@@ -22,39 +22,80 @@
 | OSCORE (CoAP) | DTLS 1.3 (MQTT-SN) | Custom (UDP) |
 +---------------------------------------------------+
 | Link-Layer Security (LLSec)                       |
-| Ed25519 signature (32B) | AES-128-CCM (optional)  |
+| Schnorr signature (48B) | AES-128-CCM (optional)  |
 +---------------------------------------------------+
 ```
 
 ### 8.3. Link-Layer Signatures
 
-Every transmitted frame carries an Ed25519 signature for sender authentication.
+Every originated frame carries a Schnorr signature for sender authentication.
 
-**Full signature (64 bytes)** is prohibitive for LoRa. We use **truncated
-signatures (32 bytes)** providing 128 bits of security:
+**Signature Scheme: Schnorr (e₁₂₈, s) — 48 bytes**
 
+Standard Ed25519 signatures are 64 bytes, prohibitive for LoRa. We use a
+well-known Schnorr variant with truncated challenge, providing 128-bit security
+in 48 bytes.
+
+**Signing (at origin):**
 ```
-Signature = Ed25519_Sign(PrivKey, Frame)[0:32]
+r = random scalar (or deterministic: H(privkey || msg))
+R = r · B                           // B is curve basepoint
+e = H(R || pubkey || msg)           // full 256-bit hash
+s = r + e · privkey (mod L)         // L is curve order
+signature = e[0:16] || s            // 16 + 32 = 48 bytes
 ```
 
-Verification:
+**Verification:**
 ```
-Valid = Ed25519_Verify_Truncated(PubKey, Frame, Signature)
+e_received = signature[0:16]
+s = signature[16:48]
+R' = s · B - e_received · pubkey    // recover R (extended with zeros)
+e' = H(R' || pubkey || msg)
+valid = (e'[0:16] == e_received)
 ```
 
-**Implementation note:** Truncated Ed25519 requires custom verification
-that checks if any of the 2^256 possible full signatures (sharing the
-truncated prefix) is valid. In practice, we use a deterministic scheme
-where the second half is derived from the first.
+**Hash function:** SHA-512, truncated per Ed25519 convention.
 
-### 8.4. Alternative: ECDSA with secp256r1
+### 8.4. Signed vs Relay-Mutable Fields
 
-If Ed25519 truncation is unacceptable, use ECDSA with secp256r1:
-- 64-byte signature (r, s)
-- Can truncate r to 32 bytes, send full s (48 bytes total)
-- More CPU-intensive than Ed25519
+Signatures cover the **immutable** portion of the packet. Relays modify
+routing headers without re-signing.
 
-### 8.5. Key Management
+**Signed (immutable):**
+| Field | Notes |
+|-------|-------|
+| Source IPv6 address | Origin identity |
+| Destination IPv6 address | Final destination |
+| Payload | Application data |
+| Sequence number | Replay protection |
+| LLSec flags | Security parameters |
+
+**Unsigned (relay-mutable):**
+| Field | Notes |
+|-------|-------|
+| Hop Limit / TTL | Decremented per hop |
+| 6LoRH source routing headers | Inserted/consumed by relays |
+| Link-layer destination | Changes each hop |
+| Link-layer source | Relay's address |
+
+**Implication:** Relays forward packets without re-signing. The original
+signature remains valid because signed fields are unchanged.
+
+### 8.5. Signature Caching
+
+To reduce verification overhead:
+
+1. **First-hop verification:** Verify signature when packet first arrives
+2. **Cache result:** Mark packet as "verified from <IID>" in forwarding state
+3. **Relay without re-verify:** Subsequent hops trust first-hop verification
+4. **Cache keyed by:** (source IID, sequence number) with TTL
+
+Cache entries expire after 2× expected mesh traversal time (default: 30 seconds).
+
+**Security note:** A compromised relay could inject unverified packets. In
+high-security deployments, enable per-hop verification (costs CPU, not bytes).
+
+### 8.6. Key Management
 
 **Design Principles:**
 - No pre-shared network keys (each node has its own keypair)
@@ -136,7 +177,7 @@ For high-security pairing without infrastructure:
 - Key change without signature -> reject, require re-verification
 - Revocation: remove from local key store; no global revocation list
 
-### 8.6. OSCORE (RFC 8613)
+### 8.7. OSCORE (RFC 8613)
 
 Object Security for Constrained RESTful Environments provides end-to-end
 security for CoAP:
@@ -150,7 +191,7 @@ security for CoAP:
 
 **OSCORE Overhead:** 8-13 bytes (Partial IV + Tag)
 
-### 8.7. RPL Secure Mode
+### 8.8. RPL Secure Mode
 
 RPL defines three security modes:
 
@@ -171,7 +212,7 @@ OSCORE for data plane.
 
 | Primitive | Security Level | Notes |
 |-----------|----------------|-------|
-| Ed25519 | 128 bits | Truncated to 32B OK |
+| Schnorr (e₁₂₈, s) | 128 bits | 48-byte signatures |
 | AES-128-CCM | 128 bits | Used by OSCORE |
 | HKDF-SHA256 | 256 bits | Key derivation |
 
