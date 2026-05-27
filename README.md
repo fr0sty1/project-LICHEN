@@ -16,7 +16,7 @@ Meshtastic, MeshCore, and LoRaWAN are neat. They're also deeply flawed.
 | Interop | Protobuf everything | Custom binary | Vendor lock-in |
 | IP connectivity | None | None | Via application server |
 
-The IETF already solved these problems. IPv6 gives us real addresses. RPL gives us real mesh routing. CoAP gives us real application protocols. SCHC gives us real compression for constrained links. OSCORE gives us real end-to-end security.
+The IETF already solved these problems. IPv6 gives us real addresses. RPL+LOADng give us real mesh routing. CoAP gives us real application protocols. SCHC gives us real compression for constrained links. OSCORE gives us real end-to-end security.
 
 LICHEN assembles these existing standards into a working LoRa mesh. No novel protocols. No proprietary formats. Just standards, composed correctly.
 
@@ -30,6 +30,8 @@ LICHEN assembles these existing standards into a working LoRa mesh. No novel pro
 ├─────────────────────────────────────────┤
 │  UDP / IPv6 (RFC 768, 8200)             │
 ├─────────────────────────────────────────┤
+│  Routing: RPL + Announce + LOADng       │
+├─────────────────────────────────────────┤
 │  SCHC Compression (RFC 8724)            │
 ├─────────────────────────────────────────┤
 │  LICHEN Link Layer (Schnorr signatures) │
@@ -41,7 +43,7 @@ LICHEN assembles these existing standards into a working LoRa mesh. No novel pro
 **Key properties:**
 
 - **Real IPv6 addresses** — Every node has link-local, ULA, and optionally global addresses
-- **Real mesh routing** — RPL builds efficient routes, not naive flooding
+- **Real mesh routing** — Three-tier architecture (RPL + Announce + LOADng), not naive flooding
 - **Real security** — Every packet signed; optional end-to-end encryption
 - **Real interop** — Border routers connect mesh to internet; standard CoAP APIs
 - **Bandwidth efficient** — SCHC compresses IPv6+UDP+CoAP from 60+ bytes to 6-12 bytes
@@ -114,7 +116,17 @@ Addresses are stable, routable, and work with standard IPv6 tools.
 
 ### Routing
 
-RPL (RFC 6550) builds a tree rooted at the border router or self-elected root. Packets route toward root (upward) and back out (downward via source routing). No flooding for unicast traffic.
+LICHEN uses three-tier hybrid routing, not one-size-fits-all:
+
+| Tier | Protocol | Traffic Type |
+|------|----------|--------------|
+| 1 | **RPL** | Border router ↔ mesh (tree-shaped, upward/downward) |
+| 2 | **Announce** | Peer-to-peer between active nodes (instant, proactive) |
+| 3 | **LOADng** | Unknown destinations (reactive discovery fallback) |
+
+RPL builds a tree rooted at the border router for internet traffic. Announce routing builds gradients toward active mesh participants — nodes periodically broadcast signed announcements, so peers can reach each other instantly. LOADng provides reactive route discovery for new or sleeping nodes.
+
+All three methods populate a unified gradient table. No flooding for unicast traffic.
 
 ### Compression
 
@@ -159,7 +171,11 @@ LICHEN/
 ├── spec/                   # Protocol specification
 │   ├── README.md           # Spec index
 │   ├── 01-architecture.md  # Design principles
-│   ├── ...                 # Core spec documents
+│   ├── 05-routing.md       # Three-tier routing
+│   ├── 06-security.md      # Security architecture
+│   ├── appendix-rpl.md     # RPL configuration
+│   ├── appendix-loadng.md  # LOADng configuration
+│   ├── ...                 # Other spec documents
 │   └── drafts/             # Internet-Drafts
 ├── python/                 # (planned) Python prototype
 ├── rust/                   # (planned) Rust implementation
@@ -176,6 +192,7 @@ ls spec/*.md
 **Key documents:**
 - `spec/README.md` — Table of contents
 - `spec/01-architecture.md` — Why these design choices
+- `spec/05-routing.md` — Three-tier routing (RPL + Announce + LOADng)
 - `spec/06-security.md` — Security architecture
 - `spec/drafts/` — Standalone components (Schnorr sigs, SCHC profile, RPL config)
 
@@ -203,6 +220,10 @@ Areas needing work:
 
 LoRaWAN is star topology — every node talks to a gateway, no mesh. Good for city-scale IoT with infrastructure, not for off-grid mesh.
 
+**Why three routing protocols?**
+
+Each solves a different problem. RPL excels at tree-shaped sensor→gateway traffic but peer-to-peer goes through the common ancestor (inefficient). Announce routing gives instant peer-to-peer between active nodes but can't find sleeping or new nodes. LOADng discovers unknown destinations reactively. Together they cover all traffic patterns efficiently. Thread rejected pure RPL for similar reasons.
+
 **Why Schnorr instead of Ed25519?**
 
 Ed25519 signatures are 64 bytes. Our Schnorr variant is 48 bytes. At LoRa data rates, 16 bytes saved per packet is significant. See `spec/drafts/draft-lichen-schnorr-00.md`.
@@ -224,7 +245,7 @@ LICHEN is authentication-first, not encryption-first. Every packet is signed (se
 
 LICHEN stands on the shoulders of the IETF. The protocol is an assembly of:
 - IPv6 (RFC 8200)
-- RPL (RFC 6550)
+- RPL (RFC 6550) + LOADng (draft-ietf-roll-aodv-rpl)
 - SCHC (RFC 8724)
 - CoAP (RFC 7252)
 - OSCORE (RFC 8613)
