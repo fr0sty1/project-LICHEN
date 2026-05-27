@@ -4,13 +4,47 @@
 
 ## 5. Adaptation Layer
 
-### 5.1. SCHC Overview (RFC 8724)
+### 5.1. Design Choice: SCHC, Not 6LoWPAN IPHC
+
+Traditional 6LoWPAN (RFC 4944, 6282) was designed for IEEE 802.15.4 networks.
+LICHEN uses **SCHC (RFC 8724) instead** because:
+
+| Aspect | 6LoWPAN IPHC | SCHC |
+|--------|--------------|------|
+| Designed for | 802.15.4 | **LPWAN (LoRa, Sigfox, NB-IoT)** |
+| Compression | Fixed encoding | **Flexible rules** |
+| Fragmentation | Tied to 802.15.4 | **LPWAN-optimized (ACK-on-Error)** |
+| CoAP compression | Separate (RFC 8824) | **Integrated** |
+| MTU assumption | 127 bytes | **Variable** |
+
+**LICHEN stack (no 802.15.4):**
+
+```
+┌─────────────────────────────────┐
+│  IPv6 / UDP / ICMPv6 / CoAP    │
+├─────────────────────────────────┤
+│  SCHC (RFC 8724)               │
+│  - Compression (replaces IPHC) │
+│  - Fragmentation               │
+├─────────────────────────────────┤
+│  LICHEN Link Layer             │
+│  - Custom framing              │
+│  - Schnorr signatures          │
+├─────────────────────────────────┤
+│  LoRa PHY                      │
+└─────────────────────────────────┘
+```
+
+**Zephyr integration:** Requires custom L2 driver or network interface.
+Cannot use `CONFIG_NET_L2_IEEE802154`.
+
+### 5.2. SCHC Overview (RFC 8724)
 
 Static Context Header Compression uses pre-shared "rules" to compress
 headers. Both sender and receiver store identical rule sets; packets
 carry only a Rule ID and residue (changed fields).
 
-### 5.2. Compression Gains
+### 5.3. Compression Gains
 
 | Headers | Uncompressed | SCHC Compressed |
 |---------|--------------|-----------------|
@@ -18,14 +52,14 @@ carry only a Rule ID and residue (changed fields).
 | IPv6 + UDP | 48 bytes | 3-6 bytes |
 | IPv6 + UDP + CoAP | 60+ bytes | 6-12 bytes |
 
-### 5.3. Rule Structure
+### 5.4. Rule Structure
 
 Each rule specifies, for each header field:
 - **TV (Target Value):** Expected value
 - **MO (Matching Operator):** equal, ignore, MSB(n), etc.
 - **CDA (Compression/Decompression Action):** not-sent, value-sent, LSB(n), etc.
 
-### 5.4. Default Rules
+### 5.5. Default Rules
 
 **Rule 0: Link-local IPv6 + UDP (most common)**
 
@@ -58,7 +92,7 @@ Each rule specifies, for each header field:
 
 **Compressed size: 10 bytes** (includes full destination prefix)
 
-### 5.5. Fragmentation
+### 5.6. Fragmentation
 
 Packets exceeding L2 MTU are fragmented per RFC 8724 Section 8:
 
