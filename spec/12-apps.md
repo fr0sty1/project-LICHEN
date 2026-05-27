@@ -128,8 +128,85 @@ GET /.well-known/core?rt=msg.store
 </msg/store>;rt="msg.store"
 ```
 
-Implementation is OPTIONAL. Maximum stored messages and TTL are
-implementation-defined.
+Implementation is OPTIONAL. Implementations that support store-and-forward
+MUST comply with the limits below.
+
+**Storage Limits:**
+
+| Parameter | Minimum | Default | Maximum |
+|-----------|---------|---------|---------|
+| Total messages | 8 | 16 | 64 |
+| Per-destination messages | 2 | 4 | 16 |
+| Message size | 128 B | 256 B | 512 B |
+| Total storage | 1 KB | 4 KB | 16 KB |
+| Message TTL | 1 hour | 4 hours | 24 hours |
+
+Nodes MUST support at least the minimum values. Constrained nodes (e.g.,
+STM32WL) SHOULD use minimum values to preserve RAM for other functions.
+
+**Eviction Policy:**
+
+When storage is full, evict messages in this order:
+
+1. **Expired messages:** TTL exceeded (always evict first)
+2. **Per-destination fairness:** If one destination has more than fair share,
+   evict its oldest message first
+3. **FIFO:** Oldest message across all destinations
+
+Fair share = total_messages / active_destinations. A destination with 8
+messages when fair share is 4 has its oldest message evicted before a
+destination with 2 messages.
+
+**Back-Pressure Signaling:**
+
+When a store-and-forward node cannot accept a message:
+
+| Condition | Response Code | Meaning |
+|-----------|---------------|---------|
+| Storage full | 5.03 Service Unavailable | Retry later |
+| Message too large | 4.13 Request Entity Too Large | Reduce size |
+| Destination blacklisted | 4.03 Forbidden | Won't store for this dest |
+| TTL too long | 4.00 Bad Request | Reduce TTL |
+
+Example rejection:
+
+```
+POST coap://[store-node]/msg/store
+Content-Format: application/cbor
+{...message...}
+
+Response: 5.03 Service Unavailable
+Max-Age: 60              ; retry after 60 seconds
+Content-Format: application/cbor
+{
+  "reason": "storage_full",
+  "available": 0,
+  "retry_after": 60
+}
+```
+
+**Memory Reservation:**
+
+Nodes SHOULD reserve store-and-forward memory statically at boot:
+
+| Platform | Recommended S&F Budget |
+|----------|------------------------|
+| ESP32/nRF52840 | 4-8 KB |
+| STM32WL | 1-2 KB |
+| Border router | 16-64 KB |
+
+Store-and-forward MUST NOT allocate memory dynamically in a way that
+starves routing tables, network buffers, or other critical functions.
+
+**Delivery:**
+
+When destination becomes reachable:
+
+1. Query routing table for destination
+2. If reachable, deliver stored messages in FIFO order
+3. Wait for ACK (if requested) before delivering next
+4. On delivery failure, retain message (until TTL expires)
+5. On successful delivery, delete from store
 
 ### 18.2. Position Sharing
 
@@ -217,16 +294,90 @@ Nodes MAY implement position privacy:
 | Setting | Behavior |
 |---------|----------|
 | public | Beacon to all, respond to queries |
-| group | Beacon to group only, query requires auth |
-| private | No beacon, query requires explicit auth |
+| group | Beacon to group only (encrypted), query requires group membership |
+| private | No beacon, query requires pairwise OSCORE |
 | off | GPS disabled, no position sharing |
 
 ```
 GET coap://[node]/config/privacy
 Content-Format: application/cbor
 
-{"location": "group"}
+{"location": "group", "group_id": "team-alpha"}
 ```
+
+**Query Authentication:**
+
+Position queries (`GET /sensors/location`) are protected based on privacy mode:
+
+| Mode | Authentication Required |
+|------|------------------------|
+| public | None |
+| group | OSCORE with group context (see 18.8) |
+| private | OSCORE with pairwise context (see 8.8 EDHOC) |
+
+Unauthenticated queries to non-public nodes receive `4.01 Unauthorized`:
+
+```
+GET coap://[node]/sensors/location
+(no OSCORE)
+
+Response: 4.01 Unauthorized
+Content-Format: application/cbor
+{"error": "oscore_required", "mode": "private"}
+```
+
+**Group Beacon Encryption:**
+
+In `group` mode, position beacons are encrypted with the group OSCORE key:
+
+```
+PUT coap://[ff35:...group-mcast]/pos
+Content-Format: application/senml+cbor
+OSCORE: <group context, key_id=key-alpha-001>
+
+[encrypted position SenML]
+```
+
+Only group members can decrypt the beacon. Non-members see:
+- That a transmission occurred (presence)
+- Encrypted payload (no location data)
+
+**Private Mode Behavior:**
+
+In `private` mode:
+- No beacons transmitted
+- Position revealed only to peers with established OSCORE context
+- Node must explicitly allow each peer (whitelist)
+
+```
+PUT coap://[node]/config/privacy/allowed
+Content-Format: application/cbor
+
+{"peers": ["fd12:...:1111", "fd12:...:2222"]}
+```
+
+Only whitelisted peers' OSCORE-protected queries are answered.
+
+**Presence vs Location Privacy:**
+
+| What | Can Be Hidden? |
+|------|---------------|
+| Location (lat/lon) | Yes (encryption) |
+| Presence (node exists) | **No** |
+
+**Important limitation:** Even with encryption, passive observers can detect:
+- That a node is transmitting (radio activity)
+- Approximate node location via RF direction-finding
+- Communication patterns (who talks to whom)
+
+True presence hiding requires cover traffic (constant dummy transmissions),
+which is impractical on duty-cycle-limited LoRa. LICHEN does not attempt
+to hide presence—only location content.
+
+For high-security scenarios requiring presence hiding, consider:
+- Radio silence (off mode)
+- Physical security (Faraday, remote deployment)
+- Accepting presence disclosure as operational constraint
 
 ### 18.3. Waypoints
 
@@ -358,7 +509,58 @@ Priority alerting for emergencies.
 - CoAP (RFC 7252)
 - CAP concepts (OASIS Common Alerting Protocol) for alert structure
 
-#### 18.4.1. Emergency Alert Format
+#### 18.4.1. SOS Authentication and Rate Limiting
+
+SOS messages are high-priority and trigger network-wide flooding. Without
+controls, fake SOS floods cause denial of service. All SOS messages MUST
+be authenticated and rate-limited.
+
+**Authentication (REQUIRED):**
+
+SOS messages MUST carry a valid link-layer signature from the originating
+node. The Ed25519/Schnorr signature is verified at each receiving node
+before rebroadcast. Unsigned or invalid SOS messages are silently dropped.
+
+```
+SOS frame = [LLSec header] [SOS payload] [Schnorr signature (48B)]
+```
+
+**Rate Limiting (REQUIRED):**
+
+Each node enforces per-source SOS rate limits:
+
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| SOS cooldown | 10 minutes | Prevents accidental spam |
+| Max SOS per hour | 3 | Limits intentional abuse |
+| Burst allowance | 2 | Allows rapid updates to same SOS |
+
+Nodes track (source IID, SOS count, last SOS timestamp). An SOS from
+a node that exceeds rate limits is dropped and logged but not relayed.
+
+**Soft Blacklist (RECOMMENDED):**
+
+Nodes MAY implement reputation tracking for SOS abuse:
+
+| Violation | Reputation Impact |
+|-----------|-------------------|
+| SOS cancelled within 5 min | -1 point |
+| Repeated SOS without response | -2 points |
+| False SOS confirmed by operator | -10 points |
+| Valid emergency confirmed | Reset to 0 |
+
+Nodes with reputation below threshold (-10) have their SOS messages
+delayed or dropped entirely. Blacklist entries expire after 7 days
+without violations.
+
+**Operator Override:**
+
+Nodes SHOULD support operator commands to:
+- Clear rate limit for a specific node (emergency responder scenario)
+- Manually blacklist/whitelist nodes
+- Disable rate limiting entirely (trusted network)
+
+#### 18.4.2. Emergency Alert Format
 
 ```cbor
 {
@@ -382,7 +584,7 @@ Alert types:
 | fire | Fire emergency |
 | cancel | Cancel previous alert |
 
-#### 18.4.2. Sending Emergency Alert
+#### 18.4.3. Sending Emergency Alert
 
 **Dedicated SOS endpoint with multicast:**
 
@@ -403,7 +605,7 @@ Nodes receiving SOS:
 2. Re-broadcast once (controlled flooding, TTL-limited)
 3. Log to `/sos/log`
 
-#### 18.4.3. SOS Button Behavior
+#### 18.4.4. SOS Button Behavior
 
 Hardware SOS button (if present):
 
@@ -414,7 +616,7 @@ Hardware SOS button (if present):
 | Press during SOS | Send update with current position |
 | Hold 5s during SOS | Cancel SOS |
 
-#### 18.4.4. Emergency Resources
+#### 18.4.5. Emergency Resources
 
 **View Active Emergencies:**
 
@@ -450,7 +652,7 @@ Content-Format: application/cbor
 }
 ```
 
-#### 18.4.5. Network Behavior During Emergency
+#### 18.4.6. Network Behavior During Emergency
 
 When SOS is active:
 
@@ -740,16 +942,190 @@ Groups provide:
   "id": "team-alpha",
   "name": "Team Alpha",
   "mcast": "ff35:40:fd12:3456:789a:1::1",  ; mesh-local multicast
+  "owner": "fd12:...:1111",                ; group creator
+  "admins": ["fd12:...:2222"],             ; delegated admins
   "members": [
     "fd12:...:1111",
     "fd12:...:2222",
     "fd12:...:3333"
   ],
-  "key_id": "key-alpha-001"    ; OSCORE Group key reference (optional)
+  "key_id": "key-alpha-001",   ; OSCORE Group key reference (optional)
+  "created": 1716742800,
+  "key_epoch": 1               ; increments on rekey
 }
 ```
 
-#### 18.8.2. Group Multicast Addressing
+#### 18.8.2. Group Membership Protocol
+
+**Roles:**
+
+| Role | Capabilities |
+|------|--------------|
+| Owner | Full control: delete group, promote/demote admins, invite/remove anyone |
+| Admin | Invite members, remove members (not owner/admins), distribute keys |
+| Member | Send/receive group messages, view membership |
+
+Owner is always a member. Admins are always members.
+
+**Group Creation:**
+
+```
+POST coap://[creator-node]/groups
+Content-Format: application/cbor
+
+{
+  "name": "Team Alpha",
+  "encrypted": true    ; whether to use OSCORE Group
+}
+
+Response: 2.01 Created
+Location-Path: /groups/team-alpha
+Content-Format: application/cbor
+
+{
+  "id": "team-alpha",
+  "mcast": "ff35:0040:...",
+  "key_id": "key-alpha-001",   ; if encrypted
+  "master_secret": "<base64>"  ; only in creation response
+}
+```
+
+Creator automatically becomes owner. Group ID derived from name hash or
+randomly generated.
+
+**Invitations:**
+
+Owner or admin invites a node:
+
+```
+POST coap://[target-node]/groups/invite
+Content-Format: application/cbor
+
+{
+  "group_id": "team-alpha",
+  "group_name": "Team Alpha",
+  "mcast": "ff35:0040:...",
+  "inviter": "fd12:...:1111",
+  "role": "member",            ; "member" or "admin"
+  "expires": 1716829200,       ; invitation expiry
+  "signature": "<inviter's signature over above fields>"
+}
+
+Response: 2.04 Changed (accepted) or 4.03 Forbidden (declined)
+```
+
+Target validates inviter's signature. If accepted, target adds group to
+local store and requests key (if encrypted).
+
+**Key Distribution:**
+
+For encrypted groups, new members request the group key:
+
+```
+POST coap://[inviter]/groups/team-alpha/key
+Content-Format: application/cbor
+OSCORE: <secured with pairwise context>
+
+{
+  "request": "join_key",
+  "node": "fd12:...:3333"
+}
+
+Response: 2.05 Content
+Content-Format: application/cbor
+OSCORE: <secured with pairwise context>
+
+{
+  "key_id": "key-alpha-001",
+  "key_epoch": 1,
+  "master_secret": "<32 bytes, base64>",
+  "master_salt": "<8 bytes, base64>",
+  "algorithm": "AES-CCM-16-64-128"
+}
+```
+
+Key is sent over the existing pairwise OSCORE context (established via
+EDHOC) between inviter and new member. Never sent in plaintext.
+
+**Leaving a Group:**
+
+Member voluntarily leaves:
+
+```
+DELETE coap://[own-node]/groups/team-alpha
+
+Response: 2.02 Deleted
+```
+
+Node removes group from local store, deletes key material.
+
+**Removal by Admin/Owner:**
+
+```
+POST coap://[target-node]/groups/remove
+Content-Format: application/cbor
+
+{
+  "group_id": "team-alpha",
+  "removed_by": "fd12:...:1111",
+  "reason": "no longer on team",
+  "signature": "<remover's signature>"
+}
+
+Response: 2.04 Changed
+```
+
+Target validates signature is from owner or admin, then deletes group.
+
+**Membership Synchronization:**
+
+Full membership list is NOT broadcast (privacy). Nodes track:
+- Groups they belong to (local)
+- Who invited them (can request updated member list)
+
+Owner/admins maintain authoritative member list:
+
+```
+GET coap://[owner]/groups/team-alpha/members
+OSCORE: <group context>
+
+Response: 2.05 Content
+{
+  "owner": "fd12:...:1111",
+  "admins": ["fd12:...:2222"],
+  "members": ["fd12:...:3333", "fd12:...:4444"]
+}
+```
+
+**Rekeying:**
+
+When a member is removed, the group key SHOULD be rotated:
+
+1. Owner/admin generates new master_secret
+2. Increment key_epoch
+3. Distribute new key to remaining members via pairwise OSCORE
+4. Old key_epoch rejected after grace period (1 hour)
+
+Rekeying is NOT required for voluntary leaves (member already has key,
+but is trusted not to abuse it).
+
+**Admin Delegation:**
+
+```
+POST coap://[owner]/groups/team-alpha/admins
+Content-Format: application/cbor
+
+{
+  "action": "promote",
+  "node": "fd12:...:2222"
+}
+
+Response: 2.04 Changed
+```
+
+Only owner can promote/demote admins.
+
+#### 18.8.3. Group Multicast Addressing
 
 Per RFC 7390 and RFC 3306 (unicast-prefix-based multicast):
 
@@ -762,7 +1138,7 @@ Example: Group 1 on mesh `fd12:3456:789a:1::/64`:
 ff35:0040:fd12:3456:789a:0001::0001
 ```
 
-#### 18.8.3. Group Resources
+#### 18.8.4. Group Resources
 
 **List Groups:**
 
@@ -796,7 +1172,7 @@ Content-Format: application/senml+cbor
 [...position SenML...]
 ```
 
-#### 18.8.4. Group Key Management
+#### 18.8.5. Group Key Management
 
 For encrypted groups (OSCORE Group per RFC 9203):
 

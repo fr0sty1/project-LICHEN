@@ -61,6 +61,9 @@ Each rule specifies, for each header field:
 
 ### 5.5. Default Rules
 
+Rule IDs 0-127 are for compression rules. Rule ID 255 is reserved for
+uncompressed fallback (see 5.7).
+
 **Rule 0: Link-local IPv6 + UDP (most common)**
 
 | Field | TV | MO | CDA |
@@ -109,6 +112,78 @@ Packets exceeding L2 MTU are fragmented per RFC 8724 Section 8:
 
 **ACK-on-Error mode** recommended for LoRa: receiver only sends NACK
 for missing fragments.
+
+### 5.7. Rule Versioning and Interoperability
+
+SCHC requires identical rule sets on sender and receiver. To ensure
+interoperability across firmware versions:
+
+**Rule Set Version:**
+
+Each LICHEN release defines a rule set version (8-bit unsigned integer).
+Version increments when rules are added, removed, or modified.
+
+| Version | Description |
+|---------|-------------|
+| 0 | Reserved (uncompressed fallback) |
+| 1 | Initial LICHEN release |
+| 2+ | Future versions |
+
+**DIO Rule Version Option (Type TBD):**
+
+DODAG roots advertise their rule set version in DIO messages:
+
+```
++--------+--------+--------+
+| Type   | Length | Version|
++--------+--------+--------+
+   1B       1B       1B
+```
+
+Nodes SHOULD only join a DODAG if their rule set version matches the
+advertised version. Version mismatch indicates firmware incompatibility.
+
+**Fallback Rule (Rule ID 255): No Compression**
+
+Rule 255 is reserved for uncompressed packets. All implementations MUST
+support Rule 255 regardless of version:
+
+```
+Rule 255 packet:
++----------+-----------------+
+| RuleID   | Full IPv6 packet|
+| (1 byte) | (40+ bytes)     |
++----------+-----------------+
+```
+
+**When to use Rule 255:**
+- Decompression failure (unknown rule ID)
+- Version mismatch detected
+- Debugging / diagnostics
+- Communicating with legacy nodes
+
+**Decompression Failure Handling:**
+
+| Scenario | Action |
+|----------|--------|
+| Unknown Rule ID | Drop packet, log warning |
+| Decompression produces invalid IPv6 | Drop packet, log warning |
+| Repeated failures from same source | Assume version mismatch, notify operator |
+
+**Version Negotiation:**
+
+Explicit version negotiation is NOT required. The DIO advertisement
+provides passive discovery. Nodes with mismatched versions:
+1. Cannot join the same DODAG (DIO filter)
+2. Can still communicate via Rule 255 (degraded performance)
+3. Should be upgraded to matching firmware
+
+**Backward Compatibility:**
+
+When updating firmware:
+1. New rules SHOULD be added with new Rule IDs (don't reuse)
+2. Old rules SHOULD remain supported for one version cycle
+3. Version number MUST increment on any rule change
 
 ---
 

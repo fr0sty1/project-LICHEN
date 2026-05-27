@@ -191,18 +191,136 @@ security for CoAP:
 
 **OSCORE Overhead:** 8-13 bytes (Partial IV + Tag)
 
-### 8.8. RPL Secure Mode
+### 8.8. EDHOC (RFC 9528)
 
-RPL defines three security modes:
+Ephemeral Diffie-Hellman Over COSE provides lightweight authenticated key
+exchange for establishing OSCORE security contexts.
 
-| Mode | Authentication | Confidentiality |
-|------|----------------|-----------------|
-| Unsecured | None | None |
-| Preinstalled | Shared key | Optional |
-| Authenticated | Per-node keys | Optional |
+**Why EDHOC:**
+- Ed25519 keypairs (link-layer) are for signatures, not key agreement
+- OSCORE requires symmetric master secrets
+- Pre-shared keys don't scale; out-of-band provisioning is fragile
+- EDHOC provides authenticated key exchange in 3 messages (~200 bytes total)
 
-Recommended: **Preinstalled mode** with network-wide key for control plane,
-OSCORE for data plane.
+**Key Agreement:**
+
+Each node derives an X25519 keypair from its Ed25519 seed (RFC 8032 compatible):
+```
+x25519_private = SHA-512(ed25519_seed)[0:32]
+x25519_public  = X25519(x25519_private, basepoint)
+```
+
+EDHOC uses these for ephemeral-static or ephemeral-ephemeral DH.
+
+**Protocol Flow:**
+
+```
+Initiator                              Responder
+    |                                      |
+    |  --- EDHOC Message 1 (METHOD, G_X) ->|
+    |                                      |
+    |<-- EDHOC Message 2 (G_Y, CIPHERTEXT) |
+    |                                      |
+    |  --- EDHOC Message 3 (CIPHERTEXT) -->|
+    |                                      |
+  [OSCORE Master Secret derived]       [OSCORE Master Secret derived]
+```
+
+**Authentication:**
+
+EDHOC Message 2 and 3 include signatures using Ed25519 (or the Schnorr
+variant). The initiator and responder authenticate each other using their
+existing link-layer keypairs—no additional certificates needed.
+
+**OSCORE Context Export:**
+
+After EDHOC completes, both parties derive:
+```
+OSCORE Master Secret = EDHOC-Exporter("OSCORE Master Secret", h'', 16)
+OSCORE Master Salt   = EDHOC-Exporter("OSCORE Master Salt", h'', 8)
+```
+
+**When to Run EDHOC:**
+
+- **Lazy establishment:** On first OSCORE-protected request to a peer
+- **Explicit:** Via `POST coap://[peer]/.well-known/edhoc`
+- **Periodic refresh:** Re-run every 24 hours or on sequence number exhaustion
+
+**EDHOC Cipher Suite:**
+
+| Suite | AEAD | Hash | ECDH Curve | Signature |
+|-------|------|------|------------|-----------|
+| 2 | AES-CCM-16-64-128 | SHA-256 | X25519 | Ed25519 |
+
+Suite 2 is RECOMMENDED for LICHEN (matches OSCORE cipher suite).
+
+**Constrained Nodes:**
+
+EDHOC is designed for constrained devices:
+- ~200 bytes total message overhead
+- Can run over CoAP (reliable block-wise) or raw UDP
+- One-RTT for initiator-authenticated, two-RTT for mutual auth
+
+Nodes unable to run EDHOC MAY use pre-shared OSCORE contexts provisioned
+out-of-band (see 8.6 Key Management).
+
+### 8.9. RPL Security
+
+RPL control messages (DIO, DAO, DIS) are protected by **link-layer signatures**
+as the baseline. RPL's native secure modes are OPTIONAL for additional
+defense-in-depth.
+
+**Baseline: Link-Layer Signatures (REQUIRED)**
+
+All RPL control messages are frames, and all frames carry Schnorr signatures.
+This provides:
+- **Sender authentication:** DIO originates from claimed node
+- **Integrity:** Message not modified in transit
+- **Replay protection:** Epoch + seqnum prevents replay
+
+This is sufficient for most deployments. Attackers cannot forge DIOs or
+inject fake routing information without a valid keypair.
+
+**Limitation of link-layer signatures:**
+
+A compromised node with valid keys CAN:
+- Advertise false rank (attract then drop traffic)
+- Trigger unnecessary re-convergence (battery drain)
+- Inject itself as preferred parent
+
+Link-layer signatures prove "who sent this" but not "is this routing info honest."
+
+**Optional: RPL Preinstalled Mode (Defense-in-Depth)**
+
+For high-security deployments, RPL preinstalled mode adds a network-wide PSK
+for control plane messages. This provides:
+- **Network membership proof:** Only nodes with PSK can participate in routing
+- **Additional MAC:** Redundant integrity check
+
+| Mode | When to Use |
+|------|-------------|
+| Unsecured + link sigs | Default, sufficient for most deployments |
+| Preinstalled + link sigs | Adversarial environments, critical infrastructure |
+
+**Configuration:**
+
+```
+CONFIG_LICHEN_RPL_SECURE_MODE=n       # Default: rely on link-layer sigs
+CONFIG_LICHEN_RPL_SECURE_MODE=y       # Enable preinstalled mode
+CONFIG_LICHEN_RPL_PSK="<32-byte-hex>" # Network-wide key (if enabled)
+```
+
+**Note on "No PSK" Principle:**
+
+The design principle "no pre-shared network keys" applies to the **data plane**.
+An optional control plane PSK for RPL is an acceptable tradeoff:
+- Does not affect per-peer trust model
+- Does not encrypt user data
+- Is not required for operation
+- Adds defense-in-depth where needed
+
+Authenticated mode (per-node keys + KDC) is NOT recommended due to
+infrastructure complexity.
 
 ---
 
@@ -227,9 +345,15 @@ Private keys MUST be stored in:
 
 | Layer | Mechanism |
 |-------|-----------|
-| Link | 16-bit SeqNum with window |
+| Link | 8-bit epoch + 16-bit SeqNum (24-bit logical counter) |
 | OSCORE | Partial IV / Sequence Number |
-| RPL | Secure mode counters |
+| RPL | Link-layer seqnum (baseline), secure mode counters (optional) |
+
+**Link-Layer Replay Window:**
+
+Receivers track per-sender (epoch, seqnum) state with a 32-entry sliding
+window for out-of-order tolerance. Epoch persisted to flash; increments
+on wrap or reboot. See section 4.4 in Physical and Link Layers.
 
 ### 15.4. Known Limitations
 

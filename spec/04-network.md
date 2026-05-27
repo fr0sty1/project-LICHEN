@@ -62,10 +62,67 @@ Nodes MAY have both ULA and GUA addresses simultaneously.
 
 **Isolated Meshes (No Border Router):**
 
+When no border router is present, the mesh self-organizes:
+
+**Root Election:**
 - Any router MAY elect itself as DODAG root
 - Election: lowest EUI-64 wins (deterministic, no negotiation)
 - Self-elected root generates and advertises ULA prefix
 - If a "real" border router appears, nodes prefer it (lower rank)
+
+**Root Failure Detection:**
+
+Nodes monitor root health via DIO reception:
+
+| Condition | Action |
+|-----------|--------|
+| No DIO from root for 3× Imax | Declare root unreachable |
+| Root unreachable + no alternate path | Initiate re-election |
+
+Re-election process:
+1. Node with next-lowest EUI-64 waits random delay (0-5 seconds)
+2. If no DIO received during delay, self-elect as root
+3. Generate new ULA prefix (or reuse if known)
+4. Advertise DIO; other candidates stand down
+
+**Root Demotion:**
+
+Nodes MAY vote to demote a misbehaving root:
+
+| Misbehavior | Evidence |
+|-------------|----------|
+| Selective forwarding | Packets dropped, detected via E2E ACKs |
+| Rank manipulation | Advertised rank inconsistent with topology |
+| Resource exhaustion | Root stops responding to DAO |
+
+Demotion protocol:
+1. Detecting node broadcasts DEMOTION_REQUEST with evidence hash
+2. Other nodes validate evidence independently
+3. If >50% of mesh (by node count) agree, root is demoted
+4. Demoted node MUST NOT self-elect for 1 hour
+5. Next-lowest EUI-64 becomes root
+
+DEMOTION_REQUEST format (ICMPv6 RPL Control Message):
+```
++--------+--------+--------+--------+
+| Type   | Code   | Checksum        |
++--------+--------+--------+--------+
+| Target EUI-64 (8 bytes)           |
++--------+--------+--------+--------+
+| Evidence Hash (16 bytes, SHA-256 truncated) |
++--------+--------+--------+--------+
+| Signature (48 bytes, Schnorr)     |
++--------+--------+--------+--------+
+```
+
+Nodes track demotion votes per-target. Votes expire after 10 minutes.
+
+**Limitations:**
+
+- EUI-64 gaming requires hardware access; if attacker controls hardware,
+  network is already compromised
+- Demotion requires >50% honest nodes (Byzantine assumption)
+- Small meshes (<5 nodes) should use manual root configuration
 
 **Multiple Border Routers:**
 
