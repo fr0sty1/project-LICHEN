@@ -57,10 +57,12 @@ Everything Meshtastic does, plus:
 - Waypoint and route sharing
 
 **Tactical/Pro-Am**
-- Search and rescue coordination
+- Search and rescue teams (SAR/CERT)
+- Milsim and airsoft operations (multi-day, large AO)
 - Event/race communications
 - Amateur radio mesh experiments (with appropriate licensing)
-- Field telemetry collection
+- Field research expeditions
+- Disaster response / NGO coordination
 
 **Hobby/Maker**
 - Sensor networks (weather, environmental, agricultural)
@@ -77,6 +79,10 @@ Meshtastic works. But:
 - AES-CTR without authentication (malleable ciphertext)
 
 If you need a working solution today, use Meshtastic. If you want a technically sound foundation for the future, that's what LICHEN is for.
+
+**Why not goTenna/Silvus/proprietary?**
+
+goTenna Pro is $1,000+. Silvus is $5,000+. LICHEN runs on $30 hardware. You can equip 30 people for the price of one goTenna. For volunteer SAR teams, milsim groups, and disaster response orgs, that math changes everything.
 
 ## Target Hardware
 
