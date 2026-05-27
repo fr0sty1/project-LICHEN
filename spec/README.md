@@ -46,6 +46,16 @@ hardware as a reflash -- same radios, new protocol.
 - [Appendix C-E: Miscellaneous](appendix-misc.md) - Resource Directory, Comparison, Example
 - [Appendix F: SenML Profile](appendix-senml.md) - Sensor Data Format
 
+### Internet-Drafts (Preliminary)
+
+Standalone documents for novel or reusable components:
+
+- [draft-lichen-schnorr-00](drafts/draft-lichen-schnorr-00.md) - 48-byte Schnorr signatures
+- [draft-lichen-schc-lora-00](drafts/draft-lichen-schc-lora-00.md) - SCHC profile for LoRa
+- [draft-lichen-rpl-lora-00](drafts/draft-lichen-rpl-lora-00.md) - RPL tuning for LoRa
+
+See [drafts/README.md](drafts/README.md) for status and contributing info.
+
 ---
 
 *This document is a design sketch, not a finalized specification. Implementation
