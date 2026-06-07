@@ -104,9 +104,18 @@ high-security deployments, enable per-hop verification (costs CPU, not bytes).
 - Packet overhead must not increase for verified peers
 
 **Bootstrap:**
+
+*Self-Provisioned (default):*
 1. Device generates Ed25519 keypair at first boot
 2. Public key bound to node identifier (EUI-64 -> IPv6 IID)
 3. Private key stored securely, never transmitted
+
+*BR-Provisioned (optional):*
+1. Device boots in commissioning mode (no keypair)
+2. Border router provisions keypair via secure channel
+3. IID may be assigned by border router (not derived from EUI-64)
+
+See "BR-Provisioned" section below for full provisioning flow.
 
 **Trust Establishment (Layered):**
 
@@ -115,6 +124,7 @@ Implementations MUST support TOFU. Other methods are OPTIONAL.
 | Method | Infrastructure | Trust Level | Use Case |
 |--------|---------------|-------------|----------|
 | TOFU | None | Pinned | Default, works offline |
+| BR-Provisioned | Border Router | Delegated | Managed fleets, enterprise |
 | DANE | DNSSEC | Verified | Internet-connected nodes |
 | PKIX | CA | Verified | Enterprise deployments |
 
@@ -135,7 +145,74 @@ Key Store Entry:
   LastSeen: <timestamp>
 ```
 
-**2. DANE (RFC 6698) -- Optional Upgrade**
+**2. BR-Provisioned -- Optional**
+
+For managed deployments, the border router MAY provision keypairs to nodes
+during commissioning. This enables central control over network membership.
+
+**Provisioning Flow:**
+
+1. Node boots in commissioning mode (no keypair yet)
+2. Node connects to border router via secure channel (USB, BLE, or LCI)
+3. Border router generates Ed25519 keypair for node
+4. Border router assigns IID (may differ from EUI-64)
+5. Border router transmits keypair to node over secure channel
+6. Node stores keypair; exits commissioning mode
+7. Border router records (IID, PubKey) in its trust anchor list
+8. Border router distributes trust anchor to other managed nodes
+
+**Security Requirements:**
+
+- Provisioning channel MUST be encrypted (TLS, DTLS, or physical isolation)
+- Private key MUST be deleted from border router after successful transfer
+- Node MUST NOT accept provisioning after initial setup (factory reset required)
+- Border router SHOULD log all provisioning events
+
+**Trust Anchor Distribution:**
+
+The border router maintains an authoritative list of provisioned nodes:
+
+```
+Trust Anchor List:
+  - IID: 1234:5678:9abc:def0, PubKey: <32 bytes>, Provisioned: <timestamp>
+  - IID: 1234:5678:9abc:def1, PubKey: <32 bytes>, Provisioned: <timestamp>
+```
+
+Managed nodes MAY fetch this list via CoAP:
+
+```
+GET coap://[border-router]/.well-known/trust-anchors
+Content-Format: application/cbor
+
+[
+  [h'12345678...', h'<pubkey>'],  ; [IID, PubKey]
+  [h'12345678...', h'<pubkey>']
+]
+```
+
+Nodes receiving trust anchors from the border router trust those keys
+without TOFU. This enables instant mesh formation without first-contact
+verification delays.
+
+**Revocation:**
+
+The border router can revoke a node by:
+
+1. Removing it from the trust anchor list
+2. Pushing updated list to all managed nodes
+3. Optionally broadcasting a revocation message (signed by BR)
+
+Revocation takes effect when nodes receive the updated trust anchor list.
+Nodes SHOULD fetch updates periodically (e.g., every hour) or on BR announcement.
+
+**Mixed Mode:**
+
+A mesh MAY contain both self-provisioned (TOFU) and BR-provisioned nodes.
+BR-provisioned nodes trust each other via the trust anchor list. They
+interact with TOFU nodes normally (pinning on first contact). This allows
+gradual migration or mixed autonomous/managed deployments.
+
+**3. DANE (RFC 6698) -- Optional**
 
 When a node has a DNS name and internet connectivity:
 
@@ -148,7 +225,7 @@ When a node has a DNS name and internet connectivity:
 DANE verification happens out-of-band (via border router), not over LoRa.
 No additional per-packet overhead.
 
-**3. PKIX/ACME -- Optional Upgrade**
+**4. PKIX/ACME -- Optional**
 
 For enterprise deployments requiring CA-issued certificates:
 
