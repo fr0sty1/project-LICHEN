@@ -7,12 +7,12 @@ medium.
 
 from __future__ import annotations
 
-from collections import defaultdict
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from lichen.sim.events import Event, EventQueue, RxTimeoutEvent, TxEndEvent
 from lichen.sim.medium import Medium
+from lichen.sim.metrics import Metrics
 from lichen.sim.node import NodeState, SimNode
 
 if TYPE_CHECKING:
@@ -68,6 +68,7 @@ class Simulation:
         self._pending_rx_timeouts: dict[str, int] = {}  # node_id -> timeout_time_us
         self._active_transmissions: dict[str, str] = {}  # node_id -> transmission_id
         self._chaos_engine = chaos_engine
+        self._metrics = Metrics()
 
     @property
     def id(self) -> str:
@@ -93,6 +94,11 @@ class Simulation:
     def event_queue(self) -> EventQueue:
         """Return the event queue."""
         return self._event_queue
+
+    @property
+    def metrics(self) -> Metrics:
+        """Return the metrics collector for this simulation."""
+        return self._metrics
 
     @property
     def chaos_engine(self) -> ChaosEngine | None:
@@ -290,6 +296,7 @@ class Simulation:
         )
 
         self._active_transmissions[node_id] = tx.id
+        self._metrics.record_transmission_start(tx.id, tx.start_time_us)
 
         end_event = TxEndEvent(
             time_us=tx.end_time_us,
@@ -370,7 +377,15 @@ class Simulation:
 
         tx = self._medium.resolve_reception(candidates)
         if tx is None:
+            # Two or more overlapping signals that failed the capture check
+            # are a collision (deduplicated inside record_collision).
+            if len(candidates) >= 2:
+                self._metrics.record_collision(
+                    node_id, [c.transmission.id for c in candidates]
+                )
             return None
+
+        self._metrics.record_reception(node_id, tx.id, self._current_time_us)
 
         # Find the candidate to get RSSI/SNR
         for candidate in candidates:

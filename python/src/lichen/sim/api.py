@@ -181,6 +181,21 @@ class SimulatorAPI:
             }
         )
 
+    async def get_metrics(self, request: Request) -> JSONResponse:
+        """Get collected metrics for a simulation.
+
+        GET /sim/{sim_id}/metrics
+        Returns the metrics snapshot: transmissions, receptions, collisions,
+        delivery_rate, collision_rate, and latency_us stats.
+        """
+        sim_id = request.path_params["sim_id"]
+        sim = self._get_simulation(sim_id)
+
+        if sim is None:
+            return _error_response(f"Simulation '{sim_id}' not found", status_code=404)
+
+        return JSONResponse(sim.metrics.snapshot())
+
     async def tick_simulation(self, request: Request) -> JSONResponse:
         """Advance simulation time.
 
@@ -588,6 +603,7 @@ class SimulatorAPI:
             ),
             Route("/sim/{sim_id}/chaos/jam", self.add_chaos_jam, methods=["POST"]),
             Route("/sim/{sim_id}/topology", self.get_topology, methods=["GET"]),
+            Route("/sim/{sim_id}/metrics", self.get_metrics, methods=["GET"]),
         ]
         self._app = Starlette(routes=routes)
         return self._app

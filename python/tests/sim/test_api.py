@@ -109,6 +109,29 @@ class TestSimulationCRUD:
         assert "not found" in response.json()["error"]
 
     @pytest.mark.asyncio
+    async def test_get_metrics(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/metrics returns a zeroed metrics snapshot for a new sim."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.get("/sim/sim1/metrics")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["transmissions"] == 0
+        assert data["receptions"] == 0
+        assert data["collisions"] == 0
+        assert data["delivery_rate"] == 0.0
+        assert data["collision_rate"] == 0.0
+        assert data["latency_us"]["count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_get_metrics_not_found(self, client: AsyncClient) -> None:
+        """GET /sim/{id}/metrics returns 404 for unknown simulation."""
+        response = await client.get("/sim/unknown/metrics")
+
+        assert response.status_code == 404
+        assert "not found" in response.json()["error"]
+
+    @pytest.mark.asyncio
     async def test_delete_simulation(self, client: AsyncClient) -> None:
         """DELETE /sim/{id} removes simulation."""
         await client.post("/sim", json={"id": "sim1"})
