@@ -1,1 +1,122 @@
-['int, str, bytes, ipaddress.IPv6Address, None]\n    matching_operator: MatchingOperator\n    compression_action: CompressionDecompressionAction\n    sent_bits: int = 0\n\n\n@dataclass\nclass Rule:\n    "', 'An SCHC Compression Rule"', '\n    rule_id: int\n    name: str\n    description: str\n    fields: List[RuleField]\n    applicability: str = "', 'class SCHC_RULES:\n    "', 'Predefined SCHC Rules for LICHEN"', '\n    \n    # Rule 0: Link-local IPv6 + UDP + CoAP (4-6 bytes compressed)\n    RULE_0 = Rule(\n        rule_id=0,\n        name="Link-local IPv6 + UDP + CoAP', 'description="Optimized for mesh-internal CoAP traffic', 'applicability="Link-local mesh communication (ff02::/16 destinations)', 'fields=[\n            # IPv6 Header\n            RuleField("IPv6.Version', 6, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.TrafficClass', 0, 'MatchingOperator.IGNORE, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.FlowLabel', 0, 'MatchingOperator.IGNORE, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.PayloadLength', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.COMPUTE),\n            RuleField("IPv6.NextHeader', 17, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),  # UDP\n            RuleField("IPv6.HopLimit', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT, 8),\n            RuleField("IPv6.SrcPrefix', 'ipaddress.IPv6Address("fe80::', 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.SrcIID', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.DEVIID),\n            RuleField("IPv6.DstPrefix', 'ipaddress.IPv6Address("ff02::', 'MatchingOperator.MSB, CompressionDecompressionAction.MSB),\n            RuleField("IPv6.DstIID', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.DEVIID),\n            # UDP Header  \n            RuleField("UDP.SrcPort', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT, 16),\n            RuleField("UDP.DstPort', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT, 16),\n            RuleField("UDP.Length', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.COMPUTE),\n            RuleField("UDP.Checksum', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.COMPUTE),\n        ]\n    )\n    \n    # Rule 1: Global IPv6 + UDP + CoAP (12-14 bytes compressed)  \n    RULE_1 = Rule(\n        rule_id=1,\n        name="Global IPv6 + UDP + CoAP', 'description="For traffic to/from internet via border router', 'applicability=', 'IPv6 source is mesh (ULA or GUA), destination is global (2000::/3)', 'fields=[\n            # IPv6 Header\n            RuleField("IPv6.Version', 6, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.TrafficClass', 0, 'MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT, 8),\n            RuleField("IPv6.FlowLabel', 0, 'MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT, 20),\n            RuleField("IPv6.PayloadLength', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.COMPUTE),\n            RuleField("IPv6.NextHeader', 17, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),  # UDP\n            RuleField("IPv6.HopLimit', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT, 8),\n            RuleField("IPv6.SrcAddr', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT, 128),\n            RuleField("IPv6.DstAddr', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT, 128),\n            # UDP Header\n            RuleField("UDP.SrcPort', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT, 16),\n            RuleField("UDP.DstPort', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT, 16),\n            RuleField("UDP.Length', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.COMPUTE),\n            RuleField("UDP.Checksum', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.COMPUTE),\n        ]\n    )\n    \n    # Rule 2: ICMPv6 Echo (3 bytes compressed)\n    RULE_2 = Rule(\n        rule_id=2,\n        name="ICMPv6 Echo', 'description="For ping and echo requests/replies', 'applicability="ICMPv6 type is Echo Request (128) or Echo Reply (129)', 'fields=[\n            # IPv6 Header\n            RuleField("IPv6.Version', 6, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.TrafficClass', 0, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.FlowLabel', 0, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.PayloadLength', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.COMPUTE),\n            RuleField("IPv6.NextHeader', 58, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),  # ICMPv6\n            RuleField("IPv6.HopLimit', 64, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.SrcPrefix', 'ipaddress.IPv6Address("fe80::', 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.SrcIID', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.DEVIID),\n            RuleField("IPv6.DstPrefix', 'ipaddress.IPv6Address("fe80::', 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.DstIID', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.DEVIID),\n            # ICMPv6 Header\n            RuleField("ICMPv6.Type', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT, 8),\n            RuleField("ICMPv6.Code', 0, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),\n            RuleField("ICMPv6.Checksum', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.COMPUTE),\n        ]\n    )\n    \n    # Rule 3: RPL DIO (8 bytes compressed)\n    RULE_3 = Rule(\n        rule_id=3,\n        name="RPL DIO', 'description=', 'For RPL control messages (DIO, DAO, DIS)', 'applicability=', 'Next header is ICMPv6 (58), ICMPv6 type is RPL (155)', 'fields=[\n            # IPv6 Header\n            RuleField("IPv6.Version', 6, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.TrafficClass', 0, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.FlowLabel', 0, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.PayloadLength', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.COMPUTE),\n            RuleField("IPv6.NextHeader', 58, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),  # ICMPv6\n            RuleField("IPv6.HopLimit', 255, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.SrcPrefix', 'ipaddress.IPv6Address("fe80::', 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.SrcIID', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.DEVIID),\n            RuleField("IPv6.DstAddr', 'ipaddress.IPv6Address("ff02::1a', 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),  # All-RPL-nodes\n            # ICMPv6 Header (RPL)\n            RuleField("ICMPv6.Type', 155, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),  # RPL\n            RuleField("ICMPv6.Code', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT, 8),\n            RuleField("ICMPv6.Checksum', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.COMPUTE),\n        ]\n    )\n    \n    # Rule 4: Minimal RPL DAO (6 bytes compressed)\n    RULE_4 = Rule(\n        rule_id=4,\n        name="RPL DAO', 'description="Minimal RPL DAO messages', 'applicability=', 'Next header is ICMPv6 (58), ICMPv6 type is RPL (155), code indicates DAO', 'fields=[\n            # IPv6 Header (Minimal form for DAO)\n            RuleField("IPv6.Version', 6, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.TrafficClass', 0, 'MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT, 8),\n            RuleField("IPv6.FlowLabel', 0, 'MatchingOperator.IGNORE, CompressionDecompressionAction.NOT_SENT),\n            RuleField("IPv6.PayloadLength', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.COMPUTE),\n            RuleField("IPv6.NextHeader', 58, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),  # ICMPv6\n            RuleField("IPv6.HopLimit', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT, 8),\n            RuleField("IPv6.SrcAddr', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT, 128),\n            RuleField("IPv6.DstAddr', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.NOT_SENT),  # Assume known destination\n            # ICMPv6 Header\n            RuleField("ICMPv6.Type', 155, 'MatchingOperator.EQUAL, CompressionDecompressionAction.NOT_SENT),  # RPL\n            RuleField("ICMPv6.Code', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT, 8),  # DAO indication\n            RuleField("ICMPv6.Checksum', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.COMPUTE),\n        ]\n    )\n    \n    # Rule 255: No Compression (Fallback)\n    RULE_255 = Rule(\n        rule_id=255,\n        name="No Compression', 'description="Fallback for interoperability or unmatched packets', 'applicability="When no other rule matches or for debugging', 'fields=[\n            # Send full packet as-is\n            RuleField("RawPacket', 'None, MatchingOperator.IGNORE, CompressionDecompressionAction.VALUE_SENT),\n        ]\n    )\n    \n    @classmethod\n    def get_rule(cls, rule_id: int) -> Optional[Rule]:\n        "', 'Get a rule by its ID"', '\n        rule_map = {\n            0: cls.RULE_0,\n            1: cls.RULE_1,\n            2: cls.RULE_2,\n            3: cls.RULE_3,\n            4: cls.RULE_4,\n            255: cls.RULE_255\n        }\n        return rule_map.get(rule_id)\n    \n    @classmethod\n    def get_all_rules(cls) -> Dict[int, Rule]:\n        "', 'Get all available rules"', '\n        return {\n            0: cls.RULE_0,\n            1: cls.RULE_1,\n            2: cls.RULE_2,\n            3: cls.RULE_3,\n            4: cls.RULE_4,\n            255: cls.RULE_255\n        }']
+"""SCHC rule definitions for LICHEN (RFC 8724).
+
+A SCHC *rule* describes, field by field, how a header is compressed. Each field
+carries a Matching Operator (MO) that decides whether the rule applies to a
+given value, and a Compression/Decompression Action (CDA) that decides what (if
+anything) is placed in the compression residue.
+
+This module implements the rule *model* and a small registry of rules drawn
+from the LICHEN specification (spec/03-adaptation.md and spec/appendix-schc.md).
+The compression engine lives in :mod:`lichen.schc.codec`.
+
+Scope: fixed-bit-length fields with the operators the LICHEN rules use
+(EQUAL / IGNORE / MSB and NOT_SENT / VALUE_SENT / LSB / COMPUTE). Variable-length
+fields (e.g. a CoAP token) and fragmentation (RFC 8724 section 8) are not
+handled here.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import Enum
+
+
+class MO(Enum):
+    """Matching Operator — decides whether a rule applies to a field value."""
+
+    EQUAL = "equal"  # value must equal the target value
+    IGNORE = "ignore"  # always matches
+    MSB = "msb"  # the top `mo_arg` bits must equal the target value's top bits
+
+
+class CDA(Enum):
+    """Compression/Decompression Action — what goes in the residue."""
+
+    NOT_SENT = "not-sent"  # nothing sent; reconstructed from the target value
+    VALUE_SENT = "value-sent"  # the whole field is sent in the residue
+    LSB = "lsb"  # only the least-significant (length - MSB) bits are sent
+    COMPUTE = "compute"  # nothing sent; recomputed by an upper layer
+
+
+@dataclass(frozen=True)
+class FieldDescriptor:
+    """One field's compression behaviour within a rule.
+
+    Attributes:
+        field_id: Stable identifier for the field (e.g. "CoAP.MID").
+        length_bits: Field width in bits.
+        mo: Matching Operator.
+        cda: Compression/Decompression Action.
+        target_value: Target value used by EQUAL / MSB matching and NOT_SENT
+            reconstruction.
+        mo_arg: For MSB, the number of most-significant bits to match. Also
+            determines the LSB residue width (length_bits - mo_arg).
+    """
+
+    field_id: str
+    length_bits: int
+    mo: MO
+    cda: CDA
+    target_value: int = 0
+    mo_arg: int | None = None
+
+    def lsb_bits(self) -> int:
+        """Number of residue bits for an LSB action (length_bits - MSB length)."""
+        if self.mo_arg is None:
+            raise ValueError(f"{self.field_id}: LSB requires mo_arg (MSB length)")
+        return self.length_bits - self.mo_arg
+
+
+@dataclass(frozen=True)
+class Rule:
+    """A SCHC rule: an ordered set of field descriptors keyed by a rule ID.
+
+    Rule IDs 0-127 are compression rules; 255 is the uncompressed fallback
+    (spec section 5.5). The rule ID is encoded as a single leading byte.
+    """
+
+    rule_id: int
+    fields: tuple[FieldDescriptor, ...]
+
+
+# Rule ID reserved for the uncompressed fallback (spec sections 5.5 / 5.7).
+RULE_ID_UNCOMPRESSED = 255
+
+
+# CoAP header compression (spec appendix A.2), fixed part (no variable token).
+# Version is a constant; the rest are carried verbatim in the residue.
+# IDs 64+ are used for these standalone building-block rules to avoid colliding
+# with the spec's reserved top-level rules 0-4 (which additionally require IPv6
+# header parsing that is not yet implemented).
+COAP_RULE = Rule(
+    rule_id=64,
+    fields=(
+        FieldDescriptor("CoAP.Version", 2, MO.EQUAL, CDA.NOT_SENT, target_value=1),
+        FieldDescriptor("CoAP.Type", 2, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.TKL", 4, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.Code", 8, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.MID", 16, MO.IGNORE, CDA.VALUE_SENT),
+    ),
+)
+
+
+# UDP port compression (spec section 5.5): well-known CoAP port 5683 with
+# MSB(12)/LSB(4), so only the low nibble of each port travels in the residue.
+UDP_PORT_RULE = Rule(
+    rule_id=65,
+    fields=(
+        FieldDescriptor(
+            "UDP.SrcPort", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12
+        ),
+        FieldDescriptor(
+            "UDP.DstPort", 16, MO.MSB, CDA.LSB, target_value=5683, mo_arg=12
+        ),
+    ),
+)
+
+
+# Registry keyed by rule ID.
+RULES: dict[int, Rule] = {
+    COAP_RULE.rule_id: COAP_RULE,
+    UDP_PORT_RULE.rule_id: UDP_PORT_RULE,
+}
