@@ -432,7 +432,8 @@ async def start_node_server(
     simulation: Simulation,
     host: str = "127.0.0.1",
     port: int = 4444,
-    **kwargs: object,
+    pcap_writer: PcapngWriter | None = None,
+    duty_cycle_limit: float = 1.0,
 ) -> asyncio.Server:
     """Start a TCP server for SimRadio client connections.
 
@@ -443,8 +444,8 @@ async def start_node_server(
         simulation: The Simulation instance to use.
         host: Host address to bind to. Defaults to "127.0.0.1".
         port: Port number to bind to. Defaults to 4444.
-        **kwargs: Additional arguments passed to NodeServer constructor
-            (pcap_writer, duty_cycle_limit).
+        pcap_writer: Optional PcapngWriter for packet capture.
+        duty_cycle_limit: Maximum duty cycle as percentage (e.g., 1.0 for 1%).
 
     Returns:
         The asyncio.Server instance. Use `server.close()` and
@@ -457,14 +458,9 @@ async def start_node_server(
         >>> server.close()
         >>> await server.wait_closed()
     """
-    # Filter kwargs to only those accepted by NodeServer
-    node_server_kwargs = {}
-    if "pcap_writer" in kwargs:
-        node_server_kwargs["pcap_writer"] = kwargs["pcap_writer"]
-    if "duty_cycle_limit" in kwargs:
-        node_server_kwargs["duty_cycle_limit"] = kwargs["duty_cycle_limit"]
-
-    node_server = NodeServer(simulation, **node_server_kwargs)
+    node_server = NodeServer(
+        simulation, pcap_writer=pcap_writer, duty_cycle_limit=duty_cycle_limit
+    )
 
     server = await asyncio.start_server(
         node_server.handle_connection,

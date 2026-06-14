@@ -539,3 +539,10 @@ class TestStartNodeServer:
         finally:
             server.close()
             await server.wait_closed()
+
+    @pytest.mark.asyncio
+    async def test_unknown_kwarg_rejected(self) -> None:
+        """Unknown keyword args are now a TypeError, not silently dropped."""
+        sim = Simulation("test-sim")
+        with pytest.raises(TypeError):
+            await start_node_server(sim, port=0, bogus_option=123)
