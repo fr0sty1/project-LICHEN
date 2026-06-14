@@ -7,6 +7,7 @@ nodes, and chaos rules programmatically.
 from __future__ import annotations
 
 import json
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from starlette.applications import Starlette
@@ -78,11 +79,24 @@ class SimulatorAPI:
     applying chaos rules, and observing topology.
     """
 
-    def __init__(self) -> None:
-        """Initialize the API with empty simulation and chaos engine stores."""
+    def __init__(
+        self,
+        on_simulation_created: Callable[[str], Awaitable[None]] | None = None,
+        on_simulation_deleted: Callable[[str], Awaitable[None]] | None = None,
+    ) -> None:
+        """Initialize the API with empty simulation and chaos engine stores.
+
+        Args:
+            on_simulation_created: Optional async callback invoked with the
+                simulation ID after a simulation is created via the REST API.
+            on_simulation_deleted: Optional async callback invoked with the
+                simulation ID just before a simulation is deleted via the API.
+        """
         self._simulations: dict[str, Simulation] = {}
         self._chaos_engines: dict[str, ChaosEngine] = {}
         self._app: Starlette | None = None
+        self._on_simulation_created = on_simulation_created
+        self._on_simulation_deleted = on_simulation_deleted
 
     def _get_simulation(self, sim_id: str) -> Simulation | None:
         """Get a simulation by ID.
@@ -140,6 +154,9 @@ class SimulatorAPI:
         self._simulations[sim_id] = sim
         self._chaos_engines[sim_id] = chaos_engine
 
+        if self._on_simulation_created is not None:
+            await self._on_simulation_created(sim_id)
+
         return JSONResponse({"id": sim_id, "status": "created"})
 
     async def delete_simulation(self, request: Request) -> JSONResponse:
@@ -152,6 +169,9 @@ class SimulatorAPI:
 
         if sim_id not in self._simulations:
             return _error_response(f"Simulation '{sim_id}' not found", status_code=404)
+
+        if self._on_simulation_deleted is not None:
+            await self._on_simulation_deleted(sim_id)
 
         del self._simulations[sim_id]
         del self._chaos_engines[sim_id]

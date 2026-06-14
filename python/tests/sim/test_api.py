@@ -26,6 +26,48 @@ async def client(app) -> AsyncClient:
         yield ac
 
 
+class TestSimulationCallbacks:
+    """The API invokes lifecycle callbacks (used by SimulatorServer instead of
+    monkey-patching) on create and delete."""
+
+    @pytest.mark.asyncio
+    async def test_create_and_delete_invoke_callbacks(self) -> None:
+        created: list[str] = []
+        deleted: list[str] = []
+
+        async def on_created(sim_id: str) -> None:
+            created.append(sim_id)
+
+        async def on_deleted(sim_id: str) -> None:
+            deleted.append(sim_id)
+
+        api = SimulatorAPI(
+            on_simulation_created=on_created, on_simulation_deleted=on_deleted
+        )
+        transport = ASGITransport(app=api.create_app())
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            await client.post("/sim", json={"id": "sim1"})
+            assert created == ["sim1"]
+            assert deleted == []
+
+            await client.delete("/sim/sim1")
+            assert deleted == ["sim1"]
+
+    @pytest.mark.asyncio
+    async def test_delete_missing_does_not_invoke_callback(self) -> None:
+        deleted: list[str] = []
+
+        async def on_deleted(sim_id: str) -> None:
+            deleted.append(sim_id)
+
+        api = SimulatorAPI(on_simulation_deleted=on_deleted)
+        transport = ASGITransport(app=api.create_app())
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            resp = await client.delete("/sim/missing")
+            assert resp.status_code == 404
+            assert deleted == []  # callback not fired for a non-existent sim
+
+
 class TestSimulationCRUD:
     """Test simulation create/read/delete operations."""
 

@@ -9,10 +9,9 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import json
 import logging
 import signal
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import structlog
 import uvicorn
@@ -23,8 +22,6 @@ from lichen.sim.simulation import Simulation, TimeMode
 
 if TYPE_CHECKING:
     from starlette.applications import Starlette
-    from starlette.requests import Request
-    from starlette.responses import JSONResponse
 
 
 class SimulatorServer:
@@ -66,32 +63,15 @@ class SimulatorServer:
         """
         self._shutdown_event = asyncio.Event()
 
-        # Create API and share our simulations dict
-        self._api = SimulatorAPI()
-        # Replace API's internal simulations dict with ours so we can track them
+        # Create the API with callbacks so that creating/deleting a simulation
+        # over REST also starts/stops its TCP node server. This is composition
+        # via hooks rather than monkey-patching the API's methods at runtime.
+        self._api = SimulatorAPI(
+            on_simulation_created=self._start_node_server_for_sim,
+            on_simulation_deleted=self._stop_node_server_for_sim,
+        )
+        # Share our simulations dict so both REST and programmatic paths agree.
         self._api._simulations = self._simulations
-
-        # Wrap API methods to intercept simulation create/delete
-        original_create = self._api.create_simulation
-        original_delete = self._api.delete_simulation
-
-        async def wrapped_create(request: Request) -> JSONResponse:
-            response = await original_create(request)
-            if response.status_code == 200:
-                body: dict[str, Any] = json.loads(bytes(response.body).decode())
-                sim_id = body.get("id")
-                if sim_id and sim_id in self._simulations:
-                    await self._start_node_server_for_sim(sim_id)
-            return response
-
-        async def wrapped_delete(request: Request) -> JSONResponse:
-            sim_id = request.path_params["sim_id"]
-            if sim_id in self._node_servers:
-                await self._stop_node_server_for_sim(sim_id)
-            return await original_delete(request)
-
-        self._api.create_simulation = wrapped_create  # type: ignore[method-assign]
-        self._api.delete_simulation = wrapped_delete  # type: ignore[method-assign]
 
         # Create Starlette app
         app = self._api.create_app()
