@@ -10,6 +10,8 @@ from __future__ import annotations
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
+import structlog
+
 from lichen.sim.events import Event, EventQueue, RxTimeoutEvent, TxEndEvent
 from lichen.sim.medium import Medium
 from lichen.sim.metrics import Metrics
@@ -17,6 +19,8 @@ from lichen.sim.node import NodeState, SimNode
 
 if TYPE_CHECKING:
     from lichen.sim.chaos import ChaosEngine
+
+logger = structlog.get_logger()
 
 
 class TimeMode(Enum):
@@ -221,6 +225,13 @@ class Simulation:
             node.state = NodeState.IDLE
         self._medium.end_tx(event.transmission_id)
         self._active_transmissions.pop(event.node_id, None)
+        logger.debug(
+            "tx_end",
+            sim_id=self._id,
+            node_id=event.node_id,
+            tx_id=event.transmission_id,
+            time_us=event.time_us,
+        )
 
     def _handle_rx_timeout(self, event: RxTimeoutEvent) -> None:
         """Handle receive timeout event.
@@ -232,6 +243,12 @@ class Simulation:
         if node is not None and node.state == NodeState.RX_WAIT:
             node.state = NodeState.IDLE
         self._pending_rx_timeouts.pop(event.node_id, None)
+        logger.debug(
+            "rx_timeout",
+            sim_id=self._id,
+            node_id=event.node_id,
+            time_us=event.time_us,
+        )
 
     def maybe_advance_time(self) -> bool:
         """Attempt to advance time in BARRIER_SYNC mode.
@@ -260,6 +277,12 @@ class Simulation:
         if next_event is None:
             return False
 
+        logger.debug(
+            "time_advance",
+            sim_id=self._id,
+            from_us=self._current_time_us,
+            to_us=next_event.time_us,
+        )
         self.process_next_event()
         return True
 
@@ -297,6 +320,15 @@ class Simulation:
 
         self._active_transmissions[node_id] = tx.id
         self._metrics.record_transmission_start(tx.id, tx.start_time_us)
+        logger.debug(
+            "tx_start",
+            sim_id=self._id,
+            node_id=node_id,
+            tx_id=tx.id,
+            payload_len=len(payload),
+            start_us=tx.start_time_us,
+            end_us=tx.end_time_us,
+        )
 
         end_event = TxEndEvent(
             time_us=tx.end_time_us,
@@ -335,6 +367,9 @@ class Simulation:
             node_id=node_id,
         )
         self._event_queue.push(timeout_event)
+        logger.debug(
+            "rx_start", sim_id=self._id, node_id=node_id, timeout_us=timeout_us
+        )
 
     def get_rx_result(self, node_id: str) -> tuple[bytes, int, int] | None:
         """Check if a transmission can be received by a node.
@@ -380,8 +415,14 @@ class Simulation:
             # Two or more overlapping signals that failed the capture check
             # are a collision (deduplicated inside record_collision).
             if len(candidates) >= 2:
-                self._metrics.record_collision(
-                    node_id, [c.transmission.id for c in candidates]
+                tx_ids = [c.transmission.id for c in candidates]
+                self._metrics.record_collision(node_id, tx_ids)
+                logger.debug(
+                    "collision",
+                    sim_id=self._id,
+                    node_id=node_id,
+                    time_us=self._current_time_us,
+                    tx_ids=tx_ids,
                 )
             return None
 
@@ -390,6 +431,15 @@ class Simulation:
         # Find the candidate to get RSSI/SNR
         for candidate in candidates:
             if candidate.transmission is tx:
+                logger.debug(
+                    "rx_success",
+                    sim_id=self._id,
+                    node_id=node_id,
+                    tx_id=tx.id,
+                    rssi=int(candidate.rssi),
+                    snr=int(candidate.snr),
+                    time_us=self._current_time_us,
+                )
                 return (
                     tx.payload,
                     int(candidate.rssi),
