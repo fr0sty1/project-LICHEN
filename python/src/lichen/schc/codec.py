@@ -101,9 +101,10 @@ def compress(rule: Rule, fields: dict[str, int]) -> bytes:
 
     for fd in rule.fields:
         value = fields.get(fd.field_id)
-        needs_value = fd.mo in (MO.EQUAL, MO.MSB) or fd.cda in (
+        needs_value = fd.mo in (MO.EQUAL, MO.MSB, MO.MATCH_MAPPING) or fd.cda in (
             CDA.VALUE_SENT,
             CDA.LSB,
+            CDA.MAPPING_SENT,
         )
         if value is None:
             if needs_value:
@@ -117,6 +118,10 @@ def compress(rule: Rule, fields: dict[str, int]) -> bytes:
             )
         if fd.mo == MO.MSB:
             _check_msb(fd, value)
+        if fd.mo == MO.MATCH_MAPPING and (
+            fd.mapping is None or value not in fd.mapping
+        ):
+            raise SchcError(f"{fd.field_id}: value {value} not in mapping")
 
         # Compression action.
         if fd.cda == CDA.VALUE_SENT:
@@ -129,6 +134,10 @@ def compress(rule: Rule, fields: dict[str, int]) -> bytes:
         elif fd.cda == CDA.LSB:
             k = fd.lsb_bits()
             writer.write(value & ((1 << k) - 1), k)
+        elif fd.cda == CDA.MAPPING_SENT:
+            if fd.mapping is None or value not in fd.mapping:
+                raise SchcError(f"{fd.field_id}: value {value} not in mapping")
+            writer.write(fd.mapping.index(value), fd.mapping_bits())
         # NOT_SENT and COMPUTE contribute nothing to the residue.
 
     return bytes([rule.rule_id]) + writer.to_bytes()
@@ -178,5 +187,12 @@ def decompress(data: bytes, rule: Rule | None = None) -> tuple[int, dict[str, in
             lsb = reader.read(k)
             msb = (fd.target_value >> k) << k
             out[fd.field_id] = msb | lsb
+        elif fd.cda == CDA.MAPPING_SENT:
+            if fd.mapping is None:
+                raise SchcError(f"{fd.field_id}: MAPPING_SENT requires a mapping")
+            index = reader.read(fd.mapping_bits())
+            if index >= len(fd.mapping):
+                raise SchcError(f"{fd.field_id}: mapping index {index} out of range")
+            out[fd.field_id] = fd.mapping[index]
 
     return rule_id, out

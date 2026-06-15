@@ -26,9 +26,10 @@ def rule_matches(rule: Rule, fields: dict[str, int]) -> bool:
     """Whether ``fields`` satisfy every descriptor of ``rule``."""
     for fd in rule.fields:
         value = fields.get(fd.field_id)
-        needs_value = fd.mo in (MO.EQUAL, MO.MSB) or fd.cda in (
+        needs_value = fd.mo in (MO.EQUAL, MO.MSB, MO.MATCH_MAPPING) or fd.cda in (
             CDA.VALUE_SENT,
             CDA.LSB,
+            CDA.MAPPING_SENT,
         )
         if value is None:
             if needs_value:
@@ -42,6 +43,10 @@ def rule_matches(rule: Rule, fields: dict[str, int]) -> bool:
             shift = fd.length_bits - fd.mo_arg
             if (value >> shift) != (fd.target_value >> shift):
                 return False
+        if fd.mo == MO.MATCH_MAPPING and (
+            fd.mapping is None or value not in fd.mapping
+        ):
+            return False
     return True
 
 

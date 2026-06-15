@@ -27,6 +27,7 @@ class MO(Enum):
     EQUAL = "equal"  # value must equal the target value
     IGNORE = "ignore"  # always matches
     MSB = "msb"  # the top `mo_arg` bits must equal the target value's top bits
+    MATCH_MAPPING = "match-mapping"  # value must be one of `mapping`
 
 
 class CDA(Enum):
@@ -36,6 +37,7 @@ class CDA(Enum):
     VALUE_SENT = "value-sent"  # the whole field is sent in the residue
     LSB = "lsb"  # only the least-significant (length - MSB) bits are sent
     COMPUTE = "compute"  # nothing sent; recomputed by an upper layer
+    MAPPING_SENT = "mapping-sent"  # the index of the value within `mapping`
 
 
 @dataclass(frozen=True)
@@ -51,6 +53,8 @@ class FieldDescriptor:
             reconstruction.
         mo_arg: For MSB, the number of most-significant bits to match. Also
             determines the LSB residue width (length_bits - mo_arg).
+        mapping: For MATCH_MAPPING / MAPPING_SENT, the ordered list of allowed
+            values; the residue carries the index into this list.
     """
 
     field_id: str
@@ -59,12 +63,19 @@ class FieldDescriptor:
     cda: CDA
     target_value: int = 0
     mo_arg: int | None = None
+    mapping: tuple[int, ...] | None = None
 
     def lsb_bits(self) -> int:
         """Number of residue bits for an LSB action (length_bits - MSB length)."""
         if self.mo_arg is None:
             raise ValueError(f"{self.field_id}: LSB requires mo_arg (MSB length)")
         return self.length_bits - self.mo_arg
+
+    def mapping_bits(self) -> int:
+        """Number of residue bits for a MAPPING_SENT index (ceil(log2(n)))."""
+        if not self.mapping:
+            raise ValueError(f"{self.field_id}: mapping action requires a mapping")
+        return (len(self.mapping) - 1).bit_length()
 
 
 @dataclass(frozen=True)
