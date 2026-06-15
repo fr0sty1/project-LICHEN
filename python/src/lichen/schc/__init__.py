@@ -7,9 +7,11 @@ Public API:
 """
 
 from lichen.schc.codec import BitReader, BitWriter, SchcError, compress, decompress
+from lichen.schc.context import NoMatchingRuleError, SchcContext, rule_matches
 from lichen.schc.rules import (
     CDA,
     COAP_RULE,
+    ICMPV6_ECHO_RULE,
     MO,
     RULE_ID_UNCOMPRESSED,
     RULES,
@@ -24,12 +26,16 @@ __all__ = [
     "CDA",
     "COAP_RULE",
     "FieldDescriptor",
+    "ICMPV6_ECHO_RULE",
     "MO",
+    "NoMatchingRuleError",
     "RULES",
     "RULE_ID_UNCOMPRESSED",
     "Rule",
+    "SchcContext",
     "SchcError",
     "UDP_PORT_RULE",
     "compress",
     "decompress",
+    "rule_matches",
 ]
