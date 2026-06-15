@@ -4,6 +4,7 @@ RPL carries border-router traffic via a proactive DODAG tree. This package
 currently provides the control-message codecs (DIO, DIS, DAO, DAO-ACK).
 """
 
+from lichen.rpl.dodag import DodagRole, DodagState, ParentCandidate
 from lichen.rpl.messages import (
     DAO,
     DIO,
@@ -25,7 +26,10 @@ __all__ = [
     "DIO",
     "DIS",
     "DAOAck",
+    "DodagRole",
+    "DodagState",
     "ModeOfOperation",
+    "ParentCandidate",
     "RplCode",
     "RplError",
     "RplMessage",
