@@ -18,6 +18,11 @@ from lichen.schc.fragment import (
     FragmentSender,
     compute_mic,
 )
+from lichen.schc.reassembly import (
+    FragmentReceiver,
+    ReassemblyManager,
+    ReceiverResult,
+)
 from lichen.schc.rules import (
     CDA,
     COAP_RULE,
@@ -42,10 +47,13 @@ __all__ = [
     "FieldDescriptor",
     "Fragment",
     "FragmentError",
+    "FragmentReceiver",
     "FragmentSender",
     "ICMPV6_ECHO_RULE",
     "MO",
     "NoMatchingRuleError",
+    "ReassemblyManager",
+    "ReceiverResult",
     "RULES",
     "RULE_ID_UNCOMPRESSED",
     "Rule",
