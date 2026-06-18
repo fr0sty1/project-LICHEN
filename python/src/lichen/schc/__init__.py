@@ -27,8 +27,11 @@ from lichen.schc.fragment import (
     compute_mic,
 )
 from lichen.schc.headers import (
+    CoapUdpGlobalProfile,
     CoapUdpLinkLocalProfile,
     PacketProfile,
+    RplDaoProfile,
+    RplDioProfile,
     compress_packet,
     decompress_packet,
 )
@@ -58,6 +61,7 @@ __all__ = [
     "DEFAULT_WINDOW_SIZE",
     "MIC_LENGTH",
     "Ack",
+    "CoapUdpGlobalProfile",
     "CoapUdpLinkLocalProfile",
     "FieldDescriptor",
     "Fragment",
@@ -70,6 +74,8 @@ __all__ = [
     "PacketProfile",
     "ReassemblyManager",
     "ReceiverResult",
+    "RplDaoProfile",
+    "RplDioProfile",
     "RULES",
     "RULE_ID_UNCOMPRESSED",
     "Rule",
