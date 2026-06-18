@@ -32,7 +32,7 @@ jobs:
         run: >
           pip install
           pytest pytest-asyncio pytest-timeout httpx ruff
-          anyio starlette uvicorn pynacl structlog cbor2
+          aiocoap anyio starlette uvicorn pynacl structlog cbor2
 
       - name: Lint (ruff)
         run: ruff check src tests

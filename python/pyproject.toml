@@ -24,6 +24,7 @@ classifiers = [
     "Topic :: System :: Networking",
 ]
 dependencies = [
+    "aiocoap>=0.4.7",
     "anyio>=4.0",
     "starlette>=0.35",
     "uvicorn>=0.27",
