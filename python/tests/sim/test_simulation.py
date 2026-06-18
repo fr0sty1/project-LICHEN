@@ -236,14 +236,31 @@ class TestBarrierSync:
         assert advanced is True
         assert sim.current_time_us > initial_time
 
-    def test_maybe_advance_time_not_all_blocked(self) -> None:
-        """maybe_advance_time does not advance when some nodes are not blocked."""
+    def test_maybe_advance_time_idle_node_does_not_block(self) -> None:
+        """An idle node must not hold the barrier (regression: fgk deadlock).
+
+        When a receiver is waiting, time advances even if other nodes are idle;
+        otherwise a node that transmitted then went idle would freeze the clock
+        and the receiver's timeout could never fire.
+        """
         sim = Simulation(sim_id="test-sim", time_mode=TimeMode.BARRIER_SYNC)
         sim.add_node("node1", 0.0, 0.0, 0.0)
-        sim.add_node("node2", 100.0, 0.0, 0.0)
+        sim.add_node("node2", 100.0, 0.0, 0.0)  # stays IDLE
 
-        # Only one node in RX_WAIT
         sim.start_receive("node1", timeout_ms=100)
+
+        initial_time = sim.current_time_us
+        advanced = sim.maybe_advance_time()
+
+        assert advanced is True
+        assert sim.current_time_us > initial_time
+
+    def test_maybe_advance_time_no_receiver_waiting(self) -> None:
+        """No advance when nothing is waiting on the clock, even with events."""
+        sim = Simulation(sim_id="test-sim", time_mode=TimeMode.BARRIER_SYNC)
+        sim.add_node("node1", 0.0, 0.0, 0.0)
+        # A transmission schedules a TxEnd event, but no node is in RX_WAIT.
+        sim.start_transmission("node1", b"hello")
 
         initial_time = sim.current_time_us
         advanced = sim.maybe_advance_time()
@@ -499,9 +516,9 @@ class TestTransmissionReceiveFlow:
     def test_tx_rx_flow_with_barrier_sync(self) -> None:
         """Test complete TX/RX flow using barrier sync.
 
-        In barrier sync mode, time only advances when all connected nodes
-        are in RX_WAIT state. This test verifies that when all nodes are
-        waiting to receive, time advances to process events.
+        Time advances to the next event while any node is waiting to receive;
+        an idle node (e.g. one whose timeout already fired) does not block a
+        still-waiting receiver. Once no node is waiting, the clock stops.
         """
         sim = Simulation(sim_id="test-sim", time_mode=TimeMode.BARRIER_SYNC)
         node1 = sim.add_node("node1", 0.0, 0.0, 0.0)
@@ -510,28 +527,25 @@ class TestTransmissionReceiveFlow:
         # Both nodes start listening with different timeouts
         sim.start_receive("node1", timeout_ms=100)
         sim.start_receive("node2", timeout_ms=200)
-
-        # Both nodes are in RX_WAIT, barrier sync should advance
         assert node1.state == NodeState.RX_WAIT
         assert node2.state == NodeState.RX_WAIT
 
-        # First advance should process node1's timeout
+        # First advance processes node1's earlier timeout.
         advanced = sim.maybe_advance_time()
         assert advanced is True
         assert sim.current_time_us == 100 * 1000
         assert node1.state == NodeState.IDLE
 
-        # node1 is now IDLE, so barrier won't advance until it blocks again
-        advanced = sim.maybe_advance_time()
-        assert advanced is False
-
-        # Put node1 back in RX_WAIT
-        sim.start_receive("node1", timeout_ms=500)
-
-        # Now both are blocked again, should advance to node2's timeout
+        # node2 is still waiting, so the clock advances to its timeout even
+        # though node1 is now idle.
         advanced = sim.maybe_advance_time()
         assert advanced is True
+        assert sim.current_time_us == 200 * 1000
         assert node2.state == NodeState.IDLE
+
+        # Nothing is waiting now, so the clock stops.
+        advanced = sim.maybe_advance_time()
+        assert advanced is False
 
     def test_multiple_transmitters_collision(self) -> None:
         """Test collision when two nodes transmit simultaneously."""

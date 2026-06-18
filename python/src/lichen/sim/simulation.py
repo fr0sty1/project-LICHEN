@@ -280,9 +280,12 @@ class Simulation:
     def maybe_advance_time(self) -> bool:
         """Attempt to advance time in BARRIER_SYNC mode.
 
-        In BARRIER_SYNC mode, time advances to the next event only when
-        all connected nodes are blocked (in RX_WAIT state). This ensures
-        deterministic simulation behavior.
+        Time advances to the next event when at least one connected node is
+        waiting on the simulation clock (RX_WAIT). Idle nodes do not hold the
+        barrier, and transmitting nodes must not either — their TxEndEvent is
+        exactly what advancing fires. Callers (the RX wait loop) check for a
+        deliverable packet *before* advancing, so advancing can never skip an
+        in-range reception; it only drives transmit completion and RX timeouts.
 
         Returns:
             True if time was advanced, False otherwise.
@@ -290,16 +293,16 @@ class Simulation:
         if self._time_mode != TimeMode.BARRIER_SYNC:
             return False
 
-        # Check if all connected nodes are in RX_WAIT state
         connected_nodes = [n for n in self._nodes.values() if n.connected]
         if not connected_nodes:
             return False
 
-        all_blocked = all(n.state == NodeState.RX_WAIT for n in connected_nodes)
-        if not all_blocked:
+        # Advance only when something is actually waiting on the clock; without
+        # a waiting receiver nothing polls this and advancing would race ahead
+        # of nodes still expected to issue commands at the current time.
+        if not any(n.state == NodeState.RX_WAIT for n in connected_nodes):
             return False
 
-        # All nodes are blocked, advance to next event
         next_event = self._event_queue.peek()
         if next_event is None:
             return False

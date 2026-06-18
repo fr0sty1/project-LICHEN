@@ -38,11 +38,12 @@ jobs:
         run: ruff check src tests
 
       - name: Tests
-        # tests/sim/test_integration.py is excluded pending lora_ipv6_mesh-fgk:
-        # several of its cases hang on a BARRIER_SYNC RX-timeout bug. The
-        # per-test timeout is a safety net so any new hang fails instead of
-        # stalling the runner (thread method is async-safe).
+        # The integration suite now runs (the BARRIER_SYNC RX-timeout deadlock
+        # fgk is fixed). One case is deselected pending lora_ipv6_mesh-euj
+        # (back-to-back transmits self-collide). The per-test timeout is a
+        # safety net so any new hang fails instead of stalling the runner
+        # (thread method is async-safe).
         run: >
           PYTHONPATH=src pytest -q
           --timeout=120 --timeout-method=thread
-          --ignore=tests/sim/test_integration.py
+          --deselect "tests/sim/test_integration.py::TestChaosMonkeyOperations::test_partition_rule_blocks_cross_group"
