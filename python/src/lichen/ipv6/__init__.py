@@ -43,6 +43,13 @@ from lichen.ipv6.packet import (
     NextHeader,
     PacketError,
 )
+from lichen.ipv6.udp import (
+    UDP_HEADER_LENGTH,
+    UDP_NEXT_HEADER,
+    UdpDatagram,
+    UdpError,
+    udp_checksum,
+)
 
 __all__ = [
     "GUA_NETWORK",
@@ -66,6 +73,11 @@ __all__ = [
     "PacketError",
     "Scope",
     "TimeExceededCode",
+    "UDP_HEADER_LENGTH",
+    "UDP_NEXT_HEADER",
+    "UdpDatagram",
+    "UdpError",
+    "udp_checksum",
     "address_from_prefix",
     "eui64_to_iid",
     "handle_icmpv6",

@@ -141,8 +141,47 @@ ICMPV6_ECHO_RULE = Rule(
 )
 
 
+# Link-local IPv6 + UDP + CoAP whole-packet rule (spec appendix A.1 rule 0).
+# Constant IPv6 fields are elided; the link-local /64 prefix is matched via
+# MSB(64) so only the 64-bit IID travels (full L2-derived IID elision needs the
+# link layer and is a future optimization). Lengths and checksums are recomputed
+# on decompression. The CoAP token/options/payload travel verbatim after the
+# residue as a variable tail handled by the extraction layer.
+_LINK_LOCAL_PREFIX_TV = 0xFE80 << 112  # fe80::/64 as a 128-bit target value
+
+LINK_LOCAL_COAP_RULE = Rule(
+    rule_id=0,
+    fields=(
+        FieldDescriptor("IPv6.version", 4, MO.EQUAL, CDA.NOT_SENT, target_value=6),
+        FieldDescriptor("IPv6.traffic_class", 8, MO.EQUAL, CDA.NOT_SENT),
+        FieldDescriptor("IPv6.flow_label", 20, MO.EQUAL, CDA.NOT_SENT),
+        FieldDescriptor("IPv6.payload_length", 16, MO.IGNORE, CDA.COMPUTE),
+        FieldDescriptor("IPv6.next_header", 8, MO.EQUAL, CDA.NOT_SENT, target_value=17),
+        FieldDescriptor("IPv6.hop_limit", 8, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor(
+            "IPv6.src", 128, MO.MSB, CDA.LSB,
+            target_value=_LINK_LOCAL_PREFIX_TV, mo_arg=64,
+        ),
+        FieldDescriptor(
+            "IPv6.dst", 128, MO.MSB, CDA.LSB,
+            target_value=_LINK_LOCAL_PREFIX_TV, mo_arg=64,
+        ),
+        FieldDescriptor("UDP.src_port", 16, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("UDP.dst_port", 16, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("UDP.length", 16, MO.IGNORE, CDA.COMPUTE),
+        FieldDescriptor("UDP.checksum", 16, MO.IGNORE, CDA.COMPUTE),
+        FieldDescriptor("CoAP.version", 2, MO.EQUAL, CDA.NOT_SENT, target_value=1),
+        FieldDescriptor("CoAP.type", 2, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.tkl", 4, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.code", 8, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("CoAP.mid", 16, MO.IGNORE, CDA.VALUE_SENT),
+    ),
+)
+
+
 # Registry keyed by rule ID.
 RULES: dict[int, Rule] = {
+    LINK_LOCAL_COAP_RULE.rule_id: LINK_LOCAL_COAP_RULE,
     ICMPV6_ECHO_RULE.rule_id: ICMPV6_ECHO_RULE,
     COAP_RULE.rule_id: COAP_RULE,
     UDP_PORT_RULE.rule_id: UDP_PORT_RULE,

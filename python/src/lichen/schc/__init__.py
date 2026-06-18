@@ -6,7 +6,15 @@ Public API:
     - Engine: ``compress``, ``decompress``, ``SchcError``
 """
 
-from lichen.schc.codec import BitReader, BitWriter, SchcError, compress, decompress
+from lichen.schc.codec import (
+    BitReader,
+    BitWriter,
+    SchcError,
+    compress,
+    decompress,
+    residue_bit_length,
+    residue_byte_length,
+)
 from lichen.schc.context import NoMatchingRuleError, SchcContext, rule_matches
 from lichen.schc.fragment import (
     ALL_1,
@@ -17,6 +25,12 @@ from lichen.schc.fragment import (
     FragmentError,
     FragmentSender,
     compute_mic,
+)
+from lichen.schc.headers import (
+    CoapUdpLinkLocalProfile,
+    PacketProfile,
+    compress_packet,
+    decompress_packet,
 )
 from lichen.schc.reassembly import (
     FragmentReceiver,
@@ -44,6 +58,7 @@ __all__ = [
     "DEFAULT_WINDOW_SIZE",
     "MIC_LENGTH",
     "Ack",
+    "CoapUdpLinkLocalProfile",
     "FieldDescriptor",
     "Fragment",
     "FragmentError",
@@ -52,6 +67,7 @@ __all__ = [
     "ICMPV6_ECHO_RULE",
     "MO",
     "NoMatchingRuleError",
+    "PacketProfile",
     "ReassemblyManager",
     "ReceiverResult",
     "RULES",
@@ -61,7 +77,11 @@ __all__ = [
     "SchcError",
     "UDP_PORT_RULE",
     "compress",
+    "compress_packet",
     "compute_mic",
     "decompress",
+    "decompress_packet",
+    "residue_bit_length",
+    "residue_byte_length",
     "rule_matches",
 ]

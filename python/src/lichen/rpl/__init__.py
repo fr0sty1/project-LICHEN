@@ -33,6 +33,7 @@ from lichen.rpl.routing import (
     insert_source_route,
     next_hop_upward,
 )
+from lichen.rpl.trickle import TrickleTimer
 from lichen.rpl.visualize import (
     format_source_route,
     ranks_from_states,
@@ -40,7 +41,6 @@ from lichen.rpl.visualize import (
     to_dot,
     topology_from_states,
 )
-from lichen.rpl.trickle import TrickleTimer
 
 __all__ = [
     "DAO",

@@ -18,6 +18,28 @@ class SchcError(Exception):
     """Raised when compression or decompression fails."""
 
 
+def residue_bit_length(rule: Rule) -> int:
+    """Total residue bits a rule emits (sum over fields by their CDA).
+
+    Lets callers find where a byte-aligned residue ends and a variable tail
+    (e.g. a CoAP token/options/payload) begins.
+    """
+    total = 0
+    for fd in rule.fields:
+        if fd.cda == CDA.VALUE_SENT:
+            total += fd.length_bits
+        elif fd.cda == CDA.LSB:
+            total += fd.lsb_bits()
+        elif fd.cda == CDA.MAPPING_SENT:
+            total += fd.mapping_bits()
+    return total
+
+
+def residue_byte_length(rule: Rule) -> int:
+    """Byte length of a rule's residue, padded to a byte boundary."""
+    return (residue_bit_length(rule) + 7) // 8
+
+
 class BitWriter:
     """Accumulates bits most-significant-first and emits padded bytes."""
 
