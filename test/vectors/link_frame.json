@@ -1,0 +1,70 @@
+{
+  "format_version": 1,
+  "description": "LICHEN link-layer frame vectors (spec section 4). 'fields' are the frame inputs; 'encoded' is LichenFrame(**fields).to_bytes().",
+  "vectors": [
+    {
+      "name": "broadcast_min",
+      "description": "Broadcast, no address, 32-bit MIC",
+      "fields": {
+        "epoch": 1,
+        "seqnum": 2,
+        "dst_addr": "",
+        "payload": "616263",
+        "mic": "01020304",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false
+      },
+      "encoded": "0b0001000261626301020304"
+    },
+    {
+      "name": "short_addr",
+      "description": "16-bit short destination address",
+      "fields": {
+        "epoch": 16,
+        "seqnum": 8240,
+        "dst_addr": "abcd",
+        "payload": "6869",
+        "mic": "00000000",
+        "addr_mode": 1,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false
+      },
+      "encoded": "0c01102030abcd686900000000"
+    },
+    {
+      "name": "extended_addr_mic64",
+      "description": "64-bit address, 64-bit MIC",
+      "fields": {
+        "epoch": 255,
+        "seqnum": 65535,
+        "dst_addr": "0001020304050607",
+        "payload": "64617461",
+        "mic": "0001020304050607",
+        "addr_mode": 2,
+        "mic_length": 1,
+        "signature_present": false,
+        "encrypted": false
+      },
+      "encoded": "1806ffffff0001020304050607646174610001020304050607"
+    },
+    {
+      "name": "signed_encrypted",
+      "description": "Signature + encrypted flags set",
+      "fields": {
+        "epoch": 3,
+        "seqnum": 4,
+        "dst_addr": "",
+        "payload": "78",
+        "mic": "00000000",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": true
+      },
+      "encoded": "09600300047800000000"
+    }
+  ]
+}
