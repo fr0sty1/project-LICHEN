@@ -12,6 +12,7 @@ from lichen.coap.resources import (
     StatusResource,
     build_site,
 )
+from lichen.coap.schc_channel import SchcChannel, unwrap_coap, wrap_coap
 from lichen.coap.transport import (
     DatagramChannel,
     InMemoryChannel,
@@ -30,8 +31,11 @@ __all__ = [
     "LichenTransport",
     "NeighborsResource",
     "NodeInfo",
+    "SchcChannel",
     "StaticNodeInfo",
     "StatusResource",
     "build_site",
     "create_lichen_context",
+    "unwrap_coap",
+    "wrap_coap",
 ]
