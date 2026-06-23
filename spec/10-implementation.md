@@ -70,6 +70,10 @@ LICHEN/
 
 ### 16.2. Hardware Targets
 
+#### Recommended First Device
+
+**[Muzi Works R1](https://muzi.works/products/r1)** — turnkey nRF52840 + SX1262 in a ready-to-use enclosure. Battery, antenna, USB-C. Comfortable memory (256KB RAM, 1MB flash). Many Meshtastic users already have one. Reflash and go.
+
 #### Meshtastic-Compatible (Primary)
 
 Reflash existing Meshtastic hardware with LICHEN firmware — same radios, different stack.
