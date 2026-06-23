@@ -51,6 +51,45 @@ def route_packet(dst):
 | Other GUA | Off-mesh | RPL to border router |
 | Unknown | Off-mesh | RPL to border router |
 
+### 7.3. Conformance Requirements
+
+Keywords per RFC 2119. Device classes:
+
+| Class | Example | RAM | Description |
+|-------|---------|-----|-------------|
+| **Constrained** | STM32WL | ≤64 KB | Battery-powered sensors/actuators |
+| **Router** | ESP32, RPi | ≥256 KB | Powered relay nodes |
+| **Border Router** | RPi, server | ≥1 MB | Internet gateway |
+
+**Core Protocol (All Devices):**
+
+| Feature | Constrained | Router | BR |
+|---------|-------------|--------|-----|
+| RPL join (DIO/DIS/DAO) | MUST | MUST | MUST |
+| Announce send | MUST | MUST | MUST |
+| Announce receive + gradient install | MUST | MUST | MUST |
+| Announce relay | SHOULD | MUST | MUST |
+| LOADng originate (RREQ/RREP) | MUST | MUST | MUST |
+| LOADng relay | SHOULD | MUST | MUST |
+| Gradient table (§11) | MUST | MUST | MUST |
+
+**Extended Features (Routers Only):**
+
+| Feature | Constrained | Router | BR |
+|---------|-------------|--------|-----|
+| Geographic coords in announce (§9.7) | MAY | MAY | MAY |
+| GPSR fallback (§9.7) | — | MAY | MAY |
+| Backpressure tracking (§11.4) | — | MAY | SHOULD |
+| Store-and-forward / DTN (§9.8) | — | MAY | SHOULD |
+| Opportunistic forwarding (§9.9) | — | MAY | MAY |
+
+**Notes:**
+
+- "—" means feature not applicable (insufficient resources).
+- Constrained nodes MAY set DTN S-flag but do not buffer.
+- Constrained nodes use unicast forwarding only (no opportunistic).
+- All MAY features are independently optional; implement any subset.
+
 ---
 
 ## 8. RPL (Border Router Traffic)
@@ -202,6 +241,176 @@ Announces are self-authenticating:
 
 First announce from a new node establishes TOFU binding.
 
+### 9.7. Geographic Fallback (GPSR)
+
+When gradient is missing and LOADng times out, nodes with GPS can fall back to geographic routing.
+
+**Coordinates in App Data:**
+
+```
+App Data (coords present):
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Type=0x01 | Lat (3 bytes)  | Lon (3 bytes)   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+- **Type 0x01:** Geographic coordinates present
+- **Lat/Lon:** Signed 24-bit fixed-point, 1e-5 degree resolution (~1m precision)
+  - Range: ±83.88° (sufficient for inhabited land)
+  - Encoding: `(degrees * 100000)` as int24
+
+**GradientEntry Extension:**
+
+Nodes store coords from announces:
+```
+coords: (lat, lon) | None  # from app_data if present
+```
+
+**GPSR Forwarding:**
+
+```
+def gpsr_forward(dst_coords, packet):
+    # Find neighbor closest to destination
+    best = None
+    best_dist = my_distance_to(dst_coords)  # greedy progress required
+
+    for neighbor in neighbor_table:
+        if neighbor.coords is None:
+            continue
+        d = distance(neighbor.coords, dst_coords)
+        if d < best_dist:
+            best_dist = d
+            best = neighbor
+
+    if best:
+        forward_to(best)
+    else:
+        # Local minimum - perimeter mode or drop
+        drop("gpsr: no progress")  # ponytail: perimeter mode if needed later
+```
+
+**When GPSR is attempted:**
+1. No gradient for destination
+2. LOADng RREQ timed out (RREQ_RETRIES exhausted)
+3. Destination coords known (from previous announce or out-of-band)
+4. At least one neighbor has coords
+
+**Privacy:**
+
+Coords reveal physical location. Nodes MAY omit coords from announces if privacy is required. GPSR fallback unavailable for such nodes.
+
+### 9.8. Store-and-Forward (DTN)
+
+Border routers MAY buffer messages for unreachable destinations, delivering when a path appears.
+
+**When used:**
+- Destination has no gradient and LOADng fails
+- Message has store-and-forward flag set
+- Router has buffer space
+
+**Message Header Extension:**
+
+```
+DTN Flags (1 byte in IPv6 hop-by-hop options):
++-+-+-+-+-+-+-+-+
+|S|   Reserved  |
++-+-+-+-+-+-+-+-+
+S = Store-and-forward requested
+```
+
+**Absolute TTL:**
+
+Store-and-forward messages carry absolute expiry (Unix timestamp, 4 bytes) instead of hop limit. Expired messages are dropped silently.
+
+```
+App Data (DTN expiry):
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Type=0x03 | Expiry (4 bytes, UTC)     |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+**Storage Policy:**
+
+| Parameter | Value |
+|-----------|-------|
+| Max buffer | 64 KB per router |
+| Eviction | Oldest-first when full |
+| Default TTL | 24 hours |
+| Max TTL | 7 days |
+
+**Handoff via Announce:**
+
+Routers with buffered messages advertise pending destinations:
+
+```
+App Data (pending destinations):
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Type=0x04 | Count | IID₁ (8B) | IID₂ (8B) ... |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+When a node sees its IID in a pending list, it sends a pull request to retrieve buffered messages.
+
+**Scope:**
+
+Border routers and powered routers only. Constrained nodes set the S flag but do not buffer—they forward or drop.
+
+<!-- ponytail: spray-and-wait if single-copy delivery too slow -->
+
+### 9.9. Opportunistic Forwarding (Optional)
+
+Routers MAY use coordinated broadcast forwarding to exploit LoRa's broadcast nature in lossy conditions.
+
+**Concept:**
+
+Instead of unicast to one next-hop, broadcast once. Multiple receivers hear it; the best one forwards, others suppress.
+
+**Forwarder List:**
+
+Sender includes ranked forwarder candidates (by hop count to destination):
+
+```
+Opportunistic Header (after IPv6 header):
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Type=OPP | Count | IID₁ (8B) | IID₂ (8B) | ...     |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+- **Count:** Number of candidate forwarders (1-4)
+- **IIDₙ:** Candidates ranked best-first (lowest hop count to destination)
+
+**Timed Suppression:**
+
+Each candidate waits before forwarding:
+
+```
+def opportunistic_forward(packet, my_rank):
+    wait_time = my_rank * SLOT_TIME  # rank 0 = immediate
+    wait(wait_time)
+
+    if heard_forward_from_better_rank:
+        suppress()  # higher-priority node handled it
+    else:
+        forward(packet)
+```
+
+| Parameter | Value |
+|-----------|-------|
+| SLOT_TIME | 100 ms |
+| MAX_CANDIDATES | 4 |
+
+**When Used:**
+
+Sender chooses opportunistic mode when:
+- Multiple neighbors have gradient to destination
+- Link quality is poor (high packet loss observed)
+
+**Scope:**
+
+Routers only. Constrained nodes use standard unicast forwarding—timing coordination adds code complexity.
+
+<!-- ponytail: no ACK-based batch, add if throughput matters -->
+
 ---
 
 ## 10. LOADng (Peer-to-Peer Fallback)
@@ -303,6 +512,7 @@ GradientEntry:
     seq_num: for freshness comparison
     source: "announce" | "rrep" | "data" | "rpl"
     expires: timestamp
+    coords: (lat, lon) | None  # from announce app_data (§9.7)
 ```
 
 ### 11.2. Passive Learning
@@ -333,7 +543,50 @@ When multiple sources provide gradient for same destination:
 | rrep | High | Explicitly discovered |
 | data | Low | Opportunistic, may be stale |
 
-Higher priority entry replaces lower. Same priority: prefer lower hop count.
+Higher priority entry replaces lower. Same priority: prefer lower hop count, then lower congestion (§11.4).
+
+### 11.4. Backpressure (Optional)
+
+Routers MAY track neighbor congestion to spread load across alternate paths.
+
+**Neighbor Queue Depth:**
+
+```
+NeighborEntry (extended):
+    queue_depth: uint8  # packets queued toward this neighbor
+```
+
+Incremented when packet enqueued, decremented on TX complete or drop.
+
+**Congestion in Announces:**
+
+Routers MAY include queue depth in app_data:
+
+```
+App Data (congestion):
++-+-+-+-+-+-+-+-+
+| Type=0x02 | Q |
++-+-+-+-+-+-+-+-+
+```
+
+- **Type 0x02:** Congestion indicator
+- **Q:** Current outbound queue depth (0-255)
+
+**Path Selection:**
+
+When multiple next-hops have equal hop count:
+
+```
+def select_next_hop(candidates):
+    # Prefer least-congested path
+    return min(candidates, key=lambda n: n.queue_depth)
+```
+
+**Scope:**
+
+Border routers and powered routers only. Constrained nodes (≤64KB RAM) skip backpressure tracking—the memory cost exceeds the benefit at low traffic volumes.
+
+<!-- ponytail: no per-flow fairness, add if starvation observed -->
 
 ---
 
