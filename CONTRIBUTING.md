@@ -49,6 +49,16 @@ CI runs both on every PR.
 - **No magic numbers.** Protocol constants belong in `python/src/lichen/constants.py` and the root `constants.toml`.
 - **Type-annotated.** All new functions need full type annotations. `mypy --strict` must pass.
 
+### Protocol vs ABC
+
+The codebase uses two patterns for abstract types — use whichever fits:
+
+- **`typing.Protocol`** — structural subtyping ("duck typing"). Implementors need not inherit from the Protocol class. Use this when you want to define a capability that multiple unrelated classes can satisfy without coupling them to a base class. Example: `radio/base.py` — `SimRadio` satisfies `Radio` without inheriting it.
+
+- **`abc.ABC`** — nominal subtyping. Implementors must explicitly inherit. Use this when all implementations belong to a known closed hierarchy and you want `isinstance` checks to work. Example: `sim/chaos.py` — all `ChaosRule` subclasses are registered types that the engine dispatches over.
+
+Both are correct; the choice depends on whether the type is open (Protocol) or closed (ABC).
+
 See `AGENTS.md` for the full protocol stack description and `spec/` for the protocol specification.
 
 ## Submitting changes
