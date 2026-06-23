@@ -1,0 +1,22 @@
+[package]
+name = "lichen-cli"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "LICHEN command-line interface — query and control a node via CoAP."
+
+[[bin]]
+name = "lichen"
+path = "src/main.rs"
+
+[dependencies]
+lichen-core  = { path = "../lichen-core" }
+lichen-coap  = { path = "../lichen-coap" }
+
+clap    = { version = "4", features = ["derive", "color", "env"] }
+tokio   = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+serde   = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+tracing            = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

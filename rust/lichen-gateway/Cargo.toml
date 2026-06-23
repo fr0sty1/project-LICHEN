@@ -8,3 +8,22 @@ description = "LICHEN border router (6LBR) daemon for Linux."
 [dependencies]
 lichen-core = { path = "../lichen-core" }
 lichen-node = { path = "../lichen-node", features = ["std"] }
+
+# Async runtime + serial I/O
+tokio        = { version = "1", features = ["rt-multi-thread", "macros", "io-util", "net", "time", "signal"] }
+tokio-serial = "5"
+
+# Config
+serde      = { version = "1", features = ["derive"] }
+toml       = "0.8"
+
+# Logging
+tracing            = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+[[bin]]
+name = "lichend"
+path = "src/bin/lichend.rs"

@@ -10,6 +10,7 @@ members = [
     "lichen-gateway",
     "lichen-sim",
     "lichen-apps",
+    "lichen-cli",
 ]
 
 [workspace.package]

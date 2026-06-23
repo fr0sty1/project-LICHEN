@@ -8,7 +8,16 @@
 
 / {
 	chosen {
-		zephyr,lora = &lora0;
+		zephyr,lora      = &lora0;
+		zephyr,slip-uart = &cdc_acm_uart0;
+	};
+};
+
+/* CDC-ACM virtual UART — the host sees this as a /dev/ttyACMx port.
+ * The SLIP driver uses it as its serial backend. */
+&zephyr_udc0 {
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
 	};
 };
 
