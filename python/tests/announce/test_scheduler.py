@@ -16,9 +16,10 @@ Test categories:
 """
 
 import asyncio
+
 import pytest
 
-from lichen.announce.messages import AnnounceMessage, SIGNATURE_LENGTH
+from lichen.announce.messages import SIGNATURE_LENGTH, AnnounceMessage
 from lichen.announce.scheduler import (
     AnnounceScheduler,
     SchedulerConfig,

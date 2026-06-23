@@ -7,11 +7,11 @@ Deterministic nonce prevents catastrophic failure from reuse.
 from hashlib import sha512
 
 from nacl.bindings import (
+    crypto_core_ed25519_is_valid_point,
     crypto_core_ed25519_scalar_reduce,
+    crypto_core_ed25519_sub,
     crypto_scalarmult_ed25519_base_noclamp,
     crypto_scalarmult_ed25519_noclamp,
-    crypto_core_ed25519_sub,
-    crypto_core_ed25519_is_valid_point,
 )
 
 # Group order L = 2^252 + 27742317777372353535851937790883648493
@@ -94,7 +94,7 @@ def sign(privkey: bytes, pubkey: bytes, msg: bytes) -> bytes:
     _, r = _hash_to_scalar(privkey + msg)
 
     # 2. Commitment: R = r * B
-    R = _point_mult_base(r)
+    R = _point_mult_base(r)  # noqa: N806 - Schnorr point notation
 
     # 3. Challenge: e = H(R || pubkey || msg)[0:16]
     e_full_hash = sha512(R + pubkey + msg).digest()
@@ -141,9 +141,9 @@ def verify(pubkey: bytes, msg: bytes, sig: bytes) -> bool:
     e_scalar = _scalar_from_bytes(e_extended)
 
     # 3. Recover commitment: R' = s*B - e*pubkey
-    sB = _point_mult_base(s)
-    ePK = _point_mult(e_scalar, pubkey)
-    R_prime = _point_sub(sB, ePK)
+    sB = _point_mult_base(s)  # noqa: N806 - Schnorr point notation
+    ePK = _point_mult(e_scalar, pubkey)  # noqa: N806 - Schnorr point notation
+    R_prime = _point_sub(sB, ePK)  # noqa: N806 - Schnorr point notation
 
     # 4. Recompute challenge
     e_full_hash, _ = _hash_to_scalar(R_prime + pubkey + msg)

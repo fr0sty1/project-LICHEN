@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from lichen.crypto.schnorr48 import sign, verify, derive_keypair
+from lichen.crypto.schnorr48 import derive_keypair, sign, verify
 
 VECTORS_PATH = Path(__file__).parent.parent.parent.parent / "test" / "vectors" / "schnorr48.json"
 

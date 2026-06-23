@@ -8,7 +8,6 @@ from lichen.announce.coords import (
     APP_DATA_TYPE_DTN_EXPIRY,
     APP_DATA_TYPE_DTN_PENDING,
     HEADER_TYPE_OPPORTUNISTIC,
-    MAX_OPPORTUNISTIC_CANDIDATES,
     OPPORTUNISTIC_SLOT_TIME_MS,
     decode_congestion,
     decode_coords,
@@ -317,7 +316,10 @@ class TestOpportunisticEncoding:
     def test_decode_truncated(self):
         """Truncated data returns None."""
         # Says 1 forwarder but only 4 bytes of IID
-        assert decode_opportunistic_forwarders(bytes([HEADER_TYPE_OPPORTUNISTIC, 1, 0, 0, 0, 0])) is None
+        assert (
+            decode_opportunistic_forwarders(bytes([HEADER_TYPE_OPPORTUNISTIC, 1, 0, 0, 0, 0]))
+            is None
+        )
 
     def test_round_trip(self):
         """Encode then decode recovers original forwarders."""

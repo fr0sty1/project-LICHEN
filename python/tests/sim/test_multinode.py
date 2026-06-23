@@ -15,7 +15,6 @@ Test scenario:
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import AsyncGenerator
 from ipaddress import IPv6Address
 
@@ -24,10 +23,9 @@ import pytest
 from lichen.announce.messages import AnnounceMessage
 from lichen.announce.processor import AnnounceProcessor
 from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
-from lichen.crypto.identity import Identity, PeerIdentity
+from lichen.crypto.identity import Identity
 from lichen.crypto.schnorr48 import verify
 from lichen.gradient import GradientTable
-from lichen.link.frame import LichenFrame
 from lichen.radio.sim_client import SimRadio
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
@@ -102,7 +100,6 @@ class TestLineTopology:
 
         # Create identities
         identity_a = make_identity(0)
-        identity_b = make_identity(1)
 
         # Build announce from A
         mock_tx = MockTransmitter()
@@ -159,7 +156,6 @@ class TestLineTopology:
 
         # Create identities
         identity_a = make_identity(0)
-        identity_b = make_identity(1)
 
         # Build announce from A
         mock_tx = MockTransmitter()
@@ -232,7 +228,7 @@ class TestLineTopology:
 
         # Connect all 5 nodes
         radios: list[SimRadio] = []
-        for i, (node_id, pos) in enumerate(zip(node_ids, positions)):
+        for node_id, pos in zip(node_ids, positions, strict=False):
             radio = SimRadio(
                 "127.0.0.1", node_port, "multinode-test", node_id, pos
             )
@@ -292,7 +288,6 @@ class TestLineTopology:
 
         # Create identities
         identity_a = make_identity(0)
-        identity_b = make_identity(1)
 
         # Build announce from A
         mock_tx = MockTransmitter()
@@ -381,7 +376,6 @@ class TestGradientConvergence:
         assert node_port is not None
 
         identity_a = make_identity(0)
-        identity_b = make_identity(1)
 
         # B's gradient table and processor
         gradient_b = GradientTable()
@@ -438,7 +432,7 @@ class TestGradientConvergence:
         identity_b = make_identity(1)
 
         # Test A->B (A announces, B builds gradient)
-        sim_ab = await server.create_simulation("test-ab", TimeMode.BARRIER_SYNC)
+        await server.create_simulation("test-ab", TimeMode.BARRIER_SYNC)
         port_ab = server.get_node_server_port("test-ab")
         assert port_ab is not None
 
@@ -473,7 +467,7 @@ class TestGradientConvergence:
         assert entry is not None, "B should have gradient to A"
 
         # Test B->A (B announces, A builds gradient)
-        sim_ba = await server.create_simulation("test-ba", TimeMode.BARRIER_SYNC)
+        await server.create_simulation("test-ba", TimeMode.BARRIER_SYNC)
         port_ba = server.get_node_server_port("test-ba")
         assert port_ba is not None
 
@@ -529,7 +523,6 @@ class TestEndToEndRouting:
         assert node_port is not None
 
         identity_a = make_identity(0)
-        identity_b = make_identity(1)
 
         # Build announce from A
         mock_tx = MockTransmitter()

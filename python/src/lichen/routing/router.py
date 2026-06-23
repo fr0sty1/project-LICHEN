@@ -12,17 +12,15 @@ The Router orchestrates them based on address classification and route availabil
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from ipaddress import IPv6Address, IPv6Network
-from typing import Callable
 
-from lichen.gradient import GradientEntry, GradientTable
+from lichen.gradient import GradientTable
 from lichen.ipv6.packet import IPv6Packet
 from lichen.loadng.discovery import LoadngRouter
 from lichen.rpl.dodag import DodagState
-
-import math
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +135,7 @@ class Router:
         default_factory=dict, repr=False
     )  # link-local -> queue depth (spec 11.4)
     # DTN store-and-forward buffer (spec 9.8)
-    dtn_buffer: list["DtnMessage"] = field(default_factory=list, repr=False)
+    dtn_buffer: list[DtnMessage] = field(default_factory=list, repr=False)
     dtn_buffer_max_bytes: int = 65536  # 64KB default
 
     # Why fe80::/10: RFC 4291 link-local prefix. All link-local addresses
@@ -314,7 +312,7 @@ class Router:
         # Why limit: Prevent memory exhaustion during slow discovery.
         if len(queue) >= self.max_pending_per_dest:
             # Drop oldest packet
-            dropped = queue.pop(0)
+            queue.pop(0)
             logger.debug("pending queue full for %s, dropped oldest", dst)
 
         queue.append(pending)

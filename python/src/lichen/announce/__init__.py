@@ -10,10 +10,10 @@ participate in the mesh. These nodes announce regularly. No discovery needed.
 
 from lichen.announce.messages import (
     ANNOUNCE_TYPE,
-    AnnounceError,
-    AnnounceMessage,
     MAX_ANNOUNCE_HOPS,
     SIGNATURE_LENGTH,
+    AnnounceError,
+    AnnounceMessage,
 )
 from lichen.announce.processor import (
     ANNOUNCE_INTERVAL_MS,

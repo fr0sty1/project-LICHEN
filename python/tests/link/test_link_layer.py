@@ -17,14 +17,12 @@ import pytest
 
 from lichen.crypto.identity import Identity, PeerIdentity
 from lichen.crypto.schnorr48 import sign
-from lichen.link.frame import AddrMode, LichenFrame, MicLength
+from lichen.link.frame import AddrMode, LichenFrame
 from lichen.link.link_layer import (
     PLACEHOLDER_MIC,
     SIGNATURE_LENGTH,
     LinkLayer,
-    RxFrame,
 )
-from lichen.link.replay import ReplayProtector
 
 
 class MockRadio:

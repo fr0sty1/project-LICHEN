@@ -11,15 +11,14 @@ Separation keeps the codec testable without crypto dependencies.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from ipaddress import IPv6Address
-from typing import Callable
 
 from lichen.announce.coords import decode_congestion, decode_coords
 from lichen.announce.messages import (
     AnnounceMessage,
-    MAX_ANNOUNCE_HOPS,
 )
 from lichen.crypto.identity import PeerIdentity, _pubkey_to_iid
 from lichen.crypto.schnorr48 import verify

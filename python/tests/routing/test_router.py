@@ -16,17 +16,17 @@ Test categories:
 6. LOADng discovery integration
 """
 
+from ipaddress import IPv6Address
+
 import pytest
-from ipaddress import IPv6Address, IPv6Network
 
 from lichen.gradient import GradientEntry, GradientSource, GradientTable
+from lichen.ipv6.packet import IPv6Header, IPv6Packet
 from lichen.routing.router import (
     AddressClass,
-    PendingPacket,
     RouteDecision,
     Router,
 )
-from lichen.ipv6.packet import IPv6Header, IPv6Packet
 from lichen.rpl.dodag import DodagRole, DodagState
 
 
@@ -172,8 +172,8 @@ class TestMeshLocalRouting:
     def test_no_gradient_with_loadng_queues(self, router: Router, gradient_table: GradientTable):
         """No gradient but LOADng available = queue for discovery."""
         # Why test: LOADng can discover routes on demand.
-        from lichen.loadng.discovery import LoadngRouter
         from lichen.loadng.cache import RouteCache
+        from lichen.loadng.discovery import LoadngRouter
 
         router.loadng = LoadngRouter(
             node_address=router.node_address,
@@ -265,8 +265,8 @@ class TestPendingQueue:
     def test_queue_stores_packet(self, router: Router, gradient_table: GradientTable):
         """Queued packets are stored for later forwarding."""
         # Setup LOADng so we queue instead of drop
-        from lichen.loadng.discovery import LoadngRouter
         from lichen.loadng.cache import RouteCache
+        from lichen.loadng.discovery import LoadngRouter
 
         router.loadng = LoadngRouter(
             node_address=router.node_address,
@@ -284,8 +284,8 @@ class TestPendingQueue:
 
     def test_queue_limit_drops_oldest(self, router: Router, gradient_table: GradientTable):
         """Queue limit drops oldest packets when exceeded."""
-        from lichen.loadng.discovery import LoadngRouter
         from lichen.loadng.cache import RouteCache
+        from lichen.loadng.discovery import LoadngRouter
 
         router.loadng = LoadngRouter(
             node_address=router.node_address,
@@ -311,8 +311,8 @@ class TestPendingQueue:
 
     def test_clear_pending_removes_all(self, router: Router, gradient_table: GradientTable):
         """clear_pending removes all packets for a destination."""
-        from lichen.loadng.discovery import LoadngRouter
         from lichen.loadng.cache import RouteCache
+        from lichen.loadng.discovery import LoadngRouter
 
         router.loadng = LoadngRouter(
             node_address=router.node_address,
@@ -330,8 +330,8 @@ class TestPendingQueue:
 
     def test_expire_pending_removes_old(self, router: Router, gradient_table: GradientTable):
         """expire_pending removes packets older than timeout."""
-        from lichen.loadng.discovery import LoadngRouter
         from lichen.loadng.cache import RouteCache
+        from lichen.loadng.discovery import LoadngRouter
 
         router.loadng = LoadngRouter(
             node_address=router.node_address,
@@ -352,10 +352,12 @@ class TestPendingQueue:
         assert len(pending) == 1
         assert pending[0].queued_at_ms == 200
 
-    def test_on_route_discovered_returns_pending(self, router: Router, gradient_table: GradientTable):
+    def test_on_route_discovered_returns_pending(
+        self, router: Router, gradient_table: GradientTable
+    ):
         """on_route_discovered returns and clears pending packets."""
-        from lichen.loadng.discovery import LoadngRouter
         from lichen.loadng.cache import RouteCache
+        from lichen.loadng.discovery import LoadngRouter
 
         router.loadng = LoadngRouter(
             node_address=router.node_address,

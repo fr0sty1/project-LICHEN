@@ -19,21 +19,21 @@ Packet flow (TX):
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from ipaddress import IPv6Address
-from typing import Callable
 
-from lichen.announce.messages import AnnounceMessage, ANNOUNCE_TYPE
+from lichen.announce.messages import ANNOUNCE_TYPE, AnnounceMessage
 from lichen.announce.processor import AnnounceProcessor
 from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity, PeerIdentity
 from lichen.gradient import GradientTable
-from lichen.link.frame import LichenFrame
 from lichen.link.link_layer import LinkLayer, RxFrame
 from lichen.radio.base import Radio
-from lichen.routing.router import AddressClass, RouteDecision, Router
+from lichen.routing.router import Router
 
 logger = logging.getLogger(__name__)
 
@@ -241,10 +241,8 @@ class Node:
         # Cancel receive task
         if self._receive_task:
             self._receive_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._receive_task
-            except asyncio.CancelledError:
-                pass
             self._receive_task = None
 
         self.state = NodeState.STOPPED

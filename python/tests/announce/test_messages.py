@@ -19,8 +19,8 @@ import pytest
 
 from lichen.announce.messages import (
     ANNOUNCE_TYPE,
-    SIGNATURE_LENGTH,
     MAX_ANNOUNCE_HOPS,
+    SIGNATURE_LENGTH,
     AnnounceError,
     AnnounceMessage,
 )

@@ -14,11 +14,11 @@ Test categories:
 """
 
 import asyncio
+import contextlib
+
 import pytest
 
 from lichen.crypto.identity import Identity, PeerIdentity
-from lichen.crypto.schnorr48 import sign
-from lichen.announce.messages import AnnounceMessage, SIGNATURE_LENGTH
 from lichen.node import Node, NodeConfig, NodeState
 
 
@@ -45,13 +45,11 @@ class MockRadio:
             return self.rx_queue.pop(0)
 
         # Wait briefly to simulate timeout
-        try:
+        with contextlib.suppress(TimeoutError):
             await asyncio.wait_for(
                 self._rx_event.wait(),
                 timeout=timeout_ms / 1000,
             )
-        except asyncio.TimeoutError:
-            pass
 
         if self.rx_queue:
             self._rx_event.clear()
