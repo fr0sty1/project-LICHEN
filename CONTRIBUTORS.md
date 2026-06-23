@@ -15,7 +15,7 @@
 | aj0 | Hybrid routing (RPL + LOADng) | ✅ Done — `routing/` module with 26 tests |
 | q0p | Full node integration | ✅ Done — `node.py` with 13 tests |
 | 8rd | Announce scheduler | ✅ Done — `announce/scheduler.py` with 25 tests |
-| sxe | Multi-node simulation integration | Ready to start |
+| sxe | Multi-node simulation integration | ✅ Done — `tests/sim/test_multinode.py` with 8 tests |
 | 1a0/ijj | CoAP integration + gate | Ready to verify |
 
 ## Key Files
