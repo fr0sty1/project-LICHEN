@@ -84,6 +84,8 @@ Reflash existing Meshtastic hardware with LICHEN firmware — same radios, diffe
 
 #### Open Hardware Radios (Future)
 
+*Tracking: `bd show python-wdr`*
+
 | Project | Hardware | Notes |
 |---------|----------|-------|
 | [kv4p HT](https://www.kv4p.com/) | ESP32 + SA818 VHF/UHF | ~$50, Android app, has APRS modem |
@@ -93,6 +95,8 @@ Reflash existing Meshtastic hardware with LICHEN firmware — same radios, diffe
 Integration: Native LICHEN (if LoRa added), gateway to mesh, or LICHEN-over-FM.
 
 #### Open Firmware Radios (Gateway Candidates)
+
+*Tracking: `bd show python-wdr`*
 
 | Radio | Firmware | Notes |
 |-------|----------|-------|
@@ -104,6 +108,8 @@ Integration: Native LICHEN (if LoRa added), gateway to mesh, or LICHEN-over-FM.
 Integration: Bridge APRS/packet ↔ LICHEN mesh via border router.
 
 #### Border Router Hardware
+
+*Tracking: `bd show python-dqc`*
 
 Border routers benefit from good antennas and elevated placement — more direct reach = fewer hops to internet.
 
@@ -136,11 +142,14 @@ Antenna matters more than compute:
 
 **Tiered Implementation Strategy:**
 
-| Platform | Stack | Notes |
-|----------|-------|-------|
-| Linux/Pi | Rust | Gateway, simulator, border router |
-| ESP32, nRF52840, RP2040 | Zephyr RTOS | Primary embedded target |
-| STM32WL | Zephyr or RIOT | RIOT fallback if Zephyr too big |
+| Platform | Stack | Tracking | Notes |
+|----------|-------|----------|-------|
+| Linux/Pi | Rust | `bd show python-ypk` | Gateway, simulator, border router |
+| ESP32, nRF52840, RP2040 | Rust (Embassy) | `bd show python-ypk` | Alternative to Zephyr |
+| ESP32, nRF52840, RP2040 | Zephyr RTOS | `bd show python-oae` | Uses Zephyr IPv6 stack |
+| STM32WL | Zephyr or RIOT | `bd show python-oae` | RIOT fallback if Zephyr too big |
+
+Both Rust and Zephyr are on the roadmap. Whichever gets contributors first wins, or they coexist for different use cases.
 
 **Zephyr Stack Usage:**
 
