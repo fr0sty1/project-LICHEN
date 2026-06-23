@@ -1,0 +1,56 @@
+# LICHEN Protocol Constants
+#
+# Canonical cross-language source of truth.
+# Python: lichen.constants
+# Rust:   include_str!("../../constants.toml") or generated consts.rs
+# C:      generated constants.h
+
+[lora]
+# Physical layer (SF10 / BW125 / CR4-5)
+spreading_factor = 10
+bandwidth_hz     = 125_000
+coding_rate      = "4/5"
+preamble_symbols = 8
+sync_word        = 0x34      # Distinct from Meshtastic (0x2B)
+
+[lora.freq_hz]
+# Default channel 0 per region (spec §02-physical-link)
+us_ca = 903_900_000   # 903.9 MHz, US/CA 915 MHz ISM band
+eu    = 868_100_000   # 868.1 MHz, EU 868 MHz band
+au_nz = 916_800_000   # 916.8 MHz, AU/NZ 915 MHz ISM band
+
+[ports]
+coap       = 5683
+coap_dtls  = 5684
+mqtt_sn    = 10883
+
+[schc.rule_id]
+# SCHC compression rule IDs (RFC 8724); see spec appendix-schc.md
+link_local_coap  = 0    # Link-local IPv6 + UDP + CoAP
+global_coap      = 1    # Global IPv6 + UDP + CoAP
+icmpv6_echo      = 2    # ICMPv6 Echo Request/Reply
+rpl_dio          = 3    # RPL DIO over link-local ICMPv6
+rpl_dao          = 4    # RPL DAO with DODAGID over link-local ICMPv6
+uncompressed     = 255  # No compression; full headers follow
+
+[rpl]
+# RPL configuration (spec appendix-rpl.md, RFC 6550)
+instance_id          = 0      # Default RPL instance
+mode_of_operation    = 1      # Non-Storing (MOP=1)
+icmpv6_type          = 155    # ICMPv6 type for RPL control messages
+min_hop_rank_increase = 256
+max_rank_increase     = 2048
+infinite_rank         = 0xFFFF
+root_rank             = 256   # Equal to min_hop_rank_increase
+default_lifetime_s    = 1800  # 30 minutes
+lifetime_unit_s       = 60    # Lifetime field unit
+
+[rpl.trickle]
+# Trickle timer parameters (RFC 6206)
+imin_ms         = 4096  # ~4 seconds
+imax_doublings  = 8     # imax_doublings so max = imin * 2^8 = 2^20 ms (~17 min)
+k               = 10    # Redundancy constant
+
+[announce]
+# LICHEN Announce message (spec §05-routing)
+type_byte = 0x01   # First byte of an Announce frame; rules 0x01 and SCHC global CoAP share this — Announce is detected first
