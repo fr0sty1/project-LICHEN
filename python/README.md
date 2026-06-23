@@ -66,7 +66,9 @@ We need help with:
 2. **Zephyr port** — Real firmware for real hardware
 3. **Radio drivers** — SX126x/SX127x integration
 4. **Border router** — Linux daemon connecting mesh to internet
-5. **Testing** — More scenarios, edge cases, stress tests
+5. **Flutter app** — Cross-platform mobile client
+6. **TypeScript client** — Web-based mesh interface
+7. **Testing** — More scenarios, edge cases, stress tests
 
 Start by running the tests and reading the code. The simulator tests in `tests/sim/` show how the pieces fit together. The protocol spec in `../spec/` explains the design decisions.
 
