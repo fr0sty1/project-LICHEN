@@ -201,13 +201,22 @@ LICHEN/
 │   ├── src/lichen/         # Core protocol implementation
 │   ├── tests/              # Unit and integration tests
 │   └── tests/sim/          # Multi-node simulation tests
-├── rust/                   # (planned) Rust implementation
-└── zephyr/                 # (planned) Zephyr embedded
+├── rust/                   # Rust reference implementation (in progress)
+│   ├── lichen-core/        # no_std types and constants
+│   ├── lichen-link/        # Link-layer frame codec
+│   ├── lichen-schc/        # SCHC compression (RFC 8724)
+│   └── lichen-*/           # Other protocol crates
+├── lichen/                 # Zephyr west manifest (T2 workspace)
+│   ├── west.yml            # Pins Zephyr v3.7.0
+│   └── apps/               # Embedded applications
+│       ├── puck/           # Field-device firmware
+│       └── gateway/        # Border-router firmware
+└── constants.toml          # Cross-language protocol constants
 ```
 
 ## Getting Started
 
-**Run the simulator:**
+**Run the simulator (Python prototype):**
 ```bash
 cd python
 pip install -e ".[dev]"
@@ -215,6 +224,35 @@ pytest                          # Run all tests
 pytest tests/sim/               # Run simulation tests only
 lichen-sim --help               # Start simulator server
 ```
+
+**Build the Rust crates:**
+```bash
+# Install Rust toolchain (https://rustup.rs)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
+
+cd rust
+cargo build
+cargo test
+cargo clippy
+```
+
+**Set up the Zephyr workspace (embedded targets):**
+
+See `lichen/README.md` for full details. Quick start:
+```bash
+pip install west
+# Run from inside project-LICHEN/:
+west init -l lichen/
+west update           # clones Zephyr v3.7.0 into zephyr/ alongside lichen/
+west zephyr-export
+pip install -r zephyr/scripts/requirements.txt
+
+# Build puck firmware for RAK4631
+west build -b rak4631_nrf52840 lichen/apps/puck
+```
+
+Requires the [Zephyr SDK](https://docs.zephyrproject.org/latest/develop/toolchains/zephyr_sdk.html) (≥ 0.16) with the `arm-zephyr-eabi` toolchain.
 
 **Read the spec:**
 ```bash
