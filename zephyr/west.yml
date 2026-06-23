@@ -5,9 +5,7 @@ manifest:
     path: zephyr
 
   defaults:
-    remote:
-      name: zephyrproject
-      url-base: https://github.com/zephyrproject-rtos
+    remote: zephyrproject
 
   remotes:
     - name: zephyrproject
