@@ -1,0 +1,13 @@
+[package]
+name = "lichen-senml"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "SenML (RFC 8428): record type and CBOR encode/decode stubs."
+
+[features]
+default = []
+std = []
+
+[dependencies]
+lichen-core = { path = "../lichen-core" }

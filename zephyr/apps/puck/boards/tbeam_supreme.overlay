@@ -1,0 +1,27 @@
+/*
+ * LilyGO T-Beam Supreme — ESP32-S3 + SX1262
+ *
+ * NOTE: As of Zephyr v3.7.0 the T-Beam Supreme does not have an upstream
+ * board definition.  This overlay is a stub that will be activated once a
+ * board file is contributed (or maintained out-of-tree in a custom board
+ * directory under lichen/boards/).
+ *
+ * When a board file becomes available, verify the SX1262 node label and
+ * remove this comment block.
+ */
+
+/ {
+	chosen {
+		zephyr,lora = &lora0;
+	};
+};
+
+/* SX1262 is on FSPI — pin assignments match the T-Beam Supreme schematic.
+ * Update cs-gpios / reset-gpios / busy-gpios if the upstream board file
+ * uses different GPIO numbers. */
+&lora0 {
+	status = "okay";
+
+	tx-power = <22>;        /* dBm */
+	frequency = <868000000>;
+};

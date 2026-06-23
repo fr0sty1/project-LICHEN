@@ -1,0 +1,26 @@
+/*
+ * Heltec WiFi LoRa 32 v3 — ESP32-S3 + SX1262
+ *
+ * The upstream board definition (boards/xtensa/heltec_lora32_v3) already
+ * declares the SX1262 as &lora0 on the FSPI bus.  This overlay enables the
+ * node and sets the LICHEN operating parameters.
+ *
+ * If the upstream board file exposes a different node name, adjust the
+ * reference below to match (e.g. &sx1262).
+ */
+
+/ {
+	chosen {
+		zephyr,lora = &lora0;
+	};
+};
+
+&lora0 {
+	status = "okay";
+
+	/* SX1262 RF parameters for the 868 / 915 MHz band.
+	 * Actual frequency is set at runtime by the radio driver via
+	 * lora_config(); these properties serve as compile-time defaults. */
+	tx-power = <22>;        /* dBm — SX1262 max */
+	frequency = <868000000>;
+};

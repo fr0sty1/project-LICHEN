@@ -1,0 +1,16 @@
+[package]
+name = "lichen-node"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "LICHEN integration crate: combines link, SCHC, CoAP, and routing stubs."
+
+[features]
+default = []
+std = []
+
+[dependencies]
+lichen-core = { path = "../lichen-core" }
+lichen-link = { path = "../lichen-link" }
+lichen-schc = { path = "../lichen-schc" }
+lichen-coap = { path = "../lichen-coap" }

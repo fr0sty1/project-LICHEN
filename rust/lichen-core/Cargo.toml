@@ -1,0 +1,13 @@
+[package]
+name = "lichen-core"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "LICHEN protocol primitives: constants, address types, and frame type stubs."
+
+[features]
+default = []
+std = []
+
+[dependencies]
+# no external deps for now; will add heapless, embedded-hal as needed

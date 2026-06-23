@@ -1,0 +1,9 @@
+[package]
+name = "lichen-gateway"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "LICHEN border router (6LBR) daemon for Linux."
+
+[dependencies]
+lichen-node = { path = "../lichen-node", features = ["std"] }

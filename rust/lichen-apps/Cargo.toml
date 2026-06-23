@@ -1,0 +1,9 @@
+[package]
+name = "lichen-apps"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "Shared application utilities and CLI parsing stubs for LICHEN tools."
+
+[dependencies]
+lichen-node = { path = "../lichen-node", features = ["std"] }
