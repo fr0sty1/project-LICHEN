@@ -4,6 +4,8 @@ LICHEN is an open-source LoRa IPv6 mesh protocol stack. Contributions are welcom
 
 ## Development environment
 
+### Python prototype
+
 ```bash
 git clone https://github.com/fr0sty1/project-LICHEN
 cd project-LICHEN/python
@@ -11,6 +13,47 @@ pip install -e ".[dev]"
 ```
 
 Requires Python 3.11+. The `[dev]` extras install pytest, ruff, mypy, and httpx.
+
+### Rust implementation
+
+```bash
+# Install Rust toolchain (https://rustup.rs)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
+
+cd rust
+cargo build           # build all crates
+cargo test            # run all tests
+cargo clippy          # lint
+cargo fmt --check     # format check
+```
+
+The workspace uses `resolver = "2"`. Core crates (`lichen-core`, `lichen-link`, `lichen-schc`) are `no_std`. Gateway and simulator crates require `std`.
+
+### Zephyr embedded targets
+
+Install prerequisites:
+- [west](https://docs.zephyrproject.org/latest/develop/west/install.html): `pip install west`
+- [Zephyr SDK](https://docs.zephyrproject.org/latest/develop/toolchains/zephyr_sdk.html) ≥ 0.16
+  - `arm-zephyr-eabi` — for nRF52840 (RAK4631) and STM32WL (Nucleo-WL55JC) targets
+  - `xtensa-espressif_esp32s3_zephyr-elf` — for ESP32-S3 targets
+
+Initialise the workspace (run from `project-LICHEN/`):
+```bash
+rm -rf .west          # if retrying after a failed west update
+west init -l lichen/
+west update           # clones Zephyr v3.7.0 into zephyr/ alongside lichen/
+west zephyr-export
+pip install -r zephyr/scripts/requirements.txt
+```
+
+Build:
+```bash
+west build -b rak4631_nrf52840 lichen/apps/puck    # nRF52840 puck
+west build -b native_sim       lichen/apps/gateway  # simulation target
+```
+
+See `lichen/README.md` for the full board matrix.
 
 ## Running the tests
 
