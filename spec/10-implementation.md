@@ -70,7 +70,9 @@ LICHEN/
 
 ### 16.2. Hardware Targets
 
-**Primary target:** All Meshtastic-compatible hardware (reflash, same radios).
+#### Meshtastic-Compatible (Primary)
+
+Reflash existing Meshtastic hardware with LICHEN firmware — same radios, different stack.
 
 | Family | Examples | MCU | Radio |
 |--------|----------|-----|-------|
@@ -79,6 +81,47 @@ LICHEN/
 | nRF52840 + SX126x | RAK4631, LilyGo T-Echo | nRF52840 | SX1262 |
 | RP2040 + SX126x | RAK11310 | RP2040 | SX1262 |
 | STM32WL | RAK3172, Seeed Wio-E5 | STM32WL55 | Integrated |
+
+#### Open Hardware Radios (Future)
+
+| Project | Hardware | Notes |
+|---------|----------|-------|
+| [kv4p HT](https://www.kv4p.com/) | ESP32 + SA818 VHF/UHF | ~$50, Android app, has APRS modem |
+| [OpenHT](https://github.com/M17-Project/OpenHT-hw) | AT86RF215 SDR + FPGA | True SDR, M17 project |
+| [Module17](https://m17project.org/module17/) | STM32 M17 modem | OSHWA certified, plugs into FM radio |
+
+Integration: Native LICHEN (if LoRa added), gateway to mesh, or LICHEN-over-FM.
+
+#### Open Firmware Radios (Gateway Candidates)
+
+| Radio | Firmware | Notes |
+|-------|----------|-------|
+| TYT MD-380/UV380 | [OpenRTX](https://openrtx.org/) | DMR handheld, M17 support |
+| Radioddity GD-77 | OpenRTX | Popular, well documented |
+| QuanSheng UV-K5 | [egzumer](https://github.com/egzumer/uv-k5-firmware-custom) | ~$25, huge community |
+| Baofeng DM-1801 | OpenGD77 | Budget option |
+
+Integration: Bridge APRS/packet ↔ LICHEN mesh via border router.
+
+#### Border Router Hardware
+
+Border routers benefit from good antennas and elevated placement — more direct reach = fewer hops to internet.
+
+| Platform | Config | Cost | Notes |
+|----------|--------|------|-------|
+| Raspberry Pi 4/5 | + USB puck | ~$80 | Development |
+| Pi Zero 2W | + SX1262 HAT | ~$40 | Low power deployment |
+| GL.iNet routers | + USB puck | ~$70+ | OpenWRT, easy setup |
+| RAK7391 WisGate | CM4 + LoRa + cell | ~$200 | Integrated solution |
+
+Antenna matters more than compute:
+
+| Level | Antenna | Placement | Range |
+|-------|---------|-----------|-------|
+| Basic | Rubber duck | Indoor | 1-2 km |
+| Better | 5dBi fiberglass | Window | 5-10 km |
+| Good | 8dBi collinear | Rooftop | 15-25 km |
+| Excellent | Yagi/sector | Tower | 30+ km LOS |
 
 **Memory budgets:**
 
