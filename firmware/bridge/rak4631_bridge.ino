@@ -4,6 +4,8 @@
 // Serial-to-LoRa bridge for RAK4631 (nRF52840 + SX1262)
 // Defensive, paranoid, explores hardware at boot.
 
+#include <Arduino.h>
+#include <Adafruit_TinyUSB.h>  // Required for USB Serial on RAK4631
 #include <RadioLib.h>
 #include <SPI.h>
 
@@ -11,14 +13,23 @@
 // Hardware Configuration - RAK4631
 // =============================================================================
 
-#define LORA_NSS   42
-#define LORA_DIO1  47
-#define LORA_BUSY  46
-#define LORA_RST   38
+// SX1262 control pins (directly connected to nRF52840)
+#define LORA_NSS   42   // P1.10 - SPI chip select
+#define LORA_DIO1  47   // P1.15 - interrupt
+#define LORA_BUSY  46   // P1.14 - busy status
+#define LORA_RST   38   // P1.06 - reset
+
+// SX1262 SPI pins - NOT on default Arduino SPI bus!
+// RAK4631 routes SX1262 to different pins than the WisBlock SPI slot
+#define LORA_SCK   43   // P1.11
+#define LORA_MOSI  44   // P1.12
+#define LORA_MISO  45   // P1.13
 
 // RAK4631 LEDs
 #define LED_GREEN  35
 #define LED_BLUE   36
+
+// SX1262 uses default SPI with custom pins set in setup()
 
 // SX1262 limits (from datasheet)
 #define SX1262_FREQ_MIN     150.0    // MHz
@@ -795,17 +806,16 @@ void setup() {
     delay(100);
   }
 
-  // Serial
+  // Serial - wait for USB connection
   Serial.begin(115200);
+  while (!Serial) delay(10);
+  Serial.println("# BOOT: Serial ready");
 
-  // Wait for USB serial, but not forever
-  uint32_t start = millis();
-  while (!Serial && (millis() - start) < 5000) {
-    ledOn(LED_BLUE);
-    delay(50);
-    ledOff(LED_BLUE);
-    delay(50);
-  }
+  // Configure SPI for SX1262 (different pins than default)
+  Serial.println("# BOOT: SPI init...");
+  SPI.setPins(LORA_MISO, LORA_SCK, LORA_MOSI);
+  SPI.begin();
+  Serial.println("# BOOT: SPI ready");
 
   stats.bootTime = millis();
 
