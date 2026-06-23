@@ -21,11 +21,13 @@ class RxCandidate:
         transmission: The transmission being received.
         rssi: Received signal strength indicator in dBm.
         snr: Signal-to-noise ratio in dB.
+        added_latency_us: Extra delivery delay in microseconds (set by LatencyRule).
     """
 
     transmission: Transmission
     rssi: float
     snr: float
+    added_latency_us: int = 0
 
 
 class Medium:

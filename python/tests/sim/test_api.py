@@ -584,6 +584,38 @@ class TestChaosRules:
         assert "must be positive" in response.json()["error"]
 
     @pytest.mark.asyncio
+    async def test_add_latency_rule(self, client: AsyncClient) -> None:
+        """POST /sim/{id}/chaos/latency adds a latency rule."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.post(
+            "/sim/sim1/chaos/latency",
+            json={"node_id": "node1", "added_us": 5000},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "rule_id" in data
+        assert data["type"] == "latency"
+
+    @pytest.mark.asyncio
+    async def test_add_latency_rule_missing_node_id(self, client: AsyncClient) -> None:
+        """POST /sim/{id}/chaos/latency requires node_id."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.post(
+            "/sim/sim1/chaos/latency", json={"added_us": 1000}
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_add_latency_rule_invalid_added_us(self, client: AsyncClient) -> None:
+        """POST /sim/{id}/chaos/latency rejects non-positive added_us."""
+        await client.post("/sim", json={"id": "sim1"})
+        response = await client.post(
+            "/sim/sim1/chaos/latency", json={"node_id": "node1", "added_us": 0}
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
     async def test_list_chaos_rules(self, client: AsyncClient) -> None:
         """GET /sim/{id}/chaos lists all rules."""
         await client.post("/sim", json={"id": "sim1"})

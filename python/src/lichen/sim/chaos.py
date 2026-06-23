@@ -273,15 +273,15 @@ class JammerRule(ChaosRule):
 
 @dataclass
 class LatencyRule(ChaosRule):
-    """Add latency to a specific node (for future use).
+    """Add artificial delivery latency to a specific node.
 
-    This rule marks transmissions for added latency but does not
-    modify the candidate directly. The latency should be applied
-    by the simulator's timing logic.
+    Sets ``added_latency_us`` on the candidate; the simulator's
+    ``get_rx_result()`` filters out candidates that have not yet
+    cleared their added delivery delay.
 
     Attributes:
-        node_id: ID of the node to add latency to.
-        added_us: Additional latency in microseconds.
+        node_id: ID of the node to add latency to (sender or receiver).
+        added_us: Additional delivery delay in microseconds.
         id: Unique rule identifier.
     """
 
@@ -298,8 +298,10 @@ class LatencyRule(ChaosRule):
         candidate: RxCandidate,
         rx_position: tuple[float, float, float] | None = None,
     ) -> RxCandidate:
-        """Return candidate unchanged; latency is handled elsewhere."""
-        return candidate
+        """Add latency to the candidate's delivery delay."""
+        from dataclasses import replace
+
+        return replace(candidate, added_latency_us=candidate.added_latency_us + self.added_us)
 
 
 class ChaosEngine:

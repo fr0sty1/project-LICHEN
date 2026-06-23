@@ -323,12 +323,22 @@ class TestLatencyRule:
         tx = make_transmission("sender")
         assert rule.matches(tx, "receiver") is False
 
-    def test_latency_returns_unchanged_candidate(self) -> None:
-        """LatencyRule returns candidate unchanged (latency handled elsewhere)."""
+    def test_latency_adds_delay_to_candidate(self) -> None:
+        """LatencyRule sets added_latency_us on the returned candidate."""
         rule = LatencyRule(node_id="sender", added_us=1000)
         candidate = make_candidate()
         result = rule.apply(candidate)
-        assert result is candidate
+        assert result is not candidate
+        assert result.added_latency_us == 1000
+
+    def test_latency_stacks_with_existing_delay(self) -> None:
+        """Multiple LatencyRules accumulate added_latency_us."""
+        rule = LatencyRule(node_id="sender", added_us=500)
+        from dataclasses import replace
+
+        candidate = replace(make_candidate(), added_latency_us=200)
+        result = rule.apply(candidate)
+        assert result.added_latency_us == 700
 
 
 class TestChaosEngineBasics:
