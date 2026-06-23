@@ -6,8 +6,8 @@
 
 #![no_std]
 
-pub mod record;
 pub mod cbor;
+pub mod record;
 
 pub use record::Record;
 

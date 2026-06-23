@@ -1,12 +1,13 @@
 /*
- * native_sim — simulation / development target
+ * native_sim overlay for the LICHEN gateway.
  *
- * No LoRa hardware overlay is needed: the gateway uses the LICHEN simulator
- * TCP driver (CONFIG_LORA_LICHEN_SIM) instead of a real radio when built for
- * native_sim.  The SLIP TAP interface provides host connectivity.
- *
- * The chosen zephyr,lora binding is intentionally omitted here; the simulator
- * driver registers itself at init time without a DTS node.
+ * Instantiates the simulator LoRa driver (lora_sim.c).  Radio parameters and
+ * node identity are configured via Kconfig (see native_sim.conf).
  */
 
-/* Placeholder — extend when the simulator LoRa driver gains DTS bindings. */
+/ {
+	lora0: lora {
+		compatible = "lichen,lora-sim";
+		status = "okay";
+	};
+};

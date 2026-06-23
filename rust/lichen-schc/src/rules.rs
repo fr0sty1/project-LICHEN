@@ -1,8 +1,8 @@
 //! SCHC rule model (RFC 8724 §7).
 
 use lichen_core::constants::{
-    RULE_GLOBAL_COAP, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP,
-    RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED,
+    RULE_GLOBAL_COAP, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP, RULE_RPL_DAO, RULE_RPL_DIO,
+    RULE_UNCOMPRESSED,
 };
 
 /// Matching Operator — decides whether a rule applies to a field value.
@@ -53,9 +53,27 @@ pub struct Rule {
 // populated in a future implementation pass.
 // ---------------------------------------------------------------------------
 
-pub const LINK_LOCAL_COAP_RULE: Rule = Rule { rule_id: RULE_LINK_LOCAL_COAP, fields: &[] };
-pub const GLOBAL_COAP_RULE: Rule = Rule { rule_id: RULE_GLOBAL_COAP, fields: &[] };
-pub const ICMPV6_ECHO_RULE: Rule = Rule { rule_id: RULE_ICMPV6_ECHO, fields: &[] };
-pub const RPL_DIO_RULE: Rule = Rule { rule_id: RULE_RPL_DIO, fields: &[] };
-pub const RPL_DAO_RULE: Rule = Rule { rule_id: RULE_RPL_DAO, fields: &[] };
-pub const UNCOMPRESSED_RULE: Rule = Rule { rule_id: RULE_UNCOMPRESSED, fields: &[] };
+pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
+    rule_id: RULE_LINK_LOCAL_COAP,
+    fields: &[],
+};
+pub const GLOBAL_COAP_RULE: Rule = Rule {
+    rule_id: RULE_GLOBAL_COAP,
+    fields: &[],
+};
+pub const ICMPV6_ECHO_RULE: Rule = Rule {
+    rule_id: RULE_ICMPV6_ECHO,
+    fields: &[],
+};
+pub const RPL_DIO_RULE: Rule = Rule {
+    rule_id: RULE_RPL_DIO,
+    fields: &[],
+};
+pub const RPL_DAO_RULE: Rule = Rule {
+    rule_id: RULE_RPL_DAO,
+    fields: &[],
+};
+pub const UNCOMPRESSED_RULE: Rule = Rule {
+    rule_id: RULE_UNCOMPRESSED,
+    fields: &[],
+};

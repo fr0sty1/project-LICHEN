@@ -1,0 +1,32 @@
+config LORA_LICHEN_SIM
+	bool "LICHEN simulator LoRa driver"
+	depends on LORA
+	select NET_SOCKETS
+	select NET_SOCKETS_POSIX_NAMES
+	help
+	  TCP client driver for native_sim builds. Connects to the lichen-sim
+	  server and presents a LoRa radio interface to the node stack.
+
+if LORA_LICHEN_SIM
+
+config LORA_LICHEN_SIM_HOST
+	string "Simulator host address"
+	default "127.0.0.1"
+
+config LORA_LICHEN_SIM_PORT
+	int "Simulator port"
+	default 4444
+	range 1 65535
+
+config LORA_LICHEN_SIM_NODE_ID
+	string "Node identifier sent to simulator at registration"
+	default "node0"
+	help
+	  ASCII string identifying this node to the simulator (e.g. "gw0",
+	  "node1"). Must be unique across all nodes in the simulation.
+
+config LORA_LICHEN_SIM_SIM_ID
+	string "Simulation run identifier"
+	default "lichen"
+
+endif # LORA_LICHEN_SIM

@@ -89,8 +89,12 @@ impl<'a> LichenFrame<'a> {
     pub fn llsec_byte(&self) -> u8 {
         let mut v = (self.addr_mode as u8) & ADDR_MODE_MASK;
         v |= ((self.mic_length as u8) & MIC_LEN_MASK) << MIC_LEN_SHIFT;
-        if self.signature_present { v |= SIGNATURE_BIT; }
-        if self.encrypted { v |= ENCRYPTED_BIT; }
+        if self.signature_present {
+            v |= SIGNATURE_BIT;
+        }
+        if self.encrypted {
+            v |= ENCRYPTED_BIT;
+        }
         v
     }
 

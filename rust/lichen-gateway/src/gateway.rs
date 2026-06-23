@@ -1,7 +1,7 @@
 //! Gateway state stub.
 
-use lichen_node::Node;
 use lichen_core::addr::NodeId;
+use lichen_node::Node;
 
 /// Border router state.
 ///
@@ -13,6 +13,8 @@ pub struct Gateway {
 
 impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
-        Self { node: Node::new(node_id) }
+        Self {
+            node: Node::new(node_id),
+        }
     }
 }
