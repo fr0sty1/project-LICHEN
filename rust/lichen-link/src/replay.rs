@@ -7,6 +7,7 @@
 ///
 /// Accepts a sequence number if it is within the window and has not been seen.
 /// The window advances when a newer sequence number is accepted.
+#[allow(dead_code)] // fields used by the full implementation (future work)
 pub struct ReplayWindow {
     last_seq: u16,
     window: u64, // bit i set => (last_seq - i) was seen
@@ -14,7 +15,10 @@ pub struct ReplayWindow {
 
 impl ReplayWindow {
     pub const fn new() -> Self {
-        Self { last_seq: 0, window: 0 }
+        Self {
+            last_seq: 0,
+            window: 0,
+        }
     }
 
     /// Check and record `seq`. Returns `true` if the packet should be accepted.
@@ -26,5 +30,7 @@ impl ReplayWindow {
 }
 
 impl Default for ReplayWindow {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }

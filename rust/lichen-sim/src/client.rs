@@ -4,8 +4,8 @@
 //! TCP. Each message is a 2-byte big-endian length followed by the frame bytes.
 //! This mirrors the Python SimRadio in `python/src/lichen/radio/sim_client.py`.
 
-use std::net::{TcpStream, SocketAddr};
 use std::io::{self, Read, Write};
+use std::net::{SocketAddr, TcpStream};
 
 /// Default simulator server address.
 pub const DEFAULT_ADDR: &str = "127.0.0.1:4444";
@@ -39,7 +39,10 @@ impl SimClient {
         self.stream.read_exact(&mut len_bytes)?;
         let len = u16::from_be_bytes(len_bytes) as usize;
         if len > buf.len() {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "frame too large"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "frame too large",
+            ));
         }
         self.stream.read_exact(&mut buf[..len])?;
         Ok(len)

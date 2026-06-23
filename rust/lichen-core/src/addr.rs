@@ -26,8 +26,22 @@ impl NodeId {
     pub fn link_local_addr(&self) -> Ipv6Addr {
         let e = self.0;
         Ipv6Addr([
-            0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            e[0] ^ 0x02, e[1], e[2], e[3], e[4], e[5], e[6], e[7],
+            0xfe,
+            0x80,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            e[0] ^ 0x02,
+            e[1],
+            e[2],
+            e[3],
+            e[4],
+            e[5],
+            e[6],
+            e[7],
         ])
     }
 }

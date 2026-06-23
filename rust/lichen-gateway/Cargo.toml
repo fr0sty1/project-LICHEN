@@ -6,4 +6,5 @@ license.workspace = true
 description = "LICHEN border router (6LBR) daemon for Linux."
 
 [dependencies]
+lichen-core = { path = "../lichen-core" }
 lichen-node = { path = "../lichen-node", features = ["std"] }

@@ -6,8 +6,8 @@
 
 #![no_std]
 
-pub mod constants;
 pub mod addr;
+pub mod constants;
 
 #[cfg(feature = "std")]
 extern crate std;

@@ -20,9 +20,6 @@ pub fn encode<'a>(_records: &[Record<'a>], _out: &mut [u8]) -> Result<usize, Cbo
 /// Decode SenML-CBOR bytes into a fixed-size array of records.
 ///
 /// Stub — always returns `NotImplemented`.
-pub fn decode<'a>(
-    _data: &'a [u8],
-    _buf: &'a mut [Record<'a>],
-) -> Result<usize, CborError> {
+pub fn decode<'a>(_data: &'a [u8], _buf: &'a mut [Record<'a>]) -> Result<usize, CborError> {
     Err(CborError::NotImplemented)
 }

@@ -15,8 +15,8 @@
 
 #![no_std]
 
-pub mod rules;
 pub mod codec;
+pub mod rules;
 
 pub use rules::{Cda, FieldDescriptor, Mo, Rule};
 

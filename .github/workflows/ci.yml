@@ -43,3 +43,78 @@ jobs:
         # The per-test timeout is a safety net so any new hang fails instead of
         # stalling the runner (thread method is async-safe).
         run: PYTHONPATH=src pytest -q --timeout=120 --timeout-method=thread
+
+  rust:
+    name: Rust
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Build
+        run: cargo build --workspace
+        working-directory: rust
+
+      - name: Test
+        run: cargo test --workspace
+        working-directory: rust
+
+      - name: Clippy
+        run: cargo clippy --workspace -- -D warnings
+        working-directory: rust
+
+      - name: Format check
+        run: cargo fmt --check
+        working-directory: rust
+
+  zephyr-native-sim:
+    name: Zephyr native_sim
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # west T2 topology: manifest repo (lichen/) must sit alongside zephyr/.
+          # Checking out to a subdirectory replicates the workspace layout.
+          path: lichen
+
+      - name: Install system deps
+        run: sudo apt-get install -y --no-install-recommends cmake ninja-build gcc
+
+      - name: Install west and Python deps
+        run: pip install west
+
+      - name: Cache Zephyr checkout
+        id: cache-zephyr
+        uses: actions/cache@v4
+        with:
+          path: zephyr
+          key: zephyr-${{ hashFiles('lichen/west.yml') }}
+          restore-keys: zephyr-
+
+      - name: west init + update
+        if: steps.cache-zephyr.outputs.cache-hit != 'true'
+        run: |
+          west init -l lichen/
+          west update
+
+      - name: west init (manifest only, Zephyr from cache)
+        if: steps.cache-zephyr.outputs.cache-hit == 'true'
+        run: west init -l lichen/
+
+      - name: Install Zephyr Python requirements
+        run: pip install -r zephyr/scripts/requirements.txt
+
+      - name: west zephyr-export
+        run: west zephyr-export
+
+      - name: Build gateway (native_sim)
+        run: west build -b native_sim lichen/apps/gateway

@@ -1,0 +1,1 @@
+add_subdirectory_ifdef(CONFIG_LORA_LICHEN_SIM lora)
