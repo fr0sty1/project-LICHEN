@@ -1,0 +1,18 @@
+[workspace]
+resolver = "2"
+members = [
+    "lichen-core",
+    "lichen-link",
+    "lichen-schc",
+    "lichen-coap",
+    "lichen-senml",
+    "lichen-node",
+    "lichen-gateway",
+    "lichen-sim",
+    "lichen-apps",
+]
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+license = "GPL-3.0-or-later"

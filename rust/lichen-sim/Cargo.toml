@@ -1,0 +1,9 @@
+[package]
+name = "lichen-sim"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "LICHEN simulator TCP client (mirrors the Python SimRadio interface)."
+
+[dependencies]
+lichen-node = { path = "../lichen-node", features = ["std"] }

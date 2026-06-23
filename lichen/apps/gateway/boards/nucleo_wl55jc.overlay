@@ -1,0 +1,28 @@
+/*
+ * Nucleo-WL55JC — STM32WL55 with built-in sub-GHz radio
+ *
+ * The STM32WL55 integrates an SX126x-compatible sub-GHz transceiver
+ * reachable via the internal SUBGHZSPI peripheral.  The Zephyr board
+ * definition exposes it as &subghzspi / the STM32 sub-GHz radio node.
+ *
+ * References:
+ *   boards/arm/nucleo_wl55jc/nucleo_wl55jc.dts
+ *   drivers/lora/sx126x.c (subghz variant)
+ */
+
+/ {
+	chosen {
+		zephyr,lora = &lora0;
+	};
+};
+
+/*
+ * lora0 is the alias node for the sub-GHz radio in the upstream board file.
+ * It is wired internally — no external SPI CS / reset / busy GPIOs needed.
+ */
+&lora0 {
+	status = "okay";
+
+	tx-power = <22>;        /* dBm — STM32WL HP PA max */
+	frequency = <868000000>;
+};

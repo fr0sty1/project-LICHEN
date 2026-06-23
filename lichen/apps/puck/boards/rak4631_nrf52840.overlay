@@ -1,0 +1,20 @@
+/*
+ * RAK4631 — nRF52840 + SX1262
+ *
+ * The upstream board definition (boards/arm/rak4631_nrf52840) declares the
+ * SX1262 as &lora0 on SPI3.  This overlay enables the node and applies the
+ * LICHEN RF defaults.
+ */
+
+/ {
+	chosen {
+		zephyr,lora = &lora0;
+	};
+};
+
+&lora0 {
+	status = "okay";
+
+	tx-power = <22>;        /* dBm */
+	frequency = <868000000>;
+};

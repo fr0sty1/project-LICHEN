@@ -1,0 +1,13 @@
+[package]
+name = "lichen-coap"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "CoAP (RFC 7252): message types, options, and blockwise transfer stubs."
+
+[features]
+default = []
+std = []
+
+[dependencies]
+lichen-core = { path = "../lichen-core" }

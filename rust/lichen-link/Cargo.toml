@@ -1,0 +1,13 @@
+[package]
+name = "lichen-link"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "LICHEN link layer: frame format, LLSec modes, and replay window."
+
+[features]
+default = []
+std = []
+
+[dependencies]
+lichen-core = { path = "../lichen-core" }

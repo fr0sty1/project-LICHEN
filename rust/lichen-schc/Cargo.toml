@@ -1,0 +1,13 @@
+[package]
+name = "lichen-schc"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "SCHC header compression (RFC 8724): rule model and compress/decompress stubs."
+
+[features]
+default = []
+std = []
+
+[dependencies]
+lichen-core = { path = "../lichen-core" }
