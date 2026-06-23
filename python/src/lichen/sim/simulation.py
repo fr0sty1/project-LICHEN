@@ -285,10 +285,11 @@ class Simulation:
         Args:
             event: The event to handle.
         """
-        if isinstance(event, TxEndEvent):
-            self._handle_tx_end(event)
-        elif isinstance(event, RxTimeoutEvent):
-            self._handle_rx_timeout(event)
+        match event:
+            case TxEndEvent():
+                self._handle_tx_end(event)
+            case RxTimeoutEvent():
+                self._handle_rx_timeout(event)
 
     def _handle_tx_end(self, event: TxEndEvent) -> None:
         """Handle transmission end event.

@@ -6,7 +6,21 @@ This module provides a writer for the pcapng file format, allowing
 captured packets to be written to files that can be analyzed with
 Wireshark and other network analysis tools.
 
-The format follows IETF draft-tuexen-opsawg-pcapng.
+The format follows IETF draft-tuexen-opsawg-pcapng. Files use link type
+LINKTYPE_USER0 (147 / 0x93). Each captured payload is the raw SCHC-compressed
+frame as transmitted on the wire (after SCHC compression, before link framing).
+
+Custom EPB options (private use range 0x8000–0x8003):
+
+    0x8000  RSSI        4-byte little-endian signed int32 in dBm
+    0x8001  SNR         4-byte little-endian signed int32 in dB
+    0x8002  SRC_NODE    UTF-8 string, the source node ID
+    0x8003  DST_NODE    UTF-8 string, the destination node ID
+
+A Wireshark Lua dissector for these options is provided at
+``tools/wireshark/lichen.lua``. Load it via Edit → Preferences →
+Protocols → DissectorTable → Lua scripts, or by placing it in your
+Wireshark personal Lua directory.
 """
 
 from __future__ import annotations

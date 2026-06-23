@@ -59,27 +59,28 @@ def _rule_to_dict(rule: ChaosRule) -> dict[str, Any]:
     """
     result: dict[str, Any] = {"id": rule.id}
 
-    if isinstance(rule, DropRule):
-        result["type"] = "drop"
-        result["node_id"] = rule.node_id
-        result["direction"] = rule.direction
-    elif isinstance(rule, PartitionRule):
-        result["type"] = "partition"
-        result["groups"] = [list(group) for group in rule.groups]
-    elif isinstance(rule, DegradeRule):
-        result["type"] = "degrade"
-        result["node_id"] = rule.node_id
-        result["rssi_penalty_db"] = rule.rssi_penalty_db
-    elif isinstance(rule, JammerRule):
-        result["type"] = "jammer"
-        result["x"] = rule.x
-        result["y"] = rule.y
-        result["z"] = rule.z
-        result["radius_m"] = rule.radius_m
-    elif isinstance(rule, LatencyRule):
-        result["type"] = "latency"
-        result["node_id"] = rule.node_id
-        result["added_us"] = rule.added_us
+    match rule:
+        case DropRule():
+            result["type"] = "drop"
+            result["node_id"] = rule.node_id
+            result["direction"] = rule.direction
+        case PartitionRule():
+            result["type"] = "partition"
+            result["groups"] = [list(group) for group in rule.groups]
+        case DegradeRule():
+            result["type"] = "degrade"
+            result["node_id"] = rule.node_id
+            result["rssi_penalty_db"] = rule.rssi_penalty_db
+        case JammerRule():
+            result["type"] = "jammer"
+            result["x"] = rule.x
+            result["y"] = rule.y
+            result["z"] = rule.z
+            result["radius_m"] = rule.radius_m
+        case LatencyRule():
+            result["type"] = "latency"
+            result["node_id"] = rule.node_id
+            result["added_us"] = rule.added_us
 
     return result
 
