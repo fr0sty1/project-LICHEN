@@ -110,6 +110,67 @@ pub fn verify(pubkey: &[u8; 32], msg: &[u8], sig: &[u8; 48]) -> bool {
     e_check[..16] == e_received
 }
 
+/// Length of a Schnorr48 signature in bytes.
+pub const SIGNATURE_LENGTH: usize = 48;
+
+/// Sign a link-layer frame. Append the returned 48 bytes to the inner payload.
+///
+/// Signed data layout: epoch(1B) || seqnum(2B, BE) || dst_addr || inner_payload.
+/// This matches the Python reference: `_build_signable_data`.
+pub fn sign_frame(
+    epoch: u8,
+    seqnum: u16,
+    dst_addr: &[u8],
+    inner_payload: &[u8],
+    privkey: &[u8; 32],
+    pubkey: &[u8; 32],
+) -> [u8; 48] {
+    let mut buf = [0u8; 256];
+    let msg = build_signable(&mut buf, epoch, seqnum, dst_addr, inner_payload);
+    sign(privkey, pubkey, msg)
+}
+
+/// Verify a signed link-layer frame.
+///
+/// `payload_with_sig` is the full frame payload: inner_payload || sig(48B).
+/// Returns `false` if the payload is shorter than 48 bytes or the signature
+/// does not verify.
+pub fn verify_frame(
+    epoch: u8,
+    seqnum: u16,
+    dst_addr: &[u8],
+    payload_with_sig: &[u8],
+    sender_pubkey: &[u8; 32],
+) -> bool {
+    if payload_with_sig.len() < SIGNATURE_LENGTH {
+        return false;
+    }
+    let split = payload_with_sig.len() - SIGNATURE_LENGTH;
+    let inner_payload = &payload_with_sig[..split];
+    let sig: [u8; 48] = payload_with_sig[split..].try_into().unwrap();
+    let mut buf = [0u8; 256];
+    let msg = build_signable(&mut buf, epoch, seqnum, dst_addr, inner_payload);
+    verify(sender_pubkey, msg, &sig)
+}
+
+// epoch(1) || seqnum(2, BE) || dst_addr || inner_payload — max 202 bytes for LoRa.
+fn build_signable<'a>(
+    buf: &'a mut [u8; 256],
+    epoch: u8,
+    seqnum: u16,
+    dst_addr: &[u8],
+    inner_payload: &[u8],
+) -> &'a [u8] {
+    buf[0] = epoch;
+    buf[1..3].copy_from_slice(&seqnum.to_be_bytes());
+    let mut off = 3;
+    buf[off..off + dst_addr.len()].copy_from_slice(dst_addr);
+    off += dst_addr.len();
+    buf[off..off + inner_payload.len()].copy_from_slice(inner_payload);
+    off += inner_payload.len();
+    &buf[..off]
+}
+
 fn clamp(mut bytes: [u8; 32]) -> [u8; 32] {
     bytes[0] &= 248;
     bytes[31] &= 127;
@@ -297,5 +358,81 @@ mod tests {
         let msg = hex("74657374");
         let sig = [0u8; 48];
         assert!(!verify(&pubkey, &msg, &sig));
+    }
+
+    // ── two-node authenticated frame exchange ────────────────────────────
+
+    #[test]
+    fn two_node_frame_exchange() {
+        use crate::frame::{AddrMode, LichenFrame, MicLength};
+        use crate::replay::ReplayWindow;
+
+        let seed_a = [0x01u8; 32];
+        let (priv_a, pub_a) = derive_keypair(&seed_a);
+        let seed_b = [0x02u8; 32];
+        let (_, pub_b) = derive_keypair(&seed_b);
+
+        let mut replay = ReplayWindow::new();
+
+        let epoch: u8 = 1;
+        let seqnum: u16 = 42;
+        let dst_addr = [0x00u8, 0x01u8];
+        let inner_payload = b"hello";
+
+        // Node A: sign and assemble payload = inner_payload || sig
+        let sig = sign_frame(epoch, seqnum, &dst_addr, inner_payload, &priv_a, &pub_a);
+        let mut signed_payload = [0u8; 53]; // 5 + 48
+        signed_payload[..5].copy_from_slice(inner_payload);
+        signed_payload[5..].copy_from_slice(&sig);
+
+        // Node A: serialise frame
+        let frame = LichenFrame {
+            epoch,
+            seqnum,
+            dst_addr: &dst_addr,
+            payload: &signed_payload,
+            mic: &[0u8; 4],
+            addr_mode: AddrMode::Short,
+            mic_length: MicLength::Bits32,
+            signature_present: true,
+            encrypted: false,
+        };
+        let mut wire = [0u8; 128];
+        let n = frame.write_to(&mut wire).unwrap();
+
+        // Node B: parse and verify
+        let rx = LichenFrame::from_bytes(&wire[..n]).unwrap();
+        assert!(rx.signature_present);
+        assert!(
+            replay.accept(rx.seqnum),
+            "first delivery should pass replay window"
+        );
+        assert!(
+            verify_frame(rx.epoch, rx.seqnum, rx.dst_addr, rx.payload, &pub_a),
+            "valid frame should verify"
+        );
+
+        // Replay: same sequence number rejected by ReplayWindow
+        assert!(!replay.accept(rx.seqnum), "replay must be rejected");
+
+        // Tampered inner payload: signature check fails
+        let mut tampered = signed_payload;
+        tampered[0] ^= 0xFF;
+        assert!(
+            !verify_frame(epoch, seqnum, &dst_addr, &tampered, &pub_a),
+            "tampered payload must not verify"
+        );
+
+        // Wrong public key: signature check fails
+        assert!(
+            !verify_frame(epoch, seqnum, &dst_addr, &signed_payload, &pub_b),
+            "wrong pubkey must not verify"
+        );
+
+        // Payload too short to contain a signature
+        assert!(
+            !verify_frame(epoch, seqnum, &dst_addr, &signed_payload[..47], &pub_a),
+            "truncated payload must not verify"
+        );
     }
 }
