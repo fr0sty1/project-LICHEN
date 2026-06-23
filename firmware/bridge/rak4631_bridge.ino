@@ -63,6 +63,7 @@ struct RadioConfig {
   int8_t power = 22;
   uint16_t preambleLen = 8;
   bool crcEnabled = true;
+  uint8_t syncWord = 0x12;  // 0x12=LoRaWAN private, 0x34=LoRaWAN public, 0x2B=Meshtastic
 } config;
 
 // Runtime stats
@@ -217,7 +218,7 @@ void probeHardware() {
     config.bandwidth,
     config.spreadingFactor,
     config.codingRate,
-    RADIOLIB_SX126X_SYNC_WORD_PRIVATE,
+    config.syncWord,
     config.power,
     config.preambleLen
   );
@@ -330,7 +331,8 @@ void cmdHelp() {
   Serial.println("#   SF=5-12, BW=7.8-500, CR=5-8");
   Serial.println("#   FREQ=150-960 (MHz) or FREQ=150000000-960000000 (Hz)");
   Serial.println("#   PWR=-9 to 22 (dBm)");
-  Serial.println("#   CRC=0/1, PREAMBLE=6-65535");
+  Serial.println("#   CRC=0/1, PREAMBLE=6-65535, SYNC=0x00-0xFF");
+  Serial.println("#   SYNC: 0x12=LoRaWAN, 0x2B=Meshtastic");
   Serial.println("#");
   Serial.println("# Output:");
   Serial.println("#   RX <rssi> <snr> <hex> - Received packet");
@@ -469,6 +471,14 @@ void cmdCfg(const char* args) {
       newConfig.crcEnabled = atoi(p + 4) != 0;
     } else if (strncmp(p, "PREAMBLE=", 9) == 0) {
       newConfig.preambleLen = atoi(p + 9);
+    } else if (strncmp(p, "SYNC=", 5) == 0) {
+      // Accept hex (0x2B) or decimal (43)
+      const char* val = p + 5;
+      if (val[0] == '0' && (val[1] == 'x' || val[1] == 'X')) {
+        newConfig.syncWord = strtol(val, NULL, 16);
+      } else {
+        newConfig.syncWord = atoi(val);
+      }
     } else {
       char key[16] = {0};
       int i = 0;
@@ -543,6 +553,13 @@ void cmdCfg(const char* args) {
     failed = true;
   }
 
+  state = radio.setSyncWord(newConfig.syncWord);
+  if (state != RADIOLIB_ERR_NONE) {
+    Serial.print("# setSyncWord failed: ");
+    Serial.println(state);
+    failed = true;
+  }
+
   if (failed) {
     replyERR("config apply failed (see # lines above)");
     // Try to restore old config
@@ -561,9 +578,9 @@ void cmdCfg(const char* args) {
   radio.startReceive();
 
   char msg[96];
-  snprintf(msg, sizeof(msg), "SF=%d BW=%.1f CR=%d FREQ=%.3f PWR=%d CRC=%d",
+  snprintf(msg, sizeof(msg), "SF=%d BW=%.1f CR=%d FREQ=%.3f PWR=%d CRC=%d SYNC=0x%02X",
            config.spreadingFactor, config.bandwidth, config.codingRate,
-           config.frequency, config.power, config.crcEnabled ? 1 : 0);
+           config.frequency, config.power, config.crcEnabled ? 1 : 0, config.syncWord);
   replyOK(msg);
 }
 
@@ -579,10 +596,10 @@ void cmdStatus() {
 
   char msg[128];
   snprintf(msg, sizeof(msg),
-           "SF=%d BW=%.1f CR=%d FREQ=%.6f PWR=%d CRC=%d PREAMBLE=%d",
+           "SF=%d BW=%.1f CR=%d FREQ=%.6f PWR=%d CRC=%d PREAMBLE=%d SYNC=0x%02X",
            config.spreadingFactor, config.bandwidth, config.codingRate,
            config.frequency, config.power, config.crcEnabled ? 1 : 0,
-           config.preambleLen);
+           config.preambleLen, config.syncWord);
   replyOK(msg);
 }
 
@@ -643,7 +660,7 @@ void cmdReset() {
     config.bandwidth,
     config.spreadingFactor,
     config.codingRate,
-    RADIOLIB_SX126X_SYNC_WORD_PRIVATE,
+    config.syncWord,
     config.power,
     config.preambleLen
   );
