@@ -85,6 +85,9 @@ class LinkLayer:
     identity: Identity
     peer_lookup: Callable[[bytes], PeerIdentity | None]
     replay_protector: ReplayProtector = field(default_factory=ReplayProtector)
+    peer_lookup_all: Callable[[], list[PeerIdentity]] | None = field(
+        default=None, repr=False
+    )
     _epoch: int = field(default=0, repr=False)
     _seqnum: int = field(default=0, repr=False)
 
@@ -372,7 +375,12 @@ class LinkLayer:
         if peer is not None and verify(peer.pubkey, signable, signature):
             return peer
 
-        # No match found
+        # If we have an all-peers iterator, try each one for broadcast frames.
+        if self.peer_lookup_all is not None:
+            for candidate in self.peer_lookup_all():
+                if candidate is not peer and verify(candidate.pubkey, signable, signature):
+                    return candidate
+
         return None
 
     def set_sequence(self, epoch: int, seqnum: int) -> None:

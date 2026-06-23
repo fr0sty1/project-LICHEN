@@ -31,9 +31,11 @@ from lichen.announce.processor import AnnounceProcessor
 from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity, PeerIdentity
 from lichen.gradient import GradientTable
+from lichen.ipv6.packet import IPv6Packet
 from lichen.link.link_layer import LinkLayer, RxFrame
 from lichen.radio.base import Radio
-from lichen.routing.router import Router
+from lichen.routing.router import RouteDecision, Router
+from lichen.schc.headers import compress_packet, decompress_packet
 
 logger = logging.getLogger(__name__)
 
@@ -115,12 +117,16 @@ class Node:
         default=None, init=False, repr=False
     )
 
+    # Relay dedup: SCHC payloads forwarded by this node; prevents relay loops.
+    _relay_seen: set[bytes] = field(default_factory=set, init=False, repr=False)
+
     def __post_init__(self) -> None:
         # Why initialize layers here: They depend on self.identity, self.radio.
         self.link = LinkLayer(
             radio=self.radio,
             identity=self.identity,
             peer_lookup=self._peer_lookup,
+            peer_lookup_all=lambda: list(self.peer_db.values()),
         )
 
         # Why separate address builder: Router needs to build full IPv6 from IID.
@@ -271,13 +277,34 @@ class Node:
         """
         payload = rx.frame.payload
 
-        # Why check first byte: Identifies message type (announce vs data).
         if len(payload) > 0 and payload[0] == ANNOUNCE_TYPE:
             await self._process_announce(payload, rx.sender, rx.rssi_dbm)
-        else:
-            # Application data
+            return
+
+        # SCHC-compressed IPv6 data packet: decompress, route, relay or deliver.
+        # Note: SCHC rule 0x01 (global CoAP) shares the first byte with
+        # ANNOUNCE_TYPE — excluded above; ULA/link-local traffic is unambiguous.
+        try:
+            ipv6_bytes = decompress_packet(payload)
+            packet = IPv6Packet.from_bytes(ipv6_bytes)
+        except Exception:
+            # Not a parseable IPv6 packet — pass raw bytes to app callback.
             if self._on_receive:
                 self._on_receive(payload, rx.sender)
+            return
+
+        now_ms = int(asyncio.get_event_loop().time() * 1000)
+        decision, _next_hop = self.router.route(packet, now_ms)
+
+        if decision == RouteDecision.DELIVER_LOCAL:
+            if self._on_receive:
+                self._on_receive(payload, rx.sender)
+        elif decision == RouteDecision.FORWARD and payload not in self._relay_seen:
+            # Relay: re-broadcast SCHC bytes unchanged.  Dedup prevents loops.
+            self._relay_seen.add(payload)
+            if len(self._relay_seen) > 128:
+                self._relay_seen.clear()
+            await self.link.send(payload)
 
     async def _process_announce(
         self, payload: bytes, sender: PeerIdentity, rssi_dbm: int
@@ -346,21 +373,38 @@ class Node:
         """
         return self._scheduler.get_seq_num()
 
-    async def send(self, dst: IPv6Address, payload: bytes) -> bool:
-        """Send application data to a destination.
-
-        Why async: May need to wait for route discovery.
+    async def send(self, ipv6_bytes: bytes) -> bool:
+        """Send a raw IPv6 datagram through the SCHC + routing stack.
 
         Args:
-            dst: Destination IPv6 address.
-            payload: Application data to send.
+            ipv6_bytes: A complete IPv6 datagram (e.g. IPv6 + UDP + CoAP).
+                        Use coap.node_channel.NodeChannel to build this from CoAP.
 
         Returns:
-            True if sent (or queued for discovery), False if dropped.
+            True if forwarded to the link layer, False if routed to drop.
         """
-        # For now, just send directly via link layer
-        # In production, would go through SCHC compression first
-        return await self.link.send(payload)
+        try:
+            packet = IPv6Packet.from_bytes(ipv6_bytes)
+        except Exception:
+            logger.warning("send: failed to parse IPv6 packet")
+            return False
+
+        schc = compress_packet(ipv6_bytes)
+        # Track what we've sent so relay dedup doesn't forward it back to us.
+        self._relay_seen.add(schc)
+        if len(self._relay_seen) > 128:
+            self._relay_seen.clear()
+
+        now_ms = int(asyncio.get_event_loop().time() * 1000)
+        decision, _next_hop = self.router.route(packet, now_ms)
+
+        if decision == RouteDecision.FORWARD:
+            return await self.link.send(schc)
+        if decision == RouteDecision.DELIVER_LOCAL:
+            if self._on_receive:
+                self._on_receive(schc, PeerIdentity.from_pubkey(self.identity.pubkey))
+            return True
+        return False
 
     def get_status(self) -> dict:
         """Get node status for debugging/monitoring.
