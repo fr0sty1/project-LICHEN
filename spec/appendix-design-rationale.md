@@ -176,7 +176,74 @@ autonomous sensor networks, infrastructure-independent communication, and
 integration with standard IP tooling. Consumer mesh prioritizes simplicity and
 phone compatibility.
 
-## 6. Summary
+## 6. Intentional Simplifications
+
+The implementation deliberately omits advanced features from the tactical radio
+playbook. These features add significant complexity to handle edge cases that
+rarely occur in practice.
+
+### 6.1. GPSR: Greedy Only, No Perimeter Mode
+
+Full GPSR includes "perimeter mode" (face routing) for escaping local minima—
+situations where no neighbor is closer to the destination than the current node.
+This requires planarizing the network graph and traversing faces, which means:
+
+- Maintaining planar subgraph state at every node
+- Complex right-hand rule traversal logic
+- Additional message types for mode switching
+
+**Why omitted:** Local minima are rare in real deployments. When they occur,
+LOADng reactive discovery finds a path. The complexity of perimeter mode isn't
+justified for an edge case that has a working fallback.
+
+### 6.2. Backpressure: Data Collection Only
+
+Full backpressure routing automatically selects less-congested paths. LICHEN
+collects congestion data (queue depths in announces) but doesn't auto-route
+around congestion. Applications can use the data if they want.
+
+**Why omitted:** Automatic backpressure routing requires:
+
+- Continuous queue depth updates (more airtime)
+- Hysteresis to avoid route flapping
+- Complex interaction with other routing tiers
+
+For LoRa's bandwidth, the cure is worse than the disease. If a path is
+congested, the network is probably overloaded anyway. Applications that care
+can implement their own logic using the exposed queue depth data.
+
+### 6.3. Opportunistic: Ranked Candidates, No Correlation Tracking
+
+Full ExOR-style opportunistic routing tracks which packets each forwarder has
+received (via batch maps) to avoid duplicate transmissions. LICHEN uses simpler
+ranked-candidate selection with timed suppression.
+
+**Why omitted:** Correlation tracking requires:
+
+- Batch acknowledgment maps in every packet
+- Per-forwarder packet reception state
+- Complex duplicate suppression logic
+
+The timed suppression approach wastes some airtime on duplicates but requires
+no coordination state. At LoRa data rates, the overhead of batch maps would
+exceed the savings from perfect duplicate suppression.
+
+### 6.4. The Pattern
+
+Each omission follows the same logic: **the full version handles edge cases
+that have simpler fallbacks, at a complexity cost that exceeds the benefit.**
+
+| Feature | Edge Case | Fallback | Complexity Saved |
+|---------|-----------|----------|------------------|
+| GPSR perimeter | Local minima | LOADng discovery | Graph planarization |
+| Auto backpressure | Congested paths | App-layer logic | Route flap hysteresis |
+| ExOR correlation | Duplicate packets | Timed suppression | Batch map state |
+
+This is deliberate. A protocol that handles every edge case optimally is a
+protocol too complex to implement correctly on a microcontroller. LICHEN
+handles common cases well and degrades gracefully on edge cases.
+
+## 7. Summary
 
 LICHEN applies concepts proven in tactical MANETs to the constrained world of
 LoRa:
