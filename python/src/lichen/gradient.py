@@ -52,6 +52,7 @@ class GradientEntry:
     seq_num: int
     source: GradientSource
     expires: int
+    coords: tuple[float, float] | None = None  # (lat, lon) from app_data (spec 9.7)
 
     def __post_init__(self) -> None:
         self.destination = _addr(self.destination)

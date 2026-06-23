@@ -16,6 +16,7 @@ from enum import Enum, auto
 from ipaddress import IPv6Address
 from typing import Callable
 
+from lichen.announce.coords import decode_congestion, decode_coords
 from lichen.announce.messages import (
     AnnounceMessage,
     MAX_ANNOUNCE_HOPS,
@@ -61,12 +62,14 @@ class AnnounceResult:
             not relay (hop limit reached, or duplicate from better path).
         reject_reason: Why the announce was rejected, if not accepted.
         peer: The sender's identity if signature verified.
+        congestion: Queue depth from announce app_data (spec 11.4), or None.
     """
 
     accepted: bool
     should_relay: bool
     reject_reason: AnnounceRejectReason | None = None
     peer: PeerIdentity | None = None
+    congestion: int | None = None
 
 
 @dataclass
@@ -165,6 +168,8 @@ class AnnounceProcessor:
         # Step 4: Update gradient table
         # Why build full IPv6: Gradient table uses full addresses for lookup.
         destination = self.address_builder(iid)
+        coords = decode_coords(announce.app_data)  # None if not present
+        congestion = decode_congestion(announce.app_data)  # None if not present
         entry = GradientEntry(
             destination=destination,
             next_hop=from_neighbor,
@@ -172,6 +177,7 @@ class AnnounceProcessor:
             seq_num=announce.seq_num,
             source=GradientSource.ANNOUNCE,
             expires=now_ms + GRADIENT_TIMEOUT_MS,
+            coords=coords,
         )
         self.gradient_table.update(entry, now=now_ms)
 
@@ -192,6 +198,7 @@ class AnnounceProcessor:
             accepted=True,
             should_relay=should_relay,
             peer=peer,
+            congestion=congestion,
         )
 
     def get_relay_message(self, announce: AnnounceMessage) -> AnnounceMessage | None:

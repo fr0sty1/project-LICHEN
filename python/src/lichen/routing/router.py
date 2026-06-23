@@ -22,6 +22,8 @@ from lichen.ipv6.packet import IPv6Packet
 from lichen.loadng.discovery import LoadngRouter
 from lichen.rpl.dodag import DodagState
 
+import math
+
 logger = logging.getLogger(__name__)
 
 
@@ -74,6 +76,27 @@ class PendingPacket:
 
 
 @dataclass
+class DtnMessage:
+    """A message buffered for DTN store-and-forward (spec 9.8).
+
+    Attributes:
+        packet: The IPv6 packet data.
+        destination_iid: 8-byte IID of destination.
+        expiry_unix: Unix timestamp when message expires.
+        buffered_at_ms: When message was buffered (for eviction ordering).
+    """
+
+    packet: IPv6Packet
+    destination_iid: bytes
+    expiry_unix: int
+    buffered_at_ms: int
+
+    def size(self) -> int:
+        """Approximate size in bytes for buffer accounting."""
+        return len(self.packet.payload) + 100  # header overhead estimate
+
+
+@dataclass
 class Router:
     """Hybrid routing decision engine (spec 7.2).
 
@@ -106,6 +129,16 @@ class Router:
         default_factory=dict, repr=False
     )
     max_pending_per_dest: int = 3
+    node_coords: tuple[float, float] | None = None  # (lat, lon) for GPSR (spec 9.7)
+    neighbor_coords: dict[IPv6Address, tuple[float, float]] = field(
+        default_factory=dict, repr=False
+    )  # link-local -> coords
+    neighbor_queue_depth: dict[IPv6Address, int] = field(
+        default_factory=dict, repr=False
+    )  # link-local -> queue depth (spec 11.4)
+    # DTN store-and-forward buffer (spec 9.8)
+    dtn_buffer: list["DtnMessage"] = field(default_factory=list, repr=False)
+    dtn_buffer_max_bytes: int = 65536  # 64KB default
 
     # Why fe80::/10: RFC 4291 link-local prefix. All link-local addresses
     # start with fe80:: through febf::, which is fe80::/10.
@@ -213,9 +246,15 @@ class Router:
                         dst, entry.next_hop, entry.hop_count)
             return RouteDecision.FORWARD, entry.next_hop
 
-        # Why check loadng: If LOADng isn't configured, we can't discover.
+        # Why check loadng: If LOADng isn't configured, try GPSR fallback.
         if self.loadng is None:
-            logger.warning("no gradient for %s and LOADng not configured", dst)
+            # Try GPSR if we know destination coords (spec 9.7)
+            dst_entry = self.gradient_table.lookup(dst)  # may be expired but has coords
+            if dst_entry is not None and dst_entry.coords is not None:
+                next_hop = self.gpsr_forward(dst_entry.coords)
+                if next_hop is not None:
+                    return RouteDecision.FORWARD, next_hop
+            logger.warning("no gradient for %s, LOADng not configured, GPSR failed", dst)
             return RouteDecision.DROP, None
 
         # Initiate discovery and queue packet
@@ -362,3 +401,142 @@ class Router:
         logger.debug("route discovered for %s, releasing %d pending packets",
                     dst, len(pending))
         return pending
+
+    def update_neighbor_coords(
+        self, neighbor: IPv6Address, coords: tuple[float, float]
+    ) -> None:
+        """Update coords for a neighbor (from their announce)."""
+        self.neighbor_coords[neighbor] = coords
+
+    def update_neighbor_queue_depth(
+        self, neighbor: IPv6Address, depth: int
+    ) -> None:
+        """Update queue depth for a neighbor (from their announce, spec 11.4)."""
+        self.neighbor_queue_depth[neighbor] = depth
+
+    def get_neighbor_queue_depth(self, neighbor: IPv6Address) -> int:
+        """Get queue depth for a neighbor (0 if unknown)."""
+        return self.neighbor_queue_depth.get(neighbor, 0)
+
+    # --- DTN store-and-forward (spec 9.8) ---
+
+    def dtn_buffer_message(
+        self,
+        packet: IPv6Packet,
+        destination_iid: bytes,
+        expiry_unix: int,
+        now_ms: int,
+    ) -> bool:
+        """Buffer a message for DTN store-and-forward.
+
+        Returns True if buffered, False if rejected (e.g., already expired).
+        """
+        import time
+        now_unix = int(time.time())
+        if expiry_unix <= now_unix:
+            logger.debug("dtn: rejecting expired message (expiry=%d, now=%d)",
+                        expiry_unix, now_unix)
+            return False
+
+        msg = DtnMessage(
+            packet=packet,
+            destination_iid=destination_iid,
+            expiry_unix=expiry_unix,
+            buffered_at_ms=now_ms,
+        )
+
+        # Evict oldest messages until we have space
+        self._dtn_evict_if_needed(msg.size())
+        self.dtn_buffer.append(msg)
+        logger.debug("dtn: buffered message for %s, expiry=%d, buffer_size=%d",
+                    destination_iid.hex(), expiry_unix, len(self.dtn_buffer))
+        return True
+
+    def dtn_get_pending_iids(self) -> list[bytes]:
+        """Get list of destination IIDs with buffered messages."""
+        seen: set[bytes] = set()
+        result: list[bytes] = []
+        for msg in self.dtn_buffer:
+            if msg.destination_iid not in seen:
+                seen.add(msg.destination_iid)
+                result.append(msg.destination_iid)
+        return result
+
+    def dtn_retrieve_for(self, destination_iid: bytes) -> list[DtnMessage]:
+        """Retrieve and remove all messages for a destination IID."""
+        matching = [m for m in self.dtn_buffer if m.destination_iid == destination_iid]
+        self.dtn_buffer = [m for m in self.dtn_buffer if m.destination_iid != destination_iid]
+        logger.debug("dtn: retrieved %d messages for %s",
+                    len(matching), destination_iid.hex())
+        return matching
+
+    def dtn_expire_old(self) -> int:
+        """Remove expired messages from buffer. Returns count removed."""
+        import time
+        now_unix = int(time.time())
+        original_len = len(self.dtn_buffer)
+        self.dtn_buffer = [m for m in self.dtn_buffer if m.expiry_unix > now_unix]
+        expired = original_len - len(self.dtn_buffer)
+        if expired > 0:
+            logger.debug("dtn: expired %d messages", expired)
+        return expired
+
+    def _dtn_buffer_size(self) -> int:
+        """Current buffer size in bytes."""
+        return sum(m.size() for m in self.dtn_buffer)
+
+    def _dtn_evict_if_needed(self, new_msg_size: int) -> int:
+        """Evict oldest messages to make room. Returns count evicted."""
+        evicted = 0
+        while self._dtn_buffer_size() + new_msg_size > self.dtn_buffer_max_bytes:
+            if not self.dtn_buffer:
+                break
+            oldest = self.dtn_buffer.pop(0)  # oldest-first eviction
+            evicted += 1
+            logger.debug("dtn: evicted message for %s to make room",
+                        oldest.destination_iid.hex())
+        return evicted
+
+    def gpsr_forward(
+        self, dst_coords: tuple[float, float]
+    ) -> IPv6Address | None:
+        """GPSR greedy forwarding: find neighbor closest to destination (spec 9.7).
+
+        Returns next-hop address, or None if no progress possible (local minimum).
+        """
+        if self.node_coords is None:
+            return None
+        if not self.neighbor_coords:
+            return None
+
+        my_dist = _haversine(self.node_coords, dst_coords)
+        best_neighbor: IPv6Address | None = None
+        best_dist = my_dist  # must make progress
+
+        for neighbor, coords in self.neighbor_coords.items():
+            d = _haversine(coords, dst_coords)
+            if d < best_dist:
+                best_dist = d
+                best_neighbor = neighbor
+
+        if best_neighbor is not None:
+            logger.debug("gpsr: forwarding to %s (%.1fm closer)",
+                        best_neighbor, my_dist - best_dist)
+        else:
+            logger.debug("gpsr: local minimum, no progress possible")
+
+        return best_neighbor
+
+
+def _haversine(c1: tuple[float, float], c2: tuple[float, float]) -> float:
+    """Haversine distance in meters between two (lat, lon) points."""
+    lat1, lon1 = math.radians(c1[0]), math.radians(c1[1])
+    lat2, lon2 = math.radians(c2[0]), math.radians(c2[1])
+
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    c = 2 * math.asin(math.sqrt(a))
+
+    return 6_371_000 * c  # Earth radius in meters

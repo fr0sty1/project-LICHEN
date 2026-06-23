@@ -431,3 +431,201 @@ class TestRootNode:
 
         assert decision == RouteDecision.FORWARD
         assert next_hop == IPv6Address("fe80::aaaa")
+
+
+class TestGPSRFallback:
+    """Tests for GPSR geographic routing fallback (spec 9.7)."""
+
+    def test_gpsr_forward_selects_closest_neighbor(self, router: Router):
+        """gpsr_forward returns neighbor closest to destination."""
+        # Why test: Core GPSR algorithm - greedy forwarding.
+        router.node_coords = (0.0, 0.0)
+        router.neighbor_coords = {
+            IPv6Address("fe80::a"): (1.0, 0.0),  # 1 degree north
+            IPv6Address("fe80::b"): (0.5, 0.0),  # 0.5 degrees north (closer)
+        }
+        dst_coords = (2.0, 0.0)  # destination is 2 degrees north
+
+        next_hop = router.gpsr_forward(dst_coords)
+
+        assert next_hop == IPv6Address("fe80::a")  # 1.0 is closer to 2.0 than 0.5
+
+    def test_gpsr_forward_requires_progress(self, router: Router):
+        """gpsr_forward returns None if no neighbor is closer than us."""
+        # Why test: GPSR only forwards if progress is made (greedy requirement).
+        router.node_coords = (1.0, 0.0)
+        router.neighbor_coords = {
+            IPv6Address("fe80::a"): (0.5, 0.0),  # further from dest than us
+            IPv6Address("fe80::b"): (0.0, 0.0),  # even further
+        }
+        dst_coords = (2.0, 0.0)
+
+        next_hop = router.gpsr_forward(dst_coords)
+
+        assert next_hop is None  # local minimum
+
+    def test_gpsr_forward_no_coords(self, router: Router):
+        """gpsr_forward returns None if node has no coords."""
+        router.node_coords = None
+        router.neighbor_coords = {IPv6Address("fe80::a"): (1.0, 0.0)}
+
+        next_hop = router.gpsr_forward((2.0, 0.0))
+
+        assert next_hop is None
+
+    def test_gpsr_forward_no_neighbors(self, router: Router):
+        """gpsr_forward returns None if no neighbors have coords."""
+        router.node_coords = (0.0, 0.0)
+        router.neighbor_coords = {}
+
+        next_hop = router.gpsr_forward((2.0, 0.0))
+
+        assert next_hop is None
+
+    def test_mesh_local_uses_gpsr_when_no_loadng(
+        self, router: Router, gradient_table: GradientTable
+    ):
+        """Mesh-local routing falls back to GPSR when LOADng not configured."""
+        # Setup: expired gradient with coords, no LOADng
+        router.loadng = None
+        router.node_coords = (0.0, 0.0)
+        router.neighbor_coords = {IPv6Address("fe80::a"): (1.0, 0.0)}
+
+        # Add an expired entry with coords
+        dst = IPv6Address("fd00::100")
+        gradient_table.update(
+            GradientEntry(
+                destination=dst,
+                next_hop=IPv6Address("fe80::dead"),
+                hop_count=3,
+                seq_num=1,
+                source=GradientSource.ANNOUNCE,
+                expires=0,  # expired
+                coords=(2.0, 0.0),
+            )
+        )
+
+        packet = make_packet("fd00::100")
+        decision, next_hop = router.route(packet, now_ms=1000)
+
+        assert decision == RouteDecision.FORWARD
+        assert next_hop == IPv6Address("fe80::a")
+
+    def test_update_neighbor_coords(self, router: Router):
+        """update_neighbor_coords stores coords for neighbor."""
+        neighbor = IPv6Address("fe80::a")
+        coords = (47.6062, 12.3321)
+
+        router.update_neighbor_coords(neighbor, coords)
+
+        assert router.neighbor_coords[neighbor] == coords
+
+
+class TestBackpressure:
+    """Tests for backpressure routing (spec 11.4)."""
+
+    def test_update_neighbor_queue_depth(self, router: Router):
+        """update_neighbor_queue_depth stores queue depth."""
+        neighbor = IPv6Address("fe80::a")
+
+        router.update_neighbor_queue_depth(neighbor, 10)
+
+        assert router.neighbor_queue_depth[neighbor] == 10
+
+    def test_get_neighbor_queue_depth_default(self, router: Router):
+        """get_neighbor_queue_depth returns 0 for unknown neighbor."""
+        neighbor = IPv6Address("fe80::dead")
+
+        depth = router.get_neighbor_queue_depth(neighbor)
+
+        assert depth == 0
+
+    def test_get_neighbor_queue_depth_known(self, router: Router):
+        """get_neighbor_queue_depth returns stored value."""
+        neighbor = IPv6Address("fe80::a")
+        router.neighbor_queue_depth[neighbor] = 42
+
+        depth = router.get_neighbor_queue_depth(neighbor)
+
+        assert depth == 42
+
+
+class TestDtnBuffer:
+    """Tests for DTN store-and-forward buffer (spec 9.8)."""
+
+    def test_buffer_message(self, router: Router):
+        """dtn_buffer_message adds message to buffer."""
+        import time
+        packet = make_packet("fd00::100")
+        iid = b"\x01\x02\x03\x04\x05\x06\x07\x08"
+        expiry = int(time.time()) + 3600  # 1 hour from now
+
+        result = router.dtn_buffer_message(packet, iid, expiry, now_ms=0)
+
+        assert result is True
+        assert len(router.dtn_buffer) == 1
+        assert router.dtn_buffer[0].destination_iid == iid
+
+    def test_buffer_rejects_expired(self, router: Router):
+        """dtn_buffer_message rejects already-expired messages."""
+        import time
+        packet = make_packet("fd00::100")
+        iid = b"\x01\x02\x03\x04\x05\x06\x07\x08"
+        expiry = int(time.time()) - 100  # already expired
+
+        result = router.dtn_buffer_message(packet, iid, expiry, now_ms=0)
+
+        assert result is False
+        assert len(router.dtn_buffer) == 0
+
+    def test_get_pending_iids(self, router: Router):
+        """dtn_get_pending_iids returns unique IIDs."""
+        import time
+        expiry = int(time.time()) + 3600
+        iid1 = b"\x01" * 8
+        iid2 = b"\x02" * 8
+
+        router.dtn_buffer_message(make_packet("fd00::1"), iid1, expiry, 0)
+        router.dtn_buffer_message(make_packet("fd00::1"), iid1, expiry, 1)  # duplicate
+        router.dtn_buffer_message(make_packet("fd00::2"), iid2, expiry, 2)
+
+        pending = router.dtn_get_pending_iids()
+
+        assert len(pending) == 2
+        assert iid1 in pending
+        assert iid2 in pending
+
+    def test_retrieve_for(self, router: Router):
+        """dtn_retrieve_for removes and returns matching messages."""
+        import time
+        expiry = int(time.time()) + 3600
+        iid1 = b"\x01" * 8
+        iid2 = b"\x02" * 8
+
+        router.dtn_buffer_message(make_packet("fd00::1"), iid1, expiry, 0)
+        router.dtn_buffer_message(make_packet("fd00::2"), iid2, expiry, 1)
+        router.dtn_buffer_message(make_packet("fd00::1b"), iid1, expiry, 2)
+
+        retrieved = router.dtn_retrieve_for(iid1)
+
+        assert len(retrieved) == 2
+        assert len(router.dtn_buffer) == 1
+        assert router.dtn_buffer[0].destination_iid == iid2
+
+    def test_eviction_oldest_first(self, router: Router):
+        """Buffer evicts oldest messages when full."""
+        import time
+        expiry = int(time.time()) + 3600
+        router.dtn_buffer_max_bytes = 300  # small buffer
+
+        # Add messages until eviction
+        for i in range(10):
+            router.dtn_buffer_message(
+                make_packet("fd00::1"),
+                bytes([i] * 8),
+                expiry,
+                now_ms=i,
+            )
+
+        # Should have evicted oldest to stay under limit
+        assert router._dtn_buffer_size() <= router.dtn_buffer_max_bytes
