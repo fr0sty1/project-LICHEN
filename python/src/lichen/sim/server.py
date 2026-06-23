@@ -31,21 +31,32 @@ class SimulatorServer:
     TCP server for node connections. The REST API provides endpoints for
     creating/deleting simulations and managing nodes and chaos rules.
 
+    Security note: The REST API has no authentication. Only bind to
+    ``127.0.0.1`` (the default) in development environments. Do not expose
+    the API port on a network interface accessible to untrusted hosts.
+
     Attributes:
         node_port: Base TCP port for node connections.
         api_port: HTTP port for REST API.
+        bind_host: Host address to bind both servers.
     """
 
-    def __init__(self, node_port: int = 4444, api_port: int = 4445) -> None:
+    def __init__(
+        self, node_port: int = 4444, api_port: int = 4445, bind_host: str = "127.0.0.1"
+    ) -> None:
         """Initialize the simulator server.
 
         Args:
             node_port: Base TCP port for node connections. Each simulation
                 gets its own port starting from this value.
             api_port: HTTP port for the REST API.
+            bind_host: Host address to bind. Defaults to ``127.0.0.1``
+                (loopback only). Set to ``0.0.0.0`` only on a trusted
+                network — the API has no authentication.
         """
         self.node_port = node_port
         self.api_port = api_port
+        self.bind_host = bind_host
         self._simulations: dict[str, Simulation] = {}
         self._node_servers: dict[str, asyncio.Server] = {}
         self._api: SimulatorAPI | None = None
@@ -79,7 +90,7 @@ class SimulatorServer:
         # Start uvicorn server
         config = uvicorn.Config(
             app,
-            host="127.0.0.1",
+            host=self.bind_host,
             port=self.api_port,
             log_level="warning",
         )
@@ -224,7 +235,7 @@ class SimulatorServer:
             port = self._next_node_port
             self._next_node_port += 1
 
-        server = await start_node_server(sim, host="127.0.0.1", port=port)
+        server = await start_node_server(sim, host=self.bind_host, port=port)
         self._node_servers[sim_id] = server
 
         actual_port = server.sockets[0].getsockname()[1]
@@ -265,6 +276,15 @@ def main() -> None:
         help="HTTP port for REST API (default: 4445)",
     )
     parser.add_argument(
+        "--bind-address",
+        default="127.0.0.1",
+        metavar="HOST",
+        help=(
+            "Host address to bind (default: 127.0.0.1). "
+            "The REST API has no authentication — only change this on a trusted network."
+        ),
+    )
+    parser.add_argument(
         "--log-level",
         default="INFO",
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
@@ -286,7 +306,9 @@ def main() -> None:
     )
 
     # Create server
-    server = SimulatorServer(node_port=args.node_port, api_port=args.api_port)
+    server = SimulatorServer(
+        node_port=args.node_port, api_port=args.api_port, bind_host=args.bind_address
+    )
 
     async def run() -> None:
         await server.start()
