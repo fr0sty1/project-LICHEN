@@ -2,7 +2,7 @@ manifest:
   version: "0.13"
 
   self:
-    path: lichen
+    path: zephyr
 
   defaults:
     remote:
