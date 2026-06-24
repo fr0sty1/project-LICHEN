@@ -8,6 +8,7 @@
 
 pub mod addr;
 pub mod constants;
+pub mod icmpv6;
 
 #[cfg(feature = "std")]
 extern crate std;

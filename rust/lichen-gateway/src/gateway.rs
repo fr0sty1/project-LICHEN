@@ -84,3 +84,76 @@ impl Gateway {
         self.routes.insert(addr, node_id);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lichen_core::{addr::Ipv6Addr, icmpv6};
+
+    fn ll(iid: u8) -> Ipv6Addr {
+        Ipv6Addr([
+            0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x02, 0, 0, 0, 0, 0, 0, iid,
+        ])
+    }
+
+    fn test_gateway() -> Gateway {
+        Gateway::new(NodeId([0x02, 0, 0, 0, 0, 0, 0, 0x01]))
+    }
+
+    #[test]
+    fn icmpv6_echo_request_round_trips() {
+        let src = ll(1);
+        let dst = ll(2);
+        let mut packet = [0u8; 52];
+        let n = icmpv6::echo_request(&src, &dst, 0x1234, 5, b"ping", &mut packet);
+        let packet = &packet[..n];
+
+        let mut gw = test_gateway();
+        let schc = gw.upstream_to_mesh(packet).expect("compress failed");
+        assert_eq!(schc[0], 2, "expected rule 2 (ICMPv6 echo link-local)");
+
+        let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
+
+        // IPv6 header fields
+        assert_eq!(recovered[6], 58, "NH should be ICMPv6");
+        assert_eq!(&recovered[8..24], &src.0, "src mismatch");
+        assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
+        // ICMPv6 fields
+        assert_eq!(recovered[40], icmpv6::ECHO_REQUEST, "type should be 128");
+        assert_eq!(recovered[41], 0, "code should be 0");
+        assert_eq!(&recovered[44..46], &[0x12, 0x34], "id mismatch");
+        assert_eq!(&recovered[46..48], &[0x00, 0x05], "seq mismatch");
+        assert_eq!(&recovered[48..], b"ping", "payload mismatch");
+    }
+
+    #[test]
+    fn icmpv6_echo_reply_round_trips() {
+        let src = ll(2);
+        let dst = ll(1);
+        let mut packet = [0u8; 48];
+        let n = icmpv6::echo_reply(&src, &dst, 0x1234, 5, &[], &mut packet);
+        let packet = &packet[..n];
+
+        let mut gw = test_gateway();
+        let schc = gw.upstream_to_mesh(packet).expect("compress failed");
+        assert_eq!(schc[0], 2, "expected rule 2");
+
+        let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
+        assert_eq!(recovered[40], icmpv6::ECHO_REPLY, "type should be 129");
+        assert_eq!(&recovered[8..24], &src.0, "src mismatch");
+        assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
+    }
+
+    #[test]
+    fn non_ipv6_upstream_is_dropped() {
+        let mut gw = test_gateway();
+        assert!(gw.upstream_to_mesh(&[0u8; 40]).is_none());
+    }
+
+    #[test]
+    fn unknown_schc_rule_is_dropped() {
+        let mut gw = test_gateway();
+        // Rule 0xAA is not defined
+        assert!(gw.mesh_to_upstream(&[0xAAu8, 0x00]).is_none());
+    }
+}
