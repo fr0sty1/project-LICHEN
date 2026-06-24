@@ -92,6 +92,7 @@ class LinkLayer:
     )
     _epoch: int = field(default=0, repr=False)
     _seqnum: int = field(default=0, repr=False)
+    _pinned_keys: dict[bytes, bytes] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
         # Why validate: Catch misconfiguration early
@@ -290,6 +291,18 @@ class LinkLayer:
 
         # Step 4 happened inside _find_sender (signature verification)
 
+        # Step 4.5: Key pinning — TOFU anchor + change detection.
+        pinned_pk = self._pinned_keys.get(sender.iid)
+        if pinned_pk is not None and pinned_pk != sender.pubkey:
+            logger.error(
+                "link-layer KEY CHANGE DETECTED for IID %s: pinned=%s got=%s",
+                sender.iid.hex(),
+                pinned_pk.hex()[:16],
+                sender.pubkey.hex()[:16],
+            )
+            return None
+        self._pinned_keys[sender.iid] = sender.pubkey
+
         # Step 5: Replay protection
         # Why use pubkey as sender ID: It's the unique identifier for a node.
         # IID has a (tiny) collision risk; pubkey is definitive.
@@ -414,3 +427,11 @@ class LinkLayer:
             (epoch, seqnum) tuple.
         """
         return self._epoch, self._seqnum
+
+    def unpin_peer(self, iid: bytes) -> None:
+        """Remove the key pin for a peer IID (use only for intentional key rotation)."""
+        self._pinned_keys.pop(iid, None)
+
+    def pinned_pubkey_for(self, iid: bytes) -> bytes | None:
+        """Return the pinned pubkey for an IID, or None if not yet seen."""
+        return self._pinned_keys.get(iid)

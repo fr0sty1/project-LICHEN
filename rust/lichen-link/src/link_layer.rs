@@ -21,6 +21,8 @@ pub enum RxError {
     Replay,
     /// Payload shorter than the mandatory 48-byte signature trailer.
     TruncatedPayload,
+    /// A previously-pinned IID appeared with a different public key.
+    KeyChange,
 }
 
 impl From<FrameError> for RxError {
@@ -72,10 +74,15 @@ impl Default for ReplayProtector {
 /// Peer table is keyed by IID (8 bytes). On RX, every known peer is tried;
 /// the first successful verify pins the sender. Unknown senders are rejected
 /// (no TOFU auto-enrolment — callers handle that via the Announce layer).
+///
+/// Key pinning: once an IID is seen with a valid signature, its pubkey is
+/// stored in `pinned`. Subsequent frames from the same IID must match the
+/// pinned pubkey; a mismatch returns `RxError::KeyChange`.
 pub struct LinkLayer {
     pub identity: Identity,
     peers: HashMap<[u8; 8], PeerIdentity>,
     replay: ReplayProtector,
+    pinned: HashMap<[u8; 8], [u8; 32]>,
 }
 
 impl LinkLayer {
@@ -84,7 +91,18 @@ impl LinkLayer {
             identity,
             peers: HashMap::new(),
             replay: ReplayProtector::new(),
+            pinned: HashMap::new(),
         }
+    }
+
+    /// Remove the key pin for a peer IID (use only for intentional key rotation).
+    pub fn unpin_peer(&mut self, iid: &[u8; 8]) {
+        self.pinned.remove(iid);
+    }
+
+    /// Return the pinned pubkey for an IID, or None if not yet seen.
+    pub fn pinned_pubkey_for(&self, iid: &[u8; 8]) -> Option<&[u8; 32]> {
+        self.pinned.get(iid)
     }
 
     pub fn add_peer(&mut self, peer: PeerIdentity) {
@@ -166,6 +184,13 @@ impl LinkLayer {
             })
             .cloned()
             .ok_or(RxError::UnknownSender)?;
+
+        // Key pinning: first-contact pins IID→pubkey; subsequent frames must match.
+        match self.pinned.get(&sender.iid) {
+            Some(pk) if pk != &sender.pubkey => return Err(RxError::KeyChange),
+            None => { self.pinned.insert(sender.iid, sender.pubkey); }
+            _ => {}
+        }
 
         if !self.replay.check_and_update(&sender.pubkey, frame.epoch, frame.seqnum) {
             return Err(RxError::Replay);
@@ -260,5 +285,65 @@ mod tests {
         assert_eq!(ll.peer_count(), 1);
         ll.remove_peer(&iid_a);
         assert_eq!(ll.peer_count(), 0);
+    }
+
+    #[test]
+    fn key_change_detected() {
+        // Pin alice's IID to alice's pubkey on first successful RX.
+        // Then swap alice's peer entry for an impersonator with the same IID
+        // (achieved by manually overwriting the pin). Second RX must fail with KeyChange.
+        let alice = Identity::from_seed([0x01u8; 32]);
+        let alice_peer = PeerIdentity::from_pubkey(alice.pubkey);
+        let alice_iid = alice_peer.iid;
+        let mut ll_bob = make_ll(0x02);
+        ll_bob.add_peer(alice_peer.clone());
+
+        let ll_alice = LinkLayer::new(alice);
+        let mut wire1 = [0u8; 256];
+        let n1 = ll_alice.build_frame(1, 1, &[], b"hello", &mut wire1);
+
+        // First RX succeeds and pins alice_iid → alice's pubkey.
+        ll_bob.receive_frame(&wire1[..n1]).unwrap();
+        assert_eq!(ll_bob.pinned_pubkey_for(&alice_iid), Some(&alice_peer.pubkey));
+
+        // Simulate key change: overwrite pin with a different pubkey.
+        let impostor_pk = Identity::from_seed([0x99u8; 32]).pubkey;
+        ll_bob.pinned.insert(alice_iid, impostor_pk);
+
+        // Second RX with same alice frame must now fail with KeyChange.
+        let ll_alice2 = LinkLayer::new(Identity::from_seed([0x01u8; 32]));
+        let mut wire2 = [0u8; 256];
+        let n2 = ll_alice2.build_frame(1, 2, &[], b"hi", &mut wire2);
+        assert_eq!(ll_bob.receive_frame(&wire2[..n2]).unwrap_err(), RxError::KeyChange);
+    }
+
+    #[test]
+    fn unpin_allows_key_rotation() {
+        let alice = Identity::from_seed([0x01u8; 32]);
+        let alice_peer = PeerIdentity::from_pubkey(alice.pubkey);
+        let alice_iid = alice_peer.iid;
+        let mut ll_bob = make_ll(0x02);
+        ll_bob.add_peer(alice_peer);
+
+        let ll_alice = LinkLayer::new(Identity::from_seed([0x01u8; 32]));
+        let mut wire = [0u8; 256];
+        let n = ll_alice.build_frame(1, 1, &[], b"hello", &mut wire);
+        ll_bob.receive_frame(&wire[..n]).unwrap();
+
+        // Admin unpins: allows accepting a new key for this IID.
+        ll_bob.unpin_peer(&alice_iid);
+        assert_eq!(ll_bob.pinned_pubkey_for(&alice_iid), None);
+
+        // New key accepted and re-pinned.
+        let new_alice = Identity::from_seed([0xAAu8; 32]);
+        let new_alice_peer = PeerIdentity::from_pubkey(new_alice.pubkey);
+        ll_bob.remove_peer(&alice_iid);
+        ll_bob.add_peer(new_alice_peer.clone());
+
+        let ll_new = LinkLayer::new(new_alice);
+        let mut wire2 = [0u8; 256];
+        let n2 = ll_new.build_frame(1, 1, &[], b"rotated", &mut wire2);
+        ll_bob.receive_frame(&wire2[..n2]).unwrap();
+        assert_eq!(ll_bob.pinned_pubkey_for(&new_alice_peer.iid), Some(&new_alice_peer.pubkey));
     }
 }

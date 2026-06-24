@@ -43,10 +43,11 @@ class AnnounceRejectReason(Enum):
     """Why an announce was rejected (for logging/debugging)."""
 
     INVALID_SIGNATURE = auto()
-    IID_MISMATCH = auto()  # IID doesn't match pubkey hash
-    STALE_SEQNUM = auto()  # seq_num <= existing
+    IID_MISMATCH = auto()       # IID doesn't match pubkey hash
+    STALE_SEQNUM = auto()       # seq_num <= existing
     HOP_LIMIT_EXCEEDED = auto()
     MALFORMED = auto()
+    KEY_CHANGE_DETECTED = auto()  # IID known, pubkey differs from pinned
 
 
 @dataclass
@@ -89,11 +90,15 @@ class AnnounceProcessor:
             The processor doesn't know/care about prefix assignment.
         _seen: Per-originator highest seq_num seen.
             Why dict[bytes, int]: IID is the key, seq_num is the value.
+        _pinned_keys: IID → pinned pubkey (TOFU trust anchors).
+            Why separate from _seen: An IID's seq_num resets on reboot;
+            the pinned pubkey must NOT change (that would be a key change).
     """
 
     gradient_table: GradientTable
     address_builder: Callable[[bytes], IPv6Address]
     _seen: dict[bytes, int] = field(default_factory=dict, repr=False)
+    _pinned_keys: dict[bytes, bytes] = field(default_factory=dict, repr=False)
 
     def process(
         self,
@@ -146,9 +151,28 @@ class AnnounceProcessor:
                 reject_reason=AnnounceRejectReason.INVALID_SIGNATURE,
             )
 
-        # Step 3: Check for stale/duplicate
-        # Why: Prevents processing old announces that were delayed in the network.
+        # Step 3: Key pinning — TOFU anchor + change detection.
+        # Why: Even though IID = hash(pubkey) makes silent substitution
+        # cryptographically infeasible, we maintain an explicit pin table as
+        # defence-in-depth. A pin mismatch means either hash collision or a
+        # bug in key derivation — both warrant a hard reject.
         iid = announce.originator_iid
+        pinned_pubkey = self._pinned_keys.get(iid)
+        if pinned_pubkey is not None and pinned_pubkey != announce.pubkey:
+            logger.error(
+                "KEY CHANGE DETECTED for IID %s: pinned=%s got=%s — rejecting",
+                iid.hex(),
+                pinned_pubkey.hex()[:16],
+                announce.pubkey.hex()[:16],
+            )
+            return AnnounceResult(
+                accepted=False,
+                should_relay=False,
+                reject_reason=AnnounceRejectReason.KEY_CHANGE_DETECTED,
+            )
+
+        # Step 4: Check for stale/duplicate
+        # Why: Prevents processing old announces that were delayed in the network.
         existing_seq = self._seen.get(iid)
         if existing_seq is not None and announce.seq_num <= existing_seq:
             logger.debug(
@@ -163,10 +187,11 @@ class AnnounceProcessor:
                 reject_reason=AnnounceRejectReason.STALE_SEQNUM,
             )
 
-        # Accept: update seen and gradient
+        # Accept: pin pubkey (TOFU first-contact), update seen, update gradient.
+        self._pinned_keys[iid] = announce.pubkey
         self._seen[iid] = announce.seq_num
 
-        # Step 4: Update gradient table
+        # Step 5: Update gradient table
         # Why build full IPv6: Gradient table uses full addresses for lookup.
         destination = self.address_builder(iid)
         coords = decode_coords(announce.app_data)  # None if not present
@@ -190,7 +215,7 @@ class AnnounceProcessor:
             from_neighbor,
         )
 
-        # Step 5: Decide relay
+        # Step 6: Decide relay
         # Why: Propagate announces through the mesh, up to hop limit.
         should_relay = announce.should_relay()
 
@@ -222,6 +247,19 @@ class AnnounceProcessor:
         allows accepting announces from their new identity.
         """
         self._seen.pop(iid, None)
+
+    def unpin(self, iid: bytes) -> None:
+        """Remove the key pin for an IID (use only for intentional key rotation).
+
+        Why: Administrators who rotate a node's key must unpin the old binding
+        or all future announces from the new key will be rejected as key changes.
+        This is an intentional administrative action — not automatic.
+        """
+        self._pinned_keys.pop(iid, None)
+
+    def pinned_pubkey_for(self, iid: bytes) -> bytes | None:
+        """Return the pinned pubkey for an IID, or None if not yet seen."""
+        return self._pinned_keys.get(iid)
 
     def known_originators(self) -> list[bytes]:
         """Return IIDs of all originators we've seen announces from.

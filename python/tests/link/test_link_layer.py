@@ -447,3 +447,109 @@ class TestRxFrameMetadata:
         assert result is not None
         assert result.rssi_dbm == -75
         assert result.snr_db == 5
+
+
+class TestKeyPinning:
+    """Tests for link-layer TOFU key pinning and change detection."""
+
+    @pytest.mark.asyncio
+    async def test_pins_pubkey_on_first_rx(
+        self,
+        mock_radio: MockRadio,
+        node_identity: Identity,
+        peer_identity: Identity,
+    ):
+        """After first successful RX from a peer, that peer's pubkey is pinned."""
+        peer_peer = PeerIdentity.from_pubkey(peer_identity.pubkey)
+
+        def peer_lookup(hint: bytes) -> PeerIdentity | None:
+            return peer_peer
+
+        node_ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=peer_lookup,
+        )
+
+        peer_ll = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
+        await peer_ll.send(b"hello")
+        mock_radio.queue_rx(peer_ll.radio.tx_history[0])
+
+        result = await node_ll.receive(timeout_ms=100)
+        assert result is not None
+        assert node_ll.pinned_pubkey_for(peer_peer.iid) == peer_identity.pubkey
+
+    @pytest.mark.asyncio
+    async def test_key_change_rejected(
+        self,
+        mock_radio: MockRadio,
+        node_identity: Identity,
+        peer_identity: Identity,
+    ):
+        """After pinning a peer's pubkey, a frame from the same IID with a
+        different pubkey must be silently dropped."""
+        peer_peer = PeerIdentity.from_pubkey(peer_identity.pubkey)
+
+        def peer_lookup(hint: bytes) -> PeerIdentity | None:
+            return peer_peer
+
+        node_ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=peer_lookup,
+        )
+
+        # First RX: pins the pubkey.
+        peer_ll = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
+        await peer_ll.send(b"first")
+        mock_radio.queue_rx(peer_ll.radio.tx_history[0])
+        result1 = await node_ll.receive(timeout_ms=100)
+        assert result1 is not None
+
+        # Overwrite pin to simulate key-change scenario.
+        node_ll._pinned_keys[peer_peer.iid] = bytes([0x99] * 32)
+
+        # Second RX: same peer, same signature, but pin now says different key → dropped.
+        peer_ll2 = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
+        await peer_ll2.send(b"second")
+        mock_radio.queue_rx(peer_ll2.radio.tx_history[0])
+        result2 = await node_ll.receive(timeout_ms=100)
+        assert result2 is None
+
+    @pytest.mark.asyncio
+    async def test_unpin_allows_key_rotation(
+        self,
+        mock_radio: MockRadio,
+        node_identity: Identity,
+        peer_identity: Identity,
+    ):
+        """After unpin_peer(), a new peer with the same IID (after admin key rotation)
+        is accepted and re-pinned."""
+        peer_peer = PeerIdentity.from_pubkey(peer_identity.pubkey)
+
+        def peer_lookup(hint: bytes) -> PeerIdentity | None:
+            return peer_peer
+
+        node_ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=peer_lookup,
+        )
+
+        peer_ll = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
+        await peer_ll.send(b"hello")
+        mock_radio.queue_rx(peer_ll.radio.tx_history[0])
+        await node_ll.receive(timeout_ms=100)
+
+        # Admin unpins
+        node_ll.unpin_peer(peer_peer.iid)
+        assert node_ll.pinned_pubkey_for(peer_peer.iid) is None
+
+        # Same peer can now re-establish trust (advance seqnum past replay window)
+        peer_ll2 = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
+        peer_ll2.set_sequence(0, 1)  # seqnum=1 is fresh relative to the window
+        await peer_ll2.send(b"reintroduce")
+        mock_radio.queue_rx(peer_ll2.radio.tx_history[0])
+        result = await node_ll.receive(timeout_ms=100)
+        assert result is not None
+        assert node_ll.pinned_pubkey_for(peer_peer.iid) == peer_identity.pubkey

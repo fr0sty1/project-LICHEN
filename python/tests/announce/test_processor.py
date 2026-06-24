@@ -506,3 +506,82 @@ class TestKnownOriginators:
         processor.process(announce, neighbor, now_ms=0)
 
         assert processor.known_originators() == []
+
+
+class TestKeyPinning:
+    """Tests for TOFU key pinning and change detection."""
+
+    def test_pins_pubkey_on_first_accept(
+        self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
+    ):
+        """After accepting the first announce, the pubkey is pinned for that IID."""
+        announce = make_signed_announce(identity, seq_num=1)
+        processor.process(announce, neighbor, now_ms=0)
+        assert processor.pinned_pubkey_for(identity.iid) == identity.pubkey
+
+    def test_not_pinned_before_any_announce(
+        self, processor: AnnounceProcessor, identity: Identity
+    ):
+        """An IID that has never announced has no pin."""
+        assert processor.pinned_pubkey_for(identity.iid) is None
+
+    def test_key_change_rejected(
+        self,
+        processor: AnnounceProcessor,
+        identity: Identity,
+        neighbor: IPv6Address,
+    ):
+        """After pinning IID→pubkey_A, a frame claiming the same IID with pubkey_B
+        must be rejected even if its signature is internally valid."""
+        # First announce: pins identity.iid → identity.pubkey
+        ann1 = make_signed_announce(identity, seq_num=1)
+        result1 = processor.process(ann1, neighbor, now_ms=0)
+        assert result1.accepted
+
+        # Manually overwrite the pin with a different pubkey to simulate a
+        # key-change scenario (same IID, different key).
+        impostor_pubkey = bytes([0x99] * 32)
+        processor._pinned_keys[identity.iid] = impostor_pubkey
+
+        # Now re-submit a valid announce from identity: same IID, real pubkey.
+        # The pin check should catch the mismatch and reject it.
+        ann2 = make_signed_announce(identity, seq_num=2)
+        result2 = processor.process(ann2, neighbor, now_ms=1000)
+
+        assert result2.accepted is False
+        assert result2.reject_reason == AnnounceRejectReason.KEY_CHANGE_DETECTED
+
+    def test_unpin_allows_key_rotation(
+        self,
+        processor: AnnounceProcessor,
+        identity: Identity,
+        other_identity: Identity,
+        neighbor: IPv6Address,
+    ):
+        """After unpin(), a new pubkey is accepted and re-pinned (admin key rotation)."""
+        ann1 = make_signed_announce(identity, seq_num=1)
+        processor.process(ann1, neighbor, now_ms=0)
+        assert processor.pinned_pubkey_for(identity.iid) == identity.pubkey
+
+        # Admin removes old pin
+        processor.unpin(identity.iid)
+        assert processor.pinned_pubkey_for(identity.iid) is None
+
+        # New announce from other_identity (different key, different IID) is accepted
+        ann2 = make_signed_announce(other_identity, seq_num=1)
+        result = processor.process(ann2, neighbor, now_ms=1000)
+        assert result.accepted
+        assert processor.pinned_pubkey_for(other_identity.iid) == other_identity.pubkey
+
+    def test_same_pubkey_repeated_announce_accepted(
+        self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
+    ):
+        """A second announce from the same IID+pubkey is accepted (seq advances)."""
+        ann1 = make_signed_announce(identity, seq_num=1)
+        processor.process(ann1, neighbor, now_ms=0)
+
+        ann2 = make_signed_announce(identity, seq_num=2)
+        result = processor.process(ann2, neighbor, now_ms=1000)
+        assert result.accepted
+        # Pin unchanged
+        assert processor.pinned_pubkey_for(identity.iid) == identity.pubkey
