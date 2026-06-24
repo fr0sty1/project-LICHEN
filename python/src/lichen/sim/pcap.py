@@ -7,8 +7,9 @@ captured packets to be written to files that can be analyzed with
 Wireshark and other network analysis tools.
 
 The format follows IETF draft-tuexen-opsawg-pcapng. Files use link type
-LINKTYPE_USER0 (147 / 0x93). Each captured payload is the raw SCHC-compressed
-frame as transmitted on the wire (after SCHC compression, before link framing).
+LINKTYPE_USER0 (147 / 0x93). Each captured payload is the complete
+LICHEN link-layer frame as transmitted on the wire (including the Length
+byte, LLSec flags, Epoch, SeqNum, Dst Addr, SCHC payload, and MIC).
 
 Custom EPB options (private use range 0x8000–0x8003):
 
@@ -17,10 +18,10 @@ Custom EPB options (private use range 0x8000–0x8003):
     0x8002  SRC_NODE    UTF-8 string, the source node ID
     0x8003  DST_NODE    UTF-8 string, the destination node ID
 
-A Wireshark Lua dissector for these options is provided at
-``tools/wireshark/lichen.lua``. Load it via Edit → Preferences →
-Protocols → DissectorTable → Lua scripts, or by placing it in your
-Wireshark personal Lua directory.
+A Wireshark Lua dissector that decodes these frames and options is
+provided at ``tools/wireshark/lichen.lua``. Place it in your Wireshark
+personal Lua directory (~/.config/wireshark/ on Linux/macOS) and
+restart Wireshark.
 """
 
 from __future__ import annotations
