@@ -314,6 +314,67 @@ class PresenceResource(resource.ObservableResource):
         return msg
 
 
+_MESSAGES_MAX = 100  # maximum inbox depth
+
+
+class MessagesResource(resource.ObservableResource):
+    """Observable ``/messages`` — CBOR inbox with POST-to-send.
+
+    Each message is a CBOR map::
+
+        {"from": "<hex-eui64>", "to": "<hex-eui64> | all", "text": "...", "t": <float>}
+
+    **GET** returns the inbox (most recent :data:`_MESSAGES_MAX` messages, oldest
+    first).  **POST** delivers a new message and notifies all observers;
+    the body must be a valid CBOR map with at least ``from``, ``to``, and
+    ``text`` keys.
+
+    Callers can also inject received messages directly via :meth:`deliver`
+    (used when a message arrives over the mesh rather than via CoAP POST).
+
+    Example::
+
+        msgs = MessagesResource()
+        site = build_site(info, messages_resource=msgs)
+        # A peer message arrives over the mesh:
+        msgs.deliver({"from": "aabb...", "to": "all", "text": "hello", "t": 1700000000.0})
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._inbox: list[dict[str, Any]] = []
+
+    def deliver(self, message: dict[str, Any]) -> None:
+        """Append *message* to the inbox and notify observers.
+
+        Trims the inbox to :data:`_MESSAGES_MAX` entries (oldest dropped).
+        """
+        self._inbox.append(message)
+        if len(self._inbox) > _MESSAGES_MAX:
+            self._inbox = self._inbox[-_MESSAGES_MAX:]
+        self.updated_state()
+
+    async def render_get(self, request: Message) -> Message:
+        msg = Message(code=CONTENT, payload=cbor2.dumps(self._inbox))
+        msg.opt.content_format = CBOR
+        return msg
+
+    async def render_post(self, request: Message) -> Message:
+        if not request.payload:
+            return Message(code=aiocoap.BAD_REQUEST)
+        try:
+            body = cbor2.loads(request.payload)
+        except Exception:
+            return Message(code=aiocoap.BAD_REQUEST)
+        if not isinstance(body, dict):
+            return Message(code=aiocoap.BAD_REQUEST)
+        required = {"from", "to", "text"}
+        if not required.issubset(body.keys()):
+            return Message(code=aiocoap.BAD_REQUEST)
+        self.deliver(body)
+        return Message(code=aiocoap.CHANGED)
+
+
 def build_site(
     node_info: NodeInfo,
     *,
@@ -321,13 +382,15 @@ def build_site(
     sensors_resource: SenMLSensorsResource | None = None,
     location_resource: SenMLLocationResource | None = None,
     presence_resource: PresenceResource | None = None,
+    messages_resource: MessagesResource | None = None,
 ) -> resource.Site:
     """Build an aiocoap Site exposing the LICHEN node resources.
 
     Pass ``mesh_client`` to also expose a forward proxy at ``/proxy``.
     Pass pre-constructed observable resources to expose ``/sensors``,
-    ``/location``, and/or ``/presence``; callers hold the references and
-    call ``update()`` / ``seen()`` to push data to observers.
+    ``/location``, ``/presence``, and/or ``/messages``; callers hold the
+    references and call ``update()`` / ``seen()`` / ``deliver()`` to push
+    data to observers.
     """
     site = resource.Site()
     site.add_resource(
@@ -345,4 +408,6 @@ def build_site(
         site.add_resource(["location"], location_resource)
     if presence_resource is not None:
         site.add_resource(["presence"], presence_resource)
+    if messages_resource is not None:
+        site.add_resource(["messages"], messages_resource)
     return site
