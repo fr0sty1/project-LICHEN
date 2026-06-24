@@ -124,9 +124,41 @@ async def partial_messages(request: Request) -> HTMLResponse:
     return HTMLResponse(_render_list(data, "Inbox empty"))
 
 
+async def partial_sensors(request: Request) -> HTMLResponse:
+    data = await _fetch("/sensors")
+    return HTMLResponse(_render_senml(data))
+
+
+async def partial_location(request: Request) -> HTMLResponse:
+    data = await _fetch("/location")
+    return HTMLResponse(_render_senml(data))
+
+
 async def api_status(request: Request) -> JSONResponse:
     data = await _fetch("/status")
     return JSONResponse({"ok": data is not None, "data": data})
+
+
+def _render_senml(data: Any) -> str:
+    """Render a SenML pack (list of [name, value, unit?, time?] or maps) as a table."""
+    if data is None:
+        return "<p class='err'>Unreachable</p>"
+    if not isinstance(data, list) or not data:
+        return "<p class='empty'>No data</p>"
+    rows = []
+    for entry in data:
+        if isinstance(entry, list) and len(entry) >= 2:
+            name, value = entry[0], entry[1]
+            unit = entry[2] if len(entry) > 2 else ""
+            rows.append(f"<tr><th>{_esc(name)}</th><td>{_esc(value)}{(' ' + _esc(unit)) if unit else ''}</td></tr>")
+        elif isinstance(entry, dict):
+            name = entry.get("n", entry.get(0, ""))
+            value = entry.get("v", entry.get("vs", entry.get("vb", entry.get(2, ""))))
+            unit = entry.get("u", entry.get(1, ""))
+            rows.append(f"<tr><th>{_esc(name)}</th><td>{_esc(value)}{(' ' + _esc(unit)) if unit else ''}</td></tr>")
+    if not rows:
+        return f"<pre>{_esc(json.dumps(data, default=str))}</pre>"
+    return f"<table class='kv'>{''.join(rows)}</table>"
 
 
 def create_app() -> Starlette:
@@ -137,6 +169,8 @@ def create_app() -> Starlette:
             Route("/partial/neighbors", partial_neighbors),
             Route("/partial/presence", partial_presence),
             Route("/partial/messages", partial_messages),
+            Route("/partial/sensors", partial_sensors),
+            Route("/partial/location", partial_location),
             Route("/api/status", api_status),
         ]
     )
@@ -205,6 +239,20 @@ _PAGE_HTML = """\
     <div class="card">
       <h2>Messages <span class="htmx-indicator">&#8635;</span></h2>
       <div hx-get="/partial/messages" hx-trigger="load, every 30s" hx-indicator="closest .card">
+        Loading&#8230;
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Sensors <span class="htmx-indicator">&#8635;</span></h2>
+      <div hx-get="/partial/sensors" hx-trigger="load, every 10s" hx-indicator="closest .card">
+        Loading&#8230;
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Location <span class="htmx-indicator">&#8635;</span></h2>
+      <div hx-get="/partial/location" hx-trigger="load, every 15s" hx-indicator="closest .card">
         Loading&#8230;
       </div>
     </div>
