@@ -533,6 +533,7 @@ dependencies = [
 name = "lichen-cli"
 version = "0.1.0"
 dependencies = [
+ "ciborium",
  "clap",
  "lichen-coap",
  "lichen-core",
@@ -548,6 +549,7 @@ name = "lichen-coap"
 version = "0.1.0"
 dependencies = [
  "lichen-core",
+ "tokio",
 ]
 
 [[package]]

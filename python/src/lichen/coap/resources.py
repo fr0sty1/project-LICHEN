@@ -33,12 +33,13 @@ a node-backed provider once it lands.
 from __future__ import annotations
 
 import asyncio
+import itertools
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 import aiocoap
 import cbor2
-from aiocoap import BAD_GATEWAY, BAD_REQUEST, CHANGED, CONTENT, Message, resource
+from aiocoap import BAD_GATEWAY, BAD_REQUEST, CHANGED, CONTENT, CREATED, DELETED, Message, resource
 from aiocoap.numbers import ContentFormat
 
 CBOR = ContentFormat.CBOR
@@ -452,6 +453,133 @@ class MessagesResource(resource.ObservableResource):
         return Message(code=aiocoap.CHANGED)
 
 
+_RD_DEFAULT_LIFETIME = 86400  # seconds (RFC 9176 §7.3.1)
+_rd_id_counter = itertools.count(1)
+
+
+@dataclass
+class _RdEntry:
+    """One endpoint registration in the Resource Directory."""
+
+    reg_id: str
+    ep: str  # endpoint name (RFC 9176 §7.3.1, mandatory)
+    lt: int  # lifetime in seconds
+    base: str | None
+    links: list[dict[str, Any]]  # decoded link descriptors
+
+
+class ResourceDirectoryResource(resource.Resource):
+    """``/rd`` — CoAP Resource Directory (simplified RFC 9176).
+
+    **POST** registers an endpoint; query parameters ``ep`` (required),
+    ``lt`` (optional, default 86400), ``base`` (optional), body is a CBOR
+    list of link descriptor maps ``[{"href": "/sensors", "rt": "..."}]``.
+    Returns ``2.01 Created`` with ``Location-Path: /rd/<id>``.
+
+    **GET** returns all active registrations as a CBOR list.
+
+    Individual registrations are managed via :class:`_RdRegistrationResource`
+    mounted at ``/rd/<id>``; those resources are added dynamically to the site
+    when a node registers.
+
+    Example registration::
+
+        POST coap://rd/rd?ep=node-01&lt=3600
+        CBOR body: [{"href": "/sensors", "rt": "lichen.sensors"},
+                    {"href": "/status",  "rt": "lichen.status"}]
+    """
+
+    def __init__(self, site: resource.Site) -> None:
+        super().__init__()
+        self._site = site
+        self._entries: dict[str, _RdEntry] = {}  # keyed by reg_id
+
+    def _lookup(self, ep: str | None = None) -> list[dict[str, Any]]:
+        """Return registrations, optionally filtered by endpoint name."""
+        rows = list(self._entries.values())
+        if ep is not None:
+            rows = [r for r in rows if r.ep == ep]
+        return [
+            {
+                "id": r.reg_id,
+                "ep": r.ep,
+                "lt": r.lt,
+                "base": r.base,
+                "links": r.links,
+            }
+            for r in rows
+        ]
+
+    def remove_entry(self, reg_id: str) -> bool:
+        """Remove a registration; returns True if it existed."""
+        return self._entries.pop(reg_id, None) is not None
+
+    async def render_get(self, request: Message) -> Message:
+        ep_filter: str | None = None
+        if request.opt.uri_query:
+            for q in request.opt.uri_query:
+                if q.startswith("ep="):
+                    ep_filter = q[3:]
+        msg = Message(code=CONTENT, payload=cbor2.dumps(self._lookup(ep_filter)))
+        msg.opt.content_format = CBOR
+        return msg
+
+    async def render_post(self, request: Message) -> Message:
+        # Parse query parameters
+        ep: str | None = None
+        lt: int = _RD_DEFAULT_LIFETIME
+        base: str | None = None
+        for q in (request.opt.uri_query or []):
+            if q.startswith("ep="):
+                ep = q[3:]
+            elif q.startswith("lt="):
+                try:
+                    lt = int(q[3:])
+                except ValueError:
+                    return Message(code=BAD_REQUEST)
+            elif q.startswith("base="):
+                base = q[5:]
+
+        if not ep:
+            return Message(code=BAD_REQUEST)  # RFC 9176 §7.3.1: ep is mandatory
+
+        links: list[dict[str, Any]] = []
+        if request.payload:
+            try:
+                body = cbor2.loads(request.payload)
+                if isinstance(body, list):
+                    links = body
+            except Exception:
+                return Message(code=BAD_REQUEST)
+
+        reg_id = str(next(_rd_id_counter))
+        entry = _RdEntry(reg_id=reg_id, ep=ep, lt=lt, base=base, links=links)
+        self._entries[reg_id] = entry
+
+        # Mount a deletion endpoint at /rd/<id>
+        self._site.add_resource(
+            ["rd", reg_id],
+            _RdRegistrationResource(self, reg_id),
+        )
+
+        resp = Message(code=CREATED)
+        resp.opt.location_path = ("rd", reg_id)
+        return resp
+
+
+class _RdRegistrationResource(resource.Resource):
+    """``/rd/<id>`` — per-registration management (DELETE to remove)."""
+
+    def __init__(self, rd: ResourceDirectoryResource, reg_id: str) -> None:
+        super().__init__()
+        self._rd = rd
+        self._reg_id = reg_id
+
+    async def render_delete(self, request: Message) -> Message:
+        self._rd.remove_entry(self._reg_id)
+        return Message(code=DELETED)
+
+
 def build_site(
     node_info: NodeInfo,
     *,
@@ -461,6 +589,7 @@ def build_site(
     presence_resource: PresenceResource | None = None,
     messages_resource: MessagesResource | None = None,
     sos_resource: SosResource | None = None,
+    resource_directory: bool = False,
 ) -> resource.Site:
     """Build an aiocoap Site exposing the LICHEN node resources.
 
@@ -469,6 +598,8 @@ def build_site(
     ``/location``, ``/presence``, ``/messages``, and/or ``/sos``; callers
     hold the references and call ``update()`` / ``seen()`` / ``deliver()`` /
     ``activate()`` to push data to observers.
+    Pass ``resource_directory=True`` to expose a CoAP Resource Directory
+    at ``/rd`` (RFC 9176).
     """
     site = resource.Site()
     site.add_resource(
@@ -490,4 +621,6 @@ def build_site(
         site.add_resource(["messages"], messages_resource)
     if sos_resource is not None:
         site.add_resource(["sos"], sos_resource)
+    if resource_directory:
+        site.add_resource(["rd"], ResourceDirectoryResource(site))
     return site
