@@ -22,6 +22,9 @@ Observable resources (RFC 7641):
   neighbour nodes; updated by calling :meth:`~PresenceResource.seen` whenever a
   beacon arrives from a mesh peer.
 
+* :class:`SosResource` — ``/sos`` — emergency beacon.  PUT activates SOS;
+  DELETE cancels; GET and Observe let any node monitor the state.
+
 Because the integrated Node class does not exist yet, the local resources read
 from an injected :class:`NodeInfo` provider rather than a live node; swap in
 a node-backed provider once it lands.
@@ -314,6 +317,80 @@ class PresenceResource(resource.ObservableResource):
         return msg
 
 
+class SosResource(resource.ObservableResource):
+    """Observable ``/sos`` — emergency beacon (PUT to activate, DELETE to cancel).
+
+    State is a CBOR map::
+
+        {"active": true, "from": "<hex-eui64>", "t": <float>}  # active
+        {"active": false, "from": null, "t": null}              # idle
+
+    **PUT** activates SOS; body is optional CBOR ``{"from": "<hex>", "t": <float>}``.
+    **DELETE** cancels.  **GET** and **Observe** expose the current state to all
+    subscribers so neighbouring nodes can relay/escalate the alert.
+
+    The repeating-beacon behaviour (every 30 s) is the responsibility of the
+    application layer driving :meth:`retrigger`; the resource itself only
+    tracks state and notifies on changes.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._active = False
+        self._from: str | None = None
+        self._t: float | None = None
+
+    def _state_payload(self) -> bytes:
+        return cbor2.dumps(
+            {"active": self._active, "from": self._from, "t": self._t}
+        )
+
+    def activate(self, from_eui64: bytes, t: float) -> None:
+        """Activate SOS from *from_eui64* at time *t* and notify observers."""
+        self._active = True
+        self._from = from_eui64.hex()
+        self._t = t
+        self.updated_state()
+
+    def cancel(self) -> None:
+        """Cancel an active SOS and notify observers.  No-op if already idle."""
+        if self._active:
+            self._active = False
+            self._from = None
+            self._t = None
+            self.updated_state()
+
+    def retrigger(self) -> None:
+        """Re-notify observers without changing state (periodic beacon pulse)."""
+        if self._active:
+            self.updated_state()
+
+    async def render_get(self, request: Message) -> Message:
+        msg = Message(code=CONTENT, payload=self._state_payload())
+        msg.opt.content_format = CBOR
+        return msg
+
+    async def render_put(self, request: Message) -> Message:
+        t: float | None = None
+        from_hex: str | None = None
+        if request.payload:
+            try:
+                body = cbor2.loads(request.payload)
+                if isinstance(body, dict):
+                    from_hex = body.get("from")
+                    t = body.get("t")
+            except Exception:
+                return Message(code=aiocoap.BAD_REQUEST)
+
+        eui64 = bytes.fromhex(from_hex) if from_hex else b"\x00" * 8
+        self.activate(eui64, t if t is not None else 0.0)
+        return Message(code=aiocoap.CHANGED)
+
+    async def render_delete(self, request: Message) -> Message:
+        self.cancel()
+        return Message(code=aiocoap.DELETED)
+
+
 _MESSAGES_MAX = 100  # maximum inbox depth
 
 
@@ -383,14 +460,15 @@ def build_site(
     location_resource: SenMLLocationResource | None = None,
     presence_resource: PresenceResource | None = None,
     messages_resource: MessagesResource | None = None,
+    sos_resource: SosResource | None = None,
 ) -> resource.Site:
     """Build an aiocoap Site exposing the LICHEN node resources.
 
     Pass ``mesh_client`` to also expose a forward proxy at ``/proxy``.
     Pass pre-constructed observable resources to expose ``/sensors``,
-    ``/location``, ``/presence``, and/or ``/messages``; callers hold the
-    references and call ``update()`` / ``seen()`` / ``deliver()`` to push
-    data to observers.
+    ``/location``, ``/presence``, ``/messages``, and/or ``/sos``; callers
+    hold the references and call ``update()`` / ``seen()`` / ``deliver()`` /
+    ``activate()`` to push data to observers.
     """
     site = resource.Site()
     site.add_resource(
@@ -410,4 +488,6 @@ def build_site(
         site.add_resource(["presence"], presence_resource)
     if messages_resource is not None:
         site.add_resource(["messages"], messages_resource)
+    if sos_resource is not None:
+        site.add_resource(["sos"], sos_resource)
     return site
