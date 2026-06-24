@@ -23,6 +23,7 @@ from lichen.coap.transport import (
     LichenTransport,
     create_lichen_context,
 )
+from lichen.coap.udp_server import bind_coap_udp
 
 __all__ = [
     "ConfigResource",
@@ -36,6 +37,7 @@ __all__ = [
     "SchcChannel",
     "StaticNodeInfo",
     "StatusResource",
+    "bind_coap_udp",
     "build_site",
     "create_lichen_context",
     "unwrap_coap",

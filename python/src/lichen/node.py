@@ -413,7 +413,14 @@ class Node:
 
         Returns:
             Dict with node state, peer count, gradient count, etc.
+            Includes `uptime` and `firmware` for Rust TUI compatibility.
         """
+        # ponytail: uptime from event loop time, good enough for sim
+        try:
+            loop = asyncio.get_running_loop()
+            uptime_secs = int(loop.time())
+        except RuntimeError:
+            uptime_secs = 0
         return {
             "iid": self.identity.iid.hex(),
             "pubkey": self.identity.pubkey.hex()[:16] + "...",
@@ -421,4 +428,37 @@ class Node:
             "peers": len(self.peer_db),
             "gradients": len(self.gradient_table),
             "announce_seq": self._scheduler.get_seq_num(),
+            "uptime": uptime_secs,
+            "firmware": "sim-0.1.0",
         }
+
+    def get_neighbors(self) -> list[dict]:
+        """Get neighbor list for CoAP /neighbors resource.
+
+        Returns:
+            List of dicts with `addr` and `rssi` keys.
+        """
+        # ponytail: peer_db has IIDs, convert to link-local addresses
+        neighbors = []
+        for iid in self.peer_db:
+            addr = IPv6Address(b"\xfe\x80\x00\x00\x00\x00\x00\x00" + iid)
+            neighbors.append({
+                "addr": str(addr),
+                "rssi": -100,  # ponytail: no per-peer RSSI tracking yet
+            })
+        return neighbors
+
+    def get_config(self) -> dict:
+        """Get node config for CoAP /config resource."""
+        return {
+            "receive_timeout_ms": self.config.receive_timeout_ms,
+            "announce_interval_ms": self.config.announce_interval_ms,
+        }
+
+    def set_config(self, updates: dict) -> None:
+        """Update node config from CoAP /config PUT."""
+        # ponytail: only allow safe updates, ignore unknown keys
+        if "receive_timeout_ms" in updates:
+            self.config.receive_timeout_ms = int(updates["receive_timeout_ms"])
+        if "announce_interval_ms" in updates:
+            self.config.announce_interval_ms = int(updates["announce_interval_ms"])

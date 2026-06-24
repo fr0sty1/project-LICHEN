@@ -1,7 +1,7 @@
 {
   "database": "dolt",
   "backend": "dolt",
-  "dolt_mode": "embedded",
+  "dolt_mode": "server",
   "dolt_database": "lora_ipv6_mesh",
   "project_id": "055fd018-4991-4ad2-9276-6be7ce590e65",
   "global_dolt_database": "beads_global"
