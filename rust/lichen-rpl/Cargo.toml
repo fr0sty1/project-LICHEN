@@ -1,0 +1,13 @@
+[package]
+name = "lichen-rpl"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "RPL routing protocol engine for LICHEN (RFC 6550, Non-Storing Mode)."
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+lichen-core = { path = "../lichen-core" }
