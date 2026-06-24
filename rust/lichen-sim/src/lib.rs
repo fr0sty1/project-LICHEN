@@ -6,4 +6,4 @@
 
 pub mod client;
 
-pub use client::SimClient;
+pub use client::{SimClient, SimError};

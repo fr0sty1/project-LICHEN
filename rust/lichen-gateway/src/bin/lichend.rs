@@ -11,8 +11,9 @@
 use clap::Parser;
 use lichen_core::addr::NodeId;
 use lichen_gateway::{config::Config, slip, Gateway};
+use lichen_sim::SimClient;
 use std::path::PathBuf;
-use tokio::{io::AsyncWriteExt, io::BufReader, signal};
+use tokio::{signal, sync::mpsc};
 use tracing::{error, info, warn};
 use tracing_subscriber::{fmt, EnvFilter};
 
@@ -37,6 +38,11 @@ struct Args {
     /// Node identifier (8-byte hex EUI-64, e.g. `0200000000000001`).
     #[arg(long, default_value = "0200000000000001")]
     node_id: String,
+
+    /// Simulation ID to join (used with --sim; must match a simulation
+    /// already created on the Python server).
+    #[arg(long, default_value = "lichen")]
+    sim_id: String,
 
     /// Skip TUN device creation (logs packets instead of forwarding).
     /// Required when running without CAP_NET_ADMIN (e.g. CI).
@@ -111,7 +117,7 @@ async fn main() {
     let mut gw = Gateway::new(node_id);
 
     if use_sim {
-        run_sim(&mut gw, &args.sim_addr, tun).await;
+        run_sim(&mut gw, &args.sim_addr, &args.sim_id, &args.node_id, tun).await;
     } else {
         run_serial(&mut gw, &config.mesh.interface, config.mesh.baud, tun).await;
     }
@@ -132,57 +138,123 @@ async fn tun_send_none(_buf: &[u8]) -> std::io::Result<()> {
 // ── sim mode ─────────────────────────────────────────────────────────────────
 
 #[cfg(target_os = "linux")]
-async fn run_sim(gw: &mut Gateway, addr: &str, tun: Option<TunDevice>) {
-    run_sim_inner(gw, addr, tun).await
+async fn run_sim(
+    gw: &mut Gateway,
+    addr: &str,
+    sim_id: &str,
+    node_id: &str,
+    tun: Option<TunDevice>,
+) {
+    run_sim_inner(gw, addr, sim_id, node_id, tun).await
 }
 
 #[cfg(not(target_os = "linux"))]
-async fn run_sim(gw: &mut Gateway, addr: &str, _tun: Option<()>) {
-    run_sim_inner(gw, addr, None::<()>).await
+async fn run_sim(
+    gw: &mut Gateway,
+    addr: &str,
+    sim_id: &str,
+    node_id: &str,
+    _tun: Option<()>,
+) {
+    run_sim_inner(gw, addr, sim_id, node_id, None::<()>).await
 }
 
-async fn run_sim_inner<T>(gw: &mut Gateway, addr: &str, tun: Option<T>)
-where
+/// Sim mode: connects to the Python simulator and exchanges SCHC frames.
+///
+/// The simulator protocol is strictly request→response: you cannot send a
+/// TX and an RX concurrently. We handle this by running the SimClient in a
+/// dedicated task with two channels:
+///   tx_send  — gateway → sim task (frames to transmit)
+///   rx_recv  — sim task → gateway (frames received from the sim)
+///
+/// The sim task loops: drain tx_send → receive(50 ms) → push to rx_recv.
+/// The gateway task loops: select! on rx_recv, TUN recv, ctrl_c.
+async fn run_sim_inner<T>(
+    gw: &mut Gateway,
+    addr: &str,
+    sim_id: &str,
+    node_id: &str,
+    tun: Option<T>,
+) where
     T: TunLike,
 {
-    let stream = match tokio::net::TcpStream::connect(addr).await {
+    let sock_addr = match addr.parse() {
+        Ok(a) => a,
+        Err(e) => {
+            error!("invalid sim address '{addr}': {e}");
+            return;
+        }
+    };
+
+    let mut sim = match SimClient::connect(sock_addr, sim_id, node_id, 0.0, 0.0, 0.0).await {
         Ok(s) => s,
         Err(e) => {
             error!("cannot connect to simulator at {addr}: {e}");
             return;
         }
     };
-    info!("connected to simulator at {addr}");
-    let (reader, mut writer) = stream.into_split();
-    let mut reader = BufReader::new(reader);
+    info!(addr, sim_id, node_id, "connected to simulator");
 
-    let mut slip_buf = vec![0u8; 1500];
+    // Channels between the gateway task and the sim protocol task.
+    let (tx_send, mut tx_recv) = mpsc::channel::<Vec<u8>>(8);
+    let (rx_send, mut rx_recv) = mpsc::channel::<Vec<u8>>(8);
+
+    // Sim protocol task: sequential TX-drain → RX(50 ms) loop.
+    let sim_task = tokio::spawn(async move {
+        loop {
+            // Drain all pending TX frames before the next RX window.
+            while let Ok(frame) = tx_recv.try_recv() {
+                match sim.transmit(&frame).await {
+                    Ok(airtime_us) => info!(airtime_us, "TX done"),
+                    Err(e) => warn!("TX failed: {e}"),
+                }
+            }
+            // Listen for an incoming frame with a short timeout.
+            match sim.receive(50).await {
+                Ok(Some((payload, rssi, snr))) => {
+                    info!(len = payload.len(), rssi, snr, "RX frame");
+                    if rx_send.send(payload).await.is_err() {
+                        break; // gateway task dropped rx_recv → shutting down
+                    }
+                }
+                Ok(None) => {} // RX_TIMEOUT — loop again
+                Err(e) => {
+                    error!("sim receive error: {e}");
+                    break;
+                }
+            }
+        }
+    });
+
     let mut tun_buf = vec![0u8; 1500];
 
     loop {
         tokio::select! {
-            result = slip::recv_packet(&mut reader, &mut slip_buf) => {
-                match result {
-                    Ok(n) => forward_mesh_to_upstream(gw, &slip_buf[..n], &tun).await,
-                    Err(e) => { error!("SLIP recv: {e}"); break; }
-                }
+            Some(frame) = rx_recv.recv() => {
+                forward_mesh_to_upstream(gw, &frame, &tun).await;
             }
             result = async { match &tun {
                 Some(t) => t.recv_pkt(&mut tun_buf).await,
                 None => tun_recv_none(&mut tun_buf).await,
             }} => {
                 match result {
-                    Ok(n) => forward_upstream_to_mesh(gw, &tun_buf[..n], &mut writer).await,
+                    Ok(n) => {
+                        if let Some(schc) = gw.upstream_to_mesh(&tun_buf[..n]) {
+                            // Best-effort: drop if sim task is behind.
+                            let _ = tx_send.try_send(schc);
+                        }
+                    }
                     Err(e) => { error!("TUN recv: {e}"); break; }
                 }
             }
             _ = signal::ctrl_c() => {
                 info!("shutting down");
-                let _ = writer.shutdown().await;
                 break;
             }
         }
     }
+
+    sim_task.abort();
 }
 
 // ── serial mode ───────────────────────────────────────────────────────────────
@@ -252,18 +324,6 @@ async fn forward_mesh_to_upstream<T: TunLike>(gw: &mut Gateway, frame: &[u8], tu
             if let Err(e) = t.send_pkt(&ipv6).await {
                 error!("TUN write: {e}");
             }
-        }
-    }
-}
-
-async fn forward_upstream_to_mesh<W: AsyncWriteExt + Unpin>(
-    gw: &mut Gateway,
-    packet: &[u8],
-    writer: &mut W,
-) {
-    if let Some(schc) = gw.upstream_to_mesh(packet) {
-        if let Err(e) = slip::send_packet(writer, &schc).await {
-            error!("SLIP send: {e}");
         }
     }
 }

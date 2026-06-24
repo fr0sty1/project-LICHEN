@@ -563,6 +563,7 @@ dependencies = [
  "lichen-core",
  "lichen-node",
  "lichen-schc",
+ "lichen-sim",
  "serde",
  "tokio",
  "tokio-serial",
@@ -609,6 +610,7 @@ name = "lichen-sim"
 version = "0.1.0"
 dependencies = [
  "lichen-node",
+ "tokio",
 ]
 
 [[package]]

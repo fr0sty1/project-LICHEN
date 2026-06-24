@@ -7,3 +7,4 @@ description = "LICHEN simulator TCP client (mirrors the Python SimRadio interfac
 
 [dependencies]
 lichen-node = { path = "../lichen-node", features = ["std"] }
+tokio = { version = "1", features = ["net", "io-util"] }

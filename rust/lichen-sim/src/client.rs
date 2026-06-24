@@ -1,50 +1,248 @@
-//! TCP client stub connecting to the LICHEN simulator server.
+//! Async TCP client for the LICHEN simulator node server.
 //!
-//! The simulator server speaks a simple length-prefixed framing protocol over
-//! TCP. Each message is a 2-byte big-endian length followed by the frame bytes.
-//! This mirrors the Python SimRadio in `python/src/lichen/radio/sim_client.py`.
+//! Wire format: each message is framed with a 4-byte LE length prefix.
+//! The first byte of the body is the message type (matches
+//! `python/src/lichen/sim/protocol.py`). The client must send REGISTER
+//! before any TX / RX / TIME messages.
 
-use std::io::{self, Read, Write};
-use std::net::{SocketAddr, TcpStream};
+use std::net::SocketAddr;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt, BufReader},
+    net::{
+        tcp::{OwnedReadHalf, OwnedWriteHalf},
+        TcpStream,
+    },
+};
 
-/// Default simulator server address.
-pub const DEFAULT_ADDR: &str = "127.0.0.1:4444";
+// Message type constants
+const MSG_OK: u8 = 0x00;
+const MSG_REGISTER: u8 = 0x01;
+const MSG_TX: u8 = 0x10;
+const MSG_TX_DONE: u8 = 0x11;
+const MSG_TX_FAIL: u8 = 0x12;
+const MSG_RX: u8 = 0x20;
+const MSG_RX_OK: u8 = 0x21;
+const MSG_RX_TIMEOUT: u8 = 0x22;
+const MSG_TIME: u8 = 0x30;
+const MSG_TIME_OK: u8 = 0x31;
+const MSG_ERR: u8 = 0xFF;
 
-/// TCP client for the LICHEN simulator.
+/// Errors returned by [`SimClient`].
+#[derive(Debug)]
+pub enum SimError {
+    Io(std::io::Error),
+    /// Server returned an ERR response.
+    Server { code: u8, message: String },
+    /// Response did not match the expected message type.
+    Protocol(&'static str),
+    /// Simulator rejected the TX (TX_FAIL).
+    TxFailed,
+}
+
+impl std::fmt::Display for SimError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SimError::Io(e) => write!(f, "I/O error: {e}"),
+            SimError::Server { code, message } => write!(f, "server error {code}: {message}"),
+            SimError::Protocol(s) => write!(f, "protocol error: {s}"),
+            SimError::TxFailed => write!(f, "TX_FAIL from simulator"),
+        }
+    }
+}
+
+impl From<std::io::Error> for SimError {
+    fn from(e: std::io::Error) -> Self {
+        SimError::Io(e)
+    }
+}
+
+/// Async TCP client for the LICHEN node server.
+///
+/// Call [`SimClient::connect`] to connect and register, then use
+/// [`transmit`](SimClient::transmit) / [`receive`](SimClient::receive) in a
+/// loop. The protocol is strictly request → response: do not call both
+/// concurrently from different tasks without external synchronisation.
 pub struct SimClient {
-    stream: TcpStream,
+    reader: BufReader<OwnedReadHalf>,
+    writer: OwnedWriteHalf,
 }
 
 impl SimClient {
-    /// Connect to the simulator server at `addr`.
-    pub fn connect(addr: SocketAddr) -> io::Result<Self> {
-        let stream = TcpStream::connect(addr)?;
-        Ok(Self { stream })
+    /// Connect to `addr`, send REGISTER, and await the server's OK.
+    pub async fn connect(
+        addr: SocketAddr,
+        sim_id: &str,
+        node_id: &str,
+        x: f64,
+        y: f64,
+        z: f64,
+    ) -> Result<Self, SimError> {
+        let stream = TcpStream::connect(addr).await?;
+        let (r, w) = stream.into_split();
+        let mut client = Self {
+            reader: BufReader::new(r),
+            writer: w,
+        };
+        client.register(sim_id, node_id, x, y, z).await?;
+        Ok(client)
     }
 
-    /// Send a raw frame to the simulator.
-    pub fn send_frame(&mut self, frame: &[u8]) -> io::Result<()> {
-        let len = (frame.len() as u16).to_be_bytes();
-        self.stream.write_all(&len)?;
-        self.stream.write_all(frame)?;
+    async fn register(
+        &mut self,
+        sim_id: &str,
+        node_id: &str,
+        x: f64,
+        y: f64,
+        z: f64,
+    ) -> Result<(), SimError> {
+        let sid = sim_id.as_bytes();
+        let nid = node_id.as_bytes();
+        let mut body = Vec::with_capacity(1 + 1 + sid.len() + 1 + nid.len() + 24);
+        body.push(MSG_REGISTER);
+        body.push(sid.len() as u8);
+        body.extend_from_slice(sid);
+        body.push(nid.len() as u8);
+        body.extend_from_slice(nid);
+        body.extend_from_slice(&x.to_le_bytes());
+        body.extend_from_slice(&y.to_le_bytes());
+        body.extend_from_slice(&z.to_le_bytes());
+        self.send_msg(&body).await?;
+
+        let resp = self.recv_msg().await?;
+        match resp.first().copied() {
+            Some(MSG_OK) => Ok(()),
+            Some(MSG_ERR) => Err(parse_err(&resp[1..])),
+            _ => Err(SimError::Protocol("unexpected response to REGISTER")),
+        }
+    }
+
+    /// Transmit `payload` over the simulated radio.
+    ///
+    /// Returns airtime in microseconds on success.
+    pub async fn transmit(&mut self, payload: &[u8]) -> Result<u32, SimError> {
+        let mut body = Vec::with_capacity(3 + payload.len());
+        body.push(MSG_TX);
+        body.extend_from_slice(&(payload.len() as u16).to_le_bytes());
+        body.extend_from_slice(payload);
+        self.send_msg(&body).await?;
+
+        let resp = self.recv_msg().await?;
+        match resp.first().copied() {
+            Some(MSG_TX_DONE) => {
+                if resp.len() < 5 {
+                    return Err(SimError::Protocol("TX_DONE too short"));
+                }
+                Ok(u32::from_le_bytes(resp[1..5].try_into().unwrap()))
+            }
+            Some(MSG_TX_FAIL) => Err(SimError::TxFailed),
+            Some(MSG_ERR) => Err(parse_err(&resp[1..])),
+            _ => Err(SimError::Protocol("unexpected response to TX")),
+        }
+    }
+
+    /// Wait up to `timeout_ms` for an incoming frame.
+    ///
+    /// Returns `None` on timeout, `Some((payload, rssi, snr))` on success.
+    pub async fn receive(
+        &mut self,
+        timeout_ms: u32,
+    ) -> Result<Option<(Vec<u8>, i16, i16)>, SimError> {
+        let mut body = [0u8; 5];
+        body[0] = MSG_RX;
+        body[1..5].copy_from_slice(&timeout_ms.to_le_bytes());
+        self.send_msg(&body).await?;
+
+        let resp = self.recv_msg().await?;
+        match resp.first().copied() {
+            Some(MSG_RX_OK) => {
+                if resp.len() < 3 {
+                    return Err(SimError::Protocol("RX_OK too short"));
+                }
+                let plen = u16::from_le_bytes([resp[1], resp[2]]) as usize;
+                if resp.len() < 3 + plen + 4 {
+                    return Err(SimError::Protocol("RX_OK truncated"));
+                }
+                let payload = resp[3..3 + plen].to_vec();
+                let rssi = i16::from_le_bytes([resp[3 + plen], resp[4 + plen]]);
+                let snr = i16::from_le_bytes([resp[5 + plen], resp[6 + plen]]);
+                Ok(Some((payload, rssi, snr)))
+            }
+            Some(MSG_RX_TIMEOUT) => Ok(None),
+            Some(MSG_ERR) => Err(parse_err(&resp[1..])),
+            _ => Err(SimError::Protocol("unexpected response to RX")),
+        }
+    }
+
+    /// Query current simulation time in microseconds.
+    pub async fn time_us(&mut self) -> Result<u64, SimError> {
+        self.send_msg(&[MSG_TIME]).await?;
+
+        let resp = self.recv_msg().await?;
+        match resp.first().copied() {
+            Some(MSG_TIME_OK) => {
+                if resp.len() < 9 {
+                    return Err(SimError::Protocol("TIME_OK too short"));
+                }
+                Ok(u64::from_le_bytes(resp[1..9].try_into().unwrap()))
+            }
+            Some(MSG_ERR) => Err(parse_err(&resp[1..])),
+            _ => Err(SimError::Protocol("unexpected response to TIME")),
+        }
+    }
+
+    async fn send_msg(&mut self, body: &[u8]) -> Result<(), SimError> {
+        self.writer
+            .write_all(&(body.len() as u32).to_le_bytes())
+            .await?;
+        self.writer.write_all(body).await?;
         Ok(())
     }
 
-    /// Receive one frame from the simulator into `buf`.
-    ///
-    /// Returns the number of bytes written into `buf`, or an error if the
-    /// frame is larger than `buf`.
-    pub fn recv_frame(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let mut len_bytes = [0u8; 2];
-        self.stream.read_exact(&mut len_bytes)?;
-        let len = u16::from_be_bytes(len_bytes) as usize;
-        if len > buf.len() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "frame too large",
-            ));
+    async fn recv_msg(&mut self) -> Result<Vec<u8>, SimError> {
+        let mut len_bytes = [0u8; 4];
+        self.reader.read_exact(&mut len_bytes).await?;
+        let len = u32::from_le_bytes(len_bytes) as usize;
+        let mut body = vec![0u8; len];
+        self.reader.read_exact(&mut body).await?;
+        Ok(body)
+    }
+}
+
+fn parse_err(payload: &[u8]) -> SimError {
+    if payload.len() < 2 {
+        return SimError::Protocol("ERR response too short");
+    }
+    let code = payload[0];
+    let msg_len = payload[1] as usize;
+    let message = if payload.len() >= 2 + msg_len {
+        String::from_utf8_lossy(&payload[2..2 + msg_len]).into_owned()
+    } else {
+        "(truncated)".to_string()
+    };
+    SimError::Server { code, message }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_err_well_formed() {
+        // code=4, msg="hello"
+        let payload = [4u8, 5, b'h', b'e', b'l', b'l', b'o'];
+        let e = parse_err(&payload);
+        match e {
+            SimError::Server { code, message } => {
+                assert_eq!(code, 4);
+                assert_eq!(message, "hello");
+            }
+            _ => panic!("wrong variant"),
         }
-        self.stream.read_exact(&mut buf[..len])?;
-        Ok(len)
+    }
+
+    #[test]
+    fn parse_err_too_short() {
+        let e = parse_err(&[]);
+        assert!(matches!(e, SimError::Protocol(_)));
     }
 }
