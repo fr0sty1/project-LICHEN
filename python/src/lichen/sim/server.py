@@ -272,7 +272,13 @@ class SimulatorServer:
         server = self._node_servers.pop(sim_id, None)
         if server is not None:
             server.close()
-            await server.wait_closed()
+            # Python 3.12 changed wait_closed(): if close() fires _wakeup()
+            # before wait_closed() adds its future to _waiters, the future
+            # never resolves. Cap with a timeout to prevent indefinite hang.
+            try:
+                await asyncio.wait_for(server.wait_closed(), timeout=1.0)
+            except TimeoutError:
+                pass
             self._logger.info("Stopped node server", sim_id=sim_id)
 
 
