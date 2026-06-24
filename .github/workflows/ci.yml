@@ -85,7 +85,8 @@ jobs:
         # alongside zephyr/ — the standard west T2 workspace layout.
 
       - name: Install system deps
-        run: sudo apt-get install -y --no-install-recommends cmake ninja-build gcc
+        # gcc-multilib provides 32-bit headers needed by native_sim (-m32 build)
+        run: sudo apt-get install -y --no-install-recommends cmake ninja-build gcc gcc-multilib
 
       - name: Install west and Python deps
         run: pip install west
