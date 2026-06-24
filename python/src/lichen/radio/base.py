@@ -53,3 +53,23 @@ class Radio(Protocol):
             tx_power_dbm: Transmit power in dBm (e.g., 14 for 14 dBm / 25 mW).
         """
         ...
+
+    async def cad(self, timeout_ms: int) -> bool:
+        """Perform Channel Activity Detection (CAD).
+
+        CAD listens briefly for LoRa preamble activity without fully receiving
+        a packet. This is used for carrier-sense before transmitting (CSMA/CA)
+        and for low-power wake-on-radio applications.
+
+        The operation completes quickly (typically 2-4 symbol periods) or when
+        the timeout expires, whichever comes first.
+
+        Args:
+            timeout_ms: Maximum time to wait for CAD completion, in milliseconds.
+                        Typical values are 20-50ms for SF10/125kHz.
+
+        Returns:
+            True if channel activity (LoRa preamble) was detected,
+            False if the channel appears clear or timeout expired without detection.
+        """
+        ...

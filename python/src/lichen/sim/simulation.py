@@ -22,6 +22,7 @@ from lichen.sim.events import (
     RxTimeoutEvent,
     SimulationObserver,
     TxEndEvent,
+    TxStartDelayedEvent,
 )
 from lichen.sim.medium import Medium
 from lichen.sim.metrics import Metrics
@@ -66,6 +67,8 @@ class Simulation:
         time_mode: TimeMode = TimeMode.BARRIER_SYNC,
         chaos_engine: ChaosEngine | None = None,
         seed: int | None = None,
+        jitter_min_us: int = 0,
+        jitter_max_us: int = 0,
     ) -> None:
         """Initialize a new simulation.
 
@@ -76,6 +79,9 @@ class Simulation:
             seed: Optional seed for the simulation's random number generator.
                 Two simulations created with the same seed draw the same random
                 sequence, making probabilistic runs (e.g. chaos loss) reproducible.
+            jitter_min_us: Minimum TX jitter in microseconds. Defaults to 0.
+            jitter_max_us: Maximum TX jitter in microseconds. Defaults to 0
+                (disabled). Set to a positive value to enable TX jitter.
         """
         self._id = sim_id
         self._time_mode = time_mode
@@ -90,6 +96,8 @@ class Simulation:
         self._seed = seed
         self._rng = random.Random(seed)
         self._observers = ObserverRegistry()
+        self._jitter_min_us = jitter_min_us
+        self._jitter_max_us = jitter_max_us
 
     @property
     def id(self) -> str:
@@ -140,6 +148,27 @@ class Simulation:
         """Reset the RNG to a new seed, restoring reproducible state."""
         self._seed = seed
         self._rng = random.Random(seed)
+
+    @property
+    def jitter_min_us(self) -> int:
+        """Return the minimum TX jitter in microseconds."""
+        return self._jitter_min_us
+
+    @property
+    def jitter_max_us(self) -> int:
+        """Return the maximum TX jitter in microseconds."""
+        return self._jitter_max_us
+
+    def calculate_tx_jitter(self) -> int:
+        """Calculate a random TX jitter delay.
+
+        Returns a uniformly distributed random value in the range
+        [jitter_min_us, jitter_max_us] using the simulation's seedable RNG.
+
+        Returns:
+            Jitter delay in microseconds.
+        """
+        return self._rng.randint(self._jitter_min_us, self._jitter_max_us)
 
     @property
     def chaos_engine(self) -> ChaosEngine | None:
@@ -286,10 +315,30 @@ class Simulation:
             event: The event to handle.
         """
         match event:
+            case TxStartDelayedEvent():
+                self._handle_tx_start_delayed(event)
             case TxEndEvent():
                 self._handle_tx_end(event)
             case RxTimeoutEvent():
                 self._handle_rx_timeout(event)
+
+    def _handle_tx_start_delayed(self, event: TxStartDelayedEvent) -> None:
+        """Handle delayed transmission start event.
+
+        Args:
+            event: The TxStartDelayedEvent to handle.
+        """
+        node = self._nodes.get(event.node_id)
+        if node is None or not node.connected:
+            # Node was removed or disconnected while waiting for jitter
+            return
+
+        self._do_start_transmission(
+            node_id=event.node_id,
+            payload=event.payload,
+            tx_power_dbm=event.tx_power_dbm,
+            position=event.position,
+        )
 
     def _handle_tx_end(self, event: TxEndEvent) -> None:
         """Handle transmission end event.
@@ -390,15 +439,16 @@ class Simulation:
     def start_transmission(self, node_id: str, payload: bytes) -> str:
         """Start a transmission from a node.
 
-        Sets the node to TX state, creates a transmission in the medium,
-        and queues a TxEndEvent.
+        If jitter is enabled (jitter_max_us > 0), queues a TxStartDelayedEvent
+        and returns an empty string (tx_id will be assigned when the event fires).
+        Otherwise, starts the transmission immediately.
 
         Args:
             node_id: ID of the transmitting node.
             payload: Raw bytes to transmit.
 
         Returns:
-            The transmission ID.
+            The transmission ID (empty string if transmission is delayed).
 
         Raises:
             ValueError: If node doesn't exist or is not connected.
@@ -409,6 +459,57 @@ class Simulation:
         if not node.connected:
             raise ValueError(f"Node '{node_id}' is not connected")
 
+        # If jitter is enabled, queue a delayed start event
+        if self._jitter_max_us > 0:
+            jitter = self.calculate_tx_jitter()
+            delayed_event = TxStartDelayedEvent(
+                time_us=self._current_time_us + jitter,
+                node_id=node_id,
+                payload=payload,
+                tx_power_dbm=node.tx_power_dbm,
+                position=node.position,
+            )
+            self._event_queue.push(delayed_event)
+            logger.debug(
+                "tx_delayed",
+                sim_id=self._id,
+                node_id=node_id,
+                jitter_us=jitter,
+                fire_at_us=delayed_event.time_us,
+            )
+            return ""
+
+        # No jitter: start transmission immediately
+        return self._do_start_transmission(
+            node_id=node_id,
+            payload=payload,
+            tx_power_dbm=node.tx_power_dbm,
+            position=node.position,
+        )
+
+    def _do_start_transmission(
+        self,
+        node_id: str,
+        payload: bytes,
+        tx_power_dbm: int,
+        position: tuple[float, float, float],
+    ) -> str:
+        """Execute the actual transmission start in the medium.
+
+        This is the core TX logic, called either immediately from
+        start_transmission() or later via TxStartDelayedEvent.
+
+        Args:
+            node_id: ID of the transmitting node.
+            payload: Raw bytes to transmit.
+            tx_power_dbm: Transmit power in dBm.
+            position: Node position (x, y, z) in meters.
+
+        Returns:
+            The transmission ID.
+        """
+        node = self._nodes.get(node_id)
+
         # Half-duplex: a radio emits at most one signal at a time. If the node
         # is already transmitting, end the previous transmission before starting
         # the new one so the two never coexist in the medium (which would
@@ -418,13 +519,14 @@ class Simulation:
         if previous_tx_id is not None:
             self._medium.end_tx(previous_tx_id)
 
-        node.state = NodeState.TX
+        if node is not None:
+            node.state = NodeState.TX
 
         tx = self._medium.start_tx(
             node_id=node_id,
             payload=payload,
-            tx_power_dbm=node.tx_power_dbm,
-            position=node.position,
+            tx_power_dbm=tx_power_dbm,
+            position=position,
             time_us=self._current_time_us,
         )
 

@@ -30,6 +30,10 @@ class MockRadio:
         self.freq_hz = freq_hz
         self.tx_power_dbm = tx_power_dbm
 
+    async def cad(self, timeout_ms: int) -> bool:
+        """Return False (channel clear) by default."""
+        return False
+
 
 class IncompleteRadio:
     """A radio implementation missing required methods."""
@@ -83,3 +87,9 @@ class TestRadioProtocol:
         radio.configure(freq_hz=868_000_000, tx_power_dbm=20)
         assert radio.freq_hz == 868_000_000
         assert radio.tx_power_dbm == 20
+
+    async def test_cad_returns_bool(self) -> None:
+        """cad() should return a boolean indicating channel activity."""
+        radio = MockRadio()
+        result = await radio.cad(timeout_ms=35)
+        assert result is False  # MockRadio returns False (channel clear)

@@ -37,6 +37,7 @@ class MockRadio:
     def __init__(self):
         self.tx_history: list[bytes] = []
         self.rx_queue: list[tuple[bytes, int, int]] = []
+        self.cad_returns: bool = False  # False = channel clear
 
     async def transmit(self, payload: bytes) -> bool:
         """Record transmitted frames."""
@@ -52,6 +53,10 @@ class MockRadio:
     def configure(self, freq_hz: int, tx_power_dbm: int) -> None:
         """No-op for mock."""
         pass
+
+    async def cad(self, timeout_ms: int) -> bool:
+        """Return configured CAD result (default: channel clear)."""
+        return self.cad_returns
 
     def queue_rx(self, data: bytes, rssi: int = -50, snr: int = 10) -> None:
         """Queue a frame for reception."""

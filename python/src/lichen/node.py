@@ -23,6 +23,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import random
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -66,12 +67,18 @@ class NodeConfig:
             Why 30000: Spec section 9.4 (0-30 seconds).
         pending_timeout_ms: How long to queue packets waiting for discovery.
             Why 5000: LOADng RREQ_WAIT_TIME is 5 seconds.
+        rreq_jitter_min_ms: Minimum jitter before sending RREQ.
+            Why 0: Allow immediate transmission when no contention.
+        rreq_jitter_max_ms: Maximum jitter before sending RREQ.
+            Why 100: LOADng spec recommends short jitter to reduce collisions.
     """
 
     receive_timeout_ms: int = 1000
     announce_interval_ms: int = 300_000
     announce_jitter_ms: int = 30_000
     pending_timeout_ms: int = 5_000
+    rreq_jitter_min_ms: int = 0
+    rreq_jitter_max_ms: int = 100
 
 
 @dataclass
@@ -407,6 +414,41 @@ class Node:
                 self._on_receive(schc, PeerIdentity.from_pubkey(self.identity.pubkey))
             return True
         return False
+
+    def scheduled_send(
+        self,
+        data: bytes,
+        min_delay_ms: int | None = None,
+        max_delay_ms: int | None = None,
+    ) -> asyncio.Task:
+        """Schedule a transmission after a random jitter delay.
+
+        Why jitter: RREQ rebroadcast uses jitter to reduce collision probability
+        when multiple nodes forward the same RREQ (LOADng spec).
+
+        Args:
+            data: Bytes to transmit via link layer.
+            min_delay_ms: Minimum delay in milliseconds. Defaults to config.rreq_jitter_min_ms.
+            max_delay_ms: Maximum delay in milliseconds. Defaults to config.rreq_jitter_max_ms.
+
+        Returns:
+            The asyncio Task that will perform the delayed send.
+        """
+        if min_delay_ms is None:
+            min_delay_ms = self.config.rreq_jitter_min_ms
+        if max_delay_ms is None:
+            max_delay_ms = self.config.rreq_jitter_max_ms
+
+        delay_ms = random.randint(min_delay_ms, max_delay_ms)
+
+        async def _delayed_send() -> bool:
+            await asyncio.sleep(delay_ms / 1000)
+            return await self.link.send(data)
+
+        return asyncio.create_task(
+            _delayed_send(),
+            name=f"scheduled-send-{delay_ms}ms",
+        )
 
     def get_status(self) -> dict:
         """Get node status for debugging/monitoring.

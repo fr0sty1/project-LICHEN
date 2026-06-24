@@ -17,6 +17,8 @@ Message types:
     RX_TIMEOUT (0x22): Receive timeout
     TIME (0x30): Time query request
     TIME_OK (0x31): Time query response
+    CAD (0x40): Channel Activity Detection request with timeout
+    CAD_RESULT (0x41): CAD result (detected/not detected)
 """
 
 from __future__ import annotations
@@ -35,6 +37,8 @@ MSG_RX_OK: Final[int] = 0x21
 MSG_RX_TIMEOUT: Final[int] = 0x22
 MSG_TIME: Final[int] = 0x30
 MSG_TIME_OK: Final[int] = 0x31
+MSG_CAD: Final[int] = 0x40
+MSG_CAD_RESULT: Final[int] = 0x41
 MSG_ERR: Final[int] = 0xFF
 
 # Maximum lengths for variable-length fields
@@ -409,6 +413,79 @@ def decode_time_ok(data: bytes) -> int:
 
     (time_us,) = struct.unpack_from("<Q", data, 0)
     return int(time_us)
+
+
+def encode_cad(timeout_ms: int) -> bytes:
+    """Encode a CAD (Channel Activity Detection) message.
+
+    Format:
+        - 1 byte: message type (0x40)
+        - 4 bytes: timeout in milliseconds (uint32, little-endian)
+
+    Args:
+        timeout_ms: CAD timeout in milliseconds.
+
+    Returns:
+        Encoded message bytes.
+
+    Raises:
+        ProtocolError: If timeout_ms does not fit in a uint32.
+    """
+    _check_range("timeout_ms", timeout_ms, 0, _UINT32_MAX)
+    return struct.pack("<BI", MSG_CAD, timeout_ms)
+
+
+def decode_cad(data: bytes) -> int:
+    """Decode a CAD message payload.
+
+    Args:
+        data: Message bytes (excluding message type byte).
+
+    Returns:
+        Timeout in milliseconds.
+
+    Raises:
+        ProtocolError: If data is too short.
+    """
+    if len(data) < 4:
+        raise ProtocolError("CAD message too short")
+
+    (timeout_ms,) = struct.unpack_from("<I", data, 0)
+    return int(timeout_ms)
+
+
+def encode_cad_result(detected: bool) -> bytes:
+    """Encode a CAD_RESULT message.
+
+    Format:
+        - 1 byte: message type (0x41)
+        - 1 byte: detected (0 = no activity, 1 = activity detected)
+
+    Args:
+        detected: True if channel activity was detected, False otherwise.
+
+    Returns:
+        Encoded message bytes.
+    """
+    return struct.pack("<BB", MSG_CAD_RESULT, 1 if detected else 0)
+
+
+def decode_cad_result(data: bytes) -> bool:
+    """Decode a CAD_RESULT message payload.
+
+    Args:
+        data: Message bytes (excluding message type byte).
+
+    Returns:
+        True if channel activity was detected, False otherwise.
+
+    Raises:
+        ProtocolError: If data is too short.
+    """
+    if len(data) < 1:
+        raise ProtocolError("CAD_RESULT message too short")
+
+    return data[0] != 0
 
 
 def encode_ok() -> bytes:

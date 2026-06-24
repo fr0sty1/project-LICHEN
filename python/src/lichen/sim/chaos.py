@@ -306,6 +306,62 @@ class LatencyRule(ChaosRule):
         return replace(candidate, added_latency_us=candidate.added_latency_us + self.added_us)
 
 
+@dataclass
+class TxJitterRule(ChaosRule):
+    """Override TX jitter for a specific node or globally.
+
+    Provides custom jitter parameters that the simulator can query
+    when scheduling transmissions. When ``node_id`` is None, the rule
+    applies globally to all nodes.
+
+    Attributes:
+        jitter_min_us: Minimum jitter delay in microseconds.
+        jitter_max_us: Maximum jitter delay in microseconds.
+        node_id: ID of the node to apply jitter to, or None for global.
+        rng: Random source for generating jitter values.
+        id: Unique rule identifier.
+    """
+
+    jitter_min_us: int
+    jitter_max_us: int
+    node_id: str | None = None
+    rng: random.Random = field(default_factory=random.Random)
+    id: str = field(default_factory=lambda: str(uuid4()))
+
+    def __post_init__(self) -> None:
+        if self.jitter_min_us < 0:
+            raise ValueError(
+                f"jitter_min_us must be non-negative, got {self.jitter_min_us}"
+            )
+        if self.jitter_max_us < self.jitter_min_us:
+            raise ValueError(
+                f"jitter_max_us ({self.jitter_max_us}) must be >= jitter_min_us ({self.jitter_min_us})"
+            )
+
+    def matches(self, tx: Transmission, rx_node_id: str) -> bool:
+        """Match if node_id is None (global) or matches the sender."""
+        if self.node_id is None:
+            return True
+        return tx.source_node_id == self.node_id
+
+    def apply(
+        self,
+        candidate: RxCandidate,
+        rx_position: tuple[float, float, float] | None = None,
+    ) -> RxCandidate:
+        """Pass through unchanged; jitter is applied at TX scheduling time."""
+        return candidate
+
+    def get_jitter_us(self) -> int:
+        """Generate a random jitter value within the configured range.
+
+        Returns:
+            Jitter delay in microseconds, uniformly distributed
+            between jitter_min_us and jitter_max_us (inclusive).
+        """
+        return self.rng.randint(self.jitter_min_us, self.jitter_max_us)
+
+
 class ChaosEngine:
     """Manages and applies chaos rules.
 

@@ -9,6 +9,11 @@ LORA_SPREADING_FACTOR: int = 10
 LORA_BANDWIDTH_HZ: int = 125_000
 LORA_PREAMBLE_SYMBOLS: int = 8
 LORA_SYNC_WORD: int = 0x34  # Distinct from Meshtastic (0x2B)
+LORA_CAD_SYMBOLS: int = 2  # Symbols to detect in CAD mode (2-4 typical)
+LORA_CAD_TIMEOUT_MS: int = 35  # Default CAD timeout (covers ~4 symbols + overhead)
+CAD_SLOT_MS: int = 10  # Backoff slot duration for CAD-based CSMA
+CAD_MAX_BACKOFF_EXPONENT: int = 5  # Max slots = 2^5 - 1 = 31
+CAD_MAX_CYCLES: int = 3  # Full backoff cycles before TX failure
 
 # Default channel 0 frequencies per region (spec §02-physical-link)
 FREQ_US_CA_HZ: int = 903_900_000   # US/CA 915 MHz ISM band

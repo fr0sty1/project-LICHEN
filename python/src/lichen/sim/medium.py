@@ -11,7 +11,12 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from lichen.sim.propagation import CAPTURE_THRESHOLD_DB, SENSITIVITY_SF10, PropagationModel
+from lichen.sim.propagation import (
+    CAPTURE_THRESHOLD_DB,
+    SENSITIVITY_DEFAULT,
+    SENSITIVITY_SF10,
+    PropagationModel,
+)
 from lichen.sim.transmission import Transmission, airtime_us
 
 
@@ -218,3 +223,51 @@ class Medium:
 
         # Collision: neither can be decoded
         return None
+
+    def detect_activity(
+        self,
+        position: tuple[float, float, float],
+        time_us: int,
+        sensitivity_dbm: float = SENSITIVITY_DEFAULT,
+    ) -> bool:
+        """Detect if any transmission is active and detectable at a position.
+
+        This implements Channel Activity Detection (CAD). Returns True if any
+        active transmission produces a received power above the sensitivity
+        threshold at the given position.
+
+        Args:
+            position: (x, y, z) position of the detector in meters.
+            time_us: Current simulation time in microseconds.
+            sensitivity_dbm: Receiver sensitivity threshold in dBm.
+                Defaults to SF10 sensitivity (-132 dBm).
+
+        Returns:
+            True if channel activity is detected, False otherwise.
+        """
+        active = self.get_active_transmissions(time_us)
+
+        for tx in active:
+            tx_pos = self._tx_positions.get(tx.id)
+            if tx_pos is None:
+                continue
+
+            # Calculate 3D distance
+            distance = math.sqrt(
+                (position[0] - tx_pos[0]) ** 2
+                + (position[1] - tx_pos[1]) ** 2
+                + (position[2] - tx_pos[2]) ** 2
+            )
+
+            # Avoid division by zero for co-located nodes
+            if distance <= 0:
+                distance = 0.001  # 1mm minimum
+
+            # Calculate received power
+            rx_power = self.propagation.received_power(tx.tx_power_dbm, distance)
+
+            # If any transmission is above sensitivity, activity is detected
+            if rx_power >= sensitivity_dbm:
+                return True
+
+        return False

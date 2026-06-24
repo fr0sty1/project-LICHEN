@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 import anyio
 
 from lichen.sim.protocol import (
+    MSG_CAD_RESULT,
     MSG_ERR,
     MSG_OK,
     MSG_RX_OK,
@@ -22,9 +23,11 @@ from lichen.sim.protocol import (
     MSG_TX_DONE,
     MSG_TX_FAIL,
     ProtocolError,
+    decode_cad_result,
     decode_err,
     decode_rx_ok,
     decode_time_ok,
+    encode_cad,
     encode_register,
     encode_rx,
     encode_time,
@@ -217,6 +220,37 @@ class SimRadio:
             raise SimRadioError(f"TIME error (code {code}): {err_msg}")
         else:
             raise SimRadioError(f"Unexpected response to TIME: 0x{msg_type:02x}")
+
+    async def cad(self, timeout_ms: int) -> bool:
+        """Perform Channel Activity Detection (CAD).
+
+        CAD is a quick check for LoRa preamble activity on the channel,
+        used for listen-before-talk and low-power wake-up detection.
+
+        Args:
+            timeout_ms: Maximum time to wait for CAD completion, in milliseconds.
+
+        Returns:
+            True if channel activity (LoRa preamble) was detected, False otherwise.
+
+        Raises:
+            SimRadioError: If not connected or protocol error occurs.
+        """
+        self._ensure_connected()
+
+        msg = encode_cad(timeout_ms)
+        async with self._lock:
+            await self._send(msg)
+            response = await self._recv()
+        msg_type = get_message_type(response)
+
+        if msg_type == MSG_CAD_RESULT:
+            return decode_cad_result(response[1:])
+        elif msg_type == MSG_ERR:
+            code, err_msg = decode_err(response[1:])
+            raise SimRadioError(f"CAD error (code {code}): {err_msg}")
+        else:
+            raise SimRadioError(f"Unexpected response to CAD: 0x{msg_type:02x}")
 
     def configure(self, freq_hz: int, tx_power_dbm: int) -> None:
         """Configure the radio parameters.

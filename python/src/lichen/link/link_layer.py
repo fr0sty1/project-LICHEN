@@ -19,11 +19,19 @@ used by one task at a time. For concurrent access, use external synchronization.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import random
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from ..constants import (
+    CAD_MAX_BACKOFF_EXPONENT,
+    CAD_MAX_CYCLES,
+    CAD_SLOT_MS,
+    LORA_CAD_TIMEOUT_MS,
+)
 from ..crypto.identity import Identity, PeerIdentity
 from ..crypto.schnorr48 import sign, verify
 from .frame import AddrMode, FrameError, LichenFrame, MicLength
@@ -79,6 +87,8 @@ class LinkLayer:
             Why a callback: The peer database is owned by upper layers.
             We don't want the link layer to own peer state.
         replay_protector: Per-sender replay detection.
+        cad_enabled: If True, perform CAD before transmit with exponential
+            backoff on busy channel. Defaults to True.
         _epoch: Current 8-bit epoch (increments on seqnum wrap).
         _seqnum: Current 16-bit sequence number.
     """
@@ -90,6 +100,7 @@ class LinkLayer:
     peer_lookup_all: Callable[[], list[PeerIdentity]] | None = field(
         default=None, repr=False
     )
+    cad_enabled: bool = field(default=True)
     _epoch: int = field(default=0, repr=False)
     _seqnum: int = field(default=0, repr=False)
 
@@ -169,13 +180,19 @@ class LinkLayer:
         Why async: Radio transmission may block waiting for channel clear
         (listen-before-talk) or TX completion.
 
+        If cad_enabled is True, performs CAD before transmitting. On busy
+        channel, backs off with exponential delay (0 to 2^attempt - 1 slots,
+        capped at 31 slots). After 3 full backoff cycles without clearing,
+        returns False without transmitting.
+
         Args:
             payload: The data to send (typically SCHC-compressed packet).
             dst_addr: Destination address (empty for broadcast).
             addr_mode: How to encode the destination.
 
         Returns:
-            True if transmission succeeded, False otherwise.
+            True if transmission succeeded, False if CAD failed after max
+            retries or radio transmit failed.
 
         Raises:
             FrameError: If the frame cannot be constructed (e.g., too large).
@@ -213,7 +230,64 @@ class LinkLayer:
             len(payload),
         )
 
+        # CAD with exponential backoff before transmit
+        if self.cad_enabled and not await self._wait_for_clear_channel():
+            logger.warning(
+                "TX aborted: channel busy after %d backoff cycles",
+                CAD_MAX_CYCLES,
+            )
+            return False
+
         return await self.radio.transmit(frame_bytes)
+
+    async def _wait_for_clear_channel(self) -> bool:
+        """Perform CAD with exponential backoff until channel is clear.
+
+        Algorithm: For each cycle, attempt CAD with increasing backoff.
+        - attempt 0: CAD, if busy wait 0 slots (immediate retry)
+        - attempt 1: CAD, if busy wait 0-1 slots
+        - attempt 2: CAD, if busy wait 0-3 slots
+        - ...
+        - attempt 5: CAD, if busy wait 0-31 slots (max)
+
+        If we complete CAD_MAX_BACKOFF_EXPONENT attempts and still busy,
+        that's one cycle. After CAD_MAX_CYCLES full cycles, give up.
+
+        Returns:
+            True if channel became clear, False after max retries.
+        """
+        max_slots = (1 << CAD_MAX_BACKOFF_EXPONENT) - 1  # 31
+
+        for cycle in range(CAD_MAX_CYCLES):
+            for attempt in range(CAD_MAX_BACKOFF_EXPONENT + 1):
+                channel_busy = await self.radio.cad(LORA_CAD_TIMEOUT_MS)
+
+                if not channel_busy:
+                    logger.debug(
+                        "CAD clear: cycle=%d attempt=%d",
+                        cycle,
+                        attempt,
+                    )
+                    return True
+
+                # Channel busy - compute backoff
+                # Window size: 2^attempt, capped at 2^max_exponent
+                window = min(1 << attempt, max_slots + 1)
+                slots = random.randint(0, window - 1)
+                backoff_ms = slots * CAD_SLOT_MS
+
+                logger.debug(
+                    "CAD busy: cycle=%d attempt=%d backoff=%dms (%d slots)",
+                    cycle,
+                    attempt,
+                    backoff_ms,
+                    slots,
+                )
+
+                if backoff_ms > 0:
+                    await asyncio.sleep(backoff_ms / 1000.0)
+
+        return False
 
     async def receive(self, timeout_ms: int) -> RxFrame | None:
         """Receive and validate a frame.

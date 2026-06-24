@@ -12,6 +12,7 @@ from lichen.sim.chaos import (
     JammerRule,
     LatencyRule,
     PartitionRule,
+    TxJitterRule,
 )
 from lichen.sim.medium import RxCandidate
 from lichen.sim.transmission import Transmission
@@ -341,6 +342,89 @@ class TestLatencyRule:
         candidate = replace(make_candidate(), added_latency_us=200)
         result = rule.apply(candidate)
         assert result.added_latency_us == 700
+
+
+class TestTxJitterRule:
+    """Test TxJitterRule functionality."""
+
+    def test_tx_jitter_rule_has_unique_id(self) -> None:
+        """TxJitterRule generates unique IDs."""
+        rule1 = TxJitterRule(jitter_min_us=100, jitter_max_us=500)
+        rule2 = TxJitterRule(jitter_min_us=100, jitter_max_us=500)
+        assert rule1.id != rule2.id
+
+    def test_tx_jitter_rule_custom_id(self) -> None:
+        """TxJitterRule accepts custom ID."""
+        rule = TxJitterRule(jitter_min_us=100, jitter_max_us=500, id="custom-id")
+        assert rule.id == "custom-id"
+
+    def test_tx_jitter_global_matches_any_sender(self) -> None:
+        """TxJitterRule with node_id=None matches any sender."""
+        rule = TxJitterRule(jitter_min_us=100, jitter_max_us=500, node_id=None)
+        tx1 = make_transmission("sender1")
+        tx2 = make_transmission("sender2")
+        assert rule.matches(tx1, "receiver") is True
+        assert rule.matches(tx2, "receiver") is True
+
+    def test_tx_jitter_per_node_matches_specific_sender(self) -> None:
+        """TxJitterRule with node_id matches only that sender."""
+        rule = TxJitterRule(jitter_min_us=100, jitter_max_us=500, node_id="sender1")
+        tx1 = make_transmission("sender1")
+        tx2 = make_transmission("sender2")
+        assert rule.matches(tx1, "receiver") is True
+        assert rule.matches(tx2, "receiver") is False
+
+    def test_tx_jitter_apply_passes_through(self) -> None:
+        """TxJitterRule apply passes candidate through unchanged."""
+        rule = TxJitterRule(jitter_min_us=100, jitter_max_us=500)
+        candidate = make_candidate()
+        result = rule.apply(candidate)
+        assert result is candidate
+
+    def test_tx_jitter_get_jitter_us_in_range(self) -> None:
+        """TxJitterRule.get_jitter_us returns values in range."""
+        import random
+
+        rng = random.Random(42)
+        rule = TxJitterRule(jitter_min_us=100, jitter_max_us=500, rng=rng)
+
+        for _ in range(100):
+            jitter = rule.get_jitter_us()
+            assert 100 <= jitter <= 500
+
+    def test_tx_jitter_get_jitter_us_deterministic_with_seed(self) -> None:
+        """TxJitterRule.get_jitter_us is deterministic with seeded rng."""
+        import random
+
+        rng1 = random.Random(42)
+        rng2 = random.Random(42)
+        rule1 = TxJitterRule(jitter_min_us=100, jitter_max_us=500, rng=rng1)
+        rule2 = TxJitterRule(jitter_min_us=100, jitter_max_us=500, rng=rng2)
+
+        jitters1 = [rule1.get_jitter_us() for _ in range(10)]
+        jitters2 = [rule2.get_jitter_us() for _ in range(10)]
+        assert jitters1 == jitters2
+
+    def test_tx_jitter_min_equals_max_returns_constant(self) -> None:
+        """TxJitterRule with min==max returns constant value."""
+        rule = TxJitterRule(jitter_min_us=250, jitter_max_us=250)
+        for _ in range(10):
+            assert rule.get_jitter_us() == 250
+
+    def test_tx_jitter_rejects_negative_min(self) -> None:
+        """TxJitterRule rejects negative jitter_min_us."""
+        with pytest.raises(ValueError, match="jitter_min_us must be non-negative"):
+            TxJitterRule(jitter_min_us=-100, jitter_max_us=500)
+
+    def test_tx_jitter_rejects_max_less_than_min(self) -> None:
+        """TxJitterRule rejects jitter_max_us < jitter_min_us."""
+        with pytest.raises(ValueError, match="jitter_max_us .* must be >= jitter_min_us"):
+            TxJitterRule(jitter_min_us=500, jitter_max_us=100)
+
+    def test_tx_jitter_zero_range_allowed(self) -> None:
+        """TxJitterRule allows zero jitter range."""
+        rule = TxJitterRule(jitter_min_us=0, jitter_max_us=0)
+        assert rule.get_jitter_us() == 0
 
 
 class TestChaosEngineBasics:

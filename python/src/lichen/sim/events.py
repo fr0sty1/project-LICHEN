@@ -47,6 +47,16 @@ class TxEndEvent(Event):
 
 
 @dataclass(frozen=True)
+class TxStartDelayedEvent(Event):
+    """A delayed transmission start (after jitter delay)."""
+
+    node_id: str
+    payload: bytes
+    tx_power_dbm: int
+    position: tuple[float, float, float]
+
+
+@dataclass(frozen=True)
 class RxTimeoutEvent(Event):
     """A node's receive timeout expires."""
 

@@ -17,14 +17,17 @@ from typing import TYPE_CHECKING
 
 from lichen.sim.duty_cycle import DutyCycleTracker
 from lichen.sim.protocol import (
+    MSG_CAD,
     MSG_REGISTER,
     MSG_RX,
     MSG_TIME,
     MSG_TX,
     ProtocolError,
+    decode_cad,
     decode_register,
     decode_rx,
     decode_tx,
+    encode_cad_result,
     encode_err,
     encode_ok,
     encode_rx_ok,
@@ -182,6 +185,8 @@ class NodeServer:
                     await self._handle_rx(node_id, data, writer)
                 elif msg_type == MSG_TIME:
                     await self._handle_time(writer)
+                elif msg_type == MSG_CAD:
+                    await self._handle_cad(node_id, data, writer)
                 else:
                     logger.warning(
                         "Unknown message type 0x%02x from node %s", msg_type, node_id
@@ -407,6 +412,47 @@ class NodeServer:
         time_us = self._simulation.current_time_us
         logger.debug("TIME query: %d us", time_us)
         await write_message(writer, encode_time_ok(time_us))
+
+    async def _handle_cad(
+        self,
+        node_id: str,
+        data: bytes,
+        writer: asyncio.StreamWriter,
+    ) -> None:
+        """Handle a CAD (Channel Activity Detection) message.
+
+        Checks if any transmission is detectable at the node's position
+        and returns the result.
+
+        Args:
+            node_id: The detecting node's ID.
+            data: The complete message bytes (including type byte).
+            writer: The stream writer for responses.
+        """
+        try:
+            payload = get_message_payload(data)
+            _timeout_ms = decode_cad(payload)
+        except ProtocolError as e:
+            logger.error("Failed to decode CAD from %s: %s", node_id, e)
+            await write_message(writer, encode_err(1, f"Invalid CAD: {e}"))
+            return
+
+        # Get node position
+        node = self._simulation.get_node(node_id)
+        if node is None:
+            logger.error("Node %s not found for CAD", node_id)
+            await write_message(writer, encode_err(8, f"Node not found: {node_id}"))
+            return
+
+        # Detect activity using the medium
+        current_time_us = self._simulation.current_time_us
+        detected = self._simulation.medium.detect_activity(
+            position=node.position,
+            time_us=current_time_us,
+        )
+
+        logger.debug("CAD at %s: detected=%s", node_id, detected)
+        await write_message(writer, encode_cad_result(detected))
 
     def _cleanup_node(self, node_id: str) -> None:
         """Clean up resources for a disconnected node.
