@@ -60,6 +60,23 @@ For native_sim, just run the produced ELF directly:
 ./build/zephyr/zephyr.exe
 ```
 
+## Memory Budget (validated 2026-06-24)
+
+STM32WL55 (nucleo_wl55jc) — 256 KB flash, 64 KB RAM:
+
+| Component | Flash | RAM |
+|-----------|-------|-----|
+| Zephyr kernel + IPv6 + CoAP + STM32WL LoRa | 78 KB (30%) | 30 KB (47%) |
+| **Budget for LICHEN protocol** | **~140 KB** | **~20 KB** |
+
+Build command:
+```sh
+ZEPHYR_TOOLCHAIN_VARIANT=gnuarmemb GNUARMEMB_TOOLCHAIN_PATH=/opt/homebrew \
+  west build -b nucleo_wl55jc lichen/apps/gateway
+```
+
+No RIOT OS fallback needed — plenty of headroom for the LICHEN protocol layer.
+
 ## Directory layout
 
 ```
