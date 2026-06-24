@@ -9,6 +9,15 @@ appropriate for constrained LoRa links.
 Also provides :class:`ProxyResource` — a forward proxy (RFC 7252 §5.7) that
 lets a local client reach any mesh node by passing a ``Proxy-Uri`` option.
 
+Observable resources (RFC 7641):
+
+* :class:`SenMLSensorsResource` — ``/sensors`` — SenML+CBOR pack of all
+  current sensor readings; clients subscribe with ``Observe: 0`` and receive
+  pushed updates whenever the node calls :meth:`~SenMLSensorsResource.update`.
+
+* :class:`SenMLLocationResource` — ``/location`` — SenML+CBOR lat/lon/alt pack;
+  updated by calling :meth:`~SenMLLocationResource.update`.
+
 Because the integrated Node class does not exist yet, the local resources read
 from an injected :class:`NodeInfo` provider rather than a live node; swap in
 a node-backed provider once it lands.
@@ -26,6 +35,7 @@ from aiocoap import BAD_GATEWAY, BAD_REQUEST, CHANGED, CONTENT, Message, resourc
 from aiocoap.numbers import ContentFormat
 
 CBOR = ContentFormat.CBOR
+SENML_CBOR = ContentFormat(112)  # application/senml+cbor (RFC 8428)
 
 
 class NodeInfo(Protocol):
@@ -158,15 +168,91 @@ class ProxyResource(resource.Resource):
         return relay
 
 
+class SenMLSensorsResource(resource.ObservableResource):
+    """Observable ``/sensors`` — SenML+CBOR pack of all current readings.
+
+    Callers push new readings by calling :meth:`update`; all registered CoAP
+    observers receive a notification automatically (RFC 7641).
+
+    Example::
+
+        sensors = SenMLSensorsResource()
+        site = build_site(info, sensors_resource=sensors)
+        # ... later, when readings change:
+        sensors.update([temperature(23.4), humidity(61.0)])
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._records: list[Any] = []
+
+    def update(self, records: list[Any]) -> None:
+        """Replace the current readings and notify all observers.
+
+        Args:
+            records: List of :class:`~lichen.senml.codec.SenmlRecord`.
+        """
+        from lichen.senml.codec import pack
+        self._records = records
+        self._payload = pack(records)
+        self.updated_state()
+
+    async def render_get(self, request: Message) -> Message:
+        from lichen.senml.codec import pack
+        payload = getattr(self, "_payload", pack([]))
+        msg = Message(code=CONTENT, payload=payload)
+        msg.opt.content_format = SENML_CBOR
+        return msg
+
+
+class SenMLLocationResource(resource.ObservableResource):
+    """Observable ``/location`` — SenML+CBOR lat/lon(/alt) pack.
+
+    Callers push position fixes by calling :meth:`update`.
+
+    Example::
+
+        loc = SenMLLocationResource()
+        site = build_site(info, location_resource=loc)
+        loc.update(lat=48.2049, lon=16.3710, alt=158.0)
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._payload: bytes = b""
+
+    def update(self, lat: float, lon: float, alt: float | None = None) -> None:
+        """Set the current position and notify all observers.
+
+        Args:
+            lat: Latitude in decimal degrees (WGS-84).
+            lon: Longitude in decimal degrees (WGS-84).
+            alt: Altitude in metres above WGS-84 ellipsoid, or None to omit.
+        """
+        from lichen.senml.codec import pack
+        from lichen.senml.profiles import location
+        self._payload = pack(location(lat, lon, alt))
+        self.updated_state()
+
+    async def render_get(self, request: Message) -> Message:
+        msg = Message(code=CONTENT, payload=self._payload)
+        msg.opt.content_format = SENML_CBOR
+        return msg
+
+
 def build_site(
     node_info: NodeInfo,
     *,
     mesh_client: aiocoap.Context | None = None,
+    sensors_resource: SenMLSensorsResource | None = None,
+    location_resource: SenMLLocationResource | None = None,
 ) -> resource.Site:
     """Build an aiocoap Site exposing the LICHEN node resources.
 
-    Pass ``mesh_client`` to also expose a forward proxy at ``/proxy``
-    that routes requests with ``Proxy-Uri`` into the mesh.
+    Pass ``mesh_client`` to also expose a forward proxy at ``/proxy``.
+    Pass pre-constructed observable resources to expose ``/sensors`` and/or
+    ``/location``; callers hold the references and call ``update()`` to push
+    readings to observers.
     """
     site = resource.Site()
     site.add_resource(
@@ -178,4 +264,8 @@ def build_site(
     site.add_resource(["config"], ConfigResource(node_info))
     if mesh_client is not None:
         site.add_resource(["proxy"], ProxyResource(mesh_client))
+    if sensors_resource is not None:
+        site.add_resource(["sensors"], sensors_resource)
+    if location_resource is not None:
+        site.add_resource(["location"], location_resource)
     return site
