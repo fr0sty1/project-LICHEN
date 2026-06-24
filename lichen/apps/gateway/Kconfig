@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+menu "LICHEN Gateway"
+
+config LORA_LICHEN_BLE
+	bool "BLE UART interface (Nordic UART Service)"
+	depends on BT
+	depends on BT_PERIPHERAL
+	default n
+	help
+	  Enable the Nordic UART Service (NUS) GATT profile so a phone can
+	  exchange SLIP-framed IPv6 packets with the gateway over BLE UART.
+	  Gate per board: the nucleo_wl55jc has no BLE radio; enable on
+	  nRF52840-based boards instead.
+
+endmenu

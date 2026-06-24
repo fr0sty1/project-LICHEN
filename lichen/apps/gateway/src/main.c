@@ -10,6 +10,10 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap_service.h>
 
+#ifdef CONFIG_LORA_LICHEN_BLE
+#include "ble_uart.h"
+#endif
+
 LOG_MODULE_REGISTER(lichen_gateway, LOG_LEVEL_INF);
 
 /* LoRa parameters per LICHEN spec: SF10 / 125 kHz / CR4-5.
@@ -228,6 +232,13 @@ int main(void)
 	/* SLIP bridge: enabled by Kconfig on hardware (CONFIG_SLIP +
 	 * CONFIG_NET_SLIP_TAP).  native_sim uses the lichen-sim driver
 	 * instead.  No app-level init required in either case. */
+
+	/* BLE UART (NUS) — optional, enabled on boards with a BLE radio */
+#ifdef CONFIG_LORA_LICHEN_BLE
+	if (ble_uart_init() < 0) {
+		LOG_WRN("BLE UART init failed — BLE unavailable");
+	}
+#endif
 
 	/* RPL DODAG root: Zephyr has no RPL subsystem.  This gateway acts as
 	 * the mesh coordinator; RPL signalling is deferred until the C RPL
