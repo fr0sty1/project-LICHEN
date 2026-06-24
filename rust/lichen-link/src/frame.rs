@@ -71,7 +71,7 @@ pub enum FrameError {
 ///
 /// Payload is stored as a reference to avoid heap allocation in `no_std`
 /// contexts. Use [`LichenFrameBuf`] for an owned variant (future work).
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct LichenFrame<'a> {
     pub epoch: u8,
     pub seqnum: u16,
@@ -174,5 +174,100 @@ impl<'a> LichenFrame<'a> {
             signature_present: llsec & SIGNATURE_BIT != 0,
             encrypted: llsec & ENCRYPTED_BIT != 0,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::vec::Vec;
+
+    fn from_hex(s: &str) -> Vec<u8> {
+        (0..s.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn broadcast_min_roundtrip() {
+        let wire = from_hex("0b0001000261626301020304");
+        let frame = LichenFrame::from_bytes(&wire).unwrap();
+        assert_eq!(frame.epoch, 1);
+        assert_eq!(frame.seqnum, 2);
+        assert_eq!(frame.dst_addr, &[] as &[u8]);
+        assert_eq!(frame.payload, b"abc");
+        assert_eq!(frame.mic, &[0x01, 0x02, 0x03, 0x04]);
+        assert_eq!(frame.addr_mode, AddrMode::None);
+        assert_eq!(frame.mic_length, MicLength::Bits32);
+        assert!(!frame.signature_present);
+        assert!(!frame.encrypted);
+        let mut buf = [0u8; 64];
+        let n = frame.write_to(&mut buf).unwrap();
+        assert_eq!(&buf[..n], &wire[..]);
+    }
+
+    #[test]
+    fn short_addr_roundtrip() {
+        let wire = from_hex("0c01102030abcd686900000000");
+        let frame = LichenFrame::from_bytes(&wire).unwrap();
+        assert_eq!(frame.epoch, 16);
+        assert_eq!(frame.seqnum, 0x2030);
+        assert_eq!(frame.dst_addr, &[0xab, 0xcd]);
+        assert_eq!(frame.payload, b"hi");
+        assert_eq!(frame.mic, &[0u8; 4]);
+        assert_eq!(frame.addr_mode, AddrMode::Short);
+        assert_eq!(frame.mic_length, MicLength::Bits32);
+        let mut buf = [0u8; 64];
+        let n = frame.write_to(&mut buf).unwrap();
+        assert_eq!(&buf[..n], &wire[..]);
+    }
+
+    #[test]
+    fn extended_addr_mic64_roundtrip() {
+        let wire = from_hex("1806ffffff0001020304050607646174610001020304050607");
+        let frame = LichenFrame::from_bytes(&wire).unwrap();
+        assert_eq!(frame.epoch, 255);
+        assert_eq!(frame.seqnum, 0xffff);
+        assert_eq!(frame.dst_addr, &[0, 1, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(frame.payload, b"data");
+        assert_eq!(frame.mic, &[0, 1, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(frame.addr_mode, AddrMode::Extended);
+        assert_eq!(frame.mic_length, MicLength::Bits64);
+        let mut buf = [0u8; 64];
+        let n = frame.write_to(&mut buf).unwrap();
+        assert_eq!(&buf[..n], &wire[..]);
+    }
+
+    #[test]
+    fn signed_encrypted_roundtrip() {
+        let wire = from_hex("09600300047800000000");
+        let frame = LichenFrame::from_bytes(&wire).unwrap();
+        assert_eq!(frame.epoch, 3);
+        assert_eq!(frame.seqnum, 4);
+        assert_eq!(frame.dst_addr, &[] as &[u8]);
+        assert_eq!(frame.payload, &[0x78]);
+        assert_eq!(frame.mic, &[0u8; 4]);
+        assert!(frame.signature_present);
+        assert!(frame.encrypted);
+        let mut buf = [0u8; 64];
+        let n = frame.write_to(&mut buf).unwrap();
+        assert_eq!(&buf[..n], &wire[..]);
+    }
+
+    #[test]
+    fn empty_input_error() {
+        assert_eq!(LichenFrame::from_bytes(&[]), Err(FrameError::Empty));
+    }
+
+    #[test]
+    fn truncated_body_error() {
+        assert_eq!(LichenFrame::from_bytes(&[0x0f, 0x00]), Err(FrameError::TruncatedBody));
+    }
+
+    #[test]
+    fn reserved_bit_error() {
+        let wire = from_hex("0b8001000261626301020304");
+        assert_eq!(LichenFrame::from_bytes(&wire), Err(FrameError::ReservedBitSet));
     }
 }

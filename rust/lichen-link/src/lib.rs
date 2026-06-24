@@ -26,5 +26,11 @@ pub mod replay;
 #[cfg(feature = "schnorr")]
 pub mod schnorr;
 
+#[cfg(feature = "schnorr")]
+pub mod identity;
+
+#[cfg(all(feature = "schnorr", feature = "std"))]
+pub mod link_layer;
+
 #[cfg(any(test, feature = "std"))]
 extern crate std;
