@@ -30,3 +30,5 @@ config LORA_LICHEN_SIM_SIM_ID
 	default "lichen"
 
 endif # LORA_LICHEN_SIM
+
+rsource "lr1110/Kconfig"

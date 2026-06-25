@@ -1,0 +1,50 @@
+# Copyright (c) 2024 The contributors to the LICHEN project
+# SPDX-License-Identifier: Apache-2.0
+
+description: Semtech LR1110 LoRa/GNSS/Wi-Fi Modem
+
+compatible: "semtech,lr1110"
+
+include: spi-device.yaml
+
+properties:
+  reset-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      GPIO connected to NRESET (active-low). The LR1110 reset is asserted
+      by driving this pin low for at least 100 us.
+
+  busy-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      GPIO connected to the BUSY output (active-high). The modem holds
+      BUSY high while processing a command; the HAL must wait for it to
+      fall before issuing the next command.
+
+  dio9-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      GPIO connected to DIO9. This is the primary radio interrupt line
+      used to signal TX-done, RX-done, and error conditions.
+
+  tx-enable-gpios:
+    type: phandle-array
+    description: |
+      Optional RF switch TX-enable GPIO.  When present the driver asserts
+      this during transmission and de-asserts during reception.
+
+  tcxo-power-startup-delay-ms:
+    type: int
+    description: |
+      Startup stabilisation delay in milliseconds for an external TCXO
+      supplied by the LR1110's TCXO supply pin.  Omit if a crystal or
+      no TCXO is used.
+
+  hp-max-power:
+    type: boolean
+    description: |
+      Select the High-Power PA path (up to +22 dBm, requires VBAT > 3.7 V)
+      instead of the default Low-Power PA path (up to +14 dBm, DCDC).

@@ -1,0 +1,3 @@
+/ { chosen { zephyr,lora = &lora0; }; };
+
+&lora0 { status = "okay"; };

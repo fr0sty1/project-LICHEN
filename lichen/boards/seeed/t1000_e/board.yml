@@ -1,0 +1,5 @@
+board:
+  name: t1000_e
+  vendor: seeed
+  socs:
+  - name: nrf52840

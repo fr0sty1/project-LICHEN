@@ -1,0 +1,17 @@
+identifier: t1000_e/nrf52840
+name: Seeed SenseCAP T1000-E
+type: mcu
+arch: arm
+ram: 256
+flash: 1024
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+supported:
+  - ble
+  - gpio
+  - lora
+  - spi
+  - usbd
+vendor: seeed

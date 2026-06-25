@@ -1,0 +1,117 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: The contributors to the LICHEN project
+ *
+ * Seeed SenseCAP T1000-E — nRF52840-QIAA + LR1110
+ *
+ * WARNING: GPIO pin assignments are UNVERIFIED PLACEHOLDERS marked
+ * with TODO comments.  Verify against the T1000-E schematic (or the
+ * Amazon Sidewalk SDK hw_config.h) before flashing real hardware.
+ */
+
+/dts-v1/;
+#include <nordic/nrf52840_qiaa.dtsi>
+#include "t1000_e-pinctrl.dtsi"
+
+/ {
+	model = "Seeed SenseCAP T1000-E";
+	compatible = "seeed,t1000-e";
+
+	chosen {
+		zephyr,sram           = &sram0;
+		zephyr,flash          = &flash0;
+		zephyr,code-partition = &slot0_partition;
+		zephyr,console        = &cdc_acm_uart0;
+	};
+
+	aliases {
+		lora0     = &lora0;
+		watchdog0 = &wdt0;
+	};
+};
+
+&uicr {
+	gpio-as-nreset;
+};
+
+&gpiote {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+/*
+ * LR1110 on SPI2.
+ *
+ * TODO: replace placeholder GPIO pin numbers with verified values.
+ *   CS     = P1.04 (placeholder — verify)
+ *   RESET  = P1.05 (placeholder — verify)
+ *   BUSY   = P1.06 (placeholder — verify)
+ *   DIO9   = P1.07 (placeholder — verify)
+ *
+ * The LR1110 on T1000-E uses the LP PA (≤14 dBm) supplied via DCDC.
+ * Add hp-max-power in an app overlay if the HP PA path is wired.
+ */
+&spi2 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	cs-gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;   /* TODO: verify */
+	pinctrl-0 = <&spi2_default>;
+	pinctrl-1 = <&spi2_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	lora0: lora@0 {
+		compatible = "semtech,lr1110";
+		reg = <0>;
+		status = "disabled";
+		reset-gpios = <&gpio1 5 GPIO_ACTIVE_LOW>;  /* TODO: verify */
+		busy-gpios  = <&gpio1 6 GPIO_ACTIVE_HIGH>; /* TODO: verify */
+		dio9-gpios  = <&gpio1 7 GPIO_ACTIVE_HIGH>; /* TODO: verify */
+		spi-max-frequency = <8000000>;
+	};
+};
+
+/* Native USB — CDC-ACM console */
+zephyr_udc0: &usbd {
+	compatible = "nordic,nrf-usbd";
+	status = "okay";
+
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_partition: partition@0 {
+			label = "mcuboot";
+			reg = <0x00000000 0x0000C000>;
+		};
+		slot0_partition: partition@c000 {
+			label = "image-0";
+			reg = <0x0000C000 0x00067000>;
+		};
+		slot1_partition: partition@73000 {
+			label = "image-1";
+			reg = <0x00073000 0x00067000>;
+		};
+		scratch_partition: partition@da000 {
+			label = "image-scratch";
+			reg = <0x000da000 0x0001e000>;
+		};
+		storage_partition: partition@f8000 {
+			label = "storage";
+			reg = <0x000f8000 0x00008000>;
+		};
+	};
+};
