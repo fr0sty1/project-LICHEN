@@ -1,0 +1,17 @@
+/*
+ * T-Echo gateway overlay — nRF52840 + SX1262
+ *
+ * Enables the SX1262 LoRa radio and wires it into the Zephyr LoRa subsystem.
+ * The board DTS (lichen/boards/lilygo/t_echo/t_echo_nrf52840.dts) leaves
+ * lora0 disabled; this overlay enables it for the gateway application.
+ */
+
+/ {
+	chosen {
+		zephyr,lora = &lora0;
+	};
+};
+
+&lora0 {
+	status = "okay";
+};

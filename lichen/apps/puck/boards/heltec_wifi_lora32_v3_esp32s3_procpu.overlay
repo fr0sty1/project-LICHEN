@@ -1,0 +1,13 @@
+/*
+ * Heltec WiFi LoRa 32 V3 puck overlay — ESP32-S3 + SX1262
+ *
+ * The out-of-tree board DTS (lichen/boards/heltec/heltec_wifi_lora32_v3/)
+ * already defines lora0 on spi2.  This overlay wires it into the Zephyr
+ * LoRa subsystem via the chosen binding.
+ */
+
+/ {
+	chosen {
+		zephyr,lora = &lora0;
+	};
+};

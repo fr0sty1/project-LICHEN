@@ -1,0 +1,57 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: The contributors to the LICHEN project
+ *
+ * Heltec WiFi LoRa 32 V3 — ESP32-S3FN8 pin assignments.
+ * Pin data sourced from Heltec schematics v3.0 and cross-checked
+ * against the Meshtastic firmware (variants/heltec_v3/variant.h).
+ */
+
+#include <zephyr/dt-bindings/pinctrl/esp-pinctrl-common.h>
+#include <dt-bindings/pinctrl/esp32s3-pinctrl.h>
+#include <zephyr/dt-bindings/pinctrl/esp32s3-gpio-sigmap.h>
+
+&pinctrl {
+	/* UART0: debug console — TX=GPIO43, RX=GPIO44 */
+	uart0_default: uart0_default {
+		group1 {
+			pinmux = <UART0_TX_GPIO43>;
+			output-high;
+		};
+		group2 {
+			pinmux = <UART0_RX_GPIO44>;
+			bias-pull-up;
+		};
+	};
+
+	/*
+	 * I2C0: SSD1306 OLED display — SDA=GPIO17, SCL=GPIO18
+	 * Disabled by default; enable via app overlay.
+	 */
+	i2c0_default: i2c0_default {
+		group1 {
+			pinmux = <I2C0_SDA_GPIO17>,
+				 <I2C0_SCL_GPIO18>;
+			bias-pull-up;
+			drive-open-drain;
+			output-high;
+		};
+	};
+
+	/*
+	 * SPI2: SX1262 LoRa radio
+	 *   SCK=GPIO9  MOSI=GPIO10  MISO=GPIO11  CS=GPIO8
+	 *   RESET=GPIO12  BUSY=GPIO13  DIO1=GPIO14
+	 */
+	spim2_default: spim2_default {
+		group1 {
+			pinmux = <SPIM2_MISO_GPIO11>,
+				 <SPIM2_SCLK_GPIO9>,
+				 <SPIM2_CSEL_GPIO8>;
+		};
+		group2 {
+			pinmux = <SPIM2_MOSI_GPIO10>;
+			output-low;
+		};
+	};
+};

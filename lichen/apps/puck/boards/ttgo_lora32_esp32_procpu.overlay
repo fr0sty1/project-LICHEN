@@ -1,0 +1,13 @@
+/*
+ * LilyGo TTGO LoRa32 (T3 V1.6.1) puck overlay — ESP32 + SX1276
+ *
+ * The upstream board DTS (lilygo/ttgo_lora32/ttgo_lora32_esp32_procpu.dts)
+ * already defines lora0 (semtech,sx1276) on spi3.  This overlay wires it
+ * into the Zephyr LoRa subsystem via the chosen binding.
+ */
+
+/ {
+	chosen {
+		zephyr,lora = &lora0;
+	};
+};
