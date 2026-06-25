@@ -4,7 +4,7 @@
  * Zephyr GNSS driver for the Airoha AG3335 series.
  *
  * Power sequence (T1000-E schematic / Meshtastic variant.h):
- *   1. VRTC_EN → HIGH  (RTC backup supply; never toggled after init)
+ *   1. VRTC_EN → HIGH  (RTC backup supply; never toggled after first init)
  *   2. SLEEP_INT → HIGH (hold for normal operation)
  *   3. GPS_EN → HIGH   (main power)
  *   4. 200ms settling
@@ -12,6 +12,11 @@
  *
  * After power-on the AG3335 streams NMEA-0183 at 115200 baud with no
  * further init required.
+ *
+ * PM_DEVICE suspend: closes the UART pipe and pulls GPS_EN low (hard
+ * sleep — chip loses ephemeris).  Resume repeats the full power sequence.
+ * For duty-cycled tracking the application calls pm_device_action_run()
+ * between fix intervals.
  */
 
 #include <zephyr/drivers/gnss.h>
@@ -20,6 +25,7 @@
 #include <zephyr/modem/backend/uart.h>
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/pm/device.h>
 #include <string.h>
 
 #include "gnss_nmea0183.h"
@@ -45,6 +51,7 @@ struct gnss_ag3335_config {
 };
 
 struct gnss_ag3335_data {
+	/* match_data MUST be first — modem_chat passes it as user_data */
 	struct gnss_nmea0183_match_data match_data;
 #if CONFIG_GNSS_SATELLITES
 	struct gnss_satellite satellites[CONFIG_GNSS_AG3335_SATELLITES_COUNT];
@@ -70,28 +77,104 @@ MODEM_CHAT_MATCHES_DEFINE(unsol_matches,
 
 MODEM_CHAT_SCRIPT_EMPTY_DEFINE(gnss_ag3335_init_chat_script);
 
+/* --------------------------------------------------------------------------
+ * Power control
+ * -------------------------------------------------------------------------- */
+
+static int gnss_ag3335_power_on(const struct device *dev)
+{
+	const struct gnss_ag3335_config *cfg = dev->config;
+
+	if (gpio_pin_configure_dt(&cfg->vrtc_gpio,      GPIO_OUTPUT_INACTIVE) < 0 ||
+	    gpio_pin_configure_dt(&cfg->sleep_int_gpio,  GPIO_OUTPUT_INACTIVE) < 0 ||
+	    gpio_pin_configure_dt(&cfg->reset_gpio,      GPIO_OUTPUT_INACTIVE) < 0 ||
+	    gpio_pin_configure_dt(&cfg->enable_gpio,     GPIO_OUTPUT_INACTIVE) < 0) {
+		LOG_ERR("GPIO configuration failed");
+		return -EIO;
+	}
+
+	gpio_pin_set_dt(&cfg->vrtc_gpio,      1); /* RTC backup — hold always */
+	gpio_pin_set_dt(&cfg->sleep_int_gpio, 1); /* normal op  — hold always */
+	gpio_pin_set_dt(&cfg->enable_gpio,    1); /* main power on */
+	k_sleep(K_MSEC(200));
+
+	gpio_pin_set_dt(&cfg->reset_gpio, 1);
+	k_sleep(K_MSEC(10));
+	gpio_pin_set_dt(&cfg->reset_gpio, 0);
+	k_sleep(K_MSEC(100));
+
+	return 0;
+}
+
+static void gnss_ag3335_power_off(const struct device *dev)
+{
+	const struct gnss_ag3335_config *cfg = dev->config;
+
+	gpio_pin_set_dt(&cfg->enable_gpio, 0);
+}
+
+/* --------------------------------------------------------------------------
+ * PM actions
+ * -------------------------------------------------------------------------- */
+
 static int gnss_ag3335_resume(const struct device *dev)
 {
 	struct gnss_ag3335_data *data = dev->data;
 	int ret;
 
+	ret = gnss_ag3335_power_on(dev);
+	if (ret < 0) {
+		return ret;
+	}
+
 	ret = modem_pipe_open(data->uart_pipe);
 	if (ret < 0) {
+		gnss_ag3335_power_off(dev);
 		return ret;
 	}
 
 	ret = modem_chat_attach(&data->chat, data->uart_pipe);
 	if (ret < 0) {
 		modem_pipe_close(data->uart_pipe);
+		gnss_ag3335_power_off(dev);
 		return ret;
 	}
 
 	ret = modem_chat_run_script(&data->chat, &gnss_ag3335_init_chat_script);
 	if (ret < 0) {
 		modem_pipe_close(data->uart_pipe);
+		gnss_ag3335_power_off(dev);
 	}
 	return ret;
 }
+
+#if CONFIG_PM_DEVICE
+static int gnss_ag3335_suspend(const struct device *dev)
+{
+	struct gnss_ag3335_data *data = dev->data;
+
+	modem_pipe_close(data->uart_pipe);
+	gnss_ag3335_power_off(dev);
+	return 0;
+}
+
+static int gnss_ag3335_pm_action(const struct device *dev,
+				 enum pm_device_action action)
+{
+	switch (action) {
+	case PM_DEVICE_ACTION_RESUME:
+		return gnss_ag3335_resume(dev);
+	case PM_DEVICE_ACTION_SUSPEND:
+		return gnss_ag3335_suspend(dev);
+	default:
+		return -ENOTSUP;
+	}
+}
+#endif
+
+/* --------------------------------------------------------------------------
+ * One-time init (modem stack setup only)
+ * -------------------------------------------------------------------------- */
 
 static const struct gnss_driver_api gnss_ag3335_api = {
 };
@@ -124,7 +207,8 @@ static void gnss_ag3335_init_pipe(const struct device *dev)
 		.transmit_buf_size = sizeof(data->uart_backend_transmit_buf),
 	};
 
-	data->uart_pipe = modem_backend_uart_init(&data->uart_backend, &uart_backend_config);
+	data->uart_pipe = modem_backend_uart_init(&data->uart_backend,
+						  &uart_backend_config);
 }
 
 static uint8_t gnss_ag3335_char_delimiter[] = {'\r', '\n'};
@@ -150,38 +234,14 @@ static int gnss_ag3335_init_chat(const struct device *dev)
 	return modem_chat_init(&data->chat, &chat_config);
 }
 
-static int gnss_ag3335_power_on(const struct device *dev)
-{
-	const struct gnss_ag3335_config *cfg = dev->config;
-
-	if (gpio_pin_configure_dt(&cfg->vrtc_gpio,      GPIO_OUTPUT_INACTIVE) < 0 ||
-	    gpio_pin_configure_dt(&cfg->sleep_int_gpio,  GPIO_OUTPUT_INACTIVE) < 0 ||
-	    gpio_pin_configure_dt(&cfg->reset_gpio,      GPIO_OUTPUT_INACTIVE) < 0 ||
-	    gpio_pin_configure_dt(&cfg->enable_gpio,     GPIO_OUTPUT_INACTIVE) < 0) {
-		LOG_ERR("GPIO configuration failed");
-		return -EIO;
-	}
-
-	gpio_pin_set_dt(&cfg->vrtc_gpio,      1); /* RTC backup — hold always */
-	gpio_pin_set_dt(&cfg->sleep_int_gpio, 1); /* normal op  — hold always */
-	gpio_pin_set_dt(&cfg->enable_gpio,    1); /* main power on */
-	k_sleep(K_MSEC(200));                     /* settling */
-
-	gpio_pin_set_dt(&cfg->reset_gpio, 1);     /* reset pulse */
-	k_sleep(K_MSEC(10));
-	gpio_pin_set_dt(&cfg->reset_gpio, 0);
-	k_sleep(K_MSEC(100));                     /* boot after reset */
-
-	return 0;
-}
-
 static int gnss_ag3335_init(const struct device *dev)
 {
+	const struct gnss_ag3335_config *cfg = dev->config;
 	int ret;
 
-	ret = gnss_ag3335_power_on(dev);
-	if (ret < 0) {
-		return ret;
+	if (!device_is_ready(cfg->uart)) {
+		LOG_ERR("UART not ready");
+		return -ENODEV;
 	}
 
 	ret = gnss_ag3335_init_match(dev);
@@ -196,8 +256,17 @@ static int gnss_ag3335_init(const struct device *dev)
 		return ret;
 	}
 
+#if CONFIG_PM_DEVICE
+	pm_device_init_suspended(dev);
+	return 0;
+#else
 	return gnss_ag3335_resume(dev);
+#endif
 }
+
+/* --------------------------------------------------------------------------
+ * Instance definition
+ * -------------------------------------------------------------------------- */
 
 #define GNSS_AG3335_DEFINE(inst)                                                    \
 	static const struct gnss_ag3335_config gnss_ag3335_config_##inst = {        \
@@ -210,7 +279,9 @@ static int gnss_ag3335_init(const struct device *dev)
                                                                                     \
 	static struct gnss_ag3335_data gnss_ag3335_data_##inst;                     \
                                                                                     \
-	DEVICE_DT_INST_DEFINE(inst, gnss_ag3335_init, NULL,                         \
+	PM_DEVICE_DT_INST_DEFINE(inst, gnss_ag3335_pm_action);                      \
+                                                                                    \
+	DEVICE_DT_INST_DEFINE(inst, gnss_ag3335_init, PM_DEVICE_DT_INST_GET(inst), \
 			      &gnss_ag3335_data_##inst, &gnss_ag3335_config_##inst, \
 			      POST_KERNEL, CONFIG_GNSS_INIT_PRIORITY,               \
 			      &gnss_ag3335_api);

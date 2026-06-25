@@ -47,3 +47,9 @@ properties:
     type: phandle-array
     required: true
     description: GPS_RESET — active-HIGH reset pulse
+
+  wakeup-gpios:
+    type: phandle-array
+    description: |
+      GPS_RTC_INT — pulse HIGH to wake the chip from soft sleep.
+      Optional; unused by the driver today but wired on the T1000-E.
