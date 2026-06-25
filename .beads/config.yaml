@@ -56,4 +56,4 @@
 
 dolt.shared-server: false
 
-# sync.remote: "git+ssh://git@github.com/fr0sty1/project-LICHEN.git"
+sync.remote: "git+ssh://git@github.com/fr0sty1/project-LICHEN.git"
