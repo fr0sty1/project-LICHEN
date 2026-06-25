@@ -13,15 +13,21 @@ This document describes how LICHEN nodes expose a Meshtastic-compatible BLE inte
 To enable Meshtastic compatibility, explicitly request it at build time:
 
 ```
-# Zephyr
-west build -DCONFIG_LICHEN_MESHTASTIC_COMPAT=y
-
 # Rust
 cargo build --features meshtastic-compat
 
-# Python (development/simulation)
+# Python (development/simulation only)
 pip install lichen[meshtastic]
 ```
+
+**Supported platforms:**
+- ESP32 (via esp32-nimble)
+- nRF52840 (via nrf-softdevice)
+- Linux (via bluer, for testing)
+
+**Not supported:**
+- STM32WL (no BLE hardware—use serial transport instead)
+- Native Zephyr (use Rust via FFI if needed)
 
 Without this feature, users must use LICHEN-native apps (iOS, Android, CLI, or web) to interact with the node.
 
