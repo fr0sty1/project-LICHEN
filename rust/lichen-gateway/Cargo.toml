@@ -11,9 +11,6 @@ lichen-node = { path = "../lichen-node", features = ["std"] }
 lichen-schc = { path = "../lichen-schc", features = ["std"] }
 lichen-sim  = { path = "../lichen-sim" }
 
-[target.'cfg(target_os = "linux")'.dependencies]
-libc = "0.2"
-
 # Async runtime + serial I/O
 tokio        = { version = "1", features = ["rt-multi-thread", "macros", "io-util", "net", "time", "signal", "sync"] }
 tokio-serial = "5"
@@ -28,6 +25,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # CLI
 clap = { version = "4", features = ["derive", "env"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
 
 [[bin]]
 name = "lichend"

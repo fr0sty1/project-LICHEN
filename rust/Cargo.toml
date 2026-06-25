@@ -2,6 +2,8 @@
 resolver = "2"
 members = [
     "lichen-core",
+    "lichen-hal",
+    "lichen-embassy",
     "lichen-link",
     "lichen-schc",
     "lichen-coap",

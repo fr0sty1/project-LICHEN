@@ -7,8 +7,11 @@
 #![no_std]
 
 pub mod addr;
+pub mod announce;
 pub mod constants;
 pub mod icmpv6;
+pub mod ipv6;
+pub mod loadng;
 
 #[cfg(feature = "std")]
 extern crate std;

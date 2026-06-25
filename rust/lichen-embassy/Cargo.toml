@@ -1,0 +1,39 @@
+[package]
+name = "lichen-embassy"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "Embassy HAL implementations for LICHEN. Feature-gated per target."
+
+[features]
+default = []
+# Target features - only one should be enabled at a time
+esp32s3 = ["dep:esp-hal"]
+# nrf52840 = ["dep:embassy-nrf"]  # ponytail: uncomment when targeting nRF
+# rp2040 = ["dep:embassy-rp"]     # ponytail: uncomment when targeting RP2040
+# stm32wl = ["dep:embassy-stm32"] # ponytail: uncomment when targeting STM32WL
+
+# Mock/simulator target for host testing
+mock = []
+
+[dependencies]
+lichen-hal = { path = "../lichen-hal" }
+lichen-core = { path = "../lichen-core" }
+
+# Embassy core (always needed)
+embassy-time = "0.4"
+embassy-sync = "0.6"
+
+# Target-specific HALs (feature-gated)
+[target.'cfg(target_arch = "xtensa")'.dependencies]
+esp-hal = { version = "0.23", optional = true }
+
+# ponytail: other targets commented until actually needed
+# [target.'cfg(target_arch = "thumbv7em")'.dependencies]
+# embassy-nrf = { version = "0.2", optional = true }
+# embassy-rp = { version = "0.2", optional = true }
+# embassy-stm32 = { version = "0.2", optional = true }
+
+[dev-dependencies]
+# ponytail: tokio only for tests, not for the library itself
+tokio = { version = "1", features = ["rt", "macros", "time"] }

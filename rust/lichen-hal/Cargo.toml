@@ -1,0 +1,13 @@
+[package]
+name = "lichen-hal"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "Hardware abstraction traits for LICHEN. Implemented by Embassy HALs and Linux std."
+
+[features]
+default = []
+std = []
+
+[dependencies]
+# ponytail: no deps, pure traits

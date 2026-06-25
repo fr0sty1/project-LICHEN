@@ -38,6 +38,27 @@ pub async fn send(_node: SocketAddr, to: &str, message: &str, fmt: &OutputFormat
 
 pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> CmdResult {
     match action {
+        KeyAction::Generate { output: out_path } => {
+            // Generate 32 random bytes for Ed25519 seed
+            let mut seed = [0u8; 32];
+            getrandom(&mut seed)?;
+
+            // Derive public key (Ed25519: first 32 bytes of SHA512(seed) as scalar, then multiply)
+            // ponytail: using simple derivation without pulling in ed25519 crate
+            // Real impl would use ed25519-dalek; this outputs raw seed for now
+            let seed_hex: String = seed.iter().map(|b| format!("{b:02x}")).collect();
+
+            // Derive IID from pubkey hash (simplified: just use first 8 bytes of seed for demo)
+            let iid_hex: String = seed[..8].iter().map(|b| format!("{b:02x}")).collect();
+
+            if let Some(path) = out_path {
+                std::fs::write(&path, format!("{seed_hex}\n"))?;
+                output::print_kv("private_key", path.display().to_string().as_str(), fmt);
+            } else {
+                output::print_kv("private_key", &seed_hex, fmt);
+            }
+            output::print_kv("iid", &iid_hex, fmt);
+        }
         KeyAction::Fingerprint => {
             let _resp = coap_get(node, "/key/fingerprint").await?;
             output::print_kv("fingerprint", "(stub)", fmt);
@@ -53,6 +74,14 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
             output::print_kv("unpinned", &peer, fmt);
         }
     }
+    Ok(())
+}
+
+fn getrandom(buf: &mut [u8]) -> Result<(), Box<dyn std::error::Error>> {
+    use std::fs::File;
+    use std::io::Read;
+    let mut f = File::open("/dev/urandom")?;
+    f.read_exact(buf)?;
     Ok(())
 }
 
