@@ -1,0 +1,16 @@
+identifier: t_deck/esp32s3/procpu
+name: Lilygo T-Deck PROCPU
+type: mcu
+arch: xtensa
+toolchain:
+  - zephyr
+supported:
+  - gpio
+  - uart
+  - spi
+  - counter
+  - watchdog
+  - entropy
+  - bluetooth
+  - lora
+vendor: lilygo
