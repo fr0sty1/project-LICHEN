@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2024 The contributors to the LICHEN project
+
+description: |
+  Airoha AG3335 GNSS receiver (NMEA-0183 via UART).
+
+  Streams standard NMEA sentences at 115200 baud with no host-side
+  initialisation required.  Power sequencing uses four GPIOs derived
+  from the Seeed SenseCAP T1000-E schematic.
+
+  Example (nRF52840, T1000-E pin assignments):
+
+    &uart1 {
+      current-speed = <115200>;
+      ...
+      gnss0: ag3335 {
+        compatible = "airoha,ag3335";
+        enable-gpios    = <&gpio1 11 GPIO_ACTIVE_HIGH>;
+        vrtc-gpios      = <&gpio0  8 GPIO_ACTIVE_HIGH>;
+        sleep-int-gpios = <&gpio1 12 GPIO_ACTIVE_HIGH>;
+        reset-gpios     = <&gpio1 15 GPIO_ACTIVE_HIGH>;
+      };
+    };
+
+compatible: "airoha,ag3335"
+
+include:
+  - uart-device.yaml
+
+properties:
+  enable-gpios:
+    type: phandle-array
+    required: true
+    description: GPS_EN — main power enable (active HIGH)
+
+  vrtc-gpios:
+    type: phandle-array
+    required: true
+    description: GPS_VRTC_EN — RTC backup supply; held HIGH at all times
+
+  sleep-int-gpios:
+    type: phandle-array
+    required: true
+    description: GPS_SLEEP_INT — held HIGH for normal (non-sleep) operation
+
+  reset-gpios:
+    type: phandle-array
+    required: true
+    description: GPS_RESET — active-HIGH reset pulse

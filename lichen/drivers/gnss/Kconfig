@@ -1,0 +1,25 @@
+config GNSS_AG3335
+	bool "Airoha AG3335 GNSS driver"
+	default y
+	depends on DT_HAS_AIROHA_AG3335_ENABLED
+	select GNSS
+	select MODEM_MODULES
+	select MODEM_BACKEND_UART
+	select MODEM_CHAT
+	select GNSS_PARSE
+	select GNSS_NMEA0183
+	select GNSS_NMEA0183_MATCH
+	help
+	  Driver for the Airoha AG3335 GNSS receiver. Outputs standard
+	  NMEA-0183 at 115200 baud; no host-side init sequence required.
+
+if GNSS_AG3335
+
+config GNSS_AG3335_SATELLITES_COUNT
+	int "Maximum satellite count"
+	depends on GNSS_SATELLITES
+	default 24
+	help
+	  Maximum number of satellites reported in the satellites callback.
+
+endif # GNSS_AG3335

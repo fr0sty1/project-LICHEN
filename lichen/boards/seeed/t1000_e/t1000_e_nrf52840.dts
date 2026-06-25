@@ -26,6 +26,7 @@
 
 	aliases {
 		lora0     = &lora0;
+		gnss0     = &gnss0;
 		watchdog0 = &wdt0;
 	};
 };
@@ -74,6 +75,31 @@
 		busy-gpios  = <&gpio1 6 GPIO_ACTIVE_HIGH>; /* TODO: verify */
 		dio9-gpios  = <&gpio1 7 GPIO_ACTIVE_HIGH>; /* TODO: verify */
 		spi-max-frequency = <8000000>;
+	};
+};
+
+/*
+ * AG3335 GNSS on UART1.
+ *
+ * Pin assignments verified against Meshtastic variants/nrf52840/tracker-t1000-e/variant.h:
+ *   TX  = P0.13  RX  = P0.14
+ *   EN  = P1.11  VRTC = P0.08  SLEEP_INT = P1.12  RESET = P1.15
+ */
+&uart1 {
+	compatible = "nordic,nrf-uarte";
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&uart1_default>;
+	pinctrl-1 = <&uart1_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	gnss0: ag3335 {
+		compatible = "airoha,ag3335";
+		status = "disabled";
+		enable-gpios    = <&gpio1 11 GPIO_ACTIVE_HIGH>;
+		vrtc-gpios      = <&gpio0  8 GPIO_ACTIVE_HIGH>;
+		sleep-int-gpios = <&gpio1 12 GPIO_ACTIVE_HIGH>;
+		reset-gpios     = <&gpio1 15 GPIO_ACTIVE_HIGH>;
 	};
 };
 

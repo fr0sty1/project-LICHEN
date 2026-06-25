@@ -1,3 +1,5 @@
 / { chosen { zephyr,lora = &lora0; }; };
 
 &lora0 { status = "okay"; };
+
+&gnss0 { status = "okay"; };

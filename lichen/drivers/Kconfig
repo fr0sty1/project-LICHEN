@@ -1,1 +1,2 @@
 rsource "lora/Kconfig"
+rsource "gnss/Kconfig"
