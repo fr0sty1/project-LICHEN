@@ -1,0 +1,15 @@
+/*
+ * T-Echo puck overlay — enables the SX1262 LoRa radio and wires it
+ * into the Zephyr LoRa subsystem.
+ */
+
+/ {
+	chosen {
+		zephyr,lora = &lora0;
+	};
+};
+
+/* Enable the SX1262 node (disabled by default in the board DTS) */
+&lora0 {
+	status = "okay";
+};

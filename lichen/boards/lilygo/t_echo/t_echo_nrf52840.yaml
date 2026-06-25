@@ -1,0 +1,21 @@
+identifier: t_echo/nrf52840
+name: LilyGo T-Echo V1
+type: mcu
+arch: arm
+ram: 256
+flash: 1024
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+supported:
+  - adc
+  - ble
+  - gpio
+  - i2c
+  - lora
+  - rtc
+  - spi
+  - usbd
+  - watchdog
+vendor: lilygo

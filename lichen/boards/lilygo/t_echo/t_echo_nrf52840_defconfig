@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# ARM MPU and stack protection
+CONFIG_ARM_MPU=y
+CONFIG_HW_STACK_PROTECTION=y
+
+# LF clock: 32 kHz crystal (LFXO) is populated on T-Echo
+CONFIG_CLOCK_CONTROL_NRF_K32SRC_XTAL=y
+
+# GPIO
+CONFIG_GPIO=y
+
+# SPI (for LoRa and e-ink)
+CONFIG_SPI=y
+
+# I2C (for PCF8563 RTC)
+CONFIG_I2C=y
+
+# RTT console — no USB-UART chip on V1; use J-Link RTT for debug output.
+# Apps that want USB CDC-ACM console should add CONFIG_USB_DEVICE_STACK=y
+# and CONFIG_USB_CDC_ACM=y to their prj.conf.
+CONFIG_USE_SEGGER_RTT=y
+CONFIG_RTT_CONSOLE=y
+CONFIG_CONSOLE=y
+CONFIG_UART_CONSOLE=n

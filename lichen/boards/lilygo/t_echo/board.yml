@@ -1,0 +1,5 @@
+board:
+  name: t_echo
+  vendor: lilygo
+  socs:
+  - name: nrf52840

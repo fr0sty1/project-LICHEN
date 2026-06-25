@@ -1,3 +1,4 @@
 build:
   cmake: drivers
   kconfig: drivers/Kconfig
+  board_root: .
