@@ -5,11 +5,11 @@
 
 / {
 	chosen {
-		zephyr,lora = &lora0;
+		zephyr,lora = &lora;
 	};
 };
 
 /* Enable the SX1262 node (disabled by default in the board DTS) */
-&lora0 {
+&lora {
 	status = "okay";
 };

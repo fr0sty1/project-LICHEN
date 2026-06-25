@@ -15,3 +15,5 @@ config LORA_LICHEN_BLE
 	  nRF52840-based boards instead.
 
 endmenu
+
+source "Kconfig.zephyr"

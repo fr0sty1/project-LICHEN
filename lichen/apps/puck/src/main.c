@@ -62,7 +62,7 @@ int main(void)
 {
 	LOG_INF("LICHEN puck starting");
 
-	const struct device *lora_dev = DEVICE_DT_GET(DT_NODELABEL(lora0));
+	const struct device *lora_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_lora));
 
 	if (!device_is_ready(lora_dev)) {
 		LOG_ERR("LoRa radio not ready");

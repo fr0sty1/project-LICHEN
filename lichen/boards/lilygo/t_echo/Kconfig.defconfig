@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+if BOARD_T_ECHO
+
+config BT_CTLR
+	default BT
+
+endif # BOARD_T_ECHO

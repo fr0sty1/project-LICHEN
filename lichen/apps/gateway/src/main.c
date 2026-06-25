@@ -204,7 +204,7 @@ int main(void)
 
 	/* LoRa radio init.  The sim driver ignores RF parameters and returns 0;
 	 * on hardware this configures the SX126x transceiver. */
-	const struct device *lora_dev = DEVICE_DT_GET(DT_NODELABEL(lora0));
+	const struct device *lora_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_lora));
 
 	if (!device_is_ready(lora_dev)) {
 		/* Expected in CI (no sim server); gateway still serves CoAP. */

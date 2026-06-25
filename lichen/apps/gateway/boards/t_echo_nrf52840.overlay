@@ -8,10 +8,10 @@
 
 / {
 	chosen {
-		zephyr,lora = &lora0;
+		zephyr,lora = &lora;
 	};
 };
 
-&lora0 {
+&lora {
 	status = "okay";
 };
