@@ -17,9 +17,24 @@
 #include <zephyr/drivers/uart.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
+#include <zephyr/usb/usb_device.h>
+#include <zephyr/init.h>
+#endif
 #include <string.h>
 
 LOG_MODULE_REGISTER(lichen_native, LOG_LEVEL_INF);
+
+#if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
+/* Enable USB early so CDC-ACM enumerates before peripheral drivers start,
+ * allowing console output even if LoRa/GNSS init fails. */
+static int lichen_usb_early_init(void)
+{
+	int ret = usb_enable(NULL);
+	return (ret == -EALREADY) ? 0 : ret;
+}
+SYS_INIT(lichen_usb_early_init, APPLICATION, 0);
+#endif
 
 /* --------------------------------------------------------------------------
  * Minimal CBOR encoding helpers — integer-keyed map only
@@ -333,6 +348,13 @@ int lichen_native_init(lichen_native_rx_cb_t rx_cb)
 {
 	s_rx_cb = rx_cb;
 	s_log_subscribed = false;
+
+#if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
+	int usb_ret = usb_enable(NULL);
+	if (usb_ret && usb_ret != -EALREADY) {
+		LOG_ERR("USB enable failed: %d", usb_ret);
+	}
+#endif
 
 #if DT_HAS_CHOSEN(lichen_native_uart)
 	s_uart = DEVICE_DT_GET(DT_CHOSEN(lichen_native_uart));
