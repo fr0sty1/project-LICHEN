@@ -149,7 +149,7 @@ int main(void)
 	LOG_INF("LoRa SF10/125kHz/CR4-5 @ %u Hz", LORA_FREQ_HZ);
 
 	/* GNSS power-on (PM_DEVICE start) */
-#if IS_ENABLED(CONFIG_GNSS) && DT_HAS_ALIAS(gnss0)
+#if IS_ENABLED(CONFIG_GNSS_AG3335)
 	const struct device *gnss_dev = DEVICE_DT_GET(DT_ALIAS(gnss0));
 	if (device_is_ready(gnss_dev)) {
 		pm_device_action_run(gnss_dev, PM_DEVICE_ACTION_RESUME);

@@ -14,6 +14,10 @@
 #include "ble_uart.h"
 #endif
 
+#if IS_ENABLED(CONFIG_LICHEN_NATIVE)
+#include <lichen/native.h>
+#endif
+
 LOG_MODULE_REGISTER(lichen_gateway, LOG_LEVEL_INF);
 
 /* LoRa parameters per LICHEN spec: SF10 / 125 kHz / CR4-5.
@@ -222,6 +226,12 @@ static void lora_rx_entry(void *a, void *b, void *c)
 			LOG_INF("RX %d B rssi=%d snr=%d [%02x%s]",
 				len, rssi, snr, buf[0],
 				len > 1 ? " ..." : "");
+#if IS_ENABLED(CONFIG_LICHEN_NATIVE)
+			static const uint8_t unknown_iid[8];
+			lichen_native_send_message_received(unknown_iid,
+							    buf, len,
+							    rssi, snr);
+#endif
 		} else if (len < 0) {
 			LOG_WRN("lora_recv err: %d", len);
 			k_sleep(K_MSEC(100));
@@ -268,6 +278,14 @@ int main(void)
 			k_sem_give(&s_radio_ready);
 		}
 	}
+
+	/* LICHEN Native over USB CDC-ACM */
+#if IS_ENABLED(CONFIG_LICHEN_NATIVE)
+	if (lichen_native_init(lichen_native_handle_rx) == 0) {
+		LOG_INF("LICHEN Native ready");
+		lichen_native_send_hello();
+	}
+#endif
 
 	/* SLIP bridge: enabled by Kconfig on hardware (CONFIG_SLIP +
 	 * CONFIG_NET_SLIP_TAP).  native_sim uses the lichen-sim driver

@@ -1,5 +1,17 @@
-/ { chosen { zephyr,lora = &lora0; }; };
+/ {
+	chosen {
+		zephyr,lora        = &lora0;
+		lichen,native-uart = &cdc_acm_uart0;
+		zephyr,uart-mcumgr = &cdc_acm_uart1;
+	};
+};
 
-&lora0 { status = "okay"; };
+&lora0  { status = "okay"; };
+&gnss0  { status = "okay"; };
 
-&gnss0 { status = "okay"; };
+/* Second CDC-ACM instance for SMP image management (mcumgr CLI). */
+&usbd {
+	cdc_acm_uart1: cdc_acm_uart1 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};

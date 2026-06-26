@@ -25,9 +25,11 @@ LOG_MODULE_REGISTER(lichen_native, LOG_LEVEL_INF);
  * Minimal CBOR encoding helpers — integer-keyed map only
  * -------------------------------------------------------------------------- */
 
-/* Returns new position after writing, or -1 if buffer exhausted. */
+/* Returns new position after writing, or -1 if buffer exhausted.
+ * All helpers propagate -1 from a prior call so callers can chain them. */
 static int cbor_uint(uint8_t *buf, int pos, int cap, uint64_t val)
 {
+	if (pos < 0) { return -1; }
 	if (val <= 0x17u) {
 		if (pos + 1 > cap) { return -1; }
 		buf[pos++] = (uint8_t)(0x00u | val);
@@ -59,6 +61,7 @@ static int cbor_uint(uint8_t *buf, int pos, int cap, uint64_t val)
 
 static int cbor_int(uint8_t *buf, int pos, int cap, int64_t val)
 {
+	if (pos < 0) { return -1; }
 	if (val >= 0) {
 		return cbor_uint(buf, pos, cap, (uint64_t)val);
 	}
@@ -89,6 +92,7 @@ static int cbor_int(uint8_t *buf, int pos, int cap, int64_t val)
 
 static int cbor_bstr(uint8_t *buf, int pos, int cap, const uint8_t *data, size_t len)
 {
+	if (pos < 0) { return -1; }
 	/* header */
 	if (len <= 0x17u) {
 		if (pos + 1 > cap) { return -1; }
@@ -110,6 +114,7 @@ static int cbor_bstr(uint8_t *buf, int pos, int cap, const uint8_t *data, size_t
 
 static int cbor_tstr(uint8_t *buf, int pos, int cap, const char *s)
 {
+	if (pos < 0) { return -1; }
 	size_t len = strlen(s);
 	if (len <= 0x17u) {
 		if (pos + 1 > cap) { return -1; }
@@ -131,6 +136,7 @@ static int cbor_tstr(uint8_t *buf, int pos, int cap, const char *s)
 
 static int cbor_map(uint8_t *buf, int pos, int cap, uint32_t n_items)
 {
+	if (pos < 0) { return -1; }
 	if (n_items <= 0x17u) {
 		if (pos + 1 > cap) { return -1; }
 		buf[pos++] = (uint8_t)(0xa0u | n_items);
@@ -146,6 +152,7 @@ static int cbor_map(uint8_t *buf, int pos, int cap, uint32_t n_items)
 
 static int cbor_array(uint8_t *buf, int pos, int cap, uint32_t n_items)
 {
+	if (pos < 0) { return -1; }
 	if (n_items <= 0x17u) {
 		if (pos + 1 > cap) { return -1; }
 		buf[pos++] = (uint8_t)(0x80u | n_items);
@@ -157,6 +164,7 @@ static int cbor_array(uint8_t *buf, int pos, int cap, uint32_t n_items)
 
 static int cbor_bool(uint8_t *buf, int pos, int cap, bool val)
 {
+	if (pos < 0) { return -1; }
 	if (pos + 1 > cap) { return -1; }
 	buf[pos++] = val ? 0xf5u : 0xf4u;
 	return pos;
