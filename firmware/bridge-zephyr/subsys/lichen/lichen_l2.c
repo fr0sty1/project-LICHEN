@@ -43,12 +43,19 @@ LOG_MODULE_REGISTER(lichen_l2, CONFIG_LICHEN_L2_LOG_LEVEL);
  *
  * Note: SCHC compression/decompression is handled internally by lichen_link_tx/rx,
  * so we only need the raw IPv6 and final frame buffers here.
+ *
+ * Buffer sizing: LICHEN_L2_MTU (200) + 40 (IPv6 base header) = 240 bytes.
+ * This assumes no IPv6 extension headers. LICHEN's SCHC rules (schc/rules.py)
+ * are defined for specific protocol stacks (CoAP, ICMPv6, RPL) without extension
+ * headers; packets with extension headers fall back to rule 255 (uncompressed)
+ * and will fail the MTU check. When OSCORE support is added, its headers will
+ * need a dedicated SCHC rule, at which point buffer sizing should be revisited.
  */
-static uint8_t tx_ipv6_buf[LICHEN_L2_MTU + 40];  /* IPv6 packet */
+static uint8_t tx_ipv6_buf[LICHEN_L2_MTU + 40];  /* IPv6 base header + payload */
 static uint8_t tx_frame_buf[MAX_LORA_FRAME];     /* LICHEN frame */
 static K_MUTEX_DEFINE(tx_mutex);
 
-static uint8_t rx_ipv6_buf[LICHEN_L2_MTU + 40];  /* Decompressed IPv6 */
+static uint8_t rx_ipv6_buf[LICHEN_L2_MTU + 40];  /* Decompressed IPv6 (base hdr) */
 static K_MUTEX_DEFINE(rx_mutex);
 
 /* Link context for framing */

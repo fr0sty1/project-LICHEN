@@ -29,6 +29,12 @@ extern "C" {
  *
  * This is the maximum IPv6 packet size we can send. After SCHC compression
  * and LICHEN framing, the on-air payload fits within LoRa limits.
+ *
+ * Note: Current SCHC rules assume no IPv6 extension headers. Packets with
+ * extension headers (Hop-by-Hop, Routing, OSCORE, etc.) exceed the internal
+ * buffer size (MTU + 40 for base IPv6 header) and will be rejected. When
+ * OSCORE or other extension header support is added, revisit lichen_l2.c
+ * buffer sizing and define appropriate SCHC compression rules.
  */
 #define LICHEN_L2_MTU 200
 
