@@ -74,6 +74,29 @@ enum oscore_err {
  * Contains the cryptographic material and state for one peer.
  * Each context has a sender context (for outgoing messages) and
  * a recipient context (for incoming messages).
+ *
+ * @warning INTERNAL STRUCTURE - DO NOT ACCESS FIELDS DIRECTLY
+ *
+ * This struct is defined in the public header only because C requires the
+ * complete type for stack allocation patterns. Callers MUST treat this as
+ * opaque and use only the provided API functions:
+ *
+ *   - oscore_ctx_create()       - Create and register a new context
+ *   - oscore_ctx_free()         - Destroy a context (wipes key material)
+ *   - oscore_ctx_get()          - Get pointer by recipient ID (for protect/unprotect)
+ *   - oscore_ctx_get_sender_seq() / oscore_ctx_set_sender_seq() - Sequence persistence
+ *
+ * Direct field access:
+ *   - Bypasses mutex protection required for thread safety
+ *   - Exposes key material that should remain in protected memory
+ *   - Creates ABI coupling that prevents internal layout changes
+ *
+ * The struct layout is subject to change without notice. Code that accesses
+ * fields directly will break.
+ *
+ * @note oscore_ctx_lookup() copies this struct including key material to the
+ * caller's stack. Prefer oscore_ctx_get() which returns a pointer and keeps
+ * key material in the protected context array.
  */
 struct oscore_ctx {
 	/* Common context (shared) */
@@ -190,12 +213,21 @@ int oscore_ctx_get_sender_seq(const struct oscore_ctx *ctx, uint32_t *sender_seq
 /**
  * @brief Look up a security context by recipient ID (copy).
  *
+ * @deprecated This function copies key material to the caller's stack, which
+ * is a security concern. Use oscore_ctx_get() instead, which returns a pointer
+ * to the internal context without copying sensitive data.
+ *
  * Copies the context into the caller-provided buffer.
  *
  * WARNING: The copied context CANNOT be used with oscore_protect_request()
  * or oscore_unprotect_request() because those functions require a pointer
  * to the real internal context for atomic state updates. Use oscore_ctx_get()
  * instead for contexts that will be used with protect/unprotect.
+ *
+ * @warning Copies key material (sender_key, recipient_key, common_iv) to
+ * caller's stack. This exposes sensitive cryptographic material outside the
+ * protected internal context array. The caller is responsible for wiping the
+ * buffer after use if security is a concern.
  *
  * @param[in]  recipient_id     Recipient ID to search for
  * @param[in]  recipient_id_len Length of recipient ID
