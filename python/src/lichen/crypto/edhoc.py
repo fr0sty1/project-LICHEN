@@ -337,11 +337,23 @@ class EdhocInitiator:
 
         # ID_CRED_I - our credential identifier (simplified: just pubkey)
         id_cred_i = self.identity.pubkey
+        cred_i = self.identity.pubkey  # CRED_I = pubkey for simplified case
 
-        # Compute Signature_3
-        # M_3 = << ID_CRED_I, TH_3, CRED_I, ?EAD_3 >>
-        # ponytail: simplified - CRED_I = pubkey
-        m_3 = cbor2.dumps([id_cred_i, self._th_3, self.identity.pubkey])
+        # Compute MAC_3 per RFC 9528 Section 4.4.2
+        # MAC_3 = EDHOC-KDF(PRK_4e3m, TH_3, "MAC_3", context_3, mac_length_3)
+        # context_3 = << ID_CRED_I, CRED_I, ?EAD_3 >>
+        context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(cred_i)
+        mac_3 = _edhoc_kdf(self._prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
+
+        # Compute Signature_3 per RFC 9528 Section 4.4.2 (COSE Sig_structure)
+        # M_3 = ["Signature1", << ID_CRED_I >>, TH_3, << CRED_I, ?EAD_3 >>, MAC_3]
+        m_3 = cbor2.dumps([
+            "Signature1",
+            cbor2.dumps(id_cred_i),  # << ID_CRED_I >> bstr-wrapped
+            self._th_3,
+            cbor2.dumps(cred_i),     # << CRED_I >> bstr-wrapped
+            mac_3,
+        ])
         signing_key = SigningKey(self.identity.seed)
         signature_3 = signing_key.sign(m_3).signature
 
@@ -480,10 +492,23 @@ class EdhocResponder:
 
         # Create PLAINTEXT_2 = (ID_CRED_R, Signature_or_MAC_2, ?EAD_2)
         id_cred_r = self.identity.pubkey
+        cred_r = self.identity.pubkey  # CRED_R = pubkey for simplified case
 
-        # Compute Signature_2
-        # M_2 = << ID_CRED_R, TH_2, CRED_R, ?EAD_2 >>
-        m_2 = cbor2.dumps([id_cred_r, self._th_2, self.identity.pubkey])
+        # Compute MAC_2 per RFC 9528 Section 4.3.2
+        # MAC_2 = EDHOC-KDF(PRK_3e2m, TH_2, "MAC_2", context_2, mac_length_2)
+        # context_2 = << ID_CRED_R, CRED_R, ?EAD_2 >>
+        context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
+        mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
+
+        # Compute Signature_2 per RFC 9528 Section 4.3.2 (COSE Sig_structure)
+        # M_2 = ["Signature1", << ID_CRED_R >>, TH_2, << CRED_R, ?EAD_2 >>, MAC_2]
+        m_2 = cbor2.dumps([
+            "Signature1",
+            cbor2.dumps(id_cred_r),
+            self._th_2,
+            cbor2.dumps(cred_r),
+            mac_2,
+        ])
         signing_key = SigningKey(self.identity.seed)
         signature_2 = signing_key.sign(m_2).signature
 
@@ -529,16 +554,29 @@ class EdhocResponder:
         id_cred_i = pt3_items[0]
         signature_3 = pt3_items[1]
 
-        # Verify Signature_3
-        m_3 = cbor2.dumps([id_cred_i, self._th_3, peer_pubkey])
+        # PRK_4e3m = PRK_3e2m for SIGN_SIGN (needed for MAC_3)
+        self._prk_4e3m = self._prk_3e2m
+
+        # Verify Signature_3 per RFC 9528 Section 4.4.2
+        cred_i = peer_pubkey  # CRED_I = pubkey for simplified case
+
+        # Recompute MAC_3
+        context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(cred_i)
+        mac_3 = _edhoc_kdf(self._prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
+
+        # M_3 = ["Signature1", << ID_CRED_I >>, TH_3, << CRED_I, ?EAD_3 >>, MAC_3]
+        m_3 = cbor2.dumps([
+            "Signature1",
+            cbor2.dumps(id_cred_i),
+            self._th_3,
+            cbor2.dumps(cred_i),
+            mac_3,
+        ])
         verify_key = VerifyKey(peer_pubkey)
         try:
             verify_key.verify(m_3, signature_3)
         except Exception as e:
             raise ValueError(f"Signature verification failed: {e}") from e
-
-        # PRK_4e3m = PRK_3e2m for SIGN_SIGN
-        self._prk_4e3m = self._prk_3e2m
 
         # TH_4 = H(TH_3, CIPHERTEXT_3)
         th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)
