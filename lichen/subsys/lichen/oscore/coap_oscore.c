@@ -19,10 +19,23 @@
 
 LOG_MODULE_REGISTER(coap_oscore, CONFIG_LICHEN_OSCORE_LOG_LEVEL);
 
-/* Default plaintext buffer size if not configured via Kconfig */
-#ifndef CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX
-#define CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX 256
-#endif
+/**
+ * @brief Translate Zephyr CoAP errno to OSCORE error space.
+ */
+static inline int coap_err_to_oscore(int err)
+{
+	if (err >= 0) {
+		return OSCORE_OK;
+	}
+	switch (err) {
+	case -ENOMEM:
+		return OSCORE_ERR_BUFFER_TOO_SMALL;
+	case -EINVAL:
+		return OSCORE_ERR_INVALID_PARAM;
+	default:
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+}
 
 bool coap_oscore_is_protected(const struct coap_packet *request)
 {
@@ -165,25 +178,25 @@ int coap_oscore_protect_response(struct oscore_ctx *ctx,
 			       COAP_RESPONSE_CODE_CHANGED, /* Outer code for OSCORE */
 			       coap_header_get_id(original_request));
 	if (ret < 0) {
-		return ret;
+		return coap_err_to_oscore(ret);
 	}
 
 	/* Add OSCORE option */
 	ret = coap_packet_append_option(response, COAP_OPTION_OSCORE,
 					oscore_opt, oscore_opt_len);
 	if (ret < 0) {
-		return ret;
+		return coap_err_to_oscore(ret);
 	}
 
 	/* Add payload marker and ciphertext */
 	ret = coap_packet_append_payload_marker(response);
 	if (ret < 0) {
-		return ret;
+		return coap_err_to_oscore(ret);
 	}
 
 	ret = coap_packet_append_payload(response, ciphertext, ciphertext_len);
 	if (ret < 0) {
-		return ret;
+		return coap_err_to_oscore(ret);
 	}
 
 	LOG_DBG("Protected OSCORE response: ct_len=%zu", ciphertext_len);
@@ -207,8 +220,9 @@ int coap_oscore_send_unauthorized(struct coap_resource *resource,
 			       COAP_RESPONSE_CODE_UNAUTHORIZED,
 			       coap_header_get_id(request));
 	if (ret < 0) {
-		return ret;
+		return coap_err_to_oscore(ret);
 	}
 
-	return coap_resource_send(resource, &resp, addr, addr_len, NULL);
+	ret = coap_resource_send(resource, &resp, addr, addr_len, NULL);
+	return coap_err_to_oscore(ret);
 }
