@@ -6,6 +6,22 @@
  * @brief CoAP client for mesh requests
  *
  * Implements asynchronous CoAP client using Zephyr's coap_client APIs.
+ *
+ * Design note: Single global socket
+ * ---------------------------------
+ * This module uses a single UDP socket (s_sock) shared across all requests.
+ * The socket is created once at init and never recreated. This simplifies
+ * resource management for embedded targets where sockets are scarce.
+ *
+ * Known limitation: if the socket enters an error state (ICMP unreachable
+ * caching, interface down, etc.), all subsequent requests fail until the
+ * module is reinitialized via device reset. Zephyr's coap_client API does
+ * support per-request sockets, but implementing reconnect logic was deferred
+ * as YAGNI for the current use cases.
+ *
+ * If you hit "CoAP stopped working after network blip" in the field, the
+ * workaround is device reset. A future enhancement could add a
+ * lichen_coap_client_reconnect() function if this becomes a real problem.
  */
 
 #include <string.h>
