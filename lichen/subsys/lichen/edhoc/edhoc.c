@@ -340,17 +340,18 @@ static size_t encode_cid(uint8_t *out, size_t out_size,
 			 const uint8_t *cid, size_t cid_len)
 {
 	ZCBOR_STATE_E(zse, 0, out, out_size, 0);
+	bool ok;
 
 	if (cid_len == 1 && cid[0] <= 23) {
-		zcbor_uint32_put(zse, cid[0]);
+		ok = zcbor_uint32_put(zse, cid[0]);
 	} else {
-		zcbor_bstr_encode_ptr(zse, cid, cid_len);
+		ok = zcbor_bstr_encode_ptr(zse, cid, cid_len);
 	}
 	if (!zcbor_check_error(zse)) {
 		return 0;
 	}
 
-	return zse->payload - out;
+	return ok ? (size_t)(zse->payload - out) : 0;
 }
 
 int edhoc_initiator_init(struct edhoc_initiator *ctx,
@@ -604,11 +605,10 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 
 	/* M_3 = CBOR(ID_CRED_I, TH_3, CRED_I) - simplified */
 	ZCBOR_STATE_E(zse_m3, 0, m_3, sizeof(m_3), 0);
-	zcbor_bstr_encode_ptr(zse_m3, ctx->ed_pubkey, 32);
-	zcbor_bstr_encode_ptr(zse_m3, ctx->th_3, 32);
-	zcbor_bstr_encode_ptr(zse_m3, ctx->ed_pubkey, 32);
-	if (!zcbor_check_error(zse_m3)) {
-		return -EINVAL;
+	if (!zcbor_bstr_encode_ptr(zse_m3, ctx->ed_pubkey, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_m3, ctx->th_3, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_m3, ctx->ed_pubkey, 32)) {
+		return -ENOMEM;
 	}
 	m_3_len = zse_m3->payload - m_3;
 
@@ -617,10 +617,9 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	/* Encode PLAINTEXT_3 */
 	uint8_t plaintext_3[128];
 	ZCBOR_STATE_E(zse_pt3, 0, plaintext_3, sizeof(plaintext_3), 0);
-	zcbor_bstr_encode_ptr(zse_pt3, ctx->ed_pubkey, 32);
-	zcbor_bstr_encode_ptr(zse_pt3, signature_3, 64);
-	if (!zcbor_check_error(zse_pt3)) {
-		return -EINVAL;
+	if (!zcbor_bstr_encode_ptr(zse_pt3, ctx->ed_pubkey, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_pt3, signature_3, 64)) {
+		return -ENOMEM;
 	}
 	size_t pt3_len = zse_pt3->payload - plaintext_3;
 
@@ -637,13 +636,12 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	/* A_3 for AAD - simplified */
 	uint8_t a_3[64];
 	ZCBOR_STATE_E(zse_a3, 0, a_3, sizeof(a_3), 0);
-	zcbor_list_start_encode(zse_a3, 3);
-	zcbor_tstr_put_lit(zse_a3, "Encrypt0");
-	zcbor_bstr_encode_ptr(zse_a3, NULL, 0);
-	zcbor_bstr_encode_ptr(zse_a3, ctx->th_3, 32);
-	zcbor_list_end_encode(zse_a3, 3);
-	if (!zcbor_check_error(zse_a3)) {
-		return -EINVAL;
+	if (!zcbor_list_start_encode(zse_a3, 3) ||
+	    !zcbor_tstr_put_lit(zse_a3, "Encrypt0") ||
+	    !zcbor_bstr_encode_ptr(zse_a3, NULL, 0) ||
+	    !zcbor_bstr_encode_ptr(zse_a3, ctx->th_3, 32) ||
+	    !zcbor_list_end_encode(zse_a3, 3)) {
+		return -ENOMEM;
 	}
 	size_t a_3_len = zse_a3->payload - a_3;
 
@@ -864,11 +862,10 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	uint8_t m_2[128];
 	size_t m_2_len = 0;
 	ZCBOR_STATE_E(zse_m2, 0, m_2, sizeof(m_2), 0);
-	zcbor_bstr_encode_ptr(zse_m2, ctx->ed_pubkey, 32);
-	zcbor_bstr_encode_ptr(zse_m2, ctx->th_2, 32);
-	zcbor_bstr_encode_ptr(zse_m2, ctx->ed_pubkey, 32);
-	if (!zcbor_check_error(zse_m2)) {
-		return -EINVAL;
+	if (!zcbor_bstr_encode_ptr(zse_m2, ctx->ed_pubkey, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_m2, ctx->th_2, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_m2, ctx->ed_pubkey, 32)) {
+		return -ENOMEM;
 	}
 	m_2_len = zse_m2->payload - m_2;
 
@@ -876,10 +873,9 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 
 	uint8_t plaintext_2[128];
 	ZCBOR_STATE_E(zse_pt2, 0, plaintext_2, sizeof(plaintext_2), 0);
-	zcbor_bstr_encode_ptr(zse_pt2, ctx->ed_pubkey, 32);
-	zcbor_bstr_encode_ptr(zse_pt2, signature_2, 64);
-	if (!zcbor_check_error(zse_pt2)) {
-		return -EINVAL;
+	if (!zcbor_bstr_encode_ptr(zse_pt2, ctx->ed_pubkey, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_pt2, signature_2, 64)) {
+		return -ENOMEM;
 	}
 	size_t pt2_len = zse_pt2->payload - plaintext_2;
 
@@ -986,13 +982,12 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	/* A_3 for AAD */
 	uint8_t a_3[64];
 	ZCBOR_STATE_E(zse_a3, 0, a_3, sizeof(a_3), 0);
-	zcbor_list_start_encode(zse_a3, 3);
-	zcbor_tstr_put_lit(zse_a3, "Encrypt0");
-	zcbor_bstr_encode_ptr(zse_a3, NULL, 0);
-	zcbor_bstr_encode_ptr(zse_a3, ctx->th_3, 32);
-	zcbor_list_end_encode(zse_a3, 3);
-	if (!zcbor_check_error(zse_a3)) {
-		return -EINVAL;
+	if (!zcbor_list_start_encode(zse_a3, 3) ||
+	    !zcbor_tstr_put_lit(zse_a3, "Encrypt0") ||
+	    !zcbor_bstr_encode_ptr(zse_a3, NULL, 0) ||
+	    !zcbor_bstr_encode_ptr(zse_a3, ctx->th_3, 32) ||
+	    !zcbor_list_end_encode(zse_a3, 3)) {
+		return -ENOMEM;
 	}
 	size_t a_3_len = zse_a3->payload - a_3;
 
@@ -1024,11 +1019,10 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	uint8_t m_3[128];
 	size_t m_3_len = 0;
 	ZCBOR_STATE_E(zse_m3, 0, m_3, sizeof(m_3), 0);
-	zcbor_bstr_encode_ptr(zse_m3, id_cred_i.value, id_cred_i.len);
-	zcbor_bstr_encode_ptr(zse_m3, ctx->th_3, 32);
-	zcbor_bstr_encode_ptr(zse_m3, peer_pubkey, 32);
-	if (!zcbor_check_error(zse_m3)) {
-		return -EINVAL;
+	if (!zcbor_bstr_encode_ptr(zse_m3, id_cred_i.value, id_cred_i.len) ||
+	    !zcbor_bstr_encode_ptr(zse_m3, ctx->th_3, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_m3, peer_pubkey, 32)) {
+		return -ENOMEM;
 	}
 	m_3_len = zse_m3->payload - m_3;
 
