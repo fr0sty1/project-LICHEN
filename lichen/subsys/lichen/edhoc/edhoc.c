@@ -209,6 +209,47 @@ static int edhoc_kdf(const uint8_t prk[32],
 }
 
 /*
+ * Build COSE Sig_structure per RFC 9052 Section 4.4.
+ * Sig_structure = ["Signature1", body_protected, external_aad, payload]
+ *
+ * For EDHOC Suite 0:
+ * - body_protected = << ID_CRED >> (bstr-wrapped)
+ * - external_aad = << TH, CRED >> (CBOR sequence as bstr)
+ * - payload = MAC (from EDHOC-KDF)
+ */
+static int build_sig_structure(const uint8_t *id_cred, size_t id_cred_len,
+			       const uint8_t *th,
+			       const uint8_t *cred, size_t cred_len,
+			       const uint8_t *mac, size_t mac_len,
+			       uint8_t *out, size_t out_size, size_t *out_len)
+{
+	/* external_aad = << TH, CRED >> */
+	uint8_t ext_aad[96];
+	ZCBOR_STATE_E(zse_ext, 0, ext_aad, sizeof(ext_aad), 0);
+	zcbor_bstr_encode_ptr(zse_ext, th, 32);
+	zcbor_bstr_encode_ptr(zse_ext, cred, cred_len);
+	size_t ext_aad_len = zse_ext->payload - ext_aad;
+
+	/* body_protected = << ID_CRED >> */
+	uint8_t body_prot[48];
+	ZCBOR_STATE_E(zse_bp, 0, body_prot, sizeof(body_prot), 0);
+	zcbor_bstr_encode_ptr(zse_bp, id_cred, id_cred_len);
+	size_t body_prot_len = zse_bp->payload - body_prot;
+
+	/* Sig_structure = ["Signature1", body_protected, external_aad, MAC] */
+	ZCBOR_STATE_E(zse, 0, out, out_size, 0);
+	zcbor_list_start_encode(zse, 4);
+	zcbor_tstr_put_lit(zse, "Signature1");
+	zcbor_bstr_encode_ptr(zse, body_prot, body_prot_len);
+	zcbor_bstr_encode_ptr(zse, ext_aad, ext_aad_len);
+	zcbor_bstr_encode_ptr(zse, mac, mac_len);
+	zcbor_list_end_encode(zse, 4);
+
+	*out_len = zse->payload - out;
+	return 0;
+}
+
+/*
  * AES-CCM-16-64-128 encryption
  */
 static int aead_encrypt(const uint8_t key[16],
@@ -564,27 +605,41 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	if (signature_2.len != EDHOC_ED25519_SIG_LEN) {
 		return -EINVAL;
 	}
-
-	/* Verify Signature_2 over M_2 = (ID_CRED_R, TH_2, CRED_R) */
-	/* Matches how the responder constructs and signs M_2 per RFC 9528 */
-	uint8_t m_2[128];
-	size_t m_2_len = 0;
-	ZCBOR_STATE_E(zse_m2, 0, m_2, sizeof(m_2), 0);
-	zcbor_bstr_encode_ptr(zse_m2, peer_pubkey, 32);
-	zcbor_bstr_encode_ptr(zse_m2, ctx->th_2, 32);
-	zcbor_bstr_encode_ptr(zse_m2, peer_pubkey, 32);
-	m_2_len = zse_m2->payload - m_2;
-
-	if (ed25519_verify(peer_pubkey, signature_2.value, m_2, m_2_len) != 0) {
-		LOG_ERR("Signature_2 verification failed");
-		return -EACCES;
+	if (signature_2.len != EDHOC_ED25519_SIG_LEN) {
+		return -EINVAL;
 	}
 
 	/* PRK_3e2m = PRK_2e for SIGN_SIGN Suite 0 */
 	memcpy(ctx->prk_3e2m, ctx->prk_2e, 32);
 
-	/* TH_3 = H(TH_2 || PLAINTEXT_2 || CRED_R) per RFC 9528 Section 4.2.2 */
-	/* ponytail: CRED_R = raw pubkey, proper impl needs CBOR credential */
+	/* Verify Signature_2 per RFC 9528 */
+	/* MAC_2 = EDHOC-KDF(PRK_3e2m, TH_2, "MAC_2", context_2, 32) */
+	uint8_t context_2[128];
+	ZCBOR_STATE_E(zse_ctx2, 0, context_2, sizeof(context_2), 0);
+	zcbor_bstr_encode_ptr(zse_ctx2, ctx->c_r, ctx->c_r_len);
+	zcbor_bstr_encode_ptr(zse_ctx2, peer_pubkey, 32);
+	zcbor_bstr_encode_ptr(zse_ctx2, ctx->th_2, 32);
+	zcbor_bstr_encode_ptr(zse_ctx2, peer_pubkey, 32);
+	size_t context_2_len = zse_ctx2->payload - context_2;
+
+	uint8_t mac_2[32];
+	ret = edhoc_kdf(ctx->prk_3e2m, ctx->th_2, "MAC_2", context_2, context_2_len, mac_2, 32);
+	if (ret != 0) {
+		return ret;
+	}
+
+	uint8_t sig_struct_2[256];
+	size_t sig_struct_2_len;
+	build_sig_structure(peer_pubkey, 32, ctx->th_2, peer_pubkey, 32,
+			    mac_2, 32, sig_struct_2, sizeof(sig_struct_2), &sig_struct_2_len);
+
+	if (ed25519_verify(peer_pubkey, signature_2.value, sig_struct_2, sig_struct_2_len) != 0) {
+		LOG_ERR("Signature_2 verification failed");
+		return -EACCES;
+	}
+
+	/* TH_3 = H(TH_2 || CIPHERTEXT_2 || ID_CRED_R) - simplified */
+	/* ponytail: proper TH_3 needs CBOR encoding, using hash of concat */
 	uint8_t th3_input[256];
 	size_t th3_len = 0;
 	memcpy(th3_input + th3_len, ctx->th_2, 32);
@@ -601,20 +656,29 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	/* Create Message 3 */
 	/* PLAINTEXT_3 = (ID_CRED_I, Signature_3) */
 
-	/* Compute Signature_3 over M_3 */
-	uint8_t m_3[128];
-	size_t m_3_len = 0;
+	/* MAC_3 = EDHOC-KDF(PRK_4e3m, TH_3, "MAC_3", context_3, 32) */
+	/* context_3 = << ID_CRED_I, TH_3, CRED_I >> */
+	uint8_t context_3[128];
+	ZCBOR_STATE_E(zse_ctx3, 0, context_3, sizeof(context_3), 0);
+	zcbor_bstr_encode_ptr(zse_ctx3, ctx->ed_pubkey, 32);
+	zcbor_bstr_encode_ptr(zse_ctx3, ctx->th_3, 32);
+	zcbor_bstr_encode_ptr(zse_ctx3, ctx->ed_pubkey, 32);
+	size_t context_3_len = zse_ctx3->payload - context_3;
 
-	/* M_3 = CBOR(ID_CRED_I, TH_3, CRED_I) - simplified */
-	ZCBOR_STATE_E(zse_m3, 0, m_3, sizeof(m_3), 0);
-	if (!zcbor_bstr_encode_ptr(zse_m3, ctx->ed_pubkey, 32) ||
-	    !zcbor_bstr_encode_ptr(zse_m3, ctx->th_3, 32) ||
-	    !zcbor_bstr_encode_ptr(zse_m3, ctx->ed_pubkey, 32)) {
-		return -ENOMEM;
+	uint8_t mac_3[32];
+	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_3, "MAC_3", context_3, context_3_len, mac_3, 32);
+	if (ret != 0) {
+		return ret;
 	}
-	m_3_len = zse_m3->payload - m_3;
 
-	ed25519_sign(signature_3, ctx->ed_seed, m_3, m_3_len);
+	/* Sig_structure_3 per RFC 9528/9052 */
+	uint8_t sig_struct_3[256];
+	size_t sig_struct_3_len;
+	build_sig_structure(ctx->ed_pubkey, 32, ctx->th_3, ctx->ed_pubkey, 32,
+			    mac_3, 32, sig_struct_3, sizeof(sig_struct_3), &sig_struct_3_len);
+
+	uint8_t signature_3[64];
+	ed25519_sign(signature_3, ctx->ed_seed, sig_struct_3, sig_struct_3_len);
 
 	/* Encode PLAINTEXT_3 */
 	uint8_t plaintext_3[128];
@@ -860,18 +924,30 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	/* PRK_3e2m = PRK_2e for SIGN_SIGN */
 	memcpy(ctx->prk_3e2m, ctx->prk_2e, 32);
 
-	/* Create PLAINTEXT_2 = (ID_CRED_R, Signature_2) */
-	uint8_t m_2[128];
-	size_t m_2_len = 0;
-	ZCBOR_STATE_E(zse_m2, 0, m_2, sizeof(m_2), 0);
-	if (!zcbor_bstr_encode_ptr(zse_m2, ctx->ed_pubkey, 32) ||
-	    !zcbor_bstr_encode_ptr(zse_m2, ctx->th_2, 32) ||
-	    !zcbor_bstr_encode_ptr(zse_m2, ctx->ed_pubkey, 32)) {
-		return -ENOMEM;
-	}
-	m_2_len = zse_m2->payload - m_2;
+	/* MAC_2 = EDHOC-KDF(PRK_3e2m, TH_2, "MAC_2", context_2, 32) */
+	/* context_2 = << C_R, ID_CRED_R, TH_2, CRED_R >> */
+	uint8_t context_2[128];
+	ZCBOR_STATE_E(zse_ctx2, 0, context_2, sizeof(context_2), 0);
+	zcbor_bstr_encode_ptr(zse_ctx2, ctx->c_r, ctx->c_r_len);
+	zcbor_bstr_encode_ptr(zse_ctx2, ctx->ed_pubkey, 32);
+	zcbor_bstr_encode_ptr(zse_ctx2, ctx->th_2, 32);
+	zcbor_bstr_encode_ptr(zse_ctx2, ctx->ed_pubkey, 32);
+	size_t context_2_len = zse_ctx2->payload - context_2;
 
-	ed25519_sign(signature_2, ctx->ed_seed, m_2, m_2_len);
+	uint8_t mac_2[32];
+	ret = edhoc_kdf(ctx->prk_3e2m, ctx->th_2, "MAC_2", context_2, context_2_len, mac_2, 32);
+	if (ret != 0) {
+		return ret;
+	}
+
+	/* Sig_structure_2 per RFC 9528/9052 */
+	uint8_t sig_struct_2[256];
+	size_t sig_struct_2_len;
+	build_sig_structure(ctx->ed_pubkey, 32, ctx->th_2, ctx->ed_pubkey, 32,
+			    mac_2, 32, sig_struct_2, sizeof(sig_struct_2), &sig_struct_2_len);
+
+	uint8_t signature_2[64];
+	ed25519_sign(signature_2, ctx->ed_seed, sig_struct_2, sig_struct_2_len);
 
 	uint8_t plaintext_2[128];
 	ZCBOR_STATE_E(zse_pt2, 0, plaintext_2, sizeof(plaintext_2), 0);
@@ -1016,29 +1092,46 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 		ret = -EINVAL;
 		goto err_wipe;
 	}
-
-	/* Verify Signature_3 */
-	uint8_t m_3[128];
-	size_t m_3_len = 0;
-	ZCBOR_STATE_E(zse_m3, 0, m_3, sizeof(m_3), 0);
-	if (!zcbor_bstr_encode_ptr(zse_m3, id_cred_i.value, id_cred_i.len) ||
-	    !zcbor_bstr_encode_ptr(zse_m3, ctx->th_3, 32) ||
-	    !zcbor_bstr_encode_ptr(zse_m3, peer_pubkey, 32)) {
-		return -ENOMEM;
-	}
-	m_3_len = zse_m3->payload - m_3;
-
-	if (ed25519_verify(peer_pubkey, signature_3.value, m_3, m_3_len) != 0) {
-		LOG_ERR("Signature verification failed");
-		ret = -EACCES;
-		goto err_wipe;
+	if (signature_3.len != EDHOC_ED25519_SIG_LEN) {
+		return -EINVAL;
 	}
 
 	/* PRK_4e3m = PRK_3e2m for SIGN_SIGN */
 	memcpy(ctx->prk_4e3m, ctx->prk_3e2m, 32);
 
-	/* TH_4 = H(TH_3, PLAINTEXT_3, CRED_I) per RFC 9528 Section 4.1.2 */
-	compute_th(ctx->th_4, ctx->th_3, 32, plaintext_3, pt3_len, peer_pubkey, 32);
+	/* Verify Signature_3 per RFC 9528 */
+	/* MAC_3 = EDHOC-KDF(PRK_4e3m, TH_3, "MAC_3", context_3, 32) */
+	uint8_t context_3[128];
+	ZCBOR_STATE_E(zse_ctx3, 0, context_3, sizeof(context_3), 0);
+	zcbor_bstr_encode_ptr(zse_ctx3, peer_pubkey, 32);
+	zcbor_bstr_encode_ptr(zse_ctx3, ctx->th_3, 32);
+	zcbor_bstr_encode_ptr(zse_ctx3, peer_pubkey, 32);
+	size_t context_3_len = zse_ctx3->payload - context_3;
+
+	uint8_t mac_3[32];
+	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_3, "MAC_3", context_3, context_3_len, mac_3, 32);
+	if (ret != 0) {
+		return ret;
+	}
+
+	uint8_t sig_struct_3[256];
+	size_t sig_struct_3_len;
+	build_sig_structure(peer_pubkey, 32, ctx->th_3, peer_pubkey, 32,
+			    mac_3, 32, sig_struct_3, sizeof(sig_struct_3), &sig_struct_3_len);
+
+	if (ed25519_verify(peer_pubkey, signature_3.value, sig_struct_3, sig_struct_3_len) != 0) {
+		LOG_ERR("Signature_3 verification failed");
+		return -EACCES;
+	}
+
+	/* TH_4 = H(TH_3 || CIPHERTEXT_3) */
+	uint8_t th4_input[256];
+	size_t th4_len = 0;
+	memcpy(th4_input + th4_len, ctx->th_3, 32);
+	th4_len += 32;
+	memcpy(th4_input + th4_len, msg3, msg3_len);
+	th4_len += msg3_len;
+	sha256_hash(th4_input, th4_len, ctx->th_4);
 
 	crypto_wipe(k_3, sizeof(k_3));
 	crypto_wipe(iv_3, sizeof(iv_3));
