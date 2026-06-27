@@ -466,6 +466,18 @@ static int compress_coap(const uint8_t *packet, size_t pkt_len,
 	uint8_t hop_limit = packet[7];
 	const uint8_t *src = &packet[8];
 	const uint8_t *dst = &packet[24];
+
+	/* Validate addresses match rule to prevent silent corruption. */
+	if (rule_id == SCHC_RULE_LINK_LOCAL_COAP) {
+		if (!is_link_local(src) || !is_link_local(dst)) {
+			return SCHC_ERR_NO_MATCHING_RULE;
+		}
+	} else if (rule_id == SCHC_RULE_GLOBAL_COAP) {
+		if (!is_global(src) || !is_global(dst)) {
+			return SCHC_ERR_NO_MATCHING_RULE;
+		}
+	}
+
 	const uint8_t *udp = &packet[40];
 	uint16_t src_port = ((uint16_t)udp[0] << 8) | udp[1];
 	uint16_t dst_port = ((uint16_t)udp[2] << 8) | udp[3];
@@ -641,37 +653,6 @@ static int compress_rpl_dao(const uint8_t *packet, size_t pkt_len,
 
 /* ─── per-rule decompress ─────────────────────────────────────────────────── */
 
-/**
- * Common prologue for link-local decompress_* functions: read hop_limit and
- * reconstruct src/dst from IIDs (64 bits each) with fe80:: prefix.
- *
- * @param r          Pointer to initialized bit_reader
- * @param hop_limit  Output: IPv6 hop limit
- * @param src        Output: Source IPv6 address (16 bytes, caller-allocated)
- * @param dst        Output: Destination IPv6 address (16 bytes, caller-allocated)
- * @return           0 on success, SCHC_ERR_TOO_SHORT on read failure
- */
-static int decompress_link_local_header(struct bit_reader *r, uint64_t *hop_limit,
-					uint8_t *src, uint8_t *dst)
-{
-	if (bit_reader_read(r, 8, hop_limit) < 0) {
-		return SCHC_ERR_TOO_SHORT;
-	}
-
-	memset(src, 0, 16);
-	memset(dst, 0, 16);
-	src[0] = 0xFE;
-	src[1] = 0x80;
-	dst[0] = 0xFE;
-	dst[1] = 0x80;
-
-	if (bit_reader_read_bytes(r, 64, &src[8], 8) < 0 ||
-	    bit_reader_read_bytes(r, 64, &dst[8], 8) < 0) {
-		return SCHC_ERR_TOO_SHORT;
-	}
-	return 0;
-}
-
 static int decompress_coap(const uint8_t *data, size_t data_len,
 			   uint8_t *out, size_t out_len, uint8_t rule_id)
 {
@@ -806,9 +787,21 @@ static int decompress_icmpv6_echo(const uint8_t *data, size_t data_len,
 
 	uint64_t hop_limit;
 	uint8_t src[16], dst[16];
-	int err = decompress_link_local_header(&r, &hop_limit, src, dst);
-	if (err < 0) {
-		return err;
+
+	if (bit_reader_read(&r, 8, &hop_limit) < 0) {
+		return SCHC_ERR_TOO_SHORT;
+	}
+
+	memset(src, 0, 16);
+	memset(dst, 0, 16);
+	src[0] = 0xFE;
+	src[1] = 0x80;
+	dst[0] = 0xFE;
+	dst[1] = 0x80;
+
+	if (bit_reader_read_bytes(&r, 64, &src[8], 8) < 0 ||
+	    bit_reader_read_bytes(&r, 64, &dst[8], 8) < 0) {
+		return SCHC_ERR_TOO_SHORT;
 	}
 
 	uint64_t icmp_type, icmp_id, icmp_seq;
@@ -895,9 +888,21 @@ static int decompress_rpl_dio(const uint8_t *data, size_t data_len,
 
 	uint64_t hop_limit;
 	uint8_t src[16], dst[16];
-	int err = decompress_link_local_header(&r, &hop_limit, src, dst);
-	if (err < 0) {
-		return err;
+
+	if (bit_reader_read(&r, 8, &hop_limit) < 0) {
+		return SCHC_ERR_TOO_SHORT;
+	}
+
+	memset(src, 0, 16);
+	memset(dst, 0, 16);
+	src[0] = 0xFE;
+	src[1] = 0x80;
+	dst[0] = 0xFE;
+	dst[1] = 0x80;
+
+	if (bit_reader_read_bytes(&r, 64, &src[8], 8) < 0 ||
+	    bit_reader_read_bytes(&r, 64, &dst[8], 8) < 0) {
+		return SCHC_ERR_TOO_SHORT;
 	}
 
 	uint64_t instance, version, rank, gmop, dtsn;
@@ -987,9 +992,21 @@ static int decompress_rpl_dao(const uint8_t *data, size_t data_len,
 
 	uint64_t hop_limit;
 	uint8_t src[16], dst[16];
-	int err = decompress_link_local_header(&r, &hop_limit, src, dst);
-	if (err < 0) {
-		return err;
+
+	if (bit_reader_read(&r, 8, &hop_limit) < 0) {
+		return SCHC_ERR_TOO_SHORT;
+	}
+
+	memset(src, 0, 16);
+	memset(dst, 0, 16);
+	src[0] = 0xFE;
+	src[1] = 0x80;
+	dst[0] = 0xFE;
+	dst[1] = 0x80;
+
+	if (bit_reader_read_bytes(&r, 64, &src[8], 8) < 0 ||
+	    bit_reader_read_bytes(&r, 64, &dst[8], 8) < 0) {
+		return SCHC_ERR_TOO_SHORT;
 	}
 
 	uint64_t instance, kd_flags, seq;
