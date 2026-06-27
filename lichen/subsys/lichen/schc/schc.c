@@ -297,6 +297,7 @@ static int bit_reader_read_bytes(struct bit_reader *r, int nbits,
 	return 0;
 }
 
+/** Return byte offset of last partially-read byte (rounds up). */
 static size_t bit_reader_residue_byte_end(const struct bit_reader *r)
 {
 	return (r->pos + 7) / 8;
@@ -304,11 +305,13 @@ static size_t bit_reader_residue_byte_end(const struct bit_reader *r)
 
 /* ─── address helpers ─────────────────────────────────────────────────────── */
 
+/** Return true if addr is an IPv6 link-local address (fe80::/10). */
 static bool is_link_local(const uint8_t addr[16])
 {
 	return addr[0] == 0xFE && (addr[1] & 0xC0) == 0x80;
 }
 
+/** Return true if addr is an IPv6 global unicast address (2000::/3). */
 static bool is_global(const uint8_t addr[16])
 {
 	return (addr[0] >> 5) == 0x01; /* 001x xxxx = 2000::/3 */
@@ -316,6 +319,7 @@ static bool is_global(const uint8_t addr[16])
 
 /* ─── checksum helpers ────────────────────────────────────────────────────── */
 
+/** Add two values with one's-complement carry folding. */
 static uint32_t oc_add(uint32_t a, uint32_t b)
 {
 	uint32_t s = a + b;
@@ -325,6 +329,7 @@ static uint32_t oc_add(uint32_t a, uint32_t b)
 	return s;
 }
 
+/** Sum bytes as 16-bit big-endian words for checksum calculation. */
 static uint32_t checksum_bytes(const uint8_t *data, size_t len)
 {
 	uint32_t sum = 0;
@@ -339,6 +344,7 @@ static uint32_t checksum_bytes(const uint8_t *data, size_t len)
 	return sum;
 }
 
+/** Compute IPv6 pseudo-header checksum contribution. */
 static uint32_t pseudo_sum(const uint8_t src[16], const uint8_t dst[16],
 			   uint8_t next_header, uint16_t length)
 {
@@ -355,6 +361,7 @@ static uint32_t pseudo_sum(const uint8_t src[16], const uint8_t dst[16],
 	return sum;
 }
 
+/** Fold and complement accumulated sum to produce final checksum. */
 static uint16_t finalize_checksum(uint32_t sum)
 {
 	while (sum >> 16) {

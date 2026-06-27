@@ -19,6 +19,20 @@
 _Static_assert(LICHEN_RPL_MAX_HOPS <= 255,
 	       "LICHEN_RPL_MAX_HOPS exceeds uint8_t range");
 
+/* ── Helpers ───────────────────────────────────────────────────────────────── */
+
+/** Compare two IPv6 addresses for equality. */
+static bool addr_eq(const uint8_t *a, const uint8_t *b)
+{
+	return memcmp(a, b, 16) == 0;
+}
+
+/** Copy a 16-byte IPv6 address from src to dst. */
+static void addr_copy(uint8_t *dst, const uint8_t *src)
+{
+	memcpy(dst, src, 16);
+}
+
 /* ── Visited Set for O(1) Loop Detection ──────────────────────────────────── */
 
 #define VISITED_BUCKETS 16  /* power of 2, >= LICHEN_RPL_MAX_HOPS */
@@ -27,7 +41,7 @@ _Static_assert((VISITED_BUCKETS & (VISITED_BUCKETS - 1)) == 0,
 _Static_assert(VISITED_BUCKETS >= LICHEN_RPL_MAX_HOPS,
                "VISITED_BUCKETS must be >= LICHEN_RPL_MAX_HOPS for loop detection");
 
-/* Simple hash of IPv6 address for visited set indexing */
+/** Hash an IPv6 address via XOR-folding for hash table indexing. */
 static inline uint32_t addr_hash(const uint8_t *addr)
 {
 	/* XOR fold 16 bytes into 32 bits */
@@ -47,6 +61,7 @@ struct visited_set {
 	bool occupied[VISITED_BUCKETS];
 };
 
+/** Reset a visited set to empty. */
 static inline void visited_init(struct visited_set *v)
 {
 	memset(v->occupied, 0, sizeof(v->occupied));
