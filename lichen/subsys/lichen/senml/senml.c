@@ -121,6 +121,11 @@ int senml_add_bool(struct senml_pack *pack,
 
 /*
  * Encode a single SenML record as a CBOR map.
+ *
+ * Returns false if encoding fails. The only realistic failure is buffer
+ * exhaustion (zcbor ran out of space), which senml_encode_cbor() reports
+ * as -ENOMEM. Invalid value types cannot occur when records are added via
+ * senml_add_*(), which validates types before storing.
  */
 static bool encode_record(zcbor_state_t *state,
 			  const struct senml_record *rec,
@@ -205,6 +210,14 @@ static bool encode_record(zcbor_state_t *state,
 	return zcbor_map_end_encode(state, entries);
 }
 
+/**
+ * @brief Encode a SenML pack to CBOR
+ *
+ * @return Encoded length on success, or negative errno:
+ *         -EINVAL: No records in pack
+ *         -ENOMEM: Output buffer too small
+ *         -EMSGSIZE: Encoded length exceeds INT_MAX
+ */
 int senml_encode_cbor(const struct senml_pack *pack,
 		      uint8_t *buf, size_t buflen)
 {
