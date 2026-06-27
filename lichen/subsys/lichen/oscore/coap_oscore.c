@@ -63,6 +63,7 @@ int coap_oscore_get_option(const struct coap_packet *request,
 int coap_oscore_unprotect_request(struct oscore_ctx *ctx,
 				  const struct coap_packet *request,
 				  uint8_t *original_code,
+				  uint8_t *options, size_t *options_len,
 				  uint8_t *payload, size_t *payload_len,
 				  uint8_t *request_piv, size_t *request_piv_len)
 {
@@ -102,12 +103,12 @@ int coap_oscore_unprotect_request(struct oscore_ctx *ctx,
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
-	/* Unprotect (Class E options not used yet, pass NULL) */
+	/* Unprotect */
 	ret = oscore_unprotect_request(ctx,
 				       oscore_opt, oscore_opt_len,
 				       ciphertext, ciphertext_len,
 				       original_code,
-				       NULL, NULL,
+				       options, options_len,
 				       payload, payload_len);
 	if (ret != OSCORE_OK) {
 		LOG_WRN("OSCORE unprotect failed: %d", ret);

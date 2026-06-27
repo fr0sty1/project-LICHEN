@@ -48,6 +48,8 @@ int coap_oscore_get_option(const struct coap_packet *request,
  * @param[in]     ctx            OSCORE security context
  * @param[in]     request        Protected CoAP request
  * @param[out]    original_code  Original CoAP request code
+ * @param[out]    options        Decrypted Class E options (may be NULL)
+ * @param[in,out] options_len    Input: buffer size, output: options length (may be NULL)
  * @param[out]    payload        Decrypted payload buffer
  * @param[in,out] payload_len    Input: buffer size, output: payload length
  * @param[out]    request_piv    Request PIV (for response)
@@ -57,6 +59,7 @@ int coap_oscore_get_option(const struct coap_packet *request,
 int coap_oscore_unprotect_request(struct oscore_ctx *ctx,
 				  const struct coap_packet *request,
 				  uint8_t *original_code,
+				  uint8_t *options, size_t *options_len,
 				  uint8_t *payload, size_t *payload_len,
 				  uint8_t *request_piv, size_t *request_piv_len);
 
