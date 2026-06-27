@@ -15,7 +15,13 @@
 
 pub mod seqnum;
 
+#[cfg(feature = "edhoc")]
+pub mod edhoc;
+
 pub use seqnum::OscoreSeqNum;
+
+#[cfg(feature = "edhoc")]
+pub use edhoc::{EdhocError, EdhocInitiator, EdhocResponder};
 
 use aes::Aes128;
 use ccm::{
