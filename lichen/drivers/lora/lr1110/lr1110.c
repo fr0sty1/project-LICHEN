@@ -23,6 +23,9 @@ LOG_MODULE_REGISTER(lr1110, CONFIG_LORA_LOG_LEVEL);
 
 #define DT_DRV_COMPAT semtech_lr1110
 
+BUILD_ASSERT(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) <= 1,
+	     "LR1110 driver supports only one instance (uses global state)");
+
 /* IRQ mask bits routed to DIO9 */
 #define LR1110_IRQ_RADIO (LR1110_SYSTEM_IRQ_TXDONE_MASK    | \
 			  LR1110_SYSTEM_IRQ_RXDONE_MASK    | \
