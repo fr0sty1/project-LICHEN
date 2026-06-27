@@ -26,6 +26,11 @@
  */
 #define LOLLIPOP_MAX_VALUE    255
 #define LOLLIPOP_CIRCULAR_BIT 128
+/*
+ * SEQUENCE_WINDOW per RFC 1982 serial number arithmetic: 'a' is newer than 'b'
+ * if (a - b) mod 128 is in (0, WINDOW]. Value 16 balances tolerance for
+ * out-of-order delivery (~16 missed DIOs) against detecting true rollbacks.
+ */
 #define LOLLIPOP_SEQUENCE_WINDOW 16
 
 static bool version_is_newer(uint8_t a, uint8_t b)
