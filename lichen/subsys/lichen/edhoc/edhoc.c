@@ -504,10 +504,19 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	/* Compute shared secret G_XY */
 	x25519_shared_secret(g_xy, ctx->eph_sk, ctx->g_y);
 
-	/* TH_2 = H(H(message_1), G_Y, C_R) per RFC 9528 Section 4.1.2 */
+	/* TH_2 = H(H(message_1) || G_Y || C_R) per RFC 9528 Section 4.1.2 */
 	uint8_t h_msg1[32];
 	sha256_hash(ctx->msg1, ctx->msg1_len, h_msg1);
-	compute_th(ctx->th_2, h_msg1, 32, ctx->g_y, 32, ctx->c_r, ctx->c_r_len);
+
+	uint8_t th2_input[72];  /* 32 + 32 + up to 8 for C_R */
+	size_t th2_input_len = 0;
+	memcpy(th2_input + th2_input_len, h_msg1, 32);
+	th2_input_len += 32;
+	memcpy(th2_input + th2_input_len, ctx->g_y, 32);
+	th2_input_len += 32;
+	memcpy(th2_input + th2_input_len, ctx->c_r, ctx->c_r_len);
+	th2_input_len += ctx->c_r_len;
+	sha256_hash(th2_input, th2_input_len, ctx->th_2);
 
 	/* PRK_2e = HKDF-Extract(TH_2, G_XY) */
 	hkdf_extract(ctx->th_2, 32, g_xy, 32, ctx->prk_2e);
@@ -571,8 +580,17 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	/* PRK_3e2m = PRK_2e for SIGN_SIGN Suite 0 */
 	memcpy(ctx->prk_3e2m, ctx->prk_2e, 32);
 
-	/* TH_3 = H(TH_2, PLAINTEXT_2, CRED_R) per RFC 9528 Section 4.1.2 */
-	compute_th(ctx->th_3, ctx->th_2, 32, plaintext_2, ct2_len, peer_pubkey, 32);
+	/* TH_3 = H(TH_2 || PLAINTEXT_2 || CRED_R) per RFC 9528 Section 4.2.2 */
+	/* ponytail: CRED_R = raw pubkey, proper impl needs CBOR credential */
+	uint8_t th3_input[256];
+	size_t th3_len = 0;
+	memcpy(th3_input + th3_len, ctx->th_2, 32);
+	th3_len += 32;
+	memcpy(th3_input + th3_len, plaintext_2, ct2_len);
+	th3_len += ct2_len;
+	memcpy(th3_input + th3_len, peer_pubkey, 32);
+	th3_len += 32;
+	sha256_hash(th3_input, th3_len, ctx->th_3);
 
 	/* PRK_4e3m = PRK_3e2m for SIGN_SIGN */
 	memcpy(ctx->prk_4e3m, ctx->prk_3e2m, 32);
@@ -821,10 +839,19 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	/* Compute shared secret */
 	x25519_shared_secret(g_xy, ctx->eph_sk, ctx->g_x);
 
-	/* TH_2 = H(H(message_1), G_Y, C_R) per RFC 9528 Section 4.1.2 */
+	/* TH_2 = H(H(message_1) || G_Y || C_R) per RFC 9528 Section 4.1.2 */
 	uint8_t h_msg1[32];
 	sha256_hash(ctx->msg1, ctx->msg1_len, h_msg1);
-	compute_th(ctx->th_2, h_msg1, 32, ctx->eph_pk, 32, ctx->c_r, ctx->c_r_len);
+
+	uint8_t th2_input[72];  /* 32 + 32 + up to 8 for C_R */
+	size_t th2_input_len = 0;
+	memcpy(th2_input + th2_input_len, h_msg1, 32);
+	th2_input_len += 32;
+	memcpy(th2_input + th2_input_len, ctx->eph_pk, 32);  /* G_Y = our eph_pk */
+	th2_input_len += 32;
+	memcpy(th2_input + th2_input_len, ctx->c_r, ctx->c_r_len);
+	th2_input_len += ctx->c_r_len;
+	sha256_hash(th2_input, th2_input_len, ctx->th_2);
 
 	/* PRK_2e */
 	hkdf_extract(ctx->th_2, 32, g_xy, 32, ctx->prk_2e);
@@ -873,8 +900,17 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 		ciphertext_2[i] = plaintext_2[i] ^ keystream_2[i];
 	}
 
-	/* TH_3 = H(TH_2, PLAINTEXT_2, CRED_R) per RFC 9528 Section 4.1.2 */
-	compute_th(ctx->th_3, ctx->th_2, 32, plaintext_2, pt2_len, ctx->ed_pubkey, 32);
+	/* TH_3 = H(TH_2 || PLAINTEXT_2 || CRED_R) per RFC 9528 Section 4.2.2 */
+	/* ponytail: CRED_R = raw pubkey, proper impl needs CBOR credential */
+	uint8_t th3_input[256];
+	size_t th3_len = 0;
+	memcpy(th3_input + th3_len, ctx->th_2, 32);
+	th3_len += 32;
+	memcpy(th3_input + th3_len, plaintext_2, pt2_len);
+	th3_len += pt2_len;
+	memcpy(th3_input + th3_len, ctx->ed_pubkey, 32);
+	th3_len += 32;
+	sha256_hash(th3_input, th3_len, ctx->th_3);
 
 	/* Build message_2 = (G_Y || CIPHERTEXT_2, C_R) */
 	ZCBOR_STATE_E(zse, 0, msg2, msg2_size, 0);
