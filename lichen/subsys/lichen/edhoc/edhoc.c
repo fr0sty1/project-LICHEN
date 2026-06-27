@@ -203,7 +203,9 @@ static int edhoc_kdf(const uint8_t prk[32],
 
 	info_len = zse->payload - info;
 
-	return hkdf_expand(prk, info, info_len, out, out_len);
+	hkdf_expand(prk, info, info_len, out, out_len);
+	crypto_wipe(info, sizeof(info));
+	return 0;
 }
 
 /*
