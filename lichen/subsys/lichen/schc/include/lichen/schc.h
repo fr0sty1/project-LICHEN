@@ -28,6 +28,14 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#ifndef LICHEN_WARN_UNUSED_RESULT
+#if defined(__GNUC__) || defined(__clang__)
+#define LICHEN_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+#else
+#define LICHEN_WARN_UNUSED_RESULT
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -64,6 +72,7 @@ enum schc_error {
  * @param[in]  out_len   Size of output buffer
  * @return Number of bytes written to @p out, or negative error code
  */
+LICHEN_WARN_UNUSED_RESULT
 int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
 			 uint8_t *out, size_t out_len);
 
@@ -79,6 +88,7 @@ int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
  * @param[in]  out_len   Size of output buffer
  * @return Number of bytes written to @p out, or negative error code
  */
+LICHEN_WARN_UNUSED_RESULT
 int lichen_schc_decompress(const uint8_t *data, size_t data_len,
 			   uint8_t *out, size_t out_len);
 

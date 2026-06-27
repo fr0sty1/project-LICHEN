@@ -60,6 +60,7 @@ int lichen_rpl_srh_write(const struct lichen_rpl_srh *srh,
  * @param len  Length of data
  * @return 0 on success, negative error code on failure
  */
+LICHEN_WARN_UNUSED_RESULT
 int lichen_rpl_srh_parse(struct lichen_rpl_srh *srh,
 			 const uint8_t *data, size_t len);
 

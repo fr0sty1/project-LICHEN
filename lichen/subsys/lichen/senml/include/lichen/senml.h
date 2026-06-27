@@ -16,6 +16,14 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifndef LICHEN_WARN_UNUSED_RESULT
+#if defined(__GNUC__) || defined(__clang__)
+#define LICHEN_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+#else
+#define LICHEN_WARN_UNUSED_RESULT
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -132,6 +140,7 @@ int senml_add_bool(struct senml_pack *pack,
  *         -ENOMEM if buffer too small
  *         -EMSGSIZE if string too long to encode
  */
+LICHEN_WARN_UNUSED_RESULT
 int senml_encode_cbor(const struct senml_pack *pack,
 		      uint8_t *buf, size_t buflen);
 

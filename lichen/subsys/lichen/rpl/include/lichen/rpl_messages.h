@@ -16,6 +16,14 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifndef LICHEN_WARN_UNUSED_RESULT
+#if defined(__GNUC__) || defined(__clang__)
+#define LICHEN_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+#else
+#define LICHEN_WARN_UNUSED_RESULT
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -78,6 +86,7 @@ struct lichen_rpl_dio {
  * @param len  Length of data
  * @return 0 on success, negative error code on failure
  */
+LICHEN_WARN_UNUSED_RESULT
 int lichen_rpl_dio_parse(struct lichen_rpl_dio *dio,
 			 const uint8_t *data, size_t len);
 
@@ -138,6 +147,7 @@ struct lichen_rpl_dao {
  * @param len  Length of data
  * @return 0 on success, negative error code on failure
  */
+LICHEN_WARN_UNUSED_RESULT
 int lichen_rpl_dao_parse(struct lichen_rpl_dao *dao,
 			 const uint8_t *data, size_t len);
 
@@ -218,6 +228,7 @@ void lichen_rpl_dodag_config_init(struct lichen_rpl_dodag_config *cfg);
 /**
  * @brief Parse DODAG config from option data (after type/length bytes).
  */
+LICHEN_WARN_UNUSED_RESULT
 int lichen_rpl_dodag_config_parse(struct lichen_rpl_dodag_config *cfg,
 				  const uint8_t *data, size_t len);
 
@@ -244,6 +255,7 @@ struct lichen_rpl_target {
 /**
  * @brief Parse RPL Target from option data (after type/length bytes).
  */
+LICHEN_WARN_UNUSED_RESULT
 int lichen_rpl_target_parse(struct lichen_rpl_target *target,
 			    const uint8_t *data, size_t len);
 
@@ -275,6 +287,7 @@ struct lichen_rpl_transit_info {
 /**
  * @brief Parse Transit Info from option data (after type/length bytes).
  */
+LICHEN_WARN_UNUSED_RESULT
 int lichen_rpl_transit_info_parse(struct lichen_rpl_transit_info *ti,
 				  const uint8_t *data, size_t len);
 
