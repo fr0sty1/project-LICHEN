@@ -57,6 +57,7 @@ static K_MUTEX_DEFINE(s_tx_mutex);
 static uint8_t  s_rx_buf[SLIP_BUF_SIZE];
 static uint16_t s_rx_len;
 static bool     s_rx_esc;
+static bool     s_rx_overflow;
 
 /* --------------------------------------------------------------------------
  * Packet dispatch: phone → mesh
@@ -113,6 +114,7 @@ static ssize_t nus_rx_write(struct bt_conn *conn,
 
 			/* Check buffer space BEFORE writing decoded escape byte */
 			if (s_rx_len >= sizeof(s_rx_buf)) {
+				s_rx_overflow = true;
 				continue;
 			}
 			s_rx_buf[s_rx_len++] = b;
@@ -120,13 +122,20 @@ static ssize_t nus_rx_write(struct bt_conn *conn,
 			s_rx_esc = true;
 		} else if (b == SLIP_END) {
 			if (s_rx_len > 0) {
-				slip_dispatch(s_rx_buf, s_rx_len);
+				if (s_rx_overflow) {
+					LOG_WRN("SLIP RX overflow: frame discarded");
+				} else {
+					slip_dispatch(s_rx_buf, s_rx_len);
+				}
 				s_rx_len = 0;
+				s_rx_overflow = false;
 			}
 		} else {
 			/* Regular byte — store if buffer has space */
 			if (s_rx_len < sizeof(s_rx_buf)) {
 				s_rx_buf[s_rx_len++] = b;
+			} else {
+				s_rx_overflow = true;
 			}
 		}
 	}
@@ -202,6 +211,7 @@ static void on_connected(struct bt_conn *conn, uint8_t err)
 	k_mutex_lock(&s_rx_mutex, K_FOREVER);
 	s_rx_len = 0;
 	s_rx_esc = false;
+	s_rx_overflow = false;
 	k_mutex_unlock(&s_rx_mutex);
 	LOG_INF("BLE phone connected");
 }
