@@ -737,7 +737,6 @@ int edhoc_responder_init(struct edhoc_responder *ctx,
 
 int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 				 const uint8_t *msg1, size_t msg1_len,
-				 const uint8_t *peer_pubkey,
 				 uint8_t *msg2, size_t msg2_size,
 				 size_t *msg2_len)
 {
@@ -745,7 +744,7 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	uint8_t g_xy[32] = {0};
 	uint8_t signature_2[64] = {0};
 
-	if (ctx == NULL || msg1 == NULL || peer_pubkey == NULL ||
+	if (ctx == NULL || msg1 == NULL ||
 	    msg2 == NULL || msg2_len == NULL) {
 		return -EINVAL;
 	}

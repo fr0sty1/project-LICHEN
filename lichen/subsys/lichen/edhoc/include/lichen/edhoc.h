@@ -243,7 +243,6 @@ int edhoc_responder_init(struct edhoc_responder *ctx,
  * @param ctx Responder context
  * @param msg1 Message 1 from initiator
  * @param msg1_len Length of Message 1
- * @param peer_pubkey Initiator's Ed25519 public key (32 bytes)
  * @param msg2 Buffer for Message 2
  * @param msg2_size Size of buffer
  * @param msg2_len Output: actual message length
@@ -251,7 +250,6 @@ int edhoc_responder_init(struct edhoc_responder *ctx,
  */
 int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 				 const uint8_t *msg1, size_t msg1_len,
-				 const uint8_t *peer_pubkey,
 				 uint8_t *msg2, size_t msg2_size,
 				 size_t *msg2_len);
 
