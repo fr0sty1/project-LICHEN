@@ -30,6 +30,13 @@ LOG_MODULE_REGISTER(edhoc, CONFIG_LICHEN_EDHOC_LOG_LEVEL);
 /* CBOR encoding buffer size */
 #define CBOR_BUF_SIZE 128
 
+/* Maximum EDHOC message sizes for stack buffers.
+ * PLAINTEXT_3 contains ID_CRED_I (33B CBOR) + Signature_3 (65B CBOR) = ~100B.
+ * CIPHERTEXT_3 = PLAINTEXT_3 + 8-byte CCM tag. 128+8=136 is safe upper bound.
+ */
+#define EDHOC_MAX_PLAINTEXT_LEN 128
+#define EDHOC_MAX_MSG3_LEN (EDHOC_MAX_PLAINTEXT_LEN + 8)
+
 /*
  * SHA-256 hash
  */
@@ -920,6 +927,10 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	}
 	if (ctx->state != EDHOC_STATE_MSG2_SENT) {
 		return -EBUSY;
+	}
+	/* Validate msg3_len to prevent stack buffer overflow */
+	if (msg3_len > EDHOC_MAX_MSG3_LEN) {
+		return -ENOMEM;
 	}
 
 	/* K_3 and IV_3 for AEAD decryption */
