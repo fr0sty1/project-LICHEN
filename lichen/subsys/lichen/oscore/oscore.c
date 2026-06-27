@@ -149,7 +149,9 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 {
 	size_t off = 0;
 
-	/* Array of 5 elements */
+	if (buf == NULL || buf_len == 0) return -1;
+
+	/* Array of 5 elements: 0x85 */
 	if (off >= buf_len) return -1;
 	buf[off++] = CBOR_ARRAY_BASE | 5;
 
@@ -245,6 +247,8 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 			    uint8_t *buf, size_t buf_len)
 {
 	size_t off = 0;
+
+	if (buf == NULL || buf_len == 0) return -1;
 
 	/*
 	 * First build the aad_array, then wrap it.
