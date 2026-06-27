@@ -42,17 +42,21 @@ enum lichen_coap_result {
 	LICHEN_COAP_ERR_NOT_FOUND = -5,
 	LICHEN_COAP_ERR_UNAUTHORIZED = -6,
 	LICHEN_COAP_ERR_INVALID_PARAM = -7,
+	LICHEN_COAP_ERR_TRANSPORT = -8,
 };
 
 /**
  * @brief CoAP response callback
  *
  * @param[in] user_data   User-provided context
- * @param[in] code        CoAP response code
+ * @param[in] status      Request status (LICHEN_COAP_OK, LICHEN_COAP_ERR_TIMEOUT,
+ *                        or LICHEN_COAP_ERR_TRANSPORT)
+ * @param[in] code        CoAP response code (only valid when status == LICHEN_COAP_OK)
  * @param[in] payload     Response payload (may be NULL)
  * @param[in] payload_len Payload length
  */
 typedef void (*lichen_coap_response_cb)(void *user_data,
+					int status,
 					uint8_t code,
 					const uint8_t *payload,
 					size_t payload_len);

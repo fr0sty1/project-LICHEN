@@ -120,7 +120,7 @@ static void request_timeout_handler(struct k_work *work)
 
 	/* Notify user of timeout */
 	if (ctx->callback != NULL) {
-		ctx->callback(ctx->user_data, 0, NULL, 0);
+		ctx->callback(ctx->user_data, LICHEN_COAP_ERR_TIMEOUT, 0, NULL, 0);
 	}
 
 	k_free(ctx);
@@ -156,7 +156,7 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 		}
 		k_work_cancel_delayable(&ctx->timeout_work);
 		if (ctx->callback != NULL) {
-			ctx->callback(ctx->user_data, 0, NULL, 0);
+			ctx->callback(ctx->user_data, LICHEN_COAP_ERR_TRANSPORT, 0, NULL, 0);
 		}
 		k_free(ctx);
 		return;
@@ -195,14 +195,7 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 		k_work_cancel_delayable(&ctx->timeout_work);
 
 		if (ctx->callback != NULL) {
-			/*
-			 * CoAP codes are 3-bit class + 5-bit detail (max 0x9F).
-			 * Negative error codes are filtered at line 134, so code
-			 * is guaranteed non-negative here. Assert the uint8_t cast
-			 * is safe.
-			 */
-			__ASSERT(code >= 0 && code <= 0xFF, "Invalid CoAP code: %d", code);
-			ctx->callback(ctx->user_data, (uint8_t)code,
+			ctx->callback(ctx->user_data, LICHEN_COAP_OK, (uint8_t)code,
 				      ctx->response_buf, ctx->response_len);
 		}
 		k_free(ctx);
