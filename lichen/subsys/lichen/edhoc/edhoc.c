@@ -375,28 +375,6 @@ static int ed25519_verify(const uint8_t pk[32],
 	return crypto_ed25519_check(sig, pk, msg, msg_len);
 }
 
-/*
- * Encode connection ID for CBOR
- * One-byte values 0-23 can use int encoding for compactness
- */
-static size_t encode_cid(uint8_t *out, size_t out_size,
-			 const uint8_t *cid, size_t cid_len)
-{
-	ZCBOR_STATE_E(zse, 0, out, out_size, 0);
-	bool ok;
-
-	if (cid_len == 1 && cid[0] <= 23) {
-		ok = zcbor_uint32_put(zse, cid[0]);
-	} else {
-		ok = zcbor_bstr_encode_ptr(zse, cid, cid_len);
-	}
-	if (!zcbor_check_error(zse)) {
-		return 0;
-	}
-
-	return ok ? (size_t)(zse->payload - out) : 0;
-}
-
 int edhoc_initiator_init(struct edhoc_initiator *ctx,
 			 const uint8_t *ed_seed,
 			 const uint8_t *ed_pubkey,
