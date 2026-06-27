@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-yw7i.14",
+  "title": "Good: IPv6 address format uses uncompressed form",
+  "description": "ipv6_addr.c:lichen_ipv6_addr_to_str() uses uncompressed lowercase hex format consistently. The header documents this differs from RFC 5952 compressed form and explains why. This predictability aids debugging and log parsing.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T17:07:13.090591Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T17:07:13.091159Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-yw7i.14",
+      "depends_on_id": "project-LICHEN-yw7i",
+      "type": "parent-child",
+      "created_at": "2026-06-27T17:07:13.091159Z"
+    }
+  ]
+}

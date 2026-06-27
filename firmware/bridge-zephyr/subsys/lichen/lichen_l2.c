@@ -22,11 +22,53 @@
 
 #include <string.h>
 
+/*
+ * Compile-time assertion: MTU constants must match between layers.
+ * LICHEN_L2_MTU (lichen_l2.h) is the IPv6 MTU exposed to the network stack.
+ * LICHEN_LORA_MTU (lora_l2.h) is the payload capacity after LoRa framing overhead.
+ * If these diverge, one layer will reject packets the other accepts, causing
+ * silent packet loss or -EMSGSIZE errors with no obvious root cause.
+ * (project-LICHEN-9j70.1)
+ */
+BUILD_ASSERT(LICHEN_L2_MTU == LICHEN_LORA_MTU,
+	     "MTU mismatch: LICHEN_L2_MTU and LICHEN_LORA_MTU must be equal");
+
+/*
+ * Compile-time assertion: address sizes must match between layers.
+ * iface_link_addr uses LICHEN_L2_ADDR_LEN for its buffer, but we copy from
+ * lora_state.eui64 which uses LICHEN_LORA_L2_ADDR_LEN. These must be equal
+ * to avoid buffer overread in lichen_l2_iface_init(). (project-LICHEN-1www.29)
+ */
+BUILD_ASSERT(LICHEN_L2_ADDR_LEN == LICHEN_LORA_L2_ADDR_LEN,
+	     "Address length mismatch: LICHEN_L2_ADDR_LEN and LICHEN_LORA_L2_ADDR_LEN must be equal");
+
 LOG_MODULE_REGISTER(lichen_l2, CONFIG_LICHEN_L2_LOG_LEVEL);
+
+/*
+ * Log level policy:
+ *   LOG_ERR: Initialization failures, resource exhaustion, programming errors
+ *            (NULL params), conditions that prevent operation.
+ *   LOG_WRN: Transient conditions that drop a single packet but don't indicate
+ *            system failure - e.g., RX during early startup, frame auth failure,
+ *            oversized frame. These are expected in normal mesh operation (nodes
+ *            may receive traffic before fully initialized, or from misconfigured
+ *            peers). WRN avoids log spam while remaining visible for debugging.
+ *   LOG_INF: State transitions, initialization success, configuration summary.
+ *   LOG_DBG: Per-packet tracing, detailed state.
+ */
 
 #include "lichen_util.h"
 
-/* Include LICHEN link layer if available */
+/*
+ * Include LICHEN link layer if available.
+ *
+ * Required symbols from these headers (must stay inside HAVE_LICHEN_LINK guards):
+ *   link.h:     lichen_link_tx(), lichen_link_rx(), lichen_link_frame_overhead(),
+ *               struct lichen_link_rx_ctx, struct lichen_link_tx_ctx
+ *   link_ctx.h: LICHEN_LINK_KEY_LEN, struct lichen_link_ctx, lichen_link_init(),
+ *               lichen_link_cleanup()
+ *   schc.h:     lichen_schc_init()
+ */
 #if defined(CONFIG_LICHEN_LINK)
 #include <lichen/link.h>
 #include <lichen/link_ctx.h>
@@ -36,8 +78,106 @@ LOG_MODULE_REGISTER(lichen_l2, CONFIG_LICHEN_L2_LOG_LEVEL);
 #define HAVE_LICHEN_LINK 0
 #endif
 
+/*
+ * SECURITY: Require LICHEN_LINK for production builds (project-LICHEN-9j70.16).
+ *
+ * Without CONFIG_LICHEN_LINK, packets are sent as raw IPv6 over LoRa with:
+ * - No MIC/CRC protection (corruption goes undetected)
+ * - No SCHC compression (40-byte IPv6 header wastes MTU)
+ * - No replay protection
+ * - No interoperability with LICHEN-framed nodes
+ *
+ * The raw mode was useful for early bring-up but is not suitable for any
+ * deployment. If you hit this error, enable CONFIG_LICHEN_LINK in your prj.conf.
+ */
+BUILD_ASSERT(HAVE_LICHEN_LINK,
+	     "CONFIG_LICHEN_LINK is required: raw IPv6-over-LoRa provides no "
+	     "security, compression, or interoperability. Enable LICHEN_LINK "
+	     "in prj.conf or menuconfig.");
+
 /* Maximum frame size for LoRa */
 #define MAX_LORA_FRAME 255
+
+/*
+ * Minimum valid LICHEN frame size.
+ *
+ * Wire format (spec section 4, python/src/lichen/link/frame.py):
+ *   Length(1) + LLSec(1) + Epoch(1) + SeqNum(2) + DstAddr(0-8) + Payload + MIC(4-8)
+ *
+ * Absolute minimum (broadcast, 32-bit MIC, empty payload):
+ *   1 + 1 + 1 + 2 + 0 + 0 + 4 = 9 bytes
+ *
+ * Note: source address is NOT in the wire format; it's derived from context
+ * (signature verification or out-of-band information).
+ *
+ * SECURITY: Early rejection of runt frames prevents out-of-bounds reads
+ * in lichen_link_rx() before MIC validation can occur.
+ */
+#define LICHEN_MIN_FRAME_LEN 9
+
+/*
+ * Validate LICHEN_MIN_FRAME_LEN derivation.
+ *
+ * These values are defined by the LICHEN spec (section 4) and cannot change
+ * without a protocol revision. The BUILD_ASSERTs document the derivation.
+ *
+ * (project-LICHEN-1www.41): Use authoritative constants from link.h where
+ * available (LICHEN_MIC_32_LEN) to catch drift. Header field sizes are
+ * protocol-defined with no shared constant, so we define them locally but
+ * validate against LICHEN_MIN_FRAME_LEN = 9 per spec.
+ */
+#define LICHEN_FRAME_LENGTH_FIELD 1
+#define LICHEN_FRAME_LLSEC_FIELD  1
+#define LICHEN_FRAME_EPOCH_FIELD  1
+#define LICHEN_FRAME_SEQNUM_FIELD 2
+#define LICHEN_FRAME_MIN_MIC      LICHEN_MIC_32_LEN  /* Use authoritative constant from link.h */
+#define LICHEN_FRAME_MIN_ADDR     0  /* broadcast/NONE mode has 0 addr bytes */
+
+BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
+	     LICHEN_FRAME_LENGTH_FIELD +
+	     LICHEN_FRAME_LLSEC_FIELD +
+	     LICHEN_FRAME_EPOCH_FIELD +
+	     LICHEN_FRAME_SEQNUM_FIELD +
+	     LICHEN_FRAME_MIN_ADDR +
+	     LICHEN_FRAME_MIN_MIC,
+	     "LICHEN_MIN_FRAME_LEN does not match frame component sizes");
+
+/*
+ * Validate LICHEN_LORA_FRAME_OVERHEAD against frame format constants.
+ *
+ * The overhead (55 bytes) is tuned for MTU = 200 bytes, relying on SCHC
+ * compression to shrink IPv6 headers from 40 bytes to ~3-6 bytes. The
+ * actual on-air signed frame fits within 255 bytes because SCHC gains
+ * more than offset the signature cost.
+ *
+ * These assertions catch drift if schnorr48.h or frame format constants
+ * change without updating LICHEN_LORA_FRAME_OVERHEAD in lora_l2.h.
+ *
+ * SECURITY: If LICHEN_SIG_LEN increases, review LICHEN_LORA_FRAME_OVERHEAD
+ * to ensure signed frames still fit within the LoRa PHY limit.
+ */
+#define LICHEN_FRAME_BASE_OVERHEAD \
+	(LICHEN_FRAME_LENGTH_FIELD + \
+	 LICHEN_FRAME_LLSEC_FIELD + \
+	 LICHEN_FRAME_EPOCH_FIELD + \
+	 LICHEN_FRAME_SEQNUM_FIELD + \
+	 LICHEN_FRAME_MIN_MIC)
+
+/*
+ * Assert: signature length has not changed.
+ * LICHEN_LORA_FRAME_OVERHEAD was calculated assuming 48-byte signatures.
+ * If this assertion fails, recalculate the overhead constant.
+ */
+BUILD_ASSERT(LICHEN_SIG_LEN == 48,
+	     "LICHEN_SIG_LEN changed - update LICHEN_LORA_FRAME_OVERHEAD in lora_l2.h");
+
+/*
+ * Assert: frame header size has not changed.
+ * LICHEN_LORA_FRAME_OVERHEAD assumes 9-byte minimum frame (broadcast + 32-bit MIC).
+ * If this assertion fails, recalculate the overhead constant.
+ */
+BUILD_ASSERT(LICHEN_FRAME_BASE_OVERHEAD == 9,
+	     "Frame header size changed - update LICHEN_LORA_FRAME_OVERHEAD in lora_l2.h");
 
 /* IPv6 base header size (RFC 8200). Does NOT include extension headers. */
 #define IPV6_BASE_HDR_LEN 40
@@ -121,13 +261,22 @@ static void lora_rx_callback(const uint8_t *data, size_t len,
  * Called by net_recv_data() to let L2 process the packet before
  * passing it up to the IP layer.
  *
- * Required: Zephyr's net_if_recv_data() dereferences ->recv without NULL
- * check (net_if.c:5034), so this callback MUST be provided. Cannot be NULL.
- * Compare dummy L2 which also returns NET_CONTINUE when no processing needed.
+ * WHY THIS EXISTS (even though it just returns NET_CONTINUE):
+ * Zephyr's net_if_recv_data() unconditionally calls iface->l2->recv() without
+ * a NULL check. If we omit this callback from NET_L2_INIT, any packet injection
+ * via net_recv_data() would dereference NULL and crash. This function must exist
+ * even when it performs no L2-specific processing. Compare Zephyr's dummy L2
+ * (subsys/net/l2/dummy/dummy.c) which follows the same pattern.
  */
 static enum net_verdict lichen_l2_recv(struct net_if *iface,
 				       struct net_pkt *pkt)
 {
+	/* Validate iface parameter (project-LICHEN-1www.25) */
+	if (iface == NULL) {
+		LOG_ERR("lichen_l2_recv: iface is NULL");
+		return NET_DROP;
+	}
+
 	ARG_UNUSED(iface);
 	ARG_UNUSED(pkt);
 
@@ -153,6 +302,12 @@ static enum net_verdict lichen_l2_recv(struct net_if *iface,
 static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 {
 	int ret;
+
+	/* Validate pkt parameter (project-LICHEN-1www.22) */
+	if (pkt == NULL) {
+		LOG_ERR("TX rejected: pkt is NULL");
+		return -EINVAL;
+	}
 
 	/* SECURITY: Reject TX if interface initialization failed (project-LICHEN-1ojj.2) */
 	if (atomic_get(&iface_init_failed)) {
@@ -209,7 +364,8 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 	ret = lichen_link_tx(&link_ctx, tx_ipv6_buf, pkt_len, NULL,
 			     tx_frame_buf, &frame_len);
 	if (ret < 0) {
-		LOG_ERR("Frame build failed: %d", ret);
+		LOG_ERR("Frame build failed: %s (%d)",
+			lichen_link_strerror(ret), ret);
 		k_mutex_unlock(&tx_mutex);
 		return ret;
 	}
@@ -244,6 +400,12 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
  */
 static int lichen_l2_enable(struct net_if *iface, bool state)
 {
+	/* Validate iface parameter (project-LICHEN-1www.25) */
+	if (iface == NULL) {
+		LOG_ERR("lichen_l2_enable: iface is NULL");
+		return -EINVAL;
+	}
+
 	ARG_UNUSED(iface);
 
 	/* SECURITY: Reject enable if interface initialization failed (project-LICHEN-1ojj.2) */
@@ -258,13 +420,33 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 #if HAVE_LICHEN_LINK
 		/*
 		 * Re-initialize link_ctx if it was cleaned up by a prior disable.
-		 * This mirrors lichen_l2_iface_init() initialization.
 		 * (project-LICHEN-rwio.1)
+		 *
+		 * This intentionally duplicates lichen_l2_iface_init() initialization
+		 * rather than extracting a helper because:
+		 * 1. The init path runs once at boot with no concurrency concerns
+		 * 2. The enable path must hold both mutexes due to potential races
+		 *    with in-flight TX/RX from a concurrent thread
+		 * 3. Extracting a helper would require passing mutex-held state or
+		 *    adding "already_locked" parameters, obscuring the safety model
+		 *
+		 * LOCK ORDER (project-LICHEN-1www.33): tx_mutex MUST be acquired
+		 * before rx_mutex to match the disable path and avoid ABBA deadlock.
+		 * This ordering is consistent across:
+		 * - lichen_l2_enable() enable path (here)
+		 * - lichen_l2_enable() disable path
+		 * Any future code acquiring both mutexes must follow this order.
+		 * (project-LICHEN-gy7h.2)
 		 */
+		k_mutex_lock(&tx_mutex, K_FOREVER);
+		k_mutex_lock(&rx_mutex, K_FOREVER);
 		if (!atomic_get(&link_ctx_initialized)) {
 			const uint8_t *eui64 = lichen_lora_l2_get_eui64();
 			if (eui64 == NULL) {
-				LOG_ERR("Failed to get EUI-64 for link_ctx re-init");
+				/* lichen_lora_l2_get_eui64() logs the specific error */
+				LOG_ERR("Cannot re-init link_ctx: LoRa L2 not initialized");
+				k_mutex_unlock(&rx_mutex);
+				k_mutex_unlock(&tx_mutex);
 				return -ENODEV;
 			}
 			/* SECURITY: Defensive zero of any stale key material before re-init
@@ -273,6 +455,8 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 			lichen_link_init(&link_ctx, eui64);
 			atomic_set(&link_ctx_initialized, 1);
 		}
+		k_mutex_unlock(&rx_mutex);
+		k_mutex_unlock(&tx_mutex);
 #endif
 		/*
 		 * Re-register RX callback before starting.
@@ -326,11 +510,27 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
  */
 static enum net_l2_flags lichen_l2_flags(struct net_if *iface)
 {
+	ARG_UNUSED(iface);
+
 	/*
-	 * LICHEN is a broadcast medium (all nodes hear all transmissions).
-	 * We support multicast at the IP layer.
+	 * NET_L2_MULTICAST: Tells Zephyr this L2 can deliver IP multicast frames.
+	 * LoRa is inherently broadcast - all transmissions reach all receivers,
+	 * so multicast delivery works by default.
+	 *
+	 * NET_L2_MULTICAST_SKIP_JOIN_SOLICIT_NODE: Skip joining solicited-node
+	 * multicast groups (ff02::1:ffXX:XXXX). This relies on LoRa being a true
+	 * broadcast medium where every TX reaches every receiver in range. In such
+	 * a medium, all nodes receive all Neighbor Solicitation messages regardless
+	 * of multicast group membership, making solicited-node optimization pointless.
+	 * Skipping the join avoids MLD (Multicast Listener Discovery) report traffic
+	 * that would waste precious LoRa airtime for no benefit. OpenThread uses the
+	 * same pattern for similar reasons.
+	 *
+	 * Note: We do NOT set NET_IF_IPV6_NO_MLD or NET_IF_IPV6_NO_ND flags because
+	 * LICHEN uses standard IPv6 ND and MLD for all-nodes multicast. Only the
+	 * solicited-node optimization is unnecessary.
 	 */
-	return NET_L2_MULTICAST;
+	return NET_L2_MULTICAST | NET_L2_MULTICAST_SKIP_JOIN_SOLICIT_NODE;
 }
 
 /* Register the L2 layer */
@@ -441,10 +641,15 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * lora_state.eui64 to avoid UB if Zephyr ever writes to it.
 	 * (project-LICHEN-ybal.15/.16)
 	 */
-	memcpy(iface_link_addr, eui64, LICHEN_L2_ADDR_LEN);
+	memcpy(iface_link_addr, eui64, sizeof(iface_link_addr));
 	/* NET_LINK_IEEE802154 is closest match for 8-byte EUI-64 addresses */
-	net_if_set_link_addr(iface, iface_link_addr, LICHEN_L2_ADDR_LEN,
-			     NET_LINK_IEEE802154);
+	ret = net_if_set_link_addr(iface, iface_link_addr, LICHEN_L2_ADDR_LEN,
+				   NET_LINK_IEEE802154);
+	if (ret < 0) {
+		LOG_ERR("net_if_set_link_addr failed: %d", ret);
+		atomic_set(&iface_init_failed, 1);
+		return;
+	}
 
 #if HAVE_LICHEN_LINK
 	/* Initialize link context before enabling RX */
@@ -457,7 +662,18 @@ void lichen_l2_iface_init(struct net_if *iface)
 	atomic_set(&link_ctx_initialized, 1);
 #endif
 
-	/* Cache interface for RX callback */
+	/*
+	 * Cache interface for RX callback.
+	 *
+	 * INVARIANT (project-LICHEN-1www.46): lichen_iface is set exactly once
+	 * during initialization and never cleared. This allows lora_rx_callback()
+	 * to read it without synchronization. Enforce with runtime check.
+	 */
+	if (lichen_iface != NULL) {
+		LOG_ERR("lichen_iface already set (set-once invariant violated)");
+		atomic_set(&iface_init_failed, 1);
+		return;
+	}
 	lichen_iface = iface;
 
 	/* Register RX callback - must happen AFTER link_ctx is initialized */
@@ -466,6 +682,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 	/* Derive and log link-local address */
 	ret = lichen_log_link_local_from_eui64(eui64, NULL);
 	if (ret < 0) {
+		/* Must undo RX callback registration; see fail_late_init cleanup */
 		goto fail_late_init;
 	}
 
@@ -513,11 +730,12 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 		LOG_DBG("RX: empty frame ignored");
 		return;
 	}
-	/* Minimum frame: length(1) + flags(1) + src_eui64(8) + mic(4) = 14 bytes
-	 * (project-LICHEN-725z.5) */
-#define LICHEN_MIN_FRAME_LEN 14
 	if (len < LICHEN_MIN_FRAME_LEN) {
 		LOG_DBG("RX: frame too short (%zu < %d)", len, LICHEN_MIN_FRAME_LEN);
+		return;
+	}
+	if (len > MAX_LORA_FRAME) {
+		LOG_WRN("RX: frame too large (%zu > %d)", len, MAX_LORA_FRAME);
 		return;
 	}
 
@@ -558,7 +776,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * also write valid key material to link_key. If this invariant is violated,
 	 * MIC verification will fail (not silently accept).
 	 */
-	uint8_t rx_link_key[LICHEN_LINK_KEY_LEN];  /* from <lichen/link_ctx.h> */
+	uint8_t rx_link_key[LICHEN_LINK_KEY_LEN];
 	const uint8_t *rx_link_key_ptr = NULL;
 	if (link_ctx.has_link_key) {
 		memcpy(rx_link_key, link_ctx.link_key, LICHEN_LINK_KEY_LEN);
@@ -571,13 +789,14 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 		.link_key = rx_link_key_ptr,
 		.current_time = 0,
 	};
-	uint8_t src_eui64[8];
+	uint8_t src_eui64[8] = {0};
 
 	ipv6_len = sizeof(rx_ipv6_buf);
 	ret = lichen_link_rx(&rx_ctx, NULL, data, len,
 			     rx_ipv6_buf, &ipv6_len, src_eui64);
 	if (ret < 0) {
-		LOG_WRN("Frame RX failed: %d", ret);
+		LOG_WRN("Frame RX failed: %s (%d)",
+			lichen_link_strerror(ret), ret);
 		secure_zero(rx_link_key, sizeof(rx_link_key));
 		k_mutex_unlock(&rx_mutex);
 		return;
@@ -601,11 +820,14 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	ipv6_len = len;
 #endif
 
-	/* Allocate net_pkt for the IPv6 packet.
-	 * Use short timeout to allow memory reclaim under pressure. */
-	struct net_pkt *pkt = net_pkt_rx_alloc_with_buffer(iface, ipv6_len,
-							   AF_INET6,
-							   0, K_MSEC(10));
+	/*
+	 * Allocate net_pkt for the IPv6 packet.
+	 * Timeout configured via CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS.
+	 * See Kconfig help for tradeoff rationale.
+	 */
+	struct net_pkt *pkt = net_pkt_rx_alloc_with_buffer(
+		iface, ipv6_len, AF_INET6, 0,
+		K_MSEC(CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS));
 	if (pkt == NULL) {
 		LOG_ERR("Failed to allocate RX packet");
 		k_mutex_unlock(&rx_mutex);

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-0zj6.14",
+  "title": "main.c goto usage is correct but unusual for Zephyr",
+  "description": "main.c:108-126 uses goto main_loop for error handling. This is valid C but Zephyr style typically uses early returns or nested ifs. The current code is correct - all variables are declared before the gotos (lines 98-101 comment explains why). Consider adding a one-line comment: '// Error handling converges at main_loop' at the first goto to signal intent.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:32:28.346461Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:38:59.114207Z",
+  "closed_at": "2026-06-27T06:38:59.114207Z",
+  "close_reason": "Fixed: added block comment explaining the goto cleanup pattern for LoRa L2 initialization",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0zj6.14",
+      "depends_on_id": "project-LICHEN-0zj6",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:32:28.34971Z"
+    }
+  ]
+}

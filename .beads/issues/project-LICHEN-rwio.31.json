@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-rwio.31",
+  "title": "lichen_l2_recv returns NET_CONTINUE unconditionally with no processing",
+  "description": "lichen_l2.c lines 118-125: The L2 recv callback just returns NET_CONTINUE because decompression happens in lichen_l2_input() before net_recv_data() is called. The comment explains this ('Packet is already an IPv6 packet'). Consider whether this callback could be NULL/removed, or whether Zephyr's L2 contract requires it. If it must exist, the comment is sufficient.\n\nRewrite if removable: Set recv callback to NULL in NET_L2_INIT if the API allows.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:02:11.521695Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:18:03.604756Z",
+  "closed_at": "2026-06-27T06:18:03.604756Z",
+  "close_reason": "Correct L2 pattern: decompression happens before net_recv_data() call; recv callback returning NET_CONTINUE with explanatory comment is the standard pattern when L2 doesn't modify the packet",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rwio.31",
+      "depends_on_id": "project-LICHEN-rwio",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:02:11.522209Z"
+    }
+  ]
+}

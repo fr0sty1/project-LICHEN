@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-ybal.2",
+  "title": "lora_l2_tx holds mutex during blocking lora_send - potential RX starvation",
+  "description": "File: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:253-269\n\nlichen_lora_l2_tx() holds lora_mutex while calling lora_send(), which blocks until TX completes. At SF10/125kHz, a 255-byte packet takes ~500ms airtime.\n\nMeanwhile, the RX thread also acquires lora_mutex (line 127) to snapshot the callback. If TX is in progress, the RX thread blocks waiting for mutex, but it cannot deliver packets until TX releases.\n\nTrigger: Transmit a large packet while another node is sending.\n\nBad behavior: Received packets are delayed by TX airtime (~500ms). In half-duplex LoRa radios, this may cause packet loss if radio switches to TX during incoming reception.\n\nNote: The mutex protects running state, but the lora_send itself does not need serialization if the driver handles it. Consider narrowing the critical section to just the state check.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T05:26:07.073305Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T05:31:36.424549Z",
+  "closed_at": "2026-06-27T05:31:36.424549Z",
+  "close_reason": "Fixed: removed mutex from lichen_lora_l2_tx(). The atomic_t running field is read directly without locking, allowing RX thread to proceed during TX. Added detailed comment explaining why this is safe (atomic read, Zephyr driver thread-safety, driver handles stop race).",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ybal.2",
+      "depends_on_id": "project-LICHEN-ybal",
+      "type": "parent-child",
+      "created_at": "2026-06-27T05:26:07.073736Z"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-0zj6.7",
+  "title": "Duplicate secure_zero() could live in a shared header",
+  "description": "lora_l2.c:44-50, ipv6_addr.c:32-37, lichen_l2.c:32-38 all define identical secure_zero() functions. Move to a shared header (e.g., lichen_util.h) as static inline to maintain call-site inlining while eliminating the duplication. Low priority since static inline is cheap to duplicate.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:32:09.762083Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:38:39.573553Z",
+  "closed_at": "2026-06-27T06:38:39.573553Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0zj6.7",
+      "depends_on_id": "project-LICHEN-0zj6",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:32:09.76411Z"
+    }
+  ]
+}

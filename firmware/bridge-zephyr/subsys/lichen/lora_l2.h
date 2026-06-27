@@ -42,18 +42,32 @@ extern "C" {
 /**
  * @brief MTU for LICHEN LoRa interface
  *
- * Derivation (must match lichen/schnorr48.h and frame format):
+ * Derivation (see lichen/link.h wire layout and lichen/schnorr48.h):
+ *
  *   Max LoRa payload at SF10/BW125:     255 bytes
- *   LICHEN frame overhead:               ~10 bytes (length, flags, epoch, seqnum, addr, mic)
+ *
+ *   LICHEN frame header (fixed):
+ *     Length field:                       1 byte
+ *     LLSec flags:                         1 byte
+ *     Epoch:                               1 byte
+ *     Sequence number:                     2 bytes
+ *     Subtotal:                            5 bytes
+ *
+ *   MIC (32-bit minimum):                  4 bytes
  *   Schnorr-48 signature:                 48 bytes (SCHNORR48_SIG_LEN)
- *   Margin for SCHC rule ID:               ~2 bytes
  *   ----------------------------------------
- *   Available for IPv6 payload:          ~195 bytes, rounded to 200
+ *   Total fixed overhead:                 57 bytes
+ *
+ *   Rounding down to 55 provides 2 bytes margin for:
+ *   - SCHC rule ID (1-2 bytes in compressed payload)
+ *   - Future address field use (currently elided for broadcast)
+ *
+ *   Result: 255 - 55 = 200 bytes available for IPv6 payload
  *
  * If frame format or signature size changes, update this constant.
  */
 #define LICHEN_LORA_MAX_PHY_PAYLOAD 255
-#define LICHEN_LORA_FRAME_OVERHEAD   55  /* 10 + 48 - margin rounded */
+#define LICHEN_LORA_FRAME_OVERHEAD   55  /* 57 raw - 2 margin = 5 hdr + 4 MIC + 48 sig - 2 */
 #define LICHEN_LORA_MTU (LICHEN_LORA_MAX_PHY_PAYLOAD - LICHEN_LORA_FRAME_OVERHEAD)
 
 /**
@@ -101,24 +115,42 @@ int lichen_lora_l2_start(void);
  * Stops the RX thread. Idempotent: returns 0 if not running.
  * Blocks until RX thread exits.
  *
+ * If the RX thread does not exit gracefully within the timeout, it will be
+ * forcibly aborted. After a forced abort, the module enters an undefined
+ * state and requires lichen_lora_l2_deinit() followed by lichen_lora_l2_init()
+ * before it can be restarted.
+ *
  * @return 0 on success, negative errno on failure
  */
 int lichen_lora_l2_stop(void);
 
 /**
+ * @brief Deinitialize the LoRa L2 module
+ *
+ * Releases resources and resets state to allow re-initialization.
+ * Required after a forced thread abort in stop() before the module can be
+ * restarted. Must be called when the module is stopped (not running).
+ *
+ * After deinit, lichen_lora_l2_init() must be called before any other
+ * operations.
+ *
+ * @return 0 on success
+ * @return -EBUSY if module is still running (call stop() first)
+ */
+int lichen_lora_l2_deinit(void);
+
+/**
  * @brief Transmit a packet over LoRa
  *
- * @param data Packet data to send. Buffer must remain valid during TX.
- *             NOTE: The underlying Zephyr lora_send() API takes a non-const
- *             pointer because some radio drivers may modify the buffer
- *             (e.g., for DMA alignment or in-place encryption). Do not
- *             assume buffer contents are preserved after this call returns.
- *             Use a dedicated TX buffer rather than passing const data.
+ * Copies data into an internal buffer before transmission.
+ * The caller's buffer is never modified.
+ *
+ * @param data Packet data to send
  * @param len Length of data (max 255 bytes)
  *
  * @return 0 on success, negative errno on failure
  */
-int lichen_lora_l2_tx(uint8_t *data, size_t len);
+int lichen_lora_l2_tx(const uint8_t *data, size_t len);
 
 /**
  * @brief Set the RX callback
@@ -144,6 +176,18 @@ const uint8_t *lichen_lora_l2_get_eui64(void);
  * @return true if started, false otherwise
  */
 bool lichen_lora_l2_is_running(void);
+
+/**
+ * @brief Check if module requires re-initialization
+ *
+ * Returns true if the RX thread was forcibly aborted during stop().
+ * When true, the module is in an undefined state and requires
+ * lichen_lora_l2_deinit() followed by lichen_lora_l2_init() before
+ * it can be used again.
+ *
+ * @return true if re-initialization is required, false otherwise
+ */
+bool lichen_lora_l2_needs_reinit(void);
 
 #ifdef __cplusplus
 }

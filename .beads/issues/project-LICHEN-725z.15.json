@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-725z.15",
+  "title": "SHA-256 error handling is repetitive across files",
+  "description": "lora_l2.c:108-122 and ipv6_addr.c:66-80 — Both repeat same tc_sha256_init/update/final pattern with identical error handling. Extract helper like lichen_sha256(input, inlen, output).",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T18:10:07.642681Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T18:14:51.830649Z",
+  "closed_at": "2026-06-27T18:14:51.830649Z",
+  "close_reason": "Added lichen_sha256 helper to reduce repetition",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-725z.15",
+      "depends_on_id": "project-LICHEN-725z",
+      "type": "parent-child",
+      "created_at": "2026-06-27T18:10:07.643193Z"
+    }
+  ]
+}

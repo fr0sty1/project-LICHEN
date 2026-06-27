@@ -3,6 +3,11 @@
 
 zephyr_library()
 
+# Common utilities (always built when LICHEN subsystem is enabled)
+zephyr_library_sources(
+    lichen_util.c
+)
+
 zephyr_library_sources_ifdef(CONFIG_LICHEN_LORA_L2
     lora_l2.c
 )

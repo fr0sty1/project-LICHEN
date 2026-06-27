@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-0zj6.20",
+  "title": "Data race: lichen_iface written and read without synchronization",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:32:50.20556Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:39:38.607821Z",
+  "closed_at": "2026-06-27T06:39:38.607821Z",
+  "close_reason": "Added comment explaining ordering guarantee: lichen_iface written before callback registration, lora_mutex provides release barrier",
+  "labels": [
+    "c-standards",
+    "concurrency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0zj6.20",
+      "depends_on_id": "project-LICHEN-0zj6",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:32:50.206051Z"
+    }
+  ]
+}

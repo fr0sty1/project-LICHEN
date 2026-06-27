@@ -40,6 +40,23 @@ config LICHEN_LORA_L2_RX_PRIORITY
 	help
 	  Priority for the LoRa L2 RX thread. Lower numbers = higher priority.
 
+config LICHEN_LORA_L2_RX_TIMEOUT_MS
+	int "LoRa RX timeout in milliseconds"
+	depends on LICHEN_LORA_L2
+	default 1000
+	range 100 10000
+	help
+	  Timeout for lora_recv() calls in the RX thread. This affects:
+	  - How often the thread checks the running flag (lower = more responsive stop)
+	  - Stop latency (worst case: 100ms + this timeout before thread joins)
+	  - CPU overhead (lower = more loop iterations, but overhead is minimal)
+
+	  Lower values (500-1000ms) provide faster stop() responsiveness.
+	  Higher values (3000-5000ms) may save power on some platforms by
+	  reducing wakeup frequency, but slow down disable/enable cycles.
+
+	  Default 1000ms balances responsiveness with low overhead.
+
 config LICHEN_LORA_FREQUENCY
 	int "LoRa frequency in Hz"
 	depends on LICHEN_LORA_L2
@@ -60,6 +77,7 @@ config LICHEN_LORA_TX_POWER
 config LICHEN_L2
 	bool "LICHEN Zephyr L2 network interface"
 	depends on LICHEN_LORA_L2
+	depends on LICHEN_LINK
 	depends on NETWORKING
 	depends on NET_IPV6
 	depends on LICHEN_IPV6
@@ -82,6 +100,31 @@ config LICHEN_L2_LOG_LEVEL
 	help
 	  Log level for LICHEN Zephyr L2 interface.
 	  0 = Off, 1 = Error, 2 = Warning, 3 = Info, 4 = Debug
+
+config LICHEN_L2_RX_ALLOC_TIMEOUT_MS
+	int "RX packet allocation timeout (ms)"
+	depends on LICHEN_L2
+	default 50
+	range 0 1000
+	help
+	  Timeout in milliseconds for net_pkt_rx_alloc_with_buffer().
+	  Controls how long the RX path waits for a network buffer.
+
+	  Tradeoffs:
+	  - Lower values (0-10ms): Faster failure under memory pressure,
+	    but may drop packets that could have succeeded with a brief wait.
+	  - Higher values (50-100ms): Better allocation success rate,
+	    but may stall RX processing and cause radio buffer overruns.
+
+	  For LoRa's low data rate (~300 bps at SF10), 50ms is reasonable:
+	  a full 255-byte frame takes ~6.8 seconds to transmit, so brief
+	  allocation delays don't cause radio-level issues. However, if your
+	  application has tighter real-time constraints, reduce this value.
+
+	  If you see "Failed to allocate RX packet" log messages, consider
+	  increasing this value or adding more NET_BUF_RX buffers.
+
+	  Set to 0 for immediate failure (K_NO_WAIT).
 
 config LICHEN_IPV6
 	bool "LICHEN IPv6 address utilities"

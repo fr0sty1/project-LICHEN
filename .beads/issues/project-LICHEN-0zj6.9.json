@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-0zj6.9",
+  "title": "ipv6_addr.c:170-212 snprintf error handling is correct but over-commented",
+  "description": "lichen_ipv6_addr_to_str() has 15 lines of error handling for a fixed-format snprintf that will never fail in practice (encoding failure, truncation). The checks are correct but the comments explaining what 'ret' means (lines 198, 206-207) restate what the code already expresses. Either trim comments to intent-level ('Handle snprintf failure modes') or trust that the reader knows snprintf semantics.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:32:13.870285Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:37:48.924836Z",
+  "closed_at": "2026-06-27T06:37:48.924836Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0zj6.9",
+      "depends_on_id": "project-LICHEN-0zj6",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:32:13.870746Z"
+    }
+  ]
+}

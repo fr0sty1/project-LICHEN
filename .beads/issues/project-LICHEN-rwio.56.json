@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-rwio.56",
+  "title": "SHA-256 truncation to 64 bits for EUI-64/IID derivation lacks security documentation",
+  "description": "In lora_l2.c:114-115 and ipv6_addr.c:73-74, only the first 8 bytes (64 bits) of SHA-256 are used:\nmemcpy(eui64, hash, 8);  // lora_l2.c\nmemcpy(iid, hash, 8);    // ipv6_addr.c\n\nLocations:\n- firmware/bridge-zephyr/subsys/lichen/lora_l2.c:114-115\n- firmware/bridge-zephyr/subsys/lichen/ipv6_addr.c:73-74\n\nThis is a standard approach (matching RFC 7343 ORCHID) and provides 64-bit collision resistance, which is acceptable for identifiers. However, the code lacks a SECURITY comment explaining:\n1. Why 64-bit truncation is sufficient (birthday bound ~2^32 operations)\n2. That this is NOT suitable for cryptographic authentication\n3. Reference to the spec/RFC justifying this choice\n\nImpact: No vulnerability - this is documentation/clarity debt. A future maintainer might incorrectly assume SHA-256 provides 256-bit security for these identifiers.\n\nRecommendation: Add a SECURITY comment at each truncation point explaining the 64-bit security level and referencing spec section 6.2 or RFC 7343.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:03:12.187579Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:18:09.061979Z",
+  "closed_at": "2026-06-27T06:18:09.061979Z",
+  "close_reason": "Added SECURITY comments in lora_l2.c and ipv6_addr.c explaining SHA-256 truncation safety for EUI-64/IID derivation",
+  "labels": [
+    "crypto-security",
+    "algorithm",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rwio.56",
+      "depends_on_id": "project-LICHEN-rwio",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:03:12.188161Z"
+    }
+  ]
+}

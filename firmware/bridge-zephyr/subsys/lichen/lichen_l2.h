@@ -37,6 +37,12 @@ extern "C" {
  * size we can send. After SCHC compression and LICHEN framing, the on-air
  * payload fits within LoRa limits.
  *
+ * When to use each constant:
+ * - LICHEN_L2_MTU: Use at the Zephyr network stack layer (net_if, net_pkt).
+ *   This is the MTU reported to the IPv6 stack and controls fragmentation.
+ * - LICHEN_LORA_MTU: Use at the LoRa driver layer (lora_l2.c). Identical
+ *   value, but defined separately to avoid coupling header dependencies.
+ *
  * Duplication note: We duplicate rather than include lora_l2.h to avoid
  * forcing consumers of lichen_l2.h to pull in LoRa driver types.
  *

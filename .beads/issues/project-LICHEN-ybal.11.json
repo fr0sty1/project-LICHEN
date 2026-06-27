@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-ybal.11",
+  "title": "k_thread_create return value check is wrong - NULL is never returned",
+  "description": "File: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:201-210\n\nThe code checks if k_thread_create returns NULL:\n  if (tid == NULL) { ... return -ENOMEM; }\n\nBut k_thread_create() always returns a valid k_tid_t (the thread_data pointer passed in). It cannot fail at runtime - if resources are insufficient, it is a build-time config error.\n\nThis dead code:\n1. Suggests a misunderstanding of the API\n2. Sets running=1 before thread create, then clears on 'failure' - but the failure path never executes\n3. Will cause confusion when a contributor tries to understand failure modes\n\nTrigger: N/A (dead code)\n\nBad behavior: None today, but incorrect mental model leads to incorrect future changes.\n\nFix: Remove dead NULL check, or add comment explaining it's defensive against future API changes.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T05:26:36.212398Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T05:31:02.7985Z",
+  "closed_at": "2026-06-27T05:31:02.7985Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ybal.11",
+      "depends_on_id": "project-LICHEN-ybal",
+      "type": "parent-child",
+      "created_at": "2026-06-27T05:26:36.212828Z"
+    }
+  ]
+}

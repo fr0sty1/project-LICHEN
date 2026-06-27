@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-yw7i.23",
+  "title": "LICHEN_LINK_KEY_LEN used but not defined in reviewed files",
+  "description": "lichen_l2.c:536 uses LICHEN_LINK_KEY_LEN without a visible definition in the reviewed files. Presumably defined in \u003clichen/link.h\u003e. Add a comment noting where this constant comes from, or define locally with static_assert checking equality.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T17:07:36.500613Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T17:14:02.354125Z",
+  "closed_at": "2026-06-27T17:14:02.354125Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-yw7i.23",
+      "depends_on_id": "project-LICHEN-yw7i",
+      "type": "parent-child",
+      "created_at": "2026-06-27T17:07:36.501096Z"
+    }
+  ]
+}

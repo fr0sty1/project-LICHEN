@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-rwio.4",
+  "title": "GOOD: Mutex-protected callback snapshot in RX thread prevents TOCTOU races",
+  "description": "lora_l2.c lines 167-171: The RX thread snapshots both rx_callback and rx_callback_user_data under the mutex before invoking, and set_rx_callback() updates both atomically. This prevents invoking a callback with mismatched user_data. Worth defending if anyone suggests 'simplifying' by removing the mutex.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:01:24.625452Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:01:24.625974Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rwio.4",
+      "depends_on_id": "project-LICHEN-rwio",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:01:24.625974Z"
+    }
+  ]
+}

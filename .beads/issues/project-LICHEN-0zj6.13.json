@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-0zj6.13",
+  "title": "Data race: lichen_iface written and read without synchronization",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:32:26.21864Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:32:26.21864Z",
+  "labels": [
+    "c-standards",
+    "concurrency",
+    "review"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-0zj6.18",
+  "title": "lichen_l2.c:527-529 comment explains defensive copy but is verbose",
+  "description": "The comment block at lichen_l2.c:521-529 explaining why rx_link_key is copied rather than pointer-captured is accurate but verbose (9 lines). The code pattern (copy + local pointer) is idiomatic for key material handling. Trim to: '/* SECURITY: Copy key to stack to survive hypothetical cleanup reordering. */'",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:32:39.038922Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:39:58.602391Z",
+  "closed_at": "2026-06-27T06:39:58.602391Z",
+  "close_reason": "Trimmed verbose ownership comment from 7 lines to 2: 'net_recv_data takes ownership on success; we unref on failure'",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0zj6.18",
+      "depends_on_id": "project-LICHEN-0zj6",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:32:39.03946Z"
+    }
+  ]
+}

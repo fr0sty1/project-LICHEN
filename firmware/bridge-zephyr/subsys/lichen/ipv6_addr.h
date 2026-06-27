@@ -29,32 +29,49 @@ extern "C" {
 #endif
 
 /*
- * struct in6_addr detection. Define LICHEN_HAVE_IN6_ADDR=1 before including
- * this header if your platform provides struct in6_addr but uses a guard
- * macro not listed here.
+ * struct in6_addr detection and fallback definition.
  *
- * Detection strategy (most portable first):
- * - LICHEN_HAVE_IN6_ADDR: user override for unlisted platforms
- * - IN6ADDR_ANY_INIT: defined by any POSIX-compliant header providing struct in6_addr
- * - Zephyr with CONFIG_NET_IPV6: use zephyr/net/net_ip.h
- * - POSIX header guards: various platforms use different guard names
- * - Otherwise: provide fallback definition
+ * WHY THIS IS COMPLEX: struct in6_addr is defined by system headers (POSIX
+ * netinet/in.h, Zephyr net_ip.h), but there is no universal guard macro.
+ * Each platform uses different include guards (_NETINET_IN_H, __NETINET_IN_H__,
+ * etc.) and no single check works everywhere. The cascade below checks multiple
+ * signals for "in6_addr already defined" before providing our fallback.
+ *
+ * THE COMPLEXITY IS NECESSARY because defining our own struct in6_addr when
+ * the system already provides one causes a compile error (duplicate definition).
+ * False negatives (providing fallback when not needed) break the build.
+ * False positives (skipping fallback when needed) also break the build.
+ *
+ * Detection strategy (most reliable first):
+ * 1. LICHEN_HAVE_IN6_ADDR: explicit user override for unlisted platforms
+ * 2. IN6ADDR_ANY_INIT: required by POSIX for any header providing in6_addr
+ * 3. Zephyr with CONFIG_NET_IPV6: pulls in zephyr/net/net_ip.h
+ * 4. POSIX header guards: platform-specific guard macros (the long list)
+ * 5. Fallback: provide our own minimal definition
+ *
+ * If you see "redefinition of struct in6_addr", either:
+ * - Include your system's netinet/in.h BEFORE this header, or
+ * - Define LICHEN_HAVE_IN6_ADDR=1 before including this header
  */
 #if defined(LICHEN_HAVE_IN6_ADDR) && LICHEN_HAVE_IN6_ADDR
-/* User says in6_addr is already defined - trust them */
-#elif defined(IN6ADDR_ANY_INIT)
-/* System header already provides struct in6_addr */
+/* User explicitly says in6_addr is already defined */
+#elif defined(IN6ADDR_ANY_INIT) || defined(IN6ADDR_LOOPBACK_INIT)
+/* POSIX-compliant header already provides struct in6_addr */
 #elif defined(CONFIG_NET_IPV6) && defined(__ZEPHYR__)
 #include <zephyr/net/net_ip.h>
 #elif defined(_NETINET_IN_H) || defined(_NETINET_IN_H_) || defined(_NETINET6_IN6_H) || \
-      defined(__NETINET_IN_H__) || defined(ZEPHYR_INCLUDE_POSIX_NETINET_IN_H_)
+      defined(__NETINET_IN_H__) || defined(ZEPHYR_INCLUDE_POSIX_NETINET_IN_H_) || \
+      defined(_SYS_SOCKET_H) || (defined(__APPLE__) && defined(_STRUCT_IN6_ADDR))
 /* System header already provides struct in6_addr */
 #else
 /**
- * @brief IPv6 address structure
+ * @brief IPv6 address structure (fallback definition)
  *
  * 128-bit IPv6 address. Compatible with Zephyr's struct in6_addr
  * and POSIX struct in6_addr.
+ *
+ * If this conflicts with your platform's struct in6_addr, define
+ * LICHEN_HAVE_IN6_ADDR=1 before including this header.
  */
 struct in6_addr {
     uint8_t s6_addr[16];
@@ -150,7 +167,6 @@ int lichen_make_gua(const uint8_t *prefix, const uint8_t *iid,
  *
  * @return 0 on success
  * @retval -EINVAL NULL pointer or buffer too small
- * @retval -ENOSPC Output was truncated (should not occur if buflen >= LICHEN_IPV6_ADDR_STR_LEN)
  * @retval -EIO snprintf encoding error
  */
 int lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t buflen);

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ybal.26",
+  "title": "Good: EUI-64 generation sets U/L bit correctly",
+  "description": "generate_eui64() (lora_l2.c:67-90) correctly sets the U/L bit (bit 1) and clears the multicast bit (bit 0) per IEEE EUI-64 semantics: 'eui64[0] = (eui64[0] | 0x02) \u0026 0xFE'. The comment explains what each bit means.\n\nThis matches the IID derivation in ipv6_addr.c, ensuring address consistency.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:83-85",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T05:27:18.747112Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T05:39:58.245044Z",
+  "closed_at": "2026-06-27T05:39:58.245044Z",
+  "close_reason": "Positive observations, no action needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ybal.26",
+      "depends_on_id": "project-LICHEN-ybal",
+      "type": "parent-child",
+      "created_at": "2026-06-27T05:27:18.748241Z"
+    }
+  ]
+}

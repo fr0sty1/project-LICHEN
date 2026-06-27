@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-725z",
+  "title": "Review: bridge-zephyr 2026-06-27",
+  "notes": "## Confidence Calibration\n\n**High confidence findings:** P0 bugs (invariant violation, false Ready message), secure_zero implementation concerns, buffer overflow timing issues.\n\n**Medium confidence:** The 'divergent code paths' finding assumes HAVE_LICHEN_LINK else-branch gets exercised; unclear from code alone. MTU/struct portability concerns depend on actual deployment targets.\n\n**Taste-only (low confidence):** None filed. All findings have engineering basis - either documented race conditions, spec violations, or potential data loss.\n\n## Positive Patterns Worth Defending\n\n1. Atomic flags for cross-thread state (iface_init_failed, link_ctx_initialized, running)\n2. Static scratch buffers with mutex protection - avoids heap allocation\n3. Copy-before-use pattern for link_key - defensive against lifetime bugs\n4. Idempotent init functions - prevents double-init bugs\n5. Explicit ownership documentation in comments\n6. Consistent SECURITY: comment prefix for security-critical decisions\n7. Thorough secure_zero usage on all paths (implementation concern is platform, not discipline)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T18:07:03.41893Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T18:15:15.963378Z",
+  "closed_at": "2026-06-27T18:15:15.963378Z",
+  "close_reason": "All 19 findings fixed: 2 P0, 7 P1, 5 P2, 5 P3. Build verified.",
+  "labels": [
+    "review"
+  ]
+}

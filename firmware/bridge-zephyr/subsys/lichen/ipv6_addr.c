@@ -14,11 +14,23 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <zephyr/logging/log.h>
 
 #include "lichen_util.h"
 
+/*
+ * Logging abstraction: use Zephyr logging when available, otherwise
+ * fall back to no-ops. This allows the module to be used in host-side
+ * unit tests without stubbing the logging system.
+ */
+#ifdef __ZEPHYR__
+#include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(lichen_ipv6, LOG_LEVEL_INF);
+#else
+#define LOG_ERR(...)  ((void)0)
+#define LOG_WRN(...)  ((void)0)
+#define LOG_INF(...)  ((void)0)
+#define LOG_DBG(...)  ((void)0)
+#endif
 
 /* Ed25519 public key length - compile-time check */
 #define LICHEN_ED25519_PUBKEY_LEN 32
@@ -38,7 +50,18 @@ int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid)
         return -EINVAL;
     }
 
-    /* Copy and flip U/L bit per spec 6.2 */
+    /*
+     * Copy and flip U/L bit per RFC 4291 and LICHEN spec 6.2.
+     *
+     * EUI-64 derived IIDs: XOR (flip) U/L bit because the source is a
+     * universally-administered MAC address. RFC 4291 requires inverting
+     * the U/L bit when embedding a universal identifier into an IID so
+     * that locally-assigned IIDs can use the natural U/L=0 value.
+     *
+     * Compare with lichen_pubkey_to_iid() which clears U/L rather than
+     * flipping it, because pubkey-derived IIDs are not derived from a
+     * universally-administered identifier (they are synthetic).
+     */
     memcpy(iid, eui64, 8);
     iid[0] ^= UL_BIT;
     return 0;
@@ -79,9 +102,15 @@ int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
      * IID semantics (RFC 4291 section 2.5.1):
      * - Bit 1 (U/L): 0=local, 1=universal
      *
-     * For pubkey-derived IIDs, mark as locally-administered (U/L=0)
-     * since they are not globally-unique MAC addresses. The Python
-     * implementation also clears only the U/L bit (bit 1).
+     * For pubkey-derived IIDs, clear U/L bit to mark as locally-administered
+     * since they are not derived from a universally-administered MAC address.
+     *
+     * This differs from lichen_eui64_to_iid() which flips (XORs) the U/L bit.
+     * The reason: EUI-64 starts with a universal MAC (U/L=1), so RFC 4291
+     * requires flipping it. Pubkey-derived IIDs start from hash output with
+     * no inherent U/L semantics, so we simply clear the bit to indicate
+     * "locally-administered" status. The Python implementation in
+     * lichen/crypto/identity.py uses the same approach (clear, not flip).
      */
     iid[0] &= ~UL_BIT;  /* Clear U/L bit */
 
@@ -142,6 +171,18 @@ int lichen_make_gua(const uint8_t *prefix, const uint8_t *iid,
     return 0;
 }
 
+/*
+ * IPv6 address string length: 8 groups * 4 hex chars + 7 colons = 39 chars + null.
+ * Verify at compile time that our buffer constant is sufficient.
+ */
+#ifdef __ZEPHYR__
+BUILD_ASSERT(LICHEN_IPV6_ADDR_STR_LEN >= 40,
+             "LICHEN_IPV6_ADDR_STR_LEN must hold 39-char IPv6 string plus null");
+#else
+_Static_assert(LICHEN_IPV6_ADDR_STR_LEN >= 40,
+               "LICHEN_IPV6_ADDR_STR_LEN must hold 39-char IPv6 string plus null");
+#endif
+
 int lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t buflen)
 {
     if (addr == NULL || buf == NULL) {
@@ -156,7 +197,12 @@ int lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t bufle
         return -EINVAL;
     }
 
-    /* Simple IPv6 formatting (not compressed) */
+    /*
+     * Uncompressed format chosen over RFC 5952 compressed form for:
+     * 1. Deterministic output (same address always produces same string)
+     * 2. Simpler parsing (no :: expansion needed by consumers)
+     * 3. Consistent log line lengths for alignment
+     */
     int ret = snprintf(buf, buflen,
              "%02x%02x:%02x%02x:%02x%02x:%02x%02x:"
              "%02x%02x:%02x%02x:%02x%02x:%02x%02x",
@@ -178,10 +224,10 @@ int lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t bufle
         return -EIO;
     }
 
-    /* Handle truncation (ret is chars that WOULD have been written, excl. null) */
+    /* Check for truncation (defensive - buflen check above should prevent this) */
     if ((size_t)ret >= buflen) {
-        LOG_ERR("IPv6 addr truncated");
-        return -ENOSPC;
+        LOG_ERR("IPv6 addr format truncated");
+        return -EINVAL;
     }
 
     return 0;

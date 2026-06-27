@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-1ojj.21",
+  "title": "lichen_l2_recv does nothing but return NET_CONTINUE",
+  "description": "lichen_l2.c:106-113 implements L2 recv handler that just returns NET_CONTINUE with a comment explaining the packet is already decompressed.\n\nWhat goes wrong as-is: A function that does nothing except return a constant is the definition of a no-op. The comment explains why, but the reader might wonder if this could be NULL in the NET_L2_INIT registration.\n\nNote: Zephyr's net_l2 API may require a non-NULL callback. If so, this is unavoidable boilerplate. If not, passing NULL would be clearer. Verify NET_L2_INIT requirements.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T05:47:57.591361Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T05:51:22.516471Z",
+  "closed_at": "2026-06-27T05:51:22.516471Z",
+  "close_reason": "By design: Zephyr net_l2 API requires non-NULL recv callback",
+  "labels": [
+    "elegance",
+    "opinion",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1ojj.21",
+      "depends_on_id": "project-LICHEN-1ojj",
+      "type": "parent-child",
+      "created_at": "2026-06-27T05:47:57.591889Z"
+    }
+  ]
+}

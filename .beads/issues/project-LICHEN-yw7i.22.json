@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-yw7i.22",
+  "title": "Good: SECURITY comments mark critical code paths",
+  "description": "Multiple files use 'SECURITY:' prefix for security-critical comments (ipv6_addr.c:64, 85, 99, 102; lora_l2.c:95, 107, 125; lichen_l2.c:71, 99, 148, 520). This consistent tagging makes security review efficient via grep.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T17:07:34.207398Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T17:07:34.208411Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-yw7i.22",
+      "depends_on_id": "project-LICHEN-yw7i",
+      "type": "parent-child",
+      "created_at": "2026-06-27T17:07:34.208411Z"
+    }
+  ]
+}

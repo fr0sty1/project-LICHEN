@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-yw7i.8",
+  "title": "Unreachable return in main() after infinite loop",
+  "description": "main.c:173 has 'return 0;' after 'while (1) { ... }'. This is harmless but unreachable code that may confuse readers or trigger static analysis warnings. Remove the return statement or mark with __UNREACHABLE.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T17:06:53.045429Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T17:13:36.065738Z",
+  "closed_at": "2026-06-27T17:13:36.065738Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-yw7i.8",
+      "depends_on_id": "project-LICHEN-yw7i",
+      "type": "parent-child",
+      "created_at": "2026-06-27T17:06:53.04599Z"
+    }
+  ]
+}
