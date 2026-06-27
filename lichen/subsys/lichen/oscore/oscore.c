@@ -18,6 +18,7 @@
 #include "aes_ccm.h"
 #include "hkdf.h"
 #include <monocypher.h>
+#include <zcbor_encode.h>
 
 LOG_MODULE_REGISTER(oscore, CONFIG_LICHEN_OSCORE_LOG_LEVEL);
 
@@ -133,210 +134,72 @@ static int ctx_get_index(const struct oscore_ctx *ctx)
 #endif
 
 /*
- * Build OSCORE HKDF info structure in CBOR format.
+ * Build OSCORE HKDF info structure in CBOR format (RFC 8613 Section 3.2.1):
+ *   info = [id : bstr, id_context : bstr / nil, alg_aead : int, type : tstr, L : uint]
  * Returns encoded length, or negative on error.
- *
- * Note: This function contains inline CBOR encoding rather than using a
- * shared CBOR library. This is intentional - OSCORE info encoding is a
- * simple, fixed-format structure (5-element array with known types), and
- * pulling in a general CBOR encoder would add code size for no benefit.
- * The encoding here matches RFC 8613 Section 3.2.1 exactly.
  */
 static int build_info_cbor(const uint8_t *id, size_t id_len,
 			   const uint8_t *id_context, size_t id_context_len,
 			   const char *type, size_t out_len,
 			   uint8_t *buf, size_t buf_len)
 {
-	size_t off = 0;
+	ZCBOR_STATE_E(state, 0, buf, buf_len, 1);
 
-	if (buf == NULL || buf_len == 0) return -1;
-
-	/* Array of 5 elements: 0x85 */
-	if (off >= buf_len) return -1;
-	buf[off++] = CBOR_ARRAY_BASE | 5;
-
-	/* id: bstr */
-	if (id_len <= 23) {
-		if (off >= buf_len) return -1;
-		buf[off++] = CBOR_BSTR_BASE | (uint8_t)id_len;
-	} else {
-		if (off + 1 >= buf_len) return -1;
-		buf[off++] = CBOR_BSTR_1BYTE;
-		buf[off++] = (uint8_t)id_len;
-	}
-	if (off + id_len > buf_len) return -1;
-	memcpy(buf + off, id, id_len);
-	off += id_len;
-
-	/* id_context: bstr or null */
-	if (id_context_len == 0) {
-		if (off >= buf_len) return -1;
-		buf[off++] = CBOR_NULL;
-	} else {
-		if (id_context_len <= 23) {
-			if (off >= buf_len) return -1;
-			buf[off++] = CBOR_BSTR_BASE | (uint8_t)id_context_len;
-		} else {
-			if (off + 1 >= buf_len) return -1;
-			buf[off++] = CBOR_BSTR_1BYTE;
-			buf[off++] = (uint8_t)id_context_len;
-		}
-		if (off + id_context_len > buf_len) return -1;
-		memcpy(buf + off, id_context, id_context_len);
-		off += id_context_len;
-	}
-
-	/* alg_aead: int (10 for AES-CCM-16-64-128) */
-	if (off >= buf_len) return -1;
-	buf[off++] = OSCORE_ALG_AEAD; /* 0..23 encodes directly */
-
-	/* type: tstr ("Key", "IV", or "Info") */
-	size_t type_len = strlen(type);
-	if (type_len <= 23) {
-		if (off >= buf_len) return -1;
-		buf[off++] = CBOR_TSTR_BASE | (uint8_t)type_len;
-	} else {
-		return -1; /* type shouldn't be > 23 chars */
-	}
-	if (off + type_len > buf_len) return -1;
-	memcpy(buf + off, type, type_len);
-	off += type_len;
-
-	/* L: uint (output length) */
-	if (out_len <= 23) {
-		if (off >= buf_len) return -1;
-		buf[off++] = (uint8_t)out_len;
-	} else if (out_len <= 255) {
-		if (off + 1 >= buf_len) return -1;
-		buf[off++] = CBOR_UINT_1BYTE;
-		buf[off++] = (uint8_t)out_len;
-	} else {
-		return -1; /* L shouldn't be > 255 for OSCORE */
-	}
-
-	/* Guard against unlikely overflow before int cast (python-ano.118) */
-	if (off > (size_t)INT_MAX) {
+	if (!zcbor_list_start_encode(state, 5) ||
+	    !zcbor_bstr_encode_ptr(state, id, id_len) ||
+	    (id_context_len == 0 ? !zcbor_nil_put(state, NULL) :
+				   !zcbor_bstr_encode_ptr(state, id_context, id_context_len)) ||
+	    !zcbor_int32_put(state, OSCORE_ALG_AEAD) ||
+	    !zcbor_tstr_put_term(state, type, 16) ||
+	    !zcbor_uint32_put(state, (uint32_t)out_len) ||
+	    !zcbor_list_end_encode(state, 5)) {
 		return -1;
 	}
-	return (int)off;
+
+	size_t encoded_len = state->payload - buf;
+	return (encoded_len > (size_t)INT_MAX) ? -1 : (int)encoded_len;
 }
 
 /*
  * Build OSCORE external AAD per RFC 8613 Section 5.4.
- *
- * external_aad = bstr .cbor aad_array
- * aad_array = [
- *   oscore_version : uint,        (1 for OSCORE v1)
- *   algorithms : [alg_aead : int], (array containing algorithm ID)
- *   request_kid : bstr,
- *   request_piv : bstr,
- *   options : bstr                (Class I options, empty for now)
- * ]
- *
- * Then wrapped in Enc_structure:
- * Enc_structure = [
- *   "Encrypt0",
- *   h'',  (empty protected header)
- *   external_aad
- * ]
- *
+ * Enc_structure = ["Encrypt0", h'', external_aad]
+ * where external_aad = bstr .cbor [oscore_version, [alg], kid, piv, options]
  * Returns encoded length, or negative on error.
  */
 static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 			    const uint8_t *request_piv, size_t request_piv_len,
 			    uint8_t *buf, size_t buf_len)
 {
-	size_t off = 0;
-
-	if (buf == NULL || buf_len == 0) return -1;
-
-	/*
-	 * First build the aad_array, then wrap it.
-	 * We build the inner structure in a temp buffer, then encode it
-	 * as a bstr inside the Enc_structure.
-	 */
+	/* Build aad_array first */
 	uint8_t inner[64];
-	size_t inner_off = 0;
+	ZCBOR_STATE_E(inner_state, 0, inner, sizeof(inner), 1);
 
-	/* aad_array: 5-element array */
-	inner[inner_off++] = CBOR_ARRAY_BASE | 5;
-
-	/* oscore_version: 1 */
-	inner[inner_off++] = 0x01;
-
-	/* algorithms: 1-element array containing algorithm ID (10) */
-	inner[inner_off++] = CBOR_ARRAY_BASE | 1;
-	inner[inner_off++] = OSCORE_ALG_AEAD; /* algorithm ID 10 */
-
-	/* request_kid: bstr */
-	if (request_kid_len <= 23) {
-		inner[inner_off++] = CBOR_BSTR_BASE | (uint8_t)request_kid_len;
-	} else {
-		return -1; /* shouldn't happen with OSCORE_ID_MAX_LEN */
-	}
-	if (request_kid_len > 0) {
-		if (inner_off + request_kid_len > sizeof(inner)) {
-			return -1;
-		}
-		memcpy(inner + inner_off, request_kid, request_kid_len);
-		inner_off += request_kid_len;
-	}
-
-	/* request_piv: bstr */
-	if (request_piv_len <= 23) {
-		inner[inner_off++] = CBOR_BSTR_BASE | (uint8_t)request_piv_len;
-	} else {
+	if (!zcbor_list_start_encode(inner_state, 5) ||
+	    !zcbor_uint32_put(inner_state, 1) ||                /* oscore_version */
+	    !zcbor_list_start_encode(inner_state, 1) ||         /* algorithms array */
+	    !zcbor_int32_put(inner_state, OSCORE_ALG_AEAD) ||
+	    !zcbor_list_end_encode(inner_state, 1) ||
+	    !zcbor_bstr_encode_ptr(inner_state, request_kid, request_kid_len) ||
+	    !zcbor_bstr_encode_ptr(inner_state, request_piv, request_piv_len) ||
+	    !zcbor_bstr_encode_ptr(inner_state, NULL, 0) ||     /* empty options */
+	    !zcbor_list_end_encode(inner_state, 5)) {
 		return -1;
 	}
-	if (request_piv_len > 0) {
-		if (inner_off + request_piv_len > sizeof(inner)) {
-			return -1;
-		}
-		memcpy(inner + inner_off, request_piv, request_piv_len);
-		inner_off += request_piv_len;
-	}
+	size_t inner_len = inner_state->payload - inner;
 
-	/* options: empty bstr (Class I options not used) */
-	inner[inner_off++] = CBOR_BSTR_BASE;
+	/* Build Enc_structure: ["Encrypt0", h'', external_aad] */
+	ZCBOR_STATE_E(state, 0, buf, buf_len, 1);
 
-	/*
-	 * Now build Enc_structure: ["Encrypt0", h'', external_aad]
-	 * where external_aad = bstr .cbor aad_array (the inner buffer)
-	 */
-
-	/* 3-element array */
-	if (off >= buf_len) return -1;
-	buf[off++] = CBOR_ARRAY_BASE | 3;
-
-	/* "Encrypt0" as tstr (8 chars) */
-	if (off >= buf_len) return -1;
-	buf[off++] = CBOR_TSTR_BASE | 8;
-	if (off + 8 > buf_len) return -1;
-	memcpy(buf + off, "Encrypt0", 8);
-	off += 8;
-
-	/* empty bstr (protected header) */
-	if (off >= buf_len) return -1;
-	buf[off++] = CBOR_BSTR_BASE;
-
-	/* external_aad as bstr wrapping the inner CBOR */
-	if (inner_off <= 23) {
-		if (off >= buf_len) return -1;
-		buf[off++] = CBOR_BSTR_BASE | (uint8_t)inner_off;
-	} else {
-		if (off + 1 >= buf_len) return -1;
-		buf[off++] = CBOR_BSTR_1BYTE;
-		buf[off++] = (uint8_t)inner_off;
-	}
-	if (off + inner_off > buf_len) return -1;
-	memcpy(buf + off, inner, inner_off);
-	off += inner_off;
-
-	/* Guard against unlikely overflow before int cast (python-ano.118) */
-	if (off > (size_t)INT_MAX) {
+	if (!zcbor_list_start_encode(state, 3) ||
+	    !zcbor_tstr_put_lit(state, "Encrypt0") ||
+	    !zcbor_bstr_encode_ptr(state, NULL, 0) ||           /* empty protected */
+	    !zcbor_bstr_encode_ptr(state, inner, inner_len) ||  /* external_aad */
+	    !zcbor_list_end_encode(state, 3)) {
 		return -1;
 	}
-	return (int)off;
+
+	size_t encoded_len = state->payload - buf;
+	return (encoded_len > (size_t)INT_MAX) ? -1 : (int)encoded_len;
 }
 
 /*
