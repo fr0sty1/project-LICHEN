@@ -15,8 +15,26 @@
 #include <stdio.h>
 #include <string.h>
 #include <zephyr/logging/log.h>
+#include <tinycrypt/sha256.h>
+#include <tinycrypt/constants.h>
 
 LOG_MODULE_REGISTER(lichen_ipv6, LOG_LEVEL_INF);
+
+/* Ed25519 public key length - compile-time check */
+#define LICHEN_ED25519_PUBKEY_LEN 32
+
+/*
+ * SECURITY: Secure memset that won't be optimized away.
+ * Standard memset() on dead buffers can be removed by the compiler.
+ * The volatile pointer forces each store to actually execute.
+ */
+static inline void secure_zero(void *ptr, size_t len)
+{
+    volatile uint8_t *p = ptr;
+    while (len--) {
+        *p++ = 0;
+    }
+}
 
 /* U/L bit position in EUI-64 (bit 1 of first octet) */
 #define UL_BIT 0x02
@@ -41,17 +59,61 @@ int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid)
 
 int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
 {
+    int ret = 0;
+    struct tc_sha256_state_struct sha_state;
+    uint8_t hash[TC_SHA256_DIGEST_SIZE];
+
     if (pubkey == NULL || iid == NULL) {
         LOG_ERR("pubkey_to_iid: NULL pointer");
         return -EINVAL;
     }
 
-    /* Use first 8 bytes of pubkey */
-    memcpy(iid, pubkey, 8);
+    /*
+     * SECURITY: Use SHA-256 hash of pubkey rather than raw bytes.
+     * Raw Ed25519 public key bytes have structure that could leak
+     * information. This matches RFC 7343 (ORCHID) approach and the
+     * Python implementation in lichen/crypto/identity.py.
+     */
+    if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS) {
+        LOG_ERR("pubkey_to_iid: SHA-256 init failed");
+        ret = -EIO;
+        goto cleanup;
+    }
+    if (tc_sha256_update(&sha_state, pubkey, LICHEN_ED25519_PUBKEY_LEN) != TC_CRYPTO_SUCCESS) {
+        LOG_ERR("pubkey_to_iid: SHA-256 update failed");
+        ret = -EIO;
+        goto cleanup;
+    }
+    if (tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+        LOG_ERR("pubkey_to_iid: SHA-256 final failed");
+        ret = -EIO;
+        goto cleanup;
+    }
 
-    /* Set locally administered bit, clear multicast bit */
-    iid[0] = (iid[0] | UL_BIT) & 0xFE;
-    return 0;
+    /*
+     * SECURITY: Using first 64 bits of SHA-256 for IID derivation.
+     * This is safe for identifier derivation (not key material) because:
+     * 1. Birthday collision requires 2^32 attempts (4B devices) for 50% collision
+     * 2. Preimage resistance remains at 2^64 (sufficient for device identity)
+     * 3. Matches RFC 7343 (ORCHID) approach for cryptographic identifiers
+     */
+    memcpy(iid, hash, 8);
+
+    /*
+     * IID semantics (RFC 4291 section 2.5.1):
+     * - Bit 1 (U/L): 0=local, 1=universal
+     *
+     * For pubkey-derived IIDs, mark as locally-administered (U/L=0)
+     * since they are not globally-unique MAC addresses. The Python
+     * implementation also clears only the U/L bit (bit 1).
+     */
+    iid[0] &= ~UL_BIT;  /* Clear U/L bit */
+
+cleanup:
+    /* SECURITY: Zero all crypto state on all paths (success and error) */
+    secure_zero(&sha_state, sizeof(sha_state));
+    secure_zero(hash, sizeof(hash));
+    return ret;
 }
 
 int lichen_make_link_local(const uint8_t *iid, struct in6_addr *addr)
@@ -132,12 +194,20 @@ int lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t bufle
              addr->s6_addr[12], addr->s6_addr[13],
              addr->s6_addr[14], addr->s6_addr[15]);
 
-    /* Handle truncation or error */
-    if (ret < 0 || (size_t)ret >= buflen) {
-        LOG_WRN("IPv6 addr format truncated or failed");
+    /* Handle snprintf error (encoding failure, rare) */
+    if (ret < 0) {
+        LOG_ERR("IPv6 addr format failed");
         if (buflen > 0) {
-            buf[buflen - 1] = '\0';
+            buf[0] = '\0';
         }
+        return -EIO;
     }
+
+    /* Handle truncation (ret is chars that WOULD have been written, excl. null) */
+    if ((size_t)ret >= buflen) {
+        LOG_ERR("IPv6 addr truncated");
+        return -ENOSPC;
+    }
+
     return 0;
 }

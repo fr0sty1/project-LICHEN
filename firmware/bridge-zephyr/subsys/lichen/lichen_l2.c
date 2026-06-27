@@ -24,6 +24,19 @@
 
 LOG_MODULE_REGISTER(lichen_l2, CONFIG_LICHEN_L2_LOG_LEVEL);
 
+/*
+ * SECURITY: Secure memset that won't be optimized away.
+ * Standard memset() on dead buffers can be removed by the compiler.
+ * The volatile pointer forces each store to actually execute.
+ */
+static inline void secure_zero(void *ptr, size_t len)
+{
+	volatile uint8_t *p = ptr;
+	while (len--) {
+		*p++ = 0;
+	}
+}
+
 /* Include LICHEN link layer if available */
 #if defined(CONFIG_LICHEN_LINK)
 #include <lichen/link.h>
@@ -37,6 +50,9 @@ LOG_MODULE_REGISTER(lichen_l2, CONFIG_LICHEN_L2_LOG_LEVEL);
 /* Maximum frame size for LoRa */
 #define MAX_LORA_FRAME 255
 
+/* IPv6 base header size (RFC 8200). Does NOT include extension headers. */
+#define IPV6_BASE_HDR_LEN 40
+
 /*
  * Scratch buffers for TX/RX processing.
  * Protected by mutexes since multiple threads may call L2 send/recv.
@@ -44,28 +60,69 @@ LOG_MODULE_REGISTER(lichen_l2, CONFIG_LICHEN_L2_LOG_LEVEL);
  * Note: SCHC compression/decompression is handled internally by lichen_link_tx/rx,
  * so we only need the raw IPv6 and final frame buffers here.
  *
- * Buffer sizing: LICHEN_L2_MTU (200) + 40 (IPv6 base header) = 240 bytes.
+ * Buffer sizing: LICHEN_L2_MTU + IPV6_BASE_HDR_LEN = 240 bytes.
  * This assumes no IPv6 extension headers. LICHEN's SCHC rules (schc/rules.py)
  * are defined for specific protocol stacks (CoAP, ICMPv6, RPL) without extension
  * headers; packets with extension headers fall back to rule 255 (uncompressed)
  * and will fail the MTU check. When OSCORE support is added, its headers will
  * need a dedicated SCHC rule, at which point buffer sizing should be revisited.
  */
-static uint8_t tx_ipv6_buf[LICHEN_L2_MTU + 40];  /* IPv6 base header + payload */
-static uint8_t tx_frame_buf[MAX_LORA_FRAME];     /* LICHEN frame */
+static uint8_t tx_ipv6_buf[LICHEN_L2_MTU + IPV6_BASE_HDR_LEN];
+static uint8_t tx_frame_buf[MAX_LORA_FRAME];
 static K_MUTEX_DEFINE(tx_mutex);
 
-static uint8_t rx_ipv6_buf[LICHEN_L2_MTU + 40];  /* Decompressed IPv6 (base hdr) */
+static uint8_t rx_ipv6_buf[LICHEN_L2_MTU + IPV6_BASE_HDR_LEN];
 static K_MUTEX_DEFINE(rx_mutex);
 
 /* Link context for framing */
 #if HAVE_LICHEN_LINK
 static struct lichen_link_ctx link_ctx;
-static bool link_ctx_initialized;  /* Guards access to link_ctx (python-ano.27) */
+/*
+ * Guards access to link_ctx before initialization completes.
+ * SECURITY: atomic_t prevents torn reads under aggressive optimization.
+ * atomic_set() provides release semantics (stores to link_ctx complete first),
+ * atomic_get() provides acquire semantics (link_ctx reads happen after).
+ */
+static atomic_t link_ctx_initialized;
 #endif
 
-/* Cached interface pointer for RX callback */
+/*
+ * Cached interface pointer for RX callback.
+ *
+ * Thread-safety invariant (project-LICHEN-ybal.4): This pointer is set exactly
+ * once in lichen_l2_iface_init() and is NEVER cleared. The underlying net_if
+ * structure is statically allocated by NET_DEVICE_INIT and has device lifetime.
+ * DO NOT add code to clear this pointer in lichen_l2_enable(false) or elsewhere
+ * - doing so would race with lora_rx_callback() which reads it without a mutex.
+ *
+ * This is consistent with Zephyr's network interface model: once a net_if is
+ * registered, it remains valid until the system is powered down.
+ */
 static struct net_if *lichen_iface;
+
+/*
+ * Initialization error flag.
+ *
+ * Set to 1 if lichen_l2_iface_init() failed partway through initialization.
+ * Checked by lichen_l2_send(), lichen_l2_enable(), and lora_rx_callback() to
+ * prevent operating on a half-initialized interface. (project-LICHEN-1ojj.2)
+ *
+ * SECURITY: Prevents silent failures where the net_if appears valid to the IPv6
+ * stack but the L2 layer cannot actually transmit or receive.
+ *
+ * atomic_t for safe concurrent access without mutex. (project-LICHEN-rwio.13)
+ */
+static atomic_t iface_init_failed;
+
+/*
+ * Local copy of link-layer address for net_if_set_link_addr().
+ *
+ * Zephyr's net_if stores the pointer directly without copying, so we must
+ * provide storage that persists for the interface lifetime. We copy from
+ * lichen_lora_l2_get_eui64() rather than casting away const to avoid UB
+ * if Zephyr ever writes to this buffer. (project-LICHEN-ybal.15/.16)
+ */
+static uint8_t iface_link_addr[LICHEN_L2_ADDR_LEN];
 
 /**
  * @brief L2 receive handler
@@ -90,10 +147,20 @@ static enum net_verdict lichen_l2_recv(struct net_if *iface,
  * 2. Compress with SCHC
  * 3. Build LICHEN frame
  * 4. Send via LoRa
+ *
+ * Ownership: Per Zephyr net_l2 contract, on success (return 0) this function
+ * takes ownership of @p pkt and calls net_pkt_unref(). On error (return < 0),
+ * caller retains ownership and is responsible for cleanup.
  */
 static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 {
 	int ret;
+
+	/* SECURITY: Reject TX if interface initialization failed (project-LICHEN-1ojj.2) */
+	if (atomic_get(&iface_init_failed)) {
+		LOG_ERR("TX rejected: interface initialization failed");
+		return -ENODEV;
+	}
 
 	if (!lichen_lora_l2_is_running()) {
 		LOG_WRN("LoRa L2 not running");
@@ -110,33 +177,24 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 
 	k_mutex_lock(&tx_mutex, K_FOREVER);
 
-	struct net_buf *frag = pkt->frags;
-	size_t offset = 0;
-
-	while (frag && offset < pkt_len) {
-		size_t copy_len = frag->len;
-
-		if (offset + copy_len > sizeof(tx_ipv6_buf)) {
-			LOG_ERR("Fragment exceeds buffer during linearization: "
-				"offset=%zu frag_len=%zu buf_size=%zu",
-				offset, frag->len, sizeof(tx_ipv6_buf));
-			k_mutex_unlock(&tx_mutex);
-			return -EMSGSIZE;
-		}
-		memcpy(&tx_ipv6_buf[offset], frag->data, copy_len);
-		offset += copy_len;
-		frag = frag->frags;
+	/* Linearize packet into scratch buffer using Zephyr's cursor API */
+	net_pkt_cursor_init(pkt);
+	ret = net_pkt_read(pkt, tx_ipv6_buf, pkt_len);
+	if (ret < 0) {
+		LOG_ERR("Failed to linearize packet: %d", ret);
+		k_mutex_unlock(&tx_mutex);
+		return ret;
 	}
 
 	LOG_DBG("TX IPv6 packet: %zu bytes", pkt_len);
 
 #if HAVE_LICHEN_LINK
 	/*
-	 * Guard against access before initialization (python-t7j5.1).
+	 * Guard against access before initialization.
 	 * This mirrors the RX path guard - could happen if IPv6 stack tries
 	 * to transmit during early startup before lichen_l2_iface_init() completes.
 	 */
-	if (!link_ctx_initialized) {
+	if (!atomic_get(&link_ctx_initialized)) {
 		LOG_WRN("TX attempted before link_ctx initialized");
 		k_mutex_unlock(&tx_mutex);
 		return -EAGAIN;
@@ -174,7 +232,12 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 		return ret;
 	}
 
-	/* Return 0 on success (packet was sent) */
+	/*
+	 * Per Zephyr net_l2 contract: when L2 returns 0, it took ownership
+	 * of the packet and must free it. The caller (IPv6 stack) will not
+	 * free it on success.
+	 */
+	net_pkt_unref(pkt);
 	return 0;
 }
 
@@ -184,23 +247,68 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 static int lichen_l2_enable(struct net_if *iface, bool state)
 {
 	ARG_UNUSED(iface);
+
+	/* SECURITY: Reject enable if interface initialization failed (project-LICHEN-1ojj.2) */
+	if (atomic_get(&iface_init_failed)) {
+		LOG_ERR("Enable rejected: interface initialization failed");
+		return -ENODEV;
+	}
+
 	LOG_INF("LICHEN L2 %s", state ? "enabled" : "disabled");
 
 	if (state) {
+#if HAVE_LICHEN_LINK
+		/*
+		 * Re-initialize link_ctx if it was cleaned up by a prior disable.
+		 * This mirrors lichen_l2_iface_init() initialization.
+		 * (project-LICHEN-rwio.1)
+		 */
+		if (!atomic_get(&link_ctx_initialized)) {
+			const uint8_t *eui64 = lichen_lora_l2_get_eui64();
+			if (eui64 == NULL) {
+				LOG_ERR("Failed to get EUI-64 for link_ctx re-init");
+				return -ENODEV;
+			}
+			lichen_link_init(&link_ctx, eui64);
+			atomic_set(&link_ctx_initialized, 1);
+		}
+#endif
 		return lichen_lora_l2_start();
 	} else {
+		/*
+		 * lichen_lora_l2_stop() clears the RX callback before signaling
+		 * the thread to exit, then joins the thread. This guarantees:
+		 * 1. No NEW callbacks can start after stop() begins
+		 * 2. Any in-flight callback (already past the snapshot) will still
+		 *    execute and acquire rx_mutex in lichen_l2_input()
+		 * 3. Thread join returns only after the loop iteration completes
+		 * 4. Our mutex acquisition below waits for any in-flight callback
+		 *
+		 * This ordering ensures link_ctx cleanup is safe.
+		 */
 		int ret = lichen_lora_l2_stop();
+		/*
+		 * Note: We intentionally do NOT clear lichen_iface here.
+		 * See the invariant comment at the lichen_iface declaration.
+		 */
 #if HAVE_LICHEN_LINK
 		/*
 		 * Clean up link context: wipe keys, reset sequence state.
-		 * Hold rx_mutex to prevent TOCTOU race with lichen_l2_input() -
-		 * ensures any in-flight RX completes before we invalidate link_ctx.
-		 * (python-t7j5.4)
+		 * Hold both mutexes to prevent races with in-flight TX/RX:
+		 * - tx_mutex: ensures lichen_l2_send() completes before cleanup
+		 * - rx_mutex: ensures lichen_l2_input() completes before cleanup
+		 * Lock order: tx_mutex first to avoid deadlock (consistent ordering).
+		 *
+		 * SECURITY: lichen_l2_input() copies link_key into a local buffer
+		 * before use, but the copy happens under rx_mutex. Cleanup MUST
+		 * acquire rx_mutex to ensure any in-flight RX completes first.
 		 */
+		k_mutex_lock(&tx_mutex, K_FOREVER);
 		k_mutex_lock(&rx_mutex, K_FOREVER);
-		link_ctx_initialized = false;
+		atomic_set(&link_ctx_initialized, 0);
 		lichen_link_cleanup(&link_ctx);
 		k_mutex_unlock(&rx_mutex);
+		k_mutex_unlock(&tx_mutex);
 #endif
 		return ret;
 	}
@@ -276,14 +384,34 @@ static void lora_rx_callback(const uint8_t *data, size_t len,
 {
 	ARG_UNUSED(user_data);
 
-	if (lichen_iface == NULL) {
-		LOG_WRN("No interface registered");
+	/*
+	 * Check both conditions to distinguish init-failure from never-initialized.
+	 * (project-LICHEN-rwio.11)
+	 */
+	if (lichen_iface == NULL || atomic_get(&iface_init_failed)) {
+		LOG_WRN("Interface not ready");
 		return;
 	}
 
 	lichen_l2_input(lichen_iface, data, len, rssi, snr);
 }
 
+/**
+ * @brief Initialize the LICHEN L2 network interface
+ *
+ * Called by Zephyr's network stack during NET_DEVICE_INIT. This function:
+ * 1. Initializes the LoRa L2 driver (lichen_lora_l2_init)
+ * 2. Retrieves or generates a stable EUI-64 from hardware ID
+ * 3. Sets the link-layer address on the net_if
+ * 4. Initializes the LICHEN link context for framing/crypto
+ * 5. Caches the net_if pointer for RX callback delivery
+ * 6. Registers the LoRa RX callback
+ *
+ * On failure, sets iface_init_failed flag and returns early. The L2 send/recv
+ * paths check this flag to reject operations on a half-initialized interface.
+ *
+ * @param iface The network interface being initialized (from NET_DEVICE_INIT)
+ */
 void lichen_l2_iface_init(struct net_if *iface)
 {
 	int ret;
@@ -294,6 +422,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 	ret = lichen_lora_l2_init();
 	if (ret < 0) {
 		LOG_ERR("LoRa L2 init failed: %d", ret);
+		atomic_set(&iface_init_failed, 1);
 		return;
 	}
 
@@ -301,17 +430,29 @@ void lichen_l2_iface_init(struct net_if *iface)
 	const uint8_t *eui64 = lichen_lora_l2_get_eui64();
 	if (eui64 == NULL) {
 		LOG_ERR("Failed to get EUI-64 from LoRa L2");
+		atomic_set(&iface_init_failed, 1);
 		return;
 	}
 
-	/* Set link-layer address on the interface */
-	net_if_set_link_addr(iface, (uint8_t *)eui64, LICHEN_L2_ADDR_LEN,
+	/*
+	 * Copy EUI-64 to local storage for net_if_set_link_addr().
+	 * Zephyr stores the pointer directly; we must not cast away const from
+	 * lora_state.eui64 to avoid UB if Zephyr ever writes to it.
+	 * (project-LICHEN-ybal.15/.16)
+	 */
+	memcpy(iface_link_addr, eui64, LICHEN_L2_ADDR_LEN);
+	net_if_set_link_addr(iface, iface_link_addr, LICHEN_L2_ADDR_LEN,
 			     NET_LINK_UNKNOWN);
 
 #if HAVE_LICHEN_LINK
 	/* Initialize link context before enabling RX */
 	lichen_link_init(&link_ctx, eui64);
-	link_ctx_initialized = true;  /* Mark as safe to access (python-ano.27) */
+	/*
+	 * Mark link_ctx as safe to access.
+	 * atomic_set() provides release semantics - all stores to link_ctx
+	 * are visible before the flag becomes true.
+	 */
+	atomic_set(&link_ctx_initialized, 1);
 #endif
 
 	/* Cache interface for RX callback */
@@ -339,17 +480,32 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	int ret;
 	size_t ipv6_len;
 
+	/* Validate required parameters (project-LICHEN-ybal.28) */
+	if (iface == NULL) {
+		LOG_ERR("lichen_l2_input: iface is NULL");
+		return;
+	}
+	if (data == NULL) {
+		LOG_ERR("lichen_l2_input: data is NULL");
+		return;
+	}
+	/* Reject empty frames before taking mutex (project-LICHEN-1ojj.7) */
+	if (len == 0) {
+		LOG_DBG("RX: empty frame ignored");
+		return;
+	}
+
 	LOG_DBG("RX: %zu bytes, RSSI=%d, SNR=%d", len, rssi, snr);
 
 	k_mutex_lock(&rx_mutex, K_FOREVER);
 
 #if HAVE_LICHEN_LINK
 	/*
-	 * Guard against access before initialization (python-ano.27).
+	 * Guard against access before initialization.
 	 * This shouldn't happen in normal operation, but could if a packet
 	 * arrives during early startup before lichen_l2_iface_init() completes.
 	 */
-	if (!link_ctx_initialized) {
+	if (!atomic_get(&link_ctx_initialized)) {
 		LOG_WRN("RX before link_ctx initialized - dropping frame");
 		k_mutex_unlock(&rx_mutex);
 		return;
@@ -364,11 +520,25 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * - SCHC decompression
 	 *
 	 * For broadcast reception without peer context, we use minimal RX ctx.
+	 *
+	 * SECURITY: Copy link_key into a local buffer rather than capturing a
+	 * pointer to link_ctx.link_key. This ensures rx_ctx remains valid even
+	 * if a future refactor moves lichen_link_cleanup() outside the rx_mutex.
+	 * The current code is safe (cleanup holds both mutexes), but copying
+	 * eliminates a subtle lifetime dependency that could cause use-after-free
+	 * if cleanup timing changes. 16-byte copy is cheap. (project-LICHEN-ybal.7)
 	 */
+	uint8_t rx_link_key[LICHEN_LINK_KEY_LEN];
+	const uint8_t *rx_link_key_ptr = NULL;
+	if (link_ctx.has_link_key) {
+		memcpy(rx_link_key, link_ctx.link_key, LICHEN_LINK_KEY_LEN);
+		rx_link_key_ptr = rx_link_key;
+	}
+
 	struct lichen_link_rx_ctx rx_ctx = {
 		.peer_pubkey = NULL,  /* Unknown sender - no signature verification */
 		.peer_eui64 = NULL,   /* Unknown sender - CRC32 mode only */
-		.link_key = link_ctx.has_link_key ? link_ctx.link_key : NULL,
+		.link_key = rx_link_key_ptr,
 		.current_time = 0,
 	};
 	uint8_t src_eui64[8];
@@ -378,6 +548,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 			     rx_ipv6_buf, &ipv6_len, src_eui64);
 	if (ret < 0) {
 		LOG_WRN("Frame RX failed: %d", ret);
+		secure_zero(rx_link_key, sizeof(rx_link_key));
 		k_mutex_unlock(&rx_mutex);
 		return;
 	}
@@ -386,6 +557,9 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 		ipv6_len,
 		src_eui64[0], src_eui64[1], src_eui64[2], src_eui64[3],
 		src_eui64[4], src_eui64[5], src_eui64[6], src_eui64[7]);
+
+	/* SECURITY: Zero local key copy before any exit (project-LICHEN-1ojj.28) */
+	secure_zero(rx_link_key, sizeof(rx_link_key));
 #else
 	/* No LICHEN link layer - treat as raw IPv6 */
 	if (len > sizeof(rx_ipv6_buf)) {

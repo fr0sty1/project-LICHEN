@@ -10,6 +10,8 @@ if LICHEN
 config LICHEN_LORA_L2
 	bool "LICHEN LoRa L2 driver"
 	depends on LORA
+	select TINYCRYPT
+	select TINYCRYPT_SHA256
 	default y
 	help
 	  Enable the LICHEN LoRa L2 driver. This provides low-level LoRa

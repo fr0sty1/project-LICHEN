@@ -75,7 +75,8 @@ typedef void (*lichen_lora_rx_cb_t)(const uint8_t *data, size_t len,
  * @brief Initialize the LoRa L2 module
  *
  * Must be called before any other function. Generates EUI-64 address
- * and validates LoRa device is ready.
+ * and validates LoRa device is ready. Idempotent: returns 0 if already
+ * initialized.
  *
  * @return 0 on success, negative errno on failure
  */
@@ -85,6 +86,7 @@ int lichen_lora_l2_init(void);
  * @brief Start the LoRa L2 layer
  *
  * Configures the radio and starts the RX thread.
+ * Requires init() to have been called. Idempotent: returns 0 if already running.
  *
  * @return 0 on success, negative errno on failure
  */
@@ -93,7 +95,8 @@ int lichen_lora_l2_start(void);
 /**
  * @brief Stop the LoRa L2 layer
  *
- * Stops the RX thread.
+ * Stops the RX thread. Idempotent: returns 0 if not running.
+ * Blocks until RX thread exits.
  *
  * @return 0 on success, negative errno on failure
  */
@@ -102,12 +105,17 @@ int lichen_lora_l2_stop(void);
 /**
  * @brief Transmit a packet over LoRa
  *
- * @param data Packet data to send
+ * @param data Packet data to send. Buffer must remain valid during TX.
+ *             NOTE: The underlying Zephyr lora_send() API takes a non-const
+ *             pointer because some radio drivers may modify the buffer
+ *             (e.g., for DMA alignment or in-place encryption). Do not
+ *             assume buffer contents are preserved after this call returns.
+ *             Use a dedicated TX buffer rather than passing const data.
  * @param len Length of data (max 255 bytes)
  *
  * @return 0 on success, negative errno on failure
  */
-int lichen_lora_l2_tx(const uint8_t *data, size_t len);
+int lichen_lora_l2_tx(uint8_t *data, size_t len);
 
 /**
  * @brief Set the RX callback
@@ -119,6 +127,9 @@ void lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data);
 
 /**
  * @brief Get this node's EUI-64 address
+ *
+ * @warning The returned pointer aliases internal state. Do NOT modify.
+ *          Contents are stable after init() completes.
  *
  * @return Pointer to 8-byte EUI-64 (valid after init)
  */

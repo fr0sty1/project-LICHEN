@@ -28,9 +28,20 @@ static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 #define HAS_LED 1
 #endif
 
-#if defined(CONFIG_LICHEN_LORA_L2)
+/*
+ * Standalone LoRa mode: CONFIG_LICHEN_LORA_L2 without CONFIG_LICHEN_L2.
+ *
+ * When CONFIG_LICHEN_L2 is enabled, the Zephyr L2 integration handles all
+ * initialization via NET_DEVICE_INIT's callback (lichen_l2_iface_init).
+ * That path sets up the LoRa driver, RX callback, and link context.
+ *
+ * When CONFIG_LICHEN_L2 is NOT enabled (standalone mode), main() handles
+ * initialization directly. This is for testing/debugging without the full
+ * IPv6 stack, or on boards that don't support Zephyr networking.
+ */
+#if defined(CONFIG_LICHEN_LORA_L2) && !defined(CONFIG_LICHEN_L2)
 /**
- * @brief Handle received LoRa packets
+ * @brief Handle received LoRa packets (standalone mode only)
  */
 static void lora_rx_handler(const uint8_t *data, size_t len,
                             int16_t rssi, int8_t snr, void *user_data)
@@ -48,7 +59,7 @@ static void lora_rx_handler(const uint8_t *data, size_t len,
 
 int main(void)
 {
-    int ret;
+    int ret = 0;
 
     LOG_INF("LICHEN bridge (Zephyr) starting...");
 
@@ -74,7 +85,22 @@ int main(void)
     LOG_INF("UART console ready");
 #endif
 
-#if defined(CONFIG_LICHEN_LORA_L2)
+/*
+ * Standalone LoRa initialization (no Zephyr net_if).
+ * When CONFIG_LICHEN_L2 is enabled, NET_DEVICE_INIT handles init via
+ * lichen_l2_iface_init() - we skip this block to avoid double-init.
+ */
+#if defined(CONFIG_LICHEN_LORA_L2) && !defined(CONFIG_LICHEN_L2)
+    /*
+     * Declare variables before any goto targets to avoid jumping over
+     * declarations (undefined behavior in C).
+     */
+#if defined(CONFIG_LICHEN_IPV6)
+    uint8_t iid[8];
+    struct in6_addr ll_addr;
+    char addr_str[LICHEN_IPV6_ADDR_STR_LEN];
+#endif
+
     /* Initialize LoRa L2 layer */
     ret = lichen_lora_l2_init();
     if (ret < 0) {
@@ -94,15 +120,16 @@ int main(void)
 
     /* Log our link-layer address */
     const uint8_t *eui64 = lichen_lora_l2_get_eui64();
+    if (eui64 == NULL) {
+        LOG_ERR("Failed to get EUI-64 address");
+        goto main_loop;
+    }
     LOG_INF("EUI-64: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
             eui64[0], eui64[1], eui64[2], eui64[3],
             eui64[4], eui64[5], eui64[6], eui64[7]);
 
 #if defined(CONFIG_LICHEN_IPV6)
     /* Derive and log link-local address */
-    uint8_t iid[8];
-    struct in6_addr ll_addr;
-    char addr_str[LICHEN_IPV6_ADDR_STR_LEN];
     lichen_eui64_to_iid(eui64, iid);
     lichen_make_link_local(iid, &ll_addr);
     lichen_ipv6_addr_to_str(&ll_addr, addr_str, sizeof(addr_str));
@@ -110,7 +137,7 @@ int main(void)
 #endif
 
     LOG_INF("LoRa L2 active: SF10, BW125, 915MHz");
-#endif /* CONFIG_LICHEN_LORA_L2 */
+#endif /* CONFIG_LICHEN_LORA_L2 && !CONFIG_LICHEN_L2 */
 
 #if defined(HAS_LED)
     if (gpio_is_ready_dt(&led)) {

@@ -11,8 +11,8 @@
  * - GUA: 2000::/3 prefix + IID
  *
  * IID derivation (spec 6.2):
- * - From EUI-64: flip the U/L bit (bit 1 of first octet)
- * - From Ed25519 pubkey: first 8 bytes with U/L bit set
+ * - From EUI-64: flip the U/L bit per RFC 4291 (universal MAC -> local IID)
+ * - From Ed25519 pubkey: first 8 bytes with U/L=0, G=0 (locally-administered unicast)
  *
  * This module does not depend on Zephyr's networking stack.
  */
@@ -23,7 +23,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <errno.h>
-#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,10 +30,19 @@ extern "C" {
 
 /*
  * Use Zephyr's struct in6_addr when networking stack is available,
- * otherwise define our own compatible structure.
+ * otherwise define our own compatible structure only if no system
+ * header has provided it.
+ *
+ * Detection strategy:
+ * - Zephyr with CONFIG_NET_IPV6: use zephyr/net/net_ip.h
+ * - POSIX with <netinet/in.h> already included: skip (detected via standard guards)
+ * - Otherwise: provide fallback definition
  */
 #if defined(CONFIG_NET_IPV6) && defined(__ZEPHYR__)
 #include <zephyr/net/net_ip.h>
+#elif defined(_NETINET_IN_H) || defined(_NETINET_IN_H_) || defined(_NETINET6_IN6_H) || \
+      defined(__NETINET_IN_H__) || defined(ZEPHYR_INCLUDE_POSIX_NETINET_IN_H_)
+/* System header already provides struct in6_addr - do not redefine */
 #else
 /**
  * @brief IPv6 address structure
@@ -49,6 +57,11 @@ struct in6_addr {
 
 /**
  * @brief Buffer size for IPv6 address string (including null terminator)
+ *
+ * LICHEN uses uncompressed lowercase hex format:
+ * "fe80:0000:0000:0000:1234:5678:abcd:ef01" (39 chars + null)
+ *
+ * This differs from RFC 5952 compressed form ("fe80::1234:5678:abcd:ef01").
  */
 #define LICHEN_IPV6_ADDR_STR_LEN 40
 
@@ -67,8 +80,13 @@ int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid);
 /**
  * @brief Derive IID from Ed25519 public key
  *
- * Uses first 8 bytes of pubkey with locally-administered bit set.
- * This provides a cryptographically-derived address.
+ * Computes SHA-256(pubkey) and uses the first 8 bytes as the IID,
+ * with U/L bit cleared to mark as locally-administered. This matches
+ * RFC 7343 (ORCHID) approach and ensures interoperability with the
+ * Python implementation in lichen/crypto/identity.py.
+ *
+ * SECURITY: Uses SHA-256 hash rather than raw pubkey bytes because
+ * Ed25519 public keys have structure that could leak information.
  *
  * @param pubkey Ed25519 public key (32 bytes)
  * @param iid Output IID (8 bytes)
@@ -124,7 +142,10 @@ int lichen_make_gua(const uint8_t *prefix, const uint8_t *iid,
  * @param buf Output buffer
  * @param buflen Buffer length (must be >= LICHEN_IPV6_ADDR_STR_LEN)
  *
- * @return 0 on success, -EINVAL if NULL pointer
+ * @return 0 on success
+ * @retval -EINVAL NULL pointer or buffer too small
+ * @retval -ENOSPC Output was truncated (should not occur if buflen >= LICHEN_IPV6_ADDR_STR_LEN)
+ * @retval -EIO snprintf encoding error
  */
 int lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t buflen);
 

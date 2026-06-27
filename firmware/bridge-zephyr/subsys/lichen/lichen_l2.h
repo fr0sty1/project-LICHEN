@@ -11,6 +11,12 @@
  *
  * TX path: IPv6 packet -> SCHC compress -> LICHEN frame -> LoRa TX
  * RX path: LoRa RX -> LICHEN frame parse -> SCHC decompress -> IPv6 stack
+ *
+ * Packet ownership (Zephyr net_l2 contract):
+ * - TX (L2 send): On success (return 0), L2 takes ownership of net_pkt and
+ *   calls net_pkt_unref(). On error (return < 0), caller retains ownership.
+ * - RX (lichen_l2_input): Allocates a new net_pkt and passes ownership to
+ *   the network stack via net_recv_data().
  */
 
 #ifndef LICHEN_L2_H_
