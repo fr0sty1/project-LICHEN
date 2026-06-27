@@ -785,8 +785,15 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	int32_t c_i_int;
 	struct zcbor_string c_i_bstr;
 	if (zcbor_int32_decode(zsd, &c_i_int)) {
-		ctx->c_i[0] = (uint8_t)c_i_int;
-		ctx->c_i_len = 1;
+		if (c_i_int >= 0 && c_i_int <= 255) {
+			ctx->c_i[0] = (uint8_t)c_i_int;
+			ctx->c_i_len = 1;
+		} else if (c_i_int >= -24 && c_i_int < 0) {
+			ctx->c_i[0] = (uint8_t)(c_i_int + 256);
+			ctx->c_i_len = 1;
+		} else {
+			return -EINVAL;
+		}
 	} else if (zcbor_bstr_decode(zsd, &c_i_bstr)) {
 		if (c_i_bstr.len > EDHOC_CID_MAX_LEN) {
 			return -EINVAL;
