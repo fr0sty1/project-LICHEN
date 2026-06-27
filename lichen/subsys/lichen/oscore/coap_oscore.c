@@ -19,6 +19,11 @@
 
 LOG_MODULE_REGISTER(coap_oscore, CONFIG_LICHEN_OSCORE_LOG_LEVEL);
 
+/* Default plaintext buffer size if not configured via Kconfig */
+#ifndef CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX
+#define CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX 256
+#endif
+
 bool coap_oscore_is_protected(const struct coap_packet *request)
 {
 	struct coap_option opt;
@@ -128,7 +133,7 @@ int coap_oscore_protect_response(struct oscore_ctx *ctx,
 				 struct coap_packet *response,
 				 uint8_t *resp_buf, size_t resp_buf_len)
 {
-	uint8_t ciphertext[256];
+	uint8_t ciphertext[CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX + OSCORE_TAG_LEN];
 	size_t ciphertext_len = sizeof(ciphertext);
 	uint8_t oscore_opt[16];
 	size_t oscore_opt_len = sizeof(oscore_opt);
