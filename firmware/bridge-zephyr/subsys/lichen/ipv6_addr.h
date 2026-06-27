@@ -59,8 +59,10 @@ struct in6_addr {
  *
  * @param eui64 Input EUI-64 (8 bytes)
  * @param iid Output IID (8 bytes)
+ *
+ * @return 0 on success, -EINVAL if NULL pointer
  */
-void lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid);
+int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid);
 
 /**
  * @brief Derive IID from Ed25519 public key
@@ -70,8 +72,10 @@ void lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid);
  *
  * @param pubkey Ed25519 public key (32 bytes)
  * @param iid Output IID (8 bytes)
+ *
+ * @return 0 on success, -EINVAL if NULL pointer
  */
-void lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid);
+int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid);
 
 /**
  * @brief Construct link-local address from IID
@@ -80,8 +84,10 @@ void lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid);
  *
  * @param iid Interface identifier (8 bytes)
  * @param addr Output IPv6 address
+ *
+ * @return 0 on success, -EINVAL if NULL pointer
  */
-void lichen_make_link_local(const uint8_t *iid, struct in6_addr *addr);
+int lichen_make_link_local(const uint8_t *iid, struct in6_addr *addr);
 
 /**
  * @brief Construct ULA address from prefix and IID
@@ -117,8 +123,10 @@ int lichen_make_gua(const uint8_t *prefix, const uint8_t *iid,
  * @param addr IPv6 address to format
  * @param buf Output buffer
  * @param buflen Buffer length (must be >= LICHEN_IPV6_ADDR_STR_LEN)
+ *
+ * @return 0 on success, -EINVAL if NULL pointer
  */
-void lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t buflen);
+int lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t buflen);
 
 #ifdef __cplusplus
 }

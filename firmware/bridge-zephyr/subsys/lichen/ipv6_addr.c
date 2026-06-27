@@ -26,23 +26,24 @@ static const uint8_t link_local_prefix[8] = {
     0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-void lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid)
+int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid)
 {
     if (eui64 == NULL || iid == NULL) {
         LOG_ERR("eui64_to_iid: NULL pointer");
-        return;
+        return -EINVAL;
     }
 
     /* Copy and flip U/L bit per spec 6.2 */
     memcpy(iid, eui64, 8);
     iid[0] ^= UL_BIT;
+    return 0;
 }
 
-void lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
+int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
 {
     if (pubkey == NULL || iid == NULL) {
         LOG_ERR("pubkey_to_iid: NULL pointer");
-        return;
+        return -EINVAL;
     }
 
     /* Use first 8 bytes of pubkey */
@@ -50,18 +51,20 @@ void lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
 
     /* Set locally administered bit, clear multicast bit */
     iid[0] = (iid[0] | UL_BIT) & 0xFE;
+    return 0;
 }
 
-void lichen_make_link_local(const uint8_t *iid, struct in6_addr *addr)
+int lichen_make_link_local(const uint8_t *iid, struct in6_addr *addr)
 {
     if (iid == NULL || addr == NULL) {
         LOG_ERR("make_link_local: NULL pointer");
-        return;
+        return -EINVAL;
     }
 
     /* fe80::0000:0000:0000:0000 + IID */
     memcpy(addr->s6_addr, link_local_prefix, 8);
     memcpy(&addr->s6_addr[8], iid, 8);
+    return 0;
 }
 
 int lichen_make_ula(const uint8_t *prefix, const uint8_t *iid,
@@ -102,18 +105,18 @@ int lichen_make_gua(const uint8_t *prefix, const uint8_t *iid,
     return 0;
 }
 
-void lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t buflen)
+int lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t buflen)
 {
     if (addr == NULL || buf == NULL) {
         LOG_ERR("ipv6_addr_to_str: NULL pointer");
-        return;
+        return -EINVAL;
     }
 
     if (buflen < LICHEN_IPV6_ADDR_STR_LEN) {
         if (buflen > 0) {
             buf[0] = '\0';
         }
-        return;
+        return -EINVAL;
     }
 
     /* Simple IPv6 formatting (not compressed) */
@@ -136,4 +139,5 @@ void lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t bufl
             buf[buflen - 1] = '\0';
         }
     }
+    return 0;
 }
