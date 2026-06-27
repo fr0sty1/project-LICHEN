@@ -122,16 +122,12 @@ int senml_add_bool(struct senml_pack *pack,
 
 /*
  * Encode a single SenML record as a CBOR map.
- *
- * Returns false if encoding fails. The only realistic failure is buffer
- * exhaustion (zcbor ran out of space), which senml_encode_cbor() reports
- * as -ENOMEM. Invalid value types cannot occur when records are added via
- * senml_add_*(), which validates types before storing.
+ * Returns: 0 on success, -ENOTSUP for unsupported types, -ENOMEM on CBOR error
  */
-static bool encode_record(zcbor_state_t *state,
-			  const struct senml_record *rec,
-			  const struct senml_pack *pack,
-			  bool is_first)
+static int encode_record(zcbor_state_t *state,
+			 const struct senml_record *rec,
+			 const struct senml_pack *pack,
+			 bool is_first)
 {
 	/* Count map entries */
 	size_t entries = 1; /* value always present */
@@ -142,15 +138,14 @@ static bool encode_record(zcbor_state_t *state,
 	if (rec->has_time) entries++;
 
 	if (!zcbor_map_start_encode(state, entries)) {
-		return false;
+		return -ENOMEM;
 	}
 
 	/* Base name (first record only) */
 	if (is_first && pack->base_name != NULL) {
 		if (!zcbor_int32_put(state, SENML_LABEL_BN) ||
-		    !zcbor_tstr_put_term(state, pack->base_name,
-					 SENML_MAX_NAME_LEN + 1)) {
-			return false;
+		    !zcbor_tstr_put_term(state, pack->base_name, 256)) {
+			return -ENOMEM;
 		}
 	}
 
@@ -158,25 +153,23 @@ static bool encode_record(zcbor_state_t *state,
 	if (is_first && pack->has_base_time) {
 		if (!zcbor_int32_put(state, SENML_LABEL_BT) ||
 		    !zcbor_uint64_put(state, pack->base_time)) {
-			return false;
+			return -ENOMEM;
 		}
 	}
 
 	/* Name */
 	if (rec->name != NULL) {
 		if (!zcbor_int32_put(state, SENML_LABEL_N) ||
-		    !zcbor_tstr_put_term(state, rec->name,
-					 SENML_MAX_NAME_LEN + 1)) {
-			return false;
+		    !zcbor_tstr_put_term(state, rec->name, 256)) {
+			return -ENOMEM;
 		}
 	}
 
 	/* Unit */
 	if (rec->unit != NULL) {
 		if (!zcbor_int32_put(state, SENML_LABEL_U) ||
-		    !zcbor_tstr_put_term(state, rec->unit,
-					 SENML_MAX_UNIT_LEN + 1)) {
-			return false;
+		    !zcbor_tstr_put_term(state, rec->unit, 256)) {
+			return -ENOMEM;
 		}
 	}
 
@@ -185,30 +178,36 @@ static bool encode_record(zcbor_state_t *state,
 	case SENML_VALUE_FLOAT:
 		if (!zcbor_int32_put(state, SENML_LABEL_V) ||
 		    !zcbor_float32_put(state, rec->value.f)) {
-			return false;
+			return -ENOMEM;
 		}
 		break;
 
 	case SENML_VALUE_BOOL:
 		if (!zcbor_int32_put(state, SENML_LABEL_VB) ||
 		    !zcbor_bool_put(state, rec->value.b)) {
-			return false;
+			return -ENOMEM;
 		}
 		break;
 
-	default:
-		return false;
+	case SENML_VALUE_STRING:
+	case SENML_VALUE_DATA:
+		/* String and binary data types not yet implemented */
+		return -ENOTSUP;
 	}
 
 	/* Time offset */
 	if (rec->has_time) {
 		if (!zcbor_int32_put(state, SENML_LABEL_T) ||
 		    !zcbor_int32_put(state, rec->time_offset)) {
-			return false;
+			return -ENOMEM;
 		}
 	}
 
-	return zcbor_map_end_encode(state, entries);
+	if (!zcbor_map_end_encode(state, entries)) {
+		return -ENOMEM;
+	}
+
+	return 0;
 }
 
 /**
@@ -239,8 +238,9 @@ int senml_encode_cbor(const struct senml_pack *pack,
 
 	/* Encode each record */
 	for (size_t i = 0; i < pack->record_count; i++) {
-		if (!encode_record(state, &pack->records[i], pack, (i == 0))) {
-			return -ENOMEM;
+		int ret = encode_record(state, &pack->records[i], pack, (i == 0));
+		if (ret < 0) {
+			return ret;
 		}
 	}
 

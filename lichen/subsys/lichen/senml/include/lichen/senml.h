@@ -142,7 +142,8 @@ int senml_add_bool(struct senml_pack *pack,
  * @param[out] buf     Output buffer
  * @param[in]  buflen  Buffer size
  * @return Bytes written, or negative error code:
- *         -EINVAL if pack has no records or invalid value type
+ *         -EINVAL if pack has no records
+ *         -ENOTSUP if record uses unsupported value type (STRING, DATA)
  *         -ENOMEM if buffer too small
  *         -EMSGSIZE if string too long to encode
  */
