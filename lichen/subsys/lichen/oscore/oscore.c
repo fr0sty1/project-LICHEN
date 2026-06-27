@@ -24,6 +24,7 @@ LOG_MODULE_REGISTER(oscore, CONFIG_LICHEN_OSCORE_LOG_LEVEL);
 /* Context storage */
 static struct oscore_ctx s_contexts[CONFIG_LICHEN_OSCORE_MAX_CONTEXTS];
 static bool s_seq_initialized[CONFIG_LICHEN_OSCORE_MAX_CONTEXTS];
+static bool s_initialized;
 static K_MUTEX_DEFINE(s_ctx_mutex);
 
 /*
@@ -363,8 +364,13 @@ static int derive_key(const uint8_t *master_secret, size_t ms_len,
 int oscore_init(void)
 {
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+	if (s_initialized) {
+		k_mutex_unlock(&s_ctx_mutex);
+		return 0;
+	}
 	memset(s_contexts, 0, sizeof(s_contexts));
 	memset(s_seq_initialized, 0, sizeof(s_seq_initialized));
+	s_initialized = true;
 	k_mutex_unlock(&s_ctx_mutex);
 
 	LOG_INF("OSCORE initialized (%d contexts max)",
