@@ -15,26 +15,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <zephyr/logging/log.h>
-#include <tinycrypt/sha256.h>
-#include <tinycrypt/constants.h>
+
+#include "lichen_util.h"
 
 LOG_MODULE_REGISTER(lichen_ipv6, LOG_LEVEL_INF);
 
 /* Ed25519 public key length - compile-time check */
 #define LICHEN_ED25519_PUBKEY_LEN 32
-
-/*
- * SECURITY: Secure memset that won't be optimized away.
- * Standard memset() on dead buffers can be removed by the compiler.
- * The volatile pointer forces each store to actually execute.
- */
-static inline void secure_zero(void *ptr, size_t len)
-{
-    volatile uint8_t *p = ptr;
-    while (len--) {
-        *p++ = 0;
-    }
-}
 
 /* U/L bit position in EUI-64 (bit 1 of first octet) */
 #define UL_BIT 0x02
@@ -59,8 +46,7 @@ int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid)
 
 int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
 {
-    int ret = 0;
-    struct tc_sha256_state_struct sha_state;
+    int ret;
     uint8_t hash[TC_SHA256_DIGEST_SIZE];
 
     if (pubkey == NULL || iid == NULL) {
@@ -74,19 +60,9 @@ int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
      * information. This matches RFC 7343 (ORCHID) approach and the
      * Python implementation in lichen/crypto/identity.py.
      */
-    if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS) {
-        LOG_ERR("pubkey_to_iid: SHA-256 init failed");
-        ret = -EIO;
-        goto cleanup;
-    }
-    if (tc_sha256_update(&sha_state, pubkey, LICHEN_ED25519_PUBKEY_LEN) != TC_CRYPTO_SUCCESS) {
-        LOG_ERR("pubkey_to_iid: SHA-256 update failed");
-        ret = -EIO;
-        goto cleanup;
-    }
-    if (tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
-        LOG_ERR("pubkey_to_iid: SHA-256 final failed");
-        ret = -EIO;
+    ret = lichen_sha256(pubkey, LICHEN_ED25519_PUBKEY_LEN, hash);
+    if (ret != 0) {
+        LOG_ERR("pubkey_to_iid: SHA-256 failed");
         goto cleanup;
     }
 
@@ -110,8 +86,7 @@ int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
     iid[0] &= ~UL_BIT;  /* Clear U/L bit */
 
 cleanup:
-    /* SECURITY: Zero all crypto state on all paths (success and error) */
-    secure_zero(&sha_state, sizeof(sha_state));
+    /* SECURITY: Zero hash on all paths (sha_state zeroed by helper) */
     secure_zero(hash, sizeof(hash));
     return ret;
 }
@@ -207,6 +182,45 @@ int lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t bufle
     if ((size_t)ret >= buflen) {
         LOG_ERR("IPv6 addr truncated");
         return -ENOSPC;
+    }
+
+    return 0;
+}
+
+int lichen_log_link_local_from_eui64(const uint8_t *eui64, struct in6_addr *ll_addr_out)
+{
+    int ret;
+    uint8_t iid[8];
+    struct in6_addr ll_addr;
+    char addr_str[LICHEN_IPV6_ADDR_STR_LEN];
+
+    if (eui64 == NULL) {
+        LOG_ERR("log_link_local: NULL eui64");
+        return -EINVAL;
+    }
+
+    ret = lichen_eui64_to_iid(eui64, iid);
+    if (ret < 0) {
+        LOG_ERR("Failed to derive IID from EUI-64: %d", ret);
+        return ret;
+    }
+
+    ret = lichen_make_link_local(iid, &ll_addr);
+    if (ret < 0) {
+        LOG_ERR("Failed to make link-local address: %d", ret);
+        return ret;
+    }
+
+    ret = lichen_ipv6_addr_to_str(&ll_addr, addr_str, sizeof(addr_str));
+    if (ret < 0) {
+        LOG_WRN("Failed to format link-local address: %d", ret);
+        /* Non-fatal - address is still valid, just can't log it */
+    } else {
+        LOG_INF("Link-local: %s", addr_str);
+    }
+
+    if (ll_addr_out != NULL) {
+        memcpy(ll_addr_out, &ll_addr, sizeof(ll_addr));
     }
 
     return 0;

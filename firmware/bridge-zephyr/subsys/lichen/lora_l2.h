@@ -42,16 +42,19 @@ extern "C" {
 /**
  * @brief MTU for LICHEN LoRa interface
  *
- * This is the maximum IPv6 packet size we can send after SCHC compression.
- * Actual LoRa payload is larger due to link-layer header/signature overhead.
+ * Derivation (must match lichen/schnorr48.h and frame format):
+ *   Max LoRa payload at SF10/BW125:     255 bytes
+ *   LICHEN frame overhead:               ~10 bytes (length, flags, epoch, seqnum, addr, mic)
+ *   Schnorr-48 signature:                 48 bytes (SCHNORR48_SIG_LEN)
+ *   Margin for SCHC rule ID:               ~2 bytes
+ *   ----------------------------------------
+ *   Available for IPv6 payload:          ~195 bytes, rounded to 200
  *
- * Calculation:
- * - Max LoRa payload at SF10/BW125: ~255 bytes
- * - LICHEN frame overhead: ~10 bytes (length, llsec, epoch, seqnum, addr, mic)
- * - Schnorr signature: 48 bytes
- * - Available for SCHC packet: ~197 bytes
+ * If frame format or signature size changes, update this constant.
  */
-#define LICHEN_LORA_MTU 200
+#define LICHEN_LORA_MAX_PHY_PAYLOAD 255
+#define LICHEN_LORA_FRAME_OVERHEAD   55  /* 10 + 48 - margin rounded */
+#define LICHEN_LORA_MTU (LICHEN_LORA_MAX_PHY_PAYLOAD - LICHEN_LORA_FRAME_OVERHEAD)
 
 /**
  * @brief Link-layer address length (EUI-64)

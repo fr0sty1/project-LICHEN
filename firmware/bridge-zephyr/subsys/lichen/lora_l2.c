@@ -31,28 +31,16 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/random/random.h>
 #include <zephyr/drivers/hwinfo.h>
-#include <tinycrypt/sha256.h>
-#include <tinycrypt/constants.h>
+
+#include "lichen_util.h"
 
 LOG_MODULE_REGISTER(lichen_lora_l2, CONFIG_LICHEN_LORA_L2_LOG_LEVEL);
-
-/*
- * SECURITY: Secure memset that won't be optimized away.
- * Standard memset() on dead buffers can be removed by the compiler.
- * The volatile pointer forces each store to actually execute.
- */
-static inline void secure_zero(void *ptr, size_t len)
-{
-    volatile uint8_t *p = ptr;
-    while (len--) {
-        *p++ = 0;
-    }
-}
 
 /* RX thread configuration */
 #define RX_THREAD_STACK_SIZE 2048
 #define RX_THREAD_PRIORITY   7
 #define RX_TIMEOUT_MS        5000
+#define RX_ERROR_WARN_THRESHOLD 5
 
 /* LoRa device - aliased in devicetree */
 #define LORA_DEV DEVICE_DT_GET(DT_ALIAS(lora0))
@@ -94,10 +82,9 @@ static struct {
  */
 static int generate_eui64(uint8_t *eui64)
 {
-    int ret = 0;
+    int ret;
     uint8_t hwid[32];  /* Large enough for all supported MCUs */
     ssize_t hwid_len;
-    struct tc_sha256_state_struct sha_state;
     uint8_t hash[TC_SHA256_DIGEST_SIZE];
 
     hwid_len = hwinfo_get_device_id(hwid, sizeof(hwid));
@@ -115,19 +102,9 @@ static int generate_eui64(uint8_t *eui64)
     /* Hash the full hardware ID to avoid MCU-specific layout issues.
      * SECURITY: SHA-256 provides collision resistance - two different
      * hwids will produce different EUI-64s with overwhelming probability. */
-    if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS) {
-        LOG_ERR("EUI-64: SHA-256 init failed");
-        ret = -EINVAL;
-        goto cleanup;
-    }
-    if (tc_sha256_update(&sha_state, hwid, (size_t)hwid_len) != TC_CRYPTO_SUCCESS) {
-        LOG_ERR("EUI-64: SHA-256 update failed");
-        ret = -EINVAL;
-        goto cleanup;
-    }
-    if (tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
-        LOG_ERR("EUI-64: SHA-256 final failed");
-        ret = -EINVAL;
+    ret = lichen_sha256(hwid, (size_t)hwid_len, hash);
+    if (ret != 0) {
+        LOG_ERR("EUI-64: SHA-256 failed");
         goto cleanup;
     }
 
@@ -150,8 +127,7 @@ static int generate_eui64(uint8_t *eui64)
             eui64[4], eui64[5], eui64[6], eui64[7]);
 
 cleanup:
-    /* SECURITY: Zero all crypto state on all paths (success and error) */
-    secure_zero(&sha_state, sizeof(sha_state));
+    /* SECURITY: Zero hash on all paths (sha_state zeroed by helper) */
     secure_zero(hash, sizeof(hash));
     return ret;
 }
@@ -166,9 +142,12 @@ static void rx_thread(void *arg1, void *arg2, void *arg3)
     ARG_UNUSED(arg3);
 
     int ret;
-    uint8_t rx_buf[255];  /* Max size for lora_recv() uint8_t size param */
+    uint8_t rx_buf[LICHEN_LORA_MAX_PHY_PAYLOAD];
+    BUILD_ASSERT(sizeof(rx_buf) == LICHEN_LORA_MAX_PHY_PAYLOAD,
+                 "rx_buf must match lora_recv max size");
     int16_t rssi;
     int8_t snr;
+    int consecutive_errors = 0;
 
     LOG_INF("LoRa L2 RX thread started");
 
@@ -178,20 +157,30 @@ static void rx_thread(void *arg1, void *arg2, void *arg3)
 
         if (ret < 0) {
             if (ret == -EAGAIN) {
-                continue;  /* Timeout - normal */
+                consecutive_errors = 0;  /* Timeout is normal, reset counter */
+                continue;
             }
+            consecutive_errors++;
             LOG_ERR("LoRa RX error: %d", ret);
+            if (consecutive_errors > 0 && consecutive_errors % RX_ERROR_WARN_THRESHOLD == 0) {
+                LOG_WRN("LoRa RX: %d consecutive errors - check hardware",
+                        consecutive_errors);
+            }
             /* Backoff on persistent errors to avoid log flooding and CPU starvation */
             k_sleep(K_MSEC(1000));
             continue;
         }
+        consecutive_errors = 0;  /* Successful receive, reset counter */
 
         if (ret == 0) {
             continue;  /* Empty packet */
         }
 
+        /* Sanity check: if driver returned more than buffer size, corruption
+         * already occurred. Log and continue - we can't recover but can detect. */
         if (ret > (int)sizeof(rx_buf)) {
-            LOG_ERR("lora_recv returned oversized packet: %d", ret);
+            LOG_ERR("CRITICAL: lora_recv returned %d > buffer size %zu - driver bug",
+                    ret, sizeof(rx_buf));
             continue;
         }
 
@@ -267,14 +256,14 @@ int lichen_lora_l2_start(void)
         return 0;  /* Already running */
     }
 
-    /* Configure LoRa radio for LICHEN defaults */
+    /* Configure LoRa radio using Kconfig options */
     struct lora_modem_config config = {
-        .frequency = 915000000,
+        .frequency = CONFIG_LICHEN_LORA_FREQUENCY,
         .bandwidth = BW_125_KHZ,
         .datarate = SF_10,
         .coding_rate = CR_4_5,
         .preamble_len = 8,
-        .tx_power = 22,
+        .tx_power = CONFIG_LICHEN_LORA_TX_POWER,
         .tx = true,
     };
 
@@ -302,7 +291,8 @@ int lichen_lora_l2_start(void)
 
     k_mutex_unlock(&lora_mutex);
 
-    LOG_INF("LoRa L2 started: SF10, BW125, 915MHz");
+    LOG_INF("LoRa L2 started: SF10, BW125, %uMHz, %ddBm",
+            CONFIG_LICHEN_LORA_FREQUENCY / 1000000, CONFIG_LICHEN_LORA_TX_POWER);
     return 0;
 }
 
@@ -332,16 +322,23 @@ int lichen_lora_l2_stop(void)
     k_mutex_unlock(&lora_mutex);
 
     /*
-     * Wait for RX thread to exit gracefully. If join times out (thread stuck
-     * in lora_recv or callback), forcibly abort to ensure thread struct is
-     * safe to reuse on subsequent start(). Abort + join(K_FOREVER) guarantees
-     * the thread is fully terminated before we return.
+     * Wait for RX thread to exit gracefully. Use a short initial timeout for
+     * the common case where the thread exits quickly (running flag cleared
+     * while not blocked in lora_recv). If that times out, wait up to one
+     * full RX timeout cycle. If still stuck, forcibly abort to ensure thread
+     * struct is safe to reuse on subsequent start().
      */
-    int join_ret = k_thread_join(&rx_thread_data, K_MSEC(RX_TIMEOUT_MS + 1000));
+    int join_ret = k_thread_join(&rx_thread_data, K_MSEC(100));
     if (join_ret == -EAGAIN) {
-        LOG_WRN("RX thread join timed out, aborting thread");
-        k_thread_abort(&rx_thread_data);
-        k_thread_join(&rx_thread_data, K_FOREVER);
+        /* Thread still running - may be blocked in lora_recv(), wait longer */
+        join_ret = k_thread_join(&rx_thread_data, K_MSEC(RX_TIMEOUT_MS));
+        if (join_ret == -EAGAIN) {
+            LOG_WRN("RX thread join timed out after %dms, aborting thread. "
+                    "Any in-flight packet processing was terminated.",
+                    100 + RX_TIMEOUT_MS);
+            k_thread_abort(&rx_thread_data);
+            k_thread_join(&rx_thread_data, K_FOREVER);
+        }
     }
 
     LOG_INF("LoRa L2 stopped");
@@ -355,8 +352,8 @@ int lichen_lora_l2_tx(uint8_t *data, size_t len)
         return -EINVAL;
     }
 
-    if (len > 255) {
-        LOG_ERR("Packet too large: %zu", len);
+    if (len > LICHEN_LORA_MAX_PHY_PAYLOAD) {
+        LOG_ERR("Packet too large: %zu (max %d)", len, LICHEN_LORA_MAX_PHY_PAYLOAD);
         return -EMSGSIZE;
     }
 

@@ -26,6 +26,7 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 #if DT_NODE_EXISTS(DT_ALIAS(led0))
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 #define HAS_LED 1
+static bool led_configured;
 #endif
 
 /*
@@ -69,6 +70,7 @@ int main(void)
         if (ret < 0) {
             LOG_ERR("Failed to configure LED GPIO: %d", ret);
         } else {
+            led_configured = true;
             gpio_pin_set_dt(&led, 1);
         }
     }
@@ -78,9 +80,10 @@ int main(void)
     ret = usb_enable(NULL);
     if (ret != 0) {
         LOG_ERR("USB enable failed: %d", ret);
+    } else {
+        k_sleep(K_MSEC(1000));
+        LOG_INF("USB CDC ready");
     }
-    k_sleep(K_MSEC(1000));
-    LOG_INF("USB CDC ready");
 #else
     LOG_INF("UART console ready");
 #endif
@@ -91,67 +94,67 @@ int main(void)
  * lichen_l2_iface_init() - we skip this block to avoid double-init.
  */
 #if defined(CONFIG_LICHEN_LORA_L2) && !defined(CONFIG_LICHEN_L2)
-    /*
-     * Declare variables before any goto targets to avoid jumping over
-     * declarations (undefined behavior in C).
-     */
-#if defined(CONFIG_LICHEN_IPV6)
-    uint8_t iid[8];
-    struct in6_addr ll_addr;
-    char addr_str[LICHEN_IPV6_ADDR_STR_LEN];
-#endif
+    {
+        bool init_ok = false;
 
-    /* Initialize LoRa L2 layer */
-    ret = lichen_lora_l2_init();
-    if (ret < 0) {
-        LOG_ERR("LoRa L2 init failed: %d", ret);
-        goto main_loop;
-    }
+        ret = lichen_lora_l2_init();
+        if (ret < 0) {
+            LOG_ERR("LoRa L2 init failed: %d", ret);
+        } else {
+            /* Set up RX callback */
+            lichen_lora_l2_set_rx_callback(lora_rx_handler, NULL);
 
-    /* Set up RX callback */
-    lichen_lora_l2_set_rx_callback(lora_rx_handler, NULL);
-
-    /* Start LoRa L2 */
-    ret = lichen_lora_l2_start();
-    if (ret < 0) {
-        LOG_ERR("LoRa L2 start failed: %d", ret);
-        goto main_loop;
-    }
-
-    /* Log our link-layer address */
-    const uint8_t *eui64 = lichen_lora_l2_get_eui64();
-    if (eui64 == NULL) {
-        LOG_ERR("Failed to get EUI-64 address");
-        goto main_loop;
-    }
-    LOG_INF("EUI-64: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
-            eui64[0], eui64[1], eui64[2], eui64[3],
-            eui64[4], eui64[5], eui64[6], eui64[7]);
+            /* Start LoRa L2 */
+            ret = lichen_lora_l2_start();
+            if (ret < 0) {
+                LOG_ERR("LoRa L2 start failed: %d", ret);
+            } else {
+                /* Log our link-layer address */
+                const uint8_t *eui64 = lichen_lora_l2_get_eui64();
+                if (eui64 == NULL) {
+                    LOG_ERR("Failed to get EUI-64 address");
+                } else {
+                    LOG_INF("EUI-64: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
+                            eui64[0], eui64[1], eui64[2], eui64[3],
+                            eui64[4], eui64[5], eui64[6], eui64[7]);
 
 #if defined(CONFIG_LICHEN_IPV6)
-    /* Derive and log link-local address */
-    lichen_eui64_to_iid(eui64, iid);
-    lichen_make_link_local(iid, &ll_addr);
-    lichen_ipv6_addr_to_str(&ll_addr, addr_str, sizeof(addr_str));
-    LOG_INF("Link-local: %s", addr_str);
+                    /* Derive and log link-local address */
+                    ret = lichen_log_link_local_from_eui64(eui64, NULL);
+                    if (ret == 0) {
+                        init_ok = true;
+                    }
+#else
+                    init_ok = true;
 #endif
+                }
+            }
+        }
 
-    LOG_INF("LoRa L2 active: SF10, BW125, 915MHz");
-#endif /* CONFIG_LICHEN_LORA_L2 && !CONFIG_LICHEN_L2 */
-
+        /* Turn off busy LED */
 #if defined(HAS_LED)
-    if (gpio_is_ready_dt(&led)) {
+        if (led_configured) {
+            gpio_pin_set_dt(&led, 0);
+        }
+#endif
+
+        if (init_ok) {
+            LOG_INF("LoRa L2 active: SF10, BW125, 915MHz");
+        }
+    }
+#else
+    /* Non-LoRa build: turn off LED */
+#if defined(HAS_LED)
+    if (led_configured) {
         gpio_pin_set_dt(&led, 0);
     }
 #endif
+#endif /* CONFIG_LICHEN_LORA_L2 && !CONFIG_LICHEN_L2 */
 
-main_loop:
     LOG_INF("Ready - LICHEN IPv6/LoRa mesh");
 
     while (1) {
         k_sleep(K_SECONDS(60));
         LOG_DBG("tick");
     }
-
-    return 0;
 }

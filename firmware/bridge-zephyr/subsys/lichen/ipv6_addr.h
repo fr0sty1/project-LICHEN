@@ -29,20 +29,26 @@ extern "C" {
 #endif
 
 /*
- * Use Zephyr's struct in6_addr when networking stack is available,
- * otherwise define our own compatible structure only if no system
- * header has provided it.
+ * struct in6_addr detection. Define LICHEN_HAVE_IN6_ADDR=1 before including
+ * this header if your platform provides struct in6_addr but uses a guard
+ * macro not listed here.
  *
- * Detection strategy:
+ * Detection strategy (most portable first):
+ * - LICHEN_HAVE_IN6_ADDR: user override for unlisted platforms
+ * - IN6ADDR_ANY_INIT: defined by any POSIX-compliant header providing struct in6_addr
  * - Zephyr with CONFIG_NET_IPV6: use zephyr/net/net_ip.h
- * - POSIX with <netinet/in.h> already included: skip (detected via standard guards)
+ * - POSIX header guards: various platforms use different guard names
  * - Otherwise: provide fallback definition
  */
-#if defined(CONFIG_NET_IPV6) && defined(__ZEPHYR__)
+#if defined(LICHEN_HAVE_IN6_ADDR) && LICHEN_HAVE_IN6_ADDR
+/* User says in6_addr is already defined - trust them */
+#elif defined(IN6ADDR_ANY_INIT)
+/* System header already provides struct in6_addr */
+#elif defined(CONFIG_NET_IPV6) && defined(__ZEPHYR__)
 #include <zephyr/net/net_ip.h>
 #elif defined(_NETINET_IN_H) || defined(_NETINET_IN_H_) || defined(_NETINET6_IN6_H) || \
       defined(__NETINET_IN_H__) || defined(ZEPHYR_INCLUDE_POSIX_NETINET_IN_H_)
-/* System header already provides struct in6_addr - do not redefine */
+/* System header already provides struct in6_addr */
 #else
 /**
  * @brief IPv6 address structure
@@ -148,6 +154,19 @@ int lichen_make_gua(const uint8_t *prefix, const uint8_t *iid,
  * @retval -EIO snprintf encoding error
  */
 int lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t buflen);
+
+/**
+ * @brief Derive link-local address from EUI-64 and log it
+ *
+ * Combines lichen_eui64_to_iid(), lichen_make_link_local(), and logging
+ * into a single call. Logs at INFO level on success.
+ *
+ * @param eui64 Input EUI-64 (8 bytes)
+ * @param ll_addr_out Output link-local address (may be NULL if caller doesn't need it)
+ *
+ * @return 0 on success, negative errno on failure
+ */
+int lichen_log_link_local_from_eui64(const uint8_t *eui64, struct in6_addr *ll_addr_out);
 
 #ifdef __cplusplus
 }

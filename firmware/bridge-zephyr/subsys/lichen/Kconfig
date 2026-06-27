@@ -10,8 +10,6 @@ if LICHEN
 config LICHEN_LORA_L2
 	bool "LICHEN LoRa L2 driver"
 	depends on LORA
-	select TINYCRYPT
-	select TINYCRYPT_SHA256
 	default y
 	help
 	  Enable the LICHEN LoRa L2 driver. This provides low-level LoRa
@@ -41,6 +39,23 @@ config LICHEN_LORA_L2_RX_PRIORITY
 	default 7
 	help
 	  Priority for the LoRa L2 RX thread. Lower numbers = higher priority.
+
+config LICHEN_LORA_FREQUENCY
+	int "LoRa frequency in Hz"
+	depends on LICHEN_LORA_L2
+	default 915000000
+	help
+	  LoRa carrier frequency in Hz. Must comply with regional regulations.
+	  Common ISM bands: 915000000 (US), 868000000 (EU), 433000000 (Asia).
+
+config LICHEN_LORA_TX_POWER
+	int "LoRa TX power in dBm"
+	depends on LICHEN_LORA_L2
+	default 14
+	range 0 22
+	help
+	  LoRa transmit power in dBm. Default 14 dBm is safe worldwide.
+	  Higher values may violate regional regulations. Maximum 22 dBm.
 
 config LICHEN_L2
 	bool "LICHEN Zephyr L2 network interface"
