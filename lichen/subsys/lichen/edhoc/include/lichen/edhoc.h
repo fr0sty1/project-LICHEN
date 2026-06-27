@@ -47,12 +47,16 @@ extern "C" {
 
 /**
  * @brief EDHOC authentication methods (RFC 9528 Section 3.2)
+ *
+ * NOTE: This implementation only supports EDHOC_METHOD_SIGN_SIGN (Method 0).
+ * The other method values are defined for protocol completeness per RFC 9528,
+ * but will be rejected at runtime with -ENOTSUP.
  */
 enum edhoc_method {
-	EDHOC_METHOD_SIGN_SIGN = 0,    /* Both parties use signatures */
-	EDHOC_METHOD_SIGN_STATIC = 1,  /* Initiator signs, responder static DH */
-	EDHOC_METHOD_STATIC_SIGN = 2,  /* Initiator static DH, responder signs */
-	EDHOC_METHOD_STATIC_STATIC = 3 /* Both use static DH */
+	EDHOC_METHOD_SIGN_SIGN = 0,    /* Both parties use signatures (SUPPORTED) */
+	EDHOC_METHOD_SIGN_STATIC = 1,  /* Initiator signs, responder static DH (NOT SUPPORTED) */
+	EDHOC_METHOD_STATIC_SIGN = 2,  /* Initiator static DH, responder signs (NOT SUPPORTED) */
+	EDHOC_METHOD_STATIC_STATIC = 3 /* Both use static DH (NOT SUPPORTED) */
 };
 
 /**

@@ -762,13 +762,19 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	if (!zcbor_int32_decode(zsd, &method_corr)) {
 		return -EINVAL;
 	}
+	/* METHOD_CORR = method * 4 + corr; extract method */
+	int method = method_corr / 4;
+	if (method != EDHOC_METHOD_SIGN_SIGN) {
+		LOG_ERR("Unsupported EDHOC method: %d (only SIGN_SIGN supported)", method);
+		return -ENOTSUP;
+	}
 
 	int32_t suites_i;
 	if (!zcbor_int32_decode(zsd, &suites_i)) {
 		return -EINVAL;
 	}
 	if (suites_i != EDHOC_SUITE_0) {
-		LOG_ERR("Unsupported suite: %d", suites_i);
+		LOG_ERR("Unsupported EDHOC suite: %d (only Suite 0 supported)", suites_i);
 		return -ENOTSUP;
 	}
 
