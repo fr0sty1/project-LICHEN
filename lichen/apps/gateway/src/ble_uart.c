@@ -238,11 +238,8 @@ BT_CONN_CB_DEFINE(conn_callbacks) = {
 
 int ble_uart_send_slip(const uint8_t *ipv6, size_t len)
 {
-	/*
-	 * Static buffer is safe: BLE stack serializes all sends through the
-	 * connection callback, so concurrent calls cannot interleave.
-	 * Worst-case SLIP frame: every byte escaped → 2× len, plus 2 END bytes.
-	 */
+	/* Worst-case SLIP frame: every byte escaped → 2x len, plus 2 END bytes.
+	 * Protected by s_tx_mutex below. */
 	static uint8_t s_tx_frame[SLIP_BUF_SIZE * 2u + 2u];
 	uint16_t fi = 0;
 	int rc = 0;
