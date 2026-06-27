@@ -97,9 +97,27 @@ void lichen_replay_table_init(struct lichen_replay_table *table);
  * exists and there's room in the table, creates a new entry. If the table
  * is full, the least-recently-used entry is evicted to make room.
  *
- * Security note: An attacker spoofing frames from many addresses can cause
- * legitimate peer windows to be evicted. Consider sizing the table for the
- * expected number of neighbors plus margin for transient peers.
+ * @warning REPLAY WINDOW POISONING ATTACK
+ *
+ * An attacker can evict legitimate peer replay windows by sending frames
+ * from many spoofed source addresses. Attack sequence:
+ *   1. Attacker sends N+1 frames with distinct spoofed EUI-64 addresses
+ *      (where N = CONFIG_LICHEN_LINK_MAX_NEIGHBORS, default 16)
+ *   2. Each spoofed frame evicts the LRU entry
+ *   3. Eventually all legitimate peer windows are evicted
+ *   4. Attacker can now replay captured frames from evicted peers
+ *
+ * This is a fundamental limitation of unauthenticated LRU eviction.
+ * Mitigations:
+ *   - Size table >> expected neighbors (but memory is limited on MCUs)
+ *   - Only call lichen_replay_get() for peers with verified link keys
+ *     (OSCORE peers, post-EDHOC handshake) - this prevents unauthenticated
+ *     sources from allocating replay slots
+ *   - Monitor for eviction storms (rapid evictions indicate attack)
+ *
+ * The current implementation does NOT enforce authenticated peer registration.
+ * Deployments in hostile RF environments should verify peer identity before
+ * calling this function.
  *
  * @param[in,out] table Replay table
  * @param[in]     eui64 Peer's EUI-64 address (8 bytes)

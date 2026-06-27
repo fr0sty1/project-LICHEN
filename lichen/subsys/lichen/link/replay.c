@@ -216,7 +216,14 @@ struct lichen_replay_window *lichen_replay_get(struct lichen_replay_table *table
 	if (free_slot < CONFIG_LICHEN_LINK_MAX_NEIGHBORS) {
 		target_slot = free_slot;
 	} else {
-		/* Table full: evict LRU entry */
+		/*
+		 * Table full: evict LRU entry.
+		 *
+		 * WARNING: Unauthenticated eviction allows replay window poisoning.
+		 * An attacker spoofing many source addresses can evict legitimate
+		 * peer windows, enabling replay attacks against those peers.
+		 * See lichen/replay.h for mitigation guidance.
+		 */
 		target_slot = lru_slot;
 	}
 
