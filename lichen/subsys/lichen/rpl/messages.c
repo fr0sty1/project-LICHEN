@@ -10,19 +10,9 @@
 
 #include <lichen/rpl_messages.h>
 #include <string.h>
+#include <zephyr/sys/byteorder.h>
 
 /* ── Helpers ───────────────────────────────────────────────────────────────── */
-
-static uint16_t read_be16(const uint8_t *p)
-{
-	return ((uint16_t)p[0] << 8) | p[1];
-}
-
-static void write_be16(uint8_t *p, uint16_t v)
-{
-	p[0] = (uint8_t)(v >> 8);
-	p[1] = (uint8_t)v;
-}
 
 /* Division rounding up */
 static size_t div_ceil(size_t a, size_t b)
@@ -46,7 +36,7 @@ int lichen_rpl_dio_parse(struct lichen_rpl_dio *dio,
 
 	dio->rpl_instance_id = data[0];
 	dio->version = data[1];
-	dio->rank = read_be16(&data[2]);
+	dio->rank = sys_get_be16(&data[2]);
 	dio->grounded = (gmop >> 7) & 1;
 	dio->mode_of_operation = (gmop >> 3) & 0x7;
 	dio->preference = gmop & 0x7;
@@ -73,7 +63,7 @@ int lichen_rpl_dio_write(const struct lichen_rpl_dio *dio,
 
 	buf[0] = dio->rpl_instance_id;
 	buf[1] = dio->version;
-	write_be16(&buf[2], dio->rank);
+	sys_put_be16(dio->rank, &buf[2]);
 	buf[4] = gmop;
 	buf[5] = dio->dtsn;
 	buf[6] = dio->flags;
@@ -202,12 +192,12 @@ int lichen_rpl_dodag_config_parse(struct lichen_rpl_dodag_config *cfg,
 	cfg->dio_int_doublings = data[1];
 	cfg->dio_int_min = data[2];
 	cfg->dio_redundancy_const = data[3];
-	cfg->max_rank_increase = read_be16(&data[4]);
-	cfg->min_hop_rank_increase = read_be16(&data[6]);
-	cfg->ocp = read_be16(&data[8]);
+	cfg->max_rank_increase = sys_get_be16(&data[4]);
+	cfg->min_hop_rank_increase = sys_get_be16(&data[6]);
+	cfg->ocp = sys_get_be16(&data[8]);
 	/* data[10] = reserved */
 	cfg->def_lifetime = data[11];
-	cfg->lifetime_unit = read_be16(&data[12]);
+	cfg->lifetime_unit = sys_get_be16(&data[12]);
 
 	return LICHEN_RPL_OK;
 }
@@ -226,12 +216,12 @@ int lichen_rpl_dodag_config_write(const struct lichen_rpl_dodag_config *cfg,
 	buf[3] = cfg->dio_int_doublings;
 	buf[4] = cfg->dio_int_min;
 	buf[5] = cfg->dio_redundancy_const;
-	write_be16(&buf[6], cfg->max_rank_increase);
-	write_be16(&buf[8], cfg->min_hop_rank_increase);
-	write_be16(&buf[10], cfg->ocp);
+	sys_put_be16(cfg->max_rank_increase, &buf[6]);
+	sys_put_be16(cfg->min_hop_rank_increase, &buf[8]);
+	sys_put_be16(cfg->ocp, &buf[10]);
 	buf[12] = 0;  /* reserved */
 	buf[13] = cfg->def_lifetime;
-	write_be16(&buf[14], cfg->lifetime_unit);
+	sys_put_be16(cfg->lifetime_unit, &buf[14]);
 
 	return (int)needed;
 }
