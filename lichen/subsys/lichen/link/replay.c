@@ -28,7 +28,7 @@
 static int eui64_ct_compare(const uint8_t a[LICHEN_EUI64_LEN],
 			    const uint8_t b[LICHEN_EUI64_LEN])
 {
-	uint8_t diff = 0;
+	volatile uint8_t diff = 0;
 
 	for (size_t i = 0; i < LICHEN_EUI64_LEN; i++) {
 		diff |= a[i] ^ b[i];
