@@ -62,8 +62,16 @@ static bool     s_rx_esc;
  * Packet dispatch: phone → mesh
  * -------------------------------------------------------------------------- */
 
+/* IPv6 header is 40 bytes (RFC 8200 §3) */
+#define IPV6_HDR_MIN 40u
+
 static void slip_dispatch(const uint8_t *pkt, size_t len)
 {
+	if (len < IPV6_HDR_MIN) {
+		LOG_WRN("BLE UART RX %zu B: too short for IPv6 (need %u)", len, IPV6_HDR_MIN);
+		return;
+	}
+
 	/*
 	 * TODO: inject the IPv6 packet into the mesh via the Zephyr net_pkt
 	 * API once the RPL/net integration layer lands.  Until then, log and
