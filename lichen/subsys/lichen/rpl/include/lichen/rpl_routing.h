@@ -88,6 +88,8 @@ struct lichen_rpl_routing_table {
 
 /**
  * @brief Initialize a routing table.
+ *
+ * @note No-op if @p rt is NULL.
  */
 void lichen_rpl_routing_table_init(struct lichen_rpl_routing_table *rt);
 
@@ -108,6 +110,8 @@ int lichen_rpl_routing_table_add(struct lichen_rpl_routing_table *rt,
 
 /**
  * @brief Remove a route to a target.
+ *
+ * @note No-op if @p rt is NULL, @p target is NULL, or the target is not found.
  */
 void lichen_rpl_routing_table_remove(struct lichen_rpl_routing_table *rt,
 				     const uint8_t *target);
