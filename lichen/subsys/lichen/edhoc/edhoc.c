@@ -658,7 +658,7 @@ err_wipe:
 	return ret;
 }
 
-int edhoc_initiator_export_oscore(const struct edhoc_initiator *ctx,
+int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 				  struct edhoc_oscore_ctx *oscore)
 {
 	int ret;
@@ -689,6 +689,11 @@ int edhoc_initiator_export_oscore(const struct edhoc_initiator *ctx,
 	oscore->sender_id_len = ctx->c_i_len;
 	memcpy(oscore->recipient_id, ctx->c_r, ctx->c_r_len);
 	oscore->recipient_id_len = ctx->c_r_len;
+
+	/* Wipe PRK material after export - PRK can derive any key */
+	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
+	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
+	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
 
 	return 0;
 }
@@ -1039,7 +1044,7 @@ err_wipe:
 	return ret;
 }
 
-int edhoc_responder_export_oscore(const struct edhoc_responder *ctx,
+int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
 				  struct edhoc_oscore_ctx *oscore)
 {
 	int ret;
@@ -1068,6 +1073,11 @@ int edhoc_responder_export_oscore(const struct edhoc_responder *ctx,
 	oscore->sender_id_len = ctx->c_r_len;
 	memcpy(oscore->recipient_id, ctx->c_i, ctx->c_i_len);
 	oscore->recipient_id_len = ctx->c_i_len;
+
+	/* Wipe PRK material after export - PRK can derive any key */
+	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
+	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
+	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
 
 	return 0;
 }

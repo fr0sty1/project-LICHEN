@@ -212,11 +212,14 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 /**
  * @brief Export OSCORE context from completed initiator
  *
- * @param ctx Initiator context (must be in COMPLETED state)
+ * Derives OSCORE master secret and salt from EDHOC session, then wipes
+ * PRK material from ctx. After export, ctx cannot derive additional keys.
+ *
+ * @param ctx Initiator context (must be in COMPLETED state, wiped after)
  * @param oscore Output OSCORE context
  * @return 0 on success, negative on error
  */
-int edhoc_initiator_export_oscore(const struct edhoc_initiator *ctx,
+int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 				  struct edhoc_oscore_ctx *oscore);
 
 /**
@@ -268,11 +271,14 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 /**
  * @brief Export OSCORE context from completed responder
  *
- * @param ctx Responder context (must be in COMPLETED state)
+ * Derives OSCORE master secret and salt from EDHOC session, then wipes
+ * PRK material from ctx. After export, ctx cannot derive additional keys.
+ *
+ * @param ctx Responder context (must be in COMPLETED state, wiped after)
  * @param oscore Output OSCORE context
  * @return 0 on success, negative on error
  */
-int edhoc_responder_export_oscore(const struct edhoc_responder *ctx,
+int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
 				  struct edhoc_oscore_ctx *oscore);
 
 /**
