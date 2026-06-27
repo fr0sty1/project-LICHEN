@@ -192,14 +192,14 @@ int lichen_rpl_routing_table_add(struct lichen_rpl_routing_table *rt,
 	}
 
 	if (path_len > LICHEN_RPL_MAX_HOPS) {
-		return LICHEN_RPL_ERR_OVERRUN;
+		return LICHEN_RPL_ERR_INVALID;
 	}
 
 	struct lichen_rpl_route *r = find_route(rt, target);
 	if (r == NULL) {
 		r = find_free_route(rt);
 		if (r == NULL) {
-			return LICHEN_RPL_ERR_OVERRUN;  /* Table full */
+			return LICHEN_RPL_ERR_FULL;  /* Table full */
 		}
 	}
 

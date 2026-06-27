@@ -37,6 +37,7 @@ extern "C" {
 #define LICHEN_RPL_ERR_BAD_RT     -4
 #define LICHEN_RPL_ERR_BUF_SMALL  -5
 #define LICHEN_RPL_ERR_INVALID    -6  /**< NULL pointer or invalid argument */
+#define LICHEN_RPL_ERR_FULL       -7  /**< Table or buffer is full */
 
 /* ── Option type bytes ─────────────────────────────────────────────────────── */
 
