@@ -9,23 +9,12 @@
  */
 
 #include <lichen/rpl_routing.h>
+#include <lichen/rpl_addr.h>
 #include <string.h>
 
 /* Ensure LICHEN_RPL_MAX_HOPS fits in uint8_t (used for num_addresses field) */
 _Static_assert(LICHEN_RPL_MAX_HOPS <= 255,
 	       "LICHEN_RPL_MAX_HOPS exceeds uint8_t range");
-
-/* ── Helpers ───────────────────────────────────────────────────────────────── */
-
-static bool addr_eq(const uint8_t *a, const uint8_t *b)
-{
-	return memcmp(a, b, 16) == 0;
-}
-
-static void addr_copy(uint8_t *dst, const uint8_t *src)
-{
-	memcpy(dst, src, 16);
-}
 
 /* ── Visited Set for O(1) Loop Detection ──────────────────────────────────── */
 
@@ -74,7 +63,7 @@ static inline bool visited_check_and_add(struct visited_set *v, const uint8_t *a
 			v->occupied[bucket] = true;
 			return false;
 		}
-		if (addr_eq(v->addrs[bucket], addr)) {
+		if (rpl_addr_eq(v->addrs[bucket], addr)) {
 			/* Found - loop detected */
 			return true;
 		}
@@ -171,7 +160,7 @@ static struct lichen_rpl_route *
 find_route(struct lichen_rpl_routing_table *rt, const uint8_t *target)
 {
 	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_ROUTES; i++) {
-		if (rt->routes[i].valid && addr_eq(rt->routes[i].target, target)) {
+		if (rt->routes[i].valid && rpl_addr_eq(rt->routes[i].target, target)) {
 			return &rt->routes[i];
 		}
 	}
@@ -214,9 +203,9 @@ int lichen_rpl_routing_table_add(struct lichen_rpl_routing_table *rt,
 		}
 	}
 
-	addr_copy(r->target, target);
+	rpl_addr_copy(r->target, target);
 	for (int i = 0; i < path_len; i++) {
-		addr_copy(r->path[i], path[i]);
+		rpl_addr_copy(r->path[i], path[i]);
 	}
 	r->path_len = path_len;
 	r->valid = true;
@@ -244,7 +233,7 @@ lichen_rpl_routing_table_lookup(const struct lichen_rpl_routing_table *rt,
 		return NULL;
 	}
 	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_ROUTES; i++) {
-		if (rt->routes[i].valid && addr_eq(rt->routes[i].target, target)) {
+		if (rt->routes[i].valid && rpl_addr_eq(rt->routes[i].target, target)) {
 			return &rt->routes[i];
 		}
 	}
@@ -276,9 +265,9 @@ int lichen_rpl_dao_manager_init(struct lichen_rpl_dao_manager *dm,
 		return LICHEN_RPL_ERR_INVALID;
 	}
 	memset(dm, 0, sizeof(*dm));
-	addr_copy(dm->node_address, node_address);
+	rpl_addr_copy(dm->node_address, node_address);
 	dm->rpl_instance_id = rpl_instance_id;
-	addr_copy(dm->dodag_id, dodag_id);
+	rpl_addr_copy(dm->dodag_id, dodag_id);
 	dm->is_root = false;
 	dm->dao_sequence = 0;
 	return LICHEN_RPL_OK;
@@ -319,7 +308,7 @@ int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *dm,
 		.flags = 0,
 		.dao_sequence = seq,
 	};
-	addr_copy(dao.dodag_id, dm->dodag_id);
+	rpl_addr_copy(dao.dodag_id, dm->dodag_id);
 
 	int pos = lichen_rpl_dao_write(&dao, buf, len);
 	if (pos < 0) {
@@ -330,7 +319,7 @@ int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *dm,
 	struct lichen_rpl_target target = {
 		.prefix_len = 128,
 	};
-	addr_copy(target.prefix, dm->node_address);
+	rpl_addr_copy(target.prefix, dm->node_address);
 
 	int n = lichen_rpl_target_write(&target, &buf[pos], len - pos);
 	if (n < 0) {
@@ -344,7 +333,7 @@ int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *dm,
 		.path_sequence = 0,
 		.path_lifetime = 255,
 	};
-	addr_copy(transit.parent_address, parent_addr);
+	rpl_addr_copy(transit.parent_address, parent_addr);
 
 	n = lichen_rpl_transit_info_write(&transit, &buf[pos], len - pos);
 	if (n < 0) {
@@ -387,7 +376,7 @@ static bool extract_edge(const uint8_t *dao_bytes, size_t len,
 		if (opt.opt_type == LICHEN_RPL_OPT_RPL_TARGET) {
 			struct lichen_rpl_target t;
 			if (lichen_rpl_target_parse(&t, opt.data, opt.data_len) == LICHEN_RPL_OK) {
-				addr_copy(target, t.prefix);
+				rpl_addr_copy(target, t.prefix);
 				have_target = true;
 			}
 		} else if (opt.opt_type == LICHEN_RPL_OPT_TRANSIT_INFO) {
@@ -398,8 +387,8 @@ static bool extract_edge(const uint8_t *dao_bytes, size_t len,
 			if (have_target) {
 				struct lichen_rpl_transit_info ti;
 				if (lichen_rpl_transit_info_parse(&ti, opt.data, opt.data_len) == LICHEN_RPL_OK) {
-					addr_copy(target_out, target);
-					addr_copy(parent_out, ti.parent_address);
+					rpl_addr_copy(target_out, target);
+					rpl_addr_copy(parent_out, ti.parent_address);
 					return true;
 				}
 			}
@@ -416,7 +405,7 @@ find_edge(struct lichen_rpl_dao_manager *dm, const uint8_t *target)
 {
 	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_ROUTES; i++) {
 		if (dm->parent_map[i].valid &&
-		    addr_eq(dm->parent_map[i].target, target)) {
+		    rpl_addr_eq(dm->parent_map[i].target, target)) {
 			return &dm->parent_map[i];
 		}
 	}
@@ -451,14 +440,14 @@ static int assemble_path(struct lichen_rpl_dao_manager *dm,
 	visited_init(&visited);
 
 	uint8_t node[16];
-	addr_copy(node, target);
+	rpl_addr_copy(node, target);
 
 	/* Walk chain with O(1) loop detection via hash set */
 	while (chain_len < LICHEN_RPL_MAX_HOPS) {
-		if (addr_eq(node, dm->node_address)) {
+		if (rpl_addr_eq(node, dm->node_address)) {
 			/* Reached root - reverse chain into path */
 			for (int i = 0; i < chain_len; i++) {
-				addr_copy(path[i], chain[chain_len - 1 - i]);
+				rpl_addr_copy(path[i], chain[chain_len - 1 - i]);
 			}
 			return chain_len;
 		}
@@ -468,7 +457,7 @@ static int assemble_path(struct lichen_rpl_dao_manager *dm,
 			return 0;  /* Loop detected */
 		}
 
-		addr_copy(chain[chain_len], node);
+		rpl_addr_copy(chain[chain_len], node);
 		chain_len++;
 
 		/* Look up parent */
@@ -477,7 +466,7 @@ static int assemble_path(struct lichen_rpl_dao_manager *dm,
 			return 0;  /* Incomplete chain */
 		}
 
-		addr_copy(node, edge->parent);
+		rpl_addr_copy(node, edge->parent);
 	}
 
 	return 0;  /* Too many hops */
@@ -584,8 +573,8 @@ bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
 		}
 	}
 
-	addr_copy(edge->target, target);
-	addr_copy(edge->parent, parent);
+	rpl_addr_copy(edge->target, target);
+	rpl_addr_copy(edge->parent, parent);
 	edge->valid = true;
 
 	(void)rebuild_routes(dm);  /* Best-effort rebuild; lookup below determines success */

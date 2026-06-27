@@ -12,14 +12,8 @@
  */
 
 #include <lichen/rpl_dodag.h>
+#include <lichen/rpl_addr.h>
 #include <string.h>
-
-/* ── Helpers ───────────────────────────────────────────────────────────────── */
-
-static bool addr_eq(const uint8_t *a, const uint8_t *b)
-{
-	return memcmp(a, b, 16) == 0;
-}
 
 /**
  * RFC 6550 Section 7.2: Lollipop sequence number comparison.
@@ -81,7 +75,7 @@ static struct lichen_rpl_parent *find_parent(struct lichen_rpl_dodag *d,
 					     const uint8_t *addr)
 {
 	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_PARENTS; i++) {
-		if (d->parents[i].valid && addr_eq(d->parents[i].addr, addr)) {
+		if (d->parents[i].valid && rpl_addr_eq(d->parents[i].addr, addr)) {
 			return &d->parents[i];
 		}
 	}
@@ -213,7 +207,7 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 	uint8_t *chosen_addr = best_addr;
 	uint16_t chosen_cost = best_cost;
 
-	if (d->has_preferred_parent && !addr_eq(d->preferred_parent, best_addr)) {
+	if (d->has_preferred_parent && !rpl_addr_eq(d->preferred_parent, best_addr)) {
 		struct lichen_rpl_parent *cur = find_parent(d, d->preferred_parent);
 		if (cur != NULL) {
 			uint16_t cur_cost = path_cost(cur, mhri);
@@ -256,7 +250,7 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 
 	/* Only accept DIOs from the same DODAG once joined */
 	if (lichen_rpl_dodag_is_joined(d) &&
-	    !addr_eq(dio->dodag_id, d->dodag_id)) {
+	    !rpl_addr_eq(dio->dodag_id, d->dodag_id)) {
 		return;
 	}
 
