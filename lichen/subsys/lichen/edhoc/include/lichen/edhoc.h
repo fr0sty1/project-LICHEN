@@ -9,8 +9,8 @@
  * Suite 0: X25519 + Ed25519 + AES-CCM-16-64-128 + SHA-256.
  */
 
-#ifndef LICHEN_EDHOC_H
-#define LICHEN_EDHOC_H
+#ifndef LICHEN_EDHOC_H_
+#define LICHEN_EDHOC_H_
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -295,4 +295,4 @@ void edhoc_responder_wipe(struct edhoc_responder *ctx);
 }
 #endif
 
-#endif /* LICHEN_EDHOC_H */
+#endif /* LICHEN_EDHOC_H_ */
