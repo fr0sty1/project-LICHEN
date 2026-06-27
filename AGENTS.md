@@ -262,6 +262,7 @@ int lichen_node_init(const uint8_t eui64[8], const uint8_t seed[32])
 
 ### C
 - Target: C11, no dynamic allocation in hot paths
+- **Naming prefixes**: Subsystem prefixes follow RFC/spec names (`SCHC_`, `SENML_`, `EDHOC_`, `OSCORE_`). Use `LICHEN_` only for project-specific constructs with no external spec (e.g., `LICHEN_RPL_*` for our RPL extensions, `LICHEN_LINK_*` for link layer).
 - Memory budget varies by platform:
   - ESP32: 320KB+ SRAM, 4MB+ Flash (comfortable)
   - nRF52840: 256KB RAM, 1MB Flash (comfortable)
