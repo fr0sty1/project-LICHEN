@@ -1,0 +1,1 @@
+"mcuboot":"/Volumes/Attic/Desktop/Projects/project-LICHEN/bootloader/mcuboot":"/Volumes/Attic/Desktop/Projects/project-LICHEN/bootloader/mcuboot/boot/zephyr/sysbuild"

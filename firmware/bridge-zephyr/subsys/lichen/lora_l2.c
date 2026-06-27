@@ -28,6 +28,7 @@
 #include <zephyr/drivers/lora.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/random/random.h>
+#include <zephyr/drivers/hwinfo.h>
 
 LOG_MODULE_REGISTER(lichen_lora_l2, CONFIG_LICHEN_LORA_L2_LOG_LEVEL);
 
@@ -57,23 +58,33 @@ static struct {
 } lora_state;
 
 /**
- * @brief Generate EUI-64 from device unique ID or random
+ * @brief Generate stable EUI-64 from hardware device ID
  *
- * In production, this should derive from:
- * 1. Hardware unique ID (e.g., nRF52's DEVICEID)
- * 2. Ed25519 public key (first 8 bytes with U/L bit flipped)
- *
- * For now, we use random + local admin bit to avoid conflicts.
+ * Uses Zephyr hwinfo API to get hardware-unique device ID. Falls back to
+ * random if hwinfo unavailable (with warning). Future: derive from Ed25519
+ * public key per spec 6.2.
  */
 static void generate_eui64(uint8_t *eui64)
 {
-    sys_rand_get(eui64, 8);
+    uint8_t hwid[16];
+    ssize_t hwid_len;
+
+    hwid_len = hwinfo_get_device_id(hwid, sizeof(hwid));
+    if (hwid_len >= 8) {
+        /* Use first 8 bytes of hardware ID */
+        memcpy(eui64, hwid, 8);
+        LOG_INF("EUI-64 from hardware ID (%d bytes)", (int)hwid_len);
+    } else {
+        /* Fallback: random (not stable across reboots) */
+        sys_rand_get(eui64, 8);
+        LOG_WRN("No hardware ID available, using random EUI-64 (unstable)");
+    }
 
     /* Set locally administered bit (bit 1 of first byte) */
     /* Clear multicast bit (bit 0 of first byte) */
     eui64[0] = (eui64[0] | 0x02) & 0xFE;
 
-    LOG_INF("Generated EUI-64: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
+    LOG_INF("EUI-64: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
             eui64[0], eui64[1], eui64[2], eui64[3],
             eui64[4], eui64[5], eui64[6], eui64[7]);
 }
