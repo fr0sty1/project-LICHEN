@@ -139,6 +139,16 @@ class DaoManager:
             return self.build_dao_ack(dao)
         return None
 
+    def remove_edge(self, target: IPv6Address | str) -> bool:
+        """Remove a target's parent edge and its route. Returns True if removed."""
+        target = _addr(target)
+        if target not in self._parent_map:
+            return False
+        del self._parent_map[target]
+        self.routing_table.remove_route(target)
+        self._rebuild_routes()  # downstream routes may now be incomplete
+        return True
+
     def build_dao_ack(self, dao: DAO, status: int = 0) -> DAOAck:
         return DAOAck(
             rpl_instance_id=dao.rpl_instance_id,
@@ -161,6 +171,7 @@ class DaoManager:
         return target, parent
 
     def _rebuild_routes(self) -> None:
+        self.routing_table._routes.clear()
         for target in self._parent_map:
             path = self._assemble_path(target)
             if path is not None:

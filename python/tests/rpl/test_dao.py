@@ -123,3 +123,22 @@ def test_loop_in_chain_yields_no_route() -> None:
     root.process_dao(DaoManager(node_address=N2).build_dao(N1))
     assert root.routing_table.lookup(N1) is None
     assert root.routing_table.lookup(N2) is None
+
+
+def test_remove_edge_clears_route_and_downstream() -> None:
+    """Removing a node's edge removes its route and breaks downstream routes."""
+    root = DaoManager(node_address=ROOT, is_root=True)
+    # Build a chain: ROOT <- N1 <- N2 <- N3
+    root.process_dao(DaoManager(node_address=N1).build_dao(ROOT))
+    root.process_dao(DaoManager(node_address=N2).build_dao(N1))
+    root.process_dao(DaoManager(node_address=N3).build_dao(N2))
+    assert root.routing_table.lookup(N3) == [N1, N2, N3]
+
+    # Remove N2's edge; N2 and N3 routes should disappear
+    assert root.remove_edge(N2) is True
+    assert root.routing_table.lookup(N2) is None
+    assert root.routing_table.lookup(N3) is None  # N3's chain is now incomplete
+    assert root.routing_table.lookup(N1) == [N1]  # N1 unaffected
+
+    # Removing nonexistent edge returns False
+    assert root.remove_edge(N2) is False
