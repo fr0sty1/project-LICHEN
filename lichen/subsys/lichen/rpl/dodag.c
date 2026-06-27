@@ -243,8 +243,9 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 			 * Hysteresis: only switch if improvement exceeds threshold.
 			 * Stay with current if: best_cost + threshold >= cur_cost
 			 * This form avoids underflow when cur_cost <= threshold.
+			 * Explicit casts prevent overflow if best_cost + threshold > 65535.
 			 */
-			if ((uint32_t)best_cost + threshold >= cur_cost) {
+			if ((uint32_t)best_cost + (uint32_t)threshold >= (uint32_t)cur_cost) {
 				/* Not enough improvement - stay with current */
 				chosen_addr = cur->addr;
 				chosen_cost = cur_cost;
