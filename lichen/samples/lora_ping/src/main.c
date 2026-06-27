@@ -52,7 +52,7 @@ int main(void)
 
 	while (1) {
 		LOG_INF("TX: PING #%d", ++count);
-		ret = lora_send(lora, tx_buf, sizeof(tx_buf));
+		ret = lora_send(lora, tx_buf, sizeof(tx_buf) - 1);
 		if (ret < 0) {
 			LOG_ERR("lora_send failed: %d", ret);
 		} else {
