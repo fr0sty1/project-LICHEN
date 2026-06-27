@@ -76,7 +76,11 @@ struct lichen_coap_request {
 /**
  * @brief Initialize the CoAP client subsystem.
  *
- * Must be called once at startup.
+ * Called automatically on first request if not already initialized.
+ * Call explicitly at startup to fail-fast on socket/init errors and
+ * avoid first-request latency from socket creation.
+ *
+ * Thread-safe; idempotent (multiple calls return 0 after first success).
  *
  * @return 0 on success, negative error code on failure
  */
