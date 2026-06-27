@@ -92,6 +92,7 @@ class Node:
         identity: This node's cryptographic identity.
         radio: Physical layer (simulated or hardware).
         config: Node configuration.
+        meshtastic: Enable Meshtastic BLE adapter (requires [meshtastic] extra).
         link: Link layer for frame signing/verification.
         gradient_table: Unified routing table.
         router: Hybrid routing decision engine.
@@ -103,6 +104,7 @@ class Node:
     identity: Identity
     radio: Radio
     config: NodeConfig = field(default_factory=NodeConfig)
+    meshtastic: bool = False
 
     # Protocol layers - initialized in __post_init__
     link: LinkLayer = field(init=False, repr=False)
@@ -128,6 +130,9 @@ class Node:
 
     # Relay dedup: SCHC payloads forwarded by this node; prevents relay loops.
     _relay_seen: set[bytes] = field(default_factory=set, init=False, repr=False)
+
+    # Meshtastic adapter (optional, created if meshtastic=True)
+    _meshtastic_adapter: object | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         # Why initialize layers here: They depend on self.identity, self.radio.
@@ -166,6 +171,18 @@ class Node:
                 initial_delay_ms=5_000,  # Why 5s: Let node discover peers first.
             ),
         )
+
+        # Meshtastic adapter: lazy import to avoid requiring bleak/betterproto
+        if self.meshtastic:
+            try:
+                from lichen.meshtastic.adapter import MeshtasticAdapter
+
+                self._meshtastic_adapter = MeshtasticAdapter(self)
+            except ImportError:
+                logger.warning(
+                    "meshtastic=True but adapter not available; "
+                    "install with: pip install lichen[meshtastic]"
+                )
 
     def _peer_lookup(self, hint: bytes) -> PeerIdentity | None:
         """Look up a peer by IID hint.
@@ -235,6 +252,10 @@ class Node:
         # Why separate: Scheduler owns timing and seq_num; Node owns integration.
         await self._scheduler.start()
 
+        # Start Meshtastic adapter if enabled
+        if self._meshtastic_adapter is not None:
+            await self._meshtastic_adapter.start()
+
         self.state = NodeState.RUNNING
         logger.info("node started")
 
@@ -249,7 +270,11 @@ class Node:
         self.state = NodeState.STOPPING
         logger.info("stopping node")
 
-        # Stop announce scheduler first
+        # Stop Meshtastic adapter first
+        if self._meshtastic_adapter is not None:
+            await self._meshtastic_adapter.stop()
+
+        # Stop announce scheduler
         # Why first: Prevents new announces while shutting down.
         await self._scheduler.stop()
 
