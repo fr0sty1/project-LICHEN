@@ -239,10 +239,18 @@ static int gnss_ag3335_pm_action(const struct device *dev,
 #endif
 
 /* --------------------------------------------------------------------------
- * One-time init (modem stack setup only)
+ * Driver API
+ *
+ * The AG3335 is passive-only: after power-on it streams NMEA at 115200 baud
+ * with a fixed 1Hz fix rate and no command interface for runtime config.
+ * Fixes are published automatically via modem_chat unsolicited matches.
+ *
+ * All gnss_driver_api callbacks are left NULL; callers using gnss_set_fix_rate()
+ * etc. will get -ENOSYS (Zephyr checks for NULL before calling).
  * -------------------------------------------------------------------------- */
 
 static const struct gnss_driver_api gnss_ag3335_api = {
+	/* Passive-only — no runtime configuration supported */
 };
 
 static int gnss_ag3335_init_match(const struct device *dev)
