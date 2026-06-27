@@ -1046,9 +1046,17 @@ void edhoc_initiator_wipe(struct edhoc_initiator *ctx)
 		return;
 	}
 	crypto_wipe(ctx->eph_sk, sizeof(ctx->eph_sk));
+	crypto_wipe(ctx->eph_pk, sizeof(ctx->eph_pk));
+	crypto_wipe(ctx->g_y, sizeof(ctx->g_y));
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
 	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
+	crypto_wipe(ctx->th_2, sizeof(ctx->th_2));
+	crypto_wipe(ctx->th_3, sizeof(ctx->th_3));
+	crypto_wipe(ctx->th_4, sizeof(ctx->th_4));
+	crypto_wipe(ctx->msg1, sizeof(ctx->msg1));
+	crypto_wipe(ctx->c_i, sizeof(ctx->c_i));
+	crypto_wipe(ctx->c_r, sizeof(ctx->c_r));
 	ctx->state = EDHOC_STATE_IDLE;
 }
 
@@ -1058,8 +1066,16 @@ void edhoc_responder_wipe(struct edhoc_responder *ctx)
 		return;
 	}
 	crypto_wipe(ctx->eph_sk, sizeof(ctx->eph_sk));
+	crypto_wipe(ctx->eph_pk, sizeof(ctx->eph_pk));
+	crypto_wipe(ctx->g_x, sizeof(ctx->g_x));
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
 	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
+	crypto_wipe(ctx->th_2, sizeof(ctx->th_2));
+	crypto_wipe(ctx->th_3, sizeof(ctx->th_3));
+	crypto_wipe(ctx->th_4, sizeof(ctx->th_4));
+	crypto_wipe(ctx->msg1, sizeof(ctx->msg1));
+	crypto_wipe(ctx->c_i, sizeof(ctx->c_i));
+	crypto_wipe(ctx->c_r, sizeof(ctx->c_r));
 	ctx->state = EDHOC_STATE_IDLE;
 }
