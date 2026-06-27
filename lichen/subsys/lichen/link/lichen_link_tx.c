@@ -24,27 +24,8 @@
 /* CRC32 for non-crypto MIC fallback */
 #include <zephyr/sys/crc.h>
 
-/**
- * @brief Build AES-CCM nonce for link-layer MIC.
- *
- * Nonce format (13 bytes):
- *   - eui64[8]: sender's EUI-64
- *   - epoch[1]: current epoch
- *   - seqnum[2]: sequence number (big-endian)
- *   - reserved[2]: 0x00 padding
- */
-static void build_link_nonce(uint8_t nonce[AES_CCM_NONCE_LEN],
-			     const uint8_t eui64[LICHEN_EUI64_LEN],
-			     uint8_t epoch,
-			     uint16_t seqnum)
-{
-	memcpy(&nonce[0], eui64, LICHEN_EUI64_LEN);
-	nonce[8] = epoch;
-	nonce[9] = (uint8_t)(seqnum >> 8);
-	nonce[10] = (uint8_t)(seqnum & 0xFF);
-	nonce[11] = 0x00;
-	nonce[12] = 0x00;
-}
+/* Shared nonce construction */
+#include "link_nonce.h"
 
 int lichen_link_tx(struct lichen_link_ctx *ctx,
 		   const uint8_t *ipv6_pkt, size_t ipv6_len,
