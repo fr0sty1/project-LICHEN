@@ -41,6 +41,21 @@
 #define UDP_HDR_LEN     8    /* UDP header length */
 #define ICMPV6_TYPE_RPL 155  /* RPL ICMPv6 type (RFC 6550) */
 
+/*
+ * Minimum residue sizes (bytes, excluding rule ID) for decompress validation.
+ * Derived from sum of variable-length field bits, rounded up to byte boundary.
+ */
+/* hop(8)+src_iid(64)+dst_iid(64)+ports(32)+ver(2)+type(4)+tkl(8)+token(16) = 198b */
+#define SCHC_RULE0_MIN_RESIDUE  25
+/* hop(8)+src(128)+dst(128)+ports(32)+ver(2)+type(4)+tkl(8)+token(16) = 326b */
+#define SCHC_RULE1_MIN_RESIDUE  41
+/* hop(8)+src_iid(64)+dst_iid(64)+type(8)+id(16)+seq(16) = 176b */
+#define SCHC_RULE2_MIN_RESIDUE  22
+/* hop(8)+src_iid(64)+dst_iid(64)+inst(8)+ver(8)+rank(16)+gmop(8)+dtsn(8)+dodagid(128) = 312b */
+#define SCHC_RULE3_MIN_RESIDUE  39
+/* hop(8)+src_iid(64)+dst_iid(64)+inst(8)+kd(8)+seq(8)+dodagid(128) = 288b */
+#define SCHC_RULE4_MIN_RESIDUE  36
+
 /* ─── bit-packing ─────────────────────────────────────────────────────────── */
 
 struct bit_writer {
@@ -296,15 +311,7 @@ static bool is_link_local(const uint8_t addr[16])
 
 static bool is_global(const uint8_t addr[16])
 {
-	/* GUA (2000::/3): first 3 bits = 001 */
-	if ((addr[0] >> 5) == 0x01) {
-		return true;
-	}
-	/* ULA (fc00::/7): first 7 bits = 1111110 (0xFC or 0xFD) */
-	if ((addr[0] & 0xFE) == 0xFC) {
-		return true;
-	}
-	return false;
+	return (addr[0] >> 5) == 0x01; /* 001x xxxx = 2000::/3 */
 }
 
 /* ─── checksum helpers ────────────────────────────────────────────────────── */
@@ -652,12 +659,8 @@ static int compress_rpl_dao(const uint8_t *packet, size_t pkt_len,
 static int decompress_coap(const uint8_t *data, size_t data_len,
 			   uint8_t *out, size_t out_len, uint8_t rule_id)
 {
-	/*
-	 * Minimum residue size (excluding rule ID byte):
-	 * - Rule 0 (link-local): 8 + 64 + 64 + 16 + 16 + 2 + 4 + 8 + 16 = 198 bits = 25 bytes
-	 * - Rule 1 (global):     8 + 128 + 128 + 16 + 16 + 2 + 4 + 8 + 16 = 326 bits = 41 bytes
-	 */
-	size_t min_residue = (rule_id == SCHC_RULE_LINK_LOCAL_COAP) ? 25 : 41;
+	size_t min_residue = (rule_id == SCHC_RULE_LINK_LOCAL_COAP)
+			     ? SCHC_RULE0_MIN_RESIDUE : SCHC_RULE1_MIN_RESIDUE;
 	if (data_len < 1 + min_residue) {
 		return SCHC_ERR_TOO_SHORT;
 	}
@@ -770,11 +773,7 @@ static int decompress_coap(const uint8_t *data, size_t data_len,
 static int decompress_icmpv6_echo(const uint8_t *data, size_t data_len,
 				  uint8_t *out, size_t out_len)
 {
-	/*
-	 * Minimum residue size (excluding rule ID byte):
-	 * 8 + 64 + 64 + 8 + 16 + 16 = 176 bits = 22 bytes
-	 */
-	if (data_len < 1 + 22) {
+	if (data_len < 1 + SCHC_RULE2_MIN_RESIDUE) {
 		return SCHC_ERR_TOO_SHORT;
 	}
 
@@ -871,11 +870,7 @@ static int decompress_icmpv6_echo(const uint8_t *data, size_t data_len,
 static int decompress_rpl_dio(const uint8_t *data, size_t data_len,
 			      uint8_t *out, size_t out_len)
 {
-	/*
-	 * Minimum residue size (excluding rule ID byte):
-	 * 8 + 64 + 64 + 8 + 8 + 16 + 8 + 8 + 128 = 312 bits = 39 bytes
-	 */
-	if (data_len < 1 + 39) {
+	if (data_len < 1 + SCHC_RULE3_MIN_RESIDUE) {
 		return SCHC_ERR_TOO_SHORT;
 	}
 
@@ -975,11 +970,7 @@ static int decompress_rpl_dio(const uint8_t *data, size_t data_len,
 static int decompress_rpl_dao(const uint8_t *data, size_t data_len,
 			      uint8_t *out, size_t out_len)
 {
-	/*
-	 * Minimum residue size (excluding rule ID byte):
-	 * 8 + 64 + 64 + 8 + 8 + 8 + 128 = 288 bits = 36 bytes
-	 */
-	if (data_len < 1 + 36) {
+	if (data_len < 1 + SCHC_RULE4_MIN_RESIDUE) {
 		return SCHC_ERR_TOO_SHORT;
 	}
 
