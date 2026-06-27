@@ -46,13 +46,13 @@ struct ping_test_ctx {
 	uint16_t reply_seq;
 };
 
-static struct ping_test_ctx test_ctx;
+static struct ping_test_ctx s_test_ctx;
 
 /**
  * Link-local IPv6 address for testing
  * fe80::1 - simple link-local address
  */
-static struct in6_addr test_ll_addr = {
+static struct in6_addr s_test_ll_addr = {
 	.s6_addr = { 0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 }
 };
@@ -119,7 +119,7 @@ static int test_loopback_send(const struct device *dev, struct net_pkt *pkt)
 }
 
 /* Dummy L2 API for loopback testing */
-static struct dummy_api test_dummy_api = {
+static struct dummy_api s_test_dummy_api = {
 	.iface_api.init = test_iface_init,
 	.send = test_loopback_send,
 };
@@ -130,9 +130,9 @@ static struct dummy_api test_dummy_api = {
  */
 NET_DEVICE_INIT(lichen_loopback, "lichen_loopback",
 		NULL, NULL,
-		&test_ctx, NULL,
+		&s_test_ctx, NULL,
 		CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
-		&test_dummy_api,
+		&s_test_dummy_api,
 		DUMMY_L2, NET_L2_GET_CTX_TYPE(DUMMY_L2),
 		200);
 
@@ -170,9 +170,9 @@ ZTEST(ping_l2, test_interface_init)
 
 	iface = net_if_lookup_by_dev(DEVICE_GET(lichen_loopback));
 	zassert_not_null(iface, "Failed to find loopback interface");
-	zassert_equal(iface, test_ctx.iface,
+	zassert_equal(iface, s_test_ctx.iface,
 		      "Interface mismatch (expected %p, got %p)",
-		      test_ctx.iface, iface);
+		      s_test_ctx.iface, iface);
 
 	LOG_INF("Interface initialization: PASS");
 }
@@ -182,18 +182,18 @@ ZTEST(ping_l2, test_interface_init)
  */
 ZTEST(ping_l2, test_ipv6_addr_config)
 {
-	struct net_if *iface = test_ctx.iface;
+	struct net_if *iface = s_test_ctx.iface;
 	struct net_if_addr *ifaddr;
 
 	zassert_not_null(iface, "Interface not initialized");
 
 	/* Add link-local address */
-	ifaddr = net_if_ipv6_addr_add(iface, &test_ll_addr,
+	ifaddr = net_if_ipv6_addr_add(iface, &s_s_test_ll_addr,
 				      NET_ADDR_MANUAL, 0);
 	zassert_not_null(ifaddr, "Failed to add IPv6 address");
 
 	/* Verify address was added */
-	zassert_true(net_if_ipv6_addr_lookup(&test_ll_addr, NULL) != NULL,
+	zassert_true(net_if_ipv6_addr_lookup(&s_s_test_ll_addr, NULL) != NULL,
 		     "IPv6 address not found after add");
 
 	LOG_INF("IPv6 address configuration: PASS");
@@ -212,11 +212,11 @@ ZTEST(ping_l2, test_icmpv6_ping)
 	struct sockaddr_in6 dst = { 0 };
 	int ret;
 
-	zassert_not_null(test_ctx.iface, "Interface not initialized");
+	zassert_not_null(s_test_ctx.iface, "Interface not initialized");
 
 	/* Initialize semaphore */
-	k_sem_init(&test_ctx.reply_sem, 0, 1);
-	test_ctx.reply_received = false;
+	k_sem_init(&s_s_test_ctx.reply_sem, 0, 1);
+	s_test_ctx.reply_received = false;
 
 	/* Register for Echo Reply */
 	ret = net_icmp_init_ctx(&icmp_ctx, NET_ICMPV6_ECHO_REPLY, 0,
@@ -225,7 +225,7 @@ ZTEST(ping_l2, test_icmpv6_ping)
 
 	/* Set up destination (our own link-local address) */
 	dst.sin6_family = AF_INET6;
-	memcpy(&dst.sin6_addr, &test_ll_addr, sizeof(test_ll_addr));
+	memcpy(&dst.sin6_addr, &s_s_test_ll_addr, sizeof(test_ll_addr));
 
 	/* Set up ping parameters */
 	params.identifier = 0x4C49;  /* "LI" */
@@ -238,16 +238,16 @@ ZTEST(ping_l2, test_icmpv6_ping)
 	LOG_INF("Sending ICMPv6 Echo Request...");
 
 	/* Send ping */
-	ret = net_icmp_send_echo_request(&icmp_ctx, test_ctx.iface,
+	ret = net_icmp_send_echo_request(&icmp_ctx, s_test_ctx.iface,
 					 (struct sockaddr *)&dst,
-					 &params, &test_ctx);
+					 &params, &s_test_ctx);
 	zassert_equal(ret, 0, "Failed to send Echo Request: %d", ret);
 
 	/* Wait for reply */
-	ret = k_sem_take(&test_ctx.reply_sem, SEM_WAIT_TIME);
+	ret = k_sem_take(&s_s_test_ctx.reply_sem, SEM_WAIT_TIME);
 	zassert_equal(ret, 0, "Timeout waiting for Echo Reply");
 
-	zassert_true(test_ctx.reply_received, "Echo Reply not received");
+	zassert_true(s_test_ctx.reply_received, "Echo Reply not received");
 
 	/* Cleanup */
 	ret = net_icmp_cleanup_ctx(&icmp_ctx);
@@ -273,14 +273,14 @@ static void *ping_l2_setup(void)
 
 	/* Get interface and add IPv6 address */
 	iface = net_if_lookup_by_dev(DEVICE_GET(lichen_loopback));
-	if (iface && test_ctx.iface == NULL) {
-		test_ctx.iface = iface;
+	if (iface && s_test_ctx.iface == NULL) {
+		s_test_ctx.iface = iface;
 	}
 
 	if (iface) {
 		/* Add the link-local address if not already present */
-		if (net_if_ipv6_addr_lookup(&test_ll_addr, NULL) == NULL) {
-			net_if_ipv6_addr_add(iface, &test_ll_addr,
+		if (net_if_ipv6_addr_lookup(&s_s_test_ll_addr, NULL) == NULL) {
+			net_if_ipv6_addr_add(iface, &s_s_test_ll_addr,
 					     NET_ADDR_MANUAL, 0);
 		}
 	}
