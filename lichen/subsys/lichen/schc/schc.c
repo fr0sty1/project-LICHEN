@@ -34,20 +34,11 @@
 #include <string.h>
 #include <stdbool.h>
 
-#ifdef __ZEPHYR__
-#include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(schc, CONFIG_LICHEN_SCHC_LOG_LEVEL);
-#else
-#include <stdio.h>
-#define LOG_WRN(...) fprintf(stderr, "WRN: " __VA_ARGS__)
-#endif
-
 /* IPv6 protocol constants */
 #define IPV6_NH_UDP     17   /* UDP next header (RFC 768) */
 #define IPV6_NH_ICMPV6  58   /* ICMPv6 next header (RFC 4443) */
 #define IPV6_HDR_LEN    40   /* IPv6 base header length */
 #define UDP_HDR_LEN     8    /* UDP header length */
-#define ICMPV6_ECHO_HDR_LEN 8  /* ICMPv6 Echo Request/Reply header size */
 #define ICMPV6_TYPE_RPL 155  /* RPL ICMPv6 type (RFC 6550) */
 
 /* ─── bit-packing ─────────────────────────────────────────────────────────── */
@@ -80,10 +71,7 @@ static int bit_writer_write(struct bit_writer *w, uint64_t value, int nbits)
 		return -1;
 	}
 
-	/* Check for overflow before computing bytes_needed */
-	if ((size_t)nbits > SIZE_MAX - w->nbits - 7) {
-		return -1;
-	}
+	/* Check if we have enough space (worst case: ceil of bits to bytes) */
 	size_t bytes_needed = (w->nbits + (size_t)nbits + 7) / 8;
 	if (bytes_needed > w->buf_len) {
 		return -1;
@@ -137,10 +125,7 @@ static int bit_writer_write128(struct bit_writer *w,
 		return -1;
 	}
 
-	/* Check for overflow before computing bytes_needed */
-	if ((size_t)nbits > SIZE_MAX - w->nbits - 7) {
-		return -1;
-	}
+	/* Check if we have enough space */
 	size_t bytes_needed = (w->nbits + (size_t)nbits + 7) / 8;
 	if (bytes_needed > w->buf_len) {
 		return -1;
@@ -297,7 +282,6 @@ static int bit_reader_read_bytes(struct bit_reader *r, int nbits,
 	return 0;
 }
 
-/** Return byte offset of last partially-read byte (rounds up). */
 static size_t bit_reader_residue_byte_end(const struct bit_reader *r)
 {
 	return (r->pos + 7) / 8;
@@ -305,21 +289,26 @@ static size_t bit_reader_residue_byte_end(const struct bit_reader *r)
 
 /* ─── address helpers ─────────────────────────────────────────────────────── */
 
-/** Return true if addr is an IPv6 link-local address (fe80::/10). */
 static bool is_link_local(const uint8_t addr[16])
 {
 	return addr[0] == 0xFE && (addr[1] & 0xC0) == 0x80;
 }
 
-/** Return true if addr is an IPv6 global unicast address (2000::/3). */
 static bool is_global(const uint8_t addr[16])
 {
-	return (addr[0] >> 5) == 0x01; /* 001x xxxx = 2000::/3 */
+	/* GUA (2000::/3): first 3 bits = 001 */
+	if ((addr[0] >> 5) == 0x01) {
+		return true;
+	}
+	/* ULA (fc00::/7): first 7 bits = 1111110 (0xFC or 0xFD) */
+	if ((addr[0] & 0xFE) == 0xFC) {
+		return true;
+	}
+	return false;
 }
 
 /* ─── checksum helpers ────────────────────────────────────────────────────── */
 
-/** Add two values with one's-complement carry folding. */
 static uint32_t oc_add(uint32_t a, uint32_t b)
 {
 	uint32_t s = a + b;
@@ -329,7 +318,6 @@ static uint32_t oc_add(uint32_t a, uint32_t b)
 	return s;
 }
 
-/** Sum bytes as 16-bit big-endian words for checksum calculation. */
 static uint32_t checksum_bytes(const uint8_t *data, size_t len)
 {
 	uint32_t sum = 0;
@@ -344,7 +332,6 @@ static uint32_t checksum_bytes(const uint8_t *data, size_t len)
 	return sum;
 }
 
-/** Compute IPv6 pseudo-header checksum contribution. */
 static uint32_t pseudo_sum(const uint8_t src[16], const uint8_t dst[16],
 			   uint8_t next_header, uint16_t length)
 {
@@ -361,7 +348,6 @@ static uint32_t pseudo_sum(const uint8_t src[16], const uint8_t dst[16],
 	return sum;
 }
 
-/** Fold and complement accumulated sum to produce final checksum. */
 static uint16_t finalize_checksum(uint32_t sum)
 {
 	while (sum >> 16) {
@@ -724,10 +710,7 @@ static int decompress_coap(const uint8_t *data, size_t data_len,
 	size_t coap_len = 4 + tail_len;
 	uint16_t udp_len = 8 + coap_len;
 
-	/* Build CoAP for checksum computation.
-	 * ponytail: 512-byte stack buffer limits CoAP payload to ~508 bytes.
-	 * This is adequate for LoRa MTUs (~250 bytes). For larger payloads,
-	 * implement incremental checksum computation. */
+	/* Build CoAP for checksum computation */
 	uint8_t coap_buf[512];
 
 	/* Ensure tail fits in working buffer */
@@ -835,10 +818,7 @@ static int decompress_icmpv6_echo(const uint8_t *data, size_t data_len,
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 
-	/* Build ICMPv6 with zero checksum for computation.
-	 * ponytail: 512-byte stack buffer limits ICMPv6 payload to ~504 bytes.
-	 * This is adequate for LoRa MTUs (~250 bytes). For larger payloads,
-	 * implement incremental checksum computation. */
+	/* Build ICMPv6 with zero checksum for computation */
 	uint8_t icmp_buf[512];
 
 	/* Ensure tail fits in working buffer */
@@ -946,9 +926,6 @@ static int decompress_rpl_dio(const uint8_t *data, size_t data_len,
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 
-	/* ponytail: 512-byte stack buffer limits DIO options to ~484 bytes.
-	 * This is adequate for LoRa MTUs (~250 bytes). For larger payloads,
-	 * implement incremental checksum computation. */
 	uint8_t icmp_buf[512];
 
 	/* Ensure tail fits in working buffer (28 = DIO header) */
@@ -1050,9 +1027,6 @@ static int decompress_rpl_dao(const uint8_t *data, size_t data_len,
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 
-	/* ponytail: 512-byte stack buffer limits DAO options to ~488 bytes.
-	 * This is adequate for LoRa MTUs (~250 bytes). For larger payloads,
-	 * implement incremental checksum computation. */
 	uint8_t icmp_buf[512];
 
 	/* Ensure tail fits in working buffer (24 = DAO header) */
@@ -1102,10 +1076,6 @@ int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
 {
 	int ret;
 
-	if (packet == NULL || out == NULL) {
-		return SCHC_ERR_TOO_SHORT;
-	}
-
 	if (pkt_len < IPV6_HDR_LEN || (packet[0] >> 4) != 6) {
 		/* Not IPv6 - uncompressed fallback */
 		size_t needed = 1 + pkt_len;
@@ -1115,17 +1085,6 @@ int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
 		out[0] = SCHC_RULE_UNCOMPRESSED;
 		memcpy(&out[1], packet, pkt_len);
 		return (int)needed;
-	}
-
-	/* Validate NOT_SENT fields match rule assumptions.
-	 * All SCHC rules assume traffic_class=0 and flow_label=0.
-	 * Non-zero values will be lost in compression. */
-	uint8_t tc = ((packet[0] & 0x0F) << 4) | (packet[1] >> 4);
-	uint32_t fl = ((uint32_t)(packet[1] & 0x0F) << 16) |
-		      ((uint32_t)packet[2] << 8) | packet[3];
-	if (tc != 0 || fl != 0) {
-		LOG_WRN("SCHC: non-zero TC/FL will be lost (tc=%u fl=%u)\n",
-			tc, (unsigned)fl);
 	}
 
 	uint8_t nh = packet[6];
@@ -1155,7 +1114,7 @@ int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
 		if ((icmp_type == 128 || icmp_type == 129) &&
 		    icmp_code == 0 &&
 		    is_link_local(src) && is_link_local(dst) &&
-		    pkt_len >= IPV6_HDR_LEN + ICMPV6_ECHO_HDR_LEN) {
+		    pkt_len >= IPV6_HDR_LEN + UDP_HDR_LEN) {
 			ret = compress_icmpv6_echo(packet, pkt_len, out, out_len);
 			if (ret > 0) {
 				return ret;
@@ -1195,10 +1154,6 @@ int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
 int lichen_schc_decompress(const uint8_t *data, size_t data_len,
 			   uint8_t *out, size_t out_len)
 {
-	if (data == NULL || out == NULL) {
-		return SCHC_ERR_TOO_SHORT;
-	}
-
 	if (data_len == 0) {
 		return SCHC_ERR_TOO_SHORT;
 	}
