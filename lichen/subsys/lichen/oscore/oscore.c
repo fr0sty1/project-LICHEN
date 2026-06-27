@@ -388,6 +388,12 @@ int oscore_ctx_create(const uint8_t master_secret[OSCORE_KEY_LEN],
 	int ret;
 	int ctx_idx;
 
+	/* Validate master_secret is provided (python-t7j5.160) */
+	if (master_secret == NULL) {
+		LOG_ERR("master_secret must not be NULL");
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
 	/*
 	 * RFC 8613 Section 5.2: The nonce format reserves 6 bytes for
 	 * the sender ID in the nonce computation. IDs of 7 bytes are
