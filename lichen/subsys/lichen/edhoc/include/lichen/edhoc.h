@@ -88,9 +88,9 @@ struct edhoc_initiator {
 	enum edhoc_state state;
 	enum edhoc_method method;
 
-	/* Our identity (Ed25519 keypair) */
-	const uint8_t *ed_seed;     /* 32 bytes, NOT owned */
-	const uint8_t *ed_pubkey;   /* 32 bytes, NOT owned */
+	/* Our identity (Ed25519 keypair, copied from caller) */
+	uint8_t ed_seed[EDHOC_ED25519_SK_LEN];
+	uint8_t ed_pubkey[EDHOC_ED25519_PK_LEN];
 
 	/* Connection identifiers */
 	uint8_t c_i[EDHOC_CID_MAX_LEN];
@@ -127,9 +127,9 @@ struct edhoc_responder {
 	enum edhoc_state state;
 	enum edhoc_method method;
 
-	/* Our identity */
-	const uint8_t *ed_seed;
-	const uint8_t *ed_pubkey;
+	/* Our identity (Ed25519 keypair, copied from caller) */
+	uint8_t ed_seed[EDHOC_ED25519_SK_LEN];
+	uint8_t ed_pubkey[EDHOC_ED25519_PK_LEN];
 
 	/* Connection identifiers */
 	uint8_t c_i[EDHOC_CID_MAX_LEN];
@@ -163,8 +163,8 @@ struct edhoc_responder {
  * @brief Initialize EDHOC initiator
  *
  * @param ctx Initiator context to initialize
- * @param ed_seed Ed25519 seed (32 bytes, caller retains ownership)
- * @param ed_pubkey Ed25519 public key (32 bytes, caller retains ownership)
+ * @param ed_seed Ed25519 seed (32 bytes, copied)
+ * @param ed_pubkey Ed25519 public key (32 bytes, copied)
  * @param c_i Connection identifier (copied)
  * @param c_i_len Length of c_i
  * @return 0 on success, negative on error

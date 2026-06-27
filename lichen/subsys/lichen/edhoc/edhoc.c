@@ -340,8 +340,8 @@ int edhoc_initiator_init(struct edhoc_initiator *ctx,
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->state = EDHOC_STATE_IDLE;
 	ctx->method = EDHOC_METHOD_SIGN_SIGN;
-	ctx->ed_seed = ed_seed;
-	ctx->ed_pubkey = ed_pubkey;
+	memcpy(ctx->ed_seed, ed_seed, EDHOC_ED25519_SK_LEN);
+	memcpy(ctx->ed_pubkey, ed_pubkey, EDHOC_ED25519_PK_LEN);
 
 	if (c_i != NULL && c_i_len > 0) {
 		memcpy(ctx->c_i, c_i, c_i_len);
@@ -708,8 +708,8 @@ int edhoc_responder_init(struct edhoc_responder *ctx,
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->state = EDHOC_STATE_IDLE;
 	ctx->method = EDHOC_METHOD_SIGN_SIGN;
-	ctx->ed_seed = ed_seed;
-	ctx->ed_pubkey = ed_pubkey;
+	memcpy(ctx->ed_seed, ed_seed, EDHOC_ED25519_SK_LEN);
+	memcpy(ctx->ed_pubkey, ed_pubkey, EDHOC_ED25519_PK_LEN);
 
 	if (c_r != NULL && c_r_len > 0) {
 		memcpy(ctx->c_r, c_r, c_r_len);
@@ -1071,6 +1071,7 @@ void edhoc_initiator_wipe(struct edhoc_initiator *ctx)
 	if (ctx == NULL) {
 		return;
 	}
+	crypto_wipe(ctx->ed_seed, sizeof(ctx->ed_seed));
 	crypto_wipe(ctx->eph_sk, sizeof(ctx->eph_sk));
 	crypto_wipe(ctx->eph_pk, sizeof(ctx->eph_pk));
 	crypto_wipe(ctx->g_y, sizeof(ctx->g_y));
@@ -1091,6 +1092,7 @@ void edhoc_responder_wipe(struct edhoc_responder *ctx)
 	if (ctx == NULL) {
 		return;
 	}
+	crypto_wipe(ctx->ed_seed, sizeof(ctx->ed_seed));
 	crypto_wipe(ctx->eph_sk, sizeof(ctx->eph_sk));
 	crypto_wipe(ctx->eph_pk, sizeof(ctx->eph_pk));
 	crypto_wipe(ctx->g_x, sizeof(ctx->g_x));
