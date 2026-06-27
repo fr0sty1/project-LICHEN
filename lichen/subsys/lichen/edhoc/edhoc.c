@@ -119,6 +119,7 @@ static void hkdf_extract(const uint8_t *salt, size_t salt_len,
 		salt_len = 32;
 	}
 	hmac_sha256(salt, salt_len, ikm, ikm_len, prk);
+	crypto_wipe(default_salt, sizeof(default_salt));
 }
 
 /*
@@ -168,8 +169,7 @@ static int hkdf_expand(const uint8_t prk[32],
 		offset += copy_len;
 		counter++;
 	}
-
-	return 0;
+	crypto_wipe(t, sizeof(t));
 }
 
 /*
