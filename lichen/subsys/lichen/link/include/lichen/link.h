@@ -187,7 +187,7 @@ struct lichen_link_rx_ctx {
  * @param[out]    src_eui64  Filled with sender's EUI-64 (8 bytes)
  * @return 0 on success, negative error code on failure
  *         -EINVAL: malformed frame
- *         -EAUTH: signature/MIC verification failed
+ *         -LICHEN_EAUTH: signature/MIC verification failed
  *         -EALREADY: replay detected
  *         -ENOMEM: output buffer too small
  */

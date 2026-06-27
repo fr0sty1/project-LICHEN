@@ -87,7 +87,7 @@ static int verify_mic(const struct lichen_link_rx_ctx *ctx,
 		/* Require link key and peer EUI-64 for AES-CCM verification */
 		if (ctx->link_key == NULL || ctx->peer_eui64 == NULL) {
 			LOG_WRN("AES-CCM MIC verification requires link_key and peer_eui64\n");
-			return -EAUTH;
+			return -LICHEN_EAUTH;
 		}
 
 		/* AAD is everything except the MIC itself */
@@ -101,7 +101,7 @@ static int verify_mic(const struct lichen_link_rx_ctx *ctx,
 					   raw_frame, aad_len,
 					   NULL, 0,
 					   expected_mic) != 0) {
-			return -EAUTH;
+			return -LICHEN_EAUTH;
 		}
 
 		/* Constant-time comparison of MIC */
@@ -111,7 +111,7 @@ static int verify_mic(const struct lichen_link_rx_ctx *ctx,
 		}
 
 		if (diff != 0) {
-			return -EAUTH;
+			return -LICHEN_EAUTH;
 		}
 
 		return 0;
@@ -139,7 +139,7 @@ static int verify_mic(const struct lichen_link_rx_ctx *ctx,
 		if (diff != 0) {
 			LOG_WRN("CRC32 mismatch: expected 0x%08x, got 0x%08x\n",
 				expected_crc, received_crc);
-			return -EAUTH;
+			return -LICHEN_EAUTH;
 		}
 
 		return 0;
@@ -181,7 +181,7 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 	if (parsed.signature_present) {
 		if (ctx->peer_pubkey == NULL) {
 			/* Cannot verify without sender's public key */
-			return -EAUTH;
+			return -LICHEN_EAUTH;
 		}
 
 		/*
@@ -199,7 +199,7 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 							   parsed.payload_len,
 							   ctx->peer_pubkey);
 		if (verify_result != 1) {
-			return -EAUTH;
+			return -LICHEN_EAUTH;
 		}
 	}
 
@@ -255,7 +255,7 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 	/* Step 5: Verify MIC */
 	ret = verify_mic(ctx, &parsed, frame, frame_len);
 	if (ret < 0) {
-		return -EAUTH;
+		return -LICHEN_EAUTH;
 	}
 
 	/*
