@@ -98,6 +98,29 @@ static struct lichen_rpl_parent *find_free_slot(struct lichen_rpl_dodag *d)
 }
 
 /**
+ * Find the worst parent (highest path cost) in the table.
+ * Returns NULL if no valid parents exist.
+ */
+static struct lichen_rpl_parent *find_worst_parent(struct lichen_rpl_dodag *d)
+{
+	struct lichen_rpl_parent *worst = NULL;
+	uint16_t worst_cost = 0;
+
+	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_PARENTS; i++) {
+		struct lichen_rpl_parent *p = &d->parents[i];
+		if (!p->valid) {
+			continue;
+		}
+		uint16_t cost = path_cost(p, d->min_hop_rank_increase);
+		if (worst == NULL || cost > worst_cost) {
+			worst = p;
+			worst_cost = cost;
+		}
+	}
+	return worst;
+}
+
+/**
  * Check if a candidate is admissible (MaxRankIncrease check).
  */
 static bool is_admissible(const struct lichen_rpl_dodag *d,
@@ -289,8 +312,27 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 	if (p == NULL) {
 		p = find_free_slot(d);
 		if (p == NULL) {
-			/* No room - could evict worst, but for now just ignore */
-			return;
+			/*
+			 * Table full - evict the worst parent if the new
+			 * candidate would be better. Compute the new
+			 * candidate's path cost to compare.
+			 */
+			struct lichen_rpl_parent *worst = find_worst_parent(d);
+			if (worst == NULL) {
+				return;
+			}
+			uint16_t worst_cost = path_cost(worst, d->min_hop_rank_increase);
+			uint32_t new_increment = ((uint32_t)link_etx * d->min_hop_rank_increase) / 256;
+			uint32_t new_cost = (uint32_t)dio->rank + new_increment;
+			if (new_cost > 0xFFFF) {
+				new_cost = 0xFFFF;
+			}
+			if (new_cost >= worst_cost) {
+				/* New candidate is not better - ignore it */
+				return;
+			}
+			/* Evict the worst and use its slot */
+			p = worst;
 		}
 		memcpy(p->addr, neighbor_addr, 16);
 	}
