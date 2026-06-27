@@ -11,6 +11,7 @@
 
 #include <string.h>
 #include <math.h>
+#include <limits.h>
 #include <lichen/senml.h>
 #include <lichen/errno.h>
 #include <zcbor_encode.h>

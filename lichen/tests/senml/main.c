@@ -1,0 +1,189 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* SPDX-FileCopyrightText: The contributors to the LICHEN project */
+
+/**
+ * @file main.c
+ * @brief SenML CBOR encoder tests with reference vectors
+ *
+ * Test vectors are generated using Python cbor2 and verified against
+ * RFC 8428 CBOR label definitions. Each test compares encoder output
+ * against known-good CBOR bytes.
+ */
+
+#include <lichen/senml.h>
+#include <lichen/errno.h>
+#include <string.h>
+#include <stdio.h>
+
+/* ─── test framework ──────────────────────────────────────────────────────── */
+
+static int tests_run = 0;
+static int tests_passed = 0;
+
+#define ASSERT_EQ(a, b, msg) do { \
+	if ((a) != (b)) { \
+		printf("  FAIL: %s (got %d, expected %d)\n", msg, (int)(a), (int)(b)); \
+		return 0; \
+	} \
+} while (0)
+
+#define ASSERT_MEM_EQ(a, b, len, msg) do { \
+	if (memcmp((a), (b), (len)) != 0) { \
+		printf("  FAIL: %s (memory mismatch)\n", msg); \
+		for (size_t i = 0; i < (len); i++) { \
+			printf("    [%zu] got=0x%02x expected=0x%02x\n", \
+			       i, ((uint8_t*)(a))[i], ((uint8_t*)(b))[i]); \
+		} \
+		return 0; \
+	} \
+} while (0)
+
+/* ─── test vectors ────────────────────────────────────────────────────────── */
+
+/*
+ * Test vector: temperature 25.0 Celsius, no base name/time
+ * Python: cbor2.dumps([{0: 'temp', 1: 'Cel', 2: 25.0}])  (with float32)
+ * CBOR structure:
+ *   81        array(1)
+ *   a3        map(3)
+ *   00        label 0 (n = name)
+ *   64 74656d70   tstr(4) "temp"
+ *   01        label 1 (u = unit)
+ *   63 43656c     tstr(3) "Cel"
+ *   02        label 2 (v = value)
+ *   fa 41c80000   float32(25.0)
+ */
+static const uint8_t VEC_TEMP_SIMPLE[] = {
+	0x81, 0xa3,
+	0x00, 0x64, 0x74, 0x65, 0x6d, 0x70,
+	0x01, 0x63, 0x43, 0x65, 0x6c,
+	0x02, 0xfa, 0x41, 0xc8, 0x00, 0x00
+};
+
+/*
+ * Test vector: boolean value (charging: true)
+ * Python: cbor2.dumps([{0: 'charging', 4: True}])
+ * CBOR structure:
+ *   81        array(1)
+ *   a2        map(2)
+ *   00        label 0 (n)
+ *   68 6368617267696e67   tstr(8) "charging"
+ *   04        label 4 (vb = boolean value)
+ *   f5        true
+ */
+static const uint8_t VEC_BOOL_TRUE[] = {
+	0x81, 0xa2,
+	0x00, 0x68, 0x63, 0x68, 0x61, 0x72, 0x67, 0x69, 0x6e, 0x67,
+	0x04, 0xf5
+};
+
+/* ─── tests ───────────────────────────────────────────────────────────────── */
+
+static int test_encode_temperature(void)
+{
+	struct senml_pack pack;
+	uint8_t buf[64];
+	int ret;
+
+	senml_pack_init(&pack, NULL, 0);
+	ret = senml_add_float(&pack, "temp", "Cel", 25.0f);
+	ASSERT_EQ(ret, 0, "senml_add_float");
+
+	ret = senml_encode_cbor(&pack, buf, sizeof(buf));
+	ASSERT_EQ(ret, (int)sizeof(VEC_TEMP_SIMPLE), "encoded length");
+	ASSERT_MEM_EQ(buf, VEC_TEMP_SIMPLE, sizeof(VEC_TEMP_SIMPLE), "CBOR output");
+
+	return 1;
+}
+
+static int test_encode_boolean(void)
+{
+	struct senml_pack pack;
+	uint8_t buf[64];
+	int ret;
+
+	senml_pack_init(&pack, NULL, 0);
+	ret = senml_add_bool(&pack, "charging", true);
+	ASSERT_EQ(ret, 0, "senml_add_bool");
+
+	ret = senml_encode_cbor(&pack, buf, sizeof(buf));
+	ASSERT_EQ(ret, (int)sizeof(VEC_BOOL_TRUE), "encoded length");
+	ASSERT_MEM_EQ(buf, VEC_BOOL_TRUE, sizeof(VEC_BOOL_TRUE), "CBOR output");
+
+	return 1;
+}
+
+static int test_empty_pack_rejected(void)
+{
+	struct senml_pack pack;
+	uint8_t buf[64];
+	int ret;
+
+	senml_pack_init(&pack, NULL, 0);
+	ret = senml_encode_cbor(&pack, buf, sizeof(buf));
+	ASSERT_EQ(ret, -EINVAL, "empty pack returns -EINVAL");
+
+	return 1;
+}
+
+static int test_buffer_too_small(void)
+{
+	struct senml_pack pack;
+	uint8_t buf[4]; /* Too small */
+	int ret;
+
+	senml_pack_init(&pack, NULL, 0);
+	senml_add_float(&pack, "temp", "Cel", 25.0f);
+
+	ret = senml_encode_cbor(&pack, buf, sizeof(buf));
+	ASSERT_EQ(ret, -ENOMEM, "small buffer returns -ENOMEM");
+
+	return 1;
+}
+
+static int test_pack_full(void)
+{
+	struct senml_pack pack;
+	int ret;
+
+	senml_pack_init(&pack, NULL, 0);
+
+	/* Fill the pack to capacity */
+	for (int i = 0; i < SENML_MAX_RECORDS; i++) {
+		ret = senml_add_float(&pack, "x", NULL, (float)i);
+		ASSERT_EQ(ret, 0, "add record");
+	}
+
+	/* Next add should fail */
+	ret = senml_add_float(&pack, "overflow", NULL, 999.0f);
+	ASSERT_EQ(ret, -ENOMEM, "pack full returns -ENOMEM");
+
+	return 1;
+}
+
+/* ─── test runner ─────────────────────────────────────────────────────────── */
+
+#define RUN_TEST(fn) do { \
+	printf("  %s...", #fn); \
+	tests_run++; \
+	if (fn()) { \
+		printf(" OK\n"); \
+		tests_passed++; \
+	} \
+} while (0)
+
+int main(void)
+{
+	printf("SenML Encoder Tests\n");
+	printf("===================\n\n");
+
+	RUN_TEST(test_encode_temperature);
+	RUN_TEST(test_encode_boolean);
+	RUN_TEST(test_empty_pack_rejected);
+	RUN_TEST(test_buffer_too_small);
+	RUN_TEST(test_pack_full);
+
+	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
+
+	return (tests_passed == tests_run) ? 0 : 1;
+}
