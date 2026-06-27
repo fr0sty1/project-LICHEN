@@ -101,6 +101,19 @@ static int ctx_get_index(const struct oscore_ctx *ctx)
 #define OSCORE_ALG_AEAD 10
 
 /*
+ * CBOR encoding constants (RFC 8949).
+ * Major types are encoded in the high 3 bits of the initial byte.
+ * The low 5 bits encode the argument (length/value) for values 0-23,
+ * or indicate extended encoding (24=1-byte, 25=2-byte, etc.).
+ */
+#define CBOR_UINT_1BYTE   0x18  /* uint with 1-byte argument follows */
+#define CBOR_BSTR_BASE    0x40  /* bstr major type (type 2, arg 0) */
+#define CBOR_BSTR_1BYTE   0x58  /* bstr with 1-byte length follows */
+#define CBOR_TSTR_BASE    0x60  /* tstr major type (type 3, arg 0) */
+#define CBOR_ARRAY_BASE   0x80  /* array major type (type 4, arg 0) */
+#define CBOR_NULL         0xf6  /* simple value null */
+
+/*
  * Replay window implementation uses a 32-bit bitmap. The configurable
  * window size must not exceed what can be tracked in uint32_t.
  * (Fixes python-ano.55)
@@ -136,27 +149,17 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 {
 	size_t off = 0;
 
-	/*
-	 * Defense in depth: reject lengths that would truncate when cast to
-	 * uint8_t in the CBOR encoding below. Callers use bounded values
-	 * (OSCORE IDs are ≤ 7 bytes per RFC 8613), but this prevents silent
-	 * corruption if invariants are violated. (python-t7j5.120)
-	 */
-	if (id_len > 255 || id_context_len > 255) {
-		return -1;
-	}
-
-	/* Array of 5 elements: 0x85 */
+	/* Array of 5 elements */
 	if (off >= buf_len) return -1;
-	buf[off++] = 0x85;
+	buf[off++] = CBOR_ARRAY_BASE | 5;
 
 	/* id: bstr */
 	if (id_len <= 23) {
 		if (off >= buf_len) return -1;
-		buf[off++] = 0x40 | (uint8_t)id_len;
+		buf[off++] = CBOR_BSTR_BASE | (uint8_t)id_len;
 	} else {
 		if (off + 1 >= buf_len) return -1;
-		buf[off++] = 0x58;
+		buf[off++] = CBOR_BSTR_1BYTE;
 		buf[off++] = (uint8_t)id_len;
 	}
 	if (off + id_len > buf_len) return -1;
@@ -166,14 +169,14 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 	/* id_context: bstr or null */
 	if (id_context_len == 0) {
 		if (off >= buf_len) return -1;
-		buf[off++] = 0xf6; /* null */
+		buf[off++] = CBOR_NULL;
 	} else {
 		if (id_context_len <= 23) {
 			if (off >= buf_len) return -1;
-			buf[off++] = 0x40 | (uint8_t)id_context_len;
+			buf[off++] = CBOR_BSTR_BASE | (uint8_t)id_context_len;
 		} else {
 			if (off + 1 >= buf_len) return -1;
-			buf[off++] = 0x58;
+			buf[off++] = CBOR_BSTR_1BYTE;
 			buf[off++] = (uint8_t)id_context_len;
 		}
 		if (off + id_context_len > buf_len) return -1;
@@ -189,7 +192,7 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 	size_t type_len = strlen(type);
 	if (type_len <= 23) {
 		if (off >= buf_len) return -1;
-		buf[off++] = 0x60 | (uint8_t)type_len;
+		buf[off++] = CBOR_TSTR_BASE | (uint8_t)type_len;
 	} else {
 		return -1; /* type shouldn't be > 23 chars */
 	}
@@ -203,7 +206,7 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 		buf[off++] = (uint8_t)out_len;
 	} else if (out_len <= 255) {
 		if (off + 1 >= buf_len) return -1;
-		buf[off++] = 0x18;
+		buf[off++] = CBOR_UINT_1BYTE;
 		buf[off++] = (uint8_t)out_len;
 	} else {
 		return -1; /* L shouldn't be > 255 for OSCORE */
@@ -252,18 +255,18 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 	size_t inner_off = 0;
 
 	/* aad_array: 5-element array */
-	inner[inner_off++] = 0x85;
+	inner[inner_off++] = CBOR_ARRAY_BASE | 5;
 
 	/* oscore_version: 1 */
 	inner[inner_off++] = 0x01;
 
 	/* algorithms: 1-element array containing algorithm ID (10) */
-	inner[inner_off++] = 0x81; /* 1-element array */
+	inner[inner_off++] = CBOR_ARRAY_BASE | 1;
 	inner[inner_off++] = OSCORE_ALG_AEAD; /* algorithm ID 10 */
 
 	/* request_kid: bstr */
 	if (request_kid_len <= 23) {
-		inner[inner_off++] = 0x40 | (uint8_t)request_kid_len;
+		inner[inner_off++] = CBOR_BSTR_BASE | (uint8_t)request_kid_len;
 	} else {
 		return -1; /* shouldn't happen with OSCORE_ID_MAX_LEN */
 	}
@@ -277,7 +280,7 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 
 	/* request_piv: bstr */
 	if (request_piv_len <= 23) {
-		inner[inner_off++] = 0x40 | (uint8_t)request_piv_len;
+		inner[inner_off++] = CBOR_BSTR_BASE | (uint8_t)request_piv_len;
 	} else {
 		return -1;
 	}
@@ -290,7 +293,7 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 	}
 
 	/* options: empty bstr (Class I options not used) */
-	inner[inner_off++] = 0x40;
+	inner[inner_off++] = CBOR_BSTR_BASE;
 
 	/*
 	 * Now build Enc_structure: ["Encrypt0", h'', external_aad]
@@ -299,26 +302,26 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 
 	/* 3-element array */
 	if (off >= buf_len) return -1;
-	buf[off++] = 0x83;
+	buf[off++] = CBOR_ARRAY_BASE | 3;
 
 	/* "Encrypt0" as tstr (8 chars) */
 	if (off >= buf_len) return -1;
-	buf[off++] = 0x68; /* tstr of length 8 */
+	buf[off++] = CBOR_TSTR_BASE | 8;
 	if (off + 8 > buf_len) return -1;
 	memcpy(buf + off, "Encrypt0", 8);
 	off += 8;
 
 	/* empty bstr (protected header) */
 	if (off >= buf_len) return -1;
-	buf[off++] = 0x40;
+	buf[off++] = CBOR_BSTR_BASE;
 
 	/* external_aad as bstr wrapping the inner CBOR */
 	if (inner_off <= 23) {
 		if (off >= buf_len) return -1;
-		buf[off++] = 0x40 | (uint8_t)inner_off;
+		buf[off++] = CBOR_BSTR_BASE | (uint8_t)inner_off;
 	} else {
 		if (off + 1 >= buf_len) return -1;
-		buf[off++] = 0x58;
+		buf[off++] = CBOR_BSTR_1BYTE;
 		buf[off++] = (uint8_t)inner_off;
 	}
 	if (off + inner_off > buf_len) return -1;
