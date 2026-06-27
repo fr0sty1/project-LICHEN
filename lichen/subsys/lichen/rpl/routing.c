@@ -557,6 +557,17 @@ bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
 		return false;
 	}
 
+	/* Validate RPL instance ID and DODAG ID match our configuration.
+	 * Reject DAOs from other DODAGs to prevent route poisoning. */
+	struct lichen_rpl_dao dao;
+	if (lichen_rpl_dao_parse(&dao, dao_bytes, len) != LICHEN_RPL_OK) {
+		return false;
+	}
+	if (dao.rpl_instance_id != dm->rpl_instance_id ||
+	    memcmp(dao.dodag_id, dm->dodag_id, 16) != 0) {
+		return false;
+	}
+
 	uint8_t target[16];
 	uint8_t parent[16];
 
