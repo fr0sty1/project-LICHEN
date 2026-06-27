@@ -489,7 +489,11 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	hkdf_extract(ctx->th_2, 32, g_xy, 32, ctx->prk_2e);
 	crypto_wipe(g_xy, sizeof(g_xy));
 
-	/* Decrypt CIPHERTEXT_2 with KEYSTREAM_2 (XOR) */
+	/*
+	 * Decrypt CIPHERTEXT_2 with KEYSTREAM_2 (XOR).
+	 * RFC 9528 Section 4.3: message_2 uses XOR-only encryption without MAC.
+	 * Authenticity comes from Signature_2 which covers MAC_2 over TH_2.
+	 */
 	uint8_t keystream_2[128];
 	if (ct2_len > sizeof(keystream_2)) {
 		ret = -ENOMEM;
@@ -835,7 +839,11 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	}
 	size_t pt2_len = zse_pt2->payload - plaintext_2;
 
-	/* KEYSTREAM_2 for XOR encryption */
+	/*
+	 * KEYSTREAM_2 for XOR encryption.
+	 * RFC 9528 Section 4.3: message_2 uses XOR-only encryption without MAC.
+	 * Authenticity comes from Signature_2 which covers MAC_2 over TH_2.
+	 */
 	uint8_t keystream_2[128];
 	ret = edhoc_kdf(ctx->prk_2e, ctx->th_2, "KEYSTREAM_2", NULL, 0,
 			keystream_2, pt2_len);
