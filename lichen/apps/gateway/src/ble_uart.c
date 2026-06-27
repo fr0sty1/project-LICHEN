@@ -123,7 +123,7 @@ static ssize_t nus_rx_write(struct bt_conn *conn,
 		} else if (b == SLIP_END) {
 			if (s_rx_len > 0) {
 				if (s_rx_overflow) {
-					LOG_WRN("SLIP RX overflow: frame discarded");
+					LOG_WRN("BLE UART RX frame dropped (overflow)");
 				} else {
 					slip_dispatch(s_rx_buf, s_rx_len);
 				}
