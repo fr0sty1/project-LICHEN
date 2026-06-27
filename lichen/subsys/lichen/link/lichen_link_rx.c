@@ -135,7 +135,8 @@ static int verify_mic(const struct lichen_link_rx_ctx *ctx,
 					((uint32_t)frame->mic[2] << 16) |
 					((uint32_t)frame->mic[3] << 24);
 
-		if (expected_crc != received_crc) {
+		uint32_t diff = expected_crc ^ received_crc;
+		if (diff != 0) {
 			LOG_WRN("CRC32 mismatch: expected 0x%08x, got 0x%08x\n",
 				expected_crc, received_crc);
 			return -EAUTH;
