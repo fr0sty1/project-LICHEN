@@ -1,0 +1,16 @@
+{
+  "id": "lora-ipv6-mesh-252",
+  "title": "SimRadio.configure() stores values but never sends to simulator",
+  "description": "configure(freq_hz, tx_power_dbm) stores values locally but TX message only includes payload. Simulator ignores radio config. Either add CONFIG message to wire protocol, or clarify that config is local-only and update docstrings.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Frost",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T19:07:13Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-13T02:37:56Z",
+  "started_at": "2026-06-13T02:24:48Z",
+  "closed_at": "2026-06-13T02:37:56Z",
+  "close_reason": "Clarified configure() docstring: values are local-only and not sent to the simulator (TX carries only payload). Docstring-only; existing test_configure covers local storage."
+}

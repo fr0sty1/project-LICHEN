@@ -1,0 +1,14 @@
+{
+  "id": "lora-ipv6-mesh-z0h",
+  "title": "Spec: Add SCHC rule versioning",
+  "description": "SCHC rules are pre-provisioned with no versioning scheme. Problems: (1) no fallback when rules mismatch, (2) firmware updates could silently break interop, (3) no error detection for rule mismatch. Need: rule version field in packets, negotiation/fallback mechanism, or minimum version advertisement in DIO.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T04:55:12Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-27T05:52:31Z",
+  "closed_at": "2026-05-27T05:52:31Z",
+  "close_reason": "Added section 5.7: DIO advertises rule version, Rule 255 reserved for uncompressed fallback. spec/03-adaptation.md"
+}

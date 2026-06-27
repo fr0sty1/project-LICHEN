@@ -1,0 +1,24 @@
+{
+  "id": "lora-ipv6-mesh-sw3",
+  "title": "Validate STM32WL memory budget",
+  "description": "Build minimal Zephyr+IPv6+CoAP on nucleo_wl55jc. Run west build -t ram_report and rom_report. Target: \u003c50KB RAM, \u003c220KB flash. If exceeded, evaluate RIOT OS fallback. This is a go/no-go gate for Zephyr on STM32WL.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:10:27Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-24T04:07:37Z",
+  "closed_at": "2026-06-24T04:07:37Z",
+  "close_reason": "nucleo_wl55jc build confirmed: flash=65KB (\u003c220KB target), RAM=16KB (\u003c50KB target); 155KB and 34KB headroom respectively. Zephyr passes go/no-go; RIOT fallback not needed.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-sw3",
+      "depends_on_id": "lora-ipv6-mesh-ijj",
+      "type": "blocks",
+      "created_at": "2026-05-26T22:14:43Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

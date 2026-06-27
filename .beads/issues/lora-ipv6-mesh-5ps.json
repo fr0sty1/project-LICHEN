@@ -1,0 +1,16 @@
+{
+  "id": "lora-ipv6-mesh-5ps",
+  "title": "Package missing py.typed marker for PEP 561",
+  "description": "**Ecosystem Integration**\n\nThe package has comprehensive type annotations and uses mypy strict mode, but it doesn't include a `py.typed` marker file. Without this:\n\n1. Downstream projects using mypy won't see the types\n2. Type stubs would need to be distributed separately\n3. The investment in typing is wasted for library consumers\n\nFix: Add an empty `src/lichen/py.typed` file and ensure it's included in the wheel via pyproject.toml:\n```toml\n[tool.hatch.build.targets.wheel]\npackages = ['src/lichen']\ninclude = ['src/lichen/py.typed']\n```\n\nReference: PEP 561 - Distributing and Packaging Type Information\n\nFiles: pyproject.toml, src/lichen/",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T21:25:41Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-28T05:32:55Z",
+  "started_at": "2026-05-28T05:32:27Z",
+  "closed_at": "2026-05-28T05:32:55Z",
+  "close_reason": "Added empty src/lichen/py.typed marker file. Verified it's included in wheel build. Downstream mypy users will now see the package's type annotations per PEP 561."
+}

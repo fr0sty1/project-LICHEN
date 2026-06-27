@@ -1,0 +1,16 @@
+{
+  "id": "lora-ipv6-mesh-6l2",
+  "title": "Implement metrics collection for simulation harness",
+  "description": "Add metrics collection capabilities to the simulation harness including latency, delivery rate, and collision statistics. Should track per-node and aggregate metrics with time-based reporting.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-09T03:47:37Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-13T04:23:34Z",
+  "started_at": "2026-06-09T04:10:19Z",
+  "closed_at": "2026-06-13T04:23:34Z",
+  "close_reason": "Superseded by the metrics implementation in sim/metrics.py + Simulation integration + REST GET /sim/{id}/metrics. See 4r8/xep. Tests in tests/sim/test_metrics.py and tests/sim/test_api.py."
+}

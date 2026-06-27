@@ -1,0 +1,24 @@
+{
+  "id": "lora-ipv6-mesh-7ry",
+  "title": "Phase 3: IPv6 and 6LoWPAN",
+  "description": "Full IPv6 with layered addressing. Exit criteria: nodes can ping (link-local), ULA addresses work, isolated mesh self-organizes.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:09:51Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-24T02:51:18Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-7ry",
+      "depends_on_id": "lora-ipv6-mesh-68r",
+      "type": "blocks",
+      "created_at": "2026-05-26T22:10:50Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

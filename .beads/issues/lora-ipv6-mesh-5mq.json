@@ -1,0 +1,24 @@
+{
+  "id": "lora-ipv6-mesh-5mq",
+  "title": "LOADng message types (RREQ, RREP, RERR)",
+  "description": "Implement LOADng control messages per spec section 9.\n\nICMPv6 type 158, codes:\n- 0: RREQ (Route Request)\n- 1: RREP (Route Reply)\n- 2: RERR (Route Error)\n- 3: RACK (Route Acknowledgment)\n\nRREQ fields:\n- Hop Limit, Seq Num, Metric, Flags\n- Originator Address (128 bits)\n- Destination Address (128 bits)\n\nRREP fields:\n- Hop Count, Seq Num, Metric, Flags\n- Originator Address\n- Destination Address\n\nRERR fields:\n- Flags, Error Code\n- Unreachable Address\n\nDataclasses for each message type with to_bytes/from_bytes.\nUse ICMPv6 framing.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T08:35:29Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-15T20:48:20Z",
+  "close_reason": "Implemented in python/src/lichen/loadng/messages.py: RREQ/RREP/RERR codecs (spec 10.3/10.4 wire format), ICMPv6 type-158 wrap+dispatch. Signature carried as opaque bytes (crypto-free; signing is 9a9). Metric folded into hop count per B2.3. 12 tests, hand-built byte vectors. ruff clean.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-5mq",
+      "depends_on_id": "lora-ipv6-mesh-rap",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:36:12Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

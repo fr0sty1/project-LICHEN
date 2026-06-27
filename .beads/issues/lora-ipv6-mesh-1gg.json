@@ -1,0 +1,16 @@
+{
+  "id": "lora-ipv6-mesh-1gg",
+  "title": "SimRadio lacks concurrent operation protection",
+  "description": "No synchronization in SimRadio class. Concurrent transmit()/receive() calls interleave _send/_recv, corrupting request/response matching. Either add asyncio.Lock, document not-thread-safe, or serialize operations.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Frost",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T19:07:38Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-13T02:56:52Z",
+  "started_at": "2026-06-13T02:49:00Z",
+  "closed_at": "2026-06-13T02:56:52Z",
+  "close_reason": "Added an anyio.Lock serializing each request/response exchange in SimRadio (connect/transmit/receive/get_time); concurrent ops no longer interleave _send/_recv and mismatch responses (sim_client.py). Test: test_concurrent_operations_are_serialized, with a recording stream proven to fail (SimRadioError: response mismatch) when the lock is removed."
+}

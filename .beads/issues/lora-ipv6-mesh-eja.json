@@ -1,0 +1,25 @@
+{
+  "id": "lora-ipv6-mesh-eja",
+  "title": "Implement RPL routing in Python",
+  "description": "Python implementation of RFC 6550 RPL. DIO/DIS/DAO/DAO-ACK messages. Trickle timer. MRHOF objective function with ETX. DODAG formation. Non-storing mode with source routing. Test with 5+ node topology.",
+  "notes": "All listed deliverables DONE \u0026 tested in lichen.rpl (DIO/DIS/DAO/DAO-ACK, Trickle, MRHOF+ETX, DODAG formation, non-storing source routing, 5-node topology test). Not closed only because the epic-track dependency zev is still open (its remaining item is the IPv6\u003c-\u003eSCHC extraction glue); close once that chain is reconciled.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:14:55Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-18T17:39:28Z",
+  "close_reason": "RPL in Python COMPLETE (lichen.rpl): DIO/DIS/DAO/DAO-ACK messages, RFC 6206 Trickle, MRHOF+ETX objective + DODAG formation/parent selection, non-storing source routing (RFC 6554 SRH), DAO route assembly with a 5-node line-topology test. All tested with independent oracles.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-eja",
+      "depends_on_id": "lora-ipv6-mesh-zev",
+      "type": "blocks",
+      "created_at": "2026-05-26T22:15:13Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "id": "lora-ipv6-mesh-4hu",
+  "title": "Implement Medium class",
+  "description": "Create python/src/lichen/sim/medium.py. Tracks active transmissions. Methods: start_tx(node_id, payload, tx_power) -\u003e Transmission, get_rx_candidates(node_id, position, time) -\u003e list of (Transmission, rssi, snr). Uses PropagationModel for path loss. Collision detection: find overlapping TXs. Capture effect: if strongest signal is 6+ dB above second strongest, it wins; otherwise all colliding packets lost. Configurable noise_floor_dbm (default -120). Unit tests for: single TX delivery, collision with both lost, capture effect winner.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T07:01:49Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-05-27T17:11:02Z",
+  "close_reason": "Wave 3 complete. 241 tests pass, ruff clean.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-4hu",
+      "depends_on_id": "lora-ipv6-mesh-6vy",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:03:36Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-4hu",
+      "depends_on_id": "lora-ipv6-mesh-d5f",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:03:36Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

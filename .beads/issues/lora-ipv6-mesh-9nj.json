@@ -1,0 +1,16 @@
+{
+  "id": "lora-ipv6-mesh-9nj",
+  "title": "Implement replay protection",
+  "description": "16-bit sequence number with 32-entry sliding window per sender. Track per-sender SeqNum state. Reject if SeqNum \u003c= last_seen (accounting for window).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Frost",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:11:02Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-14T16:43:43Z",
+  "started_at": "2026-06-14T16:36:13Z",
+  "closed_at": "2026-06-14T16:43:43Z",
+  "close_reason": "Implemented in link/replay.py: ReplayWindow (sliding window over the 24-bit epoch||seqnum logical counter) + per-sender ReplayProtector. Rejects duplicates and frames below the window floor; accepts in-window out-of-order frames once. Tests: tests/link/test_replay.py (44 link tests total). Design note: window operates over the logical counter per spec 4.4's data model, so epoch-boundary reordering within the window is accepted (documented in module + test)."
+}

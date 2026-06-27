@@ -1,0 +1,26 @@
+{
+  "id": "lora-ipv6-mesh-n80",
+  "title": "Link layer frame format dataclasses",
+  "description": "Define Python dataclasses for link layer frames per spec section 4.\n\nClasses:\n- LLSecByte: flags for addressing mode, security level\n- FrameHeader: length, llsec, seqnum, dst_addr\n- Frame: header + payload + signature\n\nAddress modes:\n- 0: implicit (broadcast)\n- 1: short (2 bytes)\n- 2: extended (8 bytes)\n\nMethods:\n- Frame.to_bytes() -\u003e bytes\n- Frame.from_bytes(data) -\u003e Frame\n- Frame.max_payload_size(addr_mode) -\u003e int\n\nUse @dataclass(frozen=True) for immutability where appropriate.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Frost",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T08:20:20Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "started_at": "2026-06-14T16:27:55Z",
+  "closed_at": "2026-06-14T16:35:12Z",
+  "close_reason": "Implemented link-layer frame dataclasses per spec section 4 in link/frame.py: LichenFrame (Length/LLSec/Epoch/SeqNum/DstAddr/Payload/MIC), AddrMode + MicLength enums, LLSec bit packing, to_bytes()/from_bytes() with validation. Tests: tests/link/test_frame.py (22 cases incl. hand-computed spec byte vectors, round-trips, and parse-error paths). Note: fw4 (Rust/C encoding) and muq (TX/RX integration) remain open.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-n80",
+      "depends_on_id": "lora-ipv6-mesh-xly",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:23:24Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "lora-ipv6-mesh-irc",
+  "title": "SimulatorServer uses fragile monkey-patching for API integration",
+  "description": "server.py replaces self._api.create_simulation and delete_simulation at runtime with wrapped versions. Uses type: ignore comments. Hard to understand, test, maintain. Refactor to use composition: have server handle routes directly and delegate, or use proper hooks/callbacks.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T19:07:48Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-14T18:43:55Z",
+  "closed_at": "2026-06-14T18:43:55Z",
+  "close_reason": "Refactored SimulatorServer to stop monkey-patching the API. SimulatorAPI now takes optional on_simulation_created/on_simulation_deleted async callbacks; the server registers its _start/_stop_node_server_for_sim methods. Removed the runtime method reassignment and its type: ignore comments. Tests: TestSimulationCallbacks in test_api.py (callbacks fire on create/delete, not on 404); existing server tests still pass."
+}

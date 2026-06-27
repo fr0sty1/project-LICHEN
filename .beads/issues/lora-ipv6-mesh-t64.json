@@ -1,0 +1,24 @@
+{
+  "id": "lora-ipv6-mesh-t64",
+  "title": "Basic CoAP resources (/.well-known/core, /status)",
+  "description": "Implement basic CoAP resources for LICHEN node.\n\nResources:\n\n/.well-known/core (RFC 6690):\n- GET returns link-format list of resources\n- Required for CoAP discovery\n- Format: \u003c/resource\u003e;rt=\"type\";ct=0\n\n/status:\n- GET returns node status (JSON or CBOR)\n- Includes: uptime, neighbors, rank, parent, battery\n\n/config:\n- GET/PUT node configuration\n- Radio params, identity, network settings\n\n/neighbors:\n- GET returns neighbor table\n- Address, rank, ETX, last seen\n\nImplementation:\n- Use aiocoap.resource.Resource base class\n- Register with aiocoap.resource.Site\n- Return appropriate content-format\n\nCBOR encoding for efficiency (ct=60).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T08:22:42Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-18T04:49:50Z",
+  "close_reason": "Implemented in python/src/lichen/coap/resources.py: /.well-known/core (aiocoap WKCResource, RFC 6690 link-format with rt=), /status, /neighbors, /config (GET+PUT), CBOR payloads (ct=60). Backed by injectable NodeInfo provider (StaticNodeInfo) since Node class doesn't exist yet. build_site() wires them. 9 tests over real aiocoap loopback incl. discovery + config round-trip. ruff clean.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-t64",
+      "depends_on_id": "lora-ipv6-mesh-3dl",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:24:09Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

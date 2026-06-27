@@ -1,0 +1,26 @@
+{
+  "id": "lora-ipv6-mesh-68r",
+  "title": "Phase 2: SCHC Compression",
+  "description": "RFC 8724 SCHC for IPv6/UDP/CoAP compression. Exit criteria: all rules implemented and tested, fragmentation working, Rust and C produce identical output.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Frost",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:09:50Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "started_at": "2026-06-24T01:40:30Z",
+  "closed_at": "2026-06-24T01:49:54Z",
+  "close_reason": "Rust lichen-schc fully implemented: rules 0-4 compress/decompress match Python reference (5 test vectors), fragmentation sender+receiver (RFC 8724 §8). All 17 tests pass.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-68r",
+      "depends_on_id": "lora-ipv6-mesh-71u",
+      "type": "blocks",
+      "created_at": "2026-05-26T22:10:49Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "lora-ipv6-mesh-51k",
+  "title": "EventQueue.size property missing - tick_simulation event count always 0",
+  "description": "**Correctness Bug**\n\nIn api.py:211-216, tick_simulation tries to count processed events:\n```python\nevents_before = sim.event_queue.size if hasattr(sim.event_queue, 'size') else 0\n# ...\nevents_after = sim.event_queue.size if hasattr(sim.event_queue, 'size') else 0\n```\n\nBut EventQueue has no `size` property - it implements `__len__`. The hasattr check always fails, so events_processed is always 0.\n\nFix: Use `len(sim.event_queue)` instead, or add a `size` property that returns `len(self)`.\n\nFiles: api.py:211-216, events.py",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T21:24:57Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-27T23:49:28Z",
+  "started_at": "2026-05-27T23:48:26Z",
+  "closed_at": "2026-05-27T23:49:28Z",
+  "close_reason": "Fixed: Changed hasattr(sim.event_queue, 'size') to len(sim.event_queue). EventQueue implements __len__, not size property. Added test_tick_simulation_counts_events to verify events_processed is now correct."
+}

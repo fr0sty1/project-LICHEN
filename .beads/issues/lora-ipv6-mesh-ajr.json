@@ -1,0 +1,14 @@
+{
+  "id": "lora-ipv6-mesh-ajr",
+  "title": "Create test vector framework",
+  "description": "Set up test/vectors/ with JSON schema for test vectors. Create initial vectors for: link layer frames, SCHC compression. Both Rust and C implementations must validate against these vectors.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:10:31Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-18T18:49:27Z",
+  "closed_at": "2026-06-18T18:49:27Z",
+  "close_reason": "test/vectors/ framework created: schema.json (draft-07), schc_compression.json (rules 0-4 whole-packet), link_frame.json (4 frame cases), generate.py (regenerator from the Python reference impl), README.md (how Rust/C validate). python/tests/test_vectors.py re-derives every vector (runs in CI) so the impl can't drift; 11 checks. Rust/C will validate against these same files when built."
+}

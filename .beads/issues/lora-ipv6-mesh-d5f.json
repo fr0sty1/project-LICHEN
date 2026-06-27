@@ -1,0 +1,24 @@
+{
+  "id": "lora-ipv6-mesh-d5f",
+  "title": "Implement propagation model",
+  "description": "Create python/src/lichen/sim/propagation.py. Log-distance path loss: PL = PL₀ + 10·n·log₁₀(d/d₀). Default PL₀=-127.41dBm at d₀=1m for 915MHz. Configurable exponent n (2.0=free space, 2.7=urban, 3.5=indoor).\n\nSF sensitivity thresholds from LoRaSim (Bor et al., 2016, 'Do LoRa Low-Power Wide-Area Networks Scale?'):\n  SF7: -123 dBm, SF8: -126 dBm, SF9: -129 dBm, SF10: -132 dBm, SF11: -134.5 dBm, SF12: -137 dBm\n  (at 125kHz BW)\n\nCapture effect threshold: 6 dB (stronger signal wins if delta \u003e= 6dB, per LoRaSim).\n\nWe use SF10 fixed, so threshold is -132 dBm.\n\nClass PropagationModel with:\n- path_loss(distance_m) -\u003e float (dB)\n- snr(tx_power_dbm, distance_m, noise_floor_dbm) -\u003e float\n- can_decode(snr) -\u003e bool (snr \u003e sensitivity - noise_floor)\n\nUnit tests with known distances. Cite LoRaSim paper in docstring.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T07:01:28Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-05-27T15:53:36Z",
+  "close_reason": "Wave 2 complete. 187 tests pass, ruff clean.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-d5f",
+      "depends_on_id": "lora-ipv6-mesh-xly",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:03:24Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

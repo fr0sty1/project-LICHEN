@@ -1,0 +1,24 @@
+{
+  "id": "lora-ipv6-mesh-7j0",
+  "title": "LOADng route error handling (RERR)",
+  "description": "Implement LOADng route error handling per spec section 9.7.\n\nLink failure detection:\n- TX failure (no ACK at link layer) triggers RERR\n- Only if route was being used (not stale)\n\nRERR generation:\n- Create RERR with unreachable destination\n- Send toward affected sources (nodes that were using this route)\n\nRERR processing:\n- Invalidate cached routes through broken link\n- Propagate RERR if I had downstream users of this route\n\nRouteError class:\n- on_link_failure(next_hop) -\u003e None\n- process_rerr(rerr_msg) -\u003e None\n\nTrack active flows to know who to notify on failure.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T08:35:49Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-15T20:57:23Z",
+  "close_reason": "Implemented in python/src/lichen/loadng/error.py: RouteErrorManager with record_flow (precursor tracking), on_link_failure (invalidate routes via failed next_hop in cache+gradient, emit RERR per unreachable dest toward precursors), process_rerr (invalidate matching route via reporting neighbor, propagate upstream). Added remove_via() to GradientTable and RouteCache. 7 tests. ruff clean.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-7j0",
+      "depends_on_id": "lora-ipv6-mesh-62n",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:36:16Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

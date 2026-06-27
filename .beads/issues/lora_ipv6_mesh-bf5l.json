@@ -1,0 +1,27 @@
+{
+  "id": "lora_ipv6_mesh-bf5l",
+  "title": "Zephyr gateway: SLIP bridge + CoAP server wiring",
+  "description": "Implement the gateway firmware body in lichen/apps/gateway/src/main.c. Current state: the file just logs and returns. Needed: (1) initialise the LoRa radio driver and SCHC context, (2) start the SLIP bridge over the console UART using Zephyr net_slip or a custom driver so a host PC gets a SLIP network interface to the mesh, (3) start the CoAP server with the LICHEN resources (/status, /neighbors, /config, /.well-known/core), (4) initialise as RPL DODAG root so mesh nodes can join. The native_sim build should compile and the CI check should still pass.",
+  "acceptance_criteria": "native_sim build compiles cleanly in CI; main.c starts radio + SLIP + CoAP + RPL without panicking on native_sim",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Frost",
+  "owner": "mark.frost@gmail.com",
+  "created_at": "2026-06-24T17:38:01Z",
+  "created_by": "Mark Frost",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "started_at": "2026-06-24T19:46:17Z",
+  "closed_at": "2026-06-25T04:47:11Z",
+  "close_reason": "main.c implemented: LoRa init, CoAP server AUTOSTART with /status /neighbors /config resources, BLE UART conditional on CONFIG_LORA_LICHEN_BLE, SLIP handled at OS level. CI passes on native_sim.",
+  "dependencies": [
+    {
+      "issue_id": "lora_ipv6_mesh-bf5l",
+      "depends_on_id": "lora_ipv6_mesh-1gv",
+      "type": "blocks",
+      "created_at": "2026-06-24T12:38:13Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

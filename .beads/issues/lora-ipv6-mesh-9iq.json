@@ -1,0 +1,14 @@
+{
+  "id": "lora-ipv6-mesh-9iq",
+  "title": "Continue implementing simulation harness features",
+  "description": "Implement the remaining simulation harness features including visualization of DODAG formation and support for reproducible runs (seeded RNG).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-09T03:51:38Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-18T03:44:19Z",
+  "closed_at": "2026-06-18T03:44:19Z",
+  "close_reason": "Both named sim-harness features delivered: seeded RNG for reproducible runs (j34, Simulation.rng/seed/reseed + LossRule) and DODAG-formation visualization (hrv, rpl/visualize.py DOT+ASCII). No further harness work specified."
+}

@@ -1,0 +1,27 @@
+{
+  "id": "lora_ipv6_mesh-82zw",
+  "title": "CoAP forward proxy resource for gateway",
+  "description": "Add a CoAP forward proxy to resources.py so that a local client can reach any mesh node through the gateway. A client sends a request to coap://[gateway]/proxy with a Proxy-Uri option pointing at a remote mesh node (e.g. coap://[fd00::2]/status). The gateway CoAP server forwards the request into the mesh via NodeChannel and returns the response. Spec: RFC 7252 §5.7 (forward proxy). This is the key feature that lets phone/desktop apps address deep mesh nodes without knowing the full routing table.",
+  "acceptance_criteria": "A GET to /proxy with Proxy-Uri reaches the target node and returns its response; non-existent targets return 5.02; the proxy does not alter the payload",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "feature",
+  "assignee": "Mark Frost",
+  "owner": "mark.frost@gmail.com",
+  "created_at": "2026-06-24T17:37:54Z",
+  "created_by": "Mark Frost",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "started_at": "2026-06-24T17:55:30Z",
+  "closed_at": "2026-06-24T18:05:32Z",
+  "close_reason": "ProxyResource implemented, build_site wired, 10 tests pass",
+  "dependencies": [
+    {
+      "issue_id": "lora_ipv6_mesh-82zw",
+      "depends_on_id": "lora_ipv6_mesh-1gv",
+      "type": "blocks",
+      "created_at": "2026-06-24T12:38:12Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

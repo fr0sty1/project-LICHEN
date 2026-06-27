@@ -1,0 +1,14 @@
+{
+  "id": "lora-ipv6-mesh-j34",
+  "title": "Add seeded RNG support for reproducible simulations",
+  "description": "Implement support for reproducible simulation runs by adding seeded random number generator support. Should allow setting a seed for deterministic behavior across simulation runs.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-09T04:01:54Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-18T03:30:16Z",
+  "closed_at": "2026-06-18T03:30:16Z",
+  "close_reason": "Implemented in sim/simulation.py: Simulation gains seed param, rng property (random.Random), seed property, reseed(). Same seed -\u003e identical sequence. Added LossRule chaos rule (probabilistic drop drawing from an injected rng) for reproducible random chaos. 11 tests incl. reproducibility + LossRule wired to sim.rng. ruff clean."
+}

@@ -1,0 +1,24 @@
+{
+  "id": "lora-ipv6-mesh-d69",
+  "title": "Integration test: collision and capture effect",
+  "description": "Test: three nodes A, B, C. A and B transmit simultaneously to C. Case 1: equal power, both lost. Case 2: A is 10dB stronger, A wins (capture effect). Case 3: A is 4dB stronger, both lost (below 6dB threshold). Verify packet delivery matches expected behavior.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T07:03:10Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-05-27T18:53:31Z",
+  "close_reason": "Integration tests added to test_integration.py: collision/capture (3 tests), mobility (3 tests), chaos monkey (3 tests).",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-d69",
+      "depends_on_id": "lora-ipv6-mesh-503",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:04:02Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

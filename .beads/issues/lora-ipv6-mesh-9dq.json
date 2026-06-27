@@ -1,0 +1,16 @@
+{
+  "id": "lora-ipv6-mesh-9dq",
+  "title": "Define shared constants",
+  "description": "Create shared header/module with: frequencies per region, sync word 0x34, CoAP ports (5683, 5684), MQTT-SN port (10883), SCHC rule IDs, RPL parameters. Must be usable from both Rust and C.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Frost",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:10:28Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-23T16:08:18Z",
+  "started_at": "2026-06-23T16:03:41Z",
+  "closed_at": "2026-06-23T16:08:18Z",
+  "close_reason": "constants.toml + python/src/lichen/constants.py"
+}

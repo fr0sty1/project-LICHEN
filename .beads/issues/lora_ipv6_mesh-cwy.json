@@ -1,0 +1,26 @@
+{
+  "id": "lora_ipv6_mesh-cwy",
+  "title": "Fix Rust SimClient: 4-byte LE framing + message type protocol",
+  "description": "The current SimClient uses 2-byte BE length prefix with no message type protocol. The Python sim server expects 4-byte LE length-prefixed messages with REGISTER/TX/RX/TIME typed payloads. Rewrite client.rs as async tokio to match, enabling lichend --sim to exchange real frames with the Python simulator.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Frost",
+  "owner": "mark.frost@gmail.com",
+  "created_at": "2026-06-24T02:23:23Z",
+  "created_by": "Mark Frost",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "started_at": "2026-06-24T02:23:30Z",
+  "closed_at": "2026-06-24T02:30:13Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "lora_ipv6_mesh-cwy",
+      "depends_on_id": "lora-ipv6-mesh-7ry",
+      "type": "blocks",
+      "created_at": "2026-06-23T21:23:28Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

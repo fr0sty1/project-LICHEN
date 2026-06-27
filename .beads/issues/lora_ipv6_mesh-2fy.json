@@ -1,0 +1,16 @@
+{
+  "id": "lora_ipv6_mesh-2fy",
+  "title": "Rust lichen-schc: real compress/decompress (rules 0-4, vector tests)",
+  "description": "Replace codec.rs stubs with real RFC 8724 BitWriter/BitReader and per-rule compress_packet/decompress_packet. Rules 0-4 match Python reference exactly. Tests validate against test/vectors/schc_compression.json data.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Frost",
+  "owner": "mark.frost@gmail.com",
+  "created_at": "2026-06-24T01:40:31Z",
+  "created_by": "Mark Frost",
+  "updated_at": "2026-06-24T01:49:48Z",
+  "started_at": "2026-06-24T01:40:48Z",
+  "closed_at": "2026-06-24T01:49:48Z",
+  "close_reason": "Implemented in Rust: codec.rs real compress/decompress (rules 0-4, all 5 vectors pass), fragment.rs FragmentSender+Receiver (CRC32 MIC, window/FCN schedule, 9 tests pass)"
+}

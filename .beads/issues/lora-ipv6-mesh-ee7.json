@@ -1,0 +1,14 @@
+{
+  "id": "lora-ipv6-mesh-ee7",
+  "title": "Spec: Define CoAP block-wise vs SCHC fragmentation interaction",
+  "description": "Both CoAP block-wise (RFC 7959) and SCHC (RFC 8724) fragment large payloads. Interaction unspecified: which layer fragments first? How do reassembly failures propagate? What's the overhead when both active? Need clear layering rules and failure handling.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T04:55:26Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-27T06:02:56Z",
+  "closed_at": "2026-05-27T06:02:56Z",
+  "close_reason": "CoAP block-wise NOT RECOMMENDED. SCHC handles all fragmentation. Large transfers use app-level chunking. spec/07-transport-app.md section 10.3"
+}

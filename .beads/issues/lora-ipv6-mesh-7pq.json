@@ -1,0 +1,24 @@
+{
+  "id": "lora-ipv6-mesh-7pq",
+  "title": "Implement pcapng packet capture",
+  "description": "Create python/src/lichen/sim/pcap.py. PcapngWriter class: __init__(path), write_shb() (Section Header Block), write_idb() (Interface Description Block with DLT_USER0, name='lichen-lora', custom options for SF/BW/CR), write_epb(timestamp_us, data, rssi, snr, src_node, dst_node) (Enhanced Packet Block with custom options). Use struct for binary packing. Follow pcapng spec (IETF draft-tuexen-opsawg-pcapng). Integration with Medium to capture all TX/RX events. Unit test: write file, verify with tshark -r.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T07:02:31Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-05-27T17:11:02Z",
+  "close_reason": "Wave 3 complete. 241 tests pass, ruff clean.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-7pq",
+      "depends_on_id": "lora-ipv6-mesh-6vy",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:03:40Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

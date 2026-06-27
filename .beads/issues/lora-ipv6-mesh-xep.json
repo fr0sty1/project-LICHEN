@@ -1,0 +1,14 @@
+{
+  "id": "lora-ipv6-mesh-xep",
+  "title": "Implement complete metrics collection for simulation harness",
+  "description": "Complete the metrics collection implementation to track transmission starts, successful receptions, collisions, latency statistics, delivery rates, and collision rates. Should integrate with existing Simulation class and provide methods to retrieve metrics.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-09T04:01:35Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-13T04:23:34Z",
+  "closed_at": "2026-06-13T04:23:34Z",
+  "close_reason": "Done: sim/metrics.py Metrics tracks tx starts, successful receptions, collisions, latency stats, delivery rate, collision rate; integrated with Simulation and retrievable via sim.metrics / snapshot() and REST GET /sim/{id}/metrics. Tests: tests/sim/test_metrics.py (12 unit + 5 integration), tests/sim/test_api.py (endpoint)."
+}

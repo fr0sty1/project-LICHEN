@@ -1,0 +1,16 @@
+{
+  "id": "lora-ipv6-mesh-doq",
+  "title": "ChaosEngine not wired into Medium - chaos rules have no effect",
+  "description": "**Critical Correctness Bug**\n\nChaosEngine is instantiated for each simulation (api.py:139, server.py:163-165), but it's never actually integrated with the Medium's propagation flow. The Medium.get_rx_candidates() and resolve_reception() methods don't call the ChaosEngine.\n\nThis means:\n- DropRule, PartitionRule, DegradeRule, JammerRule are all defined and testable in isolation\n- REST API endpoints for /chaos/* all work and store rules\n- But the rules never actually affect simulation behavior\n\nTo fix: Either inject ChaosEngine into Medium, or have Simulation apply chaos rules when querying rx_candidates. The chaos.py module has apply_all() ready to go.\n\nFiles: api.py, server.py, simulation.py, medium.py, chaos.py",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T21:24:55Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-27T23:36:19Z",
+  "started_at": "2026-05-27T23:28:26Z",
+  "closed_at": "2026-05-27T23:36:19Z",
+  "close_reason": "Fixed: ChaosEngine now integrated with Simulation. Changes: (1) Added chaos_engine parameter to Simulation.__init__, (2) Added chaos_engine property/setter, (3) Modified get_rx_result() to apply chaos rules to candidates before resolve_reception(), (4) Wired up chaos engines in SimulatorAPI and SimulatorServer. Added 7 integration tests proving DropRule, PartitionRule, DegradeRule, and JammerRule all affect simulation results."
+}

@@ -1,0 +1,16 @@
+{
+  "id": "lora-ipv6-mesh-jwg",
+  "title": "SLIP interface for Zephyr puck",
+  "description": "Zephyr network interface driver for SLIP over USB serial.\n\nImplements Zephyr net_if API backed by SLIP framing to USB CDC ACM.\n\nFeatures:\n- Standard SLIP framing (RFC 1055)\n- USB CDC ACM serial\n- MTU configuration\n- Flow control\n\nThis allows the puck to appear as a network interface to the border router PC.\n\nReference: Zephyr has existing SLIP support for native_sim, adapt for USB.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Frost",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T08:10:04Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-23T19:30:13Z",
+  "started_at": "2026-06-23T19:23:56Z",
+  "closed_at": "2026-06-23T19:30:13Z",
+  "close_reason": "Closed"
+}

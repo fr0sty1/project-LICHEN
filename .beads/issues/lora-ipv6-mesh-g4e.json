@@ -1,0 +1,14 @@
+{
+  "id": "lora-ipv6-mesh-g4e",
+  "title": "Chaos rules created but never applied to transmissions",
+  "description": "ChaosEngine instances are created per-simulation in api.py but Simulation class has no integration with them. Rules are stored but never actually affect packet delivery. Either integrate chaos rules into Medium.get_rx_candidates() or Simulation.get_rx_result(), or remove dead code.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T19:07:08Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-28T01:08:52Z",
+  "closed_at": "2026-05-28T01:08:52Z",
+  "close_reason": "Duplicate of lora-ipv6-mesh-doq, already fixed"
+}

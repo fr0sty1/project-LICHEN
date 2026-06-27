@@ -1,8 +1,1 @@
-{
-  "database": "dolt",
-  "backend": "dolt",
-  "dolt_mode": "server",
-  "dolt_database": "lora_ipv6_mesh",
-  "project_id": "055fd018-4991-4ad2-9276-6be7ce590e65",
-  "global_dolt_database": "beads_global"
-}
+{"backend":"flatfile","project_id":"70cad240-9ec1-484e-83d7-4e7ba42616ef"}

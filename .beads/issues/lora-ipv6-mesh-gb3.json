@@ -1,0 +1,48 @@
+{
+  "id": "lora-ipv6-mesh-gb3",
+  "title": "Phase 6: Local Client Interface",
+  "description": "IPv6+CoAP interface for phone apps and local clients. Exit criteria: SLIP framing works over serial, BLE UART works, CoAP resources implemented, client can address mesh nodes through local node.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:09:56Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-25T04:47:20Z",
+  "close_reason": "All sub-issues complete: SLIP codec (1gv), CoAP forward proxy (82zw), Zephyr gateway firmware (bf5l) with BLE UART (3evd). Client can address mesh nodes through local node via IPv6+CoAP over SLIP or BLE.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-gb3",
+      "depends_on_id": "lora_ipv6_mesh-bf5l",
+      "type": "blocks",
+      "created_at": "2026-06-24T12:38:15Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-gb3",
+      "depends_on_id": "lora_ipv6_mesh-82zw",
+      "type": "blocks",
+      "created_at": "2026-06-24T12:38:15Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-gb3",
+      "depends_on_id": "lora_ipv6_mesh-1gv",
+      "type": "blocks",
+      "created_at": "2026-06-24T12:38:14Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-gb3",
+      "depends_on_id": "lora-ipv6-mesh-1ru",
+      "type": "blocks",
+      "created_at": "2026-05-26T22:10:54Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}
