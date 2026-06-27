@@ -374,7 +374,8 @@ int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *dm,
  * return all targets for the same transit info.
  */
 static bool extract_edge(const uint8_t *dao_bytes, size_t len,
-			 uint8_t *target_out, uint8_t *parent_out)
+			 uint8_t *target_out, uint8_t *parent_out,
+			 uint8_t *lifetime_out)
 {
 	const uint8_t *opts = lichen_rpl_dao_options(dao_bytes, len);
 	size_t opts_len = lichen_rpl_dao_options_len_ex(dao_bytes, len);
@@ -405,8 +406,9 @@ static bool extract_edge(const uint8_t *dao_bytes, size_t len,
 			if (have_target) {
 				struct lichen_rpl_transit_info ti;
 				if (lichen_rpl_transit_info_parse(&ti, opt.data, opt.data_len) == LICHEN_RPL_OK) {
-					rpl_addr_copy(target_out, target);
-					rpl_addr_copy(parent_out, ti.parent_address);
+					addr_copy(target_out, target);
+					addr_copy(parent_out, ti.parent_address);
+					*lifetime_out = ti.path_lifetime;
 					return true;
 				}
 			}
@@ -566,10 +568,12 @@ static int rebuild_routes(struct lichen_rpl_dao_manager *dm)
  * @param dm         DAO manager (must be root)
  * @param dao_bytes  Raw DAO message bytes
  * @param len        Length of dao_bytes
+ * @param now        Current timestamp for lifetime tracking
  * @return true if a route to the DAO target was successfully installed
  */
 bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
-					const uint8_t *dao_bytes, size_t len)
+					const uint8_t *dao_bytes, size_t len,
+					uint32_t now)
 {
 	if (!dm->is_root) {
 		return false;
@@ -588,8 +592,9 @@ bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
 
 	uint8_t target[16];
 	uint8_t parent[16];
+	uint8_t lifetime;
 
-	if (!extract_edge(dao_bytes, len, target, parent)) {
+	if (!extract_edge(dao_bytes, len, target, parent, &lifetime)) {
 		return false;
 	}
 
@@ -602,11 +607,83 @@ bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
 		}
 	}
 
-	rpl_addr_copy(edge->target, target);
-	rpl_addr_copy(edge->parent, parent);
+	addr_copy(edge->target, target);
+	addr_copy(edge->parent, parent);
+	edge->path_lifetime = lifetime;
+	edge->last_updated = now;
 	edge->valid = true;
 
 	(void)rebuild_routes(dm);  /* Best-effort rebuild; lookup below determines success */
 
-	return lichen_rpl_routing_table_lookup(&dm->routing_table, target) != NULL;
+	/* Copy lifetime info to route */
+	struct lichen_rpl_route *route = find_route(&dm->routing_table, target);
+	if (route != NULL) {
+		route->path_lifetime = lifetime;
+		route->last_updated = now;
+	}
+
+	return route != NULL;
+}
+
+int lichen_rpl_routing_table_expire(struct lichen_rpl_routing_table *rt,
+				    uint32_t now, uint32_t lifetime_unit)
+{
+	int expired = 0;
+
+	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_ROUTES; i++) {
+		struct lichen_rpl_route *r = &rt->routes[i];
+		if (!r->valid) {
+			continue;
+		}
+
+		/* lifetime=255 means infinite (never expires) */
+		if (r->path_lifetime == 255) {
+			continue;
+		}
+
+		uint32_t max_age = (uint32_t)r->path_lifetime * lifetime_unit;
+		uint32_t age = now - r->last_updated;
+		if (age > max_age) {
+			r->valid = false;
+			expired++;
+		}
+	}
+
+	return expired;
+}
+
+int lichen_rpl_dao_manager_expire(struct lichen_rpl_dao_manager *dm,
+				  uint32_t now, uint32_t lifetime_unit)
+{
+	int expired = 0;
+
+	/* Expire stale parent edges */
+	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_ROUTES; i++) {
+		struct lichen_rpl_parent_edge *e = &dm->parent_map[i];
+		if (!e->valid) {
+			continue;
+		}
+
+		/* lifetime=255 means infinite (never expires) */
+		if (e->path_lifetime == 255) {
+			continue;
+		}
+
+		uint32_t max_age = (uint32_t)e->path_lifetime * lifetime_unit;
+		uint32_t age = now - e->last_updated;
+		if (age > max_age) {
+			e->valid = false;
+			expired++;
+		}
+	}
+
+	/* Also expire routes */
+	expired += lichen_rpl_routing_table_expire(&dm->routing_table, now, lifetime_unit);
+
+	/* Rebuild remaining routes after expiring edges */
+	if (expired > 0) {
+		(void)rebuild_routes(dm);
+	}
+
+	return expired;
 }

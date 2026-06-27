@@ -73,6 +73,8 @@ struct lichen_rpl_route {
 	uint8_t target[16];
 	uint8_t path[LICHEN_RPL_MAX_HOPS][16];  /**< [0]=first hop, ..., [n-1]=target */
 	uint8_t path_len;
+	uint8_t path_lifetime;   /**< TTL in lifetime units (from Transit Info) */
+	uint32_t last_updated;   /**< Timestamp when route was last updated (caller-provided) */
 	bool valid;
 };
 
@@ -132,6 +134,19 @@ lichen_rpl_routing_table_lookup(const struct lichen_rpl_routing_table *rt,
  */
 int lichen_rpl_routing_table_count(const struct lichen_rpl_routing_table *rt);
 
+/**
+ * @brief Expire stale routes.
+ *
+ * Removes routes where (now - last_updated) exceeds path_lifetime * lifetime_unit.
+ *
+ * @param rt            Routing table
+ * @param now           Current timestamp (same units as last_updated)
+ * @param lifetime_unit Seconds per lifetime unit (RFC 6550 default: 60)
+ * @return Number of routes expired
+ */
+int lichen_rpl_routing_table_expire(struct lichen_rpl_routing_table *rt,
+				    uint32_t now, uint32_t lifetime_unit);
+
 /* ── DAO Manager ───────────────────────────────────────────────────────────── */
 
 /**
@@ -140,6 +155,8 @@ int lichen_rpl_routing_table_count(const struct lichen_rpl_routing_table *rt);
 struct lichen_rpl_parent_edge {
 	uint8_t target[16];
 	uint8_t parent[16];
+	uint8_t path_lifetime;   /**< TTL in lifetime units (from Transit Info) */
+	uint32_t last_updated;   /**< Timestamp when edge was last updated (caller-provided) */
 	bool valid;
 };
 
@@ -216,10 +233,23 @@ int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *dm,
  * @param dm        DAO manager (must be root)
  * @param dao_bytes Raw DAO wire bytes (base object + options)
  * @param len       Length of DAO bytes
+ * @param now       Current timestamp for lifetime tracking
  * @return true if a route was installed, false otherwise
  */
 bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
-					const uint8_t *dao_bytes, size_t len);
+					const uint8_t *dao_bytes, size_t len,
+					uint32_t now);
+
+/**
+ * @brief Expire stale parent edges and routes.
+ *
+ * @param dm            DAO manager (must be root)
+ * @param now           Current timestamp (same units as last_updated)
+ * @param lifetime_unit Seconds per lifetime unit (RFC 6550 default: 60)
+ * @return Number of entries expired
+ */
+int lichen_rpl_dao_manager_expire(struct lichen_rpl_dao_manager *dm,
+				  uint32_t now, uint32_t lifetime_unit);
 
 #ifdef __cplusplus
 }

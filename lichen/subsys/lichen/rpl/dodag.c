@@ -266,7 +266,8 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 				  const struct lichen_rpl_dio *dio,
 				  const uint8_t *neighbor_addr,
-				  uint16_t link_etx)
+				  uint16_t link_etx,
+				  uint32_t now)
 {
 	if (d == NULL || dio == NULL || neighbor_addr == NULL) {
 		return;
@@ -340,6 +341,7 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 
 	p->rank = dio->rank;
 	p->link_etx = link_etx;
+	p->last_updated = now;
 	p->valid = true;
 
 	lichen_rpl_dodag_select_parent(d);
@@ -364,4 +366,29 @@ int lichen_rpl_dodag_parent_count(const struct lichen_rpl_dodag *d)
 		}
 	}
 	return count;
+}
+
+int lichen_rpl_dodag_expire_parents(struct lichen_rpl_dodag *d,
+				    uint32_t now, uint32_t max_age)
+{
+	int expired = 0;
+
+	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_PARENTS; i++) {
+		struct lichen_rpl_parent *p = &d->parents[i];
+		if (!p->valid) {
+			continue;
+		}
+
+		uint32_t age = now - p->last_updated;
+		if (age > max_age) {
+			p->valid = false;
+			expired++;
+		}
+	}
+
+	if (expired > 0) {
+		lichen_rpl_dodag_select_parent(d);
+	}
+
+	return expired;
 }
