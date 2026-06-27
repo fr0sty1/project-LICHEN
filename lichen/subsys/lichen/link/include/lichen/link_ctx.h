@@ -72,21 +72,25 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64);
  * Derives the Ed25519 keypair using the Schnorr-48 key derivation
  * (SHA-512 + clamping), which is compatible with standard Ed25519.
  *
- * @warning SECURITY: The seed MUST be generated using a cryptographically
- *          secure PRNG (CSPRNG). Using a weak or predictable seed compromises
- *          all signatures and link-layer authentication.
- *          - On Zephyr: use sys_csrand_get() from <zephyr/random/random.h>
- *          - On POSIX: use getrandom(2) or read from /dev/urandom
- *          - NEVER use rand(), random(), or other non-cryptographic sources
- *
- *          There is no compile-time enforcement of CSPRNG usage. Callers are
- *          responsible for ensuring seed quality.
+ * @warning SECURITY: The seed MUST be from a CSPRNG. Prefer
+ *          lichen_link_generate_key() which handles CSPRNG internally.
  *
  * @param[in,out] ctx  Link context
  * @param[in]     seed 32-byte random seed (MUST be from a CSPRNG)
  * @return 0 on success, -EINVAL if ctx or seed is NULL
  */
 int lichen_link_load_key(struct lichen_link_ctx *ctx, const uint8_t seed[32]);
+
+/**
+ * @brief Generate and load an Ed25519 keypair from the platform CSPRNG.
+ *
+ * Recommended way to initialize link-layer keys. Internally calls the
+ * platform's CSPRNG (sys_csrand_get on Zephyr, getrandom on POSIX).
+ *
+ * @param[in,out] ctx Link context
+ * @return 0 on success, -EINVAL if ctx is NULL, -EIO if CSPRNG fails
+ */
+int lichen_link_generate_key(struct lichen_link_ctx *ctx);
 
 /**
  * @brief Increment and return the next TX sequence number.

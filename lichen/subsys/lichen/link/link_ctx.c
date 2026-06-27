@@ -21,17 +21,27 @@
 
 #ifdef __ZEPHYR__
 #include <zephyr/logging/log.h>
+#include <zephyr/random/random.h>
 LOG_MODULE_REGISTER(link_ctx, CONFIG_LICHEN_LINK_LOG_LEVEL);
 #else
 /* Minimal logging for non-Zephyr builds */
 #include <stdio.h>
 #define LOG_WRN(...) fprintf(stderr, "WRN: " __VA_ARGS__)
+/* POSIX CSPRNG */
+#if defined(__linux__)
+#include <sys/random.h>
+#elif defined(__APPLE__)
+#include <sys/random.h>
+#endif
 #endif
 
 /* Runtime warning flag for stub crypto */
 #ifndef CONFIG_LICHEN_CRYPTO_MONOCYPHER
 static bool stub_warned_load_key = false;
 #endif
+
+/* Forward declaration */
+static void secure_wipe(void *buf, size_t len);
 
 int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 {
@@ -106,7 +116,36 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx, const uint8_t seed[32])
 	return 0;
 }
 
-int lichen_link_next_seq(struct lichen_link_ctx *ctx, uint16_t *seqnum)
+int lichen_link_generate_key(struct lichen_link_ctx *ctx)
+{
+	uint8_t seed[LICHEN_SEED_LEN];
+	int ret;
+
+	if (ctx == NULL) {
+		return -EINVAL;
+	}
+
+#ifdef __ZEPHYR__
+	if (sys_csrand_get(seed, sizeof(seed)) != 0) {
+		return -EIO;
+	}
+#elif defined(__linux__) || defined(__APPLE__)
+	if (getentropy(seed, sizeof(seed)) != 0) {
+		return -EIO;
+	}
+#else
+#error "No CSPRNG available for this platform"
+#endif
+
+	ret = lichen_link_load_key(ctx, seed);
+
+	/* Wipe seed from stack */
+	secure_wipe(seed, sizeof(seed));
+
+	return ret;
+}
+
+uint16_t lichen_link_next_seq(struct lichen_link_ctx *ctx)
 {
 	if (ctx == NULL || seqnum == NULL) {
 		return -EINVAL;
