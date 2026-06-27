@@ -97,6 +97,7 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx, const uint8_t seed[32])
 		stub_warned_load_key = true;
 	}
 	memcpy(ctx->ed25519_sk, seed, LICHEN_SK_LEN);
+	schnorr48_clamp_scalar(ctx->ed25519_sk);
 	memset(ctx->ed25519_pk, 0, LICHEN_PK_LEN);
 	ctx->ed25519_pk[0] = 0x01;
 #endif
