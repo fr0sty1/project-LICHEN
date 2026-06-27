@@ -7,6 +7,12 @@
  *
  * Provides helpers for encoding sensor readings as SenML over CBOR.
  * Content-Format: application/senml+cbor (112)
+ *
+ * @warning SenML payloads may contain sensitive data (location, health
+ * metrics, device identifiers). Always encrypt SenML payloads using OSCORE
+ * before transmission. The base_name field often contains device identifiers
+ * (e.g., MAC addresses) which leak device identity even if values are
+ * encrypted separately.
  */
 
 #ifndef LICHEN_SENML_H_

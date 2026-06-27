@@ -17,9 +17,12 @@
  *
  * Compression target: 48+ byte IPv6/UDP header to 3-6 bytes.
  *
- * @warning SECURITY: CoAP payloads MUST be OSCORE-encrypted before calling
- * lichen_schc_compress(). Compressing plaintext leaks information through
- * size variations (compression oracle attack). See schc.c for details.
+ * @warning SCHC compression can leak information through compressed size
+ * variations (compression oracle attack). In LICHEN, OSCORE encryption
+ * happens BEFORE SCHC compression, so encrypted payloads appear opaque.
+ * Header field values (ports, addresses) are compressed but not encrypted
+ * and may leak metadata. For high-security deployments, pad payloads to
+ * fixed sizes before OSCORE encryption.
  */
 
 #ifndef LICHEN_SCHC_H_

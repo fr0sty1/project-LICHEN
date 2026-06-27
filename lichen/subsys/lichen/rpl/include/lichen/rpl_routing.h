@@ -205,6 +205,14 @@ int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *dm,
 /**
  * @brief Process a received DAO on the root.
  *
+ * @warning This function does NOT authenticate DAO messages. The caller
+ * MUST ensure DAOs are received over an authenticated channel (OSCORE or
+ * link-layer authentication). Unauthenticated DAOs enable routing poisoning
+ * attacks where an attacker claims arbitrary target/parent relationships.
+ * LICHEN relies on Schnorr link signatures (48B) to authenticate the
+ * immediate sender; verify that the DAO source is a known authenticated
+ * neighbor before calling this function.
+ *
  * @param dm        DAO manager (must be root)
  * @param dao_bytes Raw DAO wire bytes (base object + options)
  * @param len       Length of DAO bytes
