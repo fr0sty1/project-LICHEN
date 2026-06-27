@@ -187,10 +187,13 @@ ZTEST(ping_l2, test_ipv6_addr_config)
 
 	zassert_not_null(iface, "Interface not initialized");
 
-	/* Add link-local address */
-	ifaddr = net_if_ipv6_addr_add(iface, &s_s_test_ll_addr,
-				      NET_ADDR_MANUAL, 0);
-	zassert_not_null(ifaddr, "Failed to add IPv6 address");
+	/* Add link-local address if not already present */
+	ifaddr = net_if_ipv6_addr_lookup(&test_ll_addr, NULL);
+	if (ifaddr == NULL) {
+		ifaddr = net_if_ipv6_addr_add(iface, &test_ll_addr,
+					      NET_ADDR_MANUAL, 0);
+	}
+	zassert_not_null(ifaddr, "Failed to add/find IPv6 address");
 
 	/* Verify address was added */
 	zassert_true(net_if_ipv6_addr_lookup(&s_s_test_ll_addr, NULL) != NULL,
