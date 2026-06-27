@@ -232,6 +232,8 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		memcpy(&out_frame[off], mic_out, AES_CCM_TAG_LEN);
 		off += AES_CCM_TAG_LEN;
 	} else {
+#ifdef CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC
+#warning "CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC is enabled - CRC32 MIC provides NO authentication, frames can be forged!"
 		/*
 		 * CRC32 fallback (no link key configured).
 		 *
@@ -252,6 +254,13 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		out_frame[off++] = (uint8_t)((mic >> 8) & 0xFF);
 		out_frame[off++] = (uint8_t)((mic >> 16) & 0xFF);
 		out_frame[off++] = (uint8_t)((mic >> 24) & 0xFF);
+#else
+		/*
+		 * No link key and CRC32 fallback not enabled.
+		 * Require CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC=y to use CRC32 mode.
+		 */
+		return -EINVAL;
+#endif
 	}
 
 	*out_len = off;

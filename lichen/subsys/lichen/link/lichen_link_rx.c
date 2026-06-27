@@ -135,6 +135,8 @@ static int verify_mic(const struct lichen_link_rx_ctx *ctx,
 
 		return 0;
 	} else {
+#ifdef CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC
+#warning "CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC is enabled - CRC32 MIC provides NO authentication, frames can be forged!"
 		/*
 		 * CRC32 fallback - verifies data integrity (transmission errors)
 		 * but provides NO cryptographic authentication. An attacker can
@@ -159,6 +161,14 @@ static int verify_mic(const struct lichen_link_rx_ctx *ctx,
 		}
 
 		return 0;
+#else
+		/*
+		 * No link key and CRC32 fallback not enabled.
+		 * Require CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC=y to use CRC32 mode.
+		 */
+		LOG_WRN("CRC32 MIC received but CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC not enabled\n");
+		return -EAUTH;
+#endif
 	}
 #endif
 }
