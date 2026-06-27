@@ -67,8 +67,8 @@ static int lora_loopback_send(const struct device *dev,
 		return -EINVAL;
 	}
 
-	if (payload_len > LORA_MAX_PAYLOAD) {
-		LOG_ERR("payload too large: %u > %u", payload_len, LORA_MAX_PAYLOAD);
+	if (payload_len > CONFIG_LORA_LOOPBACK_MTU) {
+		LOG_ERR("payload exceeds MTU: %u > %u", payload_len, CONFIG_LORA_LOOPBACK_MTU);
 		return -EMSGSIZE;
 	}
 
