@@ -139,7 +139,11 @@ For multi-step tasks, state a brief plan:
 3. [Step] → verify: [check]
 ```
 
-### 5. Test Integrity
+### 5. Security Comments
+
+Use `SECURITY:` prefix for comments highlighting security-critical code paths (e.g., MIC verification, authentication requirements, cryptographic limitations).
+
+### 6. Test Integrity
 
 **Never modify tests to make them pass.**
 
