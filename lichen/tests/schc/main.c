@@ -33,6 +33,9 @@ static int hex_to_byte(char c)
 static size_t hex_decode(const char *hex, uint8_t *out, size_t out_len)
 {
 	size_t len = strlen(hex);
+	if (len % 2 != 0) {
+		return 0;  /* odd-length hex is invalid */
+	}
 	size_t bytes = len / 2;
 
 	if (bytes > out_len) {

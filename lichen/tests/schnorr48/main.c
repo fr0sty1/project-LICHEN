@@ -26,6 +26,9 @@ static int hex_digit(char c)
 static size_t hex_decode(const char *hex, uint8_t *out, size_t max_len)
 {
 	size_t hex_len = strlen(hex);
+	if (hex_len % 2 != 0) {
+		return 0;  /* odd-length hex is invalid */
+	}
 	size_t bytes = hex_len / 2;
 
 	if (bytes > max_len) {
