@@ -24,8 +24,9 @@
 /* CRC32 for non-crypto MIC fallback */
 #include <zephyr/sys/crc.h>
 
-/* Shared nonce construction */
-#include "link_nonce.h"
+/* SHA-256 for EUI-64 derivation from public key */
+#include <tinycrypt/sha256.h>
+#include <tinycrypt/constants.h>
 
 /* Replay table functions are in replay.c */
 
@@ -220,11 +221,19 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 	 * Using peer_pubkey before verification would allow an attacker to
 	 * poison data structures (like the replay window) with spoofed EUI-64s.
 	 *
-	 * TEMPORARY: Use first 8 bytes of peer_pubkey as EUI-64.
-	 * Real implementation should use SHA-256(pubkey)[0:8].
+	 * EUI-64 derivation: SHA-256(pubkey)[0:8]
+	 * Using a hash ensures different public keys produce distinct EUI-64s
+	 * even if their raw bytes share a common prefix.
 	 */
 	if (ctx->peer_pubkey != NULL) {
-		memcpy(src_eui64, ctx->peer_pubkey, LICHEN_EUI64_LEN);
+		struct tc_sha256_state_struct sha_state;
+		uint8_t hash[TC_SHA256_DIGEST_SIZE];
+
+		(void)tc_sha256_init(&sha_state);
+		(void)tc_sha256_update(&sha_state, ctx->peer_pubkey,
+				       SCHNORR48_PUBKEY_LEN);
+		(void)tc_sha256_final(hash, &sha_state);
+		memcpy(src_eui64, hash, LICHEN_EUI64_LEN);
 	} else {
 		/* No peer context - cannot determine source */
 		memset(src_eui64, 0, LICHEN_EUI64_LEN);
