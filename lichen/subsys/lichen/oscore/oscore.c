@@ -576,6 +576,19 @@ int oscore_ctx_get_sender_seq(const struct oscore_ctx *ctx, uint32_t *sender_seq
 	return OSCORE_OK;
 }
 
+int oscore_ctx_get_seq_remaining(const struct oscore_ctx *ctx, uint32_t *remaining)
+{
+	if (ctx == NULL || remaining == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+	*remaining = UINT32_MAX - ctx->sender_seq;
+	k_mutex_unlock(&s_ctx_mutex);
+
+	return OSCORE_OK;
+}
+
 int oscore_ctx_lookup(const uint8_t *recipient_id,
 		      size_t recipient_id_len,
 		      struct oscore_ctx *ctx_out)

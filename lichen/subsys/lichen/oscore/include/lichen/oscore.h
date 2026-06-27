@@ -15,6 +15,45 @@
  *   - 16-byte L field for CCM
  *
  * Key derivation uses HKDF-SHA256 per RFC 8613 Section 3.2.
+ *
+ * @anchor oscore_key_rotation
+ * ## Key Rotation
+ *
+ * OSCORE contexts have a finite lifetime bounded by the 32-bit sender sequence
+ * number. When sender_seq reaches UINT32_MAX, oscore_protect_request() returns
+ * OSCORE_ERR_SEQ_EXHAUSTED and the context can no longer send messages.
+ *
+ * ### Recommended rotation pattern:
+ *
+ * 1. **Monitor remaining budget** - Call oscore_ctx_get_seq_remaining()
+ *    periodically (e.g., every 1000 messages). Trigger rotation when
+ *    remaining < threshold (suggest 1,000,000 for proactive, 10,000 critical).
+ *
+ * 2. **Establish new keys** - Run EDHOC (see edhoc.h) or your key agreement
+ *    protocol with the peer to derive a fresh master secret.
+ *
+ * 3. **Create new context** - Call oscore_ctx_create() with the new master
+ *    secret. The old context remains valid for receiving in-flight messages.
+ *
+ * 4. **Transition sending** - Switch application code to use the new context
+ *    for outgoing messages. Coordinate with the peer (e.g., via a CoAP signal
+ *    or by including kid_context in the OSCORE option).
+ *
+ * 5. **Drain and retire old context** - After a grace period for in-flight
+ *    messages, call oscore_ctx_free() on the old context.
+ *
+ * ### Why no oscore_ctx_rotate() API?
+ *
+ * Key rotation inherently requires peer coordination (both sides must agree on
+ * the new master secret). This coordination is protocol-specific:
+ *   - EDHOC for new key establishment
+ *   - Application-level signaling for transition timing
+ *   - Grace periods for in-flight message handling
+ *
+ * Rather than impose a specific coordination model, this API provides the
+ * building blocks (sequence monitoring, context creation/destruction) and
+ * leaves coordination to the integrator. See RFC 8613 Appendix B.2 for
+ * security considerations on key update.
  */
 
 #ifndef LICHEN_OSCORE_H_
@@ -209,6 +248,25 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq);
  * @return 0 on success, OSCORE_ERR_INVALID_PARAM if ctx or sender_seq is NULL
  */
 int oscore_ctx_get_sender_seq(const struct oscore_ctx *ctx, uint32_t *sender_seq);
+
+/**
+ * @brief Get remaining sender sequence budget before exhaustion.
+ *
+ * Returns UINT32_MAX - sender_seq, the number of messages that can be sent
+ * before OSCORE_ERR_SEQ_EXHAUSTED is returned. Integrators should monitor
+ * this value and trigger key rotation before it reaches zero.
+ *
+ * Example rotation thresholds:
+ *   - Warning at 1,000,000 remaining (proactive rotation)
+ *   - Critical at 10,000 remaining (mandatory rotation)
+ *
+ * @param[in]  ctx       Security context
+ * @param[out] remaining Messages remaining before exhaustion
+ * @return 0 on success, OSCORE_ERR_INVALID_PARAM if ctx or remaining is NULL
+ *
+ * @see @ref oscore_key_rotation "Key Rotation" for the complete rotation pattern
+ */
+int oscore_ctx_get_seq_remaining(const struct oscore_ctx *ctx, uint32_t *remaining);
 
 /**
  * @brief Look up a security context by recipient ID (copy).
