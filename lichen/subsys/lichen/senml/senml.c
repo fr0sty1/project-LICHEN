@@ -9,9 +9,12 @@
  * Uses Zephyr's zcbor library for CBOR encoding.
  */
 
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 #include <math.h>
-#include <limits.h>
+
 #include <lichen/senml.h>
 #include <lichen/errno.h>
 #include <zcbor_encode.h>

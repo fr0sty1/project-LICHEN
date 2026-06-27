@@ -8,9 +8,13 @@
  * Ported from rust/lichen-rpl/src/messages.rs
  */
 
-#include <lichen/rpl_messages.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 #include <zephyr/sys/byteorder.h>
+
+#include <lichen/rpl_messages.h>
 
 /* ── Helpers ───────────────────────────────────────────────────────────────── */
 

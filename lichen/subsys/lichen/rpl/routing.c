@@ -8,9 +8,12 @@
  * Ported from rust/lichen-rpl/src/routing.rs
  */
 
-#include <lichen/rpl_routing.h>
-#include <lichen/rpl_addr.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
+
+#include <lichen/rpl_routing.h>
 
 /* Ensure LICHEN_RPL_MAX_HOPS fits in uint8_t (used for num_addresses field) */
 _Static_assert(LICHEN_RPL_MAX_HOPS <= 255,
