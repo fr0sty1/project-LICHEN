@@ -595,6 +595,11 @@ int oscore_ctx_lookup(const uint8_t *recipient_id,
 		 *
 		 * Use oscore_ctx_get() instead to obtain a pointer that
 		 * works with protect/unprotect operations.
+		 *
+		 * SECURITY: The copy contains key material (sender_key,
+		 * recipient_key, common_iv). Caller MUST wipe ctx_out with
+		 * memset(ctx_out, 0, sizeof(*ctx_out)) before it goes out
+		 * of scope to prevent key material persisting on stack.
 		 */
 		memcpy(ctx_out, ctx, sizeof(*ctx_out));
 		ret = OSCORE_OK;
