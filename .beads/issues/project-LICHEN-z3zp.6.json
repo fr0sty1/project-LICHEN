@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-z3zp.6",
+  "title": "oscore_option_parse dereferences option and data before validation",
+  "description": "oscore_option_parse() immediately memset()s option and, for non-empty input, reads data[0] without checking either pointer. Trigger: malformed call from a protocol boundary passes option=NULL, or data=NULL with len \u003e 0. Bad behavior: NULL dereference instead of returning OSCORE_ERR_INVALID_PARAM. Location: lichen/subsys/lichen/oscore/oscore.c:745-772.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T21:15:12.454524Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T21:31:39.257078Z",
+  "closed_at": "2026-06-28T21:31:39.257078Z",
+  "close_reason": "Completed: oscore_option_parse now rejects NULL option before storing and NULL data with nonzero len before reading.",
+  "labels": [
+    "c-safety",
+    "null",
+    "crypto-security",
+    "untrusted-input",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-z3zp.6",
+      "depends_on_id": "project-LICHEN-z3zp",
+      "type": "parent-child",
+      "created_at": "2026-06-28T21:15:12.455105Z"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-z3zp.3",
+  "title": "Link sequence API implementation does not match header",
+  "description": "The public header declares int lichen_link_next_seq(struct lichen_link_ctx *ctx, uint16_t *seqnum), but link_ctx.c defines uint16_t lichen_link_next_seq(struct lichen_link_ctx *ctx) and then dereferences an undeclared seqnum. Trigger: compile any caller such as lichen_link_tx(), which calls lichen_link_next_seq(ctx, \u0026seqnum). Bad behavior: conflicting types / too many arguments / undeclared identifier prevent the link layer from building. Locations: lichen/subsys/lichen/link/include/lichen/link_ctx.h:108-113 and lichen/subsys/lichen/link/link_ctx.c:148-164.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T21:14:48.640694Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T21:21:07.477952Z",
+  "closed_at": "2026-06-28T21:21:07.477952Z",
+  "close_reason": "Fixed lichen_link_next_seq definition to match public header and caller API",
+  "labels": [
+    "correctness",
+    "c-standards",
+    "compiler",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-z3zp.3",
+      "depends_on_id": "project-LICHEN-z3zp",
+      "type": "parent-child",
+      "created_at": "2026-06-28T21:14:48.641171Z"
+    }
+  ]
+}

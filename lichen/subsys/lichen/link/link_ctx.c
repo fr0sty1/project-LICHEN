@@ -145,7 +145,7 @@ int lichen_link_generate_key(struct lichen_link_ctx *ctx)
 	return ret;
 }
 
-uint16_t lichen_link_next_seq(struct lichen_link_ctx *ctx)
+int lichen_link_next_seq(struct lichen_link_ctx *ctx, uint16_t *seqnum)
 {
 	if (ctx == NULL || seqnum == NULL) {
 		return -EINVAL;

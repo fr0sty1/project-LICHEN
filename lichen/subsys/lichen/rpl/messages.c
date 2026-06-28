@@ -29,7 +29,7 @@ static size_t div_ceil(size_t a, size_t b)
 int lichen_rpl_dio_parse(struct lichen_rpl_dio *dio,
 			 const uint8_t *data, size_t len)
 {
-	if (dio == NULL) {
+	if (dio == NULL || data == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
 	if (len < LICHEN_RPL_DIO_BASE_LEN) {
@@ -54,7 +54,7 @@ int lichen_rpl_dio_parse(struct lichen_rpl_dio *dio,
 int lichen_rpl_dio_write(const struct lichen_rpl_dio *dio,
 			 uint8_t *buf, size_t len)
 {
-	if (dio == NULL) {
+	if (dio == NULL || buf == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
 	if (len < LICHEN_RPL_DIO_BASE_LEN) {
@@ -96,7 +96,7 @@ const uint8_t *lichen_rpl_dio_options(const uint8_t *data, size_t len)
 int lichen_rpl_dao_parse(struct lichen_rpl_dao *dao,
 			 const uint8_t *data, size_t len)
 {
-	if (dao == NULL) {
+	if (dao == NULL || data == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
 	/* Minimum: 4 bytes base without DODAGID */
@@ -129,7 +129,7 @@ int lichen_rpl_dao_parse(struct lichen_rpl_dao *dao,
 int lichen_rpl_dao_write(const struct lichen_rpl_dao *dao,
 			 uint8_t *buf, size_t len)
 {
-	if (dao == NULL) {
+	if (dao == NULL || buf == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
 	if (len < LICHEN_RPL_DAO_BASE_LEN) {
@@ -188,6 +188,9 @@ void lichen_rpl_dodag_config_init(struct lichen_rpl_dodag_config *cfg)
 int lichen_rpl_dodag_config_parse(struct lichen_rpl_dodag_config *cfg,
 				  const uint8_t *data, size_t len)
 {
+	if (cfg == NULL || data == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
 	if (len < LICHEN_RPL_DODAG_CONFIG_DATA_LEN) {
 		return LICHEN_RPL_ERR_TOO_SHORT;
 	}
@@ -210,6 +213,9 @@ int lichen_rpl_dodag_config_write(const struct lichen_rpl_dodag_config *cfg,
 				  uint8_t *buf, size_t len)
 {
 	size_t needed = 2 + LICHEN_RPL_DODAG_CONFIG_DATA_LEN;
+	if (cfg == NULL || buf == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
 	if (len < needed) {
 		return LICHEN_RPL_ERR_BUF_SMALL;
 	}
@@ -235,7 +241,7 @@ int lichen_rpl_dodag_config_write(const struct lichen_rpl_dodag_config *cfg,
 int lichen_rpl_target_parse(struct lichen_rpl_target *target,
 			    const uint8_t *data, size_t len)
 {
-	if (target == NULL) {
+	if (target == NULL || data == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
 	if (len < 2) {
@@ -269,6 +275,9 @@ int lichen_rpl_target_parse(struct lichen_rpl_target *target,
 int lichen_rpl_target_write(const struct lichen_rpl_target *target,
 			    uint8_t *buf, size_t len)
 {
+	if (target == NULL || buf == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
 	if (target->prefix_len == 0 || target->prefix_len > 128) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
@@ -295,7 +304,7 @@ int lichen_rpl_target_write(const struct lichen_rpl_target *target,
 int lichen_rpl_transit_info_parse(struct lichen_rpl_transit_info *ti,
 				  const uint8_t *data, size_t len)
 {
-	if (ti == NULL) {
+	if (ti == NULL || data == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
 	if (len < LICHEN_RPL_TRANSIT_INFO_DATA_LEN) {
@@ -315,6 +324,9 @@ int lichen_rpl_transit_info_write(const struct lichen_rpl_transit_info *ti,
 				  uint8_t *buf, size_t len)
 {
 	size_t needed = 2 + LICHEN_RPL_TRANSIT_INFO_DATA_LEN;
+	if (ti == NULL || buf == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
 	if (len < needed) {
 		return LICHEN_RPL_ERR_BUF_SMALL;
 	}
@@ -335,6 +347,9 @@ int lichen_rpl_transit_info_write(const struct lichen_rpl_transit_info *ti,
 void lichen_rpl_opt_iter_init(struct lichen_rpl_opt_iter *it,
 			      const uint8_t *data, size_t len)
 {
+	if (it == NULL) {
+		return;
+	}
 	it->data = data;
 	it->len = len;
 	it->pos = 0;
@@ -343,6 +358,9 @@ void lichen_rpl_opt_iter_init(struct lichen_rpl_opt_iter *it,
 int lichen_rpl_opt_iter_next(struct lichen_rpl_opt_iter *it,
 			     struct lichen_rpl_raw_opt *out)
 {
+	if (it == NULL || out == NULL || (it->data == NULL && it->len > 0)) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
 	while (it->pos < it->len) {
 		uint8_t opt_type = it->data[it->pos];
 

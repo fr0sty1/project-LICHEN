@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-s3n3",
+  "title": "Fix gateway native_sim build Kconfig module loading",
+  "description": "A narrow verification build for lichen/apps/gateway with board native_sim aborts during Kconfig before C compilation. CONFIG_LICHEN, CONFIG_LICHEN_OSCORE, CONFIG_LICHEN_IPV6, CONFIG_LICHEN_LORA_L2, and CONFIG_LICHEN_L2 are reported as undefined even when retrying west build with ZEPHYR_EXTRA_MODULES pointed at the local lichen module. Investigate module registration/Kconfig loading for gateway native_sim so OSCORE and related subsystem builds can be verified.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T21:29:31.258617Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T21:33:08.491891Z",
+  "closed_at": "2026-06-28T21:33:08.491891Z",
+  "close_reason": "Fixed LICHEN Zephyr module metadata so ZEPHYR_EXTRA_MODULES=\u003crepo\u003e/lichen sources lichen/zephyr/Kconfig and lichen/zephyr/CMakeLists.txt. Verified gateway native_sim no longer reports undefined CONFIG_LICHEN* symbols; follow-up project-LICHEN-wg5w tracks remaining native_sim dependency warnings."
+}

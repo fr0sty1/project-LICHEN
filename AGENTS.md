@@ -285,6 +285,10 @@ int lichen_node_init(const uint8_t eui64[8], const uint8_t seed[32])
 
 Test vectors live in `test/vectors/` as JSON. Both implementations read and verify against these.
 
+If a Zephyr build or test is Linux-only and cannot run on the local host, use SSH host `heft` to run that build/test instead of skipping it. `heft` already has `~/GIT`; create/use `~/WORKSPACE` there for build workspaces.
+
+When Linux builders or interbox testing are needed and local/`heft` resources are insufficient, use AWS EC2 via the AWS CLI. The local AWS profile is `AdministratorAccess-921772462201`; keep instance lifetimes short, use the smallest practical instance type, tag temporary resources with the project/task, and shut them down or terminate them when finished.
+
 ## IETF I-D Documents
 
 We're writing protocol docs in IETF Internet-Draft style:

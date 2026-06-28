@@ -75,10 +75,6 @@ cleanup:
 	/* Wipe key schedule and CCM state to prevent key leakage */
 	crypto_wipe(&sched, sizeof(sched));
 	crypto_wipe(&ccm, sizeof(ccm));
-	/* Wipe plaintext on auth failure to prevent leaking partial decryption */
-	if (result != 0 && ct_len >= AES_CCM_TAG_LEN) {
-		crypto_wipe(plaintext, ct_len - AES_CCM_TAG_LEN);
-	}
 	return result;
 }
 

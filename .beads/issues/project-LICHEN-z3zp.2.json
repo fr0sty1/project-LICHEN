@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-z3zp.2",
+  "title": "AES-CCM encrypt cleanup references decrypt-only ct_len",
+  "description": "lichen_aes_ccm_encrypt() cleanup tests ct_len and wipes plaintext using ct_len, but ct_len is not in scope in the encrypt function and plaintext is a const pointer. Trigger: compile lichen/subsys/lichen/oscore/aes_ccm.c. Bad behavior: the AES-CCM wrapper does not compile, so OSCORE and link MIC code cannot link. Location: lichen/subsys/lichen/oscore/aes_ccm.c:74-81.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T21:14:41.595555Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T21:23:19.904493Z",
+  "closed_at": "2026-06-28T21:23:19.904493Z",
+  "close_reason": "Fixed encrypt cleanup to avoid decrypt-only ct_len and const plaintext wipe; verified aes_ccm.c syntax.",
+  "labels": [
+    "correctness",
+    "c-standards",
+    "compiler",
+    "crypto-security",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-z3zp.2",
+      "depends_on_id": "project-LICHEN-z3zp",
+      "type": "parent-child",
+      "created_at": "2026-06-28T21:14:41.596159Z"
+    }
+  ]
+}

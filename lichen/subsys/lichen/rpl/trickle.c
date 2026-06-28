@@ -9,6 +9,7 @@
  */
 
 #include <lichen/rpl_trickle.h>
+#include <stddef.h>
 
 /* Saturating add - clamp at UINT32_MAX on overflow */
 static uint32_t sat_add_u32(uint32_t a, uint32_t b)
@@ -86,6 +87,10 @@ void lichen_trickle_start(struct lichen_trickle *t,
 
 bool lichen_trickle_fire_transmit(struct lichen_trickle *t)
 {
+	if (t == NULL) {
+		return false;
+	}
+
 	t->transmitted = true;
 	return lichen_trickle_should_transmit(t);
 }
@@ -94,6 +99,10 @@ void lichen_trickle_expire(struct lichen_trickle *t,
 			   uint32_t now,
 			   uint32_t rand_offset)
 {
+	if (t == NULL) {
+		return;
+	}
+
 	/* Double interval, capped at max_interval */
 	uint32_t doubled = sat_mul_u32(t->interval, 2);
 	t->interval = (doubled < t->max_interval) ? doubled : t->max_interval;
@@ -104,6 +113,10 @@ void lichen_trickle_reset(struct lichen_trickle *t,
 			  uint32_t now,
 			  uint32_t rand_offset)
 {
+	if (t == NULL) {
+		return;
+	}
+
 	/* RFC 6206 section 4.2: no-op if already at imin */
 	if (t->interval != t->imin) {
 		t->interval = t->imin;
@@ -114,6 +127,10 @@ void lichen_trickle_reset(struct lichen_trickle *t,
 void lichen_trickle_next_event(const struct lichen_trickle *t,
 			       struct lichen_trickle_event *out)
 {
+	if (t == NULL || out == NULL) {
+		return;
+	}
+
 	if (!t->transmitted) {
 		out->type = LICHEN_TRICKLE_TRANSMIT;
 		out->at_ms = t->transmit_time;

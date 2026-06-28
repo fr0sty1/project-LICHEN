@@ -28,6 +28,17 @@ static bool s_seq_initialized[CONFIG_LICHEN_OSCORE_MAX_CONTEXTS];
 static bool s_initialized;
 static K_MUTEX_DEFINE(s_ctx_mutex);
 
+#define OSCORE_REPLAY_PENDING_MAX \
+	(CONFIG_LICHEN_OSCORE_MAX_CONTEXTS * CONFIG_LICHEN_OSCORE_REPLAY_WINDOW)
+
+struct oscore_replay_pending {
+	bool active;
+	int ctx_idx;
+	uint32_t seq;
+};
+
+static struct oscore_replay_pending s_replay_pending[OSCORE_REPLAY_PENDING_MAX];
+
 /*
  * Find context pointer by recipient ID (internal, caller holds mutex).
  * Returns NULL if not found.
@@ -83,6 +94,8 @@ static int ctx_get_index(const struct oscore_ctx *ctx)
 	}
 	return -1;
 }
+
+static void replay_clear_pending_context_locked(int ctx_idx);
 
 /*
  * OSCORE info structure for HKDF (RFC 8613 Section 3.2.1):
@@ -158,7 +171,7 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 			   const char *type, size_t out_len,
 			   uint8_t *buf, size_t buf_len)
 {
-	ZCBOR_STATE_E(state, 0, buf, buf_len, 1);
+	size_t off = 0;
 
 	/*
 	 * CBOR array header: major type 4 (0x80) + 5 items = 0x85
@@ -255,8 +268,7 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 		return -1;
 	}
 
-	size_t encoded_len = state->payload - buf;
-	return (encoded_len > (size_t)INT_MAX) ? -1 : (int)encoded_len;
+	return (int)off;
 }
 
 /*
@@ -299,7 +311,7 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 	 * as a bstr inside the Enc_structure.
 	 */
 	uint8_t inner[64];
-	ZCBOR_STATE_E(inner_state, 0, inner, sizeof(inner), 1);
+	size_t inner_off = 0;
 
 	/*
 	 * aad_array: 5-element array
@@ -347,8 +359,6 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 	} else {
 		return -1;
 	}
-	size_t inner_len = inner_state->payload - inner;
-
 	/*
 	 * options: empty bstr (RFC 8613 Section 5.4, fifth element)
 	 * Class I options - not used in this implementation
@@ -407,8 +417,7 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 		return -1;
 	}
 
-	size_t encoded_len = state->payload - buf;
-	return (encoded_len > (size_t)INT_MAX) ? -1 : (int)encoded_len;
+	return (int)off;
 }
 
 /*
@@ -449,6 +458,7 @@ int oscore_init(void)
 	}
 	memset(s_contexts, 0, sizeof(s_contexts));
 	memset(s_seq_initialized, 0, sizeof(s_seq_initialized));
+	memset(s_replay_pending, 0, sizeof(s_replay_pending));
 	s_initialized = true;
 	k_mutex_unlock(&s_ctx_mutex);
 
@@ -467,7 +477,12 @@ int oscore_ctx_create(const uint8_t master_secret[OSCORE_KEY_LEN],
 	int ret;
 	int ctx_idx;
 
-	/* Validate master_secret is provided (python-t7j5.160) */
+	/* Validate required output and master_secret are provided. */
+	if (ctx_out == NULL) {
+		LOG_ERR("ctx_out must not be NULL");
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
 	if (master_secret == NULL) {
 		LOG_ERR("master_secret must not be NULL");
 		return OSCORE_ERR_INVALID_PARAM;
@@ -502,7 +517,8 @@ int oscore_ctx_create(const uint8_t master_secret[OSCORE_KEY_LEN],
 	 * (RFC 9203) may allow this, but we don't support it yet.
 	 * (python-ano.48)
 	 */
-	if (sender_id_len == recipient_id_len &&
+	if (sender_id_len > 0 &&
+	    sender_id_len == recipient_id_len &&
 	    memcmp(sender_id, recipient_id, sender_id_len) == 0) {
 		LOG_WRN("sender_id == recipient_id - key derivation will be symmetric");
 	}
@@ -525,6 +541,7 @@ int oscore_ctx_create(const uint8_t master_secret[OSCORE_KEY_LEN],
 	}
 
 	/* Initialize context */
+	replay_clear_pending_context_locked(ctx_idx);
 	memset(ctx, 0, sizeof(*ctx));
 	memcpy(ctx->master_secret, master_secret, OSCORE_KEY_LEN);
 
@@ -533,10 +550,14 @@ int oscore_ctx_create(const uint8_t master_secret[OSCORE_KEY_LEN],
 		ctx->master_salt_len = (uint8_t)master_salt_len;
 	}
 
-	memcpy(ctx->sender_id, sender_id, sender_id_len);
+	if (sender_id_len > 0) {
+		memcpy(ctx->sender_id, sender_id, sender_id_len);
+	}
 	ctx->sender_id_len = (uint8_t)sender_id_len;
 
-	memcpy(ctx->recipient_id, recipient_id, recipient_id_len);
+	if (recipient_id_len > 0) {
+		memcpy(ctx->recipient_id, recipient_id, recipient_id_len);
+	}
 	ctx->recipient_id_len = (uint8_t)recipient_id_len;
 
 	/* Derive Sender Key */
@@ -600,11 +621,18 @@ cleanup_on_failure:
 
 void oscore_ctx_free(struct oscore_ctx *ctx)
 {
+	int ctx_idx;
+
 	if (ctx == NULL) {
 		return;
 	}
 
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+
+	ctx_idx = ctx_get_index(ctx);
+	if (ctx_idx >= 0) {
+		replay_clear_pending_context_locked(ctx_idx);
+	}
 
 	/* Secure wipe of key material (crypto_wipe cannot be optimized away) */
 	crypto_wipe(ctx->master_secret, sizeof(ctx->master_secret));
@@ -745,6 +773,10 @@ int oscore_ctx_get(const uint8_t *recipient_id,
 int oscore_option_parse(const uint8_t *data, size_t len,
 			struct oscore_option *option)
 {
+	if (option == NULL || (data == NULL && len > 0)) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
 	memset(option, 0, sizeof(*option));
 
 	if (len == 0) {
@@ -1022,16 +1054,80 @@ static bool replay_check_acceptable(const struct oscore_ctx *ctx, uint32_t seq)
 }
 
 /*
+ * Reserve an acceptable sequence while authentication runs without the replay
+ * mutex. The committed replay window is not advanced until authentication
+ * succeeds, so forged packets cannot poison replay state.
+ *
+ * Caller must hold s_ctx_mutex.
+ */
+static int replay_reserve_pending_locked(const struct oscore_ctx *ctx, int ctx_idx, uint32_t seq)
+{
+	int free_idx = -1;
+
+	if (!replay_check_acceptable(ctx, seq)) {
+		return OSCORE_ERR_REPLAY;
+	}
+
+	for (int i = 0; i < OSCORE_REPLAY_PENDING_MAX; i++) {
+		if (!s_replay_pending[i].active) {
+			if (free_idx < 0) {
+				free_idx = i;
+			}
+			continue;
+		}
+
+		if (s_replay_pending[i].ctx_idx == ctx_idx && s_replay_pending[i].seq == seq) {
+			return OSCORE_ERR_REPLAY;
+		}
+	}
+
+	if (free_idx < 0) {
+		return OSCORE_ERR_NO_MEMORY;
+	}
+
+	s_replay_pending[free_idx].active = true;
+	s_replay_pending[free_idx].ctx_idx = ctx_idx;
+	s_replay_pending[free_idx].seq = seq;
+	return OSCORE_OK;
+}
+
+/*
+ * Clear a pending reservation. Caller must hold s_ctx_mutex.
+ */
+static void replay_clear_pending_locked(int ctx_idx, uint32_t seq)
+{
+	for (int i = 0; i < OSCORE_REPLAY_PENDING_MAX; i++) {
+		if (s_replay_pending[i].active &&
+		    s_replay_pending[i].ctx_idx == ctx_idx &&
+		    s_replay_pending[i].seq == seq) {
+			s_replay_pending[i].active = false;
+			return;
+		}
+	}
+}
+
+/*
+ * Clear all pending reservations for a context slot. Caller must hold
+ * s_ctx_mutex.
+ */
+static void replay_clear_pending_context_locked(int ctx_idx)
+{
+	for (int i = 0; i < OSCORE_REPLAY_PENDING_MAX; i++) {
+		if (s_replay_pending[i].active && s_replay_pending[i].ctx_idx == ctx_idx) {
+			s_replay_pending[i].active = false;
+		}
+	}
+}
+
+/*
  * Update replay window after successful decryption.
  * Must be called ONLY after decryption succeeds (caller holds mutex).
  *
  * Returns true if update succeeded, false if seq is no longer acceptable
  * (another thread may have advanced the window during decryption).
  *
- * Note: OSCORE replay protection provides at-least-once rejection, not
- * exactly-once delivery. Concurrent threads may both accept the same
- * authentic packet before either marks the window. Applications requiring
- * exactly-once semantics must add their own sequence tracking.
+ * Concurrent decryptions are serialized by the pending replay reservations, so
+ * a sequence that is already marked here is a replay and must not be delivered.
  */
 static bool replay_update_window(struct oscore_ctx *ctx, uint32_t seq)
 {
@@ -1068,14 +1164,7 @@ static bool replay_update_window(struct oscore_ctx *ctx, uint32_t seq)
 	/* Check if already marked by another thread */
 	uint32_t mask = 1U << diff;
 	if (ctx->replay_window & mask) {
-		/*
-		 * Already marked - this could happen if another thread
-		 * processed the same seq concurrently. One of them will
-		 * get here first and mark it, the other will see it
-		 * already marked. Both decryptions succeeded (authentic
-		 * packet), so we can safely return success.
-		 */
-		return true;
+		return false;
 	}
 
 	/* Mark as seen */
@@ -1099,7 +1188,13 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	int ctx_idx;
 	uint32_t seq;
 
-	if (ctx == NULL || ciphertext == NULL || oscore_opt == NULL) {
+	if (ctx == NULL || ciphertext == NULL || ciphertext_len == NULL ||
+	    oscore_opt == NULL || oscore_opt_len == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	if ((options_len > 0 && options == NULL) ||
+	    (payload_len > 0 && payload == NULL)) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
@@ -1150,7 +1245,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	plaintext[pt_len++] = code;
 
 	if (options_len > 0) {
-		if (pt_len + options_len >= sizeof(plaintext)) {
+		if (options_len > sizeof(plaintext) - pt_len) {
 			ret = OSCORE_ERR_BUFFER_TOO_SMALL;
 			goto cleanup_protect_request;
 		}
@@ -1159,7 +1254,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	}
 
 	if (payload_len > 0) {
-		if (pt_len + 1 + payload_len >= sizeof(plaintext)) {
+		if (payload_len > sizeof(plaintext) - pt_len - 1) {
 			ret = OSCORE_ERR_BUFFER_TOO_SMALL;
 			goto cleanup_protect_request;
 		}
@@ -1303,6 +1398,7 @@ int oscore_unprotect_request(struct oscore_ctx *ctx,
 	int ret;
 	uint32_t seq;
 	int ctx_idx;
+	bool replay_reserved = false;
 
 	if (ctx == NULL || ciphertext == NULL || code == NULL) {
 		return OSCORE_ERR_INVALID_PARAM;
@@ -1326,10 +1422,9 @@ int oscore_unprotect_request(struct oscore_ctx *ctx,
 	seq = decode_piv(opt.piv, opt.piv_len);
 
 	/*
-	 * Check if sequence would be acceptable (without updating window).
-	 * We defer the window update until AFTER decryption succeeds to
-	 * prevent an attacker from corrupting our replay window with
-	 * forged packets (python-ano.4).
+	 * Reserve the sequence while decrypting without advancing the committed
+	 * replay window. This keeps failed authentication from poisoning replay
+	 * state while ensuring a concurrent copy of the same sequence is rejected.
 	 */
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 
@@ -1340,11 +1435,17 @@ int oscore_unprotect_request(struct oscore_ctx *ctx,
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
-	if (!replay_check_acceptable(ctx, seq)) {
+	ret = replay_reserve_pending_locked(ctx, ctx_idx, seq);
+	if (ret != OSCORE_OK) {
 		k_mutex_unlock(&s_ctx_mutex);
-		LOG_WRN("OSCORE replay detected: seq=%u", seq);
-		return OSCORE_ERR_REPLAY;
+		if (ret == OSCORE_ERR_REPLAY) {
+			LOG_WRN("OSCORE replay detected: seq=%u", seq);
+		} else {
+			LOG_ERR("OSCORE replay reservation unavailable: seq=%u", seq);
+		}
+		return ret;
 	}
+	replay_reserved = true;
 
 	k_mutex_unlock(&s_ctx_mutex);
 
@@ -1383,7 +1484,14 @@ int oscore_unprotect_request(struct oscore_ctx *ctx,
 	 * python-ano.56 (updates lost because operating on copy).
 	 */
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
-	replay_update_window(ctx, seq);
+	replay_clear_pending_locked(ctx_idx, seq);
+	replay_reserved = false;
+	if (!replay_update_window(ctx, seq)) {
+		k_mutex_unlock(&s_ctx_mutex);
+		LOG_WRN("OSCORE replay detected after decrypt: seq=%u", seq);
+		ret = OSCORE_ERR_REPLAY;
+		goto cleanup_unprotect_request;
+	}
 	k_mutex_unlock(&s_ctx_mutex);
 
 	/* Parse plaintext: code || options || 0xFF || payload */
@@ -1439,6 +1547,11 @@ int oscore_unprotect_request(struct oscore_ctx *ctx,
 	ret = OSCORE_OK;
 
 cleanup_unprotect_request:
+	if (replay_reserved) {
+		k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+		replay_clear_pending_locked(ctx_idx, seq);
+		k_mutex_unlock(&s_ctx_mutex);
+	}
 	crypto_wipe(nonce, sizeof(nonce));
 	crypto_wipe(plaintext, sizeof(plaintext));
 	return ret;
@@ -1457,11 +1570,15 @@ int oscore_protect_response(struct oscore_ctx *ctx,
 	size_t pt_len;
 	int ret;
 
-	if (ctx == NULL || ciphertext == NULL || oscore_opt == NULL) {
+	if (ctx == NULL || ciphertext == NULL || ciphertext_len == NULL ||
+	    oscore_opt == NULL || oscore_opt_len == NULL) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
-	if (request_piv_len > OSCORE_PIV_MAX_LEN) {
+	if ((request_piv_len > 0 && request_piv == NULL) ||
+	    request_piv_len > OSCORE_PIV_MAX_LEN ||
+	    (options_len > 0 && options == NULL) ||
+	    (payload_len > 0 && payload == NULL)) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
@@ -1474,7 +1591,7 @@ int oscore_protect_response(struct oscore_ctx *ctx,
 	plaintext[pt_len++] = code;
 
 	if (options_len > 0) {
-		if (pt_len + options_len >= sizeof(plaintext)) {
+		if (options_len > sizeof(plaintext) - pt_len) {
 			ret = OSCORE_ERR_BUFFER_TOO_SMALL;
 			goto cleanup_protect_response;
 		}
@@ -1483,7 +1600,7 @@ int oscore_protect_response(struct oscore_ctx *ctx,
 	}
 
 	if (payload_len > 0) {
-		if (pt_len + 1 + payload_len >= sizeof(plaintext)) {
+		if (payload_len > sizeof(plaintext) - pt_len - 1) {
 			ret = OSCORE_ERR_BUFFER_TOO_SMALL;
 			goto cleanup_protect_response;
 		}

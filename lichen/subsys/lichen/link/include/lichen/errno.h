@@ -57,6 +57,11 @@
 #define EALREADY 114
 #endif
 
+/** Value too large (nonce space exhausted) */
+#ifndef EOVERFLOW
+#define EOVERFLOW 75
+#endif
+
 /** I/O error (CSPRNG failure, device error) */
 #ifndef EIO
 #define EIO 5

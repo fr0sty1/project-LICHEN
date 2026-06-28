@@ -200,6 +200,10 @@ int lichen_rpl_dodag_init_root(struct lichen_rpl_dodag *d,
 
 void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 {
+	if (d == NULL) {
+		return;
+	}
+
 	uint16_t mhri = d->min_hop_rank_increase;
 	uint16_t threshold = d->parent_switch_threshold;
 
@@ -350,6 +354,10 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 void lichen_rpl_dodag_remove_parent(struct lichen_rpl_dodag *d,
 				    const uint8_t *addr)
 {
+	if (d == NULL || addr == NULL) {
+		return;
+	}
+
 	struct lichen_rpl_parent *p = find_parent(d, addr);
 	if (p != NULL) {
 		p->valid = false;
@@ -359,6 +367,10 @@ void lichen_rpl_dodag_remove_parent(struct lichen_rpl_dodag *d,
 
 int lichen_rpl_dodag_parent_count(const struct lichen_rpl_dodag *d)
 {
+	if (d == NULL) {
+		return 0;
+	}
+
 	int count = 0;
 	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_PARENTS; i++) {
 		if (d->parents[i].valid) {
