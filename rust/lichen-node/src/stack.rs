@@ -276,7 +276,8 @@ impl<R: Radio> Stack<R> {
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
             .link
-            .build_frame(self.epoch, seqnum, &[], &schc[..schc_len], &mut wire);
+            .build_frame(self.epoch, seqnum, &[], &schc[..schc_len], &mut wire)
+            .map_err(|_| TxError::FrameEncode)?;
 
         // Radio TX
         self.radio
@@ -298,7 +299,8 @@ impl<R: Radio> Stack<R> {
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
             .link
-            .build_frame(self.epoch, seqnum, &[], &schc[..schc_len], &mut wire);
+            .build_frame(self.epoch, seqnum, &[], &schc[..schc_len], &mut wire)
+            .map_err(|_| TxError::FrameEncode)?;
 
         self.radio
             .transmit(&wire[..wire_len])

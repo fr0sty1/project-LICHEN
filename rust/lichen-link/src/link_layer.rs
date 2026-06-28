@@ -178,9 +178,9 @@ impl LinkLayer {
     ///
     /// # Panics
     ///
-    /// Panics if `out` is smaller than the serialised frame size. Callers must
-    /// provide a buffer of at least `inner_payload.len() + 48 + 6` bytes (frame
-    /// header + signature trailer).
+    /// Returns an error if `out` is smaller than the serialised frame size.
+    /// Callers must provide a buffer of at least `inner_payload.len() + 48 + 6`
+    /// bytes (frame header + signature trailer).
     pub fn build_frame(
         &self,
         epoch: u8,
@@ -188,7 +188,7 @@ impl LinkLayer {
         dst_addr: &[u8],
         inner_payload: &[u8],
         out: &mut [u8],
-    ) -> usize {
+    ) -> Result<usize, FrameError> {
         let sig = schnorr::sign_frame(
             epoch,
             seqnum,
@@ -212,7 +212,7 @@ impl LinkLayer {
             signature: Signature::Present,
             encryption: Encryption::Plaintext,
         };
-        frame.write_to(out).expect("build_frame: buffer too small")
+        frame.write_to(out)
     }
 
     /// Parse, authenticate, and replay-check an incoming frame.
@@ -292,7 +292,7 @@ mod tests {
 
         let ll_alice = LinkLayer::new(alice);
         let mut wire = [0u8; 256];
-        let n = ll_alice.build_frame(1, seq(1), &[], b"hello", &mut wire);
+        let n = ll_alice.build_frame(1, seq(1), &[], b"hello", &mut wire).unwrap();
 
         let rx = ll_bob.receive_frame(&wire[..n]).unwrap();
         assert_eq!(rx.payload, b"hello");
@@ -309,7 +309,7 @@ mod tests {
 
         let ll_alice = LinkLayer::new(alice);
         let mut wire = [0u8; 256];
-        let n = ll_alice.build_frame(1, seq(42), &[], b"data", &mut wire);
+        let n = ll_alice.build_frame(1, seq(42), &[], b"data", &mut wire).unwrap();
 
         ll_bob.receive_frame(&wire[..n]).unwrap();
         let err = ll_bob.receive_frame(&wire[..n]).unwrap_err();
@@ -324,7 +324,7 @@ mod tests {
 
         let ll_alice = LinkLayer::new(alice);
         let mut wire = [0u8; 256];
-        let n = ll_alice.build_frame(1, seq(1), &[], b"hi", &mut wire);
+        let n = ll_alice.build_frame(1, seq(1), &[], b"hi", &mut wire).unwrap();
 
         assert_eq!(
             ll_bob.receive_frame(&wire[..n]).unwrap_err(),
@@ -341,7 +341,7 @@ mod tests {
 
         let ll_alice = LinkLayer::new(alice);
         let mut wire = [0u8; 256];
-        let n = ll_alice.build_frame(1, seq(1), &[], b"hello", &mut wire);
+        let n = ll_alice.build_frame(1, seq(1), &[], b"hello", &mut wire).unwrap();
 
         // Flip a bit in the inner payload region
         wire[6] ^= 0xFF;
@@ -376,7 +376,7 @@ mod tests {
 
         let ll_alice = LinkLayer::new(alice);
         let mut wire1 = [0u8; 256];
-        let n1 = ll_alice.build_frame(1, seq(1), &[], b"hello", &mut wire1);
+        let n1 = ll_alice.build_frame(1, seq(1), &[], b"hello", &mut wire1).unwrap();
 
         // First RX succeeds and pins alice_iid → alice's pubkey.
         ll_bob.receive_frame(&wire1[..n1]).unwrap();
@@ -392,7 +392,7 @@ mod tests {
         // Second RX with same alice frame must now fail with KeyChange.
         let ll_alice2 = LinkLayer::new(Identity::from_seed(Seed::new([0x01u8; 32])));
         let mut wire2 = [0u8; 256];
-        let n2 = ll_alice2.build_frame(1, seq(2), &[], b"hi", &mut wire2);
+        let n2 = ll_alice2.build_frame(1, seq(2), &[], b"hi", &mut wire2).unwrap();
         assert_eq!(
             ll_bob.receive_frame(&wire2[..n2]).unwrap_err(),
             LinkRxError::KeyChange
@@ -409,7 +409,7 @@ mod tests {
 
         let ll_alice = LinkLayer::new(Identity::from_seed(Seed::new([0x01u8; 32])));
         let mut wire = [0u8; 256];
-        let n = ll_alice.build_frame(1, seq(1), &[], b"hello", &mut wire);
+        let n = ll_alice.build_frame(1, seq(1), &[], b"hello", &mut wire).unwrap();
         ll_bob.receive_frame(&wire[..n]).unwrap();
 
         // Admin unpins: allows accepting a new key for this IID.
@@ -424,7 +424,7 @@ mod tests {
 
         let ll_new = LinkLayer::new(new_alice);
         let mut wire2 = [0u8; 256];
-        let n2 = ll_new.build_frame(1, seq(1), &[], b"rotated", &mut wire2);
+        let n2 = ll_new.build_frame(1, seq(1), &[], b"rotated", &mut wire2).unwrap();
         ll_bob.receive_frame(&wire2[..n2]).unwrap();
         assert_eq!(
             ll_bob.pinned_pubkey_for(&new_alice_peer.iid),
