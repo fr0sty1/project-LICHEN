@@ -5,6 +5,11 @@
 # These extend the base LICHEN Kconfig from lichen/subsys/lichen/Kconfig
 # with Zephyr network stack integration.
 
+menuconfig LICHEN
+	bool "LICHEN mesh networking stack"
+	help
+	  Enable the LICHEN IPv6 mesh networking stack over LoRa.
+
 if LICHEN
 
 config LICHEN_LORA_L2

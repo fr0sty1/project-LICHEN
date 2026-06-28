@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+# Application-level Kconfig
+
+# Source Zephyr base configuration
+source "Kconfig.zephyr"
+
+# Source LICHEN subsystem configuration
+rsource "subsys/Kconfig"

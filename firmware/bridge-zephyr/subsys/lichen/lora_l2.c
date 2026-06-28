@@ -23,6 +23,7 @@
 
 #include "lora_l2.h"
 #include "lichen_l2.h"
+#include "crash_info.h"
 
 #include <limits.h>
 #include <string.h>
@@ -79,29 +80,31 @@ static atomic_t current_state = ATOMIC_INIT(LORA_UNINIT);
 /**
  * @brief Transition to a new state with validation
  *
- * Panics if the transition is invalid. This catches state machine bugs
- * at runtime rather than letting them cause subtle corruption.
+ * Returns error and forces ABORTED state if the transition is invalid.
+ * This catches state machine bugs at runtime.
  *
  * @param new_state Target state
- * @return 0 on success (always, since invalid transitions panic)
+ * @return 0 on success, -EINVAL if transition invalid (state forced to ABORTED)
  */
 static int lora_transition(enum lora_state new_state)
 {
     enum lora_state old_state = atomic_get(&current_state);
 
     if (new_state >= LORA_STATE_COUNT) {
-        LOG_ERR("Invalid state: %d", new_state);
-        k_panic();
+        LOG_ERR("lora_l2: invalid state (%d), forcing ABORTED", new_state);
+        atomic_set(&current_state, LORA_ABORTED);
+        return -EINVAL;
     }
 
     if (!valid_transitions[old_state][new_state]) {
-        LOG_ERR("Invalid transition: %s -> %s",
+        LOG_ERR("lora_l2: invalid transition %s -> %s, forcing ABORTED",
                 state_names[old_state], state_names[new_state]);
-        k_panic();
+        atomic_set(&current_state, LORA_ABORTED);
+        return -EINVAL;
     }
 
     atomic_set(&current_state, new_state);
-    LOG_DBG("State: %s -> %s", state_names[old_state], state_names[new_state]);
+    LOG_DBG("lora_l2: state %s -> %s", state_names[old_state], state_names[new_state]);
     return 0;
 }
 
@@ -116,19 +119,22 @@ static int lora_transition_from(enum lora_state expected, enum lora_state new_st
 {
     /* Validate transition BEFORE attempting CAS to avoid momentarily invalid state */
     if (expected >= LORA_STATE_COUNT || new_state >= LORA_STATE_COUNT) {
-        LOG_ERR("Invalid state value: expected=%d, new=%d", expected, new_state);
-        k_panic();
+        LOG_ERR("lora_l2: invalid state value (expected=%d, new=%d), forcing ABORTED",
+                expected, new_state);
+        atomic_set(&current_state, LORA_ABORTED);
+        return -EINVAL;
     }
     if (!valid_transitions[expected][new_state]) {
-        LOG_ERR("Invalid transition: %s -> %s",
+        LOG_ERR("lora_l2: invalid transition %s -> %s, forcing ABORTED",
                 state_names[expected], state_names[new_state]);
-        k_panic();
+        atomic_set(&current_state, LORA_ABORTED);
+        return -EINVAL;
     }
 
     if (!atomic_cas(&current_state, expected, new_state)) {
         return -EAGAIN;
     }
-    LOG_DBG("State: %s -> %s", state_names[expected], state_names[new_state]);
+    LOG_DBG("lora_l2: state %s -> %s", state_names[expected], state_names[new_state]);
     return 0;
 }
 
@@ -254,18 +260,18 @@ static int generate_eui64(uint8_t *eui64)
     if (hwid_len < 0) {
         /* SECURITY: Refusing to start without stable identity. A random EUI-64
          * would change on each reboot, breaking IPv6 NDP and mesh routing. */
-        LOG_ERR("hwinfo_get_device_id failed: %d", (int)hwid_len);
+        LOG_ERR("lora_l2: hwinfo_get_device_id failed (%d)", (int)hwid_len);
         ret = (int)hwid_len;
         goto cleanup;
     }
     if (hwid_len == 0) {
         /* SECURITY: Zero-length hwid means no unique identity available */
-        LOG_ERR("No hardware ID available - cannot generate stable EUI-64");
+        LOG_ERR("lora_l2: no hardware ID available, cannot generate stable EUI-64");
         ret = -ENODEV;
         goto cleanup;
     }
     if ((size_t)hwid_len > sizeof(hwid)) {
-        LOG_ERR("hwinfo returned invalid length: %d", (int)hwid_len);
+        LOG_ERR("lora_l2: hwinfo returned invalid length (%d)", (int)hwid_len);
         ret = -EINVAL;
         goto cleanup;
     }
@@ -275,7 +281,7 @@ static int generate_eui64(uint8_t *eui64)
      * hwids will produce different EUI-64s with overwhelming probability. */
     ret = lichen_sha256(hwid, (size_t)hwid_len, hash);
     if (ret != 0) {
-        LOG_ERR("EUI-64: SHA-256 failed");
+        LOG_ERR("lora_l2: EUI-64 SHA-256 failed");
         goto cleanup;
     }
 
@@ -289,7 +295,7 @@ static int generate_eui64(uint8_t *eui64)
     memcpy(eui64, hash, 8);
     /* hwid_len is ssize_t; cast to int is safe since hwinfo_get_device_id()
      * returns at most sizeof(hwid) (32 bytes), well within int range. */
-    LOG_DBG("EUI-64 from hashed hardware ID (%d bytes)", (int)hwid_len);
+    LOG_DBG("lora_l2: EUI-64 from hashed hardware ID (%d bytes)", (int)hwid_len);
 
     /*
      * IEEE 802 EUI-64 first octet bit definitions (LSB numbering):
@@ -305,7 +311,7 @@ static int generate_eui64(uint8_t *eui64)
      */
     eui64[0] = (eui64[0] | 0x02) & 0xFE;  /* Set U/L bit, clear I/G bit */
 
-    LOG_DBG("EUI-64: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
+    LOG_DBG("lora_l2: EUI-64 %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
             eui64[0], eui64[1], eui64[2], eui64[3],
             eui64[4], eui64[5], eui64[6], eui64[7]);
 
@@ -355,7 +361,7 @@ static void rx_thread(void *arg1, void *arg2, void *arg3)
     const struct device *dev = lora_data.lora_dev;
     k_mutex_unlock(&lora_mutex);
 
-    LOG_INF("LoRa L2 RX thread started");
+    LOG_INF("lora_l2: RX thread started");
 
     /*
      * Loop condition: checking LORA_RUNNING is sufficient because ABORTED
@@ -378,9 +384,9 @@ static void rx_thread(void *arg1, void *arg2, void *arg3)
             if (consecutive_errors < INT_MAX) {
                 consecutive_errors++;
             }
-            LOG_ERR("LoRa RX error: %d", ret);
+            LOG_ERR("lora_l2: RX error (%d)", ret);
             if (consecutive_errors > 0 && consecutive_errors % RX_ERROR_WARN_THRESHOLD == 0) {
-                LOG_WRN("LoRa RX: %d consecutive errors - check hardware",
+                LOG_WRN("lora_l2: %d consecutive RX errors, check hardware",
                         consecutive_errors);
             }
             /*
@@ -431,13 +437,18 @@ static void rx_thread(void *arg1, void *arg2, void *arg3)
          * sizeof(rx_buf) is size_t. Cast sizeof to int for comparison since
          * LICHEN_LORA_MAX_PHY_PAYLOAD (255) fits safely in int. */
         if (ret > (int)sizeof(rx_buf)) {
-            LOG_ERR("CRITICAL: lora_recv returned %d > buffer size %d - "
-                    "stack corruption likely, aborting",
-                    ret, (int)sizeof(rx_buf));
-            k_panic();
+            /*
+             * Driver returned more bytes than buffer size - corruption likely.
+             * Store crash info for post-mortem, transition to ABORTED, and
+             * exit the RX loop. Watchdog will reset us if we're stuck.
+             */
+            LOG_ERR("lora_l2: recv overflow (%d > %d)", ret, (int)sizeof(rx_buf));
+            crash_info_store(CRASH_DRIVER_OVERFLOW, __LINE__, (uint32_t)ret);
+            atomic_set(&current_state, LORA_ABORTED);
+            break;  /* Exit RX loop - let watchdog reset if needed */
         }
 
-        LOG_DBG("RX %d bytes, RSSI=%d dBm, SNR=%d dB", ret, rssi, snr);
+        LOG_DBG("lora_l2: RX %d bytes (RSSI %d dBm, SNR %d dB)", ret, rssi, snr);
 
         /*
          * Invoke callback if registered - snapshot under lock for consistency.
@@ -467,7 +478,7 @@ static void rx_thread(void *arg1, void *arg2, void *arg3)
         }
     }
 
-    LOG_INF("LoRa L2 RX thread exiting");
+    LOG_INF("lora_l2: RX thread exiting");
 }
 
 int lichen_lora_l2_init(void)
@@ -498,19 +509,22 @@ int lichen_lora_l2_init(void)
     lora_data.rx_callback_user_data = NULL;
 
     if (!device_is_ready(lora_data.lora_dev)) {
-        LOG_ERR("LoRa device not ready");
+        LOG_ERR("lora_l2: device not ready");
         ret = -ENODEV;
         goto out;
     }
 
     ret = generate_eui64(lora_data.eui64);
     if (ret < 0) {
-        LOG_ERR("Failed to generate stable EUI-64 - cannot initialize");
+        LOG_ERR("lora_l2: failed to generate stable EUI-64, cannot initialize");
         goto out;
     }
 
-    lora_transition(LORA_STOPPED);
-    LOG_INF("LICHEN LoRa L2 initialized");
+    if (lora_transition(LORA_STOPPED) != 0) {
+        ret = -EIO;
+        goto out;
+    }
+    LOG_INF("lora_l2: initialized");
 
 out:
     k_mutex_unlock(&lora_mutex);
@@ -523,22 +537,22 @@ int lichen_lora_l2_start(void)
 
     switch (state) {
     case LORA_UNINIT:
-        LOG_ERR("LoRa L2 not initialized - call lichen_lora_l2_init() first");
+        LOG_ERR("lora_l2: not initialized, call lichen_lora_l2_init() first");
         return -EINVAL;
     case LORA_ABORTED:
-        LOG_ERR("LoRa L2 in undefined state after forced abort - "
-                "call lichen_lora_l2_deinit() then lichen_lora_l2_init()");
+        LOG_ERR("lora_l2: in ABORTED state, call deinit() then init()");
         return -ECANCELED;
     case LORA_DEINITING:
-        LOG_ERR("LoRa L2 deinit in progress - cannot start");
+        LOG_ERR("lora_l2: deinit in progress, cannot start");
         return -EBUSY;
     case LORA_RUNNING:
         return 0;  /* Already running */
     case LORA_STOPPED:
         break;  /* Proceed */
     default:
-        LOG_ERR("Unknown state: %d", state);
-        k_panic();
+        LOG_ERR("lora_l2: unknown state (%d), forcing ABORTED", state);
+        atomic_set(&current_state, LORA_ABORTED);
+        return -EINVAL;
     }
 
     k_mutex_lock(&lora_mutex, K_FOREVER);
@@ -588,12 +602,15 @@ int lichen_lora_l2_start(void)
 
     int ret = lora_config(lora_data.lora_dev, &config);
     if (ret < 0) {
-        LOG_ERR("LoRa config failed: %d", ret);
+        LOG_ERR("lora_l2: config failed (%d)", ret);
         k_mutex_unlock(&lora_mutex);
         return ret;
     }
 
-    lora_transition(LORA_RUNNING);
+    if (lora_transition(LORA_RUNNING) != 0) {
+        k_mutex_unlock(&lora_mutex);
+        return -EIO;
+    }
 
     /* Start RX thread.
      * k_thread_create() returns the thread pointer passed in (first arg).
@@ -609,12 +626,12 @@ int lichen_lora_l2_start(void)
     /* Thread naming is best-effort - failure is non-fatal but logged for debugging */
     int name_ret = k_thread_name_set(&rx_thread_data, "lora_rx");
     if (name_ret < 0) {
-        LOG_WRN("Failed to set thread name: %d", name_ret);
+        LOG_DBG("lora_l2: failed to set thread name (%d)", name_ret);
     }
 
     k_mutex_unlock(&lora_mutex);
 
-    LOG_INF("LoRa L2 started: SF10, BW125, %uMHz, %ddBm",
+    LOG_INF("lora_l2: started (%u MHz, %d dBm, SF10)",
             CONFIG_LICHEN_LORA_FREQUENCY / 1000000, CONFIG_LICHEN_LORA_TX_POWER);
     return 0;
 }
@@ -652,7 +669,10 @@ int lichen_lora_l2_stop(void)
     lora_data.rx_callback_user_data = NULL;
 
     /* Transition to STOPPED before releasing mutex - thread will see this */
-    lora_transition(LORA_STOPPED);
+    if (lora_transition(LORA_STOPPED) != 0) {
+        k_mutex_unlock(&lora_mutex);
+        return -EIO;
+    }
 
     /* Release mutex before joining - allows any in-flight TX to complete */
     k_mutex_unlock(&lora_mutex);
@@ -677,8 +697,7 @@ int lichen_lora_l2_stop(void)
          */
         join_ret = k_thread_join(&rx_thread_data, K_MSEC(RX_TIMEOUT_MS));
         if (join_ret == -EAGAIN) {
-            LOG_WRN("RX thread join timed out after %dms, aborting thread. "
-                    "Any in-flight packet processing was terminated.",
+            LOG_WRN("lora_l2: RX thread join timed out after %d ms, aborting",
                     RX_THREAD_QUICK_JOIN_MS + RX_TIMEOUT_MS);
             k_thread_abort(&rx_thread_data);
             k_thread_join(&rx_thread_data, K_FOREVER);
@@ -689,13 +708,15 @@ int lichen_lora_l2_stop(void)
              * or have allocated resources that are now leaked. Safe restart
              * requires full de-init/re-init cycle.
              */
-            lora_transition(LORA_ABORTED);
-            LOG_WRN("Module requires lichen_lora_l2_deinit() before restart");
+            /* Note: lora_transition() may fail here since we're already in
+             * STOPPED state, so set ABORTED directly. */
+            atomic_set(&current_state, LORA_ABORTED);
+            LOG_WRN("lora_l2: module requires deinit() before restart");
             ret = -ECANCELED;
         }
     }
 
-    LOG_INF("LoRa L2 stopped");
+    LOG_INF("lora_l2: stopped");
     return ret;
 }
 
@@ -709,25 +730,26 @@ int lichen_lora_l2_deinit(void)
      */
     if (state == LORA_STOPPED) {
         if (lora_transition_from(LORA_STOPPED, LORA_DEINITING) != 0) {
-            LOG_ERR("LoRa L2 deinit race - state changed");
+            LOG_ERR("lora_l2: deinit race, state changed");
             return -EBUSY;
         }
     } else if (state == LORA_ABORTED) {
         if (lora_transition_from(LORA_ABORTED, LORA_DEINITING) != 0) {
-            LOG_ERR("LoRa L2 deinit race - state changed");
+            LOG_ERR("lora_l2: deinit race, state changed");
             return -EBUSY;
         }
     } else if (state == LORA_DEINITING) {
-        LOG_ERR("LoRa L2 deinit already in progress");
+        LOG_ERR("lora_l2: deinit already in progress");
         return -EBUSY;
     } else if (state == LORA_RUNNING) {
-        LOG_ERR("LoRa L2 still running - call lichen_lora_l2_stop() first");
+        LOG_ERR("lora_l2: still running, call stop() first");
         return -EBUSY;
     } else if (state == LORA_UNINIT) {
         return 0;  /* Already uninitialized */
     } else {
-        LOG_ERR("Unknown state: %d", state);
-        k_panic();
+        LOG_ERR("lora_l2: unknown state (%d), forcing ABORTED", state);
+        atomic_set(&current_state, LORA_ABORTED);
+        return -EINVAL;
     }
 
     /*
@@ -762,7 +784,7 @@ int lichen_lora_l2_deinit(void)
          *   -EBUSY: Thread not yet terminated
          *   -EDEADLK: Deadlock detected (should not happen here)
          * Refusing to deinit leaves module permanently unusable. */
-        LOG_WRN("RX thread join failed in deinit (err=%d) - proceeding with "
+        LOG_WRN("lora_l2: RX thread join failed in deinit (%d), proceeding with "
                 "best-effort recovery", join_ret);
     }
 
@@ -814,7 +836,7 @@ int lichen_lora_l2_deinit(void)
         /* k_mutex_init() should not fail in kernel mode, but log if it does.
          * There is no recovery action - we've already committed to resetting
          * the module and proceeding is better than leaving it unusable. */
-        LOG_ERR("k_mutex_init failed: %d - module may be unstable", mutex_ret);
+        LOG_ERR("lora_l2: k_mutex_init failed (%d), module may be unstable", mutex_ret);
     }
 
     /* Also reinitialize tx_buf_mutex for completeness during abort recovery.
@@ -822,7 +844,7 @@ int lichen_lora_l2_deinit(void)
      * but in abort scenarios the mutex state may be corrupted. */
     mutex_ret = k_mutex_init(&tx_buf_mutex);
     if (mutex_ret != 0) {
-        LOG_ERR("k_mutex_init(tx_buf_mutex) failed: %d - module may be unstable",
+        LOG_ERR("lora_l2: k_mutex_init(tx_buf_mutex) failed (%d), module may be unstable",
                 mutex_ret);
     }
 
@@ -859,28 +881,29 @@ int lichen_lora_l2_deinit(void)
      */
     if (lora_transition_from(LORA_DEINITING, LORA_UNINIT) != 0) {
         /* Should be impossible - we hold DEINITING exclusively */
-        LOG_ERR("State corrupted during deinit");
-        k_panic();
+        LOG_ERR("lora_l2: deinit state corrupted, forcing ABORTED");
+        atomic_set(&current_state, LORA_ABORTED);
+        return -EIO;
     }
 
-    LOG_INF("LoRa L2 deinitialized");
+    LOG_INF("lora_l2: deinitialized");
     return 0;
 }
 
 int lichen_lora_l2_tx(const uint8_t *data, size_t len)
 {
     if (data == NULL) {
-        LOG_ERR("TX data pointer is NULL");
+        LOG_ERR("lora_l2: TX data pointer is NULL");
         return -EINVAL;
     }
 
     if (len == 0) {
-        LOG_ERR("TX with zero length");
+        LOG_ERR("lora_l2: TX with zero length");
         return -EINVAL;
     }
 
     if (len > LICHEN_LORA_MAX_PHY_PAYLOAD) {
-        LOG_ERR("Packet too large: %zu (max %d)", len, LICHEN_LORA_MAX_PHY_PAYLOAD);
+        LOG_ERR("lora_l2: packet too large (%zu > %d)", len, LICHEN_LORA_MAX_PHY_PAYLOAD);
         return -EMSGSIZE;
     }
 
@@ -922,15 +945,15 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
      */
     enum lora_state state = lora_get_state();
     if (state == LORA_UNINIT) {
-        LOG_ERR("LoRa L2 not initialized");
+        LOG_ERR("lora_l2: not initialized");
         return -ENODEV;
     }
     if (state != LORA_RUNNING) {
-        LOG_WRN("LoRa L2 not running (state=%s)", state_names[state]);
+        LOG_WRN("lora_l2: not running (state=%s)", state_names[state]);
         return -ENETDOWN;
     }
 
-    LOG_DBG("TX %zu bytes", len);
+    LOG_DBG("lora_l2: TX %zu bytes", len);
 
     /*
      * Serialize TX operations with tx_buf_mutex. This protects the memcpy
@@ -977,7 +1000,7 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
     k_mutex_unlock(&tx_buf_mutex);
 
     if (ret < 0) {
-        LOG_ERR("LoRa TX failed: %d", ret);
+        LOG_ERR("lora_l2: TX failed (%d)", ret);
         return ret;
     }
 
@@ -987,7 +1010,7 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
 void lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data)
 {
     if (lora_get_state() == LORA_UNINIT) {
-        LOG_WRN("Cannot set RX callback: LoRa L2 not initialized");
+        LOG_WRN("lora_l2: cannot set RX callback, not initialized");
         return;
     }
 
@@ -1015,7 +1038,7 @@ void lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data)
 const uint8_t *lichen_lora_l2_get_eui64(void)
 {
     if (lora_get_state() == LORA_UNINIT) {
-        LOG_ERR("LoRa L2 not initialized");
+        LOG_ERR("lora_l2: not initialized");
         return NULL;
     }
     return lora_data.eui64;

@@ -26,6 +26,8 @@
 #include "ipv6_addr.h"
 #endif
 
+#include "crash_info.h"
+
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
 /* LED (optional - not all boards have one) */
@@ -46,7 +48,7 @@ static inline void led_set(int value)
     if (led_configured) {
         int ret = gpio_pin_set_dt(&led, value);
         if (ret < 0) {
-            LOG_ERR("LED gpio_pin_set_dt failed: %d", ret);
+            LOG_ERR("main: LED gpio_pin_set_dt failed (%d)", ret);
         }
     }
 }
@@ -74,8 +76,7 @@ static void lora_rx_handler(const uint8_t *data, size_t len,
     ARG_UNUSED(data);
 
     // ponytail: RX processing not implemented - add when needed
-    LOG_INF("RX: %zu bytes (standalone mode - not processed)", len);
-    LOG_INF("  RSSI=%d dBm, SNR=%d dB", rssi, snr);
+    LOG_INF("main: RX %zu bytes standalone (RSSI %d dBm, SNR %d dB)", len, rssi, snr);
 }
 
 /**
@@ -90,7 +91,7 @@ static int init_standalone_lora(void)
 
     ret = lichen_lora_l2_init();
     if (ret < 0) {
-        LOG_ERR("LoRa L2 init failed: %d", ret);
+        LOG_ERR("main: LoRa L2 init failed (%d)", ret);
         return ret;
     }
 
@@ -98,17 +99,17 @@ static int init_standalone_lora(void)
 
     ret = lichen_lora_l2_start();
     if (ret < 0) {
-        LOG_ERR("LoRa L2 start failed: %d", ret);
+        LOG_ERR("main: LoRa L2 start failed (%d)", ret);
         return ret;
     }
 
     eui64 = lichen_lora_l2_get_eui64();
     if (eui64 == NULL) {
-        LOG_ERR("Failed to get EUI-64 address");
+        LOG_ERR("main: failed to get EUI-64");
         goto cleanup;
     }
 
-    LOG_INF("EUI-64: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
+    LOG_INF("main: EUI-64 %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
             eui64[0], eui64[1], eui64[2], eui64[3],
             eui64[4], eui64[5], eui64[6], eui64[7]);
 
@@ -119,7 +120,7 @@ static int init_standalone_lora(void)
     }
 #endif
 
-    LOG_INF("LoRa L2 active: SF10, BW125, 915MHz");
+    LOG_INF("main: LoRa L2 active (SF10 BW125 915 MHz)");
     return 0;
 
 cleanup:
@@ -133,14 +134,15 @@ int main(void)
 {
     int ret = 0;
 
-    LOG_INF("LICHEN bridge (Zephyr) starting...");
+    LOG_INF("main: starting");
+    crash_info_check_and_clear();
 
 #if defined(HAS_LED)
     /* LED pattern: solid on during init = startup in progress */
     if (gpio_is_ready_dt(&led)) {
         ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
         if (ret < 0) {
-            LOG_ERR("Failed to configure LED GPIO: %d", ret);
+            LOG_ERR("main: LED GPIO configure failed (%d)", ret);
         } else {
             led_configured = true;
             led_set(1);
@@ -151,7 +153,7 @@ int main(void)
 #if defined(CONFIG_USB_DEVICE_STACK)
     ret = usb_enable(NULL);
     if (ret != 0) {
-        LOG_ERR("USB enable failed: %d", ret);
+        LOG_ERR("main: USB enable failed (%d)", ret);
         /*
          * USB CDC failure means console output may not be visible.
          * Provide visual feedback via LED if available.
@@ -177,10 +179,10 @@ int main(void)
 #endif
     } else {
         k_sleep(K_MSEC(1000));
-        LOG_INF("USB CDC ready");
+        LOG_INF("main: USB CDC ready");
     }
 #else
-    LOG_INF("UART console ready");
+    LOG_INF("main: UART console ready");
 #endif
 
 /*
@@ -191,8 +193,8 @@ int main(void)
 #if defined(CONFIG_LICHEN_LORA_L2) && !defined(CONFIG_LICHEN_L2)
     ret = init_standalone_lora();
     if (ret < 0) {
-        LOG_ERR("Standalone LoRa init failed: %d", ret);
-        LOG_ERR("FATAL: Cannot continue without LoRa. Entering error state.");
+        LOG_ERR("main: standalone LoRa init failed (%d)", ret);
+        LOG_ERR("main: fatal, entering error state");
 #if defined(HAS_LED)
         /*
          * LED pattern: continuous 200ms blink forever = fatal LoRa failure.
@@ -218,10 +220,10 @@ int main(void)
     led_set(0);
 #endif
 
-    LOG_INF("Ready - LICHEN IPv6/LoRa mesh");
+    LOG_INF("main: ready");
 
     while (1) {
         k_sleep(K_SECONDS(60));
-        LOG_DBG("tick");
+        LOG_DBG("main: tick");
     }
 }

@@ -583,10 +583,7 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 		ctx->peer_pubkey = peer_table[found_idx].pubkey;
 		ctx->peer_eui64 = peer_table[found_idx].eui64;
 		*out_len = found_out_len;
-		LOG_DBG("Frame verified by peer %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
-			peer_table[found_idx].eui64[0], peer_table[found_idx].eui64[1],
-			peer_table[found_idx].eui64[2], peer_table[found_idx].eui64[3],
-			peer_table[found_idx].eui64[4], peer_table[found_idx].eui64[5],
+		LOG_DBG("lichen_l2: RX auth ok (peer ..%02x:%02x)",
 			peer_table[found_idx].eui64[6], peer_table[found_idx].eui64[7]);
 		return found_ret;
 	}
@@ -624,7 +621,7 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 	 * Recovery requires: lichen_lora_l2_deinit() + lichen_lora_l2_init()
 	 */
 	if (lichen_lora_l2_needs_reinit()) {
-		LOG_ERR("peer_add rejected: LoRa L2 requires re-initialization after forced abort");
+		LOG_ERR("lichen_l2: peer_add rejected (reinit required after abort)");
 		return -ECANCELED;
 	}
 
@@ -642,7 +639,7 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 	 * API - get_eui64() returns NULL only in UNINIT state.
 	 */
 	if (lichen_lora_l2_get_eui64() == NULL) {
-		LOG_ERR("peer_add rejected: LoRa L2 not initialized");
+		LOG_ERR("lichen_l2: peer_add rejected (not initialized)");
 		return -ENODEV;
 	}
 
@@ -653,9 +650,8 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 	if (existing != NULL) {
 		memcpy(existing->pubkey, pubkey, LICHEN_L2_PUBKEY_LEN);
 		existing->last_seen = k_uptime_get();
-		LOG_INF("Peer updated: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
-			eui64[0], eui64[1], eui64[2], eui64[3],
-			eui64[4], eui64[5], eui64[6], eui64[7]);
+		LOG_INF("lichen_l2: peer updated ..%02x:%02x",
+			eui64[6], eui64[7]);
 		k_mutex_unlock(&rx_mutex);
 		return 0;  /* Update succeeded */
 	}
@@ -680,15 +676,11 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 		slot = peer_find_oldest_locked();
 		if (slot < 0) {
 			/* Should not happen: table full but no oldest entry found */
-			LOG_ERR("Peer table inconsistent: full but no eviction candidate");
+			LOG_ERR("lichen_l2: peer table inconsistent (no eviction candidate)");
 			k_mutex_unlock(&rx_mutex);
 			return -ENOSPC;
 		}
-		LOG_INF("Peer table full, evicting oldest: "
-			"%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
-			peer_table[slot].eui64[0], peer_table[slot].eui64[1],
-			peer_table[slot].eui64[2], peer_table[slot].eui64[3],
-			peer_table[slot].eui64[4], peer_table[slot].eui64[5],
+		LOG_INF("lichen_l2: peer table full, evicting ..%02x:%02x",
 			peer_table[slot].eui64[6], peer_table[slot].eui64[7]);
 	}
 
@@ -696,9 +688,8 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 	memcpy(peer_table[slot].pubkey, pubkey, LICHEN_L2_PUBKEY_LEN);
 	peer_table[slot].last_seen = k_uptime_get();
 	peer_table[slot].active = true;
-	LOG_INF("Peer added: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
-		eui64[0], eui64[1], eui64[2], eui64[3],
-		eui64[4], eui64[5], eui64[6], eui64[7]);
+	LOG_INF("lichen_l2: peer added ..%02x:%02x",
+		eui64[6], eui64[7]);
 	k_mutex_unlock(&rx_mutex);
 	return 0;
 #else
@@ -725,7 +716,7 @@ int lichen_peer_remove(const uint8_t eui64[8])
 	 * Recovery requires: lichen_lora_l2_deinit() + lichen_lora_l2_init()
 	 */
 	if (lichen_lora_l2_needs_reinit()) {
-		LOG_ERR("peer_remove rejected: LoRa L2 requires re-initialization after forced abort");
+		LOG_ERR("lichen_l2: peer_remove rejected (reinit required after abort)");
 		return -ECANCELED;
 	}
 
@@ -750,9 +741,8 @@ int lichen_peer_remove(const uint8_t eui64[8])
 	secure_zero(entry->pubkey, sizeof(entry->pubkey));
 	secure_zero(entry->eui64, sizeof(entry->eui64));
 	entry->active = false;
-	LOG_INF("Peer removed: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
-		eui64[0], eui64[1], eui64[2], eui64[3],
-		eui64[4], eui64[5], eui64[6], eui64[7]);
+	LOG_INF("lichen_l2: peer removed ..%02x:%02x",
+		eui64[6], eui64[7]);
 
 	k_mutex_unlock(&rx_mutex);
 	return 0;
@@ -828,7 +818,7 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 
 	/* SECURITY: Reject TX if interface initialization failed (project-LICHEN-1ojj.2) */
 	if (atomic_get(&iface_init_failed)) {
-		LOG_ERR("TX rejected: interface initialization failed");
+		LOG_ERR("lichen_l2: TX rejected (init failed)");
 		return -ENODEV;
 	}
 
@@ -839,12 +829,12 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 	 * before lichen_l2_iface_init() completes.
 	 */
 	if (!atomic_get(&link_ctx_initialized)) {
-		LOG_WRN("TX attempted before link_ctx initialized");
+		LOG_WRN("lichen_l2: TX rejected (link_ctx not ready)");
 		return -EAGAIN;
 	}
 
 	if (!lichen_lora_l2_is_running()) {
-		LOG_WRN("LoRa L2 not running");
+		LOG_WRN("lichen_l2: TX rejected (LoRa L2 not running)");
 		return -ENETDOWN;
 	}
 
@@ -852,12 +842,13 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 	size_t pkt_len = net_pkt_get_len(pkt);
 
 	if (pkt_len > sizeof(tx_ipv6_buf)) {
-		LOG_ERR("Packet too large: %zu > %zu", pkt_len, sizeof(tx_ipv6_buf));
+		LOG_ERR("lichen_l2: TX pkt too large (%zu > %zu bytes)",
+			pkt_len, sizeof(tx_ipv6_buf));
 		return -EMSGSIZE;
 	}
 
 	if (pkt_len < IPV6_BASE_HDR_LEN) {
-		LOG_ERR("Packet too small for IPv6: %zu", pkt_len);
+		LOG_ERR("lichen_l2: TX pkt too small for IPv6 (%zu bytes)", pkt_len);
 		return -EINVAL;
 	}
 
@@ -877,12 +868,12 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 	net_pkt_cursor_init(pkt);
 	ret = net_pkt_read(pkt, tx_ipv6_buf, pkt_len);
 	if (ret < 0) {
-		LOG_ERR("Failed to linearize packet: %d", ret);
+		LOG_ERR("lichen_l2: TX linearize failed (%d)", ret);
 		k_mutex_unlock(&tx_mutex);
 		return ret;
 	}
 
-	LOG_DBG("TX IPv6 packet: %zu bytes", pkt_len);
+	LOG_DBG("lichen_l2: TX IPv6 %zu bytes", pkt_len);
 
 #if HAVE_LICHEN_LINK
 	/*
@@ -910,7 +901,7 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 	ret = lichen_link_tx(&link_ctx, tx_ipv6_buf, pkt_len, NULL,
 			     tx_frame_buf, &frame_len);
 	if (ret < 0) {
-		LOG_ERR("Frame build failed: %s (%d)",
+		LOG_ERR("lichen_l2: TX frame build failed: %s (%d)",
 			lichen_link_strerror(ret), ret);
 		k_mutex_unlock(&tx_mutex);
 		return ret;
@@ -918,17 +909,17 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 
 	/* SECURITY: Validate frame_len before using it (project-LICHEN-i1gk.91) */
 	if (frame_len == 0) {
-		LOG_ERR("lichen_link_tx returned zero-length frame");
+		LOG_ERR("lichen_l2: TX returned zero-length frame");
 		k_mutex_unlock(&tx_mutex);
 		return -EINVAL;
 	}
 	if (frame_len > sizeof(tx_frame_buf)) {
-		LOG_ERR("lichen_link_tx returned oversized frame: %zu", frame_len);
+		LOG_ERR("lichen_l2: TX returned oversized frame (%zu bytes)", frame_len);
 		k_mutex_unlock(&tx_mutex);
 		return -EOVERFLOW;
 	}
 
-	LOG_DBG("LICHEN frame: %zu bytes", frame_len);
+	LOG_DBG("lichen_l2: TX frame %zu bytes", frame_len);
 
 	/* Send via LoRa */
 	ret = lichen_lora_l2_tx(tx_frame_buf, frame_len);
@@ -940,7 +931,7 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 	k_mutex_unlock(&tx_mutex);
 
 	if (ret < 0) {
-		LOG_ERR("LoRa TX failed: %d", ret);
+		LOG_ERR("lichen_l2: LoRa TX failed (%d)", ret);
 		return ret;
 	}
 
@@ -971,7 +962,7 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 
 	/* SECURITY: Reject enable if interface initialization failed (project-LICHEN-1ojj.2) */
 	if (atomic_get(&iface_init_failed)) {
-		LOG_ERR("Enable rejected: interface initialization failed");
+		LOG_ERR("lichen_l2: enable rejected (init failed)");
 		return -ENODEV;
 	}
 
@@ -986,12 +977,11 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 	 * which reinitializes all mutexes and state.
 	 */
 	if (lichen_lora_l2_needs_reinit()) {
-		LOG_ERR("Enable rejected: LoRa L2 requires re-initialization after forced abort. "
-			"Call lichen_lora_l2_deinit() then lichen_lora_l2_init()");
+		LOG_ERR("lichen_l2: enable rejected (reinit required after abort)");
 		return -ECANCELED;
 	}
 
-	LOG_INF("LICHEN L2 %s", state ? "enabled" : "disabled");
+	LOG_INF("lichen_l2: %s", state ? "enabled" : "disabled");
 
 	if (state) {
 #if HAVE_LICHEN_LINK
@@ -1025,7 +1015,7 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 			const uint8_t *eui64_ptr = lichen_lora_l2_get_eui64();
 			if (eui64_ptr == NULL) {
 				/* lichen_lora_l2_get_eui64() logs the specific error */
-				LOG_ERR("Cannot re-init link_ctx: LoRa L2 not initialized");
+				LOG_ERR("lichen_l2: cannot re-init link_ctx (LoRa L2 not initialized)");
 				k_mutex_unlock(&rx_mutex);
 				k_mutex_unlock(&tx_mutex);
 				return -ENODEV;
@@ -1118,7 +1108,7 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		if (ret == -ECANCELED) {
 			int deinit_ret = lichen_lora_l2_deinit();
 			if (deinit_ret != 0) {
-				LOG_ERR("deinit after abort failed: %d", deinit_ret);
+				LOG_ERR("lichen_l2: deinit after abort failed (%d)", deinit_ret);
 			}
 		}
 		/*
@@ -1149,8 +1139,7 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 */
 		k_mutex_lock(&tx_mutex, K_FOREVER);
 		if (k_mutex_lock(&rx_mutex, K_MSEC(100)) != 0) {
-			LOG_WRN("rx_mutex acquisition timed out - reinitializing "
-				"(thread may have been aborted while holding it)");
+			LOG_DBG("lichen_l2: rx_mutex timeout, reinitializing (possible aborted thread)");
 			k_mutex_init(&rx_mutex);
 			k_mutex_lock(&rx_mutex, K_FOREVER);
 		}
@@ -1308,7 +1297,7 @@ static void lora_rx_callback(const uint8_t *data, size_t len,
 	 * (project-LICHEN-rwio.11)
 	 */
 	if (lichen_iface == NULL || atomic_get(&iface_init_failed)) {
-		LOG_WRN("Interface not ready");
+		LOG_WRN("lichen_l2: RX callback ignored (interface not ready)");
 		return;
 	}
 
@@ -1338,7 +1327,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 	/* iface guaranteed non-NULL by Zephyr NET_DEVICE_INIT */
 	int ret;
 
-	LOG_INF("Initializing LICHEN L2 interface");
+	LOG_INF("lichen_l2: initializing interface");
 
 	/*
 	 * Do NOT clear iface_init_failed here (project-LICHEN-i1gk.63).
@@ -1362,7 +1351,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 	/* Initialize LoRa driver */
 	ret = lichen_lora_l2_init();
 	if (ret < 0) {
-		LOG_ERR("LoRa L2 init failed: %d", ret);
+		LOG_ERR("lichen_l2: LoRa L2 init failed (%d)", ret);
 		atomic_set(&iface_init_failed, 1);
 		return;
 	}
@@ -1376,7 +1365,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 */
 	const uint8_t *eui64 = lichen_lora_l2_get_eui64();
 	if (eui64 == NULL) {
-		LOG_ERR("Failed to get EUI-64 from LoRa L2");
+		LOG_ERR("lichen_l2: failed to get EUI-64 from LoRa L2");
 		atomic_set(&iface_init_failed, 1);
 		return;
 	}
@@ -1392,7 +1381,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 	ret = net_if_set_link_addr(iface, iface_link_addr, LICHEN_L2_ADDR_LEN,
 				   NET_LINK_IEEE802154);
 	if (ret < 0) {
-		LOG_ERR("net_if_set_link_addr failed: %d", ret);
+		LOG_ERR("lichen_l2: net_if_set_link_addr failed (%d)", ret);
 		atomic_set(&iface_init_failed, 1);
 		return;
 	}
@@ -1484,7 +1473,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * late init failure rather than a true invariant violation.
 	 */
 	if (lichen_iface != NULL) {
-		LOG_ERR("lichen_iface already set (init requires reboot after failure)");
+		LOG_ERR("lichen_l2: iface already set (init requires reboot after failure)");
 		atomic_set(&iface_init_failed, 1);
 		return;
 	}
@@ -1515,9 +1504,9 @@ void lichen_l2_iface_init(struct net_if *iface)
 	}
 
 #if HAVE_LICHEN_LINK
-	LOG_INF("LICHEN L2 interface initialized (full framing)");
+	LOG_INF("lichen_l2: initialized (full framing)");
 #else
-	LOG_WRN("LICHEN L2 interface initialized (RAW MODE - no framing/crypto)");
+	LOG_WRN("lichen_l2: initialized (RAW MODE - no framing/crypto)");
 #endif
 	return;
 
@@ -1612,32 +1601,25 @@ void lichen_l2_reinit_after_abort(void)
 	 * 3. This function is INTERNAL-ONLY (called exclusively from deinit())
 	 *
 	 * The weaker check is acceptable because:
-	 * - The dangerous case (RUNNING) is caught and panics
+	 * - The dangerous case (RUNNING) is caught and returns early
 	 * - STOPPED: Caller made a logic error, but mutex is valid - reinit is harmless
 	 * - UNINIT: Mutex was never corrupted - reinit is harmless
 	 * - ABORTED: This is the intended state before deinit transitions to DEINITING
 	 * - DEINITING: Correct state
 	 *
-	 * Only RUNNING would corrupt state, and that panics.
+	 * Only RUNNING would corrupt state, and that is rejected.
 	 */
 	if (lichen_lora_l2_is_running()) {
-		LOG_ERR("SECURITY: lichen_l2_reinit_after_abort called while "
-			"module is running - refusing to corrupt mutex");
-		k_panic();
+		LOG_ERR("lichen_l2: reinit_after_abort called while running (caller bug)");
+		return;  /* Don't corrupt mutex; caller must stop first */
 	}
 
-	int ret = k_mutex_init(&rx_mutex);
-	if (ret != 0) {
-		LOG_ERR("rx_mutex reinit failed: %d - cannot safely continue", ret);
-		/*
-		 * SECURITY: If mutex reinit fails, the system is in an
-		 * unrecoverable state. Continuing would risk deadlocks or
-		 * undefined behavior. Panic is the only safe option.
-		 * (project-LICHEN-tvfm.2)
-		 */
-		k_panic();
-	}
-	LOG_DBG("rx_mutex reinitialized after abort recovery");
+	/*
+	 * k_mutex_init() cannot fail in kernel mode (only in userspace syscall path).
+	 * Cast to void to suppress unused-result warnings.
+	 */
+	(void)k_mutex_init(&rx_mutex);
+	LOG_DBG("lichen_l2: rx_mutex reinitialized after abort recovery");
 }
 
 void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
@@ -1648,28 +1630,28 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 
 	/* Validate required parameters (project-LICHEN-ybal.28) */
 	if (iface == NULL) {
-		LOG_ERR("lichen_l2_input: iface is NULL");
+		LOG_ERR("lichen_l2: input iface is NULL");
 		return;
 	}
 	if (data == NULL) {
-		LOG_ERR("lichen_l2_input: data is NULL");
+		LOG_ERR("lichen_l2: input data is NULL");
 		return;
 	}
 	/* Reject empty frames before taking mutex (project-LICHEN-1ojj.7) */
 	if (len == 0) {
-		LOG_WRN("RX: empty frame ignored");
+		LOG_WRN("lichen_l2: RX empty frame ignored");
 		return;
 	}
 	if (len < LICHEN_MIN_FRAME_LEN) {
-		LOG_DBG("RX: frame too short (%zu < %d)", len, LICHEN_MIN_FRAME_LEN);
+		LOG_DBG("lichen_l2: RX frame too short (%zu < %d bytes)", len, LICHEN_MIN_FRAME_LEN);
 		return;
 	}
 	if (len > MAX_LORA_FRAME) {
-		LOG_WRN("RX: frame too large (%zu > %d)", len, MAX_LORA_FRAME);
+		LOG_WRN("lichen_l2: RX frame too large (%zu > %d bytes)", len, MAX_LORA_FRAME);
 		return;
 	}
 
-	LOG_DBG("RX: %zu bytes, RSSI=%d, SNR=%d", len, rssi, snr);
+	LOG_DBG("lichen_l2: RX %zu bytes (RSSI %d dBm, SNR %d dB)", len, rssi, snr);
 
 	k_mutex_lock(&rx_mutex, K_FOREVER);
 
@@ -1680,7 +1662,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * arrives during early startup before lichen_l2_iface_init() completes.
 	 */
 	if (!atomic_get(&link_ctx_initialized)) {
-		LOG_WRN("RX before link_ctx initialized - dropping frame");
+		LOG_WRN("lichen_l2: RX before link_ctx initialized, dropping");
 		k_mutex_unlock(&rx_mutex);
 		return;
 	}
@@ -1759,7 +1741,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	ret = peer_try_all_pubkeys(&rx_ctx, &replay_table, data, len,
 				   rx_ipv6_buf, &ipv6_len, src_eui64);
 	if (ret < 0) {
-		LOG_WRN("Frame RX failed: %s (%d)",
+		LOG_WRN("lichen_l2: RX failed: %s (%d)",
 			lichen_link_strerror(ret), ret);
 		secure_zero(rx_link_key, sizeof(rx_link_key));
 		k_mutex_unlock(&rx_mutex);
@@ -1768,7 +1750,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 
 	/* SECURITY: Validate ipv6_len before using it (project-LICHEN-3pun.5) */
 	if (ipv6_len > sizeof(rx_ipv6_buf)) {
-		LOG_ERR("lichen_link_rx returned oversized packet: %zu", ipv6_len);
+		LOG_ERR("lichen_l2: RX returned oversized packet (%zu bytes)", ipv6_len);
 		secure_zero(rx_link_key, sizeof(rx_link_key));
 		k_mutex_unlock(&rx_mutex);
 		return;
@@ -1785,17 +1767,15 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * 4. Per-packet tracing is essential for mesh debugging; truncated addresses
 	 *    would make multi-hop routing analysis impractical
 	 */
-	LOG_DBG("Decompressed %zu bytes from %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
-		ipv6_len,
-		src_eui64[0], src_eui64[1], src_eui64[2], src_eui64[3],
-		src_eui64[4], src_eui64[5], src_eui64[6], src_eui64[7]);
+	LOG_DBG("lichen_l2: RX decompressed %zu bytes from ..%02x:%02x",
+		ipv6_len, src_eui64[6], src_eui64[7]);
 
 	/* SECURITY: Zero local key copy before any exit (project-LICHEN-1ojj.28) */
 	secure_zero(rx_link_key, sizeof(rx_link_key));
 #else
 	/* No LICHEN link layer - treat as raw IPv6 */
 	if (len > sizeof(rx_ipv6_buf)) {
-		LOG_WRN("Packet too large: %zu", len);
+		LOG_WRN("lichen_l2: RX packet too large (%zu bytes)", len);
 		k_mutex_unlock(&rx_mutex);
 		return;
 	}
@@ -1827,7 +1807,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 		iface, ipv6_len, AF_INET6, 0,
 		K_MSEC(CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS));
 	if (pkt == NULL) {
-		LOG_ERR("Failed to allocate RX packet");
+		LOG_ERR("lichen_l2: RX packet alloc failed");
 		k_mutex_unlock(&rx_mutex);
 		return;
 	}
@@ -1843,7 +1823,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 */
 	ret = net_pkt_write(pkt, rx_ipv6_buf, ipv6_len);
 	if (ret < 0) {
-		LOG_ERR("Failed to write packet data: %d", ret);
+		LOG_ERR("lichen_l2: RX packet write failed (%d)", ret);
 		net_pkt_unref(pkt);
 		k_mutex_unlock(&rx_mutex);
 		return;
@@ -1862,11 +1842,11 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 */
 	ret = net_recv_data(iface, pkt);
 	if (ret < 0) {
-		LOG_ERR("net_recv_data failed: %d", ret);
+		LOG_ERR("lichen_l2: net_recv_data failed (%d)", ret);
 		net_pkt_unref(pkt);
 		return;
 	}
 
 	/* pkt ownership transferred to network stack - do not access */
-	LOG_DBG("Injected %zu byte IPv6 packet into stack", ipv6_len);
+	LOG_DBG("lichen_l2: injected %zu bytes to IPv6 stack", ipv6_len);
 }
