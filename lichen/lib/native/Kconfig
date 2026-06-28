@@ -1,0 +1,28 @@
+config LICHEN_NATIVE
+	bool "LICHEN Native protocol library"
+	depends on UART_INTERRUPT_DRIVEN
+	help
+	  Enables the LICHEN Native framing library (0xC1 + CBOR over
+	  USB CDC-ACM or serial UART).  Requires lichen,native-uart in
+	  the board's chosen node.
+
+if LICHEN_NATIVE
+
+config LICHEN_NATIVE_TX_BUF_SIZE
+	int "TX scratch buffer (bytes)"
+	default 512
+	help
+	  Scratch buffer used to encode one outgoing CBOR frame.
+	  Must be large enough for the largest message you send.
+
+config LICHEN_NATIVE_RX_BUF_SIZE
+	int "RX reassembly buffer (bytes)"
+	default 512
+	help
+	  Buffer for incoming frame payload reassembly.
+
+config LICHEN_NATIVE_RX_STACK_SIZE
+	int "RX thread stack size (bytes)"
+	default 1024
+
+endif # LICHEN_NATIVE

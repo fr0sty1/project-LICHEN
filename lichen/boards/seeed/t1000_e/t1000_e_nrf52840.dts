@@ -121,25 +121,28 @@ zephyr_udc0: &usbd {
 		#address-cells = <1>;
 		#size-cells = <1>;
 
-		boot_partition: partition@0 {
+		/*
+		 * Adafruit UF2 bootloader layout for Seeed T1000-E:
+		 *   0x0000-0x0FFF  Nordic MBR (protected, not writeable via UF2)
+		 *   0x1000-0x25FFF SoftDevice placeholder (unused, 148 KB)
+		 *   0x26000        APP_START_ADDR — where the Adafruit bootloader jumps
+		 *   0xEA000+       Adafruit UF2 bootloader itself
+		 */
+		boot_partition: partition@26000 {
 			label = "mcuboot";
-			reg = <0x00000000 0x0000C000>;
+			reg = <0x00026000 0x0000C000>;
 		};
-		slot0_partition: partition@c000 {
+		slot0_partition: partition@32000 {
 			label = "image-0";
-			reg = <0x0000C000 0x00067000>;
+			reg = <0x00032000 0x0005A000>;
 		};
-		slot1_partition: partition@73000 {
+		slot1_partition: partition@8c000 {
 			label = "image-1";
-			reg = <0x00073000 0x00067000>;
+			reg = <0x0008C000 0x0005A000>;
 		};
-		scratch_partition: partition@da000 {
-			label = "image-scratch";
-			reg = <0x000da000 0x0001e000>;
-		};
-		storage_partition: partition@f8000 {
+		storage_partition: partition@e6000 {
 			label = "storage";
-			reg = <0x000f8000 0x00008000>;
+			reg = <0x000e6000 0x00004000>;
 		};
 	};
 };
