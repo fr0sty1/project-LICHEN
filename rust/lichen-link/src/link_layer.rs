@@ -3,6 +3,9 @@
 use std::collections::HashMap;
 use std::vec::Vec;
 
+#[cfg(feature = "log")]
+use log::{debug, warn};
+
 use crate::frame::{Encryption, FrameError, LichenFrame, Signature};
 use crate::identity::{Identity, PeerIdentity};
 use crate::keys::PublicKey;
@@ -220,6 +223,8 @@ impl LinkLayer {
         let frame = LichenFrame::from_bytes(wire)?;
 
         if !frame.signature.is_present() {
+            #[cfg(feature = "log")]
+            warn!("link_layer: received unsigned frame");
             return Err(LinkRxError::Unsigned);
         }
         if frame.payload.len() < SIGNATURE_LENGTH {
@@ -243,11 +248,19 @@ impl LinkLayer {
                 )
             })
             .cloned()
-            .ok_or(LinkRxError::UnknownSender)?;
+            .ok_or_else(|| {
+                #[cfg(feature = "log")]
+                debug!("link_layer: frame from unknown sender");
+                LinkRxError::UnknownSender
+            })?;
 
         // Key pinning: first-contact pins IID→pubkey; subsequent frames must match.
         match self.pinned.get(&sender.iid) {
-            Some(pk) if *pk != sender.pubkey => return Err(LinkRxError::KeyChange),
+            Some(pk) if *pk != sender.pubkey => {
+                #[cfg(feature = "log")]
+                warn!("link_layer: key change detected for IID {:02x?}", &sender.iid[6..]);
+                return Err(LinkRxError::KeyChange);
+            }
             None => {
                 self.pinned.insert(sender.iid, sender.pubkey);
             }
@@ -258,6 +271,12 @@ impl LinkLayer {
             .replay
             .check_and_update(&sender.pubkey, frame.epoch, frame.seqnum)
         {
+            #[cfg(feature = "log")]
+            debug!(
+                "link_layer: replay detected (epoch={}, seq={})",
+                frame.epoch,
+                u16::from(frame.seqnum)
+            );
             return Err(LinkRxError::Replay);
         }
 

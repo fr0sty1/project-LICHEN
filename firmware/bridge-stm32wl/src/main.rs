@@ -166,9 +166,21 @@ async fn main(_spawner: Spawner) {
     };
 
     // Create LoRa PHY instance
-    let mut lora = LoRa::new(Sx126x::new(spi_device, iv, radio_config), false, Delay)
-        .await
-        .expect("Failed to create LoRa instance");
+    let mut lora = match LoRa::new(Sx126x::new(spi_device, iv, radio_config), false, Delay).await {
+        Ok(lora) => lora,
+        Err(e) => {
+            error!("LoRa init failed: {:?}", defmt::Debug2Format(&e));
+            loop {
+                for _ in 0..3 {
+                    led.set_high();
+                    Timer::after_millis(100).await;
+                    led.set_low();
+                    Timer::after_millis(100).await;
+                }
+                Timer::after_millis(500).await;
+            }
+        }
+    };
 
     info!("SubGHz radio initialized");
 
@@ -179,14 +191,26 @@ async fn main(_spawner: Spawner) {
 
     // Create modulation parameters using lora-phy API
     // LICHEN spec: SF10, 125kHz, CR 4/5
-    let mdltn_params = lora
-        .create_modulation_params(
-            SpreadingFactor::_10,
-            Bandwidth::_125KHz,
-            CodingRate::_4_5,
-            LORA_FREQUENCY_HZ,
-        )
-        .expect("Failed to create modulation params");
+    let mdltn_params = match lora.create_modulation_params(
+        SpreadingFactor::_10,
+        Bandwidth::_125KHz,
+        CodingRate::_4_5,
+        LORA_FREQUENCY_HZ,
+    ) {
+        Ok(params) => params,
+        Err(e) => {
+            error!("Modulation params failed: {:?}", defmt::Debug2Format(&e));
+            loop {
+                for _ in 0..3 {
+                    led.set_high();
+                    Timer::after_millis(100).await;
+                    led.set_low();
+                    Timer::after_millis(100).await;
+                }
+                Timer::after_millis(500).await;
+            }
+        }
+    };
 
     info!(
         "Radio config: SF10, 125kHz, {} MHz",
@@ -194,16 +218,28 @@ async fn main(_spawner: Spawner) {
     );
 
     // Create RX packet parameters
-    let rx_pkt_params = lora
-        .create_rx_packet_params(
-            8,                        // preamble_length
-            false,                    // implicit_header
-            MAX_PAYLOAD_LEN as u8,    // max_payload_length
-            true,                     // crc_on
-            false,                    // iq_inverted
-            &mdltn_params,
-        )
-        .expect("Failed to create RX packet params");
+    let rx_pkt_params = match lora.create_rx_packet_params(
+        8,                        // preamble_length
+        false,                    // implicit_header
+        MAX_PAYLOAD_LEN as u8,    // max_payload_length
+        true,                     // crc_on
+        false,                    // iq_inverted
+        &mdltn_params,
+    ) {
+        Ok(params) => params,
+        Err(e) => {
+            error!("RX packet params failed: {:?}", defmt::Debug2Format(&e));
+            loop {
+                for _ in 0..3 {
+                    led.set_high();
+                    Timer::after_millis(100).await;
+                    led.set_low();
+                    Timer::after_millis(100).await;
+                }
+                Timer::after_millis(500).await;
+            }
+        }
+    };
 
     // Prepare for continuous RX
     if let Err(e) = lora
@@ -234,15 +270,20 @@ async fn main(_spawner: Spawner) {
                 led.set_high();
 
                 // Create TX packet params (payload_length set to 0 initially, prepare_for_tx sets it)
-                let mut tx_pkt_params = lora
-                    .create_tx_packet_params(
-                        8,      // preamble_length
-                        false,  // implicit_header
-                        true,   // crc_on
-                        false,  // iq_inverted
-                        &mdltn_params,
-                    )
-                    .expect("Failed to create TX packet params");
+                let mut tx_pkt_params = match lora.create_tx_packet_params(
+                    8,      // preamble_length
+                    false,  // implicit_header
+                    true,   // crc_on
+                    false,  // iq_inverted
+                    &mdltn_params,
+                ) {
+                    Ok(params) => params,
+                    Err(e) => {
+                        error!("TX packet params failed: {:?}", defmt::Debug2Format(&e));
+                        led.set_low();
+                        continue;
+                    }
+                };
 
                 match lora
                     .prepare_for_tx(&mdltn_params, &mut tx_pkt_params, 14, tx_pkt.as_slice())
