@@ -67,11 +67,12 @@ LOG_MODULE_REGISTER(lichen_l2, CONFIG_LICHEN_L2_LOG_LEVEL);
  *               struct lichen_link_rx_ctx, struct lichen_link_tx_ctx
  *   link_ctx.h: LICHEN_LINK_KEY_LEN, struct lichen_link_ctx, lichen_link_init(),
  *               lichen_link_cleanup()
- *   schc.h:     lichen_schc_init()
+ *   schc.h:     lichen_schc_compress(), lichen_schc_decompress() (stateless - no init)
  */
 #if defined(CONFIG_LICHEN_LINK)
 #include <lichen/link.h>
 #include <lichen/link_ctx.h>
+#include <lichen/replay.h>
 #include <lichen/schc.h>
 #define HAVE_LICHEN_LINK 1
 #else
@@ -95,6 +96,20 @@ BUILD_ASSERT(HAVE_LICHEN_LINK,
 	     "security, compression, or interoperability. Enable LICHEN_LINK "
 	     "in prj.conf or menuconfig.");
 
+/*
+ * Compile-time assertion: lichen_peer_add() API array sizes must match constants.
+ *
+ * The function signature uses array syntax (eui64[8], pubkey[32]) but C arrays
+ * decay to pointers, providing no runtime size enforcement. These BUILD_ASSERTs
+ * verify the documented sizes match the internal constants used by memcpy().
+ * If the constants change, the API documentation and signature must be updated.
+ * (project-LICHEN-tvfm.7)
+ */
+BUILD_ASSERT(LICHEN_EUI64_LEN == 8,
+	     "lichen_peer_add() eui64[8] size mismatch: update API if LICHEN_EUI64_LEN changed");
+BUILD_ASSERT(LICHEN_L2_PUBKEY_LEN == 32,
+	     "lichen_peer_add() pubkey[32] size mismatch: update API if LICHEN_L2_PUBKEY_LEN changed");
+
 /* Maximum frame size for LoRa */
 #define MAX_LORA_FRAME 255
 
@@ -112,6 +127,13 @@ BUILD_ASSERT(HAVE_LICHEN_LINK,
  *
  * SECURITY: Early rejection of runt frames prevents out-of-bounds reads
  * in lichen_link_rx() before MIC validation can occur.
+ *
+ * MIC size note: 32-bit MIC (4 bytes) is the smallest supported MIC size.
+ * Frames using 64-bit MIC (8 bytes) are always longer than this minimum.
+ * If a security level requires 64-bit MIC but the frame only has 32-bit,
+ * the frame passes this length check but fails during MIC verification
+ * in lichen_link_rx(). This is correct - length check is a fast early-
+ * reject for malformed frames, not a security policy enforcement point.
  */
 #define LICHEN_MIN_FRAME_LEN 9
 
@@ -155,6 +177,16 @@ BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
  *
  * SECURITY: If LICHEN_SIG_LEN increases, review LICHEN_LORA_FRAME_OVERHEAD
  * to ensure signed frames still fit within the LoRa PHY limit.
+ *
+ * Constant naming (project-LICHEN-tvfm.106, project-LICHEN-tvfm.107):
+ * - LICHEN_FRAME_BASE_OVERHEAD (9 bytes): Minimum frame size for validation.
+ *   Used in LICHEN_MIN_FRAME_LEN to reject malformed runt frames early.
+ *   Does NOT include signature (signature is conditional on has_key).
+ * - LICHEN_LORA_FRAME_OVERHEAD (55 bytes): Conservative MTU overhead.
+ *   Always reserves space for signature even when not used. This is
+ *   intentional: a static MTU simplifies buffer sizing and avoids
+ *   dynamic MTU changes when signing keys are provisioned. The 46-byte
+ *   overhead when unsigned is acceptable for the simplicity benefit.
  */
 #define LICHEN_FRAME_BASE_OVERHEAD \
 	(LICHEN_FRAME_LENGTH_FIELD + \
@@ -188,10 +220,28 @@ BUILD_ASSERT(LICHEN_FRAME_BASE_OVERHEAD == 9,
  *
  * Buffer sizing: LICHEN_L2_MTU + IPV6_BASE_HDR_LEN = 240 bytes.
  *
- * LIMITATION: This assumes no IPv6 extension headers. LICHEN's SCHC rules
- * (schc/rules.py) are defined for specific protocol stacks (CoAP, ICMPv6,
- * RPL) without extension headers. Packets with extension headers fall back
- * to rule 255 (uncompressed) and will be rejected by MTU check.
+ * LIMITATION (project-LICHEN-tvfm.97): IPv6 extension headers are NOT supported.
+ *
+ * These buffers are sized for base IPv6 header (40 bytes) + payload only.
+ * Packets with extension headers (Hop-by-Hop, Routing, Fragment, Destination,
+ * OSCORE Object-Security, etc.) will be dropped:
+ *
+ * TX path: Oversized packets fail the pkt_len > sizeof(tx_ipv6_buf) check
+ *          in lichen_l2_send() with -EMSGSIZE.
+ *
+ * RX path: SCHC decompression produces a packet larger than rx_ipv6_buf,
+ *          causing lichen_link_rx() to fail or the ipv6_len > sizeof check
+ *          to reject the packet.
+ *
+ * This is by design: LICHEN's SCHC rules (schc/rules.py) are defined for
+ * specific protocol stacks (CoAP/UDP, ICMPv6, RPL) without extension headers.
+ * Packets with extension headers fall back to SCHC rule 255 (uncompressed),
+ * which exceeds the 200-byte MTU and gets rejected.
+ *
+ * To support extension headers in the future:
+ * 1. Add a dedicated SCHC rule in schc/rules.py for the specific extension
+ * 2. Increase buffer sizes here (add extension header size to IPV6_BASE_HDR_LEN)
+ * 3. Potentially update LICHEN_L2_MTU in lora_l2.h
  *
  * FIXME(OSCORE): When OSCORE support is added, its headers will need:
  * 1. A dedicated SCHC rule in schc/rules.py
@@ -199,31 +249,155 @@ BUILD_ASSERT(LICHEN_FRAME_BASE_OVERHEAD == 9,
  * 3. Update LICHEN_L2_MTU in lora_l2.h
  * Search for "FIXME(OSCORE)" to find all locations needing update.
  */
+/*
+ * TX/RX scratch buffers and their protecting mutexes.
+ *
+ * LOCK ORDER (project-LICHEN-tvfm.25): When acquiring BOTH mutexes, tx_mutex
+ * MUST be acquired before rx_mutex. Violating this order causes ABBA deadlock.
+ * This ordering is enforced in lichen_l2_enable() (enable and disable paths)
+ * and any future code that needs both locks must follow the same order.
+ *
+ * Single-mutex acquisitions (e.g., tx_mutex in lichen_l2_send(), rx_mutex in
+ * lichen_l2_input()) do not create deadlock risk and are fine on their own.
+ */
+/*
+ * TX/RX buffers for packet linearization and framing.
+ *
+ * PORTABILITY NOTE (project-LICHEN-i1gk.95): These buffers are not cache-line
+ * aligned. On Cortex-M0/M3/M4 (no cache) this is fine. On Cortex-M7/M33 with
+ * cache, if the LoRa driver uses DMA, these buffers may need:
+ *   - __attribute__((aligned(32))) for cache-line alignment
+ *   - Cache maintenance (clean/invalidate) around DMA transfers
+ * Currently the LoRa driver abstracts DMA details, so no alignment is needed.
+ */
 static uint8_t tx_ipv6_buf[LICHEN_L2_MTU + IPV6_BASE_HDR_LEN];
 static uint8_t tx_frame_buf[MAX_LORA_FRAME];
-static K_MUTEX_DEFINE(tx_mutex);
+static K_MUTEX_DEFINE(tx_mutex);  /* Lock order: 1st (before rx_mutex) */
 
 static uint8_t rx_ipv6_buf[LICHEN_L2_MTU + IPV6_BASE_HDR_LEN];
-static K_MUTEX_DEFINE(rx_mutex);
+static K_MUTEX_DEFINE(rx_mutex);  /* Lock order: 2nd (after tx_mutex) */
 
 /* Link context for framing */
 #if HAVE_LICHEN_LINK
 static struct lichen_link_ctx link_ctx;
 /*
+ * Replay protection table for received frames.
+ *
+ * SECURITY (replay.h:100-120): Replay windows are only allocated AFTER peer
+ * authentication succeeds. This prevents a poisoning attack where an attacker
+ * floods spoofed source addresses to evict legitimate peers' replay windows
+ * via LRU eviction. Currently, signature verification is not yet implemented
+ * (peer_pubkey=NULL), so this table will accept windows for any source. Once
+ * peer authentication is wired up (project-LICHEN-j70n), replay_get() should
+ * only be called for authenticated peers.
+ */
+static struct lichen_replay_table replay_table;
+
+/*
+ * Peer table for RX signature verification.
+ *
+ * Maps EUI-64 addresses to Ed25519 public keys. Used during RX to verify
+ * Schnorr-48 signatures from known peers. Populated by EDHOC handshake
+ * or announce processing via lichen_peer_add().
+ *
+ * SECURITY: Frames from unknown peers (not in this table) are REJECTED.
+ * This is the security boundary for link-layer authentication.
+ *
+ * Protected by rx_mutex (same as link_ctx and replay_table).
+ *
+ * Memory layout note (project-LICHEN-tvfm.105): This struct has no explicit
+ * packing attribute. The compiler may insert padding after 'active' (or between
+ * fields on some architectures). lichen_peer_remove() zeros eui64 and pubkey
+ * individually via secure_zero(), which is sufficient since:
+ * 1. Padding bytes are never initialized from security-sensitive sources
+ * 2. The key material (pubkey) is explicitly cleared
+ * 3. Adding __attribute__((packed)) would hurt performance on ARM Cortex-M
+ */
+struct lichen_peer_entry {
+	uint8_t eui64[LICHEN_EUI64_LEN];
+	uint8_t pubkey[LICHEN_L2_PUBKEY_LEN];
+	/*
+	 * k_uptime_get() timestamp of last verified frame.
+	 *
+	 * SECURITY (project-LICHEN-i1gk.99): Timing uses k_uptime_get() which relies
+	 * on the kernel tick timer. On typical embedded MCUs (STM32WL, nRF52, ESP32),
+	 * this timer runs at a fixed frequency independent of CPU frequency scaling.
+	 * LICHEN targets single-core Cortex-M devices without DVFS (Dynamic Voltage
+	 * and Frequency Scaling), so timing measurements are stable.
+	 *
+	 * If porting to a platform with aggressive power management (variable CPU
+	 * clock, tickless idle), verify that:
+	 * 1. k_uptime_get() uses a fixed-frequency timer source (e.g., LPTIM, RTC)
+	 * 2. Replay window aging (if implemented) accounts for timer drift
+	 */
+	int64_t last_seen;
+	bool active;
+};
+
+/*
+ * Compile-time validation of peer table configuration.
+ *
+ * CONFIG_LICHEN_LINK_MAX_NEIGHBORS sets the static peer_table size.
+ * Constraints (from lichen/subsys/lichen/link/Kconfig):
+ * - Range: 4-64 (enforced by Kconfig)
+ * - Memory: ~56 bytes per entry (8 EUI-64 + 32 pubkey + 8 last_seen + 1 active + padding)
+ *
+ * At max (64 neighbors): ~3.6 KB RAM for peer table alone, plus ~1.3 KB
+ * for replay windows (CONFIG_LICHEN_LINK_MAX_NEIGHBORS entries in replay_table).
+ *
+ * The upper bound (64) balances RAM budget against mesh network size.
+ * Most deployments need far fewer peers (8-16 is typical for a mesh node).
+ * (project-LICHEN-tvfm.33)
+ */
+BUILD_ASSERT(CONFIG_LICHEN_LINK_MAX_NEIGHBORS >= 4,
+	     "CONFIG_LICHEN_LINK_MAX_NEIGHBORS must be at least 4 for basic mesh operation");
+BUILD_ASSERT(CONFIG_LICHEN_LINK_MAX_NEIGHBORS <= 64,
+	     "CONFIG_LICHEN_LINK_MAX_NEIGHBORS exceeds maximum (64) - reduce to limit RAM usage");
+
+static struct lichen_peer_entry peer_table[CONFIG_LICHEN_LINK_MAX_NEIGHBORS];
+
+/*
  * Guards access to link_ctx before initialization completes.
  * SECURITY: atomic_t prevents torn reads under aggressive optimization.
- * atomic_set() provides release semantics (stores to link_ctx complete first),
- * atomic_get() provides acquire semantics (link_ctx reads happen after).
+ *
+ * PLATFORM CONSTRAINT: This code requires single-core execution.
+ * Zephyr's atomic_set()/atomic_get() do NOT provide memory ordering
+ * guarantees (no release/acquire semantics). On single-core platforms,
+ * program order guarantees visibility - stores complete before subsequent
+ * instructions execute on the same core. Multi-core requires explicit
+ * memory barriers (e.g., __DMB(), atomic_thread_fence) which are not
+ * used here.
+ *
+ * BUILD_ASSERT below enforces this constraint at compile time.
+ * (project-LICHEN-tvfm.112)
  */
+#if defined(CONFIG_SMP) || (defined(CONFIG_MP_MAX_NUM_CPUS) && CONFIG_MP_MAX_NUM_CPUS > 1)
+BUILD_ASSERT(0, "LICHEN L2 requires single-core: atomic_t usage lacks memory barriers. "
+		"Disable CONFIG_SMP or ensure CONFIG_MP_MAX_NUM_CPUS == 1.");
+#endif
 static atomic_t link_ctx_initialized;
 #endif
 
 /*
  * Cached interface pointer for RX callback.
  *
- * INVARIANT (project-LICHEN-ybal.4): Set once, never cleared. The net_if is
- * statically allocated with device lifetime. Do NOT clear this pointer —
- * lora_rx_callback() reads it without a mutex.
+ * INVARIANT (project-LICHEN-ybal.4, project-LICHEN-0zj6.13): Write-once-read-many.
+ * Set exactly once in lichen_l2_iface_init(), never cleared. The net_if is
+ * statically allocated with device lifetime. Do NOT clear this pointer.
+ *
+ * SYNCHRONIZATION: lora_rx_callback() reads this without a mutex. This is safe
+ * because:
+ * 1. The callback is registered (lichen_lora_l2_set_rx_callback) AFTER the
+ *    pointer is written, establishing happens-before via the callback
+ *    registration itself (which uses internal synchronization).
+ * 2. On single-core Cortex-M (the target platform), store ordering is
+ *    naturally guaranteed by program order.
+ * 3. The reader also checks atomic_get(&iface_init_failed) which is set AFTER
+ *    lichen_iface on the error path, providing additional ordering.
+ *
+ * For multi-core portability, this could use atomic_ptr_set/get, but Zephyr
+ * does not provide atomic pointer operations for all architectures. The current
+ * design is correct for the target hardware.
  */
 static struct net_if *lichen_iface;
 
@@ -251,6 +425,343 @@ static atomic_t iface_init_failed;
  */
 static uint8_t iface_link_addr[LICHEN_L2_ADDR_LEN];
 
+/* ─── Peer table management ──────────────────────────────────────────────── */
+
+#if HAVE_LICHEN_LINK
+/**
+ * @brief Find peer entry by EUI-64 (internal, caller must hold rx_mutex).
+ *
+ * @param eui64 8-byte peer EUI-64 address
+ * @return Pointer to entry if found, NULL otherwise
+ */
+static struct lichen_peer_entry *peer_find_locked(const uint8_t eui64[8])
+{
+	for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
+		if (peer_table[i].active &&
+		    memcmp(peer_table[i].eui64, eui64, LICHEN_EUI64_LEN) == 0) {
+			return &peer_table[i];
+		}
+	}
+	return NULL;
+}
+
+/**
+ * @brief Find oldest (least-recently-seen) peer for eviction.
+ *
+ * Used for LRU eviction when the peer table is full (project-LICHEN-tvfm.98).
+ * Caller must hold rx_mutex.
+ *
+ * @return Index of oldest peer, or -1 if table is empty
+ */
+static int peer_find_oldest_locked(void)
+{
+	int oldest_idx = -1;
+	int64_t oldest_time = INT64_MAX;
+
+	for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
+		if (peer_table[i].active && peer_table[i].last_seen < oldest_time) {
+			oldest_time = peer_table[i].last_seen;
+			oldest_idx = (int)i;
+		}
+	}
+	return oldest_idx;
+}
+
+/**
+ * @brief Try all peers' pubkeys to verify a frame signature.
+ *
+ * Since LICHEN frames don't include sender EUI-64 in the wire format,
+ * we must try each known peer's pubkey until one verifies. This is O(n)
+ * where n is the number of peers, but n is bounded by CONFIG_LICHEN_LINK_MAX_NEIGHBORS.
+ *
+ * SECURITY: This function is the authentication boundary. Only returns success
+ * if a known peer's pubkey verifies the signature.
+ *
+ * THREAD SAFETY (project-LICHEN-tvfm.22): This function temporarily modifies
+ * ctx->peer_pubkey and ctx->peer_eui64 during iteration, restoring the saved
+ * values on error paths. This modify-then-restore pattern is safe because:
+ * 1. The ctx is a local stack variable in the caller (lichen_l2_input), not
+ *    shared global state. If this thread is preempted, no other code can
+ *    observe the partial state.
+ * 2. The caller holds rx_mutex, preventing concurrent RX operations.
+ * 3. On thread abort (the only way to exit without restoration), the entire
+ *    stack frame including ctx is discarded - there is no observable state
+ *    corruption because the stack variable ceases to exist.
+ *
+ * Context restoration note (project-LICHEN-tvfm.104): We save peer_pubkey and
+ * peer_eui64 on entry and restore them on error paths. For non-auth errors,
+ * this restoration is technically redundant (caller doesn't use ctx on error)
+ * but maintains the invariant that ctx is unmodified on failure. This makes
+ * the function contract clear: success modifies ctx, failure leaves it clean.
+ *
+ * @param ctx        RX context (peer_pubkey will be set on success)
+ * @param replay     Replay table for duplicate detection
+ * @param frame      Raw LICHEN frame bytes
+ * @param frame_len  Length of frame
+ * @param out_ipv6   Output buffer for decompressed IPv6 packet
+ * @param out_len    In: buffer size, Out: IPv6 packet length
+ * @param src_eui64  Filled with sender's EUI-64 on success
+ * @return 0 on success (peer found and verified), negative error otherwise
+ */
+static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
+				struct lichen_replay_table *replay,
+				const uint8_t *frame, size_t frame_len,
+				uint8_t *out_ipv6, size_t *out_len,
+				uint8_t src_eui64[8])
+{
+	int ret;
+	size_t saved_out_len = *out_len;
+	const uint8_t *saved_peer_pubkey = ctx->peer_pubkey;
+	const uint8_t *saved_peer_eui64 = ctx->peer_eui64;
+
+	/*
+	 * SECURITY: Constant-time peer iteration to prevent timing side-channel.
+	 *
+	 * Always iterate through ALL peers even after finding a match. This
+	 * prevents an attacker from inferring which peer index matched based
+	 * on how quickly the function returns.
+	 *
+	 * Non-auth errors (malformed frame, replay) still abort early since
+	 * they don't leak peer identity - the frame is rejected before peer
+	 * matching completes.
+	 *
+	 * FUTURE (project-LICHEN-i1gk.76): Iteration order is deterministic
+	 * (index 0, 1, 2, ...). Cache/memory timing may still leak the matching
+	 * peer's table position via microarchitectural side channels. For
+	 * security-critical deployments, consider randomizing the iteration
+	 * start index (start = random % count, wrap around).
+	 */
+	int found_idx = -1;
+	int found_ret = -LICHEN_EAUTH;
+	size_t found_out_len = 0;
+
+	for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
+		if (!peer_table[i].active) {
+			continue;
+		}
+
+		/* Try this peer's pubkey */
+		ctx->peer_pubkey = peer_table[i].pubkey;
+		ctx->peer_eui64 = peer_table[i].eui64;
+		*out_len = saved_out_len;
+
+		ret = lichen_link_rx(ctx, replay, frame, frame_len,
+				     out_ipv6, out_len, src_eui64);
+		if (ret == 0) {
+			/*
+			 * Signature verified - record but don't return yet.
+			 * Continue checking all remaining peers for constant time.
+			 * Save out_len now since loop continues resetting it.
+			 */
+			if (found_idx < 0) {
+				found_idx = (int)i;
+				found_ret = 0;
+				found_out_len = *out_len;
+			}
+			continue;
+		}
+
+		/*
+		 * SECURITY: Abort on non-auth errors (malformed frame, replay).
+		 * These don't leak peer identity - the frame is rejected before
+		 * peer matching completes.
+		 */
+		if (ret != -LICHEN_EAUTH) {
+			ctx->peer_pubkey = saved_peer_pubkey;
+			ctx->peer_eui64 = saved_peer_eui64;
+			*out_len = saved_out_len;
+			return ret;
+		}
+	}
+
+	/* Return result after checking all peers */
+	if (found_idx >= 0) {
+		/* Update last_seen for LRU eviction (project-LICHEN-tvfm.98) */
+		peer_table[found_idx].last_seen = k_uptime_get();
+
+		/* Restore context and out_len to the matched peer's values */
+		ctx->peer_pubkey = peer_table[found_idx].pubkey;
+		ctx->peer_eui64 = peer_table[found_idx].eui64;
+		*out_len = found_out_len;
+		LOG_DBG("Frame verified by peer %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
+			peer_table[found_idx].eui64[0], peer_table[found_idx].eui64[1],
+			peer_table[found_idx].eui64[2], peer_table[found_idx].eui64[3],
+			peer_table[found_idx].eui64[4], peer_table[found_idx].eui64[5],
+			peer_table[found_idx].eui64[6], peer_table[found_idx].eui64[7]);
+		return found_ret;
+	}
+
+	/* No peer's pubkey verified the signature */
+	ctx->peer_pubkey = saved_peer_pubkey;
+	ctx->peer_eui64 = saved_peer_eui64;
+	*out_len = saved_out_len;
+	return -LICHEN_EAUTH;
+}
+#endif /* HAVE_LICHEN_LINK */
+
+int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
+		    const uint8_t pubkey[LICHEN_L2_PUBKEY_LEN])
+{
+#if HAVE_LICHEN_LINK
+	/*
+	 * SECURITY: Array parameters decay to pointers - no compile-time or
+	 * runtime size enforcement. BUILD_ASSERTs at lines 108-111 verify the
+	 * array sizes in the function signature (8, 32) match our constants.
+	 * Callers MUST pass buffers of exactly these sizes; undersized buffers
+	 * cause undefined behavior (buffer overread in memcpy below).
+	 */
+	if (eui64 == NULL || pubkey == NULL) {
+		return -EINVAL;
+	}
+
+	/*
+	 * Check for prior abort BEFORE acquiring mutex (project-LICHEN-dq6n.21).
+	 *
+	 * If the lora_l2 RX thread was forcibly aborted, it may have been terminated
+	 * while holding rx_mutex (during lichen_l2_input callback processing).
+	 * Attempting to acquire rx_mutex would deadlock forever.
+	 *
+	 * Recovery requires: lichen_lora_l2_deinit() + lichen_lora_l2_init()
+	 */
+	if (lichen_lora_l2_needs_reinit()) {
+		LOG_ERR("peer_add rejected: LoRa L2 requires re-initialization after forced abort");
+		return -ECANCELED;
+	}
+
+	/*
+	 * Reject peer_add when module is not initialized (project-LICHEN-i1gk.53).
+	 *
+	 * After deinit(), the state is UNINIT. needs_reinit() returns false (state !=
+	 * ABORTED), so the check above passes. But peer_add() would populate peer_table
+	 * that gets wiped by the next init() (via memset/secure_zero). This causes
+	 * silent peer data loss. Reject early with a clear error.
+	 *
+	 * Note: is_running() returns false for UNINIT, STOPPED, ABORTED, and DEINITING.
+	 * We specifically need the "not initialized at all" case, which is UNINIT.
+	 * Using get_eui64()==NULL as a proxy for UNINIT because there's no is_initialized()
+	 * API - get_eui64() returns NULL only in UNINIT state.
+	 */
+	if (lichen_lora_l2_get_eui64() == NULL) {
+		LOG_ERR("peer_add rejected: LoRa L2 not initialized");
+		return -ENODEV;
+	}
+
+	k_mutex_lock(&rx_mutex, K_FOREVER);
+
+	/* Check if peer already exists - update pubkey if so */
+	struct lichen_peer_entry *existing = peer_find_locked(eui64);
+	if (existing != NULL) {
+		memcpy(existing->pubkey, pubkey, LICHEN_L2_PUBKEY_LEN);
+		existing->last_seen = k_uptime_get();
+		LOG_INF("Peer updated: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
+			eui64[0], eui64[1], eui64[2], eui64[3],
+			eui64[4], eui64[5], eui64[6], eui64[7]);
+		k_mutex_unlock(&rx_mutex);
+		return 0;  /* Update succeeded */
+	}
+
+	/* Find an empty slot */
+	int slot = -1;
+	for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
+		if (!peer_table[i].active) {
+			slot = (int)i;
+			break;
+		}
+	}
+
+	/*
+	 * LRU eviction when table is full (project-LICHEN-tvfm.98).
+	 *
+	 * If no empty slot, evict the least-recently-seen peer. This allows
+	 * the mesh to adapt to topology changes without manual peer removal.
+	 * The evicted peer can re-join via EDHOC handshake if still active.
+	 */
+	if (slot < 0) {
+		slot = peer_find_oldest_locked();
+		if (slot < 0) {
+			/* Should not happen: table full but no oldest entry found */
+			LOG_ERR("Peer table inconsistent: full but no eviction candidate");
+			k_mutex_unlock(&rx_mutex);
+			return -ENOSPC;
+		}
+		LOG_INF("Peer table full, evicting oldest: "
+			"%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
+			peer_table[slot].eui64[0], peer_table[slot].eui64[1],
+			peer_table[slot].eui64[2], peer_table[slot].eui64[3],
+			peer_table[slot].eui64[4], peer_table[slot].eui64[5],
+			peer_table[slot].eui64[6], peer_table[slot].eui64[7]);
+	}
+
+	memcpy(peer_table[slot].eui64, eui64, LICHEN_EUI64_LEN);
+	memcpy(peer_table[slot].pubkey, pubkey, LICHEN_L2_PUBKEY_LEN);
+	peer_table[slot].last_seen = k_uptime_get();
+	peer_table[slot].active = true;
+	LOG_INF("Peer added: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
+		eui64[0], eui64[1], eui64[2], eui64[3],
+		eui64[4], eui64[5], eui64[6], eui64[7]);
+	k_mutex_unlock(&rx_mutex);
+	return 0;
+#else
+	ARG_UNUSED(eui64);
+	ARG_UNUSED(pubkey);
+	return -ENOTSUP;
+#endif
+}
+
+int lichen_peer_remove(const uint8_t eui64[8])
+{
+#if HAVE_LICHEN_LINK
+	if (eui64 == NULL) {
+		return -EINVAL;
+	}
+
+	/*
+	 * Check for prior abort BEFORE acquiring mutex (project-LICHEN-dq6n.21).
+	 *
+	 * If the lora_l2 RX thread was forcibly aborted, it may have been terminated
+	 * while holding rx_mutex (during lichen_l2_input callback processing).
+	 * Attempting to acquire rx_mutex would deadlock forever.
+	 *
+	 * Recovery requires: lichen_lora_l2_deinit() + lichen_lora_l2_init()
+	 */
+	if (lichen_lora_l2_needs_reinit()) {
+		LOG_ERR("peer_remove rejected: LoRa L2 requires re-initialization after forced abort");
+		return -ECANCELED;
+	}
+
+	k_mutex_lock(&rx_mutex, K_FOREVER);
+
+	struct lichen_peer_entry *entry = peer_find_locked(eui64);
+	if (entry == NULL) {
+		k_mutex_unlock(&rx_mutex);
+		return -ENOENT;
+	}
+
+	/*
+	 * SECURITY: Clear replay window for this peer before removing.
+	 * Stale replay state could cause valid packets to be rejected
+	 * (if sequence numbers overlap) or replayed packets to be accepted
+	 * (if the peer reconnects and the attacker replays old frames).
+	 * (project-LICHEN-tvfm.45)
+	 */
+	lichen_replay_remove(&replay_table, eui64);
+
+	/* SECURITY: Zero pubkey before marking inactive */
+	secure_zero(entry->pubkey, sizeof(entry->pubkey));
+	secure_zero(entry->eui64, sizeof(entry->eui64));
+	entry->active = false;
+	LOG_INF("Peer removed: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
+		eui64[0], eui64[1], eui64[2], eui64[3],
+		eui64[4], eui64[5], eui64[6], eui64[7]);
+
+	k_mutex_unlock(&rx_mutex);
+	return 0;
+#else
+	ARG_UNUSED(eui64);
+	return -ENOTSUP;
+#endif
+}
+
 /* Forward declarations */
 static void lora_rx_callback(const uint8_t *data, size_t len,
                              int16_t rssi, int8_t snr, void *user_data);
@@ -267,16 +778,22 @@ static void lora_rx_callback(const uint8_t *data, size_t len,
  * via net_recv_data() would dereference NULL and crash. This function must exist
  * even when it performs no L2-specific processing. Compare Zephyr's dummy L2
  * (subsys/net/l2/dummy/dummy.c) which follows the same pattern.
+ *
+ * WHY NET_CONTINUE IS ALWAYS RETURNED:
+ * All L2 validation (MIC check, replay protection, decompression) happens in
+ * lichen_l2_input() via the LoRa RX callback, before the packet reaches
+ * net_recv_data(). By the time this callback is invoked, the packet has already
+ * passed L2 validation and is ready for IP processing. Returning NET_DROP or
+ * NET_OK here would be incorrect. (project-LICHEN-tvfm.75)
  */
 static enum net_verdict lichen_l2_recv(struct net_if *iface,
 				       struct net_pkt *pkt)
 {
-	/* Validate iface parameter (project-LICHEN-1www.25) */
-	if (iface == NULL) {
-		LOG_ERR("lichen_l2_recv: iface is NULL");
-		return NET_DROP;
-	}
-
+	/*
+	 * Trust Zephyr's net_l2 contract: iface and pkt are guaranteed non-NULL.
+	 * See net_if_recv_data() in zephyr/subsys/net/ip/net_if.c which calls
+	 * l2->recv() unconditionally. Zephyr's dummy L2 follows the same pattern.
+	 */
 	ARG_UNUSED(iface);
 	ARG_UNUSED(pkt);
 
@@ -303,16 +820,27 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 {
 	int ret;
 
-	/* Validate pkt parameter (project-LICHEN-1www.22) */
-	if (pkt == NULL) {
-		LOG_ERR("TX rejected: pkt is NULL");
-		return -EINVAL;
-	}
+	/*
+	 * Trust Zephyr's net_l2 contract: iface and pkt are guaranteed non-NULL.
+	 * The IPv6 stack calls l2->send() only with valid parameters.
+	 */
+	ARG_UNUSED(iface);
 
 	/* SECURITY: Reject TX if interface initialization failed (project-LICHEN-1ojj.2) */
 	if (atomic_get(&iface_init_failed)) {
 		LOG_ERR("TX rejected: interface initialization failed");
 		return -ENODEV;
+	}
+
+	/*
+	 * Guard against access before initialization. (project-LICHEN-tvfm.29)
+	 * Check early before taking mutex or doing any packet processing.
+	 * Could happen if IPv6 stack tries to transmit during early startup
+	 * before lichen_l2_iface_init() completes.
+	 */
+	if (!atomic_get(&link_ctx_initialized)) {
+		LOG_WRN("TX attempted before link_ctx initialized");
+		return -EAGAIN;
 	}
 
 	if (!lichen_lora_l2_is_running()) {
@@ -328,9 +856,24 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 		return -EMSGSIZE;
 	}
 
+	if (pkt_len < IPV6_BASE_HDR_LEN) {
+		LOG_ERR("Packet too small for IPv6: %zu", pkt_len);
+		return -EINVAL;
+	}
+
 	k_mutex_lock(&tx_mutex, K_FOREVER);
 
-	/* Linearize packet into scratch buffer using Zephyr's cursor API */
+	/*
+	 * Linearize packet into scratch buffer using Zephyr's cursor API.
+	 * net_pkt_read() handles multi-fragment packets transparently: the cursor
+	 * iterates across all net_buf fragments, copying data contiguously into
+	 * tx_ipv6_buf. This is the standard Zephyr pattern for linearizing packets.
+	 *
+	 * NOTE (project-LICHEN-i1gk.112): net_pkt_cursor_init() is void and cannot
+	 * fail. We trust net_pkt_get_len() matches actual fragment data. If Zephyr's
+	 * net_pkt is corrupted (len > actual data), net_pkt_read() will fail. The
+	 * error check below handles this defensively.
+	 */
 	net_pkt_cursor_init(pkt);
 	ret = net_pkt_read(pkt, tx_ipv6_buf, pkt_len);
 	if (ret < 0) {
@@ -343,17 +886,6 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 
 #if HAVE_LICHEN_LINK
 	/*
-	 * Guard against access before initialization.
-	 * This mirrors the RX path guard - could happen if IPv6 stack tries
-	 * to transmit during early startup before lichen_l2_iface_init() completes.
-	 */
-	if (!atomic_get(&link_ctx_initialized)) {
-		LOG_WRN("TX attempted before link_ctx initialized");
-		k_mutex_unlock(&tx_mutex);
-		return -EAGAIN;
-	}
-
-	/*
 	 * Use lichen_link_tx() to build the complete frame with proper MIC.
 	 * This handles:
 	 * - SCHC compression
@@ -361,6 +893,20 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 	 * - AES-CCM-64 MIC if has_link_key, else CRC32 fallback
 	 */
 	size_t frame_len = sizeof(tx_frame_buf);
+	/*
+	 * NULL dst_eui64 = broadcast (no destination address in frame header).
+	 *
+	 * DESIGN DECISION: LICHEN always transmits broadcast frames at L2.
+	 * This is intentional for mesh operation:
+	 * - All neighbors hear the frame for routing purposes
+	 * - IPv6 destination address (after SCHC decompression) determines
+	 *   actual recipient - L2 unicast is unnecessary
+	 * - Saves frame overhead (no L2 destination address field)
+	 *
+	 * L2 unicast is NOT supported. If future requirements need directed
+	 * addressing (e.g., certain RPL modes, energy optimization), extend
+	 * this to pass a non-NULL dst_eui64 based on routing decisions.
+	 */
 	ret = lichen_link_tx(&link_ctx, tx_ipv6_buf, pkt_len, NULL,
 			     tx_frame_buf, &frame_len);
 	if (ret < 0) {
@@ -368,6 +914,18 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 			lichen_link_strerror(ret), ret);
 		k_mutex_unlock(&tx_mutex);
 		return ret;
+	}
+
+	/* SECURITY: Validate frame_len before using it (project-LICHEN-i1gk.91) */
+	if (frame_len == 0) {
+		LOG_ERR("lichen_link_tx returned zero-length frame");
+		k_mutex_unlock(&tx_mutex);
+		return -EINVAL;
+	}
+	if (frame_len > sizeof(tx_frame_buf)) {
+		LOG_ERR("lichen_link_tx returned oversized frame: %zu", frame_len);
+		k_mutex_unlock(&tx_mutex);
+		return -EOVERFLOW;
 	}
 
 	LOG_DBG("LICHEN frame: %zu bytes", frame_len);
@@ -390,6 +948,11 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 	 * Per Zephyr net_l2 contract: when L2 returns 0, it took ownership
 	 * of the packet and must free it. The caller (IPv6 stack) will not
 	 * free it on success.
+	 *
+	 * The packet is guaranteed valid here because lichen_lora_l2_tx()
+	 * only receives a pointer to our static tx_frame_buf/tx_ipv6_buf,
+	 * not the net_pkt itself. The packet was linearized into that buffer
+	 * earlier via net_pkt_read(), so the pkt structure is untouched by TX.
 	 */
 	net_pkt_unref(pkt);
 	return 0;
@@ -400,18 +963,32 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
  */
 static int lichen_l2_enable(struct net_if *iface, bool state)
 {
-	/* Validate iface parameter (project-LICHEN-1www.25) */
-	if (iface == NULL) {
-		LOG_ERR("lichen_l2_enable: iface is NULL");
-		return -EINVAL;
-	}
-
+	/*
+	 * Trust Zephyr's net_l2 contract: iface is guaranteed non-NULL.
+	 * The network stack calls l2->enable() only with valid parameters.
+	 */
 	ARG_UNUSED(iface);
 
 	/* SECURITY: Reject enable if interface initialization failed (project-LICHEN-1ojj.2) */
 	if (atomic_get(&iface_init_failed)) {
 		LOG_ERR("Enable rejected: interface initialization failed");
 		return -ENODEV;
+	}
+
+	/*
+	 * Check for prior abort BEFORE acquiring any mutex (project-LICHEN-3pun.16).
+	 *
+	 * If the lora_l2 RX thread was forcibly aborted, it may have been terminated
+	 * while holding rx_mutex (during lichen_l2_input callback processing).
+	 * Attempting to acquire rx_mutex below would deadlock forever.
+	 *
+	 * Recovery requires: lichen_lora_l2_deinit() + lichen_lora_l2_init()
+	 * which reinitializes all mutexes and state.
+	 */
+	if (lichen_lora_l2_needs_reinit()) {
+		LOG_ERR("Enable rejected: LoRa L2 requires re-initialization after forced abort. "
+			"Call lichen_lora_l2_deinit() then lichen_lora_l2_init()");
+		return -ECANCELED;
 	}
 
 	LOG_INF("LICHEN L2 %s", state ? "enabled" : "disabled");
@@ -430,30 +1007,55 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 * 3. Extracting a helper would require passing mutex-held state or
 		 *    adding "already_locked" parameters, obscuring the safety model
 		 *
-		 * LOCK ORDER (project-LICHEN-1www.33): tx_mutex MUST be acquired
-		 * before rx_mutex to match the disable path and avoid ABBA deadlock.
-		 * This ordering is consistent across:
-		 * - lichen_l2_enable() enable path (here)
-		 * - lichen_l2_enable() disable path
-		 * Any future code acquiring both mutexes must follow this order.
-		 * (project-LICHEN-gy7h.2)
+		 * LOCK ORDER: tx_mutex before rx_mutex. See comment at mutex
+		 * definitions (~line 217) for rationale and full documentation.
 		 */
+		bool link_ctx_initialized_here = false;
 		k_mutex_lock(&tx_mutex, K_FOREVER);
 		k_mutex_lock(&rx_mutex, K_FOREVER);
 		if (!atomic_get(&link_ctx_initialized)) {
-			const uint8_t *eui64 = lichen_lora_l2_get_eui64();
-			if (eui64 == NULL) {
+			/*
+			 * Copy EUI-64 immediately to local buffer (project-LICHEN-i1gk.39).
+			 * lichen_lora_l2_get_eui64() returns a pointer to internal state
+			 * that could become invalid if concurrent deinit() runs. Copying
+			 * immediately while we hold both mutexes ensures we use a stable
+			 * snapshot. Although deinit requires stop first (preventing new
+			 * operations), defensive copy is cheap and eliminates the race window.
+			 */
+			const uint8_t *eui64_ptr = lichen_lora_l2_get_eui64();
+			if (eui64_ptr == NULL) {
 				/* lichen_lora_l2_get_eui64() logs the specific error */
 				LOG_ERR("Cannot re-init link_ctx: LoRa L2 not initialized");
 				k_mutex_unlock(&rx_mutex);
 				k_mutex_unlock(&tx_mutex);
 				return -ENODEV;
 			}
+			uint8_t eui64_copy[LICHEN_EUI64_LEN];
+			memcpy(eui64_copy, eui64_ptr, LICHEN_EUI64_LEN);
 			/* SECURITY: Defensive zero of any stale key material before re-init
 			 * (project-LICHEN-725z.9) */
 			secure_zero(&link_ctx, sizeof(link_ctx));
-			lichen_link_init(&link_ctx, eui64);
+			lichen_link_init(&link_ctx, eui64_copy);
+			/*
+			 * Re-init replay table to match iface_init() behavior.
+			 * Without this, stale replay windows could persist or be
+			 * uninitialized after disable/enable cycle.
+			 *
+			 * Safe on dirty table: lichen_replay_table_init() does memset()
+			 * which clears all entries regardless of prior state. No dynamic
+			 * allocation in replay table - all entries are POD types.
+			 * (project-LICHEN-dq6n.19, project-LICHEN-tvfm.80)
+			 *
+			 * NOTE (project-LICHEN-i1gk.74): Replay table is cleared here but
+			 * peer_table is NOT cleared on enable (only on disable). This is
+			 * intentional: replay protection resets for security (peers must
+			 * exceed their old sequence numbers), while peer keys persist so
+			 * EDHOC re-handshake is not required. Peers that were mid-session
+			 * will fail replay checks until their sequence numbers advance.
+			 */
+			lichen_replay_table_init(&replay_table);
 			atomic_set(&link_ctx_initialized, 1);
+			link_ctx_initialized_here = true;
 		}
 		k_mutex_unlock(&rx_mutex);
 		k_mutex_unlock(&tx_mutex);
@@ -464,7 +1066,36 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 * so we must re-register it on enable. (project-LICHEN-yw7i.28)
 		 */
 		lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
-		return lichen_lora_l2_start();
+		int ret = lichen_lora_l2_start();
+		/*
+		 * Roll back callback on start() failure. (project-LICHEN-tvfm.72)
+		 *
+		 * If start() fails, the RX thread isn't running and won't invoke
+		 * the callback, but leaving it registered creates inconsistent
+		 * state. Clear it to match the stopped state.
+		 */
+		if (ret != 0) {
+			lichen_lora_l2_set_rx_callback(NULL, NULL);
+		}
+#if HAVE_LICHEN_LINK
+		/*
+		 * Roll back link_ctx state on start() failure. (project-LICHEN-dq6n.20)
+		 *
+		 * If we initialized link_ctx in this enable() call but lichen_lora_l2_start()
+		 * failed, we must clean up to avoid leaving link_ctx_initialized set while
+		 * LoRa is not actually running. This prevents inconsistent state where
+		 * subsequent calls might assume link_ctx is valid when LoRa is stopped.
+		 */
+		if (ret != 0 && link_ctx_initialized_here) {
+			k_mutex_lock(&tx_mutex, K_FOREVER);
+			k_mutex_lock(&rx_mutex, K_FOREVER);
+			atomic_set(&link_ctx_initialized, 0);
+			lichen_link_cleanup(&link_ctx);
+			k_mutex_unlock(&rx_mutex);
+			k_mutex_unlock(&tx_mutex);
+		}
+#endif
+		return ret;
 	} else {
 		/*
 		 * lichen_lora_l2_stop() clears the RX callback before signaling
@@ -479,6 +1110,18 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 */
 		int ret = lichen_lora_l2_stop();
 		/*
+		 * If stop() aborted the RX thread (returned -ECANCELED), the thread
+		 * may have been holding rx_mutex during lichen_l2_input(). We must
+		 * call deinit() to reinitialize mutexes before acquiring them, or
+		 * we'll deadlock. (project-LICHEN-i1gk.67)
+		 */
+		if (ret == -ECANCELED) {
+			int deinit_ret = lichen_lora_l2_deinit();
+			if (deinit_ret != 0) {
+				LOG_ERR("deinit after abort failed: %d", deinit_ret);
+			}
+		}
+		/*
 		 * Note: We intentionally do NOT clear lichen_iface here.
 		 * See the invariant comment at the lichen_iface declaration.
 		 */
@@ -488,16 +1131,60 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 * Hold both mutexes to prevent races with in-flight TX/RX:
 		 * - tx_mutex: ensures lichen_l2_send() completes before cleanup
 		 * - rx_mutex: ensures lichen_l2_input() completes before cleanup
-		 * Lock order: tx_mutex first to avoid deadlock (consistent ordering).
+		 *
+		 * LOCK ORDER: tx_mutex before rx_mutex. See comment at mutex
+		 * definitions (~line 217) for rationale.
 		 *
 		 * SECURITY: lichen_l2_input() copies link_key into a local buffer
 		 * before use, but the copy happens under rx_mutex. Cleanup MUST
 		 * acquire rx_mutex to ensure any in-flight RX completes first.
+		 *
+		 * DEADLOCK AVOIDANCE: Use trylock with timeout instead of K_FOREVER.
+		 * If the RX thread was aborted while holding rx_mutex (edge case not
+		 * fully handled by the -ECANCELED check above), trylock will fail and
+		 * we reinitialize the mutex. This is defense-in-depth against:
+		 * 1. Bugs in stop()/deinit() sequencing
+		 * 2. Future changes that introduce new abort paths
+		 * 3. Kernel bugs or hardware faults
 		 */
 		k_mutex_lock(&tx_mutex, K_FOREVER);
-		k_mutex_lock(&rx_mutex, K_FOREVER);
+		if (k_mutex_lock(&rx_mutex, K_MSEC(100)) != 0) {
+			LOG_WRN("rx_mutex acquisition timed out - reinitializing "
+				"(thread may have been aborted while holding it)");
+			k_mutex_init(&rx_mutex);
+			k_mutex_lock(&rx_mutex, K_FOREVER);
+		}
 		atomic_set(&link_ctx_initialized, 0);
 		lichen_link_cleanup(&link_ctx);
+		/*
+		 * Clear replay table to prevent stale windows from persisting across
+		 * enable/disable cycles.
+		 *
+		 * Safe on dirty table: lichen_replay_table_init() does memset()
+		 * which clears all entries regardless of prior state. No dynamic
+		 * allocation in replay table - all entries are POD types.
+		 * (project-LICHEN-tvfm.80)
+		 */
+		lichen_replay_table_init(&replay_table);
+		/*
+		 * Clear peer table to prevent stale peer keys from persisting across
+		 * enable/disable cycles. SECURITY: Use secure_zero on pubkeys.
+		 *
+		 * THREAD SAFETY: This loop is safe without additional IRQ masking:
+		 * - Called from net_if_down() which holds iface->lock (a k_mutex)
+		 * - We hold both tx_mutex and rx_mutex (acquired above)
+		 * - All peer_table accessors (peer_find_locked, peer_try_all_pubkeys,
+		 *   lichen_peer_add) require rx_mutex, so they block until we release
+		 * - No ISRs access peer_table directly
+		 * Preemption by higher-priority threads is harmless since they will
+		 * block on the mutex; the loop will resume and complete atomically
+		 * from peer_table's perspective. (project-LICHEN-tvfm.6)
+		 */
+		for (size_t i = 0; i < CONFIG_LICHEN_LINK_MAX_NEIGHBORS; i++) {
+			secure_zero(peer_table[i].pubkey, sizeof(peer_table[i].pubkey));
+			secure_zero(peer_table[i].eui64, sizeof(peer_table[i].eui64));
+			peer_table[i].active = false;
+		}
 		k_mutex_unlock(&rx_mutex);
 		k_mutex_unlock(&tx_mutex);
 #endif
@@ -507,6 +1194,13 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 
 /**
  * @brief L2 flags handler
+ *
+ * Returns L2 capability flags without checking interface state.
+ * This is intentional: these flags describe static hardware/protocol
+ * capabilities (multicast support), not runtime state. Zephyr's net
+ * subsystem may query capabilities during interface setup before
+ * initialization completes, and the capabilities are constant regardless
+ * of whether the interface is currently enabled. (project-LICHEN-tvfm.41)
  */
 static enum net_l2_flags lichen_l2_flags(struct net_if *iface)
 {
@@ -529,6 +1223,15 @@ static enum net_l2_flags lichen_l2_flags(struct net_if *iface)
 	 * Note: We do NOT set NET_IF_IPV6_NO_MLD or NET_IF_IPV6_NO_ND flags because
 	 * LICHEN uses standard IPv6 ND and MLD for all-nodes multicast. Only the
 	 * solicited-node optimization is unnecessary.
+	 *
+	 * DESIGN ASSUMPTION: These flags assume LICHEN operates over standard LoRa
+	 * (not LoRaWAN) where all transmissions are true broadcast. This assumption
+	 * may NOT hold for:
+	 * - LoRa devices with hardware address filtering
+	 * - LoRa mesh configurations with selective forwarding
+	 * - LoRaWAN Class B/C with directed downlinks
+	 * If porting LICHEN to such configurations, re-evaluate whether
+	 * NET_L2_MULTICAST_SKIP_JOIN_SOLICIT_NODE is appropriate.
 	 */
 	return NET_L2_MULTICAST | NET_L2_MULTICAST_SKIP_JOIN_SOLICIT_NODE;
 }
@@ -538,11 +1241,18 @@ NET_L2_INIT(LICHEN_L2, lichen_l2_recv, lichen_l2_send, lichen_l2_enable,
 	    lichen_l2_flags);
 
 /*
- * L2 context type - empty since we use static state.
- * Required by NET_DEVICE_INIT.
+ * L2 context type for NET_DEVICE_INIT.
+ *
+ * This struct is intentionally empty: Zephyr's NET_DEVICE_INIT macro requires
+ * a context type for the L2 layer, but LICHEN uses module-static state rather
+ * than per-interface context. The empty struct satisfies the macro's type
+ * requirements while keeping all actual state in static variables above.
+ *
+ * A dummy field is included to avoid zero-size struct warnings from compilers
+ * with -Wpedantic or -Wempty-struct. (project-LICHEN-i1gk.52)
  */
 struct lichen_l2_ctx {
-	/* Required by NET_DEVICE_INIT; actual state is module-static */
+	uint8_t unused;  /* Avoid zero-size struct warning */
 };
 
 /* Define the context type macro for NET_DEVICE_INIT */
@@ -564,6 +1274,14 @@ static struct net_if_api lichen_iface_api = {
  * Register LICHEN as a network device. This creates a net_if and wires
  * it to our L2 layer. The device is a software-defined interface -
  * actual hardware (LoRa radio) is accessed via lora_l2.c.
+ *
+ * Initialization priority: CONFIG_KERNEL_INIT_PRIORITY_DEFAULT is correct
+ * for network interfaces. Zephyr's driver subsystem initializes hardware
+ * drivers (lora0, hwinfo) at earlier priorities (PRE_KERNEL_1/2 or
+ * POST_KERNEL with lower priority values), so they are available when
+ * lichen_l2_iface_init() runs. If a dependency is missing on a custom
+ * board, the init function sets iface_init_failed and logs an error.
+ * (project-LICHEN-tvfm.62)
  */
 NET_DEVICE_INIT(lichen_l2_dev,      /* Device ID */
 		"LICHEN",           /* Device name */
@@ -608,16 +1326,38 @@ static void lora_rx_callback(const uint8_t *data, size_t len,
  * 5. Caches the net_if pointer for RX callback delivery
  * 6. Registers the LoRa RX callback
  *
- * On failure, sets iface_init_failed flag and returns early. The L2 send/recv
- * paths check this flag to reject operations on a half-initialized interface.
+ * @note Zephyr's net_if_api.init callback signature is void(*)(struct net_if*),
+ * so errors cannot be returned to the caller. Instead, on any failure this
+ * function sets the iface_init_failed atomic flag and returns early. All L2
+ * operations (send, recv, RX callback) check this flag and fail gracefully.
  *
  * @param iface The network interface being initialized (from NET_DEVICE_INIT)
  */
 void lichen_l2_iface_init(struct net_if *iface)
 {
+	/* iface guaranteed non-NULL by Zephyr NET_DEVICE_INIT */
 	int ret;
 
 	LOG_INF("Initializing LICHEN L2 interface");
+
+	/*
+	 * Do NOT clear iface_init_failed here (project-LICHEN-i1gk.63).
+	 *
+	 * Clearing optimistically at the start creates confusing control flow:
+	 * if a previous init partially succeeded (e.g., lora_l2_init passed but
+	 * get_eui64 failed), clearing the flag here and then having lichen_lora_l2_init()
+	 * return 0 (idempotent success) would temporarily show success before a later
+	 * check re-sets the flag.
+	 *
+	 * The iface_init_failed flag is:
+	 * - Set on any failure path (via atomic_set(&iface_init_failed, 1))
+	 * - Never explicitly cleared here; first boot starts at 0 (static init)
+	 * - Checked by send/recv/enable to reject operations on half-initialized state
+	 *
+	 * After a failed init, the lichen_iface != NULL check (see below) catches
+	 * retry attempts, ensuring failure is permanent until system restart.
+	 * This is fail-safe by design.
+	 */
 
 	/* Initialize LoRa driver */
 	ret = lichen_lora_l2_init();
@@ -627,7 +1367,13 @@ void lichen_l2_iface_init(struct net_if *iface)
 		return;
 	}
 
-	/* Get our EUI-64 */
+	/*
+	 * Get our EUI-64. This returns a pointer to internal lora_data.eui64.
+	 * THREAD SAFETY (project-LICHEN-i1gk.39): At boot, there is no concurrency
+	 * concern - this runs before the RX thread starts and deinit is impossible.
+	 * We copy immediately below (to iface_link_addr for Zephyr, and lichen_link_init()
+	 * copies to link_ctx.eui64). No pointer retention after the copies complete.
+	 */
 	const uint8_t *eui64 = lichen_lora_l2_get_eui64();
 	if (eui64 == NULL) {
 		LOG_ERR("Failed to get EUI-64 from LoRa L2");
@@ -641,7 +1387,7 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * lora_state.eui64 to avoid UB if Zephyr ever writes to it.
 	 * (project-LICHEN-ybal.15/.16)
 	 */
-	memcpy(iface_link_addr, eui64, sizeof(iface_link_addr));
+	memcpy(iface_link_addr, eui64, LICHEN_L2_ADDR_LEN);
 	/* NET_LINK_IEEE802154 is closest match for 8-byte EUI-64 addresses */
 	ret = net_if_set_link_addr(iface, iface_link_addr, LICHEN_L2_ADDR_LEN,
 				   NET_LINK_IEEE802154);
@@ -652,14 +1398,74 @@ void lichen_l2_iface_init(struct net_if *iface)
 	}
 
 #if HAVE_LICHEN_LINK
-	/* Initialize link context before enabling RX */
-	lichen_link_init(&link_ctx, eui64);
 	/*
-	 * Mark link_ctx as safe to access.
-	 * atomic_set() provides release semantics - all stores to link_ctx
-	 * are visible before the flag becomes true.
+	 * Initialize link context before enabling RX.
+	 *
+	 * NOTE: This duplicates logic in lichen_l2_enable() intentionally.
+	 * See comment there (~line 419) for rationale: boot-time init needs no
+	 * mutexes, while re-enable after disable must hold both mutexes and
+	 * secure_zero() before re-init.
+	 *
+	 * replay_table is static, so zero-initialized at boot (C11 6.7.9p10).
+	 * lichen_replay_table_init() does memset anyway, which is idempotent
+	 * and handles future cases where table might not be zero.
+	 * (project-LICHEN-tvfm.80)
+	 *
+	 * SECURITY (project-LICHEN-tvfm.87): If re-initializing after a previous
+	 * init (failed or successful), clean up existing key material before
+	 * calling lichen_link_init(). At boot, link_ctx_initialized is 0 (static
+	 * init) so cleanup is skipped. On re-init, we hold mutexes and securely
+	 * wipe any existing keys to prevent stale key material from persisting.
+	 *
+	 * Init/cleanup symmetry (project-LICHEN-tvfm.111): The check for
+	 * link_ctx_initialized prevents calling lichen_link_init() on an already-
+	 * initialized context without cleanup. At boot this is a no-op (flag is 0).
+	 * On re-init, we call lichen_link_cleanup() first. The invariant check
+	 * at lines ~1315 (lichen_iface != NULL) catches double-iface_init attempts,
+	 * which is the only path that could bypass this cleanup.
 	 */
-	atomic_set(&link_ctx_initialized, 1);
+	if (atomic_get(&link_ctx_initialized)) {
+		/*
+		 * Re-initialization path: hold both mutexes during cleanup to
+		 * synchronize with any in-flight RX/TX. Lock order matches
+		 * lichen_l2_enable() and fail_late_init (tx_mutex before rx_mutex).
+		 *
+		 * SECURITY: Clear peer_table with secure_zero while holding mutexes
+		 * to prevent stale entries from being accessed during cleanup window.
+		 * (project-LICHEN-i1gk.22)
+		 */
+		k_mutex_lock(&tx_mutex, K_FOREVER);
+		k_mutex_lock(&rx_mutex, K_FOREVER);
+		atomic_set(&link_ctx_initialized, 0);
+		secure_zero(peer_table, sizeof(peer_table));
+		lichen_link_cleanup(&link_ctx);
+		k_mutex_unlock(&rx_mutex);
+		k_mutex_unlock(&tx_mutex);
+	}
+	/*
+	 * Initialize link_ctx then replay_table. Order is safe: link_ctx does not
+	 * depend on replay_table, and no async access occurs before link_ctx_initialized
+	 * is set (after RX callback registration). (project-LICHEN-i1gk.81)
+	 */
+	lichen_link_init(&link_ctx, eui64);
+	lichen_replay_table_init(&replay_table);
+	/*
+	 * Explicitly initialize peer_table at boot.
+	 *
+	 * C guarantees static storage is zero-initialized (C11 6.7.9p10), so
+	 * peer_table[i].active is already false. However, explicit initialization
+	 * is defensive: it documents the invariant, survives any future move to
+	 * dynamic allocation, and costs nothing at boot (single memset).
+	 * (project-LICHEN-tvfm.66)
+	 *
+	 * On re-init, peer_table was already cleared with secure_zero above while
+	 * holding mutexes. This secure_zero is redundant in that case but harmless.
+	 *
+	 * SECURITY (project-LICHEN-i1gk.47): Use secure_zero instead of memset for
+	 * consistency with other peer_table clearing paths and to prevent compiler
+	 * optimization from eliding the clear on re-init after failed init.
+	 */
+	secure_zero(peer_table, sizeof(peer_table));
 #endif
 
 	/*
@@ -668,9 +1474,17 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * INVARIANT (project-LICHEN-1www.46): lichen_iface is set exactly once
 	 * during initialization and never cleared. This allows lora_rx_callback()
 	 * to read it without synchronization. Enforce with runtime check.
+	 *
+	 * Recovery note (project-LICHEN-tvfm.93): If a previous init attempt
+	 * failed after setting lichen_iface (e.g., in fail_late_init), the
+	 * iface pointer persists intentionally. The failure state is permanent
+	 * until reboot - this is fail-safe by design. A retry would reach this
+	 * check and fail with the message below, which correctly identifies
+	 * the condition (iface already set) even if the original cause was a
+	 * late init failure rather than a true invariant violation.
 	 */
 	if (lichen_iface != NULL) {
-		LOG_ERR("lichen_iface already set (set-once invariant violated)");
+		LOG_ERR("lichen_iface already set (init requires reboot after failure)");
 		atomic_set(&iface_init_failed, 1);
 		return;
 	}
@@ -678,6 +1492,20 @@ void lichen_l2_iface_init(struct net_if *iface)
 
 	/* Register RX callback - must happen AFTER link_ctx is initialized */
 	lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
+
+#if HAVE_LICHEN_LINK
+	/*
+	 * Mark link_ctx as safe to access.
+	 * Note: Zephyr's atomic_set() does NOT provide release semantics.
+	 * On single-core Cortex-M, program order suffices since all prior
+	 * stores complete before this store executes.
+	 *
+	 * Set AFTER RX callback registration so the flag truthfully indicates
+	 * that the full initialization sequence is complete.
+	 * (project-LICHEN-q3iy.24)
+	 */
+	atomic_set(&link_ctx_initialized, 1);
+#endif
 
 	/* Derive and log link-local address */
 	ret = lichen_log_link_local_from_eui64(eui64, NULL);
@@ -701,13 +1529,115 @@ fail_late_init:
 	 *
 	 * NOTE: Do NOT clear lichen_iface here — it has a set-once invariant
 	 * (project-LICHEN-ybal.4) because lora_rx_callback() reads it without mutex.
+	 *
+	 * SECURITY (project-LICHEN-3pun.15): Hold BOTH mutexes during link_ctx cleanup
+	 * to synchronize with any in-flight RX callback and maintain consistent lock
+	 * ordering with lichen_l2_enable(). The race scenario:
+	 * 1. RX callback is registered (line ~898)
+	 * 2. link_ctx_initialized is set (line ~910)
+	 * 3. lichen_log_link_local_from_eui64() fails -> goto fail_late_init
+	 * 4. Meanwhile, an RX callback is in-flight and has passed the
+	 *    atomic_get(&link_ctx_initialized) check in lichen_l2_input()
+	 * 5. Without mutex, cleanup could race with the in-flight callback
+	 *
+	 * LOCK ORDER (project-LICHEN-tvfm.56): tx_mutex before rx_mutex, matching
+	 * lichen_l2_enable() enable/disable paths. See mutex definition comments
+	 * (~line 217) for the canonical ordering rule. Although iface_init runs at
+	 * boot with no concurrent TX, maintaining consistent ordering prevents
+	 * future deadlock if init/enable sequences ever overlap.
+	 *
+	 * SECURITY (project-LICHEN-tvfm.36): Set iface_init_failed FIRST, before
+	 * unregistering the callback. This ensures any callback invoked between
+	 * registration (line ~1106) and cleanup sees the flag and bails out
+	 * immediately in lora_rx_callback() (line ~1013). Without this ordering,
+	 * a callback could pass the iface_init_failed check before the flag is set
+	 * and proceed into lichen_l2_input() while cleanup is in progress.
 	 */
+	atomic_set(&iface_init_failed, 1);
 	lichen_lora_l2_set_rx_callback(NULL, NULL);
 #if HAVE_LICHEN_LINK
+	k_mutex_lock(&tx_mutex, K_FOREVER);
+	k_mutex_lock(&rx_mutex, K_FOREVER);
 	atomic_set(&link_ctx_initialized, 0);
+	/*
+	 * SECURITY (project-LICHEN-i1gk.23): Clear peer_table with secure_zero
+	 * to prevent stale peer keys from persisting after init failure. Matches
+	 * the disable path (lichen_l2_enable) which also clears peer_table.
+	 * Although unlikely, peers could have been added by another thread between
+	 * link_ctx_initialized being set and the init failure.
+	 */
+	secure_zero(peer_table, sizeof(peer_table));
 	lichen_link_cleanup(&link_ctx);
+	k_mutex_unlock(&rx_mutex);
+	k_mutex_unlock(&tx_mutex);
 #endif
-	atomic_set(&iface_init_failed, 1);
+}
+
+void lichen_l2_reinit_after_abort(void)
+{
+	/*
+	 * SECURITY: DANGEROUS FUNCTION - INTERNAL USE ONLY
+	 *
+	 * Reinitialize rx_mutex after RX thread abort recovery.
+	 * (project-LICHEN-dq6n.22, project-LICHEN-tvfm.16)
+	 *
+	 * This function reinitializes a mutex that may still be held, which is
+	 * UNDEFINED BEHAVIOR per POSIX and Zephyr semantics. If called at the
+	 * wrong time, it can corrupt kernel data structures and cause crashes
+	 * or deadlocks in subsequent operations.
+	 *
+	 * PRECONDITIONS (caller MUST ensure):
+	 * 1. The lora_l2 module is in DEINITING state (lichen_lora_l2_deinit()
+	 *    has been called and is executing)
+	 * 2. The RX thread has been joined or forcibly aborted
+	 * 3. No concurrent RX operations are possible
+	 *
+	 * This function is exported only because rx_mutex lives in this module
+	 * while deinit lives in lora_l2.c. It MUST ONLY be called from
+	 * lichen_lora_l2_deinit(). Any other caller will cause undefined behavior.
+	 *
+	 * The only truly safe recovery from a thread-abort scenario is a full
+	 * system reset (k_sys_reboot). See lora_l2.c:lichen_lora_l2_deinit()
+	 * for the complete security analysis.
+	 */
+
+	/*
+	 * Precondition check: the module must NOT be running (project-LICHEN-i1gk.55).
+	 *
+	 * ARCHITECTURAL LIMITATION: This check uses is_running() which returns false
+	 * for STOPPED, DEINITING, ABORTED, and UNINIT states. Ideally we would verify
+	 * specifically that we're in DEINITING state, but:
+	 * 1. There's no is_deiniting() API exposed by lora_l2
+	 * 2. Adding one would expand the API surface for a single internal caller
+	 * 3. This function is INTERNAL-ONLY (called exclusively from deinit())
+	 *
+	 * The weaker check is acceptable because:
+	 * - The dangerous case (RUNNING) is caught and panics
+	 * - STOPPED: Caller made a logic error, but mutex is valid - reinit is harmless
+	 * - UNINIT: Mutex was never corrupted - reinit is harmless
+	 * - ABORTED: This is the intended state before deinit transitions to DEINITING
+	 * - DEINITING: Correct state
+	 *
+	 * Only RUNNING would corrupt state, and that panics.
+	 */
+	if (lichen_lora_l2_is_running()) {
+		LOG_ERR("SECURITY: lichen_l2_reinit_after_abort called while "
+			"module is running - refusing to corrupt mutex");
+		k_panic();
+	}
+
+	int ret = k_mutex_init(&rx_mutex);
+	if (ret != 0) {
+		LOG_ERR("rx_mutex reinit failed: %d - cannot safely continue", ret);
+		/*
+		 * SECURITY: If mutex reinit fails, the system is in an
+		 * unrecoverable state. Continuing would risk deadlocks or
+		 * undefined behavior. Panic is the only safe option.
+		 * (project-LICHEN-tvfm.2)
+		 */
+		k_panic();
+	}
+	LOG_DBG("rx_mutex reinitialized after abort recovery");
 }
 
 void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
@@ -727,7 +1657,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	}
 	/* Reject empty frames before taking mutex (project-LICHEN-1ojj.7) */
 	if (len == 0) {
-		LOG_DBG("RX: empty frame ignored");
+		LOG_WRN("RX: empty frame ignored");
 		return;
 	}
 	if (len < LICHEN_MIN_FRAME_LEN) {
@@ -763,8 +1693,6 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * - MIC verification (AES-CCM-64 or CRC32)
 	 * - SCHC decompression
 	 *
-	 * For broadcast reception without peer context, we use minimal RX ctx.
-	 *
 	 * SECURITY: Copy link_key into a local buffer rather than capturing a
 	 * pointer to link_ctx.link_key. This ensures rx_ctx remains valid even
 	 * if a future refactor moves lichen_link_cleanup() outside the rx_mutex.
@@ -775,6 +1703,15 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * INVARIANT: has_link_key is only set by key provisioning functions that
 	 * also write valid key material to link_key. If this invariant is violated,
 	 * MIC verification will fail (not silently accept).
+	 *
+	 * SECURITY (project-LICHEN-tvfm.85): When has_link_key is false,
+	 * rx_link_key_ptr remains NULL. This is passed to lichen_link_rx() which:
+	 * - For AES-CCM-64 MIC (8-byte): Fails with -LICHEN_EAUTH (requires key)
+	 * - For CRC32 MIC (4-byte): Falls back to CRC32 verification only
+	 * CRC32 provides integrity (accidental corruption) but not authentication.
+	 * This is expected during unauthenticated bootstrap before key exchange.
+	 * Once EDHOC handshake completes, has_link_key becomes true and frames
+	 * require cryptographic MIC verification.
 	 */
 	uint8_t rx_link_key[LICHEN_LINK_KEY_LEN];
 	const uint8_t *rx_link_key_ptr = NULL;
@@ -783,17 +1720,44 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 		rx_link_key_ptr = rx_link_key;
 	}
 
+	/*
+	 * SECURITY: Peer-authenticated frame acceptance
+	 *
+	 * Frames are verified against known peers in peer_table[]. The
+	 * peer_try_all_pubkeys() function iterates through all registered
+	 * peers and returns success only if one peer's pubkey verifies
+	 * the Schnorr-48 signature. Frames from unknown senders are REJECTED.
+	 *
+	 * Peers are registered via lichen_peer_add() after EDHOC handshake
+	 * or announce processing. Replay protection is scoped to authenticated
+	 * peers only (replay windows allocated after signature verification),
+	 * preventing the replay window poisoning attack described in
+	 * replay.h:100-120.
+	 */
 	struct lichen_link_rx_ctx rx_ctx = {
-		.peer_pubkey = NULL,  /* Unknown sender - no signature verification */
-		.peer_eui64 = NULL,   /* Unknown sender - CRC32 mode only */
+		.peer_pubkey = NULL,  /* Set by peer_try_all_pubkeys() */
+		.peer_eui64 = NULL,   /* Set by peer_try_all_pubkeys() */
 		.link_key = rx_link_key_ptr,
+		/*
+		 * current_time: Reserved for time-based replay aging (not currently
+		 * used). The replay protection implementation uses a sliding window
+		 * with monotonic access_counter for LRU eviction, not wall-clock time.
+		 * Setting to 0 is safe because lichen_link_rx() does not read this
+		 * field. If future replay aging is added, use k_uptime_get() here.
+		 */
 		.current_time = 0,
 	};
+	/*
+	 * Defensive initialization: zero src_eui64 in case peer_try_all_pubkeys()
+	 * fails before setting it. On success, src_eui64 is filled with the
+	 * authenticated peer's address. On failure, we return early and never
+	 * use this array. (project-LICHEN-tvfm.68)
+	 */
 	uint8_t src_eui64[8] = {0};
 
 	ipv6_len = sizeof(rx_ipv6_buf);
-	ret = lichen_link_rx(&rx_ctx, NULL, data, len,
-			     rx_ipv6_buf, &ipv6_len, src_eui64);
+	ret = peer_try_all_pubkeys(&rx_ctx, &replay_table, data, len,
+				   rx_ipv6_buf, &ipv6_len, src_eui64);
 	if (ret < 0) {
 		LOG_WRN("Frame RX failed: %s (%d)",
 			lichen_link_strerror(ret), ret);
@@ -802,6 +1766,25 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 		return;
 	}
 
+	/* SECURITY: Validate ipv6_len before using it (project-LICHEN-3pun.5) */
+	if (ipv6_len > sizeof(rx_ipv6_buf)) {
+		LOG_ERR("lichen_link_rx returned oversized packet: %zu", ipv6_len);
+		secure_zero(rx_link_key, sizeof(rx_link_key));
+		k_mutex_unlock(&rx_mutex);
+		return;
+	}
+
+	/*
+	 * SECURITY: Logging full EUI-64 at DEBUG level is acceptable because:
+	 * 1. DEBUG logging requires explicit CONFIG_LICHEN_L2_LOG_LEVEL=4, not
+	 *    enabled in production builds
+	 * 2. This EUI-64 is from an AUTHENTICATED peer (signature verified above),
+	 *    not arbitrary traffic - logging confirms which known peer sent data
+	 * 3. EUI-64 is already exposed in IEEE 802.15.4-style link-layer addresses
+	 *    and IPv6 link-local addresses (fe80::...IID)
+	 * 4. Per-packet tracing is essential for mesh debugging; truncated addresses
+	 *    would make multi-hop routing analysis impractical
+	 */
 	LOG_DBG("Decompressed %zu bytes from %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
 		ipv6_len,
 		src_eui64[0], src_eui64[1], src_eui64[2], src_eui64[3],
@@ -824,6 +1807,21 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * Allocate net_pkt for the IPv6 packet.
 	 * Timeout configured via CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS.
 	 * See Kconfig help for tradeoff rationale.
+	 *
+	 * Memory pressure behavior (project-LICHEN-tvfm.99):
+	 * On allocation failure, we drop this packet and return. At LoRa data
+	 * rates (~980 bps at SF10), sustained memory pressure would cause each
+	 * incoming frame to block for the timeout (default 50ms) then fail.
+	 * This is acceptable because:
+	 *   1. LoRa frames arrive slowly (one 255-byte frame takes ~6.8s at SF10)
+	 *   2. Memory pressure severe enough to exhaust NET_BUF_RX_COUNT indicates
+	 *      a system-level issue requiring operator intervention
+	 *   3. No adaptive backoff is needed - the radio's low throughput limits
+	 *      CPU impact to ~7-15 blocked iterations per minute worst-case
+	 *
+	 * FUTURE (project-LICHEN-i1gk.62, project-LICHEN-i1gk.79): The timeout is
+	 * fixed (CONFIG-driven). Adaptive backoff and allocation failure counters
+	 * could improve observability under sustained memory pressure.
 	 */
 	struct net_pkt *pkt = net_pkt_rx_alloc_with_buffer(
 		iface, ipv6_len, AF_INET6, 0,
@@ -834,7 +1832,15 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 		return;
 	}
 
-	/* Write IPv6 data into the packet */
+	/*
+	 * Write IPv6 data into the packet.
+	 *
+	 * net_pkt_write() COPIES data from rx_ipv6_buf into the packet's internal
+	 * buffer - it does not retain a pointer to rx_ipv6_buf. This copy happens
+	 * while rx_mutex is held, so rx_ipv6_buf is protected. After unlocking,
+	 * net_recv_data() operates on pkt (which has its own copy), not rx_ipv6_buf.
+	 * (project-LICHEN-tvfm.51)
+	 */
 	ret = net_pkt_write(pkt, rx_ipv6_buf, ipv6_len);
 	if (ret < 0) {
 		LOG_ERR("Failed to write packet data: %d", ret);

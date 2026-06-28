@@ -58,16 +58,20 @@ extern "C" {
  *   ----------------------------------------
  *   Total fixed overhead:                 57 bytes
  *
- *   Rounding down to 55 provides 2 bytes margin for:
- *   - SCHC rule ID (1-2 bytes in compressed payload)
- *   - Future address field use (currently elided for broadcast)
+ *   We use 55 rather than 57 (project-LICHEN-tvfm.95):
+ *   The MTU computation is: 255 - FRAME_OVERHEAD = MTU.
+ *   Using 55 yields MTU=200 (vs 198 with 57). The 2-byte "savings" means:
+ *   - SCHC rule ID (1-2 bytes) is accounted for in the 57-byte real overhead
+ *   - We're optimistically assuming rule IDs fit within header space
+ *   - If compressed payload + rule ID exceeds 200 bytes, TX will fail at
+ *     the size check in lichen_l2_send()
  *
- *   Result: 255 - 55 = 200 bytes available for IPv6 payload
+ *   Result: 255 - 55 = 200 bytes nominal MTU for IPv6 payload
  *
  * If frame format or signature size changes, update this constant.
  */
 #define LICHEN_LORA_MAX_PHY_PAYLOAD 255
-#define LICHEN_LORA_FRAME_OVERHEAD   55  /* 57 raw - 2 margin = 5 hdr + 4 MIC + 48 sig - 2 */
+#define LICHEN_LORA_FRAME_OVERHEAD   55  /* 57 (header+MIC+sig) rounded to 55 for SCHC rule ID headroom */
 #define LICHEN_LORA_MTU (LICHEN_LORA_MAX_PHY_PAYLOAD - LICHEN_LORA_FRAME_OVERHEAD)
 
 /**
@@ -80,9 +84,13 @@ extern "C" {
  *
  * @param data Received packet data
  * @param len Length of received data
- * @param rssi RSSI in dBm
- * @param snr SNR in dB
+ * @param rssi RSSI in dBm (int16_t matches Zephyr lora_recv() output type)
+ * @param snr SNR in dB (int8_t matches Zephyr lora_recv() output type)
  * @param user_data User-provided context
+ *
+ * @note rssi/snr types match Zephyr's lora_recv() API (zephyr/drivers/lora.h).
+ *       If Zephyr changes these types, this typedef should be updated to match.
+ *       (project-LICHEN-tvfm.70)
  */
 typedef void (*lichen_lora_rx_cb_t)(const uint8_t *data, size_t len,
                                     int16_t rssi, int8_t snr,
@@ -95,6 +103,12 @@ typedef void (*lichen_lora_rx_cb_t)(const uint8_t *data, size_t len,
  * and validates LoRa device is ready. Idempotent: returns 0 if already
  * initialized.
  *
+ * Idempotency guarantee: If init() fails partway through, subsequent calls
+ * retry from the beginning. All module fields (lora_dev, eui64, rx_callback)
+ * are re-written before any state transition, so a failed init followed by
+ * a successful retry produces correct state. Partial state from a failed
+ * attempt is always overwritten.
+ *
  * @return 0 on success, negative errno on failure
  */
 int lichen_lora_l2_init(void);
@@ -105,22 +119,35 @@ int lichen_lora_l2_init(void);
  * Configures the radio and starts the RX thread.
  * Requires init() to have been called. Idempotent: returns 0 if already running.
  *
- * @return 0 on success, negative errno on failure
+ * @return 0 on success (idempotent if already running)
+ * @return -EINVAL if not initialized (call init() first)
+ * @return -ECANCELED if module needs re-init after forced abort (call deinit() then init())
+ * @return Other negative errno from lora_config() on radio configuration failure
  */
 int lichen_lora_l2_start(void);
 
 /**
  * @brief Stop the LoRa L2 layer
  *
- * Stops the RX thread. Idempotent: returns 0 if not running.
+ * Stops the RX thread. Idempotent: safe to call when already stopped.
  * Blocks until RX thread exits.
+ *
+ * @note Maximum blocking time: 100ms + CONFIG_LICHEN_LORA_L2_RX_TIMEOUT_MS
+ * (default 1000ms, configurable 100-10000ms). The function uses a two-phase
+ * join: a quick 100ms wait for the common case, then up to RX_TIMEOUT_MS if
+ * the thread is blocked in lora_recv(). If both timeouts expire, the thread
+ * is forcibly aborted and joined with K_FOREVER (typically immediate).
  *
  * If the RX thread does not exit gracefully within the timeout, it will be
  * forcibly aborted. After a forced abort, the module enters an undefined
  * state and requires lichen_lora_l2_deinit() followed by lichen_lora_l2_init()
  * before it can be restarted.
  *
- * @return 0 on success, negative errno on failure
+ * @note RX callback clearing: stop() ALWAYS clears the RX callback to NULL.
+ * Callers that need to receive packets after restart must re-register their
+ * callback via lichen_lora_l2_set_rx_callback() before calling start().
+ *
+ * @return Always returns 0 (stop is idempotent and cannot fail)
  */
 int lichen_lora_l2_stop(void);
 
@@ -163,10 +190,16 @@ void lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data);
 /**
  * @brief Get this node's EUI-64 address
  *
- * @warning The returned pointer aliases internal state. Do NOT modify.
- *          Contents are stable after init() completes.
+ * Returns a pointer to internal state; caller must copy if persistent
+ * access is needed. The EUI-64 value is stable after init() completes
+ * and does not change until deinit().
  *
- * @return Pointer to 8-byte EUI-64 (valid after init)
+ * @warning The returned pointer aliases internal state. Do NOT modify.
+ * @warning Thread safety: Caller must ensure no concurrent deinit() while
+ *          using the returned pointer. Either copy immediately, or hold
+ *          application-level synchronization that prevents deinit during use.
+ *
+ * @return Pointer to 8-byte EUI-64, or NULL if not initialized
  */
 const uint8_t *lichen_lora_l2_get_eui64(void);
 

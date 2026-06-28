@@ -42,6 +42,7 @@ static bool led_configured;
  */
 static inline void led_set(int value)
 {
+    /* No-op if led_configured is false (GPIO init failed) */
     if (led_configured) {
         int ret = gpio_pin_set_dt(&led, value);
         if (ret < 0) {
@@ -70,7 +71,9 @@ static void lora_rx_handler(const uint8_t *data, size_t len,
                             int16_t rssi, int8_t snr, void *user_data)
 {
     ARG_UNUSED(user_data);
+    ARG_UNUSED(data);
 
+    // ponytail: RX processing not implemented - add when needed
     LOG_INF("RX: %zu bytes (standalone mode - not processed)", len);
     LOG_INF("  RSSI=%d dBm, SNR=%d dB", rssi, snr);
 }
@@ -102,7 +105,7 @@ static int init_standalone_lora(void)
     eui64 = lichen_lora_l2_get_eui64();
     if (eui64 == NULL) {
         LOG_ERR("Failed to get EUI-64 address");
-        return -ENODATA;
+        goto cleanup;
     }
 
     LOG_INF("EUI-64: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
@@ -112,12 +115,17 @@ static int init_standalone_lora(void)
 #if defined(CONFIG_LICHEN_IPV6)
     ret = lichen_log_link_local_from_eui64(eui64, NULL);
     if (ret < 0) {
-        return ret;
+        goto cleanup;
     }
 #endif
 
     LOG_INF("LoRa L2 active: SF10, BW125, 915MHz");
     return 0;
+
+cleanup:
+    lichen_lora_l2_stop();
+    lichen_lora_l2_deinit();
+    return (ret < 0) ? ret : -ENODATA;
 }
 #endif
 
@@ -151,9 +159,11 @@ int main(void)
          * Note: We continue startup despite USB failure. Console output may
          * go to UART instead (if available), and LoRa functionality can still
          * operate. The LED pattern provides visual indication of the failure.
+         *
+         * LED pattern: 3 rapid blinks (100ms) then off = non-fatal USB failure.
+         * Distinct from fatal LoRa failure which is continuous 200ms blink.
          */
 #if defined(HAS_LED)
-        /* LED pattern: 3 rapid blinks (100ms on/off) = USB init failure */
         for (int i = 0; i < 3; i++) {
             led_set(1);
             k_sleep(K_MSEC(100));
@@ -184,7 +194,10 @@ int main(void)
         LOG_ERR("Standalone LoRa init failed: %d", ret);
         LOG_ERR("FATAL: Cannot continue without LoRa. Entering error state.");
 #if defined(HAS_LED)
-        /* LED pattern: continuous 200ms blink = standalone LoRa init failure (fatal) */
+        /*
+         * LED pattern: continuous 200ms blink forever = fatal LoRa failure.
+         * Distinct from USB failure which is 3 rapid 100ms blinks then stops.
+         */
         while (1) {
             led_set(1);
             k_sleep(K_MSEC(200));

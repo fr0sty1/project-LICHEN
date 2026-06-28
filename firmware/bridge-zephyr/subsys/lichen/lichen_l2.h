@@ -30,6 +30,65 @@
 extern "C" {
 #endif
 
+/* ─── Peer table ─────────────────────────────────────────────────────────── */
+
+/**
+ * @brief Maximum number of peers in the peer table.
+ *
+ * Uses CONFIG_LICHEN_LINK_MAX_NEIGHBORS for consistency with replay table.
+ * Defined in lichen/subsys/lichen/link/Kconfig (default 16, range 4-64).
+ * LICHEN_L2 depends on LICHEN_LINK, which guarantees this config is set.
+ */
+/* CONFIG_LICHEN_LINK_MAX_NEIGHBORS provided by Kconfig - no header default */
+
+/**
+ * @brief Ed25519 public key length (from schnorr48.h)
+ */
+#define LICHEN_L2_PUBKEY_LEN 32
+
+/**
+ * @brief Add or update a peer in the peer table.
+ *
+ * Registers a peer's public key for RX signature verification. Once added,
+ * frames signed by this peer can be authenticated. If the peer already exists,
+ * its public key is updated.
+ *
+ * Thread-safe: protected by internal mutex.
+ *
+ * SECURITY: Array size contract (C arrays decay to pointers - no runtime check):
+ *   - eui64 MUST point to exactly 8 bytes (LICHEN_EUI64_LEN from link_ctx.h)
+ *   - pubkey MUST point to exactly 32 bytes (LICHEN_L2_PUBKEY_LEN)
+ * Passing undersized buffers causes undefined behavior (buffer overread).
+ * The implementation uses memcpy with these exact sizes.
+ *
+ * @param eui64  8-byte peer EUI-64 address (must be exactly 8 bytes)
+ * @param pubkey 32-byte Ed25519 public key (must be exactly 32 bytes)
+ * @return 0 on success (peer added or updated)
+ *         -EINVAL if eui64 or pubkey is NULL
+ *         -ENOSPC if peer table is internally inconsistent (should not happen;
+ *                 LRU eviction normally prevents table-full condition)
+ */
+int lichen_peer_add(const uint8_t eui64[8], const uint8_t pubkey[32]);
+
+/**
+ * @brief Remove a peer from the peer table.
+ *
+ * After removal, frames from this peer will be rejected (unknown sender).
+ *
+ * Thread-safe: protected by internal mutex.
+ *
+ * @param eui64 8-byte peer EUI-64 address
+ *
+ * @return 0 on success
+ * @return -EINVAL if eui64 is NULL
+ * @return -ENOENT if peer not found
+ * @return -ECANCELED if LoRa L2 requires re-initialization
+ * @return -ENOTSUP if LICHEN link support is not enabled
+ */
+int lichen_peer_remove(const uint8_t eui64[8]);
+
+/* ─── MTU and addressing ─────────────────────────────────────────────────── */
+
 /**
  * @brief MTU for LICHEN interface
  *
@@ -88,6 +147,26 @@ void lichen_l2_iface_init(struct net_if *iface);
  */
 void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 		     int16_t rssi, int8_t snr);
+
+/**
+ * @brief Reinitialize internal state after RX thread abort recovery.
+ *
+ * SECURITY: DANGEROUS FUNCTION - INTERNAL USE ONLY (project-LICHEN-tvfm.16)
+ *
+ * This function reinitializes a mutex that may still be held, which is
+ * UNDEFINED BEHAVIOR. Calling it at the wrong time corrupts kernel state.
+ *
+ * MUST ONLY be called from lichen_lora_l2_deinit() after:
+ * 1. The RX thread has been joined or forcibly aborted
+ * 2. No concurrent RX operations are possible
+ *
+ * Exported only because rx_mutex lives in lichen_l2.c while deinit lives in
+ * lora_l2.c. Do NOT call from any other context. Will k_panic() if called
+ * while the module is running.
+ *
+ * The only truly safe recovery from thread-abort is k_sys_reboot().
+ */
+void lichen_l2_reinit_after_abort(void);
 
 /* Declare the L2 struct for external reference */
 NET_L2_DECLARE_PUBLIC(LICHEN_L2);

@@ -31,27 +31,39 @@ extern "C" {
 /*
  * struct in6_addr detection and fallback definition.
  *
- * WHY THIS IS COMPLEX: struct in6_addr is defined by system headers (POSIX
- * netinet/in.h, Zephyr net_ip.h), but there is no universal guard macro.
- * Each platform uses different include guards (_NETINET_IN_H, __NETINET_IN_H__,
- * etc.) and no single check works everywhere. The cascade below checks multiple
- * signals for "in6_addr already defined" before providing our fallback.
+ * Problem: struct in6_addr is defined by system headers (POSIX netinet/in.h,
+ * Zephyr net_ip.h), but there is no universal guard macro. Duplicate
+ * definitions cause compile errors; missing definitions also break the build.
  *
- * THE COMPLEXITY IS NECESSARY because defining our own struct in6_addr when
- * the system already provides one causes a compile error (duplicate definition).
- * False negatives (providing fallback when not needed) break the build.
- * False positives (skipping fallback when needed) also break the build.
+ * Detection cascade (checked in order, first match wins):
  *
- * Detection strategy (most reliable first):
- * 1. LICHEN_HAVE_IN6_ADDR: explicit user override for unlisted platforms
- * 2. IN6ADDR_ANY_INIT: required by POSIX for any header providing in6_addr
- * 3. Zephyr with CONFIG_NET_IPV6: pulls in zephyr/net/net_ip.h
- * 4. POSIX header guards: platform-specific guard macros (the long list)
- * 5. Fallback: provide our own minimal definition
+ *   Priority  Check                         Action           When to use
+ *   --------  ----------------------------  ---------------  -----------------------
+ *   1         LICHEN_HAVE_IN6_ADDR=1        skip fallback    user override (unlisted
+ *                                                            platforms, custom setup)
+ *   2         IN6ADDR_ANY_INIT or           skip fallback    POSIX-compliant headers
+ *             IN6ADDR_LOOPBACK_INIT                          (most reliable signal)
+ *   3         CONFIG_NET_IPV6 + __ZEPHYR__  include net_ip.h Zephyr with IPv6 enabled
+ *   4         Platform header guards:       skip fallback    system header included
+ *             _NETINET_IN_H (Linux glibc)                    before this header
+ *             _NETINET_IN_H_ (BSD/macOS)
+ *             _NETINET6_IN6_H (FreeBSD)
+ *             __NETINET_IN_H__ (some BSDs)
+ *             ZEPHYR_INCLUDE_POSIX_...
+ *             _STRUCT_IN6_ADDR (macOS)
+ *   5         (none of the above)           define fallback  bare-metal, minimal env
  *
- * If you see "redefinition of struct in6_addr", either:
- * - Include your system's netinet/in.h BEFORE this header, or
- * - Define LICHEN_HAVE_IN6_ADDR=1 before including this header
+ * Note: _SYS_SOCKET_H (from <sys/socket.h>) was intentionally removed from
+ * the detection list. Including <sys/socket.h> does NOT define struct in6_addr;
+ * that struct is defined in <netinet/in.h>. Checking _SYS_SOCKET_H would cause
+ * a false positive: skipping the fallback when in6_addr isn't actually defined.
+ *
+ * Fallback definition: struct in6_addr { uint8_t s6_addr[16]; }
+ * This is wire-compatible with all known implementations.
+ *
+ * If you see "redefinition of struct in6_addr":
+ *   - Include your system's netinet/in.h BEFORE this header, or
+ *   - Define LICHEN_HAVE_IN6_ADDR=1 before including this header
  */
 #if defined(LICHEN_HAVE_IN6_ADDR) && LICHEN_HAVE_IN6_ADDR
 /* User explicitly says in6_addr is already defined */
@@ -61,7 +73,7 @@ extern "C" {
 #include <zephyr/net/net_ip.h>
 #elif defined(_NETINET_IN_H) || defined(_NETINET_IN_H_) || defined(_NETINET6_IN6_H) || \
       defined(__NETINET_IN_H__) || defined(ZEPHYR_INCLUDE_POSIX_NETINET_IN_H_) || \
-      defined(_SYS_SOCKET_H) || (defined(__APPLE__) && defined(_STRUCT_IN6_ADDR))
+      (defined(__APPLE__) && defined(_STRUCT_IN6_ADDR))
 /* System header already provides struct in6_addr */
 #else
 /**
@@ -134,6 +146,10 @@ int lichen_make_link_local(const uint8_t *iid, struct in6_addr *addr);
  * @brief Construct ULA address from prefix and IID
  *
  * Combines a fd00::/8 prefix with the IID.
+ *
+ * Note: Only fd00::/8 is accepted, not the full fc00::/7 ULA range.
+ * Per RFC 4193, fc00::/8 (L=0) is reserved; only fd00::/8 (L=1) is
+ * allocated for locally-assigned ULAs.
  *
  * @param prefix 64-bit prefix (first 8 bytes, must be in fd00::/8)
  * @param iid Interface identifier (8 bytes)

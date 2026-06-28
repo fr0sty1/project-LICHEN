@@ -19,17 +19,19 @@
 
 /*
  * Logging abstraction: use Zephyr logging when available, otherwise
- * fall back to no-ops. This allows the module to be used in host-side
- * unit tests without stubbing the logging system.
+ * fall back to fprintf(stderr) for host-side unit tests.
+ *
+ * Note: Host-side log output is best-effort for debugging. Production
+ * (Zephyr) builds use proper logging levels. (project-LICHEN-tvfm.76)
  */
 #ifdef __ZEPHYR__
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(lichen_ipv6, LOG_LEVEL_INF);
 #else
-#define LOG_ERR(...)  ((void)0)
-#define LOG_WRN(...)  ((void)0)
-#define LOG_INF(...)  ((void)0)
-#define LOG_DBG(...)  ((void)0)
+#define LOG_ERR(fmt, ...)  fprintf(stderr, "ERR: " fmt "\n", ##__VA_ARGS__)
+#define LOG_WRN(fmt, ...)  fprintf(stderr, "WRN: " fmt "\n", ##__VA_ARGS__)
+#define LOG_INF(fmt, ...)  ((void)0)  /* Suppress info in tests */
+#define LOG_DBG(fmt, ...)  ((void)0)  /* Suppress debug in tests */
 #endif
 
 /* Ed25519 public key length - compile-time check */
@@ -94,7 +96,11 @@ int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
      * This is safe for identifier derivation (not key material) because:
      * 1. Birthday collision requires 2^32 attempts (4B devices) for 50% collision
      * 2. Preimage resistance remains at 2^64 (sufficient for device identity)
-     * 3. Matches RFC 7343 (ORCHID) approach for cryptographic identifiers
+     *
+     * Note: While inspired by RFC 7343 (ORCHID), this is NOT a compliant ORCHID.
+     * ORCHIDs have additional structure (specific prefix, hash-index bits) that
+     * we omit. Our derivation is simpler: SHA-256(pubkey) -> first 8 bytes ->
+     * clear U/L bit. This is valid for LICHEN's internal IID generation.
      */
     memcpy(iid, hash, 8);
 
@@ -141,7 +147,31 @@ int lichen_make_ula(const uint8_t *prefix, const uint8_t *iid,
         return -EINVAL;
     }
 
-    /* Check prefix is in fd00::/8 */
+    /*
+     * Validate prefix is in fd00::/8 (locally-assigned ULA range).
+     *
+     * RFC 4193 ULA structure (fc00::/7):
+     *   Bits 0-6:   1111110 (fc00::/7 prefix identifier)
+     *   Bit 7:      L bit (1=local, 0=reserved for future central assignment)
+     *   Bits 8-47:  40-bit Global ID (randomly generated per site)
+     *   Bits 48-63: 16-bit Subnet ID (site-specific)
+     *
+     * The /8 prefix check means we validate all 8 bits of the first byte:
+     *   0xfd = 11111101 = fc00::/7 prefix (1111110) + L=1 (locally assigned)
+     *
+     * We only accept fd00::/8 (L=1), not fc00::/8 (L=0) which is reserved.
+     * The Global ID and Subnet ID (bytes 1-7) are site-specific and have
+     * no format constraints beyond being randomly generated per RFC 4193.
+     *
+     * Global ID validation (project-LICHEN-tvfm.100):
+     * We intentionally do NOT validate bytes 1-7 (the 40-bit Global ID + 16-bit
+     * Subnet ID). RFC 4193 Section 3.2.2 recommends pseudo-random generation,
+     * but "fd00:0000:0000::" (all-zeros Global ID) is technically valid. Using
+     * a non-random Global ID risks collision with other sites using the same
+     * simple prefix, but this is a deployment policy issue, not a protocol
+     * violation. The caller (provisioning system or config) is responsible for
+     * ensuring proper prefix selection.
+     */
     if (prefix[0] != 0xfd) {
         LOG_ERR("ULA prefix must be in fd00::/8, got %02x", prefix[0]);
         return -EINVAL;
@@ -174,13 +204,16 @@ int lichen_make_gua(const uint8_t *prefix, const uint8_t *iid,
 /*
  * IPv6 address string length: 8 groups * 4 hex chars + 7 colons = 39 chars + null.
  * Verify at compile time that our buffer constant is sufficient.
+ *
+ * For non-Zephyr builds (host tests), we use a portable compile-time assertion
+ * that works with C99 and later. The negative-sized array typedef fails at
+ * compile time if the condition is false.
  */
 #ifdef __ZEPHYR__
 BUILD_ASSERT(LICHEN_IPV6_ADDR_STR_LEN >= 40,
              "LICHEN_IPV6_ADDR_STR_LEN must hold 39-char IPv6 string plus null");
 #else
-_Static_assert(LICHEN_IPV6_ADDR_STR_LEN >= 40,
-               "LICHEN_IPV6_ADDR_STR_LEN must hold 39-char IPv6 string plus null");
+typedef char _ipv6_addr_str_len_check[(LICHEN_IPV6_ADDR_STR_LEN >= 40) ? 1 : -1];
 #endif
 
 int lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t buflen)
@@ -242,18 +275,27 @@ int lichen_log_link_local_from_eui64(const uint8_t *eui64, struct in6_addr *ll_a
 
     if (eui64 == NULL) {
         LOG_ERR("log_link_local: NULL eui64");
+        if (ll_addr_out != NULL) {
+            memset(ll_addr_out, 0, sizeof(*ll_addr_out));
+        }
         return -EINVAL;
     }
 
     ret = lichen_eui64_to_iid(eui64, iid);
     if (ret < 0) {
         LOG_ERR("Failed to derive IID from EUI-64: %d", ret);
+        if (ll_addr_out != NULL) {
+            memset(ll_addr_out, 0, sizeof(*ll_addr_out));
+        }
         return ret;
     }
 
     ret = lichen_make_link_local(iid, &ll_addr);
     if (ret < 0) {
         LOG_ERR("Failed to make link-local address: %d", ret);
+        if (ll_addr_out != NULL) {
+            memset(ll_addr_out, 0, sizeof(*ll_addr_out));
+        }
         return ret;
     }
 

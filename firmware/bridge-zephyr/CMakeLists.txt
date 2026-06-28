@@ -8,6 +8,7 @@ target_sources(app PRIVATE
     src/main.c
     subsys/lichen/lora_l2.c
     subsys/lichen/ipv6_addr.c
+    subsys/lichen/lichen_util.c
 )
 
 # Add lichen_l2.c only when full networking stack is enabled
