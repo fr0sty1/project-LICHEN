@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.54",
+  "title": "[main.c:159-167] LED blink loop shares pattern with fatal error loop",
+  "description": "Gap found: main.c LED patterns not reviewed.\n\nWhy this was missed: LED diagnostic code considered non-critical.\n\nThe actual bug: In main(), USB failure causes 3 rapid blinks (lines 159-167) and then continues. LoRa failure causes continuous 200ms blinks forever (lines 192-197). Both use the same led_set() function and similar patterns, but USB failure is non-fatal while LoRa failure is fatal.\n\nThe subtle issue: if someone observing the device sees 3 rapid blinks, they might think something is wrong and reset. But the device would continue. The LED patterns could be more distinct:\n- USB failure: 3 slow blinks (500ms), or different count\n- LoRa failure: continuous fast blinks (current 200ms)\n\nThis is a UX design question, not a bug. The current code is correct. Priority 4 - suggestion only.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:51:36.814363Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:51:44.749473Z",
+  "closed_at": "2026-06-28T02:51:44.749473Z",
+  "close_reason": "Fixed: Enhanced inline comments to document the distinct LED patterns - USB failure uses 3 rapid 100ms blinks then stops, LoRa failure uses continuous 200ms blink forever. The patterns were already distinct; improved documentation to make this clearer.",
+  "labels": [
+    "review",
+    "round2",
+    "gap",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.54",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:51:36.814892Z"
+    }
+  ]
+}

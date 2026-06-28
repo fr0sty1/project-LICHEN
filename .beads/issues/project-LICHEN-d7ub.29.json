@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-d7ub.29",
+  "title": "lichen_l2.c:1691 reinit_after_abort lacks atomic for link_ctx_initialized",
+  "description": "Contract violation: lichen_l2_reinit_after_abort() - Does not clear or check link_ctx_initialized atomic. If called from deinit(), the caller (lora_l2.c) calls lichen_l2_reinit_after_abort() but lichen_l2.c's link_ctx_initialized is not touched. deinit() at lora_l2.c:958-960 conditionally calls this, but if link_ctx_initialized is still set after abort, subsequent enable() might skip re-init. WHY: Inconsistent state between modules. HOW to fix: Either have reinit_after_abort also clear link_ctx_initialized, or document that caller must handle this (deinit doesn't reach lichen_l2's internals).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T07:20:37.247284Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:20:37.247822Z",
+  "labels": [
+    "review",
+    "round1",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-d7ub.29",
+      "depends_on_id": "project-LICHEN-d7ub",
+      "type": "parent-child",
+      "created_at": "2026-06-28T07:20:37.247821Z"
+    }
+  ]
+}

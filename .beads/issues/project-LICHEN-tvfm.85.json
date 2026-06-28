@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.85",
+  "title": "[lichen_l2.c:1134-1139] rx_link_key copied but has_link_key not checked for copy",
+  "description": "Gap found: Link key copy logic not fully traced.\n\nWhy this was missed: Key handling logic reviewed partially, not complete path.\n\nThe actual bug: Lines 1134-1139 copy link_key only if has_link_key is true:\n  if (link_ctx.has_link_key) {\n      memcpy(rx_link_key, link_ctx.link_key, LICHEN_LINK_KEY_LEN);\n      rx_link_key_ptr = rx_link_key;\n  }\n\nIf has_link_key is false, rx_link_key_ptr remains NULL (initialized on line 1135). This is passed to rx_ctx.link_key (line 1158).\n\nThe question: what does lichen_link_rx() do when link_key is NULL?\n- If it requires link_key for MIC validation, the frame will fail\n- If it falls back to CRC32 validation, the frame may be accepted without crypto\n\nThis is by design - link_key is optional during initial handshake. The code correctly propagates the key state.\n\nHowever: if has_link_key is false but an attacker sends a frame with MIC that happens to pass CRC32, it would be accepted. This is documented behavior for unauthenticated bootstrap.\n\nPriority 3 - security design note for unauthenticated mode.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:53:53.747285Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:45:19.65707Z",
+  "closed_at": "2026-06-28T02:45:19.65707Z",
+  "close_reason": "Fixed: Added security documentation explaining behavior when has_link_key is false. The code already correctly checks has_link_key before copying (line 1349). Enhanced comment now documents that NULL link_key causes: AES-CCM-64 MIC to fail with -LICHEN_EAUTH; CRC32 MIC to fall back to non-cryptographic verification. This is expected during unauthenticated bootstrap.",
+  "labels": [
+    "review",
+    "round2",
+    "gap",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.85",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:53:53.747819Z"
+    }
+  ]
+}

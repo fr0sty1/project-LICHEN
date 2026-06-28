@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-i1gk.47",
+  "title": "[lichen_l2.c:1319 vs 1295-1306] peer_table cleared with memset but previous path uses secure_zero",
+  "description": "Cross-file analysis: In lichen_l2_iface_init(), line 1319 uses memset() to clear peer_table, while the re-initialization path at lines 1295-1306 and the disable path in lichen_l2_enable() (lines 1071-1074) use secure_zero() for pubkeys. This inconsistency is intentional per the comment (C guarantees zero-init for statics), but creates a subtle issue: if lichen_l2_iface_init() is ever called a second time (after failed init followed by another init attempt), peer_table may contain stale pubkey material from the first attempt. Line 1337-1341 checks for this and rejects re-init, but if that check passes (lichen_iface was NULL), peer_table could have stale pubkeys from a partial link_ctx init. The memset at 1319 wipes them, but without secure_zero, the compiler could optimize it out. Should use secure_zero for defense-in-depth consistency.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T03:08:59.28473Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T03:43:42.109845Z",
+  "closed_at": "2026-06-28T03:43:42.109845Z",
+  "close_reason": "Fixed: Changed memset to secure_zero at line 1343 for defense-in-depth consistency with other peer_table clearing paths",
+  "labels": [
+    "review",
+    "round2",
+    "cross-file",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i1gk.47",
+      "depends_on_id": "project-LICHEN-i1gk",
+      "type": "parent-child",
+      "created_at": "2026-06-28T03:08:59.285318Z"
+    }
+  ]
+}

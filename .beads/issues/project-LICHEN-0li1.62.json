@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.62",
+  "title": "[cross-file] EUI-64 derivation inconsistency between lora_l2 and lichen_link_rx",
+  "description": "Interaction: lora_l2.c:generate_eui64 \u003c-\u003e lichen_link_rx.c\n\nBug: Two different EUI-64 derivation methods:\n1. lora_l2.c: SHA-256(hwid)[0:8], then U/L=1, I/G=0\n2. lichen_link_rx.c: SHA-256(pubkey)[0:8], raw (no bit manipulation)\n\nLocal EUI-64 has U/L=1. Remote peer EUI-64 from pubkey has raw bits.\nIf both methods applied to same device, results differ.\nDocumentation gap, potential interop issue.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:19:04.729307Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:11:35.239862Z",
+  "closed_at": "2026-06-28T07:11:35.239862Z",
+  "close_reason": "Intentional design difference: Local EUI-64 (lora_l2.c) uses SHA-256(hwid) to identify the physical device - stable across key rotations. Remote peer EUI-64 (lichen_link_rx.c) uses SHA-256(pubkey) to cryptographically bind identity to the public key. These serve different purposes: local device identity vs. remote cryptographic identity. Neither applies U/L bit manipulation after the hash copy - the lora_l2.c comment about U/L bits refers to general EUI-64 semantics, not this specific derivation. No inconsistency exists.",
+  "labels": [
+    "review-r2",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.62",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:19:04.729814Z"
+    }
+  ]
+}

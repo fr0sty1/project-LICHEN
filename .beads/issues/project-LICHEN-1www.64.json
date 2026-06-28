@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-1www.64",
+  "title": "lichen_l2_input uses src_eui64 output after lichen_link_rx failure",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T21:47:26.367039Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T21:47:34.095947Z",
+  "closed_at": "2026-06-27T21:47:34.095947Z",
+  "close_reason": "Not a bug - src_eui64 is only used in LOG_DBG at line 727 which is after the ret \u003c 0 check at line 719",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1www.64",
+      "depends_on_id": "project-LICHEN-1www",
+      "type": "parent-child",
+      "created_at": "2026-06-27T21:47:26.367582Z"
+    }
+  ]
+}

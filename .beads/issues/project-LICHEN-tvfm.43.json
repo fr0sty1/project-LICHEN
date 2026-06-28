@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.43",
+  "title": "[lichen_l2.h:40-42] CONFIG_LICHEN_LINK_MAX_NEIGHBORS default in header bypasses Kconfig",
+  "description": "Gap found: Header-level defaults not reviewed in Round 1.\n\nWhy this was missed: Kconfig interaction patterns not examined.\n\nThe actual bug: Lines 40-42 define CONFIG_LICHEN_LINK_MAX_NEIGHBORS with a default of 16 if not defined. This means the header provides a fallback default that may conflict with the Kconfig system. If a Kconfig file defines LICHEN_LINK_MAX_NEIGHBORS without the CONFIG_ prefix, or if the Kconfig isn't processed before this header, the hardcoded 16 takes effect silently. Better practice: use BUILD_ASSERT to require the Kconfig value rather than defaulting, or move the default exclusively to Kconfig. This pattern appears in multiple LICHEN headers. Priority 4 because current builds process Kconfig first.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:50:48.814298Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:48:30.280646Z",
+  "closed_at": "2026-06-28T02:48:30.280646Z",
+  "close_reason": "Fixed: Removed header default for CONFIG_LICHEN_LINK_MAX_NEIGHBORS. Kconfig in lichen/subsys/lichen/link/Kconfig provides the definitive default (16, range 4-64). LICHEN_L2 depends on LICHEN_LINK, guaranteeing the config is set. Header now documents the Kconfig source instead of providing a bypass.",
+  "labels": [
+    "review",
+    "round2",
+    "gap",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.43",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:50:48.814837Z"
+    }
+  ]
+}

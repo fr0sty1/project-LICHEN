@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.60",
+  "title": "[lora_l2.c:453-456] k_thread_join second timeout uses RX_TIMEOUT_MS directly",
+  "description": "Gap found: Thread join timeout sequence not fully analyzed.\n\nWhy this was missed: Round 1 covered thread abort but not the timeout values.\n\nThe actual bug: In lichen_lora_l2_stop() lines 453-456:\n1. First join attempt: K_MSEC(RX_THREAD_QUICK_JOIN_MS) = 100ms\n2. Second join attempt: K_MSEC(RX_TIMEOUT_MS) = CONFIG value (default 1000ms)\n\nThe LOG_WRN at line 459 says 'timed out after %dms' with value RX_THREAD_QUICK_JOIN_MS + RX_TIMEOUT_MS. This correctly logs total wait time (1100ms default).\n\nThe design question: if the thread is blocked in lora_recv() with timeout RX_TIMEOUT_MS, the second join should allow at least that long. The current code does allow this (1000ms second join matches lora_recv timeout). But if CONFIG_LICHEN_LORA_L2_RX_TIMEOUT_MS is increased, the join timeout scales accordingly, which is correct.\n\nVerified correct. Priority 4 - documentation note that join timeout equals RX timeout.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:52:07.257023Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:51:59.349877Z",
+  "closed_at": "2026-06-28T02:51:59.349877Z",
+  "close_reason": "Fixed: Added clarifying comment to the second k_thread_join timeout explaining why RX_TIMEOUT_MS is used directly - worst-case scenario where lora_recv() just started when stop flag was set.",
+  "labels": [
+    "review",
+    "round2",
+    "gap",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.60",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:52:07.257592Z"
+    }
+  ]
+}

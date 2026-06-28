@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.28",
+  "title": "[lichen_l2.c:506] peer_try_all_pubkeys modifies ctx then restores on error - complex state management",
+  "description": "Contract: peer_try_all_pubkeys should return ctx in known state on all paths.\nViolation: The function saves ctx-\u003epeer_pubkey and ctx-\u003epeer_eui64 (lines 514-515), modifies them during iteration (lines 544-545), and restores on error (lines 570-573, 592-594). On success, it re-sets them to the matched peer's values (lines 583-584). This modify-then-restore pattern is correct but complex.\nImpact: The comment (lines 481-489) correctly explains why this is safe (ctx is stack-local, caller holds rx_mutex). However, if ctx is ever passed from external state or if locking discipline changes, the pattern becomes unsafe.\nMitigation: The comments are adequate. Consider refactoring to return matched peer info separately rather than modifying ctx, for cleaner contract.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:13:07.903401Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:10:26.126202Z",
+  "closed_at": "2026-06-28T07:10:26.126202Z",
+  "close_reason": "Verified correctness: (1) ctx is stack-local in lichen_l2_input (line 1774), (2) caller holds rx_mutex (line 1711), (3) all error paths restore saved state (lines 575-577, 597-599), (4) success path correctly updates to matched peer (lines 588-590). Comments at lines 485-500 accurately document the safety invariants. The modify-then-restore pattern is correct and well-documented; no refactoring needed.",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.28",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:13:07.90392Z"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-tvfm.6",
+  "title": "[lichen_l2.c:791-795] peer_table clearing loop may leave holes if interrupted",
+  "description": "In lichen_l2_enable() disable path (lines 791-795), the peer_table clearing loop uses secure_zero for each entry then sets active=false. If the system is interrupted mid-loop (e.g., power failure, watchdog), some entries may be zeroed while others are not, leaving the table in an inconsistent state on restart. While the mutexes are held, hardware interruptions don't respect mutexes. Consider using a generation counter or atomic flag to mark the entire table invalid before clearing entries.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:45:39.088871Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:30:57.677538Z",
+  "closed_at": "2026-06-28T02:30:57.677538Z",
+  "close_reason": "Fixed: Added documentation explaining why the peer_table clearing loop is thread-safe. The loop is already protected by both tx_mutex and rx_mutex, and is only called from thread context (via net_if_down -\u003e l2-\u003eenable). All peer_table accessors require rx_mutex, so preemption cannot cause inconsistent state. No IRQs access peer_table directly. Added detailed comment (project-LICHEN-tvfm.6) explaining the safety invariants.",
+  "labels": [
+    "review",
+    "round1",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.6",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:45:39.089393Z"
+    }
+  ]
+}

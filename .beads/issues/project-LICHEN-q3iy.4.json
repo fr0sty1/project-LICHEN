@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-q3iy.4",
+  "title": "secure_zero: word-aligned path rechecks alignment",
+  "description": "In lichen_util.h:51, the word-aligned write loop redundantly checks alignment:\n\n```c\nwhile (len \u003e= sizeof(unsigned long) \u0026\u0026\n       ((uintptr_t)p \u0026 (sizeof(unsigned long) - 1)) == 0) {\n```\n\nAfter the initial alignment loop (lines 46-49), p is guaranteed word-aligned. The second alignment check inside the bulk loop is dead code - it will always be true if execution reaches this point.\n\nWhat goes wrong: Nothing functionally breaks, but the check runs every iteration for buffers \u003e= 32 bytes. On a hot path (mutex-protected key wiping), this adds measurable overhead.\n\nSuggested fix: Remove the redundant alignment check from the bulk loop condition.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T22:19:19.038592Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T22:26:35.462346Z",
+  "closed_at": "2026-06-27T22:26:35.462346Z",
+  "close_reason": "Duplicate of project-LICHEN-q3iy.1",
+  "labels": [
+    "efficiency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-q3iy.4",
+      "depends_on_id": "project-LICHEN-q3iy",
+      "type": "parent-child",
+      "created_at": "2026-06-27T22:19:19.03912Z"
+    }
+  ]
+}

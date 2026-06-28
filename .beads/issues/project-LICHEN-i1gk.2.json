@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-i1gk.2",
+  "title": "[lichen_l2.c:693] secure_zero logs eui64 after zeroing",
+  "description": "In lichen_peer_remove(), the LOG_INF on line 693 logs the eui64 address, but secure_zero(entry-\u003eeui64) was already called on line 691. This logs all zeros instead of the actual removed peer address. Fix: either log BEFORE zeroing, or copy the eui64 to a local variable first.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T03:03:52.973624Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T03:43:50.055189Z",
+  "closed_at": "2026-06-28T03:43:50.055189Z",
+  "close_reason": "Invalid: The LOG_INF uses the function parameter 'eui64' (caller-provided), not 'entry-\u003eeui64' (table entry). These are separate memory locations - peer_find_locked compares them but returns a pointer to the table entry, not the parameter. The parameter remains intact after entry-\u003eeui64 is zeroed.",
+  "labels": [
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i1gk.2",
+      "depends_on_id": "project-LICHEN-i1gk",
+      "type": "parent-child",
+      "created_at": "2026-06-28T03:03:52.974068Z"
+    }
+  ]
+}

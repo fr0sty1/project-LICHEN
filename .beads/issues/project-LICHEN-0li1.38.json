@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.38",
+  "title": "[lichen_link_rx.c:153] Typo: -EAUTH instead of -LICHEN_EAUTH",
+  "description": "Flow: verify_mic() -\u003e CRC32 fallback path -\u003e return -EAUTH\n\nIn lichen_link_rx.c line 153, the code returns `-EAUTH` when CRC32 MIC is received but CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC is not enabled.\n\n`-EAUTH` is not a standard POSIX errno and may not be defined. On some platforms this will be a compiler error; on others it may compile to an undefined value.\n\nThe correct constant is `-LICHEN_EAUTH` (defined in lichen/errno.h as 200).\n\nThis is in a compile-time conditional path (only reached when CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC is NOT enabled), but the typo should still be fixed for consistency.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:14:00.528154Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:07:48.966353Z",
+  "closed_at": "2026-06-28T07:07:48.966353Z",
+  "close_reason": "Fixed: Changed -EAUTH to -LICHEN_EAUTH at line 153 in lichen_link_rx.c",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.38",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:14:00.528661Z"
+    }
+  ]
+}

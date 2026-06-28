@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.41",
+  "title": "[lichen_link_rx.c:257] Replay entry created before MIC verification",
+  "description": "Flow: lichen_link_rx() -\u003e lichen_replay_get() before verify_mic()\n\nIn lichen_link_rx.c, the replay window allocation happens at line 257 (lichen_replay_get), but MIC verification doesn't happen until line 265. If MIC verification fails, the replay table entry still exists with an updated LRU timestamp.\n\nAttack scenario:\n1. Attacker sends malformed frame with valid signature but bad MIC\n2. Frame passes signature verification (if signature_present=true)\n3. lichen_replay_get() is called, updating/creating replay entry\n4. MIC verification fails, function returns -LICHEN_EAUTH\n5. Replay entry persists with fresh LRU timestamp\n\nImpact: An attacker can keep replay entries 'warm' (prevent LRU eviction) for peers they want to target for replay attacks later. This is a minor information leak / DoS vector since it affects table eviction ordering.\n\nMitigation: Move lichen_replay_get() call after verify_mic() returns successfully. The replay window commit (lichen_replay_check) already happens at Step 7 after all validation, but the table entry allocation should also be deferred.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:14:09.835408Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T05:22:27.484153Z",
+  "closed_at": "2026-06-28T05:22:27.484153Z",
+  "close_reason": "Duplicate of project-LICHEN-0li1.48 (same issue: replay window before verification, R2 version has more detail)",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.41",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:14:09.835935Z"
+    }
+  ]
+}

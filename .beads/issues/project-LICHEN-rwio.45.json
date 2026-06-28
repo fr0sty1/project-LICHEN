@@ -2,13 +2,16 @@
   "id": "project-LICHEN-rwio.45",
   "title": "GOOD: lichen_l2.c lock ordering documented to prevent deadlock",
   "description": "lichen_l2.c lines 265-266: 'Lock order: tx_mutex first to avoid deadlock (consistent ordering)'. The code acquires tx_mutex then rx_mutex consistently. Without this comment, a maintainer could innocently reverse the order elsewhere and cause intermittent deadlock.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "decision",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-27T06:02:40.201328Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-27T06:02:40.20183Z",
+  "updated_at": "2026-06-28T02:24:57.095945Z",
+  "closed_at": "2026-06-28T02:24:57.095945Z",
+  "close_reason": "Not a bug - positive observation",
   "labels": [
     "review"
   ],

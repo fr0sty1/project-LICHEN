@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.56",
+  "title": "[lichen_l2] iface_init fail path mutex ordering differs from enable path",
+  "description": "Cross-file potential deadlock: The fail_late_init cleanup path in lichen_l2_iface_init() only acquires rx_mutex (line 1030), while lichen_l2_enable() acquires tx_mutex THEN rx_mutex (lines 695-696 for enable, 778-779 for disable).\n\nCurrent safety: During iface_init, the interface is not yet operational - no concurrent TX should be possible since lichen_iface is only set at line 975, and the RX callback is only registered at line 978. So there's no practical race.\n\nFuture hazard: If code is refactored to allow early TX (e.g., during boot for neighbor discovery), the inconsistent lock ordering could cause ABBA deadlock between:\n- fail_late_init path: rx_mutex only\n- concurrent TX: tx_mutex only (or tx_mutex then rx_mutex if refactored)\n\nLocation: lichen_l2.c:1028-1034 (fail_late_init) vs lines 695-696, 778-779 (enable)\n\nRecommendation: For consistency, fail_late_init should acquire tx_mutex then rx_mutex, matching lichen_l2_enable(). Even if currently safe, consistent lock ordering prevents future bugs.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:51:51.713995Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:40:13.287844Z",
+  "closed_at": "2026-06-28T02:40:13.287844Z",
+  "close_reason": "Fixed: fail_late_init path now acquires both tx_mutex and rx_mutex in the correct order (tx_mutex first, then rx_mutex), matching the enable/disable paths in lichen_l2_enable(). Updated comment to document the lock ordering rationale.",
+  "labels": [
+    "review",
+    "round2",
+    "cross-file",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.56",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:51:51.715159Z"
+    }
+  ]
+}

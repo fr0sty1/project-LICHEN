@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-1www.41",
+  "title": "LICHEN_MIN_FRAME_LEN validation incomplete",
+  "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:81-116\n\nLICHEN_MIN_FRAME_LEN = 9 is validated via BUILD_ASSERT against component sizes defined locally. However, these local constants (LICHEN_FRAME_LENGTH_FIELD etc.) are duplicates of values that should come from a shared header.\n\nWhat goes wrong: If the actual frame format changes in link.h, the local constants here wont update, and the BUILD_ASSERT will still pass with stale values. The validation provides false confidence.\n\nBetter: Reference the authoritative constants from link.h (e.g., LICHEN_FRAME_HDR_LEN if defined) rather than defining local copies.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T21:44:22.744594Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T22:06:48.573354Z",
+  "closed_at": "2026-06-27T22:06:48.573354Z",
+  "close_reason": "Fixed: Changed LICHEN_FRAME_MIN_MIC to use LICHEN_MIC_32_LEN from link.h",
+  "labels": [
+    "c-standards",
+    "documentation",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1www.41",
+      "depends_on_id": "project-LICHEN-1www",
+      "type": "parent-child",
+      "created_at": "2026-06-27T21:44:22.74515Z"
+    }
+  ]
+}

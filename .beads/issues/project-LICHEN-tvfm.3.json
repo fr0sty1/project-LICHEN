@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-tvfm.3",
+  "title": "[lora_l2.c:134] hwid_len check could allow negative values as size_t",
+  "description": "In generate_eui64() at line 134-144, hwid_len is ssize_t. The check 'hwid_len \u003c= 0' handles negative returns correctly, but on line 141 the cast '(size_t)hwid_len \u003e sizeof(hwid)' is redundant since we already validated hwid_len \u003c= 0. If hwinfo_get_device_id() returns 0 (empty hwid), the code proceeds to hash an empty buffer. While SHA-256 of empty input is well-defined, an empty hardware ID may indicate a hardware issue that should be flagged more explicitly. The LOG_ERR on line 138 ('No hardware ID available') won't fire since 0 \u003e 0 is false - it should check hwid_len \u003c 1.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:45:26.042255Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:21:16.411334Z",
+  "closed_at": "2026-06-28T02:21:16.411334Z",
+  "close_reason": "Fixed: Split hwid_len check into separate \u003c 0 and == 0 conditions for clarity. Now explicitly returns the error code on failure, handles zero-length hwid as -ENODEV. The lora_l2.c.obj compiled successfully; overall build fails due to unrelated toolchain issue with arm-zephyr-eabi-ar/ranlib.",
+  "labels": [
+    "review",
+    "round1",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.3",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:45:26.042797Z"
+    }
+  ]
+}

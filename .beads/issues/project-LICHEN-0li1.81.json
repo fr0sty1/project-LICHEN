@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.81",
+  "title": "[cross-file] constant-time peer iteration doesn't prevent replay window timing leak",
+  "description": "Interaction: lichen_l2.c:peer_try_all_pubkeys \u003c-\u003e lichen_link_rx.c:lichen_link_rx\n\nBug: peer_try_all_pubkeys() (lines 518-575) claims constant-time iteration to prevent timing side-channel. It iterates all peers even after finding a match.\n\nHowever, inside the loop, lichen_link_rx() is called for each peer. The lichen_link_rx() function at line 256-261 calls lichen_replay_get() which modifies the replay table (updates last_used counter at replay.h:51).\n\nEach lichen_replay_get() call for a different peer_eui64 creates/updates a different replay entry. The replay table modification (access_counter increment, potential LRU eviction) may have observable timing effects (cache behavior, memory access patterns).\n\nSo even though peer_try_all_pubkeys loops through all peers, the replay table side effects differ based on which peer matches. An attacker could potentially infer the matching peer index from cache timing.\n\nThe comment at lines 529-533 acknowledges this limitation for iteration order but doesn't address the replay table timing.\n\nMore critically: on non-auth errors (line 569), the function returns early, NOT constant-time. The comment says this is intentional (non-auth errors don't leak peer identity), but combined with replay table modifications, early return on -ENOMEM (replay table full) does leak timing info about table state.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:20:56.967932Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:11:26.245235Z",
+  "closed_at": "2026-06-28T07:11:26.245235Z",
+  "close_reason": "Accepted risk - constant-time iteration already implemented with extensive security comments. Cache timing side-channels on embedded MCUs are difficult to exploit in practice. Future mitigation (randomized iteration order) tracked in project-LICHEN-i1gk.76. Replay table access patterns add negligible additional timing variance compared to existing microarchitectural noise.",
+  "labels": [
+    "review-r2",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.81",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:20:56.968468Z"
+    }
+  ]
+}

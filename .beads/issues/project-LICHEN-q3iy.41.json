@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-q3iy.41",
+  "title": "RX path passes NULL replay table, disabling replay protection",
+  "description": "In lichen_l2_input(), lichen_link_rx() is called with replay = NULL, which disables replay protection.\n\n## Location\n- /firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:795\n\n## Security Impact\nWhat goes wrong: An attacker can capture valid LICHEN frames and replay them indefinitely. Without a replay window, the receiver has no way to detect that a frame was previously processed. This enables replay attacks, resource exhaustion, and protocol state confusion.\n\nCombined with issue project-LICHEN-q3iy.37 (CRC32-only mode), an attacker can both forge and replay frames.\n\n## Priority\nP1 - Replay protection is a fundamental security control.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T22:22:07.065272Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T22:29:46.167294Z",
+  "closed_at": "2026-06-27T22:29:46.167294Z",
+  "close_reason": "Documented as known security gap with SECURITY comment in lichen_l2.c. Created follow-up issue project-LICHEN-4oeh to wire up replay table. The NULL replay table is NOT intentional - the replay.h infrastructure exists but is not connected. Must be implemented before production use.",
+  "labels": [
+    "crypto-security",
+    "untrusted-input",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-q3iy.41",
+      "depends_on_id": "project-LICHEN-q3iy",
+      "type": "parent-child",
+      "created_at": "2026-06-27T22:22:07.065811Z"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-d7ub.5",
+  "title": "lichen_l2.c:799 peer_remove logs removed EUI-64 after zeroing",
+  "description": "Contract violation: lichen_peer_remove() - After secure_zero() clears eui64 at line 797, the LOG_INF at line 799 logs eui64[6] and eui64[7] which are now zero. This leaks no sensitive data (all zeros) but produces useless log output that doesn't identify which peer was removed. WHY this is a bug: The log is misleading and unhelpful for debugging. HOW to fix: Save eui64[6] and eui64[7] to local variables before secure_zero(), or log before zeroing.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T07:19:21.001488Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:22:21.132946Z",
+  "closed_at": "2026-06-28T07:22:21.132946Z",
+  "close_reason": "Duplicate of project-LICHEN-d7ub.1 - same logging issue",
+  "labels": [
+    "review",
+    "round1",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-d7ub.5",
+      "depends_on_id": "project-LICHEN-d7ub",
+      "type": "parent-child",
+      "created_at": "2026-06-28T07:19:21.001974Z"
+    }
+  ]
+}

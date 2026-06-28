@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.84",
+  "title": "[Kconfig:65-70] CONFIG_LICHEN_LORA_FREQUENCY missing range constraint",
+  "description": "Critic: Kconfig validation gap missed by both rounds. What: CONFIG_LICHEN_LORA_FREQUENCY has no 'range' constraint; accepts any int value (-2^31 to 2^31-1). Why it matters: Invalid frequencies (0, negative, \u003e1GHz) could crash radio driver or cause undefined hardware behavior. Regional compliance depends on correct frequency band. Fix: Add range constraint e.g. 'range 150000000 960000000' covering common LoRa bands (150-960 MHz).",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:25:12.666907Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:11:28.006545Z",
+  "closed_at": "2026-06-28T07:11:28.006545Z",
+  "close_reason": "Fixed - added 'range 150000000 960000000' constraint to CONFIG_LICHEN_LORA_FREQUENCY in subsys/lichen/Kconfig. Range covers all LoRa-capable bands (150-960 MHz) while rejecting invalid values like 0, negative, or \u003e1GHz.",
+  "labels": [
+    "review-r3",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.84",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:25:12.670538Z"
+    }
+  ]
+}

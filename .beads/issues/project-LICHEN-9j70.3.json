@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-9j70.3",
+  "title": "LICHEN_MIN_FRAME_LEN defined inside function body",
+  "description": "lichen_l2.c:518 defines LICHEN_MIN_FRAME_LEN inside lichen_l2_input() function body.\n\nWhat goes wrong: Contributors will copy this pattern or miss the constant when looking for frame size limits at file scope. The constant is not reusable elsewhere (e.g., in tests or other validation code).\n\nThe value 14 (length(1) + flags(1) + src_eui64(8) + mic(4)) is a protocol constant that should be visible and documented at file scope, ideally derived from the actual frame format header.\n\nFix: Move to file scope near MAX_LORA_FRAME. Consider deriving from frame format constants if they exist.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T18:18:17.667876Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T18:26:33.355382Z",
+  "closed_at": "2026-06-27T18:26:33.355382Z",
+  "close_reason": "Fixed: Moved LICHEN_MIN_FRAME_LEN from inside lichen_l2_input() to file scope near MAX_LORA_FRAME. Updated the value from 14 to 9 to match lichen_frame_parse() in frame.c, and corrected the documentation to reflect the actual wire format (source EUI-64 is not in the frame header).",
+  "labels": [
+    "risk",
+    "maintainer-burden",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9j70.3",
+      "depends_on_id": "project-LICHEN-9j70",
+      "type": "parent-child",
+      "created_at": "2026-06-27T18:18:17.668416Z"
+    }
+  ]
+}

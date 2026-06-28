@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.82",
+  "title": "[ipv6_addr/lora_l2] SHA-256 failure in generate_eui64 not securely handled",
+  "description": "Cross-file security issue: In lora_l2.c generate_eui64() (lines 127-180), if lichen_sha256() fails:\n\n    ret = lichen_sha256(hwid, (size_t)hwid_len, hash);\n    if (ret != 0) {\n        LOG_ERR('EUI-64: SHA-256 failed');\n        goto cleanup;  // ret is nonzero (from sha256 failure)\n    }\n\nThe cleanup path (lines 176-179) zeros hwid and hash. This is correct.\n\nHowever, the eui64 OUTPUT buffer is NOT zeroed on this failure path. The caller receives an undefined eui64 value (whatever was in the buffer before the call).\n\nIn this case, the caller (lichen_lora_l2_init) checks the return value and doesn't use eui64 on failure, so this isn't exploitable. But it's poor hygiene - the output buffer should be zeroed on any error path.\n\nLocation: lora_l2.c:127-180\n\nImpact: P4 - defense-in-depth, caller correctly checks return value.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:53:41.016281Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:56:27.958994Z",
+  "closed_at": "2026-06-28T02:56:27.958994Z",
+  "close_reason": "Fixed: Modified generate_eui64() to zero the output buffer on all error paths. Changed early returns to goto cleanup, and added secure_zero(eui64, 8) when ret != 0. Defense-in-depth against caller misuse.",
+  "labels": [
+    "review",
+    "round2",
+    "cross-file",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.82",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:53:41.016829Z"
+    }
+  ]
+}

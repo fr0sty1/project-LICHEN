@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.47",
+  "title": "[lichen_link_rx.c:232-236] SHA state not zeroed on all paths",
+  "description": "Gap: sha_state and hash buffers are not zeroed after use in the EUI-64 derivation code.\n\nWhat: Lines 229-236 create a tc_sha256_state_struct on the stack and a 32-byte hash buffer. Neither is zeroed after use. The lichen_sha256() helper in lichen_util.c explicitly zeros the state with secure_zero(\u0026state, sizeof(state)), but lichen_link_rx.c does not follow this pattern.\n\nWhy it matters: While the hash of a public key is not secret, the sha_state struct contains internal hash state that could aid cryptanalysis if leaked. Defense-in-depth suggests zeroing cryptographic state consistently, matching the pattern in lichen_util.c.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:17:52.293672Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:11:12.976812Z",
+  "closed_at": "2026-06-28T07:11:12.976812Z",
+  "close_reason": "File is in lichen/ west workspace (external Zephyr module), not bridge-zephyr application code. The west workspace code at lichen/subsys/lichen/link/ is managed separately from the main firmware code at firmware/bridge-zephyr/. Defense-in-depth fix would need to be applied upstream in the west module.",
+  "labels": [
+    "review-r2",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.47",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:17:52.294171Z"
+    }
+  ]
+}

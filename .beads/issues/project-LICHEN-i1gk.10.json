@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-i1gk.10",
+  "title": "[lora_l2.c:802-817] lichen_lora_l2_tx: -EINVAL for zero length but doc doesn't mention it",
+  "description": "Contract violation: documentation\n\n**Issue:** The function returns -EINVAL when len==0 (line 810) but the header documentation doesn't mention this error case.\n\n**Header doc (lora_l2.h:168-170):**\n```\n * @param len Length of data (max 255 bytes)\n * @return 0 on success, negative errno on failure\n```\n\n**Implementation:**\n```c\nif (len == 0) {\n    LOG_ERR(\"TX with zero length\");\n    return -EINVAL;\n}\n```\n\n**Impact:** Minor - callers won't know zero-length TX is rejected without reading implementation.\n\n**Fix:** Add to doc: '@return -EINVAL if data is NULL or len is 0'",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T03:04:28.027119Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T03:44:41.334347Z",
+  "closed_at": "2026-06-28T03:44:41.334347Z",
+  "close_reason": "Fixed: documented -EINVAL for data=NULL or len=0, and all other return values",
+  "labels": [
+    "review",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i1gk.10",
+      "depends_on_id": "project-LICHEN-i1gk",
+      "type": "parent-child",
+      "created_at": "2026-06-28T03:04:28.027936Z"
+    }
+  ]
+}

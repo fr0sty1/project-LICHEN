@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.80",
+  "title": "[lichen_l2.c:786-787] replay_table_init called without clearing active windows first",
+  "description": "Gap found: Replay table cleanup sequence not reviewed.\n\nWhy this was missed: Focus was on peer table, not replay table in disable path.\n\nThe actual bug: In lichen_l2_enable() disable path (line 786), lichen_replay_table_init() is called. According to replay.h semantics, this should reinitialize the table structure.\n\nHowever, if replay windows contain dynamically allocated state (which they may depending on LICHEN replay implementation), calling init() without a cleanup function could leak memory.\n\nLooking at the pattern: peer_table is explicitly zeroed with secure_zero (lines 791-795), but replay_table just calls init(). If lichen_replay_table_init() is a simple memset/zero operation, this is fine. If it assumes the table is already clean, there could be issues.\n\nNeed to verify: does lichen_replay_table_init() handle a dirty table, or does it assume fresh memory?\n\nPriority 3 - potential resource leak depending on replay.h implementation.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:53:31.954509Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:42:48.768628Z",
+  "closed_at": "2026-06-28T02:42:48.768628Z",
+  "close_reason": "Fixed: Documented that lichen_replay_table_init() handles stale state via memset - no dynamic allocation in replay table. Added comments at all three call sites explaining this is safe on dirty tables.",
+  "labels": [
+    "review",
+    "round2",
+    "gap",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.80",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:53:31.955033Z"
+    }
+  ]
+}

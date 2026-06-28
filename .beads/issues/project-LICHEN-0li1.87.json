@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.87",
+  "title": "[CMakeLists.txt] crash_info.c included at app level but not in subsys CMakeLists",
+  "description": "Critic: Build configuration inconsistency. What: crash_info.c is listed in top-level CMakeLists.txt (line 12) but NOT in subsys/lichen/CMakeLists.txt, unlike other subsys sources (lora_l2.c, ipv6_addr.c, lichen_util.c). Why it matters: Subsys CMakeLists.txt is unused (top-level includes sources directly), creating maintenance confusion. Either move all source includes to subsys CMakeLists.txt or remove subsys CMakeLists.txt entirely. Currently subsys sources are compiled TWICE if both methods are active. Fix: Ensure crash_info.c follows same pattern as other subsys files, or document why it differs.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:25:49.976696Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:12:39.170218Z",
+  "closed_at": "2026-06-28T07:12:39.170218Z",
+  "close_reason": "Added crash_info.c to subsys/lichen/CMakeLists.txt as unconditional source (alongside lichen_util.c). The app-level CMakeLists.txt includes sources directly due to zephyr_library linking issues, but the subsys CMakeLists.txt must also include crash_info.c for consistency when LICHEN is used as a proper Zephyr subsystem.",
+  "labels": [
+    "review-r3",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.87",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:25:49.978503Z"
+    }
+  ]
+}

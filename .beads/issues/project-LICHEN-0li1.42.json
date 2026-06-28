@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.42",
+  "title": "[lichen_util.h:141] lichen_link_strerror returns static string without bounds check",
+  "description": "What: lichen_link_strerror() is defined as inline in the header. Multiple compilation units including this header will each get their own copy of the string literals.\n\nWhy it matters: This is a code size issue, not a correctness bug. Each .c file that includes lichen_util.h will have its own copy of all the string literals ('invalid argument', 'buffer too small', etc.). For embedded systems with limited flash, this bloat adds up.\n\nSolution: Mark the function as 'static inline' (already done) and ensure the linker merges identical strings, OR move implementation to lichen_util.c and make it a regular function.\n\nSince it's already 'static inline' and compilers typically merge identical string literals, this is low priority.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:14:11.721831Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:09:58.609014Z",
+  "closed_at": "2026-06-28T07:09:58.609014Z",
+  "close_reason": "The function returns string literals directly from switch cases, not via array indexing. String literals are compile-time constants in .rodata - always valid and null-terminated. No bounds check is needed or possible.",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.42",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:14:11.722345Z"
+    }
+  ]
+}

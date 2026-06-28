@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-9c8w.10",
+  "title": "main.c: normalize logging to style guide",
+  "description": "Normalize main.c logging.\n\nCurrent:\n  LOG_INF(\"LICHEN bridge (Zephyr) starting...\");\n  LOG_ERR(\"Standalone LoRa init failed: %d\", ret);\n  LOG_INF(\"tick\");\n\nTarget:\n  LOG_INF(\"main: starting\");\n  LOG_ERR(\"main: LoRa init failed (%d)\", ret);\n  // Remove 'tick' or make LOG_DBG\n\nAlso consolidate the two-line RX log into one:\n  LOG_INF(\"main: RX %zu bytes (RSSI %d dBm, SNR %d dB)\", len, rssi, snr);",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T04:05:24.991844Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T04:25:43.924753Z",
+  "closed_at": "2026-06-28T04:25:43.924753Z",
+  "close_reason": "Normalized 15 LOG_* calls to style guide: added main: prefix, consolidated multi-line RX log, error codes in parens, space before MHz",
+  "labels": [
+    "logging",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c8w.10",
+      "depends_on_id": "project-LICHEN-9c8w",
+      "type": "parent-child",
+      "created_at": "2026-06-28T04:05:24.992329Z"
+    }
+  ]
+}

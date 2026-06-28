@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.61",
+  "title": "[lichen_l2.c:580] last_seen timestamp updated even if constant-time loop continues",
+  "description": "Gap: In peer_try_all_pubkeys, last_seen is updated only for the FIRST matching peer if multiple peers could verify (duplicate keys).\n\nWhat: Lines 556-559 record the first matching peer. Line 580 updates last_seen for that peer. If (hypothetically) two peers had the same public key registered, only the first one's last_seen would be updated, and the loop would continue, potentially recording a different found_idx.\n\nWhy it matters: While duplicate pubkeys are unlikely in practice (the same Ed25519 keypair registered under two EUI-64s), the code structure allows for this ambiguity. The 'if (found_idx \u003c 0)' check on line 556 prevents updating found_idx after the first match, but the semantic is subtle. Could lead to LRU eviction of the wrong peer entry.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:19:00.159827Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:11:32.341207Z",
+  "closed_at": "2026-06-28T07:11:32.341207Z",
+  "close_reason": "By design: Duplicate pubkeys across different EUI-64 entries is architecturally impossible because the peer's EUI-64 IS derived from their pubkey (SHA-256(pubkey)[0:8]). The same pubkey always produces the same EUI-64, so there cannot be 'two peers with the same public key registered under two EUI-64s'. The found_idx logic correctly handles the only valid case: one pubkey = one peer entry.",
+  "labels": [
+    "review-r2",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.61",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:19:00.160375Z"
+    }
+  ]
+}

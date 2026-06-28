@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.53",
+  "title": "[lichen_l2.c:298-307] peer_find_locked iterates full table even after finding match",
+  "description": "Gap found: Peer table search efficiency not analyzed.\n\nWhy this was missed: Focus was on peer_try_all_pubkeys, not peer_find_locked.\n\nThe actual bug: In peer_find_locked() (lines 298-307), the loop iterates through all CONFIG_LICHEN_LINK_MAX_NEIGHBORS entries. It returns immediately when a match is found (line 303), so this is actually efficient - it short-circuits on first match.\n\nWait, reviewing more carefully: the loop structure is correct. The return inside the if statement causes early exit. This is NOT a bug.\n\nHowever, the related function peer_try_all_pubkeys (already flagged in Round 1) has the same pattern but with expensive signature verification. peer_find_locked is O(n) memcmp which is fast. \n\nClosing this as a non-issue after review.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:51:31.468476Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:50:31.343539Z",
+  "closed_at": "2026-06-28T02:50:31.343539Z",
+  "close_reason": "Not a bug: peer_find_locked already has early return at line 393. The function returns \u0026peer_table[i] immediately upon finding a match and does NOT continue iterating. The line numbers in the issue (298-307) are incorrect - they point to BUILD_ASSERT statements, not the function. This is a false positive.",
+  "labels": [
+    "review",
+    "round2",
+    "gap",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.53",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:51:31.468904Z"
+    }
+  ]
+}

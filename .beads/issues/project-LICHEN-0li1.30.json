@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.30",
+  "title": "[lichen_l2.c:1325] lichen_l2_iface_init cannot return errors to Zephyr",
+  "description": "Contract: lichen_l2_iface_init should initialize the L2 layer.\nViolation: Zephyr's net_if_api.init callback is void(*)(struct net_if*), so errors cannot be returned. The function sets iface_init_failed atomic and returns early on any failure. While this is handled correctly (all operations check iface_init_failed), it means Zephyr's network stack believes init succeeded.\nImpact: Medium - The net_if will appear operational to the IPv6 stack even though L2 is broken. Packets sent to this interface will fail at lichen_l2_send() with -ENODEV, which is correct behavior but may confuse upper layers.\nMitigation: This is a Zephyr API limitation. The current approach (iface_init_failed flag) is the correct workaround. Consider using a Zephyr hook to mark interface as DOWN if init fails.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:13:16.26702Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:09:16.29197Z",
+  "closed_at": "2026-06-28T07:09:16.29197Z",
+  "close_reason": "Verified: The Zephyr API limitation is correctly documented (lines 1318-1321) and handled. All L2 entry points check iface_init_failed: lichen_l2_send (line 820) returns -ENODEV, lichen_l2_enable (line 964) returns -ENODEV, lora_rx_callback (line 1298) returns early. lichen_l2_recv is a passthrough that doesn't access state. lichen_l2_flags returns static values. The current defensive approach is correct - no code changes needed.",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.30",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:13:16.26753Z"
+    }
+  ]
+}

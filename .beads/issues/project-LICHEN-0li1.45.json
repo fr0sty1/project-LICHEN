@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.45",
+  "title": "[lichen_link_rx.c:229-236] tc_sha256 return values silently ignored",
+  "description": "Gap: lichen_link_rx.c uses tc_sha256 functions but ignores their return values, unlike the centralized lichen_sha256 in lichen_util.c.\n\nWhat: Lines 229-236 call tc_sha256_init, tc_sha256_update, and tc_sha256_final with (void) casts, ignoring any errors. While TinyCrypt's SHA-256 functions typically only fail on NULL pointers (which cannot happen here), the inconsistency with lichen_sha256() creates two different error handling patterns.\n\nWhy it matters: If TinyCrypt behavior changes (e.g., internal state corruption detection), errors would be silently swallowed. The EUI-64 derivation would produce garbage hash data used for peer identification, potentially allowing frames to appear as from a different peer.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:17:45.677706Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:11:09.461928Z",
+  "closed_at": "2026-06-28T07:11:09.461928Z",
+  "close_reason": "Not external - this is project code in lichen/subsys/lichen/link/lichen_link_rx.c. The tc_sha256 returns (lines 250-253) are explicitly cast to (void), a deliberate idiom indicating intentional ignore. Failure is impossible: sha_state is a valid stack variable, ctx-\u003epeer_pubkey is guarded by has_peer_identity check, and hash is a valid stack array. The (void) casts satisfy static analyzers while documenting the intent.",
+  "labels": [
+    "review-r2",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.45",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:17:45.687754Z"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-i1gk.27",
+  "title": "[lichen_l2.c:1549] rx_link_key copied but original may be modified concurrently",
+  "description": "At line 1549, rx_link_key is copied from link_ctx.link_key while holding rx_mutex. However, the comment says this is to protect against 'future refactor' that moves cleanup outside rx_mutex. The current code holds rx_mutex for the entire lichen_l2_input(), so this is safe. But note that the peer_try_all_pubkeys call at line 1589 releases rx_mutex? No - actually rx_mutex is held continuously. The function is correct but the defensive copy suggests concern about a race that cannot currently occur. The issue is more that link_ctx.link_key could be modified by lichen_l2_enable(disable=true) but that path also acquires rx_mutex, so no race.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T03:05:52.507224Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T03:44:04.583483Z",
+  "closed_at": "2026-06-28T03:44:04.583483Z",
+  "close_reason": "Fixed: Added issue reference to existing comment explaining the defensive copy is intentional for future-proofing",
+  "labels": [
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i1gk.27",
+      "depends_on_id": "project-LICHEN-i1gk",
+      "type": "parent-child",
+      "created_at": "2026-06-28T03:05:52.507793Z"
+    }
+  ]
+}

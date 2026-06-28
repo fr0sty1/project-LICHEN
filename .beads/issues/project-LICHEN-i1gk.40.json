@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-i1gk.40",
+  "title": "[main.c:76-77] lora_rx_handler logs len twice with different context",
+  "description": "Round 2 gap analysis: Missed in Round 1 - focus was on init_standalone_lora error handling.\n\nIn the standalone LoRa RX callback at lines 70-79:\n```c\nstatic void lora_rx_handler(const uint8_t *data, size_t len,\n                            int16_t rssi, int8_t snr, void *user_data)\n{\n    ARG_UNUSED(user_data);\n    ARG_UNUSED(data);\n\n    // ponytail: RX processing not implemented - add when needed\n    LOG_INF(\"RX: %zu bytes (standalone mode - not processed)\", len);\n    LOG_INF(\"  RSSI=%d dBm, SNR=%d dB\", rssi, snr);\n}\n```\n\nThe data pointer is ARG_UNUSED but then the length is logged. While technically fine (len is valid regardless of whether data is used), this is potentially confusing. If someone tries to add actual packet processing, they might think data was intentionally discarded.\n\nExtremely minor - the ponytail comment makes the intent clear.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "feature",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T03:08:28.44757Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T03:40:12.11405Z",
+  "closed_at": "2026-06-28T03:40:12.11405Z",
+  "close_reason": "Fixed: consolidated two LOG_INF calls into single line: len, RSSI, SNR together",
+  "labels": [
+    "review",
+    "round2",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i1gk.40",
+      "depends_on_id": "project-LICHEN-i1gk",
+      "type": "parent-child",
+      "created_at": "2026-06-28T03:08:28.448105Z"
+    }
+  ]
+}

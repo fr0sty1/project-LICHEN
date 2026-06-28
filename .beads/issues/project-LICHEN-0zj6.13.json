@@ -1,13 +1,16 @@
 {
   "id": "project-LICHEN-0zj6.13",
   "title": "Data race: lichen_iface written and read without synchronization",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-27T06:32:26.21864Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-27T06:32:26.21864Z",
+  "updated_at": "2026-06-28T02:26:08.851986Z",
+  "closed_at": "2026-06-28T02:26:08.851986Z",
+  "close_reason": "Fixed: Documented write-once-read-many synchronization pattern for lichen_iface pointer. The pointer is set exactly once during initialization (before callback registration) and never modified. Added comprehensive comment explaining why mutex-free reads are safe: (1) callback registration happens after write establishing happens-before, (2) single-core Cortex-M provides natural store ordering, (3) atomic iface_init_failed check provides additional ordering on error paths.",
   "labels": [
     "c-standards",
     "concurrency",

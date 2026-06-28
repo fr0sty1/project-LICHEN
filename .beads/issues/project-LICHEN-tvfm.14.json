@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.14",
+  "title": "[lichen_l2.c:911] lichen_l2_iface_init no error return",
+  "description": "Function: lichen_l2_iface_init. Contract violation: The function has void return type but can fail in multiple ways (LoRa init, EUI-64 retrieval, link addr set). It sets iface_init_failed flag internally but callers (NET_DEVICE_INIT) cannot detect failure. Zephyr's net_if_api.init is defined as void, so this is by design, but downstream operations (send, enable) must check iface_init_failed to avoid operating on half-initialized state. The implementation correctly does this (lines 539, 649), so this is documented behavior, not a bug. Priority 3 - design observation only.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "issue",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:46:01.518327Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:33:33.400769Z",
+  "closed_at": "2026-06-28T02:33:33.400769Z",
+  "close_reason": "Documented: Zephyr's net_if_api.init callback mandates void return. Error handling via iface_init_failed atomic flag is correct; added @note documenting this design constraint.",
+  "labels": [
+    "review",
+    "round1",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.14",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:46:01.519158Z"
+    }
+  ]
+}

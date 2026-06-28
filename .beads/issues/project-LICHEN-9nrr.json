@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-9nrr",
+  "title": "Exhaustive Review: bridge-zephyr 2026-06-27",
+  "description": "Multi-round exhaustive code review of Zephyr C code in firmware/bridge-zephyr. Target: convergence (0 new findings for 2 rounds).",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T03:03:08.792346Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T03:03:08.792386Z",
+  "labels": [
+    "review",
+    "exhaustive"
+  ]
+}

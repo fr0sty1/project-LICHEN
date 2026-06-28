@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-9j70.22",
+  "title": "lora_l2.c: LORA_DEV macro hides devicetree dependency",
+  "description": "Location: lora_l2.c:46\n\n#define LORA_DEV DEVICE_DT_GET(DT_ALIAS(lora0))\n\nThe macro expands to a devicetree lookup but doesn't make clear that 'lora0' must be defined in the board's devicetree overlay.\n\nWhat goes wrong: When porting to a new board, failure to define 'lora0' alias produces a cryptic linker error about undefined symbols from DEVICE_DT_GET. The macro name 'LORA_DEV' gives no hint about devicetree requirements.\n\nSuggested fix: Add a comment: /* Requires 'lora0' alias in devicetree overlay */, or use BUILD_ASSERT with DT_NODE_EXISTS to produce a clear compile-time error.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T18:19:19.510802Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T18:25:09.072822Z",
+  "closed_at": "2026-06-27T18:25:09.072822Z",
+  "close_reason": "Already fixed: BUILD_ASSERT with DT_NODE_EXISTS now produces clear compile-time error when lora0 alias is missing",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9j70.22",
+      "depends_on_id": "project-LICHEN-9j70",
+      "type": "parent-child",
+      "created_at": "2026-06-27T18:19:19.511422Z"
+    }
+  ]
+}

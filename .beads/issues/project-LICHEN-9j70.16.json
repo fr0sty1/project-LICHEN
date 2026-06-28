@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-9j70.16",
+  "title": "HAVE_LICHEN_LINK conditional compiles different TX behavior",
+  "description": "lichen_l2.c:221-224: When HAVE_LICHEN_LINK is 0, the code sends raw IPv6 over LoRa without any framing or MAC.\n\nThe comment says 'for testing' but this path is production-compiled when CONFIG_LICHEN_LINK is not set.\n\nWhat goes wrong:\n1. No MIC/CRC protection - packets can be corrupted without detection\n2. No SCHC compression - 40-byte IPv6 header sent uncompressed, eating MTU\n3. No replay protection\n4. Interoperability: other LICHEN nodes expect framed packets\n\nA user who builds without CONFIG_LICHEN_LINK (perhaps due to missing dependency) gets a silently broken network.\n\nFix: Consider making LICHEN_LINK mandatory (BUILD_ASSERT), or at minimum log WRN at startup when running in raw mode. The existing LOG_WRN at line 475 ('RAW MODE - no framing/crypto') is good but may be missed in log scrollback.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T18:18:59.746743Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T18:26:23.239039Z",
+  "closed_at": "2026-06-27T18:26:23.239039Z",
+  "close_reason": "Fixed: Added BUILD_ASSERT(HAVE_LICHEN_LINK) to fail build without CONFIG_LICHEN_LINK. Raw IPv6-over-LoRa mode is now blocked at compile time with clear error message explaining the security/interop implications.",
+  "labels": [
+    "risk",
+    "maintainer-burden",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9j70.16",
+      "depends_on_id": "project-LICHEN-9j70",
+      "type": "parent-child",
+      "created_at": "2026-06-27T18:18:59.747322Z"
+    }
+  ]
+}

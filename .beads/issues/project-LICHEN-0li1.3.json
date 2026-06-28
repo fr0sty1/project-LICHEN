@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.3",
+  "title": "[lora_l2.c:893] lichen_lora_l2_tx len cast overflow for size_t \u003e UINT32_MAX",
+  "description": "Contract: lichen_lora_l2_tx receives size_t len parameter\nViolation: On line 988, len is cast to uint32_t for lora_send(). While the code validates len \u003c= 255, on 64-bit platforms where size_t \u003e 32 bits, if len validation were ever bypassed or changed, the cast could silently truncate.\nImpact: Currently low (len is capped at 255), but the cast relies on implicit contract that LICHEN_LORA_MAX_PHY_PAYLOAD fits in uint32_t. A compile-time assertion would make this explicit.\nMitigation: Add BUILD_ASSERT(LICHEN_LORA_MAX_PHY_PAYLOAD \u003c= UINT32_MAX)",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:11:18.412031Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:10:54.180758Z",
+  "closed_at": "2026-06-28T07:10:54.180758Z",
+  "close_reason": "Added BUILD_ASSERT(sizeof(size_t) \u003c= sizeof(uint32_t)) at the lora_send() cast site. This guards against compilation on 64-bit platforms where size_t could exceed uint32_t. On target 32-bit MCUs (nRF52/STM32/ESP32), size_t == uint32_t so the assertion passes. Expanded comment to document both the runtime safety (len bounded to 255) and the platform assumption.",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.3",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:11:18.412663Z"
+    }
+  ]
+}

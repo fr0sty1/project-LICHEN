@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-9c8w.11",
+  "title": "Add Kconfig per-module log level controls",
+  "description": "Add Kconfig options for per-module log level control.\n\nAdd to firmware/bridge-zephyr/subsys/lichen/Kconfig:\n\n  config LICHEN_LORA_L2_LOG_LEVEL\n      int \"LoRa L2 log level\"\n      default 3\n      depends on LOG\n      help\n        Log level for the LoRa L2 module (0=off, 1=err, 2=wrn, 3=inf, 4=dbg)\n\n  config LICHEN_L2_LOG_LEVEL\n      int \"LICHEN L2 log level\"\n      default 3\n      depends on LOG\n\nThen update LOG_MODULE_REGISTER calls to use these configs.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T04:05:31.907643Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T04:28:59.728993Z",
+  "closed_at": "2026-06-28T04:28:59.728993Z",
+  "close_reason": "Added LICHEN_IPV6_ADDR_LOG_LEVEL Kconfig option and updated ipv6_addr.c to use it. The other two modules (lora_l2.c, lichen_l2.c) already had their log level config options defined and in use. Build verification blocked by pre-existing project issue: lichen module not detected by Zephyr build system.",
+  "labels": [
+    "logging",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c8w.11",
+      "depends_on_id": "project-LICHEN-9c8w",
+      "type": "parent-child",
+      "created_at": "2026-06-28T04:05:31.90812Z"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.27",
+  "title": "[lora_l2.c:259] ssize_t to int cast on error path",
+  "description": "What: generate_eui64() stores hwinfo_get_device_id() return (ssize_t) in hwid_len, then casts to int for logging and return:\n```c\nssize_t hwid_len;\nhwid_len = hwinfo_get_device_id(hwid, sizeof(hwid));\nif (hwid_len \u003c 0) {\n    LOG_ERR(\"...\", (int)hwid_len);  // cast\n    ret = (int)hwid_len;  // cast\n}\n```\n\nWhy it matters: On platforms where ssize_t is larger than int (e.g., 64-bit), large negative error codes could be truncated. However:\n1. Zephyr hwinfo returns standard errno codes (small negative integers)\n2. LICHEN targets 32-bit ARM where int == ssize_t size\n3. Error codes fit in int on all platforms\n\nThis is a theoretical portability concern, not a practical bug.\n\nEvidence: Line 264 cast (int)hwid_len",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:13:06.337726Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:09:55.467809Z",
+  "closed_at": "2026-06-28T07:09:55.467809Z",
+  "close_reason": "Added comment explaining ssize_t to int cast is safe: hwinfo errors are negative errno values which always fit in int",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.27",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:13:06.338234Z"
+    }
+  ]
+}

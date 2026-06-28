@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.32",
+  "title": "[lichen_l2.c:1155] rx_ctx.current_time hardcoded to 0",
+  "description": "Function: lichen_l2_input. Precondition: The rx_ctx.current_time is hardcoded to 0 (line 1159). If lichen_link_rx() uses this for epoch validation or time-based replay protection, the value 0 would be incorrect. Need to verify what lichen_link_rx() does with current_time. If it's optional/unused, this is fine. If it's used for epoch checking, this is a security issue (time-based replay attacks possible). Priority 2 pending review of link.h contract for current_time field.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:48:04.085556Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:24:27.37118Z",
+  "closed_at": "2026-06-28T02:24:27.37118Z",
+  "close_reason": "Fixed: Added comment explaining that current_time is reserved for future time-based replay aging but not currently used. The replay protection uses sliding window with monotonic access_counter, not wall-clock time. Setting to 0 is safe because lichen_link_rx() does not read this field.",
+  "labels": [
+    "review",
+    "round1",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.32",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:48:04.086075Z"
+    }
+  ]
+}

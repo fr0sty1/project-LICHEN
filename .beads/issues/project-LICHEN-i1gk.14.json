@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-i1gk.14",
+  "title": "[lichen_l2.c:519] lichen_link_rx called with potentially NULL out buffer state",
+  "description": "In peer_try_all_pubkeys, when iterating through peers and calling lichen_link_rx() at line 517, the function passes out_ipv6 and out_len. If a previous iteration wrote to out_ipv6 (partial decompression before auth failure), the buffer may contain partial/garbage data. While the function resets *out_len = saved_out_len before each attempt (line 515), it does not clear out_ipv6 itself. If lichen_link_rx() fails partway through decompression, subsequent attempts use a dirty buffer. This may or may not be a problem depending on lichen_link_rx's behavior - if it always writes from byte 0, it's fine. But if SCHC decompression appends, this could cause issues.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T03:04:45.233641Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T03:43:55.238141Z",
+  "closed_at": "2026-06-28T03:43:55.238141Z",
+  "close_reason": "Invalid: lichen_link_rx() only writes to out_ipv6 buffer AFTER signature and MIC verification succeed (Step 6). If auth fails (Step 2 or 5), the function returns early without touching out_ipv6. The buffer cannot contain partial data from failed auth attempts because decompression never runs on auth failure.",
+  "labels": [
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i1gk.14",
+      "depends_on_id": "project-LICHEN-i1gk",
+      "type": "parent-child",
+      "created_at": "2026-06-28T03:04:45.234443Z"
+    }
+  ]
+}

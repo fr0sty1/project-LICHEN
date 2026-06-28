@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.78",
+  "title": "[lichen_l2.c:814-828] NET_L2_MULTICAST flags assume true broadcast medium",
+  "description": "Gap found: L2 flags assumptions not verified against all LoRa configurations.\n\nWhy this was missed: Protocol assumptions about LoRa broadcast not examined.\n\nThe actual bug: Lines 814-828 set NET_L2_MULTICAST and NET_L2_MULTICAST_SKIP_JOIN_SOLICIT_NODE flags based on the assumption that 'LoRa is inherently broadcast - all transmissions reach all receivers'.\n\nThis assumption holds for:\n- Standard LoRa (no addressing)\n- LoRaWAN Class A/B/C devices (receive windows)\n\nBut may not hold for:\n- LoRa devices with hardware address filtering\n- LoRa mesh with forwarding (may not receive all traffic)\n- LoRaWAN Class B/C with specific downlinks\n\nThe LICHEN design (over standard LoRa) does use true broadcast, so this is correct. But the comment should note this assumption for future maintainers who might use LoRaWAN.\n\nPriority 4 - documentation note.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:53:21.225391Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:56:23.525513Z",
+  "closed_at": "2026-06-28T02:56:23.525513Z",
+  "close_reason": "Fixed: Added documentation note about broadcast medium assumption for NET_L2_MULTICAST flags in lichen_l2.c. Explains that the assumption holds for standard LoRa but may not apply to LoRaWAN or hardware address filtering configurations.",
+  "labels": [
+    "review",
+    "round2",
+    "gap",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.78",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:53:21.225909Z"
+    }
+  ]
+}

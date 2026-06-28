@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-d7ub.69",
+  "title": "crash_info.c + lichen_l2.c: no crash_info hooks in lichen_l2.c",
+  "description": "Cross-file interaction gap: crash_info.c provides crash telemetry but lichen_l2.c has no calls to crash_info_store().\n\nlora_l2.c:490 calls crash_info_store(CRASH_DRIVER_OVERFLOW, ...) for driver overflow.\n\nlichen_l2.c has no crash_info_store() calls even though it has critical failure paths:\n- Line 1879: 'RX returned oversized packet' - silently returns\n- Line 962-974: TX frame build failed - returns error but no crash log\n- Various NULL checks that LOG_ERR but don't record to crash_info\n\nFor debugging field failures, having lichen_l2.c failures recorded in retained RAM would help diagnose issues after watchdog reset.\n\nP3: Not a correctness bug, but operational gap. Consider adding crash_info_store() for critical lichen_l2.c failures like:\n- lichen_link_rx returning oversized output\n- peer table corruption (line 703)\n- rx_mutex timeout (line 1252)",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T07:28:24.836162Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:28:24.836625Z",
+  "labels": [
+    "review",
+    "round2",
+    "interaction",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-d7ub.69",
+      "depends_on_id": "project-LICHEN-d7ub",
+      "type": "parent-child",
+      "created_at": "2026-06-28T07:28:24.836625Z"
+    }
+  ]
+}

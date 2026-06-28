@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.63",
+  "title": "[lora_l2.c:1047-1050] lichen_lora_l2_is_running and needs_reinit have no memory barrier",
+  "description": "Gap: The public state query functions read atomic_t without memory barriers.\n\nWhat: Lines 1047-1055 define is_running() and needs_reinit() which read current_state via atomic_get(). On multi-core systems (which LICHEN rejects via BUILD_ASSERT), this could return stale values.\n\nWhy it matters: While the BUILD_ASSERT at lichen_l2.c:375-376 prevents multi-core builds, the is_running() function is part of the public API and could be called from interrupt context or by code that doesn't know about the single-core constraint. The atomic_get() provides no ordering guarantees beyond atomicity. For robustness, the API docs should clarify these functions are only valid when called from thread context on single-core.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:19:10.833368Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:13:08.577367Z",
+  "closed_at": "2026-06-28T07:13:08.577367Z",
+  "close_reason": "Acceptable: BUILD_ASSERT at lichen_l2.c:374-376 rejects multi-core builds at compile time. On single-core (the only supported config), atomic_get provides sufficient ordering. The public API implicitly inherits this constraint. Adding docs would be belt-and-suspenders; the compile-time enforcement is the real protection.",
+  "labels": [
+    "review-r2",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.63",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:19:10.833848Z"
+    }
+  ]
+}

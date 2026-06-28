@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.97",
+  "title": "[lichen_l2.c:203-204] tx_ipv6_buf and tx_frame_buf sizes assume no IPv6 extension headers",
+  "description": "Category not checked: Buffer sizing assumptions vs protocol reality\n\nBug found: tx_ipv6_buf is sized as LICHEN_L2_MTU + IPV6_BASE_HDR_LEN (200 + 40 = 240 bytes). The comment at lines 191-201 documents this limitation but doesn't guard against it.\n\nIf IPv6 extension headers are present (Hop-by-Hop, Routing, Destination, OSCORE, etc.), the packet can exceed 240 bytes before SCHC compression. The code at line 552-554 rejects packets \u003e sizeof(tx_ipv6_buf), but the error message says 'Packet too large' without indicating the extension header limitation.\n\nMore critically: Zephyr's IPv6 stack CAN send packets with extension headers. The MTU is 200 bytes, but that's the payload after IPv6 header - a packet with a 40-byte base header + 8-byte routing header + 192-byte payload = 240 bytes would fit the MTU but exceed the buffer.\n\nImpact: P3 - Silent packet drops with confusing error when using extension headers, which the FIXME(OSCORE) hints will be needed.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:57:00.294853Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:46:53.139967Z",
+  "closed_at": "2026-06-28T02:46:53.139967Z",
+  "close_reason": "Fixed: Documented that IPv6 extension headers are not supported by design. Added explicit LIMITATION comment explaining TX path fails with -EMSGSIZE, RX path fails size check. This is intentional because SCHC rules target CoAP/ICMPv6/RPL without extension headers. Extension headers fall back to rule 255 (uncompressed) which exceeds MTU.",
+  "labels": [
+    "review",
+    "round3",
+    "completeness",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.97",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:57:00.295381Z"
+    }
+  ]
+}
