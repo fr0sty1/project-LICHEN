@@ -83,7 +83,7 @@ struct lichen_coap_request {
 	bool confirmable;                   /**< Use CON message type */
 	lichen_coap_response_cb callback;   /**< Response callback */
 	void *user_data;                    /**< User context for callback */
-	uint32_t timeout_ms;                /**< Timeout in ms (0 = default) */
+	uint32_t timeout_ms;                /**< Timeout in ms (0 = default, max UINT32_MAX / 2) */
 };
 
 /**

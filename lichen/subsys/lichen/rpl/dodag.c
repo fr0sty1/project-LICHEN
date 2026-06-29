@@ -383,6 +383,10 @@ int lichen_rpl_dodag_parent_count(const struct lichen_rpl_dodag *d)
 int lichen_rpl_dodag_expire_parents(struct lichen_rpl_dodag *d,
 				    uint32_t now, uint32_t max_age)
 {
+	if (d == NULL) {
+		return 0;
+	}
+
 	int expired = 0;
 
 	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_PARENTS; i++) {

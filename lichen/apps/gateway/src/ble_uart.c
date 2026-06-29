@@ -289,6 +289,11 @@ int ble_uart_send_slip(const uint8_t *ipv6, size_t len)
 		goto out_unref;
 	}
 
+	if (ipv6 == NULL && len > 0u) {
+		rc = -EINVAL;
+		goto out_unref;
+	}
+
 	k_mutex_lock(&s_tx_mutex, K_FOREVER);
 
 	/* Encode SLIP frame — check space before each write to prevent overflow */

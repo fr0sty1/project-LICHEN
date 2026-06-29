@@ -1,0 +1,36 @@
+{
+  "id": "project-LICHEN-i81y.20",
+  "title": "Fix LICHEN Zephyr module bridge subdirectory path",
+  "description": "While validating project-LICHEN-i81y.14, Zephyr configure for both lichen/tests/oscore and firmware/bridge-zephyr reached lichen/zephyr/CMakeLists.txt and failed at add_subdirectory(../../../firmware/bridge-zephyr/subsys): the relative source path does not exist from the module CMake location. This blocks narrow Zephyr configure checks before EDHOC subsystem CMake can be fully validated. Investigate and replace the hard-coded relative path with a robust path or app-owned inclusion pattern.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-29T03:36:12.278457Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T03:50:27.147198Z",
+  "closed_at": "2026-06-29T03:50:27.147198Z",
+  "close_reason": "Fixed the LICHEN Zephyr module bridge subsystem include to resolve from CMAKE_CURRENT_LIST_DIR, fail clearly if missing, and skip module inclusion when firmware/bridge-zephyr is the application. Gateway and bridge-zephyr nRF52840 checks now pass CMake configure; remaining compile blockers are tracked separately.",
+  "labels": [
+    "zephyr",
+    "cmake",
+    "validation",
+    "review",
+    "c"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i81y.20",
+      "depends_on_id": "project-LICHEN-i81y",
+      "type": "parent-child",
+      "created_at": "2026-06-29T03:36:12.278934Z"
+    },
+    {
+      "issue_id": "project-LICHEN-i81y.20",
+      "depends_on_id": "project-LICHEN-i81y.14",
+      "type": "discovered-from",
+      "created_at": "2026-06-29T03:36:12.279276Z"
+    }
+  ]
+}

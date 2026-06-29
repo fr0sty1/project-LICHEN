@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-hhub",
+  "title": "Gateway nRF52840 build lacks zephyr,uart-pipe chosen node",
+  "description": "After fixing the LICHEN Zephyr module bridge subdirectory path, west build -p always -b nrf52840dk/nrf52840 lichen/apps/gateway -d build_gateway_i81y20_path_check passes CMake configure and then fails compiling zephyr/drivers/serial/uart_pipe.c because DT_CHOSEN(zephyr_uart_pipe) has no device. Decide whether the gateway board overlay should define zephyr,uart-pipe or whether CONFIG_UART_PIPE should be disabled/conditioned for this board.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-29T03:50:17.613318Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T03:58:40.23019Z",
+  "closed_at": "2026-06-29T03:58:40.23019Z",
+  "close_reason": "Fixed: nrf52840dk gateway board config disables Zephyr wired SLIP because this board uses BLE NUS for the local client interface. Verified west build gets past the previous zephyr,uart-pipe/uart_pipe.c failure; next blocker is OSCORE dependency compile errors tracked as project-LICHEN-zq76."
+}

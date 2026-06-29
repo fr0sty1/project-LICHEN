@@ -249,18 +249,29 @@ static struct {
  * @param eui64 Output buffer for 8-byte EUI-64
  * @return 0 on success, negative errno on failure
  */
+/*
+ * SECURITY: Domain separation prefix for EUI-64 derivation.
+ * This ensures SHA-256(prefix || hwid) produces different output than
+ * other uses of SHA-256 on the same hwid (e.g., key derivation).
+ * The prefix is a fixed ASCII string with no trailing NUL in the hash input.
+ */
+#define EUI64_DOMAIN_PREFIX "LICHEN-EUI64-v1"
+#define EUI64_DOMAIN_PREFIX_LEN (sizeof(EUI64_DOMAIN_PREFIX) - 1)
+
 static int generate_eui64(uint8_t *eui64)
 {
     int ret = 0;
     uint8_t hwid[32];  /* Large enough for all supported MCUs */
     ssize_t hwid_len;
     uint8_t hash[TC_SHA256_DIGEST_SIZE];
+    uint8_t hash_input[EUI64_DOMAIN_PREFIX_LEN + sizeof(hwid)];
 
     hwid_len = hwinfo_get_device_id(hwid, sizeof(hwid));
     if (hwid_len < 0) {
         /* SECURITY: Refusing to start without stable identity. A random EUI-64
          * would change on each reboot, breaking IPv6 NDP and mesh routing. */
         LOG_ERR("lora_l2: hwinfo_get_device_id failed (%d)", (int)hwid_len);
+        /* Cast safe: hwinfo errors are negative errno (-E*), always fit in int */
         ret = (int)hwid_len;
         goto cleanup;
     }
@@ -276,10 +287,31 @@ static int generate_eui64(uint8_t *eui64)
         goto cleanup;
     }
 
-    /* Hash the full hardware ID to avoid MCU-specific layout issues.
+    /* SECURITY: Reject all-zeros hwid which would cause EUI-64 collisions.
+     * Some MCUs return zeros when fuses aren't programmed or in debug mode. */
+    bool all_zeros = true;
+    for (ssize_t i = 0; i < hwid_len; i++) {
+        if (hwid[i] != 0) {
+            all_zeros = false;
+            break;
+        }
+    }
+    if (all_zeros) {
+        LOG_ERR("lora_l2: hardware ID is all zeros, cannot generate unique EUI-64");
+        ret = -EINVAL;
+        goto cleanup;
+    }
+
+    /*
+     * Hash prefix || hwid to derive EUI-64 with domain separation.
      * SECURITY: SHA-256 provides collision resistance - two different
-     * hwids will produce different EUI-64s with overwhelming probability. */
-    ret = lichen_sha256(hwid, (size_t)hwid_len, hash);
+     * hwids will produce different EUI-64s with overwhelming probability.
+     * The domain prefix ensures this derivation is independent of other
+     * SHA-256 uses (e.g., ipv6_addr.c:pubkey_to_iid uses different input).
+     */
+    memcpy(hash_input, EUI64_DOMAIN_PREFIX, EUI64_DOMAIN_PREFIX_LEN);
+    memcpy(hash_input + EUI64_DOMAIN_PREFIX_LEN, hwid, (size_t)hwid_len);
+    ret = lichen_sha256(hash_input, EUI64_DOMAIN_PREFIX_LEN + (size_t)hwid_len, hash);
     if (ret != 0) {
         LOG_ERR("lora_l2: EUI-64 SHA-256 failed");
         goto cleanup;
@@ -320,6 +352,7 @@ cleanup:
      * Defense-in-depth: ensure caller never sees undefined eui64 on failure,
      * even though callers should check return value. */
     secure_zero(hwid, sizeof(hwid));
+    secure_zero(hash_input, sizeof(hash_input));
     secure_zero(hash, sizeof(hash));
     if (ret != 0) {
         secure_zero(eui64, 8);
@@ -356,6 +389,17 @@ static void rx_thread(void *arg1, void *arg2, void *arg3)
      * proper synchronization with init() and avoids repeated mutex
      * acquisition in the hot path. The device pointer is immutable after
      * init(), so a single snapshot is sufficient.
+     *
+     * SAFETY (project-LICHEN-0li1.5): The cached pointer cannot become stale
+     * because stop() joins this thread (waits for termination) before returning,
+     * and deinit() can only be called after stop() completes (state machine
+     * enforces STOPPED->DEINITING transition). The shutdown sequence is:
+     *   1. stop() transitions to STOPPED
+     *   2. This thread sees STOPPED, exits the loop
+     *   3. stop() joins this thread (k_thread_join)
+     *   4. stop() returns
+     *   5. Only then can deinit() be called
+     * Thus deinit() never runs while this thread holds the cached pointer.
      */
     k_mutex_lock(&lora_mutex, K_FOREVER);
     const struct device *dev = lora_data.lora_dev;
@@ -474,6 +518,24 @@ static void rx_thread(void *arg1, void *arg2, void *arg3)
         k_mutex_unlock(&lora_mutex);
 
         if (cb) {
+            /*
+             * SECURITY: Callback interruption risk during k_thread_abort().
+             *
+             * If stop() times out and calls k_thread_abort() while this
+             * callback is executing, the callback will be terminated
+             * mid-execution. This can leave the callback's resources in an
+             * inconsistent state (held locks, partial allocations, etc.).
+             *
+             * Recovery mechanism: After abort, stop() sets LORA_ABORTED state.
+             * Callers must check lichen_lora_l2_needs_reinit() and perform a
+             * full deinit()/init() cycle before restart. The callback owner
+             * is responsible for detecting the abort (via needs_reinit() or
+             * its own timeout/watchdog) and cleaning up any leaked resources.
+             *
+             * This is a known limitation of thread abort - there is no safe
+             * way to interrupt an arbitrary callback. The ABORTED state
+             * ensures callers are aware recovery action is required.
+             */
             cb(rx_buf, ret, rssi, snr, cb_user_data);
         }
     }
@@ -726,7 +788,14 @@ int lichen_lora_l2_deinit(void)
 
     /*
      * Only STOPPED or ABORTED states can transition to DEINITING.
-     * Use atomic CAS to prevent concurrent deinit() calls.
+     *
+     * SECURITY: This appears to be a TOCTOU pattern (read state, then act on it),
+     * but is actually safe: lora_transition_from() uses atomic CAS internally,
+     * so if the state changes between lora_get_state() and the CAS, the CAS
+     * fails atomically and we return -EBUSY. The initial read is merely an
+     * optimization to select which expected-state to pass to the CAS. Two
+     * concurrent deinit() calls racing on the same state will have exactly
+     * one succeed (CAS guarantee), the other returns -EBUSY.
      */
     if (state == LORA_STOPPED) {
         if (lora_transition_from(LORA_STOPPED, LORA_DEINITING) != 0) {
@@ -831,6 +900,23 @@ int lichen_lora_l2_deinit(void)
      * (it only initializes fields and the wait queue). The return value check
      * is defensive against future Zephyr API changes or userspace builds.
      */
+
+    /* Best-effort check: trylock to detect if mutex is held. If trylock
+     * succeeds, we own it and can safely reinit after unlock. If it fails,
+     * we log a warning but proceed with reinit anyway (documented UB). */
+    int trylock_ret = k_mutex_lock(&lora_mutex, K_NO_WAIT);
+    if (trylock_ret == 0) {
+        /* We acquired it - mutex was free. Unlock before reinit. */
+        k_mutex_unlock(&lora_mutex);
+    } else {
+        /* Trylock failed - mutex is held by another context (likely dead thread).
+         * SECURITY: Proceeding with k_mutex_init() is UNDEFINED BEHAVIOR.
+         * Log at ERR level since this indicates the system is in a degraded
+         * state where full reboot is the only guaranteed recovery. */
+        LOG_ERR("lora_l2: lora_mutex held during deinit (trylock=%d), "
+                "reinit is UB - consider k_sys_reboot for guaranteed recovery",
+                trylock_ret);
+    }
     int mutex_ret = k_mutex_init(&lora_mutex);
     if (mutex_ret != 0) {
         /* k_mutex_init() should not fail in kernel mode, but log if it does.
@@ -982,9 +1068,16 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
      *   -EINVAL: invalid parameters
      *
      * Cast len (size_t) to uint32_t: lora_send() expects uint32_t data_len.
-     * This cast is safe because len was validated above to not exceed
-     * LICHEN_LORA_MAX_PHY_PAYLOAD (255), well within uint32_t range.
+     * This cast is safe because:
+     * 1. len was validated above to not exceed LICHEN_LORA_MAX_PHY_PAYLOAD (255)
+     * 2. On target platforms (32-bit MCUs), size_t == uint32_t (asserted below)
+     *
+     * The BUILD_ASSERT guards against 64-bit platforms where size_t > UINT32_MAX
+     * could theoretically wrap. This is purely defensive - LICHEN targets
+     * embedded 32-bit systems (nRF52/STM32/ESP32) where size_t fits in uint32_t.
      */
+    BUILD_ASSERT(sizeof(size_t) <= sizeof(uint32_t),
+                 "size_t larger than uint32_t - review lora_send() cast");
     int ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)len);
 
     /*
@@ -1007,11 +1100,11 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
     return 0;
 }
 
-void lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data)
+int lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data)
 {
     if (lora_get_state() == LORA_UNINIT) {
         LOG_WRN("lora_l2: cannot set RX callback, not initialized");
-        return;
+        return -ENODEV;
     }
 
     /*
@@ -1027,12 +1120,22 @@ void lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data)
     lora_data.rx_callback_user_data = user_data;
     lora_data.rx_callback = cb;
     k_mutex_unlock(&lora_mutex);
+
+    return 0;
 }
 
 /*
- * Returns alias to internal eui64 array. Thread safety contract:
- * - Caller must ensure no concurrent deinit() while using the pointer
+ * Returns alias to internal eui64 array WITHOUT mutex protection.
+ *
+ * Thread safety contract (caller responsibility):
+ * - No mutex is held; concurrent deinit() will zero the backing memory
+ * - Caller must prevent concurrent deinit() while using the pointer
  * - Copy immediately if persistent access is needed
+ *
+ * Rationale: EUI-64 is stable between init() and deinit(). Mutex overhead
+ * is unnecessary for the common case; callers that need the EUI-64 during
+ * shutdown transitions should copy first.
+ *
  * See header documentation for full contract.
  */
 const uint8_t *lichen_lora_l2_get_eui64(void)

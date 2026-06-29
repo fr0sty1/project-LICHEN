@@ -6,11 +6,15 @@
  * @brief Sliding window replay protection
  *
  * Implements per-peer replay protection using a 64-slot bitmap window.
- * Ported from rust/lichen-link/src/replay.rs
+ * Ported from rust/lichen-link/src/replay.rs and python/src/lichen/link/replay.py
  *
- * The window tracks sequence numbers relative to the highest seen.
- * Bit 0 = last_seq, bit i = last_seq - i. Sequence arithmetic wraps
- * at 65536 with half-space normalization to handle u16 wraparound.
+ * Uses a 24-bit logical counter formed from (epoch << 16) | seqnum to
+ * prevent cross-epoch replay attacks. When tx_seq wraps from 0xFFFF to 0
+ * and epoch increments, old (epoch, seqnum) pairs cannot be replayed.
+ *
+ * The window tracks counters relative to the highest seen.
+ * Bit 0 = last_counter, bit i = last_counter - i. Counter arithmetic
+ * wraps at 16M (24-bit space) with half-space normalization.
  */
 
 #include <stdint.h>
@@ -38,68 +42,72 @@ static int eui64_ct_compare(const uint8_t a[LICHEN_EUI64_LEN],
 
 void lichen_replay_init(struct lichen_replay_window *rw)
 {
-	rw->last_seq = 0;
+	rw->last_counter = 0;
 	rw->bitmap = 0;
 	rw->initialised = false;
 }
 
-bool lichen_replay_check(struct lichen_replay_window *rw, uint16_t seq)
+/**
+ * @brief Combine epoch and seqnum into a 24-bit logical counter.
+ *
+ * This ensures monotonicity across epoch boundaries: when seqnum wraps
+ * from 0xFFFF to 0 and epoch increments, the counter continues to advance.
+ */
+static inline uint32_t logical_counter(uint8_t epoch, uint16_t seq)
+{
+	return ((uint32_t)epoch << 16) | (uint32_t)seq;
+}
+
+bool lichen_replay_check(struct lichen_replay_window *rw, uint8_t epoch, uint16_t seq)
 {
 	int32_t diff;
+	uint32_t counter = logical_counter(epoch, seq);
 
 	if (!rw->initialised) {
-		rw->last_seq = seq;
+		rw->last_counter = counter;
 		rw->bitmap = 1;
 		rw->initialised = true;
 		return true;
 	}
 
-	/* Signed distance: positive means seq is newer than last_seq.
+	/* Signed distance: positive means counter is newer than last_counter.
 	 * Use i32 arithmetic to handle wrapping correctly. */
-	diff = (int32_t)seq - (int32_t)rw->last_seq;
+	diff = (int32_t)counter - (int32_t)rw->last_counter;
 
 	/*
-	 * Half-space comparison for u16 sequence numbers (RFC 1982 Serial
-	 * Number Arithmetic).
+	 * Half-space comparison for 24-bit counters (RFC 1982 Serial
+	 * Number Arithmetic adapted to 24-bit space).
 	 *
-	 * When sequence numbers wrap (0 follows 65535), naive comparison
-	 * breaks: 0 < 65535 suggests 0 is "older", but it's actually newer.
+	 * The 24-bit counter has range [0, 16777215]. When it wraps
+	 * (0 follows 16777215), naive comparison breaks.
 	 *
-	 * The fix: interpret any distance > 32767 as a backward wrap.
-	 * We split the 65536-value space in half around the current position:
-	 *   - Differences in [1, 32767] mean seq is ahead (newer)
-	 *   - Differences in [-32768, -1] mean seq is behind (older)
+	 * The fix: interpret any distance > 8388607 (half of 16M) as a
+	 * backward wrap. We split the 24-bit space in half:
+	 *   - Differences in [1, 8388607] mean counter is ahead (newer)
+	 *   - Differences in [-8388608, -1] mean counter is behind (older)
 	 *
-	 * Example: last_seq=65530, seq=5
-	 *   Raw diff: 5 - 65530 = -65525 (in i32)
-	 *   After normalisation: -65525 + 65536 = 11 (seq is 11 ahead, newer)
+	 * This works as long as no two valid counters are ever more than
+	 * 8M apart - a safe assumption for any reasonable reordering window.
 	 *
-	 * Example: last_seq=5, seq=65530
-	 *   Raw diff: 65530 - 5 = 65525 (in i32)
-	 *   After normalisation: 65525 - 65536 = -11 (seq is 11 behind, older)
-	 *
-	 * This works as long as no two valid sequence numbers are ever more
-	 * than 32767 apart - a safe assumption when packets arrive in roughly
-	 * sequential order with a 64-slot window.
-	 *
-	 * See RFC 1982 Section 3.2 for the formal definition of serial number
-	 * comparison with SERIAL_BITS=16.
+	 * See RFC 1982 Section 3.2 for the formal definition.
 	 */
-	if (diff > 32767) {
-		diff -= 65536;
-	} else if (diff < -32768) {
-		diff += 65536;
+	#define COUNTER_HALF_SPACE 8388607  /* (1 << 23) - 1 = 0x7FFFFF */
+	#define COUNTER_FULL_SPACE 16777216 /* 1 << 24 = 0x1000000 */
+
+	if (diff > COUNTER_HALF_SPACE) {
+		diff -= COUNTER_FULL_SPACE;
+	} else if (diff < -COUNTER_HALF_SPACE - 1) {
+		diff += COUNTER_FULL_SPACE;
 	}
 
 	if (diff > 0) {
 		/*
 		 * Newer than anything we've seen: advance the window.
 		 *
-		 * Validate diff is within the positive half-space (1 to 32767).
-		 * After RFC 1982 normalization, diff should be in [-32768, 32767].
-		 * If diff > 32767 here, something is wrong with the normalization.
+		 * Validate diff is within the positive half-space.
+		 * After normalization, diff should be in [-8388608, 8388607].
 		 */
-		if (diff > 32767) {
+		if (diff > COUNTER_HALF_SPACE) {
 			/* Should not happen after normalization - reject */
 			return false;
 		}
@@ -112,16 +120,16 @@ bool lichen_replay_check(struct lichen_replay_window *rw, uint16_t seq)
 		} else {
 			rw->bitmap = (rw->bitmap << shift) | 1;
 		}
-		rw->last_seq = seq;
+		rw->last_counter = counter;
 		return true;
 	}
 
 	if (diff == 0) {
-		/* Exact duplicate of last_seq */
+		/* Exact duplicate of last_counter */
 		return false;
 	}
 
-	/* Older than last_seq: check the bitmask */
+	/* Older than last_counter: check the bitmask */
 	uint32_t offset = (uint32_t)(-diff);
 
 	if (offset >= 64) {
@@ -138,6 +146,9 @@ bool lichen_replay_check(struct lichen_replay_window *rw, uint16_t seq)
 
 	rw->bitmap |= bit;
 	return true;
+
+	#undef COUNTER_HALF_SPACE
+	#undef COUNTER_FULL_SPACE
 }
 
 void lichen_replay_table_init(struct lichen_replay_table *table)

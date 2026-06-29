@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-i81y.4",
+  "title": "CoAP request accepts NULL payload with nonzero length",
+  "description": "Trigger: a caller uses the public lichen_coap_request() or lichen_coap_post_cbor() API with payload == NULL and payload_len \u003e 0. lichen/subsys/lichen/coap/coap_client.c:343-344 forwards req-\u003epayload and req-\u003epayload_len directly into Zephyr's coap_client_request, and the wrapper at lines 410-424 does not reject this invalid pair. Impact: a malformed local API call can make the Zephyr CoAP client read from a NULL payload pointer while serializing the request instead of returning LICHEN_COAP_ERR_INVALID_PARAM. Fix by rejecting payload == NULL when payload_len \u003e 0 at the public entry point and adding a focused test.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-29T03:15:44.54626Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T03:40:35.638247Z",
+  "closed_at": "2026-06-29T03:40:35.638247Z",
+  "close_reason": "Completed: lichen_coap_request() and lichen_coap_post_cbor() now reject NULL payload with nonzero payload_len using LICHEN_COAP_ERR_INVALID_PARAM.",
+  "labels": [
+    "review",
+    "coap",
+    "c-safety",
+    "api-contract",
+    "zephyr",
+    "c"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i81y.4",
+      "depends_on_id": "project-LICHEN-i81y",
+      "type": "parent-child",
+      "created_at": "2026-06-29T03:15:44.563021Z"
+    }
+  ]
+}

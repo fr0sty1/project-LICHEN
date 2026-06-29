@@ -19,7 +19,7 @@
 #include <lichen/errno.h>
 
 /* AES-CCM for link-layer MIC */
-#include "oscore/aes_ccm.h"
+#include "aes_ccm.h"
 
 /* CRC32 for non-crypto MIC fallback */
 #include <zephyr/sys/crc.h>
@@ -247,7 +247,8 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		 * No link key and CRC32 fallback not enabled.
 		 * Require CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC=y to use CRC32 mode.
 		 */
-		return -EINVAL;
+		ret = -EINVAL;
+		goto cleanup;
 #endif
 	}
 
@@ -256,9 +257,10 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 
 cleanup:
 	/*
-	 * SECURITY: Wipe payload_buf on all exits to avoid leaking signature
-	 * or partial frame data on the stack.
+	 * SECURITY: Wipe stack buffers on cleanup exits to avoid leaking
+	 * compressed packet data, signatures, or partial frame data.
 	 */
 	memset(payload_buf, 0, sizeof(payload_buf));
+	memset(compressed, 0, sizeof(compressed));
 	return ret;
 }

@@ -19,20 +19,6 @@
 _Static_assert(LICHEN_RPL_MAX_HOPS <= 255,
 	       "LICHEN_RPL_MAX_HOPS exceeds uint8_t range");
 
-/* ── Helpers ───────────────────────────────────────────────────────────────── */
-
-/** Compare two IPv6 addresses for equality. */
-static bool addr_eq(const uint8_t *a, const uint8_t *b)
-{
-	return memcmp(a, b, 16) == 0;
-}
-
-/** Copy a 16-byte IPv6 address from src to dst. */
-static void addr_copy(uint8_t *dst, const uint8_t *src)
-{
-	memcpy(dst, src, 16);
-}
-
 /* ── Visited Set for O(1) Loop Detection ──────────────────────────────────── */
 
 #define VISITED_BUCKETS 16  /* power of 2, >= LICHEN_RPL_MAX_HOPS */
@@ -97,7 +83,7 @@ static inline bool visited_check_and_add(struct visited_set *v, const uint8_t *a
 int lichen_rpl_srh_write(const struct lichen_rpl_srh *srh,
 			 uint8_t *buf, size_t len)
 {
-	if (srh == NULL) {
+	if (srh == NULL || buf == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
 	if (srh->num_addresses > LICHEN_RPL_MAX_HOPS) {
@@ -129,7 +115,7 @@ int lichen_rpl_srh_write(const struct lichen_rpl_srh *srh,
 int lichen_rpl_srh_parse(struct lichen_rpl_srh *srh,
 			 const uint8_t *data, size_t len)
 {
-	if (srh == NULL) {
+	if (srh == NULL || data == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
 	if (len < 6) {
@@ -314,6 +300,9 @@ int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *dm,
 {
 	/* Need: DAO(20) + Target(20) + TransitInfo(22) = 62 bytes, pad to 64 */
 #define LICHEN_RPL_DAO_MIN_BUF 64
+	if (dm == NULL || parent_addr == NULL || buf == NULL) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
 	if (len < LICHEN_RPL_DAO_MIN_BUF) {
 		return LICHEN_RPL_ERR_BUF_SMALL;
 	}
@@ -409,8 +398,8 @@ static bool extract_edge(const uint8_t *dao_bytes, size_t len,
 			if (have_target) {
 				struct lichen_rpl_transit_info ti;
 				if (lichen_rpl_transit_info_parse(&ti, opt.data, opt.data_len) == LICHEN_RPL_OK) {
-					addr_copy(target_out, target);
-					addr_copy(parent_out, ti.parent_address);
+					rpl_addr_copy(target_out, target);
+					rpl_addr_copy(parent_out, ti.parent_address);
 					*lifetime_out = ti.path_lifetime;
 					return true;
 				}
@@ -578,6 +567,9 @@ bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
 					const uint8_t *dao_bytes, size_t len,
 					uint32_t now)
 {
+	if (dm == NULL || dao_bytes == NULL) {
+		return false;
+	}
 	if (!dm->is_root) {
 		return false;
 	}
@@ -620,8 +612,8 @@ bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
 		}
 	}
 
-	addr_copy(edge->target, target);
-	addr_copy(edge->parent, parent);
+	rpl_addr_copy(edge->target, target);
+	rpl_addr_copy(edge->parent, parent);
 	edge->path_lifetime = lifetime;
 	edge->last_updated = now;
 	edge->valid = true;
@@ -641,6 +633,10 @@ bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
 int lichen_rpl_routing_table_expire(struct lichen_rpl_routing_table *rt,
 				    uint32_t now, uint32_t lifetime_unit)
 {
+	if (rt == NULL) {
+		return 0;
+	}
+
 	int expired = 0;
 
 	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_ROUTES; i++) {
@@ -668,6 +664,10 @@ int lichen_rpl_routing_table_expire(struct lichen_rpl_routing_table *rt,
 int lichen_rpl_dao_manager_expire(struct lichen_rpl_dao_manager *dm,
 				  uint32_t now, uint32_t lifetime_unit)
 {
+	if (dm == NULL) {
+		return 0;
+	}
+
 	int expired = 0;
 
 	/* Expire stale parent edges */

@@ -16,6 +16,7 @@
 #include <string.h>
 #include <tinycrypt/aes.h>
 #include <tinycrypt/ccm_mode.h>
+#include <tinycrypt/constants.h>
 #include <monocypher.h>
 
 #include "aes_ccm.h"

@@ -12,6 +12,7 @@
 
 #include <lichen/senml.h>
 #include <lichen/errno.h>
+#include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -77,6 +78,12 @@ static const uint8_t VEC_BOOL_TRUE[] = {
 	0x04, 0xf5
 };
 
+static void fill_string(char *str, size_t len, char ch)
+{
+	memset(str, ch, len);
+	str[len] = '\0';
+}
+
 /* ─── tests ───────────────────────────────────────────────────────────────── */
 
 static int test_encode_temperature(void)
@@ -85,7 +92,8 @@ static int test_encode_temperature(void)
 	uint8_t buf[64];
 	int ret;
 
-	senml_pack_init(&pack, NULL, 0);
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
 	ret = senml_add_float(&pack, "temp", "Cel", 25.0f);
 	ASSERT_EQ(ret, 0, "senml_add_float");
 
@@ -102,7 +110,8 @@ static int test_encode_boolean(void)
 	uint8_t buf[64];
 	int ret;
 
-	senml_pack_init(&pack, NULL, 0);
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
 	ret = senml_add_bool(&pack, "charging", true);
 	ASSERT_EQ(ret, 0, "senml_add_bool");
 
@@ -119,7 +128,8 @@ static int test_empty_pack_rejected(void)
 	uint8_t buf[64];
 	int ret;
 
-	senml_pack_init(&pack, NULL, 0);
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
 	ret = senml_encode_cbor(&pack, buf, sizeof(buf));
 	ASSERT_EQ(ret, -EINVAL, "empty pack returns -EINVAL");
 
@@ -132,8 +142,10 @@ static int test_buffer_too_small(void)
 	uint8_t buf[4]; /* Too small */
 	int ret;
 
-	senml_pack_init(&pack, NULL, 0);
-	senml_add_float(&pack, "temp", "Cel", 25.0f);
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
+	ret = senml_add_float(&pack, "temp", "Cel", 25.0f);
+	ASSERT_EQ(ret, 0, "senml_add_float");
 
 	ret = senml_encode_cbor(&pack, buf, sizeof(buf));
 	ASSERT_EQ(ret, -ENOMEM, "small buffer returns -ENOMEM");
@@ -146,7 +158,8 @@ static int test_pack_full(void)
 	struct senml_pack pack;
 	int ret;
 
-	senml_pack_init(&pack, NULL, 0);
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
 
 	/* Fill the pack to capacity */
 	for (int i = 0; i < SENML_MAX_RECORDS; i++) {
@@ -157,6 +170,55 @@ static int test_pack_full(void)
 	/* Next add should fail */
 	ret = senml_add_float(&pack, "overflow", NULL, 999.0f);
 	ASSERT_EQ(ret, -ENOMEM, "pack full returns -ENOMEM");
+
+	return 1;
+}
+
+static int test_string_length_limits(void)
+{
+	struct senml_pack pack;
+	char max_name[SENML_MAX_NAME_LEN + 1];
+	char long_name[SENML_MAX_NAME_LEN + 2];
+	char max_unit[SENML_MAX_UNIT_LEN + 1];
+	char long_unit[SENML_MAX_UNIT_LEN + 2];
+	uint8_t buf[128];
+	int ret;
+
+	fill_string(max_name, SENML_MAX_NAME_LEN, 'n');
+	fill_string(long_name, SENML_MAX_NAME_LEN + 1, 'n');
+	fill_string(max_unit, SENML_MAX_UNIT_LEN, 'u');
+	fill_string(long_unit, SENML_MAX_UNIT_LEN + 1, 'u');
+
+	ret = senml_pack_init(&pack, max_name, 0);
+	ASSERT_EQ(ret, 0, "max-length base name accepted");
+
+	ret = senml_pack_init(&pack, long_name, 0);
+	ASSERT_EQ(ret, -EMSGSIZE, "overlong base name rejected");
+	ASSERT_EQ(pack.record_count, 0, "failed init leaves empty pack");
+	ASSERT_EQ(pack.base_name == NULL, true, "failed init clears base name");
+
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
+
+	ret = senml_add_float(&pack, max_name, max_unit, 1.0f);
+	ASSERT_EQ(ret, 0, "max-length name/unit accepted");
+	ASSERT_EQ(pack.record_count, 1, "accepted record counted");
+
+	ret = senml_add_float(&pack, long_name, max_unit, 1.0f);
+	ASSERT_EQ(ret, -EMSGSIZE, "overlong float name rejected");
+	ASSERT_EQ(pack.record_count, 1, "rejected name not counted");
+
+	ret = senml_add_float_t(&pack, max_name, long_unit, 1.0f, 1);
+	ASSERT_EQ(ret, -EMSGSIZE, "overlong timed float unit rejected");
+	ASSERT_EQ(pack.record_count, 1, "rejected unit not counted");
+
+	ret = senml_add_bool(&pack, long_name, true);
+	ASSERT_EQ(ret, -EMSGSIZE, "overlong bool name rejected");
+	ASSERT_EQ(pack.record_count, 1, "rejected bool not counted");
+
+	pack.records[0].name = long_name;
+	ret = senml_encode_cbor(&pack, buf, sizeof(buf));
+	ASSERT_EQ(ret, -EMSGSIZE, "manually overlong record rejected at encode");
 
 	return 1;
 }
@@ -182,6 +244,7 @@ int main(void)
 	RUN_TEST(test_empty_pack_rejected);
 	RUN_TEST(test_buffer_too_small);
 	RUN_TEST(test_pack_full);
+	RUN_TEST(test_string_length_limits);
 
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 

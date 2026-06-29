@@ -6,19 +6,20 @@ zephyr_library()
 # Common utilities (always built when LICHEN subsystem is enabled)
 zephyr_library_sources(
     lichen_util.c
+    crash_info.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_LICHEN_LORA_L2
-    lora_l2.c
-)
+if(DEFINED CONFIG_LICHEN_LORA_L2 AND CONFIG_LICHEN_LORA_L2)
+    zephyr_library_sources(lora_l2.c)
+endif()
 
-zephyr_library_sources_ifdef(CONFIG_LICHEN_L2
-    lichen_l2.c
-)
+if(DEFINED CONFIG_LICHEN_L2 AND CONFIG_LICHEN_L2)
+    zephyr_library_sources(lichen_l2.c)
+endif()
 
-zephyr_library_sources_ifdef(CONFIG_LICHEN_IPV6
-    ipv6_addr.c
-)
+if(DEFINED CONFIG_LICHEN_IPV6 AND CONFIG_LICHEN_IPV6)
+    zephyr_library_sources(ipv6_addr.c)
+endif()
 
 zephyr_include_directories(.)
 

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-i81y.16",
+  "title": "Link layer include path does not match oscore/aes_ccm.h includes",
+  "description": "lichen/subsys/lichen/link/lichen_link_tx.c:22, lichen/subsys/lichen/link/lichen_link_rx.c:22, and lichen/subsys/lichen/link/link_nonce.h:15 include \"oscore/aes_ccm.h\". The only matching header is lichen/subsys/lichen/oscore/aes_ccm.h, but lichen/subsys/lichen/link/CMakeLists.txt:30-31 adds /../oscore as the include directory. That path would satisfy \"aes_ccm.h\", not \"oscore/aes_ccm.h\".\\n\\nImpact: CONFIG_LICHEN_LINK builds depend on a sibling private OSCORE helper but the include contract and CMake path disagree, so link-layer compilation can fail before the OSCORE subsystem is even involved. Make the include spelling and exported include directory agree, or move the AES-CCM helper behind a public/shared include path.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-29T03:17:10.484827Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T03:35:49.808192Z",
+  "closed_at": "2026-06-29T03:35:49.808192Z",
+  "close_reason": "Completed: aligned link-layer AES-CCM includes with existing ../oscore include directory",
+  "labels": [
+    "review",
+    "workspace-api",
+    "zephyr",
+    "c"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i81y.16",
+      "depends_on_id": "project-LICHEN-i81y",
+      "type": "parent-child",
+      "created_at": "2026-06-29T03:17:10.485414Z"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-i81y.15",
+  "title": "link_ctx key reload overwrites old secrets without wiping",
+  "description": "Trigger: lichen_link_load_key() derives a new Ed25519 scalar directly into ctx-\u003eed25519_sk at lichen/subsys/lichen/link/link_ctx.c:95-106, and lichen_link_load_link_key() copies a new AES key directly into ctx-\u003elink_key at lichen/subsys/lichen/link/link_ctx.c:230-238. Neither path checks ctx-\u003ehas_key/ctx-\u003ehas_link_key nor securely wipes the existing key bytes before overwriting them.\\n\\nImpact: key rotation or reprovisioning can leave previous signing/link keys recoverable in RAM until those bytes are naturally reused, defeating the module's cleanup guarantees and increasing post-compromise key exposure. This is distinct from lichen_link_cleanup(), which wipes only when callers explicitly tear down the context at lichen/subsys/lichen/link/link_ctx.c:289-295.\\n\\nRelevant refs: lichen/subsys/lichen/link/link_ctx.c:102, lichen/subsys/lichen/link/link_ctx.c:119, lichen/subsys/lichen/link/link_ctx.c:237, lichen/subsys/lichen/link/link_ctx.c:293.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-29T03:17:04.259116Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T03:29:46.728441Z",
+  "closed_at": "2026-06-29T03:29:46.728441Z",
+  "close_reason": "Completed",
+  "labels": [
+    "review",
+    "crypto-security",
+    "key-lifecycle",
+    "zephyr",
+    "c"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i81y.15",
+      "depends_on_id": "project-LICHEN-i81y",
+      "type": "parent-child",
+      "created_at": "2026-06-29T03:17:04.25963Z"
+    }
+  ]
+}

@@ -13,11 +13,16 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <limits.h>
 #include <math.h>
 
 #include <lichen/senml.h>
 #include <lichen/errno.h>
 #include <zcbor_encode.h>
+
+#ifndef ENOTSUP
+#define ENOTSUP 95
+#endif
 
 /* CBOR SenML label indices (RFC 8428 Section 6) */
 enum senml_label {
@@ -37,20 +42,42 @@ enum senml_label {
 	SENML_LABEL_VD =  8,  /* Data Value */
 };
 
-void senml_pack_init(struct senml_pack *pack,
-		     const char *base_name,
-		     uint64_t base_time)
+static bool string_too_long(const char *str, size_t max_len)
+{
+	return str != NULL && strnlen(str, max_len + 1) > max_len;
+}
+
+static int validate_name(const char *name)
+{
+	return string_too_long(name, SENML_MAX_NAME_LEN) ? -EMSGSIZE : 0;
+}
+
+static int validate_unit(const char *unit)
+{
+	return string_too_long(unit, SENML_MAX_UNIT_LEN) ? -EMSGSIZE : 0;
+}
+
+int senml_pack_init(struct senml_pack *pack,
+		    const char *base_name,
+		    uint64_t base_time)
 {
 	if (pack == NULL) {
-		return;
+		return -EINVAL;
 	}
 
 	memset(pack, 0, sizeof(*pack));
+
+	if (validate_name(base_name) < 0) {
+		return -EMSGSIZE;
+	}
+
 	pack->base_name = base_name;
 	if (base_time > 0) {
 		pack->base_time = base_time;
 		pack->has_base_time = true;
 	}
+
+	return 0;
 }
 
 int senml_add_float(struct senml_pack *pack,
@@ -60,6 +87,10 @@ int senml_add_float(struct senml_pack *pack,
 {
 	if (pack == NULL) {
 		return -EINVAL;
+	}
+
+	if (validate_name(name) < 0 || validate_unit(unit) < 0) {
+		return -EMSGSIZE;
 	}
 
 	if (pack->record_count >= SENML_MAX_RECORDS) {
@@ -86,6 +117,10 @@ int senml_add_float_t(struct senml_pack *pack,
 		return -EINVAL;
 	}
 
+	if (validate_name(name) < 0 || validate_unit(unit) < 0) {
+		return -EMSGSIZE;
+	}
+
 	if (pack->record_count >= SENML_MAX_RECORDS) {
 		return -ENOMEM;
 	}
@@ -107,6 +142,10 @@ int senml_add_bool(struct senml_pack *pack,
 {
 	if (pack == NULL) {
 		return -EINVAL;
+	}
+
+	if (validate_name(name) < 0) {
+		return -EMSGSIZE;
 	}
 
 	if (pack->record_count >= SENML_MAX_RECORDS) {
@@ -139,6 +178,12 @@ static int encode_record(zcbor_state_t *state,
 	if (rec->name != NULL) entries++;
 	if (rec->unit != NULL) entries++;
 	if (rec->has_time) entries++;
+
+	if ((is_first && validate_name(pack->base_name) < 0) ||
+	    validate_name(rec->name) < 0 ||
+	    validate_unit(rec->unit) < 0) {
+		return -EMSGSIZE;
+	}
 
 	if (!zcbor_map_start_encode(state, entries)) {
 		return -ENOMEM;
@@ -267,7 +312,10 @@ int senml_encode_location(const char *base_name, uint64_t base_time,
 	struct senml_pack pack;
 	int ret;
 
-	senml_pack_init(&pack, base_name, base_time);
+	ret = senml_pack_init(&pack, base_name, base_time);
+	if (ret < 0) {
+		return ret;
+	}
 
 	/* RFC 8428 uses "deg" (degrees) as the SenML unit for lat/lon */
 	ret = senml_add_float(&pack, "lat", "deg", lat);
@@ -297,7 +345,10 @@ int senml_encode_battery(const char *base_name, uint64_t base_time,
 	struct senml_pack pack;
 	int ret;
 
-	senml_pack_init(&pack, base_name, base_time);
+	ret = senml_pack_init(&pack, base_name, base_time);
+	if (ret < 0) {
+		return ret;
+	}
 
 	/* Use "%" for battery percentage (not %RH which is relative humidity) */
 	ret = senml_add_float(&pack, "pct", "%", (float)percent);
@@ -325,7 +376,10 @@ int senml_encode_temperature(const char *base_name, uint64_t base_time,
 	struct senml_pack pack;
 	int ret;
 
-	senml_pack_init(&pack, base_name, base_time);
+	ret = senml_pack_init(&pack, base_name, base_time);
+	if (ret < 0) {
+		return ret;
+	}
 
 	ret = senml_add_float(&pack, "temp", "Cel", temp_c);
 	if (ret < 0) {

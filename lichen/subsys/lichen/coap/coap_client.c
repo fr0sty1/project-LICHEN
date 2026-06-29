@@ -45,6 +45,9 @@ LOG_MODULE_REGISTER(lichen_coap_client, LOG_LEVEL_INF);
 /* Maximum number of URI path components (defense against unterminated arrays) */
 #define COAP_MAX_PATH_COMPONENTS LICHEN_COAP_MAX_PATH_COMPONENTS
 
+/* Fallback timeout is scheduled at 2x the request timeout. */
+#define COAP_MAX_REQUEST_TIMEOUT_MS (UINT32_MAX / 2U)
+
 /* CoAP client socket - protected by s_mutex for thread safety */
 static int s_sock = -1;
 static struct coap_client s_client;
@@ -141,6 +144,8 @@ static void request_ctx_cancel_coap_slot(struct request_ctx *ctx)
 	for (size_t i = 0; i < ARRAY_SIZE(s_client.requests); i++) {
 		if (s_client.requests[i].request_ongoing &&
 		    s_client.requests[i].coap_request.user_data == ctx) {
+			s_client.requests[i].coap_request.cb = NULL;
+			s_client.requests[i].coap_request.user_data = NULL;
 			s_client.requests[i].request_ongoing = false;
 			s_client.requests[i].is_observe = false;
 		}
@@ -177,6 +182,8 @@ static void request_timeout_handler(struct k_work *work)
 	}
 
 	LOG_WRN("CoAP request timeout - no callback received");
+
+	request_ctx_cancel_coap_slot(ctx);
 
 	/* Notify user of timeout */
 	if (ctx->callback != NULL) {
@@ -276,14 +283,24 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 	int ret;
 	int sock;
 	size_t path_components;
+	uint32_t timeout_ms;
 
 	if (req == NULL) {
+		return LICHEN_COAP_ERR_INVALID_PARAM;
+	}
+
+	if (req->payload == NULL && req->payload_len > 0) {
 		return LICHEN_COAP_ERR_INVALID_PARAM;
 	}
 
 	ret = validate_path_components(req->path, &path_components);
 	if (ret < 0) {
 		return ret;
+	}
+
+	timeout_ms = req->timeout_ms > 0 ? req->timeout_ms : LICHEN_COAP_TIMEOUT_MS;
+	if (timeout_ms > COAP_MAX_REQUEST_TIMEOUT_MS) {
+		return LICHEN_COAP_ERR_INVALID_PARAM;
 	}
 
 	if (!s_initialized) {
@@ -368,9 +385,6 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 	 * normal timeouts; this catches cases where the callback never fires.
 	 */
 	if (atomic_get(&ctx->completed) == 0) {
-		uint32_t timeout_ms = req->timeout_ms > 0 ?
-				      req->timeout_ms : LICHEN_COAP_TIMEOUT_MS;
-
 		request_ctx_get(ctx);
 		atomic_set(&ctx->timeout_ref_held, 1);
 		k_work_schedule(&ctx->timeout_work, K_MSEC(timeout_ms * 2));
@@ -413,7 +427,7 @@ int lichen_coap_post_cbor(const struct sockaddr_in6 *addr,
 			  lichen_coap_response_cb callback,
 			  void *user_data)
 {
-	if (addr == NULL || path == NULL) {
+	if (addr == NULL || path == NULL || (payload == NULL && payload_len > 0)) {
 		return LICHEN_COAP_ERR_INVALID_PARAM;
 	}
 

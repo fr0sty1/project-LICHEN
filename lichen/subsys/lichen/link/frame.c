@@ -20,6 +20,7 @@
 
 /* Address lengths by mode (index = enum lichen_addr_mode value) */
 static const uint8_t addr_lens[] = { 0, 2, 8, 0 };
+#define ADDR_LENS_COUNT (sizeof(addr_lens) / sizeof(addr_lens[0]))
 
 /* Compile-time assertions: ensure struct field sizes match max values */
 _Static_assert(sizeof(((struct lichen_frame *)0)->dst_addr) >= 8,
@@ -110,6 +111,10 @@ int lichen_frame_write(const struct lichen_frame *frame,
 		       uint8_t *buf, size_t buflen)
 {
 	if (frame == NULL || buf == NULL) {
+		return -EINVAL;
+	}
+
+	if ((unsigned int)frame->addr_mode >= ADDR_LENS_COUNT) {
 		return -EINVAL;
 	}
 

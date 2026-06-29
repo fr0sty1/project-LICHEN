@@ -12,7 +12,7 @@
 #define LICHEN_LINK_NONCE_H_
 
 #include <lichen/link_ctx.h>
-#include "oscore/aes_ccm.h"
+#include "aes_ccm.h"
 #include <string.h>
 
 /**

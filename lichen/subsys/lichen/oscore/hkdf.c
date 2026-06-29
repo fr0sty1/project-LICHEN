@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <tinycrypt/sha256.h>
 #include <tinycrypt/hmac.h>
+#include <tinycrypt/constants.h>
 #include <monocypher.h>
 
 #include "hkdf.h"

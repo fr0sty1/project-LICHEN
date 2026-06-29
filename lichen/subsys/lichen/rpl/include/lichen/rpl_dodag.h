@@ -168,7 +168,7 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d);
  * Invalidates parents where (now - last_updated) exceeds max_age.
  * Triggers parent re-selection if any were expired.
  *
- * @param d       DODAG state
+ * @param d       DODAG state, or NULL to expire no parents
  * @param now     Current timestamp (same units as last_updated)
  * @param max_age Maximum age in timestamp units before expiring
  * @return Number of parents expired

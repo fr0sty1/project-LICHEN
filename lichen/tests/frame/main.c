@@ -66,6 +66,21 @@ static int test_write_rejects_null_buf(void)
 	return 1;
 }
 
+static int test_write_rejects_invalid_addr_mode(void)
+{
+	struct lichen_frame frame;
+	uint8_t buf[16];
+
+	memset(&frame, 0, sizeof(frame));
+	frame.addr_mode = (enum lichen_addr_mode)4;
+	frame.mic_len = LICHEN_MIC_32_LEN;
+
+	ASSERT_EQ(lichen_frame_write(&frame, buf, sizeof(buf)), -EINVAL,
+		  "write rejects invalid address mode");
+
+	return 1;
+}
+
 #define RUN_TEST(fn) do { \
 	printf("  %s...", #fn); \
 	tests_run++; \
@@ -84,6 +99,7 @@ int main(void)
 	RUN_TEST(test_parse_rejects_null_data);
 	RUN_TEST(test_write_rejects_null_frame);
 	RUN_TEST(test_write_rejects_null_buf);
+	RUN_TEST(test_write_rejects_invalid_addr_mode);
 
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 

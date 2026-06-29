@@ -137,16 +137,6 @@ static void replay_clear_pending_context_locked(int ctx_idx);
 #endif
 
 /*
- * Maximum plaintext buffer size for OSCORE protect/unprotect.
- * This limits the maximum CoAP payload size to approximately
- * OSCORE_PLAINTEXT_MAX - OSCORE_TAG_LEN - 1 (for code byte).
- * Increase if larger payloads are needed.
- */
-#ifndef CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX
-#define CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX 256
-#endif
-
-/*
  * Build OSCORE HKDF info structure in CBOR format (RFC 8613 Section 3.2.1):
  *   info = [id : bstr, id_context : bstr / nil, alg_aead : int, type : tstr, L : uint]
  * Returns encoded length, or negative on error.
@@ -482,6 +472,7 @@ int oscore_ctx_create(const uint8_t master_secret[OSCORE_KEY_LEN],
 		LOG_ERR("ctx_out must not be NULL");
 		return OSCORE_ERR_INVALID_PARAM;
 	}
+	*ctx_out = NULL;
 
 	if (master_secret == NULL) {
 		LOG_ERR("master_secret must not be NULL");
@@ -524,6 +515,12 @@ int oscore_ctx_create(const uint8_t master_secret[OSCORE_KEY_LEN],
 	}
 
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+
+	if (!s_initialized) {
+		k_mutex_unlock(&s_ctx_mutex);
+		LOG_ERR("oscore_init() must be called before oscore_ctx_create()");
+		return OSCORE_ERR_INVALID_PARAM;
+	}
 
 	/* Find free slot */
 	ctx_idx = -1;

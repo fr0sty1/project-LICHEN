@@ -205,7 +205,9 @@ int oscore_init(void);
  * @param[in] recipient_id   Recipient ID
  * @param[in] recipient_id_len Recipient ID length
  * @param[out] ctx           Output context pointer
- * @return 0 on success, negative error code on failure
+ * @return 0 on success, OSCORE_ERR_INVALID_PARAM if oscore_init() has not
+ *         been called or a parameter is invalid, negative error code on other
+ *         failures
  */
 int oscore_ctx_create(const uint8_t master_secret[OSCORE_KEY_LEN],
 		      const uint8_t *master_salt, size_t master_salt_len,

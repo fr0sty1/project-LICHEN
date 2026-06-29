@@ -6,9 +6,14 @@ project(lichen_bridge)
 # from app subdirs doesn't auto-link)
 target_sources(app PRIVATE
     src/main.c
-    subsys/lichen/lora_l2.c
     subsys/lichen/ipv6_addr.c
     subsys/lichen/lichen_util.c
+    subsys/lichen/crash_info.c
+)
+
+# Add LoRa hardware access only on boards with a LoRa radio configured.
+target_sources_ifdef(CONFIG_LICHEN_LORA_L2 app PRIVATE
+    subsys/lichen/lora_l2.c
 )
 
 # Add lichen_l2.c only when full networking stack is enabled

@@ -742,30 +742,10 @@ static int decompress_coap(const uint8_t *data, size_t data_len,
 	/* Build CoAP header: ver(2)=1 | type(2) | tkl(4), code, mid[2] */
 	uint8_t coap_b0 = (1 << 6) | ((coap_type & 0x3) << 4) | (coap_tkl & 0x0F);
 	size_t coap_len = 4 + tail_len;
-	uint16_t udp_len = 8 + coap_len;
-
-	/* Build CoAP for checksum computation */
-	uint8_t coap_buf[512];
-
-	/* Ensure tail fits in working buffer */
-	if (tail_len > sizeof(coap_buf) - 4) {
+	if (coap_len > UINT16_MAX - UDP_HDR_LEN) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
-
-	coap_buf[0] = coap_b0;
-	coap_buf[1] = (uint8_t)coap_code;
-	coap_buf[2] = (uint8_t)(coap_mid >> 8);
-	coap_buf[3] = (uint8_t)coap_mid;
-	if (tail_len > 0) {
-		memcpy(&coap_buf[4], tail, tail_len);
-	}
-
-	uint16_t udp_cksum;
-	if (udp_checksum(src, dst, (uint16_t)src_port, (uint16_t)dst_port,
-			 coap_buf, coap_len, &udp_cksum) < 0) {
-		return SCHC_ERR_BUFFER_TOO_SMALL;  /* Payload too large for UDP */
-	}
-
+	uint16_t udp_len = UDP_HDR_LEN + coap_len;
 	uint16_t ipv6_payload_len = udp_len;
 	size_t total = 40 + 8 + coap_len;
 
@@ -792,11 +772,25 @@ static int decompress_coap(const uint8_t *data, size_t data_len,
 	out[43] = (uint8_t)dst_port;
 	out[44] = (uint8_t)(udp_len >> 8);
 	out[45] = (uint8_t)udp_len;
-	out[46] = (uint8_t)(udp_cksum >> 8);
-	out[47] = (uint8_t)udp_cksum;
+	out[46] = 0;
+	out[47] = 0;
 
 	/* CoAP */
-	memcpy(&out[48], coap_buf, coap_len);
+	out[48] = coap_b0;
+	out[49] = (uint8_t)coap_code;
+	out[50] = (uint8_t)(coap_mid >> 8);
+	out[51] = (uint8_t)coap_mid;
+	if (tail_len > 0) {
+		memcpy(&out[52], tail, tail_len);
+	}
+
+	uint16_t udp_cksum;
+	if (udp_checksum(src, dst, (uint16_t)src_port, (uint16_t)dst_port,
+			 &out[48], coap_len, &udp_cksum) < 0) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;  /* Payload too large for UDP */
+	}
+	out[46] = (uint8_t)(udp_cksum >> 8);
+	out[47] = (uint8_t)udp_cksum;
 
 	return (int)total;
 }
@@ -846,33 +840,14 @@ static int decompress_icmpv6_echo(const uint8_t *data, size_t data_len,
 	size_t tail_len = data_len - 1 - residue_end;
 
 	size_t icmp_len = 8 + tail_len;
+	if (icmp_len > UINT16_MAX) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;
+	}
 	size_t total = 40 + icmp_len;
 
 	if (total > out_len) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
-
-	/* Build ICMPv6 with zero checksum for computation */
-	uint8_t icmp_buf[512];
-
-	/* Ensure tail fits in working buffer */
-	if (tail_len > sizeof(icmp_buf) - 8) {
-		return SCHC_ERR_BUFFER_TOO_SMALL;
-	}
-
-	icmp_buf[0] = (uint8_t)icmp_type;
-	icmp_buf[1] = 0; /* code NOT_SENT = 0 */
-	icmp_buf[2] = 0; /* checksum placeholder */
-	icmp_buf[3] = 0;
-	icmp_buf[4] = (uint8_t)(icmp_id >> 8);
-	icmp_buf[5] = (uint8_t)icmp_id;
-	icmp_buf[6] = (uint8_t)(icmp_seq >> 8);
-	icmp_buf[7] = (uint8_t)icmp_seq;
-	if (tail_len > 0) {
-		memcpy(&icmp_buf[8], tail, tail_len);
-	}
-
-	uint16_t cksum = icmpv6_checksum(src, dst, icmp_buf, icmp_len);
 
 	/* IPv6 header */
 	out[0] = 0x60;
@@ -889,8 +864,8 @@ static int decompress_icmpv6_echo(const uint8_t *data, size_t data_len,
 	/* ICMPv6 */
 	out[40] = (uint8_t)icmp_type;
 	out[41] = 0;
-	out[42] = (uint8_t)(cksum >> 8);
-	out[43] = (uint8_t)cksum;
+	out[42] = 0;
+	out[43] = 0;
 	out[44] = (uint8_t)(icmp_id >> 8);
 	out[45] = (uint8_t)icmp_id;
 	out[46] = (uint8_t)(icmp_seq >> 8);
@@ -898,6 +873,10 @@ static int decompress_icmpv6_echo(const uint8_t *data, size_t data_len,
 	if (tail_len > 0) {
 		memcpy(&out[48], tail, tail_len);
 	}
+
+	uint16_t cksum = icmpv6_checksum(src, dst, &out[40], icmp_len);
+	out[42] = (uint8_t)(cksum >> 8);
+	out[43] = (uint8_t)cksum;
 
 	return (int)total;
 }
@@ -954,37 +933,14 @@ static int decompress_rpl_dio(const uint8_t *data, size_t data_len,
 	/* RPL DIO base (24 bytes) + tail */
 	size_t rpl_body_len = 24 + tail_len;
 	size_t icmp_len = 4 + rpl_body_len; /* type+code+cksum + body */
+	if (icmp_len > UINT16_MAX) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;
+	}
 	size_t total = 40 + icmp_len;
 
 	if (total > out_len) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
-
-	uint8_t icmp_buf[512];
-
-	/* Ensure tail fits in working buffer (28 = DIO header) */
-	if (tail_len > sizeof(icmp_buf) - 28) {
-		return SCHC_ERR_BUFFER_TOO_SMALL;
-	}
-
-	icmp_buf[0] = 155; /* RPL */
-	icmp_buf[1] = 1;   /* DIO code */
-	icmp_buf[2] = 0;   /* checksum placeholder */
-	icmp_buf[3] = 0;
-	icmp_buf[4] = (uint8_t)instance;
-	icmp_buf[5] = (uint8_t)version;
-	icmp_buf[6] = (uint8_t)(rank >> 8);
-	icmp_buf[7] = (uint8_t)rank;
-	icmp_buf[8] = (uint8_t)gmop;
-	icmp_buf[9] = (uint8_t)dtsn;
-	icmp_buf[10] = 0; /* flags (NOT_SENT = 0) */
-	icmp_buf[11] = 0; /* reserved (NOT_SENT = 0) */
-	memcpy(&icmp_buf[12], dodagid, 16);
-	if (tail_len > 0) {
-		memcpy(&icmp_buf[28], tail, tail_len);
-	}
-
-	uint16_t cksum = icmpv6_checksum(src, dst, icmp_buf, icmp_len);
 
 	/* IPv6 header */
 	out[0] = 0x60;
@@ -999,7 +955,24 @@ static int decompress_rpl_dio(const uint8_t *data, size_t data_len,
 	memcpy(&out[24], dst, 16);
 
 	/* ICMPv6 / RPL DIO */
-	memcpy(&out[40], icmp_buf, icmp_len);
+	out[40] = 155; /* RPL */
+	out[41] = 1;   /* DIO code */
+	out[42] = 0;   /* checksum placeholder */
+	out[43] = 0;
+	out[44] = (uint8_t)instance;
+	out[45] = (uint8_t)version;
+	out[46] = (uint8_t)(rank >> 8);
+	out[47] = (uint8_t)rank;
+	out[48] = (uint8_t)gmop;
+	out[49] = (uint8_t)dtsn;
+	out[50] = 0; /* flags (NOT_SENT = 0) */
+	out[51] = 0; /* reserved (NOT_SENT = 0) */
+	memcpy(&out[52], dodagid, 16);
+	if (tail_len > 0) {
+		memcpy(&out[68], tail, tail_len);
+	}
+
+	uint16_t cksum = icmpv6_checksum(src, dst, &out[40], icmp_len);
 	out[42] = (uint8_t)(cksum >> 8);
 	out[43] = (uint8_t)cksum;
 
@@ -1055,33 +1028,14 @@ static int decompress_rpl_dao(const uint8_t *data, size_t data_len,
 
 	size_t rpl_body_len = 20 + tail_len;
 	size_t icmp_len = 4 + rpl_body_len;
+	if (icmp_len > UINT16_MAX) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;
+	}
 	size_t total = 40 + icmp_len;
 
 	if (total > out_len) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
-
-	uint8_t icmp_buf[512];
-
-	/* Ensure tail fits in working buffer (24 = DAO header) */
-	if (tail_len > sizeof(icmp_buf) - 24) {
-		return SCHC_ERR_BUFFER_TOO_SMALL;
-	}
-
-	icmp_buf[0] = 155; /* RPL */
-	icmp_buf[1] = 2;   /* DAO code */
-	icmp_buf[2] = 0;   /* checksum placeholder */
-	icmp_buf[3] = 0;
-	icmp_buf[4] = (uint8_t)instance;
-	icmp_buf[5] = (uint8_t)kd_flags;
-	icmp_buf[6] = 0; /* reserved (NOT_SENT = 0) */
-	icmp_buf[7] = (uint8_t)seq;
-	memcpy(&icmp_buf[8], dodagid, 16);
-	if (tail_len > 0) {
-		memcpy(&icmp_buf[24], tail, tail_len);
-	}
-
-	uint16_t cksum = icmpv6_checksum(src, dst, icmp_buf, icmp_len);
 
 	/* IPv6 header */
 	out[0] = 0x60;
@@ -1096,7 +1050,20 @@ static int decompress_rpl_dao(const uint8_t *data, size_t data_len,
 	memcpy(&out[24], dst, 16);
 
 	/* ICMPv6 / RPL DAO */
-	memcpy(&out[40], icmp_buf, icmp_len);
+	out[40] = 155; /* RPL */
+	out[41] = 2;   /* DAO code */
+	out[42] = 0;   /* checksum placeholder */
+	out[43] = 0;
+	out[44] = (uint8_t)instance;
+	out[45] = (uint8_t)kd_flags;
+	out[46] = 0; /* reserved (NOT_SENT = 0) */
+	out[47] = (uint8_t)seq;
+	memcpy(&out[48], dodagid, 16);
+	if (tail_len > 0) {
+		memcpy(&out[64], tail, tail_len);
+	}
+
+	uint16_t cksum = icmpv6_checksum(src, dst, &out[40], icmp_len);
 	out[42] = (uint8_t)(cksum >> 8);
 	out[43] = (uint8_t)cksum;
 

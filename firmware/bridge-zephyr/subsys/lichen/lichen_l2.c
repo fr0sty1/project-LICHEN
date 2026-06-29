@@ -431,6 +431,11 @@ static uint8_t iface_link_addr[LICHEN_L2_ADDR_LEN];
 /**
  * @brief Find peer entry by EUI-64 (internal, caller must hold rx_mutex).
  *
+ * Uses memcmp (not constant-time) because EUI-64 addresses are public
+ * identifiers, not secrets. Timing-safe comparison is done in
+ * peer_table_try_all_peers_locked() during signature verification, where
+ * timing could leak which peer's key matched.
+ *
  * @param eui64 8-byte peer EUI-64 address
  * @return Pointer to entry if found, NULL otherwise
  */
@@ -513,6 +518,23 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 	size_t saved_out_len = *out_len;
 	const uint8_t *saved_peer_pubkey = ctx->peer_pubkey;
 	const uint8_t *saved_peer_eui64 = ctx->peer_eui64;
+	struct lichen_frame parsed;
+
+	ret = lichen_frame_parse(&parsed, frame, frame_len);
+	if (ret < 0) {
+		return -EINVAL;
+	}
+
+	/*
+	 * SECURITY: This helper is the peer-authenticated RX path. CRC32-only
+	 * frames may still be accepted by lichen_link_rx() for explicit
+	 * unauthenticated/dev-mode callers, but they must not be attributed to
+	 * a known peer by trying each peer's public key. Without a signature,
+	 * lichen_link_rx() has no peer-auth proof to verify.
+	 */
+	if (!parsed.signature_present) {
+		return -LICHEN_EAUTH;
+	}
 
 	/*
 	 * SECURITY: Constant-time peer iteration to prevent timing side-channel.
@@ -540,7 +562,13 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 			continue;
 		}
 
-		/* Try this peer's pubkey */
+		/*
+		 * BY DESIGN (project-LICHEN-0li1.32): lichen_link_rx is called once per
+		 * peer to try signature verification with each pubkey. LICHEN frames omit
+		 * sender identity, so we must try all known peers. The redundant SCHC
+		 * decompression and MIC verification per iteration is acceptable given
+		 * LoRa's low packet rate and bounded peer count (CONFIG_LICHEN_LINK_MAX_NEIGHBORS).
+		 */
 		ctx->peer_pubkey = peer_table[i].pubkey;
 		ctx->peer_eui64 = peer_table[i].eui64;
 		*out_len = saved_out_len;
@@ -611,6 +639,12 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 		return -EINVAL;
 	}
 
+	/* SECURITY: Reject peer_add if interface initialization failed (project-LICHEN-0li1.66) */
+	if (atomic_get(&iface_init_failed)) {
+		LOG_ERR("lichen_l2: peer_add rejected (init failed)");
+		return -ENODEV;
+	}
+
 	/*
 	 * Check for prior abort BEFORE acquiring mutex (project-LICHEN-dq6n.21).
 	 *
@@ -648,6 +682,14 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 	/* Check if peer already exists - update pubkey if so */
 	struct lichen_peer_entry *existing = peer_find_locked(eui64);
 	if (existing != NULL) {
+		/*
+		 * SECURITY: Clear replay window before updating pubkey.
+		 * A new pubkey means new key material, so old sequence numbers
+		 * are no longer valid. Without this, stale replay state could
+		 * reject valid packets from the rotated key or accept replays.
+		 * (project-LICHEN-0li1.36)
+		 */
+		lichen_replay_remove(&replay_table, eui64);
 		memcpy(existing->pubkey, pubkey, LICHEN_L2_PUBKEY_LEN);
 		existing->last_seen = k_uptime_get();
 		LOG_INF("lichen_l2: peer updated ..%02x:%02x",
@@ -680,6 +722,14 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 			k_mutex_unlock(&rx_mutex);
 			return -ENOSPC;
 		}
+		/*
+		 * SECURITY: Clear replay window before evicting peer.
+		 * Stale replay state from the evicted peer could cause valid
+		 * packets to be rejected if that peer reconnects and its new
+		 * sequence numbers fall within the old window.
+		 * (project-LICHEN-0li1.53)
+		 */
+		lichen_replay_remove(&replay_table, peer_table[slot].eui64);
 		LOG_INF("lichen_l2: peer table full, evicting ..%02x:%02x",
 			peer_table[slot].eui64[6], peer_table[slot].eui64[7]);
 	}
@@ -706,6 +756,12 @@ int lichen_peer_remove(const uint8_t eui64[8])
 		return -EINVAL;
 	}
 
+	/* SECURITY: Reject peer_remove if interface initialization failed (project-LICHEN-0li1.66) */
+	if (atomic_get(&iface_init_failed)) {
+		LOG_ERR("lichen_l2: peer_remove rejected (init failed)");
+		return -ENODEV;
+	}
+
 	/*
 	 * Check for prior abort BEFORE acquiring mutex (project-LICHEN-dq6n.21).
 	 *
@@ -718,6 +774,22 @@ int lichen_peer_remove(const uint8_t eui64[8])
 	if (lichen_lora_l2_needs_reinit()) {
 		LOG_ERR("lichen_l2: peer_remove rejected (reinit required after abort)");
 		return -ECANCELED;
+	}
+
+	/*
+	 * Reject peer_remove when module is not initialized (project-LICHEN-0li1.11).
+	 *
+	 * After deinit(), the state is UNINIT. needs_reinit() returns false (state !=
+	 * ABORTED), so the check above passes. But peer_remove() would attempt to
+	 * access peer_table that may be in an indeterminate state. Reject early with
+	 * a clear error.
+	 *
+	 * Using get_eui64()==NULL as a proxy for UNINIT because there's no is_initialized()
+	 * API - get_eui64() returns NULL only in UNINIT state.
+	 */
+	if (lichen_lora_l2_get_eui64() == NULL) {
+		LOG_ERR("lichen_l2: peer_remove rejected (not initialized)");
+		return -ENODEV;
 	}
 
 	k_mutex_lock(&rx_mutex, K_FOREVER);
@@ -1055,17 +1127,45 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 * lichen_lora_l2_stop() clears the callback (lora_l2.c:324-325),
 		 * so we must re-register it on enable. (project-LICHEN-yw7i.28)
 		 */
-		lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
-		int ret = lichen_lora_l2_start();
+		int ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
+		if (ret != 0) {
+			LOG_ERR("lichen_l2: failed to set RX callback (%d)", ret);
+#if HAVE_LICHEN_LINK
+			if (link_ctx_initialized_here) {
+				k_mutex_lock(&tx_mutex, K_FOREVER);
+				k_mutex_lock(&rx_mutex, K_FOREVER);
+				atomic_set(&link_ctx_initialized, 0);
+				lichen_link_cleanup(&link_ctx);
+				k_mutex_unlock(&rx_mutex);
+				k_mutex_unlock(&tx_mutex);
+			}
+#endif
+			return ret;
+		}
+		ret = lichen_lora_l2_start();
 		/*
 		 * Roll back callback on start() failure. (project-LICHEN-tvfm.72)
 		 *
 		 * If start() fails, the RX thread isn't running and won't invoke
 		 * the callback, but leaving it registered creates inconsistent
 		 * state. Clear it to match the stopped state.
+		 *
+		 * DEFENSIVE (project-LICHEN-0li1.50): Check and log callback clearing
+		 * failure. This can only happen if state transitioned to UNINIT between
+		 * start() failing and this call - a very narrow race. If clearing fails,
+		 * the callback may remain registered pointing to lora_rx_callback, but
+		 * this is SAFE because:
+		 * 1. link_ctx_initialized is cleared below, so lichen_l2_input() will
+		 *    check it at line ~1755 and drop any packets before using link_ctx
+		 * 2. The RX thread isn't running (start() failed), so the callback
+		 *    won't be invoked until a future successful start()
+		 * 3. A future enable() will re-register the callback anyway
 		 */
 		if (ret != 0) {
-			lichen_lora_l2_set_rx_callback(NULL, NULL);
+			int cb_ret = lichen_lora_l2_set_rx_callback(NULL, NULL);
+			if (cb_ret != 0) {
+				LOG_WRN("lichen_l2: failed to clear callback on start failure (%d)", cb_ret);
+			}
 		}
 #if HAVE_LICHEN_LINK
 		/*
@@ -1109,6 +1209,24 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 			int deinit_ret = lichen_lora_l2_deinit();
 			if (deinit_ret != 0) {
 				LOG_ERR("lichen_l2: deinit after abort failed (%d)", deinit_ret);
+				/*
+				 * SECURITY (project-LICHEN-0li1.46): Clear link_ctx_initialized
+				 * even if deinit() failed. This ensures re-initialization on
+				 * next enable() after the user manually recovers via deinit/init.
+				 *
+				 * Without this, link_ctx_initialized would remain set, causing
+				 * enable() to skip link_ctx initialization and use stale state
+				 * (potentially including stale cryptographic keys).
+				 *
+				 * We cannot safely call lichen_link_cleanup() here because we
+				 * don't hold the mutexes (and can't acquire them - that's why
+				 * deinit failed). The atomic clear is safe without locks.
+				 * The link_ctx contents may be stale, but the next enable()
+				 * will re-initialize it properly since link_ctx_initialized=0.
+				 */
+#if HAVE_LICHEN_LINK
+				atomic_set(&link_ctx_initialized, 0);
+#endif
 			}
 		}
 		/*
@@ -1130,18 +1248,38 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 * acquire rx_mutex to ensure any in-flight RX completes first.
 		 *
 		 * DEADLOCK AVOIDANCE: Use trylock with timeout instead of K_FOREVER.
-		 * If the RX thread was aborted while holding rx_mutex (edge case not
-		 * fully handled by the -ECANCELED check above), trylock will fail and
-		 * we reinitialize the mutex. This is defense-in-depth against:
-		 * 1. Bugs in stop()/deinit() sequencing
-		 * 2. Future changes that introduce new abort paths
-		 * 3. Kernel bugs or hardware faults
+		 *
+		 * By this point, stop() has already joined the RX thread, which means
+		 * lichen_l2_input() has completed and released rx_mutex. The 100ms
+		 * timeout is a defensive check - it should NEVER fire in normal
+		 * operation. If it does, something unexpected happened (e.g., kernel
+		 * bug, memory corruption, or an unhandled abort path).
+		 *
+		 * Note: lichen_l2_input() uses K_FOREVER when acquiring rx_mutex,
+		 * which is correct for the callback path - it must complete processing
+		 * before releasing the lock. The difference in timeouts is intentional:
+		 * - Callback path (K_FOREVER): Must finish signature verification etc.
+		 * - Disable path (100ms): Defensive check after thread already exited
+		 *
+		 * The -ECANCELED path above handles aborted threads by calling deinit()
+		 * to reinitialize mutexes. Return error rather than reinitializing a
+		 * potentially-held mutex (UB). (project-LICHEN-0li1.7)
 		 */
 		k_mutex_lock(&tx_mutex, K_FOREVER);
 		if (k_mutex_lock(&rx_mutex, K_MSEC(100)) != 0) {
-			LOG_DBG("lichen_l2: rx_mutex timeout, reinitializing (possible aborted thread)");
-			k_mutex_init(&rx_mutex);
-			k_mutex_lock(&rx_mutex, K_FOREVER);
+			LOG_ERR("lichen_l2: rx_mutex timeout during disable, stop() "
+				"may have left RX in bad state");
+			/*
+			 * SECURITY (project-LICHEN-0li1.46): Clear link_ctx_initialized
+			 * even though cleanup is incomplete. This ensures the next
+			 * enable() will re-initialize link_ctx rather than use stale
+			 * state. The link_ctx contents are NOT wiped here (we can't
+			 * call lichen_link_cleanup without rx_mutex), but the flag
+			 * ensures fresh initialization on next enable().
+			 */
+			atomic_set(&link_ctx_initialized, 0);
+			k_mutex_unlock(&tx_mutex);
+			return -EBUSY;
 		}
 		atomic_set(&link_ctx_initialized, 0);
 		lichen_link_cleanup(&link_ctx);
@@ -1480,7 +1618,12 @@ void lichen_l2_iface_init(struct net_if *iface)
 	lichen_iface = iface;
 
 	/* Register RX callback - must happen AFTER link_ctx is initialized */
-	lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
+	ret = lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL);
+	if (ret != 0) {
+		LOG_ERR("lichen_l2: failed to set RX callback (%d)", ret);
+		atomic_set(&iface_init_failed, 1);
+		return;
+	}
 
 #if HAVE_LICHEN_LINK
 	/*
@@ -1543,7 +1686,7 @@ fail_late_init:
 	 * and proceed into lichen_l2_input() while cleanup is in progress.
 	 */
 	atomic_set(&iface_init_failed, 1);
-	lichen_lora_l2_set_rx_callback(NULL, NULL);
+	(void)lichen_lora_l2_set_rx_callback(NULL, NULL);
 #if HAVE_LICHEN_LINK
 	k_mutex_lock(&tx_mutex, K_FOREVER);
 	k_mutex_lock(&rx_mutex, K_FOREVER);
@@ -1787,6 +1930,23 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * Allocate net_pkt for the IPv6 packet.
 	 * Timeout configured via CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS.
 	 * See Kconfig help for tradeoff rationale.
+	 *
+	 * Mutex-during-allocation trade-off (project-LICHEN-0li1.17, project-LICHEN-0li1.64):
+	 * We hold rx_mutex during this potentially-blocking allocation. This is
+	 * intentional: releasing the mutex before allocation would require copying
+	 * rx_ipv6_buf to a local buffer (wasting stack) or introducing a double-
+	 * checked locking pattern (complex, error-prone). The timeout via
+	 * CONFIG_LICHEN_L2_RX_ALLOC_TIMEOUT_MS (default 50ms) bounds the blocking
+	 * window. At LoRa data rates, frames arrive slowly enough (~6.8s per max
+	 * frame at SF10) that brief mutex contention is acceptable. Operations
+	 * needing rx_mutex (peer_add, peer_remove, enable/disable) are infrequent
+	 * configuration events that can tolerate 50ms worst-case wait.
+	 *
+	 * Priority inversion: If a higher-priority thread blocks on rx_mutex while
+	 * this allocation waits, inversion occurs. Mitigated by: (1) Zephyr k_mutex
+	 * implements priority inheritance, boosting this thread's priority; (2) the
+	 * timeout bounds worst-case blocking; (3) at LoRa rates, mutex contention
+	 * probability is very low.
 	 *
 	 * Memory pressure behavior (project-LICHEN-tvfm.99):
 	 * On allocation failure, we drop this packet and return. At LoRa data

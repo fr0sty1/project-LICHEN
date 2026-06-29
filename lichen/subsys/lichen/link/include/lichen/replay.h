@@ -32,14 +32,17 @@ extern "C" {
 /**
  * @brief Replay window state for one peer
  *
- * Tracks a 64-slot sliding window of sequence numbers. Bit 0 represents
- * last_seq, bit i represents last_seq - i. A set bit means that sequence
- * number was already accepted.
+ * Tracks a 64-slot sliding window of (epoch, sequence number) pairs using
+ * a 24-bit logical counter: counter = (epoch << 16) | seqnum. This prevents
+ * cross-epoch replay attacks when tx_seq wraps from 0xFFFF to 0.
+ *
+ * Bit layout: bit 0 of bitmap represents last_counter, bit i represents
+ * last_counter - i. A set bit means that counter was already accepted.
  */
 struct lichen_replay_window {
-	uint16_t last_seq;   /**< Highest accepted sequence number */
-	uint64_t bitmap;     /**< 64-bit seen sequence bitmap */
-	bool initialised;    /**< True once first sequence accepted */
+	uint32_t last_counter; /**< Highest accepted 24-bit counter (epoch<<16|seq) */
+	uint64_t bitmap;       /**< 64-bit seen counter bitmap */
+	bool initialised;      /**< True once first counter accepted */
 };
 
 /**
@@ -73,15 +76,20 @@ void lichen_replay_init(struct lichen_replay_window *rw);
  * Call this for every received frame. Returns true if the frame
  * should be accepted (not a replay), false if it should be rejected.
  *
- * The window tracks 64 sequence numbers relative to the highest seen.
- * Sequence numbers wrap at 65536 (u16 space), with half-space
- * arithmetic to handle wraparound correctly.
+ * The window uses a 24-bit logical counter formed from (epoch << 16) | seqnum.
+ * This ensures that when tx_seq wraps from 0xFFFF to 0 and epoch increments,
+ * old (epoch, seqnum) pairs cannot be replayed against the new epoch.
+ *
+ * The window tracks 64 counter values relative to the highest seen.
+ * The 24-bit counter wraps at 16M (256 epochs * 65536 sequences), with
+ * half-space arithmetic to handle wraparound correctly.
  *
  * @param[in,out] rw     Replay window state
- * @param[in]     seq    Received sequence number
+ * @param[in]     epoch  8-bit epoch from frame header
+ * @param[in]     seq    16-bit sequence number from frame header
  * @return true if frame should be accepted, false if replay
  */
-bool lichen_replay_check(struct lichen_replay_window *rw, uint16_t seq);
+bool lichen_replay_check(struct lichen_replay_window *rw, uint8_t epoch, uint16_t seq);
 
 /**
  * @brief Initialize a replay table.

@@ -147,7 +147,8 @@ int lichen_lora_l2_start(void);
  * Callers that need to receive packets after restart must re-register their
  * callback via lichen_lora_l2_set_rx_callback() before calling start().
  *
- * @return Always returns 0 (stop is idempotent and cannot fail)
+ * @return 0 on success (graceful stop)
+ * @return -ECANCELED if RX thread had to be forcibly aborted (requires deinit/init cycle)
  */
 int lichen_lora_l2_stop(void);
 
@@ -184,8 +185,9 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len);
  *
  * @param cb Callback function (NULL to disable)
  * @param user_data Context passed to callback
+ * @return 0 on success, -ENODEV if not initialized
  */
-void lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data);
+int lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data);
 
 /**
  * @brief Get this node's EUI-64 address
@@ -195,9 +197,11 @@ void lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data);
  * and does not change until deinit().
  *
  * @warning The returned pointer aliases internal state. Do NOT modify.
- * @warning Thread safety: Caller must ensure no concurrent deinit() while
- *          using the returned pointer. Either copy immediately, or hold
- *          application-level synchronization that prevents deinit during use.
+ * @warning Thread safety: Returns internal pointer WITHOUT mutex protection.
+ *          Caller must ensure no concurrent deinit() while using the pointer.
+ *          A concurrent deinit() will zero the backing memory, causing stale
+ *          or partial reads. Either copy immediately, or hold application-level
+ *          synchronization that prevents deinit during use.
  *
  * @return Pointer to 8-byte EUI-64, or NULL if not initialized
  */

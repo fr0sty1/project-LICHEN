@@ -15,6 +15,7 @@ if LICHEN
 config LICHEN_LORA_L2
 	bool "LICHEN LoRa L2 driver"
 	depends on LORA
+	select HWINFO
 	default y
 	help
 	  Enable the LICHEN LoRa L2 driver. This provides low-level LoRa
@@ -66,9 +67,11 @@ config LICHEN_LORA_FREQUENCY
 	int "LoRa frequency in Hz"
 	depends on LICHEN_LORA_L2
 	default 915000000
+	range 150000000 960000000
 	help
 	  LoRa carrier frequency in Hz. Must comply with regional regulations.
 	  Common ISM bands: 915000000 (US), 868000000 (EU), 433000000 (Asia).
+	  Range: 150-960 MHz covers all LoRa-capable frequency bands.
 
 config LICHEN_LORA_TX_POWER
 	int "LoRa TX power in dBm"
@@ -149,5 +152,9 @@ config LICHEN_IPV6_ULA_PREFIX
 	help
 	  Default ULA prefix used when no DODAG root provides one.
 	  Format: fd00:xxxx:xxxx:: (must be in fd00::/8)
+
+	  Note: Kconfig cannot validate string format at compile time.
+	  Runtime validation in lichen_make_ula() enforces the fd00::/8
+	  requirement and returns -EINVAL for invalid prefixes.
 
 endif # LICHEN

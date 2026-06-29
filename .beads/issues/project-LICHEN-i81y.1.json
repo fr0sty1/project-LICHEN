@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-i81y.1",
+  "title": "coap_client.c:167 late CoAP callback can use freed request context",
+  "description": "Trigger: lichen_coap_request() submits a request successfully, schedules timeout_work at coap_client.c:374-376, then request_timeout_handler() fires before Zephyr's coap_client callback. The timeout handler sets completed at coap_client.c:172-177, invokes the user timeout callback at coap_client.c:181-184, then drops both refs at coap_client.c:186-187. It does not call request_ctx_cancel_coap_slot() or otherwise keep a CoAP-layer ref alive.\\n\\nImpact: if Zephyr later delivers the response/error callback for the same request, coap_response_handler() receives the stale user_data pointer and dereferences it at coap_client.c:193-204. That is a use-after-free in the network callback path; hostile or lossy network timing can turn a normal timeout into memory corruption or a crash.\\n\\nRelevant refs: lichen/subsys/lichen/coap/coap_client.c:167, lichen/subsys/lichen/coap/coap_client.c:172, lichen/subsys/lichen/coap/coap_client.c:186, lichen/subsys/lichen/coap/coap_client.c:190, lichen/subsys/lichen/coap/coap_client.c:374.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-29T03:15:25.345271Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T03:28:34.202208Z",
+  "closed_at": "2026-06-29T03:28:34.202208Z",
+  "close_reason": "Completed",
+  "labels": [
+    "review",
+    "correctness",
+    "zephyr",
+    "c"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i81y.1",
+      "depends_on_id": "project-LICHEN-i81y",
+      "type": "parent-child",
+      "created_at": "2026-06-29T03:15:25.345905Z"
+    }
+  ]
+}

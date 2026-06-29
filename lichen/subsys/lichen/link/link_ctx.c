@@ -88,6 +88,9 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
  */
 int lichen_link_load_key(struct lichen_link_ctx *ctx, const uint8_t seed[32])
 {
+	uint8_t new_sk[LICHEN_SK_LEN];
+	uint8_t new_pk[LICHEN_PK_LEN];
+
 	if (ctx == NULL || seed == NULL) {
 		return -EINVAL;
 	}
@@ -99,11 +102,11 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx, const uint8_t seed[32])
 	crypto_sha512(hash, seed, 32);
 
 	/* sk = clamp(h[0:32]) */
-	memcpy(ctx->ed25519_sk, hash, LICHEN_SK_LEN);
-	schnorr48_clamp_scalar(ctx->ed25519_sk);
+	memcpy(new_sk, hash, sizeof(new_sk));
+	schnorr48_clamp_scalar(new_sk);
 
 	/* pk = sk * B */
-	crypto_eddsa_scalarbase(ctx->ed25519_pk, ctx->ed25519_sk);
+	crypto_eddsa_scalarbase(new_pk, new_sk);
 
 	/* Wipe sensitive intermediate data */
 	crypto_wipe(hash, sizeof(hash));
@@ -116,12 +119,19 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx, const uint8_t seed[32])
 		LOG_WRN("INSECURE: using stub lichen_link_load_key - NOT FOR PRODUCTION\n");
 		stub_warned_load_key = true;
 	}
-	memcpy(ctx->ed25519_sk, seed, LICHEN_SK_LEN);
-	schnorr48_clamp_scalar(ctx->ed25519_sk);
-	memset(ctx->ed25519_pk, 0, LICHEN_PK_LEN);
-	ctx->ed25519_pk[0] = 0x01;
+	memcpy(new_sk, seed, sizeof(new_sk));
+	schnorr48_clamp_scalar(new_sk);
+	memset(new_pk, 0, sizeof(new_pk));
+	new_pk[0] = 0x01;
 #endif
 
+	if (ctx->has_key) {
+		secure_wipe(ctx->ed25519_sk, LICHEN_SK_LEN);
+	}
+
+	memcpy(ctx->ed25519_sk, new_sk, LICHEN_SK_LEN);
+	memcpy(ctx->ed25519_pk, new_pk, LICHEN_PK_LEN);
+	secure_wipe(new_sk, sizeof(new_sk));
 	ctx->has_key = true;
 	return 0;
 }
@@ -230,11 +240,20 @@ void lichen_link_set_epoch(struct lichen_link_ctx *ctx, uint8_t epoch)
 int lichen_link_load_link_key(struct lichen_link_ctx *ctx,
 			      const uint8_t link_key[LICHEN_LINK_KEY_LEN])
 {
+	uint8_t new_link_key[LICHEN_LINK_KEY_LEN];
+
 	if (ctx == NULL || link_key == NULL) {
 		return -EINVAL;
 	}
 
-	memcpy(ctx->link_key, link_key, LICHEN_LINK_KEY_LEN);
+	memcpy(new_link_key, link_key, sizeof(new_link_key));
+
+	if (ctx->has_link_key) {
+		secure_wipe(ctx->link_key, LICHEN_LINK_KEY_LEN);
+	}
+
+	memcpy(ctx->link_key, new_link_key, LICHEN_LINK_KEY_LEN);
+	secure_wipe(new_link_key, sizeof(new_link_key));
 	ctx->has_link_key = true;
 
 	return 0;
