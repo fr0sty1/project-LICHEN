@@ -360,7 +360,13 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 		return -EIO;
 	}
 
-	uint8_t len = MIN(buf_status.rx_payload_length, size);
+	if (buf_status.rx_payload_length > size) {
+		LOG_ERR("recv: packet too large for buffer: %u > %u",
+			buf_status.rx_payload_length, size);
+		return -EMSGSIZE;
+	}
+
+	uint8_t len = buf_status.rx_payload_length;
 	ret = lr1110_regmem_read_buffer8(dev, data, buf_status.rx_start_buffer_pointer, len);
 	if (ret != 0) {
 		LOG_ERR("lr1110_regmem_read_buffer8 failed: %d", ret);

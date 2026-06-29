@@ -17,6 +17,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __ZEPHYR__
+#include <zephyr/kernel.h>
+#else
+#include <pthread.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -52,6 +58,11 @@ struct lichen_link_ctx {
 	bool has_key;     /**< Whether keypair is loaded */
 	bool has_link_key; /**< Whether link-layer key is loaded */
 	bool nonce_exhausted; /**< Nonce space exhausted, TX blocked until key rotation */
+#ifdef __ZEPHYR__
+	struct k_mutex seq_lock; /**< Protects TX epoch/sequence allocation */
+#else
+	pthread_mutex_t seq_lock; /**< Protects TX epoch/sequence allocation */
+#endif
 };
 
 /**
@@ -111,6 +122,22 @@ int lichen_link_generate_key(struct lichen_link_ctx *ctx);
  * @return 0 on success, -EINVAL if ctx/seqnum is NULL, -EOVERFLOW if nonce exhausted
  */
 int lichen_link_next_seq(struct lichen_link_ctx *ctx, uint16_t *seqnum);
+
+/**
+ * @brief Allocate the next TX nonce tuple.
+ *
+ * Atomically allocates a unique (epoch, seqnum) pair for transmission on this
+ * context. Callers that build authenticated frames MUST use the returned epoch
+ * with the returned sequence number; reading ctx->epoch separately can race
+ * with another transmitter crossing a sequence wrap boundary.
+ *
+ * @param[in,out] ctx    Link context
+ * @param[out]    epoch  Pointer to receive the allocated epoch (on success)
+ * @param[out]    seqnum Pointer to receive the allocated sequence number (on success)
+ *
+ * @return 0 on success, -EINVAL if an argument is NULL, -EOVERFLOW if nonce exhausted
+ */
+int lichen_link_next_tx(struct lichen_link_ctx *ctx, uint8_t *epoch, uint16_t *seqnum);
 
 /**
  * @brief Set the current epoch.

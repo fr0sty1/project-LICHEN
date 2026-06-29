@@ -39,6 +39,7 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	uint8_t addr_mode;
 	uint8_t dst_addr[8];
 	uint8_t dst_addr_len;
+	uint8_t epoch;
 	uint16_t seqnum;
 	size_t off;
 	size_t frame_body_len;
@@ -92,8 +93,8 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		dst_addr_len = 0;
 	}
 
-	/* Get next sequence number using the link context API */
-	int seq_err = lichen_link_next_seq(ctx, &seqnum);
+	/* Get next nonce tuple using the link context API */
+	int seq_err = lichen_link_next_tx(ctx, &epoch, &seqnum);
 	if (seq_err != 0) {
 		/* Nonce exhausted or invalid context - TX blocked */
 		return seq_err;
@@ -108,7 +109,7 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 
 		memcpy(payload_buf, compressed, compressed_len);
 
-		if (schnorr48_sign_frame(ctx->epoch, seqnum,
+		if (schnorr48_sign_frame(epoch, seqnum,
 					 dst_addr, dst_addr_len,
 					 compressed, compressed_len,
 					 ctx->ed25519_sk, ctx->ed25519_pk,
@@ -175,7 +176,7 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	off++;
 
 	/* Epoch */
-	out_frame[off++] = ctx->epoch;
+	out_frame[off++] = epoch;
 
 	/* Sequence number (big-endian) */
 	out_frame[off++] = (uint8_t)(seqnum >> 8);
@@ -204,7 +205,7 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		uint8_t mic_out[AES_CCM_TAG_LEN];
 		size_t aad_len = off;  /* Everything built so far is AAD */
 
-		build_link_nonce(nonce, ctx->eui64, ctx->epoch, seqnum);
+		build_link_nonce(nonce, ctx->eui64, epoch, seqnum);
 
 		/* AES-CCM encrypt with empty plaintext to get just the tag */
 		if (lichen_aes_ccm_encrypt(ctx->link_key, nonce,

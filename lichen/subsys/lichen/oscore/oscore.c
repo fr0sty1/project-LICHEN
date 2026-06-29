@@ -512,15 +512,15 @@ int oscore_ctx_create(const uint8_t master_secret[OSCORE_KEY_LEN],
 	}
 
 	/*
-	 * Warn if sender_id == recipient_id - this breaks unicast OSCORE
-	 * because both peers would derive identical keys. Group OSCORE
-	 * (RFC 9203) may allow this, but we don't support it yet.
-	 * (python-ano.48)
+	 * Reject sender_id == recipient_id for unicast OSCORE because both peers
+	 * would derive identical keys. Group OSCORE (RFC 9203) may allow this,
+	 * but we don't support it yet.
 	 */
 	if (sender_id_len > 0 &&
 	    sender_id_len == recipient_id_len &&
 	    memcmp(sender_id, recipient_id, sender_id_len) == 0) {
-		LOG_WRN("sender_id == recipient_id - key derivation will be symmetric");
+		LOG_ERR("sender_id and recipient_id must differ for unicast OSCORE");
+		return OSCORE_ERR_INVALID_PARAM;
 	}
 
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);

@@ -47,6 +47,9 @@ static struct bt_uuid_128 nus_tx_uuid  = BT_UUID_INIT_128(BT_UUID_NUS_TX_VAL);
 /* Active connection (NULL when no phone is connected) */
 static struct bt_conn *s_conn;
 
+/* Mutex protecting s_conn publication and reference acquisition */
+static K_MUTEX_DEFINE(s_conn_mutex);
+
 /* Mutex protecting SLIP reassembly state */
 static K_MUTEX_DEFINE(s_rx_mutex);
 
@@ -203,11 +206,22 @@ static void adv_start(void)
 
 static void on_connected(struct bt_conn *conn, uint8_t err)
 {
+	struct bt_conn *old_conn;
+
 	if (err) {
 		LOG_ERR("BLE connect error %u", err);
 		return;
 	}
+
+	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+	old_conn = s_conn;
 	s_conn = bt_conn_ref(conn);
+	k_mutex_unlock(&s_conn_mutex);
+
+	if (old_conn != NULL) {
+		bt_conn_unref(old_conn);
+	}
+
 	k_mutex_lock(&s_rx_mutex, K_FOREVER);
 	s_rx_len = 0;
 	s_rx_esc = false;
@@ -218,11 +232,19 @@ static void on_connected(struct bt_conn *conn, uint8_t err)
 
 static void on_disconnected(struct bt_conn *conn, uint8_t reason)
 {
-	ARG_UNUSED(conn);
-	if (s_conn) {
-		bt_conn_unref(s_conn);
+	struct bt_conn *old_conn = NULL;
+
+	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+	if (s_conn == conn) {
+		old_conn = s_conn;
 		s_conn = NULL;
 	}
+	k_mutex_unlock(&s_conn_mutex);
+
+	if (old_conn != NULL) {
+		bt_conn_unref(old_conn);
+	}
+
 	LOG_INF("BLE phone disconnected (reason %u)", reason);
 	adv_start();
 }
@@ -243,18 +265,23 @@ int ble_uart_send_slip(const uint8_t *ipv6, size_t len)
 	static uint8_t s_tx_frame[SLIP_BUF_SIZE * 2u + 2u];
 	uint16_t fi = 0;
 	int rc = 0;
+	struct bt_conn *conn;
 
 	/*
-	 * Capture connection reference atomically. This prevents a race where
-	 * s_conn becomes NULL (via on_disconnected) between our check and use.
-	 * The reference keeps the connection object valid for our entire send.
+	 * Acquire the reference while holding s_conn_mutex.  on_disconnected()
+	 * clears s_conn under the same mutex before dropping its stored
+	 * reference, so this cannot ref a connection after disconnect released it.
 	 */
-	struct bt_conn *conn = s_conn;
+	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+	conn = s_conn;
+	if (conn != NULL) {
+		bt_conn_ref(conn);
+	}
+	k_mutex_unlock(&s_conn_mutex);
 
 	if (conn == NULL) {
 		return -ENOTCONN;
 	}
-	bt_conn_ref(conn);
 
 	/* Validate input length to prevent overflow */
 	if (len > SLIP_BUF_SIZE) {

@@ -188,15 +188,15 @@ ZTEST(ping_l2, test_ipv6_addr_config)
 	zassert_not_null(iface, "Interface not initialized");
 
 	/* Add link-local address if not already present */
-	ifaddr = net_if_ipv6_addr_lookup(&test_ll_addr, NULL);
+	ifaddr = net_if_ipv6_addr_lookup(&s_test_ll_addr, NULL);
 	if (ifaddr == NULL) {
-		ifaddr = net_if_ipv6_addr_add(iface, &test_ll_addr,
+		ifaddr = net_if_ipv6_addr_add(iface, &s_test_ll_addr,
 					      NET_ADDR_MANUAL, 0);
 	}
 	zassert_not_null(ifaddr, "Failed to add/find IPv6 address");
 
 	/* Verify address was added */
-	zassert_true(net_if_ipv6_addr_lookup(&s_s_test_ll_addr, NULL) != NULL,
+	zassert_true(net_if_ipv6_addr_lookup(&s_test_ll_addr, NULL) != NULL,
 		     "IPv6 address not found after add");
 
 	LOG_INF("IPv6 address configuration: PASS");
@@ -218,7 +218,7 @@ ZTEST(ping_l2, test_icmpv6_ping)
 	zassert_not_null(s_test_ctx.iface, "Interface not initialized");
 
 	/* Initialize semaphore */
-	k_sem_init(&s_s_test_ctx.reply_sem, 0, 1);
+	k_sem_init(&s_test_ctx.reply_sem, 0, 1);
 	s_test_ctx.reply_received = false;
 
 	/* Register for Echo Reply */
@@ -228,7 +228,7 @@ ZTEST(ping_l2, test_icmpv6_ping)
 
 	/* Set up destination (our own link-local address) */
 	dst.sin6_family = AF_INET6;
-	memcpy(&dst.sin6_addr, &s_s_test_ll_addr, sizeof(test_ll_addr));
+	memcpy(&dst.sin6_addr, &s_test_ll_addr, sizeof(s_test_ll_addr));
 
 	/* Set up ping parameters */
 	params.identifier = 0x4C49;  /* "LI" */
@@ -247,7 +247,7 @@ ZTEST(ping_l2, test_icmpv6_ping)
 	zassert_equal(ret, 0, "Failed to send Echo Request: %d", ret);
 
 	/* Wait for reply */
-	ret = k_sem_take(&s_s_test_ctx.reply_sem, SEM_WAIT_TIME);
+	ret = k_sem_take(&s_test_ctx.reply_sem, SEM_WAIT_TIME);
 	zassert_equal(ret, 0, "Timeout waiting for Echo Reply");
 
 	zassert_true(s_test_ctx.reply_received, "Echo Reply not received");
@@ -282,8 +282,8 @@ static void *ping_l2_setup(void)
 
 	if (iface) {
 		/* Add the link-local address if not already present */
-		if (net_if_ipv6_addr_lookup(&s_s_test_ll_addr, NULL) == NULL) {
-			net_if_ipv6_addr_add(iface, &s_s_test_ll_addr,
+		if (net_if_ipv6_addr_lookup(&s_test_ll_addr, NULL) == NULL) {
+			net_if_ipv6_addr_add(iface, &s_test_ll_addr,
 					     NET_ADDR_MANUAL, 0);
 		}
 	}

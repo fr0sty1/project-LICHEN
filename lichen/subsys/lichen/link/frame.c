@@ -30,6 +30,10 @@ _Static_assert(sizeof(((struct lichen_frame *)0)->mic) >= 8,
 int lichen_frame_parse(struct lichen_frame *frame,
 		       const uint8_t *data, size_t len)
 {
+	if (frame == NULL || data == NULL) {
+		return -EINVAL;
+	}
+
 	/*
 	 * Minimum frame size: 9 bytes
 	 *   length(1) + llsec(1) + epoch(1) + seqnum(2) + mic(4) = 9
@@ -105,6 +109,10 @@ int lichen_frame_parse(struct lichen_frame *frame,
 int lichen_frame_write(const struct lichen_frame *frame,
 		       uint8_t *buf, size_t buflen)
 {
+	if (frame == NULL || buf == NULL) {
+		return -EINVAL;
+	}
+
 	/* Reject ELIDED mode - not yet supported (matches parse behavior) */
 	if (frame->addr_mode == LICHEN_ADDR_ELIDED) {
 		return -EINVAL;

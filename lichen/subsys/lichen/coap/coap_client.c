@@ -43,7 +43,7 @@ LOG_MODULE_REGISTER(lichen_coap_client, LOG_LEVEL_INF);
 #define COAP_MAX_PATH_LEN 64
 
 /* Maximum number of URI path components (defense against unterminated arrays) */
-#define COAP_MAX_PATH_COMPONENTS 8
+#define COAP_MAX_PATH_COMPONENTS LICHEN_COAP_MAX_PATH_COMPONENTS
 
 /* CoAP client socket - protected by s_mutex for thread safety */
 static int s_sock = -1;
@@ -99,11 +99,70 @@ struct request_ctx {
 	lichen_coap_response_cb callback;
 	void *user_data;
 	struct k_work_delayable timeout_work;
+	atomic_t refs;       /* Context lifetime across submitter/callback/work */
 	atomic_t completed;  /* Set atomically; first setter owns cleanup */
+	atomic_t timeout_ref_held;
 	char path_buf[COAP_MAX_PATH_LEN];  /* Joined URI path for Zephyr */
 	uint8_t response_buf[LICHEN_COAP_MAX_PAYLOAD];  /* Accumulated response */
 	size_t response_len;  /* Current accumulated length */
+	bool response_oversized;  /* True if any block exceeds response_buf */
 };
+
+static void request_ctx_get(struct request_ctx *ctx)
+{
+	atomic_inc(&ctx->refs);
+}
+
+static void request_ctx_put(struct request_ctx *ctx)
+{
+	if (atomic_dec(&ctx->refs) == 1) {
+		k_free(ctx);
+	}
+}
+
+static void request_ctx_release_timeout_ref(struct request_ctx *ctx)
+{
+	if (atomic_cas(&ctx->timeout_ref_held, 1, 0)) {
+		request_ctx_put(ctx);
+	}
+}
+
+static void request_ctx_cancel_timeout_sync(struct request_ctx *ctx)
+{
+	struct k_work_sync sync;
+
+	k_work_cancel_delayable_sync(&ctx->timeout_work, &sync);
+	request_ctx_release_timeout_ref(ctx);
+}
+
+static void request_ctx_cancel_coap_slot(struct request_ctx *ctx)
+{
+	k_mutex_lock(&s_client.send_mutex, K_FOREVER);
+	for (size_t i = 0; i < ARRAY_SIZE(s_client.requests); i++) {
+		if (s_client.requests[i].request_ongoing &&
+		    s_client.requests[i].coap_request.user_data == ctx) {
+			s_client.requests[i].request_ongoing = false;
+			s_client.requests[i].is_observe = false;
+		}
+	}
+	k_mutex_unlock(&s_client.send_mutex);
+}
+
+static int validate_path_components(const char * const *path, size_t *component_count)
+{
+	if (path == NULL || component_count == NULL) {
+		return LICHEN_COAP_ERR_INVALID_PARAM;
+	}
+
+	for (size_t i = 0; i < COAP_MAX_PATH_COMPONENTS; i++) {
+		if (path[i] == NULL) {
+			*component_count = i;
+			return LICHEN_COAP_OK;
+		}
+	}
+
+	return LICHEN_COAP_ERR_INVALID_PARAM;
+}
 
 static void request_timeout_handler(struct k_work *work)
 {
@@ -112,7 +171,8 @@ static void request_timeout_handler(struct k_work *work)
 
 	/* Atomically check and set completed flag; if already set, exit */
 	if (atomic_set(&ctx->completed, 1) != 0) {
-		/* Callback already fired; it owns cleanup */
+		/* Callback already fired; it owns completion cleanup */
+		request_ctx_release_timeout_ref(ctx);
 		return;
 	}
 
@@ -123,7 +183,8 @@ static void request_timeout_handler(struct k_work *work)
 		ctx->callback(ctx->user_data, LICHEN_COAP_ERR_TIMEOUT, 0, NULL, 0);
 	}
 
-	k_free(ctx);
+	request_ctx_put(ctx);
+	request_ctx_release_timeout_ref(ctx);
 }
 
 static void coap_response_handler(int16_t code, size_t offset, const uint8_t *payload,
@@ -154,11 +215,11 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 		if (atomic_set(&ctx->completed, 1) != 0) {
 			return;  /* Lost race to timeout */
 		}
-		k_work_cancel_delayable(&ctx->timeout_work);
+		request_ctx_cancel_timeout_sync(ctx);
 		if (ctx->callback != NULL) {
 			ctx->callback(ctx->user_data, LICHEN_COAP_ERR_TRANSPORT, 0, NULL, 0);
 		}
-		k_free(ctx);
+		request_ctx_put(ctx);
 		return;
 	}
 
@@ -169,14 +230,15 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 	 */
 	if (payload != NULL && len > 0) {
 		size_t copy_len = len;
-		if (offset + len > sizeof(ctx->response_buf)) {
-			/* Truncate to fit buffer */
+		if (offset > sizeof(ctx->response_buf) ||
+		    len > sizeof(ctx->response_buf) - offset) {
+			ctx->response_oversized = true;
 			if (offset < sizeof(ctx->response_buf)) {
 				copy_len = sizeof(ctx->response_buf) - offset;
 			} else {
 				copy_len = 0;
 			}
-			LOG_WRN("Response truncated: %zu bytes at offset %zu exceeds buffer",
+			LOG_WRN("Response too large: %zu bytes at offset %zu exceeds buffer",
 				len, offset);
 		}
 		if (copy_len > 0) {
@@ -192,13 +254,18 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 		if (atomic_set(&ctx->completed, 1) != 0) {
 			return;  /* Lost race to timeout */
 		}
-		k_work_cancel_delayable(&ctx->timeout_work);
+		request_ctx_cancel_timeout_sync(ctx);
 
 		if (ctx->callback != NULL) {
-			ctx->callback(ctx->user_data, LICHEN_COAP_OK, (uint8_t)code,
-				      ctx->response_buf, ctx->response_len);
+			if (ctx->response_oversized) {
+				ctx->callback(ctx->user_data, LICHEN_COAP_ERR_INVALID_RESPONSE,
+					      0, NULL, 0);
+			} else {
+				ctx->callback(ctx->user_data, LICHEN_COAP_OK, (uint8_t)code,
+					      ctx->response_buf, ctx->response_len);
+			}
 		}
-		k_free(ctx);
+		request_ctx_put(ctx);
 	}
 }
 
@@ -208,9 +275,15 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 	struct request_ctx *ctx;
 	int ret;
 	int sock;
+	size_t path_components;
 
 	if (req == NULL) {
 		return LICHEN_COAP_ERR_INVALID_PARAM;
+	}
+
+	ret = validate_path_components(req->path, &path_components);
+	if (ret < 0) {
+		return ret;
 	}
 
 	if (!s_initialized) {
@@ -233,7 +306,10 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 	ctx->callback = req->callback;
 	ctx->user_data = req->user_data;
 	ctx->response_len = 0;
+	ctx->response_oversized = false;
+	atomic_set(&ctx->refs, 2);  /* CoAP callback path + submitter path */
 	atomic_set(&ctx->completed, 0);
+	atomic_set(&ctx->timeout_ref_held, 0);
 	k_work_init_delayable(&ctx->timeout_work, request_timeout_handler);
 
 	/*
@@ -241,7 +317,7 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 	 * Zephyr's coap_client expects a single path string like "sensors/temp".
 	 */
 	size_t path_pos = 0;
-	for (size_t i = 0; i < COAP_MAX_PATH_COMPONENTS && req->path[i] != NULL; i++) {
+	for (size_t i = 0; i < path_components; i++) {
 		size_t comp_len = strlen(req->path[i]);
 		if (i > 0) {
 			/* Add separator between components */
@@ -273,27 +349,37 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 		client_req.fmt = req->content_format;
 	}
 
-	/*
-	 * Schedule timeout cleanup BEFORE sending request to avoid use-after-free.
-	 * If callback fires synchronously and frees ctx, scheduling afterward
-	 * would write to freed memory. Use 2x the request timeout to allow
-	 * Zephyr's CoAP layer to handle normal timeouts; this catches cases
-	 * where the callback never fires at all.
-	 */
-	uint32_t timeout_ms = req->timeout_ms > 0 ? req->timeout_ms : LICHEN_COAP_TIMEOUT_MS;
-	k_work_schedule(&ctx->timeout_work, K_MSEC(timeout_ms * 2));
-
 	/* Send request using snapshotted socket */
 	ret = coap_client_req(&s_client, sock,
 			      (const struct sockaddr *)&req->addr,
 			      &client_req, NULL);
 	if (ret < 0) {
 		LOG_WRN("CoAP request failed: %d", ret);
-		k_work_cancel_delayable(&ctx->timeout_work);
-		k_free(ctx);
+		if (atomic_set(&ctx->completed, 1) == 0) {
+			request_ctx_cancel_coap_slot(ctx);
+			request_ctx_put(ctx);
+		}
+		request_ctx_put(ctx);
 		return LICHEN_COAP_ERR_SEND_FAILED;
 	}
 
+	/*
+	 * Use 2x the request timeout to allow Zephyr's CoAP layer to handle
+	 * normal timeouts; this catches cases where the callback never fires.
+	 */
+	if (atomic_get(&ctx->completed) == 0) {
+		uint32_t timeout_ms = req->timeout_ms > 0 ?
+				      req->timeout_ms : LICHEN_COAP_TIMEOUT_MS;
+
+		request_ctx_get(ctx);
+		atomic_set(&ctx->timeout_ref_held, 1);
+		k_work_schedule(&ctx->timeout_work, K_MSEC(timeout_ms * 2));
+		if (atomic_get(&ctx->completed) != 0) {
+			request_ctx_cancel_timeout_sync(ctx);
+		}
+	}
+
+	request_ctx_put(ctx);
 	return LICHEN_COAP_OK;
 }
 

@@ -100,6 +100,9 @@ int lichen_rpl_srh_write(const struct lichen_rpl_srh *srh,
 	if (srh == NULL) {
 		return LICHEN_RPL_ERR_INVALID;
 	}
+	if (srh->num_addresses > LICHEN_RPL_MAX_HOPS) {
+		return LICHEN_RPL_ERR_INVALID;
+	}
 	/* segments_left must not exceed num_addresses */
 	if (srh->segments_left > srh->num_addresses) {
 		return LICHEN_RPL_ERR_INVALID;
@@ -595,6 +598,16 @@ bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
 	uint8_t lifetime;
 
 	if (!extract_edge(dao_bytes, len, target, parent, &lifetime)) {
+		return false;
+	}
+
+	if (lifetime == 0) {
+		struct lichen_rpl_parent_edge *edge = find_edge(dm, target);
+		if (edge != NULL) {
+			edge->valid = false;
+		}
+		lichen_rpl_routing_table_remove(&dm->routing_table, target);
+		(void)rebuild_routes(dm);
 		return false;
 	}
 

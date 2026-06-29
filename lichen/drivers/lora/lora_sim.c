@@ -96,6 +96,21 @@ static int recv_exact(int fd, uint8_t *buf, int len)
 	return 0;
 }
 
+static int drain_exact(int fd, uint32_t len)
+{
+	uint8_t discard[64];
+
+	while (len > 0) {
+		int chunk = len > sizeof(discard) ? sizeof(discard) : (int)len;
+
+		if (recv_exact(fd, discard, chunk) < 0) {
+			return -EIO;
+		}
+		len -= chunk;
+	}
+	return 0;
+}
+
 static int write_frame(int fd, const uint8_t *payload, uint32_t len)
 {
 	uint8_t hdr[4];
@@ -119,6 +134,10 @@ static int read_frame(int fd, uint8_t *buf, uint32_t buf_size)
 
 	if (len > buf_size) {
 		LOG_ERR("frame too large: %u > %u", len, buf_size);
+		if (drain_exact(fd, len) < 0) {
+			LOG_ERR("failed to drain oversized frame");
+			return -EIO;
+		}
 		return -ENOMEM;
 	}
 	if (recv_exact(fd, buf, len) < 0) {

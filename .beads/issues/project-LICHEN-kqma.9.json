@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-kqma.9",
+  "title": "Fix ping_l2 test identifier typos",
+  "description": "Trigger: building lichen/tests/ping_l2. lichen/tests/ping_l2/src/main.c references undefined identifiers test_ll_addr, s_s_test_ll_addr, and s_s_test_ctx at lines 191, 199, 221, 231, 250, 285, and 286. Impact: the Zephyr ping_l2 test does not compile, so ICMPv6/link-layer coverage is absent even when the test target is selected. Replace the typos with the defined test context/address symbols and add this test to the normal Zephyr test gate.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-29T02:03:29.606395Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T02:46:43.949261Z",
+  "closed_at": "2026-06-29T02:46:43.949261Z",
+  "close_reason": "Implemented fixes in assigned subagents and ran available focused checks; full Zephyr builds remain blocked by existing workspace/module setup issues.",
+  "labels": [
+    "tests",
+    "zephyr",
+    "build-reliability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-kqma.9",
+      "depends_on_id": "project-LICHEN-kqma",
+      "type": "parent-child",
+      "created_at": "2026-06-29T02:03:29.606946Z"
+    }
+  ]
+}

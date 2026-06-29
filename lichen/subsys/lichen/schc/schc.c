@@ -299,6 +299,36 @@ static bool is_global(const uint8_t addr[16])
 	return (addr[0] >> 5) == 0x01; /* 001x xxxx = 2000::/3 */
 }
 
+static uint16_t read_be16(const uint8_t *p)
+{
+	return ((uint16_t)p[0] << 8) | p[1];
+}
+
+static int validate_ipv6_transport_lengths(const uint8_t *packet, size_t pkt_len)
+{
+	uint16_t ipv6_payload_len = read_be16(&packet[4]);
+	size_t actual_payload_len = pkt_len - IPV6_HDR_LEN;
+
+	if (ipv6_payload_len != actual_payload_len) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	if (packet[6] != IPV6_NH_UDP) {
+		return SCHC_OK;
+	}
+
+	if (actual_payload_len < UDP_HDR_LEN) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	uint16_t udp_len = read_be16(&packet[IPV6_HDR_LEN + 4]);
+	if (udp_len < UDP_HDR_LEN || udp_len != actual_payload_len) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	return SCHC_OK;
+}
+
 /* ─── checksum helpers ────────────────────────────────────────────────────── */
 
 static uint32_t oc_add(uint32_t a, uint32_t b)
@@ -1080,6 +1110,14 @@ int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
 {
 	int ret;
 
+	if (packet == NULL) {
+		return SCHC_ERR_TOO_SHORT;
+	}
+
+	if (out == NULL) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;
+	}
+
 	if (pkt_len < IPV6_HDR_LEN || (packet[0] >> 4) != 6) {
 		/* Not IPv6 - uncompressed fallback */
 		size_t needed = 1 + pkt_len;
@@ -1089,6 +1127,11 @@ int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
 		out[0] = SCHC_RULE_UNCOMPRESSED;
 		memcpy(&out[1], packet, pkt_len);
 		return (int)needed;
+	}
+
+	ret = validate_ipv6_transport_lengths(packet, pkt_len);
+	if (ret < 0) {
+		return ret;
 	}
 
 	uint8_t nh = packet[6];
@@ -1158,6 +1201,14 @@ int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
 int lichen_schc_decompress(const uint8_t *data, size_t data_len,
 			   uint8_t *out, size_t out_len)
 {
+	if (data == NULL) {
+		return SCHC_ERR_TOO_SHORT;
+	}
+
+	if (out == NULL) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;
+	}
+
 	if (data_len == 0) {
 		return SCHC_ERR_TOO_SHORT;
 	}

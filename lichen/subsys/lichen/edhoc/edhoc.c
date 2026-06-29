@@ -525,6 +525,11 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 
 	/* Compute shared secret G_XY */
 	x25519_shared_secret(g_xy, ctx->eph_sk, ctx->g_y);
+	if (is_all_zeros(g_xy, sizeof(g_xy))) {
+		LOG_ERR("Rejected all-zero X25519 shared secret from message_2");
+		ret = -EACCES;
+		goto err_wipe;
+	}
 
 	/* TH_2 = H(H(message_1) || G_Y || C_R) per RFC 9528 Section 4.1.2 */
 	uint8_t h_msg1[32];
@@ -581,10 +586,8 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		goto err_wipe;
 	}
 	if (signature_2.len != EDHOC_ED25519_SIG_LEN) {
-		return -EINVAL;
-	}
-	if (signature_2.len != EDHOC_ED25519_SIG_LEN) {
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_wipe;
 	}
 
 	/* PRK_3e2m = PRK_2e for SIGN_SIGN Suite 0 */
@@ -603,7 +606,7 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	uint8_t mac_2[32];
 	ret = edhoc_kdf(ctx->prk_3e2m, ctx->th_2, "MAC_2", context_2, context_2_len, mac_2, 32);
 	if (ret != 0) {
-		return ret;
+		goto err_wipe;
 	}
 
 	uint8_t sig_struct_2[256];
@@ -613,7 +616,8 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 
 	if (ed25519_verify(peer_pubkey, signature_2.value, sig_struct_2, sig_struct_2_len) != 0) {
 		LOG_ERR("Signature_2 verification failed");
-		return -EACCES;
+		ret = -EACCES;
+		goto err_wipe;
 	}
 
 	/* TH_3 = H(TH_2 || CIPHERTEXT_2 || ID_CRED_R) - simplified */
@@ -646,7 +650,7 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	uint8_t mac_3[32];
 	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_3, "MAC_3", context_3, context_3_len, mac_3, 32);
 	if (ret != 0) {
-		return ret;
+		goto err_wipe;
 	}
 
 	/* Sig_structure_3 per RFC 9528/9052 */
@@ -655,7 +659,6 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	build_sig_structure(ctx->ed_pubkey, 32, ctx->th_3, ctx->ed_pubkey, 32,
 			    mac_3, 32, sig_struct_3, sizeof(sig_struct_3), &sig_struct_3_len);
 
-	uint8_t signature_3[64];
 	ed25519_sign(signature_3, ctx->ed_seed, sig_struct_3, sig_struct_3_len);
 
 	/* Encode PLAINTEXT_3 */
@@ -663,7 +666,8 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	ZCBOR_STATE_E(zse_pt3, 0, plaintext_3, sizeof(plaintext_3), 0);
 	if (!zcbor_bstr_encode_ptr(zse_pt3, ctx->ed_pubkey, 32) ||
 	    !zcbor_bstr_encode_ptr(zse_pt3, signature_3, 64)) {
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_wipe;
 	}
 	size_t pt3_len = zse_pt3->payload - plaintext_3;
 
@@ -685,7 +689,8 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	    !zcbor_bstr_encode_ptr(zse_a3, NULL, 0) ||
 	    !zcbor_bstr_encode_ptr(zse_a3, ctx->th_3, 32) ||
 	    !zcbor_list_end_encode(zse_a3, 3)) {
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_wipe;
 	}
 	size_t a_3_len = zse_a3->payload - a_3;
 
@@ -706,6 +711,7 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	crypto_wipe(k_3, sizeof(k_3));
 	crypto_wipe(iv_3, sizeof(iv_3));
 	crypto_wipe(signature_3, sizeof(signature_3));
+	crypto_wipe(ctx->eph_sk, sizeof(ctx->eph_sk));
 
 	ctx->state = EDHOC_STATE_COMPLETED;
 	return 0;
@@ -880,6 +886,11 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 
 	/* Compute shared secret */
 	x25519_shared_secret(g_xy, ctx->eph_sk, ctx->g_x);
+	if (is_all_zeros(g_xy, sizeof(g_xy))) {
+		LOG_ERR("Rejected all-zero X25519 shared secret from message_1");
+		ret = -EACCES;
+		goto err_wipe;
+	}
 
 	/* TH_2 = H(H(message_1) || G_Y || C_R) per RFC 9528 Section 4.1.2 */
 	uint8_t h_msg1[32];
@@ -915,7 +926,7 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	uint8_t mac_2[32];
 	ret = edhoc_kdf(ctx->prk_3e2m, ctx->th_2, "MAC_2", context_2, context_2_len, mac_2, 32);
 	if (ret != 0) {
-		return ret;
+		goto err_wipe;
 	}
 
 	/* Sig_structure_2 per RFC 9528/9052 */
@@ -924,14 +935,14 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	build_sig_structure(ctx->ed_pubkey, 32, ctx->th_2, ctx->ed_pubkey, 32,
 			    mac_2, 32, sig_struct_2, sizeof(sig_struct_2), &sig_struct_2_len);
 
-	uint8_t signature_2[64];
 	ed25519_sign(signature_2, ctx->ed_seed, sig_struct_2, sig_struct_2_len);
 
 	uint8_t plaintext_2[128];
 	ZCBOR_STATE_E(zse_pt2, 0, plaintext_2, sizeof(plaintext_2), 0);
 	if (!zcbor_bstr_encode_ptr(zse_pt2, ctx->ed_pubkey, 32) ||
 	    !zcbor_bstr_encode_ptr(zse_pt2, signature_2, 64)) {
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_wipe;
 	}
 	size_t pt2_len = zse_pt2->payload - plaintext_2;
 
@@ -993,6 +1004,7 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	*msg2_len = zse->payload - msg2;
 
 	crypto_wipe(signature_2, sizeof(signature_2));
+	crypto_wipe(ctx->eph_sk, sizeof(ctx->eph_sk));
 
 	ctx->state = EDHOC_STATE_MSG2_SENT;
 	return 0;
@@ -1043,7 +1055,8 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	    !zcbor_bstr_encode_ptr(zse_a3, NULL, 0) ||
 	    !zcbor_bstr_encode_ptr(zse_a3, ctx->th_3, 32) ||
 	    !zcbor_list_end_encode(zse_a3, 3)) {
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_wipe;
 	}
 	size_t a_3_len = zse_a3->payload - a_3;
 
@@ -1071,7 +1084,8 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 		goto err_wipe;
 	}
 	if (signature_3.len != EDHOC_ED25519_SIG_LEN) {
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_wipe;
 	}
 
 	/* PRK_4e3m = PRK_3e2m for SIGN_SIGN */
@@ -1089,7 +1103,7 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	uint8_t mac_3[32];
 	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_3, "MAC_3", context_3, context_3_len, mac_3, 32);
 	if (ret != 0) {
-		return ret;
+		goto err_wipe;
 	}
 
 	uint8_t sig_struct_3[256];
@@ -1099,7 +1113,8 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 
 	if (ed25519_verify(peer_pubkey, signature_3.value, sig_struct_3, sig_struct_3_len) != 0) {
 		LOG_ERR("Signature_3 verification failed");
-		return -EACCES;
+		ret = -EACCES;
+		goto err_wipe;
 	}
 
 	/* TH_4 = H(TH_3 || CIPHERTEXT_3) */
@@ -1113,6 +1128,7 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 
 	crypto_wipe(k_3, sizeof(k_3));
 	crypto_wipe(iv_3, sizeof(iv_3));
+	crypto_wipe(ctx->eph_sk, sizeof(ctx->eph_sk));
 
 	ctx->state = EDHOC_STATE_COMPLETED;
 	return 0;

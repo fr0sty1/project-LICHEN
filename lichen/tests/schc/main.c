@@ -250,6 +250,94 @@ static int test_truncated_coap_global(void)
 	return 1;
 }
 
+static int test_null_public_args(void)
+{
+	uint8_t packet[40] = { 0x60 };
+	uint8_t data[1] = { SCHC_RULE_UNCOMPRESSED };
+	uint8_t out[64];
+	int ret;
+
+	ret = lichen_schc_compress(NULL, sizeof(packet), out, sizeof(out));
+	if (ret != SCHC_ERR_TOO_SHORT) {
+		printf("  FAIL: compress NULL packet expected SCHC_ERR_TOO_SHORT (got %d)\n", ret);
+		return 0;
+	}
+
+	ret = lichen_schc_compress(packet, sizeof(packet), NULL, sizeof(out));
+	if (ret != SCHC_ERR_BUFFER_TOO_SMALL) {
+		printf("  FAIL: compress NULL out expected SCHC_ERR_BUFFER_TOO_SMALL (got %d)\n", ret);
+		return 0;
+	}
+
+	ret = lichen_schc_decompress(NULL, sizeof(data), out, sizeof(out));
+	if (ret != SCHC_ERR_TOO_SHORT) {
+		printf("  FAIL: decompress NULL data expected SCHC_ERR_TOO_SHORT (got %d)\n", ret);
+		return 0;
+	}
+
+	ret = lichen_schc_decompress(data, sizeof(data), NULL, sizeof(out));
+	if (ret != SCHC_ERR_BUFFER_TOO_SMALL) {
+		printf("  FAIL: decompress NULL out expected SCHC_ERR_BUFFER_TOO_SMALL (got %d)\n", ret);
+		return 0;
+	}
+
+	return 1;
+}
+
+static int test_reject_bad_ipv6_payload_len(void)
+{
+	uint8_t packet[1500];
+	uint8_t comp_buf[1500];
+	size_t pkt_len = hex_decode(
+		"6000000000131140fe800000000000000000000000000001"
+		"fe80000000000000000000000000000216331633001328dd"
+		"40011234ff737461747573",
+		packet, sizeof(packet));
+
+	if (pkt_len == 0) {
+		printf("  FAIL: hex decode error\n");
+		return 0;
+	}
+
+	packet[5]--; /* IPv6 Payload Length no longer matches pkt_len. */
+
+	int ret = lichen_schc_compress(packet, pkt_len, comp_buf, sizeof(comp_buf));
+	if (ret != SCHC_ERR_NO_MATCHING_RULE) {
+		printf("  FAIL: bad IPv6 Payload Length expected SCHC_ERR_NO_MATCHING_RULE (got %d)\n",
+		       ret);
+		return 0;
+	}
+
+	return 1;
+}
+
+static int test_reject_bad_udp_len(void)
+{
+	uint8_t packet[1500];
+	uint8_t comp_buf[1500];
+	size_t pkt_len = hex_decode(
+		"6000000000131140fe800000000000000000000000000001"
+		"fe80000000000000000000000000000216331633001328dd"
+		"40011234ff737461747573",
+		packet, sizeof(packet));
+
+	if (pkt_len == 0) {
+		printf("  FAIL: hex decode error\n");
+		return 0;
+	}
+
+	packet[45]--; /* UDP Length no longer matches the IPv6 payload length. */
+
+	int ret = lichen_schc_compress(packet, pkt_len, comp_buf, sizeof(comp_buf));
+	if (ret != SCHC_ERR_NO_MATCHING_RULE) {
+		printf("  FAIL: bad UDP Length expected SCHC_ERR_NO_MATCHING_RULE (got %d)\n",
+		       ret);
+		return 0;
+	}
+
+	return 1;
+}
+
 /* ─── test runner ─────────────────────────────────────────────────────────── */
 
 #define RUN_TEST(fn) do { \
@@ -275,6 +363,9 @@ int main(void)
 	RUN_TEST(test_unknown_rule_id);
 	RUN_TEST(test_truncated_coap_linklocal);
 	RUN_TEST(test_truncated_coap_global);
+	RUN_TEST(test_null_public_args);
+	RUN_TEST(test_reject_bad_ipv6_payload_len);
+	RUN_TEST(test_reject_bad_udp_len);
 
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 

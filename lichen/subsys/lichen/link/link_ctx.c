@@ -42,12 +42,22 @@ static bool stub_warned_load_key = false;
 
 /* Forward declaration */
 static void secure_wipe(void *buf, size_t len);
+static int seq_lock(struct lichen_link_ctx *ctx);
+static int seq_unlock(struct lichen_link_ctx *ctx);
 
 int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 {
 	if (ctx == NULL || eui64 == NULL) {
 		return -EINVAL;
 	}
+
+#ifdef __ZEPHYR__
+	k_mutex_init(&ctx->seq_lock);
+#else
+	if (pthread_mutex_init(&ctx->seq_lock, NULL) != 0) {
+		return -EIO;
+	}
+#endif
 
 	memcpy(ctx->eui64, eui64, LICHEN_EUI64_LEN);
 	memset(ctx->ed25519_sk, 0, LICHEN_SK_LEN);
@@ -147,8 +157,22 @@ int lichen_link_generate_key(struct lichen_link_ctx *ctx)
 
 int lichen_link_next_seq(struct lichen_link_ctx *ctx, uint16_t *seqnum)
 {
+	uint8_t epoch;
+
+	return lichen_link_next_tx(ctx, &epoch, seqnum);
+}
+
+int lichen_link_next_tx(struct lichen_link_ctx *ctx, uint8_t *epoch, uint16_t *seqnum)
+{
 	if (ctx == NULL || seqnum == NULL) {
 		return -EINVAL;
+	}
+	if (epoch == NULL) {
+		return -EINVAL;
+	}
+
+	if (seq_lock(ctx) != 0) {
+		return -EIO;
 	}
 
 	/*
@@ -157,9 +181,11 @@ int lichen_link_next_seq(struct lichen_link_ctx *ctx, uint16_t *seqnum)
 	 * in AES-CCM, completely breaking confidentiality and authenticity.
 	 */
 	if (ctx->nonce_exhausted) {
+		(void)seq_unlock(ctx);
 		return -EOVERFLOW;
 	}
 
+	*epoch = ctx->epoch;
 	*seqnum = ctx->tx_seq;
 	ctx->tx_seq++;
 
@@ -185,6 +211,7 @@ int lichen_link_next_seq(struct lichen_link_ctx *ctx, uint16_t *seqnum)
 		}
 	}
 
+	(void)seq_unlock(ctx);
 	return 0;
 }
 
@@ -193,7 +220,11 @@ void lichen_link_set_epoch(struct lichen_link_ctx *ctx, uint8_t epoch)
 	if (ctx == NULL) {
 		return;
 	}
+	if (seq_lock(ctx) != 0) {
+		return;
+	}
 	ctx->epoch = epoch;
+	(void)seq_unlock(ctx);
 }
 
 int lichen_link_load_link_key(struct lichen_link_ctx *ctx,
@@ -228,9 +259,33 @@ static void secure_wipe(void *buf, size_t len)
 #endif
 }
 
+static int seq_lock(struct lichen_link_ctx *ctx)
+{
+#ifdef __ZEPHYR__
+	k_mutex_lock(&ctx->seq_lock, K_FOREVER);
+	return 0;
+#else
+	return pthread_mutex_lock(&ctx->seq_lock);
+#endif
+}
+
+static int seq_unlock(struct lichen_link_ctx *ctx)
+{
+#ifdef __ZEPHYR__
+	k_mutex_unlock(&ctx->seq_lock);
+	return 0;
+#else
+	return pthread_mutex_unlock(&ctx->seq_lock);
+#endif
+}
+
 void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 {
 	if (ctx == NULL) {
+		return;
+	}
+
+	if (seq_lock(ctx) != 0) {
 		return;
 	}
 
@@ -247,4 +302,6 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 	ctx->epoch = 0;
 	ctx->tx_seq = 0;
 	ctx->nonce_exhausted = false;
+
+	(void)seq_unlock(ctx);
 }
