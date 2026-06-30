@@ -2,11 +2,12 @@
   "id": "project-LICHEN-ev5b",
   "title": "Muzi Works R1 firmware MVP with Meshtastic app compatibility",
   "description": "## Why\\nLICHEN needs a concrete firmware MVP that runs on Muzi Works R1/R1 Neo class hardware and works with the standard Meshtastic mobile app as the local phone interface. This means Meshtastic BLE/app-protocol compatibility to a local LICHEN node, not Meshtastic RF compatibility, unless explicitly requested.\\n\\n## Scope\\nDrive the active Zephyr firmware from L2/native_sim validation to hardware boot, LoRa L2 bring-up, BLE advertising, Meshtastic app pairing, node info/status/config access, and basic message ingress/egress through the LICHEN local interface.\\n\\n## Global workflow requirements\\nUse Beads for all tracking and create follow-up Beads as needed. Use lots of subagents for hardware research, Meshtastic protocol investigation, test design, Zephyr build diagnosis, and code review. Every time code is created or modified, run three independent codereview subagents before that implementation Bead can close; record findings in Beads notes or child/follow-up Beads.\\n\\n## Done\\nFirmware builds for the exact R1/R1 Neo target, boots on hardware, logs board identity/L2/radio/BLE readiness, pairs with the standard Meshtastic mobile app, exposes node info/status/config, accepts a message from the app into the LICHEN local interface, surfaces incoming LICHEN message/status data to the app, and documents supported/unsupported Meshtastic app features.",
-  "status": "open",
+  "notes": "Blocked on 2026-06-30 by missing physical Muzi R1 Neo/R1 hardware access after completing the buildable R1 Neo Zephyr target.\n\nCompleted toward epic:\n- project-LICHEN-ev5b.1 hardware facts closed.\n- project-LICHEN-ev5b.2 native_sim L2 packet-path gate closed.\n- project-LICHEN-ev5b.3 minimal HAL/devicetree boundary closed.\n- project-LICHEN-ev5b.4 R1 Neo Zephyr board target and BLE/L2 gateway overlay closed; EC2 build passes.\n\nBlocking condition:\n- project-LICHEN-ev5b.5 is blocked by project-LICHEN-avrb because the local host has no detectable R1 Neo/R1 hardware: no R1-Neo/UF2/Adafruit/nRF volume, no Muzi/Adafruit/Nordic CDC/DFU USB device, and only unrelated FT232R/debug/wlan/Bluetooth serial ports.\n- Without the hardware or remote flashing/console access, firmware flashing, hardware boot logs, LoRa init smoke test, BLE advertising verification, and Meshtastic app pairing/basic flows cannot be performed.\n\nNext resume condition:\n- Attach Muzi R1 Neo hardware in UF2/bootloader or app serial mode, or provide remote console/flashing access; then resume project-LICHEN-avrb and project-LICHEN-ev5b.5.",
+  "status": "blocked",
   "priority": 0,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T14:56:32.130066Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-30T14:56:32.130095Z"
+  "updated_at": "2026-06-30T16:53:13.148108Z"
 }
