@@ -2,13 +2,16 @@
   "id": "project-LICHEN-9nrr.25",
   "title": "puck: silence non-native unused state warnings",
   "description": "Why this exists: while validating project-LICHEN-9nrr.22, west build -b t_echo/nrf52840 lichen/apps/puck now links, but still emits pre-existing warnings when CONFIG_LICHEN_NATIVE is disabled: s_iid is defined but not used, and last_info_ms is unused in main(). What needs to be done: gate or move these variables so non-native builds are warning-clean without changing native status/reporting behavior. Verify at least t_echo/nrf52840 puck build and a native-enabled puck build or equivalent config. As a code-generation/fix Bead, run two review passes before closing.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T02:51:35.066517Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-30T02:51:35.067029Z",
+  "updated_at": "2026-06-30T04:59:18.421668Z",
+  "closed_at": "2026-06-30T04:59:18.421668Z",
+  "close_reason": "Gated puck native-only state so non-native builds do not define unused s_iid or last_info_ms while preserving the CONFIG_LICHEN_NATIVE node-info/reporting path. Tests/builds: west build -b t_echo/nrf52840 lichen/apps/puck -d build/puck_t_echo_nrf52840 --pristine=always passed; west build -b t1000_e/nrf52840 lichen/apps/puck -d build/puck_t1000_e_nrf52840 --pristine=always passed; git diff --check passed. Review pass 1: no findings; verified the non-native T-Echo config has CONFIG_LICHEN_NATIVE disabled and the unused symbols are inside IS_ENABLED(CONFIG_LICHEN_NATIVE). Review pass 2: no findings in scope; filed project-LICHEN-9nrr.33 for unrelated T1000-E USB default VID/PID warnings seen during native-enabled validation.",
   "labels": [
     "review",
     "exhaustive"
