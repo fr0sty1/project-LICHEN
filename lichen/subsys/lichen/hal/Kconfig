@@ -1,0 +1,179 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+menuconfig LICHEN_HAL
+	bool "LICHEN board capability HAL"
+	depends on LICHEN
+	default y
+	help
+	  Enable the small board capability boundary used by LICHEN apps.
+
+	  Board ports should describe hardware using these Kconfig symbols plus
+	  the devicetree conventions documented below. Protocol and application
+	  code should consume the HAL API instead of open-coding board-specific
+	  devicetree aliases or board names.
+
+if LICHEN_HAL
+
+config LICHEN_BOARD_NAME
+	string "LICHEN board identity override"
+	default ""
+	help
+	  Optional user-facing board name override. If left empty, the HAL
+	  reports CONFIG_BOARD.
+
+config LICHEN_HAS_LORA
+	bool "Board has a LICHEN LoRa radio"
+	depends on LORA
+	help
+	  Enable when devicetree provides an okay chosen zephyr,lora.
+
+config LICHEN_HAS_BLE_LOCAL
+	bool "Board supports BLE local-client transport"
+	depends on BT
+	depends on BT_PERIPHERAL
+	help
+	  Enable when the board can expose the local client interface over BLE.
+
+config LICHEN_HAS_SERIAL_LOCAL
+	bool "Board supports serial local-client transport"
+	help
+	  Enable when the board can expose the local client interface over a
+	  lichen,native-uart, zephyr,uart-pipe, Zephyr serial console,
+	  shell UART, CDC ACM device, or board overlay.
+
+config LICHEN_HAS_GNSS
+	bool "Board has GNSS"
+	depends on GNSS
+	help
+	  Enable when devicetree provides an okay gnss0 alias.
+
+config LICHEN_HAS_BATTERY
+	bool "Board has battery measurement"
+	help
+	  Enable when devicetree provides an okay battery0 alias.
+
+config LICHEN_HAS_PMIC
+	bool "Board has PMIC or charger control"
+	help
+	  Enable when devicetree provides an okay pmic0 alias.
+
+config LICHEN_HAS_BUTTONS
+	bool "Board has user buttons"
+	depends on GPIO
+	help
+	  Enable when devicetree provides at least an okay sw0 alias.
+
+config LICHEN_HAS_LEDS
+	bool "Board has user LEDs"
+	depends on GPIO
+	help
+	  Enable when devicetree provides at least an okay led0 alias.
+
+config LICHEN_HAS_DISPLAY
+	bool "Board has a display"
+	depends on DISPLAY
+	help
+	  Enable when devicetree provides chosen zephyr,display or an okay
+	  display0 alias.
+
+config LICHEN_HAS_EXTERNAL_FLASH
+	bool "Board has external flash"
+	depends on FLASH
+	help
+	  Enable when devicetree provides an okay external-flash0 alias.
+
+choice LICHEN_RADIO_MODEL
+	prompt "LICHEN radio model"
+	default LICHEN_RADIO_MODEL_LOOPBACK if LORA_LOOPBACK
+	default LICHEN_RADIO_MODEL_SIM if LORA_LICHEN_SIM
+	default LICHEN_RADIO_MODEL_RENODE if LORA_LICHEN_RENODE
+	default LICHEN_RADIO_MODEL_LR1110 if LORA_LR1110
+	default LICHEN_RADIO_MODEL_STM32WL if LORA_STM32WL_SUBGHZ_RADIO
+	default LICHEN_RADIO_MODEL_SX126X if LORA_SX126X
+	default LICHEN_RADIO_MODEL_SX127X if LORA_SX127X
+	default LICHEN_RADIO_MODEL_NONE
+	help
+	  Radio silicon family used by the LICHEN board port.
+
+config LICHEN_RADIO_MODEL_NONE
+	bool "No LoRa radio"
+	depends on !LICHEN_HAS_LORA
+
+config LICHEN_RADIO_MODEL_SX126X
+	bool "Semtech SX126x"
+	depends on LICHEN_HAS_LORA
+
+config LICHEN_RADIO_MODEL_SX127X
+	bool "Semtech SX127x"
+	depends on LICHEN_HAS_LORA
+
+config LICHEN_RADIO_MODEL_LR1110
+	bool "Semtech LR1110"
+	depends on LICHEN_HAS_LORA
+
+config LICHEN_RADIO_MODEL_STM32WL
+	bool "STM32WL integrated Sub-GHz radio"
+	depends on LICHEN_HAS_LORA
+
+config LICHEN_RADIO_MODEL_SIM
+	bool "LICHEN simulator LoRa"
+	depends on LICHEN_HAS_LORA
+
+config LICHEN_RADIO_MODEL_LOOPBACK
+	bool "LICHEN loopback LoRa"
+	depends on LICHEN_HAS_LORA
+
+config LICHEN_RADIO_MODEL_RENODE
+	bool "LICHEN Renode LoRa"
+	depends on LICHEN_HAS_LORA
+
+endchoice
+
+choice LICHEN_UI_PROFILE
+	prompt "LICHEN UI profile"
+	default LICHEN_UI_PROFILE_HEADLESS
+	help
+	  Coarse UI shape exposed to apps. It is intentionally small so board
+	  overlays, not app code, own display/button/LED details.
+
+config LICHEN_UI_PROFILE_HEADLESS
+	bool "Headless"
+
+config LICHEN_UI_PROFILE_TRACKER
+	bool "Tracker"
+	depends on LICHEN_HAS_LEDS || LICHEN_HAS_BUTTONS || LICHEN_HAS_DISPLAY
+
+config LICHEN_UI_PROFILE_HANDHELD
+	bool "Handheld"
+	depends on LICHEN_HAS_DISPLAY
+
+endchoice
+
+choice LICHEN_LOCATION_PROVIDER
+	prompt "LICHEN location provider"
+	default LICHEN_LOCATION_PROVIDER_NONE
+
+config LICHEN_LOCATION_PROVIDER_NONE
+	bool "No location provider"
+
+config LICHEN_LOCATION_PROVIDER_GNSS
+	bool "GNSS"
+	depends on LICHEN_HAS_GNSS
+
+endchoice
+
+choice LICHEN_TIME_PROVIDER
+	prompt "LICHEN time provider"
+	default LICHEN_TIME_PROVIDER_UPTIME
+
+config LICHEN_TIME_PROVIDER_UPTIME
+	bool "Uptime only"
+
+config LICHEN_TIME_PROVIDER_GNSS
+	bool "GNSS time"
+	depends on LICHEN_HAS_GNSS
+
+endchoice
+
+endif # LICHEN_HAL
