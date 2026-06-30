@@ -24,11 +24,11 @@ import asyncio
 import contextlib
 import logging
 import random
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from ipaddress import IPv6Address
-from typing import Protocol
+from typing import Protocol, cast
 
 from lichen.announce.messages import ANNOUNCE_TYPE, AnnounceMessage
 from lichen.announce.processor import AnnounceProcessor
@@ -137,7 +137,7 @@ class Node:
 
     # Lifecycle state
     _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
-    _receive_task: asyncio.Task | None = field(default=None, init=False, repr=False)
+    _receive_task: asyncio.Task[None] | None = field(default=None, init=False, repr=False)
 
     # Announce scheduler - manages periodic announce transmission
     # Why separate: Single responsibility, persistence support, testability.
@@ -476,7 +476,7 @@ class Node:
         data: bytes,
         min_delay_ms: int | None = None,
         max_delay_ms: int | None = None,
-    ) -> asyncio.Task:
+    ) -> asyncio.Task[bool]:
         """Schedule a transmission after a random jitter delay.
 
         Why jitter: RREQ rebroadcast uses jitter to reduce collision probability
@@ -506,7 +506,7 @@ class Node:
             name=f"scheduled-send-{delay_ms}ms",
         )
 
-    def get_status(self) -> dict:
+    def get_status(self) -> dict[str, object]:
         """Get node status for debugging/monitoring.
 
         Returns:
@@ -530,7 +530,7 @@ class Node:
             "firmware": "sim-0.1.0",
         }
 
-    def get_neighbors(self) -> list[dict]:
+    def get_neighbors(self) -> list[dict[str, object]]:
         """Get neighbor list for CoAP /neighbors resource.
 
         Returns:
@@ -546,17 +546,17 @@ class Node:
             })
         return neighbors
 
-    def get_config(self) -> dict:
+    def get_config(self) -> dict[str, int]:
         """Get node config for CoAP /config resource."""
         return {
             "receive_timeout_ms": self.config.receive_timeout_ms,
             "announce_interval_ms": self.config.announce_interval_ms,
         }
 
-    def set_config(self, updates: dict) -> None:
+    def set_config(self, updates: Mapping[str, object]) -> None:
         """Update node config from CoAP /config PUT."""
         # ponytail: only allow safe updates, ignore unknown keys
         if "receive_timeout_ms" in updates:
-            self.config.receive_timeout_ms = int(updates["receive_timeout_ms"])
+            self.config.receive_timeout_ms = int(cast(int | str, updates["receive_timeout_ms"]))
         if "announce_interval_ms" in updates:
-            self.config.announce_interval_ms = int(updates["announce_interval_ms"])
+            self.config.announce_interval_ms = int(cast(int | str, updates["announce_interval_ms"]))
