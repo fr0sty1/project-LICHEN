@@ -2,6 +2,18 @@
 
 This document describes how LICHEN nodes expose a Meshtastic-compatible BLE interface, allowing unmodified Meshtastic apps to connect.
 
+## Source Baseline
+
+This contract is based on the Meshtastic app/protocol research recorded in Bead `project-LICHEN-t2hn.1`:
+
+| Source | Commit inspected |
+|--------|------------------|
+| `meshtastic/protobufs` | `032b7dfd68e875c4323e6ac67590c6fc616b1714` |
+| `meshtastic/firmware` | `2f97112987af311ca81dd70b83cbcf7236d6c119` |
+| `meshtastic/python` | `6d76edf8a7b192c51e3a5d26bc5868da556ac3d9` |
+| `meshtastic/Meshtastic-Android` | `eb3bd10757a312d1537874bfab245117c46c36a9` |
+| `meshtastic/Meshtastic-Apple` | `aeeb0cc49fbe0ed593e918ba2f95100ecf694256` |
+
 ## Build and Target Architecture
 
 **This feature is off by default.** The Meshtastic adapter adds significant firmware size:
@@ -225,8 +237,7 @@ These features can't be stubbed meaningfully. The adapter returns errors or empt
 
 | Feature | Response |
 |---------|----------|
-| Admin config writes | Empty/error |
-| Read-only owner/session admin requests | Return synthetic owner/session data or document limited compatibility |
+| Admin config writes/commands | Deterministic no-op/error; read-only admin requests still return synthetic compatibility data |
 | Secondary channels | Not created |
 | Store-and-forward queries | Empty |
 | Range test | Not implemented |
@@ -258,6 +269,18 @@ These features can't be stubbed meaningfully. The adapter returns errors or empt
 5. App subscribes to `FromNum` notifications; Android also proactively drains after writes.
 6. On notify, app reads `FromRadio` until the characteristic returns an empty value.
 7. App writes `ToRadio.packet` for outbound messages.
+8. Node emits `FromRadio.queueStatus` for local enqueue/accounting state and emits `FromRadio.packet` with
+   `ROUTING_APP` ACK/NAK for app-visible delivery state when the LICHEN contract can confirm success or failure.
+
+The sync nonces are fixed by current Android and iOS client flows. `69420` means "send config and static metadata";
+`69421` means "send node database". The adapter must echo the nonce in `config_complete_id` after the records for that
+stage. It must not assume the app is done after the first `config_complete_id`, because Apple and Android use the second
+stage to seed the node database. Other nonces are treated as legacy/full-sync requests for Python or older clients: queue
+the stage-1 config/static records and the stage-2 node database, then echo the original nonce in `config_complete_id`.
+
+The `FromNum` characteristic is an edge-triggered queue hint, not the data channel. Every queued `FromRadio` value
+increments `FromNum` modulo 2^32 and notifies subscribed clients when notifications are enabled. A `FromRadio` read
+returns one complete protobuf value. An empty value means the queue is drained.
 
 ### MTU Handling
 
@@ -274,25 +297,38 @@ The adapter implements a subset of Meshtastic's protobuf schema.
 
 | Field | Handling |
 |-------|----------|
-| `want_config_id` | Triggers config sync |
-| `heartbeat` | Keepalive/liveness trigger; may return `queueStatus` |
-| `packet` | MeshPacket to send |
-| `disconnect` | Close connection |
+| `want_config_id = 69420` | Queue stage-1 config, metadata, region presets, channel, module config, and matching `config_complete_id` |
+| `want_config_id = 69421` | Queue stage-2 node database and matching `config_complete_id` |
+| Other `want_config_id` | Queue legacy/full sync and matching `config_complete_id`; log compatibility nonce |
+| `heartbeat` | Keepalive/liveness trigger; may queue `queueStatus`; never required before sync |
+| `packet` with `TEXT_MESSAGE_APP` | Translate to the shared LICHEN message contract and queue local `queueStatus` |
+| `packet` with `POSITION_APP` | Translate to LICHEN position/announce when available; otherwise deterministic no-op status |
+| `packet` with `NODEINFO_APP` | Update transient display metadata only; no persistent Meshtastic identity writes |
+| `packet` with `ADMIN_APP` read request | Return synthetic owner/session/config response for supported read-only requests |
+| `packet` with `ADMIN_APP` write/command | Reject or no-op deterministically; do not mutate LICHEN radio/security settings |
+| `packet` with unsupported portnum | Drop with deterministic status or empty response; never crash or desync the queue |
+| `disconnect` | Clear connection-scoped queue/session state |
 
 ### Outbound (FromRadio)
 
 | Field | Source |
 |-------|--------|
-| `my_info` | This node's LICHEN identity |
-| `node_info` | LICHEN peer table |
+| `my_info` | This node's LICHEN identity and synthetic Meshtastic node number |
+| `node_info` | LICHEN peer table, including self and discovered peers |
 | `config` | Synthetic config from LICHEN state |
 | `moduleConfig` | Synthetic module config defaults |
-| `channel` | Mapped from SCHC context |
-| `metadata` | Synthetic device metadata |
-| `region_presets` | Region/preset constraints, or explicitly omitted under a tested safe-absence policy |
-| `packet` | Incoming mesh messages |
-| `queueStatus` | Send queue status |
-| `config_complete_id` | Signals end of config sync |
+| `channel` | Synthetic primary channel plus disabled secondary channels when requested |
+| `metadata` | Synthetic device metadata and firmware/version policy |
+| `region_presets` | Region/preset constraints for current app sync; omission requires a separate tested safe-absence policy |
+| `packet` | Incoming mesh messages, node-info/position updates, and `ROUTING_APP` ACK/NAK |
+| `queueStatus` | Local send queue status only |
+| `config_complete_id` | End marker that echoes the stage nonce |
+| `clientNotification` | Optional advisory error/notice when a client requires visible feedback |
+
+`queueStatus` is not a delivery receipt. It only tells the app whether the local adapter accepted or rejected work for
+the local queue. Delivered/failed state that the app can show against a message must be represented as a `ROUTING_APP`
+packet whose decoded `request_id` matches the original message request/id. If LICHEN cannot prove final delivery, the
+adapter should report queued/local state only and avoid fabricating a final delivered ACK.
 
 ### MeshPacket
 
@@ -319,7 +355,13 @@ Meshtastic uses `portnum` to identify message types. The adapter maps these to C
 | `TELEMETRY_APP` (67) | `/telem` | Device telemetry |
 | `TRACEROUTE_APP` (70) | N/A | Handled internally |
 
-Unsupported portnums are silently dropped or return empty responses.
+Unsupported portnums produce deterministic no-op/error behavior and never produce mesh side effects.
+
+For unsupported app packets the behavior is deterministic: parse errors reject the `ToRadio` write at the transport
+boundary when the BLE stack permits it; valid but unsupported portnums produce no mesh side effect and may enqueue a
+`queueStatus` or `clientNotification` explaining the unsupported operation. Firmware must not leave partially decoded
+state, advance config stages incorrectly, or mutate LICHEN keys, channels, radio settings, or routing state because of a
+Meshtastic compatibility write.
 
 ## State Mapping
 
@@ -353,7 +395,8 @@ Meshtastic channels don't map directly to LICHEN. The adapter presents a synthet
 | `settings.name` | "LICHEN" |
 | `settings.psk` | Empty (security handled differently) |
 
-Additional channels are not supported. Config writes to channel settings are acknowledged but ignored.
+Additional channels are not creatable or mutable. When an app requests secondary channel reads, the adapter may return
+disabled secondary channel records for compatibility. Config writes to channel settings are acknowledged but ignored.
 
 ## Config Sections
 
@@ -370,6 +413,19 @@ The adapter returns synthetic config matching Meshtastic's expected structure:
 | `bluetooth` | Current BLE state |
 
 Config writes via ToRadio are acknowledged but most are no-ops. The LICHEN stack controls actual radio parameters.
+
+The read-only admin subset is first class for app compatibility:
+
+| Admin request | Response |
+|---------------|----------|
+| `get_owner_request` | Synthetic `User` for this LICHEN node |
+| `get_channel_request` | Primary `Channel` response or disabled secondary channel |
+| `get_config_request` | Synthetic supported config section, empty safe default for unsupported sections |
+| `get_device_metadata_request` | Synthetic device metadata and firmware version |
+
+Config/channel/owner write requests are acknowledged only if the app requires a response, but they are no-ops unless a
+future Bead explicitly maps the setting into the native LICHEN contract. Commands such as reboot, factory reset, and
+node DB reset are unsupported in the MVP and must return a deterministic unsupported/no-op result.
 
 ## Message Flow Examples
 
