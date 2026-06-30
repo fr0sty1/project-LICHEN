@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-9c4y.2",
+  "title": "Define MeshCore-to-LICHEN compatibility contract and mapping table",
+  "description": "Why this exists: MeshCore app compatibility needs a clear local adapter contract that preserves LICHEN RF/mesh behavior. What needs to be done: define supported MeshCore local operations and map them to LICHEN HAL identity, local CoAP/status/config/message/key flows, or explicit unsupported errors. Include command semantics, response/error policy, transport assumptions, and state ownership. Acceptance criteria: mapping table is recorded in Beads notes or design field; RF protocol boundary is explicit; config/status/message flows have deterministic behavior; unsupported features and semantic mismatches are named.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:19:07.584686Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:19:36.253972Z",
+  "labels": [
+    "zephyr",
+    "meshcore",
+    "app-interface",
+    "design",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c4y.2",
+      "depends_on_id": "project-LICHEN-9c4y",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:19:07.585201Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c4y.2",
+      "depends_on_id": "project-LICHEN-9c4y.1",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:19:36.253972Z"
+    }
+  ]
+}

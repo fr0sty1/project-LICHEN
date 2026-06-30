@@ -1,0 +1,58 @@
+{
+  "id": "project-LICHEN-9c4y.10",
+  "title": "Build native_sim MeshCore app-compat test harness",
+  "description": "Why this exists: MeshCore adapter behavior needs automated proof before hardware/client smoke tests. What needs to be done: create a native_sim or host-side test harness that feeds MeshCore app frames into the adapter and inspects responses plus LICHEN local-interface calls. Cover connect/init, node identity/status/config reads, message ingress, incoming message egress, malformed input, unsupported commands, and queue limits. Acceptance criteria: west build/twister test runs on Linux EC2 Zephyr cache; tests fail if handlers are bypassed or if MeshCore RF is used as the LICHEN RF path; commands and results are recorded in Beads notes.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:19:08.501907Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:19:40.004829Z",
+  "labels": [
+    "zephyr",
+    "meshcore",
+    "native_sim",
+    "test",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c4y.10",
+      "depends_on_id": "project-LICHEN-9c4y",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:19:08.502413Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c4y.10",
+      "depends_on_id": "project-LICHEN-9c4y.4",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:19:38.647149Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c4y.10",
+      "depends_on_id": "project-LICHEN-9c4y.6",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:19:39.498808Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c4y.10",
+      "depends_on_id": "project-LICHEN-9c4y.7",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:19:39.665397Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c4y.10",
+      "depends_on_id": "project-LICHEN-9c4y.8",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:19:39.835435Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c4y.10",
+      "depends_on_id": "project-LICHEN-9c4y.9",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:19:40.004828Z"
+    }
+  ]
+}
