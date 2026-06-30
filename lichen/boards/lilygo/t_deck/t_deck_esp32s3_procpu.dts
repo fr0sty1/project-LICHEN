@@ -14,6 +14,7 @@
 #include "t_deck-pinctrl.dtsi"
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <zephyr/dt-bindings/lora/sx126x.h>
+#include <zephyr/dt-bindings/mipi_dbi/mipi_dbi.h>
 
 / {
 	model = "Lilygo T-Deck PROCPU";
@@ -53,6 +54,49 @@
 			zephyr,code = <INPUT_KEY_0>;
 		};
 	};
+
+	/*
+	 * ST7789 display on SPI3 CS1, disabled until display/input bring-up
+	 * validates panel init, orientation, and bus coexistence with LoRa.
+	 */
+	tdeck_mipi_dbi: mipi-dbi {
+		compatible = "zephyr,mipi-dbi-spi";
+		spi-dev = <&spi3>;
+		dc-gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+		write-only;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+
+		tdeck_display: st7789v@1 {
+			compatible = "sitronix,st7789v";
+			reg = <1>;
+			status = "disabled";
+			mipi-max-frequency = <20000000>;
+
+			width = <240>;
+			height = <320>;
+			x-offset = <0>;
+			y-offset = <0>;
+
+			vcom = <0x28>;
+			gctrl = <0x35>;
+			vrhs = <0x10>;
+			vdvs = <0x20>;
+			mdac = <0x00>;
+			gamma = <0x01>;
+			colmod = <0x55>;
+			lcm = <0x2c>;
+			porch-param = [0c 0c 00 33 33];
+			cmd2en-param = [5a 69 02 00];
+			pwctrl1-param = [a4 a1];
+			pvgam-param = [d0 00 02 07 0a 28 32 44 42 06 0e 12 14 17];
+			nvgam-param = [d0 00 02 07 0a 28 31 54 47 0e 1c 17 1b 1e];
+			ram-param = [00 f0];
+			rgb-param = [40 02 14];
+			mipi-mode = <MIPI_DBI_MODE_SPI_4WIRE>;
+		};
+	};
 };
 
 &uart0 {
@@ -78,7 +122,8 @@
 
 	/*
 	 * The ST7789 display shares SPI3 with LoRa and SD.  Keep its CS
-	 * deselected until an app overlay enables a display node.
+	 * deselected until an overlay enables the display node and removes
+	 * this hog so SPI can own CS1.
 	 */
 	t_deck_tft_cs_hog: tft-cs-hog {
 		gpio-hog;
@@ -91,8 +136,8 @@
 	status = "okay";
 
 	/*
-	 * The SD card also shares SPI3.  Keep CS high until storage support is
-	 * modeled and enabled by an app overlay.
+	 * The SD card also shares SPI3.  Keep CS inactive until an overlay
+	 * enables storage and removes this hog so SPI can own CS2.
 	 */
 	t_deck_sd_cs_hog: sd-cs-hog {
 		gpio-hog;
@@ -113,6 +158,9 @@
 	status = "okay";
 	pinctrl-0 = <&spim3_default>;
 	pinctrl-names = "default";
+	cs-gpios = <&gpio0 9 GPIO_ACTIVE_LOW>,
+		   <&gpio0 12 GPIO_ACTIVE_LOW>,
+		   <&gpio1 7 GPIO_ACTIVE_LOW>; /* GPIO39 = gpio1[7] */
 
 	lora0: lora@0 {
 		compatible = "semtech,sx1262";
@@ -124,6 +172,17 @@
 		dio3-tcxo-voltage = <SX126X_DIO3_TCXO_1V8>;
 		tcxo-power-startup-delay-ms = <5>;
 		spi-max-frequency = <16000000>;
+	};
+
+	tdeck_sd: sd@2 {
+		compatible = "zephyr,sdhc-spi-slot";
+		reg = <2>;
+		status = "disabled";
+		spi-max-frequency = <12000000>;
+		mmc {
+			compatible = "zephyr,sdmmc-disk";
+			status = "disabled";
+		};
 	};
 };
 

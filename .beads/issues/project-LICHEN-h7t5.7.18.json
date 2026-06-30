@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-h7t5.7.18",
+  "title": "Validate T-Deck SD SPI frequency and storage node",
+  "description": "Verify the disabled Zephyr SPI SDHC node for the LilyGO T-Deck SD card before enabling storage. Confirm SD CS GPIO39 mapping, safe spi-max-frequency, card detect/power assumptions if any, LittleFS/FAT choice, and coexistence with LoRa/display on SPI3. Meshtastic uses high SD_SPI_FREQUENCY values, but Zephyr bring-up should choose validated timing. Acceptance: SD card mount/read/write smoke passes on physical T-Deck without disturbing LoRa transfers; frequency and failure mode are recorded.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T21:36:32.160858Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T21:36:49.933881Z",
+  "labels": [
+    "lilygo",
+    "t-deck",
+    "sd",
+    "storage",
+    "zephyr",
+    "hardware",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.18",
+      "depends_on_id": "project-LICHEN-h7t5.7",
+      "type": "parent-child",
+      "created_at": "2026-06-30T21:36:32.161359Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.18",
+      "depends_on_id": "project-LICHEN-h7t5.7.15",
+      "type": "blocks",
+      "created_at": "2026-06-30T21:36:49.933881Z"
+    }
+  ]
+}
