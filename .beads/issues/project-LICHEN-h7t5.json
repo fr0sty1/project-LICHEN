@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-h7t5",
+  "title": "Our-side Zephyr HAL foundation for firmware targets",
+  "description": "## Why\nBefore a dev partner can efficiently add many board ports, LICHEN needs a stable Zephyr HAL contract and a small set of reference targets that define how firmware code discovers and uses board capabilities. Without this, partner work will hard-code board quirks into application logic and make UI, radio, location/time, power, and app-interface behavior inconsistent across targets.\n\n## Scope\nDefine the HAL architecture, board capability model, Kconfig/devicetree conventions, reference target implementations, validation matrix, and partner handoff package. Scope is our side of the work: own the abstraction boundary and reference implementations; leave long-tail board overlays and hardware smoke testing to partner Beads once the contract is stable.\n\n## Success Criteria\nChild Beads cover HAL contract, capability matrix, Kconfig/devicetree model, reference targets, source-provider integration, validation, and partner handoff. Meshtastic and MeshCore board/HAL patterns are used as source material for capability modeling and board prioritization, while LICHEN remains Zephyr-native. Two code-review passes are completed before closing any implementation child.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T06:19:01.538665Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T06:24:02.188568Z",
+  "labels": [
+    "zephyr",
+    "hal",
+    "firmware",
+    "board-support",
+    "partner-handoff"
+  ]
+}

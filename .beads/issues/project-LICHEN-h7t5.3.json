@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-h7t5.3",
+  "title": "Define Zephyr Kconfig and devicetree model for HAL capabilities",
+  "description": "Why this exists: partner board ports should be mostly overlays, Kconfig fragments, and driver bindings, not application rewrites. We need a stable way to express board capabilities and feature gates. What needs to be done: define Kconfig symbols and devicetree conventions for LICHEN board capabilities: CONFIG_LICHEN_HAS_DISPLAY, HAS_BUTTONS, HAS_LEDS, HAS_GNSS, HAS_BATTERY, HAS_PMIC, HAS_BLE_LOCAL, HAS_SERIAL_LOCAL, HAS_EXTERNAL_FLASH, radio model selection, UI profile, and source-provider support for location/time. Ensure runtime capability discovery can be derived from build-time config where appropriate. Acceptance criteria: Kconfig options and devicetree aliases/chosen nodes are documented; sample overlays exist for reference boards or fake/native test targets; invalid combinations fail at build time where possible; headless builds do not pull display/UI code; two code-review passes are completed before closure.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T06:19:52.038028Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T06:19:52.040792Z",
+  "labels": [
+    "zephyr",
+    "kconfig",
+    "devicetree",
+    "hal",
+    "firmware",
+    "board-support",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.3",
+      "depends_on_id": "project-LICHEN-h7t5",
+      "type": "parent-child",
+      "created_at": "2026-06-30T06:19:52.040792Z"
+    }
+  ]
+}
