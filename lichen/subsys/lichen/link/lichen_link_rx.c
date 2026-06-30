@@ -157,6 +157,41 @@ static int verify_mic(const struct lichen_link_rx_ctx *ctx,
 #endif
 }
 
+static int decrypt_payload(const struct lichen_link_rx_ctx *ctx,
+			   const struct lichen_frame *frame,
+			   const uint8_t *raw_frame,
+			   uint8_t *payload_buf, size_t payload_buf_len)
+{
+	uint8_t nonce[AES_CCM_NONCE_LEN];
+	size_t aad_len;
+	size_t ciphertext_len;
+
+	if (ctx->link_key == NULL || ctx->peer_eui64 == NULL) {
+		LOG_WRN("Encrypted frame requires link_key and peer_eui64\n");
+		return -LICHEN_EAUTH;
+	}
+	if (frame->mic_len != AES_CCM_TAG_LEN) {
+		return -LICHEN_EAUTH;
+	}
+	if (frame->payload_len > payload_buf_len) {
+		return -ENOMEM;
+	}
+
+	aad_len = LICHEN_FRAME_PAYLOAD_OFFSET(frame->dst_addr_len);
+	ciphertext_len = frame->payload_len + frame->mic_len;
+
+	build_link_nonce(nonce, ctx->peer_eui64, frame->epoch, frame->seqnum);
+
+	if (lichen_aes_ccm_decrypt(ctx->link_key, nonce,
+				   raw_frame, aad_len,
+				   frame->payload, ciphertext_len,
+				   payload_buf) != 0) {
+		return -LICHEN_EAUTH;
+	}
+
+	return 0;
+}
+
 /* ─── RX path ─────────────────────────────────────────────────────────────── */
 
 int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
@@ -166,6 +201,12 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 		   uint8_t *src_eui64)
 {
 	struct lichen_frame parsed;
+	uint8_t decrypted_payload[256];
+	const uint8_t *auth_payload;
+	size_t auth_payload_len;
+	const uint8_t *schc_data;
+	size_t schc_len;
+	bool payload_decrypted = false;
 	int ret;
 
 	if (ctx == NULL || frame == NULL || out_ipv6 == NULL ||
@@ -179,11 +220,26 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 		return -EINVAL;
 	}
 
+	if (parsed.encrypted) {
+		ret = decrypt_payload(ctx, &parsed, frame,
+				      decrypted_payload, sizeof(decrypted_payload));
+		if (ret < 0) {
+			return ret;
+		}
+		auth_payload = decrypted_payload;
+		auth_payload_len = parsed.payload_len;
+		payload_decrypted = true;
+	} else {
+		auth_payload = parsed.payload;
+		auth_payload_len = parsed.payload_len;
+	}
+
 	/* Step 2: Verify Schnorr-48 signature if present */
 	if (parsed.signature_present) {
 		if (ctx->peer_pubkey == NULL) {
 			/* Cannot verify without sender's public key */
-			return -LICHEN_EAUTH;
+			ret = -LICHEN_EAUTH;
+			goto cleanup;
 		}
 
 		/*
@@ -197,21 +253,24 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 		int verify_result = schnorr48_verify_frame(parsed.epoch, parsed.seqnum,
 							   parsed.dst_addr,
 							   parsed.dst_addr_len,
-							   parsed.payload,
-							   parsed.payload_len,
+							   auth_payload,
+							   auth_payload_len,
 							   ctx->peer_pubkey);
 		if (verify_result == 0) {
 			/* SECURITY: Invalid signature — possible forgery attempt */
 			LOG_WRN("Schnorr signature verification failed\n");
-			return -LICHEN_EAUTH;
+			ret = -LICHEN_EAUTH;
+			goto cleanup;
 		} else if (verify_result == -1) {
 			/* Programming error or corrupted peer state */
 			LOG_WRN("Schnorr verify: invalid parameters (check peer_pubkey)\n");
-			return -LICHEN_EAUTH;
+			ret = -LICHEN_EAUTH;
+			goto cleanup;
 		} else if (verify_result != 1) {
 			/* Unexpected return value — defensive check */
 			LOG_WRN("Schnorr verify: unexpected result %d\n", verify_result);
-			return -LICHEN_EAUTH;
+			ret = -LICHEN_EAUTH;
+			goto cleanup;
 		}
 	}
 
@@ -264,7 +323,8 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 		 * For signed frames, this is already caught above (line 183-185).
 		 * This check handles unsigned frames where no peer_pubkey is set.
 		 */
-		return -LICHEN_EAUTH;
+		ret = -LICHEN_EAUTH;
+		goto cleanup;
 	}
 
 	/*
@@ -292,14 +352,18 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 		replay_window = lichen_replay_get(replay, src_eui64);
 		if (replay_window == NULL) {
 			/* Table full */
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto cleanup;
 		}
 	}
 
 	/* Step 5: Verify MIC */
-	ret = verify_mic(ctx, &parsed, frame, frame_len);
-	if (ret < 0) {
-		return -LICHEN_EAUTH;
+	if (!parsed.encrypted) {
+		ret = verify_mic(ctx, &parsed, frame, frame_len);
+		if (ret < 0) {
+			ret = -LICHEN_EAUTH;
+			goto cleanup;
+		}
 	}
 
 	/*
@@ -308,20 +372,23 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 	 * Use inner_payload_len which excludes the signature if present.
 	 * Minimum IPv6 header is 40 bytes; require at least that.
 	 */
-	const uint8_t *schc_data = parsed.payload;
-	size_t schc_len = parsed.inner_payload_len;
+	schc_data = auth_payload;
+	schc_len = parsed.inner_payload_len;
 
 	/* Validate output buffer can hold minimum IPv6 header */
 	if (*out_len < 40) {
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto cleanup;
 	}
 
 	ret = lichen_schc_decompress(schc_data, schc_len, out_ipv6, *out_len);
 	if (ret < 0) {
 		if (ret == SCHC_ERR_BUFFER_TOO_SMALL) {
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto cleanup;
 		}
-		return -EINVAL;
+		ret = -EINVAL;
+		goto cleanup;
 	}
 
 	/*
@@ -339,10 +406,17 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 	 */
 	if (replay_window != NULL) {
 		if (!lichen_replay_check(replay_window, parsed.epoch, parsed.seqnum)) {
-			return -EALREADY;
+			ret = -EALREADY;
+			goto cleanup;
 		}
 	}
 
 	*out_len = (size_t)ret;
-	return 0;
+	ret = 0;
+
+cleanup:
+	if (payload_decrypted) {
+		memset(decrypted_payload, 0, sizeof(decrypted_payload));
+	}
+	return ret;
 }

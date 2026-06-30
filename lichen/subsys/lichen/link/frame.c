@@ -41,7 +41,7 @@ int lichen_frame_parse(struct lichen_frame *frame,
 	 * With 64-bit MIC it's 13 bytes, but we can't know MIC length
 	 * until we parse LLSec, so check for minimum 32-bit MIC first.
 	 */
-	if (len < 9) {
+	if (len < LICHEN_FRAME_FIXED_HEADER_LEN + LICHEN_MIC_32_LEN) {
 		return -EINVAL;
 	}
 
@@ -73,8 +73,8 @@ int lichen_frame_parse(struct lichen_frame *frame,
 	frame->mic_len = (frame->mic_length == LICHEN_MIC_64) ? LICHEN_MIC_64_LEN : LICHEN_MIC_32_LEN;
 	uint8_t addr_len = addr_lens[frame->addr_mode];
 
-	/* Check total required length: header(5) + addr + mic */
-	if (len < 5 + addr_len + frame->mic_len) {
+	/* Check total required length: fixed header + address + MIC */
+	if (len < LICHEN_FRAME_PAYLOAD_OFFSET(addr_len) + frame->mic_len) {
 		return -EINVAL;
 	}
 
@@ -128,15 +128,16 @@ int lichen_frame_write(const struct lichen_frame *frame,
 	 * The MIC is not computed here - it must be computed externally over
 	 * the frame data and stored in frame->mic before serialization.
 	 */
-	if (frame->mic_len != LICHEN_MIC_32_LEN && frame->mic_len != LICHEN_MIC_64_LEN) {
-		return -EINVAL;
-	}
-
 	uint8_t addr_len = addr_lens[frame->addr_mode];
 	uint8_t mic_len = (frame->mic_length == LICHEN_MIC_64) ? LICHEN_MIC_64_LEN : LICHEN_MIC_32_LEN;
 
+	if (frame->mic_len != mic_len) {
+		return -EINVAL;
+	}
+
 	/* Calculate total frame size */
-	size_t frame_len = 1 + 1 + 1 + 2 + addr_len + frame->payload_len + mic_len;
+	size_t frame_len = LICHEN_FRAME_PAYLOAD_OFFSET(addr_len) +
+			   frame->payload_len + mic_len;
 
 	if (frame_len > buflen) {
 		return -ENOMEM; /* Buffer too small */

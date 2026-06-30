@@ -63,6 +63,27 @@ enum lichen_mic_len {
 /** 64-bit MIC length in bytes */
 #define LICHEN_MIC_64_LEN 8
 
+/** Wire length of the frame length field */
+#define LICHEN_FRAME_LEN_FIELD_LEN 1
+
+/** Wire length of the LLSec field */
+#define LICHEN_FRAME_LLSEC_LEN 1
+
+/** Wire length of the epoch field */
+#define LICHEN_FRAME_EPOCH_LEN 1
+
+/** Wire length of the sequence number field */
+#define LICHEN_FRAME_SEQNUM_LEN 2
+
+/** Fixed wire header length before the destination address */
+#define LICHEN_FRAME_FIXED_HEADER_LEN \
+	(LICHEN_FRAME_LEN_FIELD_LEN + LICHEN_FRAME_LLSEC_LEN + \
+	 LICHEN_FRAME_EPOCH_LEN + LICHEN_FRAME_SEQNUM_LEN)
+
+/** Payload offset for a parsed frame with the given destination address length */
+#define LICHEN_FRAME_PAYLOAD_OFFSET(addr_len) \
+	(LICHEN_FRAME_FIXED_HEADER_LEN + (size_t)(addr_len))
+
 /**
  * @brief LICHEN frame structure for parsing/building frames
  */

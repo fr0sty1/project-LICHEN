@@ -43,6 +43,7 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	uint16_t seqnum;
 	size_t off;
 	size_t frame_body_len;
+	size_t aad_len;
 	uint8_t mic_len;
 	int ret;
 
@@ -140,7 +141,8 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	/* Calculate frame body length (everything after the length byte):
 	 * LLSec(1) + Epoch(1) + SeqNum(2) + DstAddr(0/2/8) + Payload + MIC(4/8)
 	 */
-	frame_body_len = 1 + 1 + 2 + dst_addr_len + payload_len + mic_len;
+	frame_body_len = (LICHEN_FRAME_PAYLOAD_OFFSET(dst_addr_len) -
+			  LICHEN_FRAME_LEN_FIELD_LEN) + payload_len + mic_len;
 
 	if (frame_body_len > 255) {
 		ret = -EMSGSIZE;
@@ -163,12 +165,13 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	 * bits 0-1: AddrMode
 	 * bit 2: MicLength (0 = 32-bit, 1 = 64-bit)
 	 * bit 5: signature present
-	 * bit 6: encrypted (0 for now)
+	 * bit 6: encrypted when a link key is present
 	 * bit 7: reserved (0)
 	 */
 	out_frame[off] = addr_mode & 0x03;
 	if (ctx->has_link_key) {
 		out_frame[off] |= 0x04; /* 64-bit MIC */
+		out_frame[off] |= 0x40; /* encrypted */
 	}
 	if (ctx->has_key) {
 		out_frame[off] |= 0x20; /* signature present */
@@ -188,38 +191,34 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		off += dst_addr_len;
 	}
 
-	/* Step 4: Append payload (includes signature if present) */
-	memcpy(&out_frame[off], payload_buf, payload_len);
-	off += payload_len;
+	aad_len = off;
 
-	/* Step 5: Compute MIC over frame body (excluding MIC itself) */
+	/* Step 4/5: Protect payload and append MIC */
 	if (ctx->has_link_key) {
 		/*
-		 * AES-CCM-64 MIC
+		 * AES-CCM-64 encryption and MIC.
 		 *
-		 * AAD = length || LLSec || epoch || seqnum || dst_addr
-		 * The payload is empty (no encryption), we just compute the tag.
+		 * AAD = length || LLSec || epoch || seqnum || dst_addr.
+		 * Plaintext = compressed payload plus optional Schnorr-48 signature.
 		 * Nonce = eui64 || epoch || seqnum || 0x0000
 		 */
 		uint8_t nonce[AES_CCM_NONCE_LEN];
-		uint8_t mic_out[AES_CCM_TAG_LEN];
-		size_t aad_len = off;  /* Everything built so far is AAD */
 
 		build_link_nonce(nonce, ctx->eui64, epoch, seqnum);
 
-		/* AES-CCM encrypt with empty plaintext to get just the tag */
 		if (lichen_aes_ccm_encrypt(ctx->link_key, nonce,
 					   &out_frame[0], aad_len,
-					   NULL, 0,
-					   mic_out) != 0) {
+					   payload_buf, payload_len,
+					   &out_frame[off]) != 0) {
 			ret = -EINVAL;
 			goto cleanup;
 		}
 
-		/* Append 64-bit MIC */
-		memcpy(&out_frame[off], mic_out, AES_CCM_TAG_LEN);
-		off += AES_CCM_TAG_LEN;
+		off += payload_len + AES_CCM_TAG_LEN;
 	} else {
+		/* Append plaintext payload before computing the CRC32 fallback. */
+		memcpy(&out_frame[off], payload_buf, payload_len);
+		off += payload_len;
 #ifdef CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC
 #warning "CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC is enabled - CRC32 MIC provides NO authentication, frames can be forged!"
 		/*

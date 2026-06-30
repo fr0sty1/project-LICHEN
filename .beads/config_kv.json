@@ -1,3 +1,5 @@
 {
-  "issue_prefix": "project-LICHEN"
+  "issue_prefix": "project-LICHEN",
+  "kv.memory.workflow-rule-every-small-code-generation-or-fix": "Workflow rule: every small code-generation or fix Bead must be followed by two code-review passes before it is considered done. Add this explicitly to acceptance criteria for new codegen/fix Beads.",
+  "kv.memory.zephyr-builds-ec2": "Zephyr Linux-only builds/tests can use AWS EC2 when local macOS or heft are insufficient. Local AWS profile: AdministratorAccess-921772462201. Keep instances small/short-lived, tag temporary resources with project/task, and terminate them after use."
 }
