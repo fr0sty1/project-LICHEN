@@ -78,6 +78,26 @@ static const uint8_t VEC_BOOL_TRUE[] = {
 	0x04, 0xf5
 };
 
+/*
+ * Test vector: base time 2^63, boolean value (ok: true)
+ * Python: cbor2.dumps([{-3: 0x8000000000000000, 0: 'ok', 4: True}])
+ * CBOR structure:
+ *   81        array(1)
+ *   a3        map(3)
+ *   22        label -3 (bt = base time)
+ *   1b 8000000000000000  uint64(2^63)
+ *   00        label 0 (n)
+ *   62 6f6b   tstr(2) "ok"
+ *   04        label 4 (vb = boolean value)
+ *   f5        true
+ */
+static const uint8_t VEC_BASE_TIME_UINT64_HIGH[] = {
+	0x81, 0xa3,
+	0x22, 0x1b, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x62, 0x6f, 0x6b,
+	0x04, 0xf5
+};
+
 static void fill_string(char *str, size_t len, char ch)
 {
 	memset(str, ch, len);
@@ -118,6 +138,25 @@ static int test_encode_boolean(void)
 	ret = senml_encode_cbor(&pack, buf, sizeof(buf));
 	ASSERT_EQ(ret, (int)sizeof(VEC_BOOL_TRUE), "encoded length");
 	ASSERT_MEM_EQ(buf, VEC_BOOL_TRUE, sizeof(VEC_BOOL_TRUE), "CBOR output");
+
+	return 1;
+}
+
+static int test_base_time_uint64_high(void)
+{
+	struct senml_pack pack;
+	uint8_t buf[64];
+	int ret;
+
+	ret = senml_pack_init(&pack, NULL, 0x8000000000000000ULL);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
+	ret = senml_add_bool(&pack, "ok", true);
+	ASSERT_EQ(ret, 0, "senml_add_bool");
+
+	ret = senml_encode_cbor(&pack, buf, sizeof(buf));
+	ASSERT_EQ(ret, (int)sizeof(VEC_BASE_TIME_UINT64_HIGH), "encoded length");
+	ASSERT_MEM_EQ(buf, VEC_BASE_TIME_UINT64_HIGH,
+		      sizeof(VEC_BASE_TIME_UINT64_HIGH), "CBOR output");
 
 	return 1;
 }
@@ -241,6 +280,7 @@ int main(void)
 
 	RUN_TEST(test_encode_temperature);
 	RUN_TEST(test_encode_boolean);
+	RUN_TEST(test_base_time_uint64_high);
 	RUN_TEST(test_empty_pack_rejected);
 	RUN_TEST(test_buffer_too_small);
 	RUN_TEST(test_pack_full);

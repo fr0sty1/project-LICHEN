@@ -25,20 +25,9 @@ static bool emit_byte(zcbor_state_t *state, uint8_t b)
 	return emit(state, &b, 1);
 }
 
-/* Encode CBOR unsigned integer (major type 0) or negative (major type 1) */
-static bool encode_int(zcbor_state_t *state, int64_t value)
+/* Encode the CBOR integer payload for major type 0 or 1. */
+static bool encode_uint(zcbor_state_t *state, uint8_t major, uint64_t uval)
 {
-	uint8_t major;
-	uint64_t uval;
-
-	if (value >= 0) {
-		major = 0x00; /* unsigned */
-		uval = (uint64_t)value;
-	} else {
-		major = 0x20; /* negative */
-		uval = (uint64_t)(-(value + 1));
-	}
-
 	if (uval <= 23) {
 		return emit_byte(state, major | (uint8_t)uval);
 	} else if (uval <= 0xff) {
@@ -64,6 +53,16 @@ static bool encode_int(zcbor_state_t *state, int64_t value)
 		};
 		return emit(state, buf, 9);
 	}
+}
+
+/* Encode CBOR unsigned integer (major type 0) or negative (major type 1) */
+static bool encode_int(zcbor_state_t *state, int64_t value)
+{
+	if (value >= 0) {
+		return encode_uint(state, 0x00, (uint64_t)value);
+	}
+
+	return encode_uint(state, 0x20, (uint64_t)(-(value + 1)));
 }
 
 bool zcbor_list_start_encode(zcbor_state_t *state, size_t max_num)
@@ -111,7 +110,7 @@ bool zcbor_int32_put(zcbor_state_t *state, int32_t value)
 
 bool zcbor_uint64_put(zcbor_state_t *state, uint64_t value)
 {
-	return encode_int(state, (int64_t)value);
+	return encode_uint(state, 0x00, value);
 }
 
 bool zcbor_tstr_put_term(zcbor_state_t *state, const char *str, size_t maxlen)
