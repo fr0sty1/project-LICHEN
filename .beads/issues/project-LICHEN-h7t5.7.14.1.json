@@ -2,13 +2,15 @@
   "id": "project-LICHEN-h7t5.7.14.1",
   "title": "Validate T-Deck 16 MB partition map on hardware",
   "description": "Validate the expanded LilyGO T-Deck 16 MB flash map on physical hardware. Build-time DTS generation can prove offsets and image size fit, but flashing must still confirm the bootloader accepts the larger image slots, the app boots from slot0, and storage/assets/log partitions do not conflict with ESP32 boot metadata or tooling. Acceptance: capture exact board revision, flash command, esptool/boot logs, booted image evidence, partition map dump if available, and rollback/OTA constraints or file follow-up corrections.",
-  "status": "open",
+  "notes": "Host-side validation attempt on 2026-06-30: claimed task and checked local macOS serial/USB state. Visible serial candidates remain /dev/cu.usbserial-A704ESXG plus Bluetooth/debug/wlan virtual ports; IOKit identifies A704ESXG as FTDI FT232R USB UART with idVendor 1027 (0x0403), product FT232R USB UART, serial A704ESXG, not native ESP32-S3 USB/JTAG/CDC. Bounded identify command /opt/homebrew/bin/esptool.py --port /dev/cu.usbserial-A704ESXG --baud 115200 --connect-attempts 1 chip_id failed: Failed to connect to Espressif device: Invalid head of packet (0x00). Added dependency on project-LICHEN-h7t5.7.13.1. Cannot flash or validate the 16 MiB partition map until physical T-Deck revision and bootloader/serial access evidence is provided.",
+  "status": "blocked",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T21:06:44.430469Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-30T21:06:44.431194Z",
+  "updated_at": "2026-06-30T21:30:43.12283Z",
   "labels": [
     "lilygo",
     "t-deck",
@@ -31,6 +33,12 @@
       "depends_on_id": "project-LICHEN-h7t5.7.14",
       "type": "parent-child",
       "created_at": "2026-06-30T21:06:44.431194Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.14.1",
+      "depends_on_id": "project-LICHEN-h7t5.7.13.1",
+      "type": "blocks",
+      "created_at": "2026-06-30T21:30:21.488222Z"
     }
   ]
 }
