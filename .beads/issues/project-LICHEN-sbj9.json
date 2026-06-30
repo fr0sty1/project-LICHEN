@@ -2,13 +2,16 @@
   "id": "project-LICHEN-sbj9",
   "title": "Build broken: LICHEN Kconfig not sourced correctly",
   "description": "west build fails with 'undefined symbol LICHEN' for all boards. The lichen/zephyr/module.yml has 'kconfig: Kconfig' but Zephyr is sourcing lichen/Kconfig (wrong path) instead of lichen/zephyr/Kconfig. This may be related to west manifest self-reference vs module path resolution. Previously claimed working at commit a24db525 - may need west update or module.yml fix.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-28T04:29:53.575309Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-28T04:29:53.575351Z",
+  "updated_at": "2026-06-29T21:39:28.123073Z",
+  "closed_at": "2026-06-29T21:39:28.123073Z",
+  "close_reason": "Verified fixed: fresh Zephyr build now sources lichen/zephyr/Kconfig and qemu_cortex_m3 bridge build completes without undefined CONFIG_LICHEN.",
   "labels": [
     "build",
     "zephyr"

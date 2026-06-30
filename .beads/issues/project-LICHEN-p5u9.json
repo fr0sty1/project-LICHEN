@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-p5u9",
+  "title": "Stop Beads UserPromptSubmit hook spam",
+  "description": "Remove the Codex UserPromptSubmit Beads hook so Beads context is not reprinted on every prompt while preserving SessionStart and compaction hooks.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-29T18:25:36.16669Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T18:28:50.702684Z",
+  "closed_at": "2026-06-29T18:28:50.702684Z",
+  "close_reason": "Removed UserPromptSubmit Beads hook from .codex/hooks.json"
+}

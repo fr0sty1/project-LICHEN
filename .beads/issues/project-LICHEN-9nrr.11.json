@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-9nrr.11",
+  "title": "zephyr: create generic SCHC module",
+  "description": "User-requested follow-up. Create a reusable generic Zephyr SCHC module rather than keeping SCHC only as a LICHEN-private subsystem. This is distinct from evaluating libSCHC: the module may wrap libSCHC if evaluation supports that, or may factor the existing lichen/subsys/lichen/schc implementation into a generic Zephyr module with LICHEN-specific rules/config layered on top. Acceptance: define module boundaries and public API for generic RFC 8724 SCHC compression/decompression and fragmentation; separate generic SCHC engine code from LICHEN rule tables and profile choices; provide Zephyr Kconfig/CMake integration usable by other apps; preserve existing LICHEN SCHC test vectors; document how LICHEN configures/installs its rule set; include at least one standalone sample or test target using the generic module without LICHEN-specific link code.",
+  "acceptance_criteria": "After implementation, run the relevant tests/builds and then complete two separate code-review passes before closing. Each review pass should inspect the produced code against this Bead's acceptance criteria and file follow-up Beads for any discovered issues.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-29T23:27:57.393328Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T23:56:30.920597Z",
+  "labels": [
+    "review",
+    "exhaustive",
+    "zephyr",
+    "c",
+    "schc",
+    "module",
+    "architecture"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9nrr.11",
+      "depends_on_id": "project-LICHEN-9nrr",
+      "type": "parent-child",
+      "created_at": "2026-06-29T23:27:57.394208Z"
+    }
+  ]
+}
