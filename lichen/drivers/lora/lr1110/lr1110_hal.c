@@ -169,26 +169,24 @@ lr1110_hal_status_t lr1110_hal_write_read(const void *context,
 	return LR1110_HAL_STATUS_OK;
 }
 
-int lr1110_hal_reset(const void *context)
+void lr1110_hal_reset(const void *context)
 {
 	ARG_UNUSED(context);
 
 	int ret = gpio_pin_set_dt(&lr1110_gpio_reset, 1);
 	if (ret < 0) {
 		LOG_ERR("Failed to assert reset GPIO: %d", ret);
-		return ret;
+		return;
 	}
 	k_busy_wait(1000);
 
 	ret = gpio_pin_set_dt(&lr1110_gpio_reset, 0);
 	if (ret < 0) {
 		LOG_ERR("Failed to deassert reset GPIO: %d", ret);
-		return ret;
+		return;
 	}
 	k_busy_wait(1000);
 	k_sleep(K_MSEC(200)); /* wait for internal firmware to load */
-
-	return 0;
 }
 
 lr1110_hal_status_t lr1110_hal_wakeup(const void *context)
