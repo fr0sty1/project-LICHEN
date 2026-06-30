@@ -13,6 +13,8 @@
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
+use core::marker::PhantomData;
+
 #[cfg(feature = "std")]
 use crate::message::Dio;
 
@@ -28,6 +30,116 @@ pub enum DodagRole {
     Unjoined,
     Joined,
     Root,
+}
+
+impl DodagRole {
+    pub fn can_transition_to(self, next: Self) -> bool {
+        matches!(
+            (self, next),
+            (Self::Unjoined, Self::Unjoined)
+                | (Self::Unjoined, Self::Joined)
+                | (Self::Unjoined, Self::Root)
+                | (Self::Joined, Self::Unjoined)
+                | (Self::Joined, Self::Joined)
+                | (Self::Root, Self::Root)
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct InvalidDodagTransition {
+    pub from: DodagRole,
+    pub to: DodagRole,
+}
+
+pub trait DodagMembership {
+    const ROLE: DodagRole;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Unjoined;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Joined;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Root;
+
+impl DodagMembership for Unjoined {
+    const ROLE: DodagRole = DodagRole::Unjoined;
+}
+
+impl DodagMembership for Joined {
+    const ROLE: DodagRole = DodagRole::Joined;
+}
+
+impl DodagMembership for Root {
+    const ROLE: DodagRole = DodagRole::Root;
+}
+
+/// Compile-time DODAG membership state used to verify legal role transitions.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DodagMembershipState<S: DodagMembership> {
+    pub rpl_instance_id: u8,
+    pub dodag_id: [u8; 16],
+    pub version: u8,
+    pub rank: u16,
+    pub preferred_parent: Option<[u8; 16]>,
+    state: PhantomData<S>,
+}
+
+impl DodagMembershipState<Unjoined> {
+    pub fn new(rpl_instance_id: u8, dodag_id: [u8; 16], version: u8) -> Self {
+        Self {
+            rpl_instance_id,
+            dodag_id,
+            version,
+            rank: INFINITE_RANK,
+            preferred_parent: None,
+            state: PhantomData,
+        }
+    }
+
+    pub fn join(self, preferred_parent: [u8; 16], rank: u16) -> DodagMembershipState<Joined> {
+        DodagMembershipState {
+            rpl_instance_id: self.rpl_instance_id,
+            dodag_id: self.dodag_id,
+            version: self.version,
+            rank,
+            preferred_parent: Some(preferred_parent),
+            state: PhantomData,
+        }
+    }
+
+    pub fn become_root(self) -> DodagMembershipState<Root> {
+        DodagMembershipState {
+            rpl_instance_id: self.rpl_instance_id,
+            dodag_id: self.dodag_id,
+            version: self.version,
+            rank: ROOT_RANK,
+            preferred_parent: None,
+            state: PhantomData,
+        }
+    }
+}
+
+impl DodagMembershipState<Joined> {
+    pub fn leave(self) -> DodagMembershipState<Unjoined> {
+        DodagMembershipState {
+            rpl_instance_id: self.rpl_instance_id,
+            dodag_id: self.dodag_id,
+            version: self.version,
+            rank: INFINITE_RANK,
+            preferred_parent: None,
+            state: PhantomData,
+        }
+    }
+}
+
+impl<S: DodagMembership> DodagMembershipState<S> {
+    pub fn role(&self) -> DodagRole {
+        S::ROLE
+    }
 }
 
 /// A neighbour that is advertising membership in the DODAG.
@@ -110,6 +222,18 @@ impl DodagState {
         matches!(self.role, DodagRole::Joined | DodagRole::Root)
     }
 
+    fn set_role(&mut self, next: DodagRole) -> Result<(), InvalidDodagTransition> {
+        if self.role.can_transition_to(next) {
+            self.role = next;
+            Ok(())
+        } else {
+            Err(InvalidDodagTransition {
+                from: self.role,
+                to: next,
+            })
+        }
+    }
+
     /// Process a received DIO from `neighbor_addr` with `link_etx` quality.
     pub fn process_dio(&mut self, dio: &Dio, neighbor_addr: [u8; 16], link_etx: f32) {
         if self.role == DodagRole::Root {
@@ -153,7 +277,8 @@ impl DodagState {
         self.preferred_parent = None;
         self.rank = INFINITE_RANK;
         self.lowest_rank = INFINITE_RANK;
-        self.role = DodagRole::Unjoined;
+        self.set_role(DodagRole::Unjoined)
+            .expect("DODAG version adoption cannot demote a root");
     }
 
     fn admissible(&self, candidate: &ParentCandidate) -> bool {
@@ -177,7 +302,8 @@ impl DodagState {
 
         let Some(best) = best else {
             if self.role != DodagRole::Root {
-                self.role = DodagRole::Unjoined;
+                self.set_role(DodagRole::Unjoined)
+                    .expect("joined DODAG can return to unjoined");
                 self.preferred_parent = None;
                 self.rank = INFINITE_RANK;
             }
@@ -210,7 +336,8 @@ impl DodagState {
 
         self.preferred_parent = Some(chosen_addr);
         self.rank = chosen_cost;
-        self.role = DodagRole::Joined;
+        self.set_role(DodagRole::Joined)
+            .expect("non-root DODAG can join through a selected parent");
         if chosen_cost < self.lowest_rank {
             self.lowest_rank = chosen_cost;
         }
@@ -256,6 +383,35 @@ mod tests {
             flags: 0,
             dodag_id: dodag_id(),
         }
+    }
+
+    #[test]
+    fn dodag_role_transition_table_rejects_root_demotions() {
+        assert!(DodagRole::Unjoined.can_transition_to(DodagRole::Joined));
+        assert!(DodagRole::Joined.can_transition_to(DodagRole::Unjoined));
+        assert!(DodagRole::Root.can_transition_to(DodagRole::Root));
+        assert!(!DodagRole::Root.can_transition_to(DodagRole::Unjoined));
+        assert!(!DodagRole::Root.can_transition_to(DodagRole::Joined));
+    }
+
+    #[test]
+    fn dodag_membership_typestate_join_leave_root_paths() {
+        let unjoined = DodagMembershipState::<Unjoined>::new(0, dodag_id(), 0);
+        assert_eq!(unjoined.role(), DodagRole::Unjoined);
+
+        let joined = unjoined.join(ll(1), 512);
+        assert_eq!(joined.role(), DodagRole::Joined);
+        assert_eq!(joined.preferred_parent, Some(ll(1)));
+        assert_eq!(joined.rank, 512);
+
+        let unjoined = joined.leave();
+        assert_eq!(unjoined.role(), DodagRole::Unjoined);
+        assert_eq!(unjoined.rank, INFINITE_RANK);
+        assert_eq!(unjoined.preferred_parent, None);
+
+        let root = unjoined.become_root();
+        assert_eq!(root.role(), DodagRole::Root);
+        assert_eq!(root.rank, ROOT_RANK);
     }
 
     #[test]
