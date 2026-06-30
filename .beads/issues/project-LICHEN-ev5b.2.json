@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ev5b.2",
+  "title": "Make native_sim L2 packet-path proof the firmware gate",
+  "description": "Why this exists: before hardware bring-up, the active Zephyr L2 path must prove actual packet movement, not just compile and boot. What needs to be done: complete project-LICHEN-kxbj or equivalent so IPv6/UDP/CoAP traverses LICHEN_L2 TX, LoRa loopback, LICHEN link RX, SCHC decompression, and Zephyr networking ingress. Acceptance criteria: automated Linux/native_sim test exists; test fails if raw bypass paths are used; EC2 builder instructions are documented if local host cannot run native_sim; three independent codereview subagents run after code changes and findings are recorded.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T14:56:32.635742Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T14:56:33.337268Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ev5b.2",
+      "depends_on_id": "project-LICHEN-ev5b",
+      "type": "parent-child",
+      "created_at": "2026-06-30T14:56:32.636274Z"
+    },
+    {
+      "issue_id": "project-LICHEN-ev5b.2",
+      "depends_on_id": "project-LICHEN-kxbj",
+      "type": "blocks",
+      "created_at": "2026-06-30T14:56:33.337268Z"
+    }
+  ]
+}

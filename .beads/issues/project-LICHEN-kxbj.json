@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-kxbj",
+  "title": "Add native_sim L2 loopback packet-path test",
+  "description": "Why this exists: the active Zephyr module now builds and boots LICHEN_L2 on native_sim with the loopback LoRa driver, but we still need an automated packet-path proof. What needs to be done: add a native_sim or ztest harness that sends an IPv6/UDP/CoAP packet through the LICHEN_L2 TX path, loops it through the LoRa loopback driver, verifies LICHEN link frame handling/SCHC decompression on RX, and confirms the packet reaches the Zephyr IPv6 stack or a test observer. Acceptance criteria: the test runs in CI/Linux with CONFIG_LICHEN_L2=y, fails if framing/compression/RX injection is bypassed, and documents any native_sim TAP/zeth requirements.",
+  "notes": "MVP workflow overlay: use subagents liberally for test design and Zephyr/native_sim diagnosis. Any code creation or modification under this Bead requires three independent codereview subagent passes before closure; record findings in Beads notes or follow-up Beads.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T14:46:20.773658Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T14:56:54.793268Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-kxbj",
+      "depends_on_id": "project-LICHEN-7o5j",
+      "type": "blocks",
+      "created_at": "2026-06-30T14:46:27.955031Z"
+    }
+  ]
+}

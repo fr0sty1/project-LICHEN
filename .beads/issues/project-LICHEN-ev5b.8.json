@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-ev5b.8",
+  "title": "Resolve Muzi R1/R1 Neo public schematic and board-revision gaps",
+  "description": "Why this exists: project-LICHEN-ev5b.1 confirmed useful firmware sources but no official public schematic or board revision matrix for original R1/R1 Neo was found. What needs to be done: obtain vendor schematic/revision data or document that the Zephyr target is based on Meshtastic/MeshCore firmware pin metadata plus hardware smoke tests. Acceptance criteria: source of truth is recorded; any revision-specific pin or power differences have child Beads before hardware bring-up proceeds.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T15:04:27.679194Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T15:04:27.679743Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ev5b.8",
+      "depends_on_id": "project-LICHEN-ev5b",
+      "type": "parent-child",
+      "created_at": "2026-06-30T15:04:27.679743Z"
+    }
+  ]
+}

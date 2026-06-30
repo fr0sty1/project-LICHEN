@@ -1,0 +1,32 @@
+{
+  "id": "project-LICHEN-ev5b.3",
+  "title": "Define minimal R1 HAL and devicetree boundary",
+  "description": "Why this exists: the R1 MVP needs only enough HAL/Kconfig/devicetree structure to keep board-specific details out of protocol/app code. What needs to be done: finish the minimal pieces of project-LICHEN-h7t5.1 and project-LICHEN-h7t5.3 needed for radio, BLE local transport, identity, GNSS, battery/PMIC, buttons/LEDs, and board identity. Acceptance criteria: required capabilities are represented by explicit Kconfig/devicetree conventions; absent capabilities return deterministic unsupported/unavailable behavior; invalid combinations fail at build time where practical; three independent codereview subagents run after code changes and findings are recorded.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T14:56:32.749777Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T14:56:33.72466Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ev5b.3",
+      "depends_on_id": "project-LICHEN-ev5b",
+      "type": "parent-child",
+      "created_at": "2026-06-30T14:56:32.750371Z"
+    },
+    {
+      "issue_id": "project-LICHEN-ev5b.3",
+      "depends_on_id": "project-LICHEN-h7t5.1",
+      "type": "blocks",
+      "created_at": "2026-06-30T14:56:33.501523Z"
+    },
+    {
+      "issue_id": "project-LICHEN-ev5b.3",
+      "depends_on_id": "project-LICHEN-h7t5.3",
+      "type": "blocks",
+      "created_at": "2026-06-30T14:56:33.72466Z"
+    }
+  ]
+}

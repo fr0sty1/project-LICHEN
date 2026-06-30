@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-ev5b.9",
+  "title": "Validate R1 Neo SX1262 reset pin behavior before final overlay",
+  "description": "Why this exists: Meshtastic r1-neo uses SX126X_RESET=38 while MeshCore muziworks_r1_neo sets P_LORA_RESET=RADIOLIB_NC despite variant.cpp labeling P1.06 as reset. What needs to be done: confirm whether Zephyr should drive P1.06 reset or leave it disconnected, using hardware test or vendor confirmation. Acceptance criteria: board overlay records the confirmed reset behavior; wrong-reset behavior has a regression/smoke test or explicit limitation.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T15:04:27.792444Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T15:04:27.792959Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ev5b.9",
+      "depends_on_id": "project-LICHEN-ev5b",
+      "type": "parent-child",
+      "created_at": "2026-06-30T15:04:27.792959Z"
+    }
+  ]
+}

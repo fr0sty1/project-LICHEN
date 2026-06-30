@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ev5b.5",
+  "title": "Build, flash, and smoke-test R1 firmware on hardware",
+  "description": "Why this exists: firmware is not complete until the actual device boots and proves the board path. What needs to be done: document flashing path, build firmware for the exact R1 target, flash the device, capture boot logs, and verify board identity, LICHEN_L2 enabled, LoRa configured, BLE advertising, and no fatal init failures. Acceptance criteria: reproducible build and flash commands exist; hardware boot logs are recorded in Beads notes; failures create blocker Beads with exact logs; three independent codereview subagents run after code changes and findings are recorded.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T14:56:32.976037Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T14:56:34.627667Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ev5b.5",
+      "depends_on_id": "project-LICHEN-ev5b",
+      "type": "parent-child",
+      "created_at": "2026-06-30T14:56:32.976564Z"
+    },
+    {
+      "issue_id": "project-LICHEN-ev5b.5",
+      "depends_on_id": "project-LICHEN-ev5b.4",
+      "type": "blocks",
+      "created_at": "2026-06-30T14:56:34.627667Z"
+    }
+  ]
+}
