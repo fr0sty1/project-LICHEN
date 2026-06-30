@@ -3,6 +3,53 @@
 use crate::seqnum::LinkSeqNum;
 use lichen_core::error::TooShort;
 
+/// Coarse states in zero-copy link-frame parsing.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum FrameProcessingState {
+    Start,
+    LengthRead,
+    HeaderRead,
+    Parsed,
+    Failed,
+}
+
+impl FrameProcessingState {
+    pub fn can_transition_to(self, next: Self) -> bool {
+        matches!(
+            (self, next),
+            (Self::Start, Self::LengthRead)
+                | (Self::Start, Self::Failed)
+                | (Self::LengthRead, Self::HeaderRead)
+                | (Self::LengthRead, Self::Failed)
+                | (Self::HeaderRead, Self::Parsed)
+                | (Self::HeaderRead, Self::Failed)
+                | (Self::Parsed, Self::Parsed)
+                | (Self::Failed, Self::Failed)
+        )
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct InvalidFrameProcessingTransition {
+    pub from: FrameProcessingState,
+    pub to: FrameProcessingState,
+}
+
+fn transition_frame_state(
+    state: &mut FrameProcessingState,
+    next: FrameProcessingState,
+) -> Result<(), InvalidFrameProcessingTransition> {
+    if state.can_transition_to(next) {
+        *state = next;
+        Ok(())
+    } else {
+        Err(InvalidFrameProcessingTransition {
+            from: *state,
+            to: next,
+        })
+    }
+}
+
 /// Destination addressing mode (LLSec bits 0-1, spec 4.3).
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -214,38 +261,58 @@ impl<'a> LichenFrame<'a> {
 
     /// Parse a frame from a byte slice.
     pub fn from_bytes(data: &'a [u8]) -> Result<Self, FrameError> {
+        let mut state = FrameProcessingState::Start;
         if data.is_empty() {
+            transition_frame_state(&mut state, FrameProcessingState::Failed)
+                .expect("empty input can fail before length read");
             return Err(FrameError::Empty);
         }
         let length = data[0] as usize;
+        transition_frame_state(&mut state, FrameProcessingState::LengthRead)
+            .expect("non-empty frame can read length");
         let expected_total = 1 + length;
-        let body = data
-            .get(1..expected_total)
-            .ok_or_else(|| TooShort::new(expected_total, data.len()))?;
+        let Some(body) = data.get(1..expected_total) else {
+            transition_frame_state(&mut state, FrameProcessingState::Failed)
+                .expect("length-read frame can fail bounds check");
+            return Err(TooShort::new(expected_total, data.len()).into());
+        };
         if length < 4 {
+            transition_frame_state(&mut state, FrameProcessingState::Failed)
+                .expect("length-read frame can fail minimum body length check");
             return Err(TooShort::new(4, length).into());
         }
         let llsec = body[0];
         if llsec & RESERVED_BIT != 0 {
+            transition_frame_state(&mut state, FrameProcessingState::Failed)
+                .expect("length-read frame can fail LLSec reserved bit check");
             return Err(FrameError::ReservedBitSet);
         }
         // ADDR_MODE_MASK is 0b11, so value is always 0-3; from_u8 covers all cases
         let addr_mode = AddrMode::from_u8(llsec & ADDR_MODE_MASK).unwrap();
         let mic_field = (llsec >> MIC_LEN_SHIFT) & MIC_LEN_MASK;
-        let mic_length = MicLength::from_u8(mic_field)
-            .ok_or(FrameError::ReservedMicLength(mic_field))?;
+        let Some(mic_length) = MicLength::from_u8(mic_field) else {
+            transition_frame_state(&mut state, FrameProcessingState::Failed)
+                .expect("length-read frame can fail MIC length decoding");
+            return Err(FrameError::ReservedMicLength(mic_field));
+        };
         let epoch = body[1];
         let seqnum = LinkSeqNum::from_be_bytes([body[2], body[3]]);
+        transition_frame_state(&mut state, FrameProcessingState::HeaderRead)
+            .expect("valid fixed header can advance to header-read");
         let addr_len = addr_mode.addr_len();
         let mic_len = mic_length.mic_len();
         let min_body = 4 + addr_len + mic_len;
         if body.len() < min_body {
+            transition_frame_state(&mut state, FrameProcessingState::Failed)
+                .expect("header-read frame can fail variable length check");
             return Err(TooShort::new(min_body, body.len()).into());
         }
         let dst_addr = &body[4..4 + addr_len];
         let payload_end = body.len() - mic_len;
         let payload = &body[4 + addr_len..payload_end];
         let mic = &body[payload_end..];
+        transition_frame_state(&mut state, FrameProcessingState::Parsed)
+            .expect("header-read frame can parse successfully");
         Ok(LichenFrame {
             epoch,
             seqnum,
@@ -272,6 +339,17 @@ impl<'a> LichenFrame<'a> {
 mod tests {
     use super::*;
     use crate::test_utils::from_hex;
+
+    #[test]
+    fn frame_processing_transition_table_rejects_recovery_from_failure() {
+        assert!(FrameProcessingState::Start.can_transition_to(FrameProcessingState::LengthRead));
+        assert!(
+            FrameProcessingState::LengthRead.can_transition_to(FrameProcessingState::HeaderRead)
+        );
+        assert!(FrameProcessingState::HeaderRead.can_transition_to(FrameProcessingState::Parsed));
+        assert!(!FrameProcessingState::Failed.can_transition_to(FrameProcessingState::Parsed));
+        assert!(!FrameProcessingState::Parsed.can_transition_to(FrameProcessingState::HeaderRead));
+    }
 
     #[test]
     fn broadcast_min_roundtrip() {

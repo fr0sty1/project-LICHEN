@@ -6,6 +6,27 @@
 
 use crate::seqnum::LinkSeqNum;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReplayWindowState {
+    Empty,
+    Tracking,
+}
+
+impl ReplayWindowState {
+    pub fn can_transition_to(self, next: Self) -> bool {
+        matches!(
+            (self, next),
+            (Self::Empty, Self::Tracking) | (Self::Tracking, Self::Tracking)
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct InvalidReplayWindowTransition {
+    pub from: ReplayWindowState,
+    pub to: ReplayWindowState,
+}
+
 /// A 64-slot replay window for one (peer, epoch) context.
 ///
 /// Bit layout: bit 0 of `window` represents `last_seq`; bit `i` represents
@@ -24,6 +45,7 @@ pub struct ReplayWindow {
     /// True once at least one sequence number has been accepted (to
     /// distinguish "last_seq = 0 never seen" from "last_seq = 0 was seen").
     initialised: bool,
+    state: ReplayWindowState,
 }
 
 impl ReplayWindow {
@@ -32,6 +54,26 @@ impl ReplayWindow {
             last_seq: LinkSeqNum::new(0),
             window: 0,
             initialised: false,
+            state: ReplayWindowState::Empty,
+        }
+    }
+
+    pub fn state(&self) -> ReplayWindowState {
+        self.state
+    }
+
+    fn transition_to(
+        &mut self,
+        next: ReplayWindowState,
+    ) -> Result<(), InvalidReplayWindowTransition> {
+        if self.state.can_transition_to(next) {
+            self.state = next;
+            Ok(())
+        } else {
+            Err(InvalidReplayWindowTransition {
+                from: self.state,
+                to: next,
+            })
         }
     }
 
@@ -44,6 +86,8 @@ impl ReplayWindow {
             self.last_seq = seq;
             self.window = 1;
             self.initialised = true;
+            self.transition_to(ReplayWindowState::Tracking)
+                .expect("empty replay window can start tracking");
             return true;
         }
 
@@ -60,6 +104,8 @@ impl ReplayWindow {
                 (self.window << shift) | 1
             };
             self.last_seq = seq;
+            self.transition_to(ReplayWindowState::Tracking)
+                .expect("tracking replay window can keep tracking");
             true
         } else if diff == 0 {
             // Exact duplicate of last_seq.
@@ -77,6 +123,8 @@ impl ReplayWindow {
                 false
             } else {
                 self.window |= bit;
+                self.transition_to(ReplayWindowState::Tracking)
+                    .expect("tracking replay window can keep tracking");
                 true
             }
         }
@@ -100,8 +148,17 @@ mod tests {
     #[test]
     fn first_packet_always_accepted() {
         let mut w = ReplayWindow::new();
+        assert_eq!(w.state(), ReplayWindowState::Empty);
         assert!(w.accept(seq(0)));
+        assert_eq!(w.state(), ReplayWindowState::Tracking);
         assert!(w.accept(seq(100)));
+    }
+
+    #[test]
+    fn replay_window_transition_table_rejects_return_to_empty() {
+        assert!(ReplayWindowState::Empty.can_transition_to(ReplayWindowState::Tracking));
+        assert!(ReplayWindowState::Tracking.can_transition_to(ReplayWindowState::Tracking));
+        assert!(!ReplayWindowState::Tracking.can_transition_to(ReplayWindowState::Empty));
     }
 
     #[test]
