@@ -4,6 +4,7 @@
 //! type 158, with code selecting RREQ (0), RREP (1), RERR (2).
 
 use crate::addr::Ipv6Addr;
+use core::marker::PhantomData;
 
 /// ICMPv6 type for LOADng messages.
 pub const LOADNG_ICMPV6_TYPE: u8 = 158;
@@ -45,6 +46,11 @@ pub enum LoadngError {
     TooShort(TooShort),
     BufferTooSmall(BufferTooSmall),
     UnknownCode(u8),
+    InvalidDiscoveryTransition {
+        from: RouteDiscoveryState,
+        to: RouteDiscoveryState,
+    },
+    InvalidDiscoveryReply,
 }
 
 impl core::fmt::Display for LoadngError {
@@ -53,6 +59,14 @@ impl core::fmt::Display for LoadngError {
             Self::TooShort(e) => write!(f, "LOADng {}", e),
             Self::BufferTooSmall(e) => write!(f, "LOADng {}", e),
             Self::UnknownCode(c) => write!(f, "unknown LOADng code: {}", c),
+            Self::InvalidDiscoveryTransition { from, to } => {
+                write!(
+                    f,
+                    "invalid LOADng discovery transition: {:?} -> {:?}",
+                    from, to
+                )
+            }
+            Self::InvalidDiscoveryReply => write!(f, "invalid LOADng discovery reply"),
         }
     }
 }
@@ -92,6 +106,200 @@ pub struct Rreq {
     pub seq_num: u16,
     pub hop_limit: u8,
     pub flags: u8,
+}
+
+/// Runtime route-discovery state for dynamic checks and observability.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RouteDiscoveryState {
+    Idle,
+    Searching,
+    Replied,
+    Failed,
+}
+
+impl RouteDiscoveryState {
+    /// Whether this transition is allowed by the LOADng discovery state machine.
+    pub const fn can_transition_to(self, next: Self) -> bool {
+        match (self, next) {
+            (Self::Idle, Self::Searching) => true,
+            (Self::Searching, Self::Searching | Self::Replied | Self::Failed) => true,
+            (Self::Replied, _) | (Self::Failed, _) => false,
+            _ => false,
+        }
+    }
+
+    /// Validate a runtime transition.
+    pub fn transition_to(self, next: Self) -> Result<Self, LoadngError> {
+        if self.can_transition_to(next) {
+            Ok(next)
+        } else {
+            Err(LoadngError::InvalidDiscoveryTransition {
+                from: self,
+                to: next,
+            })
+        }
+    }
+}
+
+/// Marker for a route discovery that has not sent its first RREQ.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Idle;
+
+/// Marker for a route discovery that is sending expanding-ring RREQs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Searching;
+
+/// Marker for a route discovery that received a matching RREP.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Replied;
+
+/// Marker for a route discovery that exhausted all expanding rings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Failed;
+
+pub trait DiscoveryMarker {
+    const STATE: RouteDiscoveryState;
+}
+
+impl DiscoveryMarker for Idle {
+    const STATE: RouteDiscoveryState = RouteDiscoveryState::Idle;
+}
+
+impl DiscoveryMarker for Searching {
+    const STATE: RouteDiscoveryState = RouteDiscoveryState::Searching;
+}
+
+impl DiscoveryMarker for Replied {
+    const STATE: RouteDiscoveryState = RouteDiscoveryState::Replied;
+}
+
+impl DiscoveryMarker for Failed {
+    const STATE: RouteDiscoveryState = RouteDiscoveryState::Failed;
+}
+
+/// Compile-time typed LOADng route discovery.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RouteDiscovery<S> {
+    originator: Ipv6Addr,
+    destination: Ipv6Addr,
+    seq_num: u16,
+    ring_index: usize,
+    _state: PhantomData<S>,
+}
+
+impl<S: DiscoveryMarker> RouteDiscovery<S> {
+    /// Current dynamic state.
+    pub const fn state(&self) -> RouteDiscoveryState {
+        S::STATE
+    }
+
+    /// Originator address used in RREQs.
+    pub const fn originator(&self) -> Ipv6Addr {
+        self.originator
+    }
+
+    /// Destination address being discovered.
+    pub const fn destination(&self) -> Ipv6Addr {
+        self.destination
+    }
+
+    /// Sequence number carried by this discovery.
+    pub const fn seq_num(&self) -> u16 {
+        self.seq_num
+    }
+
+    /// Current expanding-ring index.
+    pub const fn ring_index(&self) -> usize {
+        self.ring_index
+    }
+}
+
+impl RouteDiscovery<Idle> {
+    /// Create an idle route discovery.
+    pub const fn new(originator: Ipv6Addr, destination: Ipv6Addr, seq_num: u16) -> Self {
+        Self {
+            originator,
+            destination,
+            seq_num,
+            ring_index: 0,
+            _state: PhantomData,
+        }
+    }
+
+    /// Start discovery and emit the first expanding-ring RREQ.
+    pub fn start(self) -> (RouteDiscovery<Searching>, Rreq) {
+        debug_assert!(RouteDiscoveryState::Idle.can_transition_to(RouteDiscoveryState::Searching));
+        let searching = RouteDiscovery {
+            originator: self.originator,
+            destination: self.destination,
+            seq_num: self.seq_num,
+            ring_index: 0,
+            _state: PhantomData,
+        };
+        let rreq = searching.rreq();
+        (searching, rreq)
+    }
+}
+
+impl RouteDiscovery<Searching> {
+    /// Build the RREQ for the current expanding ring.
+    pub fn rreq(&self) -> Rreq {
+        Rreq {
+            originator: self.originator,
+            destination: self.destination,
+            seq_num: self.seq_num,
+            hop_limit: EXPANDING_RING[self.ring_index],
+            flags: 0,
+        }
+    }
+
+    /// Advance to the next expanding ring or fail if all rings are exhausted.
+    pub fn advance_ring(self) -> Result<(Self, Rreq), RouteDiscovery<Failed>> {
+        if self.ring_index + 1 >= EXPANDING_RING.len() {
+            return Err(self.fail());
+        }
+        debug_assert!(
+            RouteDiscoveryState::Searching.can_transition_to(RouteDiscoveryState::Searching)
+        );
+        let next = Self {
+            ring_index: self.ring_index + 1,
+            ..self
+        };
+        let rreq = next.rreq();
+        Ok((next, rreq))
+    }
+
+    /// Mark discovery failed.
+    pub fn fail(self) -> RouteDiscovery<Failed> {
+        debug_assert!(RouteDiscoveryState::Searching.can_transition_to(RouteDiscoveryState::Failed));
+        RouteDiscovery {
+            originator: self.originator,
+            destination: self.destination,
+            seq_num: self.seq_num,
+            ring_index: self.ring_index,
+            _state: PhantomData,
+        }
+    }
+
+    /// Accept a matching RREP and move to the terminal replied state.
+    pub fn receive_rrep(self, rrep: Rrep) -> Result<RouteDiscovery<Replied>, LoadngError> {
+        if rrep.originator != self.destination
+            || rrep.destination != self.originator
+            || rrep.seq_num != self.seq_num
+        {
+            return Err(LoadngError::InvalidDiscoveryReply);
+        }
+        debug_assert!(
+            RouteDiscoveryState::Searching.can_transition_to(RouteDiscoveryState::Replied)
+        );
+        Ok(RouteDiscovery {
+            originator: self.originator,
+            destination: self.destination,
+            seq_num: self.seq_num,
+            ring_index: self.ring_index,
+            _state: PhantomData,
+        })
+    }
 }
 
 impl Rreq {
@@ -350,5 +558,82 @@ mod tests {
         assert_eq!(dec2.hop_limit, 0);
 
         assert!(dec2.with_decremented_hop_limit().is_none());
+    }
+
+    #[test]
+    fn route_discovery_expanding_ring_typestate() {
+        let idle = RouteDiscovery::<Idle>::new(ll(1), ll(2), 0x2222);
+        assert_eq!(idle.state(), RouteDiscoveryState::Idle);
+
+        let (searching, rreq) = idle.start();
+        assert_eq!(searching.state(), RouteDiscoveryState::Searching);
+        assert_eq!(rreq.originator, ll(1));
+        assert_eq!(rreq.destination, ll(2));
+        assert_eq!(rreq.seq_num, 0x2222);
+        assert_eq!(rreq.hop_limit, EXPANDING_RING[0]);
+
+        let (searching, rreq) = searching.advance_ring().unwrap();
+        assert_eq!(searching.ring_index(), 1);
+        assert_eq!(rreq.hop_limit, EXPANDING_RING[1]);
+
+        let (searching, rreq) = searching.advance_ring().unwrap();
+        assert_eq!(searching.ring_index(), 2);
+        assert_eq!(rreq.hop_limit, EXPANDING_RING[2]);
+
+        let failed = searching.advance_ring().unwrap_err();
+        assert_eq!(failed.state(), RouteDiscoveryState::Failed);
+    }
+
+    #[test]
+    fn route_discovery_accepts_matching_rrep() {
+        let (searching, _) = RouteDiscovery::<Idle>::new(ll(1), ll(2), 0x3333).start();
+        let replied = searching
+            .receive_rrep(Rrep {
+                originator: ll(2),
+                destination: ll(1),
+                seq_num: 0x3333,
+                hop_count: 2,
+                flags: 0,
+            })
+            .unwrap();
+        assert_eq!(replied.state(), RouteDiscoveryState::Replied);
+        assert_eq!(replied.originator(), ll(1));
+        assert_eq!(replied.destination(), ll(2));
+    }
+
+    #[test]
+    fn route_discovery_rejects_wrong_rrep() {
+        let (searching, _) = RouteDiscovery::<Idle>::new(ll(1), ll(2), 0x3333).start();
+        let err = searching
+            .receive_rrep(Rrep {
+                originator: ll(3),
+                destination: ll(1),
+                seq_num: 0x3333,
+                hop_count: 2,
+                flags: 0,
+            })
+            .unwrap_err();
+        assert_eq!(err, LoadngError::InvalidDiscoveryReply);
+    }
+
+    #[test]
+    fn route_discovery_runtime_transition_table_rejects_invalid_edges() {
+        assert!(RouteDiscoveryState::Idle
+            .transition_to(RouteDiscoveryState::Searching)
+            .is_ok());
+        assert_eq!(
+            RouteDiscoveryState::Idle.transition_to(RouteDiscoveryState::Replied),
+            Err(LoadngError::InvalidDiscoveryTransition {
+                from: RouteDiscoveryState::Idle,
+                to: RouteDiscoveryState::Replied,
+            })
+        );
+        assert_eq!(
+            RouteDiscoveryState::Failed.transition_to(RouteDiscoveryState::Searching),
+            Err(LoadngError::InvalidDiscoveryTransition {
+                from: RouteDiscoveryState::Failed,
+                to: RouteDiscoveryState::Searching,
+            })
+        );
     }
 }
