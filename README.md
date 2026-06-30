@@ -241,7 +241,10 @@ cargo clippy
 
 See `lichen/README.md` for full details. Quick start:
 ```bash
-pip install west
+python3 -m venv .venv
+. .venv/bin/activate
+pip install --upgrade pip
+pip install west "setuptools<81" # setuptools provides pkg_resources for Zephyr 3.7 Twister
 # Run from inside project-LICHEN/:
 west init -l lichen/
 west update           # clones Zephyr v3.7.0 into zephyr/ alongside lichen/
@@ -250,6 +253,15 @@ pip install -r zephyr/scripts/requirements.txt
 
 # Build puck firmware for RAK4631
 west build -b rak4631_nrf52840 lichen/apps/puck
+```
+
+Keep `.venv/bin` first on `PATH` when running `west twister`; CMake also uses
+`python3` from `PATH` for Zephyr helper scripts. If `west` was installed with
+`pipx` instead of the venv above, install the same dependencies into that
+isolated environment:
+
+```bash
+pipx runpip west install -r "$PWD/zephyr/scripts/requirements.txt" "setuptools<81"
 ```
 
 Requires the [Zephyr SDK](https://docs.zephyrproject.org/latest/develop/toolchains/zephyr_sdk.html) (≥ 0.16) with the `arm-zephyr-eabi` toolchain.

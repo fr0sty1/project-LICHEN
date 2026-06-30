@@ -12,13 +12,27 @@ Zephyr v3.7.0 (LTS) and all modules are fetched as dependencies.
 
 ## Initialise workspace
 
-Run these commands from the directory **above** `project-LICHEN/`:
+Run these commands from the workspace root:
 
 ```sh
-west init -l project-LICHEN/zephyr/
+python3 -m venv .venv
+. .venv/bin/activate
+pip install --upgrade pip
+pip install west "setuptools<81"
+west init -l lichen/
 west update
 west zephyr-export
 pip install -r zephyr/scripts/requirements.txt
+```
+
+Zephyr 3.7 Twister imports `pkg_resources`, which is provided by older
+`setuptools` releases. Keep `.venv/bin` first on `PATH` when running
+`west twister`; CMake also uses `python3` from `PATH` for Zephyr helper
+scripts. If `west` was installed with `pipx` instead of the venv above, install
+the same dependencies into west's isolated environment:
+
+```sh
+pipx runpip west install -r "$PWD/zephyr/scripts/requirements.txt" "setuptools<81"
 ```
 
 ## Build
