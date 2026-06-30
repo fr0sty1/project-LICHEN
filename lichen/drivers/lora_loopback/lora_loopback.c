@@ -13,7 +13,10 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/lora.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/atomic.h>
 #include <string.h>
+
+#include "lora_loopback_test.h"
 
 LOG_MODULE_REGISTER(lora_loopback, CONFIG_LORA_LOG_LEVEL);
 
@@ -36,7 +39,38 @@ struct lora_loopback_data {
 	char __aligned(4) rx_queue_buf[LOOPBACK_QUEUE_DEPTH * sizeof(struct loopback_packet)];
 	struct lora_modem_config config;
 	bool configured;
+#ifdef CONFIG_LORA_LOOPBACK_TEST_HOOKS
+	atomic_t sent_packets;
+	atomic_t received_packets;
+#endif
 };
+
+#ifdef CONFIG_LORA_LOOPBACK_TEST_HOOKS
+void lora_loopback_test_reset(const struct device *dev)
+{
+	struct lora_loopback_data *data = dev->data;
+	struct loopback_packet pkt;
+
+	while (k_msgq_get(&data->rx_queue, &pkt, K_NO_WAIT) == 0) {
+	}
+
+	atomic_set(&data->sent_packets, 0);
+	atomic_set(&data->received_packets, 0);
+}
+
+void lora_loopback_test_get_stats(const struct device *dev,
+				  struct lora_loopback_test_stats *stats)
+{
+	struct lora_loopback_data *data = dev->data;
+
+	if (stats == NULL) {
+		return;
+	}
+
+	stats->sent_packets = (uint32_t)atomic_get(&data->sent_packets);
+	stats->received_packets = (uint32_t)atomic_get(&data->received_packets);
+}
+#endif
 
 static int lora_loopback_config(const struct device *dev,
 				struct lora_modem_config *config)
@@ -81,6 +115,9 @@ static int lora_loopback_send(const struct device *dev,
 		return -ENOBUFS;
 	}
 
+#ifdef CONFIG_LORA_LOOPBACK_TEST_HOOKS
+	atomic_inc(&data->sent_packets);
+#endif
 	LOG_DBG("sent %u bytes (looped back to rx queue)", payload_len);
 	return 0;
 }
@@ -121,6 +158,9 @@ static int lora_loopback_recv(const struct device *dev,
 		*snr = CONFIG_LORA_LOOPBACK_SNR;
 	}
 
+#ifdef CONFIG_LORA_LOOPBACK_TEST_HOOKS
+	atomic_inc(&data->received_packets);
+#endif
 	LOG_DBG("received %u bytes (from loopback queue)", pkt.len);
 	return pkt.len;
 }

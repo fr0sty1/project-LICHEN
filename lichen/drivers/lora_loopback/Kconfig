@@ -41,4 +41,11 @@ config LORA_LOOPBACK_MTU
 	  Maximum packet size in bytes. Packets larger than this are
 	  rejected with -EMSGSIZE. Default 200 matches LICHEN_LORA_MTU.
 
+config LORA_LOOPBACK_TEST_HOOKS
+	bool "LoRa loopback ztest-only counters"
+	depends on ZTEST
+	default n
+	help
+	  Expose loopback driver packet counters for automated tests.
+
 endif # LORA_LOOPBACK

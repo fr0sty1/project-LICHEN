@@ -1,0 +1,5 @@
+# Device tree binding vendor prefix registry for LICHEN module bindings.
+#
+# <vendor-prefix><TAB><Full name of vendor>
+
+lichen	The LICHEN project
