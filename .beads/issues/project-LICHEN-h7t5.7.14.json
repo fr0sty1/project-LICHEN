@@ -2,13 +2,15 @@
   "id": "project-LICHEN-h7t5.7.14",
   "title": "Decide T-Deck 16 MB flash partition layout",
   "description": "Why this exists: LilyGO/Meshtastic sources identify the T-Deck as a 16 MB flash board, but the current Zephyr DTS keeps small 1 MB image slots and tiny storage, which may not fit BLE/LVGL/UI firmware or filesystem assets. What needs to be done: define a T-Deck partition layout for bootloader, image slots/OTA, NVS/LittleFS, logs/assets, and factory/debug needs. Acceptance criteria: generated partition map uses the available flash intentionally; image slot sizes are justified by measured firmware sizes; storage needs for UI/assets/config are documented; bootloader/flashing compatibility is verified or split into a hardware smoke blocker.",
-  "status": "open",
+  "notes": "Build/review evidence: EC2 Zephyr build passed for west build -p always -b t_deck/esp32s3/procpu lichen/apps/gateway -d build/t_deck_gateway_partitions after applying the T-Deck 16 MiB partition patch. Generated config: CONFIG_FLASH_SIZE=16777216, CONFIG_SOC_ESP32S3_WROOM_N16R8=y, CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y, CONFIG_ESPTOOLPY_FLASHSIZE=\"16MB\". Generated zephyr.dts: flash0 reg \u003c0x0 0x1000000\u003e, zephyr,code-partition=\u0026slot0_partition, partitions boot 0x0+0x10000, slot0 0x10000+0x400000, slot1 0x410000+0x400000, scratch 0x810000+0x80000, storage 0x890000+0x400000, assets 0xc90000+0x300000, logs 0xf90000+0x70000. Memory: FLASH 213996 B / 16776960 B (1.28%), IRAM 51484 B / 329 KiB, DRAM 92552 B / 313 KiB, IROM 110986 B / 16 MiB, DROM 148460 B / 16 MiB; zephyr.bin 213996 B / 209 KiB. Three final codex review passes over staged/unstaged/untracked changes found no discrete introduced bugs; earlier P1 8 MiB flash0 mismatch was fixed. Physical flash/boot validation remains split to child project-LICHEN-h7t5.7.14.1 and blocks closure.",
+  "status": "blocked",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T19:31:03.588385Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-30T19:31:03.588943Z",
+  "updated_at": "2026-06-30T21:21:12.959564Z",
   "labels": [
     "zephyr",
     "lilygo",
@@ -25,6 +27,12 @@
       "depends_on_id": "project-LICHEN-h7t5.7",
       "type": "parent-child",
       "created_at": "2026-06-30T19:31:03.588943Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.14",
+      "depends_on_id": "project-LICHEN-h7t5.7.14.1",
+      "type": "blocks",
+      "created_at": "2026-06-30T21:12:35.213342Z"
     }
   ]
 }
