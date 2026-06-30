@@ -8,11 +8,19 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T06:08:30.091938Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-30T06:08:30.091961Z",
+  "updated_at": "2026-06-30T06:12:36.177198Z",
   "labels": [
     "zephyr",
     "meshcore",
     "app-interface",
     "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c4y",
+      "depends_on_id": "project-LICHEN-zte2",
+      "type": "blocks",
+      "created_at": "2026-06-30T06:12:36.177198Z"
+    }
   ]
 }
