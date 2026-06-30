@@ -2,6 +2,7 @@
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
 #include <errno.h>
+#include <stdbool.h>
 #include <string.h>
 
 #include <zephyr/device.h>
@@ -13,6 +14,8 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap_service.h>
+
+#include "config_cbor.h"
 
 #ifdef CONFIG_LORA_LICHEN_BLE
 #include "ble_uart.h"
@@ -50,6 +53,16 @@ static K_SEM_DEFINE(s_radio_ready, 0, 1);
 
 /* CBOR content-format code (RFC 7252 §12.3 / IANA CoAP Content-Formats) */
 #define CBOR_CONTENT_FORMAT 60
+
+#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
+#define LICHEN_GATEWAY_STATUS_ROLE "root"
+#define LICHEN_GATEWAY_STATUS_RPL_CAPABLE true
+#define LICHEN_GATEWAY_STATUS_RANK 256
+#else
+#define LICHEN_GATEWAY_STATUS_ROLE "gateway"
+#define LICHEN_GATEWAY_STATUS_RPL_CAPABLE false
+#define LICHEN_GATEWAY_STATUS_RANK 0xffff
+#endif
 
 /* Mutable gateway config — written by PUT /config */
 static int8_t s_tx_power_dbm = 14;
@@ -107,31 +120,35 @@ static int coap_respond(struct coap_resource *resource,
  * -------------------------------------------------------------------------- */
 
 /*
- * Build CBOR: {"rank": <rank>, "role": "root", "uptime": <ms>}
+ * Build CBOR: {"rank": <rank>, "role": <role>, "rpl": <bool>, "uptime": <ms>}
  * Returns encoded byte count.
  */
-static size_t encode_status_cbor(uint8_t *buf, size_t buf_size, uint16_t rank)
+static size_t encode_status_cbor(uint8_t *buf, size_t buf_size, uint16_t rank,
+				 const char *role, bool rpl_capable)
 {
 	uint32_t uptime_ms = k_uptime_get_32();
+	size_t role_len = role ? strlen(role) : 0;
 
 	/*
 	 * CBOR encoding:
-	 *   a3              -- map(3)
+	 *   a4              -- map(4)
 	 *   64 "rank"       -- tstr(4)
 	 *   19 XX XX        -- uint(16-bit)
 	 *   64 "role"       -- tstr(4)
-	 *   64 "root"       -- tstr(4)
+	 *   <role>          -- tstr
+	 *   63 "rpl"        -- tstr(3)
+	 *   f4/f5           -- false/true
 	 *   66 "uptime"     -- tstr(6)
 	 *   1a XX XX XX XX  -- uint(32-bit)
-	 * Total: 1 + 7 + 7 + 13 = 28 bytes
 	 */
-#define STATUS_CBOR_SIZE 28
-	if (buf_size < STATUS_CBOR_SIZE) {
+#define STATUS_CBOR_FIXED_OVERHEAD 32
+	if (role == NULL || role_len > 23 ||
+	    buf_size < STATUS_CBOR_FIXED_OVERHEAD + role_len) {
 		return 0;
 	}
 
 	size_t off = 0;
-	buf[off++] = 0xa3; /* map(3) */
+	buf[off++] = 0xa4; /* map(4) */
 
 	/* rank: uint16 */
 	buf[off++] = 0x64; /* tstr(4) */
@@ -140,11 +157,17 @@ static size_t encode_status_cbor(uint8_t *buf, size_t buf_size, uint16_t rank)
 	buf[off++] = (uint8_t)(rank >> 8);
 	buf[off++] = (uint8_t)(rank & 0xFF);
 
-	/* role: "root" */
+	/* role */
 	buf[off++] = 0x64; /* tstr(4) */
 	buf[off++] = 'r'; buf[off++] = 'o'; buf[off++] = 'l'; buf[off++] = 'e';
-	buf[off++] = 0x64; /* tstr(4) */
-	buf[off++] = 'r'; buf[off++] = 'o'; buf[off++] = 'o'; buf[off++] = 't';
+	buf[off++] = 0x60 | (uint8_t)role_len;
+	memcpy(&buf[off], role, role_len);
+	off += role_len;
+
+	/* rpl: bool */
+	buf[off++] = 0x63; /* tstr(3) */
+	buf[off++] = 'r'; buf[off++] = 'p'; buf[off++] = 'l';
+	buf[off++] = rpl_capable ? 0xf5 : 0xf4;
 
 	/* uptime: uint32 */
 	buf[off++] = 0x66; /* tstr(6) */
@@ -160,14 +183,16 @@ static size_t encode_status_cbor(uint8_t *buf, size_t buf_size, uint16_t rank)
 }
 
 /* Gateway status state (observable) */
-static uint16_t s_rank = 256;  /* RPL rank: 256 = root */
+static uint16_t s_rank = LICHEN_GATEWAY_STATUS_RANK;
 
 static int status_get(struct coap_resource *resource,
 		      struct coap_packet *request,
 		      struct sockaddr *addr, socklen_t addr_len)
 {
-	uint8_t cbor_buf[32];
-	size_t len = encode_status_cbor(cbor_buf, sizeof(cbor_buf), s_rank);
+	uint8_t cbor_buf[48];
+	size_t len = encode_status_cbor(cbor_buf, sizeof(cbor_buf), s_rank,
+					LICHEN_GATEWAY_STATUS_ROLE,
+					LICHEN_GATEWAY_STATUS_RPL_CAPABLE);
 
 	return coap_respond(resource, request, addr, addr_len,
 			    COAP_RESPONSE_CODE_CONTENT, cbor_buf, len);
@@ -181,12 +206,14 @@ static void status_notify(struct coap_resource *resource,
 			  struct coap_observer *observer)
 {
 	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
-	uint8_t cbor_buf[32];
+	uint8_t cbor_buf[48];
 	struct coap_packet notif;
 	size_t cbor_len;
 	int r;
 
-	cbor_len = encode_status_cbor(cbor_buf, sizeof(cbor_buf), s_rank);
+	cbor_len = encode_status_cbor(cbor_buf, sizeof(cbor_buf), s_rank,
+				      LICHEN_GATEWAY_STATUS_ROLE,
+				      LICHEN_GATEWAY_STATUS_RPL_CAPABLE);
 	if (cbor_len == 0) {
 		return;
 	}
@@ -258,45 +285,13 @@ COAP_RESOURCE_DEFINE(neighbors, lichen_coap, {
  * /config
  * -------------------------------------------------------------------------- */
 
-/*
- * Build CBOR {"tx_power_dbm": <val>} into buf (must be >= 16 bytes).
- *   a1              -- map(1)
- *   6c "tx_power_dbm" -- tstr(12)
- *   <val>           -- uint or negative int
- *
- * Returns encoded byte count (15 or 16).
- */
-static size_t encode_config_cbor(uint8_t *buf, size_t buf_size)
-{
-	if (buf_size < 16) {
-		return 0;
-	}
-	buf[0] = 0xa1;
-	buf[1] = 0x6c;
-	(void)memcpy(&buf[2], "tx_power_dbm", 12);
-	if (s_tx_power_dbm >= 0 && s_tx_power_dbm <= 23) {
-		buf[14] = (uint8_t)s_tx_power_dbm;
-		return 15;
-	} else if (s_tx_power_dbm >= 24) {
-		buf[14] = 0x18;
-		buf[15] = (uint8_t)s_tx_power_dbm;
-		return 16;
-	} else if (s_tx_power_dbm >= -24) {
-		buf[14] = (uint8_t)(0x20u + (uint8_t)(-s_tx_power_dbm - 1));
-		return 15;
-	} else {
-		buf[14] = 0x38;
-		buf[15] = (uint8_t)(-s_tx_power_dbm - 1);
-		return 16;
-	}
-}
-
 static int config_get(struct coap_resource *resource,
 		      struct coap_packet *request,
 		      struct sockaddr *addr, socklen_t addr_len)
 {
 	uint8_t cbor_buf[16];
-	size_t len = encode_config_cbor(cbor_buf, sizeof(cbor_buf));
+	size_t len = lichen_gateway_encode_config_cbor(cbor_buf, sizeof(cbor_buf),
+						      s_tx_power_dbm);
 
 	return coap_respond(resource, request, addr, addr_len,
 			    COAP_RESPONSE_CODE_CONTENT, cbor_buf, len);
@@ -306,7 +301,18 @@ static int config_put(struct coap_resource *resource,
 		      struct coap_packet *request,
 		      struct sockaddr *addr, socklen_t addr_len)
 {
-	/* CBOR body parsing deferred; accept unconditionally */
+	uint16_t payload_len = 0;
+	const uint8_t *payload = coap_packet_get_payload(request, &payload_len);
+	int8_t tx_power_dbm = 0;
+
+	if (payload == NULL ||
+	    lichen_gateway_decode_config_cbor(payload, payload_len,
+					      &tx_power_dbm) < 0) {
+		return coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
+	}
+
+	s_tx_power_dbm = tx_power_dbm;
 	return coap_respond(resource, request, addr, addr_len,
 			    COAP_RESPONSE_CODE_CHANGED, NULL, 0);
 }
@@ -435,9 +441,11 @@ int main(void)
 	}
 #endif
 
-	/* RPL DODAG root: Zephyr has no RPL subsystem.  This gateway acts as
-	 * the mesh coordinator; RPL signalling is deferred until the C RPL
-	 * layer lands. */
+#if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
+	LOG_INF("RPL root signalling enabled");
+#else
+	LOG_WRN("RPL root signalling disabled - advertising /status rpl=false");
+#endif
 	LOG_INF("CoAP server on port %u (AUTOSTART)", coap_port);
 
 	return 0;

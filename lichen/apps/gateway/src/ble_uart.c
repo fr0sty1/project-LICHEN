@@ -12,6 +12,7 @@
  */
 
 #include "ble_uart.h"
+#include "ble_ingress.h"
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
@@ -63,26 +64,20 @@ static bool     s_rx_esc;
 static bool     s_rx_overflow;
 
 /* --------------------------------------------------------------------------
- * Packet dispatch: phone → mesh
+ * Packet dispatch: phone -> mesh
  * -------------------------------------------------------------------------- */
-
-/* IPv6 header is 40 bytes (RFC 8200 §3) */
-#define IPV6_HDR_MIN 40u
 
 static void slip_dispatch(const uint8_t *pkt, size_t len)
 {
-	if (len < IPV6_HDR_MIN) {
-		LOG_WRN("BLE UART RX %zu B: too short for IPv6 (need %u)", len, IPV6_HDR_MIN);
+	int ret;
+
+	ret = ble_ingress_ipv6_default(pkt, len);
+	if (ret < 0) {
+		LOG_WRN("BLE UART RX %zu B dropped: %d", len, ret);
 		return;
 	}
 
-	/*
-	 * TODO: inject the IPv6 packet into the mesh via the Zephyr net_pkt
-	 * API once the RPL/net integration layer lands.  Until then, log and
-	 * drop so the BLE UART layer is exercisable independently.
-	 */
-	LOG_INF("BLE UART RX %zu B (IPv6; mesh injection deferred)", len);
-	ARG_UNUSED(pkt);
+	LOG_DBG("BLE UART RX %zu B injected into IPv6 ingress", len);
 }
 
 /* --------------------------------------------------------------------------

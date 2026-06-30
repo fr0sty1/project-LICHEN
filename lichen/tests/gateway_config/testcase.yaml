@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+tests:
+  net.lichen.gateway_config:
+    tags:
+      - net
+      - lichen
+      - gateway
+      - cbor
+    platform_allow:
+      - qemu_x86
+    integration_platforms:
+      - qemu_x86
