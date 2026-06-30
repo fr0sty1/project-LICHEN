@@ -9,6 +9,49 @@
  * Bit order: MSB-first (network bit order). The residue is zero-padded to
  * a byte boundary.
  *
+ * COMPRESSION PROFILE DECISIONS
+ * =============================
+ *
+ * This file currently implements the LICHEN SCHC profile, not a fully generic
+ * Zephyr SCHC module. The intended architecture is:
+ *
+ *   generic RFC 8724 engine + rule machinery
+ *       used by
+ *   LICHEN-specific packet profiles and rule table
+ *
+ * Until that split exists, keep the profile decisions explicit in this file:
+ *
+ * - Rule IDs are interop constants. They must continue to match
+ *   rust/lichen-schc, python/src/lichen/schc, constants.toml, and
+ *   test/vectors/schc_compression.json.
+ *
+ * - Rules 0 and 1 cover IPv6 + UDP + CoAP. Rule 0 is link-local source and
+ *   destination. Rule 1 is global source and destination. Mixed-scope or
+ *   otherwise unsupported address shapes fall through to rule 255.
+ *
+ * - Rule 2 covers link-local ICMPv6 Echo Request/Reply only.
+ *
+ * - Rules 3 and 4 cover link-local RPL control messages over ICMPv6 type 155.
+ *   Rule 3 covers DIO. Rule 4 covers DAO only when the D flag says DODAGID is
+ *   present, matching the non-storing-mode case LICHEN optimizes for.
+ *
+ * - Rule 255 is the uncompressed fallback. It is deliberately preserved so new
+ *   packet shapes remain deliverable before a dedicated compression rule is
+ *   designed and tested.
+ *
+ * - Checksums, lengths, and other derivable fields are reconstructed during
+ *   decompression. They are not carried in the residue unless a rule says they
+ *   must be sent.
+ *
+ * - Variable tails are carried verbatim after the fixed rule residue. For CoAP
+ *   this means token/options/payload after the 4-byte fixed header. For RPL it
+ *   means options after the DIO/DAO base object.
+ *
+ * - Packet-header positions are fixed by IPv6/UDP/CoAP/ICMPv6/RPL wire
+ *   formats, but maintainers must not spread raw stride offsets through new
+ *   code. Use named constants and accessor helpers/macros. Existing raw
+ *   offsets are being tracked for cleanup under the SCHC header-accessor work.
+ *
  * SECURITY CONSIDERATIONS
  * =======================
  * SCHC compression can leak information about packet contents through
@@ -40,6 +83,65 @@
 #define IPV6_HDR_LEN    40   /* IPv6 base header length */
 #define UDP_HDR_LEN     8    /* UDP header length */
 #define ICMPV6_TYPE_RPL 155  /* RPL ICMPv6 type (RFC 6550) */
+
+/*
+ * Packet-layout constants.
+ *
+ * These compile-time constants document the offsets currently implied by the
+ * profile code below. They are intentionally named even where older code still
+ * uses numeric offsets directly; new or refactored code should use accessors
+ * built on these names instead of repeating numbers such as 40, 44, or 45.
+ */
+enum schc_ipv6_layout {
+	SCHC_IPV6_VERSION_OFFSET = 0,
+	SCHC_IPV6_PAYLOAD_LEN_OFFSET = 4,
+	SCHC_IPV6_NEXT_HEADER_OFFSET = 6,
+	SCHC_IPV6_HOP_LIMIT_OFFSET = 7,
+	SCHC_IPV6_SRC_OFFSET = 8,
+	SCHC_IPV6_DST_OFFSET = 24,
+	SCHC_IPV6_ADDR_LEN = 16,
+};
+
+enum schc_udp_layout {
+	SCHC_UDP_SRC_PORT_OFFSET = 0,
+	SCHC_UDP_DST_PORT_OFFSET = 2,
+	SCHC_UDP_LEN_OFFSET = 4,
+	SCHC_UDP_CHECKSUM_OFFSET = 6,
+	SCHC_UDP_PAYLOAD_OFFSET = UDP_HDR_LEN,
+};
+
+enum schc_coap_layout {
+	SCHC_COAP_VER_TYPE_TKL_OFFSET = 0,
+	SCHC_COAP_CODE_OFFSET = 1,
+	SCHC_COAP_MID_OFFSET = 2,
+	SCHC_COAP_FIXED_LEN = 4,
+};
+
+enum schc_icmpv6_layout {
+	SCHC_ICMPV6_TYPE_OFFSET = 0,
+	SCHC_ICMPV6_CODE_OFFSET = 1,
+	SCHC_ICMPV6_CHECKSUM_OFFSET = 2,
+	SCHC_ICMPV6_BODY_OFFSET = 4,
+	SCHC_ICMPV6_ECHO_ID_OFFSET = 4,
+	SCHC_ICMPV6_ECHO_SEQ_OFFSET = 6,
+	SCHC_ICMPV6_ECHO_TAIL_OFFSET = 8,
+};
+
+enum schc_rpl_layout {
+	SCHC_RPL_AFTER_IPV6_OFFSET = IPV6_HDR_LEN + SCHC_ICMPV6_BODY_OFFSET,
+	SCHC_RPL_INSTANCE_OFFSET = 0,
+	SCHC_RPL_DIO_VERSION_OFFSET = 1,
+	SCHC_RPL_DIO_RANK_OFFSET = 2,
+	SCHC_RPL_DIO_GMOP_OFFSET = 4,
+	SCHC_RPL_DIO_DTSN_OFFSET = 5,
+	SCHC_RPL_DIO_FLAGS_OFFSET = 6,
+	SCHC_RPL_DIO_DODAGID_OFFSET = 8,
+	SCHC_RPL_DIO_BASE_LEN = 24,
+	SCHC_RPL_DAO_KD_FLAGS_OFFSET = 1,
+	SCHC_RPL_DAO_SEQUENCE_OFFSET = 3,
+	SCHC_RPL_DAO_DODAGID_OFFSET = 4,
+	SCHC_RPL_DAO_BASE_WITH_DODAGID_LEN = 20,
+};
 
 /* ─── bit-packing ─────────────────────────────────────────────────────────── */
 

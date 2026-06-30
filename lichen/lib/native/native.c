@@ -198,6 +198,8 @@ static uint8_t s_tx_buf[TX_BUF_SIZE];
 
 static bool s_log_subscribed;
 static lichen_native_rx_cb_t s_rx_cb;
+static bool s_initialized;
+static K_MUTEX_DEFINE(s_init_mutex);
 
 /* Write a complete frame: [0xC1][LEN_HI][LEN_LO][payload] */
 static int native_send_frame(const uint8_t *payload, uint16_t len)
@@ -330,8 +332,16 @@ static void rx_thread_fn(void *p1, void *p2, void *p3)
 				int type = parse_msg_type(s_rx_payload, expected_len);
 				if (type < 0) {
 					LOG_WRN("CBOR parse failed — dropping frame");
-				} else if (s_rx_cb) {
-					s_rx_cb((uint8_t)type, s_rx_payload, expected_len);
+				} else {
+					lichen_native_rx_cb_t rx_cb;
+
+					k_mutex_lock(&s_init_mutex, K_FOREVER);
+					rx_cb = s_rx_cb;
+					k_mutex_unlock(&s_init_mutex);
+
+					if (rx_cb) {
+						rx_cb((uint8_t)type, s_rx_payload, expected_len);
+					}
 				}
 				state = S_SYNC;
 			}
@@ -346,6 +356,14 @@ static void rx_thread_fn(void *p1, void *p2, void *p3)
 
 int lichen_native_init(lichen_native_rx_cb_t rx_cb)
 {
+	k_mutex_lock(&s_init_mutex, K_FOREVER);
+
+	if (s_initialized) {
+		s_rx_cb = rx_cb;
+		k_mutex_unlock(&s_init_mutex);
+		return 0;
+	}
+
 	s_rx_cb = rx_cb;
 	s_log_subscribed = false;
 
@@ -360,11 +378,13 @@ int lichen_native_init(lichen_native_rx_cb_t rx_cb)
 	s_uart = DEVICE_DT_GET(DT_CHOSEN(lichen_native_uart));
 #else
 	LOG_ERR("lichen,native-uart not set in chosen");
+	k_mutex_unlock(&s_init_mutex);
 	return -ENODEV;
 #endif
 
 	if (!device_is_ready(s_uart)) {
 		LOG_ERR("native UART not ready");
+		k_mutex_unlock(&s_init_mutex);
 		return -ENODEV;
 	}
 
@@ -376,6 +396,8 @@ int lichen_native_init(lichen_native_rx_cb_t rx_cb)
 			K_PRIO_COOP(7), 0, K_NO_WAIT);
 	k_thread_name_set(&s_rx_thread, "native_rx");
 
+	s_initialized = true;
+	k_mutex_unlock(&s_init_mutex);
 	return 0;
 }
 

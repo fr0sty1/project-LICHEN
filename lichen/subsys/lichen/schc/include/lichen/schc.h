@@ -17,6 +17,36 @@
  *
  * Compression target: 48+ byte IPv6/UDP header to 3-6 bytes.
  *
+ * Design decisions captured here are part of the wire contract:
+ *
+ * - This API is packet-oriented. Callers pass a complete IPv6 packet and get
+ *   one complete SCHC datagram. It is not a streaming parser.
+ *
+ * - Rule IDs are stable interop values, not local enum ordinals. Changing a
+ *   rule ID requires updating the Rust, Python, C, and JSON test vectors
+ *   together.
+ *
+ * - Rule selection is deterministic. The compressor tries specific LICHEN
+ *   profiles first and uses rule 255 only when no compression profile matches.
+ *   Rule 255 is an interop fallback, not a best-effort compression rule.
+ *
+ * - Unknown IPv6 shapes intentionally fall back to uncompressed passthrough.
+ *   That keeps the link usable while making missing compression rules visible
+ *   through size and rule ID.
+ *
+ * - Checksums and lengths are reconstructed on decompression instead of being
+ *   carried when the rule can derive them. Any future generic SCHC module must
+ *   preserve byte-for-byte output for the current test vectors.
+ *
+ * - The generic RFC 8724 engine and LICHEN-specific rules should remain
+ *   separable. LICHEN profiles decide which IPv6/UDP/CoAP/RPL shapes are in
+ *   scope; the SCHC engine should only apply rule mechanics.
+ *
+ * - Packet-header access in implementations should use named constants and
+ *   accessor helpers/macros rather than naked stride offsets such as
+ *   packet[45]. Fixed-format headers are positional by design, but duplicated
+ *   magic offsets are not acceptable as the code evolves.
+ *
  * @warning SCHC compression can leak information through compressed size
  * variations (compression oracle attack). In LICHEN, OSCORE encryption
  * happens BEFORE SCHC compression, so encrypted payloads appear opaque.

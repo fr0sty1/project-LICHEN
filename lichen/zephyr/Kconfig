@@ -4,6 +4,7 @@
 # LICHEN Zephyr module Kconfig extension
 
 rsource "../drivers/Kconfig"
+rsource "../lib/Kconfig"
 rsource "../subsys/Kconfig"
 
 # L2 integration from bridge-zephyr (Zephyr network stack integration)
