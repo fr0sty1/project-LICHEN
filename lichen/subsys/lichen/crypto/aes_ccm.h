@@ -3,13 +3,13 @@
 
 /**
  * @file aes_ccm.h
- * @brief AES-CCM-16-64-128 for OSCORE
+ * @brief Shared AES-CCM-16-64-128 helper
  *
  * COSE Algorithm ID 10: AES-CCM with 128-bit key, 64-bit tag, 13-byte nonce.
  */
 
-#ifndef LICHEN_OSCORE_AES_CCM_H_
-#define LICHEN_OSCORE_AES_CCM_H_
+#ifndef LICHEN_CRYPTO_AES_CCM_H_
+#define LICHEN_CRYPTO_AES_CCM_H_
 
 #include <stdint.h>
 #include <stddef.h>
@@ -64,4 +64,4 @@ int lichen_aes_ccm_decrypt(const uint8_t key[AES_CCM_KEY_LEN],
 		    const uint8_t *ciphertext, size_t ct_len,
 		    uint8_t *plaintext);
 
-#endif /* LICHEN_OSCORE_AES_CCM_H_ */
+#endif /* LICHEN_CRYPTO_AES_CCM_H_ */

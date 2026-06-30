@@ -3,6 +3,16 @@
 
 # LICHEN crypto subsystem Kconfig
 
+config LICHEN_CRYPTO_AES_CCM
+	bool "AES-CCM-16-64-128 helper"
+	depends on LICHEN
+	select TINYCRYPT
+	select TINYCRYPT_AES
+	select TINYCRYPT_AES_CCM
+	help
+	  Include the shared AES-CCM-16-64-128 helper used by link-layer
+	  encrypted frames and OSCORE.
+
 config LICHEN_CRYPTO_MONOCYPHER
 	bool "Monocypher cryptographic library"
 	default y if LICHEN_LINK_SCHNORR

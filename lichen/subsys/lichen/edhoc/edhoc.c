@@ -170,6 +170,7 @@ static int hkdf_expand(const uint8_t prk[32],
 		counter++;
 	}
 	crypto_wipe(t, sizeof(t));
+	return 0;
 }
 
 /*
@@ -184,6 +185,7 @@ static int edhoc_kdf(const uint8_t prk[32],
 {
 	uint8_t info[CBOR_BUF_SIZE];
 	size_t info_len = 0;
+	int ret;
 
 	/* Encode info as CBOR sequence */
 	ZCBOR_STATE_E(zse, 0, info, sizeof(info), 0);
@@ -203,9 +205,9 @@ static int edhoc_kdf(const uint8_t prk[32],
 
 	info_len = zse->payload - info;
 
-	hkdf_expand(prk, info, info_len, out, out_len);
+	ret = hkdf_expand(prk, info, info_len, out, out_len);
 	crypto_wipe(info, sizeof(info));
-	return 0;
+	return ret;
 }
 
 /*

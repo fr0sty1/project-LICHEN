@@ -13,13 +13,20 @@
  * Uses tinycrypt's CCM mode implementation.
  */
 
-#include <string.h>
 #include <tinycrypt/aes.h>
 #include <tinycrypt/ccm_mode.h>
 #include <tinycrypt/constants.h>
-#include <monocypher.h>
 
 #include "aes_ccm.h"
+
+static void aes_ccm_wipe(void *buf, size_t len)
+{
+	volatile uint8_t *p = (volatile uint8_t *)buf;
+
+	while (len-- > 0) {
+		*p++ = 0;
+	}
+}
 
 int lichen_aes_ccm_encrypt(const uint8_t key[AES_CCM_KEY_LEN],
 		    const uint8_t nonce[AES_CCM_NONCE_LEN],
@@ -74,8 +81,8 @@ int lichen_aes_ccm_encrypt(const uint8_t key[AES_CCM_KEY_LEN],
 
 cleanup:
 	/* Wipe key schedule and CCM state to prevent key leakage */
-	crypto_wipe(&sched, sizeof(sched));
-	crypto_wipe(&ccm, sizeof(ccm));
+	aes_ccm_wipe(&sched, sizeof(sched));
+	aes_ccm_wipe(&ccm, sizeof(ccm));
 	return result;
 }
 
@@ -133,11 +140,11 @@ int lichen_aes_ccm_decrypt(const uint8_t key[AES_CCM_KEY_LEN],
 
 cleanup:
 	/* Wipe key schedule and CCM state to prevent key leakage */
-	crypto_wipe(&sched, sizeof(sched));
-	crypto_wipe(&ccm, sizeof(ccm));
+	aes_ccm_wipe(&sched, sizeof(sched));
+	aes_ccm_wipe(&ccm, sizeof(ccm));
 	/* Wipe plaintext on auth failure to prevent leaking partial decryption */
 	if (result != 0 && ct_len >= AES_CCM_TAG_LEN) {
-		crypto_wipe(plaintext, ct_len - AES_CCM_TAG_LEN);
+		aes_ccm_wipe(plaintext, ct_len - AES_CCM_TAG_LEN);
 	}
 	return result;
 }

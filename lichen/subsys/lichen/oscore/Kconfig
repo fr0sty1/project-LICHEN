@@ -6,9 +6,8 @@
 menuconfig LICHEN_OSCORE
 	bool "OSCORE end-to-end CoAP security"
 	depends on LICHEN
-	select TINYCRYPT
-	select TINYCRYPT_AES
-	select TINYCRYPT_AES_CCM
+	select LICHEN_CRYPTO_AES_CCM
+	select LICHEN_CRYPTO_MONOCYPHER
 	select TINYCRYPT_SHA256
 	select TINYCRYPT_SHA256_HMAC
 	select ZCBOR

@@ -10,4 +10,8 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_CRYPTO_MONOCYPHER
   monocypher-ed25519.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_LICHEN_CRYPTO_AES_CCM
+  aes_ccm.c
+)
+
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR})
