@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-py4c.1.4",
+  "title": "Implement shared native client protocol model for Python TUI",
+  "description": "Why this exists: BLE and IP/CoAP paths must expose the same behavior to the TUI instead of creating two separate apps. What needs to be done: define Python client interfaces for connect, identify node, get status, get/set config, list mesh peers, send message, receive message, subscribe logs, diagnostics, and disconnect. Reuse or extend existing python/src/lichen/interface native protocol code where appropriate. Acceptance criteria: shared app-facing model exists; BLE and IP adapters can implement it; message and status types are typed; error/result codes preserve firmware details; unit tests cover model parsing and normalization.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:51:22.414376Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:51:23.80468Z",
+  "labels": [
+    "python",
+    "native-protocol",
+    "client-app",
+    "tui",
+    "native-interface",
+    "ble",
+    "coap",
+    "lilygo",
+    "zephyr",
+    "lichen",
+    "app-interface",
+    "firmware",
+    "lci"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-py4c.1.4",
+      "depends_on_id": "project-LICHEN-py4c.1",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:51:22.414849Z"
+    },
+    {
+      "issue_id": "project-LICHEN-py4c.1.4",
+      "depends_on_id": "project-LICHEN-py4c.1.3",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:51:23.80468Z"
+    }
+  ]
+}

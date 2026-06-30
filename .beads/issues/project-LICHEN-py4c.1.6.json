@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-py4c.1.6",
+  "title": "Implement IP/CoAP transport for Python TUI native client",
+  "description": "Why this exists: native clients also need the standards-native IP path defined by the Local Client Interface. What needs to be done: implement connection and request/observe flows for IPv6 + CoAP over a local node link, including discovery, status/config resources, messaging resources, mesh state resources, and error handling. Acceptance criteria: client can address a local node over the LCI path; CoAP resource paths and content formats are aligned with spec section 17 and project-LICHEN-py4c; observe/streaming behavior is represented in the shared app model; native_sim or fake-server tests cover success, timeout, malformed response, and unsupported-resource cases.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:51:22.645028Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:51:24.149316Z",
+  "labels": [
+    "python",
+    "coap",
+    "ipv6",
+    "client-app",
+    "tui",
+    "native-interface",
+    "ble",
+    "lilygo",
+    "zephyr",
+    "lichen",
+    "app-interface",
+    "firmware",
+    "lci"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-py4c.1.6",
+      "depends_on_id": "project-LICHEN-py4c.1",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:51:22.645515Z"
+    },
+    {
+      "issue_id": "project-LICHEN-py4c.1.6",
+      "depends_on_id": "project-LICHEN-py4c.1.4",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:51:24.149316Z"
+    }
+  ]
+}

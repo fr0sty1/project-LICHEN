@@ -1,0 +1,61 @@
+{
+  "id": "project-LICHEN-py4c.1.9",
+  "title": "Implement TUI status, mesh, config, and diagnostics views",
+  "description": "Why this exists: the TUI should be a useful field and development tool, not only a chat window. What needs to be done: implement node status, radio/link summary, BLE/IP connection info, mesh neighbor or route state, basic editable config fields, key/trust status display where safe, log subscription, raw diagnostics, and unsupported-feature messaging. Acceptance criteria: status/config/mesh/log screens use the shared model; sensitive key material is never printed accidentally; config writes require confirmation; unsupported firmware operations show actionable errors; tests cover render and command behavior.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:51:22.984874Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:51:25.948167Z",
+  "labels": [
+    "python",
+    "tui",
+    "status",
+    "config",
+    "diagnostics",
+    "client-app",
+    "native-interface",
+    "ble",
+    "coap",
+    "lilygo",
+    "zephyr",
+    "lichen",
+    "app-interface",
+    "firmware",
+    "lci"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-py4c.1.9",
+      "depends_on_id": "project-LICHEN-py4c.1",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:51:22.985537Z"
+    },
+    {
+      "issue_id": "project-LICHEN-py4c.1.9",
+      "depends_on_id": "project-LICHEN-py4c.1.4",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:51:25.433764Z"
+    },
+    {
+      "issue_id": "project-LICHEN-py4c.1.9",
+      "depends_on_id": "project-LICHEN-py4c.1.7",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:51:25.606857Z"
+    },
+    {
+      "issue_id": "project-LICHEN-py4c.1.9",
+      "depends_on_id": "project-LICHEN-py4c.1.5",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:51:25.776879Z"
+    },
+    {
+      "issue_id": "project-LICHEN-py4c.1.9",
+      "depends_on_id": "project-LICHEN-py4c.1.6",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:51:25.948167Z"
+    }
+  ]
+}
