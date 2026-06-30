@@ -43,6 +43,7 @@ enum schc_error {
 	SCHC_ERR_NOT_SUPPORTED = -5,
 	SCHC_ERR_INVALID_ARGUMENT = -6,
 	SCHC_ERR_DONE = -7,
+	SCHC_ERR_MIC_MISMATCH = -8,
 };
 
 struct schc_rule;
@@ -111,13 +112,14 @@ enum schc_fragment_direction {
 
 enum schc_fragment_mode {
 	SCHC_FRAGMENT_NO_ACK,
-	/* ACK modes currently share the No-ACK wire format until ACK/MIC APIs land. */
 	SCHC_FRAGMENT_ACK_ALWAYS,
 	SCHC_FRAGMENT_ACK_ON_ERROR,
 };
 
 struct schc_fragmenter_config {
 	uint8_t rule_id;
+	uint8_t dtag;
+	uint8_t dtag_bits;
 	uint8_t window_bits;
 	uint8_t fcn_bits;
 	size_t tile_size;
@@ -133,6 +135,17 @@ struct schc_fragmenter {
 	size_t offset;
 };
 
+struct schc_ack {
+	uint8_t rule_id;
+	uint8_t dtag;
+	uint8_t dtag_bits;
+	uint8_t window;
+	uint8_t window_bits;
+	bool complete;
+	uint8_t bitmap_bits;
+	uint64_t bitmap;
+};
+
 size_t schc_fragment_header_len(const struct schc_fragmenter_config *config);
 
 SCHC_WARN_UNUSED_RESULT
@@ -144,11 +157,29 @@ SCHC_WARN_UNUSED_RESULT
 int schc_fragmenter_next(struct schc_fragmenter *fragmenter,
 			 uint8_t *out, size_t out_len);
 
+SCHC_WARN_UNUSED_RESULT
+int schc_fragmenter_retransmit(const struct schc_fragmenter *fragmenter,
+			       const struct schc_ack *ack,
+			       uint8_t *out, size_t out_len);
+
+size_t schc_ack_len(const struct schc_ack *ack);
+
+SCHC_WARN_UNUSED_RESULT
+int schc_ack_encode(const struct schc_ack *ack, uint8_t *out, size_t out_len);
+
+SCHC_WARN_UNUSED_RESULT
+int schc_ack_decode(struct schc_ack *ack, uint8_t dtag_bits,
+		    uint8_t window_bits, uint8_t bitmap_bits,
+		    const uint8_t *data, size_t data_len);
+
 struct schc_reassembler_config {
 	uint8_t rule_id;
+	uint8_t dtag;
+	uint8_t dtag_bits;
 	uint8_t window_bits;
 	uint8_t fcn_bits;
 	size_t tile_size;
+	enum schc_fragment_mode mode;
 };
 
 struct schc_reassembler {
@@ -157,6 +188,10 @@ struct schc_reassembler {
 	size_t packet_max_len;
 	size_t packet_len;
 	bool complete;
+	uint64_t received_tiles;
+	size_t received_tile_count;
+	size_t contiguous_tile_count;
+	uint8_t last_window;
 };
 
 size_t schc_reassembler_header_len(const struct schc_reassembler_config *config);
@@ -170,6 +205,10 @@ SCHC_WARN_UNUSED_RESULT
 int schc_reassembler_input(struct schc_reassembler *reassembler,
 			   const uint8_t *fragment, size_t fragment_len,
 			   bool *complete);
+
+SCHC_WARN_UNUSED_RESULT
+int schc_reassembler_ack(const struct schc_reassembler *reassembler,
+			 struct schc_ack *ack);
 
 #ifdef __cplusplus
 }

@@ -2,6 +2,7 @@
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
 #include <zephyr/ztest.h>
+#include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/util.h>
 
 #include <schc/bitstream.h>
@@ -184,7 +185,7 @@ ZTEST(schc_generic, test_fragmenter_rolls_windows)
 		.tile_size = 3,
 		.mtu = 5,
 		.direction = SCHC_FRAGMENT_DOWNLINK,
-		.mode = SCHC_FRAGMENT_ACK_ALWAYS,
+		.mode = SCHC_FRAGMENT_NO_ACK,
 	};
 	uint8_t out[5];
 	const uint8_t expected_control[] = {
@@ -235,6 +236,38 @@ ZTEST(schc_generic, test_fragmenter_rejects_too_small_mtu_or_output)
 		      SCHC_ERR_BUFFER_TOO_SMALL);
 }
 
+ZTEST(schc_generic, test_fragmenter_emits_dtag_and_ack_mode_mic)
+{
+	const uint8_t packet[] = { 0x10, 0x11, 0x12 };
+	struct schc_fragmenter fragmenter;
+	struct schc_fragmenter_config config = {
+		.rule_id = TEST_RULE_ID,
+		.dtag = 0x01,
+		.dtag_bits = 1,
+		.window_bits = 2,
+		.fcn_bits = 3,
+		.tile_size = 4,
+		.mtu = 10,
+		.direction = SCHC_FRAGMENT_UPLINK,
+		.mode = SCHC_FRAGMENT_ACK_ON_ERROR,
+	};
+	uint8_t out[10];
+
+	zassert_equal(schc_fragmenter_init(&fragmenter, &config,
+					   packet, sizeof(packet)),
+		      SCHC_OK);
+
+	int ret = schc_fragmenter_next(&fragmenter, out, sizeof(out));
+
+	zassert_equal(ret, 9);
+	zassert_equal(out[0], TEST_RULE_ID);
+	zassert_equal(out[1], 0x27);
+	zassert_mem_equal(&out[2], packet, sizeof(packet));
+	zassert_not_equal(sys_get_be32(&out[5]), 0);
+	zassert_equal(schc_fragmenter_next(&fragmenter, out, sizeof(out)),
+		      SCHC_ERR_DONE);
+}
+
 ZTEST(schc_generic, test_reassembler_round_trips_fragmenter_output)
 {
 	const uint8_t packet[] = {
@@ -246,6 +279,8 @@ ZTEST(schc_generic, test_reassembler_round_trips_fragmenter_output)
 	struct schc_reassembler reassembler;
 	struct schc_fragmenter_config frag_config = {
 		.rule_id = TEST_RULE_ID,
+		.dtag = 1,
+		.dtag_bits = 1,
 		.window_bits = 2,
 		.fcn_bits = 3,
 		.tile_size = 4,
@@ -255,6 +290,8 @@ ZTEST(schc_generic, test_reassembler_round_trips_fragmenter_output)
 	};
 	struct schc_reassembler_config reasm_config = {
 		.rule_id = TEST_RULE_ID,
+		.dtag = 1,
+		.dtag_bits = 1,
 		.window_bits = 2,
 		.fcn_bits = 3,
 		.tile_size = 4,
@@ -293,6 +330,86 @@ ZTEST(schc_generic, test_reassembler_round_trips_fragmenter_output)
 	zassert_mem_equal(output, packet, sizeof(packet));
 }
 
+ZTEST(schc_generic, test_ack_mode_reassembler_validates_mic)
+{
+	const uint8_t packet[] = {
+		0xa0, 0xa1, 0xa2, 0xa3,
+		0xb0,
+	};
+	struct schc_fragmenter fragmenter;
+	struct schc_reassembler reassembler;
+	struct schc_fragmenter_config frag_config = {
+		.rule_id = TEST_RULE_ID,
+		.dtag = 1,
+		.dtag_bits = 1,
+		.window_bits = 2,
+		.fcn_bits = 3,
+		.tile_size = 4,
+		.mtu = 10,
+		.direction = SCHC_FRAGMENT_UPLINK,
+		.mode = SCHC_FRAGMENT_ACK_ALWAYS,
+	};
+	struct schc_reassembler_config reasm_config = {
+		.rule_id = TEST_RULE_ID,
+		.dtag = 1,
+		.dtag_bits = 1,
+		.window_bits = 2,
+		.fcn_bits = 3,
+		.tile_size = 4,
+		.mode = SCHC_FRAGMENT_ACK_ALWAYS,
+	};
+	uint8_t fragment[10];
+	uint8_t correct_all_1[10];
+	uint8_t output[sizeof(packet)];
+	bool complete = false;
+
+	zassert_equal(schc_fragmenter_init(&fragmenter, &frag_config,
+					   packet, sizeof(packet)),
+		      SCHC_OK);
+	zassert_equal(schc_reassembler_init(&reassembler, &reasm_config,
+					    output, sizeof(output)),
+		      SCHC_OK);
+
+	int ret = schc_fragmenter_next(&fragmenter, fragment, sizeof(fragment));
+	zassert_equal(ret, 6);
+	zassert_equal(schc_reassembler_input(&reassembler, fragment, ret,
+					     &complete),
+		      SCHC_OK);
+	zassert_false(complete);
+
+	ret = schc_fragmenter_next(&fragmenter, fragment, sizeof(fragment));
+	zassert_equal(ret, 7);
+	zassert_equal(schc_reassembler_input(&reassembler, fragment, ret,
+					     &complete),
+		      sizeof(packet));
+	zassert_true(complete);
+	zassert_mem_equal(output, packet, sizeof(packet));
+
+	zassert_equal(schc_reassembler_init(&reassembler, &reasm_config,
+					    output, sizeof(output)),
+		      SCHC_OK);
+	zassert_equal(schc_fragmenter_init(&fragmenter, &frag_config,
+					   packet, sizeof(packet)),
+		      SCHC_OK);
+	ret = schc_fragmenter_next(&fragmenter, fragment, sizeof(fragment));
+	zassert_equal(schc_reassembler_input(&reassembler, fragment, ret,
+					     &complete),
+		      SCHC_OK);
+	ret = schc_fragmenter_next(&fragmenter, fragment, sizeof(fragment));
+	zassert_true(ret > 0);
+	memcpy(correct_all_1, fragment, ret);
+	fragment[ret - 1] ^= 0x01;
+	zassert_equal(schc_reassembler_input(&reassembler, fragment, ret,
+					     &complete),
+		      SCHC_ERR_MIC_MISMATCH);
+	zassert_false(complete);
+	zassert_equal(schc_reassembler_input(&reassembler, correct_all_1, ret,
+					     &complete),
+		      sizeof(packet));
+	zassert_true(complete);
+	zassert_mem_equal(output, packet, sizeof(packet));
+}
+
 ZTEST(schc_generic, test_reassembler_rejects_wrong_rule_and_out_of_order)
 {
 	struct schc_reassembler reassembler;
@@ -306,6 +423,7 @@ ZTEST(schc_generic, test_reassembler_rejects_wrong_rule_and_out_of_order)
 	bool complete = false;
 	const uint8_t wrong_rule[] = { 0x01, 0x06, 0xaa, 0xbb, 0xcc, 0xdd };
 	const uint8_t out_of_order[] = { TEST_RULE_ID, 0x05, 0xaa, 0xbb, 0xcc, 0xdd };
+	struct schc_ack ack;
 
 	zassert_equal(schc_reassembler_init(&reassembler, &config,
 					    output, sizeof(output)),
@@ -315,7 +433,147 @@ ZTEST(schc_generic, test_reassembler_rejects_wrong_rule_and_out_of_order)
 		      SCHC_ERR_UNKNOWN_RULE_ID);
 	zassert_equal(schc_reassembler_input(&reassembler, out_of_order,
 					     sizeof(out_of_order), &complete),
+		      SCHC_OK);
+	zassert_false(complete);
+	zassert_equal(schc_reassembler_ack(&reassembler, &ack), SCHC_OK);
+	zassert_equal(ack.bitmap_bits, 7);
+	zassert_equal(ack.bitmap, 0x02);
+}
+
+ZTEST(schc_generic, test_reassembler_missing_tile_ack_and_retransmit)
+{
+	const uint8_t packet[] = {
+		0x00, 0x01, 0x02, 0x03,
+		0x04, 0x05, 0x06, 0x07,
+		0x08,
+	};
+	struct schc_fragmenter fragmenter;
+	struct schc_reassembler reassembler;
+	struct schc_fragmenter_config frag_config = {
+		.rule_id = TEST_RULE_ID,
+		.dtag = 1,
+		.dtag_bits = 1,
+		.window_bits = 2,
+		.fcn_bits = 3,
+		.tile_size = 4,
+		.mtu = 10,
+		.direction = SCHC_FRAGMENT_UPLINK,
+		.mode = SCHC_FRAGMENT_ACK_ON_ERROR,
+	};
+	struct schc_reassembler_config reasm_config = {
+		.rule_id = TEST_RULE_ID,
+		.dtag = 1,
+		.dtag_bits = 1,
+		.window_bits = 2,
+		.fcn_bits = 3,
+		.tile_size = 4,
+		.mode = SCHC_FRAGMENT_ACK_ON_ERROR,
+	};
+	uint8_t fragments[3][10];
+	int fragment_len[3];
+	uint8_t output[sizeof(packet)];
+	bool complete = false;
+	struct schc_ack ack;
+	uint8_t ack_frame[8];
+	struct schc_ack decoded;
+	uint8_t retransmit[10];
+
+	zassert_equal(schc_fragmenter_init(&fragmenter, &frag_config,
+					   packet, sizeof(packet)),
+		      SCHC_OK);
+	for (size_t i = 0; i < ARRAY_SIZE(fragments); i++) {
+		fragment_len[i] = schc_fragmenter_next(&fragmenter, fragments[i],
+						       sizeof(fragments[i]));
+		zassert_true(fragment_len[i] > 0);
+	}
+
+	zassert_equal(schc_reassembler_init(&reassembler, &reasm_config,
+					    output, sizeof(output)),
+		      SCHC_OK);
+	zassert_equal(schc_reassembler_input(&reassembler, fragments[1],
+					     fragment_len[1], &complete),
+		      SCHC_OK);
+	zassert_false(complete);
+	zassert_equal(schc_reassembler_ack(&reassembler, &ack), SCHC_OK);
+	zassert_equal(ack.bitmap, 0x02);
+
+	int ack_len = schc_ack_encode(&ack, ack_frame, sizeof(ack_frame));
+	zassert_equal(ack_len, 4);
+	zassert_equal(schc_ack_decode(&decoded, 1, 2, ack.bitmap_bits,
+				      ack_frame, ack_len),
+		      ack_len);
+	zassert_equal(decoded.rule_id, TEST_RULE_ID);
+	zassert_equal(decoded.dtag, 1);
+	zassert_equal(decoded.dtag_bits, 1);
+	zassert_equal(decoded.window, 0);
+	zassert_equal(decoded.window_bits, 2);
+	zassert_equal(decoded.bitmap, 0x02);
+
+	zassert_equal(schc_fragmenter_retransmit(&fragmenter, &decoded,
+						 retransmit, sizeof(retransmit)),
+		      fragment_len[0]);
+	zassert_mem_equal(retransmit, fragments[0], fragment_len[0]);
+
+	zassert_equal(schc_reassembler_input(&reassembler, retransmit,
+					     fragment_len[0], &complete),
+		      SCHC_OK);
+	zassert_false(complete);
+	zassert_equal(schc_reassembler_input(&reassembler, fragments[2],
+					     fragment_len[2], &complete),
+		      sizeof(packet));
+	zassert_true(complete);
+	zassert_mem_equal(output, packet, sizeof(packet));
+}
+
+ZTEST(schc_generic, test_all_1_does_not_complete_with_missing_prior_tile)
+{
+	const uint8_t packet[] = {
+		0x00, 0x01, 0x02, 0x03,
+		0x04, 0x05, 0x06, 0x07,
+		0x08,
+	};
+	struct schc_fragmenter fragmenter;
+	struct schc_reassembler reassembler;
+	struct schc_fragmenter_config frag_config = {
+		.rule_id = TEST_RULE_ID,
+		.window_bits = 2,
+		.fcn_bits = 3,
+		.tile_size = 4,
+		.mtu = 10,
+		.direction = SCHC_FRAGMENT_UPLINK,
+		.mode = SCHC_FRAGMENT_ACK_ON_ERROR,
+	};
+	struct schc_reassembler_config reasm_config = {
+		.rule_id = TEST_RULE_ID,
+		.window_bits = 2,
+		.fcn_bits = 3,
+		.tile_size = 4,
+		.mode = SCHC_FRAGMENT_ACK_ON_ERROR,
+	};
+	uint8_t fragment[3][10];
+	int fragment_len[3];
+	uint8_t output[sizeof(packet)];
+	bool complete = false;
+
+	zassert_equal(schc_fragmenter_init(&fragmenter, &frag_config,
+					   packet, sizeof(packet)),
+		      SCHC_OK);
+	for (size_t i = 0; i < ARRAY_SIZE(fragment); i++) {
+		fragment_len[i] = schc_fragmenter_next(&fragmenter, fragment[i],
+						       sizeof(fragment[i]));
+		zassert_true(fragment_len[i] > 0);
+	}
+
+	zassert_equal(schc_reassembler_init(&reassembler, &reasm_config,
+					    output, sizeof(output)),
+		      SCHC_OK);
+	zassert_equal(schc_reassembler_input(&reassembler, fragment[1],
+					     fragment_len[1], &complete),
+		      SCHC_OK);
+	zassert_equal(schc_reassembler_input(&reassembler, fragment[2],
+					     fragment_len[2], &complete),
 		      SCHC_ERR_NO_MATCHING_RULE);
+	zassert_false(complete);
 }
 
 ZTEST(schc_generic, test_reassembler_rejects_truncated_and_oversize_tiles)
