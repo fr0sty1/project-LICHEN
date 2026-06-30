@@ -55,6 +55,17 @@ class TestStateTransitions:
         adapter.on_connect()
         assert adapter.config_sync_pending is None
 
+    async def test_start_stop_lifecycle_hooks(self, adapter):
+        """Start is available for Node lifecycle; stop clears connection state."""
+        await adapter.start()
+        adapter.on_connect()
+        adapter.queue_from_radio(b"\x01\x02\x03")
+
+        await adapter.stop()
+
+        assert adapter.connected is False
+        assert len(adapter.from_radio_queue) == 0
+
 
 class TestQueueBehavior:
     """Test FromRadio queue behavior."""

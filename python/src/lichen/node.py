@@ -28,6 +28,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from ipaddress import IPv6Address
+from typing import Protocol
 
 from lichen.announce.messages import ANNOUNCE_TYPE, AnnounceMessage
 from lichen.announce.processor import AnnounceProcessor
@@ -42,6 +43,16 @@ from lichen.schc.headers import compress_packet, decompress_packet
 from lichen.state_machine import StateMachine, requires_state
 
 logger = logging.getLogger(__name__)
+
+
+class MeshtasticAdapterProtocol(Protocol):
+    """Lifecycle surface Node needs from an optional Meshtastic adapter."""
+
+    async def start(self) -> None:
+        """Start adapter-owned async resources."""
+
+    async def stop(self) -> None:
+        """Stop adapter-owned async resources."""
 
 
 class NodeState(Enum):
@@ -141,7 +152,9 @@ class Node:
     _relay_seen: set[bytes] = field(default_factory=set, init=False, repr=False)
 
     # Meshtastic adapter (optional, created if meshtastic=True)
-    _meshtastic_adapter: object | None = field(default=None, init=False, repr=False)
+    _meshtastic_adapter: MeshtasticAdapterProtocol | None = field(
+        default=None, init=False, repr=False
+    )
 
     def __post_init__(self) -> None:
         self._state_machine = StateMachine(
@@ -190,7 +203,7 @@ class Node:
         # Meshtastic adapter: lazy import to avoid requiring bleak/betterproto
         if self.meshtastic:
             try:
-                from lichen.meshtastic.adapter import MeshtasticAdapter
+                from lichen.interface.meshtastic.adapter import MeshtasticAdapter
 
                 self._meshtastic_adapter = MeshtasticAdapter(self)
             except ImportError:

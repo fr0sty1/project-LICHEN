@@ -56,6 +56,19 @@ class MeshtasticAdapter:
         """Set callback invoked when FromNum changes (new message queued)."""
         self._on_from_num_changed = callback
 
+    async def start(self) -> None:
+        """Start adapter-owned resources.
+
+        BLE server startup is implemented by the GATT layer; this core adapter
+        only owns in-memory state, so start is currently a no-op lifecycle hook.
+        """
+        log.info("Meshtastic adapter started")
+
+    async def stop(self) -> None:
+        """Stop adapter-owned resources and clear connection state."""
+        self.on_disconnect()
+        log.info("Meshtastic adapter stopped")
+
     # --- BLE events (called from BLE thread) ---
 
     def on_connect(self) -> None:
