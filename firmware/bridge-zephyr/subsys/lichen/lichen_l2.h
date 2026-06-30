@@ -61,15 +61,14 @@ extern "C" {
  * Passing undersized buffers causes undefined behavior (buffer overread).
  * The implementation uses memcpy with these exact sizes.
  *
- * @param eui64  8-byte peer EUI-64 address (must be exactly 8 bytes)
- * @param pubkey 32-byte Ed25519 public key (must be exactly 32 bytes)
+ * @param eui64  8-byte peer EUI-64 address (must be exactly 8 bytes, or NULL)
+ * @param pubkey 32-byte Ed25519 public key (must be exactly 32 bytes, or NULL)
  * @return 0 on success (peer added or updated)
  *         -EINVAL if eui64 or pubkey is NULL
  *         -ENOSPC if peer table is internally inconsistent (should not happen;
  *                 LRU eviction normally prevents table-full condition)
  */
-int lichen_peer_add(const uint8_t eui64[8], const uint8_t pubkey[32])
-	__attribute__((nonnull));
+int lichen_peer_add(const uint8_t eui64[8], const uint8_t pubkey[32]);
 
 /**
  * @brief Remove a peer from the peer table.
@@ -82,7 +81,7 @@ int lichen_peer_add(const uint8_t eui64[8], const uint8_t pubkey[32])
  *   - eui64 MUST point to exactly 8 bytes (LICHEN_EUI64_LEN from link_ctx.h)
  * Passing undersized buffers causes undefined behavior (buffer overread).
  *
- * @param eui64 8-byte peer EUI-64 address (must be exactly 8 bytes)
+ * @param eui64 8-byte peer EUI-64 address (must be exactly 8 bytes, or NULL)
  *
  * @return 0 on success
  * @return -EINVAL if eui64 is NULL
@@ -90,8 +89,7 @@ int lichen_peer_add(const uint8_t eui64[8], const uint8_t pubkey[32])
  * @return -ECANCELED if LoRa L2 requires re-initialization
  * @return -ENOTSUP if LICHEN link support is not enabled
  */
-int lichen_peer_remove(const uint8_t eui64[8])
-	__attribute__((nonnull));
+int lichen_peer_remove(const uint8_t eui64[8]);
 
 /* ─── MTU and addressing ─────────────────────────────────────────────────── */
 

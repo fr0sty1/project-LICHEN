@@ -15,13 +15,21 @@ if LICHEN
 config LICHEN_LORA_L2
 	bool "LICHEN LoRa L2 driver"
 	depends on LORA
+	depends on NETWORKING
+	depends on NET_IPV6
+	depends on LICHEN_IPV6
+	select LICHEN_LINK
 	select HWINFO
+	select TINYCRYPT
+	select TINYCRYPT_AES
+	select TINYCRYPT_AES_CCM
 	default y
 	help
 	  Enable the LICHEN LoRa L2 driver. This provides low-level LoRa
 	  radio access including TX/RX threads and EUI-64 generation.
-	  This is the hardware abstraction layer; enable LICHEN_L2 for
-	  full IPv6 stack integration.
+	  It is only supported through the full LICHEN_L2 Zephyr network
+	  interface path; standalone LoRa mode is disabled because it could
+	  receive frames without parsing, SCHC decompression, or IPv6 ingress.
 
 config LICHEN_LORA_L2_LOG_LEVEL
 	int "LICHEN LoRa L2 log level"
