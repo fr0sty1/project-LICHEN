@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft7Validator
 
 from lichen.crypto.identity import Identity
 from lichen.crypto.schnorr48 import sign as schnorr_sign
@@ -35,6 +36,21 @@ def _load(name: str) -> dict:
 def test_vectors_directory_exists() -> None:
     assert VECTORS_DIR.is_dir(), f"missing {VECTORS_DIR}"
     assert (VECTORS_DIR / "schema.json").is_file()
+
+
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "schc_compression.json",
+        "link_frame.json",
+        "meshtastic_app_compat.json",
+    ],
+)
+def test_vector_file_schema(filename: str) -> None:
+    schema = _load("schema.json")
+    doc = _load(filename)
+    errors = sorted(Draft7Validator(schema).iter_errors(doc), key=lambda e: e.path)
+    assert not errors, [error.message for error in errors]
 
 
 def _schc_cases():
@@ -181,6 +197,17 @@ def _assert_data(data: bytes, decoded: dict) -> None:
         assert by_field[6] == (5, decoded["request_id"])
 
 
+def _assert_queue_status(data: bytes, decoded: dict) -> None:
+    fields = _read_fields(data)
+    by_field = {field: (wire_type, value) for field, wire_type, value in fields}
+    if "res" in decoded:
+        assert by_field[1] == (0, decoded["res"])
+    assert by_field[2] == (0, decoded["free"])
+    assert by_field[3] == (0, decoded["maxlen"])
+    if "mesh_packet_id" in decoded:
+        assert by_field[4] == (0, decoded["mesh_packet_id"])
+
+
 @pytest.mark.parametrize("name,vector", _meshtastic_cases())
 def test_meshtastic_app_compat_vector_wire_schema(name: str, vector: dict) -> None:
     encoded = bytes.fromhex(vector["encoded"])
@@ -193,10 +220,21 @@ def test_meshtastic_app_compat_vector_wire_schema(name: str, vector: dict) -> No
             assert len(encoded) == expect["max_to_radio_bytes"] + 1
         return
 
+    if vector["protobuf"] == "Empty":
+        assert encoded == b""
+        assert expect["queue_drained"] is True
+        assert expect["no_from_num_increment"] is True
+        return
+
     assert not encoded.startswith(bytes.fromhex("94c3")), name
     assert vector["transport"]["framing"] == "one raw serialized protobuf per GATT value"
 
-    if vector["message"] == "heartbeat":
+    if vector["protobuf"] == "FromNum":
+        assert len(encoded) == 4
+        assert int.from_bytes(encoded, "little") == vector["decoded"]["from_num"]
+        assert expect["byte_order"] == "little-endian"
+        assert expect["read_until_empty"] is True
+    elif vector["message"] == "heartbeat":
         heartbeat = _one_field(encoded, 7, 2)
         assert heartbeat == b""
     elif vector["message"] == "want_config_id":
@@ -208,9 +246,14 @@ def test_meshtastic_app_compat_vector_wire_schema(name: str, vector: dict) -> No
         mesh_packet = _one_field(encoded, 1, 2)
         _assert_mesh_packet(mesh_packet, vector["decoded"])
     elif vector["protobuf"] == "FromRadio":
-        assert _one_field(encoded, 1, 0) == expect["from_radio_id"]
-        mesh_packet = _one_field(encoded, 2, 2)
-        _assert_mesh_packet(mesh_packet, vector["decoded"])
+        if vector["message"] == "queueStatus":
+            assert not [value for f, wt, value in _read_fields(encoded) if f == 1 and wt == 0]
+            queue_status = _one_field(encoded, 11, 2)
+            _assert_queue_status(queue_status, vector["decoded"]["queueStatus"])
+        else:
+            assert _one_field(encoded, 1, 0) == expect["from_radio_id"]
+            mesh_packet = _one_field(encoded, 2, 2)
+            _assert_mesh_packet(mesh_packet, vector["decoded"])
 
 
 def _schnorr_cases():

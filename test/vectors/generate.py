@@ -87,6 +87,23 @@ def _routing_error(error_reason: int) -> bytes:
     return _varint_field(3, error_reason)
 
 
+def _queue_status(
+    *,
+    res: int | None = None,
+    free: int,
+    maxlen: int,
+    mesh_packet_id: int | None = None,
+) -> bytes:
+    out = bytearray()
+    if res is not None:
+        out += _varint_field(1, res)
+    out += _varint_field(2, free)
+    out += _varint_field(3, maxlen)
+    if mesh_packet_id is not None:
+        out += _varint_field(4, mesh_packet_id)
+    return bytes(out)
+
+
 def _mesh_packet(
     *,
     from_num: int | None = None,
@@ -113,6 +130,10 @@ def _to_radio_packet(mesh_packet: bytes) -> bytes:
 
 def _from_radio_packet(message_id: int, mesh_packet: bytes) -> bytes:
     return _varint_field(1, message_id) + _bytes_field(2, mesh_packet)
+
+
+def _from_radio_queue_status(queue_status: bytes) -> bytes:
+    return _bytes_field(11, queue_status)
 
 
 def _to_radio_want_config(nonce: int) -> bytes:
@@ -256,6 +277,9 @@ def meshtastic_app_compat_vectors() -> list[dict]:
             decoded=_data(5, _routing_error(1), request_id=packet_id),
         )
     )
+    heartbeat_queue_status = _from_radio_queue_status(
+        _queue_status(res=0, free=4, maxlen=8, mesh_packet_id=packet_id),
+    )
 
     baseline = MESHTASTIC_SOURCE_BASELINE
     transport = {
@@ -278,6 +302,27 @@ def meshtastic_app_compat_vectors() -> list[dict]:
                 "queue_side_effect": "none required",
                 "response": "queueStatus optional",
                 "must_not_require_before_sync": True,
+            },
+        },
+        {
+            "name": "heartbeat_queue_status",
+            "description": "A heartbeat may be answered with local queue status over FromRadio.",
+            "source_baseline": baseline,
+            "transport": transport,
+            "direction": "node_to_app",
+            "protobuf": "FromRadio",
+            "message": "queueStatus",
+            "encoded": heartbeat_queue_status.hex(),
+            "decoded": {
+                "queueStatus": {
+                    "res": 0,
+                    "free": 4,
+                    "maxlen": 8,
+                    "mesh_packet_id": packet_id,
+                },
+            },
+            "expect": {
+                "response_to": "heartbeat",
             },
         },
         {
@@ -470,6 +515,36 @@ def meshtastic_app_compat_vectors() -> list[dict]:
             "expect": {
                 "reject": True,
                 "reason": "serial TCP 0x94c3 length prefix is invalid on BLE",
+            },
+        },
+        {
+            "name": "fromnum_notify_counter_4",
+            "description": "FromNum notifies the app that queued FromRadio values should be drained.",
+            "source_baseline": baseline,
+            "transport": transport,
+            "direction": "node_to_app",
+            "protobuf": "FromNum",
+            "message": "fromnum_notify",
+            "encoded": _u32le(4).hex(),
+            "decoded": {"from_num": 4},
+            "expect": {
+                "byte_order": "little-endian",
+                "read_until_empty": True,
+            },
+        },
+        {
+            "name": "fromradio_empty_queue_drain",
+            "description": "A zero-length FromRadio read terminates the drain loop.",
+            "source_baseline": baseline,
+            "transport": transport,
+            "direction": "node_to_app",
+            "protobuf": "Empty",
+            "message": "fromradio_empty",
+            "encoded": "",
+            "decoded": {"queue_empty": True},
+            "expect": {
+                "queue_drained": True,
+                "no_from_num_increment": True,
             },
         },
         {

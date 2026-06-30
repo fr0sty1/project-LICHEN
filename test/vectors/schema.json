@@ -122,11 +122,36 @@
           }
         },
         {
-          "if": {"properties": {"direction": {"const": "node_to_app"}}},
+          "if": {
+            "properties": {
+              "protobuf": {"const": "FromRadio"},
+              "message": {"enum": ["packet.TEXT_MESSAGE_APP", "packet.ROUTING_APP"]}
+            }
+          },
           "then": {
             "properties": {
               "expect": {
                 "required": ["from_radio_id"]
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"protobuf": {"const": "FromNum"}}},
+          "then": {
+            "properties": {
+              "expect": {
+                "required": ["byte_order", "read_until_empty"]
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"protobuf": {"const": "Empty"}}},
+          "then": {
+            "properties": {
+              "expect": {
+                "required": ["queue_drained", "no_from_num_increment"]
               }
             }
           }
@@ -158,7 +183,7 @@
           }
         },
         "direction": {"type": "string", "enum": ["app_to_node", "node_to_app", "exchange"]},
-        "protobuf": {"type": "string", "enum": ["ToRadio", "FromRadio"]},
+        "protobuf": {"type": "string", "enum": ["ToRadio", "FromRadio", "FromNum", "Empty"]},
         "message": {"type": "string"},
         "encoded": {"$ref": "#/definitions/hex"},
         "decoded": {"type": "object"},
@@ -174,8 +199,13 @@
             },
             "max_to_radio_bytes": {"type": "integer", "minimum": 1},
             "must_not_require_before_sync": {"type": "boolean"},
+            "byte_order": {"type": "string", "enum": ["little-endian"]},
+            "no_from_num_increment": {"type": "boolean"},
             "queue_side_effect": {"type": "string"},
+            "queue_drained": {"type": "boolean"},
             "reason": {"type": "string"},
+            "read_until_empty": {"type": "boolean"},
+            "response_to": {"type": "string"},
             "reject": {"type": "boolean"},
             "response": {"type": "string"},
             "side_effect": {"type": "string"},

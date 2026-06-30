@@ -31,6 +31,37 @@
       }
     },
     {
+      "name": "heartbeat_queue_status",
+      "description": "A heartbeat may be answered with local queue status over FromRadio.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromRadio",
+      "message": "queueStatus",
+      "encoded": "5a0c08001004180820f8acd19101",
+      "decoded": {
+        "queueStatus": {
+          "res": 0,
+          "free": 4,
+          "maxlen": 8,
+          "mesh_packet_id": 305419896
+        }
+      },
+      "expect": {
+        "response_to": "heartbeat"
+      }
+    },
+    {
       "name": "want_config_stage_69420",
       "description": "Android/iOS stage 1 config/static metadata request.",
       "source_baseline": {
@@ -329,6 +360,60 @@
       "expect": {
         "reject": true,
         "reason": "serial TCP 0x94c3 length prefix is invalid on BLE"
+      }
+    },
+    {
+      "name": "fromnum_notify_counter_4",
+      "description": "FromNum notifies the app that queued FromRadio values should be drained.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromNum",
+      "message": "fromnum_notify",
+      "encoded": "04000000",
+      "decoded": {
+        "from_num": 4
+      },
+      "expect": {
+        "byte_order": "little-endian",
+        "read_until_empty": true
+      }
+    },
+    {
+      "name": "fromradio_empty_queue_drain",
+      "description": "A zero-length FromRadio read terminates the drain loop.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "Empty",
+      "message": "fromradio_empty",
+      "encoded": "",
+      "decoded": {
+        "queue_empty": true
+      },
+      "expect": {
+        "queue_drained": true,
+        "no_from_num_increment": true
       }
     },
     {

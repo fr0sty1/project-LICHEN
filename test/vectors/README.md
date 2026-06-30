@@ -40,6 +40,8 @@ All byte strings are lowercase hex (possibly empty).
   emit a `config_complete_id` matching the incoming nonce at the end of the stage.
 - Implementations should decode `encoded` with their Meshtastic protobuf schema and compare the decoded structure to
   `decoded`; the Python drift test also checks wire types independently of the generator.
+- `FromNum` vectors encode the 32-bit queue counter as little-endian bytes. A `FromNum` notification means the app
+  should read `FromRadio` repeatedly until it receives the zero-length empty-drain vector.
 
 ## Regenerating
 
