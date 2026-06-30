@@ -1,0 +1,186 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: The contributors to the LICHEN project
+ *
+ * Muzi Works R1 Neo — nRF52840 + SX1262.
+ *
+ * Pin assignments are from the project-LICHEN-ev5b.1 hardware fact Bead.
+ * The original non-Neo R1 is intentionally not aliased to this target.
+ */
+
+/dts-v1/;
+#include <nordic/nrf52840_qiaa.dtsi>
+#include <zephyr/dt-bindings/lora/sx126x.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include "r1_neo-pinctrl.dtsi"
+
+/ {
+	model = "Muzi Works R1 Neo";
+	compatible = "muzi,r1-neo";
+
+	chosen {
+		zephyr,sram           = &sram0;
+		zephyr,flash          = &flash0;
+		zephyr,code-partition = &slot0_partition;
+		zephyr,console        = &cdc_acm_uart0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		green_led: green_led {
+			gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;
+			label = "LED Green";
+		};
+		blue_led: blue_led {
+			gpios = <&gpio0 28 GPIO_ACTIVE_HIGH>;
+			label = "LED Blue";
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
+			label = "User button";
+			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
+
+	aliases {
+		led0      = &green_led;
+		led1      = &blue_led;
+		sw0       = &button0;
+		lora0     = &lora0;
+		watchdog0 = &wdt0;
+	};
+};
+
+&gpiote {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+
+	dcdc-en-hold-hog {
+		gpio-hog;
+		gpios = <13 GPIO_ACTIVE_HIGH>;
+		output-high;
+	};
+
+	nrf-on-hog {
+		gpio-hog;
+		gpios = <29 GPIO_ACTIVE_HIGH>;
+		output-high;
+	};
+};
+
+&gpio1 {
+	status = "okay";
+
+	lora-power-hog {
+		gpio-hog;
+		gpios = <5 GPIO_ACTIVE_HIGH>;
+		output-high;
+	};
+};
+
+&adc {
+	status = "okay";
+};
+
+/*
+ * RX8130CE RTC is present at 0x32, but no Zephyr binding is enabled here.
+ * The bus is available for future RTC bring-up.
+ */
+&i2c0 {
+	compatible = "nordic,nrf-twim";
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	pinctrl-0 = <&i2c0_default>;
+	pinctrl-1 = <&i2c0_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+/*
+ * SX1262 LoRa radio on SPI1.
+ *   CS=P1.10  RESET=P1.06  BUSY=P1.14  DIO1=P1.15
+ *   DIO2 drives the RF switch; DIO3 supplies the TCXO at 1.8 V.
+ *
+ * RESET=P1.06 is provisional pending project-LICHEN-ev5b.9 validation.
+ * Node is disabled in the board DTS and enabled by application overlays.
+ */
+&spi1 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	cs-gpios = <&gpio1 10 GPIO_ACTIVE_LOW>;
+	pinctrl-0 = <&spi1_default>;
+	pinctrl-1 = <&spi1_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	lora0: lora@0 {
+		compatible = "semtech,sx1262";
+		reg = <0>;
+		status = "disabled";
+		reset-gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
+		busy-gpios = <&gpio1 14 GPIO_ACTIVE_HIGH>;
+		dio1-gpios = <&gpio1 15 GPIO_ACTIVE_HIGH>;
+		dio2-tx-enable;
+		dio3-tcxo-voltage = <SX126X_DIO3_TCXO_1V8>;
+		tcxo-power-startup-delay-ms = <5>;
+		spi-max-frequency = <8000000>;
+	};
+};
+
+/*
+ * GNSS UART pins are known only at the physical-pin level (P0.24/P0.25).
+ * Keep the UART disabled until the direction and AG3335 control lines are
+ * validated against hardware.
+ */
+&uart1 {
+	compatible = "nordic,nrf-uarte";
+	status = "disabled";
+	current-speed = <115200>;
+	pinctrl-0 = <&uart1_default>;
+	pinctrl-1 = <&uart1_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+/* Native USB — CDC-ACM console and optional LICHEN Native transport. */
+zephyr_udc0: &usbd {
+	compatible = "nordic,nrf-usbd";
+	status = "okay";
+
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		/*
+		 * Muzi/Adafruit UF2-style layout. Validate against real R1 Neo
+		 * bootloader before relying on DFU or OTA update flows.
+		 */
+		boot_partition: partition@26000 {
+			label = "mcuboot";
+			reg = <0x00026000 0x0000C000>;
+		};
+		slot0_partition: partition@32000 {
+			label = "image-0";
+			reg = <0x00032000 0x0005A000>;
+		};
+		slot1_partition: partition@8c000 {
+			label = "image-1";
+			reg = <0x0008C000 0x0005A000>;
+		};
+		storage_partition: partition@e6000 {
+			label = "storage";
+			reg = <0x000e6000 0x00004000>;
+		};
+	};
+};

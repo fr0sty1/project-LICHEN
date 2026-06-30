@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-t1v0",
+  "title": "Smoke-test R1 Neo power-hold GPIO timing",
+  "description": "Discovered while creating project-LICHEN-ev5b.4. The board DTS drives DCDC_EN_HOLD P0.13, NRF_ON/SOFT_SHUTDOWN P0.29, and LoRa POWER_EN P1.05 as GPIO hogs. Validate that these assert early enough for stable boot/radio bring-up and that their active levels match real R1 Neo hardware.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T16:35:19.906724Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T16:35:19.906764Z"
+}
