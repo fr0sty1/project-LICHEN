@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-h7t5.7.14",
+  "title": "Decide T-Deck 16 MB flash partition layout",
+  "description": "Why this exists: LilyGO/Meshtastic sources identify the T-Deck as a 16 MB flash board, but the current Zephyr DTS keeps small 1 MB image slots and tiny storage, which may not fit BLE/LVGL/UI firmware or filesystem assets. What needs to be done: define a T-Deck partition layout for bootloader, image slots/OTA, NVS/LittleFS, logs/assets, and factory/debug needs. Acceptance criteria: generated partition map uses the available flash intentionally; image slot sizes are justified by measured firmware sizes; storage needs for UI/assets/config are documented; bootloader/flashing compatibility is verified or split into a hardware smoke blocker.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T19:31:03.588385Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T19:31:03.588943Z",
+  "labels": [
+    "zephyr",
+    "lilygo",
+    "hardware",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.14",
+      "depends_on_id": "project-LICHEN-h7t5.7",
+      "type": "parent-child",
+      "created_at": "2026-06-30T19:31:03.588943Z"
+    }
+  ]
+}

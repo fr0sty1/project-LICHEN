@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-h7t5.7.15",
+  "title": "Model T-Deck shared SPI display and SD chip selects",
+  "description": "Why this exists: T-Deck LoRa, ST7789 display, and SD card share SPI pins, and current board support only keeps TFT/SD CS deselected with GPIO hogs until those devices are validated. What needs to be done: when display/storage support is enabled, replace or override the CS hogs with proper SPI child nodes or app overlays, verify CS idle behavior, and test bus coexistence with SX1262. Acceptance criteria: display and SD nodes do not assert CS during LoRa transfers; overlays can disable the hog labels cleanly; bus frequency constraints are documented for LoRa, display, and SD.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T19:31:03.705149Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T19:31:03.705661Z",
+  "labels": [
+    "zephyr",
+    "lilygo",
+    "hardware",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.15",
+      "depends_on_id": "project-LICHEN-h7t5.7",
+      "type": "parent-child",
+      "created_at": "2026-06-30T19:31:03.705661Z"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-t2hn.15",
+  "title": "Define Meshtastic synthetic metadata and firmware version policy",
+  "description": "Why this exists: Meshtastic Apple clients may fail version checks if DeviceMetadata/firmware_version is absent, but LICHEN must not misrepresent itself as Meshtastic RF firmware. What needs to be done: define synthetic metadata, min app version, hw model/capability fields, and user-visible naming for LICHEN compatibility mode. Acceptance criteria: policy passes Apple/Android/Python discovery expectations, clearly labels LICHEN compatibility, and documents fields that are synthetic or unsupported.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T19:30:27.235595Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T19:30:27.236123Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.15",
+      "depends_on_id": "project-LICHEN-t2hn",
+      "type": "parent-child",
+      "created_at": "2026-06-30T19:30:27.236123Z"
+    }
+  ]
+}

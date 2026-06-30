@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-9c4y.14",
+  "title": "Design LICHEN identity projection for MeshCore compatibility",
+  "description": "Why this exists: MeshCore clients identify nodes by 32-byte public key plus 6-byte prefix, while LICHEN native identity is IPv6/key material with different trust semantics. What needs to be done: define stable compatibility public-key/prefix derivation or storage, collision behavior, and user-visible identity semantics. Acceptance criteria: projection is deterministic, does not weaken LICHEN trust model, supports contact/message mapping, and documents migration/rotation behavior.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T19:30:39.605537Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T19:30:39.606246Z",
+  "labels": [
+    "zephyr",
+    "meshcore",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c4y.14",
+      "depends_on_id": "project-LICHEN-9c4y",
+      "type": "parent-child",
+      "created_at": "2026-06-30T19:30:39.606246Z"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-t2hn.13",
+  "title": "Update Meshtastic compatibility contract for current app sync flow",
+  "description": "Why this exists: project-LICHEN-t2hn.1 research found the current Meshtastic app flow needs heartbeat/queueStatus, metadata, region_presets, moduleConfig/device UI config, and Apple's two-phase config/database sync, which are not fully captured in the existing compatibility notes. What needs to be done: update the Meshtastic-to-LICHEN mapping contract with these protobuf messages, nonce handling, FromNum drain behavior, and explicit unsupported-write policy. Acceptance criteria: mapping table covers ToRadio want_config_id/heartbeat/packet/disconnect and FromRadio my_info/node_info/metadata/region_presets/channel/config/moduleConfig/config_complete_id/queueStatus/packet/clientNotification; Android, Apple, and Python client expectations are cited by source commit; unsupported writes have deterministic responses.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T19:30:15.669175Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T19:30:15.6698Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.13",
+      "depends_on_id": "project-LICHEN-t2hn",
+      "type": "parent-child",
+      "created_at": "2026-06-30T19:30:15.6698Z"
+    }
+  ]
+}
