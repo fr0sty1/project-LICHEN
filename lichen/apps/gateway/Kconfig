@@ -11,8 +11,9 @@ config LORA_LICHEN_BLE
 	help
 	  Enable the Nordic UART Service (NUS) GATT profile so a phone can
 	  exchange SLIP-framed IPv6 packets with the gateway over BLE UART.
-	  Gate per board: the nucleo_wl55jc has no BLE radio; enable on
-	  nRF52840-based boards instead.
+	  Gate per board: enable only on targets with an enabled Zephyr BLE HCI
+	  device. Keep the HAL BLE-local capability disabled until the board has a
+	  validated bidirectional local-client transport.
 
 config LORA_LICHEN_GATEWAY_RPL_ROOT
 	bool "RPL root signalling"

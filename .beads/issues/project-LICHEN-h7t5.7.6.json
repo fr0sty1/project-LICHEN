@@ -2,13 +2,15 @@
   "id": "project-LICHEN-h7t5.7.6",
   "title": "Bring up LilyGO local client transports",
   "description": "Why this exists: LilyGO should validate the native app paths, not only radio boot. What needs to be done: verify USB CDC/serial shell or SLIP path, BLE advertising/connectivity where hardware supports BLE, direct BLE native-app service assumptions, and IP/CoAP LCI path where available. Acceptance criteria: host can discover/connect over the supported local path; at least one native app smoke path works from Linux or macOS; BLE service/characteristic UUIDs or serial endpoints are recorded; unsupported transport cases are explicit and filed if needed.",
-  "status": "open",
+  "notes": "Blocked: T-Deck local-client transport cannot be closed until the linked blockers are handled: IPSP vs NUS transport decision, direct BLE native service definition, and BLE NUS egress/bidirectional LCI. Current firmware builds with local transports intentionally disabled for T-Deck.",
+  "status": "blocked",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T17:54:39.760583Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-30T17:54:41.316338Z",
+  "updated_at": "2026-06-30T21:04:59.662153Z",
   "labels": [
     "zephyr",
     "lilygo",
@@ -35,6 +37,24 @@
       "depends_on_id": "project-LICHEN-h7t5.7.4",
       "type": "blocks",
       "created_at": "2026-06-30T17:54:41.316337Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6",
+      "depends_on_id": "project-LICHEN-h7t5.7.6.1",
+      "type": "blocks",
+      "created_at": "2026-06-30T20:41:04.446579Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6",
+      "depends_on_id": "project-LICHEN-h7t5.7.6.3",
+      "type": "blocks",
+      "created_at": "2026-06-30T20:41:37.133199Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6",
+      "depends_on_id": "project-LICHEN-h7t5.7.6.2",
+      "type": "blocks",
+      "created_at": "2026-06-30T20:45:41.094551Z"
     }
   ]
 }

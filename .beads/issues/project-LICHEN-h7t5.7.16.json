@@ -1,0 +1,36 @@
+{
+  "id": "project-LICHEN-h7t5.7.16",
+  "title": "Validate partner T-Echo LICHEN Native node_info RF observation",
+  "description": "Partner reported that a LilyGO T-Echo is alive and sent a LICHEN Native node_info frame while monitoring for LoRa packets. Treat this as an initial RF observation, not confirmed bidirectional RX/TX. Acceptance: capture the exact firmware commit, board/overlay, radio settings, monitor command/log, decoded node_info payload, peer device identity if any, and a 60s or longer log showing whether packets are one-way or bidirectional. If bidirectional exchange is confirmed, update the relevant RF smoke Beads with evidence; otherwise file the specific RX/TX blocker.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T20:58:16.930117Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T20:58:16.930594Z",
+  "labels": [
+    "lilygo",
+    "t-echo",
+    "lora",
+    "rf",
+    "hardware",
+    "smoke-test",
+    "native-protocol",
+    "partner-handoff",
+    "validation",
+    "zephyr",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.16",
+      "depends_on_id": "project-LICHEN-h7t5.7",
+      "type": "parent-child",
+      "created_at": "2026-06-30T20:58:16.930594Z"
+    }
+  ]
+}
