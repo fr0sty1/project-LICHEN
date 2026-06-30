@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-h7t5.7.13",
+  "title": "Confirm physical LilyGO T-Deck revision before hardware smoke",
+  "description": "Why this exists: public sources distinguish T-Deck, T-Deck Plus, T-Deck Pro, and Pro v1.1 variants, and the user has physical T-Deck hardware but the exact marking/revision has not been captured in repo evidence. What needs to be done: record board photos or markings, confirm whether it is standard T-Deck versus Plus/Pro, capture USB VID/PID and boot log, and update board/overlay assumptions if the physical unit is not standard T-Deck. Acceptance criteria: exact physical revision is recorded with evidence; any T-Deck Plus/Pro pinout differences are either ruled out or split into separate board targets; flash/smoke Beads reference the confirmed revision.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T19:27:15.645736Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T19:27:15.646215Z",
+  "labels": [
+    "zephyr",
+    "lilygo",
+    "hardware",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.13",
+      "depends_on_id": "project-LICHEN-h7t5.7",
+      "type": "parent-child",
+      "created_at": "2026-06-30T19:27:15.646215Z"
+    }
+  ]
+}
