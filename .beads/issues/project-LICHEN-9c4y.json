@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-9c4y",
+  "title": "MeshCore app interface to Zephyr firmware",
+  "description": "Why this exists: MeshCore users and tools may be an adjacent adoption path, and the Zephyr firmware needs a deliberate compatibility boundary if MeshCore app clients are to interact with a LICHEN node locally. What needs to be done: investigate MeshCore app transport/framing expectations, define the supported local interface subset, implement or scaffold Zephyr-side adaptation to LICHEN local CoAP/config/message/status resources, and document semantic differences from MeshCore mesh behavior. Do not change LICHEN over-the-air protocol behavior to match MeshCore. Acceptance criteria: MeshCore app protocol assumptions are captured; supported/unsupported command matrix exists; local transport and framing are implemented or split into child Beads; config/status/message flows have tests or documented manual test procedure; interoperability limitations are documented; two code-review passes are completed before closure.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T06:08:30.091938Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T06:08:30.091961Z",
+  "labels": [
+    "zephyr",
+    "meshcore",
+    "app-interface",
+    "firmware"
+  ]
+}
