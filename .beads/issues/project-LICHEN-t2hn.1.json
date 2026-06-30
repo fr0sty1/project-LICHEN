@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-t2hn.1",
+  "title": "Research Meshtastic app BLE/API protocol subset for MVP",
+  "description": "Why this exists: the adapter must match what the current standard Meshtastic mobile app actually expects over BLE before code is written. What needs to be done: inspect Meshtastic app and firmware sources for BLE service/characteristics, ToRadio/FromRadio framing, protobuf messages, connection handshake, node info/status/config flows, and message send/receive behavior. Identify exact minimum message types for app discovery, pairing/connect, node info, status/config, text send, and incoming message/status display. Acceptance criteria: source references and commit SHAs are recorded in Beads notes; mandatory vs optional protobuf messages are listed; unsupported features for MVP are explicitly named; any uncertainty creates follow-up Beads.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:15:24.24754Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:15:24.248134Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "app-interface",
+    "research",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.1",
+      "depends_on_id": "project-LICHEN-t2hn",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:15:24.248133Z"
+    }
+  ]
+}

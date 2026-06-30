@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-t2hn.2",
+  "title": "Define Meshtastic-to-LICHEN compatibility contract and mapping table",
+  "description": "Why this exists: firmware code needs a narrow contract that maps Meshtastic app semantics onto LICHEN local resources without implying Meshtastic RF interoperability. What needs to be done: define the adapter boundary, transport framing, protobuf message ownership, request/response mapping, error policy, and unsupported feature behavior for the MVP. Map Meshtastic node info/status/config/message/key operations to LICHEN HAL identity, local CoAP/status/config/message/key flows, or explicit unsupported errors. Acceptance criteria: mapping table is recorded in Beads notes or design field; RF protocol boundary is explicit; config/status/message flows have deterministic behavior; edge cases such as unknown protobufs, missing channels, unsupported admin operations, and app-provided position are specified.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:15:24.365619Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:15:54.284616Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "app-interface",
+    "design",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.2",
+      "depends_on_id": "project-LICHEN-t2hn",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:15:24.36612Z"
+    },
+    {
+      "issue_id": "project-LICHEN-t2hn.2",
+      "depends_on_id": "project-LICHEN-t2hn.1",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:15:54.284616Z"
+    }
+  ]
+}
