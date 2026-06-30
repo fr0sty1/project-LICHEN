@@ -51,6 +51,20 @@ BUILD_ASSERT(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) <= 1,
 #define LR1110_PA_HP_SEL    0U
 #endif
 
+void lr1110_hal_clear_last_error(void);
+int lr1110_hal_get_last_error(void);
+
+#define LR1110_RETURN_ON_HAL_ERROR(expr)                                      \
+	do {                                                                  \
+		lr1110_hal_clear_last_error();                                 \
+		expr;                                                         \
+		int err__ = lr1110_hal_get_last_error();                       \
+		if (err__ < 0) {                                               \
+			LOG_ERR("%s failed: %d", #expr, err__);                \
+			return err__;                                          \
+		}                                                             \
+	} while (0)
+
 /* --------------------------------------------------------------------------
  * Hardware resources — shared with lr1110_hal.c
  * -------------------------------------------------------------------------- */
@@ -130,8 +144,21 @@ static void lr1110_irq_work_handler(struct k_work *work)
 	lr1110_system_stat2_t stat2;
 	uint32_t irq = 0;
 
+	lr1110_hal_clear_last_error();
 	lr1110_system_get_status(lr1110_dev, &stat1, &stat2, &irq);
+	if (lr1110_hal_get_last_error() < 0) {
+		data->last_irq = 0;
+		k_sem_give(&data->radio_sem);
+		return;
+	}
+
+	lr1110_hal_clear_last_error();
 	lr1110_system_clear_irq(lr1110_dev, irq);
+	if (lr1110_hal_get_last_error() < 0) {
+		data->last_irq = 0;
+		k_sem_give(&data->radio_sem);
+		return;
+	}
 
 	data->last_irq = irq;
 	k_sem_give(&data->radio_sem);
@@ -154,12 +181,12 @@ static void lr1110_dio9_isr(const struct device *port,
 static int lr1110_lora_config(const struct device *dev,
 			      struct lora_modem_config *cfg)
 {
-	lr1110_hal_reset(dev);
-	lr1110_system_calibrate(dev, 0x3Fu); /* all 6 calibration blocks */
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_hal_reset(dev));
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_system_calibrate(dev, 0x3Fu)); /* all 6 calibration blocks */
 
-	lr1110_system_clear_errors(dev);
-	lr1110_radio_set_packet_type(dev, LR1110_RADIO_PACKET_LORA);
-	lr1110_radio_set_rf_frequency(dev, cfg->frequency);
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_system_clear_errors(dev));
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_packet_type(dev, LR1110_RADIO_PACKET_LORA));
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_rf_frequency(dev, cfg->frequency));
 
 	lr1110_radio_modulation_param_lora_t mod = {
 		.spreading_factor = map_sf(cfg->datarate),
@@ -167,7 +194,7 @@ static int lr1110_lora_config(const struct device *dev,
 		.coding_rate      = map_cr(cfg->coding_rate),
 		.ppm_offset       = 0,
 	};
-	lr1110_radio_set_modulation_param_lora(dev, &mod);
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_modulation_param_lora(dev, &mod));
 
 	lr1110_radio_packet_param_lora_t pkt = {
 		.preamble_length_in_symb = cfg->preamble_len,
@@ -177,7 +204,7 @@ static int lr1110_lora_config(const struct device *dev,
 		.iq = cfg->iq_inverted ? LR1110_RADIO_LORA_IQ_INVERTED
 				       : LR1110_RADIO_LORA_IQ_STANDARD,
 	};
-	lr1110_radio_set_packet_param_lora(dev, &pkt);
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_packet_param_lora(dev, &pkt));
 
 	lr1110_radio_pa_config_t pa = {
 		.pa_sel        = LR1110_PA_SEL,
@@ -185,13 +212,17 @@ static int lr1110_lora_config(const struct device *dev,
 		.pa_dutycycle  = LR1110_PA_DC,
 		.pa_hp_sel     = LR1110_PA_HP_SEL,
 	};
-	lr1110_radio_set_pa_config(dev, &pa);
-	lr1110_radio_set_tx_params(dev, cfg->tx_power, LR1110_RADIO_RAMP_TIME_40U);
-	lr1110_system_set_dio_irq_params(dev, LR1110_IRQ_RADIO, 0);
-	lr1110_radio_set_rx_tx_fallback_mode(dev, LR1110_RADIO_RX_TX_FALLBACK_MODE_STDBYRC);
-	lr1110_radio_set_lora_sync_word(dev, cfg->public_network
-		? LR1110_RADIO_LORA_NETWORK_PUBLIC
-		: LR1110_RADIO_LORA_NETWORK_PRIVATE);
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_pa_config(dev, &pa));
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_tx_params(dev, cfg->tx_power,
+							      LR1110_RADIO_RAMP_TIME_40U));
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_system_set_dio_irq_params(dev, LR1110_IRQ_RADIO, 0));
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_radio_set_rx_tx_fallback_mode(
+			dev, LR1110_RADIO_RX_TX_FALLBACK_MODE_STDBYRC));
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_radio_set_lora_sync_word(
+			dev, cfg->public_network ? LR1110_RADIO_LORA_NETWORK_PUBLIC
+						 : LR1110_RADIO_LORA_NETWORK_PRIVATE));
 
 #if DT_INST_NODE_HAS_PROP(0, tx_enable_gpios)
 	gpio_pin_set_dt(&lr1110_gpio_tx_enable, cfg->tx ? 1 : 0);
@@ -223,12 +254,16 @@ static int lr1110_lora_send(const struct device *dev, uint8_t *data,
 	}
 
 	k_sem_reset(&drv->radio_sem);
-	lr1110_regmem_write_buffer8(dev, data, (uint8_t)data_len);
-	lr1110_radio_set_tx(dev, 0);
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_regmem_write_buffer8(dev, data, (uint8_t)data_len));
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_tx(dev, 0));
 
 	if (k_sem_take(&drv->radio_sem, K_SECONDS(10)) != 0) {
 		LOG_ERR("TX timeout");
 		return -ETIMEDOUT;
+	}
+	int ret = lr1110_hal_get_last_error();
+	if (ret < 0) {
+		return ret;
 	}
 
 	if (drv->last_irq & LR1110_SYSTEM_IRQ_TXDONE_MASK) {
@@ -256,17 +291,23 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 	struct lr1110_data *drv = dev->data;
 
 	k_sem_reset(&drv->radio_sem);
-	lr1110_radio_set_rx(dev, LR1110_RX_CONTINUOUS);
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_rx(dev, LR1110_RX_CONTINUOUS));
 
 	if (k_sem_take(&drv->radio_sem, timeout) != 0) {
 		/* Timeout waiting for IRQ - put radio back to standby */
-		lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_RC);
+		LR1110_RETURN_ON_HAL_ERROR(
+			lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_RC));
 		return -EAGAIN;
+	}
+	int ret = lr1110_hal_get_last_error();
+	if (ret < 0) {
+		return ret;
 	}
 
 	if (!(drv->last_irq & LR1110_SYSTEM_IRQ_RXDONE_MASK)) {
 		/* Error path - ensure radio is not left in RX mode */
-		lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_RC);
+		LR1110_RETURN_ON_HAL_ERROR(
+			lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_RC));
 		if (drv->last_irq & LR1110_SYSTEM_IRQ_TIMEOUT_MASK) {
 			return -EAGAIN;
 		}
@@ -275,7 +316,7 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 	}
 
 	lr1110_radio_rxbuffer_status_t buf_status;
-	lr1110_radio_get_rxbuffer_status(dev, &buf_status);
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_get_rxbuffer_status(dev, &buf_status));
 
 	if (buf_status.rx_payload_length > size) {
 		LOG_ERR("recv: packet too large for buffer: %u > %u",
@@ -284,11 +325,12 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 	}
 
 	uint8_t len = buf_status.rx_payload_length;
-	lr1110_regmem_read_buffer8(dev, data, buf_status.rx_start_buffer_pointer, len);
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_regmem_read_buffer8(dev, data, buf_status.rx_start_buffer_pointer, len));
 
 	if (rssi || snr) {
 		lr1110_radio_packet_status_lora_t pkt_status;
-		lr1110_radio_get_packet_status_lora(dev, &pkt_status);
+		LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_get_packet_status_lora(dev, &pkt_status));
 		if (rssi) {
 			*rssi = pkt_status.rssi_packet_in_dbm;
 		}

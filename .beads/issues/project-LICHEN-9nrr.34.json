@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-9nrr.34",
+  "title": "gateway: set non-default USB VID for T1000-E board config",
+  "description": "Why this exists: while validating project-LICHEN-9nrr.28 with west build -b t1000_e/nrf52840 lichen/apps/gateway, Zephyr warned that CONFIG_USB_DEVICE_VID=0x2FE3 is the default testing value. The T1000-E gateway config enables USB CDC-ACM for LICHEN Native/MCUmgr and sets product/PID, but the VID remains Zephyr's default test VID. What needs to be done: choose appropriate non-default LICHEN gateway USB VID/product/manufacturer settings for lichen/apps/gateway/boards/t1000_e_nrf52840.conf, preserving CDC-ACM Native and MCUmgr behavior, and verify the T1000-E gateway build no longer emits the default VID warning. As a code-generation/fix Bead, run two review passes before closing.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T05:04:07.212532Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T05:04:18.03714Z",
+  "labels": [
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9nrr.34",
+      "depends_on_id": "project-LICHEN-9nrr",
+      "type": "parent-child",
+      "created_at": "2026-06-30T05:04:07.213063Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9nrr.34",
+      "depends_on_id": "project-LICHEN-9nrr.28",
+      "type": "discovered-from",
+      "created_at": "2026-06-30T05:04:18.03714Z"
+    }
+  ]
+}
