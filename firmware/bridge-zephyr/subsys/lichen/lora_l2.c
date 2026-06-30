@@ -213,7 +213,7 @@ static uint8_t tx_buf[LICHEN_LORA_MAX_PHY_PAYLOAD];
 static struct {
     /* Mutex-protected: device pointer set once during init */
     const struct device *lora_dev;
-    /* Mutex-protected: stable after init; alias returned by get_eui64() */
+    /* Mutex-protected: stable after init; copied by copy_eui64() */
     uint8_t eui64[8];
     /* Mutex-protected: callback + user_data updated as a pair */
     lichen_lora_rx_cb_t rx_callback;
@@ -257,14 +257,23 @@ static struct {
  */
 #define EUI64_DOMAIN_PREFIX "LICHEN-EUI64-v1"
 #define EUI64_DOMAIN_PREFIX_LEN (sizeof(EUI64_DOMAIN_PREFIX) - 1)
+#define LICHEN_HWID_MAX_LEN 32U
+#define LICHEN_EXPECTED_MAX_HWID_LEN 16U
+
+BUILD_ASSERT(LICHEN_HWID_MAX_LEN >= LICHEN_EXPECTED_MAX_HWID_LEN,
+             "hardware ID buffer must cover supported MCU IDs");
 
 static int generate_eui64(uint8_t *eui64)
 {
     int ret = 0;
-    uint8_t hwid[32];  /* Large enough for all supported MCUs */
+    uint8_t hwid[LICHEN_HWID_MAX_LEN];
     ssize_t hwid_len;
     uint8_t hash[TC_SHA256_DIGEST_SIZE];
     uint8_t hash_input[EUI64_DOMAIN_PREFIX_LEN + sizeof(hwid)];
+    BUILD_ASSERT(sizeof(hwid) == LICHEN_HWID_MAX_LEN,
+                 "hwid buffer must match declared max hardware ID length");
+    BUILD_ASSERT(sizeof(hash_input) == EUI64_DOMAIN_PREFIX_LEN + LICHEN_HWID_MAX_LEN,
+                 "hash_input must cover domain prefix plus max hardware ID");
 
     hwid_len = hwinfo_get_device_id(hwid, sizeof(hwid));
     if (hwid_len < 0) {
@@ -286,17 +295,15 @@ static int generate_eui64(uint8_t *eui64)
         ret = -EINVAL;
         goto cleanup;
     }
+    const size_t checked_hwid_len = (size_t)hwid_len;
 
     /* SECURITY: Reject all-zeros hwid which would cause EUI-64 collisions.
      * Some MCUs return zeros when fuses aren't programmed or in debug mode. */
-    bool all_zeros = true;
+    uint8_t nonzero = 0;
     for (ssize_t i = 0; i < hwid_len; i++) {
-        if (hwid[i] != 0) {
-            all_zeros = false;
-            break;
-        }
+        nonzero |= hwid[i];
     }
-    if (all_zeros) {
+    if (nonzero == 0) {
         LOG_ERR("lora_l2: hardware ID is all zeros, cannot generate unique EUI-64");
         ret = -EINVAL;
         goto cleanup;
@@ -310,8 +317,8 @@ static int generate_eui64(uint8_t *eui64)
      * SHA-256 uses (e.g., ipv6_addr.c:pubkey_to_iid uses different input).
      */
     memcpy(hash_input, EUI64_DOMAIN_PREFIX, EUI64_DOMAIN_PREFIX_LEN);
-    memcpy(hash_input + EUI64_DOMAIN_PREFIX_LEN, hwid, (size_t)hwid_len);
-    ret = lichen_sha256(hash_input, EUI64_DOMAIN_PREFIX_LEN + (size_t)hwid_len, hash);
+    memcpy(hash_input + EUI64_DOMAIN_PREFIX_LEN, hwid, checked_hwid_len);
+    ret = lichen_sha256(hash_input, EUI64_DOMAIN_PREFIX_LEN + checked_hwid_len, hash);
     if (ret != 0) {
         LOG_ERR("lora_l2: EUI-64 SHA-256 failed");
         goto cleanup;
@@ -487,6 +494,10 @@ static void rx_thread(void *arg1, void *arg2, void *arg3)
              * exit the RX loop. Watchdog will reset us if we're stuck.
              */
             LOG_ERR("lora_l2: recv overflow (%d > %d)", ret, (int)sizeof(rx_buf));
+            /*
+             * Best-effort retained telemetry only: crash_info_store() cannot
+             * report failure, so recovery must not depend on this write.
+             */
             crash_info_store(CRASH_DRIVER_OVERFLOW, __LINE__, (uint32_t)ret);
             atomic_set(&current_state, LORA_ABORTED);
             break;  /* Exit RX loop - let watchdog reset if needed */
@@ -638,19 +649,17 @@ int lichen_lora_l2_start(void)
      * sx12xx_lora_config memcpy, rylr_config field reads) and does not
      * retain a pointer.
      *
-     * Half-duplex operation note (project-LICHEN-tvfm.113): .tx = true sets
-     * the INITIAL radio state to TX mode, but does NOT lock the radio to
-     * TX-only. Zephyr's LoRa driver handles mode switching internally:
-     *   - lora_send() configures TX mode before transmission
-     *   - lora_recv() configures RX mode before listening
-     * This config just specifies the preferred initial state after
-     * lora_config() returns. Both TX and RX work regardless of this setting.
+     * Zephyr's lora_modem_config.tx selects the direction being configured.
+     * This L2 implementation is targeted at Zephyr's SX126x/SX127x path used
+     * by the supported Meshtastic-class boards. For that driver family,
+     * lora_config(... .tx = true) stores the TX parameters needed by
+     * lora_send(), while lora_recv() explicitly enters RX mode for each
+     * receive operation.
      *
-     * We use .tx = true despite starting the RX thread immediately because:
-     * 1. The value is effectively unused (RX thread calls lora_recv() first)
-     * 2. .tx = true matches the Zephyr driver default behavior
-     * 3. Some drivers use this hint to initialize PA/LNA configuration
-     * The RX thread's first lora_recv() call switches to RX mode anyway.
+     * Do not change this to a post-config RX pass without auditing the driver:
+     * drivers such as RYLR keep .tx as persistent direction state and reject
+     * lora_send() after an RX config. Supporting those drivers would require a
+     * per-operation config strategy around both lora_send() and lora_recv().
      */
     struct lora_modem_config config = {
         .frequency = CONFIG_LICHEN_LORA_FREQUENCY,
@@ -659,7 +668,7 @@ int lichen_lora_l2_start(void)
         .coding_rate = CR_4_5,     /* Zephyr enum: 4/5 coding rate */
         .preamble_len = 8,         /* LoRa default preamble symbols */
         .tx_power = CONFIG_LICHEN_LORA_TX_POWER,
-        .tx = true,                /* Initial state only - see note above */
+        .tx = true,                /* SX12xx TX config cache; see note above */
     };
 
     int ret = lora_config(lora_data.lora_dev, &config);
@@ -837,24 +846,26 @@ int lichen_lora_l2_deinit(void)
     k_mutex_unlock(&tx_buf_mutex);
 
     /*
-     * Best-effort recovery: ensure the RX thread is actually terminated before
-     * touching the mutex. In normal operation, stop() already joined the thread.
-     * However, if called after a hardware fault or forced abort where the thread
-     * is in an unexpected state, this join provides a final safety check.
+     * Abort recovery only: ensure the RX thread is actually terminated before
+     * touching mutexes or callback state. Normal STOPPED teardown skips this
+     * join because stop() already joined the RX thread, and init-without-start
+     * has no valid RX thread object to join.
      *
-     * If the join times out, we proceed anyway - this is best-effort recovery
-     * and the alternative (refusing to deinit) leaves the system in a worse state.
+     * If this join fails, deinit is incomplete. Continuing would let callers
+     * reuse or reinitialize resources while the RX thread may still access
+     * them. Leave the module in ABORTED and return the join error so callers
+     * can treat a system reboot as the only guaranteed recovery.
      */
-    int join_ret = k_thread_join(&rx_thread_data, K_MSEC(DEINIT_JOIN_TIMEOUT_MS));
-    if (join_ret != 0) {
-        /* SECURITY: Best-effort recovery - log all join errors but proceed.
-         * Possible errors:
-         *   -EAGAIN: Timeout waiting for thread
-         *   -EBUSY: Thread not yet terminated
-         *   -EDEADLK: Deadlock detected (should not happen here)
-         * Refusing to deinit leaves module permanently unusable. */
-        LOG_WRN("lora_l2: RX thread join failed in deinit (%d), proceeding with "
-                "best-effort recovery", join_ret);
+    if (state == LORA_ABORTED) {
+        int join_ret = k_thread_join(&rx_thread_data, K_MSEC(DEINIT_JOIN_TIMEOUT_MS));
+
+        if (join_ret != 0) {
+            LOG_ERR("lora_l2: RX thread join failed in deinit (%d); "
+                    "deinit incomplete, reboot required for guaranteed recovery",
+                    join_ret);
+            atomic_set(&current_state, LORA_ABORTED);
+            return join_ret;
+        }
     }
 
     /*
@@ -1017,17 +1028,9 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
      * attempt during deinit fails at the state != RUNNING check.
      *
      * TOCTOU analysis (project-LICHEN-i1gk.65): There is a TOCTOU window between
-     * the state check here and tx_buf_mutex acquisition below. If stop() is called
-     * in this window:
-     * - TX sees RUNNING, proceeds to mutex acquisition
-     * - stop() transitions to STOPPED/ABORTED, waits on tx_buf_mutex in deinit()
-     * - TX completes, releases mutex
-     * - deinit() acquires mutex and proceeds
-     *
-     * This is SAFE: deinit() waits K_FOREVER on tx_buf_mutex specifically to let
-     * in-flight TX complete. The TX will succeed, and deinit() completes after.
-     * The only cost is deinit() blocking for the TX duration (~500ms). This is
-     * acceptable and documented in deinit()'s tx_buf_mutex comment.
+     * the state check here and tx_buf_mutex acquisition below. Re-check state
+     * after acquiring tx_buf_mutex so a stop/deinit transition that wins this
+     * window prevents a stale TX before airtime is spent.
      */
     enum lora_state state = lora_get_state();
     if (state == LORA_UNINIT) {
@@ -1052,6 +1055,13 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
      * callback registration if we held lora_mutex here.
      */
     k_mutex_lock(&tx_buf_mutex, K_FOREVER);
+
+    state = lora_get_state();
+    if (state != LORA_RUNNING) {
+        LOG_WRN("lora_l2: not running after TX lock (state=%s)", state_names[state]);
+        k_mutex_unlock(&tx_buf_mutex);
+        return -ENETDOWN;
+    }
 
     /*
      * Copy into internal buffer before lora_send(). Zephyr's lora_send()
@@ -1102,9 +1112,19 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
 
 int lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data)
 {
-    if (lora_get_state() == LORA_UNINIT) {
+    enum lora_state state = lora_get_state();
+
+    if (state == LORA_UNINIT) {
         LOG_WRN("lora_l2: cannot set RX callback, not initialized");
         return -ENODEV;
+    }
+    if (state == LORA_DEINITING) {
+        LOG_WRN("lora_l2: cannot set RX callback during deinit");
+        return -EBUSY;
+    }
+    if (state == LORA_ABORTED || lichen_lora_l2_needs_reinit()) {
+        LOG_WRN("lora_l2: cannot set RX callback until reinit after abort");
+        return -ECANCELED;
     }
 
     /*
@@ -1124,27 +1144,68 @@ int lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data)
     return 0;
 }
 
+int lichen_lora_l2_copy_eui64(uint8_t out[8])
+{
+    enum lora_state state;
+    int ret = 0;
+
+    if (out == NULL) {
+        return -EINVAL;
+    }
+
+    k_mutex_lock(&lora_mutex, K_FOREVER);
+    state = lora_get_state();
+    switch (state) {
+    case LORA_STOPPED:
+    case LORA_RUNNING:
+        memcpy(out, lora_data.eui64, sizeof(lora_data.eui64));
+        break;
+    case LORA_UNINIT:
+        LOG_ERR("lora_l2: not initialized");
+        ret = -ENODEV;
+        break;
+    case LORA_ABORTED:
+        LOG_ERR("lora_l2: EUI-64 unavailable until reinit after abort");
+        ret = -ECANCELED;
+        break;
+    case LORA_DEINITING:
+        LOG_ERR("lora_l2: EUI-64 unavailable during deinit");
+        ret = -EBUSY;
+        break;
+    default:
+        LOG_ERR("lora_l2: invalid state while copying EUI-64 (%d)", state);
+        ret = -EINVAL;
+        break;
+    }
+    k_mutex_unlock(&lora_mutex);
+    return ret;
+}
+
 /*
- * Returns alias to internal eui64 array WITHOUT mutex protection.
+ * Compatibility API: returns an alias to internal eui64 storage after a
+ * mutex-protected state check. New callers should use copy_eui64() instead.
  *
  * Thread safety contract (caller responsibility):
- * - No mutex is held; concurrent deinit() will zero the backing memory
+ * - No mutex is held after return; concurrent deinit() can zero the backing memory
  * - Caller must prevent concurrent deinit() while using the pointer
- * - Copy immediately if persistent access is needed
- *
- * Rationale: EUI-64 is stable between init() and deinit(). Mutex overhead
- * is unnecessary for the common case; callers that need the EUI-64 during
- * shutdown transitions should copy first.
- *
- * See header documentation for full contract.
  */
 const uint8_t *lichen_lora_l2_get_eui64(void)
 {
-    if (lora_get_state() == LORA_UNINIT) {
+    const uint8_t *eui64 = NULL;
+    enum lora_state state;
+
+    k_mutex_lock(&lora_mutex, K_FOREVER);
+    state = lora_get_state();
+    if (state == LORA_STOPPED || state == LORA_RUNNING) {
+        eui64 = lora_data.eui64;
+    } else if (state == LORA_UNINIT) {
         LOG_ERR("lora_l2: not initialized");
-        return NULL;
+    } else {
+        LOG_ERR("lora_l2: EUI-64 unavailable in state %d", state);
     }
-    return lora_data.eui64;
+    k_mutex_unlock(&lora_mutex);
+
+    return eui64;
 }
 
 bool lichen_lora_l2_is_running(void)

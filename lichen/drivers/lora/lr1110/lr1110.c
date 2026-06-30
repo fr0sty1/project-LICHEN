@@ -322,6 +322,10 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 			    uint8_t size, k_timeout_t timeout,
 			    int16_t *rssi, int8_t *snr)
 {
+	if (dev == NULL || data == NULL || size == 0) {
+		return -EINVAL;
+	}
+
 	struct lr1110_data *drv = dev->data;
 
 	k_sem_reset(&drv->radio_sem);

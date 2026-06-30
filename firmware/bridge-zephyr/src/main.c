@@ -87,7 +87,7 @@ static void lora_rx_handler(const uint8_t *data, size_t len,
 static int init_standalone_lora(void)
 {
     int ret;
-    const uint8_t *eui64;
+    uint8_t eui64[8];
 
     ret = lichen_lora_l2_init();
     if (ret < 0) {
@@ -95,16 +95,20 @@ static int init_standalone_lora(void)
         return ret;
     }
 
-    lichen_lora_l2_set_rx_callback(lora_rx_handler, NULL);
+    ret = lichen_lora_l2_set_rx_callback(lora_rx_handler, NULL);
+    if (ret < 0) {
+        LOG_ERR("main: failed to set RX callback (%d)", ret);
+        goto cleanup;
+    }
 
     ret = lichen_lora_l2_start();
     if (ret < 0) {
         LOG_ERR("main: LoRa L2 start failed (%d)", ret);
-        return ret;
+        goto cleanup;
     }
 
-    eui64 = lichen_lora_l2_get_eui64();
-    if (eui64 == NULL) {
+    ret = lichen_lora_l2_copy_eui64(eui64);
+    if (ret < 0) {
         LOG_ERR("main: failed to get EUI-64");
         goto cleanup;
     }
@@ -126,7 +130,7 @@ static int init_standalone_lora(void)
 cleanup:
     lichen_lora_l2_stop();
     lichen_lora_l2_deinit();
-    return (ret < 0) ? ret : -ENODATA;
+    return ret;
 }
 #endif
 

@@ -103,6 +103,11 @@ typedef void (*lichen_lora_rx_cb_t)(const uint8_t *data, size_t len,
  * and validates LoRa device is ready. Idempotent: returns 0 if already
  * initialized.
  *
+ * When using the Zephyr network interface path, lichen_l2_iface_init()
+ * calls this during NET_DEVICE_INIT before copying the EUI-64 or registering
+ * RX callbacks. Code that bypasses that path and calls lichen_lora_l2_start()
+ * directly must call this first; start() returns -EINVAL from the UNINIT state.
+ *
  * Idempotency guarantee: If init() fails partway through, subsequent calls
  * retry from the beginning. All module fields (lora_dev, eui64, rx_callback)
  * are re-written before any state transition, so a failed init followed by
@@ -192,12 +197,30 @@ int lichen_lora_l2_set_rx_callback(lichen_lora_rx_cb_t cb, void *user_data);
 /**
  * @brief Get this node's EUI-64 address
  *
+ * Copies the EUI-64 under the LoRa L2 mutex so callers never observe a
+ * partially-cleared value during concurrent deinit().
+ *
+ * @param out Output buffer for 8-byte EUI-64
+ *
+ * @return 0 on success
+ * @return -EINVAL if out is NULL
+ * @return -ENODEV if not initialized
+ * @return -ECANCELED if abort recovery is required
+ * @return -EBUSY if deinit is in progress
+ */
+int lichen_lora_l2_copy_eui64(uint8_t out[8]);
+
+/**
+ * @brief Get this node's EUI-64 address
+ *
  * Returns a pointer to internal state; caller must copy if persistent
  * access is needed. The EUI-64 value is stable after init() completes
  * and does not change until deinit().
  *
+ * Prefer lichen_lora_l2_copy_eui64() for all new code.
+ *
  * @warning The returned pointer aliases internal state. Do NOT modify.
- * @warning Thread safety: Returns internal pointer WITHOUT mutex protection.
+ * @warning Thread safety: Returns internal pointer after releasing the mutex.
  *          Caller must ensure no concurrent deinit() while using the pointer.
  *          A concurrent deinit() will zero the backing memory, causing stale
  *          or partial reads. Either copy immediately, or hold application-level

@@ -40,6 +40,8 @@ LOG_MODULE_REGISTER(lichen_ipv6, LOG_LEVEL_INF);
 /* U/L bit position in EUI-64 (bit 1 of first octet) */
 #define UL_BIT 0x02
 
+static const char hex_digits[] = "0123456789abcdef";
+
 /* Link-local prefix: fe80::/10 */
 static const uint8_t link_local_prefix[8] = {
     0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
@@ -236,32 +238,17 @@ int lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t bufle
      * 2. Simpler parsing (no :: expansion needed by consumers)
      * 3. Consistent log line lengths for alignment
      */
-    int ret = snprintf(buf, buflen,
-             "%02x%02x:%02x%02x:%02x%02x:%02x%02x:"
-             "%02x%02x:%02x%02x:%02x%02x:%02x%02x",
-             addr->s6_addr[0], addr->s6_addr[1],
-             addr->s6_addr[2], addr->s6_addr[3],
-             addr->s6_addr[4], addr->s6_addr[5],
-             addr->s6_addr[6], addr->s6_addr[7],
-             addr->s6_addr[8], addr->s6_addr[9],
-             addr->s6_addr[10], addr->s6_addr[11],
-             addr->s6_addr[12], addr->s6_addr[13],
-             addr->s6_addr[14], addr->s6_addr[15]);
+    size_t out = 0;
+    for (size_t i = 0; i < sizeof(addr->s6_addr); i++) {
+        uint8_t octet = addr->s6_addr[i];
 
-    /* Handle snprintf error (encoding failure, rare) */
-    if (ret < 0) {
-        LOG_ERR("ipv6_addr: addr_to_str failed (snprintf error %d)", ret);
-        if (buflen > 0) {
-            buf[0] = '\0';
+        buf[out++] = hex_digits[octet >> 4];
+        buf[out++] = hex_digits[octet & 0x0f];
+        if ((i & 1U) != 0U && i != (sizeof(addr->s6_addr) - 1U)) {
+            buf[out++] = ':';
         }
-        return -EIO;
     }
-
-    /* Check for truncation (defensive - buflen check above should prevent this) */
-    if ((size_t)ret >= buflen) {
-        LOG_ERR("ipv6_addr: addr_to_str failed (truncated, need %d got %zu)", ret, buflen);
-        return -EINVAL;
-    }
+    buf[out] = '\0';
 
     return 0;
 }

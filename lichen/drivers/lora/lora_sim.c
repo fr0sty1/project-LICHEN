@@ -303,6 +303,10 @@ static int lora_sim_recv(const struct device *dev,
 			 k_timeout_t timeout,
 			 int16_t *rssi, int8_t *snr)
 {
+	if (dev == NULL || data == NULL || size == 0) {
+		return -EINVAL;
+	}
+
 	struct lora_sim_data *drv = dev->data;
 
 	if (drv->fd <= 0) {

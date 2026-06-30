@@ -105,8 +105,13 @@ struct in6_addr {
  *
  * Per spec 6.2: IID = EUI-64 XOR 0x0200000000000000
  *
- * @param eui64 Input EUI-64 (8 bytes)
- * @param iid Output IID (8 bytes)
+ * SECURITY: Both buffers MUST be exactly 8 bytes. The pointer parameters
+ * provide no compile-time bounds checking (C array decay). Passing smaller
+ * buffers causes undefined behavior. Callers should declare:
+ *   uint8_t eui64[8], iid[8];
+ *
+ * @param eui64 Input EUI-64 (8 bytes, not bounds-checked at runtime)
+ * @param iid Output IID (8 bytes, not bounds-checked at runtime)
  *
  * @return 0 on success, -EINVAL if NULL pointer
  */
@@ -123,8 +128,12 @@ int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid);
  * SECURITY: Uses SHA-256 hash rather than raw pubkey bytes because
  * Ed25519 public keys have structure that could leak information.
  *
- * @param pubkey Ed25519 public key (32 bytes)
- * @param iid Output IID (8 bytes)
+ * SECURITY: Buffer sizes are not bounds-checked at runtime (C array decay).
+ * pubkey MUST be 32 bytes, iid MUST be 8 bytes. Passing smaller buffers
+ * causes undefined behavior.
+ *
+ * @param pubkey Ed25519 public key (32 bytes, not bounds-checked at runtime)
+ * @param iid Output IID (8 bytes, not bounds-checked at runtime)
  *
  * @return 0 on success, -EINVAL if NULL pointer
  */
@@ -183,7 +192,6 @@ int lichen_make_gua(const uint8_t *prefix, const uint8_t *iid,
  *
  * @return 0 on success
  * @retval -EINVAL NULL pointer or buffer too small
- * @retval -EIO snprintf encoding error
  */
 int lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t buflen);
 
@@ -194,7 +202,8 @@ int lichen_ipv6_addr_to_str(const struct in6_addr *addr, char *buf, size_t bufle
  * into a single call. Logs at INFO level on success.
  *
  * @param eui64 Input EUI-64 (8 bytes)
- * @param ll_addr_out Output link-local address (may be NULL if caller doesn't need it)
+ * @param ll_addr_out Output link-local address (may be NULL if caller doesn't need it).
+ *                    On error, zeroed to prevent stale data; on success, filled.
  *
  * @return 0 on success, negative errno on failure
  */

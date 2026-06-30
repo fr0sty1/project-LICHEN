@@ -18,6 +18,9 @@
 #include <tinycrypt/sha256.h>
 #include <tinycrypt/constants.h>
 
+BUILD_ASSERT((sizeof(unsigned long) & (sizeof(unsigned long) - 1)) == 0,
+	     "secure_zero alignment mask requires power-of-two unsigned long size");
+
 /*
  * LICHEN-specific error codes (only when link layer is available).
  * Uses defined() rather than IS_ENABLED() to work in host-side tests
