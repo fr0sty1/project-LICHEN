@@ -284,10 +284,33 @@ returns one complete protobuf value. An empty value means the queue is drained.
 
 ### MTU Handling
 
-BLE uses one protobuf per GATT value, not the serial/TCP `0x94 0xc3 + length` stream framing. Current Meshtastic
-firmware generated sizes are below 512 bytes (`ToRadio` about 504 bytes, `FromRadio` about 510 bytes), but exact ATT
-MTU, long-read, and long-write requirements are tracked separately. The adapter must bound decode/encode buffers and
-reject oversized values deterministically.
+BLE uses one protobuf per GATT value, not the serial/TCP `0x94 0xc3 + length` stream framing. The source baseline in
+`project-LICHEN-t2hn.1` records Meshtastic firmware generated protobuf budgets of `ToRadio_size = 504` bytes and
+`FromRadio_size = 510` bytes, with a 512-byte characteristic value envelope.
+
+LICHEN compatibility builds use these limits:
+
+| Direction | Characteristic | Maximum protobuf value | Required behavior |
+|-----------|----------------|------------------------|-------------------|
+| App to node | `ToRadio` | 504 bytes | Accept one complete raw protobuf value; reject 505+ bytes |
+| Node to app | `FromRadio` | 510 bytes | Emit one complete raw protobuf value per read; never emit 511+ bytes |
+| Notify/read hint | `FromNum` | 4 bytes | Notify/read a little-endian monotonic queue counter |
+
+ATT MTU is a transport detail below the app contract. The Zephyr GATT binding may rely on ATT long write/read support or
+platform-provided value reassembly, but the Meshtastic adapter must see exactly one complete protobuf value per
+`ToRadio` write and must expose exactly one queued protobuf value per `FromRadio` read. The adapter must not implement
+Meshtastic-specific app-level BLE chunking or accept StreamAPI length-prefixed frames on BLE.
+
+Boundary behavior is deterministic:
+
+- `ToRadio` values larger than 504 bytes are rejected before decode and must not leave partial parser or sync state.
+- `FromRadio` payloads that would encode larger than 510 bytes must be reduced, split at the semantic queue level, or
+  replaced with a deterministic compatibility error before they reach the GATT value.
+- If a board/stack cannot carry 504-byte writes or 510-byte reads through ATT long operations, that board is not
+  Meshtastic-compatible until the limitation is fixed or documented as a blocker.
+
+`test/vectors/meshtastic_app_compat.json` includes BLE stream-prefix rejection and 505-byte `ToRadio` rejection cases.
+Captured Android/iOS/Python ATT evidence is tracked separately by `project-LICHEN-t2hn.21`.
 
 ## Protobuf Messages
 
