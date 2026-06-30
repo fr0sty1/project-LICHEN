@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-avrb",
+  "title": "Provide local Muzi R1 Neo hardware for flash/smoke test",
+  "description": "Blocks project-LICHEN-ev5b.5. The host currently has no detectable Muzi Works R1 Neo/R1 hardware attached: no /Volumes/R1-Neo or Adafruit UF2 mass-storage volume, no Nordic/Adafruit/Muzi CDC/DFU USB device in ioreg, and only unrelated serial devices (/dev/cu.usbserial-A704ESXG FT232R plus debug/wlan/Bluetooth ports). Attach the R1 Neo in bootloader or app serial mode, or provide remote console/flashing access, then resume the flash and smoke test.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T16:52:14.822015Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T16:52:14.822055Z"
+}
