@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+menuconfig LICHEN_MESHTASTIC_CODEC
+	bool "Meshtastic app-compat bounded protobuf codec"
+	depends on LICHEN
+	help
+	  Enable the bounded no-allocation protobuf subset used by the
+	  Meshtastic app compatibility adapter. The schema source is
+	  meshtastic/protobufs commit 032b7dfd68e875c4323e6ac67590c6fc616b1714.
+
+if LICHEN_MESHTASTIC_CODEC
+
+config LICHEN_MESHTASTIC_MAX_TO_RADIO
+	int "Maximum ToRadio protobuf value size"
+	default 504
+	range 1 504
+	help
+	  Maximum raw ToRadio protobuf value accepted from BLE. This follows
+	  the generated Meshtastic firmware ToRadio_size budget.
+
+config LICHEN_MESHTASTIC_MAX_FROM_RADIO
+	int "Maximum FromRadio protobuf value size"
+	default 510
+	range 1 510
+	help
+	  Maximum raw FromRadio protobuf value emitted to BLE. This follows
+	  the generated Meshtastic firmware FromRadio_size budget.
+
+endif # LICHEN_MESHTASTIC_CODEC

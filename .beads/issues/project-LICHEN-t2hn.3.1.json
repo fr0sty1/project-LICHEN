@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-t2hn.3.1",
+  "title": "Drive Zephyr Meshtastic codec tests from canonical vectors",
+  "description": "Why this exists: the Zephyr meshtastic_codec ztest currently mirrors selected bytes from test/vectors/meshtastic_app_compat.json, but it does not consume the canonical vector corpus directly. What needs to be done: add a generator or build-time conversion so Zephyr C tests are produced from the JSON vectors, including supported/unsupported cases and BLE prefix rejection where applicable, without dynamic allocation. Acceptance criteria: generated C fixture or embedded data is reproducible from the JSON vector file; native_sim ztest covers all codec-applicable vectors; Python and Zephyr remain in sync when vectors change.",
+  "notes": "2026-06-30 completed: added lichen/tests/meshtastic_codec build-time generator gen_vectors.py consuming test/vectors/meshtastic_app_compat.json and emitting meshtastic_vectors.h. Ztest asserts source vector count 14 and codec-applicable vector count 12, covers heartbeat, want_config_id, packet views, BLE stream-prefix rejection, oversized ToRadio rejection, queueStatus, FromRadio packet vectors, malformed/truncated/overflow varints, oversized field key, fixed64 skip, oneof last-wins, no-partial-write oversize encode, and sync response wrappers. EC2 post-fix Twister native_sim PASS: 1 scenario / 11 cases.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T23:12:03.670929Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T23:47:54.016714Z",
+  "closed_at": "2026-06-30T23:47:54.016714Z",
+  "close_reason": "Completed: canonical JSON-driven Zephyr meshtastic_codec vector harness implemented and native_sim Twister passed.",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "protobuf",
+    "firmware",
+    "app-interface"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.3.1",
+      "depends_on_id": "project-LICHEN-t2hn.3",
+      "type": "parent-child",
+      "created_at": "2026-06-30T23:12:03.671441Z"
+    }
+  ]
+}
