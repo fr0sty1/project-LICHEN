@@ -201,16 +201,17 @@ static lichen_native_rx_cb_t s_rx_cb;
 static bool s_initialized;
 static K_MUTEX_DEFINE(s_init_mutex);
 
-/* Write a complete frame: [0xC1][LEN_HI][LEN_LO][payload] */
-static int native_send_frame(const uint8_t *payload, uint16_t len)
+/* Write a complete frame: [0xC1][LEN_HI][LEN_LO][payload].
+ * Caller must hold s_tx_mutex so shared encode buffers cannot be modified
+ * while their frame is being emitted.
+ */
+static int native_send_frame_locked(const uint8_t *payload, uint16_t len)
 {
 	int ret = 0;
 
 	if (!s_uart || !device_is_ready(s_uart)) {
 		return -ENODEV;
 	}
-
-	k_mutex_lock(&s_tx_mutex, K_FOREVER);
 
 	uart_poll_out(s_uart, 0xC1u);
 	uart_poll_out(s_uart, (uint8_t)(len >> 8));
@@ -219,18 +220,27 @@ static int native_send_frame(const uint8_t *payload, uint16_t len)
 		uart_poll_out(s_uart, payload[i]);
 	}
 
-	k_mutex_unlock(&s_tx_mutex);
 	return ret;
 }
 
-/* Encode CBOR payload into s_tx_buf and send. */
-static int send_payload(int pos)
+/* Send payload already encoded into s_tx_buf. Caller must hold s_tx_mutex. */
+static int send_payload_locked(int pos)
 {
 	if (pos < 0 || pos > TX_BUF_SIZE) {
-		LOG_ERR("CBOR encode overflow");
 		return -ENOMEM;
 	}
-	return native_send_frame(s_tx_buf, (uint16_t)pos);
+	return native_send_frame_locked(s_tx_buf, (uint16_t)pos);
+}
+
+static int finish_tx_locked(int pos)
+{
+	int ret = send_payload_locked(pos);
+
+	k_mutex_unlock(&s_tx_mutex);
+	if (ret == -ENOMEM) {
+		LOG_ERR("CBOR encode overflow");
+	}
+	return ret;
 }
 
 /* --------------------------------------------------------------------------
@@ -431,6 +441,9 @@ int lichen_native_send_hello(void)
 #endif
 
 	int n_top = 5; /* 0,1,2,3,7 */
+
+	k_mutex_lock(&s_tx_mutex, K_FOREVER);
+
 	pos = cbor_map(s_tx_buf, pos, cap, n_top);
 	/* 0: type = hello */
 	pos = cbor_uint(s_tx_buf, pos, cap, 0);
@@ -453,7 +466,7 @@ int lichen_native_send_hello(void)
 	pos = cbor_uint(s_tx_buf, pos, cap, 4);
 	pos = cbor_bool(s_tx_buf, pos, cap, has_gps);
 
-	return send_payload(pos);
+	return finish_tx_locked(pos);
 }
 
 int lichen_native_send_node_info(const char *name,
@@ -466,6 +479,8 @@ int lichen_native_send_node_info(const char *name,
 {
 	int pos = 0;
 	const int cap = TX_BUF_SIZE;
+
+	k_mutex_lock(&s_tx_mutex, K_FOREVER);
 
 	/* Count how many optional top-level keys we'll include */
 	int n_top = 5; /* 0,1,5 always + name(2),fw(3),hw(4),uptime(5)... */
@@ -536,7 +551,7 @@ int lichen_native_send_node_info(const char *name,
 		pos = cbor_uint(s_tx_buf, pos, cap, radio->rx_pkts);
 	}
 
-	return send_payload(pos);
+	return finish_tx_locked(pos);
 }
 
 int lichen_native_send_message_received(const uint8_t src_iid[8],
@@ -545,6 +560,8 @@ int lichen_native_send_message_received(const uint8_t src_iid[8],
 {
 	int pos = 0;
 	const int cap = TX_BUF_SIZE;
+
+	k_mutex_lock(&s_tx_mutex, K_FOREVER);
 
 	/* keys: 0,1,2,5,6 = 5 items */
 	pos = cbor_map(s_tx_buf, pos, cap, 5);
@@ -564,7 +581,7 @@ int lichen_native_send_message_received(const uint8_t src_iid[8],
 	pos = cbor_uint(s_tx_buf, pos, cap, 6);
 	pos = cbor_int(s_tx_buf, pos, cap, snr);
 
-	return send_payload(pos);
+	return finish_tx_locked(pos);
 }
 
 bool lichen_native_log_is_subscribed(void)
@@ -580,6 +597,8 @@ int lichen_native_send_log_entry(uint8_t level, const char *module, const char *
 
 	int pos = 0;
 	const int cap = TX_BUF_SIZE;
+
+	k_mutex_lock(&s_tx_mutex, K_FOREVER);
 
 	/* keys: 0,1,2,3,4 = 5 items (type, level, msg, module, uptime) */
 	pos = cbor_map(s_tx_buf, pos, cap, 5);
@@ -599,7 +618,7 @@ int lichen_native_send_log_entry(uint8_t level, const char *module, const char *
 	pos = cbor_uint(s_tx_buf, pos, cap, 4);
 	pos = cbor_uint(s_tx_buf, pos, cap, (uint64_t)k_uptime_get());
 
-	return send_payload(pos);
+	return finish_tx_locked(pos);
 }
 
 /* --------------------------------------------------------------------------
