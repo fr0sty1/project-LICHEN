@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-rjsw",
   "title": "LilyGO device UI for LICHEN firmware",
-  "description": "Why this exists: LilyGO-class Meshtastic-compatible boards are likely first-run contributor/user hardware, and the Zephyr firmware needs an on-device UI path for status, pairing, diagnostics, and basic mesh interaction rather than relying only on serial logs or phone apps. What needs to be done: design and implement the LilyGO UI surface for supported display/button/GPS variants, including boot/status screens, node identity display, radio/link status, neighbor/route summary, message or app notification views, settings affordances, error states, and low-power behavior. Integrate with the existing Zephyr firmware abstractions without hard-coding a single board layout. Acceptance criteria: supported LilyGO boards are enumerated; display/input drivers and board overlays are documented; UI state model and rendering loop are implemented or explicitly scoped into child Beads; simulator or hardware test path is documented; build succeeds for at least one LilyGO target; two code-review passes are completed before closure.",
+  "description": "Why this exists: LilyGO-class Meshtastic-compatible boards are likely first-run contributor/user hardware, and the Zephyr firmware needs an on-device UI path for status, pairing, diagnostics, and actual user messaging rather than relying only on serial logs or phone apps. What needs to be done: design and implement the LilyGO UI surface for supported display/button/GPS variants, including boot/status screens, node identity display, radio/link status, neighbor/route summary, text messaging views, settings affordances, error states, and low-power behavior. The UI must act as a basic texting app: browse channels/groups, read message history, compose/send channel/group messages, browse contacts/peers, read 1:1 conversations, compose/send 1:1 messages, show delivery/pending/error state where available, and surface unread/message notification state. Integrate with existing firmware abstractions without hard-coding a single board layout; consume firmware-wide location and date/time providers instead of owning GNSS/time source policy. Acceptance criteria: supported LilyGO boards are enumerated; display/input drivers and board overlays are documented; UI state model and rendering/input loop cover status plus channel/group and 1:1 messaging; message compose constraints for small screens/buttons are documented; simulator or hardware test path is documented; build succeeds for at least one LilyGO target; two code-review passes are completed before closure.",
   "notes": "Location/GNSS is firmware-wide, not LilyGO-specific. LilyGO UI must consume the unified location provider tracked by project-LICHEN-zte2 and render fix/source/age/quality from that provider instead of assuming onboard GNSS.",
   "status": "open",
   "priority": 2,
@@ -9,7 +9,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T06:08:08.179387Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-30T06:12:50.409257Z",
+  "updated_at": "2026-06-30T06:15:44.697824Z",
   "labels": [
     "zephyr",
     "ui",
@@ -22,6 +22,12 @@
       "depends_on_id": "project-LICHEN-zte2",
       "type": "blocks",
       "created_at": "2026-06-30T06:12:36.156686Z"
+    },
+    {
+      "issue_id": "project-LICHEN-rjsw",
+      "depends_on_id": "project-LICHEN-2067",
+      "type": "blocks",
+      "created_at": "2026-06-30T06:15:09.016299Z"
     }
   ]
 }

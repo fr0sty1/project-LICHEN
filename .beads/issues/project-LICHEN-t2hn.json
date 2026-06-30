@@ -8,7 +8,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T06:08:19.813345Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-30T06:12:36.168831Z",
+  "updated_at": "2026-06-30T06:15:09.022752Z",
   "labels": [
     "zephyr",
     "meshtastic",
@@ -21,6 +21,12 @@
       "depends_on_id": "project-LICHEN-zte2",
       "type": "blocks",
       "created_at": "2026-06-30T06:12:36.168831Z"
+    },
+    {
+      "issue_id": "project-LICHEN-t2hn",
+      "depends_on_id": "project-LICHEN-2067",
+      "type": "blocks",
+      "created_at": "2026-06-30T06:15:09.022752Z"
     }
   ]
 }
