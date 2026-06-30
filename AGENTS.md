@@ -287,7 +287,33 @@ Test vectors live in `test/vectors/` as JSON. Both implementations read and veri
 
 If a Zephyr build or test is Linux-only and cannot run on the local host, use SSH host `heft` to run that build/test instead of skipping it. `heft` already has `~/GIT`; create/use `~/WORKSPACE` there for build workspaces.
 
-When Linux builders or interbox testing are needed and local/`heft` resources are insufficient, use AWS EC2 via the AWS CLI. The local AWS profile is `AdministratorAccess-921772462201`; keep instance lifetimes short, use the smallest practical instance type, tag temporary resources with the project/task, and shut them down or terminate them when finished.
+When Linux builders or interbox testing are needed and local/`heft` resources are insufficient, use AWS EC2 via the AWS CLI. The local AWS profile is `AdministratorAccess-921772462201`; keep instance lifetimes short, use the smallest practical instance type, tag temporary resources with the project/task, and shut them down or terminate them when finished. You can also connect to the EC2 instance console itself both over SSH and through the AWS API, so use those paths to watch instance boot, diagnose cloud-init or package-install failures, and confirm the builder is ready before starting long Zephyr builds.
+
+### AWS Zephyr Builder EBS Cache
+
+Use the persistent single-AZ EBS builder cache before rebuilding Zephyr dependencies from scratch:
+
+- Volume: `vol-0875d0df8bdf82a58`
+- Region/AZ: `us-east-2` / `us-east-2a`
+- Size/type: 100 GiB `gp3`
+- Filesystem label: `LICHEN_ZEPHYR`
+- Mount point: `/mnt/lichen-zephyr`
+- Prepared contents: Zephyr SDK `0.16.8`, repo west workspace pinned to Zephyr `v3.7.0`, Zephyr Python venv, west modules, ccache, pip/uv cache directories, and helper scripts.
+- Validation: `west build -b native_sim ... lichen/tests/link_crypto` plus `west build -t run` passed with `link_crypto` 2/2.
+
+Workflow for a fresh EC2 instance in `us-east-2a`:
+
+```bash
+aws ec2 attach-volume --profile AdministratorAccess-921772462201 --region us-east-2 \
+  --volume-id vol-0875d0df8bdf82a58 --instance-id <instance-id> --device /dev/sdf
+
+sudo /mnt/lichen-zephyr/scripts/mount-volume.sh vol-0875d0df8bdf82a58 /mnt/lichen-zephyr
+/mnt/lichen-zephyr/scripts/bootstrap-host.sh   # only if host packages are missing
+. /mnt/lichen-zephyr/env.sh
+cd /mnt/lichen-zephyr/work/project-LICHEN
+```
+
+The volume is single-attach. Before terminating a builder, run `sync`, unmount `/mnt/lichen-zephyr`, detach the volume, and wait for it to return to `available` so the next builder can attach it.
 
 ## IETF I-D Documents
 
