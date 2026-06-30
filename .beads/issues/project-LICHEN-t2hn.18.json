@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-t2hn.18",
+  "title": "Define Meshtastic BLE payload-size and ATT behavior contract",
+  "description": "Why this exists: current Meshtastic apps write one serialized ToRadio protobuf per GATT value and drain one FromRadio protobuf per read, but worst-case payload size depends on ATT MTU, long-write/read behavior, and firmware-generated ToRadio/FromRadio budgets. What needs to be done: determine the exact maximum BLE GATT value sizes LICHEN must accept/emit for Android, iOS, Python, nRF52, and ESP32 Meshtastic compatibility; define failure behavior for oversized ToRadio and chunking/non-chunking assumptions. Acceptance criteria: source refs or captured BLE evidence are recorded; max inbound/outbound payload sizes are explicit; tests or vector Beads are updated to cover boundary cases.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T21:58:48.509774Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T21:58:48.510479Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.18",
+      "depends_on_id": "project-LICHEN-t2hn",
+      "type": "parent-child",
+      "created_at": "2026-06-30T21:58:48.510479Z"
+    }
+  ]
+}
