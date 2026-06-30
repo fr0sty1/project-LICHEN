@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-42j7",
+  "title": "python: fix Node Meshtastic adapter import and typing",
+  "description": "Why this exists: while validating project-LICHEN-1ox2 with mypy, python/src/lichen/node.py failed because it imports lichen.meshtastic.adapter, but the adapter implementation is under lichen/interface/meshtastic/adapter.py, and _meshtastic_adapter is typed as object so mypy rejects start()/stop() calls. What needs to be done: decide the intended public import path for the Meshtastic adapter, update Node's lazy import and type annotation/protocol accordingly, and add or update tests so mypy can check node.py without these import/attr-defined errors.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T05:26:47.515577Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T05:26:52.901397Z",
+  "labels": [
+    "python",
+    "meshtastic",
+    "mypy",
+    "follow-up"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-42j7",
+      "depends_on_id": "project-LICHEN-1ox2",
+      "type": "discovered-from",
+      "created_at": "2026-06-30T05:26:52.901397Z"
+    }
+  ]
+}

@@ -39,6 +39,7 @@ from lichen.link.link_layer import LinkLayer, RxFrame
 from lichen.radio.base import Radio
 from lichen.routing.router import RouteDecision, Router
 from lichen.schc.headers import compress_packet, decompress_packet
+from lichen.state_machine import StateMachine, requires_state
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,14 @@ class NodeState(Enum):
     STARTING = auto()
     RUNNING = auto()
     STOPPING = auto()
+
+
+NODE_STATE_TRANSITIONS: dict[NodeState, frozenset[NodeState]] = {
+    NodeState.STOPPED: frozenset({NodeState.STARTING}),
+    NodeState.STARTING: frozenset({NodeState.RUNNING, NodeState.STOPPING}),
+    NodeState.RUNNING: frozenset({NodeState.STOPPING}),
+    NodeState.STOPPING: frozenset({NodeState.STOPPED}),
+}
 
 
 @dataclass
@@ -116,7 +125,7 @@ class Node:
     peer_db: dict[bytes, PeerIdentity] = field(default_factory=dict, repr=False)
 
     # Lifecycle state
-    state: NodeState = field(default=NodeState.STOPPED, init=False)
+    _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
     _receive_task: asyncio.Task | None = field(default=None, init=False, repr=False)
 
     # Announce scheduler - manages periodic announce transmission
@@ -135,6 +144,12 @@ class Node:
     _meshtastic_adapter: object | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
+        self._state_machine = StateMachine(
+            initial=NodeState.STOPPED,
+            transitions=NODE_STATE_TRANSITIONS,
+            name=f"node[{self.identity.iid.hex()}]",
+        )
+
         # Why initialize layers here: They depend on self.identity, self.radio.
         self.link = LinkLayer(
             radio=self.radio,
@@ -184,6 +199,11 @@ class Node:
                     "install with: pip install lichen[meshtastic]"
                 )
 
+    @property
+    def state(self) -> NodeState:
+        """Return the node lifecycle state."""
+        return self._state_machine.state
+
     def _peer_lookup(self, hint: bytes) -> PeerIdentity | None:
         """Look up a peer by IID hint.
 
@@ -231,15 +251,13 @@ class Node:
         """
         self._on_receive = callback
 
+    @requires_state(NodeState.STOPPED)
     async def start(self) -> None:
         """Start the node's async tasks.
 
         Why async: Creates background tasks that run until stop().
         """
-        if self.state != NodeState.STOPPED:
-            raise RuntimeError(f"cannot start node in state {self.state}")
-
-        self.state = NodeState.STARTING
+        self._state_machine.transition(NodeState.STARTING)
         logger.info("starting node %s", self.identity.iid.hex())
 
         # Start receive loop
@@ -256,7 +274,7 @@ class Node:
         if self._meshtastic_adapter is not None:
             await self._meshtastic_adapter.start()
 
-        self.state = NodeState.RUNNING
+        self._state_machine.transition(NodeState.RUNNING)
         logger.info("node started")
 
     async def stop(self) -> None:
@@ -267,7 +285,7 @@ class Node:
         if self.state != NodeState.RUNNING:
             return
 
-        self.state = NodeState.STOPPING
+        self._state_machine.transition(NodeState.STOPPING)
         logger.info("stopping node")
 
         # Stop Meshtastic adapter first
@@ -285,7 +303,7 @@ class Node:
                 await self._receive_task
             self._receive_task = None
 
-        self.state = NodeState.STOPPED
+        self._state_machine.transition(NodeState.STOPPED)
         logger.info("node stopped")
 
     async def _receive_loop(self) -> None:
