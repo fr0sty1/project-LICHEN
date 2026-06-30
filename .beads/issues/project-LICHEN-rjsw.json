@@ -9,7 +9,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T06:08:08.179387Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-30T06:15:44.697824Z",
+  "updated_at": "2026-06-30T17:54:43.580744Z",
   "labels": [
     "zephyr",
     "ui",
@@ -28,6 +28,12 @@
       "depends_on_id": "project-LICHEN-2067",
       "type": "blocks",
       "created_at": "2026-06-30T06:15:09.016299Z"
+    },
+    {
+      "issue_id": "project-LICHEN-rjsw",
+      "depends_on_id": "project-LICHEN-h7t5.7.7",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:54:43.580744Z"
     }
   ]
 }

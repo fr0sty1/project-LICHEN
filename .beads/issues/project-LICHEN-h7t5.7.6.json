@@ -1,0 +1,40 @@
+{
+  "id": "project-LICHEN-h7t5.7.6",
+  "title": "Bring up LilyGO local client transports",
+  "description": "Why this exists: LilyGO should validate the native app paths, not only radio boot. What needs to be done: verify USB CDC/serial shell or SLIP path, BLE advertising/connectivity where hardware supports BLE, direct BLE native-app service assumptions, and IP/CoAP LCI path where available. Acceptance criteria: host can discover/connect over the supported local path; at least one native app smoke path works from Linux or macOS; BLE service/characteristic UUIDs or serial endpoints are recorded; unsupported transport cases are explicit and filed if needed.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:54:39.760583Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:54:41.316338Z",
+  "labels": [
+    "zephyr",
+    "lilygo",
+    "ble",
+    "serial",
+    "lci",
+    "native-interface",
+    "hardware",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6",
+      "depends_on_id": "project-LICHEN-h7t5.7",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:54:39.761112Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6",
+      "depends_on_id": "project-LICHEN-h7t5.7.4",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:54:41.316337Z"
+    }
+  ]
+}

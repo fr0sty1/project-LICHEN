@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-h7t5.7.5",
+  "title": "Bring up LilyGO LoRa radio path",
+  "description": "Why this exists: the selected LilyGO board is only useful as a mesh target if the LoRa radio path works with correct SPI, DIO, reset, busy, RF switch, TCXO, antenna, and regional parameters. What needs to be done: validate Zephyr radio binding, SPI bus, GPIOs, interrupts, reset sequencing, SX126x/SX127x variant, RF switch/TCXO control, TX power constraints, receive path, and LICHEN link-layer integration. Acceptance criteria: firmware can initialize radio; TX smoke test succeeds; RX or peer exchange succeeds with known-good device or simulator bridge; failures create specific follow-up Beads with captured logs and pin/component evidence.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:54:39.642283Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:54:41.13636Z",
+  "labels": [
+    "zephyr",
+    "lilygo",
+    "lora",
+    "radio",
+    "smoke-test",
+    "hardware",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.5",
+      "depends_on_id": "project-LICHEN-h7t5.7",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:54:39.642825Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.5",
+      "depends_on_id": "project-LICHEN-h7t5.7.4",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:54:41.136359Z"
+    }
+  ]
+}

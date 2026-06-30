@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-h7t5.7.7",
+  "title": "Bring up LilyGO display and input hardware",
+  "description": "Why this exists: LilyGO is expected to be the first visual/user-facing reference board, but display and input vary widely by model. What needs to be done: validate display controller, bus, backlight, orientation, resolution, buttons/encoder/keyboard/touch if present, debounce/input events, and low-power display behavior. Coordinate with project-LICHEN-rjsw for the actual device UI. Acceptance criteria: display test pattern or status screen renders correctly; input events are visible through Zephyr input/HAL; orientation/backlight are correct; UI-specific rendering work is linked to project-LICHEN-rjsw; missing drivers or hardware uncertainty create follow-up Beads.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:54:39.873847Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:54:52.949891Z",
+  "labels": [
+    "zephyr",
+    "lilygo",
+    "display",
+    "input",
+    "ui",
+    "hardware",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.7",
+      "depends_on_id": "project-LICHEN-h7t5.7",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:54:39.874366Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.7",
+      "depends_on_id": "project-LICHEN-h7t5.7.4",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:54:41.488986Z"
+    }
+  ]
+}

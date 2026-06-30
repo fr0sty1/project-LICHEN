@@ -1,0 +1,37 @@
+{
+  "id": "project-LICHEN-h7t5.7.2",
+  "title": "Confirm LilyGO hardware facts from source material",
+  "description": "Why this exists: board files and HAL descriptors must be based on confirmed pinouts and component variants, not community memory. What needs to be done: collect official LilyGO schematics/docs, Meshtastic board definitions, PlatformIO variants, Zephyr upstream board status if any, and driver requirements for MCU, LoRa radio, display, input, GNSS, PMIC, battery ADC, external flash/storage, reset/boot pins, and charging/power controls. Acceptance criteria: source provenance is recorded; pin map is complete enough for Zephyr devicetree; uncertain pins/components are filed as follow-up Beads; any revision-specific differences are documented.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:54:38.295114Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:54:40.583287Z",
+  "labels": [
+    "lilygo",
+    "hardware",
+    "research",
+    "zephyr",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.2",
+      "depends_on_id": "project-LICHEN-h7t5.7",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:54:38.295644Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.2",
+      "depends_on_id": "project-LICHEN-h7t5.7.1",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:54:40.583287Z"
+    }
+  ]
+}

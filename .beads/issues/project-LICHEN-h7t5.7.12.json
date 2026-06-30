@@ -1,0 +1,38 @@
+{
+  "id": "project-LICHEN-h7t5.7.12",
+  "title": "Document LilyGO target support status and limitations",
+  "description": "Why this exists: contributors and users need to know what exact LilyGO device works, what is experimental, and how to reproduce builds and flashes. What needs to be done: document selected board, hardware revision, supported peripherals, unsupported peripherals, build/flash commands, host prerequisites, smoke-test steps, known issues, and relationship to R1/R1 Neo product target. Acceptance criteria: support status is recorded in project docs or Beads design fields; limitations are explicit; hardware uncertainties and missing tests are represented as Beads; partner/contributor handoff is clear.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:54:40.445778Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:54:43.060834Z",
+  "labels": [
+    "docs",
+    "lilygo",
+    "hardware",
+    "support-matrix",
+    "zephyr",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.12",
+      "depends_on_id": "project-LICHEN-h7t5.7",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:54:40.446292Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.12",
+      "depends_on_id": "project-LICHEN-h7t5.7.11",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:54:43.060834Z"
+    }
+  ]
+}

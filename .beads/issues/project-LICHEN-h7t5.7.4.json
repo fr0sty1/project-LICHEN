@@ -1,0 +1,37 @@
+{
+  "id": "project-LICHEN-h7t5.7.4",
+  "title": "Add LilyGO LICHEN gateway/app overlays",
+  "description": "Why this exists: the board target alone is not enough; LICHEN apps need overlays and config fragments that bind the selected board capabilities to gateway/native-client firmware. What needs to be done: add app-specific overlay and conf files for the selected LilyGO target, enabling LICHEN L2 packet path, LoRa driver, BLE or serial local interface, logging, shell/diagnostics as appropriate, and HAL capability discovery. Acceptance criteria: gateway/native firmware builds for the LilyGO target; generated config confirms expected LICHEN, radio, BLE/serial, and HAL settings; optional peripherals are disabled or stubbed until validated; memory usage is recorded.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:54:39.52798Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:54:40.959226Z",
+  "labels": [
+    "zephyr",
+    "lilygo",
+    "overlay",
+    "firmware",
+    "hardware",
+    "board-support",
+    "bringup",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.4",
+      "depends_on_id": "project-LICHEN-h7t5.7",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:54:39.528529Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.4",
+      "depends_on_id": "project-LICHEN-h7t5.7.3",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:54:40.959226Z"
+    }
+  ]
+}
