@@ -8,12 +8,15 @@ project(schc_test C)
 
 # Include paths
 include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/schc/include
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/schc/include
 )
 
 # Build test executable
 add_executable(schc_test
   main.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/schc/bitstream.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/schc/schc.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/schc/schc.c
 )
 

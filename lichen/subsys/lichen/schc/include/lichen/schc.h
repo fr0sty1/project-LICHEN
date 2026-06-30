@@ -60,6 +60,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <schc/schc.h>
 
 #ifndef LICHEN_WARN_UNUSED_RESULT
 #if defined(__GNUC__) || defined(__clang__)
@@ -80,15 +81,6 @@ extern "C" {
 #define SCHC_RULE_RPL_DIO          3
 #define SCHC_RULE_RPL_DAO          4
 #define SCHC_RULE_UNCOMPRESSED     255
-
-/** Error codes */
-enum schc_error {
-	SCHC_OK = 0,
-	SCHC_ERR_NO_MATCHING_RULE = -1,
-	SCHC_ERR_BUFFER_TOO_SMALL = -2,
-	SCHC_ERR_UNKNOWN_RULE_ID = -3,
-	SCHC_ERR_TOO_SHORT = -4,
-};
 
 /**
  * @brief Compress an IPv6 packet using SCHC.
@@ -133,7 +125,7 @@ int lichen_schc_decompress(const uint8_t *data, size_t data_len,
  */
 static inline int lichen_schc_rule_id(const uint8_t *data, size_t len)
 {
-	return (len > 0) ? data[0] : -1;
+	return schc_rule_id(data, len);
 }
 
 #ifdef __cplusplus
