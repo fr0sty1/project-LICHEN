@@ -77,7 +77,8 @@ int lichen_native_init(lichen_native_rx_cb_t rx_cb);
 /*
  * lichen_native_send_hello — transmit a hello frame to the host.
  *
- * Announces supported message types and device capabilities.
+ * Announces the default device-side message types implemented by this library
+ * and device capabilities.
  */
 int lichen_native_send_hello(void);
 

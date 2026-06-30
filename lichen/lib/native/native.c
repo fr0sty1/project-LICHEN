@@ -21,6 +21,7 @@
 #include <zephyr/usb/usb_device.h>
 #include <zephyr/init.h>
 #endif
+#include <zcbor_decode.h>
 #include <string.h>
 
 LOG_MODULE_REGISTER(lichen_native, LOG_LEVEL_INF);
@@ -192,6 +193,8 @@ static int cbor_bool(uint8_t *buf, int pos, int cap, bool val)
 #define TX_BUF_SIZE CONFIG_LICHEN_NATIVE_TX_BUF_SIZE
 #define RX_BUF_SIZE CONFIG_LICHEN_NATIVE_RX_BUF_SIZE
 
+#define LN_FRAME_SYNC_BYTE 0xC1u
+
 static const struct device *s_uart;
 static K_MUTEX_DEFINE(s_tx_mutex);
 static uint8_t s_tx_buf[TX_BUF_SIZE];
@@ -201,6 +204,57 @@ static lichen_native_rx_cb_t s_rx_cb;
 static bool s_initialized;
 static K_MUTEX_DEFINE(s_init_mutex);
 
+static const uint8_t s_default_supported_types[] = {
+	LN_TYPE_HELLO,
+	LN_TYPE_MESSAGE_RECEIVED,
+	LN_TYPE_NODE_INFO,
+	LN_TYPE_LOG_ENTRY,
+	LN_TYPE_LOG_SUBSCRIBE,
+};
+
+#ifdef LICHEN_NATIVE_TEST_TX
+#define TEST_TX_CAPTURE_SIZE 8192U
+static K_MUTEX_DEFINE(s_test_tx_mutex);
+static uint8_t s_test_tx_capture[TEST_TX_CAPTURE_SIZE];
+static size_t s_test_tx_len;
+static bool s_test_tx_overflow;
+
+void lichen_native_test_tx_clear(void)
+{
+	k_mutex_lock(&s_test_tx_mutex, K_FOREVER);
+	s_test_tx_len = 0;
+	s_test_tx_overflow = false;
+	k_mutex_unlock(&s_test_tx_mutex);
+}
+
+size_t lichen_native_test_tx_snapshot(uint8_t *buf, size_t cap, bool *overflow)
+{
+	size_t len;
+
+	k_mutex_lock(&s_test_tx_mutex, K_FOREVER);
+	len = MIN(s_test_tx_len, cap);
+	memcpy(buf, s_test_tx_capture, len);
+	if (overflow != NULL) {
+		*overflow = s_test_tx_overflow;
+	}
+	k_mutex_unlock(&s_test_tx_mutex);
+
+	return len;
+}
+
+static void test_tx_byte(uint8_t byte)
+{
+	k_mutex_lock(&s_test_tx_mutex, K_FOREVER);
+	if (s_test_tx_len < sizeof(s_test_tx_capture)) {
+		s_test_tx_capture[s_test_tx_len++] = byte;
+	} else {
+		s_test_tx_overflow = true;
+	}
+	k_mutex_unlock(&s_test_tx_mutex);
+	k_yield();
+}
+#endif
+
 /* Write a complete frame: [0xC1][LEN_HI][LEN_LO][payload].
  * Caller must hold s_tx_mutex so shared encode buffers cannot be modified
  * while their frame is being emitted.
@@ -209,11 +263,21 @@ static int native_send_frame_locked(const uint8_t *payload, uint16_t len)
 {
 	int ret = 0;
 
+#ifdef LICHEN_NATIVE_TEST_TX
+	test_tx_byte(LN_FRAME_SYNC_BYTE);
+	test_tx_byte((uint8_t)(len >> 8));
+	test_tx_byte((uint8_t)len);
+	for (uint16_t i = 0; i < len; i++) {
+		test_tx_byte(payload[i]);
+	}
+
+	return ret;
+#else
 	if (!s_uart || !device_is_ready(s_uart)) {
 		return -ENODEV;
 	}
 
-	uart_poll_out(s_uart, 0xC1u);
+	uart_poll_out(s_uart, LN_FRAME_SYNC_BYTE);
 	uart_poll_out(s_uart, (uint8_t)(len >> 8));
 	uart_poll_out(s_uart, (uint8_t)len);
 	for (uint16_t i = 0; i < len; i++) {
@@ -221,6 +285,7 @@ static int native_send_frame_locked(const uint8_t *payload, uint16_t len)
 	}
 
 	return ret;
+#endif
 }
 
 /* Send payload already encoded into s_tx_buf. Caller must hold s_tx_mutex. */
@@ -242,6 +307,58 @@ static int finish_tx_locked(int pos)
 	}
 	return ret;
 }
+
+static int encode_hello(uint8_t *buf, int cap, const uint8_t *supported,
+			size_t supported_len)
+{
+	int pos = 0;
+
+#if IS_ENABLED(CONFIG_GNSS_AG3335)
+	const bool has_gps = true;
+#else
+	const bool has_gps = false;
+#endif
+
+	if (buf == NULL || supported == NULL || supported_len > 23) {
+		return -EINVAL;
+	}
+
+	/*
+	 * hello map has 5 top-level keys:
+	 *   0:type  1:version  2:[types]  3:fw  7:{4:has_gps}
+	 */
+	pos = cbor_map(buf, pos, cap, 5);
+	/* 0: type = hello */
+	pos = cbor_uint(buf, pos, cap, 0);
+	pos = cbor_uint(buf, pos, cap, LN_TYPE_HELLO);
+	/* 1: protocol version = 1 */
+	pos = cbor_uint(buf, pos, cap, 1);
+	pos = cbor_uint(buf, pos, cap, 1);
+	/* 2: supported types array */
+	pos = cbor_uint(buf, pos, cap, 2);
+	pos = cbor_array(buf, pos, cap, supported_len);
+	for (size_t i = 0; i < supported_len; i++) {
+		pos = cbor_uint(buf, pos, cap, supported[i]);
+	}
+	/* 3: firmware string */
+	pos = cbor_uint(buf, pos, cap, 3);
+	pos = cbor_tstr(buf, pos, cap, "lichen-fw-0.1.0");
+	/* 7: features {4: has_gps} */
+	pos = cbor_uint(buf, pos, cap, 7);
+	pos = cbor_map(buf, pos, cap, 1);
+	pos = cbor_uint(buf, pos, cap, 4);
+	pos = cbor_bool(buf, pos, cap, has_gps);
+
+	return pos;
+}
+
+#ifdef LICHEN_NATIVE_TEST_PARSE
+int lichen_native_encode_hello_for_test(uint8_t *buf, size_t len)
+{
+	return encode_hello(buf, (int)len, s_default_supported_types,
+			    ARRAY_SIZE(s_default_supported_types));
+}
+#endif
 
 /* --------------------------------------------------------------------------
  * RX path: interrupt-driven byte stream → frame reassembly → callback
@@ -272,34 +389,124 @@ static void uart_rx_isr(const struct device *dev, void *user_data)
 }
 
 /* Pre-parse CBOR map key 0 (message type) from payload. Returns -1 if unparseable. */
-static int parse_msg_type(const uint8_t *buf, size_t len)
+#define LN_MSG_TYPE_KEY 0u
+#define LN_LOG_SUBSCRIBE_ENABLE_KEY 1u
+
+#ifdef LICHEN_NATIVE_TEST_PARSE
+int lichen_native_parse_msg_type_for_test(const uint8_t *buf, size_t len);
+int lichen_native_parse_log_subscribe_for_test(const uint8_t *buf, size_t len,
+					       bool *enable);
+#define PARSE_MSG_TYPE_LINKAGE
+#else
+#define PARSE_MSG_TYPE_LINKAGE static
+#endif
+
+PARSE_MSG_TYPE_LINKAGE int parse_msg_type(const uint8_t *buf, size_t len)
 {
-	if (len < 2) {
+	uint32_t key = LN_MSG_TYPE_KEY;
+	uint32_t type = 0;
+	bool found_type = false;
+
+	if (buf == NULL || len == 0) {
 		return -1;
 	}
-	/* expect map header (0xa1..0xb7 or 0xb8) at byte 0, then key 0 (0x00), then type */
-	size_t pos = 0;
-	uint8_t b = buf[pos++];
-	if ((b & 0xe0u) != 0xa0u) {
-		return -1; /* not a map */
-	}
-	/* key 0 */
-	if (pos >= len || buf[pos++] != 0x00u) {
+
+	ZCBOR_STATE_D(zsd, 2, buf, len, 1, 0);
+
+	if (!zcbor_map_start_decode(zsd)) {
 		return -1;
 	}
-	/* value = message type uint */
-	if (pos >= len) {
+
+	while (!zcbor_array_at_end(zsd)) {
+		zcbor_state_t key_state = *zsd;
+
+		if (zcbor_uint32_decode(zsd, &key) && key == LN_MSG_TYPE_KEY) {
+			if (!zcbor_uint32_decode(zsd, &type) || type > UINT8_MAX) {
+				(void)zcbor_list_map_end_force_decode(zsd);
+				return -1;
+			}
+			found_type = true;
+			continue;
+		}
+
+		(void)zcbor_pop_error(zsd);
+		*zsd = key_state;
+
+		if (!zcbor_any_skip(zsd, NULL) || !zcbor_any_skip(zsd, NULL)) {
+			(void)zcbor_list_map_end_force_decode(zsd);
+			return -1;
+		}
+	}
+
+	if (!zcbor_map_end_decode(zsd)) {
+		(void)zcbor_list_map_end_force_decode(zsd);
 		return -1;
 	}
-	b = buf[pos];
-	if (b <= 0x17u) {
-		return (int)b;
-	}
-	if (b == 0x18u && pos + 1 < len) {
-		return (int)buf[pos + 1];
-	}
-	return -1;
+
+	return found_type ? (int)type : -1;
 }
+
+#ifdef LICHEN_NATIVE_TEST_PARSE
+int lichen_native_parse_msg_type_for_test(const uint8_t *buf, size_t len)
+{
+	return parse_msg_type(buf, len);
+}
+#endif
+
+static int parse_log_subscribe_enable(const uint8_t *buf, size_t len, bool *enable)
+{
+	uint32_t key = 0;
+	bool decoded_enable = false;
+	bool found_enable = false;
+
+	if (buf == NULL || len == 0 || enable == NULL) {
+		return -EINVAL;
+	}
+
+	ZCBOR_STATE_D(zsd, 2, buf, len, 1, 0);
+
+	if (!zcbor_map_start_decode(zsd)) {
+		return -EINVAL;
+	}
+
+	while (!zcbor_array_at_end(zsd)) {
+		zcbor_state_t key_state = *zsd;
+
+		if (zcbor_uint32_decode(zsd, &key) &&
+		    key == LN_LOG_SUBSCRIBE_ENABLE_KEY) {
+			if (!zcbor_bool_decode(zsd, &decoded_enable)) {
+				(void)zcbor_list_map_end_force_decode(zsd);
+				return -EINVAL;
+			}
+			found_enable = true;
+			continue;
+		}
+
+		(void)zcbor_pop_error(zsd);
+		*zsd = key_state;
+
+		if (!zcbor_any_skip(zsd, NULL) || !zcbor_any_skip(zsd, NULL)) {
+			(void)zcbor_list_map_end_force_decode(zsd);
+			return -EINVAL;
+		}
+	}
+
+	if (!zcbor_map_end_decode(zsd) || !found_enable) {
+		(void)zcbor_list_map_end_force_decode(zsd);
+		return -EINVAL;
+	}
+
+	*enable = decoded_enable;
+	return 0;
+}
+
+#ifdef LICHEN_NATIVE_TEST_PARSE
+int lichen_native_parse_log_subscribe_for_test(const uint8_t *buf, size_t len,
+					       bool *enable)
+{
+	return parse_log_subscribe_enable(buf, len, enable);
+}
+#endif
 
 static void rx_thread_fn(void *p1, void *p2, void *p3)
 {
@@ -315,7 +522,7 @@ static void rx_thread_fn(void *p1, void *p2, void *p3)
 
 		switch (state) {
 		case S_SYNC:
-			if (byte == 0xC1u) {
+			if (byte == LN_FRAME_SYNC_BYTE) {
 				state = S_LEN_HI;
 			}
 			break;
@@ -413,58 +620,12 @@ int lichen_native_init(lichen_native_rx_cb_t rx_cb)
 
 int lichen_native_send_hello(void)
 {
-	/* Supported message types we implement on the device side */
-	static const uint8_t supported[] = {
-		LN_TYPE_HELLO,
-		LN_TYPE_CONFIG_GET,
-		LN_TYPE_CONFIG_RESULT,
-		LN_TYPE_SEND_MESSAGE,
-		LN_TYPE_MESSAGE_RECEIVED,
-		LN_TYPE_NODE_INFO,
-		LN_TYPE_LOG_ENTRY,
-		LN_TYPE_LOG_SUBSCRIBE,
-	};
-	const int N_SUPPORTED = ARRAY_SIZE(supported);
-
-	/*
-	 * hello map has 5 fixed keys + 1 features sub-map:
-	 *   0:type  1:version  2:[types]  3:fw  7:{4:has_gps}
-	 * Count: 5 top-level keys
-	 */
-	int pos = 0;
 	const int cap = TX_BUF_SIZE;
-
-#if IS_ENABLED(CONFIG_GNSS_AG3335)
-	const bool has_gps = true;
-#else
-	const bool has_gps = false;
-#endif
-
-	int n_top = 5; /* 0,1,2,3,7 */
+	int pos;
 
 	k_mutex_lock(&s_tx_mutex, K_FOREVER);
-
-	pos = cbor_map(s_tx_buf, pos, cap, n_top);
-	/* 0: type = hello */
-	pos = cbor_uint(s_tx_buf, pos, cap, 0);
-	pos = cbor_uint(s_tx_buf, pos, cap, LN_TYPE_HELLO);
-	/* 1: protocol version = 1 */
-	pos = cbor_uint(s_tx_buf, pos, cap, 1);
-	pos = cbor_uint(s_tx_buf, pos, cap, 1);
-	/* 2: supported types array */
-	pos = cbor_uint(s_tx_buf, pos, cap, 2);
-	pos = cbor_array(s_tx_buf, pos, cap, N_SUPPORTED);
-	for (int i = 0; i < N_SUPPORTED; i++) {
-		pos = cbor_uint(s_tx_buf, pos, cap, supported[i]);
-	}
-	/* 3: firmware string */
-	pos = cbor_uint(s_tx_buf, pos, cap, 3);
-	pos = cbor_tstr(s_tx_buf, pos, cap, "lichen-fw-0.1.0");
-	/* 7: features {4: has_gps} */
-	pos = cbor_uint(s_tx_buf, pos, cap, 7);
-	pos = cbor_map(s_tx_buf, pos, cap, 1);
-	pos = cbor_uint(s_tx_buf, pos, cap, 4);
-	pos = cbor_bool(s_tx_buf, pos, cap, has_gps);
+	pos = encode_hello(s_tx_buf, cap, s_default_supported_types,
+			   ARRAY_SIZE(s_default_supported_types));
 
 	return finish_tx_locked(pos);
 }
@@ -633,8 +794,6 @@ int lichen_native_send_log_entry(uint8_t level, const char *module, const char *
  */
 void lichen_native_handle_rx(uint8_t msg_type, const uint8_t *buf, size_t len)
 {
-	ARG_UNUSED(buf); ARG_UNUSED(len);
-
 	switch (msg_type) {
 	case LN_TYPE_HELLO:
 		/* Host connected — reply with our hello + node_info */
@@ -643,26 +802,13 @@ void lichen_native_handle_rx(uint8_t msg_type, const uint8_t *buf, size_t len)
 		break;
 
 	case LN_TYPE_LOG_SUBSCRIBE: {
-		/*
-		 * Minimal parse: key 1 is a bool (enable).
-		 * Full CBOR parse: find key 0x01 in the map, read bool.
-		 * For now, toggle based on key 1 value.
-		 */
 		bool enable = false;
-		/* Walk map: skip type key, look for key 1 */
-		size_t pos = 0;
-		if (pos < len && (buf[pos] & 0xe0u) == 0xa0u) {
-			pos++;
+
+		if (parse_log_subscribe_enable(buf, len, &enable) < 0) {
+			LOG_WRN("invalid log_subscribe frame");
+			break;
 		}
-		while (pos + 1 < len) {
-			uint8_t k = buf[pos++];
-			if (k == 0x01u) { /* key 1 */
-				enable = (pos < len && buf[pos] == 0xf5u);
-				break;
-			}
-			/* skip the value — only handles simple types */
-			if (pos < len) { pos++; }
-		}
+
 		s_log_subscribed = enable;
 		LOG_INF("log streaming %s", enable ? "enabled" : "disabled");
 		break;
