@@ -13,6 +13,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
+#include <lichen/app_interface/app_interface.h>
 #include <lichen/meshcore/adapter.h>
 #include <lichen/meshcore/limits.h>
 
@@ -28,8 +29,12 @@ static struct k_thread s_thread;
 static K_THREAD_STACK_DEFINE(s_stack, ADAPTER_STACK_SIZE);
 static K_MUTEX_DEFINE(s_init_mutex);
 static K_MUTEX_DEFINE(s_adapter_mutex);
+static K_MUTEX_DEFINE(s_sink_mutex);
 static bool s_started;
+static bool s_sink_registered;
+static uint8_t s_sink_id;
 static uint32_t s_dispatch_epoch;
+static uint32_t s_adapter_epoch;
 
 static int enqueue_tx(const uint8_t *frame, size_t len, void *user_data)
 {
@@ -53,15 +58,114 @@ static struct lichen_meshcore_adapter_ops adapter_ops(void)
 	};
 }
 
+static uint32_t sync_adapter_session_locked(void)
+{
+	uint32_t current_epoch = ble_meshcore_session_epoch();
+
+	if (s_adapter_epoch != current_epoch) {
+		lichen_meshcore_adapter_reset(&s_adapter);
+		s_adapter_epoch = current_epoch;
+	}
+	return current_epoch;
+}
+
+static int meshcore_text_sink(const struct lichen_app_text_event *event,
+			      void *user_data)
+{
+	struct lichen_meshcore_incoming_text meshcore_event;
+	int ret;
+
+	ARG_UNUSED(user_data);
+
+	if (event == NULL) {
+		return -EINVAL;
+	}
+	if (!ble_meshcore_session_active()) {
+		return -ENOTCONN;
+	}
+
+	meshcore_event = (struct lichen_meshcore_incoming_text){
+		.from = event->from,
+		.to = event->to,
+		.id = event->id,
+		.payload = event->payload,
+		.payload_len = event->payload_len,
+		.has_id = event->has_id,
+	};
+
+	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
+	s_dispatch_epoch = sync_adapter_session_locked();
+	ret = lichen_meshcore_adapter_emit_text(&s_adapter, &meshcore_event);
+	k_mutex_unlock(&s_adapter_mutex);
+	return ret;
+}
+
+static int meshcore_status_sink(const struct lichen_app_status_event *event,
+				void *user_data)
+{
+	struct lichen_meshcore_incoming_status meshcore_event;
+	int ret;
+
+	ARG_UNUSED(user_data);
+
+	if (event == NULL) {
+		return -EINVAL;
+	}
+	if (!ble_meshcore_session_active()) {
+		return -ENOTCONN;
+	}
+
+	meshcore_event = (struct lichen_meshcore_incoming_status){
+		.from = event->from,
+		.to = event->to,
+		.id = event->id,
+		.request_id = event->request_id,
+		.error_reason = event->error_reason,
+		.has_id = event->has_id,
+		.has_error_reason = event->has_error_reason,
+	};
+
+	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
+	s_dispatch_epoch = sync_adapter_session_locked();
+	ret = lichen_meshcore_adapter_emit_status(&s_adapter, &meshcore_event);
+	k_mutex_unlock(&s_adapter_mutex);
+	return ret;
+}
+
+static int ensure_app_sink(void)
+{
+	const struct lichen_app_interface_sink sink = {
+		.emit_text = meshcore_text_sink,
+		.emit_status = meshcore_status_sink,
+	};
+	int ret = 0;
+
+	k_mutex_lock(&s_sink_mutex, K_FOREVER);
+	if (!s_sink_registered) {
+		ret = lichen_app_interface_register_sink(&sink, &s_sink_id);
+		if (ret == 0) {
+			s_sink_registered = true;
+		}
+	}
+	k_mutex_unlock(&s_sink_mutex);
+	return ret;
+}
+
 #ifdef CONFIG_ZTEST
 void gateway_meshcore_adapter_test_reset(void)
 {
 	struct lichen_meshcore_adapter_ops ops = adapter_ops();
 
+	k_mutex_lock(&s_sink_mutex, K_FOREVER);
+	s_sink_registered = false;
+	k_mutex_unlock(&s_sink_mutex);
+
 	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
 	s_dispatch_epoch = 0U;
+	s_adapter_epoch = ble_meshcore_session_epoch();
 	lichen_meshcore_adapter_init(&s_adapter, &ops);
 	k_mutex_unlock(&s_adapter_mutex);
+	(void)ensure_app_sink();
 }
 
 int gateway_meshcore_adapter_test_process_once(void)
@@ -76,6 +180,7 @@ int gateway_meshcore_adapter_test_process_once(void)
 	}
 
 	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
+	s_adapter_epoch = sync_adapter_session_locked();
 	s_dispatch_epoch = session_epoch;
 	if (!ble_meshcore_session_epoch_current(session_epoch)) {
 		lichen_meshcore_adapter_reset(&s_adapter);
@@ -113,6 +218,7 @@ static void adapter_thread(void *a, void *b, void *c)
 		}
 
 		k_mutex_lock(&s_adapter_mutex, K_FOREVER);
+		s_adapter_epoch = sync_adapter_session_locked();
 		s_dispatch_epoch = session_epoch;
 		if (!ble_meshcore_session_epoch_current(session_epoch)) {
 			lichen_meshcore_adapter_reset(&s_adapter);
@@ -141,8 +247,13 @@ int gateway_meshcore_adapter_init(void)
 	}
 
 	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
+	s_adapter_epoch = ble_meshcore_session_epoch();
 	lichen_meshcore_adapter_init(&s_adapter, &ops);
 	k_mutex_unlock(&s_adapter_mutex);
+	if (ensure_app_sink() < 0) {
+		k_mutex_unlock(&s_init_mutex);
+		return -EIO;
+	}
 
 	k_thread_create(&s_thread, s_stack, K_THREAD_STACK_SIZEOF(s_stack),
 			adapter_thread, NULL, NULL, NULL,

@@ -277,6 +277,123 @@ ZTEST(meshcore_adapter, test_serial_split_frame_dispatches_once)
 		      stream_frame_count, 1U);
 }
 
+ZTEST(meshcore_adapter, test_incoming_text_waiting_and_sync_next)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t payload[] = { 'h', 'i' };
+	const uint8_t sync_next[] = { LICHEN_MESHCORE_CMD_SYNC_NEXT_MESSAGE };
+	const struct lichen_meshcore_incoming_text event = {
+		.id = 0x01020304U,
+		.payload = payload,
+		.payload_len = sizeof(payload),
+		.has_id = true,
+	};
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	zassert_ok(lichen_meshcore_adapter_emit_text(&adapter, &event));
+	zassert_equal(ctx.count, 1U);
+	zassert_equal(ctx.out[0].data[0], LICHEN_MESHCORE_PUSH_MSG_WAITING);
+
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, sync_next,
+							  sizeof(sync_next)), 0);
+	zassert_equal(ctx.count, 2U);
+	zassert_equal(ctx.out[1].data[0],
+		      LICHEN_MESHCORE_RESP_CHANNEL_MSG_RECV_V3);
+	zassert_equal(ctx.out[1].len, 13U);
+	zassert_equal(sys_get_le32(&ctx.out[1].data[7]), event.id);
+	zassert_mem_equal(&ctx.out[1].data[11], payload, sizeof(payload));
+
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, sync_next,
+							  sizeof(sync_next)), 0);
+	zassert_equal(ctx.out[2].data[0], LICHEN_MESHCORE_RESP_NO_MORE_MESSAGES);
+}
+
+ZTEST(meshcore_adapter, test_incoming_status_waiting_and_sync_next)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t sync_next[] = { LICHEN_MESHCORE_CMD_SYNC_NEXT_MESSAGE };
+	const struct lichen_meshcore_incoming_status event = {
+		.request_id = 0x12345678U,
+		.error_reason = 9U,
+		.has_error_reason = true,
+	};
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	zassert_ok(lichen_meshcore_adapter_emit_status(&adapter, &event));
+	zassert_equal(ctx.out[0].data[0], LICHEN_MESHCORE_PUSH_MSG_WAITING);
+
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, sync_next,
+							  sizeof(sync_next)), 0);
+	zassert_equal(ctx.out[1].data[0], LICHEN_MESHCORE_PUSH_SEND_CONFIRMED);
+	zassert_equal(ctx.out[1].len, 7U);
+	zassert_equal(sys_get_le32(&ctx.out[1].data[1]), event.request_id);
+	zassert_equal(ctx.out[1].data[5], event.error_reason);
+	zassert_equal(ctx.out[1].data[6], 1U);
+}
+
+ZTEST(meshcore_adapter, test_incoming_queue_full_and_waiting_backpressure)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t sync_next[] = { LICHEN_MESHCORE_CMD_SYNC_NEXT_MESSAGE };
+	const uint8_t payload[] = { 'x' };
+	const struct lichen_meshcore_incoming_text event = {
+		.payload = payload,
+		.payload_len = sizeof(payload),
+	};
+
+	init_adapter(&adapter, &ctx, 0U);
+	zassert_equal(lichen_meshcore_adapter_emit_text(&adapter, &event),
+		      -ENOMEM);
+	zassert_equal(ctx.count, 0U);
+	zassert_equal(lichen_meshcore_adapter_get_stats(&adapter)->
+		      waiting_push_fail_count, 1U);
+
+	ctx.limit = OUT_DEPTH;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, sync_next,
+							  sizeof(sync_next)), 0);
+	zassert_equal(ctx.out[0].data[0], LICHEN_MESHCORE_RESP_NO_MORE_MESSAGES);
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	for (uint32_t i = 0U; i < CONFIG_LICHEN_MESHCORE_PENDING_EVENTS; i++) {
+		zassert_ok(lichen_meshcore_adapter_emit_text(&adapter, &event));
+	}
+	zassert_equal(lichen_meshcore_adapter_emit_text(&adapter, &event),
+		      -ENOMEM);
+	zassert_equal(lichen_meshcore_adapter_get_stats(&adapter)->
+		      pending_full_count, 1U);
+}
+
+ZTEST(meshcore_adapter, test_incoming_validation)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	uint8_t too_big[LICHEN_MESHCORE_FRAME_MAX] = { 0 };
+	const struct lichen_meshcore_incoming_text bad_text = {
+		.payload = too_big,
+		.payload_len = sizeof(too_big),
+	};
+	const struct lichen_meshcore_incoming_status bad_status = { 0 };
+	const struct lichen_meshcore_incoming_status bad_reason = {
+		.request_id = 1U,
+		.error_reason = 256U,
+		.has_error_reason = true,
+	};
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_emit_text(&adapter, NULL), -EINVAL);
+	zassert_equal(lichen_meshcore_adapter_emit_text(&adapter, &bad_text),
+		      -EMSGSIZE);
+	zassert_equal(lichen_meshcore_adapter_emit_status(&adapter, NULL),
+		      -EINVAL);
+	zassert_equal(lichen_meshcore_adapter_emit_status(&adapter, &bad_status),
+		      -ENOTSUP);
+	zassert_equal(lichen_meshcore_adapter_emit_status(&adapter, &bad_reason),
+		      -ERANGE);
+}
+
 ZTEST(meshcore_adapter, test_reset_clears_partial_stream)
 {
 	struct lichen_meshcore_adapter adapter;

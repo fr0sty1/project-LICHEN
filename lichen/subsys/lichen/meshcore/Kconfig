@@ -35,4 +35,12 @@ config LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD
 	  Maximum MeshCore inner payload size accepted inside the serial/TCP
 	  0x3c/0x3e + uint16_le length wrapper.
 
+config LICHEN_MESHCORE_PENDING_EVENTS
+	int "Maximum pending MeshCore app events"
+	default 4
+	range 1 16
+	help
+	  Maximum incoming LICHEN app-interface events retained for a connected
+	  MeshCore client to drain with CMD_SYNC_NEXT_MESSAGE.
+
 endif # LICHEN_MESHCORE_CODEC

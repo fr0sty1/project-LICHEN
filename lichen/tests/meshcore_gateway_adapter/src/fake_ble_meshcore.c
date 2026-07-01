@@ -30,6 +30,8 @@ static size_t s_rx_count;
 static size_t s_tx_count;
 static uint32_t s_epoch = 1U;
 static uint32_t s_tx_cap = FAKE_QUEUE_DEPTH;
+static bool s_connected = true;
+static bool s_disconnect_on_next_enqueue;
 static K_MUTEX_DEFINE(s_fake_mutex);
 
 void fake_ble_meshcore_reset(uint32_t tx_cap)
@@ -41,6 +43,8 @@ void fake_ble_meshcore_reset(uint32_t tx_cap)
 	s_tx_count = 0U;
 	s_epoch = 1U;
 	s_tx_cap = MIN(tx_cap, FAKE_QUEUE_DEPTH);
+	s_connected = true;
+	s_disconnect_on_next_enqueue = false;
 	k_mutex_unlock(&s_fake_mutex);
 }
 
@@ -48,6 +52,26 @@ void fake_ble_meshcore_set_epoch(uint32_t session_epoch)
 {
 	k_mutex_lock(&s_fake_mutex, K_FOREVER);
 	s_epoch = session_epoch;
+	k_mutex_unlock(&s_fake_mutex);
+}
+
+void fake_ble_meshcore_disconnect_on_next_enqueue(void)
+{
+	k_mutex_lock(&s_fake_mutex, K_FOREVER);
+	s_disconnect_on_next_enqueue = true;
+	k_mutex_unlock(&s_fake_mutex);
+}
+
+void fake_ble_meshcore_set_connected(bool connected)
+{
+	k_mutex_lock(&s_fake_mutex, K_FOREVER);
+	if (s_connected != connected) {
+		s_epoch++;
+	}
+	s_connected = connected;
+	if (!s_connected) {
+		s_tx_count = 0U;
+	}
 	k_mutex_unlock(&s_fake_mutex);
 }
 
@@ -135,9 +159,21 @@ int ble_meshcore_enqueue_tx_if_session(uint32_t session_epoch,
 	}
 
 	k_mutex_lock(&s_fake_mutex, K_FOREVER);
+	if (!s_connected) {
+		k_mutex_unlock(&s_fake_mutex);
+		return -ENOTCONN;
+	}
 	if (session_epoch != s_epoch) {
 		k_mutex_unlock(&s_fake_mutex);
 		return -ESTALE;
+	}
+	if (s_disconnect_on_next_enqueue) {
+		s_disconnect_on_next_enqueue = false;
+		s_connected = false;
+		s_epoch++;
+		s_tx_count = 0U;
+		k_mutex_unlock(&s_fake_mutex);
+		return -ENOTCONN;
 	}
 	if (s_tx_count >= s_tx_cap) {
 		k_mutex_unlock(&s_fake_mutex);
@@ -170,4 +206,24 @@ bool ble_meshcore_session_epoch_current(uint32_t session_epoch)
 	current = session_epoch == s_epoch;
 	k_mutex_unlock(&s_fake_mutex);
 	return current;
+}
+
+uint32_t ble_meshcore_session_epoch(void)
+{
+	uint32_t epoch;
+
+	k_mutex_lock(&s_fake_mutex, K_FOREVER);
+	epoch = s_epoch;
+	k_mutex_unlock(&s_fake_mutex);
+	return epoch;
+}
+
+bool ble_meshcore_session_active(void)
+{
+	bool connected;
+
+	k_mutex_lock(&s_fake_mutex, K_FOREVER);
+	connected = s_connected;
+	k_mutex_unlock(&s_fake_mutex);
+	return connected;
 }

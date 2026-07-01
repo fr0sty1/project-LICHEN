@@ -16,10 +16,15 @@
 #define LICHEN_MESHCORE_SELF_INFO_LEN 64U
 #define LICHEN_MESHCORE_DEVICE_INFO_LEN 82U
 #define LICHEN_MESHCORE_CHANNEL_INFO_LEN 50U
+#define LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN 11U
+#define LICHEN_MESHCORE_STATUS_ACK_LEN 7U
 
 BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD <=
 	     LICHEN_MESHCORE_FRAME_MAX,
 	     "MeshCore serial payload cannot exceed inner frame buffer");
+BUILD_ASSERT(LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN <
+	     LICHEN_MESHCORE_FRAME_MAX,
+	     "MeshCore channel V3 header must fit in a frame");
 
 static int enqueue(struct lichen_meshcore_adapter *adapter,
 		   const uint8_t *frame, size_t len)
@@ -133,6 +138,132 @@ static int enqueue_time(struct lichen_meshcore_adapter *adapter)
 	return enqueue(adapter, out, sizeof(out));
 }
 
+static struct lichen_meshcore_pending_event *
+pending_tail(struct lichen_meshcore_adapter *adapter)
+{
+	return &adapter->pending[adapter->pending_tail];
+}
+
+static const struct lichen_meshcore_pending_event *
+pending_head(const struct lichen_meshcore_adapter *adapter)
+{
+	return &adapter->pending[adapter->pending_head];
+}
+
+static void pending_push(struct lichen_meshcore_adapter *adapter)
+{
+	adapter->pending_tail =
+		(adapter->pending_tail + 1U) %
+		ARRAY_SIZE(adapter->pending);
+	adapter->pending_count++;
+}
+
+static void pending_pop(struct lichen_meshcore_adapter *adapter)
+{
+	if (adapter->pending_count == 0U) {
+		return;
+	}
+
+	memset(&adapter->pending[adapter->pending_head], 0,
+	       sizeof(adapter->pending[adapter->pending_head]));
+	adapter->pending_head =
+		(adapter->pending_head + 1U) %
+		ARRAY_SIZE(adapter->pending);
+	adapter->pending_count--;
+}
+
+static void pending_drop_tail(struct lichen_meshcore_adapter *adapter)
+{
+	if (adapter->pending_count == 0U) {
+		return;
+	}
+
+	adapter->pending_tail =
+		(adapter->pending_tail + ARRAY_SIZE(adapter->pending) - 1U) %
+		ARRAY_SIZE(adapter->pending);
+	memset(&adapter->pending[adapter->pending_tail], 0,
+	       sizeof(adapter->pending[adapter->pending_tail]));
+	adapter->pending_count--;
+}
+
+static int encode_pending_text(const struct lichen_meshcore_pending_event *event,
+			       uint8_t *out, size_t out_len)
+{
+	size_t len = LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN +
+		     event->payload_len;
+
+	if (out == NULL || out_len < len) {
+		return -ENOMEM;
+	}
+
+	out[0] = LICHEN_MESHCORE_RESP_CHANNEL_MSG_RECV_V3;
+	out[1] = 0U; /* unknown RSSI/SNR */
+	out[2] = 0U;
+	out[3] = 0U;
+	out[4] = 0U; /* compatibility public channel */
+	out[5] = 0xffU; /* path unavailable */
+	out[6] = 0U; /* plain text */
+	sys_put_le32(event->has_id ? event->id : 0U, &out[7]);
+	if (event->payload_len > 0U) {
+		memcpy(&out[LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN],
+		       event->payload, event->payload_len);
+	}
+	return (int)len;
+}
+
+static int encode_pending_status(
+	const struct lichen_meshcore_pending_event *event,
+	uint8_t *out, size_t out_len)
+{
+	uint32_t ack_id = event->request_id != 0U ?
+			  event->request_id : event->id;
+
+	if (out == NULL || out_len < LICHEN_MESHCORE_STATUS_ACK_LEN) {
+		return -ENOMEM;
+	}
+
+	out[0] = LICHEN_MESHCORE_PUSH_SEND_CONFIRMED;
+	sys_put_le32(ack_id, &out[1]);
+	out[5] = (uint8_t)event->error_reason;
+	out[6] = event->has_error_reason ? 1U : 0U;
+	return LICHEN_MESHCORE_STATUS_ACK_LEN;
+}
+
+static int enqueue_next_pending(struct lichen_meshcore_adapter *adapter)
+{
+	const struct lichen_meshcore_pending_event *event;
+	uint8_t out[LICHEN_MESHCORE_FRAME_MAX];
+	int ret;
+
+	if (adapter->pending_count == 0U) {
+		uint8_t none = LICHEN_MESHCORE_RESP_NO_MORE_MESSAGES;
+		return enqueue(adapter, &none, sizeof(none));
+	}
+
+	event = pending_head(adapter);
+	switch (event->kind) {
+	case LICHEN_MESHCORE_PENDING_TEXT:
+		ret = encode_pending_text(event, out, sizeof(out));
+		break;
+	case LICHEN_MESHCORE_PENDING_STATUS:
+		ret = encode_pending_status(event, out, sizeof(out));
+		break;
+	default:
+		adapter->stats.pending_drop_count++;
+		pending_pop(adapter);
+		return -EINVAL;
+	}
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = enqueue(adapter, out, (size_t)ret);
+	if (ret == 0) {
+		pending_pop(adapter);
+	}
+	return ret;
+}
+
 static int enqueue_channel(struct lichen_meshcore_adapter *adapter,
 			   const struct lichen_meshcore_frame_view *view)
 {
@@ -171,12 +302,10 @@ static int dispatch_supported(struct lichen_meshcore_adapter *adapter,
 			enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
 	case LICHEN_MESHCORE_CMD_GET_CHANNEL:
 		return enqueue_channel(adapter, view);
-	case LICHEN_MESHCORE_CMD_SYNC_NEXT_MESSAGE: {
-		uint8_t out = LICHEN_MESHCORE_RESP_NO_MORE_MESSAGES;
+	case LICHEN_MESHCORE_CMD_SYNC_NEXT_MESSAGE:
 		return view->payload_len == 0U ?
-			enqueue(adapter, &out, sizeof(out)) :
+			enqueue_next_pending(adapter) :
 			enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
-	}
 	case LICHEN_MESHCORE_CMD_GET_BATT_AND_STORAGE:
 		return view->payload_len == 0U ?
 			enqueue_batt_storage(adapter) :
@@ -327,6 +456,95 @@ int lichen_meshcore_adapter_feed_stream(
 	}
 
 	return last;
+}
+
+int lichen_meshcore_adapter_emit_text(
+	struct lichen_meshcore_adapter *adapter,
+	const struct lichen_meshcore_incoming_text *event)
+{
+	struct lichen_meshcore_pending_event *pending;
+	const uint8_t waiting = LICHEN_MESHCORE_PUSH_MSG_WAITING;
+	int ret;
+
+	if (adapter == NULL || event == NULL ||
+	    (event->payload == NULL && event->payload_len > 0U)) {
+		return -EINVAL;
+	}
+	if (event->payload_len >
+	    LICHEN_MESHCORE_FRAME_MAX -
+	    LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN) {
+		return -EMSGSIZE;
+	}
+	if (adapter->pending_count == ARRAY_SIZE(adapter->pending)) {
+		adapter->stats.pending_full_count++;
+		return -ENOMEM;
+	}
+
+	pending = pending_tail(adapter);
+	memset(pending, 0, sizeof(*pending));
+	pending->kind = LICHEN_MESHCORE_PENDING_TEXT;
+	pending->from = event->from;
+	pending->to = event->to;
+	pending->id = event->id;
+	pending->has_id = event->has_id;
+	pending->payload_len = (uint16_t)event->payload_len;
+	if (event->payload_len > 0U) {
+		memcpy(pending->payload, event->payload, event->payload_len);
+	}
+	pending_push(adapter);
+	adapter->stats.incoming_text_count++;
+
+	ret = enqueue(adapter, &waiting, sizeof(waiting));
+	if (ret < 0) {
+		adapter->stats.waiting_push_fail_count++;
+		pending_drop_tail(adapter);
+		return ret;
+	}
+	return 0;
+}
+
+int lichen_meshcore_adapter_emit_status(
+	struct lichen_meshcore_adapter *adapter,
+	const struct lichen_meshcore_incoming_status *event)
+{
+	struct lichen_meshcore_pending_event *pending;
+	const uint8_t waiting = LICHEN_MESHCORE_PUSH_MSG_WAITING;
+	int ret;
+
+	if (adapter == NULL || event == NULL) {
+		return -EINVAL;
+	}
+	if (!event->has_id && event->request_id == 0U) {
+		return -ENOTSUP;
+	}
+	if (event->has_error_reason && event->error_reason > UINT8_MAX) {
+		return -ERANGE;
+	}
+	if (adapter->pending_count == ARRAY_SIZE(adapter->pending)) {
+		adapter->stats.pending_full_count++;
+		return -ENOMEM;
+	}
+
+	pending = pending_tail(adapter);
+	memset(pending, 0, sizeof(*pending));
+	pending->kind = LICHEN_MESHCORE_PENDING_STATUS;
+	pending->from = event->from;
+	pending->to = event->to;
+	pending->id = event->id;
+	pending->request_id = event->request_id;
+	pending->error_reason = event->error_reason;
+	pending->has_id = event->has_id;
+	pending->has_error_reason = event->has_error_reason;
+	pending_push(adapter);
+	adapter->stats.incoming_status_count++;
+
+	ret = enqueue(adapter, &waiting, sizeof(waiting));
+	if (ret < 0) {
+		adapter->stats.waiting_push_fail_count++;
+		pending_drop_tail(adapter);
+		return ret;
+	}
+	return 0;
 }
 
 const struct lichen_meshcore_adapter_stats *

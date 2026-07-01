@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-9c4y.8.2",
+  "title": "Validate MeshCore incoming events with real BLE client",
+  "description": "Why this exists: native_sim/fake BLE tests cover MeshCore incoming app-event behavior, but a real MeshCore-compatible BLE client has not validated the user-visible smoke path. What needs to be done: on hardware with BLE enabled, connect a MeshCore client, inject incoming LICHEN text/status events, verify MSG_WAITING/SYNC_NEXT_MESSAGE delivery, disconnect/reconnect behavior, and queue-full behavior from the app perspective.",
+  "acceptance_criteria": "Physical BLE smoke test records board, client/app version, commands/events exercised, pass/fail evidence, and any observed protocol/client incompatibilities.",
+  "notes": "Blocked for this no-hardware run: requires a physical BLE-capable board/phone or MeshCore client transport and real BLE session validation. Native_sim/fake BLE coverage was completed under project-LICHEN-9c4y.8; physical smoke evidence remains unavailable locally.",
+  "status": "blocked",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T10:27:41.047695Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T10:27:41.14681Z",
+  "labels": [
+    "hardware",
+    "ble",
+    "meshcore",
+    "smoke-test",
+    "zephyr",
+    "messaging",
+    "status",
+    "firmware",
+    "app-interface"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c4y.8.2",
+      "depends_on_id": "project-LICHEN-9c4y.8",
+      "type": "parent-child",
+      "created_at": "2026-07-01T10:27:41.048177Z"
+    }
+  ]
+}
