@@ -15,7 +15,6 @@ extern "C" {
 #endif
 
 #define LICHEN_MESHTASTIC_STREAM_HEADER_LEN 4U
-#define LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX 200U
 
 enum lichen_meshtastic_adapter_result {
 	LICHEN_MESHTASTIC_ADAPTER_DISPATCHED = 0,
@@ -57,6 +56,16 @@ struct lichen_meshtastic_adapter_stats {
 	uint32_t unsupported_packet_count;
 	uint32_t malformed_count;
 	uint32_t enqueue_fail_count;
+	uint32_t incoming_text_count;
+};
+
+struct lichen_meshtastic_incoming_text {
+	uint32_t from;
+	uint32_t to;
+	uint32_t id;
+	const uint8_t *payload;
+	size_t payload_len;
+	bool has_id;
 };
 
 typedef int (*lichen_meshtastic_adapter_enqueue_fn)(const uint8_t *from_radio,
@@ -88,6 +97,7 @@ struct lichen_meshtastic_adapter {
 	size_t stream_expected;
 	uint8_t stream_header[LICHEN_MESHTASTIC_STREAM_HEADER_LEN];
 	size_t stream_header_len;
+	uint32_t from_radio_id;
 	bool stream_in_frame;
 	bool disconnected;
 };
@@ -105,6 +115,10 @@ int lichen_meshtastic_adapter_process_raw(
 int lichen_meshtastic_adapter_feed_stream(
 	struct lichen_meshtastic_adapter *adapter,
 	const uint8_t *data, size_t len);
+
+int lichen_meshtastic_adapter_emit_text(
+	struct lichen_meshtastic_adapter *adapter,
+	const struct lichen_meshtastic_incoming_text *event);
 
 const struct lichen_meshtastic_adapter_stats *
 lichen_meshtastic_adapter_get_stats(

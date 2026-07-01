@@ -27,6 +27,8 @@ extern "C" {
 #define LICHEN_MESHTASTIC_FROM_RADIO_MAX 510U
 #endif
 
+#define LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX 200U
+
 enum lichen_meshtastic_to_radio_type {
 	LICHEN_MESHTASTIC_TO_RADIO_UNSET = 0,
 	LICHEN_MESHTASTIC_TO_RADIO_PACKET,
@@ -54,6 +56,17 @@ struct lichen_meshtastic_queue_status {
 	uint32_t mesh_packet_id;
 	bool has_res;
 	bool has_mesh_packet_id;
+};
+
+struct lichen_meshtastic_text_packet {
+	uint32_t from;
+	uint32_t to;
+	uint32_t id;
+	uint32_t channel;
+	const uint8_t *payload;
+	size_t payload_len;
+	bool has_channel;
+	bool want_ack;
 };
 
 struct lichen_meshtastic_local_info {
@@ -107,6 +120,10 @@ int lichen_meshtastic_encode_from_radio_packet(uint32_t from_radio_id,
 int lichen_meshtastic_encode_from_radio_message(
 	enum lichen_meshtastic_from_radio_message message,
 	const uint8_t *payload, size_t payload_len,
+	uint8_t *buf, size_t buflen);
+
+int lichen_meshtastic_encode_text_packet(
+	const struct lichen_meshtastic_text_packet *packet,
 	uint8_t *buf, size_t buflen);
 
 int lichen_meshtastic_encode_my_info_payload(

@@ -666,6 +666,64 @@ void lichen_meshtastic_adapter_reset(struct lichen_meshtastic_adapter *adapter)
 	lichen_meshtastic_adapter_init(adapter, &ops);
 }
 
+int lichen_meshtastic_adapter_emit_text(
+	struct lichen_meshtastic_adapter *adapter,
+	const struct lichen_meshtastic_incoming_text *event)
+{
+	struct lichen_meshtastic_text_packet packet;
+	uint8_t mesh_packet[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint8_t from_radio[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint32_t from_radio_id;
+	int ret;
+
+	if (adapter == NULL || event == NULL ||
+	    (event->payload == NULL && event->payload_len > 0U)) {
+		return -EINVAL;
+	}
+	if (event->payload_len == 0U ||
+	    event->payload_len > LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX ||
+	    !utf8_is_valid(event->payload, event->payload_len)) {
+		return -EMSGSIZE;
+	}
+	if (adapter->disconnected) {
+		return -ENOTCONN;
+	}
+	if (adapter->ops.enqueue_from_radio == NULL) {
+		return -ENOTSUP;
+	}
+
+	from_radio_id = adapter->from_radio_id + 1U;
+	packet = (struct lichen_meshtastic_text_packet){
+		.from = event->from,
+		.to = event->to,
+		.id = event->has_id ? event->id : from_radio_id,
+		.payload = event->payload,
+		.payload_len = event->payload_len,
+	};
+
+	ret = lichen_meshtastic_encode_text_packet(&packet, mesh_packet,
+						   sizeof(mesh_packet));
+	if (ret < 0) {
+		return ret;
+	}
+	ret = lichen_meshtastic_encode_from_radio_packet(from_radio_id,
+							 mesh_packet,
+							 (size_t)ret,
+							 from_radio,
+							 sizeof(from_radio));
+	if (ret < 0) {
+		return ret;
+	}
+	ret = enqueue(adapter, from_radio, (size_t)ret);
+	if (ret < 0) {
+		return ret;
+	}
+
+	adapter->from_radio_id = from_radio_id;
+	adapter->stats.incoming_text_count++;
+	return 0;
+}
+
 int lichen_meshtastic_adapter_process_raw(
 	struct lichen_meshtastic_adapter *adapter,
 	const uint8_t *to_radio, size_t len)

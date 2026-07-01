@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
+#include <errno.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -72,6 +73,37 @@ ZTEST(meshtastic_ble, test_single_exact_read_releases_from_radio_slot)
 	zassert_equal(ret, sizeof(msg));
 	zassert_mem_equal(out, msg, sizeof(msg));
 	zassert_equal(ble_meshtastic_from_radio_free(), capacity);
+}
+
+ZTEST(meshtastic_ble, test_full_from_radio_queue_rejects_new_packet)
+{
+	const uint8_t first[] = { 0x38, 0x01 };
+	const uint8_t filler[] = { 0x38, 0x02 };
+	const uint8_t overflow[] = { 0x38, 0x03 };
+	uint8_t out[sizeof(first)];
+	uint32_t capacity;
+	int ret;
+
+	ble_meshtastic_reset_session();
+	capacity = ble_meshtastic_from_radio_capacity();
+	zassert_true(capacity > 0U);
+
+	zassert_equal(ble_meshtastic_enqueue_from_radio(first, sizeof(first)), 0);
+	for (uint32_t i = 1U; i < capacity; i++) {
+		zassert_equal(ble_meshtastic_enqueue_from_radio(filler,
+								sizeof(filler)),
+			      0);
+	}
+	zassert_equal(ble_meshtastic_from_radio_free(), 0U);
+	zassert_equal(ble_meshtastic_enqueue_from_radio(overflow,
+							sizeof(overflow)),
+		      -ENOMEM);
+	zassert_equal(ble_meshtastic_from_radio_free(), 0U);
+
+	ret = ble_meshtastic_test_read_from_radio(out, sizeof(out), 0U);
+	zassert_equal(ret, sizeof(first));
+	zassert_mem_equal(out, first, sizeof(first));
+	zassert_equal(ble_meshtastic_from_radio_free(), 1U);
 }
 
 ZTEST(meshtastic_ble, test_session_epoch_guard_drops_stale_response)

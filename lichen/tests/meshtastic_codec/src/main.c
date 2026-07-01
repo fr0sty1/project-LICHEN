@@ -341,6 +341,124 @@ ZTEST(meshtastic_codec, test_encode_packet)
 	zassert_equal(buf[0], 0x5a, "short-buffer encode should not write output");
 }
 
+ZTEST(meshtastic_codec, test_encode_text_packet_matches_incoming_vector)
+{
+	const uint8_t expected_packet[] = {
+		0x0d, 0x44, 0x33, 0x22, 0x11, 0x15, 0x04, 0x03,
+		0x02, 0x01, 0x22, 0x06, 0x08, 0x01, 0x12, 0x02,
+		0x68, 0x69, 0x35, 0x88, 0x77, 0x66, 0x55
+	};
+	const uint8_t expected_from_radio[] = {
+		0x08, 0x01, 0x12, 0x17, 0x0d, 0x44, 0x33, 0x22,
+		0x11, 0x15, 0x04, 0x03, 0x02, 0x01, 0x22, 0x06,
+		0x08, 0x01, 0x12, 0x02, 0x68, 0x69, 0x35, 0x88,
+		0x77, 0x66, 0x55
+	};
+	const uint8_t payload[] = { 'h', 'i' };
+	struct lichen_meshtastic_text_packet packet = {
+		.from = 0x11223344U,
+		.to = 0x01020304U,
+		.id = 0x55667788U,
+		.payload = payload,
+		.payload_len = sizeof(payload),
+	};
+	uint8_t packet_buf[64];
+	uint8_t from_radio_buf[64];
+	int ret;
+
+	ret = lichen_meshtastic_encode_text_packet(&packet, packet_buf,
+						   sizeof(packet_buf));
+	zassert_true(ret > 0, "text packet encode failed: %d", ret);
+	expect_bytes(packet_buf, (size_t)ret, expected_packet,
+		     sizeof(expected_packet));
+
+	ret = lichen_meshtastic_encode_from_radio_packet(1U, packet_buf,
+							 sizeof(expected_packet),
+							 from_radio_buf,
+							 sizeof(from_radio_buf));
+	zassert_true(ret > 0, "FromRadio packet encode failed: %d", ret);
+	expect_bytes(from_radio_buf, (size_t)ret, expected_from_radio,
+		     sizeof(expected_from_radio));
+}
+
+ZTEST(meshtastic_codec, test_encode_text_packet_optional_fields)
+{
+	const uint8_t expected_packet[] = {
+		0x0d, 0x44, 0x33, 0x22, 0x11, 0x15, 0x04, 0x03,
+		0x02, 0x01, 0x18, 0x07, 0x22, 0x06, 0x08, 0x01,
+		0x12, 0x02, 0x68, 0x69, 0x35, 0x88, 0x77, 0x66,
+		0x55, 0x50, 0x01
+	};
+	const uint8_t payload[] = { 'h', 'i' };
+	struct lichen_meshtastic_text_packet packet = {
+		.from = 0x11223344U,
+		.to = 0x01020304U,
+		.id = 0x55667788U,
+		.channel = 7U,
+		.payload = payload,
+		.payload_len = sizeof(payload),
+		.has_channel = true,
+		.want_ack = true,
+	};
+	uint8_t buf[64];
+	int ret;
+
+	ret = lichen_meshtastic_encode_text_packet(&packet, buf, sizeof(buf));
+	zassert_true(ret > 0, "text packet encode failed: %d", ret);
+	expect_bytes(buf, (size_t)ret, expected_packet,
+		     sizeof(expected_packet));
+}
+
+ZTEST(meshtastic_codec, test_encode_text_packet_rejects_bad_sizes)
+{
+	uint8_t payload[LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX + 1U];
+	struct lichen_meshtastic_text_packet packet = {
+		.from = 0x11223344U,
+		.to = 0x01020304U,
+		.id = 0x55667788U,
+		.payload = payload,
+		.payload_len = LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX,
+	};
+	uint8_t buf[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	int ret;
+
+	memset(payload, 'x', sizeof(payload));
+	memset(buf, 0x5a, sizeof(buf));
+	ret = lichen_meshtastic_encode_text_packet(&packet, buf, sizeof(buf));
+	zassert_equal(ret, 223, "max payload should fit");
+
+	packet.payload_len = LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX + 1U;
+	memset(buf, 0x5a, sizeof(buf));
+	zassert_equal(lichen_meshtastic_encode_text_packet(&packet, buf,
+							   sizeof(buf)),
+		      -EMSGSIZE);
+	zassert_equal(buf[0], 0x5a, "oversize encode should not write output");
+
+	packet.payload_len = 0U;
+	zassert_equal(lichen_meshtastic_encode_text_packet(&packet, buf,
+							   sizeof(buf)),
+		      -EMSGSIZE);
+}
+
+ZTEST(meshtastic_codec, test_encode_text_packet_rejects_short_buffer)
+{
+	const uint8_t payload[] = { 'h', 'i' };
+	struct lichen_meshtastic_text_packet packet = {
+		.from = 0x11223344U,
+		.to = 0x01020304U,
+		.id = 0x55667788U,
+		.payload = payload,
+		.payload_len = sizeof(payload),
+	};
+	uint8_t buf[22];
+
+	memset(buf, 0x5a, sizeof(buf));
+	zassert_equal(lichen_meshtastic_encode_text_packet(&packet, buf,
+							   sizeof(buf)),
+		      -ENOMEM);
+	zassert_equal(buf[0], 0x5a, "short-buffer encode should not write output");
+}
+
 ZTEST(meshtastic_codec, test_encode_packet_rejects_from_radio_oversize)
 {
 	uint8_t packet[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
