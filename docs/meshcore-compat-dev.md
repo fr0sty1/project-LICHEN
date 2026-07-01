@@ -64,3 +64,10 @@ setting, not a LICHEN trust secret. Production policy is:
 `test/vectors/meshcore_app_compat.json` records the current deterministic MVP
 behavior for the write commands above, and the `meshcore_adapter` native_sim
 test consumes those vectors through a generated fixture header.
+
+## Smoke Testing
+
+Use `docs/meshcore-smoke-test.md` for MeshCore app/client smoke runs. It defines
+the required no-hardware Twister preflight, BLE discovery and pairing evidence,
+raw-frame checks, app-interface message ingress/egress checks, and the hardware
+artifacts that must be recorded before declaring client compatibility tested.

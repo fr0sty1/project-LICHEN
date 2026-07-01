@@ -1,0 +1,35 @@
+{
+  "id": "project-LICHEN-9c4y.20",
+  "title": "Execute MeshCore app/client smoke test on physical BLE target",
+  "description": "Why this exists: docs/meshcore-smoke-test.md defines the repeatable smoke procedure, but full pass/fail evidence requires a BLE-capable target and a real MeshCore client/app. What needs to be done: flash a MeshCore-BLE LICHEN gateway image, run the documented smoke procedure with a MeshCore app or compatible CLI, capture firmware logs/client observations, and file exact failure Beads. Acceptance criteria: client/app version/date/device recorded; firmware commit/build command and board recorded; BLE discovery/pairing/MTU/raw-frame/message ingress/egress/unsupported-operation/disconnect evidence captured; failures create exact blocker Beads with logs.",
+  "notes": "Blocked for physical/client resources. Requires a BLE-capable target flashed with CONFIG_LORA_LICHEN_MESHCORE_BLE=y, serial console capture, and a real MeshCore mobile app or compatible BLE client/CLI to execute docs/meshcore-smoke-test.md. No physical radios/boards/phones/BLE client access are available in this no-hardware session. No-hardware prerequisite procedure is documented in project-LICHEN-9c4y.11.",
+  "status": "blocked",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T12:08:52.084488Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T12:09:20.596734Z",
+  "labels": [
+    "zephyr",
+    "meshcore",
+    "mobile-test",
+    "hardware",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c4y.20",
+      "depends_on_id": "project-LICHEN-9c4y",
+      "type": "parent-child",
+      "created_at": "2026-07-01T12:08:52.084967Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c4y.20",
+      "depends_on_id": "project-LICHEN-9c4y.11",
+      "type": "discovered-from",
+      "created_at": "2026-07-01T12:08:52.08533Z"
+    }
+  ]
+}
