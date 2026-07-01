@@ -8,6 +8,7 @@
 #include <stdbool.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/conn.h>
 
 enum ble_app_owner_surface {
 	BLE_APP_OWNER_SURFACE_NATIVE,
@@ -16,6 +17,9 @@ enum ble_app_owner_surface {
 };
 
 typedef int (*ble_app_owner_prepare_fn)(void);
+typedef void (*ble_app_owner_connected_fn)(struct bt_conn *conn, uint8_t err);
+typedef void (*ble_app_owner_disconnected_fn)(struct bt_conn *conn,
+					      uint8_t reason);
 
 struct ble_app_owner_advertising {
 	enum ble_app_owner_surface surface;
@@ -25,11 +29,16 @@ struct ble_app_owner_advertising {
 	size_t sd_len;
 	const char *name;
 	ble_app_owner_prepare_fn prepare;
+	ble_app_owner_connected_fn connected;
+	ble_app_owner_disconnected_fn disconnected;
 };
 
 int ble_app_owner_start(const struct ble_app_owner_advertising *adv);
 int ble_app_owner_stop(enum ble_app_owner_surface surface);
 int ble_app_owner_restart(enum ble_app_owner_surface surface);
+int ble_app_owner_conn_ref(enum ble_app_owner_surface surface,
+			   struct bt_conn **conn);
+void ble_app_owner_conn_unref(struct bt_conn *conn);
 
 #ifdef CONFIG_ZTEST
 struct ble_app_owner_test_state {
@@ -43,6 +52,11 @@ struct ble_app_owner_test_state {
 	const struct bt_data *sd;
 	size_t sd_len;
 	bool has_surface;
+	bool has_connected;
+	bool has_disconnected;
+	bool has_connection;
+	uint32_t conn_ref_count;
+	uint32_t conn_unref_count;
 };
 
 void ble_app_owner_test_reset(void);
@@ -53,6 +67,8 @@ int ble_app_owner_test_validate_modes(bool native, bool meshtastic,
 				      bool meshcore);
 int ble_app_owner_test_validate_advertising(
 	const struct ble_app_owner_advertising *adv);
+void ble_app_owner_test_connected(struct bt_conn *conn, uint8_t err);
+void ble_app_owner_test_disconnected(struct bt_conn *conn, uint8_t reason);
 #endif
 
 #endif /* BLE_APP_OWNER_H_ */

@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/conn.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
@@ -19,6 +20,7 @@ static bool s_bt_enabled;
 static bool s_adv_started;
 static enum ble_app_owner_surface s_surface;
 static struct ble_app_owner_advertising s_adv;
+static struct bt_conn *s_conn;
 
 #ifdef CONFIG_ZTEST
 static int s_test_enable_ret;
@@ -28,6 +30,8 @@ static uint32_t s_test_enable_count;
 static uint32_t s_test_adv_start_count;
 static uint32_t s_test_adv_stop_count;
 static uint32_t s_test_adv_options;
+static uint32_t s_test_conn_ref_count;
+static uint32_t s_test_conn_unref_count;
 #endif
 
 static int owner_bt_enable(void)
@@ -65,6 +69,26 @@ static int owner_bt_le_adv_stop(void)
 	return s_test_adv_stop_ret;
 #else
 	return bt_le_adv_stop();
+#endif
+}
+
+static struct bt_conn *owner_bt_conn_ref(struct bt_conn *conn)
+{
+#ifdef CONFIG_ZTEST
+	s_test_conn_ref_count++;
+	return conn;
+#else
+	return bt_conn_ref(conn);
+#endif
+}
+
+static void owner_bt_conn_unref(struct bt_conn *conn)
+{
+#ifdef CONFIG_ZTEST
+	ARG_UNUSED(conn);
+	s_test_conn_unref_count++;
+#else
+	bt_conn_unref(conn);
 #endif
 }
 
@@ -125,6 +149,57 @@ static int validate_compiled_mode(enum ble_app_owner_surface surface)
 	return 0;
 }
 
+static void owner_connected(struct bt_conn *conn, uint8_t err)
+{
+	ble_app_owner_connected_fn connected;
+	struct bt_conn *old_conn = NULL;
+	struct bt_conn *new_conn = NULL;
+
+	k_mutex_lock(&s_owner_mutex, K_FOREVER);
+	if (err == 0U && s_adv_started && conn != NULL) {
+		new_conn = owner_bt_conn_ref(conn);
+		old_conn = s_conn;
+		s_conn = new_conn;
+	}
+	connected = s_adv_started ? s_adv.connected : NULL;
+	k_mutex_unlock(&s_owner_mutex);
+
+	if (old_conn != NULL) {
+		owner_bt_conn_unref(old_conn);
+	}
+	if (connected != NULL) {
+		connected(conn, err);
+	}
+}
+
+static void owner_disconnected(struct bt_conn *conn, uint8_t reason)
+{
+	ble_app_owner_disconnected_fn disconnected;
+	struct bt_conn *old_conn = NULL;
+	bool matched;
+
+	k_mutex_lock(&s_owner_mutex, K_FOREVER);
+	matched = s_conn != NULL && s_conn == conn;
+	if (matched) {
+		old_conn = s_conn;
+		s_conn = NULL;
+	}
+	disconnected = (s_adv_started && matched) ? s_adv.disconnected : NULL;
+	k_mutex_unlock(&s_owner_mutex);
+
+	if (disconnected != NULL) {
+		disconnected(conn, reason);
+	}
+	if (old_conn != NULL) {
+		owner_bt_conn_unref(old_conn);
+	}
+}
+
+BT_CONN_CB_DEFINE(owner_conn_callbacks) = {
+	.connected = owner_connected,
+	.disconnected = owner_disconnected,
+};
+
 int ble_app_owner_start(const struct ble_app_owner_advertising *adv)
 {
 	const struct bt_le_adv_param *param;
@@ -184,6 +259,7 @@ int ble_app_owner_start(const struct ble_app_owner_advertising *adv)
 
 int ble_app_owner_stop(enum ble_app_owner_surface surface)
 {
+	struct bt_conn *old_conn = NULL;
 	int ret;
 
 	k_mutex_lock(&s_owner_mutex, K_FOREVER);
@@ -195,11 +271,17 @@ int ble_app_owner_stop(enum ble_app_owner_surface surface)
 	ret = owner_bt_le_adv_stop();
 	if (ret == 0 || ret == -EALREADY) {
 		s_adv_started = false;
+		old_conn = s_conn;
+		s_conn = NULL;
 		ret = 0;
 	} else {
 		LOG_ERR("BLE app owner advertising stop failed: %d", ret);
 	}
 	k_mutex_unlock(&s_owner_mutex);
+
+	if (old_conn != NULL) {
+		owner_bt_conn_unref(old_conn);
+	}
 
 	return ret;
 }
@@ -234,10 +316,40 @@ int ble_app_owner_restart(enum ble_app_owner_surface surface)
 	return ret;
 }
 
+int ble_app_owner_conn_ref(enum ble_app_owner_surface surface,
+			   struct bt_conn **conn)
+{
+	if (conn == NULL) {
+		return -EINVAL;
+	}
+
+	k_mutex_lock(&s_owner_mutex, K_FOREVER);
+	if (!s_adv_started || s_surface != surface || s_conn == NULL) {
+		*conn = NULL;
+		k_mutex_unlock(&s_owner_mutex);
+		return -ENOTCONN;
+	}
+	*conn = owner_bt_conn_ref(s_conn);
+	k_mutex_unlock(&s_owner_mutex);
+
+	return 0;
+}
+
+void ble_app_owner_conn_unref(struct bt_conn *conn)
+{
+	if (conn != NULL) {
+		owner_bt_conn_unref(conn);
+	}
+}
+
 #ifdef CONFIG_ZTEST
 void ble_app_owner_test_reset(void)
 {
+	struct bt_conn *old_conn;
+
 	k_mutex_lock(&s_owner_mutex, K_FOREVER);
+	old_conn = s_conn;
+	s_conn = NULL;
 	s_bt_enabled = false;
 	s_adv_started = false;
 	s_surface = BLE_APP_OWNER_SURFACE_NATIVE;
@@ -249,7 +361,13 @@ void ble_app_owner_test_reset(void)
 	s_test_adv_start_count = 0U;
 	s_test_adv_stop_count = 0U;
 	s_test_adv_options = 0U;
+	s_test_conn_ref_count = 0U;
+	s_test_conn_unref_count = 0U;
 	k_mutex_unlock(&s_owner_mutex);
+
+	if (old_conn != NULL) {
+		ARG_UNUSED(old_conn);
+	}
 }
 
 void ble_app_owner_test_set_backend(int enable_ret, int adv_start_ret,
@@ -279,6 +397,11 @@ int ble_app_owner_test_copy_state(struct ble_app_owner_test_state *state)
 	state->sd = s_adv.sd;
 	state->sd_len = s_adv.sd_len;
 	state->has_surface = s_adv_started;
+	state->has_connected = s_adv.connected != NULL;
+	state->has_disconnected = s_adv.disconnected != NULL;
+	state->has_connection = s_conn != NULL;
+	state->conn_ref_count = s_test_conn_ref_count;
+	state->conn_unref_count = s_test_conn_unref_count;
 	k_mutex_unlock(&s_owner_mutex);
 
 	return 0;
@@ -295,4 +418,15 @@ int ble_app_owner_test_validate_advertising(
 {
 	return validate_advertising(adv);
 }
+
+void ble_app_owner_test_connected(struct bt_conn *conn, uint8_t err)
+{
+	owner_connected(conn, err);
+}
+
+void ble_app_owner_test_disconnected(struct bt_conn *conn, uint8_t reason)
+{
+	owner_disconnected(conn, reason);
+}
+
 #endif

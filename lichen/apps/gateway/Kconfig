@@ -7,6 +7,7 @@ config LORA_LICHEN_BLE
 	bool "BLE UART interface (Nordic UART Service)"
 	depends on BT
 	depends on BT_PERIPHERAL
+	depends on BT_MAX_CONN = 1
 	default n
 	help
 	  Enable the Nordic UART Service (NUS) GATT profile so a phone can
