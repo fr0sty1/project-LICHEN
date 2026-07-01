@@ -17,6 +17,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/atomic.h>
+#include <hal/nrf_spim.h>
 
 #include <errno.h>
 
@@ -27,6 +28,49 @@ LOG_MODULE_DECLARE(lr1110, CONFIG_LORA_LOG_LEVEL);
 /* Provided by lr1110.c — single-instance statics */
 extern const struct spi_dt_spec  lr1110_bus;
 extern const struct gpio_dt_spec lr1110_gpio_busy;
+
+/* The LR1110 is on spi2 == SPIM2. USB-CDC EasyDMA can contend with the SPIM
+ * EasyDMA and wedge a transfer so the blocking SPI API waits forever, hanging
+ * the main thread. Do transfers via the async API bounded by a timeout; if a
+ * transfer stalls, trigger the SPIM STOP task so the driver's transaction
+ * completes and releases the bus, then return an error instead of blocking. */
+#define LR1110_SPIM               NRF_SPIM2
+#define LR1110_SPI_XFER_TIMEOUT   K_MSEC(50)
+
+/* Application-provided progress hook (weak no-op in lr1110.c). */
+extern void lichen_radio_progress(void);
+
+static int lr1110_spi_bounded(const struct spi_buf_set *tx,
+			      const struct spi_buf_set *rx)
+{
+	struct k_poll_signal sig;
+	struct k_poll_event evt = K_POLL_EVENT_INITIALIZER(
+		K_POLL_TYPE_SIGNAL, K_POLL_MODE_NOTIFY_ONLY, &sig);
+
+	k_poll_signal_init(&sig);
+
+	int ret = spi_transceive_signal(lr1110_bus.bus, &lr1110_bus.config,
+					tx, rx, &sig);
+	if (ret) {
+		return ret;
+	}
+
+	if (k_poll(&evt, 1, LR1110_SPI_XFER_TIMEOUT) == -EAGAIN) {
+		/* Transfer stalled — abort the SPIM so the driver completes and
+		 * releases the bus lock (STOPPED completes the nrfx transaction). */
+		LOG_ERR("LR1110 SPI transfer stalled — aborting SPIM");
+		nrf_spim_task_trigger(LR1110_SPIM, NRF_SPIM_TASK_STOP);
+		(void)k_poll(&evt, 1, K_MSEC(20));
+		lichen_radio_progress(); /* we recovered — not a true stall for WDT */
+		return -ETIMEDOUT;
+	}
+
+	unsigned int signaled;
+	int result;
+
+	k_poll_signal_check(&sig, &signaled, &result);
+	return signaled ? result : 0;
+}
 extern const struct gpio_dt_spec lr1110_gpio_reset;
 
 /* LR1110 SetSleep command opcode (puts chip to sleep immediately) */
@@ -109,7 +153,7 @@ lr1110_hal_status_t lr1110_hal_write(const void *context,
 		.count   = data_length ? 2U : 1U,
 	};
 
-	if (spi_write_dt(&lr1110_bus, &tx)) {
+	if (lr1110_spi_bounded(&tx, NULL)) {
 		LOG_ERR("SPI write failed");
 		record_error(-EIO);
 		return LR1110_HAL_STATUS_ERROR;
@@ -147,7 +191,7 @@ lr1110_hal_status_t lr1110_hal_read(const void *context,
 	struct spi_buf cmd_buf = { .buf = (void *)command, .len = command_length };
 	const struct spi_buf_set cmd_tx = { .buffers = &cmd_buf, .count = 1 };
 
-	if (spi_write_dt(&lr1110_bus, &cmd_tx)) {
+	if (lr1110_spi_bounded(&cmd_tx, NULL)) {
 		LOG_ERR("SPI cmd write failed");
 		record_error(-EIO);
 		return LR1110_HAL_STATUS_ERROR;
@@ -166,7 +210,7 @@ lr1110_hal_status_t lr1110_hal_read(const void *context,
 	const struct spi_buf_set rx_tx = { .buffers = &tx_buf,  .count = 1 };
 	const struct spi_buf_set rx_rx = { .buffers = rx_bufs,  .count = 2 };
 
-	if (spi_transceive_dt(&lr1110_bus, &rx_tx, &rx_rx)) {
+	if (lr1110_spi_bounded(&rx_tx, &rx_rx)) {
 		LOG_ERR("SPI read failed");
 		record_error(-EIO);
 		return LR1110_HAL_STATUS_ERROR;
@@ -187,7 +231,7 @@ lr1110_hal_status_t lr1110_hal_write_read(const void *context,
 	const struct spi_buf_set tx = { .buffers = &tx_buf, .count = 1 };
 	const struct spi_buf_set rx = { .buffers = &rx_buf, .count = 1 };
 
-	if (spi_transceive_dt(&lr1110_bus, &tx, &rx)) {
+	if (lr1110_spi_bounded(&tx, &rx)) {
 		LOG_ERR("SPI write_read failed");
 		record_error(-EIO);
 		return LR1110_HAL_STATUS_ERROR;
