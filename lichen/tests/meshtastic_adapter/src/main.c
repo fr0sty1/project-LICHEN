@@ -20,6 +20,7 @@ struct test_ctx {
 	uint32_t text_count;
 	uint32_t last_text_id;
 	size_t last_text_len;
+	const char *firmware_version;
 };
 
 struct queue_status_view {
@@ -94,14 +95,20 @@ static void expect_bytes(const uint8_t *actual, size_t actual_len,
 	zassert_mem_equal(actual, expected, expected_len, "unexpected encoded bytes");
 }
 
+static void decode_from_radio(const uint8_t *buf, size_t len,
+			      struct from_radio_view *out);
+static bool payload_has_string(const uint8_t *buf, size_t len, uint32_t field,
+			       const char *value);
+static bool payload_get_varint_field(const uint8_t *buf, size_t len,
+				     uint32_t field, uint32_t *value);
+
 static int test_local_info(struct lichen_meshtastic_local_info *info,
 			   void *user_data)
 {
 	static const uint8_t device_id[] = {
 		0x02, 0x00, 0x00, 0xff, 0xaa, 0xbb, 0xcc, 0xdd
 	};
-
-	ARG_UNUSED(user_data);
+	struct test_ctx *ctx = user_data;
 
 	memset(info, 0, sizeof(*info));
 	info->node_num = 0xaabbccddU;
@@ -110,7 +117,9 @@ static int test_local_info(struct lichen_meshtastic_local_info *info,
 	info->uptime_seconds = 123U;
 	info->long_name = "LICHEN native_sim";
 	info->short_name = "LICH";
-	info->firmware_version = "LICHEN test 0.0.0";
+	info->firmware_version = ctx->firmware_version != NULL ?
+					 ctx->firmware_version :
+					 "LICHEN test 0.0.0";
 	info->pio_env = "zephyr-native_sim";
 	info->device_id = device_id;
 	info->device_id_len = sizeof(device_id);
@@ -119,6 +128,69 @@ static int test_local_info(struct lichen_meshtastic_local_info *info,
 	info->has_tx_power_dbm = true;
 	info->tx_power_dbm = 14;
 	return 0;
+}
+
+ZTEST(meshtastic_adapter, test_unbranded_firmware_version_uses_lichen_default)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t want_config[] = { 0x18, 0xac, 0x9e, 0x04 };
+	struct from_radio_view view;
+	uint32_t excluded_modules = 0U;
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ctx.firmware_version = "LICHEN mEsHtAsTiC 2.7.0";
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+
+	zassert_equal(ret, 0);
+	zassert_true(ctx.out_count > 1U);
+	decode_from_radio(ctx.out[1], ctx.out_len[1], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_METADATA);
+	zassert_true(payload_has_string(view.payload, view.payload_len, 1U,
+					"LICHEN Zephyr compat 0.0.0+unknown"));
+	zassert_false(payload_has_string(view.payload, view.payload_len, 1U,
+					 "LICHEN mEsHtAsTiC 2.7.0"));
+	zassert_true(payload_get_varint_field(view.payload, view.payload_len, 9U,
+					      &excluded_modules));
+	zassert_equal(excluded_modules, 255U);
+	zassert_true(payload_get_varint_field(view.payload, view.payload_len, 12U,
+					      &excluded_modules));
+	zassert_equal(excluded_modules, 0x5fff);
+}
+
+ZTEST(meshtastic_adapter, test_firmware_version_requires_lichen_prefix)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t want_config[] = { 0x18, 0xac, 0x9e, 0x04 };
+	struct from_radio_view view;
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ctx.firmware_version = "NOTLICHEN compat 1.0";
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+
+	zassert_equal(ret, 0);
+	decode_from_radio(ctx.out[1], ctx.out_len[1], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_METADATA);
+	zassert_true(payload_has_string(view.payload, view.payload_len, 1U,
+					"LICHEN Zephyr compat 0.0.0+unknown"));
+	zassert_false(payload_has_string(view.payload, view.payload_len, 1U,
+					 "NOTLICHEN compat 1.0"));
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ctx.firmware_version = "LICHEN compat 1.0+board";
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+
+	zassert_equal(ret, 0);
+	decode_from_radio(ctx.out[1], ctx.out_len[1], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_METADATA);
+	zassert_true(payload_has_string(view.payload, view.payload_len, 1U,
+					"LICHEN compat 1.0+board"));
 }
 
 static int read_varint(const uint8_t *buf, size_t len, size_t *pos,
@@ -188,6 +260,43 @@ static bool payload_has_string(const uint8_t *buf, size_t len, uint32_t field,
 			if (read_varint(buf, len, &pos, &n) < 0) {
 				return false;
 			}
+		} else if ((key & 0x07U) == 5U) {
+			if (len - pos < 4U) {
+				return false;
+			}
+			pos += 4U;
+		} else {
+			return false;
+		}
+	}
+	return false;
+}
+
+static bool payload_get_varint_field(const uint8_t *buf, size_t len,
+				     uint32_t field, uint32_t *value)
+{
+	size_t pos = 0U;
+
+	while (pos < len) {
+		uint32_t key;
+		uint32_t n;
+
+		if (read_varint(buf, len, &pos, &key) < 0) {
+			return false;
+		}
+		if ((key & 0x07U) == 0U) {
+			if (read_varint(buf, len, &pos, &n) < 0) {
+				return false;
+			}
+			if ((key >> 3) == field) {
+				*value = n;
+				return true;
+			}
+		} else if ((key & 0x07U) == 2U) {
+			if (read_varint(buf, len, &pos, &n) < 0 || n > len - pos) {
+				return false;
+			}
+			pos += n;
 		} else if ((key & 0x07U) == 5U) {
 			if (len - pos < 4U) {
 				return false;
@@ -414,6 +523,7 @@ ZTEST(meshtastic_adapter, test_synthetic_node_and_channel_fields_are_stable)
 	size_t channel_len;
 	size_t settings_len;
 	size_t user_len;
+	uint32_t hw_model = 0U;
 	int ret;
 
 	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
@@ -440,6 +550,9 @@ ZTEST(meshtastic_adapter, test_synthetic_node_and_channel_fields_are_stable)
 					   &user_payload, &user_len));
 	zassert_true(payload_has_string(user_payload, user_len, 2U,
 					"LICHEN native_sim"));
+	zassert_true(payload_get_varint_field(user_payload, user_len, 5U,
+					      &hw_model));
+	zassert_equal(hw_model, 255U);
 }
 
 ZTEST(meshtastic_adapter, test_disconnect_marks_session_only)

@@ -99,7 +99,7 @@ static int get_local_info(struct lichen_meshtastic_local_info *info,
 		       identity.zephyr_board != NULL ? identity.zephyr_board :
 							       CONFIG_BOARD);
 	(void)snprintf(s_firmware_version, sizeof(s_firmware_version),
-		       "LICHEN Zephyr %u.%u.%u compat",
+		       "LICHEN compat 0.0.0+zephyr.%u.%u.%u",
 		       SYS_KERNEL_VER_MAJOR(sys_kernel_version_get()),
 		       SYS_KERNEL_VER_MINOR(sys_kernel_version_get()),
 		       SYS_KERNEL_VER_PATCHLEVEL(sys_kernel_version_get()));

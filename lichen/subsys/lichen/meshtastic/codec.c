@@ -15,6 +15,8 @@
 #define PB_WT_32BIT 5U
 
 #define PB_MAX_FIELD_NUMBER 536870911ULL
+#define LICHEN_BRAND "LICHEN"
+#define MESHTASTIC_BRAND "meshtastic"
 
 #define TORADIO_PACKET_FIELD 1U
 #define TORADIO_WANT_CONFIG_ID_FIELD 3U
@@ -85,6 +87,31 @@
 #define METADATA_HAS_REMOTE_HARDWARE_FIELD 10U
 #define METADATA_HAS_PKC_FIELD 11U
 #define METADATA_EXCLUDED_MODULES_FIELD 12U
+
+#define EXCLUDED_MQTT_CONFIG (1U << 0)
+#define EXCLUDED_SERIAL_CONFIG (1U << 1)
+#define EXCLUDED_EXTNOTIF_CONFIG (1U << 2)
+#define EXCLUDED_STOREFORWARD_CONFIG (1U << 3)
+#define EXCLUDED_RANGETEST_CONFIG (1U << 4)
+#define EXCLUDED_TELEMETRY_CONFIG (1U << 5)
+#define EXCLUDED_CANNEDMSG_CONFIG (1U << 6)
+#define EXCLUDED_AUDIO_CONFIG (1U << 7)
+#define EXCLUDED_REMOTEHARDWARE_CONFIG (1U << 8)
+#define EXCLUDED_NEIGHBORINFO_CONFIG (1U << 9)
+#define EXCLUDED_AMBIENTLIGHTING_CONFIG (1U << 10)
+#define EXCLUDED_DETECTIONSENSOR_CONFIG (1U << 11)
+#define EXCLUDED_PAXCOUNTER_CONFIG (1U << 12)
+#define EXCLUDED_BLUETOOTH_CONFIG (1U << 13)
+#define EXCLUDED_NETWORK_CONFIG (1U << 14)
+
+#define EXCLUDED_MODULES_MVP \
+	(EXCLUDED_MQTT_CONFIG | EXCLUDED_SERIAL_CONFIG | \
+	 EXCLUDED_EXTNOTIF_CONFIG | EXCLUDED_STOREFORWARD_CONFIG | \
+	 EXCLUDED_RANGETEST_CONFIG | EXCLUDED_TELEMETRY_CONFIG | \
+	 EXCLUDED_CANNEDMSG_CONFIG | EXCLUDED_AUDIO_CONFIG | \
+	 EXCLUDED_REMOTEHARDWARE_CONFIG | EXCLUDED_NEIGHBORINFO_CONFIG | \
+	 EXCLUDED_AMBIENTLIGHTING_CONFIG | EXCLUDED_DETECTIONSENSOR_CONFIG | \
+	 EXCLUDED_PAXCOUNTER_CONFIG | EXCLUDED_NETWORK_CONFIG)
 
 #define CONFIG_POSITION_FIELD 2U
 #define CONFIG_POWER_FIELD 3U
@@ -385,10 +412,37 @@ static const char *info_short_name(const struct lichen_meshtastic_local_info *in
 static const char *info_firmware_version(
 	const struct lichen_meshtastic_local_info *info)
 {
-	return (info != NULL && info->firmware_version != NULL &&
-		info->firmware_version[0] != '\0') ?
-		       info->firmware_version :
-		       "LICHEN Zephyr compat 0.0.0+unknown";
+	const char *version = (info != NULL) ? info->firmware_version : NULL;
+	size_t meshtastic_pos = 0U;
+	size_t brand_len = strlen(LICHEN_BRAND);
+	char next;
+
+	if (version == NULL || strncmp(version, LICHEN_BRAND, brand_len) != 0) {
+		return "LICHEN Zephyr compat 0.0.0+unknown";
+	}
+
+	next = version[brand_len];
+	if (next != '\0' && next != ' ' && next != '-' && next != '+') {
+		return "LICHEN Zephyr compat 0.0.0+unknown";
+	}
+
+	for (const char *p = version; *p != '\0'; p++) {
+		char c = *p;
+
+		if (c >= 'A' && c <= 'Z') {
+			c = (char)(c - 'A' + 'a');
+		}
+		if (c == MESHTASTIC_BRAND[meshtastic_pos]) {
+			meshtastic_pos++;
+			if (MESHTASTIC_BRAND[meshtastic_pos] == '\0') {
+				return "LICHEN Zephyr compat 0.0.0+unknown";
+			}
+		} else {
+			meshtastic_pos = (c == MESHTASTIC_BRAND[0]) ? 1U : 0U;
+		}
+	}
+
+	return info->firmware_version;
 }
 
 static const char *info_pio_env(const struct lichen_meshtastic_local_info *info)
@@ -417,6 +471,18 @@ static uint32_t info_nodedb_count(
 	return (info != NULL && info->nodedb_count != 0U) ?
 		       info->nodedb_count :
 		       1U;
+}
+
+static uint32_t info_excluded_modules(
+	const struct lichen_meshtastic_local_info *info)
+{
+	uint32_t excluded = EXCLUDED_MODULES_MVP;
+
+	if (info == NULL || !info->has_bluetooth) {
+		excluded |= EXCLUDED_BLUETOOTH_CONFIG;
+	}
+
+	return excluded;
 }
 
 static int write_user(uint8_t *buf, size_t buflen, size_t *pos,
@@ -617,7 +683,8 @@ int lichen_meshtastic_encode_metadata_payload(
 	    pb_write_varint_field(tmp, sizeof(tmp), &pos, METADATA_HAS_PKC_FIELD,
 				  0U) < 0 ||
 	    pb_write_varint_field(tmp, sizeof(tmp), &pos,
-				  METADATA_EXCLUDED_MODULES_FIELD, 0U) < 0) {
+				  METADATA_EXCLUDED_MODULES_FIELD,
+				  info_excluded_modules(info)) < 0) {
 		return -EMSGSIZE;
 	}
 

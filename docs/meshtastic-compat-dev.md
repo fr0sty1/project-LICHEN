@@ -125,9 +125,34 @@ The app may show a "saved" confirmation, but the name won't persist. This is int
 
 **The problem:** Meshtastic apps display device type (T-Beam, Heltec, RAK, etc.) from a `hw_model` enum.
 
-**The solution:** Always report `PRIVATE_HW` (255) or a new `LICHEN_NODE` value if Meshtastic adds one.
+**The solution:** Always report `PRIVATE_HW` (255) unless Meshtastic upstream adds an official LICHEN-specific enum
+value.
 
 The app will show "Unknown" or a generic icon. This is accurate—LICHEN runs on various hardware, and Meshtastic's model list doesn't apply.
+
+### Synthetic Metadata and Version Policy
+
+Meshtastic app compatibility metadata is synthetic. It exists so unmodified Meshtastic clients can complete discovery and
+sync against a local LICHEN node. It MUST NOT imply that the device is running Meshtastic RF firmware or can interoperate
+with Meshtastic nodes over LoRa.
+
+Policy for `MyNodeInfo`, `DeviceMetadata`, and `User` fields:
+
+| Field | Policy |
+|-------|--------|
+| `firmware_version` | LICHEN-branded app-compat firmware string, for example `"LICHEN compat 0.1.0"` or `"LICHEN compat 0.1.0+zephyr.3.7.0"`; must start with `LICHEN`, must not contain `Meshtastic` in any casing, and must not present an unlabeled RTOS version as the LICHEN firmware release |
+| `min_app_version` | Default `30200` until mobile smoke testing proves a higher minimum is required |
+| `pio_env` | Zephyr-branded environment string such as `"zephyr-r1_neo_nrf52840"` |
+| `hw_model` | `PRIVATE_HW` (255) for both `DeviceMetadata.hw_model` and `User.hw_model` |
+| `role` | `CLIENT` unless a later tested app flow requires a different local-app role |
+| `has_bluetooth` | True only when the Meshtastic-compatible BLE surface is active |
+| `has_wifi`, `has_ethernet`, `has_remote_hardware`, `has_pkc` | False for the MVP unless backed by an implemented LICHEN capability |
+| `position_flags` | Zero until HAL location/provider support is wired into this adapter |
+| `excluded_modules` | Bitmask excludes unsupported Meshtastic modules/features for the MVP; Bluetooth config is excluded only when the compatibility BLE surface is absent |
+
+The user-visible device name and `User.long_name` SHOULD remain visibly LICHEN-branded, such as `"LICHEN R1 Neo"` or
+`"LICHEN <board>"`. Board-specific Meshtastic hardware enum values such as T-Beam, Heltec, or RAK4631 MUST NOT be used
+even when LICHEN is running on that hardware, because those values imply Meshtastic firmware behavior and RF semantics.
 
 ### Channels and Encryption
 
@@ -396,7 +421,7 @@ Meshtastic compatibility write.
 | `user.id` | IID hex | `!` + hex(iid)[0:8] |
 | `user.long_name` | CoAP `/node` resource | Fetched from node |
 | `user.short_name` | Derived | First 4 chars of long_name |
-| `user.hw_model` | Fixed | `LICHEN_NODE` |
+| `user.hw_model` | Fixed | `PRIVATE_HW` (255) |
 
 ### Position
 

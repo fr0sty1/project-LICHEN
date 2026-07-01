@@ -20,6 +20,101 @@ static void expect_bytes(const uint8_t *actual, size_t actual_len,
 	zassert_mem_equal(actual, expected, expected_len, "unexpected encoded bytes");
 }
 
+static int read_varint(const uint8_t *buf, size_t len, size_t *pos,
+		       uint32_t *value)
+{
+	uint32_t out = 0U;
+	uint8_t shift = 0U;
+
+	while (*pos < len && shift < 32U) {
+		uint8_t byte = buf[(*pos)++];
+
+		out |= (uint32_t)(byte & 0x7fU) << shift;
+		if ((byte & 0x80U) == 0U) {
+			*value = out;
+			return 0;
+		}
+		shift += 7U;
+	}
+
+	return -EINVAL;
+}
+
+static bool payload_has_string(const uint8_t *buf, size_t len, uint32_t field,
+			       const char *value)
+{
+	size_t pos = 0U;
+	size_t value_len = strlen(value);
+
+	while (pos < len) {
+		uint32_t key;
+		uint32_t n;
+
+		if (read_varint(buf, len, &pos, &key) < 0) {
+			return false;
+		}
+		if ((key & 0x07U) == 2U) {
+			if (read_varint(buf, len, &pos, &n) < 0 || n > len - pos) {
+				return false;
+			}
+			if ((key >> 3) == field && n == value_len &&
+			    memcmp(&buf[pos], value, value_len) == 0) {
+				return true;
+			}
+			pos += n;
+		} else if ((key & 0x07U) == 0U) {
+			if (read_varint(buf, len, &pos, &n) < 0) {
+				return false;
+			}
+		} else if ((key & 0x07U) == 5U) {
+			if (len - pos < 4U) {
+				return false;
+			}
+			pos += 4U;
+		} else {
+			return false;
+		}
+	}
+	return false;
+}
+
+static bool payload_get_varint_field(const uint8_t *buf, size_t len,
+				     uint32_t field, uint32_t *value)
+{
+	size_t pos = 0U;
+
+	while (pos < len) {
+		uint32_t key;
+		uint32_t n;
+
+		if (read_varint(buf, len, &pos, &key) < 0) {
+			return false;
+		}
+		if ((key & 0x07U) == 0U) {
+			if (read_varint(buf, len, &pos, &n) < 0) {
+				return false;
+			}
+			if ((key >> 3) == field) {
+				*value = n;
+				return true;
+			}
+		} else if ((key & 0x07U) == 2U) {
+			if (read_varint(buf, len, &pos, &n) < 0 || n > len - pos) {
+				return false;
+			}
+			pos += n;
+		} else if ((key & 0x07U) == 5U) {
+			if (len - pos < 4U) {
+				return false;
+			}
+			pos += 4U;
+		} else {
+			return false;
+		}
+	}
+	return false;
+}
+
 ZTEST(meshtastic_codec, test_generated_vectors_are_current)
 {
 	zassert_equal(MESHTASTIC_VECTOR_SOURCE_COUNT, 14U);
@@ -384,6 +479,57 @@ ZTEST(meshtastic_codec, test_encode_sync_payload_builders)
 	ret = lichen_meshtastic_encode_node_info_payload(&info, payload,
 							 sizeof(payload));
 	zassert_true(ret > 0, "node_info payload failed: %d", ret);
+}
+
+ZTEST(meshtastic_codec, test_metadata_payload_rejects_meshtastic_branding)
+{
+	struct lichen_meshtastic_local_info info = {
+		.firmware_version = "LICHEN MESHTASTIC 2.7.0",
+		.has_bluetooth = false,
+	};
+	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint32_t value = 0U;
+	int ret;
+
+	ret = lichen_meshtastic_encode_metadata_payload(&info, payload,
+							sizeof(payload));
+
+	zassert_true(ret > 0, "metadata payload failed: %d", ret);
+	zassert_true(payload_has_string(payload, (size_t)ret, 1U,
+					"LICHEN Zephyr compat 0.0.0+unknown"));
+	zassert_false(payload_has_string(payload, (size_t)ret, 1U,
+					 "LICHEN MESHTASTIC 2.7.0"));
+	zassert_true(payload_get_varint_field(payload, (size_t)ret, 9U, &value));
+	zassert_equal(value, 255U);
+	zassert_true(payload_get_varint_field(payload, (size_t)ret, 12U, &value));
+	zassert_equal(value, 0x7fff);
+}
+
+ZTEST(meshtastic_codec, test_metadata_payload_requires_lichen_prefix)
+{
+	struct lichen_meshtastic_local_info info = {
+		.firmware_version = "NOTLICHEN compat 1.0",
+		.has_bluetooth = true,
+	};
+	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	int ret;
+
+	ret = lichen_meshtastic_encode_metadata_payload(&info, payload,
+							sizeof(payload));
+
+	zassert_true(ret > 0, "metadata payload failed: %d", ret);
+	zassert_true(payload_has_string(payload, (size_t)ret, 1U,
+					"LICHEN Zephyr compat 0.0.0+unknown"));
+	zassert_false(payload_has_string(payload, (size_t)ret, 1U,
+					 "NOTLICHEN compat 1.0"));
+
+	info.firmware_version = "LICHEN compat 1.0+board";
+	ret = lichen_meshtastic_encode_metadata_payload(&info, payload,
+							sizeof(payload));
+
+	zassert_true(ret > 0, "metadata payload failed: %d", ret);
+	zassert_true(payload_has_string(payload, (size_t)ret, 1U,
+					"LICHEN compat 1.0+board"));
 }
 
 ZTEST(meshtastic_codec, test_encode_sync_payload_rejects_bad_buffers)
