@@ -11,6 +11,8 @@ target_include_directories(app PRIVATE
 
 target_sources(app PRIVATE
   src/fake_ble_meshcore.c
+  src/fake_l2_identity.c
   src/main.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/gateway_identity.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/meshcore_adapter.c
 )

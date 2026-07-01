@@ -31,6 +31,7 @@
 
 #ifdef CONFIG_LORA_LICHEN_MESHCORE_BLE
 #include "ble_meshcore.h"
+#include "gateway_identity.h"
 #include "message_contract.h"
 #include "meshcore_adapter.h"
 #endif
@@ -571,6 +572,10 @@ int main(void)
 
 	/* MeshCore-compatible BLE GATT — local app compatibility only */
 #ifdef CONFIG_LORA_LICHEN_MESHCORE_BLE
+	if (IS_ENABLED(CONFIG_LICHEN_L2) &&
+	    gateway_identity_publish_self() < 0) {
+		LOG_WRN("MeshCore app identity using degraded SELF_INFO until key is published");
+	}
 	if (gateway_message_contract_init() < 0) {
 		LOG_WRN("Message contract init failed — MeshCore app unavailable");
 	} else if (ble_meshcore_init() < 0) {

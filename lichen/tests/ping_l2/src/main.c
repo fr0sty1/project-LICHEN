@@ -17,6 +17,8 @@
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/ztest.h>
 
+#include <lichen/app_identity/app_identity.h>
+
 #include <string.h>
 
 #include "lichen_l2.h"
@@ -52,6 +54,7 @@ static uint8_t expected_packet[sizeof(struct net_ipv6_hdr) + 8 + PING_DATA_SIZE]
 static size_t expected_packet_len;
 static uint8_t expected_udp_packet[sizeof(struct net_ipv6_hdr) + 8 + sizeof(coap_test_payload)];
 static size_t expected_udp_packet_len;
+static uint8_t test_pubkey[32];
 
 static void build_ping_packet(uint8_t *packet, size_t *packet_len);
 static void build_udp_packet(uint8_t *packet, size_t *packet_len);
@@ -145,7 +148,6 @@ static uint16_t udp_checksum(const struct net_ipv6_hdr *ipv6,
 static void *ping_l2_setup(void)
 {
 	uint8_t eui64[8];
-	uint8_t pubkey[32];
 	int ret;
 
 	zassert_true(IS_ENABLED(CONFIG_LICHEN_L2), "CONFIG_LICHEN_L2 is disabled");
@@ -158,13 +160,15 @@ static void *ping_l2_setup(void)
 	ret = lichen_lora_l2_copy_eui64(eui64);
 	zassert_equal(ret, 0, "failed to copy L2 EUI-64: %d", ret);
 
-	ret = lichen_l2_test_load_key(test_seed, pubkey);
+	lichen_app_identity_test_reset();
+
+	ret = lichen_l2_test_load_key(test_seed, test_pubkey);
 	zassert_equal(ret, 0, "failed to load deterministic test key: %d", ret);
 
 	ret = lichen_l2_test_load_link_key(test_link_key);
 	zassert_equal(ret, 0, "failed to load deterministic link key: %d", ret);
 
-	ret = lichen_peer_add(eui64, pubkey);
+	ret = lichen_peer_add(eui64, test_pubkey);
 	zassert_equal(ret, 0, "failed to add self peer: %d", ret);
 
 	make_link_local_from_eui64(eui64, &test_ll_addr);
@@ -389,6 +393,19 @@ ZTEST(ping_l2, test_full_l2_loopback_ping)
 	zassert_true(wait_for_packet_path(&l2_before, &loop_before,
 					  expected_packet, expected_packet_len),
 		     "full LICHEN_L2 loopback packet path was not observed");
+}
+
+ZTEST(ping_l2, test_l2_publish_app_identity_uses_link_context_key)
+{
+	struct lichen_app_identity_self self;
+
+	lichen_app_identity_test_reset();
+	zassert_ok(lichen_l2_publish_app_identity("LICHEN", "LICHEN"));
+	zassert_ok(lichen_app_identity_copy_self(&self));
+	zassert_true(self.has_public_key);
+	zassert_mem_equal(self.public_key, test_pubkey, sizeof(test_pubkey));
+	zassert_mem_equal(self.display_name, "LICHEN", sizeof("LICHEN"));
+	zassert_mem_equal(self.firmware_name, "LICHEN", sizeof("LICHEN"));
 }
 
 ZTEST(ping_l2, test_udp_payload_reaches_socket_after_l2_injection)

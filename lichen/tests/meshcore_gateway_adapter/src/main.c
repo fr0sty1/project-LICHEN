@@ -9,14 +9,18 @@
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/ztest.h>
 
+#include <lichen/app_identity/app_identity.h>
 #include <lichen/app_interface/app_interface.h>
 #include <lichen/meshcore/codec.h>
 
 #include "ble_meshcore.h"
 #include "fake_ble_meshcore.h"
+#include "gateway_identity.h"
 #include "meshcore_adapter.h"
 
 #define WORKER_STACK_SIZE 1024
+
+void fake_l2_identity_set_publish_ret(int ret);
 
 struct emit_worker_ctx {
 	struct k_sem *start;
@@ -112,9 +116,24 @@ static void expect_error(size_t index, uint8_t err)
 
 static void reset_gateway(uint32_t tx_cap)
 {
+	fake_l2_identity_set_publish_ret(0);
+	lichen_app_identity_test_reset();
 	lichen_app_interface_test_reset();
 	fake_ble_meshcore_reset(tx_cap);
 	gateway_meshcore_adapter_test_reset();
+}
+
+static void expect_self_info_key(size_t index, const uint8_t *expected_key,
+				 size_t expected_key_len)
+{
+	const uint8_t *frame;
+	size_t len;
+
+	frame = fake_ble_meshcore_tx(index, &len);
+	zassert_not_null(frame);
+	zassert_equal(len, 64U);
+	zassert_equal(frame[0], LICHEN_MESHCORE_RESP_SELF_INFO);
+	zassert_mem_equal(&frame[4], expected_key, expected_key_len);
 }
 
 ZTEST(meshcore_gateway_adapter, test_process_once_dispatches_current_session)
@@ -127,6 +146,53 @@ ZTEST(meshcore_gateway_adapter, test_process_once_dispatches_current_session)
 	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
 	zassert_equal(fake_ble_meshcore_tx_count(), 1U);
 	expect_tx(0U, LICHEN_MESHCORE_RESP_DEVICE_INFO, 82U);
+}
+
+ZTEST(meshcore_gateway_adapter,
+      test_gateway_identity_publish_self_info_nonzero_key)
+{
+	const uint8_t app_start[] = { LICHEN_MESHCORE_CMD_APP_START,
+				      0, 0, 0, 0, 0, 0, 0, 't' };
+	uint8_t expected_key[32];
+	const uint8_t *frame;
+	size_t len;
+
+	for (uint8_t i = 0U; i < sizeof(expected_key); i++) {
+		expected_key[i] = (uint8_t)(0xd0U + i);
+	}
+
+	reset_gateway(2U);
+	zassert_ok(gateway_identity_publish_self());
+	zassert_ok(fake_ble_meshcore_push_rx(app_start, sizeof(app_start), 1U));
+
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	expect_self_info_key(0U, expected_key, sizeof(expected_key));
+	frame = fake_ble_meshcore_tx(0U, &len);
+	zassert_mem_equal(&frame[58], "LICHEN", 6U);
+}
+
+ZTEST(meshcore_gateway_adapter,
+      test_gateway_identity_retry_replaces_degraded_self_info)
+{
+	const uint8_t app_start[] = { LICHEN_MESHCORE_CMD_APP_START,
+				      0, 0, 0, 0, 0, 0, 0, 't' };
+	uint8_t expected_key[32];
+	uint8_t zero_key[32] = { 0 };
+
+	for (uint8_t i = 0U; i < sizeof(expected_key); i++) {
+		expected_key[i] = (uint8_t)(0xd0U + i);
+	}
+
+	reset_gateway(4U);
+	fake_l2_identity_set_publish_ret(-ENOKEY);
+	zassert_ok(fake_ble_meshcore_push_rx(app_start, sizeof(app_start), 1U));
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	expect_self_info_key(0U, zero_key, sizeof(zero_key));
+
+	fake_l2_identity_set_publish_ret(0);
+	zassert_ok(fake_ble_meshcore_push_rx(app_start, sizeof(app_start), 1U));
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	expect_self_info_key(1U, expected_key, sizeof(expected_key));
 }
 
 ZTEST(meshcore_gateway_adapter, test_process_once_rejects_stale_session)

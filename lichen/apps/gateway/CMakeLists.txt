@@ -17,6 +17,7 @@ target_sources_ifdef(CONFIG_LORA_LICHEN_MESHTASTIC_BLE app PRIVATE
 target_sources_ifdef(CONFIG_LORA_LICHEN_MESHCORE_BLE app PRIVATE
   src/ble_app_owner.c
   src/ble_meshcore.c
+  src/gateway_identity.c
   src/message_contract.c
   src/meshcore_adapter.c)
 

@@ -94,6 +94,16 @@ int lichen_peer_add(const uint8_t eui64[8], const uint8_t pubkey[32]);
  */
 int lichen_peer_remove(const uint8_t eui64[8]);
 
+/*
+ * Publish the local L2 link identity to the app-identity provider.
+ *
+ * This snapshots the initialized L2 link context while holding the same
+ * mutexes used by key loading. It returns -ENOKEY until a link keypair has
+ * been loaded/generated.
+ */
+int lichen_l2_publish_app_identity(const char *display_name,
+				   const char *firmware_name);
+
 #ifdef CONFIG_LICHEN_L2_TEST_HOOKS
 #define LICHEN_L2_TEST_CAPTURE_MAX 256
 

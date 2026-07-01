@@ -4,6 +4,7 @@
 #include "meshcore_adapter.h"
 
 #include "ble_meshcore.h"
+#include "gateway_identity.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -16,6 +17,10 @@
 #include <lichen/app_interface/app_interface.h>
 #include <lichen/meshcore/adapter.h>
 #include <lichen/meshcore/limits.h>
+
+#ifndef ENOKEY
+#define ENOKEY ENOENT
+#endif
 
 LOG_MODULE_REGISTER(gateway_meshcore_adapter, LOG_LEVEL_INF);
 
@@ -189,6 +194,17 @@ static int ensure_app_sink(void)
 	return ret;
 }
 
+static void try_publish_self_identity(void)
+{
+	int ret = gateway_identity_publish_self();
+
+	if (ret < 0 && ret != -ENOTSUP && ret != -ENOKEY &&
+	    ret != -EAGAIN) {
+		LOG_WRN("MeshCore self identity publication retry failed: %d",
+			ret);
+	}
+}
+
 #ifdef CONFIG_ZTEST
 void gateway_meshcore_adapter_test_reset(void)
 {
@@ -219,6 +235,7 @@ int gateway_meshcore_adapter_test_process_once(void)
 		return ret;
 	}
 
+	try_publish_self_identity();
 	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
 	s_adapter_epoch = sync_adapter_session_locked();
 	s_dispatch_epoch = session_epoch;
@@ -261,6 +278,7 @@ static void adapter_thread(void *a, void *b, void *c)
 			continue;
 		}
 
+		try_publish_self_identity();
 		k_mutex_lock(&s_adapter_mutex, K_FOREVER);
 		s_adapter_epoch = sync_adapter_session_locked();
 		s_dispatch_epoch = session_epoch;
@@ -298,6 +316,7 @@ int gateway_meshcore_adapter_init(void)
 	s_adapter_epoch = ble_meshcore_session_epoch();
 	lichen_meshcore_adapter_init(&s_adapter, &ops);
 	k_mutex_unlock(&s_adapter_mutex);
+	try_publish_self_identity();
 	if (ensure_app_sink() < 0) {
 		k_mutex_unlock(&s_init_mutex);
 		return -EIO;
