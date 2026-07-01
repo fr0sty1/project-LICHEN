@@ -68,6 +68,24 @@ enum lichen_app_fix_source {
 	LICHEN_APP_FIX_SOURCE_GNSS,
 };
 
+enum lichen_app_location_source_class {
+	LICHEN_APP_LOCATION_SOURCE_NONE,
+	LICHEN_APP_LOCATION_SOURCE_ONBOARD_HARDWARE,
+	LICHEN_APP_LOCATION_SOURCE_EXTERNAL_HARDWARE,
+	LICHEN_APP_LOCATION_SOURCE_NETWORK,
+	LICHEN_APP_LOCATION_SOURCE_LOCAL_CLIENT,
+	LICHEN_APP_LOCATION_SOURCE_MANUAL_STATIC,
+};
+
+enum lichen_app_location_fix_state {
+	LICHEN_APP_LOCATION_FIX_NONE,
+	LICHEN_APP_LOCATION_FIX_NO_FIX,
+	LICHEN_APP_LOCATION_FIX_2D,
+	LICHEN_APP_LOCATION_FIX_3D,
+	LICHEN_APP_LOCATION_FIX_STALE,
+	LICHEN_APP_LOCATION_FIX_ERROR,
+};
+
 struct lichen_app_location_time_snapshot {
 	bool location_provider_available;
 	bool time_provider_available;
@@ -83,6 +101,17 @@ struct lichen_app_location_time_snapshot {
 	uint8_t satellites;
 	bool fix_source_valid;
 	enum lichen_app_fix_source fix_source;
+	bool source_class_valid;
+	enum lichen_app_location_source_class source_class;
+	char source_name[24];
+	bool fix_state_valid;
+	enum lichen_app_location_fix_state fix_state;
+	bool age_seconds_valid;
+	uint32_t age_seconds;
+	bool horizontal_accuracy_mm_valid;
+	uint32_t horizontal_accuracy_mm;
+	bool vertical_accuracy_mm_valid;
+	uint32_t vertical_accuracy_mm;
 };
 
 struct lichen_app_status_snapshot {
