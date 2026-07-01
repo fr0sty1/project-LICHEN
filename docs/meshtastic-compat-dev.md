@@ -47,6 +47,11 @@ BLE advertising and product-mode ownership are tracked in
 `docs/ble-app-surface-owner.md`. Current firmware builds keep native LICHEN BLE,
 Meshtastic BLE, and MeshCore BLE mutually exclusive.
 
+Use `docs/meshtastic-smoke-test.md` for Android and iOS Meshtastic app smoke
+runs. It defines the required no-hardware preflight, BLE discovery, config sync,
+node DB sync, message ingress/egress, unsupported-operation checks, and physical
+client evidence.
+
 **Reference and test platforms:**
 - Python prototype and tests for adapter behavior.
 - Rust `lichen-meshtastic` for schema, address mapping, config, and host tooling. Its current `gatt.rs` is not

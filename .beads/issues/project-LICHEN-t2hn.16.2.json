@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-t2hn.16.2",
+  "title": "Execute Meshtastic iOS app smoke test",
+  "description": "Run docs/meshtastic-smoke-test.md with a BLE-capable LICHEN target and an iPhone/iPad running the Meshtastic app. Collect discovery, connect, config sync, node DB sync, text send/receive, status, disconnect cleanup, ATT/MTU, screenshots/client logs, and firmware serial evidence.",
+  "acceptance_criteria": "iOS evidence attached to Beads notes: mandatory no-hardware Twister preflight and Python vector/prototype drift checks passed; firmware commit/build and target board recorded; iOS app version and phone OS/device recorded; BLE service/characteristic discovery includes acknowledged ToRadio write and FromNum read/write/notify; sync stages 69420/69421 and FromNum/FromRadio drain pass; post-sync ADMIN_APP get_owner_request/session-passkey behavior returns supported responses, otherwise record only partial read-only smoke and block full pass on project-LICHEN-t2hn.23 or child; raw ATT evidence proves 504-byte ToRadio write and 510-byte FromRadio read succeed, otherwise the smoke is blocked for that board/phone/stack; text send reaches the LICHEN local message submit contract, otherwise the text-send checkpoint fails and blocks on project-LICHEN-t2hn.7.2 or child; incoming text/status behavior and disconnect cleanup pass; unsupported-operation safety checks do not mutate native LICHEN state; evidence confirms this is a local app surface and not Meshtastic RF interoperability; failure triage recorded for any mismatch.",
+  "notes": "Blocked for this no-hardware session: requires a BLE-capable flashed LICHEN target, iOS device with Meshtastic app, phone-side BLE/scanner/client-log evidence, and physical connection/disconnect/ATT observations. The reusable procedure is docs/meshtastic-smoke-test.md.",
+  "status": "blocked",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T12:48:49.723757Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T12:57:44.223084Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "ble",
+    "app-interface",
+    "hardware",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.16.2",
+      "depends_on_id": "project-LICHEN-t2hn.16",
+      "type": "parent-child",
+      "created_at": "2026-07-01T12:48:49.72423Z"
+    }
+  ]
+}
