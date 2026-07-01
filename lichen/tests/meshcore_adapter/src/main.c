@@ -678,6 +678,32 @@ ZTEST(meshcore_adapter, test_serial_split_frame_dispatches_once)
 		      stream_frame_count, 1U);
 }
 
+ZTEST(meshcore_adapter, test_stream_dispatches_concatenated_frames)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	uint8_t stream[8];
+	const uint8_t payload[] = { 0x0a };
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_encode_serial_frame(
+			      LICHEN_MESHCORE_SERIAL_APP_TO_DEVICE,
+			      payload, sizeof(payload), stream, 4U),
+		      4);
+	zassert_equal(lichen_meshcore_encode_serial_frame(
+			      LICHEN_MESHCORE_SERIAL_APP_TO_DEVICE,
+			      payload, sizeof(payload), &stream[4], 4U),
+		      4);
+
+	zassert_equal(lichen_meshcore_adapter_feed_stream(&adapter, stream,
+							 sizeof(stream)), 0);
+	zassert_equal(ctx.count, 2U);
+	zassert_equal(ctx.out[0].data[0], LICHEN_MESHCORE_RESP_NO_MORE_MESSAGES);
+	zassert_equal(ctx.out[1].data[0], LICHEN_MESHCORE_RESP_NO_MORE_MESSAGES);
+	zassert_equal(lichen_meshcore_adapter_get_stats(&adapter)->
+		      stream_frame_count, 2U);
+}
+
 ZTEST(meshcore_adapter, test_incoming_text_waiting_and_sync_next)
 {
 	struct lichen_meshcore_adapter adapter;
