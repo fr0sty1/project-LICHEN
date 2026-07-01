@@ -125,6 +125,8 @@ struct lichen_hal_location_time_snapshot {
 	int32_t longitude_e7;
 	bool altitude_m_valid;
 	int32_t altitude_m;
+	bool altitude_cm_valid;
+	int32_t altitude_cm;
 	bool fix_time_unix_valid;
 	uint32_t fix_time_unix;
 	bool satellites_valid;
@@ -150,6 +152,8 @@ struct lichen_hal_location_sample {
 	int32_t longitude_e7;
 	bool altitude_m_valid;
 	int32_t altitude_m;
+	bool altitude_cm_valid;
+	int32_t altitude_cm;
 	bool fix_time_unix_valid;
 	uint32_t fix_time_unix;
 	bool satellites_valid;

@@ -1,0 +1,42 @@
+{
+  "id": "project-LICHEN-zte2.3.1",
+  "title": "Fix T1000-E puck LR1110 loramac-node build source path",
+  "description": "Discovered during project-LICHEN-zte2.3 no-hardware validation. Building lichen/apps/puck for t1000_e/nrf52840 fails during CMake generation before application code links because lichen/drivers/lora/lr1110/CMakeLists.txt references missing loramac-node source modules/lib/loramac-node/src/radio/lr1110/lr1110_driver/src/lr1110_radio.c. Command: west build -p always -b t1000_e/nrf52840 lichen/apps/puck -d build-puck-t1000-location-v1 -- -DZEPHYR_EXTRA_MODULES=$PWD/lichen. Acceptance: t1000_e/nrf52840 puck app reaches compile/link or the T1000-E LR1110 puck target is explicitly marked unsupported with a tracked replacement path; no physical hardware required for build fix, physical radio smoke remains separate.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T23:41:07.01927Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T23:41:07.020038Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "puck",
+    "t1000-e",
+    "lora",
+    "lr1110",
+    "build",
+    "no-hardware",
+    "location",
+    "gnss",
+    "native-interface",
+    "test",
+    "hardware",
+    "network-source"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zte2.3.1",
+      "depends_on_id": "project-LICHEN-zte2.3",
+      "type": "parent-child",
+      "created_at": "2026-07-01T23:41:07.01971Z"
+    },
+    {
+      "issue_id": "project-LICHEN-zte2.3.1",
+      "depends_on_id": "project-LICHEN-zte2.3",
+      "type": "discovered-from",
+      "created_at": "2026-07-01T23:41:07.020038Z"
+    }
+  ]
+}

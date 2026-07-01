@@ -211,6 +211,8 @@ ZTEST(hal, test_location_time_snapshot_absent_providers_is_explicitly_unknown)
 		.longitude_e7 = -1223493000,
 		.altitude_m_valid = true,
 		.altitude_m = 42,
+		.altitude_cm_valid = true,
+		.altitude_cm = 4249,
 		.fix_time_unix_valid = true,
 		.fix_time_unix = 1710000000U,
 		.satellites_valid = true,
@@ -231,6 +233,8 @@ ZTEST(hal, test_location_time_snapshot_absent_providers_is_explicitly_unknown)
 	zassert_equal(snapshot.longitude_e7, 0);
 	zassert_false(snapshot.altitude_m_valid);
 	zassert_equal(snapshot.altitude_m, 0);
+	zassert_false(snapshot.altitude_cm_valid);
+	zassert_equal(snapshot.altitude_cm, 0);
 	zassert_false(snapshot.fix_time_unix_valid);
 	zassert_equal(snapshot.fix_time_unix, 0U);
 	zassert_false(snapshot.satellites_valid);
@@ -250,6 +254,8 @@ ZTEST(hal, test_location_time_snapshot_test_hook_round_trips_and_resets)
 		.longitude_e7 = -1223493000,
 		.altitude_m_valid = true,
 		.altitude_m = 42,
+		.altitude_cm_valid = true,
+		.altitude_cm = 4249,
 		.fix_time_unix_valid = true,
 		.fix_time_unix = 1710000000U,
 		.satellites_valid = true,
@@ -269,6 +275,8 @@ ZTEST(hal, test_location_time_snapshot_test_hook_round_trips_and_resets)
 	zassert_equal(snapshot.longitude_e7, -1223493000);
 	zassert_true(snapshot.altitude_m_valid);
 	zassert_equal(snapshot.altitude_m, 42);
+	zassert_true(snapshot.altitude_cm_valid);
+	zassert_equal(snapshot.altitude_cm, 4249);
 	zassert_true(snapshot.fix_time_unix_valid);
 	zassert_equal(snapshot.fix_time_unix, 1710000000U);
 	zassert_true(snapshot.satellites_valid);
@@ -293,11 +301,13 @@ ZTEST(hal, test_location_provider_submit_fresh_gnss_fix)
 		.observed_uptime_ms = 1000,
 		.latitude_e7_valid = true,
 		.latitude_e7 = 476206130,
-		.longitude_e7_valid = true,
-		.longitude_e7 = -1223493000,
-		.altitude_m_valid = true,
-		.altitude_m = 42,
-		.fix_time_unix_valid = true,
+			.longitude_e7_valid = true,
+			.longitude_e7 = -1223493000,
+			.altitude_m_valid = true,
+			.altitude_m = 42,
+			.altitude_cm_valid = true,
+			.altitude_cm = 4249,
+			.fix_time_unix_valid = true,
 		.fix_time_unix = 1710000000U,
 		.satellites_valid = true,
 		.satellites = 9U,
@@ -327,6 +337,8 @@ ZTEST(hal, test_location_provider_submit_fresh_gnss_fix)
 	zassert_equal(snapshot.longitude_e7, -1223493000);
 	zassert_true(snapshot.altitude_m_valid);
 	zassert_equal(snapshot.altitude_m, 42);
+	zassert_true(snapshot.altitude_cm_valid);
+	zassert_equal(snapshot.altitude_cm, 4249);
 	zassert_true(snapshot.fix_time_unix_valid);
 	zassert_equal(snapshot.fix_time_unix, 1710000000U);
 	zassert_true(snapshot.satellites_valid);
@@ -351,6 +363,10 @@ ZTEST(hal, test_location_provider_stale_fix_suppresses_position_fields)
 		.latitude_e7 = 100,
 		.longitude_e7_valid = true,
 		.longitude_e7 = 200,
+		.altitude_m_valid = true,
+		.altitude_m = 42,
+		.altitude_cm_valid = true,
+		.altitude_cm = 4249,
 		.fix_time_unix_valid = true,
 		.fix_time_unix = 1710000001U,
 	};
@@ -371,6 +387,8 @@ ZTEST(hal, test_location_provider_stale_fix_suppresses_position_fields)
 	zassert_true(snapshot.age_seconds_valid);
 	zassert_false(snapshot.latitude_e7_valid);
 	zassert_false(snapshot.longitude_e7_valid);
+	zassert_false(snapshot.altitude_m_valid);
+	zassert_false(snapshot.altitude_cm_valid);
 	zassert_false(snapshot.fix_time_unix_valid);
 	zassert_false(snapshot.fix_source_valid);
 }

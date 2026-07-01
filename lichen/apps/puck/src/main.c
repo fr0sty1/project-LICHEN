@@ -17,6 +17,8 @@
 #include <lichen/native.h>
 #endif
 
+#include "puck_location.h"
+
 LOG_MODULE_REGISTER(lichen_puck, LOG_LEVEL_INF);
 
 /* LoRa parameters per LICHEN spec: SF10 / 125 kHz / CR4-5 @ 868 MHz (EU). */
@@ -47,30 +49,18 @@ static const uint8_t s_iid[8] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77
 /* Radio stats forwarded to native protocol */
 static struct ln_radio_stats s_radio_stats;
 
-/* Last known GPS fix */
-static struct ln_gps_info s_gps;
 #endif
 
 /* --------------------------------------------------------------------------
  * GNSS callback (called from GNSS driver context)
  * -------------------------------------------------------------------------- */
 
-#if defined(LICHEN_HAL_GNSS_DEVICE) && IS_ENABLED(CONFIG_LICHEN_NATIVE)
+#if defined(LICHEN_HAL_GNSS_DEVICE)
 #include <zephyr/drivers/gnss.h>
 
 static void on_gnss_data(const struct device *dev, const struct gnss_data *data)
 {
-	ARG_UNUSED(dev);
-
-	if (data->info.fix_status == GNSS_FIX_STATUS_NO_FIX) {
-		s_gps.valid = false;
-		return;
-	}
-
-	s_gps.lat_udeg  = (int32_t)(data->nav_data.latitude  / 1000); /* nanodeg → microdeg */
-	s_gps.lon_udeg  = (int32_t)(data->nav_data.longitude / 1000);
-	s_gps.alt_cm    = data->nav_data.altitude / 10;              /* mm → cm */
-	s_gps.valid     = true;
+	lichen_puck_location_gnss_callback_for_test(dev, data);
 }
 
 GNSS_DATA_CALLBACK_DEFINE(LICHEN_HAL_GNSS_DEVICE, on_gnss_data);
@@ -232,13 +222,22 @@ int main(void)
 		/* Send node_info every 60s */
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 		if (now - last_info_ms >= 60000) {
+			struct lichen_hal_location_time_snapshot location_time;
+			struct ln_gps_info gps;
+			const struct ln_gps_info *gps_ptr = NULL;
+
+			if (lichen_hal_location_time_snapshot_get(&location_time) == 0 &&
+			    lichen_puck_location_snapshot_to_native_gps(&location_time,
+								       &gps)) {
+				gps_ptr = &gps;
+			}
 			lichen_native_send_node_info(
 				identity.board_name,
 				"lichen-fw-0.1.0",
 				identity.zephyr_board,
 				(uint64_t)now,
 				s_iid,
-				s_gps.valid ? &s_gps : NULL,
+				gps_ptr,
 				&s_radio_stats);
 			last_info_ms = now;
 		}

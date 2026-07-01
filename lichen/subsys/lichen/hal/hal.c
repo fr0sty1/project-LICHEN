@@ -731,6 +731,8 @@ static void snapshot_from_sample(struct lichen_hal_location_time_snapshot *snaps
 	snapshot->fix_time_unix = sample->fix_time_unix;
 	snapshot->altitude_m_valid = !stale && sample->altitude_m_valid;
 	snapshot->altitude_m = sample->altitude_m;
+	snapshot->altitude_cm_valid = !stale && sample->altitude_cm_valid;
+	snapshot->altitude_cm = sample->altitude_cm;
 
 	if (!stale && sample_has_usable_fix(sample)) {
 		snapshot->latitude_e7_valid = true;
