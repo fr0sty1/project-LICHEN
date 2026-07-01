@@ -5,9 +5,49 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <zephyr/bluetooth/uuid.h>
 #include <zephyr/ztest.h>
 
+#include "ble_app_owner.h"
 #include "ble_meshcore.h"
+
+#define NUS_SVC_UUID_VAL \
+	BT_UUID_128_ENCODE(0x6e400001, 0xb5a3, 0xf393, 0xe0a9, 0xe50e24dcca9e)
+
+static const uint8_t s_nus_svc_uuid[] = { NUS_SVC_UUID_VAL };
+
+static void assert_flags_data(const struct bt_data *data)
+{
+	zassert_not_null(data);
+	zassert_equal(data->type, BT_DATA_FLAGS);
+	zassert_equal(data->data_len, 1U);
+	zassert_equal(data->data[0], BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR);
+}
+
+static void assert_uuid128_data(const struct bt_data *data,
+				const uint8_t *uuid_value)
+{
+	zassert_not_null(data);
+	zassert_equal(data->type, BT_DATA_UUID128_ALL);
+	zassert_equal(data->data_len, 16U);
+	zassert_mem_equal(data->data, uuid_value, 16U);
+}
+
+static void assert_short_name_data(const struct bt_data *data,
+				   const char *name)
+{
+	zassert_not_null(data);
+	zassert_equal(data->type, BT_DATA_NAME_SHORTENED);
+	zassert_equal(data->data_len, strlen(name));
+	zassert_mem_equal(data->data, name, strlen(name));
+}
+
+static void meshcore_ble_before(void *fixture)
+{
+	ARG_UNUSED(fixture);
+	ble_app_owner_test_reset();
+	ble_meshcore_test_disconnect();
+}
 
 ZTEST(meshcore_ble, test_rx_write_dequeues_raw_frame_with_epoch)
 {
@@ -174,4 +214,22 @@ ZTEST(meshcore_ble, test_reset_session_if_epoch_preserves_new_session)
 	zassert_equal(ble_meshcore_tx_free(), ble_meshcore_tx_capacity());
 }
 
-ZTEST_SUITE(meshcore_ble, NULL, NULL, NULL, NULL, NULL);
+ZTEST(meshcore_ble, test_init_uses_meshcore_owner_advertising)
+{
+	struct ble_app_owner_test_state state;
+
+	zassert_ok(ble_meshcore_init());
+	zassert_ok(ble_app_owner_test_copy_state(&state));
+	zassert_equal(state.enable_count, 1U);
+	zassert_equal(state.adv_start_count, 1U);
+	zassert_equal(state.surface, BLE_APP_OWNER_SURFACE_MESHCORE);
+	zassert_equal(state.ad_len, 2U);
+	zassert_equal(state.sd_len, 1U);
+	assert_flags_data(&state.ad[0]);
+	assert_uuid128_data(&state.ad[1], s_nus_svc_uuid);
+	assert_short_name_data(&state.sd[0], "MeshCore-LICHEN");
+	zassert_true((state.adv_options & BT_LE_ADV_OPT_CONNECTABLE) != 0U);
+	zassert_false((state.adv_options & BT_LE_ADV_OPT_USE_NAME) != 0U);
+}
+
+ZTEST_SUITE(meshcore_ble, NULL, NULL, meshcore_ble_before, NULL, NULL);

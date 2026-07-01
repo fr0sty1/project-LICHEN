@@ -11,8 +11,9 @@
  * client stack works regardless of whether it connects via USB-serial or BLE.
  */
 
-#include "ble_uart.h"
 #include "ble_ingress.h"
+#include "ble_app_owner.h"
+#include "ble_uart.h"
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
@@ -183,22 +184,6 @@ static const struct bt_data s_ad[] = {
 	BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_NUS_VAL),
 };
 
-static void adv_start(void)
-{
-	int err = bt_le_adv_start(
-		BT_LE_ADV_PARAM(BT_LE_ADV_OPT_CONNECTABLE | BT_LE_ADV_OPT_USE_NAME,
-				BT_GAP_ADV_FAST_INT_MIN_2,
-				BT_GAP_ADV_FAST_INT_MAX_2,
-				NULL),
-		s_ad, ARRAY_SIZE(s_ad), NULL, 0);
-
-	if (err) {
-		LOG_ERR("adv_start failed: %d", err);
-	} else {
-		LOG_INF("BLE advertising as \"%s\"", CONFIG_BT_DEVICE_NAME);
-	}
-}
-
 static void on_connected(struct bt_conn *conn, uint8_t err)
 {
 	struct bt_conn *old_conn;
@@ -241,7 +226,7 @@ static void on_disconnected(struct bt_conn *conn, uint8_t reason)
 	}
 
 	LOG_INF("BLE phone disconnected (reason %u)", reason);
-	adv_start();
+	(void)ble_app_owner_restart(BLE_APP_OWNER_SURFACE_NATIVE);
 }
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
@@ -345,12 +330,12 @@ out_unref:
 
 int ble_uart_init(void)
 {
-	int err = bt_enable(NULL);
+	const struct ble_app_owner_advertising adv = {
+		.surface = BLE_APP_OWNER_SURFACE_NATIVE,
+		.ad = s_ad,
+		.ad_len = ARRAY_SIZE(s_ad),
+		.name = CONFIG_BT_DEVICE_NAME,
+	};
 
-	if (err) {
-		LOG_ERR("bt_enable failed: %d", err);
-		return err;
-	}
-	adv_start();
-	return 0;
+	return ble_app_owner_start(&adv);
 }

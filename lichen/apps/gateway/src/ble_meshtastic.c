@@ -7,6 +7,7 @@
  * length headers are rejected here so the dispatcher only sees ToRadio bytes.
  */
 
+#include "ble_app_owner.h"
 #include "ble_meshtastic.h"
 
 #include <errno.h>
@@ -412,23 +413,6 @@ static const struct bt_data s_sd[] = {
 		sizeof(MESHTASTIC_ADV_NAME) - 1U),
 };
 
-static int adv_start(void)
-{
-	int err = bt_le_adv_start(
-		BT_LE_ADV_PARAM(BT_LE_ADV_OPT_CONNECTABLE,
-				BT_GAP_ADV_FAST_INT_MIN_2,
-				BT_GAP_ADV_FAST_INT_MAX_2,
-				NULL),
-		s_ad, ARRAY_SIZE(s_ad), s_sd, ARRAY_SIZE(s_sd));
-
-	if (err) {
-		LOG_ERR("Meshtastic BLE adv_start failed: %d", err);
-	} else {
-		LOG_INF("Meshtastic BLE advertising as \"%s\"", CONFIG_BT_DEVICE_NAME);
-	}
-	return err;
-}
-
 static void on_connected(struct bt_conn *conn, uint8_t err)
 {
 	struct bt_conn *old_conn;
@@ -479,7 +463,7 @@ static void on_disconnected(struct bt_conn *conn, uint8_t reason)
 	}
 
 	LOG_INF("Meshtastic BLE client disconnected (reason %u)", reason);
-	(void)adv_start();
+	(void)ble_app_owner_restart(BLE_APP_OWNER_SURFACE_MESHTASTIC);
 }
 
 BT_CONN_CB_DEFINE(meshtastic_conn_callbacks) = {
@@ -680,12 +664,14 @@ uint32_t ble_meshtastic_from_radio_capacity(void)
 
 int ble_meshtastic_init(void)
 {
-	int err = bt_enable(NULL);
+	const struct ble_app_owner_advertising adv = {
+		.surface = BLE_APP_OWNER_SURFACE_MESHTASTIC,
+		.ad = s_ad,
+		.ad_len = ARRAY_SIZE(s_ad),
+		.sd = s_sd,
+		.sd_len = ARRAY_SIZE(s_sd),
+		.name = MESHTASTIC_ADV_NAME,
+	};
 
-	if (err) {
-		LOG_ERR("bt_enable failed: %d", err);
-		return err;
-	}
-
-	return adv_start();
+	return ble_app_owner_start(&adv);
 }

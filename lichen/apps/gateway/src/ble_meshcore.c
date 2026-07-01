@@ -8,6 +8,7 @@
  * before frames enter the dispatcher queue.
  */
 
+#include "ble_app_owner.h"
 #include "ble_meshcore.h"
 
 #include <errno.h>
@@ -265,22 +266,17 @@ static const struct bt_data s_sd[] = {
 		sizeof(CONFIG_LORA_LICHEN_MESHCORE_BLE_NAME) - 1U),
 };
 
-static int adv_start(void)
+static int prepare_meshcore(void)
 {
-	int err = bt_le_adv_start(
-		BT_LE_ADV_PARAM(BT_LE_ADV_OPT_CONNECTABLE,
-				BT_GAP_ADV_FAST_INT_MIN_2,
-				BT_GAP_ADV_FAST_INT_MAX_2,
-				NULL),
-		s_ad, ARRAY_SIZE(s_ad), s_sd, ARRAY_SIZE(s_sd));
+#if defined(CONFIG_BT_FIXED_PASSKEY) && !defined(CONFIG_ZTEST)
+	int err = bt_passkey_set(CONFIG_LORA_LICHEN_MESHCORE_BLE_PASSKEY);
 
 	if (err) {
-		LOG_ERR("MeshCore BLE adv_start failed: %d", err);
-	} else {
-		LOG_INF("MeshCore BLE advertising as \"%s\"",
-			CONFIG_LORA_LICHEN_MESHCORE_BLE_NAME);
+		LOG_ERR("MeshCore BLE passkey setup failed: %d", err);
+		return err;
 	}
-	return err;
+#endif
+	return 0;
 }
 
 static void on_connected(struct bt_conn *conn, uint8_t err)
@@ -326,7 +322,7 @@ static void on_disconnected(struct bt_conn *conn, uint8_t reason)
 	}
 
 	LOG_INF("MeshCore BLE client disconnected (reason %u)", reason);
-	(void)adv_start();
+	(void)ble_app_owner_restart(BLE_APP_OWNER_SURFACE_MESHCORE);
 }
 
 BT_CONN_CB_DEFINE(meshcore_conn_callbacks) = {
@@ -571,20 +567,15 @@ void ble_meshcore_test_disconnect(void)
 
 int ble_meshcore_init(void)
 {
-	int err = bt_enable(NULL);
+	const struct ble_app_owner_advertising adv = {
+		.surface = BLE_APP_OWNER_SURFACE_MESHCORE,
+		.ad = s_ad,
+		.ad_len = ARRAY_SIZE(s_ad),
+		.sd = s_sd,
+		.sd_len = ARRAY_SIZE(s_sd),
+		.name = CONFIG_LORA_LICHEN_MESHCORE_BLE_NAME,
+		.prepare = prepare_meshcore,
+	};
 
-	if (err) {
-		LOG_ERR("bt_enable failed: %d", err);
-		return err;
-	}
-
-#if defined(CONFIG_BT_FIXED_PASSKEY) && !defined(CONFIG_ZTEST)
-	err = bt_passkey_set(CONFIG_LORA_LICHEN_MESHCORE_BLE_PASSKEY);
-	if (err) {
-		LOG_ERR("MeshCore BLE passkey setup failed: %d", err);
-		return err;
-	}
-#endif
-
-	return adv_start();
+	return ble_app_owner_start(&adv);
 }

@@ -3,14 +3,19 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(lichen_gateway)
 
 target_sources(app PRIVATE src/main.c src/config_cbor.c)
-target_sources_ifdef(CONFIG_LORA_LICHEN_BLE app PRIVATE src/ble_uart.c src/ble_ingress.c)
+target_sources_ifdef(CONFIG_LORA_LICHEN_BLE app PRIVATE
+  src/ble_app_owner.c
+  src/ble_uart.c
+  src/ble_ingress.c)
 target_sources_ifdef(CONFIG_LORA_LICHEN_MESHTASTIC_BLE app PRIVATE
+  src/ble_app_owner.c
   src/ble_meshtastic.c
   src/inbound_coap.c
   src/inbound_events.c
   src/message_contract.c
   src/meshtastic_adapter.c)
 target_sources_ifdef(CONFIG_LORA_LICHEN_MESHCORE_BLE app PRIVATE
+  src/ble_app_owner.c
   src/ble_meshcore.c
   src/message_contract.c
   src/meshcore_adapter.c)

@@ -6,9 +6,11 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(meshcore_ble)
 
 target_compile_definitions(app PRIVATE
+  CONFIG_LORA_LICHEN_MESHCORE_BLE=1
   CONFIG_LORA_LICHEN_MESHCORE_BLE_QUEUE_DEPTH=4
   CONFIG_LORA_LICHEN_MESHCORE_BLE_NAME="MeshCore-LICHEN")
 target_include_directories(app PRIVATE ../../apps/gateway/src)
 target_sources(app PRIVATE
+  ../../apps/gateway/src/ble_app_owner.c
   ../../apps/gateway/src/ble_meshcore.c
   src/main.c)
