@@ -46,7 +46,9 @@ pip install lichen[meshtastic]
 **Reference and test platforms:**
 - Python prototype and tests for adapter behavior.
 - Rust `lichen-meshtastic` for schema, address mapping, config, and host tooling. Its current `gatt.rs` is not
-  authoritative for BLE framing until updated to raw protobuf-per-GATT-value semantics.
+  authoritative for BLE framing until updated to raw protobuf-per-GATT-value semantics. Rust no longer carries a
+  separate Admin/config handler; active read-only sync behavior is owned by Zephyr compatibility codec/adapter tests,
+  and packet-level `ADMIN_APP` reads are tracked separately by `project-LICHEN-t2hn.23`.
 - Linux BLE clients for smoke tests.
 
 Without this feature, users must use LICHEN-native apps (iOS, Android, CLI, or web) to interact with the node.
@@ -352,8 +354,8 @@ The adapter implements a subset of Meshtastic's protobuf schema.
 | `packet` with `TEXT_MESSAGE_APP` | Validate broadcast primary-channel UTF-8 text up to 200 bytes, call the adapter text hook, and queue local `queueStatus` |
 | `packet` with `POSITION_APP` | Translate to LICHEN position/announce when available; otherwise deterministic no-op status |
 | `packet` with `NODEINFO_APP` | Update transient display metadata only; no persistent Meshtastic identity writes |
-| `packet` with `ADMIN_APP` read request | Return synthetic owner/session/config response for supported read-only requests |
-| `packet` with `ADMIN_APP` write/command | Reject or no-op deterministically; do not mutate LICHEN radio/security settings |
+| `packet` with `ADMIN_APP` read request | Deferred until `project-LICHEN-t2hn.23`; current firmware returns deterministic unsupported status. |
+| `packet` with `ADMIN_APP` write/command | Reject or no-op deterministically; do not mutate LICHEN radio/security settings. |
 | `packet` with unsupported portnum | Drop with deterministic status or empty response; never crash or desync the queue |
 | `disconnect` | Clear connection-scoped queue/session state |
 
@@ -462,7 +464,11 @@ The adapter returns synthetic config matching Meshtastic's expected structure:
 
 Config writes via ToRadio are acknowledged but most are no-ops. The LICHEN stack controls actual radio parameters.
 
-The read-only admin subset is first class for app compatibility:
+The staged `want_config_id` sync path is the current read-only config surface.
+Packet-level `ADMIN_APP` reads are deferred until `project-LICHEN-t2hn.23` and
+currently return deterministic unsupported status.
+
+Target packet-level admin subset:
 
 | Admin request | Response |
 |---------------|----------|
