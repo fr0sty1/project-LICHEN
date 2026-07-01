@@ -38,8 +38,52 @@ separately from app-compat product mode where practical.
 This means simultaneous native LICHEN plus Meshtastic or MeshCore BLE is not
 supported by the current firmware image. Native LICHEN and MeshCore also both
 use the NUS UUID triplet with incompatible payload semantics, so they must stay
-mutually exclusive until native LICHEN BLE moves to LICHEN-specific UUIDs or a
-different discovery policy prevents clients from binding to the wrong service.
+mutually exclusive until native LICHEN BLE moves to LICHEN-specific UUIDs.
+
+## Native UUID Policy
+
+Decision: native LICHEN BLE may keep the Nordic UART Service UUID triplet only
+inside the current mutually exclusive native product mode. Any firmware image
+that enables native LICHEN BLE together with a compatibility BLE surface MUST
+first move native LICHEN BLE to LICHEN-specific service and characteristic
+UUIDs. A combined native-plus-MeshCore image MUST NOT advertise two NUS
+services with different payload contracts.
+
+Rationale:
+
+- MeshCore client compatibility depends on exact NUS UUIDs carrying raw
+  MeshCore frames.
+- Current native LICHEN BLE uses the same NUS UUIDs for SLIP-framed IPv6.
+- BLE centrals discover and bind by UUID, so two incompatible services with the
+  same UUID triplet create ambiguous client behavior.
+- Preserving NUS for the mutually exclusive native mode avoids breaking the
+  existing no-hardware and board-default native BLE path while compatibility
+  product modes are still isolated.
+
+Client and migration impact:
+
+- Existing native BLE clients that know only NUS continue to work with
+  `CONFIG_LORA_LICHEN_BLE` product images while that mode remains exclusive.
+- New native clients SHOULD learn the future LICHEN-specific UUIDs before any
+  coexistence image is shipped.
+- During migration, native clients MAY probe LICHEN-specific UUIDs first and
+  fall back to NUS only when no compatibility surface is active.
+- Compatibility product images MUST NOT rely on native-client NUS fallback,
+  even when the compatibility surface itself uses distinct UUIDs.
+- MeshCore clients continue to see exact NUS UUIDs and the MeshCore
+  compatibility name in MeshCore product mode.
+
+Blocked product modes:
+
+- Native-plus-MeshCore BLE remains blocked until native LICHEN BLE has
+  LICHEN-specific UUIDs, tests cover both UUID sets, and client discovery notes
+  are updated.
+- Native-plus-Meshtastic BLE remains blocked until native LICHEN BLE has
+  LICHEN-specific UUIDs and until the single-session owner and
+  `CONFIG_BT_MAX_CONN=1` policy are replaced with tested multi-surface session
+  handling.
+- Any future combined BLE product mode must keep advertising composition,
+  connection arbitration, and per-surface queues under the shared owner.
 
 The owner design does not make every BLE-capable board an app-compatible
 product. STM32WL/Nucleo WL55JC remains serial/SLIP only because it has no BLE
@@ -162,8 +206,9 @@ The shared owner should be implemented in small slices:
    ownership behind the owner, preserving authenticated encrypted access in
    production builds and keeping the selected compatibility PIN aligned with
    MeshCore `DEVICE_INFO` reporting.
-5. Decide whether native LICHEN BLE gets LICHEN-specific UUIDs before enabling
-   any combined native-plus-MeshCore product mode.
+5. Move native LICHEN BLE to LICHEN-specific UUIDs, update client discovery
+   notes, and cover both legacy NUS-exclusive and LICHEN-specific native UUID
+   paths before enabling any combined native-plus-compatibility product mode.
 6. Add native_sim tests for advertising composition, unsupported Kconfig/product
    combinations, disconnect queue cleanup, and stale session rejection.
 
