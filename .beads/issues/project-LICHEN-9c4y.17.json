@@ -1,0 +1,34 @@
+{
+  "id": "project-LICHEN-9c4y.17",
+  "title": "Define MeshCore compatibility channel/config secret policy",
+  "description": "Why this exists: project-LICHEN-9c4y.1 research found MeshCore CHANNEL_INFO/SET_CHANNEL expose MeshCore channel names and secrets through the local API, while LICHEN native group/OSCORE material must not be leaked or misrepresented through a compatibility shim. Config write commands also need a clear read-only versus persisted-compatibility policy. What needs to be done: define how LICHEN synthesizes MeshCore channel slots, whether compatibility-local secrets are generated/stored, which config writes are accepted, persisted, ignored, or rejected, and how responses avoid claiming MeshCore RF interoperability. Acceptance criteria: policy is recorded with command impacts; native secrets are never exposed; unsupported writes have deterministic MeshCore ERR/OK semantics; downstream mapping/tests consume the policy.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T08:29:43.639883Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T08:29:43.655439Z",
+  "labels": [
+    "zephyr",
+    "meshcore",
+    "security",
+    "config",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c4y.17",
+      "depends_on_id": "project-LICHEN-9c4y",
+      "type": "parent-child",
+      "created_at": "2026-07-01T08:29:43.654975Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c4y.17",
+      "depends_on_id": "project-LICHEN-9c4y.1",
+      "type": "discovered-from",
+      "created_at": "2026-07-01T08:29:43.655439Z"
+    }
+  ]
+}
