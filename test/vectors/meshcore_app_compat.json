@@ -390,6 +390,118 @@
       }
     },
     {
+      "name": "set_advert_name_unsupported",
+      "description": "Compatibility display-name writes are rejected until settings-backed local compatibility state exists.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "084c494348454e",
+      "decoded": {
+        "command": "SET_ADVERT_NAME",
+        "name": "LICHEN"
+      },
+      "expect": {
+        "responses": [
+          "0101"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "set_channel_unsupported",
+      "description": "Channel writes are rejected; LICHEN does not accept MeshCore channel secrets as native group or OSCORE material.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "2000",
+      "decoded": {
+        "command": "SET_CHANNEL",
+        "index": 0
+      },
+      "expect": {
+        "responses": [
+          "0101"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "set_device_pin_unsupported",
+      "description": "BLE PIN writes are rejected until a settings-backed MeshCore compatibility PIN store is implemented.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "25313233343536",
+      "decoded": {
+        "command": "SET_DEVICE_PIN",
+        "pin": "123456"
+      },
+      "expect": {
+        "responses": [
+          "0101"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "set_autoadd_config_unsupported",
+      "description": "Auto-add configuration writes are rejected until compatibility-local persistence exists.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "3a0000",
+      "decoded": {
+        "command": "SET_AUTOADD_CONFIG",
+        "enabled": false
+      },
+      "expect": {
+        "responses": [
+          "0101"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
       "name": "self_advert_unsupported",
       "description": "Self-advert is a MeshCore RF operation and must not be OK/no-op in LICHEN compatibility.",
       "source_baseline": {

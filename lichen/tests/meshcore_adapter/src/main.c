@@ -90,10 +90,10 @@ ZTEST(meshcore_adapter, test_canonical_app_compat_vectors)
 	struct lichen_meshcore_adapter adapter;
 	struct test_ctx ctx;
 
-	zassert_equal(MESHCORE_VECTOR_SOURCE_COUNT, 28U);
+	zassert_equal(MESHCORE_VECTOR_SOURCE_COUNT, 32U);
 	zassert_equal(MESHCORE_VECTOR_ADAPTER_COUNT,
 		      ARRAY_SIZE(meshcore_vectors));
-	zassert_equal(MESHCORE_VECTOR_ADAPTER_COUNT, 22U);
+	zassert_equal(MESHCORE_VECTOR_ADAPTER_COUNT, 26U);
 
 	for (size_t i = 0U; i < ARRAY_SIZE(meshcore_vectors); i++) {
 		const struct meshcore_vector *v = &meshcore_vectors[i];
