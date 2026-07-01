@@ -11,6 +11,14 @@ menuconfig LICHEN_MESHTASTIC_CODEC
 
 if LICHEN_MESHTASTIC_CODEC
 
+config LICHEN_MESHTASTIC_ADAPTER
+	bool "Meshtastic app-compat dispatcher"
+	help
+	  Enable the board-agnostic Meshtastic app adapter dispatcher. It accepts
+	  raw ToRadio protobuf values, optionally reassembles serial StreamAPI
+	  frames for non-BLE transports, and emits bounded FromRadio protobuf
+	  responses through caller-provided transport callbacks.
+
 config LICHEN_MESHTASTIC_MAX_TO_RADIO
 	int "Maximum ToRadio protobuf value size"
 	default 504

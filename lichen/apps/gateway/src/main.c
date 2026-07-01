@@ -23,6 +23,7 @@
 
 #ifdef CONFIG_LORA_LICHEN_MESHTASTIC_BLE
 #include "ble_meshtastic.h"
+#include "meshtastic_adapter.h"
 #endif
 
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
@@ -449,6 +450,8 @@ int main(void)
 #ifdef CONFIG_LORA_LICHEN_MESHTASTIC_BLE
 	if (ble_meshtastic_init() < 0) {
 		LOG_WRN("Meshtastic BLE init failed — Meshtastic app unavailable");
+	} else if (gateway_meshtastic_adapter_init() < 0) {
+		LOG_WRN("Meshtastic adapter init failed — Meshtastic app unavailable");
 	}
 #endif
 

@@ -52,6 +52,7 @@ struct msg_slot {
 struct to_radio_slot {
 	uint8_t data[LICHEN_MESHTASTIC_TO_RADIO_MAX];
 	uint16_t len;
+	uint32_t session_epoch;
 };
 
 static struct bt_uuid_128 mesh_svc_uuid = BT_UUID_INIT_128(BT_UUID_MESH_SVC_VAL);
@@ -61,6 +62,7 @@ static struct bt_uuid_128 from_num_uuid = BT_UUID_INIT_128(BT_UUID_MESH_FROMNUM_
 
 static struct bt_conn *s_conn;
 static K_MUTEX_DEFINE(s_conn_mutex);
+static uint32_t s_session_epoch;
 
 static K_MUTEX_DEFINE(s_rx_mutex);
 static struct to_radio_slot s_rx_queue[MESHTASTIC_QUEUE_DEPTH];
@@ -78,8 +80,21 @@ static bool s_from_num_notify_enabled;
 
 static uint8_t s_read_buf[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 static uint16_t s_read_len;
+static uint16_t s_read_next_offset;
 static uint8_t s_read_slot;
 static bool s_read_active;
+
+static void reset_session_locked(void);
+
+static uint32_t session_epoch_locked(void)
+{
+	return s_session_epoch;
+}
+
+static void session_epoch_bump_locked(void)
+{
+	s_session_epoch++;
+}
 
 static bool has_stream_prefix(const uint8_t *data, size_t len)
 {
@@ -132,22 +147,34 @@ static ssize_t to_radio_write(struct bt_conn *conn,
 	}
 
 	ret = lichen_meshtastic_decode_to_radio(data, len, &decoded);
-	if (ret < 0) {
+	if (ret < 0 && ret != -ENODATA) {
 		LOG_WRN("Meshtastic ToRadio rejected: %d", ret);
 		return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
 	}
 
+	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+#ifdef CONFIG_ZTEST
+	if (conn != NULL && conn != s_conn) {
+#else
+	if (conn == NULL || conn != s_conn) {
+#endif
+		k_mutex_unlock(&s_conn_mutex);
+		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+	}
 	k_mutex_lock(&s_rx_mutex, K_FOREVER);
 	if (s_rx_count == ARRAY_SIZE(s_rx_queue)) {
 		k_mutex_unlock(&s_rx_mutex);
+		k_mutex_unlock(&s_conn_mutex);
 		return BT_GATT_ERR(BT_ATT_ERR_INSUFFICIENT_RESOURCES);
 	}
 
 	memcpy(s_rx_queue[s_rx_tail].data, data, len);
 	s_rx_queue[s_rx_tail].len = len;
+	s_rx_queue[s_rx_tail].session_epoch = session_epoch_locked();
 	s_rx_tail = (s_rx_tail + 1U) % ARRAY_SIZE(s_rx_queue);
 	s_rx_count++;
 	k_mutex_unlock(&s_rx_mutex);
+	k_mutex_unlock(&s_conn_mutex);
 
 	LOG_DBG("Queued Meshtastic ToRadio %u B", len);
 	return len;
@@ -198,23 +225,59 @@ static ssize_t from_radio_read(struct bt_conn *conn,
 			return BT_GATT_ERR(BT_ATT_ERR_INSUFFICIENT_RESOURCES);
 		}
 		s_read_len = (uint16_t)ret;
+		s_read_next_offset = 0U;
 		s_read_active = ret > 0;
-	} else if (!s_read_active || offset > s_read_len) {
+	} else if (!s_read_active || offset != s_read_next_offset) {
 		k_mutex_unlock(&s_tx_mutex);
 		return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
 	}
 
 	ret = bt_gatt_attr_read(conn, attr, buf, len, offset, s_read_buf, s_read_len);
 	if (ret >= 0 && ((uint16_t)ret < len ||
-			 offset + (uint16_t)ret > s_read_len)) {
+			 (uint32_t)offset + (uint32_t)ret >= s_read_len)) {
 		from_radio_pop_read_slot_locked();
 		s_read_active = false;
 		s_read_len = 0U;
+		s_read_next_offset = 0U;
+	} else if (ret > 0) {
+		s_read_next_offset = offset + (uint16_t)ret;
 	}
 	k_mutex_unlock(&s_tx_mutex);
 
 	return ret;
 }
+
+#ifdef CONFIG_ZTEST
+int ble_meshtastic_test_read_from_radio(uint8_t *buf, size_t len,
+					size_t offset)
+{
+	if (len > UINT16_MAX || offset > UINT16_MAX) {
+		return -EINVAL;
+	}
+
+	return from_radio_read(NULL, NULL, buf, (uint16_t)len,
+			       (uint16_t)offset);
+}
+
+int ble_meshtastic_test_write_to_radio(const uint8_t *buf, size_t len)
+{
+	if (len > UINT16_MAX) {
+		return -EINVAL;
+	}
+
+	return to_radio_write(NULL, NULL, buf, (uint16_t)len, 0U, 0U);
+}
+
+int ble_meshtastic_test_write_to_radio_conn(const uint8_t *buf, size_t len,
+					    void *conn)
+{
+	if (len > UINT16_MAX) {
+		return -EINVAL;
+	}
+
+	return to_radio_write(conn, NULL, buf, (uint16_t)len, 0U, 0U);
+}
+#endif
 
 static ssize_t from_num_read(struct bt_conn *conn,
 			     const struct bt_gatt_attr *attr,
@@ -366,6 +429,7 @@ static void on_connected(struct bt_conn *conn, uint8_t err)
 	k_mutex_lock(&s_conn_mutex, K_FOREVER);
 	old_conn = s_conn;
 	s_conn = bt_conn_ref(conn);
+	session_epoch_bump_locked();
 	k_mutex_unlock(&s_conn_mutex);
 
 	if (old_conn != NULL) {
@@ -375,6 +439,7 @@ static void on_connected(struct bt_conn *conn, uint8_t err)
 	k_mutex_lock(&s_tx_mutex, K_FOREVER);
 	s_read_active = false;
 	s_read_len = 0U;
+	s_read_next_offset = 0U;
 	s_read_slot = 0U;
 	k_mutex_unlock(&s_tx_mutex);
 
@@ -389,28 +454,17 @@ static void on_disconnected(struct bt_conn *conn, uint8_t reason)
 	if (s_conn == conn) {
 		old_conn = s_conn;
 		s_conn = NULL;
+		reset_session_locked();
+
+		k_mutex_lock(&s_tx_mutex, K_FOREVER);
+		s_from_num_notify_enabled = false;
+		k_mutex_unlock(&s_tx_mutex);
 	}
 	k_mutex_unlock(&s_conn_mutex);
 
 	if (old_conn != NULL) {
 		bt_conn_unref(old_conn);
 	}
-
-	k_mutex_lock(&s_rx_mutex, K_FOREVER);
-	s_rx_head = 0U;
-	s_rx_tail = 0U;
-	s_rx_count = 0U;
-	k_mutex_unlock(&s_rx_mutex);
-
-	k_mutex_lock(&s_tx_mutex, K_FOREVER);
-	s_tx_head = 0U;
-	s_tx_tail = 0U;
-	s_tx_count = 0U;
-	s_read_active = false;
-	s_read_len = 0U;
-	s_read_slot = 0U;
-	s_from_num_notify_enabled = false;
-	k_mutex_unlock(&s_tx_mutex);
 
 	LOG_INF("Meshtastic BLE client disconnected (reason %u)", reason);
 	(void)adv_start();
@@ -421,7 +475,7 @@ BT_CONN_CB_DEFINE(meshtastic_conn_callbacks) = {
 	.disconnected = on_disconnected,
 };
 
-int ble_meshtastic_enqueue_from_radio(const uint8_t *from_radio, size_t len)
+static int enqueue_from_radio_locked(const uint8_t *from_radio, size_t len)
 {
 	if (from_radio == NULL && len > 0U) {
 		return -EINVAL;
@@ -446,15 +500,51 @@ int ble_meshtastic_enqueue_from_radio(const uint8_t *from_radio, size_t len)
 	s_from_num++;
 	k_mutex_unlock(&s_tx_mutex);
 
+	return 0;
+}
+
+int ble_meshtastic_enqueue_from_radio(const uint8_t *from_radio, size_t len)
+{
+	int ret;
+
+	ret = enqueue_from_radio_locked(from_radio, len);
+	if (ret < 0) {
+		return ret;
+	}
+
 	notify_from_num();
 	return 0;
 }
 
-int ble_meshtastic_dequeue_to_radio(uint8_t *to_radio, size_t buflen)
+int ble_meshtastic_enqueue_from_radio_if_session(uint32_t session_epoch,
+						 const uint8_t *from_radio,
+						 size_t len)
+{
+	int ret;
+
+	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+	if (session_epoch_locked() != session_epoch) {
+		k_mutex_unlock(&s_conn_mutex);
+		return -ESTALE;
+	}
+
+	ret = enqueue_from_radio_locked(from_radio, len);
+	k_mutex_unlock(&s_conn_mutex);
+	if (ret < 0) {
+		return ret;
+	}
+
+	notify_from_num();
+	return 0;
+}
+
+int ble_meshtastic_dequeue_to_radio(uint8_t *to_radio, size_t buflen,
+				    size_t *out_len,
+				    uint32_t *out_session_epoch)
 {
 	uint16_t len;
 
-	if (to_radio == NULL && buflen > 0U) {
+	if (to_radio == NULL || out_len == NULL || out_session_epoch == NULL) {
 		return -EINVAL;
 	}
 
@@ -473,11 +563,92 @@ int ble_meshtastic_dequeue_to_radio(uint8_t *to_radio, size_t buflen)
 	if (len > 0U) {
 		memcpy(to_radio, s_rx_queue[s_rx_head].data, len);
 	}
+	*out_session_epoch = s_rx_queue[s_rx_head].session_epoch;
 	s_rx_head = (s_rx_head + 1U) % ARRAY_SIZE(s_rx_queue);
 	s_rx_count--;
 	k_mutex_unlock(&s_rx_mutex);
 
-	return len;
+	*out_len = len;
+	return 1;
+}
+
+uint32_t ble_meshtastic_session_epoch(void)
+{
+	uint32_t epoch;
+
+	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+	epoch = session_epoch_locked();
+	k_mutex_unlock(&s_conn_mutex);
+
+	return epoch;
+}
+
+bool ble_meshtastic_session_epoch_current(uint32_t session_epoch)
+{
+	bool current;
+
+	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+	current = session_epoch_locked() == session_epoch;
+	k_mutex_unlock(&s_conn_mutex);
+
+	return current;
+}
+
+static void reset_session_locked(void)
+{
+	session_epoch_bump_locked();
+
+	k_mutex_lock(&s_rx_mutex, K_FOREVER);
+	s_rx_head = 0U;
+	s_rx_tail = 0U;
+	s_rx_count = 0U;
+	k_mutex_unlock(&s_rx_mutex);
+
+	k_mutex_lock(&s_tx_mutex, K_FOREVER);
+	s_tx_head = 0U;
+	s_tx_tail = 0U;
+	s_tx_count = 0U;
+	s_read_active = false;
+	s_read_len = 0U;
+	s_read_next_offset = 0U;
+	s_read_slot = 0U;
+	k_mutex_unlock(&s_tx_mutex);
+}
+
+void ble_meshtastic_reset_session(void)
+{
+	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+	reset_session_locked();
+	k_mutex_unlock(&s_conn_mutex);
+}
+
+int ble_meshtastic_reset_session_if_epoch(uint32_t session_epoch)
+{
+	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+	if (session_epoch_locked() != session_epoch) {
+		k_mutex_unlock(&s_conn_mutex);
+		return -ESTALE;
+	}
+
+	reset_session_locked();
+	k_mutex_unlock(&s_conn_mutex);
+	return 0;
+}
+
+uint32_t ble_meshtastic_from_radio_free(void)
+{
+	uint32_t free_slots;
+
+	k_mutex_lock(&s_tx_mutex, K_FOREVER);
+	free_slots = ARRAY_SIZE(s_tx_queue) - s_tx_count;
+	k_mutex_unlock(&s_tx_mutex);
+
+	return free_slots;
+}
+
+uint32_t ble_meshtastic_from_radio_capacity(void)
+{
+	return ARRAY_SIZE(s_tx_queue);
 }
 
 int ble_meshtastic_init(void)

@@ -22,6 +22,7 @@ config LORA_LICHEN_MESHTASTIC_BLE
 	depends on BT_MAX_CONN = 1
 	depends on LICHEN_MESHTASTIC_CODEC
 	depends on !LORA_LICHEN_BLE
+	select LICHEN_MESHTASTIC_ADAPTER
 	default n
 	help
 	  Enable the Meshtastic BLE service UUID and raw protobuf

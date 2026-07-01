@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-t2hn.5.1",
+  "title": "Add gateway-level Meshtastic adapter thread end-to-end ztest",
+  "description": "Why this exists: project-LICHEN-t2hn.5 covers the board-agnostic dispatcher and BLE session primitives separately, but does not have a single test that drives the gateway Meshtastic adapter thread through BLE write, dispatch, disconnect=true, and BLE queue cleanup. What needs to be done: add a native_sim/ztest harness or refactorable test hook that exercises BLE ToRadio write -\u003e gateway adapter processing -\u003e FromRadio response and disconnect cleanup without requiring physical BLE hardware. Acceptance criteria: test proves session-scoped disconnect clears RX/TX/read queues, stale responses are dropped, and no raw Meshtastic RF path is invoked.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T02:37:50.389718Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T02:37:50.390361Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "framing",
+    "firmware",
+    "app-interface"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.5.1",
+      "depends_on_id": "project-LICHEN-t2hn.5",
+      "type": "parent-child",
+      "created_at": "2026-07-01T02:37:50.390361Z"
+    }
+  ]
+}
