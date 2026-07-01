@@ -184,3 +184,41 @@ firmware and exchange 9-byte MIC beacons.
 Isolation method that nailed it: flashing the **known-good pre-merge build**
 booted instantly → proved hardware/bootloader were fine and the fault was in the
 merged firmware, not the (heavily re-flashed) T-Echo bootloader.
+
+---
+
+## USB-monitoring watchdog reboots — root cause & fix (USB-CDC-NEXT stack)
+
+**Symptom:** the T1000-E watchdog-resets ~5–8×/90s *only while a host holds the
+USB-CDC port open and reads continuously*. Headless = 0 reboots. Confirmed
+WATCHDOG resets (`RESETREAS`=DOG); main/CPU stalls >4 s.
+
+**A/B that nailed it:** swapping *only* the USB stack —
+`CONFIG_USB_DEVICE_STACK_NEXT` → old `CONFIG_USB_DEVICE_STACK` — took reboots
+from 5–8/90s to **0/90s**, both builds fully functional (TX+RX confirmed via the
+T-Echo receiving the T1000-E's beacons). So the fault is in the **USB-CDC
+`device_next` stack under sustained host reads**, not the radio.
+
+**Ruled out** (none stopped the reboots): bounded async SPI + SPIM STOP abort;
+**non-DMA SPI** (rules out SPIM↔USB EasyDMA bus contention); native-TX disabled;
+**timer-ISR** watchdog feeder (rules out feeder-thread starvation); progress
+bumps in every SPI wait + poll loop; SPI 8→2→1 MHz. The timer *ISR* being
+starved too suggests a fault-that-spins or a hard CPU stall, not a thread block.
+
+**Fix shipped:** T1000-E uses the old USB stack. `native.c` was refactored so
+`buzz_n()` and the 1200-bps DFU-touch handler are gated by board features
+(`CONFIG_LICHEN_NATIVE_BUZZER`, nRF+`UART_LINE_CTRL`) instead of the USB stack,
+so the old stack keeps the buzzer and headless reflash. The **T-Echo stays on
+NEXT** (the old stack reportedly fails on T-Echo+MCUboot) and relies on the
+heartbeat watchdog's ~4 s auto-recovery.
+
+**Couldn't capture the stall location:** the GPREGRET2 retention marker reads 0
+at boot — the MCUboot chain clears it. A retention path that survives MCUboot
+(reserved top-of-RAM or `CONFIG_RETENTION`) or an RTT/debugger probe is needed
+to get the stall PC.
+
+**Future work (bd `Investigate USB-CDC device_next…`):** fix the NEXT-stack
+stall so both boards can share one modern stack. Leads: is it a fault-vs-lock in
+`usbd_cdc_acm.c` under sustained bulk-IN; reproduce with the upstream Zephyr
+`device_next` CDC-ACM sample; inspect `CDC_ACM_LOCK`/`tx_fifo_work`/`irq_cb_work`
+interplay when the host reads fast.
