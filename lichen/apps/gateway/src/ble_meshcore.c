@@ -61,9 +61,10 @@ static struct bt_uuid_128 nus_svc_uuid = BT_UUID_INIT_128(BT_UUID_NUS_VAL);
 static struct bt_uuid_128 nus_rx_uuid = BT_UUID_INIT_128(BT_UUID_NUS_RX_VAL);
 static struct bt_uuid_128 nus_tx_uuid = BT_UUID_INIT_128(BT_UUID_NUS_TX_VAL);
 
-static struct bt_conn *s_conn;
 static K_MUTEX_DEFINE(s_conn_mutex);
 static uint32_t s_session_epoch;
+static bool s_session_active;
+static uint32_t s_owner_generation;
 
 static K_MUTEX_DEFINE(s_rx_mutex);
 static struct meshcore_frame_slot s_rx_queue[MESHCORE_QUEUE_DEPTH];
@@ -80,6 +81,10 @@ static bool s_tx_notify_enabled;
 
 static void reset_session_locked(void);
 static void notify_tx(void);
+#ifdef CONFIG_ZTEST
+static bool s_test_advance_owner_after_match;
+static struct bt_conn *s_test_advance_owner_conn;
+#endif
 
 static uint32_t session_epoch_locked(void)
 {
@@ -101,14 +106,30 @@ static bool has_serial_header(const uint8_t *data, size_t len)
 
 static int conn_ref_get(struct bt_conn **out)
 {
-	k_mutex_lock(&s_conn_mutex, K_FOREVER);
-	*out = s_conn;
-	if (*out != NULL) {
-		bt_conn_ref(*out);
-	}
-	k_mutex_unlock(&s_conn_mutex);
+	return ble_app_owner_conn_ref(BLE_APP_OWNER_SURFACE_MESHCORE, out);
+}
 
-	return *out == NULL ? -ENOTCONN : 0;
+static bool owner_conn_matches_with_generation(struct bt_conn *conn,
+					       uint32_t *generation)
+{
+	return ble_app_owner_conn_matches(BLE_APP_OWNER_SURFACE_MESHCORE,
+					  conn, generation);
+}
+
+static bool owner_generation_current(uint32_t generation)
+{
+	return generation != 0U && s_owner_generation == generation;
+}
+
+static void maybe_test_advance_owner_after_match(void)
+{
+#ifdef CONFIG_ZTEST
+	if (s_test_advance_owner_after_match) {
+		s_test_advance_owner_after_match = false;
+		ble_app_owner_test_disconnected(s_test_advance_owner_conn, 19U);
+		ble_app_owner_test_connected((struct bt_conn *)0x7, 0U);
+	}
+#endif
 }
 
 static ssize_t nus_rx_write(struct bt_conn *conn,
@@ -117,6 +138,7 @@ static ssize_t nus_rx_write(struct bt_conn *conn,
 			    uint16_t offset, uint8_t flags)
 {
 	const uint8_t *data = buf;
+	uint32_t owner_generation = 0U;
 
 	ARG_UNUSED(attr);
 	ARG_UNUSED(flags);
@@ -129,16 +151,22 @@ static ssize_t nus_rx_write(struct bt_conn *conn,
 		return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
 	}
 
-	k_mutex_lock(&s_conn_mutex, K_FOREVER);
 #ifdef CONFIG_ZTEST
-	if (conn != NULL && conn != s_conn) {
+	if (conn != NULL &&
+	    !owner_conn_matches_with_generation(conn, &owner_generation)) {
 #else
-	if (conn == NULL || conn != s_conn) {
+	if (conn == NULL ||
+	    !owner_conn_matches_with_generation(conn, &owner_generation)) {
 #endif
-		k_mutex_unlock(&s_conn_mutex);
 		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
 	}
 
+	maybe_test_advance_owner_after_match();
+	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+	if (conn != NULL && !owner_generation_current(owner_generation)) {
+		k_mutex_unlock(&s_conn_mutex);
+		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+	}
 	k_mutex_lock(&s_rx_mutex, K_FOREVER);
 	if (s_rx_count == ARRAY_SIZE(s_rx_queue)) {
 		k_mutex_unlock(&s_rx_mutex);
@@ -245,7 +273,7 @@ static void notify_tx(void)
 
 	ret = bt_gatt_notify(conn, &meshcore_svc.attrs[NUS_TX_VAL_IDX],
 			     frame, len);
-	bt_conn_unref(conn);
+	ble_app_owner_conn_unref(conn);
 	if (ret < 0) {
 		LOG_WRN("MeshCore TX notify failed: %d", ret);
 		return;
@@ -279,9 +307,10 @@ static int prepare_meshcore(void)
 	return 0;
 }
 
-static void on_connected(struct bt_conn *conn, uint8_t err)
+static void on_connected(struct bt_conn *conn, uint8_t err,
+			 uint32_t generation)
 {
-	struct bt_conn *old_conn;
+	ARG_UNUSED(conn);
 
 	if (err) {
 		LOG_ERR("MeshCore BLE connect error %u", err);
@@ -289,14 +318,10 @@ static void on_connected(struct bt_conn *conn, uint8_t err)
 	}
 
 	k_mutex_lock(&s_conn_mutex, K_FOREVER);
-	old_conn = s_conn;
-	s_conn = bt_conn_ref(conn);
+	s_session_active = true;
+	s_owner_generation = generation;
 	session_epoch_bump_locked();
 	k_mutex_unlock(&s_conn_mutex);
-
-	if (old_conn != NULL) {
-		bt_conn_unref(old_conn);
-	}
 
 	k_mutex_lock(&s_tx_mutex, K_FOREVER);
 	s_tx_notify_enabled = false;
@@ -305,30 +330,20 @@ static void on_connected(struct bt_conn *conn, uint8_t err)
 	LOG_INF("MeshCore BLE client connected");
 }
 
-static void on_disconnected(struct bt_conn *conn, uint8_t reason)
+static void on_disconnected(struct bt_conn *conn, uint8_t reason,
+			    uint32_t generation)
 {
-	struct bt_conn *old_conn = NULL;
+	ARG_UNUSED(conn);
 
 	k_mutex_lock(&s_conn_mutex, K_FOREVER);
-	if (s_conn == conn) {
-		old_conn = s_conn;
-		s_conn = NULL;
-		reset_session_locked();
-	}
+	s_session_active = false;
+	s_owner_generation = generation;
+	reset_session_locked();
 	k_mutex_unlock(&s_conn_mutex);
-
-	if (old_conn != NULL) {
-		bt_conn_unref(old_conn);
-	}
 
 	LOG_INF("MeshCore BLE client disconnected (reason %u)", reason);
 	(void)ble_app_owner_restart(BLE_APP_OWNER_SURFACE_MESHCORE);
 }
-
-BT_CONN_CB_DEFINE(meshcore_conn_callbacks) = {
-	.connected = on_connected,
-	.disconnected = on_disconnected,
-};
 
 int ble_meshcore_dequeue_rx(uint8_t *frame, size_t buflen, size_t *out_len,
 			    uint32_t *out_session_epoch)
@@ -391,7 +406,7 @@ int ble_meshcore_enqueue_tx(const uint8_t *frame, size_t len)
 	int ret;
 
 	k_mutex_lock(&s_conn_mutex, K_FOREVER);
-	if (s_conn == NULL) {
+	if (!s_session_active) {
 		k_mutex_unlock(&s_conn_mutex);
 		return -ENOTCONN;
 	}
@@ -415,7 +430,7 @@ int ble_meshcore_enqueue_tx_if_session(uint32_t session_epoch,
 		k_mutex_unlock(&s_conn_mutex);
 		return -ESTALE;
 	}
-	if (s_conn == NULL) {
+	if (!s_session_active) {
 		k_mutex_unlock(&s_conn_mutex);
 		return -ENOTCONN;
 	}
@@ -445,7 +460,7 @@ bool ble_meshcore_session_active(void)
 	bool active;
 
 	k_mutex_lock(&s_conn_mutex, K_FOREVER);
-	active = (s_conn != NULL);
+	active = s_session_active;
 	k_mutex_unlock(&s_conn_mutex);
 
 	return active;
@@ -483,6 +498,8 @@ static void reset_session_locked(void)
 void ble_meshcore_reset_session(void)
 {
 	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+	s_session_active = false;
+	s_owner_generation = 0U;
 	reset_session_locked();
 	k_mutex_unlock(&s_conn_mutex);
 }
@@ -543,23 +560,22 @@ int ble_meshcore_test_set_tx_notify(bool enabled)
 
 void ble_meshcore_test_connect(void)
 {
-	static uint8_t test_conn;
-	struct bt_conn *old_conn;
-
 	k_mutex_lock(&s_conn_mutex, K_FOREVER);
-	old_conn = s_conn;
-	s_conn = (struct bt_conn *)&test_conn;
+	s_session_active = true;
 	session_epoch_bump_locked();
 	k_mutex_unlock(&s_conn_mutex);
-	if (old_conn != NULL && old_conn != s_conn) {
-		bt_conn_unref(old_conn);
-	}
+}
+
+void ble_meshcore_test_advance_owner_after_match(void *conn)
+{
+	s_test_advance_owner_after_match = true;
+	s_test_advance_owner_conn = conn;
 }
 
 void ble_meshcore_test_disconnect(void)
 {
 	k_mutex_lock(&s_conn_mutex, K_FOREVER);
-	s_conn = NULL;
+	s_session_active = false;
 	reset_session_locked();
 	k_mutex_unlock(&s_conn_mutex);
 }
@@ -575,6 +591,8 @@ int ble_meshcore_init(void)
 		.sd_len = ARRAY_SIZE(s_sd),
 		.name = CONFIG_LORA_LICHEN_MESHCORE_BLE_NAME,
 		.prepare = prepare_meshcore,
+		.connected = on_connected,
+		.disconnected = on_disconnected,
 	};
 
 	return ble_app_owner_start(&adv);

@@ -52,6 +52,7 @@ int ble_meshcore_test_write_rx_conn(const uint8_t *buf, size_t len,
 				    void *conn);
 int ble_meshcore_test_set_tx_notify(bool enabled);
 void ble_meshcore_test_connect(void);
+void ble_meshcore_test_advance_owner_after_match(void *conn);
 void ble_meshcore_test_disconnect(void);
 #endif
 

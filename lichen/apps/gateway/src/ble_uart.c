@@ -212,9 +212,11 @@ static const struct bt_data s_ad[] = {
 	BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_NUS_VAL),
 };
 
-static void on_connected(struct bt_conn *conn, uint8_t err)
+static void on_connected(struct bt_conn *conn, uint8_t err,
+			 uint32_t generation)
 {
 	ARG_UNUSED(conn);
+	ARG_UNUSED(generation);
 
 	if (err) {
 		LOG_ERR("BLE connect error %u", err);
@@ -229,9 +231,11 @@ static void on_connected(struct bt_conn *conn, uint8_t err)
 	LOG_INF("BLE phone connected");
 }
 
-static void on_disconnected(struct bt_conn *conn, uint8_t reason)
+static void on_disconnected(struct bt_conn *conn, uint8_t reason,
+			    uint32_t generation)
 {
 	ARG_UNUSED(conn);
+	ARG_UNUSED(generation);
 
 	k_mutex_lock(&s_rx_mutex, K_FOREVER);
 	s_rx_len = 0;

@@ -66,6 +66,7 @@ static struct bt_uuid_128 from_num_uuid = BT_UUID_INIT_128(BT_UUID_MESH_FROMNUM_
 static K_MUTEX_DEFINE(s_conn_mutex);
 static uint32_t s_session_epoch;
 static bool s_session_active;
+static uint32_t s_owner_generation;
 
 static K_MUTEX_DEFINE(s_rx_mutex);
 static struct to_radio_slot s_rx_queue[MESHTASTIC_TO_RADIO_QUEUE_DEPTH];
@@ -88,6 +89,10 @@ static uint8_t s_read_slot;
 static bool s_read_active;
 
 static void reset_session_locked(void);
+#ifdef CONFIG_ZTEST
+static bool s_test_advance_owner_after_match;
+static struct bt_conn *s_test_advance_owner_conn;
+#endif
 
 static uint32_t session_epoch_locked(void)
 {
@@ -115,20 +120,27 @@ static int conn_ref_get(struct bt_conn **out)
 	return ble_app_owner_conn_ref(BLE_APP_OWNER_SURFACE_MESHTASTIC, out);
 }
 
-static bool owner_conn_matches(struct bt_conn *conn)
+static bool owner_conn_matches_with_generation(struct bt_conn *conn,
+					       uint32_t *generation)
 {
-	struct bt_conn *owner_conn;
-	bool matches;
+	return ble_app_owner_conn_matches(BLE_APP_OWNER_SURFACE_MESHTASTIC,
+					  conn, generation);
+}
 
-	if (ble_app_owner_conn_ref(BLE_APP_OWNER_SURFACE_MESHTASTIC,
-				   &owner_conn) < 0) {
-		return false;
+static bool owner_generation_current(uint32_t generation)
+{
+	return generation != 0U && s_owner_generation == generation;
+}
+
+static void maybe_test_advance_owner_after_match(void)
+{
+#ifdef CONFIG_ZTEST
+	if (s_test_advance_owner_after_match) {
+		s_test_advance_owner_after_match = false;
+		ble_app_owner_test_disconnected(s_test_advance_owner_conn, 19U);
+		ble_app_owner_test_connected((struct bt_conn *)0x7, 0U);
 	}
-
-	matches = owner_conn == conn;
-	ble_app_owner_conn_unref(owner_conn);
-
-	return matches;
+#endif
 }
 
 static ssize_t to_radio_write(struct bt_conn *conn,
@@ -138,6 +150,7 @@ static ssize_t to_radio_write(struct bt_conn *conn,
 {
 	struct lichen_meshtastic_to_radio decoded;
 	const uint8_t *data = buf;
+	uint32_t owner_generation = 0U;
 	int ret;
 
 	ARG_UNUSED(conn);
@@ -164,12 +177,19 @@ static ssize_t to_radio_write(struct bt_conn *conn,
 		return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
 	}
 
-	k_mutex_lock(&s_conn_mutex, K_FOREVER);
 #ifdef CONFIG_ZTEST
-	if (conn != NULL && !owner_conn_matches(conn)) {
+	if (conn != NULL &&
+	    !owner_conn_matches_with_generation(conn, &owner_generation)) {
 #else
-	if (conn == NULL || !owner_conn_matches(conn)) {
+	if (conn == NULL ||
+	    !owner_conn_matches_with_generation(conn, &owner_generation)) {
 #endif
+		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+	}
+
+	maybe_test_advance_owner_after_match();
+	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+	if (conn != NULL && !owner_generation_current(owner_generation)) {
 		k_mutex_unlock(&s_conn_mutex);
 		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
 	}
@@ -297,6 +317,12 @@ void ble_meshtastic_test_connect(void)
 	session_epoch_bump_locked();
 	k_mutex_unlock(&s_conn_mutex);
 }
+
+void ble_meshtastic_test_advance_owner_after_match(void *conn)
+{
+	s_test_advance_owner_after_match = true;
+	s_test_advance_owner_conn = conn;
+}
 #endif
 
 static ssize_t from_num_read(struct bt_conn *conn,
@@ -420,7 +446,8 @@ static const struct bt_data s_sd[] = {
 		sizeof(MESHTASTIC_ADV_NAME) - 1U),
 };
 
-static void on_connected(struct bt_conn *conn, uint8_t err)
+static void on_connected(struct bt_conn *conn, uint8_t err,
+			 uint32_t generation)
 {
 	ARG_UNUSED(conn);
 
@@ -431,6 +458,7 @@ static void on_connected(struct bt_conn *conn, uint8_t err)
 
 	k_mutex_lock(&s_conn_mutex, K_FOREVER);
 	s_session_active = true;
+	s_owner_generation = generation;
 	session_epoch_bump_locked();
 	k_mutex_unlock(&s_conn_mutex);
 
@@ -444,12 +472,14 @@ static void on_connected(struct bt_conn *conn, uint8_t err)
 	LOG_INF("Meshtastic BLE client connected");
 }
 
-static void on_disconnected(struct bt_conn *conn, uint8_t reason)
+static void on_disconnected(struct bt_conn *conn, uint8_t reason,
+			    uint32_t generation)
 {
 	ARG_UNUSED(conn);
 
 	k_mutex_lock(&s_conn_mutex, K_FOREVER);
 	s_session_active = false;
+	s_owner_generation = generation;
 	reset_session_locked();
 
 	k_mutex_lock(&s_tx_mutex, K_FOREVER);
@@ -620,6 +650,7 @@ void ble_meshtastic_reset_session(void)
 {
 	k_mutex_lock(&s_conn_mutex, K_FOREVER);
 	s_session_active = false;
+	s_owner_generation = 0U;
 	reset_session_locked();
 	k_mutex_unlock(&s_conn_mutex);
 }

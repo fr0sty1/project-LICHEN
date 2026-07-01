@@ -54,6 +54,7 @@ int ble_meshtastic_test_write_to_radio(const uint8_t *buf, size_t len);
 int ble_meshtastic_test_write_to_radio_conn(const uint8_t *buf, size_t len,
 					    void *conn);
 void ble_meshtastic_test_connect(void);
+void ble_meshtastic_test_advance_owner_after_match(void *conn);
 #endif
 
 #endif /* BLE_MESHTASTIC_H_ */

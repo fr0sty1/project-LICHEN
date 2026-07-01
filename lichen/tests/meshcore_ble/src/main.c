@@ -141,6 +141,113 @@ ZTEST(meshcore_ble, test_stale_connection_write_is_rejected)
 		      0);
 }
 
+ZTEST(meshcore_ble, test_owner_connection_write_and_disconnect_cleanup)
+{
+	const uint8_t frame[] = { 0x02, 0x03 };
+	const uint8_t response[] = { 0x04, 0x05 };
+	struct bt_conn *conn = (struct bt_conn *)0x1;
+	struct bt_conn *other_conn = (struct bt_conn *)0x2;
+	struct ble_app_owner_test_state owner_state;
+	uint8_t out[sizeof(frame)];
+	size_t out_len;
+	uint32_t epoch;
+	uint32_t stale_epoch;
+
+	zassert_ok(ble_meshcore_init());
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_true(owner_state.has_connected);
+	zassert_true(owner_state.has_disconnected);
+
+	stale_epoch = ble_meshcore_session_epoch();
+	ble_app_owner_test_connected(conn, 0U);
+	epoch = ble_meshcore_session_epoch();
+	zassert_not_equal(epoch, stale_epoch);
+	zassert_true(ble_meshcore_session_active());
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_true(owner_state.has_connection);
+	zassert_equal(owner_state.conn_ref_count, 1U);
+
+	zassert_equal(ble_meshcore_test_write_rx_conn(frame, sizeof(frame), conn),
+		      sizeof(frame));
+	zassert_equal(ble_meshcore_dequeue_rx(out, sizeof(out), &out_len,
+					      &stale_epoch),
+		      1);
+	zassert_equal(stale_epoch, epoch);
+	zassert_equal(out_len, sizeof(frame));
+	zassert_mem_equal(out, frame, sizeof(frame));
+
+	zassert_true(ble_meshcore_test_write_rx_conn(frame, sizeof(frame),
+						     other_conn) < 0);
+	zassert_equal(ble_meshcore_dequeue_rx(out, sizeof(out), &out_len,
+					      &stale_epoch),
+		      0);
+
+	zassert_equal(ble_meshcore_enqueue_tx_if_session(epoch, response,
+							 sizeof(response)),
+		      0);
+	zassert_equal(ble_meshcore_tx_free(),
+		      ble_meshcore_tx_capacity() - 1U);
+
+	ble_app_owner_test_disconnected(other_conn, 19U);
+	zassert_true(ble_meshcore_session_active());
+	zassert_equal(ble_meshcore_tx_free(),
+		      ble_meshcore_tx_capacity() - 1U);
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_equal(owner_state.adv_start_count, 1U);
+
+	ble_app_owner_test_disconnected(conn, 19U);
+	zassert_false(ble_meshcore_session_active());
+	zassert_false(ble_meshcore_session_epoch_current(epoch));
+	zassert_equal(ble_meshcore_enqueue_tx_if_session(epoch, response,
+							 sizeof(response)),
+		      -ESTALE);
+	zassert_equal(ble_meshcore_tx_free(), ble_meshcore_tx_capacity());
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_false(owner_state.has_connection);
+	zassert_equal(owner_state.adv_start_count, 2U);
+	zassert_equal(owner_state.conn_ref_count, owner_state.conn_unref_count);
+}
+
+ZTEST(meshcore_ble, test_reconnect_rejects_old_connection_write)
+{
+	const uint8_t frame[] = { 0x02 };
+	struct bt_conn *old_conn = (struct bt_conn *)0x1;
+	struct bt_conn *new_conn = (struct bt_conn *)0x2;
+	struct bt_conn *race_conn = (struct bt_conn *)0x3;
+	uint8_t out[sizeof(frame)];
+	size_t out_len;
+	uint32_t old_epoch;
+	uint32_t new_epoch;
+
+	zassert_ok(ble_meshcore_init());
+	ble_app_owner_test_connected(old_conn, 0U);
+	old_epoch = ble_meshcore_session_epoch();
+	ble_app_owner_test_disconnected(old_conn, 19U);
+	ble_app_owner_test_connected(new_conn, 0U);
+	new_epoch = ble_meshcore_session_epoch();
+
+	zassert_not_equal(old_epoch, new_epoch);
+	zassert_true(ble_meshcore_test_write_rx_conn(frame, sizeof(frame),
+						     old_conn) < 0);
+	zassert_equal(ble_meshcore_dequeue_rx(out, sizeof(out), &out_len,
+					      &new_epoch),
+		      0);
+	zassert_equal(ble_meshcore_test_write_rx_conn(frame, sizeof(frame),
+						     new_conn),
+		      sizeof(frame));
+
+	ble_app_owner_test_disconnected(new_conn, 19U);
+	ble_app_owner_test_connected(race_conn, 0U);
+	new_epoch = ble_meshcore_session_epoch();
+	ble_meshcore_test_advance_owner_after_match(race_conn);
+	zassert_true(ble_meshcore_test_write_rx_conn(frame, sizeof(frame),
+						     race_conn) < 0);
+	zassert_false(ble_meshcore_session_epoch_current(new_epoch));
+	zassert_equal(ble_meshcore_dequeue_rx(out, sizeof(out), &out_len,
+					      &new_epoch),
+		      0);
+}
+
 ZTEST(meshcore_ble, test_tx_requires_active_session_and_preserves_epoch)
 {
 	const uint8_t frame[] = { 0x03, 0x04 };
@@ -230,6 +337,8 @@ ZTEST(meshcore_ble, test_init_uses_meshcore_owner_advertising)
 	assert_short_name_data(&state.sd[0], "MeshCore-LICHEN");
 	zassert_true((state.adv_options & BT_LE_ADV_OPT_CONNECTABLE) != 0U);
 	zassert_false((state.adv_options & BT_LE_ADV_OPT_USE_NAME) != 0U);
+	zassert_true(state.has_connected);
+	zassert_true(state.has_disconnected);
 }
 
 ZTEST_SUITE(meshcore_ble, NULL, NULL, meshcore_ble_before, NULL, NULL);

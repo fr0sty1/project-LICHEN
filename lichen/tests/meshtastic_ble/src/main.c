@@ -291,6 +291,7 @@ ZTEST(meshtastic_ble, test_reconnect_rejects_old_connection_write)
 	const uint8_t heartbeat[] = { 0x3a, 0x00 };
 	struct bt_conn *old_conn = (struct bt_conn *)0x1;
 	struct bt_conn *new_conn = (struct bt_conn *)0x2;
+	struct bt_conn *race_conn = (struct bt_conn *)0x3;
 	uint8_t out[sizeof(heartbeat)];
 	size_t out_len;
 	uint32_t old_epoch;
@@ -312,6 +313,17 @@ ZTEST(meshtastic_ble, test_reconnect_rejects_old_connection_write)
 	zassert_equal(ble_meshtastic_test_write_to_radio_conn(
 			      heartbeat, sizeof(heartbeat), new_conn),
 		      sizeof(heartbeat));
+
+	ble_app_owner_test_disconnected(new_conn, 19U);
+	ble_app_owner_test_connected(race_conn, 0U);
+	new_epoch = ble_meshtastic_session_epoch();
+	ble_meshtastic_test_advance_owner_after_match(race_conn);
+	zassert_true(ble_meshtastic_test_write_to_radio_conn(
+			     heartbeat, sizeof(heartbeat), race_conn) < 0);
+	zassert_false(ble_meshtastic_session_epoch_current(new_epoch));
+	zassert_equal(ble_meshtastic_dequeue_to_radio(out, sizeof(out),
+						      &out_len, &new_epoch),
+		      0);
 }
 
 ZTEST(meshtastic_ble, test_reset_session_if_epoch_preserves_new_session)

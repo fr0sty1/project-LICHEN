@@ -17,9 +17,11 @@ enum ble_app_owner_surface {
 };
 
 typedef int (*ble_app_owner_prepare_fn)(void);
-typedef void (*ble_app_owner_connected_fn)(struct bt_conn *conn, uint8_t err);
+typedef void (*ble_app_owner_connected_fn)(struct bt_conn *conn, uint8_t err,
+					   uint32_t generation);
 typedef void (*ble_app_owner_disconnected_fn)(struct bt_conn *conn,
-					      uint8_t reason);
+					      uint8_t reason,
+					      uint32_t generation);
 
 struct ble_app_owner_advertising {
 	enum ble_app_owner_surface surface;
@@ -39,6 +41,10 @@ int ble_app_owner_restart(enum ble_app_owner_surface surface);
 int ble_app_owner_conn_ref(enum ble_app_owner_surface surface,
 			   struct bt_conn **conn);
 void ble_app_owner_conn_unref(struct bt_conn *conn);
+uint32_t ble_app_owner_conn_generation(enum ble_app_owner_surface surface);
+bool ble_app_owner_conn_matches(enum ble_app_owner_surface surface,
+				const struct bt_conn *conn,
+				uint32_t *generation);
 
 #ifdef CONFIG_ZTEST
 struct ble_app_owner_test_state {
