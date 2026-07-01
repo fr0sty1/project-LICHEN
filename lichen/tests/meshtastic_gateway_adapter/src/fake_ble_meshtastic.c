@@ -15,7 +15,7 @@
 #include "ble_meshtastic.h"
 #include "fake_ble_meshtastic.h"
 
-#define FAKE_FROM_RADIO_CAPACITY 2U
+#define FAKE_FROM_RADIO_CAPACITY 4U
 #define FAKE_TO_RADIO_CAPACITY 2U
 
 static uint8_t s_from_radio[FAKE_FROM_RADIO_CAPACITY][LICHEN_MESHTASTIC_FROM_RADIO_MAX];

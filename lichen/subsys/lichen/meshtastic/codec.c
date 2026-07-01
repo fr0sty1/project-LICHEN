@@ -538,6 +538,11 @@ static uint32_t info_nodedb_count(
 		       1U;
 }
 
+static uint32_t info_hops_away(const struct lichen_meshtastic_local_info *info)
+{
+	return (info != NULL && info->has_hops_away) ? info->hops_away : 0U;
+}
+
 static uint32_t info_excluded_modules(
 	const struct lichen_meshtastic_local_info *info)
 {
@@ -1183,7 +1188,8 @@ int lichen_meshtastic_encode_node_info_payload(
 	    pb_write_varint_field(tmp, sizeof(tmp), &pos, NODE_INFO_CHANNEL_FIELD,
 				  0U) < 0 ||
 	    pb_write_varint_field(tmp, sizeof(tmp), &pos,
-				  NODE_INFO_HOPS_AWAY_FIELD, 0U) < 0) {
+				  NODE_INFO_HOPS_AWAY_FIELD,
+				  info_hops_away(info)) < 0) {
 		return -EMSGSIZE;
 	}
 

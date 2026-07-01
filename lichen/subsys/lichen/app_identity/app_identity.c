@@ -11,6 +11,10 @@
 #include <zephyr/sys/util.h>
 
 #include <lichen/app_identity/app_identity.h>
+
+#ifndef ENOKEY
+#define ENOKEY ENOENT
+#endif
 #include <lichen/link_ctx.h>
 
 BUILD_ASSERT(LICHEN_APP_IDENTITY_EUI64_LEN == LICHEN_EUI64_LEN,
@@ -190,6 +194,9 @@ int lichen_app_identity_upsert_peer(
 	if (!peer->has_public_key) {
 		return -ENOKEY;
 	}
+	if (!has_nul(peer->display_name, sizeof(peer->display_name))) {
+		return -ENAMETOOLONG;
+	}
 
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	slot = find_peer_locked(peer->eui64);
@@ -201,7 +208,11 @@ int lichen_app_identity_upsert_peer(
 		return slot;
 	}
 
+	memset(&s_peers[slot].peer, 0, sizeof(s_peers[slot].peer));
 	s_peers[slot].peer = *peer;
+	(void)copy_string(s_peers[slot].peer.display_name,
+			  sizeof(s_peers[slot].peer.display_name),
+			  peer->display_name);
 	eui64_to_iid(s_peers[slot].peer.eui64, s_peers[slot].peer.iid);
 	s_peers[slot].used = true;
 	k_mutex_unlock(&s_mutex);

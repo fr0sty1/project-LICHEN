@@ -8,18 +8,24 @@
 #include <string.h>
 
 #include <zephyr/ztest.h>
+#include <zephyr/sys/util.h>
 
 #include <lichen/meshtastic/adapter.h>
 #include <lichen/meshtastic/codec.h>
 
 #define GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_DEFAULT 20U
-#define GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_MIN 17U
+#define GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_MIN 20U
+#define GATEWAY_MESHTASTIC_NODEDB_DEFAULT_MAX_PEERS \
+	CONFIG_LICHEN_MESHTASTIC_NODEDB_MAX_PEERS
+#define MESHTASTIC_FULL_STATIC_RECORDS 14U
 
 struct test_ctx {
 	uint8_t out[20][LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	size_t out_len[20];
 	size_t out_count;
 	size_t out_cap;
+	struct lichen_meshtastic_peer_snapshot peers[4];
+	size_t peer_count;
 	uint32_t text_count;
 	uint32_t last_text_from;
 	uint32_t last_text_to;
@@ -82,6 +88,16 @@ struct admin_metadata_packet_view {
 	bool has_request_id;
 };
 
+struct node_info_view {
+	uint32_t num;
+	uint32_t hops_away;
+	const uint8_t *user;
+	size_t user_len;
+	bool has_num;
+	bool has_user;
+	bool has_hops_away;
+};
+
 static int test_enqueue(const uint8_t *from_radio, size_t len, void *user_data)
 {
 	struct test_ctx *ctx = user_data;
@@ -140,6 +156,8 @@ static uint32_t test_queue_free(void *user_data)
 
 static int test_local_info(struct lichen_meshtastic_local_info *info,
 			   void *user_data);
+static size_t test_get_peers(struct lichen_meshtastic_peer_snapshot *peers,
+			     size_t peer_cap, void *user_data);
 
 static void init_adapter(struct lichen_meshtastic_adapter *adapter,
 			 struct test_ctx *ctx, size_t out_cap)
@@ -148,6 +166,7 @@ static void init_adapter(struct lichen_meshtastic_adapter *adapter,
 		.enqueue_from_radio = test_enqueue,
 		.handle_text = test_text,
 		.get_local_info = test_local_info,
+		.get_peers = test_get_peers,
 		.user_data = ctx,
 		.queue_maxlen = 8U,
 		.heartbeat_queue_status = true,
@@ -166,6 +185,7 @@ static void init_adapter_without_text_hook(struct lichen_meshtastic_adapter *ada
 	struct lichen_meshtastic_adapter_ops ops = {
 		.enqueue_from_radio = test_enqueue,
 		.get_local_info = test_local_info,
+		.get_peers = test_get_peers,
 		.user_data = ctx,
 		.queue_maxlen = 8U,
 		.heartbeat_queue_status = true,
@@ -185,6 +205,7 @@ static void init_adapter_with_unsupported_text_hook(
 		.enqueue_from_radio = test_enqueue,
 		.handle_text = test_text_unsupported,
 		.get_local_info = test_local_info,
+		.get_peers = test_get_peers,
 		.user_data = ctx,
 		.queue_maxlen = 8U,
 		.heartbeat_queue_status = true,
@@ -204,6 +225,7 @@ static void init_adapter_with_queue_free(struct lichen_meshtastic_adapter *adapt
 		.handle_text = test_text,
 		.queue_free = test_queue_free,
 		.get_local_info = test_local_info,
+		.get_peers = test_get_peers,
 		.user_data = ctx,
 		.queue_maxlen = out_cap,
 		.heartbeat_queue_status = true,
@@ -213,6 +235,17 @@ static void init_adapter_with_queue_free(struct lichen_meshtastic_adapter *adapt
 	memset(s_last_text_payload, 0, sizeof(s_last_text_payload));
 	ctx->out_cap = out_cap;
 	lichen_meshtastic_adapter_init(adapter, &ops);
+}
+
+static void set_default_max_peers(struct test_ctx *ctx)
+{
+	ctx->peer_count = GATEWAY_MESHTASTIC_NODEDB_DEFAULT_MAX_PEERS;
+	for (size_t i = 0U; i < ctx->peer_count; i++) {
+		ctx->peers[i] = (struct lichen_meshtastic_peer_snapshot){
+			.eui64 = { 0x02, 0xaa, 0, 0, 0, 0, 0,
+				   (uint8_t)(i + 1U) },
+		};
+	}
 }
 
 static void expect_bytes(const uint8_t *actual, size_t actual_len,
@@ -265,6 +298,21 @@ static int test_local_info(struct lichen_meshtastic_local_info *info,
 	info->has_tx_power_dbm = true;
 	info->tx_power_dbm = 14;
 	return 0;
+}
+
+static size_t test_get_peers(struct lichen_meshtastic_peer_snapshot *peers,
+			     size_t peer_cap, void *user_data)
+{
+	struct test_ctx *ctx = user_data;
+	size_t count;
+
+	if (peers == NULL || peer_cap == 0U) {
+		return 0U;
+	}
+
+	count = MIN(ctx->peer_count, peer_cap);
+	memcpy(peers, ctx->peers, count * sizeof(peers[0]));
+	return count;
 }
 
 ZTEST(meshtastic_adapter, test_unbranded_firmware_version_uses_lichen_default)
@@ -771,6 +819,17 @@ static uint32_t get_le32(const uint8_t *buf)
 	       ((uint32_t)buf[3] << 24);
 }
 
+static void decode_node_info_payload(const uint8_t *buf, size_t len,
+				     struct node_info_view *out)
+{
+	memset(out, 0, sizeof(*out));
+	out->has_num = payload_get_varint_field(buf, len, 1U, &out->num);
+	out->has_user = payload_get_len_field(buf, len, 2U, &out->user,
+					      &out->user_len);
+	out->has_hops_away = payload_get_varint_field(buf, len, 9U,
+						      &out->hops_away);
+}
+
 static void decode_text_from_radio(const uint8_t *buf, size_t len,
 				   struct text_packet_view *out)
 {
@@ -1147,6 +1206,36 @@ ZTEST(meshtastic_adapter, test_want_config_69420_queues_stage1_sequence)
 		      1U);
 }
 
+ZTEST(meshtastic_adapter, test_my_info_nodedb_count_tracks_peer_snapshot)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t want_config[] = { 0x18, 0xac, 0x9e, 0x04 };
+	struct from_radio_view view;
+	uint32_t value = 0U;
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ctx.peer_count = ARRAY_SIZE(ctx.peers);
+	for (size_t i = 0U; i < ctx.peer_count; i++) {
+		ctx.peers[i] = (struct lichen_meshtastic_peer_snapshot){
+			.eui64 = {
+				0x02, 0xaa, 0, 0, 0, 0, 0, (uint8_t)(i + 1U),
+			},
+		};
+	}
+
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+
+	zassert_equal(ret, 0);
+	decode_from_radio(ctx.out[0], ctx.out_len[0], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_MY_INFO);
+	zassert_true(payload_get_varint_field(view.payload, view.payload_len, 15U,
+					      &value));
+	zassert_equal(value, 1U + GATEWAY_MESHTASTIC_NODEDB_DEFAULT_MAX_PEERS);
+}
+
 ZTEST(meshtastic_adapter, test_want_config_69421_queues_node_db_sequence)
 {
 	struct lichen_meshtastic_adapter adapter;
@@ -1154,6 +1243,7 @@ ZTEST(meshtastic_adapter, test_want_config_69421_queues_node_db_sequence)
 	const uint8_t want_config[] = { 0x18, 0xad, 0x9e, 0x04 };
 	const uint8_t complete[] = { 0x38, 0xad, 0x9e, 0x04 };
 	struct from_radio_view view;
+	struct node_info_view node;
 	int ret;
 
 	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
@@ -1164,9 +1254,204 @@ ZTEST(meshtastic_adapter, test_want_config_69421_queues_node_db_sequence)
 	zassert_equal(ctx.out_count, 2U);
 	decode_from_radio(ctx.out[0], ctx.out_len[0], &view);
 	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
+	decode_node_info_payload(view.payload, view.payload_len, &node);
+	zassert_true(node.has_num);
+	zassert_equal(node.num, 0xaabbccddU);
+	zassert_true(node.has_user);
+	zassert_true(payload_has_string(node.user, node.user_len, 2U,
+					"LICHEN native_sim"));
+	zassert_true(payload_has_string(node.user, node.user_len, 3U, "LICH"));
+	zassert_true(node.has_hops_away);
+	zassert_equal(node.hops_away, 0U);
 	decode_from_radio(ctx.out[1], ctx.out_len[1], &view);
 	zassert_equal(view.field, 7U);
 	expect_bytes(ctx.out[1], ctx.out_len[1], complete, sizeof(complete));
+}
+
+ZTEST(meshtastic_adapter, test_want_config_69421_queues_self_then_peers)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t want_config[] = { 0x18, 0xad, 0x9e, 0x04 };
+	const uint8_t complete[] = { 0x38, 0xad, 0x9e, 0x04 };
+	struct from_radio_view view;
+	struct node_info_view node;
+	uint32_t expected_nums[] = {
+		0xaabbccddU, 0x00000011U, 0x00000022U,
+	};
+	const char *expected_names[] = {
+		"LICHEN native_sim", "peer-a", "peer-b",
+	};
+	uint32_t expected_hops[] = { 0U, 1U, 2U };
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ctx.peer_count = 2U;
+	ctx.peers[0] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xaa, 0, 0, 0, 0, 0, 0x22 },
+		.long_name = "peer-b",
+		.hop_distance = 2U,
+		.has_long_name = true,
+		.has_hop_distance = true,
+	};
+	ctx.peers[1] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xaa, 0, 0, 0, 0, 0, 0x11 },
+		.long_name = "peer-a",
+		.hop_distance = 1U,
+		.has_long_name = true,
+		.has_hop_distance = true,
+	};
+
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.out_count, 4U);
+	for (size_t i = 0U; i < ARRAY_SIZE(expected_nums); i++) {
+		decode_from_radio(ctx.out[i], ctx.out_len[i], &view);
+		zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
+		decode_node_info_payload(view.payload, view.payload_len, &node);
+		zassert_true(node.has_num);
+		zassert_equal(node.num, expected_nums[i], "node[%u]",
+			      (uint32_t)i);
+		zassert_true(node.has_user);
+		zassert_true(payload_has_string(node.user, node.user_len, 2U,
+						expected_names[i]));
+		zassert_true(node.has_hops_away);
+		zassert_equal(node.hops_away, expected_hops[i], "hops[%u]",
+			      (uint32_t)i);
+	}
+	decode_from_radio(ctx.out[3], ctx.out_len[3], &view);
+	zassert_equal(view.field, 7U);
+	expect_bytes(ctx.out[3], ctx.out_len[3], complete, sizeof(complete));
+}
+
+ZTEST(meshtastic_adapter, test_peer_long_name_is_bounded)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t want_config[] = { 0x18, 0xad, 0x9e, 0x04 };
+	struct from_radio_view view;
+	struct node_info_view node;
+	char expected_name[LICHEN_MESHTASTIC_NODE_NAME_MAX];
+	int ret;
+
+	memset(expected_name, 'x', sizeof(expected_name) - 1U);
+	expected_name[sizeof(expected_name) - 1U] = '\0';
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ctx.peer_count = 1U;
+	memset(ctx.peers[0].long_name, 'x', sizeof(ctx.peers[0].long_name));
+	ctx.peers[0].eui64[7] = 0x42U;
+	ctx.peers[0].has_long_name = true;
+
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.out_count, 3U);
+	decode_from_radio(ctx.out[1], ctx.out_len[1], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
+	decode_node_info_payload(view.payload, view.payload_len, &node);
+	zassert_true(node.has_user);
+	zassert_true(payload_has_string(node.user, node.user_len, 2U,
+					expected_name));
+}
+
+ZTEST(meshtastic_adapter, test_want_config_69421_preflights_queue_for_peers)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t heartbeat[] = { 0x3a, 0x00 };
+	const uint8_t want_config[] = { 0x18, 0xad, 0x9e, 0x04 };
+	struct from_radio_view view;
+	int ret;
+
+	init_adapter_with_queue_free(&adapter, &ctx, 4U);
+	ctx.peer_count = 2U;
+	ctx.peers[0] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xaa, 0, 0, 0, 0, 0, 1 },
+	};
+	ctx.peers[1] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xaa, 0, 0, 0, 0, 0, 2 },
+	};
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.out_count, 4U);
+	decode_from_radio(ctx.out[2], ctx.out_len[2], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
+	decode_from_radio(ctx.out[3], ctx.out_len[3], &view);
+	zassert_equal(view.field, 7U);
+
+	init_adapter_with_queue_free(&adapter, &ctx, 4U);
+	ctx.peer_count = 2U;
+	ctx.peers[0] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xaa, 0, 0, 0, 0, 0, 1 },
+	};
+	ctx.peers[1] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xaa, 0, 0, 0, 0, 0, 2 },
+	};
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, heartbeat,
+						    sizeof(heartbeat));
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.out_count, 1U);
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+	zassert_equal(ret, -ENOMEM);
+	zassert_equal(ctx.out_count, 1U);
+	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+			      enqueue_fail_count,
+		      1U);
+}
+
+ZTEST(meshtastic_adapter, test_node_number_collisions_are_omitted_and_tracked)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t want_config[] = { 0x18, 0xad, 0x9e, 0x04 };
+	struct from_radio_view view;
+	struct node_info_view node;
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ctx.peer_count = 3U;
+	ctx.peers[0] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xbb, 0, 0, 0, 0, 0, 0x55 },
+		.long_name = "peer-b",
+		.has_long_name = true,
+	};
+	ctx.peers[1] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xaa, 0, 0, 0, 0, 0, 0x55 },
+		.long_name = "peer-a",
+		.has_long_name = true,
+	};
+	ctx.peers[2] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xcc, 0, 0, 0xaa, 0xbb, 0xcc, 0xdd },
+		.long_name = "self-collision",
+		.has_long_name = true,
+	};
+
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.out_count, 3U);
+	decode_from_radio(ctx.out[0], ctx.out_len[0], &view);
+	decode_node_info_payload(view.payload, view.payload_len, &node);
+	zassert_equal(node.num, 0xaabbccddU);
+	decode_from_radio(ctx.out[1], ctx.out_len[1], &view);
+	decode_node_info_payload(view.payload, view.payload_len, &node);
+	zassert_equal(node.num, 0x00000055U);
+	zassert_true(payload_has_string(node.user, node.user_len, 2U, "peer-a"));
+	zassert_false(payload_has_string(node.user, node.user_len, 2U, "peer-b"));
+	zassert_false(payload_has_string(node.user, node.user_len, 2U,
+					 "self-collision"));
+	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+			      nodedb_peer_collision_count,
+		      2U);
+	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+			      nodedb_peer_omitted_count,
+		      2U);
 }
 
 ZTEST(meshtastic_adapter, test_want_config_unknown_nonce_queues_full_sync)
@@ -1191,6 +1476,51 @@ ZTEST(meshtastic_adapter, test_want_config_unknown_nonce_queues_full_sync)
 	expect_bytes(ctx.out[15], ctx.out_len[15], complete, sizeof(complete));
 }
 
+ZTEST(meshtastic_adapter, test_want_config_unknown_nonce_includes_peers)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t want_config[] = { 0x18, 0xa5, 0xcb, 0x96, 0xad, 0x0a };
+	const uint8_t complete[] = { 0x38, 0xa5, 0xcb, 0x96, 0xad, 0x0a };
+	struct from_radio_view view;
+	struct node_info_view node;
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ctx.peer_count = 2U;
+	ctx.peers[0] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xaa, 0, 0, 0, 0, 0, 1 },
+		.long_name = "peer-1",
+		.has_long_name = true,
+	};
+	ctx.peers[1] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xaa, 0, 0, 0, 0, 0, 2 },
+		.long_name = "peer-2",
+		.has_long_name = true,
+	};
+
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.out_count, 18U);
+	decode_from_radio(ctx.out[14], ctx.out_len[14], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
+	decode_node_info_payload(view.payload, view.payload_len, &node);
+	zassert_equal(node.num, 0xaabbccddU);
+	decode_from_radio(ctx.out[15], ctx.out_len[15], &view);
+	decode_node_info_payload(view.payload, view.payload_len, &node);
+	zassert_equal(node.num, 1U);
+	zassert_true(payload_has_string(node.user, node.user_len, 2U, "peer-1"));
+	decode_from_radio(ctx.out[16], ctx.out_len[16], &view);
+	decode_node_info_payload(view.payload, view.payload_len, &node);
+	zassert_equal(node.num, 2U);
+	zassert_true(payload_has_string(node.user, node.user_len, 2U, "peer-2"));
+	decode_from_radio(ctx.out[17], ctx.out_len[17], &view);
+	zassert_equal(view.field, 7U);
+	expect_bytes(ctx.out[17], ctx.out_len[17], complete, sizeof(complete));
+}
+
 ZTEST(meshtastic_adapter, test_want_config_full_sync_fits_gateway_default_queue)
 {
 	struct lichen_meshtastic_adapter adapter;
@@ -1199,14 +1529,20 @@ ZTEST(meshtastic_adapter, test_want_config_full_sync_fits_gateway_default_queue)
 	const uint8_t want_config[] = { 0x18, 0xa5, 0xcb, 0x96, 0xad, 0x0a };
 	const uint8_t complete[] = { 0x38, 0xa5, 0xcb, 0x96, 0xad, 0x0a };
 	struct from_radio_view view;
+	size_t expected_count = 1U + MESHTASTIC_FULL_STATIC_RECORDS + 1U +
+				GATEWAY_MESHTASTIC_NODEDB_DEFAULT_MAX_PEERS +
+				1U;
 	int ret;
 
 	zassert_true(ARRAY_SIZE(ctx.out) >=
 		     GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_DEFAULT);
-	zassert_true(GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_MIN >= 17U);
+	zassert_true(GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_MIN >= expected_count);
+	zassert_true(expected_count <=
+		     GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_DEFAULT);
 
 	init_adapter(&adapter, &ctx,
 		     GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_DEFAULT);
+	set_default_max_peers(&ctx);
 	ret = lichen_meshtastic_adapter_process_raw(&adapter, heartbeat,
 						    sizeof(heartbeat));
 	zassert_equal(ret, 0);
@@ -1216,12 +1552,16 @@ ZTEST(meshtastic_adapter, test_want_config_full_sync_fits_gateway_default_queue)
 						    sizeof(want_config));
 
 	zassert_equal(ret, 0);
-	zassert_equal(ctx.out_count, 17U);
-	decode_from_radio(ctx.out[15], ctx.out_len[15], &view);
+	zassert_equal(ctx.out_count, expected_count);
+	decode_from_radio(ctx.out[expected_count - 2U],
+			  ctx.out_len[expected_count - 2U], &view);
 	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
-	decode_from_radio(ctx.out[16], ctx.out_len[16], &view);
+	decode_from_radio(ctx.out[expected_count - 1U],
+			  ctx.out_len[expected_count - 1U], &view);
 	zassert_equal(view.field, 7U);
-	expect_bytes(ctx.out[16], ctx.out_len[16], complete, sizeof(complete));
+	expect_bytes(ctx.out[expected_count - 1U],
+		     ctx.out_len[expected_count - 1U], complete,
+		     sizeof(complete));
 }
 
 ZTEST(meshtastic_adapter, test_want_config_full_sync_preflights_queue_free)
@@ -1232,10 +1572,14 @@ ZTEST(meshtastic_adapter, test_want_config_full_sync_preflights_queue_free)
 	const uint8_t want_config[] = { 0x18, 0xa5, 0xcb, 0x96, 0xad, 0x0a };
 	const uint8_t complete[] = { 0x38, 0xa5, 0xcb, 0x96, 0xad, 0x0a };
 	struct from_radio_view view;
+	size_t expected_count = 1U + MESHTASTIC_FULL_STATIC_RECORDS + 1U +
+				GATEWAY_MESHTASTIC_NODEDB_DEFAULT_MAX_PEERS +
+				1U;
 	int ret;
 
 	init_adapter_with_queue_free(&adapter, &ctx,
 				     GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_MIN);
+	set_default_max_peers(&ctx);
 	ret = lichen_meshtastic_adapter_process_raw(&adapter, heartbeat,
 						    sizeof(heartbeat));
 	zassert_equal(ret, 0);
@@ -1244,13 +1588,17 @@ ZTEST(meshtastic_adapter, test_want_config_full_sync_preflights_queue_free)
 	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
 						    sizeof(want_config));
 	zassert_equal(ret, 0);
-	zassert_equal(ctx.out_count, GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_MIN);
-	decode_from_radio(ctx.out[16], ctx.out_len[16], &view);
+	zassert_equal(ctx.out_count, expected_count);
+	decode_from_radio(ctx.out[expected_count - 1U],
+			  ctx.out_len[expected_count - 1U], &view);
 	zassert_equal(view.field, 7U);
-	expect_bytes(ctx.out[16], ctx.out_len[16], complete, sizeof(complete));
+	expect_bytes(ctx.out[expected_count - 1U],
+		     ctx.out_len[expected_count - 1U], complete,
+		     sizeof(complete));
 
 	init_adapter_with_queue_free(&adapter, &ctx,
 				     GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_MIN);
+	set_default_max_peers(&ctx);
 	ret = lichen_meshtastic_adapter_process_raw(&adapter, heartbeat,
 						    sizeof(heartbeat));
 	zassert_equal(ret, 0);

@@ -32,7 +32,16 @@ struct lichen_app_identity_peer {
 	uint8_t eui64[LICHEN_APP_IDENTITY_EUI64_LEN];
 	uint8_t iid[LICHEN_APP_IDENTITY_EUI64_LEN];
 	uint8_t public_key[LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN];
+	char display_name[LICHEN_APP_IDENTITY_DISPLAY_MAX];
+	uint32_t last_heard_seconds_ago;
+	int16_t rssi_dbm;
+	int8_t snr_db;
+	uint8_t hop_distance;
 	bool has_public_key;
+	bool has_last_heard_seconds_ago;
+	bool has_rssi_dbm;
+	bool has_snr_db;
+	bool has_hop_distance;
 };
 
 /*

@@ -74,6 +74,7 @@
 #define MESHTASTIC_STATIC_SYNC_FIXED_RECORDS 5U
 #define MESHTASTIC_NODE_SYNC_RECORDS 1U
 #define MESHTASTIC_CONFIG_COMPLETE_RECORDS 1U
+#define MESHTASTIC_NODEDB_MAX_PEERS CONFIG_LICHEN_MESHTASTIC_NODEDB_MAX_PEERS
 #define LICHEN_BRAND "LICHEN"
 #define MESHTASTIC_BRAND "meshtastic"
 
@@ -86,6 +87,15 @@ struct pb_cursor {
 	const uint8_t *buf;
 	size_t len;
 	size_t pos;
+};
+
+struct nodedb_peer_state {
+	struct lichen_meshtastic_peer_snapshot peers[MESHTASTIC_NODEDB_MAX_PEERS];
+	uint32_t node_nums[MESHTASTIC_NODEDB_MAX_PEERS];
+	size_t peer_count;
+	size_t emit_count;
+	uint32_t collision_count;
+	uint32_t omitted_count;
 };
 
 static const struct lichen_meshtastic_adapter_unsupported_operation
@@ -701,16 +711,105 @@ static uint32_t static_sync_record_count(void)
 	return MESHTASTIC_STATIC_SYNC_FIXED_RECORDS + ARRAY_SIZE(s_config_sections);
 }
 
-static uint32_t want_config_record_count(uint32_t nonce)
+static uint32_t peer_node_num(const uint8_t eui64[8])
+{
+	uint32_t node_num = ((uint32_t)eui64[4] << 24) |
+			    ((uint32_t)eui64[5] << 16) |
+			    ((uint32_t)eui64[6] << 8) |
+			    (uint32_t)eui64[7];
+
+	return node_num != 0U ? node_num : 1U;
+}
+
+static void sort_peers_by_eui64(struct nodedb_peer_state *state)
+{
+	for (size_t i = 1U; i < state->peer_count; i++) {
+		struct lichen_meshtastic_peer_snapshot peer = state->peers[i];
+		size_t j = i;
+
+		while (j > 0U &&
+		       memcmp(state->peers[j - 1U].eui64, peer.eui64,
+			      sizeof(peer.eui64)) > 0) {
+			state->peers[j] = state->peers[j - 1U];
+			j--;
+		}
+		state->peers[j] = peer;
+	}
+}
+
+static void sanitize_peer_snapshot(struct lichen_meshtastic_peer_snapshot *peer)
+{
+	if (peer->has_long_name) {
+		peer->long_name[sizeof(peer->long_name) - 1U] = '\0';
+		if (peer->long_name[0] == '\0') {
+			peer->has_long_name = false;
+		}
+	}
+}
+
+static bool node_num_already_used(const struct nodedb_peer_state *state,
+				  uint32_t self_node_num, uint32_t node_num)
+{
+	if (node_num == self_node_num) {
+		return true;
+	}
+	for (size_t i = 0U; i < state->emit_count; i++) {
+		if (state->node_nums[i] == node_num) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static void nodedb_peer_snapshot(struct lichen_meshtastic_adapter *adapter,
+				 uint32_t self_node_num,
+				 struct nodedb_peer_state *state)
+{
+	memset(state, 0, sizeof(*state));
+	if (adapter->ops.get_peers == NULL) {
+		return;
+	}
+
+	state->peer_count = adapter->ops.get_peers(
+		state->peers, ARRAY_SIZE(state->peers), adapter->ops.user_data);
+	if (state->peer_count > ARRAY_SIZE(state->peers)) {
+		state->peer_count = ARRAY_SIZE(state->peers);
+	}
+	sort_peers_by_eui64(state);
+
+	for (size_t i = 0U; i < state->peer_count; i++) {
+		uint32_t node_num = peer_node_num(state->peers[i].eui64);
+
+		sanitize_peer_snapshot(&state->peers[i]);
+		if (node_num_already_used(state, self_node_num, node_num)) {
+			state->collision_count++;
+			state->omitted_count++;
+			continue;
+		}
+		if (state->emit_count != i) {
+			state->peers[state->emit_count] = state->peers[i];
+		}
+		state->node_nums[state->emit_count++] = node_num;
+	}
+}
+
+static uint32_t node_sync_record_count(const struct nodedb_peer_state *state)
+{
+	return MESHTASTIC_NODE_SYNC_RECORDS + (uint32_t)state->emit_count;
+}
+
+static uint32_t want_config_record_count(
+	uint32_t nonce, const struct nodedb_peer_state *state)
 {
 	uint32_t records = MESHTASTIC_CONFIG_COMPLETE_RECORDS;
 
 	if (nonce == MESHTASTIC_CONFIG_STAGE_STATIC) {
 		records += static_sync_record_count();
 	} else if (nonce == MESHTASTIC_CONFIG_STAGE_NODEDB) {
-		records += MESHTASTIC_NODE_SYNC_RECORDS;
+		records += node_sync_record_count(state);
 	} else {
-		records += static_sync_record_count() + MESHTASTIC_NODE_SYNC_RECORDS;
+		records += static_sync_record_count() +
+			   node_sync_record_count(state);
 	}
 
 	return records;
@@ -939,8 +1038,32 @@ static int enqueue_static_sync(struct lichen_meshtastic_adapter *adapter,
 	return 0;
 }
 
-static int enqueue_node_sync(struct lichen_meshtastic_adapter *adapter,
-			     const struct lichen_meshtastic_local_info *info)
+static void peer_info_from_snapshot(
+	const struct lichen_meshtastic_peer_snapshot *peer, uint32_t node_num,
+	const struct lichen_meshtastic_local_info *local,
+	struct lichen_meshtastic_local_info *info)
+{
+	memset(info, 0, sizeof(*info));
+	info->node_num = node_num;
+	info->min_app_version = local->min_app_version;
+	info->nodedb_count = local->nodedb_count;
+	info->long_name = peer->has_long_name && peer->long_name[0] != '\0' ?
+				  peer->long_name : "LICHEN Peer";
+	info->short_name = "PEER";
+	info->firmware_version = local->firmware_version;
+	info->pio_env = local->pio_env;
+	info->device_id = peer->eui64;
+	info->device_id_len = sizeof(peer->eui64);
+	info->has_lora = true;
+	if (peer->has_hop_distance) {
+		info->has_hops_away = true;
+		info->hops_away = peer->hop_distance;
+	}
+}
+
+static int enqueue_single_node_info(
+	struct lichen_meshtastic_adapter *adapter,
+	const struct lichen_meshtastic_local_info *info)
 {
 	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	int ret = lichen_meshtastic_encode_node_info_payload(info, payload,
@@ -951,6 +1074,30 @@ static int enqueue_node_sync(struct lichen_meshtastic_adapter *adapter,
 	}
 	return enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO,
 			       payload, (size_t)ret);
+}
+
+static int enqueue_node_sync(struct lichen_meshtastic_adapter *adapter,
+			     const struct lichen_meshtastic_local_info *info,
+			     const struct nodedb_peer_state *state)
+{
+	int ret = enqueue_single_node_info(adapter, info);
+
+	if (ret < 0) {
+		return ret;
+	}
+
+	for (size_t i = 0U; i < state->emit_count; i++) {
+		struct lichen_meshtastic_local_info peer_info;
+
+		peer_info_from_snapshot(&state->peers[i], state->node_nums[i],
+					info, &peer_info);
+		ret = enqueue_single_node_info(adapter, &peer_info);
+		if (ret < 0) {
+			return ret;
+		}
+	}
+
+	return 0;
 }
 
 static int enqueue_admin_metadata_response(
@@ -1030,25 +1177,31 @@ static int dispatch_want_config(struct lichen_meshtastic_adapter *adapter,
 				uint32_t nonce)
 {
 	struct lichen_meshtastic_local_info info;
-	int ret = require_queue_space(adapter, want_config_record_count(nonce));
-
-	if (ret < 0) {
-		return ret;
-	}
+	struct nodedb_peer_state peers;
+	int ret;
 
 	ret = local_info(adapter, &info);
 	if (ret < 0) {
 		return ret;
 	}
+	nodedb_peer_snapshot(adapter, info.node_num, &peers);
+	info.nodedb_count = 1U + (uint32_t)peers.emit_count;
+
+	ret = require_queue_space(adapter, want_config_record_count(nonce, &peers));
+	if (ret < 0) {
+		return ret;
+	}
+	adapter->stats.nodedb_peer_collision_count += peers.collision_count;
+	adapter->stats.nodedb_peer_omitted_count += peers.omitted_count;
 
 	if (nonce == MESHTASTIC_CONFIG_STAGE_STATIC) {
 		ret = enqueue_static_sync(adapter, &info);
 	} else if (nonce == MESHTASTIC_CONFIG_STAGE_NODEDB) {
-		ret = enqueue_node_sync(adapter, &info);
+		ret = enqueue_node_sync(adapter, &info, &peers);
 	} else {
 		ret = enqueue_static_sync(adapter, &info);
 		if (ret == 0) {
-			ret = enqueue_node_sync(adapter, &info);
+			ret = enqueue_node_sync(adapter, &info, &peers);
 		}
 	}
 	if (ret < 0) {

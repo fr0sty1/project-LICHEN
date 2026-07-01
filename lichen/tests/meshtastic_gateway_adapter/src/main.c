@@ -10,6 +10,7 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/net/coap.h>
 
+#include <lichen/app_identity/app_identity.h>
 #include <lichen/app_interface/app_interface.h>
 #include <lichen/meshtastic/codec.h>
 
@@ -24,6 +25,7 @@
 static void reset_gateway(size_t from_radio_cap)
 {
 	gateway_inbound_events_test_reset();
+	lichen_app_identity_test_reset();
 	lichen_app_interface_test_reset();
 	fake_ble_meshtastic_reset(from_radio_cap);
 	gateway_meshtastic_adapter_test_reset();
@@ -186,6 +188,18 @@ static bool payload_get_len_field(const uint8_t *buf, size_t len, uint32_t field
 		}
 	}
 	return false;
+}
+
+static bool payload_has_string(const uint8_t *buf, size_t len, uint32_t field,
+			       const char *value)
+{
+	const uint8_t *actual;
+	size_t actual_len;
+	size_t value_len = strlen(value);
+
+	return payload_get_len_field(buf, len, field, &actual, &actual_len) &&
+	       actual_len == value_len &&
+	       memcmp(actual, value, value_len) == 0;
 }
 
 static bool payload_get_varint_field(const uint8_t *buf, size_t len,
@@ -639,6 +653,48 @@ ZTEST(meshtastic_gateway_adapter,
 	zassert_true(payload_get_varint_field(position, position_len, 19U,
 					      &value));
 	zassert_equal(value, 9U);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_want_config_node_info_includes_app_identity_peer)
+{
+	const uint8_t want_config_node_db[] = { 0x18, 0xad, 0x9e, 0x04 };
+	struct lichen_app_identity_peer peer = {
+		.eui64 = { 0x02, 0xaa, 0, 0, 0, 0, 0, 0x42 },
+		.display_name = "identity-peer",
+		.has_public_key = true,
+		.hop_distance = 3U,
+		.has_hop_distance = true,
+	};
+	const uint8_t *user = NULL;
+	size_t user_len = 0U;
+	const uint8_t *from_radio;
+	size_t from_radio_len;
+	struct from_radio_view view;
+	uint32_t value = 0U;
+
+	memset(peer.public_key, 0x42, sizeof(peer.public_key));
+
+	reset_gateway(3U);
+	zassert_ok(lichen_app_identity_upsert_peer(&peer));
+	zassert_ok(fake_ble_meshtastic_push_to_radio(want_config_node_db,
+						     sizeof(want_config_node_db)));
+
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 3U);
+	from_radio = fake_ble_meshtastic_from_radio(1U, &from_radio_len);
+	zassert_not_null(from_radio);
+	decode_from_radio(from_radio, from_radio_len, &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
+	zassert_true(payload_get_varint_field(view.payload, view.payload_len, 1U,
+					      &value));
+	zassert_equal(value, 0x42U);
+	zassert_true(payload_get_len_field(view.payload, view.payload_len, 2U,
+					   &user, &user_len));
+	zassert_true(payload_has_string(user, user_len, 2U, "identity-peer"));
+	zassert_true(payload_get_varint_field(view.payload, view.payload_len, 9U,
+					      &value));
+	zassert_equal(value, 3U);
 }
 
 ZTEST(meshtastic_gateway_adapter, test_process_once_drops_stale_response)

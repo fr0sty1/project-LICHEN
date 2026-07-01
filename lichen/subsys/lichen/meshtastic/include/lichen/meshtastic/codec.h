@@ -28,6 +28,7 @@ extern "C" {
 #endif
 
 #define LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX 200U
+#define LICHEN_MESHTASTIC_NODE_NAME_MAX 32U
 
 enum lichen_meshtastic_to_radio_type {
 	LICHEN_MESHTASTIC_TO_RADIO_UNSET = 0,
@@ -115,6 +116,8 @@ struct lichen_meshtastic_local_info {
 	bool has_satellites;
 	uint8_t satellites;
 	bool has_gnss_fix;
+	uint8_t hops_away;
+	bool has_hops_away;
 };
 
 enum lichen_meshtastic_config_section {

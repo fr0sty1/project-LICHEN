@@ -15,7 +15,11 @@
 #include <zephyr/kernel.h>
 #include <zephyr/kernel_version.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/util.h>
 
+#if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
+#include <lichen/app_identity/app_identity.h>
+#endif
 #include <lichen/hal.h>
 #if IS_ENABLED(CONFIG_LICHEN_L2)
 #include "lora_l2.h"
@@ -25,7 +29,7 @@
 
 LOG_MODULE_REGISTER(gateway_meshtastic_adapter, LOG_LEVEL_INF);
 
-#define ADAPTER_STACK_SIZE 2048
+#define ADAPTER_STACK_SIZE 4096
 #define ADAPTER_PRIORITY 7
 #define ADAPTER_IDLE_SLEEP K_MSEC(20)
 
@@ -58,6 +62,8 @@ static int handle_text(
 static uint32_t queue_free(void *user_data);
 static int get_local_info(struct lichen_meshtastic_local_info *info,
 			  void *user_data);
+static size_t get_peers(struct lichen_meshtastic_peer_snapshot *peers,
+			size_t peer_cap, void *user_data);
 static int process_once_internal(void);
 #ifndef CONFIG_ZTEST
 static void adapter_thread(void *a, void *b, void *c);
@@ -70,6 +76,7 @@ static struct lichen_meshtastic_adapter_ops adapter_ops(void)
 		.handle_text = handle_text,
 		.queue_free = queue_free,
 		.get_local_info = get_local_info,
+		.get_peers = get_peers,
 		.queue_maxlen = ble_meshtastic_from_radio_capacity(),
 		.heartbeat_queue_status = true,
 	};
@@ -210,6 +217,51 @@ static int get_local_info(struct lichen_meshtastic_local_info *info,
 	info->nodedb_count = 1U;
 
 	return 0;
+}
+
+static size_t get_peers(struct lichen_meshtastic_peer_snapshot *peers,
+			size_t peer_cap, void *user_data)
+{
+#if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
+	struct lichen_app_identity_peer
+		identities[CONFIG_LICHEN_MESHTASTIC_NODEDB_MAX_PEERS];
+	size_t count;
+
+	ARG_UNUSED(user_data);
+	if (peers == NULL || peer_cap == 0U) {
+		return 0U;
+	}
+
+	count = lichen_app_identity_copy_peers(identities,
+					       MIN(peer_cap,
+						   ARRAY_SIZE(identities)));
+	for (size_t i = 0U; i < count; i++) {
+		memset(&peers[i], 0, sizeof(peers[i]));
+		memcpy(peers[i].eui64, identities[i].eui64,
+		       sizeof(peers[i].eui64));
+		if (identities[i].display_name[0] != '\0') {
+			memcpy(peers[i].long_name, identities[i].display_name,
+			       sizeof(peers[i].long_name));
+			peers[i].has_long_name = true;
+		}
+		peers[i].last_heard_seconds_ago =
+			identities[i].last_heard_seconds_ago;
+		peers[i].rssi_dbm = identities[i].rssi_dbm;
+		peers[i].snr_db = identities[i].snr_db;
+		peers[i].hop_distance = identities[i].hop_distance;
+		peers[i].has_last_heard_seconds_ago =
+			identities[i].has_last_heard_seconds_ago;
+		peers[i].has_rssi_dbm = identities[i].has_rssi_dbm;
+		peers[i].has_snr_db = identities[i].has_snr_db;
+		peers[i].has_hop_distance = identities[i].has_hop_distance;
+	}
+	return count;
+#else
+	ARG_UNUSED(peers);
+	ARG_UNUSED(peer_cap);
+	ARG_UNUSED(user_data);
+	return 0U;
+#endif
 }
 
 int gateway_meshtastic_adapter_init(void)

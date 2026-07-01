@@ -21,7 +21,9 @@ config LORA_LICHEN_MESHTASTIC_BLE
 	depends on BT_PERIPHERAL
 	depends on BT_MAX_CONN = 1
 	depends on LICHEN_MESHTASTIC_CODEC
+	depends on LICHEN_LINK
 	depends on !LORA_LICHEN_BLE
+	select LICHEN_APP_IDENTITY
 	select LICHEN_APP_INTERFACE
 	select LICHEN_MESHTASTIC_ADAPTER
 	default n
@@ -31,6 +33,8 @@ config LORA_LICHEN_MESHTASTIC_BLE
 	  compatibility surface only; it does not make LICHEN RF packets
 	  Meshtastic-compatible. The first implementation owns a single
 	  Meshtastic app session and therefore requires CONFIG_BT_MAX_CONN=1.
+	  App identity is selected so NodeDB sync can enumerate known LICHEN
+	  peers through the common app-visible identity table.
 
 config LORA_LICHEN_MESHCORE_BLE
 	bool "MeshCore-compatible BLE GATT interface"
@@ -88,11 +92,11 @@ config LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH
 	int "Meshtastic BLE FromRadio queue depth"
 	depends on LORA_LICHEN_MESHTASTIC_BLE
 	default 20
-	range 17 32
+	range 20 32
 	help
 	  Number of complete FromRadio protobuf values retained for app reads.
-	  Keep enough headroom for a queued heartbeat plus a legacy full
-	  configuration sync burst.
+	  Keep enough headroom for a queued heartbeat plus a full configuration
+	  sync burst with the default bounded NodeDB peer cap.
 
 config LORA_LICHEN_MESHTASTIC_BLE_TO_RADIO_QUEUE_DEPTH
 	int "Meshtastic BLE ToRadio queue depth"

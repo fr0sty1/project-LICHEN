@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-p2pu",
+  "title": "Derive Meshtastic gateway queue capacity regression from Kconfig",
+  "description": "Follow-up from project-LICHEN-t2hn.6.4 reviews: meshtastic_adapter tests verify the gateway default queue fits heartbeat + full sync + default NodeDB peers, but the gateway queue depth constants and static-sync record count are duplicated in the test. Make this drift-proof by deriving the queue settings from Kconfig/build metadata or adding compile-time assertions/shared test-visible constants.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T17:43:09.704664Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T17:43:09.704702Z"
+}

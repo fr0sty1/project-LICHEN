@@ -61,6 +61,8 @@ struct lichen_meshtastic_adapter_stats {
 	uint32_t enqueue_fail_count;
 	uint32_t incoming_text_count;
 	uint32_t incoming_status_count;
+	uint32_t nodedb_peer_collision_count;
+	uint32_t nodedb_peer_omitted_count;
 };
 
 enum lichen_meshtastic_adapter_unsupported_operation_id {
@@ -131,11 +133,35 @@ typedef uint32_t (*lichen_meshtastic_adapter_queue_free_fn)(void *user_data);
 typedef int (*lichen_meshtastic_adapter_local_info_fn)(
 	struct lichen_meshtastic_local_info *info, void *user_data);
 
+/*
+ * Copy up to peer_cap peers into peers and return the number copied. The
+ * adapter owns sorting, node number collision handling, queue preflight, and
+ * defensive string termination for peer names.
+ */
+struct lichen_meshtastic_peer_snapshot {
+	uint8_t eui64[8];
+	char long_name[LICHEN_MESHTASTIC_NODE_NAME_MAX];
+	uint32_t last_heard_seconds_ago;
+	int16_t rssi_dbm;
+	int8_t snr_db;
+	uint8_t hop_distance;
+	bool has_long_name;
+	bool has_last_heard_seconds_ago;
+	bool has_rssi_dbm;
+	bool has_snr_db;
+	bool has_hop_distance;
+};
+
+typedef size_t (*lichen_meshtastic_adapter_peer_snapshot_fn)(
+	struct lichen_meshtastic_peer_snapshot *peers, size_t peer_cap,
+	void *user_data);
+
 struct lichen_meshtastic_adapter_ops {
 	lichen_meshtastic_adapter_enqueue_fn enqueue_from_radio;
 	lichen_meshtastic_adapter_text_fn handle_text;
 	lichen_meshtastic_adapter_queue_free_fn queue_free;
 	lichen_meshtastic_adapter_local_info_fn get_local_info;
+	lichen_meshtastic_adapter_peer_snapshot_fn get_peers;
 	void *user_data;
 	uint32_t queue_maxlen;
 	bool heartbeat_queue_status;

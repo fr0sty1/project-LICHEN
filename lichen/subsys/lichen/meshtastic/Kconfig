@@ -35,4 +35,15 @@ config LICHEN_MESHTASTIC_MAX_FROM_RADIO
 	  Maximum raw FromRadio protobuf value emitted to BLE. This follows
 	  the generated Meshtastic firmware FromRadio_size budget.
 
+config LICHEN_MESHTASTIC_NODEDB_MAX_PEERS
+	int "Maximum Meshtastic NodeDB peer records per sync"
+	default 3
+	range 1 3
+	help
+	  Maximum number of peer snapshots copied into one Meshtastic NodeDB
+	  sync response. The adapter always emits self first, then up to this
+	  many deterministic peer NodeInfo records after collision filtering.
+	  The default gateway FromRadio queue can hold one queued heartbeat plus
+	  a full static-and-NodeDB sync at this cap.
+
 endif # LICHEN_MESHTASTIC_CODEC
