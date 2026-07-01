@@ -8,6 +8,7 @@ config LORA_LICHEN_BLE
 	depends on BT
 	depends on BT_PERIPHERAL
 	depends on BT_MAX_CONN = 1
+	select NET_L2_DUMMY
 	default n
 	help
 	  Enable the native LICHEN BLE Local Client Interface so a phone can
@@ -26,6 +27,9 @@ config LORA_LICHEN_BLE_LEGACY_NUS
 	  triplet for existing mutually exclusive native product images. Do not
 	  enable this in images that also need MeshCore compatibility: MeshCore
 	  owns NUS UUIDs with raw MeshCore frame semantics.
+
+config NET_IF_MAX_IPV6_COUNT
+	default 2 if LORA_LICHEN_BLE
 
 config LORA_LICHEN_MESHTASTIC_BLE
 	bool "Meshtastic-compatible BLE GATT interface"

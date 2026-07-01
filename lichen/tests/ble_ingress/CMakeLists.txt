@@ -11,5 +11,7 @@ target_include_directories(app PRIVATE
 
 target_sources(app PRIVATE
   src/main.c
+  src/ble_uart_stub.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/ble_lci_netif.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/ble_ingress.c
 )

@@ -14,6 +14,7 @@
  */
 
 #include "ble_ingress.h"
+#include "ble_lci_netif.h"
 #include "ble_app_owner.h"
 #include "ble_uart.h"
 
@@ -118,15 +119,16 @@ static bool     s_rx_overflow;
 
 static void slip_dispatch(const uint8_t *pkt, size_t len)
 {
+	struct net_if *iface = ble_lci_netif_get();
 	int ret;
 
-	ret = ble_ingress_ipv6_default(pkt, len);
+	ret = ble_ingress_ipv6(iface, pkt, len);
 	if (ret < 0) {
 		LOG_WRN("BLE UART RX %zu B dropped: %d", len, ret);
 		return;
 	}
 
-	LOG_DBG("BLE UART RX %zu B injected into IPv6 ingress", len);
+	LOG_DBG("BLE UART RX %zu B injected into BLE LCI IPv6 ingress", len);
 }
 
 /* --------------------------------------------------------------------------

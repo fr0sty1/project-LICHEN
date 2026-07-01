@@ -6,6 +6,7 @@ target_sources(app PRIVATE src/main.c src/config_cbor.c)
 target_sources_ifdef(CONFIG_LORA_LICHEN_BLE app PRIVATE
   src/ble_app_owner.c
   src/ble_uart.c
+  src/ble_lci_netif.c
   src/ble_ingress.c)
 target_sources_ifdef(CONFIG_LORA_LICHEN_MESHTASTIC_BLE app PRIVATE
   src/ble_app_owner.c

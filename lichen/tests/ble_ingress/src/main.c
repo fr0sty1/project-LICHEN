@@ -2,6 +2,7 @@
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
 #include "ble_ingress.h"
+#include "ble_lci_netif.h"
 
 #include <errno.h>
 
@@ -24,6 +25,10 @@ LOG_MODULE_REGISTER(ble_ingress_test, LOG_LEVEL_INF);
 #define ICMPV6_TYPE_OFFSET (NET_IPV6H_LEN)
 #define ICMPV6_ID_OFFSET   (ICMPV6_TYPE_OFFSET + 4u)
 #define ICMPV6_SEQ_OFFSET  (ICMPV6_TYPE_OFFSET + 6u)
+#define IPV6_NEXT_HEADER_OFFSET 6u
+#define IPV6_SRC_OFFSET 8u
+#define IPV6_DST_OFFSET 24u
+#define IPV6_ADDR_LEN 16u
 
 struct ble_ingress_test_ctx {
 	uint8_t mac_addr[8];
@@ -49,6 +54,12 @@ static const uint8_t s_echo_request[] = {
 	0x80, 0x00, 0xb9, 0x1b, 0x42, 0x4c, 0x00, 0x01,
 	0x42, 0x4c, 0x45
 };
+
+void ble_uart_stub_reset(int return_value);
+int ble_uart_stub_wait(void);
+uint32_t ble_uart_stub_send_count(void);
+size_t ble_uart_stub_last_len(void);
+int ble_uart_stub_copy_last(uint8_t *buf, size_t cap);
 
 static uint16_t read_be16(const uint8_t *buf, size_t offset)
 {
@@ -94,7 +105,6 @@ static int test_l2_send(const struct device *dev, struct net_pkt *pkt)
 		k_sem_give(&ctx->reply_sem);
 	}
 
-	net_pkt_unref(pkt);
 	return 0;
 }
 
@@ -111,9 +121,36 @@ NET_DEVICE_INIT(ble_ingress_loopback, "ble_ingress_loopback",
 		DUMMY_L2, NET_L2_GET_CTX_TYPE(DUMMY_L2),
 		TEST_MTU);
 
-static void configure_iface(void)
+static int move_local_addr_to_iface(struct net_if *iface)
 {
 	struct net_if_addr *ifaddr;
+	struct net_if *current_iface = NULL;
+	int ret;
+
+	ifaddr = net_if_ipv6_addr_lookup(&s_local_addr, &current_iface);
+	if (ifaddr != NULL && current_iface != iface) {
+		net_if_ipv6_addr_rm(current_iface, &s_local_addr);
+		ifaddr = NULL;
+	}
+
+	if (ifaddr == NULL) {
+		ifaddr = net_if_ipv6_addr_add(iface, &s_local_addr,
+					      NET_ADDR_MANUAL, 0);
+	}
+	if (ifaddr == NULL) {
+		return -ENOMEM;
+	}
+
+	ret = net_if_up(iface);
+	if (ret < 0 && ret != -EALREADY) {
+		return ret;
+	}
+
+	return 0;
+}
+
+static void configure_iface(void)
+{
 	int ret;
 
 	if (s_test_ctx.iface == NULL) {
@@ -122,17 +159,9 @@ static void configure_iface(void)
 
 	zassert_not_null(s_test_ctx.iface, "test interface not found");
 
-	ifaddr = net_if_ipv6_addr_lookup(&s_local_addr, NULL);
-	if (ifaddr == NULL) {
-		ifaddr = net_if_ipv6_addr_add(s_test_ctx.iface, &s_local_addr,
-					      NET_ADDR_MANUAL, 0);
-	}
-
-	zassert_not_null(ifaddr, "failed to configure local IPv6 address");
-
-	ret = net_if_up(s_test_ctx.iface);
-	zassert_true(ret == 0 || ret == -EALREADY,
-		     "failed to bring test interface up: %d", ret);
+	ret = move_local_addr_to_iface(s_test_ctx.iface);
+	zassert_equal(ret, 0,
+		     "failed to bring interface up: %d", ret);
 }
 
 ZTEST(ble_ingress, test_rejects_malformed_ipv6)
@@ -169,6 +198,49 @@ ZTEST(ble_ingress, test_injects_ipv6_to_rx_path)
 	zassert_equal(s_test_ctx.reply_seq, 1u, "unexpected echo reply seq");
 }
 
+ZTEST(ble_ingress, test_ble_lci_iface_is_configured_for_slip_link)
+{
+	struct net_if *ble_iface = ble_lci_netif_get();
+
+	zassert_not_null(ble_iface, "BLE LCI interface not found");
+	zassert_true(net_if_flag_is_set(ble_iface, NET_IF_POINTOPOINT),
+		     "BLE LCI interface must be point-to-point");
+	zassert_true(net_if_flag_is_set(ble_iface, NET_IF_IPV6_NO_ND),
+		     "BLE LCI interface must bypass IPv6 ND");
+	zassert_true(net_if_is_up(ble_iface),
+		     "BLE LCI interface should be up after init");
+}
+
+ZTEST(ble_ingress, test_reply_exits_ble_lci_egress_path)
+{
+	struct net_if *ble_iface = ble_lci_netif_get();
+	uint8_t reply[128];
+	int ret;
+
+	zassert_not_null(ble_iface, "BLE LCI interface not found");
+	ret = move_local_addr_to_iface(ble_iface);
+	zassert_equal(ret, 0, "failed to configure BLE LCI address: %d", ret);
+	ble_uart_stub_reset(0);
+
+	ret = ble_ingress_ipv6(ble_iface, s_echo_request, sizeof(s_echo_request));
+	zassert_equal(ret, 0, "BLE IPv6 injection failed: %d", ret);
+
+	ret = ble_uart_stub_wait();
+	zassert_equal(ret, 0, "timeout waiting for BLE LCI egress");
+	zassert_equal(ble_uart_stub_send_count(), 1U);
+	zassert_equal(ble_uart_stub_last_len(), sizeof(s_echo_request));
+	zassert_ok(ble_uart_stub_copy_last(reply, sizeof(reply)));
+	zassert_equal(reply[0] >> 4, 6U);
+	zassert_equal(reply[IPV6_NEXT_HEADER_OFFSET], IPPROTO_ICMPV6);
+	zassert_mem_equal(&reply[IPV6_SRC_OFFSET], &s_echo_request[IPV6_DST_OFFSET],
+			  IPV6_ADDR_LEN);
+	zassert_mem_equal(&reply[IPV6_DST_OFFSET], &s_echo_request[IPV6_SRC_OFFSET],
+			  IPV6_ADDR_LEN);
+	zassert_equal(reply[ICMPV6_TYPE_OFFSET], NET_ICMPV6_ECHO_REPLY);
+	zassert_equal(read_be16(reply, ICMPV6_ID_OFFSET), 0x424c);
+	zassert_equal(read_be16(reply, ICMPV6_SEQ_OFFSET), 1U);
+}
+
 static void *ble_ingress_setup(void)
 {
 	if (IS_ENABLED(CONFIG_NET_TC_THREAD_COOPERATIVE)) {
@@ -184,4 +256,13 @@ static void *ble_ingress_setup(void)
 	return NULL;
 }
 
-ZTEST_SUITE(ble_ingress, NULL, ble_ingress_setup, NULL, NULL, NULL);
+static void ble_ingress_after(void *fixture)
+{
+	ARG_UNUSED(fixture);
+
+	if (s_test_ctx.iface != NULL) {
+		(void)move_local_addr_to_iface(s_test_ctx.iface);
+	}
+}
+
+ZTEST_SUITE(ble_ingress, NULL, ble_ingress_setup, NULL, ble_ingress_after, NULL);
