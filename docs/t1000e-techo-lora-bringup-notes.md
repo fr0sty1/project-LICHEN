@@ -152,3 +152,35 @@ dmesg | grep -c "1-1.6: new full-speed"   # T1000-E hub
 
 Serial numbers seen this session: T1000-E `891FA3226B7B0D14`, T-Echo
 `2BE0BCC87606D748` (USB hubs `1-1.6` and `1-1.7` respectively).
+
+---
+
+## Upstream integration (merge of `upstream/main`)
+
+Merged `upstream/main` into `feat/t1000e` (commit `f19ae25`). Upstream's LR1110
+rework did **not** fix the TX hang (no TCXO, still interrupt-based); it added
+HAL error propagation (`LR1110_RETURN_ON_HAL_ERROR`), a beacon CRC-MIC, and a
+native.c refactor (zcbor CBOR + test helpers + init mutex). Both sides were
+needed. Conflicts resolved to keep our hardware-proven behavior (TCXO, SPI
+polling, watchdog, NEXT USB stack, 2 MHz SPI) and adopt upstream's additions.
+
+### Gotcha: T-Echo "bricked" after the merge (silently-disabled subsystem)
+Symptom: T-Echo flashed clean (serial-DFU CRC-verified) but **never enumerated
+USB** — dead, no reboot loop. The T1000-E ran the merged firmware fine.
+
+Root cause: upstream's native.c now uses **zcbor**, and its Kconfig gained
+`depends on ZCBOR`. The T1000-E enables `CONFIG_ZCBOR` (for mcumgr); the T-Echo
+did not. So `LICHEN_NATIVE` **silently dropped to `n`**, `native.c` (which does
+USB-CDC enumeration via `SYS_INIT`) wasn't compiled, and USB never came up.
+
+Fingerprints of a silently-disabled Kconfig subsystem:
+- build warning `LICHEN_NATIVE ... was assigned the value 'y' but got 'n'`
+- `No SOURCES given to Zephyr library: lichen_native`
+- the app image is noticeably **smaller** (~8 KB here)
+
+Fix: `CONFIG_ZCBOR=y` in `t_echo_nrf52840.conf`. Both boards then run the merged
+firmware and exchange 9-byte MIC beacons.
+
+Isolation method that nailed it: flashing the **known-good pre-merge build**
+booted instantly → proved hardware/bootloader were fine and the fault was in the
+merged firmware, not the (heavily re-flashed) T-Echo bootloader.
