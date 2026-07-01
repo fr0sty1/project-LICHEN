@@ -8,6 +8,10 @@ client transports and byte-command shapes so existing clients can inspect and
 exercise a LICHEN node, but it does not make LICHEN RF packets MeshCore
 compatible.
 
+BLE advertising and product-mode ownership are tracked in
+`docs/ble-app-surface-owner.md`. Current firmware builds keep native LICHEN BLE,
+Meshtastic BLE, and MeshCore BLE mutually exclusive.
+
 ## Channel And Secret Policy
 
 MeshCore channel records are compatibility-local views. They are not LICHEN

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-t2hn.22.2",
+  "title": "Move native LICHEN BLE behind app owner",
+  "description": "Refactor native BLE UART/NUS so advertising and connection callback ownership are provided by the shared BLE app owner while preserving SLIP-framed IPv6 payload behavior and the existing public ble_uart_send_slip() contract.",
+  "acceptance_criteria": "native_sim tests or build coverage prove native NUS/SLIP behavior still resets RX state on connect/disconnect and sends notifications through the owner-managed connection; NUS UUID collision with MeshCore remains explicitly blocked.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T12:40:46.51521Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T12:40:46.515675Z",
+  "labels": [
+    "zephyr",
+    "ble",
+    "app-interface",
+    "firmware",
+    "meshtastic"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.22.2",
+      "depends_on_id": "project-LICHEN-t2hn.22",
+      "type": "parent-child",
+      "created_at": "2026-07-01T12:40:46.515675Z"
+    }
+  ]
+}

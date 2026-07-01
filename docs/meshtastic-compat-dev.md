@@ -43,6 +43,10 @@ pip install lichen[meshtastic]
 - ESP32-S3 targets remain possible once Zephyr BLE support is validated for the board.
 - STM32WL has no BLE hardware; a serial/TCP Meshtastic-compatible stream is separate work and must not be confused with BLE GATT.
 
+BLE advertising and product-mode ownership are tracked in
+`docs/ble-app-surface-owner.md`. Current firmware builds keep native LICHEN BLE,
+Meshtastic BLE, and MeshCore BLE mutually exclusive.
+
 **Reference and test platforms:**
 - Python prototype and tests for adapter behavior.
 - Rust `lichen-meshtastic` for schema, address mapping, config, and host tooling. Its current `gatt.rs` is not

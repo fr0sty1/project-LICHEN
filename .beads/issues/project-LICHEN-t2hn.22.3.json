@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-t2hn.22.3",
+  "title": "Move Meshtastic BLE behind app owner",
+  "description": "Refactor Meshtastic BLE compatibility so advertising, connection callbacks, and restart are owned by the shared BLE app owner while preserving ToRadio/FromRadio/FromNum semantics, queue limits, FromNum notification, and session_epoch stale-response guards.",
+  "acceptance_criteria": "meshtastic_ble and meshtastic_gateway_adapter native_sim/Twister tests pass; added tests cover owner-managed disconnect cleanup and stale session rejection; no physical app evidence required.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T12:40:46.622435Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T12:40:46.622921Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "ble",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.22.3",
+      "depends_on_id": "project-LICHEN-t2hn.22",
+      "type": "parent-child",
+      "created_at": "2026-07-01T12:40:46.622921Z"
+    }
+  ]
+}
