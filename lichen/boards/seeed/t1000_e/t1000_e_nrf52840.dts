@@ -76,9 +76,9 @@
 		reset-gpios = <&gpio1 10 GPIO_ACTIVE_LOW>;
 		busy-gpios  = <&gpio0  7 GPIO_ACTIVE_HIGH>;
 		dio9-gpios  = <&gpio1  1 GPIO_ACTIVE_HIGH>;
-		/* 2 MHz (was 8 MHz): conservative SPI clock to rule out signal-
-		 * integrity/timing as a cause of intermittent SPIM transfer hangs. */
-		spi-max-frequency = <2000000>;
+		/* 1 MHz (from 8 MHz): conservative SPI clock — reduces USB-EasyDMA vs
+		 * SPIM-EasyDMA contention that intermittently wedges a transfer. */
+		spi-max-frequency = <1000000>;
 	};
 };
 

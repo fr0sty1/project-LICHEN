@@ -137,9 +137,9 @@
 		dio2-tx-enable;
 		dio3-tcxo-voltage    = <SX126X_DIO3_TCXO_1V8>;
 		tcxo-power-startup-delay-ms = <5>;
-		/* 2 MHz (was 8 MHz): conservative SPI clock — 8 MHz intermittently
-		 * wedges the nRF52840 SPIM on a post-RXDONE radio read. */
-		spi-max-frequency    = <2000000>;
+		/* 1 MHz (from 8 MHz): conservative SPI clock — reduces the nRF52840
+		 * USB/SPIM EasyDMA contention that wedges a transfer. */
+		spi-max-frequency    = <1000000>;
 	};
 };
 
