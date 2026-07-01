@@ -10,11 +10,20 @@
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/ztest.h>
 
+#if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
+#include <lichen/app_identity/app_identity.h>
+#endif
 #include <lichen/meshcore/adapter.h>
 
 #include "meshcore_vectors.h"
 
 #define OUT_DEPTH 8
+#define SELF_INFO_PUBLIC_KEY_OFF 4U
+#define SELF_INFO_PUBLIC_KEY_LEN 32U
+#define SELF_INFO_NAME_OFF 58U
+#define DEVICE_INFO_BUILD_OFF 8U
+#define DEVICE_INFO_MODEL_OFF 20U
+#define DEVICE_INFO_VERSION_OFF 60U
 
 struct out_slot {
 	uint8_t data[LICHEN_MESHCORE_FRAME_MAX];
@@ -85,10 +94,38 @@ static void expect_bytes(const struct test_ctx *ctx, size_t slot,
 			  "slot %zu bytes", slot);
 }
 
+#if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
+static bool contains_bytes(const uint8_t *haystack, size_t haystack_len,
+			   const uint8_t *needle, size_t needle_len)
+{
+	if (needle_len == 0U || haystack_len < needle_len) {
+		return false;
+	}
+
+	for (size_t i = 0U; i <= haystack_len - needle_len; i++) {
+		if (memcmp(&haystack[i], needle, needle_len) == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static void before_each(const struct ztest_unit_test *test, void *fixture)
+{
+	ARG_UNUSED(test);
+	ARG_UNUSED(fixture);
+	lichen_app_identity_test_reset();
+}
+
+ZTEST_RULE(meshcore_adapter_identity_reset, before_each, NULL);
+#endif
+
 ZTEST(meshcore_adapter, test_canonical_app_compat_vectors)
 {
 	struct lichen_meshcore_adapter adapter;
 	struct test_ctx ctx;
+
+	Z_TEST_SKIP_IFDEF(CONFIG_LICHEN_APP_IDENTITY);
 
 	zassert_equal(MESHCORE_VECTOR_SOURCE_COUNT, 32U);
 	zassert_equal(MESHCORE_VECTOR_ADAPTER_COUNT,
@@ -112,6 +149,112 @@ ZTEST(meshcore_adapter, test_canonical_app_compat_vectors)
 	}
 }
 
+ZTEST(meshcore_adapter, test_app_start_without_identity_is_degraded)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t app_start[] = { 0x01, 0, 0, 0, 0, 0, 0, 0, 't' };
+	uint8_t zero_key[SELF_INFO_PUBLIC_KEY_LEN] = { 0 };
+
+	Z_TEST_SKIP_IFDEF(CONFIG_LICHEN_APP_IDENTITY);
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, app_start,
+							  sizeof(app_start)), 0);
+	zassert_equal(ctx.count, 1U);
+	zassert_equal(ctx.out[0].data[0], LICHEN_MESHCORE_RESP_SELF_INFO);
+	zassert_equal(ctx.out[0].len, 64U);
+	zassert_mem_equal(&ctx.out[0].data[SELF_INFO_PUBLIC_KEY_OFF], zero_key,
+			  sizeof(zero_key));
+	zassert_mem_equal(&ctx.out[0].data[SELF_INFO_NAME_OFF], "LICHEN", 6U);
+}
+
+ZTEST(meshcore_adapter, test_app_start_without_published_identity_is_degraded)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t app_start[] = { 0x01, 0, 0, 0, 0, 0, 0, 0, 't' };
+	uint8_t zero_key[SELF_INFO_PUBLIC_KEY_LEN] = { 0 };
+
+	Z_TEST_SKIP_IFNDEF(CONFIG_LICHEN_APP_IDENTITY);
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, app_start,
+							  sizeof(app_start)), 0);
+	zassert_equal(ctx.count, 1U);
+	zassert_equal(ctx.out[0].data[0], LICHEN_MESHCORE_RESP_SELF_INFO);
+	zassert_equal(ctx.out[0].len, 64U);
+	zassert_mem_equal(&ctx.out[0].data[SELF_INFO_PUBLIC_KEY_OFF], zero_key,
+			  sizeof(zero_key));
+	zassert_mem_equal(&ctx.out[0].data[SELF_INFO_NAME_OFF], "LICHEN", 6U);
+}
+
+#if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
+ZTEST(meshcore_adapter, test_app_start_uses_provider_self_identity)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t app_start[] = { 0x01, 0, 0, 0, 0, 0, 0, 0, 't' };
+	struct lichen_app_identity_self self = {
+		.eui64 = { 0x02, 0x00, 0x00, 0xff, 0xfe, 0x00, 0x00, 0x01 },
+		.public_key = {
+			0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
+			0xa8, 0xa9, 0xaa, 0xab, 0xac, 0xad, 0xae, 0xaf,
+			0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7,
+			0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf,
+		},
+		.display_name = "node-a",
+		.firmware_name = "fw-a",
+		.has_public_key = true,
+	};
+
+	zassert_ok(lichen_app_identity_set_self(&self));
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, app_start,
+							  sizeof(app_start)), 0);
+	zassert_equal(ctx.count, 1U);
+	zassert_equal(ctx.out[0].data[0], LICHEN_MESHCORE_RESP_SELF_INFO);
+	zassert_equal(ctx.out[0].len, 64U);
+	zassert_mem_equal(&ctx.out[0].data[SELF_INFO_PUBLIC_KEY_OFF],
+			  self.public_key, sizeof(self.public_key));
+	zassert_mem_equal(&ctx.out[0].data[SELF_INFO_NAME_OFF], "node-a", 6U);
+}
+
+ZTEST(meshcore_adapter, test_device_query_uses_provider_names_without_key)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t device_query[] = { 0x16, 0x03 };
+	struct lichen_app_identity_self self = {
+		.eui64 = { 0x02, 0x00, 0x00, 0xff, 0xfe, 0x00, 0x00, 0x02 },
+		.public_key = {
+			0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,
+			0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf,
+			0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7,
+			0xd8, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf,
+		},
+		.display_name = "node-a",
+		.firmware_name = "fw-a",
+		.has_public_key = true,
+	};
+
+	zassert_ok(lichen_app_identity_set_self(&self));
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter,
+							  device_query,
+							  sizeof(device_query)), 0);
+	zassert_equal(ctx.count, 1U);
+	zassert_equal(ctx.out[0].data[0], LICHEN_MESHCORE_RESP_DEVICE_INFO);
+	zassert_equal(ctx.out[0].len, 82U);
+	zassert_equal(ctx.out[0].data[1], LICHEN_MESHCORE_APP_PROTOCOL_VERSION);
+	zassert_mem_equal(&ctx.out[0].data[DEVICE_INFO_BUILD_OFF], "fw-a", 4U);
+	zassert_mem_equal(&ctx.out[0].data[DEVICE_INFO_MODEL_OFF], "node-a", 6U);
+	zassert_mem_equal(&ctx.out[0].data[DEVICE_INFO_VERSION_OFF], "fw-a", 4U);
+	zassert_false(contains_bytes(ctx.out[0].data, ctx.out[0].len,
+				     self.public_key, sizeof(self.public_key)));
+}
+#endif
+
 ZTEST(meshcore_adapter, test_phase1_startup_read_commands)
 {
 	struct lichen_meshcore_adapter adapter;
@@ -126,6 +269,22 @@ ZTEST(meshcore_adapter, test_phase1_startup_read_commands)
 	const uint8_t custom_vars[] = { 0x28 };
 	const uint8_t autoadd[] = { 0x3b };
 	const uint8_t flood_scope[] = { 0x40 };
+#if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
+	struct lichen_app_identity_self self = {
+		.eui64 = { 0x02, 0x00, 0x00, 0xff, 0xfe, 0x00, 0x00, 0x03 },
+		.public_key = {
+			0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
+			0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
+			0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
+			0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
+		},
+		.display_name = "node-b",
+		.firmware_name = "fw-b",
+		.has_public_key = true,
+	};
+
+	zassert_ok(lichen_app_identity_set_self(&self));
+#endif
 
 	init_adapter(&adapter, &ctx, OUT_DEPTH);
 	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, app_start,

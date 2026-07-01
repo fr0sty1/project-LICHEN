@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-9c4y.19",
+  "title": "Publish gateway self identity before MeshCore BLE requires app identity",
+  "description": "Why this exists: the MeshCore adapter can project a LICHEN Ed25519 public key through SELF_INFO when CONFIG_LICHEN_APP_IDENTITY is enabled and a self identity has been published, but the gateway does not currently publish a production self identity from a loaded link context before MeshCore BLE starts. Current adapter policy therefore keeps missing identity as an explicit degraded zero-key SELF_INFO so app startup is not broken and no sendable synthetic key is invented. What needs to be done: add a production key publication path from gateway/L2/link identity into lichen_app_identity_set_self(), then decide whether MeshCore BLE product configuration should require/select LICHEN_APP_IDENTITY and add a native_sim gateway-path test proving APP_START returns a nonzero public key after publication while preserving deterministic degraded behavior before publication. Evidence: review found no production call to lichen_app_identity_set_self() or lichen_app_identity_set_self_from_link_ctx(); lichen_l2 exposes only ztest key loading today; gateway init only starts BLE and adapter.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T11:15:35.171415Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T11:20:54.771217Z",
+  "labels": [
+    "zephyr",
+    "meshcore",
+    "app-interface",
+    "identity",
+    "gateway",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c4y.19",
+      "depends_on_id": "project-LICHEN-9c4y",
+      "type": "parent-child",
+      "created_at": "2026-07-01T11:15:35.171905Z"
+    }
+  ]
+}

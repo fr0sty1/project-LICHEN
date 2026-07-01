@@ -11,6 +11,9 @@
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/util.h>
 
+#if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
+#include <lichen/app_identity/app_identity.h>
+#endif
 #include <lichen/meshcore/adapter.h>
 
 #define LICHEN_MESHCORE_SELF_INFO_LEN 64U
@@ -18,6 +21,17 @@
 #define LICHEN_MESHCORE_CHANNEL_INFO_LEN 50U
 #define LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN 11U
 #define LICHEN_MESHCORE_STATUS_ACK_LEN 7U
+#define LICHEN_MESHCORE_SELF_INFO_PUBLIC_KEY_OFF 4U
+#define LICHEN_MESHCORE_SELF_INFO_PUBLIC_KEY_LEN 32U
+#define LICHEN_MESHCORE_SELF_INFO_NAME_OFF 58U
+#define LICHEN_MESHCORE_SELF_INFO_NAME_LEN \
+	(LICHEN_MESHCORE_SELF_INFO_LEN - LICHEN_MESHCORE_SELF_INFO_NAME_OFF)
+#define LICHEN_MESHCORE_DEVICE_INFO_BUILD_OFF 8U
+#define LICHEN_MESHCORE_DEVICE_INFO_BUILD_LEN 12U
+#define LICHEN_MESHCORE_DEVICE_INFO_MODEL_OFF 20U
+#define LICHEN_MESHCORE_DEVICE_INFO_MODEL_LEN 40U
+#define LICHEN_MESHCORE_DEVICE_INFO_VERSION_OFF 60U
+#define LICHEN_MESHCORE_DEVICE_INFO_VERSION_LEN 20U
 
 BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD <=
 	     LICHEN_MESHCORE_FRAME_MAX,
@@ -54,6 +68,33 @@ static int enqueue_error(struct lichen_meshcore_adapter *adapter, uint8_t err)
 	return enqueue(adapter, out, (size_t)ret);
 }
 
+static void copy_fixed_string(uint8_t *dst, size_t dst_len,
+			      const char *fallback, const char *preferred)
+{
+	const char *src = (preferred != NULL && preferred[0] != '\0') ?
+			  preferred : fallback;
+	size_t len;
+
+	if (dst == NULL || dst_len == 0U || src == NULL) {
+		return;
+	}
+
+	len = strlen(src);
+	if (len > dst_len) {
+		len = dst_len;
+	}
+	memcpy(dst, src, len);
+}
+
+#if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
+static bool copy_self_identity(struct lichen_app_identity_self *identity)
+{
+	return identity != NULL &&
+	       lichen_app_identity_copy_self(identity) == 0 &&
+	       identity->has_public_key;
+}
+#endif
+
 static int enqueue_contacts_empty(struct lichen_meshcore_adapter *adapter)
 {
 	uint8_t start[5] = { LICHEN_MESHCORE_RESP_CONTACTS_START };
@@ -83,11 +124,24 @@ static int enqueue_self_info(struct lichen_meshcore_adapter *adapter)
 	uint8_t out[LICHEN_MESHCORE_SELF_INFO_LEN] = {
 		LICHEN_MESHCORE_RESP_SELF_INFO,
 	};
-	const char name[] = "LICHEN";
+	const char *name = "LICHEN";
+#if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
+	struct lichen_app_identity_self identity;
+#endif
 
 	out[1] = 0x01U; /* chat advert placeholder */
 	out[2] = 14U;   /* tx power dBm placeholder */
 	out[3] = 22U;   /* max tx power placeholder */
+#if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
+	if (copy_self_identity(&identity)) {
+		memcpy(&out[LICHEN_MESHCORE_SELF_INFO_PUBLIC_KEY_OFF],
+		       identity.public_key,
+		       LICHEN_MESHCORE_SELF_INFO_PUBLIC_KEY_LEN);
+		if (identity.display_name[0] != '\0') {
+			name = identity.display_name;
+		}
+	}
+#endif
 	out[44] = 0U;   /* multi ACKs */
 	out[45] = 0U;   /* location policy */
 	out[46] = 0U;   /* telemetry modes */
@@ -96,7 +150,8 @@ static int enqueue_self_info(struct lichen_meshcore_adapter *adapter)
 	sys_put_le32(125000U, &out[52]);
 	out[56] = 10U;  /* SF10 */
 	out[57] = 5U;   /* CR 4/5 representation */
-	memcpy(&out[58], name, sizeof(name) - 1U);
+	copy_fixed_string(&out[LICHEN_MESHCORE_SELF_INFO_NAME_OFF],
+			  LICHEN_MESHCORE_SELF_INFO_NAME_LEN, "LICHEN", name);
 	return enqueue(adapter, out, sizeof(out));
 }
 
@@ -105,16 +160,35 @@ static int enqueue_device_info(struct lichen_meshcore_adapter *adapter)
 	uint8_t out[LICHEN_MESHCORE_DEVICE_INFO_LEN] = {
 		LICHEN_MESHCORE_RESP_DEVICE_INFO,
 	};
-	const char build[] = "LICHEN";
-	const char model[] = "LICHEN";
-	const char version[] = "0.0.0";
+	const char *build = "LICHEN";
+	const char *model = "LICHEN";
+	const char *version = "0.0.0";
+#if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
+	struct lichen_app_identity_self identity;
+
+	if (copy_self_identity(&identity)) {
+		if (identity.firmware_name[0] != '\0') {
+			build = identity.firmware_name;
+			version = identity.firmware_name;
+		}
+		if (identity.display_name[0] != '\0') {
+			model = identity.display_name;
+		}
+	}
+#endif
 
 	out[1] = LICHEN_MESHCORE_APP_PROTOCOL_VERSION;
 	out[2] = 0U; /* max contacts / 2 */
 	out[3] = 1U; /* one placeholder public channel */
-	memcpy(&out[8], build, sizeof(build) - 1U);
-	memcpy(&out[20], model, sizeof(model) - 1U);
-	memcpy(&out[60], version, sizeof(version) - 1U);
+	copy_fixed_string(&out[LICHEN_MESHCORE_DEVICE_INFO_BUILD_OFF],
+			  LICHEN_MESHCORE_DEVICE_INFO_BUILD_LEN, "LICHEN",
+			  build);
+	copy_fixed_string(&out[LICHEN_MESHCORE_DEVICE_INFO_MODEL_OFF],
+			  LICHEN_MESHCORE_DEVICE_INFO_MODEL_LEN, "LICHEN",
+			  model);
+	copy_fixed_string(&out[LICHEN_MESHCORE_DEVICE_INFO_VERSION_OFF],
+			  LICHEN_MESHCORE_DEVICE_INFO_VERSION_LEN, "0.0.0",
+			  version);
 	out[80] = 0U; /* client repeat disabled */
 	out[81] = 0U; /* path hash disabled */
 	return enqueue(adapter, out, sizeof(out));
