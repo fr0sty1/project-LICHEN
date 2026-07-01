@@ -30,6 +30,7 @@
 
 #ifdef CONFIG_LORA_LICHEN_MESHCORE_BLE
 #include "ble_meshcore.h"
+#include "meshcore_adapter.h"
 #endif
 
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
@@ -466,6 +467,8 @@ int main(void)
 #ifdef CONFIG_LORA_LICHEN_MESHCORE_BLE
 	if (ble_meshcore_init() < 0) {
 		LOG_WRN("MeshCore BLE init failed — MeshCore app unavailable");
+	} else if (gateway_meshcore_adapter_init() < 0) {
+		LOG_WRN("MeshCore adapter init failed — MeshCore app unavailable");
 	}
 #endif
 

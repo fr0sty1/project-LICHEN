@@ -27,4 +27,12 @@ config LICHEN_MESHCORE_MAX_FRAME
 	  follows the firmware-side MeshCore frame budget; serial/TCP transports
 	  may use a smaller outer-framing budget.
 
+config LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD
+	int "Maximum MeshCore serial payload size"
+	default 172
+	range 1 176
+	help
+	  Maximum MeshCore inner payload size accepted inside the serial/TCP
+	  0x3c/0x3e + uint16_le length wrapper.
+
 endif # LICHEN_MESHCORE_CODEC

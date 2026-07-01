@@ -10,7 +10,8 @@ target_sources_ifdef(CONFIG_LORA_LICHEN_MESHTASTIC_BLE app PRIVATE
   src/inbound_events.c
   src/meshtastic_adapter.c)
 target_sources_ifdef(CONFIG_LORA_LICHEN_MESHCORE_BLE app PRIVATE
-  src/ble_meshcore.c)
+  src/ble_meshcore.c
+  src/meshcore_adapter.c)
 
 # Register the lichen_coap iterable section so the linker resolves
 # _coap_resource_lichen_coap_list_start / _list_end symbols.
