@@ -110,6 +110,17 @@ config LORA_LICHEN_MESHTASTIC_BLE_TO_RADIO_QUEUE_DEPTH
 	  Number of complete ToRadio protobuf values retained for gateway
 	  processing after app writes.
 
+config LORA_LICHEN_GATEWAY_MESSAGE_QUEUE_DEPTH
+	int "Gateway local message ingress queue depth"
+	depends on LORA_LICHEN_MESHTASTIC_BLE || LORA_LICHEN_MESHCORE_BLE
+	default 4
+	range 1 16
+	help
+	  Number of app-ingress text messages accepted from compatibility
+	  surfaces and retained for the normal LICHEN message sender. Until that
+	  sender is enabled, this bounded queue is the deterministic local
+	  contract and does not transmit on BLE or LoRa by itself.
+
 config LORA_LICHEN_GATEWAY_RPL_ROOT
 	bool "RPL root signalling"
 	depends on LICHEN_RPL

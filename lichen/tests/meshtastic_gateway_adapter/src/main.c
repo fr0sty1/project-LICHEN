@@ -19,16 +19,20 @@
 #include "fake_ble_meshtastic.h"
 #include "inbound_coap.h"
 #include "inbound_events.h"
+#include "message_contract.h"
 #include "meshtastic_adapter.h"
 
 #define COAP_TEST_BUF_SIZE 64
+#define TEST_MESSAGE_CONTRACT_QUEUE_DEPTH 3U
 
 static void reset_gateway(size_t from_radio_cap)
 {
 	gateway_inbound_events_test_reset();
 	lichen_app_identity_test_reset();
+	gateway_message_contract_test_reset();
 	lichen_app_interface_test_reset();
 	fake_ble_meshtastic_reset(from_radio_cap);
+	zassert_ok(gateway_message_contract_init());
 	gateway_meshtastic_adapter_test_reset();
 }
 
@@ -75,38 +79,6 @@ struct from_radio_view {
 	size_t payload_len;
 	uint32_t value;
 };
-
-struct submit_text_ctx {
-	uint32_t count;
-	uint32_t last_to;
-	uint8_t last_to_iid[8];
-	uint8_t payload[64];
-	size_t payload_len;
-	bool has_to_iid;
-};
-
-static int submit_text_sink(const struct lichen_app_text_event *event,
-			    void *user_data)
-{
-	struct submit_text_ctx *ctx = user_data;
-
-	if (event == NULL || ctx == NULL) {
-		return -EINVAL;
-	}
-	ctx->count++;
-	ctx->last_to = event->to;
-	ctx->has_to_iid = event->has_to_iid;
-	if (event->has_to_iid) {
-		memcpy(ctx->last_to_iid, event->to_iid,
-		       sizeof(ctx->last_to_iid));
-	}
-	ctx->payload_len = event->payload_len;
-	zassert_true(event->payload_len <= sizeof(ctx->payload));
-	if (event->payload_len > 0U) {
-		memcpy(ctx->payload, event->payload, event->payload_len);
-	}
-	return 0;
-}
 
 static int read_varint(const uint8_t *buf, size_t len, size_t *pos,
 		       uint32_t *value)
@@ -626,14 +598,10 @@ ZTEST(meshtastic_gateway_adapter,
 	const uint8_t expected_iid[] = {
 		0x00, 0xaa, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04
 	};
-	struct submit_text_ctx submit;
+	struct gateway_message_contract_text submitted;
 	struct lichen_app_identity_peer peer = {
 		.eui64 = { 0x02, 0xaa, 0, 0, 0x01, 0x02, 0x03, 0x04 },
 		.has_public_key = true,
-	};
-	const struct lichen_app_interface_sink sink = {
-		.submit_text = submit_text_sink,
-		.user_data = &submit,
 	};
 	uint8_t to_radio[128];
 	const uint8_t *from_radio;
@@ -642,10 +610,8 @@ ZTEST(meshtastic_gateway_adapter,
 	struct queue_status_view status;
 
 	reset_gateway(2U);
-	memset(&submit, 0, sizeof(submit));
 	memcpy(peer.public_key, peer_key, sizeof(peer.public_key));
 	zassert_ok(lichen_app_identity_upsert_peer(&peer));
-	zassert_ok(lichen_app_interface_register_sink(&sink, NULL));
 
 	to_radio_len = build_text_to_radio_to(to_radio, sizeof(to_radio),
 					      (const uint8_t *)"hello", 5U,
@@ -653,12 +619,14 @@ ZTEST(meshtastic_gateway_adapter,
 	zassert_ok(fake_ble_meshtastic_push_to_radio(to_radio, to_radio_len));
 
 	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
-	zassert_equal(submit.count, 1U);
-	zassert_equal(submit.last_to, UINT32_MAX);
-	zassert_true(submit.has_to_iid);
-	zassert_mem_equal(submit.last_to_iid, expected_iid,
+	zassert_ok(gateway_message_contract_pop_text(&submitted));
+	zassert_equal(submitted.to, UINT32_MAX);
+	zassert_true(submitted.has_to_iid);
+	zassert_mem_equal(submitted.to_iid, expected_iid,
 			  sizeof(expected_iid));
-	zassert_mem_equal(submit.payload, "hello", 5U);
+	zassert_mem_equal(submitted.payload, "hello", 5U);
+	zassert_equal(submitted.payload_len, 5U);
+	zassert_equal(gateway_message_contract_pop_text(&submitted), -ENOENT);
 	zassert_equal(fake_ble_meshtastic_from_radio_count(), 1U);
 	from_radio = fake_ble_meshtastic_from_radio(0U, &from_radio_len);
 	zassert_not_null(from_radio);
@@ -667,6 +635,75 @@ ZTEST(meshtastic_gateway_adapter,
 	zassert_equal(status.res, 0U);
 	zassert_true(status.has_mesh_packet_id);
 	zassert_equal(status.mesh_packet_id, 0x12345678U);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_process_once_direct_text_backpressure_is_unsupported)
+{
+	static const uint32_t accepted_ids[] = {
+		0x12345678U, 0x12345679U, 0x1234567aU
+	};
+	BUILD_ASSERT(ARRAY_SIZE(accepted_ids) == TEST_MESSAGE_CONTRACT_QUEUE_DEPTH);
+	static const uint8_t peer_key[LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN] = {
+		1, 2, 3, 4
+	};
+	struct gateway_message_contract_text submitted;
+	struct lichen_app_identity_peer peer = {
+		.eui64 = { 0x02, 0xaa, 0, 0, 0x01, 0x02, 0x03, 0x04 },
+		.has_public_key = true,
+	};
+	uint8_t to_radio[128];
+	const uint8_t *from_radio;
+	size_t to_radio_len;
+	size_t from_radio_len;
+	struct queue_status_view status;
+
+	reset_gateway(ARRAY_SIZE(accepted_ids) + 2U);
+	memcpy(peer.public_key, peer_key, sizeof(peer.public_key));
+	zassert_ok(lichen_app_identity_upsert_peer(&peer));
+
+	for (size_t i = 0U; i < ARRAY_SIZE(accepted_ids); i++) {
+		to_radio_len = build_text_to_radio_to(to_radio, sizeof(to_radio),
+						      (const uint8_t *)"one",
+						      3U, 0x01020304U,
+						      accepted_ids[i]);
+		zassert_ok(fake_ble_meshtastic_push_to_radio(to_radio,
+							     to_radio_len));
+		zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+	}
+
+	to_radio_len = build_text_to_radio_to(to_radio, sizeof(to_radio),
+					      (const uint8_t *)"two", 3U,
+					      0x01020304U, 0x1234567cU);
+	zassert_ok(fake_ble_meshtastic_push_to_radio(to_radio, to_radio_len));
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+
+	for (size_t i = 0U; i < ARRAY_SIZE(accepted_ids); i++) {
+		zassert_ok(gateway_message_contract_pop_text(&submitted));
+		zassert_mem_equal(submitted.payload, "one", 3U);
+	}
+	zassert_equal(gateway_message_contract_pop_text(&submitted), -ENOENT);
+
+	zassert_equal(fake_ble_meshtastic_from_radio_count(),
+		      ARRAY_SIZE(accepted_ids) + 1U);
+	for (size_t i = 0U; i < ARRAY_SIZE(accepted_ids); i++) {
+		from_radio = fake_ble_meshtastic_from_radio(i, &from_radio_len);
+		zassert_not_null(from_radio);
+		decode_queue_status(from_radio, from_radio_len, &status);
+		zassert_true(status.has_res);
+		zassert_equal(status.res, 0U);
+		zassert_true(status.has_mesh_packet_id);
+		zassert_equal(status.mesh_packet_id, accepted_ids[i]);
+	}
+
+	from_radio = fake_ble_meshtastic_from_radio(ARRAY_SIZE(accepted_ids),
+						    &from_radio_len);
+	zassert_not_null(from_radio);
+	decode_queue_status(from_radio, from_radio_len, &status);
+	zassert_true(status.has_res);
+	zassert_equal(status.res, 2U);
+	zassert_true(status.has_mesh_packet_id);
+	zassert_equal(status.mesh_packet_id, 0x1234567cU);
 }
 
 ZTEST(meshtastic_gateway_adapter, test_process_once_without_ble_write_is_idle)

@@ -25,11 +25,13 @@
 
 #ifdef CONFIG_LORA_LICHEN_MESHTASTIC_BLE
 #include "ble_meshtastic.h"
+#include "message_contract.h"
 #include "meshtastic_adapter.h"
 #endif
 
 #ifdef CONFIG_LORA_LICHEN_MESHCORE_BLE
 #include "ble_meshcore.h"
+#include "message_contract.h"
 #include "meshcore_adapter.h"
 #endif
 
@@ -558,7 +560,9 @@ int main(void)
 
 	/* Meshtastic-compatible BLE GATT — optional app compatibility surface */
 #ifdef CONFIG_LORA_LICHEN_MESHTASTIC_BLE
-	if (ble_meshtastic_init() < 0) {
+	if (gateway_message_contract_init() < 0) {
+		LOG_WRN("Message contract init failed — Meshtastic app unavailable");
+	} else if (ble_meshtastic_init() < 0) {
 		LOG_WRN("Meshtastic BLE init failed — Meshtastic app unavailable");
 	} else if (gateway_meshtastic_adapter_init() < 0) {
 		LOG_WRN("Meshtastic adapter init failed — Meshtastic app unavailable");
@@ -567,7 +571,9 @@ int main(void)
 
 	/* MeshCore-compatible BLE GATT — local app compatibility only */
 #ifdef CONFIG_LORA_LICHEN_MESHCORE_BLE
-	if (ble_meshcore_init() < 0) {
+	if (gateway_message_contract_init() < 0) {
+		LOG_WRN("Message contract init failed — MeshCore app unavailable");
+	} else if (ble_meshcore_init() < 0) {
 		LOG_WRN("MeshCore BLE init failed — MeshCore app unavailable");
 	} else if (gateway_meshcore_adapter_init() < 0) {
 		LOG_WRN("MeshCore adapter init failed — MeshCore app unavailable");

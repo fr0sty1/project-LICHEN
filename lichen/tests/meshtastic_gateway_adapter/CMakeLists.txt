@@ -9,10 +9,15 @@ target_include_directories(app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src
 )
 
+target_compile_definitions(app PRIVATE
+  CONFIG_LORA_LICHEN_GATEWAY_MESSAGE_QUEUE_DEPTH=3
+)
+
 target_sources(app PRIVATE
   src/fake_ble_meshtastic.c
   src/main.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/inbound_coap.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/inbound_events.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/message_contract.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/meshtastic_adapter.c
 )
