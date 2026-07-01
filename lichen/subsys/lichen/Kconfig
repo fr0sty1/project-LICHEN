@@ -11,6 +11,7 @@ menuconfig LICHEN
 
 if LICHEN
 
+rsource "app_identity/Kconfig"
 rsource "app_interface/Kconfig"
 rsource "coap/Kconfig"
 rsource "crypto/Kconfig"

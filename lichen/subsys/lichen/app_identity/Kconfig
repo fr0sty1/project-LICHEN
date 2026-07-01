@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+menuconfig LICHEN_APP_IDENTITY
+	bool "LICHEN local app identity provider"
+	depends on LICHEN
+	depends on LICHEN_LINK
+	help
+	  Enable a copy-only public identity provider for local app
+	  compatibility surfaces. This exposes self EUI/IID/public key and a
+	  bounded public peer table without exposing private key material.
+
+if LICHEN_APP_IDENTITY
+
+config LICHEN_APP_IDENTITY_MAX_PEERS
+	int "Maximum app-visible peer identities"
+	default 8
+	range 1 32
+	help
+	  Maximum number of public peer identity records retained for local app
+	  compatibility surfaces.
+
+config LICHEN_APP_IDENTITY_TEST_HOOKS
+	bool "LICHEN app identity ztest hooks"
+	depends on ZTEST
+	default n
+	help
+	  Enable reset hooks used only by native_sim app-identity tests.
+
+endif # LICHEN_APP_IDENTITY
