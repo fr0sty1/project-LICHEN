@@ -4,6 +4,16 @@
 #ifndef GATEWAY_MESHTASTIC_ADAPTER_H_
 #define GATEWAY_MESHTASTIC_ADAPTER_H_
 
+#include <lichen/meshtastic/adapter.h>
+
 int gateway_meshtastic_adapter_init(void);
+int gateway_meshtastic_adapter_emit_text(
+	const struct lichen_meshtastic_incoming_text *event);
+int gateway_meshtastic_adapter_emit_status(
+	const struct lichen_meshtastic_incoming_status *event);
+
+#ifdef CONFIG_ZTEST
+void gateway_meshtastic_adapter_test_reset(void);
+#endif
 
 #endif /* GATEWAY_MESHTASTIC_ADAPTER_H_ */

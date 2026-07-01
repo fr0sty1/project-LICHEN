@@ -1,0 +1,10 @@
+common:
+  tags:
+    - lichen
+    - meshtastic
+    - gateway
+tests:
+  net.lichen.meshtastic_gateway_adapter:
+    platform_allow:
+      - qemu_x86
+      - native_sim

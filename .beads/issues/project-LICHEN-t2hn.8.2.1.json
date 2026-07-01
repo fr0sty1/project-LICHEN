@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-t2hn.8.2.1",
+  "title": "Define LICHEN app-level inbound event source for Meshtastic gateway",
+  "description": "The gateway now exposes and tests gateway_meshtastic_adapter_emit_text/status wrappers, but no production LICHEN app-level source currently calls them. Current L2 RX terminates at net_recv_data(), and the native message_received path is only the non-L2 LoRa compatibility path, so there is no semantic inbound message/status callback that can be wired without defining a source contract. Define/implement the no-hardware event source for inbound LICHEN messages and status, connect it to gateway_meshtastic_adapter_emit_text/status, and add qemu/native_sim tests proving the production path. Physical radio validation should remain a separate child if needed.",
+  "acceptance_criteria": "A production no-hardware LICHEN message/status source invokes the Meshtastic gateway emit wrappers; qemu/native_sim tests prove text and status reach BLE FromRadio via that path; any physical-radio validation is split to a hardware child Bead.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T05:56:45.258745Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T05:56:45.259595Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "gateway",
+    "messaging",
+    "app-interface",
+    "status",
+    "test-harness",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.8.2.1",
+      "depends_on_id": "project-LICHEN-t2hn.8.2",
+      "type": "parent-child",
+      "created_at": "2026-07-01T05:56:45.259595Z"
+    }
+  ]
+}

@@ -277,6 +277,16 @@ int ble_meshtastic_test_write_to_radio_conn(const uint8_t *buf, size_t len,
 
 	return to_radio_write(conn, NULL, buf, (uint16_t)len, 0U, 0U);
 }
+
+void ble_meshtastic_test_connect(void)
+{
+	static uint8_t test_conn;
+
+	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+	s_conn = (struct bt_conn *)&test_conn;
+	session_epoch_bump_locked();
+	k_mutex_unlock(&s_conn_mutex);
+}
 #endif
 
 static ssize_t from_num_read(struct bt_conn *conn,
@@ -527,6 +537,10 @@ int ble_meshtastic_enqueue_from_radio_if_session(uint32_t session_epoch,
 		k_mutex_unlock(&s_conn_mutex);
 		return -ESTALE;
 	}
+	if (s_conn == NULL) {
+		k_mutex_unlock(&s_conn_mutex);
+		return -ENOTCONN;
+	}
 
 	ret = enqueue_from_radio_locked(from_radio, len);
 	k_mutex_unlock(&s_conn_mutex);
@@ -581,6 +595,17 @@ uint32_t ble_meshtastic_session_epoch(void)
 	k_mutex_unlock(&s_conn_mutex);
 
 	return epoch;
+}
+
+bool ble_meshtastic_session_active(void)
+{
+	bool active;
+
+	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+	active = (s_conn != NULL);
+	k_mutex_unlock(&s_conn_mutex);
+
+	return active;
 }
 
 bool ble_meshtastic_session_epoch_current(uint32_t session_epoch)

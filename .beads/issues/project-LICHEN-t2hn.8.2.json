@@ -2,6 +2,7 @@
   "id": "project-LICHEN-t2hn.8.2",
   "title": "Wire LICHEN inbound events into Meshtastic adapter",
   "description": "Why this exists: project-LICHEN-t2hn.8 now has an adapter text-emission primitive, but the gateway does not yet consume real LICHEN-native/L2 message or status events and pass them to the Meshtastic BLE adapter. What needs to be done: define the no-hardware event source seam, connect incoming LICHEN message/status events to lichen_meshtastic_adapter_emit_* APIs, preserve BLE session/queue behavior, and add qemu/native_sim tests or a simulator harness proving the gateway path.",
+  "notes": "Partial no-hardware gateway seam implemented: added gateway_meshtastic_adapter_emit_text/status wrappers around the shared Meshtastic adapter, serialized adapter init with s_init_mutex, serialized adapter dispatch/emission with s_adapter_mutex, added active BLE session check before enqueue, and added ble_meshtastic_session_active(). Added meshtastic_gateway_adapter qemu ztest with fake BLE transport covering text/status FromRadio encoding, text/status backpressure propagation, inactive BLE rejection, and NULL event rejection. Test evidence 2026-07-01: git diff --check PASS; west build -p always -b qemu_x86 lichen/tests/meshtastic_gateway_adapter -d build/meshtastic_gateway_adapter_qemu_t2hn82 built RAM 188472 B/31 MB and emitted PROJECT EXECUTION SUCCESSFUL with ztest PASS 6/6, then QEMU wrapper was terminated manually because it did not exit after success; west build -p always -b qemu_x86 lichen/apps/gateway -d build/gateway_qemu_t2hn82 PASS, RAM 235676 B/31 MB. Remaining blocker: production LICHEN semantic source is not present; filed child project-LICHEN-t2hn.8.2.1 for defining/implementing that source and wiring it to these wrappers.\nCode review P1 fixed 2026-07-01: three independent reviewers found that production ble_meshtastic_enqueue_from_radio_if_session() accepted a matching session epoch even when no BLE connection was active, so a disconnect between gateway wrapper active-check and epoch snapshot could enqueue FromRadio for a disconnected session. Fixed production enqueue to require s_conn != NULL under s_conn_mutex before touching the FromRadio queue. Added fake_ble_meshtastic_disconnect_on_next_enqueue() and ztest test_emit_rejects_disconnect_during_enqueue to cover disconnect during emission. Re-test evidence: git diff --check PASS; west build -p always -b qemu_x86 lichen/tests/meshtastic_gateway_adapter -d build/meshtastic_gateway_adapter_qemu_t2hn82 PASS, RAM 188472 B/31 MB, ztest PASS 7/7 with PROJECT EXECUTION SUCCESSFUL; command used timeout and exited 124 after success because QEMU wrapper did not auto-exit. west build -p always -b qemu_x86 lichen/apps/gateway -d build/gateway_qemu_t2hn82 PASS, RAM 235676 B/31 MB.\nAdditional review/test evidence 2026-07-01: post-fix reviewers found two remaining issues: existing meshtastic_ble native_sim tests needed an active session for the now-active-only ble_meshtastic_enqueue_from_radio_if_session() success path, and fake_ble_meshtastic_session_epoch_current() was stricter than production. Fixed by adding CONFIG_ZTEST-only ble_meshtastic_test_connect(), updating meshtastic_ble guarded-enqueue tests to activate a synthetic session, and aligning the gateway fake epoch-current helper with production epoch-equality semantics. Local re-test: git diff --check PASS; qemu_x86 meshtastic_gateway_adapter built RAM 188472 B/31 MB and ztest PASS 7/7 with PROJECT EXECUTION SUCCESSFUL before timeout killed non-exiting QEMU wrapper; qemu_x86 gateway build PASS RAM 235676 B/31 MB. EC2 validation: launched i-01e78ac1ec8adf4c4 in us-east-2a with EBS vol-0875d0df8bdf82a58, bootstrap-host completed, clean validation worktree used. native_sim meshtastic_ble PASS 8/8 with expected Bluetooth device missing warning. native_sim meshtastic_gateway_adapter could not be validated on EC2 because the clean worktree still resolved LICHEN module includes through the dirty cached primary workspace and saw stale meshtastic adapter headers; filed tooling follow-up project-LICHEN-7el3.\nFinal validation update 2026-07-01: after adding ble_meshtastic_test_connect() and aligning fake epoch-current behavior, local git diff --check PASS; local qemu_x86 meshtastic_gateway_adapter PASS 7/7, RAM 188472 B/31 MB, QEMU wrapper timed out after PROJECT EXECUTION SUCCESSFUL as expected; local qemu_x86 gateway build PASS, RAM 235676 B/31 MB. EC2 cleanup completed: instance i-01e78ac1ec8adf4c4 terminated, security group sg-012e6001e50923a22 deleted, EBS vol-0875d0df8bdf82a58 detached and available.\nFinal code review 2026-07-01: three independent post-fix reviewers (Hypatia, Plato, Carson) reported no P0/P1/P2 findings. They confirmed disconnected enqueue is fixed at production boundary, lock order is consistent, CONFIG_ZTEST ble_meshtastic_test_connect() is acceptable for current tests, fake gateway BLE contract matches production epoch-current semantics, and separate blockers project-LICHEN-t2hn.8.2.1 and project-LICHEN-7el3 adequately track deferred source-wiring/tooling issues.",
   "status": "in_progress",
   "priority": 0,
   "issue_type": "task",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-01T05:21:00.772223Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-01T05:42:11.062875Z",
+  "updated_at": "2026-07-01T06:13:41.398916Z",
   "labels": [
     "zephyr",
     "meshtastic",
@@ -25,6 +26,12 @@
       "depends_on_id": "project-LICHEN-t2hn.8",
       "type": "parent-child",
       "created_at": "2026-07-01T05:21:00.772716Z"
+    },
+    {
+      "issue_id": "project-LICHEN-t2hn.8.2",
+      "depends_on_id": "project-LICHEN-t2hn.8.2.1",
+      "type": "blocks",
+      "created_at": "2026-07-01T05:56:55.230037Z"
     }
   ]
 }

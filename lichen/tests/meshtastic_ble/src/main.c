@@ -112,6 +112,7 @@ ZTEST(meshtastic_ble, test_session_epoch_guard_drops_stale_response)
 	uint32_t epoch;
 
 	ble_meshtastic_reset_session();
+	ble_meshtastic_test_connect();
 	epoch = ble_meshtastic_session_epoch();
 	zassert_true(ble_meshtastic_session_epoch_current(epoch));
 
@@ -185,6 +186,7 @@ ZTEST(meshtastic_ble, test_reset_session_if_epoch_preserves_new_session)
 	ble_meshtastic_reset_session();
 	old_epoch = ble_meshtastic_session_epoch();
 	ble_meshtastic_reset_session();
+	ble_meshtastic_test_connect();
 	new_epoch = ble_meshtastic_session_epoch();
 
 	zassert_not_equal(old_epoch, new_epoch);

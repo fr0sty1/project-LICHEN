@@ -38,6 +38,7 @@ void ble_meshtastic_reset_session(void);
 int ble_meshtastic_reset_session_if_epoch(uint32_t session_epoch);
 
 uint32_t ble_meshtastic_session_epoch(void);
+bool ble_meshtastic_session_active(void);
 bool ble_meshtastic_session_epoch_current(uint32_t session_epoch);
 int ble_meshtastic_enqueue_from_radio_if_session(uint32_t session_epoch,
 						 const uint8_t *from_radio,
@@ -52,6 +53,7 @@ int ble_meshtastic_test_read_from_radio(uint8_t *buf, size_t len,
 int ble_meshtastic_test_write_to_radio(const uint8_t *buf, size_t len);
 int ble_meshtastic_test_write_to_radio_conn(const uint8_t *buf, size_t len,
 					    void *conn);
+void ble_meshtastic_test_connect(void);
 #endif
 
 #endif /* BLE_MESHTASTIC_H_ */

@@ -33,12 +33,35 @@ static struct lichen_meshtastic_adapter s_adapter;
 static uint8_t s_to_radio[LICHEN_MESHTASTIC_TO_RADIO_MAX];
 static struct k_thread s_thread;
 static K_THREAD_STACK_DEFINE(s_stack, ADAPTER_STACK_SIZE);
+static K_MUTEX_DEFINE(s_init_mutex);
+static K_MUTEX_DEFINE(s_adapter_mutex);
 static bool s_started;
 static uint32_t s_dispatch_epoch;
 static char s_long_name[32];
 static char s_pio_env[48];
 static char s_firmware_version[48];
 static uint8_t s_device_id[8];
+
+static int enqueue_from_radio(const uint8_t *from_radio, size_t len,
+			      void *user_data);
+static int handle_text(
+	const struct lichen_meshtastic_adapter_packet_info *packet,
+	void *user_data);
+static uint32_t queue_free(void *user_data);
+static int get_local_info(struct lichen_meshtastic_local_info *info,
+			  void *user_data);
+
+static struct lichen_meshtastic_adapter_ops adapter_ops(void)
+{
+	return (struct lichen_meshtastic_adapter_ops){
+		.enqueue_from_radio = enqueue_from_radio,
+		.handle_text = handle_text,
+		.queue_free = queue_free,
+		.get_local_info = get_local_info,
+		.queue_maxlen = ble_meshtastic_from_radio_capacity(),
+		.heartbeat_queue_status = true,
+	};
+}
 
 static int enqueue_from_radio(const uint8_t *from_radio, size_t len, void *user_data)
 {
@@ -158,9 +181,11 @@ static void adapter_thread(void *a, void *b, void *c)
 			continue;
 		}
 
+		k_mutex_lock(&s_adapter_mutex, K_FOREVER);
 		s_dispatch_epoch = session_epoch;
 		if (!ble_meshtastic_session_epoch_current(session_epoch)) {
 			lichen_meshtastic_adapter_reset(&s_adapter);
+			k_mutex_unlock(&s_adapter_mutex);
 			continue;
 		}
 		ret = lichen_meshtastic_adapter_process_raw(&s_adapter, s_to_radio,
@@ -173,31 +198,91 @@ static void adapter_thread(void *a, void *b, void *c)
 			(void)ble_meshtastic_reset_session_if_epoch(session_epoch);
 			lichen_meshtastic_adapter_reset(&s_adapter);
 		}
+		k_mutex_unlock(&s_adapter_mutex);
 	}
 }
 
 int gateway_meshtastic_adapter_init(void)
 {
-	struct lichen_meshtastic_adapter_ops ops = {
-		.enqueue_from_radio = enqueue_from_radio,
-		.handle_text = handle_text,
-		.queue_free = queue_free,
-		.get_local_info = get_local_info,
-		.queue_maxlen = ble_meshtastic_from_radio_capacity(),
-		.heartbeat_queue_status = true,
-	};
+	struct lichen_meshtastic_adapter_ops ops = adapter_ops();
 
+	k_mutex_lock(&s_init_mutex, K_FOREVER);
 	if (s_started) {
+		k_mutex_unlock(&s_init_mutex);
 		return 0;
 	}
 
+	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
 	lichen_meshtastic_adapter_init(&s_adapter, &ops);
+	k_mutex_unlock(&s_adapter_mutex);
 	k_thread_create(&s_thread, s_stack, K_THREAD_STACK_SIZEOF(s_stack),
 			adapter_thread, NULL, NULL, NULL,
 			ADAPTER_PRIORITY, 0, K_NO_WAIT);
 	k_thread_name_set(&s_thread, "meshapp");
 	s_started = true;
+	k_mutex_unlock(&s_init_mutex);
 	LOG_INF("Meshtastic app adapter ready");
 
 	return 0;
+}
+
+int gateway_meshtastic_adapter_emit_text(
+	const struct lichen_meshtastic_incoming_text *event)
+{
+	int ret;
+
+	if (event == NULL) {
+		return -EINVAL;
+	}
+	ret = gateway_meshtastic_adapter_init();
+	if (ret < 0) {
+		return ret;
+	}
+	if (!ble_meshtastic_session_active()) {
+		return -ENOTCONN;
+	}
+
+	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
+	s_dispatch_epoch = ble_meshtastic_session_epoch();
+	ret = lichen_meshtastic_adapter_emit_text(&s_adapter, event);
+	k_mutex_unlock(&s_adapter_mutex);
+
+	return ret;
+}
+
+#ifdef CONFIG_ZTEST
+void gateway_meshtastic_adapter_test_reset(void)
+{
+	struct lichen_meshtastic_adapter_ops ops = adapter_ops();
+
+	(void)gateway_meshtastic_adapter_init();
+	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
+	s_dispatch_epoch = ble_meshtastic_session_epoch();
+	lichen_meshtastic_adapter_init(&s_adapter, &ops);
+	k_mutex_unlock(&s_adapter_mutex);
+}
+#endif
+
+int gateway_meshtastic_adapter_emit_status(
+	const struct lichen_meshtastic_incoming_status *event)
+{
+	int ret;
+
+	if (event == NULL) {
+		return -EINVAL;
+	}
+	ret = gateway_meshtastic_adapter_init();
+	if (ret < 0) {
+		return ret;
+	}
+	if (!ble_meshtastic_session_active()) {
+		return -ENOTCONN;
+	}
+
+	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
+	s_dispatch_epoch = ble_meshtastic_session_epoch();
+	ret = lichen_meshtastic_adapter_emit_status(&s_adapter, event);
+	k_mutex_unlock(&s_adapter_mutex);
+
+	return ret;
 }
