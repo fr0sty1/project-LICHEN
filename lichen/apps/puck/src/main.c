@@ -19,6 +19,12 @@
 #include <lichen/native.h>
 #endif
 
+/* Stall-marker uses the nRF GPREGRET2 retention register (nRF boards only). */
+#if defined(CONFIG_SOC_FAMILY_NORDIC_NRF)
+#include <nrfx_power.h>
+#define STALL_MARKER_HAVE 1
+#endif
+
 LOG_MODULE_REGISTER(lichen_puck, LOG_LEVEL_INF);
 
 /* LoRa parameters per LICHEN spec: SF10 / 125 kHz / CR4-5 @ 868 MHz (EU). */
@@ -118,6 +124,28 @@ static int lora_set_mode(const struct device *dev, bool tx)
 	return lora_config(dev, &cfg);
 }
 
+/* Main-loop phase marker (retained across watchdog reset — see stall_report).
+ *
+ * Stored in the GPREGRET2 retention register, NOT RAM: MCUboot runs between the
+ * watchdog reset and the app and clobbers .noinit RAM, but leaves GPREGRET2
+ * alone. GPREGRET (reg 0) is reserved for the DFU-touch magic. High nibble
+ * 0xA0 = valid marker, low nibble = phase. */
+enum stall_phase {
+	PH_BOOT = 0, PH_RECV, PH_RX_FORWARD, PH_CFG_TX,
+	PH_TX, PH_CFG_RX, PH_NODE_INFO, PH_NPHASES,
+};
+
+#define STALL_GPREG_MAGIC 0xA0u
+
+static inline void set_phase(enum stall_phase ph)
+{
+#if defined(STALL_MARKER_HAVE)
+	NRF_POWER->GPREGRET2 = STALL_GPREG_MAGIC | ((uint32_t)ph & 0x0Fu);
+#else
+	ARG_UNUSED(ph);
+#endif
+}
+
 static void send_beacon(const struct device *dev)
 {
 	/* Build beacon header */
@@ -137,10 +165,12 @@ static void send_beacon(const struct device *dev)
 	s_beacon[7] = (uint8_t)((mic >> 16) & 0xFF);
 	s_beacon[8] = (uint8_t)((mic >> 24) & 0xFF);
 
+	set_phase(PH_CFG_TX);
 	if (lora_set_mode(dev, true) < 0) {
 		LOG_ERR("TX config failed");
 		return;
 	}
+	set_phase(PH_TX);
 	int ret = lora_send(dev, s_beacon, sizeof(s_beacon));
 	if (ret < 0) {
 		LOG_ERR("beacon TX failed: %d", ret);
@@ -150,6 +180,7 @@ static void send_beacon(const struct device *dev)
 		s_radio_stats.tx_pkts++;
 #endif
 	}
+	set_phase(PH_CFG_RX);
 	lora_set_mode(dev, false);
 }
 
@@ -164,10 +195,15 @@ static void send_beacon(const struct device *dev)
  *
  * Instead we track a "progress" heartbeat that the radio driver bumps from
  * inside its poll loops (via the weak lichen_radio_progress() hook it calls),
- * plus the main loop each iteration. A dedicated feeder thread feeds the SoC
- * watchdog only while the heartbeat is fresh. Normal multi-second RX/TX waits
- * keep bumping the heartbeat so they don't trip it; a genuinely stuck SPI
- * transfer stops the bumps and the watchdog resets within a few seconds.
+ * plus the main loop each iteration. A k_timer feeds the SoC watchdog only
+ * while the heartbeat is fresh. Normal multi-second RX/TX waits keep bumping
+ * the heartbeat so they don't trip it; a genuine stall stops the bumps and the
+ * watchdog resets within a few seconds.
+ *
+ * The feeder runs from a k_timer (system-clock ISR), NOT a thread: under heavy
+ * USB-CDC contention the CDC work queue can starve a cooperative feeder thread,
+ * which would withhold the feed and reset the SoC even though main is fine. A
+ * timer ISR cannot be starved by threads.
  * -------------------------------------------------------------------------- */
 
 /* WDT_STALL_MS must exceed the longest legitimately-blocking main-loop step
@@ -176,7 +212,7 @@ static void send_beacon(const struct device *dev)
  * (< WDT_STALL_MS) so a normal RX never looks like a stall. */
 #define WDT_TIMEOUT_MS   4000   /* SoC reset if not fed for this long */
 #define WDT_STALL_MS     4000   /* feeder withholds the feed after no progress this long */
-#define WDT_FEED_MS      1000   /* feeder cadence */
+#define WDT_FEED_MS      500    /* feeder cadence */
 #define RX_WINDOW_MS     2000   /* per-iteration RX listen window */
 
 static const struct device *s_wdt;
@@ -190,22 +226,19 @@ void lichen_radio_progress(void)
 	atomic_set(&s_last_progress_ms, (atomic_val_t)k_uptime_get());
 }
 
-static void wdt_feeder_fn(void *p1, void *p2, void *p3)
+/* Runs in system-clock ISR context — feed only while progress is fresh. */
+static void wdt_feed_timer_fn(struct k_timer *t)
 {
-	ARG_UNUSED(p1); ARG_UNUSED(p2); ARG_UNUSED(p3);
-	while (1) {
-		k_msleep(WDT_FEED_MS);
-		int64_t age = k_uptime_get() -
-			      (int64_t)atomic_get(&s_last_progress_ms);
-		if (s_wdt && age < WDT_STALL_MS) {
-			wdt_feed(s_wdt, s_wdt_channel);
-		}
-		/* else: no forward progress → withhold feed → SoC resets */
+	ARG_UNUSED(t);
+	int64_t age = k_uptime_get() - (int64_t)atomic_get(&s_last_progress_ms);
+
+	if (s_wdt && age < WDT_STALL_MS) {
+		wdt_feed(s_wdt, s_wdt_channel);
 	}
+	/* else: no forward progress → withhold feed → SoC resets */
 }
 
-K_THREAD_STACK_DEFINE(s_wdt_feeder_stack, 512);
-static struct k_thread s_wdt_feeder;
+static K_TIMER_DEFINE(s_wdt_timer, wdt_feed_timer_fn, NULL);
 
 static void wdt_init(void)
 {
@@ -237,17 +270,52 @@ static void wdt_init(void)
 		return;
 	}
 
-	k_thread_create(&s_wdt_feeder, s_wdt_feeder_stack,
-			K_THREAD_STACK_SIZEOF(s_wdt_feeder_stack),
-			wdt_feeder_fn, NULL, NULL, NULL,
-			K_PRIO_COOP(1), 0, K_NO_WAIT);
-	k_thread_name_set(&s_wdt_feeder, "wdt_feeder");
-	LOG_INF("watchdog armed (%d ms, stall %d ms)", WDT_TIMEOUT_MS, WDT_STALL_MS);
+	k_timer_start(&s_wdt_timer, K_MSEC(WDT_FEED_MS), K_MSEC(WDT_FEED_MS));
+	LOG_INF("watchdog armed (%d ms, stall %d ms, timer-fed)",
+		WDT_TIMEOUT_MS, WDT_STALL_MS);
 }
 
 static inline void wdt_kick(void)
 {
 	lichen_radio_progress();
+}
+
+/* --------------------------------------------------------------------------
+ * Stall marker — retained across a warm (watchdog) reset
+ *
+ * The heartbeat watchdog resets the SoC when main stalls, but the deferred log
+ * that would say *where* is lost in the reset. set_phase() records the current
+ * main-loop phase in a .noinit variable (RAM survives a watchdog reset on
+ * nRF52); stall_report() prints it on the next boot. (Types/setter are defined
+ * earlier, before send_beacon, since it uses them.)
+ * -------------------------------------------------------------------------- */
+
+static void stall_report(void)
+{
+#if defined(STALL_MARKER_HAVE)
+	static const char *const names[PH_NPHASES] = {
+		"boot", "recv", "rx_forward", "cfg_tx",
+		"tx", "cfg_rx", "node_info",
+	};
+	uint32_t g  = NRF_POWER->GPREGRET2;
+	uint32_t rr = NRF_POWER->RESETREAS;
+
+	NRF_POWER->RESETREAS = rr; /* write-1-to-clear so next boot is fresh */
+
+	uint32_t ph = g & 0x0Fu;
+	const char *phn = ((g & 0xF0u) == STALL_GPREG_MAGIC) && ph < PH_NPHASES
+			  ? names[ph] : "n/a";
+
+	/* RESETREAS: bit1=DOG(watchdog) bit2=SREQ(soft) bit0=pin bit3=lockup */
+	LOG_WRN("*** boot: RESETREAS=0x%08x %s GPREGRET2=0x%02x phase=%s ***",
+		rr,
+		(rr & BIT(1)) ? "WATCHDOG" :
+		(rr & BIT(2)) ? "soft" :
+		(rr & BIT(3)) ? "LOCKUP" :
+		(rr & BIT(0)) ? "pin" : "poweron/other",
+		g, phn);
+	set_phase(PH_BOOT);
+#endif
 }
 
 /* --------------------------------------------------------------------------
@@ -257,6 +325,7 @@ static inline void wdt_kick(void)
 int main(void)
 {
 	LOG_INF("LICHEN puck starting");
+	stall_report();
 
 	/* Enable USB early so CDC-ACM enumerates before peripheral drivers
 	 * start — guarantees serial log visibility even if LoRa/GNSS fails. */
@@ -310,6 +379,7 @@ int main(void)
 	while (1) {
 		wdt_kick();
 
+		set_phase(PH_RECV);
 		int len = lora_recv(lora_dev, buf, sizeof(buf),
 				    K_MSEC(RX_WINDOW_MS), &rssi, &snr);
 
@@ -322,6 +392,7 @@ int main(void)
 			/* Forward to connected host.
 			 * src_iid is unknown at this layer — send zeros. */
 			static const uint8_t unknown_iid[8];
+			set_phase(PH_RX_FORWARD);
 			lichen_native_send_message_received(unknown_iid,
 							    buf, len,
 							    rssi, snr);
@@ -338,6 +409,7 @@ int main(void)
 		/* Send node_info every 60s */
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 		if (now - last_info_ms >= 60000) {
+			set_phase(PH_NODE_INFO);
 			lichen_native_send_node_info(
 				"t1000-puck",
 				"lichen-fw-0.1.0",

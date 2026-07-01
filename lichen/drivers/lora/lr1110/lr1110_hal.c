@@ -17,7 +17,6 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/atomic.h>
-#include <hal/nrf_spim.h>
 
 #include <errno.h>
 
@@ -29,47 +28,20 @@ LOG_MODULE_DECLARE(lr1110, CONFIG_LORA_LOG_LEVEL);
 extern const struct spi_dt_spec  lr1110_bus;
 extern const struct gpio_dt_spec lr1110_gpio_busy;
 
-/* The LR1110 is on spi2 == SPIM2. USB-CDC EasyDMA can contend with the SPIM
- * EasyDMA and wedge a transfer so the blocking SPI API waits forever, hanging
- * the main thread. Do transfers via the async API bounded by a timeout; if a
- * transfer stalls, trigger the SPIM STOP task so the driver's transaction
- * completes and releases the bus, then return an error instead of blocking. */
-#define LR1110_SPIM               NRF_SPIM2
-#define LR1110_SPI_XFER_TIMEOUT   K_MSEC(50)
-
 /* Application-provided progress hook (weak no-op in lr1110.c). */
 extern void lichen_radio_progress(void);
 
+/* The LR1110 uses the non-DMA nRF SPI (see the board DTS): its transfers are
+ * CPU-driven and can't wedge on USB/SPIM EasyDMA bus contention, so a plain
+ * blocking transfer is safe. Bump the progress heartbeat on completion. */
 static int lr1110_spi_bounded(const struct spi_buf_set *tx,
 			      const struct spi_buf_set *rx)
 {
-	struct k_poll_signal sig;
-	struct k_poll_event evt = K_POLL_EVENT_INITIALIZER(
-		K_POLL_TYPE_SIGNAL, K_POLL_MODE_NOTIFY_ONLY, &sig);
+	int ret = rx ? spi_transceive_dt(&lr1110_bus, tx, rx)
+		     : spi_write_dt(&lr1110_bus, tx);
 
-	k_poll_signal_init(&sig);
-
-	int ret = spi_transceive_signal(lr1110_bus.bus, &lr1110_bus.config,
-					tx, rx, &sig);
-	if (ret) {
-		return ret;
-	}
-
-	if (k_poll(&evt, 1, LR1110_SPI_XFER_TIMEOUT) == -EAGAIN) {
-		/* Transfer stalled — abort the SPIM so the driver completes and
-		 * releases the bus lock (STOPPED completes the nrfx transaction). */
-		LOG_ERR("LR1110 SPI transfer stalled — aborting SPIM");
-		nrf_spim_task_trigger(LR1110_SPIM, NRF_SPIM_TASK_STOP);
-		(void)k_poll(&evt, 1, K_MSEC(20));
-		lichen_radio_progress(); /* we recovered — not a true stall for WDT */
-		return -ETIMEDOUT;
-	}
-
-	unsigned int signaled;
-	int result;
-
-	k_poll_signal_check(&sig, &signaled, &result);
-	return signaled ? result : 0;
+	lichen_radio_progress();
+	return ret;
 }
 extern const struct gpio_dt_spec lr1110_gpio_reset;
 
@@ -117,6 +89,7 @@ static int wait_busy(void)
 	int timeout = LR1110_BUSY_TIMEOUT_MS;
 
 	while (gpio_pin_get_dt(&lr1110_gpio_busy) > 0 && timeout > 0) {
+		lichen_radio_progress(); /* slow-but-progressing: don't trip the WDT */
 		k_sleep(K_MSEC(1));
 		timeout--;
 	}
