@@ -1,0 +1,769 @@
+{
+  "format_version": 1,
+  "description": "MeshCore app-compat byte-command vectors. 'encoded' is one raw MeshCore inner frame for BLE unless transport.framing states serial 0x3c/0x3e length framing.",
+  "vectors": [
+    {
+      "name": "app_start_self_info",
+      "description": "App startup advertises the client name and receives deterministic LICHEN self info.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "010000000000000074",
+      "decoded": {
+        "command": "APP_START",
+        "client_name": "t"
+      },
+      "expect": {
+        "responses": [
+          "05010e16000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a1bc3348e801000a054c494348454e"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "device_query_protocol_v3",
+      "description": "Client protocol query returns placeholder LICHEN device metadata and protocol version 3.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "1603",
+      "decoded": {
+        "command": "DEVICE_QUERY",
+        "app_protocol_version": 3
+      },
+      "expect": {
+        "responses": [
+          "0d030001000000004c494348454e0000000000004c494348454e00000000000000000000000000000000000000000000000000000000000000000000302e302e300000000000000000000000000000000000"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "get_contacts_empty",
+      "description": "Empty compatibility contact table is encoded as CONTACTS_START count 0 then END_OF_CONTACTS count 0.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "04",
+      "decoded": {
+        "command": "GET_CONTACTS"
+      },
+      "expect": {
+        "responses": [
+          "0200000000",
+          "0400000000"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "get_channel_public_slot",
+      "description": "Channel slot 0 is synthesized as a public compatibility channel without native LICHEN secrets.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "1f00",
+      "decoded": {
+        "command": "GET_CHANNEL",
+        "index": 0
+      },
+      "expect": {
+        "responses": [
+          "12005075626c6963000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "get_channel_not_found",
+      "description": "Only channel slot 0 exists in the MVP compatibility view.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "1f01",
+      "decoded": {
+        "command": "GET_CHANNEL",
+        "index": 1
+      },
+      "expect": {
+        "responses": [
+          "0102"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "get_channel_missing_arg",
+      "description": "GET_CHANNEL requires a channel index byte.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "1f",
+      "decoded": {
+        "command": "GET_CHANNEL",
+        "malformed": true
+      },
+      "expect": {
+        "responses": [
+          "0106"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "sync_next_empty",
+      "description": "SYNC_NEXT_MESSAGE returns NO_MORE_MESSAGES when no pending app-visible events exist.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "0a",
+      "decoded": {
+        "command": "SYNC_NEXT_MESSAGE"
+      },
+      "expect": {
+        "responses": [
+          "0a"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "get_batt_and_storage_placeholder",
+      "description": "Battery/storage response uses explicit zero placeholders until HAL providers are wired.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "14",
+      "decoded": {
+        "command": "GET_BATT_AND_STORAGE"
+      },
+      "expect": {
+        "responses": [
+          "0c00000000000000000000"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "get_device_time",
+      "description": "Device time is uptime-derived and therefore validated by response type and length.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "05",
+      "decoded": {
+        "command": "GET_DEVICE_TIME"
+      },
+      "expect": {
+        "response_prefix": "09",
+        "response_len": 5
+      }
+    },
+    {
+      "name": "get_custom_vars_empty",
+      "description": "Custom variables are present as an empty compatibility response.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "28",
+      "decoded": {
+        "command": "GET_CUSTOM_VARS"
+      },
+      "expect": {
+        "responses": [
+          "15"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "get_autoadd_config_disabled",
+      "description": "Auto-add compatibility config is disabled by default.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "3b",
+      "decoded": {
+        "command": "GET_AUTOADD_CONFIG"
+      },
+      "expect": {
+        "responses": [
+          "190000"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "get_default_flood_scope_null",
+      "description": "Default flood scope is null/empty until compatibility policy is expanded.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "40",
+      "decoded": {
+        "command": "GET_DEFAULT_FLOOD_SCOPE"
+      },
+      "expect": {
+        "responses": [
+          "1c"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "send_channel_txt_msg_ack_drift",
+      "description": "MeshCore source drift: firmware e8d3c53 returns OK for channel text send while docs/Flutter may expect MSG_SENT in some paths; LICHEN currently returns unsupported until app-ingress mapping is implemented.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "0300006869",
+      "decoded": {
+        "command": "SEND_CHANNEL_TXT_MSG",
+        "channel": 0,
+        "txt_type": 0,
+        "payload_utf8": "hi"
+      },
+      "expect": {
+        "responses": [
+          "0101"
+        ],
+        "adapter_test": true,
+        "drift_note": "Upstream firmware observed OK, app/docs may expect SENT; LICHEN rejects until local message ingress exists."
+      }
+    },
+    {
+      "name": "send_txt_msg_direct_unsupported",
+      "description": "Direct text requires LICHEN peer identity projection and is deterministic unsupported for now.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "0200006869",
+      "decoded": {
+        "command": "SEND_TXT_MSG",
+        "payload_utf8": "hi"
+      },
+      "expect": {
+        "responses": [
+          "0101"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "self_advert_unsupported",
+      "description": "Self-advert is a MeshCore RF operation and must not be OK/no-op in LICHEN compatibility.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "07",
+      "decoded": {
+        "command": "SEND_SELF_ADVERT"
+      },
+      "expect": {
+        "responses": [
+          "0101"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "newer_get_allowed_repeat_freq_unsupported",
+      "description": "Newer firmware command 0x3c is recognized but unsupported by the MVP shim.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "3c",
+      "decoded": {
+        "command": "GET_ALLOWED_REPEAT_FREQ"
+      },
+      "expect": {
+        "responses": [
+          "0101"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "newer_send_channel_data_unsupported",
+      "description": "Newer firmware command 0x3e is recognized but unsupported by the MVP shim.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "3e",
+      "decoded": {
+        "command": "SEND_CHANNEL_DATA"
+      },
+      "expect": {
+        "responses": [
+          "0101"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "newer_set_default_flood_scope_unsupported",
+      "description": "Newer firmware command 0x3f is recognized but unsupported by the MVP shim.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "3f",
+      "decoded": {
+        "command": "SET_DEFAULT_FLOOD_SCOPE"
+      },
+      "expect": {
+        "responses": [
+          "0101"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "newer_send_raw_packet_unsupported",
+      "description": "Newer firmware command 0x41 is recognized but unsupported because LICHEN does not expose MeshCore raw RF.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "41",
+      "decoded": {
+        "command": "SEND_RAW_PACKET"
+      },
+      "expect": {
+        "responses": [
+          "0101"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "unknown_zero_unsupported",
+      "description": "Out-of-range command below the known range returns unsupported.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "00",
+      "decoded": {
+        "command": "UNKNOWN_00"
+      },
+      "expect": {
+        "responses": [
+          "0101"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "unknown_after_range_unsupported",
+      "description": "Out-of-range command after the known firmware range returns unsupported.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "42",
+      "decoded": {
+        "command": "UNKNOWN_42"
+      },
+      "expect": {
+        "responses": [
+          "0101"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "unknown_ff_unsupported",
+      "description": "0xff is not a MeshCore command and returns unsupported.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "ff",
+      "decoded": {
+        "command": "UNKNOWN_FF"
+      },
+      "expect": {
+        "responses": [
+          "0101"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "app_start_short_illegal_arg",
+      "description": "Malformed APP_START shorter than the minimum payload returns ILLEGAL_ARG.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "010000",
+      "decoded": {
+        "command": "APP_START",
+        "malformed": true
+      },
+      "expect": {
+        "responses": [
+          "0106"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "ble_msg_waiting_push",
+      "description": "Incoming LICHEN app event first notifies the MeshCore client with MSG_WAITING.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "node_to_app",
+      "frame": "push",
+      "encoded": "83",
+      "decoded": {
+        "push": "MSG_WAITING"
+      },
+      "expect": {
+        "emitted_by": "emit_text_or_status"
+      }
+    },
+    {
+      "name": "channel_msg_recv_v3_hi",
+      "description": "SYNC_NEXT_MESSAGE drains pending text as CHANNEL_MSG_RECV_V3.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "node_to_app",
+      "frame": "response",
+      "encoded": "1100000000ff00040302016869",
+      "decoded": {
+        "response": "CHANNEL_MSG_RECV_V3",
+        "channel": 0,
+        "path": "unavailable",
+        "txt_type": 0,
+        "id": 16909060,
+        "payload_utf8": "hi"
+      },
+      "expect": {
+        "preceded_by": "MSG_WAITING",
+        "response_to": "SYNC_NEXT_MESSAGE"
+      }
+    },
+    {
+      "name": "send_confirmed_status_nak",
+      "description": "Pending app status is surfaced as PUSH_SEND_CONFIRMED with request id and error reason.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "node_to_app",
+      "frame": "push",
+      "encoded": "82785634120901",
+      "decoded": {
+        "push": "SEND_CONFIRMED",
+        "request_id": 305419896,
+        "error_reason": 9,
+        "has_error_reason": true
+      },
+      "expect": {
+        "preceded_by": "MSG_WAITING",
+        "response_to": "SYNC_NEXT_MESSAGE"
+      }
+    },
+    {
+      "name": "serial_app_to_device_sync_next",
+      "description": "Serial/TCP app-to-device framing wraps the raw SYNC_NEXT_MESSAGE command with '<' and uint16_le payload length.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "serial",
+        "framing": "0x3c + uint16_le length + MeshCore inner frame"
+      },
+      "direction": "app_to_node",
+      "frame": "serial",
+      "encoded": "3c01000a",
+      "decoded": {
+        "serial_marker": "app_to_device",
+        "payload": "0a"
+      },
+      "expect": {
+        "inner_frame": "0a"
+      }
+    },
+    {
+      "name": "serial_device_to_app_no_more_messages",
+      "description": "Serial/TCP device-to-app framing wraps the raw NO_MORE_MESSAGES response with '>' and uint16_le payload length.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "serial",
+        "framing": "0x3e + uint16_le length + MeshCore inner frame"
+      },
+      "direction": "node_to_app",
+      "frame": "serial",
+      "encoded": "3e01000a",
+      "decoded": {
+        "serial_marker": "device_to_app",
+        "payload": "0a"
+      },
+      "expect": {
+        "inner_frame": "0a"
+      }
+    }
+  ]
+}

@@ -15,6 +15,7 @@ against these files (issue `ajr`, gate `ijj`).
 | `schc_compression.json` | SCHC whole-packet compression (RFC 8724), rules 0–4 |
 | `link_frame.json` | LICHEN link-layer frame encoding (spec section 4) |
 | `meshtastic_app_compat.json` | Meshtastic BLE raw-protobuf app compatibility exchanges |
+| `meshcore_app_compat.json` | MeshCore byte-command app compatibility exchanges |
 
 All byte strings are lowercase hex (possibly empty).
 
@@ -42,6 +43,16 @@ All byte strings are lowercase hex (possibly empty).
   `decoded`; the Python drift test also checks wire types independently of the generator.
 - `FromNum` vectors encode the 32-bit queue counter as little-endian bytes. A `FromNum` notification means the app
   should read `FromRadio` repeatedly until it receives the zero-length empty-drain vector.
+
+**MeshCore app compatibility** (`meshcore_app_compat.json`): for each vector,
+- BLE/NUS vectors encode one raw MeshCore inner frame in `encoded`: command/response/push byte followed by payload.
+- Serial vectors include the outer `0x3c` app-to-device or `0x3e` device-to-app marker, a 16-bit little-endian payload
+  length, then the raw inner frame.
+- `source_baseline` records the upstream MeshCore firmware/client commits used for command IDs and drift notes.
+- `expect.responses` lists exact response frames for deterministic adapter command vectors. Variable fields, such as
+  uptime-derived device time, use `expect.response_prefix` and `expect.response_len`.
+- Incoming app-event vectors include `MSG_WAITING`, `CHANNEL_MSG_RECV_V3`, and `PUSH_SEND_CONFIRMED` frames used with
+  `SYNC_NEXT_MESSAGE`.
 
 ## Regenerating
 

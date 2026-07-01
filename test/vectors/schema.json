@@ -13,7 +13,8 @@
         "oneOf": [
           {"$ref": "#/definitions/schc_vector"},
           {"$ref": "#/definitions/frame_vector"},
-          {"$ref": "#/definitions/meshtastic_app_compat_vector"}
+          {"$ref": "#/definitions/meshtastic_app_compat_vector"},
+          {"$ref": "#/definitions/meshcore_app_compat_vector"}
         ]
       }
     }
@@ -28,6 +29,24 @@
       "type": "object",
       "required": ["name", "rule_id", "packet", "compressed"],
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "expect": {
+                "required": ["response_prefix"]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "expect": {
+                "required": ["response_len"]
+              }
+            }
+          }
+        }
+      ],
       "properties": {
         "name": {"type": "string"},
         "rule_id": {"type": "integer", "minimum": 0, "maximum": 255},
@@ -211,6 +230,69 @@
             "side_effect": {"type": "string"},
             "terminal_from_radio": {"$ref": "#/definitions/hex"},
             "unsupported": {"type": "boolean"}
+          }
+        }
+      }
+    },
+    "meshcore_app_compat_vector": {
+      "type": "object",
+      "required": [
+        "name",
+        "description",
+        "source_baseline",
+        "transport",
+        "direction",
+        "frame",
+        "encoded",
+        "decoded",
+        "expect"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "source_baseline": {
+          "type": "object",
+          "required": ["firmware", "flutter", "python", "cli", "js"],
+          "additionalProperties": false,
+          "properties": {
+            "firmware": {"type": "string"},
+            "flutter": {"type": "string"},
+            "python": {"type": "string"},
+            "cli": {"type": "string"},
+            "js": {"type": "string"}
+          }
+        },
+        "transport": {
+          "type": "object",
+          "required": ["name", "framing"],
+          "additionalProperties": false,
+          "properties": {
+            "name": {"type": "string", "enum": ["ble-nus", "serial"]},
+            "framing": {"type": "string"}
+          }
+        },
+        "direction": {"type": "string", "enum": ["app_to_node", "node_to_app", "exchange"]},
+        "frame": {"type": "string", "enum": ["command", "response", "push", "serial"]},
+        "encoded": {"$ref": "#/definitions/hex"},
+        "decoded": {"type": "object"},
+        "expect": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "adapter_test": {"type": "boolean"},
+            "drift_note": {"type": "string"},
+            "emitted_by": {"type": "string"},
+            "inner_frame": {"$ref": "#/definitions/hex"},
+            "preceded_by": {"type": "string"},
+            "response_len": {"type": "integer", "minimum": 0},
+            "response_prefix": {"$ref": "#/definitions/hex"},
+            "response_to": {"type": "string"},
+            "responses": {
+              "type": "array",
+              "items": {"$ref": "#/definitions/hex"},
+              "minItems": 1
+            }
           }
         }
       }

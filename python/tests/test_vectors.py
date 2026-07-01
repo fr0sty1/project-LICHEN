@@ -26,7 +26,7 @@ from lichen.schc.headers import compress_packet, decompress_packet
 VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 
 sys.path.insert(0, str(VECTORS_DIR))
-from generate import meshtastic_app_compat_vectors  # noqa: E402
+from generate import meshcore_app_compat_vectors, meshtastic_app_compat_vectors  # noqa: E402
 
 
 def _load(name: str) -> dict:
@@ -44,6 +44,7 @@ def test_vectors_directory_exists() -> None:
         "schc_compression.json",
         "link_frame.json",
         "meshtastic_app_compat.json",
+        "meshcore_app_compat.json",
     ],
 )
 def test_vector_file_schema(filename: str) -> None:
@@ -67,6 +68,12 @@ def _frame_cases():
 
 def _meshtastic_cases():
     doc = _load("meshtastic_app_compat.json")
+    assert doc["format_version"] == 1
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+def _meshcore_cases():
+    doc = _load("meshcore_app_compat.json")
     assert doc["format_version"] == 1
     return [(v["name"], v) for v in doc["vectors"]]
 
@@ -117,6 +124,11 @@ def test_all_schc_rules_covered() -> None:
 def test_meshtastic_app_compat_vectors_match_generator() -> None:
     doc = _load("meshtastic_app_compat.json")
     assert doc["vectors"] == meshtastic_app_compat_vectors()
+
+
+def test_meshcore_app_compat_vectors_match_generator() -> None:
+    doc = _load("meshcore_app_compat.json")
+    assert doc["vectors"] == meshcore_app_compat_vectors()
 
 
 def _read_varint(data: bytes, offset: int) -> tuple[int, int]:
@@ -254,6 +266,48 @@ def test_meshtastic_app_compat_vector_wire_schema(name: str, vector: dict) -> No
             assert _one_field(encoded, 1, 0) == expect["from_radio_id"]
             mesh_packet = _one_field(encoded, 2, 2)
             _assert_mesh_packet(mesh_packet, vector["decoded"])
+
+
+@pytest.mark.parametrize("name,vector", _meshcore_cases())
+def test_meshcore_app_compat_vector_wire_schema(name: str, vector: dict) -> None:
+    encoded = bytes.fromhex(vector["encoded"])
+    expect = vector["expect"]
+
+    if vector["transport"]["name"] == "serial":
+        assert len(encoded) >= 4, name
+        assert encoded[0] in (0x3C, 0x3E), name
+        inner_len = int.from_bytes(encoded[1:3], "little")
+        assert inner_len == len(encoded) - 3, name
+        assert encoded[3:].hex() == expect["inner_frame"], name
+        return
+
+    assert vector["transport"]["name"] == "ble-nus"
+    assert not encoded.startswith(bytes.fromhex("94c3")), name
+    assert encoded, name
+
+    if vector["frame"] == "command" and "responses" in expect:
+        for response_hex in expect["responses"]:
+            response = bytes.fromhex(response_hex)
+            assert response, name
+            if response[0] == 0x01:
+                assert len(response) == 2, name
+    elif vector["frame"] in ("response", "push"):
+        if vector["decoded"].get("response") == "CHANNEL_MSG_RECV_V3":
+            assert encoded[0] == 0x11, name
+            assert encoded[5] == 0xFF, name
+            assert int.from_bytes(encoded[7:11], "little") == vector["decoded"]["id"]
+            assert encoded[11:] == vector["decoded"]["payload_utf8"].encode()
+        elif vector["decoded"].get("push") == "SEND_CONFIRMED":
+            assert encoded[0] == 0x82, name
+            assert int.from_bytes(encoded[1:5], "little") == vector["decoded"]["request_id"]
+            assert encoded[5] == vector["decoded"]["error_reason"]
+            assert encoded[6] == int(vector["decoded"]["has_error_reason"])
+        elif vector["decoded"].get("push") == "MSG_WAITING":
+            assert encoded == b"\x83", name
+    elif "response_prefix" in expect:
+        prefix = bytes.fromhex(expect["response_prefix"])
+        assert prefix, name
+        assert expect["response_len"] >= len(prefix), name
 
 
 def _schnorr_cases():

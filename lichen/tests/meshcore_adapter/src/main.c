@@ -12,6 +12,8 @@
 
 #include <lichen/meshcore/adapter.h>
 
+#include "meshcore_vectors.h"
+
 #define OUT_DEPTH 8
 
 struct out_slot {
@@ -72,6 +74,42 @@ static void expect_error(const struct test_ctx *ctx, size_t slot, uint8_t err)
 	zassert_equal(ctx->out[slot].len, 2U);
 	zassert_equal(ctx->out[slot].data[0], LICHEN_MESHCORE_RESP_ERR);
 	zassert_equal(ctx->out[slot].data[1], err);
+}
+
+static void expect_bytes(const struct test_ctx *ctx, size_t slot,
+			 const uint8_t *expected, size_t expected_len)
+{
+	zassert_true(slot < ctx->count);
+	zassert_equal(ctx->out[slot].len, expected_len, "slot %zu length", slot);
+	zassert_mem_equal(ctx->out[slot].data, expected, expected_len,
+			  "slot %zu bytes", slot);
+}
+
+ZTEST(meshcore_adapter, test_canonical_app_compat_vectors)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+
+	zassert_equal(MESHCORE_VECTOR_SOURCE_COUNT, 28U);
+	zassert_equal(MESHCORE_VECTOR_ADAPTER_COUNT,
+		      ARRAY_SIZE(meshcore_vectors));
+	zassert_equal(MESHCORE_VECTOR_ADAPTER_COUNT, 22U);
+
+	for (size_t i = 0U; i < ARRAY_SIZE(meshcore_vectors); i++) {
+		const struct meshcore_vector *v = &meshcore_vectors[i];
+
+		init_adapter(&adapter, &ctx, OUT_DEPTH);
+		zassert_equal(lichen_meshcore_adapter_process_raw(
+				      &adapter, v->request, v->request_len),
+			      0, "%s dispatch failed", v->name);
+		zassert_equal(ctx.count, v->response_count,
+			      "%s response count", v->name);
+		expect_bytes(&ctx, 0U, v->response0, v->response0_len);
+		if (v->response_count == 2U) {
+			expect_bytes(&ctx, 1U, v->response1,
+				     v->response1_len);
+		}
+	}
 }
 
 ZTEST(meshcore_adapter, test_phase1_startup_read_commands)
