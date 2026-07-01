@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-1www.18",
+  "title": "lichen_sha256 output parameter not bounds-checked",
+  "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_util.c:11-28, lichen_util.h:69-70\n\nlichen_sha256() signature declares output as uint8_t output[TC_SHA256_DIGEST_SIZE] but this is just syntactic sugar - it decays to uint8_t*. The function does not verify the caller provided a buffer of at least TC_SHA256_DIGEST_SIZE bytes.\n\nWhat goes wrong: A caller passing a smaller buffer would have a buffer overflow when tc_sha256_final writes 32 bytes. The array parameter syntax provides false safety assurance.\n\nOptions:\n1. Document clearly that caller MUST provide 32 bytes\n2. Add a size parameter and check it\n3. Use a struct wrapper to enforce size at compile time\n\nCurrent callers (ipv6_addr.c, lora_l2.c) all use correctly-sized buffers, so no immediate bug.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T21:43:09.770749Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T22:03:43.646856Z",
+  "closed_at": "2026-06-27T22:03:43.646856Z",
+  "close_reason": "Fixed: Added explicit SECURITY documentation warning that output buffer must be \u003e= 32 bytes and that the array parameter syntax provides no compile-time bounds checking. Runtime bounds checking was not added because: (1) all current callers use correctly-sized buffers, (2) adding a size parameter would change the API with no practical benefit, and (3) a struct wrapper would be over-engineering. The documentation now clearly warns callers about the requirement.",
+  "labels": [
+    "c-standards",
+    "documentation",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1www.18",
+      "depends_on_id": "project-LICHEN-1www",
+      "type": "parent-child",
+      "created_at": "2026-06-27T21:43:09.772099Z"
+    }
+  ]
+}

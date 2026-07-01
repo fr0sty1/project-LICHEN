@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.54",
+  "title": "[lora_l2.c:412] Error backoff sleep is not interruptible by state change",
+  "description": "Gap: The 1000ms k_sleep in the error backoff path cannot be interrupted by stop().\n\nWhat: Line 412 uses k_sleep(K_MSEC(1000)) for backoff on consecutive errors. Unlike lora_recv() which uses a timeout, k_sleep cannot be interrupted by the thread checking its state. If stop() is called during this sleep, the thread won't exit until the sleep completes.\n\nWhy it matters: Already documented in the comments (project-LICHEN-i1gk.103) but the interaction is subtle: if CONFIG_LICHEN_LORA_L2_RX_TIMEOUT_MS \u003c 1000ms, the stop() join timeout may expire during this backoff, causing forced thread abort. This is an edge case where aggressive Kconfig tuning can degrade graceful shutdown to forced abort.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:18:24.932941Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:11:07.601975Z",
+  "closed_at": "2026-06-28T07:11:07.601975Z",
+  "close_reason": "Already documented: The 1000ms backoff sleep has extensive documentation (lines 438-454) explaining the interaction with RX_THREAD_QUICK_JOIN_MS, why forced abort is acceptable for persistent hardware errors, and that recovery requires reinitialization anyway. Referenced as project-LICHEN-i1gk.103. The tradeoffs are explicitly acknowledged; no change needed.",
+  "labels": [
+    "review-r2",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.54",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:18:24.933414Z"
+    }
+  ]
+}

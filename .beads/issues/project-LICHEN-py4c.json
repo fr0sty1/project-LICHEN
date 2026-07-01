@@ -1,0 +1,34 @@
+{
+  "id": "project-LICHEN-py4c",
+  "title": "Native LICHEN app interface to Zephyr firmware",
+  "description": "Why this exists: LICHEN needs a first-class local app interface for LICHEN-native clients instead of relying only on compatibility shims for other ecosystems. The native interface should be the reference behavior for phone, desktop, CLI, and gateway clients. What needs to be done: define and implement the Zephyr firmware's native local-client API over the supported local transports, centered on IPv6 + CoAP resources for config, status, keys, messaging, presence, position, routes, and mesh proxying. Align behavior with spec section 17 and existing gateway/bridge resources, and keep compatibility adapters layered on top of this native surface where practical. Acceptance criteria: resource map and content formats are documented; transport binding over BLE UART/SLIP/serial is specified; config/status/key/message/proxy flows are implemented or split into child Beads; tests cover CBOR decoding with decoder-backed parsing, not byte walkers; client compatibility notes are documented; two code-review passes are completed before closure.",
+  "notes": "Design decision from 2026-06-30: native LICHEN apps may have two first-class local interface paths: (1) standards-native IP/CoAP over SLIP, serial, BLE IPSP, or equivalent IPv6 local link, and (2) a direct BLE app protocol for platforms where app UX or OS BLE APIs make IP impractical. These are not competing product surfaces: they must share the same resource/operation contract for config, status, keys, messaging, presence, position, routes, mesh state, and proxying. Compatibility shims for Meshtastic/MeshCore should layer above this native contract where practical.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T06:08:52.872967Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:47:04.348364Z",
+  "labels": [
+    "zephyr",
+    "lichen",
+    "app-interface",
+    "firmware",
+    "lci"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-py4c",
+      "depends_on_id": "project-LICHEN-zte2",
+      "type": "blocks",
+      "created_at": "2026-06-30T06:12:50.264275Z"
+    },
+    {
+      "issue_id": "project-LICHEN-py4c",
+      "depends_on_id": "project-LICHEN-2067",
+      "type": "blocks",
+      "created_at": "2026-06-30T06:15:20.212248Z"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "lora-ipv6-mesh-7an",
+  "title": "[epic] Client Applications",
+  "description": "User-facing applications for LICHEN. All apps communicate with local node via IPv6+CoAP over SLIP/BLE/IPC.\n\nCLI - lichen-cli (Rust)\nTUI - lichen-tui (Rust, ratatui)\nDesktop GUI - lichen-desktop (Electron or Tauri)\nMobile - lichen-mobile (Flutter)\n\nAll apps share:\n- CoAP client library for node communication\n- Common data models (contacts, messages, waypoints)\n- Key management (TOFU pinning, contact keys)\n\nDepends on Local Client Interface (Phase 6) being defined.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T08:00:31Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-27T08:00:31Z",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-7an",
+      "depends_on_id": "lora-ipv6-mesh-gb3",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:01:10Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

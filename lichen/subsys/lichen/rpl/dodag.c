@@ -12,13 +12,50 @@
  */
 
 #include <lichen/rpl_dodag.h>
+#include <lichen/rpl_addr.h>
 #include <string.h>
 
-/* ── Helpers ───────────────────────────────────────────────────────────────── */
+/**
+ * RFC 6550 Section 7.2: Lollipop sequence number comparison.
+ *
+ * RPL version numbers use a "lollipop" counter: values 0-127 are in the
+ * linear region (restart), 128-255 are in the circular region (normal).
+ *
+ * Returns true if 'a' is newer than 'b' per lollipop semantics.
+ * The circular region uses modular comparison with a window of SEQUENCE_WINDOW.
+ */
+#define LOLLIPOP_MAX_VALUE    255
+#define LOLLIPOP_CIRCULAR_BIT 128
+/*
+ * SEQUENCE_WINDOW per RFC 1982 serial number arithmetic: 'a' is newer than 'b'
+ * if (a - b) mod 128 is in (0, WINDOW]. Value 16 balances tolerance for
+ * out-of-order delivery (~16 missed DIOs) against detecting true rollbacks.
+ */
+#define LOLLIPOP_SEQUENCE_WINDOW 16
 
-static bool addr_eq(const uint8_t *a, const uint8_t *b)
+static bool version_is_newer(uint8_t a, uint8_t b)
 {
-	return memcmp(a, b, 16) == 0;
+	/* If both in linear region (0-127), simple comparison */
+	if (a < LOLLIPOP_CIRCULAR_BIT && b < LOLLIPOP_CIRCULAR_BIT) {
+		return a > b;
+	}
+
+	/* If both in circular region (128-255), use modular comparison */
+	if (a >= LOLLIPOP_CIRCULAR_BIT && b >= LOLLIPOP_CIRCULAR_BIT) {
+		/*
+		 * The circular region has 128 values (128-255).
+		 * a is newer than b if (a - b) mod 128 is in (0, WINDOW].
+		 * We mask with 0x7F to get the circular distance.
+		 */
+		uint8_t diff = (uint8_t)((a - b) & 0x7F);
+		return diff > 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW;
+	}
+
+	/*
+	 * Mixed regions: linear (restart) is always newer than circular.
+	 * A node restarting with version 0 should be accepted over version 250.
+	 */
+	return a < LOLLIPOP_CIRCULAR_BIT;
 }
 
 /**
@@ -43,7 +80,7 @@ static struct lichen_rpl_parent *find_parent(struct lichen_rpl_dodag *d,
 					     const uint8_t *addr)
 {
 	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_PARENTS; i++) {
-		if (d->parents[i].valid && addr_eq(d->parents[i].addr, addr)) {
+		if (d->parents[i].valid && rpl_addr_eq(d->parents[i].addr, addr)) {
 			return &d->parents[i];
 		}
 	}
@@ -58,6 +95,29 @@ static struct lichen_rpl_parent *find_free_slot(struct lichen_rpl_dodag *d)
 		}
 	}
 	return NULL;
+}
+
+/**
+ * Find the worst parent (highest path cost) in the table.
+ * Returns NULL if no valid parents exist.
+ */
+static struct lichen_rpl_parent *find_worst_parent(struct lichen_rpl_dodag *d)
+{
+	struct lichen_rpl_parent *worst = NULL;
+	uint16_t worst_cost = 0;
+
+	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_PARENTS; i++) {
+		struct lichen_rpl_parent *p = &d->parents[i];
+		if (!p->valid) {
+			continue;
+		}
+		uint16_t cost = path_cost(p, d->min_hop_rank_increase);
+		if (worst == NULL || cost > worst_cost) {
+			worst = p;
+			worst_cost = cost;
+		}
+	}
+	return worst;
 }
 
 /**
@@ -99,13 +159,13 @@ static void adopt_version(struct lichen_rpl_dodag *d,
 
 /* ── Public API ────────────────────────────────────────────────────────────── */
 
-void lichen_rpl_dodag_init(struct lichen_rpl_dodag *d,
-			   uint8_t rpl_instance_id,
-			   const uint8_t *dodag_id,
-			   uint8_t version)
+int lichen_rpl_dodag_init(struct lichen_rpl_dodag *d,
+			  uint8_t rpl_instance_id,
+			  const uint8_t *dodag_id,
+			  uint8_t version)
 {
 	if (d == NULL || dodag_id == NULL) {
-		return;
+		return LICHEN_RPL_ERR_INVALID;
 	}
 	memset(d, 0, sizeof(*d));
 
@@ -120,21 +180,30 @@ void lichen_rpl_dodag_init(struct lichen_rpl_dodag *d,
 	d->max_rank_increase = LICHEN_RPL_DEFAULT_MAX_RANK_INC;
 	d->parent_switch_threshold = LICHEN_RPL_DEFAULT_SWITCH_THRESH;
 	d->lowest_rank = LICHEN_RPL_INFINITE_RANK;
+	return 0;
 }
 
-void lichen_rpl_dodag_init_root(struct lichen_rpl_dodag *d,
-				uint8_t rpl_instance_id,
-				const uint8_t *dodag_id,
-				uint8_t version)
+int lichen_rpl_dodag_init_root(struct lichen_rpl_dodag *d,
+			       uint8_t rpl_instance_id,
+			       const uint8_t *dodag_id,
+			       uint8_t version)
 {
-	lichen_rpl_dodag_init(d, rpl_instance_id, dodag_id, version);
+	int err = lichen_rpl_dodag_init(d, rpl_instance_id, dodag_id, version);
+	if (err != 0) {
+		return err;
+	}
 	d->role = LICHEN_RPL_ROOT;
 	d->rank = LICHEN_RPL_ROOT_RANK;
 	d->lowest_rank = LICHEN_RPL_ROOT_RANK;
+	return 0;
 }
 
 void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 {
+	if (d == NULL) {
+		return;
+	}
+
 	uint16_t mhri = d->min_hop_rank_increase;
 	uint16_t threshold = d->parent_switch_threshold;
 
@@ -170,14 +239,17 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 	uint8_t *chosen_addr = best_addr;
 	uint16_t chosen_cost = best_cost;
 
-	if (d->has_preferred_parent && !addr_eq(d->preferred_parent, best_addr)) {
+	if (d->has_preferred_parent && !rpl_addr_eq(d->preferred_parent, best_addr)) {
 		struct lichen_rpl_parent *cur = find_parent(d, d->preferred_parent);
 		if (cur != NULL) {
 			uint16_t cur_cost = path_cost(cur, mhri);
-			/* improvement = cur_cost - best_cost */
-			/* switch only if best_cost < cur_cost - threshold */
-			if (cur_cost > threshold &&
-			    best_cost > cur_cost - threshold) {
+			/*
+			 * Hysteresis: only switch if improvement exceeds threshold.
+			 * Stay with current if: best_cost + threshold >= cur_cost
+			 * This form avoids underflow when cur_cost <= threshold.
+			 * Explicit casts prevent overflow if best_cost + threshold > 65535.
+			 */
+			if ((uint32_t)best_cost + (uint32_t)threshold >= (uint32_t)cur_cost) {
 				/* Not enough improvement - stay with current */
 				chosen_addr = cur->addr;
 				chosen_cost = cur_cost;
@@ -198,7 +270,8 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 				  const struct lichen_rpl_dio *dio,
 				  const uint8_t *neighbor_addr,
-				  uint16_t link_etx)
+				  uint16_t link_etx,
+				  uint32_t now)
 {
 	if (d == NULL || dio == NULL || neighbor_addr == NULL) {
 		return;
@@ -211,15 +284,22 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 
 	/* Only accept DIOs from the same DODAG once joined */
 	if (lichen_rpl_dodag_is_joined(d) &&
-	    !addr_eq(dio->dodag_id, d->dodag_id)) {
+	    !rpl_addr_eq(dio->dodag_id, d->dodag_id)) {
 		return;
 	}
 
-	/* Newer version or first DIO? Rejoin. */
-	if (dio->version > d->version || !lichen_rpl_dodag_is_joined(d)) {
+	/*
+	 * Version handling per RFC 6550 lollipop semantics.
+	 * A newer version triggers DODAG rejoin; stale versions are ignored.
+	 */
+	if (!lichen_rpl_dodag_is_joined(d)) {
+		/* First DIO - join unconditionally */
 		adopt_version(d, dio);
-	} else if (dio->version < d->version) {
-		/* Stale version */
+	} else if (version_is_newer(dio->version, d->version)) {
+		/* Newer version - rejoin the DODAG */
+		adopt_version(d, dio);
+	} else if (dio->version != d->version) {
+		/* Stale version (not newer and not equal) - ignore */
 		return;
 	}
 
@@ -238,14 +318,34 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 	if (p == NULL) {
 		p = find_free_slot(d);
 		if (p == NULL) {
-			/* No room - could evict worst, but for now just ignore */
-			return;
+			/*
+			 * Table full - evict the worst parent if the new
+			 * candidate would be better. Compute the new
+			 * candidate's path cost to compare.
+			 */
+			struct lichen_rpl_parent *worst = find_worst_parent(d);
+			if (worst == NULL) {
+				return;
+			}
+			uint16_t worst_cost = path_cost(worst, d->min_hop_rank_increase);
+			uint32_t new_increment = ((uint32_t)link_etx * d->min_hop_rank_increase) / 256;
+			uint32_t new_cost = (uint32_t)dio->rank + new_increment;
+			if (new_cost > 0xFFFF) {
+				new_cost = 0xFFFF;
+			}
+			if (new_cost >= worst_cost) {
+				/* New candidate is not better - ignore it */
+				return;
+			}
+			/* Evict the worst and use its slot */
+			p = worst;
 		}
 		memcpy(p->addr, neighbor_addr, 16);
 	}
 
 	p->rank = dio->rank;
 	p->link_etx = link_etx;
+	p->last_updated = now;
 	p->valid = true;
 
 	lichen_rpl_dodag_select_parent(d);
@@ -254,6 +354,10 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 void lichen_rpl_dodag_remove_parent(struct lichen_rpl_dodag *d,
 				    const uint8_t *addr)
 {
+	if (d == NULL || addr == NULL) {
+		return;
+	}
+
 	struct lichen_rpl_parent *p = find_parent(d, addr);
 	if (p != NULL) {
 		p->valid = false;
@@ -263,6 +367,10 @@ void lichen_rpl_dodag_remove_parent(struct lichen_rpl_dodag *d,
 
 int lichen_rpl_dodag_parent_count(const struct lichen_rpl_dodag *d)
 {
+	if (d == NULL) {
+		return 0;
+	}
+
 	int count = 0;
 	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_PARENTS; i++) {
 		if (d->parents[i].valid) {
@@ -270,4 +378,33 @@ int lichen_rpl_dodag_parent_count(const struct lichen_rpl_dodag *d)
 		}
 	}
 	return count;
+}
+
+int lichen_rpl_dodag_expire_parents(struct lichen_rpl_dodag *d,
+				    uint32_t now, uint32_t max_age)
+{
+	if (d == NULL) {
+		return 0;
+	}
+
+	int expired = 0;
+
+	for (int i = 0; i < CONFIG_LICHEN_RPL_MAX_PARENTS; i++) {
+		struct lichen_rpl_parent *p = &d->parents[i];
+		if (!p->valid) {
+			continue;
+		}
+
+		uint32_t age = now - p->last_updated;
+		if (age > max_age) {
+			p->valid = false;
+			expired++;
+		}
+	}
+
+	if (expired > 0) {
+		lichen_rpl_dodag_select_parent(d);
+	}
+
+	return expired;
 }

@@ -1,0 +1,33 @@
+{
+  "id": "lora-ipv6-mesh-ijj",
+  "title": "Python prototype validates protocol design",
+  "description": "Gate for moving to embedded implementation. Python prototype must demonstrate: SCHC compression works, RPL DODAG forms in simulation, CoAP messaging works end-to-end, test vectors generated for Rust/C.",
+  "notes": "Gate near-complete: SCHC ✓, RPL DODAG formation ✓ (router/dodag + multinode sim tests), Schnorr+link+announce+node ✓, test vectors for Rust/C ✓ (test/vectors/). REMAINING: CoAP messaging end-to-end OVER THE MULTI-HOP MESH (coap works on loopback; not yet wired through SCHC+Node — follow-up lora_ipv6_mesh-eo8 via 1a0). Upstream marked the gate complete in docs (b47d3da); this note records the one integration gap.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:14:11Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-23T15:51:42Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-ijj",
+      "depends_on_id": "lora-ipv6-mesh-fxi",
+      "type": "blocks",
+      "created_at": "2026-05-26T22:15:19Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-ijj",
+      "depends_on_id": "lora-ipv6-mesh-1a0",
+      "type": "blocks",
+      "created_at": "2026-05-26T22:15:18Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

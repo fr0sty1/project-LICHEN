@@ -16,6 +16,14 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifndef LICHEN_WARN_UNUSED_RESULT
+#if defined(__GNUC__) || defined(__clang__)
+#define LICHEN_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+#else
+#define LICHEN_WARN_UNUSED_RESULT
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -28,6 +36,8 @@ extern "C" {
 #define LICHEN_RPL_ERR_BAD_OPT    -3
 #define LICHEN_RPL_ERR_BAD_RT     -4
 #define LICHEN_RPL_ERR_BUF_SMALL  -5
+#define LICHEN_RPL_ERR_INVALID    -6  /**< NULL pointer or invalid argument */
+#define LICHEN_RPL_ERR_FULL       -7  /**< Table or buffer is full */
 
 /* ── Option type bytes ─────────────────────────────────────────────────────── */
 
@@ -77,6 +87,7 @@ struct lichen_rpl_dio {
  * @param len  Length of data
  * @return 0 on success, negative error code on failure
  */
+LICHEN_WARN_UNUSED_RESULT
 int lichen_rpl_dio_parse(struct lichen_rpl_dio *dio,
 			 const uint8_t *data, size_t len);
 
@@ -94,9 +105,10 @@ int lichen_rpl_dio_write(const struct lichen_rpl_dio *dio,
 /**
  * @brief Get pointer to options following DIO base.
  *
- * @param data Full DIO message
- * @param len  Length of data
- * @return Pointer to options, or NULL if no options
+ * @param data The DIO message buffer. MUST be valid for at least @p len bytes.
+ *             Caller is responsible for ensuring data/len consistency.
+ * @param len  Total length of the DIO message.
+ * @return Pointer to options, or NULL if no options present.
  */
 const uint8_t *lichen_rpl_dio_options(const uint8_t *data, size_t len);
 
@@ -136,6 +148,7 @@ struct lichen_rpl_dao {
  * @param len  Length of data
  * @return 0 on success, negative error code on failure
  */
+LICHEN_WARN_UNUSED_RESULT
 int lichen_rpl_dao_parse(struct lichen_rpl_dao *dao,
 			 const uint8_t *data, size_t len);
 
@@ -157,6 +170,30 @@ const uint8_t *lichen_rpl_dao_options(const uint8_t *data, size_t len);
 
 /**
  * @brief Get length of options following DAO base.
+ *
+ * @param data      DAO message bytes (needed to check D-flag)
+ * @param total_len Total length of DAO message
+ * @return Length of options, or 0 if none
+ *
+ * @note The D-flag (bit 6 of byte 1) determines whether DODAGID is present:
+ *       D=1: base is 20 bytes (with DODAGID)
+ *       D=0: base is 4 bytes (no DODAGID)
+ */
+static inline size_t lichen_rpl_dao_options_len_ex(const uint8_t *data,
+						   size_t total_len)
+{
+	if (data == NULL || total_len < 4) {
+		return 0;
+	}
+	/* D-flag is bit 6 of byte 1 */
+	bool d_flag = (data[1] >> 6) & 1;
+	size_t base_len = d_flag ? LICHEN_RPL_DAO_BASE_LEN : 4;
+	return (total_len > base_len) ? (total_len - base_len) : 0;
+}
+
+/**
+ * @brief Get length of options following DAO base (legacy, assumes D=1).
+ * @deprecated Use lichen_rpl_dao_options_len_ex() for D-flag aware calculation.
  */
 static inline size_t lichen_rpl_dao_options_len(size_t total_len)
 {
@@ -192,6 +229,7 @@ void lichen_rpl_dodag_config_init(struct lichen_rpl_dodag_config *cfg);
 /**
  * @brief Parse DODAG config from option data (after type/length bytes).
  */
+LICHEN_WARN_UNUSED_RESULT
 int lichen_rpl_dodag_config_parse(struct lichen_rpl_dodag_config *cfg,
 				  const uint8_t *data, size_t len);
 
@@ -218,6 +256,7 @@ struct lichen_rpl_target {
 /**
  * @brief Parse RPL Target from option data (after type/length bytes).
  */
+LICHEN_WARN_UNUSED_RESULT
 int lichen_rpl_target_parse(struct lichen_rpl_target *target,
 			    const uint8_t *data, size_t len);
 
@@ -249,6 +288,7 @@ struct lichen_rpl_transit_info {
 /**
  * @brief Parse Transit Info from option data (after type/length bytes).
  */
+LICHEN_WARN_UNUSED_RESULT
 int lichen_rpl_transit_info_parse(struct lichen_rpl_transit_info *ti,
 				  const uint8_t *data, size_t len);
 

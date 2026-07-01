@@ -82,20 +82,31 @@ void lichen_trickle_start(struct lichen_trickle *t,
 
 /**
  * @brief Get the absolute time when the current interval ends.
+ *
+ * Uses saturating addition to handle time wraparound after ~49.7 days.
+ * When saturated, returns UINT32_MAX to avoid scheduling events in the past.
  */
 static inline uint32_t lichen_trickle_interval_end(const struct lichen_trickle *t)
 {
-	return t->interval_start + t->interval;
+	uint32_t end = t->interval_start + t->interval;
+	/* Saturate on overflow: if result < start, we wrapped */
+	if (end < t->interval_start) {
+		return UINT32_MAX;
+	}
+	return end;
 }
 
 /**
  * @brief Record a consistent transmission from a neighbor (RFC 6206 step 3).
  *
  * Call this when receiving a DIO with the same DODAG version.
+ * Uses saturating increment to prevent counter wrap causing spurious transmits.
  */
 static inline void lichen_trickle_heard_consistent(struct lichen_trickle *t)
 {
-	t->counter++;
+	if (t->counter < UINT32_MAX) {
+		t->counter++;
+	}
 }
 
 /**
@@ -109,6 +120,7 @@ static inline bool lichen_trickle_should_transmit(const struct lichen_trickle *t
 /**
  * @brief Mark the transmit point reached.
  *
+ * @pre t must be non-NULL and initialized via lichen_trickle_init()
  * @return true if a DIO should be sent (counter < k)
  */
 bool lichen_trickle_fire_transmit(struct lichen_trickle *t);
@@ -116,6 +128,7 @@ bool lichen_trickle_fire_transmit(struct lichen_trickle *t);
 /**
  * @brief End the current interval: double (capped) and start the next (step 5).
  *
+ * @pre t must be non-NULL and initialized via lichen_trickle_init()
  * @param t           Timer
  * @param now         Current time in ms
  * @param rand_offset Random value in [0, new_interval/2) for transmit scheduling
@@ -129,6 +142,7 @@ void lichen_trickle_expire(struct lichen_trickle *t,
  *
  * No-op if the interval is already imin (RFC 6206 section 4.2).
  *
+ * @pre t must be non-NULL and initialized via lichen_trickle_init()
  * @param t           Timer
  * @param now         Current time in ms
  * @param rand_offset Random value in [0, imin/2) for transmit scheduling
@@ -140,6 +154,7 @@ void lichen_trickle_reset(struct lichen_trickle *t,
 /**
  * @brief Get the next scheduled event.
  *
+ * @pre t and out must be non-NULL; t must be initialized via lichen_trickle_init()
  * @param t   Timer
  * @param out Event to populate
  */

@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-h7t5.1",
+  "title": "Define Zephyr HAL contract and ownership boundaries",
+  "description": "Why this exists: LICHEN needs a clear HAL boundary that application/protocol code can rely on across LilyGO, Heltec, RAK, STM32WL, RP2040, nRF52840, ESP32-class, gateway, and headless targets. What needs to be done: define the C API, subsystem ownership, initialization ordering, thread-safety expectations, error model, and capability discovery surface for board services including radio, display, input buttons, LEDs, GNSS/location, date/time, battery/PMIC, storage, BLE/serial/local-client transport, board identity, and reset/diagnostic controls. The contract must state which APIs are mandatory, optional, stubbed, or compile-time-disabled. Acceptance criteria: public headers and design notes describe each HAL service; no application code needs board-specific #ifdefs for the covered services; missing capability behavior is explicit and testable; initialization dependencies align with AGENTS.md subsystem order; two code-review passes are completed before closure.",
+  "notes": "Progress from project-LICHEN-ev5b.3: added initial minimal lichen_hal subsystem and public API for board capabilities, identity, deterministic unsupported/unavailable behavior, radio/GNSS/display/serial/battery/PMIC/external flash device lookup, LED/button GPIO specs, and BLE local status. This is enough for R1/R1 Neo MVP board target work but does not close h7t5.1 because broader design notes, initialization/thread-safety documentation, reset/diagnostic controls, and app code de-ifdefing remain.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "feature",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T06:19:16.943574Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T16:27:15.678616Z",
+  "labels": [
+    "zephyr",
+    "hal",
+    "api",
+    "firmware",
+    "board-support",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.1",
+      "depends_on_id": "project-LICHEN-h7t5",
+      "type": "parent-child",
+      "created_at": "2026-06-30T06:19:16.944076Z"
+    }
+  ]
+}

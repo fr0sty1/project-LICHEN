@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-d7ub.58",
+  "title": "lora_l2.c + crash_info.c: crash_info_store does not influence state machine",
+  "description": "Cross-file interaction issue: crash_info_store() called from lora_l2.c:490 but lora state machine proceeds independently.\n\nlora_l2.c:488-492:\n  LOG_ERR('lora_l2: recv overflow (%d \u003e %d)', ret, sizeof(rx_buf));\n  crash_info_store(CRASH_DRIVER_OVERFLOW, __LINE__, ret);\n  atomic_set(\u0026current_state, LORA_ABORTED);\n  break;\n\ncrash_info_store() at crash_info.c:18-47 writes to retained RAM but has no return value and cannot signal failure.\n\nThis is INTENTIONAL - crash_info is best-effort telemetry. But the cross-file contract is undocumented: lora_l2.c expects crash_info_store to succeed silently, and crash_info.c makes no guarantees.\n\nIf crash_info retained RAM is corrupted (magic never valid), crash_info_store continues without error. This is acceptable design but should be documented.\n\nFIX: Add comment in lora_l2.c:490 noting crash_info_store is best-effort and does not affect recovery path.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T07:26:27.257779Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T21:45:32.029884Z",
+  "closed_at": "2026-06-29T21:45:32.029884Z",
+  "close_reason": "Documented crash_info_store as best-effort telemetry at the lora_l2 driver overflow recovery path; verified with bridge build",
+  "labels": [
+    "review",
+    "round2",
+    "interaction",
+    "documentation",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-d7ub.58",
+      "depends_on_id": "project-LICHEN-d7ub",
+      "type": "parent-child",
+      "created_at": "2026-06-28T07:26:27.258259Z"
+    }
+  ]
+}

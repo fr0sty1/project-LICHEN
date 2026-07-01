@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-t2hn.20",
+  "title": "Wire or retire Rust Meshtastic config handler",
+  "description": "Why this exists: Schrodinger review found rust/lichen-meshtastic/src/config_handler.rs is not exported or compiled by rust/lichen-meshtastic/src/lib.rs, so cargo check can pass while stale admin/config behavior diverges from the Meshtastic compatibility contract. What needs to be done: decide whether the Rust handler remains reference/tooling or should be compiled; wire it into lib.rs or remove/replace it; update tests so unsupported admin writes and read-only owner/channel/config/metadata responses match docs/meshtastic-compat-dev.md. Acceptance criteria: cargo check/test covers the handler or it is explicitly removed from the reference surface; stale unsupported-write behavior is not silently present.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T22:13:16.206947Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T22:13:16.20756Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.20",
+      "depends_on_id": "project-LICHEN-t2hn",
+      "type": "parent-child",
+      "created_at": "2026-06-30T22:13:16.20756Z"
+    }
+  ]
+}

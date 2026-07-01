@@ -1,0 +1,59 @@
+{
+  "id": "project-LICHEN-py4c.1.8",
+  "title": "Implement TUI messaging flows",
+  "description": "Why this exists: messaging is the core operator workflow for the native client. What needs to be done: implement inbox/thread list, message detail, compose/send, delivery state, received-message notifications, timestamp/source display, error display, and basic contact/node selection backed by the shared native client model. Acceptance criteria: user can view received messages, compose outbound text, send through BLE or IP/CoAP without changing UI behavior, see delivery/result state, and recover from transport errors; tests cover send success, send failure, inbound message update, and empty-state rendering.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:51:22.869355Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:51:25.231594Z",
+  "labels": [
+    "python",
+    "tui",
+    "messaging",
+    "client-app",
+    "native-interface",
+    "ble",
+    "coap",
+    "lilygo",
+    "zephyr",
+    "lichen",
+    "app-interface",
+    "firmware",
+    "lci"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-py4c.1.8",
+      "depends_on_id": "project-LICHEN-py4c.1",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:51:22.86984Z"
+    },
+    {
+      "issue_id": "project-LICHEN-py4c.1.8",
+      "depends_on_id": "project-LICHEN-py4c.1.4",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:51:24.712572Z"
+    },
+    {
+      "issue_id": "project-LICHEN-py4c.1.8",
+      "depends_on_id": "project-LICHEN-py4c.1.7",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:51:24.883724Z"
+    },
+    {
+      "issue_id": "project-LICHEN-py4c.1.8",
+      "depends_on_id": "project-LICHEN-py4c.1.5",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:51:25.054066Z"
+    },
+    {
+      "issue_id": "project-LICHEN-py4c.1.8",
+      "depends_on_id": "project-LICHEN-py4c.1.6",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:51:25.231594Z"
+    }
+  ]
+}

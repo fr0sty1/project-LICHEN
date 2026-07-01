@@ -13,7 +13,11 @@ if LICHEN
 
 rsource "coap/Kconfig"
 rsource "crypto/Kconfig"
+rsource "edhoc/Kconfig"
+rsource "hal/Kconfig"
 rsource "link/Kconfig"
+rsource "meshtastic/Kconfig"
+rsource "l2/Kconfig"
 rsource "oscore/Kconfig"
 rsource "schc/Kconfig"
 rsource "senml/Kconfig"

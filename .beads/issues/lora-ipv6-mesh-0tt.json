@@ -1,0 +1,14 @@
+{
+  "id": "lora-ipv6-mesh-0tt",
+  "title": "Spec: Define time synchronization mechanism",
+  "description": "Time sync is listed as 'open question' but is critical for: replay protection (SeqNum wrapping), SenML timestamps, message TTL expiration, scheduled check-ins, OSCORE sequence numbers. Options mentioned: NTP over CoAP, GPS, DIO piggyback. Need to pick one and specify protocol.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T04:55:05Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-27T05:29:09Z",
+  "closed_at": "2026-05-27T05:29:09Z",
+  "close_reason": "Resolved: Hierarchical time sources (GPS \u003e gpsd \u003e NTS \u003e Roughtime \u003e mesh peer \u003e none). Stratum propagated via DIO Time Option. Constrained nodes gracefully degrade to monotonic counters. Updated spec/09-packets-timing.md."
+}

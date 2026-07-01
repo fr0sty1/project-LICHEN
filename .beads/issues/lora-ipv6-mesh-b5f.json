@@ -1,0 +1,14 @@
+{
+  "id": "lora-ipv6-mesh-b5f",
+  "title": "Spec: Address link-layer metadata exposure",
+  "description": "Spec acknowledges 'Metadata visible: Link-layer headers unencrypted' but doesn't mitigate. Enables: traffic analysis, node tracking via IID/EUI-64, network topology discovery by passive adversaries. Consider: IID rotation, traffic padding, dummy messages for cover traffic.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T04:55:27Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-27T04:56:46Z",
+  "closed_at": "2026-05-27T04:56:46Z",
+  "close_reason": "Not a concern per threat model: auth-only, not concealment. Running in the clear is intentional."
+}

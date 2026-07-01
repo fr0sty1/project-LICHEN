@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-rwio.26",
+  "title": "main.c goto-based error handling could use early-return pattern instead",
+  "description": "main.c lines 106-127: Uses goto main_loop for error cases. The function is short and each error path just logs and continues, so early-return with if-else chains would be equivalent and avoid the goto. However, this is a minor style preference - the current code is readable and the goto is clearly labeled. No strong recommendation to change.\n\nLocations: main.c lines 106-109, 115-119, 123-127",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:02:03.792156Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:18:01.494439Z",
+  "closed_at": "2026-06-27T06:18:01.494439Z",
+  "close_reason": "Taste: goto-cleanup is a standard idiom in kernel/embedded C code; both patterns are valid and the current code is readable with clearly labeled goto",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rwio.26",
+      "depends_on_id": "project-LICHEN-rwio",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:02:03.79267Z"
+    }
+  ]
+}

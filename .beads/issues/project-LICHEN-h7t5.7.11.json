@@ -1,0 +1,57 @@
+{
+  "id": "project-LICHEN-h7t5.7.11",
+  "title": "Run LilyGO end-to-end packet and app smoke tests",
+  "description": "Why this exists: LilyGO should prove the target is usable, not just bootable. What needs to be done: run a small end-to-end smoke suite covering LoRa packet TX/RX or known-peer exchange, node status, local client connection, basic message send/receive through native interface where available, and diagnostics collection. Acceptance criteria: test steps and outputs are recorded; at least one real packet path is verified; at least one local app path is verified; failures are split into blocker/follow-up Beads; results are sufficient for contributor handoff.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:54:40.329672Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T19:27:20.669413Z",
+  "labels": [
+    "zephyr",
+    "lilygo",
+    "smoke-test",
+    "lora",
+    "app-interface",
+    "hardware",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.11",
+      "depends_on_id": "project-LICHEN-h7t5.7",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:54:40.3302Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.11",
+      "depends_on_id": "project-LICHEN-h7t5.7.10",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:54:42.524185Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.11",
+      "depends_on_id": "project-LICHEN-h7t5.7.5",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:54:42.699958Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.11",
+      "depends_on_id": "project-LICHEN-h7t5.7.6",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:54:42.873494Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.11",
+      "depends_on_id": "project-LICHEN-h7t5.7.13",
+      "type": "blocks",
+      "created_at": "2026-06-30T19:27:20.669412Z"
+    }
+  ]
+}

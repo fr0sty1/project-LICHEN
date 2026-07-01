@@ -1,0 +1,14 @@
+{
+  "id": "lora-ipv6-mesh-p4w",
+  "title": "Implement Radio abstraction trait",
+  "description": "Create Radio trait with: configure(), transmit(), receive(), cad(), rssi(), snr(). Implement for sx126x, sx127x, and simulated backends. Per spec section 3.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:10:59Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-13T04:37:12Z",
+  "closed_at": "2026-06-13T04:37:12Z",
+  "close_reason": "Done for the Python-prototype scope: radio/base.py defines Radio(Protocol); SimRadio implements it with full tests. Hardware backends (sx126x/sx127x) belong to the embedded phases. (Re-applied on main after a branch-switch reverted the reconciliation close.)"
+}

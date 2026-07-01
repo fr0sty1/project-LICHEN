@@ -1,0 +1,34 @@
+{
+  "id": "lora-ipv6-mesh-2bg",
+  "title": "Implement simulator main entry point",
+  "description": "Create python/src/lichen/sim/server.py (main module). SimulatorServer class: __init__(node_port=4444, api_port=4445), async start(), async stop(). Starts both TCP node server and HTTP REST API. Manages SimulationRegistry (dict of active simulations). CLI entry point: python -m lichen.sim --node-port 4444 --api-port 4445 --log-level INFO. Graceful shutdown on SIGINT/SIGTERM. Structlog for logging.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T07:02:46Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "started_at": "2026-05-27T17:46:21Z",
+  "closed_at": "2026-05-27T18:32:56Z",
+  "close_reason": "Wave 6 complete. Server entry point implemented with CLI, uvicorn integration, and structlog. 348+ tests pass.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-2bg",
+      "depends_on_id": "lora-ipv6-mesh-1tn",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:04:00Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-2bg",
+      "depends_on_id": "lora-ipv6-mesh-w82",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:03:59Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

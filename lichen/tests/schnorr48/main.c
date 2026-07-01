@@ -26,6 +26,9 @@ static int hex_digit(char c)
 static size_t hex_decode(const char *hex, uint8_t *out, size_t max_len)
 {
 	size_t hex_len = strlen(hex);
+	if (hex_len % 2 != 0) {
+		return 0;  /* odd-length hex is invalid */
+	}
 	size_t bytes = hex_len / 2;
 
 	if (bytes > max_len) {
@@ -345,23 +348,51 @@ static int test_frame_sign_verify(void)
 	uint8_t inner_payload[] = "CoAP";
 	uint8_t sig[48];
 
-	schnorr48_sign_frame(1, 42, dst_addr, 2, inner_payload, 4, privkey, pubkey, sig);
+	/* schnorr48_sign_frame returns 0 on success */
+	ASSERT_TRUE(schnorr48_sign_frame(1, 42, dst_addr, 2, inner_payload, 4,
+					 privkey, pubkey, sig) == 0,
+		    "sign_frame returns 0 on success");
 
 	/* Build full payload: inner || sig */
 	uint8_t full_payload[4 + 48];
 	memcpy(full_payload, inner_payload, 4);
 	memcpy(full_payload + 4, sig, 48);
 
-	ASSERT_TRUE(schnorr48_verify_frame(1, 42, dst_addr, 2, full_payload, 52, pubkey),
+	/* schnorr48_verify_frame returns 1 on valid signature */
+	ASSERT_TRUE(schnorr48_verify_frame(1, 42, dst_addr, 2, full_payload, 52, pubkey) == 1,
 		    "frame verify");
 
-	/* Wrong epoch */
-	ASSERT_FALSE(schnorr48_verify_frame(2, 42, dst_addr, 2, full_payload, 52, pubkey),
-		     "wrong epoch should fail");
+	/* Wrong epoch - returns 0 (invalid signature) */
+	ASSERT_TRUE(schnorr48_verify_frame(2, 42, dst_addr, 2, full_payload, 52, pubkey) == 0,
+		    "wrong epoch should fail");
 
-	/* Wrong seqnum */
-	ASSERT_FALSE(schnorr48_verify_frame(1, 43, dst_addr, 2, full_payload, 52, pubkey),
-		     "wrong seqnum should fail");
+	/* Wrong seqnum - returns 0 (invalid signature) */
+	ASSERT_TRUE(schnorr48_verify_frame(1, 43, dst_addr, 2, full_payload, 52, pubkey) == 0,
+		    "wrong seqnum should fail");
+
+	return 1;
+}
+
+static int test_frame_bounds_checking(void)
+{
+	uint8_t seed[32] = { 0 };
+	uint8_t privkey[32], pubkey[32];
+
+	schnorr48_derive_keypair(seed, privkey, pubkey);
+
+	uint8_t dst_addr[9] = { 0 };  /* Too long - max is 8 */
+	uint8_t inner_payload[] = "CoAP";
+	uint8_t sig[48];
+
+	/* sign_frame should return -1 for dst_addr_len > 8 */
+	ASSERT_TRUE(schnorr48_sign_frame(1, 42, dst_addr, 9, inner_payload, 4,
+					 privkey, pubkey, sig) == -1,
+		    "sign_frame rejects dst_addr_len > 8");
+
+	/* verify_frame should return -1 for dst_addr_len > 8 */
+	uint8_t full_payload[52] = { 0 };
+	ASSERT_TRUE(schnorr48_verify_frame(1, 42, dst_addr, 9, full_payload, 52, pubkey) == -1,
+		    "verify_frame rejects dst_addr_len > 8");
 
 	return 1;
 }
@@ -388,6 +419,7 @@ int main(void)
 	RUN_TEST(test_verify_invalid_signatures);
 	RUN_TEST(test_sign_verify_roundtrip);
 	RUN_TEST(test_frame_sign_verify);
+	RUN_TEST(test_frame_bounds_checking);
 
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 

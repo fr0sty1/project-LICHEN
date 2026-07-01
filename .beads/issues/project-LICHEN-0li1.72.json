@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.72",
+  "title": "[lichen_link_rx.c:196-205] schnorr48_verify_frame return value semantics unclear",
+  "description": "Gap: schnorr48_verify_frame returns 1/0/-1 but the check only tests for '!= 1'.\n\nWhat: Lines 196-205 call schnorr48_verify_frame and check 'if (verify_result != 1)' to reject. The comment says it returns '1=valid, 0=invalid signature, -1=invalid parameters'. The check correctly rejects both 0 and -1, but the distinction between 'invalid signature' (forgery attempt) and 'invalid parameters' (programming error) is lost.\n\nWhy it matters: An invalid parameter error (e.g., malformed public key in peer_table) is a different class of error than a forgery attempt. The current code treats both as -LICHEN_EAUTH, preventing distinguishing between 'someone tried to forge' vs 'our peer table is corrupted'. Consider logging the specific schnorr48 error code.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:19:53.983448Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:10:44.869932Z",
+  "closed_at": "2026-06-28T07:10:44.869932Z",
+  "close_reason": "Fixed: Added distinct logging for schnorr48_verify_frame return values. Now logs 'signature verification failed' for forgery attempts (return 0), 'invalid parameters' for programming errors (return -1), and 'unexpected result' for defensive coverage of unknown return values. All cases still correctly return -LICHEN_EAUTH but the distinction is now observable in logs for debugging.",
+  "labels": [
+    "review-r2",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.72",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:19:53.983995Z"
+    }
+  ]
+}

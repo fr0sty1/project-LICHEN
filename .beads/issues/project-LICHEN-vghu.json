@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-vghu",
+  "title": "Fix Codex codereview slash command",
+  "description": "The custom /codereview command exists as a loose prompt file under ~/.codex/prompts, but Codex 0.142.3 does not register it as a slash command. Move or wrap it in the supported plugin commands surface and verify the command is recognized.",
+  "notes": "Attempted supported surfaces for /codereview in Codex 0.142.3. Installed a validated personal plugin with commands/codereview.md; mirrored prompt to ~/.codex/commands and ~/.claude/commands; drove externalAgentConfig/detect over app-server; and tested a local MCP prompt server. Fresh TUI still lists only built-ins for /c and direct /codereview returns: Unrecognized command '/codereview'. Type '/' for a list of supported commands. Conclusion: this Codex TUI build does not load user/plugin/MCP prompts as slash commands; /codereview cannot be made a supported slash command via config in 0.142.3.",
+  "status": "blocked",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-29T04:53:09.672215Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T18:15:19.920345Z"
+}

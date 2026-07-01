@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.20",
+  "title": "[lichen_l2.c:441] lichen_peer_remove void return hides errors",
+  "description": "Function: lichen_peer_remove. Contract violation: The function returns void but can fail in multiple ways: NULL eui64 (line 444), lora_l2_needs_reinit() (lines 457-460), or peer not found (silent). Callers cannot distinguish between 'peer removed' and 'removal failed due to aborted state'. The peer_add() counterpart returns int with error codes. Consider returning int for symmetry: 0 on success, -EINVAL for NULL, -ECANCELED for needs_reinit, -ENOENT if peer not found. Priority 3 because current callers don't check the result.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:46:40.914927Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:32:21.695923Z",
+  "closed_at": "2026-06-28T02:32:21.695923Z",
+  "close_reason": "Fixed: Changed lichen_peer_remove return type from void to int. Now returns: 0 on success, -EINVAL for NULL eui64, -ENOENT if peer not found, -ECANCELED if LoRa L2 needs reinit, -ENOTSUP if link support disabled.",
+  "labels": [
+    "review",
+    "round1",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.20",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:46:40.915411Z"
+    }
+  ]
+}

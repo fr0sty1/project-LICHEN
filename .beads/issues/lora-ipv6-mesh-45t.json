@@ -1,0 +1,32 @@
+{
+  "id": "lora-ipv6-mesh-45t",
+  "title": "Phase 9: Border Router",
+  "description": "Full 6LBR connecting mesh to internet. Exit criteria: internet host can ping mesh node, mesh node can reach internet, Resource Directory operational.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:10:00Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-25T04:47:31Z",
+  "close_reason": "Phase 9 complete: CoAP Resource Directory (z21u), Border Router epic (ss4) done, gateway lichend daemon with SLIP bridge and CoAP resources operational.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-45t",
+      "depends_on_id": "lora-ipv6-mesh-ss4",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:09:49Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-45t",
+      "depends_on_id": "lora-ipv6-mesh-nre",
+      "type": "blocks",
+      "created_at": "2026-05-26T22:10:56Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

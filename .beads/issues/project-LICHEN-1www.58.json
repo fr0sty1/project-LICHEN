@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-1www.58",
+  "title": "lichen_link_strerror switch statement missing ENODATA case",
+  "description": "Location: firmware/bridge-zephyr/subsys/lichen/lichen_util.h:86-138 (lichen_link_strerror)\n\nRisk: The function lists covered error codes in the comment (line 80-82) but misses ENODATA which is returned by init_standalone_lora() at main.c:89 when lichen_lora_l2_get_eui64() fails.\n\nAdditionally, the function is used to decode errors from lichen_link_tx() and lichen_link_rx() but those functions may return other LICHEN-specific error codes beyond LICHEN_EAUTH.\n\nPattern generating user issue reports: When ENODATA is returned, the log will say unknown error which is not helpful for debugging.\n\nSuggested fix: Add case -ENODATA: return no data available; and review lichen/errno.h for other LICHEN-specific error codes that should be included.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T21:46:14.854466Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T22:02:49.498808Z",
+  "closed_at": "2026-06-27T22:02:49.498808Z",
+  "close_reason": "Closed",
+  "labels": [
+    "risk",
+    "maintainer-burden",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1www.58",
+      "depends_on_id": "project-LICHEN-1www",
+      "type": "parent-child",
+      "created_at": "2026-06-27T21:46:14.854897Z"
+    }
+  ]
+}

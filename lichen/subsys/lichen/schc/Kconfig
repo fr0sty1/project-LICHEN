@@ -6,6 +6,7 @@
 menuconfig LICHEN_SCHC
 	bool "SCHC header compression (RFC 8724)"
 	depends on LICHEN
+	select SCHC
 	help
 	  Enable Static Context Header Compression for IPv6/UDP/CoAP
 	  and ICMPv6 packets. Compresses 48+ byte headers to 3-6 bytes.

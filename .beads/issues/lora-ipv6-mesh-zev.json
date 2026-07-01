@@ -1,0 +1,25 @@
+{
+  "id": "lora-ipv6-mesh-zev",
+  "title": "Implement minimal IPv6/6LoWPAN in Python",
+  "description": "Python IPv6 packet construction/parsing. 6LoWPAN IPHC compression. Address handling: link-local, ULA, IID derivation from EUI-64. ICMPv6 echo. Integrate with SCHC layer.",
+  "notes": "COMPLETE in substance: IPv6 packet build/parse (ipv6/packet.py), UDP (ipv6/udp.py), address/IID (ipv6/addr.py), ICMPv6 echo (ipv6/icmpv6.py), and SCHC integration (schc/headers.py extracts IPv6/UDP fields; coap/schc_channel.py carries SCHC-compressed datagrams). '6LoWPAN IPHC' is N/A (LICHEN uses SCHC). Held open only by the 5d7 dependency (its rule-2 whole-packet gap).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:14:53Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-18T17:39:28Z",
+  "close_reason": "Minimal IPv6 in Python COMPLETE: packet build/parse (ipv6/packet.py), UDP (ipv6/udp.py), address handling + IID-from-EUI64 + link-local/ULA/GUA (ipv6/addr.py), ICMPv6 echo (ipv6/icmpv6.py), and SCHC integration (schc/headers.py extracts IPv6/UDP/ICMPv6 fields; coap/schc_channel.py carries SCHC-compressed datagrams). '6LoWPAN IPHC' is N/A — LICHEN uses SCHC (per architecture).",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-zev",
+      "depends_on_id": "lora-ipv6-mesh-5d7",
+      "type": "blocks",
+      "created_at": "2026-05-26T22:15:13Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.21",
+  "title": "[lichen_util.h:93] Pointer cast may violate strict aliasing",
+  "description": "What: secure_zero() casts a volatile uint8_t* to volatile unsigned long* via uintptr_t:\n```c\nvolatile unsigned long *wp = (volatile unsigned long *)(uintptr_t)p;\n```\n\nWhy it matters: C strict aliasing rules state that accessing an object through an incompatible pointer type is undefined behavior. The comment claims this is safe because 'writing zeros through any pointer type is well-defined', but the C standard does not make this exception.\n\nHowever:\n1. The pointer is volatile, which may provide additional guarantees on embedded compilers\n2. The target is being zeroed, so the value doesn't matter\n3. ARM compilers typically don't exploit strict aliasing for volatile pointers\n4. The code has been tested on target platforms\n\nThis is a theoretical concern for strict standards compliance, not a practical bug on embedded Cortex-M targets.\n\nEvidence: Lines 85-100 in lichen_util.h",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:12:41.588767Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:09:45.09285Z",
+  "closed_at": "2026-06-28T07:09:45.09285Z",
+  "close_reason": "False positive. The cast at line 93 is safe: (1) the pointer is already word-aligned after the alignment loop (lines 87-90), (2) writing zeros has well-defined behavior regardless of pointer type since 0x00 bytes have identical representation in all integer types, (3) no aliasing conflict exists because there are no reads through the original uint8_t* after writing through unsigned long*, (4) volatile ensures actual stores. The existing comment at lines 72-75 correctly documents this safety rationale.",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.21",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:12:41.58929Z"
+    }
+  ]
+}

@@ -22,10 +22,5 @@ zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 # Include SCHC headers for compression/decompression
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../schc/include)
 
-# Include crypto headers for Monocypher when using Schnorr-48
-zephyr_include_directories_ifdef(CONFIG_LICHEN_CRYPTO_MONOCYPHER
-  ${CMAKE_CURRENT_SOURCE_DIR}/../crypto
-)
-
-# Include OSCORE headers for AES-CCM MIC computation
-zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../oscore)
+# Include shared crypto headers for Schnorr-48 and AES-CCM MIC computation
+zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../crypto)

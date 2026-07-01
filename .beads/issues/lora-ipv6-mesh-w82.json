@@ -1,0 +1,50 @@
+{
+  "id": "lora-ipv6-mesh-w82",
+  "title": "Implement TCP node server",
+  "description": "Create python/src/lichen/sim/node_server.py. asyncio TCP server on port 4444. On connect: read REGISTER message, create/lookup Simulation by sim_id, add node, send OK/ERR. Handle TX: validate, create Transmission in medium, schedule TxEndEvent, send TX_DONE with airtime. Handle RX: set node state to RX_WAIT, create RxTimeoutEvent, await packet delivery or timeout, send RX_OK or RX_TIMEOUT. Handle TIME: return current_time_us. Track connection -\u003e node_id mapping. Clean up on disconnect.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T07:02:27Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "started_at": "2026-05-27T17:30:58Z",
+  "closed_at": "2026-05-27T17:35:13Z",
+  "close_reason": "Wave 5 complete. 428 tests pass, ruff clean.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-w82",
+      "depends_on_id": "lora-ipv6-mesh-ej6",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:03:48Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-w82",
+      "depends_on_id": "lora-ipv6-mesh-017",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:03:47Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-w82",
+      "depends_on_id": "lora-ipv6-mesh-m3m",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:03:49Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-w82",
+      "depends_on_id": "lora-ipv6-mesh-7pq",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:04:16Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

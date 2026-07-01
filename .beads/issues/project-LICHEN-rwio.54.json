@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-rwio.54",
+  "title": "lichen_l2_enable returns non-void but some paths may return without value",
+  "description": "lichen_l2.c line 228-280: The function signature is int lichen_l2_enable(), and the else branch (lines 254-279) returns the result of lichen_lora_l2_stop(). However, looking carefully: line 241 returns lichen_lora_l2_start(), line 254-278 return ret. All paths return. No issue - just verifying.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:03:05.045321Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:03:12.696029Z",
+  "closed_at": "2026-06-27T06:03:12.696029Z",
+  "close_reason": "Invalid - verified all paths return correctly: line 235 (-ENODEV), line 241 (start result), line 278 (ret from stop)",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rwio.54",
+      "depends_on_id": "project-LICHEN-rwio",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:03:05.045815Z"
+    }
+  ]
+}

@@ -139,6 +139,16 @@ class DaoManager:
             return self.build_dao_ack(dao)
         return None
 
+    def remove_edge(self, target: IPv6Address | str) -> bool:
+        """Remove a target's parent edge and its route. Returns True if removed."""
+        target = _addr(target)
+        if target not in self._parent_map:
+            return False
+        del self._parent_map[target]
+        self.routing_table.remove_route(target)
+        self._rebuild_routes()  # downstream routes may now be incomplete
+        return True
+
     def build_dao_ack(self, dao: DAO, status: int = 0) -> DAOAck:
         return DAOAck(
             rpl_instance_id=dao.rpl_instance_id,
@@ -149,10 +159,22 @@ class DaoManager:
 
     @staticmethod
     def _extract_edge(dao: DAO) -> tuple[IPv6Address, IPv6Address]:
+        """Extract the single (target, parent) edge from a DAO.
+
+        RFC 6550 Section 6.7.7 allows multiple RPL Target options to share a
+        single Transit Information option. This implementation supports only
+        single-target DAOs. Multi-target DAOs are rejected with DaoError rather
+        than silently dropping targets.
+        """
         target: IPv6Address | None = None
         parent: IPv6Address | None = None
         for opt in dao.options:
             if opt.type == RplOptionType.RPL_TARGET:
+                if target is not None:
+                    raise DaoError(
+                        "multi-target DAOs not supported; "
+                        "send one DAO per target"
+                    )
                 target = RplTarget.from_option(opt).target
             elif opt.type == RplOptionType.TRANSIT_INFORMATION:
                 parent = TransitInformation.from_option(opt).parent_address
@@ -161,6 +183,7 @@ class DaoManager:
         return target, parent
 
     def _rebuild_routes(self) -> None:
+        self.routing_table._routes.clear()
         for target in self._parent_map:
             path = self._assemble_path(target)
             if path is not None:

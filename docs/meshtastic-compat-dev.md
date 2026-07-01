@@ -2,7 +2,19 @@
 
 This document describes how LICHEN nodes expose a Meshtastic-compatible BLE interface, allowing unmodified Meshtastic apps to connect.
 
-## Build Considerations
+## Source Baseline
+
+This contract is based on the Meshtastic app/protocol research recorded in Bead `project-LICHEN-t2hn.1`:
+
+| Source | Commit inspected |
+|--------|------------------|
+| `meshtastic/protobufs` | `032b7dfd68e875c4323e6ac67590c6fc616b1714` |
+| `meshtastic/firmware` | `2f97112987af311ca81dd70b83cbcf7236d6c119` |
+| `meshtastic/python` | `6d76edf8a7b192c51e3a5d26bc5868da556ac3d9` |
+| `meshtastic/Meshtastic-Android` | `eb3bd10757a312d1537874bfab245117c46c36a9` |
+| `meshtastic/Meshtastic-Apple` | `aeeb0cc49fbe0ed593e918ba2f95100ecf694256` |
+
+## Build and Target Architecture
 
 **This feature is off by default.** The Meshtastic adapter adds significant firmware size:
 
@@ -10,24 +22,32 @@ This document describes how LICHEN nodes expose a Meshtastic-compatible BLE inte
 - GATT service and adapter logic: ~8-12 KB
 - Total overhead: ~25-30 KB
 
-To enable Meshtastic compatibility, explicitly request it at build time:
+The firmware MVP target is native Zephyr C. It should use a bounded, no-dynamic-allocation protobuf codec for the
+small app-compat subset, exposed through Zephyr Bluetooth GATT services and wired into the same LICHEN app-level
+contract used by native LICHEN clients. Rust and Python implementations remain reference, host tooling, and simulator
+paths unless a later Bead explicitly selects an FFI or host-bridge architecture.
+
+To enable Meshtastic compatibility, explicitly request it at build time. Final Zephyr Kconfig names are tracked by the
+Meshtastic implementation Beads; the Rust/Python commands below are for development and simulation only:
 
 ```
-# Rust
-cargo build --features meshtastic-compat
+# Rust reference / host tooling
+cargo build -p lichen-meshtastic
 
 # Python (development/simulation only)
 pip install lichen[meshtastic]
 ```
 
-**Supported platforms:**
-- ESP32 (via esp32-nimble)
-- nRF52840 (via nrf-softdevice)
-- Linux (via bluer, for testing)
+**Firmware platforms:**
+- Zephyr boards with BLE local transport, such as nRF52840 targets, are the first implementation target.
+- ESP32-S3 targets remain possible once Zephyr BLE support is validated for the board.
+- STM32WL has no BLE hardware; a serial/TCP Meshtastic-compatible stream is separate work and must not be confused with BLE GATT.
 
-**Not supported:**
-- STM32WL (no BLE hardware—use serial transport instead)
-- Native Zephyr (use Rust via FFI if needed)
+**Reference and test platforms:**
+- Python prototype and tests for adapter behavior.
+- Rust `lichen-meshtastic` for schema, address mapping, config, and host tooling. Its current `gatt.rs` is not
+  authoritative for BLE framing until updated to raw protobuf-per-GATT-value semantics.
+- Linux BLE clients for smoke tests.
 
 Without this feature, users must use LICHEN-native apps (iOS, Android, CLI, or web) to interact with the node.
 
@@ -80,13 +100,18 @@ Meshtastic num (32b):  0x5e6f7a8b  (low 32 bits)
 Meshtastic id string:  "!5e6f7a8b"
 ```
 
-**Collision risk:** Two LICHEN nodes could have IIDs that share the same low 32 bits. This is unlikely (~1 in 4 billion) but possible. The Meshtastic app would show them as the same node. LICHEN itself uses full IIDs so routing is unaffected—only the app display is wrong.
+**Collision risk:** Two LICHEN nodes could have IIDs that share the same low 32 bits. This is unlikely
+(~1 in 4 billion) but possible. The Meshtastic app would show them as the same node. LICHEN itself uses full IIDs so
+routing is unaffected; only the app display is wrong.
 
-**Reverse lookup:** When the app sends to a 32-bit destination, the adapter searches the peer table for an IID ending in those 32 bits. If no match, the message is dropped. Broadcast (0xFFFFFFFF) maps to IPv6 link-local all-nodes multicast.
+**Reverse lookup:** When the app sends to a 32-bit destination, the adapter searches the peer table for an IID ending
+in those 32 bits. If no match, the message is dropped. Broadcast (0xFFFFFFFF) maps to IPv6 link-local all-nodes
+multicast.
 
 ### User Names (short_name, long_name)
 
-**The problem:** Meshtastic stores user-configured names on each node. Users expect to set their name in the app and have it stick.
+**The problem:** Meshtastic stores user-configured names on each node. Users expect to set their name in the app and
+have it stick.
 
 **The solution:** Ignore writes, synthesize reads.
 
@@ -173,7 +198,8 @@ Position precision is preserved (1e-7 degree resolution).
 
 ### Message Delivery Semantics
 
-**The problem:** Meshtastic has implicit ACKs and "delivered" indicators. LICHEN uses CoAP confirmable/non-confirmable.
+**The problem:** Meshtastic has implicit ACKs and "delivered" indicators. LICHEN uses CoAP
+confirmable/non-confirmable.
 
 **The solution:** Best-effort mapping.
 
@@ -181,9 +207,12 @@ Position precision is preserved (1e-7 degree resolution).
 |------------|--------|
 | `want_ack: true` | CoAP CON (confirmable) |
 | `want_ack: false` | CoAP NON (non-confirmable) |
-| Delivery receipt | CoAP ACK response |
+| Local enqueue status | `queueStatus` |
+| Delivery receipt | `ROUTING_APP` ACK/NAK packet with `decoded.request_id` |
 
-If a CoAP CON gets an ACK, the adapter signals delivery. If it times out, no delivery confirmation. This roughly matches Meshtastic behavior.
+The adapter may use CoAP CON/NON internally, but the Meshtastic app-visible delivery state must be surfaced as a
+`FromRadio.packet` carrying a `ROUTING_APP` ACK/NAK correlated to the original Meshtastic packet ID with
+`decoded.request_id`. A local CoAP ACK alone is not enough for the app to show delivery.
 
 ### What We Stub
 
@@ -208,7 +237,7 @@ These features can't be stubbed meaningfully. The adapter returns errors or empt
 
 | Feature | Response |
 |---------|----------|
-| Admin messages (remote config) | Empty/error |
+| Admin config writes/commands | Deterministic no-op/error; read-only admin requests still return synthetic compatibility data |
 | Secondary channels | Not created |
 | Store-and-forward queries | Empty |
 | Range test | Not implemented |
@@ -227,21 +256,61 @@ These features can't be stubbed meaningfully. The adapter returns errors or empt
 
 ### Connection Flow
 
-1. App connects, requests MTU 512
-2. App writes `ToRadio { want_config_id: N }`
-3. Node responds with config sequence via FromRadio reads:
+1. App connects and discovers the Meshtastic service.
+2. App writes raw serialized `ToRadio` protobuf values to `ToRadio`.
+3. Current Android and iOS apps use a two-stage sync: `want_config_id = 69420` for config and
+   `want_config_id = 69421` for node DB. Android/iOS may also send `ToRadio.heartbeat` around the handshake,
+   especially between stages; firmware must tolerate heartbeat but must not require it before stage 1.
+4. Node responds via `FromRadio` reads:
    - `MyNodeInfo` (this node's identity)
+   - `DeviceMetadata` and config/module/channel records for config sync
    - `NodeInfo` (each known peer)
-   - `Config` sections (radio, display, etc.)
-   - `Channel` definitions
-   - `ConfigCompleteId`
-4. App subscribes to FromNum notifications
-5. On notify, app reads FromRadio until empty
-6. App writes ToRadio for outbound messages
+   - `ConfigCompleteId` matching the request nonce
+5. App subscribes to `FromNum` notifications; Android also proactively drains after writes.
+6. On notify, app reads `FromRadio` until the characteristic returns an empty value.
+7. App writes `ToRadio.packet` for outbound messages.
+8. Node emits `FromRadio.queueStatus` for local enqueue/accounting state and emits `FromRadio.packet` with
+   `ROUTING_APP` ACK/NAK for app-visible delivery state when the LICHEN contract can confirm success or failure.
+
+The sync nonces are fixed by current Android and iOS client flows. `69420` means "send config and static metadata";
+`69421` means "send node database". The adapter must echo the nonce in `config_complete_id` after the records for that
+stage. It must not assume the app is done after the first `config_complete_id`, because Apple and Android use the second
+stage to seed the node database. Other nonces are treated as legacy/full-sync requests for Python or older clients: queue
+the stage-1 config/static records and the stage-2 node database, then echo the original nonce in `config_complete_id`.
+
+The `FromNum` characteristic is an edge-triggered queue hint, not the data channel. Every queued `FromRadio` value
+increments `FromNum` modulo 2^32 and notifies subscribed clients when notifications are enabled. A `FromRadio` read
+returns one complete protobuf value. An empty value means the queue is drained.
 
 ### MTU Handling
 
-Meshtastic apps expect 512-byte MTU. Messages larger than ATT MTU are chunked by the BLE stack. The adapter reassembles ToRadio writes and chunks FromRadio reads.
+BLE uses one protobuf per GATT value, not the serial/TCP `0x94 0xc3 + length` stream framing. The source baseline in
+`project-LICHEN-t2hn.1` records Meshtastic firmware generated protobuf budgets of `ToRadio_size = 504` bytes and
+`FromRadio_size = 510` bytes, with a 512-byte characteristic value envelope.
+
+LICHEN compatibility builds use these limits:
+
+| Direction | Characteristic | Maximum protobuf value | Required behavior |
+|-----------|----------------|------------------------|-------------------|
+| App to node | `ToRadio` | 504 bytes | Accept one complete raw protobuf value; reject 505+ bytes |
+| Node to app | `FromRadio` | 510 bytes | Emit one complete raw protobuf value per read; never emit 511+ bytes |
+| Notify/read hint | `FromNum` | 4 bytes | Notify/read a little-endian monotonic queue counter |
+
+ATT MTU is a transport detail below the app contract. The Zephyr GATT binding may rely on ATT long write/read support or
+platform-provided value reassembly, but the Meshtastic adapter must see exactly one complete protobuf value per
+`ToRadio` write and must expose exactly one queued protobuf value per `FromRadio` read. The adapter must not implement
+Meshtastic-specific app-level BLE chunking or accept StreamAPI length-prefixed frames on BLE.
+
+Boundary behavior is deterministic:
+
+- `ToRadio` values larger than 504 bytes are rejected before decode and must not leave partial parser or sync state.
+- `FromRadio` payloads that would encode larger than 510 bytes must be reduced, split at the semantic queue level, or
+  replaced with a deterministic compatibility error before they reach the GATT value.
+- If a board/stack cannot carry 504-byte writes or 510-byte reads through ATT long operations, that board is not
+  Meshtastic-compatible until the limitation is fixed or documented as a blocker.
+
+`test/vectors/meshtastic_app_compat.json` includes BLE stream-prefix rejection and 505-byte `ToRadio` rejection cases.
+Captured Android/iOS/Python ATT evidence is tracked separately by `project-LICHEN-t2hn.21`.
 
 ## Protobuf Messages
 
@@ -251,20 +320,38 @@ The adapter implements a subset of Meshtastic's protobuf schema.
 
 | Field | Handling |
 |-------|----------|
-| `want_config_id` | Triggers config sync |
-| `packet` | MeshPacket to send |
-| `disconnect` | Close connection |
+| `want_config_id = 69420` | Queue stage-1 config, metadata, region presets, channel, module config, and matching `config_complete_id` |
+| `want_config_id = 69421` | Queue stage-2 node database and matching `config_complete_id` |
+| Other `want_config_id` | Queue legacy/full sync and matching `config_complete_id`; log compatibility nonce |
+| `heartbeat` | Keepalive/liveness trigger; may queue `queueStatus`; never required before sync |
+| `packet` with `TEXT_MESSAGE_APP` | Translate to the shared LICHEN message contract and queue local `queueStatus` |
+| `packet` with `POSITION_APP` | Translate to LICHEN position/announce when available; otherwise deterministic no-op status |
+| `packet` with `NODEINFO_APP` | Update transient display metadata only; no persistent Meshtastic identity writes |
+| `packet` with `ADMIN_APP` read request | Return synthetic owner/session/config response for supported read-only requests |
+| `packet` with `ADMIN_APP` write/command | Reject or no-op deterministically; do not mutate LICHEN radio/security settings |
+| `packet` with unsupported portnum | Drop with deterministic status or empty response; never crash or desync the queue |
+| `disconnect` | Clear connection-scoped queue/session state |
 
 ### Outbound (FromRadio)
 
 | Field | Source |
 |-------|--------|
-| `my_info` | This node's LICHEN identity |
-| `node_info` | LICHEN peer table |
+| `my_info` | This node's LICHEN identity and synthetic Meshtastic node number |
+| `node_info` | LICHEN peer table, including self and discovered peers |
 | `config` | Synthetic config from LICHEN state |
-| `channel` | Mapped from SCHC context |
-| `packet` | Incoming mesh messages |
-| `config_complete_id` | Signals end of config sync |
+| `moduleConfig` | Synthetic module config defaults |
+| `channel` | Synthetic primary channel plus disabled secondary channels when requested |
+| `metadata` | Synthetic device metadata and firmware/version policy |
+| `region_presets` | Region/preset constraints for current app sync; omission requires a separate tested safe-absence policy |
+| `packet` | Incoming mesh messages, node-info/position updates, and `ROUTING_APP` ACK/NAK |
+| `queueStatus` | Local send queue status only |
+| `config_complete_id` | End marker that echoes the stage nonce |
+| `clientNotification` | Optional advisory error/notice when a client requires visible feedback |
+
+`queueStatus` is not a delivery receipt. It only tells the app whether the local adapter accepted or rejected work for
+the local queue. Delivered/failed state that the app can show against a message must be represented as a `ROUTING_APP`
+packet whose decoded `request_id` matches the original message request/id. If LICHEN cannot prove final delivery, the
+adapter should report queued/local state only and avoid fabricating a final delivered ACK.
 
 ### MeshPacket
 
@@ -291,7 +378,13 @@ Meshtastic uses `portnum` to identify message types. The adapter maps these to C
 | `TELEMETRY_APP` (67) | `/telem` | Device telemetry |
 | `TRACEROUTE_APP` (70) | N/A | Handled internally |
 
-Unsupported portnums are silently dropped or return empty responses.
+Unsupported portnums produce deterministic no-op/error behavior and never produce mesh side effects.
+
+For unsupported app packets the behavior is deterministic: parse errors reject the `ToRadio` write at the transport
+boundary when the BLE stack permits it; valid but unsupported portnums produce no mesh side effect and may enqueue a
+`queueStatus` or `clientNotification` explaining the unsupported operation. Firmware must not leave partially decoded
+state, advance config stages incorrectly, or mutate LICHEN keys, channels, radio settings, or routing state because of a
+Meshtastic compatibility write.
 
 ## State Mapping
 
@@ -325,7 +418,8 @@ Meshtastic channels don't map directly to LICHEN. The adapter presents a synthet
 | `settings.name` | "LICHEN" |
 | `settings.psk` | Empty (security handled differently) |
 
-Additional channels are not supported. Config writes to channel settings are acknowledged but ignored.
+Additional channels are not creatable or mutable. When an app requests secondary channel reads, the adapter may return
+disabled secondary channel records for compatibility. Config writes to channel settings are acknowledged but ignored.
 
 ## Config Sections
 
@@ -342,6 +436,19 @@ The adapter returns synthetic config matching Meshtastic's expected structure:
 | `bluetooth` | Current BLE state |
 
 Config writes via ToRadio are acknowledged but most are no-ops. The LICHEN stack controls actual radio parameters.
+
+The read-only admin subset is first class for app compatibility:
+
+| Admin request | Response |
+|---------------|----------|
+| `get_owner_request` | Synthetic `User` for this LICHEN node |
+| `get_channel_request` | Primary `Channel` response or disabled secondary channel |
+| `get_config_request` | Synthetic supported config section, empty safe default for unsupported sections |
+| `get_device_metadata_request` | Synthetic device metadata and firmware version |
+
+Config/channel/owner write requests are acknowledged only if the app requires a response, but they are no-ops unless a
+future Bead explicitly maps the setting into the native LICHEN contract. Commands such as reboot, factory reset, and
+node DB reset are unsupported in the MVP and must return a deterministic unsupported/no-op result.
 
 ## Message Flow Examples
 
@@ -403,18 +510,26 @@ App: Reads FromRadio, displays position on map
 
 - **Hop limit**: Meshtastic's hop_limit is advisory. LICHEN uses IPv6 hop limit, decremented by actual routers.
 
-## Implementation Files
+## Planned Firmware Files
 
 ```
-lichen/interface/meshtastic/
-├── __init__.py
-├── adapter.py      # Main translation logic
-├── gatt.py         # BLE GATT service definition
-├── protos/         # Compiled Meshtastic protobufs
-│   ├── mesh_pb2.py
-│   ├── portnums_pb2.py
-│   └── ...
-└── mapping.py      # State conversion functions
+lichen/subsys/lichen/meshtastic/
+├── Kconfig         # Adapter feature gates, buffers, queue sizes
+├── CMakeLists.txt  # Zephyr build integration
+├── codec.*         # Bounded protobuf subset codec
+├── adapter.*       # App-level mapping and dispatcher
+├── gatt.*          # Zephyr BLE GATT service
+├── include/lichen/meshtastic/*.h
+└── mapping.*       # LICHEN state conversion
+
+python/src/lichen/interface/meshtastic/
+├── adapter.py      # Prototype state machine
+├── translate.py    # Reference translation helpers
+└── address.py      # Reference node-number mapping
+
+rust/lichen-meshtastic/
+├── proto/          # Reference schema subset
+└── src/            # Reference and host-tooling code; current gatt.rs is stale for BLE framing
 ```
 
 ## Testing

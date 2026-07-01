@@ -1,0 +1,16 @@
+{
+  "id": "lora-ipv6-mesh-4r8",
+  "title": "Implement metrics collection system in Simulation class",
+  "description": "Integrate the detailed metrics collection implementation plan into the Simulation class. Add metrics tracking variables, modify start_transmission and get_rx_result methods, and add metrics summary methods as documented in metrics_plan.md.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-09T04:16:54Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-13T04:23:33Z",
+  "started_at": "2026-06-09T04:21:35Z",
+  "closed_at": "2026-06-13T04:23:33Z",
+  "close_reason": "Implemented metrics collection. New sim/metrics.py Metrics class tracks transmissions, deduplicated receptions (per receiver,tx) and collisions (per receiver,overlapping-tx-set), per-delivery latency, and derived delivery_rate/collision_rate. Wired into Simulation (record on start_transmission and in get_rx_result). Dedup is essential because get_rx_result is polled ~1ms. Tests: tests/sim/test_metrics.py (unit + integration with independent oracles)."
+}

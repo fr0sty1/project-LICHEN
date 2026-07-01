@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-gy7h.24",
+  "title": "lichen_l2_iface_init sets lichen_iface before checking all init steps can succeed",
+  "description": "Location: lichen_l2.c:530-563\n\n**What goes wrong:** The initialization sequence is:\n1. Init LoRa driver (line 492-497) - can fail, sets iface_init_failed\n2. Get EUI-64 (line 500-505) - can fail, sets iface_init_failed\n3. Set link addr (line 513-516)\n4. Init link_ctx (line 520-527)\n5. Set lichen_iface = iface (line 530)\n6. Register RX callback (line 533)\n7. Log link-local (line 536-540) - can fail, goes to fail_late_init\n\nThe issue: lichen_iface is set at line 530 but lichen_log_link_local_from_eui64 can fail at line 536. If it fails, the code goes to fail_late_init which clears the callback but does NOT clear lichen_iface (due to \"set-once invariant\"). However, iface_init_failed IS set.\n\nThe lora_rx_callback checks both lichen_iface == NULL and iface_init_failed, so this is actually handled correctly. Not a bug.\n\nRetracting.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T21:22:37.69987Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T21:22:40.427577Z",
+  "closed_at": "2026-06-27T21:22:40.427577Z",
+  "close_reason": "Not a bug - lora_rx_callback checks both lichen_iface AND iface_init_failed, so late init failure is properly handled",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-gy7h.24",
+      "depends_on_id": "project-LICHEN-gy7h",
+      "type": "parent-child",
+      "created_at": "2026-06-27T21:22:37.700389Z"
+    }
+  ]
+}

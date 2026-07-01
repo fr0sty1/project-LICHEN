@@ -1,0 +1,48 @@
+{
+  "id": "lora-ipv6-mesh-muq",
+  "title": "Link layer transmit/receive logic",
+  "description": "Implement link layer TX/RX integration.\n\nLinkLayer class:\n- __init__(radio: Radio, identity: Identity)\n- async send(dst_addr, payload, security_level) -\u003e bool\n- async receive(timeout_ms) -\u003e Frame | None\n- Uses Schnorr signer for outgoing frames\n- Uses ReplayProtector for incoming frames\n- Tracks own sequence numbers\n\nTX flow:\n1. Build frame header\n2. Sign frame (header + payload)\n3. Call radio.transmit()\n4. Increment seqnum\n\nRX flow:\n1. Call radio.receive()\n2. Parse frame\n3. Verify signature\n4. Check replay protection\n5. Return payload\n\nIntegration with SimRadio for testing.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T08:20:50Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-23T14:02:41Z",
+  "close_reason": "Implemented upstream in python/src/lichen/link/link_layer.py (LinkLayer: Schnorr sign on TX, verify + ReplayProtector on RX, RxFrame). tests/link/test_link_layer.py.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-muq",
+      "depends_on_id": "lora-ipv6-mesh-n80",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:23:27Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-muq",
+      "depends_on_id": "lora-ipv6-mesh-s4n",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:23:30Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-muq",
+      "depends_on_id": "lora-ipv6-mesh-9a9",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:23:28Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-muq",
+      "depends_on_id": "lora-ipv6-mesh-eno",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:23:29Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

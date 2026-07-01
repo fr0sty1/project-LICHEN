@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-0zj6.12",
+  "title": "lora_l2.c RX thread holds mutex across callback invocation",
+  "description": "lora_l2.c:201-207 snapshots the callback under mutex but the comment at 200 says 'for consistency'. The snapshot is fine, but holding the mutex while invoking the callback would be wrong. Current code is correct (unlocks before calling cb at 207), but the mutex scope looks suspicious on first read. Add comment: 'Release mutex BEFORE invoking callback to avoid blocking TX/set_callback during potentially long callback execution.'",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:32:21.577612Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:39:49.454456Z",
+  "closed_at": "2026-06-27T06:39:49.454456Z",
+  "close_reason": "Added comment: 'Mutex released before callback - intentional to avoid holding lock during stack processing'",
+  "labels": [
+    "efficiency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0zj6.12",
+      "depends_on_id": "project-LICHEN-0zj6",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:32:21.580895Z"
+    }
+  ]
+}

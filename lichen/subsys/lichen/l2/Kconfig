@@ -1,0 +1,144 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+# LICHEN Zephyr L2 network integration options
+
+config LICHEN_IPV6
+	bool "LICHEN IPv6 address utilities"
+	depends on LICHEN
+	default y
+	help
+	  Enable LICHEN IPv6 address utilities:
+	  - Link-local address derivation from EUI-64
+	  - ULA address construction
+	  - GUA address construction
+
+	  These utilities are standalone and can be used with or without
+	  Zephyr's full networking stack.
+
+config LICHEN_IPV6_ULA_PREFIX
+	string "Default ULA prefix"
+	depends on LICHEN_IPV6
+	default "fd00:lich:en00::"
+	help
+	  Default ULA prefix used when no DODAG root provides one.
+	  Format: fd00:xxxx:xxxx:: (must be in fd00::/8).
+
+	  Kconfig cannot validate string format at compile time. Runtime
+	  validation in lichen_make_ula() enforces the fd00::/8 requirement.
+
+config LICHEN_LORA_L2
+	bool "LICHEN LoRa L2 driver"
+	depends on LICHEN
+	depends on LORA
+	depends on NETWORKING
+	depends on NET_IPV6
+	depends on LICHEN_IPV6
+	select HWINFO
+	select TINYCRYPT
+	select TINYCRYPT_SHA256
+	default y
+	help
+	  Enable the LICHEN LoRa L2 driver. This provides low-level LoRa
+	  radio access including TX/RX threads and EUI-64 generation.
+
+	  It is intended to be used through the full LICHEN_L2 Zephyr network
+	  interface path so received frames are parsed, decompressed, verified,
+	  and injected into IPv6.
+
+config LICHEN_LORA_L2_LOG_LEVEL
+	int "LICHEN LoRa L2 log level"
+	depends on LICHEN_LORA_L2
+	default 3
+	range 0 4
+	help
+	  Log level for LICHEN LoRa L2 driver.
+	  0 = Off, 1 = Error, 2 = Warning, 3 = Info, 4 = Debug.
+
+config LICHEN_LORA_L2_RX_STACK_SIZE
+	int "LICHEN LoRa L2 RX thread stack size"
+	depends on LICHEN_LORA_L2
+	default 2048
+	help
+	  Stack size for the LoRa L2 RX thread.
+
+config LICHEN_LORA_L2_RX_PRIORITY
+	int "LICHEN LoRa L2 RX thread priority"
+	depends on LICHEN_LORA_L2
+	default 7
+	help
+	  Priority for the LoRa L2 RX thread. Lower numbers have higher
+	  priority in Zephyr.
+
+config LICHEN_LORA_L2_RX_TIMEOUT_MS
+	int "LoRa RX timeout in milliseconds"
+	depends on LICHEN_LORA_L2
+	default 1000
+	range 100 10000
+	help
+	  Timeout for lora_recv() calls in the RX thread.
+
+	  Lower values provide faster stop() responsiveness. Higher values may
+	  reduce wakeups on some platforms, but slow disable/enable cycles.
+
+config LICHEN_LORA_FREQUENCY
+	int "LoRa frequency in Hz"
+	depends on LICHEN_LORA_L2
+	default 915000000
+	range 150000000 960000000
+	help
+	  LoRa carrier frequency in Hz. Must comply with regional regulations.
+	  Common ISM bands: 915000000 (US), 868000000 (EU), 433000000 (Asia).
+
+config LICHEN_LORA_TX_POWER
+	int "LoRa TX power in dBm"
+	depends on LICHEN_LORA_L2
+	default 14
+	range 0 22
+	help
+	  LoRa transmit power in dBm. Default 14 dBm is safe worldwide.
+	  Higher values may violate regional regulations.
+
+config LICHEN_L2
+	bool "LICHEN Zephyr L2 network interface"
+	depends on LICHEN_LORA_L2
+	depends on LICHEN_LINK
+	depends on NETWORKING
+	depends on NET_IPV6
+	depends on LICHEN_IPV6
+	default y if NET_IPV6
+	help
+	  Register LICHEN as a Zephyr L2 network interface so the IPv6 stack
+	  routes packets through LoRa. This implements the net_l2 callbacks
+	  and bridges IPv6 packets to the LoRa radio via SCHC compression and
+	  LICHEN framing.
+
+config LICHEN_L2_LOG_LEVEL
+	int "LICHEN L2 log level"
+	depends on LICHEN_L2
+	default 3
+	range 0 4
+	help
+	  Log level for LICHEN Zephyr L2 interface.
+	  0 = Off, 1 = Error, 2 = Warning, 3 = Info, 4 = Debug.
+
+config LICHEN_L2_RX_ALLOC_TIMEOUT_MS
+	int "RX packet allocation timeout (ms)"
+	depends on LICHEN_L2
+	default 50
+	range 0 1000
+	help
+	  Timeout in milliseconds for net_pkt_rx_alloc_with_buffer().
+
+	  For LoRa's low data rate, 50 ms is reasonable. If RX packet
+	  allocation fails under memory pressure, increase this value or add
+	  more NET_BUF_RX buffers.
+
+config LICHEN_L2_TEST_HOOKS
+	bool "LICHEN L2 ztest-only test hooks"
+	depends on LICHEN_L2
+	depends on ZTEST
+	default n
+	help
+	  Expose deterministic key loading and packet counters for automated
+	  L2 path tests. This must stay disabled in production builds.

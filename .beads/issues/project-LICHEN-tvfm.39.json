@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.39",
+  "title": "[lora_l2.c:306] lora_l2_init callback not cleared, may be stale",
+  "description": "Function: lichen_lora_l2_init. Initialization: Line 306 sets rx_callback = NULL, but if init is called after a stop() without deinit(), the callback from a previous session might linger until this NULL assignment. Actually, looking more carefully: init sets it to NULL (line 306), and set_rx_callback() is typically called after init, so this is correct. The check at line 298-300 makes init idempotent, so on double-init the callback isn't touched. This could preserve a stale callback across restart. But init() is only called once after deinit(), so this is fine. Priority 3 - verified correct.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "issue",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:48:47.916245Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:37:54.68656Z",
+  "closed_at": "2026-06-28T02:37:54.68656Z",
+  "close_reason": "Not a bug: rx_callback and rx_callback_user_data are already explicitly cleared to NULL in lichen_lora_l2_init() at lines 400-401. The issue was a false positive from static analysis.",
+  "labels": [
+    "review",
+    "round1",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.39",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:48:47.9261Z"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-9nrr.22",
+  "title": "puck: T-Echo build misses crc32_ieee dependency",
+  "description": "Discovered while validating project-LICHEN-9nrr.3. west build -b t_echo/nrf52840 lichen/apps/puck -d build/puck_t_echo --pristine=always compiles the app but fails at zephyr_pre0 link: app/libapp.a(main.c.obj) send_beacon() references crc32_ieee at lichen/apps/puck/src/main.c:130, but the build does not link/provide that symbol. The same build also emits pre-existing warnings for unused last_info_ms and s_iid when CONFIG_LICHEN_NATIVE is not enabled, but the link error is the blocker. Scope: add the correct Zephyr CRC library/config dependency or replace the call with the project helper used elsewhere, preserving beacon payload behavior. Acceptance: west build -b t_echo/nrf52840 lichen/apps/puck compiles and links; crc32 behavior for beacon payloads remains compatible with existing vectors/protocol expectations; no unrelated puck behavior changes.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T02:23:10.602415Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T02:52:07.914289Z",
+  "closed_at": "2026-06-30T02:52:07.914289Z",
+  "close_reason": "Completed: added CONFIG_CRC to puck prj.conf so crc32_ieee links for T-Echo, verified t_echo/nrf52840 puck build compiles and links, confirmed CRC object inclusion, and filed follow-up for pre-existing non-native warnings.",
+  "labels": [
+    "zephyr",
+    "c",
+    "puck",
+    "build",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9nrr.22",
+      "depends_on_id": "project-LICHEN-9nrr",
+      "type": "parent-child",
+      "created_at": "2026-06-30T02:23:10.602874Z"
+    }
+  ]
+}

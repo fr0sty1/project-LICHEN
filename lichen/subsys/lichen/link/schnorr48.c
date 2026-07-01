@@ -32,18 +32,6 @@ LOG_MODULE_REGISTER(schnorr48, CONFIG_LICHEN_LINK_LOG_LEVEL);
 #include "monocypher.h"
 #include "monocypher-ed25519.h"
 
-/**
- * @brief Apply Ed25519 clamping to a scalar.
- *
- * Clears bits 0-2, sets bit 254, clears bit 255.
- */
-static void clamp_scalar(uint8_t s[32])
-{
-	s[0] &= 248;
-	s[31] &= 127;
-	s[31] |= 64;
-}
-
 void schnorr48_derive_keypair(const uint8_t seed[32],
 			      uint8_t privkey[32],
 			      uint8_t pubkey[32])
@@ -55,7 +43,7 @@ void schnorr48_derive_keypair(const uint8_t seed[32],
 
 	/* privkey = clamp(h[0:32]) */
 	memcpy(privkey, hash, 32);
-	clamp_scalar(privkey);
+	schnorr48_clamp_scalar(privkey);
 
 	/* pubkey = privkey * B */
 	crypto_eddsa_scalarbase(pubkey, privkey);
@@ -64,10 +52,10 @@ void schnorr48_derive_keypair(const uint8_t seed[32],
 	crypto_wipe(hash, sizeof(hash));
 }
 
-void schnorr48_sign(const uint8_t privkey[32],
-		    const uint8_t pubkey[32],
-		    const uint8_t *msg, size_t msg_len,
-		    uint8_t sig[48])
+int schnorr48_sign(const uint8_t privkey[32],
+		   const uint8_t pubkey[32],
+		   const uint8_t *msg, size_t msg_len,
+		   uint8_t sig[48])
 {
 	uint8_t nonce_hash[64];
 	uint8_t r_scalar[32];
@@ -77,11 +65,23 @@ void schnorr48_sign(const uint8_t privkey[32],
 	crypto_sha512_ctx ctx;
 
 	/*
+	 * Validate: if msg_len > 0, msg must not be NULL.
+	 * Empty messages (msg_len == 0) are valid regardless of msg pointer.
+	 */
+	if (msg_len > 0 && msg == NULL) {
+		/* Cannot sign: NULL message with nonzero length */
+		memset(sig, 0, SCHNORR48_SIG_LEN);
+		return -1;
+	}
+
+	/*
 	 * 1. Deterministic nonce: r = SHA-512(privkey || msg) mod L
 	 */
 	crypto_sha512_init(&ctx);
 	crypto_sha512_update(&ctx, privkey, 32);
-	crypto_sha512_update(&ctx, msg, msg_len);
+	if (msg_len > 0) {
+		crypto_sha512_update(&ctx, msg, msg_len);
+	}
 	crypto_sha512_final(&ctx, nonce_hash);
 
 	/* Reduce 64-byte hash to scalar mod L */
@@ -98,7 +98,9 @@ void schnorr48_sign(const uint8_t privkey[32],
 	crypto_sha512_init(&ctx);
 	crypto_sha512_update(&ctx, R, 32);
 	crypto_sha512_update(&ctx, pubkey, 32);
-	crypto_sha512_update(&ctx, msg, msg_len);
+	if (msg_len > 0) {
+		crypto_sha512_update(&ctx, msg, msg_len);
+	}
 	crypto_sha512_final(&ctx, e_hash);
 
 	/* Copy truncated challenge to signature */
@@ -123,6 +125,8 @@ void schnorr48_sign(const uint8_t privkey[32],
 	crypto_wipe(e_hash, sizeof(e_hash));
 	crypto_wipe(e_extended, sizeof(e_extended));
 	crypto_wipe(&ctx, sizeof(ctx));
+
+	return 0;
 }
 
 bool schnorr48_verify(const uint8_t pubkey[32],
@@ -137,13 +141,21 @@ bool schnorr48_verify(const uint8_t pubkey[32],
 	crypto_sha512_ctx ctx;
 
 	/*
-	 * 1. Check s is non-zero
+	 * Validate: if msg_len > 0, msg must not be NULL.
+	 * Empty messages (msg_len == 0) are valid regardless of msg pointer.
 	 */
-	uint8_t s_is_zero = 0;
-	for (int i = 0; i < 32; i++) {
-		s_is_zero |= s[i];
+	if (msg_len > 0 && msg == NULL) {
+		return false;
 	}
-	if (s_is_zero == 0) {
+
+	/*
+	 * 1. Check s is non-zero (constant-time OR accumulator)
+	 */
+	uint8_t s_nonzero_acc = 0;
+	for (int i = 0; i < 32; i++) {
+		s_nonzero_acc |= s[i];
+	}
+	if (s_nonzero_acc == 0) {
 		return false;
 	}
 
@@ -167,7 +179,9 @@ bool schnorr48_verify(const uint8_t pubkey[32],
 	crypto_sha512_init(&ctx);
 	crypto_sha512_update(&ctx, R_prime, 32);
 	crypto_sha512_update(&ctx, pubkey, 32);
-	crypto_sha512_update(&ctx, msg, msg_len);
+	if (msg_len > 0) {
+		crypto_sha512_update(&ctx, msg, msg_len);
+	}
 	crypto_sha512_final(&ctx, e_hash);
 
 	/*
@@ -180,59 +194,55 @@ bool schnorr48_verify(const uint8_t pubkey[32],
 
 /*
  * Stub implementation for builds without Monocypher.
- * Returns fixed patterns for development; NOT FOR PRODUCTION.
+ * These functions abort at runtime to prevent accidental deployment
+ * of a system with no cryptographic security.
  */
 #ifdef CONFIG_LICHEN_LINK_SCHNORR
-#warning "Using stub Schnorr-48 implementation - NOT FOR PRODUCTION"
+#error "CONFIG_LICHEN_LINK_SCHNORR requires CONFIG_LICHEN_CRYPTO_MONOCYPHER"
 #endif
 
-/* Runtime warning flag - warn once per function */
-static bool stub_warned_keypair = false;
-static bool stub_warned_sign = false;
-static bool stub_warned_verify = false;
+#include <stdlib.h>
+
+static void schnorr48_stub_abort(const char *func)
+{
+	LOG_WRN("FATAL: %s called without Monocypher - aborting\n", func);
+	abort();
+}
 
 void schnorr48_derive_keypair(const uint8_t seed[32],
 			      uint8_t privkey[32],
 			      uint8_t pubkey[32])
 {
-	if (!stub_warned_keypair) {
-		LOG_WRN("INSECURE: using stub schnorr48_derive_keypair - NOT FOR PRODUCTION\n");
-		stub_warned_keypair = true;
-	}
-	memcpy(privkey, seed, 32);
-	memset(pubkey, 0, 32);
-	pubkey[0] = 0x01;
+	(void)seed;
+	(void)privkey;
+	(void)pubkey;
+	schnorr48_stub_abort("schnorr48_derive_keypair");
 }
 
-void schnorr48_sign(const uint8_t privkey[32],
-		    const uint8_t pubkey[32],
-		    const uint8_t *msg, size_t msg_len,
-		    uint8_t sig[48])
+int schnorr48_sign(const uint8_t privkey[32],
+		   const uint8_t pubkey[32],
+		   const uint8_t *msg, size_t msg_len,
+		   uint8_t sig[48])
 {
-	if (!stub_warned_sign) {
-		LOG_WRN("INSECURE: using stub schnorr48_sign - NOT FOR PRODUCTION\n");
-		stub_warned_sign = true;
-	}
 	(void)privkey;
 	(void)pubkey;
 	(void)msg;
 	(void)msg_len;
-	memset(sig, 0, 48);
+	(void)sig;
+	schnorr48_stub_abort("schnorr48_sign");
+	return -1; /* unreachable, but satisfies compiler */
 }
 
 bool schnorr48_verify(const uint8_t pubkey[32],
 		      const uint8_t *msg, size_t msg_len,
 		      const uint8_t sig[48])
 {
-	if (!stub_warned_verify) {
-		LOG_WRN("INSECURE: using stub schnorr48_verify - NOT FOR PRODUCTION\n");
-		stub_warned_verify = true;
-	}
 	(void)pubkey;
 	(void)msg;
 	(void)msg_len;
 	(void)sig;
-	return false;
+	schnorr48_stub_abort("schnorr48_verify");
+	return false; /* unreachable, but satisfies compiler */
 }
 
 #endif /* CONFIG_LICHEN_CRYPTO_MONOCYPHER */
@@ -243,12 +253,12 @@ bool schnorr48_verify(const uint8_t pubkey[32],
  */
 #ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
 
-void schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
-			  const uint8_t *dst_addr, size_t dst_addr_len,
-			  const uint8_t *payload, size_t payload_len,
-			  const uint8_t privkey[32],
-			  const uint8_t pubkey[32],
-			  uint8_t sig[48])
+int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
+			 const uint8_t *dst_addr, size_t dst_addr_len,
+			 const uint8_t *payload, size_t payload_len,
+			 const uint8_t privkey[32],
+			 const uint8_t pubkey[32],
+			 uint8_t sig[48])
 {
 	uint8_t header[11]; /* epoch(1) + seqnum(2) + dst_addr(up to 8) */
 	size_t header_len = 0;
@@ -259,11 +269,26 @@ void schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
 	uint8_t e_extended[32];
 	crypto_sha512_ctx ctx;
 
+	/* Validate dst_addr_len before use */
+	if (dst_addr_len > SCHNORR48_MAX_ADDR_LEN) {
+		return -1;
+	}
+
+	/* Validate: if dst_addr_len > 0, dst_addr must not be NULL */
+	if (dst_addr_len > 0 && dst_addr == NULL) {
+		return -1;
+	}
+
+	/* Validate: if payload_len > 0, payload must not be NULL */
+	if (payload_len > 0 && payload == NULL) {
+		return -1;
+	}
+
 	/* Build header: epoch || seqnum (big-endian) || dst_addr */
 	header[header_len++] = epoch;
 	header[header_len++] = (uint8_t)(seqnum >> 8);
 	header[header_len++] = (uint8_t)(seqnum & 0xFF);
-	if (dst_addr_len > 0 && dst_addr_len <= 8) {
+	if (dst_addr_len > 0) {
 		memcpy(&header[header_len], dst_addr, dst_addr_len);
 		header_len += dst_addr_len;
 	}
@@ -274,7 +299,9 @@ void schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
 	crypto_sha512_init(&ctx);
 	crypto_sha512_update(&ctx, privkey, 32);
 	crypto_sha512_update(&ctx, header, header_len);
-	crypto_sha512_update(&ctx, payload, payload_len);
+	if (payload_len > 0) {
+		crypto_sha512_update(&ctx, payload, payload_len);
+	}
 	crypto_sha512_final(&ctx, nonce_hash);
 	crypto_eddsa_reduce(r_scalar, nonce_hash);
 
@@ -290,7 +317,9 @@ void schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
 	crypto_sha512_update(&ctx, R, 32);
 	crypto_sha512_update(&ctx, pubkey, 32);
 	crypto_sha512_update(&ctx, header, header_len);
-	crypto_sha512_update(&ctx, payload, payload_len);
+	if (payload_len > 0) {
+		crypto_sha512_update(&ctx, payload, payload_len);
+	}
 	crypto_sha512_final(&ctx, e_hash);
 
 	/* Copy truncated challenge to signature */
@@ -314,15 +343,36 @@ void schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
 	crypto_wipe(e_hash, sizeof(e_hash));
 	crypto_wipe(e_extended, sizeof(e_extended));
 	crypto_wipe(&ctx, sizeof(ctx));
+
+	return 0;
 }
 
-bool schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
-			    const uint8_t *dst_addr, size_t dst_addr_len,
-			    const uint8_t *payload, size_t payload_len,
-			    const uint8_t pubkey[32])
+int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
+			   const uint8_t *dst_addr, size_t dst_addr_len,
+			   const uint8_t *payload, size_t payload_len,
+			   const uint8_t pubkey[32])
 {
+	/* Validate dst_addr_len before use */
+	if (dst_addr_len > SCHNORR48_MAX_ADDR_LEN) {
+		return -1;
+	}
+
+	/* Validate: if dst_addr_len > 0, dst_addr must not be NULL */
+	if (dst_addr_len > 0 && dst_addr == NULL) {
+		return -1;
+	}
+
+	/* Validate: payload must not be NULL (always needed for signature) */
+	if (payload == NULL) {
+		return -1;
+	}
+
+	/*
+	 * Payload too short to contain signature (python-ano.17):
+	 * Return -1 for malformed frame, distinguishing from invalid signature (0).
+	 */
 	if (payload_len < SCHNORR48_SIG_LEN) {
-		return false;
+		return -1;
 	}
 
 	size_t inner_len = payload_len - SCHNORR48_SIG_LEN;
@@ -341,20 +391,20 @@ bool schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
 	header[header_len++] = epoch;
 	header[header_len++] = (uint8_t)(seqnum >> 8);
 	header[header_len++] = (uint8_t)(seqnum & 0xFF);
-	if (dst_addr_len > 0 && dst_addr_len <= 8) {
+	if (dst_addr_len > 0) {
 		memcpy(&header[header_len], dst_addr, dst_addr_len);
 		header_len += dst_addr_len;
 	}
 
 	/*
-	 * 1. Check s is non-zero
+	 * 1. Check s is non-zero (constant-time OR accumulator)
 	 */
-	uint8_t s_is_zero = 0;
+	uint8_t s_nonzero_acc = 0;
 	for (int i = 0; i < 32; i++) {
-		s_is_zero |= s[i];
+		s_nonzero_acc |= s[i];
 	}
-	if (s_is_zero == 0) {
-		return false;
+	if (s_nonzero_acc == 0) {
+		return 0;
 	}
 
 	/*
@@ -367,42 +417,36 @@ bool schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
 	 * 3. R' = s*B - e_extended*pubkey
 	 */
 	if (crypto_eddsa_recover_r(R_prime, pubkey, s, e_extended) != 0) {
-		return false;
+		return 0;
 	}
 
 	/*
-	 * 4. e' = SHA-512(R' || pubkey || header || payload)[0:16]
+	 * 4. e' = SHA-512(R' || pubkey || header || inner_payload)[0:16]
 	 */
 	crypto_sha512_init(&ctx);
 	crypto_sha512_update(&ctx, R_prime, 32);
 	crypto_sha512_update(&ctx, pubkey, 32);
 	crypto_sha512_update(&ctx, header, header_len);
-	crypto_sha512_update(&ctx, payload, inner_len);
+	if (inner_len > 0) {
+		crypto_sha512_update(&ctx, payload, inner_len);
+	}
 	crypto_sha512_final(&ctx, e_hash);
 
 	/*
 	 * 5. Constant-time comparison of e' and e_received
 	 */
-	return crypto_verify16(e_hash, e_received) == 0;
+	return crypto_verify16(e_hash, e_received) == 0 ? 1 : 0;
 }
 
 #else /* !CONFIG_LICHEN_CRYPTO_MONOCYPHER */
 
-/* Runtime warning flags for frame helpers */
-static bool stub_warned_sign_frame = false;
-static bool stub_warned_verify_frame = false;
-
-void schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
-			  const uint8_t *dst_addr, size_t dst_addr_len,
-			  const uint8_t *payload, size_t payload_len,
-			  const uint8_t privkey[32],
-			  const uint8_t pubkey[32],
-			  uint8_t sig[48])
+int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
+			 const uint8_t *dst_addr, size_t dst_addr_len,
+			 const uint8_t *payload, size_t payload_len,
+			 const uint8_t privkey[32],
+			 const uint8_t pubkey[32],
+			 uint8_t sig[48])
 {
-	if (!stub_warned_sign_frame) {
-		LOG_WRN("INSECURE: using stub schnorr48_sign_frame - NOT FOR PRODUCTION\n");
-		stub_warned_sign_frame = true;
-	}
 	(void)epoch;
 	(void)seqnum;
 	(void)dst_addr;
@@ -411,18 +455,16 @@ void schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
 	(void)payload_len;
 	(void)privkey;
 	(void)pubkey;
-	memset(sig, 0, 48);
+	(void)sig;
+	schnorr48_stub_abort("schnorr48_sign_frame");
+	return -1; /* unreachable, but satisfies compiler */
 }
 
-bool schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
-			    const uint8_t *dst_addr, size_t dst_addr_len,
-			    const uint8_t *payload, size_t payload_len,
-			    const uint8_t pubkey[32])
+int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
+			   const uint8_t *dst_addr, size_t dst_addr_len,
+			   const uint8_t *payload, size_t payload_len,
+			   const uint8_t pubkey[32])
 {
-	if (!stub_warned_verify_frame) {
-		LOG_WRN("INSECURE: using stub schnorr48_verify_frame - NOT FOR PRODUCTION\n");
-		stub_warned_verify_frame = true;
-	}
 	(void)epoch;
 	(void)seqnum;
 	(void)dst_addr;
@@ -430,7 +472,8 @@ bool schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
 	(void)payload;
 	(void)payload_len;
 	(void)pubkey;
-	return false;
+	schnorr48_stub_abort("schnorr48_verify_frame");
+	return -1; /* unreachable, but satisfies compiler */
 }
 
 #endif /* CONFIG_LICHEN_CRYPTO_MONOCYPHER */

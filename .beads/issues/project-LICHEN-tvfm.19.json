@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.19",
+  "title": "[lora_l2.c:618] lichen_lora_l2_tx length type mismatch with lora_send",
+  "description": "Function: lichen_lora_l2_tx. Contract violation: The function takes 'size_t len' but lora_send() takes 'uint32_t len'. On 64-bit platforms, size_t is 64 bits while uint32_t is 32 bits. The check 'len \u003e LICHEN_LORA_MAX_PHY_PAYLOAD' (255) prevents overflow in practice, but there's no explicit cast at the lora_send() call site (line 688). If LICHEN_LORA_MAX_PHY_PAYLOAD ever increased above UINT32_MAX (impossible in practice), truncation would occur. Priority 3 - theoretical concern, not a real bug.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "issue",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:46:31.860739Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:33:58.199149Z",
+  "closed_at": "2026-06-28T02:33:58.199149Z",
+  "close_reason": "Fixed: Added explicit cast from size_t to uint32_t when calling lora_send(), with comment explaining why the cast is safe (len is validated \u003c= 255)",
+  "labels": [
+    "review",
+    "round1",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.19",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:46:31.861707Z"
+    }
+  ]
+}

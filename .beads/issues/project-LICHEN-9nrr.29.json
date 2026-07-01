@@ -1,0 +1,38 @@
+{
+  "id": "project-LICHEN-9nrr.29",
+  "title": "dev-env: restore local Zephyr Twister pkg_resources dependency",
+  "description": "Review follow-up from project-LICHEN-9nrr.18. The native_parse test builds and runs directly with west build -t run, but local Twister invocation fails before test discovery because the Python environment used by west/python3 cannot import pkg_resources. Commands tried: west twister -T lichen/tests/native_parse -p qemu_x86 --inline-logs, and python3 zephyr/scripts/twister -T lichen/tests/native_parse -p qemu_x86 --inline-logs. Both fail with ModuleNotFoundError: No module named 'pkg_resources'. Decide whether the project should document/install setuptools for the local Zephyr test environment or provide a repo bootstrap check so Twister works consistently.",
+  "acceptance_criteria": "west twister -T lichen/tests/native_parse -p qemu_x86 --inline-logs reaches test discovery/execution in the documented local dev environment, or the required Python dependency/bootstrap step is documented in AGENTS/developer setup.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T03:17:46.786983Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T05:14:47.483317Z",
+  "closed_at": "2026-06-30T05:14:47.483317Z",
+  "close_reason": "Documented the local Zephyr/Twister Python environment so Zephyr 3.7's pkg_resources dependency is available: setup now uses a project .venv, installs west plus setuptools\u003c81, installs zephyr/scripts/requirements.txt, and notes that .venv/bin must stay first on PATH because CMake also resolves python3 from PATH. Added a pipx runpip alternative for isolated west installs. Local environment validation: initial west twister -T lichen/tests/native_parse -p qemu_x86 --inline-logs reproduced ModuleNotFoundError: pkg_resources; setuptools 82 still lacked pkg_resources; setuptools\u003c81 fixed that; installing Zephyr requirements into .venv and running PATH=\"/Users/markatwood/Desktop/Projects/project-LICHEN/.venv/bin:/Users/markatwood/.codex/packages/standalone/releases/0.142.4-aarch64-apple-darwin/codex-path:/Users/markatwood/.opencode/bin:/Users/markatwood/.local/bin:/Users/markatwood/.opencode/bin:/Users/markatwood/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/markatwood/.opencode/bin:/usr/local/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Applications/BitKeeper.app/Contents/Resources/bitkeeper:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/opt/pmk/env/global/bin:/opt/X11/bin:/Library/Apple/usr/bin:/Applications/Keybase.app/Contents/SharedSupport/bin:/usr/local/MacGPG2/bin:/usr/local/git/bin:/usr/local/go/bin:/Users/markatwood/.codex/tmp/arg0/codex-arg0KX8C7k:/Users/markatwood/.codex/packages/standalone/releases/0.142.4-aarch64-apple-darwin/codex-path:/Users/markatwood/.local/bin:/Users/markatwood/.cargo/bin:/Applications/iTerm.app/Contents/Resources/utilities:/Users/markatwood/.local/bin:/Users/markatwood/.local/bin:/Users/markatwood/.local/bin\" west twister -T lichen/tests/native_parse -p qemu_x86 --inline-logs passed with 1/1 test configurations and 15 test cases executed. git diff --check passed. Review pass 1: no findings; repo change is documentation only plus Beads metadata. Review pass 2: no findings; documented commands match the passing Twister invocation and dependency probe resolves pkg_resources/pykwalify through .venv/bin/python3. No follow-up Beads created.",
+  "labels": [
+    "zephyr",
+    "twister",
+    "dev-env",
+    "follow-up",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9nrr.29",
+      "depends_on_id": "project-LICHEN-9nrr",
+      "type": "parent-child",
+      "created_at": "2026-06-30T03:17:46.787543Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9nrr.29",
+      "depends_on_id": "project-LICHEN-9nrr.18",
+      "type": "discovered-from",
+      "created_at": "2026-06-30T03:17:46.787872Z"
+    }
+  ]
+}

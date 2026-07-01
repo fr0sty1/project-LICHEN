@@ -1,0 +1,32 @@
+{
+  "id": "lora-ipv6-mesh-1tn",
+  "title": "Implement REST control API",
+  "description": "Create python/src/lichen/sim/api.py using Starlette. Endpoints: POST /sim (create simulation), DELETE /sim/{id}, GET /sim/{id} (status), POST /sim/{id}/tick (advance time). Node management: POST /sim/{id}/node, DELETE /sim/{id}/node/{nid}, PATCH /sim/{id}/node/{nid} (move). Chaos: POST /sim/{id}/chaos/drop, /partition, /degrade, /jam, DELETE /sim/{id}/chaos. Observe: GET /sim/{id}/packets, GET /sim/{id}/topology, WebSocket /sim/{id}/stream for live events. JSON request/response. Return appropriate HTTP status codes.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T07:02:29Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-05-27T17:35:13Z",
+  "close_reason": "Wave 5 complete. 428 tests pass, ruff clean.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-1tn",
+      "depends_on_id": "lora-ipv6-mesh-017",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:03:50Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-1tn",
+      "depends_on_id": "lora-ipv6-mesh-1bh",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:03:51Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

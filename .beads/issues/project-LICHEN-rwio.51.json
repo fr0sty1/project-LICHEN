@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-rwio.51",
+  "title": "lichen_l2_send net_pkt_unref on success may double-free if caller also unrefs",
+  "description": "In lichen_l2.c lichen_l2_send() lines 218-222:\n\n    /*\n     * Per Zephyr net_l2 contract: when L2 returns 0, it took ownership\n     * of the packet and must free it.\n     */\n    net_pkt_unref(pkt);\n    return 0;\n\nThe comment correctly states the Zephyr L2 contract. However, if a future maintainer doesn't understand this contract and adds an unref at a call site, or if the L2 contract changes in a Zephyr version upgrade, this could cause double-free.\n\nThe code is currently correct. This is a documentation/footgun issue:\n1. The contract is only documented in this one comment\n2. A contributor modifying lichen_l2_send() error paths might add cleanup code that unrefs on success\n3. The asymmetry (error paths don't unref, success path does) is non-obvious\n\nConsider: Adding a header comment to lichen_l2_send() declaration in lichen_l2.h explaining the ownership semantics.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c lines 218-222",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:02:55.653792Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:15:38.521171Z",
+  "closed_at": "2026-06-27T06:15:38.521171Z",
+  "close_reason": "Documented net_pkt ownership semantics in both lichen_l2.h (module-level comment explaining TX/RX ownership contract) and lichen_l2.c (lichen_l2_send function docstring). On success L2 takes ownership and calls net_pkt_unref(); on error caller retains ownership.",
+  "labels": [
+    "risk",
+    "maintainer-burden",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rwio.51",
+      "depends_on_id": "project-LICHEN-rwio",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:02:55.654299Z"
+    }
+  ]
+}

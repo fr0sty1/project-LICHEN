@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-1www.66",
+  "title": "generate_eui64 sets both U/L and clears multicast but comment only mentions multicast check",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T21:47:51.334737Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T21:47:58.259368Z",
+  "closed_at": "2026-06-27T21:47:58.259368Z",
+  "close_reason": "Not a bug - comment at lines 135-136 correctly says Set U/L bit, clear multicast bit which matches the code",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1www.66",
+      "depends_on_id": "project-LICHEN-1www",
+      "type": "parent-child",
+      "created_at": "2026-06-27T21:47:51.336255Z"
+    }
+  ]
+}

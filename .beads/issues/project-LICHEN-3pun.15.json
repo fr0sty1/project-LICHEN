@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-3pun.15",
+  "title": "Cross-file: fail_late_init cleanup races with in-flight RX callback",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T22:52:02.221361Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T23:18:32.210308Z",
+  "closed_at": "2026-06-27T23:18:32.210308Z",
+  "close_reason": "Closed",
+  "labels": [
+    "cross-file",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-3pun.15",
+      "depends_on_id": "project-LICHEN-3pun",
+      "type": "parent-child",
+      "created_at": "2026-06-27T22:52:02.221862Z"
+    }
+  ]
+}

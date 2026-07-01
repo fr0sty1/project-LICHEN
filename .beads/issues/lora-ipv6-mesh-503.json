@@ -1,0 +1,34 @@
+{
+  "id": "lora-ipv6-mesh-503",
+  "title": "Integration test: two-node TX/RX",
+  "description": "Create tests/sim/test_integration.py. Test: start simulator server, connect two SimRadio clients (nodes A and B at 100m apart), A transmits, B receives with correct RSSI/SNR. Verify: packet delivered, RSSI matches propagation model, airtime correct. Use pytest-asyncio. Fixture to start/stop simulator server.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T07:03:09Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "started_at": "2026-05-27T18:43:46Z",
+  "closed_at": "2026-05-27T18:50:53Z",
+  "close_reason": "Wave 7 complete. Integration test file created with 10 test scenarios covering full stack: TX/RX, RSSI, range, bidirectional, multi-node.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-503",
+      "depends_on_id": "lora-ipv6-mesh-s4n",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:04:01Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-503",
+      "depends_on_id": "lora-ipv6-mesh-2bg",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:04:01Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

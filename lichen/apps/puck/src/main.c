@@ -10,6 +10,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/pm/device.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/crc.h>
 #if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
 #include <zephyr/usb/usb_device.h>
 #endif
@@ -25,21 +26,26 @@ LOG_MODULE_REGISTER(lichen_puck, LOG_LEVEL_INF);
 #define LORA_MAX_FRAME     255
 #define BEACON_INTERVAL_MS CONFIG_LICHEN_PUCK_BEACON_INTERVAL_MS
 
-/* Placeholder IID — in production derive from nRF52840 FICR. */
-static const uint8_t s_iid[8] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77 };
-
 /*
- * Minimal LICHEN announce frame — no payload, no addresses, no MIC.
- *   [0] length = 5   (total frame size)
- *   [1] llsec  = 0x00  (AddrMode=0, no sig, no enc)
+ * LICHEN announce frame with 32-bit CRC MIC.
+ *   [0] length = 9   (total frame size)
+ *   [1] llsec  = 0x00  (AddrMode=0, MIC32, no sig, no enc)
  *   [2] epoch  = 0
  *   [3] seqhi  = 0
  *   [4] seqlo  = incremented on each TX
+ *   [5-8] MIC  = CRC32 of bytes 1-4 (llsec through seqlo)
  */
-static uint8_t s_beacon[5] = { 0x05, 0x00, 0x00, 0x00, 0x00 };
+#define BEACON_HDR_LEN 5
+#define BEACON_MIC_LEN 4
+#define BEACON_TOTAL_LEN (BEACON_HDR_LEN + BEACON_MIC_LEN)
+static uint8_t s_beacon[BEACON_TOTAL_LEN];
 static uint8_t s_seqnum;
+static uint8_t s_epoch;
 
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
+/* Placeholder IID — in production derive from nRF52840 FICR. */
+static const uint8_t s_iid[8] = { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77 };
+
 /* Radio stats forwarded to native protocol */
 static struct ln_radio_stats s_radio_stats;
 
@@ -114,7 +120,22 @@ static int lora_set_mode(const struct device *dev, bool tx)
 
 static void send_beacon(const struct device *dev)
 {
-	s_beacon[4] = ++s_seqnum;
+	/* Build beacon header */
+	s_beacon[0] = BEACON_TOTAL_LEN;
+	s_beacon[1] = 0x00;  /* LLSec: AddrMode=0, MIC32, no sig, no enc */
+	if (++s_seqnum == 0) {
+		s_epoch++;  /* Increment epoch on seqnum wrap */
+	}
+	s_beacon[2] = s_epoch;   /* epoch */
+	s_beacon[3] = 0x00;      /* seqhi */
+	s_beacon[4] = s_seqnum;  /* seqlo */
+
+	/* Compute CRC32 MIC over header (bytes 1-4, excluding length byte) */
+	uint32_t mic = crc32_ieee(&s_beacon[1], BEACON_HDR_LEN - 1);
+	s_beacon[5] = (uint8_t)(mic & 0xFF);
+	s_beacon[6] = (uint8_t)((mic >> 8) & 0xFF);
+	s_beacon[7] = (uint8_t)((mic >> 16) & 0xFF);
+	s_beacon[8] = (uint8_t)((mic >> 24) & 0xFF);
 
 	if (lora_set_mode(dev, true) < 0) {
 		LOG_ERR("TX config failed");
@@ -124,7 +145,7 @@ static void send_beacon(const struct device *dev)
 	if (ret < 0) {
 		LOG_ERR("beacon TX failed: %d", ret);
 	} else {
-		LOG_INF("beacon seq=%u", s_seqnum);
+		LOG_INF("beacon seq=%u mic=0x%08x", s_seqnum, mic);
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 		s_radio_stats.tx_pkts++;
 #endif
@@ -241,7 +262,9 @@ int main(void)
 	int16_t rssi;
 	int8_t  snr;
 	int64_t last_tx_ms  = -(int64_t)BEACON_INTERVAL_MS;
+#if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 	int64_t last_info_ms = 0;
+#endif
 
 	while (1) {
 		wdt_kick();

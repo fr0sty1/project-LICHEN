@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-1www.62",
+  "title": "lichen_sha256 allows NULL input with inlen\u003e0 due to condition order",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T21:47:01.051686Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T21:47:08.944333Z",
+  "closed_at": "2026-06-27T21:47:08.944333Z",
+  "close_reason": "Not a bug - (input==NULL \u0026\u0026 inlen\u003e0) correctly rejects NULL with non-zero length; NULL with inlen=0 is valid (empty input hash)",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1www.62",
+      "depends_on_id": "project-LICHEN-1www",
+      "type": "parent-child",
+      "created_at": "2026-06-27T21:47:01.052182Z"
+    }
+  ]
+}

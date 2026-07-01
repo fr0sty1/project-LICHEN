@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-725z.1",
+  "title": "fail_late_init clears lichen_iface violating set-once invariant",
+  "description": "lichen_l2.c:478 — The invariant at line 82-85 states 'Set once, never cleared' because lora_rx_callback() reads without mutex. But fail_late_init sets lichen_iface = NULL. Race window: packet arrives between line 457 (set) and 478 (clear).",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T18:09:20.098318Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T18:12:01.905226Z",
+  "closed_at": "2026-06-27T18:12:01.905226Z",
+  "close_reason": "Removed lichen_iface = NULL from fail_late_init; atomic flag is sufficient",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-725z.1",
+      "depends_on_id": "project-LICHEN-725z",
+      "type": "parent-child",
+      "created_at": "2026-06-27T18:09:20.099011Z"
+    }
+  ]
+}

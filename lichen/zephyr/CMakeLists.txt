@@ -6,6 +6,3 @@
 add_subdirectory(../drivers drivers)
 add_subdirectory(../lib lib)
 add_subdirectory(../subsys subsys)
-
-# L2 integration from bridge-zephyr (Zephyr network stack integration)
-add_subdirectory(../../../firmware/bridge-zephyr/subsys bridge-zephyr-subsys)

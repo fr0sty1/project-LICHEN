@@ -22,6 +22,7 @@ import pytest
 
 from lichen.crypto.identity import Identity, PeerIdentity
 from lichen.node import Node, NodeConfig, NodeState
+from lichen.state_machine import StateError
 
 
 class MockRadio:
@@ -61,6 +62,10 @@ class MockRadio:
     def configure(self, freq_hz: int, tx_power_dbm: int) -> None:
         """No-op for mock."""
         pass
+
+    async def cad(self, timeout_ms: int) -> bool:
+        """Mock CAD always reports a clear channel."""
+        return False
 
     def queue_rx(self, data: bytes, rssi: int = -50, snr: int = 10) -> None:
         """Queue a frame for reception."""
@@ -125,7 +130,7 @@ class TestNodeLifecycle:
     async def test_start_twice_raises(self, node: Node):
         """Cannot start() an already running node."""
         await node.start()
-        with pytest.raises(RuntimeError, match="cannot start"):
+        with pytest.raises(StateError, match="expected STOPPED"):
             await node.start()
         await node.stop()
 

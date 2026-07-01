@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-gy7h.4",
+  "title": "lichen_lora_l2_deinit() clears initialized without stopping RX thread first in abort case",
+  "description": "Location: lora_l2.c:388-429\n\n**What goes wrong:** lichen_lora_l2_deinit() checks running state (line 394) but if called after a forced abort, the running flag is already 0 while the thread struct may still be referenced by the kernel. The code comments acknowledge the mutex might be locked by a dead thread, but the fix (reinitializing mutex at line 425) only works if the thread was truly aborted. If k_thread_abort() failed or the thread is in a weird state, k_mutex_init() on a kernel-owned mutex is undefined behavior.\n\n**Trigger:** Hardware fault during RX thread operation where abort doesn't cleanly terminate the thread.\n\n**Fix:** Document this is best-effort recovery. Consider adding a k_thread_join() with short timeout before mutex reinit to ensure thread is actually terminated.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T21:21:19.364273Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T21:30:35.136679Z",
+  "closed_at": "2026-06-27T21:30:35.136679Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-gy7h.4",
+      "depends_on_id": "project-LICHEN-gy7h",
+      "type": "parent-child",
+      "created_at": "2026-06-27T21:21:19.365521Z"
+    }
+  ]
+}

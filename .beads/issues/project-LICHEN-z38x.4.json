@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-z38x.4",
+  "title": "lora_l2.c: replace deinit state corruption panic",
+  "description": "Replace k_panic() at line 863 (state corrupted during deinit).\n\nCurrent:\n  if (lora_transition_from(LORA_DEINITING, LORA_UNINIT) != 0) {\n      LOG_ERR(\"State corrupted during deinit\");\n      k_panic();\n  }\n\nTarget:\n  if (lora_transition_from(LORA_DEINITING, LORA_UNINIT) != 0) {\n      LOG_ERR(\"lora_l2: deinit state corrupted, forcing ABORTED\");\n      atomic_set(\u0026current_state, LORA_ABORTED);\n      return -EIO;\n  }\n\nCallers already handle deinit() failure - they just won't be able to reinit without another deinit attempt.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T04:12:25.86145Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T04:29:37.283716Z",
+  "closed_at": "2026-06-28T04:29:37.283716Z",
+  "close_reason": "Fixed: Replaced deinit state corruption k_panic() (line 863) with atomic_set(LORA_ABORTED) + return -EIO",
+  "labels": [
+    "reliability",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-z38x.4",
+      "depends_on_id": "project-LICHEN-z38x",
+      "type": "parent-child",
+      "created_at": "2026-06-28T04:12:25.862051Z"
+    }
+  ]
+}

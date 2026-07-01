@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.63",
+  "title": "[lora_l2] deinit acquires then immediately releases lora_mutex (pointless)",
+  "description": "Cross-file code smell: In lichen_lora_l2_deinit() lines 589-592:\n\n    k_mutex_lock(\u0026lora_mutex, K_FOREVER);\n    lora_state.rx_callback = NULL;\n    lora_state.rx_callback_user_data = NULL;\n    k_mutex_unlock(\u0026lora_mutex);\n\nThis acquires lora_mutex after it was just reinitialized (line 575). The comment says 'This must happen AFTER mutex reinitialization so we have a valid mutex to lock.'\n\nHowever:\n1. The mutex was just reinitialized - no one else can be holding it\n2. initialized was already cleared atomically (line 540), blocking new operations\n3. The RX thread was already joined (line 514), so no callbacks can be in flight\n\nThe mutex lock/unlock is unnecessary and potentially misleading - it suggests concurrent access is possible when it isn't (at this point in deinit).\n\nLocation: lora_l2.c:589-592\n\nPriority: P4 - cosmetic, the code is correct but the mutex operation is cargo-cult.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:52:19.062784Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:53:02.761807Z",
+  "closed_at": "2026-06-28T02:53:02.761807Z",
+  "close_reason": "Fixed: Removed unnecessary mutex lock/unlock in lichen_lora_l2_deinit(). The callback pointer assignments no longer acquire lora_mutex because: (1) RX thread was already joined, (2) DEINITING state blocks new operations. Simplified the comment to explain why no mutex is needed.",
+  "labels": [
+    "review",
+    "round2",
+    "cross-file",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.63",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:52:19.06331Z"
+    }
+  ]
+}

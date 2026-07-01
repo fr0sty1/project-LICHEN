@@ -19,6 +19,24 @@
 
 LOG_MODULE_REGISTER(coap_oscore, CONFIG_LICHEN_OSCORE_LOG_LEVEL);
 
+/**
+ * @brief Translate Zephyr CoAP errno to OSCORE error space.
+ */
+static inline int coap_err_to_oscore(int err)
+{
+	if (err >= 0) {
+		return OSCORE_OK;
+	}
+	switch (err) {
+	case -ENOMEM:
+		return OSCORE_ERR_BUFFER_TOO_SMALL;
+	case -EINVAL:
+		return OSCORE_ERR_INVALID_PARAM;
+	default:
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+}
+
 bool coap_oscore_is_protected(const struct coap_packet *request)
 {
 	struct coap_option opt;
@@ -28,29 +46,42 @@ bool coap_oscore_is_protected(const struct coap_packet *request)
 	return ret > 0;
 }
 
+/**
+ * @brief Get the OSCORE option from a CoAP request.
+ *
+ * @return 0 on success, OSCORE_ERR_NO_CONTEXT if option not present,
+ *         OSCORE_ERR_BUFFER_TOO_SMALL if buffer insufficient
+ */
 int coap_oscore_get_option(const struct coap_packet *request,
 			   uint8_t *opt_data, size_t *opt_len)
 {
 	struct coap_option opt;
 	int ret;
 
+	/*
+	 * Note: We trust Zephyr's coap_find_options to return valid
+	 * opt.value and opt.len from the parsed packet. If processing
+	 * untrusted network packets, Zephyr's CoAP parser provides the
+	 * first line of defense against malformed packets.
+	 */
 	ret = coap_find_options(request, COAP_OPTION_OSCORE, &opt, 1);
 	if (ret < 1) {
-		return -ENOENT;
+		return OSCORE_ERR_NO_CONTEXT;
 	}
 
 	if (opt.len > *opt_len) {
-		return -ENOMEM;
+		return OSCORE_ERR_BUFFER_TOO_SMALL;
 	}
 
 	memcpy(opt_data, opt.value, opt.len);
 	*opt_len = opt.len;
-	return 0;
+	return OSCORE_OK;
 }
 
 int coap_oscore_unprotect_request(struct oscore_ctx *ctx,
 				  const struct coap_packet *request,
 				  uint8_t *original_code,
+				  uint8_t *options, size_t *options_len,
 				  uint8_t *payload, size_t *payload_len,
 				  uint8_t *request_piv, size_t *request_piv_len)
 {
@@ -87,15 +118,15 @@ int coap_oscore_unprotect_request(struct oscore_ctx *ctx,
 	/* Get encrypted payload */
 	ciphertext = coap_packet_get_payload(request, &ciphertext_len);
 	if (ciphertext == NULL || ciphertext_len == 0) {
-		return -EINVAL;
+		return OSCORE_ERR_INVALID_PARAM;
 	}
 
-	/* Unprotect (Class E options not used yet, pass NULL) */
+	/* Unprotect */
 	ret = oscore_unprotect_request(ctx,
 				       oscore_opt, oscore_opt_len,
 				       ciphertext, ciphertext_len,
 				       original_code,
-				       NULL, NULL,
+				       options, options_len,
 				       payload, payload_len);
 	if (ret != OSCORE_OK) {
 		LOG_WRN("OSCORE unprotect failed: %d", ret);
@@ -104,7 +135,7 @@ int coap_oscore_unprotect_request(struct oscore_ctx *ctx,
 
 	LOG_DBG("Unprotected OSCORE request: code=0x%02x, payload=%zu",
 		*original_code, *payload_len);
-	return 0;
+	return OSCORE_OK;
 }
 
 int coap_oscore_protect_response(struct oscore_ctx *ctx,
@@ -115,7 +146,7 @@ int coap_oscore_protect_response(struct oscore_ctx *ctx,
 				 struct coap_packet *response,
 				 uint8_t *resp_buf, size_t resp_buf_len)
 {
-	uint8_t ciphertext[256];
+	uint8_t ciphertext[CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX + OSCORE_TAG_LEN];
 	size_t ciphertext_len = sizeof(ciphertext);
 	uint8_t oscore_opt[16];
 	size_t oscore_opt_len = sizeof(oscore_opt);
@@ -147,25 +178,25 @@ int coap_oscore_protect_response(struct oscore_ctx *ctx,
 			       COAP_RESPONSE_CODE_CHANGED, /* Outer code for OSCORE */
 			       coap_header_get_id(original_request));
 	if (ret < 0) {
-		return ret;
+		return coap_err_to_oscore(ret);
 	}
 
 	/* Add OSCORE option */
 	ret = coap_packet_append_option(response, COAP_OPTION_OSCORE,
 					oscore_opt, oscore_opt_len);
 	if (ret < 0) {
-		return ret;
+		return coap_err_to_oscore(ret);
 	}
 
 	/* Add payload marker and ciphertext */
 	ret = coap_packet_append_payload_marker(response);
 	if (ret < 0) {
-		return ret;
+		return coap_err_to_oscore(ret);
 	}
 
 	ret = coap_packet_append_payload(response, ciphertext, ciphertext_len);
 	if (ret < 0) {
-		return ret;
+		return coap_err_to_oscore(ret);
 	}
 
 	LOG_DBG("Protected OSCORE response: ct_len=%zu", ciphertext_len);
@@ -189,8 +220,9 @@ int coap_oscore_send_unauthorized(struct coap_resource *resource,
 			       COAP_RESPONSE_CODE_UNAUTHORIZED,
 			       coap_header_get_id(request));
 	if (ret < 0) {
-		return ret;
+		return coap_err_to_oscore(ret);
 	}
 
-	return coap_resource_send(resource, &resp, addr, addr_len, NULL);
+	ret = coap_resource_send(resource, &resp, addr, addr_len, NULL);
+	return coap_err_to_oscore(ret);
 }

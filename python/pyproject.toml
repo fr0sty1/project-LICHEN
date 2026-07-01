@@ -33,6 +33,8 @@ dependencies = [
     "structlog>=24.1",
     "cbor2>=5.6",
     "textual>=0.80.0",
+    "cryptography>=42.0",
+    "filelock>=3.0",
 ]
 
 [project.optional-dependencies]
@@ -41,8 +43,13 @@ dev = [
     "pytest-asyncio>=0.23",
     "pytest-timeout>=2.3",
     "httpx>=0.27",
+    "jsonschema>=4.0",
     "ruff>=0.3",
     "mypy>=1.8",
+]
+meshtastic = [
+    "betterproto>=2.0.0b6",
+    "bleak>=0.21",
 ]
 
 [project.scripts]

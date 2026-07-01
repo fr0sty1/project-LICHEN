@@ -1,0 +1,64 @@
+{
+  "id": "lora-ipv6-mesh-q0p",
+  "title": "LICHEN Node class (main integration)",
+  "description": "Main Node class that integrates all protocol layers.\n\nNode class:\n- __init__(identity, radio, config)\n- Owns all layer instances\n- Manages lifecycle (start, stop)\n\nLayer instances:\n- radio: Radio (SimRadio or real)\n- link: LinkLayer\n- schc: SchcContext\n- ipv6: IPv6Layer\n- rpl: RplEngine\n- coap: aiocoap Site + LichenTransport\n\nPacket flow (RX):\nradio.receive() -\u003e link.receive() -\u003e schc.decompress() -\u003e\nipv6.process() -\u003e rpl.process() or coap.process()\n\nPacket flow (TX):\ncoap/app -\u003e ipv6.send() -\u003e schc.compress() -\u003e\nlink.send() -\u003e radio.transmit()\n\nAsync main loop:\n- Receive task: continuously receive and process\n- Trickle task: RPL DIO transmission\n- Application tasks: CoAP server, periodic beacons\n\nMethods:\n- async start() -\u003e None\n- async stop() -\u003e None\n- async send_message(dst, payload) -\u003e bool\n- get_status() -\u003e NodeStatus\n\nThis is the main entry point for running a LICHEN node.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T08:23:03Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-23T14:03:50Z",
+  "close_reason": "Implemented upstream in python/src/lichen/node.py (Node: lifecycle start/stop, AnnounceScheduler + AnnounceProcessor + LinkLayer + Router wired, peer/gradient management, send()). tests/test_node.py. NOTE: node.send() currently goes straight to the link layer; SCHC compression and CoAP-over-node are not yet wired (tracked under 1a0 follow-up).",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-q0p",
+      "depends_on_id": "lora-ipv6-mesh-e2m",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:24:11Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-q0p",
+      "depends_on_id": "lora-ipv6-mesh-aj0",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:36:20Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-q0p",
+      "depends_on_id": "lora-ipv6-mesh-muq",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:24:10Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-q0p",
+      "depends_on_id": "lora-ipv6-mesh-snq",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:24:12Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-q0p",
+      "depends_on_id": "lora-ipv6-mesh-t64",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:24:14Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-q0p",
+      "depends_on_id": "lora-ipv6-mesh-gds",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:24:13Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

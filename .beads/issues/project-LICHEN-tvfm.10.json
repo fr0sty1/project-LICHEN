@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-tvfm.10",
+  "title": "[ipv6_addr.c:235] snprintf truncation check uses ret as size_t comparison",
+  "description": "In lichen_ipv6_addr_to_str() line 235, '(size_t)ret \u003e= buflen' checks for truncation. This is correct but the cast is needed because ret is int. However, we already know ret \u003e= 0 from line 226 check, so the cast is safe. The real issue is that snprintf returns the number of characters that WOULD have been written, not the actual count. If buflen is 39 and ret is 39, we wrote 39 chars but no null terminator (truncation). The \u003e= check is correct but a clarifying comment would help future readers understand why \u003e= not \u003e.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:45:48.130323Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:28:07.866187Z",
+  "closed_at": "2026-06-28T02:28:07.866187Z",
+  "close_reason": "Verified correct: The code at line 235 is the standard snprintf truncation check pattern. After line 226 checks ret\u003c0 (error case), line 235 safely casts ret to size_t for comparison with buflen. The cast is safe because we've already ensured ret\u003e=0. Build passes without warnings.",
+  "labels": [
+    "review",
+    "round1",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.10",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:45:48.13142Z"
+    }
+  ]
+}

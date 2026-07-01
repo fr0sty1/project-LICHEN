@@ -1,0 +1,448 @@
+{
+  "format_version": 1,
+  "description": "Meshtastic app-compat BLE protobuf exchange vectors. 'encoded' is one raw GATT value unless the vector explicitly expects rejection.",
+  "vectors": [
+    {
+      "name": "heartbeat_tolerated",
+      "description": "Current apps may send ToRadio.heartbeat around sync; firmware must tolerate it.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "app_to_node",
+      "protobuf": "ToRadio",
+      "message": "heartbeat",
+      "encoded": "3a00",
+      "decoded": {
+        "heartbeat": {}
+      },
+      "expect": {
+        "queue_side_effect": "none required",
+        "response": "queueStatus optional",
+        "must_not_require_before_sync": true
+      }
+    },
+    {
+      "name": "heartbeat_queue_status",
+      "description": "A heartbeat may be answered with local queue status over FromRadio.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromRadio",
+      "message": "queueStatus",
+      "encoded": "5a0c08001004180820f8acd19101",
+      "decoded": {
+        "queueStatus": {
+          "res": 0,
+          "free": 4,
+          "maxlen": 8,
+          "mesh_packet_id": 305419896
+        }
+      },
+      "expect": {
+        "response_to": "heartbeat"
+      }
+    },
+    {
+      "name": "want_config_stage_69420",
+      "description": "Android/iOS stage 1 config/static metadata request.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "exchange",
+      "protobuf": "ToRadio",
+      "message": "want_config_id",
+      "encoded": "18ac9e04",
+      "decoded": {
+        "want_config_id": 69420
+      },
+      "expect": {
+        "from_radio_sequence": [
+          "my_info",
+          "metadata",
+          "config",
+          "moduleConfig",
+          "channel",
+          "region_presets",
+          "config_complete_id"
+        ],
+        "terminal_from_radio": "38ac9e04"
+      }
+    },
+    {
+      "name": "want_node_db_stage_69421",
+      "description": "Android/iOS stage 2 node database request.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "exchange",
+      "protobuf": "ToRadio",
+      "message": "want_config_id",
+      "encoded": "18ad9e04",
+      "decoded": {
+        "want_config_id": 69421
+      },
+      "expect": {
+        "from_radio_sequence": [
+          "node_info",
+          "config_complete_id"
+        ],
+        "terminal_from_radio": "38ad9e04"
+      }
+    },
+    {
+      "name": "legacy_full_sync_unknown_nonce",
+      "description": "Python/older clients may use a non-staged nonce and still need full sync data.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "exchange",
+      "protobuf": "ToRadio",
+      "message": "want_config_id",
+      "encoded": "18a5cb96ad0a",
+      "decoded": {
+        "want_config_id": 2779096485
+      },
+      "expect": {
+        "from_radio_sequence": [
+          "my_info",
+          "metadata",
+          "config",
+          "moduleConfig",
+          "channel",
+          "region_presets",
+          "node_info",
+          "config_complete_id"
+        ],
+        "terminal_from_radio": "38a5cb96ad0a"
+      }
+    },
+    {
+      "name": "text_message_send_broadcast",
+      "description": "App sends TEXT_MESSAGE_APP as ToRadio.packet with raw UTF-8 payload.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "app_to_node",
+      "protobuf": "ToRadio",
+      "message": "packet.TEXT_MESSAGE_APP",
+      "encoded": "0a1715ffffffff22090801120568656c6c6f35785634125001",
+      "decoded": {
+        "packet": {
+          "to": 4294967295,
+          "id": 305419896,
+          "want_ack": true,
+          "decoded": {
+            "portnum": "TEXT_MESSAGE_APP",
+            "payload_utf8": "hello"
+          }
+        }
+      },
+      "expect": {
+        "response": "queueStatus local enqueue status"
+      }
+    },
+    {
+      "name": "unsupported_private_app_no_side_effect",
+      "description": "Unsupported app portnums produce deterministic no-op/error behavior.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "app_to_node",
+      "protobuf": "ToRadio",
+      "message": "packet.PRIVATE_APP",
+      "encoded": "0a1c15ffffffff2210088002120b756e737570706f727465643579563412",
+      "decoded": {
+        "packet": {
+          "to": 4294967295,
+          "id": 305419897,
+          "decoded": {
+            "portnum": "PRIVATE_APP",
+            "payload_utf8": "unsupported"
+          }
+        }
+      },
+      "expect": {
+        "unsupported": true,
+        "response": "queueStatus or clientNotification deterministic no-op/error",
+        "side_effect": "no mesh packet emitted"
+      }
+    },
+    {
+      "name": "incoming_text_message",
+      "description": "Node surfaces an incoming LICHEN text message as FromRadio.packet.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromRadio",
+      "message": "packet.TEXT_MESSAGE_APP",
+      "encoded": "080112170d44332211150403020122060801120268693588776655",
+      "decoded": {
+        "packet": {
+          "from": 287454020,
+          "to": 16909060,
+          "id": 1432778632,
+          "decoded": {
+            "portnum": "TEXT_MESSAGE_APP",
+            "payload_utf8": "hi"
+          }
+        }
+      },
+      "expect": {
+        "from_radio_id": 1,
+        "from_num_increment": true
+      }
+    },
+    {
+      "name": "routing_ack_for_request",
+      "description": "App-visible delivery success is a ROUTING_APP packet correlated by request_id.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromRadio",
+      "message": "packet.ROUTING_APP",
+      "encoded": "080212180d4433221115040302012207080535785634123589776655",
+      "decoded": {
+        "packet": {
+          "from": 287454020,
+          "to": 16909060,
+          "id": 1432778633,
+          "decoded": {
+            "portnum": "ROUTING_APP",
+            "request_id": 305419896
+          }
+        }
+      },
+      "expect": {
+        "delivery_status": "ack",
+        "from_radio_id": 2
+      }
+    },
+    {
+      "name": "routing_nak_for_request",
+      "description": "App-visible delivery failure is a ROUTING_APP packet correlated by request_id.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromRadio",
+      "message": "packet.ROUTING_APP",
+      "encoded": "0803121c0d443322111504030201220b0805120218013578563412358a776655",
+      "decoded": {
+        "packet": {
+          "from": 287454020,
+          "to": 16909060,
+          "id": 1432778634,
+          "decoded": {
+            "portnum": "ROUTING_APP",
+            "routing_error_reason": "NO_ROUTE",
+            "request_id": 305419896
+          }
+        }
+      },
+      "expect": {
+        "delivery_status": "nak",
+        "from_radio_id": 3
+      }
+    },
+    {
+      "name": "ble_rejects_stream_framing_prefix",
+      "description": "BLE ToRadio uses raw protobuf values and must reject serial/TCP stream framing.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "app_to_node",
+      "protobuf": "ToRadio",
+      "message": "invalid_stream_framing",
+      "encoded": "94c300190a1715ffffffff22090801120568656c6c6f35785634125001",
+      "decoded": {},
+      "expect": {
+        "reject": true,
+        "reason": "serial TCP 0x94c3 length prefix is invalid on BLE"
+      }
+    },
+    {
+      "name": "fromnum_notify_counter_4",
+      "description": "FromNum notifies the app that queued FromRadio values should be drained.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromNum",
+      "message": "fromnum_notify",
+      "encoded": "04000000",
+      "decoded": {
+        "from_num": 4
+      },
+      "expect": {
+        "byte_order": "little-endian",
+        "read_until_empty": true
+      }
+    },
+    {
+      "name": "fromradio_empty_queue_drain",
+      "description": "A zero-length FromRadio read terminates the drain loop.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "Empty",
+      "message": "fromradio_empty",
+      "encoded": "",
+      "decoded": {
+        "queue_empty": true
+      },
+      "expect": {
+        "queue_drained": true,
+        "no_from_num_increment": true
+      }
+    },
+    {
+      "name": "oversized_to_radio_rejected",
+      "description": "Inbound BLE values larger than the accepted ToRadio budget are rejected deterministically.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "app_to_node",
+      "protobuf": "ToRadio",
+      "message": "oversized",
+      "encoded": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "decoded": {
+        "length": 505
+      },
+      "expect": {
+        "max_to_radio_bytes": 504,
+        "reject": true,
+        "side_effect": "no partial state retained"
+      }
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "id": "project-LICHEN-ev5b.5",
+  "title": "Build, flash, and smoke-test R1 firmware on hardware",
+  "description": "Why this exists: firmware is not complete until the actual device boots and proves the board path. What needs to be done: document flashing path, build firmware for the exact R1 target, flash the device, capture boot logs, and verify board identity, LICHEN_L2 enabled, LoRa configured, BLE advertising, and no fatal init failures. Acceptance criteria: reproducible build and flash commands exist; hardware boot logs are recorded in Beads notes; failures create blocker Beads with exact logs; three independent codereview subagents run after code changes and findings are recorded.",
+  "notes": "Blocked on physical hardware access after local detection pass.\n\nBuild state available from project-LICHEN-ev5b.4:\n- EC2 Zephyr builder command is known-good for the image to flash: west build -p always -b r1_neo/nrf52840 -d build/gateway-r1-neo lichen/apps/gateway.\n- Final build passed with FLASH 243172 B / 1 MiB and RAM 73092 B / 256 KiB.\n\nLocal hardware detection on 2026-06-30 found no flash/smoke-test target:\n- /Volumes contains only Attic and Macintosh HD; no R1-Neo, UF2, Adafruit, or nRF mass-storage volume.\n- diskutil list shows only internal APFS and external Attic APFS disks; no small removable UF2 disk.\n- /dev serial devices are Bluetooth/debug/wlan plus /dev/cu.usbserial-A704ESXG, an FT232R USB UART.\n- ioreg USB devices include hubs, storage, Lumina camera, Logitech IOUSBHostDevice entries, FT232R, microphone, Fitbit, Yubikey, audio devices; no Muzi, R1 Neo, Adafruit, Nordic/nRF CDC/DFU, or UF2 device.\n\nCreated blocker project-LICHEN-avrb: provide local Muzi R1 Neo hardware in bootloader or app serial mode, or provide remote console/flashing access. No firmware flashing, boot logs, BLE advertising, LoRa init, or smoke-test assertions were possible without the hardware.",
+  "status": "blocked",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T14:56:32.976037Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T16:52:33.57762Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ev5b.5",
+      "depends_on_id": "project-LICHEN-ev5b",
+      "type": "parent-child",
+      "created_at": "2026-06-30T14:56:32.976564Z"
+    },
+    {
+      "issue_id": "project-LICHEN-ev5b.5",
+      "depends_on_id": "project-LICHEN-ev5b.4",
+      "type": "blocks",
+      "created_at": "2026-06-30T14:56:34.627667Z"
+    },
+    {
+      "issue_id": "project-LICHEN-ev5b.5",
+      "depends_on_id": "project-LICHEN-avrb",
+      "type": "blocks",
+      "created_at": "2026-06-30T16:52:33.417986Z"
+    }
+  ]
+}

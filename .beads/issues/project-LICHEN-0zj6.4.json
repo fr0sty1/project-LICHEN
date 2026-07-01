@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-0zj6.4",
+  "title": "lichen_l2_iface_init ignores return values from ipv6 address functions",
+  "description": "Location: lichen_l2.c:469-471. lichen_eui64_to_iid(), lichen_make_link_local(), and lichen_ipv6_addr_to_str() all return error codes but their return values are ignored. If any fails (unlikely but possible with NULL checks), the LOG_INF prints garbage. The functions can only fail on NULL input which wont happen here, but unchecked returns violate exit-code discipline and set a bad pattern for contributors to copy.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:32:03.926489Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:39:29.016002Z",
+  "closed_at": "2026-06-27T06:39:29.016002Z",
+  "close_reason": "Added return value checks for lichen_eui64_to_iid, lichen_make_link_local, lichen_ipv6_addr_to_str with early return on error",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0zj6.4",
+      "depends_on_id": "project-LICHEN-0zj6",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:32:03.926929Z"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+tests:
+  lichen.hal.native_defaults:
+    tags:
+      - lichen
+      - hal
+    platform_allow:
+      - native_sim
+      - qemu_x86
+    integration_platforms:
+      - native_sim
+  lichen.hal.loopback_lora:
+    tags:
+      - lichen
+      - hal
+    platform_allow:
+      - native_sim
+    integration_platforms:
+      - native_sim
+    extra_args:
+      - CONF_FILE=prj.conf;prj_lora_loopback.conf
+      - DTC_OVERLAY_FILE=boards/native_sim_lora_loopback.overlay

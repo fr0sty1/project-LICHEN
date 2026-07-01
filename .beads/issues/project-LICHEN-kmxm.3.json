@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-kmxm.3",
+  "title": "lichen_link_rx accepts encrypted flag without decrypting",
+  "description": "Why this issue exists: lichen_frame_parse records the LLSec encrypted bit, but lichen_link_rx never rejects or decrypts encrypted frames before treating the payload as SCHC. What needs to be done: reject parsed.encrypted until link encryption is implemented, or add the decrypt path before SCHC decompression.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-29T18:50:14.511849Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T19:02:34.832318Z",
+  "closed_at": "2026-06-29T19:02:34.832318Z",
+  "close_reason": "Completed: lichen_link_rx now rejects encrypted link frames before SCHC processing; verified with targeted nrf52840dk gateway Zephyr build.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-kmxm.3",
+      "depends_on_id": "project-LICHEN-kmxm",
+      "type": "parent-child",
+      "created_at": "2026-06-29T18:50:14.512405Z"
+    }
+  ]
+}

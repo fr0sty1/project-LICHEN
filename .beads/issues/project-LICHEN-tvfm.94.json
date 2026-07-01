@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.94",
+  "title": "[lichen_util.h:62-79] secure_zero word path skips final read-back for remainder",
+  "description": "Category not checked: Cryptographic cleanup completeness\n\nBug found: The word-aligned path in secure_zero() does a read-back (line 76) for the word writes, but the remainder loop (lines 83-85) has NO read-back verification. The final bytes written are only protected by the compiler_barrier(), not by actual read verification.\n\nThis is inconsistent - either all bytes need read-back verification (paranoid mode) or none do. The partial read-back gives false confidence that the zeroing was verified while leaving the tail bytes unverified.\n\nImpact: Minor - the compiler_barrier() should be sufficient, but the inconsistent treatment suggests incomplete reasoning about the security model.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:56:28.585709Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:59:55.057549Z",
+  "closed_at": "2026-06-28T02:59:55.057549Z",
+  "close_reason": "Fixed: Added comment explaining volatile qualifier handles security, no read-back needed",
+  "labels": [
+    "review",
+    "round3",
+    "completeness",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.94",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:56:28.596955Z"
+    }
+  ]
+}

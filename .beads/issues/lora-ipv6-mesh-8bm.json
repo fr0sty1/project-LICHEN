@@ -1,0 +1,25 @@
+{
+  "id": "lora-ipv6-mesh-8bm",
+  "title": "SCHC compression implementation",
+  "description": "Implement SCHC compression per RFC 8724.\n\ncompress(context, packet) -\u003e (rule_id, residue)\n\nAlgorithm:\n1. Match packet against rules in priority order\n2. For matching rule:\n   a. For each field descriptor:\n      - Apply matching operator\n      - Apply compression action\n      - Accumulate sent bits into residue\n3. Return rule_id + residue bitstring\n\nCompression actions implementation:\n- not-sent: emit nothing\n- value-sent: emit full field\n- mapping-sent: emit mapping index\n- LSB(n): emit n least significant bits\n- compute-checksum: compute at decompression\n\nBit-level operations:\n- BitWriter class for accumulating bits\n- Handle non-byte-aligned fields\n\nTest with all rules from spec Appendix A.",
+  "notes": "Partially addressed: compress() implemented + tested in schc/codec.py for fixed-length fields. Needs full-header rules + fragmentation.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T08:21:09Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-15T21:04:37Z",
+  "close_reason": "SCHC compress/decompress fully implemented in schc/codec.py with BitWriter/BitReader and the complete CDA/MO set: NOT_SENT, VALUE_SENT, LSB, COMPUTE, and now MAPPING_SENT (match-mapping) added this change. Round-trip verified. Fragmentation is tracked separately (0uz/e2m); whole-header IPv6 rules in the 2le follow-up. 37 schc tests incl. hand-computed mapping vectors. ruff clean.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-8bm",
+      "depends_on_id": "lora-ipv6-mesh-2le",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:23:38Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

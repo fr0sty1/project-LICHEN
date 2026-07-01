@@ -1,0 +1,25 @@
+{
+  "id": "lora-ipv6-mesh-5xf",
+  "title": "SCHC decompression implementation",
+  "description": "Implement SCHC decompression per RFC 8724.\n\ndecompress(context, rule_id, residue) -\u003e packet\n\nAlgorithm:\n1. Look up rule by rule_id\n2. For each field descriptor:\n   a. Apply decompression action\n   b. Consume bits from residue as needed\n   c. Reconstruct field value\n3. Assemble full packet\n\nDecompression actions:\n- not-sent: use target value from rule\n- value-sent: read full field from residue\n- mapping-sent: read index, lookup in mapping\n- LSB(n): combine with MSB from target value\n- compute-checksum: calculate from reconstructed packet\n\nBitReader class for consuming bits from residue.\n\nVerify round-trip: decompress(compress(packet)) == packet",
+  "notes": "Partially addressed: decompress() implemented + tested in schc/codec.py. Needs full-header rules + reassembly (e2m).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T08:21:09Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-15T21:04:37Z",
+  "close_reason": "SCHC compress/decompress fully implemented in schc/codec.py with BitWriter/BitReader and the complete CDA/MO set: NOT_SENT, VALUE_SENT, LSB, COMPUTE, and now MAPPING_SENT (match-mapping) added this change. Round-trip verified. Fragmentation is tracked separately (0uz/e2m); whole-header IPv6 rules in the 2le follow-up. 37 schc tests incl. hand-computed mapping vectors. ruff clean.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-5xf",
+      "depends_on_id": "lora-ipv6-mesh-2le",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:23:39Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

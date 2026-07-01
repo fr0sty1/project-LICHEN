@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.88",
+  "title": "[lora_l2.c:1010-1015] lichen_lora_l2_set_rx_callback silently fails on UNINIT state",
+  "description": "Critic: Silent failure pattern. What: lichen_lora_l2_set_rx_callback() returns void but silently fails (logs warning only) when called in UNINIT state. Callers have no way to know the callback was not registered. Why it matters: Caller may proceed assuming callback is active, leading to lost packets. Code at lichen_l2.c:1058 calls this before start() but after init(), so UNINIT case is unlikely but not impossible in edge cases. Fix: Either return int error code, or assert/LOG_ERR on UNINIT since it indicates caller bug. The warn-and-continue pattern hides programming errors.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:26:26.167673Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:11:32.237388Z",
+  "closed_at": "2026-06-28T07:11:32.237388Z",
+  "close_reason": "Invalid - issue description is factually incorrect. The function lichen_lora_l2_set_rx_callback() returns int (not void) and returns -ENODEV when called in UNINIT state. Callers can and should check the return value. See lora_l2.h declaration and lora_l2.c:1103-1107 implementation.",
+  "labels": [
+    "review-r3",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.88",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:26:26.168892Z"
+    }
+  ]
+}

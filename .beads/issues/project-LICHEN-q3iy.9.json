@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-q3iy.9",
+  "title": "lichen_util.h lichen_link_strerror depends on LICHEN_EAUTH conditionally",
+  "description": "## Location\nfirmware/bridge-zephyr/subsys/lichen/lichen_util.h:145-147\n\n## Finding\nThe `lichen_link_strerror()` function has a case for `LICHEN_EAUTH` conditionally compiled:\n```c\n#if HAVE_LICHEN_ERRNO\n    case -LICHEN_EAUTH:\n        return \"authentication failed\";\n#endif\n```\n\nIf `CONFIG_LICHEN_LINK` is disabled, `LICHEN_EAUTH` errors will fall through to \"unknown error\". This is correct behavior (LICHEN_EAUTH can only be returned by link layer code which is also disabled), but the silent fallback could mask issues during development.\n\n## What goes wrong\nDuring development/debugging, if someone calls a function that returns LICHEN_EAUTH in a configuration where CONFIG_LICHEN_LINK is disabled, the error message will be \"unknown error\" instead of the specific authentication failure message.\n\n## Recommendation\nLow priority. The current design is intentional (lichen_l2.c requires CONFIG_LICHEN_LINK via BUILD_ASSERT). No action needed unless LICHEN_EAUTH becomes usable outside the link layer.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T22:19:33.544696Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T22:28:57.206709Z",
+  "closed_at": "2026-06-27T22:28:57.206709Z",
+  "close_reason": "Documented build configuration. The conditional is correct: LICHEN_EAUTH only exists when CONFIG_LICHEN_LINK is enabled. Added comments explaining the build config dependency at both the #define HAVE_LICHEN_ERRNO location and the switch case.",
+  "labels": [
+    "c-standards",
+    "headers",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-q3iy.9",
+      "depends_on_id": "project-LICHEN-q3iy",
+      "type": "parent-child",
+      "created_at": "2026-06-27T22:19:33.545167Z"
+    }
+  ]
+}

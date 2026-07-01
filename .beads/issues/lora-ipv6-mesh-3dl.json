@@ -1,0 +1,32 @@
+{
+  "id": "lora-ipv6-mesh-3dl",
+  "title": "aiocoap transport binding for LICHEN",
+  "description": "Create custom aiocoap transport that uses LICHEN stack.\n\naiocoap supports custom transports via MessageInterface.\n\nLichenTransport class:\n- Implements aiocoap.interfaces.MessageInterface\n- Sends CoAP messages through LICHEN stack (SCHC compression, link layer)\n- Receives from LICHEN stack, passes to aiocoap\n\nIntegration points:\n- UDP socket replacement: instead of real UDP, use our IPv6/SCHC layer\n- Address mapping: CoAP addresses are IPv6 addresses\n- Message serialization: aiocoap handles, we just transport\n\nClass LichenTransport(MessageInterface):\n- async send(message) -\u003e None\n- Receive callback registration\n- Shutdown handling\n\nReference: aiocoap generic transport documentation.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T08:22:41Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-18T04:47:21Z",
+  "close_reason": "Implemented in python/src/lichen/coap/transport.py: LichenTransport(aiocoap MessageInterface) + LichenRemote(EndpointAddress) + pluggable DatagramChannel with InMemoryNetwork loopback + create_lichen_context() helper. Thin variant per decision: CoAP over raw datagram channel (SCHC/link signing slot in later when muq/extraction land; delivery deferred via call_soon to avoid reentrancy). 4 tests: real aiocoap GET/POST/NOT_FOUND request-response over loopback. aiocoap added to deps + CI. ruff clean.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-3dl",
+      "depends_on_id": "lora-ipv6-mesh-e2m",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:24:07Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-3dl",
+      "depends_on_id": "lora-ipv6-mesh-gds",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:24:08Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

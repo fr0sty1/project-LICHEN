@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.21",
+  "title": "[lora_l2.c:479] lichen_lora_l2_deinit state inconsistency window",
+  "description": "Function: lichen_lora_l2_deinit. Contract violation: Between lines 540 (atomic_set initialized=0) and 612 (atomic_set deiniting=0), the module is in an inconsistent state: initialized is false but cleanup is ongoing. A racing init() call would pass the deiniting check (line 490) but fail at line 298 (already initialized check). The atomic_cas at line 490 prevents concurrent deinit, but the state machine has a brief window where initialized=0 but deiniting=1 could confuse callers checking lichen_lora_l2_is_running() or get_eui64(). Priority 3 - edge case with correct behavior but subtle semantics.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "issue",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:46:48.488544Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:35:43.321941Z",
+  "closed_at": "2026-06-28T02:35:43.321941Z",
+  "close_reason": "Fixed: Changed final DEINITING-\u003eUNINIT transition to use lora_transition_from() (atomic CAS) instead of lora_transition() to eliminate the state inconsistency window. The non-atomic read-then-write pattern could theoretically allow state corruption between the atomic_get() and atomic_set() calls.",
+  "labels": [
+    "review",
+    "round1",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.21",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:46:48.489547Z"
+    }
+  ]
+}

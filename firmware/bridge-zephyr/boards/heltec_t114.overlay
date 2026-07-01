@@ -29,6 +29,8 @@
  * Battery ADC: P0.04 (control: P0.06)
  */
 
+#include <zephyr/dt-bindings/lora/sx126x.h>
+
 / {
 	chosen {
 		zephyr,console = &cdc_acm_uart0;
@@ -81,8 +83,9 @@
 		dio1-gpios = <&gpio0 20 GPIO_ACTIVE_HIGH>;   /* P0.20 = DIO1 */
 		/* DIO2 controls RF switch internally */
 		dio2-tx-enable;
-		/* TCXO wakeup time in ms */
-		tcxo-wakeup-time = <5>;
+		/* 1.8V TCXO controlled by DIO3 */
+		dio3-tcxo-voltage = <SX126X_DIO3_TCXO_1V8>;
+		tcxo-power-startup-delay-ms = <5>;
 	};
 };
 

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-i1gk.99",
+  "title": "[lichen_l2.c:51-52] SECURITY: No protection against CPU frequency timing attacks",
+  "description": "Security finding: The code uses k_uptime_get() for timestamps (lines 309, 547, 595, 637) but doesn't account for CPU frequency scaling.\n\nAnalysis:\n- k_uptime_get() returns kernel tick time\n- Timing-based security measures rely on consistent timing\n- If CPU frequency varies (DVFS), timing measurements are unreliable\n\nImpact: P2 - relevant only for timing-based security measures like:\n- Replay window aging (current_time in rx_ctx, line 1578)\n- LRU eviction timing (last_seen in peer_table)\n\nOn typical embedded MCUs:\n- Many run at fixed frequency (no DVFS)\n- Kernel tick is usually from a fixed-frequency timer\n- This is likely not a practical issue\n\nMitigation:\n1. Document assumption of fixed-frequency timer source\n2. Use monotonic hardware timer if available\n3. Or accept as acceptable risk for constrained devices",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T03:14:31.009781Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T03:50:38.613076Z",
+  "closed_at": "2026-06-28T03:50:38.613076Z",
+  "close_reason": "Documented: Added SECURITY comment on last_seen field in lichen_peer_entry struct. Documents that k_uptime_get() relies on fixed-frequency kernel tick timer. LICHEN targets single-core Cortex-M without DVFS. Notes considerations for porting to platforms with variable CPU clocks.",
+  "labels": [
+    "review",
+    "round3",
+    "security",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i1gk.99",
+      "depends_on_id": "project-LICHEN-i1gk",
+      "type": "parent-child",
+      "created_at": "2026-06-28T03:14:31.01028Z"
+    }
+  ]
+}

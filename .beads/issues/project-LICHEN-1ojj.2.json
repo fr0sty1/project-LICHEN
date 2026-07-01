@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-1ojj.2",
+  "title": "lichen_l2_iface_init: no return on init failure leaves interface half-initialized",
+  "description": "In lichen_l2.c:lichen_l2_iface_init() at lines 333-337 and 340-344, if lichen_lora_l2_init() or lichen_lora_l2_get_eui64() fails, the function logs an error and returns early. However, Zephyr's NET_DEVICE_INIT has already registered the net_if and L2 layer. The interface remains registered but non-functional: lichen_iface is NULL, link_ctx is uninitialized, no RX callback is set. Subsequent TX attempts will check lichen_lora_l2_is_running() (false) and fail with -ENETDOWN, but the root cause (init failure) is lost. The net_if reports as 'up' but cannot transmit or receive.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T05:47:14.140847Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T05:52:49.855552Z",
+  "closed_at": "2026-06-27T05:52:49.855552Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1ojj.2",
+      "depends_on_id": "project-LICHEN-1ojj",
+      "type": "parent-child",
+      "created_at": "2026-06-27T05:47:14.141397Z"
+    }
+  ]
+}

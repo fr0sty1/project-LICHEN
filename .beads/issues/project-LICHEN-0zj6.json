@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-0zj6",
+  "title": "Review: bridge-zephyr C code 2026-06-26",
+  "notes": "## Review Confidence\n\nReview confidence: ~15% chance of missed bug.\n\nLeast confident areas:\n- lichen_link_rx/tx integration (external module, not reviewed)\n- NET_DEVICE_INIT macro expansion behavior\n- Zephyr-specific memory ordering guarantees\n\nWould raise confidence if:\n- Reviewed the lichen_link module (SCHC/crypto layer)\n- Ran static analyzers (cppcheck, clang-tidy)\n- Checked Zephyr threading model documentation",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:30:58.271963Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:44:52.756968Z",
+  "closed_at": "2026-06-27T06:44:52.756968Z",
+  "close_reason": "All review findings addressed",
+  "labels": [
+    "review"
+  ]
+}

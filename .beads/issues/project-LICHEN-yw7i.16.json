@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-yw7i.16",
+  "title": "main.c: unused main_loop label generates compiler warning",
+  "description": "Location: firmware/bridge-zephyr/src/main.c line 165\n\nThe `main_loop:` label is defined but never used as a jump target. The code falls through from `led_off:` to `main_loop:` naturally, so the label serves no purpose.\n\nWhat breaks: Builds with `-Wunused-label` (common in CI/strict warning configs) will emit a warning. This clutters CI output and may cause builds to fail if warnings-as-errors is enabled.\n\nFix: Remove the unused `main_loop:` label.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T17:07:18.265905Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T17:12:35.375437Z",
+  "closed_at": "2026-06-27T17:12:35.375437Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-yw7i.16",
+      "depends_on_id": "project-LICHEN-yw7i",
+      "type": "parent-child",
+      "created_at": "2026-06-27T17:07:18.266384Z"
+    }
+  ]
+}

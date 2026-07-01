@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-i1gk.45",
+  "title": "[lora_l2.c:403-406 vs lichen_l2.c:1504] callback invocation order: mutex release before callback violates ordering",
+  "description": "Cross-file analysis: In lora_l2.c rx_thread (lines 403-409), the callback is invoked AFTER releasing lora_mutex. The callback eventually reaches lichen_l2_input() which acquires rx_mutex. This is correct. However, there's a subtle cross-module lock ordering issue: if lichen_l2_input() ever needs to call back into lora_l2.c functions while holding rx_mutex (e.g., to send a response), and those functions acquire lora_mutex, we'd have: Thread A (RX): lora_mutex -\u003e release -\u003e rx_mutex. Thread B (TX): tx_mutex -\u003e lora_l2_tx -\u003e (no lora_mutex needed per current code). Currently safe because lora_l2_tx() doesn't acquire lora_mutex (line 864 shows tx_buf_mutex only), but the pattern is fragile. Document the cross-module lock independence as an invariant.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "docs",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T03:08:53.687444Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T03:50:29.460758Z",
+  "closed_at": "2026-06-28T03:50:29.460758Z",
+  "close_reason": "Fixed: Added lock order invariant documentation in lora_l2.c rx_thread explaining mutex release before callback and cross-module lock independence requirement that lora_l2_tx must not acquire lora_mutex.",
+  "labels": [
+    "review",
+    "round2",
+    "cross-file",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i1gk.45",
+      "depends_on_id": "project-LICHEN-i1gk",
+      "type": "parent-child",
+      "created_at": "2026-06-28T03:08:53.688293Z"
+    }
+  ]
+}

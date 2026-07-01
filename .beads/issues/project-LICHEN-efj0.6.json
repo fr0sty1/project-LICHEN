@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-efj0.6",
+  "title": "Rust logging: add structured logging to lichen-link library",
+  "description": "rust/lichen-link has no logging. Add tracing (for std) or defmt (for no_std) instrumentation for frame parsing errors, signature verification failures, and replay detection. Use feature flags to compile out for size-constrained targets.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T04:52:44.397487Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T05:03:41.822306Z",
+  "closed_at": "2026-06-28T05:03:41.822306Z",
+  "close_reason": "Added conditional logging (feature=log) to link_layer.rs: warn for unsigned/key-change, debug for unknown-sender/replay",
+  "labels": [
+    "rust",
+    "quality"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-efj0.6",
+      "depends_on_id": "project-LICHEN-efj0",
+      "type": "parent-child",
+      "created_at": "2026-06-28T04:52:44.400303Z"
+    }
+  ]
+}

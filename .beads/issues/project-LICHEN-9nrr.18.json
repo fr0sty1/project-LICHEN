@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-9nrr.18",
+  "title": "native: add permanent TX concurrency test scaffolding",
+  "description": "Why this exists: project-LICHEN-9nrr.1 fixed the native shared TX scratch buffer race by serializing encode+send, but the repo does not yet have a permanent native protocol unit/test harness that can exercise public send APIs without real UART hardware. Temporary validation used a board build with CONFIG_LICHEN_NATIVE enabled. What needs to be done: add a durable native test scaffold that can drive lichen_native_send_hello(), lichen_native_send_node_info(), lichen_native_send_message_received(), and lichen_native_send_log_entry() with a fake or test UART path, then add a concurrency regression that proves frames cannot interleave or corrupt the CBOR payload under concurrent senders. Keep this separate from CBOR parser work; do not add magic byte walkers. Acceptance: the test is part of normal Zephyr/twister or repo test invocation, fails against the pre-fix shared-buffer race or equivalent injected interleaving, passes with encode+send serialization, and after implementation/tests completes two separate code-review passes with follow-up Beads for findings.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T01:13:28.931862Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T03:17:56.632451Z",
+  "closed_at": "2026-06-30T03:17:56.632451Z",
+  "close_reason": "Added permanent native TX concurrency scaffolding to the existing native_parse Zephyr test. The native library now has a LICHEN_NATIVE_TEST_TX-only byte-wise capture sink that yields during frame emission, allowing public send APIs to run without UART hardware while preserving the production UART path. The test drives lichen_native_send_hello(), lichen_native_send_node_info(), lichen_native_send_message_received(), and lichen_native_send_log_entry() from concurrent threads, then validates every captured frame and payload with named frame-header helpers and zcbor-backed CBOR map parsing. Verified west build -b qemu_x86 lichen/tests/native_parse -d build/lichen_native_parse_qemu --pristine=always, and timeout 30 west build -t run -d build/lichen_native_parse_qemu; the QEMU suite reported 15/15 pass and PROJECT EXECUTION SUCCESSFUL before timeout terminated QEMU. Twister could not start locally due missing pkg_resources; filed project-LICHEN-9nrr.29. Review pass 1 clean: diff/whitespace/test macro scoping/CBOR decoder use. Review pass 2 clean for Bead scope and coverage; no code follow-ups.",
+  "labels": [
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9nrr.18",
+      "depends_on_id": "project-LICHEN-9nrr",
+      "type": "parent-child",
+      "created_at": "2026-06-30T01:13:28.932383Z"
+    }
+  ]
+}

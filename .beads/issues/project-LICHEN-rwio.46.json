@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-rwio.46",
+  "title": "EUI-64 logged twice on startup in standalone mode",
+  "description": "In main.c standalone mode (CONFIG_LICHEN_LORA_L2 \u0026\u0026 !CONFIG_LICHEN_L2):\n\n1. lichen_lora_l2_init() is called at line 105\n2. generate_eui64() logs the EUI-64 at lora_l2.c line 125-127\n3. main.c also logs the EUI-64 at lines 127-129\n\nThe same EUI-64 appears twice in the log output:\n  'EUI-64: aa:bb:cc:dd:ee:ff:00:11'  (from generate_eui64)\n  'EUI-64: aa:bb:cc:dd:ee:ff:00:11'  (from main.c)\n\nThis is cosmetic but confusing for users - they might think initialization happened twice or wonder if the values differ.\n\nLocation: firmware/bridge-zephyr/src/main.c lines 127-129, firmware/bridge-zephyr/subsys/lichen/lora_l2.c lines 125-127",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:02:45.729385Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:17:20.193269Z",
+  "closed_at": "2026-06-27T06:17:20.193269Z",
+  "close_reason": "fixed",
+  "labels": [
+    "risk",
+    "maintainer-burden",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rwio.46",
+      "depends_on_id": "project-LICHEN-rwio",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:02:45.730834Z"
+    }
+  ]
+}

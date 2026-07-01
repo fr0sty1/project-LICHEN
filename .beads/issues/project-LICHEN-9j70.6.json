@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-9j70.6",
+  "title": "lora_l2.c: RX thread error counting resets on two separate paths",
+  "description": "Location: lora_l2.c:160, 173\n\nconsecutive_errors is reset to 0 in two separate places:\n- Line 160: inside the -EAGAIN branch\n- Line 173: after successful receive\n\nWhat goes wrong: The reset-on-success is correct but the reset-on-timeout is semantically different (timeout is normal operation, not 'error recovery'). Mixing these two reset reasons in the same counter conflates 'no real errors' with 'errors interspersed with timeouts'.\n\nIf the intent is 'consecutive hard errors without ANY successful operation', current code is correct but unclear. If intent is 'consecutive errors without successful packet reception', line 160 is wrong.\n\nSuggested fix: Add a one-line comment at line 160: /* Timeout is normal operation, not an error - reset counter */.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T18:18:27.388324Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T18:24:50.43214Z",
+  "closed_at": "2026-06-27T18:24:50.43214Z",
+  "close_reason": "Fixed: Clarified consecutive_errors reset comment at -EAGAIN branch to explicitly state 'Timeout is normal operation, not an error - reset counter', distinguishing it from the success-path reset",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9j70.6",
+      "depends_on_id": "project-LICHEN-9j70",
+      "type": "parent-child",
+      "created_at": "2026-06-27T18:18:27.388921Z"
+    }
+  ]
+}

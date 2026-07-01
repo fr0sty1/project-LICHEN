@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-rwio.30",
+  "title": "link_ctx.link_key not explicitly zeroized on lichen_link_cleanup()",
+  "description": "In lichen_l2.c:274, lichen_link_cleanup(\u0026link_ctx) is called to clean up the link context. The cleanup function is external (from \u003clichen/link_ctx.h\u003e), so its implementation must be verified to ensure it zeroizes link_ctx.link_key.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/lichen_l2.c:274\n\nIf lichen_link_cleanup() does not explicitly clear the link_key field (and any other key material in link_ctx), the key persists in static memory after disable. This static memory (link_ctx at file scope) remains allocated for the lifetime of the process.\n\nImpact: If link_cleanup() fails to zeroize, link keys remain in memory after the L2 interface is disabled, violating key lifecycle management. Keys should be wiped when no longer needed.\n\nRecommendation: Audit lichen_link_cleanup() implementation to confirm it zeroizes all key material. If it does not, add explicit memset_s/explicit_bzero for link_key after the cleanup call.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:02:10.589289Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:18:05.477125Z",
+  "closed_at": "2026-06-27T06:18:05.477125Z",
+  "close_reason": "invalid",
+  "labels": [
+    "crypto-security",
+    "key-lifecycle",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rwio.30",
+      "depends_on_id": "project-LICHEN-rwio",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:02:10.589862Z"
+    }
+  ]
+}

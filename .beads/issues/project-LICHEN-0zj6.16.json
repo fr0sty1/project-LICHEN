@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-0zj6.16",
+  "title": "Missing size_t cast in snprintf truncation check",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:32:31.729319Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:37:47.988786Z",
+  "closed_at": "2026-06-27T06:37:47.988786Z",
+  "close_reason": "Closed",
+  "labels": [
+    "c-standards",
+    "error-handling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0zj6.16",
+      "depends_on_id": "project-LICHEN-0zj6",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:32:31.767293Z"
+    }
+  ]
+}

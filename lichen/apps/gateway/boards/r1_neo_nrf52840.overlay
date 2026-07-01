@@ -1,0 +1,13 @@
+/*
+ * Muzi Works R1 Neo gateway overlay — enables SX1262 and BLE-local firmware.
+ */
+
+/ {
+	chosen {
+		zephyr,lora = &lora0;
+	};
+};
+
+&lora0 {
+	status = "okay";
+};

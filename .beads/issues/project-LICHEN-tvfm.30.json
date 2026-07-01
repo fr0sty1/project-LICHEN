@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.30",
+  "title": "[lora_l2.c:184] rx_thread does not check aborted state in loop",
+  "description": "Function: rx_thread (static). Thread safety: The RX thread loop condition (line 218) only checks 'atomic_get(\u0026lora_state.running)'. If the module enters aborted state (lora_state.aborted = 1) but running is not cleared, the thread continues. In practice, stop() sets running=0 before or after setting aborted=1, so this is a non-issue. But checking aborted in the loop condition would make the thread exit faster when abort is signaled. Priority 3 - theoretical race, not a practical bug.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "issue",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:47:49.809676Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:36:31.877173Z",
+  "closed_at": "2026-06-28T02:36:31.877173Z",
+  "close_reason": "Fixed: Added documentation comment explaining that checking LORA_RUNNING is sufficient because LORA_ABORTED can only be set after the RX thread is already terminated. The shutdown sequence in stop() is: (1) transition to STOPPED, (2) join/abort thread, (3) only then transition to ABORTED. So the thread exits gracefully on STOPPED or is forcibly terminated before ABORTED is ever set.",
+  "labels": [
+    "review",
+    "round1",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.30",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:47:49.810242Z"
+    }
+  ]
+}

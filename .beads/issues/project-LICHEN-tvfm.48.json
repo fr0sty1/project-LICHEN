@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.48",
+  "title": "[lora_l2/lichen_l2] tx in flight during deinit is not waited",
+  "description": "Cross-file bug: lichen_lora_l2_deinit() checks that running==0 but does not wait for in-flight TX operations to complete.\n\nRace scenario:\n1. Thread A calls lichen_lora_l2_tx() and acquires tx_buf_mutex\n2. Thread A enters lora_send() which blocks for ~500ms\n3. Thread B calls lichen_lora_l2_stop() - sets running=0, joins RX thread\n4. Thread B calls lichen_lora_l2_deinit() - running==0 check passes\n5. deinit() reinitializes lora_mutex\n6. Thread A's lora_send() completes, TX path continues with potentially corrupted state\n\nThe TX path doesn't hold lora_mutex during the actual lora_send() call (intentionally, to avoid starving RX), but this means deinit can race.\n\nLocation: lora_l2.c:479-616 (deinit) and lora_l2.c:618-698 (tx)\n\nMitigation: deinit should acquire and release tx_buf_mutex before reinitializing lora_mutex, to ensure no TX is in flight.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:51:10.199704Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:22:41.563056Z",
+  "closed_at": "2026-06-28T02:22:41.563056Z",
+  "close_reason": "Fixed: deinit() now acquires tx_buf_mutex before cleanup to wait for any in-flight TX to complete, and reinitializes both tx_buf_mutex and lora_mutex for abort recovery",
+  "labels": [
+    "review",
+    "round2",
+    "cross-file",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.48",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:51:10.200211Z"
+    }
+  ]
+}

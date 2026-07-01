@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-i81y.6",
+  "title": "lichen_link_tx.c:250 CRC-disabled error path skips stack buffer wipe",
+  "description": "Trigger: lichen_link_tx() is called with no link key (ctx-\u003ehas_link_key false) while CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC is not enabled. The function has already compressed the IPv6 packet into compressed[] at link/lichen_link_tx.c:79-84 and copied it into payload_buf at link/lichen_link_tx.c:103-135, but the CRC-disabled branch returns -EINVAL directly at link/lichen_link_tx.c:245-250 instead of going through the cleanup label at link/lichen_link_tx.c:257-263.\\n\\nImpact: compressed packet contents and any generated signed payload remain in stack storage despite the explicit SECURITY cleanup comment. This is not a packet-format failure, but it undermines the module's documented secret/data hygiene and creates a branch contributors can copy when adding new error paths.\\n\\nRelevant refs: lichen/subsys/lichen/link/lichen_link_tx.c:35, lichen/subsys/lichen/link/lichen_link_tx.c:80, lichen/subsys/lichen/link/lichen_link_tx.c:110, lichen/subsys/lichen/link/lichen_link_tx.c:245, lichen/subsys/lichen/link/lichen_link_tx.c:257.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-29T03:15:52.482555Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T03:34:55.106373Z",
+  "closed_at": "2026-06-29T03:34:55.106373Z",
+  "close_reason": "Fixed CRC-disabled/no-key TX error path to use cleanup and wipe stack buffers",
+  "labels": [
+    "review",
+    "correctness",
+    "risk",
+    "maintainer-burden",
+    "zephyr",
+    "c"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i81y.6",
+      "depends_on_id": "project-LICHEN-i81y",
+      "type": "parent-child",
+      "created_at": "2026-06-29T03:15:52.483092Z"
+    }
+  ]
+}

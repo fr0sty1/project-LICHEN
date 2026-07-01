@@ -60,6 +60,7 @@ struct lichen_rpl_parent {
 	uint8_t addr[16];     /**< Full IPv6 link-local address */
 	uint16_t rank;        /**< Advertised rank */
 	uint16_t link_etx;    /**< Fixed-point ETX (1.0 = 256) */
+	uint32_t last_updated; /**< Timestamp when last DIO received (caller-provided) */
 	bool valid;           /**< Slot in use */
 };
 
@@ -93,19 +94,23 @@ struct lichen_rpl_dodag {
 
 /**
  * @brief Initialize an unjoined node for the given DODAG.
+ *
+ * @return 0 on success, LICHEN_RPL_ERR_INVALID if d or dodag_id is NULL.
  */
-void lichen_rpl_dodag_init(struct lichen_rpl_dodag *d,
-			   uint8_t rpl_instance_id,
-			   const uint8_t *dodag_id,
-			   uint8_t version);
+int lichen_rpl_dodag_init(struct lichen_rpl_dodag *d,
+			  uint8_t rpl_instance_id,
+			  const uint8_t *dodag_id,
+			  uint8_t version);
 
 /**
  * @brief Initialize a DODAG root with rank = ROOT_RANK.
+ *
+ * @return 0 on success, LICHEN_RPL_ERR_INVALID if d or dodag_id is NULL.
  */
-void lichen_rpl_dodag_init_root(struct lichen_rpl_dodag *d,
-				uint8_t rpl_instance_id,
-				const uint8_t *dodag_id,
-				uint8_t version);
+int lichen_rpl_dodag_init_root(struct lichen_rpl_dodag *d,
+			       uint8_t rpl_instance_id,
+			       const uint8_t *dodag_id,
+			       uint8_t version);
 
 /**
  * @brief Check if node is root.
@@ -130,11 +135,13 @@ static inline bool lichen_rpl_dodag_is_joined(const struct lichen_rpl_dodag *d)
  * @param dio          Parsed DIO message
  * @param neighbor_addr IPv6 address of the DIO sender (16 bytes)
  * @param link_etx     Fixed-point ETX estimate (256 = perfect link)
+ * @param now          Current timestamp for lifetime tracking
  */
 void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 				  const struct lichen_rpl_dio *dio,
 				  const uint8_t *neighbor_addr,
-				  uint16_t link_etx);
+				  uint16_t link_etx,
+				  uint32_t now);
 
 /**
  * @brief Drop a neighbor (e.g., link failure) and re-select parent.
@@ -154,6 +161,20 @@ int lichen_rpl_dodag_parent_count(const struct lichen_rpl_dodag *d);
  * @brief Force parent re-selection (e.g., after link quality change).
  */
 void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d);
+
+/**
+ * @brief Expire stale parent candidates.
+ *
+ * Invalidates parents where (now - last_updated) exceeds max_age.
+ * Triggers parent re-selection if any were expired.
+ *
+ * @param d       DODAG state, or NULL to expire no parents
+ * @param now     Current timestamp (same units as last_updated)
+ * @param max_age Maximum age in timestamp units before expiring
+ * @return Number of parents expired
+ */
+int lichen_rpl_dodag_expire_parents(struct lichen_rpl_dodag *d,
+				    uint32_t now, uint32_t max_age);
 
 #ifdef __cplusplus
 }

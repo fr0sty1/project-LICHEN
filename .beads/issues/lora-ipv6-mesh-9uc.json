@@ -1,0 +1,24 @@
+{
+  "id": "lora-ipv6-mesh-9uc",
+  "title": "Integration test: chaos monkey operations",
+  "description": "Test: set up 3-node network, verify baseline connectivity. Apply DropRule: verify packets dropped. Apply PartitionRule: verify cross-partition packets blocked. Apply DegradeRule: verify RSSI reduced. Apply JammerRule: verify nodes in radius can't communicate. Clear chaos, verify connectivity restored. Use REST API to apply/clear rules.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T07:03:12Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-05-27T18:53:31Z",
+  "close_reason": "Integration tests added to test_integration.py: collision/capture (3 tests), mobility (3 tests), chaos monkey (3 tests).",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-9uc",
+      "depends_on_id": "lora-ipv6-mesh-503",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:04:03Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

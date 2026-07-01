@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.50",
+  "title": "[cross-file] lichen_l2_enable() rollback path leaves callback registered on link_ctx cleanup failure",
+  "description": "Interaction: lichen_l2.c:lichen_l2_enable \u003c-\u003e lora_l2.c:lichen_lora_l2_set_rx_callback\n\nBug: In lichen_l2_enable() enable path (lines 1058-1088):\n1. Line 1058: lichen_lora_l2_set_rx_callback(lora_rx_callback, NULL) is called\n2. Line 1059: lichen_lora_l2_start() is called\n3. If start() fails (lines 1067-1069), callback is cleared\n4. If start() succeeds but link_ctx_initialized_here is true and we need rollback (line 1079), we acquire mutexes and clean up link_ctx\n\nHowever, between line 1051 (unlock rx_mutex after link_ctx init) and line 1058 (register callback), there's no failure check. If lichen_lora_l2_set_rx_callback() is a no-op due to UNINIT state (lora_l2.c:1012-1015), we proceed to start() which will fail because state is UNINIT.\n\nThe actual bug is subtler: if start() succeeds but we crash in the rollback path (lines 1079-1086), the callback remains registered pointing to lora_rx_callback, which will call lichen_l2_input() with link_ctx_initialized=0 (we just cleared it). The input function checks this at line 1664 and drops the packet, so it's safe.\n\nActually reviewing more carefully - the rollback at lines 1079-1086 only runs if ret != 0 AND link_ctx_initialized_here is true. If ret==0, we return success and everything is fine. So this is a false positive for most paths.\n\nBUT: There's still a window. If start() fails, we clear callback at line 1068. Then we check link_ctx_initialized_here at line 1079 and rollback. But what if start() returned 0 (success) and then crashed before the function returned? The RX thread is running, callback is set, but link_ctx_initialized might be cleared by a concurrent disable on another thread.\n\nActually this is prevented by needing to hold the iface-\u003elock. Downgrading to P3.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:18:09.578765Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:15:29.519225Z",
+  "closed_at": "2026-06-28T07:15:29.519225Z",
+  "close_reason": "Added defensive error checking for callback clearing in lichen_l2_enable() rollback path. The callback clearing failure is now logged with LOG_WRN. Added detailed comment explaining why this is SAFE even if clearing fails: (1) link_ctx_initialized is cleared, so lichen_l2_input() will drop packets; (2) RX thread isn't running if start() failed; (3) future enable() will re-register anyway. This addresses the edge case where state transitions to UNINIT between start() failure and callback clearing.",
+  "labels": [
+    "review-r2",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.50",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:18:09.580105Z"
+    }
+  ]
+}

@@ -25,15 +25,15 @@
 	};
 
 	/*
-	 * SPI3: SX1262 LoRa radio (and display — shared bus)
-	 *   SCK=GPIO40  MOSI=GPIO41  MISO=GPIO38  CS=GPIO9
+	 * SPI3: shared by SX1262 LoRa, ST7789 display, and SD card.
+	 *   SCK=GPIO40  MOSI=GPIO41  MISO=GPIO38
+	 *   CS0 LoRa=GPIO9  CS1 TFT=GPIO12  CS2 SD=GPIO39
 	 *   RESET=GPIO17  BUSY=GPIO13  DIO1=GPIO45
 	 */
 	spim3_default: spim3_default {
 		group1 {
 			pinmux = <SPIM3_MISO_GPIO38>,
-				 <SPIM3_SCLK_GPIO40>,
-				 <SPIM3_CSEL_GPIO9>;
+				 <SPIM3_SCLK_GPIO40>;
 		};
 		group2 {
 			pinmux = <SPIM3_MOSI_GPIO41>;

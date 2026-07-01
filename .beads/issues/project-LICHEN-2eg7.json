@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-2eg7",
+  "title": "State machine verification: Rust lichen-core",
+  "description": "Add compile-time + runtime state machine verification to lichen-core Rust crate.\n\nRust options:\n1. typestate pattern (compile-time, zero-cost)\n2. enum + match exhaustiveness (compile-time)\n3. runtime transition table (like C, but with debug_assert)\n\nFiles: rust/lichen-core/src/*.rs\n\nPrefer typestate where practical (e.g., connection states), runtime for dynamic state (e.g., routing tables).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T02:17:51.559687Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T05:35:48.71276Z",
+  "closed_at": "2026-06-30T05:35:48.71276Z",
+  "close_reason": "Added compile-time and runtime LOADng route-discovery state verification to rust/lichen-core. Implemented RouteDiscovery\u003cIdle|Searching|Replied|Failed\u003e typestate sequencing for expanding-ring RREQ discovery, matching-RREP acceptance, failure after exhausted rings, and a RouteDiscoveryState runtime transition table with InvalidDiscoveryTransition/InvalidDiscoveryReply errors. Kept scope to rust/lichen-core/src/loadng.rs. Tests/checks: rustfmt lichen-core/src/loadng.rs passed; cargo test -p lichen-core passed with 50/50 tests; cargo clippy -p lichen-core --all-targets -- -D warnings -A clippy::manual_is_multiple_of passed; git diff --check passed. cargo clippy -p lichen-core --all-targets -- -D warnings without the allow is blocked by a pre-existing ipv6.rs manual_is_multiple_of lint tracked as project-LICHEN-1i7v. Review pass 1: found and fixed public/private trait-bound warning by making DiscoveryMarker public; also removed unrelated rustfmt churn in addr.rs/announce.rs/ipv6.rs/udp.rs. Review pass 2: no findings; verified diff is scoped to LOADng state-machine code plus Beads metadata and generated rust/target was removed. Follow-up created: project-LICHEN-1i7v for the out-of-scope clippy lint.",
+  "labels": [
+    "state-machine",
+    "rust"
+  ]
+}

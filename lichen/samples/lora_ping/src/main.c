@@ -1,6 +1,13 @@
 /*
  * Simple LoRa ping test - transmits a packet and waits for response.
  * Used to verify LoRa driver works in Renode + lichen-sim.
+ *
+ * Note: This sample calls lora_config() on each TX/RX switch for clarity.
+ * Production code would use lora_set_mode() which is lighter weight, but
+ * the full config call is preferred here because:
+ * 1. It exercises the complete driver configuration path
+ * 2. It's more explicit about what's being changed
+ * 3. Performance is not critical for this test sample
  */
 
 #include <zephyr/kernel.h>
@@ -45,7 +52,7 @@ int main(void)
 
 	while (1) {
 		LOG_INF("TX: PING #%d", ++count);
-		ret = lora_send(lora, tx_buf, sizeof(tx_buf));
+		ret = lora_send(lora, tx_buf, sizeof(tx_buf) - 1);
 		if (ret < 0) {
 			LOG_ERR("lora_send failed: %d", ret);
 		} else {

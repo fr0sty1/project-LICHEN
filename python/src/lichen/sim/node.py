@@ -8,6 +8,8 @@ import asyncio
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
+from lichen.state_machine import StateMachine
+
 
 class NodeState(Enum):
     """Radio state of a simulated node."""
@@ -17,7 +19,14 @@ class NodeState(Enum):
     RX_WAIT = auto()
 
 
-@dataclass
+NODE_STATE_TRANSITIONS: dict[NodeState, frozenset[NodeState]] = {
+    NodeState.IDLE: frozenset({NodeState.TX, NodeState.RX_WAIT}),
+    NodeState.TX: frozenset({NodeState.IDLE, NodeState.TX, NodeState.RX_WAIT}),
+    NodeState.RX_WAIT: frozenset({NodeState.IDLE, NodeState.TX, NodeState.RX_WAIT}),
+}
+
+
+@dataclass(init=False)
 class SimNode:
     """State for a single simulated node in the LICHEN mesh.
 
@@ -26,12 +35,43 @@ class SimNode:
     """
 
     id: str
-    position: tuple[float, float, float] = (0.0, 0.0, 0.0)
-    tx_power_dbm: int = 22
-    state: NodeState = NodeState.IDLE
-    pending_rx_future: asyncio.Future[None] | None = field(default=None, repr=False)
-    connected: bool = False
-    last_seen_time_us: int = 0
+    position: tuple[float, float, float]
+    tx_power_dbm: int
+    pending_rx_future: asyncio.Future[None] | None = field(repr=False)
+    connected: bool
+    last_seen_time_us: int
+    _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
+
+    def __init__(
+        self,
+        id: str,
+        position: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        tx_power_dbm: int = 22,
+        state: NodeState = NodeState.IDLE,
+        pending_rx_future: asyncio.Future[None] | None = None,
+        connected: bool = False,
+        last_seen_time_us: int = 0,
+    ) -> None:
+        self.id = id
+        self.position = position
+        self.tx_power_dbm = tx_power_dbm
+        self.pending_rx_future = pending_rx_future
+        self.connected = connected
+        self.last_seen_time_us = last_seen_time_us
+        self._state_machine = StateMachine(
+            initial=state,
+            transitions=NODE_STATE_TRANSITIONS,
+            name=f"sim-node[{self.id}]",
+        )
+
+    @property
+    def state(self) -> NodeState:
+        """Return this node's radio state."""
+        return self._state_machine.state
+
+    @state.setter
+    def state(self, new_state: NodeState) -> None:
+        self._state_machine.transition(new_state)
 
     def set_position(self, x: float, y: float, z: float) -> None:
         """Update the node's position in 3D space.

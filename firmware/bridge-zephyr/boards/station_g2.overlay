@@ -25,6 +25,7 @@
  */
 
 #include <zephyr/dt-bindings/pinctrl/esp32s3-pinctrl.h>
+#include <zephyr/dt-bindings/lora/sx126x.h>
 
 / {
 	chosen {
@@ -83,6 +84,7 @@
 		/* DIO2 controls RF switch internally */
 		dio2-tx-enable;
 		/* DIO3 provides TCXO voltage */
+		dio3-tcxo-voltage = <SX126X_DIO3_TCXO_1V8>;
 		tcxo-power-startup-delay-ms = <5>;
 	};
 };

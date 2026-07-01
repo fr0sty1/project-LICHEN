@@ -1,0 +1,17 @@
+{
+  "id": "lora-ipv6-mesh-d94",
+  "title": "Set up GitHub Actions CI",
+  "description": "Create .github/workflows/ with: Rust build/test/clippy/fmt, Zephyr build for all target boards, test vector validation. CI should run on push and PR.",
+  "notes": "Python CI implemented in .github/workflows/ci.yml (ruff + pytest matrix py3.11/3.12) via 1ow. Remaining for d94: Rust build/clippy/fmt and Zephyr board builds + test-vector validation jobs — deferred until those codebases exist (no rust/ or zephyr/ trees yet).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Frost",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:10:30Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-23T18:56:59Z",
+  "started_at": "2026-06-23T18:47:59Z",
+  "closed_at": "2026-06-23T18:56:59Z",
+  "close_reason": "Closed"
+}

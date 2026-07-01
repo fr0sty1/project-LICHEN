@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-d7ub.87",
+  "title": "crash_info.c missing from CMakeLists.txt causes link failure",
+  "description": "The file subsys/lichen/crash_info.c exists and is referenced by lora_l2.c and main.c, but is not included in target_sources() in CMakeLists.txt. This causes link failures:\n\n```\nundefined reference to 'crash_info_check_and_clear'\nundefined reference to 'crash_info_store'\n```\n\nFix: Add crash_info.c to the target_sources() list in firmware/bridge-zephyr/CMakeLists.txt",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T07:46:25.313477Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T21:39:17.925046Z",
+  "closed_at": "2026-06-29T21:39:17.925046Z",
+  "close_reason": "Completed: crash_info.c is included in firmware/bridge-zephyr/CMakeLists.txt app target sources and nrf52840dk Zephyr build links successfully.",
+  "labels": [
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-d7ub.87",
+      "depends_on_id": "project-LICHEN-d7ub",
+      "type": "parent-child",
+      "created_at": "2026-06-28T07:46:25.320098Z"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-rwio.32",
+  "title": "lichen_dev_iface_init is a one-line wrapper that could be inlined",
+  "description": "lichen_l2.c lines 314-317: static void lichen_dev_iface_init(iface) { lichen_l2_iface_init(iface); }. This wrapper exists to match the net_if_api.init signature. Technically could pass lichen_l2_iface_init directly to the struct initializer since signatures match.\n\nRewrite: .init = lichen_l2_iface_init, (assuming lichen_l2_iface_init signature matches net_if_api.init)",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:02:15.151492Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:18:04.025738Z",
+  "closed_at": "2026-06-27T06:18:04.025738Z",
+  "close_reason": "API compatibility: wrapper exists to match NET_L2_INIT signature requirements; inlining would require macro changes",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rwio.32",
+      "depends_on_id": "project-LICHEN-rwio",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:02:15.152623Z"
+    }
+  ]
+}

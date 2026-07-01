@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.20",
+  "title": "[lichen_l2.c:1565] lichen_l2_reinit_after_abort precondition check uses wrong API",
+  "description": "Contract: lichen_l2_reinit_after_abort should only be called from deinit() when module is in DEINITING state.\nViolation: The precondition check (line 1612) uses is_running() which returns false for STOPPED, DEINITING, ABORTED, and UNINIT states. It cannot distinguish between valid calls (DEINITING) and invalid calls (STOPPED, UNINIT). The comment (lines 1597-1610) acknowledges this as an 'architectural limitation'.\nImpact: Medium - Calling from STOPPED state would reinitialize a valid mutex (harmless but wasteful). Calling from UNINIT would reinitialize an uninitialized mutex (undefined, but k_mutex_init on static mutex is likely safe). The only dangerous case (RUNNING) is correctly rejected.\nMitigation: The comment documents the limitation adequately. Could add lora_l2 API to query exact state if stricter checking needed.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:12:38.362035Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:10:11.743792Z",
+  "closed_at": "2026-06-28T07:10:11.743792Z",
+  "close_reason": "The is_running() check is correct. The comment (lines 1643-1661) thoroughly documents this as an architectural limitation and explains why it is acceptable: (1) The dangerous case (RUNNING) is correctly rejected; (2) Other states (STOPPED/UNINIT) result in harmless mutex reinit; (3) The function is internal-only with a single caller (deinit); (4) Adding is_deiniting() API would expand API surface for a single caller. No code change needed - the limitation is properly documented and the check is sufficient.",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.20",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:12:38.362589Z"
+    }
+  ]
+}

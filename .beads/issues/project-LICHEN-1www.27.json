@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-1www.27",
+  "title": "Magic numbers in LoRa config struct",
+  "description": "Location: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:301-310\n\nlora_modem_config struct uses named constants for most fields (BW_125_KHZ, SF_10, CR_4_5) but preamble_len = 8 is a magic number.\n\nWhat goes wrong: If preamble length needs to change or its meaning is unclear during maintenance, theres no named constant explaining the choice. Other fields reference Kconfig (CONFIG_LICHEN_LORA_FREQUENCY, CONFIG_LICHEN_LORA_TX_POWER) but preamble_len does not.\n\nConsider adding CONFIG_LICHEN_LORA_PREAMBLE_LEN or a named constant with comment explaining the choice of 8.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T21:43:35.478196Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T22:04:36.350649Z",
+  "closed_at": "2026-06-27T22:04:36.350649Z",
+  "close_reason": "Added comprehensive block comment explaining LoRa modulation parameters (BW_125_KHZ, SF_10, CR_4_5) are Zephyr enums from lora.h, documenting their meaning and why these values match LICHEN spec. Added inline comments on each field.",
+  "labels": [
+    "c-standards",
+    "documentation",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1www.27",
+      "depends_on_id": "project-LICHEN-1www",
+      "type": "parent-child",
+      "created_at": "2026-06-27T21:43:35.478656Z"
+    }
+  ]
+}

@@ -10,6 +10,23 @@
  *
  * Provides 128-bit security against forgery while saving 16 bytes
  * compared to standard Ed25519 signatures.
+ *
+ * Security Analysis - Challenge Truncation
+ * -----------------------------------------
+ * Standard Ed25519/Schnorr uses a 256-bit challenge derived from a 64-byte
+ * SHA-512 hash. Schnorr-48 truncates this challenge to 128 bits (16 bytes)
+ * to reduce signature size from 64 bytes to 48 bytes, saving 16 bytes per
+ * frame on constrained LoRa links.
+ *
+ * This is an intentional bandwidth/security tradeoff:
+ * - 128-bit security against forgery is considered sufficient for link-layer
+ *   authentication, comparable to AES-128 which is widely deployed.
+ * - An attacker must perform ~2^128 operations to forge a signature, which
+ *   is computationally infeasible with foreseeable technology.
+ * - The truncation does not affect the discrete-log security of the response
+ *   scalar, which remains a full 256-bit value.
+ *
+ * See draft-lichen-schnorr-00 for formal security analysis and proofs.
  */
 
 #ifndef LICHEN_SCHNORR48_H_
@@ -35,6 +52,24 @@ extern "C" {
 /** Seed length for key derivation */
 #define SCHNORR48_SEED_LEN 32
 
+/** Maximum destination address length for frame signing */
+#define SCHNORR48_MAX_ADDR_LEN 8
+
+/**
+ * @brief Apply Ed25519 clamping to a scalar.
+ *
+ * Clears bits 0-2, sets bit 254, clears bit 255.
+ * This is the standard Ed25519 scalar clamping operation.
+ *
+ * @param[in,out] s 32-byte scalar to clamp in place
+ */
+static inline void schnorr48_clamp_scalar(uint8_t s[32])
+{
+	s[0] &= 248;
+	s[31] &= 127;
+	s[31] |= 64;
+}
+
 /**
  * @brief Derive an Ed25519 keypair from a 32-byte seed.
  *
@@ -51,14 +86,15 @@ void schnorr48_derive_keypair(const uint8_t seed[32],
  *
  * @param[in]  privkey  32-byte private key
  * @param[in]  pubkey   32-byte public key
- * @param[in]  msg      Message to sign
+ * @param[in]  msg      Message to sign (may be NULL if msg_len is 0)
  * @param[in]  msg_len  Message length
  * @param[out] sig      48-byte signature output
+ * @return 0 on success, -1 if msg is NULL with nonzero msg_len
  */
-void schnorr48_sign(const uint8_t privkey[32],
-		    const uint8_t pubkey[32],
-		    const uint8_t *msg, size_t msg_len,
-		    uint8_t sig[48]);
+int schnorr48_sign(const uint8_t privkey[32],
+		   const uint8_t pubkey[32],
+		   const uint8_t *msg, size_t msg_len,
+		   uint8_t sig[48]);
 
 /**
  * @brief Verify a Schnorr-48 signature.
@@ -81,37 +117,39 @@ bool schnorr48_verify(const uint8_t pubkey[32],
  *
  * @param[in]  epoch         Epoch byte
  * @param[in]  seqnum        Sequence number (big-endian in signable data)
- * @param[in]  dst_addr      Destination address
- * @param[in]  dst_addr_len  Address length
+ * @param[in]  dst_addr      Destination address (may be NULL if dst_addr_len is 0)
+ * @param[in]  dst_addr_len  Address length (must be <= SCHNORR48_MAX_ADDR_LEN)
  * @param[in]  payload       Inner payload (without signature)
  * @param[in]  payload_len   Payload length
  * @param[in]  privkey       32-byte private key
  * @param[in]  pubkey        32-byte public key
  * @param[out] sig           48-byte signature output
+ * @return 0 on success, -1 if dst_addr_len > SCHNORR48_MAX_ADDR_LEN
  */
-void schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
-			  const uint8_t *dst_addr, size_t dst_addr_len,
-			  const uint8_t *payload, size_t payload_len,
-			  const uint8_t privkey[32],
-			  const uint8_t pubkey[32],
-			  uint8_t sig[48]);
+int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
+			 const uint8_t *dst_addr, size_t dst_addr_len,
+			 const uint8_t *payload, size_t payload_len,
+			 const uint8_t privkey[32],
+			 const uint8_t pubkey[32],
+			 uint8_t sig[48]);
 
 /**
  * @brief Verify a signed LICHEN link-layer frame.
  *
  * @param[in] epoch        Epoch byte
  * @param[in] seqnum       Sequence number
- * @param[in] dst_addr     Destination address
- * @param[in] dst_addr_len Address length
+ * @param[in] dst_addr     Destination address (may be NULL if dst_addr_len is 0)
+ * @param[in] dst_addr_len Address length (must be <= SCHNORR48_MAX_ADDR_LEN)
  * @param[in] payload      Full payload (inner || signature)
  * @param[in] payload_len  Full payload length (must be >= 48)
  * @param[in] pubkey       32-byte sender public key
- * @return true if valid, false if invalid
+ * @return 1 if valid, 0 if invalid signature,
+ *         -1 if malformed (dst_addr_len > max, payload too short, NULL payload)
  */
-bool schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
-			    const uint8_t *dst_addr, size_t dst_addr_len,
-			    const uint8_t *payload, size_t payload_len,
-			    const uint8_t pubkey[32]);
+int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
+			   const uint8_t *dst_addr, size_t dst_addr_len,
+			   const uint8_t *payload, size_t payload_len,
+			   const uint8_t pubkey[32]);
 
 #ifdef __cplusplus
 }

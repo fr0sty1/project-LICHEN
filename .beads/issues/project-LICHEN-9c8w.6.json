@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-9c8w.6",
+  "title": "Review LOG_ERR vs k_panic for impossible states",
+  "description": "Audit LOG_ERR calls for invariant violations that should panic.\n\nExamples to review:\n  LOG_ERR(\"Unknown state: %d\", state);           // -\u003e k_panic?\n  LOG_ERR(\"Peer table inconsistent: full but no eviction\");  // -\u003e __ASSERT?\n  LOG_ERR(\"State corrupted during deinit\");      // already followed by k_panic\n\nCriteria:\n- If state is impossible due to programming error -\u003e __ASSERT or k_panic\n- If state is recoverable or due to external input -\u003e LOG_ERR + return",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T04:04:58.253441Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T04:30:22.445412Z",
+  "closed_at": "2026-06-28T04:30:22.445412Z",
+  "close_reason": "Superseded: panic removal handled by project-LICHEN-z38x tasks",
+  "labels": [
+    "logging",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c8w.6",
+      "depends_on_id": "project-LICHEN-9c8w",
+      "type": "parent-child",
+      "created_at": "2026-06-28T04:04:58.253929Z"
+    }
+  ]
+}

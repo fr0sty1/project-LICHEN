@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.32",
+  "title": "[lichen_l2.c:548-549] lichen_link_rx called multiple times for same frame",
+  "description": "What: peer_try_all_pubkeys() iterates through all peers and calls lichen_link_rx() for each one to try signature verification. This means lichen_link_rx() is called N times for each incoming frame, where N is the number of active peers.\n\nWhy it matters: This is the intended design (documented in comment at line 475), but has performance implications:\n1. Each call to lichen_link_rx() performs SCHC decompression\n2. Each call performs MIC verification (AES-CCM or CRC32)\n3. Only signature verification differs between iterations\n\nThe performance impact is bounded by CONFIG_LICHEN_LINK_MAX_NEIGHBORS (max 64). At LoRa speeds, this overhead is acceptable, but it's not optimal.\n\nAlternative design: Parse frame once, extract signature, try pubkeys against signature only. This would reduce redundant work.\n\nMarking as code smell/optimization opportunity rather than bug.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:13:25.348892Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:10:22.788151Z",
+  "closed_at": "2026-06-28T07:10:22.788151Z",
+  "close_reason": "Added inline BY DESIGN comment at line 548 explaining that repeated lichen_link_rx calls are intentional for peer signature verification. The comment references the issue ID and explains the performance tradeoff (redundant SCHC/MIC work acceptable given LoRa's low packet rate and bounded peer count).",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.32",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:13:25.349431Z"
+    }
+  ]
+}

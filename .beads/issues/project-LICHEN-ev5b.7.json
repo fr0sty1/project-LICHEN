@@ -1,0 +1,38 @@
+{
+  "id": "project-LICHEN-ev5b.7",
+  "title": "Document R1 MVP support and Meshtastic app limitations",
+  "description": "Why this exists: users and future agents need exact support boundaries. What needs to be done: document hardware revision assumptions, build/flash commands, BLE pairing flow, supported Meshtastic app screens/actions, unsupported app features, known issues, and troubleshooting logs. Acceptance criteria: docs match verified hardware behavior; unsupported features are explicit; follow-up Beads exist for every known gap.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T14:56:33.202993Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:15:25.505573Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ev5b.7",
+      "depends_on_id": "project-LICHEN-ev5b",
+      "type": "parent-child",
+      "created_at": "2026-06-30T14:56:33.203529Z"
+    },
+    {
+      "issue_id": "project-LICHEN-ev5b.7",
+      "depends_on_id": "project-LICHEN-ev5b.5",
+      "type": "blocks",
+      "created_at": "2026-06-30T14:56:35.29754Z"
+    },
+    {
+      "issue_id": "project-LICHEN-ev5b.7",
+      "depends_on_id": "project-LICHEN-ev5b.6",
+      "type": "blocks",
+      "created_at": "2026-06-30T14:56:35.520127Z"
+    },
+    {
+      "issue_id": "project-LICHEN-ev5b.7",
+      "depends_on_id": "project-LICHEN-t2hn.12",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:15:25.505573Z"
+    }
+  ]
+}

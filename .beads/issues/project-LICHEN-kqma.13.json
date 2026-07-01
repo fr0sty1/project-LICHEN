@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-kqma.13",
+  "title": "Report oversized CoAP responses instead of returning truncated OK payloads",
+  "description": "Trigger: a blockwise CoAP response exceeds LICHEN_COAP_MAX_PAYLOAD. lichen/subsys/lichen/coap/coap_client.c truncates blocks around line 172, logs a warning, and still delivers LICHEN_COAP_OK at line 198 with the partial response buffer. Impact: callers cannot distinguish a valid payload from corrupted/truncated data and may act on incomplete application state. Track truncation and return an error status, or reject the response as soon as it exceeds the configured maximum.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-29T02:04:05.823939Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T02:46:44.063306Z",
+  "closed_at": "2026-06-29T02:46:44.063306Z",
+  "close_reason": "Implemented fixes in assigned subagents and ran available focused checks; full Zephyr builds remain blocked by existing workspace/module setup issues.",
+  "labels": [
+    "coap",
+    "correctness",
+    "api"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-kqma.13",
+      "depends_on_id": "project-LICHEN-kqma",
+      "type": "parent-child",
+      "created_at": "2026-06-29T02:04:05.824424Z"
+    }
+  ]
+}

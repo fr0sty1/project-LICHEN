@@ -7,6 +7,12 @@
  *
  * Provides helpers for encoding sensor readings as SenML over CBOR.
  * Content-Format: application/senml+cbor (112)
+ *
+ * @warning SenML payloads may contain sensitive data (location, health
+ * metrics, device identifiers). Always encrypt SenML payloads using OSCORE
+ * before transmission. The base_name field often contains device identifiers
+ * (e.g., MAC addresses) which leak device identity even if values are
+ * encrypted separately.
  */
 
 #ifndef LICHEN_SENML_H_
@@ -15,6 +21,14 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+
+#ifndef LICHEN_WARN_UNUSED_RESULT
+#if defined(__GNUC__) || defined(__clang__)
+#define LICHEN_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+#else
+#define LICHEN_WARN_UNUSED_RESULT
+#endif
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,10 +88,12 @@ struct senml_pack {
  * @param[out] pack       Pack to initialize
  * @param[in]  base_name  Base name (e.g., "urn:dev:mac:0011223344556677:")
  * @param[in]  base_time  Base Unix timestamp (0 to omit)
+ * @return 0 on success, -EINVAL if pack is NULL, -EMSGSIZE if base_name is
+ *         longer than SENML_MAX_NAME_LEN
  */
-void senml_pack_init(struct senml_pack *pack,
-		     const char *base_name,
-		     uint64_t base_time);
+int senml_pack_init(struct senml_pack *pack,
+		    const char *base_name,
+		    uint64_t base_time);
 
 /**
  * @brief Add a float record to the pack.
@@ -86,7 +102,8 @@ void senml_pack_init(struct senml_pack *pack,
  * @param[in]     name  Record name (e.g., "temp")
  * @param[in]     unit  Unit string (e.g., "Cel") or NULL
  * @param[in]     value Float value
- * @return 0 on success, -1 if pack is full
+ * @return 0 on success, -ENOMEM if pack is full, -EMSGSIZE if name or unit is
+ *         too long
  */
 int senml_add_float(struct senml_pack *pack,
 		    const char *name,
@@ -101,7 +118,8 @@ int senml_add_float(struct senml_pack *pack,
  * @param[in]     unit        Unit string or NULL
  * @param[in]     value       Float value
  * @param[in]     time_offset Seconds from base_time
- * @return 0 on success, -1 if pack is full
+ * @return 0 on success, -ENOMEM if pack is full, -EMSGSIZE if name or unit is
+ *         too long
  */
 int senml_add_float_t(struct senml_pack *pack,
 		      const char *name,
@@ -115,7 +133,7 @@ int senml_add_float_t(struct senml_pack *pack,
  * @param[in,out] pack  SenML pack
  * @param[in]     name  Record name (e.g., "charging")
  * @param[in]     value Boolean value
- * @return 0 on success, -1 if pack is full
+ * @return 0 on success, -ENOMEM if pack is full, -EMSGSIZE if name is too long
  */
 int senml_add_bool(struct senml_pack *pack,
 		   const char *name,
@@ -127,8 +145,13 @@ int senml_add_bool(struct senml_pack *pack,
  * @param[in]  pack    SenML pack to encode
  * @param[out] buf     Output buffer
  * @param[in]  buflen  Buffer size
- * @return Bytes written, or negative error code
+ * @return Bytes written, or negative error code:
+ *         -EINVAL if pack has no records
+ *         -ENOTSUP if record uses unsupported value type (STRING, DATA)
+ *         -ENOMEM if buffer too small
+ *         -EMSGSIZE if string too long to encode
  */
+LICHEN_WARN_UNUSED_RESULT
 int senml_encode_cbor(const struct senml_pack *pack,
 		      uint8_t *buf, size_t buflen);
 

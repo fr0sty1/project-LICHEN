@@ -15,12 +15,11 @@
  *   - ENOMEM (12): Out of memory / buffer too small
  *   - EMSGSIZE (90): Message too long
  *   - EALREADY (114): Operation already in progress / duplicate
+ *   - EOVERFLOW (75): Value too large (nonce space exhausted)
  *
  * **LICHEN-specific codes** (project-defined, not in POSIX):
- *   - EAUTH (80): Authentication/signature verification failed
- *     Note: 80 is chosen to avoid collision with standard codes (highest
- *     standard code is ~130). Some BSDs define EAUTH at 80, which is
- *     why we use the same value for portability with BSD systems.
+ *   - LICHEN_EAUTH (200): Authentication/signature verification failed
+ *     Note: 200 is above all platform errno values (Linux max ~133, BSD ~106).
  */
 
 #ifndef LICHEN_ERRNO_H_
@@ -58,6 +57,16 @@
 #define EALREADY 114
 #endif
 
+/** Value too large (nonce space exhausted) */
+#ifndef EOVERFLOW
+#define EOVERFLOW 75
+#endif
+
+/** I/O error (CSPRNG failure, device error) */
+#ifndef EIO
+#define EIO 5
+#endif
+
 #endif /* __ZEPHYR__ */
 
 /*
@@ -72,11 +81,7 @@
  * - Schnorr-48 signature verification fails
  * - MIC verification fails
  * - No peer public key available for signature verification
- *
- * Note: Value 80 matches BSD EAUTH where defined.
  */
-#ifndef EAUTH
-#define EAUTH 80
-#endif
+#define LICHEN_EAUTH 200
 
 #endif /* LICHEN_ERRNO_H_ */

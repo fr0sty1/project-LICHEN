@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-z3zp.5",
+  "title": "OSCORE protect paths memcpy optional buffers without validating length pairs",
+  "description": "oscore_protect_request() and oscore_protect_response() call memcpy() from options when options_len \u003e 0 and from payload when payload_len \u003e 0, but neither function checks that the corresponding pointer is non-NULL. Trigger: caller supplies payload_len/options_len from decoded CoAP metadata while the pointer is NULL. Bad behavior: NULL dereference in the protect path instead of OSCORE_ERR_INVALID_PARAM. Locations: lichen/subsys/lichen/oscore/oscore.c:1152-1168 and :1476-1492.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T21:15:05.631583Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T21:29:35.36221Z",
+  "closed_at": "2026-06-28T21:29:35.36221Z",
+  "close_reason": "Completed",
+  "labels": [
+    "c-safety",
+    "null",
+    "crypto-security",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-z3zp.5",
+      "depends_on_id": "project-LICHEN-z3zp",
+      "type": "parent-child",
+      "created_at": "2026-06-28T21:15:05.631958Z"
+    }
+  ]
+}

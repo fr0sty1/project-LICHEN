@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.31",
+  "title": "[ipv6_addr.c:70] lichen_pubkey_to_iid cleanup label only zeros on failure",
+  "description": "Function: lichen_pubkey_to_iid. Resource cleanup: The 'cleanup' label (line 117) always zeros the hash buffer via secure_zero. This is correct - the hash is zeroed on both success and failure paths (goto cleanup happens for error at line 89, and falls through for success). Verified correct behavior. However, the 'ret' variable is used before initialized if goto cleanup happens before assignment. Actually, 'ret' is assigned at line 86, so this is fine. Priority 3 - verified correct, no issue.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "issue",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:47:56.025843Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:36:21.755711Z",
+  "closed_at": "2026-06-28T02:36:21.755711Z",
+  "close_reason": "No fix needed: code review found cleanup already zeros hash on all paths. The function structure ensures secure_zero(hash, sizeof(hash)) is called whether SHA-256 succeeds or fails - there is no early return after hash is populated, so control flow always reaches the cleanup label.",
+  "labels": [
+    "review",
+    "round1",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.31",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:47:56.026391Z"
+    }
+  ]
+}

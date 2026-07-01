@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.85",
+  "title": "[Kconfig:41-45] CONFIG_LICHEN_LORA_L2_RX_PRIORITY missing range constraint",
+  "description": "Critic: Kconfig validation gap. What: CONFIG_LICHEN_LORA_L2_RX_PRIORITY has no 'range' constraint to validate against NUM_PREEMPT_PRIORITIES. Default 7 is reasonable but arbitrary values accepted. Why it matters: Invalid priority values could cause assertion failure in k_thread_create() or undefined scheduling behavior. Comment claims Kconfig validates via range but no range present. Fix: Add 'range 0 NUM_PREEMPT_PRIORITIES'.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:25:15.601613Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:11:30.457506Z",
+  "closed_at": "2026-06-28T07:11:30.457506Z",
+  "close_reason": "Won't fix - Kconfig 'range' directive cannot reference other Kconfig symbols like NUM_PREEMPT_PRIORITIES. Runtime validation in k_thread_create() catches invalid priority values with an assertion. The default value 7 is valid for all Zephyr configurations. Adding a static range (e.g., 0-15) would be incorrect for configs with fewer preempt priorities.",
+  "labels": [
+    "review-r3",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.85",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:25:15.60254Z"
+    }
+  ]
+}

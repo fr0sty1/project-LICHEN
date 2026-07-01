@@ -330,9 +330,10 @@ OSCORE Master Salt   = EDHOC-Exporter("OSCORE Master Salt", h'', 8)
 
 | Suite | AEAD | Hash | ECDH Curve | Signature |
 |-------|------|------|------------|-----------|
-| 2 | AES-CCM-16-64-128 | SHA-256 | X25519 | Ed25519 |
+| 0 | AES-CCM-16-64-128 | SHA-256 | X25519 | Ed25519 |
 
-Suite 2 is RECOMMENDED for LICHEN (matches OSCORE cipher suite).
+Suite 0 is REQUIRED for LICHEN. This matches the link-layer's use of Ed25519
+(Schnorr48 signatures) and allows deriving X25519 keys from Ed25519 seeds.
 
 **Constrained Nodes:**
 

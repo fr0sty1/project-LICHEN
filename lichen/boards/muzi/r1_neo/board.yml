@@ -1,0 +1,5 @@
+board:
+  name: r1_neo
+  vendor: muzi
+  socs:
+  - name: nrf52840

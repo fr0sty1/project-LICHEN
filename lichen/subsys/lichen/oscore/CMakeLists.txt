@@ -7,9 +7,12 @@ zephyr_library()
 
 zephyr_library_sources(
   oscore.c
-  aes_ccm.c
   hkdf.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_COAP_SERVER
   coap_oscore.c
 )
 
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../crypto)

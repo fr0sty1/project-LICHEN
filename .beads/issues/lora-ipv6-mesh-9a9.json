@@ -1,0 +1,24 @@
+{
+  "id": "lora-ipv6-mesh-9a9",
+  "title": "Schnorr signature implementation",
+  "description": "Implement truncated Schnorr signatures per spec section 8.4.\n\nAlgorithm (48 bytes total):\n1. Generate nonce: r = H(priv || msg) mod L\n2. Compute R = r * G\n3. Compute e = H(R || pub || msg), truncate to 16 bytes (e₁₂₈)\n4. Compute s = r + e * priv mod L (32 bytes)\n5. Signature = e₁₂₈ || s (48 bytes)\n\nVerification:\n1. Compute R' = s * G - e * pub\n2. Compute e' = H(R' || pub || msg), truncate to 16 bytes\n3. Verify e' == e₁₂₈\n\nImplementation:\n- Use PyNaCl for Ed25519 primitives\n- Derive X25519 from Ed25519 for ECDH (EDHOC later)\n- Constant-time comparison for verification\n\nFunctions:\n- sign(private_key, message) -\u003e bytes (48)\n- verify(public_key, message, signature) -\u003e bool\n- keypair_generate() -\u003e (private, public)\n\nTest vectors from spec draft.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T08:20:31Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-23T14:02:39Z",
+  "close_reason": "Implemented upstream in python/src/lichen/crypto/schnorr48.py (sign/verify) per draft-lichen-schnorr-00: Ed25519/SHA-512, 16-byte truncated challenge + 32-byte response, deterministic nonce. Validated against reference vectors in test/vectors/schnorr48.json (tests/crypto/test_schnorr48.py). + crypto/identity.py.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-9a9",
+      "depends_on_id": "lora-ipv6-mesh-xly",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:23:25Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

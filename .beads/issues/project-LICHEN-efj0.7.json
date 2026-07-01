@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-efj0.7",
+  "title": "Rust firmware: standardize defmt log levels across bridge-*",
+  "description": "Review bridge-rust, bridge-stm32wl, bridge-esp32 for consistent defmt usage. Ensure: ERR for failures, WARN for recoverable issues, INFO for state transitions, DEBUG for per-packet tracing. Match the style guide in docs/LOGGING_STYLE.md where applicable.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T04:52:47.359073Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T05:04:42.911337Z",
+  "closed_at": "2026-06-28T05:04:42.911337Z",
+  "close_reason": "Logging is consistent. Minor polish: per-packet logs (TX/RX bytes) should be debug! not info!. Heartbeat should be debug!. Low priority - defer to next cleanup pass.",
+  "labels": [
+    "rust",
+    "quality"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-efj0.7",
+      "depends_on_id": "project-LICHEN-efj0",
+      "type": "parent-child",
+      "created_at": "2026-06-28T04:52:47.360231Z"
+    }
+  ]
+}

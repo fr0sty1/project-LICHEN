@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+menuconfig LICHEN_EDHOC
+	bool "EDHOC (RFC 9528) Suite 0 support"
+	depends on LICHEN_CRYPTO_MONOCYPHER
+	depends on ZCBOR
+	select TINYCRYPT
+	select TINYCRYPT_SHA256
+	select TINYCRYPT_HMAC
+	select TINYCRYPT_AES
+	select TINYCRYPT_AES_CCM
+	help
+	  Enable EDHOC (Ephemeral Diffie-Hellman Over COSE) for establishing
+	  OSCORE security contexts. Uses Suite 0: X25519 + Ed25519 + AES-CCM.
+
+if LICHEN_EDHOC
+
+config LICHEN_EDHOC_LOG_LEVEL
+	int "EDHOC log level"
+	default 3
+	range 0 4
+	help
+	  Log level for EDHOC module (0=off, 1=err, 2=wrn, 3=inf, 4=dbg)
+
+endif # LICHEN_EDHOC

@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-9c4y.3",
+  "title": "Choose MeshCore app message codec and schema integration strategy",
+  "description": "Why this exists: MeshCore app messages may not share Meshtastic protobuf framing, and Zephyr needs a bounded, maintainable codec. What needs to be done: identify the message format from research, choose a bounded decode/encode strategy suitable for Zephyr C, decide whether generated code, handwritten parsers, or shared protocol headers are appropriate, and document schema/source provenance. Acceptance criteria: codec strategy builds for native_sim and representative hardware targets when implemented; malformed/oversized input handling is specified; no unbounded allocation assumptions; source version/provenance is recorded.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:19:07.698213Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:19:36.434476Z",
+  "labels": [
+    "zephyr",
+    "meshcore",
+    "codec",
+    "firmware",
+    "app-interface"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c4y.3",
+      "depends_on_id": "project-LICHEN-9c4y",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:19:07.698703Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c4y.3",
+      "depends_on_id": "project-LICHEN-9c4y.1",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:19:36.434476Z"
+    }
+  ]
+}

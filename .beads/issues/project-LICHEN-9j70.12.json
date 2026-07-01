@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-9j70.12",
+  "title": "Good: lichen_l2.c ownership comments on TX/RX packet handling",
+  "description": "Locations: lichen_l2.c:148-152, 628-634\n\nThe comments documenting Zephyr net_pkt ownership semantics are valuable:\n- TX (line 148-152): 'On success (return 0), L2 takes ownership... On error (return \u003c 0), caller retains ownership'\n- RX (line 628-634): 'On success (ret \u003e= 0): net_recv_data takes ownership... We MUST NOT access or unref pkt after this point'\n\nWhy this is good: Packet ownership in Zephyr's net stack is a common source of double-free and use-after-free bugs. These comments make the contract explicit and prevent 'helpful' refactors that add pkt access after handoff. Worth defending if someone suggests removing 'obvious' comments.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T18:18:47.342763Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T18:29:07.422307Z",
+  "closed_at": "2026-06-27T18:29:07.422307Z",
+  "close_reason": "Pattern documented - no action needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9j70.12",
+      "depends_on_id": "project-LICHEN-9j70",
+      "type": "parent-child",
+      "created_at": "2026-06-27T18:18:47.343492Z"
+    }
+  ]
+}

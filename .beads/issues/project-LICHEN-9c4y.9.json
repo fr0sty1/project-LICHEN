@@ -1,0 +1,45 @@
+{
+  "id": "project-LICHEN-9c4y.9",
+  "title": "Return explicit MeshCore errors for unsupported operations",
+  "description": "Why this exists: MeshCore app clients must fail gracefully when they request features LICHEN does not implement or intentionally does differently. What needs to be done: enumerate unsupported operations such as MeshCore RF/channel/routing features that do not map to LICHEN, remote admin operations, store-and-forward, telemetry/location/time injection if not supported, firmware update flows, and any MeshCore-specific mesh operations. Implement explicit error/no-op responses rather than silent drops. Acceptance criteria: unsupported command table is recorded; tests cover representative unsupported requests; client receives deterministic error or harmless read-only response; docs can consume the same matrix.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:19:08.385792Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:19:39.329625Z",
+  "labels": [
+    "zephyr",
+    "meshcore",
+    "compatibility",
+    "firmware",
+    "app-interface"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c4y.9",
+      "depends_on_id": "project-LICHEN-9c4y",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:19:08.386388Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c4y.9",
+      "depends_on_id": "project-LICHEN-9c4y.1",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:19:36.774247Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c4y.9",
+      "depends_on_id": "project-LICHEN-9c4y.2",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:19:37.632977Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c4y.9",
+      "depends_on_id": "project-LICHEN-9c4y.5",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:19:39.329625Z"
+    }
+  ]
+}

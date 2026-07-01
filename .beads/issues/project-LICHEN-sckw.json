@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-sckw",
+  "title": "docs: replace legacy remote Zephyr build guidance with AWS EC2",
+  "description": "User requested removing the old SSH-host remote build guidance from AGENTS.md and Beads persistent memories, and using AWS EC2 instead for remote/Linux-only Zephyr builds. Scope: update AGENTS.md to direct agents to AWS EC2 when local builds cannot run; update Beads memories so no persistent memory recommends the old SSH host; verify with searches in AGENTS.md and Beads memories.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "chore",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T02:27:52.744364Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T02:28:56.702993Z",
+  "closed_at": "2026-06-30T02:28:56.702993Z",
+  "close_reason": "Removed legacy SSH-host remote build guidance from AGENTS.md and replaced it with direct AWS EC2 guidance for Linux-only Zephyr builds. Updated Beads memory zephyr-builds-ec2 to say Linux-only Zephyr builds/tests should use AWS EC2 when local macOS cannot run them. Verified bd memories query and repository Beads exports have no remaining old-host references; git diff --check passed.",
+  "labels": [
+    "docs",
+    "workflow",
+    "beads",
+    "aws"
+  ]
+}

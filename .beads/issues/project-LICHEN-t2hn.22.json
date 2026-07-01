@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-t2hn.22",
+  "title": "Design shared BLE advertising/service owner for native and Meshtastic app surfaces",
+  "description": "Why this exists: project-LICHEN-t2hn.4 intentionally made the Meshtastic BLE app-compat surface mutually exclusive with the existing native LICHEN NUS/SLIP BLE service so the first implementation has one advertising owner and one app session. This blocks simultaneous native direct-BLE LCI and Meshtastic compatibility over BLE on the same firmware image. What needs to be done: design a shared Zephyr BLE owner that composes advertising data/scan response, connection policy, CCC/session state, and service registration for native LICHEN BLE and Meshtastic BLE without double-starting advertising or corrupting per-client queues. Acceptance criteria: architecture is recorded in Beads design/notes; Kconfig policy for coexistence versus product modes is explicit; implementation Beads are created for code movement if needed; T-Deck/R1/R1 Neo assumptions remain below board/app config boundaries.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T23:58:04.949637Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T23:58:04.950113Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.22",
+      "depends_on_id": "project-LICHEN-t2hn",
+      "type": "parent-child",
+      "created_at": "2026-06-30T23:58:04.950113Z"
+    }
+  ]
+}

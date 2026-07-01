@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-9j70.26",
+  "title": "k_thread_abort leaves RX callback in undefined state",
+  "description": "lora_l2.c:339-340: After k_thread_abort(), the RX thread is terminated mid-execution. If the thread was inside lora_recv() or the callback invocation, resources may be leaked or mutex left locked.\n\nWhat goes wrong:\n1. If thread was in callback (lora_rx_callback -\u003e lichen_l2_input), rx_mutex could be locked. lichen_l2_enable(true) would deadlock.\n2. If thread was in lora_recv(), the LoRa driver's internal state may be corrupted.\n3. Any in-flight net_pkt allocation may be leaked.\n\nThe code does clear the callback at lines 315-316 BEFORE signaling exit, but k_thread_abort() can happen while the callback is executing (after the callback pointer was snapshotted at line 191-193).\n\nFix: After abort, explicitly reinitialize rx_mutex. Or document that abort is a last resort and the interface requires full re-init after an abort. Consider adding a flag that prevents re-start after forced abort.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T18:19:36.450618Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T18:27:00.222728Z",
+  "closed_at": "2026-06-27T18:27:00.222728Z",
+  "close_reason": "Fixed: Added aborted flag to track forced thread abort, added lichen_lora_l2_deinit() to reinitialize mutex after abort, start() now checks aborted flag and returns -ECANCELED if set, added lichen_lora_l2_needs_reinit() query function",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9j70.26",
+      "depends_on_id": "project-LICHEN-9j70",
+      "type": "parent-child",
+      "created_at": "2026-06-27T18:19:36.451177Z"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-tvfm.8",
+  "title": "[lora_l2.c:700-710] rx_callback+user_data update order could race",
+  "description": "In lichen_lora_l2_set_rx_callback(), user_data is set before rx_callback (lines 708-709). The comment says 'ensure atomic update of callback + user_data pair' via mutex. However, if the RX thread reads the callback pointer between the two assignments (before mutex is released), it snapshots NULL callback with new user_data. This is benign since cb==NULL short-circuits the call, but the comment implies atomic semantics that aren't quite achieved. Setting callback=NULL first, then user_data, then callback=cb would ensure the old callback never sees new user_data.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:45:44.123133Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:27:58.208944Z",
+  "closed_at": "2026-06-28T02:27:58.208944Z",
+  "close_reason": "Verified: code already had correct order (user_data before callback) and mutex protection. Added clarifying comment explaining why the order matters for race safety.",
+  "labels": [
+    "review",
+    "round1",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.8",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:45:44.124172Z"
+    }
+  ]
+}

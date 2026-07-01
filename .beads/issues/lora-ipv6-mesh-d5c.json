@@ -1,0 +1,26 @@
+{
+  "id": "lora-ipv6-mesh-d5c",
+  "title": "Phase 4: RPL Routing",
+  "description": "Mesh formation with MRHOF objective function. Exit criteria: 5-node mesh forms DODAG, upward and downward routing work, parent switching on link failure.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Frost",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:09:53Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "started_at": "2026-06-24T03:21:49Z",
+  "closed_at": "2026-06-24T03:45:51Z",
+  "close_reason": "lichen-rpl crate implements all exit criteria; 5-node integration test confirms DODAG formation, upward/downward routing, and parent switching on failure",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-d5c",
+      "depends_on_id": "lora-ipv6-mesh-7ry",
+      "type": "blocks",
+      "created_at": "2026-05-26T22:10:51Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

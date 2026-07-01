@@ -77,6 +77,89 @@ impl SourceRoutingHeader {
 
 // ── Routing table ─────────────────────────────────────────────────────────────
 
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RouteEntryState {
+    Fresh,
+    Stale,
+    Expired,
+}
+
+#[cfg(feature = "std")]
+impl RouteEntryState {
+    pub fn can_transition_to(self, next: Self) -> bool {
+        matches!(
+            (self, next),
+            (Self::Fresh, Self::Fresh)
+                | (Self::Fresh, Self::Stale)
+                | (Self::Fresh, Self::Expired)
+                | (Self::Stale, Self::Fresh)
+                | (Self::Stale, Self::Stale)
+                | (Self::Stale, Self::Expired)
+                | (Self::Expired, Self::Expired)
+        )
+    }
+}
+
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct InvalidRouteEntryTransition {
+    pub from: RouteEntryState,
+    pub to: RouteEntryState,
+}
+
+#[cfg(feature = "std")]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RouteEntry {
+    pub path: Vec<[u8; 16]>,
+    pub state: RouteEntryState,
+}
+
+#[cfg(feature = "std")]
+impl RouteEntry {
+    pub fn fresh(path: Vec<[u8; 16]>) -> Self {
+        Self {
+            path,
+            state: RouteEntryState::Fresh,
+        }
+    }
+
+    fn transition_to(&mut self, next: RouteEntryState) -> Result<(), InvalidRouteEntryTransition> {
+        if self.state.can_transition_to(next) {
+            self.state = next;
+            Ok(())
+        } else {
+            Err(InvalidRouteEntryTransition {
+                from: self.state,
+                to: next,
+            })
+        }
+    }
+
+    pub fn mark_stale(&mut self) -> Result<(), InvalidRouteEntryTransition> {
+        self.transition_to(RouteEntryState::Stale)
+    }
+
+    pub fn mark_expired(&mut self) -> Result<(), InvalidRouteEntryTransition> {
+        self.transition_to(RouteEntryState::Expired)
+    }
+
+    pub fn refresh(&mut self, path: Vec<[u8; 16]>) -> Result<(), InvalidRouteEntryTransition> {
+        if self.state == RouteEntryState::Expired {
+            return Err(InvalidRouteEntryTransition {
+                from: self.state,
+                to: RouteEntryState::Fresh,
+            });
+        }
+        self.path = path;
+        self.transition_to(RouteEntryState::Fresh)
+    }
+
+    pub fn is_usable(&self) -> bool {
+        self.state != RouteEntryState::Expired
+    }
+}
+
 /// Root-side map from target address to the ordered hop list `[h1, ..., target]`.
 ///
 /// The first element is the root's direct neighbour; the last is the target.
@@ -84,7 +167,7 @@ impl SourceRoutingHeader {
 #[cfg(feature = "std")]
 #[derive(Debug, Default)]
 pub struct RoutingTable {
-    routes: HashMap<[u8; 16], Vec<[u8; 16]>>,
+    routes: HashMap<[u8; 16], RouteEntry>,
 }
 
 #[cfg(feature = "std")]
@@ -94,16 +177,46 @@ impl RoutingTable {
     }
 
     pub fn add_route(&mut self, target: [u8; 16], path: Vec<[u8; 16]>) {
-        self.routes.insert(target, path);
+        match self.routes.get_mut(&target) {
+            Some(entry) if entry.state != RouteEntryState::Expired => {
+                entry
+                    .refresh(path)
+                    .expect("fresh or stale route entry can refresh");
+            }
+            _ => {
+                self.routes.insert(target, RouteEntry::fresh(path));
+            }
+        }
     }
 
     pub fn remove_route(&mut self, target: &[u8; 16]) {
         self.routes.remove(target);
     }
 
+    pub fn mark_stale(
+        &mut self,
+        target: &[u8; 16],
+    ) -> Option<Result<(), InvalidRouteEntryTransition>> {
+        self.routes.get_mut(target).map(RouteEntry::mark_stale)
+    }
+
+    pub fn mark_expired(
+        &mut self,
+        target: &[u8; 16],
+    ) -> Option<Result<(), InvalidRouteEntryTransition>> {
+        self.routes.get_mut(target).map(RouteEntry::mark_expired)
+    }
+
+    pub fn entry_state(&self, target: &[u8; 16]) -> Option<RouteEntryState> {
+        self.routes.get(target).map(|entry| entry.state)
+    }
+
     /// Return the path for `target`, or `None` if no route is known.
     pub fn lookup(&self, target: &[u8; 16]) -> Option<&[[u8; 16]]> {
-        self.routes.get(target).map(|v| v.as_slice())
+        self.routes
+            .get(target)
+            .filter(|entry| entry.is_usable())
+            .map(|entry| entry.path.as_slice())
     }
 
     pub fn len(&self) -> usize {
@@ -214,7 +327,9 @@ impl DaoManager {
                     target = RplTarget::from_bytes(opt.data).ok().map(|t| t.prefix);
                 }
                 OPT_TRANSIT_INFO => {
-                    parent = TransitInfo::from_bytes(opt.data).ok().map(|ti| ti.parent_address);
+                    parent = TransitInfo::from_bytes(opt.data)
+                        .ok()
+                        .map(|ti| ti.parent_address);
                 }
                 _ => {}
             }
@@ -291,6 +406,47 @@ mod tests {
     }
 
     #[test]
+    fn route_entry_state_machine_allows_stale_refresh_and_rejects_expired_refresh() {
+        let mut entry = RouteEntry::fresh([ll(2), ll(3)].into_iter().collect());
+        assert_eq!(entry.state, RouteEntryState::Fresh);
+
+        entry.mark_stale().unwrap();
+        assert_eq!(entry.state, RouteEntryState::Stale);
+
+        entry.refresh([ll(4), ll(3)].into_iter().collect()).unwrap();
+        assert_eq!(entry.state, RouteEntryState::Fresh);
+        assert_eq!(entry.path, [ll(4), ll(3)]);
+
+        entry.mark_expired().unwrap();
+        assert_eq!(
+            entry.refresh([ll(2), ll(3)].into_iter().collect()),
+            Err(InvalidRouteEntryTransition {
+                from: RouteEntryState::Expired,
+                to: RouteEntryState::Fresh,
+            })
+        );
+    }
+
+    #[test]
+    fn routing_table_hides_expired_routes_but_keeps_state_visible() {
+        let mut table = RoutingTable::new();
+        let target = ll(3);
+        table.add_route(target, [ll(2), ll(3)].into_iter().collect());
+
+        table.mark_stale(&target).unwrap().unwrap();
+        assert_eq!(table.entry_state(&target), Some(RouteEntryState::Stale));
+        assert!(table.lookup(&target).is_some());
+
+        table.mark_expired(&target).unwrap().unwrap();
+        assert_eq!(table.entry_state(&target), Some(RouteEntryState::Expired));
+        assert!(table.lookup(&target).is_none());
+
+        table.add_route(target, [ll(4), ll(3)].into_iter().collect());
+        assert_eq!(table.entry_state(&target), Some(RouteEntryState::Fresh));
+        assert_eq!(table.lookup(&target).unwrap(), &[ll(4), ll(3)]);
+    }
+
+    #[test]
     fn srh_encode_decode_roundtrip() {
         let addresses: Vec<[u8; 16]> = [ll(2), ll(3)].into_iter().collect();
         let srh = SourceRoutingHeader {
@@ -323,7 +479,10 @@ mod tests {
     fn srh_wrong_type_returns_error() {
         let mut buf = [0u8; 6];
         buf[0] = 0; // routing type 0, not 3
-        assert_eq!(SourceRoutingHeader::from_bytes(&buf), Err(RplError::BadRoutingType(0)));
+        assert_eq!(
+            SourceRoutingHeader::from_bytes(&buf),
+            Err(RplError::BadRoutingType(0))
+        );
     }
 
     #[test]

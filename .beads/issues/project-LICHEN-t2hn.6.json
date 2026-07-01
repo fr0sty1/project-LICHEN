@@ -1,0 +1,46 @@
+{
+  "id": "project-LICHEN-t2hn.6",
+  "title": "Implement Meshtastic node info, owner, status, and config read handlers",
+  "description": "Why this exists: the app must show a usable local node after pairing. What needs to be done: implement MVP handlers/responses for app requests that populate node identity, owner/user fields, device metadata, firmware/app version, radio/local status, battery/power placeholders, position/time placeholders, channels/config readbacks, and adapter limitations. Map values from LICHEN HAL and local status resources where available. Acceptance criteria: Meshtastic app can read node info/status/config without crashing or indefinite spinners; unsupported or synthetic fields are documented; hardware-unknown fields are explicit placeholders; native_sim tests validate encoded response fields.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:15:24.818789Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:15:56.851631Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "config",
+    "status",
+    "firmware",
+    "app-interface"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.6",
+      "depends_on_id": "project-LICHEN-t2hn",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:15:24.819306Z"
+    },
+    {
+      "issue_id": "project-LICHEN-t2hn.6",
+      "depends_on_id": "project-LICHEN-t2hn.2",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:15:55.155579Z"
+    },
+    {
+      "issue_id": "project-LICHEN-t2hn.6",
+      "depends_on_id": "project-LICHEN-t2hn.3",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:15:56.003967Z"
+    },
+    {
+      "issue_id": "project-LICHEN-t2hn.6",
+      "depends_on_id": "project-LICHEN-t2hn.5",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:15:56.851631Z"
+    }
+  ]
+}

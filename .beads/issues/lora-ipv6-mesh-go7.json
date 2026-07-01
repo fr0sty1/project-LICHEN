@@ -1,0 +1,24 @@
+{
+  "id": "lora-ipv6-mesh-go7",
+  "title": "Topology change and re-routing test",
+  "description": "Test RPL adaptation to topology changes.\n\nScenario 1 - Link failure:\n1. 5-node mesh, stable DODAG\n2. Use chaos API to partition B from C\n3. Verify: C, D, E find alternate parent or lose connectivity\n4. Remove partition\n5. Verify: DODAG re-converges\n\nScenario 2 - Node failure:\n1. Stable DODAG\n2. Kill node C\n3. Verify: D, E re-parent through alternate path (if exists) or go offline\n4. Restart C\n5. Verify: C rejoins, D, E may re-parent through C\n\nScenario 3 - Mobile node:\n1. Stable DODAG\n2. Move node E from near D to near B\n3. Verify: E re-parents to B, rank improves\n\nTiming: track convergence time, should be reasonable (\u003c 30 seconds).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T08:23:04Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-23T14:03:52Z",
+  "closed_at": "2026-06-23T14:03:52Z",
+  "close_reason": "Implemented upstream in python/tests/sim/test_topology_change.py (node movement / link failure triggers re-routing; gradient invalidation + rediscovery).",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-go7",
+      "depends_on_id": "lora-ipv6-mesh-sxe",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:24:16Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

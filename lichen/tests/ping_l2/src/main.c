@@ -3,298 +3,267 @@
 
 /**
  * @file main.c
- * @brief ICMPv6 ping test over LICHEN L2 loopback
- *
- * This test verifies ICMPv6 Echo Request/Reply works over a loopback
- * L2 interface that simulates the LICHEN link layer. The test:
- *
- * 1. Initializes a loopback network interface
- * 2. Configures a link-local IPv6 address
- * 3. Sends an ICMPv6 Echo Request to itself
- * 4. Verifies the Echo Reply is received
- *
- * This validates the IPv6/ICMPv6 stack integration path that LICHEN L2
- * will use, without requiring actual LoRa hardware.
+ * @brief ICMPv6 packet-path proof over real LICHEN_L2 and LoRa loopback.
  */
 
+#include <zephyr/device.h>
 #include <zephyr/kernel.h>
-#include <zephyr/ztest.h>
 #include <zephyr/logging/log.h>
-
-#include <zephyr/net/net_if.h>
-#include <zephyr/net/net_l2.h>
-#include <zephyr/net/net_pkt.h>
-#include <zephyr/net/dummy.h>
 #include <zephyr/net/icmp.h>
+#include <zephyr/net/net_if.h>
+#include <zephyr/net/net_ip.h>
+#include <zephyr/net/net_pkt.h>
+#include <zephyr/sys/byteorder.h>
+#include <zephyr/ztest.h>
+
+#include <string.h>
+
+#include "lichen_l2.h"
+#include "lora_l2.h"
+#include "lora_loopback_test.h"
 
 LOG_MODULE_REGISTER(ping_l2_test, LOG_LEVEL_INF);
 
-#define PKT_WAIT_TIME  K_SECONDS(1)
-#define SEM_WAIT_TIME  K_SECONDS(2)
 #define PING_DATA      "LICHEN"
 #define PING_DATA_SIZE (sizeof(PING_DATA) - 1)
 
-/**
- * Test context structure
- */
-struct ping_test_ctx {
-	uint8_t mac_addr[8];           /* EUI-64 style address */
-	struct net_if *iface;
-	struct k_sem reply_sem;
-	bool reply_received;
-	uint16_t reply_id;
-	uint16_t reply_seq;
+static const uint8_t test_seed[32] = {
+	0x4c, 0x49, 0x43, 0x48, 0x45, 0x4e, 0x2d, 0x4c,
+	0x32, 0x2d, 0x6c, 0x6f, 0x6f, 0x70, 0x62, 0x61,
+	0x63, 0x6b, 0x2d, 0x70, 0x61, 0x74, 0x68, 0x2d,
+	0x74, 0x65, 0x73, 0x74, 0x2d, 0x30, 0x30, 0x31,
+};
+static const uint8_t test_link_key[16] = {
+	0x4c, 0x32, 0x2d, 0x6c, 0x69, 0x6e, 0x6b, 0x2d,
+	0x6c, 0x6f, 0x6f, 0x70, 0x62, 0x61, 0x63, 0x6b,
 };
 
-static struct ping_test_ctx test_ctx;
+static const struct device *const lora_dev = DEVICE_DT_GET(DT_ALIAS(lora0));
+static struct net_if *test_iface;
+static struct in6_addr test_ll_addr;
+static struct in6_addr peer_ll_addr;
+static uint8_t expected_packet[sizeof(struct net_ipv6_hdr) + 8 + PING_DATA_SIZE];
+static size_t expected_packet_len;
 
-/**
- * Link-local IPv6 address for testing
- * fe80::1 - simple link-local address
- */
-static struct in6_addr test_ll_addr = {
-	.s6_addr = { 0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 }
-};
+static void build_ping_packet(uint8_t *packet, size_t *packet_len);
 
-/**
- * @brief Initialize the test interface
- */
-static void test_iface_init(struct net_if *iface)
+static void make_link_local_from_eui64(const uint8_t eui64[8],
+				       struct in6_addr *addr)
 {
-	struct ping_test_ctx *ctx = net_if_get_device(iface)->data;
-
-	/* Generate EUI-64 style address */
-	ctx->mac_addr[0] = 0x02;  /* Locally administered */
-	ctx->mac_addr[1] = 0x00;
-	ctx->mac_addr[2] = 0x5e;  /* IANA OUI for documentation */
-	ctx->mac_addr[3] = 0x00;
-	ctx->mac_addr[4] = 0x53;
-	ctx->mac_addr[5] = 0x00;
-	ctx->mac_addr[6] = 0x00;
-	ctx->mac_addr[7] = 0x01;
-
-	net_if_set_link_addr(iface, ctx->mac_addr, sizeof(ctx->mac_addr),
-			     NET_LINK_IEEE802154);
-
-	ctx->iface = iface;
-
-	LOG_INF("Test interface initialized");
+	memset(addr, 0, sizeof(*addr));
+	addr->s6_addr[0] = 0xfe;
+	addr->s6_addr[1] = 0x80;
+	memcpy(&addr->s6_addr[8], eui64, 8);
+	addr->s6_addr[8] ^= 0x02;
 }
 
-/**
- * @brief Loopback send function
- *
- * When a packet is sent, loop it back to the receive path.
- * This simulates the LICHEN L2 loopback behavior.
- */
-static int test_loopback_send(const struct device *dev, struct net_pkt *pkt)
+static uint32_t checksum_add(const uint8_t *data, size_t len)
 {
-	struct ping_test_ctx *ctx = dev->data;
-	struct net_pkt *clone;
+	uint32_t sum = 0;
 
-	LOG_DBG("Loopback TX: %zu bytes", net_pkt_get_len(pkt));
+	while (len > 1) {
+		sum += ((uint16_t)data[0] << 8) | data[1];
+		data += 2;
+		len -= 2;
+	}
 
-	/* Clone the packet for receive processing */
-	clone = net_pkt_clone(pkt, PKT_WAIT_TIME);
-	if (!clone) {
-		LOG_ERR("Failed to clone packet");
-		net_pkt_unref(pkt);
+	if (len > 0) {
+		sum += (uint16_t)data[0] << 8;
+	}
+
+	return sum;
+}
+
+static uint16_t checksum_finish(uint32_t sum)
+{
+	while ((sum >> 16) != 0) {
+		sum = (sum & 0xffff) + (sum >> 16);
+	}
+
+	return (uint16_t)~sum;
+}
+
+static uint16_t icmpv6_checksum(const struct net_ipv6_hdr *ipv6,
+				const uint8_t *icmp,
+				size_t icmp_len)
+{
+	uint8_t pseudo[8] = {
+		(uint8_t)(icmp_len >> 24),
+		(uint8_t)(icmp_len >> 16),
+		(uint8_t)(icmp_len >> 8),
+		(uint8_t)icmp_len,
+		0,
+		0,
+		0,
+		IPPROTO_ICMPV6,
+	};
+	uint32_t sum = 0;
+
+	sum += checksum_add(ipv6->src, sizeof(ipv6->src));
+	sum += checksum_add(ipv6->dst, sizeof(ipv6->dst));
+	sum += checksum_add(pseudo, sizeof(pseudo));
+	sum += checksum_add(icmp, icmp_len);
+
+	return checksum_finish(sum);
+}
+
+static void *ping_l2_setup(void)
+{
+	uint8_t eui64[8];
+	uint8_t pubkey[32];
+	int ret;
+
+	zassert_true(IS_ENABLED(CONFIG_LICHEN_L2), "CONFIG_LICHEN_L2 is disabled");
+	zassert_false(IS_ENABLED(CONFIG_NET_L2_DUMMY), "dummy L2 bypass is enabled");
+	zassert_true(device_is_ready(lora_dev), "lora0 loopback device is not ready");
+
+	test_iface = net_if_get_first_by_type(&NET_L2_GET_NAME(lichen_l2));
+	zassert_not_null(test_iface, "no default LICHEN interface");
+
+	ret = lichen_lora_l2_copy_eui64(eui64);
+	zassert_equal(ret, 0, "failed to copy L2 EUI-64: %d", ret);
+
+	ret = lichen_l2_test_load_key(test_seed, pubkey);
+	zassert_equal(ret, 0, "failed to load deterministic test key: %d", ret);
+
+	ret = lichen_l2_test_load_link_key(test_link_key);
+	zassert_equal(ret, 0, "failed to load deterministic link key: %d", ret);
+
+	ret = lichen_peer_add(eui64, pubkey);
+	zassert_equal(ret, 0, "failed to add self peer: %d", ret);
+
+	make_link_local_from_eui64(eui64, &test_ll_addr);
+	memcpy(&peer_ll_addr, &test_ll_addr, sizeof(peer_ll_addr));
+	peer_ll_addr.s6_addr[15] ^= 0x01;
+
+	if (net_if_ipv6_addr_lookup(&test_ll_addr, NULL) == NULL) {
+		struct net_if_addr *ifaddr;
+
+		ifaddr = net_if_ipv6_addr_add(test_iface, &test_ll_addr,
+					      NET_ADDR_MANUAL, 0);
+		zassert_not_null(ifaddr, "failed to add LICHEN link-local address");
+	}
+
+	ret = net_if_up(test_iface);
+	zassert_true(ret == 0 || ret == -EALREADY, "failed to bring iface up: %d", ret);
+
+	build_ping_packet(expected_packet, &expected_packet_len);
+
+	return NULL;
+}
+
+static void build_ping_packet(uint8_t *packet, size_t *packet_len)
+{
+	struct net_ipv6_hdr *ipv6 = (struct net_ipv6_hdr *)packet;
+	uint8_t *icmp = packet + sizeof(struct net_ipv6_hdr);
+	size_t icmp_len = 8 + PING_DATA_SIZE;
+
+	memset(packet, 0, sizeof(struct net_ipv6_hdr) + icmp_len);
+	ipv6->vtc = 0x60;
+	ipv6->len = sys_cpu_to_be16((uint16_t)icmp_len);
+	ipv6->nexthdr = IPPROTO_ICMPV6;
+	ipv6->hop_limit = 64;
+	memcpy(ipv6->src, test_ll_addr.s6_addr, sizeof(ipv6->src));
+	memcpy(ipv6->dst, peer_ll_addr.s6_addr, sizeof(ipv6->dst));
+
+	icmp[0] = NET_ICMPV6_ECHO_REQUEST;
+	icmp[1] = 0;
+	icmp[2] = 0;
+	icmp[3] = 0;
+	icmp[4] = 0x4c;
+	icmp[5] = 0x49;
+	icmp[6] = 0;
+	icmp[7] = 1;
+	memcpy(&icmp[8], PING_DATA, PING_DATA_SIZE);
+	sys_put_be16(icmpv6_checksum(ipv6, icmp, icmp_len), &icmp[2]);
+
+	*packet_len = sizeof(struct net_ipv6_hdr) + icmp_len;
+}
+
+static int send_ping_packet(const uint8_t *packet, size_t packet_len)
+{
+	struct net_pkt *pkt;
+
+	pkt = net_pkt_alloc_with_buffer(test_iface, packet_len, AF_INET6,
+					IPPROTO_ICMPV6, K_SECONDS(1));
+	if (pkt == NULL) {
 		return -ENOMEM;
 	}
 
-	/* Set the interface for the cloned packet */
-	net_pkt_set_iface(clone, ctx->iface);
-
-	/* Inject into the receive path */
-	if (net_recv_data(ctx->iface, clone) < 0) {
-		LOG_ERR("net_recv_data failed");
-		net_pkt_unref(clone);
+	if (net_pkt_write(pkt, packet, packet_len) < 0) {
+		goto drop;
 	}
 
-	/* Free the original packet */
+	net_pkt_cursor_init(pkt);
+
+	if (net_if_l2(test_iface)->send(test_iface, pkt) < 0) {
+		goto drop;
+	}
+
+	return 0;
+
+drop:
 	net_pkt_unref(pkt);
-
-	return 0;
+	return -EIO;
 }
 
-/* Dummy L2 API for loopback testing */
-static struct dummy_api test_dummy_api = {
-	.iface_api.init = test_iface_init,
-	.send = test_loopback_send,
-};
-
-/*
- * Register the test network device with DUMMY L2
- * MTU of 200 matches LICHEN L2 MTU
- */
-NET_DEVICE_INIT(lichen_loopback, "lichen_loopback",
-		NULL, NULL,
-		&test_ctx, NULL,
-		CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
-		&test_dummy_api,
-		DUMMY_L2, NET_L2_GET_CTX_TYPE(DUMMY_L2),
-		200);
-
-/**
- * @brief ICMPv6 Echo Reply handler
- */
-static int icmp_reply_handler(struct net_icmp_ctx *ctx,
-			      struct net_pkt *pkt,
-			      struct net_icmp_ip_hdr *ip_hdr,
-			      struct net_icmp_hdr *icmp_hdr,
-			      void *user_data)
+static bool packet_path_observed(const struct lichen_l2_test_stats *l2_before,
+				 const struct lora_loopback_test_stats *loop_before,
+				 const uint8_t *expected,
+				 size_t expected_len)
 {
-	struct ping_test_ctx *test = user_data;
-	struct net_ipv6_hdr *ipv6 = ip_hdr->ipv6;
-	char src_str[NET_IPV6_ADDR_LEN];
-	char dst_str[NET_IPV6_ADDR_LEN];
+	struct lichen_l2_test_stats l2_now;
+	struct lora_loopback_test_stats loop_now;
 
-	net_addr_ntop(AF_INET6, &ipv6->src, src_str, sizeof(src_str));
-	net_addr_ntop(AF_INET6, &ipv6->dst, dst_str, sizeof(dst_str));
+	lichen_l2_test_get_stats(&l2_now);
+	lora_loopback_test_get_stats(lora_dev, &loop_now);
 
-	LOG_INF("Received Echo Reply: %s -> %s", src_str, dst_str);
+	return l2_now.tx_packets > l2_before->tx_packets &&
+	       l2_now.rx_frames > l2_before->rx_frames &&
+	       l2_now.rx_injected_packets > l2_before->rx_injected_packets &&
+	       loop_now.sent_packets > loop_before->sent_packets &&
+	       loop_now.received_packets > loop_before->received_packets &&
+	       l2_now.last_injected_len == expected_len &&
+	       memcmp(l2_now.last_injected, expected, expected_len) == 0;
+}
 
-	/* Extract identifier and sequence from ICMP header */
-	/* ICMPv6 Echo: type(1) + code(1) + checksum(2) + id(2) + seq(2) */
-	struct net_buf *frag = pkt->buffer;
-
-	if (frag && frag->len >= 8) {
-		/* Skip IPv6 header to get to ICMP data */
-		/* The cursor should already be positioned at ICMP */
+static bool wait_for_packet_path(const struct lichen_l2_test_stats *l2_before,
+				 const struct lora_loopback_test_stats *loop_before,
+				 const uint8_t *expected,
+				 size_t expected_len)
+{
+	for (int i = 0; i < 500; i++) {
+		if (packet_path_observed(l2_before, loop_before, expected,
+					 expected_len)) {
+			return true;
+		}
+		k_msleep(10);
 	}
 
-	test->reply_received = true;
-	k_sem_give(&test->reply_sem);
-
-	return 0;
+	return false;
 }
 
-/**
- * Test: Verify interface initialization
- */
-ZTEST(ping_l2, test_interface_init)
+ZTEST(ping_l2, test_full_l2_loopback_ping)
 {
-	struct net_if *iface;
-
-	iface = net_if_lookup_by_dev(DEVICE_GET(lichen_loopback));
-	zassert_not_null(iface, "Failed to find loopback interface");
-	zassert_equal(iface, test_ctx.iface,
-		      "Interface mismatch (expected %p, got %p)",
-		      test_ctx.iface, iface);
-
-	LOG_INF("Interface initialization: PASS");
-}
-
-/**
- * Test: Configure IPv6 link-local address
- */
-ZTEST(ping_l2, test_ipv6_addr_config)
-{
-	struct net_if *iface = test_ctx.iface;
-	struct net_if_addr *ifaddr;
-
-	zassert_not_null(iface, "Interface not initialized");
-
-	/* Add link-local address */
-	ifaddr = net_if_ipv6_addr_add(iface, &test_ll_addr,
-				      NET_ADDR_MANUAL, 0);
-	zassert_not_null(ifaddr, "Failed to add IPv6 address");
-
-	/* Verify address was added */
-	zassert_true(net_if_ipv6_addr_lookup(&test_ll_addr, NULL) != NULL,
-		     "IPv6 address not found after add");
-
-	LOG_INF("IPv6 address configuration: PASS");
-}
-
-/**
- * Test: ICMPv6 Echo Request/Reply (ping)
- *
- * This is the core test - send a ping to our own link-local address
- * and verify we receive the reply.
- */
-ZTEST(ping_l2, test_icmpv6_ping)
-{
-	struct net_icmp_ctx icmp_ctx;
-	struct net_icmp_ping_params params;
-	struct sockaddr_in6 dst = { 0 };
+	struct lichen_l2_test_stats l2_before;
+	struct lora_loopback_test_stats loop_before;
 	int ret;
 
-	zassert_not_null(test_ctx.iface, "Interface not initialized");
+	/* Let startup MLD/ND frames drain before measuring the packet under test. */
+	k_sleep(K_MSEC(100));
 
-	/* Initialize semaphore */
-	k_sem_init(&test_ctx.reply_sem, 0, 1);
-	test_ctx.reply_received = false;
+	lichen_l2_test_reset_stats();
+	lora_loopback_test_reset(lora_dev);
 
-	/* Register for Echo Reply */
-	ret = net_icmp_init_ctx(&icmp_ctx, NET_ICMPV6_ECHO_REPLY, 0,
-				icmp_reply_handler);
-	zassert_equal(ret, 0, "Failed to init ICMP context: %d", ret);
+	lichen_l2_test_get_stats(&l2_before);
+	lora_loopback_test_get_stats(lora_dev, &loop_before);
 
-	/* Set up destination (our own link-local address) */
-	dst.sin6_family = AF_INET6;
-	memcpy(&dst.sin6_addr, &test_ll_addr, sizeof(test_ll_addr));
+	ret = send_ping_packet(expected_packet, expected_packet_len);
+	zassert_equal(ret, 0, "failed to send Echo Request packet: %d", ret);
 
-	/* Set up ping parameters */
-	params.identifier = 0x4C49;  /* "LI" */
-	params.sequence = 1;
-	params.tc_tos = 0;
-	params.priority = 0;
-	params.data = PING_DATA;
-	params.data_size = PING_DATA_SIZE;
-
-	LOG_INF("Sending ICMPv6 Echo Request...");
-
-	/* Send ping */
-	ret = net_icmp_send_echo_request(&icmp_ctx, test_ctx.iface,
-					 (struct sockaddr *)&dst,
-					 &params, &test_ctx);
-	zassert_equal(ret, 0, "Failed to send Echo Request: %d", ret);
-
-	/* Wait for reply */
-	ret = k_sem_take(&test_ctx.reply_sem, SEM_WAIT_TIME);
-	zassert_equal(ret, 0, "Timeout waiting for Echo Reply");
-
-	zassert_true(test_ctx.reply_received, "Echo Reply not received");
-
-	/* Cleanup */
-	ret = net_icmp_cleanup_ctx(&icmp_ctx);
-	zassert_equal(ret, 0, "Failed to cleanup ICMP context: %d", ret);
-
-	LOG_INF("ICMPv6 ping test: PASS");
-}
-
-/**
- * Test setup - called before each test
- */
-static void *ping_l2_setup(void)
-{
-	struct net_if *iface;
-
-	/* Set thread priority for cooperative scheduling */
-	if (IS_ENABLED(CONFIG_NET_TC_THREAD_COOPERATIVE)) {
-		k_thread_priority_set(k_current_get(),
-				      K_PRIO_COOP(CONFIG_NUM_COOP_PRIORITIES - 1));
-	} else {
-		k_thread_priority_set(k_current_get(), K_PRIO_PREEMPT(9));
-	}
-
-	/* Get interface and add IPv6 address */
-	iface = net_if_lookup_by_dev(DEVICE_GET(lichen_loopback));
-	if (iface && test_ctx.iface == NULL) {
-		test_ctx.iface = iface;
-	}
-
-	if (iface) {
-		/* Add the link-local address if not already present */
-		if (net_if_ipv6_addr_lookup(&test_ll_addr, NULL) == NULL) {
-			net_if_ipv6_addr_add(iface, &test_ll_addr,
-					     NET_ADDR_MANUAL, 0);
-		}
-	}
-
-	return NULL;
+	zassert_true(wait_for_packet_path(&l2_before, &loop_before,
+					  expected_packet, expected_packet_len),
+		     "full LICHEN_L2 loopback packet path was not observed");
 }
 
 ZTEST_SUITE(ping_l2, NULL, ping_l2_setup, NULL, NULL, NULL);

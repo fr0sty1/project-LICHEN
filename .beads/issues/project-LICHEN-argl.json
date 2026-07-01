@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-argl",
+  "title": "Add CoAP client API validation tests",
+  "description": "project-LICHEN-i81y.4 fixed NULL payload/nonzero length validation in coap_client.c, but there is no existing CoAP ztest suite to extend within that scoped fix. Add focused tests for lichen_coap_request() and lichen_coap_post_cbor() invalid parameter handling, including payload == NULL with payload_len \u003e 0.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-29T03:40:19.599178Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T03:55:13.287405Z",
+  "closed_at": "2026-06-29T03:55:13.287405Z",
+  "close_reason": "Completed: added focused Zephyr CoAP client API validation test target covering invalid request/post_cbor parameters and timeout overflow bounds.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-argl",
+      "depends_on_id": "project-LICHEN-i81y",
+      "type": "parent-child",
+      "created_at": "2026-06-29T03:40:29.848742Z"
+    }
+  ]
+}

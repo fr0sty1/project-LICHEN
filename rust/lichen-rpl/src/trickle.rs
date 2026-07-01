@@ -16,6 +16,31 @@ pub enum TrickleEvent {
     Expire { at_ms: u32 },
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TrickleState {
+    Stopped,
+    WaitingTransmit,
+    WaitingExpire,
+}
+
+impl TrickleState {
+    pub fn can_transition_to(self, next: Self) -> bool {
+        matches!(
+            (self, next),
+            (Self::Stopped, Self::WaitingTransmit)
+                | (Self::WaitingTransmit, Self::WaitingTransmit)
+                | (Self::WaitingTransmit, Self::WaitingExpire)
+                | (Self::WaitingExpire, Self::WaitingTransmit)
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct InvalidTrickleTransition {
+    pub from: TrickleState,
+    pub to: TrickleState,
+}
+
 /// RFC 6206 Trickle timer.
 ///
 /// All times are integer milliseconds. The caller supplies random offsets so the
@@ -29,6 +54,7 @@ pub struct TrickleTimer {
     pub counter: u32,
     pub interval_start: u32,
     pub transmit_time: u32,
+    pub state: TrickleState,
     transmitted: bool,
 }
 
@@ -45,7 +71,20 @@ impl TrickleTimer {
             counter: 0,
             interval_start: 0,
             transmit_time: 0,
+            state: TrickleState::Stopped,
             transmitted: false,
+        }
+    }
+
+    fn transition_to(&mut self, next: TrickleState) -> Result<(), InvalidTrickleTransition> {
+        if self.state.can_transition_to(next) {
+            self.state = next;
+            Ok(())
+        } else {
+            Err(InvalidTrickleTransition {
+                from: self.state,
+                to: next,
+            })
         }
     }
 
@@ -54,10 +93,15 @@ impl TrickleTimer {
     /// `rand_offset` is a caller-supplied random value in `[0, imin/2)`.
     pub fn start(&mut self, now: u32, rand_offset: u32) {
         self.interval = self.imin;
-        self.begin_interval(now, rand_offset);
+        self.begin_interval(now, rand_offset)
+            .expect("stopped or active Trickle timer can begin an interval");
     }
 
-    fn begin_interval(&mut self, now: u32, rand_offset: u32) {
+    fn begin_interval(
+        &mut self,
+        now: u32,
+        rand_offset: u32,
+    ) -> Result<(), InvalidTrickleTransition> {
         self.interval_start = now;
         self.counter = 0;
         self.transmitted = false;
@@ -65,6 +109,7 @@ impl TrickleTimer {
         // transmit_time is uniform in [now + half, now + interval)
         let offset = if half > 0 { rand_offset % half } else { 0 };
         self.transmit_time = now + half + offset;
+        self.transition_to(TrickleState::WaitingTransmit)
     }
 
     /// Absolute time when the current interval ends.
@@ -84,26 +129,54 @@ impl TrickleTimer {
 
     /// Mark the transmit point reached; returns `true` if a DIO should be sent.
     pub fn fire_transmit(&mut self) -> bool {
+        self.try_fire_transmit().unwrap_or(false)
+    }
+
+    pub fn try_fire_transmit(&mut self) -> Result<bool, InvalidTrickleTransition> {
+        self.transition_to(TrickleState::WaitingExpire)?;
         self.transmitted = true;
-        self.should_transmit()
+        Ok(self.should_transmit())
     }
 
     /// End the current interval: double (capped) and start the next one (step 5).
     ///
     /// `rand_offset` is a caller-supplied random value in `[0, new_interval/2)`.
     pub fn expire(&mut self, now: u32, rand_offset: u32) {
+        let _ = self.try_expire(now, rand_offset);
+    }
+
+    pub fn try_expire(
+        &mut self,
+        now: u32,
+        rand_offset: u32,
+    ) -> Result<(), InvalidTrickleTransition> {
+        if self.state != TrickleState::WaitingExpire {
+            return Err(InvalidTrickleTransition {
+                from: self.state,
+                to: TrickleState::WaitingTransmit,
+            });
+        }
         self.interval = self.interval.saturating_mul(2).min(self.max_interval);
-        self.begin_interval(now, rand_offset);
+        self.begin_interval(now, rand_offset)
     }
 
     /// Handle an inconsistency: shrink to `imin` and restart (RFC 6206 step 6).
     ///
     /// No-op if the interval is already `imin` (RFC 6206 §4.2).
     pub fn reset(&mut self, now: u32, rand_offset: u32) {
+        let _ = self.try_reset(now, rand_offset);
+    }
+
+    pub fn try_reset(
+        &mut self,
+        now: u32,
+        rand_offset: u32,
+    ) -> Result<(), InvalidTrickleTransition> {
         if self.interval != self.imin {
             self.interval = self.imin;
-            self.begin_interval(now, rand_offset);
+            self.begin_interval(now, rand_offset)?;
         }
+        Ok(())
     }
 
     /// The next scheduled event.
@@ -127,7 +200,9 @@ mod tests {
     #[test]
     fn transmit_time_in_second_half_of_interval() {
         let mut t = TrickleTimer::new(1000, 4, 10);
+        assert_eq!(t.state, TrickleState::Stopped);
         t.start(0, 0); // rand_offset=0 → transmit at 500ms
+        assert_eq!(t.state, TrickleState::WaitingTransmit);
         assert_eq!(t.transmit_time, 500);
         assert_eq!(t.interval_end(), 1000);
         assert_eq!(t.next_event(), TrickleEvent::Transmit { at_ms: 500 });
@@ -138,7 +213,30 @@ mod tests {
         let mut t = TrickleTimer::new(1000, 4, 10);
         t.start(0, 0);
         assert!(t.fire_transmit()); // c=0 < k=10 → should transmit
+        assert_eq!(t.state, TrickleState::WaitingExpire);
         assert_eq!(t.next_event(), TrickleEvent::Expire { at_ms: 1000 });
+    }
+
+    #[test]
+    fn checked_trickle_transitions_reject_repeated_transmit_and_early_expire() {
+        let mut t = TrickleTimer::new(1000, 4, 10);
+        assert_eq!(
+            t.try_expire(0, 0),
+            Err(InvalidTrickleTransition {
+                from: TrickleState::Stopped,
+                to: TrickleState::WaitingTransmit,
+            })
+        );
+
+        t.start(0, 0);
+        assert!(t.try_fire_transmit().unwrap());
+        assert_eq!(
+            t.try_fire_transmit(),
+            Err(InvalidTrickleTransition {
+                from: TrickleState::WaitingExpire,
+                to: TrickleState::WaitingExpire,
+            })
+        );
     }
 
     #[test]
@@ -157,6 +255,7 @@ mod tests {
         t.start(0, 0);
         t.fire_transmit();
         t.expire(1000, 0);
+        assert_eq!(t.state, TrickleState::WaitingTransmit);
         assert_eq!(t.interval, 2000);
         t.fire_transmit();
         t.expire(3000, 0);

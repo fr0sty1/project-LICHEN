@@ -123,3 +123,23 @@ def test_loop_in_chain_yields_no_route() -> None:
     root.process_dao(DaoManager(node_address=N2).build_dao(N1))
     assert root.routing_table.lookup(N1) is None
     assert root.routing_table.lookup(N2) is None
+
+
+def test_multi_target_dao_rejected() -> None:
+    """Multi-target DAOs are rejected rather than silently dropping targets."""
+    from lichen.rpl.messages import DAO
+
+    # Build a DAO with two RPL Target options (RFC 6550 allows this but we don't).
+    dao = DAO(
+        rpl_instance_id=0,
+        dao_sequence=1,
+        dodag_id=ROOT,
+        ack_requested=False,
+        options=[
+            RplTarget(N1).to_option(),
+            RplTarget(N2).to_option(),
+            TransitInformation(ROOT).to_option(),
+        ],
+    )
+    with pytest.raises(DaoError, match="multi-target"):
+        DaoManager._extract_edge(dao)

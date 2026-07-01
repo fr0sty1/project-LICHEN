@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.9",
+  "title": "[lichen_util.h:53] secure_zero silent NULL return in release",
+  "description": "Function: secure_zero. Contract violation: The function silently returns on NULL pointer in release builds (line 58: if (ptr == NULL || len == 0) return) but only asserts in debug builds. This inconsistent behavior means callers won't notice a programming error in production. A misused secure_zero could leave sensitive data unzeroed. Consider always returning an error code or using a compiler warning attribute. Priority 2 because this is a security-sensitive function where silent failures are problematic.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:45:47.682914Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:21:01.709734Z",
+  "closed_at": "2026-06-28T02:21:01.709734Z",
+  "close_reason": "Fixed: Added explicit NULL check with printk warning before early return. The function now logs 'WARN: secure_zero called with NULL pointer' in release builds instead of silently returning. Also added #include \u003czephyr/sys/printk.h\u003e.",
+  "labels": [
+    "review",
+    "round1",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.9",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:45:47.683459Z"
+    }
+  ]
+}

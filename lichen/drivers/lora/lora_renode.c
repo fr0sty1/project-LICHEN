@@ -4,6 +4,13 @@
  * Memory-mapped interface to the C# peripheral which bridges to lichen-sim.
  * For use in Renode simulation of STM32WL firmware.
  *
+ * Polling Design Note:
+ *   TX uses fixed 1ms polling intervals, RX uses 10ms intervals. These are
+ *   simple and sufficient for simulation where timing is not critical.
+ *   A production driver on real hardware could use interrupts or k_poll(),
+ *   but the Renode peripheral doesn't support GPIO interrupts, so polling
+ *   is the appropriate model for this simulation environment.
+ *
  * Memory map (base from devicetree, typically 0x58010000):
  *   0x000: TX_LEN (write) - payload length
  *   0x004: TX_TRIGGER (write) - any write triggers TX
@@ -105,12 +112,11 @@ static int lora_renode_config(const struct device *dev,
 static int lora_renode_send(const struct device *dev,
 			    uint8_t *data, uint32_t data_len)
 {
-	const struct lora_renode_config *cfg = dev->config;
-	struct lora_renode_data *drv = dev->data;
-
 	if (dev == NULL || data == NULL) {
 		return -EINVAL;
 	}
+	const struct lora_renode_config *cfg = dev->config;
+	struct lora_renode_data *drv = dev->data;
 	if (!drv->connected) {
 		LOG_WRN("not connected to lichen-sim");
 		return -ENOTCONN;
@@ -128,9 +134,14 @@ static int lora_renode_send(const struct device *dev,
 	/* Trigger TX */
 	reg_write(cfg, REG_TX_TRIGGER, 1);
 
-	/* Poll for completion */
+	/* Poll for completion.
+	 * TX_TIMEOUT_MS covers the longest LoRa airtime: SF12/125kHz with 255B
+	 * payload takes ~1.3s. 2 seconds provides margin for simulation overhead.
+	 * Timeout indicates a stuck radio.
+	 */
+	#define TX_TIMEOUT_MS 2000
 	uint32_t status;
-	int retries = 1000; /* ponytail: simple polling, ~1s max */
+	int retries = TX_TIMEOUT_MS;
 
 	do {
 		status = reg_read(cfg, REG_TX_STATUS);
@@ -171,9 +182,17 @@ static int lora_renode_recv(const struct device *dev,
 
 		if (status == RX_AVAILABLE) {
 			uint16_t rx_len = (uint16_t)reg_read(cfg, REG_RX_LEN);
-			uint16_t copy = MIN(rx_len, size);
 
-			buf_read(cfg, REG_RX_BUFFER, data, copy);
+			if (rx_len > size) {
+				/* Consume the packet to prevent infinite loop,
+				 * then return error */
+				reg_write(cfg, REG_RX_CONSUME, 1);
+				LOG_ERR("recv: packet too large for buffer: %u > %u",
+					rx_len, size);
+				return -EMSGSIZE;
+			}
+
+			buf_read(cfg, REG_RX_BUFFER, data, rx_len);
 
 			if (rssi) {
 				*rssi = (int16_t)reg_read(cfg, REG_RX_RSSI);
@@ -187,8 +206,8 @@ static int lora_renode_recv(const struct device *dev,
 			/* Consume the packet */
 			reg_write(cfg, REG_RX_CONSUME, 1);
 
-			LOG_DBG("RX: %u bytes, RSSI=%d", copy, rssi ? *rssi : 0);
-			return copy;
+			LOG_DBG("RX: %u bytes, RSSI=%d", rx_len, rssi ? *rssi : 0);
+			return rx_len;
 		}
 
 		k_sleep(K_MSEC(10));

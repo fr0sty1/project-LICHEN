@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.6",
+  "title": "[lichen_util.c:20] lichen_sha256 output buffer size unchecked",
+  "description": "Contract: lichen_sha256 declares output[TC_SHA256_DIGEST_SIZE] but this decays to pointer.\nViolation: The function writes 32 bytes to output via tc_sha256_final() without runtime validation that the buffer is large enough. The header comment warns about this (lines 114-116 of lichen_util.h) but there is no runtime defense.\nImpact: Buffer overflow if caller passes buffer \u003c 32 bytes. This is called from generate_eui64() and lichen_pubkey_to_iid() which use correctly-sized local buffers, but any future caller could trigger overflow.\nMitigation: Document more prominently, or add explicit length parameter for defense-in-depth (would change API).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:11:33.032156Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:07:38.758738Z",
+  "closed_at": "2026-06-28T07:07:38.758738Z",
+  "close_reason": "No change needed: existing documentation already comprehensive. Header has SECURITY comment (lines 109-121) warning about array decay, 32-byte requirement, UB risk, and usage guidance. BUILD_ASSERT verifies digest size. Both callers (lora_l2.c, ipv6_addr.c) correctly use TC_SHA256_DIGEST_SIZE. This is an accepted C limitation with adequate caller contract documentation.",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.6",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:11:33.032707Z"
+    }
+  ]
+}

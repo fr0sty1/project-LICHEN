@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-725z.18",
+  "title": "RX_ERROR_WARN_THRESHOLD warning only fires once",
+  "description": "lora_l2.c:177-179 — Warning at threshold==5 only fires once. If errors continue to 10, 20, etc, no further indication. Log periodically or document one-shot design is intentional.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T18:10:17.820935Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T18:13:50.263288Z",
+  "closed_at": "2026-06-27T18:13:50.263288Z",
+  "close_reason": "Changed warning to fire every N errors instead of just once",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-725z.18",
+      "depends_on_id": "project-LICHEN-725z",
+      "type": "parent-child",
+      "created_at": "2026-06-27T18:10:17.821492Z"
+    }
+  ]
+}

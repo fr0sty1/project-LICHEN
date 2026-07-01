@@ -1,6 +1,7 @@
 config LICHEN_NATIVE
 	bool "LICHEN Native protocol library"
 	depends on UART_INTERRUPT_DRIVEN
+	depends on ZCBOR
 	help
 	  Enables the LICHEN Native framing library (0xC1 + CBOR over
 	  USB CDC-ACM or serial UART).  Requires lichen,native-uart in

@@ -1,0 +1,24 @@
+{
+  "id": "lora-ipv6-mesh-bt6",
+  "title": "Integration test: node mobility",
+  "description": "Test: two nodes A and B, initially 100m apart (good link). A transmits, B receives. Move B to 5000m via REST API. A transmits, B cannot receive (out of range or very weak). Move B back to 200m. A transmits, B receives again. Verify RSSI changes match distance.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T07:03:14Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-05-27T18:53:31Z",
+  "close_reason": "Integration tests added to test_integration.py: collision/capture (3 tests), mobility (3 tests), chaos monkey (3 tests).",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-bt6",
+      "depends_on_id": "lora-ipv6-mesh-503",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:04:04Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

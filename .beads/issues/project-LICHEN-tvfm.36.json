@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.36",
+  "title": "[lichen_l2.c:996] late init failure leaves RX callback partially registered",
+  "description": "Function: lichen_l2_iface_init. Error handling: If lichen_log_link_local_from_eui64 fails (line 995-998), the code jumps to fail_late_init which clears the RX callback (line 1028). However, link_ctx_initialized was already set to 1 (line 991) and is cleared in the failure path (line 1031). The sequence is: link_ctx initialized, RX callback set, link_ctx_initialized=1, then failure, then callback cleared and link_ctx_initialized=0. This is correct. But between lines 978-991, if an RX arrives, it would see link_ctx_initialized=0 (not yet set) and drop the frame. This is the intended behavior per comments. Priority 3 - verified correct.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "issue",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:48:28.026554Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:38:41.858226Z",
+  "closed_at": "2026-06-28T02:38:41.858226Z",
+  "close_reason": "Fixed: Moved atomic_set(\u0026iface_init_failed, 1) to BEFORE lichen_lora_l2_set_rx_callback(NULL, NULL) in fail_late_init. This ensures any RX callback invoked between registration and cleanup sees the failure flag and bails out immediately, preventing races where a callback could proceed into lichen_l2_input() while cleanup is in progress.",
+  "labels": [
+    "review",
+    "round1",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.36",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:48:28.027098Z"
+    }
+  ]
+}

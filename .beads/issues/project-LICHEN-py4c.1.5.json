@@ -1,0 +1,40 @@
+{
+  "id": "project-LICHEN-py4c.1.5",
+  "title": "Implement BLE transport for Python TUI native client",
+  "description": "Why this exists: native apps need a direct BLE path for laptop and mobile-like usage where IP over BLE is impractical. What needs to be done: implement BLE scanning, device filtering, connection, service discovery, MTU-aware writes, notification subscription, reconnect handling, timeout handling, and pairing/user-selection behavior using a cross-platform Python BLE library such as Bleak where feasible. Acceptance criteria: works on Linux BlueZ and macOS CoreBluetooth for standard GATT client operations; service/characteristic UUIDs are configurable or derived from the native interface spec; disconnect/reconnect is handled without wedging the UI; tests use mocks/fakes where hardware is absent; hardware smoke-test Bead is created if real-device validation is missing.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:51:22.529224Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:51:23.977174Z",
+  "labels": [
+    "python",
+    "ble",
+    "client-app",
+    "tui",
+    "native-interface",
+    "coap",
+    "lilygo",
+    "zephyr",
+    "lichen",
+    "app-interface",
+    "firmware",
+    "lci"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-py4c.1.5",
+      "depends_on_id": "project-LICHEN-py4c.1",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:51:22.529753Z"
+    },
+    {
+      "issue_id": "project-LICHEN-py4c.1.5",
+      "depends_on_id": "project-LICHEN-py4c.1.4",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:51:23.977174Z"
+    }
+  ]
+}

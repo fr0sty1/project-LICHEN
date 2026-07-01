@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-efj0.1",
+  "title": "bridge-stm32wl: replace 4 expect() calls with error handling",
+  "description": "firmware/bridge-stm32wl/src/main.rs has 4 expect() calls during LoRa init (lines 171, 189, 206, 245). These will panic the device if init fails. Replace with proper error handling - either return Result from init or enter a recoverable error state with LED indication.",
+  "notes": "Development firmware uses panic_probe for debug info on panic. Init failures genuinely should stop the device. For production: add LED error patterns and optional watchdog recovery. Lower priority than library panics.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T04:52:35.00986Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T05:04:05.325692Z",
+  "closed_at": "2026-06-28T05:04:05.325692Z",
+  "close_reason": "Replaced panic/expect with error logging and graceful degradation (LED blink pattern or continue loop)",
+  "labels": [
+    "rust",
+    "quality"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-efj0.1",
+      "depends_on_id": "project-LICHEN-efj0",
+      "type": "parent-child",
+      "created_at": "2026-06-28T04:52:35.010682Z"
+    }
+  ]
+}

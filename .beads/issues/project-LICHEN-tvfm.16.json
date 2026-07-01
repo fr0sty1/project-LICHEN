@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.16",
+  "title": "[lichen_l2.c:1038] lichen_l2_reinit_after_abort called from cross-module",
+  "description": "Function: lichen_l2_reinit_after_abort. Contract violation: The function documents 'This function is NOT thread-safe. It must only be called from lora_l2_deinit()' but the header (lichen_l2.h:152) exports it publicly. Any external caller could invoke it at the wrong time, corrupting the mutex. Consider making it static and exposing via a function pointer set during init, or adding a guard (e.g., checking if the caller is holding a deinit-in-progress flag). Priority 2 because misuse leads to undefined behavior in a security-critical path.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:46:14.100416Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:21:21.983188Z",
+  "closed_at": "2026-06-28T02:21:21.983188Z",
+  "close_reason": "Fixed: Added k_panic() precondition check that refuses to reinit mutex if module is running, plus strengthened SECURITY comments in both .c and .h files documenting the danger and correct usage",
+  "labels": [
+    "review",
+    "round1",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.16",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:46:14.104207Z"
+    }
+  ]
+}

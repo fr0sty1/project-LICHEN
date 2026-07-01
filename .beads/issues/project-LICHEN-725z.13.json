@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-725z.13",
+  "title": "RX buffer sizing comment outdated re: extension headers",
+  "description": "lichen_l2.c:45-58 — Comment says to 'revisit buffer sizing' when OSCORE added. This tribal knowledge will be forgotten. Add static_assert or runtime check rejecting extension headers.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T18:10:02.767913Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T18:13:34.482625Z",
+  "closed_at": "2026-06-27T18:13:34.482625Z",
+  "close_reason": "Added FIXME(OSCORE) tag for grep-able tracking of buffer sizing debt",
+  "labels": [
+    "risk",
+    "maintainer-burden",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-725z.13",
+      "depends_on_id": "project-LICHEN-725z",
+      "type": "parent-child",
+      "created_at": "2026-06-27T18:10:02.768528Z"
+    }
+  ]
+}

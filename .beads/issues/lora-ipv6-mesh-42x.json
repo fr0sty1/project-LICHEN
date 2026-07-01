@@ -1,0 +1,26 @@
+{
+  "id": "lora-ipv6-mesh-42x",
+  "title": "Create Rust workspace with no_std crates",
+  "description": "Set up rust/ directory with Cargo.toml workspace. Create stub crates: lichen-core, lichen-link, lichen-schc, lichen-coap, lichen-senml, lichen-apps, lichen-node, lichen-gateway, lichen-sim. All core crates should be no_std by default.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Frost",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:10:24Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-23T17:35:26Z",
+  "started_at": "2026-06-23T17:28:46Z",
+  "closed_at": "2026-06-23T17:35:26Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-42x",
+      "depends_on_id": "lora-ipv6-mesh-ijj",
+      "type": "blocks",
+      "created_at": "2026-05-26T22:14:42Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

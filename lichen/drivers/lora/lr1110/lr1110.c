@@ -23,6 +23,9 @@ LOG_MODULE_REGISTER(lr1110, CONFIG_LORA_LOG_LEVEL);
 
 #define DT_DRV_COMPAT semtech_lr1110
 
+BUILD_ASSERT(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) <= 1,
+	     "LR1110 driver supports only one instance (uses global state)");
+
 /* IRQ mask bits routed to DIO9 */
 #define LR1110_IRQ_RADIO (LR1110_SYSTEM_IRQ_TXDONE_MASK    | \
 			  LR1110_SYSTEM_IRQ_RXDONE_MASK    | \
@@ -47,6 +50,20 @@ LOG_MODULE_REGISTER(lr1110, CONFIG_LORA_LOG_LEVEL);
 #define LR1110_PA_DC        4U
 #define LR1110_PA_HP_SEL    0U
 #endif
+
+void lr1110_hal_clear_last_error(void);
+int lr1110_hal_get_last_error(void);
+
+#define LR1110_RETURN_ON_HAL_ERROR(expr)                                      \
+	do {                                                                  \
+		lr1110_hal_clear_last_error();                                 \
+		expr;                                                         \
+		int err__ = lr1110_hal_get_last_error();                       \
+		if (err__ < 0) {                                               \
+			LOG_ERR("%s failed: %d", #expr, err__);                \
+			return err__;                                          \
+		}                                                             \
+	} while (0)
 
 /* --------------------------------------------------------------------------
  * Hardware resources — shared with lr1110_hal.c
@@ -79,6 +96,12 @@ struct lr1110_data {
 	uint32_t             last_irq;
 };
 
+/*
+ * Single-instance limitation: This driver uses a global dev_data struct and
+ * lr1110_dev pointer, so only one LR1110 device is supported. Multi-instance
+ * support would require passing instance data through the lr1110_driver HAL
+ * context pointer and refactoring the DT macros to allocate per-instance data.
+ */
 static struct lr1110_data dev_data;
 
 /* Used as the lr1110_driver "context" pointer in all library calls */
@@ -121,8 +144,22 @@ static void lr1110_irq_work_handler(struct k_work *work)
 	lr1110_system_stat2_t stat2;
 	uint32_t irq = 0;
 
+	lr1110_hal_clear_last_error();
 	lr1110_system_get_status(lr1110_dev, &stat1, &stat2, &irq);
+	if (lr1110_hal_get_last_error() < 0) {
+		data->last_irq = 0;
+		k_sem_give(&data->radio_sem);
+		return;
+	}
+
+	lr1110_hal_clear_last_error();
 	lr1110_system_clear_irq(lr1110_dev, irq);
+	if (lr1110_hal_get_last_error() < 0) {
+		data->last_irq = 0;
+		k_sem_give(&data->radio_sem);
+		return;
+	}
+
 	data->last_irq = irq;
 	k_sem_give(&data->radio_sem);
 
@@ -156,24 +193,25 @@ static int lr1110_lora_config(const struct device *dev,
 			      struct lora_modem_config *cfg)
 {
 	/* Disable DIO9 interrupt before reset: the LR1110 asserts DIO9 during
-	 * its boot sequence. Without this, the spurious ISR fires irq_work which
-	 * races the SPI bus against the calibration sequence and can leave DIO9
-	 * stuck high — so the TXDONE edge is never seen. */
+	 * its boot sequence. Without this, a spurious ISR races the SPI bus
+	 * against the calibration sequence. (We drive TX/RX by polling and never
+	 * re-enable this interrupt — see the note near clear_irq below.) */
 	gpio_pin_interrupt_configure_dt(&lr1110_gpio_dio9, GPIO_INT_DISABLE);
 
-	lr1110_hal_reset(dev);
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_hal_reset(dev));
 
 	/* The Seeed T1000-E clocks the LR1110 from a TCXO. It must be powered
 	 * (via set_tcxo_mode) BEFORE calibration, otherwise the HF crystal never
 	 * starts and every RF command (set_tx) fails with a command error.
 	 * 1.8 V supply; timeout in 30.52 us RTC steps. */
-	lr1110_system_set_tcxo_mode(dev, LR1110_SYSTEM_TCXO_SUPPLY_VOLTAGE_1_8V, 4096);
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_system_set_tcxo_mode(dev, LR1110_SYSTEM_TCXO_SUPPLY_VOLTAGE_1_8V, 4096));
 
-	lr1110_system_calibrate(dev, 0x3Fu); /* all 6 calibration blocks */
-	lr1110_system_clear_errors(dev);
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_system_calibrate(dev, 0x3Fu)); /* all 6 calibration blocks */
 
-	lr1110_radio_set_packet_type(dev, LR1110_RADIO_PACKET_LORA);
-	lr1110_radio_set_rf_frequency(dev, cfg->frequency);
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_system_clear_errors(dev));
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_packet_type(dev, LR1110_RADIO_PACKET_LORA));
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_rf_frequency(dev, cfg->frequency));
 
 	lr1110_radio_modulation_param_lora_t mod = {
 		.spreading_factor = map_sf(cfg->datarate),
@@ -181,7 +219,7 @@ static int lr1110_lora_config(const struct device *dev,
 		.coding_rate      = map_cr(cfg->coding_rate),
 		.ppm_offset       = 0,
 	};
-	lr1110_radio_set_modulation_param_lora(dev, &mod);
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_modulation_param_lora(dev, &mod));
 
 	lr1110_radio_packet_param_lora_t pkt = {
 		.preamble_length_in_symb = cfg->preamble_len,
@@ -191,7 +229,7 @@ static int lr1110_lora_config(const struct device *dev,
 		.iq = cfg->iq_inverted ? LR1110_RADIO_LORA_IQ_INVERTED
 				       : LR1110_RADIO_LORA_IQ_STANDARD,
 	};
-	lr1110_radio_set_packet_param_lora(dev, &pkt);
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_packet_param_lora(dev, &pkt));
 
 	lr1110_radio_pa_config_t pa = {
 		.pa_sel        = LR1110_PA_SEL,
@@ -199,14 +237,17 @@ static int lr1110_lora_config(const struct device *dev,
 		.pa_dutycycle  = LR1110_PA_DC,
 		.pa_hp_sel     = LR1110_PA_HP_SEL,
 	};
-	lr1110_radio_set_pa_config(dev, &pa);
-	lr1110_radio_set_tx_params(dev, cfg->tx_power, LR1110_RADIO_RAMP_TIME_40U);
-
-	lr1110_system_set_dio_irq_params(dev, LR1110_IRQ_RADIO, 0);
-	lr1110_radio_set_rx_tx_fallback_mode(dev, LR1110_RADIO_RX_TX_FALLBACK_MODE_STDBYRC);
-	lr1110_radio_set_lora_sync_word(dev, cfg->public_network
-		? LR1110_RADIO_LORA_NETWORK_PUBLIC
-		: LR1110_RADIO_LORA_NETWORK_PRIVATE);
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_pa_config(dev, &pa));
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_tx_params(dev, cfg->tx_power,
+							      LR1110_RADIO_RAMP_TIME_40U));
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_system_set_dio_irq_params(dev, LR1110_IRQ_RADIO, 0));
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_radio_set_rx_tx_fallback_mode(
+			dev, LR1110_RADIO_RX_TX_FALLBACK_MODE_STDBYRC));
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_radio_set_lora_sync_word(
+			dev, cfg->public_network ? LR1110_RADIO_LORA_NETWORK_PUBLIC
+						 : LR1110_RADIO_LORA_NETWORK_PRIVATE));
 
 #if DT_INST_NODE_HAS_PROP(0, tx_enable_gpios)
 	gpio_pin_set_dt(&lr1110_gpio_tx_enable, cfg->tx ? 1 : 0);
@@ -248,10 +289,11 @@ static int lr1110_lora_send(const struct device *dev, uint8_t *data,
 	 * signals TX/RX errors (CMDERR, ERR) on IRQ bits that are NOT routed to
 	 * DIO9, so a failed TX would otherwise never wake a waiting semaphore.
 	 * Polling lets us observe the true status and bound the wait. */
+	ARG_UNUSED(drv);
 	gpio_pin_interrupt_configure_dt(&lr1110_gpio_dio9, GPIO_INT_DISABLE);
 
-	lr1110_regmem_write_buffer8(dev, data, (uint8_t)data_len);
-	lr1110_radio_set_tx(dev, 0);
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_regmem_write_buffer8(dev, data, (uint8_t)data_len));
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_tx(dev, 0));
 
 	/* SF10/BW125 airtime for a short frame is well under 1 s. Poll every
 	 * 10 ms (up to 3 s) — infrequent enough to keep SPIM traffic light (it
@@ -267,6 +309,10 @@ static int lr1110_lora_send(const struct device *dev, uint8_t *data,
 		}
 	}
 	lr1110_system_clear_irq(dev, irq);
+	int ret = lr1110_hal_get_last_error();
+	if (ret < 0) {
+		return ret;
+	}
 
 	if (irq & LR1110_SYSTEM_IRQ_TXDONE_MASK) {
 		return 0;
@@ -286,6 +332,10 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 			    uint8_t size, k_timeout_t timeout,
 			    int16_t *rssi, int8_t *snr)
 {
+	if (dev == NULL || data == NULL || size == 0) {
+		return -EINVAL;
+	}
+
 	struct lr1110_data *drv = dev->data;
 
 	ARG_UNUSED(drv);
@@ -294,7 +344,7 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 	 * work-handler get_status sequence intermittently hard-freezes the CPU
 	 * when it runs on a received packet, so we drive RX by polling too. */
 	gpio_pin_interrupt_configure_dt(&lr1110_gpio_dio9, GPIO_INT_DISABLE);
-	lr1110_radio_set_rx(dev, LR1110_RX_CONTINUOUS);
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_rx(dev, LR1110_RX_CONTINUOUS));
 
 	int64_t deadline = k_uptime_get() + k_ticks_to_ms_floor64(timeout.ticks);
 	lr1110_system_stat1_t stat1;
@@ -310,18 +360,29 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 	lr1110_system_clear_irq(dev, irq);
 
 	if (!(irq & LR1110_SYSTEM_IRQ_RXDONE_MASK)) {
+		/* No packet — return the radio to standby (don't leave it in RX),
+		 * mirroring upstream's error-path hygiene. */
+		LR1110_RETURN_ON_HAL_ERROR(
+			lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_RC));
 		return -EAGAIN;
 	}
 
 	lr1110_radio_rxbuffer_status_t buf_status;
-	lr1110_radio_get_rxbuffer_status(dev, &buf_status);
+	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_get_rxbuffer_status(dev, &buf_status));
 
-	uint8_t len = MIN(buf_status.rx_payload_length, size);
-	lr1110_regmem_read_buffer8(dev, data, buf_status.rx_start_buffer_pointer, len);
+	if (buf_status.rx_payload_length > size) {
+		LOG_ERR("recv: packet too large for buffer: %u > %u",
+			buf_status.rx_payload_length, size);
+		return -EMSGSIZE;
+	}
+
+	uint8_t len = buf_status.rx_payload_length;
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_regmem_read_buffer8(dev, data, buf_status.rx_start_buffer_pointer, len));
 
 	if (rssi || snr) {
 		lr1110_radio_packet_status_lora_t pkt_status;
-		lr1110_radio_get_packet_status_lora(dev, &pkt_status);
+		LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_get_packet_status_lora(dev, &pkt_status));
 		if (rssi) {
 			*rssi = pkt_status.rssi_packet_in_dbm;
 		}

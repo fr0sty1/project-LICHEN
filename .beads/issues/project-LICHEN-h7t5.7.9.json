@@ -1,0 +1,57 @@
+{
+  "id": "project-LICHEN-h7t5.7.9",
+  "title": "Run LilyGO native_sim and hardware build matrix",
+  "description": "Why this exists: build success needs to be demonstrated locally or on the prepared Linux Zephyr builder, and hardware target memory usage must be tracked. What needs to be done: run native_sim packet-path tests, build selected LilyGO target app firmware, capture generated config and memory usage, and use EC2 Zephyr cache for Linux-only native_sim/build work if local macOS cannot run it. Acceptance criteria: native_sim tests pass or failing Beads are filed; selected LilyGO firmware build passes; memory usage is recorded; EC2 resources are cleaned up if used; build commands are documented in Beads notes or support docs.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:54:40.101503Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T19:31:10.889083Z",
+  "labels": [
+    "zephyr",
+    "lilygo",
+    "build",
+    "test",
+    "native_sim",
+    "hardware",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.9",
+      "depends_on_id": "project-LICHEN-h7t5.7",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:54:40.101997Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.9",
+      "depends_on_id": "project-LICHEN-h7t5.7.4",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:54:41.833926Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.9",
+      "depends_on_id": "project-LICHEN-h7t5.7.5",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:54:42.007717Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.9",
+      "depends_on_id": "project-LICHEN-h7t5.7.6",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:54:42.177391Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.9",
+      "depends_on_id": "project-LICHEN-h7t5.7.14",
+      "type": "blocks",
+      "created_at": "2026-06-30T19:31:10.889083Z"
+    }
+  ]
+}

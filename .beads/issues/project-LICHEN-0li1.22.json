@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.22",
+  "title": "[crash_info.c:18] crash_info_store has no mutex protection",
+  "description": "Contract: crash_info_store should safely record crash info from any context.\nViolation: The function writes to static crash_info struct without synchronization. If two threads call crash_info_store() concurrently (or if called from ISR while main thread is accessing), the struct could have torn writes (e.g., reason from one call, location from another).\nImpact: Low - crash_info is typically called in critical error paths where concurrent calls are unlikely. However, the count increment (line 24) is particularly susceptible to lost updates.\nMitigation: Use atomic operations or accept that crash info may be imprecise under concurrent failure scenarios (reasonable for diagnostic data).",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:12:45.814153Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:09:51.565126Z",
+  "closed_at": "2026-06-28T07:09:51.565126Z",
+  "close_reason": "Added DESIGN comment explaining intentional lack of mutex: called from error paths where mutex may be corrupted or scheduler broken; 32-bit writes are atomic on Cortex-M; torn writes during concurrent crashes are acceptable since we still capture crash evidence.",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.22",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:12:45.825549Z"
+    }
+  ]
+}

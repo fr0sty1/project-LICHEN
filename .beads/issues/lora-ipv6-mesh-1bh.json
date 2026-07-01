@@ -1,0 +1,24 @@
+{
+  "id": "lora-ipv6-mesh-1bh",
+  "title": "Implement chaos rules framework",
+  "description": "Create python/src/lichen/sim/chaos.py. ChaosRule ABC with matches(tx, rx_node) -\u003e bool and apply(tx) -\u003e Transmission | None. Concrete rules: DropRule(node_id, direction='tx|rx|both', count), PartitionRule(groups: list[set[str]]), DegradeRule(node_id, rssi_penalty_db), JammerRule(x, y, z, radius_m, power_dbm), LatencyRule(node_id, added_us). ChaosEngine class: add_rule(rule), remove_rule(rule_id), clear(), apply_all(tx, rx_node) -\u003e Transmission | None. Unit tests for each rule type.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T07:02:10Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-05-27T17:22:41Z",
+  "close_reason": "Wave 4 complete. 348 tests pass, ruff clean.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-1bh",
+      "depends_on_id": "lora-ipv6-mesh-4hu",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:03:37Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

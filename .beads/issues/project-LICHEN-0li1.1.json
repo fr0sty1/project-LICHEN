@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.1",
+  "title": "[lichen_l2.c:744] Logs sensitive data (EUI-64) after zeroing",
+  "description": "What: lichen_peer_remove() logs the peer's EUI-64 address after calling secure_zero() on it. The LOG_INF at line 744 reads eui64[6] and eui64[7], but secure_zero() was called at line 742.\n\nWhy it matters: Reading memory after secure_zero() produces undefined values (zeros). The log message will always show '..00:00' rather than the actual removed peer's address. This is a logic error, not a security issue.\n\nEvidence:\n```c\nsecure_zero(entry-\u003epubkey, sizeof(entry-\u003epubkey));\nsecure_zero(entry-\u003eeui64, sizeof(entry-\u003eeui64));  // zeroes eui64\nentry-\u003eactive = false;\nLOG_INF(\"lichen_l2: peer removed ..%02x:%02x\",\n        eui64[6], eui64[7]);  // reads function param eui64, not entry-\u003eeui64\n```\n\nWait, this actually reads the function parameter 'eui64' not 'entry-\u003eeui64'. Let me re-verify...",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:11:01.432608Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T05:11:07.193589Z",
+  "closed_at": "2026-06-28T05:11:07.193589Z",
+  "close_reason": "False positive: The LOG_INF reads the function parameter 'eui64' (const pointer to caller's data), not 'entry-\u003eeui64' which was zeroed. The log is correct.",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.1",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:11:01.439504Z"
+    }
+  ]
+}

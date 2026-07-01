@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-1www.4",
+  "title": "size_t to int cast in rx_thread ret comparison",
+  "description": "Location: firmware/bridge-zephyr/subsys/lichen/lora_l2.c:210\n\nThe comparison uses (int)sizeof(rx_buf) but lora_recv returns int. The comparison is safe here since sizeof(rx_buf) is 255 which fits in int, but the pattern is fragile.\n\nWhat goes wrong: If LICHEN_LORA_MAX_PHY_PAYLOAD ever exceeds INT_MAX (highly unlikely for LoRa but possible in future refactors), the cast would wrap and the bounds check would be incorrect.\n\nCurrent code is safe due to k_panic() on overflow, but the cast direction should be reversed: cast ret to size_t after checking ret \u003e 0, then compare to sizeof(rx_buf). This documents intent and is future-proof.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T21:42:02.234695Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T22:04:22.664431Z",
+  "closed_at": "2026-06-27T22:04:22.664431Z",
+  "close_reason": "Added comment explaining size_t to int cast is safe since LICHEN_LORA_MAX_PHY_PAYLOAD (255) fits in int, and fixed LOG_ERR format to use %d with (int) cast for both values",
+  "labels": [
+    "c-safety",
+    "integer",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1www.4",
+      "depends_on_id": "project-LICHEN-1www",
+      "type": "parent-child",
+      "created_at": "2026-06-27T21:42:02.236701Z"
+    }
+  ]
+}

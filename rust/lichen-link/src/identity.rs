@@ -82,7 +82,7 @@ mod tests {
         let pubkey = PublicKey::new([0u8; 32]);
         let iid = iid_from_pubkey(&pubkey);
         // SHA-256(0x00*32) = e3b0c44298fc1c149afb... — first byte 0xe3 & ~0x02 = 0xe1
-        let expected_hash = Sha256::digest(&[0u8; 32]);
+        let expected_hash = Sha256::digest([0u8; 32]);
         let mut expected: [u8; 8] = expected_hash[..8].try_into().unwrap();
         expected[0] &= 0b1111_1101;
         assert_eq!(iid, expected);

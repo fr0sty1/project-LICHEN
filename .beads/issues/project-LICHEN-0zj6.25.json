@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-0zj6.25",
+  "title": "struct in6_addr fallback may conflict with POSIX headers",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:33:08.372355Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:37:48.440679Z",
+  "closed_at": "2026-06-27T06:37:48.440679Z",
+  "close_reason": "Closed",
+  "labels": [
+    "c-standards",
+    "headers",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0zj6.25",
+      "depends_on_id": "project-LICHEN-0zj6",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:33:08.372934Z"
+    }
+  ]
+}

@@ -121,6 +121,11 @@ jobs:
       - name: Build puck (native_sim)
         run: west build -b native_sim lichen/apps/puck --pristine -- -DZEPHYR_TOOLCHAIN_VARIANT=host
 
+      - name: Test Meshtastic codec (native_sim)
+        env:
+          ZEPHYR_TOOLCHAIN_VARIANT: host
+        run: west twister -T lichen/tests/meshtastic_codec -p native_sim --inline-logs
+
   zephyr-hardware:
     name: Zephyr hardware targets
     runs-on: ubuntu-latest
@@ -131,11 +136,17 @@ jobs:
           # nRF52840 boards (ARM Cortex-M4F)
           - board: rak4631_nrf52840
             app: puck
+            extra-conf: ""
           - board: t_echo_nrf52840
             app: puck
+            extra-conf: ""
+          - board: r1_neo/nrf52840
+            app: gateway
+            extra-conf: meshtastic_compat.conf
           # STM32WL boards (ARM Cortex-M4)
           - board: nucleo_wl55jc
             app: gateway
+            extra-conf: ""
     steps:
       - uses: actions/checkout@v4
 
@@ -177,4 +188,9 @@ jobs:
         run: west zephyr-export
 
       - name: Build ${{ matrix.app }} for ${{ matrix.board }}
-        run: west build -b ${{ matrix.board }} lichen/apps/${{ matrix.app }}
+        run: |
+          if [ -n "${{ matrix.extra-conf }}" ]; then
+            west build -b ${{ matrix.board }} lichen/apps/${{ matrix.app }} -- -DEXTRA_CONF_FILE=${{ matrix.extra-conf }}
+          else
+            west build -b ${{ matrix.board }} lichen/apps/${{ matrix.app }}
+          fi

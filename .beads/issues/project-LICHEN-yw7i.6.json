@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-yw7i.6",
+  "title": "Good: Local copy of link_key before use",
+  "description": "lichen_l2.c:536-541 copies link_key into a local buffer rather than capturing a pointer. The comment explains the lifetime reasoning - this defensive copy prevents subtle use-after-free if cleanup timing ever changes.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T17:06:45.863734Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T17:06:45.86437Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-yw7i.6",
+      "depends_on_id": "project-LICHEN-yw7i",
+      "type": "parent-child",
+      "created_at": "2026-06-27T17:06:45.86437Z"
+    }
+  ]
+}

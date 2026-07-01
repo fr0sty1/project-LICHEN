@@ -67,7 +67,8 @@ typedef void (*lichen_native_rx_cb_t)(uint8_t msg_type, const uint8_t *buf, size
 /*
  * lichen_native_init — initialise the library and start the RX thread.
  *
- * Must be called once at application start after USB is ready.
+ * Call at application start after USB is ready. Repeated calls are allowed:
+ * they update rx_cb and do not restart the RX thread or reset runtime state.
  * rx_cb is called on the native RX thread for every received frame.
  * Returns 0 on success, negative errno on failure.
  */
@@ -76,7 +77,8 @@ int lichen_native_init(lichen_native_rx_cb_t rx_cb);
 /*
  * lichen_native_send_hello — transmit a hello frame to the host.
  *
- * Announces supported message types and device capabilities.
+ * Announces the default device-side message types implemented by this library
+ * and device capabilities.
  */
 int lichen_native_send_hello(void);
 

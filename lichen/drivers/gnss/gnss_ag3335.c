@@ -86,6 +86,24 @@ static int gnss_ag3335_power_on(const struct device *dev)
 	const struct gnss_ag3335_config *cfg = dev->config;
 	int ret;
 
+	/* Verify all GPIOs are ready before configuring */
+	if (!gpio_is_ready_dt(&cfg->vrtc_gpio)) {
+		LOG_ERR("VRTC GPIO not ready");
+		return -ENODEV;
+	}
+	if (!gpio_is_ready_dt(&cfg->sleep_int_gpio)) {
+		LOG_ERR("SLEEP_INT GPIO not ready");
+		return -ENODEV;
+	}
+	if (!gpio_is_ready_dt(&cfg->reset_gpio)) {
+		LOG_ERR("RESET GPIO not ready");
+		return -ENODEV;
+	}
+	if (!gpio_is_ready_dt(&cfg->enable_gpio)) {
+		LOG_ERR("ENABLE GPIO not ready");
+		return -ENODEV;
+	}
+
 	ret = gpio_pin_configure_dt(&cfg->vrtc_gpio, GPIO_OUTPUT_INACTIVE);
 	if (ret < 0) {
 		LOG_ERR("Failed to configure VRTC GPIO: %d", ret);
@@ -221,10 +239,18 @@ static int gnss_ag3335_pm_action(const struct device *dev,
 #endif
 
 /* --------------------------------------------------------------------------
- * One-time init (modem stack setup only)
+ * Driver API
+ *
+ * The AG3335 is passive-only: after power-on it streams NMEA at 115200 baud
+ * with a fixed 1Hz fix rate and no command interface for runtime config.
+ * Fixes are published automatically via modem_chat unsolicited matches.
+ *
+ * All gnss_driver_api callbacks are left NULL; callers using gnss_set_fix_rate()
+ * etc. will get -ENOSYS (Zephyr checks for NULL before calling).
  * -------------------------------------------------------------------------- */
 
 static const struct gnss_driver_api gnss_ag3335_api = {
+	/* Passive-only — no runtime configuration supported */
 };
 
 static int gnss_ag3335_init_match(const struct device *dev)
@@ -327,9 +353,12 @@ static int gnss_ag3335_init(const struct device *dev)
                                                                                     \
 	static struct gnss_ag3335_data gnss_ag3335_data_##inst;                     \
                                                                                     \
-	PM_DEVICE_DT_INST_DEFINE(inst, gnss_ag3335_pm_action);                      \
+	IF_ENABLED(CONFIG_PM_DEVICE, (                                              \
+		PM_DEVICE_DT_INST_DEFINE(inst, gnss_ag3335_pm_action);              \
+	))                                                                          \
                                                                                     \
-	DEVICE_DT_INST_DEFINE(inst, gnss_ag3335_init, PM_DEVICE_DT_INST_GET(inst), \
+	DEVICE_DT_INST_DEFINE(inst, gnss_ag3335_init,                               \
+			      PM_DEVICE_DT_INST_GET(inst),                          \
 			      &gnss_ag3335_data_##inst, &gnss_ag3335_config_##inst, \
 			      POST_KERNEL, CONFIG_GNSS_INIT_PRIORITY,               \
 			      &gnss_ag3335_api);

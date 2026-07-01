@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-9j70.20",
+  "title": "secure_zero memory barrier is GCC-specific",
+  "description": "lichen_util.h:30: __asm__ __volatile__(\"\" ::: \"memory\") is GCC/Clang syntax.\n\nWhat goes wrong: Code won't compile on non-GCC toolchains (IAR, armcc, MSVC for host tests). Zephyr primarily uses GCC/Clang so this is low risk for device builds, but host-side unit tests or ports to other RTOSes would fail.\n\nFix: Use Zephyr's compiler abstraction if available, or add #ifdef for other compilers.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T18:19:11.169281Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T18:25:43.080339Z",
+  "closed_at": "2026-06-27T18:25:43.080339Z",
+  "close_reason": "Fixed: replaced GCC-specific __asm__ __volatile__ with Zephyr's portable compiler_barrier() from \u003czephyr/toolchain.h\u003e",
+  "labels": [
+    "risk",
+    "maintainer-burden",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9j70.20",
+      "depends_on_id": "project-LICHEN-9j70",
+      "type": "parent-child",
+      "created_at": "2026-06-27T18:19:11.169813Z"
+    }
+  ]
+}

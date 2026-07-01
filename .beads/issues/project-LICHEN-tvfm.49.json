@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.49",
+  "title": "[lora_l2.c:169] generate_eui64 sets U/L bit but clears multicast - EUI-64 semantics unclear",
+  "description": "Gap found: EUI-64 bit manipulation not fully analyzed.\n\nWhy this was missed: generate_eui64 was reviewed for hwid_len only, not bit operations.\n\nThe actual bug: Line 169 does 'eui64[0] = (eui64[0] | 0x02) \u0026 0xFE'. This sets bit 1 (U/L = locally administered) and clears bit 0 (multicast = unicast). The comment (lines 167-168) explains 'Set U/L bit, clear multicast bit'. However:\n\n1. For EUI-64, setting U/L bit means 'locally administered' - correct for a hash-derived address\n2. The hash output from SHA-256 already has random bits; forcing U/L and clearing multicast is correct\n\nThe subtle issue: if the hash happens to produce 0xFF in the first byte, after the operation we get (0xFF | 0x02) \u0026 0xFE = 0xFE. But if hash produces 0x00, we get (0x00 | 0x02) \u0026 0xFE = 0x02. Both are valid but the resulting address space is slightly constrained. This is intentional and correct. Priority 4 - verified correct, documentation note only.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:51:16.544524Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:50:31.949509Z",
+  "closed_at": "2026-06-28T02:50:31.949509Z",
+  "close_reason": "Fixed: Added comprehensive IEEE 802 EUI-64 bit semantics documentation explaining U/L (Universal/Local) and I/G (Individual/Group) bits with IEEE 802-2014 reference",
+  "labels": [
+    "review",
+    "round2",
+    "gap",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.49",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:51:16.556095Z"
+    }
+  ]
+}

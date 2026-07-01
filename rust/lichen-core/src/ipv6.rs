@@ -273,7 +273,7 @@ pub fn write_extension_header(
     out: &mut [u8],
 ) -> Result<usize, Ipv6Error> {
     let total_len = options_data.len() + 2;
-    if total_len % 8 != 0 {
+    if !total_len.is_multiple_of(8) {
         return Err(Ipv6Error::InvalidExtensionLength);
     }
     if out.len() < total_len {

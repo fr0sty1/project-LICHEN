@@ -6,7 +6,10 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
+
 from lichen.sim import NodeState, SimNode
+from lichen.state_machine import StateError, StateMachine
 
 
 class TestNodeState:
@@ -218,3 +221,34 @@ class TestStateTransitions:
         node = SimNode(id="node-1", state=NodeState.RX_WAIT)
         node.state = NodeState.IDLE
         assert node.state == NodeState.IDLE
+
+    def test_idle_to_idle_noop(self) -> None:
+        """A repeated state assignment is a no-op."""
+        node = SimNode(id="node-1", state=NodeState.IDLE)
+        node.state = NodeState.IDLE
+        assert node.state == NodeState.IDLE
+
+    def test_state_machine_invalid_transition_raises(self) -> None:
+        """The shared verifier rejects transitions outside its table."""
+        machine = StateMachine(
+            initial=NodeState.TX,
+            transitions={NodeState.TX: frozenset({NodeState.IDLE})},
+            name="test-node",
+        )
+        with pytest.raises(StateError, match="invalid transition TX -> RX_WAIT"):
+            machine.transition(NodeState.RX_WAIT)
+
+    def test_state_machine_invalid_initial_state_raises(self) -> None:
+        """The shared verifier rejects an initial state absent from the table."""
+        with pytest.raises(StateError, match="initial state TX is not in transition table"):
+            StateMachine(
+                initial=NodeState.TX,
+                transitions={NodeState.IDLE: frozenset({NodeState.RX_WAIT})},
+                name="test-node",
+            )
+
+    def test_non_state_value_raises(self) -> None:
+        """Only NodeState values are accepted."""
+        node = SimNode(id="node-1")
+        with pytest.raises(StateError, match="invalid state value"):
+            node.state = "TX"  # type: ignore[assignment]

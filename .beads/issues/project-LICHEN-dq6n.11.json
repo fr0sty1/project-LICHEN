@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-dq6n.11",
+  "title": "[ipv6_addr.c:267-272] Return success even when address formatting fails",
+  "description": "In lichen_log_link_local_from_eui64(), when lichen_ipv6_addr_to_str() fails, the function logs a warning but still returns success:\n\n```c\nret = lichen_ipv6_addr_to_str(\u0026ll_addr, addr_str, sizeof(addr_str));\nif (ret \u003c 0) {\n    LOG_WRN(\"Failed to format link-local address: %d\", ret);\n    /* Non-fatal - address is still valid, just can't log it */\n} else {\n    LOG_INF(\"Link-local: %s\", addr_str);\n}\n\nif (ll_addr_out != NULL) {\n    memcpy(ll_addr_out, \u0026ll_addr, sizeof(ll_addr));\n}\n\nreturn 0;  // Returns success even if formatting failed\n```\n\nThe comment says 'Non-fatal - address is still valid', which is correct. The address derivation succeeded; only the logging failed. The function's contract is to derive and optionally log the address, and it fulfills that contract.\n\nHowever, the function name includes 'log' - if logging is part of its purpose, failure to log could be considered a partial failure.\n\nImpact: P3 - design question rather than bug. Current behavior is arguably correct (address derivation succeeded).",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T23:21:53.486505Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T23:21:57.264537Z",
+  "closed_at": "2026-06-27T23:21:57.264537Z",
+  "close_reason": "Not a bug: The function's primary purpose is address derivation, which succeeded. The logging is convenience, not the contract. The comment documents this design decision. Returning failure would cause callers to reject valid addresses.",
+  "labels": [
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-dq6n.11",
+      "depends_on_id": "project-LICHEN-dq6n",
+      "type": "parent-child",
+      "created_at": "2026-06-27T23:21:53.487007Z"
+    }
+  ]
+}

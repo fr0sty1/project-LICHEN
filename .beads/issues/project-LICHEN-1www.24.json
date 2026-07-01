@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-1www.24",
+  "title": "TX mutex held across lora_send() blocks RX callback snapshotting",
+  "description": "lora_l2.c:lichen_lora_l2_tx() does NOT hold lora_mutex during lora_send(), which is correct (see comment at lines 479-493). However, lichen_l2.c:lichen_l2_send() holds tx_mutex across the entire lora_send() call via:\n\n  k_mutex_lock(\u0026tx_mutex, K_FOREVER);  // line 289\n  ... linearize, compress, build frame ...\n  ret = lichen_lora_l2_tx(tx_frame_buf, frame_len);  // line 334\n  k_mutex_unlock(\u0026tx_mutex);  // line 340\n\nThe lora_send() at SF10/255 bytes takes ~500ms airtime. During this period:\n- tx_mutex is held\n- lichen_l2_enable(false) at line 440 acquires tx_mutex before cleanup\n\nThis means disabling the interface while a TX is in progress blocks for up to 500ms. This is acceptable but should be documented.\n\nWhat goes wrong: Not a correctness bug, but the lock duration may surprise callers expecting lichen_l2_enable(false) to return promptly. A future caller might add timeout handling that masks the real cause.\n\nNo code change needed - add a comment noting the expected hold time.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T21:43:29.049627Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T22:03:04.609056Z",
+  "closed_at": "2026-06-27T22:03:04.609056Z",
+  "close_reason": "Already fixed. The code has a deliberate two-mutex design: tx_buf_mutex protects the TX buffer during the ~500ms blocking lora_send(), while lora_mutex remains available for RX callback snapshotting. See lora_l2.c lines 59-64 (mutex definitions with explanatory comment), lines 224-227 (RX callback snapshot uses lora_mutex), and lines 548-559 (TX holds only tx_buf_mutex during lora_send).",
+  "labels": [
+    "efficiency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1www.24",
+      "depends_on_id": "project-LICHEN-1www",
+      "type": "parent-child",
+      "created_at": "2026-06-27T21:43:29.050197Z"
+    }
+  ]
+}

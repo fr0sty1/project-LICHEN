@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-9c4y.13",
+  "title": "Define MeshCore compatibility minimum command matrix",
+  "description": "Why this exists: MeshCore research found a byte-command local API with mandatory startup, device info, contacts, messaging, and async event behavior, plus many repeater/admin flows that should not silently drop. What needs to be done: classify MeshCore commands as mandatory, optional, stubbed, or unsupported for LICHEN compatibility and define response codes. Acceptance criteria: matrix covers CMD_DEVICE_QUERY, CMD_APP_START, contacts, direct/channel text, battery/storage, stats, custom vars, auto-add config, ACK/message push, repeater/admin/login/binary/control/raw flows; unsupported commands return deterministic RESP_CODE_ERR or documented no-op.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T19:30:39.485783Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T19:30:39.486314Z",
+  "labels": [
+    "zephyr",
+    "meshcore",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c4y.13",
+      "depends_on_id": "project-LICHEN-9c4y",
+      "type": "parent-child",
+      "created_at": "2026-06-30T19:30:39.486314Z"
+    }
+  ]
+}

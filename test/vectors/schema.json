@@ -12,7 +12,8 @@
       "items": {
         "oneOf": [
           {"$ref": "#/definitions/schc_vector"},
-          {"$ref": "#/definitions/frame_vector"}
+          {"$ref": "#/definitions/frame_vector"},
+          {"$ref": "#/definitions/meshtastic_app_compat_vector"}
         ]
       }
     }
@@ -62,6 +63,156 @@
         },
         "encoded": {"$ref": "#/definitions/hex",
           "description": "On-air frame bytes (length-prefixed)."}
+      }
+    },
+    "meshtastic_app_compat_vector": {
+      "type": "object",
+      "required": [
+        "name",
+        "description",
+        "source_baseline",
+        "transport",
+        "direction",
+        "protobuf",
+        "message",
+        "encoded",
+        "decoded",
+        "expect"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"message": {"const": "want_config_id"}}},
+          "then": {
+            "properties": {
+              "expect": {
+                "required": ["from_radio_sequence", "terminal_from_radio"]
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"message": {"enum": ["invalid_stream_framing", "oversized"]}}},
+          "then": {
+            "properties": {
+              "expect": {
+                "required": ["reject"]
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"message": {"const": "packet.PRIVATE_APP"}}},
+          "then": {
+            "properties": {
+              "expect": {
+                "required": ["unsupported", "side_effect"]
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"message": {"const": "packet.ROUTING_APP"}}},
+          "then": {
+            "properties": {
+              "expect": {
+                "required": ["delivery_status"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "protobuf": {"const": "FromRadio"},
+              "message": {"enum": ["packet.TEXT_MESSAGE_APP", "packet.ROUTING_APP"]}
+            }
+          },
+          "then": {
+            "properties": {
+              "expect": {
+                "required": ["from_radio_id"]
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"protobuf": {"const": "FromNum"}}},
+          "then": {
+            "properties": {
+              "expect": {
+                "required": ["byte_order", "read_until_empty"]
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"protobuf": {"const": "Empty"}}},
+          "then": {
+            "properties": {
+              "expect": {
+                "required": ["queue_drained", "no_from_num_increment"]
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "source_baseline": {
+          "type": "object",
+          "required": ["protobufs", "firmware", "python", "android", "apple"],
+          "additionalProperties": false,
+          "properties": {
+            "protobufs": {"type": "string"},
+            "firmware": {"type": "string"},
+            "python": {"type": "string"},
+            "android": {"type": "string"},
+            "apple": {"type": "string"}
+          }
+        },
+        "transport": {
+          "type": "object",
+          "required": ["name", "framing", "reject_prefix_hex"],
+          "additionalProperties": false,
+          "properties": {
+            "name": {"type": "string"},
+            "framing": {"type": "string"},
+            "reject_prefix_hex": {"$ref": "#/definitions/hex"}
+          }
+        },
+        "direction": {"type": "string", "enum": ["app_to_node", "node_to_app", "exchange"]},
+        "protobuf": {"type": "string", "enum": ["ToRadio", "FromRadio", "FromNum", "Empty"]},
+        "message": {"type": "string"},
+        "encoded": {"$ref": "#/definitions/hex"},
+        "decoded": {"type": "object"},
+        "expect": {
+          "type": "object",
+          "properties": {
+            "delivery_status": {"type": "string", "enum": ["ack", "nak"]},
+            "from_radio_id": {"type": "integer", "minimum": 1},
+            "from_radio_sequence": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1
+            },
+            "max_to_radio_bytes": {"type": "integer", "minimum": 1},
+            "must_not_require_before_sync": {"type": "boolean"},
+            "byte_order": {"type": "string", "enum": ["little-endian"]},
+            "no_from_num_increment": {"type": "boolean"},
+            "queue_side_effect": {"type": "string"},
+            "queue_drained": {"type": "boolean"},
+            "reason": {"type": "string"},
+            "read_until_empty": {"type": "boolean"},
+            "response_to": {"type": "string"},
+            "reject": {"type": "boolean"},
+            "response": {"type": "string"},
+            "side_effect": {"type": "string"},
+            "terminal_from_radio": {"$ref": "#/definitions/hex"},
+            "unsupported": {"type": "boolean"}
+          }
+        }
       }
     }
   }

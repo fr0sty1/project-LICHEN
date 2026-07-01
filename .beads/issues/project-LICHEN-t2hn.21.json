@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-t2hn.21",
+  "title": "Capture Meshtastic BLE ATT long-read/write evidence",
+  "description": "Why this exists: project-LICHEN-t2hn.18 can define source-backed protobuf payload budgets from Meshtastic firmware, but we do not yet have real BLE captures proving Android, iOS, Python, nRF52, and ESP32 behavior for ATT MTU negotiation, long writes to ToRadio, and long reads from FromRadio at the 504/510 byte boundaries. What needs to be done: capture or script BLE transactions against Meshtastic firmware or a compatible test peripheral for Android, iOS, and Python clients; record negotiated MTU, write type, read/blob behavior, and failure behavior at 504/505 byte ToRadio and 510/511 byte FromRadio. Acceptance criteria: captures or logs are attached/linked in Beads; any platform that cannot carry the required values has a blocker Bead for implementation policy.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T22:30:22.094002Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T22:30:22.095212Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.21",
+      "depends_on_id": "project-LICHEN-t2hn",
+      "type": "parent-child",
+      "created_at": "2026-06-30T22:30:22.095212Z"
+    }
+  ]
+}

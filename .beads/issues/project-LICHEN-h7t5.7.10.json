@@ -1,0 +1,44 @@
+{
+  "id": "project-LICHEN-h7t5.7.10",
+  "title": "Flash LilyGO hardware and run boot smoke test",
+  "description": "Why this exists: a build is not a hardware bring-up. The selected LilyGO board must boot real firmware. What needs to be done: document flashing method, bootloader mode, serial console access, erase/recover procedure, first boot logs, panic/assert behavior, and basic shell/log output. Acceptance criteria: physical board flashes successfully; boot reaches LICHEN app init; serial/log output is captured; reset/reboot works; hardware-access absence blocks this Bead with exact missing hardware/access reason.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:54:40.216514Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T19:27:20.495846Z",
+  "labels": [
+    "zephyr",
+    "lilygo",
+    "flash",
+    "hardware",
+    "smoke-test",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.10",
+      "depends_on_id": "project-LICHEN-h7t5.7",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:54:40.217014Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.10",
+      "depends_on_id": "project-LICHEN-h7t5.7.9",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:54:42.350642Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.10",
+      "depends_on_id": "project-LICHEN-h7t5.7.13",
+      "type": "blocks",
+      "created_at": "2026-06-30T19:27:20.495846Z"
+    }
+  ]
+}

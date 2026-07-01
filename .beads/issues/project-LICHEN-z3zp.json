@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-z3zp",
+  "title": "Review: Zephyr C code 2026-06-28",
+  "description": "Single-pass read-only code review of the Zephyr C code scope. Findings are filed as child issues under this epic.",
+  "notes": "Review confidence: 35% chance of missed bug. Least confident areas: generated/board-specific Zephyr driver integration, full SCHC rule coverage, and code paths behind Kconfig combinations not visible from static reading. Would raise confidence if: a Zephyr build matrix for the lichen module ran cleanly, unit tests covered OSCORE/link/RPL null and boundary cases, and compile_commands.json for the current tree was available.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T21:12:24.811215Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T22:19:55.760789Z",
+  "closed_at": "2026-06-28T22:19:55.760789Z",
+  "close_reason": "All review findings fixed",
+  "labels": [
+    "review"
+  ]
+}

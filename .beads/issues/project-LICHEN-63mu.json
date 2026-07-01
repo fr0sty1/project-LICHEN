@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-63mu",
+  "title": "Validate R1 Neo GNSS UART direction and AG3335 controls",
+  "description": "Discovered while creating project-LICHEN-ev5b.4. R1 Neo facts confirm GPS_EN P1.01, PPS P0.02, and physical UART pins P0.24/P0.25, but Meshtastic and MeshCore naming conflicts leave nRF TX/RX direction uncertain and the current Zephyr AG3335 binding requires VRTC, SLEEP_INT, and RESET GPIOs that are not confirmed. Validate on hardware or schematic, then enable gnss0/CONFIG_LICHEN_HAS_GNSS if appropriate.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T16:35:19.906776Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T16:35:19.906797Z"
+}

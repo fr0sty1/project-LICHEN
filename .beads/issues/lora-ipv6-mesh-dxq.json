@@ -1,0 +1,16 @@
+{
+  "id": "lora-ipv6-mesh-dxq",
+  "title": "No examples directory showing simulator usage",
+  "description": "**Ease of Contribution / Documentation**\n\nThe simulator is sophisticated but there's no examples/ directory showing:\n1. How to start a simulation via API\n2. How to connect SimRadio clients\n3. How to use chaos rules for testing\n4. How to read pcap output\n5. Multi-node topology scenarios\n\nExamples help:\n- New users understand the API quickly\n- Contributors see intended usage patterns\n- Serve as integration tests\n- Provide copy-paste starting points\n\nSuggested examples:\n- `examples/basic_two_node.py` - Simple TX/RX\n- `examples/mesh_topology.py` - Multi-hop scenario\n- `examples/chaos_testing.py` - Using drop/partition rules\n- `examples/pcap_capture.py` - Writing and reading captures\n\nFiles: examples/ (new directory)",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Frost",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T21:26:26Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-23T16:16:05Z",
+  "started_at": "2026-06-23T16:08:31Z",
+  "closed_at": "2026-06-23T16:16:05Z",
+  "close_reason": "Closed"
+}

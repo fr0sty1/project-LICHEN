@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-1ojj.16",
+  "title": "goto main_loop pattern with variable declarations",
+  "description": "main.c:98-102 declares variables before the goto targets to avoid jumping over declarations. The pattern works but the code flow is unusual: variables declared, then goto potentially skips their use, then main_loop label.\n\nWhat goes wrong as-is: Reader must understand C's rules about jumping over declarations. The comment helps but the structure is awkward.\n\nAlternative: Extract the standalone LoRa init block into a separate function that returns success/failure, then call it from main(). This eliminates the goto and makes the flow linear. The variables would be local to the helper function.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T05:47:48.140731Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T05:51:22.290638Z",
+  "closed_at": "2026-06-27T05:51:22.290638Z",
+  "close_reason": "Won't fix: goto pattern is C-correct and commented, refactor adds complexity",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1ojj.16",
+      "depends_on_id": "project-LICHEN-1ojj",
+      "type": "parent-child",
+      "created_at": "2026-06-27T05:47:48.141266Z"
+    }
+  ]
+}

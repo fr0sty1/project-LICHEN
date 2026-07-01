@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-1ojj.22",
+  "title": "net_pkt_read return value compared incorrectly",
+  "description": "net_pkt_read() returns 0 on success or negative errno on failure. The code checks 'if (net_pkt_read(...) \u003c 0)' which is correct, but the error is not preserved for the return value.\n\nLocation:\n- lichen_l2.c:145\n\nWhat goes wrong: When net_pkt_read fails, the function returns -EIO as a generic error code rather than propagating the actual error (which could be -ENOBUFS, -EINVAL, etc.). This loses diagnostic information.\n\nThis is minor - the pattern works correctly, but the error code could be more informative.\n\nFix: Capture return value: 'ret = net_pkt_read(...); if (ret \u003c 0) { return ret; }'",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T05:47:58.08602Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T05:56:16.844418Z",
+  "closed_at": "2026-06-27T05:56:16.844418Z",
+  "close_reason": "Closed",
+  "labels": [
+    "c-standards",
+    "error-handling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1ojj.22",
+      "depends_on_id": "project-LICHEN-1ojj",
+      "type": "parent-child",
+      "created_at": "2026-06-27T05:47:58.086535Z"
+    }
+  ]
+}

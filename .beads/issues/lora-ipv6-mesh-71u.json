@@ -1,0 +1,27 @@
+{
+  "id": "lora-ipv6-mesh-71u",
+  "title": "Phase 1: Physical \u0026 Link Layer",
+  "description": "Transmit and receive authenticated frames over LoRa. Exit criteria: two nodes exchange authenticated frames, replay attack blocked, test vectors for link layer.",
+  "notes": "Two-node authenticated frame exchange test complete (two_node_frame_exchange): Node A signs, Node B verifies full wire-format frame, tampered payload/wrong pubkey/truncated payload all rejected, replay blocked by ReplayWindow. sign_frame/verify_frame helpers in schnorr.rs. Remaining: test vector export for link layer (ijj).",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Frost",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:09:49Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "started_at": "2026-06-23T19:23:56Z",
+  "closed_at": "2026-06-24T00:45:55Z",
+  "close_reason": "Two-node authenticated frame exchange implemented and tested: sign_frame/verify_frame in schnorr.rs, replay detection via ReplayWindow, full wire-format round-trip in two_node_frame_exchange test. All 18 Rust tests passing.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-71u",
+      "depends_on_id": "lora-ipv6-mesh-7xg",
+      "type": "blocks",
+      "created_at": "2026-05-26T22:10:49Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

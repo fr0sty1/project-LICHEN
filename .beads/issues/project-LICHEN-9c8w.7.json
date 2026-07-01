@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-9c8w.7",
+  "title": "Audit LOG_WRN vs LOG_DBG for cosmetic failures",
+  "description": "Downgrade LOG_WRN to LOG_DBG for non-actionable cosmetic issues.\n\nCandidates:\n  LOG_WRN(\"Failed to set thread name: %d\");  // cosmetic, no impact\n  LOG_INF(\"tick\");                           // noise, remove or LOG_DBG\n\nCriteria:\n- LOG_WRN: operator should investigate or take action\n- LOG_DBG: developer debugging info only",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T04:05:04.676637Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T04:29:28.335694Z",
+  "closed_at": "2026-06-28T04:29:28.335694Z",
+  "close_reason": "Fixed: Downgraded thread name failure LOG_WRN to LOG_DBG (cosmetic, non-actionable)",
+  "labels": [
+    "logging",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c8w.7",
+      "depends_on_id": "project-LICHEN-9c8w",
+      "type": "parent-child",
+      "created_at": "2026-06-28T04:05:04.67717Z"
+    }
+  ]
+}

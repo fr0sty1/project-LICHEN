@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.13",
+  "title": "[lora_l2.c:723] lichen_lora_l2_deinit has TOCTOU race in state check",
+  "description": "Contract: lichen_lora_l2_deinit should atomically transition from STOPPED/ABORTED to DEINITING.\nViolation: Lines 725-753 read state, then check various conditions with if/else-if chain, creating a window between state read and lora_transition_from() calls. A concurrent thread could change state in this window (though unlikely in embedded context).\nImpact: Low in practice - embedded systems typically single-threaded for this type of operation. The CAS in lora_transition_from() catches most races. However, the pattern is not consistent with the atomic discipline used elsewhere.\nMitigation: The existing lora_transition_from() CAS provides sufficient protection. Document that concurrent deinit() calls are not supported.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:12:01.665767Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:09:44.289442Z",
+  "closed_at": "2026-06-28T07:09:44.289442Z",
+  "close_reason": "False positive: while the code reads state then checks it (TOCTOU pattern), lora_transition_from() uses atomic_cas() internally which atomically verifies the expected state. If state changes between lora_get_state() and the CAS, the CAS fails safely. The initial read is just an optimization to select which expected-state to try. Added SECURITY comment documenting why this is safe.",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.13",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:12:01.666325Z"
+    }
+  ]
+}

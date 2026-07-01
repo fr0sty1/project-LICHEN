@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
-#pragma once
+
+#ifndef BLE_UART_H_
+#define BLE_UART_H_
 
 #include <stddef.h>
 #include <stdint.h>
@@ -22,3 +24,5 @@ int ble_uart_init(void);
  * frame exceeds buffer capacity, or negative errno on other failures.
  */
 int ble_uart_send_slip(const uint8_t *ipv6, size_t len);
+
+#endif /* BLE_UART_H_ */

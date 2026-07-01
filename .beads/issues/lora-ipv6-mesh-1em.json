@@ -1,0 +1,24 @@
+{
+  "id": "lora-ipv6-mesh-1em",
+  "title": "Implement SimNode state tracking",
+  "description": "Create python/src/lichen/sim/node.py. SimNode dataclass: id (str), position (tuple[float,float,float]), tx_power_dbm (default 22), state enum (IDLE, TX, RX_WAIT), pending_rx_future (for async wakeup), connected (bool), last_seen_time_us. Methods: set_position(x,y,z), disconnect(), is_online(). Position is mutable for mobility support.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T07:01:51Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-05-27T15:53:36Z",
+  "close_reason": "Wave 2 complete. 187 tests pass, ruff clean.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-1em",
+      "depends_on_id": "lora-ipv6-mesh-xly",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:03:27Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

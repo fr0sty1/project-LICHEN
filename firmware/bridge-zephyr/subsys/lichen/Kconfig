@@ -5,17 +5,31 @@
 # These extend the base LICHEN Kconfig from lichen/subsys/lichen/Kconfig
 # with Zephyr network stack integration.
 
+menuconfig LICHEN
+	bool "LICHEN mesh networking stack"
+	help
+	  Enable the LICHEN IPv6 mesh networking stack over LoRa.
+
 if LICHEN
 
 config LICHEN_LORA_L2
 	bool "LICHEN LoRa L2 driver"
 	depends on LORA
+	depends on NETWORKING
+	depends on NET_IPV6
+	depends on LICHEN_IPV6
+	select LICHEN_LINK
+	select HWINFO
+	select TINYCRYPT
+	select TINYCRYPT_AES
+	select TINYCRYPT_AES_CCM
 	default y
 	help
 	  Enable the LICHEN LoRa L2 driver. This provides low-level LoRa
 	  radio access including TX/RX threads and EUI-64 generation.
-	  This is the hardware abstraction layer; enable LICHEN_L2 for
-	  full IPv6 stack integration.
+	  It is only supported through the full LICHEN_L2 Zephyr network
+	  interface path; standalone LoRa mode is disabled because it could
+	  receive frames without parsing, SCHC decompression, or IPv6 ingress.
 
 config LICHEN_LORA_L2_LOG_LEVEL
 	int "LICHEN LoRa L2 log level"
@@ -40,9 +54,46 @@ config LICHEN_LORA_L2_RX_PRIORITY
 	help
 	  Priority for the LoRa L2 RX thread. Lower numbers = higher priority.
 
+config LICHEN_LORA_L2_RX_TIMEOUT_MS
+	int "LoRa RX timeout in milliseconds"
+	depends on LICHEN_LORA_L2
+	default 1000
+	range 100 10000
+	help
+	  Timeout for lora_recv() calls in the RX thread. This affects:
+	  - How often the thread checks the running flag (lower = more responsive stop)
+	  - Stop latency (worst case: 100ms + this timeout before thread joins)
+	  - CPU overhead (lower = more loop iterations, but overhead is minimal)
+
+	  Lower values (500-1000ms) provide faster stop() responsiveness.
+	  Higher values (3000-5000ms) may save power on some platforms by
+	  reducing wakeup frequency, but slow down disable/enable cycles.
+
+	  Default 1000ms balances responsiveness with low overhead.
+
+config LICHEN_LORA_FREQUENCY
+	int "LoRa frequency in Hz"
+	depends on LICHEN_LORA_L2
+	default 915000000
+	range 150000000 960000000
+	help
+	  LoRa carrier frequency in Hz. Must comply with regional regulations.
+	  Common ISM bands: 915000000 (US), 868000000 (EU), 433000000 (Asia).
+	  Range: 150-960 MHz covers all LoRa-capable frequency bands.
+
+config LICHEN_LORA_TX_POWER
+	int "LoRa TX power in dBm"
+	depends on LICHEN_LORA_L2
+	default 14
+	range 0 22
+	help
+	  LoRa transmit power in dBm. Default 14 dBm is safe worldwide.
+	  Higher values may violate regional regulations. Maximum 22 dBm.
+
 config LICHEN_L2
 	bool "LICHEN Zephyr L2 network interface"
 	depends on LICHEN_LORA_L2
+	depends on LICHEN_LINK
 	depends on NETWORKING
 	depends on NET_IPV6
 	depends on LICHEN_IPV6
@@ -66,6 +117,31 @@ config LICHEN_L2_LOG_LEVEL
 	  Log level for LICHEN Zephyr L2 interface.
 	  0 = Off, 1 = Error, 2 = Warning, 3 = Info, 4 = Debug
 
+config LICHEN_L2_RX_ALLOC_TIMEOUT_MS
+	int "RX packet allocation timeout (ms)"
+	depends on LICHEN_L2
+	default 50
+	range 0 1000
+	help
+	  Timeout in milliseconds for net_pkt_rx_alloc_with_buffer().
+	  Controls how long the RX path waits for a network buffer.
+
+	  Tradeoffs:
+	  - Lower values (0-10ms): Faster failure under memory pressure,
+	    but may drop packets that could have succeeded with a brief wait.
+	  - Higher values (50-100ms): Better allocation success rate,
+	    but may stall RX processing and cause radio buffer overruns.
+
+	  For LoRa's low data rate (~300 bps at SF10), 50ms is reasonable:
+	  a full 255-byte frame takes ~6.8 seconds to transmit, so brief
+	  allocation delays don't cause radio-level issues. However, if your
+	  application has tighter real-time constraints, reduce this value.
+
+	  If you see "Failed to allocate RX packet" log messages, consider
+	  increasing this value or adding more NET_BUF_RX buffers.
+
+	  Set to 0 for immediate failure (K_NO_WAIT).
+
 config LICHEN_IPV6
 	bool "LICHEN IPv6 address utilities"
 	default y
@@ -84,5 +160,9 @@ config LICHEN_IPV6_ULA_PREFIX
 	help
 	  Default ULA prefix used when no DODAG root provides one.
 	  Format: fd00:xxxx:xxxx:: (must be in fd00::/8)
+
+	  Note: Kconfig cannot validate string format at compile time.
+	  Runtime validation in lichen_make_ula() enforces the fd00::/8
+	  requirement and returns -EINVAL for invalid prefixes.
 
 endif # LICHEN

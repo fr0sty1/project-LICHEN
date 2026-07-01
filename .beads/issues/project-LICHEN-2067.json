@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2067",
+  "title": "Firmware-wide date/time provider abstraction",
+  "description": "Why this exists: date/time is firmware-wide, not specific to UI or any one app channel. LICHEN firmware targets may get time from UI/local-client channels, internal RTC or monotonic clocks, onboard or external GNSS, gpsd bridges, SNTP/NTP, network-provided time, or static/manual configuration. Firmware needs one source-agnostic time service so scheduling, logs, security freshness, beacons, position timestamps, UI, CoAP resources, and app compatibility layers do not each invent their own time assumptions. What needs to be done: define and implement a firmware-wide date/time provider abstraction with source identification, source class (internal RTC/monotonic, GNSS, gpsd, SNTP/NTP, network, local UI/app/client, manual/static), wall-clock validity, monotonic time linkage, freshness/age, accuracy/stratum or quality metadata when available, trust/override policy, and conflict handling across hardware, network, and app-provided sources. Hardware/network/UI/app sources must feed this provider directly; UI and app interfaces may feed or consume it but do not own it. Acceptance criteria: supported time source classes are enumerated; precedence/override policy is documented; stale/fresh and valid/invalid wall-clock semantics are tested; SNTP/gpsd/GNSS/manual/app-injected sources use the same internal representation; UI consumes only unified provider state; CoAP/status resources expose source class, source name, wall-clock validity, age, and accuracy/quality where available; two code-review passes are completed before closure.",
+  "notes": "Related but separate from project-LICHEN-zte2 location provider: GNSS/gpsd may supply both time and position, but firmware should model time validity/accuracy/source independently from location fix/source.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T06:14:51.438262Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T06:15:20.350805Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "time",
+    "rtc",
+    "gnss",
+    "gpsd",
+    "sntp",
+    "network-source"
+  ]
+}

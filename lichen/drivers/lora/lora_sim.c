@@ -96,6 +96,21 @@ static int recv_exact(int fd, uint8_t *buf, int len)
 	return 0;
 }
 
+static int drain_exact(int fd, uint32_t len)
+{
+	uint8_t discard[64];
+
+	while (len > 0) {
+		int chunk = len > sizeof(discard) ? sizeof(discard) : (int)len;
+
+		if (recv_exact(fd, discard, chunk) < 0) {
+			return -EIO;
+		}
+		len -= chunk;
+	}
+	return 0;
+}
+
 static int write_frame(int fd, const uint8_t *payload, uint32_t len)
 {
 	uint8_t hdr[4];
@@ -119,6 +134,10 @@ static int read_frame(int fd, uint8_t *buf, uint32_t buf_size)
 
 	if (len > buf_size) {
 		LOG_ERR("frame too large: %u > %u", len, buf_size);
+		if (drain_exact(fd, len) < 0) {
+			LOG_ERR("failed to drain oversized frame");
+			return -EIO;
+		}
 		return -ENOMEM;
 	}
 	if (recv_exact(fd, buf, len) < 0) {
@@ -242,6 +261,11 @@ static int lora_sim_send(const struct device *dev,
 		return -EINVAL;
 	}
 	struct lora_sim_data *drv = dev->data;
+
+	if (drv->fd <= 0) {
+		LOG_ERR("send: not connected to simulator");
+		return -ENOTCONN;
+	}
 	uint8_t buf[256 + 3];
 	int off = 0;
 
@@ -279,7 +303,16 @@ static int lora_sim_recv(const struct device *dev,
 			 k_timeout_t timeout,
 			 int16_t *rssi, int8_t *snr)
 {
+	if (dev == NULL || data == NULL || size == 0) {
+		return -EINVAL;
+	}
+
 	struct lora_sim_data *drv = dev->data;
+
+	if (drv->fd <= 0) {
+		LOG_ERR("recv: not connected to simulator");
+		return -ENOTCONN;
+	}
 
 	/* K_FOREVER sends 0xFFFFFFFF as the explicit "wait forever" marker.
 	 * The server interprets this as infinite timeout.
@@ -316,9 +349,12 @@ static int lora_sim_recv(const struct device *dev,
 	if (n < (int)(3 + payload_len + 4)) {
 		return -EPROTO;
 	}
-	uint16_t copy = MIN(payload_len, size);
+	if (payload_len > size) {
+		LOG_ERR("recv: packet too large for buffer: %u > %u", payload_len, size);
+		return -EMSGSIZE;
+	}
 
-	memcpy(data, buf + 3, copy);
+	memcpy(data, buf + 3, payload_len);
 
 	if (rssi) {
 		*rssi = (int16_t)sys_get_le16(buf + 3 + payload_len);
@@ -326,7 +362,7 @@ static int lora_sim_recv(const struct device *dev,
 	if (snr) {
 		*snr = (int8_t)((int16_t)sys_get_le16(buf + 3 + payload_len + 2) / 10);
 	}
-	return copy;
+	return payload_len;
 }
 
 /* --- device init -------------------------------------------------------- */

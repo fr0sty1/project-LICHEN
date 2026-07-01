@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.35",
+  "title": "[main.c:106] init_standalone_lora eui64 pointer used after potential stop/deinit",
+  "description": "Contract: lichen_lora_l2_get_eui64() returns pointer valid until deinit.\nViolation: Line 106 gets eui64 pointer, line 107 checks for NULL. If NULL, line 109 'goto cleanup' calls stop() and deinit(). The eui64 variable still holds the (potentially invalid) pointer value from line 106. While it's not dereferenced after the NULL check, the control flow is error-prone.\nImpact: Currently safe - the NULL check prevents dereference. However, if future code after 'cleanup:' accidentally used eui64, it would be use-after-free.\nMitigation: Set eui64 = NULL explicitly in the error path, or restructure to avoid the issue.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:13:45.945034Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:09:58.75036Z",
+  "closed_at": "2026-06-28T07:09:58.75036Z",
+  "close_reason": "False positive: eui64 is only used BEFORE the cleanup path. At line 113 (goto cleanup if NULL), eui64 was never used. At line 124 (goto cleanup on error), eui64 was already used at lines 116-118 and 121. The stop/deinit calls at lines 131-132 happen after all eui64 usage, and the function returns immediately after (line 133). No use-after-deinit exists.",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.35",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:13:45.945574Z"
+    }
+  ]
+}

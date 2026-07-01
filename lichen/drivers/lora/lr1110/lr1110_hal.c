@@ -16,6 +16,9 @@
 #include <zephyr/drivers/spi.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/atomic.h>
+
+#include <errno.h>
 
 #include "lr1110_hal.h"
 
@@ -26,29 +29,60 @@ extern const struct spi_dt_spec  lr1110_bus;
 extern const struct gpio_dt_spec lr1110_gpio_busy;
 extern const struct gpio_dt_spec lr1110_gpio_reset;
 
+/* LR1110 SetSleep command opcode (puts chip to sleep immediately) */
+#define LR1110_CMD_SET_SLEEP_0 0x01
+#define LR1110_CMD_SET_SLEEP_1 0x1B
+
 /*
- * Zero-filled NOP pad for the SPI read response phase.
+ * LR1110 SPI buffer limits (LR1110 datasheet section 5.2).
  *
- * The LR1110's two-phase read protocol clocks out 1 status byte followed by
- * up to 256 data bytes. The radio buffer is 256 bytes (per LR1110 datasheet
- * section 5.2), so the maximum response is 1 + 256 = 257 bytes. We transmit
- * NOPs (0x00) to generate the SPI clock while receiving.
+ * The radio buffer is 256 bytes. For reads, the two-phase protocol clocks out
+ * 1 status byte followed by up to 256 data bytes; we transmit NOPs to generate
+ * the clock while receiving. For writes, the largest transfer is a full TX
+ * payload (255 bytes per LoRa spec). Command opcodes are at most 2 bytes.
+ *
+ * Firmware updates require a streaming code path and are not supported here.
  */
-#define LR1110_HAL_MAX_READ_DATA 256U
+#define LR1110_HAL_MAX_READ_DATA  256U
+#define LR1110_HAL_MAX_WRITE_DATA 256U
 static const uint8_t nop_pad[1U + LR1110_HAL_MAX_READ_DATA];
+static atomic_t last_error;
 
-static void wait_busy(void)
+/* Timeout for BUSY pin to go low after command. 1s is generous for any
+ * LR1110 operation; if exceeded, hardware is likely faulted.
+ */
+#define LR1110_BUSY_TIMEOUT_MS 1000
+
+void lr1110_hal_clear_last_error(void)
 {
-	int64_t deadline = k_uptime_get() + 500;
+	atomic_set(&last_error, 0);
+}
 
-	while (gpio_pin_get_dt(&lr1110_gpio_busy) > 0) {
-		if (k_uptime_get() > deadline) {
-			LOG_ERR("LR1110 BUSY stuck — hard reset");
-			lr1110_hal_reset(NULL);
-			return;
-		}
+int lr1110_hal_get_last_error(void)
+{
+	return (int)atomic_get(&last_error);
+}
+
+static void record_error(int err)
+{
+	atomic_set(&last_error, err);
+}
+
+static int wait_busy(void)
+{
+	int timeout = LR1110_BUSY_TIMEOUT_MS;
+
+	while (gpio_pin_get_dt(&lr1110_gpio_busy) > 0 && timeout > 0) {
 		k_sleep(K_MSEC(1));
+		timeout--;
 	}
+
+	if (timeout == 0) {
+		LOG_ERR("LR1110 BUSY timeout - hardware fault?");
+		record_error(-ETIMEDOUT);
+		return -ETIMEDOUT;
+	}
+	return 0;
 }
 
 lr1110_hal_status_t lr1110_hal_write(const void *context,
@@ -58,6 +92,13 @@ lr1110_hal_status_t lr1110_hal_write(const void *context,
 				     const uint16_t data_length)
 {
 	ARG_UNUSED(context);
+
+	if (data_length > LR1110_HAL_MAX_WRITE_DATA) {
+		LOG_ERR("Write length %u exceeds max %u", data_length,
+			LR1110_HAL_MAX_WRITE_DATA);
+		record_error(-EMSGSIZE);
+		return LR1110_HAL_STATUS_ERROR;
+	}
 
 	struct spi_buf tx_bufs[2] = {
 		{ .buf = (void *)command, .len = command_length },
@@ -70,14 +111,19 @@ lr1110_hal_status_t lr1110_hal_write(const void *context,
 
 	if (spi_write_dt(&lr1110_bus, &tx)) {
 		LOG_ERR("SPI write failed");
+		record_error(-EIO);
 		return LR1110_HAL_STATUS_ERROR;
 	}
 
-	/* SetSleep (0x01 0x1B) puts the chip to sleep immediately — no BUSY transition */
-	if (command_length >= 2 && command[0] == 0x01 && command[1] == 0x1B) {
+	/* SetSleep puts the chip to sleep immediately — no BUSY transition */
+	if (command_length >= 2 &&
+	    command[0] == LR1110_CMD_SET_SLEEP_0 &&
+	    command[1] == LR1110_CMD_SET_SLEEP_1) {
 		k_busy_wait(1000);
 	} else {
-		wait_busy();
+		if (wait_busy() < 0) {
+			return LR1110_HAL_STATUS_ERROR;
+		}
 	}
 	return LR1110_HAL_STATUS_OK;
 }
@@ -93,6 +139,7 @@ lr1110_hal_status_t lr1110_hal_read(const void *context,
 	if (data_length > LR1110_HAL_MAX_READ_DATA) {
 		LOG_ERR("Read length %u exceeds max %u", data_length,
 			LR1110_HAL_MAX_READ_DATA);
+		record_error(-EMSGSIZE);
 		return LR1110_HAL_STATUS_ERROR;
 	}
 
@@ -102,9 +149,12 @@ lr1110_hal_status_t lr1110_hal_read(const void *context,
 
 	if (spi_write_dt(&lr1110_bus, &cmd_tx)) {
 		LOG_ERR("SPI cmd write failed");
+		record_error(-EIO);
 		return LR1110_HAL_STATUS_ERROR;
 	}
-	wait_busy();
+	if (wait_busy() < 0) {
+		return LR1110_HAL_STATUS_ERROR;
+	}
 
 	/* Phase 2: send NOPs, receive [stat1 (discarded), data×N] */
 	uint8_t stat_byte;
@@ -118,6 +168,7 @@ lr1110_hal_status_t lr1110_hal_read(const void *context,
 
 	if (spi_transceive_dt(&lr1110_bus, &rx_tx, &rx_rx)) {
 		LOG_ERR("SPI read failed");
+		record_error(-EIO);
 		return LR1110_HAL_STATUS_ERROR;
 	}
 	return LR1110_HAL_STATUS_OK;
@@ -138,6 +189,7 @@ lr1110_hal_status_t lr1110_hal_write_read(const void *context,
 
 	if (spi_transceive_dt(&lr1110_bus, &tx, &rx)) {
 		LOG_ERR("SPI write_read failed");
+		record_error(-EIO);
 		return LR1110_HAL_STATUS_ERROR;
 	}
 	return LR1110_HAL_STATUS_OK;
@@ -146,9 +198,21 @@ lr1110_hal_status_t lr1110_hal_write_read(const void *context,
 void lr1110_hal_reset(const void *context)
 {
 	ARG_UNUSED(context);
-	gpio_pin_set_dt(&lr1110_gpio_reset, 1);
+
+	int ret = gpio_pin_set_dt(&lr1110_gpio_reset, 1);
+	if (ret < 0) {
+		LOG_ERR("Failed to assert reset GPIO: %d", ret);
+		record_error(-EIO);
+		return;
+	}
 	k_busy_wait(1000);
-	gpio_pin_set_dt(&lr1110_gpio_reset, 0);
+
+	ret = gpio_pin_set_dt(&lr1110_gpio_reset, 0);
+	if (ret < 0) {
+		LOG_ERR("Failed to deassert reset GPIO: %d", ret);
+		record_error(-EIO);
+		return;
+	}
 	k_busy_wait(1000);
 	k_sleep(K_MSEC(200)); /* wait for internal firmware to load */
 }
@@ -157,11 +221,30 @@ lr1110_hal_status_t lr1110_hal_wakeup(const void *context)
 {
 	ARG_UNUSED(context);
 
-	/* CS pulse (no SPI bytes) wakes the LR1110 from sleep.
-	 * CS is active-low: assert LOW to wake, then release HIGH. */
-	gpio_pin_set_dt(&lr1110_bus.config.cs.gpio, 0);
+	/*
+	 * CS pulse (no SPI bytes) wakes the LR1110 from sleep.
+	 * CS is active-low: assert LOW to wake, then release HIGH.
+	 *
+	 * gpio_pin_set_dt() interprets values relative to GPIO_ACTIVE_* flags:
+	 *   value=1 → logical active (asserted) → LOW for ACTIVE_LOW
+	 *   value=0 → logical inactive (deasserted) → HIGH for ACTIVE_LOW
+	 */
+	int ret = gpio_pin_set_dt(&lr1110_bus.config.cs.gpio, 1);
+	if (ret < 0) {
+		LOG_ERR("Failed to assert CS GPIO: %d", ret);
+		record_error(-EIO);
+		return LR1110_HAL_STATUS_ERROR;
+	}
 	k_busy_wait(100);
-	gpio_pin_set_dt(&lr1110_bus.config.cs.gpio, 1);
-	wait_busy();
+
+	ret = gpio_pin_set_dt(&lr1110_bus.config.cs.gpio, 0);
+	if (ret < 0) {
+		LOG_ERR("Failed to deassert CS GPIO: %d", ret);
+		record_error(-EIO);
+		return LR1110_HAL_STATUS_ERROR;
+	}
+	if (wait_busy() < 0) {
+		return LR1110_HAL_STATUS_ERROR;
+	}
 	return LR1110_HAL_STATUS_OK;
 }

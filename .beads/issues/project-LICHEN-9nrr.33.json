@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-9nrr.33",
+  "title": "puck: set non-default USB VID/PID for T1000-E board config",
+  "description": "Why this exists: while validating project-LICHEN-9nrr.25 with west build -b t1000_e/nrf52840 lichen/apps/puck, Zephyr warned that CONFIG_USB_DEVICE_VID=0x2FE3 and CONFIG_USB_DEVICE_PID=0x0100 are default test values even though the board config sets them explicitly. The T1000-E puck config enables USB CDC-ACM for LICHEN Native and MCUmgr, so product USB identifiers should not use Zephyr's testing defaults. What needs to be done: choose appropriate LICHEN puck USB VID/PID/product/manufacturer settings for lichen/apps/puck/boards/t1000_e_nrf52840.conf, preserving CDC-ACM Native and MCUmgr behavior, and verify the T1000-E puck build no longer emits the default VID/PID warnings. As a code-generation/fix Bead, run two review passes before closing.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T04:58:48.248494Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T05:07:40.100132Z",
+  "closed_at": "2026-06-30T05:07:40.100132Z",
+  "close_reason": "Set T1000-E puck USB identifiers to non-default LICHEN values: VID 0x239A, PID 0x0029, product LICHEN Puck, manufacturer LICHEN. Preserved CDC-ACM Native and MCUmgr behavior. Tests/builds: west build -b t1000_e/nrf52840 lichen/apps/puck -d build/puck_t1000_e_nrf52840 --pristine=always passed; generated .config verified CONFIG_USB_DEVICE_STACK=y, CONFIG_USB_CDC_ACM=y, CONFIG_LICHEN_NATIVE=y, CONFIG_MCUMGR=y, VID/PID/product/manufacturer set as intended; default VID/PID warnings are gone; git diff --check passed. Review pass 1: no findings; verified built config values and matching project USB-ID pattern. Review pass 2: no findings; scope limited to T1000-E puck config and Beads metadata, with unrelated gateway T1000-E USB warning already tracked by project-LICHEN-9nrr.34.",
+  "labels": [
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9nrr.33",
+      "depends_on_id": "project-LICHEN-9nrr",
+      "type": "parent-child",
+      "created_at": "2026-06-30T04:58:48.2491Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9nrr.33",
+      "depends_on_id": "project-LICHEN-9nrr.25",
+      "type": "discovered-from",
+      "created_at": "2026-06-30T04:58:57.517661Z"
+    }
+  ]
+}

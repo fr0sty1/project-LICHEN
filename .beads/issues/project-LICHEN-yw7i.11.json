@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-yw7i.11",
+  "title": "Magic number 48 for Schnorr signature size",
+  "description": "lora_l2.h:52 mentions '48 bytes' for Schnorr signature in MTU calculation but this constant isn't defined anywhere in these files. Either define LICHEN_SCHNORR_SIG_LEN or reference where this is defined. The comment is otherwise excellent but the magic number makes it harder to verify the math.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T17:07:03.196199Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T17:14:03.22336Z",
+  "closed_at": "2026-06-27T17:14:03.22336Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-yw7i.11",
+      "depends_on_id": "project-LICHEN-yw7i",
+      "type": "parent-child",
+      "created_at": "2026-06-27T17:07:03.196681Z"
+    }
+  ]
+}

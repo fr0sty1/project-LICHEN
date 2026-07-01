@@ -1,0 +1,14 @@
+{
+  "id": "lora-ipv6-mesh-s80",
+  "title": "Spec: Add SOS authentication and rate limiting",
+  "description": "Emergency/SOS section specifies 're-broadcast once (TTL-limited)' but no authentication. Attack vector: flood network with fake SOS messages causing DoS. Need: (1) require Ed25519 signature on SOS, (2) specify rate limiting (e.g., 1 SOS per node per hour), (3) define reputation/blacklist for SOS abusers.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T04:55:09Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-05-27T14:42:04Z",
+  "closed_at": "2026-05-27T14:42:04Z",
+  "close_reason": "Already addressed in spec/12-apps.md Section 18.4.1. Covers: Ed25519/Schnorr signature required, rate limiting (10min cooldown, 3/hr max), soft blacklist with reputation tracking."
+}

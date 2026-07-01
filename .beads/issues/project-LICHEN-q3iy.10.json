@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-q3iy.10",
+  "title": "ARG_UNUSED after parameter validation is confusing",
+  "description": "In lichen_l2.c:274-281 (lichen_l2_recv), the code validates iface, then marks it unused:\n\n```c\nif (iface == NULL) {\n    LOG_ERR(\"lichen_l2_recv: iface is NULL\");\n    return NET_DROP;\n}\n\nARG_UNUSED(iface);\nARG_UNUSED(pkt);\n```\n\nThis is technically correct (the parameter IS used for validation but not for any functional logic), but reads as contradictory. A future reader might think the NULL check is dead code.\n\nWhat goes wrong: Cognitive overhead during code review. Someone might remove the 'redundant' NULL check thinking ARG_UNUSED means the parameter truly isn't used.\n\nSuggested fix: Remove ARG_UNUSED(iface) since it IS used for validation, or add a comment explaining the pattern.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T22:19:34.731242Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T22:28:22.654401Z",
+  "closed_at": "2026-06-27T22:28:22.654401Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-q3iy.10",
+      "depends_on_id": "project-LICHEN-q3iy",
+      "type": "parent-child",
+      "created_at": "2026-06-27T22:19:34.731751Z"
+    }
+  ]
+}

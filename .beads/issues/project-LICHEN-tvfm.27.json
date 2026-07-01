@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.27",
+  "title": "[lora_l2.c:418] lichen_lora_l2_stop return value is always 0",
+  "description": "Function: lichen_lora_l2_stop. Postcondition: The function signature returns int but always returns 0 (line 476). The documentation says 'Always returns 0 (stop is idempotent and cannot fail)'. This is fine for the contract, but the int return type suggests potential failure. Consider either returning void (breaking change) or returning the k_thread_join result to let callers know if abort was required. Currently the abort case is indicated by lichen_lora_l2_needs_reinit(). Priority 3 - API design note, not a bug.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "issue",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:47:30.901824Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:35:29.52275Z",
+  "closed_at": "2026-06-28T02:35:29.52275Z",
+  "close_reason": "Fixed: lichen_lora_l2_stop now returns -ECANCELED when thread abort occurs, informing caller that module requires deinit/reinit cycle",
+  "labels": [
+    "review",
+    "round1",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.27",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:47:30.902331Z"
+    }
+  ]
+}

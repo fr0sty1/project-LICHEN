@@ -27,6 +27,12 @@ extern "C" {
 /** Maximum response payload size */
 #define LICHEN_COAP_MAX_PAYLOAD 256
 
+/** Maximum URI path array entries, including the terminating NULL */
+#define LICHEN_COAP_MAX_PATH_COMPONENTS 8
+
+/** Sentinel value indicating content_format was not set (use in initializers) */
+#define LICHEN_COAP_FMT_UNSET UINT16_MAX
+
 /**
  * @brief CoAP request result codes
  */
@@ -38,23 +44,34 @@ enum lichen_coap_result {
 	LICHEN_COAP_ERR_INVALID_RESPONSE = -4,
 	LICHEN_COAP_ERR_NOT_FOUND = -5,
 	LICHEN_COAP_ERR_UNAUTHORIZED = -6,
+	LICHEN_COAP_ERR_INVALID_PARAM = -7,
+	LICHEN_COAP_ERR_TRANSPORT = -8,
 };
 
 /**
  * @brief CoAP response callback
  *
  * @param[in] user_data   User-provided context
- * @param[in] code        CoAP response code
+ * @param[in] status      Request status (LICHEN_COAP_OK, LICHEN_COAP_ERR_TIMEOUT,
+ *                        LICHEN_COAP_ERR_TRANSPORT, or
+ *                        LICHEN_COAP_ERR_INVALID_RESPONSE)
+ * @param[in] code        CoAP response code (only valid when status == LICHEN_COAP_OK)
  * @param[in] payload     Response payload (may be NULL)
  * @param[in] payload_len Payload length
  */
 typedef void (*lichen_coap_response_cb)(void *user_data,
+					int status,
 					uint8_t code,
 					const uint8_t *payload,
 					size_t payload_len);
 
 /**
  * @brief CoAP request context
+ *
+ * The path field must point to a NULL-terminated array of URI path component
+ * strings. The terminating NULL must appear within
+ * LICHEN_COAP_MAX_PATH_COMPONENTS entries; component strings must be valid
+ * NUL-terminated strings for the lifetime of lichen_coap_request().
  */
 struct lichen_coap_request {
 	struct sockaddr_in6 addr;           /**< Destination address */
@@ -62,17 +79,21 @@ struct lichen_coap_request {
 	uint8_t method;                     /**< CoAP method (GET, POST, etc) */
 	const uint8_t *payload;             /**< Request payload (optional) */
 	size_t payload_len;                 /**< Payload length */
-	uint16_t content_format;            /**< Content format (optional) */
+	uint16_t content_format;            /**< Content format (LICHEN_COAP_FMT_UNSET = not set) */
 	bool confirmable;                   /**< Use CON message type */
 	lichen_coap_response_cb callback;   /**< Response callback */
 	void *user_data;                    /**< User context for callback */
-	uint32_t timeout_ms;                /**< Timeout in ms (0 = default) */
+	uint32_t timeout_ms;                /**< Timeout in ms (0 = default, max UINT32_MAX / 2) */
 };
 
 /**
  * @brief Initialize the CoAP client subsystem.
  *
- * Must be called once at startup.
+ * Called automatically on first request if not already initialized.
+ * Call explicitly at startup to fail-fast on socket/init errors and
+ * avoid first-request latency from socket creation.
+ *
+ * Thread-safe; idempotent (multiple calls return 0 after first success).
  *
  * @return 0 on success, negative error code on failure
  */
@@ -84,7 +105,9 @@ int lichen_coap_client_init(void);
  * This is an asynchronous operation. The callback will be invoked
  * when a response is received or the request times out.
  *
- * @param[in] req Request parameters
+ * @param[in] req Request parameters. req->path must be a NULL-terminated
+ *                URI component array as described by struct
+ *                lichen_coap_request.
  * @return 0 on success (request sent), negative error code on failure
  */
 int lichen_coap_request(const struct lichen_coap_request *req);

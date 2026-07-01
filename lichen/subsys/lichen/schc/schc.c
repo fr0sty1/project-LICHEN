@@ -8,136 +8,148 @@
  * Ported from rust/lichen-schc/src/codec.rs.
  * Bit order: MSB-first (network bit order). The residue is zero-padded to
  * a byte boundary.
+ *
+ * COMPRESSION PROFILE DECISIONS
+ * =============================
+ *
+ * This file currently implements the LICHEN SCHC profile, not a fully generic
+ * Zephyr SCHC module. The intended architecture is:
+ *
+ *   generic RFC 8724 engine + rule machinery
+ *       used by
+ *   LICHEN-specific packet profiles and rule table
+ *
+ * Until that split exists, keep the profile decisions explicit in this file:
+ *
+ * - Rule IDs are interop constants. They must continue to match
+ *   rust/lichen-schc, python/src/lichen/schc, constants.toml, and
+ *   test/vectors/schc_compression.json.
+ *
+ * - Rules 0 and 1 cover IPv6 + UDP + CoAP. Rule 0 is link-local source and
+ *   destination. Rule 1 is global source and destination. Mixed-scope or
+ *   otherwise unsupported address shapes fall through to rule 255.
+ *
+ * - Rule 2 covers link-local ICMPv6 Echo Request/Reply only.
+ *
+ * - Rules 3 and 4 cover link-local RPL control messages over ICMPv6 type 155.
+ *   Rule 3 covers DIO. Rule 4 covers DAO only when the D flag says DODAGID is
+ *   present, matching the non-storing-mode case LICHEN optimizes for.
+ *
+ * - Rule 255 is the uncompressed fallback. It is deliberately preserved so new
+ *   packet shapes remain deliverable before a dedicated compression rule is
+ *   designed and tested.
+ *
+ * - Checksums, lengths, and other derivable fields are reconstructed during
+ *   decompression. They are not carried in the residue unless a rule says they
+ *   must be sent.
+ *
+ * - Variable tails are carried verbatim after the fixed rule residue. For CoAP
+ *   this means token/options/payload after the 4-byte fixed header. For RPL it
+ *   means options after the DIO/DAO base object.
+ *
+ * - Packet-header positions are fixed by IPv6/UDP/CoAP/ICMPv6/RPL wire
+ *   formats, but maintainers must not spread raw stride offsets through rule
+ *   code. Use the named layout constants and accessor helpers below.
+ *
+ * SECURITY CONSIDERATIONS
+ * =======================
+ * SCHC compression can leak information about packet contents through
+ * compressed size variations (compression oracle attack). In contexts where
+ * encrypted payloads are compressed, an attacker observing compressed sizes
+ * may infer plaintext content by correlating size changes with known inputs.
+ *
+ * Mitigations applied in LICHEN:
+ * - OSCORE encryption happens BEFORE SCHC compression, so encrypted CoAP
+ *   payloads appear as opaque bytes that don't compress differentially.
+ * - Link-layer encryption (if any) wraps the already-compressed frame.
+ *
+ * Residual risks:
+ * - Header field values (ports, addresses, hop limit) are compressed but
+ *   not encrypted; their presence in specific rules may leak metadata.
+ * - Tail length variations remain observable.
+ *
+ * For high-security deployments, consider padding payloads to fixed sizes
+ * before OSCORE encryption.
  */
 
 #include <lichen/schc.h>
+#include <schc/bitstream.h>
 #include <string.h>
 #include <stdbool.h>
 
-/* ─── bit-packing ─────────────────────────────────────────────────────────── */
+/* IPv6 protocol constants */
+#define IPV6_NH_UDP             17   /* UDP next header (RFC 768) */
+#define IPV6_NH_ICMPV6          58   /* ICMPv6 next header (RFC 4443) */
+#define IPV6_HDR_LEN            40   /* IPv6 base header length */
+#define UDP_HDR_LEN             8    /* UDP header length */
+#define ICMPV6_TYPE_ECHO_REQUEST 128 /* Echo Request (RFC 4443) */
+#define ICMPV6_TYPE_ECHO_REPLY  129  /* Echo Reply (RFC 4443) */
+#define ICMPV6_TYPE_RPL         155  /* RPL ICMPv6 type (RFC 6550) */
+#define ICMPV6_CODE_RPL_DIO     1    /* RPL DIO code (RFC 6550) */
+#define ICMPV6_CODE_RPL_DAO     2    /* RPL DAO code (RFC 6550) */
 
-struct bit_writer {
-	uint8_t *buf;
-	size_t buf_len;
-	size_t nbits;
+/*
+ * Packet-layout constants.
+ *
+ * These compile-time constants document the offsets implied by the profile
+ * code below. Rule code should use accessors built on these names instead of
+ * repeating numbers such as 40, 44, or 45.
+ */
+enum schc_ipv6_layout {
+	SCHC_IPV6_VERSION_OFFSET = 0,
+	SCHC_IPV6_TC_FLOW_OFFSET = 1,
+	SCHC_IPV6_TC_FLOW_LEN = 3,
+	SCHC_IPV6_PAYLOAD_LEN_OFFSET = 4,
+	SCHC_IPV6_NEXT_HEADER_OFFSET = 6,
+	SCHC_IPV6_HOP_LIMIT_OFFSET = 7,
+	SCHC_IPV6_SRC_OFFSET = 8,
+	SCHC_IPV6_DST_OFFSET = 24,
+	SCHC_IPV6_ADDR_LEN = 16,
 };
 
-static void bit_writer_init(struct bit_writer *w, uint8_t *buf, size_t len)
-{
-	memset(buf, 0, len);
-	w->buf = buf;
-	w->buf_len = len;
-	w->nbits = 0;
-}
-
-/**
- * Write the low @p nbits of @p value, MSB first.
- * Returns 0 on success, -1 if buffer too small.
- */
-static int bit_writer_write(struct bit_writer *w, uint64_t value, int nbits)
-{
-	for (int i = nbits - 1; i >= 0; i--) {
-		uint8_t bit = (value >> i) & 1;
-		size_t byte_pos = w->nbits / 8;
-		int bit_pos = 7 - (w->nbits % 8);
-
-		if (byte_pos >= w->buf_len) {
-			return -1;
-		}
-		w->buf[byte_pos] |= bit << bit_pos;
-		w->nbits++;
-	}
-	return 0;
-}
-
-/**
- * Write 128 bits (for full IPv6 addresses).
- */
-static int bit_writer_write128(struct bit_writer *w,
-			       const uint8_t value[16], int nbits)
-{
-	for (int i = 0; i < nbits; i++) {
-		int byte_idx = i / 8;
-		int bit_idx = 7 - (i % 8);
-		uint8_t bit = (value[byte_idx] >> bit_idx) & 1;
-
-		size_t byte_pos = w->nbits / 8;
-		int bit_pos = 7 - (w->nbits % 8);
-
-		if (byte_pos >= w->buf_len) {
-			return -1;
-		}
-		w->buf[byte_pos] |= bit << bit_pos;
-		w->nbits++;
-	}
-	return 0;
-}
-
-static size_t bit_writer_byte_len(const struct bit_writer *w)
-{
-	return (w->nbits + 7) / 8;
-}
-
-struct bit_reader {
-	const uint8_t *buf;
-	size_t buf_len;
-	size_t pos;
+enum schc_udp_layout {
+	SCHC_UDP_SRC_PORT_OFFSET = 0,
+	SCHC_UDP_DST_PORT_OFFSET = 2,
+	SCHC_UDP_LEN_OFFSET = 4,
+	SCHC_UDP_CHECKSUM_OFFSET = 6,
+	SCHC_UDP_PAYLOAD_OFFSET = UDP_HDR_LEN,
 };
 
-static void bit_reader_init(struct bit_reader *r, const uint8_t *buf, size_t len)
-{
-	r->buf = buf;
-	r->buf_len = len;
-	r->pos = 0;
-}
+enum schc_coap_layout {
+	SCHC_COAP_VER_TYPE_TKL_OFFSET = 0,
+	SCHC_COAP_CODE_OFFSET = 1,
+	SCHC_COAP_MID_OFFSET = 2,
+	SCHC_COAP_FIXED_LEN = 4,
+};
 
-/**
- * Read @p nbits from the bit stream (max 64 bits).
- * Returns 0 on success, -1 if not enough data.
- */
-static int bit_reader_read(struct bit_reader *r, int nbits, uint64_t *out)
-{
-	if (r->pos + nbits > r->buf_len * 8) {
-		return -1;
-	}
-	uint64_t value = 0;
-	for (int i = 0; i < nbits; i++) {
-		uint8_t byte = r->buf[r->pos / 8];
-		uint8_t bit = (byte >> (7 - (r->pos % 8))) & 1;
-		value = (value << 1) | bit;
-		r->pos++;
-	}
-	*out = value;
-	return 0;
-}
+enum schc_icmpv6_layout {
+	SCHC_ICMPV6_TYPE_OFFSET = 0,
+	SCHC_ICMPV6_CODE_OFFSET = 1,
+	SCHC_ICMPV6_CHECKSUM_OFFSET = 2,
+	SCHC_ICMPV6_BODY_OFFSET = 4,
+	SCHC_ICMPV6_ECHO_ID_OFFSET = 4,
+	SCHC_ICMPV6_ECHO_SEQ_OFFSET = 6,
+	SCHC_ICMPV6_ECHO_TAIL_OFFSET = 8,
+};
 
-/**
- * Read up to 128 bits into a byte array.
- * @p out_size specifies the size of the output buffer (must be >= nbits/8).
- */
-static int bit_reader_read_bytes(struct bit_reader *r, int nbits,
-				 uint8_t *out, size_t out_size)
-{
-	size_t bytes_needed = (nbits + 7) / 8;
-	if (bytes_needed > out_size || r->pos + nbits > r->buf_len * 8) {
-		return -1;
-	}
-	memset(out, 0, bytes_needed);
-	for (int i = 0; i < nbits; i++) {
-		uint8_t byte = r->buf[r->pos / 8];
-		uint8_t bit = (byte >> (7 - (r->pos % 8))) & 1;
-		int byte_idx = i / 8;
-		int bit_idx = 7 - (i % 8);
-		out[byte_idx] |= bit << bit_idx;
-		r->pos++;
-	}
-	return 0;
-}
-
-static size_t bit_reader_residue_byte_end(const struct bit_reader *r)
-{
-	return (r->pos + 7) / 8;
-}
+enum schc_rpl_layout {
+	SCHC_RPL_AFTER_IPV6_OFFSET = IPV6_HDR_LEN + SCHC_ICMPV6_BODY_OFFSET,
+	SCHC_RPL_INSTANCE_OFFSET = 0,
+	SCHC_RPL_DIO_VERSION_OFFSET = 1,
+	SCHC_RPL_DIO_RANK_OFFSET = 2,
+	SCHC_RPL_DIO_GMOP_OFFSET = 4,
+	SCHC_RPL_DIO_DTSN_OFFSET = 5,
+	SCHC_RPL_DIO_FLAGS_OFFSET = 6,
+	SCHC_RPL_DIO_RESERVED_OFFSET = 7,
+	SCHC_RPL_DIO_DODAGID_OFFSET = 8,
+	SCHC_RPL_DIO_BASE_LEN = 24,
+	SCHC_RPL_DAO_KD_FLAGS_OFFSET = 1,
+	SCHC_RPL_DAO_RESERVED_OFFSET = 2,
+	SCHC_RPL_DAO_SEQUENCE_OFFSET = 3,
+	SCHC_RPL_DAO_DODAGID_OFFSET = 4,
+	SCHC_RPL_DAO_BASE_WITH_DODAGID_LEN = 20,
+	SCHC_RPL_DODAGID_LEN = 16,
+};
 
 /* ─── address helpers ─────────────────────────────────────────────────────── */
 
@@ -149,6 +161,324 @@ static bool is_link_local(const uint8_t addr[16])
 static bool is_global(const uint8_t addr[16])
 {
 	return (addr[0] >> 5) == 0x01; /* 001x xxxx = 2000::/3 */
+}
+
+static uint16_t read_be16(const uint8_t *p)
+{
+	return ((uint16_t)p[0] << 8) | p[1];
+}
+
+static void write_be16(uint8_t *p, uint16_t value)
+{
+	p[0] = (uint8_t)(value >> 8);
+	p[1] = (uint8_t)value;
+}
+
+static uint8_t ipv6_version(const uint8_t *packet)
+{
+	return packet[SCHC_IPV6_VERSION_OFFSET] >> 4;
+}
+
+static uint16_t ipv6_payload_len(const uint8_t *packet)
+{
+	return read_be16(&packet[SCHC_IPV6_PAYLOAD_LEN_OFFSET]);
+}
+
+static uint8_t ipv6_next_header(const uint8_t *packet)
+{
+	return packet[SCHC_IPV6_NEXT_HEADER_OFFSET];
+}
+
+static uint8_t ipv6_hop_limit(const uint8_t *packet)
+{
+	return packet[SCHC_IPV6_HOP_LIMIT_OFFSET];
+}
+
+static const uint8_t *ipv6_src(const uint8_t *packet)
+{
+	return &packet[SCHC_IPV6_SRC_OFFSET];
+}
+
+static const uint8_t *ipv6_dst(const uint8_t *packet)
+{
+	return &packet[SCHC_IPV6_DST_OFFSET];
+}
+
+static const uint8_t *ipv6_payload(const uint8_t *packet)
+{
+	return &packet[IPV6_HDR_LEN];
+}
+
+static uint8_t *ipv6_payload_mut(uint8_t *packet)
+{
+	return &packet[IPV6_HDR_LEN];
+}
+
+static void ipv6_write_base(uint8_t *packet, uint16_t payload_len,
+			    uint8_t next_header, uint8_t hop_limit,
+			    const uint8_t src[16], const uint8_t dst[16])
+{
+	packet[SCHC_IPV6_VERSION_OFFSET] = 0x60;
+	memset(&packet[SCHC_IPV6_TC_FLOW_OFFSET], 0, SCHC_IPV6_TC_FLOW_LEN);
+	write_be16(&packet[SCHC_IPV6_PAYLOAD_LEN_OFFSET], payload_len);
+	packet[SCHC_IPV6_NEXT_HEADER_OFFSET] = next_header;
+	packet[SCHC_IPV6_HOP_LIMIT_OFFSET] = hop_limit;
+	memcpy(&packet[SCHC_IPV6_SRC_OFFSET], src, SCHC_IPV6_ADDR_LEN);
+	memcpy(&packet[SCHC_IPV6_DST_OFFSET], dst, SCHC_IPV6_ADDR_LEN);
+}
+
+static uint16_t udp_src_port(const uint8_t *udp)
+{
+	return read_be16(&udp[SCHC_UDP_SRC_PORT_OFFSET]);
+}
+
+static uint16_t udp_dst_port(const uint8_t *udp)
+{
+	return read_be16(&udp[SCHC_UDP_DST_PORT_OFFSET]);
+}
+
+static uint16_t udp_len(const uint8_t *udp)
+{
+	return read_be16(&udp[SCHC_UDP_LEN_OFFSET]);
+}
+
+static const uint8_t *udp_payload(const uint8_t *udp)
+{
+	return &udp[SCHC_UDP_PAYLOAD_OFFSET];
+}
+
+static uint8_t *udp_payload_mut(uint8_t *udp)
+{
+	return &udp[SCHC_UDP_PAYLOAD_OFFSET];
+}
+
+static void udp_write_header(uint8_t *udp, uint16_t src_port,
+			     uint16_t dst_port, uint16_t len,
+			     uint16_t checksum)
+{
+	write_be16(&udp[SCHC_UDP_SRC_PORT_OFFSET], src_port);
+	write_be16(&udp[SCHC_UDP_DST_PORT_OFFSET], dst_port);
+	write_be16(&udp[SCHC_UDP_LEN_OFFSET], len);
+	write_be16(&udp[SCHC_UDP_CHECKSUM_OFFSET], checksum);
+}
+
+static void udp_write_checksum(uint8_t *udp, uint16_t checksum)
+{
+	write_be16(&udp[SCHC_UDP_CHECKSUM_OFFSET], checksum);
+}
+
+static uint8_t coap_type(const uint8_t *coap)
+{
+	return (coap[SCHC_COAP_VER_TYPE_TKL_OFFSET] >> 4) & 0x3;
+}
+
+static uint8_t coap_tkl(const uint8_t *coap)
+{
+	return coap[SCHC_COAP_VER_TYPE_TKL_OFFSET] & 0x0F;
+}
+
+static uint8_t coap_code(const uint8_t *coap)
+{
+	return coap[SCHC_COAP_CODE_OFFSET];
+}
+
+static uint16_t coap_mid(const uint8_t *coap)
+{
+	return read_be16(&coap[SCHC_COAP_MID_OFFSET]);
+}
+
+static const uint8_t *coap_tail(const uint8_t *coap)
+{
+	return &coap[SCHC_COAP_FIXED_LEN];
+}
+
+static uint8_t *coap_tail_mut(uint8_t *coap)
+{
+	return &coap[SCHC_COAP_FIXED_LEN];
+}
+
+static void coap_write_fixed(uint8_t *coap, uint8_t type, uint8_t tkl,
+			     uint8_t code, uint16_t mid)
+{
+	coap[SCHC_COAP_VER_TYPE_TKL_OFFSET] =
+		(1u << 6) | ((type & 0x3u) << 4) | (tkl & 0x0Fu);
+	coap[SCHC_COAP_CODE_OFFSET] = code;
+	write_be16(&coap[SCHC_COAP_MID_OFFSET], mid);
+}
+
+static uint8_t icmpv6_type(const uint8_t *icmpv6)
+{
+	return icmpv6[SCHC_ICMPV6_TYPE_OFFSET];
+}
+
+static uint8_t icmpv6_code(const uint8_t *icmpv6)
+{
+	return icmpv6[SCHC_ICMPV6_CODE_OFFSET];
+}
+
+static const uint8_t *icmpv6_body(const uint8_t *icmpv6)
+{
+	return &icmpv6[SCHC_ICMPV6_BODY_OFFSET];
+}
+
+static uint8_t *icmpv6_body_mut(uint8_t *icmpv6)
+{
+	return &icmpv6[SCHC_ICMPV6_BODY_OFFSET];
+}
+
+static void icmpv6_write_header(uint8_t *icmpv6, uint8_t type, uint8_t code,
+				uint16_t checksum)
+{
+	icmpv6[SCHC_ICMPV6_TYPE_OFFSET] = type;
+	icmpv6[SCHC_ICMPV6_CODE_OFFSET] = code;
+	write_be16(&icmpv6[SCHC_ICMPV6_CHECKSUM_OFFSET], checksum);
+}
+
+static void icmpv6_write_checksum(uint8_t *icmpv6, uint16_t checksum)
+{
+	write_be16(&icmpv6[SCHC_ICMPV6_CHECKSUM_OFFSET], checksum);
+}
+
+static uint16_t icmpv6_echo_id(const uint8_t *icmpv6)
+{
+	return read_be16(&icmpv6[SCHC_ICMPV6_ECHO_ID_OFFSET]);
+}
+
+static uint16_t icmpv6_echo_seq(const uint8_t *icmpv6)
+{
+	return read_be16(&icmpv6[SCHC_ICMPV6_ECHO_SEQ_OFFSET]);
+}
+
+static const uint8_t *icmpv6_echo_tail(const uint8_t *icmpv6)
+{
+	return &icmpv6[SCHC_ICMPV6_ECHO_TAIL_OFFSET];
+}
+
+static uint8_t *icmpv6_echo_tail_mut(uint8_t *icmpv6)
+{
+	return &icmpv6[SCHC_ICMPV6_ECHO_TAIL_OFFSET];
+}
+
+static void icmpv6_echo_write_body(uint8_t *icmpv6, uint16_t id, uint16_t seq)
+{
+	write_be16(&icmpv6[SCHC_ICMPV6_ECHO_ID_OFFSET], id);
+	write_be16(&icmpv6[SCHC_ICMPV6_ECHO_SEQ_OFFSET], seq);
+}
+
+static uint8_t rpl_instance(const uint8_t *rpl)
+{
+	return rpl[SCHC_RPL_INSTANCE_OFFSET];
+}
+
+static uint8_t rpl_dio_version(const uint8_t *rpl)
+{
+	return rpl[SCHC_RPL_DIO_VERSION_OFFSET];
+}
+
+static uint16_t rpl_dio_rank(const uint8_t *rpl)
+{
+	return read_be16(&rpl[SCHC_RPL_DIO_RANK_OFFSET]);
+}
+
+static uint8_t rpl_dio_gmop(const uint8_t *rpl)
+{
+	return rpl[SCHC_RPL_DIO_GMOP_OFFSET];
+}
+
+static uint8_t rpl_dio_dtsn(const uint8_t *rpl)
+{
+	return rpl[SCHC_RPL_DIO_DTSN_OFFSET];
+}
+
+static const uint8_t *rpl_dio_dodagid(const uint8_t *rpl)
+{
+	return &rpl[SCHC_RPL_DIO_DODAGID_OFFSET];
+}
+
+static const uint8_t *rpl_dio_tail(const uint8_t *rpl)
+{
+	return &rpl[SCHC_RPL_DIO_BASE_LEN];
+}
+
+static uint8_t *rpl_dio_tail_mut(uint8_t *rpl)
+{
+	return &rpl[SCHC_RPL_DIO_BASE_LEN];
+}
+
+static void rpl_dio_write_base(uint8_t *rpl, uint8_t instance,
+			       uint8_t version, uint16_t rank,
+			       uint8_t gmop, uint8_t dtsn,
+			       const uint8_t dodagid[16])
+{
+	rpl[SCHC_RPL_INSTANCE_OFFSET] = instance;
+	rpl[SCHC_RPL_DIO_VERSION_OFFSET] = version;
+	write_be16(&rpl[SCHC_RPL_DIO_RANK_OFFSET], rank);
+	rpl[SCHC_RPL_DIO_GMOP_OFFSET] = gmop;
+	rpl[SCHC_RPL_DIO_DTSN_OFFSET] = dtsn;
+	rpl[SCHC_RPL_DIO_FLAGS_OFFSET] = 0;
+	rpl[SCHC_RPL_DIO_RESERVED_OFFSET] = 0;
+	memcpy(&rpl[SCHC_RPL_DIO_DODAGID_OFFSET], dodagid, SCHC_RPL_DODAGID_LEN);
+}
+
+static uint8_t rpl_dao_kd_flags(const uint8_t *rpl)
+{
+	return rpl[SCHC_RPL_DAO_KD_FLAGS_OFFSET];
+}
+
+static uint8_t rpl_dao_sequence(const uint8_t *rpl)
+{
+	return rpl[SCHC_RPL_DAO_SEQUENCE_OFFSET];
+}
+
+static const uint8_t *rpl_dao_dodagid(const uint8_t *rpl)
+{
+	return &rpl[SCHC_RPL_DAO_DODAGID_OFFSET];
+}
+
+static const uint8_t *rpl_dao_tail(const uint8_t *rpl)
+{
+	return &rpl[SCHC_RPL_DAO_BASE_WITH_DODAGID_LEN];
+}
+
+static uint8_t *rpl_dao_tail_mut(uint8_t *rpl)
+{
+	return &rpl[SCHC_RPL_DAO_BASE_WITH_DODAGID_LEN];
+}
+
+static void rpl_dao_write_base(uint8_t *rpl, uint8_t instance,
+			       uint8_t kd_flags, uint8_t seq,
+			       const uint8_t dodagid[16])
+{
+	rpl[SCHC_RPL_INSTANCE_OFFSET] = instance;
+	rpl[SCHC_RPL_DAO_KD_FLAGS_OFFSET] = kd_flags;
+	rpl[SCHC_RPL_DAO_RESERVED_OFFSET] = 0;
+	rpl[SCHC_RPL_DAO_SEQUENCE_OFFSET] = seq;
+	memcpy(&rpl[SCHC_RPL_DAO_DODAGID_OFFSET], dodagid, SCHC_RPL_DODAGID_LEN);
+}
+
+static int validate_ipv6_transport_lengths(const uint8_t *packet, size_t pkt_len)
+{
+	uint16_t declared_payload_len = ipv6_payload_len(packet);
+	size_t actual_payload_len = pkt_len - IPV6_HDR_LEN;
+
+	if (declared_payload_len != actual_payload_len) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	if (ipv6_next_header(packet) != IPV6_NH_UDP) {
+		return SCHC_OK;
+	}
+
+	if (actual_payload_len < UDP_HDR_LEN) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	uint16_t declared_udp_len = udp_len(ipv6_payload(packet));
+	if (declared_udp_len < UDP_HDR_LEN || declared_udp_len != actual_payload_len) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	return SCHC_OK;
 }
 
 /* ─── checksum helpers ────────────────────────────────────────────────────── */
@@ -200,35 +530,64 @@ static uint16_t finalize_checksum(uint32_t sum)
 	return ~((uint16_t)sum);
 }
 
-static uint16_t udp_checksum(const uint8_t src[16], const uint8_t dst[16],
-			     uint16_t src_port, uint16_t dst_port,
-			     const uint8_t *payload, size_t payload_len)
+/**
+ * @brief Compute UDP checksum.
+ *
+ * @param src         Source IPv6 address
+ * @param dst         Destination IPv6 address
+ * @param src_port    Source port
+ * @param dst_port    Destination port
+ * @param payload     UDP payload (CoAP data)
+ * @param payload_len Payload length
+ * @param cksum_out   Output: computed checksum (only valid if return is 0)
+ * @return 0 on success, -1 if payload_len would overflow UDP length field
+ */
+static int udp_checksum(const uint8_t src[16], const uint8_t dst[16],
+			uint16_t src_port, uint16_t dst_port,
+			const uint8_t *payload, size_t payload_len,
+			uint16_t *cksum_out)
 {
 	/* UDP length field is 16 bits; header is 8 bytes, max payload is 65527 */
 	if (payload_len > UINT16_MAX - 8) {
-		return 0;
+		return -1;
 	}
 	uint16_t udp_len = (uint16_t)(8 + payload_len);
-	uint32_t sum = pseudo_sum(src, dst, 17, udp_len);
+	uint32_t sum = pseudo_sum(src, dst, IPV6_NH_UDP, udp_len);
 
 	sum = oc_add(sum, src_port);
 	sum = oc_add(sum, dst_port);
 	sum = oc_add(sum, udp_len);
 	/* checksum field (0 during computation) */
 	sum = oc_add(sum, checksum_bytes(payload, payload_len));
-	return finalize_checksum(sum);
+	*cksum_out = finalize_checksum(sum);
+	return 0;
 }
 
 static uint16_t icmpv6_checksum(const uint8_t src[16], const uint8_t dst[16],
 				const uint8_t *icmpv6_payload, size_t len)
 {
-	uint32_t sum = pseudo_sum(src, dst, 58, len);
+	uint32_t sum = pseudo_sum(src, dst, IPV6_NH_ICMPV6, len);
 
 	sum = oc_add(sum, checksum_bytes(icmpv6_payload, len));
 	return finalize_checksum(sum);
 }
 
 /* ─── per-rule compress ───────────────────────────────────────────────────── */
+
+/*
+ * Compression functions follow a common pattern:
+ *
+ *   1. Validate minimum input length for the rule
+ *   2. Write rule ID to out[0]
+ *   3. Initialize bit_writer at out[1]
+ *   4. For link-local rules: call compress_link_local_header() helper
+ *      For global rules: write full addresses inline
+ *   5. Write protocol-specific fields
+ *   6. Call compress_finish() to copy tail and return total length
+ *
+ * This pattern ensures consistent bounds checking and avoids code duplication
+ * for the common prologue (link-local header) and epilogue (tail copy).
+ */
 
 /**
  * Common epilogue for compress_* functions: compute output size, bounds-check,
@@ -241,10 +600,10 @@ static uint16_t icmpv6_checksum(const uint8_t src[16], const uint8_t dst[16],
  * @param tail_len  Length of tail data
  * @return          Total compressed length on success, SCHC_ERR_BUFFER_TOO_SMALL on failure
  */
-static int compress_finish(const struct bit_writer *w, uint8_t *out,
+static int compress_finish(const struct schc_bit_writer *w, uint8_t *out,
 			   size_t out_len, const uint8_t *tail, size_t tail_len)
 {
-	size_t residue_len = bit_writer_byte_len(w);
+	size_t residue_len = schc_bit_writer_byte_len(w);
 	size_t tail_start = 1 + residue_len;
 	size_t needed = tail_start + tail_len;
 
@@ -265,12 +624,12 @@ static int compress_finish(const struct bit_writer *w, uint8_t *out,
  * @param dst        Destination IPv6 address (16 bytes)
  * @return           0 on success, -1 on buffer overflow
  */
-static int compress_link_local_header(struct bit_writer *w, uint8_t hop_limit,
+static int compress_link_local_header(struct schc_bit_writer *w, uint8_t hop_limit,
 				      const uint8_t *src, const uint8_t *dst)
 {
-	if (bit_writer_write(w, hop_limit, 8) < 0 ||
-	    bit_writer_write128(w, &src[8], 64) < 0 ||
-	    bit_writer_write128(w, &dst[8], 64) < 0) {
+	if (schc_bit_writer_write(w, hop_limit, 8) < 0 ||
+	    schc_bit_writer_write128(w, &src[8], 64) < 0 ||
+	    schc_bit_writer_write128(w, &dst[8], 64) < 0) {
 		return -1;
 	}
 	return 0;
@@ -282,56 +641,69 @@ static int compress_link_local_header(struct bit_writer *w, uint8_t hop_limit,
 static int compress_coap(const uint8_t *packet, size_t pkt_len,
 			 uint8_t *out, size_t out_len, uint8_t rule_id)
 {
-	if (pkt_len < 40 + 8 + 4) {
+	if (pkt_len < IPV6_HDR_LEN + UDP_HDR_LEN + SCHC_COAP_FIXED_LEN) {
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
 
-	uint8_t hop_limit = packet[7];
-	const uint8_t *src = &packet[8];
-	const uint8_t *dst = &packet[24];
-	const uint8_t *udp = &packet[40];
-	uint16_t src_port = ((uint16_t)udp[0] << 8) | udp[1];
-	uint16_t dst_port = ((uint16_t)udp[2] << 8) | udp[3];
-	const uint8_t *coap = &udp[8];
-	uint8_t coap_type = (coap[0] >> 4) & 0x3;
-	uint8_t coap_tkl = coap[0] & 0x0F;
-	uint8_t coap_code = coap[1];
-	uint16_t coap_mid = ((uint16_t)coap[2] << 8) | coap[3];
-	const uint8_t *tail = &coap[4];
-	size_t tail_len = pkt_len - 40 - 8 - 4;
+	uint8_t hop_limit = ipv6_hop_limit(packet);
+	const uint8_t *src = ipv6_src(packet);
+	const uint8_t *dst = ipv6_dst(packet);
+
+	/* Validate addresses match rule to prevent silent corruption. */
+	if (rule_id == SCHC_RULE_LINK_LOCAL_COAP) {
+		if (!is_link_local(src) || !is_link_local(dst)) {
+			return SCHC_ERR_NO_MATCHING_RULE;
+		}
+	} else if (rule_id == SCHC_RULE_GLOBAL_COAP) {
+		if (!is_global(src) || !is_global(dst)) {
+			return SCHC_ERR_NO_MATCHING_RULE;
+		}
+	}
+
+	const uint8_t *udp = ipv6_payload(packet);
+	uint16_t src_port = udp_src_port(udp);
+	uint16_t dst_port = udp_dst_port(udp);
+	const uint8_t *coap = udp_payload(udp);
+	uint8_t type = coap_type(coap);
+	uint8_t tkl = coap_tkl(coap);
+	uint8_t code = coap_code(coap);
+	uint16_t mid = coap_mid(coap);
+	const uint8_t *tail = coap_tail(coap);
+	size_t tail_len = pkt_len - IPV6_HDR_LEN - UDP_HDR_LEN -
+			  SCHC_COAP_FIXED_LEN;
 
 	if (out_len == 0) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 	out[0] = rule_id;
 
-	struct bit_writer w;
-	bit_writer_init(&w, &out[1], out_len - 1);
+	struct schc_bit_writer w;
+	schc_bit_writer_init(&w, &out[1], out_len - 1);
 
-	if (bit_writer_write(&w, hop_limit, 8) < 0) {
+	if (schc_bit_writer_write(&w, hop_limit, 8) < 0) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 
 	if (rule_id == SCHC_RULE_LINK_LOCAL_COAP) {
 		/* Send only IID (64 bits) */
-		if (bit_writer_write128(&w, &src[8], 64) < 0 ||
-		    bit_writer_write128(&w, &dst[8], 64) < 0) {
+		if (schc_bit_writer_write128(&w, &src[8], 64) < 0 ||
+		    schc_bit_writer_write128(&w, &dst[8], 64) < 0) {
 			return SCHC_ERR_BUFFER_TOO_SMALL;
 		}
 	} else {
 		/* Send full 128-bit addresses */
-		if (bit_writer_write128(&w, src, 128) < 0 ||
-		    bit_writer_write128(&w, dst, 128) < 0) {
+		if (schc_bit_writer_write128(&w, src, 128) < 0 ||
+		    schc_bit_writer_write128(&w, dst, 128) < 0) {
 			return SCHC_ERR_BUFFER_TOO_SMALL;
 		}
 	}
 
-	if (bit_writer_write(&w, src_port, 16) < 0 ||
-	    bit_writer_write(&w, dst_port, 16) < 0 ||
-	    bit_writer_write(&w, coap_type, 2) < 0 ||
-	    bit_writer_write(&w, coap_tkl, 4) < 0 ||
-	    bit_writer_write(&w, coap_code, 8) < 0 ||
-	    bit_writer_write(&w, coap_mid, 16) < 0) {
+	if (schc_bit_writer_write(&w, src_port, 16) < 0 ||
+	    schc_bit_writer_write(&w, dst_port, 16) < 0 ||
+	    schc_bit_writer_write(&w, type, 2) < 0 ||
+	    schc_bit_writer_write(&w, tkl, 4) < 0 ||
+	    schc_bit_writer_write(&w, code, 8) < 0 ||
+	    schc_bit_writer_write(&w, mid, 16) < 0) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 
@@ -344,29 +716,32 @@ static int compress_coap(const uint8_t *packet, size_t pkt_len,
 static int compress_icmpv6_echo(const uint8_t *packet, size_t pkt_len,
 				uint8_t *out, size_t out_len)
 {
-	if (pkt_len < 40 + 8) {
+	if (pkt_len < IPV6_HDR_LEN + SCHC_ICMPV6_ECHO_TAIL_OFFSET) {
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
 
-	uint8_t hop_limit = packet[7];
-	const uint8_t *src = &packet[8];
-	const uint8_t *dst = &packet[24];
-	const uint8_t *icmp = &packet[40];
-	uint8_t icmp_type = icmp[0];
-	uint16_t icmp_id = ((uint16_t)icmp[4] << 8) | icmp[5];
-	uint16_t icmp_seq = ((uint16_t)icmp[6] << 8) | icmp[7];
-	const uint8_t *tail = &icmp[8];
-	size_t tail_len = pkt_len - 40 - 8;
+	uint8_t hop_limit = ipv6_hop_limit(packet);
+	const uint8_t *src = ipv6_src(packet);
+	const uint8_t *dst = ipv6_dst(packet);
+	const uint8_t *icmp = ipv6_payload(packet);
+	uint8_t type = icmpv6_type(icmp);
+	uint16_t id = icmpv6_echo_id(icmp);
+	uint16_t seq = icmpv6_echo_seq(icmp);
+	const uint8_t *tail = icmpv6_echo_tail(icmp);
+	size_t tail_len = pkt_len - IPV6_HDR_LEN - SCHC_ICMPV6_ECHO_TAIL_OFFSET;
 
+	if (out_len < 1) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;
+	}
 	out[0] = SCHC_RULE_ICMPV6_ECHO;
 
-	struct bit_writer w;
-	bit_writer_init(&w, &out[1], out_len - 1);
+	struct schc_bit_writer w;
+	schc_bit_writer_init(&w, &out[1], out_len - 1);
 
 	if (compress_link_local_header(&w, hop_limit, src, dst) < 0 ||
-	    bit_writer_write(&w, icmp_type, 8) < 0 ||
-	    bit_writer_write(&w, icmp_id, 16) < 0 ||
-	    bit_writer_write(&w, icmp_seq, 16) < 0) {
+	    schc_bit_writer_write(&w, type, 8) < 0 ||
+	    schc_bit_writer_write(&w, id, 16) < 0 ||
+	    schc_bit_writer_write(&w, seq, 16) < 0) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 
@@ -379,36 +754,40 @@ static int compress_icmpv6_echo(const uint8_t *packet, size_t pkt_len,
 static int compress_rpl_dio(const uint8_t *packet, size_t pkt_len,
 			    uint8_t *out, size_t out_len)
 {
-	if (pkt_len < 40 + 4 + 24) {
+	if (pkt_len < IPV6_HDR_LEN + SCHC_ICMPV6_BODY_OFFSET +
+		      SCHC_RPL_DIO_BASE_LEN) {
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
 
-	uint8_t hop_limit = packet[7];
-	const uint8_t *src = &packet[8];
-	const uint8_t *dst = &packet[24];
-	const uint8_t *rpl = &packet[44]; /* skip ICMPv6 type/code/checksum (4B) */
-	uint8_t instance = rpl[0];
-	uint8_t version = rpl[1];
-	uint16_t rank = ((uint16_t)rpl[2] << 8) | rpl[3];
-	uint8_t gmop = rpl[4];
-	uint8_t dtsn = rpl[5];
-	/* flags (rpl[6]) and reserved (rpl[7]) are NOT_SENT */
-	const uint8_t *dodagid = &rpl[8];
-	const uint8_t *tail = &rpl[24];
-	size_t tail_len = pkt_len - 40 - 4 - 24;
+	uint8_t hop_limit = ipv6_hop_limit(packet);
+	const uint8_t *src = ipv6_src(packet);
+	const uint8_t *dst = ipv6_dst(packet);
+	const uint8_t *rpl = icmpv6_body(ipv6_payload(packet));
+	uint8_t instance = rpl_instance(rpl);
+	uint8_t version = rpl_dio_version(rpl);
+	uint16_t rank = rpl_dio_rank(rpl);
+	uint8_t gmop = rpl_dio_gmop(rpl);
+	uint8_t dtsn = rpl_dio_dtsn(rpl);
+	const uint8_t *dodagid = rpl_dio_dodagid(rpl);
+	const uint8_t *tail = rpl_dio_tail(rpl);
+	size_t tail_len = pkt_len - IPV6_HDR_LEN - SCHC_ICMPV6_BODY_OFFSET -
+			  SCHC_RPL_DIO_BASE_LEN;
 
+	if (out_len < 1) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;
+	}
 	out[0] = SCHC_RULE_RPL_DIO;
 
-	struct bit_writer w;
-	bit_writer_init(&w, &out[1], out_len - 1);
+	struct schc_bit_writer w;
+	schc_bit_writer_init(&w, &out[1], out_len - 1);
 
 	if (compress_link_local_header(&w, hop_limit, src, dst) < 0 ||
-	    bit_writer_write(&w, instance, 8) < 0 ||
-	    bit_writer_write(&w, version, 8) < 0 ||
-	    bit_writer_write(&w, rank, 16) < 0 ||
-	    bit_writer_write(&w, gmop, 8) < 0 ||
-	    bit_writer_write(&w, dtsn, 8) < 0 ||
-	    bit_writer_write128(&w, dodagid, 128) < 0) {
+	    schc_bit_writer_write(&w, instance, 8) < 0 ||
+	    schc_bit_writer_write(&w, version, 8) < 0 ||
+	    schc_bit_writer_write(&w, rank, 16) < 0 ||
+	    schc_bit_writer_write(&w, gmop, 8) < 0 ||
+	    schc_bit_writer_write(&w, dtsn, 8) < 0 ||
+	    schc_bit_writer_write128(&w, dodagid, 128) < 0) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 
@@ -421,32 +800,36 @@ static int compress_rpl_dio(const uint8_t *packet, size_t pkt_len,
 static int compress_rpl_dao(const uint8_t *packet, size_t pkt_len,
 			    uint8_t *out, size_t out_len)
 {
-	if (pkt_len < 40 + 4 + 20) {
+	if (pkt_len < IPV6_HDR_LEN + SCHC_ICMPV6_BODY_OFFSET +
+		      SCHC_RPL_DAO_BASE_WITH_DODAGID_LEN) {
 		return SCHC_ERR_NO_MATCHING_RULE;
 	}
 
-	uint8_t hop_limit = packet[7];
-	const uint8_t *src = &packet[8];
-	const uint8_t *dst = &packet[24];
-	const uint8_t *rpl = &packet[44];
-	uint8_t instance = rpl[0];
-	uint8_t kd_flags = rpl[1];
-	/* reserved (rpl[2]) is NOT_SENT */
-	uint8_t seq = rpl[3];
-	const uint8_t *dodagid = &rpl[4];
-	const uint8_t *tail = &rpl[20];
-	size_t tail_len = pkt_len - 40 - 4 - 20;
+	uint8_t hop_limit = ipv6_hop_limit(packet);
+	const uint8_t *src = ipv6_src(packet);
+	const uint8_t *dst = ipv6_dst(packet);
+	const uint8_t *rpl = icmpv6_body(ipv6_payload(packet));
+	uint8_t instance = rpl_instance(rpl);
+	uint8_t kd_flags = rpl_dao_kd_flags(rpl);
+	uint8_t seq = rpl_dao_sequence(rpl);
+	const uint8_t *dodagid = rpl_dao_dodagid(rpl);
+	const uint8_t *tail = rpl_dao_tail(rpl);
+	size_t tail_len = pkt_len - IPV6_HDR_LEN - SCHC_ICMPV6_BODY_OFFSET -
+			  SCHC_RPL_DAO_BASE_WITH_DODAGID_LEN;
 
+	if (out_len < 1) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;
+	}
 	out[0] = SCHC_RULE_RPL_DAO;
 
-	struct bit_writer w;
-	bit_writer_init(&w, &out[1], out_len - 1);
+	struct schc_bit_writer w;
+	schc_bit_writer_init(&w, &out[1], out_len - 1);
 
 	if (compress_link_local_header(&w, hop_limit, src, dst) < 0 ||
-	    bit_writer_write(&w, instance, 8) < 0 ||
-	    bit_writer_write(&w, kd_flags, 8) < 0 ||
-	    bit_writer_write(&w, seq, 8) < 0 ||
-	    bit_writer_write128(&w, dodagid, 128) < 0) {
+	    schc_bit_writer_write(&w, instance, 8) < 0 ||
+	    schc_bit_writer_write(&w, kd_flags, 8) < 0 ||
+	    schc_bit_writer_write(&w, seq, 8) < 0 ||
+	    schc_bit_writer_write128(&w, dodagid, 128) < 0) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 
@@ -468,11 +851,11 @@ static int decompress_coap(const uint8_t *data, size_t data_len,
 		return SCHC_ERR_TOO_SHORT;
 	}
 
-	struct bit_reader r;
-	bit_reader_init(&r, &data[1], data_len - 1);
+	struct schc_bit_reader r;
+	schc_bit_reader_init(&r, &data[1], data_len - 1);
 
 	uint64_t hop_limit;
-	if (bit_reader_read(&r, 8, &hop_limit) < 0) {
+	if (schc_bit_reader_read(&r, 8, &hop_limit) < 0) {
 		return SCHC_ERR_TOO_SHORT;
 	}
 
@@ -486,86 +869,59 @@ static int decompress_coap(const uint8_t *data, size_t data_len,
 		src[1] = 0x80;
 		dst[0] = 0xFE;
 		dst[1] = 0x80;
-		if (bit_reader_read_bytes(&r, 64, &src[8], 8) < 0 ||
-		    bit_reader_read_bytes(&r, 64, &dst[8], 8) < 0) {
+		if (schc_bit_reader_read_bytes(&r, 64, &src[8], 8) < 0 ||
+		    schc_bit_reader_read_bytes(&r, 64, &dst[8], 8) < 0) {
 			return SCHC_ERR_TOO_SHORT;
 		}
 	} else {
-		if (bit_reader_read_bytes(&r, 128, src, 16) < 0 ||
-		    bit_reader_read_bytes(&r, 128, dst, 16) < 0) {
+		if (schc_bit_reader_read_bytes(&r, 128, src, 16) < 0 ||
+		    schc_bit_reader_read_bytes(&r, 128, dst, 16) < 0) {
 			return SCHC_ERR_TOO_SHORT;
 		}
 	}
 
 	uint64_t src_port, dst_port, coap_type, coap_tkl, coap_code, coap_mid;
-	if (bit_reader_read(&r, 16, &src_port) < 0 ||
-	    bit_reader_read(&r, 16, &dst_port) < 0 ||
-	    bit_reader_read(&r, 2, &coap_type) < 0 ||
-	    bit_reader_read(&r, 4, &coap_tkl) < 0 ||
-	    bit_reader_read(&r, 8, &coap_code) < 0 ||
-	    bit_reader_read(&r, 16, &coap_mid) < 0) {
+	if (schc_bit_reader_read(&r, 16, &src_port) < 0 ||
+	    schc_bit_reader_read(&r, 16, &dst_port) < 0 ||
+	    schc_bit_reader_read(&r, 2, &coap_type) < 0 ||
+	    schc_bit_reader_read(&r, 4, &coap_tkl) < 0 ||
+	    schc_bit_reader_read(&r, 8, &coap_code) < 0 ||
+	    schc_bit_reader_read(&r, 16, &coap_mid) < 0) {
 		return SCHC_ERR_TOO_SHORT;
 	}
 
-	size_t residue_end = bit_reader_residue_byte_end(&r);
+	size_t residue_end = schc_bit_reader_residue_byte_end(&r);
 	const uint8_t *tail = &data[1 + residue_end];
 	size_t tail_len = data_len - 1 - residue_end;
 
-	/* Build CoAP header: ver(2)=1 | type(2) | tkl(4), code, mid[2] */
-	uint8_t coap_b0 = (1 << 6) | ((coap_type & 0x3) << 4) | (coap_tkl & 0x0F);
-	size_t coap_len = 4 + tail_len;
-	uint16_t udp_len = 8 + coap_len;
-
-	/* Build CoAP for checksum computation */
-	uint8_t coap_buf[512];
-
-	/* Ensure tail fits in working buffer */
-	if (tail_len > sizeof(coap_buf) - 4) {
+	size_t coap_len = SCHC_COAP_FIXED_LEN + tail_len;
+	if (coap_len > UINT16_MAX - UDP_HDR_LEN) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
-
-	coap_buf[0] = coap_b0;
-	coap_buf[1] = (uint8_t)coap_code;
-	coap_buf[2] = (uint8_t)(coap_mid >> 8);
-	coap_buf[3] = (uint8_t)coap_mid;
-	if (tail_len > 0) {
-		memcpy(&coap_buf[4], tail, tail_len);
-	}
-
-	uint16_t udp_cksum = udp_checksum(src, dst, (uint16_t)src_port,
-					  (uint16_t)dst_port, coap_buf, coap_len);
-
-	uint16_t ipv6_payload_len = udp_len;
-	size_t total = 40 + 8 + coap_len;
+	uint16_t udp_len = UDP_HDR_LEN + coap_len;
+	uint16_t ipv6_len = udp_len;
+	size_t total = IPV6_HDR_LEN + UDP_HDR_LEN + coap_len;
 
 	if (total > out_len) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 
-	/* IPv6 header */
-	out[0] = 0x60;
-	out[1] = 0;
-	out[2] = 0;
-	out[3] = 0;
-	out[4] = (uint8_t)(ipv6_payload_len >> 8);
-	out[5] = (uint8_t)ipv6_payload_len;
-	out[6] = 17; /* UDP */
-	out[7] = (uint8_t)hop_limit;
-	memcpy(&out[8], src, 16);
-	memcpy(&out[24], dst, 16);
+	ipv6_write_base(out, ipv6_len, IPV6_NH_UDP, (uint8_t)hop_limit, src, dst);
+	uint8_t *udp = ipv6_payload_mut(out);
+	udp_write_header(udp, (uint16_t)src_port, (uint16_t)dst_port, udp_len, 0);
+	uint8_t *coap = udp_payload_mut(udp);
+	coap_write_fixed(coap, (uint8_t)coap_type, (uint8_t)coap_tkl,
+			 (uint8_t)coap_code, (uint16_t)coap_mid);
+	if (tail_len > 0) {
+		memcpy(coap_tail_mut(coap), tail, tail_len);
+	}
 
-	/* UDP header */
-	out[40] = (uint8_t)(src_port >> 8);
-	out[41] = (uint8_t)src_port;
-	out[42] = (uint8_t)(dst_port >> 8);
-	out[43] = (uint8_t)dst_port;
-	out[44] = (uint8_t)(udp_len >> 8);
-	out[45] = (uint8_t)udp_len;
-	out[46] = (uint8_t)(udp_cksum >> 8);
-	out[47] = (uint8_t)udp_cksum;
-
-	/* CoAP */
-	memcpy(&out[48], coap_buf, coap_len);
+	uint16_t udp_cksum;
+	if (udp_checksum(src, dst, (uint16_t)src_port, (uint16_t)dst_port,
+			 coap, coap_len, &udp_cksum) < 0) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;  /* Payload too large for UDP */
+	}
+	udp_write_checksum(udp, udp_cksum);
 
 	return (int)total;
 }
@@ -581,13 +937,13 @@ static int decompress_icmpv6_echo(const uint8_t *data, size_t data_len,
 		return SCHC_ERR_TOO_SHORT;
 	}
 
-	struct bit_reader r;
-	bit_reader_init(&r, &data[1], data_len - 1);
+	struct schc_bit_reader r;
+	schc_bit_reader_init(&r, &data[1], data_len - 1);
 
 	uint64_t hop_limit;
 	uint8_t src[16], dst[16];
 
-	if (bit_reader_read(&r, 8, &hop_limit) < 0) {
+	if (schc_bit_reader_read(&r, 8, &hop_limit) < 0) {
 		return SCHC_ERR_TOO_SHORT;
 	}
 
@@ -598,75 +954,43 @@ static int decompress_icmpv6_echo(const uint8_t *data, size_t data_len,
 	dst[0] = 0xFE;
 	dst[1] = 0x80;
 
-	if (bit_reader_read_bytes(&r, 64, &src[8], 8) < 0 ||
-	    bit_reader_read_bytes(&r, 64, &dst[8], 8) < 0) {
+	if (schc_bit_reader_read_bytes(&r, 64, &src[8], 8) < 0 ||
+	    schc_bit_reader_read_bytes(&r, 64, &dst[8], 8) < 0) {
 		return SCHC_ERR_TOO_SHORT;
 	}
 
 	uint64_t icmp_type, icmp_id, icmp_seq;
-	if (bit_reader_read(&r, 8, &icmp_type) < 0 ||
-	    bit_reader_read(&r, 16, &icmp_id) < 0 ||
-	    bit_reader_read(&r, 16, &icmp_seq) < 0) {
+	if (schc_bit_reader_read(&r, 8, &icmp_type) < 0 ||
+	    schc_bit_reader_read(&r, 16, &icmp_id) < 0 ||
+	    schc_bit_reader_read(&r, 16, &icmp_seq) < 0) {
 		return SCHC_ERR_TOO_SHORT;
 	}
 
-	size_t residue_end = bit_reader_residue_byte_end(&r);
+	size_t residue_end = schc_bit_reader_residue_byte_end(&r);
 	const uint8_t *tail = &data[1 + residue_end];
 	size_t tail_len = data_len - 1 - residue_end;
 
-	size_t icmp_len = 8 + tail_len;
-	size_t total = 40 + icmp_len;
+	size_t icmp_len = SCHC_ICMPV6_ECHO_TAIL_OFFSET + tail_len;
+	if (icmp_len > UINT16_MAX) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;
+	}
+	size_t total = IPV6_HDR_LEN + icmp_len;
 
 	if (total > out_len) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 
-	/* Build ICMPv6 with zero checksum for computation */
-	uint8_t icmp_buf[512];
-
-	/* Ensure tail fits in working buffer */
-	if (tail_len > sizeof(icmp_buf) - 8) {
-		return SCHC_ERR_BUFFER_TOO_SMALL;
-	}
-
-	icmp_buf[0] = (uint8_t)icmp_type;
-	icmp_buf[1] = 0; /* code NOT_SENT = 0 */
-	icmp_buf[2] = 0; /* checksum placeholder */
-	icmp_buf[3] = 0;
-	icmp_buf[4] = (uint8_t)(icmp_id >> 8);
-	icmp_buf[5] = (uint8_t)icmp_id;
-	icmp_buf[6] = (uint8_t)(icmp_seq >> 8);
-	icmp_buf[7] = (uint8_t)icmp_seq;
+	ipv6_write_base(out, (uint16_t)icmp_len, IPV6_NH_ICMPV6,
+			(uint8_t)hop_limit, src, dst);
+	uint8_t *icmp = ipv6_payload_mut(out);
+	icmpv6_write_header(icmp, (uint8_t)icmp_type, 0, 0);
+	icmpv6_echo_write_body(icmp, (uint16_t)icmp_id, (uint16_t)icmp_seq);
 	if (tail_len > 0) {
-		memcpy(&icmp_buf[8], tail, tail_len);
+		memcpy(icmpv6_echo_tail_mut(icmp), tail, tail_len);
 	}
 
-	uint16_t cksum = icmpv6_checksum(src, dst, icmp_buf, icmp_len);
-
-	/* IPv6 header */
-	out[0] = 0x60;
-	out[1] = 0;
-	out[2] = 0;
-	out[3] = 0;
-	out[4] = (uint8_t)(icmp_len >> 8);
-	out[5] = (uint8_t)icmp_len;
-	out[6] = 58; /* ICMPv6 */
-	out[7] = (uint8_t)hop_limit;
-	memcpy(&out[8], src, 16);
-	memcpy(&out[24], dst, 16);
-
-	/* ICMPv6 */
-	out[40] = (uint8_t)icmp_type;
-	out[41] = 0;
-	out[42] = (uint8_t)(cksum >> 8);
-	out[43] = (uint8_t)cksum;
-	out[44] = (uint8_t)(icmp_id >> 8);
-	out[45] = (uint8_t)icmp_id;
-	out[46] = (uint8_t)(icmp_seq >> 8);
-	out[47] = (uint8_t)icmp_seq;
-	if (tail_len > 0) {
-		memcpy(&out[48], tail, tail_len);
-	}
+	uint16_t cksum = icmpv6_checksum(src, dst, icmp, icmp_len);
+	icmpv6_write_checksum(icmp, cksum);
 
 	return (int)total;
 }
@@ -674,13 +998,21 @@ static int decompress_icmpv6_echo(const uint8_t *data, size_t data_len,
 static int decompress_rpl_dio(const uint8_t *data, size_t data_len,
 			      uint8_t *out, size_t out_len)
 {
-	struct bit_reader r;
-	bit_reader_init(&r, &data[1], data_len - 1);
+	/*
+	 * Minimum residue size (excluding rule ID byte):
+	 * 8 + 64 + 64 + 8 + 8 + 16 + 8 + 8 + 128 = 312 bits = 39 bytes
+	 */
+	if (data_len < 1 + 39) {
+		return SCHC_ERR_TOO_SHORT;
+	}
+
+	struct schc_bit_reader r;
+	schc_bit_reader_init(&r, &data[1], data_len - 1);
 
 	uint64_t hop_limit;
 	uint8_t src[16], dst[16];
 
-	if (bit_reader_read(&r, 8, &hop_limit) < 0) {
+	if (schc_bit_reader_read(&r, 8, &hop_limit) < 0) {
 		return SCHC_ERR_TOO_SHORT;
 	}
 
@@ -691,78 +1023,52 @@ static int decompress_rpl_dio(const uint8_t *data, size_t data_len,
 	dst[0] = 0xFE;
 	dst[1] = 0x80;
 
-	if (bit_reader_read_bytes(&r, 64, &src[8], 8) < 0 ||
-	    bit_reader_read_bytes(&r, 64, &dst[8], 8) < 0) {
+	if (schc_bit_reader_read_bytes(&r, 64, &src[8], 8) < 0 ||
+	    schc_bit_reader_read_bytes(&r, 64, &dst[8], 8) < 0) {
 		return SCHC_ERR_TOO_SHORT;
 	}
 
 	uint64_t instance, version, rank, gmop, dtsn;
 	uint8_t dodagid[16];
 
-	if (bit_reader_read(&r, 8, &instance) < 0 ||
-	    bit_reader_read(&r, 8, &version) < 0 ||
-	    bit_reader_read(&r, 16, &rank) < 0 ||
-	    bit_reader_read(&r, 8, &gmop) < 0 ||
-	    bit_reader_read(&r, 8, &dtsn) < 0 ||
-	    bit_reader_read_bytes(&r, 128, dodagid, 16) < 0) {
+	if (schc_bit_reader_read(&r, 8, &instance) < 0 ||
+	    schc_bit_reader_read(&r, 8, &version) < 0 ||
+	    schc_bit_reader_read(&r, 16, &rank) < 0 ||
+	    schc_bit_reader_read(&r, 8, &gmop) < 0 ||
+	    schc_bit_reader_read(&r, 8, &dtsn) < 0 ||
+	    schc_bit_reader_read_bytes(&r, 128, dodagid, 16) < 0) {
 		return SCHC_ERR_TOO_SHORT;
 	}
 
-	size_t residue_end = bit_reader_residue_byte_end(&r);
+	size_t residue_end = schc_bit_reader_residue_byte_end(&r);
 	const uint8_t *tail = &data[1 + residue_end];
 	size_t tail_len = data_len - 1 - residue_end;
 
-	/* RPL DIO base (24 bytes) + tail */
-	size_t rpl_body_len = 24 + tail_len;
-	size_t icmp_len = 4 + rpl_body_len; /* type+code+cksum + body */
-	size_t total = 40 + icmp_len;
+	size_t rpl_body_len = SCHC_RPL_DIO_BASE_LEN + tail_len;
+	size_t icmp_len = SCHC_ICMPV6_BODY_OFFSET + rpl_body_len;
+	if (icmp_len > UINT16_MAX) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;
+	}
+	size_t total = IPV6_HDR_LEN + icmp_len;
 
 	if (total > out_len) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 
-	uint8_t icmp_buf[512];
-
-	/* Ensure tail fits in working buffer (28 = DIO header) */
-	if (tail_len > sizeof(icmp_buf) - 28) {
-		return SCHC_ERR_BUFFER_TOO_SMALL;
-	}
-
-	icmp_buf[0] = 155; /* RPL */
-	icmp_buf[1] = 1;   /* DIO code */
-	icmp_buf[2] = 0;   /* checksum placeholder */
-	icmp_buf[3] = 0;
-	icmp_buf[4] = (uint8_t)instance;
-	icmp_buf[5] = (uint8_t)version;
-	icmp_buf[6] = (uint8_t)(rank >> 8);
-	icmp_buf[7] = (uint8_t)rank;
-	icmp_buf[8] = (uint8_t)gmop;
-	icmp_buf[9] = (uint8_t)dtsn;
-	icmp_buf[10] = 0; /* flags (NOT_SENT = 0) */
-	icmp_buf[11] = 0; /* reserved (NOT_SENT = 0) */
-	memcpy(&icmp_buf[12], dodagid, 16);
+	ipv6_write_base(out, (uint16_t)icmp_len, IPV6_NH_ICMPV6,
+			(uint8_t)hop_limit, src, dst);
+	uint8_t *icmp = ipv6_payload_mut(out);
+	icmpv6_write_header(icmp, ICMPV6_TYPE_RPL, ICMPV6_CODE_RPL_DIO, 0);
+	uint8_t *rpl = icmpv6_body_mut(icmp);
+	rpl_dio_write_base(rpl, (uint8_t)instance, (uint8_t)version,
+			   (uint16_t)rank, (uint8_t)gmop, (uint8_t)dtsn,
+			   dodagid);
 	if (tail_len > 0) {
-		memcpy(&icmp_buf[28], tail, tail_len);
+		memcpy(rpl_dio_tail_mut(rpl), tail, tail_len);
 	}
 
-	uint16_t cksum = icmpv6_checksum(src, dst, icmp_buf, icmp_len);
-
-	/* IPv6 header */
-	out[0] = 0x60;
-	out[1] = 0;
-	out[2] = 0;
-	out[3] = 0;
-	out[4] = (uint8_t)(icmp_len >> 8);
-	out[5] = (uint8_t)icmp_len;
-	out[6] = 58; /* ICMPv6 */
-	out[7] = (uint8_t)hop_limit;
-	memcpy(&out[8], src, 16);
-	memcpy(&out[24], dst, 16);
-
-	/* ICMPv6 / RPL DIO */
-	memcpy(&out[40], icmp_buf, icmp_len);
-	out[42] = (uint8_t)(cksum >> 8);
-	out[43] = (uint8_t)cksum;
+	uint16_t cksum = icmpv6_checksum(src, dst, icmp, icmp_len);
+	icmpv6_write_checksum(icmp, cksum);
 
 	return (int)total;
 }
@@ -770,13 +1076,21 @@ static int decompress_rpl_dio(const uint8_t *data, size_t data_len,
 static int decompress_rpl_dao(const uint8_t *data, size_t data_len,
 			      uint8_t *out, size_t out_len)
 {
-	struct bit_reader r;
-	bit_reader_init(&r, &data[1], data_len - 1);
+	/*
+	 * Minimum residue size (excluding rule ID byte):
+	 * 8 + 64 + 64 + 8 + 8 + 8 + 128 = 288 bits = 36 bytes
+	 */
+	if (data_len < 1 + 36) {
+		return SCHC_ERR_TOO_SHORT;
+	}
+
+	struct schc_bit_reader r;
+	schc_bit_reader_init(&r, &data[1], data_len - 1);
 
 	uint64_t hop_limit;
 	uint8_t src[16], dst[16];
 
-	if (bit_reader_read(&r, 8, &hop_limit) < 0) {
+	if (schc_bit_reader_read(&r, 8, &hop_limit) < 0) {
 		return SCHC_ERR_TOO_SHORT;
 	}
 
@@ -787,74 +1101,217 @@ static int decompress_rpl_dao(const uint8_t *data, size_t data_len,
 	dst[0] = 0xFE;
 	dst[1] = 0x80;
 
-	if (bit_reader_read_bytes(&r, 64, &src[8], 8) < 0 ||
-	    bit_reader_read_bytes(&r, 64, &dst[8], 8) < 0) {
+	if (schc_bit_reader_read_bytes(&r, 64, &src[8], 8) < 0 ||
+	    schc_bit_reader_read_bytes(&r, 64, &dst[8], 8) < 0) {
 		return SCHC_ERR_TOO_SHORT;
 	}
 
 	uint64_t instance, kd_flags, seq;
 	uint8_t dodagid[16];
 
-	if (bit_reader_read(&r, 8, &instance) < 0 ||
-	    bit_reader_read(&r, 8, &kd_flags) < 0 ||
-	    bit_reader_read(&r, 8, &seq) < 0 ||
-	    bit_reader_read_bytes(&r, 128, dodagid, 16) < 0) {
+	if (schc_bit_reader_read(&r, 8, &instance) < 0 ||
+	    schc_bit_reader_read(&r, 8, &kd_flags) < 0 ||
+	    schc_bit_reader_read(&r, 8, &seq) < 0 ||
+	    schc_bit_reader_read_bytes(&r, 128, dodagid, 16) < 0) {
 		return SCHC_ERR_TOO_SHORT;
 	}
 
-	size_t residue_end = bit_reader_residue_byte_end(&r);
+	size_t residue_end = schc_bit_reader_residue_byte_end(&r);
 	const uint8_t *tail = &data[1 + residue_end];
 	size_t tail_len = data_len - 1 - residue_end;
 
-	size_t rpl_body_len = 20 + tail_len;
-	size_t icmp_len = 4 + rpl_body_len;
-	size_t total = 40 + icmp_len;
+	size_t rpl_body_len = SCHC_RPL_DAO_BASE_WITH_DODAGID_LEN + tail_len;
+	size_t icmp_len = SCHC_ICMPV6_BODY_OFFSET + rpl_body_len;
+	if (icmp_len > UINT16_MAX) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;
+	}
+	size_t total = IPV6_HDR_LEN + icmp_len;
 
 	if (total > out_len) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 
-	uint8_t icmp_buf[512];
-
-	/* Ensure tail fits in working buffer (24 = DAO header) */
-	if (tail_len > sizeof(icmp_buf) - 24) {
-		return SCHC_ERR_BUFFER_TOO_SMALL;
-	}
-
-	icmp_buf[0] = 155; /* RPL */
-	icmp_buf[1] = 2;   /* DAO code */
-	icmp_buf[2] = 0;   /* checksum placeholder */
-	icmp_buf[3] = 0;
-	icmp_buf[4] = (uint8_t)instance;
-	icmp_buf[5] = (uint8_t)kd_flags;
-	icmp_buf[6] = 0; /* reserved (NOT_SENT = 0) */
-	icmp_buf[7] = (uint8_t)seq;
-	memcpy(&icmp_buf[8], dodagid, 16);
+	ipv6_write_base(out, (uint16_t)icmp_len, IPV6_NH_ICMPV6,
+			(uint8_t)hop_limit, src, dst);
+	uint8_t *icmp = ipv6_payload_mut(out);
+	icmpv6_write_header(icmp, ICMPV6_TYPE_RPL, ICMPV6_CODE_RPL_DAO, 0);
+	uint8_t *rpl = icmpv6_body_mut(icmp);
+	rpl_dao_write_base(rpl, (uint8_t)instance, (uint8_t)kd_flags,
+			   (uint8_t)seq, dodagid);
 	if (tail_len > 0) {
-		memcpy(&icmp_buf[24], tail, tail_len);
+		memcpy(rpl_dao_tail_mut(rpl), tail, tail_len);
 	}
 
-	uint16_t cksum = icmpv6_checksum(src, dst, icmp_buf, icmp_len);
-
-	/* IPv6 header */
-	out[0] = 0x60;
-	out[1] = 0;
-	out[2] = 0;
-	out[3] = 0;
-	out[4] = (uint8_t)(icmp_len >> 8);
-	out[5] = (uint8_t)icmp_len;
-	out[6] = 58;
-	out[7] = (uint8_t)hop_limit;
-	memcpy(&out[8], src, 16);
-	memcpy(&out[24], dst, 16);
-
-	/* ICMPv6 / RPL DAO */
-	memcpy(&out[40], icmp_buf, icmp_len);
-	out[42] = (uint8_t)(cksum >> 8);
-	out[43] = (uint8_t)cksum;
+	uint16_t cksum = icmpv6_checksum(src, dst, icmp, icmp_len);
+	icmpv6_write_checksum(icmp, cksum);
 
 	return (int)total;
 }
+
+static int lichen_rule_compress_coap(const struct schc_rule *rule,
+				     const uint8_t *packet, size_t pkt_len,
+				     uint8_t *out, size_t out_len)
+{
+	if (pkt_len < IPV6_HDR_LEN || ipv6_version(packet) != 6 ||
+	    ipv6_next_header(packet) != IPV6_NH_UDP) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	return compress_coap(packet, pkt_len, out, out_len, rule->rule_id);
+}
+
+static int lichen_rule_compress_icmpv6_echo(const struct schc_rule *rule,
+					    const uint8_t *packet, size_t pkt_len,
+					    uint8_t *out, size_t out_len)
+{
+	(void)rule;
+
+	if (pkt_len < IPV6_HDR_LEN + SCHC_ICMPV6_ECHO_TAIL_OFFSET ||
+	    ipv6_version(packet) != 6 ||
+	    ipv6_next_header(packet) != IPV6_NH_ICMPV6) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	const uint8_t *src = ipv6_src(packet);
+	const uint8_t *dst = ipv6_dst(packet);
+	const uint8_t *icmp = ipv6_payload(packet);
+	uint8_t type = icmpv6_type(icmp);
+
+	if ((type != ICMPV6_TYPE_ECHO_REQUEST &&
+	     type != ICMPV6_TYPE_ECHO_REPLY) ||
+	    icmpv6_code(icmp) != 0 ||
+	    !is_link_local(src) || !is_link_local(dst)) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	return compress_icmpv6_echo(packet, pkt_len, out, out_len);
+}
+
+static int lichen_rule_compress_rpl_dio(const struct schc_rule *rule,
+					const uint8_t *packet, size_t pkt_len,
+					uint8_t *out, size_t out_len)
+{
+	(void)rule;
+
+	if (pkt_len < IPV6_HDR_LEN + SCHC_ICMPV6_BODY_OFFSET +
+		      SCHC_RPL_DIO_BASE_LEN ||
+	    ipv6_version(packet) != 6 ||
+	    ipv6_next_header(packet) != IPV6_NH_ICMPV6) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	const uint8_t *src = ipv6_src(packet);
+	const uint8_t *dst = ipv6_dst(packet);
+	const uint8_t *icmp = ipv6_payload(packet);
+
+	if (icmpv6_type(icmp) != ICMPV6_TYPE_RPL ||
+	    icmpv6_code(icmp) != ICMPV6_CODE_RPL_DIO ||
+	    !is_link_local(src) || !is_link_local(dst)) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	return compress_rpl_dio(packet, pkt_len, out, out_len);
+}
+
+static int lichen_rule_compress_rpl_dao(const struct schc_rule *rule,
+					const uint8_t *packet, size_t pkt_len,
+					uint8_t *out, size_t out_len)
+{
+	(void)rule;
+
+	if (pkt_len < IPV6_HDR_LEN + SCHC_ICMPV6_BODY_OFFSET +
+		      SCHC_RPL_DAO_BASE_WITH_DODAGID_LEN ||
+	    ipv6_version(packet) != 6 ||
+	    ipv6_next_header(packet) != IPV6_NH_ICMPV6) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	const uint8_t *src = ipv6_src(packet);
+	const uint8_t *dst = ipv6_dst(packet);
+	const uint8_t *icmp = ipv6_payload(packet);
+
+	if (icmpv6_type(icmp) != ICMPV6_TYPE_RPL ||
+	    icmpv6_code(icmp) != ICMPV6_CODE_RPL_DAO ||
+	    !is_link_local(src) || !is_link_local(dst)) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	uint8_t kd_flags = rpl_dao_kd_flags(icmpv6_body(icmp));
+	if ((kd_flags & 0x40) == 0) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	return compress_rpl_dao(packet, pkt_len, out, out_len);
+}
+
+static int lichen_rule_decompress_coap(const struct schc_rule *rule,
+				       const uint8_t *data, size_t data_len,
+				       uint8_t *out, size_t out_len)
+{
+	return decompress_coap(data, data_len, out, out_len, rule->rule_id);
+}
+
+static int lichen_rule_decompress_icmpv6_echo(const struct schc_rule *rule,
+					      const uint8_t *data, size_t data_len,
+					      uint8_t *out, size_t out_len)
+{
+	(void)rule;
+
+	return decompress_icmpv6_echo(data, data_len, out, out_len);
+}
+
+static int lichen_rule_decompress_rpl_dio(const struct schc_rule *rule,
+					  const uint8_t *data, size_t data_len,
+					  uint8_t *out, size_t out_len)
+{
+	(void)rule;
+
+	return decompress_rpl_dio(data, data_len, out, out_len);
+}
+
+static int lichen_rule_decompress_rpl_dao(const struct schc_rule *rule,
+					  const uint8_t *data, size_t data_len,
+					  uint8_t *out, size_t out_len)
+{
+	(void)rule;
+
+	return decompress_rpl_dao(data, data_len, out, out_len);
+}
+
+static const struct schc_rule lichen_schc_rules[] = {
+	{
+		.rule_id = SCHC_RULE_LINK_LOCAL_COAP,
+		.compress = lichen_rule_compress_coap,
+		.decompress = lichen_rule_decompress_coap,
+	},
+	{
+		.rule_id = SCHC_RULE_GLOBAL_COAP,
+		.compress = lichen_rule_compress_coap,
+		.decompress = lichen_rule_decompress_coap,
+	},
+	{
+		.rule_id = SCHC_RULE_ICMPV6_ECHO,
+		.compress = lichen_rule_compress_icmpv6_echo,
+		.decompress = lichen_rule_decompress_icmpv6_echo,
+	},
+	{
+		.rule_id = SCHC_RULE_RPL_DIO,
+		.compress = lichen_rule_compress_rpl_dio,
+		.decompress = lichen_rule_decompress_rpl_dio,
+	},
+	{
+		.rule_id = SCHC_RULE_RPL_DAO,
+		.compress = lichen_rule_compress_rpl_dao,
+		.decompress = lichen_rule_decompress_rpl_dao,
+	},
+};
+
+static const struct schc_profile lichen_schc_profile = {
+	.rules = lichen_schc_rules,
+	.rule_count = sizeof(lichen_schc_rules) / sizeof(lichen_schc_rules[0]),
+	.uncompressed_rule_id = SCHC_RULE_UNCOMPRESSED,
+	.use_uncompressed_fallback = true,
+};
 
 /* ─── public API ──────────────────────────────────────────────────────────── */
 
@@ -863,7 +1320,15 @@ int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
 {
 	int ret;
 
-	if (pkt_len < 40 || (packet[0] >> 4) != 6) {
+	if (packet == NULL) {
+		return SCHC_ERR_TOO_SHORT;
+	}
+
+	if (out == NULL) {
+		return SCHC_ERR_BUFFER_TOO_SMALL;
+	}
+
+	if (pkt_len < IPV6_HDR_LEN || ipv6_version(packet) != 6) {
 		/* Not IPv6 - uncompressed fallback */
 		size_t needed = 1 + pkt_len;
 		if (out_len < needed) {
@@ -874,100 +1339,16 @@ int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
 		return (int)needed;
 	}
 
-	uint8_t nh = packet[6];
-	const uint8_t *src = &packet[8];
-	const uint8_t *dst = &packet[24];
-
-	if (nh == 17) {
-		/* UDP - rules 0 or 1 */
-		if (is_link_local(src) && is_link_local(dst)) {
-			ret = compress_coap(packet, pkt_len, out, out_len,
-					    SCHC_RULE_LINK_LOCAL_COAP);
-			if (ret > 0) {
-				return ret;
-			}
-		} else if (is_global(src) && is_global(dst)) {
-			ret = compress_coap(packet, pkt_len, out, out_len,
-					    SCHC_RULE_GLOBAL_COAP);
-			if (ret > 0) {
-				return ret;
-			}
-		}
-	} else if (nh == 58 && pkt_len >= 40 + 4) {
-		/* ICMPv6 */
-		uint8_t icmp_type = packet[40];
-		uint8_t icmp_code = packet[41];
-
-		if ((icmp_type == 128 || icmp_type == 129) &&
-		    icmp_code == 0 &&
-		    is_link_local(src) && is_link_local(dst) &&
-		    pkt_len >= 40 + 8) {
-			ret = compress_icmpv6_echo(packet, pkt_len, out, out_len);
-			if (ret > 0) {
-				return ret;
-			}
-		} else if (icmp_type == 155 &&
-			   is_link_local(src) && is_link_local(dst)) {
-			if (icmp_code == 1 && pkt_len >= 40 + 4 + 24) {
-				/* DIO */
-				ret = compress_rpl_dio(packet, pkt_len, out, out_len);
-				if (ret > 0) {
-					return ret;
-				}
-			} else if (icmp_code == 2 && pkt_len >= 40 + 4 + 20) {
-				/* DAO - only rule 4 if D flag set */
-				uint8_t kd_flags = packet[45];
-				if (kd_flags & 0x40) {
-					ret = compress_rpl_dao(packet, pkt_len,
-							       out, out_len);
-					if (ret > 0) {
-						return ret;
-					}
-				}
-			}
-		}
+	ret = validate_ipv6_transport_lengths(packet, pkt_len);
+	if (ret < 0) {
+		return ret;
 	}
 
-	/* Uncompressed fallback */
-	size_t needed = 1 + pkt_len;
-	if (out_len < needed) {
-		return SCHC_ERR_BUFFER_TOO_SMALL;
-	}
-	out[0] = SCHC_RULE_UNCOMPRESSED;
-	memcpy(&out[1], packet, pkt_len);
-	return (int)needed;
+	return schc_compress(&lichen_schc_profile, packet, pkt_len, out, out_len);
 }
 
 int lichen_schc_decompress(const uint8_t *data, size_t data_len,
 			   uint8_t *out, size_t out_len)
 {
-	if (data_len == 0) {
-		return SCHC_ERR_TOO_SHORT;
-	}
-
-	switch (data[0]) {
-	case SCHC_RULE_LINK_LOCAL_COAP:
-		return decompress_coap(data, data_len, out, out_len,
-				       SCHC_RULE_LINK_LOCAL_COAP);
-	case SCHC_RULE_GLOBAL_COAP:
-		return decompress_coap(data, data_len, out, out_len,
-				       SCHC_RULE_GLOBAL_COAP);
-	case SCHC_RULE_ICMPV6_ECHO:
-		return decompress_icmpv6_echo(data, data_len, out, out_len);
-	case SCHC_RULE_RPL_DIO:
-		return decompress_rpl_dio(data, data_len, out, out_len);
-	case SCHC_RULE_RPL_DAO:
-		return decompress_rpl_dao(data, data_len, out, out_len);
-	case SCHC_RULE_UNCOMPRESSED: {
-		const uint8_t *payload = &data[1];
-		size_t payload_len = data_len - 1;
-		if (out_len < payload_len) {
-			return SCHC_ERR_BUFFER_TOO_SMALL;
-		}
-		memcpy(out, payload, payload_len);
-		return (int)payload_len;
-	}
-	default:
-		return SCHC_ERR_UNKNOWN_RULE_ID;
-	}
+	return schc_decompress(&lichen_schc_profile, data, data_len, out, out_len);
 }

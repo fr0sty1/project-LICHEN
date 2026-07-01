@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.44",
+  "title": "[lora_l2.c:252] generate_eui64 uses SHA-256 truncation without domain separation",
+  "description": "Contract: generate_eui64 should produce unique 8-byte identifier from hardware ID.\nViolation: The function hashes hwid with SHA-256 and takes first 8 bytes (line 295). If any other part of the system also uses SHA-256(hwid)[0:8] for a different purpose, collision could occur. No domain separation tag is included in the hash input.\nImpact: Low in current codebase - no other code uses this pattern. However, if future code derives other identifiers from hwid using SHA-256, truncation collision is possible.\nMitigation: Consider using tagged hash: SHA-256('LICHEN-EUI64-v1' || hwid) to provide domain separation. This is a defensive improvement, not a current bug.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:14:23.821526Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:12:46.729334Z",
+  "closed_at": "2026-06-28T07:12:46.729334Z",
+  "close_reason": "Added domain separation prefix 'LICHEN-EUI64-v1' to SHA-256 hash input before hwid. Hash now computes SHA-256(prefix || hwid) instead of SHA-256(hwid). This ensures the EUI-64 derivation produces different output than other potential uses of SHA-256 on the same hardware ID. Also added secure_zero for the hash_input buffer in cleanup.",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.44",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:14:23.822055Z"
+    }
+  ]
+}

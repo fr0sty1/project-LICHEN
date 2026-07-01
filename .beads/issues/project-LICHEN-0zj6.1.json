@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0zj6.1",
+  "title": "Duplicate secure_zero() across three files",
+  "description": "Locations: lora_l2.c:44-50, ipv6_addr.c:31-37, lichen_l2.c:32-38. If secure_zero() needs hardening (e.g., adding memory barrier, switching to Zephyrs secure_clear if available), 3 copies must be updated. A contributor will copy one and miss updates to the others. Fix: Extract to shared header or use Zephyr equivalent if available.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:31:57.223455Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:38:39.561637Z",
+  "closed_at": "2026-06-27T06:38:39.561637Z",
+  "close_reason": "Closed",
+  "labels": [
+    "risk",
+    "maintainer-burden",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0zj6.1",
+      "depends_on_id": "project-LICHEN-0zj6",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:31:57.223876Z"
+    }
+  ]
+}

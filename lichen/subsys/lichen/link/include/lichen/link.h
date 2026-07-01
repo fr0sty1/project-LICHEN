@@ -13,6 +13,10 @@
  *   | Length | LLSec  | Epoch | SeqNum | Dst Addr | Payload |  MIC  |
  *   +--------+--------+-------+--------+----------+---------+-------+
  *      1B       1B       1B      2B       0/2/8B     var      4/8B
+ *
+ * @note Portability: bool (from stdbool.h) is used for in-memory state only.
+ *       Wire formats use explicit uint8_t fields and bit manipulation.
+ *       Structs are never raw-serialized; all encoding is byte-level.
  */
 
 #ifndef LICHEN_LINK_H_
@@ -52,6 +56,33 @@ enum lichen_mic_len {
 	LICHEN_MIC_32 = 0,  /**< 32-bit MIC (4 bytes) */
 	LICHEN_MIC_64 = 1,  /**< 64-bit MIC (8 bytes) */
 };
+
+/** 32-bit MIC length in bytes */
+#define LICHEN_MIC_32_LEN 4
+
+/** 64-bit MIC length in bytes */
+#define LICHEN_MIC_64_LEN 8
+
+/** Wire length of the frame length field */
+#define LICHEN_FRAME_LEN_FIELD_LEN 1
+
+/** Wire length of the LLSec field */
+#define LICHEN_FRAME_LLSEC_LEN 1
+
+/** Wire length of the epoch field */
+#define LICHEN_FRAME_EPOCH_LEN 1
+
+/** Wire length of the sequence number field */
+#define LICHEN_FRAME_SEQNUM_LEN 2
+
+/** Fixed wire header length before the destination address */
+#define LICHEN_FRAME_FIXED_HEADER_LEN \
+	(LICHEN_FRAME_LEN_FIELD_LEN + LICHEN_FRAME_LLSEC_LEN + \
+	 LICHEN_FRAME_EPOCH_LEN + LICHEN_FRAME_SEQNUM_LEN)
+
+/** Payload offset for a parsed frame with the given destination address length */
+#define LICHEN_FRAME_PAYLOAD_OFFSET(addr_len) \
+	(LICHEN_FRAME_FIXED_HEADER_LEN + (size_t)(addr_len))
 
 /**
  * @brief LICHEN frame structure for parsing/building frames
@@ -177,7 +208,7 @@ struct lichen_link_rx_ctx {
  * @param[out]    src_eui64  Filled with sender's EUI-64 (8 bytes)
  * @return 0 on success, negative error code on failure
  *         -EINVAL: malformed frame
- *         -EAUTH: signature/MIC verification failed
+ *         -LICHEN_EAUTH: signature/MIC verification failed
  *         -EALREADY: replay detected
  *         -ENOMEM: output buffer too small
  */

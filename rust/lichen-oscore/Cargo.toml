@@ -19,6 +19,13 @@ hkdf = { version = "0.13", default-features = false }
 sha2 = { version = "0.11", default-features = false }
 zeroize = { version = "1.8", default-features = false, features = ["derive"] }
 
+# EDHOC (RFC 9528) Suite 0 - feature-gated since it adds dependencies
+# ponytail: lakers only supports Suite 2 (P-256), not Suite 0 (X25519/Ed25519).
+# Rolling minimal Suite 0 for interop with Python simulator.
+x25519-dalek = { version = "2.0", default-features = false, features = ["static_secrets"], optional = true }
+ed25519-dalek = { version = "2.1", default-features = false, optional = true }
+rand_core = { version = "0.6", default-features = false, features = ["getrandom"], optional = true }
+
 # Logging backends (optional, feature-gated)
 defmt = { version = "0.3", optional = true }
 log = { version = "0.4", default-features = false, optional = true }
@@ -29,6 +36,9 @@ hex-literal = "0.4"
 [features]
 default = []
 std = []
+# EDHOC Suite 0 (RFC 9528) for establishing OSCORE contexts
+# Uses X25519/Ed25519 to match link-layer Schnorr48
+edhoc = ["dep:x25519-dalek", "dep:ed25519-dalek", "dep:rand_core"]
 # Logging: enable one or neither, not both
 defmt = ["dep:defmt"]
 log = ["dep:log"]

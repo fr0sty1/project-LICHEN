@@ -1,0 +1,32 @@
+{
+  "id": "lora-ipv6-mesh-l1r",
+  "title": "Announce message format and processing",
+  "description": "Implement announce routing per spec section 9.\n\nAnnounce message (~92 bytes):\n- Type, Flags, Hop Count, Seq Num\n- Originator IID (8 bytes)\n- Public Key (32 bytes)\n- Signature (48 bytes)\n- Optional app data\n\nAnnounceMessage dataclass with to_bytes/from_bytes.\n\nprocess_announce(announce, from_neighbor):\n1. Verify Schnorr signature\n2. Check for stale (seq_num \u003c= existing)\n3. Install/update gradient entry\n4. Forward if hop_count \u003c MAX_ANNOUNCE_HOPS\n\nParameters:\n- ANNOUNCE_INTERVAL: 300 sec\n- MAX_ANNOUNCE_HOPS: 15\n- GRADIENT_TIMEOUT: 600 sec\n- ANNOUNCE_JITTER: 0-30 sec",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T08:57:36Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-23T14:02:41Z",
+  "close_reason": "Implemented upstream in python/src/lichen/announce/messages.py (AnnounceMessage) + processor.py (AnnounceProcessor: Schnorr-verify, staleness check, gradient install, relay). tests/announce/test_messages.py + test_processor.py.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-l1r",
+      "depends_on_id": "lora-ipv6-mesh-9a9",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:57:49Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-l1r",
+      "depends_on_id": "lora-ipv6-mesh-xly",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:57:50Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

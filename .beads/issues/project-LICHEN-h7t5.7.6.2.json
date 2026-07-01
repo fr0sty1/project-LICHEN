@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-h7t5.7.6.2",
+  "title": "Define T-Deck direct BLE native app service",
+  "description": "Define and implement the direct BLE native LICHEN app protocol surface for LilyGO T-Deck above the shared app-level contract. The T-Deck gateway config does not currently enable BLE NUS or a direct BLE native service; those remain blocked until the service UUIDs, characteristic semantics, framing, versioning, and app-model mapping are specified and covered by tests or golden vectors. Acceptance: direct BLE contract is documented, implementation Beads are filed or completed, and unsupported pieces are explicit.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T20:37:13.838696Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T20:47:23.086711Z",
+  "labels": [
+    "lilygo",
+    "t-deck",
+    "ble",
+    "native-interface",
+    "protocol",
+    "compatibility",
+    "app-contract",
+    "follow-up",
+    "zephyr",
+    "serial",
+    "lci",
+    "hardware",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6.2",
+      "depends_on_id": "project-LICHEN-h7t5.7.6",
+      "type": "parent-child",
+      "created_at": "2026-06-30T20:37:13.839188Z"
+    }
+  ]
+}

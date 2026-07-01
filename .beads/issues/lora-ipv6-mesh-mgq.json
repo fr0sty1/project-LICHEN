@@ -1,0 +1,40 @@
+{
+  "id": "lora-ipv6-mesh-mgq",
+  "title": "LOADng route discovery (RREQ/RREP handling)",
+  "description": "Implement LOADng route discovery per spec section 9.4-9.5.\n\nRREQ Originator:\n- Check cache first, skip discovery if route exists\n- Generate RREQ with seq_num, hop_limit\n- Broadcast to neighbors\n- Start RREQ_WAIT_TIME timer\n- On timeout: retry with expanded hop_limit (expanding ring)\n- After RREQ_RETRIES: fail\n\nRREQ Forwarder:\n- Check if I am destination -\u003e send RREP\n- Check if RREQ already seen (by originator+seq) -\u003e drop (suppression)\n- Record reverse route to originator\n- Decrement hop_limit, rebroadcast if \u003e 0\n\nRREP Handler:\n- Follow reverse path to originator\n- At each hop: install forward route to destination\n- At originator: route ready, send queued packets\n\nRouteDiscovery class:\n- async discover(destination) -\u003e RouteEntry | None\n- pending_discoveries: dict[dest, Future]\n- rreq_seen: set[(originator, seq)] for suppression\n\nExpanding ring search: start HL=4, then 8, then 15.\nRate limit: RREQ_RATELIMIT = 10/min.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T08:35:48Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-15T20:55:12Z",
+  "close_reason": "Implemented in python/src/lichen/loadng/discovery.py: LoadngRouter with originate_rreq, process_rreq (suppression by originator/dest/seq window, reverse route install, destination/intermediate reply, hop-limit-bounded rebroadcast) and process_rrep (forward gradient + cache install, reverse-path forwarding, delivery). Deterministic action-returning handler. 12 tests incl. 3-node O-\u003eM-\u003eD round trip. ruff clean.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-mgq",
+      "depends_on_id": "lora-ipv6-mesh-rp4",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:57:54Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-mgq",
+      "depends_on_id": "lora-ipv6-mesh-5mq",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:36:14Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-mgq",
+      "depends_on_id": "lora-ipv6-mesh-62n",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:36:15Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

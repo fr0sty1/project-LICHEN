@@ -60,6 +60,7 @@ int lichen_rpl_srh_write(const struct lichen_rpl_srh *srh,
  * @param len  Length of data
  * @return 0 on success, negative error code on failure
  */
+LICHEN_WARN_UNUSED_RESULT
 int lichen_rpl_srh_parse(struct lichen_rpl_srh *srh,
 			 const uint8_t *data, size_t len);
 
@@ -72,6 +73,8 @@ struct lichen_rpl_route {
 	uint8_t target[16];
 	uint8_t path[LICHEN_RPL_MAX_HOPS][16];  /**< [0]=first hop, ..., [n-1]=target */
 	uint8_t path_len;
+	uint8_t path_lifetime;   /**< TTL in lifetime units (from Transit Info) */
+	uint32_t last_updated;   /**< Timestamp when route was last updated (caller-provided) */
 	bool valid;
 };
 
@@ -87,6 +90,8 @@ struct lichen_rpl_routing_table {
 
 /**
  * @brief Initialize a routing table.
+ *
+ * @note No-op if @p rt is NULL.
  */
 void lichen_rpl_routing_table_init(struct lichen_rpl_routing_table *rt);
 
@@ -97,7 +102,8 @@ void lichen_rpl_routing_table_init(struct lichen_rpl_routing_table *rt);
  * @param target   Target address (16 bytes)
  * @param path     Array of hop addresses
  * @param path_len Number of hops (includes target)
- * @return 0 on success, -1 if table full
+ * @return 0 on success, LICHEN_RPL_ERR_INVALID if NULL or path_len==0,
+ *         LICHEN_RPL_ERR_OVERRUN if path too long or table full
  */
 int lichen_rpl_routing_table_add(struct lichen_rpl_routing_table *rt,
 				 const uint8_t *target,
@@ -106,6 +112,8 @@ int lichen_rpl_routing_table_add(struct lichen_rpl_routing_table *rt,
 
 /**
  * @brief Remove a route to a target.
+ *
+ * @note No-op if @p rt is NULL, @p target is NULL, or the target is not found.
  */
 void lichen_rpl_routing_table_remove(struct lichen_rpl_routing_table *rt,
 				     const uint8_t *target);
@@ -126,6 +134,19 @@ lichen_rpl_routing_table_lookup(const struct lichen_rpl_routing_table *rt,
  */
 int lichen_rpl_routing_table_count(const struct lichen_rpl_routing_table *rt);
 
+/**
+ * @brief Expire stale routes.
+ *
+ * Removes routes where (now - last_updated) exceeds path_lifetime * lifetime_unit.
+ *
+ * @param rt            Routing table
+ * @param now           Current timestamp (same units as last_updated)
+ * @param lifetime_unit Seconds per lifetime unit (RFC 6550 default: 60)
+ * @return Number of routes expired
+ */
+int lichen_rpl_routing_table_expire(struct lichen_rpl_routing_table *rt,
+				    uint32_t now, uint32_t lifetime_unit);
+
 /* ── DAO Manager ───────────────────────────────────────────────────────────── */
 
 /**
@@ -134,6 +155,8 @@ int lichen_rpl_routing_table_count(const struct lichen_rpl_routing_table *rt);
 struct lichen_rpl_parent_edge {
 	uint8_t target[16];
 	uint8_t parent[16];
+	uint8_t path_lifetime;   /**< TTL in lifetime units (from Transit Info) */
+	uint32_t last_updated;   /**< Timestamp when edge was last updated (caller-provided) */
 	bool valid;
 };
 
@@ -157,19 +180,31 @@ struct lichen_rpl_dao_manager {
 
 /**
  * @brief Initialize DAO manager for a non-root node.
+ *
+ * @param dm           DAO manager (must not be NULL)
+ * @param node_address Node's IPv6 address (must not be NULL)
+ * @param rpl_instance_id RPL instance ID
+ * @param dodag_id     DODAG ID (must not be NULL)
+ * @return 0 on success, LICHEN_RPL_ERR_INVALID if any pointer is NULL
  */
-void lichen_rpl_dao_manager_init(struct lichen_rpl_dao_manager *dm,
-				 const uint8_t *node_address,
-				 uint8_t rpl_instance_id,
-				 const uint8_t *dodag_id);
+int lichen_rpl_dao_manager_init(struct lichen_rpl_dao_manager *dm,
+				const uint8_t *node_address,
+				uint8_t rpl_instance_id,
+				const uint8_t *dodag_id);
 
 /**
  * @brief Initialize DAO manager for root node.
+ *
+ * @param dm           DAO manager (must not be NULL)
+ * @param node_address Node's IPv6 address (must not be NULL)
+ * @param rpl_instance_id RPL instance ID
+ * @param dodag_id     DODAG ID (must not be NULL)
+ * @return 0 on success, LICHEN_RPL_ERR_INVALID if any pointer is NULL
  */
-void lichen_rpl_dao_manager_init_root(struct lichen_rpl_dao_manager *dm,
-				      const uint8_t *node_address,
-				      uint8_t rpl_instance_id,
-				      const uint8_t *dodag_id);
+int lichen_rpl_dao_manager_init_root(struct lichen_rpl_dao_manager *dm,
+				     const uint8_t *node_address,
+				     uint8_t rpl_instance_id,
+				     const uint8_t *dodag_id);
 
 /**
  * @brief Build a DAO advertising this node with given parent.
@@ -187,13 +222,34 @@ int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *dm,
 /**
  * @brief Process a received DAO on the root.
  *
+ * @warning This function does NOT authenticate DAO messages. The caller
+ * MUST ensure DAOs are received over an authenticated channel (OSCORE or
+ * link-layer authentication). Unauthenticated DAOs enable routing poisoning
+ * attacks where an attacker claims arbitrary target/parent relationships.
+ * LICHEN relies on Schnorr link signatures (48B) to authenticate the
+ * immediate sender; verify that the DAO source is a known authenticated
+ * neighbor before calling this function.
+ *
  * @param dm        DAO manager (must be root)
  * @param dao_bytes Raw DAO wire bytes (base object + options)
  * @param len       Length of DAO bytes
+ * @param now       Current timestamp for lifetime tracking
  * @return true if a route was installed, false otherwise
  */
 bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
-					const uint8_t *dao_bytes, size_t len);
+					const uint8_t *dao_bytes, size_t len,
+					uint32_t now);
+
+/**
+ * @brief Expire stale parent edges and routes.
+ *
+ * @param dm            DAO manager (must be root)
+ * @param now           Current timestamp (same units as last_updated)
+ * @param lifetime_unit Seconds per lifetime unit (RFC 6550 default: 60)
+ * @return Number of entries expired
+ */
+int lichen_rpl_dao_manager_expire(struct lichen_rpl_dao_manager *dm,
+				  uint32_t now, uint32_t lifetime_unit);
 
 #ifdef __cplusplus
 }

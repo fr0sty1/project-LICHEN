@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-1i7v",
+  "title": "rust: fix lichen-core ipv6 manual_is_multiple_of clippy lint",
+  "description": "Why this exists: while validating project-LICHEN-2eg7, cargo clippy -p lichen-core --all-targets -- -D warnings failed on pre-existing code in rust/lichen-core/src/ipv6.rs:276, where total_len % 8 != 0 triggers clippy::manual_is_multiple_of under the active Rust toolchain. What needs to be done: update the IPv6 extension-header length check to the idiomatic is_multiple_of form or otherwise handle toolchain compatibility, then rerun lichen-core clippy with -D warnings.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T05:32:59.052503Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T05:51:36.664844Z",
+  "closed_at": "2026-06-30T05:51:36.664844Z",
+  "close_reason": "Completed: replaced the IPv6 extension-header length modulo check with is_multiple_of so lichen-core clippy passes without the previous allow. Tests: cargo test -p lichen-core; cargo clippy -p lichen-core --all-targets -- -D warnings; git diff --check. Review pass 1: found unrelated rustfmt churn in ipv6.rs tests and reverted it. Review pass 2: no findings; final diff is the intended one-line source change plus Beads metadata.",
+  "labels": [
+    "rust",
+    "clippy",
+    "follow-up"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1i7v",
+      "depends_on_id": "project-LICHEN-2eg7",
+      "type": "discovered-from",
+      "created_at": "2026-06-30T05:33:07.589879Z"
+    }
+  ]
+}

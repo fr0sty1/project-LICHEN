@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.24",
+  "title": "[lora_l2.c:127] generate_eui64 relies on hwinfo_get_device_id positive for length",
+  "description": "Function: generate_eui64 (static helper). Contract violation: The function checks 'hwid_len \u003c= 0' at line 135 but hwinfo_get_device_id() returns ssize_t. If the function returned exactly 0 (empty device ID), the code would reject it (-ENODEV), which is correct. However, if it returned a very large positive value that exceeds sizeof(hwid), the check at line 141 'hwid_len \u003e sizeof(hwid)' catches this. The cast to size_t at line 149 is safe because the check at 141 ensures hwid_len fits. This is correct code. Priority 3 - verified correct, no issue.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "issue",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:47:09.626176Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:34:45.627106Z",
+  "closed_at": "2026-06-28T02:34:45.627106Z",
+  "close_reason": "Duplicate: Already fixed by tvfm.3. The generate_eui64 function at lora_l2.c:208-266 correctly handles all hwinfo_get_device_id return cases: negative returns (error codes) at line 216, zero returns at line 222, and values exceeding buffer size at line 227. Only valid positive lengths 1-32 proceed to the hash function. Build verified.",
+  "labels": [
+    "review",
+    "round1",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.24",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:47:09.627104Z"
+    }
+  ]
+}

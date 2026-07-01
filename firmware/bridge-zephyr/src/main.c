@@ -1,6 +1,12 @@
 /*
  * LICHEN LoRa Bridge - Zephyr version
  * IPv6 mesh networking over LoRa.
+ *
+ * LED diagnostic patterns (led0 alias, if present):
+ * - Solid on during init: normal startup in progress
+ * - 3 rapid blinks (100ms on/off): USB CDC initialization failed
+ * - Continuous 200ms blink (forever): network/L2 init failed
+ * - Off after init: ready, normal operation
  */
 
 #include <zephyr/kernel.h>
@@ -12,13 +18,11 @@
 #include <zephyr/usb/usb_device.h>
 #endif
 
-#if defined(CONFIG_LICHEN_LORA_L2)
-#include "lora_l2.h"
-#endif
-
 #if defined(CONFIG_LICHEN_IPV6)
 #include "ipv6_addr.h"
 #endif
+
+#include "crash_info.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
@@ -26,101 +30,100 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 #if DT_NODE_EXISTS(DT_ALIAS(led0))
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
 #define HAS_LED 1
+static bool led_configured;
+
+/**
+ * @brief Set LED state with error logging
+ *
+ * Wrapper around gpio_pin_set_dt that logs errors. Since LED is non-critical,
+ * we log but don't propagate errors.
+ */
+static inline void led_set(int value)
+{
+    /* No-op if led_configured is false (GPIO init failed) */
+    if (led_configured) {
+        int ret = gpio_pin_set_dt(&led, value);
+        if (ret < 0) {
+            LOG_ERR("main: LED gpio_pin_set_dt failed (%d)", ret);
+        }
+    }
+}
 #endif
 
-#if defined(CONFIG_LICHEN_LORA_L2)
-/**
- * @brief Handle received LoRa packets
- */
-static void lora_rx_handler(const uint8_t *data, size_t len,
-                            int16_t rssi, int8_t snr, void *user_data)
-{
-    ARG_UNUSED(user_data);
-
-    LOG_INF("RX: %zu bytes, RSSI=%d dBm, SNR=%d dB", len, rssi, snr);
-
-    /*
-     * Future: Parse LICHEN frame, verify signature, check replay,
-     * decompress SCHC, inject into IPv6 stack.
-     */
-}
+#if defined(CONFIG_LICHEN_LORA_L2) && !defined(CONFIG_LICHEN_L2)
+#error "CONFIG_LICHEN_LORA_L2 without CONFIG_LICHEN_L2 is disabled: enable full LICHEN_L2 networking so LoRa RX is framed, decompressed, and injected into IPv6"
 #endif
 
 int main(void)
 {
-    int ret;
+    int ret = 0;
 
-    LOG_INF("LICHEN bridge (Zephyr) starting...");
+    LOG_INF("main: starting");
+    crash_info_check_and_clear();
 
 #if defined(HAS_LED)
+    /* LED pattern: solid on during init = startup in progress */
     if (gpio_is_ready_dt(&led)) {
-        gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
-        gpio_pin_set_dt(&led, 1);
+        ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
+        if (ret < 0) {
+            LOG_ERR("main: LED GPIO configure failed (%d)", ret);
+        } else {
+            led_configured = true;
+            led_set(1);
+        }
     }
 #endif
 
 #if defined(CONFIG_USB_DEVICE_STACK)
     ret = usb_enable(NULL);
     if (ret != 0) {
-        LOG_ERR("USB enable failed: %d", ret);
+        LOG_ERR("main: USB enable failed (%d)", ret);
+        /*
+         * USB CDC failure means console output may not be visible.
+         * Provide visual feedback via LED if available.
+         *
+         * Note: We continue startup despite USB failure. Console output may
+         * go to UART instead (if available), and LoRa functionality can still
+         * operate. The LED pattern provides visual indication of the failure.
+         *
+         * LED pattern: 3 rapid blinks (100ms) then off = non-fatal USB failure.
+         * Distinct from fatal LoRa failure which is continuous 200ms blink.
+         */
+#if defined(HAS_LED)
+        for (int i = 0; i < 3; i++) {
+            led_set(1);
+            k_sleep(K_MSEC(100));
+            led_set(0);
+            k_sleep(K_MSEC(100));
+        }
+#endif
+        /* Turn LED off after error indication */
+#if defined(HAS_LED)
+        led_set(0);
+#endif
+    } else {
+        k_sleep(K_MSEC(1000));
+        LOG_INF("main: USB CDC ready");
     }
-    k_sleep(K_MSEC(1000));
-    LOG_INF("USB CDC ready");
 #else
-    LOG_INF("UART console ready");
+    LOG_INF("main: UART console ready");
 #endif
 
-#if defined(CONFIG_LICHEN_LORA_L2)
-    /* Initialize LoRa L2 layer */
-    ret = lichen_lora_l2_init();
-    if (ret < 0) {
-        LOG_ERR("LoRa L2 init failed: %d", ret);
-        goto main_loop;
-    }
-
-    /* Set up RX callback */
-    lichen_lora_l2_set_rx_callback(lora_rx_handler, NULL);
-
-    /* Start LoRa L2 */
-    ret = lichen_lora_l2_start();
-    if (ret < 0) {
-        LOG_ERR("LoRa L2 start failed: %d", ret);
-        goto main_loop;
-    }
-
-    /* Log our link-layer address */
-    const uint8_t *eui64 = lichen_lora_l2_get_eui64();
-    LOG_INF("EUI-64: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
-            eui64[0], eui64[1], eui64[2], eui64[3],
-            eui64[4], eui64[5], eui64[6], eui64[7]);
-
-#if defined(CONFIG_LICHEN_IPV6)
-    /* Derive and log link-local address */
-    uint8_t iid[8];
-    struct in6_addr ll_addr;
-    char addr_str[LICHEN_IPV6_ADDR_STR_LEN];
-    lichen_eui64_to_iid(eui64, iid);
-    lichen_make_link_local(iid, &ll_addr);
-    lichen_ipv6_addr_to_str(&ll_addr, addr_str, sizeof(addr_str));
-    LOG_INF("Link-local: %s", addr_str);
-#endif
-
-    LOG_INF("LoRa L2 active: SF10, BW125, 915MHz");
-#endif /* CONFIG_LICHEN_LORA_L2 */
+    /*
+     * LICHEN_L2 initializes through NET_DEVICE_INIT. The old standalone
+     * LICHEN_LORA_L2 path was removed because it accepted RX callbacks but
+     * never parsed frames or injected IPv6 packets.
+     */
 
 #if defined(HAS_LED)
-    if (gpio_is_ready_dt(&led)) {
-        gpio_pin_set_dt(&led, 0);
-    }
+    /* LED pattern: off after init = ready, normal operation */
+    led_set(0);
 #endif
 
-main_loop:
-    LOG_INF("Ready - LICHEN IPv6/LoRa mesh");
+    LOG_INF("main: ready");
 
     while (1) {
         k_sleep(K_SECONDS(60));
-        LOG_DBG("tick");
+        LOG_DBG("main: tick");
     }
-
-    return 0;
 }

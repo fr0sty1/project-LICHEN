@@ -1,0 +1,26 @@
+{
+  "id": "lora-ipv6-mesh-ihv",
+  "title": "Set up Zephyr west workspace",
+  "description": "Create zephyr/ directory with west.yml manifest. Set up CMakeLists.txt, Kconfig. Create board overlays for heltec_lora32_v3, rak4631, tbeam_supreme, nucleo_wl55jc. Verify west build succeeds for each board.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Frost",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:10:26Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "started_at": "2026-06-23T17:28:47Z",
+  "closed_at": "2026-06-23T17:35:26Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-ihv",
+      "depends_on_id": "lora-ipv6-mesh-ijj",
+      "type": "blocks",
+      "created_at": "2026-05-26T22:14:42Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

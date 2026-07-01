@@ -12,6 +12,7 @@
  */
 
 #include "ble_uart.h"
+#include "ble_ingress.h"
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
@@ -47,24 +48,36 @@ static struct bt_uuid_128 nus_tx_uuid  = BT_UUID_INIT_128(BT_UUID_NUS_TX_VAL);
 /* Active connection (NULL when no phone is connected) */
 static struct bt_conn *s_conn;
 
-/* SLIP reassembly state — written only from the BT RX thread */
+/* Mutex protecting s_conn publication and reference acquisition */
+static K_MUTEX_DEFINE(s_conn_mutex);
+
+/* Mutex protecting SLIP reassembly state */
+static K_MUTEX_DEFINE(s_rx_mutex);
+
+/* Mutex protecting TX buffer */
+static K_MUTEX_DEFINE(s_tx_mutex);
+
+/* SLIP reassembly state — protected by s_rx_mutex */
 static uint8_t  s_rx_buf[SLIP_BUF_SIZE];
 static uint16_t s_rx_len;
 static bool     s_rx_esc;
+static bool     s_rx_overflow;
 
 /* --------------------------------------------------------------------------
- * Packet dispatch: phone → mesh
+ * Packet dispatch: phone -> mesh
  * -------------------------------------------------------------------------- */
 
 static void slip_dispatch(const uint8_t *pkt, size_t len)
 {
-	/*
-	 * TODO: inject the IPv6 packet into the mesh via the Zephyr net_pkt
-	 * API once the RPL/net integration layer lands.  Until then, log and
-	 * drop so the BLE UART layer is exercisable independently.
-	 */
-	LOG_INF("BLE UART RX %zu B (IPv6; mesh injection deferred)", len);
-	ARG_UNUSED(pkt);
+	int ret;
+
+	ret = ble_ingress_ipv6_default(pkt, len);
+	if (ret < 0) {
+		LOG_WRN("BLE UART RX %zu B dropped: %d", len, ret);
+		return;
+	}
+
+	LOG_DBG("BLE UART RX %zu B injected into IPv6 ingress", len);
 }
 
 /* --------------------------------------------------------------------------
@@ -83,6 +96,8 @@ static ssize_t nus_rx_write(struct bt_conn *conn,
 	ARG_UNUSED(offset);
 	ARG_UNUSED(flags);
 
+	k_mutex_lock(&s_rx_mutex, K_FOREVER);
+
 	for (uint16_t i = 0; i < len; i++) {
 		uint8_t b = data[i];
 
@@ -97,6 +112,7 @@ static ssize_t nus_rx_write(struct bt_conn *conn,
 
 			/* Check buffer space BEFORE writing decoded escape byte */
 			if (s_rx_len >= sizeof(s_rx_buf)) {
+				s_rx_overflow = true;
 				continue;
 			}
 			s_rx_buf[s_rx_len++] = b;
@@ -104,16 +120,25 @@ static ssize_t nus_rx_write(struct bt_conn *conn,
 			s_rx_esc = true;
 		} else if (b == SLIP_END) {
 			if (s_rx_len > 0) {
-				slip_dispatch(s_rx_buf, s_rx_len);
+				if (s_rx_overflow) {
+					LOG_WRN("BLE UART RX frame dropped (overflow)");
+				} else {
+					slip_dispatch(s_rx_buf, s_rx_len);
+				}
 				s_rx_len = 0;
+				s_rx_overflow = false;
 			}
 		} else {
 			/* Regular byte — store if buffer has space */
 			if (s_rx_len < sizeof(s_rx_buf)) {
 				s_rx_buf[s_rx_len++] = b;
+			} else {
+				s_rx_overflow = true;
 			}
 		}
 	}
+
+	k_mutex_unlock(&s_rx_mutex);
 	return len;
 }
 
@@ -176,23 +201,45 @@ static void adv_start(void)
 
 static void on_connected(struct bt_conn *conn, uint8_t err)
 {
+	struct bt_conn *old_conn;
+
 	if (err) {
 		LOG_ERR("BLE connect error %u", err);
 		return;
 	}
+
+	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+	old_conn = s_conn;
 	s_conn = bt_conn_ref(conn);
+	k_mutex_unlock(&s_conn_mutex);
+
+	if (old_conn != NULL) {
+		bt_conn_unref(old_conn);
+	}
+
+	k_mutex_lock(&s_rx_mutex, K_FOREVER);
 	s_rx_len = 0;
 	s_rx_esc = false;
+	s_rx_overflow = false;
+	k_mutex_unlock(&s_rx_mutex);
 	LOG_INF("BLE phone connected");
 }
 
 static void on_disconnected(struct bt_conn *conn, uint8_t reason)
 {
-	ARG_UNUSED(conn);
-	if (s_conn) {
-		bt_conn_unref(s_conn);
+	struct bt_conn *old_conn = NULL;
+
+	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+	if (s_conn == conn) {
+		old_conn = s_conn;
 		s_conn = NULL;
 	}
+	k_mutex_unlock(&s_conn_mutex);
+
+	if (old_conn != NULL) {
+		bt_conn_unref(old_conn);
+	}
+
 	LOG_INF("BLE phone disconnected (reason %u)", reason);
 	adv_start();
 }
@@ -208,13 +255,41 @@ BT_CONN_CB_DEFINE(conn_callbacks) = {
 
 int ble_uart_send_slip(const uint8_t *ipv6, size_t len)
 {
-	/* Worst-case SLIP frame: every byte escaped → 2× len, plus 2 END bytes */
+	/* Worst-case SLIP frame: every byte escaped → 2x len, plus 2 END bytes.
+	 * Protected by s_tx_mutex below. */
 	static uint8_t s_tx_frame[SLIP_BUF_SIZE * 2u + 2u];
 	uint16_t fi = 0;
+	int rc = 0;
+	struct bt_conn *conn;
 
-	if (!s_conn) {
+	/*
+	 * Acquire the reference while holding s_conn_mutex.  on_disconnected()
+	 * clears s_conn under the same mutex before dropping its stored
+	 * reference, so this cannot ref a connection after disconnect released it.
+	 */
+	k_mutex_lock(&s_conn_mutex, K_FOREVER);
+	conn = s_conn;
+	if (conn != NULL) {
+		bt_conn_ref(conn);
+	}
+	k_mutex_unlock(&s_conn_mutex);
+
+	if (conn == NULL) {
 		return -ENOTCONN;
 	}
+
+	/* Validate input length to prevent overflow */
+	if (len > SLIP_BUF_SIZE) {
+		rc = -ENOMEM;
+		goto out_unref;
+	}
+
+	if (ipv6 == NULL && len > 0u) {
+		rc = -EINVAL;
+		goto out_unref;
+	}
+
+	k_mutex_lock(&s_tx_mutex, K_FOREVER);
 
 	/* Encode SLIP frame — check space before each write to prevent overflow */
 	s_tx_frame[fi++] = SLIP_END;
@@ -222,21 +297,24 @@ int ble_uart_send_slip(const uint8_t *ipv6, size_t len)
 		if (ipv6[i] == SLIP_END) {
 			/* Escape sequence needs 2 bytes + 1 reserved for trailing END */
 			if (fi + 2u > sizeof(s_tx_frame) - 1u) {
-				return -ENOMEM;
+				rc = -ENOMEM;
+				goto out;
 			}
 			s_tx_frame[fi++] = SLIP_ESC;
 			s_tx_frame[fi++] = SLIP_ESC_END;
 		} else if (ipv6[i] == SLIP_ESC) {
 			/* Escape sequence needs 2 bytes + 1 reserved for trailing END */
 			if (fi + 2u > sizeof(s_tx_frame) - 1u) {
-				return -ENOMEM;
+				rc = -ENOMEM;
+				goto out;
 			}
 			s_tx_frame[fi++] = SLIP_ESC;
 			s_tx_frame[fi++] = SLIP_ESC_ESC;
 		} else {
 			/* Regular byte needs 1 byte + 1 reserved for trailing END */
 			if (fi + 1u > sizeof(s_tx_frame) - 1u) {
-				return -ENOMEM;
+				rc = -ENOMEM;
+				goto out;
 			}
 			s_tx_frame[fi++] = ipv6[i];
 		}
@@ -244,19 +322,25 @@ int ble_uart_send_slip(const uint8_t *ipv6, size_t len)
 	s_tx_frame[fi++] = SLIP_END;
 
 	/* Send in chunks ≤ (ATT_MTU − 3) bytes; default MTU gives 20 bytes */
-	uint16_t mtu    = bt_gatt_get_mtu(s_conn);
+	uint16_t mtu    = bt_gatt_get_mtu(conn);
 	uint16_t chunk  = (mtu > 3u) ? (uint16_t)(mtu - 3u) : 20u;
 
 	for (uint16_t off = 0; off < fi; off += chunk) {
-		uint16_t n  = MIN(chunk, (uint16_t)(fi - off));
-		int      rc = bt_gatt_notify(s_conn,
-					     &nus_svc.attrs[NUS_TX_VAL_IDX],
-					     &s_tx_frame[off], n);
+		uint16_t n = MIN(chunk, (uint16_t)(fi - off));
+		rc = bt_gatt_notify(conn,
+				    &nus_svc.attrs[NUS_TX_VAL_IDX],
+				    &s_tx_frame[off], n);
 		if (rc < 0) {
-			return rc;
+			goto out;
 		}
 	}
-	return 0;
+	rc = 0;
+
+out:
+	k_mutex_unlock(&s_tx_mutex);
+out_unref:
+	bt_conn_unref(conn);
+	return rc;
 }
 
 int ble_uart_init(void)

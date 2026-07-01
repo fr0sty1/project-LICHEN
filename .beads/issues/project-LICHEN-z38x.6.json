@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-z38x.6",
+  "title": "Add retained RAM crash info infrastructure",
+  "description": "Add infrastructure for storing crash info in retained RAM that survives watchdog reset.\n\nImplementation:\n1. Add retained RAM section to linker script (board-specific)\n2. Create crash_info struct:\n   __retained static struct {\n       uint32_t magic;      // Validity check\n       uint32_t reason;     // Crash reason enum\n       uint32_t location;   // __LINE__ or address\n       uint32_t extra;      // Context-specific data\n       uint32_t count;      // Crash count since power-on\n   } crash_info;\n\n3. Add store_crash_info() helper\n4. On boot, check magic and log previous crash if valid\n5. Clear after logging\n\nBoards to support:\n- STM32WL (olimex_lora_stm32wl_devkit)\n- nRF52840 (future)\n\nThis enables post-mortem debugging without stopping the device.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T04:12:43.049979Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T04:26:34.39519Z",
+  "closed_at": "2026-06-28T04:26:34.39519Z",
+  "close_reason": "Fixed: Added retained RAM crash info infrastructure - crash_info.h/c with CRASH_MAGIC, store/check_and_clear functions; called early in main(); also fixed missing LICHEN Kconfig menuconfig entry and added top-level Kconfig",
+  "labels": [
+    "reliability",
+    "refactor"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-z38x.6",
+      "depends_on_id": "project-LICHEN-z38x",
+      "type": "parent-child",
+      "created_at": "2026-06-28T04:12:43.050947Z"
+    }
+  ]
+}

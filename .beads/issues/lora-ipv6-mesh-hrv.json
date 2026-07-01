@@ -1,0 +1,14 @@
+{
+  "id": "lora-ipv6-mesh-hrv",
+  "title": "Implement DODAG visualization for simulation harness",
+  "description": "Add visualization capabilities to show DODAG formation and routing paths in the simulation. Should provide methods to track and visualize the routing tree structure as it evolves during simulation.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-09T04:01:44Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-18T03:44:18Z",
+  "closed_at": "2026-06-18T03:44:18Z",
+  "close_reason": "Implemented in rpl/visualize.py: to_dot (Graphviz, child-\u003eparent edges, root doublecircle, optional ranks), to_ascii (indented tree, cycle-safe), topology_from_states/ranks_from_states (extract from DodagState), format_source_route. Headless/serializable, pure functions over a DODAG snapshot. 6 tests. ruff clean."
+}

@@ -24,10 +24,11 @@ import asyncio
 import contextlib
 import logging
 import random
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from ipaddress import IPv6Address
+from typing import Protocol, cast
 
 from lichen.announce.messages import ANNOUNCE_TYPE, AnnounceMessage
 from lichen.announce.processor import AnnounceProcessor
@@ -39,8 +40,19 @@ from lichen.link.link_layer import LinkLayer, RxFrame
 from lichen.radio.base import Radio
 from lichen.routing.router import RouteDecision, Router
 from lichen.schc.headers import compress_packet, decompress_packet
+from lichen.state_machine import StateMachine, requires_state
 
 logger = logging.getLogger(__name__)
+
+
+class MeshtasticAdapterProtocol(Protocol):
+    """Lifecycle surface Node needs from an optional Meshtastic adapter."""
+
+    async def start(self) -> None:
+        """Start adapter-owned async resources."""
+
+    async def stop(self) -> None:
+        """Stop adapter-owned async resources."""
 
 
 class NodeState(Enum):
@@ -50,6 +62,14 @@ class NodeState(Enum):
     STARTING = auto()
     RUNNING = auto()
     STOPPING = auto()
+
+
+NODE_STATE_TRANSITIONS: dict[NodeState, frozenset[NodeState]] = {
+    NodeState.STOPPED: frozenset({NodeState.STARTING}),
+    NodeState.STARTING: frozenset({NodeState.RUNNING, NodeState.STOPPING}),
+    NodeState.RUNNING: frozenset({NodeState.STOPPING}),
+    NodeState.STOPPING: frozenset({NodeState.STOPPED}),
+}
 
 
 @dataclass
@@ -92,6 +112,7 @@ class Node:
         identity: This node's cryptographic identity.
         radio: Physical layer (simulated or hardware).
         config: Node configuration.
+        meshtastic: Enable Meshtastic BLE adapter (requires [meshtastic] extra).
         link: Link layer for frame signing/verification.
         gradient_table: Unified routing table.
         router: Hybrid routing decision engine.
@@ -103,6 +124,7 @@ class Node:
     identity: Identity
     radio: Radio
     config: NodeConfig = field(default_factory=NodeConfig)
+    meshtastic: bool = False
 
     # Protocol layers - initialized in __post_init__
     link: LinkLayer = field(init=False, repr=False)
@@ -114,8 +136,8 @@ class Node:
     peer_db: dict[bytes, PeerIdentity] = field(default_factory=dict, repr=False)
 
     # Lifecycle state
-    state: NodeState = field(default=NodeState.STOPPED, init=False)
-    _receive_task: asyncio.Task | None = field(default=None, init=False, repr=False)
+    _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
+    _receive_task: asyncio.Task[None] | None = field(default=None, init=False, repr=False)
 
     # Announce scheduler - manages periodic announce transmission
     # Why separate: Single responsibility, persistence support, testability.
@@ -129,7 +151,18 @@ class Node:
     # Relay dedup: SCHC payloads forwarded by this node; prevents relay loops.
     _relay_seen: set[bytes] = field(default_factory=set, init=False, repr=False)
 
+    # Meshtastic adapter (optional, created if meshtastic=True)
+    _meshtastic_adapter: MeshtasticAdapterProtocol | None = field(
+        default=None, init=False, repr=False
+    )
+
     def __post_init__(self) -> None:
+        self._state_machine = StateMachine(
+            initial=NodeState.STOPPED,
+            transitions=NODE_STATE_TRANSITIONS,
+            name=f"node[{self.identity.iid.hex()}]",
+        )
+
         # Why initialize layers here: They depend on self.identity, self.radio.
         self.link = LinkLayer(
             radio=self.radio,
@@ -166,6 +199,23 @@ class Node:
                 initial_delay_ms=5_000,  # Why 5s: Let node discover peers first.
             ),
         )
+
+        # Meshtastic adapter: lazy import to avoid requiring bleak/betterproto
+        if self.meshtastic:
+            try:
+                from lichen.interface.meshtastic.adapter import MeshtasticAdapter
+
+                self._meshtastic_adapter = MeshtasticAdapter(self)
+            except ImportError:
+                logger.warning(
+                    "meshtastic=True but adapter not available; "
+                    "install with: pip install lichen[meshtastic]"
+                )
+
+    @property
+    def state(self) -> NodeState:
+        """Return the node lifecycle state."""
+        return self._state_machine.state
 
     def _peer_lookup(self, hint: bytes) -> PeerIdentity | None:
         """Look up a peer by IID hint.
@@ -214,15 +264,13 @@ class Node:
         """
         self._on_receive = callback
 
+    @requires_state(NodeState.STOPPED)
     async def start(self) -> None:
         """Start the node's async tasks.
 
         Why async: Creates background tasks that run until stop().
         """
-        if self.state != NodeState.STOPPED:
-            raise RuntimeError(f"cannot start node in state {self.state}")
-
-        self.state = NodeState.STARTING
+        self._state_machine.transition(NodeState.STARTING)
         logger.info("starting node %s", self.identity.iid.hex())
 
         # Start receive loop
@@ -235,7 +283,11 @@ class Node:
         # Why separate: Scheduler owns timing and seq_num; Node owns integration.
         await self._scheduler.start()
 
-        self.state = NodeState.RUNNING
+        # Start Meshtastic adapter if enabled
+        if self._meshtastic_adapter is not None:
+            await self._meshtastic_adapter.start()
+
+        self._state_machine.transition(NodeState.RUNNING)
         logger.info("node started")
 
     async def stop(self) -> None:
@@ -246,10 +298,14 @@ class Node:
         if self.state != NodeState.RUNNING:
             return
 
-        self.state = NodeState.STOPPING
+        self._state_machine.transition(NodeState.STOPPING)
         logger.info("stopping node")
 
-        # Stop announce scheduler first
+        # Stop Meshtastic adapter first
+        if self._meshtastic_adapter is not None:
+            await self._meshtastic_adapter.stop()
+
+        # Stop announce scheduler
         # Why first: Prevents new announces while shutting down.
         await self._scheduler.stop()
 
@@ -260,7 +316,7 @@ class Node:
                 await self._receive_task
             self._receive_task = None
 
-        self.state = NodeState.STOPPED
+        self._state_machine.transition(NodeState.STOPPED)
         logger.info("node stopped")
 
     async def _receive_loop(self) -> None:
@@ -420,7 +476,7 @@ class Node:
         data: bytes,
         min_delay_ms: int | None = None,
         max_delay_ms: int | None = None,
-    ) -> asyncio.Task:
+    ) -> asyncio.Task[bool]:
         """Schedule a transmission after a random jitter delay.
 
         Why jitter: RREQ rebroadcast uses jitter to reduce collision probability
@@ -450,7 +506,7 @@ class Node:
             name=f"scheduled-send-{delay_ms}ms",
         )
 
-    def get_status(self) -> dict:
+    def get_status(self) -> dict[str, object]:
         """Get node status for debugging/monitoring.
 
         Returns:
@@ -474,7 +530,7 @@ class Node:
             "firmware": "sim-0.1.0",
         }
 
-    def get_neighbors(self) -> list[dict]:
+    def get_neighbors(self) -> list[dict[str, object]]:
         """Get neighbor list for CoAP /neighbors resource.
 
         Returns:
@@ -490,17 +546,17 @@ class Node:
             })
         return neighbors
 
-    def get_config(self) -> dict:
+    def get_config(self) -> dict[str, int]:
         """Get node config for CoAP /config resource."""
         return {
             "receive_timeout_ms": self.config.receive_timeout_ms,
             "announce_interval_ms": self.config.announce_interval_ms,
         }
 
-    def set_config(self, updates: dict) -> None:
+    def set_config(self, updates: Mapping[str, object]) -> None:
         """Update node config from CoAP /config PUT."""
         # ponytail: only allow safe updates, ignore unknown keys
         if "receive_timeout_ms" in updates:
-            self.config.receive_timeout_ms = int(updates["receive_timeout_ms"])
+            self.config.receive_timeout_ms = int(cast(int | str, updates["receive_timeout_ms"]))
         if "announce_interval_ms" in updates:
-            self.config.announce_interval_ms = int(updates["announce_interval_ms"])
+            self.config.announce_interval_ms = int(cast(int | str, updates["announce_interval_ms"]))

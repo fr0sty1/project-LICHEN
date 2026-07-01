@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-0zj6.23",
+  "title": "ssize_t to size_t cast after bounds check is order-dependent",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:32:58.582806Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:38:06.194661Z",
+  "closed_at": "2026-06-27T06:38:06.194661Z",
+  "close_reason": "Fixed: added comment explaining ssize_t to size_t cast is safe because hwid_len \u003e 0 and hwid_len \u003c= sizeof(hwid) per hwinfo_get_device_id contract",
+  "labels": [
+    "c-standards",
+    "integer",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0zj6.23",
+      "depends_on_id": "project-LICHEN-0zj6",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:32:58.583362Z"
+    }
+  ]
+}

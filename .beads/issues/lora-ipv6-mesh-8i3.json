@@ -1,0 +1,24 @@
+{
+  "id": "lora-ipv6-mesh-8i3",
+  "title": "RPL message types (DIO, DIS, DAO, DAO-ACK)",
+  "description": "Implement RPL control messages per RFC 6550.\n\nICMPv6 type 155 (RPL), codes:\n- 0x00: DIS (DODAG Information Solicitation)\n- 0x01: DIO (DODAG Information Object)\n- 0x02: DAO (Destination Advertisement Object)\n- 0x03: DAO-ACK\n\nDIO fields:\n- RPLInstanceID, Version, Rank, Flags (G, MOP, Prf)\n- DTSN, DODAGID\n- Options: DODAG Configuration, Prefix Information, Route Information\n\nDAO fields:\n- RPLInstanceID, Flags (K, D), DAOSequence\n- DODAGID (if D flag)\n- Options: RPL Target, Transit Information\n\nDIS fields:\n- Flags, Reserved\n- Options: Solicited Information\n\nDataclasses for each message type with to_bytes/from_bytes.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T08:22:01Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-06-15T16:18:29Z",
+  "close_reason": "Implemented in python/src/lichen/rpl/messages.py: DIS/DIO/DAO/DAO-ACK codecs (RFC 6550), generic RPL options (Pad1/PadN/TLV), ICMPv6 type-155 wrap+dispatch. 15 tests, hand-built RFC byte vectors. ruff clean.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-8i3",
+      "depends_on_id": "lora-ipv6-mesh-rap",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:23:53Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

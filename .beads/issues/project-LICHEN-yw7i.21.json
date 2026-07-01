@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-yw7i.21",
+  "title": "Link-local address logging duplicated in main.c and lichen_l2.c",
+  "description": "main.c:139-152 and lichen_l2.c:455-477 both derive and log the link-local address from EUI-64. The lichen_l2.c version is the integration path; the main.c version is standalone mode. Consider extracting a shared helper that logs the link-local address given an EUI-64 to reduce duplication.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T17:07:31.231011Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T17:15:15.451641Z",
+  "closed_at": "2026-06-27T17:15:15.451641Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-yw7i.21",
+      "depends_on_id": "project-LICHEN-yw7i",
+      "type": "parent-child",
+      "created_at": "2026-06-27T17:07:31.231523Z"
+    }
+  ]
+}

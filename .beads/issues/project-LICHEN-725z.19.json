@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-725z.19",
+  "title": "Inline lichen_dev_iface_init is unnecessary wrapper",
+  "description": "lichen_l2.c:346-349 — One-line wrapper that calls lichen_l2_iface_init(iface). The net_if_api struct could reference lichen_l2_iface_init directly. Extra indirection obscures call chain.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T18:10:19.954411Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T18:14:36.874589Z",
+  "closed_at": "2026-06-27T18:14:36.874589Z",
+  "close_reason": "Removed unnecessary wrapper lichen_dev_iface_init, using lichen_l2_iface_init directly in net_if_api struct",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-725z.19",
+      "depends_on_id": "project-LICHEN-725z",
+      "type": "parent-child",
+      "created_at": "2026-06-27T18:10:19.95497Z"
+    }
+  ]
+}

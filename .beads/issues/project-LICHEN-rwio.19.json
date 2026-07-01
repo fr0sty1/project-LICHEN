@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-rwio.19",
+  "title": "Compiler may optimize away memset() of hash buffer in lichen_pubkey_to_iid()",
+  "description": "In ipv6_addr.c:87, memset(hash, 0, sizeof(hash)) is used to clear the SHA-256 intermediate hash buffer. This memset may be optimized away by the compiler because 'hash' is a local variable that is never read after the memset. The C standard allows dead-store elimination.\n\nImpact: The 32-byte SHA-256 hash of the public key remains in stack memory after lichen_pubkey_to_iid() returns. This hash directly derives the cryptographic IID - while the public key is public, predictable memory residue enables local attacks if an attacker can read process memory.\n\nFix: Use explicit_bzero() (POSIX), memset_s() (C11 Annex K), or Zephyr's secure_memzero() if available.\n\nLocation: firmware/bridge-zephyr/subsys/lichen/ipv6_addr.c:87",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T06:01:50.483849Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T06:15:00.98498Z",
+  "closed_at": "2026-06-27T06:15:00.98498Z",
+  "close_reason": "Replaced memset() with secure_zero() for hash buffer at line 100 in ipv6_addr.c. Added secure_zero helper with volatile pointer to prevent compiler optimization.",
+  "labels": [
+    "crypto-security",
+    "key-lifecycle",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rwio.19",
+      "depends_on_id": "project-LICHEN-rwio",
+      "type": "parent-child",
+      "created_at": "2026-06-27T06:01:50.516364Z"
+    }
+  ]
+}

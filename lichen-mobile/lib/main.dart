@@ -3,18 +3,28 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:provider/provider.dart';
 
 import 'services/ble_connection.dart';
+import 'services/message_store.dart';
+import 'pages/chat_page.dart';
 
-void main() {
-  runApp(const LichenApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final messageStore = MessageStore();
+  await messageStore.init();
+  runApp(LichenApp(messageStore: messageStore));
 }
 
 class LichenApp extends StatelessWidget {
-  const LichenApp({super.key});
+  final MessageStore messageStore;
+
+  const LichenApp({super.key, required this.messageStore});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => BleConnection(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => BleConnection()),
+        ChangeNotifierProvider.value(value: messageStore),
+      ],
       child: MaterialApp(
         title: 'LICHEN',
         theme: ThemeData(
@@ -113,6 +123,16 @@ class _ConnectionPageState extends State<ConnectionPage> {
                 );
               }),
               child: const Text('Ping'),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ChatPage(contact: 'TEST-NODE'),
+                ),
+              ),
+              child: const Text('Open Chat'),
             ),
           ],
         ),

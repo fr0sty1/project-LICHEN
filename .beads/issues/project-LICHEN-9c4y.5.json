@@ -1,0 +1,45 @@
+{
+  "id": "project-LICHEN-9c4y.5",
+  "title": "Implement MeshCore stream framing and adapter dispatcher",
+  "description": "Why this exists: individual MeshCore operations need a common bounded framing, decode, dispatch, and response path. What needs to be done: implement reassembly, frame validation, output queueing, dispatch table, request correlation if required, and explicit unknown/unsupported handling. Acceptance criteria: tests cover valid frames, split frames, malformed length/checksum, oversized frames, unknown commands, disconnect cleanup, and output backpressure; dispatcher routes supported MVP operations to stub handlers; MeshCore RF packets are not passed to LICHEN LoRa as MeshCore RF.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-30T17:19:07.922757Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T17:19:38.480733Z",
+  "labels": [
+    "zephyr",
+    "meshcore",
+    "framing",
+    "firmware",
+    "app-interface"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c4y.5",
+      "depends_on_id": "project-LICHEN-9c4y",
+      "type": "parent-child",
+      "created_at": "2026-06-30T17:19:07.923345Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c4y.5",
+      "depends_on_id": "project-LICHEN-9c4y.2",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:19:36.947803Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c4y.5",
+      "depends_on_id": "project-LICHEN-9c4y.3",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:19:37.80042Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c4y.5",
+      "depends_on_id": "project-LICHEN-9c4y.4",
+      "type": "blocks",
+      "created_at": "2026-06-30T17:19:38.480733Z"
+    }
+  ]
+}

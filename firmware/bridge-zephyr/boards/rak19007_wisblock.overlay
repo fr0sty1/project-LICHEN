@@ -37,6 +37,8 @@
  * User button: AIN1 = P0.31 (directly accessible on base board)
  */
 
+#include <zephyr/dt-bindings/lora/sx126x.h>
+
 / {
 	chosen {
 		zephyr,console = &cdc_acm_uart0;
@@ -112,7 +114,8 @@
 		dio1-gpios = <&gpio1 15 GPIO_ACTIVE_HIGH>;  /* P1.15 = DIO1 */
 		/* DIO2 controls RF switch internally */
 		dio2-tx-enable;
-		/* 1.8V TCXO */
-		tcxo-power-gpios = <&gpio1 7 GPIO_ACTIVE_HIGH>;  /* P1.07 */
+		/* 1.8V TCXO controlled by DIO3 */
+		dio3-tcxo-voltage = <SX126X_DIO3_TCXO_1V8>;
+		tcxo-power-startup-delay-ms = <5>;
 	};
 };

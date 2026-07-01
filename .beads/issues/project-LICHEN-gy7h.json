@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-gy7h",
+  "title": "Review: bridge-zephyr 2026-06-27",
+  "notes": "Review confidence: 15% chance of missed bug.\nLeast confident areas: lichen_link_tx/rx internals (not in scope, called from L2), SCHC decompression edge cases, LoRa driver behavior under concurrent TX/RX.\nWould raise confidence if: reviewed lichen/link.h implementation, ran fuzzing on frame parsing, tested concurrent start/stop scenarios.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-27T21:20:06.983052Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-27T21:33:24.856452Z",
+  "closed_at": "2026-06-27T21:33:24.856452Z",
+  "close_reason": "All 31 findings addressed: 24 fixed, 7 commendations acknowledged",
+  "labels": [
+    "review"
+  ]
+}

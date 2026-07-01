@@ -21,3 +21,6 @@ __pycache__/
 /build/
 /tools/edtt/
 /tools/net-tools/
+
+# Beads / Dolt files (added by bd init)
+.beads/proxieddb/

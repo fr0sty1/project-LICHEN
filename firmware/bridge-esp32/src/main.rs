@@ -155,12 +155,20 @@ async fn main(spawner: Spawner) {
         .with_frequency(Rate::from_mhz(8))
         .with_mode(SpiMode::_0);
 
-    let spi = Spi::new(peripherals.SPI2, spi_config)
-        .unwrap()
-        .with_sck(peripherals.GPIO5)
-        .with_miso(peripherals.GPIO19)
-        .with_mosi(peripherals.GPIO27)
-        .into_async();
+    let spi = match Spi::new(peripherals.SPI2, spi_config) {
+        Ok(s) => s,
+        Err(e) => {
+            error!("SPI init failed: {:?}", e);
+            loop {
+                info!("halted - SPI init failed");
+                Timer::after_secs(5).await;
+            }
+        }
+    }
+    .with_sck(peripherals.GPIO5)
+    .with_miso(peripherals.GPIO19)
+    .with_mosi(peripherals.GPIO27)
+    .into_async();
 
     let nss = Output::new(peripherals.GPIO18, Level::High);
     let reset = Output::new(peripherals.GPIO23, Level::High);
@@ -170,11 +178,11 @@ async fn main(spawner: Spawner) {
     info!("SPI configured for SX1262");
 
     // Spawn radio task with SPI and control pins
-    spawner
-        .spawn(radio_task(spi, nss, reset, busy, dio1))
-        .unwrap();
-
-    info!("Radio task spawned");
+    if let Err(e) = spawner.spawn(radio_task(spi, nss, reset, busy, dio1)) {
+        error!("Failed to spawn radio task: {:?}", e);
+    } else {
+        info!("Radio task spawned");
+    }
 
     // Main loop - placeholder for USB/UART bridge
     loop {

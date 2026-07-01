@@ -1,0 +1,32 @@
+{
+  "id": "lora-ipv6-mesh-tz8",
+  "title": "Implement link layer in Python",
+  "description": "Python implementation of spec section 4: frame format (Length+LLSec+SeqNum+DstAddr+Payload+Sig), Ed25519 signatures (use PyNaCl), replay protection with sliding window. Generate test vectors.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T05:14:49Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-05-27T08:24:46Z",
+  "close_reason": "Superseded by detailed breakdown: n80, 9a9, eno, muq",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-tz8",
+      "depends_on_id": "lora-ipv6-mesh-ux9",
+      "type": "blocks",
+      "created_at": "2026-05-26T22:15:11Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "lora-ipv6-mesh-tz8",
+      "depends_on_id": "lora-ipv6-mesh-s4n",
+      "type": "blocks",
+      "created_at": "2026-05-27T01:20:10Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}

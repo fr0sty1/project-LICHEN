@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-1ox2",
+  "title": "State machine verification: Python simulator",
+  "description": "Add strict runtime state machine verification to the Python simulator code. Python gets the hardass treatment:\n\n1. **Raise exceptions, not assertions** - assertions can be disabled with -O\n2. **Custom StateError exception** - clear error type for state violations\n3. **Frozen dataclass for state enum** - prevent monkey-patching\n4. **Transition decorator** - @requires_state(State.RUNNING) on methods\n5. **Logging on every transition** - audit trail\n\nPattern:\n```python\nclass StateError(Exception):\n    pass\n\n@dataclass(frozen=True)\nclass StateMachine:\n    TRANSITIONS: ClassVar[dict[State, set[State]]] = {\n        State.UNINIT: {State.STOPPED},\n        State.STOPPED: {State.RUNNING, State.UNINIT},\n        ...\n    }\n    \n    def transition(self, new: State) -\u003e None:\n        if new not in self.TRANSITIONS.get(self._state, set()):\n            raise StateError(f'Invalid: {self._state} -\u003e {new}')\n        logger.debug(f'State: {self._state} -\u003e {new}')\n        self._state = new\n```\n\nFiles to audit:\n- python/src/lichen/*.py (find stateful classes)\n\nNo silent failures. No assertions. Exceptions that cannot be ignored.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T02:17:51.452917Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-30T05:28:41.953149Z",
+  "closed_at": "2026-06-30T05:28:41.953149Z",
+  "close_reason": "Added strict runtime state-machine verification for Python simulator code. Implemented lichen.state_machine.StateError, a frozen StateMachine with explicit transition tables, transition logging, invalid initial-state checks, invalid assignment checks, and a requires_state decorator. Wired integrated Node lifecycle through NODE_STATE_TRANSITIONS and @requires_state(NodeState.STOPPED) on start(); wired SimNode radio state assignments through a simulator transition table while preserving existing valid TX/RX sequencing. Updated focused tests for StateError, valid/no-op transitions, invalid transition-table behavior, invalid state values, and MockRadio CAD support. Tests/checks: .venv/bin/python -m pytest python/tests/test_node.py python/tests/sim/test_node.py python/tests/sim/test_simulation.py python/tests/sim/test_integration.py::TestTwoNodeTxRx::test_bidirectional_communication passed, 105/105; .venv/bin/python -m ruff check touched files passed; .venv/bin/python -m mypy python/src/lichen/state_machine.py python/src/lichen/sim/node.py passed; git diff --check passed. A broader .venv/bin/python -m pytest python/tests run was interrupted after 4:25 with 1662 passed, 1 skipped, and one state-machine-related failure identified in test_bidirectional_communication; that failure was fixed and its focused test now passes. Review pass 1: found and fixed missing initial-state validation in StateMachine. Review pass 2: found and fixed decorator return-type preservation; Beads metadata and generated artifacts checked. Follow-ups created: project-LICHEN-ifdw for missing filelock dependency and project-LICHEN-42j7 for Node Meshtastic adapter import/typing mypy errors.",
+  "labels": [
+    "state-machine",
+    "python"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-kqma.6",
+  "title": "Reject oversize LR1110 RX packets instead of truncating",
+  "description": "Trigger: LR1110 receives a payload longer than the caller-provided lora_recv() buffer. lichen/drivers/lora/lr1110/lr1110.c:363 uses MIN(rx_payload_length, size), reads only that many bytes, and returns success. Impact: upper layers receive a syntactically successful but truncated radio frame, which can be parsed as corrupted LICHEN data instead of being dropped. Match the loopback/sim driver behavior: if rx_payload_length \u003e size, return -EMSGSIZE and avoid delivering partial frames.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-29T02:02:58.21086Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-29T02:46:43.859786Z",
+  "closed_at": "2026-06-29T02:46:43.859786Z",
+  "close_reason": "Implemented fixes in assigned subagents and ran available focused checks; full Zephyr builds remain blocked by existing workspace/module setup issues.",
+  "labels": [
+    "lora",
+    "lr1110",
+    "correctness"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-kqma.6",
+      "depends_on_id": "project-LICHEN-kqma",
+      "type": "parent-child",
+      "created_at": "2026-06-29T02:02:58.21143Z"
+    }
+  ]
+}

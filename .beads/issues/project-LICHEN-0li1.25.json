@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-0li1.25",
+  "title": "[lichen_l2.c:1475-1480] Double-init check sets flag before error",
+  "description": "What: lichen_l2_iface_init() checks if lichen_iface is already set (line 1475), and if so, sets iface_init_failed (line 1477) and returns. This means if init is somehow called twice, both invocations fail.\n\nWhy it matters: This is intentional fail-safe behavior, not a bug. The comment explicitly states 'init requires reboot after failure'. The design ensures that partial initialization cannot be retried without a clean reboot.\n\nClosing this as not-a-bug - this is correct defensive programming.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T05:12:56.226019Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T05:12:59.179114Z",
+  "closed_at": "2026-06-28T05:12:59.179114Z",
+  "close_reason": "Not a bug - intentional fail-safe design documented in comment at line 1476.",
+  "labels": [
+    "review-r1",
+    "review",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0li1.25",
+      "depends_on_id": "project-LICHEN-0li1",
+      "type": "parent-child",
+      "created_at": "2026-06-28T05:12:56.226857Z"
+    }
+  ]
+}

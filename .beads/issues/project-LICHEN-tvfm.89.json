@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-tvfm.89",
+  "title": "[lichen_util.h:73-77] secure_zero word-write only reads back first byte",
+  "description": "Gap found: secure_zero verification not complete.\n\nWhy this was missed: Algorithm analyzed but read-back pattern not verified.\n\nThe actual bug: Lines 73-77 write a zero word using memcpy, then read back via volatile:\n  __builtin_memcpy((void *)p, \u0026zero_word, sizeof(unsigned long));\n  (void)*(volatile uint8_t *)p;  // Read-back\n  \nThe read-back only reads 1 byte (uint8_t), not the full word. On a platform where:\n1. memcpy might be optimized away\n2. The compiler observes only 1 byte is read\n\nA sophisticated optimizer could theoretically recognize that only 1 byte matters and optimize the word write to a byte write. The subsequent bytes in the word might not be zeroed.\n\nThis is highly theoretical - no known compiler does this. But for maximum security, the read-back should match the write size:\n  (void)*(volatile unsigned long *)p;\n\nOr read back all bytes individually.\n\nPriority 3 - theoretical optimization escape.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T01:54:16.485808Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T02:46:59.207678Z",
+  "closed_at": "2026-06-28T02:46:59.207678Z",
+  "close_reason": "Fixed: The issue described a memcpy+byte-readback pattern that does not exist in the current code. The actual implementation uses volatile unsigned long* writes which preserve volatile semantics for the full word. Updated the misleading comment that referenced a union approach (not used) to accurately describe the cast-through-uintptr_t approach.",
+  "labels": [
+    "review",
+    "round2",
+    "gap",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvfm.89",
+      "depends_on_id": "project-LICHEN-tvfm",
+      "type": "parent-child",
+      "created_at": "2026-06-28T01:54:16.496952Z"
+    }
+  ]
+}

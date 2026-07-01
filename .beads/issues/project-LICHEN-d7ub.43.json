@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-d7ub.43",
+  "title": "lora_l2.c:264 hash_input buffer may have uninitialized padding",
+  "description": "Contract consideration: generate_eui64() - hash_input buffer at line 267 is declared but not initialized. memcpy at lines 312-313 fills prefix + hwid bytes, but if hwid_len \u003c sizeof(hwid), remaining bytes of hash_input after hwid are uninitialized. lichen_sha256 at line 314 uses EUI64_DOMAIN_PREFIX_LEN + hwid_len which is correct length. No uninitialized bytes are read. This is correct - no bug.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-06-28T07:21:35.504563Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-28T07:21:39.061273Z",
+  "closed_at": "2026-06-28T07:21:39.061273Z",
+  "close_reason": "Not a bug: lichen_sha256 is called with exact length (prefix_len + hwid_len), so uninitialized trailing bytes in hash_input are never read.",
+  "labels": [
+    "review",
+    "round1",
+    "contract",
+    "exhaustive"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-d7ub.43",
+      "depends_on_id": "project-LICHEN-d7ub",
+      "type": "parent-child",
+      "created_at": "2026-06-28T07:21:35.505142Z"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "id": "lora-ipv6-mesh-ej6",
+  "title": "Define wire protocol encoding/decoding",
+  "description": "Create python/src/lichen/sim/protocol.py. Binary protocol, little-endian. Message types: REGISTER(0x01), OK(0x00), ERR(0xFF), TX(0x10), TX_DONE(0x11), TX_FAIL(0x12), RX(0x20), RX_OK(0x21), RX_TIMEOUT(0x22), TIME(0x30), TIME_OK(0x31). Functions: encode_register(sim_id, node_id, x, y, z) -\u003e bytes, decode_register(data) -\u003e tuple, encode_tx(payload) -\u003e bytes, etc. Use struct module. Comprehensive round-trip unit tests for each message type.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-05-27T07:02:08Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-06-26T21:27:14Z",
+  "closed_at": "2026-05-27T15:53:36Z",
+  "close_reason": "Wave 2 complete. 187 tests pass, ruff clean.",
+  "dependencies": [
+    {
+      "issue_id": "lora-ipv6-mesh-ej6",
+      "depends_on_id": "lora-ipv6-mesh-xly",
+      "type": "blocks",
+      "created_at": "2026-05-27T00:03:28Z",
+      "created_by": "Mark Frost",
+      "metadata": "{}"
+    }
+  ]
+}
