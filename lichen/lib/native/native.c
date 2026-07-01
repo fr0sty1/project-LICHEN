@@ -15,16 +15,18 @@
 #include <lichen/native.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
+#include <zephyr/drivers/gpio.h>
 #include <zephyr/kernel.h>
+#include <zephyr/init.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/reboot.h>
 #if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
 #include <zephyr/usb/usb_device.h>
-#include <zephyr/init.h>
 #elif IS_ENABLED(CONFIG_USB_DEVICE_STACK_NEXT)
 #include <zephyr/usb/usbd.h>
-#include <zephyr/drivers/gpio.h>
-#include <zephyr/init.h>
+#endif
+/* nRF GPREGRET (DFU-touch reboot) — needed for both USB stacks on nRF. */
+#if defined(CONFIG_SOC_FAMILY_NORDIC_NRF)
 #include <nrfx_power.h>
 #endif
 #include <zcbor_decode.h>
@@ -68,38 +70,6 @@ static void lichen_usbd_msg_cb(struct usbd_context *const ctx,
 	}
 }
 
-/*
- * T1000-E buzzer: P0.25 (signal) + P1.05 (enable, active-high).
- * 2 kHz square wave, n beeps of 150 ms each separated by 200 ms gaps.
- */
-static void buzz_n(int n)
-{
-	const struct device *gpio0_dev = DEVICE_DT_GET(DT_NODELABEL(gpio0));
-	const struct device *gpio1_dev = DEVICE_DT_GET(DT_NODELABEL(gpio1));
-
-	if (!device_is_ready(gpio0_dev) || !device_is_ready(gpio1_dev)) {
-		return;
-	}
-	/* P1.05 = BUZZER_EN — power the buzzer */
-	gpio_pin_configure(gpio1_dev, 5, GPIO_OUTPUT_ACTIVE);
-	/* P0.25 = PIN_BUZZER — audio signal */
-	gpio_pin_configure(gpio0_dev, 25, GPIO_OUTPUT_INACTIVE);
-
-	for (int b = 0; b < n; b++) {
-		if (b > 0) {
-			k_busy_wait(200000); /* 200 ms gap between beeps */
-		}
-		for (int i = 0; i < 300; i++) { /* 300 × 500 µs = 150 ms */
-			gpio_pin_set_raw(gpio0_dev, 25, 1);
-			k_busy_wait(250);
-			gpio_pin_set_raw(gpio0_dev, 25, 0);
-			k_busy_wait(250);
-		}
-	}
-
-	gpio_pin_configure(gpio0_dev, 25, GPIO_INPUT);
-	gpio_pin_configure(gpio1_dev, 5, GPIO_OUTPUT_INACTIVE); /* disable */
-}
 
 static int lichen_usb_early_init(void)
 {
@@ -678,15 +648,58 @@ static void rx_thread_fn(void *p1, void *p2, void *p3)
 }
 
 /* --------------------------------------------------------------------------
- * 1200-bps touch reset (Adafruit/Arduino convention)
+ * Platform helpers — buzzer + 1200-bps DFU touch (nRF, stack-agnostic)
  *
- * When a host opens the CDC ACM port at 1200 baud with DTR de-asserted,
- * write the Adafruit UF2 bootloader magic to GPREGRET and cold-reboot.
- * The bootloader checks GPREGRET on startup: 0x57 → enter UF2 DFU mode.
- * This lets adafruit-nrfutil --touch 1200 trigger a headless reflash.
+ * These are gated by board features, NOT the USB stack, so they work with
+ * either USB_DEVICE_STACK (old) or USB_DEVICE_STACK_NEXT.
  * -------------------------------------------------------------------------- */
 
-#if IS_ENABLED(CONFIG_USB_DEVICE_STACK_NEXT)
+#if IS_ENABLED(CONFIG_LICHEN_NATIVE_BUZZER)
+/*
+ * T1000-E buzzer: P0.25 (signal) + P1.05 (enable, active-high).
+ * 2 kHz square wave, n beeps of 150 ms each separated by 200 ms gaps.
+ */
+static void buzz_n(int n)
+{
+	const struct device *gpio0_dev = DEVICE_DT_GET(DT_NODELABEL(gpio0));
+	const struct device *gpio1_dev = DEVICE_DT_GET(DT_NODELABEL(gpio1));
+
+	if (!device_is_ready(gpio0_dev) || !device_is_ready(gpio1_dev)) {
+		return;
+	}
+	/* P1.05 = BUZZER_EN — power the buzzer */
+	gpio_pin_configure(gpio1_dev, 5, GPIO_OUTPUT_ACTIVE);
+	/* P0.25 = PIN_BUZZER — audio signal */
+	gpio_pin_configure(gpio0_dev, 25, GPIO_OUTPUT_INACTIVE);
+
+	for (int b = 0; b < n; b++) {
+		if (b > 0) {
+			k_busy_wait(200000); /* 200 ms gap between beeps */
+		}
+		for (int i = 0; i < 300; i++) { /* 300 × 500 µs = 150 ms */
+			gpio_pin_set_raw(gpio0_dev, 25, 1);
+			k_busy_wait(250);
+			gpio_pin_set_raw(gpio0_dev, 25, 0);
+			k_busy_wait(250);
+		}
+	}
+
+	gpio_pin_configure(gpio0_dev, 25, GPIO_INPUT);
+	gpio_pin_configure(gpio1_dev, 5, GPIO_OUTPUT_INACTIVE); /* disable */
+}
+#endif /* CONFIG_LICHEN_NATIVE_BUZZER */
+
+/*
+ * 1200-bps touch reset (Adafruit/Arduino convention).
+ *
+ * When a host opens the CDC-ACM port at 1200 baud with DTR de-asserted, write
+ * the Adafruit UF2 bootloader magic to GPREGRET and cold-reboot. The bootloader
+ * checks GPREGRET on startup: 0x57 → enter UF2 DFU mode. This lets
+ * `adafruit-nrfutil --touch 1200` trigger a headless reflash. nRF-only
+ * (GPREGRET); works with either USB stack.
+ */
+#if defined(CONFIG_SOC_FAMILY_NORDIC_NRF) && IS_ENABLED(CONFIG_UART_LINE_CTRL)
+#define LICHEN_DFU_TOUCH 1
 #define DFU_MAGIC_UF2_RESET 0x57u
 
 static void dfu_reset_work_fn(struct k_work *work)
@@ -714,7 +727,7 @@ static void dfu_touch_poll_fn(struct k_work *work)
 	}
 	k_work_reschedule(&s_dfu_touch_poll, K_MSEC(100));
 }
-#endif /* CONFIG_USB_DEVICE_STACK_NEXT */
+#endif /* nRF + UART_LINE_CTRL */
 
 /* --------------------------------------------------------------------------
  * Public API
@@ -765,7 +778,7 @@ int lichen_native_init(lichen_native_rx_cb_t rx_cb)
 			K_PRIO_COOP(7), 0, K_NO_WAIT);
 	k_thread_name_set(&s_rx_thread, "native_rx");
 
-#if IS_ENABLED(CONFIG_USB_DEVICE_STACK_NEXT)
+#if defined(LICHEN_DFU_TOUCH)
 	k_work_schedule(&s_dfu_touch_poll, K_MSEC(100));
 #endif
 
