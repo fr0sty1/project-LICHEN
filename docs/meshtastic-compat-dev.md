@@ -14,6 +14,29 @@ This contract is based on the Meshtastic app/protocol research recorded in Bead 
 | `meshtastic/Meshtastic-Android` | `eb3bd10757a312d1537874bfab245117c46c36a9` |
 | `meshtastic/Meshtastic-Apple` | `aeeb0cc49fbe0ed593e918ba2f95100ecf694256` |
 
+`DeviceMetadata` was rechecked for Bead `project-LICHEN-t2hn.24` against the checked-in LICHEN revision
+`908b6d0f87aae73a248a30d0bb49e01c6f998255` and current `meshtastic/protobufs` `master` at
+`9cb134be322dd7122e80d49b17dad9a213ff752e`. The pinned protobuf commit above and current upstream both define the same
+12-field `DeviceMetadata` message:
+
+| Number | Field | LICHEN policy |
+|--------|-------|---------------|
+| 1 | `firmware_version` | LICHEN-branded compatibility firmware string |
+| 2 | `device_state_version` | `1` |
+| 3 | `canShutdown` | `false` |
+| 4 | `hasWifi` | `false` |
+| 5 | `hasBluetooth` | True only when the Meshtastic-compatible BLE surface is active |
+| 6 | `hasEthernet` | `false` |
+| 7 | `role` | `CLIENT` |
+| 8 | `position_flags` | `0` |
+| 9 | `hw_model` | `PRIVATE_HW` / `255` |
+| 10 | `hasRemoteHardware` | `false` |
+| 11 | `hasPKC` | `false` |
+| 12 | `excluded_modules` | MVP unsupported-module bitmask |
+
+The Zephyr encoder emits all 12 fields explicitly. No `platform_type` field exists in pinned or current upstream
+`DeviceMetadata`; do not add one unless a future upstream protobuf revision introduces it.
+
 ## Build and Target Architecture
 
 **This feature is off by default.** The Meshtastic adapter adds significant firmware size:

@@ -115,6 +115,78 @@ static bool payload_get_varint_field(const uint8_t *buf, size_t len,
 	return false;
 }
 
+static bool payload_has_only_metadata_fields(const uint8_t *buf, size_t len)
+{
+	bool seen[13] = { false };
+	size_t pos = 0U;
+
+	while (pos < len) {
+		uint32_t key;
+		uint32_t field;
+		uint32_t n;
+
+		if (read_varint(buf, len, &pos, &key) < 0) {
+			return false;
+		}
+		field = key >> 3;
+		if (field < 1U || field > 12U) {
+			return false;
+		}
+		if (seen[field]) {
+			return false;
+		}
+		seen[field] = true;
+		if ((key & 0x07U) == 0U) {
+			if (read_varint(buf, len, &pos, &n) < 0) {
+				return false;
+			}
+		} else if ((key & 0x07U) == 2U) {
+			if (read_varint(buf, len, &pos, &n) < 0 || n > len - pos) {
+				return false;
+			}
+			pos += n;
+		} else if ((key & 0x07U) == 5U) {
+			if (len - pos < 4U) {
+				return false;
+			}
+			pos += 4U;
+		} else {
+			return false;
+		}
+	}
+	return true;
+}
+
+static void assert_metadata_varint(const uint8_t *buf, size_t len,
+				   uint32_t field, uint32_t expected)
+{
+	uint32_t value = 0U;
+
+	zassert_true(payload_get_varint_field(buf, len, field, &value),
+		     "missing DeviceMetadata field %u", field);
+	zassert_equal(value, expected, "DeviceMetadata field %u", field);
+}
+
+static void assert_metadata_payload(const uint8_t *buf, size_t len,
+				    const char *firmware_version,
+				    uint32_t has_bluetooth,
+				    uint32_t excluded_modules)
+{
+	zassert_true(payload_has_only_metadata_fields(buf, len));
+	zassert_true(payload_has_string(buf, len, 1U, firmware_version));
+	assert_metadata_varint(buf, len, 2U, 1U);
+	assert_metadata_varint(buf, len, 3U, 0U);
+	assert_metadata_varint(buf, len, 4U, 0U);
+	assert_metadata_varint(buf, len, 5U, has_bluetooth);
+	assert_metadata_varint(buf, len, 6U, 0U);
+	assert_metadata_varint(buf, len, 7U, 0U);
+	assert_metadata_varint(buf, len, 8U, 0U);
+	assert_metadata_varint(buf, len, 9U, 255U);
+	assert_metadata_varint(buf, len, 10U, 0U);
+	assert_metadata_varint(buf, len, 11U, 0U);
+	assert_metadata_varint(buf, len, 12U, excluded_modules);
+}
+
 ZTEST(meshtastic_codec, test_generated_vectors_are_current)
 {
 	zassert_equal(MESHTASTIC_VECTOR_SOURCE_COUNT, 14U);
@@ -682,6 +754,31 @@ ZTEST(meshtastic_codec, test_encode_sync_payload_builders)
 	ret = lichen_meshtastic_encode_node_info_payload(&info, payload,
 							 sizeof(payload));
 	zassert_true(ret > 0, "node_info payload failed: %d", ret);
+}
+
+ZTEST(meshtastic_codec, test_metadata_payload_matches_current_schema)
+{
+	struct lichen_meshtastic_local_info info = {
+		.firmware_version = "LICHEN compat 1.0",
+		.has_bluetooth = true,
+	};
+	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	int ret;
+
+	ret = lichen_meshtastic_encode_metadata_payload(&info, payload,
+							sizeof(payload));
+
+	zassert_true(ret > 0, "metadata payload failed: %d", ret);
+	assert_metadata_payload(payload, (size_t)ret, "LICHEN compat 1.0", 1U,
+				0x5fffU);
+
+	info.has_bluetooth = false;
+	ret = lichen_meshtastic_encode_metadata_payload(&info, payload,
+							sizeof(payload));
+
+	zassert_true(ret > 0, "metadata payload failed: %d", ret);
+	assert_metadata_payload(payload, (size_t)ret, "LICHEN compat 1.0", 0U,
+				0x7fffU);
 }
 
 ZTEST(meshtastic_codec, test_metadata_payload_rejects_meshtastic_branding)
