@@ -15,6 +15,29 @@ config LORA_LICHEN_BLE
 	  device. Keep the HAL BLE-local capability disabled until the board has a
 	  validated bidirectional local-client transport.
 
+config LORA_LICHEN_MESHTASTIC_BLE
+	bool "Meshtastic-compatible BLE GATT interface"
+	depends on BT
+	depends on BT_PERIPHERAL
+	depends on BT_MAX_CONN = 1
+	depends on LICHEN_MESHTASTIC_CODEC
+	depends on !LORA_LICHEN_BLE
+	default n
+	help
+	  Enable the Meshtastic BLE service UUID and raw protobuf
+	  ToRadio/FromRadio/FromNum characteristics. This is a local app
+	  compatibility surface only; it does not make LICHEN RF packets
+	  Meshtastic-compatible. The first implementation owns a single
+	  Meshtastic app session and therefore requires CONFIG_BT_MAX_CONN=1.
+
+config LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH
+	int "Meshtastic BLE FromRadio queue depth"
+	depends on LORA_LICHEN_MESHTASTIC_BLE
+	default 4
+	range 1 16
+	help
+	  Number of complete FromRadio protobuf values retained for app reads.
+
 config LORA_LICHEN_GATEWAY_RPL_ROOT
 	bool "RPL root signalling"
 	depends on LICHEN_RPL

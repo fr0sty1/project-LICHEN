@@ -4,6 +4,7 @@ project(lichen_gateway)
 
 target_sources(app PRIVATE src/main.c src/config_cbor.c)
 target_sources_ifdef(CONFIG_LORA_LICHEN_BLE app PRIVATE src/ble_uart.c src/ble_ingress.c)
+target_sources_ifdef(CONFIG_LORA_LICHEN_MESHTASTIC_BLE app PRIVATE src/ble_meshtastic.c)
 
 # Register the lichen_coap iterable section so the linker resolves
 # _coap_resource_lichen_coap_list_start / _list_end symbols.

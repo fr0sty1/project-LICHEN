@@ -21,6 +21,10 @@
 #include "ble_uart.h"
 #endif
 
+#ifdef CONFIG_LORA_LICHEN_MESHTASTIC_BLE
+#include "ble_meshtastic.h"
+#endif
+
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 #include <lichen/native.h>
 #endif
@@ -438,6 +442,13 @@ int main(void)
 #ifdef CONFIG_LORA_LICHEN_BLE
 	if (ble_uart_init() < 0) {
 		LOG_WRN("BLE UART init failed — BLE unavailable");
+	}
+#endif
+
+	/* Meshtastic-compatible BLE GATT — optional app compatibility surface */
+#ifdef CONFIG_LORA_LICHEN_MESHTASTIC_BLE
+	if (ble_meshtastic_init() < 0) {
+		LOG_WRN("Meshtastic BLE init failed — Meshtastic app unavailable");
 	}
 #endif
 
