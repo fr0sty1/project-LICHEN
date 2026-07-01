@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-t2hn.8.2.2",
+  "title": "Validate RF-originated inbound events reach Meshtastic app surface",
+  "description": "Why this exists: project-LICHEN-t2hn.8.2.1 defines and tests the no-hardware CoAP/local inbound source path into Meshtastic FromRadio, but it does not validate real LoRa/RF-originated inbound semantic events or real phone BLE behavior. What needs to be done: on hardware, receive or inject a real RF-originated LICHEN message/status event, verify it is surfaced through the Meshtastic-compatible BLE FromRadio path to a client/app, and record board, firmware commit, RF setup, app/client version, logs, and pass/fail evidence. Acceptance criteria: hardware evidence is attached in Beads notes; failures create exact blocker Beads with logs and reproduction steps.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T06:32:50.239084Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T06:32:50.239616Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "gateway",
+    "messaging",
+    "firmware",
+    "app-interface",
+    "status"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.8.2.2",
+      "depends_on_id": "project-LICHEN-t2hn.8.2",
+      "type": "parent-child",
+      "created_at": "2026-07-01T06:32:50.239616Z"
+    }
+  ]
+}
