@@ -56,6 +56,7 @@ meshtastic = [
 lichen-sim = "lichen.sim.server:main"
 lichen-tui = "lichen.tui.app:main"
 lichen-dashboard = "lichen.dashboard.app:main"
+lichen-board-intake = "lichen.board_intake:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/lichen"]
