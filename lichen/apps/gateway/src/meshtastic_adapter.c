@@ -21,6 +21,7 @@
 #include <lichen/app_identity/app_identity.h>
 #endif
 #include <lichen/hal.h>
+#include <lichen/app_interface/app_interface.h>
 #if IS_ENABLED(CONFIG_LICHEN_L2)
 #include "lora_l2.h"
 #endif
@@ -94,6 +95,8 @@ static int handle_text(
 	const struct lichen_meshtastic_adapter_packet_info *packet,
 	void *user_data)
 {
+	struct lichen_app_text_event event;
+
 	ARG_UNUSED(user_data);
 
 	if (packet == NULL) {
@@ -103,15 +106,21 @@ static int handle_text(
 		return -ESTALE;
 	}
 
-	/*
-	 * The shared adapter has validated a broadcast, primary-channel,
-	 * UTF-8 text packet. The concrete Zephyr /msg or local send contract is
-	 * still tracked by project-LICHEN-t2hn.7.2, so report unsupported until
-	 * there is a real local ingress path behind this callback.
-	 */
-	LOG_INF("Meshtastic TEXT_MESSAGE_APP ingress unsupported: id=%u len=%u",
-		packet->has_id ? packet->id : 0U, (uint32_t)packet->payload_len);
-	return -ENOTSUP;
+	event = (struct lichen_app_text_event){
+		.from = packet->has_from ? packet->from : 0U,
+		.to = packet->has_to_peer ? UINT32_MAX :
+		      packet->has_to ? packet->to : UINT32_MAX,
+		.id = packet->has_id ? packet->id : 0U,
+		.payload = packet->payload,
+		.payload_len = packet->payload_len,
+		.has_id = packet->has_id,
+		.has_to_iid = packet->has_to_peer,
+	};
+	if (packet->has_to_peer) {
+		memcpy(event.to_iid, packet->to_iid, sizeof(event.to_iid));
+	}
+
+	return lichen_app_interface_submit_text(&event);
 }
 
 static uint32_t queue_free(void *user_data)

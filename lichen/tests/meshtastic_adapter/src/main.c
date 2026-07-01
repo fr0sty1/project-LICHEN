@@ -31,10 +31,12 @@ struct test_ctx {
 	uint32_t last_text_to;
 	uint32_t last_text_id;
 	uint32_t last_text_channel;
+	uint8_t last_text_to_iid[8];
 	size_t last_text_len;
 	bool last_text_has_from;
 	bool last_text_has_to;
 	bool last_text_has_channel;
+	bool last_text_has_to_peer;
 	bool last_text_want_ack;
 	const char *firmware_version;
 };
@@ -130,6 +132,11 @@ static int test_text(
 	ctx->last_text_has_from = packet->has_from;
 	ctx->last_text_has_to = packet->has_to;
 	ctx->last_text_has_channel = packet->has_channel;
+	ctx->last_text_has_to_peer = packet->has_to_peer;
+	if (packet->has_to_peer) {
+		memcpy(ctx->last_text_to_iid, packet->to_iid,
+		       sizeof(ctx->last_text_to_iid));
+	}
 	ctx->last_text_want_ack = packet->want_ack;
 	zassert_true(packet->payload_len <= sizeof(s_last_text_payload));
 	memcpy(s_last_text_payload, packet->payload, packet->payload_len);
@@ -268,6 +275,10 @@ static size_t put_varint(uint8_t *buf, size_t cap, uint64_t value);
 static size_t build_app_to_radio(uint8_t *buf, size_t cap, uint32_t portnum,
 				 const uint8_t *payload, size_t payload_len,
 				 uint32_t id);
+static size_t build_text_to_radio_to(uint8_t *buf, size_t cap,
+				     const uint8_t *payload,
+				     size_t payload_len, uint32_t to,
+				     uint32_t id);
 static size_t build_text_to_radio(uint8_t *buf, size_t cap,
 				  const uint8_t *payload, size_t payload_len,
 				  uint32_t id);
@@ -507,9 +518,10 @@ static void put_le32(uint8_t *buf, uint32_t value)
 	buf[3] = (uint8_t)(value >> 24);
 }
 
-static size_t build_text_to_radio(uint8_t *buf, size_t cap,
-				  const uint8_t *payload, size_t payload_len,
-				  uint32_t id)
+static size_t build_text_to_radio_to(uint8_t *buf, size_t cap,
+				     const uint8_t *payload,
+				     size_t payload_len, uint32_t to,
+				     uint32_t id)
 {
 	static uint8_t data[LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX + 16U];
 	static uint8_t packet[LICHEN_MESHTASTIC_TO_RADIO_MAX];
@@ -529,7 +541,7 @@ static size_t build_text_to_radio(uint8_t *buf, size_t cap,
 	data_len += payload_len;
 
 	packet[packet_len++] = 0x15; /* MeshPacket.to fixed32 */
-	put_le32(&packet[packet_len], 0xffffffffU);
+	put_le32(&packet[packet_len], to);
 	packet_len += 4U;
 	packet[packet_len++] = 0x22; /* MeshPacket.decoded */
 	packet_len += put_varint(&packet[packet_len],
@@ -550,6 +562,14 @@ static size_t build_text_to_radio(uint8_t *buf, size_t cap,
 	pos += packet_len;
 
 	return pos;
+}
+
+static size_t build_text_to_radio(uint8_t *buf, size_t cap,
+				  const uint8_t *payload, size_t payload_len,
+				  uint32_t id)
+{
+	return build_text_to_radio_to(buf, cap, payload, payload_len,
+				      0xffffffffU, id);
 }
 
 static size_t build_app_to_radio(uint8_t *buf, size_t cap, uint32_t portnum,
@@ -1746,6 +1766,7 @@ ZTEST(meshtastic_adapter, test_text_packet_with_from_and_primary_channel_routes)
 	zassert_equal(ctx.last_text_from, 0x01020304U);
 	zassert_true(ctx.last_text_has_to);
 	zassert_equal(ctx.last_text_to, 0xffffffffU);
+	zassert_false(ctx.last_text_has_to_peer);
 	zassert_true(ctx.last_text_has_channel);
 	zassert_equal(ctx.last_text_channel, 0U);
 	zassert_true(ctx.last_text_want_ack);
@@ -1848,21 +1869,56 @@ ZTEST(meshtastic_adapter, test_late_encrypted_oneof_overrides_decoded_text)
 		      1U);
 }
 
-ZTEST(meshtastic_adapter, test_direct_text_packet_without_resolver_is_unsupported)
+ZTEST(meshtastic_adapter, test_direct_text_known_peer_routes_to_stub)
 {
 	struct lichen_meshtastic_adapter adapter;
 	struct test_ctx ctx;
-	const uint8_t text_packet[] = {
-		0x0a, 0x17, 0x15, 0x04, 0x03, 0x02, 0x01, 0x22,
-		0x09, 0x08, 0x01, 0x12, 0x05, 0x68, 0x65, 0x6c,
-		0x6c, 0x6f, 0x35, 0x78, 0x56, 0x34, 0x12, 0x50, 0x01
+	const uint8_t expected_iid[] = {
+		0x00, 0xaa, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04
 	};
 	struct queue_status_view status;
+	size_t len;
 	int ret;
 
 	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
-	ret = lichen_meshtastic_adapter_process_raw(&adapter, text_packet,
-                                                    sizeof(text_packet));
+	ctx.peer_count = 1U;
+	ctx.peers[0] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xaa, 0, 0, 0x01, 0x02, 0x03, 0x04 },
+	};
+	len = build_text_to_radio_to(s_text_packet, sizeof(s_text_packet),
+				     (const uint8_t *)"hello", 5U,
+				     0x01020304U, 0x12345678U);
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, s_text_packet, len);
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.text_count, 1U);
+	zassert_true(ctx.last_text_has_to);
+	zassert_equal(ctx.last_text_to, 0x01020304U);
+	zassert_true(ctx.last_text_has_to_peer);
+	zassert_mem_equal(ctx.last_text_to_iid, expected_iid,
+			  sizeof(expected_iid));
+	zassert_mem_equal(s_last_text_payload, "hello", 5U);
+	zassert_equal(ctx.out_count, 1U);
+	decode_queue_status(ctx.out[0], ctx.out_len[0], &status);
+	zassert_true(status.has_res);
+	zassert_equal(status.res, 0U);
+	zassert_true(status.has_mesh_packet_id);
+	zassert_equal(status.mesh_packet_id, 0x12345678U);
+}
+
+ZTEST(meshtastic_adapter, test_direct_text_unknown_peer_is_unsupported)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	struct queue_status_view status;
+	size_t len;
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	len = build_text_to_radio_to(s_text_packet, sizeof(s_text_packet),
+				     (const uint8_t *)"hello", 5U,
+				     0x01020304U, 0x12345678U);
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, s_text_packet, len);
 
 	zassert_equal(ret, 0);
 	zassert_equal(ctx.text_count, 0U);
@@ -1874,6 +1930,67 @@ ZTEST(meshtastic_adapter, test_direct_text_packet_without_resolver_is_unsupporte
 	zassert_equal(status.mesh_packet_id, 0x12345678U);
 	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->text_packet_count,
 		      1U);
+	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+			      unsupported_packet_count,
+		      1U);
+}
+
+ZTEST(meshtastic_adapter, test_direct_text_self_node_is_unsupported)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	struct queue_status_view status;
+	size_t len;
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	len = build_text_to_radio_to(s_text_packet, sizeof(s_text_packet),
+				     (const uint8_t *)"hello", 5U,
+				     0xaabbccddU, 0x12345678U);
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, s_text_packet, len);
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.text_count, 0U);
+	zassert_equal(ctx.out_count, 1U);
+	decode_queue_status(ctx.out[0], ctx.out_len[0], &status);
+	zassert_true(status.has_res);
+	zassert_equal(status.res, 2U);
+	zassert_true(status.has_mesh_packet_id);
+	zassert_equal(status.mesh_packet_id, 0x12345678U);
+	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+			      unsupported_packet_count,
+		      1U);
+}
+
+ZTEST(meshtastic_adapter, test_direct_text_colliding_peer_is_unsupported)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	struct queue_status_view status;
+	size_t len;
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ctx.peer_count = 2U;
+	ctx.peers[0] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xaa, 0, 0, 0, 0, 0, 0x55 },
+	};
+	ctx.peers[1] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xbb, 0, 0, 0, 0, 0, 0x55 },
+	};
+	len = build_text_to_radio_to(s_text_packet, sizeof(s_text_packet),
+				     (const uint8_t *)"hello", 5U,
+				     0x00000055U, 0x12345678U);
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, s_text_packet, len);
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.text_count, 0U);
+	zassert_equal(ctx.out_count, 1U);
+	decode_queue_status(ctx.out[0], ctx.out_len[0], &status);
+	zassert_true(status.has_res);
+	zassert_equal(status.res, 2U);
+	zassert_true(status.has_mesh_packet_id);
+	zassert_equal(status.mesh_packet_id, 0x12345678U);
 	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
 			      unsupported_packet_count,
 		      1U);

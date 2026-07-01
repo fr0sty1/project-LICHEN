@@ -92,11 +92,22 @@ struct pb_cursor {
 struct nodedb_peer_state {
 	struct lichen_meshtastic_peer_snapshot peers[MESHTASTIC_NODEDB_MAX_PEERS];
 	uint32_t node_nums[MESHTASTIC_NODEDB_MAX_PEERS];
+	uint32_t collision_node_nums[MESHTASTIC_NODEDB_MAX_PEERS];
 	size_t peer_count;
 	size_t emit_count;
+	size_t collision_node_count;
 	uint32_t collision_count;
 	uint32_t omitted_count;
 };
+
+static int local_info(struct lichen_meshtastic_adapter *adapter,
+		      struct lichen_meshtastic_local_info *info);
+static void nodedb_peer_snapshot(struct lichen_meshtastic_adapter *adapter,
+				 uint32_t self_node_num,
+				 struct nodedb_peer_state *state);
+static bool node_num_collided(const struct nodedb_peer_state *state,
+			      uint32_t node_num);
+static void peer_eui64_to_iid(const uint8_t eui64[8], uint8_t iid[8]);
 
 static const struct lichen_meshtastic_adapter_unsupported_operation
 	unsupported_operations[] = {
@@ -657,8 +668,46 @@ static bool utf8_is_valid(const uint8_t *data, size_t len)
 	return true;
 }
 
+static bool resolve_text_destination(
+	struct lichen_meshtastic_adapter *adapter,
+	struct lichen_meshtastic_adapter_packet_info *packet)
+{
+	struct lichen_meshtastic_local_info info;
+	struct nodedb_peer_state peers;
+	int ret;
+
+	if (!packet->has_to) {
+		return false;
+	}
+	if (packet->to == MESHTASTIC_BROADCAST_NODE) {
+		return true;
+	}
+
+	ret = local_info(adapter, &info);
+	if (ret < 0 || packet->to == info.node_num) {
+		return false;
+	}
+	nodedb_peer_snapshot(adapter, info.node_num, &peers);
+	if (node_num_collided(&peers, packet->to)) {
+		return false;
+	}
+	for (size_t i = 0U; i < peers.emit_count; i++) {
+		if (peers.node_nums[i] != packet->to) {
+			continue;
+		}
+		memcpy(packet->to_eui64, peers.peers[i].eui64,
+		       sizeof(packet->to_eui64));
+		peer_eui64_to_iid(packet->to_eui64, packet->to_iid);
+		packet->has_to_peer = true;
+		return true;
+	}
+
+	return false;
+}
+
 static bool text_packet_supported(
-	const struct lichen_meshtastic_adapter_packet_info *packet)
+	struct lichen_meshtastic_adapter *adapter,
+	struct lichen_meshtastic_adapter_packet_info *packet)
 {
 	if (packet->payload == NULL || packet->payload_len == 0U ||
 	    packet->payload_len > LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX ||
@@ -666,7 +715,7 @@ static bool text_packet_supported(
 		return false;
 	}
 
-	if (!packet->has_to || packet->to != MESHTASTIC_BROADCAST_NODE) {
+	if (!resolve_text_destination(adapter, packet)) {
 		return false;
 	}
 
@@ -721,6 +770,12 @@ static uint32_t peer_node_num(const uint8_t eui64[8])
 	return node_num != 0U ? node_num : 1U;
 }
 
+static void peer_eui64_to_iid(const uint8_t eui64[8], uint8_t iid[8])
+{
+	memcpy(iid, eui64, 8U);
+	iid[0] ^= 0x02U;
+}
+
 static void sort_peers_by_eui64(struct nodedb_peer_state *state)
 {
 	for (size_t i = 1U; i < state->peer_count; i++) {
@@ -761,6 +816,31 @@ static bool node_num_already_used(const struct nodedb_peer_state *state,
 	return false;
 }
 
+static void record_collision_node_num(struct nodedb_peer_state *state,
+				      uint32_t node_num)
+{
+	for (size_t i = 0U; i < state->collision_node_count; i++) {
+		if (state->collision_node_nums[i] == node_num) {
+			return;
+		}
+	}
+	if (state->collision_node_count < ARRAY_SIZE(state->collision_node_nums)) {
+		state->collision_node_nums[state->collision_node_count++] =
+			node_num;
+	}
+}
+
+static bool node_num_collided(const struct nodedb_peer_state *state,
+			      uint32_t node_num)
+{
+	for (size_t i = 0U; i < state->collision_node_count; i++) {
+		if (state->collision_node_nums[i] == node_num) {
+			return true;
+		}
+	}
+	return false;
+}
+
 static void nodedb_peer_snapshot(struct lichen_meshtastic_adapter *adapter,
 				 uint32_t self_node_num,
 				 struct nodedb_peer_state *state)
@@ -782,6 +862,7 @@ static void nodedb_peer_snapshot(struct lichen_meshtastic_adapter *adapter,
 
 		sanitize_peer_snapshot(&state->peers[i]);
 		if (node_num_already_used(state, self_node_num, node_num)) {
+			record_collision_node_num(state, node_num);
 			state->collision_count++;
 			state->omitted_count++;
 			continue;
@@ -1225,7 +1306,7 @@ static int dispatch_packet(struct lichen_meshtastic_adapter *adapter,
 	switch (packet.kind) {
 	case LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP:
 		adapter->stats.text_packet_count++;
-		if (!text_packet_supported(&packet)) {
+		if (!text_packet_supported(adapter, &packet)) {
 			adapter->stats.unsupported_packet_count++;
 			return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED, &packet);
 		}

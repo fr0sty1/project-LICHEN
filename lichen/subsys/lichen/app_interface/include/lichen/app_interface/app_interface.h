@@ -14,11 +14,17 @@ extern "C" {
 
 struct lichen_app_text_event {
 	uint32_t from;
+	/*
+	 * Legacy/app-surface destination. When has_to_iid is true, to_iid is
+	 * the authoritative LICHEN destination and consumers MUST ignore to.
+	 */
 	uint32_t to;
 	uint32_t id;
+	uint8_t to_iid[8];
 	const uint8_t *payload;
 	size_t payload_len;
 	bool has_id;
+	bool has_to_iid;
 };
 
 struct lichen_app_status_event {

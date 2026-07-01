@@ -2,6 +2,7 @@
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
 #include <errno.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -63,7 +64,9 @@ struct queue_status_view {
 	uint32_t res;
 	uint32_t free;
 	uint32_t maxlen;
+	uint32_t mesh_packet_id;
 	bool has_res;
+	bool has_mesh_packet_id;
 };
 
 struct from_radio_view {
@@ -72,6 +75,38 @@ struct from_radio_view {
 	size_t payload_len;
 	uint32_t value;
 };
+
+struct submit_text_ctx {
+	uint32_t count;
+	uint32_t last_to;
+	uint8_t last_to_iid[8];
+	uint8_t payload[64];
+	size_t payload_len;
+	bool has_to_iid;
+};
+
+static int submit_text_sink(const struct lichen_app_text_event *event,
+			    void *user_data)
+{
+	struct submit_text_ctx *ctx = user_data;
+
+	if (event == NULL || ctx == NULL) {
+		return -EINVAL;
+	}
+	ctx->count++;
+	ctx->last_to = event->to;
+	ctx->has_to_iid = event->has_to_iid;
+	if (event->has_to_iid) {
+		memcpy(ctx->last_to_iid, event->to_iid,
+		       sizeof(ctx->last_to_iid));
+	}
+	ctx->payload_len = event->payload_len;
+	zassert_true(event->payload_len <= sizeof(ctx->payload));
+	if (event->payload_len > 0U) {
+		memcpy(ctx->payload, event->payload, event->payload_len);
+	}
+	return 0;
+}
 
 static int read_varint(const uint8_t *buf, size_t len, size_t *pos,
 		       uint32_t *value)
@@ -91,6 +126,75 @@ static int read_varint(const uint8_t *buf, size_t len, size_t *pos,
 	}
 
 	return -EINVAL;
+}
+
+static size_t put_varint(uint8_t *buf, size_t cap, uint64_t value)
+{
+	size_t pos = 0U;
+
+	do {
+		uint8_t byte = (uint8_t)(value & 0x7fU);
+
+		value >>= 7;
+		if (value != 0U) {
+			byte |= 0x80U;
+		}
+		zassert_true(pos < cap);
+		buf[pos++] = byte;
+	} while (value != 0U);
+
+	return pos;
+}
+
+static void put_le32(uint8_t *buf, uint32_t value)
+{
+	buf[0] = (uint8_t)value;
+	buf[1] = (uint8_t)(value >> 8);
+	buf[2] = (uint8_t)(value >> 16);
+	buf[3] = (uint8_t)(value >> 24);
+}
+
+static size_t build_text_to_radio_to(uint8_t *buf, size_t cap,
+				     const uint8_t *payload,
+				     size_t payload_len, uint32_t to,
+				     uint32_t id)
+{
+	static uint8_t data[64];
+	static uint8_t packet[128];
+	size_t data_len = 0U;
+	size_t packet_len = 0U;
+	size_t pos = 0U;
+
+	zassert_true(payload_len <= sizeof(data) - 8U);
+
+	data[data_len++] = 0x08; /* Data.portnum */
+	data[data_len++] = 0x01; /* TEXT_MESSAGE_APP */
+	data[data_len++] = 0x12; /* Data.payload */
+	data_len += put_varint(&data[data_len], sizeof(data) - data_len,
+			       payload_len);
+	memcpy(&data[data_len], payload, payload_len);
+	data_len += payload_len;
+
+	packet[packet_len++] = 0x15; /* MeshPacket.to fixed32 */
+	put_le32(&packet[packet_len], to);
+	packet_len += 4U;
+	packet[packet_len++] = 0x22; /* MeshPacket.decoded */
+	packet_len += put_varint(&packet[packet_len],
+				 sizeof(packet) - packet_len, data_len);
+	memcpy(&packet[packet_len], data, data_len);
+	packet_len += data_len;
+	packet[packet_len++] = 0x35; /* MeshPacket.id fixed32 */
+	put_le32(&packet[packet_len], id);
+	packet_len += 4U;
+
+	zassert_true(packet_len <= cap - 1U);
+	buf[pos++] = 0x0a; /* ToRadio.packet */
+	pos += put_varint(&buf[pos], cap - pos, packet_len);
+	zassert_true(packet_len <= cap - pos);
+	memcpy(&buf[pos], packet, packet_len);
+	pos += packet_len;
+
+	return pos;
 }
 
 static void decode_queue_status(const uint8_t *buf, size_t len,
@@ -123,6 +227,10 @@ static void decode_queue_status(const uint8_t *buf, size_t len,
 			break;
 		case 0x18:
 			out->maxlen = value;
+			break;
+		case 0x20:
+			out->mesh_packet_id = value;
+			out->has_mesh_packet_id = true;
 			break;
 		default:
 			zassert_unreachable("unexpected queueStatus key");
@@ -507,6 +615,58 @@ ZTEST(meshtastic_gateway_adapter, test_process_once_dispatches_ble_write)
 	zassert_equal(status.res, 0U);
 	zassert_equal(status.free, 1U);
 	zassert_equal(status.maxlen, 2U);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_process_once_direct_text_submits_resolved_peer)
+{
+	static const uint8_t peer_key[LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN] = {
+		1, 2, 3, 4
+	};
+	const uint8_t expected_iid[] = {
+		0x00, 0xaa, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04
+	};
+	struct submit_text_ctx submit;
+	struct lichen_app_identity_peer peer = {
+		.eui64 = { 0x02, 0xaa, 0, 0, 0x01, 0x02, 0x03, 0x04 },
+		.has_public_key = true,
+	};
+	const struct lichen_app_interface_sink sink = {
+		.submit_text = submit_text_sink,
+		.user_data = &submit,
+	};
+	uint8_t to_radio[128];
+	const uint8_t *from_radio;
+	size_t to_radio_len;
+	size_t from_radio_len;
+	struct queue_status_view status;
+
+	reset_gateway(2U);
+	memset(&submit, 0, sizeof(submit));
+	memcpy(peer.public_key, peer_key, sizeof(peer.public_key));
+	zassert_ok(lichen_app_identity_upsert_peer(&peer));
+	zassert_ok(lichen_app_interface_register_sink(&sink, NULL));
+
+	to_radio_len = build_text_to_radio_to(to_radio, sizeof(to_radio),
+					      (const uint8_t *)"hello", 5U,
+					      0x01020304U, 0x12345678U);
+	zassert_ok(fake_ble_meshtastic_push_to_radio(to_radio, to_radio_len));
+
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+	zassert_equal(submit.count, 1U);
+	zassert_equal(submit.last_to, UINT32_MAX);
+	zassert_true(submit.has_to_iid);
+	zassert_mem_equal(submit.last_to_iid, expected_iid,
+			  sizeof(expected_iid));
+	zassert_mem_equal(submit.payload, "hello", 5U);
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 1U);
+	from_radio = fake_ble_meshtastic_from_radio(0U, &from_radio_len);
+	zassert_not_null(from_radio);
+	decode_queue_status(from_radio, from_radio_len, &status);
+	zassert_true(status.has_res);
+	zassert_equal(status.res, 0U);
+	zassert_true(status.has_mesh_packet_id);
+	zassert_equal(status.mesh_packet_id, 0x12345678U);
 }
 
 ZTEST(meshtastic_gateway_adapter, test_process_once_without_ble_write_is_idle)

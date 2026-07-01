@@ -98,6 +98,9 @@ config LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH
 	  Keep enough headroom for a queued heartbeat plus a full configuration
 	  sync burst with the default bounded NodeDB peer cap.
 
+config LICHEN_APP_INTERFACE_MAX_PAYLOAD
+	default 200 if LORA_LICHEN_MESHTASTIC_BLE
+
 config LORA_LICHEN_MESHTASTIC_BLE_TO_RADIO_QUEUE_DEPTH
 	int "Meshtastic BLE ToRadio queue depth"
 	depends on LORA_LICHEN_MESHTASTIC_BLE

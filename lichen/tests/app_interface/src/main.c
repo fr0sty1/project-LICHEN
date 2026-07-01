@@ -24,6 +24,7 @@ struct sink_ctx {
 	uint32_t last_to;
 	uint32_t last_id;
 	uint32_t last_request_id;
+	uint8_t last_to_iid[8];
 	uint16_t rank;
 	int8_t tx_power_dbm;
 	struct lichen_app_location_time_snapshot location_time;
@@ -46,6 +47,10 @@ static int text_sink(const struct lichen_app_text_event *event, void *user_data)
 	ctx->last_from = event->from;
 	ctx->last_to = event->to;
 	ctx->last_id = event->id;
+	if (event->has_to_iid) {
+		memcpy(ctx->last_to_iid, event->to_iid,
+		       sizeof(ctx->last_to_iid));
+	}
 	ctx->payload_len = event->payload_len;
 	if (event->payload_len > 0U) {
 		memcpy(ctx->payload, event->payload, event->payload_len);
@@ -69,6 +74,10 @@ static int submit_text_sink(const struct lichen_app_text_event *event,
 	ctx->last_from = event->from;
 	ctx->last_to = event->to;
 	ctx->last_id = event->id;
+	if (event->has_to_iid) {
+		memcpy(ctx->last_to_iid, event->to_iid,
+		       sizeof(ctx->last_to_iid));
+	}
 	ctx->payload_len = event->payload_len;
 	if (event->payload_len > 0U) {
 		memcpy(ctx->payload, event->payload, event->payload_len);
@@ -265,13 +274,16 @@ ZTEST(app_interface, test_submit_text_uses_separate_sink)
 	struct sink_ctx emit;
 	struct sink_ctx submit;
 	const uint8_t payload[] = { 'h', 'i' };
+	const uint8_t to_iid[] = { 0x02, 0xaa, 0, 0, 1, 2, 3, 4 };
 	const struct lichen_app_text_event event = {
 		.from = 10U,
 		.to = 20U,
 		.id = 30U,
+		.to_iid = { 0x02, 0xaa, 0, 0, 1, 2, 3, 4 },
 		.payload = payload,
 		.payload_len = sizeof(payload),
 		.has_id = true,
+		.has_to_iid = true,
 	};
 	const struct lichen_app_interface_sink emit_sink = {
 		.emit_text = text_sink,
@@ -291,6 +303,8 @@ ZTEST(app_interface, test_submit_text_uses_separate_sink)
 	zassert_equal(emit.text_count, 0U);
 	zassert_equal(submit.submit_count, 1U);
 	zassert_equal(submit.last_from, event.from);
+	zassert_equal(submit.last_to, event.to);
+	zassert_mem_equal(submit.last_to_iid, to_iid, sizeof(to_iid));
 	zassert_mem_equal(submit.payload, payload, sizeof(payload));
 	zassert_equal(stats().text_submit_count, 1U);
 	zassert_equal(stats().text_submit_delivery_count, 1U);
