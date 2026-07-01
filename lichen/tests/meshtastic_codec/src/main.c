@@ -459,6 +459,91 @@ ZTEST(meshtastic_codec, test_encode_text_packet_rejects_short_buffer)
 	zassert_equal(buf[0], 0x5a, "short-buffer encode should not write output");
 }
 
+ZTEST(meshtastic_codec, test_encode_routing_packet_matches_vectors)
+{
+	const uint8_t expected_ack_packet[] = {
+		0x0d, 0x44, 0x33, 0x22, 0x11, 0x15, 0x04, 0x03,
+		0x02, 0x01, 0x22, 0x07, 0x08, 0x05, 0x35, 0x78,
+		0x56, 0x34, 0x12, 0x35, 0x89, 0x77, 0x66, 0x55
+	};
+	const uint8_t expected_ack_from_radio[] = {
+		0x08, 0x02, 0x12, 0x18, 0x0d, 0x44, 0x33, 0x22,
+		0x11, 0x15, 0x04, 0x03, 0x02, 0x01, 0x22, 0x07,
+		0x08, 0x05, 0x35, 0x78, 0x56, 0x34, 0x12, 0x35,
+		0x89, 0x77, 0x66, 0x55
+	};
+	const uint8_t expected_nak_packet[] = {
+		0x0d, 0x44, 0x33, 0x22, 0x11, 0x15, 0x04, 0x03,
+		0x02, 0x01, 0x22, 0x0b, 0x08, 0x05, 0x12, 0x02,
+		0x18, 0x01, 0x35, 0x78, 0x56, 0x34, 0x12, 0x35,
+		0x8a, 0x77, 0x66, 0x55
+	};
+	const uint8_t expected_nak_from_radio[] = {
+		0x08, 0x03, 0x12, 0x1c, 0x0d, 0x44, 0x33, 0x22,
+		0x11, 0x15, 0x04, 0x03, 0x02, 0x01, 0x22, 0x0b,
+		0x08, 0x05, 0x12, 0x02, 0x18, 0x01, 0x35, 0x78,
+		0x56, 0x34, 0x12, 0x35, 0x8a, 0x77, 0x66, 0x55
+	};
+	struct lichen_meshtastic_routing_packet packet = {
+		.from = 0x11223344U,
+		.to = 0x01020304U,
+		.id = 0x55667789U,
+		.request_id = 0x12345678U,
+	};
+	uint8_t packet_buf[64];
+	uint8_t from_radio_buf[64];
+	int ret;
+
+	ret = lichen_meshtastic_encode_routing_packet(&packet, packet_buf,
+						      sizeof(packet_buf));
+	zassert_true(ret > 0, "routing ACK encode failed: %d", ret);
+	expect_bytes(packet_buf, (size_t)ret, expected_ack_packet,
+		     sizeof(expected_ack_packet));
+	ret = lichen_meshtastic_encode_from_radio_packet(2U, packet_buf,
+							 sizeof(expected_ack_packet),
+							 from_radio_buf,
+							 sizeof(from_radio_buf));
+	zassert_true(ret > 0, "FromRadio ACK encode failed: %d", ret);
+	expect_bytes(from_radio_buf, (size_t)ret, expected_ack_from_radio,
+		     sizeof(expected_ack_from_radio));
+
+	packet.id = 0x5566778aU;
+	packet.error_reason = 1U;
+	packet.has_error_reason = true;
+	ret = lichen_meshtastic_encode_routing_packet(&packet, packet_buf,
+						      sizeof(packet_buf));
+	zassert_true(ret > 0, "routing NAK encode failed: %d", ret);
+	expect_bytes(packet_buf, (size_t)ret, expected_nak_packet,
+		     sizeof(expected_nak_packet));
+	ret = lichen_meshtastic_encode_from_radio_packet(3U, packet_buf,
+							 sizeof(expected_nak_packet),
+							 from_radio_buf,
+							 sizeof(from_radio_buf));
+	zassert_true(ret > 0, "FromRadio NAK encode failed: %d", ret);
+	expect_bytes(from_radio_buf, (size_t)ret, expected_nak_from_radio,
+		     sizeof(expected_nak_from_radio));
+}
+
+ZTEST(meshtastic_codec, test_encode_routing_packet_rejects_short_buffer)
+{
+	struct lichen_meshtastic_routing_packet packet = {
+		.from = 0x11223344U,
+		.to = 0x01020304U,
+		.id = 0x55667789U,
+		.request_id = 0x12345678U,
+	};
+	uint8_t buf[23];
+
+	memset(buf, 0x5a, sizeof(buf));
+	zassert_equal(lichen_meshtastic_encode_routing_packet(&packet, buf,
+							      sizeof(buf)),
+		      -ENOMEM);
+	zassert_equal(buf[0], 0x5a, "short-buffer encode should not write output");
+	zassert_equal(lichen_meshtastic_encode_routing_packet(NULL, buf,
+							      sizeof(buf)),
+		      -EINVAL);
+}
+
 ZTEST(meshtastic_codec, test_encode_packet_rejects_from_radio_oversize)
 {
 	uint8_t packet[LICHEN_MESHTASTIC_FROM_RADIO_MAX];

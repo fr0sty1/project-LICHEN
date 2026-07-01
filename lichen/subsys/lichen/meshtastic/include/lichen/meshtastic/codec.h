@@ -69,6 +69,15 @@ struct lichen_meshtastic_text_packet {
 	bool want_ack;
 };
 
+struct lichen_meshtastic_routing_packet {
+	uint32_t from;
+	uint32_t to;
+	uint32_t id;
+	uint32_t request_id;
+	uint32_t error_reason;
+	bool has_error_reason;
+};
+
 struct lichen_meshtastic_local_info {
 	uint32_t node_num;
 	uint32_t reboot_count;
@@ -124,6 +133,10 @@ int lichen_meshtastic_encode_from_radio_message(
 
 int lichen_meshtastic_encode_text_packet(
 	const struct lichen_meshtastic_text_packet *packet,
+	uint8_t *buf, size_t buflen);
+
+int lichen_meshtastic_encode_routing_packet(
+	const struct lichen_meshtastic_routing_packet *packet,
 	uint8_t *buf, size_t buflen);
 
 int lichen_meshtastic_encode_my_info_payload(

@@ -50,7 +50,11 @@
 
 #define DATA_PORTNUM_FIELD 1U
 #define DATA_PAYLOAD_FIELD 2U
+#define DATA_REQUEST_ID_FIELD 6U
 #define MESHTASTIC_PORTNUM_TEXT_MESSAGE_APP 1U
+#define MESHTASTIC_PORTNUM_ROUTING_APP 5U
+
+#define ROUTING_ERROR_REASON_FIELD 3U
 
 #define MESHTASTIC_HW_MODEL_PRIVATE 255U
 #define MESHTASTIC_ROLE_CLIENT 0U
@@ -1041,6 +1045,72 @@ int lichen_meshtastic_encode_text_packet(
 	if (packet->want_ack &&
 	    pb_write_varint_field(buf, buflen, &pos, MESH_PACKET_WANT_ACK_FIELD,
 				  1U) < 0) {
+		return -ENOMEM;
+	}
+
+	return (int)pos;
+}
+
+int lichen_meshtastic_encode_routing_packet(
+	const struct lichen_meshtastic_routing_packet *packet,
+	uint8_t *buf, size_t buflen)
+{
+	uint8_t routing[8];
+	uint8_t data[32];
+	size_t routing_pos = 0U;
+	size_t data_pos = 0U;
+	size_t encoded_len;
+	size_t pos = 0U;
+
+	if (packet == NULL || buf == NULL) {
+		return -EINVAL;
+	}
+
+	if (packet->has_error_reason &&
+	    pb_write_varint_field(routing, sizeof(routing), &routing_pos,
+				  ROUTING_ERROR_REASON_FIELD,
+				  packet->error_reason) < 0) {
+		return -ENOMEM;
+	}
+	if (pb_write_varint_field(data, sizeof(data), &data_pos,
+				  DATA_PORTNUM_FIELD,
+				  MESHTASTIC_PORTNUM_ROUTING_APP) < 0) {
+		return -ENOMEM;
+	}
+	if (packet->has_error_reason &&
+	    pb_write_len_field(data, sizeof(data), &data_pos,
+			       DATA_PAYLOAD_FIELD, routing, routing_pos) < 0) {
+		return -ENOMEM;
+	}
+	if (pb_write_fixed32_field(data, sizeof(data), &data_pos,
+				   DATA_REQUEST_ID_FIELD,
+				   packet->request_id) < 0) {
+		return -ENOMEM;
+	}
+
+	encoded_len = pb_key_size(MESH_PACKET_FROM_FIELD, PB_WT_32BIT) +
+		      sizeof(uint32_t) +
+		      pb_key_size(MESH_PACKET_TO_FIELD, PB_WT_32BIT) +
+		      sizeof(uint32_t) +
+		      pb_key_size(MESH_PACKET_DECODED_FIELD, PB_WT_LEN) +
+		      pb_varint_size(data_pos) + data_pos +
+		      pb_key_size(MESH_PACKET_ID_FIELD, PB_WT_32BIT) +
+		      sizeof(uint32_t);
+	if (encoded_len > LICHEN_MESHTASTIC_FROM_RADIO_MAX) {
+		return -EMSGSIZE;
+	}
+	if (buflen < encoded_len) {
+		return -ENOMEM;
+	}
+
+	if (pb_write_fixed32_field(buf, buflen, &pos, MESH_PACKET_FROM_FIELD,
+				   packet->from) < 0 ||
+	    pb_write_fixed32_field(buf, buflen, &pos, MESH_PACKET_TO_FIELD,
+				   packet->to) < 0 ||
+	    pb_write_len_field(buf, buflen, &pos, MESH_PACKET_DECODED_FIELD,
+			       data, data_pos) < 0 ||
+	    pb_write_fixed32_field(buf, buflen, &pos, MESH_PACKET_ID_FIELD,
+				   packet->id) < 0) {
 		return -ENOMEM;
 	}
 

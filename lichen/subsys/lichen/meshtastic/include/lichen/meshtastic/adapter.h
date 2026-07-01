@@ -57,6 +57,7 @@ struct lichen_meshtastic_adapter_stats {
 	uint32_t malformed_count;
 	uint32_t enqueue_fail_count;
 	uint32_t incoming_text_count;
+	uint32_t incoming_status_count;
 };
 
 struct lichen_meshtastic_incoming_text {
@@ -66,6 +67,16 @@ struct lichen_meshtastic_incoming_text {
 	const uint8_t *payload;
 	size_t payload_len;
 	bool has_id;
+};
+
+struct lichen_meshtastic_incoming_status {
+	uint32_t from;
+	uint32_t to;
+	uint32_t id;
+	uint32_t request_id;
+	uint32_t error_reason;
+	bool has_id;
+	bool has_error_reason;
 };
 
 typedef int (*lichen_meshtastic_adapter_enqueue_fn)(const uint8_t *from_radio,
@@ -119,6 +130,10 @@ int lichen_meshtastic_adapter_feed_stream(
 int lichen_meshtastic_adapter_emit_text(
 	struct lichen_meshtastic_adapter *adapter,
 	const struct lichen_meshtastic_incoming_text *event);
+
+int lichen_meshtastic_adapter_emit_status(
+	struct lichen_meshtastic_adapter *adapter,
+	const struct lichen_meshtastic_incoming_status *event);
 
 const struct lichen_meshtastic_adapter_stats *
 lichen_meshtastic_adapter_get_stats(

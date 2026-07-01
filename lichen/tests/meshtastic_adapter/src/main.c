@@ -58,6 +58,16 @@ struct text_packet_view {
 	size_t payload_len;
 };
 
+struct status_packet_view {
+	uint32_t from_radio_id;
+	uint32_t from;
+	uint32_t to;
+	uint32_t id;
+	uint32_t request_id;
+	uint32_t error_reason;
+	bool has_error_reason;
+};
+
 static int test_enqueue(const uint8_t *from_radio, size_t len, void *user_data)
 {
 	struct test_ctx *ctx = user_data;
@@ -499,6 +509,45 @@ static bool payload_get_len_field(const uint8_t *buf, size_t len, uint32_t field
 	return false;
 }
 
+static uint32_t get_le32(const uint8_t *buf);
+
+static bool payload_get_fixed32_field(const uint8_t *buf, size_t len,
+				      uint32_t field, uint32_t *value)
+{
+	size_t pos = 0U;
+
+	while (pos < len) {
+		uint32_t key;
+		uint32_t n;
+
+		if (read_varint(buf, len, &pos, &key) < 0) {
+			return false;
+		}
+		if ((key & 0x07U) == 5U) {
+			if (len - pos < 4U) {
+				return false;
+			}
+			if ((key >> 3) == field) {
+				*value = get_le32(&buf[pos]);
+				return true;
+			}
+			pos += 4U;
+		} else if ((key & 0x07U) == 2U) {
+			if (read_varint(buf, len, &pos, &n) < 0 || n > len - pos) {
+				return false;
+			}
+			pos += n;
+		} else if ((key & 0x07U) == 0U) {
+			if (read_varint(buf, len, &pos, &n) < 0) {
+				return false;
+			}
+		} else {
+			return false;
+		}
+	}
+	return false;
+}
+
 static uint32_t get_le32(const uint8_t *buf)
 {
 	return (uint32_t)buf[0] |
@@ -583,6 +632,91 @@ static void decode_text_from_radio(const uint8_t *buf, size_t len,
 	zassert_equal(portnum, 1U);
 	zassert_true(payload_get_len_field(data, data_len, 2U, &out->payload,
 					   &out->payload_len));
+}
+
+static void decode_status_from_radio(const uint8_t *buf, size_t len,
+				     struct status_packet_view *out)
+{
+	const uint8_t *mesh_packet = NULL;
+	size_t mesh_packet_len = 0U;
+	const uint8_t *data = NULL;
+	size_t data_len = 0U;
+	const uint8_t *routing = NULL;
+	size_t routing_len = 0U;
+	size_t pos = 0U;
+	uint32_t portnum = 0U;
+
+	memset(out, 0, sizeof(*out));
+	while (pos < len) {
+		uint32_t key;
+		uint32_t n;
+
+		zassert_equal(read_varint(buf, len, &pos, &key), 0);
+		switch (key) {
+		case 0x08:
+			zassert_equal(read_varint(buf, len, &pos,
+						  &out->from_radio_id),
+				      0);
+			break;
+		case 0x12:
+			zassert_equal(read_varint(buf, len, &pos, &n), 0);
+			zassert_true(n <= len - pos);
+			mesh_packet = &buf[pos];
+			mesh_packet_len = n;
+			pos += n;
+			break;
+		default:
+			zassert_unreachable("unexpected FromRadio field");
+		}
+	}
+
+	zassert_not_null(mesh_packet);
+	pos = 0U;
+	while (pos < mesh_packet_len) {
+		uint32_t key;
+		uint32_t n;
+
+		zassert_equal(read_varint(mesh_packet, mesh_packet_len, &pos,
+					  &key), 0);
+		switch (key) {
+		case 0x0d:
+			zassert_true(mesh_packet_len - pos >= 4U);
+			out->from = get_le32(&mesh_packet[pos]);
+			pos += 4U;
+			break;
+		case 0x15:
+			zassert_true(mesh_packet_len - pos >= 4U);
+			out->to = get_le32(&mesh_packet[pos]);
+			pos += 4U;
+			break;
+		case 0x22:
+			zassert_equal(read_varint(mesh_packet, mesh_packet_len,
+						  &pos, &n), 0);
+			zassert_true(n <= mesh_packet_len - pos);
+			data = &mesh_packet[pos];
+			data_len = n;
+			pos += n;
+			break;
+		case 0x35:
+			zassert_true(mesh_packet_len - pos >= 4U);
+			out->id = get_le32(&mesh_packet[pos]);
+			pos += 4U;
+			break;
+		default:
+			zassert_unreachable("unexpected MeshPacket field");
+		}
+	}
+
+	zassert_not_null(data);
+	zassert_true(payload_get_varint_field(data, data_len, 1U, &portnum));
+	zassert_equal(portnum, 5U);
+	zassert_true(payload_get_fixed32_field(data, data_len, 6U,
+					       &out->request_id));
+	if (payload_get_len_field(data, data_len, 2U, &routing, &routing_len)) {
+		out->has_error_reason = true;
+		zassert_true(payload_get_varint_field(routing, routing_len, 3U,
+						      &out->error_reason));
+	}
 }
 
 static void decode_queue_status(const uint8_t *buf, size_t len,
@@ -1550,6 +1684,147 @@ ZTEST(meshtastic_adapter, test_emit_text_requires_valid_payload)
 	zassert_equal(ctx.out_count, 0U);
 	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
 			      incoming_text_count,
+		      0U);
+}
+
+ZTEST(meshtastic_adapter, test_emit_status_ack_queues_routing_packet)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	struct lichen_meshtastic_incoming_status event = {
+		.from = 0x11223344U,
+		.to = 0x01020304U,
+		.id = 0x55667789U,
+		.request_id = 0x12345678U,
+		.has_id = true,
+	};
+	struct status_packet_view packet;
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_emit_status(&adapter, &event);
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.out_count, 1U);
+	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+			      incoming_status_count,
+		      1U);
+	decode_status_from_radio(ctx.out[0], ctx.out_len[0], &packet);
+	zassert_equal(packet.from_radio_id, 1U);
+	zassert_equal(packet.from, 0x11223344U);
+	zassert_equal(packet.to, 0x01020304U);
+	zassert_equal(packet.id, 0x55667789U);
+	zassert_equal(packet.request_id, 0x12345678U);
+	zassert_false(packet.has_error_reason);
+}
+
+ZTEST(meshtastic_adapter, test_emit_status_nak_queues_routing_error)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	struct lichen_meshtastic_incoming_status event = {
+		.from = 0x11223344U,
+		.to = 0x01020304U,
+		.id = 0x5566778aU,
+		.request_id = 0x12345678U,
+		.error_reason = 1U,
+		.has_id = true,
+		.has_error_reason = true,
+	};
+	struct status_packet_view packet;
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_emit_status(&adapter, &event);
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.out_count, 1U);
+	decode_status_from_radio(ctx.out[0], ctx.out_len[0], &packet);
+	zassert_equal(packet.from_radio_id, 1U);
+	zassert_equal(packet.id, 0x5566778aU);
+	zassert_equal(packet.request_id, 0x12345678U);
+	zassert_true(packet.has_error_reason);
+	zassert_equal(packet.error_reason, 1U);
+}
+
+ZTEST(meshtastic_adapter, test_emit_status_generates_stable_ids)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	struct lichen_meshtastic_incoming_status event = {
+		.from = 0x11223344U,
+		.to = 0x01020304U,
+		.request_id = 0x12345678U,
+	};
+	struct status_packet_view packet;
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_emit_status(&adapter, &event);
+	zassert_equal(ret, 0);
+	ret = lichen_meshtastic_adapter_emit_status(&adapter, &event);
+	zassert_equal(ret, 0);
+
+	zassert_equal(ctx.out_count, 2U);
+	decode_status_from_radio(ctx.out[0], ctx.out_len[0], &packet);
+	zassert_equal(packet.from_radio_id, 1U);
+	zassert_equal(packet.id, 1U);
+	decode_status_from_radio(ctx.out[1], ctx.out_len[1], &packet);
+	zassert_equal(packet.from_radio_id, 2U);
+	zassert_equal(packet.id, 2U);
+	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+			      incoming_status_count,
+		      2U);
+}
+
+ZTEST(meshtastic_adapter, test_emit_status_backpressure_is_deterministic)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	struct lichen_meshtastic_incoming_status event = {
+		.from = 0x11223344U,
+		.to = 0x01020304U,
+		.request_id = 0x12345678U,
+	};
+	int ret;
+
+	init_adapter(&adapter, &ctx, 1U);
+	ret = lichen_meshtastic_adapter_emit_status(&adapter, &event);
+	zassert_equal(ret, 0);
+	ret = lichen_meshtastic_adapter_emit_status(&adapter, &event);
+	zassert_equal(ret, -ENOMEM);
+
+	zassert_equal(ctx.out_count, 1U);
+	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+			      incoming_status_count,
+		      1U);
+	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+			      enqueue_fail_count,
+		      1U);
+}
+
+ZTEST(meshtastic_adapter, test_emit_status_rejects_disconnected_session)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t disconnect[] = { 0x20, 0x01 };
+	struct lichen_meshtastic_incoming_status event = {
+		.from = 0x11223344U,
+		.to = 0x01020304U,
+		.request_id = 0x12345678U,
+	};
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, disconnect,
+						    sizeof(disconnect));
+	zassert_equal(ret, 0);
+	ret = lichen_meshtastic_adapter_emit_status(&adapter, &event);
+
+	zassert_equal(ret, -ENOTCONN);
+	zassert_equal(ctx.out_count, 0U);
+	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+			      incoming_status_count,
 		      0U);
 }
 
