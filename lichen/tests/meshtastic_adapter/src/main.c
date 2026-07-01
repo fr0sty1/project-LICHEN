@@ -189,6 +189,9 @@ static bool payload_has_string(const uint8_t *buf, size_t len, uint32_t field,
 static bool payload_get_varint_field(const uint8_t *buf, size_t len,
 				     uint32_t field, uint32_t *value);
 static size_t put_varint(uint8_t *buf, size_t cap, uint64_t value);
+static size_t build_app_to_radio(uint8_t *buf, size_t cap, uint32_t portnum,
+				 const uint8_t *payload, size_t payload_len,
+				 uint32_t id);
 static size_t build_text_to_radio(uint8_t *buf, size_t cap,
 				  const uint8_t *payload, size_t payload_len,
 				  uint32_t id);
@@ -345,6 +348,50 @@ static size_t build_text_to_radio(uint8_t *buf, size_t cap,
 
 	data[data_len++] = 0x08; /* Data.portnum */
 	data[data_len++] = 0x01; /* TEXT_MESSAGE_APP */
+	data[data_len++] = 0x12; /* Data.payload */
+	data_len += put_varint(&data[data_len], sizeof(data) - data_len,
+			       payload_len);
+	memcpy(&data[data_len], payload, payload_len);
+	data_len += payload_len;
+
+	packet[packet_len++] = 0x15; /* MeshPacket.to fixed32 */
+	put_le32(&packet[packet_len], 0xffffffffU);
+	packet_len += 4U;
+	packet[packet_len++] = 0x22; /* MeshPacket.decoded */
+	packet_len += put_varint(&packet[packet_len],
+				 sizeof(packet) - packet_len, data_len);
+	memcpy(&packet[packet_len], data, data_len);
+	packet_len += data_len;
+	packet[packet_len++] = 0x35; /* MeshPacket.id fixed32 */
+	put_le32(&packet[packet_len], id);
+	packet_len += 4U;
+	packet[packet_len++] = 0x50; /* MeshPacket.want_ack */
+	packet[packet_len++] = 0x01;
+
+	zassert_true(packet_len <= cap - 1U);
+	buf[pos++] = 0x0a; /* ToRadio.packet */
+	pos += put_varint(&buf[pos], cap - pos, packet_len);
+	zassert_true(packet_len <= cap - pos);
+	memcpy(&buf[pos], packet, packet_len);
+	pos += packet_len;
+
+	return pos;
+}
+
+static size_t build_app_to_radio(uint8_t *buf, size_t cap, uint32_t portnum,
+				 const uint8_t *payload, size_t payload_len,
+				 uint32_t id)
+{
+	static uint8_t data[64];
+	static uint8_t packet[LICHEN_MESHTASTIC_TO_RADIO_MAX];
+	size_t data_len = 0U;
+	size_t packet_len = 0U;
+	size_t pos = 0U;
+
+	zassert_true(payload_len <= sizeof(data) - 16U);
+
+	data[data_len++] = 0x08; /* Data.portnum */
+	data_len += put_varint(&data[data_len], sizeof(data) - data_len, portnum);
 	data[data_len++] = 0x12; /* Data.payload */
 	data_len += put_varint(&data[data_len], sizeof(data) - data_len,
 			       payload_len);
@@ -1419,6 +1466,109 @@ ZTEST(meshtastic_adapter, test_unsupported_packet_is_deterministic_noop)
 	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
 			      unsupported_packet_count,
 		      1U);
+}
+
+ZTEST(meshtastic_adapter, test_unsupported_operation_table_is_recorded)
+{
+	static const struct {
+		enum lichen_meshtastic_adapter_unsupported_operation_id id;
+		uint32_t portnum;
+		bool has_portnum;
+	} expected[] = {
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_RADIO_CONFIG_WRITE, 0U, false },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_CHANNEL_CONFIG_WRITE, 0U, false },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_UNKNOWN_APP, 0U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_ADMIN_COMMAND, 6U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_NODEINFO_UPDATE, 4U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_ROUTING_APP_TO_NODE, 5U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_COMPRESSED_TEXT, 7U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_WAYPOINT, 8U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_AUDIO, 9U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_DETECTION_SENSOR, 10U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_REPLY, 32U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_IP_TUNNEL, 33U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_PAXCOUNTER, 34U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_SERIAL, 64U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_REMOTE_HARDWARE, 2U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_POSITION_UPDATE, 3U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_TELEMETRY_MODULE, 67U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_ZPS, 68U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_SIMULATOR, 69U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_NEIGHBORINFO, 71U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_ATAK_PLUGIN, 72U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_CANNED_MESSAGE_MODULE, 0U, false },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_STORE_FORWARD, 65U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_TRACEROUTE, 70U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_RANGE_TEST, 66U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_MAP_REPORT, 73U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_PRIVATE_APP, 256U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_ATAK_FORWARDER, 257U, true },
+		{ LICHEN_MESHTASTIC_UNSUPPORTED_MAX_SENTINEL, 511U, true },
+	};
+	const struct lichen_meshtastic_adapter_unsupported_operation *ops;
+	size_t count = lichen_meshtastic_adapter_unsupported_operations(&ops);
+
+	zassert_not_null(ops);
+	zassert_equal(count, ARRAY_SIZE(expected));
+
+	for (size_t i = 0U; i < count; i++) {
+		zassert_equal(ops[i].id, expected[i].id);
+		zassert_equal(ops[i].has_portnum, expected[i].has_portnum);
+		zassert_equal(ops[i].portnum, expected[i].portnum);
+	}
+
+	zassert_equal(lichen_meshtastic_adapter_unsupported_operations(NULL),
+		      count);
+}
+
+ZTEST(meshtastic_adapter, test_unsupported_operation_portnums_queue_errors)
+{
+	static const uint32_t unsupported_portnums[] = {
+		0U,  2U,  3U,  4U,  5U,  6U,  7U,  8U,  9U,
+		10U, 32U, 33U, 34U, 64U, 65U, 66U, 67U, 68U,
+		69U, 70U, 71U, 72U, 73U, 256U, 257U, 511U,
+	};
+	static const uint8_t payload[] = { 0x75, 0x6e, 0x73, 0x75 };
+	uint32_t id = 0x22330000U;
+
+	for (size_t i = 0U; i < ARRAY_SIZE(unsupported_portnums); i++) {
+		struct lichen_meshtastic_adapter adapter;
+		struct test_ctx ctx;
+		struct queue_status_view status;
+		size_t to_radio_len;
+		int ret;
+
+		id++;
+		to_radio_len = build_app_to_radio(s_text_packet, sizeof(s_text_packet),
+						  unsupported_portnums[i],
+						  payload, sizeof(payload), id);
+
+		init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+		ret = lichen_meshtastic_adapter_process_raw(&adapter,
+							    s_text_packet,
+							    to_radio_len);
+
+		zassert_equal(ret, 0, "portnum %u", unsupported_portnums[i]);
+		zassert_equal(ctx.text_count, 0U, "portnum %u",
+			      unsupported_portnums[i]);
+		zassert_equal(ctx.out_count, 1U, "portnum %u",
+			      unsupported_portnums[i]);
+		decode_queue_status(ctx.out[0], ctx.out_len[0], &status);
+		zassert_true(status.has_res, "portnum %u",
+			     unsupported_portnums[i]);
+		zassert_equal(status.res, 2U, "portnum %u",
+			      unsupported_portnums[i]);
+		zassert_true(status.has_mesh_packet_id, "portnum %u",
+			     unsupported_portnums[i]);
+		zassert_equal(status.mesh_packet_id, id, "portnum %u",
+			      unsupported_portnums[i]);
+		zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+				      packet_count,
+			      1U, "portnum %u", unsupported_portnums[i]);
+		zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+				      unsupported_packet_count,
+			      1U, "portnum %u", unsupported_portnums[i]);
+	}
 }
 
 ZTEST(meshtastic_adapter, test_stream_valid_and_split_frames)

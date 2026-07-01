@@ -26,7 +26,33 @@
 #define DATA_PORTNUM_FIELD 1U
 #define DATA_PAYLOAD_FIELD 2U
 
+#define MESHTASTIC_PORTNUM_UNKNOWN_APP 0U
 #define MESHTASTIC_PORTNUM_TEXT_MESSAGE_APP 1U
+#define MESHTASTIC_PORTNUM_REMOTE_HARDWARE_APP 2U
+#define MESHTASTIC_PORTNUM_POSITION_APP 3U
+#define MESHTASTIC_PORTNUM_NODEINFO_APP 4U
+#define MESHTASTIC_PORTNUM_ROUTING_APP 5U
+#define MESHTASTIC_PORTNUM_ADMIN_APP 6U
+#define MESHTASTIC_PORTNUM_TEXT_MESSAGE_COMPRESSED_APP 7U
+#define MESHTASTIC_PORTNUM_WAYPOINT_APP 8U
+#define MESHTASTIC_PORTNUM_AUDIO_APP 9U
+#define MESHTASTIC_PORTNUM_DETECTION_SENSOR_APP 10U
+#define MESHTASTIC_PORTNUM_REPLY_APP 32U
+#define MESHTASTIC_PORTNUM_IP_TUNNEL_APP 33U
+#define MESHTASTIC_PORTNUM_PAXCOUNTER_APP 34U
+#define MESHTASTIC_PORTNUM_SERIAL_APP 64U
+#define MESHTASTIC_PORTNUM_STORE_FORWARD_APP 65U
+#define MESHTASTIC_PORTNUM_RANGE_TEST_APP 66U
+#define MESHTASTIC_PORTNUM_TELEMETRY_APP 67U
+#define MESHTASTIC_PORTNUM_ZPS_APP 68U
+#define MESHTASTIC_PORTNUM_SIMULATOR_APP 69U
+#define MESHTASTIC_PORTNUM_TRACEROUTE_APP 70U
+#define MESHTASTIC_PORTNUM_NEIGHBORINFO_APP 71U
+#define MESHTASTIC_PORTNUM_ATAK_PLUGIN 72U
+#define MESHTASTIC_PORTNUM_MAP_REPORT_APP 73U
+#define MESHTASTIC_PORTNUM_PRIVATE_APP 256U
+#define MESHTASTIC_PORTNUM_ATAK_FORWARDER 257U
+#define MESHTASTIC_PORTNUM_MAX_SENTINEL 511U
 #define MESHTASTIC_BROADCAST_NODE 0xffffffffU
 #define MESHTASTIC_PRIMARY_CHANNEL 0U
 #define QUEUE_STATUS_OK 0U
@@ -47,6 +73,149 @@ struct pb_cursor {
 	const uint8_t *buf;
 	size_t len;
 	size_t pos;
+};
+
+static const struct lichen_meshtastic_adapter_unsupported_operation
+	unsupported_operations[] = {
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_RADIO_CONFIG_WRITE,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_CHANNEL_CONFIG_WRITE,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_UNKNOWN_APP,
+		.portnum = MESHTASTIC_PORTNUM_UNKNOWN_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_ADMIN_COMMAND,
+		.portnum = MESHTASTIC_PORTNUM_ADMIN_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_NODEINFO_UPDATE,
+		.portnum = MESHTASTIC_PORTNUM_NODEINFO_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_ROUTING_APP_TO_NODE,
+		.portnum = MESHTASTIC_PORTNUM_ROUTING_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_COMPRESSED_TEXT,
+		.portnum = MESHTASTIC_PORTNUM_TEXT_MESSAGE_COMPRESSED_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_WAYPOINT,
+		.portnum = MESHTASTIC_PORTNUM_WAYPOINT_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_AUDIO,
+		.portnum = MESHTASTIC_PORTNUM_AUDIO_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_DETECTION_SENSOR,
+		.portnum = MESHTASTIC_PORTNUM_DETECTION_SENSOR_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_REPLY,
+		.portnum = MESHTASTIC_PORTNUM_REPLY_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_IP_TUNNEL,
+		.portnum = MESHTASTIC_PORTNUM_IP_TUNNEL_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_PAXCOUNTER,
+		.portnum = MESHTASTIC_PORTNUM_PAXCOUNTER_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_SERIAL,
+		.portnum = MESHTASTIC_PORTNUM_SERIAL_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_REMOTE_HARDWARE,
+		.portnum = MESHTASTIC_PORTNUM_REMOTE_HARDWARE_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_POSITION_UPDATE,
+		.portnum = MESHTASTIC_PORTNUM_POSITION_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_TELEMETRY_MODULE,
+		.portnum = MESHTASTIC_PORTNUM_TELEMETRY_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_ZPS,
+		.portnum = MESHTASTIC_PORTNUM_ZPS_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_SIMULATOR,
+		.portnum = MESHTASTIC_PORTNUM_SIMULATOR_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_NEIGHBORINFO,
+		.portnum = MESHTASTIC_PORTNUM_NEIGHBORINFO_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_ATAK_PLUGIN,
+		.portnum = MESHTASTIC_PORTNUM_ATAK_PLUGIN,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_CANNED_MESSAGE_MODULE,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_STORE_FORWARD,
+		.portnum = MESHTASTIC_PORTNUM_STORE_FORWARD_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_TRACEROUTE,
+		.portnum = MESHTASTIC_PORTNUM_TRACEROUTE_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_RANGE_TEST,
+		.portnum = MESHTASTIC_PORTNUM_RANGE_TEST_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_MAP_REPORT,
+		.portnum = MESHTASTIC_PORTNUM_MAP_REPORT_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_PRIVATE_APP,
+		.portnum = MESHTASTIC_PORTNUM_PRIVATE_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_ATAK_FORWARDER,
+		.portnum = MESHTASTIC_PORTNUM_ATAK_FORWARDER,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_MAX_SENTINEL,
+		.portnum = MESHTASTIC_PORTNUM_MAX_SENTINEL,
+		.has_portnum = true,
+	},
 };
 
 static int pb_read_varint(struct pb_cursor *cur, uint64_t *value)
@@ -940,4 +1109,14 @@ bool lichen_meshtastic_adapter_disconnected(
 	const struct lichen_meshtastic_adapter *adapter)
 {
 	return adapter != NULL && adapter->disconnected;
+}
+
+size_t lichen_meshtastic_adapter_unsupported_operations(
+	const struct lichen_meshtastic_adapter_unsupported_operation **operations)
+{
+	if (operations != NULL) {
+		*operations = unsupported_operations;
+	}
+
+	return ARRAY_SIZE(unsupported_operations);
 }
