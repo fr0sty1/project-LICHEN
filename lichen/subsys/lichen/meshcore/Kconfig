@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+menuconfig LICHEN_MESHCORE_CODEC
+	bool "MeshCore app-compat bounded command codec"
+	depends on LICHEN
+	help
+	  Enable the bounded no-allocation MeshCore app compatibility codec
+	  surface. BLE transports pass one complete raw MeshCore inner command
+	  frame per GATT value; serial/TCP framing is handled separately.
+
+if LICHEN_MESHCORE_CODEC
+
+config LICHEN_MESHCORE_ADAPTER
+	bool "MeshCore app-compat dispatcher"
+	help
+	  Enable the board-agnostic MeshCore app adapter dispatcher. It consumes
+	  raw inner command frames from local transports and emits bounded
+	  response or push frames through caller-provided transport callbacks.
+
+config LICHEN_MESHCORE_MAX_FRAME
+	int "Maximum MeshCore BLE inner frame size"
+	default 176
+	range 1 176
+	help
+	  Maximum raw MeshCore inner frame size accepted or emitted by BLE. This
+	  follows the firmware-side MeshCore frame budget; serial/TCP transports
+	  may use a smaller outer-framing budget.
+
+endif # LICHEN_MESHCORE_CODEC

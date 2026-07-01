@@ -28,6 +28,10 @@
 #include "meshtastic_adapter.h"
 #endif
 
+#ifdef CONFIG_LORA_LICHEN_MESHCORE_BLE
+#include "ble_meshcore.h"
+#endif
+
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 #include <lichen/native.h>
 #endif
@@ -455,6 +459,13 @@ int main(void)
 		LOG_WRN("Meshtastic BLE init failed — Meshtastic app unavailable");
 	} else if (gateway_meshtastic_adapter_init() < 0) {
 		LOG_WRN("Meshtastic adapter init failed — Meshtastic app unavailable");
+	}
+#endif
+
+	/* MeshCore-compatible BLE GATT — local app compatibility only */
+#ifdef CONFIG_LORA_LICHEN_MESHCORE_BLE
+	if (ble_meshcore_init() < 0) {
+		LOG_WRN("MeshCore BLE init failed — MeshCore app unavailable");
 	}
 #endif
 
