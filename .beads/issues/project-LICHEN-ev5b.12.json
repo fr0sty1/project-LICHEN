@@ -2,13 +2,14 @@
   "id": "project-LICHEN-ev5b.12",
   "title": "Add native_sim UDP/CoAP post-injection observer",
   "description": "Review follow-up from project-LICHEN-kxbj: the native_sim L2 packet-path gate proves LICHEN_L2 TX -\u003e LoRa loopback -\u003e RX -\u003e net_recv_data injection with exact IPv6/ICMPv6 bytes, but intentionally does not prove post-IP UDP/CoAP application delivery. Add a higher-layer native_sim observer using UDP/CoAP or sockets once the stack path can send without bypassing route/ND constraints, and assert the app-level payload is accepted after net_recv_data.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T15:55:56.771596Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-30T15:55:56.775148Z",
+  "updated_at": "2026-07-01T08:09:58.333148Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-ev5b.12",
