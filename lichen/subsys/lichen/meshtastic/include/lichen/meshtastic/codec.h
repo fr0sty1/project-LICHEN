@@ -106,6 +106,18 @@ struct lichen_meshtastic_local_info {
 	bool external_power;
 };
 
+enum lichen_meshtastic_config_section {
+	LICHEN_MESHTASTIC_CONFIG_DEVICE,
+	LICHEN_MESHTASTIC_CONFIG_POSITION,
+	LICHEN_MESHTASTIC_CONFIG_POWER,
+	LICHEN_MESHTASTIC_CONFIG_NETWORK,
+	LICHEN_MESHTASTIC_CONFIG_DISPLAY,
+	LICHEN_MESHTASTIC_CONFIG_LORA,
+	LICHEN_MESHTASTIC_CONFIG_BLUETOOTH,
+	LICHEN_MESHTASTIC_CONFIG_SECURITY,
+	LICHEN_MESHTASTIC_CONFIG_DEVICE_UI,
+};
+
 enum lichen_meshtastic_from_radio_message {
 	LICHEN_MESHTASTIC_FROM_RADIO_MY_INFO = 3,
 	LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO = 4,
@@ -156,6 +168,11 @@ int lichen_meshtastic_encode_metadata_payload(
 	uint8_t *buf, size_t buflen);
 
 int lichen_meshtastic_encode_config_payload(
+	const struct lichen_meshtastic_local_info *info,
+	uint8_t *buf, size_t buflen);
+
+int lichen_meshtastic_encode_config_section_payload(
+	enum lichen_meshtastic_config_section section,
 	const struct lichen_meshtastic_local_info *info,
 	uint8_t *buf, size_t buflen);
 

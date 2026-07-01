@@ -307,13 +307,13 @@ These Meshtastic features return plausible defaults but do nothing:
 | `device.reboot_seconds` | Acknowledged, ignored |
 | `device.factory_reset` | Acknowledged, ignored |
 | `device.nodeinfo_broadcast_secs` | Returns 900, ignored |
-| `position.gps_enabled` | Returns current GPS state |
+| `position.gps_mode` | Returns `NOT_PRESENT` until a GNSS provider is wired |
 | `position.fixed_position` | Returns false |
 | `power.*` | Returns defaults |
 | `network.*` | Returns empty (no WiFi) |
 | `display.*` | Returns defaults |
 | `bluetooth.enabled` | Returns true |
-| `bluetooth.fixed_pin` | Returns 123456 |
+| `bluetooth.mode` | Returns `NO_PIN` in the local compatibility surface |
 
 ### What We Reject
 
@@ -347,7 +347,7 @@ These features can't be stubbed meaningfully. The adapter returns errors or empt
    especially between stages; firmware must tolerate heartbeat but must not require it before stage 1.
 4. Node responds via `FromRadio` reads:
    - `MyNodeInfo` (this node's identity)
-   - `DeviceMetadata`, region presets, channel, config, and module config records for config sync
+   - `DeviceMetadata`, region presets, channel, one Config record per supported section, and module config records for config sync
    - `NodeInfo` (each known peer)
    - `ConfigCompleteId` matching the request nonce
 5. App subscribes to `FromNum` notifications; Android also proactively drains after writes.
@@ -361,8 +361,8 @@ The sync nonces are fixed by current Android and iOS client flows. `69420` means
 stage. It must not assume the app is done after the first `config_complete_id`, because Apple and Android use the second
 stage to seed the node database. Other nonces are treated as legacy/full-sync requests for Python or older clients: queue
 the stage-1 config/static records and the stage-2 node database, then echo the original nonce in `config_complete_id`.
-Stage-1 order is `my_info`, `metadata`, `region_presets`, `channel`, `config`, `moduleConfig`, then
-`config_complete_id`. This follows current Meshtastic firmware
+Stage-1 order is `my_info`, `metadata`, `region_presets`, `channel`, repeated oneof-clean `config` records,
+`moduleConfig`, then `config_complete_id`. This follows current Meshtastic firmware
 `e64d20548c4313c92e0e641c41d388828e1d024a`, whose `PhoneAPI` state machine sends region presets immediately after
 metadata and before the first channel.
 
@@ -408,7 +408,7 @@ The adapter implements a subset of Meshtastic's protobuf schema.
 
 | Field | Handling |
 |-------|----------|
-| `want_config_id = 69420` | Queue stage-1 identity, metadata, region presets, channel, config, module config, and matching `config_complete_id` |
+| `want_config_id = 69420` | Queue stage-1 identity, metadata, region presets, channel, one Config record per supported section, module config, and matching `config_complete_id` |
 | `want_config_id = 69421` | Queue stage-2 node database and matching `config_complete_id` |
 | Other `want_config_id` | Queue legacy/full sync and matching `config_complete_id`; log compatibility nonce |
 | `heartbeat` | Keepalive/liveness trigger; may queue `queueStatus`; never required before sync |
@@ -426,7 +426,7 @@ The adapter implements a subset of Meshtastic's protobuf schema.
 |-------|--------|
 | `my_info` | This node's LICHEN identity and synthetic Meshtastic node number |
 | `node_info` | LICHEN peer table, including self and discovered peers |
-| `config` | Synthetic config from LICHEN state |
+| `config` | Synthetic config from LICHEN state; each `FromRadio.config` contains exactly one `Config` oneof section |
 | `moduleConfig` | Synthetic module config defaults |
 | `channel` | Synthetic primary channel plus disabled secondary channels when requested |
 | `metadata` | Synthetic device metadata and firmware/version policy |
@@ -515,15 +515,17 @@ The adapter returns synthetic config matching Meshtastic's expected structure:
 
 | Config Section | Handling |
 |----------------|----------|
-| `device` | Node name from LICHEN identity |
-| `position` | GPS settings (if applicable) |
+| `device` | Stubbed role and broadcast interval |
+| `position` | Stubbed GPS-not-present defaults |
 | `power` | Stubbed defaults |
 | `network` | Stubbed (no WiFi) |
 | `display` | Stubbed defaults |
 | `lora` | Maps from LICHEN PHY config |
 | `bluetooth` | Current BLE state |
+| `security` | Remote admin and debug surfaces disabled |
+| `device_ui` | Stubbed defaults |
 
-Config writes via ToRadio are acknowledged but most are no-ops. The LICHEN stack controls actual radio parameters.
+Each `FromRadio.config` payload contains exactly one `Config` oneof variant. Config writes via ToRadio are acknowledged but most are no-ops. The LICHEN stack controls actual radio parameters.
 
 The staged `want_config_id` sync path is the current read-only config surface.
 Packet-level `ADMIN_APP` reads are deferred until `project-LICHEN-t2hn.23` and

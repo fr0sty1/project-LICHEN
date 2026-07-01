@@ -129,13 +129,25 @@
 	 EXCLUDED_AMBIENTLIGHTING_CONFIG | EXCLUDED_DETECTIONSENSOR_CONFIG | \
 	 EXCLUDED_PAXCOUNTER_CONFIG | EXCLUDED_NETWORK_CONFIG)
 
+#define CONFIG_DEVICE_FIELD 1U
 #define CONFIG_POSITION_FIELD 2U
 #define CONFIG_POWER_FIELD 3U
+#define CONFIG_NETWORK_FIELD 4U
+#define CONFIG_DISPLAY_FIELD 5U
 #define CONFIG_LORA_FIELD 6U
 #define CONFIG_BLUETOOTH_FIELD 7U
+#define CONFIG_SECURITY_FIELD 8U
+#define CONFIG_DEVICE_UI_FIELD 10U
 
-#define POSITION_CONFIG_GPS_MODE_FIELD 4U
-#define POSITION_CONFIG_FIXED_POSITION_FIELD 6U
+#define DEVICE_CONFIG_ROLE_FIELD 1U
+#define DEVICE_CONFIG_NODE_INFO_BROADCAST_SECS_FIELD 7U
+
+#define POSITION_CONFIG_FIXED_POSITION_FIELD 3U
+#define POSITION_CONFIG_GPS_UPDATE_INTERVAL_FIELD 5U
+#define POSITION_CONFIG_POSITION_FLAGS_FIELD 7U
+#define POSITION_CONFIG_GPS_MODE_FIELD 13U
+#define POSITION_CONFIG_GPS_MODE_NOT_PRESENT 2U
+
 #define POWER_CONFIG_POWER_SAVING_FIELD 1U
 #define POWER_CONFIG_WAIT_BLUETOOTH_SECS_FIELD 4U
 
@@ -153,6 +165,23 @@
 
 #define BLUETOOTH_CONFIG_ENABLED_FIELD 1U
 #define BLUETOOTH_CONFIG_MODE_FIELD 2U
+#define BLUETOOTH_CONFIG_PAIRING_MODE_NO_PIN 2U
+
+#define NETWORK_CONFIG_WIFI_ENABLED_FIELD 1U
+#define NETWORK_CONFIG_ETH_ENABLED_FIELD 6U
+#define NETWORK_CONFIG_IPV6_ENABLED_FIELD 11U
+
+#define DISPLAY_CONFIG_SCREEN_ON_SECS_FIELD 1U
+#define DISPLAY_CONFIG_UNITS_FIELD 6U
+#define DISPLAY_CONFIG_DISPLAYMODE_FIELD 8U
+
+#define SECURITY_CONFIG_SERIAL_ENABLED_FIELD 5U
+#define SECURITY_CONFIG_DEBUG_LOG_API_ENABLED_FIELD 6U
+#define SECURITY_CONFIG_ADMIN_CHANNEL_ENABLED_FIELD 8U
+
+#define DEVICE_UI_CONFIG_VERSION_FIELD 1U
+#define DEVICE_UI_CONFIG_SCREEN_BRIGHTNESS_FIELD 2U
+#define DEVICE_UI_CONFIG_SCREEN_TIMEOUT_FIELD 3U
 
 #define MODULE_CONFIG_TELEMETRY_FIELD 6U
 #define TELEMETRY_CONFIG_DEVICE_UPDATE_INTERVAL_FIELD 1U
@@ -572,6 +601,137 @@ static int write_lora_config(uint8_t *buf, size_t buflen, size_t *pos,
 	return 0;
 }
 
+static int write_device_config(uint8_t *buf, size_t buflen, size_t *pos,
+			       const struct lichen_meshtastic_local_info *info)
+{
+	(void)info;
+
+	if (pb_write_varint_field(buf, buflen, pos, DEVICE_CONFIG_ROLE_FIELD,
+				  MESHTASTIC_ROLE_CLIENT) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos,
+				  DEVICE_CONFIG_NODE_INFO_BROADCAST_SECS_FIELD,
+				  MESHTASTIC_NODE_INFO_BROADCAST_SECS) < 0) {
+		return -ENOMEM;
+	}
+	return 0;
+}
+
+static int write_position_config(uint8_t *buf, size_t buflen, size_t *pos,
+				 const struct lichen_meshtastic_local_info *info)
+{
+	(void)info;
+
+	if (pb_write_varint_field(buf, buflen, pos,
+				  POSITION_CONFIG_FIXED_POSITION_FIELD, 0U) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos,
+				  POSITION_CONFIG_GPS_UPDATE_INTERVAL_FIELD, 0U) <
+		    0 ||
+	    pb_write_varint_field(buf, buflen, pos,
+				  POSITION_CONFIG_POSITION_FLAGS_FIELD, 0U) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos,
+				  POSITION_CONFIG_GPS_MODE_FIELD,
+				  POSITION_CONFIG_GPS_MODE_NOT_PRESENT) < 0) {
+		return -ENOMEM;
+	}
+	return 0;
+}
+
+static int write_power_config(uint8_t *buf, size_t buflen, size_t *pos,
+			      const struct lichen_meshtastic_local_info *info)
+{
+	(void)info;
+
+	if (pb_write_varint_field(buf, buflen, pos,
+				  POWER_CONFIG_POWER_SAVING_FIELD, 0U) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos,
+				  POWER_CONFIG_WAIT_BLUETOOTH_SECS_FIELD, 0U) <
+		    0) {
+		return -ENOMEM;
+	}
+	return 0;
+}
+
+static int write_network_config(uint8_t *buf, size_t buflen, size_t *pos,
+				const struct lichen_meshtastic_local_info *info)
+{
+	(void)info;
+
+	if (pb_write_varint_field(buf, buflen, pos,
+				  NETWORK_CONFIG_WIFI_ENABLED_FIELD, 0U) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos,
+				  NETWORK_CONFIG_ETH_ENABLED_FIELD, 0U) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos,
+				  NETWORK_CONFIG_IPV6_ENABLED_FIELD, 0U) < 0) {
+		return -ENOMEM;
+	}
+	return 0;
+}
+
+static int write_display_config(uint8_t *buf, size_t buflen, size_t *pos,
+				const struct lichen_meshtastic_local_info *info)
+{
+	(void)info;
+
+	if (pb_write_varint_field(buf, buflen, pos,
+				  DISPLAY_CONFIG_SCREEN_ON_SECS_FIELD, 0U) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos,
+				  DISPLAY_CONFIG_UNITS_FIELD, 0U) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos,
+				  DISPLAY_CONFIG_DISPLAYMODE_FIELD, 0U) < 0) {
+		return -ENOMEM;
+	}
+	return 0;
+}
+
+static int write_bluetooth_config(uint8_t *buf, size_t buflen, size_t *pos,
+				  const struct lichen_meshtastic_local_info *info)
+{
+	uint32_t enabled = (info != NULL && info->has_bluetooth) ? 1U : 0U;
+
+	if (pb_write_varint_field(buf, buflen, pos,
+				  BLUETOOTH_CONFIG_ENABLED_FIELD, enabled) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos, BLUETOOTH_CONFIG_MODE_FIELD,
+				  BLUETOOTH_CONFIG_PAIRING_MODE_NO_PIN) < 0) {
+		return -ENOMEM;
+	}
+	return 0;
+}
+
+static int write_security_config(uint8_t *buf, size_t buflen, size_t *pos,
+				 const struct lichen_meshtastic_local_info *info)
+{
+	(void)info;
+
+	if (pb_write_varint_field(buf, buflen, pos,
+				  SECURITY_CONFIG_SERIAL_ENABLED_FIELD, 0U) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos,
+				  SECURITY_CONFIG_DEBUG_LOG_API_ENABLED_FIELD,
+				  0U) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos,
+				  SECURITY_CONFIG_ADMIN_CHANNEL_ENABLED_FIELD,
+				  0U) < 0) {
+		return -ENOMEM;
+	}
+	return 0;
+}
+
+static int write_device_ui_config(uint8_t *buf, size_t buflen, size_t *pos,
+				  const struct lichen_meshtastic_local_info *info)
+{
+	(void)info;
+
+	if (pb_write_varint_field(buf, buflen, pos,
+				  DEVICE_UI_CONFIG_VERSION_FIELD, 0U) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos,
+				  DEVICE_UI_CONFIG_SCREEN_BRIGHTNESS_FIELD, 1U) <
+		    0 ||
+	    pb_write_varint_field(buf, buflen, pos,
+				  DEVICE_UI_CONFIG_SCREEN_TIMEOUT_FIELD, 0U) < 0) {
+		return -ENOMEM;
+	}
+	return 0;
+}
+
 int lichen_meshtastic_decode_to_radio(const uint8_t *buf, size_t len,
 				      struct lichen_meshtastic_to_radio *out)
 {
@@ -719,14 +879,81 @@ int lichen_meshtastic_encode_config_payload(
 	const struct lichen_meshtastic_local_info *info,
 	uint8_t *buf, size_t buflen)
 {
+	return lichen_meshtastic_encode_config_section_payload(
+		LICHEN_MESHTASTIC_CONFIG_LORA, info, buf, buflen);
+}
+
+int lichen_meshtastic_encode_config_section_payload(
+	enum lichen_meshtastic_config_section section,
+	const struct lichen_meshtastic_local_info *info,
+	uint8_t *buf, size_t buflen)
+{
 	uint8_t tmp[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	uint8_t inner[96];
 	size_t pos = 0U;
 	size_t inner_pos = 0U;
+	uint32_t field;
 
-	if (write_lora_config(inner, sizeof(inner), &inner_pos, info) < 0 ||
-	    pb_write_len_field(tmp, sizeof(tmp), &pos, CONFIG_LORA_FIELD,
-			       inner, inner_pos) < 0) {
+	switch (section) {
+	case LICHEN_MESHTASTIC_CONFIG_DEVICE:
+		field = CONFIG_DEVICE_FIELD;
+		if (write_device_config(inner, sizeof(inner), &inner_pos, info) < 0) {
+			return -EMSGSIZE;
+		}
+		break;
+	case LICHEN_MESHTASTIC_CONFIG_POSITION:
+		field = CONFIG_POSITION_FIELD;
+		if (write_position_config(inner, sizeof(inner), &inner_pos, info) < 0) {
+			return -EMSGSIZE;
+		}
+		break;
+	case LICHEN_MESHTASTIC_CONFIG_POWER:
+		field = CONFIG_POWER_FIELD;
+		if (write_power_config(inner, sizeof(inner), &inner_pos, info) < 0) {
+			return -EMSGSIZE;
+		}
+		break;
+	case LICHEN_MESHTASTIC_CONFIG_NETWORK:
+		field = CONFIG_NETWORK_FIELD;
+		if (write_network_config(inner, sizeof(inner), &inner_pos, info) < 0) {
+			return -EMSGSIZE;
+		}
+		break;
+	case LICHEN_MESHTASTIC_CONFIG_DISPLAY:
+		field = CONFIG_DISPLAY_FIELD;
+		if (write_display_config(inner, sizeof(inner), &inner_pos, info) < 0) {
+			return -EMSGSIZE;
+		}
+		break;
+	case LICHEN_MESHTASTIC_CONFIG_LORA:
+		field = CONFIG_LORA_FIELD;
+		if (write_lora_config(inner, sizeof(inner), &inner_pos, info) < 0) {
+			return -EMSGSIZE;
+		}
+		break;
+	case LICHEN_MESHTASTIC_CONFIG_BLUETOOTH:
+		field = CONFIG_BLUETOOTH_FIELD;
+		if (write_bluetooth_config(inner, sizeof(inner), &inner_pos, info) < 0) {
+			return -EMSGSIZE;
+		}
+		break;
+	case LICHEN_MESHTASTIC_CONFIG_SECURITY:
+		field = CONFIG_SECURITY_FIELD;
+		if (write_security_config(inner, sizeof(inner), &inner_pos, info) < 0) {
+			return -EMSGSIZE;
+		}
+		break;
+	case LICHEN_MESHTASTIC_CONFIG_DEVICE_UI:
+		field = CONFIG_DEVICE_UI_FIELD;
+		if (write_device_ui_config(inner, sizeof(inner), &inner_pos, info) < 0) {
+			return -EMSGSIZE;
+		}
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	if (pb_write_len_field(tmp, sizeof(tmp), &pos, field, inner, inner_pos) < 0) {
 		return -EMSGSIZE;
 	}
 

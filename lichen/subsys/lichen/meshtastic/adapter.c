@@ -71,6 +71,9 @@
 
 #define MESHTASTIC_CONFIG_STAGE_STATIC 69420U
 #define MESHTASTIC_CONFIG_STAGE_NODEDB 69421U
+#define MESHTASTIC_STATIC_SYNC_FIXED_RECORDS 5U
+#define MESHTASTIC_NODE_SYNC_RECORDS 1U
+#define MESHTASTIC_CONFIG_COMPLETE_RECORDS 1U
 #define LICHEN_BRAND "LICHEN"
 #define MESHTASTIC_BRAND "meshtastic"
 
@@ -681,6 +684,57 @@ static int enqueue(struct lichen_meshtastic_adapter *adapter,
 	return ret;
 }
 
+static const enum lichen_meshtastic_config_section s_config_sections[] = {
+	LICHEN_MESHTASTIC_CONFIG_DEVICE,
+	LICHEN_MESHTASTIC_CONFIG_POSITION,
+	LICHEN_MESHTASTIC_CONFIG_POWER,
+	LICHEN_MESHTASTIC_CONFIG_NETWORK,
+	LICHEN_MESHTASTIC_CONFIG_DISPLAY,
+	LICHEN_MESHTASTIC_CONFIG_LORA,
+	LICHEN_MESHTASTIC_CONFIG_BLUETOOTH,
+	LICHEN_MESHTASTIC_CONFIG_SECURITY,
+	LICHEN_MESHTASTIC_CONFIG_DEVICE_UI,
+};
+
+static uint32_t static_sync_record_count(void)
+{
+	return MESHTASTIC_STATIC_SYNC_FIXED_RECORDS + ARRAY_SIZE(s_config_sections);
+}
+
+static uint32_t want_config_record_count(uint32_t nonce)
+{
+	uint32_t records = MESHTASTIC_CONFIG_COMPLETE_RECORDS;
+
+	if (nonce == MESHTASTIC_CONFIG_STAGE_STATIC) {
+		records += static_sync_record_count();
+	} else if (nonce == MESHTASTIC_CONFIG_STAGE_NODEDB) {
+		records += MESHTASTIC_NODE_SYNC_RECORDS;
+	} else {
+		records += static_sync_record_count() + MESHTASTIC_NODE_SYNC_RECORDS;
+	}
+
+	return records;
+}
+
+static int require_queue_space(struct lichen_meshtastic_adapter *adapter,
+			       uint32_t records)
+{
+	uint32_t free_slots;
+
+	if (adapter->ops.enqueue_from_radio == NULL ||
+	    adapter->ops.queue_free == NULL) {
+		return 0;
+	}
+
+	free_slots = adapter->ops.queue_free(adapter->ops.user_data);
+	if (free_slots < records) {
+		adapter->stats.enqueue_fail_count++;
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
 static int queue_status(struct lichen_meshtastic_adapter *adapter, uint32_t res,
 			const struct lichen_meshtastic_adapter_packet_info *packet)
 {
@@ -864,10 +918,14 @@ static int enqueue_static_sync(struct lichen_meshtastic_adapter *adapter,
 		return ret < 0 ? ret : -ENOMEM;
 	}
 
-	ret = lichen_meshtastic_encode_config_payload(info, payload, sizeof(payload));
-	if (ret < 0 || enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_CONFIG,
-				       payload, (size_t)ret) < 0) {
-		return ret < 0 ? ret : -ENOMEM;
+	for (size_t i = 0U; i < ARRAY_SIZE(s_config_sections); i++) {
+		ret = lichen_meshtastic_encode_config_section_payload(
+			s_config_sections[i], info, payload, sizeof(payload));
+		if (ret < 0 ||
+		    enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_CONFIG,
+				    payload, (size_t)ret) < 0) {
+			return ret < 0 ? ret : -ENOMEM;
+		}
 	}
 
 	ret = lichen_meshtastic_encode_module_config_payload(info, payload,
@@ -972,8 +1030,13 @@ static int dispatch_want_config(struct lichen_meshtastic_adapter *adapter,
 				uint32_t nonce)
 {
 	struct lichen_meshtastic_local_info info;
-	int ret = local_info(adapter, &info);
+	int ret = require_queue_space(adapter, want_config_record_count(nonce));
 
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = local_info(adapter, &info);
 	if (ret < 0) {
 		return ret;
 	}

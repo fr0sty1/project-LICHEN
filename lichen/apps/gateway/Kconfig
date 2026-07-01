@@ -87,10 +87,21 @@ config LORA_LICHEN_MESHCORE_BLE_PASSKEY
 config LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH
 	int "Meshtastic BLE FromRadio queue depth"
 	depends on LORA_LICHEN_MESHTASTIC_BLE
+	default 20
+	range 17 32
+	help
+	  Number of complete FromRadio protobuf values retained for app reads.
+	  Keep enough headroom for a queued heartbeat plus a legacy full
+	  configuration sync burst.
+
+config LORA_LICHEN_MESHTASTIC_BLE_TO_RADIO_QUEUE_DEPTH
+	int "Meshtastic BLE ToRadio queue depth"
+	depends on LORA_LICHEN_MESHTASTIC_BLE
 	default 8
 	range 1 16
 	help
-	  Number of complete FromRadio protobuf values retained for app reads.
+	  Number of complete ToRadio protobuf values retained for gateway
+	  processing after app writes.
 
 config LORA_LICHEN_GATEWAY_RPL_ROOT
 	bool "RPL root signalling"

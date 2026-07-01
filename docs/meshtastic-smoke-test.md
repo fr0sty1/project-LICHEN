@@ -150,8 +150,8 @@ Run this with the Android app version recorded in the Bead evidence.
    its proactive read path. The drain ends when `FromRadio` returns a
    zero-length value.
 8. Confirm stage 1 returns this node's identity, synthetic DeviceMetadata,
-   region presets, channel, config, module config, and `config_complete_id =
-   69420`, in that order. The terminal encoded field is `38ac9e04`.
+   region presets, channel, repeated oneof-clean config records, module config,
+   and `config_complete_id = 69420`, in that order. The terminal encoded field is `38ac9e04`.
    DeviceMetadata must show LICHEN-branded firmware, `PRIVATE_HW`, and
    unsupported modules excluded where Meshtastic defines exclusion bits.
    Region presets must show only the tested conservative default profile unless
@@ -206,8 +206,9 @@ Run this with the iOS app version recorded in the Bead evidence.
 7. Confirm the app subscribes to or otherwise observes `FromNum`, then drains
    one complete protobuf value per `FromRadio` read until a zero-length read.
 8. Confirm stage 1 returns identity, synthetic metadata, region presets,
-   channel, config, module config, and `config_complete_id = 69420`, in that
-   order. The raw sync request/terminal fields are `18ac9e04` and `38ac9e04`.
+   channel, repeated oneof-clean config records, module config, and
+   `config_complete_id = 69420`, in that order. The raw sync request/terminal
+   fields are `18ac9e04` and `38ac9e04`.
    DeviceMetadata must show LICHEN-branded firmware, `PRIVATE_HW`, and
    unsupported modules excluded where Meshtastic defines exclusion bits; module
    config and admin responses must not expose enabled unimplemented modules;

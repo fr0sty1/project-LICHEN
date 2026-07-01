@@ -888,6 +888,120 @@ ZTEST(meshtastic_codec, test_encode_sync_payload_builders)
 	zassert_true(ret > 0, "node_info payload failed: %d", ret);
 }
 
+ZTEST(meshtastic_codec, test_config_sections_are_separate_oneofs)
+{
+	struct lichen_meshtastic_local_info info = {
+		.has_bluetooth = true,
+		.has_lora = true,
+		.has_tx_power_dbm = true,
+		.tx_power_dbm = 14,
+	};
+	const struct {
+		enum lichen_meshtastic_config_section section;
+		uint32_t oneof_field;
+	} sections[] = {
+		{ LICHEN_MESHTASTIC_CONFIG_DEVICE, 1U },
+		{ LICHEN_MESHTASTIC_CONFIG_POSITION, 2U },
+		{ LICHEN_MESHTASTIC_CONFIG_POWER, 3U },
+		{ LICHEN_MESHTASTIC_CONFIG_NETWORK, 4U },
+		{ LICHEN_MESHTASTIC_CONFIG_DISPLAY, 5U },
+		{ LICHEN_MESHTASTIC_CONFIG_LORA, 6U },
+		{ LICHEN_MESHTASTIC_CONFIG_BLUETOOTH, 7U },
+		{ LICHEN_MESHTASTIC_CONFIG_SECURITY, 8U },
+		{ LICHEN_MESHTASTIC_CONFIG_DEVICE_UI, 10U },
+	};
+	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint8_t counts[12];
+
+	for (size_t i = 0U; i < ARRAY_SIZE(sections); i++) {
+		int ret = lichen_meshtastic_encode_config_section_payload(
+			sections[i].section, &info, payload, sizeof(payload));
+
+		zassert_true(ret > 0, "config section %u failed: %d",
+			     (uint32_t)sections[i].section, ret);
+		zassert_true(payload_count_fields(payload, (size_t)ret, counts,
+						  ARRAY_SIZE(counts)));
+		for (size_t field = 1U; field < ARRAY_SIZE(counts); field++) {
+			zassert_equal(counts[field],
+				      field == sections[i].oneof_field ? 1U : 0U,
+				      "section %u unexpected Config field %u count %u",
+				      (uint32_t)sections[i].section,
+				      (uint32_t)field, counts[field]);
+		}
+	}
+
+	zassert_equal(lichen_meshtastic_encode_config_section_payload(
+			      (enum lichen_meshtastic_config_section)99, &info,
+			      payload, sizeof(payload)),
+		      -EINVAL);
+}
+
+ZTEST(meshtastic_codec, test_config_placeholders_are_explicit)
+{
+	struct lichen_meshtastic_local_info info = { 0 };
+	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	const uint8_t *section;
+	size_t section_len;
+	uint32_t value = 0U;
+	int ret;
+
+	ret = lichen_meshtastic_encode_config_section_payload(
+		LICHEN_MESHTASTIC_CONFIG_POSITION, &info, payload, sizeof(payload));
+	zassert_true(ret > 0, "position config failed: %d", ret);
+	zassert_true(payload_get_len_field(payload, (size_t)ret, 2U, &section,
+					   &section_len));
+	zassert_true(payload_get_varint_field(section, section_len, 3U, &value));
+	zassert_equal(value, 0U);
+	zassert_true(payload_get_varint_field(section, section_len, 7U, &value));
+	zassert_equal(value, 0U);
+	zassert_true(payload_get_varint_field(section, section_len, 13U, &value));
+	zassert_equal(value, 2U);
+
+	ret = lichen_meshtastic_encode_config_section_payload(
+		LICHEN_MESHTASTIC_CONFIG_POWER, &info, payload, sizeof(payload));
+	zassert_true(ret > 0, "power config failed: %d", ret);
+	zassert_true(payload_get_len_field(payload, (size_t)ret, 3U, &section,
+					   &section_len));
+	zassert_true(payload_get_varint_field(section, section_len, 1U, &value));
+	zassert_equal(value, 0U);
+	zassert_true(payload_get_varint_field(section, section_len, 4U, &value));
+	zassert_equal(value, 0U);
+
+	ret = lichen_meshtastic_encode_config_section_payload(
+		LICHEN_MESHTASTIC_CONFIG_BLUETOOTH, &info, payload,
+		sizeof(payload));
+	zassert_true(ret > 0, "bluetooth config failed: %d", ret);
+	zassert_true(payload_get_len_field(payload, (size_t)ret, 7U, &section,
+					   &section_len));
+	zassert_true(payload_get_varint_field(section, section_len, 1U, &value));
+	zassert_equal(value, 0U);
+	zassert_true(payload_get_varint_field(section, section_len, 2U, &value));
+	zassert_equal(value, 2U);
+
+	ret = lichen_meshtastic_encode_config_section_payload(
+		LICHEN_MESHTASTIC_CONFIG_DEVICE_UI, &info, payload,
+		sizeof(payload));
+	zassert_true(ret > 0, "device_ui config failed: %d", ret);
+	zassert_true(payload_get_len_field(payload, (size_t)ret, 10U, &section,
+					   &section_len));
+	zassert_true(payload_get_varint_field(section, section_len, 1U, &value));
+	zassert_equal(value, 0U);
+	zassert_true(payload_get_varint_field(section, section_len, 2U, &value));
+	zassert_equal(value, 1U);
+	zassert_true(payload_get_varint_field(section, section_len, 3U, &value));
+	zassert_equal(value, 0U);
+
+	info.has_bluetooth = true;
+	ret = lichen_meshtastic_encode_config_section_payload(
+		LICHEN_MESHTASTIC_CONFIG_BLUETOOTH, &info, payload,
+		sizeof(payload));
+	zassert_true(ret > 0, "bluetooth enabled config failed: %d", ret);
+	zassert_true(payload_get_len_field(payload, (size_t)ret, 7U, &section,
+					   &section_len));
+	zassert_true(payload_get_varint_field(section, section_len, 1U, &value));
+	zassert_equal(value, 1U);
+}
+
 ZTEST(meshtastic_codec, test_metadata_payload_matches_current_schema)
 {
 	struct lichen_meshtastic_local_info info = {

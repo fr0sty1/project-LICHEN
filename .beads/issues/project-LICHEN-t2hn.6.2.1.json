@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-t2hn.6.2.1",
+  "title": "Document and harden Meshtastic adapter queue_free contract",
+  "description": "Why this exists: project-LICHEN-t2hn.6.2 prevents partial full-sync enqueue bursts when the adapter ops provide queue_free; the production gateway wires that hook, but custom/non-gateway adapter users without queue_free retain best-effort enqueue semantics. What needs to be done: document the queue_free preflight contract in the adapter API and evaluate whether non-gateway callers should get a required hook, rollback behavior, or explicit degraded-mode tests. Acceptance criteria: adapter.h/docs state the guarantee and limitation clearly; tests cover the chosen behavior for callers with and without queue_free.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T16:39:03.960589Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T16:39:39.545001Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "adapter",
+    "docs",
+    "config",
+    "status",
+    "firmware",
+    "app-interface"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.6.2.1",
+      "depends_on_id": "project-LICHEN-t2hn.6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-01T16:39:39.545001Z"
+    }
+  ]
+}

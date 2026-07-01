@@ -38,7 +38,9 @@ LOG_MODULE_REGISTER(ble_meshtastic, LOG_LEVEL_INF);
 #define BT_UUID_MESH_FROMNUM_VAL \
 	BT_UUID_128_ENCODE(0xed9da18c, 0xa800, 0x4f66, 0xa670, 0xaa7547e34453)
 
-#define MESHTASTIC_QUEUE_DEPTH CONFIG_LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH
+#define MESHTASTIC_FROM_RADIO_QUEUE_DEPTH CONFIG_LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH
+#define MESHTASTIC_TO_RADIO_QUEUE_DEPTH \
+	CONFIG_LORA_LICHEN_MESHTASTIC_BLE_TO_RADIO_QUEUE_DEPTH
 #define MESHTASTIC_STREAM_MAGIC0 0x94U
 #define MESHTASTIC_STREAM_MAGIC1 0xc3U
 #define MESHTASTIC_ADV_NAME "LICHEN"
@@ -65,13 +67,13 @@ static K_MUTEX_DEFINE(s_conn_mutex);
 static uint32_t s_session_epoch;
 
 static K_MUTEX_DEFINE(s_rx_mutex);
-static struct to_radio_slot s_rx_queue[MESHTASTIC_QUEUE_DEPTH];
+static struct to_radio_slot s_rx_queue[MESHTASTIC_TO_RADIO_QUEUE_DEPTH];
 static uint8_t s_rx_head;
 static uint8_t s_rx_tail;
 static uint8_t s_rx_count;
 
 static K_MUTEX_DEFINE(s_tx_mutex);
-static struct msg_slot s_tx_queue[MESHTASTIC_QUEUE_DEPTH];
+static struct msg_slot s_tx_queue[MESHTASTIC_FROM_RADIO_QUEUE_DEPTH];
 static uint8_t s_tx_head;
 static uint8_t s_tx_tail;
 static uint8_t s_tx_count;

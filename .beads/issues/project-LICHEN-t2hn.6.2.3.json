@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-t2hn.6.2.3",
+  "title": "Tie Meshtastic BLE queue-depth tests to Kconfig defaults",
+  "description": "Why this exists: project-LICHEN-t2hn.6.2 adds adapter tests mirroring gateway queue bounds with local constants (minimum 17, default 20). Future Kconfig changes could drift from those test constants. What needs to be done: add Kconfig-backed test or build-time assertion coverage so CONFIG_LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH minimum/default assumptions stay aligned with the adapter full-sync boundary tests. Acceptance criteria: a change to the gateway FromRadio queue default/minimum that breaks heartbeat-plus-full-sync headroom fails native_sim/Twister or a compile-time assertion; existing meshtastic_adapter/meshtastic_ble tests still pass.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T16:39:39.775836Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T16:39:39.776339Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "test",
+    "kconfig",
+    "config",
+    "status",
+    "firmware",
+    "app-interface"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.6.2.3",
+      "depends_on_id": "project-LICHEN-t2hn.6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-01T16:39:39.776339Z"
+    }
+  ]
+}
