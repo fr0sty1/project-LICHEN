@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-zte2.3",
+  "title": "Submit puck GNSS callbacks through unified location provider",
+  "description": "lichen/apps/puck currently owns GNSS state directly in s_gps and sends LICHEN Native node_info from that app-local state. Migrate the GNSS callback to submit samples through the firmware-wide location provider, then have puck/native node_info consume provider snapshots. Acceptance: no-hardware tests or native_sim fakes cover GNSS no-fix/fix/stale behavior; physical GNSS validation remains separate.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T22:38:56.105434Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T22:38:56.105945Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "location",
+    "gnss",
+    "puck",
+    "native-interface",
+    "test",
+    "hardware",
+    "network-source"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zte2.3",
+      "depends_on_id": "project-LICHEN-zte2",
+      "type": "parent-child",
+      "created_at": "2026-07-01T22:38:56.105945Z"
+    }
+  ]
+}

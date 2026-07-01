@@ -87,9 +87,38 @@ enum lichen_hal_fix_source {
 	LICHEN_HAL_FIX_SOURCE_GNSS,
 };
 
+enum lichen_hal_location_source_class {
+	LICHEN_HAL_LOCATION_SOURCE_NONE,
+	LICHEN_HAL_LOCATION_SOURCE_ONBOARD_HARDWARE,
+	LICHEN_HAL_LOCATION_SOURCE_EXTERNAL_HARDWARE,
+	LICHEN_HAL_LOCATION_SOURCE_NETWORK,
+	LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT,
+	LICHEN_HAL_LOCATION_SOURCE_MANUAL_STATIC,
+};
+
+enum lichen_hal_location_fix_state {
+	LICHEN_HAL_LOCATION_FIX_NONE,
+	LICHEN_HAL_LOCATION_FIX_NO_FIX,
+	LICHEN_HAL_LOCATION_FIX_2D,
+	LICHEN_HAL_LOCATION_FIX_3D,
+	LICHEN_HAL_LOCATION_FIX_STALE,
+	LICHEN_HAL_LOCATION_FIX_ERROR,
+};
+
 struct lichen_hal_location_time_snapshot {
 	bool location_provider_available;
 	bool time_provider_available;
+	bool source_class_valid;
+	enum lichen_hal_location_source_class source_class;
+	char source_name[24];
+	bool fix_state_valid;
+	enum lichen_hal_location_fix_state fix_state;
+	bool age_seconds_valid;
+	uint32_t age_seconds;
+	bool horizontal_accuracy_mm_valid;
+	uint32_t horizontal_accuracy_mm;
+	bool vertical_accuracy_mm_valid;
+	uint32_t vertical_accuracy_mm;
 	bool latitude_e7_valid;
 	int32_t latitude_e7;
 	bool longitude_e7_valid;
@@ -102,6 +131,29 @@ struct lichen_hal_location_time_snapshot {
 	uint8_t satellites;
 	bool fix_source_valid;
 	enum lichen_hal_fix_source fix_source;
+};
+
+struct lichen_hal_location_sample {
+	enum lichen_hal_location_source_class source_class;
+	enum lichen_hal_location_fix_state fix_state;
+	enum lichen_hal_fix_source fix_source;
+	const char *source_name;
+	bool observed_uptime_ms_valid;
+	int64_t observed_uptime_ms;
+	bool horizontal_accuracy_mm_valid;
+	uint32_t horizontal_accuracy_mm;
+	bool vertical_accuracy_mm_valid;
+	uint32_t vertical_accuracy_mm;
+	bool latitude_e7_valid;
+	int32_t latitude_e7;
+	bool longitude_e7_valid;
+	int32_t longitude_e7;
+	bool altitude_m_valid;
+	int32_t altitude_m;
+	bool fix_time_unix_valid;
+	uint32_t fix_time_unix;
+	bool satellites_valid;
+	uint8_t satellites;
 };
 
 /*
@@ -141,10 +193,25 @@ int lichen_hal_external_flash_device_get(const struct device **dev);
 int lichen_hal_led_get(struct gpio_dt_spec *spec);
 int lichen_hal_button_get(struct gpio_dt_spec *spec);
 int lichen_hal_power_snapshot_get(struct lichen_hal_power_snapshot *snapshot);
+/*
+ * Submit a location sample from any firmware source. The provider keeps one
+ * sample per source class and selects the highest-priority fresh usable fix at
+ * snapshot time. Priority is manual/static, local client, network, external
+ * hardware, then onboard hardware. A fresh 2D/3D fix wins over no-fix/error
+ * metadata; stale high-priority fixes fall back to lower-priority fresh fixes.
+ *
+ * source_name is copied and may be truncated to fit snapshot storage.
+ * LICHEN_HAL_LOCATION_FIX_STALE is a derived snapshot state; submitters should
+ * provide NONE, NO_FIX, 2D, 3D, or ERROR.
+ */
+int lichen_hal_location_submit(const struct lichen_hal_location_sample *sample);
+void lichen_hal_location_clear(void);
 int lichen_hal_location_time_snapshot_get(
 	struct lichen_hal_location_time_snapshot *snapshot);
 
 #ifdef CONFIG_ZTEST
+void lichen_hal_location_test_set_uptime_ms(int64_t uptime_ms);
+void lichen_hal_location_test_use_real_uptime(void);
 void lichen_hal_location_time_test_set_snapshot(
 	const struct lichen_hal_location_time_snapshot *snapshot);
 #endif

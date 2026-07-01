@@ -1,0 +1,32 @@
+{
+  "id": "project-LICHEN-zte2.1",
+  "title": "Expose unified location metadata in gateway /status CBOR",
+  "description": "Gateway /status currently exposes only legacy location_provider/time_provider and coordinate fields from HAL. After project-LICHEN-zte2 adds source class/name/fix state/age/accuracy metadata, extend /status CBOR and tests to expose source class, source name, fix state, age, and accuracy/freshness fields. Acceptance: native_sim/qemu test decodes /status CBOR for absent, fresh, stale, and named-source samples; stale samples do not export position as fresh.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T22:38:55.864409Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T22:38:55.864911Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "location",
+    "gateway",
+    "coap",
+    "status",
+    "test",
+    "gnss",
+    "hardware",
+    "network-source"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zte2.1",
+      "depends_on_id": "project-LICHEN-zte2",
+      "type": "parent-child",
+      "created_at": "2026-07-01T22:38:55.864911Z"
+    }
+  ]
+}

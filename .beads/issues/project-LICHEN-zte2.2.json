@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-zte2.2",
+  "title": "Mirror unified location metadata through app interface status",
+  "description": "The app-interface status snapshot still mirrors only legacy location/time fields. Extend lichen_app_location_time_snapshot and conversion tests to carry HAL source class, source name, fix state, age, and accuracy/freshness metadata so Meshtastic, MeshCore, KISS, native clients, and UI can consume the same provider state without HAL-specific enums leaking accidentally. Acceptance: app_interface native_sim tests cover absent, fresh, stale, and named-source snapshots.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T22:38:55.986661Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T22:38:55.987155Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "location",
+    "app-interface",
+    "test",
+    "gnss",
+    "hardware",
+    "network-source"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zte2.2",
+      "depends_on_id": "project-LICHEN-zte2",
+      "type": "parent-child",
+      "created_at": "2026-07-01T22:38:55.987155Z"
+    }
+  ]
+}

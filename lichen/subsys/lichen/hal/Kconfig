@@ -163,6 +163,15 @@ config LICHEN_LOCATION_PROVIDER_GNSS
 
 endchoice
 
+config LICHEN_LOCATION_FRESHNESS_MAX_AGE_S
+	int "Maximum fresh location age in seconds"
+	default 300
+	range 1 86400
+	help
+	  Maximum age before a submitted location fix is treated as stale. Stale
+	  samples keep source metadata for status reporting but do not export
+	  position fields to app-compatibility consumers.
+
 choice LICHEN_TIME_PROVIDER
 	prompt "LICHEN time provider"
 	default LICHEN_TIME_PROVIDER_UPTIME

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-zte2.4",
+  "title": "Wire local-client injected locations into unified provider",
+  "description": "Why this exists: project-LICHEN-zte2 acceptance requires app/local-client injected locations to use the same firmware-wide location representation as hardware, network, and manual sources. The core HAL provider API exists, but no native local-client or compatibility app path submits location samples yet. What needs to be done: identify the LCI/Meshtastic/app location injection entry points, translate incoming location/fix metadata into lichen_hal_location_sample with source_class LOCAL_CLIENT, enforce freshness/accuracy/source-name policy, and add native_sim/qemu tests. Acceptance criteria: a no-hardware test injects a local-client/app location and observes it through lichen_hal_location_time_snapshot_get(); invalid partial fixes and stale client locations behave consistently with the core provider; two code-review passes are completed.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T22:53:53.899625Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T22:53:53.900184Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "gnss",
+    "location",
+    "hardware",
+    "network-source"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zte2.4",
+      "depends_on_id": "project-LICHEN-zte2",
+      "type": "parent-child",
+      "created_at": "2026-07-01T22:53:53.900184Z"
+    }
+  ]
+}
