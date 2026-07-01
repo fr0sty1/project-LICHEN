@@ -126,6 +126,22 @@ def main():
             rows.append((name, "MESHTASTIC_VECTOR_FROM_QUEUE_STATUS", arr, len(encoded),
                          "NULL", 0, 0, 0, status["res"], status["free"],
                          status["maxlen"], status["mesh_packet_id"]))
+        elif proto == "FromRadio" and message == "moduleConfig":
+            payload = hex_bytes(vector["payload"])
+            arr = f"v_{ident}_encoded"
+            payload_arr = f"v_{ident}_payload"
+            arrays.append(bytes_array(arr, encoded))
+            arrays.append(bytes_array(payload_arr, payload))
+            rows.append((name, "MESHTASTIC_VECTOR_FROM_MODULE_CONFIG", arr,
+                         len(encoded), payload_arr, len(payload), 0, 0, 0, 0, 0, 0))
+        elif proto == "FromRadio" and message == "region_presets":
+            payload = hex_bytes(vector["payload"])
+            arr = f"v_{ident}_encoded"
+            payload_arr = f"v_{ident}_payload"
+            arrays.append(bytes_array(arr, encoded))
+            arrays.append(bytes_array(payload_arr, payload))
+            rows.append((name, "MESHTASTIC_VECTOR_FROM_REGION_PRESETS", arr,
+                         len(encoded), payload_arr, len(payload), 0, 0, 0, 0, 0, 0))
         elif proto == "FromRadio" and message.startswith("packet."):
             from_id, packet = parse_from_radio_packet(encoded)
             arr = f"v_{ident}_encoded"
@@ -154,6 +170,8 @@ def main():
         "\tMESHTASTIC_VECTOR_TO_PACKET,",
         "\tMESHTASTIC_VECTOR_TO_REJECT,",
         "\tMESHTASTIC_VECTOR_FROM_QUEUE_STATUS,",
+        "\tMESHTASTIC_VECTOR_FROM_MODULE_CONFIG,",
+        "\tMESHTASTIC_VECTOR_FROM_REGION_PRESETS,",
         "\tMESHTASTIC_VECTOR_FROM_PACKET,",
         "};",
         "",

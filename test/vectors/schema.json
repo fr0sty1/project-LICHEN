@@ -156,6 +156,22 @@
           }
         },
         {
+          "if": {
+            "properties": {
+              "protobuf": {"const": "FromRadio"},
+              "message": {"enum": ["moduleConfig", "region_presets"]}
+            }
+          },
+          "then": {
+            "required": ["payload"],
+            "properties": {
+              "expect": {
+                "required": ["from_radio_field"]
+              }
+            }
+          }
+        },
+        {
           "if": {"properties": {"protobuf": {"const": "FromNum"}}},
           "then": {
             "properties": {
@@ -205,11 +221,13 @@
         "protobuf": {"type": "string", "enum": ["ToRadio", "FromRadio", "FromNum", "Empty"]},
         "message": {"type": "string"},
         "encoded": {"$ref": "#/definitions/hex"},
+        "payload": {"$ref": "#/definitions/hex"},
         "decoded": {"type": "object"},
         "expect": {
           "type": "object",
           "properties": {
             "delivery_status": {"type": "string", "enum": ["ack", "nak"]},
+            "from_radio_field": {"type": "integer", "minimum": 1},
             "from_radio_id": {"type": "integer", "minimum": 1},
             "from_radio_sequence": {
               "type": "array",

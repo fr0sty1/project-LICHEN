@@ -152,6 +152,12 @@ Run this with the Android app version recorded in the Bead evidence.
 8. Confirm stage 1 returns this node's identity, synthetic DeviceMetadata,
    region presets, channel, config, module config, and `config_complete_id =
    69420`, in that order. The terminal encoded field is `38ac9e04`.
+   DeviceMetadata must show LICHEN-branded firmware, `PRIVATE_HW`, and
+   unsupported modules excluded where Meshtastic defines exclusion bits.
+   Region presets must show only the tested conservative default profile unless
+   a broader region table has landed. Module config and admin responses must not
+   show enabled telemetry, MQTT, serial, store-forward, remote hardware, TAK,
+   mesh beacon, or other unimplemented modules.
 9. Confirm the app writes `ToRadio.want_config_id = 69421` for node database
    sync. The raw encoded field is `18ad9e04`. The app receives self/peer node
    records followed by `config_complete_id = 69421`; the terminal encoded field
@@ -202,6 +208,10 @@ Run this with the iOS app version recorded in the Bead evidence.
 8. Confirm stage 1 returns identity, synthetic metadata, region presets,
    channel, config, module config, and `config_complete_id = 69420`, in that
    order. The raw sync request/terminal fields are `18ac9e04` and `38ac9e04`.
+   DeviceMetadata must show LICHEN-branded firmware, `PRIVATE_HW`, and
+   unsupported modules excluded where Meshtastic defines exclusion bits; module
+   config and admin responses must not expose enabled unimplemented modules;
+   region presets must match the tested default region/preset policy.
 9. Confirm the app writes `ToRadio.want_config_id = 69421` and receives node
    database records followed by `config_complete_id = 69421`. The raw sync
    request/terminal fields are `18ad9e04` and `38ad9e04`.

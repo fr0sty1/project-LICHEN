@@ -80,6 +80,21 @@ def _bytes_field(field: int, value: bytes) -> bytes:
     return _key(field, 2) + _varint(len(value)) + value
 
 
+def _module_config_disabled_telemetry() -> bytes:
+    telemetry = (
+        _varint_field(1, 0)
+        + _varint_field(2, 0)
+        + _bool_field(14, False)
+    )
+    return _bytes_field(6, telemetry)
+
+
+def _region_presets_default_us_long_fast() -> bytes:
+    preset_group = _varint_field(1, 0) + _varint_field(2, 0)
+    region_group = _varint_field(1, 1) + _varint_field(2, 0)
+    return _bytes_field(1, preset_group) + _bytes_field(2, region_group)
+
+
 def _data(portnum: int, payload: bytes = b"", request_id: int | None = None) -> bytes:
     out = bytearray()
     out += _varint_field(1, portnum)
@@ -368,6 +383,59 @@ def meshtastic_app_compat_vectors() -> list[dict]:
             "expect": {
                 "from_radio_sequence": ["node_info", "config_complete_id"],
                 "terminal_from_radio": _from_radio_config_complete(node_db_nonce).hex(),
+            },
+        },
+        {
+            "name": "module_config_disabled_telemetry",
+            "description": "MVP moduleConfig placeholder reports telemetry explicitly disabled.",
+            "source_baseline": baseline,
+            "transport": transport,
+            "direction": "node_to_app",
+            "protobuf": "FromRadio",
+            "message": "moduleConfig",
+            "payload": _module_config_disabled_telemetry().hex(),
+            "encoded": _bytes_field(9, _module_config_disabled_telemetry()).hex(),
+            "decoded": {
+                "moduleConfig": {
+                    "telemetry": {
+                        "device_update_interval": 0,
+                        "environment_update_interval": 0,
+                        "device_telemetry_enabled": False,
+                    },
+                },
+            },
+            "expect": {
+                "from_radio_field": 9,
+            },
+        },
+        {
+            "name": "region_presets_us_long_fast",
+            "description": "MVP region_presets placeholder exposes only US with LONG_FAST default.",
+            "source_baseline": baseline,
+            "transport": transport,
+            "direction": "node_to_app",
+            "protobuf": "FromRadio",
+            "message": "region_presets",
+            "payload": _region_presets_default_us_long_fast().hex(),
+            "encoded": _bytes_field(19, _region_presets_default_us_long_fast()).hex(),
+            "decoded": {
+                "region_presets": {
+                    "preset_groups": [
+                        {
+                            "presets": ["LONG_FAST"],
+                            "default_preset": "LONG_FAST",
+                        },
+                    ],
+                    "region_groups": [
+                        {
+                            "region": "US",
+                            "group_index": 0,
+                        },
+                    ],
+                },
+            },
+            "expect": {
+                "from_radio_field": 19,
             },
         },
         {

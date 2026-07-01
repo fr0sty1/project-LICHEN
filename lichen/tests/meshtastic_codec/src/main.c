@@ -115,6 +115,84 @@ static bool payload_get_varint_field(const uint8_t *buf, size_t len,
 	return false;
 }
 
+static bool payload_get_len_field(const uint8_t *buf, size_t len, uint32_t field,
+				  const uint8_t **value, size_t *value_len)
+{
+	size_t pos = 0U;
+
+	while (pos < len) {
+		uint32_t key;
+		uint32_t n;
+
+		if (read_varint(buf, len, &pos, &key) < 0) {
+			return false;
+		}
+		if ((key & 0x07U) == 2U) {
+			if (read_varint(buf, len, &pos, &n) < 0 || n > len - pos) {
+				return false;
+			}
+			if ((key >> 3) == field) {
+				*value = &buf[pos];
+				*value_len = n;
+				return true;
+			}
+			pos += n;
+		} else if ((key & 0x07U) == 0U) {
+			if (read_varint(buf, len, &pos, &n) < 0) {
+				return false;
+			}
+		} else if ((key & 0x07U) == 5U) {
+			if (len - pos < 4U) {
+				return false;
+			}
+			pos += 4U;
+		} else {
+			return false;
+		}
+	}
+	return false;
+}
+
+static bool payload_count_fields(const uint8_t *buf, size_t len, uint8_t *counts,
+				 size_t counts_len)
+{
+	size_t pos = 0U;
+
+	memset(counts, 0, counts_len);
+	while (pos < len) {
+		uint32_t key;
+		uint32_t field;
+		uint32_t n;
+
+		if (read_varint(buf, len, &pos, &key) < 0) {
+			return false;
+		}
+		field = key >> 3;
+		if (field == 0U || field >= counts_len || counts[field] == UINT8_MAX) {
+			return false;
+		}
+		counts[field]++;
+		if ((key & 0x07U) == 0U) {
+			if (read_varint(buf, len, &pos, &n) < 0) {
+				return false;
+			}
+		} else if ((key & 0x07U) == 2U) {
+			if (read_varint(buf, len, &pos, &n) < 0 || n > len - pos) {
+				return false;
+			}
+			pos += n;
+		} else if ((key & 0x07U) == 5U) {
+			if (len - pos < 4U) {
+				return false;
+			}
+			pos += 4U;
+		} else {
+			return false;
+		}
+	}
+	return true;
+}
+
 static bool payload_has_only_metadata_fields(const uint8_t *buf, size_t len)
 {
 	bool seen[13] = { false };
@@ -189,9 +267,9 @@ static void assert_metadata_payload(const uint8_t *buf, size_t len,
 
 ZTEST(meshtastic_codec, test_generated_vectors_are_current)
 {
-	zassert_equal(MESHTASTIC_VECTOR_SOURCE_COUNT, 14U);
+	zassert_equal(MESHTASTIC_VECTOR_SOURCE_COUNT, 16U);
 	zassert_equal(MESHTASTIC_VECTOR_CODEC_COUNT, ARRAY_SIZE(meshtastic_vectors));
-	zassert_equal(MESHTASTIC_VECTOR_CODEC_COUNT, 12U);
+	zassert_equal(MESHTASTIC_VECTOR_CODEC_COUNT, 14U);
 }
 
 ZTEST(meshtastic_codec, test_canonical_codec_vectors)
@@ -260,6 +338,20 @@ ZTEST(meshtastic_codec, test_canonical_codec_vectors)
 			ret = lichen_meshtastic_encode_from_radio_queue_status(&status, buf,
 									       sizeof(buf));
 			zassert_true(ret > 0, "%s queueStatus failed: %d", v->name, ret);
+			expect_bytes(buf, (size_t)ret, v->encoded, v->encoded_len);
+			break;
+		case MESHTASTIC_VECTOR_FROM_MODULE_CONFIG:
+			ret = lichen_meshtastic_encode_from_radio_message(
+				LICHEN_MESHTASTIC_FROM_RADIO_MODULE_CONFIG,
+				v->payload, v->payload_len, buf, sizeof(buf));
+			zassert_true(ret > 0, "%s moduleConfig failed: %d", v->name, ret);
+			expect_bytes(buf, (size_t)ret, v->encoded, v->encoded_len);
+			break;
+		case MESHTASTIC_VECTOR_FROM_REGION_PRESETS:
+			ret = lichen_meshtastic_encode_from_radio_message(
+				LICHEN_MESHTASTIC_FROM_RADIO_REGION_PRESETS,
+				v->payload, v->payload_len, buf, sizeof(buf));
+			zassert_true(ret > 0, "%s region_presets failed: %d", v->name, ret);
 			expect_bytes(buf, (size_t)ret, v->encoded, v->encoded_len);
 			break;
 		case MESHTASTIC_VECTOR_FROM_PACKET:
@@ -779,6 +871,99 @@ ZTEST(meshtastic_codec, test_metadata_payload_matches_current_schema)
 	zassert_true(ret > 0, "metadata payload failed: %d", ret);
 	assert_metadata_payload(payload, (size_t)ret, "LICHEN compat 1.0", 0U,
 				0x7fffU);
+}
+
+ZTEST(meshtastic_codec, test_module_and_region_placeholders_match_policy)
+{
+	struct lichen_meshtastic_local_info info = { 0 };
+	const uint8_t *telemetry;
+	const uint8_t *preset_group;
+	const uint8_t *region_group;
+	size_t telemetry_len;
+	size_t preset_group_len;
+	size_t region_group_len;
+	uint8_t counts[18];
+	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint32_t value = 0U;
+	int ret;
+
+	ret = lichen_meshtastic_encode_module_config_payload(&info, payload,
+							     sizeof(payload));
+	zassert_true(ret > 0, "module payload failed: %d", ret);
+	zassert_true(payload_count_fields(payload, (size_t)ret, counts,
+					  ARRAY_SIZE(counts)));
+	for (size_t i = 1U; i < ARRAY_SIZE(counts); i++) {
+		zassert_equal(counts[i], i == 6U ? 1U : 0U,
+			      "unexpected ModuleConfig field %u count %u",
+			      (uint32_t)i, counts[i]);
+	}
+	zassert_true(payload_get_len_field(payload, (size_t)ret, 6U, &telemetry,
+					   &telemetry_len));
+	zassert_true(payload_count_fields(telemetry, telemetry_len, counts,
+					  ARRAY_SIZE(counts)));
+	for (size_t i = 1U; i < ARRAY_SIZE(counts); i++) {
+		bool expected = (i == 1U || i == 2U || i == 14U);
+
+		zassert_equal(counts[i], expected ? 1U : 0U,
+			      "unexpected TelemetryConfig field %u count %u",
+			      (uint32_t)i, counts[i]);
+	}
+	zassert_true(payload_get_varint_field(telemetry, telemetry_len, 1U,
+					      &value));
+	zassert_equal(value, 0U);
+	zassert_true(payload_get_varint_field(telemetry, telemetry_len, 2U,
+					      &value));
+	zassert_equal(value, 0U);
+	zassert_true(payload_get_varint_field(telemetry, telemetry_len, 14U,
+					      &value));
+	zassert_equal(value, 0U);
+
+	ret = lichen_meshtastic_encode_region_presets_payload(&info, payload,
+							      sizeof(payload));
+	zassert_true(ret > 0, "region payload failed: %d", ret);
+	zassert_true(payload_count_fields(payload, (size_t)ret, counts,
+					  ARRAY_SIZE(counts)));
+	for (size_t i = 1U; i < ARRAY_SIZE(counts); i++) {
+		bool expected = (i == 1U || i == 2U);
+
+		zassert_equal(counts[i], expected ? 1U : 0U,
+			      "unexpected LoRaRegionPresetMap field %u count %u",
+			      (uint32_t)i, counts[i]);
+	}
+	zassert_true(payload_get_len_field(payload, (size_t)ret, 1U, &preset_group,
+					   &preset_group_len));
+	zassert_true(payload_count_fields(preset_group, preset_group_len, counts,
+					  ARRAY_SIZE(counts)));
+	for (size_t i = 1U; i < ARRAY_SIZE(counts); i++) {
+		bool expected = (i == 1U || i == 2U);
+
+		zassert_equal(counts[i], expected ? 1U : 0U,
+			      "unexpected LoRaPresetGroup field %u count %u",
+			      (uint32_t)i, counts[i]);
+	}
+	zassert_true(payload_get_varint_field(preset_group, preset_group_len, 1U,
+					      &value));
+	zassert_equal(value, 0U);
+	zassert_true(payload_get_varint_field(preset_group, preset_group_len, 2U,
+					      &value));
+	zassert_equal(value, 0U);
+	zassert_true(payload_get_len_field(payload, (size_t)ret, 2U, &region_group,
+					   &region_group_len));
+	zassert_true(payload_count_fields(region_group, region_group_len, counts,
+					  ARRAY_SIZE(counts)));
+	for (size_t i = 1U; i < ARRAY_SIZE(counts); i++) {
+		bool expected = (i == 1U || i == 2U);
+
+		zassert_equal(counts[i], expected ? 1U : 0U,
+			      "unexpected LoRaRegionPresets field %u count %u",
+			      (uint32_t)i, counts[i]);
+	}
+	zassert_true(payload_get_varint_field(region_group, region_group_len, 1U,
+					      &value));
+	zassert_equal(value, 1U);
+	zassert_true(payload_get_varint_field(region_group, region_group_len, 2U,
+					      &value));
+	zassert_equal(value, 0U);
 }
 
 ZTEST(meshtastic_codec, test_metadata_payload_rejects_meshtastic_branding)

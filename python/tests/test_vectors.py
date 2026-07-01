@@ -220,6 +220,55 @@ def _assert_queue_status(data: bytes, decoded: dict) -> None:
         assert by_field[4] == (0, decoded["mesh_packet_id"])
 
 
+def _assert_module_config(data: bytes, decoded: dict) -> None:
+    fields = _read_fields(data)
+    assert [field for field, _, _ in fields] == [6]
+    telemetry = _one_field(data, 6, 2)
+    telemetry_fields = _read_fields(telemetry)
+    assert [(field, wire_type) for field, wire_type, _ in telemetry_fields] == [
+        (1, 0),
+        (2, 0),
+        (14, 0),
+    ]
+
+    values = decoded["moduleConfig"]["telemetry"]
+    by_field = {field: value for field, _, value in telemetry_fields}
+    assert by_field[1] == values["device_update_interval"]
+    assert by_field[2] == values["environment_update_interval"]
+    assert by_field[14] == int(values["device_telemetry_enabled"])
+
+
+def _assert_region_presets(data: bytes, decoded: dict) -> None:
+    fields = _read_fields(data)
+    assert [(field, wire_type) for field, wire_type, _ in fields] == [(1, 2), (2, 2)]
+
+    values = decoded["region_presets"]
+    assert len(values["preset_groups"]) == 1
+    assert len(values["region_groups"]) == 1
+
+    preset_group = _one_field(data, 1, 2)
+    preset_fields = _read_fields(preset_group)
+    assert [(field, wire_type) for field, wire_type, _ in preset_fields] == [
+        (1, 0),
+        (2, 0),
+    ]
+    preset_values = values["preset_groups"][0]
+    modem_presets = {"LONG_FAST": 0}
+    assert preset_fields[0][2] == modem_presets[preset_values["presets"][0]]
+    assert preset_fields[1][2] == modem_presets[preset_values["default_preset"]]
+
+    region_group = _one_field(data, 2, 2)
+    region_fields = _read_fields(region_group)
+    assert [(field, wire_type) for field, wire_type, _ in region_fields] == [
+        (1, 0),
+        (2, 0),
+    ]
+    region_values = values["region_groups"][0]
+    regions = {"US": 1}
+    assert region_fields[0][2] == regions[region_values["region"]]
+    assert region_fields[1][2] == region_values["group_index"]
+
+
 @pytest.mark.parametrize("name,vector", _meshtastic_cases())
 def test_meshtastic_app_compat_vector_wire_schema(name: str, vector: dict) -> None:
     encoded = bytes.fromhex(vector["encoded"])
@@ -262,6 +311,13 @@ def test_meshtastic_app_compat_vector_wire_schema(name: str, vector: dict) -> No
             assert not [value for f, wt, value in _read_fields(encoded) if f == 1 and wt == 0]
             queue_status = _one_field(encoded, 11, 2)
             _assert_queue_status(queue_status, vector["decoded"]["queueStatus"])
+        elif vector["message"] in ("moduleConfig", "region_presets"):
+            payload = bytes.fromhex(vector["payload"])
+            assert _one_field(encoded, expect["from_radio_field"], 2) == payload
+            if vector["message"] == "moduleConfig":
+                _assert_module_config(payload, vector["decoded"])
+            else:
+                _assert_region_presets(payload, vector["decoded"])
         else:
             assert _one_field(encoded, 1, 0) == expect["from_radio_id"]
             mesh_packet = _one_field(encoded, 2, 2)

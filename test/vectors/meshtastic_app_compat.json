@@ -127,6 +127,81 @@
       }
     },
     {
+      "name": "module_config_disabled_telemetry",
+      "description": "MVP moduleConfig placeholder reports telemetry explicitly disabled.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromRadio",
+      "message": "moduleConfig",
+      "payload": "3206080010007000",
+      "encoded": "4a083206080010007000",
+      "decoded": {
+        "moduleConfig": {
+          "telemetry": {
+            "device_update_interval": 0,
+            "environment_update_interval": 0,
+            "device_telemetry_enabled": false
+          }
+        }
+      },
+      "expect": {
+        "from_radio_field": 9
+      }
+    },
+    {
+      "name": "region_presets_us_long_fast",
+      "description": "MVP region_presets placeholder exposes only US with LONG_FAST default.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromRadio",
+      "message": "region_presets",
+      "payload": "0a0408001000120408011000",
+      "encoded": "9a010c0a0408001000120408011000",
+      "decoded": {
+        "region_presets": {
+          "preset_groups": [
+            {
+              "presets": [
+                "LONG_FAST"
+              ],
+              "default_preset": "LONG_FAST"
+            }
+          ],
+          "region_groups": [
+            {
+              "region": "US",
+              "group_index": 0
+            }
+          ]
+        }
+      },
+      "expect": {
+        "from_radio_field": 19
+      }
+    },
+    {
       "name": "legacy_full_sync_unknown_nonce",
       "description": "Python/older clients may use a non-staged nonce and still need full sync data.",
       "source_baseline": {

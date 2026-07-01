@@ -188,6 +188,31 @@ The user-visible device name and `User.long_name` SHOULD remain visibly LICHEN-b
 `"LICHEN <board>"`. Board-specific Meshtastic hardware enum values such as T-Beam, Heltec, or RAK4631 MUST NOT be used
 even when LICHEN is running on that hardware, because those values imply Meshtastic firmware behavior and RF semantics.
 
+### Placeholder Module and Region Policy
+
+This policy was checked for Bead `project-LICHEN-t2hn.6.5` against current Meshtastic source heads:
+
+| Source | Commit inspected | Relevant behavior |
+|--------|------------------|-------------------|
+| `meshtastic/protobufs` | `9cb134be322dd7122e80d49b17dad9a213ff752e` | `LoRaRegionPresetMap` clients must tolerate absence; `ExcludedModules` defines bits through `NETWORK_CONFIG = 0x4000`; `ModuleConfig` has variants through `mesh_beacon = 17` |
+| `meshtastic/firmware` | `e64d20548c4313c92e0e641c41d388828e1d024a` | `PhoneAPI` sends metadata, region presets, channels, config, then its implemented module config cases before node DB |
+| `meshtastic/Meshtastic-Android` | `60119ce9d2e4efcb2e81336dbde29c1b70c9f293` | `min_app_version` only gates an app-update prompt; `region_presets` is handled when present and documented as absent on firmware before 2.8; module configs are persisted independently as they arrive |
+| `meshtastic/Meshtastic-Apple` | `aeeb0cc49fbe0ed593e918ba2f95100ecf694256` | No newer head than the pinned baseline during this check |
+| `meshtastic/python` | `6d76edf8a7b192c51e3a5d26bc5868da556ac3d9` | No newer head than the pinned baseline during this check |
+
+LICHEN's MVP MUST prefer honest absence or explicit disabled placeholders over fabricated Meshtastic capabilities:
+
+| Surface | MVP placeholder | Reason |
+|---------|-----------------|--------|
+| `min_app_version` | `30200` | Low enough for current app compatibility while still exercising the app version path; do not raise it without Android/iOS smoke evidence |
+| `excluded_modules` | `0x5fff` when Meshtastic BLE is active, `0x7fff` when it is not | Marks MQTT, serial, external notification, store-forward, range test, telemetry, canned message, audio, remote hardware, neighbor info, ambient lighting, detection sensor, paxcounter, and network unsupported; also marks Bluetooth config unsupported when the compatibility BLE surface is absent |
+| `moduleConfig` | One `telemetry` record with `device_update_interval = 0`, `environment_update_interval = 0`, and `device_telemetry_enabled = false` | Gives clients an explicit disabled telemetry placeholder without claiming sensor, MQTT, serial, store-forward, remote hardware, TAK, mesh beacon, or other module support |
+| `region_presets` | One group containing `LONG_FAST` with default `LONG_FAST`, mapped only to `US` | Documents the current conservative native_sim/default radio profile; additional regions require a tested region table and must not be guessed |
+
+Any future module, region, battery, GNSS, or network placeholder that becomes app-visible MUST have a native_sim test and
+must either be backed by a real LICHEN/HAL capability or be marked unavailable in metadata/config so users do not see a
+fictional Meshtastic feature.
+
 ### Channels and Encryption
 
 **The problem:** Meshtastic uses named channels with PSK (pre-shared key) encryption. Users configure channels in the app, share QR codes, etc.
@@ -219,7 +244,7 @@ Channel 0:
 | Meshtastic Config | Reported Value | Writes |
 |-------------------|----------------|--------|
 | `lora.region` | Mapped from LICHEN region | Ignored |
-| `lora.modem_preset` | `LONG_MODERATE` (closest match) | Ignored |
+| `lora.modem_preset` | `LONG_FAST` for the MVP default profile | Ignored |
 | `lora.hop_limit` | Current IPv6 hop limit | Ignored |
 | `lora.tx_power` | Current TX power | Ignored |
 | `lora.frequency_offset` | 0 | Ignored |
