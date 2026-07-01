@@ -9,6 +9,10 @@ target_include_directories(app PRIVATE ../../apps/gateway/src)
 if(DEFINED BLE_APP_OWNER_TEST_MODE)
   if(BLE_APP_OWNER_TEST_MODE STREQUAL "native")
     target_compile_definitions(app PRIVATE CONFIG_LORA_LICHEN_BLE=1)
+  elseif(BLE_APP_OWNER_TEST_MODE STREQUAL "native_legacy")
+    target_compile_definitions(app PRIVATE
+      CONFIG_LORA_LICHEN_BLE=1
+      CONFIG_LORA_LICHEN_BLE_LEGACY_NUS=1)
   elseif(BLE_APP_OWNER_TEST_MODE STREQUAL "meshtastic")
     target_compile_definitions(app PRIVATE CONFIG_LORA_LICHEN_MESHTASTIC_BLE=1)
   elseif(BLE_APP_OWNER_TEST_MODE STREQUAL "meshcore")

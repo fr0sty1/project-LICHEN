@@ -10,6 +10,11 @@ tests:
     extra_args:
       - BLE_APP_OWNER_TEST_MODE=native
     tags: bluetooth app-interface
+  net.lichen.ble_app_owner.native_legacy:
+    platform_allow: native_sim
+    extra_args:
+      - BLE_APP_OWNER_TEST_MODE=native_legacy
+    tags: bluetooth app-interface
   net.lichen.ble_app_owner.meshtastic:
     platform_allow: native_sim
     extra_args:

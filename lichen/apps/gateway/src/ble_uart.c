@@ -1,14 +1,16 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 /*
- * BLE UART bridge — Nordic UART Service (NUS) with SLIP framing.
+ * BLE native LCI bridge with SLIP framing.
  *
- * Two NUS characteristics:
- *   RX  (6E400002…) — phone writes SLIP-framed IPv6 packets to the gateway
- *   TX  (6E400003…) — gateway notifies SLIP-framed IPv6 packets to the phone
+ * Two stream characteristics:
+ *   RX — phone writes SLIP-framed IPv6 packets to the gateway
+ *   TX — gateway notifies SLIP-framed IPv6 packets to the phone
  *
  * SLIP framing (RFC 1055) is identical to the wired SLIP interface so the
  * client stack works regardless of whether it connects via USB-serial or BLE.
+ * New native clients use LICHEN-specific LCI UUIDs. Existing mutually
+ * exclusive native product images may opt into the legacy NUS UUID triplet.
  */
 
 #include "ble_ingress.h"
@@ -44,9 +46,53 @@ LOG_MODULE_REGISTER(ble_uart, LOG_LEVEL_INF);
 #define BT_UUID_NUS_TX_VAL \
 	BT_UUID_128_ENCODE(0x6e400003, 0xb5a3, 0xf393, 0xe0a9, 0xe50e24dcca9e)
 
-static struct bt_uuid_128 nus_svc_uuid = BT_UUID_INIT_128(BT_UUID_NUS_VAL);
-static struct bt_uuid_128 nus_rx_uuid  = BT_UUID_INIT_128(BT_UUID_NUS_RX_VAL);
-static struct bt_uuid_128 nus_tx_uuid  = BT_UUID_INIT_128(BT_UUID_NUS_TX_VAL);
+/* LICHEN native BLE LCI UUIDs; see docs/ble-app-surface-owner.md. */
+#define BT_UUID_LICHEN_LCI_VAL \
+	BT_UUID_128_ENCODE(0xe665960c, 0x7c84, 0x5606, 0xa8d3, 0x884507d0b7a8)
+#define BT_UUID_LICHEN_LCI_RX_VAL \
+	BT_UUID_128_ENCODE(0x5e6e304a, 0x29af, 0x52d9, 0xa813, 0x306f0f888586)
+#define BT_UUID_LICHEN_LCI_TX_VAL \
+	BT_UUID_128_ENCODE(0xbe4d4a23, 0x876b, 0x592b, 0xb252, 0x440367e18e43)
+#define BT_UUID_LICHEN_LCI_VERSION_VAL \
+	BT_UUID_128_ENCODE(0x9158dca0, 0x14ea, 0x5e1c, 0x8580, 0xb97e7c6381b8)
+#define BT_UUID_LICHEN_LCI_CAPABILITIES_VAL \
+	BT_UUID_128_ENCODE(0x3d3c63f3, 0xce23, 0x5451, 0xb357, 0x738a12c20df7)
+
+#if IS_ENABLED(CONFIG_LORA_LICHEN_BLE_LEGACY_NUS)
+#define BLE_UART_SERVICE_UUID_VAL BT_UUID_NUS_VAL
+#define BLE_UART_RX_UUID_VAL      BT_UUID_NUS_RX_VAL
+#define BLE_UART_TX_UUID_VAL      BT_UUID_NUS_TX_VAL
+#else
+#define BLE_UART_SERVICE_UUID_VAL BT_UUID_LICHEN_LCI_VAL
+#define BLE_UART_RX_UUID_VAL      BT_UUID_LICHEN_LCI_RX_VAL
+#define BLE_UART_TX_UUID_VAL      BT_UUID_LICHEN_LCI_TX_VAL
+#endif
+
+#define BLE_LCI_VERSION_1 0x0001u
+#define BLE_LCI_CAP_SLIP_IPV6 BIT(0)
+
+static struct bt_uuid_128 ble_uart_svc_uuid =
+	BT_UUID_INIT_128(BLE_UART_SERVICE_UUID_VAL);
+static struct bt_uuid_128 ble_uart_rx_uuid =
+	BT_UUID_INIT_128(BLE_UART_RX_UUID_VAL);
+static struct bt_uuid_128 ble_uart_tx_uuid =
+	BT_UUID_INIT_128(BLE_UART_TX_UUID_VAL);
+#if !IS_ENABLED(CONFIG_LORA_LICHEN_BLE_LEGACY_NUS)
+static struct bt_uuid_128 ble_uart_version_uuid =
+	BT_UUID_INIT_128(BT_UUID_LICHEN_LCI_VERSION_VAL);
+static struct bt_uuid_128 ble_uart_capabilities_uuid =
+	BT_UUID_INIT_128(BT_UUID_LICHEN_LCI_CAPABILITIES_VAL);
+static const uint8_t s_lci_version[] = {
+	BLE_LCI_VERSION_1 & 0xffu,
+	(BLE_LCI_VERSION_1 >> 8) & 0xffu,
+};
+static const uint8_t s_lci_capabilities[] = {
+	BLE_LCI_CAP_SLIP_IPV6 & 0xffu,
+	(BLE_LCI_CAP_SLIP_IPV6 >> 8) & 0xffu,
+	(BLE_LCI_CAP_SLIP_IPV6 >> 16) & 0xffu,
+	(BLE_LCI_CAP_SLIP_IPV6 >> 24) & 0xffu,
+};
+#endif
 
 /* Mutex protecting SLIP reassembly state */
 static K_MUTEX_DEFINE(s_rx_mutex);
@@ -87,10 +133,10 @@ static void slip_dispatch(const uint8_t *pkt, size_t len)
  * GATT service definition
  * -------------------------------------------------------------------------- */
 
-static ssize_t nus_rx_write(struct bt_conn *conn,
-			    const struct bt_gatt_attr *attr,
-			    const void *buf, uint16_t len,
-			    uint16_t offset, uint8_t flags)
+static ssize_t ble_lci_rx_write(struct bt_conn *conn,
+				const struct bt_gatt_attr *attr,
+				const void *buf, uint16_t len,
+				uint16_t offset, uint8_t flags)
 {
 	const uint8_t *data = buf;
 
@@ -145,12 +191,34 @@ static ssize_t nus_rx_write(struct bt_conn *conn,
 	return len;
 }
 
-static void nus_tx_ccc_changed(const struct bt_gatt_attr *attr, uint16_t value)
+static void ble_lci_tx_ccc_changed(const struct bt_gatt_attr *attr,
+				   uint16_t value)
 {
 	ARG_UNUSED(attr);
 	LOG_INF("BLE UART TX notify %s",
 		(value == BT_GATT_CCC_NOTIFY) ? "enabled" : "disabled");
 }
+
+#if !IS_ENABLED(CONFIG_LORA_LICHEN_BLE_LEGACY_NUS)
+static ssize_t ble_lci_read_static(struct bt_conn *conn,
+				   const struct bt_gatt_attr *attr, void *buf,
+				   uint16_t len, uint16_t offset)
+{
+	const struct bt_uuid *uuid = attr->user_data;
+	const uint8_t *data;
+	size_t data_len;
+
+	if (uuid == &ble_uart_version_uuid.uuid) {
+		data = s_lci_version;
+		data_len = sizeof(s_lci_version);
+	} else {
+		data = s_lci_capabilities;
+		data_len = sizeof(s_lci_capabilities);
+	}
+
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, data, data_len);
+}
+#endif
 
 /*
  * GATT attribute layout (index → attribute):
@@ -160,21 +228,34 @@ static void nus_tx_ccc_changed(const struct bt_gatt_attr *attr, uint16_t value)
  *   3  TX Characteristic declaration
  *   4  TX Characteristic value  ← bt_gatt_notify target
  *   5  TX CCCD
+ *   6+ Native LCI version/capabilities characteristics (non-legacy profile)
  */
 #define NUS_TX_VAL_IDX 4
 
 BT_GATT_SERVICE_DEFINE(nus_svc,
-	BT_GATT_PRIMARY_SERVICE(&nus_svc_uuid),
-	BT_GATT_CHARACTERISTIC(&nus_rx_uuid.uuid,
+	BT_GATT_PRIMARY_SERVICE(&ble_uart_svc_uuid),
+	BT_GATT_CHARACTERISTIC(&ble_uart_rx_uuid.uuid,
 			       BT_GATT_CHRC_WRITE_WITHOUT_RESP,
 			       BT_GATT_PERM_WRITE,
-			       NULL, nus_rx_write, NULL),
-	BT_GATT_CHARACTERISTIC(&nus_tx_uuid.uuid,
+			       NULL, ble_lci_rx_write, NULL),
+	BT_GATT_CHARACTERISTIC(&ble_uart_tx_uuid.uuid,
 			       BT_GATT_CHRC_NOTIFY,
 			       BT_GATT_PERM_NONE,
 			       NULL, NULL, NULL),
-	BT_GATT_CCC(nus_tx_ccc_changed,
+	BT_GATT_CCC(ble_lci_tx_ccc_changed,
 		    BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
+#if !IS_ENABLED(CONFIG_LORA_LICHEN_BLE_LEGACY_NUS)
+	BT_GATT_CHARACTERISTIC(&ble_uart_version_uuid.uuid,
+			       BT_GATT_CHRC_READ,
+			       BT_GATT_PERM_READ,
+			       ble_lci_read_static, NULL,
+			       &ble_uart_version_uuid.uuid),
+	BT_GATT_CHARACTERISTIC(&ble_uart_capabilities_uuid.uuid,
+			       BT_GATT_CHRC_READ,
+			       BT_GATT_PERM_READ,
+			       ble_lci_read_static, NULL,
+			       &ble_uart_capabilities_uuid.uuid),
+#endif
 );
 
 static uint16_t uart_bt_gatt_get_mtu(struct bt_conn *conn)
@@ -196,7 +277,14 @@ static int uart_bt_gatt_notify(struct bt_conn *conn,
 	s_test_tx_state.conn = conn;
 	s_test_tx_state.notify_count++;
 	s_test_tx_state.len = MIN(len, (uint16_t)sizeof(s_test_tx_state.data));
-	memcpy(s_test_tx_state.data, data, s_test_tx_state.len);
+	if (s_test_tx_state.total_len < sizeof(s_test_tx_state.data)) {
+		uint16_t copy_len = MIN(len, (uint16_t)(sizeof(s_test_tx_state.data) -
+						       s_test_tx_state.total_len));
+
+		memcpy(&s_test_tx_state.data[s_test_tx_state.total_len], data,
+		       copy_len);
+	}
+	s_test_tx_state.total_len += len;
 	return s_test_notify_ret;
 #else
 	return bt_gatt_notify(conn, attr, data, len);
@@ -209,7 +297,7 @@ static int uart_bt_gatt_notify(struct bt_conn *conn,
 
 static const struct bt_data s_ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR),
-	BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_NUS_VAL),
+	BT_DATA_BYTES(BT_DATA_UUID128_ALL, BLE_UART_SERVICE_UUID_VAL),
 };
 
 static void on_connected(struct bt_conn *conn, uint8_t err,
@@ -345,6 +433,176 @@ int ble_uart_init(void)
 }
 
 #ifdef CONFIG_ZTEST
+enum {
+	BLE_UART_ATTR_SERVICE = 0,
+	BLE_UART_ATTR_RX_CHRC = 1,
+	BLE_UART_ATTR_RX_VALUE = 2,
+	BLE_UART_ATTR_TX_CHRC = 3,
+	BLE_UART_ATTR_TX_VALUE = 4,
+	BLE_UART_ATTR_TX_CCC = 5,
+	BLE_UART_ATTR_VERSION_CHRC = 6,
+	BLE_UART_ATTR_VERSION_VALUE = 7,
+	BLE_UART_ATTR_CAPABILITIES_CHRC = 8,
+	BLE_UART_ATTR_CAPABILITIES_VALUE = 9,
+};
+
+static void copy_uuid128(uint8_t dst[16], const struct bt_uuid_128 *uuid)
+{
+	memcpy(dst, uuid->val, 16U);
+}
+
+static void copy_attr_uuid128(uint8_t dst[16], const struct bt_gatt_attr *attr)
+{
+	const struct bt_uuid_128 *uuid = CONTAINER_OF(attr->uuid,
+						      struct bt_uuid_128,
+						      uuid);
+
+	copy_uuid128(dst, uuid);
+}
+
+static void copy_chrc_uuid128(uint8_t dst[16], const struct bt_gatt_attr *attr)
+{
+	const struct bt_gatt_chrc *chrc = attr->user_data;
+	const struct bt_uuid_128 *uuid = CONTAINER_OF(chrc->uuid,
+						      struct bt_uuid_128,
+						      uuid);
+
+	copy_uuid128(dst, uuid);
+}
+
+static void copy_service_uuid128(uint8_t dst[16], const struct bt_gatt_attr *attr)
+{
+	const struct bt_uuid_128 *uuid = CONTAINER_OF(attr->user_data,
+						      struct bt_uuid_128,
+						      uuid);
+
+	copy_uuid128(dst, uuid);
+}
+
+static uint8_t chrc_props(const struct bt_gatt_attr *attr)
+{
+	const struct bt_gatt_chrc *chrc = attr->user_data;
+
+	return chrc->properties;
+}
+
+int ble_uart_test_copy_profile(struct ble_uart_test_profile *profile)
+{
+	if (profile == NULL) {
+		return -EINVAL;
+	}
+
+	memset(profile, 0, sizeof(*profile));
+	profile->legacy_nus =
+		IS_ENABLED(CONFIG_LORA_LICHEN_BLE_LEGACY_NUS);
+	profile->has_version_capabilities = !profile->legacy_nus;
+	copy_uuid128(profile->service_uuid, &ble_uart_svc_uuid);
+	copy_uuid128(profile->rx_uuid, &ble_uart_rx_uuid);
+	copy_uuid128(profile->tx_uuid, &ble_uart_tx_uuid);
+#if !IS_ENABLED(CONFIG_LORA_LICHEN_BLE_LEGACY_NUS)
+	copy_uuid128(profile->version_uuid, &ble_uart_version_uuid);
+	copy_uuid128(profile->capabilities_uuid, &ble_uart_capabilities_uuid);
+	memcpy(profile->version, s_lci_version, sizeof(profile->version));
+	memcpy(profile->capabilities, s_lci_capabilities,
+	       sizeof(profile->capabilities));
+#endif
+
+	return 0;
+}
+
+int ble_uart_test_copy_gatt_shape(struct ble_uart_test_gatt_shape *shape)
+{
+	if (shape == NULL) {
+		return -EINVAL;
+	}
+
+	memset(shape, 0, sizeof(*shape));
+	shape->attr_count = nus_svc.attr_count;
+	copy_service_uuid128(shape->service_uuid,
+			     &nus_svc.attrs[BLE_UART_ATTR_SERVICE]);
+	copy_chrc_uuid128(shape->rx_chrc_uuid,
+			  &nus_svc.attrs[BLE_UART_ATTR_RX_CHRC]);
+	copy_attr_uuid128(shape->rx_value_uuid,
+			  &nus_svc.attrs[BLE_UART_ATTR_RX_VALUE]);
+	copy_chrc_uuid128(shape->tx_chrc_uuid,
+			  &nus_svc.attrs[BLE_UART_ATTR_TX_CHRC]);
+	copy_attr_uuid128(shape->tx_value_uuid,
+			  &nus_svc.attrs[BLE_UART_ATTR_TX_VALUE]);
+	shape->rx_chrc_props = chrc_props(&nus_svc.attrs[BLE_UART_ATTR_RX_CHRC]);
+	shape->tx_chrc_props = chrc_props(&nus_svc.attrs[BLE_UART_ATTR_TX_CHRC]);
+	shape->rx_value_perm = nus_svc.attrs[BLE_UART_ATTR_RX_VALUE].perm;
+	shape->tx_value_perm = nus_svc.attrs[BLE_UART_ATTR_TX_VALUE].perm;
+	shape->tx_ccc_perm = nus_svc.attrs[BLE_UART_ATTR_TX_CCC].perm;
+	shape->rx_has_write =
+		nus_svc.attrs[BLE_UART_ATTR_RX_VALUE].write == ble_lci_rx_write;
+	shape->tx_has_read_write =
+		nus_svc.attrs[BLE_UART_ATTR_TX_VALUE].read == NULL &&
+		nus_svc.attrs[BLE_UART_ATTR_TX_VALUE].write == NULL;
+
+#if !IS_ENABLED(CONFIG_LORA_LICHEN_BLE_LEGACY_NUS)
+	copy_chrc_uuid128(shape->version_chrc_uuid,
+			  &nus_svc.attrs[BLE_UART_ATTR_VERSION_CHRC]);
+	copy_attr_uuid128(shape->version_value_uuid,
+			  &nus_svc.attrs[BLE_UART_ATTR_VERSION_VALUE]);
+	copy_chrc_uuid128(shape->capabilities_chrc_uuid,
+			  &nus_svc.attrs[BLE_UART_ATTR_CAPABILITIES_CHRC]);
+	copy_attr_uuid128(shape->capabilities_value_uuid,
+			  &nus_svc.attrs[BLE_UART_ATTR_CAPABILITIES_VALUE]);
+	shape->version_chrc_props =
+		chrc_props(&nus_svc.attrs[BLE_UART_ATTR_VERSION_CHRC]);
+	shape->capabilities_chrc_props =
+		chrc_props(&nus_svc.attrs[BLE_UART_ATTR_CAPABILITIES_CHRC]);
+	shape->version_value_perm =
+		nus_svc.attrs[BLE_UART_ATTR_VERSION_VALUE].perm;
+	shape->capabilities_value_perm =
+		nus_svc.attrs[BLE_UART_ATTR_CAPABILITIES_VALUE].perm;
+	shape->version_has_read =
+		nus_svc.attrs[BLE_UART_ATTR_VERSION_VALUE].read ==
+		ble_lci_read_static;
+	shape->capabilities_has_read =
+		nus_svc.attrs[BLE_UART_ATTR_CAPABILITIES_VALUE].read ==
+		ble_lci_read_static;
+#endif
+
+	return 0;
+}
+
+ssize_t ble_uart_test_write_rx(struct bt_conn *conn, const uint8_t *data,
+			       uint16_t len)
+{
+	return nus_svc.attrs[BLE_UART_ATTR_RX_VALUE].write(
+		conn, &nus_svc.attrs[BLE_UART_ATTR_RX_VALUE], data, len, 0U, 0U);
+}
+
+ssize_t ble_uart_test_read_version(uint8_t *buf, uint16_t len, uint16_t offset)
+{
+#if IS_ENABLED(CONFIG_LORA_LICHEN_BLE_LEGACY_NUS)
+	ARG_UNUSED(buf);
+	ARG_UNUSED(len);
+	ARG_UNUSED(offset);
+	return -ENOTSUP;
+#else
+	return nus_svc.attrs[BLE_UART_ATTR_VERSION_VALUE].read(
+		NULL, &nus_svc.attrs[BLE_UART_ATTR_VERSION_VALUE], buf, len,
+		offset);
+#endif
+}
+
+ssize_t ble_uart_test_read_capabilities(uint8_t *buf, uint16_t len,
+					uint16_t offset)
+{
+#if IS_ENABLED(CONFIG_LORA_LICHEN_BLE_LEGACY_NUS)
+	ARG_UNUSED(buf);
+	ARG_UNUSED(len);
+	ARG_UNUSED(offset);
+	return -ENOTSUP;
+#else
+	return nus_svc.attrs[BLE_UART_ATTR_CAPABILITIES_VALUE].read(
+		NULL, &nus_svc.attrs[BLE_UART_ATTR_CAPABILITIES_VALUE], buf, len,
+		offset);
+#endif
+}
+
 void ble_uart_test_seed_rx_state(uint16_t rx_len, bool rx_esc,
 				 bool rx_overflow)
 {

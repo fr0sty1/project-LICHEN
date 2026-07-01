@@ -4,17 +4,28 @@
 menu "LICHEN Gateway"
 
 config LORA_LICHEN_BLE
-	bool "BLE UART interface (Nordic UART Service)"
+	bool "Native BLE LCI interface"
 	depends on BT
 	depends on BT_PERIPHERAL
 	depends on BT_MAX_CONN = 1
 	default n
 	help
-	  Enable the Nordic UART Service (NUS) GATT profile so a phone can
-	  exchange SLIP-framed IPv6 packets with the gateway over BLE UART.
+	  Enable the native LICHEN BLE Local Client Interface so a phone can
+	  exchange SLIP-framed IPv6 packets with the gateway over BLE GATT.
+	  By default this uses LICHEN-specific service and characteristic UUIDs.
 	  Gate per board: enable only on targets with an enabled Zephyr BLE HCI
 	  device. Keep the HAL BLE-local capability disabled until the board has a
 	  validated bidirectional local-client transport.
+
+config LORA_LICHEN_BLE_LEGACY_NUS
+	bool "Use legacy Nordic UART Service UUIDs for native BLE LCI"
+	depends on LORA_LICHEN_BLE
+	default n
+	help
+	  Keep the native LICHEN BLE LCI surface on the Nordic UART Service UUID
+	  triplet for existing mutually exclusive native product images. Do not
+	  enable this in images that also need MeshCore compatibility: MeshCore
+	  owns NUS UUIDs with raw MeshCore frame semantics.
 
 config LORA_LICHEN_MESHTASTIC_BLE
 	bool "Meshtastic-compatible BLE GATT interface"
@@ -102,6 +113,7 @@ config LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH
 	  sync burst with the default bounded NodeDB peer cap.
 
 config LICHEN_APP_INTERFACE_MAX_PAYLOAD
+	int
 	default 200 if LORA_LICHEN_MESHTASTIC_BLE
 
 config LORA_LICHEN_MESHTASTIC_BLE_TO_RADIO_QUEUE_DEPTH

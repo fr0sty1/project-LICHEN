@@ -7,7 +7,7 @@ LICHEN currently has three local BLE app surfaces in the Zephyr gateway:
 
 | Surface | Current role | Current UUIDs | Payload contract |
 |---------|--------------|---------------|------------------|
-| Native LICHEN BLE | Local Client Interface over BLE UART | Nordic UART Service (NUS) | SLIP-framed IPv6 packets |
+| Native LICHEN BLE | Local Client Interface over BLE GATT | LICHEN-specific native LCI UUIDs by default; legacy NUS only when explicitly enabled | SLIP-framed IPv6 packets |
 | Meshtastic BLE | Meshtastic app compatibility | Meshtastic service and ToRadio/FromRadio/FromNum characteristics | Raw Meshtastic protobuf GATT values |
 | MeshCore BLE | MeshCore app compatibility | NUS | Raw MeshCore command/response frames |
 
@@ -20,9 +20,14 @@ race to restart advertising after a disconnect.
 
 ## Current Policy
 
-The current Kconfig policy remains:
+The current Kconfig policy is:
 
-- `CONFIG_LORA_LICHEN_BLE` enables native LICHEN NUS/SLIP.
+- `CONFIG_LORA_LICHEN_BLE` enables native LICHEN BLE LCI over
+  SLIP-framed IPv6. Its default GATT profile is the LICHEN-specific native LCI
+  UUID set.
+- `CONFIG_LORA_LICHEN_BLE_LEGACY_NUS` keeps native LICHEN BLE LCI on the
+  legacy NUS UUID triplet for existing mutually exclusive native product
+  images.
 - `CONFIG_LORA_LICHEN_MESHTASTIC_BLE` enables the Meshtastic compatibility
   surface and depends on `!LORA_LICHEN_BLE`.
 - `CONFIG_LORA_LICHEN_MESHCORE_BLE` enables the MeshCore compatibility surface
@@ -36,9 +41,9 @@ R1 Neo, T-Echo, and similar targets should describe BLE hardware capability
 separately from app-compat product mode where practical.
 
 This means simultaneous native LICHEN plus Meshtastic or MeshCore BLE is not
-supported by the current firmware image. Native LICHEN and MeshCore also both
-use the NUS UUID triplet with incompatible payload semantics, so they must stay
-mutually exclusive until native LICHEN BLE moves to LICHEN-specific UUIDs.
+supported by the current firmware image. Native LICHEN legacy NUS mode and
+MeshCore both use the NUS UUID triplet with incompatible payload semantics, so
+legacy NUS mode must stay mutually exclusive with MeshCore.
 
 ## Native UUID Policy
 
@@ -53,7 +58,7 @@ Rationale:
 
 - MeshCore client compatibility depends on exact NUS UUIDs carrying raw
   MeshCore frames.
-- Current native LICHEN BLE uses the same NUS UUIDs for SLIP-framed IPv6.
+- Legacy native LICHEN BLE can use the same NUS UUIDs for SLIP-framed IPv6.
 - BLE centrals discover and bind by UUID, so two incompatible services with the
   same UUID triplet create ambiguous client behavior.
 - Preserving NUS for the mutually exclusive native mode avoids breaking the
@@ -63,8 +68,9 @@ Rationale:
 Client and migration impact:
 
 - Existing native BLE clients that know only NUS continue to work with
-  `CONFIG_LORA_LICHEN_BLE` product images while that mode remains exclusive.
-- New native clients SHOULD learn the future LICHEN-specific UUIDs before any
+  product images that enable `CONFIG_LORA_LICHEN_BLE_LEGACY_NUS` while that
+  mode remains exclusive.
+- New native clients SHOULD learn the LICHEN-specific UUIDs before any
   coexistence image is shipped.
 - During migration, native clients MAY probe LICHEN-specific UUIDs first and
   fall back to NUS only when no compatibility surface is active.
@@ -96,7 +102,7 @@ UUIDv5 again with the attribute names below.
 | Protocol version | `ble-lci-version` | `9158dca0-14ea-5e1c-8580-b97e7c6381b8` | Read | Two-byte little-endian native BLE LCI version. Initial value: `0x0001`. |
 | Capabilities | `ble-lci-capabilities` | `3d3c63f3-ce23-5451-b357-738a12c20df7` | Read | Four-byte little-endian bitset of advertised LCI transport capabilities. |
 
-Initial capabilities:
+Defined capability bits:
 
 - Bit 0: RFC 1055 SLIP-framed IPv6 over RX/TX characteristics is supported.
 - Bit 1: BLE LE Secure Connections pairing is required for non-read-only local
@@ -104,9 +110,10 @@ Initial capabilities:
 - Bit 2: OSCORE-protected local CoAP operations are available when local OSCORE
   context provisioning is configured.
 
-The capabilities value is exactly four octets. Reserved capability bits MUST be
-written as zero by the gateway and ignored by clients. Clients SHOULD discover
-this service first. They MAY fall back to NUS only when the native service is
+The initial capabilities value is exactly four octets and currently sets only
+bit 0. Reserved or unsupported capability bits MUST be written as zero by the
+gateway and ignored by clients. Clients SHOULD discover this service first.
+They MAY fall back to NUS only when the native service is
 absent and the image is known to be the legacy mutually exclusive native BLE
 product mode. Clients MUST NOT use NUS fallback when MeshCore compatibility is
 advertised, because MeshCore owns NUS payload semantics.
@@ -208,14 +215,16 @@ for discovery.
 
 Current app discovery expectations to preserve:
 
-- Native LICHEN BLE advertises NUS for SLIP local-client access.
+- Native LICHEN BLE advertises the LICHEN-specific native LCI UUID set for
+  SLIP local-client access.
+- Existing mutually exclusive native legacy images advertise NUS for SLIP
+  local-client access.
 - Meshtastic BLE advertises the Meshtastic service UUID and a LICHEN-branded
   compatibility name.
 - MeshCore BLE advertises NUS and the MeshCore compatibility name.
 
-Because MeshCore and native LICHEN both advertise NUS today, a combined
-native-plus-MeshCore product mode is unsafe until their discovery identity is
-separated.
+Because MeshCore and native LICHEN legacy mode both advertise NUS, a combined
+native-legacy-plus-MeshCore product mode is unsafe.
 
 Public BLE identity must stay compatibility-scoped. Meshtastic metadata and
 advertised names may help mobile apps find the local shim, but they must remain
