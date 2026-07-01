@@ -150,8 +150,8 @@ Run this with the Android app version recorded in the Bead evidence.
    its proactive read path. The drain ends when `FromRadio` returns a
    zero-length value.
 8. Confirm stage 1 returns this node's identity, synthetic DeviceMetadata,
-   config/module/channel records, region presets, and `config_complete_id =
-   69420`. The terminal encoded field is `38ac9e04`.
+   region presets, channel, config, module config, and `config_complete_id =
+   69420`, in that order. The terminal encoded field is `38ac9e04`.
 9. Confirm the app writes `ToRadio.want_config_id = 69421` for node database
    sync. The raw encoded field is `18ad9e04`. The app receives self/peer node
    records followed by `config_complete_id = 69421`; the terminal encoded field
@@ -199,9 +199,9 @@ Run this with the iOS app version recorded in the Bead evidence.
    tolerance around the handshake.
 7. Confirm the app subscribes to or otherwise observes `FromNum`, then drains
    one complete protobuf value per `FromRadio` read until a zero-length read.
-8. Confirm stage 1 returns identity, synthetic metadata, config/module/channel
-   records, region presets, and `config_complete_id = 69420`. The raw sync
-   request/terminal fields are `18ac9e04` and `38ac9e04`.
+8. Confirm stage 1 returns identity, synthetic metadata, region presets,
+   channel, config, module config, and `config_complete_id = 69420`, in that
+   order. The raw sync request/terminal fields are `18ac9e04` and `38ac9e04`.
 9. Confirm the app writes `ToRadio.want_config_id = 69421` and receives node
    database records followed by `config_complete_id = 69421`. The raw sync
    request/terminal fields are `18ad9e04` and `38ad9e04`.

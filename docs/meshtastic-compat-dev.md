@@ -322,7 +322,7 @@ These features can't be stubbed meaningfully. The adapter returns errors or empt
    especially between stages; firmware must tolerate heartbeat but must not require it before stage 1.
 4. Node responds via `FromRadio` reads:
    - `MyNodeInfo` (this node's identity)
-   - `DeviceMetadata` and config/module/channel records for config sync
+   - `DeviceMetadata`, region presets, channel, config, and module config records for config sync
    - `NodeInfo` (each known peer)
    - `ConfigCompleteId` matching the request nonce
 5. App subscribes to `FromNum` notifications; Android also proactively drains after writes.
@@ -336,6 +336,10 @@ The sync nonces are fixed by current Android and iOS client flows. `69420` means
 stage. It must not assume the app is done after the first `config_complete_id`, because Apple and Android use the second
 stage to seed the node database. Other nonces are treated as legacy/full-sync requests for Python or older clients: queue
 the stage-1 config/static records and the stage-2 node database, then echo the original nonce in `config_complete_id`.
+Stage-1 order is `my_info`, `metadata`, `region_presets`, `channel`, `config`, `moduleConfig`, then
+`config_complete_id`. This follows current Meshtastic firmware
+`e64d20548c4313c92e0e641c41d388828e1d024a`, whose `PhoneAPI` state machine sends region presets immediately after
+metadata and before the first channel.
 
 The `FromNum` characteristic is an edge-triggered queue hint, not the data channel. Every queued `FromRadio` value
 increments `FromNum` modulo 2^32 and notifies subscribed clients when notifications are enabled. A `FromRadio` read
@@ -379,7 +383,7 @@ The adapter implements a subset of Meshtastic's protobuf schema.
 
 | Field | Handling |
 |-------|----------|
-| `want_config_id = 69420` | Queue stage-1 config, metadata, region presets, channel, module config, and matching `config_complete_id` |
+| `want_config_id = 69420` | Queue stage-1 identity, metadata, region presets, channel, config, module config, and matching `config_complete_id` |
 | `want_config_id = 69421` | Queue stage-2 node database and matching `config_complete_id` |
 | Other `want_config_id` | Queue legacy/full sync and matching `config_complete_id`; log compatibility nonce |
 | `heartbeat` | Keepalive/liveness trigger; may queue `queueStatus`; never required before sync |

@@ -87,10 +87,10 @@
         "from_radio_sequence": [
           "my_info",
           "metadata",
+          "region_presets",
+          "channel",
           "config",
           "moduleConfig",
-          "channel",
-          "region_presets",
           "config_complete_id"
         ],
         "terminal_from_radio": "38ac9e04"
@@ -152,10 +152,10 @@
         "from_radio_sequence": [
           "my_info",
           "metadata",
+          "region_presets",
+          "channel",
           "config",
           "moduleConfig",
-          "channel",
-          "region_presets",
           "node_info",
           "config_complete_id"
         ],

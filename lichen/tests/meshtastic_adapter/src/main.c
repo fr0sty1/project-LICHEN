@@ -1024,9 +1024,9 @@ ZTEST(meshtastic_adapter, test_want_config_69420_queues_stage1_sequence)
 		LICHEN_MESHTASTIC_FROM_RADIO_MY_INFO,
 		LICHEN_MESHTASTIC_FROM_RADIO_METADATA,
 		LICHEN_MESHTASTIC_FROM_RADIO_REGION_PRESETS,
+		LICHEN_MESHTASTIC_FROM_RADIO_CHANNEL,
 		LICHEN_MESHTASTIC_FROM_RADIO_CONFIG,
 		LICHEN_MESHTASTIC_FROM_RADIO_MODULE_CONFIG,
-		LICHEN_MESHTASTIC_FROM_RADIO_CHANNEL,
 		7U,
 	};
 	int ret;
@@ -1132,7 +1132,7 @@ ZTEST(meshtastic_adapter, test_synthetic_node_and_channel_fields_are_stable)
 	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_static,
 						    sizeof(want_static));
 	zassert_equal(ret, 0);
-	decode_from_radio(ctx.out[5], ctx.out_len[5], &view);
+	decode_from_radio(ctx.out[3], ctx.out_len[3], &view);
 	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_CHANNEL);
 	channel_payload = view.payload;
 	channel_len = view.payload_len;
