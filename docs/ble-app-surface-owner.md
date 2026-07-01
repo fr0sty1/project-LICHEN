@@ -73,6 +73,80 @@ Client and migration impact:
 - MeshCore clients continue to see exact NUS UUIDs and the MeshCore
   compatibility name in MeshCore product mode.
 
+## Direct Native BLE LCI Service
+
+Decision: the direct native LICHEN BLE app surface is the Local Client
+Interface (LCI) carried as SLIP-framed IPv6 packets over a LICHEN-specific GATT
+service. It is not the Meshtastic or MeshCore app-compat surface, and it is not
+the older CBOR native protocol draft in `spec/lichen-native/`. The BLE service
+is transport for the standard LCI IPv6/CoAP contract described in
+`spec/11-lci.md`.
+
+The assigned native LCI UUIDs are UUIDv5 values and are treated as stable
+protocol identifiers. They are derived by applying UUIDv5 to DNS namespace
+`6ba7b810-9dad-11d1-80b4-00c04fd430c8` with name `lichen.mesh` to create the
+LICHEN BLE namespace `d4b23c0e-2ffc-52b7-9ec6-b4b5baa32382`, then applying
+UUIDv5 again with the attribute names below.
+
+| Attribute | UUIDv5 name | UUID | Access | Semantics |
+|-----------|-------------|------|--------|-----------|
+| Service | `ble-lci-service` | `e665960c-7c84-5606-a8d3-884507d0b7a8` | Primary service | Native LICHEN BLE LCI service. |
+| RX IPv6 SLIP | `ble-lci-rx-ipv6-slip` | `5e6e304a-29af-52d9-a813-306f0f888586` | Write without response | Client writes RFC 1055 SLIP-framed IPv6 packets to the gateway. |
+| TX IPv6 SLIP | `ble-lci-tx-ipv6-slip` | `be4d4a23-876b-592b-b252-440367e18e43` | Notify | Gateway notifies RFC 1055 SLIP-framed IPv6 packets to the client. |
+| Protocol version | `ble-lci-version` | `9158dca0-14ea-5e1c-8580-b97e7c6381b8` | Read | Two-byte little-endian native BLE LCI version. Initial value: `0x0001`. |
+| Capabilities | `ble-lci-capabilities` | `3d3c63f3-ce23-5451-b357-738a12c20df7` | Read | Four-byte little-endian bitset of advertised LCI transport capabilities. |
+
+Initial capabilities:
+
+- Bit 0: RFC 1055 SLIP-framed IPv6 over RX/TX characteristics is supported.
+- Bit 1: BLE LE Secure Connections pairing is required for non-read-only local
+  operations.
+- Bit 2: OSCORE-protected local CoAP operations are available when local OSCORE
+  context provisioning is configured.
+
+The capabilities value is exactly four octets. Reserved capability bits MUST be
+written as zero by the gateway and ignored by clients. Clients SHOULD discover
+this service first. They MAY fall back to NUS only when the native service is
+absent and the image is known to be the legacy mutually exclusive native BLE
+product mode. Clients MUST NOT use NUS fallback when MeshCore compatibility is
+advertised, because MeshCore owns NUS payload semantics.
+
+LCI payload rules:
+
+- RX and TX values carry a byte stream split across BLE ATT writes and
+  notifications. ATT value boundaries are fragmentation boundaries only; they
+  are not IPv6 packet boundaries.
+- Each IPv6 packet is delimited by RFC 1055 SLIP END bytes. ESC handling is the
+  same as the USB/serial LCI transport.
+- The gateway MUST reset SLIP reassembly state on connect and disconnect.
+- The initial maximum decoded IPv6 packet size is 1280 octets. The gateway
+  MUST reject oversize decoded packets instead of dispatching a truncated IPv6
+  packet.
+- The initial implementation preserves `CONFIG_BT_MAX_CONN=1`; multi-client
+  BLE LCI requires separate per-connection reassembly, CCC state, and egress
+  queues.
+
+Security and access:
+
+- Native BLE LCI follows the LCI security policy in `spec/11-lci.md`.
+- Product images SHOULD require LE Secure Connections before enabling Standard
+  or Admin local operations.
+- Read-only discovery characteristics MAY remain readable before pairing.
+- OSCORE remains the end-to-end protection for sensitive CoAP operations and is
+  not replaced by BLE link encryption.
+
+T-Deck boundary:
+
+- The LilyGO T-Deck gateway image MUST NOT enable direct native BLE LCI until
+  the LICHEN-specific service UUIDs are implemented and BLE egress from the
+  gateway to the local client is wired.
+- T-Deck native BLE LCI can be built and tested with native_sim/Twister for
+  service shape, advertisement composition, SLIP ingress/egress, and
+  unsupported mode rejection without physical hardware.
+- Declaring T-Deck BLE-local capability still requires a physical BLE smoke
+  test with a real central, ATT MTU evidence, connect/disconnect logs, and
+  bidirectional LCI packet evidence.
+
 Blocked product modes:
 
 - Native-plus-MeshCore BLE remains blocked until native LICHEN BLE has

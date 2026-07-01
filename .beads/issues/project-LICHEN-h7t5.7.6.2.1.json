@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-h7t5.7.6.2.1",
+  "title": "Add native BLE LCI service-shape and SLIP egress tests",
+  "description": "Add native_sim/Twister coverage for the LICHEN-specific native BLE LCI service UUIDs, protocol version and capability reads, advertising composition, RX/TX SLIP fragmentation across ATT values, oversize rejection, and disconnect reassembly reset. The tests should cover the documented direct BLE LCI contract without physical hardware.\n\n## Acceptance Criteria\n\n- native_sim/Twister tests assert the documented LICHEN-specific service and characteristic UUIDs.\n- Tests cover protocol version and four-octet capability reads.\n- Tests cover RX/TX SLIP fragmentation across ATT values, 1280-octet decoded packet limit behavior, oversize rejection, and disconnect reassembly reset.\n- Tests cover advertising composition and unsupported product-mode rejection without physical hardware.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T20:15:42.424274Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T20:19:20.299994Z",
+  "labels": [
+    "lilygo",
+    "t-deck",
+    "ble",
+    "native-interface",
+    "protocol",
+    "compatibility",
+    "app-contract",
+    "follow-up",
+    "zephyr",
+    "serial",
+    "lci",
+    "hardware",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6.2.1",
+      "depends_on_id": "project-LICHEN-h7t5.7.6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-01T20:16:14.927654Z"
+    }
+  ]
+}

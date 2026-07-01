@@ -1,0 +1,57 @@
+{
+  "id": "project-LICHEN-h7t5.7.6.2.4",
+  "title": "Physically validate T-Deck native BLE LCI service",
+  "description": "After the LICHEN-specific native BLE LCI service is implemented and T-Deck BLE egress is wired, validate on physical LilyGO T-Deck hardware with a real BLE central. Record advertised UUIDs/name, negotiated ATT MTU, pairing behavior, connect/disconnect logs, and bidirectional SLIP-framed IPv6/LCI packet evidence. This task requires physical hardware and is not completable in native_sim.\n\n## Acceptance Criteria\n\n- Physical T-Deck hardware revision, firmware commit, and flashing path are recorded.\n- BLE scanner or central evidence records advertised service UUIDs/name, pairing behavior, and negotiated ATT MTU.\n- Logs show connect, bidirectional SLIP-framed IPv6/LCI packet exchange, and disconnect cleanup.\n- The Bead remains blocked until native LCI UUID implementation, native_sim service-shape tests, and T-Deck BLE egress wiring are complete.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T20:16:15.156154Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T20:19:20.615056Z",
+  "labels": [
+    "lilygo",
+    "t-deck",
+    "ble",
+    "native-interface",
+    "protocol",
+    "compatibility",
+    "app-contract",
+    "follow-up",
+    "zephyr",
+    "serial",
+    "lci",
+    "hardware",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6.2.4",
+      "depends_on_id": "project-LICHEN-h7t5.7.6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-01T20:16:15.156662Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6.2.4",
+      "depends_on_id": "project-LICHEN-h7t5.7.6.2.2",
+      "type": "blocks",
+      "created_at": "2026-07-01T20:18:50.182506Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6.2.4",
+      "depends_on_id": "project-LICHEN-h7t5.7.6.2.1",
+      "type": "blocks",
+      "created_at": "2026-07-01T20:18:50.368038Z"
+    },
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6.2.4",
+      "depends_on_id": "project-LICHEN-h7t5.7.6.3",
+      "type": "blocks",
+      "created_at": "2026-07-01T20:18:50.588871Z"
+    }
+  ]
+}
