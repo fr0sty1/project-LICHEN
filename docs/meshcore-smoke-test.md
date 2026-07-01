@@ -32,7 +32,11 @@ Run these on the Linux Zephyr builder cache before flashing hardware:
 ```sh
 . /mnt/lichen-zephyr/env.sh
 cd /mnt/lichen-zephyr/work/project-LICHEN
-# Or use the task-specific clean worktree under /mnt/lichen-zephyr/work/.
+# Override SMOKE_REF with the branch or commit under test.
+SMOKE_REF=${SMOKE_REF:-origin/main}
+tools/zephyr-clean-worktree.sh create project-LICHEN-meshcore-smoke "$SMOKE_REF"
+cd /mnt/lichen-zephyr/work/project-LICHEN-meshcore-smoke
+# If the changes under test are not in SMOKE_REF yet, apply the patch here.
 
 west twister \
   -T lichen/tests/meshcore_codec \
@@ -44,6 +48,9 @@ west twister \
   --inline-logs \
   --outdir twister-out-meshcore-smoke-preflight \
   --extra-args ZEPHYR_EXTRA_MODULES=$PWD/lichen
+
+tools/zephyr-clean-worktree.sh verify-twister "$PWD" \
+  twister-out-meshcore-smoke-preflight
 ```
 
 Expected result: all selected configurations pass with no warnings. Do not

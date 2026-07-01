@@ -35,7 +35,11 @@ Run these on the Linux Zephyr builder cache before flashing hardware:
 ```sh
 . /mnt/lichen-zephyr/env.sh
 cd /mnt/lichen-zephyr/work/project-LICHEN
-# Or use the task-specific clean worktree under /mnt/lichen-zephyr/work/.
+# Override SMOKE_REF with the branch or commit under test.
+SMOKE_REF=${SMOKE_REF:-origin/main}
+tools/zephyr-clean-worktree.sh create project-LICHEN-meshtastic-smoke "$SMOKE_REF"
+cd /mnt/lichen-zephyr/work/project-LICHEN-meshtastic-smoke
+# If the changes under test are not in SMOKE_REF yet, apply the patch here.
 
 west twister \
   -T lichen/tests/meshtastic_codec \
@@ -48,6 +52,9 @@ west twister \
   --inline-logs \
   --outdir twister-out-meshtastic-smoke-preflight \
   --extra-args ZEPHYR_EXTRA_MODULES=$PWD/lichen
+
+tools/zephyr-clean-worktree.sh verify-twister "$PWD" \
+  twister-out-meshtastic-smoke-preflight
 ```
 
 Expected result: all selected configurations pass with no warnings. Do not
@@ -57,7 +64,7 @@ Run the Python vector/prototype drift checks that exercise the canonical
 Meshtastic app-compat vectors:
 
 ```sh
-cd /mnt/lichen-zephyr/work/project-LICHEN/python
+cd /mnt/lichen-zephyr/work/project-LICHEN-meshtastic-smoke/python
 PYTHONPATH=src python3 -m pytest \
   tests/test_vectors.py \
   tests/interface/meshtastic \
