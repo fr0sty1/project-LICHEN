@@ -111,6 +111,37 @@ static int get_status_sink(struct lichen_app_status_snapshot *status,
 	status->uptime_seconds = 42U;
 	status->role = "test";
 	status->rpl_capable = true;
+	status->power = (struct lichen_app_power_snapshot){
+		.battery_provider_available = true,
+		.pmic_provider_available = true,
+		.battery_percent_valid = true,
+		.battery_percent = 77U,
+		.battery_voltage_mv_valid = true,
+		.battery_voltage_mv = 3980U,
+		.charging_valid = true,
+		.charging = true,
+		.external_power_valid = true,
+		.external_power = false,
+	};
+	return 0;
+}
+
+static int get_minimal_status_sink(struct lichen_app_status_snapshot *status,
+				   void *user_data)
+{
+	struct sink_ctx *ctx = user_data;
+
+	if (status == NULL || ctx == NULL) {
+		return -EINVAL;
+	}
+	if (ctx->get_status_ret < 0) {
+		return ctx->get_status_ret;
+	}
+
+	status->rank = ctx->rank;
+	status->uptime_seconds = 42U;
+	status->role = "test";
+	status->rpl_capable = true;
 	return 0;
 }
 
@@ -409,6 +440,16 @@ ZTEST(app_interface, test_status_and_config_provider_hooks)
 	zassert_ok(lichen_app_interface_get_status(&status));
 	zassert_equal(status.rank, 17U);
 	zassert_true(status.rpl_capable);
+	zassert_true(status.power.battery_provider_available);
+	zassert_true(status.power.pmic_provider_available);
+	zassert_true(status.power.battery_percent_valid);
+	zassert_equal(status.power.battery_percent, 77U);
+	zassert_true(status.power.battery_voltage_mv_valid);
+	zassert_equal(status.power.battery_voltage_mv, 3980U);
+	zassert_true(status.power.charging_valid);
+	zassert_true(status.power.charging);
+	zassert_true(status.power.external_power_valid);
+	zassert_false(status.power.external_power);
 
 	zassert_ok(lichen_app_interface_get_config(&config));
 	zassert_true(config.has_tx_power_dbm);
@@ -418,6 +459,47 @@ ZTEST(app_interface, test_status_and_config_provider_hooks)
 	config.has_tx_power_dbm = true;
 	zassert_ok(lichen_app_interface_set_config(&config));
 	zassert_equal(ctx.tx_power_dbm, 10);
+}
+
+ZTEST(app_interface, test_status_provider_omitted_power_stays_unknown)
+{
+	struct sink_ctx ctx;
+	struct lichen_app_status_snapshot status = {
+		.power = {
+			.battery_provider_available = true,
+			.pmic_provider_available = true,
+			.battery_percent_valid = true,
+			.battery_percent = 77U,
+			.battery_voltage_mv_valid = true,
+			.battery_voltage_mv = 3980U,
+			.charging_valid = true,
+			.charging = true,
+			.external_power_valid = true,
+			.external_power = true,
+		},
+	};
+	const struct lichen_app_interface_sink sink = {
+		.get_status = get_minimal_status_sink,
+		.user_data = &ctx,
+	};
+
+	reset_ctx(&ctx);
+	ctx.rank = 17U;
+	zassert_ok(lichen_app_interface_register_sink(&sink, NULL));
+
+	zassert_ok(lichen_app_interface_get_status(&status));
+	zassert_equal(status.rank, 17U);
+	zassert_true(status.rpl_capable);
+	zassert_false(status.power.battery_provider_available);
+	zassert_false(status.power.pmic_provider_available);
+	zassert_false(status.power.battery_percent_valid);
+	zassert_equal(status.power.battery_percent, 0U);
+	zassert_false(status.power.battery_voltage_mv_valid);
+	zassert_equal(status.power.battery_voltage_mv, 0U);
+	zassert_false(status.power.charging_valid);
+	zassert_false(status.power.charging);
+	zassert_false(status.power.external_power_valid);
+	zassert_false(status.power.external_power);
 }
 
 ZTEST(app_interface, test_provider_hooks_are_single_owner)

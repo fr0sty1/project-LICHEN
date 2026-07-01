@@ -88,6 +88,7 @@
 #define NODE_INFO_HOPS_AWAY_FIELD 9U
 
 #define DEVICE_METRICS_BATTERY_LEVEL_FIELD 1U
+#define DEVICE_METRICS_VOLTAGE_FIELD 2U
 #define DEVICE_METRICS_UPTIME_SECONDS_FIELD 5U
 
 #define METADATA_FIRMWARE_VERSION_FIELD 1U
@@ -345,6 +346,14 @@ static int pb_write_fixed32_field(uint8_t *buf, size_t buflen, size_t *pos,
 	buf[(*pos)++] = (uint8_t)((value >> 16) & 0xffU);
 	buf[(*pos)++] = (uint8_t)((value >> 24) & 0xffU);
 	return 0;
+}
+
+static uint32_t float32_bits(float value)
+{
+	uint32_t bits;
+
+	memcpy(&bits, &value, sizeof(bits));
+	return bits;
 }
 
 static int pb_write_len_field(uint8_t *buf, size_t buflen, size_t *pos,
@@ -831,7 +840,7 @@ int lichen_meshtastic_encode_node_info_payload(
 {
 	uint8_t tmp[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	uint8_t user[160];
-	uint8_t metrics[24];
+	uint8_t metrics[32];
 	size_t pos = 0U;
 	size_t user_pos = 0U;
 	size_t metrics_pos = 0U;
@@ -844,7 +853,27 @@ int lichen_meshtastic_encode_node_info_payload(
 		return -EMSGSIZE;
 	}
 
-	(void)DEVICE_METRICS_BATTERY_LEVEL_FIELD;
+	if (info != NULL && info->has_external_power && info->external_power &&
+	    pb_write_varint_field(metrics, sizeof(metrics), &metrics_pos,
+				  DEVICE_METRICS_BATTERY_LEVEL_FIELD, 101U) < 0) {
+		return -EMSGSIZE;
+	}
+	if (info != NULL && (!info->has_external_power || !info->external_power) &&
+	    info->has_battery_percent && info->battery_percent <= 100U &&
+	    pb_write_varint_field(metrics, sizeof(metrics), &metrics_pos,
+				  DEVICE_METRICS_BATTERY_LEVEL_FIELD,
+				  info->battery_percent) < 0) {
+		return -EMSGSIZE;
+	}
+	if (info != NULL && info->has_battery_voltage_mv) {
+		float volts = (float)info->battery_voltage_mv / 1000.0f;
+
+		if (pb_write_fixed32_field(metrics, sizeof(metrics), &metrics_pos,
+					   DEVICE_METRICS_VOLTAGE_FIELD,
+					   float32_bits(volts)) < 0) {
+			return -EMSGSIZE;
+		}
+	}
 	if (pb_write_varint_field(metrics, sizeof(metrics), &metrics_pos,
 				  DEVICE_METRICS_UPTIME_SECONDS_FIELD,
 				  info != NULL ? info->uptime_seconds : 0U) < 0 ||

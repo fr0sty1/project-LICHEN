@@ -96,6 +96,14 @@ struct lichen_meshtastic_local_info {
 	bool has_gnss;
 	bool has_lora;
 	bool has_tx_power_dbm;
+	uint16_t battery_voltage_mv;
+	uint8_t battery_percent;
+	bool has_battery_percent;
+	bool has_battery_voltage_mv;
+	bool has_charging;
+	bool charging;
+	bool has_external_power;
+	bool external_power;
 };
 
 enum lichen_meshtastic_from_radio_message {

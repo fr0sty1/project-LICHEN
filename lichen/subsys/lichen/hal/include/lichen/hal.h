@@ -69,6 +69,19 @@ struct lichen_hal_identity {
 	struct lichen_hal_capabilities caps;
 };
 
+struct lichen_hal_power_snapshot {
+	bool battery_provider_available;
+	bool pmic_provider_available;
+	bool battery_percent_valid;
+	uint8_t battery_percent;
+	bool battery_voltage_mv_valid;
+	uint16_t battery_voltage_mv;
+	bool charging_valid;
+	bool charging;
+	bool external_power_valid;
+	bool external_power;
+};
+
 /*
  * Some Zephyr registration macros require a compile-time device expression
  * rather than a runtime getter. Keep those devicetree details behind HAL names
@@ -105,6 +118,7 @@ int lichen_hal_pmic_device_get(const struct device **dev);
 int lichen_hal_external_flash_device_get(const struct device **dev);
 int lichen_hal_led_get(struct gpio_dt_spec *spec);
 int lichen_hal_button_get(struct gpio_dt_spec *spec);
+int lichen_hal_power_snapshot_get(struct lichen_hal_power_snapshot *snapshot);
 
 #ifdef __cplusplus
 }

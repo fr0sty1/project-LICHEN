@@ -5,6 +5,9 @@
 #define GATEWAY_MESHTASTIC_ADAPTER_H_
 
 #include <lichen/meshtastic/adapter.h>
+#ifdef CONFIG_ZTEST
+#include <lichen/hal.h>
+#endif
 
 int gateway_meshtastic_adapter_init(void);
 int gateway_meshtastic_adapter_emit_text(
@@ -14,6 +17,8 @@ int gateway_meshtastic_adapter_emit_status(
 
 #ifdef CONFIG_ZTEST
 void gateway_meshtastic_adapter_test_reset(void);
+void gateway_meshtastic_adapter_test_set_power_snapshot(
+	const struct lichen_hal_power_snapshot *snapshot);
 int gateway_meshtastic_adapter_test_process_once(void);
 #endif
 

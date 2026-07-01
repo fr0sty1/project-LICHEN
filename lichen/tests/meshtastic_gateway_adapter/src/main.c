@@ -11,6 +11,7 @@
 #include <zephyr/net/coap.h>
 
 #include <lichen/app_interface/app_interface.h>
+#include <lichen/meshtastic/codec.h>
 
 #include "ble_meshtastic.h"
 #include "fake_ble_meshtastic.h"
@@ -61,6 +62,13 @@ struct queue_status_view {
 	uint32_t free;
 	uint32_t maxlen;
 	bool has_res;
+};
+
+struct from_radio_view {
+	uint32_t field;
+	const uint8_t *payload;
+	size_t payload_len;
+	uint32_t value;
 };
 
 static int read_varint(const uint8_t *buf, size_t len, size_t *pos,
@@ -118,6 +126,145 @@ static void decode_queue_status(const uint8_t *buf, size_t len,
 			zassert_unreachable("unexpected queueStatus key");
 		}
 	}
+}
+
+static void decode_from_radio(const uint8_t *buf, size_t len,
+			      struct from_radio_view *out)
+{
+	size_t pos = 0U;
+	uint32_t key;
+	uint32_t payload_len;
+
+	memset(out, 0, sizeof(*out));
+	zassert_equal(read_varint(buf, len, &pos, &key), 0);
+	out->field = key >> 3;
+	if ((key & 0x07U) == 2U) {
+		zassert_equal(read_varint(buf, len, &pos, &payload_len), 0);
+		zassert_true(payload_len <= len - pos);
+		out->payload = &buf[pos];
+		out->payload_len = payload_len;
+	} else {
+		zassert_equal(key & 0x07U, 0U);
+		zassert_equal(read_varint(buf, len, &pos, &out->value), 0);
+	}
+}
+
+static bool payload_get_len_field(const uint8_t *buf, size_t len, uint32_t field,
+				  const uint8_t **value, size_t *value_len)
+{
+	size_t pos = 0U;
+
+	while (pos < len) {
+		uint32_t key;
+		uint32_t n;
+
+		if (read_varint(buf, len, &pos, &key) < 0) {
+			return false;
+		}
+		if ((key & 0x07U) == 2U) {
+			if (read_varint(buf, len, &pos, &n) < 0 ||
+			    n > len - pos) {
+				return false;
+			}
+			if ((key >> 3) == field) {
+				*value = &buf[pos];
+				*value_len = n;
+				return true;
+			}
+			pos += n;
+		} else if ((key & 0x07U) == 0U) {
+			if (read_varint(buf, len, &pos, &n) < 0) {
+				return false;
+			}
+		} else if ((key & 0x07U) == 5U) {
+			if (len - pos < 4U) {
+				return false;
+			}
+			pos += 4U;
+		} else {
+			return false;
+		}
+	}
+	return false;
+}
+
+static bool payload_get_varint_field(const uint8_t *buf, size_t len,
+				     uint32_t field, uint32_t *value)
+{
+	size_t pos = 0U;
+
+	while (pos < len) {
+		uint32_t key;
+		uint32_t n;
+
+		if (read_varint(buf, len, &pos, &key) < 0) {
+			return false;
+		}
+		if ((key & 0x07U) == 0U) {
+			if (read_varint(buf, len, &pos, &n) < 0) {
+				return false;
+			}
+			if ((key >> 3) == field) {
+				*value = n;
+				return true;
+			}
+		} else if ((key & 0x07U) == 2U) {
+			if (read_varint(buf, len, &pos, &n) < 0 ||
+			    n > len - pos) {
+				return false;
+			}
+			pos += n;
+		} else if ((key & 0x07U) == 5U) {
+			if (len - pos < 4U) {
+				return false;
+			}
+			pos += 4U;
+		} else {
+			return false;
+		}
+	}
+	return false;
+}
+
+static bool payload_get_fixed32_field(const uint8_t *buf, size_t len,
+				      uint32_t field, uint32_t *value)
+{
+	size_t pos = 0U;
+
+	while (pos < len) {
+		uint32_t key;
+		uint32_t n;
+
+		if (read_varint(buf, len, &pos, &key) < 0) {
+			return false;
+		}
+		if ((key & 0x07U) == 5U) {
+			if (len - pos < 4U) {
+				return false;
+			}
+			if ((key >> 3) == field) {
+				*value = (uint32_t)buf[pos] |
+					 ((uint32_t)buf[pos + 1U] << 8) |
+					 ((uint32_t)buf[pos + 2U] << 16) |
+					 ((uint32_t)buf[pos + 3U] << 24);
+				return true;
+			}
+			pos += 4U;
+		} else if ((key & 0x07U) == 2U) {
+			if (read_varint(buf, len, &pos, &n) < 0 ||
+			    n > len - pos) {
+				return false;
+			}
+			pos += n;
+		} else if ((key & 0x07U) == 0U) {
+			if (read_varint(buf, len, &pos, &n) < 0) {
+				return false;
+			}
+		} else {
+			return false;
+		}
+	}
+	return false;
 }
 
 ZTEST(meshtastic_gateway_adapter, test_emit_text_uses_current_ble_session)
@@ -374,6 +521,81 @@ ZTEST(meshtastic_gateway_adapter,
 	zassert_true(ble_meshtastic_session_active());
 	zassert_equal(fake_ble_meshtastic_from_radio_count(), 0U);
 	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 0);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_want_config_node_info_omits_unknown_power_metrics)
+{
+	const uint8_t want_config_node_db[] = { 0x18, 0xad, 0x9e, 0x04 };
+	const uint8_t *metrics = NULL;
+	size_t metrics_len = 0U;
+	const uint8_t *from_radio;
+	size_t from_radio_len;
+	struct from_radio_view view;
+	uint32_t value = 0U;
+
+	reset_gateway(2U);
+	zassert_ok(fake_ble_meshtastic_push_to_radio(want_config_node_db,
+						     sizeof(want_config_node_db)));
+
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 2U);
+	from_radio = fake_ble_meshtastic_from_radio(0U, &from_radio_len);
+	zassert_not_null(from_radio);
+	decode_from_radio(from_radio, from_radio_len, &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
+	zassert_true(payload_get_len_field(view.payload, view.payload_len, 6U,
+					   &metrics, &metrics_len));
+	zassert_false(payload_get_varint_field(metrics, metrics_len, 1U,
+					       &value));
+	zassert_false(payload_get_fixed32_field(metrics, metrics_len, 2U,
+					       &value));
+	zassert_true(payload_get_varint_field(metrics, metrics_len, 5U,
+					      &value));
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_want_config_node_info_encodes_valid_power_metrics)
+{
+	const uint8_t want_config_node_db[] = { 0x18, 0xad, 0x9e, 0x04 };
+	const struct lichen_hal_power_snapshot power = {
+		.battery_provider_available = true,
+		.pmic_provider_available = true,
+		.battery_percent_valid = true,
+		.battery_percent = 77U,
+		.battery_voltage_mv_valid = true,
+		.battery_voltage_mv = 3700U,
+		.external_power_valid = true,
+		.external_power = false,
+	};
+	const uint8_t *metrics = NULL;
+	size_t metrics_len = 0U;
+	const uint8_t *from_radio;
+	size_t from_radio_len;
+	struct from_radio_view view;
+	uint32_t value = 0U;
+
+	reset_gateway(2U);
+	gateway_meshtastic_adapter_test_set_power_snapshot(&power);
+	zassert_ok(fake_ble_meshtastic_push_to_radio(want_config_node_db,
+						     sizeof(want_config_node_db)));
+
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 2U);
+	from_radio = fake_ble_meshtastic_from_radio(0U, &from_radio_len);
+	zassert_not_null(from_radio);
+	decode_from_radio(from_radio, from_radio_len, &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
+	zassert_true(payload_get_len_field(view.payload, view.payload_len, 6U,
+					   &metrics, &metrics_len));
+	zassert_true(payload_get_varint_field(metrics, metrics_len, 1U,
+					      &value));
+	zassert_equal(value, 77U);
+	zassert_true(payload_get_fixed32_field(metrics, metrics_len, 2U,
+					       &value));
+	zassert_equal(value, 0x406ccccdU);
+	zassert_true(payload_get_varint_field(metrics, metrics_len, 5U,
+					      &value));
 }
 
 ZTEST(meshtastic_gateway_adapter, test_process_once_drops_stale_response)

@@ -43,6 +43,10 @@ static char s_long_name[32];
 static char s_pio_env[48];
 static char s_firmware_version[48];
 static uint8_t s_device_id[8];
+#ifdef CONFIG_ZTEST
+static struct lichen_hal_power_snapshot s_test_power_snapshot;
+static bool s_has_test_power_snapshot;
+#endif
 
 static int enqueue_from_radio(const uint8_t *from_radio, size_t len,
 			      void *user_data);
@@ -108,10 +112,22 @@ static uint32_t queue_free(void *user_data)
 	return ble_meshtastic_from_radio_free();
 }
 
+static void read_power_snapshot(struct lichen_hal_power_snapshot *power)
+{
+#ifdef CONFIG_ZTEST
+	if (s_has_test_power_snapshot) {
+		*power = s_test_power_snapshot;
+		return;
+	}
+#endif
+	(void)lichen_hal_power_snapshot_get(power);
+}
+
 static int get_local_info(struct lichen_meshtastic_local_info *info,
 			  void *user_data)
 {
 	struct lichen_hal_identity identity;
+	struct lichen_hal_power_snapshot power;
 	uint8_t eui64[8] = { 0 };
 	int ret = -ENODEV;
 
@@ -149,7 +165,16 @@ static int get_local_info(struct lichen_meshtastic_local_info *info,
 	info->pio_env = s_pio_env;
 	info->uptime_seconds = (uint32_t)(k_uptime_get() / 1000);
 	info->has_bluetooth = true;
-	info->has_battery = false;
+	read_power_snapshot(&power);
+	info->has_battery = power.battery_provider_available;
+	info->has_battery_percent = power.battery_percent_valid;
+	info->battery_percent = power.battery_percent;
+	info->has_battery_voltage_mv = power.battery_voltage_mv_valid;
+	info->battery_voltage_mv = power.battery_voltage_mv;
+	info->has_charging = power.charging_valid;
+	info->charging = power.charging;
+	info->has_external_power = power.external_power_valid;
+	info->external_power = power.external_power;
 	info->has_gnss = lichen_hal_has_capability(LICHEN_HAL_CAP_GNSS);
 	info->has_lora = lichen_hal_has_capability(LICHEN_HAL_CAP_LORA);
 	info->has_tx_power_dbm = true;
@@ -231,11 +256,26 @@ void gateway_meshtastic_adapter_test_reset(void)
 {
 	struct lichen_meshtastic_adapter_ops ops = adapter_ops();
 
+	s_has_test_power_snapshot = false;
+	memset(&s_test_power_snapshot, 0, sizeof(s_test_power_snapshot));
 	(void)gateway_meshtastic_adapter_init();
 	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
 	s_dispatch_epoch = ble_meshtastic_session_epoch();
 	lichen_meshtastic_adapter_init(&s_adapter, &ops);
 	k_mutex_unlock(&s_adapter_mutex);
+}
+
+void gateway_meshtastic_adapter_test_set_power_snapshot(
+	const struct lichen_hal_power_snapshot *snapshot)
+{
+	if (snapshot == NULL) {
+		s_has_test_power_snapshot = false;
+		memset(&s_test_power_snapshot, 0, sizeof(s_test_power_snapshot));
+		return;
+	}
+
+	s_test_power_snapshot = *snapshot;
+	s_has_test_power_snapshot = true;
 }
 
 int gateway_meshtastic_adapter_test_process_once(void)

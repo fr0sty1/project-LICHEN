@@ -162,4 +162,42 @@ ZTEST(hal, test_absent_devices_return_unsupported)
 	zassert_equal(lichen_hal_ble_local_status(), -ENOTSUP);
 }
 
+ZTEST(hal, test_power_snapshot_absent_providers_is_explicitly_unknown)
+{
+	struct lichen_hal_power_snapshot snapshot = {
+		.battery_provider_available = true,
+		.pmic_provider_available = true,
+		.battery_percent_valid = true,
+		.battery_percent = 42U,
+		.battery_voltage_mv_valid = true,
+		.battery_voltage_mv = 3700U,
+		.charging_valid = true,
+		.charging = true,
+		.external_power_valid = true,
+		.external_power = true,
+	};
+
+	zassert_equal(lichen_hal_power_snapshot_get(NULL), -EINVAL);
+	zassert_ok(lichen_hal_power_snapshot_get(&snapshot));
+
+	if (IS_ENABLED(CONFIG_LICHEN_HAS_BATTERY)) {
+		zassert_true(snapshot.battery_provider_available);
+	} else {
+		zassert_false(snapshot.battery_provider_available);
+	}
+	if (IS_ENABLED(CONFIG_LICHEN_HAS_PMIC)) {
+		zassert_true(snapshot.pmic_provider_available);
+	} else {
+		zassert_false(snapshot.pmic_provider_available);
+	}
+	zassert_false(snapshot.battery_percent_valid);
+	zassert_equal(snapshot.battery_percent, 0U);
+	zassert_false(snapshot.battery_voltage_mv_valid);
+	zassert_equal(snapshot.battery_voltage_mv, 0U);
+	zassert_false(snapshot.charging_valid);
+	zassert_false(snapshot.charging);
+	zassert_false(snapshot.external_power_valid);
+	zassert_false(snapshot.external_power);
+}
+
 ZTEST_SUITE(hal, NULL, NULL, NULL, NULL, NULL);

@@ -153,6 +153,46 @@ static bool payload_get_len_field(const uint8_t *buf, size_t len, uint32_t field
 	return false;
 }
 
+static bool payload_get_fixed32_field(const uint8_t *buf, size_t len,
+				      uint32_t field, uint32_t *value)
+{
+	size_t pos = 0U;
+
+	while (pos < len) {
+		uint32_t key;
+		uint32_t n;
+
+		if (read_varint(buf, len, &pos, &key) < 0) {
+			return false;
+		}
+		if ((key & 0x07U) == 5U) {
+			if (len - pos < 4U) {
+				return false;
+			}
+			if ((key >> 3) == field) {
+				*value = (uint32_t)buf[pos] |
+					 ((uint32_t)buf[pos + 1U] << 8) |
+					 ((uint32_t)buf[pos + 2U] << 16) |
+					 ((uint32_t)buf[pos + 3U] << 24);
+				return true;
+			}
+			pos += 4U;
+		} else if ((key & 0x07U) == 0U) {
+			if (read_varint(buf, len, &pos, &n) < 0) {
+				return false;
+			}
+		} else if ((key & 0x07U) == 2U) {
+			if (read_varint(buf, len, &pos, &n) < 0 || n > len - pos) {
+				return false;
+			}
+			pos += n;
+		} else {
+			return false;
+		}
+	}
+	return false;
+}
+
 static bool payload_count_fields(const uint8_t *buf, size_t len, uint8_t *counts,
 				 size_t counts_len)
 {
@@ -871,6 +911,146 @@ ZTEST(meshtastic_codec, test_metadata_payload_matches_current_schema)
 	zassert_true(ret > 0, "metadata payload failed: %d", ret);
 	assert_metadata_payload(payload, (size_t)ret, "LICHEN compat 1.0", 0U,
 				0x7fffU);
+}
+
+ZTEST(meshtastic_codec, test_node_info_omits_unknown_battery_metrics)
+{
+	struct lichen_meshtastic_local_info info = {
+		.node_num = 0xaabbccddU,
+		.uptime_seconds = 123U,
+		.long_name = "LICHEN native_sim",
+		.short_name = "LICH",
+		.has_battery = true,
+	};
+	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	const uint8_t *metrics;
+	size_t metrics_len;
+	uint8_t counts[8];
+	uint32_t value = 0U;
+	int ret;
+
+	ret = lichen_meshtastic_encode_node_info_payload(&info, payload,
+							 sizeof(payload));
+
+	zassert_true(ret > 0, "node_info payload failed: %d", ret);
+	zassert_true(payload_get_len_field(payload, (size_t)ret, 6U, &metrics,
+					   &metrics_len));
+	zassert_true(payload_count_fields(metrics, metrics_len, counts,
+					  ARRAY_SIZE(counts)));
+	for (size_t i = 1U; i < ARRAY_SIZE(counts); i++) {
+		zassert_equal(counts[i], i == 5U ? 1U : 0U,
+			      "unexpected DeviceMetrics field %u count %u",
+			      (uint32_t)i, counts[i]);
+	}
+	zassert_true(payload_get_varint_field(metrics, metrics_len, 5U, &value));
+	zassert_equal(value, 123U);
+}
+
+ZTEST(meshtastic_codec, test_node_info_encodes_valid_battery_metrics)
+{
+	struct lichen_meshtastic_local_info info = {
+		.node_num = 0xaabbccddU,
+		.uptime_seconds = 123U,
+		.long_name = "LICHEN native_sim",
+		.short_name = "LICH",
+		.has_battery = true,
+		.has_battery_percent = true,
+		.battery_percent = 77U,
+		.has_battery_voltage_mv = true,
+		.battery_voltage_mv = 3700U,
+	};
+	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	const uint8_t *metrics;
+	size_t metrics_len;
+	uint8_t counts[8];
+	uint32_t value = 0U;
+	int ret;
+
+	ret = lichen_meshtastic_encode_node_info_payload(&info, payload,
+							 sizeof(payload));
+
+	zassert_true(ret > 0, "node_info payload failed: %d", ret);
+	zassert_true(payload_get_len_field(payload, (size_t)ret, 6U, &metrics,
+					   &metrics_len));
+	zassert_true(payload_count_fields(metrics, metrics_len, counts,
+					  ARRAY_SIZE(counts)));
+	for (size_t i = 1U; i < ARRAY_SIZE(counts); i++) {
+		bool expected = (i == 1U || i == 2U || i == 5U);
+
+		zassert_equal(counts[i], expected ? 1U : 0U,
+			      "unexpected DeviceMetrics field %u count %u",
+			      (uint32_t)i, counts[i]);
+	}
+	zassert_true(payload_get_varint_field(metrics, metrics_len, 1U, &value));
+	zassert_equal(value, 77U);
+	zassert_true(payload_get_fixed32_field(metrics, metrics_len, 2U, &value));
+	zassert_equal(value, 0x406ccccdU);
+	zassert_true(payload_get_varint_field(metrics, metrics_len, 5U, &value));
+	zassert_equal(value, 123U);
+}
+
+ZTEST(meshtastic_codec, test_node_info_encodes_external_power_explicitly)
+{
+	struct lichen_meshtastic_local_info info = {
+		.node_num = 0xaabbccddU,
+		.uptime_seconds = 123U,
+		.long_name = "LICHEN native_sim",
+		.short_name = "LICH",
+		.has_external_power = true,
+		.external_power = true,
+	};
+	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	const uint8_t *metrics;
+	size_t metrics_len;
+	uint32_t value = 0U;
+	int ret;
+
+	ret = lichen_meshtastic_encode_node_info_payload(&info, payload,
+							 sizeof(payload));
+
+	zassert_true(ret > 0, "node_info payload failed: %d", ret);
+	zassert_true(payload_get_len_field(payload, (size_t)ret, 6U, &metrics,
+					   &metrics_len));
+	zassert_true(payload_get_varint_field(metrics, metrics_len, 1U, &value));
+	zassert_equal(value, 101U);
+}
+
+ZTEST(meshtastic_codec,
+      test_node_info_omits_out_of_range_battery_percent)
+{
+	struct lichen_meshtastic_local_info info = {
+		.node_num = 0xaabbccddU,
+		.uptime_seconds = 123U,
+		.long_name = "LICHEN native_sim",
+		.short_name = "LICH",
+		.has_battery = true,
+		.has_battery_percent = true,
+		.battery_percent = 101U,
+	};
+	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	const uint8_t *metrics;
+	size_t metrics_len;
+	uint8_t counts[8];
+	uint32_t value = 0U;
+	int ret;
+
+	ret = lichen_meshtastic_encode_node_info_payload(&info, payload,
+							 sizeof(payload));
+
+	zassert_true(ret > 0, "node_info payload failed: %d", ret);
+	zassert_true(payload_get_len_field(payload, (size_t)ret, 6U, &metrics,
+					   &metrics_len));
+	zassert_true(payload_count_fields(metrics, metrics_len, counts,
+					  ARRAY_SIZE(counts)));
+	for (size_t i = 1U; i < ARRAY_SIZE(counts); i++) {
+		zassert_equal(counts[i], i == 5U ? 1U : 0U,
+			      "unexpected DeviceMetrics field %u count %u",
+			      (uint32_t)i, counts[i]);
+	}
+	zassert_false(payload_get_varint_field(metrics, metrics_len, 1U,
+					       &value));
+	zassert_true(payload_get_varint_field(metrics, metrics_len, 5U, &value));
+	zassert_equal(value, 123U);
 }
 
 ZTEST(meshtastic_codec, test_module_and_region_placeholders_match_policy)

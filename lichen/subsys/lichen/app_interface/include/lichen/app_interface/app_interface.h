@@ -44,11 +44,25 @@ struct lichen_app_interface_stats {
 	uint32_t invalid_count;
 };
 
+struct lichen_app_power_snapshot {
+	bool battery_provider_available;
+	bool pmic_provider_available;
+	bool battery_percent_valid;
+	uint8_t battery_percent;
+	bool battery_voltage_mv_valid;
+	uint16_t battery_voltage_mv;
+	bool charging_valid;
+	bool charging;
+	bool external_power_valid;
+	bool external_power;
+};
+
 struct lichen_app_status_snapshot {
 	uint16_t rank;
 	uint32_t uptime_seconds;
 	const char *role;
 	bool rpl_capable;
+	struct lichen_app_power_snapshot power;
 };
 
 struct lichen_app_config_snapshot {

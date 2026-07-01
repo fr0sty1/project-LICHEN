@@ -378,7 +378,10 @@ int lichen_app_interface_get_status(
 		return -ENOTSUP;
 	}
 	for (size_t i = 0U; i < sink_count; i++) {
-		int ret = snapshot[i].get_status(status, snapshot[i].user_data);
+		int ret;
+
+		memset(status, 0, sizeof(*status));
+		ret = snapshot[i].get_status(status, snapshot[i].user_data);
 
 		if (ret == 0) {
 			return 0;

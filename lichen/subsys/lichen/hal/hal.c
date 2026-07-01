@@ -497,3 +497,27 @@ int lichen_hal_ble_local_status(void)
 
 	return 0;
 }
+
+int lichen_hal_power_snapshot_get(struct lichen_hal_power_snapshot *snapshot)
+{
+	const struct device *dev;
+	int ret;
+
+	if (snapshot == NULL) {
+		return -EINVAL;
+	}
+
+	*snapshot = (struct lichen_hal_power_snapshot){ 0 };
+
+	ret = lichen_hal_battery_device_get(&dev);
+	if (ret == 0) {
+		snapshot->battery_provider_available = true;
+	}
+
+	ret = lichen_hal_pmic_device_get(&dev);
+	if (ret == 0) {
+		snapshot->pmic_provider_available = true;
+	}
+
+	return 0;
+}
