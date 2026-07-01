@@ -69,9 +69,32 @@ struct lichen_hal_identity {
 	struct lichen_hal_capabilities caps;
 };
 
+/*
+ * Some Zephyr registration macros require a compile-time device expression
+ * rather than a runtime getter. Keep those devicetree details behind HAL names
+ * so applications do not open-code board aliases.
+ */
+#if DT_NODE_HAS_STATUS(DT_ALIAS(gnss0), okay)
+#define LICHEN_HAL_GNSS_DEVICE DEVICE_DT_GET(DT_ALIAS(gnss0))
+#endif
+
 const struct lichen_hal_capabilities *lichen_hal_capabilities_get(void);
 bool lichen_hal_has_capability(enum lichen_hal_capability capability);
 void lichen_hal_identity_get(struct lichen_hal_identity *identity);
+
+int lichen_hal_capability_status(enum lichen_hal_capability capability);
+int lichen_hal_lora_status(void);
+int lichen_hal_ble_local_status(void);
+int lichen_hal_serial_local_status(void);
+int lichen_hal_gnss_status(void);
+int lichen_hal_battery_status(void);
+int lichen_hal_pmic_status(void);
+int lichen_hal_buttons_status(void);
+int lichen_hal_leds_status(void);
+int lichen_hal_display_status(void);
+int lichen_hal_external_flash_status(void);
+int lichen_hal_location_status(void);
+int lichen_hal_time_status(void);
 
 int lichen_hal_lora_device_get(const struct device **dev);
 int lichen_hal_gnss_device_get(const struct device **dev);
@@ -82,7 +105,6 @@ int lichen_hal_pmic_device_get(const struct device **dev);
 int lichen_hal_external_flash_device_get(const struct device **dev);
 int lichen_hal_led_get(struct gpio_dt_spec *spec);
 int lichen_hal_button_get(struct gpio_dt_spec *spec);
-int lichen_hal_ble_local_status(void);
 
 #ifdef __cplusplus
 }

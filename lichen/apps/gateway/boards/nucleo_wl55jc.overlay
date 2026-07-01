@@ -15,3 +15,9 @@
  * Already enabled by default; nothing to override for basic use.
  * Frequency and power are configured at runtime via LoRa API.
  */
+/ {
+	chosen {
+		zephyr,lora      = &lora;
+		zephyr,slip-uart = &lpuart1;
+	};
+};

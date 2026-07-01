@@ -15,6 +15,8 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap_service.h>
 
+#include <lichen/hal.h>
+
 #include "config_cbor.h"
 
 #ifdef CONFIG_LORA_LICHEN_BLE
@@ -33,7 +35,7 @@
 LOG_MODULE_REGISTER(lichen_gateway, LOG_LEVEL_INF);
 
 #define LICHEN_GATEWAY_HAS_LORA \
-	(IS_ENABLED(CONFIG_LORA) && DT_HAS_CHOSEN(zephyr_lora))
+	IS_ENABLED(CONFIG_LICHEN_HAS_LORA)
 
 /*
  * Manual LoRa handling (non-L2 mode).
@@ -396,13 +398,14 @@ int main(void)
 	 */
 	LOG_INF("LICHEN L2 enabled - LoRa handled by network stack");
 #elif LICHEN_GATEWAY_HAS_LORA
+	int ret;
+
 	/* LoRa radio init.  The sim driver ignores RF parameters and returns 0;
 	 * on hardware this configures the SX126x transceiver. */
-	s_lora_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_lora));
-
-	if (!device_is_ready(s_lora_dev)) {
+	ret = lichen_hal_lora_device_get(&s_lora_dev);
+	if (ret < 0) {
 		/* Expected in CI (no sim server); gateway still serves CoAP. */
-		LOG_WRN("LoRa radio not ready — CoAP-only mode");
+		LOG_WRN("LoRa radio unavailable (%d) — CoAP-only mode", ret);
 	} else {
 		struct lora_modem_config lora_cfg = {
 			.frequency    = LORA_FREQ_HZ,
@@ -414,7 +417,7 @@ int main(void)
 			.tx           = false,       /* start in receive mode */
 			.public_network = false,
 		};
-		int ret = lora_config(s_lora_dev, &lora_cfg);
+		ret = lora_config(s_lora_dev, &lora_cfg);
 
 		if (ret < 0) {
 			LOG_ERR("LoRa config failed: %d", ret);

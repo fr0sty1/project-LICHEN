@@ -116,12 +116,8 @@ static int get_local_info(struct lichen_meshtastic_local_info *info,
 	}
 
 	lichen_hal_identity_get(&identity);
-	(void)snprintf(s_long_name, sizeof(s_long_name), "LICHEN %s",
-		       identity.board_name != NULL ? identity.board_name :
-							     CONFIG_BOARD);
-	(void)snprintf(s_pio_env, sizeof(s_pio_env), "zephyr-%s",
-		       identity.zephyr_board != NULL ? identity.zephyr_board :
-							       CONFIG_BOARD);
+	(void)snprintf(s_long_name, sizeof(s_long_name), "LICHEN %s", identity.board_name);
+	(void)snprintf(s_pio_env, sizeof(s_pio_env), "zephyr-%s", identity.zephyr_board);
 	(void)snprintf(s_firmware_version, sizeof(s_firmware_version),
 		       "LICHEN compat 0.0.0+zephyr.%u.%u.%u",
 		       SYS_KERNEL_VER_MAJOR(sys_kernel_version_get()),

@@ -37,6 +37,7 @@ ZTEST(hal, test_loopback_lora_capability_when_enabled)
 
 	zassert_true(lichen_hal_has_capability(LICHEN_HAL_CAP_LORA));
 	zassert_equal(caps->radio, LICHEN_HAL_RADIO_LOOPBACK);
+	zassert_equal(lichen_hal_capability_status(LICHEN_HAL_CAP_LORA), 0);
 	zassert_equal(lichen_hal_lora_device_get(&dev), 0);
 	zassert_not_null(dev);
 }
@@ -54,6 +55,58 @@ ZTEST(hal, test_identity_reports_board_and_caps)
 	zassert_equal(identity.caps.radio, caps->radio);
 
 	lichen_hal_identity_get(NULL);
+}
+
+ZTEST(hal, test_capability_status_rejects_invalid_queries)
+{
+	zassert_equal(lichen_hal_capability_status(0), -EINVAL);
+	zassert_equal(lichen_hal_capability_status(LICHEN_HAL_CAP_LORA |
+						  LICHEN_HAL_CAP_GNSS),
+		      -EINVAL);
+	zassert_equal(lichen_hal_capability_status(BIT(31)), -EINVAL);
+}
+
+ZTEST(hal, test_headless_status_apis_are_deterministic)
+{
+	const enum lichen_hal_capability unsupported_caps[] = {
+		LICHEN_HAL_CAP_GNSS,
+		LICHEN_HAL_CAP_BATTERY,
+		LICHEN_HAL_CAP_PMIC,
+		LICHEN_HAL_CAP_BUTTONS,
+		LICHEN_HAL_CAP_LEDS,
+		LICHEN_HAL_CAP_DISPLAY,
+		LICHEN_HAL_CAP_EXTERNAL_FLASH,
+		LICHEN_HAL_CAP_SERIAL_LOCAL,
+		LICHEN_HAL_CAP_BLE_LOCAL,
+	};
+
+	for (size_t i = 0; i < ARRAY_SIZE(unsupported_caps); i++) {
+		zassert_equal(lichen_hal_capability_status(unsupported_caps[i]),
+			      -ENOTSUP,
+			      "capability %u should be unsupported",
+			      (uint32_t)unsupported_caps[i]);
+	}
+
+	if (IS_ENABLED(CONFIG_LICHEN_HAS_LORA)) {
+		zassert_equal(lichen_hal_capability_status(LICHEN_HAL_CAP_LORA), 0);
+		zassert_equal(lichen_hal_lora_status(), 0);
+	} else {
+		zassert_equal(lichen_hal_capability_status(LICHEN_HAL_CAP_LORA),
+			      -ENOTSUP);
+		zassert_equal(lichen_hal_lora_status(), -ENOTSUP);
+	}
+
+	zassert_equal(lichen_hal_serial_local_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_ble_local_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_gnss_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_battery_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_pmic_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_buttons_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_leds_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_display_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_external_flash_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_location_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_time_status(), 0);
 }
 
 ZTEST(hal, test_absent_devices_return_unsupported)

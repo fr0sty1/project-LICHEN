@@ -40,7 +40,7 @@ config LICHEN_HAS_SERIAL_LOCAL
 	help
 	  Enable when the board can expose the local client interface over a
 	  lichen,native-uart, zephyr,uart-pipe, Zephyr serial console,
-	  shell UART, CDC ACM device, or board overlay.
+	  shell UART, SLIP UART, CDC ACM device, or board overlay.
 
 config LICHEN_HAS_GNSS
 	bool "Board has GNSS"

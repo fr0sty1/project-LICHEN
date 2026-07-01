@@ -11,6 +11,8 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/crc.h>
 
+#include <lichen/hal.h>
+
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 #include <lichen/native.h>
 #endif
@@ -53,7 +55,7 @@ static struct ln_gps_info s_gps;
  * GNSS callback (called from GNSS driver context)
  * -------------------------------------------------------------------------- */
 
-#if IS_ENABLED(CONFIG_GNSS) && IS_ENABLED(CONFIG_LICHEN_NATIVE)
+#if defined(LICHEN_HAL_GNSS_DEVICE) && IS_ENABLED(CONFIG_LICHEN_NATIVE)
 #include <zephyr/drivers/gnss.h>
 
 static void on_gnss_data(const struct device *dev, const struct gnss_data *data)
@@ -71,7 +73,7 @@ static void on_gnss_data(const struct device *dev, const struct gnss_data *data)
 	s_gps.valid     = true;
 }
 
-GNSS_DATA_CALLBACK_DEFINE(DEVICE_DT_GET(DT_ALIAS(gnss0)), on_gnss_data);
+GNSS_DATA_CALLBACK_DEFINE(LICHEN_HAL_GNSS_DEVICE, on_gnss_data);
 #endif
 
 /* --------------------------------------------------------------------------
@@ -155,13 +157,19 @@ static void send_beacon(const struct device *dev)
 
 int main(void)
 {
+	const struct device *lora_dev;
+	struct lichen_hal_identity identity;
+	int ret;
+
 	LOG_INF("LICHEN puck starting");
 
+	lichen_hal_identity_get(&identity);
+
 	/* LoRa radio */
-	const struct device *lora_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_lora));
-	if (!device_is_ready(lora_dev)) {
-		LOG_ERR("LoRa radio not ready");
-		return -ENODEV;
+	ret = lichen_hal_lora_device_get(&lora_dev);
+	if (ret < 0) {
+		LOG_ERR("LoRa radio unavailable: %d", ret);
+		return ret;
 	}
 	if (lora_set_mode(lora_dev, false) < 0) {
 		LOG_ERR("LoRa config failed");
@@ -170,9 +178,10 @@ int main(void)
 	LOG_INF("LoRa SF10/125kHz/CR4-5 @ %u Hz", LORA_FREQ_HZ);
 
 	/* GNSS power-on (PM_DEVICE start) */
-#if IS_ENABLED(CONFIG_GNSS_AG3335)
-	const struct device *gnss_dev = DEVICE_DT_GET(DT_ALIAS(gnss0));
-	if (device_is_ready(gnss_dev)) {
+#if IS_ENABLED(CONFIG_LICHEN_HAS_GNSS)
+	const struct device *gnss_dev;
+
+	if (lichen_hal_gnss_device_get(&gnss_dev) == 0) {
 		pm_device_action_run(gnss_dev, PM_DEVICE_ACTION_RESUME);
 	}
 #endif
@@ -224,9 +233,9 @@ int main(void)
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 		if (now - last_info_ms >= 60000) {
 			lichen_native_send_node_info(
-				"t1000-puck",
+				identity.board_name,
 				"lichen-fw-0.1.0",
-				"t1000_e",
+				identity.zephyr_board,
 				(uint64_t)now,
 				s_iid,
 				s_gps.valid ? &s_gps : NULL,

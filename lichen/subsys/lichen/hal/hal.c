@@ -9,6 +9,13 @@
 
 #include <lichen/hal.h>
 
+#define LICHEN_HAL_KNOWN_CAPS \
+	(LICHEN_HAL_CAP_LORA | LICHEN_HAL_CAP_BLE_LOCAL | \
+	 LICHEN_HAL_CAP_SERIAL_LOCAL | LICHEN_HAL_CAP_GNSS | \
+	 LICHEN_HAL_CAP_BATTERY | LICHEN_HAL_CAP_PMIC | \
+	 LICHEN_HAL_CAP_BUTTONS | LICHEN_HAL_CAP_LEDS | \
+	 LICHEN_HAL_CAP_DISPLAY | LICHEN_HAL_CAP_EXTERNAL_FLASH)
+
 BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_LORA) ||
 	     (IS_ENABLED(CONFIG_LORA) &&
 	      DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_lora), okay)),
@@ -43,6 +50,7 @@ BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_BLE_LOCAL) ||
 BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_SERIAL_LOCAL) ||
 	     DT_NODE_HAS_STATUS(DT_CHOSEN(lichen_native_uart), okay) ||
 	     DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_uart_pipe), okay) ||
+	     DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_slip_uart), okay) ||
 	     DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_shell_uart), okay) ||
 	     DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_console), okay),
 	     "CONFIG_LICHEN_HAS_SERIAL_LOCAL requires an okay chosen serial local device");
@@ -154,6 +162,15 @@ void lichen_hal_identity_get(struct lichen_hal_identity *identity)
 	identity->caps = s_caps;
 }
 
+static bool is_single_capability(enum lichen_hal_capability capability)
+{
+	uint32_t value = (uint32_t)capability;
+
+	return value != 0U &&
+	       (value & (value - 1U)) == 0U &&
+	       (value & ~LICHEN_HAL_KNOWN_CAPS) == 0U;
+}
+
 int lichen_hal_lora_device_get(const struct device **dev)
 {
 	if (dev == NULL) {
@@ -178,6 +195,114 @@ int lichen_hal_lora_device_get(const struct device **dev)
 #else
 	return -ENODEV;
 #endif
+}
+
+int lichen_hal_capability_status(enum lichen_hal_capability capability)
+{
+	const struct device *dev;
+	struct gpio_dt_spec gpio;
+
+	if (!is_single_capability(capability)) {
+		return -EINVAL;
+	}
+
+	if (!lichen_hal_has_capability(capability)) {
+		return -ENOTSUP;
+	}
+
+	switch (capability) {
+	case LICHEN_HAL_CAP_LORA:
+		return lichen_hal_lora_device_get(&dev);
+	case LICHEN_HAL_CAP_BLE_LOCAL:
+		return lichen_hal_ble_local_status();
+	case LICHEN_HAL_CAP_SERIAL_LOCAL:
+		return lichen_hal_serial_device_get(&dev);
+	case LICHEN_HAL_CAP_GNSS:
+		return lichen_hal_gnss_device_get(&dev);
+	case LICHEN_HAL_CAP_BATTERY:
+		return lichen_hal_battery_device_get(&dev);
+	case LICHEN_HAL_CAP_PMIC:
+		return lichen_hal_pmic_device_get(&dev);
+	case LICHEN_HAL_CAP_BUTTONS:
+		return lichen_hal_button_get(&gpio);
+	case LICHEN_HAL_CAP_LEDS:
+		return lichen_hal_led_get(&gpio);
+	case LICHEN_HAL_CAP_DISPLAY:
+		return lichen_hal_display_device_get(&dev);
+	case LICHEN_HAL_CAP_EXTERNAL_FLASH:
+		return lichen_hal_external_flash_device_get(&dev);
+	default:
+		return -EINVAL;
+	}
+}
+
+int lichen_hal_lora_status(void)
+{
+	return lichen_hal_capability_status(LICHEN_HAL_CAP_LORA);
+}
+
+int lichen_hal_serial_local_status(void)
+{
+	return lichen_hal_capability_status(LICHEN_HAL_CAP_SERIAL_LOCAL);
+}
+
+int lichen_hal_gnss_status(void)
+{
+	return lichen_hal_capability_status(LICHEN_HAL_CAP_GNSS);
+}
+
+int lichen_hal_battery_status(void)
+{
+	return lichen_hal_capability_status(LICHEN_HAL_CAP_BATTERY);
+}
+
+int lichen_hal_pmic_status(void)
+{
+	return lichen_hal_capability_status(LICHEN_HAL_CAP_PMIC);
+}
+
+int lichen_hal_buttons_status(void)
+{
+	return lichen_hal_capability_status(LICHEN_HAL_CAP_BUTTONS);
+}
+
+int lichen_hal_leds_status(void)
+{
+	return lichen_hal_capability_status(LICHEN_HAL_CAP_LEDS);
+}
+
+int lichen_hal_display_status(void)
+{
+	return lichen_hal_capability_status(LICHEN_HAL_CAP_DISPLAY);
+}
+
+int lichen_hal_external_flash_status(void)
+{
+	return lichen_hal_capability_status(LICHEN_HAL_CAP_EXTERNAL_FLASH);
+}
+
+int lichen_hal_location_status(void)
+{
+	switch (s_caps.location) {
+	case LICHEN_HAL_LOCATION_NONE:
+		return -ENOTSUP;
+	case LICHEN_HAL_LOCATION_GNSS:
+		return lichen_hal_capability_status(LICHEN_HAL_CAP_GNSS);
+	default:
+		return -EINVAL;
+	}
+}
+
+int lichen_hal_time_status(void)
+{
+	switch (s_caps.time) {
+	case LICHEN_HAL_TIME_UPTIME:
+		return 0;
+	case LICHEN_HAL_TIME_GNSS:
+		return lichen_hal_capability_status(LICHEN_HAL_CAP_GNSS);
+	default:
+		return -EINVAL;
+	}
 }
 
 static int return_device_if_ready(const struct device **out,
@@ -250,6 +375,8 @@ int lichen_hal_serial_device_get(const struct device **dev)
 	return return_device_if_ready(dev, DEVICE_DT_GET(DT_CHOSEN(lichen_native_uart)));
 #elif DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_uart_pipe), okay)
 	return return_device_if_ready(dev, DEVICE_DT_GET(DT_CHOSEN(zephyr_uart_pipe)));
+#elif DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_slip_uart), okay)
+	return return_device_if_ready(dev, DEVICE_DT_GET(DT_CHOSEN(zephyr_slip_uart)));
 #elif DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_shell_uart), okay)
 	return return_device_if_ready(dev, DEVICE_DT_GET(DT_CHOSEN(zephyr_shell_uart)));
 #elif DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_console), okay)
