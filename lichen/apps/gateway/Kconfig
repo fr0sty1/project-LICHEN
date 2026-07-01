@@ -7,6 +7,7 @@ config LORA_LICHEN_BLE
 	bool "BLE UART interface (Nordic UART Service)"
 	depends on BT
 	depends on BT_PERIPHERAL
+	depends on BT_MAX_CONN = 1
 	default n
 	help
 	  Enable the Nordic UART Service (NUS) GATT profile so a phone can
@@ -21,7 +22,11 @@ config LORA_LICHEN_MESHTASTIC_BLE
 	depends on BT_PERIPHERAL
 	depends on BT_MAX_CONN = 1
 	depends on LICHEN_MESHTASTIC_CODEC
+	depends on LICHEN_LINK
 	depends on !LORA_LICHEN_BLE
+	select LICHEN_APP_IDENTITY
+	select LICHEN_APP_INTERFACE
+	select LICHEN_MESHTASTIC_ADAPTER
 	default n
 	help
 	  Enable the Meshtastic BLE service UUID and raw protobuf
@@ -29,14 +34,95 @@ config LORA_LICHEN_MESHTASTIC_BLE
 	  compatibility surface only; it does not make LICHEN RF packets
 	  Meshtastic-compatible. The first implementation owns a single
 	  Meshtastic app session and therefore requires CONFIG_BT_MAX_CONN=1.
+	  App identity is selected so NodeDB sync can enumerate known LICHEN
+	  peers through the common app-visible identity table.
+
+config LORA_LICHEN_MESHCORE_BLE
+	bool "MeshCore-compatible BLE GATT interface"
+	depends on BT
+	depends on BT_PERIPHERAL
+	depends on BT_MAX_CONN = 1
+	depends on BT_SMP || ZTEST
+	depends on BT_FIXED_PASSKEY || ZTEST
+	depends on LICHEN_MESHCORE_CODEC
+	depends on LICHEN_LINK
+	depends on !LORA_LICHEN_BLE
+	depends on !LORA_LICHEN_MESHTASTIC_BLE
+	select LICHEN_APP_IDENTITY
+	select LICHEN_APP_INTERFACE
+	select LICHEN_MESHCORE_ADAPTER
+	select BT_SMP_ENFORCE_MITM if !ZTEST
+	default n
+	help
+	  Enable the MeshCore-compatible Nordic UART Service UUIDs with raw
+	  MeshCore command/response frames. This is a local app compatibility
+	  surface only; it does not make LICHEN RF packets MeshCore-compatible.
+	  The first implementation owns a single MeshCore app session, requires
+	  CONFIG_BT_MAX_CONN=1, CONFIG_BT_SMP, and CONFIG_BT_FIXED_PASSKEY. It
+	  uses authenticated encrypted GATT access in production builds. Plain
+	  permissions are limited to ztest/native_sim test builds.
+
+config LORA_LICHEN_MESHCORE_BLE_QUEUE_DEPTH
+	int "MeshCore BLE frame queue depth"
+	depends on LORA_LICHEN_MESHCORE_BLE
+	default 4
+	range 1 16
+	help
+	  Number of complete raw MeshCore frames retained for app RX and TX.
+
+config LORA_LICHEN_MESHCORE_BLE_NAME
+	string "MeshCore BLE advertised name"
+	depends on LORA_LICHEN_MESHCORE_BLE
+	default "MeshCore-LICHEN"
+	help
+	  Short advertised name used only in MeshCore compatibility mode. Keep
+	  the default MeshCore- prefix unless real-client smoke tests prove
+	  another prefix is discoverable.
+
+config LORA_LICHEN_MESHCORE_BLE_PASSKEY
+	int "MeshCore BLE fixed pairing passkey"
+	depends on LORA_LICHEN_MESHCORE_BLE
+	default 123456
+	range 0 999999
+	help
+	  Six-digit MeshCore compatibility passkey installed with
+	  bt_passkey_set() before advertising starts. This is the first
+	  product-mode hook for authenticated local pairing; production boards
+	  should override it from provisioning or persistent settings once the
+	  MeshCore config-secret policy is implemented.
 
 config LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH
 	int "Meshtastic BLE FromRadio queue depth"
 	depends on LORA_LICHEN_MESHTASTIC_BLE
+	default 20
+	range 20 32
+	help
+	  Number of complete FromRadio protobuf values retained for app reads.
+	  Keep enough headroom for a queued heartbeat plus a full configuration
+	  sync burst with the default bounded NodeDB peer cap.
+
+config LICHEN_APP_INTERFACE_MAX_PAYLOAD
+	default 200 if LORA_LICHEN_MESHTASTIC_BLE
+
+config LORA_LICHEN_MESHTASTIC_BLE_TO_RADIO_QUEUE_DEPTH
+	int "Meshtastic BLE ToRadio queue depth"
+	depends on LORA_LICHEN_MESHTASTIC_BLE
+	default 8
+	range 1 16
+	help
+	  Number of complete ToRadio protobuf values retained for gateway
+	  processing after app writes.
+
+config LORA_LICHEN_GATEWAY_MESSAGE_QUEUE_DEPTH
+	int "Gateway local message ingress queue depth"
+	depends on LORA_LICHEN_MESHTASTIC_BLE || LORA_LICHEN_MESHCORE_BLE
 	default 4
 	range 1 16
 	help
-	  Number of complete FromRadio protobuf values retained for app reads.
+	  Number of app-ingress text messages accepted from compatibility
+	  surfaces and retained for the normal LICHEN message sender. Until that
+	  sender is enabled, this bounded queue is the deterministic local
+	  contract and does not transmit on BLE or LoRa by itself.
 
 config LORA_LICHEN_GATEWAY_RPL_ROOT
 	bool "RPL root signalling"

@@ -38,6 +38,13 @@ MESHTASTIC_SOURCE_BASELINE = {
     "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
     "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256",
 }
+MESHCORE_SOURCE_BASELINE = {
+    "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+    "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+    "python": "5bac3573b51c4298062881885b6d15a994109076",
+    "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+    "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425",
+}
 
 
 def _varint(value: int) -> bytes:
@@ -71,6 +78,21 @@ def _fixed32_field(field: int, value: int) -> bytes:
 
 def _bytes_field(field: int, value: bytes) -> bytes:
     return _key(field, 2) + _varint(len(value)) + value
+
+
+def _module_config_disabled_telemetry() -> bytes:
+    telemetry = (
+        _varint_field(1, 0)
+        + _varint_field(2, 0)
+        + _bool_field(14, False)
+    )
+    return _bytes_field(6, telemetry)
+
+
+def _region_presets_default_us_long_fast() -> bytes:
+    preset_group = _varint_field(1, 0) + _varint_field(2, 0)
+    region_group = _varint_field(1, 1) + _varint_field(2, 0)
+    return _bytes_field(1, preset_group) + _bytes_field(2, region_group)
 
 
 def _data(portnum: int, payload: bytes = b"", request_id: int | None = None) -> bytes:
@@ -339,10 +361,18 @@ def meshtastic_app_compat_vectors() -> list[dict]:
                 "from_radio_sequence": [
                     "my_info",
                     "metadata",
+                    "region_presets",
+                    "channel",
+                    "config",
+                    "config",
+                    "config",
+                    "config",
+                    "config",
+                    "config",
+                    "config",
+                    "config",
                     "config",
                     "moduleConfig",
-                    "channel",
-                    "region_presets",
                     "config_complete_id",
                 ],
                 "terminal_from_radio": _from_radio_config_complete(config_nonce).hex(),
@@ -364,6 +394,59 @@ def meshtastic_app_compat_vectors() -> list[dict]:
             },
         },
         {
+            "name": "module_config_disabled_telemetry",
+            "description": "MVP moduleConfig placeholder reports telemetry explicitly disabled.",
+            "source_baseline": baseline,
+            "transport": transport,
+            "direction": "node_to_app",
+            "protobuf": "FromRadio",
+            "message": "moduleConfig",
+            "payload": _module_config_disabled_telemetry().hex(),
+            "encoded": _bytes_field(9, _module_config_disabled_telemetry()).hex(),
+            "decoded": {
+                "moduleConfig": {
+                    "telemetry": {
+                        "device_update_interval": 0,
+                        "environment_update_interval": 0,
+                        "device_telemetry_enabled": False,
+                    },
+                },
+            },
+            "expect": {
+                "from_radio_field": 9,
+            },
+        },
+        {
+            "name": "region_presets_us_long_fast",
+            "description": "MVP region_presets placeholder exposes only US with LONG_FAST default.",
+            "source_baseline": baseline,
+            "transport": transport,
+            "direction": "node_to_app",
+            "protobuf": "FromRadio",
+            "message": "region_presets",
+            "payload": _region_presets_default_us_long_fast().hex(),
+            "encoded": _bytes_field(19, _region_presets_default_us_long_fast()).hex(),
+            "decoded": {
+                "region_presets": {
+                    "preset_groups": [
+                        {
+                            "presets": ["LONG_FAST"],
+                            "default_preset": "LONG_FAST",
+                        },
+                    ],
+                    "region_groups": [
+                        {
+                            "region": "US",
+                            "group_index": 0,
+                        },
+                    ],
+                },
+            },
+            "expect": {
+                "from_radio_field": 19,
+            },
+        },
+        {
             "name": "legacy_full_sync_unknown_nonce",
             "description": "Python/older clients may use a non-staged nonce and still need full sync data.",
             "source_baseline": baseline,
@@ -377,10 +460,18 @@ def meshtastic_app_compat_vectors() -> list[dict]:
                 "from_radio_sequence": [
                     "my_info",
                     "metadata",
+                    "region_presets",
+                    "channel",
+                    "config",
+                    "config",
+                    "config",
+                    "config",
+                    "config",
+                    "config",
+                    "config",
+                    "config",
                     "config",
                     "moduleConfig",
-                    "channel",
-                    "region_presets",
                     "node_info",
                     "config_complete_id",
                 ],
@@ -566,6 +657,395 @@ def meshtastic_app_compat_vectors() -> list[dict]:
     ]
 
 
+def _meshcore_self_info() -> bytes:
+    out = bytearray(64)
+    out[0] = 0x05
+    out[1] = 0x01
+    out[2] = 14
+    out[3] = 22
+    out[48:52] = (868000000).to_bytes(4, "little")
+    out[52:56] = (125000).to_bytes(4, "little")
+    out[56] = 10
+    out[57] = 5
+    out[58:64] = b"LICHEN"
+    return bytes(out)
+
+
+def _meshcore_device_info() -> bytes:
+    out = bytearray(82)
+    out[0] = 0x0D
+    out[1] = 3
+    out[3] = 1
+    out[8:14] = b"LICHEN"
+    out[20:26] = b"LICHEN"
+    out[60:65] = b"0.0.0"
+    return bytes(out)
+
+
+def _meshcore_channel_info() -> bytes:
+    out = bytearray(50)
+    out[0] = 0x12
+    out[1] = 0
+    out[2:8] = b"Public"
+    return bytes(out)
+
+
+def _meshcore_vector(
+    *,
+    name: str,
+    description: str,
+    direction: str,
+    frame: str,
+    encoded: bytes,
+    decoded: dict,
+    expect: dict,
+    transport: dict | None = None,
+) -> dict:
+    return {
+        "name": name,
+        "description": description,
+        "source_baseline": MESHCORE_SOURCE_BASELINE,
+        "transport": transport or {
+            "name": "ble-nus",
+            "framing": "one raw MeshCore inner frame per NUS value",
+        },
+        "direction": direction,
+        "frame": frame,
+        "encoded": encoded.hex(),
+        "decoded": decoded,
+        "expect": expect,
+    }
+
+
+def meshcore_app_compat_vectors() -> list[dict]:
+    err_unsupported = bytes([0x01, 0x01])
+    err_not_found = bytes([0x01, 0x02])
+    err_illegal_arg = bytes([0x01, 0x06])
+    channel_text = bytes.fromhex("1100000000ff00040302016869")
+    status_ack = bytes.fromhex("82785634120901")
+    return [
+        _meshcore_vector(
+            name="app_start_self_info",
+            description="App startup advertises the client name and receives deterministic LICHEN self info.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("010000000000000074"),
+            decoded={"command": "APP_START", "client_name": "t"},
+            expect={"responses": [_meshcore_self_info().hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="device_query_protocol_v3",
+            description="Client protocol query returns placeholder LICHEN device metadata and protocol version 3.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("1603"),
+            decoded={"command": "DEVICE_QUERY", "app_protocol_version": 3},
+            expect={"responses": [_meshcore_device_info().hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="get_contacts_empty",
+            description="Empty compatibility contact table is encoded as CONTACTS_START count 0 then END_OF_CONTACTS count 0.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("04"),
+            decoded={"command": "GET_CONTACTS"},
+            expect={"responses": ["0200000000", "0400000000"], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="get_channel_public_slot",
+            description="Channel slot 0 is synthesized as a public compatibility channel without native LICHEN secrets.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("1f00"),
+            decoded={"command": "GET_CHANNEL", "index": 0},
+            expect={"responses": [_meshcore_channel_info().hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="get_channel_not_found",
+            description="Only channel slot 0 exists in the MVP compatibility view.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("1f01"),
+            decoded={"command": "GET_CHANNEL", "index": 1},
+            expect={"responses": [err_not_found.hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="get_channel_missing_arg",
+            description="GET_CHANNEL requires a channel index byte.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("1f"),
+            decoded={"command": "GET_CHANNEL", "malformed": True},
+            expect={"responses": [err_illegal_arg.hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="sync_next_empty",
+            description="SYNC_NEXT_MESSAGE returns NO_MORE_MESSAGES when no pending app-visible events exist.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("0a"),
+            decoded={"command": "SYNC_NEXT_MESSAGE"},
+            expect={"responses": ["0a"], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="get_batt_and_storage_placeholder",
+            description="Battery/storage response uses explicit zero placeholders until HAL providers are wired.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("14"),
+            decoded={"command": "GET_BATT_AND_STORAGE"},
+            expect={"responses": ["0c00000000000000000000"], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="get_device_time",
+            description="Device time is uptime-derived and therefore validated by response type and length.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("05"),
+            decoded={"command": "GET_DEVICE_TIME"},
+            expect={"response_prefix": "09", "response_len": 5},
+        ),
+        _meshcore_vector(
+            name="get_custom_vars_empty",
+            description="Custom variables are present as an empty compatibility response.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("28"),
+            decoded={"command": "GET_CUSTOM_VARS"},
+            expect={"responses": ["15"], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="get_autoadd_config_disabled",
+            description="Auto-add compatibility config is disabled by default.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("3b"),
+            decoded={"command": "GET_AUTOADD_CONFIG"},
+            expect={"responses": ["190000"], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="get_default_flood_scope_null",
+            description="Default flood scope is null/empty until compatibility policy is expanded.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("40"),
+            decoded={"command": "GET_DEFAULT_FLOOD_SCOPE"},
+            expect={"responses": ["1c"], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="send_channel_txt_msg_ack_drift",
+            description="MeshCore source drift: firmware e8d3c53 returns OK for channel text send while docs/Flutter may expect MSG_SENT in some paths; LICHEN returns unsupported when no app-interface submit provider is registered.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("0300006869"),
+            decoded={"command": "SEND_CHANNEL_TXT_MSG", "channel": 0, "txt_type": 0, "payload_utf8": "hi"},
+            expect={
+                "responses": [err_unsupported.hex()],
+                "adapter_test": True,
+                "drift_note": "Upstream firmware observed OK, app/docs may expect SENT; LICHEN rejects in the canonical no-provider fixture and succeeds in configured submit-provider tests.",
+            },
+        ),
+        _meshcore_vector(
+            name="send_txt_msg_direct_malformed_prefix",
+            description="Direct text requires a 6-byte MeshCore peer prefix before the UTF-8 payload; shorter direct-send payloads are malformed.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("0200006869"),
+            decoded={"command": "SEND_TXT_MSG", "payload_utf8": "hi"},
+            expect={"responses": ["0106"], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="send_txt_msg_direct_unknown_peer",
+            description="Direct text with a 6-byte MeshCore peer prefix returns not-found until the prefix maps to exactly one known LICHEN peer.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("020102030405066869"),
+            decoded={
+                "command": "SEND_TXT_MSG",
+                "prefix": "010203040506",
+                "payload_utf8": "hi",
+            },
+            expect={"responses": ["0102"], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="set_advert_name_unsupported",
+            description="Compatibility display-name writes are rejected until settings-backed local compatibility state exists.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("084c494348454e"),
+            decoded={"command": "SET_ADVERT_NAME", "name": "LICHEN"},
+            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="set_channel_unsupported",
+            description="Channel writes are rejected; LICHEN does not accept MeshCore channel secrets as native group or OSCORE material.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("2000"),
+            decoded={"command": "SET_CHANNEL", "index": 0},
+            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="set_device_pin_unsupported",
+            description="BLE PIN writes are rejected until a settings-backed MeshCore compatibility PIN store is implemented.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("25313233343536"),
+            decoded={"command": "SET_DEVICE_PIN", "pin": "123456"},
+            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="set_autoadd_config_unsupported",
+            description="Auto-add configuration writes are rejected until compatibility-local persistence exists.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("3a0000"),
+            decoded={"command": "SET_AUTOADD_CONFIG", "enabled": False},
+            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="self_advert_unsupported",
+            description="Self-advert is a MeshCore RF operation and must not be OK/no-op in LICHEN compatibility.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("07"),
+            decoded={"command": "SEND_SELF_ADVERT"},
+            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="newer_get_allowed_repeat_freq_unsupported",
+            description="Newer firmware command 0x3c is recognized but unsupported by the MVP shim.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("3c"),
+            decoded={"command": "GET_ALLOWED_REPEAT_FREQ"},
+            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="newer_send_channel_data_unsupported",
+            description="Newer firmware command 0x3e is recognized but unsupported by the MVP shim.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("3e"),
+            decoded={"command": "SEND_CHANNEL_DATA"},
+            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="newer_set_default_flood_scope_unsupported",
+            description="Newer firmware command 0x3f is recognized but unsupported by the MVP shim.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("3f"),
+            decoded={"command": "SET_DEFAULT_FLOOD_SCOPE"},
+            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="newer_send_raw_packet_unsupported",
+            description="Newer firmware command 0x41 is recognized but unsupported because LICHEN does not expose MeshCore raw RF.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("41"),
+            decoded={"command": "SEND_RAW_PACKET"},
+            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="unknown_zero_unsupported",
+            description="Out-of-range command below the known range returns unsupported.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("00"),
+            decoded={"command": "UNKNOWN_00"},
+            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="unknown_after_range_unsupported",
+            description="Out-of-range command after the known firmware range returns unsupported.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("42"),
+            decoded={"command": "UNKNOWN_42"},
+            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="unknown_ff_unsupported",
+            description="0xff is not a MeshCore command and returns unsupported.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("ff"),
+            decoded={"command": "UNKNOWN_FF"},
+            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="app_start_short_illegal_arg",
+            description="Malformed APP_START shorter than the minimum payload returns ILLEGAL_ARG.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("010000"),
+            decoded={"command": "APP_START", "malformed": True},
+            expect={"responses": [err_illegal_arg.hex()], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="ble_msg_waiting_push",
+            description="Incoming LICHEN app event first notifies the MeshCore client with MSG_WAITING.",
+            direction="node_to_app",
+            frame="push",
+            encoded=bytes.fromhex("83"),
+            decoded={"push": "MSG_WAITING"},
+            expect={"emitted_by": "emit_text_or_status"},
+        ),
+        _meshcore_vector(
+            name="channel_msg_recv_v3_hi",
+            description="SYNC_NEXT_MESSAGE drains pending text as CHANNEL_MSG_RECV_V3.",
+            direction="node_to_app",
+            frame="response",
+            encoded=channel_text,
+            decoded={
+                "response": "CHANNEL_MSG_RECV_V3",
+                "channel": 0,
+                "path": "unavailable",
+                "txt_type": 0,
+                "id": 0x01020304,
+                "payload_utf8": "hi",
+            },
+            expect={"preceded_by": "MSG_WAITING", "response_to": "SYNC_NEXT_MESSAGE"},
+        ),
+        _meshcore_vector(
+            name="send_confirmed_status_nak",
+            description="Pending app status is surfaced as PUSH_SEND_CONFIRMED with request id and error reason.",
+            direction="node_to_app",
+            frame="push",
+            encoded=status_ack,
+            decoded={
+                "push": "SEND_CONFIRMED",
+                "request_id": 0x12345678,
+                "error_reason": 9,
+                "has_error_reason": True,
+            },
+            expect={"preceded_by": "MSG_WAITING", "response_to": "SYNC_NEXT_MESSAGE"},
+        ),
+        _meshcore_vector(
+            name="serial_app_to_device_sync_next",
+            description="Serial/TCP app-to-device framing wraps the raw SYNC_NEXT_MESSAGE command with '<' and uint16_le payload length.",
+            direction="app_to_node",
+            frame="serial",
+            encoded=bytes.fromhex("3c01000a"),
+            decoded={"serial_marker": "app_to_device", "payload": "0a"},
+            expect={"inner_frame": "0a"},
+            transport={"name": "serial", "framing": "0x3c + uint16_le length + MeshCore inner frame"},
+        ),
+        _meshcore_vector(
+            name="serial_device_to_app_no_more_messages",
+            description="Serial/TCP device-to-app framing wraps the raw NO_MORE_MESSAGES response with '>' and uint16_le payload length.",
+            direction="node_to_app",
+            frame="serial",
+            encoded=bytes.fromhex("3e01000a"),
+            decoded={"serial_marker": "device_to_app", "payload": "0a"},
+            expect={"inner_frame": "0a"},
+            transport={"name": "serial", "framing": "0x3e + uint16_le length + MeshCore inner frame"},
+        ),
+    ]
+
+
 def _write(filename: str, description: str, vectors: list[dict]) -> None:
     path = VECTORS_DIR / filename
     doc = {
@@ -597,6 +1077,13 @@ def main() -> None:
         "Meshtastic app-compat BLE protobuf exchange vectors. 'encoded' is one "
         "raw GATT value unless the vector explicitly expects rejection.",
         meshtastic_app_compat_vectors(),
+    )
+    _write(
+        "meshcore_app_compat.json",
+        "MeshCore app-compat byte-command vectors. 'encoded' is one raw "
+        "MeshCore inner frame for BLE unless transport.framing states serial "
+        "0x3c/0x3e length framing.",
+        meshcore_app_compat_vectors(),
     )
 
 

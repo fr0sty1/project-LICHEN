@@ -1,0 +1,9 @@
+common:
+  tags:
+    - lichen
+    - meshtastic
+    - bluetooth
+tests:
+  lichen.meshtastic_ble:
+    platform_allow:
+      - native_sim

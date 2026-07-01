@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-h7t5.7.6.2.3",
+  "title": "Update native LICHEN BLE client discovery for LCI UUIDs",
+  "description": "Update native client/tooling discovery notes and implementation so clients probe the LICHEN-specific native BLE LCI service before legacy NUS, never use NUS fallback when MeshCore compatibility is advertised, and surface protocol version/capability reads from the direct BLE LCI service.\n\n## Acceptance Criteria\n\n- Native clients or discovery documentation probe the LICHEN-specific native BLE LCI service before legacy NUS.\n- Clients do not use native NUS fallback when MeshCore compatibility is advertised.\n- Client-visible behavior includes protocol version and four-octet capabilities reads.\n- Migration behavior for legacy mutually exclusive native NUS images is documented or tested.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T20:16:15.040166Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T20:19:20.510217Z",
+  "labels": [
+    "lilygo",
+    "t-deck",
+    "ble",
+    "native-interface",
+    "protocol",
+    "compatibility",
+    "app-contract",
+    "follow-up",
+    "zephyr",
+    "serial",
+    "lci",
+    "hardware",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6.2.3",
+      "depends_on_id": "project-LICHEN-h7t5.7.6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-01T20:16:15.04066Z"
+    }
+  ]
+}

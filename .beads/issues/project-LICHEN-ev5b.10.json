@@ -2,13 +2,14 @@
   "id": "project-LICHEN-ev5b.10",
   "title": "Validate Muzi Adafruit bootloader partition and UF2 layout on hardware",
   "description": "Why this exists: R1 Neo uses Muzi/Adafruit nRF52 bootloader and Zephyr app start/partition/UF2 metadata must match it. What needs to be done: confirm app offset, bootloader settings, UF2 family, and upload path for R1/R1 Neo, then encode them in Zephyr board files. Acceptance criteria: produced firmware can be flashed by the documented path and boot logs prove the app starts.",
-  "status": "open",
+  "notes": "Blocked for no-hardware execution on 2026-07-01: acceptance requires flashing/booting firmware with the Muzi/Adafruit bootloader and proving app startup on R1/R1 Neo hardware. No local R1 Neo hardware/UF2 bootloader volume/remote flashing access is available in this session; depends operationally on project-LICHEN-avrb.",
+  "status": "blocked",
   "priority": 0,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T15:04:27.906183Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-30T15:04:27.907208Z",
+  "updated_at": "2026-07-01T07:07:30.951199Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-ev5b.10",

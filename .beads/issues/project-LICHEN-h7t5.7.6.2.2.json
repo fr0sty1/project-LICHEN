@@ -1,0 +1,40 @@
+{
+  "id": "project-LICHEN-h7t5.7.6.2.2",
+  "title": "Implement LICHEN-specific native BLE LCI service UUIDs",
+  "description": "Replace or gate the native LICHEN BLE UART service so combined-product images can expose native LCI under LICHEN-specific UUIDs without colliding with MeshCore NUS. Implement the UUIDs documented in docs/ble-app-surface-owner.md, preserve the current legacy mutually exclusive NUS path for CONFIG_LORA_LICHEN_BLE product images unless a separate migration Bead changes that policy, and keep RX/TX SLIP semantics unchanged.\n\n## Acceptance Criteria\n\n- Native LICHEN BLE LCI exposes the documented LICHEN-specific GATT service, RX/TX IPv6 SLIP characteristics, protocol version characteristic, and capabilities characteristic.\n- MeshCore compatibility remains the only owner of NUS UUIDs in MeshCore product mode.\n- The current legacy native NUS mode remains explicit, mutually exclusive, and tested unless a separate migration Bead updates the compatibility policy.\n- RX/TX SLIP payload behavior remains compatible with the documented LCI contract.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T20:16:14.927014Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T20:22:24.00695Z",
+  "labels": [
+    "lilygo",
+    "t-deck",
+    "ble",
+    "native-interface",
+    "protocol",
+    "compatibility",
+    "app-contract",
+    "follow-up",
+    "zephyr",
+    "serial",
+    "lci",
+    "hardware",
+    "board-support",
+    "bringup",
+    "firmware",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.6.2.2",
+      "depends_on_id": "project-LICHEN-h7t5.7.6.2",
+      "type": "parent-child",
+      "created_at": "2026-07-01T20:16:14.927654Z"
+    }
+  ]
+}

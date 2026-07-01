@@ -37,6 +37,7 @@ ZTEST(hal, test_loopback_lora_capability_when_enabled)
 
 	zassert_true(lichen_hal_has_capability(LICHEN_HAL_CAP_LORA));
 	zassert_equal(caps->radio, LICHEN_HAL_RADIO_LOOPBACK);
+	zassert_equal(lichen_hal_capability_status(LICHEN_HAL_CAP_LORA), 0);
 	zassert_equal(lichen_hal_lora_device_get(&dev), 0);
 	zassert_not_null(dev);
 }
@@ -54,6 +55,58 @@ ZTEST(hal, test_identity_reports_board_and_caps)
 	zassert_equal(identity.caps.radio, caps->radio);
 
 	lichen_hal_identity_get(NULL);
+}
+
+ZTEST(hal, test_capability_status_rejects_invalid_queries)
+{
+	zassert_equal(lichen_hal_capability_status(0), -EINVAL);
+	zassert_equal(lichen_hal_capability_status(LICHEN_HAL_CAP_LORA |
+						  LICHEN_HAL_CAP_GNSS),
+		      -EINVAL);
+	zassert_equal(lichen_hal_capability_status(BIT(31)), -EINVAL);
+}
+
+ZTEST(hal, test_headless_status_apis_are_deterministic)
+{
+	const enum lichen_hal_capability unsupported_caps[] = {
+		LICHEN_HAL_CAP_GNSS,
+		LICHEN_HAL_CAP_BATTERY,
+		LICHEN_HAL_CAP_PMIC,
+		LICHEN_HAL_CAP_BUTTONS,
+		LICHEN_HAL_CAP_LEDS,
+		LICHEN_HAL_CAP_DISPLAY,
+		LICHEN_HAL_CAP_EXTERNAL_FLASH,
+		LICHEN_HAL_CAP_SERIAL_LOCAL,
+		LICHEN_HAL_CAP_BLE_LOCAL,
+	};
+
+	for (size_t i = 0; i < ARRAY_SIZE(unsupported_caps); i++) {
+		zassert_equal(lichen_hal_capability_status(unsupported_caps[i]),
+			      -ENOTSUP,
+			      "capability %u should be unsupported",
+			      (uint32_t)unsupported_caps[i]);
+	}
+
+	if (IS_ENABLED(CONFIG_LICHEN_HAS_LORA)) {
+		zassert_equal(lichen_hal_capability_status(LICHEN_HAL_CAP_LORA), 0);
+		zassert_equal(lichen_hal_lora_status(), 0);
+	} else {
+		zassert_equal(lichen_hal_capability_status(LICHEN_HAL_CAP_LORA),
+			      -ENOTSUP);
+		zassert_equal(lichen_hal_lora_status(), -ENOTSUP);
+	}
+
+	zassert_equal(lichen_hal_serial_local_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_ble_local_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_gnss_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_battery_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_pmic_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_buttons_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_leds_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_display_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_external_flash_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_location_status(), -ENOTSUP);
+	zassert_equal(lichen_hal_time_status(), 0);
 }
 
 ZTEST(hal, test_absent_devices_return_unsupported)
@@ -107,6 +160,126 @@ ZTEST(hal, test_absent_devices_return_unsupported)
 	zassert_is_null(dev);
 
 	zassert_equal(lichen_hal_ble_local_status(), -ENOTSUP);
+}
+
+ZTEST(hal, test_power_snapshot_absent_providers_is_explicitly_unknown)
+{
+	struct lichen_hal_power_snapshot snapshot = {
+		.battery_provider_available = true,
+		.pmic_provider_available = true,
+		.battery_percent_valid = true,
+		.battery_percent = 42U,
+		.battery_voltage_mv_valid = true,
+		.battery_voltage_mv = 3700U,
+		.charging_valid = true,
+		.charging = true,
+		.external_power_valid = true,
+		.external_power = true,
+	};
+
+	zassert_equal(lichen_hal_power_snapshot_get(NULL), -EINVAL);
+	zassert_ok(lichen_hal_power_snapshot_get(&snapshot));
+
+	if (IS_ENABLED(CONFIG_LICHEN_HAS_BATTERY)) {
+		zassert_true(snapshot.battery_provider_available);
+	} else {
+		zassert_false(snapshot.battery_provider_available);
+	}
+	if (IS_ENABLED(CONFIG_LICHEN_HAS_PMIC)) {
+		zassert_true(snapshot.pmic_provider_available);
+	} else {
+		zassert_false(snapshot.pmic_provider_available);
+	}
+	zassert_false(snapshot.battery_percent_valid);
+	zassert_equal(snapshot.battery_percent, 0U);
+	zassert_false(snapshot.battery_voltage_mv_valid);
+	zassert_equal(snapshot.battery_voltage_mv, 0U);
+	zassert_false(snapshot.charging_valid);
+	zassert_false(snapshot.charging);
+	zassert_false(snapshot.external_power_valid);
+	zassert_false(snapshot.external_power);
+}
+
+ZTEST(hal, test_location_time_snapshot_absent_providers_is_explicitly_unknown)
+{
+	struct lichen_hal_location_time_snapshot snapshot = {
+		.location_provider_available = true,
+		.time_provider_available = true,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 476206130,
+		.longitude_e7_valid = true,
+		.longitude_e7 = -1223493000,
+		.altitude_m_valid = true,
+		.altitude_m = 42,
+		.fix_time_unix_valid = true,
+		.fix_time_unix = 1710000000U,
+		.satellites_valid = true,
+		.satellites = 9U,
+		.fix_source_valid = true,
+		.fix_source = LICHEN_HAL_FIX_SOURCE_GNSS,
+	};
+
+	zassert_equal(lichen_hal_location_time_snapshot_get(NULL), -EINVAL);
+	lichen_hal_location_time_test_set_snapshot(NULL);
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+
+	zassert_false(snapshot.location_provider_available);
+	zassert_false(snapshot.time_provider_available);
+	zassert_false(snapshot.latitude_e7_valid);
+	zassert_equal(snapshot.latitude_e7, 0);
+	zassert_false(snapshot.longitude_e7_valid);
+	zassert_equal(snapshot.longitude_e7, 0);
+	zassert_false(snapshot.altitude_m_valid);
+	zassert_equal(snapshot.altitude_m, 0);
+	zassert_false(snapshot.fix_time_unix_valid);
+	zassert_equal(snapshot.fix_time_unix, 0U);
+	zassert_false(snapshot.satellites_valid);
+	zassert_equal(snapshot.satellites, 0U);
+	zassert_false(snapshot.fix_source_valid);
+	zassert_equal(snapshot.fix_source, LICHEN_HAL_FIX_SOURCE_NONE);
+}
+
+ZTEST(hal, test_location_time_snapshot_test_hook_round_trips_and_resets)
+{
+	const struct lichen_hal_location_time_snapshot injected = {
+		.location_provider_available = true,
+		.time_provider_available = true,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 476206130,
+		.longitude_e7_valid = true,
+		.longitude_e7 = -1223493000,
+		.altitude_m_valid = true,
+		.altitude_m = 42,
+		.fix_time_unix_valid = true,
+		.fix_time_unix = 1710000000U,
+		.satellites_valid = true,
+		.satellites = 9U,
+		.fix_source_valid = true,
+		.fix_source = LICHEN_HAL_FIX_SOURCE_GNSS,
+	};
+	struct lichen_hal_location_time_snapshot snapshot;
+
+	lichen_hal_location_time_test_set_snapshot(&injected);
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.location_provider_available);
+	zassert_true(snapshot.time_provider_available);
+	zassert_true(snapshot.latitude_e7_valid);
+	zassert_equal(snapshot.latitude_e7, 476206130);
+	zassert_true(snapshot.longitude_e7_valid);
+	zassert_equal(snapshot.longitude_e7, -1223493000);
+	zassert_true(snapshot.altitude_m_valid);
+	zassert_equal(snapshot.altitude_m, 42);
+	zassert_true(snapshot.fix_time_unix_valid);
+	zassert_equal(snapshot.fix_time_unix, 1710000000U);
+	zassert_true(snapshot.satellites_valid);
+	zassert_equal(snapshot.satellites, 9U);
+	zassert_true(snapshot.fix_source_valid);
+	zassert_equal(snapshot.fix_source, LICHEN_HAL_FIX_SOURCE_GNSS);
+
+	lichen_hal_location_time_test_set_snapshot(NULL);
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_false(snapshot.latitude_e7_valid);
+	zassert_false(snapshot.fix_time_unix_valid);
 }
 
 ZTEST_SUITE(hal, NULL, NULL, NULL, NULL, NULL);

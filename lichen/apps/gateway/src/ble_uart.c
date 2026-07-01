@@ -11,8 +11,11 @@
  * client stack works regardless of whether it connects via USB-serial or BLE.
  */
 
-#include "ble_uart.h"
 #include "ble_ingress.h"
+#include "ble_app_owner.h"
+#include "ble_uart.h"
+
+#include <string.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
@@ -45,17 +48,17 @@ static struct bt_uuid_128 nus_svc_uuid = BT_UUID_INIT_128(BT_UUID_NUS_VAL);
 static struct bt_uuid_128 nus_rx_uuid  = BT_UUID_INIT_128(BT_UUID_NUS_RX_VAL);
 static struct bt_uuid_128 nus_tx_uuid  = BT_UUID_INIT_128(BT_UUID_NUS_TX_VAL);
 
-/* Active connection (NULL when no phone is connected) */
-static struct bt_conn *s_conn;
-
-/* Mutex protecting s_conn publication and reference acquisition */
-static K_MUTEX_DEFINE(s_conn_mutex);
-
 /* Mutex protecting SLIP reassembly state */
 static K_MUTEX_DEFINE(s_rx_mutex);
 
 /* Mutex protecting TX buffer */
 static K_MUTEX_DEFINE(s_tx_mutex);
+
+#ifdef CONFIG_ZTEST
+static uint16_t s_test_mtu = 23U;
+static int s_test_notify_ret;
+static struct ble_uart_test_tx_state s_test_tx_state;
+#endif
 
 /* SLIP reassembly state — protected by s_rx_mutex */
 static uint8_t  s_rx_buf[SLIP_BUF_SIZE];
@@ -174,6 +177,32 @@ BT_GATT_SERVICE_DEFINE(nus_svc,
 		    BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
 );
 
+static uint16_t uart_bt_gatt_get_mtu(struct bt_conn *conn)
+{
+#ifdef CONFIG_ZTEST
+	ARG_UNUSED(conn);
+	return s_test_mtu;
+#else
+	return bt_gatt_get_mtu(conn);
+#endif
+}
+
+static int uart_bt_gatt_notify(struct bt_conn *conn,
+			       const struct bt_gatt_attr *attr,
+			       const void *data, uint16_t len)
+{
+#ifdef CONFIG_ZTEST
+	ARG_UNUSED(attr);
+	s_test_tx_state.conn = conn;
+	s_test_tx_state.notify_count++;
+	s_test_tx_state.len = MIN(len, (uint16_t)sizeof(s_test_tx_state.data));
+	memcpy(s_test_tx_state.data, data, s_test_tx_state.len);
+	return s_test_notify_ret;
+#else
+	return bt_gatt_notify(conn, attr, data, len);
+#endif
+}
+
 /* --------------------------------------------------------------------------
  * Connection management
  * -------------------------------------------------------------------------- */
@@ -183,38 +212,15 @@ static const struct bt_data s_ad[] = {
 	BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_NUS_VAL),
 };
 
-static void adv_start(void)
+static void on_connected(struct bt_conn *conn, uint8_t err,
+			 uint32_t generation)
 {
-	int err = bt_le_adv_start(
-		BT_LE_ADV_PARAM(BT_LE_ADV_OPT_CONNECTABLE | BT_LE_ADV_OPT_USE_NAME,
-				BT_GAP_ADV_FAST_INT_MIN_2,
-				BT_GAP_ADV_FAST_INT_MAX_2,
-				NULL),
-		s_ad, ARRAY_SIZE(s_ad), NULL, 0);
-
-	if (err) {
-		LOG_ERR("adv_start failed: %d", err);
-	} else {
-		LOG_INF("BLE advertising as \"%s\"", CONFIG_BT_DEVICE_NAME);
-	}
-}
-
-static void on_connected(struct bt_conn *conn, uint8_t err)
-{
-	struct bt_conn *old_conn;
+	ARG_UNUSED(conn);
+	ARG_UNUSED(generation);
 
 	if (err) {
 		LOG_ERR("BLE connect error %u", err);
 		return;
-	}
-
-	k_mutex_lock(&s_conn_mutex, K_FOREVER);
-	old_conn = s_conn;
-	s_conn = bt_conn_ref(conn);
-	k_mutex_unlock(&s_conn_mutex);
-
-	if (old_conn != NULL) {
-		bt_conn_unref(old_conn);
 	}
 
 	k_mutex_lock(&s_rx_mutex, K_FOREVER);
@@ -225,29 +231,21 @@ static void on_connected(struct bt_conn *conn, uint8_t err)
 	LOG_INF("BLE phone connected");
 }
 
-static void on_disconnected(struct bt_conn *conn, uint8_t reason)
+static void on_disconnected(struct bt_conn *conn, uint8_t reason,
+			    uint32_t generation)
 {
-	struct bt_conn *old_conn = NULL;
+	ARG_UNUSED(conn);
+	ARG_UNUSED(generation);
 
-	k_mutex_lock(&s_conn_mutex, K_FOREVER);
-	if (s_conn == conn) {
-		old_conn = s_conn;
-		s_conn = NULL;
-	}
-	k_mutex_unlock(&s_conn_mutex);
-
-	if (old_conn != NULL) {
-		bt_conn_unref(old_conn);
-	}
+	k_mutex_lock(&s_rx_mutex, K_FOREVER);
+	s_rx_len = 0;
+	s_rx_esc = false;
+	s_rx_overflow = false;
+	k_mutex_unlock(&s_rx_mutex);
 
 	LOG_INF("BLE phone disconnected (reason %u)", reason);
-	adv_start();
+	(void)ble_app_owner_restart(BLE_APP_OWNER_SURFACE_NATIVE);
 }
-
-BT_CONN_CB_DEFINE(conn_callbacks) = {
-	.connected    = on_connected,
-	.disconnected = on_disconnected,
-};
 
 /* --------------------------------------------------------------------------
  * Public API
@@ -262,20 +260,9 @@ int ble_uart_send_slip(const uint8_t *ipv6, size_t len)
 	int rc = 0;
 	struct bt_conn *conn;
 
-	/*
-	 * Acquire the reference while holding s_conn_mutex.  on_disconnected()
-	 * clears s_conn under the same mutex before dropping its stored
-	 * reference, so this cannot ref a connection after disconnect released it.
-	 */
-	k_mutex_lock(&s_conn_mutex, K_FOREVER);
-	conn = s_conn;
-	if (conn != NULL) {
-		bt_conn_ref(conn);
-	}
-	k_mutex_unlock(&s_conn_mutex);
-
-	if (conn == NULL) {
-		return -ENOTCONN;
+	rc = ble_app_owner_conn_ref(BLE_APP_OWNER_SURFACE_NATIVE, &conn);
+	if (rc < 0) {
+		return rc;
 	}
 
 	/* Validate input length to prevent overflow */
@@ -322,14 +309,14 @@ int ble_uart_send_slip(const uint8_t *ipv6, size_t len)
 	s_tx_frame[fi++] = SLIP_END;
 
 	/* Send in chunks ≤ (ATT_MTU − 3) bytes; default MTU gives 20 bytes */
-	uint16_t mtu    = bt_gatt_get_mtu(conn);
+	uint16_t mtu    = uart_bt_gatt_get_mtu(conn);
 	uint16_t chunk  = (mtu > 3u) ? (uint16_t)(mtu - 3u) : 20u;
 
 	for (uint16_t off = 0; off < fi; off += chunk) {
 		uint16_t n = MIN(chunk, (uint16_t)(fi - off));
-		rc = bt_gatt_notify(conn,
-				    &nus_svc.attrs[NUS_TX_VAL_IDX],
-				    &s_tx_frame[off], n);
+		rc = uart_bt_gatt_notify(conn,
+					 &nus_svc.attrs[NUS_TX_VAL_IDX],
+					 &s_tx_frame[off], n);
 		if (rc < 0) {
 			goto out;
 		}
@@ -339,18 +326,75 @@ int ble_uart_send_slip(const uint8_t *ipv6, size_t len)
 out:
 	k_mutex_unlock(&s_tx_mutex);
 out_unref:
-	bt_conn_unref(conn);
+	ble_app_owner_conn_unref(conn);
 	return rc;
 }
 
 int ble_uart_init(void)
 {
-	int err = bt_enable(NULL);
+	const struct ble_app_owner_advertising adv = {
+		.surface = BLE_APP_OWNER_SURFACE_NATIVE,
+		.ad = s_ad,
+		.ad_len = ARRAY_SIZE(s_ad),
+		.name = CONFIG_BT_DEVICE_NAME,
+		.connected = on_connected,
+		.disconnected = on_disconnected,
+	};
 
-	if (err) {
-		LOG_ERR("bt_enable failed: %d", err);
-		return err;
+	return ble_app_owner_start(&adv);
+}
+
+#ifdef CONFIG_ZTEST
+void ble_uart_test_seed_rx_state(uint16_t rx_len, bool rx_esc,
+				 bool rx_overflow)
+{
+	k_mutex_lock(&s_rx_mutex, K_FOREVER);
+	s_rx_len = MIN(rx_len, (uint16_t)sizeof(s_rx_buf));
+	s_rx_esc = rx_esc;
+	s_rx_overflow = rx_overflow;
+	k_mutex_unlock(&s_rx_mutex);
+}
+
+int ble_uart_test_copy_state(struct ble_uart_test_state *state)
+{
+	struct ble_app_owner_test_state owner_state;
+
+	if (state == NULL) {
+		return -EINVAL;
 	}
-	adv_start();
+
+	state->has_connection =
+		ble_app_owner_test_copy_state(&owner_state) == 0 &&
+		owner_state.has_connection;
+
+	k_mutex_lock(&s_rx_mutex, K_FOREVER);
+	state->rx_len = s_rx_len;
+	state->rx_esc = s_rx_esc;
+	state->rx_overflow = s_rx_overflow;
+	k_mutex_unlock(&s_rx_mutex);
+
 	return 0;
 }
+
+void ble_uart_test_set_tx_backend(uint16_t mtu, int notify_ret)
+{
+	k_mutex_lock(&s_tx_mutex, K_FOREVER);
+	s_test_mtu = mtu;
+	s_test_notify_ret = notify_ret;
+	memset(&s_test_tx_state, 0, sizeof(s_test_tx_state));
+	k_mutex_unlock(&s_tx_mutex);
+}
+
+int ble_uart_test_copy_tx_state(struct ble_uart_test_tx_state *state)
+{
+	if (state == NULL) {
+		return -EINVAL;
+	}
+
+	k_mutex_lock(&s_tx_mutex, K_FOREVER);
+	*state = s_test_tx_state;
+	k_mutex_unlock(&s_tx_mutex);
+
+	return 0;
+}
+#endif

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-0awc",
+  "title": "Validate Meshtastic NodeDB peer sync with real BLE app",
+  "description": "Hardware validation follow-up from project-LICHEN-t2hn.6.4. Once physical radios/boards and real BLE phone/app are available, validate Meshtastic-compatible NodeDB sync with multiple discovered LICHEN peers: self first, deterministic peer ordering, collision omission/tracking, bounded default 3-peer cap, queue completion, app display behavior, and no regressions from qemu/native_sim-only assumptions.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T17:43:19.877927Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T17:43:19.877965Z"
+}

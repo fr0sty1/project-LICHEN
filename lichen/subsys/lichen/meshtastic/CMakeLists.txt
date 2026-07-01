@@ -4,4 +4,5 @@
 zephyr_library()
 
 zephyr_library_sources(codec.c)
+zephyr_library_sources_ifdef(CONFIG_LICHEN_MESHTASTIC_ADAPTER adapter.c)
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)

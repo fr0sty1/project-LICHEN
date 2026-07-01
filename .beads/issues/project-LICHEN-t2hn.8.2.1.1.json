@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-t2hn.8.2.1.1",
+  "title": "Add full CoAP URI dispatch tests for gateway inbound resources",
+  "description": "Why this exists: project-LICHEN-t2hn.8.2.1 qemu tests exercise the production POST handlers directly with real Zephyr coap_packet payloads, but do not prove Zephyr resource lookup/path dispatch for /inbound/text and /inbound/status. What needs to be done: add a no-hardware test that dispatches POST requests through Zephyr's CoAP resource matching/service path, verifies /inbound/text and /inbound/status are registered under CONFIG_LORA_LICHEN_MESHTASTIC_BLE, and checks success and bad-request responses. Acceptance criteria: qemu/native_sim or Twister test passes without physical BLE/radio hardware and records exact commands/results.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T06:32:50.382572Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T06:32:50.383099Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "gateway",
+    "messaging",
+    "app-interface",
+    "status",
+    "test-harness",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.8.2.1.1",
+      "depends_on_id": "project-LICHEN-t2hn.8.2.1",
+      "type": "parent-child",
+      "created_at": "2026-07-01T06:32:50.383099Z"
+    }
+  ]
+}

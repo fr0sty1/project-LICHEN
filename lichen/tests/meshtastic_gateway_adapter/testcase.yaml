@@ -1,0 +1,12 @@
+common:
+  tags:
+    - lichen
+    - meshtastic
+    - gateway
+tests:
+  net.lichen.meshtastic_gateway_adapter:
+    # The gateway integration links socket-facing CoAP helpers; qemu_x86's
+    # default SLIP serial setup requires an external /tmp/slip.sock harness.
+    # Keep this host-side gateway shim on native_sim until that harness exists.
+    platform_allow:
+      - native_sim

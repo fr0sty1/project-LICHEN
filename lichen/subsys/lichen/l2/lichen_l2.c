@@ -22,6 +22,10 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
 
+#if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
+#include <lichen/app_identity/app_identity.h>
+#endif
+
 #include <string.h>
 
 /*
@@ -874,6 +878,34 @@ int lichen_peer_remove(const uint8_t eui64[8])
 	return 0;
 #else
 	ARG_UNUSED(eui64);
+	return -ENOTSUP;
+#endif
+}
+
+int lichen_l2_publish_app_identity(const char *display_name,
+				   const char *firmware_name)
+{
+#if HAVE_LICHEN_LINK && IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
+	int ret;
+
+	if (atomic_get(&iface_init_failed)) {
+		return -ENODEV;
+	}
+	if (!atomic_get(&link_ctx_initialized)) {
+		return -EAGAIN;
+	}
+
+	k_mutex_lock(&tx_mutex, K_FOREVER);
+	k_mutex_lock(&rx_mutex, K_FOREVER);
+	ret = lichen_app_identity_set_self_from_link_ctx(
+		&link_ctx, display_name, firmware_name);
+	k_mutex_unlock(&rx_mutex);
+	k_mutex_unlock(&tx_mutex);
+
+	return ret;
+#else
+	ARG_UNUSED(display_name);
+	ARG_UNUSED(firmware_name);
 	return -ENOTSUP;
 #endif
 }

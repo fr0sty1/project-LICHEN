@@ -13,8 +13,11 @@
 #include <zephyr/net/net_if.h>
 #include <zephyr/net/net_ip.h>
 #include <zephyr/net/net_pkt.h>
+#include <zephyr/net/socket.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/ztest.h>
+
+#include <lichen/app_identity/app_identity.h>
 
 #include <string.h>
 
@@ -26,6 +29,11 @@ LOG_MODULE_REGISTER(ping_l2_test, LOG_LEVEL_INF);
 
 #define PING_DATA      "LICHEN"
 #define PING_DATA_SIZE (sizeof(PING_DATA) - 1)
+#define UDP_TEST_PORT  56830
+
+static const uint8_t coap_test_payload[] = {
+	0x50, 0x02, 0x4c, 0x32, 0xff, 'o', 'k'
+};
 
 static const uint8_t test_seed[32] = {
 	0x4c, 0x49, 0x43, 0x48, 0x45, 0x4e, 0x2d, 0x4c,
@@ -44,8 +52,12 @@ static struct in6_addr test_ll_addr;
 static struct in6_addr peer_ll_addr;
 static uint8_t expected_packet[sizeof(struct net_ipv6_hdr) + 8 + PING_DATA_SIZE];
 static size_t expected_packet_len;
+static uint8_t expected_udp_packet[sizeof(struct net_ipv6_hdr) + 8 + sizeof(coap_test_payload)];
+static size_t expected_udp_packet_len;
+static uint8_t test_pubkey[32];
 
 static void build_ping_packet(uint8_t *packet, size_t *packet_len);
+static void build_udp_packet(uint8_t *packet, size_t *packet_len);
 
 static void make_link_local_from_eui64(const uint8_t eui64[8],
 				       struct in6_addr *addr)
@@ -107,10 +119,35 @@ static uint16_t icmpv6_checksum(const struct net_ipv6_hdr *ipv6,
 	return checksum_finish(sum);
 }
 
+static uint16_t udp_checksum(const struct net_ipv6_hdr *ipv6,
+			     const uint8_t *udp,
+			     size_t udp_len)
+{
+	uint8_t pseudo[8] = {
+		(uint8_t)(udp_len >> 24),
+		(uint8_t)(udp_len >> 16),
+		(uint8_t)(udp_len >> 8),
+		(uint8_t)udp_len,
+		0,
+		0,
+		0,
+		IPPROTO_UDP,
+	};
+	uint32_t sum = 0;
+	uint16_t checksum;
+
+	sum += checksum_add(ipv6->src, sizeof(ipv6->src));
+	sum += checksum_add(ipv6->dst, sizeof(ipv6->dst));
+	sum += checksum_add(pseudo, sizeof(pseudo));
+	sum += checksum_add(udp, udp_len);
+
+	checksum = checksum_finish(sum);
+	return checksum == 0 ? 0xffff : checksum;
+}
+
 static void *ping_l2_setup(void)
 {
 	uint8_t eui64[8];
-	uint8_t pubkey[32];
 	int ret;
 
 	zassert_true(IS_ENABLED(CONFIG_LICHEN_L2), "CONFIG_LICHEN_L2 is disabled");
@@ -123,13 +160,15 @@ static void *ping_l2_setup(void)
 	ret = lichen_lora_l2_copy_eui64(eui64);
 	zassert_equal(ret, 0, "failed to copy L2 EUI-64: %d", ret);
 
-	ret = lichen_l2_test_load_key(test_seed, pubkey);
+	lichen_app_identity_test_reset();
+
+	ret = lichen_l2_test_load_key(test_seed, test_pubkey);
 	zassert_equal(ret, 0, "failed to load deterministic test key: %d", ret);
 
 	ret = lichen_l2_test_load_link_key(test_link_key);
 	zassert_equal(ret, 0, "failed to load deterministic link key: %d", ret);
 
-	ret = lichen_peer_add(eui64, pubkey);
+	ret = lichen_peer_add(eui64, test_pubkey);
 	zassert_equal(ret, 0, "failed to add self peer: %d", ret);
 
 	make_link_local_from_eui64(eui64, &test_ll_addr);
@@ -148,6 +187,7 @@ static void *ping_l2_setup(void)
 	zassert_true(ret == 0 || ret == -EALREADY, "failed to bring iface up: %d", ret);
 
 	build_ping_packet(expected_packet, &expected_packet_len);
+	build_udp_packet(expected_udp_packet, &expected_udp_packet_len);
 
 	return NULL;
 }
@@ -180,12 +220,38 @@ static void build_ping_packet(uint8_t *packet, size_t *packet_len)
 	*packet_len = sizeof(struct net_ipv6_hdr) + icmp_len;
 }
 
-static int send_ping_packet(const uint8_t *packet, size_t packet_len)
+static void build_udp_packet(uint8_t *packet, size_t *packet_len)
+{
+	struct net_ipv6_hdr *ipv6 = (struct net_ipv6_hdr *)packet;
+	uint8_t *udp = packet + sizeof(struct net_ipv6_hdr);
+	size_t udp_len = 8 + sizeof(coap_test_payload);
+
+	memset(packet, 0, sizeof(struct net_ipv6_hdr) + udp_len);
+	ipv6->vtc = 0x60;
+	ipv6->len = sys_cpu_to_be16((uint16_t)udp_len);
+	ipv6->nexthdr = IPPROTO_UDP;
+	ipv6->hop_limit = 64;
+	memcpy(ipv6->src, peer_ll_addr.s6_addr, sizeof(ipv6->src));
+	memcpy(ipv6->dst, test_ll_addr.s6_addr, sizeof(ipv6->dst));
+
+	sys_put_be16(UDP_TEST_PORT, &udp[0]);
+	sys_put_be16(UDP_TEST_PORT, &udp[2]);
+	sys_put_be16((uint16_t)udp_len, &udp[4]);
+	udp[6] = 0;
+	udp[7] = 0;
+	memcpy(&udp[8], coap_test_payload, sizeof(coap_test_payload));
+	sys_put_be16(udp_checksum(ipv6, udp, udp_len), &udp[6]);
+
+	*packet_len = sizeof(struct net_ipv6_hdr) + udp_len;
+}
+
+static int send_l2_packet(const uint8_t *packet, size_t packet_len,
+			  uint8_t next_header)
 {
 	struct net_pkt *pkt;
 
 	pkt = net_pkt_alloc_with_buffer(test_iface, packet_len, AF_INET6,
-					IPPROTO_ICMPV6, K_SECONDS(1));
+					next_header, K_SECONDS(1));
 	if (pkt == NULL) {
 		return -ENOMEM;
 	}
@@ -205,6 +271,69 @@ static int send_ping_packet(const uint8_t *packet, size_t packet_len)
 drop:
 	net_pkt_unref(pkt);
 	return -EIO;
+}
+
+static int bind_udp_observer(void)
+{
+	struct sockaddr_in6 addr = {
+		.sin6_family = AF_INET6,
+		.sin6_port = htons(UDP_TEST_PORT),
+		.sin6_scope_id = net_if_get_by_iface(test_iface),
+	};
+	struct timeval timeout = {
+		.tv_sec = 1,
+		.tv_usec = 0,
+	};
+	int sock;
+	int ret;
+
+	memcpy(&addr.sin6_addr, &test_ll_addr, sizeof(addr.sin6_addr));
+	sock = zsock_socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+	if (sock < 0) {
+		return -errno;
+	}
+
+	ret = zsock_setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,
+			       &timeout, sizeof(timeout));
+	if (ret < 0) {
+		ret = -errno;
+		goto fail;
+	}
+
+	ret = zsock_bind(sock, (const struct sockaddr *)&addr, sizeof(addr));
+	if (ret < 0) {
+		ret = -errno;
+		goto fail;
+	}
+
+	return sock;
+
+fail:
+	(void)zsock_close(sock);
+	return ret;
+}
+
+static int recv_udp_observer(int sock, uint8_t *buf, size_t buf_len)
+{
+	struct sockaddr_in6 src;
+	socklen_t src_len = sizeof(src);
+	int ret;
+
+	ret = zsock_recvfrom(sock, buf, buf_len, 0,
+			     (struct sockaddr *)&src, &src_len);
+	if (ret < 0) {
+		return -errno;
+	}
+
+	if (src.sin6_port != htons(UDP_TEST_PORT)) {
+		return -EPROTO;
+	}
+
+	if (memcmp(&src.sin6_addr, &peer_ll_addr, sizeof(peer_ll_addr)) != 0) {
+		return -EADDRNOTAVAIL;
+	}
+
+	return ret;
 }
 
 static bool packet_path_observed(const struct lichen_l2_test_stats *l2_before,
@@ -258,12 +387,63 @@ ZTEST(ping_l2, test_full_l2_loopback_ping)
 	lichen_l2_test_get_stats(&l2_before);
 	lora_loopback_test_get_stats(lora_dev, &loop_before);
 
-	ret = send_ping_packet(expected_packet, expected_packet_len);
+	ret = send_l2_packet(expected_packet, expected_packet_len, IPPROTO_ICMPV6);
 	zassert_equal(ret, 0, "failed to send Echo Request packet: %d", ret);
 
 	zassert_true(wait_for_packet_path(&l2_before, &loop_before,
 					  expected_packet, expected_packet_len),
 		     "full LICHEN_L2 loopback packet path was not observed");
+}
+
+ZTEST(ping_l2, test_l2_publish_app_identity_uses_link_context_key)
+{
+	struct lichen_app_identity_self self;
+
+	lichen_app_identity_test_reset();
+	zassert_ok(lichen_l2_publish_app_identity("LICHEN", "LICHEN"));
+	zassert_ok(lichen_app_identity_copy_self(&self));
+	zassert_true(self.has_public_key);
+	zassert_mem_equal(self.public_key, test_pubkey, sizeof(test_pubkey));
+	zassert_mem_equal(self.display_name, "LICHEN", sizeof("LICHEN"));
+	zassert_mem_equal(self.firmware_name, "LICHEN", sizeof("LICHEN"));
+}
+
+ZTEST(ping_l2, test_udp_payload_reaches_socket_after_l2_injection)
+{
+	struct lichen_l2_test_stats l2_before;
+	struct lora_loopback_test_stats loop_before;
+	uint8_t rx_buf[sizeof(coap_test_payload)];
+	int sock;
+	int ret;
+
+	k_sleep(K_MSEC(100));
+
+	sock = bind_udp_observer();
+	zassert_true(sock >= 0, "failed to bind UDP observer: %d", sock);
+
+	lichen_l2_test_reset_stats();
+	lora_loopback_test_reset(lora_dev);
+
+	lichen_l2_test_get_stats(&l2_before);
+	lora_loopback_test_get_stats(lora_dev, &loop_before);
+
+	ret = send_l2_packet(expected_udp_packet, expected_udp_packet_len,
+			     IPPROTO_UDP);
+	if (ret != 0) {
+		(void)zsock_close(sock);
+	}
+	zassert_equal(ret, 0, "failed to send UDP packet: %d", ret);
+
+	ret = recv_udp_observer(sock, rx_buf, sizeof(rx_buf));
+	(void)zsock_close(sock);
+
+	zassert_equal(ret, sizeof(coap_test_payload),
+		      "UDP observer did not receive payload: %d", ret);
+	zassert_mem_equal(rx_buf, coap_test_payload, sizeof(coap_test_payload));
+	zassert_true(wait_for_packet_path(&l2_before, &loop_before,
+					  expected_udp_packet,
+					  expected_udp_packet_len),
+		     "UDP packet was not observed through full L2 injection path");
 }
 
 ZTEST_SUITE(ping_l2, NULL, ping_l2_setup, NULL, NULL, NULL);

@@ -11,6 +11,7 @@ tests:
       - qemu_x86
     integration_platforms:
       - native_sim
+      - qemu_x86
   lichen.hal.loopback_lora:
     tags:
       - lichen
@@ -22,3 +23,15 @@ tests:
     extra_args:
       - CONF_FILE=prj.conf;prj_lora_loopback.conf
       - DTC_OVERLAY_FILE=boards/native_sim_lora_loopback.overlay
+  lichen.hal.absent_power_qemu:
+    tags:
+      - lichen
+      - hal
+      - power
+    platform_allow:
+      - qemu_x86
+    integration_platforms:
+      - qemu_x86
+    extra_configs:
+      - CONFIG_LICHEN_HAS_BATTERY=n
+      - CONFIG_LICHEN_HAS_PMIC=n

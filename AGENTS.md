@@ -311,6 +311,19 @@ sudo /mnt/lichen-zephyr/scripts/mount-volume.sh vol-0875d0df8bdf82a58 /mnt/liche
 cd /mnt/lichen-zephyr/work/project-LICHEN
 ```
 
+For validation against uncommitted or branch-specific changes, use a clean
+worktree prepared by `tools/zephyr-clean-worktree.sh` instead of building from
+the dirty primary cache workspace:
+
+```bash
+tools/zephyr-clean-worktree.sh create project-LICHEN-validate origin/main
+cd /mnt/lichen-zephyr/work/project-LICHEN-validate
+# apply patch or switch/ref as needed, then pass:
+#   -DZEPHYR_EXTRA_MODULES=$PWD/lichen
+# After each build or Twister scenario, run:
+tools/zephyr-clean-worktree.sh verify "$PWD" <build-dir>
+```
+
 The volume is single-attach. Before terminating a builder, run `sync`, unmount `/mnt/lichen-zephyr`, detach the volume, and wait for it to return to `available` so the next builder can attach it.
 
 ## IETF I-D Documents

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-xehk",
+  "title": "Add qemu_x86 harness for gateway adapter socket tests",
+  "description": "Follow-up from project-LICHEN-t2hn.6.4 validation. meshtastic_gateway_adapter was restricted to native_sim because qemu_x86 exits before Zephyr boots: qemu-system-i386 is launched with '-serial unix:/tmp/slip.sock' and fails with 'Failed to connect to /tmp/slip.sock: No such file or directory'. Provide a Twister/qemu harness that creates the expected SLIP socket or otherwise disables that serial dependency, then re-enable qemu_x86 coverage for gateway adapter tests.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T17:43:15.447024Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T17:43:15.447054Z"
+}

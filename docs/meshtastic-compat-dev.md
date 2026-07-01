@@ -14,6 +14,29 @@ This contract is based on the Meshtastic app/protocol research recorded in Bead 
 | `meshtastic/Meshtastic-Android` | `eb3bd10757a312d1537874bfab245117c46c36a9` |
 | `meshtastic/Meshtastic-Apple` | `aeeb0cc49fbe0ed593e918ba2f95100ecf694256` |
 
+`DeviceMetadata` was rechecked for Bead `project-LICHEN-t2hn.24` against the checked-in LICHEN revision
+`908b6d0f87aae73a248a30d0bb49e01c6f998255` and current `meshtastic/protobufs` `master` at
+`9cb134be322dd7122e80d49b17dad9a213ff752e`. The pinned protobuf commit above and current upstream both define the same
+12-field `DeviceMetadata` message:
+
+| Number | Field | LICHEN policy |
+|--------|-------|---------------|
+| 1 | `firmware_version` | LICHEN-branded compatibility firmware string |
+| 2 | `device_state_version` | `1` |
+| 3 | `canShutdown` | `false` |
+| 4 | `hasWifi` | `false` |
+| 5 | `hasBluetooth` | True only when the Meshtastic-compatible BLE surface is active |
+| 6 | `hasEthernet` | `false` |
+| 7 | `role` | `CLIENT` |
+| 8 | `position_flags` | `0` |
+| 9 | `hw_model` | `PRIVATE_HW` / `255` |
+| 10 | `hasRemoteHardware` | `false` |
+| 11 | `hasPKC` | `false` |
+| 12 | `excluded_modules` | MVP unsupported-module bitmask |
+
+The Zephyr encoder emits all 12 fields explicitly. No `platform_type` field exists in pinned or current upstream
+`DeviceMetadata`; do not add one unless a future upstream protobuf revision introduces it.
+
 ## Build and Target Architecture
 
 **This feature is off by default.** The Meshtastic adapter adds significant firmware size:
@@ -43,10 +66,21 @@ pip install lichen[meshtastic]
 - ESP32-S3 targets remain possible once Zephyr BLE support is validated for the board.
 - STM32WL has no BLE hardware; a serial/TCP Meshtastic-compatible stream is separate work and must not be confused with BLE GATT.
 
+BLE advertising and product-mode ownership are tracked in
+`docs/ble-app-surface-owner.md`. Current firmware builds keep native LICHEN BLE,
+Meshtastic BLE, and MeshCore BLE mutually exclusive.
+
+Use `docs/meshtastic-smoke-test.md` for Android and iOS Meshtastic app smoke
+runs. It defines the required no-hardware preflight, BLE discovery, config sync,
+node DB sync, message ingress/egress, unsupported-operation checks, and physical
+client evidence.
+
 **Reference and test platforms:**
 - Python prototype and tests for adapter behavior.
 - Rust `lichen-meshtastic` for schema, address mapping, config, and host tooling. Its current `gatt.rs` is not
-  authoritative for BLE framing until updated to raw protobuf-per-GATT-value semantics.
+  authoritative for BLE framing until updated to raw protobuf-per-GATT-value semantics. Rust no longer carries a
+  separate Admin/config handler; active read-only sync behavior is owned by Zephyr compatibility codec/adapter tests,
+  and packet-level `ADMIN_APP` reads are tracked separately by `project-LICHEN-t2hn.23`.
 - Linux BLE clients for smoke tests.
 
 Without this feature, users must use LICHEN-native apps (iOS, Android, CLI, or web) to interact with the node.
@@ -125,9 +159,59 @@ The app may show a "saved" confirmation, but the name won't persist. This is int
 
 **The problem:** Meshtastic apps display device type (T-Beam, Heltec, RAK, etc.) from a `hw_model` enum.
 
-**The solution:** Always report `PRIVATE_HW` (255) or a new `LICHEN_NODE` value if Meshtastic adds one.
+**The solution:** Always report `PRIVATE_HW` (255) unless Meshtastic upstream adds an official LICHEN-specific enum
+value.
 
 The app will show "Unknown" or a generic icon. This is accurate—LICHEN runs on various hardware, and Meshtastic's model list doesn't apply.
+
+### Synthetic Metadata and Version Policy
+
+Meshtastic app compatibility metadata is synthetic. It exists so unmodified Meshtastic clients can complete discovery and
+sync against a local LICHEN node. It MUST NOT imply that the device is running Meshtastic RF firmware or can interoperate
+with Meshtastic nodes over LoRa.
+
+Policy for `MyNodeInfo`, `DeviceMetadata`, and `User` fields:
+
+| Field | Policy |
+|-------|--------|
+| `firmware_version` | LICHEN-branded app-compat firmware string, for example `"LICHEN compat 0.1.0"` or `"LICHEN compat 0.1.0+zephyr.3.7.0"`; must start with `LICHEN`, must not contain `Meshtastic` in any casing, and must not present an unlabeled RTOS version as the LICHEN firmware release |
+| `min_app_version` | Default `30200` until mobile smoke testing proves a higher minimum is required |
+| `pio_env` | Zephyr-branded environment string such as `"zephyr-r1_neo_nrf52840"` |
+| `hw_model` | `PRIVATE_HW` (255) for both `DeviceMetadata.hw_model` and `User.hw_model` |
+| `role` | `CLIENT` unless a later tested app flow requires a different local-app role |
+| `has_bluetooth` | True only when the Meshtastic-compatible BLE surface is active |
+| `has_wifi`, `has_ethernet`, `has_remote_hardware`, `has_pkc` | False for the MVP unless backed by an implemented LICHEN capability |
+| `position_flags` | Zero until HAL location/provider support is wired into this adapter |
+| `excluded_modules` | Bitmask excludes unsupported Meshtastic modules/features for the MVP; Bluetooth config is excluded only when the compatibility BLE surface is absent |
+
+The user-visible device name and `User.long_name` SHOULD remain visibly LICHEN-branded, such as `"LICHEN R1 Neo"` or
+`"LICHEN <board>"`. Board-specific Meshtastic hardware enum values such as T-Beam, Heltec, or RAK4631 MUST NOT be used
+even when LICHEN is running on that hardware, because those values imply Meshtastic firmware behavior and RF semantics.
+
+### Placeholder Module and Region Policy
+
+This policy was checked for Bead `project-LICHEN-t2hn.6.5` against current Meshtastic source heads:
+
+| Source | Commit inspected | Relevant behavior |
+|--------|------------------|-------------------|
+| `meshtastic/protobufs` | `9cb134be322dd7122e80d49b17dad9a213ff752e` | `LoRaRegionPresetMap` clients must tolerate absence; `ExcludedModules` defines bits through `NETWORK_CONFIG = 0x4000`; `ModuleConfig` has variants through `mesh_beacon = 17` |
+| `meshtastic/firmware` | `e64d20548c4313c92e0e641c41d388828e1d024a` | `PhoneAPI` sends metadata, region presets, channels, config, then its implemented module config cases before node DB |
+| `meshtastic/Meshtastic-Android` | `60119ce9d2e4efcb2e81336dbde29c1b70c9f293` | `min_app_version` only gates an app-update prompt; `region_presets` is handled when present and documented as absent on firmware before 2.8; module configs are persisted independently as they arrive |
+| `meshtastic/Meshtastic-Apple` | `aeeb0cc49fbe0ed593e918ba2f95100ecf694256` | No newer head than the pinned baseline during this check |
+| `meshtastic/python` | `6d76edf8a7b192c51e3a5d26bc5868da556ac3d9` | No newer head than the pinned baseline during this check |
+
+LICHEN's MVP MUST prefer honest absence or explicit disabled placeholders over fabricated Meshtastic capabilities:
+
+| Surface | MVP placeholder | Reason |
+|---------|-----------------|--------|
+| `min_app_version` | `30200` | Low enough for current app compatibility while still exercising the app version path; do not raise it without Android/iOS smoke evidence |
+| `excluded_modules` | `0x5fff` when Meshtastic BLE is active, `0x7fff` when it is not | Marks MQTT, serial, external notification, store-forward, range test, telemetry, canned message, audio, remote hardware, neighbor info, ambient lighting, detection sensor, paxcounter, and network unsupported; also marks Bluetooth config unsupported when the compatibility BLE surface is absent |
+| `moduleConfig` | One `telemetry` record with `device_update_interval = 0`, `environment_update_interval = 0`, and `device_telemetry_enabled = false` | Gives clients an explicit disabled telemetry placeholder without claiming sensor, MQTT, serial, store-forward, remote hardware, TAK, mesh beacon, or other module support |
+| `region_presets` | One group containing `LONG_FAST` with default `LONG_FAST`, mapped only to `US` | Documents the current conservative native_sim/default radio profile; additional regions require a tested region table and must not be guessed |
+
+Any future module, region, battery, GNSS, or network placeholder that becomes app-visible MUST have a native_sim test and
+must either be backed by a real LICHEN/HAL capability or be marked unavailable in metadata/config so users do not see a
+fictional Meshtastic feature.
 
 ### Channels and Encryption
 
@@ -160,7 +244,7 @@ Channel 0:
 | Meshtastic Config | Reported Value | Writes |
 |-------------------|----------------|--------|
 | `lora.region` | Mapped from LICHEN region | Ignored |
-| `lora.modem_preset` | `LONG_MODERATE` (closest match) | Ignored |
+| `lora.modem_preset` | `LONG_FAST` for the MVP default profile | Ignored |
 | `lora.hop_limit` | Current IPv6 hop limit | Ignored |
 | `lora.tx_power` | Current TX power | Ignored |
 | `lora.frequency_offset` | 0 | Ignored |
@@ -223,13 +307,13 @@ These Meshtastic features return plausible defaults but do nothing:
 | `device.reboot_seconds` | Acknowledged, ignored |
 | `device.factory_reset` | Acknowledged, ignored |
 | `device.nodeinfo_broadcast_secs` | Returns 900, ignored |
-| `position.gps_enabled` | Returns current GPS state |
+| `position.gps_mode` | Returns `NOT_PRESENT` until a GNSS provider is wired |
 | `position.fixed_position` | Returns false |
 | `power.*` | Returns defaults |
 | `network.*` | Returns empty (no WiFi) |
 | `display.*` | Returns defaults |
 | `bluetooth.enabled` | Returns true |
-| `bluetooth.fixed_pin` | Returns 123456 |
+| `bluetooth.mode` | Returns `NO_PIN` in the local compatibility surface |
 
 ### What We Reject
 
@@ -263,7 +347,7 @@ These features can't be stubbed meaningfully. The adapter returns errors or empt
    especially between stages; firmware must tolerate heartbeat but must not require it before stage 1.
 4. Node responds via `FromRadio` reads:
    - `MyNodeInfo` (this node's identity)
-   - `DeviceMetadata` and config/module/channel records for config sync
+   - `DeviceMetadata`, region presets, channel, one Config record per supported section, and module config records for config sync
    - `NodeInfo` (each known peer)
    - `ConfigCompleteId` matching the request nonce
 5. App subscribes to `FromNum` notifications; Android also proactively drains after writes.
@@ -277,6 +361,10 @@ The sync nonces are fixed by current Android and iOS client flows. `69420` means
 stage. It must not assume the app is done after the first `config_complete_id`, because Apple and Android use the second
 stage to seed the node database. Other nonces are treated as legacy/full-sync requests for Python or older clients: queue
 the stage-1 config/static records and the stage-2 node database, then echo the original nonce in `config_complete_id`.
+Stage-1 order is `my_info`, `metadata`, `region_presets`, `channel`, repeated oneof-clean `config` records,
+`moduleConfig`, then `config_complete_id`. This follows current Meshtastic firmware
+`e64d20548c4313c92e0e641c41d388828e1d024a`, whose `PhoneAPI` state machine sends region presets immediately after
+metadata and before the first channel.
 
 The `FromNum` characteristic is an edge-triggered queue hint, not the data channel. Every queued `FromRadio` value
 increments `FromNum` modulo 2^32 and notifies subscribed clients when notifications are enabled. A `FromRadio` read
@@ -320,15 +408,15 @@ The adapter implements a subset of Meshtastic's protobuf schema.
 
 | Field | Handling |
 |-------|----------|
-| `want_config_id = 69420` | Queue stage-1 config, metadata, region presets, channel, module config, and matching `config_complete_id` |
+| `want_config_id = 69420` | Queue stage-1 identity, metadata, region presets, channel, one Config record per supported section, module config, and matching `config_complete_id` |
 | `want_config_id = 69421` | Queue stage-2 node database and matching `config_complete_id` |
 | Other `want_config_id` | Queue legacy/full sync and matching `config_complete_id`; log compatibility nonce |
 | `heartbeat` | Keepalive/liveness trigger; may queue `queueStatus`; never required before sync |
-| `packet` with `TEXT_MESSAGE_APP` | Translate to the shared LICHEN message contract and queue local `queueStatus` |
+| `packet` with `TEXT_MESSAGE_APP` | Validate broadcast primary-channel UTF-8 text up to 200 bytes, call the adapter text hook, and queue local `queueStatus` |
 | `packet` with `POSITION_APP` | Translate to LICHEN position/announce when available; otherwise deterministic no-op status |
 | `packet` with `NODEINFO_APP` | Update transient display metadata only; no persistent Meshtastic identity writes |
-| `packet` with `ADMIN_APP` read request | Return synthetic owner/session/config response for supported read-only requests |
-| `packet` with `ADMIN_APP` write/command | Reject or no-op deterministically; do not mutate LICHEN radio/security settings |
+| `packet` with `ADMIN_APP` read request | Deferred until `project-LICHEN-t2hn.23`; current firmware returns deterministic unsupported status. |
+| `packet` with `ADMIN_APP` write/command | Reject or no-op deterministically; do not mutate LICHEN radio/security settings. |
 | `packet` with unsupported portnum | Drop with deterministic status or empty response; never crash or desync the queue |
 | `disconnect` | Clear connection-scoped queue/session state |
 
@@ -338,7 +426,7 @@ The adapter implements a subset of Meshtastic's protobuf schema.
 |-------|--------|
 | `my_info` | This node's LICHEN identity and synthetic Meshtastic node number |
 | `node_info` | LICHEN peer table, including self and discovered peers |
-| `config` | Synthetic config from LICHEN state |
+| `config` | Synthetic config from LICHEN state; each `FromRadio.config` contains exactly one `Config` oneof section |
 | `moduleConfig` | Synthetic module config defaults |
 | `channel` | Synthetic primary channel plus disabled secondary channels when requested |
 | `metadata` | Synthetic device metadata and firmware/version policy |
@@ -396,7 +484,7 @@ Meshtastic compatibility write.
 | `user.id` | IID hex | `!` + hex(iid)[0:8] |
 | `user.long_name` | CoAP `/node` resource | Fetched from node |
 | `user.short_name` | Derived | First 4 chars of long_name |
-| `user.hw_model` | Fixed | `LICHEN_NODE` |
+| `user.hw_model` | Fixed | `PRIVATE_HW` (255) |
 
 ### Position
 
@@ -427,17 +515,23 @@ The adapter returns synthetic config matching Meshtastic's expected structure:
 
 | Config Section | Handling |
 |----------------|----------|
-| `device` | Node name from LICHEN identity |
-| `position` | GPS settings (if applicable) |
+| `device` | Stubbed role and broadcast interval |
+| `position` | Stubbed GPS-not-present defaults |
 | `power` | Stubbed defaults |
 | `network` | Stubbed (no WiFi) |
 | `display` | Stubbed defaults |
 | `lora` | Maps from LICHEN PHY config |
 | `bluetooth` | Current BLE state |
+| `security` | Remote admin and debug surfaces disabled |
+| `device_ui` | Stubbed defaults |
 
-Config writes via ToRadio are acknowledged but most are no-ops. The LICHEN stack controls actual radio parameters.
+Each `FromRadio.config` payload contains exactly one `Config` oneof variant. Config writes via ToRadio are acknowledged but most are no-ops. The LICHEN stack controls actual radio parameters.
 
-The read-only admin subset is first class for app compatibility:
+The staged `want_config_id` sync path is the current read-only config surface.
+Packet-level `ADMIN_APP` reads are deferred until `project-LICHEN-t2hn.23` and
+currently return deterministic unsupported status.
+
+Target packet-level admin subset:
 
 | Admin request | Response |
 |---------------|----------|
@@ -462,11 +556,13 @@ App: ToRadio { packet: MeshPacket {
 
 Adapter:
     1. Extracts destination (broadcast)
-    2. Creates CoAP POST to /msg
-    3. Payload: "Hello"
-    4. Sends via LICHEN mesh
+    2. Verifies the synthetic primary channel and UTF-8 text payload, with a 200-byte MVP payload limit
+    3. Calls the adapter text hook
+    4. Queues local queueStatus for the Meshtastic app
 
-LICHEN: IPv6/UDP/CoAP packet transmitted
+LICHEN: The app-compat layer does not emit Meshtastic RF packets. The gateway currently reports unsupported for text
+send attempts until the concrete Zephyr `/msg` or local send contract is implemented in `project-LICHEN-t2hn.7.2`.
+Directed Meshtastic node-number resolution is tracked by `project-LICHEN-t2hn.7.1`.
 ```
 
 ### Receiving a Position Update

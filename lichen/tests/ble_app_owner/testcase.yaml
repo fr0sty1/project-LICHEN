@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+tests:
+  net.lichen.ble_app_owner:
+    platform_allow: native_sim
+    tags: bluetooth app-interface
+  net.lichen.ble_app_owner.native:
+    platform_allow: native_sim
+    extra_args:
+      - BLE_APP_OWNER_TEST_MODE=native
+    tags: bluetooth app-interface
+  net.lichen.ble_app_owner.meshtastic:
+    platform_allow: native_sim
+    extra_args:
+      - BLE_APP_OWNER_TEST_MODE=meshtastic
+    tags: bluetooth app-interface meshtastic
+  net.lichen.ble_app_owner.meshcore:
+    platform_allow: native_sim
+    extra_args:
+      - BLE_APP_OWNER_TEST_MODE=meshcore
+    tags: bluetooth app-interface meshcore
