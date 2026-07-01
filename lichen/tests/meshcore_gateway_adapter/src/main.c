@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/ztest.h>
@@ -15,6 +16,77 @@
 #include "fake_ble_meshcore.h"
 #include "meshcore_adapter.h"
 
+#define WORKER_STACK_SIZE 1024
+
+struct emit_worker_ctx {
+	struct k_sem *start;
+	const uint8_t *payload;
+	size_t payload_len;
+	int ret;
+};
+
+struct submit_ctx {
+	uint8_t payload[LICHEN_MESHCORE_FRAME_MAX];
+	struct k_sem *entered;
+	uint32_t from;
+	uint32_t to;
+	size_t payload_len;
+	uint32_t count;
+	int ret;
+	bool emit_during_submit;
+	bool pause_during_submit;
+};
+
+static K_THREAD_STACK_DEFINE(worker_stack, WORKER_STACK_SIZE);
+static struct k_thread worker_thread;
+
+static void emit_worker(void *a, void *b, void *c)
+{
+	struct emit_worker_ctx *ctx = a;
+	const struct lichen_app_text_event event = {
+		.payload = ctx->payload,
+		.payload_len = ctx->payload_len,
+	};
+
+	ARG_UNUSED(b);
+	ARG_UNUSED(c);
+
+	k_sem_take(ctx->start, K_FOREVER);
+	ctx->ret = lichen_app_interface_emit_text(&event);
+}
+
+static int submit_text_sink(const struct lichen_app_text_event *event,
+			    void *user_data)
+{
+	struct submit_ctx *ctx = user_data;
+
+	if (event == NULL || ctx == NULL) {
+		return -EINVAL;
+	}
+	if (ctx->ret < 0) {
+		return ctx->ret;
+	}
+	if (event->payload_len > sizeof(ctx->payload)) {
+		return -EMSGSIZE;
+	}
+
+	ctx->from = event->from;
+	ctx->to = event->to;
+	ctx->payload_len = event->payload_len;
+	if (event->payload_len > 0U) {
+		memcpy(ctx->payload, event->payload, event->payload_len);
+	}
+	ctx->count++;
+	if (ctx->emit_during_submit) {
+		return lichen_app_interface_emit_text(event);
+	}
+	if (ctx->pause_during_submit) {
+		k_sem_give(ctx->entered);
+		k_sleep(K_MSEC(50));
+	}
+	return 0;
+}
+
 static void expect_tx(size_t index, uint8_t type, size_t expected_len)
 {
 	const uint8_t *frame;
@@ -24,6 +96,18 @@ static void expect_tx(size_t index, uint8_t type, size_t expected_len)
 	zassert_not_null(frame);
 	zassert_equal(len, expected_len);
 	zassert_equal(frame[0], type);
+}
+
+static void expect_error(size_t index, uint8_t err)
+{
+	const uint8_t *frame;
+	size_t len;
+
+	frame = fake_ble_meshcore_tx(index, &len);
+	zassert_not_null(frame);
+	zassert_equal(len, 2U);
+	zassert_equal(frame[0], LICHEN_MESHCORE_RESP_ERR);
+	zassert_equal(frame[1], err);
 }
 
 static void reset_gateway(uint32_t tx_cap)
@@ -66,6 +150,109 @@ ZTEST(meshcore_gateway_adapter, test_contacts_preflight_avoids_partial_tx)
 
 	zassert_equal(gateway_meshcore_adapter_test_process_once(), -ENOMEM);
 	zassert_equal(fake_ble_meshcore_tx_count(), 0U);
+}
+
+ZTEST(meshcore_gateway_adapter, test_send_channel_text_submits_to_app_interface)
+{
+	struct submit_ctx submit = { 0 };
+	const struct lichen_app_interface_sink sink = {
+		.submit_text = submit_text_sink,
+		.user_data = &submit,
+	};
+	const uint8_t send[] = {
+		LICHEN_MESHCORE_CMD_SEND_CHANNEL_TXT_MSG, 0x00, 0x00, 'h', 'i',
+	};
+
+	reset_gateway(4U);
+	zassert_ok(lichen_app_interface_register_sink(&sink, NULL));
+	zassert_ok(fake_ble_meshcore_push_rx(send, sizeof(send), 1U));
+
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	zassert_equal(submit.count, 1U);
+	zassert_equal(submit.from, 0U);
+	zassert_equal(submit.to, UINT32_MAX);
+	zassert_equal(submit.payload_len, 2U);
+	zassert_mem_equal(submit.payload, "hi", 2U);
+	zassert_equal(fake_ble_meshcore_tx_count(), 1U);
+	expect_tx(0U, LICHEN_MESHCORE_RESP_OK, 1U);
+}
+
+ZTEST(meshcore_gateway_adapter,
+      test_send_channel_text_rejects_reentrant_emit)
+{
+	struct submit_ctx submit = {
+		.emit_during_submit = true,
+	};
+	const struct lichen_app_interface_sink sink = {
+		.submit_text = submit_text_sink,
+		.user_data = &submit,
+	};
+	const uint8_t send[] = {
+		LICHEN_MESHCORE_CMD_SEND_CHANNEL_TXT_MSG, 0x00, 0x00, 'h',
+	};
+
+	reset_gateway(2U);
+	zassert_ok(lichen_app_interface_register_sink(&sink, NULL));
+	zassert_ok(fake_ble_meshcore_push_rx(send, sizeof(send), 1U));
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	zassert_equal(submit.count, 1U);
+	zassert_equal(fake_ble_meshcore_tx_count(), 1U);
+	expect_error(0U, LICHEN_MESHCORE_ERR_BAD_STATE);
+}
+
+ZTEST(meshcore_gateway_adapter,
+      test_send_channel_text_allows_external_emit_after_ack)
+{
+	struct k_sem entered;
+	const uint8_t worker_payload[] = { 'w' };
+	struct emit_worker_ctx worker = {
+		.payload = worker_payload,
+		.payload_len = sizeof(worker_payload),
+		.ret = -EAGAIN,
+	};
+	struct submit_ctx submit = {
+		.pause_during_submit = true,
+	};
+	const struct lichen_app_interface_sink sink = {
+		.submit_text = submit_text_sink,
+		.user_data = &submit,
+	};
+	const uint8_t send[] = {
+		LICHEN_MESHCORE_CMD_SEND_CHANNEL_TXT_MSG, 0x00, 0x00, 'h',
+	};
+
+	k_sem_init(&entered, 0, 1);
+	submit.entered = &entered;
+	worker.start = &entered;
+
+	reset_gateway(4U);
+	k_thread_create(&worker_thread, worker_stack,
+			K_THREAD_STACK_SIZEOF(worker_stack), emit_worker,
+			&worker, NULL, NULL, K_PRIO_PREEMPT(0), 0, K_NO_WAIT);
+	zassert_ok(lichen_app_interface_register_sink(&sink, NULL));
+	zassert_ok(fake_ble_meshcore_push_rx(send, sizeof(send), 1U));
+
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	zassert_ok(k_thread_join(&worker_thread, K_SECONDS(1)));
+	zassert_ok(worker.ret);
+	zassert_equal(submit.count, 1U);
+	zassert_equal(fake_ble_meshcore_tx_count(), 2U);
+	expect_tx(0U, LICHEN_MESHCORE_RESP_OK, 1U);
+	expect_tx(1U, LICHEN_MESHCORE_PUSH_MSG_WAITING, 1U);
+}
+
+ZTEST(meshcore_gateway_adapter, test_send_channel_text_requires_submit_sink)
+{
+	const uint8_t send[] = {
+		LICHEN_MESHCORE_CMD_SEND_CHANNEL_TXT_MSG, 0x00, 0x00, 'h',
+	};
+
+	reset_gateway(4U);
+	zassert_ok(fake_ble_meshcore_push_rx(send, sizeof(send), 1U));
+
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	zassert_equal(fake_ble_meshcore_tx_count(), 1U);
+	expect_error(0U, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
 }
 
 ZTEST(meshcore_gateway_adapter, test_app_interface_text_waiting_and_sync)

@@ -34,8 +34,10 @@ struct lichen_app_status_event {
 struct lichen_app_interface_stats {
 	uint32_t text_emit_count;
 	uint32_t status_emit_count;
+	uint32_t text_submit_count;
 	uint32_t text_delivery_count;
 	uint32_t status_delivery_count;
+	uint32_t text_submit_delivery_count;
 	uint32_t no_subscriber_count;
 	uint32_t backpressure_count;
 	uint32_t subscriber_error_count;
@@ -68,6 +70,7 @@ typedef int (*lichen_app_interface_set_config_fn)(
 struct lichen_app_interface_sink {
 	lichen_app_interface_text_fn emit_text;
 	lichen_app_interface_status_fn emit_status;
+	lichen_app_interface_text_fn submit_text;
 	lichen_app_interface_get_status_fn get_status;
 	lichen_app_interface_get_config_fn get_config;
 	lichen_app_interface_set_config_fn set_config;
@@ -84,6 +87,8 @@ int lichen_app_interface_register_sink(
 int lichen_app_interface_unregister_sink(uint8_t sink_id);
 
 int lichen_app_interface_emit_text(
+	const struct lichen_app_text_event *event);
+int lichen_app_interface_submit_text(
 	const struct lichen_app_text_event *event);
 int lichen_app_interface_emit_status(
 	const struct lichen_app_status_event *event);

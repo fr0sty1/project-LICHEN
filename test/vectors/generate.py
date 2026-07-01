@@ -750,7 +750,7 @@ def meshcore_app_compat_vectors() -> list[dict]:
         ),
         _meshcore_vector(
             name="send_channel_txt_msg_ack_drift",
-            description="MeshCore source drift: firmware e8d3c53 returns OK for channel text send while docs/Flutter may expect MSG_SENT in some paths; LICHEN currently returns unsupported until app-ingress mapping is implemented.",
+            description="MeshCore source drift: firmware e8d3c53 returns OK for channel text send while docs/Flutter may expect MSG_SENT in some paths; LICHEN returns unsupported when no app-interface submit provider is registered.",
             direction="exchange",
             frame="command",
             encoded=bytes.fromhex("0300006869"),
@@ -758,17 +758,30 @@ def meshcore_app_compat_vectors() -> list[dict]:
             expect={
                 "responses": [err_unsupported.hex()],
                 "adapter_test": True,
-                "drift_note": "Upstream firmware observed OK, app/docs may expect SENT; LICHEN rejects until local message ingress exists.",
+                "drift_note": "Upstream firmware observed OK, app/docs may expect SENT; LICHEN rejects in the canonical no-provider fixture and succeeds in configured submit-provider tests.",
             },
         ),
         _meshcore_vector(
-            name="send_txt_msg_direct_unsupported",
-            description="Direct text requires LICHEN peer identity projection and is deterministic unsupported for now.",
+            name="send_txt_msg_direct_malformed_prefix",
+            description="Direct text requires a 6-byte MeshCore peer prefix before the UTF-8 payload; shorter direct-send payloads are malformed.",
             direction="exchange",
             frame="command",
             encoded=bytes.fromhex("0200006869"),
             decoded={"command": "SEND_TXT_MSG", "payload_utf8": "hi"},
-            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+            expect={"responses": ["0106"], "adapter_test": True},
+        ),
+        _meshcore_vector(
+            name="send_txt_msg_direct_unknown_peer",
+            description="Direct text with a 6-byte MeshCore peer prefix returns not-found until the prefix maps to exactly one known LICHEN peer.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("020102030405066869"),
+            decoded={
+                "command": "SEND_TXT_MSG",
+                "prefix": "010203040506",
+                "payload_utf8": "hi",
+            },
+            expect={"responses": ["0102"], "adapter_test": True},
         ),
         _meshcore_vector(
             name="set_advert_name_unsupported",

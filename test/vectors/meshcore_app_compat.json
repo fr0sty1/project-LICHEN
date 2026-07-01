@@ -332,7 +332,7 @@
     },
     {
       "name": "send_channel_txt_msg_ack_drift",
-      "description": "MeshCore source drift: firmware e8d3c53 returns OK for channel text send while docs/Flutter may expect MSG_SENT in some paths; LICHEN currently returns unsupported until app-ingress mapping is implemented.",
+      "description": "MeshCore source drift: firmware e8d3c53 returns OK for channel text send while docs/Flutter may expect MSG_SENT in some paths; LICHEN returns unsupported when no app-interface submit provider is registered.",
       "source_baseline": {
         "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
         "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
@@ -358,12 +358,12 @@
           "0101"
         ],
         "adapter_test": true,
-        "drift_note": "Upstream firmware observed OK, app/docs may expect SENT; LICHEN rejects until local message ingress exists."
+        "drift_note": "Upstream firmware observed OK, app/docs may expect SENT; LICHEN rejects in the canonical no-provider fixture and succeeds in configured submit-provider tests."
       }
     },
     {
-      "name": "send_txt_msg_direct_unsupported",
-      "description": "Direct text requires LICHEN peer identity projection and is deterministic unsupported for now.",
+      "name": "send_txt_msg_direct_malformed_prefix",
+      "description": "Direct text requires a 6-byte MeshCore peer prefix before the UTF-8 payload; shorter direct-send payloads are malformed.",
       "source_baseline": {
         "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
         "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
@@ -384,7 +384,36 @@
       },
       "expect": {
         "responses": [
-          "0101"
+          "0106"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "send_txt_msg_direct_unknown_peer",
+      "description": "Direct text with a 6-byte MeshCore peer prefix returns not-found until the prefix maps to exactly one known LICHEN peer.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "020102030405066869",
+      "decoded": {
+        "command": "SEND_TXT_MSG",
+        "prefix": "010203040506",
+        "payload_utf8": "hi"
+      },
+      "expect": {
+        "responses": [
+          "0102"
         ],
         "adapter_test": true
       }

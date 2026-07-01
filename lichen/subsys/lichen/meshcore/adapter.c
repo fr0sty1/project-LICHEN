@@ -358,6 +358,181 @@ static int enqueue_channel(struct lichen_meshcore_adapter *adapter,
 	return enqueue(adapter, out, sizeof(out));
 }
 
+static uint8_t meshcore_error_from_errno(int err)
+{
+	switch (err) {
+	case -ENOENT:
+	case -ENODEV:
+	case -ENOTCONN:
+		return LICHEN_MESHCORE_ERR_NOT_FOUND;
+	case -ENOMEM:
+	case -ENOSPC:
+		return LICHEN_MESHCORE_ERR_TABLE_FULL;
+	case -EAGAIN:
+	case -EBUSY:
+	case -EALREADY:
+		return LICHEN_MESHCORE_ERR_BAD_STATE;
+	case -EINVAL:
+	case -EMSGSIZE:
+	case -ERANGE:
+		return LICHEN_MESHCORE_ERR_ILLEGAL_ARG;
+	case -ENOTSUP:
+	case -ENOSYS:
+	default:
+		return LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD;
+	}
+}
+
+static bool valid_utf8_text(const uint8_t *payload, size_t payload_len)
+{
+	size_t i = 0U;
+
+	while (i < payload_len) {
+		uint8_t c = payload[i];
+
+		if (c < 0x80U) {
+			i++;
+		} else if (c >= 0xc2U && c <= 0xdfU) {
+			if (i + 1U >= payload_len ||
+			    (payload[i + 1U] & 0xc0U) != 0x80U) {
+				return false;
+			}
+			i += 2U;
+		} else if (c == 0xe0U) {
+			if (i + 2U >= payload_len ||
+			    payload[i + 1U] < 0xa0U ||
+			    payload[i + 1U] > 0xbfU ||
+			    (payload[i + 2U] & 0xc0U) != 0x80U) {
+				return false;
+			}
+			i += 3U;
+		} else if ((c >= 0xe1U && c <= 0xecU) ||
+			   (c >= 0xeeU && c <= 0xefU)) {
+			if (i + 2U >= payload_len ||
+			    (payload[i + 1U] & 0xc0U) != 0x80U ||
+			    (payload[i + 2U] & 0xc0U) != 0x80U) {
+				return false;
+			}
+			i += 3U;
+		} else if (c == 0xedU) {
+			if (i + 2U >= payload_len ||
+			    payload[i + 1U] < 0x80U ||
+			    payload[i + 1U] > 0x9fU ||
+			    (payload[i + 2U] & 0xc0U) != 0x80U) {
+				return false;
+			}
+			i += 3U;
+		} else if (c == 0xf0U) {
+			if (i + 3U >= payload_len ||
+			    payload[i + 1U] < 0x90U ||
+			    payload[i + 1U] > 0xbfU ||
+			    (payload[i + 2U] & 0xc0U) != 0x80U ||
+			    (payload[i + 3U] & 0xc0U) != 0x80U) {
+				return false;
+			}
+			i += 4U;
+		} else if (c >= 0xf1U && c <= 0xf3U) {
+			if (i + 3U >= payload_len ||
+			    (payload[i + 1U] & 0xc0U) != 0x80U ||
+			    (payload[i + 2U] & 0xc0U) != 0x80U ||
+			    (payload[i + 3U] & 0xc0U) != 0x80U) {
+				return false;
+			}
+			i += 4U;
+		} else if (c == 0xf4U) {
+			if (i + 3U >= payload_len ||
+			    payload[i + 1U] < 0x80U ||
+			    payload[i + 1U] > 0x8fU ||
+			    (payload[i + 2U] & 0xc0U) != 0x80U ||
+			    (payload[i + 3U] & 0xc0U) != 0x80U) {
+				return false;
+			}
+			i += 4U;
+		} else {
+			return false;
+		}
+	}
+	return true;
+}
+
+static int preflight_tx_slots(struct lichen_meshcore_adapter *adapter,
+			      uint32_t needed)
+{
+	if (adapter->ops.tx_free == NULL ||
+	    adapter->ops.tx_free(adapter->ops.user_data) < needed) {
+		adapter->stats.enqueue_fail_count++;
+		return -ENOMEM;
+	}
+	return 0;
+}
+
+static int enqueue_channel_text_send(
+	struct lichen_meshcore_adapter *adapter,
+	const struct lichen_meshcore_frame_view *view)
+{
+	uint8_t out[1];
+	uint8_t channel;
+	uint8_t text_type;
+	const uint8_t *payload;
+	size_t payload_len;
+	int ret;
+
+	if (view->payload_len < 2U) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	}
+	if (adapter->ops.submit_text == NULL) {
+		return enqueue_error(adapter,
+				     LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	}
+
+	channel = view->payload[0];
+	text_type = view->payload[1];
+	payload = &view->payload[2];
+	payload_len = view->payload_len - 2U;
+	if (channel != 0U) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_NOT_FOUND);
+	}
+	if (text_type != 0U) {
+		return enqueue_error(adapter,
+				     LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	}
+	if (!valid_utf8_text(payload, payload_len)) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	}
+
+	ret = preflight_tx_slots(adapter, 1U);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = adapter->ops.submit_text(channel, text_type, payload, payload_len,
+				       adapter->ops.user_data);
+	if (ret < 0) {
+		return enqueue_error(adapter, meshcore_error_from_errno(ret));
+	}
+
+	ret = lichen_meshcore_encode_ok(out, sizeof(out));
+	if (ret < 0) {
+		return ret;
+	}
+	adapter->stats.submitted_text_count++;
+	return enqueue(adapter, out, (size_t)ret);
+}
+
+static int enqueue_direct_text_send(
+	struct lichen_meshcore_adapter *adapter,
+	const struct lichen_meshcore_frame_view *view)
+{
+	if (view->payload_len < 6U) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	}
+	if (!valid_utf8_text(&view->payload[6], view->payload_len - 6U)) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	}
+
+	return enqueue_error(adapter, LICHEN_MESHCORE_ERR_NOT_FOUND);
+}
+
 static int dispatch_supported(struct lichen_meshcore_adapter *adapter,
 			      const struct lichen_meshcore_frame_view *view)
 {
@@ -376,6 +551,10 @@ static int dispatch_supported(struct lichen_meshcore_adapter *adapter,
 			enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
 	case LICHEN_MESHCORE_CMD_GET_CHANNEL:
 		return enqueue_channel(adapter, view);
+	case LICHEN_MESHCORE_CMD_SEND_TXT_MSG:
+		return enqueue_direct_text_send(adapter, view);
+	case LICHEN_MESHCORE_CMD_SEND_CHANNEL_TXT_MSG:
+		return enqueue_channel_text_send(adapter, view);
 	case LICHEN_MESHCORE_CMD_SYNC_NEXT_MESSAGE:
 		return view->payload_len == 0U ?
 			enqueue_next_pending(adapter) :

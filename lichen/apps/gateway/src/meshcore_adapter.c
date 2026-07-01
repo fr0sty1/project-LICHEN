@@ -35,6 +35,19 @@ static bool s_sink_registered;
 static uint8_t s_sink_id;
 static uint32_t s_dispatch_epoch;
 static uint32_t s_adapter_epoch;
+static bool s_command_dispatching;
+static k_tid_t s_command_dispatch_thread;
+
+static int lock_adapter_for_egress(void)
+{
+	if (s_command_dispatching &&
+	    s_command_dispatch_thread == k_current_get()) {
+		return -EBUSY;
+	}
+
+	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
+	return 0;
+}
 
 static int enqueue_tx(const uint8_t *frame, size_t len, void *user_data)
 {
@@ -50,11 +63,30 @@ static uint32_t tx_free(void *user_data)
 	return ble_meshcore_tx_free();
 }
 
+static int submit_text(uint8_t channel, uint8_t text_type,
+		       const uint8_t *payload, size_t payload_len,
+		       void *user_data)
+{
+	const struct lichen_app_text_event event = {
+		.from = 0U,
+		.to = UINT32_MAX,
+		.payload = payload,
+		.payload_len = payload_len,
+	};
+
+	ARG_UNUSED(channel);
+	ARG_UNUSED(text_type);
+	ARG_UNUSED(user_data);
+
+	return lichen_app_interface_submit_text(&event);
+}
+
 static struct lichen_meshcore_adapter_ops adapter_ops(void)
 {
 	return (struct lichen_meshcore_adapter_ops){
 		.enqueue_tx = enqueue_tx,
 		.tx_free = tx_free,
+		.submit_text = submit_text,
 	};
 }
 
@@ -93,7 +125,10 @@ static int meshcore_text_sink(const struct lichen_app_text_event *event,
 		.has_id = event->has_id,
 	};
 
-	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
+	ret = lock_adapter_for_egress();
+	if (ret < 0) {
+		return ret;
+	}
 	s_dispatch_epoch = sync_adapter_session_locked();
 	ret = lichen_meshcore_adapter_emit_text(&s_adapter, &meshcore_event);
 	k_mutex_unlock(&s_adapter_mutex);
@@ -125,7 +160,10 @@ static int meshcore_status_sink(const struct lichen_app_status_event *event,
 		.has_error_reason = event->has_error_reason,
 	};
 
-	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
+	ret = lock_adapter_for_egress();
+	if (ret < 0) {
+		return ret;
+	}
 	s_dispatch_epoch = sync_adapter_session_locked();
 	ret = lichen_meshcore_adapter_emit_status(&s_adapter, &meshcore_event);
 	k_mutex_unlock(&s_adapter_mutex);
@@ -163,6 +201,8 @@ void gateway_meshcore_adapter_test_reset(void)
 	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
 	s_dispatch_epoch = 0U;
 	s_adapter_epoch = ble_meshcore_session_epoch();
+	s_command_dispatching = false;
+	s_command_dispatch_thread = NULL;
 	lichen_meshcore_adapter_init(&s_adapter, &ops);
 	k_mutex_unlock(&s_adapter_mutex);
 	(void)ensure_app_sink();
@@ -188,8 +228,12 @@ int gateway_meshcore_adapter_test_process_once(void)
 		return -ESTALE;
 	}
 
+	s_command_dispatching = true;
+	s_command_dispatch_thread = k_current_get();
 	ret = lichen_meshcore_adapter_process_raw(&s_adapter, s_rx_frame,
 						  frame_len);
+	s_command_dispatching = false;
+	s_command_dispatch_thread = NULL;
 	k_mutex_unlock(&s_adapter_mutex);
 	return ret;
 }
@@ -226,9 +270,13 @@ static void adapter_thread(void *a, void *b, void *c)
 			continue;
 		}
 
+		s_command_dispatching = true;
+		s_command_dispatch_thread = k_current_get();
 		ret = lichen_meshcore_adapter_process_raw(&s_adapter,
 							  s_rx_frame,
 							  frame_len);
+		s_command_dispatching = false;
+		s_command_dispatch_thread = NULL;
 		if (ret < 0) {
 			LOG_WRN("MeshCore command dispatch failed: %d", ret);
 		}

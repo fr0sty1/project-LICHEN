@@ -13,8 +13,10 @@
 struct sink_ctx {
 	uint32_t text_count;
 	uint32_t status_count;
+	uint32_t submit_count;
 	int text_ret;
 	int status_ret;
+	int submit_ret;
 	int get_status_ret;
 	int get_config_ret;
 	int set_config_ret;
@@ -40,6 +42,29 @@ static int text_sink(const struct lichen_app_text_event *event, void *user_data)
 	}
 
 	ctx->text_count++;
+	ctx->last_from = event->from;
+	ctx->last_to = event->to;
+	ctx->last_id = event->id;
+	ctx->payload_len = event->payload_len;
+	if (event->payload_len > 0U) {
+		memcpy(ctx->payload, event->payload, event->payload_len);
+	}
+	return 0;
+}
+
+static int submit_text_sink(const struct lichen_app_text_event *event,
+			    void *user_data)
+{
+	struct sink_ctx *ctx = user_data;
+
+	if (event == NULL || ctx == NULL) {
+		return -EINVAL;
+	}
+	if (ctx->submit_ret < 0) {
+		return ctx->submit_ret;
+	}
+
+	ctx->submit_count++;
 	ctx->last_from = event->from;
 	ctx->last_to = event->to;
 	ctx->last_id = event->id;
@@ -202,6 +227,42 @@ ZTEST(app_interface, test_status_fanout)
 	zassert_equal(stats().status_delivery_count, 1U);
 }
 
+ZTEST(app_interface, test_submit_text_uses_separate_sink)
+{
+	struct sink_ctx emit;
+	struct sink_ctx submit;
+	const uint8_t payload[] = { 'h', 'i' };
+	const struct lichen_app_text_event event = {
+		.from = 10U,
+		.to = 20U,
+		.id = 30U,
+		.payload = payload,
+		.payload_len = sizeof(payload),
+		.has_id = true,
+	};
+	const struct lichen_app_interface_sink emit_sink = {
+		.emit_text = text_sink,
+		.user_data = &emit,
+	};
+	const struct lichen_app_interface_sink submit_sink = {
+		.submit_text = submit_text_sink,
+		.user_data = &submit,
+	};
+
+	reset_ctx(&emit);
+	reset_ctx(&submit);
+	zassert_ok(lichen_app_interface_register_sink(&emit_sink, NULL));
+	zassert_ok(lichen_app_interface_register_sink(&submit_sink, NULL));
+	zassert_ok(lichen_app_interface_submit_text(&event));
+
+	zassert_equal(emit.text_count, 0U);
+	zassert_equal(submit.submit_count, 1U);
+	zassert_equal(submit.last_from, event.from);
+	zassert_mem_equal(submit.payload, payload, sizeof(payload));
+	zassert_equal(stats().text_submit_count, 1U);
+	zassert_equal(stats().text_submit_delivery_count, 1U);
+}
+
 ZTEST(app_interface, test_no_subscriber_is_unsupported)
 {
 	const uint8_t payload[] = { 'x' };
@@ -211,7 +272,8 @@ ZTEST(app_interface, test_no_subscriber_is_unsupported)
 	};
 
 	zassert_equal(lichen_app_interface_emit_text(&event), -ENOTSUP);
-	zassert_equal(stats().no_subscriber_count, 1U);
+	zassert_equal(lichen_app_interface_submit_text(&event), -ENOTSUP);
+	zassert_equal(stats().no_subscriber_count, 2U);
 }
 
 ZTEST(app_interface, test_backpressure_propagates)
@@ -231,6 +293,26 @@ ZTEST(app_interface, test_backpressure_propagates)
 	ctx.text_ret = -ENOMEM;
 	zassert_ok(lichen_app_interface_register_sink(&sink, NULL));
 	zassert_equal(lichen_app_interface_emit_text(&event), -ENOMEM);
+	zassert_equal(stats().backpressure_count, 1U);
+}
+
+ZTEST(app_interface, test_submit_backpressure_propagates)
+{
+	struct sink_ctx ctx;
+	const uint8_t payload[] = { 'x' };
+	const struct lichen_app_text_event event = {
+		.payload = payload,
+		.payload_len = sizeof(payload),
+	};
+	const struct lichen_app_interface_sink sink = {
+		.submit_text = submit_text_sink,
+		.user_data = &ctx,
+	};
+
+	reset_ctx(&ctx);
+	ctx.submit_ret = -ENOMEM;
+	zassert_ok(lichen_app_interface_register_sink(&sink, NULL));
+	zassert_equal(lichen_app_interface_submit_text(&event), -ENOMEM);
 	zassert_equal(stats().backpressure_count, 1U);
 }
 
@@ -273,7 +355,8 @@ ZTEST(app_interface, test_invalid_inputs_and_payload_bounds)
 	zassert_equal(lichen_app_interface_emit_text(NULL), -EINVAL);
 	zassert_equal(lichen_app_interface_emit_status(NULL), -EINVAL);
 	zassert_equal(lichen_app_interface_emit_text(&too_big), -EMSGSIZE);
-	zassert_equal(stats().invalid_count, 3U);
+	zassert_equal(lichen_app_interface_submit_text(&too_big), -EMSGSIZE);
+	zassert_equal(stats().invalid_count, 4U);
 }
 
 ZTEST(app_interface, test_register_capacity_and_unregister)
@@ -357,6 +440,14 @@ ZTEST(app_interface, test_provider_hooks_are_single_owner)
 		.set_config = set_config_sink,
 		.user_data = &b,
 	};
+	const struct lichen_app_interface_sink submit_owner = {
+		.submit_text = submit_text_sink,
+		.user_data = &a,
+	};
+	const struct lichen_app_interface_sink submit_duplicate = {
+		.submit_text = submit_text_sink,
+		.user_data = &b,
+	};
 
 	reset_ctx(&a);
 	reset_ctx(&b);
@@ -367,6 +458,11 @@ ZTEST(app_interface, test_provider_hooks_are_single_owner)
 
 	zassert_ok(lichen_app_interface_register_sink(&config_owner, NULL));
 	zassert_equal(lichen_app_interface_register_sink(&config_duplicate, NULL),
+		      -EALREADY);
+	lichen_app_interface_test_reset();
+
+	zassert_ok(lichen_app_interface_register_sink(&submit_owner, NULL));
+	zassert_equal(lichen_app_interface_register_sink(&submit_duplicate, NULL),
 		      -EALREADY);
 }
 

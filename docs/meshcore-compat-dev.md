@@ -21,7 +21,7 @@ The MVP exposes one synthetic channel slot:
 | `GET_CHANNEL(0)` | Return a public compatibility channel named `Public`. Secret fields are zero/absent placeholders and MUST NOT contain native LICHEN secrets. |
 | `GET_CHANNEL(n>0)` | Return `ERR_NOT_FOUND`. |
 | `SET_CHANNEL` | Return `ERR_UNSUPPORTED_CMD` until a settings-backed compatibility-only channel store exists. MeshCore channel secrets MUST NOT be imported as native LICHEN security material. |
-| `SEND_CHANNEL_TXT_MSG` | Return `ERR_UNSUPPORTED_CMD` until local message ingress maps app text into a real LICHEN send contract. |
+| `SEND_CHANNEL_TXT_MSG` | Validate channel `0`, plain text type, and UTF-8, then submit to the shared app-interface text ingress provider. Return `ERR_UNSUPPORTED_CMD` when no production submit provider is registered. |
 | Incoming channel text | Use compatibility channel index `0` and no MeshCore path when surfacing queued LICHEN events to clients. |
 
 Future support for `SET_CHANNEL` may persist a MeshCore-only display/channel

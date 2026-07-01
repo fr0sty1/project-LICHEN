@@ -34,6 +34,12 @@ struct test_ctx {
 	struct out_slot out[OUT_DEPTH];
 	size_t count;
 	size_t limit;
+	uint8_t submit_channel;
+	uint8_t submit_text_type;
+	uint8_t submit_payload[LICHEN_MESHCORE_FRAME_MAX];
+	size_t submit_payload_len;
+	uint32_t submit_count;
+	int submit_ret;
 };
 
 static int enqueue_cb(const uint8_t *frame, size_t len, void *user_data)
@@ -63,6 +69,30 @@ static uint32_t tx_free_cb(void *user_data)
 	return (uint32_t)(ctx->limit - ctx->count);
 }
 
+static int submit_text_cb(uint8_t channel, uint8_t text_type,
+			  const uint8_t *payload, size_t payload_len,
+			  void *user_data)
+{
+	struct test_ctx *ctx = user_data;
+
+	if (ctx == NULL || (payload == NULL && payload_len > 0U) ||
+	    payload_len > sizeof(ctx->submit_payload)) {
+		return -EINVAL;
+	}
+	if (ctx->submit_ret < 0) {
+		return ctx->submit_ret;
+	}
+
+	ctx->submit_channel = channel;
+	ctx->submit_text_type = text_type;
+	ctx->submit_payload_len = payload_len;
+	if (payload_len > 0U) {
+		memcpy(ctx->submit_payload, payload, payload_len);
+	}
+	ctx->submit_count++;
+	return 0;
+}
+
 static void init_adapter(struct lichen_meshcore_adapter *adapter,
 			 struct test_ctx *ctx, size_t limit)
 {
@@ -74,6 +104,35 @@ static void init_adapter(struct lichen_meshcore_adapter *adapter,
 
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->limit = limit;
+	lichen_meshcore_adapter_init(adapter, &ops);
+}
+
+static void init_adapter_with_submit(struct lichen_meshcore_adapter *adapter,
+				     struct test_ctx *ctx, size_t limit)
+{
+	const struct lichen_meshcore_adapter_ops ops = {
+		.enqueue_tx = enqueue_cb,
+		.tx_free = tx_free_cb,
+		.submit_text = submit_text_cb,
+		.user_data = ctx,
+	};
+
+	memset(ctx, 0, sizeof(*ctx));
+	ctx->limit = limit;
+	lichen_meshcore_adapter_init(adapter, &ops);
+}
+
+static void init_adapter_with_submit_no_tx_free(
+	struct lichen_meshcore_adapter *adapter, struct test_ctx *ctx)
+{
+	const struct lichen_meshcore_adapter_ops ops = {
+		.enqueue_tx = enqueue_cb,
+		.submit_text = submit_text_cb,
+		.user_data = ctx,
+	};
+
+	memset(ctx, 0, sizeof(*ctx));
+	ctx->limit = OUT_DEPTH;
 	lichen_meshcore_adapter_init(adapter, &ops);
 }
 
@@ -127,10 +186,10 @@ ZTEST(meshcore_adapter, test_canonical_app_compat_vectors)
 
 	Z_TEST_SKIP_IFDEF(CONFIG_LICHEN_APP_IDENTITY);
 
-	zassert_equal(MESHCORE_VECTOR_SOURCE_COUNT, 32U);
+	zassert_equal(MESHCORE_VECTOR_SOURCE_COUNT, 33U);
 	zassert_equal(MESHCORE_VECTOR_ADAPTER_COUNT,
 		      ARRAY_SIZE(meshcore_vectors));
-	zassert_equal(MESHCORE_VECTOR_ADAPTER_COUNT, 26U);
+	zassert_equal(MESHCORE_VECTOR_ADAPTER_COUNT, 27U);
 
 	for (size_t i = 0U; i < ARRAY_SIZE(meshcore_vectors); i++) {
 		const struct meshcore_vector *v = &meshcore_vectors[i];
@@ -349,6 +408,149 @@ ZTEST(meshcore_adapter, test_phase1_startup_read_commands)
 	zassert_equal(ctx.out[0].len, 1U);
 }
 
+ZTEST(meshcore_adapter, test_send_channel_text_submits_local_message)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t send[] = {
+		LICHEN_MESHCORE_CMD_SEND_CHANNEL_TXT_MSG,
+		0x00, /* compatibility channel */
+		0x00, /* plain text */
+		'h', 'i',
+	};
+
+	init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, send,
+							  sizeof(send)), 0);
+	zassert_equal(ctx.submit_count, 1U);
+	zassert_equal(ctx.submit_channel, 0U);
+	zassert_equal(ctx.submit_text_type, 0U);
+	zassert_equal(ctx.submit_payload_len, 2U);
+	zassert_mem_equal(ctx.submit_payload, "hi", 2U);
+	expect_bytes(&ctx, 0U, (const uint8_t[]){ LICHEN_MESHCORE_RESP_OK },
+		     1U);
+	zassert_equal(lichen_meshcore_adapter_get_stats(&adapter)->
+		      submitted_text_count, 1U);
+}
+
+ZTEST(meshcore_adapter, test_send_channel_text_validation_errors)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t too_short[] = {
+		LICHEN_MESHCORE_CMD_SEND_CHANNEL_TXT_MSG, 0x00,
+	};
+	const uint8_t unknown_channel[] = {
+		LICHEN_MESHCORE_CMD_SEND_CHANNEL_TXT_MSG, 0x01, 0x00, 'x',
+	};
+	const uint8_t unsupported_type[] = {
+		LICHEN_MESHCORE_CMD_SEND_CHANNEL_TXT_MSG, 0x00, 0x01, 'x',
+	};
+	const uint8_t invalid_utf8[] = {
+		LICHEN_MESHCORE_CMD_SEND_CHANNEL_TXT_MSG, 0x00, 0x00, 0x80,
+	};
+	const uint8_t valid[] = {
+		LICHEN_MESHCORE_CMD_SEND_CHANNEL_TXT_MSG, 0x00, 0x00, 'x',
+	};
+
+	init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, too_short,
+							  sizeof(too_short)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+
+	init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter,
+							  unknown_channel,
+							  sizeof(unknown_channel)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_NOT_FOUND);
+
+	init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter,
+							  unsupported_type,
+							  sizeof(unsupported_type)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+
+	init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter,
+							  invalid_utf8,
+							  sizeof(invalid_utf8)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, valid,
+							  sizeof(valid)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+}
+
+ZTEST(meshcore_adapter, test_send_channel_text_callback_errors_map)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t valid[] = {
+		LICHEN_MESHCORE_CMD_SEND_CHANNEL_TXT_MSG, 0x00, 0x00, 'x',
+	};
+
+	init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+	ctx.submit_ret = -EMSGSIZE;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, valid,
+							  sizeof(valid)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+
+	init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+	ctx.submit_ret = -ENOMEM;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, valid,
+							  sizeof(valid)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_TABLE_FULL);
+
+	init_adapter_with_submit(&adapter, &ctx, 0U);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, valid,
+							  sizeof(valid)), -ENOMEM);
+	zassert_equal(ctx.submit_count, 0U);
+	zassert_equal(ctx.count, 0U);
+
+	init_adapter_with_submit_no_tx_free(&adapter, &ctx);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, valid,
+							  sizeof(valid)), -ENOMEM);
+	zassert_equal(ctx.submit_count, 0U);
+	zassert_equal(ctx.count, 0U);
+}
+
+ZTEST(meshcore_adapter, test_send_direct_text_without_peer_is_not_found)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t direct[] = {
+		LICHEN_MESHCORE_CMD_SEND_TXT_MSG,
+		0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+		'h', 'i',
+	};
+	const uint8_t direct_short[] = {
+		LICHEN_MESHCORE_CMD_SEND_TXT_MSG,
+		0x01, 0x02, 0x03,
+	};
+	const uint8_t direct_invalid_utf8[] = {
+		LICHEN_MESHCORE_CMD_SEND_TXT_MSG,
+		0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+		0xc0,
+	};
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, direct,
+							  sizeof(direct)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_NOT_FOUND);
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, direct_short,
+							  sizeof(direct_short)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter,
+							  direct_invalid_utf8,
+							  sizeof(direct_invalid_utf8)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+}
+
 ZTEST(meshcore_adapter, test_unsupported_and_unknown_commands_are_errors)
 {
 	struct lichen_meshcore_adapter adapter;
@@ -384,6 +586,8 @@ static bool is_phase1_supported(uint8_t cmd)
 {
 	switch (cmd) {
 	case LICHEN_MESHCORE_CMD_APP_START:
+	case LICHEN_MESHCORE_CMD_SEND_TXT_MSG:
+	case LICHEN_MESHCORE_CMD_SEND_CHANNEL_TXT_MSG:
 	case LICHEN_MESHCORE_CMD_GET_CONTACTS:
 	case LICHEN_MESHCORE_CMD_GET_DEVICE_TIME:
 	case LICHEN_MESHCORE_CMD_SYNC_NEXT_MESSAGE:

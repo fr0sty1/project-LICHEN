@@ -14,6 +14,9 @@ typedef int (*lichen_meshcore_adapter_enqueue_fn)(const uint8_t *frame,
 						  size_t len,
 						  void *user_data);
 typedef uint32_t (*lichen_meshcore_adapter_tx_free_fn)(void *user_data);
+typedef int (*lichen_meshcore_adapter_submit_text_fn)(
+	uint8_t channel, uint8_t text_type, const uint8_t *payload,
+	size_t payload_len, void *user_data);
 
 struct lichen_meshcore_incoming_text {
 	uint32_t from;
@@ -38,6 +41,7 @@ struct lichen_meshcore_adapter_ops {
 	lichen_meshcore_adapter_enqueue_fn enqueue_tx;
 	/* Required for handlers that emit multiple response frames atomically. */
 	lichen_meshcore_adapter_tx_free_fn tx_free;
+	lichen_meshcore_adapter_submit_text_fn submit_text;
 	void *user_data;
 };
 
@@ -50,6 +54,7 @@ struct lichen_meshcore_adapter_stats {
 	uint32_t enqueue_fail_count;
 	uint32_t incoming_text_count;
 	uint32_t incoming_status_count;
+	uint32_t submitted_text_count;
 	uint32_t pending_full_count;
 	uint32_t pending_drop_count;
 	uint32_t waiting_push_fail_count;

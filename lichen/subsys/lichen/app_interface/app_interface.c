@@ -28,6 +28,7 @@ static bool same_sink(const struct lichen_app_interface_sink *a,
 {
 	return a->emit_text == b->emit_text &&
 	       a->emit_status == b->emit_status &&
+	       a->submit_text == b->submit_text &&
 	       a->get_status == b->get_status &&
 	       a->get_config == b->get_config &&
 	       a->set_config == b->set_config &&
@@ -38,6 +39,7 @@ static bool valid_sink(const struct lichen_app_interface_sink *sink)
 {
 	return sink != NULL &&
 	       (sink->emit_text != NULL || sink->emit_status != NULL ||
+		sink->submit_text != NULL ||
 		sink->get_status != NULL || sink->get_config != NULL ||
 		sink->set_config != NULL);
 }
@@ -58,7 +60,8 @@ static bool provider_conflict(const struct lichen_app_interface_sink *existing,
 			       existing->set_config != NULL;
 
 	return (candidate->get_status != NULL && existing->get_status != NULL) ||
-	       (candidate_config && existing_config);
+	       (candidate_config && existing_config) ||
+	       (candidate->submit_text != NULL && existing->submit_text != NULL);
 }
 
 int lichen_app_interface_register_sink(
@@ -147,6 +150,21 @@ static size_t snapshot_status_sinks(
 	return count;
 }
 
+static size_t snapshot_submit_text_sinks(
+	struct lichen_app_interface_sink *snapshot, size_t snapshot_len)
+{
+	size_t count = 0U;
+
+	k_mutex_lock(&s_mutex, K_FOREVER);
+	for (uint8_t i = 0U; i < ARRAY_SIZE(s_sinks) && count < snapshot_len; i++) {
+		if (s_sinks[i].used && s_sinks[i].sink.submit_text != NULL) {
+			snapshot[count++] = s_sinks[i].sink;
+		}
+	}
+	k_mutex_unlock(&s_mutex);
+	return count;
+}
+
 static size_t snapshot_get_status_sinks(
 	struct lichen_app_interface_sink *snapshot, size_t snapshot_len)
 {
@@ -203,6 +221,13 @@ static void count_emit(bool status)
 	k_mutex_unlock(&s_mutex);
 }
 
+static void count_submit_text(void)
+{
+	k_mutex_lock(&s_mutex, K_FOREVER);
+	s_stats.text_submit_count++;
+	k_mutex_unlock(&s_mutex);
+}
+
 static void count_delivery(bool status)
 {
 	k_mutex_lock(&s_mutex, K_FOREVER);
@@ -211,6 +236,13 @@ static void count_delivery(bool status)
 	} else {
 		s_stats.text_delivery_count++;
 	}
+	k_mutex_unlock(&s_mutex);
+}
+
+static void count_submit_text_delivery(void)
+{
+	k_mutex_lock(&s_mutex, K_FOREVER);
+	s_stats.text_submit_delivery_count++;
 	k_mutex_unlock(&s_mutex);
 }
 
@@ -261,6 +293,38 @@ int lichen_app_interface_emit_text(
 		if (ret == 0) {
 			delivered++;
 			count_delivery(false);
+		} else if (first_error == 0) {
+			first_error = ret;
+		}
+	}
+	return finish_emit(false, sink_count, delivered, first_error);
+}
+
+int lichen_app_interface_submit_text(
+	const struct lichen_app_text_event *event)
+{
+	struct lichen_app_interface_sink snapshot[SINK_MAX];
+	size_t sink_count;
+	size_t delivered = 0U;
+	int first_error = 0;
+
+	if (!valid_text(event)) {
+		k_mutex_lock(&s_mutex, K_FOREVER);
+		s_stats.invalid_count++;
+		k_mutex_unlock(&s_mutex);
+		return event != NULL &&
+		       event->payload_len > CONFIG_LICHEN_APP_INTERFACE_MAX_PAYLOAD ?
+		       -EMSGSIZE : -EINVAL;
+	}
+
+	count_submit_text();
+	sink_count = snapshot_submit_text_sinks(snapshot, ARRAY_SIZE(snapshot));
+	for (size_t i = 0U; i < sink_count; i++) {
+		int ret = snapshot[i].submit_text(event, snapshot[i].user_data);
+
+		if (ret == 0) {
+			delivered++;
+			count_submit_text_delivery();
 		} else if (first_error == 0) {
 			first_error = ret;
 		}
