@@ -1,0 +1,34 @@
+{
+  "id": "project-LICHEN-9c4y.18",
+  "title": "Add MeshCore app compatibility codec vectors",
+  "description": "Why this exists: project-LICHEN-9c4y.3 chose a handwritten MeshCore byte-command codec, and project rules require packet formats to have canonical vectors. What needs to be done: create test/vectors/meshcore_app_compat.json (or equivalent) with pinned MeshCore source SHAs, raw frame hex, direction, transport type, parsed fields, expected responses/errors, malformed/oversized cases, and drift notes. Acceptance criteria: vectors cover APP_START, DEVICE_QUERY, GET_CONTACTS, GET_CHANNEL, SYNC_NEXT_MESSAGE, battery/storage, time, channel/direct text, serial/TCP framing, BLE raw frames, unknown commands, and at least one SEND_CHANNEL_TXT_MSG ACK drift case; future C tests consume the vectors or generated fixture header.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T08:40:03.090342Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T08:40:03.091129Z",
+  "labels": [
+    "zephyr",
+    "meshcore",
+    "codec",
+    "test-vectors",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c4y.18",
+      "depends_on_id": "project-LICHEN-9c4y",
+      "type": "parent-child",
+      "created_at": "2026-07-01T08:40:03.090775Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c4y.18",
+      "depends_on_id": "project-LICHEN-9c4y.3",
+      "type": "discovered-from",
+      "created_at": "2026-07-01T08:40:03.091129Z"
+    }
+  ]
+}
