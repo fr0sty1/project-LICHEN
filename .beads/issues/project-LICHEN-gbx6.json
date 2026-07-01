@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-gbx6",
+  "title": "Create shared Zephyr app-interface event contract",
+  "description": "Why this exists: project-LICHEN-9c4y.2 contract work found that gateway_inbound_events is app-local and Meshtastic-specific fanout is hardwired, while MeshCore, Meshtastic, Native, CoAP, and future app surfaces need the same text/status/config/local-info boundary. What needs to be done: design and implement a small Zephyr-safe lichen_app_interface subsystem or shared library for app ingress/egress events, local info, config/status access, queue/drop semantics, and adapter registration without creating app-specific coupling. Acceptance criteria: Meshtastic and MeshCore adapters can share the event contract; gateway_inbound_* either moves behind it or delegates to it; native_sim tests cover text/status event fanout and unsupported/no-subscriber behavior; no RF protocol bypass is introduced.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T08:36:05.691587Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T08:36:05.692109Z",
+  "labels": [
+    "zephyr",
+    "app-interface",
+    "meshcore",
+    "meshtastic",
+    "gateway",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-gbx6",
+      "depends_on_id": "project-LICHEN-9c4y.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-01T08:36:05.692109Z"
+    }
+  ]
+}
