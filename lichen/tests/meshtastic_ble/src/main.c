@@ -217,6 +217,103 @@ ZTEST(meshtastic_ble, test_stale_connection_write_is_rejected)
 		      0);
 }
 
+ZTEST(meshtastic_ble, test_owner_connection_write_and_disconnect_cleanup)
+{
+	const uint8_t heartbeat[] = { 0x3a, 0x00 };
+	const uint8_t response[] = { 0x38, 0xac, 0x9e, 0x04 };
+	struct bt_conn *conn = (struct bt_conn *)0x1;
+	struct bt_conn *other_conn = (struct bt_conn *)0x2;
+	struct ble_app_owner_test_state owner_state;
+	uint8_t out[sizeof(heartbeat)];
+	size_t out_len;
+	uint32_t epoch;
+	uint32_t stale_epoch;
+
+	zassert_ok(ble_meshtastic_init());
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_true(owner_state.has_connected);
+	zassert_true(owner_state.has_disconnected);
+
+	stale_epoch = ble_meshtastic_session_epoch();
+	ble_app_owner_test_connected(conn, 0U);
+	epoch = ble_meshtastic_session_epoch();
+	zassert_not_equal(epoch, stale_epoch);
+	zassert_true(ble_meshtastic_session_active());
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_true(owner_state.has_connection);
+	zassert_equal(owner_state.conn_ref_count, 1U);
+
+	zassert_equal(ble_meshtastic_test_write_to_radio_conn(
+			      heartbeat, sizeof(heartbeat), conn),
+		      sizeof(heartbeat));
+	zassert_equal(ble_meshtastic_dequeue_to_radio(out, sizeof(out),
+						      &out_len, &stale_epoch),
+		      1);
+	zassert_equal(stale_epoch, epoch);
+	zassert_equal(out_len, sizeof(heartbeat));
+	zassert_mem_equal(out, heartbeat, sizeof(heartbeat));
+
+	zassert_true(ble_meshtastic_test_write_to_radio_conn(
+			     heartbeat, sizeof(heartbeat), other_conn) < 0);
+	zassert_equal(ble_meshtastic_dequeue_to_radio(out, sizeof(out),
+						      &out_len, &stale_epoch),
+		      0);
+
+	zassert_equal(ble_meshtastic_enqueue_from_radio_if_session(
+			      epoch, response, sizeof(response)),
+		      0);
+	zassert_equal(ble_meshtastic_from_radio_free(),
+		      ble_meshtastic_from_radio_capacity() - 1U);
+
+	ble_app_owner_test_disconnected(other_conn, 19U);
+	zassert_true(ble_meshtastic_session_active());
+	zassert_equal(ble_meshtastic_from_radio_free(),
+		      ble_meshtastic_from_radio_capacity() - 1U);
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_equal(owner_state.adv_start_count, 1U);
+
+	ble_app_owner_test_disconnected(conn, 19U);
+	zassert_false(ble_meshtastic_session_active());
+	zassert_false(ble_meshtastic_session_epoch_current(epoch));
+	zassert_equal(ble_meshtastic_enqueue_from_radio_if_session(
+			      epoch, response, sizeof(response)),
+		      -ESTALE);
+	zassert_equal(ble_meshtastic_from_radio_free(),
+		      ble_meshtastic_from_radio_capacity());
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_false(owner_state.has_connection);
+	zassert_equal(owner_state.adv_start_count, 2U);
+	zassert_equal(owner_state.conn_ref_count, owner_state.conn_unref_count);
+}
+
+ZTEST(meshtastic_ble, test_reconnect_rejects_old_connection_write)
+{
+	const uint8_t heartbeat[] = { 0x3a, 0x00 };
+	struct bt_conn *old_conn = (struct bt_conn *)0x1;
+	struct bt_conn *new_conn = (struct bt_conn *)0x2;
+	uint8_t out[sizeof(heartbeat)];
+	size_t out_len;
+	uint32_t old_epoch;
+	uint32_t new_epoch;
+
+	zassert_ok(ble_meshtastic_init());
+	ble_app_owner_test_connected(old_conn, 0U);
+	old_epoch = ble_meshtastic_session_epoch();
+	ble_app_owner_test_disconnected(old_conn, 19U);
+	ble_app_owner_test_connected(new_conn, 0U);
+	new_epoch = ble_meshtastic_session_epoch();
+
+	zassert_not_equal(old_epoch, new_epoch);
+	zassert_true(ble_meshtastic_test_write_to_radio_conn(
+			     heartbeat, sizeof(heartbeat), old_conn) < 0);
+	zassert_equal(ble_meshtastic_dequeue_to_radio(out, sizeof(out),
+						      &out_len, &new_epoch),
+		      0);
+	zassert_equal(ble_meshtastic_test_write_to_radio_conn(
+			      heartbeat, sizeof(heartbeat), new_conn),
+		      sizeof(heartbeat));
+}
+
 ZTEST(meshtastic_ble, test_reset_session_if_epoch_preserves_new_session)
 {
 	const uint8_t msg[] = { 0x38, 0xac, 0x9e, 0x04 };
@@ -258,6 +355,8 @@ ZTEST(meshtastic_ble, test_init_uses_meshtastic_owner_advertising)
 	assert_short_name_data(&state.sd[0], "LICHEN");
 	zassert_true((state.adv_options & BT_LE_ADV_OPT_CONNECTABLE) != 0U);
 	zassert_false((state.adv_options & BT_LE_ADV_OPT_USE_NAME) != 0U);
+	zassert_true(state.has_connected);
+	zassert_true(state.has_disconnected);
 }
 
 ZTEST_SUITE(meshtastic_ble, NULL, NULL, meshtastic_ble_before, NULL, NULL);

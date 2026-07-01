@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-t2hn.22.3.1",
+  "title": "Tighten Meshtastic BLE owner-path ztest coverage",
+  "description": "Reviews of project-LICHEN-t2hn.22.3 found two non-blocking test coverage gaps after moving Meshtastic BLE connection ownership behind ble_app_owner: older ToRadio tests still use the parser-only NULL write harness, and notify_from_num() owner conn_ref/conn_unref is not exercised because FromNum CCC notification enablement has no ztest hook. Add native_sim coverage that models owner-connected BLE for relevant ToRadio/session tests and verifies FromNum notification takes/releases the owner-managed connection.",
+  "acceptance_criteria": "Meshtastic BLE native_sim tests cover owner-connected ToRadio writes for session tests that intend connected behavior, and cover notify_from_num() with FromNum notifications enabled, including owner conn_ref/conn_unref balance and stale/disconnected behavior.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T19:46:22.619539Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T19:46:22.62249Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "ble",
+    "app-interface",
+    "test",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.22.3.1",
+      "depends_on_id": "project-LICHEN-t2hn.22.3",
+      "type": "parent-child",
+      "created_at": "2026-07-01T19:46:22.62249Z"
+    }
+  ]
+}
