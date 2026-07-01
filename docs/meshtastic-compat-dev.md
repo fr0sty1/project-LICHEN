@@ -349,7 +349,7 @@ The adapter implements a subset of Meshtastic's protobuf schema.
 | `want_config_id = 69421` | Queue stage-2 node database and matching `config_complete_id` |
 | Other `want_config_id` | Queue legacy/full sync and matching `config_complete_id`; log compatibility nonce |
 | `heartbeat` | Keepalive/liveness trigger; may queue `queueStatus`; never required before sync |
-| `packet` with `TEXT_MESSAGE_APP` | Translate to the shared LICHEN message contract and queue local `queueStatus` |
+| `packet` with `TEXT_MESSAGE_APP` | Validate broadcast primary-channel UTF-8 text up to 200 bytes, call the adapter text hook, and queue local `queueStatus` |
 | `packet` with `POSITION_APP` | Translate to LICHEN position/announce when available; otherwise deterministic no-op status |
 | `packet` with `NODEINFO_APP` | Update transient display metadata only; no persistent Meshtastic identity writes |
 | `packet` with `ADMIN_APP` read request | Return synthetic owner/session/config response for supported read-only requests |
@@ -487,11 +487,13 @@ App: ToRadio { packet: MeshPacket {
 
 Adapter:
     1. Extracts destination (broadcast)
-    2. Creates CoAP POST to /msg
-    3. Payload: "Hello"
-    4. Sends via LICHEN mesh
+    2. Verifies the synthetic primary channel and UTF-8 text payload, with a 200-byte MVP payload limit
+    3. Calls the adapter text hook
+    4. Queues local queueStatus for the Meshtastic app
 
-LICHEN: IPv6/UDP/CoAP packet transmitted
+LICHEN: The app-compat layer does not emit Meshtastic RF packets. The gateway currently reports unsupported for text
+send attempts until the concrete Zephyr `/msg` or local send contract is implemented in `project-LICHEN-t2hn.7.2`.
+Directed Meshtastic node-number resolution is tracked by `project-LICHEN-t2hn.7.1`.
 ```
 
 ### Receiving a Position Update

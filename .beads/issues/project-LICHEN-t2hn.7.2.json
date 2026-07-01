@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-t2hn.7.2",
+  "title": "Implement Zephyr /msg or local message send contract for app ingress",
+  "description": "Why this exists: docs describe Meshtastic TEXT_MESSAGE_APP as a CoAP /msg or /msg/inbox send, but the Zephyr C gateway currently has only /status, /neighbors, and /config resources plus a Meshtastic adapter callback boundary. What needs to be done: define the concrete Zephyr local message ingress API/resource, connect Meshtastic broadcast text callback to it, and document the selected path. Acceptance criteria: no-hardware test observes the message contract call or CoAP request; unsupported/no-route failures are deterministic; no LoRa/RF send path is invoked unless the normal LICHEN stack owns it.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T04:55:53.544413Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T04:55:53.544877Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "messaging",
+    "firmware",
+    "app-interface"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.7.2",
+      "depends_on_id": "project-LICHEN-t2hn.7",
+      "type": "parent-child",
+      "created_at": "2026-07-01T04:55:53.544877Z"
+    }
+  ]
+}

@@ -15,13 +15,20 @@
 #define MESHTASTIC_STREAM_MAGIC0 0x94U
 #define MESHTASTIC_STREAM_MAGIC1 0xc3U
 
+#define MESH_PACKET_FROM_FIELD 1U
+#define MESH_PACKET_TO_FIELD 2U
+#define MESH_PACKET_CHANNEL_FIELD 3U
 #define MESH_PACKET_DECODED_FIELD 4U
+#define MESH_PACKET_ENCRYPTED_FIELD 5U
 #define MESH_PACKET_ID_FIELD 6U
+#define MESH_PACKET_WANT_ACK_FIELD 10U
 
 #define DATA_PORTNUM_FIELD 1U
 #define DATA_PAYLOAD_FIELD 2U
 
 #define MESHTASTIC_PORTNUM_TEXT_MESSAGE_APP 1U
+#define MESHTASTIC_BROADCAST_NODE 0xffffffffU
+#define MESHTASTIC_PRIMARY_CHANNEL 0U
 #define QUEUE_STATUS_OK 0U
 #define QUEUE_STATUS_UNSUPPORTED 2U
 #define QUEUE_STATUS_MALFORMED 3U
@@ -191,6 +198,24 @@ static int parse_packet(const uint8_t *packet, size_t len,
 		}
 
 		switch (field) {
+		case MESH_PACKET_FROM_FIELD:
+			if (wt != PB_WT_32BIT ||
+			    cur.len - cur.pos < sizeof(uint32_t)) {
+				return -EINVAL;
+			}
+			info->from = sys_get_le32(&cur.buf[cur.pos]);
+			info->has_from = true;
+			cur.pos += sizeof(uint32_t);
+			break;
+		case MESH_PACKET_TO_FIELD:
+			if (wt != PB_WT_32BIT ||
+			    cur.len - cur.pos < sizeof(uint32_t)) {
+				return -EINVAL;
+			}
+			info->to = sys_get_le32(&cur.buf[cur.pos]);
+			info->has_to = true;
+			cur.pos += sizeof(uint32_t);
+			break;
 		case MESH_PACKET_ID_FIELD:
 			if (wt == PB_WT_32BIT) {
 				if (cur.len - cur.pos < sizeof(uint32_t)) {
@@ -209,6 +234,20 @@ static int parse_packet(const uint8_t *packet, size_t len,
 				return -EINVAL;
 			}
 			break;
+		case MESH_PACKET_CHANNEL_FIELD:
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0 ||
+			    v > UINT32_MAX) {
+				return -EINVAL;
+			}
+			info->channel = (uint32_t)v;
+			info->has_channel = true;
+			break;
+		case MESH_PACKET_WANT_ACK_FIELD:
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0) {
+				return -EINVAL;
+			}
+			info->want_ack = (v != 0U);
+			break;
 		case MESH_PACKET_DECODED_FIELD:
 			if (wt != PB_WT_LEN ||
 			    pb_read_len_value(&cur, &data, &data_len) < 0) {
@@ -217,6 +256,16 @@ static int parse_packet(const uint8_t *packet, size_t len,
 			if (parse_data(data, data_len, info) < 0) {
 				return -EINVAL;
 			}
+			break;
+		case MESH_PACKET_ENCRYPTED_FIELD:
+			if (wt != PB_WT_LEN ||
+			    pb_read_len_value(&cur, &data, &data_len) < 0) {
+				return -EINVAL;
+			}
+			info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_UNSUPPORTED;
+			info->portnum = 0U;
+			info->payload = NULL;
+			info->payload_len = 0U;
 			break;
 		default:
 			if (pb_skip_value(&cur, wt) < 0) {
@@ -227,6 +276,75 @@ static int parse_packet(const uint8_t *packet, size_t len,
 	}
 
 	return 0;
+}
+
+static bool utf8_is_valid(const uint8_t *data, size_t len)
+{
+	size_t pos = 0U;
+
+	while (pos < len) {
+		uint8_t c = data[pos++];
+		size_t need;
+		uint32_t cp;
+
+		if (c <= 0x7fU) {
+			continue;
+		}
+		if (c >= 0xc2U && c <= 0xdfU) {
+			need = 1U;
+			cp = c & 0x1fU;
+		} else if (c >= 0xe0U && c <= 0xefU) {
+			need = 2U;
+			cp = c & 0x0fU;
+		} else if (c >= 0xf0U && c <= 0xf4U) {
+			need = 3U;
+			cp = c & 0x07U;
+		} else {
+			return false;
+		}
+
+		if (len - pos < need) {
+			return false;
+		}
+		for (size_t i = 0U; i < need; i++) {
+			uint8_t cc = data[pos++];
+
+			if ((cc & 0xc0U) != 0x80U) {
+				return false;
+			}
+			cp = (cp << 6) | (uint32_t)(cc & 0x3fU);
+		}
+
+		if ((need == 2U && cp < 0x800U) ||
+		    (need == 3U && cp < 0x10000U) ||
+		    (cp >= 0xd800U && cp <= 0xdfffU) ||
+		    cp > 0x10ffffU) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+static bool text_packet_supported(
+	const struct lichen_meshtastic_adapter_packet_info *packet)
+{
+	if (packet->payload == NULL || packet->payload_len == 0U ||
+	    packet->payload_len > LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX ||
+	    !utf8_is_valid(packet->payload, packet->payload_len)) {
+		return false;
+	}
+
+	if (!packet->has_to || packet->to != MESHTASTIC_BROADCAST_NODE) {
+		return false;
+	}
+
+	if (packet->has_channel &&
+	    packet->channel != MESHTASTIC_PRIMARY_CHANNEL) {
+		return false;
+	}
+
+	return true;
 }
 
 static int enqueue(struct lichen_meshtastic_adapter *adapter,
@@ -500,11 +618,18 @@ static int dispatch_packet(struct lichen_meshtastic_adapter *adapter,
 	switch (packet.kind) {
 	case LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP:
 		adapter->stats.text_packet_count++;
-		if (adapter->ops.handle_text != NULL) {
-			ret = adapter->ops.handle_text(&packet, adapter->ops.user_data);
-			if (ret < 0) {
-				return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED, &packet);
-			}
+		if (!text_packet_supported(&packet)) {
+			adapter->stats.unsupported_packet_count++;
+			return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED, &packet);
+		}
+		if (adapter->ops.handle_text == NULL) {
+			adapter->stats.unsupported_packet_count++;
+			return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED, &packet);
+		}
+		ret = adapter->ops.handle_text(&packet, adapter->ops.user_data);
+		if (ret < 0) {
+			adapter->stats.unsupported_packet_count++;
+			return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED, &packet);
 		}
 		return queue_status(adapter, QUEUE_STATUS_OK, &packet);
 	case LICHEN_MESHTASTIC_ADAPTER_PACKET_UNSUPPORTED:

@@ -19,6 +19,7 @@ __pycache__/
 /modules/
 /bootloader/
 /build/
+/twister-out/
 /tools/edtt/
 /tools/net-tools/
 

@@ -15,6 +15,7 @@ extern "C" {
 #endif
 
 #define LICHEN_MESHTASTIC_STREAM_HEADER_LEN 4U
+#define LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX 200U
 
 enum lichen_meshtastic_adapter_result {
 	LICHEN_MESHTASTIC_ADAPTER_DISPATCHED = 0,
@@ -29,11 +30,22 @@ enum lichen_meshtastic_adapter_packet_kind {
 
 struct lichen_meshtastic_adapter_packet_info {
 	enum lichen_meshtastic_adapter_packet_kind kind;
+	uint32_t from;
+	uint32_t to;
 	uint32_t id;
+	uint32_t channel;
 	uint32_t portnum;
+	/*
+	 * Points into the ToRadio buffer passed to process_raw/feed_stream.
+	 * The pointer is valid only for the duration of handle_text().
+	 */
 	const uint8_t *payload;
 	size_t payload_len;
+	bool has_from;
+	bool has_to;
 	bool has_id;
+	bool has_channel;
+	bool want_ack;
 };
 
 struct lichen_meshtastic_adapter_stats {

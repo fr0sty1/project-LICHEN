@@ -62,13 +62,14 @@ static int handle_text(
 	}
 
 	/*
-	 * Full ingress into the LICHEN local message contract belongs to
-	 * project-LICHEN-t2hn.7. Until then, accept the packet at the app
-	 * boundary and return local queueStatus without emitting RF packets.
+	 * The shared adapter has validated a broadcast, primary-channel,
+	 * UTF-8 text packet. The concrete Zephyr /msg or local send contract is
+	 * still tracked by project-LICHEN-t2hn.7.2, so report unsupported until
+	 * there is a real local ingress path behind this callback.
 	 */
-	LOG_INF("Meshtastic TEXT_MESSAGE_APP ingress staged: id=%u len=%u",
+	LOG_INF("Meshtastic TEXT_MESSAGE_APP ingress unsupported: id=%u len=%u",
 		packet->has_id ? packet->id : 0U, (uint32_t)packet->payload_len);
-	return 0;
+	return -ENOTSUP;
 }
 
 static uint32_t queue_free(void *user_data)
