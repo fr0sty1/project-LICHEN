@@ -3,7 +3,6 @@
 
 #include <errno.h>
 #include <stdbool.h>
-#include <string.h>
 
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
@@ -18,6 +17,7 @@
 #include <lichen/hal.h>
 
 #include "config_cbor.h"
+#include "status_cbor.h"
 
 #ifdef CONFIG_LORA_LICHEN_BLE
 #include "ble_uart.h"
@@ -68,6 +68,12 @@ static K_SEM_DEFINE(s_radio_ready, 0, 1);
 
 /* CBOR content-format code (RFC 7252 §12.3 / IANA CoAP Content-Formats) */
 #define CBOR_CONTENT_FORMAT 60
+#define LICHEN_GATEWAY_STATUS_COAP_OVERHEAD 64U
+
+BUILD_ASSERT(CONFIG_COAP_SERVER_MESSAGE_SIZE >=
+	     LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE +
+	     LICHEN_GATEWAY_STATUS_COAP_OVERHEAD,
+	     "gateway status CoAP buffer must fit CBOR body plus options");
 
 #if IS_ENABLED(CONFIG_LORA_LICHEN_GATEWAY_RPL_ROOT)
 #define LICHEN_GATEWAY_STATUS_ROLE "root"
@@ -134,71 +140,6 @@ static int coap_respond(struct coap_resource *resource,
  * /status (Observable)
  * -------------------------------------------------------------------------- */
 
-#define STATUS_CBOR_MAX_SIZE 240U
-#define STATUS_CBOR_MAX_ROLE_LEN 15U
-
-static void cbor_put_key(uint8_t *buf, size_t *off, const char *key)
-{
-	size_t len = strlen(key);
-
-	buf[(*off)++] = 0x60 | (uint8_t)len;
-	memcpy(&buf[*off], key, len);
-	*off += len;
-}
-
-static void cbor_put_bool(uint8_t *buf, size_t *off, bool value)
-{
-	buf[(*off)++] = value ? 0xf5 : 0xf4;
-}
-
-static void cbor_put_uint(uint8_t *buf, size_t *off, uint32_t value)
-{
-	if (value < 24U) {
-		buf[(*off)++] = (uint8_t)value;
-	} else if (value <= UINT8_MAX) {
-		buf[(*off)++] = 0x18;
-		buf[(*off)++] = (uint8_t)value;
-	} else if (value <= UINT16_MAX) {
-		buf[(*off)++] = 0x19;
-		buf[(*off)++] = (uint8_t)(value >> 8);
-		buf[(*off)++] = (uint8_t)(value & 0xffU);
-	} else {
-		buf[(*off)++] = 0x1a;
-		buf[(*off)++] = (uint8_t)(value >> 24);
-		buf[(*off)++] = (uint8_t)(value >> 16);
-		buf[(*off)++] = (uint8_t)(value >> 8);
-		buf[(*off)++] = (uint8_t)(value & 0xffU);
-	}
-}
-
-static void cbor_put_int(uint8_t *buf, size_t *off, int32_t value)
-{
-	uint32_t encoded;
-
-	if (value >= 0) {
-		cbor_put_uint(buf, off, (uint32_t)value);
-		return;
-	}
-
-	encoded = (uint32_t)(-1LL - (int64_t)value);
-	if (encoded < 24U) {
-		buf[(*off)++] = 0x20U | (uint8_t)encoded;
-	} else if (encoded <= 0xffU) {
-		buf[(*off)++] = 0x38;
-		buf[(*off)++] = (uint8_t)encoded;
-	} else if (encoded <= 0xffffU) {
-		buf[(*off)++] = 0x39;
-		buf[(*off)++] = (uint8_t)(encoded >> 8);
-		buf[(*off)++] = (uint8_t)(encoded & 0xffU);
-	} else {
-		buf[(*off)++] = 0x3a;
-		buf[(*off)++] = (uint8_t)(encoded >> 24);
-		buf[(*off)++] = (uint8_t)(encoded >> 16);
-		buf[(*off)++] = (uint8_t)(encoded >> 8);
-		buf[(*off)++] = (uint8_t)(encoded & 0xffU);
-	}
-}
-
 /*
  * Build CBOR status with explicit power-provider availability and only valid
  * measured power fields. Returns encoded byte count.
@@ -209,94 +150,12 @@ static size_t encode_status_cbor(uint8_t *buf, size_t buf_size, uint16_t rank,
 	struct lichen_hal_power_snapshot power;
 	struct lichen_hal_location_time_snapshot location_time;
 	uint32_t uptime_ms = k_uptime_get_32();
-	size_t role_len = role ? strlen(role) : 0;
-	uint8_t map_count = 8U;
-	size_t off = 0;
-
-	if (role == NULL || role_len > STATUS_CBOR_MAX_ROLE_LEN ||
-	    buf_size < STATUS_CBOR_MAX_SIZE) {
-		return 0;
-	}
 
 	(void)lichen_hal_power_snapshot_get(&power);
 	(void)lichen_hal_location_time_snapshot_get(&location_time);
-	map_count += power.battery_percent_valid ? 1U : 0U;
-	map_count += power.battery_voltage_mv_valid ? 1U : 0U;
-	map_count += power.charging_valid ? 1U : 0U;
-	map_count += power.external_power_valid ? 1U : 0U;
-	map_count += location_time.latitude_e7_valid ? 1U : 0U;
-	map_count += location_time.longitude_e7_valid ? 1U : 0U;
-	map_count += location_time.altitude_m_valid ? 1U : 0U;
-	map_count += location_time.fix_time_unix_valid ? 1U : 0U;
-	map_count += location_time.satellites_valid ? 1U : 0U;
-
-	buf[off++] = 0xa0 | map_count;
-
-	/* rank: uint16 */
-	cbor_put_key(buf, &off, "rank");
-	cbor_put_uint(buf, &off, rank);
-
-	/* role */
-	cbor_put_key(buf, &off, "role");
-	buf[off++] = 0x60 | (uint8_t)role_len;
-	memcpy(&buf[off], role, role_len);
-	off += role_len;
-
-	/* rpl: bool */
-	cbor_put_key(buf, &off, "rpl");
-	cbor_put_bool(buf, &off, rpl_capable);
-
-	/* uptime: uint32 */
-	cbor_put_key(buf, &off, "uptime");
-	cbor_put_uint(buf, &off, uptime_ms);
-
-	cbor_put_key(buf, &off, "battery_provider");
-	cbor_put_bool(buf, &off, power.battery_provider_available);
-	cbor_put_key(buf, &off, "pmic_provider");
-	cbor_put_bool(buf, &off, power.pmic_provider_available);
-	cbor_put_key(buf, &off, "location_provider");
-	cbor_put_bool(buf, &off, location_time.location_provider_available);
-	cbor_put_key(buf, &off, "time_provider");
-	cbor_put_bool(buf, &off, location_time.time_provider_available);
-
-	if (power.battery_percent_valid) {
-		cbor_put_key(buf, &off, "battery");
-		cbor_put_uint(buf, &off, power.battery_percent);
-	}
-	if (power.battery_voltage_mv_valid) {
-		cbor_put_key(buf, &off, "voltage_mv");
-		cbor_put_uint(buf, &off, power.battery_voltage_mv);
-	}
-	if (power.charging_valid) {
-		cbor_put_key(buf, &off, "charging");
-		cbor_put_bool(buf, &off, power.charging);
-	}
-	if (power.external_power_valid) {
-		cbor_put_key(buf, &off, "external_power");
-		cbor_put_bool(buf, &off, power.external_power);
-	}
-	if (location_time.latitude_e7_valid) {
-		cbor_put_key(buf, &off, "lat_i");
-		cbor_put_int(buf, &off, location_time.latitude_e7);
-	}
-	if (location_time.longitude_e7_valid) {
-		cbor_put_key(buf, &off, "lon_i");
-		cbor_put_int(buf, &off, location_time.longitude_e7);
-	}
-	if (location_time.altitude_m_valid) {
-		cbor_put_key(buf, &off, "alt_m");
-		cbor_put_int(buf, &off, location_time.altitude_m);
-	}
-	if (location_time.fix_time_unix_valid) {
-		cbor_put_key(buf, &off, "time_unix");
-		cbor_put_uint(buf, &off, location_time.fix_time_unix);
-	}
-	if (location_time.satellites_valid) {
-		cbor_put_key(buf, &off, "satellites");
-		cbor_put_uint(buf, &off, location_time.satellites);
-	}
-
-	return off;
+	return lichen_gateway_encode_status_cbor(
+		buf, buf_size, rank, role, rpl_capable, uptime_ms, &power,
+		&location_time);
 }
 
 /* Gateway status state (observable) */
@@ -306,7 +165,7 @@ static int status_get(struct coap_resource *resource,
 		      struct coap_packet *request,
 		      struct sockaddr *addr, socklen_t addr_len)
 {
-	uint8_t cbor_buf[STATUS_CBOR_MAX_SIZE];
+	uint8_t cbor_buf[LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE];
 	size_t len = encode_status_cbor(cbor_buf, sizeof(cbor_buf), s_rank,
 					LICHEN_GATEWAY_STATUS_ROLE,
 					LICHEN_GATEWAY_STATUS_RPL_CAPABLE);
@@ -323,7 +182,7 @@ static void status_notify(struct coap_resource *resource,
 			  struct coap_observer *observer)
 {
 	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
-	uint8_t cbor_buf[STATUS_CBOR_MAX_SIZE];
+	uint8_t cbor_buf[LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE];
 	struct coap_packet notif;
 	size_t cbor_len;
 	int r;
