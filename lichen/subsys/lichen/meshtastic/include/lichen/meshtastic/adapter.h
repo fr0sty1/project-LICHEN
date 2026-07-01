@@ -55,11 +55,14 @@ typedef int (*lichen_meshtastic_adapter_text_fn)(
 	void *user_data);
 
 typedef uint32_t (*lichen_meshtastic_adapter_queue_free_fn)(void *user_data);
+typedef int (*lichen_meshtastic_adapter_local_info_fn)(
+	struct lichen_meshtastic_local_info *info, void *user_data);
 
 struct lichen_meshtastic_adapter_ops {
 	lichen_meshtastic_adapter_enqueue_fn enqueue_from_radio;
 	lichen_meshtastic_adapter_text_fn handle_text;
 	lichen_meshtastic_adapter_queue_free_fn queue_free;
+	lichen_meshtastic_adapter_local_info_fn get_local_info;
 	void *user_data;
 	uint32_t queue_maxlen;
 	bool heartbeat_queue_status;

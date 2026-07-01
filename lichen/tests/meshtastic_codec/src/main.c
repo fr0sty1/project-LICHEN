@@ -73,8 +73,13 @@ ZTEST(meshtastic_codec, test_canonical_codec_vectors)
 		case MESHTASTIC_VECTOR_TO_REJECT:
 			ret = lichen_meshtastic_decode_to_radio(v->encoded, v->encoded_len,
 								&to_radio);
-			zassert_equal(ret, v->expected_error, "%s wrong error: %d",
-				      v->name, ret);
+			if (v->expected_error == -90) {
+				zassert_equal(ret, -EMSGSIZE, "%s wrong error: %d",
+					      v->name, ret);
+			} else {
+				zassert_equal(ret, v->expected_error,
+					      "%s wrong error: %d", v->name, ret);
+			}
 			break;
 		case MESHTASTIC_VECTOR_FROM_QUEUE_STATUS:
 			status = (struct lichen_meshtastic_queue_status){
@@ -322,6 +327,81 @@ ZTEST(meshtastic_codec, test_encode_sync_response_messages)
 			      (enum lichen_meshtastic_from_radio_message)99, payload,
 			      sizeof(payload), buf, sizeof(buf)),
 		      -EINVAL);
+}
+
+ZTEST(meshtastic_codec, test_encode_sync_payload_builders)
+{
+	const uint8_t device_id[] = {
+		0x02, 0x00, 0x00, 0xff, 0xaa, 0xbb, 0xcc, 0xdd
+	};
+	struct lichen_meshtastic_local_info info = {
+		.node_num = 0xaabbccddU,
+		.min_app_version = 30200U,
+		.nodedb_count = 1U,
+		.uptime_seconds = 123U,
+		.tx_power_dbm = 14,
+		.long_name = "LICHEN native_sim",
+		.short_name = "LICH",
+		.firmware_version = "LICHEN test 0.0.0",
+		.pio_env = "zephyr-native_sim",
+		.device_id = device_id,
+		.device_id_len = sizeof(device_id),
+		.has_bluetooth = true,
+		.has_lora = true,
+		.has_tx_power_dbm = true,
+	};
+	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint8_t from_radio[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	int ret;
+
+	ret = lichen_meshtastic_encode_my_info_payload(&info, payload,
+						       sizeof(payload));
+	zassert_true(ret > 0, "my_info payload failed: %d", ret);
+	zassert_true(lichen_meshtastic_encode_from_radio_message(
+			     LICHEN_MESHTASTIC_FROM_RADIO_MY_INFO, payload,
+			     (size_t)ret, from_radio, sizeof(from_radio)) > 0);
+
+	ret = lichen_meshtastic_encode_metadata_payload(&info, payload,
+							sizeof(payload));
+	zassert_true(ret > 0, "metadata payload failed: %d", ret);
+
+	ret = lichen_meshtastic_encode_config_payload(&info, payload,
+						      sizeof(payload));
+	zassert_true(ret > 0, "config payload failed: %d", ret);
+
+	ret = lichen_meshtastic_encode_module_config_payload(&info, payload,
+							     sizeof(payload));
+	zassert_true(ret > 0, "module payload failed: %d", ret);
+
+	ret = lichen_meshtastic_encode_channel_payload(&info, payload,
+						       sizeof(payload));
+	zassert_true(ret > 0, "channel payload failed: %d", ret);
+
+	ret = lichen_meshtastic_encode_region_presets_payload(&info, payload,
+							      sizeof(payload));
+	zassert_true(ret > 0, "region payload failed: %d", ret);
+
+	ret = lichen_meshtastic_encode_node_info_payload(&info, payload,
+							 sizeof(payload));
+	zassert_true(ret > 0, "node_info payload failed: %d", ret);
+}
+
+ZTEST(meshtastic_codec, test_encode_sync_payload_rejects_bad_buffers)
+{
+	struct lichen_meshtastic_local_info info = {
+		.node_num = 0xaabbccddU,
+		.long_name = "LICHEN native_sim",
+		.short_name = "LICH",
+	};
+	uint8_t buf[4];
+
+	memset(buf, 0x5a, sizeof(buf));
+	zassert_equal(lichen_meshtastic_encode_my_info_payload(&info, NULL,
+							       sizeof(buf)),
+		      -EINVAL);
+	zassert_equal(lichen_meshtastic_encode_node_info_payload(&info, buf, 1U),
+		      -ENOMEM);
+	zassert_equal(buf[0], 0x5a, "short-buffer encode should not write output");
 }
 
 ZTEST_SUITE(meshtastic_codec, NULL, NULL, NULL, NULL, NULL);

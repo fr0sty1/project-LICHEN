@@ -34,7 +34,7 @@ config LORA_LICHEN_MESHTASTIC_BLE
 config LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH
 	int "Meshtastic BLE FromRadio queue depth"
 	depends on LORA_LICHEN_MESHTASTIC_BLE
-	default 4
+	default 8
 	range 1 16
 	help
 	  Number of complete FromRadio protobuf values retained for app reads.

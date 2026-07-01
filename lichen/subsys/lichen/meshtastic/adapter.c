@@ -26,6 +26,9 @@
 #define QUEUE_STATUS_UNSUPPORTED 2U
 #define QUEUE_STATUS_MALFORMED 3U
 
+#define MESHTASTIC_CONFIG_STAGE_STATIC 69420U
+#define MESHTASTIC_CONFIG_STAGE_NODEDB 69421U
+
 #define PB_WT_VARINT 0U
 #define PB_WT_64BIT 1U
 #define PB_WT_LEN 2U
@@ -285,6 +288,161 @@ static int config_complete(struct lichen_meshtastic_adapter *adapter, uint32_t n
 	return enqueue(adapter, buf, (size_t)ret);
 }
 
+static int local_info(struct lichen_meshtastic_adapter *adapter,
+		      struct lichen_meshtastic_local_info *info)
+{
+	static const char default_name[] = "LICHEN Node";
+	static const char default_short_name[] = "LICH";
+	static const char default_fw[] = "LICHEN Zephyr compat 0.0.0+unknown";
+	static const char default_env[] = "zephyr";
+
+	memset(info, 0, sizeof(*info));
+	info->node_num = 0x4c494348U;
+	info->min_app_version = 30200U;
+	info->nodedb_count = 1U;
+	info->long_name = default_name;
+	info->short_name = default_short_name;
+	info->firmware_version = default_fw;
+	info->pio_env = default_env;
+
+	if (adapter->ops.get_local_info != NULL) {
+		int ret = adapter->ops.get_local_info(info, adapter->ops.user_data);
+
+		if (ret < 0) {
+			return ret;
+		}
+	}
+
+	if (info->node_num == 0U) {
+		info->node_num = 0x4c494348U;
+	}
+	if (info->min_app_version == 0U) {
+		info->min_app_version = 30200U;
+	}
+	if (info->nodedb_count == 0U) {
+		info->nodedb_count = 1U;
+	}
+	if (info->long_name == NULL || info->long_name[0] == '\0') {
+		info->long_name = default_name;
+	}
+	if (info->short_name == NULL || info->short_name[0] == '\0') {
+		info->short_name = default_short_name;
+	}
+	if (info->firmware_version == NULL || info->firmware_version[0] == '\0') {
+		info->firmware_version = default_fw;
+	}
+	if (info->pio_env == NULL || info->pio_env[0] == '\0') {
+		info->pio_env = default_env;
+	}
+
+	return 0;
+}
+
+static int enqueue_payload(struct lichen_meshtastic_adapter *adapter,
+			   enum lichen_meshtastic_from_radio_message message,
+			   const uint8_t *payload, size_t payload_len)
+{
+	uint8_t buf[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	int ret = lichen_meshtastic_encode_from_radio_message(
+		message, payload, payload_len, buf, sizeof(buf));
+
+	if (ret < 0) {
+		return ret;
+	}
+	return enqueue(adapter, buf, (size_t)ret);
+}
+
+static int enqueue_static_sync(struct lichen_meshtastic_adapter *adapter,
+			       const struct lichen_meshtastic_local_info *info)
+{
+	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	int ret;
+
+	ret = lichen_meshtastic_encode_my_info_payload(info, payload,
+						       sizeof(payload));
+	if (ret < 0 || enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_MY_INFO,
+				       payload, (size_t)ret) < 0) {
+		return ret < 0 ? ret : -ENOMEM;
+	}
+
+	ret = lichen_meshtastic_encode_metadata_payload(info, payload,
+							sizeof(payload));
+	if (ret < 0 || enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_METADATA,
+				       payload, (size_t)ret) < 0) {
+		return ret < 0 ? ret : -ENOMEM;
+	}
+
+	ret = lichen_meshtastic_encode_region_presets_payload(info, payload,
+							      sizeof(payload));
+	if (ret < 0 || enqueue_payload(adapter,
+				       LICHEN_MESHTASTIC_FROM_RADIO_REGION_PRESETS,
+				       payload, (size_t)ret) < 0) {
+		return ret < 0 ? ret : -ENOMEM;
+	}
+
+	ret = lichen_meshtastic_encode_config_payload(info, payload, sizeof(payload));
+	if (ret < 0 || enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_CONFIG,
+				       payload, (size_t)ret) < 0) {
+		return ret < 0 ? ret : -ENOMEM;
+	}
+
+	ret = lichen_meshtastic_encode_module_config_payload(info, payload,
+							     sizeof(payload));
+	if (ret < 0 || enqueue_payload(adapter,
+				       LICHEN_MESHTASTIC_FROM_RADIO_MODULE_CONFIG,
+				       payload, (size_t)ret) < 0) {
+		return ret < 0 ? ret : -ENOMEM;
+	}
+
+	ret = lichen_meshtastic_encode_channel_payload(info, payload, sizeof(payload));
+	if (ret < 0 || enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_CHANNEL,
+				       payload, (size_t)ret) < 0) {
+		return ret < 0 ? ret : -ENOMEM;
+	}
+
+	return 0;
+}
+
+static int enqueue_node_sync(struct lichen_meshtastic_adapter *adapter,
+			     const struct lichen_meshtastic_local_info *info)
+{
+	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	int ret = lichen_meshtastic_encode_node_info_payload(info, payload,
+							     sizeof(payload));
+
+	if (ret < 0) {
+		return ret;
+	}
+	return enqueue_payload(adapter, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO,
+			       payload, (size_t)ret);
+}
+
+static int dispatch_want_config(struct lichen_meshtastic_adapter *adapter,
+				uint32_t nonce)
+{
+	struct lichen_meshtastic_local_info info;
+	int ret = local_info(adapter, &info);
+
+	if (ret < 0) {
+		return ret;
+	}
+
+	if (nonce == MESHTASTIC_CONFIG_STAGE_STATIC) {
+		ret = enqueue_static_sync(adapter, &info);
+	} else if (nonce == MESHTASTIC_CONFIG_STAGE_NODEDB) {
+		ret = enqueue_node_sync(adapter, &info);
+	} else {
+		ret = enqueue_static_sync(adapter, &info);
+		if (ret == 0) {
+			ret = enqueue_node_sync(adapter, &info);
+		}
+	}
+	if (ret < 0) {
+		return ret;
+	}
+	return config_complete(adapter, nonce);
+}
+
 static int dispatch_packet(struct lichen_meshtastic_adapter *adapter,
 			   const struct lichen_meshtastic_to_radio *msg)
 {
@@ -371,7 +529,7 @@ int lichen_meshtastic_adapter_process_raw(
 		return LICHEN_MESHTASTIC_ADAPTER_DISPATCHED;
 	case LICHEN_MESHTASTIC_TO_RADIO_WANT_CONFIG_ID:
 		adapter->stats.want_config_count++;
-		return config_complete(adapter, msg.value.want_config_id);
+		return dispatch_want_config(adapter, msg.value.want_config_id);
 	case LICHEN_MESHTASTIC_TO_RADIO_DISCONNECT:
 		if (msg.value.disconnect) {
 			adapter->stats.disconnect_count++;

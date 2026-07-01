@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-t2hn.6.2",
+  "title": "Add Meshtastic multi-section config sync records",
+  "description": "Why this exists: project-LICHEN-t2hn.6 currently emits one valid Config.LoRaConfig readback during want_config_id stage 69420, but Meshtastic apps may expect separate Config records for device, position, power, bluetooth, network, display, security, and device_ui. What needs to be done: define which read-only config sections are required by Android/iOS/Python app sync, encode each as a separate valid FromRadio.config oneof record, add native_sim tests and update meshtastic_app_compat vectors. Acceptance criteria: no Config payload contains multiple oneof variants; app-visible placeholders for position/power/bluetooth are explicit; sequence/vector docs match implementation.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T03:26:55.643293Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T03:26:55.643916Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "config",
+    "status",
+    "firmware",
+    "app-interface"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.6.2",
+      "depends_on_id": "project-LICHEN-t2hn.6",
+      "type": "parent-child",
+      "created_at": "2026-07-01T03:26:55.643916Z"
+    }
+  ]
+}

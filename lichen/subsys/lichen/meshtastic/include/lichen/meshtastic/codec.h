@@ -56,6 +56,26 @@ struct lichen_meshtastic_queue_status {
 	bool has_mesh_packet_id;
 };
 
+struct lichen_meshtastic_local_info {
+	uint32_t node_num;
+	uint32_t reboot_count;
+	uint32_t min_app_version;
+	uint32_t nodedb_count;
+	uint32_t uptime_seconds;
+	int32_t tx_power_dbm;
+	const char *long_name;
+	const char *short_name;
+	const char *firmware_version;
+	const char *pio_env;
+	const uint8_t *device_id;
+	size_t device_id_len;
+	bool has_bluetooth;
+	bool has_battery;
+	bool has_gnss;
+	bool has_lora;
+	bool has_tx_power_dbm;
+};
+
 enum lichen_meshtastic_from_radio_message {
 	LICHEN_MESHTASTIC_FROM_RADIO_MY_INFO = 3,
 	LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO = 4,
@@ -87,6 +107,34 @@ int lichen_meshtastic_encode_from_radio_packet(uint32_t from_radio_id,
 int lichen_meshtastic_encode_from_radio_message(
 	enum lichen_meshtastic_from_radio_message message,
 	const uint8_t *payload, size_t payload_len,
+	uint8_t *buf, size_t buflen);
+
+int lichen_meshtastic_encode_my_info_payload(
+	const struct lichen_meshtastic_local_info *info,
+	uint8_t *buf, size_t buflen);
+
+int lichen_meshtastic_encode_metadata_payload(
+	const struct lichen_meshtastic_local_info *info,
+	uint8_t *buf, size_t buflen);
+
+int lichen_meshtastic_encode_config_payload(
+	const struct lichen_meshtastic_local_info *info,
+	uint8_t *buf, size_t buflen);
+
+int lichen_meshtastic_encode_module_config_payload(
+	const struct lichen_meshtastic_local_info *info,
+	uint8_t *buf, size_t buflen);
+
+int lichen_meshtastic_encode_channel_payload(
+	const struct lichen_meshtastic_local_info *info,
+	uint8_t *buf, size_t buflen);
+
+int lichen_meshtastic_encode_region_presets_payload(
+	const struct lichen_meshtastic_local_info *info,
+	uint8_t *buf, size_t buflen);
+
+int lichen_meshtastic_encode_node_info_payload(
+	const struct lichen_meshtastic_local_info *info,
 	uint8_t *buf, size_t buflen);
 
 #ifdef __cplusplus

@@ -13,8 +13,8 @@
 #include <lichen/meshtastic/codec.h>
 
 struct test_ctx {
-	uint8_t out[2][LICHEN_MESHTASTIC_FROM_RADIO_MAX];
-	size_t out_len[2];
+	uint8_t out[10][LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	size_t out_len[10];
 	size_t out_count;
 	size_t out_cap;
 	uint32_t text_count;
@@ -29,6 +29,13 @@ struct queue_status_view {
 	uint32_t mesh_packet_id;
 	bool has_res;
 	bool has_mesh_packet_id;
+};
+
+struct from_radio_view {
+	uint32_t field;
+	const uint8_t *payload;
+	size_t payload_len;
+	uint32_t value;
 };
 
 static int test_enqueue(const uint8_t *from_radio, size_t len, void *user_data)
@@ -60,12 +67,16 @@ static int test_text(
 	return 0;
 }
 
+static int test_local_info(struct lichen_meshtastic_local_info *info,
+			   void *user_data);
+
 static void init_adapter(struct lichen_meshtastic_adapter *adapter,
 			 struct test_ctx *ctx, size_t out_cap)
 {
 	struct lichen_meshtastic_adapter_ops ops = {
 		.enqueue_from_radio = test_enqueue,
 		.handle_text = test_text,
+		.get_local_info = test_local_info,
 		.user_data = ctx,
 		.queue_maxlen = 8U,
 		.heartbeat_queue_status = true,
@@ -81,6 +92,33 @@ static void expect_bytes(const uint8_t *actual, size_t actual_len,
 {
 	zassert_equal(actual_len, expected_len, "unexpected encoded length");
 	zassert_mem_equal(actual, expected, expected_len, "unexpected encoded bytes");
+}
+
+static int test_local_info(struct lichen_meshtastic_local_info *info,
+			   void *user_data)
+{
+	static const uint8_t device_id[] = {
+		0x02, 0x00, 0x00, 0xff, 0xaa, 0xbb, 0xcc, 0xdd
+	};
+
+	ARG_UNUSED(user_data);
+
+	memset(info, 0, sizeof(*info));
+	info->node_num = 0xaabbccddU;
+	info->min_app_version = 30200U;
+	info->nodedb_count = 1U;
+	info->uptime_seconds = 123U;
+	info->long_name = "LICHEN native_sim";
+	info->short_name = "LICH";
+	info->firmware_version = "LICHEN test 0.0.0";
+	info->pio_env = "zephyr-native_sim";
+	info->device_id = device_id;
+	info->device_id_len = sizeof(device_id);
+	info->has_bluetooth = true;
+	info->has_lora = true;
+	info->has_tx_power_dbm = true;
+	info->tx_power_dbm = 14;
+	return 0;
 }
 
 static int read_varint(const uint8_t *buf, size_t len, size_t *pos,
@@ -101,6 +139,103 @@ static int read_varint(const uint8_t *buf, size_t len, size_t *pos,
 	}
 
 	return -EINVAL;
+}
+
+static void decode_from_radio(const uint8_t *buf, size_t len,
+			      struct from_radio_view *out)
+{
+	size_t pos = 0U;
+	uint32_t key;
+	uint32_t payload_len;
+
+	memset(out, 0, sizeof(*out));
+	zassert_equal(read_varint(buf, len, &pos, &key), 0);
+	out->field = key >> 3;
+	if ((key & 0x07U) == 2U) {
+		zassert_equal(read_varint(buf, len, &pos, &payload_len), 0);
+		zassert_true(payload_len <= len - pos);
+		out->payload = &buf[pos];
+		out->payload_len = payload_len;
+	} else {
+		zassert_equal(key & 0x07U, 0U);
+		zassert_equal(read_varint(buf, len, &pos, &out->value), 0);
+	}
+}
+
+static bool payload_has_string(const uint8_t *buf, size_t len, uint32_t field,
+			       const char *value)
+{
+	size_t pos = 0U;
+	size_t value_len = strlen(value);
+
+	while (pos < len) {
+		uint32_t key;
+		uint32_t n;
+
+		if (read_varint(buf, len, &pos, &key) < 0) {
+			return false;
+		}
+		if ((key & 0x07U) == 2U) {
+			if (read_varint(buf, len, &pos, &n) < 0 || n > len - pos) {
+				return false;
+			}
+			if ((key >> 3) == field && n == value_len &&
+			    memcmp(&buf[pos], value, value_len) == 0) {
+				return true;
+			}
+			pos += n;
+		} else if ((key & 0x07U) == 0U) {
+			if (read_varint(buf, len, &pos, &n) < 0) {
+				return false;
+			}
+		} else if ((key & 0x07U) == 5U) {
+			if (len - pos < 4U) {
+				return false;
+			}
+			pos += 4U;
+		} else {
+			return false;
+		}
+	}
+	return false;
+}
+
+static bool payload_get_len_field(const uint8_t *buf, size_t len, uint32_t field,
+				  const uint8_t **value, size_t *value_len)
+{
+	size_t pos = 0U;
+
+	while (pos < len) {
+		uint32_t key;
+		uint32_t n;
+
+		if (read_varint(buf, len, &pos, &key) < 0) {
+			return false;
+		}
+		if ((key & 0x07U) == 2U) {
+			if (read_varint(buf, len, &pos, &n) < 0 || n > len - pos) {
+				return false;
+			}
+			if ((key >> 3) == field) {
+				*value = &buf[pos];
+				*value_len = n;
+				return true;
+			}
+			pos += n;
+		} else if ((key & 0x07U) == 0U) {
+			if (read_varint(buf, len, &pos, &n) < 0) {
+				return false;
+			}
+		} else if ((key & 0x07U) == 5U) {
+			if (len - pos < 4U) {
+				return false;
+			}
+			pos += 4U;
+		} else {
+			return false;
+		}
+	}
+	return false;
 }
 
 static void decode_queue_status(const uint8_t *buf, size_t len,
@@ -168,12 +303,21 @@ ZTEST(meshtastic_adapter, test_heartbeat_queues_status)
 		      1U);
 }
 
-ZTEST(meshtastic_adapter, test_want_config_id_echoes_config_complete)
+ZTEST(meshtastic_adapter, test_want_config_69420_queues_stage1_sequence)
 {
 	struct lichen_meshtastic_adapter adapter;
 	struct test_ctx ctx;
 	const uint8_t want_config[] = { 0x18, 0xac, 0x9e, 0x04 };
 	const uint8_t complete[] = { 0x38, 0xac, 0x9e, 0x04 };
+	const uint32_t fields[] = {
+		LICHEN_MESHTASTIC_FROM_RADIO_MY_INFO,
+		LICHEN_MESHTASTIC_FROM_RADIO_METADATA,
+		LICHEN_MESHTASTIC_FROM_RADIO_REGION_PRESETS,
+		LICHEN_MESHTASTIC_FROM_RADIO_CONFIG,
+		LICHEN_MESHTASTIC_FROM_RADIO_MODULE_CONFIG,
+		LICHEN_MESHTASTIC_FROM_RADIO_CHANNEL,
+		7U,
+	};
 	int ret;
 
 	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
@@ -181,10 +325,121 @@ ZTEST(meshtastic_adapter, test_want_config_id_echoes_config_complete)
 						    sizeof(want_config));
 
 	zassert_equal(ret, 0);
-	zassert_equal(ctx.out_count, 1U);
-	expect_bytes(ctx.out[0], ctx.out_len[0], complete, sizeof(complete));
+	zassert_equal(ctx.out_count, ARRAY_SIZE(fields));
+	for (size_t i = 0U; i < ARRAY_SIZE(fields); i++) {
+		struct from_radio_view view;
+
+		decode_from_radio(ctx.out[i], ctx.out_len[i], &view);
+		zassert_equal(view.field, fields[i], "field[%u]", (uint32_t)i);
+	}
+	expect_bytes(ctx.out[ARRAY_SIZE(fields) - 1U],
+		     ctx.out_len[ARRAY_SIZE(fields) - 1U], complete,
+		     sizeof(complete));
 	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->want_config_count,
 		      1U);
+}
+
+ZTEST(meshtastic_adapter, test_want_config_69421_queues_node_db_sequence)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t want_config[] = { 0x18, 0xad, 0x9e, 0x04 };
+	const uint8_t complete[] = { 0x38, 0xad, 0x9e, 0x04 };
+	struct from_radio_view view;
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.out_count, 2U);
+	decode_from_radio(ctx.out[0], ctx.out_len[0], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
+	decode_from_radio(ctx.out[1], ctx.out_len[1], &view);
+	zassert_equal(view.field, 7U);
+	expect_bytes(ctx.out[1], ctx.out_len[1], complete, sizeof(complete));
+}
+
+ZTEST(meshtastic_adapter, test_want_config_unknown_nonce_queues_full_sync)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t want_config[] = { 0x18, 0xa5, 0xcb, 0x96, 0xad, 0x0a };
+	const uint8_t complete[] = { 0x38, 0xa5, 0xcb, 0x96, 0xad, 0x0a };
+	struct from_radio_view view;
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.out_count, 8U);
+	decode_from_radio(ctx.out[6], ctx.out_len[6], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
+	decode_from_radio(ctx.out[7], ctx.out_len[7], &view);
+	zassert_equal(view.field, 7U);
+	expect_bytes(ctx.out[7], ctx.out_len[7], complete, sizeof(complete));
+}
+
+ZTEST(meshtastic_adapter, test_want_config_full_sync_fits_gateway_default_queue)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t want_config[] = { 0x18, 0xa5, 0xcb, 0x96, 0xad, 0x0a };
+	struct from_radio_view view;
+	int ret;
+
+	init_adapter(&adapter, &ctx, 8U);
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.out_count, 8U);
+	decode_from_radio(ctx.out[7], ctx.out_len[7], &view);
+	zassert_equal(view.field, 7U);
+}
+
+ZTEST(meshtastic_adapter, test_synthetic_node_and_channel_fields_are_stable)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t want_static[] = { 0x18, 0xac, 0x9e, 0x04 };
+	const uint8_t want_nodes[] = { 0x18, 0xad, 0x9e, 0x04 };
+	struct from_radio_view view;
+	const uint8_t *channel_payload;
+	const uint8_t *settings_payload;
+	const uint8_t *user_payload;
+	size_t channel_len;
+	size_t settings_len;
+	size_t user_len;
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_static,
+						    sizeof(want_static));
+	zassert_equal(ret, 0);
+	decode_from_radio(ctx.out[5], ctx.out_len[5], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_CHANNEL);
+	channel_payload = view.payload;
+	channel_len = view.payload_len;
+	zassert_true(payload_get_len_field(channel_payload, channel_len, 2U,
+					   &settings_payload, &settings_len));
+	zassert_true(payload_has_string(settings_payload, settings_len, 3U,
+					"LICHEN"));
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_nodes,
+						    sizeof(want_nodes));
+	zassert_equal(ret, 0);
+	decode_from_radio(ctx.out[0], ctx.out_len[0], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
+	zassert_true(view.payload_len > 0U);
+	zassert_true(payload_get_len_field(view.payload, view.payload_len, 2U,
+					   &user_payload, &user_len));
+	zassert_true(payload_has_string(user_payload, user_len, 2U,
+					"LICHEN native_sim"));
 }
 
 ZTEST(meshtastic_adapter, test_disconnect_marks_session_only)
@@ -374,22 +629,23 @@ ZTEST(meshtastic_adapter, test_stream_resyncs_after_bad_frame_in_same_buffer)
 		      1U);
 }
 
-ZTEST(meshtastic_adapter, test_output_backpressure_is_bounded)
+ZTEST(meshtastic_adapter, test_want_config_stage1_stops_on_backpressure)
 {
 	struct lichen_meshtastic_adapter adapter;
 	struct test_ctx ctx;
 	const uint8_t want_config[] = { 0x18, 0xac, 0x9e, 0x04 };
+	struct from_radio_view view;
 	int ret;
 
-	init_adapter(&adapter, &ctx, 1U);
-	zassert_equal(lichen_meshtastic_adapter_process_raw(&adapter, want_config,
-							    sizeof(want_config)),
-		      0);
-
+	init_adapter(&adapter, &ctx, 2U);
 	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
 						    sizeof(want_config));
 	zassert_equal(ret, -ENOMEM);
-	zassert_equal(ctx.out_count, 1U);
+	zassert_equal(ctx.out_count, 2U);
+	decode_from_radio(ctx.out[0], ctx.out_len[0], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_MY_INFO);
+	decode_from_radio(ctx.out[1], ctx.out_len[1], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_METADATA);
 	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
 			      enqueue_fail_count,
 		      1U);

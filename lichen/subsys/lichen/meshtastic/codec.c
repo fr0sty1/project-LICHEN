@@ -39,6 +39,99 @@
 #define QUEUE_STATUS_MAXLEN_FIELD 3U
 #define QUEUE_STATUS_MESH_PACKET_ID_FIELD 4U
 
+#define MESHTASTIC_HW_MODEL_PRIVATE 255U
+#define MESHTASTIC_ROLE_CLIENT 0U
+#define MESHTASTIC_CHANNEL_PRIMARY 1U
+#define MESHTASTIC_REGION_US 1U
+#define MESHTASTIC_MODEM_LONG_FAST 0U
+#define MESHTASTIC_DEFAULT_TX_POWER_DBM 14
+#define MESHTASTIC_NODE_INFO_BROADCAST_SECS 900U
+
+#define MY_INFO_NODE_NUM_FIELD 1U
+#define MY_INFO_REBOOT_COUNT_FIELD 8U
+#define MY_INFO_MIN_APP_VERSION_FIELD 11U
+#define MY_INFO_DEVICE_ID_FIELD 12U
+#define MY_INFO_PIO_ENV_FIELD 13U
+#define MY_INFO_FIRMWARE_EDITION_FIELD 14U
+#define MY_INFO_NODEDB_COUNT_FIELD 15U
+
+#define USER_ID_FIELD 1U
+#define USER_LONG_NAME_FIELD 2U
+#define USER_SHORT_NAME_FIELD 3U
+#define USER_HW_MODEL_FIELD 5U
+#define USER_IS_LICENSED_FIELD 6U
+#define USER_ROLE_FIELD 7U
+#define USER_PUBLIC_KEY_FIELD 8U
+#define USER_IS_UNMESSAGABLE_FIELD 9U
+
+#define NODE_INFO_NUM_FIELD 1U
+#define NODE_INFO_USER_FIELD 2U
+#define NODE_INFO_DEVICE_METRICS_FIELD 6U
+#define NODE_INFO_CHANNEL_FIELD 7U
+#define NODE_INFO_HOPS_AWAY_FIELD 9U
+
+#define DEVICE_METRICS_BATTERY_LEVEL_FIELD 1U
+#define DEVICE_METRICS_UPTIME_SECONDS_FIELD 5U
+
+#define METADATA_FIRMWARE_VERSION_FIELD 1U
+#define METADATA_DEVICE_STATE_VERSION_FIELD 2U
+#define METADATA_CAN_SHUTDOWN_FIELD 3U
+#define METADATA_HAS_WIFI_FIELD 4U
+#define METADATA_HAS_BLUETOOTH_FIELD 5U
+#define METADATA_HAS_ETHERNET_FIELD 6U
+#define METADATA_ROLE_FIELD 7U
+#define METADATA_POSITION_FLAGS_FIELD 8U
+#define METADATA_HW_MODEL_FIELD 9U
+#define METADATA_HAS_REMOTE_HARDWARE_FIELD 10U
+#define METADATA_HAS_PKC_FIELD 11U
+#define METADATA_EXCLUDED_MODULES_FIELD 12U
+
+#define CONFIG_POSITION_FIELD 2U
+#define CONFIG_POWER_FIELD 3U
+#define CONFIG_LORA_FIELD 6U
+#define CONFIG_BLUETOOTH_FIELD 7U
+
+#define POSITION_CONFIG_GPS_MODE_FIELD 4U
+#define POSITION_CONFIG_FIXED_POSITION_FIELD 6U
+#define POWER_CONFIG_POWER_SAVING_FIELD 1U
+#define POWER_CONFIG_WAIT_BLUETOOTH_SECS_FIELD 4U
+
+#define LORA_CONFIG_USE_PRESET_FIELD 1U
+#define LORA_CONFIG_MODEM_PRESET_FIELD 2U
+#define LORA_CONFIG_BANDWIDTH_FIELD 3U
+#define LORA_CONFIG_SPREAD_FACTOR_FIELD 4U
+#define LORA_CONFIG_CODING_RATE_FIELD 5U
+#define LORA_CONFIG_REGION_FIELD 7U
+#define LORA_CONFIG_HOP_LIMIT_FIELD 8U
+#define LORA_CONFIG_TX_ENABLED_FIELD 9U
+#define LORA_CONFIG_TX_POWER_FIELD 10U
+#define LORA_CONFIG_CHANNEL_NUM_FIELD 11U
+#define LORA_CONFIG_IGNORE_MQTT_FIELD 104U
+
+#define BLUETOOTH_CONFIG_ENABLED_FIELD 1U
+#define BLUETOOTH_CONFIG_MODE_FIELD 2U
+
+#define MODULE_CONFIG_TELEMETRY_FIELD 6U
+#define TELEMETRY_CONFIG_DEVICE_UPDATE_INTERVAL_FIELD 1U
+#define TELEMETRY_CONFIG_ENVIRONMENT_UPDATE_INTERVAL_FIELD 2U
+#define TELEMETRY_CONFIG_DEVICE_TELEMETRY_ENABLED_FIELD 14U
+
+#define CHANNEL_INDEX_FIELD 1U
+#define CHANNEL_SETTINGS_FIELD 2U
+#define CHANNEL_ROLE_FIELD 3U
+#define CHANNEL_SETTINGS_PSK_FIELD 2U
+#define CHANNEL_SETTINGS_NAME_FIELD 3U
+#define CHANNEL_SETTINGS_ID_FIELD 4U
+#define CHANNEL_SETTINGS_UPLINK_ENABLED_FIELD 5U
+#define CHANNEL_SETTINGS_DOWNLINK_ENABLED_FIELD 6U
+
+#define REGION_PRESET_GROUPS_FIELD 1U
+#define REGION_PRESET_REGION_GROUPS_FIELD 2U
+#define PRESET_GROUP_PRESETS_FIELD 1U
+#define PRESET_GROUP_DEFAULT_PRESET_FIELD 2U
+#define PRESET_REGION_REGION_FIELD 1U
+#define PRESET_REGION_GROUP_INDEX_FIELD 2U
+
 struct pb_cursor {
 	const uint8_t *buf;
 	size_t len;
@@ -197,6 +290,21 @@ static int pb_write_varint_field(uint8_t *buf, size_t buflen, size_t *pos,
 	return pb_write_varint_raw(buf, buflen, pos, value);
 }
 
+static int pb_write_fixed32_field(uint8_t *buf, size_t buflen, size_t *pos,
+				  uint32_t field, uint32_t value)
+{
+	if (pb_write_key(buf, buflen, pos, field, PB_WT_32BIT) < 0 ||
+	    buflen - *pos < sizeof(uint32_t)) {
+		return -ENOMEM;
+	}
+
+	buf[(*pos)++] = (uint8_t)(value & 0xffU);
+	buf[(*pos)++] = (uint8_t)((value >> 8) & 0xffU);
+	buf[(*pos)++] = (uint8_t)((value >> 16) & 0xffU);
+	buf[(*pos)++] = (uint8_t)((value >> 24) & 0xffU);
+	return 0;
+}
+
 static int pb_write_len_field(uint8_t *buf, size_t buflen, size_t *pos,
 			      uint32_t field, const uint8_t *data, size_t len)
 {
@@ -217,6 +325,34 @@ static int pb_write_len_field(uint8_t *buf, size_t buflen, size_t *pos,
 	return 0;
 }
 
+static int pb_write_string_field(uint8_t *buf, size_t buflen, size_t *pos,
+				 uint32_t field, const char *value)
+{
+	if (value == NULL) {
+		value = "";
+	}
+	return pb_write_len_field(buf, buflen, pos, field,
+				  (const uint8_t *)value, strlen(value));
+}
+
+static int copy_tmp_payload(const uint8_t *tmp, size_t len,
+			    uint8_t *buf, size_t buflen)
+{
+	if (buf == NULL) {
+		return -EINVAL;
+	}
+	if (len > LICHEN_MESHTASTIC_FROM_RADIO_MAX) {
+		return -EMSGSIZE;
+	}
+	if (buflen < len) {
+		return -ENOMEM;
+	}
+	if (len > 0U) {
+		memcpy(buf, tmp, len);
+	}
+	return (int)len;
+}
+
 static bool from_radio_len_field_supported(uint32_t field)
 {
 	switch (field) {
@@ -232,6 +368,118 @@ static bool from_radio_len_field_supported(uint32_t field)
 	default:
 		return false;
 	}
+}
+
+static const char *info_long_name(const struct lichen_meshtastic_local_info *info)
+{
+	return (info != NULL && info->long_name != NULL &&
+		info->long_name[0] != '\0') ? info->long_name : "LICHEN Node";
+}
+
+static const char *info_short_name(const struct lichen_meshtastic_local_info *info)
+{
+	return (info != NULL && info->short_name != NULL &&
+		info->short_name[0] != '\0') ? info->short_name : "LICH";
+}
+
+static const char *info_firmware_version(
+	const struct lichen_meshtastic_local_info *info)
+{
+	return (info != NULL && info->firmware_version != NULL &&
+		info->firmware_version[0] != '\0') ?
+		       info->firmware_version :
+		       "LICHEN Zephyr compat 0.0.0+unknown";
+}
+
+static const char *info_pio_env(const struct lichen_meshtastic_local_info *info)
+{
+	return (info != NULL && info->pio_env != NULL &&
+		info->pio_env[0] != '\0') ? info->pio_env : "zephyr";
+}
+
+static uint32_t info_node_num(const struct lichen_meshtastic_local_info *info)
+{
+	return (info != NULL && info->node_num != 0U) ? info->node_num :
+							0x4c494348U;
+}
+
+static uint32_t info_min_app_version(
+	const struct lichen_meshtastic_local_info *info)
+{
+	return (info != NULL && info->min_app_version != 0U) ?
+		       info->min_app_version :
+		       30200U;
+}
+
+static uint32_t info_nodedb_count(
+	const struct lichen_meshtastic_local_info *info)
+{
+	return (info != NULL && info->nodedb_count != 0U) ?
+		       info->nodedb_count :
+		       1U;
+}
+
+static int write_user(uint8_t *buf, size_t buflen, size_t *pos,
+		      const struct lichen_meshtastic_local_info *info)
+{
+	char id[10];
+	uint32_t node_num = info_node_num(info);
+
+	id[0] = '!';
+	for (size_t i = 0U; i < 8U; i++) {
+		uint8_t nibble = (uint8_t)((node_num >> ((7U - i) * 4U)) & 0x0fU);
+
+		id[i + 1U] = (char)(nibble < 10U ? '0' + nibble :
+				     'a' + (nibble - 10U));
+	}
+	id[9] = '\0';
+
+	if (pb_write_string_field(buf, buflen, pos, USER_ID_FIELD, id) < 0 ||
+	    pb_write_string_field(buf, buflen, pos, USER_LONG_NAME_FIELD,
+				  info_long_name(info)) < 0 ||
+	    pb_write_string_field(buf, buflen, pos, USER_SHORT_NAME_FIELD,
+				  info_short_name(info)) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos, USER_HW_MODEL_FIELD,
+				  MESHTASTIC_HW_MODEL_PRIVATE) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos, USER_IS_LICENSED_FIELD, 0U) <
+		    0 ||
+	    pb_write_varint_field(buf, buflen, pos, USER_ROLE_FIELD,
+				  MESHTASTIC_ROLE_CLIENT) < 0 ||
+	    pb_write_len_field(buf, buflen, pos, USER_PUBLIC_KEY_FIELD, NULL,
+			       0U) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos, USER_IS_UNMESSAGABLE_FIELD,
+				  0U) < 0) {
+		return -ENOMEM;
+	}
+	return 0;
+}
+
+static int write_lora_config(uint8_t *buf, size_t buflen, size_t *pos,
+			     const struct lichen_meshtastic_local_info *info)
+{
+	int32_t tx_power = (info != NULL && info->has_tx_power_dbm) ?
+				   info->tx_power_dbm :
+				   MESHTASTIC_DEFAULT_TX_POWER_DBM;
+
+	if (pb_write_varint_field(buf, buflen, pos, LORA_CONFIG_USE_PRESET_FIELD,
+				  1U) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos, LORA_CONFIG_MODEM_PRESET_FIELD,
+				  MESHTASTIC_MODEM_LONG_FAST) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos, LORA_CONFIG_REGION_FIELD,
+				  MESHTASTIC_REGION_US) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos, LORA_CONFIG_HOP_LIMIT_FIELD,
+				  3U) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos, LORA_CONFIG_TX_ENABLED_FIELD,
+				  (info == NULL || info->has_lora) ? 1U : 0U) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos, LORA_CONFIG_TX_POWER_FIELD,
+				  (uint32_t)tx_power) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos, LORA_CONFIG_CHANNEL_NUM_FIELD,
+				  0U) < 0 ||
+	    pb_write_varint_field(buf, buflen, pos, LORA_CONFIG_IGNORE_MQTT_FIELD,
+				  1U) < 0) {
+		return -ENOMEM;
+	}
+	return 0;
 }
 
 int lichen_meshtastic_decode_to_radio(const uint8_t *buf, size_t len,
@@ -304,6 +552,231 @@ int lichen_meshtastic_decode_to_radio(const uint8_t *buf, size_t len,
 	}
 
 	return out->type != LICHEN_MESHTASTIC_TO_RADIO_UNSET ? 0 : -ENODATA;
+}
+
+int lichen_meshtastic_encode_my_info_payload(
+	const struct lichen_meshtastic_local_info *info,
+	uint8_t *buf, size_t buflen)
+{
+	uint8_t tmp[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	size_t pos = 0U;
+
+	if (pb_write_varint_field(tmp, sizeof(tmp), &pos, MY_INFO_NODE_NUM_FIELD,
+				  info_node_num(info)) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos, MY_INFO_REBOOT_COUNT_FIELD,
+				  info != NULL ? info->reboot_count : 0U) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos,
+				  MY_INFO_MIN_APP_VERSION_FIELD,
+				  info_min_app_version(info)) < 0 ||
+	    pb_write_len_field(tmp, sizeof(tmp), &pos, MY_INFO_DEVICE_ID_FIELD,
+			       info != NULL ? info->device_id : NULL,
+			       info != NULL ? info->device_id_len : 0U) < 0 ||
+	    pb_write_string_field(tmp, sizeof(tmp), &pos, MY_INFO_PIO_ENV_FIELD,
+				  info_pio_env(info)) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos,
+				  MY_INFO_FIRMWARE_EDITION_FIELD, 0U) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos,
+				  MY_INFO_NODEDB_COUNT_FIELD,
+				  info_nodedb_count(info)) < 0) {
+		return -EMSGSIZE;
+	}
+
+	return copy_tmp_payload(tmp, pos, buf, buflen);
+}
+
+int lichen_meshtastic_encode_metadata_payload(
+	const struct lichen_meshtastic_local_info *info,
+	uint8_t *buf, size_t buflen)
+{
+	uint8_t tmp[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	size_t pos = 0U;
+
+	if (pb_write_string_field(tmp, sizeof(tmp), &pos,
+				  METADATA_FIRMWARE_VERSION_FIELD,
+				  info_firmware_version(info)) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos,
+				  METADATA_DEVICE_STATE_VERSION_FIELD, 1U) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos,
+				  METADATA_CAN_SHUTDOWN_FIELD, 0U) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos,
+				  METADATA_HAS_WIFI_FIELD, 0U) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos,
+				  METADATA_HAS_BLUETOOTH_FIELD,
+				  (info != NULL && info->has_bluetooth) ? 1U :
+									   0U) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos,
+				  METADATA_HAS_ETHERNET_FIELD, 0U) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos, METADATA_ROLE_FIELD,
+				  MESHTASTIC_ROLE_CLIENT) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos,
+				  METADATA_POSITION_FLAGS_FIELD, 0U) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos, METADATA_HW_MODEL_FIELD,
+				  MESHTASTIC_HW_MODEL_PRIVATE) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos,
+				  METADATA_HAS_REMOTE_HARDWARE_FIELD, 0U) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos, METADATA_HAS_PKC_FIELD,
+				  0U) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos,
+				  METADATA_EXCLUDED_MODULES_FIELD, 0U) < 0) {
+		return -EMSGSIZE;
+	}
+
+	return copy_tmp_payload(tmp, pos, buf, buflen);
+}
+
+int lichen_meshtastic_encode_config_payload(
+	const struct lichen_meshtastic_local_info *info,
+	uint8_t *buf, size_t buflen)
+{
+	uint8_t tmp[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint8_t inner[96];
+	size_t pos = 0U;
+	size_t inner_pos = 0U;
+
+	if (write_lora_config(inner, sizeof(inner), &inner_pos, info) < 0 ||
+	    pb_write_len_field(tmp, sizeof(tmp), &pos, CONFIG_LORA_FIELD,
+			       inner, inner_pos) < 0) {
+		return -EMSGSIZE;
+	}
+
+	return copy_tmp_payload(tmp, pos, buf, buflen);
+}
+
+int lichen_meshtastic_encode_module_config_payload(
+	const struct lichen_meshtastic_local_info *info,
+	uint8_t *buf, size_t buflen)
+{
+	uint8_t tmp[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint8_t telemetry[16];
+	size_t pos = 0U;
+	size_t telemetry_pos = 0U;
+
+	(void)info;
+
+	if (pb_write_varint_field(telemetry, sizeof(telemetry), &telemetry_pos,
+				  TELEMETRY_CONFIG_DEVICE_UPDATE_INTERVAL_FIELD,
+				  0U) < 0 ||
+	    pb_write_varint_field(telemetry, sizeof(telemetry), &telemetry_pos,
+				  TELEMETRY_CONFIG_ENVIRONMENT_UPDATE_INTERVAL_FIELD,
+				  0U) < 0 ||
+	    pb_write_varint_field(telemetry, sizeof(telemetry), &telemetry_pos,
+				  TELEMETRY_CONFIG_DEVICE_TELEMETRY_ENABLED_FIELD,
+				  0U) < 0 ||
+	    pb_write_len_field(tmp, sizeof(tmp), &pos, MODULE_CONFIG_TELEMETRY_FIELD,
+			       telemetry, telemetry_pos) < 0) {
+		return -EMSGSIZE;
+	}
+
+	return copy_tmp_payload(tmp, pos, buf, buflen);
+}
+
+int lichen_meshtastic_encode_channel_payload(
+	const struct lichen_meshtastic_local_info *info,
+	uint8_t *buf, size_t buflen)
+{
+	uint8_t tmp[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint8_t settings[64];
+	size_t pos = 0U;
+	size_t settings_pos = 0U;
+
+	if (pb_write_len_field(settings, sizeof(settings), &settings_pos,
+			       CHANNEL_SETTINGS_PSK_FIELD, NULL, 0U) < 0 ||
+	    pb_write_string_field(settings, sizeof(settings), &settings_pos,
+				  CHANNEL_SETTINGS_NAME_FIELD, "LICHEN") < 0 ||
+	    pb_write_fixed32_field(settings, sizeof(settings), &settings_pos,
+				   CHANNEL_SETTINGS_ID_FIELD,
+				   info_node_num(info)) < 0 ||
+	    pb_write_varint_field(settings, sizeof(settings), &settings_pos,
+				  CHANNEL_SETTINGS_UPLINK_ENABLED_FIELD, 0U) < 0 ||
+	    pb_write_varint_field(settings, sizeof(settings), &settings_pos,
+				  CHANNEL_SETTINGS_DOWNLINK_ENABLED_FIELD, 0U) < 0) {
+		return -EMSGSIZE;
+	}
+
+	if (pb_write_varint_field(tmp, sizeof(tmp), &pos, CHANNEL_INDEX_FIELD,
+				  0U) < 0 ||
+	    pb_write_len_field(tmp, sizeof(tmp), &pos, CHANNEL_SETTINGS_FIELD,
+			       settings, settings_pos) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos, CHANNEL_ROLE_FIELD,
+				  MESHTASTIC_CHANNEL_PRIMARY) < 0) {
+		return -EMSGSIZE;
+	}
+
+	return copy_tmp_payload(tmp, pos, buf, buflen);
+}
+
+int lichen_meshtastic_encode_region_presets_payload(
+	const struct lichen_meshtastic_local_info *info,
+	uint8_t *buf, size_t buflen)
+{
+	uint8_t tmp[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint8_t group[24];
+	uint8_t region[8];
+	size_t pos = 0U;
+	size_t group_pos = 0U;
+	size_t region_pos = 0U;
+
+	(void)info;
+
+	if (pb_write_varint_field(group, sizeof(group), &group_pos,
+				  PRESET_GROUP_PRESETS_FIELD,
+				  MESHTASTIC_MODEM_LONG_FAST) < 0 ||
+	    pb_write_varint_field(group, sizeof(group), &group_pos,
+				  PRESET_GROUP_DEFAULT_PRESET_FIELD,
+				  MESHTASTIC_MODEM_LONG_FAST) < 0 ||
+	    pb_write_len_field(tmp, sizeof(tmp), &pos, REGION_PRESET_GROUPS_FIELD,
+			       group, group_pos) < 0) {
+		return -EMSGSIZE;
+	}
+
+	if (pb_write_varint_field(region, sizeof(region), &region_pos,
+				  PRESET_REGION_REGION_FIELD,
+				  MESHTASTIC_REGION_US) < 0 ||
+	    pb_write_varint_field(region, sizeof(region), &region_pos,
+				  PRESET_REGION_GROUP_INDEX_FIELD, 0U) < 0 ||
+	    pb_write_len_field(tmp, sizeof(tmp), &pos,
+			       REGION_PRESET_REGION_GROUPS_FIELD, region,
+			       region_pos) < 0) {
+		return -EMSGSIZE;
+	}
+
+	return copy_tmp_payload(tmp, pos, buf, buflen);
+}
+
+int lichen_meshtastic_encode_node_info_payload(
+	const struct lichen_meshtastic_local_info *info,
+	uint8_t *buf, size_t buflen)
+{
+	uint8_t tmp[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint8_t user[160];
+	uint8_t metrics[24];
+	size_t pos = 0U;
+	size_t user_pos = 0U;
+	size_t metrics_pos = 0U;
+
+	if (write_user(user, sizeof(user), &user_pos, info) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos, NODE_INFO_NUM_FIELD,
+				  info_node_num(info)) < 0 ||
+	    pb_write_len_field(tmp, sizeof(tmp), &pos, NODE_INFO_USER_FIELD,
+			       user, user_pos) < 0) {
+		return -EMSGSIZE;
+	}
+
+	(void)DEVICE_METRICS_BATTERY_LEVEL_FIELD;
+	if (pb_write_varint_field(metrics, sizeof(metrics), &metrics_pos,
+				  DEVICE_METRICS_UPTIME_SECONDS_FIELD,
+				  info != NULL ? info->uptime_seconds : 0U) < 0 ||
+	    pb_write_len_field(tmp, sizeof(tmp), &pos,
+			       NODE_INFO_DEVICE_METRICS_FIELD, metrics,
+			       metrics_pos) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos, NODE_INFO_CHANNEL_FIELD,
+				  0U) < 0 ||
+	    pb_write_varint_field(tmp, sizeof(tmp), &pos,
+				  NODE_INFO_HOPS_AWAY_FIELD, 0U) < 0) {
+		return -EMSGSIZE;
+	}
+
+	return copy_tmp_payload(tmp, pos, buf, buflen);
 }
 
 int lichen_meshtastic_encode_from_radio_config_complete(uint32_t nonce,

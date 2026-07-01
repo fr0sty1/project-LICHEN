@@ -9,10 +9,17 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <zephyr/kernel.h>
+#include <zephyr/kernel_version.h>
 #include <zephyr/logging/log.h>
 
+#include <lichen/hal.h>
+#if IS_ENABLED(CONFIG_LICHEN_L2)
+#include "lora_l2.h"
+#endif
 #include <lichen/meshtastic/adapter.h>
 #include <lichen/meshtastic/codec.h>
 
@@ -28,6 +35,10 @@ static struct k_thread s_thread;
 static K_THREAD_STACK_DEFINE(s_stack, ADAPTER_STACK_SIZE);
 static bool s_started;
 static uint32_t s_dispatch_epoch;
+static char s_long_name[32];
+static char s_pio_env[48];
+static char s_firmware_version[48];
+static uint8_t s_device_id[8];
 
 static int enqueue_from_radio(const uint8_t *from_radio, size_t len, void *user_data)
 {
@@ -65,6 +76,61 @@ static uint32_t queue_free(void *user_data)
 	ARG_UNUSED(user_data);
 
 	return ble_meshtastic_from_radio_free();
+}
+
+static int get_local_info(struct lichen_meshtastic_local_info *info,
+			  void *user_data)
+{
+	struct lichen_hal_identity identity;
+	uint8_t eui64[8] = { 0 };
+	int ret = -ENODEV;
+
+	ARG_UNUSED(user_data);
+
+	if (info == NULL) {
+		return -EINVAL;
+	}
+
+	lichen_hal_identity_get(&identity);
+	(void)snprintf(s_long_name, sizeof(s_long_name), "LICHEN %s",
+		       identity.board_name != NULL ? identity.board_name :
+							     CONFIG_BOARD);
+	(void)snprintf(s_pio_env, sizeof(s_pio_env), "zephyr-%s",
+		       identity.zephyr_board != NULL ? identity.zephyr_board :
+							       CONFIG_BOARD);
+	(void)snprintf(s_firmware_version, sizeof(s_firmware_version),
+		       "LICHEN Zephyr %u.%u.%u compat",
+		       SYS_KERNEL_VER_MAJOR(sys_kernel_version_get()),
+		       SYS_KERNEL_VER_MINOR(sys_kernel_version_get()),
+		       SYS_KERNEL_VER_PATCHLEVEL(sys_kernel_version_get()));
+
+#if IS_ENABLED(CONFIG_LICHEN_L2)
+	ret = lichen_lora_l2_copy_eui64(eui64);
+#endif
+	if (ret == 0) {
+		memcpy(s_device_id, eui64, sizeof(s_device_id));
+		info->device_id = s_device_id;
+		info->device_id_len = sizeof(s_device_id);
+		info->node_num = ((uint32_t)eui64[4] << 24) |
+				 ((uint32_t)eui64[5] << 16) |
+				 ((uint32_t)eui64[6] << 8) |
+				 (uint32_t)eui64[7];
+	}
+
+	info->long_name = s_long_name;
+	info->short_name = "LICH";
+	info->firmware_version = s_firmware_version;
+	info->pio_env = s_pio_env;
+	info->uptime_seconds = (uint32_t)(k_uptime_get() / 1000);
+	info->has_bluetooth = true;
+	info->has_battery = false;
+	info->has_gnss = lichen_hal_has_capability(LICHEN_HAL_CAP_GNSS);
+	info->has_lora = lichen_hal_has_capability(LICHEN_HAL_CAP_LORA);
+	info->has_tx_power_dbm = true;
+	info->tx_power_dbm = 14;
+	info->nodedb_count = 1U;
+
+	return 0;
 }
 
 static void adapter_thread(void *a, void *b, void *c)
@@ -115,6 +181,7 @@ int gateway_meshtastic_adapter_init(void)
 		.enqueue_from_radio = enqueue_from_radio,
 		.handle_text = handle_text,
 		.queue_free = queue_free,
+		.get_local_info = get_local_info,
 		.queue_maxlen = ble_meshtastic_from_radio_capacity(),
 		.heartbeat_queue_status = true,
 	};
