@@ -80,6 +80,21 @@ struct from_radio_view {
 	uint32_t value;
 };
 
+struct client_packet_view {
+	uint32_t from;
+	uint32_t to;
+	uint32_t id;
+	uint32_t portnum;
+	uint32_t request_id;
+	const uint8_t *app_payload;
+	size_t app_payload_len;
+	bool has_from;
+	bool has_to;
+	bool has_id;
+	bool has_portnum;
+	bool has_request_id;
+};
+
 static int read_varint(const uint8_t *buf, size_t len, size_t *pos,
 		       uint32_t *value)
 {
@@ -361,6 +376,65 @@ static bool payload_get_fixed32_field(const uint8_t *buf, size_t len,
 	return false;
 }
 
+static void decode_client_packet(const uint8_t *buf, size_t len,
+				 struct client_packet_view *out)
+{
+	const uint8_t *mesh = NULL;
+	const uint8_t *data = NULL;
+	size_t mesh_len = 0U;
+	size_t data_len = 0U;
+	size_t pos = 0U;
+	uint32_t packet_count = 0U;
+
+	memset(out, 0, sizeof(*out));
+	while (pos < len) {
+		uint32_t key;
+		uint32_t n;
+
+		zassert_equal(read_varint(buf, len, &pos, &key), 0);
+		if (key == 0x12U) { /* FromRadio.packet */
+			packet_count++;
+			zassert_equal(read_varint(buf, len, &pos, &n), 0);
+			zassert_true(n <= len - pos);
+			mesh = &buf[pos];
+			mesh_len = n;
+			pos += n;
+		} else if ((key & 0x07U) == 0U) {
+			zassert_equal(read_varint(buf, len, &pos, &n), 0);
+		} else if ((key & 0x07U) == 2U) {
+			zassert_equal(read_varint(buf, len, &pos, &n), 0);
+			zassert_true(n <= len - pos);
+			pos += n;
+		} else if ((key & 0x07U) == 5U) {
+			zassert_true(len - pos >= 4U);
+			pos += 4U;
+		} else {
+			zassert_unreachable("unexpected FromRadio field");
+		}
+	}
+
+	zassert_not_null(mesh);
+	zassert_equal(packet_count, 1U);
+	zassert_true(payload_get_fixed32_field(mesh, mesh_len, 1U, &out->from));
+	out->has_from = true;
+	zassert_true(payload_get_fixed32_field(mesh, mesh_len, 2U, &out->to));
+	out->has_to = true;
+	zassert_true(payload_get_fixed32_field(mesh, mesh_len, 6U, &out->id));
+	out->has_id = true;
+	zassert_true(payload_get_len_field(mesh, mesh_len, 4U, &data,
+					   &data_len));
+	zassert_true(payload_get_varint_field(data, data_len, 1U,
+					      &out->portnum));
+	out->has_portnum = true;
+	if (payload_get_len_field(data, data_len, 2U, &out->app_payload,
+				  &out->app_payload_len)) {
+		/* optional application payload */
+	}
+	if (payload_get_fixed32_field(data, data_len, 6U, &out->request_id)) {
+		out->has_request_id = true;
+	}
+}
+
 ZTEST(meshtastic_gateway_adapter, test_emit_text_uses_current_ble_session)
 {
 	const uint8_t payload[] = { 'h', 'i' };
@@ -386,6 +460,41 @@ ZTEST(meshtastic_gateway_adapter, test_emit_text_uses_current_ble_session)
 	expect_from_radio(0U, expected, sizeof(expected));
 }
 
+ZTEST(meshtastic_gateway_adapter, test_inbound_text_has_client_visible_view)
+{
+	const uint8_t payload[] = { 'h', 'i' };
+	const uint8_t *from_radio;
+	size_t from_radio_len;
+	struct client_packet_view view;
+	struct gateway_inbound_text_event event = {
+		.from = 0x11223344U,
+		.to = 0x01020304U,
+		.id = 0x55667788U,
+		.payload = payload,
+		.payload_len = sizeof(payload),
+		.has_id = true,
+	};
+
+	reset_gateway(2U);
+	zassert_equal(gateway_inbound_emit_text(&event), 0);
+
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 1U);
+	from_radio = fake_ble_meshtastic_from_radio(0U, &from_radio_len);
+	zassert_not_null(from_radio);
+	decode_client_packet(from_radio, from_radio_len, &view);
+	zassert_true(view.has_from);
+	zassert_equal(view.from, 0x11223344U);
+	zassert_true(view.has_to);
+	zassert_equal(view.to, 0x01020304U);
+	zassert_true(view.has_id);
+	zassert_equal(view.id, 0x55667788U);
+	zassert_true(view.has_portnum);
+	zassert_equal(view.portnum, 1U);
+	zassert_not_null(view.app_payload);
+	zassert_equal(view.app_payload_len, sizeof(payload));
+	zassert_mem_equal(view.app_payload, payload, sizeof(payload));
+}
+
 ZTEST(meshtastic_gateway_adapter, test_emit_status_uses_current_ble_session)
 {
 	const uint8_t expected[] = {
@@ -407,6 +516,38 @@ ZTEST(meshtastic_gateway_adapter, test_emit_status_uses_current_ble_session)
 
 	zassert_equal(fake_ble_meshtastic_from_radio_count(), 1U);
 	expect_from_radio(0U, expected, sizeof(expected));
+}
+
+ZTEST(meshtastic_gateway_adapter, test_inbound_status_has_client_visible_view)
+{
+	const uint8_t *from_radio;
+	size_t from_radio_len;
+	struct client_packet_view view;
+	struct gateway_inbound_status_event event = {
+		.from = 0x11223344U,
+		.to = 0x01020304U,
+		.id = 0x55667789U,
+		.request_id = 0x12345678U,
+		.has_id = true,
+	};
+
+	reset_gateway(2U);
+	zassert_equal(gateway_inbound_emit_status(&event), 0);
+
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 1U);
+	from_radio = fake_ble_meshtastic_from_radio(0U, &from_radio_len);
+	zassert_not_null(from_radio);
+	decode_client_packet(from_radio, from_radio_len, &view);
+	zassert_true(view.has_from);
+	zassert_equal(view.from, 0x11223344U);
+	zassert_true(view.has_to);
+	zassert_equal(view.to, 0x01020304U);
+	zassert_true(view.has_id);
+	zassert_equal(view.id, 0x55667789U);
+	zassert_true(view.has_portnum);
+	zassert_equal(view.portnum, 5U);
+	zassert_true(view.has_request_id);
+	zassert_equal(view.request_id, 0x12345678U);
 }
 
 ZTEST(meshtastic_gateway_adapter, test_emit_status_backpressure_propagates)
