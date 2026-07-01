@@ -24,6 +24,8 @@ enum lichen_meshtastic_adapter_result {
 enum lichen_meshtastic_adapter_packet_kind {
 	LICHEN_MESHTASTIC_ADAPTER_PACKET_UNKNOWN = 0,
 	LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP,
+	LICHEN_MESHTASTIC_ADAPTER_PACKET_ADMIN_GET_DEVICE_METADATA,
+	LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED,
 	LICHEN_MESHTASTIC_ADAPTER_PACKET_UNSUPPORTED,
 };
 
@@ -44,6 +46,7 @@ struct lichen_meshtastic_adapter_packet_info {
 	bool has_to;
 	bool has_id;
 	bool has_channel;
+	bool has_portnum;
 	bool want_ack;
 };
 

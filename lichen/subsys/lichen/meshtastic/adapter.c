@@ -25,6 +25,16 @@
 
 #define DATA_PORTNUM_FIELD 1U
 #define DATA_PAYLOAD_FIELD 2U
+#define DATA_REQUEST_ID_FIELD 6U
+
+#define ADMIN_GET_OWNER_REQUEST_FIELD 3U
+#define ADMIN_GET_DEVICE_METADATA_REQUEST_FIELD 12U
+#define ADMIN_GET_DEVICE_METADATA_RESPONSE_FIELD 13U
+#define ADMIN_SET_OWNER_FIELD 32U
+#define ADMIN_SESSION_PASSKEY_FIELD 101U
+#define ADMIN_OTA_REQUEST_FIELD 102U
+#define ADMIN_SENSOR_CONFIG_FIELD 103U
+#define ADMIN_LOCKDOWN_AUTH_FIELD 104U
 
 #define MESHTASTIC_PORTNUM_UNKNOWN_APP 0U
 #define MESHTASTIC_PORTNUM_TEXT_MESSAGE_APP 1U
@@ -300,6 +310,135 @@ static int pb_read_len_value(struct pb_cursor *cur, const uint8_t **data, size_t
 	return 0;
 }
 
+static int pb_write_varint(uint8_t *buf, size_t cap, size_t *pos, uint64_t value)
+{
+	do {
+		uint8_t byte;
+
+		if (*pos >= cap) {
+			return -EMSGSIZE;
+		}
+		byte = (uint8_t)(value & 0x7fU);
+		value >>= 7;
+		if (value != 0U) {
+			byte |= 0x80U;
+		}
+		buf[(*pos)++] = byte;
+	} while (value != 0U);
+
+	return 0;
+}
+
+static int pb_write_key(uint8_t *buf, size_t cap, size_t *pos,
+			uint32_t field, uint32_t wire_type)
+{
+	return pb_write_varint(buf, cap, pos,
+			       ((uint64_t)field << 3) | (uint64_t)wire_type);
+}
+
+static int pb_write_varint_field(uint8_t *buf, size_t cap, size_t *pos,
+				 uint32_t field, uint64_t value)
+{
+	if (pb_write_key(buf, cap, pos, field, PB_WT_VARINT) < 0 ||
+	    pb_write_varint(buf, cap, pos, value) < 0) {
+		return -EMSGSIZE;
+	}
+	return 0;
+}
+
+static int pb_write_fixed32_field(uint8_t *buf, size_t cap, size_t *pos,
+				  uint32_t field, uint32_t value)
+{
+	if (pb_write_key(buf, cap, pos, field, PB_WT_32BIT) < 0 ||
+	    cap - *pos < sizeof(uint32_t)) {
+		return -EMSGSIZE;
+	}
+	sys_put_le32(value, &buf[*pos]);
+	*pos += sizeof(uint32_t);
+	return 0;
+}
+
+static int pb_write_len_field(uint8_t *buf, size_t cap, size_t *pos,
+			      uint32_t field, const uint8_t *data, size_t len)
+{
+	if (pb_write_key(buf, cap, pos, field, PB_WT_LEN) < 0 ||
+	    pb_write_varint(buf, cap, pos, len) < 0 ||
+	    len > cap - *pos) {
+		return -EMSGSIZE;
+	}
+	if (len > 0U) {
+		memcpy(&buf[*pos], data, len);
+	}
+	*pos += len;
+	return 0;
+}
+
+static bool admin_payload_variant_field(uint32_t field)
+{
+	/* Current Meshtastic AdminMessage.payload_variant fields. Field 101 is
+	 * session_passkey context, not a oneof arm; unknown future fields must
+	 * be skipped rather than overriding a previous known oneof arm.
+	 */
+	return (field >= 1U && field <= 8U) ||
+	       (field >= 10U && field <= 27U) ||
+	       (field >= 32U && field <= 49U) ||
+	       (field >= 64U && field <= 67U) ||
+	       (field >= 94U && field <= 100U) ||
+	       (field >= ADMIN_OTA_REQUEST_FIELD &&
+		field <= ADMIN_LOCKDOWN_AUTH_FIELD);
+}
+
+static bool parse_admin_payload(const uint8_t *payload, size_t len,
+				enum lichen_meshtastic_adapter_packet_kind *kind)
+{
+	struct pb_cursor cur = { .buf = payload, .len = len };
+
+	*kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_UNSUPPORTED;
+
+	while (cur.pos < cur.len) {
+		uint32_t field;
+		uint32_t wt;
+		uint64_t v;
+
+		if (pb_read_key(&cur, &field, &wt) < 0) {
+			return false;
+		}
+
+		switch (field) {
+		case ADMIN_GET_DEVICE_METADATA_REQUEST_FIELD:
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0) {
+				return false;
+			}
+			*kind = (v != 0U) ?
+				LICHEN_MESHTASTIC_ADAPTER_PACKET_ADMIN_GET_DEVICE_METADATA :
+				LICHEN_MESHTASTIC_ADAPTER_PACKET_UNSUPPORTED;
+			break;
+		case ADMIN_SESSION_PASSKEY_FIELD:
+			if (pb_skip_value(&cur, wt) < 0) {
+				return false;
+			}
+			break;
+		case ADMIN_GET_OWNER_REQUEST_FIELD:
+		case ADMIN_SET_OWNER_FIELD:
+			*kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_UNSUPPORTED;
+			if (pb_skip_value(&cur, wt) < 0) {
+				return false;
+			}
+			break;
+		default:
+			if (admin_payload_variant_field(field)) {
+				*kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_UNSUPPORTED;
+			}
+			if (pb_skip_value(&cur, wt) < 0) {
+				return false;
+			}
+			break;
+		}
+	}
+
+	return true;
+}
+
 static int parse_data(const uint8_t *data, size_t len,
 		      struct lichen_meshtastic_adapter_packet_info *info)
 {
@@ -323,11 +462,7 @@ static int parse_data(const uint8_t *data, size_t len,
 				return -EINVAL;
 			}
 			info->portnum = (uint32_t)v;
-			if (info->portnum == MESHTASTIC_PORTNUM_TEXT_MESSAGE_APP) {
-				info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP;
-			} else {
-				info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_UNSUPPORTED;
-			}
+			info->has_portnum = true;
 			break;
 		case DATA_PAYLOAD_FIELD:
 			if (wt != PB_WT_LEN ||
@@ -342,6 +477,20 @@ static int parse_data(const uint8_t *data, size_t len,
 				return -EINVAL;
 			}
 			break;
+		}
+	}
+
+	if (info->has_portnum) {
+		if (info->portnum == MESHTASTIC_PORTNUM_TEXT_MESSAGE_APP) {
+			info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP;
+		} else if (info->portnum == MESHTASTIC_PORTNUM_ADMIN_APP &&
+			   info->payload != NULL) {
+			if (!parse_admin_payload(info->payload, info->payload_len,
+						 &info->kind)) {
+				info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
+			}
+		} else {
+			info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_UNSUPPORTED;
 		}
 	}
 
@@ -746,6 +895,79 @@ static int enqueue_node_sync(struct lichen_meshtastic_adapter *adapter,
 			       payload, (size_t)ret);
 }
 
+static int enqueue_admin_metadata_response(
+	struct lichen_meshtastic_adapter *adapter,
+	const struct lichen_meshtastic_adapter_packet_info *packet)
+{
+	struct lichen_meshtastic_local_info info;
+	uint8_t metadata[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint8_t admin[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint8_t data[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint8_t mesh_packet[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint8_t from_radio[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint32_t from_radio_id;
+	size_t admin_len = 0U;
+	size_t data_len = 0U;
+	size_t packet_len = 0U;
+	int ret;
+
+	ret = local_info(adapter, &info);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = lichen_meshtastic_encode_metadata_payload(&info, metadata,
+							sizeof(metadata));
+	if (ret < 0) {
+		return ret;
+	}
+	if (pb_write_len_field(admin, sizeof(admin), &admin_len,
+			       ADMIN_GET_DEVICE_METADATA_RESPONSE_FIELD,
+			       metadata, (size_t)ret) < 0 ||
+	    pb_write_varint_field(data, sizeof(data), &data_len,
+				  DATA_PORTNUM_FIELD,
+				  MESHTASTIC_PORTNUM_ADMIN_APP) < 0 ||
+	    pb_write_len_field(data, sizeof(data), &data_len,
+			       DATA_PAYLOAD_FIELD, admin, admin_len) < 0) {
+		return -EMSGSIZE;
+	}
+	if (packet->has_id &&
+	    pb_write_fixed32_field(data, sizeof(data), &data_len,
+				   DATA_REQUEST_ID_FIELD, packet->id) < 0) {
+		return -EMSGSIZE;
+	}
+
+	from_radio_id = adapter->from_radio_id + 1U;
+	if (pb_write_fixed32_field(mesh_packet, sizeof(mesh_packet), &packet_len,
+				   MESH_PACKET_FROM_FIELD, info.node_num) < 0 ||
+	    pb_write_fixed32_field(mesh_packet, sizeof(mesh_packet), &packet_len,
+				   MESH_PACKET_TO_FIELD,
+				   packet->has_from ? packet->from :
+						      MESHTASTIC_BROADCAST_NODE) < 0 ||
+	    pb_write_len_field(mesh_packet, sizeof(mesh_packet), &packet_len,
+			       MESH_PACKET_DECODED_FIELD, data, data_len) < 0 ||
+	    pb_write_fixed32_field(mesh_packet, sizeof(mesh_packet), &packet_len,
+				   MESH_PACKET_ID_FIELD, from_radio_id) < 0) {
+		return -EMSGSIZE;
+	}
+
+	ret = lichen_meshtastic_encode_from_radio_packet(from_radio_id,
+							 mesh_packet,
+							 packet_len,
+							 from_radio,
+							 sizeof(from_radio));
+	if (ret < 0) {
+		return ret;
+	}
+	ret = enqueue(adapter, from_radio, (size_t)ret);
+	if (ret < 0) {
+		return ret;
+	}
+
+	adapter->from_radio_id = from_radio_id;
+	return 0;
+}
+
 static int dispatch_want_config(struct lichen_meshtastic_adapter *adapter,
 				uint32_t nonce)
 {
@@ -801,6 +1023,11 @@ static int dispatch_packet(struct lichen_meshtastic_adapter *adapter,
 			return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED, &packet);
 		}
 		return queue_status(adapter, QUEUE_STATUS_OK, &packet);
+	case LICHEN_MESHTASTIC_ADAPTER_PACKET_ADMIN_GET_DEVICE_METADATA:
+		return enqueue_admin_metadata_response(adapter, &packet);
+	case LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED:
+		adapter->stats.malformed_count++;
+		return queue_status(adapter, QUEUE_STATUS_MALFORMED, &packet);
 	case LICHEN_MESHTASTIC_ADAPTER_PACKET_UNSUPPORTED:
 	case LICHEN_MESHTASTIC_ADAPTER_PACKET_UNKNOWN:
 	default:
