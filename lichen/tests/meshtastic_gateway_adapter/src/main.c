@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include <zephyr/ztest.h>
 #include <zephyr/sys/util.h>
@@ -11,6 +12,7 @@
 
 #include <lichen/app_interface/app_interface.h>
 
+#include "ble_meshtastic.h"
 #include "fake_ble_meshtastic.h"
 #include "inbound_coap.h"
 #include "inbound_events.h"
@@ -51,6 +53,70 @@ static void make_post_request(struct coap_packet *request, uint8_t *buf,
 		zassert_ok(coap_packet_append_payload_marker(request));
 		zassert_ok(coap_packet_append_payload(request, payload,
 						      payload_len));
+	}
+}
+
+struct queue_status_view {
+	uint32_t res;
+	uint32_t free;
+	uint32_t maxlen;
+	bool has_res;
+};
+
+static int read_varint(const uint8_t *buf, size_t len, size_t *pos,
+		       uint32_t *value)
+{
+	uint32_t out = 0U;
+	uint8_t shift = 0U;
+
+	while (*pos < len && shift < 32U) {
+		uint8_t byte = buf[(*pos)++];
+
+		out |= (uint32_t)(byte & 0x7fU) << shift;
+		if ((byte & 0x80U) == 0U) {
+			*value = out;
+			return 0;
+		}
+		shift += 7U;
+	}
+
+	return -EINVAL;
+}
+
+static void decode_queue_status(const uint8_t *buf, size_t len,
+				struct queue_status_view *out)
+{
+	size_t pos = 0U;
+	uint32_t key;
+	uint32_t inner_len;
+	size_t end;
+
+	memset(out, 0, sizeof(*out));
+	zassert_equal(read_varint(buf, len, &pos, &key), 0);
+	zassert_equal(key, 0x5aU);
+	zassert_equal(read_varint(buf, len, &pos, &inner_len), 0);
+	zassert_true(inner_len <= len - pos);
+	end = pos + inner_len;
+
+	while (pos < end) {
+		uint32_t value;
+
+		zassert_equal(read_varint(buf, end, &pos, &key), 0);
+		zassert_equal(read_varint(buf, end, &pos, &value), 0);
+		switch (key) {
+		case 0x08:
+			out->res = value;
+			out->has_res = true;
+			break;
+		case 0x10:
+			out->free = value;
+			break;
+		case 0x18:
+			out->maxlen = value;
+			break;
+		default:
+			zassert_unreachable("unexpected queueStatus key");
+		}
 	}
 }
 
@@ -257,6 +323,70 @@ ZTEST(meshtastic_gateway_adapter, test_coap_invalid_payloads_are_bad_request)
 			  sizeof(bad_status));
 	zassert_equal(gateway_inbound_status_post(NULL, &request, NULL, 0),
 		      COAP_RESPONSE_CODE_BAD_REQUEST);
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 0U);
+}
+
+ZTEST(meshtastic_gateway_adapter, test_process_once_dispatches_ble_write)
+{
+	const uint8_t heartbeat[] = { 0x3a, 0x00 };
+	const uint8_t *from_radio;
+	size_t from_radio_len;
+	struct queue_status_view status;
+
+	reset_gateway(2U);
+	zassert_ok(fake_ble_meshtastic_push_to_radio(heartbeat,
+						     sizeof(heartbeat)));
+
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 1U);
+	from_radio = fake_ble_meshtastic_from_radio(0U, &from_radio_len);
+	zassert_not_null(from_radio);
+	decode_queue_status(from_radio, from_radio_len, &status);
+	zassert_true(status.has_res);
+	zassert_equal(status.res, 0U);
+	zassert_equal(status.free, 1U);
+	zassert_equal(status.maxlen, 2U);
+}
+
+ZTEST(meshtastic_gateway_adapter, test_process_once_without_ble_write_is_idle)
+{
+	reset_gateway(2U);
+
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 0);
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 0U);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_process_once_disconnect_clears_ble_session_queues)
+{
+	const uint8_t heartbeat[] = { 0x3a, 0x00 };
+	const uint8_t disconnect[] = { 0x20, 0x01 };
+
+	reset_gateway(2U);
+	zassert_ok(fake_ble_meshtastic_push_to_radio(heartbeat,
+						     sizeof(heartbeat)));
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 1U);
+
+	zassert_ok(fake_ble_meshtastic_push_to_radio(disconnect,
+						     sizeof(disconnect)));
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+	zassert_true(ble_meshtastic_session_active());
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 0U);
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 0);
+}
+
+ZTEST(meshtastic_gateway_adapter, test_process_once_drops_stale_response)
+{
+	const uint8_t heartbeat[] = { 0x3a, 0x00 };
+
+	reset_gateway(2U);
+	zassert_ok(fake_ble_meshtastic_push_to_radio(heartbeat,
+						     sizeof(heartbeat)));
+	fake_ble_meshtastic_disconnect_on_next_enqueue();
+
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), -ENOTCONN);
+	zassert_false(ble_meshtastic_session_active());
 	zassert_equal(fake_ble_meshtastic_from_radio_count(), 0U);
 }
 

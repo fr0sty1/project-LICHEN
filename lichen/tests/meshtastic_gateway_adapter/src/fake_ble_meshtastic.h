@@ -11,6 +11,7 @@
 void fake_ble_meshtastic_reset(size_t from_radio_cap);
 void fake_ble_meshtastic_set_connected(bool connected);
 void fake_ble_meshtastic_disconnect_on_next_enqueue(void);
+int fake_ble_meshtastic_push_to_radio(const uint8_t *to_radio, size_t len);
 size_t fake_ble_meshtastic_from_radio_count(void);
 const uint8_t *fake_ble_meshtastic_from_radio(size_t index, size_t *len);
 

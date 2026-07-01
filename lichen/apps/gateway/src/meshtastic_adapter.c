@@ -31,8 +31,10 @@ LOG_MODULE_REGISTER(gateway_meshtastic_adapter, LOG_LEVEL_INF);
 
 static struct lichen_meshtastic_adapter s_adapter;
 static uint8_t s_to_radio[LICHEN_MESHTASTIC_TO_RADIO_MAX];
+#ifndef CONFIG_ZTEST
 static struct k_thread s_thread;
 static K_THREAD_STACK_DEFINE(s_stack, ADAPTER_STACK_SIZE);
+#endif
 static K_MUTEX_DEFINE(s_init_mutex);
 static K_MUTEX_DEFINE(s_adapter_mutex);
 static bool s_started;
@@ -50,6 +52,10 @@ static int handle_text(
 static uint32_t queue_free(void *user_data);
 static int get_local_info(struct lichen_meshtastic_local_info *info,
 			  void *user_data);
+static int process_once_internal(void);
+#ifndef CONFIG_ZTEST
+static void adapter_thread(void *a, void *b, void *c);
+#endif
 
 static struct lichen_meshtastic_adapter_ops adapter_ops(void)
 {
@@ -153,51 +159,6 @@ static int get_local_info(struct lichen_meshtastic_local_info *info,
 	return 0;
 }
 
-static void adapter_thread(void *a, void *b, void *c)
-{
-	ARG_UNUSED(a);
-	ARG_UNUSED(b);
-	ARG_UNUSED(c);
-
-	for (;;) {
-		size_t to_radio_len = 0U;
-		uint32_t session_epoch = 0U;
-		int ret = ble_meshtastic_dequeue_to_radio(s_to_radio,
-							  sizeof(s_to_radio),
-							  &to_radio_len,
-							  &session_epoch);
-
-		if (ret == 0) {
-			k_sleep(ADAPTER_IDLE_SLEEP);
-			continue;
-		}
-		if (ret < 0) {
-			LOG_WRN("Meshtastic ToRadio dequeue failed: %d", ret);
-			k_sleep(ADAPTER_IDLE_SLEEP);
-			continue;
-		}
-
-		k_mutex_lock(&s_adapter_mutex, K_FOREVER);
-		s_dispatch_epoch = session_epoch;
-		if (!ble_meshtastic_session_epoch_current(session_epoch)) {
-			lichen_meshtastic_adapter_reset(&s_adapter);
-			k_mutex_unlock(&s_adapter_mutex);
-			continue;
-		}
-		ret = lichen_meshtastic_adapter_process_raw(&s_adapter, s_to_radio,
-							    to_radio_len);
-		if (ret < 0) {
-			LOG_WRN("Meshtastic ToRadio dispatch failed: %d", ret);
-		}
-
-		if (lichen_meshtastic_adapter_disconnected(&s_adapter)) {
-			(void)ble_meshtastic_reset_session_if_epoch(session_epoch);
-			lichen_meshtastic_adapter_reset(&s_adapter);
-		}
-		k_mutex_unlock(&s_adapter_mutex);
-	}
-}
-
 int gateway_meshtastic_adapter_init(void)
 {
 	struct lichen_meshtastic_adapter_ops ops = adapter_ops();
@@ -211,16 +172,35 @@ int gateway_meshtastic_adapter_init(void)
 	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
 	lichen_meshtastic_adapter_init(&s_adapter, &ops);
 	k_mutex_unlock(&s_adapter_mutex);
+#ifndef CONFIG_ZTEST
 	k_thread_create(&s_thread, s_stack, K_THREAD_STACK_SIZEOF(s_stack),
 			adapter_thread, NULL, NULL, NULL,
 			ADAPTER_PRIORITY, 0, K_NO_WAIT);
 	k_thread_name_set(&s_thread, "meshapp");
+#endif
 	s_started = true;
 	k_mutex_unlock(&s_init_mutex);
 	LOG_INF("Meshtastic app adapter ready");
 
 	return 0;
 }
+
+#ifndef CONFIG_ZTEST
+static void adapter_thread(void *a, void *b, void *c)
+{
+	ARG_UNUSED(a);
+	ARG_UNUSED(b);
+	ARG_UNUSED(c);
+
+	for (;;) {
+		int ret = process_once_internal();
+
+		if (ret <= 0) {
+			k_sleep(ADAPTER_IDLE_SLEEP);
+		}
+	}
+}
+#endif
 
 int gateway_meshtastic_adapter_emit_text(
 	const struct lichen_meshtastic_incoming_text *event)
@@ -257,7 +237,48 @@ void gateway_meshtastic_adapter_test_reset(void)
 	lichen_meshtastic_adapter_init(&s_adapter, &ops);
 	k_mutex_unlock(&s_adapter_mutex);
 }
+
+int gateway_meshtastic_adapter_test_process_once(void)
+{
+	return process_once_internal();
+}
 #endif
+
+static int process_once_internal(void)
+{
+	size_t to_radio_len = 0U;
+	uint32_t session_epoch = 0U;
+	int ret = ble_meshtastic_dequeue_to_radio(s_to_radio, sizeof(s_to_radio),
+						  &to_radio_len, &session_epoch);
+
+	if (ret <= 0) {
+		if (ret < 0) {
+			LOG_WRN("Meshtastic ToRadio dequeue failed: %d", ret);
+		}
+		return ret;
+	}
+
+	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
+	s_dispatch_epoch = session_epoch;
+	if (!ble_meshtastic_session_epoch_current(session_epoch)) {
+		lichen_meshtastic_adapter_reset(&s_adapter);
+		k_mutex_unlock(&s_adapter_mutex);
+		return -ESTALE;
+	}
+	ret = lichen_meshtastic_adapter_process_raw(&s_adapter, s_to_radio,
+						    to_radio_len);
+	if (ret < 0) {
+		LOG_WRN("Meshtastic ToRadio dispatch failed: %d", ret);
+	}
+
+	if (lichen_meshtastic_adapter_disconnected(&s_adapter)) {
+		(void)ble_meshtastic_reset_session_if_epoch(session_epoch);
+		lichen_meshtastic_adapter_reset(&s_adapter);
+	}
+	k_mutex_unlock(&s_adapter_mutex);
+
+	return ret < 0 ? ret : 1;
+}
 
 int gateway_meshtastic_adapter_emit_status(
 	const struct lichen_meshtastic_incoming_status *event)

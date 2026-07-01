@@ -14,6 +14,7 @@ int gateway_meshtastic_adapter_emit_status(
 
 #ifdef CONFIG_ZTEST
 void gateway_meshtastic_adapter_test_reset(void);
+int gateway_meshtastic_adapter_test_process_once(void);
 #endif
 
 #endif /* GATEWAY_MESHTASTIC_ADAPTER_H_ */
