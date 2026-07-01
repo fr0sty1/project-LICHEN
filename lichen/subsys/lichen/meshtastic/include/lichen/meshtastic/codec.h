@@ -104,6 +104,17 @@ struct lichen_meshtastic_local_info {
 	bool charging;
 	bool has_external_power;
 	bool external_power;
+	bool has_latitude_e7;
+	int32_t latitude_e7;
+	bool has_longitude_e7;
+	int32_t longitude_e7;
+	bool has_altitude_m;
+	int32_t altitude_m;
+	bool has_fix_time_unix;
+	uint32_t fix_time_unix;
+	bool has_satellites;
+	uint8_t satellites;
+	bool has_gnss_fix;
 };
 
 enum lichen_meshtastic_config_section {

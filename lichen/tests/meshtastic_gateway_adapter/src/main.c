@@ -528,7 +528,9 @@ ZTEST(meshtastic_gateway_adapter,
 {
 	const uint8_t want_config_node_db[] = { 0x18, 0xad, 0x9e, 0x04 };
 	const uint8_t *metrics = NULL;
+	const uint8_t *position = NULL;
 	size_t metrics_len = 0U;
+	size_t position_len = 0U;
 	const uint8_t *from_radio;
 	size_t from_radio_len;
 	struct from_radio_view view;
@@ -552,6 +554,8 @@ ZTEST(meshtastic_gateway_adapter,
 					       &value));
 	zassert_true(payload_get_varint_field(metrics, metrics_len, 5U,
 					      &value));
+	zassert_false(payload_get_len_field(view.payload, view.payload_len, 3U,
+					    &position, &position_len));
 }
 
 ZTEST(meshtastic_gateway_adapter,
@@ -568,8 +572,26 @@ ZTEST(meshtastic_gateway_adapter,
 		.external_power_valid = true,
 		.external_power = false,
 	};
+	const struct lichen_hal_location_time_snapshot location_time = {
+		.location_provider_available = true,
+		.time_provider_available = true,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 476206130,
+		.longitude_e7_valid = true,
+		.longitude_e7 = -1223493000,
+		.altitude_m_valid = true,
+		.altitude_m = 42,
+		.fix_time_unix_valid = true,
+		.fix_time_unix = 1710000000U,
+		.satellites_valid = true,
+		.satellites = 9U,
+		.fix_source_valid = true,
+		.fix_source = LICHEN_HAL_FIX_SOURCE_GNSS,
+	};
 	const uint8_t *metrics = NULL;
+	const uint8_t *position = NULL;
 	size_t metrics_len = 0U;
+	size_t position_len = 0U;
 	const uint8_t *from_radio;
 	size_t from_radio_len;
 	struct from_radio_view view;
@@ -577,6 +599,7 @@ ZTEST(meshtastic_gateway_adapter,
 
 	reset_gateway(2U);
 	gateway_meshtastic_adapter_test_set_power_snapshot(&power);
+	gateway_meshtastic_adapter_test_set_location_time_snapshot(&location_time);
 	zassert_ok(fake_ble_meshtastic_push_to_radio(want_config_node_db,
 						     sizeof(want_config_node_db)));
 
@@ -596,6 +619,26 @@ ZTEST(meshtastic_gateway_adapter,
 	zassert_equal(value, 0x406ccccdU);
 	zassert_true(payload_get_varint_field(metrics, metrics_len, 5U,
 					      &value));
+	zassert_true(payload_get_len_field(view.payload, view.payload_len, 3U,
+					   &position, &position_len));
+	zassert_true(payload_get_fixed32_field(position, position_len, 1U,
+					       &value));
+	zassert_equal(value, 476206130U);
+	zassert_true(payload_get_fixed32_field(position, position_len, 2U,
+					       &value));
+	zassert_equal(value, (uint32_t)-1223493000);
+	zassert_true(payload_get_varint_field(position, position_len, 3U,
+					      &value));
+	zassert_equal(value, 42U);
+	zassert_true(payload_get_fixed32_field(position, position_len, 4U,
+					       &value));
+	zassert_equal(value, 1710000000U);
+	zassert_true(payload_get_varint_field(position, position_len, 5U,
+					      &value));
+	zassert_equal(value, 2U);
+	zassert_true(payload_get_varint_field(position, position_len, 19U,
+					      &value));
+	zassert_equal(value, 9U);
 }
 
 ZTEST(meshtastic_gateway_adapter, test_process_once_drops_stale_response)

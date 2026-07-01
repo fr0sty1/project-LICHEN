@@ -200,4 +200,86 @@ ZTEST(hal, test_power_snapshot_absent_providers_is_explicitly_unknown)
 	zassert_false(snapshot.external_power);
 }
 
+ZTEST(hal, test_location_time_snapshot_absent_providers_is_explicitly_unknown)
+{
+	struct lichen_hal_location_time_snapshot snapshot = {
+		.location_provider_available = true,
+		.time_provider_available = true,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 476206130,
+		.longitude_e7_valid = true,
+		.longitude_e7 = -1223493000,
+		.altitude_m_valid = true,
+		.altitude_m = 42,
+		.fix_time_unix_valid = true,
+		.fix_time_unix = 1710000000U,
+		.satellites_valid = true,
+		.satellites = 9U,
+		.fix_source_valid = true,
+		.fix_source = LICHEN_HAL_FIX_SOURCE_GNSS,
+	};
+
+	zassert_equal(lichen_hal_location_time_snapshot_get(NULL), -EINVAL);
+	lichen_hal_location_time_test_set_snapshot(NULL);
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+
+	zassert_false(snapshot.location_provider_available);
+	zassert_false(snapshot.time_provider_available);
+	zassert_false(snapshot.latitude_e7_valid);
+	zassert_equal(snapshot.latitude_e7, 0);
+	zassert_false(snapshot.longitude_e7_valid);
+	zassert_equal(snapshot.longitude_e7, 0);
+	zassert_false(snapshot.altitude_m_valid);
+	zassert_equal(snapshot.altitude_m, 0);
+	zassert_false(snapshot.fix_time_unix_valid);
+	zassert_equal(snapshot.fix_time_unix, 0U);
+	zassert_false(snapshot.satellites_valid);
+	zassert_equal(snapshot.satellites, 0U);
+	zassert_false(snapshot.fix_source_valid);
+	zassert_equal(snapshot.fix_source, LICHEN_HAL_FIX_SOURCE_NONE);
+}
+
+ZTEST(hal, test_location_time_snapshot_test_hook_round_trips_and_resets)
+{
+	const struct lichen_hal_location_time_snapshot injected = {
+		.location_provider_available = true,
+		.time_provider_available = true,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 476206130,
+		.longitude_e7_valid = true,
+		.longitude_e7 = -1223493000,
+		.altitude_m_valid = true,
+		.altitude_m = 42,
+		.fix_time_unix_valid = true,
+		.fix_time_unix = 1710000000U,
+		.satellites_valid = true,
+		.satellites = 9U,
+		.fix_source_valid = true,
+		.fix_source = LICHEN_HAL_FIX_SOURCE_GNSS,
+	};
+	struct lichen_hal_location_time_snapshot snapshot;
+
+	lichen_hal_location_time_test_set_snapshot(&injected);
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.location_provider_available);
+	zassert_true(snapshot.time_provider_available);
+	zassert_true(snapshot.latitude_e7_valid);
+	zassert_equal(snapshot.latitude_e7, 476206130);
+	zassert_true(snapshot.longitude_e7_valid);
+	zassert_equal(snapshot.longitude_e7, -1223493000);
+	zassert_true(snapshot.altitude_m_valid);
+	zassert_equal(snapshot.altitude_m, 42);
+	zassert_true(snapshot.fix_time_unix_valid);
+	zassert_equal(snapshot.fix_time_unix, 1710000000U);
+	zassert_true(snapshot.satellites_valid);
+	zassert_equal(snapshot.satellites, 9U);
+	zassert_true(snapshot.fix_source_valid);
+	zassert_equal(snapshot.fix_source, LICHEN_HAL_FIX_SOURCE_GNSS);
+
+	lichen_hal_location_time_test_set_snapshot(NULL);
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_false(snapshot.latitude_e7_valid);
+	zassert_false(snapshot.fix_time_unix_valid);
+}
+
 ZTEST_SUITE(hal, NULL, NULL, NULL, NULL, NULL);

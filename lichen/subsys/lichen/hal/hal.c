@@ -135,6 +135,11 @@ static const struct lichen_hal_capabilities s_caps = {
 	.time = LICHEN_HAL_TIME_PROVIDER_VALUE,
 };
 
+#ifdef CONFIG_ZTEST
+static struct lichen_hal_location_time_snapshot s_test_location_time_snapshot;
+static bool s_has_test_location_time_snapshot;
+#endif
+
 const struct lichen_hal_capabilities *lichen_hal_capabilities_get(void)
 {
 	return &s_caps;
@@ -521,3 +526,48 @@ int lichen_hal_power_snapshot_get(struct lichen_hal_power_snapshot *snapshot)
 
 	return 0;
 }
+
+int lichen_hal_location_time_snapshot_get(
+	struct lichen_hal_location_time_snapshot *snapshot)
+{
+	if (snapshot == NULL) {
+		return -EINVAL;
+	}
+
+#ifdef CONFIG_ZTEST
+	if (s_has_test_location_time_snapshot) {
+		*snapshot = s_test_location_time_snapshot;
+		return 0;
+	}
+#endif
+
+	*snapshot = (struct lichen_hal_location_time_snapshot){ 0 };
+	snapshot->location_provider_available =
+		lichen_hal_location_status() == 0;
+	snapshot->time_provider_available =
+		s_caps.time == LICHEN_HAL_TIME_GNSS && lichen_hal_time_status() == 0;
+
+	if (s_caps.location == LICHEN_HAL_LOCATION_GNSS &&
+	    snapshot->location_provider_available) {
+		snapshot->fix_source_valid = true;
+		snapshot->fix_source = LICHEN_HAL_FIX_SOURCE_GNSS;
+	}
+
+	return 0;
+}
+
+#ifdef CONFIG_ZTEST
+void lichen_hal_location_time_test_set_snapshot(
+	const struct lichen_hal_location_time_snapshot *snapshot)
+{
+	if (snapshot == NULL) {
+		s_has_test_location_time_snapshot = false;
+		s_test_location_time_snapshot =
+			(struct lichen_hal_location_time_snapshot){ 0 };
+		return;
+	}
+
+	s_test_location_time_snapshot = *snapshot;
+	s_has_test_location_time_snapshot = true;
+}
+#endif

@@ -1,0 +1,32 @@
+{
+  "id": "project-LICHEN-t2hn.6.3.2",
+  "title": "Add unit coverage for gateway status location/time CBOR",
+  "description": "Follow-up from project-LICHEN-t2hn.6.3. The gateway /status encoder now includes location_provider/time_provider and optional lat_i/lon_i/alt_m/time_unix/satellites fields, including signed CBOR integers, but the encoder remains embedded in gateway main.c and is only build-covered. Extract or otherwise expose enough of the encoder to assert absent and synthetic location/time snapshots without hardware.",
+  "acceptance_criteria": "A native_sim test verifies gateway status CBOR for absent providers, synthetic negative longitude/altitude, optional fix_time_unix and satellites, correct map size, and no uptime-as-Unix-time behavior.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-01T17:02:27.454382Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-01T17:02:27.454956Z",
+  "labels": [
+    "zephyr",
+    "gateway",
+    "cbor",
+    "status",
+    "test",
+    "meshtastic",
+    "config",
+    "firmware",
+    "app-interface"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.6.3.2",
+      "depends_on_id": "project-LICHEN-t2hn.6.3",
+      "type": "parent-child",
+      "created_at": "2026-07-01T17:02:27.454956Z"
+    }
+  ]
+}

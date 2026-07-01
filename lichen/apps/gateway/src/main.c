@@ -131,7 +131,7 @@ static int coap_respond(struct coap_resource *resource,
  * /status (Observable)
  * -------------------------------------------------------------------------- */
 
-#define STATUS_CBOR_MAX_SIZE 160U
+#define STATUS_CBOR_MAX_SIZE 240U
 #define STATUS_CBOR_MAX_ROLE_LEN 15U
 
 static void cbor_put_key(uint8_t *buf, size_t *off, const char *key)
@@ -168,6 +168,34 @@ static void cbor_put_uint(uint8_t *buf, size_t *off, uint32_t value)
 	}
 }
 
+static void cbor_put_int(uint8_t *buf, size_t *off, int32_t value)
+{
+	uint32_t encoded;
+
+	if (value >= 0) {
+		cbor_put_uint(buf, off, (uint32_t)value);
+		return;
+	}
+
+	encoded = (uint32_t)(-1LL - (int64_t)value);
+	if (encoded < 24U) {
+		buf[(*off)++] = 0x20U | (uint8_t)encoded;
+	} else if (encoded <= 0xffU) {
+		buf[(*off)++] = 0x38;
+		buf[(*off)++] = (uint8_t)encoded;
+	} else if (encoded <= 0xffffU) {
+		buf[(*off)++] = 0x39;
+		buf[(*off)++] = (uint8_t)(encoded >> 8);
+		buf[(*off)++] = (uint8_t)(encoded & 0xffU);
+	} else {
+		buf[(*off)++] = 0x3a;
+		buf[(*off)++] = (uint8_t)(encoded >> 24);
+		buf[(*off)++] = (uint8_t)(encoded >> 16);
+		buf[(*off)++] = (uint8_t)(encoded >> 8);
+		buf[(*off)++] = (uint8_t)(encoded & 0xffU);
+	}
+}
+
 /*
  * Build CBOR status with explicit power-provider availability and only valid
  * measured power fields. Returns encoded byte count.
@@ -176,9 +204,10 @@ static size_t encode_status_cbor(uint8_t *buf, size_t buf_size, uint16_t rank,
 				 const char *role, bool rpl_capable)
 {
 	struct lichen_hal_power_snapshot power;
+	struct lichen_hal_location_time_snapshot location_time;
 	uint32_t uptime_ms = k_uptime_get_32();
 	size_t role_len = role ? strlen(role) : 0;
-	uint8_t map_count = 6U;
+	uint8_t map_count = 8U;
 	size_t off = 0;
 
 	if (role == NULL || role_len > STATUS_CBOR_MAX_ROLE_LEN ||
@@ -187,10 +216,16 @@ static size_t encode_status_cbor(uint8_t *buf, size_t buf_size, uint16_t rank,
 	}
 
 	(void)lichen_hal_power_snapshot_get(&power);
+	(void)lichen_hal_location_time_snapshot_get(&location_time);
 	map_count += power.battery_percent_valid ? 1U : 0U;
 	map_count += power.battery_voltage_mv_valid ? 1U : 0U;
 	map_count += power.charging_valid ? 1U : 0U;
 	map_count += power.external_power_valid ? 1U : 0U;
+	map_count += location_time.latitude_e7_valid ? 1U : 0U;
+	map_count += location_time.longitude_e7_valid ? 1U : 0U;
+	map_count += location_time.altitude_m_valid ? 1U : 0U;
+	map_count += location_time.fix_time_unix_valid ? 1U : 0U;
+	map_count += location_time.satellites_valid ? 1U : 0U;
 
 	buf[off++] = 0xa0 | map_count;
 
@@ -216,6 +251,10 @@ static size_t encode_status_cbor(uint8_t *buf, size_t buf_size, uint16_t rank,
 	cbor_put_bool(buf, &off, power.battery_provider_available);
 	cbor_put_key(buf, &off, "pmic_provider");
 	cbor_put_bool(buf, &off, power.pmic_provider_available);
+	cbor_put_key(buf, &off, "location_provider");
+	cbor_put_bool(buf, &off, location_time.location_provider_available);
+	cbor_put_key(buf, &off, "time_provider");
+	cbor_put_bool(buf, &off, location_time.time_provider_available);
 
 	if (power.battery_percent_valid) {
 		cbor_put_key(buf, &off, "battery");
@@ -232,6 +271,26 @@ static size_t encode_status_cbor(uint8_t *buf, size_t buf_size, uint16_t rank,
 	if (power.external_power_valid) {
 		cbor_put_key(buf, &off, "external_power");
 		cbor_put_bool(buf, &off, power.external_power);
+	}
+	if (location_time.latitude_e7_valid) {
+		cbor_put_key(buf, &off, "lat_i");
+		cbor_put_int(buf, &off, location_time.latitude_e7);
+	}
+	if (location_time.longitude_e7_valid) {
+		cbor_put_key(buf, &off, "lon_i");
+		cbor_put_int(buf, &off, location_time.longitude_e7);
+	}
+	if (location_time.altitude_m_valid) {
+		cbor_put_key(buf, &off, "alt_m");
+		cbor_put_int(buf, &off, location_time.altitude_m);
+	}
+	if (location_time.fix_time_unix_valid) {
+		cbor_put_key(buf, &off, "time_unix");
+		cbor_put_uint(buf, &off, location_time.fix_time_unix);
+	}
+	if (location_time.satellites_valid) {
+		cbor_put_key(buf, &off, "satellites");
+		cbor_put_uint(buf, &off, location_time.satellites);
 	}
 
 	return off;

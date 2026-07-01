@@ -26,6 +26,7 @@ struct sink_ctx {
 	uint32_t last_request_id;
 	uint16_t rank;
 	int8_t tx_power_dbm;
+	struct lichen_app_location_time_snapshot location_time;
 	uint8_t payload[CONFIG_LICHEN_APP_INTERFACE_MAX_PAYLOAD];
 	size_t payload_len;
 };
@@ -123,6 +124,7 @@ static int get_status_sink(struct lichen_app_status_snapshot *status,
 		.external_power_valid = true,
 		.external_power = false,
 	};
+	status->location_time = ctx->location_time;
 	return 0;
 }
 
@@ -435,6 +437,22 @@ ZTEST(app_interface, test_status_and_config_provider_hooks)
 	reset_ctx(&ctx);
 	ctx.rank = 17U;
 	ctx.tx_power_dbm = 14;
+	ctx.location_time = (struct lichen_app_location_time_snapshot){
+		.location_provider_available = true,
+		.time_provider_available = true,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 476206130,
+		.longitude_e7_valid = true,
+		.longitude_e7 = -1223493000,
+		.altitude_m_valid = true,
+		.altitude_m = 42,
+		.fix_time_unix_valid = true,
+		.fix_time_unix = 1710000000U,
+		.satellites_valid = true,
+		.satellites = 9U,
+		.fix_source_valid = true,
+		.fix_source = LICHEN_APP_FIX_SOURCE_GNSS,
+	};
 	zassert_ok(lichen_app_interface_register_sink(&sink, NULL));
 
 	zassert_ok(lichen_app_interface_get_status(&status));
@@ -450,6 +468,20 @@ ZTEST(app_interface, test_status_and_config_provider_hooks)
 	zassert_true(status.power.charging);
 	zassert_true(status.power.external_power_valid);
 	zassert_false(status.power.external_power);
+	zassert_true(status.location_time.location_provider_available);
+	zassert_true(status.location_time.time_provider_available);
+	zassert_true(status.location_time.latitude_e7_valid);
+	zassert_equal(status.location_time.latitude_e7, 476206130);
+	zassert_true(status.location_time.longitude_e7_valid);
+	zassert_equal(status.location_time.longitude_e7, -1223493000);
+	zassert_true(status.location_time.altitude_m_valid);
+	zassert_equal(status.location_time.altitude_m, 42);
+	zassert_true(status.location_time.fix_time_unix_valid);
+	zassert_equal(status.location_time.fix_time_unix, 1710000000U);
+	zassert_true(status.location_time.satellites_valid);
+	zassert_equal(status.location_time.satellites, 9U);
+	zassert_true(status.location_time.fix_source_valid);
+	zassert_equal(status.location_time.fix_source, LICHEN_APP_FIX_SOURCE_GNSS);
 
 	zassert_ok(lichen_app_interface_get_config(&config));
 	zassert_true(config.has_tx_power_dbm);
@@ -477,6 +509,22 @@ ZTEST(app_interface, test_status_provider_omitted_power_stays_unknown)
 			.external_power_valid = true,
 			.external_power = true,
 		},
+		.location_time = {
+			.location_provider_available = true,
+			.time_provider_available = true,
+			.latitude_e7_valid = true,
+			.latitude_e7 = 1,
+			.longitude_e7_valid = true,
+			.longitude_e7 = 2,
+			.altitude_m_valid = true,
+			.altitude_m = 3,
+			.fix_time_unix_valid = true,
+			.fix_time_unix = 4U,
+			.satellites_valid = true,
+			.satellites = 5U,
+			.fix_source_valid = true,
+			.fix_source = LICHEN_APP_FIX_SOURCE_GNSS,
+		},
 	};
 	const struct lichen_app_interface_sink sink = {
 		.get_status = get_minimal_status_sink,
@@ -500,6 +548,20 @@ ZTEST(app_interface, test_status_provider_omitted_power_stays_unknown)
 	zassert_false(status.power.charging);
 	zassert_false(status.power.external_power_valid);
 	zassert_false(status.power.external_power);
+	zassert_false(status.location_time.location_provider_available);
+	zassert_false(status.location_time.time_provider_available);
+	zassert_false(status.location_time.latitude_e7_valid);
+	zassert_equal(status.location_time.latitude_e7, 0);
+	zassert_false(status.location_time.longitude_e7_valid);
+	zassert_equal(status.location_time.longitude_e7, 0);
+	zassert_false(status.location_time.altitude_m_valid);
+	zassert_equal(status.location_time.altitude_m, 0);
+	zassert_false(status.location_time.fix_time_unix_valid);
+	zassert_equal(status.location_time.fix_time_unix, 0U);
+	zassert_false(status.location_time.satellites_valid);
+	zassert_equal(status.location_time.satellites, 0U);
+	zassert_false(status.location_time.fix_source_valid);
+	zassert_equal(status.location_time.fix_source, LICHEN_APP_FIX_SOURCE_NONE);
 }
 
 ZTEST(app_interface, test_provider_hooks_are_single_owner)

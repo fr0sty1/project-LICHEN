@@ -57,12 +57,35 @@ struct lichen_app_power_snapshot {
 	bool external_power;
 };
 
+enum lichen_app_fix_source {
+	LICHEN_APP_FIX_SOURCE_NONE,
+	LICHEN_APP_FIX_SOURCE_GNSS,
+};
+
+struct lichen_app_location_time_snapshot {
+	bool location_provider_available;
+	bool time_provider_available;
+	bool latitude_e7_valid;
+	int32_t latitude_e7;
+	bool longitude_e7_valid;
+	int32_t longitude_e7;
+	bool altitude_m_valid;
+	int32_t altitude_m;
+	bool fix_time_unix_valid;
+	uint32_t fix_time_unix;
+	bool satellites_valid;
+	uint8_t satellites;
+	bool fix_source_valid;
+	enum lichen_app_fix_source fix_source;
+};
+
 struct lichen_app_status_snapshot {
 	uint16_t rank;
 	uint32_t uptime_seconds;
 	const char *role;
 	bool rpl_capable;
 	struct lichen_app_power_snapshot power;
+	struct lichen_app_location_time_snapshot location_time;
 };
 
 struct lichen_app_config_snapshot {

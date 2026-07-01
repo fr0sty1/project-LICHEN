@@ -40,6 +40,26 @@ static int read_varint(const uint8_t *buf, size_t len, size_t *pos,
 	return -EINVAL;
 }
 
+static int read_varint64(const uint8_t *buf, size_t len, size_t *pos,
+			 uint64_t *value)
+{
+	uint64_t out = 0U;
+	uint8_t shift = 0U;
+
+	while (*pos < len && shift < 64U) {
+		uint8_t byte = buf[(*pos)++];
+
+		out |= (uint64_t)(byte & 0x7fU) << shift;
+		if ((byte & 0x80U) == 0U) {
+			*value = out;
+			return 0;
+		}
+		shift += 7U;
+	}
+
+	return -EINVAL;
+}
+
 static bool payload_has_string(const uint8_t *buf, size_t len, uint32_t field,
 			       const char *value)
 {
@@ -103,6 +123,46 @@ static bool payload_get_varint_field(const uint8_t *buf, size_t len,
 				return false;
 			}
 			pos += n;
+		} else if ((key & 0x07U) == 5U) {
+			if (len - pos < 4U) {
+				return false;
+			}
+			pos += 4U;
+		} else {
+			return false;
+		}
+	}
+	return false;
+}
+
+static bool payload_get_varint64_field(const uint8_t *buf, size_t len,
+				       uint32_t field, uint64_t *value)
+{
+	size_t pos = 0U;
+
+	while (pos < len) {
+		uint32_t key;
+		uint64_t n;
+
+		if (read_varint(buf, len, &pos, &key) < 0) {
+			return false;
+		}
+		if ((key & 0x07U) == 0U) {
+			if (read_varint64(buf, len, &pos, &n) < 0) {
+				return false;
+			}
+			if ((key >> 3) == field) {
+				*value = n;
+				return true;
+			}
+		} else if ((key & 0x07U) == 2U) {
+			uint32_t n32;
+
+			if (read_varint(buf, len, &pos, &n32) < 0 ||
+			    n32 > len - pos) {
+				return false;
+			}
+			pos += n32;
 		} else if ((key & 0x07U) == 5U) {
 			if (len - pos < 4U) {
 				return false;
@@ -1058,6 +1118,121 @@ ZTEST(meshtastic_codec, test_node_info_omits_unknown_battery_metrics)
 	}
 	zassert_true(payload_get_varint_field(metrics, metrics_len, 5U, &value));
 	zassert_equal(value, 123U);
+	zassert_false(payload_get_len_field(payload, (size_t)ret, 3U, &metrics,
+					    &metrics_len));
+}
+
+ZTEST(meshtastic_codec, test_node_info_encodes_valid_position)
+{
+	struct lichen_meshtastic_local_info info = {
+		.node_num = 0xaabbccddU,
+		.uptime_seconds = 123U,
+		.long_name = "LICHEN native_sim",
+		.short_name = "LICH",
+		.has_latitude_e7 = true,
+		.latitude_e7 = 476206130,
+		.has_longitude_e7 = true,
+		.longitude_e7 = -1223493000,
+		.has_altitude_m = true,
+		.altitude_m = 42,
+		.has_fix_time_unix = true,
+		.fix_time_unix = 1710000000U,
+		.has_satellites = true,
+		.satellites = 9U,
+		.has_gnss_fix = true,
+	};
+	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	const uint8_t *position;
+	size_t position_len;
+	uint32_t value = 0U;
+	int ret;
+
+	ret = lichen_meshtastic_encode_node_info_payload(&info, payload,
+							 sizeof(payload));
+
+	zassert_true(ret > 0, "node_info payload failed: %d", ret);
+	zassert_true(payload_get_len_field(payload, (size_t)ret, 3U, &position,
+					   &position_len));
+	zassert_true(payload_get_fixed32_field(position, position_len, 1U,
+					       &value));
+	zassert_equal(value, 476206130U);
+	zassert_true(payload_get_fixed32_field(position, position_len, 2U,
+					       &value));
+	zassert_equal(value, (uint32_t)-1223493000);
+	zassert_true(payload_get_varint_field(position, position_len, 3U,
+					      &value));
+	zassert_equal(value, 42U);
+	zassert_true(payload_get_fixed32_field(position, position_len, 4U,
+					       &value));
+	zassert_equal(value, 1710000000U);
+	zassert_true(payload_get_varint_field(position, position_len, 5U,
+					      &value));
+	zassert_equal(value, 2U);
+	zassert_true(payload_get_varint_field(position, position_len, 6U,
+					      &value));
+	zassert_equal(value, 2U);
+	zassert_true(payload_get_fixed32_field(position, position_len, 7U,
+					       &value));
+	zassert_equal(value, 1710000000U);
+	zassert_true(payload_get_varint_field(position, position_len, 19U,
+					      &value));
+	zassert_equal(value, 9U);
+}
+
+ZTEST(meshtastic_codec, test_node_info_encodes_negative_altitude_as_int32_varint)
+{
+	struct lichen_meshtastic_local_info info = {
+		.node_num = 0xaabbccddU,
+		.uptime_seconds = 123U,
+		.long_name = "LICHEN native_sim",
+		.short_name = "LICH",
+		.has_latitude_e7 = true,
+		.latitude_e7 = 476206130,
+		.has_longitude_e7 = true,
+		.longitude_e7 = -1223493000,
+		.has_altitude_m = true,
+		.altitude_m = -17,
+	};
+	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	const uint8_t *position;
+	size_t position_len;
+	uint64_t value = 0U;
+	int ret;
+
+	ret = lichen_meshtastic_encode_node_info_payload(&info, payload,
+							 sizeof(payload));
+
+	zassert_true(ret > 0, "node_info payload failed: %d", ret);
+	zassert_true(payload_get_len_field(payload, (size_t)ret, 3U, &position,
+					   &position_len));
+	zassert_true(payload_get_varint64_field(position, position_len, 3U,
+						&value));
+	zassert_equal(value, (uint64_t)(int64_t)-17);
+}
+
+ZTEST(meshtastic_codec, test_node_info_requires_lat_lon_for_position)
+{
+	struct lichen_meshtastic_local_info info = {
+		.node_num = 0xaabbccddU,
+		.uptime_seconds = 123U,
+		.long_name = "LICHEN native_sim",
+		.short_name = "LICH",
+		.has_fix_time_unix = true,
+		.fix_time_unix = 1710000000U,
+		.has_latitude_e7 = true,
+		.latitude_e7 = 476206130,
+	};
+	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	const uint8_t *position;
+	size_t position_len;
+	int ret;
+
+	ret = lichen_meshtastic_encode_node_info_payload(&info, payload,
+							 sizeof(payload));
+
+	zassert_true(ret > 0, "node_info payload failed: %d", ret);
+	zassert_false(payload_get_len_field(payload, (size_t)ret, 3U, &position,
+					    &position_len));
 }
 
 ZTEST(meshtastic_codec, test_node_info_encodes_valid_battery_metrics)

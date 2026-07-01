@@ -46,6 +46,8 @@ static uint8_t s_device_id[8];
 #ifdef CONFIG_ZTEST
 static struct lichen_hal_power_snapshot s_test_power_snapshot;
 static bool s_has_test_power_snapshot;
+static struct lichen_hal_location_time_snapshot s_test_location_time_snapshot;
+static bool s_has_test_location_time_snapshot;
 #endif
 
 static int enqueue_from_radio(const uint8_t *from_radio, size_t len,
@@ -123,11 +125,24 @@ static void read_power_snapshot(struct lichen_hal_power_snapshot *power)
 	(void)lichen_hal_power_snapshot_get(power);
 }
 
+static void read_location_time_snapshot(
+	struct lichen_hal_location_time_snapshot *location_time)
+{
+#ifdef CONFIG_ZTEST
+	if (s_has_test_location_time_snapshot) {
+		*location_time = s_test_location_time_snapshot;
+		return;
+	}
+#endif
+	(void)lichen_hal_location_time_snapshot_get(location_time);
+}
+
 static int get_local_info(struct lichen_meshtastic_local_info *info,
 			  void *user_data)
 {
 	struct lichen_hal_identity identity;
 	struct lichen_hal_power_snapshot power;
+	struct lichen_hal_location_time_snapshot location_time;
 	uint8_t eui64[8] = { 0 };
 	int ret = -ENODEV;
 
@@ -175,7 +190,20 @@ static int get_local_info(struct lichen_meshtastic_local_info *info,
 	info->charging = power.charging;
 	info->has_external_power = power.external_power_valid;
 	info->external_power = power.external_power;
+	read_location_time_snapshot(&location_time);
 	info->has_gnss = lichen_hal_has_capability(LICHEN_HAL_CAP_GNSS);
+	info->has_latitude_e7 = location_time.latitude_e7_valid;
+	info->latitude_e7 = location_time.latitude_e7;
+	info->has_longitude_e7 = location_time.longitude_e7_valid;
+	info->longitude_e7 = location_time.longitude_e7;
+	info->has_altitude_m = location_time.altitude_m_valid;
+	info->altitude_m = location_time.altitude_m;
+	info->has_fix_time_unix = location_time.fix_time_unix_valid;
+	info->fix_time_unix = location_time.fix_time_unix;
+	info->has_satellites = location_time.satellites_valid;
+	info->satellites = location_time.satellites;
+	info->has_gnss_fix = location_time.fix_source_valid &&
+			     location_time.fix_source == LICHEN_HAL_FIX_SOURCE_GNSS;
 	info->has_lora = lichen_hal_has_capability(LICHEN_HAL_CAP_LORA);
 	info->has_tx_power_dbm = true;
 	info->tx_power_dbm = 14;
@@ -258,6 +286,9 @@ void gateway_meshtastic_adapter_test_reset(void)
 
 	s_has_test_power_snapshot = false;
 	memset(&s_test_power_snapshot, 0, sizeof(s_test_power_snapshot));
+	s_has_test_location_time_snapshot = false;
+	memset(&s_test_location_time_snapshot, 0,
+	       sizeof(s_test_location_time_snapshot));
 	(void)gateway_meshtastic_adapter_init();
 	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
 	s_dispatch_epoch = ble_meshtastic_session_epoch();
@@ -276,6 +307,20 @@ void gateway_meshtastic_adapter_test_set_power_snapshot(
 
 	s_test_power_snapshot = *snapshot;
 	s_has_test_power_snapshot = true;
+}
+
+void gateway_meshtastic_adapter_test_set_location_time_snapshot(
+	const struct lichen_hal_location_time_snapshot *snapshot)
+{
+	if (snapshot == NULL) {
+		s_has_test_location_time_snapshot = false;
+		memset(&s_test_location_time_snapshot, 0,
+		       sizeof(s_test_location_time_snapshot));
+		return;
+	}
+
+	s_test_location_time_snapshot = *snapshot;
+	s_has_test_location_time_snapshot = true;
 }
 
 int gateway_meshtastic_adapter_test_process_once(void)

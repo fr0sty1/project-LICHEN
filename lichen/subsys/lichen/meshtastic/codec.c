@@ -83,9 +83,21 @@
 
 #define NODE_INFO_NUM_FIELD 1U
 #define NODE_INFO_USER_FIELD 2U
+#define NODE_INFO_POSITION_FIELD 3U
 #define NODE_INFO_DEVICE_METRICS_FIELD 6U
 #define NODE_INFO_CHANNEL_FIELD 7U
 #define NODE_INFO_HOPS_AWAY_FIELD 9U
+
+#define POSITION_LATITUDE_I_FIELD 1U
+#define POSITION_LONGITUDE_I_FIELD 2U
+#define POSITION_ALTITUDE_FIELD 3U
+#define POSITION_TIME_FIELD 4U
+#define POSITION_LOCATION_SOURCE_FIELD 5U
+#define POSITION_ALTITUDE_SOURCE_FIELD 6U
+#define POSITION_TIMESTAMP_FIELD 7U
+#define POSITION_SATS_IN_VIEW_FIELD 19U
+#define POSITION_LOC_SOURCE_INTERNAL 2U
+#define POSITION_ALT_SOURCE_INTERNAL 2U
 
 #define DEVICE_METRICS_BATTERY_LEVEL_FIELD 1U
 #define DEVICE_METRICS_VOLTAGE_FIELD 2U
@@ -536,6 +548,11 @@ static uint32_t info_excluded_modules(
 	}
 
 	return excluded;
+}
+
+static bool info_has_position(const struct lichen_meshtastic_local_info *info)
+{
+	return info != NULL && info->has_latitude_e7 && info->has_longitude_e7;
 }
 
 static int write_user(uint8_t *buf, size_t buflen, size_t *pos,
@@ -1067,9 +1084,11 @@ int lichen_meshtastic_encode_node_info_payload(
 {
 	uint8_t tmp[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	uint8_t user[160];
+	uint8_t position[48];
 	uint8_t metrics[32];
 	size_t pos = 0U;
 	size_t user_pos = 0U;
+	size_t position_pos = 0U;
 	size_t metrics_pos = 0U;
 
 	if (write_user(user, sizeof(user), &user_pos, info) < 0 ||
@@ -1078,6 +1097,60 @@ int lichen_meshtastic_encode_node_info_payload(
 	    pb_write_len_field(tmp, sizeof(tmp), &pos, NODE_INFO_USER_FIELD,
 			       user, user_pos) < 0) {
 		return -EMSGSIZE;
+	}
+
+	if (info_has_position(info)) {
+		if (pb_write_fixed32_field(position, sizeof(position),
+					   &position_pos,
+					   POSITION_LATITUDE_I_FIELD,
+					   (uint32_t)info->latitude_e7) < 0 ||
+		    pb_write_fixed32_field(position, sizeof(position),
+					   &position_pos,
+					   POSITION_LONGITUDE_I_FIELD,
+					   (uint32_t)info->longitude_e7) < 0) {
+			return -EMSGSIZE;
+		}
+		if (info->has_altitude_m &&
+		    pb_write_varint_field(position, sizeof(position),
+					  &position_pos, POSITION_ALTITUDE_FIELD,
+					  (uint64_t)(int64_t)info->altitude_m) < 0) {
+			return -EMSGSIZE;
+		}
+		if (info->has_fix_time_unix &&
+		    (pb_write_fixed32_field(position, sizeof(position),
+					    &position_pos, POSITION_TIME_FIELD,
+					    info->fix_time_unix) < 0 ||
+		     pb_write_fixed32_field(position, sizeof(position),
+					    &position_pos, POSITION_TIMESTAMP_FIELD,
+					    info->fix_time_unix) < 0)) {
+			return -EMSGSIZE;
+		}
+		if (info->has_gnss_fix &&
+		    pb_write_varint_field(position, sizeof(position),
+					  &position_pos,
+					  POSITION_LOCATION_SOURCE_FIELD,
+					  POSITION_LOC_SOURCE_INTERNAL) < 0) {
+			return -EMSGSIZE;
+		}
+		if (info->has_altitude_m &&
+		    pb_write_varint_field(position, sizeof(position),
+					  &position_pos,
+					  POSITION_ALTITUDE_SOURCE_FIELD,
+					  POSITION_ALT_SOURCE_INTERNAL) < 0) {
+			return -EMSGSIZE;
+		}
+		if (info->has_satellites &&
+		    pb_write_varint_field(position, sizeof(position),
+					  &position_pos,
+					  POSITION_SATS_IN_VIEW_FIELD,
+					  info->satellites) < 0) {
+			return -EMSGSIZE;
+		}
+		if (pb_write_len_field(tmp, sizeof(tmp), &pos,
+				       NODE_INFO_POSITION_FIELD, position,
+				       position_pos) < 0) {
+			return -EMSGSIZE;
+		}
 	}
 
 	if (info != NULL && info->has_external_power && info->external_power &&
