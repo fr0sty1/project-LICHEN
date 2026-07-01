@@ -94,6 +94,10 @@ struct lr1110_data {
 	struct k_work        irq_work;
 	struct k_sem         radio_sem;
 	uint32_t             last_irq;
+	/* LoRa packet params from the last config, kept so lora_send() can set
+	 * the real payload length per-TX (explicit header). Without this the
+	 * chip transmits a full LR1110_MAX_PAYLOAD-byte packet every time. */
+	lr1110_radio_packet_param_lora_t pkt_params;
 };
 
 /*
@@ -221,15 +225,20 @@ static int lr1110_lora_config(const struct device *dev,
 	};
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_modulation_param_lora(dev, &mod));
 
-	lr1110_radio_packet_param_lora_t pkt = {
+	struct lr1110_data *cfg_data = dev->data;
+
+	cfg_data->pkt_params = (lr1110_radio_packet_param_lora_t){
 		.preamble_length_in_symb = cfg->preamble_len,
 		.header_type             = LR1110_RADIO_LORA_HEADER_EXPLICIT,
+		/* RX uses the max as the accept ceiling; TX overrides this with the
+		 * real length in lora_send(). */
 		.payload_length_in_byte  = LR1110_MAX_PAYLOAD,
 		.crc                     = LR1110_RADIO_LORA_CRC_ON,
 		.iq = cfg->iq_inverted ? LR1110_RADIO_LORA_IQ_INVERTED
 				       : LR1110_RADIO_LORA_IQ_STANDARD,
 	};
-	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_packet_param_lora(dev, &pkt));
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_radio_set_packet_param_lora(dev, &cfg_data->pkt_params));
 
 	lr1110_radio_pa_config_t pa = {
 		.pa_sel        = LR1110_PA_SEL,
@@ -289,8 +298,14 @@ static int lr1110_lora_send(const struct device *dev, uint8_t *data,
 	 * signals TX/RX errors (CMDERR, ERR) on IRQ bits that are NOT routed to
 	 * DIO9, so a failed TX would otherwise never wake a waiting semaphore.
 	 * Polling lets us observe the true status and bound the wait. */
-	ARG_UNUSED(drv);
 	gpio_pin_interrupt_configure_dt(&lr1110_gpio_dio9, GPIO_INT_DISABLE);
+
+	/* Set the real payload length for this TX (explicit header). Config
+	 * leaves it at LR1110_MAX_PAYLOAD for RX; without this the chip would
+	 * transmit a full 255-byte packet (real data + buffer garbage). */
+	drv->pkt_params.payload_length_in_byte = (uint8_t)data_len;
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_radio_set_packet_param_lora(dev, &drv->pkt_params));
 
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_regmem_write_buffer8(dev, data, (uint8_t)data_len));
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_tx(dev, 0));
