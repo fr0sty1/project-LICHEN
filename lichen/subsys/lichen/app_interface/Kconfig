@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+menuconfig LICHEN_APP_INTERFACE
+	bool "LICHEN local app-interface event contract"
+	depends on LICHEN
+	help
+	  Enable the board-agnostic local app ingress/egress event contract used
+	  by Meshtastic, MeshCore, native, CoAP, and future app surfaces.
+
+if LICHEN_APP_INTERFACE
+
+config LICHEN_APP_INTERFACE_MAX_SUBSCRIBERS
+	int "Maximum app-interface subscribers"
+	default 4
+	range 1 8
+	help
+	  Maximum number of local app surfaces that can subscribe to shared
+	  text/status events.
+
+config LICHEN_APP_INTERFACE_MAX_PAYLOAD
+	int "Maximum app-interface payload size"
+	default 176
+	range 1 512
+	help
+	  Maximum byte payload accepted by the shared app-interface event API.
+
+config LICHEN_APP_INTERFACE_TEST_HOOKS
+	bool "LICHEN app-interface ztest hooks"
+	depends on ZTEST
+	default n
+	help
+	  Enable reset hooks used only by native_sim app-interface tests.
+
+endif # LICHEN_APP_INTERFACE

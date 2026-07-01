@@ -1,0 +1,109 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* SPDX-FileCopyrightText: The contributors to the LICHEN project */
+
+#ifndef LICHEN_APP_INTERFACE_H_
+#define LICHEN_APP_INTERFACE_H_
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+struct lichen_app_text_event {
+	uint32_t from;
+	uint32_t to;
+	uint32_t id;
+	const uint8_t *payload;
+	size_t payload_len;
+	bool has_id;
+};
+
+struct lichen_app_status_event {
+	uint32_t from;
+	uint32_t to;
+	uint32_t id;
+	uint32_t request_id;
+	uint32_t error_reason;
+	bool has_id;
+	bool has_error_reason;
+};
+
+struct lichen_app_interface_stats {
+	uint32_t text_emit_count;
+	uint32_t status_emit_count;
+	uint32_t text_delivery_count;
+	uint32_t status_delivery_count;
+	uint32_t no_subscriber_count;
+	uint32_t backpressure_count;
+	uint32_t subscriber_error_count;
+	uint32_t invalid_count;
+};
+
+struct lichen_app_status_snapshot {
+	uint16_t rank;
+	uint32_t uptime_seconds;
+	const char *role;
+	bool rpl_capable;
+};
+
+struct lichen_app_config_snapshot {
+	int8_t tx_power_dbm;
+	bool has_tx_power_dbm;
+};
+
+typedef int (*lichen_app_interface_text_fn)(
+	const struct lichen_app_text_event *event, void *user_data);
+typedef int (*lichen_app_interface_status_fn)(
+	const struct lichen_app_status_event *event, void *user_data);
+typedef int (*lichen_app_interface_get_status_fn)(
+	struct lichen_app_status_snapshot *status, void *user_data);
+typedef int (*lichen_app_interface_get_config_fn)(
+	struct lichen_app_config_snapshot *config, void *user_data);
+typedef int (*lichen_app_interface_set_config_fn)(
+	const struct lichen_app_config_snapshot *config, void *user_data);
+
+struct lichen_app_interface_sink {
+	lichen_app_interface_text_fn emit_text;
+	lichen_app_interface_status_fn emit_status;
+	lichen_app_interface_get_status_fn get_status;
+	lichen_app_interface_get_config_fn get_config;
+	lichen_app_interface_set_config_fn set_config;
+	void *user_data;
+};
+
+/*
+ * Unregistering removes the sink from future snapshots but does not quiesce
+ * callbacks that already captured a snapshot. Keep callback code and user_data
+ * storage valid until the caller has externally excluded concurrent emits.
+ */
+int lichen_app_interface_register_sink(
+	const struct lichen_app_interface_sink *sink, uint8_t *out_id);
+int lichen_app_interface_unregister_sink(uint8_t sink_id);
+
+int lichen_app_interface_emit_text(
+	const struct lichen_app_text_event *event);
+int lichen_app_interface_emit_status(
+	const struct lichen_app_status_event *event);
+
+int lichen_app_interface_get_status(
+	struct lichen_app_status_snapshot *status);
+int lichen_app_interface_get_config(
+	struct lichen_app_config_snapshot *config);
+int lichen_app_interface_set_config(
+	const struct lichen_app_config_snapshot *config);
+
+int lichen_app_interface_copy_stats(
+	struct lichen_app_interface_stats *stats);
+
+#ifdef CONFIG_LICHEN_APP_INTERFACE_TEST_HOOKS
+void lichen_app_interface_test_reset(void);
+#endif
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* LICHEN_APP_INTERFACE_H_ */

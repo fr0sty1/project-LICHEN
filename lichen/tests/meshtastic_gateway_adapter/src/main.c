@@ -9,6 +9,8 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/net/coap.h>
 
+#include <lichen/app_interface/app_interface.h>
+
 #include "fake_ble_meshtastic.h"
 #include "inbound_coap.h"
 #include "inbound_events.h"
@@ -18,6 +20,8 @@
 
 static void reset_gateway(size_t from_radio_cap)
 {
+	gateway_inbound_events_test_reset();
+	lichen_app_interface_test_reset();
 	fake_ble_meshtastic_reset(from_radio_cap);
 	gateway_meshtastic_adapter_test_reset();
 }

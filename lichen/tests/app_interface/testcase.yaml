@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+tests:
+  net.lichen.app_interface:
+    platform_allow: native_sim
+    tags: lichen app-interface

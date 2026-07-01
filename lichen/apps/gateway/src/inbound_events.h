@@ -30,4 +30,8 @@ struct gateway_inbound_status_event {
 int gateway_inbound_emit_text(const struct gateway_inbound_text_event *event);
 int gateway_inbound_emit_status(const struct gateway_inbound_status_event *event);
 
+#ifdef CONFIG_ZTEST
+void gateway_inbound_events_test_reset(void);
+#endif
+
 #endif /* GATEWAY_INBOUND_EVENTS_H_ */
