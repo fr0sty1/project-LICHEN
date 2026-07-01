@@ -331,7 +331,7 @@ ZTEST(meshtastic_adapter, test_stream_resyncs_within_same_buffer)
 	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
 	ret = lichen_meshtastic_adapter_feed_stream(&adapter, noisy_good,
 						   sizeof(noisy_good));
-	zassert_equal(ret, 0);
+	zassert_equal(ret, 0, "ret=%d", ret);
 	zassert_equal(ctx.out_count, 1U);
 	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->heartbeat_count,
 		      1U);
@@ -355,7 +355,7 @@ ZTEST(meshtastic_adapter, test_stream_resyncs_after_bad_frame_in_same_buffer)
 	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
 	ret = lichen_meshtastic_adapter_feed_stream(&adapter, zero_len_good,
 						   sizeof(zero_len_good));
-	zassert_equal(ret, 0);
+	zassert_equal(ret, 0, "zero_len ret=%d", ret);
 	zassert_equal(ctx.out_count, 1U);
 	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->heartbeat_count,
 		      1U);
@@ -366,7 +366,7 @@ ZTEST(meshtastic_adapter, test_stream_resyncs_after_bad_frame_in_same_buffer)
 	ret = lichen_meshtastic_adapter_feed_stream(&adapter,
 						   malformed_payload_good,
 						   sizeof(malformed_payload_good));
-	zassert_equal(ret, 0);
+	zassert_equal(ret, 0, "malformed ret=%d", ret);
 	zassert_equal(ctx.out_count, 1U);
 	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->heartbeat_count,
 		      1U);

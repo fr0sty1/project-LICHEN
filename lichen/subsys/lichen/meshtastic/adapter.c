@@ -398,6 +398,7 @@ int lichen_meshtastic_adapter_feed_stream(
 	size_t pos = 0U;
 	int last = LICHEN_MESHTASTIC_ADAPTER_NEED_MORE;
 	int last_error = 0;
+	bool recovered = false;
 
 	if (adapter == NULL || (data == NULL && len > 0U)) {
 		return -EINVAL;
@@ -405,22 +406,23 @@ int lichen_meshtastic_adapter_feed_stream(
 
 	while (pos < len) {
 		if (!adapter->stream_in_frame) {
-			while (!adapter->stream_in_frame && pos < len) {
+			if (adapter->stream_header_len == 0U) {
 				uint8_t byte = data[pos++];
 
-				if (adapter->stream_header_len == 0U) {
-					if (byte == MESHTASTIC_STREAM_MAGIC0) {
-						adapter->stream_header[0] = byte;
-						adapter->stream_header_len = 1U;
-					} else {
-						adapter->stats.malformed_count++;
-						last_error = -EINVAL;
-					}
-					continue;
+				if (byte == MESHTASTIC_STREAM_MAGIC0) {
+					adapter->stream_header[0] = byte;
+					adapter->stream_header_len = 1U;
+				} else {
+					adapter->stats.malformed_count++;
+					last_error = -EINVAL;
 				}
+				continue;
+			}
 
-				if (adapter->stream_header_len == 1U &&
-				    byte != MESHTASTIC_STREAM_MAGIC1) {
+			if (adapter->stream_header_len == 1U) {
+				uint8_t byte = data[pos++];
+
+				if (byte != MESHTASTIC_STREAM_MAGIC1) {
 					adapter->stats.malformed_count++;
 					last_error = -EINVAL;
 					if (byte == MESHTASTIC_STREAM_MAGIC0) {
@@ -431,31 +433,33 @@ int lichen_meshtastic_adapter_feed_stream(
 					}
 					continue;
 				}
+				adapter->stream_header[1] = byte;
+				adapter->stream_header_len = 2U;
+				continue;
+			}
 
+			while (adapter->stream_header_len <
+			       LICHEN_MESHTASTIC_STREAM_HEADER_LEN && pos < len) {
+				uint8_t byte = data[pos++];
 				adapter->stream_header[adapter->stream_header_len++] = byte;
-				if (adapter->stream_header_len <
-				    LICHEN_MESHTASTIC_STREAM_HEADER_LEN) {
-					continue;
-				}
-
-				adapter->stream_expected =
-					sys_get_be16(&adapter->stream_header[2]);
-				adapter->stream_header_len = 0U;
-				adapter->stream_len = 0U;
-				if (adapter->stream_expected == 0U ||
-				    adapter->stream_expected >
-				    LICHEN_MESHTASTIC_TO_RADIO_MAX) {
-					adapter->stats.malformed_count++;
-					last_error = -EMSGSIZE;
-					continue;
-				}
-				adapter->stream_in_frame = true;
+			}
+			if (adapter->stream_header_len <
+			    LICHEN_MESHTASTIC_STREAM_HEADER_LEN) {
+				break;
 			}
 
-			if (!adapter->stream_in_frame) {
-				return last_error < 0 ? last_error :
-				       LICHEN_MESHTASTIC_ADAPTER_NEED_MORE;
+			adapter->stream_expected =
+				sys_get_be16(&adapter->stream_header[2]);
+			adapter->stream_header_len = 0U;
+			adapter->stream_len = 0U;
+			if (adapter->stream_expected == 0U ||
+			    adapter->stream_expected >
+			    LICHEN_MESHTASTIC_TO_RADIO_MAX) {
+				adapter->stats.malformed_count++;
+				last_error = -EMSGSIZE;
+				continue;
 			}
+			adapter->stream_in_frame = true;
 		}
 
 		size_t remaining = adapter->stream_expected - adapter->stream_len;
@@ -474,13 +478,19 @@ int lichen_meshtastic_adapter_feed_stream(
 			if (last < 0) {
 				last_error = last;
 				last = LICHEN_MESHTASTIC_ADAPTER_NEED_MORE;
+			} else {
+				recovered = true;
 			}
 		}
 	}
 
-	return last < 0 ? last :
-	       (last == LICHEN_MESHTASTIC_ADAPTER_NEED_MORE && last_error < 0 ?
-		last_error : last);
+	if (recovered) {
+		return LICHEN_MESHTASTIC_ADAPTER_DISPATCHED;
+	}
+	if (adapter->stream_in_frame || adapter->stream_header_len > 0U) {
+		return LICHEN_MESHTASTIC_ADAPTER_NEED_MORE;
+	}
+	return last_error < 0 ? last_error : last;
 }
 
 const struct lichen_meshtastic_adapter_stats *
