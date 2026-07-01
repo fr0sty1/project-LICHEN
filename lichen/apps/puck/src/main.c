@@ -156,23 +156,61 @@ static void send_beacon(const struct device *dev)
 /* --------------------------------------------------------------------------
  * Hardware watchdog — resilience against radio-driver lockups
  *
- * A LoRa TX/RX can wedge the main thread indefinitely (e.g. an SPI transaction
- * to the radio that never completes). Rather than hang forever, arm the SoC
- * watchdog and feed it once per main-loop iteration. If the loop stops making
- * progress, the watchdog resets the SoC and the node reboots back into service
- * within a couple of seconds.
+ * A LoRa TX/RX can wedge the main thread (e.g. a radio SPI transaction that
+ * never completes when USB-CDC EasyDMA contends with the SPIM). We can't feed
+ * the watchdog straight from the main loop: a normal RX wait blocks up to 5 s,
+ * so a main-loop-granular watchdog needs a ~20 s timeout — slow recovery that
+ * makes host monitoring painful (long USB drop-outs).
  *
- * WDT_TIMEOUT_MS must exceed the worst-case single iteration: a 5 s RX window
- * plus a beacon TX (radio reconfig + up to ~3 s poll) ≈ 9 s. 20 s gives margin.
+ * Instead we track a "progress" heartbeat that the radio driver bumps from
+ * inside its poll loops (via the weak lichen_radio_progress() hook it calls),
+ * plus the main loop each iteration. A dedicated feeder thread feeds the SoC
+ * watchdog only while the heartbeat is fresh. Normal multi-second RX/TX waits
+ * keep bumping the heartbeat so they don't trip it; a genuinely stuck SPI
+ * transfer stops the bumps and the watchdog resets within a few seconds.
  * -------------------------------------------------------------------------- */
 
-#define WDT_TIMEOUT_MS 20000
+/* WDT_STALL_MS must exceed the longest legitimately-blocking main-loop step
+ * that does NOT bump the heartbeat — i.e. the SX126x RX k_poll wait (the LR1110
+ * RX/TX poll loops bump continuously). We cap the RX window at RX_WINDOW_MS
+ * (< WDT_STALL_MS) so a normal RX never looks like a stall. */
+#define WDT_TIMEOUT_MS   4000   /* SoC reset if not fed for this long */
+#define WDT_STALL_MS     4000   /* feeder withholds the feed after no progress this long */
+#define WDT_FEED_MS      1000   /* feeder cadence */
+#define RX_WINDOW_MS     2000   /* per-iteration RX listen window */
 
 static const struct device *s_wdt;
 static int s_wdt_channel = -1;
+static atomic_t s_last_progress_ms;
+
+/* Marks forward progress. Strong definition overriding the radio driver's weak
+ * stub, so the driver's poll loops bump this heartbeat too. */
+void lichen_radio_progress(void)
+{
+	atomic_set(&s_last_progress_ms, (atomic_val_t)k_uptime_get());
+}
+
+static void wdt_feeder_fn(void *p1, void *p2, void *p3)
+{
+	ARG_UNUSED(p1); ARG_UNUSED(p2); ARG_UNUSED(p3);
+	while (1) {
+		k_msleep(WDT_FEED_MS);
+		int64_t age = k_uptime_get() -
+			      (int64_t)atomic_get(&s_last_progress_ms);
+		if (s_wdt && age < WDT_STALL_MS) {
+			wdt_feed(s_wdt, s_wdt_channel);
+		}
+		/* else: no forward progress → withhold feed → SoC resets */
+	}
+}
+
+K_THREAD_STACK_DEFINE(s_wdt_feeder_stack, 512);
+static struct k_thread s_wdt_feeder;
 
 static void wdt_init(void)
 {
+	lichen_radio_progress(); /* seed a fresh heartbeat before arming */
+
 	s_wdt = DEVICE_DT_GET(DT_ALIAS(watchdog0));
 	if (!device_is_ready(s_wdt)) {
 		LOG_WRN("watchdog not ready — running without it");
@@ -193,20 +231,23 @@ static void wdt_init(void)
 		return;
 	}
 
-	int ret = wdt_setup(s_wdt, WDT_OPT_PAUSE_HALTED_BY_DBG);
-	if (ret < 0) {
-		LOG_WRN("wdt_setup failed: %d", ret);
+	if (wdt_setup(s_wdt, WDT_OPT_PAUSE_HALTED_BY_DBG) < 0) {
+		LOG_WRN("wdt_setup failed");
 		s_wdt = NULL;
 		return;
 	}
-	LOG_INF("watchdog armed (%d ms)", WDT_TIMEOUT_MS);
+
+	k_thread_create(&s_wdt_feeder, s_wdt_feeder_stack,
+			K_THREAD_STACK_SIZEOF(s_wdt_feeder_stack),
+			wdt_feeder_fn, NULL, NULL, NULL,
+			K_PRIO_COOP(1), 0, K_NO_WAIT);
+	k_thread_name_set(&s_wdt_feeder, "wdt_feeder");
+	LOG_INF("watchdog armed (%d ms, stall %d ms)", WDT_TIMEOUT_MS, WDT_STALL_MS);
 }
 
 static inline void wdt_kick(void)
 {
-	if (s_wdt) {
-		wdt_feed(s_wdt, s_wdt_channel);
-	}
+	lichen_radio_progress();
 }
 
 /* --------------------------------------------------------------------------
@@ -270,7 +311,7 @@ int main(void)
 		wdt_kick();
 
 		int len = lora_recv(lora_dev, buf, sizeof(buf),
-				    K_SECONDS(5), &rssi, &snr);
+				    K_MSEC(RX_WINDOW_MS), &rssi, &snr);
 
 		if (len > 0) {
 			LOG_INF("RX %d B rssi=%d snr=%d [%02x %02x]",

@@ -23,6 +23,12 @@ LOG_MODULE_REGISTER(lr1110, CONFIG_LORA_LOG_LEVEL);
 
 #define DT_DRV_COMPAT semtech_lr1110
 
+/* Heartbeat hook — the application overrides this (strong definition) to feed a
+ * progress watchdog from inside the TX/RX poll loops, so a genuinely stuck SPI
+ * transfer is caught quickly while normal multi-second waits are not. Weak
+ * no-op by default so the driver stands alone. */
+__attribute__((weak)) void lichen_radio_progress(void) { }
+
 BUILD_ASSERT(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) <= 1,
 	     "LR1110 driver supports only one instance (uses global state)");
 
@@ -317,6 +323,7 @@ static int lr1110_lora_send(const struct device *dev, uint8_t *data,
 	lr1110_system_stat2_t stat2;
 	uint32_t irq = 0;
 	for (int i = 0; i < 300; i++) {
+		lichen_radio_progress();
 		k_sleep(K_MSEC(10));
 		lr1110_system_get_status(dev, &stat1, &stat2, &irq);
 		if (irq & LR1110_SYSTEM_IRQ_TXDONE_MASK) {
@@ -366,6 +373,7 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 	lr1110_system_stat2_t stat2;
 	uint32_t irq = 0;
 	do {
+		lichen_radio_progress();
 		k_sleep(K_MSEC(20));
 		lr1110_system_get_status(dev, &stat1, &stat2, &irq);
 	} while (!(irq & (LR1110_SYSTEM_IRQ_RXDONE_MASK |
