@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-2067.1.1.1.1",
+  "title": "Audit RAK4631 bridge USB CDC build warning",
+  "description": "During project-LICHEN-2067.1.1.1 no-hardware EC2 validation, rak4631/nrf52840 bridge-zephyr target auto-merged firmware/bridge-zephyr/boards/rak4631_nrf52840.conf and built successfully, but Zephyr emitted a compile warning from subsys/usb/device/class/cdc_acm.c: #warning \"USB_CDC_ACM_LOG_LEVEL forced to LOG_LEVEL_NONE\". Decide whether the RAK4631 bridge auto-merge fragment should keep USB CDC console enabled, set/log the expected CDC logging behavior explicitly, or split LoRa-only build coverage from USB local-client behavior. No hardware required for the build-warning audit; physical USB behavior remains a separate validation concern.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T09:19:32.140572Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T09:19:32.141539Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "bridge",
+    "boards",
+    "rak4631",
+    "usb",
+    "warning",
+    "no-hardware",
+    "tooling",
+    "test",
+    "build",
+    "time",
+    "rtc",
+    "gnss",
+    "gpsd",
+    "sntp",
+    "network-source"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2067.1.1.1.1",
+      "depends_on_id": "project-LICHEN-2067.1.1.1",
+      "type": "parent-child",
+      "created_at": "2026-07-02T09:19:32.141539Z"
+    }
+  ]
+}

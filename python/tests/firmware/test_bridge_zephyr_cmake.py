@@ -15,6 +15,18 @@ ROOT = Path(__file__).resolve().parents[3]
 BRIDGE_CMAKE = ROOT / "firmware" / "bridge-zephyr" / "CMakeLists.txt"
 BRIDGE_KCONFIG = ROOT / "firmware" / "bridge-zephyr" / "Kconfig"
 L2_KCONFIG = ROOT / "lichen" / "subsys" / "lichen" / "l2" / "Kconfig"
+BRIDGE_BOARDS = ROOT / "firmware" / "bridge-zephyr" / "boards"
+BRIDGE_AUTO_MERGE_BOARD_FILES = (
+    "heltec_wifi_lora32_v3_esp32s3_procpu",
+    "t_deck_esp32s3_procpu",
+    "t_echo_nrf52840",
+    "rak4631_nrf52840",
+)
+BRIDGE_OBSOLETE_ALIAS_BOARD_FILES = (
+    "heltec_lora32_v3",
+    "lilygo_tdeck",
+    "lilygo_techo",
+)
 
 
 def _non_comment_cmake_lines() -> list[str]:
@@ -55,6 +67,18 @@ def test_module_lora_l2_selects_link_layer_dependency() -> None:
     )[0]
 
     assert "select LICHEN_LINK" in lora_l2_block
+
+
+def test_bridge_zephyr_has_target_qualified_board_fragments() -> None:
+    for board in BRIDGE_AUTO_MERGE_BOARD_FILES:
+        assert (BRIDGE_BOARDS / f"{board}.conf").is_file(), board
+        assert (BRIDGE_BOARDS / f"{board}.overlay").is_file(), board
+
+
+def test_bridge_zephyr_omits_obsolete_alias_board_fragments() -> None:
+    for board in BRIDGE_OBSOLETE_ALIAS_BOARD_FILES:
+        assert not (BRIDGE_BOARDS / f"{board}.conf").exists(), board
+        assert not (BRIDGE_BOARDS / f"{board}.overlay").exists(), board
 
 
 @pytest.mark.skipif(
@@ -219,6 +243,64 @@ def test_bridge_zephyr_native_sim_lora_loopback_enables_full_l2(
         "lora_l2.c",
         "lichen_l2.c",
     }
+    for source in l2_sources.values():
+        assert ROOT / "lichen" / "subsys" / "lichen" / "l2" in source.parents
+        assert ROOT / "firmware" / "bridge-zephyr" / "subsys" not in source.parents
+
+
+@pytest.mark.skipif(
+    os.environ.get("LICHEN_RUN_ZEPHYR_SMOKE") != "1",
+    reason="set LICHEN_RUN_ZEPHYR_SMOKE=1 in a Zephyr workspace",
+)
+def test_bridge_zephyr_heltec_target_auto_merges_lora_board_files(
+    tmp_path: Path,
+) -> None:
+    if shutil.which("west") is None:
+        pytest.skip("west is not installed")
+
+    build_dir = tmp_path / "bridge_heltec_auto_merge"
+    env = os.environ.copy()
+    env["SOURCE_DATE_EPOCH"] = "1717777777"
+    result = subprocess.run(
+        [
+            "west",
+            "build",
+            "-p",
+            "always",
+            "-b",
+            "heltec_wifi_lora32_v3/esp32s3/procpu",
+            "-d",
+            str(build_dir),
+            str(ROOT / "firmware" / "bridge-zephyr"),
+            "--",
+            f"-DZEPHYR_EXTRA_MODULES={ROOT / 'lichen'}",
+        ],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "multiple definition" not in result.stdout + result.stderr
+    assert "undefined reference" not in result.stdout + result.stderr
+    config = (build_dir / "zephyr" / ".config").read_text(encoding="utf-8")
+    assert "CONFIG_LORA=y" in config
+    assert "CONFIG_LICHEN_LORA_L2=y" in config
+    assert "CONFIG_LICHEN_LINK=y" in config
+    assert "CONFIG_LICHEN_L2=y" in config
+
+    compile_commands = json.loads(
+        (build_dir / "compile_commands.json").read_text(encoding="utf-8")
+    )
+    l2_sources = {
+        Path(entry["file"]).name: Path(entry["file"])
+        for entry in compile_commands
+        if Path(entry["file"]).name in {"lora_l2.c", "lichen_l2.c"}
+    }
+
+    assert set(l2_sources) == {"lora_l2.c", "lichen_l2.c"}
     for source in l2_sources.values():
         assert ROOT / "lichen" / "subsys" / "lichen" / "l2" in source.parents
         assert ROOT / "firmware" / "bridge-zephyr" / "subsys" not in source.parents

@@ -340,8 +340,8 @@ int lichen_hal_time_status(void)
 	}
 }
 
-static int return_device_if_ready(const struct device **out,
-				  const struct device *candidate)
+static int __maybe_unused return_device_if_ready(const struct device **out,
+						 const struct device *candidate)
 {
 	if (!device_is_ready(candidate)) {
 		return -ENODEV;
