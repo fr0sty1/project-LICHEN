@@ -56,7 +56,9 @@ static inline void led_set(int value)
 
 int main(void)
 {
+#if defined(HAS_LED) || defined(CONFIG_USB_DEVICE_STACK)
     int ret = 0;
+#endif
 
     LOG_INF("main: starting");
     crash_info_check_and_clear();

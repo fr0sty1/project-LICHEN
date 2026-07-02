@@ -1,0 +1,35 @@
+{
+  "id": "project-LICHEN-2067.1.1.1",
+  "title": "Align bridge-zephyr board config filenames with Zephyr board targets",
+  "description": "Final review for project-LICHEN-2067.1.1 found bridge board config filenames such as firmware/bridge-zephyr/boards/heltec_lora32_v3.conf do not match actual Zephyr board targets such as heltec_wifi_lora32_v3/esp32s3/procpu. Hardware-style no-flash builds can silently skip board configs and fail to exercise CONFIG_LORA/CONFIG_LICHEN_LORA_L2 unless EXTRA_CONF_FILE/DTC_OVERLAY_FILE is passed explicitly. Audit bridge-zephyr board conf/overlay names, add/rename target-qualified files where appropriate, and add no-hardware build coverage that proves LoRa/L2 configs are merged for at least one real board target. Evidence: reviewer reproduced heltec_wifi_lora32_v3/esp32s3/procpu not merging heltec_lora32_v3.conf, leaving CONFIG_LORA off.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T08:39:29.872883Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T08:39:29.873785Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "bridge",
+    "boards",
+    "tooling",
+    "test",
+    "build",
+    "time",
+    "rtc",
+    "gnss",
+    "gpsd",
+    "sntp",
+    "network-source"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2067.1.1.1",
+      "depends_on_id": "project-LICHEN-2067.1.1",
+      "type": "parent-child",
+      "created_at": "2026-07-02T08:39:29.873785Z"
+    }
+  ]
+}

@@ -34,6 +34,7 @@ config LICHEN_LORA_L2
 	depends on NETWORKING
 	depends on NET_IPV6
 	depends on LICHEN_IPV6
+	select LICHEN_LINK
 	select HWINFO
 	select TINYCRYPT
 	select TINYCRYPT_SHA256
