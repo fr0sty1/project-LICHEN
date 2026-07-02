@@ -15,10 +15,17 @@ typedef int (*lichen_meshcore_adapter_enqueue_fn)(const uint8_t *frame,
 						  void *user_data);
 typedef uint32_t (*lichen_meshcore_adapter_tx_free_fn)(void *user_data);
 typedef int (*lichen_meshcore_adapter_submit_text_fn)(
-	uint8_t channel, uint8_t text_type, const uint8_t *payload,
-	size_t payload_len, void *user_data);
+	uint8_t channel, uint8_t text_type, const uint8_t *to_iid,
+	const uint8_t *payload, size_t payload_len, void *user_data);
 typedef int (*lichen_meshcore_adapter_apply_pin_fn)(uint32_t pin,
 						    void *user_data);
+/*
+ * Resolve a MeshCore 6-byte direct-send public-key prefix to one LICHEN peer
+ * IID. Return 0 only for an exact single match. Return a negative errno for
+ * no match, collision, unavailable peer table, or malformed arguments.
+ */
+typedef int (*lichen_meshcore_adapter_resolve_peer_prefix_fn)(
+	const uint8_t prefix[6], uint8_t to_iid[8], void *user_data);
 
 #define LICHEN_MESHCORE_ADVERT_NAME_MAX 32U
 #define LICHEN_MESHCORE_CHANNEL_BODY_LEN 49U
@@ -65,6 +72,7 @@ struct lichen_meshcore_adapter_ops {
 	lichen_meshcore_adapter_tx_free_fn tx_free;
 	lichen_meshcore_adapter_submit_text_fn submit_text;
 	lichen_meshcore_adapter_apply_pin_fn apply_pin;
+	lichen_meshcore_adapter_resolve_peer_prefix_fn resolve_peer_prefix;
 	struct lichen_meshcore_compat_settings *compat_settings;
 	void *user_data;
 };

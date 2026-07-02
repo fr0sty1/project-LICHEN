@@ -170,7 +170,11 @@ oracles live in `test/vectors/meshcore_app_compat.json`.
    - Nonzero channel index.
    - Non-plain text type.
    - Invalid UTF-8 payload.
-5. Send direct text with no resolvable peer prefix.
+5. Send direct text with a known 6-byte MeshCore public-key prefix and verify
+   the LICHEN message contract receives `has_to_iid=true` for the mapped peer
+   IID.
+6. Send direct text with no resolvable peer prefix and with an ambiguous prefix
+   shared by more than one known peer.
 
 Expected failures are explicit MeshCore errors. There must be no firmware log
 claiming a MeshCore RF transmit.

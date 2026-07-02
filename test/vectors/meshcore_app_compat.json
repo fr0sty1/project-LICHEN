@@ -419,6 +419,68 @@
       }
     },
     {
+      "name": "send_txt_msg_direct_known_peer",
+      "description": "A direct MeshCore public-key prefix that maps to exactly one known LICHEN peer submits text to that peer IID.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "020102030405066869",
+      "decoded": {
+        "command": "SEND_TXT_MSG",
+        "prefix": "010203040506",
+        "payload_utf8": "hi",
+        "expected_iid": "00aa010203040506"
+      },
+      "expect": {
+        "responses": [
+          "00"
+        ],
+        "adapter_test": true,
+        "fixture": "direct-known-peer"
+      }
+    },
+    {
+      "name": "send_txt_msg_direct_colliding_peer",
+      "description": "A direct MeshCore public-key prefix that maps to multiple known peers fails closed as not found.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "020102030405066869",
+      "decoded": {
+        "command": "SEND_TXT_MSG",
+        "prefix": "010203040506",
+        "payload_utf8": "hi",
+        "collision": true
+      },
+      "expect": {
+        "responses": [
+          "0102"
+        ],
+        "adapter_test": true,
+        "fixture": "direct-colliding-peers"
+      }
+    },
+    {
       "name": "set_advert_name_ok",
       "description": "Compatibility display-name writes update MeshCore-local state and return OK without mutating native identity.",
       "source_baseline": {

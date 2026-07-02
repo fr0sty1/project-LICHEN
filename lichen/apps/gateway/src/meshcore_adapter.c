@@ -10,10 +10,12 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
+#include <lichen/app_identity/app_identity.h>
 #include <lichen/app_interface/app_interface.h>
 #include <lichen/meshcore/adapter.h>
 #include <lichen/meshcore/limits.h>
@@ -70,12 +72,14 @@ static uint32_t tx_free(void *user_data)
 }
 
 static int submit_text(uint8_t channel, uint8_t text_type,
-		       const uint8_t *payload, size_t payload_len,
+		       const uint8_t *to_iid, const uint8_t *payload,
+		       size_t payload_len,
 		       void *user_data)
 {
 	const struct lichen_app_text_event event = {
 		.from = 0U,
 		.to = UINT32_MAX,
+		.has_to_iid = to_iid != NULL,
 		.payload = payload,
 		.payload_len = payload_len,
 	};
@@ -84,6 +88,13 @@ static int submit_text(uint8_t channel, uint8_t text_type,
 	ARG_UNUSED(text_type);
 	ARG_UNUSED(user_data);
 
+	if (to_iid != NULL) {
+		struct lichen_app_text_event direct_event = event;
+
+		memcpy(direct_event.to_iid, to_iid,
+		       sizeof(direct_event.to_iid));
+		return lichen_app_interface_submit_text(&direct_event);
+	}
 	return lichen_app_interface_submit_text(&event);
 }
 
@@ -94,6 +105,38 @@ static int apply_pin(uint32_t pin, void *user_data)
 	return ble_meshcore_set_passkey(pin);
 }
 
+static int resolve_peer_prefix(const uint8_t prefix[6], uint8_t to_iid[8],
+			       void *user_data)
+{
+#if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
+	struct lichen_app_identity_peer
+		peers[CONFIG_LICHEN_APP_IDENTITY_MAX_PEERS];
+	size_t count;
+	size_t matches = 0U;
+
+	ARG_UNUSED(user_data);
+	if (prefix == NULL || to_iid == NULL) {
+		return -EINVAL;
+	}
+
+	count = lichen_app_identity_copy_peers(peers, ARRAY_SIZE(peers));
+	for (size_t i = 0U; i < count; i++) {
+		if (!peers[i].has_public_key ||
+		    memcmp(peers[i].public_key, prefix, 6U) != 0) {
+			continue;
+		}
+		memcpy(to_iid, peers[i].iid, sizeof(peers[i].iid));
+		matches++;
+	}
+	return matches == 1U ? 0 : -ENOENT;
+#else
+	ARG_UNUSED(prefix);
+	ARG_UNUSED(to_iid);
+	ARG_UNUSED(user_data);
+	return -ENOENT;
+#endif
+}
+
 static struct lichen_meshcore_adapter_ops adapter_ops(void)
 {
 	return (struct lichen_meshcore_adapter_ops){
@@ -101,6 +144,7 @@ static struct lichen_meshcore_adapter_ops adapter_ops(void)
 		.tx_free = tx_free,
 		.submit_text = submit_text,
 		.apply_pin = apply_pin,
+		.resolve_peer_prefix = resolve_peer_prefix,
 		.compat_settings = &s_compat_settings,
 	};
 }

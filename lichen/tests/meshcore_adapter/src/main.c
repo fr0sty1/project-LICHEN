@@ -37,6 +37,7 @@ struct test_ctx {
 	size_t limit;
 	uint8_t submit_channel;
 	uint8_t submit_text_type;
+	uint8_t submit_to_iid[8];
 	uint8_t submit_payload[LICHEN_MESHCORE_FRAME_MAX];
 	size_t submit_payload_len;
 	uint32_t submit_count;
@@ -44,6 +45,9 @@ struct test_ctx {
 	uint32_t apply_pin_count;
 	int submit_ret;
 	int apply_pin_ret;
+	bool submit_has_to_iid;
+	bool resolve_match;
+	bool resolve_collision;
 };
 
 static int enqueue_cb(const uint8_t *frame, size_t len, void *user_data)
@@ -74,7 +78,8 @@ static uint32_t tx_free_cb(void *user_data)
 }
 
 static int submit_text_cb(uint8_t channel, uint8_t text_type,
-			  const uint8_t *payload, size_t payload_len,
+			  const uint8_t *to_iid, const uint8_t *payload,
+			  size_t payload_len,
 			  void *user_data)
 {
 	struct test_ctx *ctx = user_data;
@@ -89,11 +94,39 @@ static int submit_text_cb(uint8_t channel, uint8_t text_type,
 
 	ctx->submit_channel = channel;
 	ctx->submit_text_type = text_type;
+	ctx->submit_has_to_iid = to_iid != NULL;
+	if (to_iid != NULL) {
+		memcpy(ctx->submit_to_iid, to_iid, sizeof(ctx->submit_to_iid));
+	}
 	ctx->submit_payload_len = payload_len;
 	if (payload_len > 0U) {
 		memcpy(ctx->submit_payload, payload, payload_len);
 	}
 	ctx->submit_count++;
+	return 0;
+}
+
+static int resolve_peer_prefix_cb(const uint8_t prefix[6], uint8_t to_iid[8],
+				  void *user_data)
+{
+	struct test_ctx *ctx = user_data;
+	const uint8_t known_prefix[6] = { 0x01, 0x02, 0x03,
+					  0x04, 0x05, 0x06 };
+	const uint8_t known_iid[8] = { 0x00, 0xaa, 0x01, 0x02,
+				       0x03, 0x04, 0x05, 0x06 };
+
+	if (ctx == NULL || prefix == NULL || to_iid == NULL) {
+		return -EINVAL;
+	}
+	if (ctx->resolve_collision) {
+		return -ENOENT;
+	}
+	if (!ctx->resolve_match ||
+	    memcmp(prefix, known_prefix, sizeof(known_prefix)) != 0) {
+		return -ENOENT;
+	}
+
+	memcpy(to_iid, known_iid, sizeof(known_iid));
 	return 0;
 }
 
@@ -118,6 +151,7 @@ static void init_adapter(struct lichen_meshcore_adapter *adapter,
 	const struct lichen_meshcore_adapter_ops ops = {
 		.enqueue_tx = enqueue_cb,
 		.tx_free = tx_free_cb,
+		.resolve_peer_prefix = resolve_peer_prefix_cb,
 		.apply_pin = apply_pin_cb,
 		.compat_settings = &ctx->settings,
 		.user_data = ctx,
@@ -135,6 +169,7 @@ static void init_adapter_with_submit(struct lichen_meshcore_adapter *adapter,
 		.enqueue_tx = enqueue_cb,
 		.tx_free = tx_free_cb,
 		.submit_text = submit_text_cb,
+		.resolve_peer_prefix = resolve_peer_prefix_cb,
 		.apply_pin = apply_pin_cb,
 		.compat_settings = &ctx->settings,
 		.user_data = ctx,
@@ -151,6 +186,7 @@ static void init_adapter_with_submit_no_tx_free(
 	const struct lichen_meshcore_adapter_ops ops = {
 		.enqueue_tx = enqueue_cb,
 		.submit_text = submit_text_cb,
+		.resolve_peer_prefix = resolve_peer_prefix_cb,
 		.apply_pin = apply_pin_cb,
 		.compat_settings = &ctx->settings,
 		.user_data = ctx,
@@ -158,6 +194,24 @@ static void init_adapter_with_submit_no_tx_free(
 
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->limit = OUT_DEPTH;
+	lichen_meshcore_adapter_init(adapter, &ops);
+}
+
+static void init_adapter_with_submit_no_resolver(
+	struct lichen_meshcore_adapter *adapter, struct test_ctx *ctx,
+	size_t limit)
+{
+	const struct lichen_meshcore_adapter_ops ops = {
+		.enqueue_tx = enqueue_cb,
+		.tx_free = tx_free_cb,
+		.submit_text = submit_text_cb,
+		.apply_pin = apply_pin_cb,
+		.compat_settings = &ctx->settings,
+		.user_data = ctx,
+	};
+
+	memset(ctx, 0, sizeof(*ctx));
+	ctx->limit = limit;
 	lichen_meshcore_adapter_init(adapter, &ops);
 }
 
@@ -239,15 +293,24 @@ ZTEST(meshcore_adapter, test_canonical_app_compat_vectors)
 
 	Z_TEST_SKIP_IFDEF(CONFIG_LICHEN_APP_IDENTITY);
 
-	zassert_equal(MESHCORE_VECTOR_SOURCE_COUNT, 36U);
+	zassert_equal(MESHCORE_VECTOR_SOURCE_COUNT, 38U);
 	zassert_equal(MESHCORE_VECTOR_ADAPTER_COUNT,
 		      ARRAY_SIZE(meshcore_vectors));
-	zassert_equal(MESHCORE_VECTOR_ADAPTER_COUNT, 30U);
+	zassert_equal(MESHCORE_VECTOR_ADAPTER_COUNT, 32U);
 
 	for (size_t i = 0U; i < ARRAY_SIZE(meshcore_vectors); i++) {
 		const struct meshcore_vector *v = &meshcore_vectors[i];
 
-		init_adapter(&adapter, &ctx, OUT_DEPTH);
+		if (strcmp(v->fixture, "direct-known-peer") == 0) {
+			init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+			ctx.resolve_match = true;
+		} else if (strcmp(v->fixture, "direct-colliding-peers") == 0) {
+			init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+			ctx.resolve_match = true;
+			ctx.resolve_collision = true;
+		} else {
+			init_adapter(&adapter, &ctx, OUT_DEPTH);
+		}
 		zassert_equal(lichen_meshcore_adapter_process_raw(
 				      &adapter, v->request, v->request_len),
 			      0, "%s dispatch failed", v->name);
@@ -257,6 +320,27 @@ ZTEST(meshcore_adapter, test_canonical_app_compat_vectors)
 		if (v->response_count == 2U) {
 			expect_bytes(&ctx, 1U, v->response1,
 				     v->response1_len);
+		}
+		if (strcmp(v->fixture, "direct-known-peer") == 0) {
+			const uint8_t expected_iid[8] = {
+				0x00, 0xaa, 0x01, 0x02,
+				0x03, 0x04, 0x05, 0x06,
+			};
+
+			zassert_equal(ctx.submit_count, 1U,
+				      "%s submit count", v->name);
+			zassert_true(ctx.submit_has_to_iid,
+				     "%s direct IID missing", v->name);
+			zassert_mem_equal(ctx.submit_to_iid, expected_iid,
+					  sizeof(expected_iid),
+					  "%s direct IID", v->name);
+			zassert_equal(ctx.submit_payload_len, 2U,
+				      "%s payload length", v->name);
+			zassert_mem_equal(ctx.submit_payload, "hi", 2U,
+					  "%s payload", v->name);
+		} else if (strcmp(v->fixture, "direct-colliding-peers") == 0) {
+			zassert_equal(ctx.submit_count, 0U,
+				      "%s should not submit", v->name);
 		}
 	}
 }
@@ -873,10 +957,13 @@ ZTEST(meshcore_adapter, test_send_channel_text_callback_errors_map)
 	zassert_equal(ctx.count, 0U);
 }
 
-ZTEST(meshcore_adapter, test_send_direct_text_without_peer_is_not_found)
+ZTEST(meshcore_adapter, test_send_direct_text_prefix_mapping)
 {
 	struct lichen_meshcore_adapter adapter;
 	struct test_ctx ctx;
+	const uint8_t expected_iid[8] = {
+		0x00, 0xaa, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+	};
 	const uint8_t direct[] = {
 		LICHEN_MESHCORE_CMD_SEND_TXT_MSG,
 		0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
@@ -896,6 +983,49 @@ ZTEST(meshcore_adapter, test_send_direct_text_without_peer_is_not_found)
 	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, direct,
 							  sizeof(direct)), 0);
 	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_NOT_FOUND);
+	zassert_equal(ctx.submit_count, 0U);
+
+	init_adapter_with_submit_no_resolver(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, direct,
+							  sizeof(direct)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_NOT_FOUND);
+	zassert_equal(ctx.submit_count, 0U);
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	ctx.resolve_match = true;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, direct,
+							  sizeof(direct)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	zassert_equal(ctx.submit_count, 0U);
+
+	init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+	ctx.resolve_match = true;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, direct,
+							  sizeof(direct)), 0);
+	expect_ok(&ctx, 0U);
+	zassert_equal(ctx.submit_count, 1U);
+	zassert_equal(ctx.submit_channel, 0U);
+	zassert_equal(ctx.submit_text_type, 0U);
+	zassert_true(ctx.submit_has_to_iid);
+	zassert_mem_equal(ctx.submit_to_iid, expected_iid,
+			  sizeof(expected_iid));
+	zassert_equal(ctx.submit_payload_len, 2U);
+	zassert_mem_equal(ctx.submit_payload, "hi", 2U);
+
+	init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+	ctx.resolve_match = true;
+	ctx.resolve_collision = true;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, direct,
+							  sizeof(direct)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_NOT_FOUND);
+	zassert_equal(ctx.submit_count, 0U);
+
+	init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+	ctx.resolve_match = true;
+	ctx.submit_ret = -ENOMEM;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, direct,
+							  sizeof(direct)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_TABLE_FULL);
 
 	init_adapter(&adapter, &ctx, OUT_DEPTH);
 	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, direct_short,

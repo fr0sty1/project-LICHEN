@@ -806,8 +806,8 @@ static int enqueue_channel_text_send(
 		return ret;
 	}
 
-	ret = adapter->ops.submit_text(channel, text_type, payload, payload_len,
-				       adapter->ops.user_data);
+	ret = adapter->ops.submit_text(channel, text_type, NULL, payload,
+				       payload_len, adapter->ops.user_data);
 	if (ret < 0) {
 		return enqueue_error(adapter, meshcore_error_from_errno(ret));
 	}
@@ -824,14 +824,49 @@ static int enqueue_direct_text_send(
 	struct lichen_meshcore_adapter *adapter,
 	const struct lichen_meshcore_frame_view *view)
 {
+	uint8_t out[1];
+	uint8_t to_iid[8];
+	const uint8_t *payload;
+	size_t payload_len;
+	int ret;
+
 	if (view->payload_len < 6U) {
 		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
 	}
-	if (!valid_utf8_text(&view->payload[6], view->payload_len - 6U)) {
+	payload = &view->payload[6];
+	payload_len = view->payload_len - 6U;
+	if (!valid_utf8_text(payload, payload_len)) {
 		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
 	}
+	if (adapter->ops.resolve_peer_prefix == NULL) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_NOT_FOUND);
+	}
+	ret = adapter->ops.resolve_peer_prefix(view->payload, to_iid,
+					       adapter->ops.user_data);
+	if (ret < 0) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_NOT_FOUND);
+	}
+	if (adapter->ops.submit_text == NULL) {
+		return enqueue_error(adapter,
+				     LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	}
+	ret = preflight_tx_slots(adapter, 1U);
+	if (ret < 0) {
+		return ret;
+	}
 
-	return enqueue_error(adapter, LICHEN_MESHCORE_ERR_NOT_FOUND);
+	ret = adapter->ops.submit_text(0U, 0U, to_iid, payload, payload_len,
+				       adapter->ops.user_data);
+	if (ret < 0) {
+		return enqueue_error(adapter, meshcore_error_from_errno(ret));
+	}
+
+	ret = lichen_meshcore_encode_ok(out, sizeof(out));
+	if (ret < 0) {
+		return ret;
+	}
+	adapter->stats.submitted_text_count++;
+	return enqueue(adapter, out, (size_t)ret);
 }
 
 static int dispatch_supported(struct lichen_meshcore_adapter *adapter,

@@ -377,6 +377,7 @@
             "compat_store": {"type": "string"},
             "drift_note": {"type": "string"},
             "emitted_by": {"type": "string"},
+            "fixture": {"type": "string"},
             "inner_frame": {"$ref": "#/definitions/hex"},
             "preceded_by": {"type": "string"},
             "response_len": {"type": "integer", "minimum": 0},

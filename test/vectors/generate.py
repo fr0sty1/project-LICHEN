@@ -1165,6 +1165,42 @@ def meshcore_app_compat_vectors() -> list[dict]:
             expect={"responses": ["0102"], "adapter_test": True},
         ),
         _meshcore_vector(
+            name="send_txt_msg_direct_known_peer",
+            description="A direct MeshCore public-key prefix that maps to exactly one known LICHEN peer submits text to that peer IID.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("020102030405066869"),
+            decoded={
+                "command": "SEND_TXT_MSG",
+                "prefix": "010203040506",
+                "payload_utf8": "hi",
+                "expected_iid": "00aa010203040506",
+            },
+            expect={
+                "responses": ["00"],
+                "adapter_test": True,
+                "fixture": "direct-known-peer",
+            },
+        ),
+        _meshcore_vector(
+            name="send_txt_msg_direct_colliding_peer",
+            description="A direct MeshCore public-key prefix that maps to multiple known peers fails closed as not found.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("020102030405066869"),
+            decoded={
+                "command": "SEND_TXT_MSG",
+                "prefix": "010203040506",
+                "payload_utf8": "hi",
+                "collision": True,
+            },
+            expect={
+                "responses": ["0102"],
+                "adapter_test": True,
+                "fixture": "direct-colliding-peers",
+            },
+        ),
+        _meshcore_vector(
             name="set_advert_name_ok",
             description="Compatibility display-name writes update MeshCore-local state and return OK without mutating native identity.",
             direction="exchange",
