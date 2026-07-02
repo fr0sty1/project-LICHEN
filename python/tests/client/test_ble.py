@@ -11,11 +11,14 @@ from dataclasses import dataclass
 import pytest
 
 from lichen.client.ble import (
+    LICHEN_LCI_CAPABILITY_SLIP_IPV6,
     LICHEN_LCI_PROFILE,
+    LICHEN_LCI_VERSION,
     NUS_LCI_PROFILE,
     BlePacketTransport,
     BleTransportError,
     discover_lci_devices,
+    read_lci_metadata,
 )
 from lichen.slip.codec import encode
 
@@ -30,6 +33,7 @@ class FakeBleClient:
         fail_connect: bool = False,
         fail_notify: bool = False,
         fail_write: bool = False,
+        reads: dict[str, bytes] | None = None,
     ) -> None:
         self.address = address
         self.mtu_size = mtu_size
@@ -41,6 +45,13 @@ class FakeBleClient:
         self.notify_uuid: str | None = None
         self.notify_callback: Callable[[str, bytearray], None] | None = None
         self.writes: list[tuple[str, bytes, bool]] = []
+        self.reads = reads or {
+            LICHEN_LCI_PROFILE.version_uuid or "": LICHEN_LCI_VERSION.to_bytes(2, "little"),
+            LICHEN_LCI_PROFILE.capabilities_uuid or "": LICHEN_LCI_CAPABILITY_SLIP_IPV6.to_bytes(
+                4, "little"
+            ),
+        }
+        self.read_calls: list[str] = []
         self.stop_notify_calls: list[str] = []
 
     async def connect(self) -> bool:
@@ -77,6 +88,10 @@ class FakeBleClient:
             raise TimeoutError("write timeout")
         self.writes.append((char_specifier, data, response))
 
+    async def read_gatt_char(self, char_specifier: str) -> bytes:
+        self.read_calls.append(char_specifier)
+        return self.reads[char_specifier]
+
     def notify(self, data: bytes) -> None:
         assert self.notify_callback is not None
         self.notify_callback(self.notify_uuid or "", bytearray(data))
@@ -107,6 +122,7 @@ class FakeDevice:
 class FakeAdvertisement:
     service_uuids: list[str]
     rssi: int
+    local_name: str | None = None
 
 
 class FakeScanner:
@@ -126,6 +142,7 @@ class FakeScanner:
                     FakeAdvertisement(
                         service_uuids=device.metadata.get("uuids", []),
                         rssi=device.rssi,
+                        local_name=device.metadata.get("local_name", [device.name])[0],
                     ),
                 )
                 for device in FakeScanner.devices
@@ -142,6 +159,12 @@ async def test_ble_transport_connects_and_subscribes_to_lci_tx() -> None:
     assert transport.is_connected
     assert client.connected
     assert client.notify_uuid == LICHEN_LCI_PROFILE.tx_uuid
+    assert client.read_calls == [
+        LICHEN_LCI_PROFILE.version_uuid,
+        LICHEN_LCI_PROFILE.capabilities_uuid,
+    ]
+    assert transport.metadata.protocol_version == LICHEN_LCI_VERSION
+    assert transport.metadata.capabilities == LICHEN_LCI_CAPABILITY_SLIP_IPV6
 
 
 async def test_ble_transport_writes_slip_chunks_to_lci_rx() -> None:
@@ -258,6 +281,66 @@ async def test_ble_transport_wraps_write_failures() -> None:
         await transport.send_packet(b"packet")
 
 
+async def test_ble_transport_rejects_bad_lci_metadata_lengths() -> None:
+    client = FakeBleClient(
+        "AA:BB",
+        reads={
+            LICHEN_LCI_PROFILE.version_uuid or "": b"\x01",
+            LICHEN_LCI_PROFILE.capabilities_uuid or "": b"\x01\x00\x00\x00",
+        },
+    )
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _address: client, timeout_s=0.1)
+
+    with pytest.raises(BleTransportError, match="protocol version must be two octets"):
+        await transport.connect()
+
+    assert not transport.is_connected
+    assert not client.connected
+
+
+async def test_ble_transport_rejects_bad_lci_capabilities_length() -> None:
+    client = FakeBleClient(
+        "AA:BB",
+        reads={
+            LICHEN_LCI_PROFILE.version_uuid or "": b"\x01\x00",
+            LICHEN_LCI_PROFILE.capabilities_uuid or "": b"\x01\x00\x00",
+        },
+    )
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _address: client, timeout_s=0.1)
+
+    with pytest.raises(BleTransportError, match="capabilities must be four octets"):
+        await transport.connect()
+
+    assert not transport.is_connected
+    assert not client.connected
+
+
+async def test_read_lci_metadata_returns_empty_for_legacy_nus() -> None:
+    client = FakeBleClient("AA:BB")
+
+    metadata = await read_lci_metadata(client, NUS_LCI_PROFILE, timeout_s=0.1)
+
+    assert metadata.protocol_version is None
+    assert metadata.capabilities is None
+    assert client.read_calls == []
+
+
+async def test_ble_transport_skips_lci_metadata_reads_for_legacy_nus() -> None:
+    client = FakeBleClient("AA:BB")
+    transport = BlePacketTransport(
+        "AA:BB",
+        profile=NUS_LCI_PROFILE,
+        client_factory=lambda _address: client,
+    )
+
+    await transport.connect()
+
+    assert client.notify_uuid == NUS_LCI_PROFILE.tx_uuid
+    assert client.read_calls == []
+    assert transport.metadata.protocol_version is None
+    assert transport.metadata.capabilities is None
+
+
 async def test_discover_lci_devices_defaults_to_native_lci_profile() -> None:
     FakeScanner.fail_discover = False
     FakeScanner.return_advertisements = False
@@ -281,6 +364,29 @@ async def test_discover_lci_devices_defaults_to_native_lci_profile() -> None:
 
     rows = [(item.address, item.name, item.profile.service_uuid, item.rssi) for item in candidates]
     assert rows == [("AA:01", "LICHEN", LICHEN_LCI_PROFILE.service_uuid, -45)]
+
+
+async def test_discover_lci_devices_prefers_native_lci_before_legacy_nus() -> None:
+    FakeScanner.fail_discover = False
+    FakeScanner.return_advertisements = False
+    FakeScanner.devices = [
+        FakeDevice(
+            address="AA:01",
+            name="dual-mode",
+            metadata={"uuids": [NUS_LCI_PROFILE.service_uuid, LICHEN_LCI_PROFILE.service_uuid]},
+            rssi=-40,
+        )
+    ]
+
+    candidates = await discover_lci_devices(
+        scanner=FakeScanner,
+        timeout_s=0.1,
+        profiles=(LICHEN_LCI_PROFILE, NUS_LCI_PROFILE),
+    )
+
+    assert [(item.address, item.profile) for item in candidates] == [
+        ("AA:01", LICHEN_LCI_PROFILE)
+    ]
 
 
 async def test_discover_lci_devices_uses_bleak_advertisement_data() -> None:
@@ -323,6 +429,76 @@ async def test_discover_lci_devices_supports_explicit_legacy_nus_profile() -> No
     assert rows == [
         ("AA:02", "legacy", NUS_LCI_PROFILE.service_uuid, -60),
     ]
+
+
+async def test_discover_lci_devices_skips_nus_when_meshcore_is_advertised() -> None:
+    FakeScanner.fail_discover = False
+    FakeScanner.return_advertisements = False
+    FakeScanner.devices = [
+        FakeDevice(
+            address="AA:02",
+            name="MeshCore-LICHEN",
+            metadata={"uuids": [NUS_LCI_PROFILE.service_uuid]},
+            rssi=-60,
+        ),
+    ]
+
+    candidates = await discover_lci_devices(
+        scanner=FakeScanner,
+        timeout_s=0.1,
+        profiles=(NUS_LCI_PROFILE,),
+    )
+
+    assert candidates == []
+
+
+async def test_discover_lci_devices_skips_nus_when_meshcore_local_name_is_advertised() -> None:
+    FakeScanner.fail_discover = False
+    FakeScanner.return_advertisements = True
+    FakeScanner.devices = [
+        FakeDevice(
+            address="AA:02",
+            name="legacy",
+            metadata={
+                "uuids": [NUS_LCI_PROFILE.service_uuid],
+                "local_name": ["MeshCore-LICHEN"],
+            },
+            rssi=-60,
+        ),
+    ]
+
+    candidates = await discover_lci_devices(
+        scanner=FakeScanner,
+        timeout_s=0.1,
+        profiles=(NUS_LCI_PROFILE,),
+    )
+
+    assert candidates == []
+    FakeScanner.return_advertisements = False
+
+
+async def test_discover_lci_devices_skips_nus_when_meshcore_metadata_name_is_list() -> None:
+    FakeScanner.fail_discover = False
+    FakeScanner.return_advertisements = False
+    FakeScanner.devices = [
+        FakeDevice(
+            address="AA:02",
+            name="legacy",
+            metadata={
+                "uuids": [NUS_LCI_PROFILE.service_uuid],
+                "local_name": ["MeshCore-LICHEN"],
+            },
+            rssi=-60,
+        ),
+    ]
+
+    candidates = await discover_lci_devices(
+        scanner=FakeScanner,
+        timeout_s=0.1,
+        profiles=(NUS_LCI_PROFILE,),
+    )
+
+    assert candidates == []
 
 
 async def test_discover_lci_devices_wraps_scanner_failures() -> None:

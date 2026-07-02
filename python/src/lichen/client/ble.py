@@ -14,6 +14,8 @@ from typing import Any, Protocol, cast
 from lichen.slip.codec import StreamDecoder, encode
 
 DEFAULT_ATT_PAYLOAD = 20
+LICHEN_LCI_VERSION = 1
+LICHEN_LCI_CAPABILITY_SLIP_IPV6 = 1 << 0
 
 
 class BleTransportError(RuntimeError):
@@ -82,6 +84,9 @@ class BleClientLike(Protocol):
     ) -> None:
         """Write one GATT characteristic chunk."""
 
+    async def read_gatt_char(self, char_specifier: str) -> bytes | bytearray:
+        """Read one GATT characteristic value."""
+
 
 class BleScannerLike(Protocol):
     """Subset of BleakScanner used by discovery helpers."""
@@ -102,6 +107,14 @@ class BleDeviceCandidate:
     name: str | None
     profile: BleLciProfile
     rssi: int | None = None
+
+
+@dataclass(frozen=True)
+class BleLciMetadata:
+    """Client-visible metadata read from a direct native BLE LCI service."""
+
+    protocol_version: int | None = None
+    capabilities: int | None = None
 
 
 class BlePacketTransport:
@@ -128,6 +141,7 @@ class BlePacketTransport:
         self._packets: asyncio.Queue[bytes | None] = asyncio.Queue()
         self._connected = False
         self._notify_started = False
+        self._metadata = BleLciMetadata()
 
     @property
     def is_connected(self) -> bool:
@@ -146,6 +160,11 @@ class BlePacketTransport:
             return characteristic_size
         mtu = getattr(self._client, "mtu_size", DEFAULT_ATT_PAYLOAD + 3)
         return max(1, int(mtu) - 3)
+
+    @property
+    def metadata(self) -> BleLciMetadata:
+        """Return direct BLE LCI metadata read during connection setup."""
+        return self._metadata
 
     async def connect(self) -> None:
         """Connect and subscribe to the TX notification characteristic."""
@@ -215,6 +234,11 @@ class BlePacketTransport:
         result = await asyncio.wait_for(client.connect(), timeout=self._timeout_s)
         if result is False:
             raise BleTransportError("BLE client returned unsuccessful connect")
+        self._metadata = await read_lci_metadata(
+            client,
+            self.profile,
+            timeout_s=self._timeout_s,
+        )
         await asyncio.wait_for(
             client.start_notify(self.profile.tx_uuid, self._on_notify),
             timeout=self._timeout_s,
@@ -253,7 +277,12 @@ async def discover_lci_devices(
     timeout_s: float = 5.0,
     profiles: Iterable[BleLciProfile] = (LICHEN_LCI_PROFILE,),
 ) -> list[BleDeviceCandidate]:
-    """Discover BLE devices advertising LCI-compatible services."""
+    """Discover BLE devices advertising LCI-compatible services.
+
+    Profile order is authoritative. Keep the LICHEN-specific native LCI
+    profile before legacy NUS when allowing both, and skip NUS when a device
+    advertises MeshCore compatibility because MeshCore owns NUS semantics.
+    """
     scanner_obj = scanner
     if scanner_obj is None:
         try:
@@ -264,7 +293,7 @@ async def discover_lci_devices(
             ) from exc
         scanner_obj = cast(BleScannerLike, bleak.BleakScanner)
 
-    profile_by_uuid = {profile.service_uuid.lower(): profile for profile in profiles}
+    profile_list = tuple(profiles)
     try:
         discovered = await asyncio.wait_for(
             _discover_with_advertisements(scanner_obj, timeout_s),
@@ -276,7 +305,15 @@ async def discover_lci_devices(
     for device, advertisement in _iter_discovered(discovered):
         service_uuids = _advertised_service_uuids(device, advertisement)
         matched = next(
-            (profile_by_uuid[uuid] for uuid in service_uuids if uuid in profile_by_uuid),
+            (
+                profile
+                for profile in profile_list
+                if profile.service_uuid.lower() in service_uuids
+                and not (
+                    profile == NUS_LCI_PROFILE
+                    and _advertises_meshcore_compat(device, advertisement)
+                )
+            ),
             None,
         )
         if matched is None:
@@ -290,6 +327,51 @@ async def discover_lci_devices(
             )
         )
     return candidates
+
+
+async def read_lci_metadata(
+    client: BleClientLike,
+    profile: BleLciProfile = LICHEN_LCI_PROFILE,
+    *,
+    timeout_s: float = 10.0,
+) -> BleLciMetadata:
+    """Read direct native BLE LCI version/capabilities when advertised."""
+    if profile.version_uuid is None and profile.capabilities_uuid is None:
+        return BleLciMetadata()
+
+    protocol_version: int | None = None
+    capabilities: int | None = None
+    try:
+        if profile.version_uuid is not None:
+            version_raw = bytes(
+                await asyncio.wait_for(
+                    client.read_gatt_char(profile.version_uuid),
+                    timeout=timeout_s,
+                )
+            )
+            if len(version_raw) != 2:
+                raise BleTransportError("BLE LCI protocol version must be two octets")
+            protocol_version = int.from_bytes(version_raw, "little")
+
+        if profile.capabilities_uuid is not None:
+            capabilities_raw = bytes(
+                await asyncio.wait_for(
+                    client.read_gatt_char(profile.capabilities_uuid),
+                    timeout=timeout_s,
+                )
+            )
+            if len(capabilities_raw) != 4:
+                raise BleTransportError("BLE LCI capabilities must be four octets")
+            capabilities = int.from_bytes(capabilities_raw, "little")
+    except BleTransportError:
+        raise
+    except Exception as exc:
+        raise BleTransportError(f"BLE LCI metadata read failed: {exc}") from exc
+
+    return BleLciMetadata(
+        protocol_version=protocol_version,
+        capabilities=capabilities,
+    )
 
 
 async def _discover_with_advertisements(scanner: BleScannerLike, timeout_s: float) -> Any:
@@ -327,6 +409,24 @@ def _discovered_rssi(device: Any, advertisement: Any | None) -> int | None:
         if rssi is not None:
             return rssi
     return _int_or_none(getattr(device, "rssi", None))
+
+
+def _advertises_meshcore_compat(device: Any, advertisement: Any | None = None) -> bool:
+    names = [
+        getattr(device, "name", None),
+        getattr(advertisement, "local_name", None) if advertisement is not None else None,
+    ]
+    metadata = getattr(device, "metadata", {}) or {}
+    names.extend(_metadata_values(metadata.get("local_name")))
+    return any(str(name).casefold().startswith("meshcore") for name in names if name)
+
+
+def _metadata_values(value: Any) -> Iterable[Any]:
+    if value is None or isinstance(value, str):
+        return (value,)
+    if isinstance(value, Iterable):
+        return value
+    return (value,)
 
 
 def _max_write_without_response_size(client: BleClientLike, rx_uuid: str) -> int | None:

@@ -3,13 +3,17 @@
 """Shared client model for native LICHEN applications."""
 
 from lichen.client.ble import (
+    LICHEN_LCI_CAPABILITY_SLIP_IPV6,
     LICHEN_LCI_PROFILE,
+    LICHEN_LCI_VERSION,
     NUS_LCI_PROFILE,
     BleDeviceCandidate,
+    BleLciMetadata,
     BleLciProfile,
     BlePacketTransport,
     BleTransportError,
     discover_lci_devices,
+    read_lci_metadata,
 )
 from lichen.client.ip_coap import (
     AiocoapResourceSubscription,
@@ -49,7 +53,9 @@ __all__ = [
     "DeliveryState",
     "DeviceStatus",
     "Identity",
+    "LICHEN_LCI_CAPABILITY_SLIP_IPV6",
     "LICHEN_LCI_PROFILE",
+    "LICHEN_LCI_VERSION",
     "LciClient",
     "LciClientError",
     "MessageDraft",
@@ -64,6 +70,7 @@ __all__ = [
     "Route",
     "SendResult",
     "BleDeviceCandidate",
+    "BleLciMetadata",
     "BleLciProfile",
     "BlePacketTransport",
     "BleTransportError",
@@ -72,4 +79,5 @@ __all__ = [
     "CoapTransportError",
     "IpCoapConfig",
     "discover_lci_devices",
+    "read_lci_metadata",
 ]
