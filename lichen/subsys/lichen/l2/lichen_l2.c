@@ -21,6 +21,7 @@
 #include <zephyr/net/net_pkt.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
+#include <zephyr/sys/crc.h>
 
 #if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
 #include <lichen/app_identity/app_identity.h>
@@ -2068,6 +2069,34 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	ret = peer_try_all_pubkeys(&rx_ctx, &replay_table, data, len,
 				   rx_ipv6_buf, &ipv6_len, src_eui64);
 	if (ret < 0) {
+		/*
+		 * Puck neighbor beacons are 9-byte broadcast link frames with no
+		 * SCHC/IPv6 payload: [len=9][LLSec=0x00][epoch][seq_hi][seq_lo]
+		 * [CRC32 over bytes 1..4, little-endian] (see puck send_beacon()).
+		 * lichen_link_rx() rightly rejects them (nothing to deliver), but
+		 * they are valid neighbor traffic, not errors — verify the CRC32
+		 * MIC and log at INF instead of WRN. (lora_ipv6_mesh-v6g6)
+		 *
+		 * SECURITY: CRC32 is error detection only, not authentication —
+		 * beacons are observational (logged, never routed or trusted).
+		 */
+		if (len == 9 && data[0] == 9 && data[1] == 0x00) {
+			uint32_t mic = crc32_ieee(&data[1], 4);
+			uint32_t rx_mic = (uint32_t)data[5] |
+					  ((uint32_t)data[6] << 8) |
+					  ((uint32_t)data[7] << 16) |
+					  ((uint32_t)data[8] << 24);
+			if (mic == rx_mic) {
+				LOG_INF("lichen_l2: neighbor beacon epoch=%u seq=%u "
+					"rssi=%d snr=%d",
+					data[2],
+					(uint16_t)(((uint16_t)data[3] << 8) | data[4]),
+					rssi, snr);
+				secure_zero(rx_link_key, sizeof(rx_link_key));
+				k_mutex_unlock(&rx_mutex);
+				return;
+			}
+		}
 		LOG_WRN("lichen_l2: RX failed: %s (%d)",
 			lichen_link_strerror(ret), ret);
 		secure_zero(rx_link_key, sizeof(rx_link_key));
