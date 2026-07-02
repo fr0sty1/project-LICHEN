@@ -209,6 +209,24 @@ link_cached_path() {
 	fi
 }
 
+ensure_loramac_lr1110_submodule() {
+	local cache=$1
+	local loramac="$cache/modules/lib/loramac-node"
+	local lr1110_path="src/radio/lr1110/lr1110_driver"
+	local required="$loramac/$lr1110_path/src/lr1110_radio.c"
+
+	[ -d "$loramac/.git" ] || [ -f "$loramac/.git" ] || return 0
+	[ -f "$loramac/.gitmodules" ] || return 0
+	if [ -f "$required" ]; then
+		return 0
+	fi
+
+	printf 'Initializing loramac-node LR1110 driver submodule in cache...\n'
+	git -C "$loramac" submodule update --init --recursive "$lr1110_path"
+	[ -f "$required" ] ||
+		die "loramac-node LR1110 driver submodule did not provide $required"
+}
+
 setup_worktree() {
 	local dest
 	local cache
@@ -225,6 +243,7 @@ setup_worktree() {
 	link_cached_path "$cache" "$dest" zephyr
 	link_cached_path "$cache" "$dest" modules
 	link_cached_path "$cache" "$dest" bootloader
+	ensure_loramac_lr1110_submodule "$cache"
 
 	printf 'Prepared clean Zephyr worktree: %s\n' "$dest"
 	printf 'Use: -DZEPHYR_EXTRA_MODULES=%s/lichen\n' "$dest"

@@ -3,6 +3,13 @@ zephyr_library()
 set(LR1110_DRV_DIR
 	${ZEPHYR_LORAMAC_NODE_MODULE_DIR}/src/radio/lr1110/lr1110_driver/src)
 
+if(NOT EXISTS ${LR1110_DRV_DIR}/lr1110_radio.c)
+	message(FATAL_ERROR
+		"loramac-node LR1110 driver sources are missing at ${LR1110_DRV_DIR}. "
+		"Run west update or tools/zephyr-clean-worktree.sh setup/create so the "
+		"loramac-node src/radio/lr1110/lr1110_driver submodule is initialized.")
+endif()
+
 zephyr_library_sources(
 	lr1110.c
 	lr1110_hal.c
