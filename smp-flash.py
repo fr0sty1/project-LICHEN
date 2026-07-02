@@ -5,6 +5,14 @@ Minimal SMP client — image upload + reset over any pyserial-compatible port.
 Supports RFC2217 URLs directly (no PTY bridge needed):
   ./smp-flash.py rfc2217://localhost:4005 firmware.signed.bin
   ./smp-flash.py /dev/ttyACM1            firmware.signed.bin
+
+IMPORTANT: sign the OTA payload with `imgtool sign ... --pad --confirm`.
+This client does not implement the SMP "image test/confirm" command, so the
+swap trailer must ship inside the image; without --pad --confirm MCUboot
+ignores the uploaded slot1 image and never swaps. (--pad grows the file to
+the full slot size — the upload is bigger but carries its own trailer.)
+Verified working T1000-E 2026-07-02: 364 KB upload, ~19 s MCUboot copy on
+the post-reset boot, new image boots with SMP alive.
 """
 
 import sys

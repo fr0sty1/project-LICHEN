@@ -195,7 +195,7 @@ index f02dfcdc..9aff13cb 100644
  }
  
 diff --git a/subsys/usb/device_next/class/usbd_cdc_acm.c b/subsys/usb/device_next/class/usbd_cdc_acm.c
-index 0433e120..36519cda 100644
+index 0433e120..cc11ab9d 100644
 --- a/subsys/usb/device_next/class/usbd_cdc_acm.c
 +++ b/subsys/usb/device_next/class/usbd_cdc_acm.c
 @@ -102,11 +102,11 @@ struct cdc_acm_uart_data {
@@ -222,7 +222,7 @@ index 0433e120..36519cda 100644
 + * poll_out/poll_in, or the buf pool exhausted) must NOT resubmit itself
 + * immediately: the immediate re-run starves every preemptible thread —
 + * including the lock holder — and the retry spins forever. Retry paths
-+ * therefore back off by one tick so lower-priority threads can run;
++ * therefore back off by 1 ms so lower-priority threads can run;
 + * fresh-event paths still schedule with no delay.
 + */
 +static ALWAYS_INLINE int cdc_acm_work_schedule(struct k_work_delayable *work,
@@ -282,14 +282,14 @@ index 0433e120..36519cda 100644
 -		cdc_acm_work_submit(&data->tx_fifo_work);
 +		/* Back off: the lock holder may be a preemptible thread in
 +		 * poll_out/poll_in that an immediate re-run would starve. */
-+		cdc_acm_work_schedule(&data->tx_fifo_work, K_TICKS(1));
++		cdc_acm_work_schedule(&data->tx_fifo_work, K_MSEC(1));
  		return;
  	}
  
  	buf = cdc_acm_buf_alloc(cdc_acm_get_bulk_in(c_data));
  	if (buf == NULL) {
 -		cdc_acm_work_submit(&data->tx_fifo_work);
-+		cdc_acm_work_schedule(&data->tx_fifo_work, K_TICKS(1));
++		cdc_acm_work_schedule(&data->tx_fifo_work, K_MSEC(1));
  		goto tx_fifo_handler_exit;
  	}
  
@@ -330,7 +330,7 @@ index 0433e120..36519cda 100644
 +		 * poll_out/poll_in. An immediate resubmit on this cooperative
 +		 * workqueue starves it forever — the lock never clears and
 +		 * this handler respawns until the watchdog resets the SoC. */
-+		cdc_acm_work_schedule(&data->irq_cb_work, K_TICKS(1));
++		cdc_acm_work_schedule(&data->irq_cb_work, K_MSEC(1));
  		return;
  	}
  
@@ -348,14 +348,14 @@ index 0433e120..36519cda 100644
  	    !ring_buf_is_empty(data->rx_fifo.rb)) {
  		LOG_DBG("rx irq pending, submit irq_cb_work");
 -		cdc_acm_work_submit(&data->irq_cb_work);
-+		cdc_acm_work_schedule(&data->irq_cb_work, K_TICKS(1));
++		cdc_acm_work_schedule(&data->irq_cb_work, K_MSEC(1));
  	}
  
  	if (atomic_test_bit(&data->state, CDC_ACM_IRQ_TX_ENABLED) &&
  	    ring_buf_is_empty(data->tx_fifo.rb)) {
  		LOG_DBG("tx irq pending, submit irq_cb_work");
 -		cdc_acm_work_submit(&data->irq_cb_work);
-+		cdc_acm_work_schedule(&data->irq_cb_work, K_TICKS(1));
++		cdc_acm_work_schedule(&data->irq_cb_work, K_MSEC(1));
  	}
  
  	atomic_clear_bit(&data->state, CDC_ACM_LOCK);
