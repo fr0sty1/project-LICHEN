@@ -11,8 +11,20 @@
 #include "ble_app_owner.h"
 #include "ble_meshtastic.h"
 
+#include <lichen/meshtastic/adapter.h>
+
 #define MESHTASTIC_SVC_UUID_VAL \
 	BT_UUID_128_ENCODE(0x6ba1b218, 0x15a8, 0x461f, 0x9fa8, 0x5dcae273eafd)
+#define MESHTASTIC_FULL_SYNC_QUEUE_HEADROOM \
+	(1U + LICHEN_MESHTASTIC_FULL_SYNC_RECORDS( \
+		      CONFIG_LICHEN_MESHTASTIC_NODEDB_MAX_PEERS))
+
+BUILD_ASSERT(CONFIG_LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH_MIN >=
+	     MESHTASTIC_FULL_SYNC_QUEUE_HEADROOM);
+BUILD_ASSERT(CONFIG_LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH >=
+	     MESHTASTIC_FULL_SYNC_QUEUE_HEADROOM);
+BUILD_ASSERT(CONFIG_LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH >=
+	     CONFIG_LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH_MIN);
 
 static const uint8_t s_meshtastic_svc_uuid[] = { MESHTASTIC_SVC_UUID_VAL };
 
@@ -47,6 +59,16 @@ static void meshtastic_ble_before(void *fixture)
 	ARG_UNUSED(fixture);
 	ble_app_owner_test_reset();
 	ble_meshtastic_reset_session();
+}
+
+ZTEST(meshtastic_ble, test_from_radio_capacity_uses_kconfig_default)
+{
+	ble_meshtastic_reset_session();
+
+	zassert_equal(ble_meshtastic_from_radio_capacity(),
+		      CONFIG_LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH);
+	zassert_true(ble_meshtastic_from_radio_capacity() >=
+		     MESHTASTIC_FULL_SYNC_QUEUE_HEADROOM);
 }
 
 ZTEST(meshtastic_ble, test_exact_final_read_releases_from_radio_slot)
