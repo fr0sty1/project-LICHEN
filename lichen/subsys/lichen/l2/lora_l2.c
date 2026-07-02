@@ -196,6 +196,24 @@ static K_MUTEX_DEFINE(lora_mutex);
 static K_MUTEX_DEFINE(tx_buf_mutex);
 
 /*
+ * TX/RX modem arbitration (half-duplex radio, non-blocking driver acquire).
+ *
+ * The sx12xx driver's modem_acquire() is non-blocking: whichever of
+ * lora_recv()/lora_send() finds the modem held fails immediately with
+ * -EBUSY. The RX thread re-arms lora_recv() back-to-back, so it holds the
+ * modem near-continuously and TX essentially never wins the race; when TX
+ * did slip in (during the RX error backoff), RX logged -EBUSY as a hardware
+ * error and slept 1 s, going deaf.
+ *
+ * Fix: TX raises tx_pending before sending. The RX thread checks it before
+ * re-arming and yields (short sleep) while set, so TX acquires the modem as
+ * soon as the in-flight RX window drains (bounded by RX_TIMEOUT_MS). Both
+ * sides treat -EBUSY as the expected "other side owns the modem" signal,
+ * not an error.
+ */
+static atomic_t tx_pending;
+
+/*
  * Internal TX buffer - copied before lora_send() to protect caller's data.
  * Zephyr's lora_send() takes a non-const pointer because some radio drivers
  * may modify the buffer (e.g., for DMA alignment or in-place encryption).
@@ -441,6 +459,16 @@ static void rx_thread(void *arg1, void *arg2, void *arg3)
      * terminated by k_thread_abort() before ABORTED is ever set.
      */
     while (lora_get_state() == LORA_RUNNING) {
+        /*
+         * Yield the modem to a pending TX. Without this, back-to-back
+         * lora_recv() calls hold the modem near-continuously and
+         * lichen_lora_l2_tx() can never acquire it (see tx_pending above).
+         */
+        if (atomic_get(&tx_pending) > 0) {
+            k_sleep(K_MSEC(10));
+            continue;
+        }
+
         ret = lora_recv(dev, rx_buf, sizeof(rx_buf),
                         K_MSEC(RX_TIMEOUT_MS), &rssi, &snr);
 
@@ -448,6 +476,13 @@ static void rx_thread(void *arg1, void *arg2, void *arg3)
             if (ret == -EAGAIN) {
                 /* Timeout is normal operation, not an error - reset counter */
                 consecutive_errors = 0;
+                continue;
+            }
+            if (ret == -EBUSY) {
+                /* TX owns the modem (half-duplex). Expected during a send;
+                 * yield briefly and re-arm - not a hardware error. */
+                consecutive_errors = 0;
+                k_sleep(K_MSEC(50));
                 continue;
             }
             if (consecutive_errors < INT_MAX) {
@@ -667,17 +702,19 @@ int lichen_lora_l2_start(void)
      * sx12xx_lora_config memcpy, rylr_config field reads) and does not
      * retain a pointer.
      *
-     * Zephyr's lora_modem_config.tx selects the direction being configured.
-     * This L2 implementation is targeted at Zephyr's SX126x/SX127x path used
-     * by the supported Meshtastic-class boards. For that driver family,
-     * lora_config(... .tx = true) stores the TX parameters needed by
-     * lora_send(), while lora_recv() explicitly enters RX mode for each
-     * receive operation.
+     * Zephyr's lora_modem_config.tx selects the direction being configured,
+     * and for the SX12xx driver family each direction is programmed
+     * independently: .tx=true calls Radio.SetTxConfig() (and caches the
+     * params lora_send() needs for airtime), .tx=false calls
+     * Radio.SetRxConfig(). lora_recv()'s Radio.Rx() re-enters RX *mode* but
+     * reuses whatever modulation params SetRxConfig last programmed - it does
+     * NOT re-derive them from the TX config. Configuring only .tx=true left
+     * the RX side unprogrammed (default SF/BW), making the radio deaf to
+     * matched-PHY peers. Configure BOTH directions: RX first, TX second.
      *
-     * Do not change this to a post-config RX pass without auditing the driver:
-     * drivers such as RYLR keep .tx as persistent direction state and reject
-     * lora_send() after an RX config. Supporting those drivers would require a
-     * per-operation config strategy around both lora_send() and lora_recv().
+     * Driver-family caveat: drivers such as RYLR treat .tx as persistent
+     * direction state; this two-pass sequence targets the SX126x/SX127x
+     * path used by the supported boards.
      */
     struct lora_modem_config config = {
         .frequency = CONFIG_LICHEN_LORA_FREQUENCY,
@@ -686,12 +723,20 @@ int lichen_lora_l2_start(void)
         .coding_rate = CR_4_5,     /* Zephyr enum: 4/5 coding rate */
         .preamble_len = 8,         /* LoRa default preamble symbols */
         .tx_power = CONFIG_LICHEN_LORA_TX_POWER,
-        .tx = true,                /* SX12xx TX config cache; see note above */
+        .tx = false,               /* pass 1: program the RX side */
     };
 
     int ret = lora_config(lora_data.lora_dev, &config);
     if (ret < 0) {
-        LOG_ERR("lora_l2: config failed (%d)", ret);
+        LOG_ERR("lora_l2: RX config failed (%d)", ret);
+        k_mutex_unlock(&lora_mutex);
+        return ret;
+    }
+
+    config.tx = true;              /* pass 2: program TX + airtime cache */
+    ret = lora_config(lora_data.lora_dev, &config);
+    if (ret < 0) {
+        LOG_ERR("lora_l2: TX config failed (%d)", ret);
         k_mutex_unlock(&lora_mutex);
         return ret;
     }
@@ -1101,7 +1146,26 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
      */
     BUILD_ASSERT(LICHEN_LORA_MAX_PHY_PAYLOAD <= UINT32_MAX,
                  "LoRa max PHY payload no longer fits lora_send() uint32_t length");
-    int ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)len);
+
+    /*
+     * Arbitrate with the RX thread (see tx_pending above): raise tx_pending
+     * so RX stops re-arming, then retry -EBUSY until the in-flight RX window
+     * drains. Bounded by RX_TIMEOUT_MS plus margin so a wedged radio still
+     * surfaces -EBUSY to the caller rather than blocking forever.
+     */
+    atomic_inc(&tx_pending);
+    int ret;
+    int64_t tx_deadline = k_uptime_get() + RX_TIMEOUT_MS + 500;
+
+    do {
+        ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)len);
+        if (ret != -EBUSY || k_uptime_get() >= tx_deadline) {
+            break;
+        }
+        k_sleep(K_MSEC(20));
+    } while (lora_get_state() == LORA_RUNNING);
+
+    atomic_dec(&tx_pending);
 
     /*
      * SECURITY: Zero tx_buf after use to prevent leaking previous payload
