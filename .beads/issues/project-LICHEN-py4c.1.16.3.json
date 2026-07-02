@@ -1,0 +1,37 @@
+{
+  "id": "project-LICHEN-py4c.1.16.3",
+  "title": "Stabilize full Python suite on local Python 3.14/macOS",
+  "description": "During project-LICHEN-py4c.1.16 validation, affected slices and CI-targeted commands passed, but the local macOS Python 3.14 full-suite command timed out after reaching 82 percent. A reviewer also saw out-of-scope full-suite issues on this host around Renode port reuse and DirectedRadio cad support. Reproduce with verbose test names, isolate the hang/failures, and either fix Python 3.14/macOS compatibility or explicitly constrain supported local Python versions.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T14:14:52.667074Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T14:14:52.667643Z",
+  "labels": [
+    "python",
+    "tests",
+    "ci",
+    "macos",
+    "tui",
+    "client-app",
+    "native-interface",
+    "ble",
+    "coap",
+    "lilygo",
+    "zephyr",
+    "lichen",
+    "app-interface",
+    "firmware",
+    "lci"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-py4c.1.16.3",
+      "depends_on_id": "project-LICHEN-py4c.1.16",
+      "type": "parent-child",
+      "created_at": "2026-07-02T14:14:52.667643Z"
+    }
+  ]
+}

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import re
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -31,9 +32,17 @@ class TestIndex:
         resp = client.get("/")
         assert "text/html" in resp.headers["content-type"]
 
-    def test_index_contains_htmx(self, client: TestClient) -> None:
+    def test_index_uses_offline_refresh_script(self, client: TestClient) -> None:
         resp = client.get("/")
-        assert "htmx.org" in resp.text
+        assert "https://unpkg.com" not in resp.text
+        assert "htmx.org" not in resp.text
+        assert "function refreshElement" in resp.text
+        assert 'hx-get="/partial/status"' in resp.text
+
+    def test_index_has_no_external_script_or_link_urls(self, client: TestClient) -> None:
+        resp = client.get("/")
+        external_urls = re.findall(r"""(?:src|href)=["']https?://[^"']+["']""", resp.text)
+        assert external_urls == []
 
     def test_index_contains_partials(self, client: TestClient) -> None:
         resp = client.get("/")
@@ -160,6 +169,23 @@ class TestIndexCards:
     def test_location_card_in_page(self, client: TestClient) -> None:
         resp = client.get("/")
         assert "/partial/location" in resp.text
+
+    def test_polling_targets_are_served_locally(self, client: TestClient) -> None:
+        resp = client.get("/")
+        targets = sorted(set(re.findall(r'hx-get="([^"]+)"', resp.text)))
+        assert targets == [
+            "/partial/location",
+            "/partial/messages",
+            "/partial/neighbors",
+            "/partial/presence",
+            "/partial/sensors",
+            "/partial/status",
+        ]
+
+        for target in targets:
+            with _mock_fetch([]):
+                partial = client.get(target)
+            assert partial.status_code == 200
 
 
 # ---------------------------------------------------------------------------
