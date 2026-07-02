@@ -50,8 +50,11 @@ config LICHEN_HAS_GNSS
 
 config LICHEN_HAS_BATTERY
 	bool "Board has battery measurement"
+	depends on SENSOR
+	depends on VOLTAGE_DIVIDER
 	help
-	  Enable when devicetree provides an okay battery0 alias.
+	  Enable when devicetree provides an okay battery0 alias backed by a
+	  Zephyr voltage-divider sensor.
 
 config LICHEN_HAS_PMIC
 	bool "Board has PMIC or charger control"

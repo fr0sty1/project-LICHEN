@@ -6,6 +6,7 @@
 
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/sensor.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
 
@@ -40,6 +41,9 @@ BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_DISPLAY) ||
 BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_BATTERY) ||
 	     DT_NODE_HAS_STATUS(DT_ALIAS(battery0), okay),
 	     "CONFIG_LICHEN_HAS_BATTERY requires an okay battery0 alias");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_BATTERY) ||
+	     DT_NODE_HAS_COMPAT(DT_ALIAS(battery0), voltage_divider),
+	     "CONFIG_LICHEN_HAS_BATTERY requires battery0 to be a voltage-divider sensor");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_PMIC) ||
 	     DT_NODE_HAS_STATUS(DT_ALIAS(pmic0), okay),
 	     "CONFIG_LICHEN_HAS_PMIC requires an okay pmic0 alias");
@@ -543,6 +547,22 @@ int lichen_hal_power_snapshot_get(struct lichen_hal_power_snapshot *snapshot)
 	ret = lichen_hal_battery_device_get(&dev);
 	if (ret == 0) {
 		snapshot->battery_provider_available = true;
+#if IS_ENABLED(CONFIG_SENSOR)
+		struct sensor_value voltage;
+		int32_t voltage_mv;
+
+		ret = sensor_sample_fetch_chan(dev, SENSOR_CHAN_VOLTAGE);
+		if (ret == 0) {
+			ret = sensor_channel_get(dev, SENSOR_CHAN_VOLTAGE, &voltage);
+		}
+		if (ret == 0 && voltage.val1 >= 0 && voltage.val2 >= 0) {
+			voltage_mv = voltage.val1 * 1000 + voltage.val2 / 1000;
+			if (voltage_mv >= 0 && voltage_mv <= UINT16_MAX) {
+				snapshot->battery_voltage_mv_valid = true;
+				snapshot->battery_voltage_mv = (uint16_t)voltage_mv;
+			}
+		}
+#endif
 	}
 
 	ret = lichen_hal_pmic_device_get(&dev);

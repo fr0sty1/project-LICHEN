@@ -35,3 +35,23 @@ tests:
     extra_configs:
       - CONFIG_LICHEN_HAS_BATTERY=n
       - CONFIG_LICHEN_HAS_PMIC=n
+  lichen.hal.battery_adc:
+    tags:
+      - lichen
+      - hal
+      - power
+      - battery
+    platform_allow:
+      - native_sim
+      - qemu_x86
+    integration_platforms:
+      - native_sim
+      - qemu_x86
+    extra_args:
+      - DTC_OVERLAY_FILE=boards/native_sim_battery_adc.overlay
+    extra_configs:
+      - CONFIG_ADC=y
+      - CONFIG_ADC_EMUL=y
+      - CONFIG_SENSOR=y
+      - CONFIG_LICHEN_HAS_BATTERY=y
+      - CONFIG_LICHEN_HAS_PMIC=n
