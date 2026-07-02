@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-xj8k",
+  "title": "Evaluate build-time timestamp as GNSS epoch fallback",
+  "description": "User-proposed design idea: use firmware build-time stamps, and possibly board-provided build metadata, as an epoch/freshness floor for GNSS time handling before a real GNSS lock is available. Evaluate whether this is safe for LICHEN time synchronization, replay windows, logs, certificate/trust validation, and UX. This is software/design work first; any real GNSS validation must be split into a hardware follow-up.",
+  "acceptance_criteria": "Decision records whether build-time timestamps may be used as a time floor or GNSS epoch hint, identifies trust/security limits and stale firmware behavior, specifies required firmware metadata format if accepted, and creates a hardware validation follow-up if physical GNSS behavior must be checked.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T04:22:18.785722Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T04:22:18.786337Z",
+  "labels": [
+    "firmware",
+    "gnss",
+    "time",
+    "design",
+    "zephyr",
+    "no-hardware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-xj8k",
+      "depends_on_id": "project-LICHEN-py4c.1.7",
+      "type": "discovered-from",
+      "created_at": "2026-07-02T04:22:18.786337Z"
+    }
+  ]
+}
