@@ -11,5 +11,6 @@ target_include_directories(app PRIVATE
 
 target_sources(app PRIVATE
   src/main.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/config_apply.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/config_cbor.c
 )

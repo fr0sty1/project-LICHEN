@@ -3,6 +3,7 @@
 
 #include <errno.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
@@ -16,6 +17,7 @@
 
 #include <lichen/hal.h>
 
+#include "config_apply.h"
 #include "config_cbor.h"
 #include "status_cbor.h"
 
@@ -87,6 +89,8 @@ BUILD_ASSERT(CONFIG_COAP_SERVER_MESSAGE_SIZE >=
 
 /* Mutable gateway config — written by PUT /config */
 static int8_t s_tx_power_dbm = 14;
+static struct lichen_gateway_manual_location_config s_manual_location;
+static bool s_has_manual_location;
 
 /* --------------------------------------------------------------------------
  * CBOR helpers
@@ -265,9 +269,10 @@ static int config_get(struct coap_resource *resource,
 		      struct coap_packet *request,
 		      struct sockaddr *addr, socklen_t addr_len)
 {
-	uint8_t cbor_buf[16];
-	size_t len = lichen_gateway_encode_config_cbor(cbor_buf, sizeof(cbor_buf),
-						      s_tx_power_dbm);
+	uint8_t cbor_buf[160];
+	size_t len = lichen_gateway_encode_config_update_cbor(
+		cbor_buf, sizeof(cbor_buf), s_tx_power_dbm,
+		s_has_manual_location ? &s_manual_location : NULL);
 
 	return coap_respond(resource, request, addr, addr_len,
 			    COAP_RESPONSE_CODE_CONTENT, cbor_buf, len);
@@ -279,16 +284,21 @@ static int config_put(struct coap_resource *resource,
 {
 	uint16_t payload_len = 0;
 	const uint8_t *payload = coap_packet_get_payload(request, &payload_len);
-	int8_t tx_power_dbm = 0;
+	struct lichen_gateway_config_update update;
 
 	if (payload == NULL ||
 	    lichen_gateway_decode_config_cbor(payload, payload_len,
-					      &tx_power_dbm) < 0) {
+					      &update) < 0) {
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
 	}
 
-	s_tx_power_dbm = tx_power_dbm;
+	if (lichen_gateway_apply_config_update(&update, &s_tx_power_dbm,
+					       &s_manual_location,
+					       &s_has_manual_location) < 0) {
+		return coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
+	}
 	return coap_respond(resource, request, addr, addr_len,
 			    COAP_RESPONSE_CODE_CHANGED, NULL, 0);
 }

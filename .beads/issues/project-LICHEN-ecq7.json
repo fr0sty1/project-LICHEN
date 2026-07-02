@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-ecq7",
+  "title": "Define build-time epoch floor for GNSS/date-time freshness",
+  "description": "User observation: firmware/board build-time stamps can provide an epoch floor for GNSS/date-time freshness. Define how firmware build timestamp, board provisioned timestamp, and GNSS time interact in the date/time provider abstraction: reject/prevent time moving before the build/provision epoch, use it for cold-start freshness sanity, and specify simulator/native tests. No hardware validation required for the design/API/test portion; physical GNSS validation remains separate.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T00:48:15.884319Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T00:48:15.884351Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "gnss",
+    "time",
+    "design",
+    "test"
+  ]
+}

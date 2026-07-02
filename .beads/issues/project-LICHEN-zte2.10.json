@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-zte2.10",
+  "title": "Harden gateway config manual-location CBOR edge coverage",
+  "description": "Follow-up from project-LICHEN-zte2.8 reviews. Add non-blocking coverage/hardening for configured manual/static location CBOR: duplicate lon_i/hacc_mm/age_s tests, unknown nested map/array extension skipping test, explicit source_name policy for embedded NUL/non-printable text, and defensive behavior if config_get encoding returns 0 or a future caller passes an invalid manual config to the encoder.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T00:48:16.010737Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T00:48:16.011267Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "cbor",
+    "tests",
+    "gateway",
+    "gnss",
+    "location",
+    "hardware",
+    "network-source"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zte2.10",
+      "depends_on_id": "project-LICHEN-zte2",
+      "type": "parent-child",
+      "created_at": "2026-07-02T00:48:16.011267Z"
+    }
+  ]
+}

@@ -9,7 +9,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T06:14:51.438262Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-30T06:15:20.350805Z",
+  "updated_at": "2026-07-02T00:48:15.885025Z",
   "labels": [
     "zephyr",
     "firmware",
@@ -19,5 +19,13 @@
     "gpsd",
     "sntp",
     "network-source"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2067",
+      "depends_on_id": "project-LICHEN-ecq7",
+      "type": "blocks",
+      "created_at": "2026-07-02T00:48:15.885025Z"
+    }
   ]
 }
