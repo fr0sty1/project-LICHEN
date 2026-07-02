@@ -2,11 +2,12 @@
   "id": "project-LICHEN-usqf",
   "title": "Model R1 Neo battery ADC for HAL battery capability",
   "description": "Discovered while creating project-LICHEN-ev5b.4. R1 Neo facts list VBAT on P0.31/AIN7 with multiplier 1.667, but the Zephyr board target does not yet expose a battery0 device or enable CONFIG_LICHEN_HAS_BATTERY. Decide whether to use voltage-divider or a LICHEN-specific battery measurement shim, add tests/build coverage, and validate readings on hardware.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T16:35:19.906774Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-30T16:35:19.906807Z"
+  "updated_at": "2026-07-02T02:25:39.579313Z"
 }
