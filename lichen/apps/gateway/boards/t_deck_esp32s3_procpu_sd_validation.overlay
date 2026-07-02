@@ -1,0 +1,24 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: The contributors to the LICHEN project
+ *
+ * Optional no-hardware T-Deck SD-card validation overlay.  Pass this
+ * explicitly with:
+ *
+ *   -DEXTRA_DTC_OVERLAY_FILE=boards/t_deck_esp32s3_procpu_sd_validation.overlay
+ *
+ * It enables the disabled SPI SDHC slot and releases the SD CS hog so SPI3
+ * owns CS2.  Do not use FILE_SUFFIX=sd for this check: suffixed board
+ * fragments replace the base app board fragment instead of extending it.
+ */
+
+/delete-node/ &t_deck_sd_cs_hog;
+
+&tdeck_sd {
+	status = "okay";
+	spi-max-frequency = <4000000>;
+
+	mmc {
+		status = "okay";
+	};
+};

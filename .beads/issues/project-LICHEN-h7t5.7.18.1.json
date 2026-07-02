@@ -1,0 +1,35 @@
+{
+  "id": "project-LICHEN-h7t5.7.18.1",
+  "title": "Physically smoke-test T-Deck SD card storage",
+  "description": "Run the T-Deck SD validation firmware on physical hardware with a removable SD card. Validate UART shell mount/read/write/list/unlink on a sacrificial FAT card, no-card and bad-card behavior, GPIO10 power assumptions, SD CS GPIO39 behavior, LoRa/display coexistence on shared SPI3, and safe SD SPI frequency. Start at the no-hardware validated 4 MHz setting before any frequency sweep.",
+  "notes": "Blocked: requires physical LilyGO T-Deck hardware, SD card, USB serial access, and optionally a logic analyzer/scope for GPIO9/GPIO12/GPIO39 SPI CS coexistence.\nNo-hardware parent completed the build/DTS/Kconfig validation path only. Physical acceptance remains blocked on a real LilyGO T-Deck, removable SD card, USB serial console, and optional logic analyzer/scope. Use lichen/apps/gateway/boards/t_deck_esp32s3_procpu_sd_validation.conf plus .overlay; verify FAT mount via shell without auto-format, create/read/delete sentinel files, exercise no-card/bad-card cases, confirm GPIO10 power assumptions, and validate LoRa/display coexistence with SD on SPI3.",
+  "status": "blocked",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T06:38:54.160611Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T06:38:59.708272Z",
+  "labels": [
+    "lilygo",
+    "t-deck",
+    "sd",
+    "storage",
+    "zephyr",
+    "hardware",
+    "physical-validation",
+    "firmware",
+    "board-support",
+    "bringup",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.18.1",
+      "depends_on_id": "project-LICHEN-h7t5.7.18",
+      "type": "parent-child",
+      "created_at": "2026-07-02T06:38:54.1614Z"
+    }
+  ]
+}
