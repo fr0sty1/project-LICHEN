@@ -2,11 +2,12 @@
   "id": "project-LICHEN-0e37",
   "title": "Define Meshtastic peer metric exposure policy",
   "description": "Follow-up from project-LICHEN-t2hn.6.4 reviews: peer snapshots now carry last_heard_seconds_ago, rssi_dbm, and snr_db through the adapter API and gateway app_identity mapping, but NodeInfo emission only exposes name/device ID/hops. Decide whether these metrics belong in Meshtastic NodeInfo, another Meshtastic message, LICHEN status/CoAP, or remain internal; then add tests for the chosen wire/status behavior.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-01T17:43:05.530028Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-01T17:43:05.530059Z"
+  "updated_at": "2026-07-02T11:19:42.454461Z"
 }
