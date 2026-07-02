@@ -260,11 +260,21 @@ LICHEN nodes may auto-configure radio parameters based on mesh conditions. The a
 
 **The problem:** Meshtastic shows hop counts, SNR per hop, and sometimes routing paths. Users expect to see "3 hops away" or similar.
 
-**The solution:** Report all messages as direct (0 hops).
+**The solution:** Report all messages as direct (0 hops), except for NodeDB
+peer records that already carry an explicit LICHEN peer hop distance.
 
 LICHEN uses RPL (IPv6 routing) which doesn't expose per-packet hop counts to applications. The adapter has no way to know how many hops a packet took. Rather than guess, it reports 0.
 
-Users won't see routing metrics. Messages either arrive or they don't.
+Peer RSSI, SNR, and last-heard age remain internal LICHEN peer/status data for
+now. They are not encoded into Meshtastic `NodeInfo`, because that message's
+stable fields in this compatibility layer are identity, optional location,
+device metrics, channel, and `hops_away`; overloading it with link-quality or
+age data would make mobile clients treat adapter-derived diagnostics as native
+Meshtastic RF telemetry. If a later compatibility pass exposes those metrics,
+it must choose and test a concrete Meshtastic wire/status surface instead of
+piggybacking them onto NodeInfo.
+
+Users won't see packet path metrics. Messages either arrive or they don't.
 
 ### Position Handling
 
@@ -468,6 +478,10 @@ adapter should report queued/local state only and avoid fabricating a final deli
 | `hop_limit` | IPv6 hop limit |
 | `decoded.portnum` | CoAP Uri-Path mapping (see below) |
 | `decoded.payload` | CoAP payload |
+
+Peer-table RSSI/SNR/last-heard values are retained for native LICHEN status
+and routing diagnostics, but the Meshtastic NodeDB sync does not emit them.
+Only explicit peer hop distance maps to `NodeInfo.hops_away`.
 
 ### Port Number Mapping
 

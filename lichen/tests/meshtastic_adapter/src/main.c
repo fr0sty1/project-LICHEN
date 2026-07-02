@@ -1346,6 +1346,86 @@ ZTEST(meshtastic_adapter, test_want_config_69421_queues_self_then_peers)
 	expect_bytes(ctx.out[3], ctx.out_len[3], complete, sizeof(complete));
 }
 
+ZTEST(meshtastic_adapter, test_peer_link_metrics_are_not_emitted_in_node_info)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t want_config[] = { 0x18, 0xad, 0x9e, 0x04 };
+	struct from_radio_view view;
+	struct node_info_view node;
+	const uint8_t *metrics = NULL;
+	size_t metrics_len = 0U;
+	uint8_t counts[12];
+	uint8_t metric_counts[8];
+	uint32_t value = 0U;
+	int ret;
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ctx.peer_count = 1U;
+	ctx.peers[0] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xaa, 0, 0, 0, 0, 0, 0x42 },
+		.long_name = "metric-peer",
+		.last_heard_seconds_ago = 321U,
+		.rssi_dbm = -73,
+		.snr_db = 9,
+		.hop_distance = 3U,
+		.has_long_name = true,
+		.has_last_heard_seconds_ago = true,
+		.has_rssi_dbm = true,
+		.has_snr_db = true,
+		.has_hop_distance = true,
+	};
+
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.out_count, 3U);
+	decode_from_radio(ctx.out[1], ctx.out_len[1], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
+	decode_node_info_payload(view.payload, view.payload_len, &node);
+	zassert_true(node.has_num);
+	zassert_equal(node.num, 0x42U);
+	zassert_true(node.has_user);
+	zassert_true(payload_has_string(node.user, node.user_len, 2U,
+					"metric-peer"));
+	zassert_true(node.has_hops_away);
+	zassert_equal(node.hops_away, 3U);
+	zassert_true(payload_count_fields(view.payload, view.payload_len,
+					  counts, sizeof(counts)));
+	zassert_equal(counts[1], 1U);
+	zassert_equal(counts[2], 1U);
+	zassert_equal(counts[3], 0U);
+	zassert_equal(counts[4], 0U);
+	zassert_equal(counts[5], 0U);
+	zassert_equal(counts[6], 1U);
+	zassert_equal(counts[7], 1U);
+	zassert_equal(counts[9], 1U);
+	zassert_false(payload_get_fixed32_field(view.payload, view.payload_len, 4U,
+						&value));
+	zassert_false(payload_get_fixed32_field(view.payload, view.payload_len, 5U,
+						&value));
+	zassert_true(payload_get_varint_field(view.payload, view.payload_len, 7U,
+					      &value));
+	zassert_equal(value, 0U);
+	zassert_true(payload_get_len_field(view.payload, view.payload_len, 6U,
+					   &metrics, &metrics_len));
+	zassert_true(payload_count_fields(metrics, metrics_len, metric_counts,
+					  sizeof(metric_counts)));
+	zassert_equal(metric_counts[1], 0U);
+	zassert_equal(metric_counts[2], 0U);
+	zassert_equal(metric_counts[3], 0U);
+	zassert_equal(metric_counts[4], 0U);
+	zassert_equal(metric_counts[5], 1U);
+	zassert_false(payload_get_fixed32_field(metrics, metrics_len, 3U,
+						&value));
+	zassert_false(payload_get_fixed32_field(metrics, metrics_len, 4U,
+						&value));
+	zassert_true(payload_get_varint_field(metrics, metrics_len, 5U,
+					      &value));
+	zassert_equal(value, 0U);
+}
+
 ZTEST(meshtastic_adapter, test_peer_long_name_is_bounded)
 {
 	struct lichen_meshtastic_adapter adapter;

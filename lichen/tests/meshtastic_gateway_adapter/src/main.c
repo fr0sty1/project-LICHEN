@@ -1291,6 +1291,91 @@ ZTEST(meshtastic_gateway_adapter,
 	zassert_equal(value, 3U);
 }
 
+static size_t encode_identity_peer_node_info(bool include_metrics,
+					     uint8_t *payload, size_t payload_cap)
+{
+	const uint8_t want_config_node_db[] = { 0x18, 0xad, 0x9e, 0x04 };
+	struct lichen_app_identity_peer peer = {
+		.eui64 = { 0x02, 0xaa, 0, 0, 0, 0, 0, 0x42 },
+		.display_name = "identity-peer",
+		.has_public_key = true,
+		.hop_distance = 3U,
+		.has_hop_distance = true,
+	};
+	const uint8_t *from_radio;
+	size_t from_radio_len;
+	struct from_radio_view view;
+
+	if (include_metrics) {
+		peer.last_heard_seconds_ago = 42U;
+		peer.rssi_dbm = -117;
+		peer.snr_db = -9;
+		peer.has_last_heard_seconds_ago = true;
+		peer.has_rssi_dbm = true;
+		peer.has_snr_db = true;
+	}
+	memset(peer.public_key, 0x42, sizeof(peer.public_key));
+
+	reset_gateway(3U);
+	zassert_ok(lichen_app_identity_upsert_peer(&peer));
+	zassert_ok(fake_ble_meshtastic_push_to_radio(want_config_node_db,
+						     sizeof(want_config_node_db)));
+
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 3U);
+	from_radio = fake_ble_meshtastic_from_radio(1U, &from_radio_len);
+	zassert_not_null(from_radio);
+	decode_from_radio(from_radio, from_radio_len, &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
+	zassert_true(view.payload_len <= payload_cap);
+	memcpy(payload, view.payload, view.payload_len);
+	return view.payload_len;
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_want_config_node_info_keeps_peer_link_metrics_internal)
+{
+	uint8_t without_metrics[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	uint8_t with_metrics[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	const uint8_t *metrics = NULL;
+	const uint8_t *position = NULL;
+	size_t without_len;
+	size_t with_len;
+	size_t metrics_len = 0U;
+	size_t position_len = 0U;
+	uint32_t value = 0U;
+
+	without_len = encode_identity_peer_node_info(false, without_metrics,
+						     sizeof(without_metrics));
+	with_len = encode_identity_peer_node_info(true, with_metrics,
+						  sizeof(with_metrics));
+
+	zassert_equal(with_len, without_len);
+	zassert_mem_equal(with_metrics, without_metrics, without_len);
+	zassert_true(payload_get_varint_field(with_metrics, with_len, 9U,
+					      &value));
+	zassert_equal(value, 3U);
+	zassert_false(payload_get_fixed32_field(with_metrics, with_len, 4U,
+						&value));
+	zassert_false(payload_get_fixed32_field(with_metrics, with_len, 5U,
+						&value));
+	zassert_false(payload_get_len_field(with_metrics, with_len, 3U,
+					    &position, &position_len));
+	zassert_true(payload_get_len_field(with_metrics, with_len, 6U,
+					   &metrics, &metrics_len));
+	zassert_false(payload_get_varint_field(metrics, metrics_len, 1U,
+					       &value));
+	zassert_false(payload_get_fixed32_field(metrics, metrics_len, 2U,
+						&value));
+	zassert_false(payload_get_fixed32_field(metrics, metrics_len, 3U,
+						&value));
+	zassert_false(payload_get_fixed32_field(metrics, metrics_len, 4U,
+						&value));
+	zassert_true(payload_get_varint_field(metrics, metrics_len, 5U,
+					      &value));
+	zassert_equal(value, 0U);
+}
+
 ZTEST(meshtastic_gateway_adapter, test_process_once_drops_stale_response)
 {
 	const uint8_t heartbeat[] = { 0x3a, 0x00 };
