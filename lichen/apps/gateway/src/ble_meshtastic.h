@@ -8,6 +8,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+struct bt_conn;
+
 /*
  * Initialise the Meshtastic-compatible BLE service and start advertising.
  * Must be called from a thread context because bt_enable() may block.
@@ -55,6 +57,15 @@ int ble_meshtastic_test_write_to_radio_conn(const uint8_t *buf, size_t len,
 					    void *conn);
 void ble_meshtastic_test_connect(void);
 void ble_meshtastic_test_advance_owner_after_match(void *conn);
+struct ble_meshtastic_test_from_num_notify_state {
+	struct bt_conn *conn;
+	uint8_t data[sizeof(uint32_t)];
+	uint16_t len;
+	uint32_t notify_count;
+};
+int ble_meshtastic_test_set_from_num_notify(bool enabled, int notify_ret);
+int ble_meshtastic_test_copy_from_num_notify_state(
+	struct ble_meshtastic_test_from_num_notify_state *state);
 #endif
 
 #endif /* BLE_MESHTASTIC_H_ */

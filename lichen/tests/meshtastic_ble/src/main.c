@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <zephyr/bluetooth/uuid.h>
+#include <zephyr/sys/byteorder.h>
 #include <zephyr/ztest.h>
 
 #include "ble_app_owner.h"
@@ -59,6 +60,7 @@ static void meshtastic_ble_before(void *fixture)
 	ARG_UNUSED(fixture);
 	ble_app_owner_test_reset();
 	ble_meshtastic_reset_session();
+	zassert_ok(ble_meshtastic_test_set_from_num_notify(false, 0));
 }
 
 ZTEST(meshtastic_ble, test_from_radio_capacity_uses_kconfig_default)
@@ -197,15 +199,22 @@ ZTEST(meshtastic_ble, test_dequeue_returns_write_time_epoch)
 {
 	const uint8_t heartbeat[] = { 0x3a, 0x00 };
 	const uint8_t response[] = { 0x38, 0xac, 0x9e, 0x04 };
+	struct bt_conn *conn = (struct bt_conn *)0x1;
+	struct ble_app_owner_test_state owner_state;
 	uint8_t out[sizeof(heartbeat)];
 	size_t out_len;
 	uint32_t write_epoch;
 	uint32_t dequeue_epoch;
 
-	ble_meshtastic_reset_session();
+	zassert_ok(ble_meshtastic_init());
+	ble_app_owner_test_connected(conn, 0U);
 	write_epoch = ble_meshtastic_session_epoch();
-	zassert_equal(ble_meshtastic_test_write_to_radio(heartbeat,
-							 sizeof(heartbeat)),
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_equal(owner_state.conn_ref_count, 1U);
+	zassert_equal(owner_state.conn_unref_count, 0U);
+
+	zassert_equal(ble_meshtastic_test_write_to_radio_conn(
+			      heartbeat, sizeof(heartbeat), conn),
 		      sizeof(heartbeat));
 	zassert_equal(ble_meshtastic_dequeue_to_radio(out, sizeof(out), &out_len,
 						      &dequeue_epoch),
@@ -214,7 +223,10 @@ ZTEST(meshtastic_ble, test_dequeue_returns_write_time_epoch)
 	zassert_equal(out_len, sizeof(heartbeat));
 	zassert_mem_equal(out, heartbeat, sizeof(heartbeat));
 
-	ble_meshtastic_reset_session();
+	ble_app_owner_test_disconnected(conn, 19U);
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_equal(owner_state.conn_ref_count, 1U);
+	zassert_equal(owner_state.conn_unref_count, 1U);
 	zassert_equal(ble_meshtastic_enqueue_from_radio_if_session(dequeue_epoch,
 								   response,
 								   sizeof(response)),
@@ -306,6 +318,90 @@ ZTEST(meshtastic_ble, test_owner_connection_write_and_disconnect_cleanup)
 	zassert_false(owner_state.has_connection);
 	zassert_equal(owner_state.adv_start_count, 2U);
 	zassert_equal(owner_state.conn_ref_count, owner_state.conn_unref_count);
+}
+
+ZTEST(meshtastic_ble, test_from_num_notify_uses_owner_connection)
+{
+	const uint8_t first[] = { 0x38, 0x01 };
+	const uint8_t second[] = { 0x38, 0x02 };
+	const uint8_t third[] = { 0x38, 0x03 };
+	const uint8_t notify_fail[] = { 0x38, 0x04 };
+	const uint8_t stale[] = { 0x38, 0x04 };
+	struct bt_conn *conn = (struct bt_conn *)0x1;
+	struct ble_app_owner_test_state owner_state;
+	struct ble_meshtastic_test_from_num_notify_state notify_state;
+	uint32_t epoch;
+	uint32_t first_notified_num;
+
+	zassert_ok(ble_meshtastic_init());
+	ble_app_owner_test_connected(conn, 0U);
+	epoch = ble_meshtastic_session_epoch();
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_equal(owner_state.conn_ref_count, 1U);
+	zassert_equal(owner_state.conn_unref_count, 0U);
+
+	zassert_equal(ble_meshtastic_enqueue_from_radio_if_session(
+			      epoch, first, sizeof(first)),
+		      0);
+	zassert_ok(ble_meshtastic_test_copy_from_num_notify_state(
+		&notify_state));
+	zassert_equal(notify_state.notify_count, 0U);
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_equal(owner_state.conn_ref_count, 1U);
+	zassert_equal(owner_state.conn_unref_count, 0U);
+
+	zassert_ok(ble_meshtastic_test_set_from_num_notify(true, 0));
+	zassert_equal(ble_meshtastic_enqueue_from_radio_if_session(
+			      epoch, second, sizeof(second)),
+		      0);
+	zassert_ok(ble_meshtastic_test_copy_from_num_notify_state(
+		&notify_state));
+	zassert_equal(notify_state.notify_count, 1U);
+	zassert_equal_ptr(notify_state.conn, conn);
+	zassert_equal(notify_state.len, sizeof(uint32_t));
+	first_notified_num = sys_get_le32(notify_state.data);
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_equal(owner_state.conn_ref_count, 2U);
+	zassert_equal(owner_state.conn_unref_count, 1U);
+
+	zassert_equal(ble_meshtastic_enqueue_from_radio_if_session(
+			      epoch, third, sizeof(third)),
+		      0);
+	zassert_ok(ble_meshtastic_test_copy_from_num_notify_state(
+		&notify_state));
+	zassert_equal(notify_state.notify_count, 2U);
+	zassert_equal_ptr(notify_state.conn, conn);
+	zassert_equal(notify_state.len, sizeof(uint32_t));
+	zassert_equal(sys_get_le32(notify_state.data), first_notified_num + 1U);
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_equal(owner_state.conn_ref_count, 3U);
+	zassert_equal(owner_state.conn_unref_count, 2U);
+
+	zassert_ok(ble_meshtastic_test_set_from_num_notify(true, -EIO));
+	zassert_equal(ble_meshtastic_enqueue_from_radio_if_session(
+			      epoch, notify_fail, sizeof(notify_fail)),
+		      0);
+	zassert_ok(ble_meshtastic_test_copy_from_num_notify_state(
+		&notify_state));
+	zassert_equal(notify_state.notify_count, 1U);
+	zassert_equal_ptr(notify_state.conn, conn);
+	zassert_equal(notify_state.len, sizeof(uint32_t));
+	zassert_equal(sys_get_le32(notify_state.data), first_notified_num + 2U);
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_equal(owner_state.conn_ref_count, 4U);
+	zassert_equal(owner_state.conn_unref_count, 3U);
+
+	ble_app_owner_test_disconnected(conn, 19U);
+	zassert_equal(ble_meshtastic_enqueue_from_radio_if_session(
+			      epoch, stale, sizeof(stale)),
+		      -ESTALE);
+	zassert_ok(ble_meshtastic_test_copy_from_num_notify_state(
+		&notify_state));
+	zassert_equal(notify_state.notify_count, 1U);
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_false(owner_state.has_connection);
+	zassert_equal(owner_state.conn_ref_count, 4U);
+	zassert_equal(owner_state.conn_unref_count, 4U);
 }
 
 ZTEST(meshtastic_ble, test_reconnect_rejects_old_connection_write)
