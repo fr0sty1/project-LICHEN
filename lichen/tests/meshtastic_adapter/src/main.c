@@ -31,6 +31,7 @@ struct test_ctx {
 	struct lichen_meshtastic_peer_snapshot peers[4];
 	size_t peer_count;
 	uint32_t text_count;
+	uint32_t position_count;
 	uint32_t last_text_from;
 	uint32_t last_text_to;
 	uint32_t last_text_id;
@@ -42,6 +43,7 @@ struct test_ctx {
 	bool last_text_has_channel;
 	bool last_text_has_to_peer;
 	bool last_text_want_ack;
+	struct lichen_meshtastic_position_snapshot last_position;
 	const char *firmware_version;
 };
 
@@ -158,6 +160,28 @@ static int test_text_unsupported(
 	return -ENOTSUP;
 }
 
+static int test_location(
+	const struct lichen_meshtastic_adapter_packet_info *packet,
+	void *user_data)
+{
+	struct test_ctx *ctx = user_data;
+
+	ctx->position_count++;
+	ctx->last_position = packet->position;
+	return 0;
+}
+
+static int test_location_unsupported(
+	const struct lichen_meshtastic_adapter_packet_info *packet,
+	void *user_data)
+{
+	struct test_ctx *ctx = user_data;
+
+	ARG_UNUSED(packet);
+	ctx->position_count++;
+	return -ENOTSUP;
+}
+
 static uint32_t test_queue_free(void *user_data)
 {
 	struct test_ctx *ctx = user_data;
@@ -174,9 +198,10 @@ static void init_adapter(struct lichen_meshtastic_adapter *adapter,
 			 struct test_ctx *ctx, size_t out_cap)
 {
 	struct lichen_meshtastic_adapter_ops ops = {
-		.enqueue_from_radio = test_enqueue,
-		.handle_text = test_text,
-		.get_local_info = test_local_info,
+			.enqueue_from_radio = test_enqueue,
+			.handle_text = test_text,
+			.handle_location = test_location,
+			.get_local_info = test_local_info,
 		.get_peers = test_get_peers,
 		.user_data = ctx,
 		.queue_maxlen = 8U,
@@ -194,8 +219,8 @@ static void init_adapter_without_text_hook(struct lichen_meshtastic_adapter *ada
 					   size_t out_cap)
 {
 	struct lichen_meshtastic_adapter_ops ops = {
-		.enqueue_from_radio = test_enqueue,
-		.get_local_info = test_local_info,
+			.enqueue_from_radio = test_enqueue,
+			.get_local_info = test_local_info,
 		.get_peers = test_get_peers,
 		.user_data = ctx,
 		.queue_maxlen = 8U,
@@ -213,9 +238,10 @@ static void init_adapter_with_unsupported_text_hook(
 	struct test_ctx *ctx, size_t out_cap)
 {
 	struct lichen_meshtastic_adapter_ops ops = {
-		.enqueue_from_radio = test_enqueue,
-		.handle_text = test_text_unsupported,
-		.get_local_info = test_local_info,
+			.enqueue_from_radio = test_enqueue,
+			.handle_text = test_text_unsupported,
+			.handle_location = test_location,
+			.get_local_info = test_local_info,
 		.get_peers = test_get_peers,
 		.user_data = ctx,
 		.queue_maxlen = 8U,
@@ -232,9 +258,10 @@ static void init_adapter_with_queue_free(struct lichen_meshtastic_adapter *adapt
 					 struct test_ctx *ctx, size_t out_cap)
 {
 	struct lichen_meshtastic_adapter_ops ops = {
-		.enqueue_from_radio = test_enqueue,
-		.handle_text = test_text,
-		.queue_free = test_queue_free,
+			.enqueue_from_radio = test_enqueue,
+			.handle_text = test_text,
+			.handle_location = test_location,
+			.queue_free = test_queue_free,
 		.get_local_info = test_local_info,
 		.get_peers = test_get_peers,
 		.user_data = ctx,
@@ -574,6 +601,62 @@ static size_t build_text_to_radio(uint8_t *buf, size_t cap,
 {
 	return build_text_to_radio_to(buf, cap, payload, payload_len,
 				      0xffffffffU, id);
+}
+
+static size_t build_position_payload(uint8_t *buf, size_t cap, bool altitude,
+				     bool time, bool timestamp, bool sats)
+{
+	size_t pos = 0U;
+
+	zassert_true(cap >= 10U);
+	buf[pos++] = 0x0d; /* Position.latitude_i fixed32 */
+	put_le32(&buf[pos], 476206130U);
+	pos += 4U;
+	buf[pos++] = 0x15; /* Position.longitude_i fixed32 */
+	put_le32(&buf[pos], (uint32_t)-1223493000);
+	pos += 4U;
+	if (altitude) {
+		buf[pos++] = 0x18; /* Position.altitude int32 */
+		pos += put_varint(&buf[pos], cap - pos, 42U);
+	}
+	if (time) {
+		buf[pos++] = 0x25; /* Position.time fixed32 */
+		put_le32(&buf[pos], 1710000000U);
+		pos += 4U;
+	}
+	if (timestamp) {
+		buf[pos++] = 0x3d; /* Position.timestamp fixed32 */
+		put_le32(&buf[pos], 1710000200U);
+		pos += 4U;
+	}
+	if (sats) {
+		buf[pos++] = 0x98; /* Position.sats_in_view */
+		buf[pos++] = 0x01;
+		pos += put_varint(&buf[pos], cap - pos, 9U);
+	}
+
+	return pos;
+}
+
+static size_t build_negative_altitude_position_payload(uint8_t *buf, size_t cap)
+{
+	size_t pos = build_position_payload(buf, cap, false, false, false, false);
+
+	zassert_true(cap - pos >= 11U);
+	buf[pos++] = 0x18; /* Position.altitude int32 */
+	pos += put_varint(&buf[pos], cap - pos, (uint64_t)(int64_t)-17);
+	return pos;
+}
+
+static size_t build_oversized_sats_position_payload(uint8_t *buf, size_t cap)
+{
+	size_t pos = build_position_payload(buf, cap, false, false, false, false);
+
+	zassert_true(cap - pos >= 4U);
+	buf[pos++] = 0x98; /* Position.sats_in_view */
+	buf[pos++] = 0x01;
+	pos += put_varint(&buf[pos], cap - pos, 300U);
+	return pos;
 }
 
 static size_t build_app_to_radio(uint8_t *buf, size_t cap, uint32_t portnum,
@@ -1915,6 +1998,238 @@ ZTEST(meshtastic_adapter, test_text_hook_error_is_unsupported)
 		      1U);
 }
 
+ZTEST(meshtastic_adapter, test_position_packet_routes_to_stub_and_status)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	uint8_t position[32];
+	struct queue_status_view status;
+	size_t position_len;
+	size_t to_radio_len;
+	int ret;
+
+	position_len = build_position_payload(position, sizeof(position), true,
+					      true, true, true);
+	to_radio_len = build_app_to_radio(s_text_packet, sizeof(s_text_packet),
+					  3U, position, position_len,
+					  0x12345679U);
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, s_text_packet,
+						    to_radio_len);
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.position_count, 1U);
+	zassert_true(ctx.last_position.latitude_e7_valid);
+	zassert_equal(ctx.last_position.latitude_e7, 476206130);
+	zassert_true(ctx.last_position.longitude_e7_valid);
+	zassert_equal(ctx.last_position.longitude_e7, -1223493000);
+	zassert_true(ctx.last_position.altitude_m_valid);
+	zassert_equal(ctx.last_position.altitude_m, 42);
+	zassert_true(ctx.last_position.fix_time_unix_valid);
+	zassert_equal(ctx.last_position.fix_time_unix, 1710000200U);
+	zassert_true(ctx.last_position.satellites_valid);
+	zassert_equal(ctx.last_position.satellites, 9U);
+	zassert_equal(ctx.out_count, 1U);
+	decode_queue_status(ctx.out[0], ctx.out_len[0], &status);
+	zassert_true(status.has_res);
+	zassert_equal(status.res, 0U);
+	zassert_true(status.has_mesh_packet_id);
+	zassert_equal(status.mesh_packet_id, 0x12345679U);
+	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+			      position_packet_count,
+		      1U);
+}
+
+ZTEST(meshtastic_adapter, test_position_negative_altitude_routes_to_stub)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	uint8_t position[32];
+	struct queue_status_view status;
+	size_t position_len;
+	size_t to_radio_len;
+	int ret;
+
+	position_len = build_negative_altitude_position_payload(position,
+							       sizeof(position));
+	to_radio_len = build_app_to_radio(s_text_packet, sizeof(s_text_packet),
+					  3U, position, position_len,
+					  0x1234567cU);
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, s_text_packet,
+						    to_radio_len);
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.position_count, 1U);
+	zassert_true(ctx.last_position.altitude_m_valid);
+	zassert_equal(ctx.last_position.altitude_m, -17);
+	decode_queue_status(ctx.out[0], ctx.out_len[0], &status);
+	zassert_true(status.has_res);
+	zassert_equal(status.res, 0U);
+	zassert_equal(status.mesh_packet_id, 0x1234567cU);
+}
+
+ZTEST(meshtastic_adapter, test_position_oversized_satellites_are_ignored)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	uint8_t position[32];
+	struct queue_status_view status;
+	size_t position_len;
+	size_t to_radio_len;
+	int ret;
+
+	position_len = build_oversized_sats_position_payload(position,
+							     sizeof(position));
+	to_radio_len = build_app_to_radio(s_text_packet, sizeof(s_text_packet),
+					  3U, position, position_len,
+					  0x1234567dU);
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, s_text_packet,
+						    to_radio_len);
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.position_count, 1U);
+	zassert_false(ctx.last_position.satellites_valid);
+	decode_queue_status(ctx.out[0], ctx.out_len[0], &status);
+	zassert_true(status.has_res);
+	zassert_equal(status.res, 0U);
+	zassert_equal(status.mesh_packet_id, 0x1234567dU);
+}
+
+ZTEST(meshtastic_adapter, test_position_without_location_hook_is_unsupported)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	uint8_t position[16];
+	struct queue_status_view status;
+	size_t position_len;
+	size_t to_radio_len;
+	int ret;
+
+	position_len = build_position_payload(position, sizeof(position), false,
+					      false, false, false);
+	to_radio_len = build_app_to_radio(s_text_packet, sizeof(s_text_packet),
+					  3U, position, position_len,
+					  0x1234567aU);
+
+	init_adapter_without_text_hook(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, s_text_packet,
+						    to_radio_len);
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.position_count, 0U);
+	zassert_equal(ctx.out_count, 1U);
+	decode_queue_status(ctx.out[0], ctx.out_len[0], &status);
+	zassert_true(status.has_res);
+	zassert_equal(status.res, 2U);
+	zassert_true(status.has_mesh_packet_id);
+	zassert_equal(status.mesh_packet_id, 0x1234567aU);
+}
+
+ZTEST(meshtastic_adapter, test_position_hook_error_is_unsupported)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	struct lichen_meshtastic_adapter_ops ops = {
+		.enqueue_from_radio = test_enqueue,
+		.handle_text = test_text,
+		.handle_location = test_location_unsupported,
+		.get_local_info = test_local_info,
+		.get_peers = test_get_peers,
+		.user_data = &ctx,
+		.queue_maxlen = 8U,
+		.heartbeat_queue_status = true,
+	};
+	uint8_t position[16];
+	struct queue_status_view status;
+	size_t position_len;
+	size_t to_radio_len;
+	int ret;
+
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.out_cap = ARRAY_SIZE(ctx.out);
+	lichen_meshtastic_adapter_init(&adapter, &ops);
+	position_len = build_position_payload(position, sizeof(position), false,
+					      false, false, false);
+	to_radio_len = build_app_to_radio(s_text_packet, sizeof(s_text_packet),
+					  3U, position, position_len,
+					  0x1234567bU);
+
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, s_text_packet,
+						    to_radio_len);
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.position_count, 1U);
+	zassert_equal(ctx.out_count, 1U);
+	decode_queue_status(ctx.out[0], ctx.out_len[0], &status);
+	zassert_true(status.has_res);
+	zassert_equal(status.res, 2U);
+	zassert_true(status.has_mesh_packet_id);
+	zassert_equal(status.mesh_packet_id, 0x1234567bU);
+}
+
+ZTEST(meshtastic_adapter, test_position_invalid_payloads_are_malformed)
+{
+	static const uint8_t missing_lon[] = {
+		0x0d, 0x32, 0x23, 0x62, 0x1c,
+	};
+	static const uint8_t bad_lat_wire_type[] = {
+		0x08, 0x01, 0x15, 0xf8, 0x4f, 0x12, 0xb7,
+	};
+	static const uint8_t truncated_lon[] = {
+		0x0d, 0x32, 0x23, 0x62, 0x1c,
+		0x15, 0xf8, 0x4f,
+	};
+	static const uint8_t empty[] = { 0 };
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t *cases[] = {
+		empty,
+		missing_lon,
+		bad_lat_wire_type,
+		truncated_lon,
+	};
+	const size_t lens[] = {
+		0U,
+		sizeof(missing_lon),
+		sizeof(bad_lat_wire_type),
+		sizeof(truncated_lon),
+	};
+
+	for (size_t i = 0U; i < ARRAY_SIZE(cases); i++) {
+		struct queue_status_view status;
+		size_t to_radio_len;
+		int ret;
+
+		to_radio_len = build_app_to_radio(s_text_packet,
+						  sizeof(s_text_packet), 3U,
+						  cases[i], lens[i],
+						  0x12345680U + (uint32_t)i);
+
+		init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+		ret = lichen_meshtastic_adapter_process_raw(&adapter,
+							    s_text_packet,
+							    to_radio_len);
+
+		zassert_equal(ret, 0);
+		zassert_equal(ctx.position_count, 0U);
+		zassert_equal(ctx.out_count, 1U);
+		decode_queue_status(ctx.out[0], ctx.out_len[0], &status);
+		zassert_true(status.has_res);
+		zassert_equal(status.res, 3U);
+		zassert_true(status.has_mesh_packet_id);
+		zassert_equal(status.mesh_packet_id,
+			      0x12345680U + (uint32_t)i);
+		zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+				      malformed_count,
+			      1U);
+	}
+}
+
 ZTEST(meshtastic_adapter, test_late_encrypted_oneof_overrides_decoded_text)
 {
 	struct lichen_meshtastic_adapter adapter;
@@ -2637,7 +2952,6 @@ ZTEST(meshtastic_adapter, test_unsupported_operation_table_is_recorded)
 		{ LICHEN_MESHTASTIC_UNSUPPORTED_MESH_BEACON, 37U, true },
 		{ LICHEN_MESHTASTIC_UNSUPPORTED_SERIAL, 64U, true },
 		{ LICHEN_MESHTASTIC_UNSUPPORTED_REMOTE_HARDWARE, 2U, true },
-		{ LICHEN_MESHTASTIC_UNSUPPORTED_POSITION_UPDATE, 3U, true },
 		{ LICHEN_MESHTASTIC_UNSUPPORTED_TELEMETRY_MODULE, 67U, true },
 		{ LICHEN_MESHTASTIC_UNSUPPORTED_ZPS, 68U, true },
 		{ LICHEN_MESHTASTIC_UNSUPPORTED_SIMULATOR, 69U, true },
@@ -2678,7 +2992,7 @@ ZTEST(meshtastic_adapter, test_unsupported_operation_table_is_recorded)
 ZTEST(meshtastic_adapter, test_unsupported_operation_portnums_queue_errors)
 {
 	static const uint32_t unsupported_portnums[] = {
-		0U,  2U,  3U,  4U,  5U,  7U,  8U,  9U,
+		0U,  2U,  4U,  5U,  7U,  8U,  9U,
 		10U, 11U, 12U, 13U, 32U, 33U, 34U, 35U,
 		36U, 37U, 64U, 65U, 66U, 67U, 68U, 69U,
 		70U, 71U, 72U, 73U, 74U, 75U, 76U, 77U,

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-zte2.7.1",
+  "title": "Resolve Meshtastic Position metadata semantics",
+  "description": "Why this exists: project-LICHEN-zte2.7 can decode the Meshtastic Position fields already represented in local codec tests, but upstream Position has additional metadata and ambiguous semantics that should not be guessed in the first no-hardware bridge. What needs to be done: verify the current upstream Meshtastic Position protobuf schema, decide how to handle accuracy/precision fields, decide precedence when time field 4 and timestamp field 7 disagree, decide whether location_source/altitude_source should influence HAL fix_source/source_name, decide whether accepted Position timestamps must be constrained by build-time/provision epoch floors or staleness policy, and document vectors for those cases.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T13:16:16.207096Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T13:22:34.527114Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "gnss",
+    "location",
+    "hardware",
+    "network-source"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zte2.7.1",
+      "depends_on_id": "project-LICHEN-zte2.7",
+      "type": "parent-child",
+      "created_at": "2026-07-02T13:16:16.207692Z"
+    }
+  ]
+}

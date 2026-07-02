@@ -62,6 +62,9 @@ static int enqueue_from_radio(const uint8_t *from_radio, size_t len,
 static int handle_text(
 	const struct lichen_meshtastic_adapter_packet_info *packet,
 	void *user_data);
+static int handle_location(
+	const struct lichen_meshtastic_adapter_packet_info *packet,
+	void *user_data);
 static uint32_t queue_free(void *user_data);
 static int get_local_info(struct lichen_meshtastic_local_info *info,
 			  void *user_data);
@@ -77,6 +80,7 @@ static struct lichen_meshtastic_adapter_ops adapter_ops(void)
 	return (struct lichen_meshtastic_adapter_ops){
 		.enqueue_from_radio = enqueue_from_radio,
 		.handle_text = handle_text,
+		.handle_location = handle_location,
 		.queue_free = queue_free,
 		.get_local_info = get_local_info,
 		.get_peers = get_peers,
@@ -123,6 +127,43 @@ static int handle_text(
 	}
 
 	return lichen_app_interface_submit_text(&event);
+}
+
+static int handle_location(
+	const struct lichen_meshtastic_adapter_packet_info *packet,
+	void *user_data)
+{
+	struct lichen_app_location_time_snapshot location;
+
+	ARG_UNUSED(user_data);
+
+	if (packet == NULL) {
+		return -EINVAL;
+	}
+	if (!ble_meshtastic_session_epoch_current(s_dispatch_epoch)) {
+		return -ESTALE;
+	}
+
+	location = (struct lichen_app_location_time_snapshot){
+		.latitude_e7_valid = packet->position.latitude_e7_valid,
+		.latitude_e7 = packet->position.latitude_e7,
+		.longitude_e7_valid = packet->position.longitude_e7_valid,
+		.longitude_e7 = packet->position.longitude_e7,
+		.altitude_m_valid = packet->position.altitude_m_valid,
+		.altitude_m = packet->position.altitude_m,
+		.fix_time_unix_valid = packet->position.fix_time_unix_valid,
+		.fix_time_unix = packet->position.fix_time_unix,
+		.satellites_valid = packet->position.satellites_valid,
+		.satellites = packet->position.satellites,
+		.source_class_valid = true,
+		.source_class = LICHEN_APP_LOCATION_SOURCE_LOCAL_CLIENT,
+		.fix_state_valid = true,
+		.fix_state = packet->position.altitude_m_valid ?
+			     LICHEN_APP_LOCATION_FIX_3D :
+			     LICHEN_APP_LOCATION_FIX_2D,
+	};
+
+	return lichen_app_interface_submit_location(&location);
 }
 
 static uint32_t queue_free(void *user_data)

@@ -382,6 +382,95 @@ static size_t build_text_to_radio_to(uint8_t *buf, size_t cap,
 	return pos;
 }
 
+static size_t build_position_payload(uint8_t *buf, size_t cap, bool altitude,
+				     bool time, bool timestamp, bool sats)
+{
+	size_t pos = 0U;
+
+	zassert_true(cap >= 10U);
+	buf[pos++] = 0x0d; /* Position.latitude_i fixed32 */
+	put_le32(&buf[pos], 476206130U);
+	pos += 4U;
+	buf[pos++] = 0x15; /* Position.longitude_i fixed32 */
+	put_le32(&buf[pos], (uint32_t)-1223493000);
+	pos += 4U;
+	if (altitude) {
+		buf[pos++] = 0x18; /* Position.altitude int32 */
+		pos += put_varint(&buf[pos], cap - pos, 42U);
+	}
+	if (time) {
+		buf[pos++] = 0x25; /* Position.time fixed32 */
+		put_le32(&buf[pos], 1710000000U);
+		pos += 4U;
+	}
+	if (timestamp) {
+		buf[pos++] = 0x3d; /* Position.timestamp fixed32 */
+		put_le32(&buf[pos], 1710000200U);
+		pos += 4U;
+	}
+	if (sats) {
+		buf[pos++] = 0x98; /* Position.sats_in_view */
+		buf[pos++] = 0x01;
+		pos += put_varint(&buf[pos], cap - pos, 9U);
+	}
+
+	return pos;
+}
+
+static size_t build_negative_altitude_position_payload(uint8_t *buf, size_t cap)
+{
+	size_t pos = build_position_payload(buf, cap, false, false, false, false);
+
+	zassert_true(cap - pos >= 11U);
+	buf[pos++] = 0x18; /* Position.altitude int32 */
+	pos += put_varint(&buf[pos], cap - pos, (uint64_t)(int64_t)-17);
+	return pos;
+}
+
+static size_t build_position_to_radio(uint8_t *buf, size_t cap,
+				      const uint8_t *position,
+				      size_t position_len, uint32_t id)
+{
+	static uint8_t data[64];
+	static uint8_t packet[128];
+	size_t data_len = 0U;
+	size_t packet_len = 0U;
+	size_t pos = 0U;
+
+	zassert_true(position_len <= sizeof(data) - 8U);
+
+	data[data_len++] = 0x08; /* Data.portnum */
+	data[data_len++] = 0x03; /* POSITION_APP */
+	data[data_len++] = 0x12; /* Data.payload */
+	data_len += put_varint(&data[data_len], sizeof(data) - data_len,
+			       position_len);
+	memcpy(&data[data_len], position, position_len);
+	data_len += position_len;
+
+	packet[packet_len++] = 0x15; /* MeshPacket.to fixed32 */
+	put_le32(&packet[packet_len], 0xffffffffU);
+	packet_len += 4U;
+	packet[packet_len++] = 0x22; /* MeshPacket.decoded */
+	packet_len += put_varint(&packet[packet_len],
+				 sizeof(packet) - packet_len, data_len);
+	memcpy(&packet[packet_len], data, data_len);
+	packet_len += data_len;
+	packet[packet_len++] = 0x35; /* MeshPacket.id fixed32 */
+	put_le32(&packet[packet_len], id);
+	packet_len += 4U;
+	packet[packet_len++] = 0x50; /* MeshPacket.want_ack */
+	packet[packet_len++] = 0x01;
+
+	zassert_true(packet_len <= cap - 1U);
+	buf[pos++] = 0x0a; /* ToRadio.packet */
+	pos += put_varint(&buf[pos], cap - pos, packet_len);
+	zassert_true(packet_len <= cap - pos);
+	memcpy(&buf[pos], packet, packet_len);
+	pos += packet_len;
+
+	return pos;
+}
+
 static void decode_queue_status(const uint8_t *buf, size_t len,
 				struct queue_status_view *out)
 {
@@ -1242,6 +1331,185 @@ ZTEST(meshtastic_gateway_adapter, test_process_once_dispatches_ble_write)
 	zassert_equal(status.res, 0U);
 	zassert_equal(status.free, 1U);
 	zassert_equal(status.maxlen, 2U);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_process_once_position_updates_hal_snapshot)
+{
+	uint8_t position[32];
+	uint8_t to_radio[96];
+	struct lichen_hal_location_time_snapshot snapshot;
+	const uint8_t *from_radio;
+	size_t from_radio_len;
+	struct queue_status_view status;
+	size_t position_len;
+	size_t to_radio_len;
+
+	position_len = build_position_payload(position, sizeof(position), true,
+					      true, true, true);
+	to_radio_len = build_position_to_radio(to_radio, sizeof(to_radio),
+					       position, position_len,
+					       0x12345679U);
+
+	reset_gateway(1U);
+	lichen_hal_location_test_set_uptime_ms(10 * 1000);
+	zassert_ok(fake_ble_meshtastic_push_to_radio(to_radio, to_radio_len));
+
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 1U);
+	from_radio = fake_ble_meshtastic_from_radio(0U, &from_radio_len);
+	zassert_not_null(from_radio);
+	decode_queue_status(from_radio, from_radio_len, &status);
+	zassert_true(status.has_res);
+	zassert_equal(status.res, 0U);
+	zassert_true(status.has_mesh_packet_id);
+	zassert_equal(status.mesh_packet_id, 0x12345679U);
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.location_provider_available);
+	zassert_true(snapshot.source_class_valid);
+	zassert_equal(snapshot.source_class,
+		      LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT);
+	zassert_str_equal(snapshot.source_name, "local-client");
+	zassert_true(snapshot.fix_state_valid);
+	zassert_equal(snapshot.fix_state, LICHEN_HAL_LOCATION_FIX_3D);
+	zassert_true(snapshot.latitude_e7_valid);
+	zassert_equal(snapshot.latitude_e7, 476206130);
+	zassert_true(snapshot.longitude_e7_valid);
+	zassert_equal(snapshot.longitude_e7, -1223493000);
+	zassert_true(snapshot.altitude_m_valid);
+	zassert_equal(snapshot.altitude_m, 42);
+	zassert_true(snapshot.fix_time_unix_valid);
+	zassert_equal(snapshot.fix_time_unix, 1710000200U);
+	zassert_true(snapshot.satellites_valid);
+	zassert_equal(snapshot.satellites, 9U);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_process_once_position_minimal_updates_hal_snapshot)
+{
+	uint8_t position[16];
+	uint8_t to_radio[80];
+	struct lichen_hal_location_time_snapshot snapshot;
+	size_t position_len;
+	size_t to_radio_len;
+
+	position_len = build_position_payload(position, sizeof(position), false,
+					      false, false, false);
+	to_radio_len = build_position_to_radio(to_radio, sizeof(to_radio),
+					       position, position_len,
+					       0x1234567aU);
+
+	reset_gateway(1U);
+	zassert_ok(fake_ble_meshtastic_push_to_radio(to_radio, to_radio_len));
+
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.location_provider_available);
+	zassert_equal(snapshot.source_class,
+		      LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT);
+	zassert_equal(snapshot.fix_state, LICHEN_HAL_LOCATION_FIX_2D);
+	zassert_true(snapshot.latitude_e7_valid);
+	zassert_equal(snapshot.latitude_e7, 476206130);
+	zassert_true(snapshot.longitude_e7_valid);
+	zassert_equal(snapshot.longitude_e7, -1223493000);
+	zassert_false(snapshot.altitude_m_valid);
+	zassert_false(snapshot.fix_time_unix_valid);
+	zassert_false(snapshot.satellites_valid);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_process_once_position_negative_altitude_updates_hal_snapshot)
+{
+	uint8_t position[32];
+	uint8_t to_radio[96];
+	struct lichen_hal_location_time_snapshot snapshot;
+	size_t position_len;
+	size_t to_radio_len;
+
+	position_len = build_negative_altitude_position_payload(position,
+							       sizeof(position));
+	to_radio_len = build_position_to_radio(to_radio, sizeof(to_radio),
+					       position, position_len,
+					       0x1234567cU);
+
+	reset_gateway(1U);
+	zassert_ok(fake_ble_meshtastic_push_to_radio(to_radio, to_radio_len));
+
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.location_provider_available);
+	zassert_equal(snapshot.fix_state, LICHEN_HAL_LOCATION_FIX_3D);
+	zassert_true(snapshot.altitude_m_valid);
+	zassert_equal(snapshot.altitude_m, -17);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_process_once_position_malformed_payloads_do_not_replace_snapshot)
+{
+	static const uint8_t missing_lon[] = {
+		0x0d, 0x32, 0x23, 0x62, 0x1c,
+	};
+	static const uint8_t bad_lat_wire_type[] = {
+		0x08, 0x01, 0x15, 0xf8, 0x4f, 0x12, 0xb7,
+	};
+	static const uint8_t bad_lat_range[] = {
+		0x0d, 0x01, 0xe9, 0xa4, 0x35,
+		0x15, 0xf8, 0x4f, 0x12, 0xb7,
+	};
+	const uint8_t *cases[] = {
+		missing_lon,
+		bad_lat_wire_type,
+		bad_lat_range,
+	};
+	const size_t lens[] = {
+		sizeof(missing_lon),
+		sizeof(bad_lat_wire_type),
+		sizeof(bad_lat_range),
+	};
+	uint8_t good_position[16];
+	uint8_t to_radio[96];
+	size_t good_position_len;
+	size_t to_radio_len;
+
+	reset_gateway(ARRAY_SIZE(cases) + 1U);
+	good_position_len = build_position_payload(good_position,
+						   sizeof(good_position), false,
+						   false, false, false);
+	to_radio_len = build_position_to_radio(to_radio, sizeof(to_radio),
+					       good_position, good_position_len,
+					       0x1234567bU);
+	zassert_ok(fake_ble_meshtastic_push_to_radio(to_radio, to_radio_len));
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+
+	for (size_t i = 0U; i < ARRAY_SIZE(cases); i++) {
+		struct lichen_hal_location_time_snapshot snapshot;
+		const uint8_t *from_radio;
+		size_t from_radio_len;
+		struct queue_status_view status;
+
+		to_radio_len = build_position_to_radio(to_radio, sizeof(to_radio),
+						       cases[i], lens[i],
+						       0x12345680U +
+						       (uint32_t)i);
+		zassert_ok(fake_ble_meshtastic_push_to_radio(to_radio,
+							     to_radio_len));
+		zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+		from_radio = fake_ble_meshtastic_from_radio(i + 1U,
+							    &from_radio_len);
+		zassert_not_null(from_radio);
+		decode_queue_status(from_radio, from_radio_len, &status);
+		zassert_true(status.has_res);
+		zassert_equal(status.res, 3U);
+		zassert_true(status.has_mesh_packet_id);
+		zassert_equal(status.mesh_packet_id,
+			      0x12345680U + (uint32_t)i);
+		zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+		zassert_true(snapshot.latitude_e7_valid);
+		zassert_equal(snapshot.latitude_e7, 476206130);
+		zassert_true(snapshot.longitude_e7_valid);
+		zassert_equal(snapshot.longitude_e7, -1223493000);
+		zassert_false(snapshot.altitude_m_valid);
+	}
 }
 
 ZTEST(meshtastic_gateway_adapter,

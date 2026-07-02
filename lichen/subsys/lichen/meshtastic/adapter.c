@@ -27,6 +27,13 @@
 #define DATA_PAYLOAD_FIELD 2U
 #define DATA_REQUEST_ID_FIELD 6U
 
+#define POSITION_LATITUDE_I_FIELD 1U
+#define POSITION_LONGITUDE_I_FIELD 2U
+#define POSITION_ALTITUDE_FIELD 3U
+#define POSITION_TIME_FIELD 4U
+#define POSITION_TIMESTAMP_FIELD 7U
+#define POSITION_SATS_IN_VIEW_FIELD 19U
+
 #define ADMIN_GET_OWNER_REQUEST_FIELD 3U
 #define ADMIN_GET_DEVICE_METADATA_REQUEST_FIELD 12U
 #define ADMIN_GET_DEVICE_METADATA_RESPONSE_FIELD 13U
@@ -220,11 +227,6 @@ static const struct lichen_meshtastic_adapter_unsupported_operation
 	{
 		.id = LICHEN_MESHTASTIC_UNSUPPORTED_REMOTE_HARDWARE,
 		.portnum = MESHTASTIC_PORTNUM_REMOTE_HARDWARE_APP,
-		.has_portnum = true,
-	},
-	{
-		.id = LICHEN_MESHTASTIC_UNSUPPORTED_POSITION_UPDATE,
-		.portnum = MESHTASTIC_PORTNUM_POSITION_APP,
 		.has_portnum = true,
 	},
 	{
@@ -472,6 +474,133 @@ static int pb_write_len_field(uint8_t *buf, size_t cap, size_t *pos,
 	return 0;
 }
 
+static int32_t read_le_i32_twos_complement(const uint8_t bytes[4])
+{
+	uint32_t raw = sys_get_le32(bytes);
+
+	if ((raw & BIT(31)) == 0U) {
+		return (int32_t)raw;
+	}
+
+	return -1 - (int32_t)(UINT32_MAX - raw);
+}
+
+static int int32_from_pb_varint(uint64_t raw, int32_t *out)
+{
+	if (out == NULL) {
+		return -EINVAL;
+	}
+	if (raw <= (uint64_t)INT32_MAX) {
+		*out = (int32_t)raw;
+		return 0;
+	}
+	if (raw >= UINT64_MAX - (uint64_t)INT32_MAX) {
+		*out = -1 - (int32_t)(UINT64_MAX - raw);
+		return 0;
+	}
+
+	return -ERANGE;
+}
+
+static bool valid_position_e7(int32_t latitude_e7, int32_t longitude_e7)
+{
+	return latitude_e7 >= -900000000 && latitude_e7 <= 900000000 &&
+	       longitude_e7 >= -1800000000 && longitude_e7 <= 1800000000;
+}
+
+static int parse_position_payload(
+	const uint8_t *payload, size_t len,
+	struct lichen_meshtastic_position_snapshot *position)
+{
+	struct pb_cursor cur = { .buf = payload, .len = len };
+
+	if (position == NULL || (payload == NULL && len > 0U)) {
+		return -EINVAL;
+	}
+	memset(position, 0, sizeof(*position));
+
+	while (cur.pos < cur.len) {
+		uint32_t field;
+		uint32_t wt;
+		uint64_t v;
+
+		if (pb_read_key(&cur, &field, &wt) < 0) {
+			return -EINVAL;
+		}
+
+		switch (field) {
+		case POSITION_LATITUDE_I_FIELD:
+			if (wt != PB_WT_32BIT ||
+			    cur.len - cur.pos < sizeof(uint32_t)) {
+				return -EINVAL;
+			}
+			position->latitude_e7 =
+				read_le_i32_twos_complement(&cur.buf[cur.pos]);
+			position->latitude_e7_valid = true;
+			cur.pos += sizeof(uint32_t);
+			break;
+		case POSITION_LONGITUDE_I_FIELD:
+			if (wt != PB_WT_32BIT ||
+			    cur.len - cur.pos < sizeof(uint32_t)) {
+				return -EINVAL;
+			}
+			position->longitude_e7 =
+				read_le_i32_twos_complement(&cur.buf[cur.pos]);
+			position->longitude_e7_valid = true;
+			cur.pos += sizeof(uint32_t);
+			break;
+		case POSITION_ALTITUDE_FIELD:
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0 ||
+			    int32_from_pb_varint(v, &position->altitude_m) < 0) {
+				return -EINVAL;
+			}
+			position->altitude_m_valid = true;
+			break;
+		case POSITION_TIME_FIELD:
+			if (wt != PB_WT_32BIT ||
+			    cur.len - cur.pos < sizeof(uint32_t)) {
+				return -EINVAL;
+			}
+			if (!position->fix_time_unix_valid) {
+				position->fix_time_unix = sys_get_le32(&cur.buf[cur.pos]);
+				position->fix_time_unix_valid = true;
+			}
+			cur.pos += sizeof(uint32_t);
+			break;
+		case POSITION_TIMESTAMP_FIELD:
+			if (wt != PB_WT_32BIT ||
+			    cur.len - cur.pos < sizeof(uint32_t)) {
+				return -EINVAL;
+			}
+			position->fix_time_unix = sys_get_le32(&cur.buf[cur.pos]);
+			position->fix_time_unix_valid = true;
+			cur.pos += sizeof(uint32_t);
+			break;
+		case POSITION_SATS_IN_VIEW_FIELD:
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0) {
+				return -EINVAL;
+			}
+			if (v <= UINT8_MAX) {
+				position->satellites = (uint8_t)v;
+				position->satellites_valid = true;
+			}
+			break;
+		default:
+			if (pb_skip_value(&cur, wt) < 0) {
+				return -EINVAL;
+			}
+			break;
+		}
+	}
+
+	if (!position->latitude_e7_valid || !position->longitude_e7_valid ||
+	    !valid_position_e7(position->latitude_e7, position->longitude_e7)) {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static bool admin_payload_variant_field(uint32_t field)
 {
 	/* Current Meshtastic AdminMessage.payload_variant fields. Field 101 is
@@ -582,8 +711,19 @@ static int parse_data(const uint8_t *data, size_t len,
 	if (info->has_portnum) {
 		if (info->portnum == MESHTASTIC_PORTNUM_TEXT_MESSAGE_APP) {
 			info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP;
-		} else if (info->portnum == MESHTASTIC_PORTNUM_ADMIN_APP &&
-			   info->payload != NULL) {
+			} else if (info->portnum == MESHTASTIC_PORTNUM_POSITION_APP) {
+				if (info->payload == NULL ||
+				    parse_position_payload(info->payload,
+							   info->payload_len,
+							   &info->position) < 0) {
+					info->kind =
+						LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
+				} else {
+					info->kind =
+						LICHEN_MESHTASTIC_ADAPTER_PACKET_POSITION_APP;
+				}
+			} else if (info->portnum == MESHTASTIC_PORTNUM_ADMIN_APP &&
+				   info->payload != NULL) {
 			if (!parse_admin_payload(info->payload, info->payload_len,
 						 &info->kind)) {
 				info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
@@ -1382,7 +1522,7 @@ static int dispatch_packet(struct lichen_meshtastic_adapter *adapter,
 	}
 
 	switch (packet.kind) {
-	case LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP:
+		case LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP:
 		adapter->stats.text_packet_count++;
 		if (!text_packet_supported(adapter, &packet)) {
 			adapter->stats.unsupported_packet_count++;
@@ -1396,8 +1536,23 @@ static int dispatch_packet(struct lichen_meshtastic_adapter *adapter,
 		if (ret < 0) {
 			adapter->stats.unsupported_packet_count++;
 			return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED, &packet);
-		}
-		return queue_status(adapter, QUEUE_STATUS_OK, &packet);
+			}
+			return queue_status(adapter, QUEUE_STATUS_OK, &packet);
+		case LICHEN_MESHTASTIC_ADAPTER_PACKET_POSITION_APP:
+			adapter->stats.position_packet_count++;
+			if (adapter->ops.handle_location == NULL) {
+				adapter->stats.unsupported_packet_count++;
+				return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED,
+						    &packet);
+			}
+			ret = adapter->ops.handle_location(&packet,
+							   adapter->ops.user_data);
+			if (ret < 0) {
+				adapter->stats.unsupported_packet_count++;
+				return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED,
+						    &packet);
+			}
+			return queue_status(adapter, QUEUE_STATUS_OK, &packet);
 	case LICHEN_MESHTASTIC_ADAPTER_PACKET_ADMIN_GET_DEVICE_METADATA:
 		return enqueue_admin_metadata_response(adapter, &packet);
 	case LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED:

@@ -40,6 +40,20 @@ enum lichen_meshtastic_adapter_packet_kind {
 	LICHEN_MESHTASTIC_ADAPTER_PACKET_ADMIN_GET_DEVICE_METADATA,
 	LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED,
 	LICHEN_MESHTASTIC_ADAPTER_PACKET_UNSUPPORTED,
+	LICHEN_MESHTASTIC_ADAPTER_PACKET_POSITION_APP,
+};
+
+struct lichen_meshtastic_position_snapshot {
+	bool latitude_e7_valid;
+	int32_t latitude_e7;
+	bool longitude_e7_valid;
+	int32_t longitude_e7;
+	bool altitude_m_valid;
+	int32_t altitude_m;
+	bool fix_time_unix_valid;
+	uint32_t fix_time_unix;
+	bool satellites_valid;
+	uint8_t satellites;
 };
 
 struct lichen_meshtastic_adapter_packet_info {
@@ -64,6 +78,7 @@ struct lichen_meshtastic_adapter_packet_info {
 	bool has_portnum;
 	bool has_to_peer;
 	bool want_ack;
+	struct lichen_meshtastic_position_snapshot position;
 };
 
 struct lichen_meshtastic_adapter_stats {
@@ -79,6 +94,7 @@ struct lichen_meshtastic_adapter_stats {
 	uint32_t incoming_status_count;
 	uint32_t nodedb_peer_collision_count;
 	uint32_t nodedb_peer_omitted_count;
+	uint32_t position_packet_count;
 };
 
 enum lichen_meshtastic_adapter_unsupported_operation_id {
@@ -157,6 +173,9 @@ typedef int (*lichen_meshtastic_adapter_enqueue_fn)(const uint8_t *from_radio,
 typedef int (*lichen_meshtastic_adapter_text_fn)(
 	const struct lichen_meshtastic_adapter_packet_info *packet,
 	void *user_data);
+typedef int (*lichen_meshtastic_adapter_location_fn)(
+	const struct lichen_meshtastic_adapter_packet_info *packet,
+	void *user_data);
 
 typedef uint32_t (*lichen_meshtastic_adapter_queue_free_fn)(void *user_data);
 typedef int (*lichen_meshtastic_adapter_local_info_fn)(
@@ -194,6 +213,7 @@ struct lichen_meshtastic_adapter_ops {
 	void *user_data;
 	uint32_t queue_maxlen;
 	bool heartbeat_queue_status;
+	lichen_meshtastic_adapter_location_fn handle_location;
 };
 
 struct lichen_meshtastic_adapter {
