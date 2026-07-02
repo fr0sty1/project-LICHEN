@@ -4,17 +4,24 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 
 import pytest
 from textual.widgets import Input
 
 from lichen.client import (
+    Capabilities,
     CoapResult,
+    ConfigSnapshot,
     DeliveryState,
+    DeviceStatus,
+    Identity,
     LciClient,
     MessageDraft,
     MessageRecord,
+    Neighbor,
+    RadioConfig,
+    Route,
     SendResult,
 )
 from lichen.tui.native import (
@@ -71,6 +78,8 @@ class FakeMessagingClient:
         inbox_error: Exception | None = None,
         observe_error: Exception | None = None,
         send_error: Exception | None = None,
+        status_error: Exception | None = None,
+        config_write_result: CoapResult | None = None,
     ) -> None:
         self.inbox_rows = inbox or []
         self.observe_rows = observe or []
@@ -78,10 +87,35 @@ class FakeMessagingClient:
         self.inbox_error = inbox_error
         self.observe_error = observe_error
         self.send_error = send_error
+        self.status_error = status_error
+        self.config_write_result = config_write_result or CoapResult(code="2.04")
         self.inbox_calls: list[str] = []
         self.observe_calls: list[str] = []
         self.send_calls: list[tuple[MessageDraft, str]] = []
+        self.status_calls = 0
+        self.config_calls = 0
+        self.radio_calls = 0
+        self.identity_calls = 0
+        self.discover_calls = 0
+        self.neighbor_calls = 0
+        self.route_calls = 0
+        self.config_writes: list[dict[str, object]] = []
+        self.radio_writes: list[dict[str, object]] = []
+        self.log_calls: list[str] = []
+        self.diagnostics_calls: list[str] = []
         self.subscription: FakeMessageSubscription | None = None
+        self.log_subscription = FakeResourceSubscription(
+            [
+                CoapResult(
+                    code="2.05",
+                    payload={
+                        "records": [
+                            {"level": "warn", "module": "coap", "message": "timeout"}
+                        ]
+                    },
+                )
+            ]
+        )
 
     async def inbox(self, path: str = "/msg/inbox") -> list[MessageRecord]:
         self.inbox_calls.append(path)
@@ -101,6 +135,96 @@ class FakeMessagingClient:
         if self.send_error is not None:
             raise self.send_error
         return self.result
+
+    async def discover(self) -> Capabilities:
+        self.discover_calls += 1
+        if self.status_error is not None:
+            raise self.status_error
+        return Capabilities(
+            resources=frozenset({"/status", "/config", "/logs"}),
+            observable=frozenset({"/logs"}),
+        )
+
+    async def get_status(self) -> DeviceStatus:
+        self.status_calls += 1
+        if self.status_error is not None:
+            raise self.status_error
+        return DeviceStatus(
+            raw={},
+            uptime_s=42,
+            battery_pct=87,
+            battery_mv=3950,
+            mem_free_kb=128,
+            dodag={"joined": True},
+            radio={"rx_packets": 3, "tx_packets": 2},
+        )
+
+    async def get_config(self) -> ConfigSnapshot:
+        self.config_calls += 1
+        return ConfigSnapshot(raw={}, name="node-a", role="router", radio_path="/config/radio")
+
+    async def get_radio_config(self) -> RadioConfig:
+        self.radio_calls += 1
+        return RadioConfig(
+            raw={},
+            freq_mhz=906.875,
+            bw_khz=125,
+            sf=10,
+            cr="4/5",
+            tx_power_dbm=17,
+            sync_word="0x34",
+        )
+
+    async def get_identity(self) -> Identity:
+        self.identity_calls += 1
+        return Identity(
+            raw={"private_key": "DO_NOT_PRINT"},
+            eui64="0x0011223344556677",
+            pubkey="PUBLIC_KEY_SHOULD_NOT_RENDER",
+            pubkey_fingerprint="SHA256:abc",
+            addrs={"link_local": "fe80::1"},
+        )
+
+    async def list_neighbors(self) -> list[Neighbor]:
+        self.neighbor_calls += 1
+        return [
+            Neighbor(
+                raw={},
+                addr="fe80::2",
+                rssi_dbm=-80,
+                snr_db=7.5,
+                etx=1.2,
+                trust="tofu",
+                last_seen_s=30,
+            )
+        ]
+
+    async def list_routes(self) -> list[Route]:
+        self.route_calls += 1
+        return [Route(raw={}, prefix="fd00::/64", via="fe80::2", metric=512, lifetime_s=1800)]
+
+    async def set_config(self, values: Mapping[str, object]) -> CoapResult:
+        self.config_writes.append(dict(values))
+        return self.config_write_result
+
+    async def set_radio_config(self, values: Mapping[str, object]) -> CoapResult:
+        self.radio_writes.append(dict(values))
+        return self.config_write_result
+
+    async def subscribe_logs(self, path: str = "/logs") -> FakeResourceSubscription:
+        self.log_calls.append(path)
+        return self.log_subscription
+
+    async def get_diagnostics(self, path: str = "/diag") -> object:
+        self.diagnostics_calls.append(path)
+        return {
+            "ok": True,
+            "nested": {"queue": 3},
+            "private_key": "DO_NOT_PRINT",
+            "raw_payload": "DO_NOT_PRINT_RAW",
+            "blob": b"DO_NOT_PRINT_BYTES",
+            "tokens": ["DO_NOT_PRINT"],
+        }
 
 
 class FakeResourceTransport:
@@ -142,24 +266,31 @@ class FakeResourceTransport:
 
 
 class FakeResourceSubscription:
+    def __init__(self, results: list[CoapResult] | None = None) -> None:
+        self._result_rows = results or [
+            CoapResult(
+                code="2.05",
+                payload=[
+                    {
+                        "from": "fd00::1",
+                        "to": "fd00::2",
+                        "body": "observed from transport",
+                        "received": "2026-07-02T04:00:00Z",
+                    }
+                ],
+            )
+        ]
+        self.closed = False
+
     def results(self) -> AsyncIterator[CoapResult]:
         return self._results()
 
     async def close(self) -> None:
-        pass
+        self.closed = True
 
     async def _results(self) -> AsyncIterator[CoapResult]:
-        yield CoapResult(
-            code="2.05",
-            payload=[
-                {
-                    "from": "fd00::1",
-                    "to": "fd00::2",
-                    "body": "observed from transport",
-                    "received": "2026-07-02T04:00:00Z",
-                }
-            ],
-        )
+        for result in self._result_rows:
+            yield result
 
 
 def message_record(
@@ -249,16 +380,16 @@ def test_active_pane_covers_expected_modes() -> None:
 
     pane.set_mode("Dashboard")
     assert "DASHBOARD" in pane.render_mode()
-    assert "neighbors 0 routes 0" in pane.render_mode()
+    assert "unsupported" in pane.render_mode()
 
     pane.set_mode("Chats")
     assert "COMPOSE" in pane.render_mode()
 
     pane.set_mode("Nodes")
-    assert "last_heard" in pane.render_mode()
+    assert "empty" in pane.render_mode()
 
     pane.set_mode("Mesh")
-    assert "next_hop" in pane.render_mode()
+    assert "destination" in pane.render_mode()
 
     pane.set_mode("Config")
     assert "sync_word" in pane.render_mode()
@@ -578,6 +709,306 @@ async def test_lci_client_app_connects_and_refreshes_ip_transport() -> None:
     assert "from ip transport" in rendered
 
 
+async def test_status_refresh_populates_dashboard_and_status_bar() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(
+        ShellStatus(context="Dashboard", state=UiState.SYNCED),
+        client=client,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("r")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        status = app.query_one("#native-status", NativeStatusBar).status
+
+    assert client.status_calls == 1
+    assert client.config_calls == 1
+    assert client.identity_calls == 1
+    assert client.discover_calls == 1
+    assert "node-a" in rendered
+    assert "87% 3950mV" in rendered
+    assert "uptime_s" in rendered
+    assert "128" in rendered
+    assert "resources" in rendered
+    assert "SHA256:abc" in rendered
+    assert "PUBLIC_KEY_SHOULD_NOT_RENDER" not in rendered
+    assert status.device == "node-a"
+    assert status.battery == "87%"
+
+
+async def test_mesh_refresh_renders_neighbors_and_routes() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(ShellStatus(context="Mesh", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("r")
+        await pilot.pause()
+        mesh_rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        await pilot.press("3")
+        await pilot.pause()
+        node_rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert client.neighbor_calls == 1
+    assert client.route_calls == 1
+    assert "fd00::/64" in mesh_rendered
+    assert "via fe80::2" in mesh_rendered
+    assert "metric 512" in mesh_rendered
+    assert "fe80::2" in node_rendered
+    assert "rssi -80" in node_rendered
+    assert "snr 7.5" in node_rendered
+    assert "etx 1.2" in node_rendered
+    assert "trust tofu" in node_rendered
+
+
+async def test_config_refresh_renders_safe_rows_and_redacts_key_material() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(ShellStatus(context="Config", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("r")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert "node-a" in rendered
+    assert "router" in rendered
+    assert "906.875" in rendered
+    assert "sf" in rendered
+    assert "0x34" in rendered
+    assert "SHA256:abc" in rendered
+    assert "PUBLIC_KEY_SHOULD_NOT_RENDER" not in rendered
+    assert "DO_NOT_PRINT" not in rendered
+
+
+async def test_config_write_requires_confirmation() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(ShellStatus(context="Config", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await app.refresh_config()
+        await pilot.press("/")
+        app.query_one("#message-target", Input).value = "name"
+        body = app.query_one("#message-body", Input)
+        body.value = "new-name"
+        body.focus()
+        await pilot.press("enter")
+        await pilot.pause()
+        await pilot.press("enter")
+        await pilot.pause()
+        confirming = app.query_one("#active-pane", ActivePane).render_mode()
+        await pilot.press("escape")
+        await pilot.pause()
+        await pilot.press("/")
+        app.query_one("#message-target", Input).value = "name"
+        body = app.query_one("#message-body", Input)
+        body.value = "new-name"
+        body.focus()
+        await pilot.press("enter")
+        await pilot.pause()
+        await pilot.press("enter")
+        await pilot.press("y")
+        await pilot.pause()
+        written = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert "pending" in confirming
+    assert client.config_writes == [{"name": "new-name"}]
+    assert client.radio_writes == []
+    assert "last_write" in written
+    assert "name -> 2.04" in written
+
+
+async def test_unsupported_config_write_is_actionable_error() -> None:
+    client = FakeMessagingClient(config_write_result=CoapResult(code="4.05"))
+    app = NativeClientApp(ShellStatus(context="Config", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await app.refresh_config()
+        await pilot.press("/")
+        app.query_one("#message-target", Input).value = "sf"
+        body = app.query_one("#message-body", Input)
+        body.value = "10"
+        body.focus()
+        await pilot.press("enter")
+        await pilot.pause()
+        await pilot.press("enter")
+        await pilot.press("y")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        status = app.query_one("#native-status", NativeStatusBar).status
+
+    assert client.radio_writes == [{"sf": 10}]
+    assert "/config/radio" in rendered
+    assert "unsupported or rejected" in rendered
+    assert status.state == UiState.ERROR
+
+
+async def test_invalid_config_numeric_input_is_recoverable_error() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(ShellStatus(context="Config", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await app.refresh_config()
+        await pilot.press("/")
+        app.query_one("#message-target", Input).value = "sf"
+        body = app.query_one("#message-body", Input)
+        body.value = "bad"
+        body.focus()
+        await pilot.press("enter")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        status = app.query_one("#native-status", NativeStatusBar).status
+
+    assert client.radio_writes == []
+    assert "invalid sf" in rendered
+    assert status.state == UiState.ERROR
+
+
+async def test_read_only_config_field_is_not_written() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(ShellStatus(context="Config", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await app.refresh_config()
+        await pilot.press("/")
+        app.query_one("#message-target", Input).value = "private_key"
+        body = app.query_one("#message-body", Input)
+        body.value = "DO_NOT_WRITE"
+        body.focus()
+        await pilot.press("enter")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        status = app.query_one("#native-status", NativeStatusBar).status
+
+    assert client.config_writes == []
+    assert client.radio_writes == []
+    assert "private_key is read-only or unsupported" in rendered
+    assert "DO_NOT_WRITE" not in rendered
+    assert status.state == UiState.ERROR
+
+
+async def test_rejected_config_edit_clears_prior_pending_write() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(ShellStatus(context="Config", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await app.refresh_config()
+        app.stage_config_change("name", "new-name")
+        await pilot.press("/")
+        app.query_one("#message-target", Input).value = "private_key"
+        body = app.query_one("#message-body", Input)
+        body.value = "DO_NOT_WRITE"
+        body.focus()
+        await pilot.press("enter")
+        await pilot.pause()
+        await pilot.press("enter")
+        await pilot.press("y")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert client.config_writes == []
+    assert client.radio_writes == []
+    assert "private_key is read-only or unsupported" in rendered
+    assert "pending" not in rendered
+
+
+async def test_config_editor_values_do_not_leak_into_chat_compose() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(ShellStatus(context="Config", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await app.refresh_config()
+        await pilot.press("/")
+        app.query_one("#message-target", Input).value = "name"
+        body = app.query_one("#message-body", Input)
+        body.value = "new-name"
+        body.focus()
+        await pilot.press("enter")
+        await pilot.pause()
+        await pilot.press("2")
+        await pilot.press("r")
+        await pilot.pause()
+        await pilot.press("c")
+        await pilot.pause()
+        target_value = app.query_one("#message-target", Input).value
+        body_value = app.query_one("#message-body", Input).value
+
+    assert app.messaging.draft_target == ""
+    assert app.messaging.draft_body == ""
+    assert target_value == ""
+    assert body_value == ""
+
+
+async def test_logs_observe_applies_notifications_and_closes_subscription() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(ShellStatus(context="Logs", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("o")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert client.log_calls == ["/logs"]
+    assert client.log_subscription.closed is True
+    assert "warn" in rendered
+    assert "coap" in rendered
+    assert "timeout" in rendered
+
+
+async def test_diagnostics_refresh_flattens_and_redacts_payloads() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(ShellStatus(context="Diag", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("r")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert client.diagnostics_calls == ["/diag"]
+    assert "ok" in rendered
+    assert "nested.queue" in rendered
+    assert "private_key" in rendered
+    assert "<redacted>" in rendered
+    assert "DO_NOT_PRINT" not in rendered
+    assert "DO_NOT_PRINT_RAW" not in rendered
+    assert "DO_NOT_PRINT_BYTES" not in rendered
+
+
+async def test_non_chat_refresh_error_recovers_on_success() -> None:
+    client = FakeMessagingClient(status_error=RuntimeError("status down"))
+    app = NativeClientApp(
+        ShellStatus(context="Dashboard", state=UiState.SYNCED),
+        client=client,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("r")
+        await pilot.pause()
+        failed = app.query_one("#active-pane", ActivePane).render_mode()
+        failed_status = app.query_one("#native-status", NativeStatusBar).status
+        client.status_error = None
+        await pilot.press("r")
+        await pilot.pause()
+        recovered = app.query_one("#active-pane", ActivePane).render_mode()
+        recovered_status = app.query_one("#native-status", NativeStatusBar).status
+
+    assert "status down" in failed
+    assert failed_status.state == UiState.ERROR
+    assert "node-a" in recovered
+    assert recovered_status.state == UiState.SYNCED
+
+
 def test_main_wires_ip_coap_client(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -653,9 +1084,9 @@ async def test_native_client_app_renders_at_common_size() -> None:
 
         await pilot.press("/")
         await pilot.pause()
-        assert "FILTER" in app.query_one("#active-pane", ActivePane).render_mode()
+        assert app.prompt_mode == "ConfigEdit"
 
-        await pilot.press("n")
+        await pilot.press("escape")
         await pilot.pause()
         assert "CONFIG" in app.query_one("#active-pane", ActivePane).render_mode()
 
