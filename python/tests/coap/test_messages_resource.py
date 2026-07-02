@@ -8,9 +8,15 @@ import asyncio
 
 import aiocoap
 import cbor2
+import pytest
 from aiocoap import GET, POST, Message
 
-from lichen.coap.resources import MessagesResource, StaticNodeInfo, build_site
+from lichen.coap.resources import (
+    MessageReceiptsResource,
+    MessagesResource,
+    StaticNodeInfo,
+    build_site,
+)
 from lichen.coap.transport import InMemoryNetwork, create_lichen_context
 
 _FROM = "0102030405060708"
@@ -163,6 +169,110 @@ class TestMessagesGet:
             inbox = _inbox(resp.payload)
             assert inbox[0]["body"] == "body-only"
             assert inbox[0]["text"] == "body-only"
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+
+class TestMessageReceipts:
+    async def test_ack_not_advertised_without_receipts_resource(self) -> None:
+        client, server, _ = await _setup()
+        try:
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/.well-known/core")
+            ).response
+            assert '</msg/ack>;rt="msg.ack";ct="60"' not in resp.payload.decode()
+
+            missing = await client.request(
+                Message(code=POST, uri="coap://srv/msg/ack", payload=cbor2.dumps({}))
+            ).response
+            assert missing.code == aiocoap.NOT_FOUND
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_ack_advertised_and_stores_valid_receipts(self) -> None:
+        net = InMemoryNetwork()
+        receipts = MessageReceiptsResource()
+        site = build_site(StaticNodeInfo(), message_receipts_resource=receipts)
+        server = await create_lichen_context(net.channel("srv"), "srv", site=site)
+        client = await create_lichen_context(net.channel("cli"), "cli")
+        try:
+            discovery = await client.request(
+                Message(code=GET, uri="coap://srv/.well-known/core")
+            ).response
+            assert '</msg/ack>;rt="msg.ack";ct="60"' in discovery.payload.decode()
+
+            payload = {"id": 12345, "status": "delivered", "ts": 1_716_742_900}
+            resp = await client.request(
+                Message(
+                    code=POST,
+                    uri="coap://srv/msg/ack",
+                    payload=cbor2.dumps(payload),
+                    content_format=60,
+                )
+            ).response
+
+            assert resp.code == aiocoap.CHANGED
+            assert receipts.receipts() == [payload]
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_ack_dispatches_normalized_receipts_to_handler(self) -> None:
+        dispatched: list[dict[str, object]] = []
+        net = InMemoryNetwork()
+        receipts = MessageReceiptsResource(handler=dispatched.append)
+        site = build_site(StaticNodeInfo(), message_receipts_resource=receipts)
+        server = await create_lichen_context(net.channel("srv"), "srv", site=site)
+        client = await create_lichen_context(net.channel("cli"), "cli")
+        try:
+            resp = await client.request(
+                Message(
+                    code=POST,
+                    uri="coap://srv/msg/ack",
+                    payload=cbor2.dumps({"id": 12345, "status": "read", "ts": 1_716_742_901}),
+                    content_format=60,
+                )
+            ).response
+
+            assert resp.code == aiocoap.CHANGED
+            assert dispatched == [{"id": 12345, "status": "read", "ts": 1_716_742_901}]
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            b"\xff",
+            cbor2.dumps([]),
+            cbor2.dumps({"status": "delivered", "ts": 1}),
+            cbor2.dumps({"id": True, "status": "delivered", "ts": 1}),
+            cbor2.dumps({"id": -1, "status": "delivered", "ts": 1}),
+            cbor2.dumps({"id": 1.5, "status": "delivered", "ts": 1}),
+            cbor2.dumps({"id": "abc", "status": "delivered", "ts": 1}),
+            cbor2.dumps({"id": 1, "ts": 1}),
+            cbor2.dumps({"id": 1, "status": "queued", "ts": 1}),
+            cbor2.dumps({"id": 1, "status": "delivered"}),
+            cbor2.dumps({"id": 1, "status": "delivered", "ts": True}),
+            cbor2.dumps({"id": 1, "status": "delivered", "ts": -1}),
+            cbor2.dumps({"id": 1, "status": "delivered", "ts": 1.5}),
+        ],
+    )
+    async def test_ack_rejects_invalid_payloads(self, payload: bytes) -> None:
+        net = InMemoryNetwork()
+        receipts = MessageReceiptsResource()
+        site = build_site(StaticNodeInfo(), message_receipts_resource=receipts)
+        server = await create_lichen_context(net.channel("srv"), "srv", site=site)
+        client = await create_lichen_context(net.channel("cli"), "cli")
+        try:
+            resp = await client.request(
+                Message(code=POST, uri="coap://srv/msg/ack", payload=payload)
+            ).response
+
+            assert resp.code == aiocoap.BAD_REQUEST
+            assert receipts.receipts() == []
         finally:
             await client.shutdown()
             await server.shutdown()

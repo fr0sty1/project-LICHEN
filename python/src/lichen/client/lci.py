@@ -18,6 +18,7 @@ from lichen.client.model import (
     Identity,
     JsonMap,
     MessageDraft,
+    MessageReceipt,
     MessageRecord,
     Neighbor,
     RadioConfig,
@@ -25,6 +26,8 @@ from lichen.client.model import (
     RawDiagnosticState,
     RawRxEvent,
     RawRxStatus,
+    ReceiptResult,
+    ReceiptStatus,
     Route,
     SendResult,
 )
@@ -249,6 +252,47 @@ class LciClient:
             )
         return SendResult(
             state=DeliveryState.REJECTED,
+            coap_code=result.code,
+            detail=_result_detail(result),
+        )
+
+    async def send_message_receipt(
+        self,
+        receipt: MessageReceipt,
+        path: str = "/msg/ack",
+    ) -> ReceiptResult:
+        """Post a delivery/read/failure receipt through `/msg/ack`."""
+        if not _valid_receipt_id(receipt.message_id) or not _valid_receipt_timestamp(receipt.ts):
+            return ReceiptResult(
+                state=DeliveryState.VALIDATION_ERROR,
+                detail="receipt id and timestamp must be unsigned integers",
+            )
+        if not isinstance(receipt.status, ReceiptStatus):
+            return ReceiptResult(
+                state=DeliveryState.VALIDATION_ERROR,
+                detail="receipt status is invalid",
+            )
+        try:
+            result = await self._transport.request(
+                "POST",
+                path,
+                payload=cbor2.dumps(receipt.to_payload()),
+                content_format=CBOR_CONTENT_FORMAT,
+            )
+        except Exception as exc:
+            return ReceiptResult(
+                state=DeliveryState.TRANSPORT_ERROR,
+                detail=str(exc),
+            )
+        if result.is_success:
+            return ReceiptResult(state=DeliveryState.ACCEPTED, coap_code=result.code)
+        state = (
+            DeliveryState.UNSUPPORTED
+            if result.code in {"4.04", "5.01"}
+            else DeliveryState.REJECTED
+        )
+        return ReceiptResult(
+            state=state,
             coap_code=result.code,
             detail=_result_detail(result),
         )
@@ -683,6 +727,14 @@ def _map_or_empty(value: Any) -> JsonMap:
     if isinstance(value, Mapping):
         return dict(value)
     return {}
+
+
+def _valid_receipt_id(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _valid_receipt_timestamp(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
 
 
 def _str_or_none(value: Any) -> str | None:

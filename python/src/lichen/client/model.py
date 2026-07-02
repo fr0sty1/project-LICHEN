@@ -38,6 +38,14 @@ class DeliveryState(StrEnum):
     TRANSPORT_ERROR = "transport_error"
 
 
+class ReceiptStatus(StrEnum):
+    """Delivery receipt status values from `/msg/ack`."""
+
+    DELIVERED = "delivered"
+    READ = "read"
+    FAILED = "failed"
+
+
 class RawDiagnosticState(StrEnum):
     """Optional raw diagnostic resource state."""
 
@@ -185,6 +193,32 @@ class SendResult:
     state: DeliveryState
     coap_code: str | None = None
     location_path: tuple[str, ...] = ()
+    detail: str | None = None
+
+
+@dataclass(frozen=True)
+class MessageReceipt:
+    """Delivery/read/failure receipt sent to `/msg/ack`."""
+
+    message_id: int
+    status: ReceiptStatus
+    ts: int
+
+    def to_payload(self) -> JsonMap:
+        """Return the CBOR map payload used by `/msg/ack`."""
+        return {
+            "id": self.message_id,
+            "status": self.status.value,
+            "ts": self.ts,
+        }
+
+
+@dataclass(frozen=True)
+class ReceiptResult:
+    """Normalized result of posting a message receipt."""
+
+    state: DeliveryState
+    coap_code: str | None = None
     detail: str | None = None
 
 

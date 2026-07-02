@@ -81,12 +81,15 @@ def test_lci_messaging_paths_use_msg_inbox_contract() -> None:
 
     assert "POST /msg/inbox" in lci
     assert "GET /msg/inbox" in lci
+    assert "</msg/ack>;rt=\"msg.ack\";ct=60" in lci
     assert "POST coap://[destination]/msg/inbox" in apps
     assert "GET coap://[node]/msg/inbox" in apps
+    assert "POST coap://[sender]/msg/ack" in apps
     assert "POST coap://[node]/msg/inbox" in readme
     assert "GET  coap://[node]/msg/inbox" in readme
     assert "POST /msg/inbox" in support
     assert "GET /msg/inbox" in support
+    assert "POST /msg/ack" in support
     assert "`TEXT_MESSAGE_APP` (1) | `/msg/inbox`" in meshtastic
     assert "Zephyr `/msg/inbox`" in meshtastic
     assert "POST /msg\n" not in lci

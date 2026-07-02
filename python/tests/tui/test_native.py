@@ -581,6 +581,7 @@ async def test_message_send_success_updates_chat_and_status() -> None:
     assert [(call[0].to, call[0].body, call[1]) for call in client.send_calls] == [
         ("fd00::2", "ping", "/msg/inbox")
     ]
+    assert client.send_calls[0][0].ack is False
     assert "ping" in rendered
     assert "delivery" in rendered
     assert "accepted [2.04]" in rendered

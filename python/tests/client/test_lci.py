@@ -18,7 +18,9 @@ from lichen.client import (
     LciClient,
     LciClientError,
     MessageDraft,
+    MessageReceipt,
     RawDiagnosticState,
+    ReceiptStatus,
 )
 from lichen.client.lci import normalize_message, parse_link_format
 from lichen.coap.resources import MessagesResource, StaticNodeInfo, build_site
@@ -532,6 +534,72 @@ async def test_raw_tx_rejected_code_is_error_state() -> None:
     assert result.state is RawDiagnosticState.ERROR
     assert result.coap_code == "4.01"
     assert result.detail == "admin required"
+
+
+async def test_send_message_receipt_posts_cbor_payload() -> None:
+    transport = FakeResourceTransport({("POST", "/msg/ack"): CoapResult(code="2.04")})
+    client = LciClient(transport)
+
+    result = await client.send_message_receipt(
+        MessageReceipt(message_id=12345, status=ReceiptStatus.DELIVERED, ts=1_716_742_900)
+    )
+
+    assert result.state is DeliveryState.ACCEPTED
+    assert result.coap_code == "2.04"
+    method, path, payload, content_format, observe = transport.requests[-1]
+    assert (method, path, content_format, observe) == ("POST", "/msg/ack", 60, False)
+    assert cbor2.loads(payload) == {
+        "id": 12345,
+        "status": "delivered",
+        "ts": 1_716_742_900,
+    }
+
+
+@pytest.mark.parametrize("code", ["4.04", "5.01"])
+async def test_send_message_receipt_optional_unsupported_states(code: str) -> None:
+    transport = FakeResourceTransport(
+        {("POST", "/msg/ack"): CoapResult(code=code, payload={"error": "unsupported"})}
+    )
+    client = LciClient(transport)
+
+    result = await client.send_message_receipt(
+        MessageReceipt(message_id=12345, status=ReceiptStatus.READ, ts=1_716_742_901)
+    )
+
+    assert result.state is DeliveryState.UNSUPPORTED
+    assert result.coap_code == code
+    assert result.detail == "unsupported"
+
+
+async def test_send_message_receipt_validation_and_rejection_states() -> None:
+    rejected_transport = FakeResourceTransport(
+        {("POST", "/msg/ack"): CoapResult(code="4.00", payload={"error": "bad receipt"})}
+    )
+    rejected_client = LciClient(rejected_transport)
+    validation_client = LciClient(FakeResourceTransport({}))
+
+    rejected = await rejected_client.send_message_receipt(
+        MessageReceipt(message_id=1, status=ReceiptStatus.FAILED, ts=1)
+    )
+    validation_id = await validation_client.send_message_receipt(
+        MessageReceipt(message_id=-1, status=ReceiptStatus.FAILED, ts=1)
+    )
+    validation_ts = await validation_client.send_message_receipt(
+        MessageReceipt(message_id=1, status=ReceiptStatus.FAILED, ts=-1)
+    )
+    validation_status = await validation_client.send_message_receipt(
+        MessageReceipt(message_id=1, status="failed", ts=1)  # type: ignore[arg-type]
+    )
+
+    assert rejected.state is DeliveryState.REJECTED
+    assert rejected.coap_code == "4.00"
+    assert rejected.detail == "bad receipt"
+    assert validation_id.state is DeliveryState.VALIDATION_ERROR
+    assert validation_id.detail == "receipt id and timestamp must be unsigned integers"
+    assert validation_ts.state is DeliveryState.VALIDATION_ERROR
+    assert validation_ts.detail == "receipt id and timestamp must be unsigned integers"
+    assert validation_status.state is DeliveryState.VALIDATION_ERROR
+    assert validation_status.detail == "receipt status is invalid"
 
 
 async def test_send_message_validation_and_rejection_states() -> None:

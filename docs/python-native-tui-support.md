@@ -41,6 +41,8 @@ the LCI CoAP contract used by `LciClient`:
 - `GET /status/routes`
 - `GET /msg/inbox`
 - `POST /msg/inbox`
+- `GET /msg/sent`, when sent-message history is supported
+- `POST /msg/ack`, when delivery/read/failure receipts are supported
 - `GET /logs` with Observe, when logs are supported
 - `GET /diag`, when diagnostics are supported
 

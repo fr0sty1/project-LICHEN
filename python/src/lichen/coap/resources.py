@@ -539,6 +539,66 @@ class SentMessageDetailResource(resource.Resource):
         return _cbor_response(dict(self._message))
 
 
+class MessageReceiptsResource(resource.Resource):
+    """``/msg/ack`` collection for delivery/read/failure receipts."""
+
+    VALID_STATUSES = frozenset({"delivered", "read", "failed"})
+
+    def __init__(
+        self,
+        *,
+        handler: Callable[[dict[str, Any]], None] | None = None,
+    ) -> None:
+        super().__init__()
+        self._handler = handler
+        self._receipts: list[dict[str, Any]] = []
+
+    def get_link_description(self) -> dict[str, Any]:
+        return {"rt": "msg.ack", "ct": str(int(CBOR))}
+
+    def receipts(self) -> list[dict[str, Any]]:
+        """Return stored receipts in POST order."""
+        return [dict(receipt) for receipt in self._receipts]
+
+    async def render_post(self, request: Message) -> Message:
+        if not request.payload:
+            return Message(code=BAD_REQUEST)
+        try:
+            payload = cbor2.loads(request.payload)
+        except Exception:
+            return Message(code=BAD_REQUEST)
+        receipt = self._normalize(payload)
+        if receipt is None:
+            return Message(code=BAD_REQUEST)
+        self._receipts.append(receipt)
+        if self._handler is not None:
+            self._handler(dict(receipt))
+        return Message(code=CHANGED)
+
+    @classmethod
+    def _normalize(cls, payload: Any) -> dict[str, Any] | None:
+        if not isinstance(payload, dict):
+            return None
+        receipt_id = payload.get("id")
+        status = payload.get("status")
+        timestamp = payload.get("ts")
+        if not _is_uint(receipt_id):
+            return None
+        if status not in cls.VALID_STATUSES:
+            return None
+        if not _is_uint(timestamp):
+            return None
+        return {
+            "id": receipt_id,
+            "status": status,
+            "ts": timestamp,
+        }
+
+
+def _is_uint(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
 class LegacyMessagesAliasResource(resource.ObservableResource):
     """Legacy/demo ``/messages`` alias for older Python simulator clients."""
 
@@ -720,6 +780,7 @@ def build_site(
     location_resource: SenMLLocationResource | None = None,
     presence_resource: PresenceResource | None = None,
     messages_resource: MessagesResource | None = None,
+    message_receipts_resource: MessageReceiptsResource | None = None,
     sos_resource: SosResource | None = None,
     resource_directory: bool = False,
 ) -> resource.Site:
@@ -729,7 +790,7 @@ def build_site(
     forward proxy at ``/proxy``. Native LCI clients should prefer direct IPv6
     CoAP routing to mesh node addresses when the local transport supports it.
     Pass pre-constructed observable resources to expose ``/sensors``,
-    ``/location``, ``/presence``, ``/msg/inbox``, and/or ``/sos``; callers
+    ``/location``, ``/presence``, ``/msg/inbox``, ``/msg/ack``, and/or ``/sos``; callers
     hold the references and call ``update()`` / ``seen()`` / ``deliver()`` /
     ``activate()`` to push data to observers.
     Pass ``resource_directory=True`` to expose a CoAP Resource Directory
@@ -761,6 +822,8 @@ def build_site(
         site.add_resource(["msg", "inbox"], messages_resource)
         site.add_resource(["msg", "sent"], SentMessagesResource(messages_resource))
         site.add_resource(["messages"], legacy_messages)
+    if message_receipts_resource is not None:
+        site.add_resource(["msg", "ack"], message_receipts_resource)
     if sos_resource is not None:
         site.add_resource(["sos"], sos_resource)
     if resource_directory:
