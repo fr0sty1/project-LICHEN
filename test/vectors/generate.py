@@ -966,6 +966,27 @@ def _meshcore_channel_info() -> bytes:
     return bytes(out)
 
 
+def _meshcore_channel_body(name: bytes = b"Public") -> bytes:
+    out = bytearray(49)
+    out[0] = 0
+    out[1:1 + len(name)] = name
+    return bytes(out)
+
+
+def _meshcore_channel_body_with_secret(name: bytes = b"Field") -> bytes:
+    out = bytearray(_meshcore_channel_body(name))
+    out[33:49] = bytes(range(1, 17))
+    return bytes(out)
+
+
+def _meshcore_default_flood_payload(name: bytes = b"FieldScope") -> bytes:
+    out = bytearray(47)
+    out[0:len(name)] = name
+    out[len(name)] = 0
+    out[31:47] = bytes(range(0xA0, 0xB0))
+    return bytes(out)
+
+
 def _meshcore_vector(
     *,
     name: str,
@@ -1101,7 +1122,7 @@ def meshcore_app_compat_vectors() -> list[dict]:
         ),
         _meshcore_vector(
             name="get_default_flood_scope_null",
-            description="Default flood scope is null/empty until compatibility policy is expanded.",
+            description="Default flood scope is null/empty before a MeshCore-local default flood scope is stored.",
             direction="exchange",
             frame="command",
             encoded=bytes.fromhex("40"),
@@ -1144,40 +1165,88 @@ def meshcore_app_compat_vectors() -> list[dict]:
             expect={"responses": ["0102"], "adapter_test": True},
         ),
         _meshcore_vector(
-            name="set_advert_name_unsupported",
-            description="Compatibility display-name writes are rejected until settings-backed local compatibility state exists.",
+            name="set_advert_name_ok",
+            description="Compatibility display-name writes update MeshCore-local state and return OK without mutating native identity.",
             direction="exchange",
             frame="command",
             encoded=bytes.fromhex("084c494348454e"),
             decoded={"command": "SET_ADVERT_NAME", "name": "LICHEN"},
+            expect={
+                "responses": ["00"],
+                "adapter_test": True,
+                "compat_store": "meshcore-local advert name",
+            },
+        ),
+        _meshcore_vector(
+            name="set_channel0_ok",
+            description="Channel writes update a MeshCore-local channel record only; LICHEN does not accept MeshCore channel secrets as native group or OSCORE material.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes([0x20]) + _meshcore_channel_body(b"Field"),
+            decoded={"command": "SET_CHANNEL", "index": 0, "name": "Field"},
+            expect={
+                "responses": ["00"],
+                "adapter_test": True,
+                "compat_store": "meshcore-local channel slot 0",
+            },
+        ),
+        _meshcore_vector(
+            name="set_channel16_secret_unsupported",
+            description="Channel records carrying nonzero 16-byte secret material are recognized but unsupported and are not stored.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes([0x20]) + _meshcore_channel_body_with_secret(),
+            decoded={
+                "command": "SET_CHANNEL",
+                "index": 0,
+                "name": "Field",
+                "secret_len": 16,
+            },
             expect={"responses": [err_unsupported.hex()], "adapter_test": True},
         ),
         _meshcore_vector(
-            name="set_channel_unsupported",
-            description="Channel writes are rejected; LICHEN does not accept MeshCore channel secrets as native group or OSCORE material.",
+            name="set_channel_secret_unsupported",
+            description="Secret-bearing MeshCore channel writes are recognized but unsupported so MeshCore secrets are never imported as native LICHEN material.",
             direction="exchange",
             frame="command",
-            encoded=bytes.fromhex("2000"),
-            decoded={"command": "SET_CHANNEL", "index": 0},
+            encoded=(
+                bytes([0x20, 0x00])
+                + b"Field".ljust(32, b"\x00")
+                + bytes(range(32))
+            ),
+            decoded={
+                "command": "SET_CHANNEL",
+                "index": 0,
+                "name": "Field",
+                "secret_len": 32,
+            },
             expect={"responses": [err_unsupported.hex()], "adapter_test": True},
         ),
         _meshcore_vector(
-            name="set_device_pin_unsupported",
-            description="BLE PIN writes are rejected until a settings-backed MeshCore compatibility PIN store is implemented.",
+            name="set_device_pin_ok",
+            description="Device PIN writes apply and retain a MeshCore-local uint32 passkey without exposing native provisioning secrets.",
             direction="exchange",
             frame="command",
-            encoded=bytes.fromhex("25313233343536"),
-            decoded={"command": "SET_DEVICE_PIN", "pin": "123456"},
-            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+            encoded=bytes([0x25]) + _u32le(123456),
+            decoded={"command": "SET_DEVICE_PIN", "pin": 123456},
+            expect={
+                "responses": ["00"],
+                "adapter_test": True,
+                "compat_store": "meshcore-local BLE PIN applied through the BLE passkey hook",
+            },
         ),
         _meshcore_vector(
-            name="set_autoadd_config_unsupported",
-            description="Auto-add configuration writes are rejected until compatibility-local persistence exists.",
+            name="set_autoadd_config_ok",
+            description="Auto-add configuration writes retain the two-byte MeshCore-local compatibility value.",
             direction="exchange",
             frame="command",
-            encoded=bytes.fromhex("3a0000"),
-            decoded={"command": "SET_AUTOADD_CONFIG", "enabled": False},
-            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+            encoded=bytes.fromhex("3a0102"),
+            decoded={"command": "SET_AUTOADD_CONFIG", "raw": [1, 2]},
+            expect={
+                "responses": ["00"],
+                "adapter_test": True,
+                "compat_store": "meshcore-local auto-add config",
+            },
         ),
         _meshcore_vector(
             name="self_advert_unsupported",
@@ -1207,13 +1276,34 @@ def meshcore_app_compat_vectors() -> list[dict]:
             expect={"responses": [err_unsupported.hex()], "adapter_test": True},
         ),
         _meshcore_vector(
-            name="newer_set_default_flood_scope_unsupported",
-            description="Newer firmware command 0x3f is recognized but unsupported by the MVP shim.",
+            name="newer_set_default_flood_scope_ok",
+            description="Default flood scope writes retain MeshCore-local name/key state without altering native RPL or routing state.",
             direction="exchange",
             frame="command",
-            encoded=bytes.fromhex("3f"),
-            decoded={"command": "SET_DEFAULT_FLOOD_SCOPE"},
-            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+            encoded=bytes([0x3F]) + _meshcore_default_flood_payload(),
+            decoded={
+                "command": "SET_DEFAULT_FLOOD_SCOPE",
+                "name": "FieldScope",
+                "key": bytes(range(0xA0, 0xB0)).hex(),
+            },
+            expect={
+                "responses": ["00"],
+                "adapter_test": True,
+                "compat_store": "meshcore-local default flood scope name/key",
+            },
+        ),
+        _meshcore_vector(
+            name="newer_clear_default_flood_scope_ok",
+            description="An empty default flood scope write clears only the MeshCore-local default flood scope store.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes([0x3F]),
+            decoded={"command": "SET_DEFAULT_FLOOD_SCOPE", "clear": True},
+            expect={
+                "responses": ["00"],
+                "adapter_test": True,
+                "compat_store": "meshcore-local default flood scope clear",
+            },
         ),
         _meshcore_vector(
             name="newer_send_raw_packet_unsupported",

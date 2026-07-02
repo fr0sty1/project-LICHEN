@@ -26,9 +26,9 @@ or expose native LICHEN keys through MeshCore commands.
 | BLE security | Product smoke policy requires authenticated encrypted pairing/passkey before RX writes and TX notifications. ztest/native_sim builds may use test-only permissions. | `docs/meshcore-smoke-test.md` records pairing evidence requirements and the development passkey policy. | Real client pairing validation is blocked by `project-LICHEN-9c4y.20`. |
 | Identity and device info | `APP_START`/`SELF_INFO` and `DEVICE_INFO` return LICHEN-branded identity/status/config data. Without a published app identity, SELF_INFO is degraded but explicit; with app identity enabled, the public key is projected into SELF_INFO only. | `lichen/tests/meshcore_adapter` baseline and identity scenarios; production gateway self-identity publication from `project-LICHEN-9c4y.19`; `test/vectors/meshcore_app_compat.json`. | None for no-hardware MVP; physical app observation is covered by `project-LICHEN-9c4y.20`. |
 | Contacts | Compatibility contact list is empty and deterministic: contacts start count `0`, then end count `0`. Peer/contact projection is not part of the MVP support claim. | `test/vectors/meshcore_app_compat.json` and `lichen/tests/meshcore_adapter`. | None for MVP. A future peer/contact feature must first define a compatibility-local mapping Bead. |
-| Channels | Channel `0` is a synthetic public compatibility channel named `Public`; channel `n > 0` is not found. Secrets are absent or zero placeholders and never map to LICHEN OSCORE, link-layer, group, or routing state. | `test/vectors/meshcore_app_compat.json`; `lichen/tests/meshcore_adapter`. | `SET_CHANNEL` compatibility-local storage is tracked by `project-LICHEN-9c4y.21`. |
-| Config reads | Read-only placeholders exist for battery/storage, device time, custom vars, auto-add config, and default flood scope. Placeholder values must be explicit and must not imply MeshCore RF behavior. | `test/vectors/meshcore_app_compat.json`; `docs/meshcore-smoke-test.md` startup/read checklist. | HAL-backed native status improvements are outside the MeshCore MVP matrix and should be handled by normal HAL/provider Beads before changing these placeholders. |
-| Config writes/admin | Unsupported writes return `RESP_ERR + ERR_UNSUPPORTED_CMD` unless a feature has an implemented compatibility-local store. This includes advert name, channel, auto-add, default flood scope, device PIN, raw/radio/path operations, remote admin, factory reset, reboot, private-key, and signing flows. | `lichen/tests/meshcore_adapter` unsupported command coverage; `test/vectors/meshcore_app_compat.json`. | Compatibility-local stores are tracked by `project-LICHEN-9c4y.21`. |
+| Channels | Channel `0` defaults to a synthetic public compatibility channel named `Public`; channel `n > 0` is not found. `SET_CHANNEL(0)` can replace the MeshCore-local channel record, but stored channel bytes never map to LICHEN OSCORE, link-layer, group, or routing state. | `test/vectors/meshcore_app_compat.json`; `lichen/tests/meshcore_adapter`. | Flash-backed reload/corruption validation is separate follow-up work. |
+| Config reads | Read-only placeholders exist for battery/storage, device time, and custom vars. Auto-add config and default flood scope default to explicit placeholders and then reflect MeshCore-local writes. Placeholder values must not imply MeshCore RF behavior. | `test/vectors/meshcore_app_compat.json`; `docs/meshcore-smoke-test.md` startup/read checklist. | HAL-backed native status improvements are outside the MeshCore MVP matrix and should be handled by normal HAL/provider Beads before changing these placeholders. |
+| Config writes/admin | Compatibility-local stores exist for advert name, channel 0, auto-add config, default flood scope name/key, and device PIN. Other writes still return `RESP_ERR + ERR_UNSUPPORTED_CMD`, including raw/radio/path operations, remote admin, factory reset, reboot, private-key, signing flows, and secret-bearing channel imports. | `lichen/tests/meshcore_adapter` unsupported command coverage; `test/vectors/meshcore_app_compat.json`. | Flash-backed settings persistence is separate follow-up work; current no-hardware implementation retains values across adapter/session reset in RAM only. |
 | Message ingress | `SEND_CHANNEL_TXT_MSG` for channel `0`, plain text, and valid UTF-8 maps to the shared app-interface text submit boundary. It returns success only after the submit provider succeeds; without a provider it returns `ERR_UNSUPPORTED_CMD`. Direct peer text validates the 6-byte MeshCore peer prefix and UTF-8, then returns `ERR_NOT_FOUND` because no peer-prefix mapping exists. | `lichen/tests/meshcore_adapter`, `lichen/tests/meshcore_gateway_adapter`, `test/vectors/meshcore_app_compat.json`. | Gateway message-contract coverage is tracked by `project-LICHEN-t2hn.7.2.2`; direct peer mapping is tracked by `project-LICHEN-9c4y.22`. |
 | Incoming events | Connected clients receive queued LICHEN app-interface text/status events via `MSG_WAITING` and `SYNC_NEXT_MESSAGE`. Events are scoped to the active BLE session epoch; reconnects do not inherit stale queued frames. | `lichen/tests/meshcore_adapter`, `lichen/tests/meshcore_gateway_adapter`, and `docs/meshcore-smoke-test.md`. | Physical client validation is blocked by `project-LICHEN-9c4y.8.2` and `project-LICHEN-9c4y.20`. |
 | Raw-frame limits | BLE accepts raw MeshCore inner frames only. Serial/TCP length-prefixed `0x3c`/`0x3e` frames are rejected on BLE, oversized frames are rejected before adapter dispatch, and queue backpressure is deterministic. | `lichen/tests/meshcore_ble`; smoke-test raw-frame checklist. | None for no-hardware MVP; physical MTU/client behavior is part of `project-LICHEN-9c4y.20`. |
@@ -50,14 +50,14 @@ The MVP exposes one synthetic channel slot:
 |---------|--------|
 | `GET_CHANNEL(0)` | Return a public compatibility channel named `Public`. Secret fields are zero/absent placeholders and MUST NOT contain native LICHEN secrets. |
 | `GET_CHANNEL(n>0)` | Return `ERR_NOT_FOUND`. |
-| `SET_CHANNEL` | Return `ERR_UNSUPPORTED_CMD` until a settings-backed compatibility-only channel store exists. MeshCore channel secrets MUST NOT be imported as native LICHEN security material. |
+| `SET_CHANNEL` | Store a channel-0 compatibility record only. MeshCore channel secrets MUST NOT be imported as native LICHEN security material. |
 | `SEND_CHANNEL_TXT_MSG` | Validate channel `0`, plain text type, and UTF-8, then submit to the shared app-interface text ingress provider. Return `ERR_UNSUPPORTED_CMD` when no production submit provider is registered. |
 | Incoming channel text | Use compatibility channel index `0` and no MeshCore path when surfacing queued LICHEN events to clients. |
 
-Future support for `SET_CHANNEL` may persist a MeshCore-only display/channel
-record for client UX. That store must be clearly labeled compatibility-local,
-must be eraseable without affecting LICHEN membership or keys, and must never
-derive or reveal OSCORE/link-layer material.
+`SET_CHANNEL` retains a MeshCore-only display/channel record for client UX in
+the compatibility store. That store is clearly compatibility-local, is eraseable
+without affecting LICHEN membership or keys, and never derives or reveals
+OSCORE/link-layer material.
 
 ## Config Write Policy
 
@@ -67,16 +67,16 @@ Specific MVP write behavior:
 
 | Command | Policy |
 |---------|--------|
-| `SET_ADVERT_NAME` | Unsupported until a compatibility-local display-name store exists. |
-| `SET_AUTOADD_CONFIG` | Unsupported until a compatibility-local store exists; `GET_AUTOADD_CONFIG` returns disabled. |
-| `SET_DEFAULT_FLOOD_SCOPE` | Unsupported; `GET_DEFAULT_FLOOD_SCOPE` returns a null/default placeholder. |
-| `SET_DEVICE_PIN` | Unsupported until a settings-backed MeshCore PIN store exists. |
+| `SET_ADVERT_NAME` | Store a non-empty UTF-8 MeshCore-local display name, max 31 bytes, with no embedded NUL. |
+| `SET_AUTOADD_CONFIG` | Store the two-byte MeshCore-local auto-add value; `GET_AUTOADD_CONFIG` returns the stored bytes or disabled default. |
+| `SET_DEFAULT_FLOOD_SCOPE` | Empty payload clears the MeshCore-local default. A 47-byte payload stores a 31-byte name field plus 16-byte key; the name field must contain a NUL-terminated UTF-8 name of 1..30 bytes. `GET_DEFAULT_FLOOD_SCOPE` returns the stored name/key or a null/default placeholder. |
+| `SET_DEVICE_PIN` | Apply and store a MeshCore-local uint32 BLE PIN value. `0` disables the fixed passkey; otherwise the value must be `100000..999999`. `DEVICE_INFO` reports only the PIN that the BLE passkey hook accepted. |
 | Radio/path/raw packet writes | Unsupported; they would imply MeshCore RF interoperability or mutate LICHEN radio policy outside the native control path. |
 
 Read-only placeholders are allowed only when they avoid implying MeshCore RF
-interoperability. Writes may become `OK` only after the corresponding
-compatibility-local store exists and has native_sim tests for persistence,
-validation, and failure behavior.
+interoperability. The implemented compatibility-local writes return `OK` only
+after validating the payload and updating the local store. Invalid writes return
+`ERR_ILLEGAL_ARG` or `ERR_NOT_FOUND` without changing the previous stored value.
 
 ## BLE PIN Policy
 
@@ -85,9 +85,11 @@ client compatibility. That passkey is a temporary product-mode compatibility
 setting, not a LICHEN trust secret. Production policy is:
 
 - Provision or generate a per-device MeshCore compatibility PIN.
-- Persist it in a settings-backed store separate from native LICHEN keys.
+- Retain it in a compatibility store separate from native LICHEN keys.
 - Reject invalid PIN writes with `ERR_ILLEGAL_ARG`.
-- Return `ERR_UNSUPPORTED_CMD` for `SET_DEVICE_PIN` until that store exists.
+- Reflect the MeshCore-local PIN only after the BLE passkey hook accepted it, so
+  `DEVICE_INFO` cannot report a different PIN than the compatibility pairing
+  path uses.
 - Never expose native provisioning secrets, OSCORE master secrets, link keys,
   or private keys through MeshCore `DEVICE_INFO`, channel records, or PIN flows.
 

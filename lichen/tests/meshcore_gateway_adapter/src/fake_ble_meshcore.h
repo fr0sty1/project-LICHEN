@@ -14,6 +14,7 @@ int fake_ble_meshcore_push_rx(const uint8_t *frame, size_t len,
 void fake_ble_meshcore_set_epoch(uint32_t session_epoch);
 void fake_ble_meshcore_set_connected(bool connected);
 void fake_ble_meshcore_disconnect_on_next_enqueue(void);
+uint32_t fake_ble_meshcore_passkey(void);
 size_t fake_ble_meshcore_tx_count(void);
 const uint8_t *fake_ble_meshcore_tx(size_t index, size_t *len);
 

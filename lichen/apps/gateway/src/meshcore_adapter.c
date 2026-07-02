@@ -29,6 +29,7 @@ LOG_MODULE_REGISTER(gateway_meshcore_adapter, LOG_LEVEL_INF);
 #define ADAPTER_IDLE_SLEEP K_MSEC(20)
 
 static struct lichen_meshcore_adapter s_adapter;
+static struct lichen_meshcore_compat_settings s_compat_settings;
 static uint8_t s_rx_frame[LICHEN_MESHCORE_FRAME_MAX];
 static struct k_thread s_thread;
 static K_THREAD_STACK_DEFINE(s_stack, ADAPTER_STACK_SIZE);
@@ -86,12 +87,21 @@ static int submit_text(uint8_t channel, uint8_t text_type,
 	return lichen_app_interface_submit_text(&event);
 }
 
+static int apply_pin(uint32_t pin, void *user_data)
+{
+	ARG_UNUSED(user_data);
+
+	return ble_meshcore_set_passkey(pin);
+}
+
 static struct lichen_meshcore_adapter_ops adapter_ops(void)
 {
 	return (struct lichen_meshcore_adapter_ops){
 		.enqueue_tx = enqueue_tx,
 		.tx_free = tx_free,
 		.submit_text = submit_text,
+		.apply_pin = apply_pin,
+		.compat_settings = &s_compat_settings,
 	};
 }
 
@@ -205,6 +215,22 @@ static void try_publish_self_identity(void)
 	}
 }
 
+static void seed_default_compat_pin(void)
+{
+#if defined(CONFIG_LORA_LICHEN_MESHCORE_BLE_PASSKEY)
+	uint32_t pin = CONFIG_LORA_LICHEN_MESHCORE_BLE_PASSKEY;
+#elif defined(CONFIG_ZTEST)
+	uint32_t pin = 123456U;
+#else
+	uint32_t pin = 0U;
+#endif
+
+	if (pin == 0U || (pin >= 100000U && pin <= 999999U)) {
+		s_compat_settings.device_pin = pin;
+		s_compat_settings.device_pin_valid = true;
+	}
+}
+
 #ifdef CONFIG_ZTEST
 void gateway_meshcore_adapter_test_reset(void)
 {
@@ -219,6 +245,8 @@ void gateway_meshcore_adapter_test_reset(void)
 	s_adapter_epoch = ble_meshcore_session_epoch();
 	s_command_dispatching = false;
 	s_command_dispatch_thread = NULL;
+	lichen_meshcore_compat_settings_reset(&s_compat_settings);
+	seed_default_compat_pin();
 	lichen_meshcore_adapter_init(&s_adapter, &ops);
 	k_mutex_unlock(&s_adapter_mutex);
 	(void)ensure_app_sink();
@@ -314,6 +342,7 @@ int gateway_meshcore_adapter_init(void)
 
 	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
 	s_adapter_epoch = ble_meshcore_session_epoch();
+	seed_default_compat_pin();
 	lichen_meshcore_adapter_init(&s_adapter, &ops);
 	k_mutex_unlock(&s_adapter_mutex);
 	try_publish_self_identity();

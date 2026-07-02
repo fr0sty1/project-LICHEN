@@ -11,6 +11,7 @@
 
 #include <lichen/app_identity/app_identity.h>
 #include <lichen/app_interface/app_interface.h>
+#include <lichen/meshcore/adapter.h>
 #include <lichen/meshcore/codec.h>
 
 #include "ble_meshcore.h"
@@ -206,6 +207,128 @@ ZTEST(meshcore_gateway_adapter, test_process_once_rejects_stale_session)
 	fake_ble_meshcore_set_epoch(2U);
 
 	zassert_equal(gateway_meshcore_adapter_test_process_once(), -ESTALE);
+	zassert_equal(fake_ble_meshcore_tx_count(), 0U);
+}
+
+ZTEST(meshcore_gateway_adapter,
+      test_compat_settings_survive_ble_session_reset)
+{
+	uint8_t channel_set[1U + LICHEN_MESHCORE_CHANNEL_BODY_LEN] = {
+		LICHEN_MESHCORE_CMD_SET_CHANNEL,
+	};
+	uint8_t flood_set[1U + LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN +
+			  LICHEN_MESHCORE_DEFAULT_FLOOD_KEY_LEN] = {
+		LICHEN_MESHCORE_CMD_SET_DEFAULT_FLOOD_SCOPE,
+	};
+	const uint8_t set_name[] = {
+		LICHEN_MESHCORE_CMD_SET_ADVERT_NAME, 'F', 'i', 'e', 'l', 'd',
+	};
+	const uint8_t set_autoadd[] = {
+		LICHEN_MESHCORE_CMD_SET_AUTOADD_CONFIG, 0x01, 0x02,
+	};
+	const uint8_t set_pin[] = {
+		LICHEN_MESHCORE_CMD_SET_DEVICE_PIN, 0x40, 0xe2, 0x01, 0x00,
+	};
+	const uint8_t app_start[] = { LICHEN_MESHCORE_CMD_APP_START,
+				      0, 0, 0, 0, 0, 0, 0, 't' };
+	const uint8_t get_channel[] = { LICHEN_MESHCORE_CMD_GET_CHANNEL, 0x00 };
+	const uint8_t get_autoadd[] = { LICHEN_MESHCORE_CMD_GET_AUTOADD_CONFIG };
+	const uint8_t get_flood[] = {
+		LICHEN_MESHCORE_CMD_GET_DEFAULT_FLOOD_SCOPE,
+	};
+	const uint8_t device_query[] = { LICHEN_MESHCORE_CMD_DEVICE_QUERY, 0x03 };
+	const uint8_t *frame;
+	size_t len;
+
+	memcpy(&channel_set[2], "Field", 5U);
+	memcpy(&flood_set[1], "FieldScope", 10U);
+	for (uint8_t i = 0U; i < LICHEN_MESHCORE_DEFAULT_FLOOD_KEY_LEN; i++) {
+		flood_set[1U + LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN + i] =
+			(uint8_t)(0xa0U + i);
+	}
+
+	reset_gateway(16U);
+	zassert_ok(fake_ble_meshcore_push_rx(set_name, sizeof(set_name),
+					     ble_meshcore_session_epoch()));
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	expect_tx(0U, LICHEN_MESHCORE_RESP_OK, 1U);
+	zassert_ok(fake_ble_meshcore_push_rx(channel_set, sizeof(channel_set),
+					     ble_meshcore_session_epoch()));
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	expect_tx(1U, LICHEN_MESHCORE_RESP_OK, 1U);
+	zassert_ok(fake_ble_meshcore_push_rx(set_autoadd, sizeof(set_autoadd),
+					     ble_meshcore_session_epoch()));
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	expect_tx(2U, LICHEN_MESHCORE_RESP_OK, 1U);
+	zassert_ok(fake_ble_meshcore_push_rx(flood_set, sizeof(flood_set),
+					     ble_meshcore_session_epoch()));
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	expect_tx(3U, LICHEN_MESHCORE_RESP_OK, 1U);
+	fake_ble_meshcore_set_connected(false);
+	fake_ble_meshcore_set_connected(true);
+	zassert_ok(fake_ble_meshcore_push_rx(set_pin, sizeof(set_pin),
+					     ble_meshcore_session_epoch()));
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	expect_tx(0U, LICHEN_MESHCORE_RESP_OK, 1U);
+	zassert_equal(fake_ble_meshcore_passkey(), 123456U);
+
+	fake_ble_meshcore_set_connected(false);
+	fake_ble_meshcore_set_connected(true);
+	zassert_ok(fake_ble_meshcore_push_rx(app_start, sizeof(app_start),
+					     ble_meshcore_session_epoch()));
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	frame = fake_ble_meshcore_tx(0U, &len);
+	zassert_not_null(frame);
+	zassert_mem_equal(&frame[58], "Field", 5U);
+	zassert_ok(fake_ble_meshcore_push_rx(get_channel, sizeof(get_channel),
+					     ble_meshcore_session_epoch()));
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	frame = fake_ble_meshcore_tx(1U, &len);
+	zassert_not_null(frame);
+	zassert_equal(len, 1U + LICHEN_MESHCORE_CHANNEL_BODY_LEN);
+	zassert_mem_equal(&frame[2], "Field", 5U);
+	zassert_ok(fake_ble_meshcore_push_rx(get_autoadd, sizeof(get_autoadd),
+					     ble_meshcore_session_epoch()));
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	frame = fake_ble_meshcore_tx(2U, &len);
+	zassert_not_null(frame);
+	zassert_equal(len, 3U);
+	zassert_mem_equal(frame,
+			  ((const uint8_t[]){ LICHEN_MESHCORE_RESP_AUTOADD_CONFIG,
+					      0x01, 0x02 }),
+			  3U);
+	zassert_ok(fake_ble_meshcore_push_rx(get_flood, sizeof(get_flood),
+					     ble_meshcore_session_epoch()));
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	frame = fake_ble_meshcore_tx(3U, &len);
+	zassert_not_null(frame);
+	zassert_equal(len, 1U + LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN +
+			   LICHEN_MESHCORE_DEFAULT_FLOOD_KEY_LEN);
+	zassert_mem_equal(&frame[1], "FieldScope", 10U);
+	fake_ble_meshcore_set_connected(false);
+	fake_ble_meshcore_set_connected(true);
+	zassert_ok(fake_ble_meshcore_push_rx(device_query, sizeof(device_query),
+					     ble_meshcore_session_epoch()));
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
+	frame = fake_ble_meshcore_tx(0U, &len);
+	zassert_not_null(frame);
+	zassert_equal(sys_get_le32(&frame[4]), 123456U);
+}
+
+ZTEST(meshcore_gateway_adapter,
+      test_pin_set_enqueue_failure_restores_default_passkey)
+{
+	const uint8_t set_pin[] = {
+		LICHEN_MESHCORE_CMD_SET_DEVICE_PIN, 0x40, 0xe2, 0x01, 0x00,
+	};
+
+	reset_gateway(4U);
+	zassert_equal(fake_ble_meshcore_passkey(), 123456U);
+	zassert_ok(fake_ble_meshcore_push_rx(set_pin, sizeof(set_pin),
+					     ble_meshcore_session_epoch()));
+	fake_ble_meshcore_disconnect_on_next_enqueue();
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), -ENOTCONN);
+	zassert_equal(fake_ble_meshcore_passkey(), 123456U);
 	zassert_equal(fake_ble_meshcore_tx_count(), 0U);
 }
 

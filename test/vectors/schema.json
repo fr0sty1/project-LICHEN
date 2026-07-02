@@ -374,6 +374,7 @@
           "additionalProperties": true,
           "properties": {
             "adapter_test": {"type": "boolean"},
+            "compat_store": {"type": "string"},
             "drift_note": {"type": "string"},
             "emitted_by": {"type": "string"},
             "inner_frame": {"$ref": "#/definitions/hex"},

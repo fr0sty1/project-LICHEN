@@ -17,6 +17,28 @@ typedef uint32_t (*lichen_meshcore_adapter_tx_free_fn)(void *user_data);
 typedef int (*lichen_meshcore_adapter_submit_text_fn)(
 	uint8_t channel, uint8_t text_type, const uint8_t *payload,
 	size_t payload_len, void *user_data);
+typedef int (*lichen_meshcore_adapter_apply_pin_fn)(uint32_t pin,
+						    void *user_data);
+
+#define LICHEN_MESHCORE_ADVERT_NAME_MAX 32U
+#define LICHEN_MESHCORE_CHANNEL_BODY_LEN 49U
+#define LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN 31U
+#define LICHEN_MESHCORE_DEFAULT_FLOOD_KEY_LEN 16U
+
+struct lichen_meshcore_compat_settings {
+	bool advert_name_valid;
+	uint8_t advert_name_len;
+	char advert_name[LICHEN_MESHCORE_ADVERT_NAME_MAX];
+	bool channel0_valid;
+	uint8_t channel0_body[LICHEN_MESHCORE_CHANNEL_BODY_LEN];
+	bool autoadd_config_valid;
+	uint8_t autoadd_config[2];
+	bool default_flood_scope_valid;
+	uint8_t default_flood_name[LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN];
+	uint8_t default_flood_key[LICHEN_MESHCORE_DEFAULT_FLOOD_KEY_LEN];
+	bool device_pin_valid;
+	uint32_t device_pin;
+};
 
 struct lichen_meshcore_incoming_text {
 	uint32_t from;
@@ -42,6 +64,8 @@ struct lichen_meshcore_adapter_ops {
 	/* Required for handlers that emit multiple response frames atomically. */
 	lichen_meshcore_adapter_tx_free_fn tx_free;
 	lichen_meshcore_adapter_submit_text_fn submit_text;
+	lichen_meshcore_adapter_apply_pin_fn apply_pin;
+	struct lichen_meshcore_compat_settings *compat_settings;
 	void *user_data;
 };
 
@@ -113,5 +137,7 @@ int lichen_meshcore_adapter_emit_status(
 const struct lichen_meshcore_adapter_stats *
 lichen_meshcore_adapter_get_stats(
 	const struct lichen_meshcore_adapter *adapter);
+void lichen_meshcore_compat_settings_reset(
+	struct lichen_meshcore_compat_settings *settings);
 
 #endif /* LICHEN_MESHCORE_ADAPTER_H_ */
