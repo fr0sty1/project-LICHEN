@@ -6,6 +6,13 @@
 #include <zephyr/ztest.h>
 
 #include <zephyr/drivers/adc/adc_emul.h>
+#if DT_NODE_HAS_COMPAT(DT_ALIAS(pmic0), sbs_sbs_charger)
+#include <zephyr/drivers/charger.h>
+#endif
+#if DT_NODE_HAS_COMPAT(DT_ALIAS(battery0), sbs_sbs_gauge_new_api)
+#include <zephyr/drivers/emul.h>
+#include <zephyr/drivers/emul_fuel_gauge.h>
+#endif
 
 #include <lichen/hal.h>
 
@@ -88,6 +95,10 @@ ZTEST(hal, test_headless_status_apis_are_deterministic)
 		    IS_ENABLED(CONFIG_LICHEN_HAS_BATTERY)) {
 			continue;
 		}
+		if (unsupported_caps[i] == LICHEN_HAL_CAP_PMIC &&
+		    IS_ENABLED(CONFIG_LICHEN_HAS_PMIC)) {
+			continue;
+		}
 		zassert_equal(lichen_hal_capability_status(unsupported_caps[i]),
 			      -ENOTSUP,
 			      "capability %u should be unsupported",
@@ -111,7 +122,11 @@ ZTEST(hal, test_headless_status_apis_are_deterministic)
 	} else {
 		zassert_equal(lichen_hal_battery_status(), -ENOTSUP);
 	}
-	zassert_equal(lichen_hal_pmic_status(), -ENOTSUP);
+	if (IS_ENABLED(CONFIG_LICHEN_HAS_PMIC)) {
+		zassert_ok(lichen_hal_pmic_status());
+	} else {
+		zassert_equal(lichen_hal_pmic_status(), -ENOTSUP);
+	}
 	zassert_equal(lichen_hal_buttons_status(), -ENOTSUP);
 	zassert_equal(lichen_hal_leds_status(), -ENOTSUP);
 	zassert_equal(lichen_hal_display_status(), -ENOTSUP);
@@ -159,8 +174,13 @@ ZTEST(hal, test_absent_devices_return_unsupported)
 	}
 
 	dev = (const struct device *)0x1;
-	zassert_equal(lichen_hal_pmic_device_get(&dev), -ENOTSUP);
-	zassert_is_null(dev);
+	if (IS_ENABLED(CONFIG_LICHEN_HAS_PMIC)) {
+		zassert_ok(lichen_hal_pmic_device_get(&dev));
+		zassert_not_null(dev);
+	} else {
+		zassert_equal(lichen_hal_pmic_device_get(&dev), -ENOTSUP);
+		zassert_is_null(dev);
+	}
 
 	zassert_equal(lichen_hal_led_get(NULL), -EINVAL);
 	zassert_equal(lichen_hal_led_get(&gpio), -ENOTSUP);
@@ -206,23 +226,37 @@ ZTEST(hal, test_power_snapshot_absent_providers_is_explicitly_unknown)
 	} else {
 		zassert_false(snapshot.pmic_provider_available);
 	}
-	zassert_false(snapshot.battery_percent_valid);
-	zassert_equal(snapshot.battery_percent, 0U);
 	if (IS_ENABLED(CONFIG_LICHEN_HAS_BATTERY)) {
-		zassert_true(snapshot.battery_voltage_mv_valid);
+		if (DT_NODE_HAS_COMPAT(DT_ALIAS(battery0), sbs_sbs_gauge_new_api)) {
+			zassert_true(snapshot.battery_percent_valid);
+		} else {
+			zassert_false(snapshot.battery_percent_valid);
+			zassert_equal(snapshot.battery_percent, 0U);
+		}
+		zassert_false(snapshot.battery_voltage_mv_valid);
+		zassert_equal(snapshot.battery_voltage_mv, 0U);
 	} else {
+		zassert_false(snapshot.battery_percent_valid);
+		zassert_equal(snapshot.battery_percent, 0U);
 		zassert_false(snapshot.battery_voltage_mv_valid);
 		zassert_equal(snapshot.battery_voltage_mv, 0U);
 	}
-	zassert_false(snapshot.charging_valid);
-	zassert_false(snapshot.charging);
-	zassert_false(snapshot.external_power_valid);
-	zassert_false(snapshot.external_power);
+	if (IS_ENABLED(CONFIG_LICHEN_HAS_PMIC) &&
+	    DT_NODE_HAS_COMPAT(DT_ALIAS(pmic0), sbs_sbs_charger)) {
+		zassert_true(snapshot.charging_valid);
+		zassert_true(snapshot.external_power_valid);
+	} else {
+		zassert_false(snapshot.charging_valid);
+		zassert_false(snapshot.charging);
+		zassert_false(snapshot.external_power_valid);
+		zassert_false(snapshot.external_power);
+	}
 }
 
 ZTEST(hal, test_power_snapshot_reports_adc_backed_battery_voltage)
 {
-#if DT_NODE_HAS_STATUS(DT_ALIAS(battery0), okay) && \
+#if IS_ENABLED(CONFIG_ADC_EMUL) && \
+	DT_NODE_HAS_STATUS(DT_ALIAS(battery0), okay) && \
 	DT_NODE_HAS_STATUS(DT_NODELABEL(adc0), okay)
 	const struct device *adc = NULL;
 	const struct device *battery = NULL;
@@ -247,6 +281,90 @@ ZTEST(hal, test_power_snapshot_reports_adc_backed_battery_voltage)
 	zassert_within(snapshot.battery_voltage_mv, 4001U, 3U);
 	zassert_false(snapshot.battery_percent_valid);
 	zassert_false(snapshot.pmic_provider_available);
+#else
+	ztest_test_skip();
+#endif
+}
+
+ZTEST(hal, test_power_snapshot_reports_fuel_gauge_and_charger_values)
+{
+#if DT_NODE_HAS_COMPAT(DT_ALIAS(battery0), sbs_sbs_gauge_new_api) && \
+	DT_NODE_HAS_COMPAT(DT_ALIAS(pmic0), sbs_sbs_charger)
+	const struct emul *battery_emul = EMUL_DT_GET(DT_ALIAS(battery0));
+	const struct device *battery = NULL;
+	const struct device *pmic = NULL;
+	struct lichen_hal_power_snapshot snapshot;
+
+	if (!IS_ENABLED(CONFIG_LICHEN_HAS_BATTERY) ||
+	    !IS_ENABLED(CONFIG_LICHEN_HAS_PMIC)) {
+		ztest_test_skip();
+	}
+
+	zassert_ok(emul_fuel_gauge_set_battery_charging(
+		battery_emul, 4000000U, 250000U));
+
+	zassert_ok(lichen_hal_battery_device_get(&battery));
+	zassert_not_null(battery);
+	zassert_ok(lichen_hal_pmic_device_get(&pmic));
+	zassert_not_null(pmic);
+
+	zassert_ok(lichen_hal_power_snapshot_get(&snapshot));
+	zassert_true(snapshot.battery_provider_available);
+	zassert_true(snapshot.pmic_provider_available);
+	zassert_true(snapshot.battery_percent_valid);
+	zassert_equal(snapshot.battery_percent, 1U);
+	zassert_true(snapshot.battery_voltage_mv_valid);
+	zassert_equal(snapshot.battery_voltage_mv, 4000U);
+	zassert_true(snapshot.charging_valid);
+	zassert_false(snapshot.charging);
+	zassert_true(snapshot.external_power_valid);
+	zassert_false(snapshot.external_power);
+#else
+	ztest_test_skip();
+#endif
+}
+
+ZTEST(hal, test_power_snapshot_rejects_out_of_range_percent)
+{
+	zassert_true(lichen_hal_power_test_percent_valid(0U));
+	zassert_true(lichen_hal_power_test_percent_valid(100U));
+	zassert_false(lichen_hal_power_test_percent_valid(101U));
+	zassert_false(lichen_hal_power_test_percent_valid(UINT8_MAX));
+}
+
+ZTEST(hal, test_power_snapshot_maps_charger_states)
+{
+#if DT_NODE_HAS_COMPAT(DT_ALIAS(pmic0), sbs_sbs_charger)
+	zassert_false(lichen_hal_power_test_charger_status_known(
+		CHARGER_STATUS_UNKNOWN));
+	zassert_true(lichen_hal_power_test_charger_status_known(
+		CHARGER_STATUS_CHARGING));
+	zassert_true(lichen_hal_power_test_charger_status_known(
+		CHARGER_STATUS_DISCHARGING));
+	zassert_true(lichen_hal_power_test_charger_status_known(
+		CHARGER_STATUS_NOT_CHARGING));
+	zassert_true(lichen_hal_power_test_charger_status_known(
+		CHARGER_STATUS_FULL));
+	zassert_false(lichen_hal_power_test_charger_status_known(INT_MAX));
+	zassert_true(lichen_hal_power_test_charger_status_is_charging(
+		CHARGER_STATUS_CHARGING));
+	zassert_false(lichen_hal_power_test_charger_status_is_charging(
+		CHARGER_STATUS_DISCHARGING));
+	zassert_false(lichen_hal_power_test_charger_status_is_charging(INT_MAX));
+	zassert_true(lichen_hal_power_test_charger_online_known(
+		CHARGER_ONLINE_OFFLINE));
+	zassert_true(lichen_hal_power_test_charger_online_known(
+		CHARGER_ONLINE_FIXED));
+	zassert_true(lichen_hal_power_test_charger_online_known(
+		CHARGER_ONLINE_PROGRAMMABLE));
+	zassert_false(lichen_hal_power_test_charger_online_known(INT_MAX));
+	zassert_false(lichen_hal_power_test_charger_online_external_power(
+		CHARGER_ONLINE_OFFLINE));
+	zassert_true(lichen_hal_power_test_charger_online_external_power(
+		CHARGER_ONLINE_FIXED));
+	zassert_true(lichen_hal_power_test_charger_online_external_power(
+		CHARGER_ONLINE_PROGRAMMABLE));
+	zassert_false(lichen_hal_power_test_charger_online_external_power(INT_MAX));
 #else
 	ztest_test_skip();
 #endif

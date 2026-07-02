@@ -7,6 +7,12 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/sensor.h>
+#if IS_ENABLED(CONFIG_CHARGER)
+#include <zephyr/drivers/charger.h>
+#endif
+#if IS_ENABLED(CONFIG_FUEL_GAUGE)
+#include <zephyr/drivers/fuel_gauge.h>
+#endif
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
 
@@ -18,6 +24,40 @@
 	 LICHEN_HAL_CAP_BATTERY | LICHEN_HAL_CAP_PMIC | \
 	 LICHEN_HAL_CAP_BUTTONS | LICHEN_HAL_CAP_LEDS | \
 	 LICHEN_HAL_CAP_DISPLAY | LICHEN_HAL_CAP_EXTERNAL_FLASH)
+
+#define LICHEN_HAL_BATTERY_NODE DT_ALIAS(battery0)
+#define LICHEN_HAL_PMIC_NODE DT_ALIAS(pmic0)
+
+#define LICHEN_HAL_BATTERY_IS_VOLTAGE_DIVIDER \
+	DT_NODE_HAS_COMPAT(LICHEN_HAL_BATTERY_NODE, voltage_divider)
+#define LICHEN_HAL_BATTERY_IS_FUEL_GAUGE \
+	(DT_NODE_HAS_COMPAT(LICHEN_HAL_BATTERY_NODE, maxim_max17048) || \
+	 DT_NODE_HAS_COMPAT(LICHEN_HAL_BATTERY_NODE, sbs_sbs_gauge_new_api) || \
+	 DT_NODE_HAS_COMPAT(LICHEN_HAL_BATTERY_NODE, ti_bq27z746))
+#define LICHEN_HAL_BATTERY_DRIVER_ENABLED \
+	((DT_NODE_HAS_COMPAT(LICHEN_HAL_BATTERY_NODE, voltage_divider) && \
+	  IS_ENABLED(CONFIG_VOLTAGE_DIVIDER)) || \
+	 (DT_NODE_HAS_COMPAT(LICHEN_HAL_BATTERY_NODE, maxim_max17048) && \
+	  IS_ENABLED(CONFIG_MAX17048)) || \
+	 (DT_NODE_HAS_COMPAT(LICHEN_HAL_BATTERY_NODE, sbs_sbs_gauge_new_api) && \
+	  IS_ENABLED(CONFIG_SBS_GAUGE_NEW_API)) || \
+	 (DT_NODE_HAS_COMPAT(LICHEN_HAL_BATTERY_NODE, ti_bq27z746) && \
+	  IS_ENABLED(CONFIG_BQ27Z746)))
+#define LICHEN_HAL_PMIC_IS_CHARGER \
+	(DT_NODE_HAS_COMPAT(LICHEN_HAL_PMIC_NODE, sbs_sbs_charger) || \
+	 DT_NODE_HAS_COMPAT(LICHEN_HAL_PMIC_NODE, ti_bq24190) || \
+	 DT_NODE_HAS_COMPAT(LICHEN_HAL_PMIC_NODE, ti_bq25180) || \
+	 DT_NODE_HAS_COMPAT(LICHEN_HAL_PMIC_NODE, maxim_max20335_charger))
+#define LICHEN_HAL_PMIC_DRIVER_ENABLED \
+	((DT_NODE_HAS_COMPAT(LICHEN_HAL_PMIC_NODE, sbs_sbs_charger) && \
+	  IS_ENABLED(CONFIG_SBS_CHARGER)) || \
+	 (DT_NODE_HAS_COMPAT(LICHEN_HAL_PMIC_NODE, ti_bq24190) && \
+	  IS_ENABLED(CONFIG_CHARGER_BQ24190)) || \
+	 (DT_NODE_HAS_COMPAT(LICHEN_HAL_PMIC_NODE, ti_bq25180) && \
+	  IS_ENABLED(CONFIG_CHARGER_BQ25180)) || \
+	 (DT_NODE_HAS_COMPAT(LICHEN_HAL_PMIC_NODE, maxim_max20335_charger) && \
+	  IS_ENABLED(CONFIG_CHARGER_MAX20335)) || \
+	 !LICHEN_HAL_PMIC_IS_CHARGER)
 
 BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_LORA) ||
 	     (IS_ENABLED(CONFIG_LORA) &&
@@ -42,11 +82,30 @@ BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_BATTERY) ||
 	     DT_NODE_HAS_STATUS(DT_ALIAS(battery0), okay),
 	     "CONFIG_LICHEN_HAS_BATTERY requires an okay battery0 alias");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_BATTERY) ||
-	     DT_NODE_HAS_COMPAT(DT_ALIAS(battery0), voltage_divider),
-	     "CONFIG_LICHEN_HAS_BATTERY requires battery0 to be a voltage-divider sensor");
+	     (LICHEN_HAL_BATTERY_IS_VOLTAGE_DIVIDER ||
+	      LICHEN_HAL_BATTERY_IS_FUEL_GAUGE),
+	     "CONFIG_LICHEN_HAS_BATTERY requires battery0 to be voltage-divider or fuel-gauge");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_BATTERY) ||
+	     !LICHEN_HAL_BATTERY_IS_VOLTAGE_DIVIDER ||
+	     IS_ENABLED(CONFIG_SENSOR),
+	     "voltage-divider battery0 requires CONFIG_SENSOR");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_BATTERY) ||
+	     !LICHEN_HAL_BATTERY_IS_FUEL_GAUGE ||
+	     IS_ENABLED(CONFIG_FUEL_GAUGE),
+	     "fuel-gauge battery0 requires CONFIG_FUEL_GAUGE");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_BATTERY) ||
+	     LICHEN_HAL_BATTERY_DRIVER_ENABLED,
+	     "CONFIG_LICHEN_HAS_BATTERY requires the concrete battery0 driver");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_PMIC) ||
 	     DT_NODE_HAS_STATUS(DT_ALIAS(pmic0), okay),
 	     "CONFIG_LICHEN_HAS_PMIC requires an okay pmic0 alias");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_PMIC) ||
+	     !LICHEN_HAL_PMIC_IS_CHARGER ||
+	     IS_ENABLED(CONFIG_CHARGER),
+	     "charger pmic0 requires CONFIG_CHARGER");
+BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_PMIC) ||
+	     LICHEN_HAL_PMIC_DRIVER_ENABLED,
+	     "CONFIG_LICHEN_HAS_PMIC requires the concrete pmic0 driver");
 BUILD_ASSERT(!IS_ENABLED(CONFIG_LICHEN_HAS_EXTERNAL_FLASH) ||
 	     DT_NODE_HAS_STATUS(DT_ALIAS(external_flash0), okay),
 	     "CONFIG_LICHEN_HAS_EXTERNAL_FLASH requires an okay external-flash0 alias");
@@ -533,6 +592,163 @@ int lichen_hal_ble_local_status(void)
 	return 0;
 }
 
+static void read_voltage_divider_battery(const struct device *dev,
+					 struct lichen_hal_power_snapshot *snapshot)
+{
+#if IS_ENABLED(CONFIG_SENSOR)
+	struct sensor_value voltage;
+	int32_t voltage_mv;
+	int ret;
+
+	ret = sensor_sample_fetch_chan(dev, SENSOR_CHAN_VOLTAGE);
+	if (ret == 0) {
+		ret = sensor_channel_get(dev, SENSOR_CHAN_VOLTAGE, &voltage);
+	}
+	if (ret == 0 && voltage.val1 >= 0 && voltage.val2 >= 0) {
+		voltage_mv = voltage.val1 * 1000 + voltage.val2 / 1000;
+		if (voltage_mv > 0 && voltage_mv <= UINT16_MAX) {
+			snapshot->battery_voltage_mv_valid = true;
+			snapshot->battery_voltage_mv = (uint16_t)voltage_mv;
+		}
+	}
+#else
+	ARG_UNUSED(dev);
+	ARG_UNUSED(snapshot);
+#endif
+}
+
+static bool power_percent_valid(uint8_t percent)
+{
+	return percent <= 100U;
+}
+
+static bool charger_status_known(int status)
+{
+#if IS_ENABLED(CONFIG_CHARGER)
+	return status == CHARGER_STATUS_CHARGING ||
+	       status == CHARGER_STATUS_DISCHARGING ||
+	       status == CHARGER_STATUS_NOT_CHARGING ||
+	       status == CHARGER_STATUS_FULL;
+#else
+	ARG_UNUSED(status);
+	return false;
+#endif
+}
+
+static bool charger_status_is_charging(int status)
+{
+#if IS_ENABLED(CONFIG_CHARGER)
+	return charger_status_known(status) && status == CHARGER_STATUS_CHARGING;
+#else
+	ARG_UNUSED(status);
+	return false;
+#endif
+}
+
+static bool charger_online_is_external_power(int online)
+{
+#if IS_ENABLED(CONFIG_CHARGER)
+	return online == CHARGER_ONLINE_FIXED ||
+	       online == CHARGER_ONLINE_PROGRAMMABLE;
+#else
+	ARG_UNUSED(online);
+	return false;
+#endif
+}
+
+static bool charger_online_known(int online)
+{
+#if IS_ENABLED(CONFIG_CHARGER)
+	return online == CHARGER_ONLINE_OFFLINE ||
+	       online == CHARGER_ONLINE_FIXED ||
+	       online == CHARGER_ONLINE_PROGRAMMABLE;
+#else
+	ARG_UNUSED(online);
+	return false;
+#endif
+}
+
+#ifdef CONFIG_ZTEST
+bool lichen_hal_power_test_percent_valid(uint8_t percent)
+{
+	return power_percent_valid(percent);
+}
+
+bool lichen_hal_power_test_charger_status_known(int status)
+{
+	return charger_status_known(status);
+}
+
+bool lichen_hal_power_test_charger_status_is_charging(int status)
+{
+	return charger_status_is_charging(status);
+}
+
+bool lichen_hal_power_test_charger_online_external_power(int online)
+{
+	return charger_online_is_external_power(online);
+}
+
+bool lichen_hal_power_test_charger_online_known(int online)
+{
+	return charger_online_known(online);
+}
+#endif
+
+static void read_fuel_gauge_battery(const struct device *dev,
+				    struct lichen_hal_power_snapshot *snapshot)
+{
+#if IS_ENABLED(CONFIG_FUEL_GAUGE)
+	union fuel_gauge_prop_val value;
+	int ret;
+
+	ret = fuel_gauge_get_prop(dev, FUEL_GAUGE_RELATIVE_STATE_OF_CHARGE,
+				  &value);
+	if (ret == 0 && power_percent_valid(value.relative_state_of_charge)) {
+		snapshot->battery_percent_valid = true;
+		snapshot->battery_percent = value.relative_state_of_charge;
+	}
+
+	ret = fuel_gauge_get_prop(dev, FUEL_GAUGE_VOLTAGE, &value);
+	if (ret == 0 && value.voltage > 0) {
+		int32_t voltage_mv = value.voltage / 1000;
+
+		if (voltage_mv > 0 && voltage_mv <= UINT16_MAX) {
+			snapshot->battery_voltage_mv_valid = true;
+			snapshot->battery_voltage_mv = (uint16_t)voltage_mv;
+		}
+	}
+#else
+	ARG_UNUSED(dev);
+	ARG_UNUSED(snapshot);
+#endif
+}
+
+static void read_charger_pmic(const struct device *dev,
+			      struct lichen_hal_power_snapshot *snapshot)
+{
+#if IS_ENABLED(CONFIG_CHARGER)
+	union charger_propval value;
+	int ret;
+
+	ret = charger_get_prop(dev, CHARGER_PROP_STATUS, &value);
+	if (ret == 0 && charger_status_known(value.status)) {
+		snapshot->charging_valid = true;
+		snapshot->charging = charger_status_is_charging(value.status);
+	}
+
+	ret = charger_get_prop(dev, CHARGER_PROP_ONLINE, &value);
+	if (ret == 0 && charger_online_known(value.online)) {
+		snapshot->external_power_valid = true;
+		snapshot->external_power =
+			charger_online_is_external_power(value.online);
+	}
+#else
+	ARG_UNUSED(dev);
+	ARG_UNUSED(snapshot);
+#endif
+}
+
 int lichen_hal_power_snapshot_get(struct lichen_hal_power_snapshot *snapshot)
 {
 	const struct device *dev;
@@ -547,27 +763,19 @@ int lichen_hal_power_snapshot_get(struct lichen_hal_power_snapshot *snapshot)
 	ret = lichen_hal_battery_device_get(&dev);
 	if (ret == 0) {
 		snapshot->battery_provider_available = true;
-#if IS_ENABLED(CONFIG_SENSOR)
-		struct sensor_value voltage;
-		int32_t voltage_mv;
-
-		ret = sensor_sample_fetch_chan(dev, SENSOR_CHAN_VOLTAGE);
-		if (ret == 0) {
-			ret = sensor_channel_get(dev, SENSOR_CHAN_VOLTAGE, &voltage);
+		if (LICHEN_HAL_BATTERY_IS_FUEL_GAUGE) {
+			read_fuel_gauge_battery(dev, snapshot);
+		} else if (LICHEN_HAL_BATTERY_IS_VOLTAGE_DIVIDER) {
+			read_voltage_divider_battery(dev, snapshot);
 		}
-		if (ret == 0 && voltage.val1 >= 0 && voltage.val2 >= 0) {
-			voltage_mv = voltage.val1 * 1000 + voltage.val2 / 1000;
-			if (voltage_mv >= 0 && voltage_mv <= UINT16_MAX) {
-				snapshot->battery_voltage_mv_valid = true;
-				snapshot->battery_voltage_mv = (uint16_t)voltage_mv;
-			}
-		}
-#endif
 	}
 
 	ret = lichen_hal_pmic_device_get(&dev);
 	if (ret == 0) {
 		snapshot->pmic_provider_available = true;
+		if (LICHEN_HAL_PMIC_IS_CHARGER) {
+			read_charger_pmic(dev, snapshot);
+		}
 	}
 
 	return 0;

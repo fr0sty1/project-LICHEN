@@ -282,6 +282,11 @@ void lichen_hal_location_test_use_real_uptime(void);
 int64_t lichen_hal_location_test_now_ms(void);
 void lichen_hal_location_time_test_set_snapshot(
 	const struct lichen_hal_location_time_snapshot *snapshot);
+bool lichen_hal_power_test_percent_valid(uint8_t percent);
+bool lichen_hal_power_test_charger_status_known(int status);
+bool lichen_hal_power_test_charger_status_is_charging(int status);
+bool lichen_hal_power_test_charger_online_external_power(int online);
+bool lichen_hal_power_test_charger_online_known(int online);
 #endif
 
 #ifdef __cplusplus
