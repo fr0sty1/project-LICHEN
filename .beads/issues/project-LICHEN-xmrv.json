@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-xmrv",
+  "title": "Implement native TUI connection picker flow",
+  "description": "The py4c.1.10 snapshot Bead can cover disconnected/transport state, but the native TUI does not yet have a real connection picker screen for selecting Demo, BLE, or IP/CoAP endpoints. Add a no-hardware connection picker flow backed by fakes, then add terminal snapshot coverage for it.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T05:37:43.893466Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T05:37:43.894126Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-xmrv",
+      "depends_on_id": "project-LICHEN-py4c.1.10",
+      "type": "blocks",
+      "created_at": "2026-07-02T05:37:43.894126Z"
+    }
+  ]
+}

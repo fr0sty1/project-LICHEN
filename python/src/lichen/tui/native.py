@@ -1294,13 +1294,17 @@ class NativeClientApp(App[None]):
         self._set_mode(index)
 
     def _set_mode(self, index: int) -> None:
+        previous_mode = self.status.context
+        next_mode = ModeNav.MODES[index]
         if self.prompt_mode == "ConfigEdit":
+            self._restore_message_inputs(disabled=True)
+        elif previous_mode == "Chats" and next_mode != "Chats":
+            self._sync_compose_from_inputs_if_available()
             self._restore_message_inputs(disabled=True)
         self.prompt_mode = None
         self.mode_index = index
-        mode = ModeNav.MODES[index]
         self.status = ShellStatus(
-            context=mode,
+            context=next_mode,
             mode=self.status.mode,
             state=self.status.state,
             device=self.status.device,
@@ -1310,8 +1314,8 @@ class NativeClientApp(App[None]):
             target=self.status.target,
         )
         self.query_one("#native-status", NativeStatusBar).set_status(self.status)
-        self.query_one("#mode-nav", ModeNav).set_active(mode)
-        self.query_one("#active-pane", ActivePane).set_mode(mode)
+        self.query_one("#mode-nav", ModeNav).set_active(next_mode)
+        self.query_one("#active-pane", ActivePane).set_mode(next_mode)
 
     async def refresh_dashboard(self) -> None:
         """Refresh status, config, identity, and capability summary."""

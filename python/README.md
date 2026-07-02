@@ -80,6 +80,28 @@ pytest -v
 pytest tests/sim/test_announce.py tests/sim/test_topology_scenarios.py -v
 ```
 
+### Native TUI and Client Tests Without Hardware
+
+The native client tests are designed to run on developer macOS and Linux CI
+without BLE adapters, radios, or firmware. Use deterministic fakes for BLE,
+IP/CoAP, Observe subscriptions, and TUI client state:
+
+```bash
+cd python
+uv run pytest tests/tui tests/client -q
+```
+
+The BLE tests under `tests/client/test_ble.py` use fake scanners and fake BLE
+clients. They must not require BlueZ adapter access or macOS CoreBluetooth
+hardware. Any future test that needs a real phone, adapter, board, or radio
+must be separated from this default suite behind an explicit hardware marker or
+environment gate, and the software fake path must remain the default CI path.
+
+Native TUI snapshot coverage is assertion-based rather than committed generated
+SVG files: tests export terminal screenshots and assert stable text for the
+connection state, inbox, compose, status, mesh, config, logs, and diagnostics
+screens.
+
 Check open issues:
 ```bash
 bd ready        # See available work

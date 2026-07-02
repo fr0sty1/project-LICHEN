@@ -1129,3 +1129,68 @@ async def test_native_client_app_renders_at_common_size() -> None:
     assert "[read-only]" in config_svg
     assert "Tab" in help_svg
     assert "tabs" in help_svg
+
+
+async def test_native_client_terminal_snapshots_cover_core_screens() -> None:
+    client = FakeMessagingClient(inbox=[message_record("snapshot inbox")])
+    app = NativeClientApp(
+        ShellStatus(context="Dashboard", mode=LinkMode.IP, state=UiState.SYNCED),
+        client=client,
+    )
+    snapshots: dict[str, str] = {}
+
+    async with app.run_test(size=(100, 30)) as pilot:
+        await pilot.pause()
+        snapshots["connection"] = app.export_screenshot()
+
+        await pilot.press("r")
+        await pilot.pause()
+        snapshots["status"] = app.export_screenshot()
+
+        await pilot.press("2")
+        await pilot.press("r")
+        await pilot.pause()
+        snapshots["inbox"] = app.export_screenshot()
+
+        await pilot.press("c")
+        app.query_one("#message-target", Input).value = "fd00::2"
+        app.query_one("#message-body", Input).value = "snapshot compose"
+        snapshots["compose"] = app.export_screenshot()
+
+        await pilot.press("tab")
+        await pilot.press("r")
+        await pilot.pause()
+        snapshots["nodes"] = app.export_screenshot()
+
+        await pilot.press("4")
+        await pilot.pause()
+        snapshots["mesh"] = app.export_screenshot()
+
+        await pilot.press("5")
+        await pilot.press("r")
+        await pilot.pause()
+        snapshots["config"] = app.export_screenshot()
+
+        await pilot.press("6")
+        await pilot.press("o")
+        await pilot.pause()
+        snapshots["logs"] = app.export_screenshot()
+
+        await pilot.press("7")
+        await pilot.press("r")
+        await pilot.pause()
+        snapshots["diagnostics"] = app.export_screenshot()
+
+    assert "IP" in snapshots["connection"]
+    assert "SYNCED" in snapshots["connection"]
+    assert "node-a" in snapshots["status"]
+    assert "snapshot" in snapshots["inbox"]
+    assert "inbox" in snapshots["inbox"]
+    assert "snapshot" in snapshots["compose"]
+    assert "compose" in snapshots["compose"]
+    assert "fe80::2" in snapshots["nodes"]
+    assert "fd00::/64" in snapshots["mesh"]
+    assert "sync_word" in snapshots["config"]
+    assert "timeout" in snapshots["logs"]
+    assert "nested.queue" in snapshots["diagnostics"]
+    assert "DO_NOT_PRINT" not in "".join(snapshots.values())
