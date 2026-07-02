@@ -4,6 +4,19 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+
+import pytest
+from textual.widgets import Input
+
+from lichen.client import (
+    CoapResult,
+    DeliveryState,
+    LciClient,
+    MessageDraft,
+    MessageRecord,
+    SendResult,
+)
 from lichen.tui.native import (
     ActivePane,
     CommandBar,
@@ -16,16 +29,153 @@ from lichen.tui.native import (
     LogRow,
     MessageList,
     MessagePreview,
+    MessagingPanel,
+    MessagingState,
     ModeNav,
     NativeClientApp,
     NativeStatusBar,
     ShellStatus,
     UiState,
+    build_messaging_client,
     clip,
     field_line,
+    main,
     message_line,
     status_line,
 )
+
+
+class FakeMessageSubscription:
+    def __init__(self, snapshots: list[list[MessageRecord]]) -> None:
+        self.snapshots = snapshots
+        self.closed = False
+
+    def messages(self) -> AsyncIterator[list[MessageRecord]]:
+        return self._messages()
+
+    async def close(self) -> None:
+        self.closed = True
+
+    async def _messages(self) -> AsyncIterator[list[MessageRecord]]:
+        for snapshot in self.snapshots:
+            yield snapshot
+
+
+class FakeMessagingClient:
+    def __init__(
+        self,
+        *,
+        inbox: list[MessageRecord] | None = None,
+        observe: list[list[MessageRecord]] | None = None,
+        result: SendResult | None = None,
+        inbox_error: Exception | None = None,
+        observe_error: Exception | None = None,
+        send_error: Exception | None = None,
+    ) -> None:
+        self.inbox_rows = inbox or []
+        self.observe_rows = observe or []
+        self.result = result or SendResult(state=DeliveryState.ACCEPTED, coap_code="2.04")
+        self.inbox_error = inbox_error
+        self.observe_error = observe_error
+        self.send_error = send_error
+        self.inbox_calls: list[str] = []
+        self.observe_calls: list[str] = []
+        self.send_calls: list[tuple[MessageDraft, str]] = []
+        self.subscription: FakeMessageSubscription | None = None
+
+    async def inbox(self, path: str = "/msg/inbox") -> list[MessageRecord]:
+        self.inbox_calls.append(path)
+        if self.inbox_error is not None:
+            raise self.inbox_error
+        return self.inbox_rows
+
+    async def observe_inbox(self, path: str = "/msg/inbox") -> FakeMessageSubscription:
+        self.observe_calls.append(path)
+        if self.observe_error is not None:
+            raise self.observe_error
+        self.subscription = FakeMessageSubscription(self.observe_rows)
+        return self.subscription
+
+    async def send_message(self, draft: MessageDraft, path: str = "/msg") -> SendResult:
+        self.send_calls.append((draft, path))
+        if self.send_error is not None:
+            raise self.send_error
+        return self.result
+
+
+class FakeResourceTransport:
+    def __init__(self) -> None:
+        self.connected = False
+        self.closed = False
+        self.requests: list[tuple[str, str]] = []
+
+    async def connect(self) -> None:
+        self.connected = True
+
+    async def close(self) -> None:
+        self.closed = True
+
+    async def request(
+        self,
+        method: str,
+        path: str,
+        *,
+        payload: bytes = b"",
+        content_format: int | None = None,
+        observe: bool = False,
+    ) -> CoapResult:
+        self.requests.append((method, path))
+        return CoapResult(
+            code="2.05",
+            payload=[
+                {
+                    "from": "fd00::1",
+                    "to": "fd00::2",
+                    "body": "from ip transport",
+                    "received": "2026-07-02T04:00:00Z",
+                }
+            ],
+        )
+
+    async def observe(self, path: str, *, method: str = "GET") -> FakeResourceSubscription:
+        return FakeResourceSubscription()
+
+
+class FakeResourceSubscription:
+    def results(self) -> AsyncIterator[CoapResult]:
+        return self._results()
+
+    async def close(self) -> None:
+        pass
+
+    async def _results(self) -> AsyncIterator[CoapResult]:
+        yield CoapResult(
+            code="2.05",
+            payload=[
+                {
+                    "from": "fd00::1",
+                    "to": "fd00::2",
+                    "body": "observed from transport",
+                    "received": "2026-07-02T04:00:00Z",
+                }
+            ],
+        )
+
+
+def message_record(
+    body: str,
+    *,
+    sender: str | None = "fd00::1",
+    recipient: str | None = "fd00::2",
+    received: str = "2026-07-02T04:00:00Z",
+) -> MessageRecord:
+    return MessageRecord(
+        raw={"from": sender, "to": recipient, "body": body, "received": received},
+        sender=sender,
+        recipient=recipient,
+        body=body,
+        received=received,
+    )
 
 
 def test_clip_uses_stable_ascii_ellipsis() -> None:
@@ -82,6 +232,18 @@ def test_core_widgets_record_expected_terminal_text() -> None:
     assert "ip/coap" in diag.render_rows()
 
 
+def test_messaging_panel_renders_empty_inbox_and_compose_state() -> None:
+    panel = MessagingPanel(
+        MessagingState(draft_target="fd00::2", draft_body="status?"),
+        width=80,
+    )
+    rendered = panel.render()
+
+    assert "0 message(s)" in rendered
+    assert "No messages yet" in rendered
+    assert "COMPOSE  target fd00::2  body status?" in rendered
+
+
 def test_active_pane_covers_expected_modes() -> None:
     pane = ActivePane()
 
@@ -112,6 +274,336 @@ def test_active_pane_covers_expected_modes() -> None:
 
     pane.set_mode("Quit")
     assert "Press y to quit" in pane.render_mode()
+
+
+async def test_message_refresh_renders_inbound_messages() -> None:
+    client = FakeMessagingClient(inbox=[message_record("hello from mesh")])
+    app = NativeClientApp(
+        ShellStatus(context="Chats", state=UiState.SYNCED),
+        client=client,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("r")
+        await pilot.pause()
+        pane = app.query_one("#active-pane", ActivePane)
+        status = app.query_one("#native-status", NativeStatusBar).status
+
+    assert client.inbox_calls == ["/msg/inbox"]
+    assert "hello from mesh" in pane.render_mode()
+    assert "* fd00::1" in pane.render_mode()
+    assert status.unread == 1
+
+
+async def test_message_send_success_updates_chat_and_status() -> None:
+    client = FakeMessagingClient(
+        result=SendResult(
+            state=DeliveryState.ACCEPTED,
+            coap_code="2.04",
+            location_path=("msg", "42"),
+        )
+    )
+    app = NativeClientApp(
+        ShellStatus(context="Chats", state=UiState.SYNCED),
+        client=client,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        app.set_compose("fd00::2", "ping")
+        await pilot.press("enter")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        status = app.query_one("#native-status", NativeStatusBar).status
+
+    assert [(call[0].to, call[0].body, call[1]) for call in client.send_calls] == [
+        ("fd00::2", "ping", "/msg")
+    ]
+    assert "ping" in rendered
+    assert "delivery" in rendered
+    assert "accepted [2.04]" in rendered
+    assert app.messaging.draft_body == ""
+    assert status.target == "fd00::2"
+    assert status.unread == 0
+
+
+async def test_message_send_from_compose_inputs() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(
+        ShellStatus(context="Chats", state=UiState.SYNCED),
+        client=client,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("c")
+        app.query_one("#message-target", Input).value = "fd00::2"
+        body = app.query_one("#message-body", Input)
+        body.value = "from keyboard"
+        body.focus()
+        await pilot.press("enter")
+        await pilot.pause()
+
+    assert [(call[0].to, call[0].body, call[1]) for call in client.send_calls] == [
+        ("fd00::2", "from keyboard", "/msg")
+    ]
+    assert app.messaging.draft_body == ""
+
+
+async def test_message_send_failure_marks_failed_and_preserves_draft() -> None:
+    client = FakeMessagingClient(
+        result=SendResult(
+            state=DeliveryState.REJECTED,
+            coap_code="4.00",
+            detail="bad target",
+        )
+    )
+    app = NativeClientApp(
+        ShellStatus(context="Chats", state=UiState.SYNCED),
+        client=client,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        app.set_compose("fd00::bad", "ping")
+        await pilot.press("enter")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        status = app.query_one("#native-status", NativeStatusBar).status
+
+    assert len(client.send_calls) == 1
+    assert "delivery" in rendered
+    assert "rejected [bad target]" in rendered
+    assert "error" in rendered
+    assert "bad target [recoverable]" in rendered
+    assert app.messaging.draft_body == "ping"
+    assert status.state == UiState.ERROR
+
+
+async def test_message_rejection_without_detail_is_error_and_recovery_clears_status() -> None:
+    client = FakeMessagingClient(
+        result=SendResult(state=DeliveryState.REJECTED, coap_code="4.04")
+    )
+    app = NativeClientApp(
+        ShellStatus(context="Chats", state=UiState.SYNCED),
+        client=client,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        app.set_compose("fd00::bad", "ping")
+        await pilot.press("enter")
+        await pilot.pause()
+        rejected_render = app.query_one("#active-pane", ActivePane).render_mode()
+        rejected_status = app.query_one("#native-status", NativeStatusBar).status
+
+        client.result = SendResult(state=DeliveryState.ACCEPTED, coap_code="2.04")
+        app.set_compose("fd00::2", "ping")
+        edited_status = app.query_one("#native-status", NativeStatusBar).status
+        await pilot.press("enter")
+        await pilot.pause()
+        recovered_status = app.query_one("#native-status", NativeStatusBar).status
+
+    assert "rejected [4.04]" in rejected_render
+    assert "4.04 [recoverable]" in rejected_render
+    assert rejected_status.state == UiState.ERROR
+    assert edited_status.state == UiState.ERROR
+    assert recovered_status.state == UiState.SYNCED
+
+
+async def test_message_send_transport_exception_is_recoverable() -> None:
+    client = FakeMessagingClient(send_error=RuntimeError("link down"))
+    app = NativeClientApp(
+        ShellStatus(context="Chats", state=UiState.SYNCED),
+        client=client,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        app.set_compose("fd00::2", "ping")
+        await pilot.press("enter")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        status = app.query_one("#native-status", NativeStatusBar).status
+
+    assert len(client.send_calls) == 1
+    assert "transport_error [link down]" in rendered
+    assert status.state == UiState.ERROR
+
+
+async def test_empty_message_does_not_send() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(
+        ShellStatus(context="Chats", state=UiState.SYNCED),
+        client=client,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        app.set_compose("fd00::2", "   ")
+        await pilot.press("enter")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert client.send_calls == []
+    assert "message body is required" in rendered
+
+
+async def test_apply_inbound_message_increments_unread_without_transport() -> None:
+    app = NativeClientApp(ShellStatus(context="Chats", state=UiState.SYNCED))
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        app.apply_inbound_messages((message_record("observed update"),))
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        status = app.query_one("#native-status", NativeStatusBar).status
+
+    assert "observed update" in rendered
+    assert "* fd00::1" in rendered
+    assert status.unread == 1
+
+
+async def test_refresh_preserves_live_compose_input_values() -> None:
+    client = FakeMessagingClient(inbox=[message_record("hello")])
+    app = NativeClientApp(
+        ShellStatus(context="Chats", state=UiState.SYNCED),
+        client=client,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("c")
+        app.query_one("#message-target", Input).value = "fd00::draft"
+        app.query_one("#message-body", Input).value = "unsent body"
+        await app.refresh_messages()
+        await pilot.pause()
+        target_value = app.query_one("#message-target", Input).value
+        body_value = app.query_one("#message-body", Input).value
+
+    assert app.messaging.draft_target == "fd00::draft"
+    assert app.messaging.draft_body == "unsent body"
+    assert target_value == "fd00::draft"
+    assert body_value == "unsent body"
+
+
+async def test_observe_messages_applies_live_notifications_and_closes_subscription() -> None:
+    client = FakeMessagingClient(
+        observe=[
+            [message_record("first observed")],
+            [message_record("second observed", sender="fd00::3")],
+        ]
+    )
+    app = NativeClientApp(
+        ShellStatus(context="Chats", state=UiState.SYNCED),
+        client=client,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("o")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        status = app.query_one("#native-status", NativeStatusBar).status
+
+    assert client.observe_calls == ["/msg/inbox"]
+    assert client.subscription is not None
+    assert client.subscription.closed is True
+    assert "second observed" in rendered
+    assert "fd00::3" in rendered
+    assert status.unread == 1
+
+
+async def test_observe_preserves_live_compose_input_values() -> None:
+    client = FakeMessagingClient(observe=[[message_record("observed")]])
+    app = NativeClientApp(
+        ShellStatus(context="Chats", state=UiState.SYNCED),
+        client=client,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("c")
+        app.query_one("#message-target", Input).value = "fd00::draft"
+        app.query_one("#message-body", Input).value = "unsent body"
+        await app.start_observing_messages()
+        await pilot.pause()
+
+    assert app.messaging.draft_target == "fd00::draft"
+    assert app.messaging.draft_body == "unsent body"
+
+
+async def test_open_selects_current_message_contact_for_compose() -> None:
+    client = FakeMessagingClient(inbox=[message_record("reply target")])
+    app = NativeClientApp(
+        ShellStatus(context="Chats", state=UiState.SYNCED),
+        client=client,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("r")
+        await pilot.pause()
+        await pilot.press("enter")
+        await pilot.pause()
+        target_value = app.query_one("#message-target", Input).value
+
+    assert app.messaging.draft_target == "fd00::1"
+    assert target_value == "fd00::1"
+
+
+def test_build_messaging_client_uses_ip_coap_when_uri_is_supplied() -> None:
+    assert build_messaging_client(None) is None
+    assert build_messaging_client("coap://[fe80::1]") is not None
+
+
+async def test_lci_client_app_connects_and_refreshes_ip_transport() -> None:
+    transport = FakeResourceTransport()
+    client = LciClient(transport)
+    app = NativeClientApp(
+        ShellStatus(context="Chats", mode=LinkMode.IP, state=UiState.DISCONNECTED),
+        client=client,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("r")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert transport.connected is True
+    assert transport.closed is True
+    assert transport.requests == [("GET", "/msg/inbox")]
+    assert "from ip transport" in rendered
+
+
+def test_main_wires_ip_coap_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, NativeClientApp] = {}
+
+    def fake_run(self: NativeClientApp) -> None:
+        captured["app"] = self
+
+    monkeypatch.setattr(NativeClientApp, "run", fake_run)
+
+    main(
+        [
+            "--coap-base-uri",
+            "coap://[fe80::1]",
+            "--inbox-path",
+            "/custom/inbox",
+            "--send-path",
+            "/custom/send",
+        ]
+    )
+
+    app = captured["app"]
+    assert app.client is not None
+    assert app.inbox_path == "/custom/inbox"
+    assert app.send_path == "/custom/send"
+    assert app.status.mode == LinkMode.IP
 
 
 async def test_native_client_app_renders_at_common_size() -> None:

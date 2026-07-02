@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-u9jk",
+  "title": "Reconcile Python simulator /messages resource with LCI /msg contract",
+  "description": "Explorer found the Python simulator/resource layer exposes /messages with {from,to,text}, while the shared LCI client defaults to /msg and /msg/inbox with MessageDraft payload {to,body,ack}. Align the simulator/app resource contract or add compatibility mapping so TUI messaging tests and tools exercise the same LCI messaging semantics.",
+  "acceptance_criteria": "Python simulator resources and LciClient messaging agree on paths and payload names, or explicit compatibility shims are documented and tested; send and inbox tests cover the chosen contract.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T05:00:32.897662Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T05:00:32.898152Z",
+  "labels": [
+    "python",
+    "coap",
+    "lci",
+    "messaging",
+    "client-app",
+    "no-hardware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-u9jk",
+      "depends_on_id": "project-LICHEN-py4c.1.8",
+      "type": "discovered-from",
+      "created_at": "2026-07-02T05:00:32.898152Z"
+    }
+  ]
+}
