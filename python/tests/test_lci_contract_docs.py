@@ -89,10 +89,19 @@ def test_lci_messaging_paths_use_msg_inbox_contract() -> None:
     assert "GET /msg/inbox" in support
     assert "`TEXT_MESSAGE_APP` (1) | `/msg/inbox`" in meshtastic
     assert "Zephyr `/msg/inbox`" in meshtastic
-
     assert "POST /msg\n" not in lci
     assert "/msg/outbox" not in lci
     assert "legacy Python demo `/messages` resource is not part of LCI" in lci
+
+
+def test_top_level_readme_describes_native_lci_not_legacy_cbor() -> None:
+    readme = read_repo_text("README.md")
+
+    assert "LICHEN Native LCI" in readme
+    assert "IPv6 + CoAP resources from `spec/11-lci.md`" in readme
+    assert "retained only for historical prototype compatibility" in readme
+    assert "Clean-sheet design: CBOR" not in readme
+    assert "identical framing across BLE/USB/serial/IP" not in readme
 
 
 def test_lci_mesh_access_prefers_direct_ipv6_with_optional_proxy() -> None:

@@ -167,12 +167,12 @@ LICHEN supports multiple device interface protocols for mobile apps and host con
 
 | Protocol | Purpose | Apps |
 |----------|---------|------|
-| **LICHEN Native** | Clean-sheet design: CBOR, full mesh state, config, OTA | (ours) |
+| **LICHEN Native LCI** | IPv6 + CoAP app contract over BLE, USB, serial, or IP | (ours) |
 | **Meshtastic compat** | BLE GATT + Protobuf, same as Meshtastic | Meshtastic iOS/Android |
 | **MeshCore compat** | BLE/USB/WiFi, same as MeshCore | MeshCore Open (Flutter) |
 | **KISS mode** | BLE KISS API for TNC apps | aprs.fi, APRSDroid |
 
-Why four protocols? Meet users where they are. Ham operators have KISS apps. Meshtastic users have Meshtastic apps. But we also define our own protocol that does it right — CBOR encoding, identical framing across BLE/USB/serial/IP, full access to mesh state. Not every puck implements all four; firmware config selects which to include.
+Why four protocols? Meet users where they are. Ham operators have KISS apps. Meshtastic users have Meshtastic apps. But our own native app surface is LCI: IPv6 + CoAP resources from `spec/11-lci.md`, carried over local transports such as BLE SLIP, USB, serial, or IP. The older CBOR integer-key draft under `spec/lichen-native/` is retained only for historical prototype compatibility, not for new native clients or firmware features. Not every puck implements all four; firmware config selects which to include.
 
 ## Project Status
 
