@@ -115,19 +115,18 @@ s.open(); time.sleep(0.5); s.close()
 PYEOF
 }
 
-# The Terminus hub only supports GANGED power switching (-f required):
-# cycling any port cycles ALL of them — the other boards just re-enumerate.
-# Limitation: this is a host/bus-level replug. A battery-powered board whose
-# USB stack died device-side (T1000-E -110 wedge, bd 1jqj) keeps its MCU
-# powered through the cycle and stays wedged — that needs a physical replug.
+# Software "replug" via uhubctl is a dead end on this bench, measured 2026-07-02:
+# the Terminus hub reports ganged power switching but does NOT actually cut
+# VBUS. Cycling re-enumerates host-side only; a battery-backed nRF board keeps
+# its (wedged) USB stack state and stays dead (-110, bd 1jqj) — and repeated
+# cycles can desync a HEALTHY board's device stack (EPROTO on control
+# transfers). Bus-powered devices (CP2102) tolerate it. So: don't cycle.
 hub_cycle() {
-    echo "==> No serial port for $BOARD — power-cycling hub 1-1 (ganged; all ports)..."
-    if ! uhubctl -l 1-1 -a cycle -d 3 -f; then
-        echo "ERROR: uhubctl failed. Install the hub udev rule (99-lichen-hub.rules)" >&2
-        echo "       or run: sudo uhubctl -l 1-1 -a cycle -d 3 -f" >&2
-        exit 1
-    fi
-    sleep 5
+    echo "ERROR: no USB port for $BOARD and no software recovery exists for" >&2
+    echo "       this state (hub power switching is fake — see recover.sh" >&2
+    echo "       comments / bd 1jqj). Physically replug the board's cable," >&2
+    echo "       then re-run this script." >&2
+    exit 1
 }
 
 uf2_fallback() {  # T-Echo only: the wedged bootloader still serves USB MSC
