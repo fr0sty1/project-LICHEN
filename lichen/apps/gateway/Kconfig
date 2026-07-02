@@ -11,11 +11,20 @@ config LICHEN_MESHTASTIC_GATEWAY_ADAPTER_TEST_SURFACE
 	  Internal ztest hook that exposes Meshtastic gateway adapter CoAP
 	  resources without enabling the production BLE GATT backend.
 
+config LICHEN_INBOUND_LOCATION_TEST_SURFACE
+	bool "Expose inbound local-client location resource for ztests"
+	depends on ZTEST
+	default n
+	help
+	  Internal ztest hook that exposes the local-client location POST
+	  resource without enabling a production local-client write transport.
+
 config LORA_LICHEN_BLE
 	bool "Native BLE LCI interface"
 	depends on BT
 	depends on BT_PERIPHERAL
 	depends on BT_MAX_CONN = 1
+	select LICHEN_APP_INTERFACE
 	select NET_L2_DUMMY
 	default n
 	help

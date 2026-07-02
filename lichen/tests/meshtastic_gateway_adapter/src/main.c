@@ -14,6 +14,7 @@
 
 #include <lichen/app_identity/app_identity.h>
 #include <lichen/app_interface/app_interface.h>
+#include <lichen/hal.h>
 #include <lichen/meshtastic/codec.h>
 
 #include "ble_meshtastic.h"
@@ -26,6 +27,18 @@
 #define COAP_TEST_BUF_SIZE 64
 #define COAP_TEST_OPT_COUNT 8
 #define TEST_MESSAGE_CONTRACT_QUEUE_DEPTH 3U
+#define INBOUND_LOCATION_PAYLOAD_MAX_LEN 33U
+#define INBOUND_LOCATION_FLAG_ALTITUDE BIT(0)
+#define INBOUND_LOCATION_FLAG_FIX_TIME BIT(1)
+#define INBOUND_LOCATION_FLAG_SATELLITES BIT(2)
+#define INBOUND_LOCATION_FLAG_HORIZONTAL_ACCURACY BIT(3)
+#define INBOUND_LOCATION_FLAG_VERTICAL_ACCURACY BIT(4)
+#define INBOUND_LOCATION_FLAG_AGE_SECONDS BIT(5)
+#define INBOUND_LOCATION_FLAGS_ALL \
+	(INBOUND_LOCATION_FLAG_ALTITUDE | INBOUND_LOCATION_FLAG_FIX_TIME | \
+	 INBOUND_LOCATION_FLAG_SATELLITES | \
+	 INBOUND_LOCATION_FLAG_HORIZONTAL_ACCURACY | \
+	 INBOUND_LOCATION_FLAG_VERTICAL_ACCURACY | INBOUND_LOCATION_FLAG_AGE_SECONDS)
 
 extern struct coap_resource _coap_resource_lichen_coap_list_start[];
 extern struct coap_resource _coap_resource_lichen_coap_list_end[];
@@ -36,6 +49,7 @@ static void reset_gateway(size_t from_radio_cap)
 	lichen_app_identity_test_reset();
 	gateway_message_contract_test_reset();
 	lichen_app_interface_test_reset();
+	lichen_hal_location_clear();
 	fake_ble_meshtastic_reset(from_radio_cap);
 	zassert_ok(gateway_message_contract_init());
 	gateway_meshtastic_adapter_test_reset();
@@ -90,8 +104,9 @@ static void make_post_request_to_path(struct coap_packet *request, uint8_t *buf,
 	}
 }
 
-static int dispatch_post_to_path(const char * const *path, size_t path_len,
-				 const uint8_t *payload, size_t payload_len)
+static int dispatch_post_to_path_from(const char * const *path, size_t path_len,
+				      const uint8_t *payload, size_t payload_len,
+				      struct sockaddr *addr, socklen_t addr_len)
 {
 	uint8_t req_buf[COAP_TEST_BUF_SIZE];
 	struct coap_packet request;
@@ -107,7 +122,15 @@ static int dispatch_post_to_path(const char * const *path, size_t path_len,
 	zassert_ok(coap_packet_parse(&parsed, req_buf, request.offset, options,
 				     ARRAY_SIZE(options)));
 	return coap_handle_request_len(&parsed, resources, resource_count,
-				       options, ARRAY_SIZE(options), NULL, 0);
+				       options, ARRAY_SIZE(options), addr,
+				       addr_len);
+}
+
+static int dispatch_post_to_path(const char * const *path, size_t path_len,
+				 const uint8_t *payload, size_t payload_len)
+{
+	return dispatch_post_to_path_from(path, path_len, payload, payload_len,
+					  NULL, 0);
 }
 
 static struct coap_resource *find_lichen_coap_resource(const char *first,
@@ -206,6 +229,114 @@ static void put_le32(uint8_t *buf, uint32_t value)
 	buf[1] = (uint8_t)(value >> 8);
 	buf[2] = (uint8_t)(value >> 16);
 	buf[3] = (uint8_t)(value >> 24);
+}
+
+static void put_be32(uint8_t *buf, uint32_t value)
+{
+	buf[0] = (uint8_t)(value >> 24);
+	buf[1] = (uint8_t)(value >> 16);
+	buf[2] = (uint8_t)(value >> 8);
+	buf[3] = (uint8_t)value;
+}
+
+static size_t build_inbound_location_payload(uint8_t *buf, size_t cap)
+{
+	size_t pos = 0U;
+	const uint8_t flags = INBOUND_LOCATION_FLAGS_ALL;
+
+	zassert_true(cap >= INBOUND_LOCATION_PAYLOAD_MAX_LEN);
+	buf[pos++] = 1U;
+	buf[pos++] = flags;
+	buf[pos++] = LICHEN_APP_LOCATION_FIX_3D;
+	buf[pos++] = 0U;
+	put_be32(&buf[pos], (uint32_t)476206130);
+	pos += sizeof(uint32_t);
+	put_be32(&buf[pos], (uint32_t)(int32_t)-1223493000);
+	pos += sizeof(uint32_t);
+	if ((flags & INBOUND_LOCATION_FLAG_ALTITUDE) != 0U) {
+		put_be32(&buf[pos], 42U);
+		pos += sizeof(uint32_t);
+	}
+	if ((flags & INBOUND_LOCATION_FLAG_FIX_TIME) != 0U) {
+		put_be32(&buf[pos], 1710000000U);
+		pos += sizeof(uint32_t);
+	}
+	if ((flags & INBOUND_LOCATION_FLAG_SATELLITES) != 0U) {
+		buf[pos++] = 9U;
+	}
+	if ((flags & INBOUND_LOCATION_FLAG_HORIZONTAL_ACCURACY) != 0U) {
+		put_be32(&buf[pos], 2500U);
+		pos += sizeof(uint32_t);
+	}
+	if ((flags & INBOUND_LOCATION_FLAG_VERTICAL_ACCURACY) != 0U) {
+		put_be32(&buf[pos], 7500U);
+		pos += sizeof(uint32_t);
+	}
+	if ((flags & INBOUND_LOCATION_FLAG_AGE_SECONDS) != 0U) {
+		put_be32(&buf[pos], 2U);
+		pos += sizeof(uint32_t);
+	}
+
+	return pos;
+}
+
+static size_t build_inbound_location_payload_with_flags(uint8_t *buf,
+							size_t cap,
+							uint8_t flags)
+{
+	size_t pos = 0U;
+
+	zassert_true(cap >= INBOUND_LOCATION_PAYLOAD_MAX_LEN);
+	buf[pos++] = 1U;
+	buf[pos++] = flags;
+	buf[pos++] = LICHEN_APP_LOCATION_FIX_2D;
+	buf[pos++] = 0U;
+	put_be32(&buf[pos], (uint32_t)476206130);
+	pos += sizeof(uint32_t);
+	put_be32(&buf[pos], (uint32_t)(int32_t)-1223493000);
+	pos += sizeof(uint32_t);
+	if ((flags & INBOUND_LOCATION_FLAG_ALTITUDE) != 0U) {
+		put_be32(&buf[pos], 42U);
+		pos += sizeof(uint32_t);
+	}
+	if ((flags & INBOUND_LOCATION_FLAG_FIX_TIME) != 0U) {
+		put_be32(&buf[pos], 1710000000U);
+		pos += sizeof(uint32_t);
+	}
+	if ((flags & INBOUND_LOCATION_FLAG_SATELLITES) != 0U) {
+		buf[pos++] = 4U;
+	}
+	if ((flags & INBOUND_LOCATION_FLAG_HORIZONTAL_ACCURACY) != 0U) {
+		put_be32(&buf[pos], 3000U);
+		pos += sizeof(uint32_t);
+	}
+	if ((flags & INBOUND_LOCATION_FLAG_VERTICAL_ACCURACY) != 0U) {
+		put_be32(&buf[pos], 8000U);
+		pos += sizeof(uint32_t);
+	}
+	if ((flags & INBOUND_LOCATION_FLAG_AGE_SECONDS) != 0U) {
+		put_be32(&buf[pos], 5U);
+		pos += sizeof(uint32_t);
+	}
+
+	return pos;
+}
+
+static void make_ipv6_sockaddr(struct sockaddr_in6 *addr, const uint8_t ip[16])
+{
+	memset(addr, 0, sizeof(*addr));
+	addr->sin6_family = AF_INET6;
+	memcpy(addr->sin6_addr.s6_addr, ip, sizeof(addr->sin6_addr.s6_addr));
+}
+
+static void make_loopback_sockaddr(struct sockaddr_in6 *addr)
+{
+	static const uint8_t loopback[16] = {
+		0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1
+	};
+
+	make_ipv6_sockaddr(addr, loopback);
 }
 
 static size_t build_text_to_radio_to(uint8_t *buf, size_t cap,
@@ -757,13 +888,164 @@ ZTEST(meshtastic_gateway_adapter, test_coap_status_post_reaches_from_radio)
 	expect_from_radio(0U, expected, sizeof(expected));
 }
 
+ZTEST(meshtastic_gateway_adapter, test_coap_location_post_updates_hal_snapshot)
+{
+	uint8_t req_buf[COAP_TEST_BUF_SIZE];
+	uint8_t payload[INBOUND_LOCATION_PAYLOAD_MAX_LEN];
+	size_t payload_len;
+	struct coap_packet request;
+	struct lichen_hal_location_time_snapshot snapshot;
+	struct sockaddr_in6 source;
+
+	reset_gateway(2U);
+	lichen_hal_location_test_set_uptime_ms(10 * 1000);
+	payload_len = build_inbound_location_payload(payload, sizeof(payload));
+	make_post_request(&request, req_buf, sizeof(req_buf), payload,
+			  payload_len);
+	make_loopback_sockaddr(&source);
+
+	zassert_equal(gateway_inbound_location_post(NULL, &request,
+						    (struct sockaddr *)&source,
+						    sizeof(source)),
+		      COAP_RESPONSE_CODE_CHANGED);
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.location_provider_available);
+	zassert_true(snapshot.source_class_valid);
+	zassert_equal(snapshot.source_class,
+		      LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT);
+	zassert_str_equal(snapshot.source_name, "local-client");
+	zassert_true(snapshot.fix_state_valid);
+	zassert_equal(snapshot.fix_state, LICHEN_HAL_LOCATION_FIX_3D);
+	zassert_true(snapshot.latitude_e7_valid);
+	zassert_equal(snapshot.latitude_e7, 476206130);
+	zassert_true(snapshot.longitude_e7_valid);
+	zassert_equal(snapshot.longitude_e7, -1223493000);
+	zassert_true(snapshot.altitude_m_valid);
+	zassert_equal(snapshot.altitude_m, 42);
+	zassert_true(snapshot.fix_time_unix_valid);
+	zassert_equal(snapshot.fix_time_unix, 1710000000U);
+	zassert_true(snapshot.satellites_valid);
+	zassert_equal(snapshot.satellites, 9U);
+	zassert_true(snapshot.horizontal_accuracy_mm_valid);
+	zassert_equal(snapshot.horizontal_accuracy_mm, 2500U);
+	zassert_true(snapshot.vertical_accuracy_mm_valid);
+	zassert_equal(snapshot.vertical_accuracy_mm, 7500U);
+	zassert_true(snapshot.age_seconds_valid);
+	zassert_equal(snapshot.age_seconds, 2U);
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 0U);
+}
+
+ZTEST(meshtastic_gateway_adapter, test_coap_location_post_accepts_minimal_payload)
+{
+	uint8_t req_buf[COAP_TEST_BUF_SIZE];
+	uint8_t payload[INBOUND_LOCATION_PAYLOAD_MAX_LEN];
+	size_t payload_len;
+	struct coap_packet request;
+	struct lichen_hal_location_time_snapshot snapshot;
+	struct sockaddr_in6 source;
+
+	reset_gateway(2U);
+	lichen_hal_location_test_set_uptime_ms(10 * 1000);
+	payload_len = build_inbound_location_payload_with_flags(payload,
+							       sizeof(payload),
+							       0U);
+	make_post_request(&request, req_buf, sizeof(req_buf), payload,
+			  payload_len);
+	make_loopback_sockaddr(&source);
+
+	zassert_equal(gateway_inbound_location_post(NULL, &request,
+						    (struct sockaddr *)&source,
+						    sizeof(source)),
+		      COAP_RESPONSE_CODE_CHANGED);
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_equal(snapshot.fix_state, LICHEN_HAL_LOCATION_FIX_2D);
+	zassert_true(snapshot.latitude_e7_valid);
+	zassert_equal(snapshot.latitude_e7, 476206130);
+	zassert_true(snapshot.longitude_e7_valid);
+	zassert_equal(snapshot.longitude_e7, -1223493000);
+	zassert_false(snapshot.altitude_m_valid);
+	zassert_false(snapshot.fix_time_unix_valid);
+	zassert_false(snapshot.satellites_valid);
+	zassert_false(snapshot.horizontal_accuracy_mm_valid);
+	zassert_false(snapshot.vertical_accuracy_mm_valid);
+}
+
+ZTEST(meshtastic_gateway_adapter, test_coap_location_post_accepts_sparse_payload)
+{
+	uint8_t req_buf[COAP_TEST_BUF_SIZE];
+	uint8_t payload[INBOUND_LOCATION_PAYLOAD_MAX_LEN];
+	size_t payload_len;
+	struct coap_packet request;
+	struct lichen_hal_location_time_snapshot snapshot;
+	struct sockaddr_in6 source;
+	const uint8_t flags = INBOUND_LOCATION_FLAG_SATELLITES |
+			      INBOUND_LOCATION_FLAG_AGE_SECONDS;
+
+	reset_gateway(2U);
+	lichen_hal_location_test_set_uptime_ms(10 * 1000);
+	payload_len = build_inbound_location_payload_with_flags(payload,
+							       sizeof(payload),
+							       flags);
+	make_post_request(&request, req_buf, sizeof(req_buf), payload,
+			  payload_len);
+	make_loopback_sockaddr(&source);
+
+	zassert_equal(gateway_inbound_location_post(NULL, &request,
+						    (struct sockaddr *)&source,
+						    sizeof(source)),
+		      COAP_RESPONSE_CODE_CHANGED);
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.satellites_valid);
+	zassert_equal(snapshot.satellites, 4U);
+	zassert_true(snapshot.age_seconds_valid);
+	zassert_equal(snapshot.age_seconds, 5U);
+	zassert_false(snapshot.altitude_m_valid);
+	zassert_false(snapshot.fix_time_unix_valid);
+	zassert_false(snapshot.horizontal_accuracy_mm_valid);
+	zassert_false(snapshot.vertical_accuracy_mm_valid);
+}
+
+ZTEST(meshtastic_gateway_adapter, test_coap_location_post_rejects_nonlocal_source)
+{
+	uint8_t req_buf[COAP_TEST_BUF_SIZE];
+	uint8_t payload[INBOUND_LOCATION_PAYLOAD_MAX_LEN];
+	size_t payload_len;
+	struct coap_packet request;
+	struct sockaddr_in6 source;
+	struct lichen_hal_location_time_snapshot snapshot;
+	static const uint8_t global[16] = {
+		0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 1
+	};
+
+	reset_gateway(2U);
+	payload_len = build_inbound_location_payload(payload, sizeof(payload));
+	make_post_request(&request, req_buf, sizeof(req_buf), payload,
+			  payload_len);
+	make_ipv6_sockaddr(&source, global);
+
+	zassert_equal(gateway_inbound_location_post(NULL, &request,
+						    (struct sockaddr *)&source,
+						    sizeof(source)),
+		      COAP_RESPONSE_CODE_FORBIDDEN);
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_false(snapshot.location_provider_available);
+}
+
 ZTEST(meshtastic_gateway_adapter, test_coap_invalid_payloads_are_bad_request)
 {
 	uint8_t req_buf[COAP_TEST_BUF_SIZE];
 	struct coap_packet request;
+	struct sockaddr_in6 source;
 	const uint8_t bad_status[] = { 0x12, 0x34, 0x56 };
+	const uint8_t bad_location_short[] = { 1U, 0U, 2U };
+	const uint8_t bad_location_flags[] = {
+		1U, 0x80U, LICHEN_APP_LOCATION_FIX_2D, 0U,
+		0x1c, 0x62, 0x2a, 0x32, 0xb7, 0x13, 0xba, 0x38
+	};
 
 	reset_gateway(2U);
+	make_loopback_sockaddr(&source);
 	make_post_request(&request, req_buf, sizeof(req_buf), NULL, 0U);
 	zassert_equal(gateway_inbound_text_post(NULL, &request, NULL, 0),
 		      COAP_RESPONSE_CODE_BAD_REQUEST);
@@ -772,7 +1054,96 @@ ZTEST(meshtastic_gateway_adapter, test_coap_invalid_payloads_are_bad_request)
 			  sizeof(bad_status));
 	zassert_equal(gateway_inbound_status_post(NULL, &request, NULL, 0),
 		      COAP_RESPONSE_CODE_BAD_REQUEST);
+
+	make_post_request(&request, req_buf, sizeof(req_buf),
+			  bad_location_short, sizeof(bad_location_short));
+	zassert_equal(gateway_inbound_location_post(NULL, &request,
+						    (struct sockaddr *)&source,
+						    sizeof(source)),
+		      COAP_RESPONSE_CODE_BAD_REQUEST);
+
+	make_post_request(&request, req_buf, sizeof(req_buf),
+			  bad_location_flags, sizeof(bad_location_flags));
+	zassert_equal(gateway_inbound_location_post(NULL, &request,
+						    (struct sockaddr *)&source,
+						    sizeof(source)),
+		      COAP_RESPONSE_CODE_BAD_REQUEST);
 	zassert_equal(fake_ble_meshtastic_from_radio_count(), 0U);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_coap_location_post_rejects_malformed_without_replacing_snapshot)
+{
+	uint8_t req_buf[COAP_TEST_BUF_SIZE];
+	uint8_t payload[INBOUND_LOCATION_PAYLOAD_MAX_LEN];
+	size_t payload_len;
+	struct coap_packet request;
+	struct lichen_hal_location_time_snapshot snapshot;
+	struct sockaddr_in6 source;
+
+	reset_gateway(2U);
+	lichen_hal_location_test_set_uptime_ms(10 * 1000);
+	payload_len = build_inbound_location_payload_with_flags(payload,
+							       sizeof(payload),
+							       0U);
+	make_post_request(&request, req_buf, sizeof(req_buf), payload,
+			  payload_len);
+	make_loopback_sockaddr(&source);
+	zassert_equal(gateway_inbound_location_post(NULL, &request,
+						    (struct sockaddr *)&source,
+						    sizeof(source)),
+		      COAP_RESPONSE_CODE_CHANGED);
+
+	payload[0] = 2U;
+	make_post_request(&request, req_buf, sizeof(req_buf), payload,
+			  payload_len);
+	zassert_equal(gateway_inbound_location_post(NULL, &request,
+						    (struct sockaddr *)&source,
+						    sizeof(source)),
+		      COAP_RESPONSE_CODE_BAD_REQUEST);
+
+	payload[0] = 1U;
+	payload[payload_len++] = 0U;
+	make_post_request(&request, req_buf, sizeof(req_buf), payload,
+			  payload_len);
+	zassert_equal(gateway_inbound_location_post(NULL, &request,
+						    (struct sockaddr *)&source,
+						    sizeof(source)),
+		      COAP_RESPONSE_CODE_BAD_REQUEST);
+
+	payload_len = build_inbound_location_payload_with_flags(
+		payload, sizeof(payload), INBOUND_LOCATION_FLAG_FIX_TIME);
+	make_post_request(&request, req_buf, sizeof(req_buf), payload,
+			  payload_len - 1U);
+	zassert_equal(gateway_inbound_location_post(NULL, &request,
+						    (struct sockaddr *)&source,
+						    sizeof(source)),
+		      COAP_RESPONSE_CODE_BAD_REQUEST);
+
+	payload_len = build_inbound_location_payload_with_flags(payload,
+							       sizeof(payload),
+							       0U);
+	payload[2] = 99U;
+	make_post_request(&request, req_buf, sizeof(req_buf), payload,
+			  payload_len);
+	zassert_equal(gateway_inbound_location_post(NULL, &request,
+						    (struct sockaddr *)&source,
+						    sizeof(source)),
+		      COAP_RESPONSE_CODE_BAD_REQUEST);
+
+	payload[2] = LICHEN_APP_LOCATION_FIX_2D;
+	put_be32(&payload[4], (uint32_t)900000001);
+	make_post_request(&request, req_buf, sizeof(req_buf), payload,
+			  payload_len);
+	zassert_equal(gateway_inbound_location_post(NULL, &request,
+						    (struct sockaddr *)&source,
+						    sizeof(source)),
+		      COAP_RESPONSE_CODE_BAD_REQUEST);
+
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_equal(snapshot.fix_state, LICHEN_HAL_LOCATION_FIX_2D);
+	zassert_equal(snapshot.latitude_e7, 476206130);
+	zassert_equal(snapshot.longitude_e7, -1223493000);
 }
 
 ZTEST(meshtastic_gateway_adapter, test_coap_inbound_resources_are_registered)

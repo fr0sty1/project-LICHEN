@@ -13,5 +13,8 @@ int gateway_inbound_text_post(struct coap_resource *resource,
 int gateway_inbound_status_post(struct coap_resource *resource,
 				struct coap_packet *request,
 				struct sockaddr *addr, socklen_t addr_len);
+int gateway_inbound_location_post(struct coap_resource *resource,
+				  struct coap_packet *request,
+				  struct sockaddr *addr, socklen_t addr_len);
 
 #endif /* GATEWAY_INBOUND_COAP_H_ */

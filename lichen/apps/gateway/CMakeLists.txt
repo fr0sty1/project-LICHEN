@@ -13,7 +13,9 @@ target_sources_ifdef(CONFIG_LORA_LICHEN_BLE app PRIVATE
   src/ble_app_owner.c
   src/ble_uart.c
   src/ble_lci_netif.c
-  src/ble_ingress.c)
+  src/ble_ingress.c
+  src/inbound_coap.c
+  src/inbound_events.c)
 target_sources_ifdef(CONFIG_LORA_LICHEN_MESHTASTIC_BLE app PRIVATE
   src/ble_app_owner.c
   src/ble_meshtastic.c
