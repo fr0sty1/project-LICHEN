@@ -14,12 +14,22 @@
 #include "status_cbor.h"
 
 struct status_view {
+	bool battery_provider;
+	bool pmic_provider;
 	bool location_provider;
 	bool time_provider;
 	bool wall_clock_valid;
+	bool charging;
+	bool external_power;
+	bool has_battery_provider;
+	bool has_pmic_provider;
 	bool has_location_provider;
 	bool has_time_provider;
 	bool has_wall_clock_valid;
+	bool has_battery;
+	bool has_voltage_mv;
+	bool has_charging;
+	bool has_external_power;
 	bool has_loc_source_class;
 	bool has_loc_source;
 	bool has_loc_fix_state;
@@ -44,6 +54,8 @@ struct status_view {
 	char time_source_class[24];
 	char time_source[24];
 	char time_reject[24];
+	uint32_t battery;
+	uint32_t voltage_mv;
 	uint32_t loc_age_s;
 	uint32_t hacc_mm;
 	uint32_t vacc_mm;
@@ -57,6 +69,20 @@ struct status_view {
 	uint32_t time_accuracy_ms;
 	uint32_t time_quality;
 };
+
+static size_t cbor_map_count(const uint8_t *buf, size_t len)
+{
+	if (buf == NULL || len == 0U) {
+		return 0U;
+	}
+	if (buf[0] == 0xb8U && len >= 2U) {
+		return buf[1];
+	}
+	if ((buf[0] & 0xe0U) == 0xa0U) {
+		return buf[0] & 0x1fU;
+	}
+	return 0U;
+}
 
 static bool key_matches(const struct zcbor_string *key, const char *expected)
 {
@@ -95,7 +121,15 @@ static int decode_status(const uint8_t *buf, size_t len, struct status_view *out
 			(void)zcbor_list_map_end_force_decode(zsd);
 			return -EINVAL;
 		}
-		if (key_matches(&key, "location_provider")) {
+		if (key_matches(&key, "battery_provider")) {
+			out->has_battery_provider = zcbor_bool_decode(
+				zsd, &out->battery_provider);
+			decoded = out->has_battery_provider;
+		} else if (key_matches(&key, "pmic_provider")) {
+			out->has_pmic_provider = zcbor_bool_decode(
+				zsd, &out->pmic_provider);
+			decoded = out->has_pmic_provider;
+		} else if (key_matches(&key, "location_provider")) {
 			out->has_location_provider = zcbor_bool_decode(
 				zsd, &out->location_provider);
 			decoded = out->has_location_provider;
@@ -107,6 +141,21 @@ static int decode_status(const uint8_t *buf, size_t len, struct status_view *out
 			out->has_wall_clock_valid = zcbor_bool_decode(
 				zsd, &out->wall_clock_valid);
 			decoded = out->has_wall_clock_valid;
+		} else if (key_matches(&key, "battery")) {
+			out->has_battery = zcbor_uint32_decode(zsd, &out->battery);
+			decoded = out->has_battery;
+		} else if (key_matches(&key, "voltage_mv")) {
+			out->has_voltage_mv = zcbor_uint32_decode(
+				zsd, &out->voltage_mv);
+			decoded = out->has_voltage_mv;
+		} else if (key_matches(&key, "charging")) {
+			out->has_charging = zcbor_bool_decode(zsd,
+							     &out->charging);
+			decoded = out->has_charging;
+		} else if (key_matches(&key, "external_power")) {
+			out->has_external_power = zcbor_bool_decode(
+				zsd, &out->external_power);
+			decoded = out->has_external_power;
 		} else if (key_matches(&key, "loc_source_class")) {
 			out->has_loc_source_class = copy_tstr(
 				zsd, out->loc_source_class,
@@ -247,6 +296,18 @@ static size_t encode_status_with_power(
 						 &time);
 }
 
+static size_t encode_status_power_only(
+	uint8_t *buf, size_t buf_len,
+	const struct lichen_hal_power_snapshot *power)
+{
+	const struct lichen_hal_location_time_snapshot location = { 0 };
+	const struct lichen_hal_time_snapshot time = { 0 };
+
+	return lichen_gateway_encode_status_cbor(buf, buf_len, 256, "root",
+						 true, 1234U, power, &location,
+						 &time);
+}
+
 ZTEST(gateway_status, test_absent_location_metadata_is_omitted)
 {
 	const struct lichen_hal_location_time_snapshot location = { 0 };
@@ -255,7 +316,16 @@ ZTEST(gateway_status, test_absent_location_metadata_is_omitted)
 	size_t len = encode_status(buf, sizeof(buf), &location);
 
 	zassert_true(len > 0U);
+	zassert_equal(cbor_map_count(buf, len), 9U);
 	zassert_ok(decode_status(buf, len, &view));
+	zassert_true(view.has_battery_provider);
+	zassert_false(view.battery_provider);
+	zassert_true(view.has_pmic_provider);
+	zassert_false(view.pmic_provider);
+	zassert_false(view.has_battery);
+	zassert_false(view.has_voltage_mv);
+	zassert_false(view.has_charging);
+	zassert_false(view.has_external_power);
 	zassert_true(view.has_location_provider);
 	zassert_false(view.location_provider);
 	zassert_true(view.has_time_provider);
@@ -433,7 +503,20 @@ ZTEST(gateway_status, test_full_status_fits_advertised_buffer)
 
 	zassert_true(len > 0U);
 	zassert_true(len <= sizeof(buf));
+	zassert_equal(cbor_map_count(buf, len), 31U);
 	zassert_ok(decode_status(buf, len, &view));
+	zassert_true(view.has_battery_provider);
+	zassert_true(view.battery_provider);
+	zassert_true(view.has_pmic_provider);
+	zassert_true(view.pmic_provider);
+	zassert_true(view.has_battery);
+	zassert_equal(view.battery, 100U);
+	zassert_true(view.has_voltage_mv);
+	zassert_equal(view.voltage_mv, UINT16_MAX);
+	zassert_true(view.has_charging);
+	zassert_true(view.charging);
+	zassert_true(view.has_external_power);
+	zassert_true(view.external_power);
 	zassert_true(view.location_provider);
 	zassert_true(view.time_provider);
 	zassert_true(view.has_wall_clock_valid);
@@ -462,6 +545,101 @@ ZTEST(gateway_status, test_full_status_fits_advertised_buffer)
 	zassert_equal(view.time_quality, 200U);
 	zassert_true(view.has_time_reject);
 	zassert_str_equal(view.time_reject, "below_epoch_floor");
+}
+
+ZTEST(gateway_status, test_power_fields_are_encoded)
+{
+	const struct lichen_hal_power_snapshot power = {
+		.battery_provider_available = true,
+		.pmic_provider_available = true,
+		.battery_percent_valid = true,
+		.battery_percent = 87U,
+		.battery_voltage_mv_valid = true,
+		.battery_voltage_mv = 4199U,
+		.charging_valid = true,
+		.charging = true,
+		.external_power_valid = true,
+		.external_power = true,
+	};
+	uint8_t buf[LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE];
+	struct status_view view;
+	size_t len = encode_status_power_only(buf, sizeof(buf), &power);
+
+	zassert_true(len > 0U);
+	zassert_equal(cbor_map_count(buf, len), 13U);
+	zassert_ok(decode_status(buf, len, &view));
+	zassert_true(view.has_battery_provider);
+	zassert_true(view.battery_provider);
+	zassert_true(view.has_pmic_provider);
+	zassert_true(view.pmic_provider);
+	zassert_true(view.has_battery);
+	zassert_equal(view.battery, 87U);
+	zassert_true(view.has_voltage_mv);
+	zassert_equal(view.voltage_mv, 4199U);
+	zassert_true(view.has_charging);
+	zassert_true(view.charging);
+	zassert_true(view.has_external_power);
+	zassert_true(view.external_power);
+	zassert_false(view.has_loc_source_class);
+	zassert_false(view.has_wall_time_unix);
+}
+
+ZTEST(gateway_status, test_power_fields_are_valid_only)
+{
+	const struct lichen_hal_power_snapshot power = {
+		.battery_provider_available = true,
+		.pmic_provider_available = true,
+		.battery_percent_valid = false,
+		.battery_percent = 88U,
+		.battery_voltage_mv_valid = true,
+		.battery_voltage_mv = 3700U,
+		.charging_valid = false,
+		.charging = true,
+		.external_power_valid = true,
+		.external_power = false,
+	};
+	uint8_t buf[LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE];
+	struct status_view view;
+	size_t len = encode_status_power_only(buf, sizeof(buf), &power);
+
+	zassert_true(len > 0U);
+	zassert_equal(cbor_map_count(buf, len), 11U);
+	zassert_ok(decode_status(buf, len, &view));
+	zassert_true(view.has_battery_provider);
+	zassert_true(view.battery_provider);
+	zassert_true(view.has_pmic_provider);
+	zassert_true(view.pmic_provider);
+	zassert_false(view.has_battery);
+	zassert_true(view.has_voltage_mv);
+	zassert_equal(view.voltage_mv, 3700U);
+	zassert_false(view.has_charging);
+	zassert_true(view.has_external_power);
+	zassert_false(view.external_power);
+}
+
+ZTEST(gateway_status, test_status_encoder_rejects_smaller_than_fixed_bound)
+{
+	const struct lichen_hal_power_snapshot power = {
+		.battery_provider_available = true,
+		.pmic_provider_available = true,
+		.battery_percent_valid = true,
+		.battery_percent = 100U,
+		.battery_voltage_mv_valid = true,
+		.battery_voltage_mv = UINT16_MAX,
+		.charging_valid = true,
+		.charging = true,
+		.external_power_valid = true,
+		.external_power = true,
+	};
+	const struct lichen_hal_location_time_snapshot location = { 0 };
+	const struct lichen_hal_time_snapshot time = { 0 };
+	uint8_t buf[LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE];
+
+	zassert_equal(lichen_gateway_encode_status_cbor(
+			      buf, sizeof(buf) - 1U, UINT16_MAX,
+			      "border-router01", true, UINT32_MAX, &power,
+			      &location, &time),
+		      0U);
 }
 
 ZTEST(gateway_status, test_stale_location_metadata_suppresses_position)
