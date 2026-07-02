@@ -5,6 +5,7 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(lichen_gateway)
 
 target_sources(app PRIVATE
+  src/announce_ingest.c
   src/main.c
   src/config_apply.c
   src/config_cbor.c
