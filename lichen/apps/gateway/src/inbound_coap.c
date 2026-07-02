@@ -78,7 +78,8 @@ int gateway_inbound_status_post(struct coap_resource *resource,
 	return inbound_result_code(gateway_inbound_emit_status(&event));
 }
 
-#ifdef CONFIG_LORA_LICHEN_MESHTASTIC_BLE
+#if IS_ENABLED(CONFIG_LORA_LICHEN_MESHTASTIC_BLE) || \
+	IS_ENABLED(CONFIG_LICHEN_MESHTASTIC_GATEWAY_ADAPTER_TEST_SURFACE)
 #include <zephyr/net/coap_service.h>
 
 static const char * const inbound_text_path[] = { "inbound", "text", NULL };
@@ -92,4 +93,4 @@ COAP_RESOURCE_DEFINE(inbound_status, lichen_coap, {
 	.post = gateway_inbound_status_post,
 	.path = inbound_status_path,
 });
-#endif /* CONFIG_LORA_LICHEN_MESHTASTIC_BLE */
+#endif /* CONFIG_LORA_LICHEN_MESHTASTIC_BLE || test surface */

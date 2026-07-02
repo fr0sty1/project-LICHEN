@@ -3,6 +3,14 @@
 
 menu "LICHEN Gateway"
 
+config LICHEN_MESHTASTIC_GATEWAY_ADAPTER_TEST_SURFACE
+	bool "Expose Meshtastic gateway adapter surface for ztests"
+	depends on ZTEST
+	default n
+	help
+	  Internal ztest hook that exposes Meshtastic gateway adapter CoAP
+	  resources without enabling the production BLE GATT backend.
+
 config LORA_LICHEN_BLE
 	bool "Native BLE LCI interface"
 	depends on BT
@@ -122,7 +130,8 @@ config LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH_MIN
 
 config LICHEN_APP_INTERFACE_MAX_PAYLOAD
 	int
-	default 200 if LORA_LICHEN_MESHTASTIC_BLE
+	default 200 if LORA_LICHEN_MESHTASTIC_BLE || \
+		       LICHEN_MESHTASTIC_GATEWAY_ADAPTER_TEST_SURFACE
 
 config LORA_LICHEN_MESHTASTIC_BLE_TO_RADIO_QUEUE_DEPTH
 	int "Meshtastic BLE ToRadio queue depth"
@@ -135,7 +144,8 @@ config LORA_LICHEN_MESHTASTIC_BLE_TO_RADIO_QUEUE_DEPTH
 
 config LORA_LICHEN_GATEWAY_MESSAGE_QUEUE_DEPTH
 	int "Gateway local message ingress queue depth"
-	depends on LORA_LICHEN_MESHTASTIC_BLE || LORA_LICHEN_MESHCORE_BLE
+	depends on LORA_LICHEN_MESHTASTIC_BLE || LORA_LICHEN_MESHCORE_BLE || \
+		   LICHEN_MESHTASTIC_GATEWAY_ADAPTER_TEST_SURFACE
 	default 4
 	range 1 16
 	help
