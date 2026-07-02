@@ -55,6 +55,7 @@ static void reset_gateway(size_t from_radio_cap)
 	gateway_message_contract_test_reset();
 	lichen_app_interface_test_reset();
 	gateway_network_location_announce_reset();
+	gateway_network_location_announce_test_set_fallback_enabled(true);
 	gateway_announce_ingest_reset();
 	lichen_hal_location_clear();
 	fake_ble_meshtastic_reset(from_radio_cap);
@@ -1595,6 +1596,42 @@ ZTEST(meshtastic_gateway_adapter,
 	zassert_str_equal(snapshot.source_name, "mesh-announce");
 	zassert_equal(snapshot.latitude_e7, 476062000);
 	zassert_equal(snapshot.longitude_e7, -1223321000);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_gateway_announce_ingest_fallback_disabled_keeps_routing_only)
+{
+	uint8_t app_data[9];
+	uint8_t announce[GATEWAY_ANNOUNCE_MIN_LEN + sizeof(app_data)];
+	struct lichen_hal_location_time_snapshot snapshot;
+	struct gateway_network_location_announce_record record;
+	static const uint8_t seed[32] = {
+		0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38,
+		0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f, 0x40,
+		0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48,
+		0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f, 0x50,
+	};
+	size_t len;
+
+	zassert_false(IS_ENABLED(
+		CONFIG_LICHEN_GATEWAY_ANNOUNCE_NETWORK_LOCATION_FALLBACK));
+	reset_gateway(3U);
+	gateway_network_location_announce_test_set_fallback_enabled(false);
+
+	build_announce_coords_e7(app_data, 476062000, -1223321000);
+	len = build_signed_announce(announce, sizeof(announce), seed, 1U,
+				    app_data, sizeof(app_data));
+
+	zassert_ok(gateway_announce_ingest_verified(announce, len));
+	zassert_ok(gateway_network_location_announce_get(
+		&announce[5], 8U, &record));
+	zassert_true(record.coords_valid);
+	zassert_equal(record.latitude_e7, 476062000);
+	zassert_equal(record.longitude_e7, -1223321000);
+
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_false(snapshot.latitude_e7_valid);
+	zassert_false(snapshot.longitude_e7_valid);
 }
 
 ZTEST(meshtastic_gateway_adapter,

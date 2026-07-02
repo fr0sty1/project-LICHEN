@@ -65,4 +65,8 @@ int gateway_network_location_announce_get(
 
 void gateway_network_location_announce_reset(void);
 
+#ifdef CONFIG_ZTEST
+void gateway_network_location_announce_test_set_fallback_enabled(bool enabled);
+#endif
+
 #endif /* LICHEN_GATEWAY_NETWORK_LOCATION_H_ */

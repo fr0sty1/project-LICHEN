@@ -25,6 +25,10 @@ static struct announce_record announce_records[ANNOUNCE_RECORD_CAP];
 static uint8_t published_peer_id[GATEWAY_NETWORK_LOCATION_ANNOUNCE_PEER_ID_MAX_LEN];
 static uint8_t published_peer_id_len;
 static bool published_peer_valid;
+#ifdef CONFIG_ZTEST
+static bool announce_location_fallback_enabled =
+	IS_ENABLED(CONFIG_LICHEN_GATEWAY_ANNOUNCE_NETWORK_LOCATION_FALLBACK);
+#endif
 static K_MUTEX_DEFINE(announce_publish_mutex);
 static K_MUTEX_DEFINE(announce_records_mutex);
 
@@ -194,6 +198,15 @@ static bool published_peer_matches(const uint8_t *peer_id, size_t peer_id_len)
 {
 	return published_peer_valid && published_peer_id_len == peer_id_len &&
 	       memcmp(published_peer_id, peer_id, peer_id_len) == 0;
+}
+
+static bool announce_location_fallback_is_enabled(void)
+{
+#ifdef CONFIG_ZTEST
+	return announce_location_fallback_enabled;
+#else
+	return IS_ENABLED(CONFIG_LICHEN_GATEWAY_ANNOUNCE_NETWORK_LOCATION_FALLBACK);
+#endif
 }
 
 static bool published_peer_fresher_than(const uint8_t *peer_id,
@@ -481,6 +494,11 @@ int gateway_network_location_submit_announce(
 	record->location.coords_valid = true;
 	record->location.latitude_e7 = latitude_e7;
 	record->location.longitude_e7 = longitude_e7;
+	if (!announce_location_fallback_is_enabled()) {
+		k_mutex_unlock(&announce_records_mutex);
+		k_mutex_unlock(&announce_publish_mutex);
+		return 0;
+	}
 	if (published_peer_fresher_than(announce->peer_id,
 					announce->peer_id_len,
 					announce->observed_uptime_s)) {
@@ -541,6 +559,27 @@ void gateway_network_location_announce_reset(void)
 	memset(published_peer_id, 0, sizeof(published_peer_id));
 	published_peer_id_len = 0U;
 	published_peer_valid = false;
+#ifdef CONFIG_ZTEST
+	announce_location_fallback_enabled =
+		IS_ENABLED(CONFIG_LICHEN_GATEWAY_ANNOUNCE_NETWORK_LOCATION_FALLBACK);
+#endif
 	k_mutex_unlock(&announce_records_mutex);
 	k_mutex_unlock(&announce_publish_mutex);
 }
+
+#ifdef CONFIG_ZTEST
+void gateway_network_location_announce_test_set_fallback_enabled(bool enabled)
+{
+	k_mutex_lock(&announce_publish_mutex, K_FOREVER);
+	k_mutex_lock(&announce_records_mutex, K_FOREVER);
+	announce_location_fallback_enabled = enabled;
+	if (!enabled && published_peer_valid) {
+		(void)lichen_app_interface_clear_network_location();
+		memset(published_peer_id, 0, sizeof(published_peer_id));
+		published_peer_id_len = 0U;
+		published_peer_valid = false;
+	}
+	k_mutex_unlock(&announce_records_mutex);
+	k_mutex_unlock(&announce_publish_mutex);
+}
+#endif

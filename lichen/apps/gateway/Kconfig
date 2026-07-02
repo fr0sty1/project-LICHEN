@@ -19,6 +19,17 @@ config LICHEN_INBOUND_LOCATION_TEST_SURFACE
 	  Internal ztest hook that exposes the local-client location POST
 	  resource without enabling a production local-client write transport.
 
+config LICHEN_GATEWAY_ANNOUNCE_NETWORK_LOCATION_FALLBACK
+	bool "Publish announce-derived coordinates as approximate NETWORK location"
+	default n
+	help
+	  Allow verified LICHEN announce coordinate metadata from another peer to
+	  update the gateway's local NETWORK location as an approximate
+	  mesh-derived fallback. Leave disabled unless the gateway profile
+	  intentionally wants peer announce coordinates to stand in for local
+	  position. Disabled builds still parse and retain announce coordinates
+	  for routing/diagnostics, but do not publish them as this node location.
+
 config LORA_LICHEN_BLE
 	bool "Native BLE LCI interface"
 	depends on BT
