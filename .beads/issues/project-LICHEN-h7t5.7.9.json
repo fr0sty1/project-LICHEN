@@ -2,6 +2,7 @@
   "id": "project-LICHEN-h7t5.7.9",
   "title": "Run LilyGO native_sim and hardware build matrix",
   "description": "Why this exists: build success needs to be demonstrated locally or on the prepared Linux Zephyr builder, and hardware target memory usage must be tracked. What needs to be done: run native_sim packet-path tests, build selected LilyGO target app firmware, capture generated config and memory usage, and use EC2 Zephyr cache for Linux-only native_sim/build work if local macOS cannot run it. Acceptance criteria: native_sim tests pass or failing Beads are filed; selected LilyGO firmware build passes; memory usage is recorded; EC2 resources are cleaned up if used; build commands are documented in Beads notes or support docs.",
+  "notes": "Native_sim packet-path validation uncovered and fixed a coap_client test-harness issue. Initial EC2 command: west twister -p native_sim --inline-logs -O build/twister-native-packet -T lichen/tests/ping_l2 -T lichen/tests/link_crypto -T lichen/tests/schc_generic -T lichen/tests/oscore -T lichen/tests/coap_client -T lichen/tests/app_interface -T lichen/tests/gateway_config -T lichen/tests/gateway_status -T lichen/tests/meshtastic_adapter -T lichen/tests/meshtastic_gateway_adapter -T lichen/tests/meshtastic_ble -T lichen/tests/meshcore_adapter -T lichen/tests/meshcore_gateway_adapter -T lichen/tests/meshcore_ble -T lichen/tests/ble_app_owner -T lichen/tests/hal. Result before fix: 24 selected, 22/24 passed, 1 failed, 1 static skip in 571.49s; failed net.lichen.coap_client.api with kernel assertion invalid priority 15, CONFIG_COAP_CLIENT_THREAD_PRIORITY=15 colliding with idle priority on native_sim. Direct experiment with OVERLAY_CONFIG CONFIG_COAP_CLIENT_THREAD_PRIORITY=14 built and ran lichen/tests/coap_client successfully: 5/5 ztest cases passed. Implemented scoped fix in lichen/tests/coap_client/prj.conf. Focused rerun: west twister -p native_sim --inline-logs -O build/twister-coap-client-fix -T lichen/tests/coap_client -\u003e 1/1 configurations passed, 5 test cases, 0 warnings in 29.29s. Full rerun: west twister -p native_sim --inline-logs -O build/twister-native-packet-fixed [same -T list] -\u003e 24 selected, 23/24 executed passed (100%), 1 static skip, 0 failed/errors, 361 test cases, 44 skipped, 0 warnings in 562.19s. Reviews: Popper the 6th clean; Aquinas the 6th clean, qemu_x86 build passed in review, qemu run blocked by unrelated /tmp/slip.sock.",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T17:54:40.101503Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-02T04:23:02.424514Z",
+  "updated_at": "2026-07-02T04:51:20.485761Z",
   "labels": [
     "zephyr",
     "lilygo",
