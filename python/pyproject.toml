@@ -51,6 +51,9 @@ meshtastic = [
     "betterproto>=2.0.0b6",
     "bleak>=0.21",
 ]
+ble = [
+    "bleak>=0.21",
+]
 
 [project.scripts]
 lichen-sim = "lichen.sim.server:main"

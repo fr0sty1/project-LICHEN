@@ -586,6 +586,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+ble = [
+    { name = "bleak" },
+]
 dev = [
     { name = "httpx" },
     { name = "jsonschema" },
@@ -605,6 +608,7 @@ requires-dist = [
     { name = "aiocoap", specifier = ">=0.4.7" },
     { name = "anyio", specifier = ">=4.0" },
     { name = "betterproto", marker = "extra == 'meshtastic'", specifier = ">=2.0.0b6" },
+    { name = "bleak", marker = "extra == 'ble'", specifier = ">=0.21" },
     { name = "bleak", marker = "extra == 'meshtastic'", specifier = ">=0.21" },
     { name = "cbor2", specifier = ">=5.6" },
     { name = "cryptography", specifier = ">=42.0" },
@@ -623,7 +627,7 @@ requires-dist = [
     { name = "textual", specifier = ">=0.80.0" },
     { name = "uvicorn", specifier = ">=0.27" },
 ]
-provides-extras = ["dev", "meshtastic"]
+provides-extras = ["dev", "meshtastic", "ble"]
 
 [[package]]
 name = "linkify-it-py"

@@ -2,6 +2,15 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Shared client model for native LICHEN applications."""
 
+from lichen.client.ble import (
+    LICHEN_LCI_PROFILE,
+    NUS_LCI_PROFILE,
+    BleDeviceCandidate,
+    BleLciProfile,
+    BlePacketTransport,
+    BleTransportError,
+    discover_lci_devices,
+)
 from lichen.client.lci import (
     LciClient,
     LciClientError,
@@ -34,11 +43,13 @@ __all__ = [
     "DeliveryState",
     "DeviceStatus",
     "Identity",
+    "LICHEN_LCI_PROFILE",
     "LciClient",
     "LciClientError",
     "MessageDraft",
     "MessageRecord",
     "MessageSubscription",
+    "NUS_LCI_PROFILE",
     "Neighbor",
     "PacketTransport",
     "RadioConfig",
@@ -46,4 +57,9 @@ __all__ = [
     "ResourceTransport",
     "Route",
     "SendResult",
+    "BleDeviceCandidate",
+    "BleLciProfile",
+    "BlePacketTransport",
+    "BleTransportError",
+    "discover_lci_devices",
 ]
