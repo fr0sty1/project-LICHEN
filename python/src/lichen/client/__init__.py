@@ -43,6 +43,11 @@ from lichen.client.model import (
     Route,
     SendResult,
 )
+from lichen.client.packet_coap import (
+    PacketCoapConfig,
+    PacketCoapResourceTransport,
+    PacketDatagramChannel,
+)
 from lichen.client.transport import PacketTransport
 
 __all__ = [
@@ -63,6 +68,9 @@ __all__ = [
     "MessageSubscription",
     "NUS_LCI_PROFILE",
     "Neighbor",
+    "PacketCoapConfig",
+    "PacketCoapResourceTransport",
+    "PacketDatagramChannel",
     "PacketTransport",
     "RadioConfig",
     "ResourceSubscription",

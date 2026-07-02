@@ -687,6 +687,7 @@ async def test_open_selects_current_message_contact_for_compose() -> None:
 def test_build_messaging_client_uses_ip_coap_when_uri_is_supplied() -> None:
     assert build_messaging_client(None) is None
     assert build_messaging_client("coap://[fe80::1]") is not None
+    assert build_messaging_client(None, ble_address="AA:BB") is not None
 
 
 async def test_lci_client_app_connects_and_refreshes_ip_transport() -> None:
@@ -706,6 +707,28 @@ async def test_lci_client_app_connects_and_refreshes_ip_transport() -> None:
     assert transport.connected is True
     assert transport.closed is True
     assert transport.requests == [("GET", "/msg/inbox")]
+    assert "from ip transport" in rendered
+
+
+async def test_tui_messaging_flow_uses_same_lci_client_interface_for_ble_transport() -> None:
+    transport = FakeResourceTransport()
+    client = LciClient(transport)
+    app = NativeClientApp(
+        ShellStatus(context="Chats", mode=LinkMode.BLE, state=UiState.DISCONNECTED),
+        client=client,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("r")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        status = app.query_one("#native-status", NativeStatusBar).status
+
+    assert transport.connected is True
+    assert transport.closed is True
+    assert transport.requests == [("GET", "/msg/inbox")]
+    assert status.mode == LinkMode.BLE
     assert "from ip transport" in rendered
 
 
@@ -1035,6 +1058,32 @@ def test_main_wires_ip_coap_client(
     assert app.inbox_path == "/custom/inbox"
     assert app.send_path == "/custom/send"
     assert app.status.mode == LinkMode.IP
+
+
+def test_main_wires_ble_packet_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, NativeClientApp] = {}
+
+    def fake_run(self: NativeClientApp) -> None:
+        captured["app"] = self
+
+    monkeypatch.setattr(NativeClientApp, "run", fake_run)
+
+    main(
+        [
+            "--ble-address",
+            "AA:BB",
+            "--ble-local-host",
+            "fe80::22",
+            "--ble-node-host",
+            "fe80::11",
+        ]
+    )
+
+    app = captured["app"]
+    assert app.client is not None
+    assert app.status.mode == LinkMode.BLE
 
 
 async def test_native_client_app_renders_at_common_size() -> None:

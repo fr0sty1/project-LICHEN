@@ -21,6 +21,7 @@ from textual.widgets import Input, Static
 
 from lichen.client import (
     AiocoapResourceTransport,
+    BlePacketTransport,
     Capabilities,
     CoapResult,
     ConfigSnapshot,
@@ -32,6 +33,8 @@ from lichen.client import (
     MessageDraft,
     MessageRecord,
     Neighbor,
+    PacketCoapConfig,
+    PacketCoapResourceTransport,
     RadioConfig,
     ResourceSubscription,
     Route,
@@ -1844,8 +1847,21 @@ class NativeClientApp(App[None]):
         self.query_one("#active-pane", ActivePane).set_width(max(20, width - 2))
 
 
-def build_messaging_client(base_uri: str | None) -> MessagingClient | None:
-    """Build an IP/CoAP-backed messaging client when a base URI is supplied."""
+def build_messaging_client(
+    base_uri: str | None,
+    *,
+    ble_address: str | None = None,
+    ble_local_host: str = "fe80::2",
+    ble_node_host: str = "fe80::1",
+) -> MessagingClient | None:
+    """Build a messaging client for IP/CoAP or BLE packet-backed LCI."""
+    if ble_address is not None:
+        packet_transport = BlePacketTransport(ble_address)
+        transport = PacketCoapResourceTransport(
+            packet_transport,
+            config=PacketCoapConfig(local_host=ble_local_host, peer_host=ble_node_host),
+        )
+        return LciClient(transport)
     if base_uri is None:
         return None
     transport = AiocoapResourceTransport(config=IpCoapConfig(base_uri=base_uri))
@@ -1859,12 +1875,25 @@ def main(argv: Sequence[str] | None = None) -> None:
         "--coap-base-uri",
         help="Base IP/CoAP URI for a local LCI endpoint, for example coap://[fe80::1]",
     )
+    parser.add_argument("--ble-address", help="BLE address for a SLIP/IPv6 LCI endpoint")
+    parser.add_argument("--ble-local-host", default="fe80::2")
+    parser.add_argument("--ble-node-host", default="fe80::1")
     parser.add_argument("--inbox-path", default="/msg/inbox")
     parser.add_argument("--send-path", default="/msg/inbox")
     args = parser.parse_args(argv)
-    client = build_messaging_client(args.coap_base_uri)
+    client = build_messaging_client(
+        args.coap_base_uri,
+        ble_address=args.ble_address,
+        ble_local_host=args.ble_local_host,
+        ble_node_host=args.ble_node_host,
+    )
+    mode = LinkMode.DEMO
+    if args.ble_address is not None:
+        mode = LinkMode.BLE
+    elif client is not None:
+        mode = LinkMode.IP
     status = ShellStatus(
-        mode=LinkMode.IP if client is not None else LinkMode.DEMO,
+        mode=mode,
         state=UiState.SYNCED if client is not None else UiState.DISCONNECTED,
     )
     NativeClientApp(
