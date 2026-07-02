@@ -7,7 +7,9 @@ menuconfig LICHEN_MESHTASTIC_CODEC
 	help
 	  Enable the bounded no-allocation protobuf subset used by the
 	  Meshtastic app compatibility adapter. The schema source is
-	  meshtastic/protobufs commit 032b7dfd68e875c4323e6ac67590c6fc616b1714.
+	  meshtastic/protobufs commit 032b7dfd68e875c4323e6ac67590c6fc616b1714,
+	  with PortNum values refreshed against
+	  aa53c96b79d9cb49a38e71fc2bc9c46cec1fd7c6.
 
 if LICHEN_MESHTASTIC_CODEC
 

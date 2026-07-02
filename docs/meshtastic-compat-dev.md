@@ -14,6 +14,11 @@ This contract is based on the Meshtastic app/protocol research recorded in Bead 
 | `meshtastic/Meshtastic-Android` | `eb3bd10757a312d1537874bfab245117c46c36a9` |
 | `meshtastic/Meshtastic-Apple` | `aeeb0cc49fbe0ed593e918ba2f95100ecf694256` |
 
+The vendored `PortNum` table was rechecked for Bead `project-LICHEN-llgw` against current
+`meshtastic/protobufs` `master` at `aa53c96b79d9cb49a38e71fc2bc9c46cec1fd7c6`. `LORA_OTA_APP = 79`
+is new since the pinned protobuf baseline above; the LICHEN minimal subset also now includes app-visible
+PortNum values that existed upstream but had not previously been vendored locally.
+
 `DeviceMetadata` was rechecked for Bead `project-LICHEN-t2hn.24` against the checked-in LICHEN revision
 `908b6d0f87aae73a248a30d0bb49e01c6f998255` and current `meshtastic/protobufs` `master` at
 `9cb134be322dd7122e80d49b17dad9a213ff752e`. The pinned protobuf commit above and current upstream both define the same

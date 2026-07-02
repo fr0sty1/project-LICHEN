@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[4]
 PINNED_PORTNUMS = ROOT / "rust" / "lichen-meshtastic" / "proto" / "meshtastic" / "portnums.proto"
 ZEPHYR_ADAPTER_TEST = ROOT / "lichen" / "tests" / "meshtastic_adapter" / "src" / "main.c"
 ZEPHYR_ADAPTER = ROOT / "lichen" / "subsys" / "lichen" / "meshtastic" / "adapter.c"
+TEXT_MESSAGE_APP_PORTNUM = 1
+ADMIN_APP_PORTNUM = 6
 
 
 def _parse_proto_portnums() -> dict[str, int]:
@@ -58,8 +60,10 @@ def _parse_adapter_catalog_portnums() -> set[int]:
 
 def test_zephyr_unsupported_portnums_match_pinned_meshtastic_proto() -> None:
     portnums = _parse_proto_portnums()
-    expected = {value for value in portnums.values() if value != 1}
+    catalog_expected = {value for value in portnums.values() if value != TEXT_MESSAGE_APP_PORTNUM}
+    runtime_unsupported_expected = catalog_expected - {ADMIN_APP_PORTNUM}
 
-    assert portnums["TEXT_MESSAGE_APP"] == 1
-    assert _parse_zephyr_unsupported_portnums() == expected
-    assert _parse_adapter_catalog_portnums() == expected
+    assert portnums["TEXT_MESSAGE_APP"] == TEXT_MESSAGE_APP_PORTNUM
+    assert portnums["ADMIN_APP"] == ADMIN_APP_PORTNUM
+    assert _parse_zephyr_unsupported_portnums() == runtime_unsupported_expected
+    assert _parse_adapter_catalog_portnums() == catalog_expected
