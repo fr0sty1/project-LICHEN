@@ -185,4 +185,31 @@ config LICHEN_TIME_PROVIDER_GNSS
 
 endchoice
 
+config LICHEN_TIME_BUILD_EPOCH_UNIX
+	int "Deterministic firmware build epoch floor"
+	default 1700000000
+	range 1 2147483647
+	help
+	  Deterministic Unix timestamp used as the minimum plausible wall-clock
+	  value. Production builds must set this from reproducible build
+	  metadata, preferably SOURCE_DATE_EPOCH, or an explicit release epoch.
+
+config LICHEN_TIME_PROVISION_MAX_LEAD_S
+	int "Maximum provision epoch lead over build epoch"
+	default 31536000
+	range 0 2147483647
+	help
+	  Maximum accepted board provision timestamp lead over the firmware build
+	  epoch. This is a deterministic release policy bound, not a comparison
+	  with an untrusted runtime clock.
+
+config LICHEN_TIME_FRESHNESS_MAX_AGE_S
+	int "Maximum fresh wall-clock time age in seconds"
+	default 86400
+	range 1 2147483647
+	help
+	  Maximum age before an accepted wall-clock sample is considered stale.
+	  Stale samples remain visible as diagnostics but no longer establish
+	  wall-clock validity.
+
 endif # LICHEN_HAL

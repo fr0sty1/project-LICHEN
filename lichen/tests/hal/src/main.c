@@ -290,6 +290,261 @@ ZTEST(hal, test_location_time_snapshot_test_hook_round_trips_and_resets)
 	zassert_false(snapshot.fix_time_unix_valid);
 }
 
+ZTEST(hal, test_time_provider_uptime_only_does_not_synthesize_wall_clock)
+{
+	struct lichen_hal_time_snapshot snapshot = {
+		.wall_clock_valid = true,
+		.unix_time_valid = true,
+		.unix_time = 1U,
+	};
+
+	lichen_hal_time_clear();
+	lichen_hal_location_test_set_uptime_ms(123000);
+	zassert_equal(lichen_hal_time_snapshot_get(NULL), -EINVAL);
+	zassert_ok(lichen_hal_time_snapshot_get(&snapshot));
+
+	zassert_true(snapshot.provider_available);
+	zassert_false(snapshot.wall_clock_valid);
+	zassert_false(snapshot.unix_time_valid);
+	zassert_equal(snapshot.unix_time, 0U);
+	zassert_equal(snapshot.build_epoch,
+		      (uint32_t)CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX);
+	zassert_equal(snapshot.effective_epoch_floor,
+		      (uint32_t)CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX);
+}
+
+ZTEST(hal, test_time_provider_build_epoch_floor_and_diagnostics)
+{
+	const struct lichen_hal_time_sample below_floor = {
+		.source_class = LICHEN_HAL_TIME_SOURCE_GNSS,
+		.source_name = "gnss0",
+		.unix_time_valid = true,
+		.unix_time = CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX - 1U,
+	};
+	const struct lichen_hal_time_sample at_floor = {
+		.source_class = LICHEN_HAL_TIME_SOURCE_GNSS,
+		.source_name = "gnss0",
+		.unix_time_valid = true,
+		.unix_time = CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX,
+		.accuracy_ms_valid = true,
+		.accuracy_ms = 1000U,
+		.quality_valid = true,
+		.quality = 90U,
+	};
+	struct lichen_hal_time_snapshot snapshot;
+
+	lichen_hal_time_clear();
+	lichen_hal_location_test_set_uptime_ms(1000);
+	zassert_equal(lichen_hal_time_submit(NULL), -EINVAL);
+	zassert_equal(lichen_hal_time_submit(&below_floor), -ERANGE);
+	zassert_ok(lichen_hal_time_snapshot_get(&snapshot));
+	zassert_false(snapshot.wall_clock_valid);
+	zassert_equal(snapshot.last_rejection,
+		      LICHEN_HAL_TIME_REJECT_BELOW_EPOCH_FLOOR);
+
+	zassert_ok(lichen_hal_time_submit(&at_floor));
+	lichen_hal_location_test_set_uptime_ms(6000);
+	zassert_ok(lichen_hal_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.wall_clock_valid);
+	zassert_true(snapshot.unix_time_valid);
+	zassert_equal(snapshot.unix_time,
+		      CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX + 5U);
+	zassert_true(snapshot.source_class_valid);
+	zassert_equal(snapshot.source_class, LICHEN_HAL_TIME_SOURCE_GNSS);
+	zassert_str_equal(snapshot.source_name, "gnss0");
+	zassert_true(snapshot.age_seconds_valid);
+	zassert_equal(snapshot.age_seconds, 5U);
+	zassert_true(snapshot.accuracy_ms_valid);
+	zassert_equal(snapshot.accuracy_ms, 1000U);
+	zassert_true(snapshot.quality_valid);
+	zassert_equal(snapshot.quality, 90U);
+	zassert_true(snapshot.passed_epoch_floor);
+}
+
+ZTEST(hal, test_time_provider_provision_epoch_floor_and_recovery)
+{
+	const uint32_t build_epoch = CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX;
+	const uint32_t provision_epoch = build_epoch + 100U;
+	const uint32_t poisoned_epoch =
+		build_epoch + CONFIG_LICHEN_TIME_PROVISION_MAX_LEAD_S + 1U;
+	const struct lichen_hal_time_sample between = {
+		.source_class = LICHEN_HAL_TIME_SOURCE_NETWORK,
+		.source_name = "mesh",
+		.unix_time_valid = true,
+		.unix_time = build_epoch + 50U,
+	};
+	const struct lichen_hal_time_sample after_provision = {
+		.source_class = LICHEN_HAL_TIME_SOURCE_NETWORK,
+		.source_name = "mesh",
+		.unix_time_valid = true,
+		.unix_time = provision_epoch,
+	};
+	struct lichen_hal_time_snapshot snapshot;
+
+	lichen_hal_time_clear();
+	lichen_hal_location_test_set_uptime_ms(1000);
+	zassert_equal(lichen_hal_time_provision_epoch_set(provision_epoch, false),
+		      -EINVAL);
+	zassert_ok(lichen_hal_time_snapshot_get(&snapshot));
+	zassert_false(snapshot.provision_epoch_valid);
+	zassert_equal(snapshot.effective_epoch_floor, build_epoch);
+	zassert_equal(snapshot.last_rejection,
+		      LICHEN_HAL_TIME_REJECT_PROVISION_UNAUTHENTICATED);
+
+	zassert_equal(lichen_hal_time_provision_epoch_set(build_epoch - 1U, true),
+		      -EINVAL);
+	zassert_ok(lichen_hal_time_snapshot_get(&snapshot));
+	zassert_equal(snapshot.last_rejection,
+		      LICHEN_HAL_TIME_REJECT_PROVISION_INVALID);
+
+	zassert_ok(lichen_hal_time_provision_epoch_set(provision_epoch, true));
+	zassert_equal(lichen_hal_time_submit(&between), -ERANGE);
+	zassert_ok(lichen_hal_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.provision_epoch_valid);
+	zassert_equal(snapshot.provision_epoch, provision_epoch);
+	zassert_equal(snapshot.effective_epoch_floor, provision_epoch);
+	zassert_false(snapshot.wall_clock_valid);
+
+	zassert_ok(lichen_hal_time_submit(&after_provision));
+	zassert_ok(lichen_hal_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.wall_clock_valid);
+	zassert_equal(snapshot.unix_time, provision_epoch);
+
+	zassert_equal(lichen_hal_time_provision_epoch_set(poisoned_epoch, true),
+		      -EINVAL);
+	zassert_ok(lichen_hal_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.provision_epoch_valid);
+	zassert_equal(snapshot.effective_epoch_floor, provision_epoch);
+	zassert_equal(snapshot.last_rejection,
+		      LICHEN_HAL_TIME_REJECT_PROVISION_FUTURE);
+
+	lichen_hal_time_provision_epoch_clear();
+	lichen_hal_time_clear();
+	zassert_equal(lichen_hal_time_provision_epoch_set(poisoned_epoch, true),
+		      -EINVAL);
+	zassert_ok(lichen_hal_time_snapshot_get(&snapshot));
+	zassert_false(snapshot.provision_epoch_valid);
+	zassert_equal(snapshot.last_rejection,
+		      LICHEN_HAL_TIME_REJECT_PROVISION_FUTURE);
+	zassert_ok(lichen_hal_time_submit(&between));
+	zassert_ok(lichen_hal_time_snapshot_get(&snapshot));
+	zassert_false(snapshot.provision_epoch_valid);
+	zassert_equal(snapshot.effective_epoch_floor, build_epoch);
+	zassert_true(snapshot.wall_clock_valid);
+	zassert_equal(snapshot.unix_time, build_epoch + 50U);
+
+	zassert_ok(lichen_hal_time_provision_epoch_set(provision_epoch, true));
+	lichen_hal_time_provision_epoch_clear();
+	zassert_ok(lichen_hal_time_snapshot_get(&snapshot));
+	zassert_false(snapshot.provision_epoch_valid);
+	zassert_equal(snapshot.effective_epoch_floor, build_epoch);
+}
+
+ZTEST(hal, test_time_provider_precedence_stale_and_gnss_location_separation)
+{
+	const uint32_t build_epoch = CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX;
+	const struct lichen_hal_location_sample gnss_location = {
+		.source_class = LICHEN_HAL_LOCATION_SOURCE_ONBOARD_HARDWARE,
+		.fix_state = LICHEN_HAL_LOCATION_FIX_3D,
+		.fix_source = LICHEN_HAL_FIX_SOURCE_GNSS,
+		.source_name = "gnss0",
+		.latitude_e7_valid = true,
+		.latitude_e7 = 10,
+		.longitude_e7_valid = true,
+		.longitude_e7 = 20,
+		.fix_time_unix_valid = true,
+		.fix_time_unix = build_epoch - 1U,
+	};
+	const struct lichen_hal_time_sample stale_first = {
+		.source_class = LICHEN_HAL_TIME_SOURCE_GNSS,
+		.source_name = "stale-gnss",
+		.unix_time_valid = true,
+		.unix_time = build_epoch + 30U,
+		.observed_uptime_ms_valid = true,
+		.observed_uptime_ms = 0,
+		.quality_valid = true,
+		.quality = 60U,
+	};
+	const struct lichen_hal_time_sample network = {
+		.source_class = LICHEN_HAL_TIME_SOURCE_NETWORK,
+		.source_name = "mesh",
+		.unix_time_valid = true,
+		.unix_time = build_epoch + 10U,
+		.observed_uptime_ms_valid = true,
+		.observed_uptime_ms = 1000,
+	};
+	const struct lichen_hal_time_sample manual = {
+		.source_class = LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC,
+		.source_name = "manual",
+		.unix_time_valid = true,
+		.unix_time = build_epoch + 20U,
+		.observed_uptime_ms_valid = true,
+		.observed_uptime_ms = 2000,
+	};
+	const struct lichen_hal_time_sample lower_trust_backwards = {
+		.source_class = LICHEN_HAL_TIME_SOURCE_NETWORK,
+		.source_name = "mesh",
+		.unix_time_valid = true,
+		.unix_time = build_epoch + 1U,
+	};
+	struct lichen_hal_location_time_snapshot location;
+	struct lichen_hal_time_snapshot time;
+
+	lichen_hal_location_clear();
+	lichen_hal_time_clear();
+	lichen_hal_location_test_set_uptime_ms(1000);
+	zassert_ok(lichen_hal_location_submit(&gnss_location));
+	zassert_ok(lichen_hal_location_time_snapshot_get(&location));
+	zassert_true(location.latitude_e7_valid);
+	zassert_true(location.fix_time_unix_valid);
+	zassert_ok(lichen_hal_time_snapshot_get(&time));
+	zassert_false(time.wall_clock_valid);
+
+	lichen_hal_location_test_set_uptime_ms(
+		((int64_t)CONFIG_LICHEN_TIME_FRESHNESS_MAX_AGE_S + 1) * 1000);
+	zassert_equal(lichen_hal_time_submit(&stale_first), -ETIME);
+	zassert_ok(lichen_hal_time_snapshot_get(&time));
+	zassert_false(time.wall_clock_valid);
+	zassert_false(time.unix_time_valid);
+	zassert_true(time.source_class_valid);
+	zassert_equal(time.source_class, LICHEN_HAL_TIME_SOURCE_GNSS);
+	zassert_str_equal(time.source_name, "stale-gnss");
+	zassert_true(time.age_seconds_valid);
+	zassert_equal(time.age_seconds,
+		      CONFIG_LICHEN_TIME_FRESHNESS_MAX_AGE_S + 1U);
+	zassert_true(time.quality_valid);
+	zassert_equal(time.quality, 60U);
+	zassert_equal(time.last_rejection, LICHEN_HAL_TIME_REJECT_STALE);
+
+	lichen_hal_time_clear();
+	lichen_hal_location_test_set_uptime_ms(1000);
+	zassert_ok(lichen_hal_time_submit(&network));
+	lichen_hal_location_test_set_uptime_ms(2000);
+	zassert_ok(lichen_hal_time_submit(&manual));
+	lichen_hal_location_test_set_uptime_ms(3000);
+	zassert_ok(lichen_hal_time_snapshot_get(&time));
+	zassert_true(time.wall_clock_valid);
+	zassert_equal(time.source_class, LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC);
+	zassert_equal(time.unix_time, build_epoch + 21U);
+
+	zassert_equal(lichen_hal_time_submit(&lower_trust_backwards), -EALREADY);
+	zassert_ok(lichen_hal_time_snapshot_get(&time));
+	zassert_equal(time.last_rejection, LICHEN_HAL_TIME_REJECT_LOWER_TRUST);
+	zassert_equal(time.source_class, LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC);
+
+	lichen_hal_location_test_set_uptime_ms(
+		((int64_t)CONFIG_LICHEN_TIME_FRESHNESS_MAX_AGE_S + 10) * 1000);
+	zassert_ok(lichen_hal_time_snapshot_get(&time));
+	zassert_false(time.wall_clock_valid);
+	zassert_false(time.unix_time_valid);
+	zassert_true(time.source_class_valid);
+	zassert_equal(time.source_class, LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC);
+	zassert_str_equal(time.source_name, "manual");
+	zassert_true(time.age_seconds_valid);
+	zassert_equal(time.age_seconds,
+		      CONFIG_LICHEN_TIME_FRESHNESS_MAX_AGE_S + 8U);
+}
+
 ZTEST(hal, test_location_provider_submit_fresh_gnss_fix)
 {
 	const struct lichen_hal_location_sample sample = {
@@ -687,6 +942,8 @@ static void hal_after(void *fixture)
 
 	lichen_hal_location_time_test_set_snapshot(NULL);
 	lichen_hal_location_clear();
+	lichen_hal_time_clear();
+	lichen_hal_time_provision_epoch_clear();
 	lichen_hal_location_test_use_real_uptime();
 }
 

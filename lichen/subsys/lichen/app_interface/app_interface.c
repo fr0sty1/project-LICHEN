@@ -513,6 +513,63 @@ int lichen_app_interface_submit_manual_location(
 #endif
 }
 
+static int submit_time_with_bridge(
+	const struct lichen_app_time_snapshot *time,
+	int (*submit)(const struct lichen_app_time_snapshot *time))
+{
+	int ret;
+
+	if (time == NULL) {
+		k_mutex_lock(&s_mutex, K_FOREVER);
+		s_stats.invalid_count++;
+		k_mutex_unlock(&s_mutex);
+		return -EINVAL;
+	}
+
+#if IS_ENABLED(CONFIG_LICHEN_HAL)
+	ret = submit(time);
+	if (ret == -EINVAL) {
+		k_mutex_lock(&s_mutex, K_FOREVER);
+		s_stats.invalid_count++;
+		k_mutex_unlock(&s_mutex);
+	}
+	return ret;
+#else
+	ARG_UNUSED(ret);
+	ARG_UNUSED(submit);
+	return -ENOTSUP;
+#endif
+}
+
+int lichen_app_interface_submit_time(const struct lichen_app_time_snapshot *time)
+{
+#if IS_ENABLED(CONFIG_LICHEN_HAL)
+	return submit_time_with_bridge(time, lichen_app_time_submit_to_hal);
+#else
+	return submit_time_with_bridge(time, NULL);
+#endif
+}
+
+int lichen_app_interface_submit_network_time(
+	const struct lichen_app_time_snapshot *time)
+{
+#if IS_ENABLED(CONFIG_LICHEN_HAL)
+	return submit_time_with_bridge(time, lichen_app_network_time_submit_to_hal);
+#else
+	return submit_time_with_bridge(time, NULL);
+#endif
+}
+
+int lichen_app_interface_submit_manual_time(
+	const struct lichen_app_time_snapshot *time)
+{
+#if IS_ENABLED(CONFIG_LICHEN_HAL)
+	return submit_time_with_bridge(time, lichen_app_manual_time_submit_to_hal);
+#else
+	return submit_time_with_bridge(time, NULL);
+#endif
+}
+
 int lichen_app_interface_copy_stats(
 	struct lichen_app_interface_stats *stats)
 {

@@ -55,6 +55,28 @@ enum lichen_hal_time_provider {
 	LICHEN_HAL_TIME_GNSS,
 };
 
+enum lichen_hal_time_source_class {
+	LICHEN_HAL_TIME_SOURCE_NONE,
+	LICHEN_HAL_TIME_SOURCE_MONOTONIC_INTERNAL,
+	LICHEN_HAL_TIME_SOURCE_INTERNAL_RTC,
+	LICHEN_HAL_TIME_SOURCE_GNSS,
+	LICHEN_HAL_TIME_SOURCE_NETWORK,
+	LICHEN_HAL_TIME_SOURCE_LOCAL_CLIENT,
+	LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC,
+};
+
+enum lichen_hal_time_rejection_reason {
+	LICHEN_HAL_TIME_REJECT_NONE,
+	LICHEN_HAL_TIME_REJECT_INVALID_SOURCE,
+	LICHEN_HAL_TIME_REJECT_MISSING_TIMESTAMP,
+	LICHEN_HAL_TIME_REJECT_BELOW_EPOCH_FLOOR,
+	LICHEN_HAL_TIME_REJECT_STALE,
+	LICHEN_HAL_TIME_REJECT_LOWER_TRUST,
+	LICHEN_HAL_TIME_REJECT_PROVISION_UNAUTHENTICATED,
+	LICHEN_HAL_TIME_REJECT_PROVISION_INVALID,
+	LICHEN_HAL_TIME_REJECT_PROVISION_FUTURE,
+};
+
 struct lichen_hal_capabilities {
 	uint32_t flags;
 	enum lichen_hal_radio_model radio;
@@ -135,6 +157,41 @@ struct lichen_hal_location_time_snapshot {
 	enum lichen_hal_fix_source fix_source;
 };
 
+struct lichen_hal_time_snapshot {
+	bool provider_available;
+	bool wall_clock_valid;
+	bool source_class_valid;
+	enum lichen_hal_time_source_class source_class;
+	char source_name[24];
+	bool unix_time_valid;
+	uint32_t unix_time;
+	bool age_seconds_valid;
+	uint32_t age_seconds;
+	bool accuracy_ms_valid;
+	uint32_t accuracy_ms;
+	bool quality_valid;
+	uint8_t quality;
+	bool passed_epoch_floor;
+	enum lichen_hal_time_rejection_reason last_rejection;
+	uint32_t effective_epoch_floor;
+	uint32_t build_epoch;
+	bool provision_epoch_valid;
+	uint32_t provision_epoch;
+};
+
+struct lichen_hal_time_sample {
+	enum lichen_hal_time_source_class source_class;
+	const char *source_name;
+	bool unix_time_valid;
+	uint32_t unix_time;
+	bool observed_uptime_ms_valid;
+	int64_t observed_uptime_ms;
+	bool accuracy_ms_valid;
+	uint32_t accuracy_ms;
+	bool quality_valid;
+	uint8_t quality;
+};
+
 struct lichen_hal_location_sample {
 	enum lichen_hal_location_source_class source_class;
 	enum lichen_hal_location_fix_state fix_state;
@@ -212,6 +269,12 @@ int lichen_hal_location_submit(const struct lichen_hal_location_sample *sample);
 void lichen_hal_location_clear(void);
 int lichen_hal_location_time_snapshot_get(
 	struct lichen_hal_location_time_snapshot *snapshot);
+int lichen_hal_time_submit(const struct lichen_hal_time_sample *sample);
+void lichen_hal_time_clear(void);
+int lichen_hal_time_snapshot_get(struct lichen_hal_time_snapshot *snapshot);
+int lichen_hal_time_provision_epoch_set(uint32_t provision_epoch,
+					bool authenticated);
+void lichen_hal_time_provision_epoch_clear(void);
 
 #ifdef CONFIG_ZTEST
 void lichen_hal_location_test_set_uptime_ms(int64_t uptime_ms);

@@ -86,6 +86,28 @@ enum lichen_app_location_fix_state {
 	LICHEN_APP_LOCATION_FIX_ERROR,
 };
 
+enum lichen_app_time_source_class {
+	LICHEN_APP_TIME_SOURCE_NONE,
+	LICHEN_APP_TIME_SOURCE_MONOTONIC_INTERNAL,
+	LICHEN_APP_TIME_SOURCE_INTERNAL_RTC,
+	LICHEN_APP_TIME_SOURCE_GNSS,
+	LICHEN_APP_TIME_SOURCE_NETWORK,
+	LICHEN_APP_TIME_SOURCE_LOCAL_CLIENT,
+	LICHEN_APP_TIME_SOURCE_MANUAL_STATIC,
+};
+
+enum lichen_app_time_rejection_reason {
+	LICHEN_APP_TIME_REJECT_NONE,
+	LICHEN_APP_TIME_REJECT_INVALID_SOURCE,
+	LICHEN_APP_TIME_REJECT_MISSING_TIMESTAMP,
+	LICHEN_APP_TIME_REJECT_BELOW_EPOCH_FLOOR,
+	LICHEN_APP_TIME_REJECT_STALE,
+	LICHEN_APP_TIME_REJECT_LOWER_TRUST,
+	LICHEN_APP_TIME_REJECT_PROVISION_UNAUTHENTICATED,
+	LICHEN_APP_TIME_REJECT_PROVISION_INVALID,
+	LICHEN_APP_TIME_REJECT_PROVISION_FUTURE,
+};
+
 struct lichen_app_location_time_snapshot {
 	bool location_provider_available;
 	bool time_provider_available;
@@ -114,6 +136,28 @@ struct lichen_app_location_time_snapshot {
 	uint32_t vertical_accuracy_mm;
 };
 
+struct lichen_app_time_snapshot {
+	bool provider_available;
+	bool wall_clock_valid;
+	bool source_class_valid;
+	enum lichen_app_time_source_class source_class;
+	char source_name[24];
+	bool unix_time_valid;
+	uint32_t unix_time;
+	bool age_seconds_valid;
+	uint32_t age_seconds;
+	bool accuracy_ms_valid;
+	uint32_t accuracy_ms;
+	bool quality_valid;
+	uint8_t quality;
+	bool passed_epoch_floor;
+	enum lichen_app_time_rejection_reason last_rejection;
+	uint32_t effective_epoch_floor;
+	uint32_t build_epoch;
+	bool provision_epoch_valid;
+	uint32_t provision_epoch;
+};
+
 struct lichen_app_status_snapshot {
 	uint16_t rank;
 	uint32_t uptime_seconds;
@@ -121,6 +165,7 @@ struct lichen_app_status_snapshot {
 	bool rpl_capable;
 	struct lichen_app_power_snapshot power;
 	struct lichen_app_location_time_snapshot location_time;
+	struct lichen_app_time_snapshot time;
 };
 
 struct lichen_app_config_snapshot {
@@ -181,6 +226,12 @@ int lichen_app_interface_submit_network_location(
 	const struct lichen_app_location_time_snapshot *location);
 int lichen_app_interface_submit_manual_location(
 	const struct lichen_app_location_time_snapshot *location);
+int lichen_app_interface_submit_time(
+	const struct lichen_app_time_snapshot *time);
+int lichen_app_interface_submit_network_time(
+	const struct lichen_app_time_snapshot *time);
+int lichen_app_interface_submit_manual_time(
+	const struct lichen_app_time_snapshot *time);
 
 int lichen_app_interface_copy_stats(
 	struct lichen_app_interface_stats *stats);

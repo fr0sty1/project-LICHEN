@@ -151,8 +151,20 @@ struct location_provider_state {
 	bool has_sample[LICHEN_HAL_LOCATION_SOURCE_MANUAL_STATIC + 1];
 };
 
+struct time_provider_state {
+	struct lichen_hal_time_sample samples[LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC + 1];
+	char source_names[LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC + 1]
+			 [sizeof(((struct lichen_hal_time_snapshot *)0)->source_name)];
+	bool has_sample[LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC + 1];
+	bool provision_epoch_valid;
+	uint32_t provision_epoch;
+	enum lichen_hal_time_rejection_reason last_rejection;
+};
+
 static struct location_provider_state s_location_state;
 static K_MUTEX_DEFINE(s_location_mutex);
+static struct time_provider_state s_time_state;
+static K_MUTEX_DEFINE(s_time_mutex);
 
 const struct lichen_hal_capabilities *lichen_hal_capabilities_get(void)
 {
@@ -560,6 +572,13 @@ static bool valid_fix_source(enum lichen_hal_fix_source fix_source)
 	       fix_source <= LICHEN_HAL_FIX_SOURCE_GNSS;
 }
 
+static bool valid_time_source_class(
+	enum lichen_hal_time_source_class source_class)
+{
+	return source_class > LICHEN_HAL_TIME_SOURCE_NONE &&
+	       source_class <= LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC;
+}
+
 static bool valid_position_e7(int32_t latitude_e7, int32_t longitude_e7)
 {
 	return latitude_e7 >= -900000000 && latitude_e7 <= 900000000 &&
@@ -595,6 +614,137 @@ static uint32_t location_age_seconds(const struct lichen_hal_location_sample *sa
 	}
 
 	return (uint32_t)(elapsed_ms / 1000U);
+}
+
+static uint32_t elapsed_seconds_since_ms(int64_t observed)
+{
+	int64_t now = location_now_ms();
+	uint64_t elapsed_ms;
+
+	if (now <= observed) {
+		return 0U;
+	}
+	if (observed < 0 && now >= 0) {
+		elapsed_ms = (uint64_t)now + (uint64_t)(-(observed + 1)) + 1U;
+	} else {
+		elapsed_ms = (uint64_t)(now - observed);
+	}
+	if (elapsed_ms / 1000U > UINT32_MAX) {
+		return UINT32_MAX;
+	}
+
+	return (uint32_t)(elapsed_ms / 1000U);
+}
+
+static uint32_t time_age_seconds(const struct lichen_hal_time_sample *sample)
+{
+	return elapsed_seconds_since_ms(sample->observed_uptime_ms);
+}
+
+static uint32_t time_build_epoch(void)
+{
+	return (uint32_t)CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX;
+}
+
+static uint32_t time_effective_epoch_floor_locked(void)
+{
+	uint32_t floor = time_build_epoch();
+
+	if (s_time_state.provision_epoch_valid &&
+	    s_time_state.provision_epoch > floor) {
+		floor = s_time_state.provision_epoch;
+	}
+
+	return floor;
+}
+
+static bool provision_epoch_in_lead_bound(uint32_t provision_epoch)
+{
+	uint32_t build_epoch = time_build_epoch();
+	uint64_t max_epoch = (uint64_t)build_epoch +
+			     (uint64_t)CONFIG_LICHEN_TIME_PROVISION_MAX_LEAD_S;
+
+	return provision_epoch >= build_epoch && provision_epoch <= max_epoch;
+}
+
+static int time_source_priority(enum lichen_hal_time_source_class source_class)
+{
+	switch (source_class) {
+	case LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC:
+		return 6;
+	case LICHEN_HAL_TIME_SOURCE_LOCAL_CLIENT:
+		return 5;
+	case LICHEN_HAL_TIME_SOURCE_NETWORK:
+		return 4;
+	case LICHEN_HAL_TIME_SOURCE_GNSS:
+		return 3;
+	case LICHEN_HAL_TIME_SOURCE_INTERNAL_RTC:
+		return 2;
+	case LICHEN_HAL_TIME_SOURCE_MONOTONIC_INTERNAL:
+		return 1;
+	case LICHEN_HAL_TIME_SOURCE_NONE:
+	default:
+		return 0;
+	}
+}
+
+static bool time_sample_is_stale(const struct lichen_hal_time_sample *sample)
+{
+	return time_age_seconds(sample) > CONFIG_LICHEN_TIME_FRESHNESS_MAX_AGE_S;
+}
+
+static bool time_sample_passes_floor_locked(
+	const struct lichen_hal_time_sample *sample)
+{
+	return sample->unix_time_valid &&
+	       sample->unix_time >= time_effective_epoch_floor_locked();
+}
+
+static bool time_sample_can_establish_locked(
+	const struct lichen_hal_time_sample *sample)
+{
+	return sample->source_class != LICHEN_HAL_TIME_SOURCE_MONOTONIC_INTERNAL &&
+	       time_sample_passes_floor_locked(sample) &&
+	       !time_sample_is_stale(sample);
+}
+
+static uint32_t time_sample_current_unix(
+	const struct lichen_hal_time_sample *sample)
+{
+	uint64_t current = (uint64_t)sample->unix_time +
+			   (uint64_t)time_age_seconds(sample);
+
+	return current > UINT32_MAX ? UINT32_MAX : (uint32_t)current;
+}
+
+static const struct lichen_hal_time_sample *select_time_sample_locked(void)
+{
+	for (int source = LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC;
+	     source > LICHEN_HAL_TIME_SOURCE_NONE; source--) {
+		const struct lichen_hal_time_sample *sample =
+			&s_time_state.samples[source];
+
+		if (!s_time_state.has_sample[source]) {
+			continue;
+		}
+		if (time_sample_can_establish_locked(sample)) {
+			return sample;
+		}
+	}
+
+	return NULL;
+}
+
+static const struct lichen_hal_time_sample *select_time_diagnostic_sample_locked(void)
+{
+	for (int source = LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC;
+	     source > LICHEN_HAL_TIME_SOURCE_NONE; source--) {
+		if (s_time_state.has_sample[source]) {
+			return &s_time_state.samples[source];
+		}
+	}
+
+	return NULL;
 }
 
 static bool sample_is_stale(const struct lichen_hal_location_sample *sample)
@@ -707,6 +857,194 @@ void lichen_hal_location_clear(void)
 	k_mutex_lock(&s_location_mutex, K_FOREVER);
 	s_location_state = (struct location_provider_state){ 0 };
 	k_mutex_unlock(&s_location_mutex);
+}
+
+static void time_set_rejection_locked(
+	enum lichen_hal_time_rejection_reason reason)
+{
+	s_time_state.last_rejection = reason;
+}
+
+static void time_store_sample_locked(const struct lichen_hal_time_sample *sample)
+{
+	s_time_state.samples[sample->source_class] = *sample;
+	if (sample->source_name != NULL) {
+		strncpy(s_time_state.source_names[sample->source_class],
+			sample->source_name,
+			sizeof(s_time_state.source_names[sample->source_class]) - 1U);
+		s_time_state.source_names[sample->source_class]
+			[sizeof(s_time_state.source_names[sample->source_class]) - 1U] = '\0';
+	} else {
+		s_time_state.source_names[sample->source_class][0] = '\0';
+	}
+	s_time_state.samples[sample->source_class].source_name =
+		s_time_state.source_names[sample->source_class];
+	s_time_state.has_sample[sample->source_class] = true;
+}
+
+int lichen_hal_time_provision_epoch_set(uint32_t provision_epoch,
+					bool authenticated)
+{
+	k_mutex_lock(&s_time_mutex, K_FOREVER);
+	if (!authenticated) {
+		time_set_rejection_locked(
+			LICHEN_HAL_TIME_REJECT_PROVISION_UNAUTHENTICATED);
+		k_mutex_unlock(&s_time_mutex);
+		return -EINVAL;
+	}
+	if (provision_epoch == 0U || provision_epoch < time_build_epoch()) {
+		time_set_rejection_locked(
+			LICHEN_HAL_TIME_REJECT_PROVISION_INVALID);
+		k_mutex_unlock(&s_time_mutex);
+		return -EINVAL;
+	}
+	if (!provision_epoch_in_lead_bound(provision_epoch)) {
+		time_set_rejection_locked(
+			LICHEN_HAL_TIME_REJECT_PROVISION_FUTURE);
+		k_mutex_unlock(&s_time_mutex);
+		return -EINVAL;
+	}
+
+	s_time_state.provision_epoch = provision_epoch;
+	s_time_state.provision_epoch_valid = true;
+	time_set_rejection_locked(LICHEN_HAL_TIME_REJECT_NONE);
+	k_mutex_unlock(&s_time_mutex);
+	return 0;
+}
+
+void lichen_hal_time_provision_epoch_clear(void)
+{
+	k_mutex_lock(&s_time_mutex, K_FOREVER);
+	s_time_state.provision_epoch_valid = false;
+	s_time_state.provision_epoch = 0U;
+	k_mutex_unlock(&s_time_mutex);
+}
+
+int lichen_hal_time_submit(const struct lichen_hal_time_sample *sample)
+{
+	struct lichen_hal_time_sample copy;
+	const struct lichen_hal_time_sample *selected;
+
+	if (sample == NULL) {
+		return -EINVAL;
+	}
+	if (!valid_time_source_class(sample->source_class)) {
+		k_mutex_lock(&s_time_mutex, K_FOREVER);
+		time_set_rejection_locked(LICHEN_HAL_TIME_REJECT_INVALID_SOURCE);
+		k_mutex_unlock(&s_time_mutex);
+		return -EINVAL;
+	}
+	if (sample->source_class == LICHEN_HAL_TIME_SOURCE_MONOTONIC_INTERNAL ||
+	    !sample->unix_time_valid) {
+		k_mutex_lock(&s_time_mutex, K_FOREVER);
+		time_set_rejection_locked(LICHEN_HAL_TIME_REJECT_MISSING_TIMESTAMP);
+		k_mutex_unlock(&s_time_mutex);
+		return -EINVAL;
+	}
+
+	copy = *sample;
+	if (!copy.observed_uptime_ms_valid) {
+		copy.observed_uptime_ms = location_now_ms();
+		copy.observed_uptime_ms_valid = true;
+	} else if (copy.observed_uptime_ms > location_now_ms()) {
+		copy.observed_uptime_ms = location_now_ms();
+	}
+
+	k_mutex_lock(&s_time_mutex, K_FOREVER);
+	if (!time_sample_passes_floor_locked(&copy)) {
+		time_set_rejection_locked(LICHEN_HAL_TIME_REJECT_BELOW_EPOCH_FLOOR);
+		k_mutex_unlock(&s_time_mutex);
+		return -ERANGE;
+	}
+	if (time_sample_is_stale(&copy)) {
+		time_store_sample_locked(&copy);
+		time_set_rejection_locked(LICHEN_HAL_TIME_REJECT_STALE);
+		k_mutex_unlock(&s_time_mutex);
+		return -ETIME;
+	}
+
+	selected = select_time_sample_locked();
+	if (selected != NULL &&
+	    time_source_priority(copy.source_class) <
+	    time_source_priority(selected->source_class) &&
+	    copy.unix_time < time_sample_current_unix(selected)) {
+		time_set_rejection_locked(LICHEN_HAL_TIME_REJECT_LOWER_TRUST);
+		k_mutex_unlock(&s_time_mutex);
+		return -EALREADY;
+	}
+
+	time_store_sample_locked(&copy);
+	time_set_rejection_locked(LICHEN_HAL_TIME_REJECT_NONE);
+	k_mutex_unlock(&s_time_mutex);
+	return 0;
+}
+
+void lichen_hal_time_clear(void)
+{
+	k_mutex_lock(&s_time_mutex, K_FOREVER);
+	memset(s_time_state.samples, 0, sizeof(s_time_state.samples));
+	memset(s_time_state.source_names, 0, sizeof(s_time_state.source_names));
+	memset(s_time_state.has_sample, 0, sizeof(s_time_state.has_sample));
+	s_time_state.last_rejection = LICHEN_HAL_TIME_REJECT_NONE;
+	k_mutex_unlock(&s_time_mutex);
+}
+
+int lichen_hal_time_snapshot_get(struct lichen_hal_time_snapshot *snapshot)
+{
+	const struct lichen_hal_time_sample *selected;
+	bool selected_valid = false;
+
+	if (snapshot == NULL) {
+		return -EINVAL;
+	}
+
+	*snapshot = (struct lichen_hal_time_snapshot){ 0 };
+	snapshot->provider_available = lichen_hal_time_status() == 0;
+	snapshot->build_epoch = time_build_epoch();
+
+	k_mutex_lock(&s_time_mutex, K_FOREVER);
+	snapshot->effective_epoch_floor = time_effective_epoch_floor_locked();
+	snapshot->provision_epoch_valid = s_time_state.provision_epoch_valid;
+	snapshot->provision_epoch = s_time_state.provision_epoch;
+	snapshot->last_rejection = s_time_state.last_rejection;
+
+	selected = select_time_sample_locked();
+	selected_valid = selected != NULL;
+	if (selected == NULL) {
+		selected = select_time_diagnostic_sample_locked();
+	}
+	if (selected != NULL) {
+		struct lichen_hal_time_sample sample = *selected;
+		char source_name[sizeof(snapshot->source_name)];
+
+		strncpy(source_name,
+			s_time_state.source_names[sample.source_class],
+			sizeof(source_name) - 1U);
+		source_name[sizeof(source_name) - 1U] = '\0';
+		sample.source_name = source_name;
+
+		snapshot->wall_clock_valid = selected_valid;
+		snapshot->source_class_valid = true;
+		snapshot->source_class = sample.source_class;
+		strncpy(snapshot->source_name, sample.source_name,
+			sizeof(snapshot->source_name) - 1U);
+		snapshot->source_name[sizeof(snapshot->source_name) - 1U] = '\0';
+		snapshot->unix_time_valid = selected_valid;
+		if (selected_valid) {
+			snapshot->unix_time = time_sample_current_unix(&sample);
+		}
+		snapshot->age_seconds_valid = sample.observed_uptime_ms_valid;
+		snapshot->age_seconds = time_age_seconds(&sample);
+		snapshot->accuracy_ms_valid = sample.accuracy_ms_valid;
+		snapshot->accuracy_ms = sample.accuracy_ms;
+		snapshot->quality_valid = sample.quality_valid;
+		snapshot->quality = sample.quality;
+		snapshot->passed_epoch_floor =
+			time_sample_passes_floor_locked(&sample);
+	}
+	k_mutex_unlock(&s_time_mutex);
+
+	return 0;
 }
 
 static void snapshot_from_sample(struct lichen_hal_location_time_snapshot *snapshot,

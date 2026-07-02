@@ -21,6 +21,8 @@ void gateway_meshtastic_adapter_test_set_power_snapshot(
 	const struct lichen_hal_power_snapshot *snapshot);
 void gateway_meshtastic_adapter_test_set_location_time_snapshot(
 	const struct lichen_hal_location_time_snapshot *snapshot);
+void gateway_meshtastic_adapter_test_set_time_snapshot(
+	const struct lichen_hal_time_snapshot *snapshot);
 int gateway_meshtastic_adapter_test_process_once(void);
 #endif
 

@@ -16,8 +16,10 @@
 struct status_view {
 	bool location_provider;
 	bool time_provider;
+	bool wall_clock_valid;
 	bool has_location_provider;
 	bool has_time_provider;
+	bool has_wall_clock_valid;
 	bool has_loc_source_class;
 	bool has_loc_source;
 	bool has_loc_fix_state;
@@ -29,9 +31,19 @@ struct status_view {
 	bool has_alt_m;
 	bool has_time_unix;
 	bool has_satellites;
+	bool has_time_source_class;
+	bool has_time_source;
+	bool has_wall_time_unix;
+	bool has_time_age_s;
+	bool has_time_accuracy_ms;
+	bool has_time_quality;
+	bool has_time_reject;
 	char loc_source_class[24];
 	char loc_source[24];
 	char loc_fix_state[12];
+	char time_source_class[24];
+	char time_source[24];
+	char time_reject[24];
 	uint32_t loc_age_s;
 	uint32_t hacc_mm;
 	uint32_t vacc_mm;
@@ -40,6 +52,10 @@ struct status_view {
 	int32_t alt_m;
 	uint32_t time_unix;
 	uint32_t satellites;
+	uint32_t wall_time_unix;
+	uint32_t time_age_s;
+	uint32_t time_accuracy_ms;
+	uint32_t time_quality;
 };
 
 static bool key_matches(const struct zcbor_string *key, const char *expected)
@@ -87,6 +103,10 @@ static int decode_status(const uint8_t *buf, size_t len, struct status_view *out
 			out->has_time_provider = zcbor_bool_decode(
 				zsd, &out->time_provider);
 			decoded = out->has_time_provider;
+		} else if (key_matches(&key, "wall_clock_valid")) {
+			out->has_wall_clock_valid = zcbor_bool_decode(
+				zsd, &out->wall_clock_valid);
+			decoded = out->has_wall_clock_valid;
 		} else if (key_matches(&key, "loc_source_class")) {
 			out->has_loc_source_class = copy_tstr(
 				zsd, out->loc_source_class,
@@ -128,6 +148,35 @@ static int decode_status(const uint8_t *buf, size_t len, struct status_view *out
 			out->has_satellites = zcbor_uint32_decode(
 				zsd, &out->satellites);
 			decoded = out->has_satellites;
+		} else if (key_matches(&key, "time_source_class")) {
+			out->has_time_source_class = copy_tstr(
+				zsd, out->time_source_class,
+				sizeof(out->time_source_class));
+			decoded = out->has_time_source_class;
+		} else if (key_matches(&key, "time_source")) {
+			out->has_time_source = copy_tstr(
+				zsd, out->time_source, sizeof(out->time_source));
+			decoded = out->has_time_source;
+		} else if (key_matches(&key, "wall_time_unix")) {
+			out->has_wall_time_unix = zcbor_uint32_decode(
+				zsd, &out->wall_time_unix);
+			decoded = out->has_wall_time_unix;
+		} else if (key_matches(&key, "time_age_s")) {
+			out->has_time_age_s = zcbor_uint32_decode(
+				zsd, &out->time_age_s);
+			decoded = out->has_time_age_s;
+		} else if (key_matches(&key, "time_accuracy_ms")) {
+			out->has_time_accuracy_ms = zcbor_uint32_decode(
+				zsd, &out->time_accuracy_ms);
+			decoded = out->has_time_accuracy_ms;
+		} else if (key_matches(&key, "time_quality")) {
+			out->has_time_quality = zcbor_uint32_decode(
+				zsd, &out->time_quality);
+			decoded = out->has_time_quality;
+		} else if (key_matches(&key, "time_reject")) {
+			out->has_time_reject = copy_tstr(
+				zsd, out->time_reject, sizeof(out->time_reject));
+			decoded = out->has_time_reject;
 		} else {
 			*zsd = key_state;
 			if (!zcbor_any_skip(zsd, NULL) ||
@@ -151,9 +200,23 @@ static size_t encode_status(uint8_t *buf, size_t buf_len,
 			    const struct lichen_hal_location_time_snapshot *location)
 {
 	const struct lichen_hal_power_snapshot power = { 0 };
+	const struct lichen_hal_time_snapshot time = { 0 };
 
 	return lichen_gateway_encode_status_cbor(buf, buf_len, 256, "root",
-						 true, 1234U, &power, location);
+						 true, 1234U, &power, location,
+							 &time);
+}
+
+static size_t encode_status_with_time(
+	uint8_t *buf, size_t buf_len,
+	const struct lichen_hal_location_time_snapshot *location,
+	const struct lichen_hal_time_snapshot *time)
+{
+	const struct lichen_hal_power_snapshot power = { 0 };
+
+	return lichen_gateway_encode_status_cbor(buf, buf_len, 256, "root",
+						 true, 1234U, &power, location,
+						 time);
 }
 
 static size_t encode_status_with_power(
@@ -161,9 +224,27 @@ static size_t encode_status_with_power(
 	const struct lichen_hal_power_snapshot *power,
 	const struct lichen_hal_location_time_snapshot *location)
 {
+	const struct lichen_hal_time_snapshot time = {
+		.provider_available = true,
+		.wall_clock_valid = true,
+		.source_class_valid = true,
+		.source_class = LICHEN_HAL_TIME_SOURCE_NETWORK,
+		.source_name = "abcdefghijklmnopqrstuvw",
+		.unix_time_valid = true,
+		.unix_time = 1710000100U,
+		.age_seconds_valid = true,
+		.age_seconds = 3U,
+		.accuracy_ms_valid = true,
+		.accuracy_ms = 250U,
+		.quality_valid = true,
+		.quality = 200U,
+		.last_rejection = LICHEN_HAL_TIME_REJECT_BELOW_EPOCH_FLOOR,
+	};
+
 	return lichen_gateway_encode_status_cbor(buf, buf_len, UINT16_MAX,
 						 "border-router01", true,
-						 UINT32_MAX, power, location);
+						 UINT32_MAX, power, location,
+						 &time);
 }
 
 ZTEST(gateway_status, test_absent_location_metadata_is_omitted)
@@ -179,12 +260,35 @@ ZTEST(gateway_status, test_absent_location_metadata_is_omitted)
 	zassert_false(view.location_provider);
 	zassert_true(view.has_time_provider);
 	zassert_false(view.time_provider);
+	zassert_true(view.has_wall_clock_valid);
+	zassert_false(view.wall_clock_valid);
 	zassert_false(view.has_loc_source_class);
 	zassert_false(view.has_loc_source);
 	zassert_false(view.has_loc_fix_state);
 	zassert_false(view.has_loc_age_s);
 	zassert_false(view.has_lat_i);
 	zassert_false(view.has_lon_i);
+}
+
+ZTEST(gateway_status, test_uptime_only_time_provider_keeps_legacy_time_false)
+{
+	const struct lichen_hal_location_time_snapshot location = { 0 };
+	const struct lichen_hal_time_snapshot time = {
+		.provider_available = true,
+		.wall_clock_valid = false,
+		.unix_time_valid = false,
+	};
+	uint8_t buf[LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE];
+	struct status_view view;
+	size_t len = encode_status_with_time(buf, sizeof(buf), &location, &time);
+
+	zassert_true(len > 0U);
+	zassert_ok(decode_status(buf, len, &view));
+	zassert_true(view.has_time_provider);
+	zassert_false(view.time_provider);
+	zassert_true(view.has_wall_clock_valid);
+	zassert_false(view.wall_clock_valid);
+	zassert_false(view.has_wall_time_unix);
 }
 
 ZTEST(gateway_status, test_fresh_location_metadata_is_encoded)
@@ -221,7 +325,10 @@ ZTEST(gateway_status, test_fresh_location_metadata_is_encoded)
 	zassert_true(len > 0U);
 	zassert_ok(decode_status(buf, len, &view));
 	zassert_true(view.location_provider);
+	zassert_true(view.has_time_provider);
 	zassert_true(view.time_provider);
+	zassert_true(view.has_wall_clock_valid);
+	zassert_false(view.wall_clock_valid);
 	zassert_true(view.has_loc_source_class);
 	zassert_str_equal(view.loc_source_class, "network");
 	zassert_true(view.has_loc_source);
@@ -329,6 +436,8 @@ ZTEST(gateway_status, test_full_status_fits_advertised_buffer)
 	zassert_ok(decode_status(buf, len, &view));
 	zassert_true(view.location_provider);
 	zassert_true(view.time_provider);
+	zassert_true(view.has_wall_clock_valid);
+	zassert_true(view.wall_clock_valid);
 	zassert_true(view.has_loc_source_class);
 	zassert_str_equal(view.loc_source_class, "external_hardware");
 	zassert_true(view.has_loc_source);
@@ -339,6 +448,20 @@ ZTEST(gateway_status, test_full_status_fits_advertised_buffer)
 	zassert_equal(view.lon_i, INT32_MAX);
 	zassert_true(view.has_alt_m);
 	zassert_equal(view.alt_m, INT32_MIN);
+	zassert_true(view.has_time_source_class);
+	zassert_str_equal(view.time_source_class, "network");
+	zassert_true(view.has_time_source);
+	zassert_str_equal(view.time_source, "abcdefghijklmnopqrstuvw");
+	zassert_true(view.has_wall_time_unix);
+	zassert_equal(view.wall_time_unix, 1710000100U);
+	zassert_true(view.has_time_age_s);
+	zassert_equal(view.time_age_s, 3U);
+	zassert_true(view.has_time_accuracy_ms);
+	zassert_equal(view.time_accuracy_ms, 250U);
+	zassert_true(view.has_time_quality);
+	zassert_equal(view.time_quality, 200U);
+	zassert_true(view.has_time_reject);
+	zassert_str_equal(view.time_reject, "below_epoch_floor");
 }
 
 ZTEST(gateway_status, test_stale_location_metadata_suppresses_position)
@@ -383,6 +506,8 @@ ZTEST(gateway_status, test_stale_location_metadata_suppresses_position)
 	zassert_ok(decode_status(buf, len, &view));
 	zassert_true(view.location_provider);
 	zassert_false(view.time_provider);
+	zassert_true(view.has_wall_clock_valid);
+	zassert_false(view.wall_clock_valid);
 	zassert_true(view.has_loc_source_class);
 	zassert_str_equal(view.loc_source_class, "manual_static");
 	zassert_true(view.has_loc_source);

@@ -153,13 +153,15 @@ static size_t encode_status_cbor(uint8_t *buf, size_t buf_size, uint16_t rank,
 {
 	struct lichen_hal_power_snapshot power;
 	struct lichen_hal_location_time_snapshot location_time;
+	struct lichen_hal_time_snapshot time;
 	uint32_t uptime_ms = k_uptime_get_32();
 
 	(void)lichen_hal_power_snapshot_get(&power);
 	(void)lichen_hal_location_time_snapshot_get(&location_time);
+	(void)lichen_hal_time_snapshot_get(&time);
 	return lichen_gateway_encode_status_cbor(
 		buf, buf_size, rank, role, rpl_capable, uptime_ms, &power,
-		&location_time);
+		&location_time, &time);
 }
 
 /* Gateway status state (observable) */

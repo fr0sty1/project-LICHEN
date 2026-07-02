@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-2067.1",
+  "title": "Wire firmware time build epoch to SOURCE_DATE_EPOCH metadata",
+  "description": "Why this exists: project-LICHEN-2067 implements the firmware time provider with a deterministic Kconfig build epoch floor, but docs/firmware-time-provider.md also requires production builds without deterministic build epoch metadata to fail and developer generated timestamps to be explicit/tested. What needs to be done: integrate the Zephyr/LICHEN build flow so production firmware derives CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX from SOURCE_DATE_EPOCH or an explicit release epoch, fails production builds when the epoch is missing, and has native_sim/Twister coverage for missing production metadata and explicit non-reproducible developer timestamp mode. No hardware required.",
+  "notes": "User clarified that build-time stamps in firmware or board metadata can be used to epoch GNSS/date-time samples. Follow-up should make that source explicit in the build flow: deterministic SOURCE_DATE_EPOCH or release epoch for production, optional explicit developer timestamp mode, and native_sim/Twister coverage for missing/invalid metadata.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T01:53:32.784815Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T02:16:29.189183Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "time",
+    "rtc",
+    "gnss",
+    "gpsd",
+    "sntp",
+    "network-source"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2067.1",
+      "depends_on_id": "project-LICHEN-2067",
+      "type": "parent-child",
+      "created_at": "2026-07-02T01:53:32.785272Z"
+    }
+  ]
+}

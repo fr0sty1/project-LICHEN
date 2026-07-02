@@ -131,17 +131,66 @@ static const char *location_fix_state_name(
 	}
 }
 
+static const char *time_source_class_name(
+	enum lichen_hal_time_source_class source_class)
+{
+	switch (source_class) {
+	case LICHEN_HAL_TIME_SOURCE_MONOTONIC_INTERNAL:
+		return "monotonic_internal";
+	case LICHEN_HAL_TIME_SOURCE_INTERNAL_RTC:
+		return "internal_rtc";
+	case LICHEN_HAL_TIME_SOURCE_GNSS:
+		return "gnss";
+	case LICHEN_HAL_TIME_SOURCE_NETWORK:
+		return "network";
+	case LICHEN_HAL_TIME_SOURCE_LOCAL_CLIENT:
+		return "local_client";
+	case LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC:
+		return "manual_static";
+	case LICHEN_HAL_TIME_SOURCE_NONE:
+	default:
+		return "none";
+	}
+}
+
+static const char *time_rejection_reason_name(
+	enum lichen_hal_time_rejection_reason reason)
+{
+	switch (reason) {
+	case LICHEN_HAL_TIME_REJECT_INVALID_SOURCE:
+		return "invalid_source";
+	case LICHEN_HAL_TIME_REJECT_MISSING_TIMESTAMP:
+		return "missing_timestamp";
+	case LICHEN_HAL_TIME_REJECT_BELOW_EPOCH_FLOOR:
+		return "below_epoch_floor";
+	case LICHEN_HAL_TIME_REJECT_STALE:
+		return "stale";
+	case LICHEN_HAL_TIME_REJECT_LOWER_TRUST:
+		return "lower_trust";
+	case LICHEN_HAL_TIME_REJECT_PROVISION_UNAUTHENTICATED:
+		return "provision_unauthenticated";
+	case LICHEN_HAL_TIME_REJECT_PROVISION_INVALID:
+		return "provision_invalid";
+	case LICHEN_HAL_TIME_REJECT_PROVISION_FUTURE:
+		return "provision_future";
+	case LICHEN_HAL_TIME_REJECT_NONE:
+	default:
+		return "none";
+	}
+}
+
 size_t lichen_gateway_encode_status_cbor(
 	uint8_t *buf, size_t buf_size, uint16_t rank, const char *role,
 	bool rpl_capable, uint32_t uptime_ms,
 	const struct lichen_hal_power_snapshot *power,
-	const struct lichen_hal_location_time_snapshot *location_time)
+	const struct lichen_hal_location_time_snapshot *location_time,
+	const struct lichen_hal_time_snapshot *time)
 {
 	size_t role_len = role ? strlen(role) : 0;
-	uint8_t map_count = 8U;
+	uint8_t map_count = 9U;
 	size_t off = 0;
 
-	if (buf == NULL || power == NULL || location_time == NULL ||
+	if (buf == NULL || power == NULL || location_time == NULL || time == NULL ||
 	    role == NULL || role_len > LICHEN_GATEWAY_STATUS_CBOR_MAX_ROLE_LEN ||
 	    buf_size < LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE) {
 		return 0;
@@ -162,6 +211,13 @@ size_t lichen_gateway_encode_status_cbor(
 	map_count += location_time->altitude_m_valid ? 1U : 0U;
 	map_count += location_time->fix_time_unix_valid ? 1U : 0U;
 	map_count += location_time->satellites_valid ? 1U : 0U;
+	map_count += time->source_class_valid ? 1U : 0U;
+	map_count += time->source_name[0] != '\0' ? 1U : 0U;
+	map_count += time->unix_time_valid ? 1U : 0U;
+	map_count += time->age_seconds_valid ? 1U : 0U;
+	map_count += time->accuracy_ms_valid ? 1U : 0U;
+	map_count += time->quality_valid ? 1U : 0U;
+	map_count += time->last_rejection != LICHEN_HAL_TIME_REJECT_NONE ? 1U : 0U;
 
 	cbor_put_map_header(buf, &off, map_count);
 
@@ -181,7 +237,11 @@ size_t lichen_gateway_encode_status_cbor(
 	cbor_put_key(buf, &off, "location_provider");
 	cbor_put_bool(buf, &off, location_time->location_provider_available);
 	cbor_put_key(buf, &off, "time_provider");
-	cbor_put_bool(buf, &off, location_time->time_provider_available);
+	cbor_put_bool(buf, &off,
+		      time->wall_clock_valid ||
+		      location_time->time_provider_available);
+	cbor_put_key(buf, &off, "wall_clock_valid");
+	cbor_put_bool(buf, &off, time->wall_clock_valid);
 
 	if (power->battery_percent_valid) {
 		cbor_put_key(buf, &off, "battery");
@@ -244,6 +304,36 @@ size_t lichen_gateway_encode_status_cbor(
 	if (location_time->satellites_valid) {
 		cbor_put_key(buf, &off, "satellites");
 		cbor_put_uint(buf, &off, location_time->satellites);
+	}
+	if (time->source_class_valid) {
+		cbor_put_key(buf, &off, "time_source_class");
+		cbor_put_tstr(buf, &off,
+			      time_source_class_name(time->source_class));
+	}
+	if (time->source_name[0] != '\0') {
+		cbor_put_key(buf, &off, "time_source");
+		cbor_put_tstr(buf, &off, time->source_name);
+	}
+	if (time->unix_time_valid) {
+		cbor_put_key(buf, &off, "wall_time_unix");
+		cbor_put_uint(buf, &off, time->unix_time);
+	}
+	if (time->age_seconds_valid) {
+		cbor_put_key(buf, &off, "time_age_s");
+		cbor_put_uint(buf, &off, time->age_seconds);
+	}
+	if (time->accuracy_ms_valid) {
+		cbor_put_key(buf, &off, "time_accuracy_ms");
+		cbor_put_uint(buf, &off, time->accuracy_ms);
+	}
+	if (time->quality_valid) {
+		cbor_put_key(buf, &off, "time_quality");
+		cbor_put_uint(buf, &off, time->quality);
+	}
+	if (time->last_rejection != LICHEN_HAL_TIME_REJECT_NONE) {
+		cbor_put_key(buf, &off, "time_reject");
+		cbor_put_tstr(buf, &off,
+			      time_rejection_reason_name(time->last_rejection));
 	}
 
 	return off;
