@@ -2,13 +2,16 @@
   "id": "project-LICHEN-yw7i.4",
   "title": "Good: Idempotent init with double-init guard",
   "description": "lora_l2.c:lichen_lora_l2_init() checks initialized flag under mutex before generating EUI-64. Comment explicitly notes TOCTOU prevention. This prevents multiple EUI-64 values if both main.c and NET_DEVICE_INIT call init().",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "decision",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-27T17:06:42.027401Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-27T17:06:42.027862Z",
+  "updated_at": "2026-07-02T15:24:33.763519Z",
+  "closed_at": "2026-07-02T15:24:33.763519Z",
+  "close_reason": "Positive review observation recorded; no implementation action required.",
   "labels": [
     "review"
   ],
