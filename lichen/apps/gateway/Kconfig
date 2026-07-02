@@ -110,11 +110,15 @@ config LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH
 	int "Meshtastic BLE FromRadio queue depth"
 	depends on LORA_LICHEN_MESHTASTIC_BLE
 	default 20
-	range 20 32
+	range LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH_MIN 32
 	help
 	  Number of complete FromRadio protobuf values retained for app reads.
 	  Keep enough headroom for a queued heartbeat plus a full configuration
 	  sync burst with the default bounded NodeDB peer cap.
+
+config LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH_MIN
+	int
+	default 20
 
 config LICHEN_APP_INTERFACE_MAX_PAYLOAD
 	int

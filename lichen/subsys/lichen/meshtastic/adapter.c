@@ -84,9 +84,6 @@
 
 #define MESHTASTIC_CONFIG_STAGE_STATIC 69420U
 #define MESHTASTIC_CONFIG_STAGE_NODEDB 69421U
-#define MESHTASTIC_STATIC_SYNC_FIXED_RECORDS 5U
-#define MESHTASTIC_NODE_SYNC_RECORDS 1U
-#define MESHTASTIC_CONFIG_COMPLETE_RECORDS 1U
 #define MESHTASTIC_NODEDB_MAX_PEERS CONFIG_LICHEN_MESHTASTIC_NODEDB_MAX_PEERS
 #define LICHEN_BRAND "LICHEN"
 #define MESHTASTIC_BRAND "meshtastic"
@@ -833,9 +830,12 @@ static const enum lichen_meshtastic_config_section s_config_sections[] = {
 	LICHEN_MESHTASTIC_CONFIG_DEVICE_UI,
 };
 
+BUILD_ASSERT(ARRAY_SIZE(s_config_sections) ==
+	     LICHEN_MESHTASTIC_STATIC_SYNC_CONFIG_SECTIONS);
+
 static uint32_t static_sync_record_count(void)
 {
-	return MESHTASTIC_STATIC_SYNC_FIXED_RECORDS + ARRAY_SIZE(s_config_sections);
+	return LICHEN_MESHTASTIC_STATIC_SYNC_RECORDS;
 }
 
 static uint32_t peer_node_num(const uint8_t eui64[8])
@@ -954,13 +954,13 @@ static void nodedb_peer_snapshot(struct lichen_meshtastic_adapter *adapter,
 
 static uint32_t node_sync_record_count(const struct nodedb_peer_state *state)
 {
-	return MESHTASTIC_NODE_SYNC_RECORDS + (uint32_t)state->emit_count;
+	return LICHEN_MESHTASTIC_NODE_SYNC_RECORDS((uint32_t)state->emit_count);
 }
 
 static uint32_t want_config_record_count(
 	uint32_t nonce, const struct nodedb_peer_state *state)
 {
-	uint32_t records = MESHTASTIC_CONFIG_COMPLETE_RECORDS;
+	uint32_t records = LICHEN_MESHTASTIC_CONFIG_COMPLETE_RECORDS;
 
 	if (nonce == MESHTASTIC_CONFIG_STAGE_STATIC) {
 		records += static_sync_record_count();

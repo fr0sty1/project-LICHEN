@@ -13,15 +13,19 @@
 #include <lichen/meshtastic/adapter.h>
 #include <lichen/meshtastic/codec.h>
 
-#define GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_DEFAULT 20U
-#define GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_MIN 20U
+#define GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_MIN \
+	CONFIG_LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH_MIN
 #define GATEWAY_MESHTASTIC_NODEDB_DEFAULT_MAX_PEERS \
 	CONFIG_LICHEN_MESHTASTIC_NODEDB_MAX_PEERS
-#define MESHTASTIC_FULL_STATIC_RECORDS 14U
+#define TEST_FROM_RADIO_OUT_CAP GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_MIN
+
+BUILD_ASSERT(GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_MIN >=
+	     1U + LICHEN_MESHTASTIC_FULL_SYNC_RECORDS(
+		     GATEWAY_MESHTASTIC_NODEDB_DEFAULT_MAX_PEERS));
 
 struct test_ctx {
-	uint8_t out[20][LICHEN_MESHTASTIC_FROM_RADIO_MAX];
-	size_t out_len[20];
+	uint8_t out[TEST_FROM_RADIO_OUT_CAP][LICHEN_MESHTASTIC_FROM_RADIO_MAX];
+	size_t out_len[TEST_FROM_RADIO_OUT_CAP];
 	size_t out_count;
 	size_t out_cap;
 	struct lichen_meshtastic_peer_snapshot peers[4];
@@ -1629,19 +1633,13 @@ ZTEST(meshtastic_adapter, test_want_config_full_sync_fits_gateway_default_queue)
 	const uint8_t want_config[] = { 0x18, 0xa5, 0xcb, 0x96, 0xad, 0x0a };
 	const uint8_t complete[] = { 0x38, 0xa5, 0xcb, 0x96, 0xad, 0x0a };
 	struct from_radio_view view;
-	size_t expected_count = 1U + MESHTASTIC_FULL_STATIC_RECORDS + 1U +
-				GATEWAY_MESHTASTIC_NODEDB_DEFAULT_MAX_PEERS +
-				1U;
+	size_t expected_count = 1U + LICHEN_MESHTASTIC_FULL_SYNC_RECORDS(
+					     GATEWAY_MESHTASTIC_NODEDB_DEFAULT_MAX_PEERS);
 	int ret;
 
-	zassert_true(ARRAY_SIZE(ctx.out) >=
-		     GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_DEFAULT);
 	zassert_true(GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_MIN >= expected_count);
-	zassert_true(expected_count <=
-		     GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_DEFAULT);
 
-	init_adapter(&adapter, &ctx,
-		     GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_DEFAULT);
+	init_adapter(&adapter, &ctx, GATEWAY_MESHTASTIC_BLE_QUEUE_DEPTH_MIN);
 	set_default_max_peers(&ctx);
 	ret = lichen_meshtastic_adapter_process_raw(&adapter, heartbeat,
 						    sizeof(heartbeat));
@@ -1672,9 +1670,8 @@ ZTEST(meshtastic_adapter, test_want_config_full_sync_preflights_queue_free)
 	const uint8_t want_config[] = { 0x18, 0xa5, 0xcb, 0x96, 0xad, 0x0a };
 	const uint8_t complete[] = { 0x38, 0xa5, 0xcb, 0x96, 0xad, 0x0a };
 	struct from_radio_view view;
-	size_t expected_count = 1U + MESHTASTIC_FULL_STATIC_RECORDS + 1U +
-				GATEWAY_MESHTASTIC_NODEDB_DEFAULT_MAX_PEERS +
-				1U;
+	size_t expected_count = 1U + LICHEN_MESHTASTIC_FULL_SYNC_RECORDS(
+					     GATEWAY_MESHTASTIC_NODEDB_DEFAULT_MAX_PEERS);
 	int ret;
 
 	init_adapter_with_queue_free(&adapter, &ctx,
