@@ -128,12 +128,47 @@ def _config_section_expectations() -> list[dict]:
 
 
 def _data(portnum: int, payload: bytes = b"", request_id: int | None = None) -> bytes:
+	out = bytearray()
+	out += _varint_field(1, portnum)
+	if payload:
+		out += _bytes_field(2, payload)
+	if request_id is not None:
+		out += _fixed32_field(6, request_id)
+	return bytes(out)
+
+
+def _position_payload(
+    *,
+    latitude_i: int = 476206130,
+    longitude_i: int = -1223493000,
+    altitude: int | None = None,
+    time: int | None = None,
+    location_source: int | None = None,
+    altitude_source: int | None = None,
+    timestamp: int | None = None,
+    gps_accuracy: int | None = None,
+    sats_in_view: int | None = None,
+    precision_bits: int | None = None,
+) -> bytes:
     out = bytearray()
-    out += _varint_field(1, portnum)
-    if payload:
-        out += _bytes_field(2, payload)
-    if request_id is not None:
-        out += _fixed32_field(6, request_id)
+    out += _fixed32_field(1, latitude_i & 0xFFFFFFFF)
+    out += _fixed32_field(2, longitude_i & 0xFFFFFFFF)
+    if altitude is not None:
+        out += _varint_field(3, altitude & 0xFFFFFFFFFFFFFFFF)
+    if time is not None:
+        out += _fixed32_field(4, time)
+    if location_source is not None:
+        out += _varint_field(5, location_source)
+    if altitude_source is not None:
+        out += _varint_field(6, altitude_source)
+    if timestamp is not None:
+        out += _fixed32_field(7, timestamp)
+    if gps_accuracy is not None:
+        out += _varint_field(14, gps_accuracy)
+    if sats_in_view is not None:
+        out += _varint_field(19, sats_in_view)
+    if precision_bits is not None:
+        out += _varint_field(23, precision_bits)
     return bytes(out)
 
 
@@ -303,6 +338,29 @@ def meshtastic_app_compat_vectors() -> list[dict]:
             decoded=_data(1, b"hello"),
             want_ack=True,
         )
+    )
+    position_time_timestamp_disagree = _position_payload(
+        altitude=42,
+        time=1710000000,
+        timestamp=1710000200,
+        sats_in_view=9,
+    )
+    position_accuracy_precision = _position_payload(
+        altitude=42,
+        timestamp=1710000200,
+        location_source=3,
+        altitude_source=4,
+        gps_accuracy=2500,
+        sats_in_view=9,
+        precision_bits=24,
+    )
+    position_below_epoch = _position_payload(
+        time=1700000010,
+        timestamp=1699999999,
+    )
+    position_duplicate_time = (
+        _position_payload(time=1700000010)
+        + _fixed32_field(4, 1699999999)
     )
     inbound_text = _from_radio_packet(
         1,
@@ -562,6 +620,161 @@ def meshtastic_app_compat_vectors() -> list[dict]:
                 }
             },
             "expect": {"response": "queueStatus local enqueue status"},
+        },
+        {
+            "name": "position_time_and_timestamp_disagree",
+            "description": "POSITION_APP keeps field 7 timestamp as fix time when it disagrees with field 4 time.",
+            "source_baseline": baseline,
+            "transport": transport,
+            "direction": "app_to_node",
+            "protobuf": "ToRadio",
+            "message": "packet.POSITION_APP",
+            "encoded": _to_radio_packet(
+                _mesh_packet(
+                    to_num=broadcast,
+                    packet_id=0x1234567A,
+                    decoded=_data(3, position_time_timestamp_disagree),
+                )
+            ).hex(),
+            "decoded": {
+                "packet": {
+                    "to": broadcast,
+                    "id": 0x1234567A,
+                    "decoded": {
+                        "portnum": "POSITION_APP",
+                        "position": {
+                            "latitude_i": 476206130,
+                            "longitude_i": -1223493000,
+                            "altitude": 42,
+                            "time": 1710000000,
+                            "timestamp": 1710000200,
+                            "sats_in_view": 9,
+                        },
+                    },
+                },
+            },
+            "expect": {
+                "selected_fix_time_unix": 1710000200,
+                "time_field_policy": "timestamp field 7 wins over time field 4",
+                "response": "queueStatus local enqueue status",
+            },
+        },
+        {
+            "name": "position_accuracy_precision_metadata",
+            "description": "POSITION_APP source, altitude-source, accuracy, and precision metadata are decoded without upgrading local-client trust.",
+            "source_baseline": baseline,
+            "transport": transport,
+            "direction": "app_to_node",
+            "protobuf": "ToRadio",
+            "message": "packet.POSITION_APP",
+            "encoded": _to_radio_packet(
+                _mesh_packet(
+                    to_num=broadcast,
+                    packet_id=0x1234567B,
+                    decoded=_data(3, position_accuracy_precision),
+                )
+            ).hex(),
+            "decoded": {
+                "packet": {
+                    "to": broadcast,
+                    "id": 0x1234567B,
+                    "decoded": {
+                        "portnum": "POSITION_APP",
+                        "position": {
+                            "latitude_i": 476206130,
+                            "longitude_i": -1223493000,
+                            "altitude": 42,
+                            "location_source": 3,
+                            "altitude_source": 4,
+                            "timestamp": 1710000200,
+                            "gps_accuracy": 2500,
+                            "sats_in_view": 9,
+                            "precision_bits": 24,
+                        },
+                    },
+                },
+            },
+            "expect": {
+                "source_class": "LOCAL_CLIENT",
+                "source_name": "mt-pos-external",
+                "gps_accuracy_mm_retained_for_diagnostics": 2500,
+                "horizontal_accuracy_mm_valid": False,
+                "precision_bits_retained_for_diagnostics": 24,
+            },
+        },
+        {
+            "name": "position_epoch_floor_strips_timestamp",
+            "description": "POSITION_APP timestamps below the deterministic build epoch are stripped while coordinates remain local-client metadata.",
+            "source_baseline": baseline,
+            "transport": transport,
+            "direction": "app_to_node",
+            "protobuf": "ToRadio",
+            "message": "packet.POSITION_APP",
+            "encoded": _to_radio_packet(
+                _mesh_packet(
+                    to_num=broadcast,
+                    packet_id=0x1234567C,
+                    decoded=_data(3, position_below_epoch),
+                )
+            ).hex(),
+            "decoded": {
+                "packet": {
+                    "to": broadcast,
+                    "id": 0x1234567C,
+                    "decoded": {
+                        "portnum": "POSITION_APP",
+                        "position": {
+                            "latitude_i": 476206130,
+                            "longitude_i": -1223493000,
+                            "time": 1700000010,
+                            "timestamp": 1699999999,
+                        },
+                    },
+                },
+            },
+            "expect": {
+                "build_epoch_floor_unix": 1700000000,
+                "selected_fix_time_unix": None,
+                "time_field_policy": "timestamp field 7 wins over time field 4, then fails the epoch floor",
+                "coordinates_remain_valid": True,
+            },
+        },
+        {
+            "name": "position_duplicate_time_uses_last_field",
+            "description": "POSITION_APP duplicate field 4 time values use the last value when timestamp field 7 is absent.",
+            "source_baseline": baseline,
+            "transport": transport,
+            "direction": "app_to_node",
+            "protobuf": "ToRadio",
+            "message": "packet.POSITION_APP",
+            "encoded": _to_radio_packet(
+                _mesh_packet(
+                    to_num=broadcast,
+                    packet_id=0x1234567D,
+                    decoded=_data(3, position_duplicate_time),
+                )
+            ).hex(),
+            "decoded": {
+                "packet": {
+                    "to": broadcast,
+                    "id": 0x1234567D,
+                    "decoded": {
+                        "portnum": "POSITION_APP",
+                        "position": {
+                            "latitude_i": 476206130,
+                            "longitude_i": -1223493000,
+                            "time": 1699999999,
+                        },
+                    },
+                },
+            },
+            "expect": {
+                "build_epoch_floor_unix": 1700000000,
+                "selected_fix_time_unix": None,
+                "time_field_policy": "last time field 4 wins when timestamp field 7 is absent",
+                "encoded_duplicate_time_values": [1700000010, 1699999999],
+                "coordinates_remain_valid": True,
+            },
         },
         {
             "name": "unsupported_private_app_no_side_effect",

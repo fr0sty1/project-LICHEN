@@ -1369,6 +1369,180 @@
       }
     },
     {
+      "name": "position_time_and_timestamp_disagree",
+      "description": "POSITION_APP keeps field 7 timestamp as fix time when it disagrees with field 4 time.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "app_to_node",
+      "protobuf": "ToRadio",
+      "message": "packet.POSITION_APP",
+      "encoded": "0a2915ffffffff221d080312190d3254621c1578fa12b7182a258087ec653d4888ec65980109357a563412",
+      "decoded": {
+        "packet": {
+          "to": 4294967295,
+          "id": 305419898,
+          "decoded": {
+            "portnum": "POSITION_APP",
+            "position": {
+              "latitude_i": 476206130,
+              "longitude_i": -1223493000,
+              "altitude": 42,
+              "time": 1710000000,
+              "timestamp": 1710000200,
+              "sats_in_view": 9
+            }
+          }
+        }
+      },
+      "expect": {
+        "selected_fix_time_unix": 1710000200,
+        "time_field_policy": "timestamp field 7 wins over time field 4",
+        "response": "queueStatus local enqueue status"
+      }
+    },
+    {
+      "name": "position_accuracy_precision_metadata",
+      "description": "POSITION_APP source, altitude-source, accuracy, and precision metadata are decoded without upgrading local-client trust.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "app_to_node",
+      "protobuf": "ToRadio",
+      "message": "packet.POSITION_APP",
+      "encoded": "0a2e15ffffffff22220803121e0d3254621c1578fa12b7182a280330043d4888ec6570c413980109b80118357b563412",
+      "decoded": {
+        "packet": {
+          "to": 4294967295,
+          "id": 305419899,
+          "decoded": {
+            "portnum": "POSITION_APP",
+            "position": {
+              "latitude_i": 476206130,
+              "longitude_i": -1223493000,
+              "altitude": 42,
+              "location_source": 3,
+              "altitude_source": 4,
+              "timestamp": 1710000200,
+              "gps_accuracy": 2500,
+              "sats_in_view": 9,
+              "precision_bits": 24
+            }
+          }
+        }
+      },
+      "expect": {
+        "source_class": "LOCAL_CLIENT",
+        "source_name": "mt-pos-external",
+        "gps_accuracy_mm_retained_for_diagnostics": 2500,
+        "horizontal_accuracy_mm_valid": false,
+        "precision_bits_retained_for_diagnostics": 24
+      }
+    },
+    {
+      "name": "position_epoch_floor_strips_timestamp",
+      "description": "POSITION_APP timestamps below the deterministic build epoch are stripped while coordinates remain local-client metadata.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "app_to_node",
+      "protobuf": "ToRadio",
+      "message": "packet.POSITION_APP",
+      "encoded": "0a2415ffffffff2218080312140d3254621c1578fa12b7250af153653dfff05365357c563412",
+      "decoded": {
+        "packet": {
+          "to": 4294967295,
+          "id": 305419900,
+          "decoded": {
+            "portnum": "POSITION_APP",
+            "position": {
+              "latitude_i": 476206130,
+              "longitude_i": -1223493000,
+              "time": 1700000010,
+              "timestamp": 1699999999
+            }
+          }
+        }
+      },
+      "expect": {
+        "build_epoch_floor_unix": 1700000000,
+        "selected_fix_time_unix": null,
+        "time_field_policy": "timestamp field 7 wins over time field 4, then fails the epoch floor",
+        "coordinates_remain_valid": true
+      }
+    },
+    {
+      "name": "position_duplicate_time_uses_last_field",
+      "description": "POSITION_APP duplicate field 4 time values use the last value when timestamp field 7 is absent.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "app_to_node",
+      "protobuf": "ToRadio",
+      "message": "packet.POSITION_APP",
+      "encoded": "0a2415ffffffff2218080312140d3254621c1578fa12b7250af1536525fff05365357d563412",
+      "decoded": {
+        "packet": {
+          "to": 4294967295,
+          "id": 305419901,
+          "decoded": {
+            "portnum": "POSITION_APP",
+            "position": {
+              "latitude_i": 476206130,
+              "longitude_i": -1223493000,
+              "time": 1699999999
+            }
+          }
+        }
+      },
+      "expect": {
+        "build_epoch_floor_unix": 1700000000,
+        "selected_fix_time_unix": null,
+        "time_field_policy": "last time field 4 wins when timestamp field 7 is absent",
+        "encoded_duplicate_time_values": [
+          1700000010,
+          1699999999
+        ],
+        "coordinates_remain_valid": true
+      }
+    },
+    {
       "name": "unsupported_private_app_no_side_effect",
       "description": "Unsupported app portnums produce deterministic no-op/error behavior.",
       "source_baseline": {

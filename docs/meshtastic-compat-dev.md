@@ -282,13 +282,16 @@ Users won't see packet path metrics. Messages either arrive or they don't.
 
 **Current MVP behavior:** expose map-ready local NodeDB Position only when a
 LICHEN location snapshot has both latitude and longitude. App-originated
-`POSITION_APP` writes and peer-position announce translation are deferred until
-the gateway has a concrete LICHEN position-submit/announce path.
+`POSITION_APP` writes are accepted as local-client location submissions when
+the payload has valid latitude and longitude. Peer-position announce
+translation is handled by the network-location producer path, not by fabricating
+Meshtastic RF behavior.
 
 **Outbound (app → mesh):**
 1. App sends Position via MeshPacket
-2. Adapter validates the payload shape
-3. Current firmware returns deterministic unsupported/no-op status
+2. Adapter validates the payload shape and requires valid latitude/longitude
+3. Position is submitted to the LICHEN local-client location provider
+4. Queue status reports success when the local submission is accepted
 
 **Inbound (mesh → app):**
 1. Gateway reads local HAL/app-interface location metadata
@@ -304,6 +307,29 @@ available through native LICHEN status/time resources, but it is not wrapped in
 a Meshtastic Position message because mobile clients treat the presence of that
 message as map-ready location data. When coordinates are valid, optional
 altitude, fix time, and satellites are included if available.
+
+For app-originated `POSITION_APP`, Meshtastic `timestamp` field 7 is treated as
+the actual fix timestamp and wins over legacy `time` field 4 when both are
+present. Field 4 is used only when field 7 is absent. A chosen timestamp below
+the deterministic firmware build epoch is stripped from the submitted location
+sample; the coordinates remain usable as local-client position metadata. A
+stricter authenticated board/provision epoch is not applied to the stored
+location `fix_time_unix` by the compatibility gateway; it is enforced only if
+Position-derived time is submitted through the shared firmware time provider.
+
+Meshtastic `location_source` and `altitude_source` describe the upstream
+Meshtastic fix provenance, but they do not upgrade trust for a value received
+from the local compatibility app surface. The submitted LICHEN source class
+remains `LOCAL_CLIENT`; the source name records the Meshtastic provenance, for
+example `mt-pos-internal`, `mt-pos-external`, or `mt-pos-manual`.
+Barometric altitude metadata does not imply a GNSS fix source.
+
+Meshtastic `gps_accuracy` is decoded as the raw GPS module accuracy constant in
+millimeters. It is not mapped to app-visible horizontal accuracy unless DOP
+fields are also available to calculate final positional accuracy.
+`precision_bits` is decoded and retained for diagnostics/vector coverage, but it
+is not currently mapped to a native location accuracy or emitted in NodeDB
+Position messages.
 
 ### Message Delivery Semantics
 
@@ -438,7 +464,7 @@ The adapter implements a subset of Meshtastic's protobuf schema.
 | Other `want_config_id` | Queue legacy/full sync and matching `config_complete_id`; log compatibility nonce |
 | `heartbeat` | Keepalive/liveness trigger; may queue `queueStatus`; never required before sync |
 | `packet` with `TEXT_MESSAGE_APP` | Validate broadcast primary-channel UTF-8 text up to 200 bytes, call the adapter text hook, and queue local `queueStatus` |
-| `packet` with `POSITION_APP` | Deferred until a LICHEN position-submit/announce path exists; current firmware returns deterministic unsupported/no-op status |
+| `packet` with `POSITION_APP` | Valid app-originated positions are accepted as local-client location submissions; malformed or unsupported payloads return deterministic status |
 | `packet` with `NODEINFO_APP` | Update transient display metadata only; no persistent Meshtastic identity writes |
 | `packet` with `ADMIN_APP` read request | Deferred until `project-LICHEN-t2hn.23`; current firmware returns deterministic unsupported status. |
 | `packet` with `ADMIN_APP` write/command | Reject or no-op deterministically; do not mutate LICHEN radio/security settings. |
@@ -515,7 +541,7 @@ Meshtastic uses `portnum` to identify message types. The adapter maps these to C
 | Meshtastic Portnum | CoAP Uri-Path | Notes |
 |--------------------|---------------|-------|
 | `TEXT_MESSAGE_APP` (1) | `/msg/inbox` | Plain text messages |
-| `POSITION_APP` (3) | `/pos` | Deferred position writes; current firmware returns deterministic unsupported/no-op status |
+| `POSITION_APP` (3) | local-client location provider | Valid app-originated positions update the LICHEN location provider |
 | `NODEINFO_APP` (4) | `/node` | Node info exchange |
 | `TELEMETRY_APP` (67) | `/telem` | Device telemetry |
 | `TRACEROUTE_APP` (70) | N/A | Handled internally |
@@ -547,8 +573,13 @@ Meshtastic compatibility write.
 | `latitude_i` | Announce latitude | Scaled by 1e7 |
 | `longitude_i` | Announce longitude | Scaled by 1e7 |
 | `altitude` | Announce altitude | Meters; only emitted with valid lat/lon |
-| `time` | Announce timestamp | Unix epoch; only emitted with valid lat/lon |
+| `time` | Fix timestamp fallback | Unix epoch; only used when `timestamp` is absent |
+| `location_source` | Local-client source name suffix | Does not change LICHEN trust/source class |
+| `altitude_source` | Diagnostic provenance | Barometric altitude does not imply GNSS |
+| `timestamp` | Fix timestamp | Preferred over `time`; below-build-epoch values are stripped |
+| `gps_accuracy` | Raw GPS module accuracy constant | Millimeters; not exported as final horizontal accuracy without DOP |
 | `sats_in_view` | GNSS satellites | Only emitted with valid lat/lon |
+| `precision_bits` | Diagnostic precision metadata | Decoded but not mapped to app-visible accuracy |
 
 ### Channels
 

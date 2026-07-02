@@ -54,6 +54,17 @@ struct lichen_meshtastic_position_snapshot {
 	uint32_t fix_time_unix;
 	bool satellites_valid;
 	uint8_t satellites;
+	bool location_source_valid;
+	uint32_t location_source;
+	bool altitude_source_valid;
+	uint32_t altitude_source;
+	bool gps_accuracy_mm_valid;
+	uint32_t gps_accuracy_mm;
+	bool precision_bits_valid;
+	uint8_t precision_bits;
+	bool timestamp_field_valid;
+	bool fix_time_rejected_below_epoch_floor;
+	uint32_t effective_epoch_floor;
 };
 
 struct lichen_meshtastic_adapter_packet_info {

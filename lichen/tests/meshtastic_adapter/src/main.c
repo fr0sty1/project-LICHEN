@@ -308,6 +308,13 @@ static bool payload_get_len_field(const uint8_t *buf, size_t len,
 				  uint32_t field, const uint8_t **value,
 				  size_t *value_len);
 static size_t put_varint(uint8_t *buf, size_t cap, uint64_t value);
+static size_t build_position_payload_with_metadata(
+	uint8_t *buf, size_t cap, bool altitude, bool time, uint32_t time_value,
+	bool timestamp, uint32_t timestamp_value, bool sats,
+	bool location_source, uint32_t location_source_value,
+	bool altitude_source, uint32_t altitude_source_value,
+	bool gps_accuracy, uint32_t gps_accuracy_value,
+	bool precision_bits, uint32_t precision_bits_value);
 static size_t build_app_to_radio(uint8_t *buf, size_t cap, uint32_t portnum,
 				 const uint8_t *payload, size_t payload_len,
 				 uint32_t id);
@@ -611,6 +618,21 @@ static size_t build_text_to_radio(uint8_t *buf, size_t cap,
 static size_t build_position_payload(uint8_t *buf, size_t cap, bool altitude,
 				     bool time, bool timestamp, bool sats)
 {
+	return build_position_payload_with_metadata(buf, cap, altitude, time,
+						    1710000000U, timestamp,
+						    1710000200U, sats, false,
+						    0U, false, 0U, false, 0U,
+						    false, 0U);
+}
+
+static size_t build_position_payload_with_metadata(
+	uint8_t *buf, size_t cap, bool altitude, bool time, uint32_t time_value,
+	bool timestamp, uint32_t timestamp_value, bool sats, bool location_source,
+	uint32_t location_source_value, bool altitude_source,
+	uint32_t altitude_source_value, bool gps_accuracy,
+	uint32_t gps_accuracy_value, bool precision_bits,
+	uint32_t precision_bits_value)
+{
 	size_t pos = 0U;
 
 	zassert_true(cap >= 10U);
@@ -626,18 +648,35 @@ static size_t build_position_payload(uint8_t *buf, size_t cap, bool altitude,
 	}
 	if (time) {
 		buf[pos++] = 0x25; /* Position.time fixed32 */
-		put_le32(&buf[pos], 1710000000U);
+		put_le32(&buf[pos], time_value);
 		pos += 4U;
+	}
+	if (location_source) {
+		buf[pos++] = 0x28; /* Position.location_source */
+		pos += put_varint(&buf[pos], cap - pos, location_source_value);
+	}
+	if (altitude_source) {
+		buf[pos++] = 0x30; /* Position.altitude_source */
+		pos += put_varint(&buf[pos], cap - pos, altitude_source_value);
 	}
 	if (timestamp) {
 		buf[pos++] = 0x3d; /* Position.timestamp fixed32 */
-		put_le32(&buf[pos], 1710000200U);
+		put_le32(&buf[pos], timestamp_value);
 		pos += 4U;
+	}
+	if (gps_accuracy) {
+		buf[pos++] = 0x70; /* Position.gps_accuracy */
+		pos += put_varint(&buf[pos], cap - pos, gps_accuracy_value);
 	}
 	if (sats) {
 		buf[pos++] = 0x98; /* Position.sats_in_view */
 		buf[pos++] = 0x01;
 		pos += put_varint(&buf[pos], cap - pos, 9U);
+	}
+	if (precision_bits) {
+		buf[pos++] = 0xb8; /* Position.precision_bits */
+		buf[pos++] = 0x01;
+		pos += put_varint(&buf[pos], cap - pos, precision_bits_value);
 	}
 
 	return pos;
@@ -2178,6 +2217,236 @@ ZTEST(meshtastic_adapter, test_position_packet_routes_to_stub_and_status)
 	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
 			      position_packet_count,
 		      1U);
+}
+
+ZTEST(meshtastic_adapter, test_position_time_timestamp_policy_is_deterministic)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	uint8_t position[32];
+	size_t position_len;
+	size_t to_radio_len;
+	int ret;
+
+	position_len = build_position_payload_with_metadata(
+		position, sizeof(position), false, true, 1710000000U, false,
+		0U, false, false, 0U, false, 0U, false, 0U, false, 0U);
+	to_radio_len = build_app_to_radio(s_text_packet, sizeof(s_text_packet),
+					  3U, position, position_len,
+					  0x12345670U);
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, s_text_packet,
+						    to_radio_len);
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.position_count, 1U);
+	zassert_true(ctx.last_position.fix_time_unix_valid);
+	zassert_equal(ctx.last_position.fix_time_unix, 1710000000U);
+
+	position_len = build_position_payload_with_metadata(
+		position, sizeof(position), false, false, 0U, true,
+		1710000300U, false, false, 0U, false, 0U, false, 0U,
+		false, 0U);
+	to_radio_len = build_app_to_radio(s_text_packet, sizeof(s_text_packet),
+					  3U, position, position_len,
+					  0x12345671U);
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, s_text_packet,
+						    to_radio_len);
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.position_count, 1U);
+	zassert_true(ctx.last_position.fix_time_unix_valid);
+	zassert_equal(ctx.last_position.fix_time_unix, 1710000300U);
+
+	position_len = build_position_payload_with_metadata(
+		position, sizeof(position), false, true, 1710000000U, true,
+		1710000400U, false, false, 0U, false, 0U, false, 0U,
+		false, 0U);
+	to_radio_len = build_app_to_radio(s_text_packet, sizeof(s_text_packet),
+					  3U, position, position_len,
+					  0x12345672U);
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, s_text_packet,
+						    to_radio_len);
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.position_count, 1U);
+	zassert_true(ctx.last_position.fix_time_unix_valid);
+	zassert_equal(ctx.last_position.fix_time_unix, 1710000400U);
+}
+
+ZTEST(meshtastic_adapter, test_position_below_build_epoch_strips_fix_time_only)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	uint8_t position[32];
+	size_t position_len;
+	size_t to_radio_len;
+	int ret;
+
+	position_len = build_position_payload_with_metadata(
+		position, sizeof(position), false, true,
+		(uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX + 10U,
+		true,
+		(uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX - 1U,
+		false,
+		false, 0U, false, 0U, false, 0U, false, 0U);
+	to_radio_len = build_app_to_radio(s_text_packet, sizeof(s_text_packet),
+					  3U, position, position_len,
+					  0x12345673U);
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, s_text_packet,
+						    to_radio_len);
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.position_count, 1U);
+	zassert_true(ctx.last_position.latitude_e7_valid);
+	zassert_true(ctx.last_position.longitude_e7_valid);
+	zassert_false(ctx.last_position.fix_time_unix_valid);
+	zassert_true(ctx.last_position.fix_time_rejected_below_epoch_floor);
+	zassert_equal(ctx.last_position.effective_epoch_floor,
+		      (uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX);
+}
+
+ZTEST(meshtastic_adapter,
+      test_position_timestamp_before_time_still_wins_epoch_floor)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	uint8_t position[32];
+	uint8_t to_radio[LICHEN_MESHTASTIC_TO_RADIO_MAX];
+	size_t pos = 0U;
+	size_t to_radio_len;
+	int ret;
+
+	position[pos++] = 0x0d; /* Position.latitude_i fixed32 */
+	put_le32(&position[pos], 476206130U);
+	pos += 4U;
+	position[pos++] = 0x15; /* Position.longitude_i fixed32 */
+	put_le32(&position[pos], (uint32_t)-1223493000);
+	pos += 4U;
+	position[pos++] = 0x3d; /* Position.timestamp fixed32 */
+	put_le32(&position[pos],
+		 (uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX - 1U);
+	pos += 4U;
+	position[pos++] = 0x25; /* Position.time fixed32 */
+	put_le32(&position[pos],
+		 (uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX + 10U);
+	pos += 4U;
+
+	to_radio_len = build_app_to_radio(to_radio, sizeof(to_radio), 3U,
+					  position, pos, 0x12345676U);
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, to_radio,
+						    to_radio_len);
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.position_count, 1U);
+	zassert_true(ctx.last_position.timestamp_field_valid);
+	zassert_false(ctx.last_position.fix_time_unix_valid);
+	zassert_true(ctx.last_position.fix_time_rejected_below_epoch_floor);
+	zassert_equal(ctx.last_position.effective_epoch_floor,
+		      (uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX);
+}
+
+ZTEST(meshtastic_adapter,
+      test_position_duplicate_time_uses_last_value_when_timestamp_absent)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	uint8_t position[32];
+	uint8_t to_radio[LICHEN_MESHTASTIC_TO_RADIO_MAX];
+	size_t pos = 0U;
+	size_t to_radio_len;
+	int ret;
+
+	position[pos++] = 0x0d; /* Position.latitude_i fixed32 */
+	put_le32(&position[pos], 476206130U);
+	pos += 4U;
+	position[pos++] = 0x15; /* Position.longitude_i fixed32 */
+	put_le32(&position[pos], (uint32_t)-1223493000);
+	pos += 4U;
+	position[pos++] = 0x25; /* Position.time fixed32 */
+	put_le32(&position[pos],
+		 (uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX + 10U);
+	pos += 4U;
+	position[pos++] = 0x25; /* Position.time fixed32 */
+	put_le32(&position[pos],
+		 (uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX - 1U);
+	pos += 4U;
+
+	to_radio_len = build_app_to_radio(to_radio, sizeof(to_radio), 3U,
+					  position, pos, 0x12345677U);
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, to_radio,
+						    to_radio_len);
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.position_count, 1U);
+	zassert_false(ctx.last_position.timestamp_field_valid);
+	zassert_false(ctx.last_position.fix_time_unix_valid);
+	zassert_true(ctx.last_position.fix_time_rejected_below_epoch_floor);
+	zassert_equal(ctx.last_position.effective_epoch_floor,
+		      (uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX);
+}
+
+ZTEST(meshtastic_adapter, test_position_preserves_source_accuracy_and_precision)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	uint8_t position[48];
+	size_t position_len;
+	size_t to_radio_len;
+	int ret;
+
+	position_len = build_position_payload_with_metadata(
+		position, sizeof(position), true, false, 0U, true,
+		1710000200U, true, true, 3U, true, 4U, true, 2500U,
+		true, 24U);
+	to_radio_len = build_app_to_radio(s_text_packet, sizeof(s_text_packet),
+					  3U, position, position_len,
+					  0x12345674U);
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, s_text_packet,
+						    to_radio_len);
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.position_count, 1U);
+	zassert_true(ctx.last_position.location_source_valid);
+	zassert_equal(ctx.last_position.location_source, 3U);
+	zassert_true(ctx.last_position.altitude_source_valid);
+	zassert_equal(ctx.last_position.altitude_source, 4U);
+	zassert_true(ctx.last_position.gps_accuracy_mm_valid);
+	zassert_equal(ctx.last_position.gps_accuracy_mm, 2500U);
+	zassert_true(ctx.last_position.precision_bits_valid);
+	zassert_equal(ctx.last_position.precision_bits, 24U);
+}
+
+ZTEST(meshtastic_adapter, test_position_oversized_precision_is_ignored)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	uint8_t position[48];
+	size_t position_len;
+	size_t to_radio_len;
+	int ret;
+
+	position_len = build_position_payload_with_metadata(
+		position, sizeof(position), false, false, 0U, false, 0U,
+		false, false, 0U, false, 0U, false, 0U, true, 300U);
+	to_radio_len = build_app_to_radio(s_text_packet, sizeof(s_text_packet),
+					  3U, position, position_len,
+					  0x12345675U);
+
+	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, s_text_packet,
+						    to_radio_len);
+
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.position_count, 1U);
+	zassert_false(ctx.last_position.precision_bits_valid);
 }
 
 ZTEST(meshtastic_adapter, test_position_negative_altitude_routes_to_stub)

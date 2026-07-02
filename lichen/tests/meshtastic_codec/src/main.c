@@ -367,9 +367,9 @@ static void assert_metadata_payload(const uint8_t *buf, size_t len,
 
 ZTEST(meshtastic_codec, test_generated_vectors_are_current)
 {
-	zassert_equal(MESHTASTIC_VECTOR_SOURCE_COUNT, 25U);
+	zassert_equal(MESHTASTIC_VECTOR_SOURCE_COUNT, 29U);
 	zassert_equal(MESHTASTIC_VECTOR_CODEC_COUNT, ARRAY_SIZE(meshtastic_vectors));
-	zassert_equal(MESHTASTIC_VECTOR_CODEC_COUNT, 23U);
+	zassert_equal(MESHTASTIC_VECTOR_CODEC_COUNT, 27U);
 }
 
 ZTEST(meshtastic_codec, test_canonical_codec_vectors)

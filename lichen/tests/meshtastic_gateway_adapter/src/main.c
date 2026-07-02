@@ -408,8 +408,10 @@ static size_t build_text_to_radio_to(uint8_t *buf, size_t cap,
 	return pos;
 }
 
-static size_t build_position_payload(uint8_t *buf, size_t cap, bool altitude,
-				     bool time, bool timestamp, bool sats)
+static size_t build_position_payload_with_metadata(
+	uint8_t *buf, size_t cap, bool altitude, bool time, bool timestamp,
+	bool sats, bool location_source, uint32_t location_source_value,
+	bool gps_accuracy, uint32_t gps_accuracy_value)
 {
 	size_t pos = 0U;
 
@@ -429,10 +431,18 @@ static size_t build_position_payload(uint8_t *buf, size_t cap, bool altitude,
 		put_le32(&buf[pos], 1710000000U);
 		pos += 4U;
 	}
+	if (location_source) {
+		buf[pos++] = 0x28; /* Position.location_source */
+		pos += put_varint(&buf[pos], cap - pos, location_source_value);
+	}
 	if (timestamp) {
 		buf[pos++] = 0x3d; /* Position.timestamp fixed32 */
 		put_le32(&buf[pos], 1710000200U);
 		pos += 4U;
+	}
+	if (gps_accuracy) {
+		buf[pos++] = 0x70; /* Position.gps_accuracy */
+		pos += put_varint(&buf[pos], cap - pos, gps_accuracy_value);
 	}
 	if (sats) {
 		buf[pos++] = 0x98; /* Position.sats_in_view */
@@ -441,6 +451,14 @@ static size_t build_position_payload(uint8_t *buf, size_t cap, bool altitude,
 	}
 
 	return pos;
+}
+
+static size_t build_position_payload(uint8_t *buf, size_t cap, bool altitude,
+				     bool time, bool timestamp, bool sats)
+{
+	return build_position_payload_with_metadata(buf, cap, altitude, time,
+						    timestamp, sats, false, 0U,
+						    false, 0U);
 }
 
 static size_t build_negative_altitude_position_payload(uint8_t *buf, size_t cap)
@@ -1593,7 +1611,7 @@ ZTEST(meshtastic_gateway_adapter,
 	zassert_true(snapshot.source_class_valid);
 	zassert_equal(snapshot.source_class,
 		      LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT);
-	zassert_str_equal(snapshot.source_name, "local-client");
+	zassert_str_equal(snapshot.source_name, "meshtastic-position");
 	zassert_true(snapshot.fix_state_valid);
 	zassert_equal(snapshot.fix_state, LICHEN_HAL_LOCATION_FIX_3D);
 	zassert_true(snapshot.latitude_e7_valid);
@@ -1631,6 +1649,7 @@ ZTEST(meshtastic_gateway_adapter,
 	zassert_true(snapshot.location_provider_available);
 	zassert_equal(snapshot.source_class,
 		      LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT);
+	zassert_str_equal(snapshot.source_name, "meshtastic-position");
 	zassert_equal(snapshot.fix_state, LICHEN_HAL_LOCATION_FIX_2D);
 	zassert_true(snapshot.latitude_e7_valid);
 	zassert_equal(snapshot.latitude_e7, 476206130);
@@ -1639,6 +1658,36 @@ ZTEST(meshtastic_gateway_adapter,
 	zassert_false(snapshot.altitude_m_valid);
 	zassert_false(snapshot.fix_time_unix_valid);
 	zassert_false(snapshot.satellites_valid);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_process_once_position_preserves_metadata_without_trust_upgrade)
+{
+	uint8_t position[48];
+	uint8_t to_radio[112];
+	struct lichen_hal_location_time_snapshot snapshot;
+	size_t position_len;
+	size_t to_radio_len;
+
+	position_len = build_position_payload_with_metadata(
+		position, sizeof(position), false, false, false, false,
+		true, 3U, true, 2500U);
+	to_radio_len = build_position_to_radio(to_radio, sizeof(to_radio),
+					       position, position_len,
+					       0x1234567bU);
+
+	reset_gateway(1U);
+	zassert_ok(fake_ble_meshtastic_push_to_radio(to_radio, to_radio_len));
+
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.location_provider_available);
+	zassert_true(snapshot.source_class_valid);
+	zassert_equal(snapshot.source_class,
+		      LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT);
+	zassert_str_equal(snapshot.source_name, "mt-pos-external");
+	zassert_false(snapshot.horizontal_accuracy_mm_valid);
+	zassert_false(snapshot.fix_source_valid);
 }
 
 ZTEST(meshtastic_gateway_adapter,

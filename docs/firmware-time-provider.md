@@ -132,6 +132,17 @@ separately:
 Physical GNSS validation remains hardware-blocked. The no-hardware requirement
 is to model these states in the provider API and simulator/native tests.
 
+## Meshtastic Position Interaction
+
+Meshtastic-compatible app surfaces can submit `POSITION_APP` payloads over a
+local client transport. For those payloads, Meshtastic `timestamp` field 7 is
+the preferred fix timestamp and `time` field 4 is only a fallback. A chosen
+timestamp below the firmware build epoch floor is stripped from the submitted
+location metadata, while otherwise valid coordinates remain usable as a
+local-client position. If Position-derived time is submitted to the shared time
+provider, the normal effective floor applies: a valid board/provision epoch
+stricter than the build epoch rejects below-floor time.
+
 ## Test Plan
 
 The no-hardware test suite for `project-LICHEN-2067` MUST include `native_sim`

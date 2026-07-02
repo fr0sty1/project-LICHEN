@@ -31,8 +31,12 @@
 #define POSITION_LONGITUDE_I_FIELD 2U
 #define POSITION_ALTITUDE_FIELD 3U
 #define POSITION_TIME_FIELD 4U
+#define POSITION_LOCATION_SOURCE_FIELD 5U
+#define POSITION_ALTITUDE_SOURCE_FIELD 6U
 #define POSITION_TIMESTAMP_FIELD 7U
+#define POSITION_GPS_ACCURACY_FIELD 14U
 #define POSITION_SATS_IN_VIEW_FIELD 19U
+#define POSITION_PRECISION_BITS_FIELD 23U
 
 #define ADMIN_GET_OWNER_REQUEST_FIELD 3U
 #define ADMIN_GET_DEVICE_METADATA_REQUEST_FIELD 12U
@@ -508,6 +512,23 @@ static bool valid_position_e7(int32_t latitude_e7, int32_t longitude_e7)
 	       longitude_e7 >= -1800000000 && longitude_e7 <= 1800000000;
 }
 
+static void set_position_fix_time(
+	struct lichen_meshtastic_position_snapshot *position, uint32_t unix_time)
+{
+	position->effective_epoch_floor =
+		(uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX;
+	if (unix_time < position->effective_epoch_floor) {
+		position->fix_time_rejected_below_epoch_floor = true;
+		position->fix_time_unix_valid = false;
+		position->fix_time_unix = 0U;
+		return;
+	}
+
+	position->fix_time_rejected_below_epoch_floor = false;
+	position->fix_time_unix = unix_time;
+	position->fix_time_unix_valid = true;
+}
+
 static int parse_position_payload(
 	const uint8_t *payload, size_t len,
 	struct lichen_meshtastic_position_snapshot *position)
@@ -561,20 +582,44 @@ static int parse_position_payload(
 			    cur.len - cur.pos < sizeof(uint32_t)) {
 				return -EINVAL;
 			}
-			if (!position->fix_time_unix_valid) {
-				position->fix_time_unix = sys_get_le32(&cur.buf[cur.pos]);
-				position->fix_time_unix_valid = true;
+			if (!position->timestamp_field_valid) {
+				set_position_fix_time(
+					position, sys_get_le32(&cur.buf[cur.pos]));
 			}
 			cur.pos += sizeof(uint32_t);
+			break;
+		case POSITION_LOCATION_SOURCE_FIELD:
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0 ||
+			    v > UINT32_MAX) {
+				return -EINVAL;
+			}
+			position->location_source = (uint32_t)v;
+			position->location_source_valid = true;
+			break;
+		case POSITION_ALTITUDE_SOURCE_FIELD:
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0 ||
+			    v > UINT32_MAX) {
+				return -EINVAL;
+			}
+			position->altitude_source = (uint32_t)v;
+			position->altitude_source_valid = true;
 			break;
 		case POSITION_TIMESTAMP_FIELD:
 			if (wt != PB_WT_32BIT ||
 			    cur.len - cur.pos < sizeof(uint32_t)) {
 				return -EINVAL;
 			}
-			position->fix_time_unix = sys_get_le32(&cur.buf[cur.pos]);
-			position->fix_time_unix_valid = true;
+			position->timestamp_field_valid = true;
+			set_position_fix_time(position, sys_get_le32(&cur.buf[cur.pos]));
 			cur.pos += sizeof(uint32_t);
+			break;
+		case POSITION_GPS_ACCURACY_FIELD:
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0 ||
+			    v > UINT32_MAX) {
+				return -EINVAL;
+			}
+			position->gps_accuracy_mm = (uint32_t)v;
+			position->gps_accuracy_mm_valid = true;
 			break;
 		case POSITION_SATS_IN_VIEW_FIELD:
 			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0) {
@@ -583,6 +628,15 @@ static int parse_position_payload(
 			if (v <= UINT8_MAX) {
 				position->satellites = (uint8_t)v;
 				position->satellites_valid = true;
+			}
+			break;
+		case POSITION_PRECISION_BITS_FIELD:
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0) {
+				return -EINVAL;
+			}
+			if (v <= UINT8_MAX) {
+				position->precision_bits = (uint8_t)v;
+				position->precision_bits_valid = true;
 			}
 			break;
 		default:

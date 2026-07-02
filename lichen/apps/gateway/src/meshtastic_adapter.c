@@ -36,6 +36,10 @@ BUILD_ASSERT(CONFIG_LICHEN_APP_INTERFACE_MAX_PAYLOAD ==
 #define ADAPTER_STACK_SIZE 4096
 #define ADAPTER_PRIORITY 7
 #define ADAPTER_IDLE_SLEEP K_MSEC(20)
+#define MESHTASTIC_LOC_SOURCE_MANUAL 1U
+#define MESHTASTIC_LOC_SOURCE_INTERNAL 2U
+#define MESHTASTIC_LOC_SOURCE_EXTERNAL 3U
+#define MESHTASTIC_ALT_SOURCE_BAROMETRIC 4U
 
 static struct lichen_meshtastic_adapter s_adapter;
 static uint8_t s_to_radio[LICHEN_MESHTASTIC_TO_RADIO_MAX];
@@ -74,6 +78,8 @@ static int get_local_info(struct lichen_meshtastic_local_info *info,
 static size_t get_peers(struct lichen_meshtastic_peer_snapshot *peers,
 			size_t peer_cap, void *user_data);
 static int process_once_internal(void);
+static const char *position_source_name(
+	const struct lichen_meshtastic_position_snapshot *position);
 #ifndef CONFIG_ZTEST
 static void adapter_thread(void *a, void *b, void *c);
 #endif
@@ -137,6 +143,7 @@ static int handle_location(
 	void *user_data)
 {
 	struct lichen_app_location_time_snapshot location;
+	const char *source_name;
 
 	ARG_UNUSED(user_data);
 
@@ -160,11 +167,16 @@ static int handle_location(
 		.satellites = packet->position.satellites,
 		.source_class_valid = true,
 		.source_class = LICHEN_APP_LOCATION_SOURCE_LOCAL_CLIENT,
+		.age_seconds_valid = false,
 		.fix_state_valid = true,
 		.fix_state = packet->position.altitude_m_valid ?
 			     LICHEN_APP_LOCATION_FIX_3D :
 			     LICHEN_APP_LOCATION_FIX_2D,
 	};
+	source_name = position_source_name(&packet->position);
+	strncpy(location.source_name, source_name,
+		sizeof(location.source_name) - 1U);
+	location.source_name[sizeof(location.source_name) - 1U] = '\0';
 
 	return lichen_app_interface_submit_location(&location);
 }
@@ -335,6 +347,29 @@ static size_t get_peers(struct lichen_meshtastic_peer_snapshot *peers,
 	ARG_UNUSED(user_data);
 	return 0U;
 #endif
+}
+
+static const char *position_source_name(
+	const struct lichen_meshtastic_position_snapshot *position)
+{
+	if (position == NULL || !position->location_source_valid) {
+		return "meshtastic-position";
+	}
+
+	switch (position->location_source) {
+	case MESHTASTIC_LOC_SOURCE_MANUAL:
+		return "mt-pos-manual";
+	case MESHTASTIC_LOC_SOURCE_INTERNAL:
+		return "mt-pos-internal";
+	case MESHTASTIC_LOC_SOURCE_EXTERNAL:
+		return "mt-pos-external";
+	default:
+		if (position->altitude_source_valid &&
+		    position->altitude_source == MESHTASTIC_ALT_SOURCE_BAROMETRIC) {
+			return "mt-pos-baro-alt";
+		}
+		return "mt-position";
+	}
 }
 
 int gateway_meshtastic_adapter_init(void)

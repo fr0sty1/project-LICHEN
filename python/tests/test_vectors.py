@@ -210,12 +210,16 @@ def _assert_data(data: bytes, decoded: dict) -> None:
     by_field = {field: (wire_type, value) for field, wire_type, value in fields}
     portnums = {
         "TEXT_MESSAGE_APP": 1,
+        "POSITION_APP": 3,
         "ROUTING_APP": 5,
         "PRIVATE_APP": 256,
     }
     assert by_field[1] == (0, portnums[decoded["portnum"]])
     if "payload_utf8" in decoded:
         assert by_field[2] == (2, decoded["payload_utf8"].encode())
+    if "position" in decoded:
+        assert by_field[2][0] == 2
+        _assert_position(by_field[2][1], decoded["position"])
     if "routing_error_reason" in decoded:
         routing = by_field[2][1]
         assert by_field[2][0] == 2
@@ -223,6 +227,34 @@ def _assert_data(data: bytes, decoded: dict) -> None:
         assert _one_field(routing, 3, 0) == 1
     if "request_id" in decoded:
         assert by_field[6] == (5, decoded["request_id"])
+
+
+def _signed32(value: int) -> int:
+    return value if value < 0x80000000 else value - 0x100000000
+
+
+def _assert_position(data: bytes, decoded: dict) -> None:
+    fields = _read_fields(data)
+    by_field = {field: (wire_type, value) for field, wire_type, value in fields}
+    expected = {
+        "latitude_i": (1, 5, lambda value: _signed32(value)),
+        "longitude_i": (2, 5, lambda value: _signed32(value)),
+        "altitude": (3, 0, int),
+        "time": (4, 5, int),
+        "location_source": (5, 0, int),
+        "altitude_source": (6, 0, int),
+        "timestamp": (7, 5, int),
+        "gps_accuracy": (14, 0, int),
+        "sats_in_view": (19, 0, int),
+        "precision_bits": (23, 0, int),
+    }
+
+    for name, (field, wire_type, convert) in expected.items():
+        if name not in decoded:
+            continue
+        assert field in by_field, name
+        assert by_field[field][0] == wire_type, name
+        assert convert(by_field[field][1]) == decoded[name]
 
 
 def _assert_queue_status(data: bytes, decoded: dict) -> None:
