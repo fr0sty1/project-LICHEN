@@ -101,6 +101,221 @@
           "moduleConfig",
           "config_complete_id"
         ],
+        "config_sections": [
+          {
+            "section": "device",
+            "oneof_field": 1,
+            "payload": "0a050800388407",
+            "fields": [
+              {
+                "field": 1,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 7,
+                "wire_type": "varint",
+                "value": 900
+              }
+            ]
+          },
+          {
+            "section": "position",
+            "oneof_field": 2,
+            "payload": "12081800280038006802",
+            "fields": [
+              {
+                "field": 3,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 5,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 7,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 13,
+                "wire_type": "varint",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "section": "power",
+            "oneof_field": 3,
+            "payload": "1a0408002000",
+            "fields": [
+              {
+                "field": 1,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 4,
+                "wire_type": "varint",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "section": "network",
+            "oneof_field": 4,
+            "payload": "2206080030005800",
+            "fields": [
+              {
+                "field": 1,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 6,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 11,
+                "wire_type": "varint",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "section": "display",
+            "oneof_field": 5,
+            "payload": "2a06080030004000",
+            "fields": [
+              {
+                "field": 1,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 6,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 8,
+                "wire_type": "varint",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "section": "lora",
+            "oneof_field": 6,
+            "payload": "321108011000380140034801500e5800c00601",
+            "fields": [
+              {
+                "field": 1,
+                "wire_type": "varint",
+                "value": 1
+              },
+              {
+                "field": 2,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 7,
+                "wire_type": "varint",
+                "value": 1
+              },
+              {
+                "field": 8,
+                "wire_type": "varint",
+                "value": 3
+              },
+              {
+                "field": 9,
+                "wire_type": "varint",
+                "value": 1
+              },
+              {
+                "field": 10,
+                "wire_type": "varint",
+                "value": 14
+              },
+              {
+                "field": 11,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 104,
+                "wire_type": "varint",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "section": "bluetooth",
+            "oneof_field": 7,
+            "payload": "3a0408011002",
+            "fields": [
+              {
+                "field": 1,
+                "wire_type": "varint",
+                "value": 1
+              },
+              {
+                "field": 2,
+                "wire_type": "varint",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "section": "security",
+            "oneof_field": 8,
+            "payload": "4206280030004000",
+            "fields": [
+              {
+                "field": 5,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 6,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 8,
+                "wire_type": "varint",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "section": "device_ui",
+            "oneof_field": 10,
+            "payload": "5206080010011800",
+            "fields": [
+              {
+                "field": 1,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 2,
+                "wire_type": "varint",
+                "value": 1
+              },
+              {
+                "field": 3,
+                "wire_type": "varint",
+                "value": 0
+              }
+            ]
+          }
+        ],
         "terminal_from_radio": "38ac9e04"
       }
     },
@@ -210,6 +425,657 @@
       }
     },
     {
+      "name": "config_section_device",
+      "description": "MVP Config section payload for device during staged app sync.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromRadio",
+      "message": "config",
+      "payload": "0a050800388407",
+      "encoded": "2a070a050800388407",
+      "decoded": {
+        "config": {
+          "section": "device",
+          "oneof_field": 1,
+          "fields": [
+            {
+              "field": 1,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 7,
+              "wire_type": "varint",
+              "value": 900
+            }
+          ]
+        }
+      },
+      "expect": {
+        "from_radio_field": 5,
+        "config_section": {
+          "section": "device",
+          "oneof_field": 1,
+          "payload": "0a050800388407",
+          "fields": [
+            {
+              "field": 1,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 7,
+              "wire_type": "varint",
+              "value": 900
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "config_section_position",
+      "description": "MVP Config section payload for position during staged app sync.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromRadio",
+      "message": "config",
+      "payload": "12081800280038006802",
+      "encoded": "2a0a12081800280038006802",
+      "decoded": {
+        "config": {
+          "section": "position",
+          "oneof_field": 2,
+          "fields": [
+            {
+              "field": 3,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 5,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 7,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 13,
+              "wire_type": "varint",
+              "value": 2
+            }
+          ]
+        }
+      },
+      "expect": {
+        "from_radio_field": 5,
+        "config_section": {
+          "section": "position",
+          "oneof_field": 2,
+          "payload": "12081800280038006802",
+          "fields": [
+            {
+              "field": 3,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 5,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 7,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 13,
+              "wire_type": "varint",
+              "value": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "config_section_power",
+      "description": "MVP Config section payload for power during staged app sync.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromRadio",
+      "message": "config",
+      "payload": "1a0408002000",
+      "encoded": "2a061a0408002000",
+      "decoded": {
+        "config": {
+          "section": "power",
+          "oneof_field": 3,
+          "fields": [
+            {
+              "field": 1,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 4,
+              "wire_type": "varint",
+              "value": 0
+            }
+          ]
+        }
+      },
+      "expect": {
+        "from_radio_field": 5,
+        "config_section": {
+          "section": "power",
+          "oneof_field": 3,
+          "payload": "1a0408002000",
+          "fields": [
+            {
+              "field": 1,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 4,
+              "wire_type": "varint",
+              "value": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "config_section_network",
+      "description": "MVP Config section payload for network during staged app sync.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromRadio",
+      "message": "config",
+      "payload": "2206080030005800",
+      "encoded": "2a082206080030005800",
+      "decoded": {
+        "config": {
+          "section": "network",
+          "oneof_field": 4,
+          "fields": [
+            {
+              "field": 1,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 6,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 11,
+              "wire_type": "varint",
+              "value": 0
+            }
+          ]
+        }
+      },
+      "expect": {
+        "from_radio_field": 5,
+        "config_section": {
+          "section": "network",
+          "oneof_field": 4,
+          "payload": "2206080030005800",
+          "fields": [
+            {
+              "field": 1,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 6,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 11,
+              "wire_type": "varint",
+              "value": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "config_section_display",
+      "description": "MVP Config section payload for display during staged app sync.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromRadio",
+      "message": "config",
+      "payload": "2a06080030004000",
+      "encoded": "2a082a06080030004000",
+      "decoded": {
+        "config": {
+          "section": "display",
+          "oneof_field": 5,
+          "fields": [
+            {
+              "field": 1,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 6,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 8,
+              "wire_type": "varint",
+              "value": 0
+            }
+          ]
+        }
+      },
+      "expect": {
+        "from_radio_field": 5,
+        "config_section": {
+          "section": "display",
+          "oneof_field": 5,
+          "payload": "2a06080030004000",
+          "fields": [
+            {
+              "field": 1,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 6,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 8,
+              "wire_type": "varint",
+              "value": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "config_section_lora",
+      "description": "MVP Config section payload for lora during staged app sync.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromRadio",
+      "message": "config",
+      "payload": "321108011000380140034801500e5800c00601",
+      "encoded": "2a13321108011000380140034801500e5800c00601",
+      "decoded": {
+        "config": {
+          "section": "lora",
+          "oneof_field": 6,
+          "fields": [
+            {
+              "field": 1,
+              "wire_type": "varint",
+              "value": 1
+            },
+            {
+              "field": 2,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 7,
+              "wire_type": "varint",
+              "value": 1
+            },
+            {
+              "field": 8,
+              "wire_type": "varint",
+              "value": 3
+            },
+            {
+              "field": 9,
+              "wire_type": "varint",
+              "value": 1
+            },
+            {
+              "field": 10,
+              "wire_type": "varint",
+              "value": 14
+            },
+            {
+              "field": 11,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 104,
+              "wire_type": "varint",
+              "value": 1
+            }
+          ]
+        }
+      },
+      "expect": {
+        "from_radio_field": 5,
+        "config_section": {
+          "section": "lora",
+          "oneof_field": 6,
+          "payload": "321108011000380140034801500e5800c00601",
+          "fields": [
+            {
+              "field": 1,
+              "wire_type": "varint",
+              "value": 1
+            },
+            {
+              "field": 2,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 7,
+              "wire_type": "varint",
+              "value": 1
+            },
+            {
+              "field": 8,
+              "wire_type": "varint",
+              "value": 3
+            },
+            {
+              "field": 9,
+              "wire_type": "varint",
+              "value": 1
+            },
+            {
+              "field": 10,
+              "wire_type": "varint",
+              "value": 14
+            },
+            {
+              "field": 11,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 104,
+              "wire_type": "varint",
+              "value": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "config_section_bluetooth",
+      "description": "MVP Config section payload for bluetooth during staged app sync.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromRadio",
+      "message": "config",
+      "payload": "3a0408011002",
+      "encoded": "2a063a0408011002",
+      "decoded": {
+        "config": {
+          "section": "bluetooth",
+          "oneof_field": 7,
+          "fields": [
+            {
+              "field": 1,
+              "wire_type": "varint",
+              "value": 1
+            },
+            {
+              "field": 2,
+              "wire_type": "varint",
+              "value": 2
+            }
+          ]
+        }
+      },
+      "expect": {
+        "from_radio_field": 5,
+        "config_section": {
+          "section": "bluetooth",
+          "oneof_field": 7,
+          "payload": "3a0408011002",
+          "fields": [
+            {
+              "field": 1,
+              "wire_type": "varint",
+              "value": 1
+            },
+            {
+              "field": 2,
+              "wire_type": "varint",
+              "value": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "config_section_security",
+      "description": "MVP Config section payload for security during staged app sync.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromRadio",
+      "message": "config",
+      "payload": "4206280030004000",
+      "encoded": "2a084206280030004000",
+      "decoded": {
+        "config": {
+          "section": "security",
+          "oneof_field": 8,
+          "fields": [
+            {
+              "field": 5,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 6,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 8,
+              "wire_type": "varint",
+              "value": 0
+            }
+          ]
+        }
+      },
+      "expect": {
+        "from_radio_field": 5,
+        "config_section": {
+          "section": "security",
+          "oneof_field": 8,
+          "payload": "4206280030004000",
+          "fields": [
+            {
+              "field": 5,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 6,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 8,
+              "wire_type": "varint",
+              "value": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "config_section_device_ui",
+      "description": "MVP Config section payload for device_ui during staged app sync.",
+      "source_baseline": {
+        "protobufs": "032b7dfd68e875c4323e6ac67590c6fc616b1714",
+        "firmware": "2f97112987af311ca81dd70b83cbcf7236d6c119",
+        "python": "6d76edf8a7b192c51e3a5d26bc5868da556ac3d9",
+        "android": "eb3bd10757a312d1537874bfab245117c46c36a9",
+        "apple": "aeeb0cc49fbe0ed593e918ba2f95100ecf694256"
+      },
+      "transport": {
+        "name": "ble-gatt",
+        "framing": "one raw serialized protobuf per GATT value",
+        "reject_prefix_hex": "94c3"
+      },
+      "direction": "node_to_app",
+      "protobuf": "FromRadio",
+      "message": "config",
+      "payload": "5206080010011800",
+      "encoded": "2a085206080010011800",
+      "decoded": {
+        "config": {
+          "section": "device_ui",
+          "oneof_field": 10,
+          "fields": [
+            {
+              "field": 1,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 2,
+              "wire_type": "varint",
+              "value": 1
+            },
+            {
+              "field": 3,
+              "wire_type": "varint",
+              "value": 0
+            }
+          ]
+        }
+      },
+      "expect": {
+        "from_radio_field": 5,
+        "config_section": {
+          "section": "device_ui",
+          "oneof_field": 10,
+          "payload": "5206080010011800",
+          "fields": [
+            {
+              "field": 1,
+              "wire_type": "varint",
+              "value": 0
+            },
+            {
+              "field": 2,
+              "wire_type": "varint",
+              "value": 1
+            },
+            {
+              "field": 3,
+              "wire_type": "varint",
+              "value": 0
+            }
+          ]
+        }
+      }
+    },
+    {
       "name": "legacy_full_sync_unknown_nonce",
       "description": "Python/older clients may use a non-staged nonce and still need full sync data.",
       "source_baseline": {
@@ -249,6 +1115,221 @@
           "moduleConfig",
           "node_info",
           "config_complete_id"
+        ],
+        "config_sections": [
+          {
+            "section": "device",
+            "oneof_field": 1,
+            "payload": "0a050800388407",
+            "fields": [
+              {
+                "field": 1,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 7,
+                "wire_type": "varint",
+                "value": 900
+              }
+            ]
+          },
+          {
+            "section": "position",
+            "oneof_field": 2,
+            "payload": "12081800280038006802",
+            "fields": [
+              {
+                "field": 3,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 5,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 7,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 13,
+                "wire_type": "varint",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "section": "power",
+            "oneof_field": 3,
+            "payload": "1a0408002000",
+            "fields": [
+              {
+                "field": 1,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 4,
+                "wire_type": "varint",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "section": "network",
+            "oneof_field": 4,
+            "payload": "2206080030005800",
+            "fields": [
+              {
+                "field": 1,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 6,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 11,
+                "wire_type": "varint",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "section": "display",
+            "oneof_field": 5,
+            "payload": "2a06080030004000",
+            "fields": [
+              {
+                "field": 1,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 6,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 8,
+                "wire_type": "varint",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "section": "lora",
+            "oneof_field": 6,
+            "payload": "321108011000380140034801500e5800c00601",
+            "fields": [
+              {
+                "field": 1,
+                "wire_type": "varint",
+                "value": 1
+              },
+              {
+                "field": 2,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 7,
+                "wire_type": "varint",
+                "value": 1
+              },
+              {
+                "field": 8,
+                "wire_type": "varint",
+                "value": 3
+              },
+              {
+                "field": 9,
+                "wire_type": "varint",
+                "value": 1
+              },
+              {
+                "field": 10,
+                "wire_type": "varint",
+                "value": 14
+              },
+              {
+                "field": 11,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 104,
+                "wire_type": "varint",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "section": "bluetooth",
+            "oneof_field": 7,
+            "payload": "3a0408011002",
+            "fields": [
+              {
+                "field": 1,
+                "wire_type": "varint",
+                "value": 1
+              },
+              {
+                "field": 2,
+                "wire_type": "varint",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "section": "security",
+            "oneof_field": 8,
+            "payload": "4206280030004000",
+            "fields": [
+              {
+                "field": 5,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 6,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 8,
+                "wire_type": "varint",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "section": "device_ui",
+            "oneof_field": 10,
+            "payload": "5206080010011800",
+            "fields": [
+              {
+                "field": 1,
+                "wire_type": "varint",
+                "value": 0
+              },
+              {
+                "field": 2,
+                "wire_type": "varint",
+                "value": 1
+              },
+              {
+                "field": 3,
+                "wire_type": "varint",
+                "value": 0
+              }
+            ]
+          }
         ],
         "terminal_from_radio": "38a5cb96ad0a"
       }

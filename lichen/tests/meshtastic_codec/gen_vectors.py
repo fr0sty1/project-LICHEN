@@ -63,6 +63,19 @@ def parse_from_radio_packet(data):
     return from_id, packet
 
 
+CONFIG_SECTION_ENUMS = {
+    "device": 0,
+    "position": 1,
+    "power": 2,
+    "network": 3,
+    "display": 4,
+    "lora": 5,
+    "bluetooth": 6,
+    "security": 7,
+    "device_ui": 8,
+}
+
+
 def bytes_array(name, data):
     if data:
         values = ", ".join(f"0x{byte:02x}" for byte in data)
@@ -126,6 +139,15 @@ def main():
             rows.append((name, "MESHTASTIC_VECTOR_FROM_QUEUE_STATUS", arr, len(encoded),
                          "NULL", 0, 0, 0, status["res"], status["free"],
                          status["maxlen"], status["mesh_packet_id"]))
+        elif proto == "FromRadio" and message == "config":
+            payload = hex_bytes(vector["payload"])
+            section = CONFIG_SECTION_ENUMS[vector["expect"]["config_section"]["section"]]
+            arr = f"v_{ident}_encoded"
+            payload_arr = f"v_{ident}_payload"
+            arrays.append(bytes_array(arr, encoded))
+            arrays.append(bytes_array(payload_arr, payload))
+            rows.append((name, "MESHTASTIC_VECTOR_FROM_CONFIG", arr,
+                         len(encoded), payload_arr, len(payload), section, 0, 0, 0, 0, 0))
         elif proto == "FromRadio" and message == "moduleConfig":
             payload = hex_bytes(vector["payload"])
             arr = f"v_{ident}_encoded"
@@ -170,6 +192,7 @@ def main():
         "\tMESHTASTIC_VECTOR_TO_PACKET,",
         "\tMESHTASTIC_VECTOR_TO_REJECT,",
         "\tMESHTASTIC_VECTOR_FROM_QUEUE_STATUS,",
+        "\tMESHTASTIC_VECTOR_FROM_CONFIG,",
         "\tMESHTASTIC_VECTOR_FROM_MODULE_CONFIG,",
         "\tMESHTASTIC_VECTOR_FROM_REGION_PRESETS,",
         "\tMESHTASTIC_VECTOR_FROM_PACKET,",

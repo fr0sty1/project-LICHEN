@@ -111,6 +111,29 @@
           }
         },
         {
+          "if": {
+            "properties": {
+              "name": {
+                "enum": [
+                  "want_config_stage_69420",
+                  "legacy_full_sync_unknown_nonce"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "expect": {
+                "required": [
+                  "from_radio_sequence",
+                  "config_sections",
+                  "terminal_from_radio"
+                ]
+              }
+            }
+          }
+        },
+        {
           "if": {"properties": {"message": {"enum": ["invalid_stream_framing", "oversized"]}}},
           "then": {
             "properties": {
@@ -159,7 +182,7 @@
           "if": {
             "properties": {
               "protobuf": {"const": "FromRadio"},
-              "message": {"enum": ["moduleConfig", "region_presets"]}
+              "message": {"enum": ["config", "moduleConfig", "region_presets"]}
             }
           },
           "then": {
@@ -233,6 +256,58 @@
               "type": "array",
               "items": {"type": "string"},
               "minItems": 1
+            },
+            "config_sections": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["section", "oneof_field", "payload", "fields"],
+                "additionalProperties": false,
+                "properties": {
+                  "section": {"type": "string"},
+                  "oneof_field": {"type": "integer", "minimum": 1},
+                  "payload": {"$ref": "#/definitions/hex"},
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["field", "wire_type", "value"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "field": {"type": "integer", "minimum": 1},
+                        "wire_type": {"type": "string", "enum": ["varint"]},
+                        "value": {"type": "integer", "minimum": 0}
+                      }
+                    },
+                    "minItems": 1
+                  }
+                }
+              },
+              "minItems": 1
+            },
+            "config_section": {
+              "type": "object",
+              "required": ["section", "oneof_field", "payload", "fields"],
+              "additionalProperties": false,
+              "properties": {
+                "section": {"type": "string"},
+                "oneof_field": {"type": "integer", "minimum": 1},
+                "payload": {"$ref": "#/definitions/hex"},
+                "fields": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["field", "wire_type", "value"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "field": {"type": "integer", "minimum": 1},
+                      "wire_type": {"type": "string", "enum": ["varint"]},
+                      "value": {"type": "integer", "minimum": 0}
+                    }
+                  },
+                  "minItems": 1
+                }
+              }
             },
             "max_to_radio_bytes": {"type": "integer", "minimum": 1},
             "must_not_require_before_sync": {"type": "boolean"},

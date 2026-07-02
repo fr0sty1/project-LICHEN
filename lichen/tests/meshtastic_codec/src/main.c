@@ -367,9 +367,9 @@ static void assert_metadata_payload(const uint8_t *buf, size_t len,
 
 ZTEST(meshtastic_codec, test_generated_vectors_are_current)
 {
-	zassert_equal(MESHTASTIC_VECTOR_SOURCE_COUNT, 16U);
+	zassert_equal(MESHTASTIC_VECTOR_SOURCE_COUNT, 25U);
 	zassert_equal(MESHTASTIC_VECTOR_CODEC_COUNT, ARRAY_SIZE(meshtastic_vectors));
-	zassert_equal(MESHTASTIC_VECTOR_CODEC_COUNT, 14U);
+	zassert_equal(MESHTASTIC_VECTOR_CODEC_COUNT, 23U);
 }
 
 ZTEST(meshtastic_codec, test_canonical_codec_vectors)
@@ -438,6 +438,25 @@ ZTEST(meshtastic_codec, test_canonical_codec_vectors)
 			ret = lichen_meshtastic_encode_from_radio_queue_status(&status, buf,
 									       sizeof(buf));
 			zassert_true(ret > 0, "%s queueStatus failed: %d", v->name, ret);
+			expect_bytes(buf, (size_t)ret, v->encoded, v->encoded_len);
+			break;
+		case MESHTASTIC_VECTOR_FROM_CONFIG:
+			ret = lichen_meshtastic_encode_config_section_payload(
+				(enum lichen_meshtastic_config_section)v->value,
+				&(const struct lichen_meshtastic_local_info){
+					.has_bluetooth = true,
+					.has_lora = true,
+					.has_tx_power_dbm = true,
+					.tx_power_dbm = 14,
+				},
+				buf, sizeof(buf));
+			zassert_true(ret > 0, "%s config payload failed: %d", v->name,
+				     ret);
+			expect_bytes(buf, (size_t)ret, v->payload, v->payload_len);
+			ret = lichen_meshtastic_encode_from_radio_message(
+				LICHEN_MESHTASTIC_FROM_RADIO_CONFIG,
+				v->payload, v->payload_len, buf, sizeof(buf));
+			zassert_true(ret > 0, "%s config failed: %d", v->name, ret);
 			expect_bytes(buf, (size_t)ret, v->encoded, v->encoded_len);
 			break;
 		case MESHTASTIC_VECTOR_FROM_MODULE_CONFIG:

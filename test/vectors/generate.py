@@ -95,6 +95,38 @@ def _region_presets_default_us_long_fast() -> bytes:
     return _bytes_field(1, preset_group) + _bytes_field(2, region_group)
 
 
+CONFIG_SECTION_SPECS = [
+    ("device", 1, [(1, 0), (7, 900)]),
+    ("position", 2, [(3, 0), (5, 0), (7, 0), (13, 2)]),
+    ("power", 3, [(1, 0), (4, 0)]),
+    ("network", 4, [(1, 0), (6, 0), (11, 0)]),
+    ("display", 5, [(1, 0), (6, 0), (8, 0)]),
+    ("lora", 6, [(1, 1), (2, 0), (7, 1), (8, 3), (9, 1), (10, 14), (11, 0), (104, 1)]),
+    ("bluetooth", 7, [(1, 1), (2, 2)]),
+    ("security", 8, [(5, 0), (6, 0), (8, 0)]),
+    ("device_ui", 10, [(1, 0), (2, 1), (3, 0)]),
+]
+
+
+def _config_section_payload(fields: list[tuple[int, int]]) -> bytes:
+    return b"".join(_varint_field(field, value) for field, value in fields)
+
+
+def _config_section_entry(name: str, oneof_field: int, fields: list[tuple[int, int]]) -> dict:
+    payload = _config_section_payload(fields)
+    return {
+        "section": name,
+        "oneof_field": oneof_field,
+        "payload": _bytes_field(oneof_field, payload).hex(),
+        "fields": [{"field": field, "wire_type": "varint", "value": value}
+                   for field, value in fields],
+    }
+
+
+def _config_section_expectations() -> list[dict]:
+    return [_config_section_entry(*spec) for spec in CONFIG_SECTION_SPECS]
+
+
 def _data(portnum: int, payload: bytes = b"", request_id: int | None = None) -> bytes:
     out = bytearray()
     out += _varint_field(1, portnum)
@@ -302,6 +334,7 @@ def meshtastic_app_compat_vectors() -> list[dict]:
     heartbeat_queue_status = _from_radio_queue_status(
         _queue_status(res=0, free=4, maxlen=8, mesh_packet_id=packet_id),
     )
+    config_sections = _config_section_expectations()
 
     baseline = MESHTASTIC_SOURCE_BASELINE
     transport = {
@@ -375,6 +408,7 @@ def meshtastic_app_compat_vectors() -> list[dict]:
                     "moduleConfig",
                     "config_complete_id",
                 ],
+                "config_sections": config_sections,
                 "terminal_from_radio": _from_radio_config_complete(config_nonce).hex(),
             },
         },
@@ -446,6 +480,34 @@ def meshtastic_app_compat_vectors() -> list[dict]:
                 "from_radio_field": 19,
             },
         },
+        *[
+            {
+                "name": f"config_section_{section['section']}",
+                "description": (
+                    "MVP Config section payload for "
+                    f"{section['section']} during staged app sync."
+                ),
+                "source_baseline": baseline,
+                "transport": transport,
+                "direction": "node_to_app",
+                "protobuf": "FromRadio",
+                "message": "config",
+                "payload": section["payload"],
+                "encoded": _bytes_field(5, bytes.fromhex(section["payload"])).hex(),
+                "decoded": {
+                    "config": {
+                        "section": section["section"],
+                        "oneof_field": section["oneof_field"],
+                        "fields": section["fields"],
+                    },
+                },
+                "expect": {
+                    "from_radio_field": 5,
+                    "config_section": section,
+                },
+            }
+            for section in config_sections
+        ],
         {
             "name": "legacy_full_sync_unknown_nonce",
             "description": "Python/older clients may use a non-staged nonce and still need full sync data.",
@@ -475,6 +537,7 @@ def meshtastic_app_compat_vectors() -> list[dict]:
                     "node_info",
                     "config_complete_id",
                 ],
+                "config_sections": config_sections,
                 "terminal_from_radio": _from_radio_config_complete(0xA5A5A5A5).hex(),
             },
         },

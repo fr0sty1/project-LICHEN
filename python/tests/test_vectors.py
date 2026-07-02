@@ -28,6 +28,22 @@ VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 sys.path.insert(0, str(VECTORS_DIR))
 from generate import meshcore_app_compat_vectors, meshtastic_app_compat_vectors  # noqa: E402
 
+CONFIG_SECTION_EXPECTATIONS = [
+    ("device", 1, [(1, 0), (7, 900)]),
+    ("position", 2, [(3, 0), (5, 0), (7, 0), (13, 2)]),
+    ("power", 3, [(1, 0), (4, 0)]),
+    ("network", 4, [(1, 0), (6, 0), (11, 0)]),
+    ("display", 5, [(1, 0), (6, 0), (8, 0)]),
+    (
+        "lora",
+        6,
+        [(1, 1), (2, 0), (7, 1), (8, 3), (9, 1), (10, 14), (11, 0), (104, 1)],
+    ),
+    ("bluetooth", 7, [(1, 1), (2, 2)]),
+    ("security", 8, [(5, 0), (6, 0), (8, 0)]),
+    ("device_ui", 10, [(1, 0), (2, 1), (3, 0)]),
+]
+
 
 def _load(name: str) -> dict:
     return json.loads((VECTORS_DIR / name).read_text())
@@ -269,6 +285,56 @@ def _assert_region_presets(data: bytes, decoded: dict) -> None:
     assert region_fields[1][2] == region_values["group_index"]
 
 
+def _assert_config_section(data: bytes, decoded: dict, expect: dict) -> None:
+    fields = _read_fields(data)
+    assert len(fields) == 1
+    section = expect["config_section"]
+    canonical = {
+        name: {"section": name, "oneof_field": oneof, "fields": [
+            {"field": field, "wire_type": "varint", "value": value}
+            for field, value in expected_fields
+        ]}
+        for name, oneof, expected_fields in CONFIG_SECTION_EXPECTATIONS
+    }[section["section"]]
+    assert {key: section[key] for key in ("section", "oneof_field", "fields")} == canonical
+    assert fields[0][0] == section["oneof_field"]
+    assert fields[0][1] == 2
+
+    inner = fields[0][2]
+    assert isinstance(inner, bytes)
+    inner_fields = _read_fields(inner)
+    assert [(field, wire_type) for field, wire_type, _ in inner_fields] == [
+        (field["field"], 0) for field in section["fields"]
+    ]
+
+    values = {field: value for field, _, value in inner_fields}
+    for field in section["fields"]:
+        assert field["wire_type"] == "varint"
+        assert values[field["field"]] == field["value"]
+
+    config = decoded["config"]
+    assert config["section"] == section["section"]
+    assert config["oneof_field"] == section["oneof_field"]
+    assert config["fields"] == section["fields"]
+
+
+def _assert_config_sequence(expect: dict) -> None:
+    sequence = expect["from_radio_sequence"]
+    if "config" not in sequence:
+        return
+    assert "config_sections" in expect
+    section_names = [section["section"] for section in expect["config_sections"]]
+    assert [item for item in sequence if item == "config"] == ["config"] * len(section_names)
+    assert section_names == [name for name, _, _ in CONFIG_SECTION_EXPECTATIONS]
+    assert [section["oneof_field"] for section in expect["config_sections"]] == [
+        oneof for _, oneof, _ in CONFIG_SECTION_EXPECTATIONS
+    ]
+    for section in expect["config_sections"]:
+        _assert_config_section(bytes.fromhex(section["payload"]), {"config": section}, {
+            "config_section": section
+        })
+
+
 @pytest.mark.parametrize("name,vector", _meshtastic_cases())
 def test_meshtastic_app_compat_vector_wire_schema(name: str, vector: dict) -> None:
     encoded = bytes.fromhex(vector["encoded"])
@@ -303,6 +369,7 @@ def test_meshtastic_app_compat_vector_wire_schema(name: str, vector: dict) -> No
         assert _one_field(encoded, 3, 0) == nonce
         terminal = bytes.fromhex(expect["terminal_from_radio"])
         assert _one_field(terminal, 7, 0) == nonce
+        _assert_config_sequence(expect)
     elif vector["protobuf"] == "ToRadio":
         mesh_packet = _one_field(encoded, 1, 2)
         _assert_mesh_packet(mesh_packet, vector["decoded"])
@@ -311,10 +378,12 @@ def test_meshtastic_app_compat_vector_wire_schema(name: str, vector: dict) -> No
             assert not [value for f, wt, value in _read_fields(encoded) if f == 1 and wt == 0]
             queue_status = _one_field(encoded, 11, 2)
             _assert_queue_status(queue_status, vector["decoded"]["queueStatus"])
-        elif vector["message"] in ("moduleConfig", "region_presets"):
+        elif vector["message"] in ("config", "moduleConfig", "region_presets"):
             payload = bytes.fromhex(vector["payload"])
             assert _one_field(encoded, expect["from_radio_field"], 2) == payload
-            if vector["message"] == "moduleConfig":
+            if vector["message"] == "config":
+                _assert_config_section(payload, vector["decoded"], expect)
+            elif vector["message"] == "moduleConfig":
                 _assert_module_config(payload, vector["decoded"])
             else:
                 _assert_region_presets(payload, vector["decoded"])
