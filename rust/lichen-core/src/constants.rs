@@ -19,6 +19,10 @@ pub const RULE_RPL_DIO: u8 = 3;
 pub const RULE_RPL_DAO: u8 = 4;
 pub const RULE_UNCOMPRESSED: u8 = 255;
 
+// Authenticated L2 inner-payload dispatch bytes.
+pub const L2_DISPATCH_SCHC: u8 = 0x14;
+pub const L2_DISPATCH_ROUTING: u8 = 0x15;
+
 // RPL constants (RFC 6550)
 pub const RPL_INSTANCE_ID: u8 = 0;
 pub const RPL_MODE_OF_OPERATION: u8 = 1; // Non-Storing

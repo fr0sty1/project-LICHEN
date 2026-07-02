@@ -25,6 +25,8 @@ from lichen.schc.headers import compress_packet
 
 VECTORS_DIR = Path(__file__).resolve().parent
 FORMAT_VERSION = 1
+L2_DISPATCH_SCHC = 0x14
+L2_DISPATCH_ROUTING = 0x15
 
 LL_SRC = IPv6Address("fe80::1")
 LL_DST = IPv6Address("fe80::2")
@@ -331,6 +333,47 @@ def schc_vectors() -> list[dict]:
             "compressed": compress_packet(raw).hex(),
         }
         for name, rule_id, desc, raw in cases
+    ]
+
+
+def l2_payload_vectors() -> list[dict]:
+    schc_global = next(v for v in schc_vectors() if v["name"] == "coap_global")
+    announce_min = bytes([0x01, 0x00, 0x00, 0x00, 0x01]) + bytes(8 + 32 + 48)
+    schc_body = bytes.fromhex(schc_global["compressed"])
+    return [
+        {
+            "name": "schc_global_coap",
+            "description": (
+                "Authenticated L2 SCHC dispatch wrapping a SCHC global CoAP "
+                "packet whose SCHC rule ID is 0x01."
+            ),
+            "dispatch": L2_DISPATCH_SCHC,
+            "kind": "schc",
+            "body": schc_global["compressed"],
+            "wrapped": (bytes([L2_DISPATCH_SCHC]) + schc_body).hex(),
+        },
+        {
+            "name": "routing_announce_min",
+            "description": (
+                "Authenticated L2 routing dispatch wrapping a minimal raw "
+                "announce whose routing message type is 0x01."
+            ),
+            "dispatch": L2_DISPATCH_ROUTING,
+            "kind": "routing",
+            "body": announce_min.hex(),
+            "wrapped": (bytes([L2_DISPATCH_ROUTING]) + announce_min).hex(),
+        },
+        {
+            "name": "unknown_unwrapped_0x01",
+            "description": (
+                "A payload beginning with 0x01 is not self-identifying at L2 "
+                "and must not be treated as announce without dispatch=0x15."
+            ),
+            "dispatch": 0x01,
+            "kind": "unknown",
+            "body": "0040",
+            "wrapped": "010040",
+        },
     ]
 
 
@@ -1527,6 +1570,13 @@ def main() -> None:
         "LICHEN link-layer frame vectors (spec section 4). 'fields' are the "
         "frame inputs; 'encoded' is LichenFrame(**fields).to_bytes().",
         frame_vectors(),
+    )
+    _write(
+        "l2_payload.json",
+        "Authenticated L2 inner-payload dispatch vectors. 'wrapped' is the "
+        "link inner payload; byte 0 is the dispatch namespace and 'body' is "
+        "the SCHC packet or routing/control message after that byte.",
+        l2_payload_vectors(),
     )
     _write(
         "announce_coords.json",

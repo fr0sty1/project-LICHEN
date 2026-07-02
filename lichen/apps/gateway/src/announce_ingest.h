@@ -28,7 +28,11 @@ struct gateway_announce_view {
 int gateway_announce_parse(const uint8_t *data, size_t len,
 			   struct gateway_announce_view *announce);
 
+/* Post-dispatch announce body parser/verifier for unit tests and internal use. */
 int gateway_announce_ingest_verified(const uint8_t *data, size_t len);
+
+/* Authenticated L2 ingress boundary: requires 0x15 routing dispatch. */
+int gateway_announce_ingest_l2_payload(const uint8_t *data, size_t len);
 
 void gateway_announce_ingest_reset(void);
 

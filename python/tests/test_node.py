@@ -21,6 +21,7 @@ import contextlib
 import pytest
 
 from lichen.crypto.identity import Identity, PeerIdentity
+from lichen.l2_payload import L2_DISPATCH_ROUTING
 from lichen.node import Node, NodeConfig, NodeState
 from lichen.state_machine import StateError
 
@@ -178,6 +179,19 @@ class TestAnnouncing:
         from lichen.link.frame import LichenFrame
         frame = LichenFrame.from_bytes(radio.tx_history[0])
         assert frame.signature_present is True
+        assert frame.payload[0] == L2_DISPATCH_ROUTING
+
+    @pytest.mark.asyncio
+    async def test_transmit_announce_wraps_routing_payload(
+        self, node: Node, radio: MockRadio
+    ):
+        """Scheduler announce sends use the authenticated routing namespace."""
+        await node.transmit_announce(b"\x01announce")
+
+        from lichen.link.frame import LichenFrame
+
+        frame = LichenFrame.from_bytes(radio.tx_history[0])
+        assert frame.payload.startswith(b"\x15\x01announce")
 
     @pytest.mark.asyncio
     async def test_announce_increments_seq(self, node: Node, radio: MockRadio):

@@ -13,6 +13,7 @@ against these files (issue `ajr`, gate `ijj`).
 |------|--------|
 | `schema.json` | JSON Schema (draft-07) for the envelope and vector shapes |
 | `schc_compression.json` | SCHC whole-packet compression (RFC 8724), rules 0–4 |
+| `l2_payload.json` | Authenticated L2 inner-payload dispatch wrapping SCHC and routing/control bodies |
 | `link_frame.json` | LICHEN link-layer frame encoding (spec section 4) |
 | `announce_coords.json` | Announce app_data Type=0x01 geographic coordinate encoding |
 | `meshtastic_app_compat.json` | Meshtastic BLE raw-protobuf app compatibility exchanges |
@@ -33,6 +34,13 @@ All byte strings are lowercase hex (possibly empty).
 
 `addr_mode`: 0=none/broadcast, 1=16-bit short, 2=EUI-64, 3=elided.
 `mic_length`: 0=32-bit, 1=64-bit.
+
+**L2 payload dispatch** (`l2_payload.json`): for each vector,
+- `wrapped` is the authenticated link inner payload.
+- Byte 0 of `wrapped` MUST equal `dispatch`.
+- `body` MUST equal the bytes after the dispatch byte.
+- `kind=schc` uses dispatch `0x14`; `kind=routing` uses dispatch `0x15`.
+  An unwrapped payload beginning with `0x01` is `unknown`, not announce.
 
 **Announce coordinates** (`announce_coords.json`): for each vector,
 - `encoded` is the complete announce `app_data` value for Type `0x01`.

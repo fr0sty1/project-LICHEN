@@ -2,12 +2,11 @@
 
 import asyncio
 from dataclasses import dataclass, field
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
 from lichen.interface.kiss import (
-    KissCommand,
     KissHandler,
     ax25_decode,
     ax25_encode,
@@ -19,13 +18,18 @@ from lichen.interface.kiss.bridge import (
     KissBridge,
 )
 from lichen.interface.kiss.callsign import iid_to_callsign
+from lichen.l2_payload import L2_DISPATCH_ROUTING
 
 
 @dataclass
 class MockIdentity:
     """Mock identity for testing."""
 
-    iid: bytes = field(default_factory=lambda: bytes([0xFE, 0x80, 0x00, 0x00, 0x00, 0x11, 0x22, 0x33]))
+    iid: bytes = field(
+        default_factory=lambda: bytes(
+            [0xFE, 0x80, 0x00, 0x00, 0x00, 0x11, 0x22, 0x33]
+        )
+    )
     pubkey: bytes = field(default_factory=lambda: b"x" * 32)
     privkey: bytes = field(default_factory=lambda: b"p" * 32)
 
@@ -70,7 +74,7 @@ class MockLinkLayer:
     async def receive(self, timeout_ms: int) -> MockRxFrame | None:
         try:
             return await asyncio.wait_for(self.rx_queue.get(), timeout=timeout_ms / 1000)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return None
 
 
@@ -254,12 +258,83 @@ class TestBridgeRx:
         suffix = (mock_peer.iid[5] << 16) | (mock_peer.iid[6] << 8) | mock_peer.iid[7]
         assert bridge._peer_table.lookup_by_suffix(suffix) == mock_peer.iid
 
+    @pytest.mark.asyncio
+    async def test_routing_dispatch_is_not_treated_as_rej(self, bridge, mock_peer):
+        sent = []
+        bridge.on_send_kiss = sent.append
+        bridge._msg_tracker.handle_rej = MagicMock()
+        rx = MockRxFrame(
+            frame=MockLichenFrame(
+                payload=bytes([L2_DISPATCH_ROUTING, 0x01, 0x00, 0x00])
+            ),
+            sender=mock_peer,
+        )
+
+        await bridge._on_link_rx(rx)
+
+        bridge._msg_tracker.handle_rej.assert_not_called()
+        assert sent
+
+    @pytest.mark.asyncio
+    async def test_private_aprs_rej_payload_handles_rej(self, bridge, mock_peer):
+        bridge.on_send_kiss = MagicMock()
+        bridge._msg_tracker.handle_rej = MagicMock()
+        rx = MockRxFrame(
+            frame=MockLichenFrame(payload=b"\x7f\x15123"),
+            sender=mock_peer,
+        )
+
+        await bridge._on_link_rx(rx)
+
+        bridge._msg_tracker.handle_rej.assert_called_once_with("123")
+        bridge.on_send_kiss.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_non_announce_routing_dispatch_is_not_rej(self, bridge, mock_peer):
+        sent = []
+        bridge.on_send_kiss = sent.append
+        bridge._msg_tracker.handle_rej = MagicMock()
+        rx = MockRxFrame(
+            frame=MockLichenFrame(payload=bytes([L2_DISPATCH_ROUTING, 0x02, 0x00])),
+            sender=mock_peer,
+        )
+
+        await bridge._on_link_rx(rx)
+
+        bridge._msg_tracker.handle_rej.assert_not_called()
+        assert sent
+
+    def test_encode_rx_routing_dispatch_is_not_rej(self, bridge, mock_peer):
+        rx = MockRxFrame(
+            frame=MockLichenFrame(payload=bytes([L2_DISPATCH_ROUTING, 0x01, 0])),
+            sender=mock_peer,
+        )
+
+        ax25_kiss, _ = bridge.encode_rx_frames(rx)
+        kiss = kiss_decode(ax25_kiss)
+        ax25 = ax25_decode(kiss.data)
+
+        assert b":rej" not in ax25.payload
+
+    def test_encode_rx_non_announce_routing_dispatch_is_not_rej(
+        self, bridge, mock_peer
+    ):
+        rx = MockRxFrame(
+            frame=MockLichenFrame(payload=bytes([L2_DISPATCH_ROUTING, 0x02, 0])),
+            sender=mock_peer,
+        )
+
+        ax25_kiss, _ = bridge.encode_rx_frames(rx)
+        kiss = kiss_decode(ax25_kiss)
+        ax25 = ax25_decode(kiss.data)
+
+        assert b":rej" not in ax25.payload
+
 
 class TestBridgeAddPeer:
     def test_add_peer_enables_lookup(self, bridge, mock_peer):
         bridge.add_peer(mock_peer)
 
-        call = iid_to_callsign(mock_peer.iid)
         suffix = (mock_peer.iid[5] << 16) | (mock_peer.iid[6] << 8) | mock_peer.iid[7]
         assert bridge._peer_table.lookup_by_suffix(suffix) == mock_peer.iid
 
@@ -367,6 +442,24 @@ class TestBridgeAprsTx:
         assert payload == b"Broadcast message"
         assert dst == b""  # Broadcast
 
+    @pytest.mark.asyncio
+    async def test_aprs_rej_uses_private_kiss_control_prefix(
+        self, bridge, mock_link_layer, mock_peer
+    ):
+        bridge.add_peer(mock_peer)
+        dst_call = iid_to_callsign(mock_peer.iid)
+
+        from lichen.interface.kiss.aprs import AprsRej
+
+        ax25_frame = ax25_encode("LSRC", dst_call, AprsRej(dst_call, "123").encode())
+        bridge.handler.on_tx_frame(PORT_AX25, ax25_frame)
+        await asyncio.sleep(0.01)
+
+        assert len(mock_link_layer.sent_frames) == 1
+        payload, dst = mock_link_layer.sent_frames[0]
+        assert payload == b"\x7f\x15123"
+        assert dst == mock_peer.iid
+
 
 class TestBridgeAprsRx:
     """Test APRS message reception to app."""
@@ -404,6 +497,20 @@ class TestBridgeAprsRx:
 
         # Should be APRS ack format
         assert "ack123" in payload
+
+    def test_rx_private_rej_formats_correctly(self, bridge, mock_peer):
+        rx = MockRxFrame(
+            frame=MockLichenFrame(payload=b"\x7f\x15123"),
+            sender=mock_peer,
+        )
+
+        ax25_kiss, _ = bridge.encode_rx_frames(rx)
+
+        kiss = kiss_decode(ax25_kiss)
+        ax25 = ax25_decode(kiss.data)
+        payload = ax25.payload.decode("utf-8")
+
+        assert "rej123" in payload
 
 
 class TestBridgeAprsAckFlow:

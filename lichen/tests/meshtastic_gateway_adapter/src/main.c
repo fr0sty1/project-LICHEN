@@ -15,6 +15,7 @@
 #include <lichen/app_identity/app_identity.h>
 #include <lichen/app_interface/app_interface.h>
 #include <lichen/hal.h>
+#include <lichen/l2_payload.h>
 #include <lichen/meshtastic/codec.h>
 #include <lichen/schnorr48.h>
 
@@ -1596,6 +1597,39 @@ ZTEST(meshtastic_gateway_adapter,
 	zassert_str_equal(snapshot.source_name, "mesh-announce");
 	zassert_equal(snapshot.latitude_e7, 476062000);
 	zassert_equal(snapshot.longitude_e7, -1223321000);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_gateway_announce_ingest_l2_payload_requires_routing_dispatch)
+{
+	uint8_t app_data[9];
+	uint8_t announce[GATEWAY_ANNOUNCE_MIN_LEN + sizeof(app_data)];
+	uint8_t wrapped[1U + sizeof(announce)];
+	struct gateway_network_location_announce_record record;
+	static const uint8_t seed[32] = {
+		0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38,
+		0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f, 0x40,
+		0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48,
+		0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f, 0x50,
+	};
+	size_t len;
+
+	reset_gateway(3U);
+	build_announce_coords_e7(app_data, 476062000, -1223321000);
+	len = build_signed_announce(announce, sizeof(announce), seed, 1U,
+				    app_data, sizeof(app_data));
+	wrapped[0] = LICHEN_L2_DISPATCH_ROUTING;
+	memcpy(&wrapped[1], announce, len);
+
+	zassert_equal(gateway_announce_ingest_l2_payload(announce, len),
+		      -EPROTONOSUPPORT);
+	zassert_ok(gateway_announce_ingest_l2_payload(wrapped, len + 1U));
+	zassert_ok(gateway_network_location_announce_get(
+		&announce[5], 8U, &record));
+	zassert_true(record.coords_valid);
+	zassert_equal(record.seq_num, 1U);
+	zassert_equal(record.latitude_e7, 476062000);
+	zassert_equal(record.longitude_e7, -1223321000);
 }
 
 ZTEST(meshtastic_gateway_adapter,

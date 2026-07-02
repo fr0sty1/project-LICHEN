@@ -25,9 +25,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-# Why 0x01: Needs a unique type identifier. 0x01 is "announce" in our scheme.
-# Other types: 0x02=RREQ, 0x03=RREP, 0x04=RERR (if we define ICMPv6 carrying).
-# For now, announce messages travel in link-layer payload directly.
+# Why 0x01: Needs a unique type identifier inside the routing/control
+# namespace. At the authenticated link layer this byte follows
+# L2_DISPATCH_ROUTING (0x15), so it cannot collide with SCHC rule 0x01.
+# Other types: 0x02=RREQ, 0x03=RREP, 0x04=RERR.
 ANNOUNCE_TYPE = 0x01
 
 # Why 48: Schnorr48 signature length (16-byte challenge + 32-byte response).

@@ -9,6 +9,7 @@
 #include <zephyr/ztest.h>
 
 #include <lichen/errno.h>
+#include <lichen/l2_payload.h>
 #include <lichen/link.h>
 #include <lichen/link_ctx.h>
 #include <lichen/schc.h>
@@ -68,6 +69,7 @@ ZTEST(link_crypto, test_encrypted_tx_rx_round_trip)
 	struct lichen_link_rx_ctx rx;
 	struct lichen_frame parsed;
 	uint8_t frame[160];
+	uint8_t l2_payload[160];
 	uint8_t schc[160];
 	uint8_t out_ipv6[80];
 	uint8_t src_eui64[LICHEN_EUI64_LEN];
@@ -93,8 +95,13 @@ ZTEST(link_crypto, test_encrypted_tx_rx_round_trip)
 	schc_len = lichen_schc_compress(test_ipv6, sizeof(test_ipv6),
 					schc, sizeof(schc));
 	zassert_true(schc_len > 0, "SCHC compression failed: %d", schc_len);
+	l2_payload[0] = LICHEN_L2_DISPATCH_SCHC;
+	memcpy(&l2_payload[1], schc, (size_t)schc_len);
 	zassert_not_equal(memcmp(parsed.payload, schc, (size_t)schc_len), 0,
 			  "encrypted payload leaked SCHC plaintext");
+	zassert_not_equal(memcmp(parsed.payload, l2_payload,
+				 (size_t)schc_len + 1U), 0,
+			  "encrypted payload leaked L2 plaintext");
 
 	ret = lichen_link_rx(&rx, NULL, frame, frame_len,
 			     out_ipv6, &out_len, src_eui64);
@@ -138,6 +145,45 @@ ZTEST(link_crypto, test_encrypted_rx_rejects_tampered_payload)
 		      "tampered encrypted frame must fail authentication");
 
 	lichen_link_cleanup(&tx);
+}
+
+ZTEST(link_crypto, test_l2_payload_dispatch_distinguishes_global_coap_from_announce)
+{
+	const uint8_t wrapped_global_coap[] = {
+		LICHEN_L2_DISPATCH_SCHC, SCHC_RULE_GLOBAL_COAP, 0x40
+	};
+	const uint8_t wrapped_announce[] = {
+		LICHEN_L2_DISPATCH_ROUTING,
+		LICHEN_L2_ROUTING_TYPE_ANNOUNCE, 0x00
+	};
+	const uint8_t unwrapped_global_coap[] = {
+		SCHC_RULE_GLOBAL_COAP, 0x40
+	};
+	size_t body_len;
+	const uint8_t *body;
+
+	zassert_equal(lichen_l2_payload_classify(wrapped_global_coap,
+						 sizeof(wrapped_global_coap)),
+		      LICHEN_L2_PAYLOAD_SCHC);
+	body = lichen_l2_payload_body(wrapped_global_coap,
+				      sizeof(wrapped_global_coap), &body_len);
+	zassert_equal(body_len, sizeof(wrapped_global_coap) - 1U);
+	zassert_mem_equal(body, &wrapped_global_coap[1], body_len);
+
+	zassert_equal(lichen_l2_payload_classify(wrapped_announce,
+						 sizeof(wrapped_announce)),
+		      LICHEN_L2_PAYLOAD_ROUTING);
+	body = lichen_l2_payload_body(wrapped_announce,
+				      sizeof(wrapped_announce), &body_len);
+	zassert_equal(body_len, sizeof(wrapped_announce) - 1U);
+	zassert_equal(body[0], LICHEN_L2_ROUTING_TYPE_ANNOUNCE);
+	zassert_equal(wrapped_global_coap[1], wrapped_announce[1]);
+
+	zassert_equal(lichen_l2_payload_classify(unwrapped_global_coap,
+						 sizeof(unwrapped_global_coap)),
+		      LICHEN_L2_PAYLOAD_UNKNOWN);
+	zassert_equal(lichen_l2_payload_classify(NULL, 0U),
+		      LICHEN_L2_PAYLOAD_UNKNOWN);
 }
 
 ZTEST_SUITE(link_crypto, NULL, NULL, NULL, NULL, NULL);

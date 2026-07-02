@@ -12,6 +12,7 @@ pub mod constants;
 pub mod error;
 pub mod icmpv6;
 pub mod ipv6;
+pub mod l2_payload;
 pub mod loadng;
 pub mod udp;
 

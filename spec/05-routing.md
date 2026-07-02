@@ -156,7 +156,11 @@ Announce routing provides zero-latency peer-to-peer paths for active mesh partic
 
 ### 9.2. Announce Message
 
-Nodes broadcast announces periodically:
+Nodes broadcast announces periodically inside the L2 routing/control namespace.
+The authenticated link payload is `0x15 || announce`, where `0x15` is the L2
+routing/control dispatch byte and the announce bytes begin with Type `0x01`.
+Receivers MUST NOT treat an unwrapped link payload beginning with `0x01` as an
+announce because SCHC global CoAP also uses rule ID `0x01`.
 
 ```
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+

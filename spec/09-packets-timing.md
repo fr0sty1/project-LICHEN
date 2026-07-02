@@ -35,7 +35,7 @@ Payload: (17 bytes)
 Total: 21 bytes
 ```
 
-**With 6LoWPAN dispatch:**
+**With authenticated L2 payload dispatch:**
 ```
 SCHC dispatch: 0x14 (1 byte)
 SCHC packet: (21 bytes)
@@ -49,7 +49,7 @@ LLSec: 0x20 (signature, no encryption, short addr) (1 byte)
 Epoch: 0x01 (1 byte)
 SeqNum: 0x0042 (2 bytes)
 DstAddr: 0x0001 (border router short) (2 bytes)
-Payload: (22 bytes)
+Payload: dispatch 0x14 + SCHC packet (22 bytes)
 Signature: (48 bytes, Schnorr e₁₂₈+s)
 Total: 77 bytes
 ```

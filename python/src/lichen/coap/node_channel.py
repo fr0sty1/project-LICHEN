@@ -19,6 +19,7 @@ from ipaddress import IPv6Address
 from lichen.coap.schc_channel import DEFAULT_COAP_PORT, unwrap_coap, wrap_coap
 from lichen.coap.transport import DatagramChannel, ReceiveCallback
 from lichen.ipv6.packet import IPv6Packet
+from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
 from lichen.schc.headers import decompress_packet
 
 logger = logging.getLogger(__name__)
@@ -61,9 +62,12 @@ class NodeChannel(DatagramChannel):
         )
         asyncio.get_running_loop().create_task(self._node.send(ipv6_bytes))
 
-    def _on_node_receive(self, schc_bytes: bytes, _sender: object) -> None:
+    def _on_node_receive(self, payload: bytes, _sender: object) -> None:
         try:
-            ipv6_bytes = decompress_packet(schc_bytes)
+            if classify_l2_payload(payload) is not L2PayloadKind.SCHC:
+                logger.debug("NodeChannel: ignoring non-SCHC L2 payload")
+                return
+            ipv6_bytes = decompress_packet(l2_payload_body(payload))
             coap = unwrap_coap(ipv6_bytes)
             src = str(IPv6Packet.from_bytes(ipv6_bytes).header.src_addr)
         except Exception as exc:

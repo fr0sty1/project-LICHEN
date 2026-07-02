@@ -33,6 +33,10 @@ SCHC_RULE_RPL_DIO: int = 3            # RPL DIO over link-local ICMPv6
 SCHC_RULE_RPL_DAO: int = 4            # RPL DAO with DODAGID over link-local ICMPv6
 SCHC_RULE_UNCOMPRESSED: int = 255     # No compression; full headers follow
 
+# Authenticated L2 inner-payload dispatch bytes
+L2_DISPATCH_SCHC: int = 0x14
+L2_DISPATCH_ROUTING: int = 0x15
+
 # RPL configuration (spec appendix-rpl.md, RFC 6550)
 RPL_INSTANCE_ID: int = 0
 RPL_MODE_OF_OPERATION: int = 1        # Non-Storing (MOP=1)

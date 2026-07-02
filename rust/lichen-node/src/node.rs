@@ -1,11 +1,15 @@
 //! Node state and receive-path dispatch.
 
+use lichen_core::constants::L2_DISPATCH_SCHC;
 #[cfg(feature = "std")]
 use lichen_core::constants::RPL_ICMPV6_TYPE;
-use lichen_core::icmpv6::{echo_field, ICMPV6_HEADER_LEN};
 #[cfg(feature = "std")]
 use lichen_core::icmpv6::hdr_field;
+use lichen_core::icmpv6::{echo_field, ICMPV6_HEADER_LEN};
 use lichen_core::ipv6::{field, next_header, IPV6_HEADER_LEN};
+use lichen_core::l2_payload::{
+    body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
+};
 use lichen_core::{addr::Ipv6Addr, addr::NodeId, icmpv6};
 use lichen_schc::codec;
 
@@ -62,18 +66,21 @@ impl Node {
         Self { node_id }
     }
 
-    /// Process a received SCHC frame.
+    /// Process a received authenticated L2 SCHC payload.
     ///
     /// Decompresses the frame and dispatches on protocol:
     /// - ICMPv6 Echo Request addressed to this node → builds a SCHC-compressed
-    ///   Echo Reply into `reply` and returns the byte count.
+    ///   Echo Reply into `reply` as `0x14 || SCHC` and returns the byte count.
     ///
     /// Returns 0 when no reply should be sent.
     ///
-    /// `reply` must be at least 258 bytes (2-byte rule header + max ICMPv6 echo).
-    pub fn handle_frame(&self, schc_frame: &[u8], reply: &mut [u8]) -> usize {
+    /// `reply` must be at least 259 bytes (dispatch + 2-byte rule header + max ICMPv6 echo).
+    pub fn handle_frame(&self, l2_payload: &[u8], reply: &mut [u8]) -> usize {
+        if classify_l2_payload(l2_payload) != L2PayloadKind::Schc {
+            return 0;
+        }
         let mut ipv6 = [0u8; 256];
-        let n = match codec::decompress(schc_frame, &mut ipv6) {
+        let n = match codec::decompress(l2_payload_body(l2_payload), &mut ipv6) {
             Ok(n) => n,
             Err(_) => return 0,
         };
@@ -81,7 +88,7 @@ impl Node {
         let mut reply_ipv6 = [0u8; 256];
         let reply_ipv6_len = self.handle_ipv6(&ipv6[..n], &mut reply_ipv6);
         if reply_ipv6_len > 0 {
-            codec::compress(&reply_ipv6[..reply_ipv6_len], reply).unwrap_or_default()
+            wrap_compressed_reply(&reply_ipv6[..reply_ipv6_len], reply)
         } else {
             0
         }
@@ -104,7 +111,10 @@ impl Node {
 
         let nh = ipv6[6];
         let min_icmpv6_len = IPV6_HEADER_LEN + ICMPV6_HEADER_LEN;
-        if nh == next_header::ICMPV6 && n >= min_icmpv6_len && ipv6[IPV6_HEADER_LEN] == icmpv6::ECHO_REQUEST {
+        if nh == next_header::ICMPV6
+            && n >= min_icmpv6_len
+            && ipv6[IPV6_HEADER_LEN] == icmpv6::ECHO_REQUEST
+        {
             let mut dst_bytes = [0u8; 16];
             dst_bytes.copy_from_slice(&ipv6[field::DST_OFFSET..IPV6_HEADER_LEN]);
             if dst_bytes == self.node_id.link_local_addr().0 {
@@ -162,17 +172,20 @@ impl RplNode {
         }
     }
 
-    /// Process a received SCHC frame with RPL handling.
+    /// Process a received authenticated L2 SCHC payload with RPL handling.
     ///
     /// Returns (reply_len, rpl_event). reply_len > 0 means a reply should be sent.
     pub fn handle_frame_rpl(
         &mut self,
-        schc_frame: &[u8],
+        l2_payload: &[u8],
         reply: &mut [u8],
         now_ms: u32,
     ) -> (usize, RplEvent) {
+        if classify_l2_payload(l2_payload) != L2PayloadKind::Schc {
+            return (0, RplEvent::None);
+        }
         let mut ipv6 = [0u8; 256];
-        let n = match codec::decompress(schc_frame, &mut ipv6) {
+        let n = match codec::decompress(l2_payload_body(l2_payload), &mut ipv6) {
             Ok(n) => n,
             Err(_) => return (0, RplEvent::None),
         };
@@ -197,7 +210,9 @@ impl RplNode {
                 let mut dst_bytes = [0u8; 16];
                 dst_bytes.copy_from_slice(&pkt[field::DST_OFFSET..IPV6_HEADER_LEN]);
                 if dst_bytes == self.node.node_id.link_local_addr().0 {
-                    let reply_len = self.node.reply_echo_ipv6(pkt, reply);
+                    let mut reply_ipv6 = [0u8; 256];
+                    let reply_ipv6_len = self.node.reply_echo_ipv6(pkt, &mut reply_ipv6);
+                    let reply_len = wrap_compressed_reply(&reply_ipv6[..reply_ipv6_len], reply);
                     return (reply_len, RplEvent::None);
                 }
             } else if icmp_type == RPL_ICMPV6_TYPE {
@@ -214,7 +229,8 @@ impl RplNode {
                         let dio_bytes = &pkt[body_offset..];
                         if let Ok(dio) = lichen_rpl::message::Dio::from_bytes(dio_bytes) {
                             // ponytail: use 0 for rssi, real radio would provide it
-                            let inconsistent = self.router.process_dio(&dio, sender_addr, 0, now_ms);
+                            let inconsistent =
+                                self.router.process_dio(&dio, sender_addr, 0, now_ms);
                             return (0, RplEvent::DioReceived { inconsistent });
                         }
                     }
@@ -289,6 +305,17 @@ impl RplNode {
     }
 }
 
+fn wrap_compressed_reply(ipv6: &[u8], reply: &mut [u8]) -> usize {
+    if reply.is_empty() {
+        return 0;
+    }
+    reply[0] = L2_DISPATCH_SCHC;
+    match codec::compress(ipv6, &mut reply[1..]) {
+        Ok(n) => n + 1,
+        Err(_) => 0,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -297,27 +324,29 @@ mod tests {
         Node::new(NodeId([0x02, 0, 0, 0, 0, 0, 0, iid]))
     }
 
-    /// Build a SCHC-compressed ICMPv6 Echo Request from src_iid to dst_iid.
-    fn schc_echo_request(src_iid: u8, dst_iid: u8) -> ([u8; 64], usize) {
+    /// Build an L2-wrapped SCHC-compressed ICMPv6 Echo Request from src_iid to dst_iid.
+    fn l2_echo_request(src_iid: u8, dst_iid: u8) -> ([u8; 65], usize) {
         let src = NodeId([0x02, 0, 0, 0, 0, 0, 0, src_iid]).link_local_addr();
         let dst = NodeId([0x02, 0, 0, 0, 0, 0, 0, dst_iid]).link_local_addr();
         let mut pkt = [0u8; 52];
         let n = icmpv6::echo_request(&src, &dst, 42, 7, b"ping", &mut pkt);
-        let mut out = [0u8; 64];
-        let clen = codec::compress(&pkt[..n], &mut out).unwrap();
-        (out, clen)
+        let mut out = [0u8; 65];
+        out[0] = L2_DISPATCH_SCHC;
+        let clen = codec::compress(&pkt[..n], &mut out[1..]).unwrap();
+        (out, clen + 1)
     }
 
     #[test]
     fn echo_request_to_self_yields_reply() {
         let n = node(1);
-        let (req, rlen) = schc_echo_request(2, 1); // from node 2 to node 1
-        let mut reply = [0u8; 258];
+        let (req, rlen) = l2_echo_request(2, 1); // from node 2 to node 1
+        let mut reply = [0u8; 259];
         let len = n.handle_frame(&req[..rlen], &mut reply);
         assert_ne!(len, 0, "expected a reply");
+        assert_eq!(reply[0], L2_DISPATCH_SCHC);
         // Verify reply decompresses to a valid Echo Reply
         let mut ipv6 = [0u8; 256];
-        let rn = codec::decompress(&reply[..len], &mut ipv6).unwrap();
+        let rn = codec::decompress(l2_payload_body(&reply[..len]), &mut ipv6).unwrap();
         assert_eq!(ipv6[40], icmpv6::ECHO_REPLY, "type should be Echo Reply");
         assert_eq!(&ipv6[48..rn], b"ping", "payload should be echoed");
     }
@@ -325,17 +354,24 @@ mod tests {
     #[test]
     fn echo_request_to_other_node_yields_no_reply() {
         let n = node(1);
-        let (req, rlen) = schc_echo_request(1, 2); // for node 2, not node 1
-        let mut reply = [0u8; 258];
+        let (req, rlen) = l2_echo_request(1, 2); // for node 2, not node 1
+        let mut reply = [0u8; 259];
         assert_eq!(n.handle_frame(&req[..rlen], &mut reply), 0);
     }
 
     #[test]
     fn non_icmpv6_frame_yields_no_reply() {
         let n = node(1);
-        let mut reply = [0u8; 258];
+        let mut reply = [0u8; 259];
         // Rule 255 header + garbage: decompressor will return a short packet
-        let frame = [0xffu8, 0x00];
+        let frame = [L2_DISPATCH_SCHC, 0xffu8, 0x00];
         assert_eq!(n.handle_frame(&frame, &mut reply), 0);
+    }
+
+    #[test]
+    fn unwrapped_schc_frame_yields_no_reply() {
+        let n = node(1);
+        let mut reply = [0u8; 259];
+        assert_eq!(n.handle_frame(&[0x02, 0x80], &mut reply), 0);
     }
 }

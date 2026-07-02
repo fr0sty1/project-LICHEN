@@ -12,6 +12,7 @@
       "items": {
         "oneOf": [
           {"$ref": "#/definitions/schc_vector"},
+          {"$ref": "#/definitions/l2_payload_vector"},
           {"$ref": "#/definitions/frame_vector"},
           {"$ref": "#/definitions/announce_coords_vector"},
           {"$ref": "#/definitions/meshtastic_app_compat_vector"},
@@ -74,6 +75,21 @@
           "pattern": "^01[0-9a-f]{16}$",
           "description": "Announce app_data Type=0x01 bytes: type + signed big-endian lat_e7 + signed big-endian lon_e7."
         }
+      }
+    },
+    "l2_payload_vector": {
+      "type": "object",
+      "required": ["name", "dispatch", "kind", "body", "wrapped"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "dispatch": {"type": "integer", "minimum": 0, "maximum": 255},
+        "kind": {"type": "string", "enum": ["schc", "routing", "unknown"]},
+        "body": {"$ref": "#/definitions/hex",
+          "description": "Payload bytes after the dispatch byte."},
+        "wrapped": {"$ref": "#/definitions/hex",
+          "description": "Authenticated link inner payload: dispatch byte + body."}
       }
     },
     "frame_vector": {

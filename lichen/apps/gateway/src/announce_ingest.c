@@ -10,6 +10,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
 
+#include <lichen/l2_payload.h>
 #include <lichen/schnorr48.h>
 
 #include "ipv6_addr.h"
@@ -301,6 +302,29 @@ int gateway_announce_ingest_verified(const uint8_t *data, size_t len)
 	peer->last_seen_uptime_s = now_s;
 	k_mutex_unlock(&announce_peer_mutex);
 	return 0;
+}
+
+int gateway_announce_ingest_l2_payload(const uint8_t *data, size_t len)
+{
+	const uint8_t *body;
+	size_t body_len;
+
+	if (data == NULL) {
+		return -EINVAL;
+	}
+	if (lichen_l2_payload_classify(data, len) != LICHEN_L2_PAYLOAD_ROUTING) {
+		return -EPROTONOSUPPORT;
+	}
+
+	body = lichen_l2_payload_body(data, len, &body_len);
+	if (body == NULL || body_len == 0U) {
+		return -EMSGSIZE;
+	}
+	if (body[0] != GATEWAY_ANNOUNCE_TYPE) {
+		return -EPROTONOSUPPORT;
+	}
+
+	return gateway_announce_ingest_verified(body, body_len);
 }
 
 void gateway_announce_ingest_reset(void)

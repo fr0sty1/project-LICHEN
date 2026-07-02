@@ -5,11 +5,11 @@ import json
 import pytest
 
 from lichen.interface.kiss.payload_fmt import (
-    format_payload,
-    is_printable_text,
+    HAS_CBOR,
     _compact_repr,
     _format_hex,
-    HAS_CBOR,
+    format_payload,
+    is_printable_text,
 )
 
 
@@ -24,7 +24,7 @@ class TestFormatPayloadText:
         assert "Line 2" in result
 
     def test_unicode_text(self):
-        result = format_payload("Hello 世界".encode("utf-8"))
+        result = format_payload("Hello 世界".encode())
         assert "Hello" in result
         assert "世界" in result
 
@@ -184,6 +184,10 @@ class TestFormatHex:
         result = _format_hex(bytes([0x01, 0x02, 0x03, 0x04, 0x05]), 100)
         # Should have spaces every 4 hex chars
         assert " " in result
+
+    def test_l2_dispatch_labels(self):
+        assert "[L2/SCHC]" in _format_hex(bytes([0x14, 0x01, 0x02]), 100)
+        assert "[L2/Routing]" in _format_hex(bytes([0x15, 0x01, 0x02]), 100)
 
 
 class TestIsPrintableText:

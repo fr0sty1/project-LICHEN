@@ -13,9 +13,13 @@ confirmations (acks).
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
+
+from lichen.l2_payload import L2_DISPATCH_ROUTING, L2_ROUTING_TYPE_ANNOUNCE
 
 from .aprs import (
     AprsAck,
@@ -26,17 +30,18 @@ from .aprs import (
     create_message,
     parse_aprs_packet,
 )
-from .payload_fmt import format_payload
-from .aprs_synth import AprsDataType, synthesize_aprs
+from .aprs_synth import synthesize_aprs
 from .ax25 import Ax25Error, ax25_decode, ax25_encode
 from .callsign import (
     SimplePeerLookup,
-    broadcast_iid,
     callsign_to_iid,
     iid_to_callsign,
     is_broadcast_callsign,
 )
 from .handler import KissHandler
+from .payload_fmt import format_payload
+
+KISS_REJ_PREFIX = b"\x7f\x15"
 
 if TYPE_CHECKING:
     from ...crypto.identity import Identity, PeerIdentity
@@ -167,8 +172,8 @@ class KissBridge:
         if dst_iid is None:
             return
 
-        # Send reject as special payload (prefix with 0x15 NAK byte)
-        rej_payload = b"\x15" + rej.msg_id.encode("utf-8")
+        # Keep KISS reject control outside the authenticated L2 dispatch namespace.
+        rej_payload = KISS_REJ_PREFIX + rej.msg_id.encode("utf-8")
         asyncio.create_task(self._send_frame(rej_payload, dst_iid))
 
     def _handle_raw_ax25_tx(self, dst_call: str, payload: bytes) -> None:
@@ -212,8 +217,8 @@ class KissBridge:
                 msg_id = payload[1:].decode("utf-8", errors="replace")
                 self._handle_incoming_ack(sender_call, msg_id)
                 return
-            elif payload[0] == 0x15:  # NAK/REJ
-                msg_id = payload[1:].decode("utf-8", errors="replace")
+            elif _is_kiss_rej_payload(payload):  # NAK/REJ
+                msg_id = _kiss_rej_msg_id(payload)
                 self._msg_tracker.handle_rej(msg_id)
                 return
 
@@ -286,10 +291,8 @@ class KissBridge:
         self._running = False
         if self._rx_task is not None:
             self._rx_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._rx_task
-            except asyncio.CancelledError:
-                pass
             self._rx_task = None
         log.info("KISS bridge stopped")
 
@@ -323,9 +326,13 @@ class KissBridge:
         self._peer_table.add(rx.sender.iid)
 
         # Check for ack/rej control bytes
-        if len(payload) > 1 and payload[0] in (0x06, 0x15):
+        if len(payload) > 1 and (payload[0] == 0x06 or _is_kiss_rej_payload(payload)):
             # Ack or reject - format as APRS ack
-            msg_id = payload[1:].decode("utf-8", errors="replace")
+            msg_id = (
+                payload[1:].decode("utf-8", errors="replace")
+                if payload[0] == 0x06
+                else _kiss_rej_msg_id(payload)
+            )
             if payload[0] == 0x06:
                 aprs_ack = create_ack(own_call, msg_id)
             else:
@@ -352,3 +359,20 @@ class KissBridge:
         raw_kiss = self.handler.rx_frame(payload, port=PORT_RAW)
 
         return (ax25_kiss, raw_kiss)
+
+
+def _is_l2_routing_payload(payload: bytes) -> bool:
+    return (
+        len(payload) > 1
+        and payload[0] == L2_DISPATCH_ROUTING
+        and payload[1] == L2_ROUTING_TYPE_ANNOUNCE
+    )
+
+
+def _is_kiss_rej_payload(payload: bytes) -> bool:
+    return payload.startswith(KISS_REJ_PREFIX) and len(payload) > len(KISS_REJ_PREFIX)
+
+
+def _kiss_rej_msg_id(payload: bytes) -> str:
+    payload = payload[len(KISS_REJ_PREFIX) :]
+    return payload.decode("utf-8", errors="replace")

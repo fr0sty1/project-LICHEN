@@ -60,8 +60,20 @@ Nodes SHOULD implement ADR to optimize SF/TX power based on link quality:
 | Epoch | 1 byte | Epoch counter (see 4.4) |
 | SeqNum | 2 bytes | Sequence number (replay protection) |
 | Dst Addr | 2-8 bytes | Compressed destination address |
-| Payload | Variable | SCHC compressed packet |
+| Payload | Variable | Authenticated inner payload (dispatch byte + body) |
 | MIC | 4-8 bytes | Message Integrity Code |
+
+The first byte of the authenticated inner payload is a dispatch value:
+
+| Dispatch | Body |
+|----------|------|
+| `0x14` | SCHC packet: SCHC rule ID followed by residue/tail |
+| `0x15` | LICHEN routing/control message: message type followed by message body |
+
+Receivers MUST NOT infer the payload namespace from the first body byte. This
+is required because SCHC rule `0x01` is global CoAP and LICHEN routing
+announce type `0x01` would otherwise collide. The dispatch byte is covered by
+the link signature and MIC because it is part of the frame payload.
 
 ### 4.2. Link-Layer Security (LLSec) Byte
 

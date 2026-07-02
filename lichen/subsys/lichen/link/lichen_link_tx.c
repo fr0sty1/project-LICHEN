@@ -11,6 +11,7 @@
 
 #include <lichen/link.h>
 #include <lichen/link_ctx.h>
+#include <lichen/l2_payload.h>
 #include <lichen/schc.h>
 #include <lichen/schnorr48.h>
 #include <string.h>
@@ -33,8 +34,10 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		   uint8_t *out_frame, size_t *out_len)
 {
 	uint8_t compressed[256];
+	uint8_t l2_payload[256];
 	uint8_t payload_buf[256];
 	int compressed_len;
+	size_t l2_payload_len;
 	size_t payload_len;
 	uint8_t addr_mode;
 	uint8_t dst_addr[8];
@@ -83,6 +86,12 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	if (compressed_len < 0) {
 		return compressed_len;
 	}
+	if ((size_t)compressed_len + 1U > sizeof(l2_payload)) {
+		return -EMSGSIZE;
+	}
+	l2_payload[0] = LICHEN_L2_DISPATCH_SCHC;
+	memcpy(&l2_payload[1], compressed, (size_t)compressed_len);
+	l2_payload_len = (size_t)compressed_len + 1U;
 
 	/* Determine address mode and destination */
 	if (dst_eui64 != NULL) {
@@ -103,18 +112,18 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 
 	/* Step 2: If signing enabled (has_key set), compute Schnorr-48 signature */
 	if (ctx->has_key) {
-		/* Signature is appended to the compressed payload */
-		if ((size_t)compressed_len + SCHNORR48_SIG_LEN > sizeof(payload_buf)) {
+		/* Signature is appended to the authenticated L2 payload. */
+		if (l2_payload_len + SCHNORR48_SIG_LEN > sizeof(payload_buf)) {
 			return -EMSGSIZE;
 		}
 
-		memcpy(payload_buf, compressed, compressed_len);
+		memcpy(payload_buf, l2_payload, l2_payload_len);
 
 		if (schnorr48_sign_frame(epoch, seqnum,
 					 dst_addr, dst_addr_len,
-					 compressed, compressed_len,
+					 l2_payload, l2_payload_len,
 					 ctx->ed25519_sk, ctx->ed25519_pk,
-					 &payload_buf[compressed_len]) != 0) {
+					 &payload_buf[l2_payload_len]) != 0) {
 			/*
 			 * SECURITY: Wipe buffers to avoid leaking partial data.
 			 * payload_buf may have uninitialized signature slot,
@@ -125,14 +134,14 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 			return -EINVAL;
 		}
 
-		payload_len = compressed_len + SCHNORR48_SIG_LEN;
+		payload_len = l2_payload_len + SCHNORR48_SIG_LEN;
 	} else {
 		/* No signature */
-		if ((size_t)compressed_len > sizeof(payload_buf)) {
+		if (l2_payload_len > sizeof(payload_buf)) {
 			return -EMSGSIZE;
 		}
-		memcpy(payload_buf, compressed, compressed_len);
-		payload_len = compressed_len;
+		memcpy(payload_buf, l2_payload, l2_payload_len);
+		payload_len = l2_payload_len;
 	}
 
 	/* MIC length: 8 bytes for AES-CCM-64, 4 bytes for CRC32 fallback */
@@ -260,6 +269,7 @@ cleanup:
 	 * compressed packet data, signatures, or partial frame data.
 	 */
 	memset(payload_buf, 0, sizeof(payload_buf));
+	memset(l2_payload, 0, sizeof(l2_payload));
 	memset(compressed, 0, sizeof(compressed));
 	return ret;
 }

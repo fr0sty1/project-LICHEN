@@ -12,6 +12,7 @@
 #include <lichen/link.h>
 #include <lichen/link_ctx.h>
 #include <lichen/errno.h>
+#include <lichen/l2_payload.h>
 #include <lichen/replay.h>
 #include <lichen/schnorr48.h>
 #include <lichen/schc.h>
@@ -372,8 +373,17 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 	 * Use inner_payload_len which excludes the signature if present.
 	 * Minimum IPv6 header is 40 bytes; require at least that.
 	 */
-	schc_data = auth_payload;
-	schc_len = parsed.inner_payload_len;
+	if (lichen_l2_payload_classify(auth_payload, parsed.inner_payload_len) !=
+	    LICHEN_L2_PAYLOAD_SCHC) {
+		ret = -EPROTONOSUPPORT;
+		goto cleanup;
+	}
+	schc_data = lichen_l2_payload_body(auth_payload,
+					   parsed.inner_payload_len, &schc_len);
+	if (schc_data == NULL || schc_len == 0U) {
+		ret = -EINVAL;
+		goto cleanup;
+	}
 
 	/* Validate output buffer can hold minimum IPv6 header */
 	if (*out_len < 40) {

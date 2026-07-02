@@ -21,6 +21,7 @@ from lichen.announce.coords import decode_coords, encode_coords
 from lichen.crypto.identity import Identity
 from lichen.crypto.schnorr48 import sign as schnorr_sign
 from lichen.crypto.schnorr48 import verify as schnorr_verify
+from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
 from lichen.link.frame import AddrMode, LichenFrame, MicLength
 from lichen.schc.headers import compress_packet, decompress_packet
 
@@ -29,6 +30,7 @@ VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 sys.path.insert(0, str(VECTORS_DIR))
 from generate import (  # noqa: E402
     announce_coords_vectors,
+    l2_payload_vectors,
     meshcore_app_compat_vectors,
     meshtastic_app_compat_vectors,
 )
@@ -63,6 +65,7 @@ def test_vectors_directory_exists() -> None:
     "filename",
     [
         "schc_compression.json",
+        "l2_payload.json",
         "link_frame.json",
         "announce_coords.json",
         "meshtastic_app_compat.json",
@@ -84,6 +87,12 @@ def _schc_cases():
 
 def _frame_cases():
     doc = _load("link_frame.json")
+    assert doc["format_version"] == 1
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+def _l2_payload_cases():
+    doc = _load("l2_payload.json")
     assert doc["format_version"] == 1
     return [(v["name"], v) for v in doc["vectors"]]
 
@@ -113,6 +122,21 @@ def test_schc_vector(name: str, vector: dict) -> None:
     assert compress_packet(packet) == compressed, f"compress drift: {name}"
     assert decompress_packet(compressed) == packet, f"decompress drift: {name}"
     assert compressed[0] == vector["rule_id"]
+
+
+@pytest.mark.parametrize("name,vector", _l2_payload_cases())
+def test_l2_payload_vector(name: str, vector: dict) -> None:
+    wrapped = bytes.fromhex(vector["wrapped"])
+    body = bytes.fromhex(vector["body"])
+    assert wrapped[0] == vector["dispatch"], f"dispatch drift: {name}"
+    assert l2_payload_body(wrapped) == body, f"body drift: {name}"
+
+    expected = {
+        "schc": L2PayloadKind.SCHC,
+        "routing": L2PayloadKind.ROUTING,
+        "unknown": L2PayloadKind.UNKNOWN,
+    }[vector["kind"]]
+    assert classify_l2_payload(wrapped) is expected, f"classify drift: {name}"
 
 
 @pytest.mark.parametrize("name,vector", _frame_cases())
@@ -166,6 +190,11 @@ def test_all_schc_rules_covered() -> None:
 def test_announce_coords_vectors_match_generator() -> None:
     doc = _load("announce_coords.json")
     assert doc["vectors"] == announce_coords_vectors()
+
+
+def test_l2_payload_vectors_match_generator() -> None:
+    doc = _load("l2_payload.json")
+    assert doc["vectors"] == l2_payload_vectors()
 
 
 def test_meshtastic_app_compat_vectors_match_generator() -> None:

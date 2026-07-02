@@ -24,6 +24,7 @@ from unittest.mock import patch
 import pytest
 
 from lichen.crypto.identity import Identity
+from lichen.l2_payload import L2_DISPATCH_ROUTING
 from lichen.node import Node, NodeConfig
 
 
@@ -99,6 +100,10 @@ class TestScheduledSendDelay:
 
         # Verify data was sent
         assert len(radio.tx_history) == 1
+        from lichen.link.frame import LichenFrame
+
+        frame = LichenFrame.from_bytes(radio.tx_history[0])
+        assert frame.payload.startswith(bytes([L2_DISPATCH_ROUTING]) + data)
 
     @pytest.mark.asyncio
     async def test_scheduled_send_returns_task(self, node: Node):

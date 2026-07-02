@@ -30,12 +30,20 @@ from enum import Enum, auto
 from ipaddress import IPv6Address
 from typing import Protocol, cast
 
-from lichen.announce.messages import ANNOUNCE_TYPE, AnnounceMessage
+from lichen.announce.messages import AnnounceMessage
 from lichen.announce.processor import AnnounceProcessor
 from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity, PeerIdentity
 from lichen.gradient import GradientTable
 from lichen.ipv6.packet import IPv6Packet
+from lichen.l2_payload import (
+    L2_ROUTING_TYPE_ANNOUNCE,
+    L2PayloadKind,
+    classify_l2_payload,
+    l2_payload_body,
+    wrap_routing_payload,
+    wrap_schc_payload,
+)
 from lichen.link.link_layer import LinkLayer, RxFrame
 from lichen.radio.base import Radio
 from lichen.routing.router import RouteDecision, Router
@@ -254,7 +262,7 @@ class Node:
         Why a method on Node: Node owns the link layer. Scheduler calls this
         to actually send the announce bytes over the air.
         """
-        return await self.link.send(data)
+        return await self.link.send(wrap_routing_payload(data))
 
     def set_on_receive(self, callback: Callable[[bytes, PeerIdentity], None]) -> None:
         """Set callback for received application data.
@@ -342,15 +350,25 @@ class Node:
         """
         payload = rx.frame.payload
 
-        if len(payload) > 0 and payload[0] == ANNOUNCE_TYPE:
-            await self._process_announce(payload, rx.sender, rx.rssi_dbm)
+        kind = classify_l2_payload(payload)
+        body = l2_payload_body(payload)
+
+        if (
+            kind == L2PayloadKind.ROUTING
+            and len(body) > 0
+            and body[0] == L2_ROUTING_TYPE_ANNOUNCE
+        ):
+            await self._process_announce(body, rx.sender, rx.rssi_dbm)
             return
 
         # SCHC-compressed IPv6 data packet: decompress, route, relay or deliver.
-        # Note: SCHC rule 0x01 (global CoAP) shares the first byte with
-        # ANNOUNCE_TYPE — excluded above; ULA/link-local traffic is unambiguous.
+        if kind != L2PayloadKind.SCHC:
+            if self._on_receive:
+                self._on_receive(payload, rx.sender)
+            return
+
         try:
-            ipv6_bytes = decompress_packet(payload)
+            ipv6_bytes = decompress_packet(body)
             packet = IPv6Packet.from_bytes(ipv6_bytes)
         except Exception:
             # Not a parseable IPv6 packet — pass raw bytes to app callback.
@@ -413,8 +431,7 @@ class Node:
         if relay is None:
             return
 
-        # Send as raw bytes via link layer
-        success = await self.link.send(relay.to_bytes())
+        success = await self.link.send(wrap_routing_payload(relay.to_bytes()))
         if success:
             logger.debug("relayed announce from %s", announce.originator_iid.hex())
 
@@ -425,7 +442,7 @@ class Node:
         Delegates to scheduler for announce building (signing, seq_num).
         """
         announce = self._scheduler.build_announce()
-        data = announce.to_bytes()
+        data = wrap_routing_payload(announce.to_bytes())
         success = await self.link.send(data)
         if success:
             logger.info("sent announce seq=%d", announce.seq_num)
@@ -455,8 +472,9 @@ class Node:
             return False
 
         schc = compress_packet(ipv6_bytes)
+        wrapped = wrap_schc_payload(schc)
         # Track what we've sent so relay dedup doesn't forward it back to us.
-        self._relay_seen.add(schc)
+        self._relay_seen.add(wrapped)
         if len(self._relay_seen) > 128:
             self._relay_seen.clear()
 
@@ -464,10 +482,10 @@ class Node:
         decision, _next_hop = self.router.route(packet, now_ms)
 
         if decision == RouteDecision.FORWARD:
-            return await self.link.send(schc)
+            return await self.link.send(wrapped)
         if decision == RouteDecision.DELIVER_LOCAL:
             if self._on_receive:
-                self._on_receive(schc, PeerIdentity.from_pubkey(self.identity.pubkey))
+                self._on_receive(wrapped, PeerIdentity.from_pubkey(self.identity.pubkey))
             return True
         return False
 
@@ -483,7 +501,7 @@ class Node:
         when multiple nodes forward the same RREQ (LOADng spec).
 
         Args:
-            data: Bytes to transmit via link layer.
+            data: Routing/control message body to transmit via link layer.
             min_delay_ms: Minimum delay in milliseconds. Defaults to config.rreq_jitter_min_ms.
             max_delay_ms: Maximum delay in milliseconds. Defaults to config.rreq_jitter_max_ms.
 
@@ -499,7 +517,7 @@ class Node:
 
         async def _delayed_send() -> bool:
             await asyncio.sleep(delay_ms / 1000)
-            return await self.link.send(data)
+            return await self.link.send(wrap_routing_payload(data))
 
         return asyncio.create_task(
             _delayed_send(),
