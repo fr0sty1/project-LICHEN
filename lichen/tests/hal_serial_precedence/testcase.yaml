@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+tests:
+  lichen.hal.serial_precedence.native_uart:
+    tags:
+      - lichen
+      - hal
+      - serial
+    platform_allow:
+      - qemu_x86
+    integration_platforms:
+      - qemu_x86
+    extra_args:
+      - DTC_OVERLAY_FILE=boards/qemu_x86_native_uart.overlay
+  lichen.hal.serial_precedence.uart_pipe:
+    tags:
+      - lichen
+      - hal
+      - serial
+    platform_allow:
+      - qemu_x86
+    integration_platforms:
+      - qemu_x86
+    extra_args:
+      - DTC_OVERLAY_FILE=boards/qemu_x86_uart_pipe.overlay
+  lichen.hal.serial_precedence.slip_uart:
+    tags:
+      - lichen
+      - hal
+      - serial
+    platform_allow:
+      - qemu_x86
+    integration_platforms:
+      - qemu_x86
+    extra_args:
+      - DTC_OVERLAY_FILE=boards/qemu_x86_slip_uart.overlay
+  lichen.hal.serial_precedence.shell_uart:
+    tags:
+      - lichen
+      - hal
+      - serial
+    platform_allow:
+      - qemu_x86
+    integration_platforms:
+      - qemu_x86
+    extra_args:
+      - DTC_OVERLAY_FILE=boards/qemu_x86_shell_uart.overlay
+  lichen.hal.serial_precedence.console:
+    tags:
+      - lichen
+      - hal
+      - serial
+    platform_allow:
+      - qemu_x86
+    integration_platforms:
+      - qemu_x86
+    extra_args:
+      - DTC_OVERLAY_FILE=boards/qemu_x86_console.overlay
