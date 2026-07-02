@@ -54,9 +54,9 @@ LOG_MODULE_REGISTER(lichen_gateway, LOG_LEVEL_INF);
  */
 #if !IS_ENABLED(CONFIG_LICHEN_L2) && LICHEN_GATEWAY_HAS_LORA
 /* LoRa parameters per LICHEN spec: SF10 / 125 kHz / CR4-5.
- * Frequency is region-dependent; 868 MHz (EU) is the default.
+ * Frequency is region-dependent; 915 MHz (US915) is the default.
  * Override per board via a board-specific Kconfig once that lands. */
-#define LORA_FREQ_HZ     868000000U
+#define LORA_FREQ_HZ     915000000U
 #define LORA_MAX_FRAME   255
 #define LORA_RX_STACKSZ  1024
 #define LORA_RX_PRIORITY 7

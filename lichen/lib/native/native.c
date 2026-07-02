@@ -34,6 +34,16 @@
 
 LOG_MODULE_REGISTER(lichen_native, LOG_LEVEL_INF);
 
+/*
+ * Watchdog heartbeat hook. The app (e.g. puck main.c) provides a strong
+ * definition that refreshes the WDT-feed timestamp; this weak fallback lets
+ * the native lib link in apps that don't. Called during the byte-at-a-time
+ * CDC writes below: uart_poll_out() blocks while the host drains the TX ring,
+ * and native TX runs on the main loop, so without pumping this the heartbeat
+ * goes stale and the watchdog resets the SoC ~8 s after a host attaches.
+ */
+__attribute__((weak)) void lichen_radio_progress(void) { }
+
 #if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
 /* Enable USB early so CDC-ACM enumerates before peripheral drivers start,
  * allowing console output even if LoRa/GNSS init fails. */
@@ -357,10 +367,19 @@ static int native_send_frame_locked(const uint8_t *payload, uint16_t len)
 		return -ENODEV;
 	}
 
+	/*
+	 * Pump the watchdog heartbeat around each blocking write. uart_poll_out()
+	 * stalls while the host drains the 1 KB CDC TX ring, and native TX runs on
+	 * the main loop (the only other progress source is the radio poll, which we
+	 * are not in here). Without this, a slow/attached host stalls the loop and
+	 * the WDT-feed timer withholds → SoC reset ~8 s after a host opens the port.
+	 */
+	lichen_radio_progress();
 	uart_poll_out(s_uart, LN_FRAME_SYNC_BYTE);
 	uart_poll_out(s_uart, (uint8_t)(len >> 8));
 	uart_poll_out(s_uart, (uint8_t)len);
 	for (uint16_t i = 0; i < len; i++) {
+		lichen_radio_progress();
 		uart_poll_out(s_uart, payload[i]);
 	}
 

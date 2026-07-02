@@ -29,8 +29,8 @@
 
 LOG_MODULE_REGISTER(lichen_puck, LOG_LEVEL_INF);
 
-/* LoRa parameters per LICHEN spec: SF10 / 125 kHz / CR4-5 @ 868 MHz (EU). */
-#define LORA_FREQ_HZ       868000000U
+/* LoRa parameters per LICHEN spec: SF10 / 125 kHz / CR4-5 @ 915 MHz (US915). */
+#define LORA_FREQ_HZ       915000000U
 #define LORA_MAX_FRAME     255
 #define BEACON_INTERVAL_MS CONFIG_LICHEN_PUCK_BEACON_INTERVAL_MS
 
