@@ -29,6 +29,15 @@ production build MUST fail. Developer builds MAY carry a generated timestamp
 only when the metadata records that it is non-reproducible and tests cover that
 mode explicitly.
 
+The Zephyr firmware entry points use `lichen/cmake/lichen_build_epoch.cmake`
+before Kconfig is loaded. In production mode, the helper derives
+`CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX` from `SOURCE_DATE_EPOCH` or from an
+explicit `-DLICHEN_RELEASE_EPOCH_UNIX=<unix-seconds>` value; missing production
+metadata is a configure-time error. Non-reproducible developer timestamps are
+allowed only with `-DLICHEN_TIME_BUILD_EPOCH_MODE=developer-generated`, and the
+generated Kconfig metadata records that source separately from release metadata
+and from explicit developer fixed-epoch overrides.
+
 Provision metadata is valid only when it is explicitly present, authenticated or
 integrity-checked by the same mechanism that protects board identity/settings,
 non-zero, at or after the firmware build epoch, and no later than a deterministic

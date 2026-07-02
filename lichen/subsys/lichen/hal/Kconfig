@@ -197,6 +197,31 @@ config LICHEN_TIME_BUILD_EPOCH_UNIX
 	  value. Production builds must set this from reproducible build
 	  metadata, preferably SOURCE_DATE_EPOCH, or an explicit release epoch.
 
+choice LICHEN_TIME_BUILD_EPOCH_SOURCE
+	prompt "Firmware build epoch metadata source"
+	default LICHEN_TIME_BUILD_EPOCH_SOURCE_FIXED
+	help
+	  Records where CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX came from. Production
+	  firmware entry points set this through lichen_build_epoch.cmake before
+	  Zephyr loads Kconfig.
+
+config LICHEN_TIME_BUILD_EPOCH_SOURCE_FIXED
+	bool "Fixed Kconfig default or test override"
+
+config LICHEN_TIME_BUILD_EPOCH_SOURCE_DATE_EPOCH
+	bool "SOURCE_DATE_EPOCH"
+
+config LICHEN_TIME_BUILD_EPOCH_SOURCE_RELEASE
+	bool "Explicit release epoch"
+
+config LICHEN_TIME_BUILD_EPOCH_SOURCE_DEVELOPER_GENERATED
+	bool "Explicit developer generated timestamp"
+
+config LICHEN_TIME_BUILD_EPOCH_SOURCE_DEVELOPER_FIXED
+	bool "Explicit developer fixed timestamp"
+
+endchoice
+
 config LICHEN_TIME_PROVISION_MAX_LEAD_S
 	int "Maximum provision epoch lead over build epoch"
 	default 31536000

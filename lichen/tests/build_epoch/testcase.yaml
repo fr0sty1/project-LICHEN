@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+tests:
+  lichen.build_epoch.source_date_epoch:
+    tags:
+      - lichen
+      - hal
+      - time
+    platform_allow:
+      - native_sim
+      - qemu_x86
+    integration_platforms:
+      - native_sim
+      - qemu_x86
+    extra_args:
+      - LICHEN_BUILD_EPOCH_TEST_CASE=source_date_epoch
+  lichen.build_epoch.release:
+    tags:
+      - lichen
+      - hal
+      - time
+    platform_allow:
+      - native_sim
+      - qemu_x86
+    integration_platforms:
+      - native_sim
+      - qemu_x86
+    extra_args:
+      - LICHEN_BUILD_EPOCH_TEST_CASE=release
+  lichen.build_epoch.developer_generated:
+    tags:
+      - lichen
+      - hal
+      - time
+    platform_allow:
+      - native_sim
+      - qemu_x86
+    integration_platforms:
+      - native_sim
+      - qemu_x86
+    extra_args:
+      - LICHEN_BUILD_EPOCH_TEST_CASE=developer_generated
+  lichen.build_epoch.developer_fixed:
+    tags:
+      - lichen
+      - hal
+      - time
+    platform_allow:
+      - native_sim
+      - qemu_x86
+    integration_platforms:
+      - native_sim
+      - qemu_x86
+    extra_args:
+      - LICHEN_BUILD_EPOCH_TEST_CASE=developer_fixed
