@@ -1,0 +1,29 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: The contributors to the LICHEN project
+ *
+ * Optional no-hardware T-Deck display validation overlay.  Pass this
+ * explicitly with:
+ *
+ *   -DEXTRA_DTC_OVERLAY_FILE=boards/t_deck_esp32s3_procpu_display_validation.overlay
+ *
+ * It enables the disabled ST7789 node and releases the TFT CS hog so SPI3
+ * owns CS1.  Do not use FILE_SUFFIX=display for this check: suffixed board
+ * fragments replace the base app board fragment instead of extending it.
+ */
+
+/delete-node/ &t_deck_tft_cs_hog;
+
+/ {
+	chosen {
+		zephyr,display = &tdeck_display;
+	};
+};
+
+&tdeck_mipi_dbi {
+	status = "okay";
+};
+
+&tdeck_display {
+	status = "okay";
+};

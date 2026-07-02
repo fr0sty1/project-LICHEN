@@ -1,0 +1,36 @@
+{
+  "id": "project-LICHEN-h7t5.7.17.1",
+  "title": "Physically smoke-test T-Deck ST7789 display validation",
+  "description": "Run the display-enabled T-Deck gateway image on physical LilyGO T-Deck hardware and capture visual smoke evidence for ST7789 orientation, colors, backlight control, and shared SPI behavior. This is the physical validation split from project-LICHEN-h7t5.7.17 after the no-hardware DTS/Kconfig/build validation completed on EC2.",
+  "acceptance_criteria": "Flash or otherwise run the display-enabled gateway image on a LilyGO T-Deck; capture boot logs; confirm backlight turns on/off as expected; confirm orientation, dimensions, color order, and offsets visually; confirm LoRa and SD chip-select behavior remain non-conflicting during boot/display init; record board revision and any panel differences.",
+  "notes": "Blocked on physical T-Deck hardware/display access. No hardware was available in this no-hardware session; EC2 validation covered devicetree, Kconfig, and build only.\nBlocked 2026-07-02: requires physical LilyGO T-Deck hardware/display access. No physical board, panel, backlight, LoRa radio, SD card, or USB flashing path was available in this no-hardware session. Parent project-LICHEN-h7t5.7.17 completed EC2 no-hardware DTS/Kconfig/build validation only; visual orientation/colors/backlight and real shared-SPI behavior remain unvalidated.",
+  "status": "blocked",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T06:14:03.484508Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T06:14:10.027769Z",
+  "labels": [
+    "lilygo",
+    "t-deck",
+    "display",
+    "st7789",
+    "zephyr",
+    "hardware",
+    "physical-validation",
+    "firmware",
+    "board-support",
+    "bringup",
+    "hal",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.17.1",
+      "depends_on_id": "project-LICHEN-h7t5.7.17",
+      "type": "parent-child",
+      "created_at": "2026-07-02T06:14:03.485034Z"
+    }
+  ]
+}
