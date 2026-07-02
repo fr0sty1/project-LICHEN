@@ -10,6 +10,7 @@
 #include <zephyr/ztest.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/net/coap.h>
+#include <zephyr/net/coap_service.h>
 
 #include <lichen/app_identity/app_identity.h>
 #include <lichen/app_interface/app_interface.h>
@@ -23,7 +24,11 @@
 #include "meshtastic_adapter.h"
 
 #define COAP_TEST_BUF_SIZE 64
+#define COAP_TEST_OPT_COUNT 8
 #define TEST_MESSAGE_CONTRACT_QUEUE_DEPTH 3U
+
+extern struct coap_resource _coap_resource_lichen_coap_list_start[];
+extern struct coap_resource _coap_resource_lichen_coap_list_end[];
 
 static void reset_gateway(size_t from_radio_cap)
 {
@@ -62,6 +67,68 @@ static void make_post_request(struct coap_packet *request, uint8_t *buf,
 		zassert_ok(coap_packet_append_payload(request, payload,
 						      payload_len));
 	}
+}
+
+static void make_post_request_to_path(struct coap_packet *request, uint8_t *buf,
+				      size_t buf_len, const char * const *path,
+				      size_t path_len, const uint8_t *payload,
+				      size_t payload_len)
+{
+	static const uint8_t token[] = { 0x02 };
+
+	zassert_ok(coap_packet_init(request, buf, buf_len, COAP_VERSION_1,
+				    COAP_TYPE_CON, sizeof(token), token,
+				    COAP_METHOD_POST, 0x1235));
+	for (size_t i = 0U; i < path_len; i++) {
+		zassert_ok(coap_packet_append_option(request, COAP_OPTION_URI_PATH,
+						     path[i], strlen(path[i])));
+	}
+	if (payload_len > 0U) {
+		zassert_ok(coap_packet_append_payload_marker(request));
+		zassert_ok(coap_packet_append_payload(request, payload,
+						      payload_len));
+	}
+}
+
+static int dispatch_post_to_path(const char * const *path, size_t path_len,
+				 const uint8_t *payload, size_t payload_len)
+{
+	uint8_t req_buf[COAP_TEST_BUF_SIZE];
+	struct coap_packet request;
+	struct coap_packet parsed;
+	struct coap_option options[COAP_TEST_OPT_COUNT] = { 0 };
+	struct coap_resource *resources =
+		_coap_resource_lichen_coap_list_start;
+	size_t resource_count = _coap_resource_lichen_coap_list_end -
+				_coap_resource_lichen_coap_list_start;
+
+	make_post_request_to_path(&request, req_buf, sizeof(req_buf), path,
+				  path_len, payload, payload_len);
+	zassert_ok(coap_packet_parse(&parsed, req_buf, request.offset, options,
+				     ARRAY_SIZE(options)));
+	return coap_handle_request_len(&parsed, resources, resource_count,
+				       options, ARRAY_SIZE(options), NULL, 0);
+}
+
+static struct coap_resource *find_lichen_coap_resource(const char *first,
+						      const char *second)
+{
+	struct coap_resource *resources =
+		_coap_resource_lichen_coap_list_start;
+	size_t resource_count = _coap_resource_lichen_coap_list_end -
+				_coap_resource_lichen_coap_list_start;
+
+	for (size_t i = 0U; i < resource_count; i++) {
+		const char * const *path = resources[i].path;
+
+		if (path != NULL && path[0] != NULL && path[1] != NULL &&
+		    path[2] == NULL && strcmp(path[0], first) == 0 &&
+		    strcmp(path[1], second) == 0) {
+			return &resources[i];
+		}
+	}
+
+	return NULL;
 }
 
 struct queue_status_view {
@@ -704,6 +771,82 @@ ZTEST(meshtastic_gateway_adapter, test_coap_invalid_payloads_are_bad_request)
 	make_post_request(&request, req_buf, sizeof(req_buf), bad_status,
 			  sizeof(bad_status));
 	zassert_equal(gateway_inbound_status_post(NULL, &request, NULL, 0),
+		      COAP_RESPONSE_CODE_BAD_REQUEST);
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 0U);
+}
+
+ZTEST(meshtastic_gateway_adapter, test_coap_inbound_resources_are_registered)
+{
+	struct coap_resource *text;
+	struct coap_resource *status;
+
+	text = find_lichen_coap_resource("inbound", "text");
+	status = find_lichen_coap_resource("inbound", "status");
+
+	zassert_not_null(text);
+	zassert_not_null(text->post);
+	zassert_is_null(text->get);
+	zassert_equal_ptr(text->post, gateway_inbound_text_post);
+
+	zassert_not_null(status);
+	zassert_not_null(status->post);
+	zassert_is_null(status->get);
+	zassert_equal_ptr(status->post, gateway_inbound_status_post);
+}
+
+ZTEST(meshtastic_gateway_adapter, test_coap_dispatches_inbound_text_path)
+{
+	static const char * const path[] = { "inbound", "text" };
+	const uint8_t payload[] = { 'h', 'i' };
+	const uint8_t expected[] = {
+		0x08, 0x01, 0x12, 0x17, 0x0d, 0x00, 0x00, 0x00,
+		0x00, 0x15, 0xff, 0xff, 0xff, 0xff, 0x22, 0x06,
+		0x08, 0x01, 0x12, 0x02, 0x68, 0x69, 0x35, 0x01,
+		0x00, 0x00, 0x00
+	};
+
+	reset_gateway(2U);
+
+	zassert_equal(dispatch_post_to_path(path, ARRAY_SIZE(path), payload,
+					    sizeof(payload)),
+		      COAP_RESPONSE_CODE_CHANGED);
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 1U);
+	expect_from_radio(0U, expected, sizeof(expected));
+}
+
+ZTEST(meshtastic_gateway_adapter, test_coap_dispatches_inbound_status_path)
+{
+	static const char * const path[] = { "inbound", "status" };
+	const uint8_t payload[] = { 0x12, 0x34, 0x56, 0x78 };
+	const uint8_t expected[] = {
+		0x08, 0x01, 0x12, 0x18, 0x0d, 0x00, 0x00, 0x00,
+		0x00, 0x15, 0xff, 0xff, 0xff, 0xff, 0x22, 0x07,
+		0x08, 0x05, 0x35, 0x78, 0x56, 0x34, 0x12, 0x35,
+		0x01, 0x00, 0x00, 0x00
+	};
+
+	reset_gateway(2U);
+
+	zassert_equal(dispatch_post_to_path(path, ARRAY_SIZE(path), payload,
+					    sizeof(payload)),
+		      COAP_RESPONSE_CODE_CHANGED);
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 1U);
+	expect_from_radio(0U, expected, sizeof(expected));
+}
+
+ZTEST(meshtastic_gateway_adapter, test_coap_dispatch_bad_requests)
+{
+	static const char * const text_path[] = { "inbound", "text" };
+	static const char * const status_path[] = { "inbound", "status" };
+	const uint8_t bad_status[] = { 0x12, 0x34, 0x56 };
+
+	reset_gateway(2U);
+
+	zassert_equal(dispatch_post_to_path(text_path, ARRAY_SIZE(text_path),
+					    NULL, 0U),
+		      COAP_RESPONSE_CODE_BAD_REQUEST);
+	zassert_equal(dispatch_post_to_path(status_path, ARRAY_SIZE(status_path),
+					    bad_status, sizeof(bad_status)),
 		      COAP_RESPONSE_CODE_BAD_REQUEST);
 	zassert_equal(fake_ble_meshtastic_from_radio_count(), 0U);
 }
