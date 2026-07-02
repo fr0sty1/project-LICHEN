@@ -72,7 +72,12 @@ LICHEN/
 
 #### Recommended First Device
 
-**[Muzi Works R1](https://muzi.works/products/r1)** — turnkey nRF52840 + SX1262 in a ready-to-use enclosure. Battery, antenna, USB-C. Comfortable memory (256KB RAM, 1MB flash). Many Meshtastic users already have one. Reflash and go.
+**Muzi Works R1 Neo (`r1_neo_nrf52840`)** — turnkey nRF52840 + SX1262 in a ready-to-use enclosure. Battery, antenna, USB-C. Comfortable memory (256KB RAM, 1MB flash). Many Meshtastic users already have one. Reflash and go.
+
+This recommendation is scoped to the R1 Neo board target. Original/non-Neo R1
+display variants and any LR1121 radio variants are not implied by the MVP and
+require separate board files, driver work, and validation evidence before they
+can be advertised as supported.
 
 #### Meshtastic-Compatible (Primary)
 
