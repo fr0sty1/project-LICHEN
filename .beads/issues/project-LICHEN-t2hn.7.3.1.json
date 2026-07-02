@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-t2hn.7.3.1",
+  "title": "Add negative compile-fail coverage for Meshtastic payload limit drift",
+  "description": "Why this exists: project-LICHEN-t2hn.7.3 adds a BUILD_ASSERT tying CONFIG_LICHEN_APP_INTERFACE_MAX_PAYLOAD to LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX in the gateway Meshtastic adapter, but current validation only covers successful matching builds. What needs to be done: add a no-hardware compile-fail/Twister fixture or equivalent CI check that intentionally sets CONFIG_LICHEN_APP_INTERFACE_MAX_PAYLOAD away from LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX for the Meshtastic gateway adapter test surface and asserts the build fails at the guard. Keep the positive native_sim gateway adapter build intact.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T16:17:05.594389Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T16:17:05.594812Z",
+  "labels": [
+    "zephyr",
+    "meshtastic",
+    "app-interface",
+    "testing",
+    "messaging",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t2hn.7.3.1",
+      "depends_on_id": "project-LICHEN-t2hn.7.3",
+      "type": "parent-child",
+      "created_at": "2026-07-02T16:17:05.594812Z"
+    }
+  ]
+}
