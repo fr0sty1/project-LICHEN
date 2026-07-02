@@ -2,6 +2,7 @@
   "id": "project-LICHEN-9c4y.22.1",
   "title": "Add two-phase app-interface submit/ACK contract for compatibility transports",
   "description": "Code review during project-LICHEN-9c4y.22 found that MeshCore and existing channel text paths submit to lichen_app_interface before the compatibility OK response is actually enqueued. preflight_tx_slots catches ordinary backpressure but cannot roll back a submit if enqueue_tx fails because of a BLE session/queue race after submit. Design and implement a reserve/commit/abort or otherwise rollback-capable app-interface/message-contract path so compatibility transports can guarantee either (a) no app-interface message is committed unless the client receives OK, or (b) a precise documented at-least-once/error semantic with tests. Cover MeshCore direct text, MeshCore channel text, Meshtastic text ingress if affected, and gateway message_contract tests.",
+  "notes": "Implementation slice before EC2 validation:\n- Documented message_contract submit as an at-least-once app ingress boundary rather than a BLE ACK boundary. If a MeshCore/Meshtastic session drops after app-interface submit but before OK/status enqueue, the message remains committed and the dispatcher returns the transport enqueue error.\n- Added MeshCore gateway tests for channel text and direct peer text using fake_ble_meshcore_disconnect_on_next_enqueue(); both assert -ENOTCONN, zero TX frames, and retained message_contract payload.\n- Added Meshtastic gateway tests for direct peer text and primary-channel/broadcast text using fake_ble_meshtastic_disconnect_on_next_enqueue(); both assert -ENOTCONN, zero FromRadio frames, and retained message_contract payload.\n\nReview evidence:\n- Codereview agent 019f2430-4d54-7511-9e7b-d7ee5d392fa5: no P0/P1/P2 findings; verified documented semantic matches current submit-before-ACK flow and new MeshCore/Meshtastic coverage.\n- Codereview agent 019f2430-5e94-7293-9dad-7492e607d195: no P0/P1/P2 findings; verified fake BLE hooks reproduce post-submit enqueue failure and assertions match gateway APIs.\n\nLocal checks:\n- git diff --check: pass.\n- rg confirmed added disconnect-after-submit tests and at-least-once contract text.\n",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "task",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-02T18:41:48.220704Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-02T18:52:19.198584Z",
+  "updated_at": "2026-07-02T18:57:55.558944Z",
   "labels": [
     "zephyr",
     "meshcore",

@@ -406,6 +406,37 @@ ZTEST(meshcore_gateway_adapter,
 }
 
 ZTEST(meshcore_gateway_adapter,
+      test_send_channel_text_disconnect_after_submit_keeps_message_contract)
+{
+	const uint8_t send[] = {
+		LICHEN_MESHCORE_CMD_SEND_CHANNEL_TXT_MSG,
+		0x00,
+		0x00,
+		'p',
+		'i',
+		'n',
+		'g',
+	};
+	struct gateway_message_contract_text submitted;
+
+	reset_gateway(4U);
+	zassert_ok(gateway_message_contract_init());
+	zassert_ok(fake_ble_meshcore_push_rx(send, sizeof(send), 1U));
+	fake_ble_meshcore_disconnect_on_next_enqueue();
+
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), -ENOTCONN);
+	zassert_equal(fake_ble_meshcore_tx_count(), 0U);
+	zassert_ok(gateway_message_contract_pop_text(&submitted));
+	zassert_equal(submitted.from, 0U);
+	zassert_equal(submitted.to, UINT32_MAX);
+	zassert_false(submitted.has_id);
+	zassert_false(submitted.has_to_iid);
+	zassert_equal(submitted.payload_len, 4U);
+	zassert_mem_equal(submitted.payload, "ping", 4U);
+	zassert_equal(gateway_message_contract_pop_text(&submitted), -ENOENT);
+}
+
+ZTEST(meshcore_gateway_adapter,
       test_send_direct_text_enqueues_message_contract_peer_iid)
 {
 	static const uint8_t peer_key[LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN] = {
@@ -434,6 +465,45 @@ ZTEST(meshcore_gateway_adapter,
 
 	zassert_equal(gateway_meshcore_adapter_test_process_once(), 0);
 	expect_tx(0U, LICHEN_MESHCORE_RESP_OK, 1U);
+	zassert_ok(gateway_message_contract_pop_text(&submitted));
+	zassert_equal(submitted.to, UINT32_MAX);
+	zassert_true(submitted.has_to_iid);
+	zassert_mem_equal(submitted.to_iid, expected_iid, sizeof(expected_iid));
+	zassert_equal(submitted.payload_len, 4U);
+	zassert_mem_equal(submitted.payload, "ping", 4U);
+	zassert_equal(gateway_message_contract_pop_text(&submitted), -ENOENT);
+}
+
+ZTEST(meshcore_gateway_adapter,
+      test_send_direct_text_disconnect_after_submit_keeps_message_contract)
+{
+	static const uint8_t peer_key[LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN] = {
+		0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+	};
+	const uint8_t send[] = {
+		LICHEN_MESHCORE_CMD_SEND_TXT_MSG,
+		0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+		'p', 'i', 'n', 'g',
+	};
+	const uint8_t expected_iid[8] = {
+		0x00, 0xaa, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04,
+	};
+	struct lichen_app_identity_peer peer = {
+		.eui64 = { 0x02, 0xaa, 0x00, 0x00,
+			   0x01, 0x02, 0x03, 0x04 },
+		.has_public_key = true,
+	};
+	struct gateway_message_contract_text submitted;
+
+	reset_gateway(4U);
+	memcpy(peer.public_key, peer_key, sizeof(peer.public_key));
+	zassert_ok(lichen_app_identity_upsert_peer(&peer));
+	zassert_ok(gateway_message_contract_init());
+	zassert_ok(fake_ble_meshcore_push_rx(send, sizeof(send), 1U));
+	fake_ble_meshcore_disconnect_on_next_enqueue();
+
+	zassert_equal(gateway_meshcore_adapter_test_process_once(), -ENOTCONN);
+	zassert_equal(fake_ble_meshcore_tx_count(), 0U);
 	zassert_ok(gateway_message_contract_pop_text(&submitted));
 	zassert_equal(submitted.to, UINT32_MAX);
 	zassert_true(submitted.has_to_iid);
