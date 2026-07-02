@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-zte2.9",
+  "title": "Add network-derived location producer",
+  "description": "Why this exists: project-LICHEN-zte2.5 adds a dedicated network app-interface producer API that submits NETWORK samples to the unified HAL provider, but no concrete network-derived location ingestion path currently feeds it. What needs to be done: define the network-derived location source surface, map mesh/peer-derived metadata into lichen_app_interface_submit_network_location() or lichen_hal_location_submit(), preserve source_name/source_class/status metadata, and add native_sim/qemu tests proving network fallback when manual/static or local-client sources are stale or absent.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T00:17:58.492069Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T00:17:58.492603Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "gnss",
+    "location",
+    "hardware",
+    "network-source"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zte2.9",
+      "depends_on_id": "project-LICHEN-zte2",
+      "type": "parent-child",
+      "created_at": "2026-07-02T00:17:58.492603Z"
+    }
+  ]
+}

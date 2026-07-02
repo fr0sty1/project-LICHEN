@@ -11,6 +11,8 @@
 #include <lichen/app_interface/hal_bridge.h>
 
 #define APP_LOCATION_DEFAULT_SOURCE_NAME "local-client"
+#define APP_LOCATION_NETWORK_SOURCE_NAME "network"
+#define APP_LOCATION_MANUAL_SOURCE_NAME "manual"
 
 static enum lichen_app_fix_source
 app_fix_source_from_hal(enum lichen_hal_fix_source source)
@@ -104,6 +106,20 @@ static bool valid_app_location_source_class(
 	       source_class <= LICHEN_APP_LOCATION_SOURCE_MANUAL_STATIC;
 }
 
+static const char *default_source_name(
+	enum lichen_hal_location_source_class source_class)
+{
+	switch (source_class) {
+	case LICHEN_HAL_LOCATION_SOURCE_NETWORK:
+		return APP_LOCATION_NETWORK_SOURCE_NAME;
+	case LICHEN_HAL_LOCATION_SOURCE_MANUAL_STATIC:
+		return APP_LOCATION_MANUAL_SOURCE_NAME;
+	case LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT:
+	default:
+		return APP_LOCATION_DEFAULT_SOURCE_NAME;
+	}
+}
+
 static int64_t bridge_now_ms(void)
 {
 #ifdef CONFIG_ZTEST
@@ -166,15 +182,32 @@ int lichen_app_location_time_from_hal(
 	return 0;
 }
 
-int lichen_app_location_submit_to_hal(
-	const struct lichen_app_location_time_snapshot *app)
+static enum lichen_app_location_source_class app_source_class_from_hal(
+	enum lichen_hal_location_source_class source_class)
+{
+	switch (source_class) {
+	case LICHEN_HAL_LOCATION_SOURCE_NETWORK:
+		return LICHEN_APP_LOCATION_SOURCE_NETWORK;
+	case LICHEN_HAL_LOCATION_SOURCE_MANUAL_STATIC:
+		return LICHEN_APP_LOCATION_SOURCE_MANUAL_STATIC;
+	case LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT:
+	default:
+		return LICHEN_APP_LOCATION_SOURCE_LOCAL_CLIENT;
+	}
+}
+
+static int submit_to_hal_as(
+	const struct lichen_app_location_time_snapshot *app,
+	enum lichen_hal_location_source_class source_class)
 {
 	struct lichen_hal_location_sample sample;
 	const char *source_name;
+	enum lichen_app_location_source_class expected_source_class;
 
 	if (app == NULL) {
 		return -EINVAL;
 	}
+	expected_source_class = app_source_class_from_hal(source_class);
 	if (app->fix_state_valid &&
 	    !valid_app_location_fix_state(app->fix_state)) {
 		return -EINVAL;
@@ -184,7 +217,7 @@ int lichen_app_location_submit_to_hal(
 	}
 	if (app->source_class_valid &&
 	    (!valid_app_location_source_class(app->source_class) ||
-	     app->source_class != LICHEN_APP_LOCATION_SOURCE_LOCAL_CLIENT)) {
+	     app->source_class != expected_source_class)) {
 		return -EINVAL;
 	}
 	if (app->fix_state_valid &&
@@ -197,9 +230,9 @@ int lichen_app_location_submit_to_hal(
 	}
 
 	source_name = app->source_name[0] != '\0' ?
-		      app->source_name : APP_LOCATION_DEFAULT_SOURCE_NAME;
+		      app->source_name : default_source_name(source_class);
 	sample = (struct lichen_hal_location_sample){
-		.source_class = LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT,
+		.source_class = source_class,
 		.fix_state = app->fix_state_valid ?
 			     hal_location_fix_state_from_app(app->fix_state) :
 			     LICHEN_HAL_LOCATION_FIX_NONE,
@@ -229,4 +262,22 @@ int lichen_app_location_submit_to_hal(
 	}
 
 	return lichen_hal_location_submit(&sample);
+}
+
+int lichen_app_location_submit_to_hal(
+	const struct lichen_app_location_time_snapshot *app)
+{
+	return submit_to_hal_as(app, LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT);
+}
+
+int lichen_app_network_location_submit_to_hal(
+	const struct lichen_app_location_time_snapshot *app)
+{
+	return submit_to_hal_as(app, LICHEN_HAL_LOCATION_SOURCE_NETWORK);
+}
+
+int lichen_app_manual_location_submit_to_hal(
+	const struct lichen_app_location_time_snapshot *app)
+{
+	return submit_to_hal_as(app, LICHEN_HAL_LOCATION_SOURCE_MANUAL_STATIC);
 }

@@ -16,6 +16,10 @@ int lichen_app_location_time_from_hal(
 	const struct lichen_hal_location_time_snapshot *hal);
 int lichen_app_location_submit_to_hal(
 	const struct lichen_app_location_time_snapshot *app);
+int lichen_app_network_location_submit_to_hal(
+	const struct lichen_app_location_time_snapshot *app);
+int lichen_app_manual_location_submit_to_hal(
+	const struct lichen_app_location_time_snapshot *app);
 
 #ifdef __cplusplus
 }

@@ -171,7 +171,15 @@ int lichen_app_interface_get_config(
 	struct lichen_app_config_snapshot *config);
 int lichen_app_interface_set_config(
 	const struct lichen_app_config_snapshot *config);
+/*
+ * Submit app/local-client location metadata into the firmware-wide location
+ * provider. Omitted source_class defaults to LOCAL_CLIENT.
+ */
 int lichen_app_interface_submit_location(
+	const struct lichen_app_location_time_snapshot *location);
+int lichen_app_interface_submit_network_location(
+	const struct lichen_app_location_time_snapshot *location);
+int lichen_app_interface_submit_manual_location(
 	const struct lichen_app_location_time_snapshot *location);
 
 int lichen_app_interface_copy_stats(

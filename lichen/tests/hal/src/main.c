@@ -475,6 +475,46 @@ ZTEST(hal, test_location_provider_source_precedence_and_stale_fallback)
 	zassert_equal(snapshot.longitude_e7, 60);
 }
 
+ZTEST(hal, test_location_provider_stale_manual_falls_back_to_network)
+{
+	const struct lichen_hal_location_sample manual = {
+		.source_class = LICHEN_HAL_LOCATION_SOURCE_MANUAL_STATIC,
+		.fix_state = LICHEN_HAL_LOCATION_FIX_2D,
+		.source_name = "manual",
+		.observed_uptime_ms_valid = true,
+		.observed_uptime_ms = 1000,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 30,
+		.longitude_e7_valid = true,
+		.longitude_e7 = 40,
+	};
+	const struct lichen_hal_location_sample network = {
+		.source_class = LICHEN_HAL_LOCATION_SOURCE_NETWORK,
+		.fix_state = LICHEN_HAL_LOCATION_FIX_2D,
+		.source_name = "mesh",
+		.observed_uptime_ms_valid = true,
+		.observed_uptime_ms = 900000,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 50,
+		.longitude_e7_valid = true,
+		.longitude_e7 = 60,
+	};
+	struct lichen_hal_location_time_snapshot snapshot;
+
+	lichen_hal_location_clear();
+	lichen_hal_location_test_set_uptime_ms(901000);
+	zassert_ok(lichen_hal_location_submit(&manual));
+	zassert_ok(lichen_hal_location_submit(&network));
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+
+	zassert_equal(snapshot.source_class, LICHEN_HAL_LOCATION_SOURCE_NETWORK);
+	zassert_str_equal(snapshot.source_name, "mesh");
+	zassert_true(snapshot.latitude_e7_valid);
+	zassert_equal(snapshot.latitude_e7, 50);
+	zassert_true(snapshot.longitude_e7_valid);
+	zassert_equal(snapshot.longitude_e7, 60);
+}
+
 ZTEST(hal, test_location_provider_no_fix_does_not_block_usable_fix)
 {
 	const struct lichen_hal_location_sample gnss = {

@@ -246,6 +246,41 @@ ZTEST(gateway_status, test_fresh_location_metadata_is_encoded)
 	zassert_equal(view.satellites, 9U);
 }
 
+ZTEST(gateway_status, test_manual_static_location_metadata_is_encoded)
+{
+	const struct lichen_hal_location_time_snapshot location = {
+		.location_provider_available = true,
+		.source_class_valid = true,
+		.source_class = LICHEN_HAL_LOCATION_SOURCE_MANUAL_STATIC,
+		.source_name = "config-static",
+		.fix_state_valid = true,
+		.fix_state = LICHEN_HAL_LOCATION_FIX_2D,
+		.age_seconds_valid = true,
+		.age_seconds = 0U,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 476206130,
+		.longitude_e7_valid = true,
+		.longitude_e7 = -1223493000,
+	};
+	uint8_t buf[LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE];
+	struct status_view view;
+	size_t len = encode_status(buf, sizeof(buf), &location);
+
+	zassert_true(len > 0U);
+	zassert_ok(decode_status(buf, len, &view));
+	zassert_true(view.location_provider);
+	zassert_true(view.has_loc_source_class);
+	zassert_str_equal(view.loc_source_class, "manual_static");
+	zassert_true(view.has_loc_source);
+	zassert_str_equal(view.loc_source, "config-static");
+	zassert_true(view.has_loc_fix_state);
+	zassert_str_equal(view.loc_fix_state, "2d");
+	zassert_true(view.has_lat_i);
+	zassert_equal(view.lat_i, 476206130);
+	zassert_true(view.has_lon_i);
+	zassert_equal(view.lon_i, -1223493000);
+}
+
 ZTEST(gateway_status, test_full_status_fits_advertised_buffer)
 {
 	const struct lichen_hal_power_snapshot power = {
