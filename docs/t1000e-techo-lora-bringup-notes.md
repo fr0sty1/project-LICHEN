@@ -222,3 +222,79 @@ stall so both boards can share one modern stack. Leads: is it a fault-vs-lock in
 `usbd_cdc_acm.c` under sustained bulk-IN; reproduce with the upstream Zephyr
 `device_next` CDC-ACM sample; inspect `CDC_ACM_LOCK`/`tx_fifo_work`/`irq_cb_work`
 interplay when the host reads fast.
+
+---
+
+## Round 3: US915 move + three-node exchange (Heltec V3 gateway) — Jul 1-2
+
+**Goal reached:** all three nodes (T1000-E, T-Echo, Heltec V3 gateway) send and
+receive LICHEN packets at **915 MHz** (US915; 868 was the EU default — both
+`LORA_FREQ_HZ` defines moved, commit `2a1d102`). Gateway logs both pucks:
+`lichen_l2: neighbor beacon epoch=N seq=M rssi=-21/-52 snr=8/9`.
+
+### The Heltec deaf-radio chain (commit `929975f`)
+
+Bringing the merged L2 gateway up on the Heltec surfaced **four stacked bugs**;
+fixing each unmasked the next. Worth remembering as a debugging sequence:
+
+1. **No MIC method → every L2 TX failed `-22`** (`2a1d102`): no AES-CCM link key
+   and CRC32 fallback compiled out → `lichen_link_tx()` had no way to build any
+   frame. Bench fix: `CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC=y`.
+2. **TX/RX modem arbitration** (`lora_l2.c`): the sx12xx `modem_acquire()` is
+   non-blocking; the RX thread re-arms `lora_recv()` back-to-back so TX almost
+   never wins, and RX logged the collision `-EBUSY` as a hardware error with a
+   1 s deaf backoff. Fix: `tx_pending` flag RX yields to; `-EBUSY` treated as
+   expected on both sides.
+3. **TX-done sysworkq self-deadlock**: with `NET_TC_TX_COUNT=0`, boot ND/MLD
+   sends run **on the system workqueue**, where `lora_send()` blocks waiting for
+   a TX-done the sx126x driver delivers **via a work item on that same queue**
+   → guaranteed `-11` after 2× airtime. Fix: `CONFIG_NET_TC_TX_COUNT=1`.
+4. **RX side never configured** (`lora_l2.c`): Zephyr `lora_config(.tx=true)`
+   only calls `SetTxConfig`; `SetRxConfig` was never invoked — the radio
+   listened with unprogrammed modulation params. Fix: two-pass config (RX pass,
+   then TX pass).
+5. **The root deafness — ESP32-S3 SPI reads corrupt at 16 MHz** (board DTS):
+   the LoRa SPI pins route through the GPIO matrix (not FSPI IOMUX); MISO read
+   timing degrades above ~8 MHz while writes stay clean. Signature: **perfectly
+   asymmetric radio — TX on-air fine (T-Echo decoded it at rssi −20), RX stone
+   deaf**. Fix: `spi-max-frequency` 16 MHz → 2 MHz (RadioLib convention).
+   Verified: RX 0 → 18 frames/48 s. *Any ESP32 board with TX-works/RX-deaf:
+   check the SPI clock first.*
+
+**Isolation method that found #5:** flash the *puck* app (known-good raw-LoRa
+code on two nRF boards) onto the Heltec. Same code, same driver, deaf on ESP32
+→ platform-level, not protocol-level. Beware two contaminations when doing
+this: the puck defaults to 60 s beacons (`LICHEN_PUCK_BEACON_INTERVAL_MS`), and
+with `NETWORKING=y` the L2 RX thread contends with the raw main loop for the
+half-duplex modem (heltec puck conf now sets 5 s + `NETWORKING=n`; the
+**T1000-E puck still has both L2 and raw RX enabled** — same latent contention,
+untested because its USB is wedged; consider `NETWORKING=n` there too).
+
+### Beacon recognition (`7ce1074`)
+
+Puck beacons (9 B: `[len][LLSec=0x00][epoch][seq_hi][seq_lo][CRC32 LE]`) reach
+the gateway but carry no SCHC/IPv6 payload, so `lichen_link_rx()` rejects them
+with per-frame WRN spam. The L2 input failure branch now shape-checks, verifies
+the CRC32, and logs `neighbor beacon` at INF. CRC32 = error detection only;
+beacons are observational.
+
+### Operational lessons (host-side)
+
+- **Watchdog reboot on port-open — fixed** (`2a1d102`): old-stack CDC
+  `uart_poll_out()` blocks when a host attaches (discards when detached); native
+  TX runs on the main loop; heartbeat went stale → reset at ~8 s. `native.c` now
+  pumps `lichen_radio_progress()` around each byte. Verified 45 s monitored
+  read, zero reboots.
+- **T1000-E USB `-110` wedge** (bd `lora_ipv6_mesh-1jqj`): repeated host
+  open/close/DTR churn (especially overlapping readers) wedges the nRF USB into
+  a descriptor-read `-110` loop; only a replug recovers. **The firmware keeps
+  running** — its radio beacons throughout. Idle = stable 8–9 h.
+- Beacon collision capture: both pucks at ~5.43 s period drift in and out of
+  overlapping airtime; when aligned, the gateway only decodes the stronger
+  (−21 dBm) — the weaker (−52 dBm) vanishes for minutes. Expected without CSMA.
+- ESP32 auto-reset: *any* CP2102 port open resets the Heltec (RTS→EN). Every
+  monitor session starts at boot. Use `dtr=False rts=False` before open and a
+  deliberate RTS pulse for run-mode; sloppy opens can land in download mode.
+- Test-harness hygiene: orphaned background serial readers (heredoc + outer
+  `timeout`) hold the port, cause "multiple access" EIO, and can wedge the
+  T1000-E USB. Use `timeout -s KILL` around a script file, not a heredoc.
