@@ -232,7 +232,7 @@ async def test_lci_client_lists_neighbors_routes_and_inbox() -> None:
 async def test_send_message_uses_discovered_payload_shape() -> None:
     transport = FakeResourceTransport(
         {
-            ("POST", "/msg"): CoapResult(
+            ("POST", "/msg/inbox"): CoapResult(
                 code="2.01",
                 location_path=("msg", "sent", "42"),
             )
@@ -245,7 +245,7 @@ async def test_send_message_uses_discovered_payload_shape() -> None:
     assert result.state is DeliveryState.ACCEPTED
     assert result.location_path == ("msg", "sent", "42")
     method, path, payload, content_format, observe = transport.requests[-1]
-    assert (method, path, content_format, observe) == ("POST", "/msg", 60, False)
+    assert (method, path, content_format, observe) == ("POST", "/msg/inbox", 60, False)
     assert cbor2.loads(payload) == {"to": "fd00::2", "body": "hello", "ack": True}
 
 

@@ -5,7 +5,7 @@
 Translates MeshPacket payloads to/from LICHEN CoAP and announce messages.
 
 Supported port numbers:
-- TEXT_MESSAGE_APP (1): UTF-8 text → POST /msg
+- TEXT_MESSAGE_APP (1): UTF-8 text -> POST /msg/inbox
 - POSITION_APP (3): Position protobuf ↔ announce with position payload
 - NODEINFO_APP (4): User protobuf ↔ synthesized from peer identity
 
@@ -244,9 +244,9 @@ class Translator:
     """Translates between Meshtastic and LICHEN messages.
 
     Handles:
-    - Text messages (portnum 1) ↔ CoAP POST /msg
-    - Position (portnum 3) ↔ announce with position payload
-    - NodeInfo (portnum 4) ↔ synthesized from IID
+    - Text messages (portnum 1) <-> CoAP POST /msg/inbox
+    - Position (portnum 3) <-> announce with position payload
+    - NodeInfo (portnum 4) <-> synthesized from IID
 
     The Translator uses an AddressMapper to resolve node_num ↔ IID.
     """
@@ -256,7 +256,7 @@ class Translator:
     # --- Text Messages (portnum 1) ---
 
     def text_to_coap_payload(self, payload: bytes) -> bytes:
-        """Extract text payload for CoAP POST /msg.
+        """Extract text payload for CoAP POST /msg/inbox.
 
         Text messages are raw UTF-8 in the Meshtastic payload.
 
@@ -264,16 +264,16 @@ class Translator:
             payload: Raw bytes from MeshPacket.decoded.payload
 
         Returns:
-            UTF-8 bytes to POST to /msg
+            UTF-8 bytes to POST to /msg/inbox
         """
         # Meshtastic text is already UTF-8
         return payload
 
     def coap_to_text_payload(self, payload: bytes) -> bytes:
-        """Convert CoAP /msg response to Meshtastic text payload.
+        """Convert CoAP /msg/inbox response to Meshtastic text payload.
 
         Args:
-            payload: Bytes received from /msg resource
+            payload: Bytes received from /msg/inbox resource
 
         Returns:
             Raw bytes for MeshPacket.decoded.payload

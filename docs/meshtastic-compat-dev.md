@@ -465,7 +465,7 @@ Meshtastic uses `portnum` to identify message types. The adapter maps these to C
 
 | Meshtastic Portnum | CoAP Uri-Path | Notes |
 |--------------------|---------------|-------|
-| `TEXT_MESSAGE_APP` (1) | `/msg` | Plain text messages |
+| `TEXT_MESSAGE_APP` (1) | `/msg/inbox` | Plain text messages |
 | `POSITION_APP` (3) | `/pos` | Position updates |
 | `NODEINFO_APP` (4) | `/node` | Node info exchange |
 | `TELEMETRY_APP` (67) | `/telem` | Device telemetry |
@@ -566,7 +566,7 @@ Adapter:
     4. Queues local queueStatus for the Meshtastic app
 
 LICHEN: The app-compat layer does not emit Meshtastic RF packets. The gateway currently reports unsupported for text
-send attempts until the concrete Zephyr `/msg` or local send contract is implemented in `project-LICHEN-t2hn.7.2`.
+send attempts until the concrete Zephyr `/msg/inbox` or local send contract is implemented in `project-LICHEN-t2hn.7.2`.
 Directed Meshtastic node-number resolution is tracked by `project-LICHEN-t2hn.7.1`.
 ```
 

@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import asyncio
 import itertools
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -401,16 +402,17 @@ _MESSAGES_MAX = 100  # maximum inbox depth
 
 
 class MessagesResource(resource.ObservableResource):
-    """Observable ``/messages`` — CBOR inbox with POST-to-send.
+    """Observable ``/msg/inbox`` — CBOR inbox with POST-to-send.
 
     Each message is a CBOR map::
 
-        {"from": "<hex-eui64>", "to": "<hex-eui64> | all", "text": "...", "t": <float>}
+        {"from": "<addr>", "to": "<addr> | all", "body": "...", "ts": <timestamp>}
 
     **GET** returns the inbox (most recent :data:`_MESSAGES_MAX` messages, oldest
     first).  **POST** delivers a new message and notifies all observers;
-    the body must be a valid CBOR map with at least ``from``, ``to``, and
-    ``text`` keys.
+    the body must be a valid CBOR map with a message body. Local LCI submits
+    include ``to``; direct POSTs to a destination inbox MAY omit it. Legacy
+    ``text``/``t`` fields are accepted and preserved for simulator compatibility.
 
     Callers can also inject received messages directly via :meth:`deliver`
     (used when a message arrives over the mesh rather than via CoAP POST).
@@ -420,12 +422,20 @@ class MessagesResource(resource.ObservableResource):
         msgs = MessagesResource()
         site = build_site(info, messages_resource=msgs)
         # A peer message arrives over the mesh:
-        msgs.deliver({"from": "aabb...", "to": "all", "text": "hello", "t": 1700000000.0})
+        msgs.deliver({"from": "aabb...", "to": "all", "body": "hello", "ts": 1700000000})
     """
 
     def __init__(self) -> None:
         super().__init__()
         self._inbox: list[dict[str, Any]] = []
+        self._sent: dict[str, dict[str, Any]] = {}
+        self._sent_order: list[str] = []
+        self._sent_detail_registrar: Callable[[str, dict[str, Any]], None] | None = None
+        self._legacy_aliases: list[LegacyMessagesAliasResource] = []
+        self._next_id = 1
+
+    def get_link_description(self) -> dict[str, Any]:
+        return {"rt": "msg.inbox", "ct": str(int(CBOR)), "obs": None}
 
     def deliver(self, message: dict[str, Any]) -> None:
         """Append *message* to the inbox and notify observers.
@@ -436,9 +446,30 @@ class MessagesResource(resource.ObservableResource):
         if len(self._inbox) > _MESSAGES_MAX:
             self._inbox = self._inbox[-_MESSAGES_MAX:]
         self.updated_state()
+        for alias in self._legacy_aliases:
+            alias.updated_state()
+
+    def sent_messages(self) -> list[dict[str, Any]]:
+        """Return sent messages in creation order."""
+        return [self._sent[msg_id] for msg_id in self._sent_order]
+
+    def sent_message(self, msg_id: str) -> dict[str, Any] | None:
+        """Return one sent message by ID."""
+        return self._sent.get(msg_id)
+
+    def set_sent_detail_registrar(
+        self,
+        registrar: Callable[[str, dict[str, Any]], None],
+    ) -> None:
+        """Install callback used to mount ``/msg/sent/{id}`` resources."""
+        self._sent_detail_registrar = registrar
+
+    def register_legacy_alias(self, alias: LegacyMessagesAliasResource) -> None:
+        """Register a legacy observable alias that mirrors inbox updates."""
+        self._legacy_aliases.append(alias)
 
     async def render_get(self, request: Message) -> Message:
-        msg = Message(code=CONTENT, payload=cbor2.dumps(self._inbox))
+        msg = Message(code=CONTENT, payload=cbor2.dumps({"messages": self._inbox}))
         msg.opt.content_format = CBOR
         return msg
 
@@ -451,11 +482,68 @@ class MessagesResource(resource.ObservableResource):
             return Message(code=aiocoap.BAD_REQUEST)
         if not isinstance(body, dict):
             return Message(code=aiocoap.BAD_REQUEST)
-        required = {"from", "to", "text"}
-        if not required.issubset(body.keys()):
+        if not (isinstance(body.get("body"), str) or isinstance(body.get("text"), str)):
             return Message(code=aiocoap.BAD_REQUEST)
+        body = dict(body)
+        body.setdefault("id", self._next_id)
+        if isinstance(body["id"], int):
+            self._next_id = max(self._next_id + 1, body["id"] + 1)
+        else:
+            self._next_id += 1
+        if "body" not in body and "text" in body:
+            body["body"] = body["text"]
         self.deliver(body)
-        return Message(code=aiocoap.CHANGED)
+        msg_id = str(body["id"])
+        self._sent[msg_id] = body
+        if msg_id not in self._sent_order:
+            self._sent_order.append(msg_id)
+        if self._sent_detail_registrar is not None:
+            self._sent_detail_registrar(msg_id, body)
+        msg = Message(code=aiocoap.CREATED)
+        msg.opt.location_path = ("msg", "sent", msg_id)
+        return msg
+
+
+class SentMessagesResource(resource.Resource):
+    """``/msg/sent`` collection for messages accepted through LCI."""
+
+    def __init__(self, messages: MessagesResource) -> None:
+        super().__init__()
+        self._messages = messages
+
+    def get_link_description(self) -> dict[str, Any]:
+        return {"rt": "msg.sent", "ct": str(int(CBOR))}
+
+    async def render_get(self, request: Message) -> Message:
+        return _cbor_response({"messages": self._messages.sent_messages()})
+
+
+class SentMessageDetailResource(resource.Resource):
+    """``/msg/sent/{id}`` detail for one accepted message."""
+
+    def __init__(self, message: dict[str, Any]) -> None:
+        super().__init__()
+        self._message = dict(message)
+
+    async def render_get(self, request: Message) -> Message:
+        return _cbor_response(dict(self._message))
+
+
+class LegacyMessagesAliasResource(resource.ObservableResource):
+    """Legacy/demo ``/messages`` alias for older Python simulator clients."""
+
+    def __init__(self, messages: MessagesResource) -> None:
+        super().__init__()
+        self._messages = messages
+
+    def get_link_description(self) -> dict[str, Any]:
+        return {"rt": "legacy.messages", "ct": str(int(CBOR)), "title": "legacy demo alias"}
+
+    async def render_get(self, request: Message) -> Message:
+        return await self._messages.render_get(request)
+
+    async def render_post(self, request: Message) -> Message:
+        return await self._messages.render_post(request)
 
 
 _RD_DEFAULT_LIFETIME = 86400  # seconds (RFC 9176 §7.3.1)
@@ -621,7 +709,7 @@ def build_site(
 
     Pass ``mesh_client`` to also expose a forward proxy at ``/proxy``.
     Pass pre-constructed observable resources to expose ``/sensors``,
-    ``/location``, ``/presence``, ``/messages``, and/or ``/sos``; callers
+    ``/location``, ``/presence``, ``/msg/inbox``, and/or ``/sos``; callers
     hold the references and call ``update()`` / ``seen()`` / ``deliver()`` /
     ``activate()`` to push data to observers.
     Pass ``resource_directory=True`` to expose a CoAP Resource Directory
@@ -644,7 +732,15 @@ def build_site(
     if presence_resource is not None:
         site.add_resource(["presence"], presence_resource)
     if messages_resource is not None:
-        site.add_resource(["messages"], messages_resource)
+        def register_sent_detail(msg_id: str, message: dict[str, Any]) -> None:
+            site.add_resource(["msg", "sent", msg_id], SentMessageDetailResource(message))
+
+        messages_resource.set_sent_detail_registrar(register_sent_detail)
+        legacy_messages = LegacyMessagesAliasResource(messages_resource)
+        messages_resource.register_legacy_alias(legacy_messages)
+        site.add_resource(["msg", "inbox"], messages_resource)
+        site.add_resource(["msg", "sent"], SentMessagesResource(messages_resource))
+        site.add_resource(["messages"], legacy_messages)
     if sos_resource is not None:
         site.add_resource(["sos"], sos_resource)
     if resource_directory:

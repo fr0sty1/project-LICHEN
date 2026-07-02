@@ -120,7 +120,9 @@ async def partial_presence(request: Request) -> HTMLResponse:
 
 
 async def partial_messages(request: Request) -> HTMLResponse:
-    data = await _fetch("/messages")
+    data = await _fetch("/msg/inbox")
+    if isinstance(data, dict):
+        data = data.get("messages")
     return HTMLResponse(_render_list(data, "Inbox empty"))
 
 

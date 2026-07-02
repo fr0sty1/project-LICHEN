@@ -130,7 +130,7 @@ class FakeMessagingClient:
         self.subscription = FakeMessageSubscription(self.observe_rows)
         return self.subscription
 
-    async def send_message(self, draft: MessageDraft, path: str = "/msg") -> SendResult:
+    async def send_message(self, draft: MessageDraft, path: str = "/msg/inbox") -> SendResult:
         self.send_calls.append((draft, path))
         if self.send_error is not None:
             raise self.send_error
@@ -449,7 +449,7 @@ async def test_message_send_success_updates_chat_and_status() -> None:
         status = app.query_one("#native-status", NativeStatusBar).status
 
     assert [(call[0].to, call[0].body, call[1]) for call in client.send_calls] == [
-        ("fd00::2", "ping", "/msg")
+        ("fd00::2", "ping", "/msg/inbox")
     ]
     assert "ping" in rendered
     assert "delivery" in rendered
@@ -477,7 +477,7 @@ async def test_message_send_from_compose_inputs() -> None:
         await pilot.pause()
 
     assert [(call[0].to, call[0].body, call[1]) for call in client.send_calls] == [
-        ("fd00::2", "from keyboard", "/msg")
+        ("fd00::2", "from keyboard", "/msg/inbox")
     ]
     assert app.messaging.draft_body == ""
 

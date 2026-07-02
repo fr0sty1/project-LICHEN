@@ -156,6 +156,7 @@ Standard CoAP resources:
 ```
 GET  coap://[node]/sensors/location     # Position
 POST coap://[node]/msg/inbox            # Send message
+GET  coap://[node]/msg/inbox            # Receive/observe inbox
 POST coap://[ff02::1]/sos               # Emergency broadcast
 GET  coap://[node]/.well-known/core     # Resource discovery
 ```

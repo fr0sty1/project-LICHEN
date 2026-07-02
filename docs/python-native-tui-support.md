@@ -23,7 +23,7 @@ tests without hiding unsupported paths.
 |-----------|-----------------|-------------|------------|
 | macOS, no hardware | Supported for unit, renderer, CLI-help, and fake transport tests. | Python 3.11+, `uv`, terminal with Textual support. | `uv run pytest tests/tui tests/client tests/test_packaging.py -q` |
 | Linux, no hardware | Supported for unit, renderer, CLI-help, and fake transport tests. | Python 3.11+, `uv`; no BlueZ adapter access is required for default tests. | Same pytest command as macOS |
-| IP/CoAP local node | Software path implemented. | Host can route to the node IPv6 address and the firmware exposes LCI CoAP resources such as `/status`, `/config`, `/msg`, `/logs`, and `/diag`. | Manual smoke below; physical validation tracked by `project-LICHEN-mg7z` |
+| IP/CoAP local node | Software path implemented. | Host can route to the node IPv6 address and the firmware exposes LCI CoAP resources such as `/status`, `/config`, `/msg/inbox`, `/logs`, and `/diag`. | Manual smoke below; physical validation tracked by `project-LICHEN-mg7z` |
 | BLE native LCI | Packet discovery pieces exist, but the Python TUI cannot use BLE as an LCI `ResourceTransport` yet. | Needs BLE LCI UUID discovery plus CoAP-over-packet or equivalent ResourceTransport bridge. | Software bridge tracked by `project-LICHEN-q279`; physical smoke by `project-LICHEN-mg7z` |
 | native_sim/fakes | Supported for client model, renderer, Observe, and key-flow tests. | Fake transports must remain the default CI path. | `tests/tui`, `tests/client`, `tests/test_packaging.py` |
 
@@ -40,7 +40,7 @@ the LCI CoAP contract used by `LciClient`:
 - `GET /status/neighbors`
 - `GET /status/routes`
 - `GET /msg/inbox`
-- `POST /msg`
+- `POST /msg/inbox`
 - `GET /logs` with Observe, when logs are supported
 - `GET /diag`, when diagnostics are supported
 
@@ -48,8 +48,9 @@ The Python native client follows the LCI IPv6 + CoAP contract in
 `spec/11-lci.md`. It does not implement the historical CBOR native framing in
 `spec/lichen-native/` for BLE, USB, serial, or IP LCI sessions.
 
-The Python simulator currently has messaging resource-contract drift with the
-LCI `/msg` paths. That is tracked by `project-LICHEN-u9jk`.
+The legacy Python demo/simulator `/messages` resource is not a native LCI
+messaging contract. Native clients use `/msg/inbox`; `/messages` may be used
+only when explicitly configured for legacy demo compatibility.
 
 ## Known Limitations
 

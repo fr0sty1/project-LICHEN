@@ -58,7 +58,7 @@ class MessagingClient(Protocol):
     async def observe_inbox(self, path: str = "/msg/inbox") -> MessageSubscriptionLike:
         """Start a normalized inbox Observe subscription."""
 
-    async def send_message(self, draft: MessageDraft, path: str = "/msg") -> SendResult:
+    async def send_message(self, draft: MessageDraft, path: str = "/msg/inbox") -> SendResult:
         """Send a normalized message draft."""
 
     async def discover(self) -> Capabilities:
@@ -1040,7 +1040,7 @@ class NativeClientApp(App[None]):
         *,
         client: MessagingClient | None = None,
         inbox_path: str = "/msg/inbox",
-        send_path: str = "/msg",
+        send_path: str = "/msg/inbox",
     ) -> None:
         super().__init__()
         self.status = status or ShellStatus()
@@ -1860,7 +1860,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         help="Base IP/CoAP URI for a local LCI endpoint, for example coap://[fe80::1]",
     )
     parser.add_argument("--inbox-path", default="/msg/inbox")
-    parser.add_argument("--send-path", default="/msg")
+    parser.add_argument("--send-path", default="/msg/inbox")
     args = parser.parse_args(argv)
     client = build_messaging_client(args.coap_base_uri)
     status = ShellStatus(

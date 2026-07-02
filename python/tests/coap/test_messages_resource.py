@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""Tests for the observable /messages CoAP resource."""
+"""Tests for the observable /msg/inbox CoAP resource."""
 
 from __future__ import annotations
 
@@ -36,21 +36,43 @@ async def _setup() -> tuple[aiocoap.Context, aiocoap.Context, MessagesResource]:
     return client, server, msgs
 
 
+def _inbox(payload: bytes) -> list[dict[str, object]]:
+    decoded = cbor2.loads(payload)
+    assert isinstance(decoded, dict)
+    messages = decoded["messages"]
+    assert isinstance(messages, list)
+    return messages
+
+
 # ---------------------------------------------------------------------------
 # GET
 # ---------------------------------------------------------------------------
 
 
 class TestMessagesGet:
+    async def test_core_discovery_marks_canonical_and_legacy_paths(self) -> None:
+        client, server, _ = await _setup()
+        try:
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/.well-known/core")
+            ).response
+            body = resp.payload.decode()
+            assert '</msg/inbox>;rt="msg.inbox";ct="60";obs' in body
+            assert '</msg/sent>;rt="msg.sent";ct="60"' in body
+            assert '</messages>;rt="legacy.messages";ct="60";title="legacy demo alias"' in body
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
     async def test_empty_inbox(self) -> None:
         client, server, _ = await _setup()
         try:
             resp = await client.request(
-                Message(code=GET, uri="coap://srv/messages")
+                Message(code=GET, uri="coap://srv/msg/inbox")
             ).response
             assert resp.code == aiocoap.CONTENT
             assert resp.opt.content_format == 60
-            assert cbor2.loads(resp.payload) == []
+            assert _inbox(resp.payload) == []
         finally:
             await client.shutdown()
             await server.shutdown()
@@ -60,9 +82,9 @@ class TestMessagesGet:
         try:
             msgs.deliver(_MSG1)
             resp = await client.request(
-                Message(code=GET, uri="coap://srv/messages")
+                Message(code=GET, uri="coap://srv/msg/inbox")
             ).response
-            inbox = cbor2.loads(resp.payload)
+            inbox = _inbox(resp.payload)
             assert len(inbox) == 1
             assert inbox[0]["text"] == "hello mesh"
             assert inbox[0]["from"] == _FROM
@@ -76,9 +98,9 @@ class TestMessagesGet:
             msgs.deliver(_MSG1)
             msgs.deliver(_MSG2)
             resp = await client.request(
-                Message(code=GET, uri="coap://srv/messages")
+                Message(code=GET, uri="coap://srv/msg/inbox")
             ).response
-            inbox = cbor2.loads(resp.payload)
+            inbox = _inbox(resp.payload)
             assert len(inbox) == 2
             assert inbox[0]["text"] == "hello mesh"
             assert inbox[1]["text"] == "hi back"
@@ -93,9 +115,9 @@ class TestMessagesGet:
             for i in range(_MESSAGES_MAX + 10):
                 msgs.deliver({"from": _FROM, "to": "all", "text": str(i), "t": _T0 + i})
             resp = await client.request(
-                Message(code=GET, uri="coap://srv/messages")
+                Message(code=GET, uri="coap://srv/msg/inbox")
             ).response
-            inbox = cbor2.loads(resp.payload)
+            inbox = _inbox(resp.payload)
             assert len(inbox) == _MESSAGES_MAX
             # oldest messages were dropped; newest survive
             assert inbox[-1]["text"] == str(_MESSAGES_MAX + 9)
@@ -111,9 +133,22 @@ class TestMessagesGet:
         client = await create_lichen_context(net.channel("cli"), "cli")
         try:
             resp = await client.request(
-                Message(code=GET, uri="coap://srv/messages")
+                Message(code=GET, uri="coap://srv/msg/inbox")
             ).response
             assert resp.code == aiocoap.NOT_FOUND
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_legacy_messages_alias_reads_same_inbox(self) -> None:
+        client, server, msgs = await _setup()
+        try:
+            msgs.deliver(_MSG1)
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/messages")
+            ).response
+            inbox = _inbox(resp.payload)
+            assert inbox[0]["text"] == "hello mesh"
         finally:
             await client.shutdown()
             await server.shutdown()
@@ -125,22 +160,59 @@ class TestMessagesGet:
 
 
 class TestMessagesPost:
-    async def test_post_valid_message(self) -> None:
+    async def test_post_valid_legacy_message(self) -> None:
         client, server, msgs = await _setup()
         try:
             body = cbor2.dumps(_MSG1)
             resp = await client.request(
-                Message(code=POST, uri="coap://srv/messages",
-                        payload=body, content_format=60)
+                Message(
+                    code=POST,
+                    uri="coap://srv/msg/inbox",
+                    payload=body,
+                    content_format=60,
+                )
             ).response
-            assert resp.code == aiocoap.CHANGED
+            assert resp.code == aiocoap.CREATED
+            assert tuple(resp.opt.location_path) == ("msg", "sent", "1")
+            sent_resp = await client.request(
+                Message(code=GET, uri="coap://srv/msg/sent/1")
+            ).response
+            assert cbor2.loads(sent_resp.payload)["body"] == "hello mesh"
+            sent_collection = await client.request(
+                Message(code=GET, uri="coap://srv/msg/sent")
+            ).response
+            assert _inbox(sent_collection.payload)[0]["body"] == "hello mesh"
             # Verify it landed in inbox
             get_resp = await client.request(
-                Message(code=GET, uri="coap://srv/messages")
+                Message(code=GET, uri="coap://srv/msg/inbox")
             ).response
-            inbox = cbor2.loads(get_resp.payload)
+            inbox = _inbox(get_resp.payload)
             assert len(inbox) == 1
             assert inbox[0]["text"] == "hello mesh"
+            assert inbox[0]["body"] == "hello mesh"
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_post_valid_lci_message_body(self) -> None:
+        client, server, _ = await _setup()
+        try:
+            body = cbor2.dumps({"to": "fd00::2", "body": "hello lci", "ack": True})
+            resp = await client.request(
+                Message(
+                    code=POST,
+                    uri="coap://srv/msg/inbox",
+                    payload=body,
+                    content_format=60,
+                )
+            ).response
+            assert resp.code == aiocoap.CREATED
+            get_resp = await client.request(
+                Message(code=GET, uri="coap://srv/msg/inbox")
+            ).response
+            inbox = _inbox(get_resp.payload)
+            assert inbox[0]["body"] == "hello lci"
+            assert inbox[0]["ack"] is True
         finally:
             await client.shutdown()
             await server.shutdown()
@@ -149,7 +221,7 @@ class TestMessagesPost:
         client, server, _ = await _setup()
         try:
             resp = await client.request(
-                Message(code=POST, uri="coap://srv/messages", payload=b"")
+                Message(code=POST, uri="coap://srv/msg/inbox", payload=b"")
             ).response
             assert resp.code == aiocoap.BAD_REQUEST
         finally:
@@ -160,7 +232,7 @@ class TestMessagesPost:
         client, server, _ = await _setup()
         try:
             resp = await client.request(
-                Message(code=POST, uri="coap://srv/messages", payload=b"\xff\xff")
+                Message(code=POST, uri="coap://srv/msg/inbox", payload=b"\xff\xff")
             ).response
             assert resp.code == aiocoap.BAD_REQUEST
         finally:
@@ -173,8 +245,12 @@ class TestMessagesPost:
             # Missing "text"
             body = cbor2.dumps({"from": _FROM, "to": "all"})
             resp = await client.request(
-                Message(code=POST, uri="coap://srv/messages",
-                        payload=body, content_format=60)
+                Message(
+                    code=POST,
+                    uri="coap://srv/msg/inbox",
+                    payload=body,
+                    content_format=60,
+                )
             ).response
             assert resp.code == aiocoap.BAD_REQUEST
         finally:
@@ -186,8 +262,12 @@ class TestMessagesPost:
         try:
             body = cbor2.dumps(["not", "a", "map"])
             resp = await client.request(
-                Message(code=POST, uri="coap://srv/messages",
-                        payload=body, content_format=60)
+                Message(
+                    code=POST,
+                    uri="coap://srv/msg/inbox",
+                    payload=body,
+                    content_format=60,
+                )
             ).response
             assert resp.code == aiocoap.BAD_REQUEST
         finally:
@@ -205,16 +285,16 @@ class TestMessagesObserve:
         client, server, msgs = await _setup()
         try:
             req = client.request(
-                Message(code=GET, observe=0, uri="coap://srv/messages")
+                Message(code=GET, observe=0, uri="coap://srv/msg/inbox")
             )
             first = await req.response
             assert first.code == aiocoap.CONTENT
-            assert cbor2.loads(first.payload) == []
+            assert _inbox(first.payload) == []
 
             obs_iter = req.observation.__aiter__()
             msgs.deliver(_MSG1)
             note = await asyncio.wait_for(obs_iter.__anext__(), timeout=5.0)
-            inbox = cbor2.loads(note.payload)
+            inbox = _inbox(note.payload)
             assert len(inbox) == 1
             assert inbox[0]["text"] == "hello mesh"
         finally:
@@ -225,19 +305,40 @@ class TestMessagesObserve:
         client, server, msgs = await _setup()
         try:
             req = client.request(
-                Message(code=GET, observe=0, uri="coap://srv/messages")
+                Message(code=GET, observe=0, uri="coap://srv/msg/inbox")
             )
             await req.response
 
             obs_iter = req.observation.__aiter__()
             # POST from same client context triggers notification
             await client.request(
-                Message(code=POST, uri="coap://srv/messages",
-                        payload=cbor2.dumps(_MSG2), content_format=60)
+                Message(
+                    code=POST,
+                    uri="coap://srv/msg/inbox",
+                    payload=cbor2.dumps(_MSG2),
+                    content_format=60,
+                )
             ).response
             note = await asyncio.wait_for(obs_iter.__anext__(), timeout=5.0)
-            inbox = cbor2.loads(note.payload)
+            inbox = _inbox(note.payload)
             assert inbox[0]["from"] == _TO_A
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_legacy_messages_alias_observe_notified_on_deliver(self) -> None:
+        client, server, msgs = await _setup()
+        try:
+            req = client.request(
+                Message(code=GET, observe=0, uri="coap://srv/messages")
+            )
+            await req.response
+
+            obs_iter = req.observation.__aiter__()
+            msgs.deliver(_MSG1)
+            note = await asyncio.wait_for(obs_iter.__anext__(), timeout=5.0)
+            inbox = _inbox(note.payload)
+            assert inbox[0]["text"] == "hello mesh"
         finally:
             await client.shutdown()
             await server.shutdown()

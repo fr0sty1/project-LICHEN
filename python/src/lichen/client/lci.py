@@ -193,7 +193,7 @@ class LciClient:
         """Start observing an inbox resource and return typed updates."""
         return MessageSubscription(await self._transport.observe(path), path)
 
-    async def send_message(self, draft: MessageDraft, path: str = "/msg") -> SendResult:
+    async def send_message(self, draft: MessageDraft, path: str = "/msg/inbox") -> SendResult:
         """Send a message through the selected discovered messaging resource."""
         if not draft.to or not draft.body:
             return SendResult(

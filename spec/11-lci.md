@@ -172,7 +172,10 @@ Response:
 </status/routes>;rt="status",
 </keys>;rt="keystore",
 </mesh>;rt="proxy",
-</diag>;rt="diagnostics"
+</diag>;rt="diagnostics",
+</msg/inbox>;rt="msg.inbox";ct=60;obs,
+</msg/sent>;rt="msg.sent";ct=60,
+</msg/ack>;rt="msg.ack";ct=60
 ```
 
 #### 17.5.2. Configuration Resources
@@ -508,7 +511,7 @@ For human messaging (chat-like), nodes MAY implement:
 
 ```
 # Send message
-POST /msg
+POST /msg/inbox
 Content-Format: application/cbor
 
 {
@@ -518,7 +521,7 @@ Content-Format: application/cbor
 }
 
 Response: 2.01 Created
-Location-Path: /msg/outbox/42
+Location-Path: /msg/sent/42
 ```
 
 ```
@@ -540,6 +543,8 @@ Content-Format: application/cbor
 ```
 
 This is OPTIONAL. Applications MAY instead use CoAP directly to mesh nodes.
+The legacy Python demo `/messages` resource is not part of LCI and MUST NOT be
+advertised as a native messaging resource.
 
 ### 17.6. Security
 

@@ -98,14 +98,15 @@ class TestPartialPresence:
 
 class TestPartialMessages:
     def test_empty_inbox(self, client: TestClient) -> None:
-        with _mock_fetch([]):
+        with _mock_fetch({"messages": []}):
             resp = client.get("/partial/messages")
         assert "Inbox empty" in resp.text
 
     def test_with_message(self, client: TestClient) -> None:
-        with _mock_fetch([{"from": "alice", "text": "hello mesh"}]):
+        with _mock_fetch({"messages": [{"from": "alice", "body": "hello mesh"}]}) as fetch:
             resp = client.get("/partial/messages")
         assert "hello mesh" in resp.text
+        fetch.assert_awaited_once_with("/msg/inbox")
 
 
 class TestPartialSensors:

@@ -70,3 +70,26 @@ def test_zephyr_native_cbor_library_is_marked_legacy() -> None:
         text = read_repo_text(path)
         assert "Legacy" in text or "historical" in text, path
         assert "spec/11-lci.md" in text, path
+
+
+def test_lci_messaging_paths_use_msg_inbox_contract() -> None:
+    lci = read_repo_text("spec/11-lci.md")
+    apps = read_repo_text("spec/12-apps.md")
+    readme = read_repo_text("README.md")
+    support = read_repo_text("docs/python-native-tui-support.md")
+    meshtastic = read_repo_text("docs/meshtastic-compat-dev.md")
+
+    assert "POST /msg/inbox" in lci
+    assert "GET /msg/inbox" in lci
+    assert "POST coap://[destination]/msg/inbox" in apps
+    assert "GET coap://[node]/msg/inbox" in apps
+    assert "POST coap://[node]/msg/inbox" in readme
+    assert "GET  coap://[node]/msg/inbox" in readme
+    assert "POST /msg/inbox" in support
+    assert "GET /msg/inbox" in support
+    assert "`TEXT_MESSAGE_APP` (1) | `/msg/inbox`" in meshtastic
+    assert "Zephyr `/msg/inbox`" in meshtastic
+
+    assert "POST /msg\n" not in lci
+    assert "/msg/outbox" not in lci
+    assert "legacy Python demo `/messages` resource is not part of LCI" in lci
