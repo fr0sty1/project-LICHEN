@@ -38,10 +38,10 @@ The simulator TUI and native LCI client are separate commands:
 lichen-tui --host localhost --port 4444 --sim default --node mynode
 
 # Native LCI client over IP/CoAP
-lichen-native-client --coap-base-uri 'coap://[fe80::1]'
+lichen-native-client --coap-base-uri 'coap://[fe80::1%25en0]'
 
 # Backward-compatible native-client alias
-lichen-native-tui --coap-base-uri 'coap://[fe80::1]'
+lichen-native-tui --coap-base-uri 'coap://[fe80::1%25en0]'
 ```
 
 Install the native client dependencies from the project checkout with:
@@ -133,6 +133,9 @@ Native TUI snapshot coverage is assertion-based rather than committed generated
 SVG files: tests export terminal screenshots and assert stable text for the
 connection state, inbox, compose, status, mesh, config, logs, and diagnostics
 screens.
+
+For the full host/transport support matrix and manual smoke-test procedure, see
+`../docs/python-native-tui-support.md`.
 
 Check open issues:
 ```bash
