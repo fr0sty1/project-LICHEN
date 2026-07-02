@@ -115,26 +115,38 @@ s.open(); time.sleep(0.5); s.close()
 PYEOF
 }
 
+# The Terminus hub only supports GANGED power switching (-f required):
+# cycling any port cycles ALL of them — the other boards just re-enumerate.
+# Limitation: this is a host/bus-level replug. A battery-powered board whose
+# USB stack died device-side (T1000-E -110 wedge, bd 1jqj) keeps its MCU
+# powered through the cycle and stays wedged — that needs a physical replug.
 hub_cycle() {
-    echo "==> No serial port for $BOARD — power-cycling hub 1-1 port $HUB_PORT (software replug)..."
-    if ! uhubctl -l 1-1 -p "$HUB_PORT" -a cycle -d 2; then
+    echo "==> No serial port for $BOARD — power-cycling hub 1-1 (ganged; all ports)..."
+    if ! uhubctl -l 1-1 -a cycle -d 3 -f; then
         echo "ERROR: uhubctl failed. Install the hub udev rule (99-lichen-hub.rules)" >&2
-        echo "       or run: sudo uhubctl -l 1-1 -p $HUB_PORT -a cycle -d 2" >&2
+        echo "       or run: sudo uhubctl -l 1-1 -a cycle -d 3 -f" >&2
         exit 1
     fi
-    sleep 3
+    sleep 5
 }
 
 uf2_fallback() {  # T-Echo only: the wedged bootloader still serves USB MSC
     [[ "$BOARD" == "t_echo" ]] || return 1
     echo "==> Serial DFU failed — trying UF2 fallback via TECHOBOOT..."
-    local vol="" i
+    local dev="" vol="" i
     for i in $(seq 1 15); do
-        vol=$(lsblk -rno LABEL,MOUNTPOINT 2>/dev/null | awk '$1=="TECHOBOOT"{print $2; exit}')
-        [[ -n "$vol" ]] && break
+        dev=$(lsblk -rno NAME,LABEL 2>/dev/null | awk '$2=="TECHOBOOT"{print "/dev/"$1; exit}')
+        [[ -n "$dev" ]] && break
         sleep 1
     done
-    [[ -n "$vol" ]] || { echo "TECHOBOOT volume never mounted" >&2; return 1; }
+    [[ -n "$dev" ]] || { echo "TECHOBOOT volume never appeared" >&2; return 1; }
+    vol=$(lsblk -rno MOUNTPOINT "$dev" | head -1)
+    if [[ -z "$vol" ]]; then
+        udisksctl mount -b "$dev" >/dev/null 2>&1 || true
+        sleep 1
+        vol=$(lsblk -rno MOUNTPOINT "$dev" | head -1)
+    fi
+    [[ -n "$vol" ]] || { echo "TECHOBOOT would not mount" >&2; return 1; }
     local uf2conv=zephyr/scripts/build/uf2conv.py
     python3 "$uf2conv" "$COMBINED" -c -f 0xADA52840 -b "$MCUBOOT_ADDR" \
         -o /tmp/t_echo_recover.uf2
@@ -164,15 +176,18 @@ fi
 # Flash. Settle first: DFU packets sent before the freshly-enumerated
 # bootloader is ready go unanswered AND wedge it (T-Echo). Long timeout on
 # purpose: killing adafruit-nrfutil mid-transfer wedges it the same way.
+# Success is judged by the app enumerating, NOT by nrfutil's exit code —
+# adafruit-nrfutil exits 0 on some transfer failures.
 # -----------------------------------------------------------------------
 echo "==> Serial DFU flash on $PORT..."
 sleep 5
-if ! timeout 400 adafruit-nrfutil dfu serial \
-        --package "$DFU_ZIP" -p "$PORT" -b 115200 --singlebank; then
-    uf2_fallback || { echo "ERROR: all flash paths failed" >&2; exit 1; }
-fi
+timeout 400 adafruit-nrfutil dfu serial \
+    --package "$DFU_ZIP" -p "$PORT" -b 115200 --singlebank || true
 
 echo "==> Waiting for app to enumerate..."
-APP=$(wait_for app_port 20) || {
-    echo "ERROR: app port did not come back after flash" >&2; exit 1; }
+if ! APP=$(wait_for app_port 20); then
+    uf2_fallback || { echo "ERROR: all flash paths failed" >&2; exit 1; }
+    APP=$(wait_for app_port 25) || {
+        echo "ERROR: app port did not come back after UF2 flash" >&2; exit 1; }
+fi
 echo "Done: $APP"
