@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-9c4y.21",
+  "title": "Add MeshCore compatibility-local settings stores",
+  "description": "Follow-up from project-LICHEN-9c4y.12 support-matrix review. If MeshCore app compatibility grows beyond the MVP read-only placeholders, implement compatibility-local persistent stores for SET_ADVERT_NAME, SET_CHANNEL, SET_AUTOADD_CONFIG, SET_DEFAULT_FLOOD_SCOPE, and SET_DEVICE_PIN. Stores must be explicitly separate from native LICHEN identity, OSCORE/link/group/routing state, validate inputs, persist/reset deterministically, and have native_sim tests plus canonical vectors before any support claim changes from unsupported to supported.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T01:05:25.069747Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T01:05:25.070671Z",
+  "labels": [
+    "zephyr",
+    "meshcore",
+    "settings",
+    "compatibility",
+    "tests",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c4y.21",
+      "depends_on_id": "project-LICHEN-9c4y",
+      "type": "parent-child",
+      "created_at": "2026-07-02T01:05:25.07067Z"
+    }
+  ]
+}
