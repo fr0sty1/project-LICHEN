@@ -11,6 +11,12 @@ from lichen.client.ble import (
     BleTransportError,
     discover_lci_devices,
 )
+from lichen.client.ip_coap import (
+    AiocoapResourceSubscription,
+    AiocoapResourceTransport,
+    CoapTransportError,
+    IpCoapConfig,
+)
 from lichen.client.lci import (
     LciClient,
     LciClientError,
@@ -61,5 +67,9 @@ __all__ = [
     "BleLciProfile",
     "BlePacketTransport",
     "BleTransportError",
+    "AiocoapResourceSubscription",
+    "AiocoapResourceTransport",
+    "CoapTransportError",
+    "IpCoapConfig",
     "discover_lci_devices",
 ]
