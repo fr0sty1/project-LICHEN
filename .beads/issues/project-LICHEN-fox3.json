@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-fox3",
+  "title": "Evaluate build-time firmware timestamp as GNSS/time epoch seed",
+  "description": "User suggested using build-time stamps in firmware or board metadata to epoch GNSS/time. Evaluate software-only design: how build epoch is embedded, trust/freshness limits, interaction with GNSS cold start and network/manual time sources, and what hardware validation remains for RTC/GNSS behavior. Create implementation follow-ups if accepted.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T20:16:18.097858Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T20:16:18.098371Z",
+  "labels": [
+    "time",
+    "gnss",
+    "firmware",
+    "software-design"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-fox3",
+      "depends_on_id": "project-LICHEN-zte2.9.1",
+      "type": "discovered-from",
+      "created_at": "2026-07-02T20:16:18.098371Z"
+    }
+  ]
+}

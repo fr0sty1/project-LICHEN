@@ -20,6 +20,7 @@ int lichen_app_location_submit_to_hal(
 	const struct lichen_app_location_time_snapshot *app);
 int lichen_app_network_location_submit_to_hal(
 	const struct lichen_app_location_time_snapshot *app);
+int lichen_app_network_location_clear_from_hal(void);
 int lichen_app_manual_location_submit_to_hal(
 	const struct lichen_app_location_time_snapshot *app);
 int lichen_app_time_submit_to_hal(const struct lichen_app_time_snapshot *app);

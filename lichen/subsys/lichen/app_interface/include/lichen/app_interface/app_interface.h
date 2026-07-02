@@ -224,6 +224,7 @@ int lichen_app_interface_submit_location(
 	const struct lichen_app_location_time_snapshot *location);
 int lichen_app_interface_submit_network_location(
 	const struct lichen_app_location_time_snapshot *location);
+int lichen_app_interface_clear_network_location(void);
 int lichen_app_interface_submit_manual_location(
 	const struct lichen_app_location_time_snapshot *location);
 int lichen_app_interface_submit_time(
@@ -238,6 +239,8 @@ int lichen_app_interface_copy_stats(
 
 #ifdef CONFIG_LICHEN_APP_INTERFACE_TEST_HOOKS
 void lichen_app_interface_test_reset(void);
+void lichen_app_interface_test_fail_next_location_submit(int ret);
+void lichen_app_interface_test_fail_next_clear_network(int ret);
 #endif
 
 #ifdef __cplusplus

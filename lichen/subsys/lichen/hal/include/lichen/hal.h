@@ -266,6 +266,8 @@ int lichen_hal_power_snapshot_get(struct lichen_hal_power_snapshot *snapshot);
  * provide NONE, NO_FIX, 2D, 3D, or ERROR.
  */
 int lichen_hal_location_submit(const struct lichen_hal_location_sample *sample);
+int lichen_hal_location_clear_source(
+	enum lichen_hal_location_source_class source_class);
 void lichen_hal_location_clear(void);
 int lichen_hal_location_time_snapshot_get(
 	struct lichen_hal_location_time_snapshot *snapshot);

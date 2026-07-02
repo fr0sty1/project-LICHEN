@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-r9bb",
+  "title": "Wire verified LICHEN announce RX into gateway network-location ingestion",
+  "description": "The no-hardware announce-location slice adds a decoded announce coordinate decoder/table and tested gateway_network_location_submit_announce() boundary. Production C gateway/L2 still needs a real caller: parse LICHEN announce frames from RF/native simulation, verify signature/pubkey/IID/TOFU/sequence freshness, update peer/gradient state, then feed decoded app_data coords into gateway_network_location_submit_announce(). Include no-hardware simulator coverage where possible and a chained hardware/RF validation Bead for real LoRa receive paths.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T20:16:27.422914Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T20:16:27.423408Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "announce",
+    "network-source",
+    "follow-up"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-r9bb",
+      "depends_on_id": "project-LICHEN-zte2.9.1",
+      "type": "discovered-from",
+      "created_at": "2026-07-02T20:16:27.423407Z"
+    }
+  ]
+}

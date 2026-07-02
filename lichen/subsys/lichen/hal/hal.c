@@ -1084,6 +1084,23 @@ int lichen_hal_location_submit(const struct lichen_hal_location_sample *sample)
 	return 0;
 }
 
+int lichen_hal_location_clear_source(
+	enum lichen_hal_location_source_class source_class)
+{
+	if (!valid_source_class(source_class)) {
+		return -EINVAL;
+	}
+
+	k_mutex_lock(&s_location_mutex, K_FOREVER);
+	s_location_state.samples[source_class] =
+		(struct lichen_hal_location_sample){ 0 };
+	s_location_state.source_names[source_class][0] = '\0';
+	s_location_state.has_sample[source_class] = false;
+	k_mutex_unlock(&s_location_mutex);
+
+	return 0;
+}
+
 void lichen_hal_location_clear(void)
 {
 	k_mutex_lock(&s_location_mutex, K_FOREVER);

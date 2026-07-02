@@ -364,6 +364,11 @@ int lichen_app_network_location_submit_to_hal(
 	return submit_to_hal_as(app, LICHEN_HAL_LOCATION_SOURCE_NETWORK);
 }
 
+int lichen_app_network_location_clear_from_hal(void)
+{
+	return lichen_hal_location_clear_source(LICHEN_HAL_LOCATION_SOURCE_NETWORK);
+}
+
 int lichen_app_manual_location_submit_to_hal(
 	const struct lichen_app_location_time_snapshot *app)
 {
