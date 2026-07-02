@@ -1,12 +1,15 @@
 /*
  * T-Echo puck overlay — SX1262 LoRa + USB CDC-ACM.
  *
- * Two CDC-ACM UARTs:
+ * Three CDC-ACM UARTs:
  *   cdc_acm_uart0 (if00) — LICHEN Native framing protocol
  *   cdc_acm_uart1 (if02) — Zephyr console/log output
+ *   cdc_acm_uart2 (if04) — SMP image management (mcumgr / smp-flash.py)
  *
- * Separating the two prevents console printk from corrupting LICHEN binary
- * frames, and allows log output even when the host tool isn't attached.
+ * Separating them prevents console printk from corrupting LICHEN binary
+ * frames or SMP packets, and allows log output even when the host tool
+ * isn't attached. SMP on its own port makes reflash-over-running-firmware
+ * the routine dev path (no DFU / button press needed).
  */
 
 / {
@@ -15,6 +18,7 @@
 		zephyr,console     = &cdc_acm_uart1;
 		zephyr,shell-uart  = &cdc_acm_uart1;
 		lichen,native-uart = &cdc_acm_uart0;
+		zephyr,uart-mcumgr = &cdc_acm_uart2;
 	};
 };
 
@@ -27,6 +31,9 @@
 		compatible = "zephyr,cdc-acm-uart";
 	};
 	cdc_acm_uart1: cdc_acm_uart1 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+	cdc_acm_uart2: cdc_acm_uart2 {
 		compatible = "zephyr,cdc-acm-uart";
 	};
 };
