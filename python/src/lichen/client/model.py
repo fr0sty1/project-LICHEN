@@ -38,6 +38,14 @@ class DeliveryState(StrEnum):
     TRANSPORT_ERROR = "transport_error"
 
 
+class RawDiagnosticState(StrEnum):
+    """Optional raw diagnostic resource state."""
+
+    OK = "ok"
+    UNSUPPORTED = "unsupported"
+    ERROR = "error"
+
+
 @dataclass(frozen=True)
 class CoapResult:
     """A decoded CoAP response with enough detail for diagnostics."""
@@ -178,6 +186,45 @@ class SendResult:
     coap_code: str | None = None
     location_path: tuple[str, ...] = ()
     detail: str | None = None
+
+
+@dataclass(frozen=True)
+class RawRxStatus:
+    """Normalized `/diag/raw/rx` state."""
+
+    state: RawDiagnosticState
+    raw: JsonMap = field(default_factory=dict)
+    enabled: bool | None = None
+    remaining_s: int | None = None
+    max_ttl_s: int | None = None
+    coap_code: str | None = None
+    detail: str | None = None
+
+
+@dataclass(frozen=True)
+class RawRxEvent:
+    """One normalized `/diag/raw/rx/events` notification."""
+
+    state: RawDiagnosticState
+    raw: JsonMap = field(default_factory=dict)
+    frame: bytes | None = None
+    rssi_dbm: float | None = None
+    snr_db: float | None = None
+    freq_hz: int | None = None
+    crc_ok: bool | None = None
+    uptime_ms: int | None = None
+    coap_code: str | None = None
+    detail: str | None = None
+
+
+@dataclass(frozen=True)
+class RawDiagnosticResult:
+    """Result for raw diagnostic commands that do not return a typed body."""
+
+    state: RawDiagnosticState
+    coap_code: str | None = None
+    detail: str | None = None
+    payload: Any | None = None
 
 
 @dataclass(frozen=True)

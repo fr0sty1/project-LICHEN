@@ -22,6 +22,10 @@ from lichen.client import (
     MessageRecord,
     Neighbor,
     RadioConfig,
+    RawDiagnosticResult,
+    RawDiagnosticState,
+    RawRxEvent,
+    RawRxStatus,
     Route,
     SendResult,
 )
@@ -72,6 +76,25 @@ class FakeMessageSubscription:
             await asyncio.Event().wait()
 
 
+class FakeRawRxSubscription:
+    def __init__(self, events: list[RawRxEvent], *, keep_open: bool = False) -> None:
+        self.event_rows = events
+        self.keep_open = keep_open
+        self.closed = False
+
+    def events(self) -> AsyncIterator[RawRxEvent]:
+        return self._events()
+
+    async def close(self) -> None:
+        self.closed = True
+
+    async def _events(self) -> AsyncIterator[RawRxEvent]:
+        for event in self.event_rows:
+            yield event
+        if self.keep_open:
+            await asyncio.Event().wait()
+
+
 class FakeMessagingClient:
     def __init__(
         self,
@@ -85,6 +108,11 @@ class FakeMessagingClient:
         send_error: Exception | None = None,
         status_error: Exception | None = None,
         config_write_result: CoapResult | None = None,
+        raw_rx_status: RawRxStatus | None = None,
+        raw_available: bool = True,
+        raw_events: list[RawRxEvent] | None = None,
+        raw_arm_result: RawDiagnosticResult | None = None,
+        raw_tx_result: RawDiagnosticResult | None = None,
         connect_error: Exception | None = None,
         disconnect_error: Exception | None = None,
     ) -> None:
@@ -99,6 +127,32 @@ class FakeMessagingClient:
         self.connect_error = connect_error
         self.disconnect_error = disconnect_error
         self.config_write_result = config_write_result or CoapResult(code="2.04")
+        self.raw_rx_status = raw_rx_status or RawRxStatus(
+            state=RawDiagnosticState.OK,
+            raw={"enabled": True, "remaining_s": 60, "max_ttl_s": 300},
+            enabled=True,
+            remaining_s=60,
+            max_ttl_s=300,
+            coap_code="2.05",
+        )
+        self.raw_available = raw_available
+        self.raw_arm_result = raw_arm_result or RawDiagnosticResult(
+            state=RawDiagnosticState.OK,
+            coap_code="2.04",
+        )
+        self.raw_tx_result = raw_tx_result or RawDiagnosticResult(
+            state=RawDiagnosticState.OK,
+            coap_code="2.04",
+        )
+        self.raw_events = raw_events or [
+            RawRxEvent(
+                state=RawDiagnosticState.OK,
+                raw={"frame": b"\xc1\x02\x03\x04", "rssi_dbm": -85, "snr_db": 7.5},
+                frame=b"\xc1\x02\x03\x04",
+                rssi_dbm=-85,
+                snr_db=7.5,
+            )
+        ]
         self.inbox_calls: list[str] = []
         self.observe_calls: list[str] = []
         self.send_calls: list[tuple[MessageDraft, str]] = []
@@ -113,6 +167,10 @@ class FakeMessagingClient:
         self.radio_writes: list[dict[str, object]] = []
         self.log_calls: list[str] = []
         self.diagnostics_calls: list[str] = []
+        self.raw_rx_calls: list[str] = []
+        self.raw_rx_arm_calls: list[tuple[int, bool, bool, str]] = []
+        self.raw_tx_calls: list[tuple[bytes, bool, str]] = []
+        self.raw_observe_calls: list[str] = []
         self.connect_calls = 0
         self.disconnect_calls = 0
         self.subscription: FakeMessageSubscription | None = None
@@ -128,6 +186,7 @@ class FakeMessagingClient:
                 )
             ]
         )
+        self.raw_subscription = FakeRawRxSubscription(self.raw_events)
 
     async def connect(self) -> None:
         self.connect_calls += 1
@@ -242,14 +301,60 @@ class FakeMessagingClient:
 
     async def get_diagnostics(self, path: str = "/diag") -> object:
         self.diagnostics_calls.append(path)
+        raw = (
+            {
+                "available": True,
+                "rx": "/diag/raw/rx",
+                "rx_events": "/diag/raw/rx/events",
+                "tx": "/diag/raw/tx",
+                "max_frame_len": 255,
+            }
+            if self.raw_available
+            else {"available": False}
+        )
         return {
             "ok": True,
+            "raw": raw,
             "nested": {"queue": 3},
             "private_key": "DO_NOT_PRINT",
             "raw_payload": "DO_NOT_PRINT_RAW",
             "blob": b"DO_NOT_PRINT_BYTES",
+            "frame": "c1020304",
             "tokens": ["DO_NOT_PRINT"],
         }
+
+    async def get_raw_rx_status(self, path: str = "/diag/raw/rx") -> RawRxStatus:
+        self.raw_rx_calls.append(path)
+        return self.raw_rx_status
+
+    async def arm_raw_rx(
+        self,
+        *,
+        ttl_s: int,
+        include_payload: bool = False,
+        enabled: bool = True,
+        path: str = "/diag/raw/rx",
+    ) -> RawDiagnosticResult:
+        self.raw_rx_arm_calls.append((ttl_s, include_payload, enabled, path))
+        return self.raw_arm_result
+
+    async def send_raw_tx(
+        self,
+        frame: bytes | bytearray | memoryview,
+        *,
+        wait: bool = True,
+        path: str = "/diag/raw/tx",
+    ) -> RawDiagnosticResult:
+        self.raw_tx_calls.append((bytes(frame), wait, path))
+        return self.raw_tx_result
+
+    async def observe_raw_rx_events(
+        self,
+        path: str = "/diag/raw/rx/events",
+    ) -> FakeRawRxSubscription:
+        self.raw_observe_calls.append(path)
+        self.raw_subscription = FakeRawRxSubscription(self.raw_events)
+        return self.raw_subscription
 
 
 class FakeResourceTransport:
@@ -725,7 +830,7 @@ async def test_lci_client_app_connects_and_refreshes_ip_transport() -> None:
 
     async with app.run_test(size=(80, 24)) as pilot:
         await pilot.pause()
-        await pilot.press("r")
+        await app.refresh_messages()
         await pilot.pause()
         rendered = app.query_one("#active-pane", ActivePane).render_mode()
 
@@ -1271,13 +1376,229 @@ async def test_diagnostics_refresh_flattens_and_redacts_payloads() -> None:
         rendered = app.query_one("#active-pane", ActivePane).render_mode()
 
     assert client.diagnostics_calls == ["/diag"]
+    assert client.raw_rx_calls == []
     assert "ok" in rendered
     assert "nested.queue" in rendered
+    assert "raw.admin" in rendered
+    assert "required" in rendered
     assert "private_key" in rendered
     assert "<redacted>" in rendered
+    assert "frame" in rendered
+    assert "c1020304" not in rendered
     assert "DO_NOT_PRINT" not in rendered
     assert "DO_NOT_PRINT_RAW" not in rendered
     assert "DO_NOT_PRINT_BYTES" not in rendered
+
+
+async def test_diagnostics_admin_enable_unlocks_raw_status_refresh() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(ShellStatus(context="Diag", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        app.enable_raw_diagnostics_admin()
+        await app.refresh_diagnostics()
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert client.diagnostics_calls == ["/diag"]
+    assert client.raw_rx_calls == ["/diag/raw/rx"]
+    assert "raw.admin" in rendered
+    assert "enabled" in rendered
+    assert "raw.rx.state" in rendered
+    assert "raw.rx.enabled" in rendered
+    assert "True" in rendered
+
+
+async def test_raw_diagnostics_flows_require_admin_before_transport_calls() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(ShellStatus(context="Diag", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await app.arm_raw_rx_diagnostics(ttl_s=60, include_payload=True)
+        await app.send_raw_diagnostic_frame(b"\xc1\x02")
+        await app.start_observing_raw_rx()
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert client.raw_rx_arm_calls == []
+    assert client.raw_tx_calls == []
+    assert client.raw_observe_calls == []
+    assert "raw diagnostics admin authorization required" in rendered
+
+
+async def test_raw_diagnostics_admin_flows_arm_observe_and_tx_with_redaction() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(ShellStatus(context="Diag", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        app.enable_raw_diagnostics_admin()
+        await app.arm_raw_rx_diagnostics(ttl_s=60, include_payload=True)
+        await app.start_observing_raw_rx()
+        await pilot.pause()
+        await app.send_raw_diagnostic_frame(b"\xc1\x02\x03\x04", wait=True)
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert client.raw_rx_arm_calls == [(60, True, True, "/diag/raw/rx")]
+    assert client.raw_rx_calls == ["/diag/raw/rx"]
+    assert client.raw_observe_calls == ["/diag/raw/rx/events"]
+    assert client.raw_subscription.closed is True
+    assert client.raw_tx_calls == [(b"\xc1\x02\x03\x04", True, "/diag/raw/tx")]
+    assert "raw.action.state" in rendered
+    assert "raw.rx.event.0.frame" in rendered
+    assert "<redacted>" in rendered
+    assert "c1020304" not in rendered
+
+
+async def test_raw_diagnostics_key_actions_reach_admin_arm_observe_and_tx() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(ShellStatus(context="Diag", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("a")
+        await pilot.pause()
+        await pilot.press("u")
+        await pilot.press("o")
+        await pilot.pause()
+        await pilot.press("x")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert client.diagnostics_calls == ["/diag"]
+    assert client.raw_rx_calls == ["/diag/raw/rx", "/diag/raw/rx"]
+    assert client.raw_rx_arm_calls == [(60, False, True, "/diag/raw/rx")]
+    assert client.raw_observe_calls == ["/diag/raw/rx/events"]
+    assert client.raw_tx_calls == [(b"\xc1\x02\x03\x04", True, "/diag/raw/tx")]
+    assert "raw.admin" in rendered
+    assert "enabled" in rendered
+    assert "raw.action.state" in rendered
+    assert "raw.rx.event.0.frame" in rendered
+    assert "c1020304" not in rendered
+
+
+async def test_raw_diagnostics_unsupported_arm_and_tx_mark_resources_unsupported() -> None:
+    client = FakeMessagingClient(
+        raw_arm_result=RawDiagnosticResult(
+            state=RawDiagnosticState.UNSUPPORTED,
+            coap_code="5.01",
+            detail="raw arm unsupported",
+        ),
+        raw_tx_result=RawDiagnosticResult(
+            state=RawDiagnosticState.UNSUPPORTED,
+            coap_code="4.04",
+            detail="raw tx unsupported",
+        ),
+    )
+    app = NativeClientApp(ShellStatus(context="Diag", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        app.enable_raw_diagnostics_admin()
+        await app.arm_raw_rx_diagnostics(ttl_s=60)
+        arm_rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        await app.send_raw_diagnostic_frame(b"\xc1")
+        tx_rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert "raw.resources" in arm_rendered
+    assert "unsupported" in arm_rendered
+    assert "raw arm unsupported" in arm_rendered
+    assert "raw.resources" in tx_rendered
+    assert "unsupported" in tx_rendered
+    assert "raw tx unsupported" in tx_rendered
+
+
+async def test_raw_diagnostics_unsupported_observe_marks_resources_unsupported() -> None:
+    client = FakeMessagingClient(
+        raw_events=[
+            RawRxEvent(
+                state=RawDiagnosticState.UNSUPPORTED,
+                coap_code="5.01",
+                detail="raw observe unsupported",
+            )
+        ]
+    )
+    app = NativeClientApp(ShellStatus(context="Diag", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        app.enable_raw_diagnostics_admin()
+        await app.start_observing_raw_rx()
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert client.raw_observe_calls == ["/diag/raw/rx/events"]
+    assert "raw.resources" in rendered
+    assert "unsupported" in rendered
+    assert "raw observe unsupported" in rendered
+
+
+async def test_diagnostics_refresh_skips_raw_status_when_not_advertised() -> None:
+    client = FakeMessagingClient(raw_available=False)
+    app = NativeClientApp(ShellStatus(context="Diag", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        app.enable_raw_diagnostics_admin()
+        await app.refresh_diagnostics()
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert client.diagnostics_calls == ["/diag"]
+    assert client.raw_rx_calls == []
+    assert "raw.resources" in rendered
+    assert "unsupported" in rendered
+    assert "raw.rx.state" not in rendered
+
+
+async def test_diagnostics_refresh_renders_raw_unsupported_state() -> None:
+    client = FakeMessagingClient(
+        raw_rx_status=RawRxStatus(
+            state=RawDiagnosticState.UNSUPPORTED,
+            coap_code="5.01",
+            detail="raw diagnostics unavailable",
+        )
+    )
+    app = NativeClientApp(ShellStatus(context="Diag", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        app.enable_raw_diagnostics_admin()
+        await app.refresh_diagnostics()
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert client.raw_rx_calls == ["/diag/raw/rx"]
+    assert "raw.rx.state" in rendered
+    assert "unsupported" in rendered
+    assert "5.01" in rendered
+    assert "raw diagnostics unavailable" in rendered
+
+
+async def test_diagnostics_refresh_renders_raw_error_state() -> None:
+    client = FakeMessagingClient(
+        raw_rx_status=RawRxStatus(
+            state=RawDiagnosticState.ERROR,
+            coap_code="4.01",
+            detail="admin required",
+        )
+    )
+    app = NativeClientApp(ShellStatus(context="Diag", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        app.enable_raw_diagnostics_admin()
+        await app.refresh_diagnostics()
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    assert "raw.rx.state" in rendered
+    assert "error" in rendered
+    assert "4.01" in rendered
+    assert "admin required" in rendered
 
 
 async def test_non_chat_refresh_error_recovers_on_success() -> None:

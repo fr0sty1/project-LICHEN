@@ -18,6 +18,7 @@ from lichen.client import (
     LciClient,
     LciClientError,
     MessageDraft,
+    RawDiagnosticState,
 )
 from lichen.client.lci import normalize_message, parse_link_format
 from lichen.coap.resources import MessagesResource, StaticNodeInfo, build_site
@@ -390,6 +391,147 @@ async def test_config_writes_logs_diagnostics_and_observe_inbox() -> None:
         break
     await inbox_updates.close()
     assert inbox_subscription.closed is True
+
+
+async def test_raw_rx_status_normalizes_supported_payload() -> None:
+    transport = FakeResourceTransport(
+        {
+            ("GET", "/diag/raw/rx"): CoapResult(
+                code="2.05",
+                payload={"enabled": True, "remaining_s": 59, "max_ttl_s": 300},
+            )
+        }
+    )
+    client = LciClient(transport)
+
+    status = await client.get_raw_rx_status()
+
+    assert status.state is RawDiagnosticState.OK
+    assert status.enabled is True
+    assert status.remaining_s == 59
+    assert status.max_ttl_s == 300
+    assert transport.requests[-1][:2] == ("GET", "/diag/raw/rx")
+
+
+@pytest.mark.parametrize("code", ["4.04", "5.01"])
+async def test_raw_rx_status_maps_optional_unsupported_codes(code: str) -> None:
+    transport = FakeResourceTransport(
+        {("GET", "/diag/raw/rx"): CoapResult(code=code, payload={"error": "disabled"})}
+    )
+    client = LciClient(transport)
+
+    status = await client.get_raw_rx_status()
+
+    assert status.state is RawDiagnosticState.UNSUPPORTED
+    assert status.coap_code == code
+    assert status.detail == "disabled"
+
+
+async def test_arm_raw_rx_puts_finite_cbor_ttl_payload() -> None:
+    transport = FakeResourceTransport({("PUT", "/diag/raw/rx"): CoapResult(code="2.04")})
+    client = LciClient(transport)
+
+    result = await client.arm_raw_rx(ttl_s=60, include_payload=True)
+
+    assert result.state is RawDiagnosticState.OK
+    method, path, payload, content_format, observe = transport.requests[-1]
+    assert (method, path, content_format, observe) == ("PUT", "/diag/raw/rx", 60, False)
+    assert cbor2.loads(payload) == {
+        "enabled": True,
+        "ttl_s": 60,
+        "include_payload": True,
+    }
+
+
+async def test_raw_rx_events_observe_normalizes_and_closes() -> None:
+    subscription = FakeSubscription(
+        [
+            CoapResult(
+                code="2.05",
+                payload={
+                    "frame": b"\xc1\x02\x03\x04",
+                    "rssi_dbm": -85,
+                    "snr_db": 7.5,
+                    "freq_hz": 906875000,
+                    "crc_ok": True,
+                    "uptime_ms": 1234,
+                },
+            )
+        ]
+    )
+    transport = FakeResourceTransport({})
+    transport.subscriptions["/diag/raw/rx/events"] = subscription
+    client = LciClient(transport)
+
+    updates = await client.observe_raw_rx_events()
+    async for event in updates.events():
+        assert event.state is RawDiagnosticState.OK
+        assert event.frame == b"\xc1\x02\x03\x04"
+        assert event.rssi_dbm == -85
+        assert event.snr_db == 7.5
+        assert event.freq_hz == 906875000
+        assert event.crc_ok is True
+        assert event.uptime_ms == 1234
+        break
+    await updates.close()
+
+    assert transport.observes == [("GET", "/diag/raw/rx/events")]
+    assert subscription.closed is True
+
+
+@pytest.mark.parametrize("code", ["4.04", "5.01"])
+async def test_raw_rx_events_observe_unsupported_is_explicit(code: str) -> None:
+    subscription = FakeSubscription([CoapResult(code=code, payload={"error": "unsupported"})])
+    transport = FakeResourceTransport({})
+    transport.subscriptions["/diag/raw/rx/events"] = subscription
+    client = LciClient(transport)
+
+    updates = await client.observe_raw_rx_events()
+
+    async for event in updates.events():
+        assert event.state is RawDiagnosticState.UNSUPPORTED
+        assert event.coap_code == code
+        assert event.detail == "unsupported"
+        break
+
+
+async def test_raw_tx_posts_cbor_frame_payload() -> None:
+    transport = FakeResourceTransport({("POST", "/diag/raw/tx"): CoapResult(code="2.04")})
+    client = LciClient(transport)
+
+    result = await client.send_raw_tx(b"\xc1\x02\x03\x04", wait=True)
+
+    assert result.state is RawDiagnosticState.OK
+    method, path, payload, content_format, observe = transport.requests[-1]
+    assert (method, path, content_format, observe) == ("POST", "/diag/raw/tx", 60, False)
+    assert cbor2.loads(payload) == {"frame": b"\xc1\x02\x03\x04", "wait": True}
+
+
+@pytest.mark.parametrize("code", ["4.04", "5.01"])
+async def test_raw_tx_unsupported_codes_are_explicit(code: str) -> None:
+    transport = FakeResourceTransport(
+        {("POST", "/diag/raw/tx"): CoapResult(code=code, payload={"error": "unsupported"})}
+    )
+    client = LciClient(transport)
+
+    result = await client.send_raw_tx(b"\xc1")
+
+    assert result.state is RawDiagnosticState.UNSUPPORTED
+    assert result.coap_code == code
+    assert result.detail == "unsupported"
+
+
+async def test_raw_tx_rejected_code_is_error_state() -> None:
+    transport = FakeResourceTransport(
+        {("POST", "/diag/raw/tx"): CoapResult(code="4.01", payload={"error": "admin required"})}
+    )
+    client = LciClient(transport)
+
+    result = await client.send_raw_tx(b"\xc1")
+
+    assert result.state is RawDiagnosticState.ERROR
+    assert result.coap_code == "4.01"
+    assert result.detail == "admin required"
 
 
 async def test_send_message_validation_and_rejection_states() -> None:

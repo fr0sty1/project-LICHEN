@@ -36,6 +36,10 @@ from lichen.client import (
     PacketCoapConfig,
     PacketCoapResourceTransport,
     RadioConfig,
+    RawDiagnosticResult,
+    RawDiagnosticState,
+    RawRxEvent,
+    RawRxStatus,
     ResourceSubscription,
     Route,
     SendResult,
@@ -47,6 +51,16 @@ class MessageSubscriptionLike(Protocol):
 
     def messages(self) -> AsyncIterator[list[MessageRecord]]:
         """Yield normalized inbox snapshots."""
+
+    async def close(self) -> None:
+        """Cancel the Observe relationship."""
+
+
+class RawRxSubscriptionLike(Protocol):
+    """Subset of a typed raw RX Observe subscription used by the TUI."""
+
+    def events(self) -> AsyncIterator[RawRxEvent]:
+        """Yield normalized raw RX diagnostic events."""
 
     async def close(self) -> None:
         """Cancel the Observe relationship."""
@@ -96,6 +110,34 @@ class MessagingClient(Protocol):
 
     async def get_diagnostics(self, path: str = "/diag") -> Any:
         """Return raw diagnostics payload."""
+
+    async def get_raw_rx_status(self, path: str = "/diag/raw/rx") -> RawRxStatus:
+        """Return optional raw RX diagnostics state."""
+
+    async def arm_raw_rx(
+        self,
+        *,
+        ttl_s: int,
+        include_payload: bool = False,
+        enabled: bool = True,
+        path: str = "/diag/raw/rx",
+    ) -> RawDiagnosticResult:
+        """Arm optional raw RX diagnostics for a finite TTL."""
+
+    async def send_raw_tx(
+        self,
+        frame: bytes | bytearray | memoryview,
+        *,
+        wait: bool = True,
+        path: str = "/diag/raw/tx",
+    ) -> RawDiagnosticResult:
+        """Transmit one optional raw diagnostic frame."""
+
+    async def observe_raw_rx_events(
+        self,
+        path: str = "/diag/raw/rx/events",
+    ) -> RawRxSubscriptionLike:
+        """Observe optional raw RX diagnostic events."""
 
 
 class LinkMode(StrEnum):
@@ -209,6 +251,11 @@ class DiagnosticsState:
     """State rendered by the Diagnostics screen."""
 
     rows: tuple[DiagnosticRow, ...] = ()
+    raw_rx_status: RawRxStatus | None = None
+    raw_events: tuple[RawRxEvent, ...] = ()
+    raw_available: bool | None = None
+    admin_enabled: bool = False
+    last_raw_action: RawDiagnosticResult | None = None
     error: str | None = None
     loading: bool = False
 
@@ -317,10 +364,7 @@ NODE_CONFIG_FIELDS = frozenset({"name", "role"})
 
 def safe_display_value(name: str, value: object | None) -> str:
     """Return a bounded display value with key-like fields redacted."""
-    if (
-        any(part in name.lower() for part in SENSITIVE_FIELD_PARTS)
-        and "fingerprint" not in name.lower()
-    ):
+    if _is_sensitive_display_name(name):
         return "<redacted>"
     if value is None:
         return "--"
@@ -335,6 +379,17 @@ def safe_display_value(name: str, value: object | None) -> str:
     if isinstance(value, list | tuple):
         return ", ".join(safe_display_value(name, item) for item in value) or "--"
     return str(value)
+
+
+def _is_sensitive_display_name(name: str) -> bool:
+    lowered = name.lower()
+    leaf = lowered.rsplit(".", maxsplit=1)[-1]
+    if leaf == "frame":
+        return True
+    return (
+        any(part in lowered for part in SENSITIVE_FIELD_PARTS)
+        and "fingerprint" not in lowered
+    )
 
 
 def status_rows(state: DashboardState, width: int = 76) -> tuple[str, ...]:
@@ -528,13 +583,71 @@ def diagnostics_rows(state: DiagnosticsState, width: int = 76) -> tuple[Diagnost
         return (DiagnosticRow("diagnostics", "loading"),)
     if state.error is not None:
         return (DiagnosticRow("diag_error", state.error),)
-    if not state.rows:
+    has_raw_context = (
+        state.raw_available is not None
+        or state.raw_rx_status is not None
+        or bool(state.raw_events)
+        or state.last_raw_action is not None
+    )
+    if not state.rows and not has_raw_context:
         return (
             DiagnosticRow("transport", "disconnected"),
             DiagnosticRow("capabilities", "not discovered"),
             DiagnosticRow("last_error", "--"),
         )
-    return state.rows
+    rows = list(state.rows)
+    if state.raw_available is not None:
+        rows.append(
+            DiagnosticRow("raw.admin", "enabled" if state.admin_enabled else "required")
+        )
+        rows.append(
+            DiagnosticRow("raw.resources", "available" if state.raw_available else "unsupported")
+        )
+    if state.raw_rx_status is not None:
+        status = state.raw_rx_status
+        rows.extend(
+            (
+                DiagnosticRow("raw.rx.state", status.state.value),
+                DiagnosticRow("raw.rx.enabled", safe_display_value("enabled", status.enabled)),
+                DiagnosticRow(
+                    "raw.rx.remaining_s",
+                    safe_display_value("remaining_s", status.remaining_s),
+                ),
+                DiagnosticRow(
+                    "raw.rx.max_ttl_s",
+                    safe_display_value("max_ttl_s", status.max_ttl_s),
+                ),
+            )
+        )
+        if status.coap_code is not None:
+            rows.append(DiagnosticRow("raw.rx.coap", status.coap_code))
+        if status.detail is not None:
+            rows.append(DiagnosticRow("raw.rx.detail", safe_display_value("detail", status.detail)))
+    if state.last_raw_action is not None:
+        action = state.last_raw_action
+        rows.append(DiagnosticRow("raw.action.state", action.state.value))
+        if action.coap_code is not None:
+            rows.append(DiagnosticRow("raw.action.coap", action.coap_code))
+        if action.detail is not None:
+            rows.append(
+                DiagnosticRow("raw.action.detail", safe_display_value("detail", action.detail))
+            )
+    for index, event in enumerate(state.raw_events[-3:]):
+        prefix = f"raw.rx.event.{index}"
+        rows.append(DiagnosticRow(f"{prefix}.state", event.state.value))
+        if event.frame is not None:
+            rows.append(DiagnosticRow(f"{prefix}.frame", safe_display_value("frame", event.frame)))
+        if event.rssi_dbm is not None:
+            rows.append(
+                DiagnosticRow(f"{prefix}.rssi_dbm", safe_display_value("rssi", event.rssi_dbm))
+            )
+        if event.snr_db is not None:
+            rows.append(DiagnosticRow(f"{prefix}.snr_db", safe_display_value("snr", event.snr_db)))
+        if event.detail is not None:
+            rows.append(
+                DiagnosticRow(f"{prefix}.detail", safe_display_value("detail", event.detail))
+            )
+    return tuple(rows)
 
 
 def flatten_diagnostics(
@@ -561,6 +674,18 @@ def flatten_diagnostics(
             rows.extend(flatten_diagnostics(value, prefix=name, depth=depth + 1))
         return tuple(rows) or (DiagnosticRow(prefix or "value", "--"),)
     return (DiagnosticRow(prefix or "value", safe_display_value(prefix, payload)),)
+
+
+def raw_diagnostics_available(payload: Any) -> bool:
+    """Return true when `/diag` advertises admin-only raw diagnostics resources."""
+    if not isinstance(payload, Mapping):
+        return False
+    raw = payload.get("raw")
+    if not isinstance(raw, Mapping):
+        return False
+    if raw.get("available") is False:
+        return False
+    return any(raw.get(key) for key in ("rx", "rx_events", "tx"))
 
 
 def log_rows_from_payload(payload: Any) -> tuple[LogRow, ...]:
@@ -1062,6 +1187,9 @@ class NativeClientApp(App[None]):
         Binding("r", "refresh", "Refresh", priority=True),
         Binding("c", "focus_compose", "Compose"),
         Binding("o", "observe_messages", "Observe", priority=True),
+        Binding("a", "enable_raw_diagnostics_admin", "Admin", priority=True),
+        Binding("u", "arm_raw_rx_diagnostics", "Arm RX", priority=True),
+        Binding("x", "send_raw_diagnostic_frame", "Raw TX", priority=True),
         Binding("1", "jump_mode(0)", "Dashboard"),
         Binding("2", "jump_mode(1)", "Chats"),
         Binding("3", "jump_mode(2)", "Nodes"),
@@ -1094,6 +1222,8 @@ class NativeClientApp(App[None]):
         self.diagnostics = DiagnosticsState()
         self._observe_task: asyncio.Task[None] | None = None
         self._log_task: asyncio.Task[None] | None = None
+        self._raw_rx_task: asyncio.Task[None] | None = None
+        self.raw_diagnostics_admin_enabled = False
         self.mode_index = (
             ModeNav.MODES.index(self.status.context)
             if self.status.context in ModeNav.MODES
@@ -1192,6 +1322,12 @@ class NativeClientApp(App[None]):
             log_task.cancel()
             with suppress(asyncio.CancelledError, Exception):
                 await log_task
+        if self._raw_rx_task is not None:
+            raw_rx_task = self._raw_rx_task
+            self._raw_rx_task = None
+            raw_rx_task.cancel()
+            with suppress(asyncio.CancelledError, Exception):
+                await raw_rx_task
 
     async def on_unmount(self) -> None:
         """Close an owned client transport when the app exits."""
@@ -1279,9 +1415,31 @@ class NativeClientApp(App[None]):
         if self.status.context == "Logs":
             await self.start_observing_logs()
             return
+        if self.status.context == "Diag":
+            await self.start_observing_raw_rx()
+            return
         if self.status.context != "Chats":
             self._set_mode(ModeNav.MODES.index("Chats"))
         await self.start_observing_messages()
+
+    async def action_enable_raw_diagnostics_admin(self) -> None:
+        """Enable admin-gated raw diagnostics on the Diag screen."""
+        if self.status.context != "Diag":
+            self._set_mode(ModeNav.MODES.index("Diag"))
+        self.enable_raw_diagnostics_admin()
+        await self.refresh_diagnostics()
+
+    async def action_arm_raw_rx_diagnostics(self) -> None:
+        """Arm raw RX diagnostics from the Diag screen."""
+        if self.status.context != "Diag":
+            self._set_mode(ModeNav.MODES.index("Diag"))
+        await self.arm_raw_rx_diagnostics(ttl_s=60)
+
+    async def action_send_raw_diagnostic_frame(self) -> None:
+        """Send a bounded raw diagnostics test frame from the Diag screen."""
+        if self.status.context != "Diag":
+            self._set_mode(ModeNav.MODES.index("Diag"))
+        await self.send_raw_diagnostic_frame(b"\xc1\x02\x03\x04")
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         """Advance chat compose fields and send from the body field."""
@@ -1640,13 +1798,143 @@ class NativeClientApp(App[None]):
         self._set_diagnostics_state(DiagnosticsState(loading=True))
         try:
             payload = await self.client.get_diagnostics()
+            raw_available = raw_diagnostics_available(payload)
+            raw_rx_status = (
+                await self.client.get_raw_rx_status()
+                if raw_available and self.raw_diagnostics_admin_enabled
+                else None
+            )
         except Exception as exc:
             self._set_diagnostics_error(str(exc))
             return
         self._set_diagnostics_state(
-            DiagnosticsState(rows=flatten_diagnostics(payload)),
+            DiagnosticsState(
+                rows=flatten_diagnostics(payload),
+                raw_rx_status=raw_rx_status,
+                raw_events=self.diagnostics.raw_events,
+                raw_available=raw_available,
+                admin_enabled=self.raw_diagnostics_admin_enabled,
+                last_raw_action=self.diagnostics.last_raw_action,
+            ),
             recover_error=True,
         )
+
+    def enable_raw_diagnostics_admin(self, *, enabled: bool = True) -> None:
+        """Toggle explicit admin authorization for raw diagnostics UI flows."""
+        self.raw_diagnostics_admin_enabled = enabled
+        self._set_diagnostics_state(
+            DiagnosticsState(
+                rows=self.diagnostics.rows,
+                raw_rx_status=self.diagnostics.raw_rx_status if enabled else None,
+                raw_events=self.diagnostics.raw_events if enabled else (),
+                raw_available=self.diagnostics.raw_available,
+                admin_enabled=enabled,
+                last_raw_action=self.diagnostics.last_raw_action if enabled else None,
+            )
+        )
+
+    async def arm_raw_rx_diagnostics(
+        self,
+        *,
+        ttl_s: int,
+        include_payload: bool = False,
+    ) -> None:
+        """Arm raw RX diagnostics only after explicit admin enablement."""
+        if self.client is None:
+            self._set_diagnostics_error("diagnostics transport unavailable")
+            return
+        if not self.raw_diagnostics_admin_enabled:
+            self._set_diagnostics_error("raw diagnostics admin authorization required")
+            return
+        try:
+            result = await self.client.arm_raw_rx(ttl_s=ttl_s, include_payload=include_payload)
+            status = await self.client.get_raw_rx_status()
+        except Exception as exc:
+            self._set_diagnostics_error(str(exc))
+            return
+        self._set_diagnostics_state(
+            DiagnosticsState(
+                rows=self.diagnostics.rows,
+                raw_rx_status=status,
+                raw_events=self.diagnostics.raw_events,
+                raw_available=result.state is not RawDiagnosticState.UNSUPPORTED
+                and status.state is not RawDiagnosticState.UNSUPPORTED,
+                admin_enabled=True,
+                last_raw_action=result,
+            ),
+            recover_error=True,
+        )
+
+    async def send_raw_diagnostic_frame(
+        self,
+        frame: bytes | bytearray | memoryview,
+        *,
+        wait: bool = True,
+    ) -> None:
+        """Post one raw diagnostic TX frame only after explicit admin enablement."""
+        if self.client is None:
+            self._set_diagnostics_error("diagnostics transport unavailable")
+            return
+        if not self.raw_diagnostics_admin_enabled:
+            self._set_diagnostics_error("raw diagnostics admin authorization required")
+            return
+        try:
+            result = await self.client.send_raw_tx(frame, wait=wait)
+        except Exception as exc:
+            self._set_diagnostics_error(str(exc))
+            return
+        self._set_diagnostics_state(
+            DiagnosticsState(
+                rows=self.diagnostics.rows,
+                raw_rx_status=self.diagnostics.raw_rx_status,
+                raw_events=self.diagnostics.raw_events,
+                raw_available=result.state is not RawDiagnosticState.UNSUPPORTED,
+                admin_enabled=True,
+                last_raw_action=result,
+            ),
+            recover_error=True,
+        )
+
+    async def start_observing_raw_rx(self) -> None:
+        """Start raw RX Observe only after explicit admin enablement."""
+        if self.client is None:
+            self._set_diagnostics_error("diagnostics transport unavailable")
+            return
+        if not self.raw_diagnostics_admin_enabled:
+            self._set_diagnostics_error("raw diagnostics admin authorization required")
+            return
+        if self._raw_rx_task is not None and not self._raw_rx_task.done():
+            return
+        self._raw_rx_task = asyncio.create_task(self._raw_rx_loop())
+
+    async def _raw_rx_loop(self) -> None:
+        """Apply raw RX Observe notifications until the subscription ends."""
+        try:
+            if self.client is None:
+                self._set_diagnostics_error("diagnostics transport unavailable")
+                return
+            subscription = await self.client.observe_raw_rx_events()
+            try:
+                async for event in subscription.events():
+                    self._set_diagnostics_state(
+                        DiagnosticsState(
+                            rows=self.diagnostics.rows,
+                            raw_rx_status=self.diagnostics.raw_rx_status,
+                            raw_events=self.diagnostics.raw_events + (event,),
+                            raw_available=event.state is not RawDiagnosticState.UNSUPPORTED,
+                            admin_enabled=True,
+                            last_raw_action=self.diagnostics.last_raw_action,
+                        ),
+                        recover_error=True,
+                    )
+            finally:
+                await subscription.close()
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            self._set_diagnostics_error(str(exc))
+        finally:
+            self._raw_rx_task = None
 
     async def start_observing_logs(self) -> None:
         """Start a live log Observe task if one is not already running."""
@@ -1927,7 +2215,15 @@ class NativeClientApp(App[None]):
 
     def _set_diagnostics_error(self, detail: str) -> None:
         self._set_diagnostics_state(
-            DiagnosticsState(rows=self.diagnostics.rows, error=detail)
+            DiagnosticsState(
+                rows=self.diagnostics.rows,
+                raw_rx_status=self.diagnostics.raw_rx_status,
+                raw_events=self.diagnostics.raw_events,
+                raw_available=self.diagnostics.raw_available,
+                admin_enabled=self.raw_diagnostics_admin_enabled,
+                last_raw_action=self.diagnostics.last_raw_action,
+                error=detail,
+            )
         )
 
     def _set_screen_status(self, *, error: str | None, recover_error: bool = False) -> None:

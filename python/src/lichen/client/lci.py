@@ -21,11 +21,16 @@ from lichen.client.model import (
     MessageRecord,
     Neighbor,
     RadioConfig,
+    RawDiagnosticResult,
+    RawDiagnosticState,
+    RawRxEvent,
+    RawRxStatus,
     Route,
     SendResult,
 )
 
 CBOR_CONTENT_FORMAT = 60
+RAW_DIAGNOSTIC_UNSUPPORTED_CODES = frozenset({"4.04", "5.01"})
 
 
 class ResourceTransport(Protocol):
@@ -92,6 +97,29 @@ class MessageSubscription:
                     payload=result.payload,
                 )
             yield _normalize_inbox_payload(result.payload, self._path)
+
+
+class RawRxSubscription:
+    """Typed raw RX diagnostic Observe notifications."""
+
+    def __init__(self, subscription: ResourceSubscription, path: str) -> None:
+        self._subscription = subscription
+        self._path = path
+
+    def events(self) -> AsyncIterator[RawRxEvent]:
+        """Yield normalized raw RX events and explicit unsupported/error states."""
+        return self._events()
+
+    async def close(self) -> None:
+        """Cancel the raw RX Observe relationship."""
+        await self._subscription.close()
+
+    async def _events(self) -> AsyncIterator[RawRxEvent]:
+        async for result in self._subscription.results():
+            if not result.is_success:
+                yield _raw_event_from_result(result)
+                continue
+            yield normalize_raw_rx_event(result.payload)
 
 
 class LciClientError(RuntimeError):
@@ -233,6 +261,64 @@ class LciClient:
         """Fetch a diagnostics resource payload."""
         return await self._get_payload(path)
 
+    async def get_raw_rx_status(self, path: str = "/diag/raw/rx") -> RawRxStatus:
+        """Fetch optional raw RX diagnostics state without falling back to legacy APIs."""
+        result = await self._raw_request("GET", path)
+        if not result.is_success:
+            return _raw_rx_status_from_result(result)
+        return normalize_raw_rx_status(result.payload, coap_code=result.code)
+
+    async def arm_raw_rx(
+        self,
+        *,
+        ttl_s: int,
+        include_payload: bool = False,
+        enabled: bool = True,
+        path: str = "/diag/raw/rx",
+    ) -> RawDiagnosticResult:
+        """Enable raw RX diagnostics for a finite TTL."""
+        if ttl_s <= 0:
+            return RawDiagnosticResult(
+                state=RawDiagnosticState.ERROR,
+                detail="ttl_s must be positive",
+            )
+        payload = {
+            "enabled": enabled,
+            "ttl_s": ttl_s,
+            "include_payload": include_payload,
+        }
+        result = await self._raw_request(
+            "PUT",
+            path,
+            payload=cbor2.dumps(payload),
+            content_format=CBOR_CONTENT_FORMAT,
+        )
+        return _raw_command_result(result)
+
+    async def observe_raw_rx_events(
+        self,
+        path: str = "/diag/raw/rx/events",
+    ) -> RawRxSubscription:
+        """Start observing optional raw RX diagnostic events."""
+        return RawRxSubscription(await self._transport.observe(path), path)
+
+    async def send_raw_tx(
+        self,
+        frame: bytes | bytearray | memoryview,
+        *,
+        wait: bool = True,
+        path: str = "/diag/raw/tx",
+    ) -> RawDiagnosticResult:
+        """Transmit one raw diagnostic frame through the optional LCI resource."""
+        payload = {"frame": bytes(frame), "wait": wait}
+        result = await self._raw_request(
+            "POST",
+            path,
+            payload=cbor2.dumps(payload),
+            content_format=CBOR_CONTENT_FORMAT,
+        )
+        return _raw_command_result(result)
+
     async def _request(
         self,
         method: str,
@@ -258,6 +344,24 @@ class LciClient:
                 payload=result.payload,
             )
         return result
+
+    async def _raw_request(
+        self,
+        method: str,
+        path: str,
+        *,
+        payload: bytes = b"",
+        content_format: int | None = None,
+    ) -> CoapResult:
+        try:
+            return await self._transport.request(
+                method,
+                path,
+                payload=payload,
+                content_format=content_format,
+            )
+        except Exception as exc:
+            return CoapResult(code="0.00", payload={"error": str(exc)})
 
     async def _get_payload(self, path: str) -> Any:
         result = await self._request("GET", path)
@@ -408,11 +512,102 @@ def normalize_message(payload: Any) -> MessageRecord:
     )
 
 
+def normalize_raw_rx_status(payload: Any, *, coap_code: str | None = None) -> RawRxStatus:
+    """Normalize a `/diag/raw/rx` status payload."""
+    if not isinstance(payload, Mapping):
+        return RawRxStatus(
+            state=RawDiagnosticState.ERROR,
+            coap_code=coap_code,
+            detail="/diag/raw/rx payload is not a map",
+        )
+    raw = dict(payload)
+    enabled = raw.get("enabled")
+    return RawRxStatus(
+        state=RawDiagnosticState.OK,
+        raw=raw,
+        enabled=enabled if isinstance(enabled, bool) else None,
+        remaining_s=_int_or_none(raw.get("remaining_s")),
+        max_ttl_s=_int_or_none(raw.get("max_ttl_s")),
+        coap_code=coap_code,
+    )
+
+
+def normalize_raw_rx_event(payload: Any, *, coap_code: str | None = None) -> RawRxEvent:
+    """Normalize a `/diag/raw/rx/events` notification."""
+    if not isinstance(payload, Mapping):
+        return RawRxEvent(
+            state=RawDiagnosticState.ERROR,
+            coap_code=coap_code,
+            detail="/diag/raw/rx/events payload is not a map",
+        )
+    raw = dict(payload)
+    frame = raw.get("frame")
+    return RawRxEvent(
+        state=RawDiagnosticState.OK,
+        raw=raw,
+        frame=bytes(frame) if isinstance(frame, bytes | bytearray | memoryview) else None,
+        rssi_dbm=_float_or_none(raw.get("rssi_dbm", raw.get("rssi"))),
+        snr_db=_float_or_none(raw.get("snr_db", raw.get("snr"))),
+        freq_hz=_int_or_none(raw.get("freq_hz")),
+        crc_ok=raw.get("crc_ok") if isinstance(raw.get("crc_ok"), bool) else None,
+        uptime_ms=_int_or_none(raw.get("uptime_ms")),
+        coap_code=coap_code,
+    )
+
+
 def _normalize_inbox_payload(payload: Any, path: str) -> list[MessageRecord]:
     messages = payload.get("messages", []) if isinstance(payload, Mapping) else payload
     if not isinstance(messages, list):
         raise LciClientError("message inbox payload is not a list", path=path, payload=payload)
     return [normalize_message(item) for item in messages]
+
+
+def _raw_rx_status_from_result(result: CoapResult) -> RawRxStatus:
+    state = (
+        RawDiagnosticState.UNSUPPORTED
+        if result.code in RAW_DIAGNOSTIC_UNSUPPORTED_CODES
+        else RawDiagnosticState.ERROR
+    )
+    return RawRxStatus(
+        state=state,
+        raw=_map_or_empty(result.payload),
+        coap_code=result.code,
+        detail=_result_detail(result),
+    )
+
+
+def _raw_event_from_result(result: CoapResult) -> RawRxEvent:
+    state = (
+        RawDiagnosticState.UNSUPPORTED
+        if result.code in RAW_DIAGNOSTIC_UNSUPPORTED_CODES
+        else RawDiagnosticState.ERROR
+    )
+    return RawRxEvent(
+        state=state,
+        raw=_map_or_empty(result.payload),
+        coap_code=result.code,
+        detail=_result_detail(result),
+    )
+
+
+def _raw_command_result(result: CoapResult) -> RawDiagnosticResult:
+    if result.is_success:
+        return RawDiagnosticResult(
+            state=RawDiagnosticState.OK,
+            coap_code=result.code,
+            payload=result.payload,
+        )
+    state = (
+        RawDiagnosticState.UNSUPPORTED
+        if result.code in RAW_DIAGNOSTIC_UNSUPPORTED_CODES
+        else RawDiagnosticState.ERROR
+    )
+    return RawDiagnosticResult(
+        state=state,
+        coap_code=result.code,
+        detail=_result_detail(result),
+        payload=result.payload,
+    )
 
 
 def _payload_text(result: CoapResult) -> str:
@@ -482,6 +677,12 @@ def _map_or_none(value: Any) -> JsonMap | None:
     if isinstance(value, Mapping):
         return dict(value)
     return None
+
+
+def _map_or_empty(value: Any) -> JsonMap:
+    if isinstance(value, Mapping):
+        return dict(value)
+    return {}
 
 
 def _str_or_none(value: Any) -> str | None:
