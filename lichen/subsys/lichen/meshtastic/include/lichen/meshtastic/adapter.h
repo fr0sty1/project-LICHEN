@@ -207,10 +207,24 @@ typedef size_t (*lichen_meshtastic_adapter_peer_snapshot_fn)(
 struct lichen_meshtastic_adapter_ops {
 	lichen_meshtastic_adapter_enqueue_fn enqueue_from_radio;
 	lichen_meshtastic_adapter_text_fn handle_text;
+	/*
+	 * Optional current free-slot hook for enqueue_from_radio. When provided,
+	 * WantConfig sync bursts are preflighted before the first record is
+	 * enqueued. The hook must report the same queue used by
+	 * enqueue_from_radio; it is not a reservation or rollback mechanism, so
+	 * stale hook values or later enqueue failures can still leave partial
+	 * output. When omitted, the adapter keeps best-effort degraded semantics:
+	 * records are enqueued until enqueue_from_radio fails, and the caller may
+	 * observe a partial sync.
+	 */
 	lichen_meshtastic_adapter_queue_free_fn queue_free;
 	lichen_meshtastic_adapter_local_info_fn get_local_info;
 	lichen_meshtastic_adapter_peer_snapshot_fn get_peers;
 	void *user_data;
+	/*
+	 * Total FromRadio queue capacity advertised in queueStatus. Set this to
+	 * the same queue measured by queue_free when queue_free is provided.
+	 */
 	uint32_t queue_maxlen;
 	bool heartbeat_queue_status;
 	lichen_meshtastic_adapter_location_fn handle_location;

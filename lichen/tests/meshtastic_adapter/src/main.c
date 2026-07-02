@@ -28,6 +28,8 @@ struct test_ctx {
 	size_t out_len[TEST_FROM_RADIO_OUT_CAP];
 	size_t out_count;
 	size_t out_cap;
+	uint32_t reported_queue_free;
+	bool has_reported_queue_free;
 	struct lichen_meshtastic_peer_snapshot peers[4];
 	size_t peer_count;
 	uint32_t text_count;
@@ -186,6 +188,9 @@ static uint32_t test_queue_free(void *user_data)
 {
 	struct test_ctx *ctx = user_data;
 
+	if (ctx->has_reported_queue_free) {
+		return ctx->reported_queue_free;
+	}
 	return ctx->out_cap - ctx->out_count;
 }
 
@@ -1343,6 +1348,43 @@ ZTEST(meshtastic_adapter, test_my_info_nodedb_count_tracks_peer_snapshot)
 	zassert_equal(value, 1U + GATEWAY_MESHTASTIC_NODEDB_DEFAULT_MAX_PEERS);
 }
 
+ZTEST(meshtastic_adapter, test_want_config_69420_preflights_queue_free)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t heartbeat[] = { 0x3a, 0x00 };
+	const uint8_t want_config[] = { 0x18, 0xac, 0x9e, 0x04 };
+	const uint8_t complete[] = { 0x38, 0xac, 0x9e, 0x04 };
+	uint32_t expected_count = LICHEN_MESHTASTIC_STATIC_SYNC_RECORDS +
+				  LICHEN_MESHTASTIC_CONFIG_COMPLETE_RECORDS;
+	struct from_radio_view view;
+	int ret;
+
+	init_adapter_with_queue_free(&adapter, &ctx, expected_count);
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.out_count, expected_count);
+	decode_from_radio(ctx.out[expected_count - 1U],
+			  ctx.out_len[expected_count - 1U], &view);
+	zassert_equal(view.field, 7U);
+	expect_bytes(ctx.out[expected_count - 1U],
+		     ctx.out_len[expected_count - 1U], complete, sizeof(complete));
+
+	init_adapter_with_queue_free(&adapter, &ctx, expected_count);
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, heartbeat,
+						    sizeof(heartbeat));
+	zassert_equal(ret, 0);
+	zassert_equal(ctx.out_count, 1U);
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+	zassert_equal(ret, -ENOMEM);
+	zassert_equal(ctx.out_count, 1U);
+	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+			      enqueue_fail_count,
+		      1U);
+}
+
 ZTEST(meshtastic_adapter, test_want_config_69421_queues_node_db_sequence)
 {
 	struct lichen_meshtastic_adapter adapter;
@@ -1591,6 +1633,43 @@ ZTEST(meshtastic_adapter, test_want_config_69421_preflights_queue_for_peers)
 		      1U);
 }
 
+ZTEST(meshtastic_adapter,
+      test_want_config_69421_without_queue_free_allows_partial_backpressure)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t want_config[] = { 0x18, 0xad, 0x9e, 0x04 };
+	struct from_radio_view view;
+	struct node_info_view node;
+	int ret;
+
+	init_adapter(&adapter, &ctx, 2U);
+	ctx.peer_count = 2U;
+	ctx.peers[0] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xaa, 0, 0, 0, 0, 0, 1 },
+	};
+	ctx.peers[1] = (struct lichen_meshtastic_peer_snapshot){
+		.eui64 = { 0x02, 0xaa, 0, 0, 0, 0, 0, 2 },
+	};
+
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+
+	zassert_equal(ret, -ENOMEM);
+	zassert_equal(ctx.out_count, 2U);
+	decode_from_radio(ctx.out[0], ctx.out_len[0], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
+	decode_node_info_payload(view.payload, view.payload_len, &node);
+	zassert_equal(node.num, 0xaabbccddU);
+	decode_from_radio(ctx.out[1], ctx.out_len[1], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
+	decode_node_info_payload(view.payload, view.payload_len, &node);
+	zassert_equal(node.num, 1U);
+	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+			      enqueue_fail_count,
+		      1U);
+}
+
 ZTEST(meshtastic_adapter, test_node_number_collisions_are_omitted_and_tracked)
 {
 	struct lichen_meshtastic_adapter adapter;
@@ -1791,6 +1870,66 @@ ZTEST(meshtastic_adapter, test_want_config_full_sync_preflights_queue_free)
 						    sizeof(want_config));
 	zassert_equal(ret, -ENOMEM);
 	zassert_equal(ctx.out_count, 2U);
+	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+			      enqueue_fail_count,
+			      1U);
+}
+
+ZTEST(meshtastic_adapter,
+      test_want_config_full_sync_stale_queue_free_can_still_partially_enqueue)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t want_config[] = { 0x18, 0xa5, 0xcb, 0x96, 0xad, 0x0a };
+	struct from_radio_view view;
+	uint32_t expected_count = LICHEN_MESHTASTIC_FULL_SYNC_RECORDS(
+		GATEWAY_MESHTASTIC_NODEDB_DEFAULT_MAX_PEERS);
+	int ret;
+
+	init_adapter_with_queue_free(&adapter, &ctx, 3U);
+	ctx.has_reported_queue_free = true;
+	ctx.reported_queue_free = expected_count;
+	set_default_max_peers(&ctx);
+
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+
+	zassert_equal(ret, -ENOMEM);
+	zassert_equal(ctx.out_count, 3U);
+	decode_from_radio(ctx.out[0], ctx.out_len[0], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_MY_INFO);
+	decode_from_radio(ctx.out[1], ctx.out_len[1], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_METADATA);
+	decode_from_radio(ctx.out[2], ctx.out_len[2], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_REGION_PRESETS);
+	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
+			      enqueue_fail_count,
+		      1U);
+}
+
+ZTEST(meshtastic_adapter,
+      test_want_config_full_sync_without_queue_free_allows_partial_backpressure)
+{
+	struct lichen_meshtastic_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t want_config[] = { 0x18, 0xa5, 0xcb, 0x96, 0xad, 0x0a };
+	struct from_radio_view view;
+	int ret;
+
+	init_adapter(&adapter, &ctx, 3U);
+	set_default_max_peers(&ctx);
+
+	ret = lichen_meshtastic_adapter_process_raw(&adapter, want_config,
+						    sizeof(want_config));
+
+	zassert_equal(ret, -ENOMEM);
+	zassert_equal(ctx.out_count, 3U);
+	decode_from_radio(ctx.out[0], ctx.out_len[0], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_MY_INFO);
+	decode_from_radio(ctx.out[1], ctx.out_len[1], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_METADATA);
+	decode_from_radio(ctx.out[2], ctx.out_len[2], &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_REGION_PRESETS);
 	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
 			      enqueue_fail_count,
 		      1U);

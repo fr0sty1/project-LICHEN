@@ -466,6 +466,31 @@ the local queue. Delivered/failed state that the app can show against a message 
 packet whose decoded `request_id` matches the original message request/id. If LICHEN cannot prove final delivery, the
 adapter should report queued/local state only and avoid fabricating a final delivered ACK.
 
+#### Queue preflight contract
+
+The Zephyr adapter API allows `queue_free` to be omitted for custom/non-gateway
+callers, but production gateway transports that expose a bounded FromRadio queue
+SHOULD provide it. When `queue_free` is present, WantConfig bursts are
+preflighted against the complete number of records before the first record is
+enqueued. If `queue_free` accurately reports the same queue used by
+`enqueue_from_radio` and the queue is not concurrently consumed, insufficient
+space for the whole static sync, node DB sync, or legacy full sync burst makes
+the adapter return `-ENOMEM`, increment `enqueue_fail_count`, and leave the
+FromRadio queue unchanged.
+
+`queue_free` is a preflight hook, not a reservation or rollback mechanism. If it
+reports stale capacity, measures the wrong queue, or `enqueue_from_radio` later
+fails mid-burst, earlier records can remain queued and the caller must handle
+the partial burst as a recoverable degraded sync.
+
+When `queue_free` is absent, the adapter deliberately falls back to best-effort
+degraded behavior for compatibility with simple callers: records are enqueued in
+order until `enqueue_from_radio` reports backpressure. The caller can then see a
+partial sync burst and must recover by draining/resetting its transport queue
+before requesting sync again. Do not rely on atomic WantConfig bursts unless the
+caller supplies an accurate same-queue `queue_free` hook and serializes the
+queue for the burst.
+
 ### MeshPacket
 
 | Meshtastic Field | LICHEN Mapping |
