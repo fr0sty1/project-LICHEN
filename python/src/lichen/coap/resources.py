@@ -6,8 +6,10 @@ Exposes ``/.well-known/core`` (resource discovery), ``/status``, ``/neighbors``,
 and ``/config``. Payloads use CBOR (content-format 60), the compact encoding
 appropriate for constrained LoRa links.
 
-Also provides :class:`ProxyResource` — a forward proxy (RFC 7252 §5.7) that
-lets a local client reach any mesh node by passing a ``Proxy-Uri`` option.
+Also provides optional :class:`ProxyResource` compatibility support for local
+transports that cannot route directly to mesh IPv6 addresses. The
+authoritative LCI mesh access model remains direct IPv6 + CoAP routing through
+the local node.
 
 Observable resources (RFC 7641):
 
@@ -137,10 +139,12 @@ class ConfigResource(_ReadResource):
 
 
 class ProxyResource(resource.Resource):
-    """CoAP forward proxy — relays requests with Proxy-Uri into the mesh.
+    """Optional CoAP forward proxy for constrained local transports.
 
-    A local client (phone, desktop) sends a request to ``/proxy`` on the
-    gateway with a ``Proxy-Uri`` option naming the target mesh node::
+    LCI clients normally address mesh nodes directly and let the local node
+    route IPv6 packets into the mesh. When direct routing is unavailable, a
+    client can send a request to ``/proxy`` on the gateway with a ``Proxy-Uri``
+    option naming the target mesh node::
 
         GET coap://[gateway]/proxy
         Proxy-Uri: coap://[fd00::2]/status
@@ -153,6 +157,8 @@ class ProxyResource(resource.Resource):
 
     Per RFC 7252 §5.7, the Proxy-Uri option is stripped before forwarding.
     """
+
+    rt = "proxy"
 
     def __init__(self, mesh_ctx: aiocoap.Context, *, timeout: float = 30.0) -> None:
         super().__init__()
@@ -707,7 +713,9 @@ def build_site(
 ) -> resource.Site:
     """Build an aiocoap Site exposing the LICHEN node resources.
 
-    Pass ``mesh_client`` to also expose a forward proxy at ``/proxy``.
+    Pass ``mesh_client`` to also expose the optional RFC 7252 compatibility
+    forward proxy at ``/proxy``. Native LCI clients should prefer direct IPv6
+    CoAP routing to mesh node addresses when the local transport supports it.
     Pass pre-constructed observable resources to expose ``/sensors``,
     ``/location``, ``/presence``, ``/msg/inbox``, and/or ``/sos``; callers
     hold the references and call ``update()`` / ``seen()`` / ``deliver()`` /

@@ -48,6 +48,12 @@ The Python native client follows the LCI IPv6 + CoAP contract in
 `spec/11-lci.md`. It does not implement the historical CBOR native framing in
 `spec/lichen-native/` for BLE, USB, serial, or IP LCI sessions.
 
+Mesh-node access follows the same contract: when the host transport can route
+to mesh IPv6 addresses, clients address the target node directly with normal
+CoAP URIs. A discovered `/proxy` resource is an optional RFC 7252 compatibility
+helper for transports that cannot route mesh IPv6 directly; `/mesh` is not a
+native LCI proxy endpoint.
+
 The legacy Python demo/simulator `/messages` resource is not a native LCI
 messaging contract. Native clients use `/msg/inbox`; `/messages` may be used
 only when explicitly configured for legacy demo compatibility.

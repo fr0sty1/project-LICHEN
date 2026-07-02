@@ -193,12 +193,19 @@ class TestBuildSite:
                 Message(code=GET, uri="coap://srv/proxy")
             ).response
             assert resp.code == aiocoap.NOT_FOUND
+
+            core = await client.request(
+                Message(code=GET, uri="coap://srv/.well-known/core")
+            ).response
+            body = core.payload.decode()
+            assert "</proxy>" not in body
+            assert "</mesh>" not in body
         finally:
             await client.shutdown()
             await ctx.shutdown()
 
     async def test_build_site_with_proxy_exposes_proxy(self) -> None:
-        """build_site with mesh_client exposes /proxy."""
+        """build_site with mesh_client exposes optional /proxy."""
         mesh_net = InMemoryNetwork()
         local_net = InMemoryNetwork()
 
@@ -225,3 +232,29 @@ class TestBuildSite:
             await gw.shutdown()
             await gw_mesh_client.shutdown()
             await mesh_node.shutdown()
+
+    async def test_build_site_with_proxy_advertises_proxy_not_mesh(self) -> None:
+        """Discovery advertises optional /proxy and not a /mesh proxy alias."""
+        mesh_net = InMemoryNetwork()
+        local_net = InMemoryNetwork()
+        gw_mesh_client = await create_lichen_context(
+            mesh_net.channel("fd00::1"), "fd00::1"
+        )
+        gw = await create_lichen_context(
+            local_net.channel("gw"), "gw",
+            site=build_site(StaticNodeInfo(), mesh_client=gw_mesh_client),
+        )
+        cli = await create_lichen_context(local_net.channel("cli"), "cli")
+        try:
+            resp = await cli.request(
+                Message(code=GET, uri="coap://gw/.well-known/core")
+            ).response
+            body = resp.payload.decode()
+
+            assert "</proxy>" in body
+            assert 'rt="proxy"' in body
+            assert "</mesh>" not in body
+        finally:
+            await cli.shutdown()
+            await gw.shutdown()
+            await gw_mesh_client.shutdown()

@@ -93,3 +93,21 @@ def test_lci_messaging_paths_use_msg_inbox_contract() -> None:
     assert "POST /msg\n" not in lci
     assert "/msg/outbox" not in lci
     assert "legacy Python demo `/messages` resource is not part of LCI" in lci
+
+
+def test_lci_mesh_access_prefers_direct_ipv6_with_optional_proxy() -> None:
+    lci = read_repo_text("spec/11-lci.md")
+    lci_words = " ".join(lci.split())
+    resources = read_repo_text("python/src/lichen/coap/resources.py")
+
+    assert "direct IPv6 + CoAP path is the authoritative" in lci_words
+    assert "No special proxy resource is required" in lci_words
+    assert "`/mesh` is not an LCI forward-proxy resource" in lci_words
+    assert "optional RFC 7252 forward proxy at `/proxy`" in lci_words
+    assert "Clients MUST NOT require `/proxy`" in lci_words
+    assert "direct mesh CoAP reachability, optional `/proxy`" in lci_words
+    assert '</mesh>;rt="proxy"' not in lci
+    assert "mesh proxy" not in lci
+
+    assert "authoritative LCI mesh access model remains direct IPv6" in resources
+    assert 'rt = "proxy"' in resources

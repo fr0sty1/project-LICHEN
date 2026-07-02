@@ -171,7 +171,6 @@ Response:
 </status/neighbors>;rt="status";obs,
 </status/routes>;rt="status",
 </keys>;rt="keystore",
-</mesh>;rt="proxy",
 </diag>;rt="diagnostics",
 </msg/inbox>;rt="msg.inbox";ct=60;obs,
 </msg/sent>;rt="msg.sent";ct=60,
@@ -485,10 +484,12 @@ DELETE /keys/1234:5678:9abc:def0
 Response: 2.02 Deleted
 ```
 
-#### 17.5.6. Mesh Proxy
+#### 17.5.6. Mesh Reachability
 
 The client can reach any mesh node by addressing it directly. The local
-node routes the traffic. No special proxy resource is required.
+node routes the traffic. This direct IPv6 + CoAP path is the authoritative
+LCI mesh access model. No special proxy resource is required, and `/mesh` is
+not an LCI forward-proxy resource.
 
 ```
 # Client sends directly to mesh node
@@ -503,6 +504,18 @@ For discovery, the client can query the Resource Directory (if available):
 
 ```
 GET coap://[fd12:3456:789a:1::1]/rd-lookup/res?rt=temperature
+```
+
+Implementations MAY expose an optional RFC 7252 forward proxy at `/proxy` for
+compatibility with constrained local transports or host stacks that cannot
+route directly to mesh IPv6 addresses. Clients MUST NOT require `/proxy` for
+normal LCI operation, and discovery of `</proxy>;rt="proxy"` only signals this
+compatibility helper. Proxy clients use the standard CoAP `Proxy-Uri` option to
+name the mesh target; the gateway strips proxy options before forwarding.
+
+```
+GET coap://[fe80::1]/proxy
+Proxy-Uri: coap://[fd12:3456:789a:1::aaaa:bbbb:cccc:dddd]/status
 ```
 
 #### 17.5.7. Messaging (Application-Level)
@@ -574,7 +587,7 @@ Implementations SHOULD support restricting local client access:
 | Level | Allowed Operations |
 |-------|-------------------|
 | Read-only | GET on non-sensitive resources; excludes `/diag/raw/*` |
-| Standard | GET, Observe, mesh proxy; excludes `/diag/raw/*` |
+| Standard | GET, Observe, direct mesh CoAP reachability, optional `/proxy`; excludes `/diag/raw/*` |
 | Admin | All operations including PUT /config, DELETE /keys, `/diag/raw/*` |
 
 Access level determined by transport (e.g., USB = admin, BLE = standard).
