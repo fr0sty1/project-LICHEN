@@ -11,6 +11,9 @@
 #include <zephyr/sys/util.h>
 
 #include <lichen/app_interface/app_interface.h>
+#if IS_ENABLED(CONFIG_LICHEN_HAL)
+#include <lichen/app_interface/hal_bridge.h>
+#endif
 
 #define SINK_MAX CONFIG_LICHEN_APP_INTERFACE_MAX_SUBSCRIBERS
 
@@ -447,6 +450,32 @@ int lichen_app_interface_set_config(
 		}
 	}
 	return accepted > 0U ? 0 : first_error;
+}
+
+int lichen_app_interface_submit_location(
+	const struct lichen_app_location_time_snapshot *location)
+{
+	int ret;
+
+	if (location == NULL) {
+		k_mutex_lock(&s_mutex, K_FOREVER);
+		s_stats.invalid_count++;
+		k_mutex_unlock(&s_mutex);
+		return -EINVAL;
+	}
+
+#if IS_ENABLED(CONFIG_LICHEN_HAL)
+	ret = lichen_app_location_submit_to_hal(location);
+	if (ret == -EINVAL) {
+		k_mutex_lock(&s_mutex, K_FOREVER);
+		s_stats.invalid_count++;
+		k_mutex_unlock(&s_mutex);
+	}
+	return ret;
+#else
+	ARG_UNUSED(ret);
+	return -ENOTSUP;
+#endif
 }
 
 int lichen_app_interface_copy_stats(

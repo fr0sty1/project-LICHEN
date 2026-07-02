@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-zte2.7",
+  "title": "Decode Meshtastic Position packets into local-client location provider",
+  "description": "Why this exists: project-LICHEN-zte2.4 identified MESHTASTIC_PORTNUM_POSITION_APP as the compatibility app path for injected locations, but the Meshtastic adapter currently treats Position packets as unsupported. What needs to be done: add a decoded Position packet kind and adapter operation, parse position payload metadata, map it to local-client location semantics through the app-interface/HAL bridge or directly to lichen_hal_location_sample, and add native_sim/qemu adapter/gateway tests proving Position packets update lichen_hal_location_time_snapshot_get().",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T00:00:08.866998Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T00:00:08.86752Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "gnss",
+    "location",
+    "hardware",
+    "network-source"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zte2.7",
+      "depends_on_id": "project-LICHEN-zte2",
+      "type": "parent-child",
+      "created_at": "2026-07-02T00:00:08.86752Z"
+    }
+  ]
+}

@@ -216,6 +216,7 @@ int lichen_hal_location_time_snapshot_get(
 #ifdef CONFIG_ZTEST
 void lichen_hal_location_test_set_uptime_ms(int64_t uptime_ms);
 void lichen_hal_location_test_use_real_uptime(void);
+int64_t lichen_hal_location_test_now_ms(void);
 void lichen_hal_location_time_test_set_snapshot(
 	const struct lichen_hal_location_time_snapshot *snapshot);
 #endif

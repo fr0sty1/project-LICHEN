@@ -564,11 +564,21 @@ ZTEST(hal, test_location_provider_rejects_bad_source_and_clamps_future_time)
 		.longitude_e7_valid = true,
 		.longitude_e7 = 2,
 	};
-	const struct lichen_hal_location_sample negative_time = {
+	const struct lichen_hal_location_sample before_boot = {
 		.source_class = LICHEN_HAL_LOCATION_SOURCE_NETWORK,
 		.fix_state = LICHEN_HAL_LOCATION_FIX_2D,
 		.observed_uptime_ms_valid = true,
 		.observed_uptime_ms = -1,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 1,
+		.longitude_e7_valid = true,
+		.longitude_e7 = 2,
+	};
+	const struct lichen_hal_location_sample oldest_time = {
+		.source_class = LICHEN_HAL_LOCATION_SOURCE_NETWORK,
+		.fix_state = LICHEN_HAL_LOCATION_FIX_2D,
+		.observed_uptime_ms_valid = true,
+		.observed_uptime_ms = INT64_MIN,
 		.latitude_e7_valid = true,
 		.latitude_e7 = 1,
 		.longitude_e7_valid = true,
@@ -579,7 +589,20 @@ ZTEST(hal, test_location_provider_rejects_bad_source_and_clamps_future_time)
 	lichen_hal_location_clear();
 	lichen_hal_location_test_set_uptime_ms(1000);
 	zassert_equal(lichen_hal_location_submit(&bad_fix_source), -EINVAL);
-	zassert_equal(lichen_hal_location_submit(&negative_time), -EINVAL);
+	zassert_ok(lichen_hal_location_submit(&before_boot));
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.age_seconds_valid);
+	zassert_equal(snapshot.age_seconds, 1U);
+	zassert_true(snapshot.latitude_e7_valid);
+	lichen_hal_location_clear();
+
+	zassert_ok(lichen_hal_location_submit(&oldest_time));
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.age_seconds_valid);
+	zassert_equal(snapshot.age_seconds, UINT32_MAX);
+	zassert_false(snapshot.latitude_e7_valid);
+	lichen_hal_location_clear();
+
 	zassert_ok(lichen_hal_location_submit(&future));
 	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
 	zassert_true(snapshot.age_seconds_valid);

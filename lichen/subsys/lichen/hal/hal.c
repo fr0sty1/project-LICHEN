@@ -560,6 +560,12 @@ static bool valid_fix_source(enum lichen_hal_fix_source fix_source)
 	       fix_source <= LICHEN_HAL_FIX_SOURCE_GNSS;
 }
 
+static bool valid_position_e7(int32_t latitude_e7, int32_t longitude_e7)
+{
+	return latitude_e7 >= -900000000 && latitude_e7 <= 900000000 &&
+	       longitude_e7 >= -1800000000 && longitude_e7 <= 1800000000;
+}
+
 static int64_t location_now_ms(void)
 {
 #ifdef CONFIG_ZTEST
@@ -574,15 +580,21 @@ static uint32_t location_age_seconds(const struct lichen_hal_location_sample *sa
 {
 	int64_t now = location_now_ms();
 	int64_t observed = sample->observed_uptime_ms;
+	uint64_t elapsed_ms;
 
 	if (now <= observed) {
 		return 0U;
 	}
-	if ((uint64_t)(now - observed) / 1000U > UINT32_MAX) {
+	if (observed < 0 && now >= 0) {
+		elapsed_ms = (uint64_t)now + (uint64_t)(-(observed + 1)) + 1U;
+	} else {
+		elapsed_ms = (uint64_t)(now - observed);
+	}
+	if (elapsed_ms / 1000U > UINT32_MAX) {
 		return UINT32_MAX;
 	}
 
-	return (uint32_t)((now - observed) / 1000);
+	return (uint32_t)(elapsed_ms / 1000U);
 }
 
 static bool sample_is_stale(const struct lichen_hal_location_sample *sample)
@@ -654,15 +666,15 @@ int lichen_hal_location_submit(const struct lichen_hal_location_sample *sample)
 	if (sample->latitude_e7_valid != sample->longitude_e7_valid) {
 		return -EINVAL;
 	}
+	if (sample->latitude_e7_valid &&
+	    !valid_position_e7(sample->latitude_e7, sample->longitude_e7)) {
+		return -EINVAL;
+	}
 	if ((sample->fix_state == LICHEN_HAL_LOCATION_FIX_2D ||
 	     sample->fix_state == LICHEN_HAL_LOCATION_FIX_3D) &&
 	    (!sample->latitude_e7_valid || !sample->longitude_e7_valid)) {
 		return -EINVAL;
 	}
-	if (sample->observed_uptime_ms_valid && sample->observed_uptime_ms < 0) {
-		return -EINVAL;
-	}
-
 	copy = *sample;
 	if (!copy.observed_uptime_ms_valid) {
 		copy.observed_uptime_ms = location_now_ms();
@@ -810,6 +822,11 @@ void lichen_hal_location_test_use_real_uptime(void)
 {
 	s_use_test_uptime = false;
 	s_test_uptime_ms = 0;
+}
+
+int64_t lichen_hal_location_test_now_ms(void)
+{
+	return location_now_ms();
 }
 
 void lichen_hal_location_time_test_set_snapshot(

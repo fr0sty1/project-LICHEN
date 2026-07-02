@@ -10,6 +10,7 @@
 
 #include <lichen/app_interface/app_interface.h>
 #include <lichen/app_interface/hal_bridge.h>
+#include <lichen/hal.h>
 
 struct sink_ctx {
 	uint32_t text_count;
@@ -210,6 +211,8 @@ static void before(void *fixture)
 	ARG_UNUSED(fixture);
 
 	lichen_app_interface_test_reset();
+	lichen_hal_location_clear();
+	lichen_hal_location_test_use_real_uptime();
 }
 
 ZTEST(app_interface, test_text_fanout_to_multiple_sinks)
@@ -745,6 +748,184 @@ ZTEST(app_interface, test_location_time_hal_bridge_maps_stale_metadata)
 	zassert_false(app.longitude_e7_valid);
 	zassert_false(app.fix_source_valid);
 	zassert_equal(app.fix_source, LICHEN_APP_FIX_SOURCE_NONE);
+}
+
+ZTEST(app_interface, test_location_time_hal_bridge_submits_local_client_fix)
+{
+	const struct lichen_app_location_time_snapshot app = {
+		.location_provider_available = true,
+		.time_provider_available = true,
+		.source_class_valid = true,
+		.source_class = LICHEN_APP_LOCATION_SOURCE_LOCAL_CLIENT,
+		.source_name = "phone-lci",
+		.fix_state_valid = true,
+		.fix_state = LICHEN_APP_LOCATION_FIX_3D,
+		.age_seconds_valid = true,
+		.age_seconds = 4U,
+		.horizontal_accuracy_mm_valid = true,
+		.horizontal_accuracy_mm = 3200U,
+		.vertical_accuracy_mm_valid = true,
+		.vertical_accuracy_mm = 9100U,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 476206130,
+		.longitude_e7_valid = true,
+		.longitude_e7 = -1223493000,
+		.altitude_m_valid = true,
+		.altitude_m = 42,
+		.fix_time_unix_valid = true,
+		.fix_time_unix = 1710000000U,
+		.satellites_valid = true,
+		.satellites = 11U,
+	};
+	struct lichen_hal_location_time_snapshot hal;
+
+	lichen_hal_location_test_set_uptime_ms(10 * 1000);
+	zassert_equal(lichen_app_location_submit_to_hal(NULL), -EINVAL);
+	zassert_ok(lichen_app_interface_submit_location(&app));
+	zassert_ok(lichen_hal_location_time_snapshot_get(&hal));
+
+	zassert_true(hal.location_provider_available);
+	zassert_true(hal.source_class_valid);
+	zassert_equal(hal.source_class, LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT);
+	zassert_str_equal(hal.source_name, "phone-lci");
+	zassert_true(hal.fix_state_valid);
+	zassert_equal(hal.fix_state, LICHEN_HAL_LOCATION_FIX_3D);
+	zassert_true(hal.age_seconds_valid);
+	zassert_equal(hal.age_seconds, 4U);
+	zassert_true(hal.horizontal_accuracy_mm_valid);
+	zassert_equal(hal.horizontal_accuracy_mm, 3200U);
+	zassert_true(hal.vertical_accuracy_mm_valid);
+	zassert_equal(hal.vertical_accuracy_mm, 9100U);
+	zassert_true(hal.latitude_e7_valid);
+	zassert_equal(hal.latitude_e7, 476206130);
+	zassert_true(hal.longitude_e7_valid);
+	zassert_equal(hal.longitude_e7, -1223493000);
+	zassert_true(hal.altitude_m_valid);
+	zassert_equal(hal.altitude_m, 42);
+	zassert_true(hal.fix_time_unix_valid);
+	zassert_equal(hal.fix_time_unix, 1710000000U);
+	zassert_true(hal.satellites_valid);
+	zassert_equal(hal.satellites, 11U);
+	zassert_false(hal.fix_source_valid);
+	zassert_equal(hal.fix_source, LICHEN_HAL_FIX_SOURCE_NONE);
+}
+
+ZTEST(app_interface, test_location_time_hal_bridge_rejects_invalid_client_fix)
+{
+	const struct lichen_app_location_time_snapshot good = {
+		.source_name = "phone-lci",
+		.fix_state_valid = true,
+		.fix_state = LICHEN_APP_LOCATION_FIX_2D,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 476206130,
+		.longitude_e7_valid = true,
+		.longitude_e7 = -1223493000,
+	};
+	const struct lichen_app_location_time_snapshot missing_lon = {
+		.fix_state_valid = true,
+		.fix_state = LICHEN_APP_LOCATION_FIX_2D,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 476206130,
+	};
+	const struct lichen_app_location_time_snapshot derived_stale = {
+		.fix_state_valid = true,
+		.fix_state = LICHEN_APP_LOCATION_FIX_STALE,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 476206130,
+		.longitude_e7_valid = true,
+		.longitude_e7 = -1223493000,
+	};
+	const struct lichen_app_location_time_snapshot local_gnss = {
+		.fix_state_valid = true,
+		.fix_state = LICHEN_APP_LOCATION_FIX_2D,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 476206130,
+		.longitude_e7_valid = true,
+		.longitude_e7 = -1223493000,
+		.fix_source_valid = true,
+		.fix_source = LICHEN_APP_FIX_SOURCE_GNSS,
+	};
+	const struct lichen_app_location_time_snapshot network_source = {
+		.source_class_valid = true,
+		.source_class = LICHEN_APP_LOCATION_SOURCE_NETWORK,
+		.fix_state_valid = true,
+		.fix_state = LICHEN_APP_LOCATION_FIX_2D,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 476206130,
+		.longitude_e7_valid = true,
+		.longitude_e7 = -1223493000,
+	};
+	const struct lichen_app_location_time_snapshot bad_fix_state = {
+		.fix_state_valid = true,
+		.fix_state = (enum lichen_app_location_fix_state)99,
+	};
+	const struct lichen_app_location_time_snapshot bad_latitude = {
+		.fix_state_valid = true,
+		.fix_state = LICHEN_APP_LOCATION_FIX_2D,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 900000001,
+		.longitude_e7_valid = true,
+		.longitude_e7 = -1223493000,
+	};
+	struct lichen_hal_location_time_snapshot hal = {
+		.location_provider_available = true,
+	};
+
+	zassert_ok(lichen_app_interface_submit_location(&good));
+	zassert_equal(lichen_app_interface_submit_location(&missing_lon),
+		      -EINVAL);
+	zassert_equal(lichen_app_interface_submit_location(&derived_stale),
+		      -EINVAL);
+	zassert_equal(lichen_app_interface_submit_location(&local_gnss),
+		      -EINVAL);
+	zassert_equal(lichen_app_interface_submit_location(&network_source),
+		      -EINVAL);
+	zassert_equal(lichen_app_interface_submit_location(&bad_fix_state),
+		      -EINVAL);
+	zassert_equal(lichen_app_interface_submit_location(&bad_latitude),
+		      -EINVAL);
+	zassert_ok(lichen_hal_location_time_snapshot_get(&hal));
+	zassert_true(hal.location_provider_available);
+	zassert_str_equal(hal.source_name, "phone-lci");
+	zassert_true(hal.latitude_e7_valid);
+	zassert_equal(hal.latitude_e7, 476206130);
+	zassert_true(hal.longitude_e7_valid);
+	zassert_equal(hal.longitude_e7, -1223493000);
+}
+
+ZTEST(app_interface, test_location_time_hal_bridge_derives_stale_client_fix)
+{
+	const struct lichen_app_location_time_snapshot app = {
+		.fix_state_valid = true,
+		.fix_state = LICHEN_APP_LOCATION_FIX_2D,
+		.age_seconds_valid = true,
+		.age_seconds = CONFIG_LICHEN_LOCATION_FRESHNESS_MAX_AGE_S + 1U,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 476206130,
+		.longitude_e7_valid = true,
+		.longitude_e7 = -1223493000,
+		.horizontal_accuracy_mm_valid = true,
+		.horizontal_accuracy_mm = 1000U,
+	};
+	struct lichen_hal_location_time_snapshot hal;
+
+	lichen_hal_location_test_set_uptime_ms(
+		(CONFIG_LICHEN_LOCATION_FRESHNESS_MAX_AGE_S + 10) * 1000LL);
+	zassert_ok(lichen_app_interface_submit_location(&app));
+	zassert_ok(lichen_hal_location_time_snapshot_get(&hal));
+
+	zassert_true(hal.location_provider_available);
+	zassert_true(hal.source_class_valid);
+	zassert_equal(hal.source_class, LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT);
+	zassert_str_equal(hal.source_name, "local-client");
+	zassert_true(hal.fix_state_valid);
+	zassert_equal(hal.fix_state, LICHEN_HAL_LOCATION_FIX_STALE);
+	zassert_true(hal.age_seconds_valid);
+	zassert_equal(hal.age_seconds,
+		      CONFIG_LICHEN_LOCATION_FRESHNESS_MAX_AGE_S + 1U);
+	zassert_false(hal.latitude_e7_valid);
+	zassert_false(hal.longitude_e7_valid);
+	zassert_false(hal.horizontal_accuracy_mm_valid);
 }
 
 ZTEST(app_interface, test_provider_hooks_are_single_owner)

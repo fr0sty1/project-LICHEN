@@ -10,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T06:12:24.31598Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-01T22:56:51.739018Z",
+  "updated_at": "2026-07-02T00:06:44.601556Z",
   "labels": [
     "zephyr",
     "firmware",
@@ -49,6 +49,18 @@
       "depends_on_id": "project-LICHEN-zte2.5",
       "type": "blocks",
       "created_at": "2026-07-01T22:56:30.977336Z"
+    },
+    {
+      "issue_id": "project-LICHEN-zte2",
+      "depends_on_id": "project-LICHEN-zte2.6",
+      "type": "blocks",
+      "created_at": "2026-07-02T00:00:13.829594Z"
+    },
+    {
+      "issue_id": "project-LICHEN-zte2",
+      "depends_on_id": "project-LICHEN-zte2.7",
+      "type": "blocks",
+      "created_at": "2026-07-02T00:06:44.601556Z"
     }
   ]
 }
