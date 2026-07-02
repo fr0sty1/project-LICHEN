@@ -153,6 +153,20 @@ class TestMessagesGet:
             await client.shutdown()
             await server.shutdown()
 
+    async def test_legacy_messages_alias_adds_text_for_lci_body_messages(self) -> None:
+        client, server, msgs = await _setup()
+        try:
+            msgs.deliver({"from": _FROM, "to": _TO_A, "body": "body-only"})
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/messages")
+            ).response
+            inbox = _inbox(resp.payload)
+            assert inbox[0]["body"] == "body-only"
+            assert inbox[0]["text"] == "body-only"
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
 
 # ---------------------------------------------------------------------------
 # POST
@@ -213,6 +227,10 @@ class TestMessagesPost:
             inbox = _inbox(get_resp.payload)
             assert inbox[0]["body"] == "hello lci"
             assert inbox[0]["ack"] is True
+            legacy_resp = await client.request(
+                Message(code=GET, uri="coap://srv/messages")
+            ).response
+            assert _inbox(legacy_resp.payload)[0]["text"] == "hello lci"
         finally:
             await client.shutdown()
             await server.shutdown()

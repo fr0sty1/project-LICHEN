@@ -459,6 +459,10 @@ class MessagesResource(resource.ObservableResource):
         """Return sent messages in creation order."""
         return [self._sent[msg_id] for msg_id in self._sent_order]
 
+    def inbox(self) -> list[dict[str, Any]]:
+        """Return inbox messages in delivery order."""
+        return [dict(message) for message in self._inbox]
+
     def sent_message(self, msg_id: str) -> dict[str, Any] | None:
         """Return one sent message by ID."""
         return self._sent.get(msg_id)
@@ -546,10 +550,18 @@ class LegacyMessagesAliasResource(resource.ObservableResource):
         return {"rt": "legacy.messages", "ct": str(int(CBOR)), "title": "legacy demo alias"}
 
     async def render_get(self, request: Message) -> Message:
-        return await self._messages.render_get(request)
+        payload = {"messages": [_legacy_message_view(msg) for msg in self._messages.inbox()]}
+        return _cbor_response(payload)
 
     async def render_post(self, request: Message) -> Message:
         return await self._messages.render_post(request)
+
+
+def _legacy_message_view(message: dict[str, Any]) -> dict[str, Any]:
+    legacy = dict(message)
+    if "text" not in legacy and isinstance(legacy.get("body"), str):
+        legacy["text"] = legacy["body"]
+    return legacy
 
 
 _RD_DEFAULT_LIFETIME = 86400  # seconds (RFC 9176 §7.3.1)

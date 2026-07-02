@@ -11,13 +11,17 @@ import cbor2
 import pytest
 
 from lichen.client import (
+    AiocoapResourceTransport,
     CoapResult,
     DeliveryState,
+    IpCoapConfig,
     LciClient,
     LciClientError,
     MessageDraft,
 )
 from lichen.client.lci import normalize_message, parse_link_format
+from lichen.coap.resources import MessagesResource, StaticNodeInfo, build_site
+from lichen.coap.transport import InMemoryNetwork, create_lichen_context
 
 
 class FakeSubscription:
@@ -70,6 +74,39 @@ class FakeResourceTransport:
             subscription = FakeSubscription([response])
             self.subscriptions[path] = subscription
         return subscription
+
+
+class RecordingResourceTransport:
+    def __init__(self, inner: AiocoapResourceTransport) -> None:
+        self.inner = inner
+        self.requests: list[tuple[str, str]] = []
+
+    async def request(
+        self,
+        method: str,
+        path: str,
+        *,
+        payload: bytes = b"",
+        content_format: int | None = None,
+        observe: bool = False,
+    ) -> CoapResult:
+        self.requests.append((method, path))
+        return await self.inner.request(
+            method,
+            path,
+            payload=payload,
+            content_format=content_format,
+            observe=observe,
+        )
+
+    async def connect(self) -> None:
+        await self.inner.connect()
+
+    async def close(self) -> None:
+        await self.inner.close()
+
+    async def observe(self, path: str, *, method: str = "GET") -> FakeSubscription:
+        raise NotImplementedError
 
 
 def test_parse_link_format_discovers_resources_observe_and_quoted_params() -> None:
@@ -247,6 +284,70 @@ async def test_send_message_uses_discovered_payload_shape() -> None:
     method, path, payload, content_format, observe = transport.requests[-1]
     assert (method, path, content_format, observe) == ("POST", "/msg/inbox", 60, False)
     assert cbor2.loads(payload) == {"to": "fd00::2", "body": "hello", "ack": True}
+
+
+async def test_lci_client_defaults_interoperate_with_simulator_messages_resource() -> None:
+    network = InMemoryNetwork()
+    messages = MessagesResource()
+    site = build_site(StaticNodeInfo(status={"rank": 256}), messages_resource=messages)
+    server = await create_lichen_context(network.channel("srv"), "srv", site=site)
+    context = await create_lichen_context(network.channel("cli"), "cli")
+    transport = RecordingResourceTransport(
+        AiocoapResourceTransport(
+            config=IpCoapConfig(base_uri="coap://srv"),
+            context=context,
+        )
+    )
+    client = LciClient(transport)
+    try:
+        messages.deliver({"from": "fd00::1", "to": "all", "text": "legacy", "t": 1.5})
+
+        inbox = await client.inbox()
+        result = await client.send_message(MessageDraft(to="fd00::2", body="hello", ack=True))
+
+        assert inbox[0].body == "legacy"
+        assert inbox[0].timestamp == 1.5
+        assert result.state is DeliveryState.ACCEPTED
+        assert result.location_path == ("msg", "sent", "1")
+        assert transport.requests == [("GET", "/msg/inbox"), ("POST", "/msg/inbox")]
+        assert messages.sent_messages()[0]["body"] == "hello"
+        assert messages.sent_messages()[0]["ack"] is True
+    finally:
+        await transport.close()
+        await context.shutdown()
+        await server.shutdown()
+
+
+async def test_lci_client_can_use_legacy_messages_alias_explicitly() -> None:
+    network = InMemoryNetwork()
+    messages = MessagesResource()
+    site = build_site(StaticNodeInfo(status={"rank": 256}), messages_resource=messages)
+    server = await create_lichen_context(network.channel("srv"), "srv", site=site)
+    context = await create_lichen_context(network.channel("cli"), "cli")
+    transport = AiocoapResourceTransport(
+        config=IpCoapConfig(base_uri="coap://srv"),
+        context=context,
+    )
+    client = LciClient(transport)
+    try:
+        messages.deliver({"from": "fd00::1", "to": "all", "text": "legacy", "t": 1.5})
+
+        inbox = await client.inbox("/messages")
+        result = await client.send_message(
+            MessageDraft(to="fd00::2", body="compat"),
+            path="/messages",
+        )
+
+        assert inbox[0].body == "legacy"
+        assert result.state is DeliveryState.ACCEPTED
+        assert messages.sent_messages()[0]["body"] == "compat"
+        legacy_rows = await client.inbox("/messages")
+        assert legacy_rows[-1].body == "compat"
+        assert legacy_rows[-1].raw["text"] == "compat"
+    finally:
+        await transport.close()
+        await context.shutdown()
+        await server.shutdown()
 
 
 async def test_config_writes_logs_diagnostics_and_observe_inbox() -> None:
