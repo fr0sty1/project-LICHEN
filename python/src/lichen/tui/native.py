@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
 from enum import StrEnum
@@ -128,6 +128,9 @@ class ShellStatus:
     time: str = "none"
     unread: int = 0
     target: str = "--"
+
+
+ConnectionClientFactory = Callable[[LinkMode], MessagingClient | None]
 
 
 @dataclass(frozen=True)
@@ -658,6 +661,7 @@ class CommandBar(Static):
             "c compose",
             "r refresh",
             "o observe",
+            "l link",
             "? help",
             "q quit",
         )
@@ -877,6 +881,7 @@ class ActivePane(Static):
         config_state: ConfigState | None = None,
         logs: LogsState | None = None,
         diagnostics: DiagnosticsState | None = None,
+        connection_error: str | None = None,
     ) -> None:
         self.mode = mode
         self.line_width = width
@@ -886,6 +891,7 @@ class ActivePane(Static):
         self.config_state = config_state or ConfigState()
         self.logs = logs or LogsState()
         self.diagnostics = diagnostics or DiagnosticsState()
+        self.connection_error = connection_error
         super().__init__(self.render_mode(), id="active-pane", markup=False)
 
     def set_mode(self, mode: str) -> None:
@@ -934,6 +940,12 @@ class ActivePane(Static):
         if self.mode == "Diag":
             self.update(self.render_mode())
 
+    def set_connection_error(self, detail: str) -> None:
+        """Render a connection picker error."""
+        self.connection_error = detail
+        self.mode = "ConnectError"
+        self.update(self.render_mode())
+
     def render_mode(self) -> str:
         """Return deterministic text for the active screen."""
         match self.mode:
@@ -981,6 +993,27 @@ class ActivePane(Static):
                 )
             case "Quit":
                 return "\n".join(("QUIT?", "Press y to quit or Esc/n to cancel."))
+            case "Connect":
+                return "\n".join(
+                    (
+                        "CONNECTION",
+                        field_line("1", "Demo", "local", self.line_width),
+                        field_line("2", "BLE", "packet", self.line_width),
+                        field_line("3", "IP/CoAP", "network", self.line_width),
+                    )
+                )
+            case "ConnectError":
+                return "\n".join(
+                    (
+                        "CONNECTION",
+                        field_line(
+                            "error",
+                            self.connection_error or "transport unavailable",
+                            "recoverable",
+                            self.line_width,
+                        ),
+                    )
+                )
             case "Open":
                 return "\n".join(("OPEN", "Select a concrete row in child flow screens."))
             case "Filter":
@@ -1019,6 +1052,7 @@ class NativeClientApp(App[None]):
         Binding("escape", "cancel_prompt", "Cancel"),
         Binding("enter", "open", "Open"),
         Binding("slash", "filter", "Filter"),
+        Binding("l", "connect_picker", "Link"),
         Binding("tab", "next_mode", "Next", priority=True),
         Binding("shift+tab", "prev_mode", "Prev", priority=True),
         Binding("right_square_bracket", "next_mode", "Next", priority=True),
@@ -1042,12 +1076,14 @@ class NativeClientApp(App[None]):
         status: ShellStatus | None = None,
         *,
         client: MessagingClient | None = None,
+        connection_factory: ConnectionClientFactory | None = None,
         inbox_path: str = "/msg/inbox",
         send_path: str = "/msg/inbox",
     ) -> None:
         super().__init__()
         self.status = status or ShellStatus()
         self.client = client
+        self.connection_factory = connection_factory
         self.inbox_path = inbox_path
         self.send_path = send_path
         self.messaging = MessagingState()
@@ -1087,8 +1123,11 @@ class NativeClientApp(App[None]):
         """Size initial fixed-width text renderers to the terminal."""
         self._resize_widgets()
         self._update_compose_inputs()
-        connect = getattr(self.client, "connect", None)
-        if connect is None:
+        await self._connect_current_client()
+
+    async def _connect_current_client(self) -> None:
+        """Connect the current client if it exposes a connect hook."""
+        if self.client is None:
             return
         self.status = ShellStatus(
             context=self.status.context,
@@ -1101,10 +1140,9 @@ class NativeClientApp(App[None]):
             target=self.status.target,
         )
         self.query_one("#native-status", NativeStatusBar).set_status(self.status)
-        try:
-            await connect()
-        except Exception as exc:
-            self._set_messaging(self._messaging_error(str(exc)))
+        error = await self._connect_client(self.client)
+        if error is not None:
+            self._set_messaging(self._messaging_error(error))
             return
         self.status = ShellStatus(
             context=self.status.context,
@@ -1118,19 +1156,49 @@ class NativeClientApp(App[None]):
         )
         self.query_one("#native-status", NativeStatusBar).set_status(self.status)
 
-    async def on_unmount(self) -> None:
-        """Close an owned client transport when the app exits."""
-        if self._observe_task is not None:
-            self._observe_task.cancel()
-            with suppress(asyncio.CancelledError):
-                await self._observe_task
-        if self._log_task is not None:
-            self._log_task.cancel()
-            with suppress(asyncio.CancelledError):
-                await self._log_task
-        disconnect = getattr(self.client, "disconnect", None)
+    async def _connect_client(self, client: MessagingClient) -> str | None:
+        """Connect a candidate client and return a displayable error on failure."""
+        connect = getattr(client, "connect", None)
+        if connect is None:
+            return None
+        try:
+            await connect()
+        except Exception as exc:
+            return str(exc)
+        return None
+
+    async def _disconnect_current_client(self) -> None:
+        """Disconnect the current client if it exposes a disconnect hook."""
+        if self.client is not None:
+            await self._disconnect_client(self.client)
+
+    async def _disconnect_client(self, client: MessagingClient) -> None:
+        """Disconnect a client if it exposes a disconnect hook."""
+        disconnect = getattr(client, "disconnect", None)
         if disconnect is not None:
             await disconnect()
+
+    async def _cancel_live_tasks(self) -> None:
+        """Cancel active Observe/log tasks before switching transports."""
+        if self._observe_task is not None:
+            observe_task = self._observe_task
+            self._observe_task = None
+            observe_task.cancel()
+            with suppress(asyncio.CancelledError, Exception):
+                await observe_task
+        if self._log_task is not None:
+            log_task = self._log_task
+            self._log_task = None
+            log_task.cancel()
+            with suppress(asyncio.CancelledError, Exception):
+                await log_task
+
+    async def on_unmount(self) -> None:
+        """Close an owned client transport when the app exits."""
+        with suppress(Exception):
+            await self._cancel_live_tasks()
+        with suppress(Exception):
+            await self._disconnect_current_client()
 
     async def _on_resize(self, event: events.Resize) -> None:
         """Refresh fixed-width text when the terminal changes size."""
@@ -1258,6 +1326,12 @@ class NativeClientApp(App[None]):
         self.prompt_mode = "Filter"
         self.query_one("#active-pane", ActivePane).set_mode("Filter")
 
+    def action_connect_picker(self) -> None:
+        """Open the local transport picker."""
+        self.prompt_mode = "Connect"
+        self._disable_text_inputs()
+        self.query_one("#active-pane", ActivePane).set_mode("Connect")
+
     def action_help(self) -> None:
         """Show keyboard help without changing the active tab."""
         self.prompt_mode = "Help"
@@ -1292,9 +1366,116 @@ class NativeClientApp(App[None]):
             )
         self.query_one("#active-pane", ActivePane).set_mode(self.status.context)
 
-    def action_jump_mode(self, index: int) -> None:
+    async def action_jump_mode(self, index: int) -> None:
         """Jump directly to a numbered top-level mode."""
+        if self.prompt_mode == "Connect":
+            await self.select_connection(index)
+            return
         self._set_mode(index)
+
+    async def select_connection(self, index: int) -> None:
+        """Select Demo, BLE, or IP/CoAP from the connection picker."""
+        mode_by_index = {0: LinkMode.DEMO, 1: LinkMode.BLE, 2: LinkMode.IP}
+        mode = mode_by_index.get(index)
+        if mode is None:
+            return
+        next_client = None if mode is LinkMode.DEMO else self._build_connection_client(mode)
+        if mode is not LinkMode.DEMO and next_client is None:
+            detail = f"{mode.value} transport unavailable"
+            self.prompt_mode = None
+            self.status = ShellStatus(
+                context=self.status.context,
+                mode=self.status.mode,
+                state=UiState.ERROR,
+                device=self.status.device,
+                battery=self.status.battery,
+                time=self.status.time,
+                unread=self.status.unread,
+                target=self.status.target,
+            )
+            self.query_one("#native-status", NativeStatusBar).set_status(self.status)
+            self.query_one("#active-pane", ActivePane).set_connection_error(detail)
+            return
+        candidate_ready = False
+        if next_client is not None and next_client is not self.client:
+            error = await self._connect_client(next_client)
+            if error is not None:
+                with suppress(Exception):
+                    await self._disconnect_client(next_client)
+                detail = f"{mode.value} connection failed: {error}"
+                self.prompt_mode = None
+                self.status = ShellStatus(
+                    context=self.status.context,
+                    mode=self.status.mode,
+                    state=UiState.ERROR,
+                    device=self.status.device,
+                    battery=self.status.battery,
+                    time=self.status.time,
+                    unread=self.status.unread,
+                    target=self.status.target,
+                )
+                self.query_one("#native-status", NativeStatusBar).set_status(self.status)
+                self.query_one("#active-pane", ActivePane).set_connection_error(detail)
+                return
+            candidate_ready = True
+        if next_client is self.client:
+            self.prompt_mode = None
+            self.status = ShellStatus(
+                context=self.status.context,
+                mode=mode,
+                state=self.status.state,
+                device=self.status.device,
+                battery=self.status.battery,
+                time=self.status.time,
+                unread=self.status.unread,
+                target=self.status.target,
+            )
+            self.query_one("#native-status", NativeStatusBar).set_status(self.status)
+            self.query_one("#active-pane", ActivePane).set_mode(self.status.context)
+            return
+        try:
+            await self._disconnect_current_client()
+        except Exception as exc:
+            if next_client is not None and candidate_ready:
+                with suppress(Exception):
+                    await self._disconnect_client(next_client)
+            detail = f"{mode.value} switch failed: {exc}"
+            self.prompt_mode = None
+            self.status = ShellStatus(
+                context=self.status.context,
+                mode=self.status.mode,
+                state=UiState.ERROR,
+                device=self.status.device,
+                battery=self.status.battery,
+                time=self.status.time,
+                unread=self.status.unread,
+                target=self.status.target,
+            )
+            self.query_one("#native-status", NativeStatusBar).set_status(self.status)
+            self.query_one("#active-pane", ActivePane).set_connection_error(detail)
+            return
+        await self._cancel_live_tasks()
+        self.client = next_client
+        self.prompt_mode = None
+        self.status = ShellStatus(
+            context=self.status.context,
+            mode=mode,
+            state=UiState.SYNCED
+            if next_client is not None and candidate_ready
+            else UiState.DISCONNECTED,
+            device="--",
+            battery="--",
+            time=self.status.time,
+            unread=self.status.unread,
+            target=self.status.target,
+        )
+        self.query_one("#native-status", NativeStatusBar).set_status(self.status)
+        self.query_one("#active-pane", ActivePane).set_mode(self.status.context)
+
+    def _build_connection_client(self, mode: LinkMode) -> MessagingClient | None:
+        if self.connection_factory is None:
+            return self.client if self.status.mode == mode else None
+        return self.connection_factory(mode)
 
     def _set_mode(self, index: int) -> None:
         previous_mode = self.status.context
@@ -1868,6 +2049,34 @@ def build_messaging_client(
     return LciClient(transport)
 
 
+def build_connection_factory(
+    *,
+    coap_base_uri: str | None = None,
+    ble_address: str | None = None,
+    ble_local_host: str = "fe80::2",
+    ble_node_host: str = "fe80::1",
+) -> ConnectionClientFactory:
+    """Return a picker factory for Demo, BLE, and IP/CoAP modes."""
+
+    def factory(mode: LinkMode) -> MessagingClient | None:
+        if mode is LinkMode.DEMO:
+            return None
+        if mode is LinkMode.BLE:
+            if ble_address is None:
+                return None
+            return build_messaging_client(
+                None,
+                ble_address=ble_address,
+                ble_local_host=ble_local_host,
+                ble_node_host=ble_node_host,
+            )
+        if mode is LinkMode.IP and coap_base_uri is not None:
+            return build_messaging_client(coap_base_uri)
+        return None
+
+    return factory
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     """Run the native client shell."""
     parser = argparse.ArgumentParser(description="Run the LICHEN native LCI TUI")
@@ -1881,6 +2090,12 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser.add_argument("--inbox-path", default="/msg/inbox")
     parser.add_argument("--send-path", default="/msg/inbox")
     args = parser.parse_args(argv)
+    connection_factory = build_connection_factory(
+        coap_base_uri=args.coap_base_uri,
+        ble_address=args.ble_address,
+        ble_local_host=args.ble_local_host,
+        ble_node_host=args.ble_node_host,
+    )
     client = build_messaging_client(
         args.coap_base_uri,
         ble_address=args.ble_address,
@@ -1899,6 +2114,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     NativeClientApp(
         status,
         client=client,
+        connection_factory=connection_factory,
         inbox_path=args.inbox_path,
         send_path=args.send_path,
     ).run()

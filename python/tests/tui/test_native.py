@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator, Mapping
 
 import pytest
@@ -53,8 +54,9 @@ from lichen.tui.native import (
 
 
 class FakeMessageSubscription:
-    def __init__(self, snapshots: list[list[MessageRecord]]) -> None:
+    def __init__(self, snapshots: list[list[MessageRecord]], *, keep_open: bool = False) -> None:
         self.snapshots = snapshots
+        self.keep_open = keep_open
         self.closed = False
 
     def messages(self) -> AsyncIterator[list[MessageRecord]]:
@@ -66,6 +68,8 @@ class FakeMessageSubscription:
     async def _messages(self) -> AsyncIterator[list[MessageRecord]]:
         for snapshot in self.snapshots:
             yield snapshot
+        if self.keep_open:
+            await asyncio.Event().wait()
 
 
 class FakeMessagingClient:
@@ -74,20 +78,26 @@ class FakeMessagingClient:
         *,
         inbox: list[MessageRecord] | None = None,
         observe: list[list[MessageRecord]] | None = None,
+        keep_observe_open: bool = False,
         result: SendResult | None = None,
         inbox_error: Exception | None = None,
         observe_error: Exception | None = None,
         send_error: Exception | None = None,
         status_error: Exception | None = None,
         config_write_result: CoapResult | None = None,
+        connect_error: Exception | None = None,
+        disconnect_error: Exception | None = None,
     ) -> None:
         self.inbox_rows = inbox or []
         self.observe_rows = observe or []
+        self.keep_observe_open = keep_observe_open
         self.result = result or SendResult(state=DeliveryState.ACCEPTED, coap_code="2.04")
         self.inbox_error = inbox_error
         self.observe_error = observe_error
         self.send_error = send_error
         self.status_error = status_error
+        self.connect_error = connect_error
+        self.disconnect_error = disconnect_error
         self.config_write_result = config_write_result or CoapResult(code="2.04")
         self.inbox_calls: list[str] = []
         self.observe_calls: list[str] = []
@@ -103,6 +113,8 @@ class FakeMessagingClient:
         self.radio_writes: list[dict[str, object]] = []
         self.log_calls: list[str] = []
         self.diagnostics_calls: list[str] = []
+        self.connect_calls = 0
+        self.disconnect_calls = 0
         self.subscription: FakeMessageSubscription | None = None
         self.log_subscription = FakeResourceSubscription(
             [
@@ -117,6 +129,16 @@ class FakeMessagingClient:
             ]
         )
 
+    async def connect(self) -> None:
+        self.connect_calls += 1
+        if self.connect_error is not None:
+            raise self.connect_error
+
+    async def disconnect(self) -> None:
+        self.disconnect_calls += 1
+        if self.disconnect_error is not None:
+            raise self.disconnect_error
+
     async def inbox(self, path: str = "/msg/inbox") -> list[MessageRecord]:
         self.inbox_calls.append(path)
         if self.inbox_error is not None:
@@ -127,7 +149,10 @@ class FakeMessagingClient:
         self.observe_calls.append(path)
         if self.observe_error is not None:
             raise self.observe_error
-        self.subscription = FakeMessageSubscription(self.observe_rows)
+        self.subscription = FakeMessageSubscription(
+            self.observe_rows,
+            keep_open=self.keep_observe_open,
+        )
         return self.subscription
 
     async def send_message(self, draft: MessageDraft, path: str = "/msg/inbox") -> SendResult:
@@ -732,6 +757,254 @@ async def test_tui_messaging_flow_uses_same_lci_client_interface_for_ble_transpo
     assert "from ip transport" in rendered
 
 
+async def test_connection_picker_selects_ble_client_from_factory() -> None:
+    initial = FakeMessagingClient()
+    ble_client = FakeMessagingClient(inbox=[message_record("ble inbox")])
+    clients = {LinkMode.BLE: ble_client}
+
+    app = NativeClientApp(
+        ShellStatus(context="Chats", mode=LinkMode.DEMO, state=UiState.DISCONNECTED),
+        client=initial,
+        connection_factory=lambda mode: clients.get(mode),
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("l")
+        await pilot.pause()
+        picker = app.query_one("#active-pane", ActivePane).render_mode()
+        await pilot.press("2")
+        await pilot.press("r")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        status = app.query_one("#native-status", NativeStatusBar).status
+
+    assert "CONNECTION" in picker
+    assert "BLE" in picker
+    assert initial.disconnect_calls == 1
+    assert ble_client.connect_calls == 1
+    assert ble_client.inbox_calls == ["/msg/inbox"]
+    assert status.mode == LinkMode.BLE
+    assert status.state == UiState.SYNCED
+    assert "ble inbox" in rendered
+
+
+async def test_connection_picker_unavailable_choice_preserves_current_client() -> None:
+    current = FakeMessagingClient(inbox=[message_record("current inbox")])
+    app = NativeClientApp(
+        ShellStatus(context="Dashboard", mode=LinkMode.IP, state=UiState.SYNCED),
+        client=current,
+        connection_factory=lambda _mode: None,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("l")
+        await pilot.pause()
+        await pilot.press("2")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        status = app.query_one("#native-status", NativeStatusBar).status
+        disconnect_calls = current.disconnect_calls
+
+    assert app.client is current
+    assert app.prompt_mode is None
+    assert disconnect_calls == 0
+    assert status.mode == LinkMode.IP
+    assert status.state == UiState.ERROR
+    assert "CONNECTION" in rendered
+    assert "BLE transport unavailable" in rendered
+
+
+async def test_connection_picker_failed_connect_preserves_current_client() -> None:
+    current = FakeMessagingClient(inbox=[message_record("current inbox")])
+    failing_ble = FakeMessagingClient(connect_error=RuntimeError("adapter offline"))
+    app = NativeClientApp(
+        ShellStatus(context="Dashboard", mode=LinkMode.IP, state=UiState.SYNCED),
+        client=current,
+        connection_factory=lambda mode: failing_ble if mode is LinkMode.BLE else None,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("l")
+        await pilot.pause()
+        await pilot.press("2")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        status = app.query_one("#native-status", NativeStatusBar).status
+        disconnect_calls = current.disconnect_calls
+
+    assert app.client is current
+    assert app.prompt_mode is None
+    assert failing_ble.connect_calls == 1
+    assert failing_ble.disconnect_calls == 1
+    assert disconnect_calls == 0
+    assert status.mode == LinkMode.IP
+    assert status.state == UiState.ERROR
+    assert "CONNECTION" in rendered
+    assert "BLE connection failed: adapter offline" in rendered
+
+
+async def test_connection_picker_failed_connect_ignores_candidate_cleanup_error() -> None:
+    current = FakeMessagingClient()
+    failing_ble = FakeMessagingClient(
+        connect_error=RuntimeError("adapter offline"),
+        disconnect_error=RuntimeError("close failed"),
+    )
+    app = NativeClientApp(
+        ShellStatus(context="Dashboard", mode=LinkMode.IP, state=UiState.SYNCED),
+        client=current,
+        connection_factory=lambda mode: failing_ble if mode is LinkMode.BLE else None,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("l")
+        await pilot.pause()
+        await pilot.press("2")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        status = app.query_one("#native-status", NativeStatusBar).status
+        disconnect_calls = current.disconnect_calls
+
+    assert app.client is current
+    assert app.prompt_mode is None
+    assert disconnect_calls == 0
+    assert failing_ble.connect_calls == 1
+    assert failing_ble.disconnect_calls == 1
+    assert status.mode == LinkMode.IP
+    assert status.state == UiState.ERROR
+    assert "BLE connection failed: adapter offline" in rendered
+
+
+async def test_connection_picker_old_disconnect_failure_cleans_staged_client() -> None:
+    current = FakeMessagingClient(
+        observe=[[message_record("old observed")]],
+        keep_observe_open=True,
+        disconnect_error=RuntimeError("old close failed"),
+    )
+    staged_ble = FakeMessagingClient()
+    app = NativeClientApp(
+        ShellStatus(context="Chats", mode=LinkMode.IP, state=UiState.SYNCED),
+        client=current,
+        connection_factory=lambda mode: staged_ble if mode is LinkMode.BLE else None,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("o")
+        await pilot.pause()
+        assert app._observe_task is not None
+        observe_task = app._observe_task
+        await pilot.press("l")
+        await pilot.pause()
+        await pilot.press("2")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        status = app.query_one("#native-status", NativeStatusBar).status
+        current_disconnect_calls = current.disconnect_calls
+        subscription_open = current.subscription is not None and not current.subscription.closed
+        observe_task_retained = app._observe_task is observe_task and not observe_task.done()
+
+    assert app.client is current
+    assert app.prompt_mode is None
+    assert current_disconnect_calls == 1
+    assert subscription_open is True
+    assert observe_task_retained is True
+    assert staged_ble.connect_calls == 1
+    assert staged_ble.disconnect_calls == 1
+    assert status.mode == LinkMode.IP
+    assert status.state == UiState.ERROR
+    assert "BLE switch failed: old close failed" in rendered
+
+
+async def test_connection_picker_cancels_live_observe_before_switching() -> None:
+    old_client = FakeMessagingClient(
+        observe=[[message_record("old observed")]],
+        keep_observe_open=True,
+    )
+    new_client = FakeMessagingClient(inbox=[message_record("new inbox")])
+    app = NativeClientApp(
+        ShellStatus(context="Chats", mode=LinkMode.IP, state=UiState.SYNCED),
+        client=old_client,
+        connection_factory=lambda mode: new_client if mode is LinkMode.BLE else None,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("o")
+        await pilot.pause()
+        assert app._observe_task is not None
+        assert not app._observe_task.done()
+        await pilot.press("l")
+        await pilot.pause()
+        await pilot.press("2")
+        await pilot.pause()
+        status = app.query_one("#native-status", NativeStatusBar).status
+
+    assert old_client.subscription is not None
+    assert old_client.subscription.closed is True
+    assert old_client.disconnect_calls == 1
+    assert new_client.connect_calls == 1
+    assert status.mode == LinkMode.BLE
+    assert status.state == UiState.SYNCED
+
+
+async def test_unmount_disconnects_client_after_task_cleanup_failure() -> None:
+    client = FakeMessagingClient()
+    app = NativeClientApp(
+        ShellStatus(context="Dashboard", mode=LinkMode.IP, state=UiState.SYNCED),
+        client=client,
+    )
+    log_cancelled = asyncio.Event()
+
+    async def fail_on_cancel() -> None:
+        try:
+            await asyncio.Event().wait()
+        finally:
+            raise RuntimeError("observe cleanup failed")
+
+    async def log_on_cancel() -> None:
+        try:
+            await asyncio.Event().wait()
+        finally:
+            log_cancelled.set()
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        app._observe_task = asyncio.create_task(fail_on_cancel())
+        app._log_task = asyncio.create_task(log_on_cancel())
+
+    assert client.disconnect_calls == 1
+    assert app._observe_task is None
+    assert app._log_task is None
+    assert log_cancelled.is_set()
+
+
+async def test_connection_picker_selects_demo_and_disconnects_transport() -> None:
+    current = FakeMessagingClient()
+    app = NativeClientApp(
+        ShellStatus(context="Dashboard", mode=LinkMode.IP, state=UiState.SYNCED),
+        client=current,
+    )
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("l")
+        await pilot.pause()
+        await pilot.press("1")
+        await pilot.pause()
+        rendered = app.query_one("#active-pane", ActivePane).render_mode()
+        status = app.query_one("#native-status", NativeStatusBar).status
+
+    assert current.disconnect_calls == 1
+    assert app.client is None
+    assert status.mode == LinkMode.DEMO
+    assert status.state == UiState.DISCONNECTED
+    assert "DASHBOARD" in rendered
+
+
 async def test_status_refresh_populates_dashboard_and_status_bar() -> None:
     client = FakeMessagingClient()
     app = NativeClientApp(
@@ -1055,6 +1328,8 @@ def test_main_wires_ip_coap_client(
 
     app = captured["app"]
     assert app.client is not None
+    assert app.connection_factory is not None
+    assert app.connection_factory(LinkMode.IP) is not None
     assert app.inbox_path == "/custom/inbox"
     assert app.send_path == "/custom/send"
     assert app.status.mode == LinkMode.IP
@@ -1083,6 +1358,8 @@ def test_main_wires_ble_packet_client(
 
     app = captured["app"]
     assert app.client is not None
+    assert app.connection_factory is not None
+    assert app.connection_factory(LinkMode.BLE) is not None
     assert app.status.mode == LinkMode.BLE
 
 
@@ -1192,6 +1469,12 @@ async def test_native_client_terminal_snapshots_cover_core_screens() -> None:
         await pilot.pause()
         snapshots["connection"] = app.export_screenshot()
 
+        await pilot.press("l")
+        await pilot.pause()
+        snapshots["connection_picker"] = app.export_screenshot()
+        await pilot.press("escape")
+        await pilot.pause()
+
         await pilot.press("r")
         await pilot.pause()
         snapshots["status"] = app.export_screenshot()
@@ -1232,6 +1515,8 @@ async def test_native_client_terminal_snapshots_cover_core_screens() -> None:
 
     assert "IP" in snapshots["connection"]
     assert "SYNCED" in snapshots["connection"]
+    assert "CONNECTION" in snapshots["connection_picker"]
+    assert "IP/CoAP" in snapshots["connection_picker"]
     assert "node-a" in snapshots["status"]
     assert "snapshot" in snapshots["inbox"]
     assert "inbox" in snapshots["inbox"]
