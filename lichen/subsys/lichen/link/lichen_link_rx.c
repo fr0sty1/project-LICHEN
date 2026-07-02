@@ -32,6 +32,14 @@
 
 /* Replay table functions are in replay.c */
 
+#define LICHEN_PROTECTED_PAYLOAD_MAX (LICHEN_MAX_PAYLOAD + LICHEN_SIG_LEN)
+
+struct lichen_link_auth_payload {
+	size_t payload_len;
+	struct lichen_link_rx_payload_info info;
+	bool replay_eligible;
+};
+
 /* ─── Logging ─────────────────────────────────────────────────────────────── */
 
 #ifdef __ZEPHYR__
@@ -193,64 +201,75 @@ static int decrypt_payload(const struct lichen_link_rx_ctx *ctx,
 	return 0;
 }
 
-/* ─── RX path ─────────────────────────────────────────────────────────────── */
+static int commit_replay(struct lichen_replay_table *replay,
+			 struct lichen_link_auth_payload *auth)
+{
+	struct lichen_replay_window *replay_window;
 
-int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
-		   struct lichen_replay_table *replay,
-		   const uint8_t *frame, size_t frame_len,
-		   uint8_t *out_ipv6, size_t *out_len,
-		   uint8_t *src_eui64)
+	if (replay == NULL || !auth->replay_eligible) {
+		return 0;
+	}
+	replay_window = lichen_replay_get(replay, auth->info.src_eui64);
+	if (replay_window == NULL) {
+		return -ENOMEM;
+	}
+	if (!lichen_replay_check(replay_window, auth->info.epoch,
+				 auth->info.seqnum)) {
+		return -EALREADY;
+	}
+	return 0;
+}
+
+static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
+				      const uint8_t *frame, size_t frame_len,
+				      uint8_t *work_payload, size_t work_len,
+				      uint8_t *out_payload, size_t *out_len,
+				      struct lichen_link_auth_payload *auth)
 {
 	struct lichen_frame parsed;
-	uint8_t decrypted_payload[256];
 	const uint8_t *auth_payload;
 	size_t auth_payload_len;
-	const uint8_t *schc_data;
-	size_t schc_len;
-	bool payload_decrypted = false;
+	uint8_t src_eui64[LICHEN_EUI64_LEN];
 	int ret;
 
-	if (ctx == NULL || frame == NULL || out_ipv6 == NULL ||
-	    out_len == NULL || src_eui64 == NULL) {
+	if (ctx == NULL || frame == NULL || work_payload == NULL ||
+	    out_payload == NULL || out_len == NULL || auth == NULL) {
 		return -EINVAL;
 	}
+	memset(auth, 0, sizeof(*auth));
 
-	/* Step 1: Parse frame header */
 	ret = lichen_frame_parse(&parsed, frame, frame_len);
 	if (ret < 0) {
 		return -EINVAL;
 	}
 
 	if (parsed.encrypted) {
-		ret = decrypt_payload(ctx, &parsed, frame,
-				      decrypted_payload, sizeof(decrypted_payload));
-		if (ret < 0) {
-			return ret;
+		if (parsed.payload_len > LICHEN_PROTECTED_PAYLOAD_MAX) {
+			ret = -EMSGSIZE;
+			goto cleanup;
 		}
-		auth_payload = decrypted_payload;
+		if (work_len < parsed.payload_len) {
+			ret = -ENOMEM;
+			goto cleanup;
+		}
+		ret = decrypt_payload(ctx, &parsed, frame,
+				      work_payload, work_len);
+		if (ret < 0) {
+			goto cleanup;
+		}
+		auth_payload = work_payload;
 		auth_payload_len = parsed.payload_len;
-		payload_decrypted = true;
 	} else {
 		auth_payload = parsed.payload;
 		auth_payload_len = parsed.payload_len;
 	}
 
-	/* Step 2: Verify Schnorr-48 signature if present */
 	if (parsed.signature_present) {
 		if (ctx->peer_pubkey == NULL) {
-			/* Cannot verify without sender's public key */
 			ret = -LICHEN_EAUTH;
 			goto cleanup;
 		}
 
-		/*
-		 * schnorr48_verify_frame expects:
-		 * - Full payload including signature (payload_len)
-		 * - It extracts inner payload and signature internally
-		 *
-		 * Note: frame_parse() already validated payload_len >= LICHEN_SIG_LEN
-		 * Returns: 1=valid, 0=invalid signature, -1=invalid parameters
-		 */
 		int verify_result = schnorr48_verify_frame(parsed.epoch, parsed.seqnum,
 							   parsed.dst_addr,
 							   parsed.dst_addr_len,
@@ -258,53 +277,23 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 							   auth_payload_len,
 							   ctx->peer_pubkey);
 		if (verify_result == 0) {
-			/* SECURITY: Invalid signature — possible forgery attempt */
 			LOG_WRN("Schnorr signature verification failed\n");
 			ret = -LICHEN_EAUTH;
 			goto cleanup;
 		} else if (verify_result == -1) {
-			/* Programming error or corrupted peer state */
 			LOG_WRN("Schnorr verify: invalid parameters (check peer_pubkey)\n");
 			ret = -LICHEN_EAUTH;
 			goto cleanup;
 		} else if (verify_result != 1) {
-			/* Unexpected return value — defensive check */
 			LOG_WRN("Schnorr verify: unexpected result %d\n", verify_result);
 			ret = -LICHEN_EAUTH;
 			goto cleanup;
 		}
 	}
 
-	/*
-	 * Step 3: Extract source EUI-64
-	 *
-	 * SECURITY: Use ctx->peer_eui64 (from peer table) for consistency with
-	 * MIC verification. The MIC nonce is built from peer_eui64 (verify_mic,
-	 * line 98), so replay window and caller's view of source MUST match.
-	 *
-	 * This is safe because peer_eui64 comes from the same peer table entry
-	 * as peer_pubkey. If the signature (verified in Step 2) passes using
-	 * peer_pubkey, then peer_eui64 from the same entry is the authenticated
-	 * peer's address.
-	 *
-	 * Fallback to pubkey-derived EUI-64 only if peer_eui64 is NULL (legacy
-	 * callers that don't set it). This fallback uses SHA-256(pubkey)[0:8]
-	 * which differs from hwid-derived EUI-64 used in MIC nonce — such callers
-	 * MUST ensure peer_eui64 is set for MIC verification to work.
-	 */
 	if (ctx->peer_eui64 != NULL) {
-		/* Use peer table's EUI-64 (consistent with MIC nonce) */
 		memcpy(src_eui64, ctx->peer_eui64, LICHEN_EUI64_LEN);
 	} else if (ctx->peer_pubkey != NULL) {
-		/*
-		 * Fallback: Derive EUI-64 from public key: SHA-256(pubkey)[0:8]
-		 *
-		 * WARNING: This derivation differs from hwid-based derivation used
-		 * for MIC nonce in TX path. MIC verification will fail unless the
-		 * sender also uses pubkey-derived EUI-64 (they don't — lora_l2.c
-		 * uses hwid-derived). Callers SHOULD set peer_eui64 to the peer's
-		 * actual EUI-64 (learned via EDHOC/announce) for correct MIC.
-		 */
 		struct tc_sha256_state_struct sha_state;
 		uint8_t hash[TC_SHA256_DIGEST_SIZE];
 
@@ -314,51 +303,10 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 		(void)tc_sha256_final(hash, &sha_state);
 		memcpy(src_eui64, hash, LICHEN_EUI64_LEN);
 	} else {
-		/*
-		 * SECURITY: No peer context means we cannot determine the source
-		 * identity. Returning success with a zeroed EUI-64 would allow
-		 * frame processing with an unidentified source, which breaks the
-		 * security model: callers cannot distinguish "unknown sender" from
-		 * "sender with EUI-64 00:00:00:00:00:00:00:00".
-		 *
-		 * For signed frames, this is already caught above (line 183-185).
-		 * This check handles unsigned frames where no peer_pubkey is set.
-		 */
 		ret = -LICHEN_EAUTH;
 		goto cleanup;
 	}
 
-	/*
-	 * Step 4: Get replay window handle (check deferred to Step 7)
-	 *
-	 * We look up the replay window here but defer the atomic check-and-
-	 * commit to Step 7, after all validation succeeds. This prevents
-	 * malformed frames from polluting the replay window.
-	 *
-	 * Note: We deliberately do NOT peek at replay state here. A peek
-	 * without commit creates a TOCTOU race where concurrent frames with
-	 * the same sequence could both pass the peek, wasting CPU on
-	 * signature/MIC verification for frames that will ultimately be
-	 * rejected. The atomic check-and-commit in Step 7 is correct.
-	 *
-	 * SECURITY: Only allocate replay window for SIGNED frames where
-	 * signature was verified (Step 2 completed successfully). For unsigned
-	 * frames, the src_eui64 is derived from ctx->peer_pubkey which may be
-	 * an attacker-controlled guess — allocating a window would allow replay
-	 * table poisoning. Unsigned frames must rely on higher-layer replay
-	 * protection (e.g., OSCORE sequence numbers).
-	 */
-	struct lichen_replay_window *replay_window = NULL;
-	if (replay != NULL && parsed.signature_present) {
-		replay_window = lichen_replay_get(replay, src_eui64);
-		if (replay_window == NULL) {
-			/* Table full */
-			ret = -ENOMEM;
-			goto cleanup;
-		}
-	}
-
-	/* Step 5: Verify MIC */
 	if (!parsed.encrypted) {
 		ret = verify_mic(ctx, &parsed, frame, frame_len);
 		if (ret < 0) {
@@ -367,19 +315,120 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 		}
 	}
 
-	/*
-	 * Step 6: Decompress SCHC payload to IPv6
-	 *
-	 * Use inner_payload_len which excludes the signature if present.
-	 * Minimum IPv6 header is 40 bytes; require at least that.
-	 */
-	if (lichen_l2_payload_classify(auth_payload, parsed.inner_payload_len) !=
+	if (parsed.inner_payload_len > LICHEN_MAX_PAYLOAD) {
+		ret = -EMSGSIZE;
+		goto cleanup;
+	}
+	if (*out_len < parsed.inner_payload_len) {
+		ret = -ENOMEM;
+		goto cleanup;
+	}
+
+	if (auth_payload != out_payload) {
+		memcpy(out_payload, auth_payload, parsed.inner_payload_len);
+	}
+	auth->payload_len = parsed.inner_payload_len;
+	*out_len = parsed.inner_payload_len;
+	memcpy(auth->info.src_eui64, src_eui64, LICHEN_EUI64_LEN);
+	memcpy(auth->info.dst_addr, parsed.dst_addr, parsed.dst_addr_len);
+	auth->info.dst_addr_len = parsed.dst_addr_len;
+	auth->info.epoch = parsed.epoch;
+	auth->info.seqnum = parsed.seqnum;
+	auth->info.addr_mode = parsed.addr_mode;
+	auth->info.signature_present = parsed.signature_present;
+	auth->info.encrypted = parsed.encrypted;
+	auth->replay_eligible = parsed.signature_present || parsed.encrypted;
+	ret = 0;
+
+cleanup:
+	return ret;
+}
+
+/* ─── RX path ─────────────────────────────────────────────────────────────── */
+
+int lichen_link_rx_payload(struct lichen_link_rx_ctx *ctx,
+			   struct lichen_replay_table *replay,
+			   const uint8_t *frame, size_t frame_len,
+			   uint8_t *out_payload, size_t *out_len,
+			   struct lichen_link_rx_payload_info *info)
+{
+	struct lichen_link_auth_payload auth;
+	uint8_t work_payload[LICHEN_PROTECTED_PAYLOAD_MAX];
+	uint8_t inner_payload[LICHEN_MAX_PAYLOAD];
+	size_t inner_len = sizeof(inner_payload);
+	size_t caller_len;
+	int ret;
+
+	if (out_payload == NULL || out_len == NULL || info == NULL) {
+		return -EINVAL;
+	}
+	caller_len = *out_len;
+
+	ret = authenticate_inner_payload(ctx, frame, frame_len,
+					 work_payload, sizeof(work_payload),
+					 inner_payload, &inner_len, &auth);
+	if (ret < 0) {
+		memset(inner_payload, 0, sizeof(inner_payload));
+		memset(work_payload, 0, sizeof(work_payload));
+		return ret;
+	}
+	if (caller_len < inner_len) {
+		memset(inner_payload, 0, sizeof(inner_payload));
+		memset(work_payload, 0, sizeof(work_payload));
+		memset(&auth, 0, sizeof(auth));
+		return -ENOMEM;
+	}
+
+	ret = commit_replay(replay, &auth);
+	if (ret < 0) {
+		memset(inner_payload, 0, sizeof(inner_payload));
+		memset(work_payload, 0, sizeof(work_payload));
+		memset(&auth, 0, sizeof(auth));
+		return ret;
+	}
+
+	memcpy(out_payload, inner_payload, inner_len);
+	*out_len = inner_len;
+	*info = auth.info;
+	memset(inner_payload, 0, sizeof(inner_payload));
+	memset(work_payload, 0, sizeof(work_payload));
+	memset(&auth, 0, sizeof(auth));
+	return 0;
+}
+
+int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
+		   struct lichen_replay_table *replay,
+		   const uint8_t *frame, size_t frame_len,
+		   uint8_t *out_ipv6, size_t *out_len,
+		   uint8_t *src_eui64)
+{
+	struct lichen_link_auth_payload auth;
+	uint8_t l2_payload[LICHEN_PROTECTED_PAYLOAD_MAX];
+	const uint8_t *schc_data;
+	size_t l2_payload_len = sizeof(l2_payload);
+	size_t ipv6_len;
+	size_t schc_len;
+	int ret;
+
+	if (ctx == NULL || frame == NULL || out_ipv6 == NULL ||
+	    out_len == NULL || src_eui64 == NULL) {
+		return -EINVAL;
+	}
+
+	ret = authenticate_inner_payload(ctx, frame, frame_len,
+					 l2_payload, sizeof(l2_payload),
+					 l2_payload, &l2_payload_len, &auth);
+	if (ret < 0) {
+		return ret;
+	}
+
+	if (lichen_l2_payload_classify(l2_payload, l2_payload_len) !=
 	    LICHEN_L2_PAYLOAD_SCHC) {
 		ret = -EPROTONOSUPPORT;
 		goto cleanup;
 	}
-	schc_data = lichen_l2_payload_body(auth_payload,
-					   parsed.inner_payload_len, &schc_len);
+	schc_data = lichen_l2_payload_body(l2_payload, l2_payload_len,
+					   &schc_len);
 	if (schc_data == NULL || schc_len == 0U) {
 		ret = -EINVAL;
 		goto cleanup;
@@ -401,32 +450,19 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 		goto cleanup;
 	}
 
-	/*
-	 * Step 7: Atomic replay check-and-commit
-	 *
-	 * SECURITY: Only check/commit AFTER all validation succeeds.
-	 * This prevents malformed frames from polluting the replay window.
-	 *
-	 * lichen_replay_check() atomically checks whether the (epoch, seqnum)
-	 * pair is valid AND marks it as seen in a single operation, eliminating
-	 * the TOCTOU race that a separate peek-then-commit pattern would create.
-	 *
-	 * The replay window uses a 24-bit logical counter (epoch<<16 | seqnum)
-	 * to prevent cross-epoch replay attacks when tx_seq wraps.
-	 */
-	if (replay_window != NULL) {
-		if (!lichen_replay_check(replay_window, parsed.epoch, parsed.seqnum)) {
-			ret = -EALREADY;
-			goto cleanup;
-		}
+	ipv6_len = (size_t)ret;
+
+	ret = commit_replay(replay, &auth);
+	if (ret < 0) {
+		goto cleanup;
 	}
 
-	*out_len = (size_t)ret;
+	*out_len = ipv6_len;
+	memcpy(src_eui64, auth.info.src_eui64, LICHEN_EUI64_LEN);
 	ret = 0;
 
 cleanup:
-	if (payload_decrypted) {
-		memset(decrypted_payload, 0, sizeof(decrypted_payload));
-	}
+	memset(l2_payload, 0, sizeof(l2_payload));
+	memset(&auth, 0, sizeof(auth));
 	return ret;
 }
