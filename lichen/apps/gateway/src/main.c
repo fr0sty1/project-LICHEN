@@ -276,6 +276,11 @@ static int config_get(struct coap_resource *resource,
 		cbor_buf, sizeof(cbor_buf), s_tx_power_dbm,
 		s_has_manual_location ? &s_manual_location : NULL);
 
+	if (len == 0U) {
+		return coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+	}
+
 	return coap_respond(resource, request, addr, addr_len,
 			    COAP_RESPONSE_CODE_CONTENT, cbor_buf, len);
 }

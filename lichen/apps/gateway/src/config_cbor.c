@@ -23,6 +23,9 @@
 #define MANUAL_LOCATION_KEY_AGE_S "age_s"
 #define MANUAL_LOCATION_KEY_AGE_S_LEN (sizeof(MANUAL_LOCATION_KEY_AGE_S) - 1u)
 
+static bool valid_manual_location_config(
+	const struct lichen_gateway_manual_location_config *manual_location);
+
 size_t lichen_gateway_encode_config_cbor(uint8_t *buf, size_t buf_size,
 					 int8_t tx_power_dbm)
 {
@@ -160,6 +163,9 @@ size_t lichen_gateway_encode_config_update_cbor(
 	if (manual_location == NULL) {
 		return off;
 	}
+	if (!valid_manual_location_config(manual_location)) {
+		return 0U;
+	}
 
 	manual_count += manual_location->horizontal_accuracy_mm_valid ? 1U : 0U;
 	manual_count += manual_location->age_seconds_valid ? 1U : 0U;
@@ -219,6 +225,40 @@ static bool valid_lat_lon(int32_t latitude_e7, int32_t longitude_e7)
 {
 	return latitude_e7 >= -900000000 && latitude_e7 <= 900000000 &&
 	       longitude_e7 >= -1800000000 && longitude_e7 <= 1800000000;
+}
+
+static bool valid_source_name_bytes(const uint8_t *value, size_t len)
+{
+	for (size_t i = 0U; i < len; i++) {
+		if (value[i] < 0x20U || value[i] > 0x7eU) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+static bool valid_manual_location_config(
+	const struct lichen_gateway_manual_location_config *manual_location)
+{
+	size_t name_len;
+
+	if (manual_location == NULL ||
+	    !manual_location->latitude_e7_valid ||
+	    !manual_location->longitude_e7_valid ||
+	    !valid_lat_lon(manual_location->latitude_e7,
+			   manual_location->longitude_e7)) {
+		return false;
+	}
+
+	name_len = strnlen(manual_location->source_name,
+			   sizeof(manual_location->source_name));
+	if (name_len == sizeof(manual_location->source_name)) {
+		return false;
+	}
+
+	return valid_source_name_bytes(
+		(const uint8_t *)manual_location->source_name, name_len);
 }
 
 static int decode_manual_location(
@@ -299,7 +339,8 @@ static int decode_manual_location(
 				return -EINVAL;
 			}
 			if (!zcbor_tstr_decode(zsd, &tstr) ||
-			    tstr.len >= sizeof(location->source_name)) {
+			    tstr.len >= sizeof(location->source_name) ||
+			    !valid_source_name_bytes(tstr.value, tstr.len)) {
 				(void)zcbor_list_map_end_force_decode(zsd);
 				return -EINVAL;
 			}
@@ -319,8 +360,7 @@ static int decode_manual_location(
 
 	if (!zcbor_map_end_decode(zsd) ||
 	    !decoded.latitude_e7_valid ||
-	    !decoded.longitude_e7_valid ||
-	    !valid_lat_lon(decoded.latitude_e7, decoded.longitude_e7)) {
+	    !valid_manual_location_config(&decoded)) {
 		(void)zcbor_list_map_end_force_decode(zsd);
 		return -EINVAL;
 	}

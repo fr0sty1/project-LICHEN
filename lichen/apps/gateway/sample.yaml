@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+sample:
+  name: LICHEN gateway app
+  description: Build-only coverage for the LICHEN gateway application entry point.
+common:
+  tags:
+    - lichen
+    - gateway
+  build_only: true
+  extra_args:
+    - LICHEN_RELEASE_EPOCH_UNIX=1710000000
+tests:
+  app.lichen.gateway.native_sim:
+    platform_allow:
+      - native_sim
+    integration_platforms:
+      - native_sim
+  app.lichen.gateway.qemu_x86:
+    platform_allow:
+      - qemu_x86
+    integration_platforms:
+      - qemu_x86

@@ -212,15 +212,139 @@ ZTEST(gateway_config, test_decode_rejects_duplicate_manual_location_fields)
 		0x6b, 's', 'o', 'u', 'r', 'c', 'e', '_', 'n', 'a', 'm', 'e',
 		0x66, 'm', 'a', 'n', 'u', 'a', 'l',
 	};
+	const uint8_t duplicate_lon[] = {
+		0xa1,
+		0x6f, 'm', 'a', 'n', 'u', 'a', 'l', '_', 'l', 'o', 'c', 'a', 't', 'i', 'o', 'n',
+		0xa3,
+		0x65, 'l', 'a', 't', '_', 'i', 0x01,
+		0x65, 'l', 'o', 'n', '_', 'i', 0x02,
+		0x65, 'l', 'o', 'n', '_', 'i', 0x03,
+	};
+	const uint8_t duplicate_hacc[] = {
+		0xa1,
+		0x6f, 'm', 'a', 'n', 'u', 'a', 'l', '_', 'l', 'o', 'c', 'a', 't', 'i', 'o', 'n',
+		0xa4,
+		0x65, 'l', 'a', 't', '_', 'i', 0x01,
+		0x65, 'l', 'o', 'n', '_', 'i', 0x02,
+		0x67, 'h', 'a', 'c', 'c', '_', 'm', 'm', 0x03,
+		0x67, 'h', 'a', 'c', 'c', '_', 'm', 'm', 0x04,
+	};
+	const uint8_t duplicate_age[] = {
+		0xa1,
+		0x6f, 'm', 'a', 'n', 'u', 'a', 'l', '_', 'l', 'o', 'c', 'a', 't', 'i', 'o', 'n',
+		0xa4,
+		0x65, 'l', 'a', 't', '_', 'i', 0x01,
+		0x65, 'l', 'o', 'n', '_', 'i', 0x02,
+		0x65, 'a', 'g', 'e', '_', 's', 0x03,
+		0x65, 'a', 'g', 'e', '_', 's', 0x04,
+	};
 	struct lichen_gateway_config_update update = { 0 };
 
 	zassert_equal(lichen_gateway_decode_config_cbor(duplicate_lat,
 							sizeof(duplicate_lat),
 							&update),
 		      -EINVAL);
+	zassert_equal(lichen_gateway_decode_config_cbor(duplicate_lon,
+							sizeof(duplicate_lon),
+							&update),
+		      -EINVAL);
+	zassert_equal(lichen_gateway_decode_config_cbor(duplicate_hacc,
+							sizeof(duplicate_hacc),
+							&update),
+		      -EINVAL);
+	zassert_equal(lichen_gateway_decode_config_cbor(duplicate_age,
+							sizeof(duplicate_age),
+							&update),
+		      -EINVAL);
 	zassert_equal(lichen_gateway_decode_config_cbor(
 			      duplicate_empty_source_name,
 			      sizeof(duplicate_empty_source_name), &update),
+		      -EINVAL);
+}
+
+ZTEST(gateway_config, test_decode_manual_location_skips_nested_extensions)
+{
+	const uint8_t payload[] = {
+		0xa1,
+		0x6f, 'm', 'a', 'n', 'u', 'a', 'l', '_', 'l', 'o', 'c', 'a', 't', 'i', 'o', 'n',
+		0xa4,
+		0x65, 'l', 'a', 't', '_', 'i',
+		0x1a, 0x1c, 0x62, 0x54, 0x32,
+		0x63, 'e', 'x', 't',
+		0xa2,
+		0x66, 'n', 'e', 's', 't', 'e', 'd',
+		0x82, 0x01, 0xa1, 0x61, 'x', 0x02,
+		0x63, 'a', 'r', 'r',
+		0x82, 0x03, 0x04,
+		0x65, 'l', 'o', 'n', '_', 'i',
+		0x3a, 0x48, 0xed, 0x05, 0x87,
+		0x65, 'a', 'g', 'e', '_', 's',
+		0x18, 0x02,
+	};
+	struct lichen_gateway_config_update update = { 0 };
+
+	zassert_ok(lichen_gateway_decode_config_cbor(payload, sizeof(payload),
+						     &update));
+	zassert_true(update.has_manual_location);
+	zassert_equal(update.manual_location.latitude_e7, 476206130);
+	zassert_equal(update.manual_location.longitude_e7, -1223493000);
+	zassert_true(update.manual_location.age_seconds_valid);
+	zassert_equal(update.manual_location.age_seconds, 2U);
+}
+
+ZTEST(gateway_config, test_decode_rejects_invalid_manual_source_name_bytes)
+{
+	const uint8_t embedded_nul[] = {
+		0xa1,
+		0x6f, 'm', 'a', 'n', 'u', 'a', 'l', '_', 'l', 'o', 'c', 'a', 't', 'i', 'o', 'n',
+		0xa3,
+		0x65, 'l', 'a', 't', '_', 'i', 0x01,
+		0x65, 'l', 'o', 'n', '_', 'i', 0x02,
+		0x6b, 's', 'o', 'u', 'r', 'c', 'e', '_', 'n', 'a', 'm', 'e',
+		0x63, 'a', 0x00, 'b',
+	};
+	const uint8_t newline[] = {
+		0xa1,
+		0x6f, 'm', 'a', 'n', 'u', 'a', 'l', '_', 'l', 'o', 'c', 'a', 't', 'i', 'o', 'n',
+		0xa3,
+		0x65, 'l', 'a', 't', '_', 'i', 0x01,
+		0x65, 'l', 'o', 'n', '_', 'i', 0x02,
+		0x6b, 's', 'o', 'u', 'r', 'c', 'e', '_', 'n', 'a', 'm', 'e',
+		0x63, 'a', '\n', 'b',
+	};
+	const uint8_t del[] = {
+		0xa1,
+		0x6f, 'm', 'a', 'n', 'u', 'a', 'l', '_', 'l', 'o', 'c', 'a', 't', 'i', 'o', 'n',
+		0xa3,
+		0x65, 'l', 'a', 't', '_', 'i', 0x01,
+		0x65, 'l', 'o', 'n', '_', 'i', 0x02,
+		0x6b, 's', 'o', 'u', 'r', 'c', 'e', '_', 'n', 'a', 'm', 'e',
+		0x63, 'a', 0x7f, 'b',
+	};
+	const uint8_t utf8[] = {
+		0xa1,
+		0x6f, 'm', 'a', 'n', 'u', 'a', 'l', '_', 'l', 'o', 'c', 'a', 't', 'i', 'o', 'n',
+		0xa3,
+		0x65, 'l', 'a', 't', '_', 'i', 0x01,
+		0x65, 'l', 'o', 'n', '_', 'i', 0x02,
+		0x6b, 's', 'o', 'u', 'r', 'c', 'e', '_', 'n', 'a', 'm', 'e',
+		0x63, 'c', 0xc3, 0xa9,
+	};
+	struct lichen_gateway_config_update update = { 0 };
+
+	zassert_equal(lichen_gateway_decode_config_cbor(embedded_nul,
+							sizeof(embedded_nul),
+							&update),
+		      -EINVAL);
+	zassert_equal(lichen_gateway_decode_config_cbor(newline,
+							sizeof(newline),
+							&update),
+		      -EINVAL);
+	zassert_equal(lichen_gateway_decode_config_cbor(del, sizeof(del),
+							&update),
+		      -EINVAL);
+	zassert_equal(lichen_gateway_decode_config_cbor(utf8, sizeof(utf8),
+							&update),
 		      -EINVAL);
 }
 
@@ -292,6 +416,76 @@ ZTEST(gateway_config, test_encode_config_cbor_with_manual_location)
 	zassert_equal(update.manual_location.horizontal_accuracy_mm, 2500U);
 	zassert_equal(update.manual_location.age_seconds, 2U);
 	zassert_str_equal(update.manual_location.source_name, "config-static");
+}
+
+ZTEST(gateway_config, test_encode_rejects_invalid_manual_location)
+{
+	struct lichen_gateway_manual_location_config manual = {
+		.latitude_e7_valid = true,
+		.latitude_e7 = 476206130,
+		.longitude_e7_valid = true,
+		.longitude_e7 = -1223493000,
+	};
+	uint8_t buf[160];
+
+	manual.latitude_e7_valid = false;
+	zassert_equal(lichen_gateway_encode_config_update_cbor(
+			      buf, sizeof(buf), 14, &manual),
+		      0U);
+
+	manual.latitude_e7_valid = true;
+	manual.longitude_e7_valid = false;
+	zassert_equal(lichen_gateway_encode_config_update_cbor(
+			      buf, sizeof(buf), 14, &manual),
+		      0U);
+
+	manual.longitude_e7_valid = true;
+	manual.latitude_e7 = 900000001;
+	zassert_equal(lichen_gateway_encode_config_update_cbor(
+			      buf, sizeof(buf), 14, &manual),
+		      0U);
+
+	manual.latitude_e7 = 476206130;
+	manual.longitude_e7 = 1800000001;
+	zassert_equal(lichen_gateway_encode_config_update_cbor(
+			      buf, sizeof(buf), 14, &manual),
+		      0U);
+
+	manual.longitude_e7 = -1223493000;
+	manual.source_name[0] = 'a';
+	manual.source_name[1] = '\n';
+	manual.source_name[2] = '\0';
+	zassert_equal(lichen_gateway_encode_config_update_cbor(
+			      buf, sizeof(buf), 14, &manual),
+		      0U);
+
+	memset(manual.source_name, 'a', sizeof(manual.source_name));
+	zassert_equal(lichen_gateway_encode_config_update_cbor(
+			      buf, sizeof(buf), 14, &manual),
+		      0U);
+}
+
+ZTEST(gateway_config, test_encode_config_update_small_buffer_returns_zero)
+{
+	const struct lichen_gateway_manual_location_config manual = {
+		.latitude_e7_valid = true,
+		.latitude_e7 = 476206130,
+		.longitude_e7_valid = true,
+		.longitude_e7 = -1223493000,
+		.horizontal_accuracy_mm_valid = true,
+		.horizontal_accuracy_mm = 2500U,
+		.age_seconds_valid = true,
+		.age_seconds = 2U,
+		.source_name = "config-static",
+	};
+	uint8_t buf[8];
+
+	zassert_equal(lichen_gateway_encode_config_update_cbor(
+			      buf, sizeof(buf), 14, NULL),
+		      0U);
+	zassert_equal(lichen_gateway_encode_config_update_cbor(
+			      buf, sizeof(buf), 14, &manual),
+		      0U);
 }
 
 ZTEST(gateway_config, test_apply_manual_static_location_update)

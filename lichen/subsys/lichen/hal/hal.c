@@ -617,11 +617,14 @@ static void read_voltage_divider_battery(const struct device *dev,
 #endif
 }
 
+#if IS_ENABLED(CONFIG_FUEL_GAUGE) || defined(CONFIG_ZTEST)
 static bool power_percent_valid(uint8_t percent)
 {
 	return percent <= 100U;
 }
+#endif
 
+#if IS_ENABLED(CONFIG_CHARGER) || defined(CONFIG_ZTEST)
 static bool charger_status_known(int status)
 {
 #if IS_ENABLED(CONFIG_CHARGER)
@@ -667,6 +670,7 @@ static bool charger_online_known(int online)
 	return false;
 #endif
 }
+#endif
 
 #ifdef CONFIG_ZTEST
 bool lichen_hal_power_test_percent_valid(uint8_t percent)
