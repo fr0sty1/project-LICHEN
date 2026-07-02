@@ -1531,7 +1531,9 @@ def main() -> None:
     _write(
         "announce_coords.json",
         "Announce app_data Type=0x01 geographic coordinate encoding: signed "
-        "big-endian e7 latitude and longitude.",
+        "big-endian e7 latitude and longitude. Coordinates are peer-owned "
+        "announce metadata; receivers do not treat them as local position "
+        "without explicit NETWORK-source approximation policy.",
         announce_coords_vectors(),
     )
     _write(

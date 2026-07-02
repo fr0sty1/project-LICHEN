@@ -273,6 +273,25 @@ Nodes store coords from announces:
 coords: (lat, lon) | None  # from app_data if present
 ```
 
+The coordinates are peer-owned routing metadata. A receiver MUST NOT treat
+coordinates from another node's announce as the receiver's own physical
+location by default. Border routers and gateways MAY expose a derived
+`NETWORK` location only when an explicit local policy enables approximate
+mesh-derived location fallback. Such a derived location MUST preserve
+provenance (`source_class=NETWORK`, source name such as `mesh-announce`), MUST
+be withdrawn or marked stale when the underlying announce expires, and MUST NOT
+upgrade the peer's fix source to local GNSS, manual/static, or local-client
+location. It MUST NOT outrank a fresh local position provider such as onboard
+GNSS, external GNSS, manual/static configuration, or a local-client position.
+The derived location is an approximation useful for diagnostics and coarse mesh
+context, not a privacy-neutral replacement for this node's own position
+provider.
+
+Type `0x01` coordinate app data carries no Unix fix timestamp. Firmware
+build/provision epoch floors apply only if another network source submits a
+wall-clock or fix timestamp to the shared time provider; they do not make
+coordinate-only announce metadata fresh or trustworthy by themselves.
+
 **GPSR Forwarding:**
 
 ```
@@ -305,6 +324,12 @@ def gpsr_forward(dst_coords, packet):
 **Privacy:**
 
 Coords reveal physical location. Nodes MAY omit coords from announces if privacy is required. GPSR fallback unavailable for such nodes.
+
+Relays and border routers that store announce coordinates MUST apply the same
+freshness and provenance rules when presenting them outside the routing table.
+Publishing another peer's coordinates as local status without explicit
+approximate-location policy is forbidden, even when the announce signature and
+TOFU binding are valid.
 
 ### 9.8. Store-and-Forward (DTN)
 

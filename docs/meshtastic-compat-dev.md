@@ -287,6 +287,18 @@ the payload has valid latitude and longitude. Peer-position announce
 translation is handled by the network-location producer path, not by fabricating
 Meshtastic RF behavior.
 
+Peer coordinates learned from LICHEN announces are not Meshtastic peer-position
+messages and are not automatically this node's own location. If a gateway build
+enables approximate mesh-derived location fallback, those coordinates are
+submitted only as `NETWORK` source metadata with source name `mesh-announce` or
+a similarly explicit provenance string. They must remain lower priority than
+fresh local hardware, manual/static, or local-client location and must age out
+with the announce freshness window. Coordinate-only announce metadata carries no
+Unix fix time; build/provision epoch floors apply only if a separate network
+time or fix-time sample is submitted to the shared time provider. Builds that do
+not explicitly enable that fallback keep peer announce coordinates in
+routing/diagnostic state only.
+
 **Outbound (app → mesh):**
 1. App sends Position via MeshPacket
 2. Adapter validates the payload shape and requires valid latitude/longitude
