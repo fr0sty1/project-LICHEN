@@ -1,0 +1,35 @@
+{
+  "id": "project-LICHEN-h7t5.7.8.2",
+  "title": "Physically validate LilyGO battery PMIC and power telemetry",
+  "description": "Follow-up split from project-LICHEN-h7t5.7.8. HAL power provider code and native_sim/qemu emulation tests cover voltage-divider, fuel-gauge, and charger paths, but LilyGO board battery ADC/PMIC/charger wiring needs real hardware. Validate each selected LilyGO target reports provider present/unavailable correctly; battery percent or voltage, charging, external power, power-hold/shutdown, wake buttons, and any missing devicetree aliases are recorded with exact board revision and logs.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T11:18:30.885521Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T11:18:30.886072Z",
+  "labels": [
+    "zephyr",
+    "lilygo",
+    "battery",
+    "pmic",
+    "power",
+    "hardware",
+    "validation",
+    "gnss",
+    "hal",
+    "board-support",
+    "bringup",
+    "firmware",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.8.2",
+      "depends_on_id": "project-LICHEN-h7t5.7.8",
+      "type": "parent-child",
+      "created_at": "2026-07-02T11:18:30.886072Z"
+    }
+  ]
+}

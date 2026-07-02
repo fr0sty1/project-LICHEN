@@ -5,6 +5,9 @@
 
 #include <errno.h>
 #include <stdint.h>
+#include <time.h>
+
+#include <zephyr/sys/timeutil.h>
 
 static enum lichen_hal_location_fix_state puck_fix_state_from_gnss(
 	enum gnss_fix_status fix_status)
@@ -14,6 +17,98 @@ static enum lichen_hal_location_fix_state puck_fix_state_from_gnss(
 	}
 
 	return LICHEN_HAL_LOCATION_FIX_3D;
+}
+
+static bool puck_year_is_leap(uint16_t year)
+{
+	return (year % 4U) == 0U &&
+	       ((year % 100U) != 0U || (year % 400U) == 0U);
+}
+
+static uint8_t puck_days_in_month(uint16_t year, uint8_t month)
+{
+	switch (month) {
+	case 1U:
+	case 3U:
+	case 5U:
+	case 7U:
+	case 8U:
+	case 10U:
+	case 12U:
+		return 31U;
+	case 4U:
+	case 6U:
+	case 9U:
+	case 11U:
+		return 30U;
+	case 2U:
+		return puck_year_is_leap(year) ? 29U : 28U;
+	default:
+		return 0U;
+	}
+}
+
+static bool puck_gnss_utc_to_unix(const struct gnss_time *utc,
+				  uint32_t *unix_time)
+{
+	struct tm tm = { 0 };
+	int64_t epoch;
+	uint16_t year;
+	uint8_t days;
+
+	if (utc == NULL || unix_time == NULL ||
+	    utc->month < 1U || utc->month > 12U ||
+	    utc->hour > 23U || utc->minute > 59U ||
+	    utc->millisecond > 59999U) {
+		return false;
+	}
+
+	year = 2000U + utc->century_year;
+	days = puck_days_in_month(year, utc->month);
+	if (utc->month_day < 1U || utc->month_day > days) {
+		return false;
+	}
+
+	tm.tm_year = (int)year - 1900;
+	tm.tm_mon = (int)utc->month - 1;
+	tm.tm_mday = utc->month_day;
+	tm.tm_hour = utc->hour;
+	tm.tm_min = utc->minute;
+	tm.tm_sec = utc->millisecond / 1000U;
+
+	epoch = timeutil_timegm64(&tm);
+	if (epoch <= 0 || epoch > UINT32_MAX) {
+		return false;
+	}
+
+	*unix_time = (uint32_t)epoch;
+	return true;
+}
+
+static void puck_submit_gnss_time(const struct gnss_data *data)
+{
+	uint32_t unix_time;
+	struct lichen_hal_time_sample sample = {
+		.source_class = LICHEN_HAL_TIME_SOURCE_GNSS,
+		.source_name = "gnss0",
+		.unix_time_valid = true,
+	};
+
+	if (data->info.fix_status == GNSS_FIX_STATUS_NO_FIX) {
+		return;
+	}
+
+	if (!puck_gnss_utc_to_unix(&data->utc, &unix_time)) {
+		return;
+	}
+
+	sample.unix_time = unix_time;
+	if (data->info.fix_quality != GNSS_FIX_QUALITY_INVALID) {
+		sample.quality_valid = true;
+		sample.quality = data->info.fix_quality;
+	}
+
+	(void)lichen_hal_time_submit(&sample);
 }
 
 int lichen_puck_location_submit_gnss(const struct gnss_data *data)
@@ -28,6 +123,8 @@ int lichen_puck_location_submit_gnss(const struct gnss_data *data)
 	if (data == NULL) {
 		return -EINVAL;
 	}
+
+	puck_submit_gnss_time(data);
 
 	sample.fix_state = puck_fix_state_from_gnss(data->info.fix_status);
 	sample.satellites_valid = true;
