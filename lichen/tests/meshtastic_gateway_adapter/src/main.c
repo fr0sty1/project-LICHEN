@@ -27,7 +27,8 @@
 
 #define COAP_TEST_BUF_SIZE 64
 #define COAP_TEST_OPT_COUNT 8
-#define TEST_MESSAGE_CONTRACT_QUEUE_DEPTH 3U
+#define TEST_MESSAGE_CONTRACT_QUEUE_DEPTH \
+	CONFIG_LORA_LICHEN_GATEWAY_MESSAGE_QUEUE_DEPTH
 #define INBOUND_LOCATION_PAYLOAD_MAX_LEN 33U
 #define INBOUND_LOCATION_FLAG_ALTITUDE BIT(0)
 #define INBOUND_LOCATION_FLAG_FIX_TIME BIT(1)
@@ -1850,6 +1851,66 @@ ZTEST(meshtastic_gateway_adapter,
 	zassert_equal(status.res, 2U);
 	zassert_true(status.has_mesh_packet_id);
 	zassert_equal(status.mesh_packet_id, 0x1234567cU);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_message_contract_pop_then_push_wraps_fifo)
+{
+	static const char * const payloads[] = { "one", "two", "six", "new" };
+	static const uint32_t ids[] = {
+		0x12345678U, 0x12345679U, 0x1234567aU, 0x1234567bU
+	};
+	BUILD_ASSERT(ARRAY_SIZE(payloads) ==
+		     TEST_MESSAGE_CONTRACT_QUEUE_DEPTH + 1U);
+	BUILD_ASSERT(ARRAY_SIZE(ids) == ARRAY_SIZE(payloads));
+	static const uint8_t peer_key[LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN] = {
+		1, 2, 3, 4
+	};
+	struct gateway_message_contract_text submitted;
+	struct lichen_app_identity_peer peer = {
+		.eui64 = { 0x02, 0xaa, 0, 0, 0x01, 0x02, 0x03, 0x04 },
+		.has_public_key = true,
+	};
+	uint8_t to_radio[128];
+	size_t to_radio_len;
+
+	reset_gateway(ARRAY_SIZE(payloads));
+	memcpy(peer.public_key, peer_key, sizeof(peer.public_key));
+	zassert_ok(lichen_app_identity_upsert_peer(&peer));
+
+	for (size_t i = 0U; i < TEST_MESSAGE_CONTRACT_QUEUE_DEPTH; i++) {
+		to_radio_len = build_text_to_radio_to(
+			to_radio, sizeof(to_radio),
+			(const uint8_t *)payloads[i], strlen(payloads[i]),
+			0x01020304U, ids[i]);
+		zassert_ok(fake_ble_meshtastic_push_to_radio(to_radio,
+							     to_radio_len));
+		zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+	}
+
+	zassert_ok(gateway_message_contract_pop_text(&submitted));
+	zassert_true(submitted.has_id);
+	zassert_equal(submitted.id, ids[0]);
+	zassert_mem_equal(submitted.payload, payloads[0], strlen(payloads[0]));
+	zassert_equal(submitted.payload_len, strlen(payloads[0]));
+
+	to_radio_len = build_text_to_radio_to(
+		to_radio, sizeof(to_radio),
+		(const uint8_t *)payloads[TEST_MESSAGE_CONTRACT_QUEUE_DEPTH],
+		strlen(payloads[TEST_MESSAGE_CONTRACT_QUEUE_DEPTH]), 0x01020304U,
+		ids[TEST_MESSAGE_CONTRACT_QUEUE_DEPTH]);
+	zassert_ok(fake_ble_meshtastic_push_to_radio(to_radio, to_radio_len));
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+
+	for (size_t i = 1U; i < ARRAY_SIZE(payloads); i++) {
+		zassert_ok(gateway_message_contract_pop_text(&submitted));
+		zassert_true(submitted.has_id);
+		zassert_equal(submitted.id, ids[i]);
+		zassert_mem_equal(submitted.payload, payloads[i],
+				  strlen(payloads[i]));
+		zassert_equal(submitted.payload_len, strlen(payloads[i]));
+	}
+	zassert_equal(gateway_message_contract_pop_text(&submitted), -ENOENT);
 }
 
 ZTEST(meshtastic_gateway_adapter, test_process_once_without_ble_write_is_idle)
