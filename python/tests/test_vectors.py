@@ -17,6 +17,7 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft7Validator
 
+from lichen.announce.coords import decode_coords, encode_coords
 from lichen.crypto.identity import Identity
 from lichen.crypto.schnorr48 import sign as schnorr_sign
 from lichen.crypto.schnorr48 import verify as schnorr_verify
@@ -26,7 +27,11 @@ from lichen.schc.headers import compress_packet, decompress_packet
 VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 
 sys.path.insert(0, str(VECTORS_DIR))
-from generate import meshcore_app_compat_vectors, meshtastic_app_compat_vectors  # noqa: E402
+from generate import (  # noqa: E402
+    announce_coords_vectors,
+    meshcore_app_compat_vectors,
+    meshtastic_app_compat_vectors,
+)
 
 CONFIG_SECTION_EXPECTATIONS = [
     ("device", 1, [(1, 0), (7, 900)]),
@@ -59,6 +64,7 @@ def test_vectors_directory_exists() -> None:
     [
         "schc_compression.json",
         "link_frame.json",
+        "announce_coords.json",
         "meshtastic_app_compat.json",
         "meshcore_app_compat.json",
     ],
@@ -84,6 +90,12 @@ def _frame_cases():
 
 def _meshtastic_cases():
     doc = _load("meshtastic_app_compat.json")
+    assert doc["format_version"] == 1
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+def _announce_coords_cases():
+    doc = _load("announce_coords.json")
     assert doc["format_version"] == 1
     return [(v["name"], v) for v in doc["vectors"]]
 
@@ -132,9 +144,28 @@ def test_frame_vector(name: str, vector: dict) -> None:
     assert decoded.encrypted == f["encrypted"]
 
 
+@pytest.mark.parametrize("name,vector", _announce_coords_cases())
+def test_announce_coords_vector(name: str, vector: dict) -> None:
+    encoded = bytes.fromhex(vector["encoded"])
+    assert encode_coords(vector["latitude_degrees"], vector["longitude_degrees"]) == encoded
+
+    decoded = decode_coords(encoded)
+    assert decoded is not None, f"decode drift: {name}"
+    assert abs(decoded[0] - vector["latitude_degrees"]) < 1e-7
+    assert abs(decoded[1] - vector["longitude_degrees"]) < 1e-7
+
+    assert int.from_bytes(encoded[1:5], "big", signed=True) == vector["latitude_e7"]
+    assert int.from_bytes(encoded[5:9], "big", signed=True) == vector["longitude_e7"]
+
+
 def test_all_schc_rules_covered() -> None:
     rule_ids = {v["rule_id"] for _, v in _schc_cases()}
     assert {0, 1, 2, 3, 4} <= rule_ids  # every whole-packet rule has a vector
+
+
+def test_announce_coords_vectors_match_generator() -> None:
+    doc = _load("announce_coords.json")
+    assert doc["vectors"] == announce_coords_vectors()
 
 
 def test_meshtastic_app_compat_vectors_match_generator() -> None:

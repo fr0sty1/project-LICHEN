@@ -13,6 +13,7 @@
         "oneOf": [
           {"$ref": "#/definitions/schc_vector"},
           {"$ref": "#/definitions/frame_vector"},
+          {"$ref": "#/definitions/announce_coords_vector"},
           {"$ref": "#/definitions/meshtastic_app_compat_vector"},
           {"$ref": "#/definitions/meshcore_app_compat_vector"}
         ]
@@ -55,6 +56,24 @@
           "description": "Full uncompressed IPv6 datagram."},
         "compressed": {"$ref": "#/definitions/hex",
           "description": "SCHC output: leading rule-id byte + residue + tail."}
+      }
+    },
+    "announce_coords_vector": {
+      "type": "object",
+      "required": ["name", "latitude_degrees", "longitude_degrees", "latitude_e7", "longitude_e7", "encoded"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "latitude_degrees": {"type": "number", "minimum": -90, "maximum": 90},
+        "longitude_degrees": {"type": "number", "minimum": -180, "maximum": 180},
+        "latitude_e7": {"type": "integer", "minimum": -900000000, "maximum": 900000000},
+        "longitude_e7": {"type": "integer", "minimum": -1800000000, "maximum": 1800000000},
+        "encoded": {
+          "type": "string",
+          "pattern": "^01[0-9a-f]{16}$",
+          "description": "Announce app_data Type=0x01 bytes: type + signed big-endian lat_e7 + signed big-endian lon_e7."
+        }
       }
     },
     "frame_vector": {

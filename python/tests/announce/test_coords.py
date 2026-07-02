@@ -29,42 +29,44 @@ class TestCoordsEncoding:
     """Tests for encode_coords()."""
 
     def test_encode_zero(self):
-        """Zero coords encode to type byte + 6 zero bytes."""
+        """Zero coords encode to type byte + 8 zero bytes."""
         result = encode_coords(0.0, 0.0)
-        assert len(result) == 7
+        assert len(result) == 9
         assert result[0] == APP_DATA_TYPE_COORDS
-        assert result[1:] == b"\x00\x00\x00\x00\x00\x00"
+        assert result[1:] == b"\x00\x00\x00\x00\x00\x00\x00\x00"
 
     def test_encode_positive(self):
         """Positive coords encode correctly."""
-        # 47.6062 lat, -122.3321 lon (Seattle)
-        # But lon is out of range at -122, so use a smaller example
         result = encode_coords(47.6062, 12.3321)
-        assert len(result) == 7
+        assert len(result) == 9
         assert result[0] == APP_DATA_TYPE_COORDS
 
     def test_encode_negative(self):
         """Negative coords encode correctly."""
         result = encode_coords(-33.8688, -70.0)
-        assert len(result) == 7
+        assert len(result) == 9
         assert result[0] == APP_DATA_TYPE_COORDS
 
     def test_encode_max_range(self):
         """Coords at edge of range encode without error."""
-        result = encode_coords(83.88, 83.88)
-        assert len(result) == 7
-        result = encode_coords(-83.88, -83.88)
-        assert len(result) == 7
+        result = encode_coords(90.0, 180.0)
+        assert len(result) == 9
+        result = encode_coords(-90.0, -180.0)
+        assert len(result) == 9
 
     def test_encode_out_of_range_lat(self):
-        """Latitude > 83.88 raises ValueError."""
+        """Latitude > 90 raises ValueError."""
         with pytest.raises(ValueError, match="latitude"):
-            encode_coords(84.0, 0.0)
+            encode_coords(90.0000001, 0.0)
+        with pytest.raises(ValueError, match="latitude"):
+            encode_coords(90.00000004, 0.0)
 
     def test_encode_out_of_range_lon(self):
-        """Longitude > 83.88 raises ValueError."""
+        """Longitude > 180 raises ValueError."""
         with pytest.raises(ValueError, match="longitude"):
-            encode_coords(0.0, 84.0)
+            encode_coords(0.0, 180.0000001)
+        with pytest.raises(ValueError, match="longitude"):
+            encode_coords(0.0, 180.00000004)
 
 
 class TestCoordsDecoding:
@@ -75,18 +77,36 @@ class TestCoordsDecoding:
         assert decode_coords(b"") is None
 
     def test_decode_too_short(self):
-        """App_data < 7 bytes returns None."""
-        assert decode_coords(b"\x01\x00\x00") is None
+        """App_data < 9 bytes returns None."""
+        assert decode_coords(b"\x01\x00\x00\x00\x00\x00\x00\x00") is None
 
     def test_decode_wrong_type(self):
         """App_data with wrong type byte returns None."""
-        assert decode_coords(b"\x02\x00\x00\x00\x00\x00\x00") is None
+        assert decode_coords(b"\x02\x00\x00\x00\x00\x00\x00\x00\x00") is None
 
     def test_decode_zero(self):
         """Zero coords decode correctly."""
-        app_data = bytes([APP_DATA_TYPE_COORDS]) + b"\x00\x00\x00\x00\x00\x00"
+        app_data = bytes([APP_DATA_TYPE_COORDS]) + b"\x00\x00\x00\x00\x00\x00\x00\x00"
         result = decode_coords(app_data)
         assert result == (0.0, 0.0)
+
+    @pytest.mark.parametrize(
+        "lat_e7,lon_e7",
+        [
+            (900000001, 0),
+            (-900000001, 0),
+            (0, 1800000001),
+            (0, -1800000001),
+            (0x7FFFFFFF, 0),
+            (0, -0x80000000),
+        ],
+    )
+    def test_decode_rejects_out_of_range_raw_e7(self, lat_e7: int, lon_e7: int):
+        """Malformed raw e7 values outside valid coordinate bounds return None."""
+        app_data = bytes([APP_DATA_TYPE_COORDS]) + lat_e7.to_bytes(
+            4, "big", signed=True
+        ) + lon_e7.to_bytes(4, "big", signed=True)
+        assert decode_coords(app_data) is None
 
 
 class TestCoordsRoundTrip:
@@ -96,12 +116,12 @@ class TestCoordsRoundTrip:
         "lat,lon",
         [
             (0.0, 0.0),
-            (47.6062, 12.3321),
+            (47.6062, -122.3321),
             (-33.8688, 18.4241),
-            (51.5074, -0.1278),  # London (lon in range)
-            (83.0, 83.0),
-            (-83.0, -83.0),
-            (0.00001, 0.00001),  # minimum resolution
+            (51.5074, -0.1278),
+            (90.0, 180.0),
+            (-90.0, -180.0),
+            (0.0000001, 0.0000001),  # minimum resolution
         ],
     )
     def test_round_trip(self, lat: float, lon: float):
@@ -109,9 +129,9 @@ class TestCoordsRoundTrip:
         encoded = encode_coords(lat, lon)
         decoded = decode_coords(encoded)
         assert decoded is not None
-        # Resolution is 1e-5 degrees, allow small rounding error
-        assert abs(decoded[0] - lat) < 1e-4
-        assert abs(decoded[1] - lon) < 1e-4
+        # Resolution is 1e-7 degrees, allow small floating point error.
+        assert abs(decoded[0] - lat) < 1e-7
+        assert abs(decoded[1] - lon) < 1e-7
 
     def test_extra_data_ignored(self):
         """Extra bytes after coords are ignored."""

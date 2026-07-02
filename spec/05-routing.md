@@ -252,15 +252,19 @@ When gradient is missing and LOADng times out, nodes with GPS can fall back to g
 
 ```
 App Data (coords present):
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| Type=0x01 | Lat (3 bytes)  | Lon (3 bytes)   |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Type=0x01 |             LatE7 (4 bytes)        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                         LonE7 (4 bytes)        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
 - **Type 0x01:** Geographic coordinates present
-- **Lat/Lon:** Signed 24-bit fixed-point, 1e-5 degree resolution (~1m precision)
-  - Range: ±83.88° (sufficient for inhabited land)
-  - Encoding: `(degrees * 100000)` as int24
+- **LatE7/LonE7:** Signed 32-bit fixed-point, 1e-7 degree resolution
+  - Range: latitude MUST be within ±90°, longitude MUST be within ±180°
+  - Encoding: `(degrees * 10000000)` as a signed 32-bit integer in network byte order
+  - Rationale: e7 coordinates cover the full geographic range and match the
+    firmware/HAL and Meshtastic position representation.
 
 **GradientEntry Extension:**
 

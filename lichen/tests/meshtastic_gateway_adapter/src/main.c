@@ -242,21 +242,19 @@ static void put_be32(uint8_t *buf, uint32_t value)
 	buf[3] = (uint8_t)value;
 }
 
-static void put_be24(uint8_t *buf, int32_t value)
+static void build_announce_coords_e7(uint8_t *buf, int32_t latitude_e7,
+				     int32_t longitude_e7)
 {
-	uint32_t encoded = (uint32_t)value & 0x00ffffffU;
-
-	buf[0] = (uint8_t)(encoded >> 16);
-	buf[1] = (uint8_t)(encoded >> 8);
-	buf[2] = (uint8_t)encoded;
+	buf[0] = 0x01U;
+	put_be32(&buf[1], (uint32_t)latitude_e7);
+	put_be32(&buf[5], (uint32_t)longitude_e7);
 }
 
 static void build_announce_coords(uint8_t *buf, int32_t latitude_1e5,
 				  int32_t longitude_1e5)
 {
-	buf[0] = 0x01U;
-	put_be24(&buf[1], latitude_1e5);
-	put_be24(&buf[4], longitude_1e5);
+	build_announce_coords_e7(buf, latitude_1e5 * 100,
+				 longitude_1e5 * 100);
 }
 
 static size_t build_inbound_location_payload(uint8_t *buf, size_t cap)
@@ -1355,34 +1353,77 @@ ZTEST(meshtastic_gateway_adapter,
 }
 
 ZTEST(meshtastic_gateway_adapter,
-      test_announce_location_decode_accepts_int24_coords)
+      test_announce_location_decode_accepts_e7_coords)
 {
-	uint8_t app_data[7];
-	uint8_t extra_app_data[9];
+	static const struct {
+		uint8_t encoded[9];
+		int32_t latitude_e7;
+		int32_t longitude_e7;
+	} vectors[] = {
+		{
+			.encoded = { 0x01, 0x00, 0x00, 0x00, 0x00,
+				     0x00, 0x00, 0x00, 0x00 },
+			.latitude_e7 = 0,
+			.longitude_e7 = 0,
+		},
+		{
+			.encoded = { 0x01, 0x1c, 0x60, 0x21, 0x30,
+				     0xb7, 0x15, 0x9a, 0x58 },
+			.latitude_e7 = 476062000,
+			.longitude_e7 = -1223321000,
+		},
+		{
+			.encoded = { 0x01, 0x35, 0xa4, 0xe9, 0x00,
+				     0x6b, 0x49, 0xd2, 0x00 },
+			.latitude_e7 = 900000000,
+			.longitude_e7 = 1800000000,
+		},
+		{
+			.encoded = { 0x01, 0xca, 0x5b, 0x17, 0x00,
+				     0x94, 0xb6, 0x2e, 0x00 },
+			.latitude_e7 = -900000000,
+			.longitude_e7 = -1800000000,
+		},
+	};
+	uint8_t extra_app_data[11];
 	int32_t latitude_e7;
 	int32_t longitude_e7;
 
-	build_announce_coords(app_data, 4760620, -7030000);
-	zassert_ok(gateway_network_location_decode_announce_coords(
-		app_data, sizeof(app_data), &latitude_e7, &longitude_e7));
-	zassert_equal(latitude_e7, 476062000);
-	zassert_equal(longitude_e7, -703000000);
+	for (size_t i = 0U; i < ARRAY_SIZE(vectors); i++) {
+		zassert_ok(gateway_network_location_decode_announce_coords(
+			vectors[i].encoded, sizeof(vectors[i].encoded),
+			&latitude_e7, &longitude_e7));
+		zassert_equal(latitude_e7, vectors[i].latitude_e7);
+		zassert_equal(longitude_e7, vectors[i].longitude_e7);
+	}
 
-	memcpy(extra_app_data, app_data, sizeof(app_data));
-	extra_app_data[7] = 0xaaU;
-	extra_app_data[8] = 0x55U;
+	memcpy(extra_app_data, vectors[1].encoded, sizeof(vectors[1].encoded));
+	extra_app_data[9] = 0xaaU;
+	extra_app_data[10] = 0x55U;
 	zassert_ok(gateway_network_location_decode_announce_coords(
 		extra_app_data, sizeof(extra_app_data), &latitude_e7,
 		&longitude_e7));
 	zassert_equal(latitude_e7, 476062000);
-	zassert_equal(longitude_e7, -703000000);
+	zassert_equal(longitude_e7, -1223321000);
 }
 
 ZTEST(meshtastic_gateway_adapter,
       test_announce_location_decode_rejects_missing_or_malformed_coords)
 {
-	uint8_t wrong_type[7];
-	uint8_t too_short[6];
+	static const struct {
+		int32_t latitude_e7;
+		int32_t longitude_e7;
+	} invalid_vectors[] = {
+		{ 900000001, 0 },
+		{ -900000001, 0 },
+		{ 0, 1800000001 },
+		{ 0, -1800000001 },
+		{ INT32_MAX, 0 },
+		{ 0, INT32_MIN },
+	};
+	uint8_t wrong_type[9];
+	uint8_t invalid_coords[9];
+	uint8_t too_short[8];
 	int32_t latitude_e7 = 1;
 	int32_t longitude_e7 = 2;
 
@@ -1406,6 +1447,15 @@ ZTEST(meshtastic_gateway_adapter,
 			      wrong_type, sizeof(wrong_type), NULL,
 			      &longitude_e7),
 		      -ENOENT);
+	for (size_t i = 0U; i < ARRAY_SIZE(invalid_vectors); i++) {
+		build_announce_coords_e7(invalid_coords,
+					 invalid_vectors[i].latitude_e7,
+					 invalid_vectors[i].longitude_e7);
+		zassert_equal(gateway_network_location_decode_announce_coords(
+				      invalid_coords, sizeof(invalid_coords),
+				      &latitude_e7, &longitude_e7),
+			      -EINVAL);
+	}
 	zassert_equal(latitude_e7, 1);
 	zassert_equal(longitude_e7, 2);
 }
@@ -1414,7 +1464,7 @@ ZTEST(meshtastic_gateway_adapter,
       test_announce_location_submit_stores_and_submits_network_snapshot)
 {
 	static const uint8_t peer_id[] = { 0xfe, 0x80, 0, 1, 2, 3, 4, 5 };
-	uint8_t app_data[7];
+	uint8_t app_data[9];
 	struct gateway_network_location_announce_record record;
 	struct lichen_hal_location_time_snapshot snapshot;
 	struct gateway_network_location_announce_sample announce = {
@@ -1427,7 +1477,7 @@ ZTEST(meshtastic_gateway_adapter,
 	};
 
 	reset_gateway(2U);
-	build_announce_coords(app_data, 4760620, -7030000);
+	build_announce_coords_e7(app_data, 476062000, -1223321000);
 
 	zassert_ok(gateway_network_location_submit_announce(&announce));
 	zassert_ok(gateway_network_location_announce_get(
@@ -1436,7 +1486,7 @@ ZTEST(meshtastic_gateway_adapter,
 	zassert_equal(record.seq_num, 42U);
 	zassert_equal(record.observed_uptime_s, 1234U);
 	zassert_equal(record.latitude_e7, 476062000);
-	zassert_equal(record.longitude_e7, -703000000);
+	zassert_equal(record.longitude_e7, -1223321000);
 
 	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
 	zassert_true(snapshot.location_provider_available);
@@ -1448,7 +1498,7 @@ ZTEST(meshtastic_gateway_adapter,
 	zassert_true(snapshot.latitude_e7_valid);
 	zassert_equal(snapshot.latitude_e7, 476062000);
 	zassert_true(snapshot.longitude_e7_valid);
-	zassert_equal(snapshot.longitude_e7, -703000000);
+	zassert_equal(snapshot.longitude_e7, -1223321000);
 	zassert_true(snapshot.age_seconds_valid);
 	zassert_equal(snapshot.age_seconds, 0U);
 }
@@ -1457,7 +1507,7 @@ ZTEST(meshtastic_gateway_adapter,
       test_announce_location_omitted_coords_clears_record_without_submit)
 {
 	static const uint8_t peer_id[] = { 1, 2, 3, 4, 5, 6, 7, 8 };
-	uint8_t app_data[7];
+	uint8_t app_data[9];
 	struct gateway_network_location_announce_record record;
 	struct lichen_hal_location_time_snapshot snapshot;
 	struct gateway_network_location_announce_sample announce = {
@@ -1493,7 +1543,7 @@ ZTEST(meshtastic_gateway_adapter,
 {
 	static const uint8_t peer_id[] = { 0x31, 0x32, 0x33, 0x34,
 					   0x35, 0x36, 0x37, 0x38 };
-	uint8_t app_data[7];
+	uint8_t app_data[9];
 	struct lichen_app_location_time_snapshot local = {
 		.source_name = "phone-lci",
 		.source_class_valid = true,
@@ -1541,7 +1591,7 @@ ZTEST(meshtastic_gateway_adapter,
 {
 	static const uint8_t peer_id[] = { 0x21, 0x22, 0x23, 0x24,
 					   0x25, 0x26, 0x27, 0x28 };
-	uint8_t app_data[7];
+	uint8_t app_data[9];
 	struct gateway_network_location_announce_record record;
 	struct lichen_hal_location_time_snapshot snapshot;
 	struct gateway_network_location_announce_sample announce = {
@@ -1581,7 +1631,7 @@ ZTEST(meshtastic_gateway_adapter,
 {
 	static const uint8_t peer_id[] = { 0x61, 0x62, 0x63, 0x64,
 					   0x65, 0x66, 0x67, 0x68 };
-	uint8_t app_data[7];
+	uint8_t app_data[9];
 	struct gateway_network_location_announce_record record;
 	struct lichen_hal_location_time_snapshot snapshot;
 
@@ -1635,7 +1685,7 @@ ZTEST(meshtastic_gateway_adapter,
 {
 	static const uint8_t peer_id[] = { 0x71, 0x72, 0x73, 0x74,
 					   0x75, 0x76, 0x77, 0x78 };
-	uint8_t app_data[7];
+	uint8_t app_data[9];
 	struct gateway_network_location_sample direct =
 		make_network_location_sample();
 	struct lichen_hal_location_time_snapshot snapshot;
@@ -1678,7 +1728,7 @@ ZTEST(meshtastic_gateway_adapter,
       test_announce_location_stale_seq_does_not_overwrite_snapshot)
 {
 	static const uint8_t peer_id[] = { 9, 8, 7, 6, 5, 4, 3, 2 };
-	uint8_t app_data[7];
+	uint8_t app_data[9];
 	struct gateway_network_location_announce_record record;
 	struct lichen_hal_location_time_snapshot snapshot;
 	struct gateway_network_location_announce_sample announce = {
@@ -1715,7 +1765,7 @@ ZTEST(meshtastic_gateway_adapter,
 {
 	static const uint8_t wrap_peer[] = { 1, 3, 5, 7, 9, 11, 13, 15 };
 	static const uint8_t reset_peer[] = { 2, 4, 6, 8, 10, 12, 14, 16 };
-	uint8_t app_data[7];
+	uint8_t app_data[9];
 	struct lichen_hal_location_time_snapshot snapshot;
 
 	reset_gateway(2U);
@@ -1773,7 +1823,7 @@ ZTEST(meshtastic_gateway_adapter,
       test_announce_location_rejects_out_of_order_observation_time)
 {
 	static const uint8_t peer_id[] = { 4, 4, 4, 4, 4, 4, 4, 4 };
-	uint8_t app_data[7];
+	uint8_t app_data[9];
 	struct gateway_network_location_announce_record record;
 	struct lichen_hal_location_time_snapshot snapshot;
 
@@ -1816,7 +1866,7 @@ ZTEST(meshtastic_gateway_adapter,
 {
 	static const uint8_t peer_a[] = { 0x41, 1, 2, 3, 4, 5, 6, 7 };
 	static const uint8_t peer_b[] = { 0x42, 1, 2, 3, 4, 5, 6, 7 };
-	uint8_t app_data[7];
+	uint8_t app_data[9];
 	struct gateway_network_location_announce_record record;
 	struct lichen_hal_location_time_snapshot snapshot;
 
@@ -1855,7 +1905,7 @@ ZTEST(meshtastic_gateway_adapter,
 {
 	static const uint8_t peer_a[] = { 0xaa, 1, 2, 3, 4, 5, 6, 7 };
 	static const uint8_t peer_b[] = { 0xbb, 1, 2, 3, 4, 5, 6, 7 };
-	uint8_t app_data[7];
+	uint8_t app_data[9];
 	struct lichen_hal_location_time_snapshot snapshot;
 
 	reset_gateway(2U);
@@ -1934,7 +1984,7 @@ ZTEST(meshtastic_gateway_adapter,
 {
 	static const uint8_t no_coord_peer[8] = { 0 };
 	uint8_t coord_peer[8] = { 0xaa };
-	uint8_t app_data[7];
+	uint8_t app_data[9];
 	struct lichen_hal_location_time_snapshot snapshot;
 
 	reset_gateway(2U);
@@ -1971,7 +2021,7 @@ ZTEST(meshtastic_gateway_adapter,
 ZTEST(meshtastic_gateway_adapter,
       test_announce_location_table_evicts_oldest_non_published_peer)
 {
-	uint8_t app_data[7];
+	uint8_t app_data[9];
 	uint8_t peers[9][8] = { 0 };
 	struct gateway_network_location_announce_record record;
 	struct lichen_hal_location_time_snapshot snapshot;
@@ -2006,7 +2056,7 @@ ZTEST(meshtastic_gateway_adapter,
 ZTEST(meshtastic_gateway_adapter,
       test_announce_location_table_eviction_handles_uptime_wrap)
 {
-	uint8_t app_data[7];
+	uint8_t app_data[9];
 	uint8_t peers[9][8] = { 0 };
 	struct gateway_network_location_announce_record record;
 

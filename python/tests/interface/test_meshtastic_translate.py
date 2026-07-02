@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Tests for Meshtastic message translation."""
 
-import cbor2
 import pytest
 
+from lichen.announce.coords import encode_coords
 from lichen.interface.meshtastic.address import AddressMapper
 from lichen.interface.meshtastic.translate import (
     PortNum,
@@ -143,19 +143,16 @@ class TestTranslatorPosition:
         payload = pos.to_bytes()
         result = translator.position_to_announce_payload(payload)
 
-        data = cbor2.loads(result)
-        assert abs(data["lat"] - 47.6062) < 1e-6
-        assert abs(data["lon"] - (-122.3321)) < 1e-6
-        assert data["alt"] == 100
+        assert result == encode_coords(47.6062, -122.3321)
 
     def test_announce_to_position(self, translator: Translator) -> None:
-        announce_data = cbor2.dumps({"lat": 47.6062, "lon": -122.3321, "alt": 100})
+        announce_data = encode_coords(47.6062, -122.3321)
         result = translator.announce_to_position_payload(announce_data)
 
         pos = Position.from_bytes(result)
         assert pos.latitude_i == 476062000
         assert pos.longitude_i == -1223321000
-        assert pos.altitude == 100
+        assert pos.altitude is None
 
     def test_position_roundtrip(self, translator: Translator) -> None:
         """Position survives mesh→announce→mesh translation."""
@@ -173,7 +170,7 @@ class TestTranslatorPosition:
 
         assert decoded.latitude_i == original.latitude_i
         assert decoded.longitude_i == original.longitude_i
-        assert decoded.altitude == original.altitude
+        assert decoded.altitude is None
 
 
 class TestTranslatorNodeInfo:

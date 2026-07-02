@@ -11,8 +11,7 @@
 #include <zephyr/sys/util.h>
 
 #define ANNOUNCE_COORDS_APP_DATA_TYPE 0x01U
-#define ANNOUNCE_COORDS_APP_DATA_LEN 7U
-#define ANNOUNCE_COORDS_SCALE_TO_E7 100
+#define ANNOUNCE_COORDS_APP_DATA_LEN 9U
 #define ANNOUNCE_RECORD_CAP 8U
 
 struct announce_record {
@@ -35,16 +34,13 @@ static bool valid_lat_lon(int32_t latitude_e7, int32_t longitude_e7)
 	       longitude_e7 >= -1800000000 && longitude_e7 <= 1800000000;
 }
 
-static int32_t read_int24_be(const uint8_t *data)
+static int32_t read_int32_be(const uint8_t *data)
 {
-	int32_t value = ((int32_t)data[0] << 16) | ((int32_t)data[1] << 8) |
-			(int32_t)data[2];
+	uint32_t value = ((uint32_t)data[0] << 24) |
+			 ((uint32_t)data[1] << 16) |
+			 ((uint32_t)data[2] << 8) | (uint32_t)data[3];
 
-	if ((value & 0x00800000) != 0) {
-		value |= (int32_t)0xff000000;
-	}
-
-	return value;
+	return (int32_t)value;
 }
 
 static bool valid_peer_id(const uint8_t *peer_id, size_t peer_id_len)
@@ -349,8 +345,8 @@ int gateway_network_location_decode_announce_coords(const uint8_t *app_data,
 		return -ENOENT;
 	}
 
-	latitude = read_int24_be(&app_data[1]) * ANNOUNCE_COORDS_SCALE_TO_E7;
-	longitude = read_int24_be(&app_data[4]) * ANNOUNCE_COORDS_SCALE_TO_E7;
+	latitude = read_int32_be(&app_data[1]);
+	longitude = read_int32_be(&app_data[5]);
 	if (!valid_lat_lon(latitude, longitude)) {
 		return -EINVAL;
 	}

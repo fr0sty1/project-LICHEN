@@ -23,6 +23,8 @@ from dataclasses import dataclass
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
+from lichen.announce.coords import decode_coords, encode_coords
+
 if TYPE_CHECKING:
     from lichen.interface.meshtastic.address import AddressMapper
 
@@ -285,46 +287,34 @@ class Translator:
     def position_to_announce_payload(self, payload: bytes) -> bytes:
         """Convert Meshtastic Position to LICHEN announce payload.
 
-        The announce app_data format is CBOR:
-        {"lat": float, "lon": float, "alt": int}
+        The announce app_data format is Type 0x01 geographic coordinates:
+        type(1) + signed big-endian lat_e7(4) + lon_e7(4).
 
         Args:
             payload: Protobuf-encoded Position
 
         Returns:
-            CBOR-encoded position for announce app_data
+            Type 0x01 position app_data for announce
         """
-        import cbor2
-
         pos = Position.from_bytes(payload)
-        data: dict[str, int | float] = {}
-        if pos.latitude is not None:
-            data["lat"] = pos.latitude
-        if pos.longitude is not None:
-            data["lon"] = pos.longitude
-        if pos.altitude is not None:
-            data["alt"] = pos.altitude
-        return cbor2.dumps(data)
+        if pos.latitude is None or pos.longitude is None:
+            return b""
+        return encode_coords(pos.latitude, pos.longitude)
 
     def announce_to_position_payload(self, app_data: bytes) -> bytes:
         """Convert LICHEN announce payload to Meshtastic Position.
 
         Args:
-            app_data: CBOR-encoded position from announce
+            app_data: Type 0x01 position app_data from announce
 
         Returns:
             Protobuf-encoded Position
         """
-        import cbor2
-
-        data = cbor2.loads(app_data)
+        coords = decode_coords(app_data)
         pos = Position()
-        if "lat" in data:
-            pos.latitude_i = int(data["lat"] * 1e7)
-        if "lon" in data:
-            pos.longitude_i = int(data["lon"] * 1e7)
-        if "alt" in data:
-            pos.altitude = int(data["alt"])
+        if coords is not None:
+            pos.latitude_i = int(round(coords[0] * 1e7))
+            pos.longitude_i = int(round(coords[1] * 1e7))
         return pos.to_bytes()
 
     # --- NodeInfo (portnum 4) ---

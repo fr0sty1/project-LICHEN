@@ -47,6 +47,60 @@ MESHCORE_SOURCE_BASELINE = {
 }
 
 
+def _announce_coords_encode(latitude: float, longitude: float) -> bytes:
+    latitude_e7 = int(round(latitude * 10_000_000))
+    longitude_e7 = int(round(longitude * 10_000_000))
+    return bytes([0x01]) + latitude_e7.to_bytes(4, "big", signed=True) + longitude_e7.to_bytes(
+        4, "big", signed=True
+    )
+
+
+def announce_coords_vectors() -> list[dict]:
+    cases = [
+        (
+            "zero",
+            "Equator and prime meridian.",
+            0.0,
+            0.0,
+        ),
+        (
+            "seattle_west_longitude",
+            "Representative west-coast longitude that the previous int24 1e-5 format could not represent.",
+            47.6062,
+            -122.3321,
+        ),
+        (
+            "positive_limits",
+            "Maximum valid latitude and longitude.",
+            90.0,
+            180.0,
+        ),
+        (
+            "negative_limits",
+            "Minimum valid latitude and longitude.",
+            -90.0,
+            -180.0,
+        ),
+    ]
+
+    vectors = []
+    for name, description, latitude, longitude in cases:
+        latitude_e7 = int(round(latitude * 10_000_000))
+        longitude_e7 = int(round(longitude * 10_000_000))
+        vectors.append(
+            {
+                "name": name,
+                "description": description,
+                "latitude_degrees": latitude,
+                "longitude_degrees": longitude,
+                "latitude_e7": latitude_e7,
+                "longitude_e7": longitude_e7,
+                "encoded": _announce_coords_encode(latitude, longitude).hex(),
+            }
+        )
+    return vectors
+
+
 def _varint(value: int) -> bytes:
     out = bytearray()
     while value >= 0x80:
@@ -1473,6 +1527,12 @@ def main() -> None:
         "LICHEN link-layer frame vectors (spec section 4). 'fields' are the "
         "frame inputs; 'encoded' is LichenFrame(**fields).to_bytes().",
         frame_vectors(),
+    )
+    _write(
+        "announce_coords.json",
+        "Announce app_data Type=0x01 geographic coordinate encoding: signed "
+        "big-endian e7 latitude and longitude.",
+        announce_coords_vectors(),
     )
     _write(
         "meshtastic_app_compat.json",
