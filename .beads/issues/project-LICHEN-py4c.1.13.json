@@ -1,0 +1,35 @@
+{
+  "id": "project-LICHEN-py4c.1.13",
+  "title": "Reconcile stale spec/lichen-native raw-frame/config draft with LCI CoAP contract",
+  "description": "Discovered during project-LICHEN-py4c.1.2 review. The current app/LCI contract is IPv6 + CoAP over SLIP/BLE/IP per spec/11-lci.md and docs/ble-app-surface-owner.md, while spec/lichen-native is identified as an older CBOR native protocol draft. The draft also defines raw_rx_enable as config key 64 in 10-raw-frame.md but omits it from 04-config.md. Decide whether to retire, clearly mark, or reconcile spec/lichen-native, and if raw diagnostics remain needed, define the CoAP resource/permission model for raw RX/TX arming with tests/docs. No hardware required.",
+  "notes": "Evidence from project-LICHEN-py4c.1.2 review: docs/ble-app-surface-owner.md lines 82-90 say direct native BLE LCI is SLIP-framed IPv6 over a LICHEN-specific GATT service and is not the older CBOR native protocol draft in spec/lichen-native. spec/11-lci.md section 17 says LCI treats the local connection as another IPv6 interface, uses CoAP everywhere, and exposes /.well-known/core, /config, /config/radio, /config/identity, /status, /status/neighbors, /status/routes, /keys, /mesh via CoAP/Observe. spec/lichen-native/10-raw-frame.md says raw_rx_enable is config key 64, but spec/lichen-native/04-config.md does not list that config key. Until this is reconciled, Python TUI project-LICHEN-py4c.1.2 treats spec/lichen-native as non-authoritative for implementation and leaves raw diagnostics disabled/advanced placeholder only.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T03:21:12.647018Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T03:21:48.148701Z",
+  "labels": [
+    "python",
+    "tui",
+    "client-app",
+    "native-interface",
+    "ble",
+    "coap",
+    "lilygo",
+    "zephyr",
+    "lichen",
+    "app-interface",
+    "firmware",
+    "lci"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-py4c.1.13",
+      "depends_on_id": "project-LICHEN-py4c.1",
+      "type": "parent-child",
+      "created_at": "2026-07-02T03:21:12.648443Z"
+    }
+  ]
+}
