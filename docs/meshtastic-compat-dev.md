@@ -270,20 +270,30 @@ Users won't see routing metrics. Messages either arrive or they don't.
 
 **The problem:** Position formats match (lat/lon/alt), but Meshtastic positions are pushed; LICHEN uses the announce protocol.
 
-**The solution:** Two-way translation.
+**Current MVP behavior:** expose map-ready local NodeDB Position only when a
+LICHEN location snapshot has both latitude and longitude. App-originated
+`POSITION_APP` writes and peer-position announce translation are deferred until
+the gateway has a concrete LICHEN position-submit/announce path.
 
 **Outbound (app → mesh):**
 1. App sends Position via MeshPacket
-2. Adapter extracts lat/lon/alt/timestamp
-3. Triggers LICHEN announce with position payload
+2. Adapter validates the payload shape
+3. Current firmware returns deterministic unsupported/no-op status
 
 **Inbound (mesh → app):**
-1. LICHEN receives peer announce with position
-2. Adapter converts to Meshtastic Position protobuf
-3. Queues as MeshPacket with `POSITION_APP` portnum
-4. App displays on map
+1. Gateway reads local HAL/app-interface location metadata
+2. If both latitude and longitude are valid, NodeDB `NodeInfo.position` is encoded
+3. Optional altitude, fix time, and satellites are included only with that position
+4. App displays local node position from NodeDB sync
 
 Position precision is preserved (1e-7 degree resolution).
+
+Meshtastic Position payloads are emitted only when both latitude and longitude
+are valid. Time-only, altitude-only, and satellites-only GNSS metadata remains
+available through native LICHEN status/time resources, but it is not wrapped in
+a Meshtastic Position message because mobile clients treat the presence of that
+message as map-ready location data. When coordinates are valid, optional
+altitude, fix time, and satellites are included if available.
 
 ### Message Delivery Semantics
 
@@ -418,7 +428,7 @@ The adapter implements a subset of Meshtastic's protobuf schema.
 | Other `want_config_id` | Queue legacy/full sync and matching `config_complete_id`; log compatibility nonce |
 | `heartbeat` | Keepalive/liveness trigger; may queue `queueStatus`; never required before sync |
 | `packet` with `TEXT_MESSAGE_APP` | Validate broadcast primary-channel UTF-8 text up to 200 bytes, call the adapter text hook, and queue local `queueStatus` |
-| `packet` with `POSITION_APP` | Translate to LICHEN position/announce when available; otherwise deterministic no-op status |
+| `packet` with `POSITION_APP` | Deferred until a LICHEN position-submit/announce path exists; current firmware returns deterministic unsupported/no-op status |
 | `packet` with `NODEINFO_APP` | Update transient display metadata only; no persistent Meshtastic identity writes |
 | `packet` with `ADMIN_APP` read request | Deferred until `project-LICHEN-t2hn.23`; current firmware returns deterministic unsupported status. |
 | `packet` with `ADMIN_APP` write/command | Reject or no-op deterministically; do not mutate LICHEN radio/security settings. |
@@ -436,7 +446,7 @@ The adapter implements a subset of Meshtastic's protobuf schema.
 | `channel` | Synthetic primary channel plus disabled secondary channels when requested |
 | `metadata` | Synthetic device metadata and firmware/version policy |
 | `region_presets` | Region/preset constraints for current app sync; omission requires a separate tested safe-absence policy |
-| `packet` | Incoming mesh messages, node-info/position updates, and `ROUTING_APP` ACK/NAK |
+| `packet` | Incoming mesh messages, NodeInfo sync records with location-bearing positions, and `ROUTING_APP` ACK/NAK |
 | `queueStatus` | Local send queue status only |
 | `config_complete_id` | End marker that echoes the stage nonce |
 | `clientNotification` | Optional advisory error/notice when a client requires visible feedback |
@@ -466,7 +476,7 @@ Meshtastic uses `portnum` to identify message types. The adapter maps these to C
 | Meshtastic Portnum | CoAP Uri-Path | Notes |
 |--------------------|---------------|-------|
 | `TEXT_MESSAGE_APP` (1) | `/msg/inbox` | Plain text messages |
-| `POSITION_APP` (3) | `/pos` | Position updates |
+| `POSITION_APP` (3) | `/pos` | Deferred position writes; current firmware returns deterministic unsupported/no-op status |
 | `NODEINFO_APP` (4) | `/node` | Node info exchange |
 | `TELEMETRY_APP` (67) | `/telem` | Device telemetry |
 | `TRACEROUTE_APP` (70) | N/A | Handled internally |
@@ -497,8 +507,9 @@ Meshtastic compatibility write.
 |------------|--------|-------|
 | `latitude_i` | Announce latitude | Scaled by 1e7 |
 | `longitude_i` | Announce longitude | Scaled by 1e7 |
-| `altitude` | Announce altitude | Meters |
-| `time` | Announce timestamp | Unix epoch |
+| `altitude` | Announce altitude | Meters; only emitted with valid lat/lon |
+| `time` | Announce timestamp | Unix epoch; only emitted with valid lat/lon |
+| `sats_in_view` | GNSS satellites | Only emitted with valid lat/lon |
 
 ### Channels
 
@@ -570,21 +581,18 @@ send attempts until the concrete Zephyr `/msg/inbox` or local send contract is i
 Directed Meshtastic node-number resolution is tracked by `project-LICHEN-t2hn.7.1`.
 ```
 
-### Receiving a Position Update
+### Receiving a NodeDB Position Update
 
 ```
-LICHEN: Receives announce with position from peer
+LICHEN: Reads local location snapshot with valid latitude and longitude
 
 Adapter:
-    1. Extracts position from announce
-    2. Builds MeshPacket {
-        from: peer_iid & 0xFFFFFFFF,
-        decoded: Data { portnum: POSITION_APP, payload: Position {...} }
-    }
-    3. Queues in FromRadio buffer
+    1. Copies lat/lon and optional alt/time/satellites into local info
+    2. Encodes NodeInfo.position during NodeDB sync
+    3. Queues NodeInfo FromRadio record
     4. Increments FromNum, triggers notify
 
-App: Reads FromRadio, displays position on map
+App: Reads NodeDB sync, displays local node position on map
 ```
 
 ## Limitations
@@ -655,5 +663,5 @@ Use Meshtastic Android app with nRF Connect or similar to verify:
 1. Service discovery finds LICHEN node
 2. Config sync completes without errors
 3. Text messages send and receive
-4. Position updates appear on map
+4. NodeDB positions appear on the map only for records with latitude and longitude
 5. Node list populates with peers

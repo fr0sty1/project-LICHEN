@@ -1181,6 +1181,74 @@ ZTEST(meshtastic_gateway_adapter,
 	zassert_equal(value, 1710000200U);
 }
 
+static void assert_want_config_node_info_omits_position_for_snapshot(
+	const struct lichen_hal_location_time_snapshot *location_time)
+{
+	const uint8_t want_config_node_db[] = { 0x18, 0xad, 0x9e, 0x04 };
+	const uint8_t *position = NULL;
+	size_t position_len = 0U;
+	const uint8_t *from_radio;
+	size_t from_radio_len;
+	struct from_radio_view view;
+
+	reset_gateway(2U);
+	gateway_meshtastic_adapter_test_set_location_time_snapshot(location_time);
+	zassert_ok(fake_ble_meshtastic_push_to_radio(want_config_node_db,
+						     sizeof(want_config_node_db)));
+
+	zassert_equal(gateway_meshtastic_adapter_test_process_once(), 1);
+	zassert_equal(fake_ble_meshtastic_from_radio_count(), 2U);
+	from_radio = fake_ble_meshtastic_from_radio(0U, &from_radio_len);
+	zassert_not_null(from_radio);
+	decode_from_radio(from_radio, from_radio_len, &view);
+	zassert_equal(view.field, LICHEN_MESHTASTIC_FROM_RADIO_NODE_INFO);
+	zassert_false(payload_get_len_field(view.payload, view.payload_len, 3U,
+					    &position, &position_len));
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_want_config_node_info_omits_time_only_position)
+{
+	const struct lichen_hal_location_time_snapshot location_time = {
+		.location_provider_available = true,
+		.time_provider_available = true,
+		.fix_time_unix_valid = true,
+		.fix_time_unix = 1710000000U,
+		.fix_source_valid = true,
+		.fix_source = LICHEN_HAL_FIX_SOURCE_GNSS,
+	};
+
+	assert_want_config_node_info_omits_position_for_snapshot(&location_time);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_want_config_node_info_omits_altitude_only_position)
+{
+	const struct lichen_hal_location_time_snapshot location_time = {
+		.location_provider_available = true,
+		.altitude_m_valid = true,
+		.altitude_m = 42,
+		.fix_source_valid = true,
+		.fix_source = LICHEN_HAL_FIX_SOURCE_GNSS,
+	};
+
+	assert_want_config_node_info_omits_position_for_snapshot(&location_time);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_want_config_node_info_omits_satellites_only_position)
+{
+	const struct lichen_hal_location_time_snapshot location_time = {
+		.location_provider_available = true,
+		.satellites_valid = true,
+		.satellites = 9U,
+		.fix_source_valid = true,
+		.fix_source = LICHEN_HAL_FIX_SOURCE_GNSS,
+	};
+
+	assert_want_config_node_info_omits_position_for_snapshot(&location_time);
+}
+
 ZTEST(meshtastic_gateway_adapter,
       test_want_config_node_info_includes_app_identity_peer)
 {

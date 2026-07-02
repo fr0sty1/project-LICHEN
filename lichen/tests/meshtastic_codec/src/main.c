@@ -1212,27 +1212,68 @@ ZTEST(meshtastic_codec, test_node_info_encodes_negative_altitude_as_int32_varint
 
 ZTEST(meshtastic_codec, test_node_info_requires_lat_lon_for_position)
 {
-	struct lichen_meshtastic_local_info info = {
-		.node_num = 0xaabbccddU,
-		.uptime_seconds = 123U,
-		.long_name = "LICHEN native_sim",
-		.short_name = "LICH",
-		.has_fix_time_unix = true,
-		.fix_time_unix = 1710000000U,
-		.has_latitude_e7 = true,
-		.latitude_e7 = 476206130,
+	const struct lichen_meshtastic_local_info cases[] = {
+		{
+			.node_num = 0xaabbccddU,
+			.uptime_seconds = 123U,
+			.long_name = "LICHEN native_sim",
+			.short_name = "LICH",
+			.has_fix_time_unix = true,
+			.fix_time_unix = 1710000000U,
+		},
+		{
+			.node_num = 0xaabbccddU,
+			.uptime_seconds = 123U,
+			.long_name = "LICHEN native_sim",
+			.short_name = "LICH",
+			.has_altitude_m = true,
+			.altitude_m = 42,
+		},
+		{
+			.node_num = 0xaabbccddU,
+			.uptime_seconds = 123U,
+			.long_name = "LICHEN native_sim",
+			.short_name = "LICH",
+			.has_satellites = true,
+			.satellites = 9U,
+		},
+		{
+			.node_num = 0xaabbccddU,
+			.uptime_seconds = 123U,
+			.long_name = "LICHEN native_sim",
+			.short_name = "LICH",
+			.has_fix_time_unix = true,
+			.fix_time_unix = 1710000000U,
+			.has_latitude_e7 = true,
+			.latitude_e7 = 476206130,
+		},
+		{
+			.node_num = 0xaabbccddU,
+			.uptime_seconds = 123U,
+			.long_name = "LICHEN native_sim",
+			.short_name = "LICH",
+			.has_fix_time_unix = true,
+			.fix_time_unix = 1710000000U,
+			.has_longitude_e7 = true,
+			.longitude_e7 = -1223493000,
+		},
 	};
 	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	const uint8_t *position;
 	size_t position_len;
 	int ret;
 
-	ret = lichen_meshtastic_encode_node_info_payload(&info, payload,
-							 sizeof(payload));
+	for (size_t i = 0U; i < ARRAY_SIZE(cases); i++) {
+		ret = lichen_meshtastic_encode_node_info_payload(&cases[i],
+								 payload,
+								 sizeof(payload));
 
-	zassert_true(ret > 0, "node_info payload failed: %d", ret);
-	zassert_false(payload_get_len_field(payload, (size_t)ret, 3U, &position,
-					    &position_len));
+		zassert_true(ret > 0, "node_info payload %u failed: %d",
+			     (uint32_t)i, ret);
+		zassert_false(payload_get_len_field(payload, (size_t)ret, 3U,
+						    &position, &position_len),
+			      "case %u emitted partial Position", (uint32_t)i);
+	}
 }
 
 ZTEST(meshtastic_codec, test_node_info_encodes_valid_battery_metrics)
