@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-zte2.7.2",
+  "title": "Update Meshtastic compatibility docs for Position support",
+  "description": "Why this exists: project-LICHEN-zte2.7 implemented Meshtastic POSITION_APP local-client location ingestion, but docs/meshtastic-compat-dev.md still describes Position as unsupported/deferred. What needs to be done: update the compatibility documentation to describe the implemented local-client Position behavior, test coverage, and remaining metadata/epoch limitations tracked in project-LICHEN-zte2.7.1.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T13:37:22.957533Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T13:37:22.958027Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "gnss",
+    "location",
+    "hardware",
+    "network-source"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zte2.7.2",
+      "depends_on_id": "project-LICHEN-zte2.7",
+      "type": "parent-child",
+      "created_at": "2026-07-02T13:37:22.958027Z"
+    }
+  ]
+}

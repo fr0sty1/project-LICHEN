@@ -8,6 +8,7 @@ target_sources(app PRIVATE
   src/main.c
   src/config_apply.c
   src/config_cbor.c
+  src/network_location.c
   src/status_cbor.c)
 target_sources_ifdef(CONFIG_LORA_LICHEN_BLE app PRIVATE
   src/ble_app_owner.c

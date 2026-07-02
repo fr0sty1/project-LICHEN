@@ -23,6 +23,7 @@
 #include "inbound_events.h"
 #include "message_contract.h"
 #include "meshtastic_adapter.h"
+#include "network_location.h"
 
 #define COAP_TEST_BUF_SIZE 64
 #define COAP_TEST_OPT_COUNT 8
@@ -278,6 +279,30 @@ static size_t build_inbound_location_payload(uint8_t *buf, size_t cap)
 	}
 
 	return pos;
+}
+
+static struct gateway_network_location_sample make_network_location_sample(void)
+{
+	return (struct gateway_network_location_sample){
+		.latitude_e7_valid = true,
+		.latitude_e7 = 300000000,
+		.longitude_e7_valid = true,
+		.longitude_e7 = 400000000,
+		.altitude_m_valid = true,
+		.altitude_m = 123,
+		.fix_time_unix_valid = true,
+		.fix_time_unix = 1710000300U,
+		.satellites_valid = true,
+		.satellites = 6U,
+		.age_seconds_valid = true,
+		.age_seconds = 2U,
+		.horizontal_accuracy_mm_valid = true,
+		.horizontal_accuracy_mm = 5000U,
+		.vertical_accuracy_mm_valid = true,
+		.vertical_accuracy_mm = 9000U,
+		.source_name_valid = true,
+		.source_name = "mesh-announce",
+	};
 }
 
 static size_t build_inbound_location_payload_with_flags(uint8_t *buf,
@@ -1092,6 +1117,204 @@ ZTEST(meshtastic_gateway_adapter, test_coap_location_post_accepts_sparse_payload
 	zassert_false(snapshot.fix_time_unix_valid);
 	zassert_false(snapshot.horizontal_accuracy_mm_valid);
 	zassert_false(snapshot.vertical_accuracy_mm_valid);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_network_location_submit_updates_hal_snapshot)
+{
+	struct gateway_network_location_sample sample =
+		make_network_location_sample();
+	struct lichen_hal_location_time_snapshot snapshot;
+
+	reset_gateway(2U);
+	lichen_hal_location_test_set_uptime_ms(10 * 1000);
+
+	zassert_ok(gateway_network_location_submit(&sample));
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.location_provider_available);
+	zassert_true(snapshot.source_class_valid);
+	zassert_equal(snapshot.source_class, LICHEN_HAL_LOCATION_SOURCE_NETWORK);
+	zassert_str_equal(snapshot.source_name, "mesh-announce");
+	zassert_true(snapshot.fix_state_valid);
+	zassert_equal(snapshot.fix_state, LICHEN_HAL_LOCATION_FIX_3D);
+	zassert_true(snapshot.latitude_e7_valid);
+	zassert_equal(snapshot.latitude_e7, 300000000);
+	zassert_true(snapshot.longitude_e7_valid);
+	zassert_equal(snapshot.longitude_e7, 400000000);
+	zassert_true(snapshot.altitude_m_valid);
+	zassert_equal(snapshot.altitude_m, 123);
+	zassert_true(snapshot.fix_time_unix_valid);
+	zassert_equal(snapshot.fix_time_unix, 1710000300U);
+	zassert_true(snapshot.satellites_valid);
+	zassert_equal(snapshot.satellites, 6U);
+	zassert_true(snapshot.age_seconds_valid);
+	zassert_equal(snapshot.age_seconds, 2U);
+	zassert_true(snapshot.horizontal_accuracy_mm_valid);
+	zassert_equal(snapshot.horizontal_accuracy_mm, 5000U);
+	zassert_true(snapshot.vertical_accuracy_mm_valid);
+	zassert_equal(snapshot.vertical_accuracy_mm, 9000U);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_network_location_submit_defaults_empty_source_and_2d_fix)
+{
+	struct gateway_network_location_sample sample =
+		make_network_location_sample();
+	struct lichen_hal_location_time_snapshot snapshot;
+
+	reset_gateway(2U);
+	sample.altitude_m_valid = false;
+	sample.source_name_valid = false;
+	sample.source_name[0] = '\0';
+
+	zassert_ok(gateway_network_location_submit(&sample));
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.source_class_valid);
+	zassert_equal(snapshot.source_class, LICHEN_HAL_LOCATION_SOURCE_NETWORK);
+	zassert_str_equal(snapshot.source_name, "network");
+	zassert_true(snapshot.fix_state_valid);
+	zassert_equal(snapshot.fix_state, LICHEN_HAL_LOCATION_FIX_2D);
+	zassert_false(snapshot.altitude_m_valid);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_network_location_submit_terminates_full_source_name)
+{
+	struct gateway_network_location_sample sample =
+		make_network_location_sample();
+	struct lichen_hal_location_time_snapshot snapshot;
+	const char expected[] = "aaaaaaaaaaaaaaaaaaaaaaa";
+
+	reset_gateway(2U);
+	memset(sample.source_name, 'a', sizeof(sample.source_name));
+
+	zassert_ok(gateway_network_location_submit(&sample));
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_str_equal(snapshot.source_name, expected);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_network_location_submit_allows_fresh_local_client_override)
+{
+	struct gateway_network_location_sample sample =
+		make_network_location_sample();
+	uint8_t req_buf[COAP_TEST_BUF_SIZE];
+	uint8_t payload[INBOUND_LOCATION_PAYLOAD_MAX_LEN];
+	size_t payload_len;
+	struct coap_packet request;
+	struct sockaddr_in6 source;
+	struct lichen_hal_location_time_snapshot snapshot;
+
+	reset_gateway(2U);
+	lichen_hal_location_test_set_uptime_ms(10 * 1000);
+	zassert_ok(gateway_network_location_submit(&sample));
+
+	payload_len = build_inbound_location_payload(payload, sizeof(payload));
+	make_post_request(&request, req_buf, sizeof(req_buf), payload,
+			  payload_len);
+	make_loopback_sockaddr(&source);
+	zassert_equal(gateway_inbound_location_post(NULL, &request,
+						    (struct sockaddr *)&source,
+						    sizeof(source)),
+		      COAP_RESPONSE_CODE_CHANGED);
+
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.source_class_valid);
+	zassert_equal(snapshot.source_class,
+		      LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT);
+	zassert_str_equal(snapshot.source_name, "local-client");
+	zassert_true(snapshot.latitude_e7_valid);
+	zassert_equal(snapshot.latitude_e7, 476206130);
+	zassert_true(snapshot.longitude_e7_valid);
+	zassert_equal(snapshot.longitude_e7, -1223493000);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_network_location_submit_survives_stale_higher_priority_sources)
+{
+	struct gateway_network_location_sample sample =
+		make_network_location_sample();
+	uint8_t req_buf[COAP_TEST_BUF_SIZE];
+	uint8_t payload[INBOUND_LOCATION_PAYLOAD_MAX_LEN];
+	size_t payload_len;
+	struct coap_packet request;
+	struct sockaddr_in6 source;
+	struct lichen_app_location_time_snapshot manual = {
+		.source_name = "config-static",
+		.fix_state_valid = true,
+		.fix_state = LICHEN_APP_LOCATION_FIX_2D,
+		.age_seconds_valid = true,
+		.age_seconds = CONFIG_LICHEN_LOCATION_FRESHNESS_MAX_AGE_S + 1U,
+		.latitude_e7_valid = true,
+		.latitude_e7 = 500000000,
+		.longitude_e7_valid = true,
+		.longitude_e7 = 600000000,
+	};
+	struct lichen_hal_location_time_snapshot snapshot;
+
+	reset_gateway(2U);
+	lichen_hal_location_test_set_uptime_ms(
+		(CONFIG_LICHEN_LOCATION_FRESHNESS_MAX_AGE_S + 10) * 1000LL);
+	zassert_ok(gateway_network_location_submit(&sample));
+
+	payload_len = build_inbound_location_payload_with_flags(
+		payload, sizeof(payload), INBOUND_LOCATION_FLAG_AGE_SECONDS);
+	put_be32(&payload[payload_len - sizeof(uint32_t)],
+		 CONFIG_LICHEN_LOCATION_FRESHNESS_MAX_AGE_S + 1U);
+	make_post_request(&request, req_buf, sizeof(req_buf), payload,
+			  payload_len);
+	make_loopback_sockaddr(&source);
+	zassert_equal(gateway_inbound_location_post(NULL, &request,
+						    (struct sockaddr *)&source,
+						    sizeof(source)),
+		      COAP_RESPONSE_CODE_CHANGED);
+	zassert_ok(lichen_app_interface_submit_manual_location(&manual));
+
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.source_class_valid);
+	zassert_equal(snapshot.source_class, LICHEN_HAL_LOCATION_SOURCE_NETWORK);
+	zassert_str_equal(snapshot.source_name, "mesh-announce");
+	zassert_true(snapshot.latitude_e7_valid);
+	zassert_equal(snapshot.latitude_e7, 300000000);
+	zassert_true(snapshot.longitude_e7_valid);
+	zassert_equal(snapshot.longitude_e7, 400000000);
+}
+
+ZTEST(meshtastic_gateway_adapter,
+      test_network_location_submit_rejects_invalid_samples)
+{
+	struct gateway_network_location_sample good =
+		make_network_location_sample();
+	struct gateway_network_location_sample missing_lon =
+		make_network_location_sample();
+	struct gateway_network_location_sample bad_lat =
+		make_network_location_sample();
+	struct gateway_network_location_sample bad_lon =
+		make_network_location_sample();
+	struct gateway_network_location_sample missing_lat =
+		make_network_location_sample();
+	struct lichen_hal_location_time_snapshot snapshot;
+
+	reset_gateway(2U);
+	zassert_ok(gateway_network_location_submit(&good));
+
+	missing_lon.longitude_e7_valid = false;
+	bad_lat.latitude_e7 = 900000001;
+	bad_lon.longitude_e7 = -1800000001;
+	missing_lat.latitude_e7_valid = false;
+	zassert_equal(gateway_network_location_submit(NULL), -EINVAL);
+	zassert_equal(gateway_network_location_submit(&missing_lon), -EINVAL);
+	zassert_equal(gateway_network_location_submit(&missing_lat), -EINVAL);
+	zassert_equal(gateway_network_location_submit(&bad_lat), -EINVAL);
+	zassert_equal(gateway_network_location_submit(&bad_lon), -EINVAL);
+
+	zassert_ok(lichen_hal_location_time_snapshot_get(&snapshot));
+	zassert_true(snapshot.source_class_valid);
+	zassert_equal(snapshot.source_class, LICHEN_HAL_LOCATION_SOURCE_NETWORK);
+	zassert_true(snapshot.latitude_e7_valid);
+	zassert_equal(snapshot.latitude_e7, 300000000);
+	zassert_true(snapshot.longitude_e7_valid);
+	zassert_equal(snapshot.longitude_e7, 400000000);
 }
 
 ZTEST(meshtastic_gateway_adapter, test_coap_location_post_rejects_nonlocal_source)
