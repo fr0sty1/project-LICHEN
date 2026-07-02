@@ -7,11 +7,12 @@
  * Framing (spec/lichen-native/01-framing.md):
  *   [0xC1][LEN_HI][LEN_LO][CBOR payload of LEN bytes]
  *
- * Transport: the device whose alias is "native-uart" in the chosen node
- * (must be a CDC-ACM UART).  The board overlay sets:
- *   / { chosen { lichen,native-uart = &cdc_acm_uart0; }; };
+ * Transport: the board's HAL serial-local device.  Board overlays may expose
+ * lichen,native-uart, zephyr,uart-pipe, zephyr,slip-uart, shell UART, or
+ * console UART according to the HAL serial-local precedence policy.
  */
 
+#include <lichen/hal.h>
 #include <lichen/native.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
@@ -591,18 +592,12 @@ int lichen_native_init(lichen_native_rx_cb_t rx_cb)
 	}
 #endif
 
-#if DT_HAS_CHOSEN(lichen_native_uart)
-	s_uart = DEVICE_DT_GET(DT_CHOSEN(lichen_native_uart));
-#else
-	LOG_ERR("lichen,native-uart not set in chosen");
-	k_mutex_unlock(&s_init_mutex);
-	return -ENODEV;
-#endif
+	int ret = lichen_hal_serial_device_get(&s_uart);
 
-	if (!device_is_ready(s_uart)) {
-		LOG_ERR("native UART not ready");
+	if (ret < 0) {
+		LOG_ERR("native serial-local device unavailable: %d", ret);
 		k_mutex_unlock(&s_init_mutex);
-		return -ENODEV;
+		return ret;
 	}
 
 	uart_irq_callback_set(s_uart, uart_rx_isr);

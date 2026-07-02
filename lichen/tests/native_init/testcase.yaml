@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+tests:
+  net.lichen.native_init.no_serial:
+    tags:
+      - net
+      - lichen
+      - native
+      - hal
+    platform_allow:
+      - qemu_x86
+    integration_platforms:
+      - qemu_x86
+    extra_configs:
+      - CONFIG_LICHEN_HAS_SERIAL_LOCAL=n
+  net.lichen.native_init.native_uart:
+    tags:
+      - net
+      - lichen
+      - native
+      - hal
+    platform_allow:
+      - qemu_x86
+    integration_platforms:
+      - qemu_x86
+    extra_args:
+      - DTC_OVERLAY_FILE=../hal_serial_precedence/boards/qemu_x86_native_uart.overlay
+    extra_configs:
+      - CONFIG_LICHEN_HAS_SERIAL_LOCAL=y
+  net.lichen.native_init.uart_pipe:
+    tags:
+      - net
+      - lichen
+      - native
+      - hal
+    platform_allow:
+      - qemu_x86
+    integration_platforms:
+      - qemu_x86
+    extra_args:
+      - DTC_OVERLAY_FILE=../hal_serial_precedence/boards/qemu_x86_uart_pipe.overlay
+    extra_configs:
+      - CONFIG_LICHEN_HAS_SERIAL_LOCAL=y
+  net.lichen.native_init.slip_uart:
+    tags:
+      - net
+      - lichen
+      - native
+      - hal
+    platform_allow:
+      - qemu_x86
+    integration_platforms:
+      - qemu_x86
+    extra_args:
+      - DTC_OVERLAY_FILE=../hal_serial_precedence/boards/qemu_x86_slip_uart.overlay
+    extra_configs:
+      - CONFIG_LICHEN_HAS_SERIAL_LOCAL=y
