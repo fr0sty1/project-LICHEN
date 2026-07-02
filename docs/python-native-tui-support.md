@@ -44,6 +44,10 @@ the LCI CoAP contract used by `LciClient`:
 - `GET /logs` with Observe, when logs are supported
 - `GET /diag`, when diagnostics are supported
 
+The Python native client follows the LCI IPv6 + CoAP contract in
+`spec/11-lci.md`. It does not implement the historical CBOR native framing in
+`spec/lichen-native/` for BLE, USB, serial, or IP LCI sessions.
+
 The Python simulator currently has messaging resource-contract drift with the
 LCI `/msg` paths. That is tracked by `project-LICHEN-u9jk`.
 
@@ -56,8 +60,10 @@ LCI `/msg` paths. That is tracked by `project-LICHEN-u9jk`.
 - Config editing is intentionally allowlisted to `name`, `role`, `freq_mhz`,
   `bw_khz`, `sf`, `cr`, and `tx_power_dbm`. Read-only or unknown fields are
   rejected before transport writes.
-- Raw diagnostics and key-like fields are redacted in the TUI. Do not use the
-  TUI as a raw secret/debug dump.
+- Raw diagnostics and key-like fields are redacted in the TUI. Current Python
+  TUI diagnostics use the generic optional `/diag` CoAP resource; raw RX/TX
+  controls under `/diag/raw/*` are not exposed until a Bead adds explicit UI
+  arming, Observe, and transmit flows.
 - Terminal visual target is a normal 80x24 or larger text terminal. Tests cover
   80x24, 100x30, and resize behavior through Textual screenshots and render
   assertions.

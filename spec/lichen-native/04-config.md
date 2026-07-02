@@ -1,5 +1,9 @@
 # Configuration Messages
 
+> Status: historical draft. These integer-key configuration messages are
+> non-authoritative for LCI. Current configuration uses CoAP resources such as
+> `/config` and `/config/radio`; see [../11-lci.md](../11-lci.md).
+
 Read and write device configuration.
 
 ## Message Flow
@@ -79,6 +83,11 @@ config_value = int / uint / tstr / bstr / bool
 | 18 | tx_jitter_max | uint | 1000 | Max random TX delay (ms) |
 | 32 | device_name | tstr | "" | User-assigned name |
 | 48 | network_key | bstr | - | 32-byte network key (write-only) |
+
+The legacy raw diagnostics key `64` (`raw_rx_enable`) was referenced by
+[10-raw-frame.md](10-raw-frame.md) but is not part of the authoritative LCI
+configuration model. Raw RX/TX, when implemented, is controlled only through
+the LCI CoAP diagnostic resources in [../11-lci.md](../11-lci.md).
 
 ## Security
 

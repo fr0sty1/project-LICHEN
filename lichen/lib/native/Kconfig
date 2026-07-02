@@ -1,12 +1,14 @@
 config LICHEN_NATIVE
-	bool "LICHEN Native protocol library"
+	bool "Legacy LICHEN Native CBOR protocol library"
 	depends on LICHEN_HAL
 	depends on UART_INTERRUPT_DRIVEN
 	depends on ZCBOR
 	help
-	  Enables the LICHEN Native framing library (0xC1 + CBOR over
-	  USB CDC-ACM or serial UART).  Runtime transport discovery uses
-	  the LICHEN HAL serial-local API.
+	  Enables the historical LICHEN Native framing library (0xC1 + CBOR
+	  over USB CDC-ACM or serial UART). This is not the current LCI app
+	  contract; new local-client transports carry IPv6 packets and use
+	  CoAP resources from spec/11-lci.md. Runtime transport discovery
+	  uses the LICHEN HAL serial-local API.
 
 if LICHEN_NATIVE
 

@@ -1,0 +1,43 @@
+{
+  "id": "project-LICHEN-py4c.1.18",
+  "title": "Decide lifecycle for legacy CBOR native protocol surfaces",
+  "description": "Follow-up from project-LICHEN-py4c.1.13. The spec/lichen-native directory and matching Python/C native framing libraries are now marked historical and non-authoritative for LCI, but they remain in tree for prototype compatibility and tests. Decide whether to keep them as legacy compatibility, rename them to avoid 'native' ambiguity, gate them behind legacy Kconfig/package names, or remove them once all users migrate to IPv6 + CoAP LCI.",
+  "acceptance_criteria": "Decision records which legacy CBOR surfaces remain, which are renamed/removed/gated, migration impact for tests and simulator/prototype tooling, and any compatibility guarantees. If implementation is chosen, child Beads cover Python and Zephyr changes with no-hardware tests.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T10:30:30.705675Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T10:30:30.706519Z",
+  "labels": [
+    "native-interface",
+    "lci",
+    "coap",
+    "python",
+    "zephyr",
+    "docs",
+    "compatibility",
+    "tui",
+    "client-app",
+    "ble",
+    "lilygo",
+    "lichen",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-py4c.1.18",
+      "depends_on_id": "project-LICHEN-py4c.1",
+      "type": "parent-child",
+      "created_at": "2026-07-02T10:30:30.706176Z"
+    },
+    {
+      "issue_id": "project-LICHEN-py4c.1.18",
+      "depends_on_id": "project-LICHEN-py4c.1.13",
+      "type": "discovered-from",
+      "created_at": "2026-07-02T10:30:30.706519Z"
+    }
+  ]
+}

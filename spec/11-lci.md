@@ -152,6 +152,12 @@ fe80::/10       -> local interface (direct)
 The node exposes a CoAP server on UDP port 5683. All resources below are
 relative to the node's link-local address.
 
+The LCI CoAP resources in this section are the authoritative native application
+contract. The older CBOR integer-key draft under `spec/lichen-native/` is a
+historical prototype contract only; new BLE, USB, serial, IP, simulator, and
+Python-native clients MUST NOT use its `0xC1` framing, integer config keys,
+`raw_tx`, or `raw_rx` messages as LCI.
+
 #### 17.5.1. Discovery
 
 ```
@@ -165,7 +171,8 @@ Response:
 </status/neighbors>;rt="status";obs,
 </status/routes>;rt="status",
 </keys>;rt="keystore",
-</mesh>;rt="proxy"
+</mesh>;rt="proxy",
+</diag>;rt="diagnostics"
 ```
 
 #### 17.5.2. Configuration Resources
@@ -320,7 +327,104 @@ Content-Format: application/cbor
 }
 ```
 
-#### 17.5.4. Key Store
+#### 17.5.4. Diagnostic Resources
+
+Diagnostic resources are optional. Firmware MAY omit `/diag` and `/diag/raw/*`
+from `/.well-known/core`; clients MUST treat 4.04 Not Found or 5.01 Not
+Implemented as unsupported diagnostics rather than falling back to the legacy
+CBOR native protocol.
+
+**Diagnostics Summary**
+
+```
+GET /diag
+Content-Format: application/cbor
+
+{
+  "available": true,
+  "raw": {
+    "available": true,
+    "rx": "/diag/raw/rx",
+    "rx_events": "/diag/raw/rx/events",
+    "tx": "/diag/raw/tx",
+    "max_frame_len": 255
+  }
+}
+```
+
+**Raw RX Status and Arming**
+
+```
+GET /diag/raw/rx
+Content-Format: application/cbor
+
+{
+  "enabled": false,
+  "remaining_s": 0,
+  "max_ttl_s": 300
+}
+```
+
+```
+PUT /diag/raw/rx
+Content-Format: application/cbor
+
+{
+  "enabled": true,
+  "ttl_s": 60,
+  "include_payload": true
+}
+
+Response: 2.04 Changed
+```
+
+When raw RX is enabled, clients subscribe with CoAP Observe:
+
+```
+GET /diag/raw/rx/events
+Observe: 0
+Content-Format: application/cbor
+
+{
+  "frame": h'c1020304',
+  "rssi_dbm": -85,
+  "snr_db": 9,
+  "uptime_ms": 3662000,
+  "freq_hz": 915000000,
+  "crc_ok": true
+}
+```
+
+Raw RX MUST be disabled by default and MUST use a finite arming lifetime.
+Receiving raw frames MUST NOT divert frames from the normal IPv6 stack.
+
+**Raw TX**
+
+```
+POST /diag/raw/tx
+Content-Format: application/cbor
+
+{
+  "frame": h'c1020304',
+  "wait": true
+}
+
+Response: 2.04 Changed
+```
+
+Raw TX requests MAY include implementation-defined radio overrides only when
+the firmware can enforce regional limits. Implementations MUST rate-limit raw
+TX, MUST reject frames or overrides that violate configured PHY/regulatory
+constraints, and SHOULD omit raw TX entirely in production firmware.
+
+Raw diagnostics MUST require local administrative authorization. BLE transports
+MUST require LE Secure Connections for these resources; deployments that expose
+raw diagnostics beyond a local trusted link MUST protect them with OSCORE or an
+equivalent authenticated admin credential. Firmware SHOULD require a build-time
+diagnostic enablement flag and MAY require a local physical confirmation before
+arming raw RX or accepting raw TX.
+
+#### 17.5.5. Key Store
 
 **List Keys**
 
@@ -378,7 +482,7 @@ DELETE /keys/1234:5678:9abc:def0
 Response: 2.02 Deleted
 ```
 
-#### 17.5.5. Mesh Proxy
+#### 17.5.6. Mesh Proxy
 
 The client can reach any mesh node by addressing it directly. The local
 node routes the traffic. No special proxy resource is required.
@@ -398,7 +502,7 @@ For discovery, the client can query the Resource Directory (if available):
 GET coap://[fd12:3456:789a:1::1]/rd-lookup/res?rt=temperature
 ```
 
-#### 17.5.6. Messaging (Application-Level)
+#### 17.5.7. Messaging (Application-Level)
 
 For human messaging (chat-like), nodes MAY implement:
 
@@ -464,9 +568,9 @@ Implementations SHOULD support restricting local client access:
 
 | Level | Allowed Operations |
 |-------|-------------------|
-| Read-only | GET on all resources |
-| Standard | GET, Observe, mesh proxy |
-| Admin | All operations including PUT /config, DELETE /keys |
+| Read-only | GET on non-sensitive resources; excludes `/diag/raw/*` |
+| Standard | GET, Observe, mesh proxy; excludes `/diag/raw/*` |
+| Admin | All operations including PUT /config, DELETE /keys, `/diag/raw/*` |
 
 Access level determined by transport (e.g., USB = admin, BLE = standard).
 

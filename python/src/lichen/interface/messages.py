@@ -1,10 +1,12 @@
 """
-LICHEN Native protocol CBOR messages.
+Legacy LICHEN Native protocol CBOR messages.
 
 All messages are CBOR maps with integer keys.
 Key 0 is always the message type.
 
-See spec/lichen-native/02-common.md through 10-raw-frame.md
+This module implements the historical draft under spec/lichen-native/ for
+legacy prototype tests. Current Local Client Interface sessions use IPv6 + CoAP
+from spec/11-lci.md, not these CBOR messages.
 """
 
 from __future__ import annotations

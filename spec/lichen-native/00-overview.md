@@ -1,8 +1,17 @@
 # LICHEN Native Protocol
 
+> Status: historical draft. This CBOR integer-key protocol is non-authoritative
+> for the Local Client Interface. Current native clients and firmware MUST use
+> the IPv6 + CoAP LCI contract in [../11-lci.md](../11-lci.md). BLE native LCI
+> carries SLIP-framed IPv6 packets, not these CBOR native frames.
+
 Transport-agnostic device interface protocol for LICHEN nodes.
 
 ## Purpose
+
+This directory is retained to document an earlier native-device draft and to
+support legacy prototype code. It is not the application contract for new
+clients, firmware, BLE services, or simulators.
 
 Expose full mesh state and control to host applications over BLE, USB, serial, or TCP/IP with identical framing and semantics.
 

@@ -63,6 +63,11 @@ adapter access for the user running the command, and any distribution-specific
 permissions for D-Bus Bluetooth APIs. The default automated tests do not require
 BLE hardware.
 
+Native LCI means IPv6 + CoAP, as specified in `../spec/11-lci.md`. The older
+CBOR integer-key draft under `../spec/lichen-native/` is retained as a legacy
+prototype protocol and is not the BLE, USB, serial, or IP app contract for new
+native clients.
+
 ## What's Implemented
 
 | Layer | Status | What It Does |

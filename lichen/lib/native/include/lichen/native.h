@@ -2,7 +2,11 @@
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
 /*
- * LICHEN Native protocol — device-side library.
+ * Legacy LICHEN Native CBOR protocol — device-side library.
+ *
+ * This API implements the historical spec/lichen-native draft. It is retained
+ * for prototype compatibility and parser coverage. New LCI app surfaces use
+ * IPv6 + CoAP resources from spec/11-lci.md, not this CBOR framing.
  *
  * Wire format: [0xC1][LEN_HI][LEN_LO][CBOR payload]
  * Transport:   USB CDC-ACM (zephyr,cdc-acm-uart chosen alias "native-uart")
@@ -26,7 +30,7 @@
 extern "C" {
 #endif
 
-/* Message type codes (from spec/lichen-native/02-common.md) */
+/* Legacy message type codes (from spec/lichen-native/02-common.md) */
 #define LN_TYPE_HELLO            0x01
 #define LN_TYPE_CONFIG_GET       0x10
 #define LN_TYPE_CONFIG_SET       0x11

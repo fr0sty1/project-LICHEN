@@ -1,5 +1,9 @@
 # Node Info
 
+> Status: historical draft. This CBOR node-info message is non-authoritative for
+> LCI. Current node status is exposed as CoAP resources over IPv6; see
+> [../11-lci.md](../11-lci.md).
+
 Device status, hardware info, and telemetry.
 
 ## Message Flow

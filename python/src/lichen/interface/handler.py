@@ -1,7 +1,8 @@
 """
-LICHEN Native protocol handler for Node class.
+Legacy LICHEN Native CBOR protocol handler for Node class.
 
-Wires up Node methods to protocol messages.
+Wires up Node methods to historical spec/lichen-native protocol messages.
+Current LCI sessions use IPv6 + CoAP from spec/11-lci.md.
 """
 
 from __future__ import annotations
@@ -18,13 +19,10 @@ from lichen.interface.messages import (
     ConfigSet,
     GradientEntry,
     Hello,
-    LogEntry,
-    LogLevel,
     LogSubscribe,
-    Message,
-    MessageReceived,
-    MessageType,
     MeshState,
+    Message,
+    MessageType,
     NeighborEntry,
     NodeInfo,
     ResultCode,
@@ -41,7 +39,7 @@ log = logging.getLogger(__name__)
 @dataclass
 class NodeHandler:
     """
-    Handles LICHEN Native protocol messages for a Node.
+    Handles legacy LICHEN Native CBOR protocol messages for a Node.
 
     Usage:
         handler = NodeHandler(node)
@@ -162,13 +160,14 @@ class NodeHandler:
             # Extract IID from IPv6 destination (last 8 bytes)
             dest_iid = entry.destination.packed[8:16]
             next_hop_iid = entry.next_hop.packed[8:16]
+            now_ms = int(asyncio.get_running_loop().time() * 1000)
             gradients.append(
                 GradientEntry(
                     dest=dest_iid,
                     next_hop=next_hop_iid,
                     hops=entry.hop_count,
                     seq=entry.sequence,
-                    expires_ms=max(0, entry.expires_at - int(asyncio.get_running_loop().time() * 1000)),
+                    expires_ms=max(0, entry.expires_at - now_ms),
                 )
             )
 

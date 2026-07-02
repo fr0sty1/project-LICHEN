@@ -1,15 +1,17 @@
 """
-Serial transport for LICHEN Native protocol.
+Serial transport for the legacy LICHEN Native CBOR protocol.
 
-Provides async serial connection for real hardware.
+Current LCI sessions use IPv6 + CoAP from spec/11-lci.md. This module preserves
+the historical spec/lichen-native serial framing for prototype compatibility.
 """
 
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Callable, Awaitable
 
 import serial
 from serial.tools import list_ports
@@ -31,7 +33,7 @@ def list_serial_ports() -> list[str]:
 @dataclass
 class SerialConnection:
     """
-    Async serial connection using LICHEN Native framing.
+    Async serial connection using legacy LICHEN Native CBOR framing.
 
     Uses a background thread for blocking serial I/O,
     with asyncio integration via run_in_executor.
@@ -115,7 +117,7 @@ class SerialConnection:
             except (serial.SerialException, OSError) as e:
                 log.error("serial read error: %s", e)
                 self._closed = True
-                raise ConnectionError(str(e))
+                raise ConnectionError(str(e)) from e
 
             if chunk is None:
                 self._closed = True
@@ -160,10 +162,8 @@ class SerialConnection:
 
         if self._serial is not None:
             def _close():
-                try:
+                with contextlib.suppress(Exception):
                     self._serial.close()
-                except Exception:
-                    pass
 
             if self._loop:
                 await self._loop.run_in_executor(None, _close)

@@ -1,5 +1,9 @@
 # Application Messaging
 
+> Status: historical draft. These CBOR message records are non-authoritative for
+> LCI. Current messaging uses CoAP resources over IPv6; see
+> [../11-lci.md](../11-lci.md).
+
 Send and receive application-layer messages through the mesh.
 
 ## Message Flow

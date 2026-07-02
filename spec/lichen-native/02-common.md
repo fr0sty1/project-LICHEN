@@ -1,5 +1,9 @@
 # Common Types
 
+> Status: historical draft. These CBOR message types are non-authoritative for
+> LCI. Current native app semantics are CoAP resources over IPv6; see
+> [../11-lci.md](../11-lci.md).
+
 Shared CDDL definitions used across message types.
 
 ## CDDL

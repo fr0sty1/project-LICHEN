@@ -1,5 +1,9 @@
 # Hello Handshake
 
+> Status: historical draft. This CBOR handshake is non-authoritative for LCI.
+> Current native clients discover CoAP resources over an IPv6 local interface;
+> see [../11-lci.md](../11-lci.md).
+
 Connection initialization and capability negotiation.
 
 ## Sequence

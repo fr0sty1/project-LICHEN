@@ -1,5 +1,5 @@
 """
-LICHEN Native protocol framing.
+Legacy LICHEN Native protocol framing.
 
 Wire format:
     +--------+--------+--------+----------------+
@@ -7,14 +7,16 @@ Wire format:
     | 0xC1   |   (big-endian)  | (LEN bytes)    |
     +--------+--------+--------+----------------+
 
-See spec/lichen-native/01-framing.md
+This is the historical spec/lichen-native/01-framing.md envelope. Current Local
+Client Interface sessions carry IPv6 packets, with SLIP where a byte stream is
+needed; see spec/11-lci.md.
 """
 
 from __future__ import annotations
 
 import struct
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator
 
 START_BYTE = 0xC1
 HEADER_SIZE = 3  # START + 2-byte length

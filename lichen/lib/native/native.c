@@ -2,7 +2,11 @@
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
 /*
- * LICHEN Native protocol — USB CDC-ACM transport + CBOR framing.
+ * Legacy LICHEN Native CBOR protocol — USB CDC-ACM transport + framing.
+ *
+ * This implements the historical spec/lichen-native draft. It is not the
+ * current LCI app contract; current LCI transports carry IPv6 packets and use
+ * CoAP resources from spec/11-lci.md.
  *
  * Framing (spec/lichen-native/01-framing.md):
  *   [0xC1][LEN_HI][LEN_LO][CBOR payload of LEN bytes]

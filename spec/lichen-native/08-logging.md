@@ -1,5 +1,9 @@
 # Debug Logging
 
+> Status: historical draft. This CBOR log stream is non-authoritative for LCI.
+> Current local diagnostics use CoAP resources over IPv6; see
+> [../11-lci.md](../11-lci.md).
+
 Stream device logs to host for debugging.
 
 ## Message Flow

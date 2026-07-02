@@ -1,5 +1,11 @@
 # Raw Frame Access
 
+> Status: historical draft. The `raw_tx`, `raw_rx`, and `raw_rx_enable` CBOR
+> messages below are non-authoritative for LCI and MUST NOT be implemented by
+> new native clients as the BLE, USB, serial, or IP app contract. Current raw
+> diagnostics, when enabled, use the CoAP resource model in
+> [../11-lci.md](../11-lci.md).
+
 Send and receive raw link-layer frames for debugging and protocol development.
 
 ## Use Cases
@@ -67,9 +73,9 @@ raw_rx = {
 | 5 | freq | uint | Receive frequency |
 | 6 | crc_ok | bool | CRC validation result |
 
-## Enabling Raw Mode
+## Legacy Raw Mode
 
-Raw frame reception is off by default. Enable via config:
+This legacy draft enabled raw frame reception through integer config key `64`:
 
 ```cbor-diag
 {0: 17, 1: {64: true}}  / config_set raw_rx_enable=true /
@@ -77,7 +83,12 @@ Raw frame reception is off by default. Enable via config:
 
 Config key 64 = `raw_rx_enable`.
 
-When enabled:
+That key was never listed in [04-config.md](04-config.md) and is not part of
+the authoritative LCI configuration model. For current LCI implementations, raw
+frame access is exposed only through `/diag/raw/*` CoAP resources when the
+firmware advertises the diagnostic capability.
+
+The historical behavior was:
 - Device sends raw_rx for ALL received frames
 - Normal stack processing continues (frames are copied, not diverted)
 

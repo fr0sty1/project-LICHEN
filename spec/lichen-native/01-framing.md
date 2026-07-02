@@ -1,5 +1,9 @@
 # Framing
 
+> Status: historical draft. This CBOR frame envelope is non-authoritative for
+> LCI. Current native transports carry IPv6 packets, with SLIP framing where a
+> byte stream is needed; see [../11-lci.md](../11-lci.md).
+
 All LICHEN Native messages use the same framing regardless of transport.
 
 ## Wire Format

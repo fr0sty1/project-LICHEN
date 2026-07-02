@@ -1,15 +1,16 @@
 """
-TCP transport for LICHEN Native protocol.
+TCP transport for the legacy LICHEN Native CBOR protocol.
 
-Provides async client and server for simulator integration.
+Current LCI sessions use IPv6 + CoAP from spec/11-lci.md. This module preserves
+the historical spec/lichen-native TCP framing for simulator compatibility.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Callable, Awaitable
 
 from lichen.interface.framing import FrameReader, frame
 from lichen.interface.messages import Message, decode_message, encode_message
@@ -23,7 +24,7 @@ MessageHandler = Callable[[Message], Awaitable[Message | None]]
 @dataclass
 class TcpConnection:
     """
-    A single TCP connection using LICHEN Native framing.
+    A single TCP connection using legacy LICHEN Native CBOR framing.
 
     Can be used as client or server-side connection.
     """
@@ -221,6 +222,10 @@ async def serve(
     tcp_server.server = server
 
     addr = tcp_server.address
-    log.info("LICHEN Native server listening on %s:%d", addr[0] if addr else "?", addr[1] if addr else 0)
+    log.info(
+        "LICHEN Native server listening on %s:%d",
+        addr[0] if addr else "?",
+        addr[1] if addr else 0,
+    )
 
     return tcp_server

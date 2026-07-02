@@ -1,5 +1,9 @@
 # Mesh State
 
+> Status: historical draft. This CBOR mesh-state stream is non-authoritative for
+> LCI. Current mesh status is exposed as CoAP resources over IPv6; see
+> [../11-lci.md](../11-lci.md).
+
 Device pushes mesh topology state to host for visualization and routing decisions.
 
 ## Message Flow

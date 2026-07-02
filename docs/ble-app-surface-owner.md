@@ -237,8 +237,8 @@ radio. The nRF52840 DK is a useful BLE/CoAP shell but not a complete LoRa BLE
 product unless paired with an external radio configuration. T-Deck BLE app
 surfaces remain disabled until its local-client egress path is modeled. R1 Neo
 and T-Echo currently enable native LICHEN BLE NUS, not Meshtastic or MeshCore
-product modes. T1000-E uses USB CDC-ACM native protocol and must not be counted
-as BLE-local evidence.
+product modes. T1000-E uses USB CDC-ACM serial/SLIP LCI and must not be
+counted as BLE-local evidence.
 
 ## Target Owner
 
