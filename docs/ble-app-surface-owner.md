@@ -154,6 +154,71 @@ T-Deck boundary:
   test with a real central, ATT MTU evidence, connect/disconnect logs, and
   bidirectional LCI packet evidence.
 
+## T-Deck BLE IP Transport Decision
+
+Decision: the T-Deck native local-client MVP uses the direct native BLE LCI
+service above: SLIP-framed IPv6 packets over LICHEN-specific GATT
+characteristics. Do not select BLE IPSP/6LoWPAN for the T-Deck MVP, and do not
+advertise legacy NUS as the default T-Deck native surface.
+
+BLE IPSP remains the standards-track way to carry IPv6 over Bluetooth LE. RFC
+7668 specifies IPv6 over BLE using 6LoWPAN techniques, and the Bluetooth IPSP
+specification defines discovery and IPv6 packet exchange over Bluetooth LE. It
+is a good future interoperability target when Zephyr, host OS tooling, and
+client-app support are all proven for the selected board.
+
+Current evidence does not make IPSP the lowest-risk T-Deck implementation path:
+
+- Upstream Zephyr latest documentation lists ESP32-S3 Bluetooth LE hardware and
+  Bluetooth HCI support for ESP32-S3-class boards, but the documented IPSP
+  sample path is built and tested in those docs with `nrf52840dk/nrf52840`.
+- The local pinned Zephyr v3.7.0 tree has the IP Support Service UUID and
+  Bluetooth IPSP link-address definitions, but the Zephyr 3.7 release notes say
+  IPSP support was removed and `CONFIG_NET_L2_BT` no longer exists. The pinned
+  tree also does not contain the upstream `samples/bluetooth/ipsp` sample path
+  used by the latest docs.
+- The LICHEN firmware already has a transport contract for native BLE LCI:
+  SLIP-framed IPv6 over RX/TX GATT values, version and capability
+  characteristics, a 1280-octet decoded packet limit, and reset-on-session
+  reassembly rules.
+- The T-Deck board config currently disables both HAL BLE-local capability and
+  SLIP advertising because the board must not advertise an incomplete
+  local-client service.
+
+Native app impact:
+
+- Native clients SHOULD discover the LICHEN-specific native BLE LCI service
+  first, read the version and capabilities characteristics, and then run the
+  same LCI IPv6/CoAP contract used by serial/IP local transports.
+- Native clients MAY fall back to legacy NUS only for known mutually exclusive
+  native BLE images that advertise no compatibility surface. T-Deck product
+  images should not rely on that fallback.
+- IPSP support, if later added, is a separate transport option and must not
+  change the LCI resource contract or bypass LCI security policy.
+
+Advertising behavior:
+
+- T-Deck MUST keep `CONFIG_LICHEN_HAS_BLE_LOCAL=n` and
+  `CONFIG_LORA_LICHEN_BLE=n` for product images until the LICHEN-specific UUID
+  service and bidirectional BLE egress pass no-hardware tests and physical
+  T-Deck validation records a real central, ATT MTU, connect/disconnect logs,
+  and bidirectional LCI packet evidence.
+- When enabled, T-Deck native BLE LCI advertises the LICHEN-specific service
+  UUID, not NUS, unless a deliberate legacy-only developer image explicitly sets
+  `CONFIG_LORA_LICHEN_BLE_LEGACY_NUS=y`.
+- A future IPSP experiment would need to restore or replace the removed Zephyr
+  IPSP network L2 support, advertise the IP Support Service, and use the host's
+  Bluetooth 6LoWPAN/IPSP path. It should be tracked separately from the T-Deck
+  native BLE LCI product path.
+
+References:
+
+- Zephyr ESP32-S3 features: <https://docs.zephyrproject.org/latest/boards/espressif/common/soc-esp32s3-features.html>
+- Zephyr ESP32-S3-DevKitC supported features: <https://docs.zephyrproject.org/latest/boards/espressif/esp32s3_devkitc/doc/index.html>
+- Zephyr Bluetooth IPSP sample: <https://docs.zephyrproject.org/latest/samples/bluetooth/ipsp/README.html>
+- RFC 7668, IPv6 over Bluetooth Low Energy: <https://www.rfc-editor.org/rfc/rfc7668.html>
+- Bluetooth Internet Protocol Support Profile 1.0: <https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/IPSP_v1.0/out/en/index-en.html>
+
 Blocked product modes:
 
 - Native-plus-MeshCore BLE remains blocked until native LICHEN BLE has
