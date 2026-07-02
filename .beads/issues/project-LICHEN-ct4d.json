@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-ct4d",
+  "title": "Expose authenticated raw link payload RX API before SCHC decompression",
+  "description": "Why this exists: lichen_link_rx() currently parses/authenticates a frame and immediately SCHC-decompresses to IPv6, so lichen_l2_input() never sees authenticated inner payload bytes, peer pubkey/EUI, link epoch/seq, or a chance to dispatch raw routing controls. What needs to be done: add a production API or result type that returns authenticated inner payload bytes plus immediate-neighbor metadata after signature/MIC/source validation and replay commit, preserving existing IPv6 lichen_link_rx() behavior for callers. Include native_sim tests that preserve existing SCHC IPv6 RX behavior.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T22:26:22.1483Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T22:26:22.148344Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "link",
+    "l2",
+    "no-hardware"
+  ]
+}
