@@ -277,6 +277,10 @@ static int uart_bt_gatt_notify(struct bt_conn *conn,
 #ifdef CONFIG_ZTEST
 	ARG_UNUSED(attr);
 	s_test_tx_state.conn = conn;
+	if (s_test_tx_state.notify_count <
+	    ARRAY_SIZE(s_test_tx_state.chunk_len)) {
+		s_test_tx_state.chunk_len[s_test_tx_state.notify_count] = len;
+	}
 	s_test_tx_state.notify_count++;
 	s_test_tx_state.len = MIN(len, (uint16_t)sizeof(s_test_tx_state.data));
 	if (s_test_tx_state.total_len < sizeof(s_test_tx_state.data)) {

@@ -40,6 +40,7 @@ struct ble_uart_test_state {
 struct ble_uart_test_tx_state {
 	struct bt_conn *conn;
 	uint8_t data[128];
+	uint16_t chunk_len[8];
 	uint16_t len;
 	uint16_t total_len;
 	uint32_t notify_count;

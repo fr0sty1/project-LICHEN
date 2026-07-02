@@ -589,8 +589,15 @@ ZTEST(ble_app_owner, test_native_connection_callbacks_are_owner_managed)
 	struct bt_conn *owner_conn;
 	const uint8_t sample_ipv6[] = { 0x60, 0x00, 0x00, 0x00 };
 	const uint8_t escaped_ipv6[] = { 0x01, 0xc0, 0xdb, 0x02 };
+	const uint8_t chunked_escaped_ipv6[] = {
+		0x60, 0xc0, 0xdb, 0x01, 0x02, 0xc0, 0xdb, 0x03, 0x04
+	};
 	const uint8_t expected_slip[] = {
 		0xc0, 0x01, 0xdb, 0xdc, 0xdb, 0xdd, 0x02, 0xc0
+	};
+	const uint8_t expected_chunked_slip[] = {
+		0xc0, 0x60, 0xdb, 0xdc, 0xdb, 0xdd, 0x01, 0x02,
+		0xdb, 0xdc, 0xdb, 0xdd, 0x03, 0x04, 0xc0
 	};
 	uint8_t expected_fragmented_slip[40];
 	uint8_t fragmenting_ipv6[38];
@@ -649,6 +656,37 @@ ZTEST(ble_app_owner, test_native_connection_callbacks_are_owner_managed)
 	zassert_equal(owner_state.conn_ref_count, 4U);
 	zassert_equal(owner_state.conn_unref_count, 3U);
 
+	ble_uart_test_set_tx_backend(8U, 0);
+	zassert_ok(ble_uart_send_slip(chunked_escaped_ipv6,
+				      sizeof(chunked_escaped_ipv6)));
+	zassert_ok(ble_uart_test_copy_tx_state(&tx_state));
+	zassert_equal_ptr(tx_state.conn, fake_conn);
+	zassert_equal(tx_state.notify_count, 3U);
+	zassert_equal(tx_state.chunk_len[0], 5U);
+	zassert_equal(tx_state.chunk_len[1], 5U);
+	zassert_equal(tx_state.chunk_len[2], 5U);
+	zassert_equal(tx_state.len, 5U);
+	zassert_equal(tx_state.total_len, sizeof(expected_chunked_slip));
+	zassert_mem_equal(tx_state.data, expected_chunked_slip,
+			  sizeof(expected_chunked_slip));
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_equal(owner_state.conn_ref_count, 5U);
+	zassert_equal(owner_state.conn_unref_count, 4U);
+
+	ble_uart_test_set_tx_backend(8U, -EIO);
+	zassert_equal(ble_uart_send_slip(chunked_escaped_ipv6,
+					 sizeof(chunked_escaped_ipv6)),
+		      -EIO);
+	zassert_ok(ble_uart_test_copy_tx_state(&tx_state));
+	zassert_equal_ptr(tx_state.conn, fake_conn);
+	zassert_equal(tx_state.notify_count, 1U);
+	zassert_equal(tx_state.chunk_len[0], 5U);
+	zassert_equal(tx_state.total_len, 5U);
+	zassert_mem_equal(tx_state.data, expected_chunked_slip, 5U);
+	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
+	zassert_equal(owner_state.conn_ref_count, 6U);
+	zassert_equal(owner_state.conn_unref_count, 5U);
+
 	ble_uart_test_seed_rx_state(23U, true, true);
 	ble_app_owner_test_disconnected(other_conn, 19U);
 	zassert_ok(ble_uart_test_copy_state(&uart_state));
@@ -667,8 +705,8 @@ ZTEST(ble_app_owner, test_native_connection_callbacks_are_owner_managed)
 	zassert_false(uart_state.has_connection);
 	zassert_ok(ble_app_owner_test_copy_state(&owner_state));
 	zassert_equal(owner_state.adv_start_count, 2U);
-	zassert_equal(owner_state.conn_ref_count, 4U);
-	zassert_equal(owner_state.conn_unref_count, 4U);
+	zassert_equal(owner_state.conn_ref_count, 6U);
+	zassert_equal(owner_state.conn_unref_count, 6U);
 
 	zassert_equal(ble_uart_send_slip(sample_ipv6, sizeof(sample_ipv6)),
 		      -ENOTCONN);
