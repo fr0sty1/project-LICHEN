@@ -31,6 +31,38 @@ lichen-tui --host localhost --port 4444 --sim default --node mynode
 
 The TUI gives you a terminal interface to send and receive packets. Press `c` to connect, type a message, hit Enter to transmit. Press `r` to listen for incoming packets.
 
+The simulator TUI and native LCI client are separate commands:
+
+```bash
+# Simulator node TUI
+lichen-tui --host localhost --port 4444 --sim default --node mynode
+
+# Native LCI client over IP/CoAP
+lichen-native-client --coap-base-uri 'coap://[fe80::1]'
+
+# Backward-compatible native-client alias
+lichen-native-tui --coap-base-uri 'coap://[fe80::1]'
+```
+
+Install the native client dependencies from the project checkout with:
+
+```bash
+cd python
+uv pip install -e ".[native-client]"
+```
+
+BLE support is optional and uses `bleak`:
+
+```bash
+uv pip install -e ".[native-client,ble]"
+```
+
+On macOS, the first BLE run may trigger the system Bluetooth permission prompt
+for the terminal app. On Linux, real BLE use requires a running BlueZ stack,
+adapter access for the user running the command, and any distribution-specific
+permissions for D-Bus Bluetooth APIs. The default automated tests do not require
+BLE hardware.
+
 ## What's Implemented
 
 | Layer | Status | What It Does |
@@ -127,7 +159,8 @@ src/lichen/
 - **Protocol spec:** `../spec/` — Full protocol documentation
 - **Architecture:** `../spec/01-architecture.md` — Design principles
 - **Routing:** `../spec/05-routing.md` — Multi-tier routing explained
-- **API docs:** Run `lichen-sim --help` and `lichen-tui --help`
+- **API docs:** Run `lichen-sim --help`, `lichen-tui --help`, and
+  `lichen-native-client --help`
 
 ## License
 

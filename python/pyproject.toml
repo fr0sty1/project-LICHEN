@@ -54,11 +54,20 @@ meshtastic = [
 ble = [
     "bleak>=0.21",
 ]
+coap = [
+    "aiocoap>=0.4.7",
+]
+native-client = [
+    "aiocoap>=0.4.7",
+    "cbor2>=5.6",
+    "textual>=0.80.0",
+]
 
 [project.scripts]
 lichen-sim = "lichen.sim.server:main"
 lichen-tui = "lichen.tui.app:main"
 lichen-native-tui = "lichen.tui.native:main"
+lichen-native-client = "lichen.tui.native:main"
 lichen-dashboard = "lichen.dashboard.app:main"
 lichen-board-intake = "lichen.board_intake:main"
 
