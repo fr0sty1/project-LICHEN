@@ -125,6 +125,11 @@ jobs:
           ZEPHYR_TOOLCHAIN_VARIANT: host
         run: west twister -T lichen/tests/meshtastic_codec -p native_sim --inline-logs
 
+      - name: Check Meshtastic payload guard (native_sim)
+        env:
+          ZEPHYR_TOOLCHAIN_VARIANT: host
+        run: scripts/zephyr-meshtastic-negative-builds.sh
+
   zephyr-hardware:
     name: Zephyr hardware targets
     runs-on: ubuntu-latest
