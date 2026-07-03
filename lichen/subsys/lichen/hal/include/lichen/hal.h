@@ -221,6 +221,49 @@ struct lichen_hal_location_sample {
 	uint8_t satellites;
 };
 
+enum lichen_hal_reset_request {
+	LICHEN_HAL_RESET_REQUEST_COLD_REBOOT,
+	LICHEN_HAL_RESET_REQUEST_WARM_REBOOT,
+	LICHEN_HAL_RESET_REQUEST_FACTORY_RESET,
+};
+
+enum lichen_hal_reset_cause {
+	LICHEN_HAL_RESET_CAUSE_PIN = BIT(0),
+	LICHEN_HAL_RESET_CAUSE_SOFTWARE = BIT(1),
+	LICHEN_HAL_RESET_CAUSE_BROWNOUT = BIT(2),
+	LICHEN_HAL_RESET_CAUSE_POWER_ON = BIT(3),
+	LICHEN_HAL_RESET_CAUSE_WATCHDOG = BIT(4),
+	LICHEN_HAL_RESET_CAUSE_DEBUG = BIT(5),
+	LICHEN_HAL_RESET_CAUSE_SECURITY = BIT(6),
+	LICHEN_HAL_RESET_CAUSE_LOW_POWER_WAKE = BIT(7),
+	LICHEN_HAL_RESET_CAUSE_CPU_LOCKUP = BIT(8),
+	LICHEN_HAL_RESET_CAUSE_PARITY = BIT(9),
+	LICHEN_HAL_RESET_CAUSE_PLL = BIT(10),
+	LICHEN_HAL_RESET_CAUSE_CLOCK = BIT(11),
+	LICHEN_HAL_RESET_CAUSE_HARDWARE = BIT(12),
+	LICHEN_HAL_RESET_CAUSE_USER = BIT(13),
+	LICHEN_HAL_RESET_CAUSE_TEMPERATURE = BIT(14),
+};
+
+struct lichen_hal_reset_diagnostics_snapshot {
+	bool reboot_supported;
+	bool warm_reboot_best_effort;
+	bool factory_reset_supported;
+	bool reset_cause_supported;
+	bool reset_cause_clear_supported;
+	bool reset_cause_valid;
+	uint32_t reset_cause;
+	bool supported_reset_cause_valid;
+	uint32_t supported_reset_cause;
+	bool reset_cause_raw_valid;
+	uint32_t reset_cause_raw;
+	bool supported_reset_cause_raw_valid;
+	uint32_t supported_reset_cause_raw;
+	bool retained_diagnostics_supported;
+	bool retained_crash_valid;
+	uint32_t retained_crash_reason;
+};
+
 /*
  * Some Zephyr registration macros require a compile-time device expression
  * rather than a runtime getter. Keep those devicetree details behind HAL names
@@ -281,6 +324,11 @@ int lichen_hal_time_snapshot_get(struct lichen_hal_time_snapshot *snapshot);
 int lichen_hal_time_provision_epoch_set(uint32_t provision_epoch,
 					bool authenticated);
 void lichen_hal_time_provision_epoch_clear(void);
+int lichen_hal_reset_diagnostics_snapshot_get(
+	struct lichen_hal_reset_diagnostics_snapshot *snapshot);
+int lichen_hal_reset_diagnostics_clear(void);
+int lichen_hal_reboot_status(void);
+int lichen_hal_reset_request(enum lichen_hal_reset_request request);
 
 #ifdef CONFIG_ZTEST
 void lichen_hal_location_test_set_uptime_ms(int64_t uptime_ms);
@@ -293,6 +341,9 @@ bool lichen_hal_power_test_charger_status_known(int status);
 bool lichen_hal_power_test_charger_status_is_charging(int status);
 bool lichen_hal_power_test_charger_online_external_power(int online);
 bool lichen_hal_power_test_charger_online_known(int online);
+bool lichen_hal_reset_test_last_request_valid(void);
+enum lichen_hal_reset_request lichen_hal_reset_test_last_request(void);
+void lichen_hal_reset_test_clear_request(void);
 #endif
 
 #ifdef __cplusplus

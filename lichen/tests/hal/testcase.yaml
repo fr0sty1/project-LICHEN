@@ -12,6 +12,46 @@ tests:
     integration_platforms:
       - native_sim
       - qemu_x86
+  lichen.hal.reset_reboot_enabled:
+    tags:
+      - lichen
+      - hal
+      - reset
+    platform_allow:
+      - native_sim
+      - qemu_x86
+    integration_platforms:
+      - native_sim
+      - qemu_x86
+    extra_configs:
+      - CONFIG_REBOOT=y
+  lichen.hal.reset_hwinfo_enabled:
+    tags:
+      - lichen
+      - hal
+      - reset
+    platform_allow:
+      - native_sim
+      - qemu_x86
+    integration_platforms:
+      - native_sim
+      - qemu_x86
+    extra_configs:
+      - CONFIG_HWINFO=y
+  lichen.hal.reset_reboot_hwinfo_enabled:
+    tags:
+      - lichen
+      - hal
+      - reset
+    platform_allow:
+      - native_sim
+      - qemu_x86
+    integration_platforms:
+      - native_sim
+      - qemu_x86
+    extra_configs:
+      - CONFIG_REBOOT=y
+      - CONFIG_HWINFO=y
   lichen.hal.loopback_lora:
     tags:
       - lichen

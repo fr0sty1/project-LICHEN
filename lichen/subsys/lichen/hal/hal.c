@@ -6,6 +6,9 @@
 
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
+#if IS_ENABLED(CONFIG_HWINFO)
+#include <zephyr/drivers/hwinfo.h>
+#endif
 #include <zephyr/drivers/sensor.h>
 #if IS_ENABLED(CONFIG_CHARGER)
 #include <zephyr/drivers/charger.h>
@@ -14,6 +17,9 @@
 #include <zephyr/drivers/fuel_gauge.h>
 #endif
 #include <zephyr/kernel.h>
+#if IS_ENABLED(CONFIG_REBOOT)
+#include <zephyr/sys/reboot.h>
+#endif
 #include <zephyr/sys/util.h>
 
 #include <lichen/hal.h>
@@ -205,6 +211,8 @@ static struct lichen_hal_location_time_snapshot s_test_location_time_snapshot;
 static bool s_has_test_location_time_snapshot;
 static bool s_use_test_uptime;
 static int64_t s_test_uptime_ms;
+static bool s_test_reset_request_valid;
+static enum lichen_hal_reset_request s_test_reset_request;
 #endif
 
 struct location_provider_state {
@@ -787,6 +795,152 @@ int lichen_hal_power_snapshot_get(struct lichen_hal_power_snapshot *snapshot)
 	}
 
 	return 0;
+}
+
+int lichen_hal_reboot_status(void)
+{
+	return IS_ENABLED(CONFIG_REBOOT) ? 0 : -ENOTSUP;
+}
+
+#if IS_ENABLED(CONFIG_HWINFO)
+static uint32_t reset_cause_from_zephyr(uint32_t cause)
+{
+	uint32_t out = 0U;
+
+	if ((cause & RESET_PIN) != 0U) {
+		out |= LICHEN_HAL_RESET_CAUSE_PIN;
+	}
+	if ((cause & RESET_SOFTWARE) != 0U) {
+		out |= LICHEN_HAL_RESET_CAUSE_SOFTWARE;
+	}
+	if ((cause & RESET_BROWNOUT) != 0U) {
+		out |= LICHEN_HAL_RESET_CAUSE_BROWNOUT;
+	}
+	if ((cause & RESET_POR) != 0U) {
+		out |= LICHEN_HAL_RESET_CAUSE_POWER_ON;
+	}
+	if ((cause & RESET_WATCHDOG) != 0U) {
+		out |= LICHEN_HAL_RESET_CAUSE_WATCHDOG;
+	}
+	if ((cause & RESET_DEBUG) != 0U) {
+		out |= LICHEN_HAL_RESET_CAUSE_DEBUG;
+	}
+	if ((cause & RESET_SECURITY) != 0U) {
+		out |= LICHEN_HAL_RESET_CAUSE_SECURITY;
+	}
+	if ((cause & RESET_LOW_POWER_WAKE) != 0U) {
+		out |= LICHEN_HAL_RESET_CAUSE_LOW_POWER_WAKE;
+	}
+	if ((cause & RESET_CPU_LOCKUP) != 0U) {
+		out |= LICHEN_HAL_RESET_CAUSE_CPU_LOCKUP;
+	}
+	if ((cause & RESET_PARITY) != 0U) {
+		out |= LICHEN_HAL_RESET_CAUSE_PARITY;
+	}
+	if ((cause & RESET_PLL) != 0U) {
+		out |= LICHEN_HAL_RESET_CAUSE_PLL;
+	}
+	if ((cause & RESET_CLOCK) != 0U) {
+		out |= LICHEN_HAL_RESET_CAUSE_CLOCK;
+	}
+	if ((cause & RESET_HARDWARE) != 0U) {
+		out |= LICHEN_HAL_RESET_CAUSE_HARDWARE;
+	}
+	if ((cause & RESET_USER) != 0U) {
+		out |= LICHEN_HAL_RESET_CAUSE_USER;
+	}
+	if ((cause & RESET_TEMPERATURE) != 0U) {
+		out |= LICHEN_HAL_RESET_CAUSE_TEMPERATURE;
+	}
+
+	return out;
+}
+#endif
+
+static bool valid_reset_request(enum lichen_hal_reset_request request)
+{
+	return request >= LICHEN_HAL_RESET_REQUEST_COLD_REBOOT &&
+	       request <= LICHEN_HAL_RESET_REQUEST_FACTORY_RESET;
+}
+
+int lichen_hal_reset_request(enum lichen_hal_reset_request request)
+{
+	if (!valid_reset_request(request)) {
+		return -EINVAL;
+	}
+	if (request == LICHEN_HAL_RESET_REQUEST_FACTORY_RESET) {
+		return -ENOTSUP;
+	}
+	if (!IS_ENABLED(CONFIG_REBOOT)) {
+		return -ENOTSUP;
+	}
+
+#ifdef CONFIG_ZTEST
+	s_test_reset_request = request;
+	s_test_reset_request_valid = true;
+	return 0;
+#else
+#if IS_ENABLED(CONFIG_REBOOT)
+	if (request == LICHEN_HAL_RESET_REQUEST_WARM_REBOOT) {
+		sys_reboot(SYS_REBOOT_WARM);
+	} else {
+		sys_reboot(SYS_REBOOT_COLD);
+	}
+
+	return -EIO;
+#else
+	return -ENOTSUP;
+#endif
+#endif
+}
+
+int lichen_hal_reset_diagnostics_snapshot_get(
+	struct lichen_hal_reset_diagnostics_snapshot *snapshot)
+{
+	if (snapshot == NULL) {
+		return -EINVAL;
+	}
+
+	*snapshot = (struct lichen_hal_reset_diagnostics_snapshot){ 0 };
+	snapshot->reboot_supported = lichen_hal_reboot_status() == 0;
+	snapshot->warm_reboot_best_effort = snapshot->reboot_supported;
+
+#if IS_ENABLED(CONFIG_HWINFO)
+	uint32_t reset_cause = 0U;
+	uint32_t supported_reset_cause = 0U;
+	int ret;
+
+	ret = hwinfo_get_supported_reset_cause(&supported_reset_cause);
+	if (ret == 0) {
+		snapshot->reset_cause_supported = true;
+		snapshot->supported_reset_cause_valid = true;
+		snapshot->supported_reset_cause =
+			reset_cause_from_zephyr(supported_reset_cause);
+		snapshot->supported_reset_cause_raw_valid = true;
+		snapshot->supported_reset_cause_raw = supported_reset_cause;
+	}
+
+	ret = hwinfo_get_reset_cause(&reset_cause);
+	if (ret == 0) {
+		snapshot->reset_cause_supported = true;
+		snapshot->reset_cause_valid = true;
+		snapshot->reset_cause = reset_cause_from_zephyr(reset_cause);
+		snapshot->reset_cause_raw_valid = true;
+		snapshot->reset_cause_raw = reset_cause;
+	}
+#endif
+
+	return 0;
+}
+
+int lichen_hal_reset_diagnostics_clear(void)
+{
+	/*
+	 * Zephyr has hwinfo_clear_reset_cause(), but no non-destructive
+	 * capability probe for it. Keep clear unsupported until a HAL-owned
+	 * backend policy can prove support without snapshot side effects.
+	 */
+	return -ENOTSUP;
 }
 
 static bool valid_source_class(enum lichen_hal_location_source_class source_class)
@@ -1493,5 +1647,21 @@ void lichen_hal_location_time_test_set_snapshot(
 
 	s_test_location_time_snapshot = *snapshot;
 	s_has_test_location_time_snapshot = true;
+}
+
+bool lichen_hal_reset_test_last_request_valid(void)
+{
+	return s_test_reset_request_valid;
+}
+
+enum lichen_hal_reset_request lichen_hal_reset_test_last_request(void)
+{
+	return s_test_reset_request;
+}
+
+void lichen_hal_reset_test_clear_request(void)
+{
+	s_test_reset_request_valid = false;
+	s_test_reset_request = LICHEN_HAL_RESET_REQUEST_COLD_REBOOT;
 }
 #endif

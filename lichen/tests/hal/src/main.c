@@ -370,6 +370,83 @@ ZTEST(hal, test_power_snapshot_maps_charger_states)
 #endif
 }
 
+ZTEST(hal, test_reset_diagnostics_and_request_boundaries)
+{
+	struct lichen_hal_reset_diagnostics_snapshot snapshot = {
+		.reboot_supported = false,
+		.warm_reboot_best_effort = true,
+		.factory_reset_supported = true,
+		.reset_cause_supported = true,
+		.reset_cause_clear_supported = true,
+		.reset_cause_valid = true,
+		.reset_cause = UINT32_MAX,
+		.supported_reset_cause_valid = true,
+		.supported_reset_cause = UINT32_MAX,
+		.reset_cause_raw_valid = true,
+		.reset_cause_raw = UINT32_MAX,
+		.supported_reset_cause_raw_valid = true,
+		.supported_reset_cause_raw = UINT32_MAX,
+		.retained_diagnostics_supported = true,
+		.retained_crash_valid = true,
+		.retained_crash_reason = UINT32_MAX,
+	};
+	enum lichen_hal_reset_request invalid =
+		(enum lichen_hal_reset_request)UINT32_MAX;
+
+	zassert_equal(lichen_hal_reset_diagnostics_snapshot_get(NULL), -EINVAL);
+	zassert_ok(lichen_hal_reset_diagnostics_snapshot_get(&snapshot));
+	zassert_equal(snapshot.reboot_supported, IS_ENABLED(CONFIG_REBOOT));
+	zassert_equal(snapshot.warm_reboot_best_effort, IS_ENABLED(CONFIG_REBOOT));
+	zassert_false(snapshot.factory_reset_supported);
+	zassert_false(snapshot.retained_diagnostics_supported);
+	zassert_false(snapshot.retained_crash_valid);
+	zassert_equal(snapshot.retained_crash_reason, 0U);
+
+	if (!snapshot.reset_cause_supported) {
+		zassert_false(snapshot.reset_cause_valid);
+		zassert_equal(snapshot.reset_cause, 0U);
+		zassert_false(snapshot.supported_reset_cause_valid);
+		zassert_equal(snapshot.supported_reset_cause, 0U);
+	}
+	if (!snapshot.reset_cause_valid) {
+		zassert_false(snapshot.reset_cause_raw_valid);
+		zassert_equal(snapshot.reset_cause_raw, 0U);
+	}
+	if (!snapshot.supported_reset_cause_valid) {
+		zassert_false(snapshot.supported_reset_cause_raw_valid);
+		zassert_equal(snapshot.supported_reset_cause_raw, 0U);
+	}
+	zassert_false(snapshot.reset_cause_clear_supported);
+	zassert_equal(lichen_hal_reset_diagnostics_clear(), -ENOTSUP);
+
+	zassert_equal(lichen_hal_reset_request(invalid), -EINVAL);
+	zassert_equal(lichen_hal_reset_request(
+			      LICHEN_HAL_RESET_REQUEST_FACTORY_RESET),
+		      -ENOTSUP);
+
+	lichen_hal_reset_test_clear_request();
+	zassert_false(lichen_hal_reset_test_last_request_valid());
+	if (IS_ENABLED(CONFIG_REBOOT)) {
+		zassert_ok(lichen_hal_reboot_status());
+		zassert_ok(lichen_hal_reset_request(
+			LICHEN_HAL_RESET_REQUEST_COLD_REBOOT));
+		zassert_true(lichen_hal_reset_test_last_request_valid());
+		zassert_equal(lichen_hal_reset_test_last_request(),
+			      LICHEN_HAL_RESET_REQUEST_COLD_REBOOT);
+
+		zassert_ok(lichen_hal_reset_request(
+			LICHEN_HAL_RESET_REQUEST_WARM_REBOOT));
+		zassert_equal(lichen_hal_reset_test_last_request(),
+			      LICHEN_HAL_RESET_REQUEST_WARM_REBOOT);
+	} else {
+		zassert_equal(lichen_hal_reboot_status(), -ENOTSUP);
+		zassert_equal(lichen_hal_reset_request(
+				      LICHEN_HAL_RESET_REQUEST_COLD_REBOOT),
+			      -ENOTSUP);
+		zassert_false(lichen_hal_reset_test_last_request_valid());
+	}
+}
+
 ZTEST(hal, test_location_time_snapshot_absent_providers_is_explicitly_unknown)
 {
 	struct lichen_hal_location_time_snapshot snapshot = {

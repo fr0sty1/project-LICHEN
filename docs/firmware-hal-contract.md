@@ -118,6 +118,7 @@ opening a new application-level board or alias probe.
 | Buttons and LEDs | `CONFIG_LICHEN_HAS_BUTTONS` requires okay `sw0` GPIO; `CONFIG_LICHEN_HAS_LEDS` requires okay `led0` GPIO. | Use `lichen_hal_button_get()` and `lichen_hal_led_get()` for the first common control. Rich keypads, trackballs, or multi-button maps require additional HAL/API work. |
 | Display | `CONFIG_LICHEN_HAS_DISPLAY=y` and okay `chosen zephyr,display` or `display0` alias. | Use `lichen_hal_display_device_get()` for readiness. UI profile is coarse; rendering policy belongs to UI code. |
 | External flash/storage | `CONFIG_LICHEN_HAS_EXTERNAL_FLASH=y` and okay `external-flash0` alias. | Use `lichen_hal_external_flash_device_get()` before storage features assume external media. SD cards and filesystems require separate storage-layer policy. |
+| Reset diagnostics | Optional Zephyr `CONFIG_HWINFO` for reset cause and `CONFIG_REBOOT` for reboot requests. | Use `lichen_hal_reset_diagnostics_snapshot_get()` for reset-cause/reboot capability state and `lichen_hal_reset_request()` for cold/warm reboot requests. Warm reboot is best-effort because Zephyr support is platform-dependent. Reset-cause clearing, factory reset, and retained crash records are explicit unsupported fields until later work proves safe backend support. |
 
 ## Source Providers
 
@@ -137,11 +138,23 @@ reported through snapshot diagnostics without setting `wall_clock_valid`.
 
 ## Reset And Diagnostics
 
-The current HAL exposes status, device readiness, identity, capability,
-location, time, and power diagnostics. It does not yet define a stable public
-reset-control API, diagnostic dump API, multi-button map, keypad/trackball API,
-or storage lifecycle API. Code needing those features must create child Beads
-and extend the HAL rather than adding board-specific branches in applications.
+The reset diagnostic surface exposes reboot support, best-effort warm reboot
+availability, factory-reset support, reset-cause read availability, supported
+reset-cause masks, retained diagnostic support, and retained crash metadata
+validity. Unsupported providers are represented by false `*_supported` and
+`*_valid` fields rather than by board-specific probing in applications. Public
+reset-cause masks use `LICHEN_HAL_RESET_CAUSE_*` bits; raw Zephyr `hwinfo`
+masks are preserved only in diagnostic `*_raw` fields.
+
+`lichen_hal_reset_request()` accepts cold and warm reboot requests when
+`CONFIG_REBOOT` is enabled. Warm reboot requests are best-effort: platforms may
+treat them as cold reset or ignore the warm/cold distinction. Reset-cause
+clearing returns `-ENOTSUP` until `project-LICHEN-h7t5.1.1.2` proves a
+non-destructive backend support policy. Factory reset returns `-ENOTSUP`
+because LICHEN does not yet define what state should be erased or preserved.
+Retained crash/watchdog records and diagnostic dump APIs are tracked by
+`project-LICHEN-h7t5.1.1.1`; code needing those features must extend the HAL
+rather than adding board-specific branches in applications.
 
 ## No-Hardware Validation
 
