@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-r7h4.5",
+  "title": "Validate Renode nRF52840 with LICHEN test suite",
+  "description": "Run existing LICHEN Zephyr tests on Renode nRF52840 target. Verify: boot, LoRa TX/RX via lichen-sim, L2 ping, basic mesh. Add to CI matrix if stable.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-03T05:48:32.262916Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-03T05:48:32.433051Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-r7h4.5",
+      "depends_on_id": "project-LICHEN-r7h4",
+      "type": "parent-child",
+      "created_at": "2026-07-03T05:48:32.263536Z"
+    },
+    {
+      "issue_id": "project-LICHEN-r7h4.5",
+      "depends_on_id": "project-LICHEN-r7h4.3",
+      "type": "blocks",
+      "created_at": "2026-07-03T05:48:32.433051Z"
+    }
+  ]
+}

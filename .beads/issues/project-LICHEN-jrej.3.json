@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-jrej.3",
+  "title": "Add UDP port dispatch table for application protocols",
+  "description": "Route incoming UDP by destination port to appropriate handler: 5681 CoT, 5682 SenML, 5683 CoAP, 5685 Cayenne, 5686 APRS-IS, 5687 NMEA, 10883 MQTT-SN. Software-only: routing table, no new protocol logic.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-03T05:38:30.191352Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-03T05:38:30.191964Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-jrej.3",
+      "depends_on_id": "project-LICHEN-jrej",
+      "type": "parent-child",
+      "created_at": "2026-07-03T05:38:30.191964Z"
+    }
+  ]
+}

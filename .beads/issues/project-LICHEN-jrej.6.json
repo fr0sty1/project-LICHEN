@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-jrej.6",
+  "title": "Gateway: XML CoT to compact CoT compression",
+  "description": "Parse incoming CoT XML from ATAK, compress to compact binary for mesh transmission. Extract lat/lon/alt/course/speed/team/role from XML structure. Software-only: pure parsing/encoding.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-03T05:38:38.740291Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-03T05:38:46.360986Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-jrej.6",
+      "depends_on_id": "project-LICHEN-jrej",
+      "type": "parent-child",
+      "created_at": "2026-07-03T05:38:38.740866Z"
+    },
+    {
+      "issue_id": "project-LICHEN-jrej.6",
+      "depends_on_id": "project-LICHEN-jrej.2",
+      "type": "blocks",
+      "created_at": "2026-07-03T05:38:46.360986Z"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-5g8t.1",
+  "title": "Implement duty cycle state tracking",
+  "description": "Track own TX airtime in rolling 1-hour window per sub-band. Ring buffer of (timestamp, duration) records. API: remaining_ms(), next_tx_available_ms(), usage_percent(). Enforce congestion levels per spec 10.2.3. Software-only: pure accounting.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-03T05:42:33.691256Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-03T05:42:33.691741Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-5g8t.1",
+      "depends_on_id": "project-LICHEN-5g8t",
+      "type": "parent-child",
+      "created_at": "2026-07-03T05:42:33.691741Z"
+    }
+  ]
+}

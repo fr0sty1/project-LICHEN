@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-z9c7",
+  "title": "BLE peripheral stub for Renode",
+  "description": "Minimal BLE GATT peripheral for Renode. Enough to test MeshCore/Meshtastic app compat layers without real BLE. Stub accepts connections, handles NUS/ToRadio/FromRadio characteristics, bridges to test harness. Software-only app compat validation.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-03T06:41:48.624752Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-03T06:41:57.019971Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-z9c7",
+      "depends_on_id": "project-LICHEN-r7h4.3",
+      "type": "blocks",
+      "created_at": "2026-07-03T06:41:57.019971Z"
+    }
+  ]
+}

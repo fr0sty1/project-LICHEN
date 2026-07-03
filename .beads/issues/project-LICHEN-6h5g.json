@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-6h5g",
+  "title": "Renode emulation for ESP32-S3 Meshtastic boards",
+  "description": "Add Renode board definitions for ESP32-S3-based Meshtastic boards (T-Deck, Heltec v3). Use virtual interfaces: SPI/I2C/UART stubs to peripherals, don't emulate full Xtensa quirks. Focus on running Zephyr firmware with LoRa + basic I/O. Software-only: leverage existing Renode ESP32 base, add LICHEN peripherals.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-03T06:00:22.635826Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-03T06:00:22.635855Z"
+}

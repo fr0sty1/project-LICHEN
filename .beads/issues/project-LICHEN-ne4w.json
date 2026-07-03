@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-ne4w",
+  "title": "Multi-node Renode mesh test harness",
+  "description": "Scripts to spin up N Renode instances (T-Echo, RAK, mixed), each connected to lichen-sim, verify mesh formation and message routing. Should integrate with existing Python test infrastructure. Validates multi-hop before hardware.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-03T06:41:46.369007Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-03T06:41:56.204502Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ne4w",
+      "depends_on_id": "project-LICHEN-r7h4.3",
+      "type": "blocks",
+      "created_at": "2026-07-03T06:41:56.204502Z"
+    }
+  ]
+}

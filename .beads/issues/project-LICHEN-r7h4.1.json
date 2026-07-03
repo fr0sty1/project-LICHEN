@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-r7h4.1",
+  "title": "Create SX126x Renode peripheral model",
+  "description": "C# peripheral model for SX1262 LoRa radio in Renode. Can either: (1) implement register interface with TCP bridge to lichen-sim, or (2) port LichenSubGHz approach. Must support TX/RX, IRQ, SPI interface. Reference: lichen/boards/renode/nucleo_wl55jc/peripherals/LichenSubGHz.cs",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-03T05:48:10.26089Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-03T06:33:58.840901Z",
+  "closed_at": "2026-07-03T06:33:58.840901Z",
+  "close_reason": "SX1262.cs committed - magic SPI peripheral bridging to lichen-sim",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-r7h4.1",
+      "depends_on_id": "project-LICHEN-r7h4",
+      "type": "parent-child",
+      "created_at": "2026-07-03T05:48:10.261531Z"
+    }
+  ]
+}

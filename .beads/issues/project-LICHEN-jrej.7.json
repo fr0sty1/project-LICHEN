@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-jrej.7",
+  "title": "Gateway: APRS-IS translation",
+  "description": "Translate APRS-IS ASCII to/from mesh format. Incoming: parse position/status sentences to internal format. Outgoing: format for APRS-IS TCP or AX.25 RF bridge. Software-only gateway logic.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-03T05:38:40.681455Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-03T05:38:40.681921Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-jrej.7",
+      "depends_on_id": "project-LICHEN-jrej",
+      "type": "parent-child",
+      "created_at": "2026-07-03T05:38:40.681921Z"
+    }
+  ]
+}
