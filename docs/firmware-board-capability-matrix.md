@@ -105,7 +105,8 @@ LICHEN reference set.
 
 - Target families and Zephyr-first strategy: `README.md`
 - Build examples and STM32WL memory budget: `lichen/README.md`
-- HAL capability contract: `lichen/subsys/lichen/hal/include/lichen/hal.h`
+- HAL contract: `docs/firmware-hal-contract.md`
+- HAL capability API: `lichen/subsys/lichen/hal/include/lichen/hal.h`
 - HAL Kconfig/devicetree contract: `lichen/subsys/lichen/hal/Kconfig`
 - Meshtastic app-compat board-identity policy:
   `docs/meshtastic-compat-dev.md`

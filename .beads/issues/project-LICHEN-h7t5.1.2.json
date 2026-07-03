@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-h7t5.1.2",
+  "title": "Move LoRa L2 board/devicetree selection behind HAL boundary",
+  "description": "Why this exists: project-LICHEN-h7t5.1 requires application/protocol code to avoid board-specific capability detection, but the current static scan still finds LoRa L2 using DT_ALIAS(lora0) directly and a CONFIG_BOARD_NATIVE_SIM branch outside the HAL. What needs to be done: evaluate whether LoRa L2 should use lichen_hal_lora_device_get(), a HAL-owned compile-time registration macro, or a documented lower-layer exception; replace or explicitly justify the direct DT_ALIAS/CONFIG_BOARD usage; validate native_sim/qemu LoRa L2 paths without physical radios.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-03T01:57:38.649991Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-03T02:00:29.398571Z",
+  "labels": [
+    "zephyr",
+    "hal",
+    "api",
+    "firmware",
+    "board-support",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.1.2",
+      "depends_on_id": "project-LICHEN-h7t5.1",
+      "type": "parent-child",
+      "created_at": "2026-07-03T01:57:38.766596Z"
+    }
+  ]
+}
