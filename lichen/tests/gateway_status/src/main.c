@@ -21,6 +21,9 @@ struct status_view {
 	bool wall_clock_valid;
 	bool charging;
 	bool external_power;
+	bool time_passed_epoch_floor;
+	bool time_provision_epoch_valid;
+	bool time_reject_passed_epoch_floor;
 	bool has_battery_provider;
 	bool has_pmic_provider;
 	bool has_location_provider;
@@ -47,13 +50,23 @@ struct status_view {
 	bool has_time_age_s;
 	bool has_time_accuracy_ms;
 	bool has_time_quality;
+	bool has_time_passed_epoch_floor;
+	bool has_time_build_epoch;
+	bool has_time_effective_epoch_floor;
+	bool has_time_provision_epoch_valid;
+	bool has_time_provision_epoch;
 	bool has_time_reject;
+	bool has_time_reject_source_class;
+	bool has_time_reject_source;
+	bool has_time_reject_passed_epoch_floor;
 	char loc_source_class[24];
 	char loc_source[24];
 	char loc_fix_state[12];
 	char time_source_class[24];
 	char time_source[24];
-	char time_reject[24];
+	char time_reject[32];
+	char time_reject_source_class[24];
+	char time_reject_source[24];
 	uint32_t battery;
 	uint32_t voltage_mv;
 	uint32_t loc_age_s;
@@ -68,6 +81,9 @@ struct status_view {
 	uint32_t time_age_s;
 	uint32_t time_accuracy_ms;
 	uint32_t time_quality;
+	uint32_t time_build_epoch;
+	uint32_t time_effective_epoch_floor;
+	uint32_t time_provision_epoch;
 };
 
 static size_t cbor_map_count(const uint8_t *buf, size_t len)
@@ -222,10 +238,47 @@ static int decode_status(const uint8_t *buf, size_t len, struct status_view *out
 			out->has_time_quality = zcbor_uint32_decode(
 				zsd, &out->time_quality);
 			decoded = out->has_time_quality;
+		} else if (key_matches(&key, "time_passed_epoch_floor")) {
+			out->has_time_passed_epoch_floor = zcbor_bool_decode(
+				zsd, &out->time_passed_epoch_floor);
+			decoded = out->has_time_passed_epoch_floor;
+		} else if (key_matches(&key, "time_build_epoch")) {
+			out->has_time_build_epoch = zcbor_uint32_decode(
+				zsd, &out->time_build_epoch);
+			decoded = out->has_time_build_epoch;
+		} else if (key_matches(&key, "time_effective_epoch_floor")) {
+			out->has_time_effective_epoch_floor =
+				zcbor_uint32_decode(
+					zsd, &out->time_effective_epoch_floor);
+			decoded = out->has_time_effective_epoch_floor;
+		} else if (key_matches(&key, "time_provision_epoch_valid")) {
+			out->has_time_provision_epoch_valid =
+				zcbor_bool_decode(
+					zsd, &out->time_provision_epoch_valid);
+			decoded = out->has_time_provision_epoch_valid;
+		} else if (key_matches(&key, "time_provision_epoch")) {
+			out->has_time_provision_epoch = zcbor_uint32_decode(
+				zsd, &out->time_provision_epoch);
+			decoded = out->has_time_provision_epoch;
 		} else if (key_matches(&key, "time_reject")) {
 			out->has_time_reject = copy_tstr(
 				zsd, out->time_reject, sizeof(out->time_reject));
 			decoded = out->has_time_reject;
+		} else if (key_matches(&key, "time_reject_source_class")) {
+			out->has_time_reject_source_class = copy_tstr(
+				zsd, out->time_reject_source_class,
+				sizeof(out->time_reject_source_class));
+			decoded = out->has_time_reject_source_class;
+		} else if (key_matches(&key, "time_reject_source")) {
+			out->has_time_reject_source = copy_tstr(
+				zsd, out->time_reject_source,
+				sizeof(out->time_reject_source));
+			decoded = out->has_time_reject_source;
+		} else if (key_matches(&key, "time_reject_passed_epoch_floor")) {
+			out->has_time_reject_passed_epoch_floor =
+				zcbor_bool_decode(
+					zsd, &out->time_reject_passed_epoch_floor);
+			decoded = out->has_time_reject_passed_epoch_floor;
 		} else {
 			*zsd = key_state;
 			if (!zcbor_any_skip(zsd, NULL) ||
@@ -287,7 +340,12 @@ static size_t encode_status_with_power(
 		.accuracy_ms = 250U,
 		.quality_valid = true,
 		.quality = 200U,
-		.last_rejection = LICHEN_HAL_TIME_REJECT_BELOW_EPOCH_FLOOR,
+		.passed_epoch_floor = true,
+		.last_rejection = LICHEN_HAL_TIME_REJECT_PROVISION_UNAUTHENTICATED,
+		.effective_epoch_floor = 1710000000U,
+		.build_epoch = 1700000000U,
+		.provision_epoch_valid = true,
+		.provision_epoch = 1710000000U,
 	};
 
 	return lichen_gateway_encode_status_cbor(buf, buf_len, UINT16_MAX,
@@ -316,7 +374,7 @@ ZTEST(gateway_status, test_absent_location_metadata_is_omitted)
 	size_t len = encode_status(buf, sizeof(buf), &location);
 
 	zassert_true(len > 0U);
-	zassert_equal(cbor_map_count(buf, len), 9U);
+	zassert_equal(cbor_map_count(buf, len), 13U);
 	zassert_ok(decode_status(buf, len, &view));
 	zassert_true(view.has_battery_provider);
 	zassert_false(view.battery_provider);
@@ -332,6 +390,16 @@ ZTEST(gateway_status, test_absent_location_metadata_is_omitted)
 	zassert_false(view.time_provider);
 	zassert_true(view.has_wall_clock_valid);
 	zassert_false(view.wall_clock_valid);
+	zassert_true(view.has_time_passed_epoch_floor);
+	zassert_false(view.time_passed_epoch_floor);
+	zassert_true(view.has_time_build_epoch);
+	zassert_equal(view.time_build_epoch, 0U);
+	zassert_true(view.has_time_effective_epoch_floor);
+	zassert_equal(view.time_effective_epoch_floor, 0U);
+	zassert_true(view.has_time_provision_epoch_valid);
+	zassert_false(view.time_provision_epoch_valid);
+	zassert_false(view.has_time_provision_epoch);
+	zassert_false(view.has_time_reject);
 	zassert_false(view.has_loc_source_class);
 	zassert_false(view.has_loc_source);
 	zassert_false(view.has_loc_fix_state);
@@ -359,6 +427,89 @@ ZTEST(gateway_status, test_uptime_only_time_provider_keeps_legacy_time_false)
 	zassert_true(view.has_wall_clock_valid);
 	zassert_false(view.wall_clock_valid);
 	zassert_false(view.has_wall_time_unix);
+	zassert_false(view.has_time_reject);
+}
+
+ZTEST(gateway_status, test_gnss_below_epoch_rejection_is_diagnostic)
+{
+	const uint32_t build_epoch = CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX;
+	const uint32_t provision_epoch = build_epoch + 100U;
+	const struct lichen_hal_time_sample sample = {
+		.source_class = LICHEN_HAL_TIME_SOURCE_GNSS,
+		.source_name = "gnss0",
+		.unix_time_valid = true,
+		.unix_time = build_epoch + 50U,
+		.observed_uptime_ms_valid = true,
+		.observed_uptime_ms = 1000,
+		.accuracy_ms_valid = true,
+		.accuracy_ms = 1500U,
+		.quality_valid = true,
+		.quality = 75U,
+	};
+	const struct lichen_hal_location_sample location_sample = {
+		.source_class = LICHEN_HAL_LOCATION_SOURCE_ONBOARD_HARDWARE,
+		.fix_state = LICHEN_HAL_LOCATION_FIX_NO_FIX,
+		.fix_source = LICHEN_HAL_FIX_SOURCE_GNSS,
+		.source_name = "gnss0",
+		.observed_uptime_ms_valid = true,
+		.observed_uptime_ms = 1000,
+	};
+	struct lichen_hal_location_time_snapshot location;
+	struct lichen_hal_time_snapshot time;
+	uint8_t buf[LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE];
+	struct status_view view;
+	size_t len;
+
+	lichen_hal_time_clear();
+	lichen_hal_time_provision_epoch_clear();
+	lichen_hal_location_test_set_uptime_ms(1000);
+	zassert_ok(lichen_hal_location_submit(&location_sample));
+	zassert_ok(lichen_hal_time_provision_epoch_set(provision_epoch, true));
+	zassert_equal(lichen_hal_time_submit(&sample), -ERANGE);
+	zassert_ok(lichen_hal_location_time_snapshot_get(&location));
+	zassert_ok(lichen_hal_time_snapshot_get(&time));
+	len = encode_status_with_time(buf, sizeof(buf), &location, &time);
+
+	zassert_true(len > 0U);
+	zassert_ok(decode_status(buf, len, &view));
+	zassert_true(view.location_provider);
+	zassert_true(view.has_time_provider);
+	zassert_false(view.time_provider);
+	zassert_true(view.has_loc_source_class);
+	zassert_str_equal(view.loc_source_class, "onboard_hardware");
+	zassert_true(view.has_loc_source);
+	zassert_str_equal(view.loc_source, "gnss0");
+	zassert_true(view.has_loc_fix_state);
+	zassert_str_equal(view.loc_fix_state, "no_fix");
+	zassert_true(view.has_time_source_class);
+	zassert_str_equal(view.time_source_class, "gnss");
+	zassert_true(view.has_time_source);
+	zassert_str_equal(view.time_source, "gnss0");
+	zassert_true(view.has_wall_clock_valid);
+	zassert_false(view.wall_clock_valid);
+	zassert_false(view.has_wall_time_unix);
+	zassert_true(view.has_time_passed_epoch_floor);
+	zassert_false(view.time_passed_epoch_floor);
+	zassert_true(view.has_time_build_epoch);
+	zassert_equal(view.time_build_epoch, build_epoch);
+	zassert_true(view.has_time_effective_epoch_floor);
+	zassert_equal(view.time_effective_epoch_floor, provision_epoch);
+	zassert_true(view.has_time_provision_epoch_valid);
+	zassert_true(view.time_provision_epoch_valid);
+	zassert_true(view.has_time_provision_epoch);
+	zassert_equal(view.time_provision_epoch, provision_epoch);
+	zassert_true(view.has_time_accuracy_ms);
+	zassert_equal(view.time_accuracy_ms, 1500U);
+	zassert_true(view.has_time_quality);
+	zassert_equal(view.time_quality, 75U);
+	zassert_true(view.has_time_reject);
+	zassert_str_equal(view.time_reject, "below_epoch_floor");
+	zassert_true(view.has_time_reject_source_class);
+	zassert_str_equal(view.time_reject_source_class, "gnss");
+	zassert_true(view.has_time_reject_source);
+	zassert_str_equal(view.time_reject_source, "gnss0");
+	zassert_true(view.has_time_reject_passed_epoch_floor);
+	zassert_false(view.time_reject_passed_epoch_floor);
 }
 
 ZTEST(gateway_status, test_fresh_location_metadata_is_encoded)
@@ -503,7 +654,7 @@ ZTEST(gateway_status, test_full_status_fits_advertised_buffer)
 
 	zassert_true(len > 0U);
 	zassert_true(len <= sizeof(buf));
-	zassert_equal(cbor_map_count(buf, len), 31U);
+	zassert_equal(cbor_map_count(buf, len), 36U);
 	zassert_ok(decode_status(buf, len, &view));
 	zassert_true(view.has_battery_provider);
 	zassert_true(view.battery_provider);
@@ -543,8 +694,21 @@ ZTEST(gateway_status, test_full_status_fits_advertised_buffer)
 	zassert_equal(view.time_accuracy_ms, 250U);
 	zassert_true(view.has_time_quality);
 	zassert_equal(view.time_quality, 200U);
+	zassert_true(view.has_time_passed_epoch_floor);
+	zassert_true(view.time_passed_epoch_floor);
+	zassert_true(view.has_time_build_epoch);
+	zassert_equal(view.time_build_epoch, 1700000000U);
+	zassert_true(view.has_time_effective_epoch_floor);
+	zassert_equal(view.time_effective_epoch_floor, 1710000000U);
+	zassert_true(view.has_time_provision_epoch_valid);
+	zassert_true(view.time_provision_epoch_valid);
+	zassert_true(view.has_time_provision_epoch);
+	zassert_equal(view.time_provision_epoch, 1710000000U);
 	zassert_true(view.has_time_reject);
-	zassert_str_equal(view.time_reject, "below_epoch_floor");
+	zassert_str_equal(view.time_reject, "provision_unauthenticated");
+	zassert_false(view.has_time_reject_source_class);
+	zassert_false(view.has_time_reject_source);
+	zassert_false(view.has_time_reject_passed_epoch_floor);
 }
 
 ZTEST(gateway_status, test_power_fields_are_encoded)
@@ -566,7 +730,7 @@ ZTEST(gateway_status, test_power_fields_are_encoded)
 	size_t len = encode_status_power_only(buf, sizeof(buf), &power);
 
 	zassert_true(len > 0U);
-	zassert_equal(cbor_map_count(buf, len), 13U);
+	zassert_equal(cbor_map_count(buf, len), 17U);
 	zassert_ok(decode_status(buf, len, &view));
 	zassert_true(view.has_battery_provider);
 	zassert_true(view.battery_provider);
@@ -603,7 +767,7 @@ ZTEST(gateway_status, test_power_fields_are_valid_only)
 	size_t len = encode_status_power_only(buf, sizeof(buf), &power);
 
 	zassert_true(len > 0U);
-	zassert_equal(cbor_map_count(buf, len), 11U);
+	zassert_equal(cbor_map_count(buf, len), 15U);
 	zassert_ok(decode_status(buf, len, &view));
 	zassert_true(view.has_battery_provider);
 	zassert_true(view.battery_provider);
@@ -703,4 +867,14 @@ ZTEST(gateway_status, test_stale_location_metadata_suppresses_position)
 	zassert_false(view.has_satellites);
 }
 
-ZTEST_SUITE(gateway_status, NULL, NULL, NULL, NULL, NULL);
+static void gateway_status_after(void *fixture)
+{
+	ARG_UNUSED(fixture);
+
+	lichen_hal_location_clear();
+	lichen_hal_time_clear();
+	lichen_hal_time_provision_epoch_clear();
+	lichen_hal_location_test_use_real_uptime();
+}
+
+ZTEST_SUITE(gateway_status, NULL, NULL, NULL, gateway_status_after, NULL);

@@ -152,6 +152,10 @@ struct lichen_app_time_snapshot {
 	uint8_t quality;
 	bool passed_epoch_floor;
 	enum lichen_app_time_rejection_reason last_rejection;
+	bool rejection_source_class_valid;
+	enum lichen_app_time_source_class rejection_source_class;
+	char rejection_source_name[24];
+	bool rejection_passed_epoch_floor;
 	uint32_t effective_epoch_floor;
 	uint32_t build_epoch;
 	bool provision_epoch_valid;

@@ -10,7 +10,7 @@
 
 #include <lichen/hal.h>
 
-#define LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE 704U
+#define LICHEN_GATEWAY_STATUS_CBOR_MAX_SIZE 832U
 #define LICHEN_GATEWAY_STATUS_CBOR_MAX_ROLE_LEN 15U
 
 size_t lichen_gateway_encode_status_cbor(

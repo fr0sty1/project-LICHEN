@@ -259,6 +259,12 @@ int lichen_app_time_from_hal(struct lichen_app_time_snapshot *app,
 		.quality = hal->quality,
 		.passed_epoch_floor = hal->passed_epoch_floor,
 		.last_rejection = app_time_rejection_from_hal(hal->last_rejection),
+		.rejection_source_class_valid =
+			hal->rejection_source_class_valid,
+		.rejection_source_class =
+			app_time_source_class_from_hal(hal->rejection_source_class),
+		.rejection_passed_epoch_floor =
+			hal->rejection_passed_epoch_floor,
 		.effective_epoch_floor = hal->effective_epoch_floor,
 		.build_epoch = hal->build_epoch,
 		.provision_epoch_valid = hal->provision_epoch_valid,
@@ -267,6 +273,9 @@ int lichen_app_time_from_hal(struct lichen_app_time_snapshot *app,
 	strncpy(app->source_name, hal->source_name,
 		sizeof(app->source_name) - 1U);
 	app->source_name[sizeof(app->source_name) - 1U] = '\0';
+	strncpy(app->rejection_source_name, hal->rejection_source_name,
+		sizeof(app->rejection_source_name) - 1U);
+	app->rejection_source_name[sizeof(app->rejection_source_name) - 1U] = '\0';
 	return 0;
 }
 

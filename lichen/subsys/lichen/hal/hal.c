@@ -216,9 +216,13 @@ struct location_provider_state {
 
 struct time_provider_state {
 	struct lichen_hal_time_sample samples[LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC + 1];
+	struct lichen_hal_time_sample diagnostic_sample;
 	char source_names[LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC + 1]
 			 [sizeof(((struct lichen_hal_time_snapshot *)0)->source_name)];
+	char diagnostic_source_name
+		[sizeof(((struct lichen_hal_time_snapshot *)0)->source_name)];
 	bool has_sample[LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC + 1];
+	bool has_diagnostic_sample;
 	bool provision_epoch_valid;
 	uint32_t provision_epoch;
 	enum lichen_hal_time_rejection_reason last_rejection;
@@ -969,6 +973,10 @@ static const struct lichen_hal_time_sample *select_time_sample_locked(void)
 
 static const struct lichen_hal_time_sample *select_time_diagnostic_sample_locked(void)
 {
+	if (s_time_state.has_diagnostic_sample &&
+	    s_time_state.last_rejection == LICHEN_HAL_TIME_REJECT_BELOW_EPOCH_FLOOR) {
+		return &s_time_state.diagnostic_sample;
+	}
 	for (int source = LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC;
 	     source > LICHEN_HAL_TIME_SOURCE_NONE; source--) {
 		if (s_time_state.has_sample[source]) {
@@ -1131,6 +1139,33 @@ static void time_store_sample_locked(const struct lichen_hal_time_sample *sample
 	s_time_state.has_sample[sample->source_class] = true;
 }
 
+static void time_store_diagnostic_sample_locked(
+	const struct lichen_hal_time_sample *sample)
+{
+	s_time_state.diagnostic_sample = *sample;
+	if (sample->source_name != NULL) {
+		strncpy(s_time_state.diagnostic_source_name,
+			sample->source_name,
+			sizeof(s_time_state.diagnostic_source_name) - 1U);
+		s_time_state.diagnostic_source_name
+			[sizeof(s_time_state.diagnostic_source_name) - 1U] = '\0';
+	} else {
+		s_time_state.diagnostic_source_name[0] = '\0';
+	}
+	s_time_state.diagnostic_sample.source_name =
+		s_time_state.diagnostic_source_name;
+	s_time_state.has_diagnostic_sample = true;
+}
+
+static void time_clear_diagnostic_sample_locked(void)
+{
+	memset(&s_time_state.diagnostic_sample, 0,
+	       sizeof(s_time_state.diagnostic_sample));
+	memset(s_time_state.diagnostic_source_name, 0,
+	       sizeof(s_time_state.diagnostic_source_name));
+	s_time_state.has_diagnostic_sample = false;
+}
+
 int lichen_hal_time_provision_epoch_set(uint32_t provision_epoch,
 					bool authenticated)
 {
@@ -1156,6 +1191,7 @@ int lichen_hal_time_provision_epoch_set(uint32_t provision_epoch,
 
 	s_time_state.provision_epoch = provision_epoch;
 	s_time_state.provision_epoch_valid = true;
+	time_clear_diagnostic_sample_locked();
 	time_set_rejection_locked(LICHEN_HAL_TIME_REJECT_NONE);
 	k_mutex_unlock(&s_time_mutex);
 	return 0;
@@ -1166,6 +1202,8 @@ void lichen_hal_time_provision_epoch_clear(void)
 	k_mutex_lock(&s_time_mutex, K_FOREVER);
 	s_time_state.provision_epoch_valid = false;
 	s_time_state.provision_epoch = 0U;
+	time_clear_diagnostic_sample_locked();
+	time_set_rejection_locked(LICHEN_HAL_TIME_REJECT_NONE);
 	k_mutex_unlock(&s_time_mutex);
 }
 
@@ -1201,11 +1239,13 @@ int lichen_hal_time_submit(const struct lichen_hal_time_sample *sample)
 
 	k_mutex_lock(&s_time_mutex, K_FOREVER);
 	if (!time_sample_passes_floor_locked(&copy)) {
+		time_store_diagnostic_sample_locked(&copy);
 		time_set_rejection_locked(LICHEN_HAL_TIME_REJECT_BELOW_EPOCH_FLOOR);
 		k_mutex_unlock(&s_time_mutex);
 		return -ERANGE;
 	}
 	if (time_sample_is_stale(&copy)) {
+		time_clear_diagnostic_sample_locked();
 		time_store_sample_locked(&copy);
 		time_set_rejection_locked(LICHEN_HAL_TIME_REJECT_STALE);
 		k_mutex_unlock(&s_time_mutex);
@@ -1222,6 +1262,7 @@ int lichen_hal_time_submit(const struct lichen_hal_time_sample *sample)
 		return -EALREADY;
 	}
 
+	time_clear_diagnostic_sample_locked();
 	time_store_sample_locked(&copy);
 	time_set_rejection_locked(LICHEN_HAL_TIME_REJECT_NONE);
 	k_mutex_unlock(&s_time_mutex);
@@ -1234,6 +1275,7 @@ void lichen_hal_time_clear(void)
 	memset(s_time_state.samples, 0, sizeof(s_time_state.samples));
 	memset(s_time_state.source_names, 0, sizeof(s_time_state.source_names));
 	memset(s_time_state.has_sample, 0, sizeof(s_time_state.has_sample));
+	time_clear_diagnostic_sample_locked();
 	s_time_state.last_rejection = LICHEN_HAL_TIME_REJECT_NONE;
 	k_mutex_unlock(&s_time_mutex);
 }
@@ -1241,6 +1283,7 @@ void lichen_hal_time_clear(void)
 int lichen_hal_time_snapshot_get(struct lichen_hal_time_snapshot *snapshot)
 {
 	const struct lichen_hal_time_sample *selected;
+	const struct lichen_hal_time_sample *rejected;
 	bool selected_valid = false;
 
 	if (snapshot == NULL) {
@@ -1262,15 +1305,24 @@ int lichen_hal_time_snapshot_get(struct lichen_hal_time_snapshot *snapshot)
 	if (selected == NULL) {
 		selected = select_time_diagnostic_sample_locked();
 	}
+	rejected = s_time_state.has_diagnostic_sample &&
+		   s_time_state.last_rejection == LICHEN_HAL_TIME_REJECT_BELOW_EPOCH_FLOOR ?
+		   &s_time_state.diagnostic_sample : NULL;
 	if (selected != NULL) {
 		struct lichen_hal_time_sample sample = *selected;
 		char source_name[sizeof(snapshot->source_name)];
 
-		strncpy(source_name,
-			s_time_state.source_names[sample.source_class],
-			sizeof(source_name) - 1U);
-		source_name[sizeof(source_name) - 1U] = '\0';
-		sample.source_name = source_name;
+		if (sample.source_name == NULL) {
+			source_name[0] = '\0';
+			if (sample.source_class >= LICHEN_HAL_TIME_SOURCE_NONE &&
+			    sample.source_class <= LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC) {
+				strncpy(source_name,
+					s_time_state.source_names[sample.source_class],
+					sizeof(source_name) - 1U);
+				source_name[sizeof(source_name) - 1U] = '\0';
+			}
+			sample.source_name = source_name;
+		}
 
 		snapshot->wall_clock_valid = selected_valid;
 		snapshot->source_class_valid = true;
@@ -1290,6 +1342,19 @@ int lichen_hal_time_snapshot_get(struct lichen_hal_time_snapshot *snapshot)
 		snapshot->quality = sample.quality;
 		snapshot->passed_epoch_floor =
 			time_sample_passes_floor_locked(&sample);
+	}
+	if (rejected != NULL) {
+		snapshot->rejection_source_class_valid = true;
+		snapshot->rejection_source_class = rejected->source_class;
+		if (rejected->source_name != NULL) {
+			strncpy(snapshot->rejection_source_name,
+				rejected->source_name,
+				sizeof(snapshot->rejection_source_name) - 1U);
+			snapshot->rejection_source_name
+				[sizeof(snapshot->rejection_source_name) - 1U] = '\0';
+		}
+		snapshot->rejection_passed_epoch_floor =
+			time_sample_passes_floor_locked(rejected);
 	}
 	k_mutex_unlock(&s_time_mutex);
 

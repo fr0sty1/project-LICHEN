@@ -502,8 +502,12 @@ ZTEST(app_interface, test_status_and_config_provider_hooks)
 		.quality = 200U,
 		.passed_epoch_floor = true,
 		.last_rejection = LICHEN_APP_TIME_REJECT_NONE,
-		.effective_epoch_floor = CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX,
+		.effective_epoch_floor =
+			CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX + 10U,
 		.build_epoch = CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX,
+		.provision_epoch_valid = true,
+		.provision_epoch =
+			CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX + 10U,
 	};
 	zassert_ok(lichen_app_interface_register_sink(&sink, NULL));
 
@@ -558,8 +562,14 @@ ZTEST(app_interface, test_status_and_config_provider_hooks)
 	zassert_true(status.time.quality_valid);
 	zassert_equal(status.time.quality, 200U);
 	zassert_true(status.time.passed_epoch_floor);
+	zassert_equal(status.time.last_rejection, LICHEN_APP_TIME_REJECT_NONE);
 	zassert_equal(status.time.effective_epoch_floor,
+		      CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX + 10U);
+	zassert_equal(status.time.build_epoch,
 		      CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX);
+	zassert_true(status.time.provision_epoch_valid);
+	zassert_equal(status.time.provision_epoch,
+		      CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX + 10U);
 	zassert_true(status.location_time.fix_source_valid);
 	zassert_equal(status.location_time.fix_source, LICHEN_APP_FIX_SOURCE_GNSS);
 
@@ -807,8 +817,16 @@ ZTEST(app_interface, test_time_hal_bridge_maps_provider_metadata)
 		.quality = 200U,
 		.passed_epoch_floor = true,
 		.last_rejection = LICHEN_HAL_TIME_REJECT_BELOW_EPOCH_FLOOR,
-		.effective_epoch_floor = CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX,
+		.rejection_source_class_valid = true,
+		.rejection_source_class = LICHEN_HAL_TIME_SOURCE_GNSS,
+		.rejection_source_name = "gnss0",
+		.rejection_passed_epoch_floor = false,
+		.effective_epoch_floor =
+			CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX + 100U,
 		.build_epoch = CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX,
+		.provision_epoch_valid = true,
+		.provision_epoch =
+			CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX + 100U,
 	};
 	struct lichen_app_time_snapshot app;
 
@@ -832,6 +850,16 @@ ZTEST(app_interface, test_time_hal_bridge_maps_provider_metadata)
 	zassert_true(app.passed_epoch_floor);
 	zassert_equal(app.last_rejection,
 		      LICHEN_APP_TIME_REJECT_BELOW_EPOCH_FLOOR);
+	zassert_true(app.rejection_source_class_valid);
+	zassert_equal(app.rejection_source_class, LICHEN_APP_TIME_SOURCE_GNSS);
+	zassert_str_equal(app.rejection_source_name, "gnss0");
+	zassert_false(app.rejection_passed_epoch_floor);
+	zassert_equal(app.effective_epoch_floor,
+		      CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX + 100U);
+	zassert_equal(app.build_epoch, CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX);
+	zassert_true(app.provision_epoch_valid);
+	zassert_equal(app.provision_epoch,
+		      CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX + 100U);
 }
 
 ZTEST(app_interface, test_time_hal_bridge_submits_local_network_manual_sources)

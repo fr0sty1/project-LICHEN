@@ -217,7 +217,12 @@ size_t lichen_gateway_encode_status_cbor(
 	map_count += time->age_seconds_valid ? 1U : 0U;
 	map_count += time->accuracy_ms_valid ? 1U : 0U;
 	map_count += time->quality_valid ? 1U : 0U;
+	map_count += 4U;
+	map_count += time->provision_epoch_valid ? 1U : 0U;
 	map_count += time->last_rejection != LICHEN_HAL_TIME_REJECT_NONE ? 1U : 0U;
+	map_count += time->rejection_source_class_valid ? 1U : 0U;
+	map_count += time->rejection_source_name[0] != '\0' ? 1U : 0U;
+	map_count += time->rejection_source_class_valid ? 1U : 0U;
 
 	cbor_put_map_header(buf, &off, map_count);
 
@@ -330,10 +335,35 @@ size_t lichen_gateway_encode_status_cbor(
 		cbor_put_key(buf, &off, "time_quality");
 		cbor_put_uint(buf, &off, time->quality);
 	}
+	cbor_put_key(buf, &off, "time_passed_epoch_floor");
+	cbor_put_bool(buf, &off, time->passed_epoch_floor);
+	cbor_put_key(buf, &off, "time_build_epoch");
+	cbor_put_uint(buf, &off, time->build_epoch);
+	cbor_put_key(buf, &off, "time_effective_epoch_floor");
+	cbor_put_uint(buf, &off, time->effective_epoch_floor);
+	cbor_put_key(buf, &off, "time_provision_epoch_valid");
+	cbor_put_bool(buf, &off, time->provision_epoch_valid);
+	if (time->provision_epoch_valid) {
+		cbor_put_key(buf, &off, "time_provision_epoch");
+		cbor_put_uint(buf, &off, time->provision_epoch);
+	}
 	if (time->last_rejection != LICHEN_HAL_TIME_REJECT_NONE) {
 		cbor_put_key(buf, &off, "time_reject");
 		cbor_put_tstr(buf, &off,
 			      time_rejection_reason_name(time->last_rejection));
+	}
+	if (time->rejection_source_class_valid) {
+		cbor_put_key(buf, &off, "time_reject_source_class");
+		cbor_put_tstr(buf, &off,
+			      time_source_class_name(time->rejection_source_class));
+	}
+	if (time->rejection_source_name[0] != '\0') {
+		cbor_put_key(buf, &off, "time_reject_source");
+		cbor_put_tstr(buf, &off, time->rejection_source_name);
+	}
+	if (time->rejection_source_class_valid) {
+		cbor_put_key(buf, &off, "time_reject_passed_epoch_floor");
+		cbor_put_bool(buf, &off, time->rejection_passed_epoch_floor);
 	}
 
 	return off;
