@@ -260,20 +260,20 @@ class TestSimulationTick:
     @pytest.mark.asyncio
     async def test_tick_simulation_counts_events(self, api: SimulatorAPI) -> None:
         """POST /sim/{id}/tick returns correct events_processed count."""
-        from starlette.testclient import TestClient
+        from httpx import ASGITransport, AsyncClient
 
         app = api.create_app()
-        # Use sync client for direct access to api internals
-        with TestClient(app) as client:
-            client.post("/sim", json={"id": "sim1"})
-            client.post("/sim/sim1/node", json={"id": "node1", "x": 0, "y": 0, "z": 0})
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            await client.post("/sim", json={"id": "sim1"})
+            await client.post("/sim/sim1/node", json={"id": "node1", "x": 0, "y": 0, "z": 0})
 
             # Queue some events by starting a receive (queues RxTimeoutEvent)
             sim = api._simulations["sim1"]
             sim.start_receive("node1", timeout_ms=100)  # Event at 100,000 us
 
             # Tick past the timeout - should process 1 event
-            response = client.post("/sim/sim1/tick", json={"time_us": 200_000})
+            response = await client.post("/sim/sim1/tick", json={"time_us": 200_000})
 
             assert response.status_code == 200
             data = response.json()
