@@ -5,6 +5,7 @@
 #define LICHEN_HAL_H_
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include <zephyr/device.h>
@@ -273,9 +274,13 @@ struct lichen_hal_reset_diagnostics_snapshot {
 #define LICHEN_HAL_GNSS_DEVICE DEVICE_DT_GET(DT_ALIAS(gnss0))
 #endif
 
+#define LICHEN_HAL_HAS_LORA_DEVICE DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_lora), okay)
+
 const struct lichen_hal_capabilities *lichen_hal_capabilities_get(void);
 bool lichen_hal_has_capability(enum lichen_hal_capability capability);
 void lichen_hal_identity_get(struct lichen_hal_identity *identity);
+bool lichen_hal_synthetic_device_identity_allowed(void);
+int lichen_hal_synthetic_device_identity_get(uint8_t *id, size_t id_len);
 
 int lichen_hal_capability_status(enum lichen_hal_capability capability);
 int lichen_hal_lora_status(void);

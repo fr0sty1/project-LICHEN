@@ -35,6 +35,8 @@
 #include <zephyr/random/random.h>
 #include <zephyr/drivers/hwinfo.h>
 
+#include <lichen/hal.h>
+
 #include "lichen_util.h"
 
 LOG_MODULE_REGISTER(lichen_lora_l2, CONFIG_LICHEN_LORA_L2_LOG_LEVEL);
@@ -161,27 +163,13 @@ static inline enum lora_state lora_get_state(void)
 #define DEINIT_JOIN_TIMEOUT_MS 10
 
 /*
- * LoRa device - aliased in devicetree.
- *
  * ARCHITECTURAL LIMITATION (project-LICHEN-tvfm.110): This module uses static
  * global state (rx_stack, rx_thread_data, lora_mutex, tx_buf, lora_data) and
- * supports only ONE LoRa radio instance per system. The LORA_DEV macro
- * hardcodes DT_ALIAS(lora0) with no lora1/lora2 support.
- *
- * This is a deliberate simplification for LICHEN's target use case (single-
- * radio mesh nodes). Multi-radio support would require:
- * 1. Per-instance context structs instead of static globals
- * 2. Devicetree-driven instance enumeration
- * 3. Thread pool or per-instance RX threads
- * 4. API changes to accept instance handle
- *
- * Most boards have one LoRa radio. The rare multi-radio expansion boards can
- * be supported by instantiating separate firmware images on each radio.
+ * supports only one LoRa radio instance per system. The selected device is
+ * provided by the HAL's zephyr,lora boundary; multi-radio support would require
+ * per-instance context structs, instance enumeration, RX thread ownership, and
+ * API changes to accept an instance handle.
  */
-BUILD_ASSERT(DT_NODE_EXISTS(DT_ALIAS(lora0)),
-             "LoRa device alias 'lora0' not defined in devicetree. "
-             "Add 'aliases { lora0 = &your_lora_node; };' to your board's .dts file.");
-#define LORA_DEV DEVICE_DT_GET(DT_ALIAS(lora0))
 
 /* RX thread and stack */
 static K_THREAD_STACK_DEFINE(rx_stack, RX_THREAD_STACK_SIZE);
@@ -277,30 +265,30 @@ static int generate_eui64(uint8_t *eui64)
 
     hwid_len = hwinfo_get_device_id(hwid, sizeof(hwid));
     if (hwid_len < 0) {
-#if defined(CONFIG_BOARD_NATIVE_SIM)
-        /*
-         * native_sim has no hardware identity provider. Use a deterministic
-         * simulation-only identity so CI can exercise the L2 path. Hardware
-         * builds still refuse to start without a stable device identity.
-         */
-        static const uint8_t sim_hwid[] = {
-            'n', 'a', 't', 'i', 'v', 'e', '_', 's', 'i', 'm',
-            (uint8_t)CONFIG_NATIVE_SIMULATOR_MCU_N,
-        };
-
-        memcpy(hwid, sim_hwid, sizeof(sim_hwid));
-        hwid_len = sizeof(sim_hwid);
-        LOG_WRN("lora_l2: using native_sim synthetic hardware ID");
-#else
-        /*
-         * SECURITY: Refusing to start without stable identity. A random EUI-64
-         * would change on each reboot, breaking IPv6 NDP and mesh routing.
-         */
-        LOG_ERR("lora_l2: hwinfo_get_device_id failed (%d)", (int)hwid_len);
-        /* Cast safe: hwinfo errors are negative errno (-E*), always fit in int */
-        ret = (int)hwid_len;
-        goto cleanup;
-#endif
+        if (lichen_hal_synthetic_device_identity_allowed()) {
+            /*
+             * Simulation builds may not have a hardware identity provider. Use
+             * a HAL-owned deterministic identity so CI can exercise the L2
+             * path. Hardware builds still refuse to start without stable
+             * device identity.
+             */
+            ret = lichen_hal_synthetic_device_identity_get(hwid, sizeof(hwid));
+            if (ret < 0) {
+                LOG_ERR("lora_l2: synthetic hardware ID failed (%d)", ret);
+                goto cleanup;
+            }
+            hwid_len = ret;
+            LOG_WRN("lora_l2: using synthetic hardware ID");
+        } else {
+            /*
+             * SECURITY: Refusing to start without stable identity. A random EUI-64
+             * would change on each reboot, breaking IPv6 NDP and mesh routing.
+             */
+            LOG_ERR("lora_l2: hwinfo_get_device_id failed (%d)", (int)hwid_len);
+            /* Cast safe: hwinfo errors are negative errno (-E*), always fit in int */
+            ret = (int)hwid_len;
+            goto cleanup;
+        }
     }
     if (hwid_len == 0) {
         /* SECURITY: Zero-length hwid means no unique identity available */
@@ -595,7 +583,11 @@ int lichen_lora_l2_init(void)
         return 0;
     }
 
-    lora_data.lora_dev = LORA_DEV;
+    ret = lichen_hal_lora_device_get(&lora_data.lora_dev);
+    if (ret < 0) {
+        LOG_ERR("lora_l2: failed to get LoRa device from HAL (%d)", ret);
+        goto out;
+    }
     lora_data.rx_callback = NULL;
     lora_data.rx_callback_user_data = NULL;
 

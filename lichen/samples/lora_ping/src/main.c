@@ -17,9 +17,12 @@
 
 LOG_MODULE_REGISTER(lora_ping, LOG_LEVEL_INF);
 
+BUILD_ASSERT(DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_lora), okay),
+	     "lora_ping requires an enabled devicetree chosen zephyr,lora");
+
 int main(void)
 {
-	const struct device *lora = DEVICE_DT_GET(DT_ALIAS(lora0));
+	const struct device *lora = DEVICE_DT_GET(DT_CHOSEN(zephyr_lora));
 	struct lora_modem_config config = {
 		.frequency = 915000000,
 		.bandwidth = BW_125_KHZ,

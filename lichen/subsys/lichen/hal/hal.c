@@ -303,6 +303,35 @@ int lichen_hal_lora_device_get(const struct device **dev)
 #endif
 }
 
+bool lichen_hal_synthetic_device_identity_allowed(void)
+{
+	return IS_ENABLED(CONFIG_BOARD_NATIVE_SIM);
+}
+
+int lichen_hal_synthetic_device_identity_get(uint8_t *id, size_t id_len)
+{
+	if (id == NULL) {
+		return -EINVAL;
+	}
+
+#if IS_ENABLED(CONFIG_BOARD_NATIVE_SIM)
+	static const uint8_t sim_hwid[] = {
+		'n', 'a', 't', 'i', 'v', 'e', '_', 's', 'i', 'm',
+		(uint8_t)CONFIG_NATIVE_SIMULATOR_MCU_N,
+	};
+
+	if (id_len < sizeof(sim_hwid)) {
+		return -ENOMEM;
+	}
+
+	memcpy(id, sim_hwid, sizeof(sim_hwid));
+	return sizeof(sim_hwid);
+#else
+	ARG_UNUSED(id_len);
+	return -ENOTSUP;
+#endif
+}
+
 int lichen_hal_capability_status(enum lichen_hal_capability capability)
 {
 	const struct device *dev;

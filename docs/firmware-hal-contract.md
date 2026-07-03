@@ -23,10 +23,9 @@ button, GNSS receiver, power provider, storage device, or local-client
 transport exists. Board quirks stay in board files, overlays, driver bindings,
 and HAL code.
 
-The current LoRa L2 path still has a lower-layer direct `DT_ALIAS(lora0)` and
-`CONFIG_BOARD_NATIVE_SIM` dependency. That is a tracked exception, not the model
-for new code; `project-LICHEN-h7t5.1.2` owns moving or explicitly justifying
-that selection behind the HAL boundary.
+The LoRa L2 path uses the HAL LoRa device and identity boundary. Driver-level
+samples may still use Zephyr radio APIs directly, but should use `chosen
+zephyr,lora` rather than board aliases.
 
 The board capability matrix in `docs/firmware-board-capability-matrix.md`
 records target-specific evidence. It is a planning and partner-handoff document;
@@ -162,11 +161,12 @@ HAL contract changes that only update documentation should run:
 
 ```sh
 git diff --check
-rg -n '#if.*CONFIG_BOARD|CONFIG_BOARD|DT_ALIAS|DT_CHOSEN' lichen/apps lichen/subsys/lichen | rg -v 'subsys/lichen/hal|CONFIG_BOARD_NAME|subsys/lichen/l2'
+rg -n '#if.*CONFIG_BOARD|CONFIG_BOARD|DT_ALIAS|DT_CHOSEN' lichen/apps lichen/subsys/lichen | rg -v 'subsys/lichen/hal|CONFIG_BOARD_NAME'
 ```
 
-The current non-HAL LoRa L2 matches are expected until
-`project-LICHEN-h7t5.1.2` resolves that boundary.
+LoRa L2 uses the HAL LoRa device boundary; non-HAL matches in applications or
+protocol subsystems should either be moved behind HAL or documented as a
+driver-level exception with a follow-up Bead.
 
 API, Kconfig, devicetree, or behavior changes require Zephyr validation on the
 Linux builder, at minimum:
