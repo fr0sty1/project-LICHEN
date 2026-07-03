@@ -4,35 +4,13 @@
 #include "announce_ingest.h"
 
 #include <errno.h>
-#include <stdbool.h>
-#include <string.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
 
-#include <lichen/l2_payload.h>
-#include <lichen/schnorr48.h>
+#include <lichen/routing/announce.h>
 
-#include "ipv6_addr.h"
 #include "network_location.h"
-
-#define ANNOUNCE_SIGNED_PREFIX_LEN \
-	(GATEWAY_ANNOUNCE_IID_LEN + GATEWAY_ANNOUNCE_PUBKEY_LEN + 2U)
-#define ANNOUNCE_SIGNED_MAX_LEN 256U
-#define ANNOUNCE_APP_DATA_MAX_LEN \
-	(ANNOUNCE_SIGNED_MAX_LEN - ANNOUNCE_SIGNED_PREFIX_LEN)
-
-struct announce_peer_pin {
-	bool active;
-	uint8_t iid[GATEWAY_ANNOUNCE_IID_LEN];
-	uint8_t pubkey[GATEWAY_ANNOUNCE_PUBKEY_LEN];
-	uint16_t seq_num;
-	uint32_t location_seq_num;
-	uint32_t last_seen_uptime_s;
-};
-
-static K_MUTEX_DEFINE(announce_peer_mutex);
-static struct announce_peer_pin announce_peers[CONFIG_LICHEN_LINK_MAX_NEIGHBORS];
 
 static bool announce_seq_newer(uint16_t seq_num, uint16_t previous_seq_num)
 {
@@ -85,251 +63,113 @@ static uint32_t extend_location_seq(uint16_t seq_num,
 	return location_seq_num;
 }
 
-static void restore_peer_slot(struct announce_peer_pin *peer,
-			      bool old_peer_valid,
-			      const struct announce_peer_pin *old_peer)
+static int gateway_announce_app_data_observer(
+	const struct lichen_announce_view *announce,
+	const struct lichen_announce_rx_meta *meta,
+	void *user_data)
 {
-	if (old_peer_valid) {
-		*peer = *old_peer;
-	} else {
-		memset(peer, 0, sizeof(*peer));
-	}
-}
+	struct gateway_network_location_announce_sample sample;
+	struct gateway_network_location_announce_record existing_record;
+	uint32_t observed_uptime_s;
+	uint32_t location_seq_num;
+	bool accepted_expired_reset = false;
+	int ret;
 
-static struct announce_peer_pin *find_peer_locked(const uint8_t iid[8])
-{
-	for (size_t i = 0U; i < ARRAY_SIZE(announce_peers); i++) {
-		if (announce_peers[i].active &&
-		    memcmp(announce_peers[i].iid, iid, GATEWAY_ANNOUNCE_IID_LEN) == 0) {
-			return &announce_peers[i];
-		}
-	}
+	ARG_UNUSED(user_data);
 
-	return NULL;
-}
-
-static struct announce_peer_pin *allocate_peer_locked(uint32_t observed_uptime_s)
-{
-	struct announce_peer_pin *oldest = NULL;
-
-	for (size_t i = 0U; i < ARRAY_SIZE(announce_peers); i++) {
-		if (!announce_peers[i].active) {
-			return &announce_peers[i];
-		}
-		if (oldest == NULL ||
-		    (int32_t)(announce_peers[i].last_seen_uptime_s -
-			      oldest->last_seen_uptime_s) < 0) {
-			oldest = &announce_peers[i];
-		}
-	}
-
-	return oldest;
-}
-
-static int build_signed_data(const struct gateway_announce_view *announce,
-			     uint8_t *buf, size_t buf_len, size_t *out_len)
-{
-	size_t len;
-
-	if (announce == NULL || buf == NULL || out_len == NULL) {
+	if (announce == NULL) {
 		return -EINVAL;
 	}
-	if (announce->app_data_len > ANNOUNCE_APP_DATA_MAX_LEN) {
-		return -EMSGSIZE;
+
+	observed_uptime_s = (meta != NULL && meta->observed_uptime_s != 0U) ?
+			    meta->observed_uptime_s : 0U;
+	if (observed_uptime_s == 0U) {
+		observed_uptime_s = k_uptime_get_32() / 1000U;
+	}
+	location_seq_num = announce->seq_num;
+
+	ret = gateway_network_location_announce_get(
+		announce->originator_iid, LICHEN_ANNOUNCE_IID_LEN,
+		&existing_record);
+	if (ret == 0) {
+		if (!announce_seq_newer(announce->wire_seq_num,
+					(uint16_t)existing_record.seq_num) &&
+		    !downstream_record_expired(observed_uptime_s,
+					       &existing_record)) {
+			return -EALREADY;
+		}
+		accepted_expired_reset = !announce_seq_newer(
+			announce->wire_seq_num,
+			(uint16_t)existing_record.seq_num);
+		location_seq_num = extend_location_seq(announce->wire_seq_num,
+						       existing_record.seq_num);
+	} else if (ret != -ENOENT) {
+		return ret;
+	} else if (announce->seq_stale) {
+		return -EALREADY;
 	}
 
-	len = ANNOUNCE_SIGNED_PREFIX_LEN + announce->app_data_len;
-	if (buf_len < len) {
-		return -ENOMEM;
-	}
+	sample.peer_id = announce->originator_iid;
+	sample.peer_id_len = LICHEN_ANNOUNCE_IID_LEN;
+	sample.seq_num = location_seq_num;
+	sample.observed_uptime_s = observed_uptime_s;
+	sample.app_data = announce->app_data;
+	sample.app_data_len = announce->app_data_len;
 
-	memcpy(&buf[0], announce->originator_iid, GATEWAY_ANNOUNCE_IID_LEN);
-	memcpy(&buf[GATEWAY_ANNOUNCE_IID_LEN], announce->pubkey,
-	       GATEWAY_ANNOUNCE_PUBKEY_LEN);
-	buf[GATEWAY_ANNOUNCE_IID_LEN + GATEWAY_ANNOUNCE_PUBKEY_LEN] =
-		(uint8_t)(announce->seq_num >> 8);
-	buf[GATEWAY_ANNOUNCE_IID_LEN + GATEWAY_ANNOUNCE_PUBKEY_LEN + 1U] =
-		(uint8_t)announce->seq_num;
-	memcpy(&buf[ANNOUNCE_SIGNED_PREFIX_LEN], announce->app_data,
-	       announce->app_data_len);
-	*out_len = len;
-	return 0;
+	ret = gateway_network_location_submit_announce(&sample);
+	if (ret < 0) {
+		return ret;
+	}
+	return accepted_expired_reset ? LICHEN_ANNOUNCE_ACCEPT_SEQ_RESET : 0;
+}
+
+static void ensure_gateway_observer(void)
+{
+	(void)lichen_announce_register_app_data_observer_ex(
+		gateway_announce_app_data_observer, NULL,
+		LICHEN_ANNOUNCE_OBSERVER_F_ALLOW_SEQ_RESET);
 }
 
 int gateway_announce_parse(const uint8_t *data, size_t len,
 			   struct gateway_announce_view *announce)
 {
-	if (data == NULL || announce == NULL) {
+	struct lichen_announce_view view;
+	int ret;
+
+	if (announce == NULL) {
 		return -EINVAL;
-	}
-	if (len < GATEWAY_ANNOUNCE_MIN_LEN) {
-		return -EMSGSIZE;
-	}
-	if (data[0] != GATEWAY_ANNOUNCE_TYPE) {
-		return -EPROTONOSUPPORT;
-	}
-	if (data[1] != 0U) {
-		return -EINVAL;
-	}
-	if (data[2] > GATEWAY_ANNOUNCE_MAX_HOPS) {
-		return -EINVAL;
-	}
-	if (len - GATEWAY_ANNOUNCE_MIN_LEN > ANNOUNCE_APP_DATA_MAX_LEN) {
-		return -EMSGSIZE;
 	}
 
-	announce->flags = data[1];
-	announce->hop_count = data[2];
-	announce->seq_num = ((uint16_t)data[3] << 8) | data[4];
-	announce->originator_iid = &data[5];
-	announce->pubkey = &data[13];
-	announce->signature = &data[45];
-	announce->app_data = &data[GATEWAY_ANNOUNCE_MIN_LEN];
-	announce->app_data_len = len - GATEWAY_ANNOUNCE_MIN_LEN;
+	ret = lichen_announce_parse(data, len, &view);
+	if (ret < 0) {
+		return ret;
+	}
+
+	announce->flags = view.flags;
+	announce->hop_count = view.hop_count;
+	announce->seq_num = view.wire_seq_num;
+	announce->originator_iid = view.originator_iid;
+	announce->pubkey = view.pubkey;
+	announce->signature = view.signature;
+	announce->app_data = view.app_data;
+	announce->app_data_len = view.app_data_len;
 	return 0;
 }
 
 int gateway_announce_ingest_verified(const uint8_t *data, size_t len)
 {
-	struct gateway_announce_view announce;
-	uint8_t expected_iid[GATEWAY_ANNOUNCE_IID_LEN];
-	uint8_t signed_data[ANNOUNCE_SIGNED_MAX_LEN];
-	size_t signed_data_len = 0U;
-	uint32_t now_s = k_uptime_get_32() / 1000U;
-	struct announce_peer_pin *peer;
-	struct gateway_network_location_announce_sample sample;
-	bool new_peer = false;
-	bool old_peer_valid = false;
-	struct announce_peer_pin old_peer;
-	uint32_t location_seq_num;
-	struct gateway_network_location_announce_record existing_record;
-	int ret;
-
-	ret = gateway_announce_parse(data, len, &announce);
-	if (ret < 0) {
-		return ret;
-	}
-
-	ret = lichen_pubkey_to_iid(announce.pubkey, expected_iid);
-	if (ret < 0) {
-		return ret;
-	}
-	if (memcmp(announce.originator_iid, expected_iid,
-		   GATEWAY_ANNOUNCE_IID_LEN) != 0) {
-		return -EACCES;
-	}
-
-	ret = build_signed_data(&announce, signed_data, sizeof(signed_data),
-				&signed_data_len);
-	if (ret < 0) {
-		return ret;
-	}
-	if (!schnorr48_verify(announce.pubkey, signed_data, signed_data_len,
-			      announce.signature)) {
-		return -EACCES;
-	}
-
-	k_mutex_lock(&announce_peer_mutex, K_FOREVER);
-	peer = find_peer_locked(announce.originator_iid);
-	if (peer != NULL) {
-		if (memcmp(peer->pubkey, announce.pubkey,
-			   GATEWAY_ANNOUNCE_PUBKEY_LEN) != 0) {
-			k_mutex_unlock(&announce_peer_mutex);
-			return -EKEYREJECTED;
-		}
-		if (!announce_seq_newer(announce.seq_num, peer->seq_num)) {
-			k_mutex_unlock(&announce_peer_mutex);
-			return -EALREADY;
-		}
-		location_seq_num = extend_location_seq(announce.seq_num,
-						       peer->location_seq_num);
-	} else {
-		peer = allocate_peer_locked(now_s);
-		if (peer == NULL) {
-			k_mutex_unlock(&announce_peer_mutex);
-			return -ENOMEM;
-		}
-		old_peer_valid = peer->active;
-		if (old_peer_valid) {
-			old_peer = *peer;
-		}
-		memset(peer, 0, sizeof(*peer));
-		peer->active = true;
-		memcpy(peer->iid, announce.originator_iid,
-		       GATEWAY_ANNOUNCE_IID_LEN);
-		memcpy(peer->pubkey, announce.pubkey,
-		       GATEWAY_ANNOUNCE_PUBKEY_LEN);
-		new_peer = true;
-		ret = gateway_network_location_announce_get(
-			announce.originator_iid, GATEWAY_ANNOUNCE_IID_LEN,
-			&existing_record);
-		if (ret == 0) {
-			if (!announce_seq_newer(announce.seq_num,
-						(uint16_t)existing_record.seq_num) &&
-			    !downstream_record_expired(now_s, &existing_record)) {
-				restore_peer_slot(peer, old_peer_valid, &old_peer);
-				k_mutex_unlock(&announce_peer_mutex);
-				return -EALREADY;
-			}
-			location_seq_num = extend_location_seq(
-				announce.seq_num, existing_record.seq_num);
-		} else if (ret == -ENOENT) {
-			location_seq_num = announce.seq_num;
-		} else {
-			restore_peer_slot(peer, old_peer_valid, &old_peer);
-			k_mutex_unlock(&announce_peer_mutex);
-			return ret;
-		}
-	}
-
-	sample.peer_id = announce.originator_iid;
-	sample.peer_id_len = GATEWAY_ANNOUNCE_IID_LEN;
-	sample.seq_num = location_seq_num;
-	sample.observed_uptime_s = now_s;
-	sample.app_data = announce.app_data;
-	sample.app_data_len = announce.app_data_len;
-	ret = gateway_network_location_submit_announce(&sample);
-	if (ret < 0) {
-		if (new_peer) {
-			restore_peer_slot(peer, old_peer_valid, &old_peer);
-		}
-		k_mutex_unlock(&announce_peer_mutex);
-		return ret;
-	}
-
-	peer->seq_num = announce.seq_num;
-	peer->location_seq_num = location_seq_num;
-	peer->last_seen_uptime_s = now_s;
-	k_mutex_unlock(&announce_peer_mutex);
-	return 0;
+	ensure_gateway_observer();
+	return lichen_announce_ingest_authenticated(data, len, NULL);
 }
 
 int gateway_announce_ingest_l2_payload(const uint8_t *data, size_t len)
 {
-	const uint8_t *body;
-	size_t body_len;
-
-	if (data == NULL) {
-		return -EINVAL;
-	}
-	if (lichen_l2_payload_classify(data, len) != LICHEN_L2_PAYLOAD_ROUTING) {
-		return -EPROTONOSUPPORT;
-	}
-
-	body = lichen_l2_payload_body(data, len, &body_len);
-	if (body == NULL || body_len == 0U) {
-		return -EMSGSIZE;
-	}
-	if (body[0] != GATEWAY_ANNOUNCE_TYPE) {
-		return -EPROTONOSUPPORT;
-	}
-
-	return gateway_announce_ingest_verified(body, body_len);
+	ensure_gateway_observer();
+	return lichen_announce_ingest_l2_payload(data, len, NULL);
 }
 
 void gateway_announce_ingest_reset(void)
 {
-	k_mutex_lock(&announce_peer_mutex, K_FOREVER);
-	memset(announce_peers, 0, sizeof(announce_peers));
-	k_mutex_unlock(&announce_peer_mutex);
+	lichen_announce_reset();
+	ensure_gateway_observer();
 }

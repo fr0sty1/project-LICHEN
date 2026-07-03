@@ -58,6 +58,7 @@ static void reset_gateway(size_t from_radio_cap)
 	gateway_network_location_announce_reset();
 	gateway_network_location_announce_test_set_fallback_enabled(true);
 	gateway_announce_ingest_reset();
+	lichen_hal_location_test_use_real_uptime();
 	lichen_hal_location_clear();
 	fake_ble_meshtastic_reset(from_radio_cap);
 	zassert_ok(gateway_message_contract_init());
@@ -1944,9 +1945,12 @@ ZTEST(meshtastic_gateway_adapter,
 	size_t len;
 
 	reset_gateway(3U);
-	build_announce_coords_e7(app_data, 100000000, 200000000);
 	len = build_signed_announce(announce, sizeof(announce), seed, 100U,
-				    app_data, sizeof(app_data));
+				    NULL, 0U);
+	zassert_ok(gateway_announce_ingest_verified(announce, len));
+	gateway_network_location_announce_reset();
+	gateway_network_location_announce_test_set_fallback_enabled(true);
+	build_announce_coords_e7(app_data, 100000000, 200000000);
 	zassert_ok(gateway_network_location_submit_announce(
 		&(const struct gateway_network_location_announce_sample){
 			.peer_id = &announce[5],

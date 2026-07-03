@@ -1,0 +1,12 @@
+common:
+  tags:
+    - lichen
+    - routing
+tests:
+  net.lichen.routing_announce:
+    platform_allow:
+      - native_sim
+      - qemu_x86
+    integration_platforms:
+      - native_sim
+      - qemu_x86

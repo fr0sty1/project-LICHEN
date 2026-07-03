@@ -21,6 +21,9 @@
 
 #ifdef __ZEPHYR__
 #include <zephyr/logging/log.h>
+#ifndef CONFIG_LICHEN_LINK_LOG_LEVEL
+#define CONFIG_LICHEN_LINK_LOG_LEVEL LOG_LEVEL_INF
+#endif
 LOG_MODULE_REGISTER(schnorr48, CONFIG_LICHEN_LINK_LOG_LEVEL);
 #else
 /* Minimal logging for non-Zephyr builds */
