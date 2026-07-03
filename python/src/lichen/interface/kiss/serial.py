@@ -9,14 +9,15 @@ Async serial connection for KISS TNC mode.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 import serial
 
 from .framing import KissReader
-from .handler import KissHandler, DefaultKissConfig
+from .handler import DefaultKissConfig, KissHandler
 
 log = logging.getLogger(__name__)
 
@@ -111,10 +112,10 @@ class KissSerialConnection:
 
         try:
             chunk = await self._loop.run_in_executor(None, _read)
-        except (serial.SerialException, OSError) as e:
-            log.error("KISS serial read error: %s", e)
+        except (serial.SerialException, OSError) as exc:
+            log.error("KISS serial read error: %s", exc)
             self._closed = True
-            raise ConnectionError(str(e))
+            raise ConnectionError(str(exc)) from exc
 
         if chunk is None:
             self._closed = True
@@ -151,10 +152,8 @@ class KissSerialConnection:
 
         if self._serial is not None:
             def _close():
-                try:
+                with contextlib.suppress(Exception):
                     self._serial.close()
-                except Exception:
-                    pass
 
             if self._loop:
                 await self._loop.run_in_executor(None, _close)

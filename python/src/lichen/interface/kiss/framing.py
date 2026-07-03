@@ -10,9 +10,9 @@ Escaping: 0xC0 -> 0xDB 0xDC, 0xDB -> 0xDB 0xDD
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Iterator
 
 # KISS special bytes
 FEND = 0xC0  # Frame delimiter

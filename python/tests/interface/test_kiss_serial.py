@@ -1,7 +1,6 @@
 """Tests for KISS serial transport."""
 
-import asyncio
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import patch
 
 import pytest
 

@@ -1,12 +1,11 @@
 """Tests for KISS command handler."""
 
-import pytest
 
 from lichen.interface.kiss import (
+    DefaultKissConfig,
     KissCommand,
     KissFrame,
     KissHandler,
-    DefaultKissConfig,
     kiss_decode,
 )
 
@@ -153,7 +152,10 @@ class TestKissHandlerReturnCommand:
 class TestKissHandlerPortFilter:
     def test_port_filter_accepts_matching(self):
         received = []
-        handler = KissHandler(on_tx_frame=lambda port, data: received.append((port, data)), port_filter=2)
+        handler = KissHandler(
+            on_tx_frame=lambda port, data: received.append((port, data)),
+            port_filter=2,
+        )
 
         frame = KissFrame(port=2, command=KissCommand.DATA, data=b"yes")
         handler.handle(frame)
@@ -162,7 +164,10 @@ class TestKissHandlerPortFilter:
 
     def test_port_filter_rejects_nonmatching(self):
         received = []
-        handler = KissHandler(on_tx_frame=lambda port, data: received.append((port, data)), port_filter=2)
+        handler = KissHandler(
+            on_tx_frame=lambda port, data: received.append((port, data)),
+            port_filter=2,
+        )
 
         frame = KissFrame(port=0, command=KissCommand.DATA, data=b"no")
         handler.handle(frame)

@@ -122,7 +122,7 @@ class TestTranslatorText:
         assert translator.coap_to_text_payload(payload) == payload
 
     def test_utf8_preserved(self, translator: Translator) -> None:
-        payload = "Hello 世界 🌍".encode("utf-8")
+        payload = "Hello 世界 🌍".encode()
         assert translator.text_to_coap_payload(payload) == payload
 
 

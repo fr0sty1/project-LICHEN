@@ -12,10 +12,9 @@ from lichen.interface.messages import (
     LogEntry,
     LogLevel,
     LogSubscribe,
-    Message,
+    MeshState,
     MessageReceived,
     MessageType,
-    MeshState,
     NeighborEntry,
     NodeInfo,
     ResultCode,
@@ -266,5 +265,5 @@ class TestCodec:
             decode_message(data)
 
     def test_invalid_cbor(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="invalid message"):
             decode_message(b"\xFF\xFF\xFF")

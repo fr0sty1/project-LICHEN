@@ -12,7 +12,6 @@ signing key and X25519 key exchange key.
 from __future__ import annotations
 
 import os
-import struct
 from dataclasses import dataclass, field
 from enum import IntEnum
 from hashlib import sha256
@@ -307,16 +306,16 @@ class EdhocInitiator:
         self._prk_2e = _hkdf_extract(self._th_2, g_xy)
 
         # Derive KEYSTREAM_2 and decrypt CIPHERTEXT_2
-        keystream_2 = _edhoc_kdf(self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(ciphertext_2))
-        plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2))
+        keystream_2 = _edhoc_kdf(
+            self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(ciphertext_2)
+        )
+        plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2, strict=True))
 
         # PLAINTEXT_2 = (ID_CRED_R, Signature_or_MAC_2, ?EAD_2)
         # For SIGN_SIGN, ID_CRED_R is bstr (pubkey), followed by Signature_2
         pt2_items = _decode_cbor_sequence(plaintext_2)
 
         id_cred_r = pt2_items[0] if len(pt2_items) > 0 else b""
-        signature_2 = pt2_items[1] if len(pt2_items) > 1 else b""
-
         # Verify signature (simplified - full impl needs MAC_2 computation)
         # For SIGN_SIGN: Signature_2 = Sign(SK_R, M_2)
         # M_2 = (context_2, ID_CRED_R, TH_2, CRED_R, ?EAD_2)
@@ -389,10 +388,22 @@ class EdhocInitiator:
             raise ValueError("EDHOC not complete - call process_message_2 first")
 
         # OSCORE Master Secret = EDHOC-Exporter(0, h'', oscore_key_len)
-        master_secret = _edhoc_kdf(self._prk_4e3m, self._th_4, "OSCORE_Master_Secret", b"", oscore_key_len)
+        master_secret = _edhoc_kdf(
+            self._prk_4e3m,
+            self._th_4,
+            "OSCORE_Master_Secret",
+            b"",
+            oscore_key_len,
+        )
 
         # OSCORE Master Salt = EDHOC-Exporter(1, h'', oscore_salt_len)
-        master_salt = _edhoc_kdf(self._prk_4e3m, self._th_4, "OSCORE_Master_Salt", b"", oscore_salt_len)
+        master_salt = _edhoc_kdf(
+            self._prk_4e3m,
+            self._th_4,
+            "OSCORE_Master_Salt",
+            b"",
+            oscore_salt_len,
+        )
 
         # Sender/Recipient IDs from connection IDs
         # Initiator is sender with C_I, recipient is C_R
@@ -466,11 +477,9 @@ class EdhocResponder:
         # Decode message_1 = (METHOD_CORR, SUITES_I, G_X, C_I, ?EAD_1)
         items = _decode_cbor_sequence(msg1)
 
-        method_corr = items[0]
         suites_i = items[1]
         self._g_x = items[2]
         self._c_i = _decode_connection_id(items[3])
-        ead_1 = items[4] if len(items) > 4 else b""
 
         # Verify suite is supported
         if suites_i != SUITE_0:
@@ -515,8 +524,10 @@ class EdhocResponder:
         plaintext_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(signature_2)
 
         # KEYSTREAM_2 for XOR encryption
-        keystream_2 = _edhoc_kdf(self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(plaintext_2))
-        ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2))
+        keystream_2 = _edhoc_kdf(
+            self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(plaintext_2)
+        )
+        ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2, strict=True))
 
         # TH_3 = H(TH_2, CIPHERTEXT_2, ID_CRED_R)
         th_3_input = cbor2.dumps(self._th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)
@@ -590,8 +601,20 @@ class EdhocResponder:
         if not self._prk_4e3m or not self._th_4:
             raise ValueError("EDHOC not complete")
 
-        master_secret = _edhoc_kdf(self._prk_4e3m, self._th_4, "OSCORE_Master_Secret", b"", oscore_key_len)
-        master_salt = _edhoc_kdf(self._prk_4e3m, self._th_4, "OSCORE_Master_Salt", b"", oscore_salt_len)
+        master_secret = _edhoc_kdf(
+            self._prk_4e3m,
+            self._th_4,
+            "OSCORE_Master_Secret",
+            b"",
+            oscore_key_len,
+        )
+        master_salt = _edhoc_kdf(
+            self._prk_4e3m,
+            self._th_4,
+            "OSCORE_Master_Salt",
+            b"",
+            oscore_salt_len,
+        )
 
         # Responder: sender=C_R, recipient=C_I (swapped from initiator)
         return OscoreContext(

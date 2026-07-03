@@ -4,7 +4,6 @@ import pytest
 
 from lichen.interface.kiss.ax25 import (
     Ax25Error,
-    Ax25Frame,
     ax25_decode,
     ax25_encode,
     bytes_to_callsign,
@@ -141,7 +140,6 @@ class TestRoundtrip:
             result = ax25_decode(frame)
             # Normalize SSIDs for comparison
             expected_src = src if "-" in src and not src.endswith("-0") else src.replace("-0", "")
-            expected_dst = dst if "-" in dst and not dst.endswith("-0") else dst.replace("-0", "")
             assert result.src == expected_src or result.src == src.split("-")[0]
             assert result.payload == payload
 

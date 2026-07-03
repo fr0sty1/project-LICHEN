@@ -138,8 +138,6 @@ def ax25_decode(frame: bytes) -> Ax25Frame:
     src = bytes_to_callsign(frame[7:14])
 
     control = frame[14]
-    pid = frame[15]
-
     # ponytail: only UI frames supported, others rejected
     if control != CONTROL_UI:
         raise Ax25Error(f"unsupported control field: 0x{control:02X}, expected UI (0x03)")

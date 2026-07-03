@@ -34,10 +34,7 @@ jobs:
           uv sync --locked --all-extras --dev
 
       - name: Lint (ruff)
-        # Full-project Ruff currently has a historical baseline outside the
-        # dependency/dashboard surfaces touched here; keep CI enforcing the
-        # pinned tooling where this job owns the contract.
-        run: uv run ruff check src/lichen/dashboard tests/dashboard tests/test_packaging.py pyproject.toml
+        run: uv run ruff check src tests pyproject.toml
 
       - name: Tests
         # The full suite runs, including the integration tests (the BARRIER_SYNC

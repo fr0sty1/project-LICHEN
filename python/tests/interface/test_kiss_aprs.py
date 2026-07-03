@@ -3,8 +3,6 @@
 import time
 from unittest.mock import MagicMock
 
-import pytest
-
 from lichen.interface.kiss.aprs import (
     AprsAck,
     AprsMessage,
@@ -50,7 +48,7 @@ class TestAprsMessageEncode:
         msg = AprsMessage(addressee="TEST", text="Hello 世界")
         encoded = msg.encode()
         assert b"Hello" in encoded
-        assert "世界".encode("utf-8") in encoded
+        assert "世界".encode() in encoded
 
 
 class TestAprsAckEncode:

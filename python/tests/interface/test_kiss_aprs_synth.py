@@ -5,13 +5,12 @@ import json
 import pytest
 
 from lichen.interface.kiss.aprs_synth import (
-    AprsDataType,
-    SynthResult,
-    synthesize_aprs,
-    _format_position,
-    _format_weather,
-    _format_telemetry,
     HAS_CBOR,
+    AprsDataType,
+    _format_position,
+    _format_telemetry,
+    _format_weather,
+    synthesize_aprs,
 )
 
 

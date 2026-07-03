@@ -1,6 +1,7 @@
 """Tests for LICHEN Native TCP transport."""
 
 import asyncio
+import contextlib
 
 import pytest
 
@@ -11,7 +12,7 @@ from lichen.interface.messages import (
     MessageType,
     ResultCode,
 )
-from lichen.interface.tcp import TcpConnection, TcpServer, connect, serve
+from lichen.interface.tcp import TcpServer, connect, serve
 
 
 @pytest.fixture
@@ -135,7 +136,7 @@ class TestTcpServer:
 
         # Connect multiple clients
         clients = []
-        for i in range(3):
+        for _ in range(3):
             conn = await connect(addr[0], addr[1])
             clients.append(conn)
 
@@ -247,10 +248,8 @@ class TestConnectionRun:
         await conn.send(Hello(firmware="run-test"))
 
         # Run for a short time
-        try:
+        with contextlib.suppress(TimeoutError):
             await asyncio.wait_for(conn.run(), timeout=0.1)
-        except asyncio.TimeoutError:
-            pass
 
         await conn.close()
 

@@ -1,11 +1,12 @@
 """Tests for LICHEN Native serial transport."""
 
 import asyncio
+import contextlib
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from lichen.interface.messages import Hello, ConfigGet, ConfigResult, ResultCode
+from lichen.interface.messages import ConfigGet, ConfigResult, Hello, ResultCode
 from lichen.interface.serial import SerialConnection, list_serial_ports, open_serial
 
 
@@ -103,7 +104,6 @@ class TestSerialConnection:
         config_get = ConfigGet()
         framed = frame(encode_message(config_get))
 
-        call_count = 0
         read_count = 0
 
         def mock_read(size=1):
@@ -130,10 +130,8 @@ class TestSerialConnection:
             await conn.open()
 
             # Run with timeout
-            try:
+            with contextlib.suppress(TimeoutError):
                 await asyncio.wait_for(conn.run(), timeout=0.5)
-            except asyncio.TimeoutError:
-                pass
 
             assert len(received) >= 1
             assert isinstance(received[0], ConfigGet)
