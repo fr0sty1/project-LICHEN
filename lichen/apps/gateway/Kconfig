@@ -134,6 +134,19 @@ config LORA_LICHEN_MESHCORE_BLE_PASSKEY
 	  should override it from provisioning or persistent settings once the
 	  MeshCore config-secret policy is implemented.
 
+config LORA_LICHEN_MESHCORE_COMPAT_SETTINGS_PERSISTENCE
+	bool "Persist MeshCore compatibility-local settings"
+	depends on LORA_LICHEN_MESHCORE_BLE || ZTEST
+	depends on LICHEN_MESHCORE_ADAPTER
+	depends on SETTINGS_NVS
+	default n
+	help
+	  Persist only MeshCore app-compatibility local state through Zephyr
+	  settings/NVS: display name, channel 0 compatibility record, auto-add
+	  config, default flood scope, and MeshCore BLE PIN. This store is
+	  intentionally separate from native LICHEN identity, OSCORE/link keys,
+	  group/routing state, and radio configuration.
+
 config LORA_LICHEN_MESHTASTIC_BLE_QUEUE_DEPTH
 	int "Meshtastic BLE FromRadio queue depth"
 	depends on LORA_LICHEN_MESHTASTIC_BLE

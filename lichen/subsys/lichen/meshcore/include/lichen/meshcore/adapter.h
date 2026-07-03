@@ -10,6 +10,8 @@
 
 #include <lichen/meshcore/codec.h>
 
+struct lichen_meshcore_compat_settings;
+
 typedef int (*lichen_meshcore_adapter_enqueue_fn)(const uint8_t *frame,
 						  size_t len,
 						  void *user_data);
@@ -19,6 +21,9 @@ typedef int (*lichen_meshcore_adapter_submit_text_fn)(
 	const uint8_t *payload, size_t payload_len, void *user_data);
 typedef int (*lichen_meshcore_adapter_apply_pin_fn)(uint32_t pin,
 						    void *user_data);
+typedef int (*lichen_meshcore_adapter_persist_settings_fn)(
+	const struct lichen_meshcore_compat_settings *settings,
+	void *user_data);
 /*
  * Resolve a MeshCore 6-byte direct-send public-key prefix to one LICHEN peer
  * IID. Return 0 only for an exact single match. Return a negative errno for
@@ -75,6 +80,7 @@ struct lichen_meshcore_adapter_ops {
 	lichen_meshcore_adapter_resolve_peer_prefix_fn resolve_peer_prefix;
 	struct lichen_meshcore_compat_settings *compat_settings;
 	void *user_data;
+	lichen_meshcore_adapter_persist_settings_fn persist_settings;
 };
 
 struct lichen_meshcore_adapter_stats {

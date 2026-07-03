@@ -41,19 +41,26 @@ struct test_ctx {
 	uint8_t submit_payload[LICHEN_MESHCORE_FRAME_MAX];
 	size_t submit_payload_len;
 	uint32_t submit_count;
+	uint32_t persist_count;
 	uint32_t applied_pin;
 	uint32_t apply_pin_count;
 	int submit_ret;
 	int apply_pin_ret;
+	int persist_ret;
+	int enqueue_ret;
 	bool submit_has_to_iid;
 	bool resolve_match;
 	bool resolve_collision;
+	struct lichen_meshcore_compat_settings persisted_settings;
 };
 
 static int enqueue_cb(const uint8_t *frame, size_t len, void *user_data)
 {
 	struct test_ctx *ctx = user_data;
 
+	if (ctx != NULL && ctx->enqueue_ret < 0) {
+		return ctx->enqueue_ret;
+	}
 	if (frame == NULL || len == 0U || len > sizeof(ctx->out[0].data)) {
 		return -EINVAL;
 	}
@@ -64,6 +71,22 @@ static int enqueue_cb(const uint8_t *frame, size_t len, void *user_data)
 	memcpy(ctx->out[ctx->count].data, frame, len);
 	ctx->out[ctx->count].len = len;
 	ctx->count++;
+	return 0;
+}
+
+static int persist_settings_cb(
+	const struct lichen_meshcore_compat_settings *settings, void *user_data)
+{
+	struct test_ctx *ctx = user_data;
+
+	if (ctx == NULL || settings == NULL) {
+		return -EINVAL;
+	}
+	ctx->persist_count++;
+	if (ctx->persist_ret < 0) {
+		return ctx->persist_ret;
+	}
+	ctx->persisted_settings = *settings;
 	return 0;
 }
 
@@ -208,6 +231,24 @@ static void init_adapter_with_submit_no_resolver(
 		.apply_pin = apply_pin_cb,
 		.compat_settings = &ctx->settings,
 		.user_data = ctx,
+	};
+
+	memset(ctx, 0, sizeof(*ctx));
+	ctx->limit = limit;
+	lichen_meshcore_adapter_init(adapter, &ops);
+}
+
+static void init_adapter_with_persistence(struct lichen_meshcore_adapter *adapter,
+					  struct test_ctx *ctx, size_t limit)
+{
+	const struct lichen_meshcore_adapter_ops ops = {
+		.enqueue_tx = enqueue_cb,
+		.tx_free = tx_free_cb,
+		.resolve_peer_prefix = resolve_peer_prefix_cb,
+		.apply_pin = apply_pin_cb,
+		.compat_settings = &ctx->settings,
+		.user_data = ctx,
+		.persist_settings = persist_settings_cb,
 	};
 
 	memset(ctx, 0, sizeof(*ctx));
@@ -737,6 +778,83 @@ ZTEST(meshcore_adapter, test_compat_settings_survive_adapter_reset)
 		     3U);
 }
 
+ZTEST(meshcore_adapter, test_compat_settings_persist_failure_is_atomic)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t set_name[] = {
+		LICHEN_MESHCORE_CMD_SET_ADVERT_NAME, 'F', 'a', 'i', 'l',
+	};
+
+	init_adapter_with_persistence(&adapter, &ctx, OUT_DEPTH);
+	ctx.persist_ret = -ENOSPC;
+
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, set_name,
+							  sizeof(set_name)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_TABLE_FULL);
+	zassert_equal(ctx.persist_count, 1U);
+	zassert_false(ctx.settings.advert_name_valid);
+	zassert_false(ctx.persisted_settings.advert_name_valid);
+}
+
+ZTEST(meshcore_adapter, test_compat_settings_ack_failure_keeps_durable_commit)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t set_name[] = {
+		LICHEN_MESHCORE_CMD_SET_ADVERT_NAME, 'S', 'a', 'v', 'e', 'd',
+	};
+
+	init_adapter_with_persistence(&adapter, &ctx, OUT_DEPTH);
+	ctx.enqueue_ret = -ENOTCONN;
+
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, set_name,
+							  sizeof(set_name)),
+		      -ENOTCONN);
+	zassert_equal(ctx.persist_count, 1U);
+	zassert_true(ctx.settings.advert_name_valid);
+	zassert_mem_equal(ctx.settings.advert_name, "Saved", 5U);
+	zassert_true(ctx.persisted_settings.advert_name_valid);
+	zassert_mem_equal(ctx.persisted_settings.advert_name, "Saved", 5U);
+	zassert_equal(ctx.count, 0U);
+}
+
+ZTEST(meshcore_adapter, test_factory_reset_clears_compat_settings)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t set_name[] = {
+		LICHEN_MESHCORE_CMD_SET_ADVERT_NAME, 'C', 'l', 'e', 'a', 'r',
+	};
+	const uint8_t set_pin[] = {
+		LICHEN_MESHCORE_CMD_SET_DEVICE_PIN, 0xf1, 0xfb, 0x09, 0x00,
+	};
+	const uint8_t factory_reset[] = {
+		LICHEN_MESHCORE_CMD_FACTORY_RESET,
+	};
+
+	init_adapter_with_persistence(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, set_name,
+							  sizeof(set_name)), 0);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, set_pin,
+							  sizeof(set_pin)), 0);
+	zassert_true(ctx.settings.advert_name_valid);
+	zassert_true(ctx.settings.device_pin_valid);
+	zassert_equal(ctx.applied_pin, 654321U);
+
+	ctx.count = 0U;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter,
+							  factory_reset,
+							  sizeof(factory_reset)),
+		      0);
+	expect_ok(&ctx, 0U);
+	zassert_false(ctx.settings.advert_name_valid);
+	zassert_false(ctx.settings.device_pin_valid);
+	zassert_false(ctx.persisted_settings.advert_name_valid);
+	zassert_false(ctx.persisted_settings.device_pin_valid);
+	zassert_equal(ctx.applied_pin, 0U);
+}
+
 ZTEST(meshcore_adapter, test_compat_settings_validation_is_atomic)
 {
 	struct lichen_meshcore_adapter adapter;
@@ -1090,6 +1208,7 @@ static bool is_phase1_supported(uint8_t cmd)
 	case LICHEN_MESHCORE_CMD_GET_AUTOADD_CONFIG:
 	case LICHEN_MESHCORE_CMD_SET_DEFAULT_FLOOD_SCOPE:
 	case LICHEN_MESHCORE_CMD_GET_DEFAULT_FLOOD_SCOPE:
+	case LICHEN_MESHCORE_CMD_FACTORY_RESET:
 		return true;
 	default:
 		return false;

@@ -560,6 +560,98 @@ static bool channel_body_has_secret(const uint8_t *payload)
 
 static int preflight_tx_slots(struct lichen_meshcore_adapter *adapter,
 			      uint32_t needed);
+static uint8_t meshcore_error_from_errno(int err);
+
+static int persist_settings_or_error(
+	struct lichen_meshcore_adapter *adapter,
+	const struct lichen_meshcore_compat_settings *old_settings)
+{
+	struct lichen_meshcore_compat_settings *settings =
+		compat_settings(adapter);
+	int ret;
+
+	if (adapter->ops.persist_settings == NULL) {
+		return 0;
+	}
+
+	ret = adapter->ops.persist_settings(settings, adapter->ops.user_data);
+	if (ret < 0) {
+		*settings = *old_settings;
+		return enqueue_error(adapter, meshcore_error_from_errno(ret));
+	}
+	return 0;
+}
+
+static int commit_settings_with_ok(
+	struct lichen_meshcore_adapter *adapter,
+	const struct lichen_meshcore_compat_settings *old_settings)
+{
+	struct lichen_meshcore_compat_settings *settings =
+		compat_settings(adapter);
+	int ret = persist_settings_or_error(adapter, old_settings);
+
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = enqueue_ok(adapter);
+	if (ret < 0) {
+		if (adapter->ops.persist_settings == NULL) {
+			*settings = *old_settings;
+		}
+	}
+	return ret;
+}
+
+static int reset_compat_settings(struct lichen_meshcore_adapter *adapter,
+				 const struct lichen_meshcore_frame_view *view)
+{
+	struct lichen_meshcore_compat_settings *settings =
+		compat_settings(adapter);
+	struct lichen_meshcore_compat_settings old_settings;
+	int ret;
+
+	if (settings == NULL) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	}
+	if (view->payload_len != 0U) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	}
+	if (preflight_tx_slots(adapter, 1U) < 0) {
+		return -ENOMEM;
+	}
+
+	old_settings = *settings;
+	lichen_meshcore_compat_settings_reset(settings);
+	if (adapter->ops.apply_pin != NULL &&
+	    adapter->ops.apply_pin(0U, adapter->ops.user_data) < 0) {
+		*settings = old_settings;
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_BAD_STATE);
+	}
+
+	ret = persist_settings_or_error(adapter, &old_settings);
+	if (ret < 0) {
+		if (adapter->ops.apply_pin != NULL) {
+			(void)adapter->ops.apply_pin(
+				old_settings.device_pin_valid ?
+					old_settings.device_pin : 0U,
+				adapter->ops.user_data);
+		}
+		return ret;
+	}
+
+	ret = enqueue_ok(adapter);
+	if (ret < 0 && adapter->ops.persist_settings == NULL) {
+		*settings = old_settings;
+		if (adapter->ops.apply_pin != NULL) {
+			(void)adapter->ops.apply_pin(
+				old_settings.device_pin_valid ?
+					old_settings.device_pin : 0U,
+				adapter->ops.user_data);
+		}
+	}
+	return ret;
+}
 
 static int store_advert_name(struct lichen_meshcore_adapter *adapter,
 			     const struct lichen_meshcore_frame_view *view)
@@ -568,7 +660,6 @@ static int store_advert_name(struct lichen_meshcore_adapter *adapter,
 		compat_settings(adapter);
 	struct lichen_meshcore_compat_settings old_settings;
 	uint8_t len;
-	int ret;
 
 	if (settings == NULL) {
 		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
@@ -588,11 +679,7 @@ static int store_advert_name(struct lichen_meshcore_adapter *adapter,
 	memcpy(settings->advert_name, view->payload, len);
 	settings->advert_name_len = len;
 	settings->advert_name_valid = true;
-	ret = enqueue_ok(adapter);
-	if (ret < 0) {
-		*settings = old_settings;
-	}
-	return ret;
+	return commit_settings_with_ok(adapter, &old_settings);
 }
 
 static int store_channel(struct lichen_meshcore_adapter *adapter,
@@ -601,7 +688,6 @@ static int store_channel(struct lichen_meshcore_adapter *adapter,
 	struct lichen_meshcore_compat_settings *settings =
 		compat_settings(adapter);
 	struct lichen_meshcore_compat_settings old_settings;
-	int ret;
 
 	if (settings == NULL) {
 		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
@@ -626,11 +712,7 @@ static int store_channel(struct lichen_meshcore_adapter *adapter,
 	memcpy(settings->channel0_body, view->payload,
 	       sizeof(settings->channel0_body));
 	settings->channel0_valid = true;
-	ret = enqueue_ok(adapter);
-	if (ret < 0) {
-		*settings = old_settings;
-	}
-	return ret;
+	return commit_settings_with_ok(adapter, &old_settings);
 }
 
 static int store_device_pin(struct lichen_meshcore_adapter *adapter,
@@ -666,12 +748,23 @@ static int store_device_pin(struct lichen_meshcore_adapter *adapter,
 	old_settings = *settings;
 	settings->device_pin = pin;
 	settings->device_pin_valid = true;
-	ret = enqueue_ok(adapter);
+	ret = persist_settings_or_error(adapter, &old_settings);
 	if (ret < 0) {
-		*settings = old_settings;
 		(void)adapter->ops.apply_pin(old_settings.device_pin_valid ?
 						     old_settings.device_pin : 0U,
 					     adapter->ops.user_data);
+		return ret;
+	}
+
+	ret = enqueue_ok(adapter);
+	if (ret < 0) {
+		if (adapter->ops.persist_settings == NULL) {
+			*settings = old_settings;
+			(void)adapter->ops.apply_pin(
+				old_settings.device_pin_valid ?
+					old_settings.device_pin : 0U,
+				adapter->ops.user_data);
+		}
 	}
 	return ret;
 }
@@ -682,7 +775,6 @@ static int store_autoadd_config(struct lichen_meshcore_adapter *adapter,
 	struct lichen_meshcore_compat_settings *settings =
 		compat_settings(adapter);
 	struct lichen_meshcore_compat_settings old_settings;
-	int ret;
 
 	if (settings == NULL) {
 		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
@@ -698,11 +790,7 @@ static int store_autoadd_config(struct lichen_meshcore_adapter *adapter,
 	memcpy(settings->autoadd_config, view->payload,
 	       sizeof(settings->autoadd_config));
 	settings->autoadd_config_valid = true;
-	ret = enqueue_ok(adapter);
-	if (ret < 0) {
-		*settings = old_settings;
-	}
-	return ret;
+	return commit_settings_with_ok(adapter, &old_settings);
 }
 
 static int store_default_flood_scope(
@@ -712,7 +800,6 @@ static int store_default_flood_scope(
 	struct lichen_meshcore_compat_settings *settings =
 		compat_settings(adapter);
 	struct lichen_meshcore_compat_settings old_settings;
-	int ret;
 
 	if (settings == NULL) {
 		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
@@ -736,11 +823,7 @@ static int store_default_flood_scope(
 		memset(settings->default_flood_key, 0,
 		       sizeof(settings->default_flood_key));
 		settings->default_flood_scope_valid = false;
-		ret = enqueue_ok(adapter);
-		if (ret < 0) {
-			*settings = old_settings;
-		}
-		return ret;
+		return commit_settings_with_ok(adapter, &old_settings);
 	}
 
 	memcpy(settings->default_flood_name, view->payload,
@@ -749,11 +832,7 @@ static int store_default_flood_scope(
 	       &view->payload[LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN],
 	       sizeof(settings->default_flood_key));
 	settings->default_flood_scope_valid = true;
-	ret = enqueue_ok(adapter);
-	if (ret < 0) {
-		*settings = old_settings;
-	}
-	return ret;
+	return commit_settings_with_ok(adapter, &old_settings);
 }
 
 static int preflight_tx_slots(struct lichen_meshcore_adapter *adapter,
@@ -952,6 +1031,8 @@ static int dispatch_supported(struct lichen_meshcore_adapter *adapter,
 	}
 	case LICHEN_MESHCORE_CMD_SET_DEFAULT_FLOOD_SCOPE:
 		return store_default_flood_scope(adapter, view);
+	case LICHEN_MESHCORE_CMD_FACTORY_RESET:
+		return reset_compat_settings(adapter, view);
 	default:
 		return -ENOTSUP;
 	}
