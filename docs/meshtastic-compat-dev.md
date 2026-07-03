@@ -186,7 +186,7 @@ Policy for `MyNodeInfo`, `DeviceMetadata`, and `User` fields:
 | `role` | `CLIENT` unless a later tested app flow requires a different local-app role |
 | `has_bluetooth` | True only when the Meshtastic-compatible BLE surface is active |
 | `has_wifi`, `has_ethernet`, `has_remote_hardware`, `has_pkc` | False for the MVP unless backed by an implemented LICHEN capability |
-| `position_flags` | Zero until HAL location/provider support is wired into this adapter |
+| `position_flags` | `0` for the MVP; Position support is exposed through NodeDB Position records, not Meshtastic device capability flags |
 | `excluded_modules` | Bitmask excludes unsupported Meshtastic modules/features for the MVP; Bluetooth config is excluded only when the compatibility BLE surface is absent |
 
 The user-visible device name and `User.long_name` SHOULD remain visibly LICHEN-branded, such as `"LICHEN R1 Neo"` or
@@ -287,6 +287,15 @@ the payload has valid latitude and longitude. Peer-position announce
 translation is handled by the network-location producer path, not by fabricating
 Meshtastic RF behavior.
 
+The firmware path is implemented in the Zephyr Meshtastic compatibility layer:
+`POSITION_APP` packets from a local Meshtastic client decode into the shared
+adapter position snapshot, the gateway submits accepted values through the
+LICHEN app-interface as `LOCAL_CLIENT` location updates, and local NodeDB sync
+can emit this node's current valid location back to the app. Malformed Position
+payloads return deterministic status and must not replace an existing HAL
+location snapshot. Native LICHEN location, time, and status resources remain
+authoritative for richer provider diagnostics.
+
 Peer coordinates learned from LICHEN announces are not Meshtastic peer-position
 messages and are not automatically this node's own location. If a gateway build
 enables approximate mesh-derived location fallback, those coordinates are
@@ -342,6 +351,15 @@ fields are also available to calculate final positional accuracy.
 `precision_bits` is decoded and retained for diagnostics/vector coverage, but it
 is not currently mapped to a native location accuracy or emitted in NodeDB
 Position messages.
+
+No-hardware coverage for this contract lives in the Meshtastic adapter and
+gateway adapter ztests. Those tests cover valid full and minimal Position
+payloads, negative altitude, field 7 timestamp precedence over legacy field 4,
+duplicate field 4 last-wins behavior, below-build-epoch timestamp stripping
+while preserving coordinates, source/altitude/gps_accuracy/precision metadata,
+malformed payload rejection, and preservation of a prior HAL snapshot after
+malformed input. Physical phone/BLE smoke testing and RF validation remain
+separate from this software-only contract.
 
 ### Message Delivery Semantics
 
@@ -582,9 +600,9 @@ Meshtastic compatibility write.
 
 | Meshtastic | LICHEN | Notes |
 |------------|--------|-------|
-| `latitude_i` | Announce latitude | Scaled by 1e7 |
-| `longitude_i` | Announce longitude | Scaled by 1e7 |
-| `altitude` | Announce altitude | Meters; only emitted with valid lat/lon |
+| `latitude_i` | Local-client location latitude | Scaled by 1e7; required with longitude for app-originated Position ingestion |
+| `longitude_i` | Local-client location longitude | Scaled by 1e7; required with latitude for app-originated Position ingestion |
+| `altitude` | Local-client location altitude | Meters; optional, and only emitted back to NodeDB Position with valid lat/lon |
 | `time` | Fix timestamp fallback | Unix epoch; only used when `timestamp` is absent |
 | `location_source` | Local-client source name suffix | Does not change LICHEN trust/source class |
 | `altitude_source` | Diagnostic provenance | Barometric altitude does not imply GNSS |
