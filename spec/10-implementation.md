@@ -72,7 +72,7 @@ LICHEN/
 
 #### Recommended First Device
 
-**Muzi Works R1 Neo (`r1_neo_nrf52840`)** — turnkey nRF52840 + SX1262 in a ready-to-use enclosure. Battery, antenna, USB-C. Comfortable memory (256KB RAM, 1MB flash). Many Meshtastic users already have one. Reflash and go.
+**Muzi Works R1 Neo (`r1_neo_nrf52840`)** -- turnkey nRF52840 + SX1262 in a ready-to-use enclosure. Battery, antenna, USB-C. Comfortable memory (256KB RAM, 1MB flash). Many Meshtastic users already have one. Reflash and go.
 
 This recommendation is scoped to the R1 Neo board target. Original/non-Neo R1
 display variants and any LR1121 radio variants are not implied by the MVP and
@@ -81,7 +81,7 @@ can be advertised as supported.
 
 #### Meshtastic-Compatible (Primary)
 
-Reflash existing Meshtastic hardware with LICHEN firmware — same radios, different stack.
+Reflash existing Meshtastic hardware with LICHEN firmware -- same radios, different stack.
 
 | Family | Examples | MCU | Radio |
 |--------|----------|-----|-------|
@@ -120,7 +120,7 @@ Integration: Bridge APRS/packet ↔ LICHEN mesh via border router.
 
 *Tracking: `bd show python-dqc`*
 
-Border routers benefit from good antennas and elevated placement — more direct reach = fewer hops to internet.
+Border routers benefit from good antennas and elevated placement -- more direct reach = fewer hops to internet.
 
 | Platform | Config | Cost | Notes |
 |----------|--------|------|-------|

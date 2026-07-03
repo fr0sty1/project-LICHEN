@@ -11,8 +11,8 @@
 
 **Rules:**
 - Never put severity words in the message (`CRITICAL:`, `ERROR:`, `WARNING:`)
-- Never use `k_panic()` — see "No Panic Policy" below
-- `LOG_DBG` is compiled out in release builds — use freely for tracing
+- Never use `k_panic()` -- see "No Panic Policy" below
+- `LOG_DBG` is compiled out in release builds -- use freely for tracing
 
 ## Message Format
 
@@ -188,7 +188,7 @@ static void fatal_error(uint32_t reason, uint32_t location, uint32_t extra)
     
     LOG_ERR("main: fatal error (reason=%u, loc=%u)", reason, location);
     
-    // Don't spin — let watchdog reset us
+    // Don't spin -- let watchdog reset us
     // On reboot, check crash_info and log it
 }
 ```

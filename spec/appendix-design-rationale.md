@@ -12,8 +12,8 @@ constraints shape protocol choices.
 ## 1. Inspirations from Tactical MANET Radios
 
 LICHEN's routing algorithms draw from techniques proven in military tactical
-radios. These systems solve similar problems—multi-hop mesh networking in
-contested RF environments—but with vastly different resource budgets.
+radios. These systems solve similar problems--multi-hop mesh networking in
+contested RF environments--but with vastly different resource budgets.
 
 ### 1.1. ANW2 (Adaptive Networking Wideband Waveform)
 
@@ -97,7 +97,7 @@ resource limit:
 
 ### 3.1. 48-Byte Schnorr Signatures (Section 6)
 
-Not elegant by choice—necessary because a 256-byte RSA signature won't fit in a
+Not elegant by choice--necessary because a 256-byte RSA signature won't fit in a
 LoRa frame alongside actual payload. Schnorr with a 192-bit curve gives 48
 bytes: small enough to include in every packet, secure enough for authentication.
 
@@ -109,7 +109,7 @@ airtime is precious. SCHC compresses IPv6+UDP headers to 6-15 bytes instead of
 
 ### 3.3. Announce-Based Routing (Section 5, 9)
 
-Tactical radios probe links actively. LICHEN can't—probing consumes the channel.
+Tactical radios probe links actively. LICHEN can't--probing consumes the channel.
 Instead, nodes broadcast periodic announces that double as:
 
 - Presence indication (neighbor discovery)
@@ -124,7 +124,7 @@ Wave Relay can afford to elect forwarders with explicit coordination messages.
 LICHEN uses implicit coordination: all candidate forwarders hear the same
 packet, each waits a time proportional to their rank (based on distance to
 destination), and hearing a better-ranked node forward suppresses transmission.
-No coordination overhead—just timing discipline.
+No coordination overhead--just timing discipline.
 
 ### 3.5. Minimal Routing State (Section 5)
 
@@ -145,21 +145,21 @@ solves them with protocol design.**
 
 When a TSM-X node needs to find a route, it floods discovery packets. When
 LICHEN needs a route, it checks the gradient cache built from overheard
-announces—zero discovery latency, zero additional transmissions.
+announces--zero discovery latency, zero additional transmissions.
 
 When Wave Relay wants reliable delivery, it retransmits aggressively with
 link-layer ACKs. LICHEN assumes unreliable delivery and pushes reliability
 to applications (CoAP CON messages) where it belongs.
 
 When StreamCaster measures link quality, it sends probe packets. LICHEN infers
-link quality from successful packet reception—if you heard the announce, the
+link quality from successful packet reception--if you heard the announce, the
 link works.
 
 This isn't elegance for its own sake. It's survival. A protocol that wastes
 airtime on a LoRa network kills the network. A protocol that exceeds memory
 crashes. A protocol that drains batteries makes nodes disappear.
 
-The constraints aren't limitations to work around—they're the design parameters.
+The constraints aren't limitations to work around--they're the design parameters.
 
 ## 5. What's Different from Consumer Mesh
 
@@ -174,7 +174,7 @@ different tradeoffs:
 | Interop | Custom app required | Standard CoAP/MQTT-SN |
 | Scale | Tens of nodes | Designed for hundreds |
 
-LICHEN isn't "better" in absolute terms—it's designed for different use cases:
+LICHEN isn't "better" in absolute terms--it's designed for different use cases:
 autonomous sensor networks, infrastructure-independent communication, and
 integration with standard IP tooling. Consumer mesh prioritizes simplicity and
 phone compatibility.
@@ -187,7 +187,7 @@ rarely occur in practice.
 
 ### 6.1. GPSR: Greedy Only, No Perimeter Mode
 
-Full GPSR includes "perimeter mode" (face routing) for escaping local minima—
+Full GPSR includes "perimeter mode" (face routing) for escaping local minima--
 situations where no neighbor is closer to the destination than the current node.
 This requires planarizing the network graph and traversing faces, which means:
 
@@ -262,10 +262,10 @@ The LoRa PHY parameters are chosen as a middle-ground compromise:
 
 - **Not SF7-8:** LICHEN targets mesh networking over distance, not adjacent-room
   communication. Urban deployments need wall penetration. SF10 provides ~9dB
-  more link budget than SF7—the difference between "works indoors" and "doesn't."
+  more link budget than SF7--the difference between "works indoors" and "doesn't."
 
 - **Not SF11-12:** Airtime matters for battery and duty cycle. SF10→SF12 doubles
-  airtime for only ~5dB more range—diminishing returns. A node sending 100
+  airtime for only ~5dB more range--diminishing returns. A node sending 100
   packets/day at SF10 uses half the airtime of SF12, extending battery life
   proportionally.
 
@@ -325,7 +325,7 @@ The LoRa PHY parameters are chosen as a middle-ground compromise:
 
 - **Not 0x2B (Meshtastic):** In areas with Meshtastic traffic, LICHEN nodes
   would receive every Meshtastic packet, wasting CPU and battery filtering them.
-  The sync word check happens in radio hardware—different sync word means zero
+  The sync word check happens in radio hardware--different sync word means zero
   processing cost for foreign packets.
 
 - **Using 0x34 (LoRaWAN public):** Chosen arbitrarily from unused space. Could
@@ -351,7 +351,7 @@ Different design goals:
 - **LICHEN optimizes for link budget:** Lower BW for sensitivity, lower SF for
   airtime efficiency
 
-The PHY parameters are incompatible—LICHEN and Meshtastic devices cannot hear
+The PHY parameters are incompatible--LICHEN and Meshtastic devices cannot hear
 each other even on the same frequency. This is intentional; mixing protocols
 on shared PHY would create interference without interoperability.
 
@@ -368,7 +368,7 @@ LoRa:
 - **Opportunistic coordination** (from Wave Relay) adapted to implicit timing
 
 The difference is resource budget. Tactical radios have compute, memory, and
-bandwidth to spare. LICHEN has none of that luxury—so the protocol must be
+bandwidth to spare. LICHEN has none of that luxury--so the protocol must be
 correspondingly smarter about what it spends.
 
 ---

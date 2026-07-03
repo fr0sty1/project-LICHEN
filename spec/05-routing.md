@@ -81,14 +81,14 @@ Keywords per RFC 2119. Device classes:
 | Feature | Constrained | Router | BR |
 |---------|-------------|--------|-----|
 | Geographic coords in announce (§9.7) | MAY | MAY | MAY |
-| GPSR fallback (§9.7) | — | MAY | MAY |
-| Backpressure tracking (§11.4) | — | MAY | SHOULD |
-| Store-and-forward / DTN (§9.8) | — | MAY | SHOULD |
-| Opportunistic forwarding (§9.9) | — | MAY | MAY |
+| GPSR fallback (§9.7) | -- | MAY | MAY |
+| Backpressure tracking (§11.4) | -- | MAY | SHOULD |
+| Store-and-forward / DTN (§9.8) | -- | MAY | SHOULD |
+| Opportunistic forwarding (§9.9) | -- | MAY | MAY |
 
 **Notes:**
 
-- "—" means feature not applicable (insufficient resources).
+- "--" means feature not applicable (insufficient resources).
 - Constrained nodes MAY set DTN S-flag but do not buffer.
 - Constrained nodes use unicast forwarding only (no opportunistic).
 - All MAY features are independently optional; implement any subset.
@@ -389,7 +389,7 @@ When a node sees its IID in a pending list, it sends a pull request to retrieve 
 
 **Scope:**
 
-Border routers and powered routers only. Constrained nodes set the S flag but do not buffer—they forward or drop.
+Border routers and powered routers only. Constrained nodes set the S flag but do not buffer--they forward or drop.
 
 <!-- ponytail: spray-and-wait if single-copy delivery too slow -->
 
@@ -443,7 +443,7 @@ Sender chooses opportunistic mode when:
 
 **Scope:**
 
-Routers only. Constrained nodes use standard unicast forwarding—timing coordination adds code complexity.
+Routers only. Constrained nodes use standard unicast forwarding--timing coordination adds code complexity.
 
 <!-- ponytail: no ACK-based batch, add if throughput matters -->
 
@@ -620,7 +620,7 @@ def select_next_hop(candidates):
 
 **Scope:**
 
-Border routers and powered routers only. Constrained nodes (≤64KB RAM) skip backpressure tracking—the memory cost exceeds the benefit at low traffic volumes.
+Border routers and powered routers only. Constrained nodes (≤64KB RAM) skip backpressure tracking--the memory cost exceeds the benefit at low traffic volumes.
 
 <!-- ponytail: no per-flow fairness, add if starvation observed -->
 
@@ -650,10 +650,10 @@ Border routers and powered routers only. Constrained nodes (≤64KB RAM) skip ba
 
 | Traffic | Primary | Fallback |
 |---------|---------|----------|
-| To/from internet | RPL | — |
+| To/from internet | RPL | -- |
 | Peer (active node) | Announce gradient | LOADng |
 | Peer (unknown node) | LOADng | RPL via root (inefficient) |
-| Broadcast | Hop-limited flood | — |
+| Broadcast | Hop-limited flood | -- |
 
 The three-tier approach optimizes for each traffic pattern while providing fallbacks for edge cases.
 

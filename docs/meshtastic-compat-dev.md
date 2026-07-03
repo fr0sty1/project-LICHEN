@@ -1,4 +1,4 @@
-# Meshtastic Compatibility Layer — Developer Guide
+# Meshtastic Compatibility Layer -- Developer Guide
 
 This document describes how LICHEN nodes expose a Meshtastic-compatible BLE interface, allowing unmodified Meshtastic apps to connect.
 
@@ -158,7 +158,7 @@ have it stick.
 - **short_name**: First 4 characters of long_name: `"LICH"` or `"5e6f"`
 - **App writes**: Acknowledged but discarded. LICHEN node identity comes from the Ed25519 keypair, not user config.
 
-The app may show a "saved" confirmation, but the name won't persist. This is intentional—LICHEN nodes don't store Meshtastic user profiles.
+The app may show a "saved" confirmation, but the name won't persist. This is intentional--LICHEN nodes don't store Meshtastic user profiles.
 
 ### Hardware Model
 
@@ -167,7 +167,7 @@ The app may show a "saved" confirmation, but the name won't persist. This is int
 **The solution:** Always report `PRIVATE_HW` (255) unless Meshtastic upstream adds an official LICHEN-specific enum
 value.
 
-The app will show "Unknown" or a generic icon. This is accurate—LICHEN runs on various hardware, and Meshtastic's model list doesn't apply.
+The app will show "Unknown" or a generic icon. This is accurate--LICHEN runs on various hardware, and Meshtastic's model list doesn't apply.
 
 ### Synthetic Metadata and Version Policy
 
@@ -236,7 +236,7 @@ Channel 0:
 **Why this works:**
 - LICHEN always encrypts (OSCORE + link signatures). The app shows the lock icon.
 - LICHEN doesn't have "channels" in Meshtastic's sense. All nodes on a mesh can communicate.
-- PSK config is meaningless—LICHEN uses Ed25519 keypairs and SCHC contexts.
+- PSK config is meaningless--LICHEN uses Ed25519 keypairs and SCHC contexts.
 
 **What the app sees:** One channel called "LICHEN", always encrypted, no way to add more. Channel config screens work but changes are discarded.
 

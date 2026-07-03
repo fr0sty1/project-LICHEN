@@ -375,7 +375,7 @@ Only whitelisted peers' OSCORE-protected queries are answered.
 
 True presence hiding requires cover traffic (constant dummy transmissions),
 which is impractical on duty-cycle-limited LoRa. LICHEN does not attempt
-to hide presence—only location content.
+to hide presence--only location content.
 
 For high-security scenarios requiring presence hiding, consider:
 - Radio silence (off mode)

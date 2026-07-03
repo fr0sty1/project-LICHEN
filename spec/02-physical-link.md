@@ -146,7 +146,7 @@ Sender State Entry:
 
 At ~1 packet/second, 16-bit seqnum wraps every ~18 hours. The epoch
 increment ensures the 24-bit logical counter advances monotonically.
-At maximum traffic (10 pkt/sec), epoch wraps in ~7.5 years—acceptable.
+At maximum traffic (10 pkt/sec), epoch wraps in ~7.5 years--acceptable.
 
 **Reboot Resilience:**
 

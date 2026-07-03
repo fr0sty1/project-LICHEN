@@ -201,7 +201,7 @@ No routing table consulted. Purely local decision at each hop.
 
 #### 6.3.3. Broadcast Rate Limiting
 
-Broadcasts are expensive — each packet is relayed by every node in range.
+Broadcasts are expensive -- each packet is relayed by every node in range.
 Without limits, a single node can flood the network.
 
 **Distributed rate limiting (no central authority):**
@@ -285,7 +285,7 @@ Rationale:
 - Protects mesh from external multicast storms
 
 **Exception:** Explicitly configured multicast peering between meshes
-(future work — requires multicast routing protocol like PIM).
+(future work -- requires multicast routing protocol like PIM).
 
 ### 6.4. ICMPv6
 

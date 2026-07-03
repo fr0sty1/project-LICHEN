@@ -98,6 +98,37 @@ uncompressed fallback (see 5.7).
 
 **Compressed size: 10 bytes** (includes full destination prefix)
 
+**Rule 2: Link-local IPv6 + UDP + MQTT-SN**
+
+MQTT-SN uses port 10883, which lies outside the 5680-5695 range compressed
+by Rules 0 and 1. Rule 2 provides equivalent compression for MQTT-SN traffic.
+
+| Field | TV | MO | CDA |
+|-------|----|----|-----|
+| IPv6.Version | 6 | equal | not-sent |
+| IPv6.TrafficClass | 0 | equal | not-sent |
+| IPv6.FlowLabel | 0 | equal | not-sent |
+| IPv6.PayloadLength | - | ignore | compute |
+| IPv6.NextHeader | 17 (UDP) | equal | not-sent |
+| IPv6.HopLimit | 64 | ignore | not-sent |
+| IPv6.SrcPrefix | fe80::/64 | equal | not-sent |
+| IPv6.SrcIID | - | equal | not-sent (from L2) |
+| IPv6.DstPrefix | fe80::/64 | equal | not-sent |
+| IPv6.DstIID | - | equal | not-sent (from L2) |
+| UDP.SrcPort | 10883 | equal | not-sent |
+| UDP.DstPort | 10883 | equal | not-sent |
+| UDP.Length | - | ignore | compute |
+| UDP.Checksum | - | ignore | compute |
+
+**Compressed size: 1 byte** (Rule ID only; both ports exactly match)
+
+**Port Compression Note:**
+
+Rules 0 and 1 use MSB(12)/LSB(4) matching on port 5683, compressing any port
+in the range 5680-5695 to a 4-bit residue. This range covers CoAP (5683),
+compact CoT (5681), SenML (5682), Cayenne LPP (5685), APRS-IS (5686), and
+NMEA (5687). See Section 9.1 for the complete port allocation.
+
 ### 5.6. Fragmentation
 
 Packets exceeding L2 MTU are fragmented per RFC 8724 Section 8:
