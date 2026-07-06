@@ -252,6 +252,54 @@ int lichen_node_init(const uint8_t eui64[8], const uint8_t seed[32])
 }
 ```
 
+## Agent Work Ethic: NO LAZINESS
+
+**CRITICAL: When asked to fix issues, fix ALL of them. Not just "the important ones."**
+
+### Rules for Issue Resolution
+
+1. **"All issues" means ALL issues** — P0, P1, P2, P3, every single one. Do not skip P2/P3 because they're "low priority." The user asked for all of them.
+
+2. **Fix completely** — Don't half-fix an issue. Don't say "this could be improved further." Make all necessary code changes, run tests, close the issue.
+
+3. **No excuses** — Don't say:
+   - "This is low priority, skipping"
+   - "This would require significant refactoring"
+   - "This is a style preference"
+   - "I'll leave this for later"
+   
+   Instead: **FIX IT NOW.**
+
+4. **Run codereview after every fix** — When instructed to run codereview passes, actually run them. 3 passes means 3 independent reviews, not one review with 3 paragraphs.
+
+5. **Use subagents aggressively** — When fixing many issues, parallelize. Don't do them one at a time when you can do 20 at once.
+
+6. **Close issues when done** — Every fix should end with `bd close <id>`. If the issue isn't closed, it isn't done.
+
+### What "Thorough" Means
+
+- Read the full issue description
+- Find ALL files that need changes
+- Make ALL the changes
+- Run the appropriate tests (cargo test, pytest, ruff, mypy)
+- Verify the fix actually works
+- Close the issue
+
+### Anti-Patterns (DO NOT DO THESE)
+
+- ❌ "I fixed 5 of the 50 issues, the rest are lower priority"
+- ❌ "This P3 issue is just polish, skipping"
+- ❌ "I ran out of context, stopping here"
+- ❌ "This would require too many changes"
+- ❌ Closing issues without actually fixing them
+- ❌ Saying "fixed" when you only added a TODO comment
+
+### The Standard
+
+When the user says "fix all issues," the correct response is to fix **every single issue** until `bd list --status=open` returns zero issues.
+
+---
+
 ## Coding Guidelines
 
 ### Rust
