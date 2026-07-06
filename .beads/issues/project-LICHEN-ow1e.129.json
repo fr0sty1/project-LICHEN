@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-ow1e.129",
+  "title": "dao.py: full route rebuild on every DAO is O(N^2)",
+  "description": "src/lichen/rpl/dao.py:185-190 _rebuild_routes() clears and rebuilds all routes on every DAO. With N nodes, processing N DAOs costs O(N^2) path assemblies.\n\nFix: Incremental update - only rebuild routes for targets whose path changed (the target plus downstream dependents). Requires tracking reverse dependency graph.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:37:51.087718Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:37:51.088253Z",
+  "labels": [
+    "efficiency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.129",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:37:51.088253Z"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-ow1e.100",
+  "title": "LichenFrame.from_bytes allows zero-length payload with signature_present=True",
+  "description": "**Location:** python/src/lichen/link/frame.py:146-198\n\n**Bug:** The `from_bytes()` parser extracts the payload as everything between the address and MIC. If `signature_present` is set in LLSec but the payload is shorter than 48 bytes (the signature length), the frame parses successfully but will cause IndexError when the link layer tries to extract the signature.\n\n**Trigger:** Malformed or malicious frame with `signature_present=True` but payload \u003c 48 bytes.\n\n**Bad behavior:** IndexError at link_layer.py:376 (`signature = frame.payload[-SIGNATURE_LENGTH:]`) crashes the receive loop.\n\n**Fix:** Add validation in `from_bytes()`: if `signature_present` is True, require `len(payload) \u003e= SIGNATURE_LENGTH`.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:37:26.271838Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:46:30.554196Z",
+  "closed_at": "2026-07-06T15:46:30.554196Z",
+  "close_reason": "Closed",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.100",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:37:26.272387Z"
+    }
+  ]
+}

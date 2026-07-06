@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-ow1e.221",
+  "title": "good: gradient.py RFC 1982 seq_gt has SECURITY comment explaining wrap-around attack vector",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:47:23.320429Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:47:23.321696Z",
+  "labels": [
+    "good",
+    "security",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.221",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:47:23.321695Z"
+    }
+  ]
+}

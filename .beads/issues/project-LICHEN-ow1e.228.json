@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-ow1e.228",
+  "title": "Codereview pass 2: LOADng seqnum - missing boundary tests for 0/65535 edge",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:51:16.12788Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:51:16.180002Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.228",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:51:16.180002Z"
+    }
+  ]
+}

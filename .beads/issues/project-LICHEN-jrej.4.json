@@ -2,13 +2,16 @@
   "id": "project-LICHEN-jrej.4",
   "title": "Create compact CoT test vectors",
   "description": "JSON test vector file for compact CoT encoding/decoding: PLI all affiliations, chat broadcast/team/direct, markers, alerts. Include reference CoT XML for each. Software-only: test data, not implementation.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-03T05:38:31.075551Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-03T05:38:31.076082Z",
+  "updated_at": "2026-07-06T15:26:34.165717Z",
+  "closed_at": "2026-07-06T15:26:34.165717Z",
+  "close_reason": "Implemented with triple code review",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-jrej.4",

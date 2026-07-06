@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ow1e.185",
+  "title": "Codereview pass 3: scheduled_send exceptions - No further issues",
+  "description": "Code review pass 3 - final check:\n\n**Checked:**\n1. Exception handling pattern matches codebase conventions (line 343 uses same pattern)\n2. CancelledError handling is correct (re-raise without logging, per asyncio best practices)\n3. Log message format is consistent with other logger.exception calls\n4. No performance concerns - exception path only hits on actual errors\n5. Return type annotation still accurate (Task[bool])\n6. Docstring remains accurate (returns Task, caller should await it)\n\n**Finding:** No additional issues found.\n\nThe fix is minimal, correct, and follows established patterns.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:43:33.85368Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:43:33.854931Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.185",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:43:33.85493Z"
+    }
+  ]
+}

@@ -2,13 +2,16 @@
   "id": "project-LICHEN-r7h4.2",
   "title": "Renode nRF52840 platform definition for LICHEN",
   "description": "Create .repl platform file for nRF52840 with LICHEN peripherals. Start from Renode's existing nRF52840 support, add SX126x peripheral. Wire up SPI, GPIOs for radio control (BUSY, DIO1, NSS, RESET).",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-03T05:48:13.42818Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-03T05:48:23.234126Z",
+  "updated_at": "2026-07-06T01:57:26.408197Z",
+  "closed_at": "2026-07-06T01:57:26.408197Z",
+  "close_reason": "nRF52840 platform with SX1262 on spi2, tested load in Renode",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-r7h4.2",

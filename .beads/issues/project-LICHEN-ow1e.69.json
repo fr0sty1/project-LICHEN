@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-ow1e.69",
+  "title": "set_config accepts arbitrary keys without validation",
+  "description": "**Location:** python/src/lichen/node.py:574-580\n\n**Risk:** The `set_config()` method accepts a mapping and silently ignores unknown keys. A typo like `{'recieve_timeout_ms': 500}` (misspelled) will appear to succeed but have no effect.\n\n**Trigger:** User or application code calls `set_config()` with a typo in a key name.\n\n**Bad behavior:** The method returns without error, but the config is unchanged. The user may spend hours debugging why their config change 'didn't work'.\n\n**Maintainer burden:** This will generate support issues. Users expect either: (1) unknown keys to raise an error, or (2) at minimum, a warning log.\n\n**Pattern:** This 'silent ignore' pattern is common but user-hostile. Consider logging unknown keys at WARNING level or raising ValueError.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:36:56.896454Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:36:56.897011Z",
+  "labels": [
+    "risk",
+    "maintainer-burden",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.69",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:36:56.897011Z"
+    }
+  ]
+}

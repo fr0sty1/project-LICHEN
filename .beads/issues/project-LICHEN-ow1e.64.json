@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ow1e.64",
+  "title": "good: rpl/message.rs SAFETY comments on try_into().unwrap()",
+  "description": "In message.rs:88-90, 152-155, 321-323, SAFETY comments explain why try_into().unwrap() is safe. This pattern is consistent throughout the file and documents why the unwrap won't panic. Worth preserving.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:36:51.362097Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:36:51.362594Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.64",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:36:51.362594Z"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-ow1e.31",
+  "title": "oscore/edhoc: many heapless::Vec push() calls ignore results",
+  "description": "In edhoc.rs, lines 87-128, 296-334, 346-394, etc. use 'let _ = ...' to ignore push/extend_from_slice results. While buffer overflows are unlikely with sized heapless::Vec, silently ignoring errors is fragile. Either propagate errors with ? or use a helper that handles the push + map_err pattern.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:35:59.963291Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:35:59.964638Z",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.31",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:35:59.964637Z"
+    }
+  ]
+}

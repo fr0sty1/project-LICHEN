@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ow1e.22",
+  "title": "good: schnorr.rs defense-in-depth signature verification",
+  "description": "In schnorr.rs:verify() (lines 82-122), verification rejects identity points, low-order/torsion points, non-canonical scalars, and zero scalars. These checks prevent attacks on cofactor-sensitive operations. The code is well-documented with inline comments explaining each check's purpose. Worth defending if someone suggests 'simplifying' by removing checks.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:35:43.845571Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:35:43.846148Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.22",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:35:43.846148Z"
+    }
+  ]
+}

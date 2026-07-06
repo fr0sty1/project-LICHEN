@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-ow1e.70",
+  "title": "context.py: MATCH_MAPPING uses O(n) tuple membership check",
+  "description": "src/lichen/schc/context.py:48-49 uses 'value in fd.mapping' where fd.mapping is a tuple, giving O(n) lookup.\n\nSame pattern in codec.py:154-157 and codec.py:171. For rules with larger mappings (8+ values), a frozenset would provide O(1) lookup while keeping immutability.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:36:57.162401Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:36:57.162931Z",
+  "labels": [
+    "efficiency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.70",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:36:57.162931Z"
+    }
+  ]
+}

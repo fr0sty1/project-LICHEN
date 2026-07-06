@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-ow1e.49",
+  "title": "handler.py: accesses internal _entries dict directly, O(n) iteration",
+  "description": "src/lichen/interface/handler.py:165 accesses self.node.gradient_table._entries.values() directly. This is:\n1. Breaks encapsulation (accessing private _entries)\n2. O(n) iteration over all entries\n\nThe GradientTable class should expose an __iter__ method for clean access. Lower priority since the table is bounded to MAX_ENTRIES=64.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:36:29.261121Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:36:29.262099Z",
+  "labels": [
+    "efficiency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.49",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:36:29.262099Z"
+    }
+  ]
+}

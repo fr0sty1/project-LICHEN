@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-ow1e.227",
+  "title": "Codereview pass 2: LOADng seqnum - seq_ge function has no direct tests",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:51:12.906909Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:51:12.963319Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.227",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:51:12.963309Z"
+    }
+  ]
+}

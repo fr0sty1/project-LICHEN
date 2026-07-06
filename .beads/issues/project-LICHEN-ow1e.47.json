@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-ow1e.47",
+  "title": "ReplayWindow._prune_seen can skip stale keys during iteration",
+  "description": "**Location:** python/src/lichen/loadng/discovery.py:194-196\n\n**Bug:** The `_prune_seen()` method iterates over `self._seen.items()` while building a list of stale keys to delete. If the dict is modified by another coroutine between building the stale list and deleting, keys may be skipped or KeyError raised.\n\n**Trigger:** Concurrent coroutines calling `process_rreq()` which both call `_is_suppressed()` -\u003e `_prune_seen()`.\n\n**Bad behavior:** Either a stale entry is not pruned (minor inefficiency) or a KeyError is raised if a key was already deleted (crash).\n\n**Note:** Python's GIL makes this race unlikely in pure-Python code, but the async pattern means multiple coroutines can interleave at await points. Since `_prune_seen()` has no await points, this is likely safe in practice, but the pattern is fragile.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:36:28.102242Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:55:56.074399Z",
+  "closed_at": "2026-07-06T15:55:56.074399Z",
+  "close_reason": "Fixed in worktrees, verified by codereview passes",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.47",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:36:28.102944Z"
+    }
+  ]
+}

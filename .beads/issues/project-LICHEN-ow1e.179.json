@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ow1e.179",
+  "title": "Codereview pass 1: tun.rs SAFETY",
+  "description": "Review findings from codereview pass 1\n\nReviewing the SAFETY comments added to tun.rs:\n\n**Findings:**\n1. All 10 unsafe blocks now have SAFETY comments\n2. Comments correctly explain the invariants being upheld\n3. Comments are consistent in style and format\n\n**No issues found in pass 1.**",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:42:43.985158Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:42:43.986535Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.179",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:42:43.986535Z"
+    }
+  ]
+}

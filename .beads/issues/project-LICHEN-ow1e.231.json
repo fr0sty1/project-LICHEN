@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-ow1e.231",
+  "title": "Codereview pass 3: LOADng seqnum - docs and style adequate, no findings",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:52:10.810305Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:52:10.811545Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.231",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:52:10.811544Z"
+    }
+  ]
+}

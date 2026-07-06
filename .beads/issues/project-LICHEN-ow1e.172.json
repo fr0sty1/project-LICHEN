@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ow1e.172",
+  "title": "good: gateway/slip uses pre-allocated buffer and streaming iterator",
+  "description": "slip.rs:31-39 pre-allocates with capacity estimate avoiding reallocations. SlipFramer uses boxed fixed-size buffer (99-101). SlipFeedIter (157-164) is a clean streaming iterator pattern.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:41:33.201345Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:41:33.201862Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.172",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:41:33.201862Z"
+    }
+  ]
+}

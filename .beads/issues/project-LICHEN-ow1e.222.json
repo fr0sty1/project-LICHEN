@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-ow1e.222",
+  "title": "Codereview pass 1: MIC implementation - good constant-time comparison",
+  "description": "**Location:** python/src/lichen/link/link_layer.py:113-114\n\n**What's good:** verify_mic() correctly uses hmac.compare_digest() for constant-time comparison of the expected vs received MIC, preventing timing side-channel attacks.\n\n**Worth defending:** If someone suggests simplifying to `expected_mic == frame.mic`, reject it - the constant-time comparison is essential for security.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:47:26.20913Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:47:26.209774Z",
+  "labels": [
+    "review",
+    "crypto-security"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.222",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:47:26.209774Z"
+    }
+  ]
+}

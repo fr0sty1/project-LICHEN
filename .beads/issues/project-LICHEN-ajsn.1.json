@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ajsn.1",
+  "title": "Frame validation: SECURITY comment documents attack scenario",
+  "description": "The SECURITY: comment at frame.py:191-193 clearly explains why the validation is necessary (malicious frame could set signature bit but omit signature bytes). Worth preserving if someone tries to 'simplify' by removing the check.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:45:41.597556Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:45:41.59911Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ajsn.1",
+      "depends_on_id": "project-LICHEN-ajsn",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:45:41.59911Z"
+    }
+  ]
+}

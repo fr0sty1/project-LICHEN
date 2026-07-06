@@ -2,11 +2,14 @@
   "id": "project-LICHEN-j680",
   "title": "Document Renode development workflow",
   "description": "How to: install Renode, build for Renode targets, run single node, run multi-node mesh, debug with Renode, add new boards. Lives in docs/. Unblocks contributors from running emulated tests.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-03T06:41:50.603319Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-03T06:41:50.603534Z"
+  "updated_at": "2026-07-06T15:26:35.192922Z",
+  "closed_at": "2026-07-06T15:26:35.192922Z",
+  "close_reason": "Implemented with triple code review"
 }

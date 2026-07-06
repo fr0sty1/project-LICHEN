@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-ow1e.220",
+  "title": "GRADIENT_TIMEOUT_MS duplicated between gradient.py and processor.py",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:47:22.47892Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:47:22.480207Z",
+  "labels": [
+    "dry-violation",
+    "cleanup",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.220",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:47:22.480206Z"
+    }
+  ]
+}

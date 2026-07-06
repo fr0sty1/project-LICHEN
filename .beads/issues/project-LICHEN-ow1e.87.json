@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-ow1e.87",
+  "title": "Reserved MIC length values (2-7) not documented in MicLength enum",
+  "description": "In rust/lichen-link/src/frame.rs, MicLength enum has 2 variants (Bits32=0, Bits64=1), but wire format uses 3 bits allowing values 0-7. Values 2-7 are reserved per spec. The from_u8 method returns None for 2-7, caught as ReservedMicLength error in parsing. A contributor adding MIC-96 support (value 2 per spec evolution) will need to trace parsing to understand why it fails. Add doc comment to MicLength listing reserved values.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:37:14.873115Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:37:14.873689Z",
+  "labels": [
+    "risk",
+    "maintainer-burden",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.87",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:37:14.873689Z"
+    }
+  ]
+}

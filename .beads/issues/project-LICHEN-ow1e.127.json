@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ow1e.127",
+  "title": "good: node RplNode and Router facade patterns",
+  "description": "In node.rs:222-372, the RplNode wrapper delegates to both Node and Router cleanly. Methods like trickle_transmit() and trickle_reset() pass through without duplicating logic. The Router facade pattern in routing.rs bundles DODAG/trickle/DAO/neighbor state with a unified API.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:37:49.543729Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:37:49.544277Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.127",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:37:49.544277Z"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-ow1e.81",
+  "title": "lichen-senml and lichen-oscore define standalone BufferTooSmall instead of using lichen-core error types",
+  "description": "lichen-schc and lichen-coap properly wrap lichen_core::error::{TooShort, BufferTooSmall} with From impls for error chaining. However:\n\n- lichen-senml/src/cbor.rs defines its own CborError with BufferTooSmall as a unit variant\n- lichen-oscore/src/lib.rs defines OscoreError::BufferTooSmall as a unit variant  \n- lichen-rpl/src/message.rs defines RplError with TooShort and BufferTooSmall as unit variants\n\nThis breaks error chaining and loses diagnostic information (expected vs actual sizes).\n\nWhat goes wrong: When debugging compression/encoding failures, callers cannot extract how many bytes were needed vs available. The inconsistency also means caller code cannot uniformly handle buffer errors across crates.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:37:10.497062Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:37:10.497637Z",
+  "labels": [
+    "workspace-api",
+    "error-type",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.81",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:37:10.497637Z"
+    }
+  ]
+}

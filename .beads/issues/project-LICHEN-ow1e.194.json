@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ow1e.194",
+  "title": "Codereview pass 3: Identity - Good secure zeroing pattern",
+  "description": "Good implementation worth defending: Identity class uses bytearray for mutable secret storage with in-place zeroing via _zero_bytearray(). The __del__ guard pattern is defensive and handles edge cases correctly. The module docstring properly documents Python's limitations around secure memory erasure. The wipe() method is idempotent. This is well-designed defense-in-depth for crypto key material in Python.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "decision",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:44:06.043526Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:44:06.045194Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.194",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:44:06.045194Z"
+    }
+  ]
+}

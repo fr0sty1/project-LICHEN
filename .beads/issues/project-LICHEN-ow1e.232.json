@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ow1e.232",
+  "title": "Codereview pass 1: Epoch wrap comparison may fail at u8 boundary",
+  "description": "In ReplayProtector::check_and_update, the epoch comparison 'epoch \u003c *min' will incorrectly reject epoch=0 when min_epoch=255, causing valid frames to be dropped after epoch wrap. While epoch wrap takes ~7.5 years at max traffic (spec), this edge case should be documented or handled with wrapping-aware comparison. Location: rust/lichen-link/src/link_layer.rs:238-241",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:52:41.562559Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:52:41.582475Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.232",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:52:41.582475Z"
+    }
+  ]
+}
