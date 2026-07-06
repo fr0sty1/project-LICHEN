@@ -67,6 +67,7 @@ fn slip_decode_byte(byte: u8, in_escape: bool) -> (SlipDecodeResult, bool) {
 
 /// SLIP framing error.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SlipError {
     /// Packet too large for buffer.
     PacketTooLarge,
