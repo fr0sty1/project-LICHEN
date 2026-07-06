@@ -40,6 +40,7 @@ pub const SUITE_0: u8 = 0;
 
 /// EDHOC error types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum EdhocError {
     /// Protocol state error.
     InvalidState,

@@ -62,6 +62,7 @@ pub const WINDOW_SIZE: u32 = 32;
 
 /// OSCORE error types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum OscoreError {
     /// Invalid parameter provided.
     InvalidParam,
