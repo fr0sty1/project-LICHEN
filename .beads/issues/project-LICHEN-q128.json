@@ -2,13 +2,16 @@
   "id": "project-LICHEN-q128",
   "title": "Python node.py: RELAY_SEEN_MAX_SIZE clear() loses all history",
   "description": "In python/src/lichen/node.py at lines 390 and 480, when _relay_seen exceeds RELAY_SEEN_MAX_SIZE (128), the entire set is cleared. This creates a brief window where recently-relayed packets could be relayed again if they are received right after the clear(). Consider using an LRU eviction strategy that removes the oldest entries instead of clearing everything.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-06T17:26:32.75636Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-06T17:26:32.756394Z",
+  "updated_at": "2026-07-06T18:53:07.145529Z",
+  "closed_at": "2026-07-06T18:53:07.145529Z",
+  "close_reason": "Fixed by workflow",
   "labels": [
     "bug"
   ]
