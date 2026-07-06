@@ -401,6 +401,8 @@ pub enum DecodeError {
     InvalidDestType(u8),
     /// Message too long for internal buffer.
     MessageTooLong,
+    /// Expected a PLI subtype but got a different subtype.
+    NotPliSubtype(u8),
 }
 
 impl fmt::Display for DecodeError {
@@ -410,6 +412,7 @@ impl fmt::Display for DecodeError {
             Self::UnknownSubtype(b) => write!(f, "unknown compact CoT subtype: 0x{:02x}", b),
             Self::InvalidDestType(b) => write!(f, "invalid chat destination type: 0x{:02x}", b),
             Self::MessageTooLong => write!(f, "chat message exceeds 255 bytes"),
+            Self::NotPliSubtype(b) => write!(f, "expected PLI subtype, got: 0x{:02x}", b),
         }
     }
 }
@@ -488,13 +491,16 @@ fn decode_pli(subtype: CompactCotType, data: &[u8]) -> Result<CompactCot, Decode
         )));
     }
     let payload = PliPayload::decode(&data[1..]).map_err(DecodeError::TooShort)?;
-    Ok(match subtype {
-        CompactCotType::FriendlyPli => CompactCot::FriendlyPli(payload),
-        CompactCotType::HostilePli => CompactCot::HostilePli(payload),
-        CompactCotType::NeutralPli => CompactCot::NeutralPli(payload),
-        CompactCotType::UnknownPli => CompactCot::UnknownPli(payload),
-        _ => unreachable!("decode_pli called with non-PLI subtype"),
-    })
+    match subtype {
+        CompactCotType::FriendlyPli => Ok(CompactCot::FriendlyPli(payload)),
+        CompactCotType::HostilePli => Ok(CompactCot::HostilePli(payload)),
+        CompactCotType::NeutralPli => Ok(CompactCot::NeutralPli(payload)),
+        CompactCotType::UnknownPli => Ok(CompactCot::UnknownPli(payload)),
+        // SECURITY: Return error instead of panicking if called with non-PLI subtype.
+        // Currently decode() guarantees only PLI subtypes reach here, but this
+        // protects against future refactoring that might break that invariant.
+        _ => Err(DecodeError::NotPliSubtype(subtype as u8)),
+    }
 }
 
 /// Decode a compact CoT message from a buffer.

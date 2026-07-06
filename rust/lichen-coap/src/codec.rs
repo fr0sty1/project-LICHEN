@@ -195,10 +195,12 @@ impl<'a> CoapPacket<'a> {
     }
 }
 
-/// Find the payload marker (0xFF) in the options section.
+/// Validate options and find the payload marker (0xFF) in the options section.
 /// Returns offset relative to start of slice, or None if no marker.
+/// Also validates that cumulative option numbers do not overflow u16.
 fn find_payload_marker(data: &[u8]) -> Result<Option<usize>, CoapError> {
     let mut i = 0;
+    let mut current_number: u16 = 0;
     while i < data.len() {
         if data[i] == PAYLOAD_MARKER {
             return Ok(Some(i));
@@ -208,23 +210,33 @@ fn find_payload_marker(data: &[u8]) -> Result<Option<usize>, CoapError> {
         let len_nibble = data[i] & 0x0F;
         i += 1;
 
-        // Handle extended delta
-        match delta_nibble {
+        // Handle extended delta and compute actual delta value
+        let delta: u16 = match delta_nibble {
             13 => {
                 if i >= data.len() {
                     return Err(CoapError::TruncatedOption);
                 }
+                let d = data[i] as u16 + 13;
                 i += 1;
+                d
             }
             14 => {
                 if i + 1 >= data.len() {
                     return Err(CoapError::TruncatedOption);
                 }
+                let d = ((data[i] as u16) << 8 | data[i + 1] as u16) + 269;
                 i += 2;
+                d
             }
             15 => return Err(CoapError::InvalidOptionDelta),
-            _ => {}
-        }
+            n => n as u16,
+        };
+
+        // SECURITY: Detect option number overflow during initial parsing.
+        // This fails fast before any options are returned to the caller.
+        current_number = current_number
+            .checked_add(delta)
+            .ok_or(CoapError::OptionNumberOverflow)?;
 
         // Handle extended length
         let opt_len = match len_nibble {
@@ -739,11 +751,15 @@ mod tests {
     }
 
     #[test]
-    fn option_number_overflow_errors() {
+    fn option_number_overflow_fails_fast() {
         // Build a message with two large deltas that would overflow u16.
         // First option: delta = 60000 (uses extended 2-byte delta: nibble 14, ext = 60000-269 = 59731)
         // Second option: delta = 10000 (uses extended 2-byte delta: nibble 14, ext = 10000-269 = 9731)
         // Total would be 70000, which exceeds u16::MAX (65535).
+        //
+        // The overflow is detected during packet parsing (from_bytes), not during
+        // option iteration. This prevents any options from being returned before
+        // the overflow is detected.
         let mut data = Vec::new();
         // Header: CON GET, TKL=0, MID=1
         data.extend_from_slice(&[0x40, 0x01, 0x00, 0x01]);
@@ -758,11 +774,50 @@ mod tests {
         data.push(0x26); // hi byte of 9731
         data.push(0x03); // lo byte of 9731
 
+        // Overflow is detected at parse time - no options are returned
+        assert_eq!(
+            CoapPacket::from_bytes(&data),
+            Err(CoapError::OptionNumberOverflow)
+        );
+    }
+
+    #[test]
+    fn option_near_max_valid() {
+        // Verify that option numbers up to u16::MAX are still valid
+        let mut data = Vec::new();
+        // Header: CON GET, TKL=0, MID=1
+        data.extend_from_slice(&[0x40, 0x01, 0x00, 0x01]);
+        // Option with delta=65535 (u16::MAX)
+        // Extended delta = 65535 - 269 = 65266 = 0xFEF2
+        data.push(0xE0); // delta nibble=14, len nibble=0
+        data.push(0xFE); // hi byte of 65266
+        data.push(0xF2); // lo byte of 65266
+
         let pkt = CoapPacket::from_bytes(&data).unwrap();
         let opts: Vec<_> = pkt.options().collect();
-        assert_eq!(opts.len(), 2);
+        assert_eq!(opts.len(), 1);
         assert!(opts[0].is_ok());
-        assert_eq!(opts[0].as_ref().unwrap().number, 60000);
-        assert_eq!(opts[1], Err(CoapError::OptionNumberOverflow));
+        assert_eq!(opts[0].as_ref().unwrap().number, 65535);
+    }
+
+    #[test]
+    fn option_overflow_at_exact_boundary() {
+        // Two options that overflow exactly at u16::MAX + 1
+        let mut data = Vec::new();
+        // Header: CON GET, TKL=0, MID=1
+        data.extend_from_slice(&[0x40, 0x01, 0x00, 0x01]);
+        // Option 1: delta=65535 (u16::MAX)
+        // Extended delta = 65535 - 269 = 65266 = 0xFEF2
+        data.push(0xE0); // delta nibble=14, len nibble=0
+        data.push(0xFE); // hi byte of 65266
+        data.push(0xF2); // lo byte of 65266
+        // Option 2: delta=1 (overflow: 65535 + 1 = 65536)
+        data.push(0x10); // delta nibble=1, len nibble=0
+
+        // Overflow is detected at parse time
+        assert_eq!(
+            CoapPacket::from_bytes(&data),
+            Err(CoapError::OptionNumberOverflow)
+        );
     }
 }

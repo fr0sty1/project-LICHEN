@@ -18,8 +18,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from ipaddress import IPv6Address
 
-from lichen.ipv6 import to_ipv6
 from lichen.gradient import GradientTable
+from lichen.ipv6 import to_ipv6
 from lichen.loadng.cache import RouteCache
 from lichen.loadng.messages import RERR
 

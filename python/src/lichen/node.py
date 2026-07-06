@@ -24,6 +24,7 @@ import asyncio
 import contextlib
 import logging
 import random
+from collections import OrderedDict
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -160,7 +161,10 @@ class Node:
     )
 
     # Relay dedup: SCHC payloads forwarded by this node; prevents relay loops.
-    _relay_seen: set[bytes] = field(default_factory=set, init=False, repr=False)
+    # Why OrderedDict: LRU eviction preserves recent history when cache exceeds max.
+    _relay_seen: OrderedDict[bytes, None] = field(
+        default_factory=OrderedDict, init=False, repr=False
+    )
 
     # Meshtastic adapter (optional, created if meshtastic=True)
     _meshtastic_adapter: MeshtasticAdapterProtocol | None = field(
@@ -387,9 +391,12 @@ class Node:
                 self._on_receive(payload, rx.sender)
         elif decision == RouteDecision.FORWARD and payload not in self._relay_seen:
             # Relay: re-broadcast SCHC bytes unchanged.  Dedup prevents loops.
-            self._relay_seen.add(payload)
+            self._relay_seen[payload] = None
             if len(self._relay_seen) > RELAY_SEEN_MAX_SIZE:
-                self._relay_seen.clear()
+                # LRU eviction: remove oldest half to preserve recent history.
+                # Why half: amortizes eviction cost while keeping recent entries.
+                for _ in range(RELAY_SEEN_MAX_SIZE // 2):
+                    self._relay_seen.popitem(last=False)
             await self.link.send(payload)
 
     async def _process_announce(
@@ -477,9 +484,11 @@ class Node:
         schc = compress_packet(ipv6_bytes)
         wrapped = wrap_schc_payload(schc)
         # Track what we've sent so relay dedup doesn't forward it back to us.
-        self._relay_seen.add(wrapped)
+        self._relay_seen[wrapped] = None
         if len(self._relay_seen) > RELAY_SEEN_MAX_SIZE:
-            self._relay_seen.clear()
+            # LRU eviction: remove oldest half to preserve recent history.
+            for _ in range(RELAY_SEEN_MAX_SIZE // 2):
+                self._relay_seen.popitem(last=False)
 
         now_ms = int(asyncio.get_running_loop().time() * 1000)
         decision, _next_hop = self.router.route(packet, now_ms)

@@ -24,6 +24,8 @@ from typing import TYPE_CHECKING, Any
 
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
+from lichen.sim.auth import WEBSOCKET_AUTH_SUBPROTOCOL
+
 if TYPE_CHECKING:
     pass
 
@@ -85,7 +87,17 @@ class WebSocketManager:
         Returns:
             The WebSocketClient object.
         """
-        await websocket.accept()
+        # SECURITY: If client used subprotocol auth (bearer.<token>), echo back
+        # the "bearer" subprotocol to complete the handshake. This confirms we
+        # accepted the auth mechanism without echoing the token itself.
+        subprotocols = websocket.scope.get("subprotocols", [])
+        accepted_subprotocol = None
+        for proto in subprotocols:
+            if proto.startswith(f"{WEBSOCKET_AUTH_SUBPROTOCOL}."):
+                accepted_subprotocol = WEBSOCKET_AUTH_SUBPROTOCOL
+                break
+
+        await websocket.accept(subprotocol=accepted_subprotocol)
 
         if client_id is None:
             client_id = str(uuid.uuid4())[:8]

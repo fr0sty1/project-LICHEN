@@ -43,7 +43,7 @@ class TcpConnection:
     def peername(self) -> tuple[str, int] | None:
         try:
             return self.writer.get_extra_info("peername")
-        except Exception:
+        except OSError:
             log.debug("failed to get peername", exc_info=True)
             return None
 
@@ -114,7 +114,7 @@ class TcpConnection:
         try:
             self.writer.close()
             await self.writer.wait_closed()
-        except Exception:
+        except OSError:
             log.debug("error closing connection", exc_info=True)
 
 

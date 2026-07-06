@@ -66,7 +66,8 @@ class SimulatorServer:
                 from all simulations.  The caller owns the writer's lifetime.
             api_token: Optional bearer token for API authentication. When set,
                 all HTTP requests must include ``Authorization: Bearer <token>``
-                header. WebSocket connections use ``?token=<token>`` query param.
+                header. WebSocket connections use ``Sec-WebSocket-Protocol:
+                bearer.<token>`` to avoid exposing the token in URLs.
         """
         self.node_port = node_port
         self.api_port = api_port
@@ -303,7 +304,7 @@ def main() -> None:
     import os
     import sys
 
-    from lichen.sim.auth import generate_token
+    from lichen.sim.auth import WeakTokenError, generate_token, validate_token_strength
 
     parser = argparse.ArgumentParser(description="LICHEN Simulator Server")
     parser.add_argument(
@@ -356,6 +357,13 @@ def main() -> None:
     if api_token == "generate":
         api_token = generate_token()
         print(f"Generated API token: {api_token}", file=sys.stderr)
+    elif api_token is not None:
+        # SECURITY: Validate user-provided tokens meet minimum entropy requirements
+        try:
+            validate_token_strength(api_token)
+        except WeakTokenError as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            sys.exit(1)
 
     # SECURITY: Warn when binding to non-localhost without authentication
     is_localhost = args.bind_address in ("127.0.0.1", "localhost", "::1")

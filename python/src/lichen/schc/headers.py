@@ -26,7 +26,7 @@ from abc import ABC, abstractmethod
 from ipaddress import IPv6Address
 
 from lichen.ipv6.icmpv6 import icmpv6_checksum
-from lichen.ipv6.packet import HEADER_LENGTH, IPv6Header, NextHeader
+from lichen.ipv6.packet import HEADER_LENGTH, IPv6Header, NextHeader, PacketError
 from lichen.ipv6.udp import UDP_HEADER_LENGTH, UDP_NEXT_HEADER, UdpDatagram
 from lichen.schc.codec import compress, decompress, residue_byte_length
 from lichen.schc.rules import (
@@ -106,9 +106,12 @@ class _CoapUdpProfile(PacketProfile):
     def _addr_ok(self, addr: int) -> bool: ...
 
     def matches(self, raw: bytes) -> bool:
+        # Minimum length: IPv6 header + UDP header + CoAP fixed header
+        if len(raw) < HEADER_LENGTH + UDP_HEADER_LENGTH + _COAP_FIXED_HEADER:
+            return False
         try:
             header = IPv6Header.from_bytes(raw)
-        except Exception:
+        except PacketError:
             return False
         if header.next_header != UDP_NEXT_HEADER:
             return False
@@ -176,9 +179,12 @@ class _RplProfile(PacketProfile):
     base_length: int
 
     def matches(self, raw: bytes) -> bool:
+        # Minimum length: IPv6 header + ICMPv6 header + RPL base fields
+        if len(raw) < HEADER_LENGTH + _ICMPV6_HEADER + self.base_length:
+            return False
         try:
             header = IPv6Header.from_bytes(raw)
-        except Exception:
+        except PacketError:
             return False
         if header.next_header != NextHeader.ICMPV6:
             return False
@@ -299,9 +305,12 @@ class Icmpv6EchoProfile(PacketProfile):
     rule = LINK_LOCAL_ICMPV6_ECHO_RULE
 
     def matches(self, raw: bytes) -> bool:
+        # Minimum length: IPv6 header + ICMPv6 echo base (type, code, checksum, id, seq)
+        if len(raw) < HEADER_LENGTH + _ICMPV6_ECHO_BASE:
+            return False
         try:
             header = IPv6Header.from_bytes(raw)
-        except Exception:
+        except PacketError:
             return False
         if header.next_header != NextHeader.ICMPV6:
             return False
@@ -365,7 +374,19 @@ def compress_packet(raw: bytes, profiles: tuple[PacketProfile, ...] = DEFAULT_PR
 
 
 def decompress_packet(data: bytes, profiles: tuple[PacketProfile, ...] = DEFAULT_PROFILES) -> bytes:
-    """Reconstruct a full packet from a SCHC-compressed datagram."""
+    """Reconstruct a full packet from a SCHC-compressed datagram.
+
+    Args:
+        data: One Rule-ID byte followed by the residue and any trailing payload.
+        profiles: Packet profiles to match against.
+
+    Returns:
+        The decompressed packet bytes.
+
+    Raises:
+        ValueError: If data is empty or no profile matches the rule ID.
+        SchcError: If the residue is truncated (not enough bytes for the rule).
+    """
     if not data:
         raise ValueError("empty SCHC packet")
     rule_id = data[0]

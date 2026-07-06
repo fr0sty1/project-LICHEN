@@ -109,7 +109,8 @@ class SimulatorAPI:
                 simulation ID just before a simulation is deleted via the API.
             api_token: Optional bearer token for API authentication. When set,
                 all requests must include ``Authorization: Bearer <token>``
-                header (or ``?token=<token>`` query param for WebSocket).
+                header. WebSocket connections use ``Sec-WebSocket-Protocol:
+                bearer.<token>`` to avoid exposing the token in URLs.
         """
         self._simulations: dict[str, Simulation] = {}
         self._chaos_engines: dict[str, ChaosEngine] = {}

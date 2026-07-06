@@ -55,6 +55,8 @@ pub enum EdhocError {
     DecryptFailed,
     /// Buffer too small.
     BufferTooSmall,
+    /// Key derivation function failed.
+    KeyDerivation,
 }
 
 impl core::fmt::Display for EdhocError {
@@ -66,6 +68,7 @@ impl core::fmt::Display for EdhocError {
             Self::SignatureVerification => write!(f, "signature verification failed"),
             Self::DecryptFailed => write!(f, "AEAD decryption failed"),
             Self::BufferTooSmall => write!(f, "buffer too small"),
+            Self::KeyDerivation => write!(f, "key derivation failed"),
         }
     }
 }
@@ -150,13 +153,11 @@ fn edhoc_kdf(
     }
 
     // HKDF-Expand
-    // INFALLIBLE: PRK is [u8; 32] which matches SHA-256 output length (32 bytes)
-    let hk = Hkdf::<Sha256>::from_prk(prk).expect("PRK is 32 bytes, matching SHA-256 hash length");
+    // SECURITY: Propagate errors instead of panicking in crypto code path
+    let hk = Hkdf::<Sha256>::from_prk(prk).map_err(|_| EdhocError::KeyDerivation)?;
     let mut okm = heapless::Vec::new();
-    // INFALLIBLE: heapless::Vec<u8, 32> can hold up to 32 bytes; all callers use length <= 16
-    okm.resize(length, 0).expect("output Vec<u8, 32> fits any KDF output <= 32");
-    // INFALLIBLE: HKDF-Expand can produce up to 255 * hash_len bytes; length <= 32 is well within
-    hk.expand(&info, &mut okm).expect("requested length <= 32 is within HKDF-Expand limits");
+    okm.resize(length, 0).map_err(|_| EdhocError::BufferTooSmall)?;
+    hk.expand(&info, &mut okm).map_err(|_| EdhocError::KeyDerivation)?;
     Ok(okm)
 }
 

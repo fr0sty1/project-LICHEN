@@ -21,13 +21,13 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from ipaddress import IPv6Address
 
-from lichen.ipv6 import to_ipv6
 from lichen.gradient import (
     GRADIENT_TIMEOUT_MS,
     GradientEntry,
     GradientSource,
     GradientTable,
 )
+from lichen.ipv6 import to_ipv6
 from lichen.loadng.cache import RouteCache, RouteEntry
 from lichen.loadng.messages import INITIAL_HOP_LIMIT, RREP, RREQ
 

@@ -75,7 +75,16 @@ fn enc_head(out: &mut [u8], pos: usize, major: u8, n: u64) -> Result<usize, Cbor
             out[pos + 1] = n as u8;
             Ok(2)
         }
-        _ => Err(CborError::NotImplemented), // Values > 255 not supported
+        0x100..=0xffff => {
+            if pos + 3 > out.len() {
+                return Err(BufferTooSmall::new(pos + 3, out.len()).into());
+            }
+            out[pos] = major | 25;
+            out[pos + 1] = (n >> 8) as u8;
+            out[pos + 2] = n as u8;
+            Ok(3)
+        }
+        _ => Err(CborError::NotImplemented), // Values > 65535 not supported
     }
 }
 
@@ -605,5 +614,48 @@ mod tests {
         let mut buf = [0u8; 64];
         let n = encode(&records, &mut buf).unwrap();
         assert_eq!(Record::parse(&buf[..n]), Err(CborError::InvalidInput));
+    }
+
+    #[test]
+    fn roundtrip_long_string_value() {
+        // Test string > 255 bytes (requires 2-byte length encoding)
+        let long_string = "x".repeat(300);
+        let records = [Record {
+            name: Some("data"),
+            string_value: Some(&long_string),
+            ..Record::empty()
+        }];
+        let mut buf = [0u8; 512];
+        let n = encode(&records, &mut buf).unwrap();
+        let mut decoded = [Record::empty()];
+        let count = decode(&buf[..n], &mut decoded).unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(decoded[0].string_value, Some(long_string.as_str()));
+    }
+
+    #[test]
+    fn enc_head_2byte_length() {
+        // Verify 2-byte length encoding (values 256-65535)
+        let mut buf = [0u8; 8];
+        // Encode length 256 with major type 3 (text string: 0x60)
+        let n = enc_head(&mut buf, 0, 0x60, 256).unwrap();
+        assert_eq!(n, 3);
+        assert_eq!(buf[0], 0x79); // major 3 (0x60) | additional 25
+        assert_eq!(buf[1], 0x01); // high byte of 256
+        assert_eq!(buf[2], 0x00); // low byte of 256
+
+        // Encode length 65535
+        let n = enc_head(&mut buf, 0, 0x60, 65535).unwrap();
+        assert_eq!(n, 3);
+        assert_eq!(buf[0], 0x79);
+        assert_eq!(buf[1], 0xff);
+        assert_eq!(buf[2], 0xff);
+    }
+
+    #[test]
+    fn enc_head_rejects_values_over_65535() {
+        let mut buf = [0u8; 8];
+        let result = enc_head(&mut buf, 0, 0x00, 65536);
+        assert_eq!(result, Err(CborError::NotImplemented));
     }
 }
