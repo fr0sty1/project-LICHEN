@@ -30,6 +30,7 @@ from lichen.announce.processor import (
     GRADIENT_TIMEOUT_MS,
     AnnounceProcessor,
     AnnounceRejectReason,
+    seq_gt,
 )
 from lichen.crypto.identity import Identity
 from lichen.crypto.schnorr48 import sign
@@ -585,3 +586,65 @@ class TestKeyPinning:
         assert result.accepted
         # Pin unchanged
         assert processor.pinned_pubkey_for(identity.iid) == identity.pubkey
+
+
+class TestSeqNumWrapAround:
+    """Tests for RFC 1982 serial arithmetic on 16-bit seq_num."""
+
+    def test_seq_gt_basic(self):
+        """Basic seq_gt comparisons without wrap."""
+        assert seq_gt(2, 1) is True
+        assert seq_gt(1, 2) is False
+        assert seq_gt(1, 1) is False
+        assert seq_gt(100, 50) is True
+        assert seq_gt(50, 100) is False
+
+    def test_seq_gt_wrap_around(self):
+        """seq_gt handles wrap from 65535 to 0 correctly."""
+        # 0 is "greater" than 65535 (just wrapped)
+        assert seq_gt(0, 65535) is True
+        # 65535 is NOT greater than 0 (it's behind after wrap)
+        assert seq_gt(65535, 0) is False
+        # 1 is greater than 65535
+        assert seq_gt(1, 65535) is True
+        # 100 is greater than 65500 (wrapped recently)
+        assert seq_gt(100, 65500) is True
+
+    def test_seq_gt_half_space(self):
+        """seq_gt boundary at half sequence space (32768)."""
+        # Exactly half apart: ambiguous, but RFC 1982 says NOT greater
+        # Because diff == 32768 is NOT < 32768
+        assert seq_gt(32768, 0) is False
+        assert seq_gt(0, 32768) is False
+        # Just under half: is greater
+        assert seq_gt(32767, 0) is True
+        # Just over half: not greater (considered behind)
+        assert seq_gt(32769, 0) is False
+
+    def test_accepts_seq_after_wrap(
+        self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
+    ):
+        """Announce with seq_num=0 is accepted after seq_num=65535."""
+        # Simulate a node near wrap point
+        ann1 = make_signed_announce(identity, seq_num=65535)
+        result1 = processor.process(ann1, neighbor, now_ms=0)
+        assert result1.accepted is True
+
+        # Next announce wraps to 0
+        ann2 = make_signed_announce(identity, seq_num=0)
+        result2 = processor.process(ann2, neighbor, now_ms=1000)
+        assert result2.accepted is True  # Must accept, not reject as stale
+
+    def test_rejects_old_after_wrap(
+        self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
+    ):
+        """After wrap, old seq_num=65535 is correctly rejected."""
+        # Start after wrap
+        ann1 = make_signed_announce(identity, seq_num=100)
+        processor.process(ann1, neighbor, now_ms=0)
+
+        # Old announce from before wrap is stale
+        ann2 = make_signed_announce(identity, seq_num=65535)
+        result = processor.process(ann2, neighbor, now_ms=1000)
+        assert result.accepted is False
+        assert result.reject_reason == AnnounceRejectReason.STALE_SEQNUM

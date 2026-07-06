@@ -28,6 +28,25 @@ from lichen.gradient import GradientEntry, GradientSource, GradientTable
 
 logger = logging.getLogger(__name__)
 
+# Why 16-bit: Announce seq_num is 16 bits (spec section 9.3).
+SEQ_BITS = 16
+SEQ_HALF = 1 << (SEQ_BITS - 1)  # 32768
+
+
+def seq_gt(a: int, b: int) -> bool:
+    """RFC 1982 serial number arithmetic: return True if a > b (wrap-aware).
+
+    Why: 16-bit sequence numbers wrap around. Simple comparison fails when
+    seq_num wraps from 65535 to 0. RFC 1982 defines "greater than" as:
+    a > b iff (a != b) and ((a - b) mod 2^N) < 2^(N-1)
+
+    This means a is "ahead" of b if the unsigned distance (a - b) is less than
+    half the sequence space. Works correctly across wrap boundaries.
+    """
+    diff = (a - b) & 0xFFFF  # mod 2^16
+    return a != b and diff < SEQ_HALF
+
+
 # Why 300_000: Spec section 9.4. 300 seconds between announces.
 ANNOUNCE_INTERVAL_MS = 300_000
 
@@ -171,10 +190,11 @@ class AnnounceProcessor:
                 reject_reason=AnnounceRejectReason.KEY_CHANGE_DETECTED,
             )
 
-        # Step 4: Check for stale/duplicate
+        # Step 4: Check for stale/duplicate (RFC 1982 serial arithmetic)
         # Why: Prevents processing old announces that were delayed in the network.
+        # Why seq_gt: 16-bit seq_num wraps. Simple comparison fails after 65535→0.
         existing_seq = self._seen.get(iid)
-        if existing_seq is not None and announce.seq_num <= existing_seq:
+        if existing_seq is not None and not seq_gt(announce.seq_num, existing_seq):
             logger.debug(
                 "announce stale: originator=%s seq=%d <= seen=%d",
                 iid.hex(),
