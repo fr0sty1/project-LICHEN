@@ -22,6 +22,30 @@ interface, using the same CoAP protocol stack as mesh traffic.
 4. **Standard tools work:** Any CoAP client can control the node
 5. **Push via Observe:** Notifications use CoAP Observe (RFC 7641)
 
+### 17.1.1. Legacy Interface Deprecation
+
+An earlier draft protocol under `spec/lichen-native/` defined a CBOR integer-key
+framing scheme (0xC1 start byte, message type codes 0x01-0x61). That protocol
+was a prototype exploration and is **not authoritative** for LCI.
+
+**Deprecated elements (do not implement):**
+
+- 0xC1 + length + CBOR frame envelope
+- Integer message type codes (hello=0x01, config_get=0x10, raw_tx=0x60, etc.)
+- Integer configuration keys
+- `raw_tx` / `raw_rx` CBOR messages
+- `/messages` REST-style resource from Python demos
+
+**Current LCI contract:**
+
+- SLIP-framed IPv6 packets (or native IPv6 over BLE L2CAP / IPC)
+- CoAP resources at well-known paths (`/config`, `/status`, `/diag/raw/*`)
+- CBOR payloads with string keys for human readability and tooling compatibility
+
+The `spec/lichen-native/` directory is retained for historical reference. Each
+file there carries a status banner; implementers finding those files should
+follow the cross-references to this document.
+
 ### 17.2. Architecture
 
 ```
@@ -265,6 +289,13 @@ Content-Format: application/cbor
   "battery_pct": 87,
   "battery_mv": 3950,
   "mem_free_kb": 42,
+  "time": {
+    "wall_clock_valid": true,
+    "unix_time": 1716742800,
+    "source_class": "gnss",
+    "source_name": "onboard-gnss",
+    "age_s": 120
+  },
   "dodag": {
     "joined": true,
     "rank": 512,
@@ -279,6 +310,13 @@ Content-Format: application/cbor
   }
 }
 ```
+
+The `time` object exposes the firmware time provider state (see
+`docs/firmware-time-provider.md`). When `wall_clock_valid` is false, `unix_time`
+is omitted or zero and the node cannot provide authoritative timestamps. The
+`source_class` indicates how time was obtained (gnss, network, local-client,
+manual, internal-rtc). The `age_s` field shows seconds since the last accepted
+time sample.
 
 Status updates pushed via Observe on significant changes.
 

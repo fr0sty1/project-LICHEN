@@ -36,6 +36,18 @@ Text messaging between nodes, supporting unicast, multicast, and broadcast.
 }
 ```
 
+**Timestamp Semantics:**
+
+The `ts` field is a Unix timestamp (seconds since 1970-01-01T00:00:00Z) from
+the firmware time provider. Senders SHOULD include `ts` only when their time
+provider reports `wall_clock_valid=true`. Receivers MAY accept messages without
+`ts` or with `ts=0` as "time unknown" rather than rejecting them.
+
+The `ttl` field is a relative duration in seconds. Expiry comparison uses the
+receiver's wall-clock time when available. Nodes without valid wall-clock time
+SHOULD NOT enforce TTL-based expiry (messages remain valid until storage
+eviction).
+
 #### 18.1.2. Resources
 
 **Send Message:**
@@ -538,8 +550,10 @@ Each node enforces per-source SOS rate limits:
 | Max SOS per hour | 3 | Limits intentional abuse |
 | Burst allowance | 2 | Allows rapid updates to same SOS |
 
-Nodes track (source IID, SOS count, last SOS timestamp). An SOS from
-a node that exceeds rate limits is dropped and logged but not relayed.
+Nodes track (source IID, SOS count, last SOS uptime). Rate limiting uses
+monotonic uptime rather than wall-clock time to ensure enforcement works even
+when wall-clock is unavailable. An SOS from a node that exceeds rate limits
+is dropped and logged but not relayed.
 
 **Soft Blacklist (RECOMMENDED):**
 

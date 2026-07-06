@@ -400,10 +400,14 @@ Nodes MUST track duty cycle usage and throttle transmissions accordingly.
 
 ```
 Per-channel state:
-  last_tx_end: <timestamp>
+  last_tx_end: <monotonic uptime>
   tx_time_window: <rolling 1-hour sum of airtime>
   duty_limit: <region-specific, e.g., 0.01 for EU 868 sub-band>
 ```
+
+Note: `last_tx_end` uses monotonic uptime (not wall-clock time) because duty
+cycle accounting must work even when wall-clock time is unavailable. The
+rolling window is tracked via uptime deltas.
 
 **Congestion Levels:**
 
@@ -439,11 +443,32 @@ TX queue ordered by priority:
 |----------|--------------|
 | 0 (highest) | SOS, emergency |
 | 1 | RPL control (DIO, DAO) |
-| 2 | CoAP CON (awaiting ACK) |
-| 3 | CoAP NON, telemetry |
+| 2 | CoAP CON, tactical chat |
+| 3 | CoAP NON, telemetry, position |
 | 4 (lowest) | Bulk transfer, firmware |
 
 During congestion, low-priority traffic is dropped first.
+
+**Application-to-Priority Mapping:**
+
+| Port | Application | Subtype/Condition | Priority |
+|------|-------------|-------------------|----------|
+| 5681 | Compact CoT | Alert (0x20) | P0 |
+| 5681 | Compact CoT | Chat (0x01) | P2 |
+| 5681 | Compact CoT | PLI (0x02-0x05) | P3 |
+| 5681 | Compact CoT | Marker (0x10) | P3 |
+| 5682 | SenML | All | P3 |
+| 5683 | CoAP | CON | P2 |
+| 5683 | CoAP | NON | P3 |
+| 5685 | Cayenne | All | P3 |
+| 5686 | APRS-IS | All | P3 |
+| 5687 | NMEA | All | P3 |
+| 10883 | MQTT-SN | QoS 1+ | P2 |
+| 10883 | MQTT-SN | QoS 0/-1 | P3 |
+
+Tactical chat (CoT subtype 0x01) is elevated to P2 because tac messaging
+typically carries time-sensitive coordination. Routine PLI and telemetry
+remain at P3. CoT alerts jump to P0--they are emergency traffic.
 
 ### 10.3. CoAP Observe (RFC 7641)
 

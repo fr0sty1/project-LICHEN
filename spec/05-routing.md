@@ -356,7 +356,12 @@ S = Store-and-forward requested
 
 **Absolute TTL:**
 
-Store-and-forward messages carry absolute expiry (Unix timestamp, 4 bytes) instead of hop limit. Expired messages are dropped silently.
+Store-and-forward messages carry absolute expiry (Unix timestamp, 4 bytes)
+instead of hop limit. Expired messages are dropped silently. Expiry
+comparison requires valid wall-clock time from the firmware time provider
+(see `docs/firmware-time-provider.md`). Nodes without valid wall-clock time
+MUST NOT drop messages based on expiry timestamp alone; they SHOULD forward
+or store messages and let downstream nodes with valid time enforce expiry.
 
 ```
 App Data (DTN expiry):

@@ -147,29 +147,53 @@ Per node, accounting for routing: ~100-300 packets/hour comfortable.
 ### 14.6. Time Synchronization
 
 Accurate time is needed for replay protection, message TTL, SenML timestamps,
-and scheduled operations. Nodes use a hierarchical approach with graceful
-degradation.
+and scheduled operations. LICHEN firmware uses a unified time provider that
+separates monotonic uptime from wall-clock time and validates all time sources
+against epoch floors. See `docs/firmware-time-provider.md` for the full design.
 
-**Time Sources (in priority order):**
+**Time Provider Architecture:**
 
-| Priority | Source | Accuracy | Requirements | Auth |
-|----------|--------|----------|--------------|------|
-| 1 | GPS (on-device) | ~1ms | GPS hardware + sky view | Implicit |
-| 2 | gpsd (via LCI) | ~1ms | Host with GPS | Local |
-| 3 | NTS (RFC 8915) | ~100ms | Internet via BR | TLS |
-| 4 | Roughtime | ~10s | Internet via BR | Signatures |
-| 5 | Mesh peer (DIO) | ~1s | Peer with time | DIO signature |
-| 6 | None | - | - | - |
+The firmware-wide time provider tracks:
+
+- **Monotonic uptime:** Always available, used for age calculations and replay
+  protection within a power cycle. Never synthesized into Unix time.
+- **Wall-clock time:** Unix seconds, only valid after a trusted source provides
+  a timestamp at or above the effective epoch floor.
+
+**Source Classes (by trust/precedence):**
+
+| Class | Examples | Can Establish Wall Clock? |
+|-------|----------|---------------------------|
+| GNSS | On-device GNSS, external GNSS | Yes, if timestamp >= epoch floor |
+| Network | NTS (RFC 8915), Roughtime, SNTP, mesh peer DIO | Yes, if authenticated or policy-accepted and >= floor |
+| Local-client | Phone/app via LCI, gpsd | Yes, if policy permits and >= floor |
+| Manual/static | Provisioning tool, configuration | Yes, if policy permits and >= floor |
+| Internal RTC | Retained RTC, external RTC chip | Yes, if >= floor (accuracy degrades with age) |
+| Monotonic | Uptime, cycle counter | No (ordering and age only) |
+
+**Epoch Floor Validation:**
+
+The effective epoch floor prevents stale or bogus timestamps from establishing
+wall-clock time:
+
+```
+effective_epoch_floor = max(firmware_build_epoch, board_provision_epoch_if_valid)
+```
+
+Time samples below this floor are rejected for wall-clock establishment.
+This guards against common failures: GNSS modules reporting their default
+epoch (1980 or 1999), apps sending zero timestamps, or RTCs booting with
+uninitialized values.
 
 **Time Stratum (propagated in DIO Time Option):**
 
-| Value | Meaning | Source |
-|-------|---------|--------|
+| Value | Meaning | Source Class |
+|-------|---------|--------------|
 | 0 | No sync | Monotonic counters only |
-| 1 | Mesh-derived | ±10s, from peer |
-| 2 | Roughtime | ±10s, from BR |
-| 3 | NTS | ±100ms, from BR |
-| 4 | GPS/gpsd | ±1ms, authoritative |
+| 1 | Mesh-derived | Network (peer DIO) |
+| 2 | Roughtime | Network (BR) |
+| 3 | NTS | Network (BR) |
+| 4 | GNSS/gpsd | GNSS or Local-client |
 
 **DIO Time Option (Type TBD):**
 
@@ -180,23 +204,29 @@ degradation.
    1B       1B       1B       1B          4B (Unix epoch)
 ```
 
-Nodes receiving DIO with higher stratum than their own MAY adopt that time.
-Nodes MUST NOT adopt time from lower stratum sources.
+Nodes receiving DIO with higher stratum than their own MAY adopt that time,
+subject to epoch floor validation. Nodes MUST NOT adopt time from lower
+stratum sources. Nodes MUST NOT accept DIO timestamps below their effective
+epoch floor.
 
 **Constrained Node Behavior:**
 
-Nodes without any time source:
+Nodes without a valid wall-clock source:
 - Use sequence numbers for replay protection (works within power cycle)
-- SHOULD persist epoch counter across reboots (increment on boot)
-- MAY omit absolute timestamps from SenML (use relative only)
-- MUST NOT originate time-sensitive operations (scheduled check-in)
+- SHOULD persist replay epoch counter across reboots (increment on boot)
+- MAY omit absolute timestamps from SenML (use relative `t` offsets only)
+- MUST NOT originate time-sensitive operations (scheduled check-in, message
+  TTL that requires wall-clock comparison)
+- Report `wall_clock_valid=false` via LCI status until a valid source appears
 
 **Border Router Responsibilities:**
 
 Border routers with internet connectivity SHOULD:
 - Run NTS client (preferred) or Roughtime client
+- Validate obtained time against the epoch floor before advertising
 - Advertise time in DIO with appropriate stratum
 - Provide NTS/Roughtime proxy for LCI clients
+- Expose time provider state (source class, validity, age) via CoAP status
 
 ---
 

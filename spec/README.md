@@ -56,6 +56,12 @@ hardware as a reflash -- same radios, new protocol.
 - [Appendix F: SenML Profile](appendix-senml.md) - Sensor Data Format
 - [Appendix G: Design Rationale](appendix-design-rationale.md) - Inspirations and Constraints
 
+### Historical / Deprecated
+
+- [lichen-native/](lichen-native/) - **Deprecated** early prototype protocol (CBOR
+  integer-key framing). Retained for reference only; see
+  [Local Client Interface](11-lci.md) for the current native app contract.
+
 ### Internet-Drafts (Preliminary)
 
 Standalone documents for novel or reusable components:
