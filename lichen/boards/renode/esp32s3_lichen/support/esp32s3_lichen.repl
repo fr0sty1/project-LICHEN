@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: The contributors to the LICHEN project
+//
+// ESP32-S3 platform for LICHEN with external SX1262 radio.
+// Minimal platform for T-Deck, Heltec V3, and similar ESP32-S3 + SX1262 boards.
+// ponytail: stub memory regions and tagged peripherals - enough for simulation
+
+// ESP32-S3 memory map (from TRM)
+// ROM at 0x40000000-0x4005FFFF (384KB)
+// SRAM at 0x3FC88000-0x3FCFFFFF (512KB)
+// Flash mapped at 0x3C000000-0x3DFFFFFF
+
+rom: Memory.MappedMemory @ sysbus 0x40000000
+    size: 0x60000
+
+// Internal SRAM (data at 0x3FC88000, instruction at 0x40370000)
+sram: Memory.MappedMemory @ { sysbus 0x3FC88000; sysbus 0x40370000 }
+    size: 0x78000
+
+// RTC fast memory
+rtcFast: Memory.MappedMemory @ sysbus 0x600FE000
+    size: 0x2000
+
+// External flash cache (stub for XIP)
+flashCache: Memory.MappedMemory @ sysbus 0x3C000000
+    size: 0x1000000
+
+// CPU0 - Xtensa LX7
+cpu0: CPU.Xtensa @ sysbus
+    cpuType: "sample_controller"
+    frequency: 240000000
+
+// UART0 - console
+uart0: UART.ESP32_UART @ sysbus 0x60000000
+    -> cpu0@5
+
+// SPI2 (HSPI) - used for SX1262
+// Using STM32SPI as a generic SPI controller stub (no ESP32 SPI in Renode yet)
+// Actual register layout doesn't matter for simulation - firmware talks to SX1262 directly
+spi2: SPI.STM32SPI @ sysbus 0x60024000
+
+// SX1262 LoRa radio on SPI2
+sx1262: Wireless.SX1262 @ spi2
+    simHost: "127.0.0.1"
+    simPort: 5555
+
+// GPIO registers (stub tags)
+sysbus:
+    init add:
+        Tag <0x60004000 0x100> "GPIO"
+        Tag <0x60004100 0x100> "GPIO1"
+        Tag <0x60009000 0x100> "IO_MUX"
+        Tag <0x60008000 0x1000> "RTC_CNTL"
+        Tag <0x6001F000 0x1000> "SYSTEM"
+        Tag <0x60003000 0x1000> "SPI0/1"
+        Tag <0x60026000 0x1000> "I2C0"
+        Tag <0x60027000 0x1000> "I2C1"
+        Tag <0x6001C000 0x1000> "TIMG0"
+        Tag <0x6001D000 0x1000> "TIMG1"
+        Tag <0x60010000 0x1000> "EFUSE"
+        // Boot mode: SPI fast flash boot
+        Tag <0x60004038 4> "GPIO_STRAP" 0x0c
+        // Chip version tag
+        Tag <0x60010044 4> "EFUSE_RD_MAC_SPI_SYS_3" 0x0

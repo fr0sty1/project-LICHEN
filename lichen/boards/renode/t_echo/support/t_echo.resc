@@ -1,0 +1,28 @@
+:name: T-Echo
+:description: Run LICHEN firmware on LilyGO T-Echo in Renode
+
+$name?="T-Echo"
+$simPort?=5555
+
+using sysbus
+
+# Load SX1262 peripheral
+include $ORIGIN/../../peripherals/SX1262.cs
+
+mach create $name
+machine LoadPlatformDescription $ORIGIN/t_echo.repl
+
+# Set SX1262 sim port
+spi2.sx1262 SimPort $simPort
+
+# UART0 console
+showAnalyzer uart0
+
+# 64 MHz
+cpu PerformanceInMips 64
+
+macro reset
+"""
+    sysbus LoadELF $elf
+"""
+runMacro $reset

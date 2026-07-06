@@ -1,0 +1,28 @@
+:name: RAK4631
+:description: Run LICHEN firmware on RAK4631 WisBlock in Renode
+
+$name?="RAK4631"
+$simPort?=5555
+
+using sysbus
+
+# Load SX1262 peripheral
+include $ORIGIN/../../peripherals/SX1262.cs
+
+mach create $name
+machine LoadPlatformDescription $ORIGIN/rak4631.repl
+
+# Set SX1262 sim port
+spi2.sx1262 SimPort $simPort
+
+# UART1 console (per RAK4631 DTS chosen)
+showAnalyzer uart1
+
+# 64 MHz
+cpu PerformanceInMips 64
+
+macro reset
+"""
+    sysbus LoadELF $elf
+"""
+runMacro $reset

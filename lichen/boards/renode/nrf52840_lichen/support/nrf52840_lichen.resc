@@ -1,0 +1,29 @@
+:name: nRF52840-LICHEN
+:description: Run LICHEN firmware on nRF52840 with SX1262 radio in Renode
+
+$name?="nRF52840-LICHEN"
+$simPort?=5555
+
+using sysbus
+
+# Load SX1262 peripheral (bridges to lichen-sim)
+include $ORIGIN/../../peripherals/SX1262.cs
+
+mach create $name
+machine LoadPlatformDescription $ORIGIN/nrf52840_lichen.repl
+
+# Set SX1262 sim port (can override via $simPort)
+# SPI slaves are namespaced under their bus
+spi2.sx1262 SimPort $simPort
+
+# UART0 console (USB CDC-ACM in firmware, virtual UART in Renode)
+showAnalyzer uart0
+
+# 64 MHz system clock (nRF52840 default)
+cpu PerformanceInMips 64
+
+macro reset
+"""
+    sysbus LoadELF $elf
+"""
+runMacro $reset

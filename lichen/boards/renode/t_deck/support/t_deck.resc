@@ -1,0 +1,28 @@
+:name: T-Deck
+:description: Run LICHEN firmware on LilyGO T-Deck in Renode
+
+$name?="T-Deck"
+$simPort?=5555
+
+using sysbus
+
+# Load SX1262 peripheral (bridges to lichen-sim)
+include $ORIGIN/../../peripherals/SX1262.cs
+
+mach create $name
+machine LoadPlatformDescription $ORIGIN/t_deck.repl
+
+# Set SX1262 sim port (can override via $simPort)
+spi2.sx1262 SimPort $simPort
+
+# UART0 console (TX=GPIO43, RX=GPIO44)
+showAnalyzer uart0
+
+# 240 MHz system clock (ESP32-S3 max)
+cpu0 PerformanceInMips 240
+
+macro reset
+"""
+    sysbus LoadELF $elf
+"""
+runMacro $reset

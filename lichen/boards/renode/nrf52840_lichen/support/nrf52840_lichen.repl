@@ -1,0 +1,29 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: The contributors to the LICHEN project
+//
+// nRF52840 platform for LICHEN with external SX1262 radio.
+// Extends Renode's stock nRF52840 with SPI1 and SX1262 peripheral.
+// ponytail: minimal platform, add peripherals as needed
+
+using "platforms/cpus/nrf52840.repl"
+
+// nRF52840 shares SPI1/TWI1 at 0x40004000 - base platform has TWI1 there.
+// We use SPI2 at 0x40023000 (already in base) for SX1262 instead.
+// ponytail: works for simulation - actual pin routing doesn't matter in Renode
+
+// SX1262 LoRa radio on SPI2
+// GPIO wiring is board-specific (T-Echo vs RAK4631 differ)
+// Default config matches T-Echo: RESET=P0.25, BUSY=P0.17, DIO1=P0.20
+sx1262: Wireless.SX1262 @ spi2
+    simHost: "127.0.0.1"
+    simPort: 5555
+
+// Wire SX1262 GPIO pins (directly, board overlays can adjust)
+// RESET from GPIO0 pin 25 (directly driven by firmware)
+gpio0:
+    25 -> sx1262@0
+
+// SX1262 outputs
+sx1262:
+    IRQ -> gpio0@20
+    Busy -> gpio0@17

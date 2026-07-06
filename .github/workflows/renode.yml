@@ -1,0 +1,83 @@
+name: Renode
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  renode:
+    name: Renode Platform Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Renode
+        id: cache-renode
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/renode
+          key: renode-1.16.1-linux
+
+      - name: Install Renode
+        if: steps.cache-renode.outputs.cache-hit != 'true'
+        run: |
+          # Download portable Renode release
+          wget -q https://github.com/renode/renode/releases/download/v1.16.1/renode-1.16.1.linux-portable.tar.gz
+          mkdir -p ~/.local/share/renode
+          tar -xzf renode-1.16.1.linux-portable.tar.gz -C ~/.local/share/renode --strip-components=1
+          rm renode-1.16.1.linux-portable.tar.gz
+
+      - name: Add Renode to PATH
+        run: echo "$HOME/.local/share/renode" >> $GITHUB_PATH
+
+      - name: Verify Renode installation
+        run: renode --version
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python dependencies
+        working-directory: python
+        run: |
+          pip install uv
+          uv sync --locked --all-extras --dev
+
+      - name: Run Renode server tests (no firmware)
+        working-directory: python
+        run: |
+          # Run tests that don't require firmware - just the TCP bridge protocol
+          uv run pytest -v tests/sim/test_renode_server.py --timeout=60
+
+      - name: Validate platform files load
+        run: |
+          # Test that all platform description files parse without errors
+          for repl in lichen/boards/renode/*/support/*.repl; do
+            echo "Validating: $repl"
+            renode --disable-gui --console -e "mach create; machine LoadPlatformDescription @$repl; quit" || {
+              echo "FAIL: $repl failed to load"
+              exit 1
+            }
+          done
+
+      - name: Validate script files syntax
+        run: |
+          # Test that .resc files have valid syntax (load peripherals and platform)
+          # Note: These may fail at macro execution due to missing $elf, but syntax should parse
+          for resc in lichen/boards/renode/*/support/*.resc; do
+            echo "Checking syntax: $resc"
+            # Use --console to get error output, execute include/mach commands but skip the macro
+            # We extract just the platform/peripheral loading portion
+            renode --disable-gui --console -e "include @$resc; quit" 2>&1 | tee /tmp/resc_out.txt || true
+            # Check for fatal parse errors (not missing $elf which is expected)
+            if grep -q "Could not find file" /tmp/resc_out.txt || \
+               grep -q "Syntax error" /tmp/resc_out.txt || \
+               grep -q "Exception:" /tmp/resc_out.txt; then
+              echo "FAIL: $resc has errors"
+              cat /tmp/resc_out.txt
+              exit 1
+            fi
+          done
