@@ -160,6 +160,7 @@ pub const MAX_FRAME_BODY: usize = 255;
 
 /// Error type for link-layer frame parsing and serialisation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FrameError {
     Empty,
     TooShort(TooShort),
@@ -260,6 +261,12 @@ impl<'a> LichenFrame<'a> {
     }
 
     /// Parse a frame from a byte slice.
+    ///
+    /// # Panics
+    ///
+    /// This function does not panic. Internal `.expect()` calls guard state
+    /// machine transitions that are provably valid by control flow. Malformed
+    /// input returns `Err(FrameError)`, never a panic.
     pub fn from_bytes(data: &'a [u8]) -> Result<Self, FrameError> {
         let mut state = FrameProcessingState::Start;
         if data.is_empty() {

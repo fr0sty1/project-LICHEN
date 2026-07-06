@@ -8,6 +8,11 @@ use sha2::{Digest, Sha256};
 ///
 /// IID = SHA-256(pubkey)[0:8] with the U/L bit (bit 1 of byte 0) cleared.
 /// RFC 4291 §2.5.1 — locally-administered identifier.
+///
+/// # Panics
+///
+/// This function does not panic. Internal `.unwrap()` calls operate on
+/// fixed-size SHA-256 output slices that are provably the correct length.
 pub fn iid_from_pubkey(pubkey: &PublicKey) -> [u8; 8] {
     iid_from_pubkey_bytes(pubkey.as_bytes())
 }

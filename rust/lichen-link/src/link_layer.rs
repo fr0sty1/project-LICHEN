@@ -17,6 +17,7 @@ use lichen_core::error::TooShort;
 
 /// Error returned by [`LinkLayer::receive_frame`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum LinkRxError {
     Frame(FrameError),
     /// Frame has no signature but all LICHEN frames must be signed.
