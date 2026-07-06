@@ -141,3 +141,38 @@ def test_remove_parent_falls_back_or_unjoins() -> None:
     assert node.role is DodagRole.UNJOINED
     assert node.preferred_parent is None
     assert node.get_rank() == INFINITE_RANK
+
+
+def test_process_dio_accepts_string_neighbor_id() -> None:
+    """Verify that process_dio coerces string neighbor_id to IPv6Address."""
+    node = _node()
+    node.process_dio(_dio(256), "fe80::1", link_etx=1.0)  # string, not IPv6Address
+    assert node.role is DodagRole.JOINED
+    assert node.preferred_parent == P1  # should match the IPv6Address constant
+    assert P1 in node.parents
+
+
+def test_remove_parent_accepts_string_neighbor_id() -> None:
+    """Verify that remove_parent coerces string neighbor_id to IPv6Address."""
+    node = _node()
+    node.process_dio(_dio(256), P1, link_etx=1.0)
+    node.remove_parent("fe80::1")  # string, not IPv6Address
+    assert node.role is DodagRole.UNJOINED
+    assert P1 not in node.parents
+
+
+def test_process_dio_rejects_invalid_neighbor_id_type() -> None:
+    """Verify that process_dio raises TypeError for invalid neighbor_id types."""
+    import pytest
+
+    node = _node()
+    dio = _dio(256)
+
+    with pytest.raises(TypeError, match="neighbor_id must be IPv6Address or str"):
+        node.process_dio(dio, 12345, link_etx=1.0)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="neighbor_id must be IPv6Address or str"):
+        node.process_dio(dio, None, link_etx=1.0)  # type: ignore[arg-type]
+
+    with pytest.raises(TypeError, match="neighbor_id must be IPv6Address or str"):
+        node.process_dio(dio, ["fe80::1"], link_etx=1.0)  # type: ignore[arg-type]

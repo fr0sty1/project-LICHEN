@@ -1165,6 +1165,33 @@ async def test_mesh_refresh_renders_neighbors_and_routes() -> None:
     assert "trust tofu" in node_rendered
 
 
+async def test_rf_health_refresh_renders_neighbors_and_local_stats() -> None:
+    """Test RF health tab renders neighbor RF metrics and local stats (5g8t.6)."""
+    client = FakeMessagingClient()
+    app = NativeClientApp(ShellStatus(context="RF", state=UiState.SYNCED), client=client)
+
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        await pilot.press("r")
+        await pilot.pause()
+        rf_rendered = app.query_one("#active-pane", ActivePane).render_mode()
+
+    # Tab header and sections present
+    assert "RF HEALTH" in rf_rendered
+    assert "Local RF Stats" in rf_rendered
+    assert "Neighbor RF Health" in rf_rendered
+
+    # Neighbor info rendered with RF metrics
+    assert "fe80::2" in rf_rendered
+    assert "RSSI -80" in rf_rendered
+    assert "SNR 7.5" in rf_rendered
+    assert "seen 30s" in rf_rendered
+    # Note: success_rate and duty_observed are None in fake client
+
+    # Neighbors call made
+    assert client.neighbor_calls == 1
+
+
 async def test_config_refresh_renders_safe_rows_and_redacts_key_material() -> None:
     client = FakeMessagingClient()
     app = NativeClientApp(ShellStatus(context="Config", state=UiState.SYNCED), client=client)
@@ -1707,7 +1734,7 @@ async def test_native_client_app_renders_at_common_size() -> None:
         await pilot.pause()
         assert app.query_one("#native-status", NativeStatusBar).status.context == "Dashboard"
 
-        await pilot.press("5")
+        await pilot.press("6")
         await pilot.pause()
         assert app.query_one("#native-status", NativeStatusBar).status.context == "Config"
         assert "sync_word" in app.query_one("#active-pane", ActivePane).render_mode()
@@ -1823,14 +1850,19 @@ async def test_native_client_terminal_snapshots_cover_core_screens() -> None:
         await pilot.press("5")
         await pilot.press("r")
         await pilot.pause()
-        snapshots["config"] = app.export_screenshot()
+        snapshots["rf_health"] = app.export_screenshot()
 
         await pilot.press("6")
+        await pilot.press("r")
+        await pilot.pause()
+        snapshots["config"] = app.export_screenshot()
+
+        await pilot.press("7")
         await pilot.press("o")
         await pilot.pause()
         snapshots["logs"] = app.export_screenshot()
 
-        await pilot.press("7")
+        await pilot.press("8")
         await pilot.press("r")
         await pilot.pause()
         snapshots["diagnostics"] = app.export_screenshot()
@@ -1846,6 +1878,8 @@ async def test_native_client_terminal_snapshots_cover_core_screens() -> None:
     assert "compose" in snapshots["compose"]
     assert "fe80::2" in snapshots["nodes"]
     assert "fd00::/64" in snapshots["mesh"]
+    # RF tab shows local RF stats and neighbors
+    assert "local_rf" in snapshots["rf_health"] or "RF" in snapshots["rf_health"]
     assert "sync_word" in snapshots["config"]
     assert "timeout" in snapshots["logs"]
     assert "nested.queue" in snapshots["diagnostics"]

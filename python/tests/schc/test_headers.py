@@ -88,3 +88,44 @@ def test_non_udp_packet_falls_back() -> None:
     compressed = compress_packet(raw)
     assert compressed[0] == 255
     assert decompress_packet(compressed) == raw
+
+
+def test_truncated_input_falls_back_to_uncompressed() -> None:
+    """Too-short inputs should fall back to uncompressed rule (255), not raise."""
+    # Empty input - falls back
+    compressed = compress_packet(b"")
+    assert compressed[0] == 255
+    assert decompress_packet(compressed) == b""
+
+    # Less than IPv6 header length - falls back
+    short = b"\x60" + b"\x00" * 10  # partial IPv6 header
+    compressed = compress_packet(short)
+    assert compressed[0] == 255
+    assert decompress_packet(compressed) == short
+
+
+def test_truncated_coap_packet_falls_back() -> None:
+    """A valid IPv6 header but truncated UDP/CoAP should fall back."""
+    # IPv6 header with UDP next header but no payload
+    header = IPv6Header(
+        src_addr=SRC,
+        dst_addr=DST,
+        next_header=NextHeader.UDP,
+        payload_length=0,
+    )
+    raw = header.to_bytes()
+    compressed = compress_packet(raw)
+    assert compressed[0] == 255  # Falls back since no UDP data
+
+
+def test_truncated_icmpv6_falls_back() -> None:
+    """A valid IPv6 header with ICMPv6 but truncated payload falls back."""
+    header = IPv6Header(
+        src_addr=SRC,
+        dst_addr=DST,
+        next_header=NextHeader.ICMPV6,
+        payload_length=2,  # Too short for echo base (needs 8)
+    )
+    raw = header.to_bytes() + bytes(2)
+    compressed = compress_packet(raw)
+    assert compressed[0] == 255  # Falls back

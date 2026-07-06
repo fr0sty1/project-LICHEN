@@ -6,7 +6,14 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from lichen.sim.api import SimulatorAPI
-from lichen.sim.auth import generate_token
+from lichen.sim.auth import (
+    MIN_TOKEN_LENGTH,
+    WEBSOCKET_AUTH_SUBPROTOCOL,
+    WeakTokenError,
+    extract_websocket_token,
+    generate_token,
+    validate_token_strength,
+)
 
 
 class TestGenerateToken:
@@ -22,6 +29,46 @@ class TestGenerateToken:
         """generate_token returns unique tokens each call."""
         tokens = [generate_token() for _ in range(100)]
         assert len(set(tokens)) == 100
+
+
+class TestTokenValidation:
+    """Tests for token strength validation."""
+
+    def test_accepts_generated_token(self) -> None:
+        """validate_token_strength accepts generated tokens."""
+        token = generate_token()
+        # Should not raise
+        validate_token_strength(token)
+
+    def test_accepts_token_at_minimum_length(self) -> None:
+        """validate_token_strength accepts token at exactly minimum length."""
+        token = "a" * MIN_TOKEN_LENGTH
+        # Should not raise
+        validate_token_strength(token)
+
+    def test_rejects_short_token(self) -> None:
+        """validate_token_strength rejects tokens shorter than minimum."""
+        token = "a" * (MIN_TOKEN_LENGTH - 1)
+        with pytest.raises(WeakTokenError) as exc_info:
+            validate_token_strength(token)
+        assert str(MIN_TOKEN_LENGTH) in str(exc_info.value)
+        assert "generate" in str(exc_info.value).lower()
+
+    def test_rejects_very_short_token(self) -> None:
+        """validate_token_strength rejects obviously weak tokens."""
+        with pytest.raises(WeakTokenError):
+            validate_token_strength("password")
+
+    def test_rejects_empty_token(self) -> None:
+        """validate_token_strength rejects empty string."""
+        with pytest.raises(WeakTokenError):
+            validate_token_strength("")
+
+    def test_error_message_includes_helpful_hint(self) -> None:
+        """WeakTokenError message includes suggestion to use generate."""
+        with pytest.raises(WeakTokenError) as exc_info:
+            validate_token_strength("weak")
+        assert "generate" in str(exc_info.value).lower()
 
 
 class TestBearerAuthMiddleware:
@@ -157,3 +204,39 @@ class TestNoAuth:
 
         assert response.status_code == 200
         assert response.json()["id"] == "sim1"
+
+
+class TestWebSocketTokenExtraction:
+    """Tests for WebSocket subprotocol token extraction."""
+
+    def test_extracts_token_from_bearer_subprotocol(self) -> None:
+        """Extracts token from bearer.<token> subprotocol."""
+        token = extract_websocket_token([f"{WEBSOCKET_AUTH_SUBPROTOCOL}.my-secret-token"])
+        assert token == "my-secret-token"
+
+    def test_returns_none_when_no_bearer_subprotocol(self) -> None:
+        """Returns None when no bearer subprotocol present."""
+        token = extract_websocket_token(["graphql-ws", "json"])
+        assert token is None
+
+    def test_returns_none_for_empty_list(self) -> None:
+        """Returns None for empty subprotocol list."""
+        token = extract_websocket_token([])
+        assert token is None
+
+    def test_ignores_non_bearer_subprotocols(self) -> None:
+        """Ignores subprotocols that don't match bearer format."""
+        token = extract_websocket_token(
+            ["graphql-ws", f"{WEBSOCKET_AUTH_SUBPROTOCOL}.secret", "json"]
+        )
+        assert token == "secret"
+
+    def test_handles_bearer_prefix_only(self) -> None:
+        """Handles edge case of just 'bearer' without dot."""
+        token = extract_websocket_token([WEBSOCKET_AUTH_SUBPROTOCOL])
+        assert token is None
+
+    def test_extracts_empty_token_after_dot(self) -> None:
+        """Extracts empty string if token is empty after dot."""
+        token = extract_websocket_token([f"{WEBSOCKET_AUTH_SUBPROTOCOL}."])
+        assert token == ""
