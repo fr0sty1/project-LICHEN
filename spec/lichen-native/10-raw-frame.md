@@ -1,12 +1,8 @@
-# Raw Frame Access
+# Raw Frame Access (Historical)
 
-> Status: historical draft. The `raw_tx`, `raw_rx`, and `raw_rx_enable` CBOR
-> messages below are non-authoritative for LCI and MUST NOT be implemented by
-> new native clients as the BLE, USB, serial, or IP app contract. Current raw
-> diagnostics, when enabled, use the CoAP resource model in
-> [../11-lci.md](../11-lci.md).
+> **Status: FROZEN / PROTOTYPE-ONLY** — Do not implement. See [../11-lci.md](../11-lci.md).
 
-Send and receive raw link-layer frames for debugging and protocol development.
+**Deprecated** raw frame access from early prototypes. Do not use.
 
 ## Use Cases
 

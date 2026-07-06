@@ -1,10 +1,8 @@
-# Common Types
+# Common Types (Historical)
 
-> Status: historical draft. These CBOR message types are non-authoritative for
-> LCI. Current native app semantics are CoAP resources over IPv6; see
-> [../11-lci.md](../11-lci.md).
+> **Status: FROZEN / PROTOTYPE-ONLY** — See [../11-lci.md](../11-lci.md) for current LCI.
 
-Shared CDDL definitions used across message types.
+Shared CDDL definitions used by the **deprecated** prototype message types.
 
 ## CDDL
 

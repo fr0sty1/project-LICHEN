@@ -1,10 +1,8 @@
-# OTA Firmware Updates
+# OTA Firmware Updates (Historical)
 
-> Status: historical draft. These CBOR OTA messages are non-authoritative for
-> LCI. Firmware update behavior must be specified as LCI CoAP resources before
-> new clients or firmware rely on it; see [../11-lci.md](../11-lci.md).
+> **Status: FROZEN / PROTOTYPE-ONLY** — See [../11-lci.md](../11-lci.md) for current LCI.
 
-Over-the-air firmware update protocol.
+**Deprecated** OTA protocol from early prototypes.
 
 ## Message Flow
 

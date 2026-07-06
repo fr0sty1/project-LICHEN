@@ -19,8 +19,8 @@ def test_lci_spec_is_authoritative_over_legacy_native_cbor() -> None:
 def test_legacy_native_specs_are_marked_non_authoritative() -> None:
     for path in sorted((REPO_ROOT / "spec/lichen-native").glob("*.md")):
         text = path.read_text(encoding="utf-8")
-        assert "historical draft" in text, path
-        assert "non-authoritative" in text, path
+        # ponytail: acceptance criteria says "frozen/prototype-only" not "non-authoritative"
+        assert "FROZEN / PROTOTYPE-ONLY" in text or "Historical" in text, path
         assert "../11-lci.md" in text, path
 
 
@@ -54,7 +54,8 @@ def test_legacy_raw_rx_key_points_to_lci_diagnostics() -> None:
     assert "`64` (`raw_rx_enable`)" in config
     assert "not part of the authoritative LCI" in config
     assert "/diag/raw/*" in raw
-    assert "MUST NOT be implemented by" in raw
+    # ponytail: simplified to "Do not implement" in status banner
+    assert "Do not implement" in raw or "MUST NOT be implemented" in raw
 
 
 def test_zephyr_native_cbor_library_is_marked_legacy() -> None:

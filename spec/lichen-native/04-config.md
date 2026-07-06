@@ -1,10 +1,8 @@
-# Configuration Messages
+# Configuration Messages (Historical)
 
-> Status: historical draft. These integer-key configuration messages are
-> non-authoritative for LCI. Current configuration uses CoAP resources such as
-> `/config` and `/config/radio`; see [../11-lci.md](../11-lci.md).
+> **Status: FROZEN / PROTOTYPE-ONLY** — See [../11-lci.md](../11-lci.md) for current LCI.
 
-Read and write device configuration.
+**Deprecated** configuration messages from early prototypes.
 
 ## Message Flow
 

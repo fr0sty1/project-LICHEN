@@ -1,10 +1,8 @@
-# Hello Handshake
+# Hello Handshake (Historical)
 
-> Status: historical draft. This CBOR handshake is non-authoritative for LCI.
-> Current native clients discover CoAP resources over an IPv6 local interface;
-> see [../11-lci.md](../11-lci.md).
+> **Status: FROZEN / PROTOTYPE-ONLY** — See [../11-lci.md](../11-lci.md) for current LCI.
 
-Connection initialization and capability negotiation.
+**Deprecated** connection initialization from early prototypes.
 
 ## Sequence
 
