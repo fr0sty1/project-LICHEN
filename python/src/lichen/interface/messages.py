@@ -7,15 +7,21 @@ Key 0 is always the message type.
 This module implements the historical draft under spec/lichen-native/ for
 legacy prototype tests. Current Local Client Interface sessions use IPv6 + CoAP
 from spec/11-lci.md, not these CBOR messages.
+
+DEPRECATED: This module is deprecated. Set LICHEN_LEGACY_CBOR=1 to suppress warnings.
 """
 
 from __future__ import annotations
 
+import os
+import warnings
 from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Any
 
 import cbor2
+
+_LEGACY_ENABLED = bool(os.environ.get("LICHEN_LEGACY_CBOR"))
 
 
 class MessageType(IntEnum):
@@ -548,12 +554,34 @@ _MESSAGE_CLASSES: dict[int, type[Message]] = {
 
 
 def encode_message(msg: Message) -> bytes:
-    """Encode message to CBOR bytes."""
+    """Encode message to CBOR bytes.
+
+    .. deprecated::
+        Legacy CBOR protocol. Set LICHEN_LEGACY_CBOR=1 to suppress warning.
+    """
+    if not _LEGACY_ENABLED:
+        warnings.warn(
+            "encode_message() is deprecated (legacy CBOR protocol). "
+            "Set LICHEN_LEGACY_CBOR=1 to suppress.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
     return msg.to_cbor()
 
 
 def decode_message(data: bytes) -> Message:
-    """Decode CBOR bytes to message."""
+    """Decode CBOR bytes to message.
+
+    .. deprecated::
+        Legacy CBOR protocol. Set LICHEN_LEGACY_CBOR=1 to suppress warning.
+    """
+    if not _LEGACY_ENABLED:
+        warnings.warn(
+            "decode_message() is deprecated (legacy CBOR protocol). "
+            "Set LICHEN_LEGACY_CBOR=1 to suppress.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
     d = cbor2.loads(data)
     if not isinstance(d, dict) or 0 not in d:
         raise ValueError("invalid message: missing type field")

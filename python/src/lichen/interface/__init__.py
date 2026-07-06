@@ -2,7 +2,26 @@
 
 Current LCI sessions use IPv6 + CoAP from spec/11-lci.md. This package keeps
 the historical spec/lichen-native draft available for prototype compatibility.
+
+DEPRECATED: This module is deprecated and will be removed in a future release.
+Set LICHEN_LEGACY_CBOR=1 environment variable to suppress this warning.
+Use the IPv6 + CoAP interface from spec/11-lci.md instead.
 """
+
+from __future__ import annotations
+
+import os
+import warnings
+
+# Emit deprecation warning unless explicitly enabled via env var
+if not os.environ.get("LICHEN_LEGACY_CBOR"):
+    warnings.warn(
+        "lichen.interface is deprecated (legacy CBOR protocol). "
+        "Use IPv6 + CoAP from spec/11-lci.md. "
+        "Set LICHEN_LEGACY_CBOR=1 to suppress this warning.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
 from lichen.interface.framing import FrameReader, FrameWriter, frame, unframe
 from lichen.interface.handler import NodeHandler, bind_native

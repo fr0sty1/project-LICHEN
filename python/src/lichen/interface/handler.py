@@ -3,14 +3,20 @@ Legacy LICHEN Native CBOR protocol handler for Node class.
 
 Wires up Node methods to historical spec/lichen-native protocol messages.
 Current LCI sessions use IPv6 + CoAP from spec/11-lci.md.
+
+DEPRECATED: This module is deprecated. Set LICHEN_LEGACY_CBOR=1 to suppress warnings.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
+
+_LEGACY_ENABLED = bool(os.environ.get("LICHEN_LEGACY_CBOR"))
 
 from lichen.interface.messages import (
     ConfigGet,
@@ -232,7 +238,18 @@ async def bind_native(
 
     Returns:
         NodeHandler with running server
+
+    .. deprecated::
+        Legacy CBOR protocol. Use IPv6 + CoAP from spec/11-lci.md.
+        Set LICHEN_LEGACY_CBOR=1 to suppress warning.
     """
+    if not _LEGACY_ENABLED:
+        warnings.warn(
+            "bind_native() is deprecated (legacy CBOR protocol). "
+            "Use IPv6 + CoAP interface instead. Set LICHEN_LEGACY_CBOR=1 to suppress.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
     handler = NodeHandler(node=node)
     await handler.serve(host, port)
     return handler
