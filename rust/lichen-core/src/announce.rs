@@ -33,6 +33,7 @@ use crate::error::{BufferTooSmall, TooShort};
 
 /// Announce message parse/serialize error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum AnnounceError {
     TooShort(TooShort),
     WrongType(u8),

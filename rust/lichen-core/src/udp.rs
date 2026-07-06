@@ -14,6 +14,7 @@ pub const UDP_NEXT_HEADER: u8 = 17;
 
 /// UDP parse error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum UdpError {
     /// Buffer too short for UDP header.
     TooShort(TooShort),

@@ -36,6 +36,7 @@ pub mod next_header {
 
 /// IPv6 header parse error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Ipv6Error {
     /// Buffer too short for the expected data.
     TooShort(TooShort),
