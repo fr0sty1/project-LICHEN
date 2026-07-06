@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-3pzx",
+  "title": "DodagState select_parent: hysteresis logic inverted",
+  "description": "In python/src/lichen/rpl/dodag.py DodagState.select_parent(), the hysteresis check changed from 'best_cost \u003e current_cost - threshold' to 'improvement \u003c threshold'. This is semantically equivalent ONLY if improvement is defined as current_cost - best_cost. However, the logic now checks 'if improvement \u003c threshold' and keeps current parent, which is correct. BUT the docstring/comment says 'switch only if improvement exceeds threshold' yet the code keeps current when improvement is BELOW threshold. This is correct behavior but the comment/code alignment should be verified.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:26:12.152883Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:27:18.601342Z",
+  "closed_at": "2026-07-06T17:27:18.601342Z",
+  "close_reason": "Duplicate of project-LICHEN-aa0f. The hysteresis logic refactoring should be verified but is not necessarily inverted."
+}

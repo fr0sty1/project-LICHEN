@@ -2,13 +2,16 @@
   "id": "project-LICHEN-ow1e.212",
   "title": "Codereview pass 1: Frame validation",
   "description": "Correctness + Mode (my-oss) review:\n\n- Fix correctly validates payload \u003e= 48 bytes when signature_present=True\n- SECURITY comment documents the attack scenario (malicious frame sets bit but omits signature)\n- FrameError raised with actionable message\n- No correctness bugs found\n- No mode-specific risks (no new public API, no footguns for contributors)",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-06T15:46:11.961991Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-06T15:46:11.963184Z",
+  "updated_at": "2026-07-06T17:19:09.660815Z",
+  "closed_at": "2026-07-06T17:19:09.660815Z",
+  "close_reason": "Frame validation review - existing code is correct",
   "labels": [
     "review"
   ],

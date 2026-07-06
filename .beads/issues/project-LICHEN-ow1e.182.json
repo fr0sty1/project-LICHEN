@@ -2,13 +2,16 @@
   "id": "project-LICHEN-ow1e.182",
   "title": "Codereview pass 1: scheduled_send exceptions - Fix verified correct",
   "description": "Code review of the exception handling fix for scheduled_send:\n\n**Finding:** Fix is correct and follows codebase patterns.\n\nThe added exception handling:\n1. Re-raises CancelledError to preserve asyncio cancellation semantics\n2. Logs exceptions with logger.exception() before re-raising (matches line 343 pattern)\n3. Re-raises all other exceptions so callers can handle them if needed\n4. Includes useful context (delay_ms) in the log message\n\nNo issues found - fix is minimal and correct.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-06T15:43:18.589803Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-06T15:43:18.591044Z",
+  "updated_at": "2026-07-06T17:18:49.375369Z",
+  "closed_at": "2026-07-06T17:18:49.375369Z",
+  "close_reason": "Observation - code is correct as noted",
   "labels": [
     "review"
   ],

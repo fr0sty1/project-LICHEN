@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-nf9i",
+  "title": "size_to_szx: ilog2 returns incorrect value for size=16",
+  "description": "In rust/lichen-coap/src/block.rs size_to_szx(), the new implementation uses ((size.ilog2() as u8).saturating_sub(4)).min(6). For size=16, ilog2(16)=4, 4-4=0, which is correct (SZX=0 means 16 bytes). For size=32, ilog2(32)=5, 5-4=1, correct. For size=15, ilog2 panics because ilog2(0..=0) is undefined and ilog2(1..=15) ranges from 0 to 3. The function handles size\u003c16 by returning 0 early, so this is OK. However, ilog2 on size=0 would panic - the early return only checks size\u003c16, not size==0. Actually looking again: if size \u003c 16, return 0 - this handles 0 correctly. False alarm on this one but the logic is subtle.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:26:55.74588Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:27:00.044034Z",
+  "closed_at": "2026-07-06T17:27:00.044034Z",
+  "close_reason": "False positive: The early return 'if size \u003c 16 { return 0; }' handles all edge cases including size=0. The ilog2 is only called for size \u003e= 16, which is always valid."
+}

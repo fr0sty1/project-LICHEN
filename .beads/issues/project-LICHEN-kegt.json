@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-kegt",
+  "title": "SimulatorAPI auth: WebSocket token in query string visible in logs",
+  "description": "In python/src/lichen/sim/auth.py BearerAuthMiddleware, WebSocket connections pass the token as a query parameter (?token=\u003ctoken\u003e). Query parameters are often logged by web servers and proxies, potentially exposing the authentication token. Consider documenting this risk or using a subprotocol-based auth mechanism for WebSocket.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:26:39.577162Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:26:39.5772Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-8q00",
+  "title": "Python: DodagState.neighbor_id type change may break external callers",
+  "description": "In python/src/lichen/rpl/dodag.py, ParentCandidate.neighbor_id was changed from str to IPv6Address. While internal tests were updated, any external code calling process_dio() with a string neighbor_id will now fail silently or produce incorrect behavior since the dict keys won't match.\n\nLocation: python/src/lichen/rpl/dodag.py:79, 109, 133, 163\nRisk: External callers passing str instead of IPv6Address will have dict lookups fail silently.\nFix: Either add input coercion (to_ipv6) in process_dio, or document the API break and verify no external callers exist.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:24:54.944487Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:24:54.944514Z"
+}

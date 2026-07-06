@@ -1,13 +1,16 @@
 {
   "id": "project-LICHEN-ow1e.229",
   "title": "Codereview pass 2: LOADng seqnum - good wrap-around and half-space coverage",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-06T15:51:19.640716Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-06T15:51:19.641247Z",
+  "updated_at": "2026-07-06T17:19:16.457291Z",
+  "closed_at": "2026-07-06T17:19:16.457291Z",
+  "close_reason": "LOADng seqnum wrap-around and half-space coverage verified correct",
   "labels": [
     "review"
   ],

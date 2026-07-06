@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ow1e.256",
+  "title": "edhoc.rs: VecExt trait added but not pub - limits reuse",
+  "description": "The VecExt helper trait (push_err/extend_err) was added to edhoc.rs as a private trait. This pattern could be useful elsewhere in the codebase for consistent heapless::Vec error handling. Consider moving to a common module or making it pub(crate).\n\nFile: rust/lichen-oscore/src/edhoc.rs lines 74-91",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:17:02.995661Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:23:21.391196Z",
+  "closed_at": "2026-07-06T17:23:21.391196Z",
+  "close_reason": "Design suggestion - VecExt as private trait is acceptable; reuse deferred to future work",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.256",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T17:17:03.059749Z"
+    }
+  ]
+}

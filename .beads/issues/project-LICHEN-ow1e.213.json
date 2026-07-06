@@ -2,13 +2,16 @@
   "id": "project-LICHEN-ow1e.213",
   "title": "Codereview pass 2: Frame validation",
   "description": "Python idioms + standards review:\n\n- Type hints present on from_bytes (cls, data: bytes) -\u003e LichenFrame\n- Uses exception for error (FrameError), not None return\n- Uses dataclass appropriately\n- ruff check passes\n- ruff format: pre-existing issues in file, not introduced by this change\n- mypy: passes (no issues in 2 files)",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-06T15:46:18.946501Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-06T15:46:18.947603Z",
+  "updated_at": "2026-07-06T17:19:10.098192Z",
+  "closed_at": "2026-07-06T17:19:10.098192Z",
+  "close_reason": "Frame validation review - existing code is correct",
   "labels": [
     "review"
   ],

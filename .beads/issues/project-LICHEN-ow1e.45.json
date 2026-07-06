@@ -2,13 +2,16 @@
   "id": "project-LICHEN-ow1e.45",
   "title": "coap/client: duplicates CoapBuilder functionality",
   "description": "In client.rs:62-146, the encode() function reinvents what CoapBuilder already does. Consider using CoapBuilder internally to reduce duplication and maintenance burden.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-06T15:36:25.238869Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-06T15:36:25.239423Z",
+  "updated_at": "2026-07-06T17:02:21.566536Z",
+  "closed_at": "2026-07-06T17:02:21.566536Z",
+  "close_reason": "Closed",
   "labels": [
     "elegance",
     "review"

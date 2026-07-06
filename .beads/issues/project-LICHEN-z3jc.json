@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-z3jc",
+  "title": "Rust lichen-senml cbor.rs: Changes need review for correctness",
+  "description": "In rust/lichen-senml/src/cbor.rs, there were changes to CBOR encoding/decoding. The diff shows formatting and structural changes but the exact nature of the changes needs verification. Run the existing tests to ensure CBOR round-trip works correctly after the changes.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:28:11.299392Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:28:11.299423Z",
+  "labels": [
+    "test-coverage"
+  ]
+}

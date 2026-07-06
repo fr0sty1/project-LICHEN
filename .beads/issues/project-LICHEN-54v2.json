@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-54v2",
+  "title": "DATA_GRADIENT_TIMEOUT_MS constant removed but may be needed",
+  "description": "In python/src/lichen/gradient.py, the constant DATA_GRADIENT_TIMEOUT_MS = 60_000 was removed. The comment said 'opportunistic data gradients expire sooner'. If this constant was being used elsewhere (or was intended for future use), its removal could cause issues. Verify that no code depends on different timeout values for data vs announce gradients.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:27:49.064577Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:27:57.020664Z",
+  "closed_at": "2026-07-06T17:27:57.020664Z",
+  "close_reason": "False positive: grep shows DATA_GRADIENT_TIMEOUT_MS is not used anywhere in the codebase. It was dead code and its removal is correct."
+}

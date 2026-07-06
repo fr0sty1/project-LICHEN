@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ow1e.246",
+  "title": "Python dodag.py: hysteresis logic change may break backward compatibility",
+  "description": "The hysteresis logic in DodagState.select_parent() was changed from:\n  'if best_cost \u003e current_cost - threshold' (switch only if best is significantly better)\nto:\n  'improvement = current_cost - best_cost; if improvement \u003c threshold' (switch if improvement exceeds threshold)\n\nThese are mathematically equivalent when best_cost \u003c current_cost, but the new form handles the case where best_cost \u003e= current_cost differently. This is actually a bug fix (the old form could switch when best was worse), but existing tests should be verified to ensure behavior matches expectations.\n\nFile: python/src/lichen/rpl/dodag.py lines 153-156",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:16:32.069834Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:16:32.094529Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.246",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T17:16:32.094528Z"
+    }
+  ]
+}

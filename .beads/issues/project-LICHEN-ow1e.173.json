@@ -2,13 +2,16 @@
   "id": "project-LICHEN-ow1e.173",
   "title": "good: kiss/framing handles edge cases and buffer recovery",
   "description": "framing.rs:321-324 uses fixed 8KB buffer appropriate for no_std. Buffer compaction (344-373) finds last FEND to maintain sync. try_read_frame (378-431) handles leading garbage, inter-frame padding, split escapes.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "decision",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-06T15:41:36.159156Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-06T15:41:36.159715Z",
+  "updated_at": "2026-07-06T17:18:38.233453Z",
+  "closed_at": "2026-07-06T17:18:38.233453Z",
+  "close_reason": "Positive finding - no changes needed",
   "labels": [
     "review"
   ],

@@ -2,13 +2,16 @@
   "id": "project-LICHEN-ow1e.183",
   "title": "Codereview pass 2: scheduled_send exceptions - Consider test coverage",
   "description": "Code review pass 2 - test coverage observation:\n\n**Finding:** No test exists for exception propagation behavior.\n\nThe existing tests in test_rreq_jitter.py cover:\n- Delay timing\n- Task return type\n- Config defaults\n- Custom delays\n- Jitter distribution\n\nMissing: A test that verifies exceptions from link.send() are logged and re-raised.\n\n**Recommendation:** Add test that mocks link.send() to raise an exception and verifies:\n1. The exception is logged (via caplog fixture)\n2. The exception propagates to the awaiting caller\n\nPriority P3 since the current fix is correct, this is just test completeness.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-06T15:43:26.49231Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-06T15:43:26.495621Z",
+  "updated_at": "2026-07-06T17:18:50.223541Z",
+  "closed_at": "2026-07-06T17:18:50.223541Z",
+  "close_reason": "Test coverage suggestion - deferred to future work",
   "labels": [
     "review"
   ],

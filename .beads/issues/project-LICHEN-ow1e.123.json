@@ -2,13 +2,16 @@
   "id": "project-LICHEN-ow1e.123",
   "title": "good: node/stack UDP checksum implementation",
   "description": "In stack.rs:425-481, the one's complement checksum implementation is correct and well-structured. Using oc_add for 16-bit folding with carry handling, then finalize for the final fold and complement, follows RFC 768/1071 precisely. The chunks_exact usage is efficient.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "decision",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-06T15:37:47.064329Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-06T15:37:47.064857Z",
+  "updated_at": "2026-07-06T17:12:46.546097Z",
+  "closed_at": "2026-07-06T17:12:46.546097Z",
+  "close_reason": "Closed",
   "labels": [
     "review"
   ],

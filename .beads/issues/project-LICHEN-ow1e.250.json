@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ow1e.250",
+  "title": "port_dispatch.rs: DispatchError::PayloadTooShort mapped to UnknownPort(0) loses info",
+  "description": "In the From\u003cDispatchError\u003e for UdpDispatchError impl, PayloadTooShort is mapped to UnknownPort(0) with a comment 'shouldn't happen'. This loses error information and port 0 is a valid (if unusual) port number. Either add a PayloadTooShort variant to UdpDispatchError or use a different sentinel.\n\nFile: rust/lichen-node/src/port_dispatch.rs lines 82-87",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:16:38.498973Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:16:38.499531Z",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.250",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T17:16:38.499531Z"
+    }
+  ]
+}

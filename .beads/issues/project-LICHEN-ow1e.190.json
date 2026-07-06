@@ -2,13 +2,16 @@
   "id": "project-LICHEN-ow1e.190",
   "title": "Codereview pass 1: Identity.__del__ - Fix verified correct",
   "description": "Review of Identity.__del__ fix: The current implementation at lines 121-131 correctly handles partially constructed objects using hasattr() checks. The guard pattern is correct: checks _wiped existence first, then _seed and _privkey. No correctness issues found.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-06T15:43:53.696204Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-06T15:43:53.700842Z",
+  "updated_at": "2026-07-06T17:18:54.769958Z",
+  "closed_at": "2026-07-06T17:18:54.769958Z",
+  "close_reason": "Observation - fix verified correct",
   "labels": [
     "review"
   ],

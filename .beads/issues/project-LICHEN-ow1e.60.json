@@ -2,13 +2,16 @@
   "id": "project-LICHEN-ow1e.60",
   "title": "Good: GradientTable uses OrderedDict for efficient LRU eviction",
   "description": "src/lichen/gradient.py:75 uses OrderedDict for the gradient table:\n- O(1) lookup, insert, delete\n- O(1) move_to_end for LRU updates\n- Built-in LRU eviction via popitem(last=False)\n- Bounded capacity (MAX_ENTRIES=64)\n\nThis is the right data structure for the job - no external dependency needed for LRU cache semantics.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "decision",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-06T15:36:47.268813Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-06T15:36:47.269425Z",
+  "updated_at": "2026-07-06T17:03:03.087966Z",
+  "closed_at": "2026-07-06T17:03:03.087966Z",
+  "close_reason": "Closed",
   "labels": [
     "review"
   ],
