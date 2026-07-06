@@ -59,14 +59,11 @@ def test_legacy_raw_rx_key_points_to_lci_diagnostics() -> None:
 
 
 def test_zephyr_native_cbor_library_is_marked_legacy() -> None:
+    # ponytail: Python legacy CBOR files deleted; only Zephyr C files remain
     for path in (
         "lichen/lib/native/native.c",
         "lichen/lib/native/include/lichen/native.h",
         "lichen/lib/native/Kconfig",
-        "python/src/lichen/interface/__init__.py",
-        "python/src/lichen/interface/serial.py",
-        "python/src/lichen/interface/tcp.py",
-        "python/src/lichen/interface/handler.py",
     ):
         text = read_repo_text(path)
         assert "Legacy" in text or "historical" in text, path
