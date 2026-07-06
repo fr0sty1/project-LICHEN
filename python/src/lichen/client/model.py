@@ -149,6 +149,12 @@ class Neighbor:
     trust: str | None = None
     lqi: int | None = None
     last_seen_s: int | None = None
+    # RF health extensions (5g8t.2, 5g8t.4)
+    success_rate_pct: float | None = None
+    duty_observed_pct: float | None = None
+    is_cheater: bool | None = None
+    rx_count: int | None = None
+    tx_count: int | None = None
 
 
 @dataclass(frozen=True)
@@ -272,3 +278,85 @@ class MessageRecord:
     body: str | None = None
     received: str | None = None
     timestamp: int | float | str | None = None
+
+
+@dataclass(frozen=True)
+class TxQueueState:
+    """TX queue observability state for UI display.
+
+    Provides queue depth by priority level, total bytes queued,
+    estimated drain time, and age of oldest queued packet.
+    """
+
+    depth_by_priority: dict[int, int] = field(default_factory=dict)
+    total_bytes: int = 0
+    estimated_drain_time_ms: int = 0
+    oldest_age_ms: int = 0
+
+    @property
+    def total_depth(self) -> int:
+        """Return total packets across all priority levels."""
+        return sum(self.depth_by_priority.values())
+
+
+@dataclass(frozen=True)
+class DutyCycleState:
+    """Duty cycle tracking state for UI display.
+
+    Provides usage percentage, remaining budget, and time until
+    budget begins to refill.
+    """
+
+    usage_percent: float = 0.0
+    remaining_ms: int = 0
+    time_until_refill_ms: int = 0
+    limit_percent: float = 1.0
+    window_seconds: int = 3600
+
+    @property
+    def usage_ratio(self) -> float:
+        """Return usage as a ratio from 0.0 to 1.0+."""
+        return self.usage_percent / 100.0
+
+    @property
+    def is_over_limit(self) -> bool:
+        """Return True if duty cycle limit has been exceeded."""
+        return self.usage_percent > 100.0
+
+
+@dataclass(frozen=True)
+class LocalRFStats:
+    """Local RF health metrics for the RF tab (5g8t.4).
+
+    Provides noise floor, channel busy percentage, and RX error counts
+    tracked locally from radio observations.
+    """
+
+    noise_floor_dbm: float | None = None
+    channel_busy_pct: float | None = None
+    rx_crc_errors: int = 0
+    rx_timeout_errors: int = 0
+    rx_header_errors: int = 0
+    rx_total: int = 0
+
+    @property
+    def rx_error_rate_pct(self) -> float | None:
+        """Return overall RX error rate as percentage, or None if no data."""
+        if self.rx_total == 0:
+            return None
+        total_errors = self.rx_crc_errors + self.rx_timeout_errors + self.rx_header_errors
+        return (total_errors / self.rx_total) * 100.0
+
+
+@dataclass(frozen=True)
+class RadioState:
+    """Combined radio observability state for UI display.
+
+    Aggregates duty cycle and TX queue state for the Radio tab.
+    """
+
+    duty_cycle: DutyCycleState = field(default_factory=DutyCycleState)
+    tx_queue: TxQueueState = field(default_factory=TxQueueState)
+    local_rf: LocalRFStats = field(default_factory=LocalRFStats)
+    error: str | None = None
+    loading: bool = False

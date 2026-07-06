@@ -30,6 +30,7 @@ from lichen.client import (
     Identity,
     IpCoapConfig,
     LciClient,
+    LocalRFStats,
     MessageDraft,
     MessageRecord,
     Neighbor,
@@ -258,6 +259,72 @@ class DiagnosticsState:
     last_raw_action: RawDiagnosticResult | None = None
     error: str | None = None
     loading: bool = False
+
+
+@dataclass(frozen=True)
+class RadioTuiState:
+    """State rendered by the Radio screen.
+
+    Shows duty cycle usage and TX queue status for RF observability.
+    """
+
+    # Duty cycle state
+    duty_cycle_usage_percent: float = 0.0
+    duty_cycle_remaining_ms: int = 0
+    duty_cycle_time_until_refill_ms: int = 0
+    duty_cycle_limit_percent: float = 1.0
+
+    # TX queue state
+    tx_queue_depth_by_priority: tuple[tuple[int, int], ...] = ()
+    tx_queue_total_bytes: int = 0
+    tx_queue_drain_time_ms: int = 0
+    tx_queue_oldest_age_ms: int = 0
+
+    error: str | None = None
+    loading: bool = False
+
+    @property
+    def duty_cycle_usage_ratio(self) -> float:
+        """Return usage as a ratio from 0.0 to 1.0+."""
+        return self.duty_cycle_usage_percent / 100.0
+
+    @property
+    def is_over_limit(self) -> bool:
+        """Return True if duty cycle limit has been exceeded."""
+        return self.duty_cycle_usage_percent > 100.0
+
+    @property
+    def tx_queue_total_depth(self) -> int:
+        """Return total packets across all priority levels."""
+        return sum(depth for _, depth in self.tx_queue_depth_by_priority)
+
+
+@dataclass(frozen=True)
+class RFHealthState:
+    """State rendered by the RF Health screen (5g8t.6).
+
+    Shows neighbor RF metrics (success rate, duty cycle observed, cheater flags)
+    and local RF stats (noise floor, channel busy, RX errors).
+    """
+
+    # Neighbors with RF health metrics
+    neighbors: tuple[Neighbor, ...] = ()
+
+    # Local RF stats
+    local_rf: LocalRFStats | None = None
+
+    error: str | None = None
+    loading: bool = False
+
+    @property
+    def cheater_count(self) -> int:
+        """Return count of neighbors flagged as cheaters."""
+        return sum(1 for n in self.neighbors if n.is_cheater is True)
+
+    @property
+    def has_rf_data(self) -> bool:
+        """Return True if any RF health data is available."""
+        return bool(self.neighbors) or self.local_rf is not None
 
 
 @dataclass(frozen=True)
@@ -688,6 +755,242 @@ def raw_diagnostics_available(payload: Any) -> bool:
     return any(raw.get(key) for key in ("rx", "rx_events", "tx"))
 
 
+def duty_cycle_bar(usage_percent: float, width: int = 20) -> str:
+    """Render a text-based progress bar for duty cycle usage.
+
+    Args:
+        usage_percent: Current duty cycle usage as percentage (0-100+).
+        width: Width of the bar in characters.
+
+    Returns:
+        ASCII bar like "[=========>          ] 45.2%"
+    """
+    ratio = min(usage_percent / 100.0, 1.0)  # Cap at 100% for display
+    filled = int(ratio * width)
+    empty = width - filled
+
+    # Use different indicators for normal vs over-limit
+    if usage_percent > 100.0:
+        bar_char = "!"
+        indicator = "X"
+    elif usage_percent > 80.0:
+        bar_char = "#"
+        indicator = ">"
+    else:
+        bar_char = "="
+        indicator = ">"
+
+    bar = (bar_char * (filled - 1) + indicator + " " * empty) if filled > 0 else (" " * width)
+
+    return f"[{bar}] {usage_percent:5.1f}%"
+
+
+def format_duration_ms(ms: int) -> str:
+    """Format milliseconds as human-readable duration.
+
+    Args:
+        ms: Duration in milliseconds.
+
+    Returns:
+        Formatted string like "1.2s", "45ms", "2m30s", "1h15m".
+    """
+    if ms < 0:
+        return "--"
+    if ms == 0:
+        return "0ms"
+    if ms < 1000:
+        return f"{ms}ms"
+    seconds = ms // 1000
+    if seconds < 60:
+        return f"{seconds}.{(ms % 1000) // 100}s"
+    minutes = seconds // 60
+    if minutes < 60:
+        remaining_s = seconds % 60
+        if remaining_s:
+            return f"{minutes}m{remaining_s}s"
+        return f"{minutes}m"
+    hours = minutes // 60
+    remaining_m = minutes % 60
+    if remaining_m:
+        return f"{hours}h{remaining_m}m"
+    return f"{hours}h"
+
+
+def radio_rows(state: RadioTuiState, width: int = 76) -> tuple[str, ...]:
+    """Render radio observability rows for duty cycle and TX queue state."""
+    if state.loading:
+        return (field_line("radio", "loading", width=width),)
+    if state.error is not None:
+        return (field_line("radio_error", state.error, "recoverable", width),)
+
+    rows: list[str] = []
+
+    # Duty cycle section
+    rows.append(field_line("duty_cycle", "--- Duty Cycle ---", width=width))
+    rows.append(
+        field_line(
+            "usage",
+            duty_cycle_bar(state.duty_cycle_usage_percent, width=min(20, width - 30)),
+            "OVER LIMIT" if state.is_over_limit else "",
+            width,
+        )
+    )
+    rows.append(
+        field_line(
+            "remaining",
+            format_duration_ms(state.duty_cycle_remaining_ms),
+            f"of {state.duty_cycle_limit_percent:.1f}% limit",
+            width,
+        )
+    )
+    rows.append(
+        field_line(
+            "refill_in",
+            format_duration_ms(state.duty_cycle_time_until_refill_ms),
+            "until budget starts refilling",
+            width,
+        )
+    )
+
+    # TX queue section
+    rows.append(field_line("tx_queue", "--- TX Queue ---", width=width))
+    rows.append(
+        field_line(
+            "depth",
+            str(state.tx_queue_total_depth),
+            f"packets ({state.tx_queue_total_bytes} bytes)",
+            width,
+        )
+    )
+
+    # Show depth by priority if available
+    priority_labels = {
+        0: "P0 (urgent)",
+        1: "P1 (high)",
+        2: "P2 (normal)",
+        3: "P3 (low)",
+    }
+    if state.tx_queue_depth_by_priority:
+        for priority, depth in state.tx_queue_depth_by_priority:
+            priority_label = priority_labels.get(priority, f"P{priority}")
+            rows.append(field_line(f"  {priority_label}", str(depth), "packets", width))
+
+    rows.append(
+        field_line(
+            "drain_time",
+            format_duration_ms(state.tx_queue_drain_time_ms),
+            "estimated at current budget",
+            width,
+        )
+    )
+    rows.append(
+        field_line(
+            "oldest_age",
+            format_duration_ms(state.tx_queue_oldest_age_ms),
+            "oldest queued packet",
+            width,
+        )
+    )
+
+    return tuple(rows)
+
+
+def rf_health_rows(state: RFHealthState, width: int = 76) -> tuple[str, ...]:
+    """Render RF health rows for neighbor metrics and local RF stats (5g8t.6).
+
+    Shows:
+    - Neighbor table with callsign, RSSI, SNR, last heard, success rate, duty observed
+    - Cheater flags for neighbors exceeding expected duty cycle
+    - Local RF stats: noise floor, channel busy, RX errors
+    """
+    if state.loading:
+        return (field_line("rf_health", "loading", width=width),)
+    if state.error is not None:
+        return (field_line("rf_error", state.error, "recoverable", width),)
+
+    rows: list[str] = []
+
+    # Local RF stats section
+    rows.append(field_line("local_rf", "--- Local RF Stats ---", width=width))
+    if state.local_rf is not None:
+        rf = state.local_rf
+        rows.append(
+            field_line(
+                "noise_floor",
+                f"{rf.noise_floor_dbm:.1f} dBm" if rf.noise_floor_dbm is not None else "--",
+                width=width,
+            )
+        )
+        rows.append(
+            field_line(
+                "channel_busy",
+                f"{rf.channel_busy_pct:.1f}%" if rf.channel_busy_pct is not None else "--",
+                width=width,
+            )
+        )
+        error_rate = rf.rx_error_rate_pct
+        rows.append(
+            field_line(
+                "rx_errors",
+                f"{error_rate:.1f}% ({rf.rx_crc_errors} CRC, {rf.rx_timeout_errors} timeout, "
+                f"{rf.rx_header_errors} header)"
+                if error_rate is not None
+                else f"CRC {rf.rx_crc_errors}, timeout {rf.rx_timeout_errors}, "
+                f"header {rf.rx_header_errors}",
+                f"of {rf.rx_total} total" if rf.rx_total > 0 else "",
+                width,
+            )
+        )
+    else:
+        rows.append(field_line("local_rf", "--", "no data", width))
+
+    # Neighbor RF section
+    rows.append(field_line("neighbors_rf", "--- Neighbor RF Health ---", width=width))
+
+    if state.cheater_count > 0:
+        rows.append(
+            field_line(
+                "CHEATERS",
+                f"{state.cheater_count} neighbor(s) exceeding duty cycle",
+                "WARNING",
+                width,
+            )
+        )
+
+    if not state.neighbors:
+        rows.append(field_line("neighbor", "--", "no neighbors", width))
+    else:
+        for neighbor in state.neighbors:
+            # Build neighbor identifier (callsign/addr/iid)
+            ident = neighbor.addr or neighbor.iid or "unknown"
+
+            # Build RF metrics string
+            parts = []
+            if neighbor.rssi_dbm is not None:
+                parts.append(f"RSSI {neighbor.rssi_dbm:.0f}")
+            if neighbor.snr_db is not None:
+                parts.append(f"SNR {neighbor.snr_db:.1f}")
+            if neighbor.last_seen_s is not None:
+                parts.append(f"seen {neighbor.last_seen_s}s")
+            if neighbor.success_rate_pct is not None:
+                parts.append(f"succ {neighbor.success_rate_pct:.0f}%")
+            if neighbor.duty_observed_pct is not None:
+                parts.append(f"duty {neighbor.duty_observed_pct:.2f}%")
+
+            metrics = " ".join(parts) if parts else "--"
+
+            # Flag cheaters
+            status = ""
+            if neighbor.is_cheater is True:
+                status = "CHEATER"
+            elif neighbor.trust is not None:
+                status = neighbor.trust
+
+            rows.append(field_line(ident, metrics, status, width))
+
+    return tuple(rows)
+
+
 def log_rows_from_payload(payload: Any) -> tuple[LogRow, ...]:
     """Normalize common decoded log notification payload shapes."""
     records: Any
@@ -805,9 +1108,11 @@ class ModeNav(Static):
         "Chats",
         "Nodes",
         "Mesh",
+        "RF",
         "Config",
         "Logs",
         "Diag",
+        "Radio",
     )
 
     DEFAULT_CSS = """
@@ -1006,6 +1311,8 @@ class ActivePane(Static):
         config_state: ConfigState | None = None,
         logs: LogsState | None = None,
         diagnostics: DiagnosticsState | None = None,
+        radio_tui: RadioTuiState | None = None,
+        rf_health: RFHealthState | None = None,
         connection_error: str | None = None,
     ) -> None:
         self.mode = mode
@@ -1016,6 +1323,8 @@ class ActivePane(Static):
         self.config_state = config_state or ConfigState()
         self.logs = logs or LogsState()
         self.diagnostics = diagnostics or DiagnosticsState()
+        self.radio_tui = radio_tui or RadioTuiState()
+        self.rf_health = rf_health or RFHealthState()
         self.connection_error = connection_error
         super().__init__(self.render_mode(), id="active-pane", markup=False)
 
@@ -1063,6 +1372,18 @@ class ActivePane(Static):
         """Update diagnostics state and rerender when Diag is visible."""
         self.diagnostics = state
         if self.mode == "Diag":
+            self.update(self.render_mode())
+
+    def set_radio(self, state: RadioTuiState) -> None:
+        """Update radio state and rerender when Radio is visible."""
+        self.radio_tui = state
+        if self.mode == "Radio":
+            self.update(self.render_mode())
+
+    def set_rf_health(self, state: RFHealthState) -> None:
+        """Update RF health state and rerender when RF is visible."""
+        self.rf_health = state
+        if self.mode == "RF":
             self.update(self.render_mode())
 
     def set_connection_error(self, detail: str) -> None:
@@ -1116,6 +1437,10 @@ class ActivePane(Static):
                         ).render_rows(),
                     )
                 )
+            case "RF":
+                return "\n".join(("RF HEALTH", *rf_health_rows(self.rf_health, self.line_width)))
+            case "Radio":
+                return "\n".join(("RADIO", *radio_rows(self.radio_tui, self.line_width)))
             case "Quit":
                 return "\n".join(("QUIT?", "Press y to quit or Esc/n to cancel."))
             case "Connect":
@@ -1145,7 +1470,7 @@ class ActivePane(Static):
                 return "\n".join(("FILTER", "Filter prompt is reserved for data-backed screens."))
             case _:
                 return "\n".join(
-                    ("HELP", "? help", "Tab or ] next", "Shift+Tab or [ previous", "1-7 jump")
+                    ("HELP", "? help", "Tab or ] next", "Shift+Tab or [ previous", "1-8 jump")
                 )
 
 
@@ -1194,9 +1519,11 @@ class NativeClientApp(App[None]):
         Binding("2", "jump_mode(1)", "Chats"),
         Binding("3", "jump_mode(2)", "Nodes"),
         Binding("4", "jump_mode(3)", "Mesh"),
-        Binding("5", "jump_mode(4)", "Config"),
-        Binding("6", "jump_mode(5)", "Logs"),
-        Binding("7", "jump_mode(6)", "Diag"),
+        Binding("5", "jump_mode(4)", "RF"),
+        Binding("6", "jump_mode(5)", "Config"),
+        Binding("7", "jump_mode(6)", "Logs"),
+        Binding("8", "jump_mode(7)", "Diag"),
+        Binding("9", "jump_mode(8)", "Radio"),
     ]
 
     def __init__(
@@ -1220,6 +1547,8 @@ class NativeClientApp(App[None]):
         self.config_state = ConfigState()
         self.logs = LogsState()
         self.diagnostics = DiagnosticsState()
+        self.radio_tui = RadioTuiState()
+        self.rf_health = RFHealthState()
         self._observe_task: asyncio.Task[None] | None = None
         self._log_task: asyncio.Task[None] | None = None
         self._raw_rx_task: asyncio.Task[None] | None = None
@@ -1244,6 +1573,8 @@ class NativeClientApp(App[None]):
                 config_state=self.config_state,
                 logs=self.logs,
                 diagnostics=self.diagnostics,
+                radio_tui=self.radio_tui,
+                rf_health=self.rf_health,
             )
             yield Input(placeholder="message target", id="message-target", disabled=True)
             yield Input(placeholder="message body", id="message-body", disabled=True)
@@ -1364,6 +1695,10 @@ class NativeClientApp(App[None]):
                 await self.start_observing_logs()
             case "Diag":
                 await self.refresh_diagnostics()
+            case "RF":
+                await self.refresh_rf_health()
+            case "Radio":
+                await self.refresh_radio()
             case _:
                 pane = self.query_one("#active-pane", ActivePane)
                 pane.update(f"{pane.render_mode()}\nrefresh requested")
@@ -1819,6 +2154,119 @@ class NativeClientApp(App[None]):
             recover_error=True,
         )
 
+    async def refresh_radio(self) -> None:
+        """Refresh duty cycle and TX queue status for the Radio tab.
+
+        Note: In simulator mode, this fetches from the node server's duty
+        cycle tracker. In demo mode, shows placeholder data.
+        """
+        # Demo mode: show placeholder data since no real node is connected
+        if self.client is None:
+            self._set_radio_state(
+                RadioTuiState(
+                    duty_cycle_usage_percent=0.0,
+                    duty_cycle_remaining_ms=36000,  # 36s = 1% of 1 hour
+                    duty_cycle_time_until_refill_ms=0,
+                    duty_cycle_limit_percent=1.0,
+                    tx_queue_depth_by_priority=(),
+                    tx_queue_total_bytes=0,
+                    tx_queue_drain_time_ms=0,
+                    tx_queue_oldest_age_ms=0,
+                ),
+                recover_error=True,
+            )
+            return
+
+        self._set_radio_state(RadioTuiState(loading=True))
+
+        # Fetch radio status from the device if available
+        # For now, show demo data - real implementation would query
+        # /status/radio or similar endpoint with duty cycle and queue info
+        try:
+            status = await self.client.get_status()
+            radio_info = status.radio or {}
+
+            # Extract duty cycle info from radio status if available
+            duty_usage = float(radio_info.get("duty_cycle_usage_pct", 0.0))
+            duty_remaining = int(radio_info.get("duty_cycle_remaining_ms", 36000))
+            duty_refill = int(radio_info.get("duty_cycle_refill_ms", 0))
+
+            # Extract TX queue info if available
+            queue_info = radio_info.get("tx_queue", {})
+            depth_by_priority = tuple(
+                (int(k), int(v))
+                for k, v in sorted(queue_info.get("depth_by_priority", {}).items())
+            )
+            total_bytes = int(queue_info.get("total_bytes", 0))
+            drain_time = int(queue_info.get("drain_time_ms", 0))
+            oldest_age = int(queue_info.get("oldest_age_ms", 0))
+
+            self._set_radio_state(
+                RadioTuiState(
+                    duty_cycle_usage_percent=duty_usage,
+                    duty_cycle_remaining_ms=duty_remaining,
+                    duty_cycle_time_until_refill_ms=duty_refill,
+                    duty_cycle_limit_percent=1.0,
+                    tx_queue_depth_by_priority=depth_by_priority,
+                    tx_queue_total_bytes=total_bytes,
+                    tx_queue_drain_time_ms=drain_time,
+                    tx_queue_oldest_age_ms=oldest_age,
+                ),
+                recover_error=True,
+            )
+        except Exception as exc:
+            self._set_radio_error(str(exc))
+
+    async def refresh_rf_health(self) -> None:
+        """Refresh RF health neighbor metrics and local RF stats (5g8t.6).
+
+        Fetches neighbor list with RF health extensions (success rate, observed
+        duty cycle, cheater flags) and local RF stats (noise floor, channel
+        busy, RX errors).
+        """
+        # Demo mode: show placeholder data
+        if self.client is None:
+            self._set_rf_health_state(
+                RFHealthState(
+                    neighbors=(),
+                    local_rf=LocalRFStats(),
+                    error="RF transport unavailable (demo mode)",
+                ),
+                recover_error=True,
+            )
+            return
+
+        self._set_rf_health_state(RFHealthState(loading=True))
+
+        try:
+            # Fetch neighbors with RF health extensions
+            neighbors = await self.client.list_neighbors()
+
+            # Fetch status for local RF stats (if available)
+            status = await self.client.get_status()
+            radio_info = status.radio or {}
+
+            # Extract local RF stats from radio info if available
+            rf_info = radio_info.get("rf_health", radio_info.get("local_rf", {}))
+            local_rf = LocalRFStats(
+                noise_floor_dbm=rf_info.get("noise_floor_dbm"),
+                channel_busy_pct=rf_info.get("channel_busy_pct"),
+                rx_crc_errors=int(rf_info.get("rx_crc_errors", 0)),
+                rx_timeout_errors=int(rf_info.get("rx_timeout_errors", 0)),
+                rx_header_errors=int(rf_info.get("rx_header_errors", 0)),
+                rx_total=int(rf_info.get("rx_total", 0)),
+            )
+
+            self._set_rf_health_state(
+                RFHealthState(
+                    neighbors=tuple(neighbors),
+                    local_rf=local_rf,
+                ),
+                recover_error=True,
+            )
+        except Exception as exc:
+            self._set_rf_health_error(str(exc))
+
     def enable_raw_diagnostics_admin(self, *, enabled: bool = True) -> None:
         """Toggle explicit admin authorization for raw diagnostics UI flows."""
         self.raw_diagnostics_admin_enabled = enabled
@@ -2222,6 +2670,50 @@ class NativeClientApp(App[None]):
                 raw_available=self.diagnostics.raw_available,
                 admin_enabled=self.raw_diagnostics_admin_enabled,
                 last_raw_action=self.diagnostics.last_raw_action,
+                error=detail,
+            )
+        )
+
+    def _set_radio_state(
+        self,
+        state: RadioTuiState,
+        *,
+        recover_error: bool = False,
+    ) -> None:
+        self.radio_tui = state
+        self._set_screen_status(error=state.error, recover_error=recover_error)
+        self.query_one("#active-pane", ActivePane).set_radio(state)
+
+    def _set_radio_error(self, detail: str) -> None:
+        self._set_radio_state(
+            RadioTuiState(
+                duty_cycle_usage_percent=self.radio_tui.duty_cycle_usage_percent,
+                duty_cycle_remaining_ms=self.radio_tui.duty_cycle_remaining_ms,
+                duty_cycle_time_until_refill_ms=self.radio_tui.duty_cycle_time_until_refill_ms,
+                duty_cycle_limit_percent=self.radio_tui.duty_cycle_limit_percent,
+                tx_queue_depth_by_priority=self.radio_tui.tx_queue_depth_by_priority,
+                tx_queue_total_bytes=self.radio_tui.tx_queue_total_bytes,
+                tx_queue_drain_time_ms=self.radio_tui.tx_queue_drain_time_ms,
+                tx_queue_oldest_age_ms=self.radio_tui.tx_queue_oldest_age_ms,
+                error=detail,
+            )
+        )
+
+    def _set_rf_health_state(
+        self,
+        state: RFHealthState,
+        *,
+        recover_error: bool = False,
+    ) -> None:
+        self.rf_health = state
+        self._set_screen_status(error=state.error, recover_error=recover_error)
+        self.query_one("#active-pane", ActivePane).set_rf_health(state)
+
+    def _set_rf_health_error(self, detail: str) -> None:
+        self._set_rf_health_state(
+            RFHealthState(
+                neighbors=self.rf_health.neighbors,
+                local_rf=self.rf_health.local_rf,
                 error=detail,
             )
         )

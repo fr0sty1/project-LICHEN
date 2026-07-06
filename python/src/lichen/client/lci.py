@@ -526,6 +526,14 @@ def normalize_neighbor(payload: Any) -> Neighbor:
         trust=_str_or_none(raw.get("trust")),
         lqi=_int_or_none(raw.get("lqi")),
         last_seen_s=_int_or_none(raw.get("last_seen_s", raw.get("last_heard"))),
+        # RF health extensions (5g8t.2, 5g8t.4)
+        success_rate_pct=_float_or_none(raw.get("success_rate_pct", raw.get("success_rate"))),
+        duty_observed_pct=_float_or_none(
+            raw.get("duty_observed_pct", raw.get("duty_pct", raw.get("observed_duty")))
+        ),
+        is_cheater=_bool_or_none(raw.get("is_cheater", raw.get("cheater"))),
+        rx_count=_int_or_none(raw.get("rx_count")),
+        tx_count=_int_or_none(raw.get("tx_count")),
     )
 
 
@@ -759,3 +767,15 @@ def _float_or_none(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _bool_or_none(value: Any) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value != 0
+    if isinstance(value, str):
+        return value.lower() in ("true", "1", "yes")
+    return None
