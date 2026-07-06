@@ -27,7 +27,9 @@ fn iid_from_pubkey_bytes(pubkey: &[u8; 32]) -> [u8; 8] {
 }
 
 /// Local node identity (seed + derived keypair + IID).
-#[derive(Clone, Copy, PartialEq, Eq)]
+///
+/// Note: Cannot derive Copy because Seed and PrivateKey have ZeroizeOnDrop.
+#[derive(Clone, PartialEq, Eq)]
 pub struct Identity {
     pub seed: Seed,
     pub privkey: PrivateKey,

@@ -5,6 +5,17 @@
 //!
 //! Bit order: MSB-first (network bit order). The residue is zero-padded to
 //! a byte boundary. All computation is no_std.
+//!
+//! # Naming Convention
+//!
+//! This module uses `compress`/`decompress` rather than the `encode`/`decode`
+//! or `from_bytes`/`write_to` verbs used elsewhere in the workspace. This
+//! follows RFC 8724 terminology and reflects a semantic distinction: SCHC is
+//! true compression — it elides header fields entirely when they can be
+//! reconstructed from shared context, reducing a 40-byte IPv6 header to as
+//! little as 1-2 bytes. By contrast, SLIP and message serialization are
+//! *encodings* — bijective transformations with no information reduction.
+//! The verb choice signals that SCHC requires matching rules on both ends.
 
 use lichen_core::constants::{
     PORT_MQTT_SN, RULE_GLOBAL_COAP, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP, RULE_MQTT_SN,
@@ -81,7 +92,9 @@ impl<'a> BitWriter<'a> {
 
     /// Write the low `nbits` of `value`, MSB first.
     fn write(&mut self, value: u128, nbits: usize) -> Result<(), SchcError> {
-        // Reverse order: network bit order is MSB-first but we index from LSB.
+        // Iterate from the most significant bit down to the least significant.
+        // The reversed range (0..nbits).rev() processes bit positions MSB-first,
+        // which is the correct network bit order per RFC 8724.
         for i in (0..nbits).rev() {
             let bit = ((value >> i) & 1) as u8;
             let byte_pos = self.nbits / 8;

@@ -6,7 +6,9 @@ license.workspace = true
 description = "Meshtastic protobuf types for LICHEN bridge"
 
 [features]
-default = ["alloc"]
+# Consistent with workspace: no default features. This crate requires alloc
+# for Vec/String, but callers should enable it explicitly.
+default = []
 alloc = []  # Required: this crate uses Vec/String from alloc
 std = ["alloc", "prost/std"]
 # Logging: enable one or neither, not both

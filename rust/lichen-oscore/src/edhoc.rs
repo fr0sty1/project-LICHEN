@@ -25,6 +25,7 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use hkdf::Hkdf;
 use sha2::{Digest, Sha256};
 use x25519_dalek::{PublicKey, StaticSecret};
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// AES-CCM for Suite 0.
 type AesCcm = Ccm<Aes128, U8, U13>;
@@ -182,7 +183,12 @@ pub struct EdhocInitiator {
     state: InitiatorState,
 }
 
+/// Initiator protocol state.
+///
+/// Contains PRK secrets that must be zeroized on drop.
+#[derive(Zeroize, ZeroizeOnDrop)]
 struct InitiatorState {
+    #[zeroize(skip)]
     msg1: heapless::Vec<u8, 64>,
     g_y: [u8; 32],
     c_r: u8,
@@ -344,6 +350,79 @@ impl EdhocInitiator {
         // PRK_3e2m = PRK_2e for SIGN_SIGN method
         self.state.prk_3e2m = self.state.prk_2e;
 
+        // SECURITY: Parse PLAINTEXT_2 = (ID_CRED_R, Signature_2) and verify Signature_2
+        // per RFC 9528 Section 4.3.2. Without this, an attacker could inject forged Message 2.
+        // PLAINTEXT_2 format: ID_CRED_R (bstr) || Signature_2 (bstr 64 bytes)
+        let pt2 = plaintext_2.as_slice();
+        if pt2.len() < 2 {
+            return Err(EdhocError::InvalidMessage);
+        }
+        // Parse ID_CRED_R (skip it, we already have peer_pubkey)
+        let (id_cred_r_len, pt2_rest) = if pt2[0] == 0x58 && pt2.len() > 1 {
+            let len = pt2[1] as usize;
+            if pt2.len() < 2 + len { return Err(EdhocError::InvalidMessage); }
+            (len, &pt2[2 + len..])
+        } else if pt2[0] >= 0x40 && pt2[0] <= 0x57 {
+            let len = (pt2[0] - 0x40) as usize;
+            if pt2.len() < 1 + len { return Err(EdhocError::InvalidMessage); }
+            (len, &pt2[1 + len..])
+        } else {
+            return Err(EdhocError::InvalidMessage);
+        };
+        let _ = id_cred_r_len;
+
+        // Parse Signature_2 (64 bytes Ed25519)
+        let signature_2_bytes: [u8; SIG_LEN] = if pt2_rest.len() >= 2 && pt2_rest[0] == 0x58 && pt2_rest[1] == 64 {
+            if pt2_rest.len() < 2 + 64 { return Err(EdhocError::InvalidMessage); }
+            pt2_rest[2..2+64].try_into().map_err(|_| EdhocError::InvalidMessage)?
+        } else {
+            return Err(EdhocError::InvalidMessage);
+        };
+
+        // Compute MAC_2 for signature verification
+        // context_2 = << ID_CRED_R, CRED_R >> (CRED_R = peer_pubkey for simplified case)
+        let mut context_2 = heapless::Vec::<u8, 128>::new();
+        context_2.push_err(0x58)?;
+        context_2.push_err(32)?;
+        context_2.extend_err(peer_pubkey)?;  // ID_CRED_R
+        context_2.push_err(0x58)?;
+        context_2.push_err(32)?;
+        context_2.extend_err(peer_pubkey)?;  // CRED_R
+        let mac_2 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_2, "MAC_2", &context_2, 8)?;
+
+        // M_2 = ["Signature1", << ID_CRED_R >>, TH_2, << CRED_R >>, MAC_2]
+        let mut m_2 = heapless::Vec::<u8, 160>::new();
+        m_2.push_err(0x85)?;  // array of 5
+        // "Signature1"
+        m_2.push_err(0x6A)?;  // tstr of 10 chars
+        m_2.extend_err(b"Signature1")?;
+        // << ID_CRED_R >> bstr-wrapped
+        m_2.push_err(0x58)?;
+        m_2.push_err(34)?;  // 2 + 32
+        m_2.push_err(0x58)?;
+        m_2.push_err(32)?;
+        m_2.extend_err(peer_pubkey)?;
+        // TH_2
+        m_2.push_err(0x58)?;
+        m_2.push_err(32)?;
+        m_2.extend_err(&self.state.th_2)?;
+        // << CRED_R >> bstr-wrapped
+        m_2.push_err(0x58)?;
+        m_2.push_err(34)?;
+        m_2.push_err(0x58)?;
+        m_2.push_err(32)?;
+        m_2.extend_err(peer_pubkey)?;
+        // MAC_2
+        m_2.push_err(0x48)?;  // bstr of 8
+        m_2.extend_err(&mac_2)?;
+
+        // Verify Signature_2
+        let peer_verifying_key = VerifyingKey::from_bytes(peer_pubkey)
+            .map_err(|_| EdhocError::SignatureVerification)?;
+        let signature_2 = Signature::from_bytes(&signature_2_bytes);
+        peer_verifying_key.verify(&m_2, &signature_2)
+            .map_err(|_| EdhocError::SignatureVerification)?;
+
         // TH_3 = H(TH_2, CIPHERTEXT_2, ID_CRED_R)
         // ponytail: simplified - ID_CRED_R is peer pubkey
         let mut th_3_input = heapless::Vec::<u8, 128>::new();
@@ -446,13 +525,13 @@ impl EdhocInitiator {
     pub fn export_oscore(&self) -> Result<Context, OscoreError> {
         // OSCORE Master Secret = EDHOC-KDF(PRK_4e3m, TH_4, "OSCORE_Master_Secret", h'', 16)
         let master_secret_vec = edhoc_kdf(&self.state.prk_4e3m, &self.state.th_4, "OSCORE_Master_Secret", &[], KEY_LEN)
-            .map_err(|_| OscoreError::InvalidContext)?;
+            .map_err(|_| OscoreError::KeyDerivation)?;
         let mut master_secret = [0u8; KEY_LEN];
         master_secret.copy_from_slice(&master_secret_vec);
 
         // OSCORE Master Salt = EDHOC-KDF(PRK_4e3m, TH_4, "OSCORE_Master_Salt", h'', 8)
         let master_salt_vec = edhoc_kdf(&self.state.prk_4e3m, &self.state.th_4, "OSCORE_Master_Salt", &[], 8)
-            .map_err(|_| OscoreError::InvalidContext)?;
+            .map_err(|_| OscoreError::KeyDerivation)?;
         let mut master_salt = [0u8; 8];
         master_salt.copy_from_slice(&master_salt_vec);
 
@@ -482,7 +561,12 @@ pub struct EdhocResponder {
     state: ResponderState,
 }
 
+/// Responder protocol state.
+///
+/// Contains PRK secrets that must be zeroized on drop.
+#[derive(Zeroize, ZeroizeOnDrop)]
 struct ResponderState {
+    #[zeroize(skip)]
     msg1: heapless::Vec<u8, 64>,
     g_x: [u8; 32],
     c_i: u8,
@@ -746,12 +830,12 @@ impl EdhocResponder {
     /// Export OSCORE security context.
     pub fn export_oscore(&self) -> Result<Context, OscoreError> {
         let master_secret_vec = edhoc_kdf(&self.state.prk_4e3m, &self.state.th_4, "OSCORE_Master_Secret", &[], KEY_LEN)
-            .map_err(|_| OscoreError::InvalidContext)?;
+            .map_err(|_| OscoreError::KeyDerivation)?;
         let mut master_secret = [0u8; KEY_LEN];
         master_secret.copy_from_slice(&master_secret_vec);
 
         let master_salt_vec = edhoc_kdf(&self.state.prk_4e3m, &self.state.th_4, "OSCORE_Master_Salt", &[], 8)
-            .map_err(|_| OscoreError::InvalidContext)?;
+            .map_err(|_| OscoreError::KeyDerivation)?;
         let mut master_salt = [0u8; 8];
         master_salt.copy_from_slice(&master_salt_vec);
 

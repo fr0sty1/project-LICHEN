@@ -453,12 +453,13 @@ impl<'a> CoapBuilder<'a> {
 
     /// Add a Content-Format option.
     pub fn content_format(&mut self, format: u16) -> Result<&mut Self, CoapError> {
-        // Encode as minimal-length uint (CoAP spec)
+        // Encode as minimal-length uint (CoAP spec Section 3.2)
+        // format.to_be_bytes() returns [u8; 2] where [0] is high byte, [1] is low byte
         let bytes = format.to_be_bytes();
-        let value = match format {
-            0 => &bytes[2..2],
-            1..=0xFF => &bytes[1..2],
-            _ => &bytes[0..2],
+        let value: &[u8] = match format {
+            0 => &[],                    // Empty for zero
+            1..=0xFF => &bytes[1..2],    // Low byte only for 1-255
+            _ => &bytes[0..2],           // Both bytes for 256+
         };
         self.option(OptionNumber::ContentFormat as u16, value)
     }

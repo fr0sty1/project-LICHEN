@@ -76,7 +76,15 @@ class FrameReader:
         self.max_size = max_size
 
     def feed(self, data: bytes) -> None:
-        """Add received data to buffer."""
+        """Add received data to buffer.
+
+        Raises FramingError if buffer would exceed max_size + HEADER_SIZE
+        (prevents slow-drip memory exhaustion attacks).
+        """
+        if len(self.buffer) + len(data) > self.max_size + HEADER_SIZE:
+            raise FramingError(
+                f"buffer overflow: {len(self.buffer) + len(data)} > {self.max_size + HEADER_SIZE}"
+            )
         self.buffer.extend(data)
 
     def __iter__(self) -> Iterator[bytes]:

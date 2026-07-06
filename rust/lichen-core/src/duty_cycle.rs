@@ -56,6 +56,13 @@ pub struct TxRecord {
 ///   traffic. At 1 packet/second with 200ms airtime, 64 entries covers ~13s
 ///   of history; for a full hour at this rate you'd need ~3600 entries, but
 ///   in practice LoRa nodes transmit much less frequently.
+///
+/// # Time Monotonicity
+///
+/// All methods that take `now_ms` assume time is monotonically increasing.
+/// If time goes backwards (clock rollback, wrap, or test error), behavior is
+/// undefined: records with future timestamps won't be evicted and budget
+/// calculations will be incorrect. Callers must ensure monotonic timestamps.
 #[derive(Debug)]
 pub struct DutyCycleTracker<const N: usize> {
     records: Deque<TxRecord, N>,
@@ -83,7 +90,13 @@ impl<const N: usize> DutyCycleTracker<N> {
     /// # Arguments
     ///
     /// - `duty_permille`: Duty cycle in permille (e.g., 10 for 1%, 100 for 10%).
+    ///
+    /// # Panics
+    ///
+    /// Debug builds panic if `duty_permille` is 0 or > 1000 (invalid duty cycle).
     pub const fn with_duty_permille(duty_permille: u16) -> Self {
+        debug_assert!(duty_permille > 0, "duty_permille must be > 0");
+        debug_assert!(duty_permille <= 1000, "duty_permille must be <= 1000 (100%)");
         Self {
             records: Deque::new(),
             duty_permille,

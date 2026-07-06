@@ -6,10 +6,18 @@ the historical spec/lichen-native draft available for prototype compatibility.
 DEPRECATED: This module is deprecated and will be removed in a future release.
 Use the IPv6 + CoAP interface from spec/11-lci.md instead.
 
-Deprecation warnings are emitted when deprecated functions are called, not on import.
+Deprecation warnings are emitted on import to alert users that this module is deprecated.
 """
 
 from __future__ import annotations
+
+import warnings
+
+warnings.warn(
+    "lichen.interface is deprecated. Use the IPv6 + CoAP interface from spec/11-lci.md instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 from lichen.interface.framing import FrameReader, FrameWriter, frame, unframe
 from lichen.interface.handler import NodeHandler, bind_native

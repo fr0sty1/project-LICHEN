@@ -64,6 +64,8 @@ impl<'a> Record<'a> {
     /// Returns the parsed record. The input must be a CBOR array containing
     /// exactly one record map. For decoding multiple records, use
     /// [`cbor::decode`].
+    ///
+    /// Alias: [`from_bytes`](Self::from_bytes) for consistency with other crates.
     pub fn parse(data: &'a [u8]) -> Result<Self, CborError> {
         let mut buf = [Record::empty()];
         let count = cbor::decode(data, &mut buf)?;
@@ -71,5 +73,14 @@ impl<'a> Record<'a> {
             return Err(CborError::InvalidInput);
         }
         Ok(buf[0])
+    }
+
+    /// Parse a single record from a SenML-CBOR pack.
+    ///
+    /// Alias for [`parse`](Self::parse), provided for API consistency with
+    /// other codec types in the workspace (CoapPacket, LichenFrame, etc.).
+    #[inline]
+    pub fn from_bytes(data: &'a [u8]) -> Result<Self, CborError> {
+        Self::parse(data)
     }
 }

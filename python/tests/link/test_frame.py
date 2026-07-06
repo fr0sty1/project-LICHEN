@@ -115,6 +115,23 @@ class TestValidation:
             self._base(payload=b"\x00" * 300).to_bytes()
 
 
+class TestAddrModeLookup:
+    """Verify AddrMode.addr_len lookup table correctness."""
+
+    def test_addr_len_table_covers_all_modes(self) -> None:
+        """Ensure lookup table has entries for all AddrMode values."""
+        for mode in AddrMode:
+            # Should not raise IndexError
+            _ = mode.addr_len
+
+    def test_addr_len_values_correct(self) -> None:
+        """Verify each mode returns the expected address length."""
+        assert AddrMode.NONE.addr_len == 0
+        assert AddrMode.SHORT.addr_len == 2
+        assert AddrMode.EXTENDED.addr_len == 8
+        assert AddrMode.ELIDED.addr_len == 0
+
+
 class TestParseErrors:
     def test_empty(self) -> None:
         with pytest.raises(FrameError, match="empty"):

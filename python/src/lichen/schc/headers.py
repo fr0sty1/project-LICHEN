@@ -116,15 +116,11 @@ class _CoapUdpProfile(PacketProfile):
             return False
         if header.payload_length < UDP_HEADER_LENGTH + _COAP_FIXED_HEADER:
             return False
-        return self._addr_ok(int(header.src_addr)) and self._addr_ok(
-            int(header.dst_addr)
-        )
+        return self._addr_ok(int(header.src_addr)) and self._addr_ok(int(header.dst_addr))
 
     def parse(self, raw: bytes) -> tuple[dict[str, int], bytes]:
         header = IPv6Header.from_bytes(raw)
-        udp = UdpDatagram.from_bytes(
-            raw[HEADER_LENGTH : HEADER_LENGTH + header.payload_length]
-        )
+        udp = UdpDatagram.from_bytes(raw[HEADER_LENGTH : HEADER_LENGTH + header.payload_length])
         coap = udp.payload
         fixed, tail = coap[:_COAP_FIXED_HEADER], coap[_COAP_FIXED_HEADER:]
         b0 = fixed[0]
@@ -148,14 +144,10 @@ class _CoapUdpProfile(PacketProfile):
         src = IPv6Address(fields["IPv6.src"])
         dst = IPv6Address(fields["IPv6.dst"])
         b0 = (1 << 6) | ((fields["CoAP.type"] & 0x3) << 4) | (fields["CoAP.tkl"] & 0x0F)
-        coap = (
-            bytes([b0, fields["CoAP.code"]])
-            + int(fields["CoAP.mid"]).to_bytes(2, "big")
-            + tail
+        coap = bytes([b0, fields["CoAP.code"]]) + int(fields["CoAP.mid"]).to_bytes(2, "big") + tail
+        udp_bytes = UdpDatagram(fields["UDP.src_port"], fields["UDP.dst_port"], coap).to_bytes(
+            src, dst
         )
-        udp_bytes = UdpDatagram(
-            fields["UDP.src_port"], fields["UDP.dst_port"], coap
-        ).to_bytes(src, dst)
         return _ipv6_header(fields, UDP_NEXT_HEADER, len(udp_bytes)).to_bytes() + udp_bytes
 
 
@@ -220,9 +212,7 @@ class _RplProfile(PacketProfile):
         body = self._build_base(fields) + tail
         zero = bytes([_ICMPV6_RPL_TYPE, self.code, 0, 0]) + body
         checksum = icmpv6_checksum(src, dst, zero)
-        icmpv6 = (
-            bytes([_ICMPV6_RPL_TYPE, self.code]) + checksum.to_bytes(2, "big") + body
-        )
+        icmpv6 = bytes([_ICMPV6_RPL_TYPE, self.code]) + checksum.to_bytes(2, "big") + body
         header = _ipv6_header(fields, NextHeader.ICMPV6, len(icmpv6))
         return header.to_bytes() + icmpv6
 
@@ -257,8 +247,12 @@ class RplDioProfile(_RplProfile):
             bytes([fields["RPL.instance"], fields["RPL.version"]])
             + int(fields["RPL.rank"]).to_bytes(2, "big")
             + bytes(
-                [fields["RPL.gmop"], fields["RPL.dtsn"], fields["RPL.flags"],
-                 fields["RPL.reserved"]]
+                [
+                    fields["RPL.gmop"],
+                    fields["RPL.dtsn"],
+                    fields["RPL.flags"],
+                    fields["RPL.reserved"],
+                ]
             )
             + int(fields["RPL.dodagid"]).to_bytes(16, "big")
         )
@@ -289,13 +283,14 @@ class RplDaoProfile(_RplProfile):
         }
 
     def _build_base(self, fields: dict[str, int | None]) -> bytes:
-        return (
-            bytes(
-                [fields["RPL.instance"], fields["RPL.kd_flags"],
-                 fields["RPL.reserved"], fields["RPL.seq"]]
-            )
-            + int(fields["RPL.dodagid"]).to_bytes(16, "big")
-        )
+        return bytes(
+            [
+                fields["RPL.instance"],
+                fields["RPL.kd_flags"],
+                fields["RPL.reserved"],
+                fields["RPL.seq"],
+            ]
+        ) + int(fields["RPL.dodagid"]).to_bytes(16, "big")
 
 
 class Icmpv6EchoProfile(PacketProfile):
@@ -314,10 +309,7 @@ class Icmpv6EchoProfile(PacketProfile):
             return False
         if header.payload_length < _ICMPV6_ECHO_BASE:
             return False
-        if not (
-            _is_link_local(int(header.src_addr))
-            and _is_link_local(int(header.dst_addr))
-        ):
+        if not (_is_link_local(int(header.src_addr)) and _is_link_local(int(header.dst_addr))):
             return False
         icmpv6 = raw[HEADER_LENGTH:]
         return icmpv6[0] in _ICMPV6_ECHO_TYPES and icmpv6[1] == 0
@@ -363,9 +355,7 @@ DEFAULT_PROFILES: tuple[PacketProfile, ...] = (
 )
 
 
-def compress_packet(
-    raw: bytes, profiles: tuple[PacketProfile, ...] = DEFAULT_PROFILES
-) -> bytes:
+def compress_packet(raw: bytes, profiles: tuple[PacketProfile, ...] = DEFAULT_PROFILES) -> bytes:
     """Compress a full packet, or fall back to the uncompressed rule (255)."""
     for profile in profiles:
         if profile.matches(raw):
@@ -374,9 +364,7 @@ def compress_packet(
     return bytes([RULE_ID_UNCOMPRESSED]) + raw
 
 
-def decompress_packet(
-    data: bytes, profiles: tuple[PacketProfile, ...] = DEFAULT_PROFILES
-) -> bytes:
+def decompress_packet(data: bytes, profiles: tuple[PacketProfile, ...] = DEFAULT_PROFILES) -> bytes:
     """Reconstruct a full packet from a SCHC-compressed datagram."""
     if not data:
         raise ValueError("empty SCHC packet")

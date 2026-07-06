@@ -16,8 +16,6 @@ import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-_LEGACY_ENABLED = bool(os.environ.get("LICHEN_LEGACY_CBOR"))
-
 from lichen.interface.messages import (
     ConfigGet,
     ConfigKey,
@@ -35,6 +33,8 @@ from lichen.interface.messages import (
     SendMessage,
 )
 from lichen.interface.tcp import TcpConnection, TcpServer, serve
+
+_LEGACY_ENABLED = bool(os.environ.get("LICHEN_LEGACY_CBOR"))
 
 if TYPE_CHECKING:
     from lichen.node import Node
@@ -159,10 +159,8 @@ class NodeHandler:
 
     def get_mesh_state(self) -> MeshState:
         """Build current mesh state message."""
-        # ponytail: gradient table doesn't expose iterator yet
-        # Access internal _entries for now
         gradients = []
-        for entry in self.node.gradient_table._entries.values():
+        for entry in self.node.gradient_table.entries():  # uses public entries() API
             # Extract IID from IPv6 destination (last 8 bytes)
             dest_iid = entry.destination.packed[8:16]
             next_hop_iid = entry.next_hop.packed[8:16]

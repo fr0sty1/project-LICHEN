@@ -293,7 +293,12 @@ impl ChatPayload {
             return Err(DecodeError::TooShort(TooShort::new(3, data.len())));
         }
 
-        // data[0] is subtype (0x01), already verified by caller
+        // data[0] is subtype (0x01), should be verified by caller but assert for defense-in-depth
+        debug_assert_eq!(
+            data[0],
+            CompactCotType::Chat as u8,
+            "ChatPayload::decode called with non-Chat subtype"
+        );
         let dest_type =
             DestType::from_byte(data[1]).ok_or(DecodeError::InvalidDestType(data[1]))?;
 
@@ -435,6 +440,9 @@ fn encode_pli(
     payload: &PliPayload,
     buf: &mut [u8],
 ) -> Result<usize, EncodeError> {
+    if buf.is_empty() {
+        return Err(EncodeError::BufferTooSmall(BufferTooSmall::new(PLI_TOTAL_SIZE, 0)));
+    }
     buf[0] = subtype as u8;
     payload
         .encode(&mut buf[1..])

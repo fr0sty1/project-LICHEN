@@ -552,27 +552,25 @@ class TestKeyPinning:
         assert result2.accepted is False
         assert result2.reject_reason == AnnounceRejectReason.KEY_CHANGE_DETECTED
 
-    def test_unpin_allows_key_rotation(
+    def test_unpin_clears_pinned_pubkey(
         self,
         processor: AnnounceProcessor,
         identity: Identity,
-        other_identity: Identity,
         neighbor: IPv6Address,
     ):
-        """After unpin(), a new pubkey is accepted and re-pinned (admin key rotation)."""
+        """unpin() clears the pinned pubkey for an IID.
+
+        Note: True key rotation (new key, same IID) is cryptographically impossible
+        since IID = hash(pubkey). This test verifies unpin() clears state, which
+        may be useful for admin cleanup of stale entries.
+        """
         ann1 = make_signed_announce(identity, seq_num=1)
         processor.process(ann1, neighbor, now_ms=0)
         assert processor.pinned_pubkey_for(identity.iid) == identity.pubkey
 
-        # Admin removes old pin
+        # Admin removes pin
         processor.unpin(identity.iid)
         assert processor.pinned_pubkey_for(identity.iid) is None
-
-        # New announce from other_identity (different key, different IID) is accepted
-        ann2 = make_signed_announce(other_identity, seq_num=1)
-        result = processor.process(ann2, neighbor, now_ms=1000)
-        assert result.accepted
-        assert processor.pinned_pubkey_for(other_identity.iid) == other_identity.pubkey
 
     def test_same_pubkey_repeated_announce_accepted(
         self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address

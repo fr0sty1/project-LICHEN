@@ -9,12 +9,16 @@
 //! is expected, or using an unclamped seed as a private key.
 
 use core::fmt;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// 32-byte identity seed.
 ///
 /// This is the root secret: random bytes persisted to flash and used to derive
 /// the keypair via `derive_keypair(&seed)`. Never transmitted over the network.
-#[derive(Clone, Copy, PartialEq, Eq)]
+///
+/// Key material is zeroized on drop to minimize exposure window.
+/// Note: Cannot derive Copy because ZeroizeOnDrop requires Drop.
+#[derive(Clone, PartialEq, Eq, Zeroize, ZeroizeOnDrop)]
 pub struct Seed(pub(crate) [u8; 32]);
 
 impl Seed {
@@ -31,9 +35,13 @@ impl Seed {
     }
 
     /// Consume and return the inner bytes.
+    ///
+    /// Note: Not const because ZeroizeOnDrop adds a destructor.
     #[inline]
-    pub const fn into_bytes(self) -> [u8; 32] {
-        self.0
+    pub fn into_bytes(self) -> [u8; 32] {
+        let bytes = self.0;
+        core::mem::forget(self);  // Skip zeroization since caller takes ownership
+        bytes
     }
 }
 
@@ -62,7 +70,10 @@ impl fmt::Debug for Seed {
 ///
 /// Derived from a `Seed` via `derive_keypair`. Used for signing.
 /// Never persisted directly — only the seed is stored.
-#[derive(Clone, Copy, PartialEq, Eq)]
+///
+/// Key material is zeroized on drop to minimize exposure window.
+/// Note: Cannot derive Copy because ZeroizeOnDrop requires Drop.
+#[derive(Clone, PartialEq, Eq, Zeroize, ZeroizeOnDrop)]
 pub struct PrivateKey(pub(crate) [u8; 32]);
 
 impl PrivateKey {
@@ -83,9 +94,13 @@ impl PrivateKey {
     }
 
     /// Consume and return the inner bytes.
+    ///
+    /// Note: Not const because ZeroizeOnDrop adds a destructor.
     #[inline]
-    pub const fn into_bytes(self) -> [u8; 32] {
-        self.0
+    pub fn into_bytes(self) -> [u8; 32] {
+        let bytes = self.0;
+        core::mem::forget(self);  // Skip zeroization since caller takes ownership
+        bytes
     }
 }
 

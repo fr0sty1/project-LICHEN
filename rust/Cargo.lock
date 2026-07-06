@@ -1842,6 +1842,8 @@ dependencies = [
  "lichen-core",
  "log",
  "sha2 0.11.0",
+ "subtle",
+ "zeroize",
 ]
 
 [[package]]

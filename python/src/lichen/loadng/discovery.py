@@ -57,6 +57,9 @@ class RrepResult:
 class LoadngRouter:
     """Reactive route discovery state machine for one node."""
 
+    # Prune _seen cache every N suppression checks to amortize O(n) cost.
+    _PRUNE_INTERVAL = 16
+
     def __init__(
         self,
         node_address: IPv6Address | str,
@@ -71,6 +74,7 @@ class LoadngRouter:
         self.suppress_window_ms = suppress_window_ms
         self._own_seq = 0
         self._seen: dict[tuple[IPv6Address, IPv6Address, int], int] = {}
+        self._prune_countdown = self._PRUNE_INTERVAL
 
     def originate_rreq(
         self,
@@ -184,7 +188,12 @@ class LoadngRouter:
         self._seen[self._rreq_key(rreq)] = now
 
     def _is_suppressed(self, rreq: RREQ, now: int) -> bool:
-        self._prune_seen(now)
+        # Lazy prune: only prune every N checks to amortize O(n) cost.
+        # Stale entries don't affect correctness; they only waste memory.
+        self._prune_countdown -= 1
+        if self._prune_countdown <= 0:
+            self._prune_seen(now)
+            self._prune_countdown = self._PRUNE_INTERVAL
         ts = self._seen.get(self._rreq_key(rreq))
         return ts is not None and now - ts < self.suppress_window_ms
 

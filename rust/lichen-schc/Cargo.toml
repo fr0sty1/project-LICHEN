@@ -6,7 +6,9 @@ license.workspace = true
 description = "SCHC header compression (RFC 8724): rule model and compress/decompress stubs."
 
 [features]
-default = ["std"]
+# Consistent with workspace: no default features. Use `default-features = false`
+# for no_std embedded builds. Explicitly enable `std` when needed.
+default = []
 std = []
 # Logging: enable one or neither, not both
 defmt = ["dep:defmt", "lichen-core/defmt"]

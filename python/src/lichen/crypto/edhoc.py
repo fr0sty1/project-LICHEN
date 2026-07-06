@@ -11,6 +11,8 @@ signing key and X25519 key exchange key.
 
 from __future__ import annotations
 
+import hmac
+import io
 import os
 from dataclasses import dataclass, field
 from enum import IntEnum
@@ -84,8 +86,6 @@ class OscoreContext:
 
 def _hkdf_extract(salt: bytes, ikm: bytes) -> bytes:
     """HKDF-Extract with SHA-256 (RFC 5869)."""
-    import hmac
-
     if not salt:
         salt = b"\x00" * EDHOC_HASH_LEN
     return hmac.new(salt, ikm, "sha256").digest()
@@ -178,8 +178,6 @@ def _decode_connection_id(data: bytes | int) -> bytes:
 
 def _decode_cbor_sequence(data: bytes) -> list:
     """Decode a CBOR sequence (concatenated CBOR items) into a list."""
-    import io
-
     items = []
     fp = io.BytesIO(data)
     while fp.tell() < len(data):

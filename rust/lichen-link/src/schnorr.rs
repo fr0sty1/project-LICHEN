@@ -13,6 +13,7 @@ use curve25519_dalek::{
     traits::IsIdentity,
 };
 use sha2::{Digest, Sha512};
+use subtle::ConstantTimeEq;
 
 /// Derive an Ed25519 keypair from a seed.
 ///
@@ -126,14 +127,14 @@ pub fn verify(pubkey: &PublicKey, msg: &[u8], sig: &[u8; 48]) -> bool {
     let epk = e_scalar * pubkey_point;
     let r_prime = (sb - epk).compress();
 
-    // 6. Recompute challenge and compare
+    // 6. Recompute challenge and compare (constant-time)
     let e_check = Sha512::new()
         .chain_update(r_prime.as_bytes())
         .chain_update(pubkey.as_bytes())
         .chain_update(msg)
         .finalize();
 
-    e_check[..16] == e_received
+    e_check[..16].ct_eq(&e_received).into()
 }
 
 /// Length of a Schnorr48 signature in bytes.

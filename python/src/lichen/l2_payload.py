@@ -12,6 +12,14 @@ L2_ROUTING_TYPE_ANNOUNCE = 0x01
 
 
 class L2PayloadKind(Enum):
+    """Link-layer payload type for authenticated inner content dispatch.
+
+    The first byte of an authenticated L2 payload indicates its type:
+    - SCHC: SCHC-compressed IPv6 packet
+    - ROUTING: Routing protocol message (Announce, RPL, LOADng)
+    - UNKNOWN: Unrecognized dispatch byte
+    """
+
     SCHC = "schc"
     ROUTING = "routing"
     UNKNOWN = "unknown"

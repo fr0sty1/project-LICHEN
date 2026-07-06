@@ -24,7 +24,12 @@ from lichen.announce.messages import (
 )
 from lichen.crypto.identity import PeerIdentity, _pubkey_to_iid
 from lichen.crypto.schnorr48 import verify
-from lichen.gradient import GradientEntry, GradientSource, GradientTable
+from lichen.gradient import (
+    GRADIENT_TIMEOUT_MS,
+    GradientEntry,
+    GradientSource,
+    GradientTable,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +58,7 @@ ANNOUNCE_INTERVAL_MS = 300_000
 # Why 30_000: Spec section 9.4. Random jitter 0-30 seconds prevents collision.
 ANNOUNCE_JITTER_MS = 30_000
 
-# Why 600_000: Spec section 9.4. 2x announce interval. Gradient expires if
-# no announce received within this window.
-GRADIENT_TIMEOUT_MS = 600_000
+# GRADIENT_TIMEOUT_MS imported from lichen.gradient (spec section 9.4).
 
 
 class AnnounceRejectReason(Enum):

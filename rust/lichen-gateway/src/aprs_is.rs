@@ -35,7 +35,7 @@ pub const APRS_IS_PORT: u16 = 14580;
 /// +--------+--------+--------+--------+--------+--------+
 /// ```
 ///
-/// Total: 18 bytes for full PLI.
+/// Total: 17 bytes for full PLI (1 byte subtype + 16 bytes payload).
 #[derive(Debug, Clone, PartialEq)]
 pub struct CompactCot {
     /// CoT subtype byte (0x02-0x05 for PLI).
@@ -83,9 +83,9 @@ pub mod team {
 }
 
 impl CompactCot {
-    /// Decode from 18-byte PLI wire format.
+    /// Decode from 17-byte PLI wire format.
     pub fn from_bytes(data: &[u8]) -> Option<Self> {
-        if data.len() < 18 {
+        if data.len() < 17 {
             return None;
         }
         let subtype = data[0];
@@ -101,13 +101,12 @@ impl CompactCot {
             speed_cm_s: u16::from_be_bytes([data[13], data[14]]),
             team: data[15],
             role: data[16],
-            // data[17] unused/reserved
         })
     }
 
-    /// Encode to 18-byte PLI wire format.
-    pub fn to_bytes(&self) -> [u8; 18] {
-        let mut out = [0u8; 18];
+    /// Encode to 17-byte PLI wire format.
+    pub fn to_bytes(&self) -> [u8; 17] {
+        let mut out = [0u8; 17];
         out[0] = self.subtype;
         out[1..5].copy_from_slice(&self.lat_microdeg.to_be_bytes());
         out[5..9].copy_from_slice(&self.lon_microdeg.to_be_bytes());
@@ -116,7 +115,6 @@ impl CompactCot {
         out[13..15].copy_from_slice(&self.speed_cm_s.to_be_bytes());
         out[15] = self.team;
         out[16] = self.role;
-        out[17] = 0; // reserved
         out
     }
 
@@ -136,9 +134,13 @@ impl CompactCot {
     }
 
     /// Altitude in feet (for APRS).
+    ///
+    /// Uses rounded integer arithmetic. Sub-foot precision is intentionally
+    /// lost since APRS position reports use whole feet.
     pub fn alt_ft(&self) -> i32 {
         // 1 decimeter = 0.328084 feet
-        (self.alt_dm as i32 * 328084) / 1_000_000
+        // Use i64 intermediate and round to nearest foot (+500000 for rounding)
+        ((self.alt_dm as i64 * 328084 + 500000) / 1_000_000) as i32
     }
 }
 
@@ -169,11 +171,21 @@ impl std::fmt::Display for AprsError {
 
 impl std::error::Error for AprsError {}
 
+/// Whether the APRS-IS connection is verified for transmit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AprsVerification {
+    /// Verified with valid passcode — can transmit and receive.
+    Verified,
+    /// Unverified (passcode -1) — receive-only.
+    Unverified,
+}
+
 /// APRS-IS TCP client.
 pub struct AprsIsClient {
     stream: TcpStream,
     reader: BufReader<TcpStream>,
     callsign: String,
+    verification: Option<AprsVerification>,
 }
 
 impl AprsIsClient {
@@ -193,6 +205,7 @@ impl AprsIsClient {
             stream,
             reader,
             callsign: String::new(),
+            verification: None,
         })
     }
 
@@ -223,10 +236,17 @@ impl AprsIsClient {
 
         if response.contains("logresp") && response.contains("verified") {
             self.callsign = callsign.to_string();
+            // Check for "unverified" before "verified" since "unverified" contains "verified"
+            self.verification = if response.contains("unverified") {
+                Some(AprsVerification::Unverified)
+            } else {
+                Some(AprsVerification::Verified)
+            };
             Ok(())
         } else if response.contains("logresp") && response.contains("unverified") {
             // Receive-only mode (passcode -1)
             self.callsign = callsign.to_string();
+            self.verification = Some(AprsVerification::Unverified);
             Ok(())
         } else {
             Err(AprsError::LoginFailed(response))
@@ -247,27 +267,45 @@ impl AprsIsClient {
 
     /// Receive the next APRS packet from the server.
     ///
-    /// Returns None on timeout, Some(packet) on success.
+    /// Returns None on timeout or EOF, Some(packet) on success. Server comment
+    /// lines (starting with #) are skipped internally — the method loops until
+    /// it finds a real packet or hits timeout/EOF.
     pub fn recv(&mut self) -> Result<Option<String>, AprsError> {
-        let mut line = String::new();
-        match self.reader.read_line(&mut line) {
-            Ok(0) => Ok(None), // EOF
-            Ok(_) => {
-                // Skip server comments (lines starting with #)
-                if line.starts_with('#') {
-                    return Ok(None);
+        loop {
+            let mut line = String::new();
+            match self.reader.read_line(&mut line) {
+                Ok(0) => return Ok(None), // EOF
+                Ok(_) => {
+                    // Skip server comments (lines starting with #) and continue
+                    if line.starts_with('#') {
+                        continue;
+                    }
+                    return Ok(Some(line.trim_end().to_string()));
                 }
-                Ok(Some(line.trim_end().to_string()))
+                Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(None),
+                Err(e) if e.kind() == io::ErrorKind::TimedOut => return Ok(None),
+                Err(e) => return Err(e.into()),
             }
-            Err(e) if e.kind() == io::ErrorKind::WouldBlock => Ok(None),
-            Err(e) if e.kind() == io::ErrorKind::TimedOut => Ok(None),
-            Err(e) => Err(e.into()),
         }
     }
 
     /// Get the logged-in callsign.
     pub fn callsign(&self) -> &str {
         &self.callsign
+    }
+
+    /// Get the verification status after login.
+    ///
+    /// Returns `None` if [`login`](Self::login) has not been called yet.
+    /// Returns `Some(Verified)` if the passcode was valid (can transmit).
+    /// Returns `Some(Unverified)` if using passcode -1 (receive-only).
+    pub fn verification(&self) -> Option<AprsVerification> {
+        self.verification
+    }
+
+    /// Check if this connection can transmit (is verified).
+    pub fn can_transmit(&self) -> bool {
+        self.verification == Some(AprsVerification::Verified)
     }
 }
 
@@ -428,7 +466,7 @@ mod tests {
         };
 
         let bytes = cot.to_bytes();
-        assert_eq!(bytes.len(), 18);
+        assert_eq!(bytes.len(), 17);
 
         let decoded = CompactCot::from_bytes(&bytes).unwrap();
         assert_eq!(decoded, cot);
@@ -560,6 +598,13 @@ mod tests {
     #[test]
     fn compact_cot_too_short() {
         let data = [0u8; 10];
+        assert!(CompactCot::from_bytes(&data).is_none());
+    }
+
+    #[test]
+    fn compact_cot_invalid_subtype_at_boundary() {
+        let mut data = [0u8; 17];
+        data[0] = 0x06; // Invalid subtype (above UNKNOWN_GROUND)
         assert!(CompactCot::from_bytes(&data).is_none());
     }
 }

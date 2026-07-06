@@ -138,6 +138,21 @@ impl core::error::Error for OscoreError {
 /// OSCORE security context.
 ///
 /// Contains cryptographic material and state for one peer.
+///
+/// # Thread Safety
+///
+/// This type is designed for single-threaded use on embedded targets. The replay
+/// window (`replay_window` and `recipient_seq`) is not thread-safe: concurrent calls
+/// to `check_replay` could race, allowing both to pass the candidate check and both
+/// to update the window, potentially losing state or allowing replays.
+///
+/// For multi-threaded use, wrap in a `Mutex` or use atomic operations.
+///
+/// # Key Lifecycle
+///
+/// All key material (master_secret, sender_key, recipient_key) is zeroized on drop
+/// via the `Zeroize` derive. Clone is intentionally supported for cases where multiple
+/// tasks need the context; both the original and clones will be zeroized when dropped.
 #[derive(Clone, Zeroize)]
 #[zeroize(drop)]
 pub struct Context {
@@ -185,13 +200,22 @@ impl Context {
     /// Create a new OSCORE security context.
     ///
     /// Derives sender and recipient keys from master secret using HKDF-SHA256.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InvalidParam` if:
+    /// - `sender_id` or `recipient_id` exceeds 7 bytes (nonce capacity)
+    /// - `master_salt` exceeds 8 bytes
     pub fn new(
         master_secret: &[u8; KEY_LEN],
         master_salt: Option<&[u8]>,
         sender_id: &[u8],
         recipient_id: &[u8],
     ) -> Result<Self, OscoreError> {
-        if sender_id.len() > ID_MAX_LEN || recipient_id.len() > ID_MAX_LEN {
+        // SECURITY: Validate ID length against nonce capacity (7 bytes), not ID_MAX_LEN (8).
+        // RFC 8613 allows IDs up to 8 bytes, but only 7 bytes fit in the nonce layout.
+        // Accepting 8-byte IDs would cause silent truncation in compute_nonce.
+        if sender_id.len() > NONCE_ID_LEN || recipient_id.len() > NONCE_ID_LEN {
             return Err(OscoreError::InvalidParam);
         }
 

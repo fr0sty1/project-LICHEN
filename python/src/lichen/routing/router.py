@@ -140,6 +140,7 @@ class Router:
     # DTN store-and-forward buffer (spec 9.8)
     dtn_buffer: deque[DtnMessage] = field(default_factory=deque, repr=False)
     dtn_buffer_max_bytes: int = 65536  # 64KB default
+    _dtn_buffer_bytes: int = field(default=0, repr=False)  # Running total for O(1) size checks
 
     # Why fe80::/10: RFC 4291 link-local prefix. All link-local addresses
     # start with fe80:: through febf::, which is fe80::/10.
@@ -443,6 +444,7 @@ class Router:
         # Evict oldest messages until we have space
         self._dtn_evict_if_needed(msg.size())
         self.dtn_buffer.append(msg)
+        self._dtn_buffer_bytes += msg.size()
         logger.debug("dtn: buffered message for %s, expiry=%d, buffer_size=%d",
                     destination_iid.hex(), expiry_unix, len(self.dtn_buffer))
         return True
@@ -458,35 +460,58 @@ class Router:
         return result
 
     def dtn_retrieve_for(self, destination_iid: bytes) -> list[DtnMessage]:
-        """Retrieve and remove all messages for a destination IID."""
-        matching = [m for m in self.dtn_buffer if m.destination_iid == destination_iid]
-        self.dtn_buffer = deque(m for m in self.dtn_buffer if m.destination_iid != destination_iid)
+        """Retrieve and remove all messages for a destination IID.
+
+        Uses single-pass partitioning to avoid O(2n) double iteration.
+        """
+        matching: list[DtnMessage] = []
+        remaining: deque[DtnMessage] = deque()
+        for msg in self.dtn_buffer:
+            if msg.destination_iid == destination_iid:
+                matching.append(msg)
+                self._dtn_buffer_bytes -= msg.size()
+            else:
+                remaining.append(msg)
+        self.dtn_buffer = remaining
         logger.debug("dtn: retrieved %d messages for %s",
                     len(matching), destination_iid.hex())
         return matching
 
     def dtn_expire_old(self) -> int:
-        """Remove expired messages from buffer. Returns count removed."""
+        """Remove expired messages from buffer. Returns count removed.
+
+        Uses single-pass partitioning and updates running byte counter.
+        """
         import time
         now_unix = int(time.time())
-        original_len = len(self.dtn_buffer)
-        self.dtn_buffer = deque(m for m in self.dtn_buffer if m.expiry_unix > now_unix)
-        expired = original_len - len(self.dtn_buffer)
+        expired = 0
+        remaining: deque[DtnMessage] = deque()
+        for msg in self.dtn_buffer:
+            if msg.expiry_unix > now_unix:
+                remaining.append(msg)
+            else:
+                expired += 1
+                self._dtn_buffer_bytes -= msg.size()
+        self.dtn_buffer = remaining
         if expired > 0:
             logger.debug("dtn: expired %d messages", expired)
         return expired
 
     def _dtn_buffer_size(self) -> int:
-        """Current buffer size in bytes."""
-        return sum(m.size() for m in self.dtn_buffer)
+        """Current buffer size in bytes (O(1) via running counter)."""
+        return self._dtn_buffer_bytes
 
     def _dtn_evict_if_needed(self, new_msg_size: int) -> int:
-        """Evict oldest messages to make room. Returns count evicted."""
+        """Evict oldest messages to make room. Returns count evicted.
+
+        O(k) where k is evictions per insert, using running byte counter.
+        """
         evicted = 0
-        while self._dtn_buffer_size() + new_msg_size > self.dtn_buffer_max_bytes:
+        while self._dtn_buffer_bytes + new_msg_size > self.dtn_buffer_max_bytes:
             if not self.dtn_buffer:
                 break
             oldest = self.dtn_buffer.popleft()  # oldest-first eviction (O(1))
+            self._dtn_buffer_bytes -= oldest.size()
             evicted += 1
             logger.debug("dtn: evicted message for %s to make room",
                         oldest.destination_iid.hex())
