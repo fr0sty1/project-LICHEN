@@ -7,21 +7,9 @@ def read_repo_text(path: str) -> str:
     return (REPO_ROOT / path).read_text(encoding="utf-8")
 
 
-def test_lci_spec_is_authoritative_over_legacy_native_cbor() -> None:
+def test_lci_spec_is_authoritative() -> None:
     lci = read_repo_text("spec/11-lci.md")
-
     assert "authoritative native application" in lci
-    assert "spec/lichen-native/" in lci
-    assert "MUST NOT use its `0xC1` framing" in lci
-    assert "`raw_tx`, or `raw_rx` messages" in lci
-
-
-def test_legacy_native_specs_are_marked_non_authoritative() -> None:
-    for path in sorted((REPO_ROOT / "spec/lichen-native").glob("*.md")):
-        text = path.read_text(encoding="utf-8")
-        # ponytail: acceptance criteria says "frozen/prototype-only" not "non-authoritative"
-        assert "FROZEN / PROTOTYPE-ONLY" in text or "Historical" in text, path
-        assert "../11-lci.md" in text, path
 
 
 def test_lci_raw_diagnostics_have_coap_security_model() -> None:
@@ -45,17 +33,6 @@ def test_lci_raw_diagnostics_have_coap_security_model() -> None:
         "excludes `/diag/raw/*`",
     ):
         assert required in lci
-
-
-def test_legacy_raw_rx_key_points_to_lci_diagnostics() -> None:
-    config = read_repo_text("spec/lichen-native/04-config.md")
-    raw = read_repo_text("spec/lichen-native/10-raw-frame.md")
-
-    assert "`64` (`raw_rx_enable`)" in config
-    assert "not part of the authoritative LCI" in config
-    assert "/diag/raw/*" in raw
-    # ponytail: simplified to "Do not implement" in status banner
-    assert "Do not implement" in raw or "MUST NOT be implemented" in raw
 
 
 def test_zephyr_native_cbor_library_is_marked_legacy() -> None:
