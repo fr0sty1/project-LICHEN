@@ -79,6 +79,9 @@ NODE_STATE_TRANSITIONS: dict[NodeState, frozenset[NodeState]] = {
     NodeState.STOPPING: frozenset({NodeState.STOPPED}),
 }
 
+# Maximum relay-seen cache entries before LRU eviction
+RELAY_SEEN_MAX_SIZE = 128
+
 
 @dataclass
 class NodeConfig:
@@ -385,7 +388,7 @@ class Node:
         elif decision == RouteDecision.FORWARD and payload not in self._relay_seen:
             # Relay: re-broadcast SCHC bytes unchanged.  Dedup prevents loops.
             self._relay_seen.add(payload)
-            if len(self._relay_seen) > 128:
+            if len(self._relay_seen) > RELAY_SEEN_MAX_SIZE:
                 self._relay_seen.clear()
             await self.link.send(payload)
 
@@ -475,7 +478,7 @@ class Node:
         wrapped = wrap_schc_payload(schc)
         # Track what we've sent so relay dedup doesn't forward it back to us.
         self._relay_seen.add(wrapped)
-        if len(self._relay_seen) > 128:
+        if len(self._relay_seen) > RELAY_SEEN_MAX_SIZE:
             self._relay_seen.clear()
 
         now_ms = int(asyncio.get_running_loop().time() * 1000)
@@ -571,9 +574,17 @@ class Node:
             "announce_interval_ms": self.config.announce_interval_ms,
         }
 
+    _VALID_CONFIG_KEYS = frozenset({"receive_timeout_ms", "announce_interval_ms"})
+
     def set_config(self, updates: Mapping[str, object]) -> None:
-        """Update node config from CoAP /config PUT."""
-        # ponytail: only allow safe updates, ignore unknown keys
+        """Update node config from CoAP /config PUT.
+
+        Raises:
+            ValueError: If any key in updates is not a valid config key.
+        """
+        unknown = set(updates.keys()) - self._VALID_CONFIG_KEYS
+        if unknown:
+            raise ValueError(f"unknown config keys: {sorted(unknown)}")
         if "receive_timeout_ms" in updates:
             self.config.receive_timeout_ms = int(cast(int | str, updates["receive_timeout_ms"]))
         if "announce_interval_ms" in updates:

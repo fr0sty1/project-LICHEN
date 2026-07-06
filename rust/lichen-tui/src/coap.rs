@@ -42,7 +42,9 @@ fn build_get(path: &str) -> Vec<u8> {
     // Uri-Path option (11) — one entry per path segment
     let mut prev: u16 = 0;
     for seg in path.trim_matches('/').split('/').filter(|s| !s.is_empty()) {
-        let delta = 11 - prev; // 11 for first, 0 for subsequent
+        // CoAP options are delta-encoded: delta is 11 for first Uri-Path segment
+        // (option number 11), 0 for subsequent segments (same option number).
+        let delta = 11 - prev;
         p.push((delta as u8) << 4 | seg.len() as u8);
         p.extend_from_slice(seg.as_bytes());
         prev = 11;

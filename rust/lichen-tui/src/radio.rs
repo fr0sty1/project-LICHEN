@@ -87,7 +87,7 @@ impl RadioState {
 
     /// Get duty cycle usage as a fraction (0.0 to 1.0+).
     pub fn duty_cycle_fraction(&mut self) -> f64 {
-        self.duty_cycle.usage_percent(self.now_ms) as f64 / 100.0
+        self.duty_cycle.usage_permille(self.now_ms) as f64 / 1000.0
     }
 
     /// Get remaining TX budget in milliseconds.

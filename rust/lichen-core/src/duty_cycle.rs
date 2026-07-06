@@ -4,6 +4,11 @@
 //! sub-band over a 1-hour rolling window). This module tracks transmission
 //! history and provides methods to query remaining budget.
 //!
+//! # Fixed-Point Representation
+//!
+//! Duty cycle is expressed in permille (parts per thousand) to avoid floating
+//! point on soft-float embedded targets. 1% = 10 permille, 0.1% = 1 permille.
+//!
 //! # Example
 //!
 //! ```
@@ -24,11 +29,12 @@ use heapless::Deque;
 /// Rolling window duration in milliseconds (1 hour).
 pub const WINDOW_MS: u64 = 3_600_000;
 
-/// Default duty cycle limit as a fraction (1% = 0.01).
-pub const DEFAULT_DUTY_CYCLE: f32 = 0.01;
+/// Default duty cycle limit in permille (1% = 10 permille).
+pub const DEFAULT_DUTY_PERMILLE: u16 = 10;
 
-/// Maximum TX time allowed per window at 1% duty cycle.
-pub const MAX_TX_MS: u32 = (WINDOW_MS as f32 * DEFAULT_DUTY_CYCLE) as u32; // 36000ms
+/// Maximum TX time allowed per window at 1% duty cycle (36000ms).
+/// Calculated as: WINDOW_MS * DEFAULT_DUTY_PERMILLE / 1000
+pub const MAX_TX_MS: u32 = (WINDOW_MS as u32 / 1000) * (DEFAULT_DUTY_PERMILLE as u32); // 36000ms
 
 /// A transmission record: (timestamp_ms, duration_ms).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -53,7 +59,8 @@ pub struct TxRecord {
 #[derive(Debug)]
 pub struct DutyCycleTracker<const N: usize> {
     records: Deque<TxRecord, N>,
-    duty_cycle: f32,
+    /// Duty cycle limit in permille (1% = 10, 0.1% = 1).
+    duty_permille: u16,
 }
 
 impl<const N: usize> Default for DutyCycleTracker<N> {
@@ -67,19 +74,19 @@ impl<const N: usize> DutyCycleTracker<N> {
     pub const fn new() -> Self {
         Self {
             records: Deque::new(),
-            duty_cycle: DEFAULT_DUTY_CYCLE,
+            duty_permille: DEFAULT_DUTY_PERMILLE,
         }
     }
 
-    /// Create a new tracker with a custom duty cycle limit.
+    /// Create a new tracker with a custom duty cycle limit in permille.
     ///
     /// # Arguments
     ///
-    /// - `duty_cycle`: Duty cycle as a fraction (e.g., 0.01 for 1%, 0.10 for 10%).
-    pub const fn with_duty_cycle(duty_cycle: f32) -> Self {
+    /// - `duty_permille`: Duty cycle in permille (e.g., 10 for 1%, 100 for 10%).
+    pub const fn with_duty_permille(duty_permille: u16) -> Self {
         Self {
             records: Deque::new(),
-            duty_cycle,
+            duty_permille,
         }
     }
 
@@ -126,6 +133,16 @@ impl<const N: usize> DutyCycleTracker<N> {
         total
     }
 
+    /// Calculate max TX time in milliseconds based on duty cycle.
+    ///
+    /// max_tx_ms = WINDOW_MS * duty_permille / 1000
+    #[inline]
+    fn max_tx_ms(&self) -> u32 {
+        // WINDOW_MS / 1000 = 3600, then * duty_permille
+        // This avoids overflow: 3600 * 1000 = 3_600_000 fits in u32
+        (WINDOW_MS as u32 / 1000) * (self.duty_permille as u32)
+    }
+
     /// Returns remaining TX budget in milliseconds for the current window.
     ///
     /// # Arguments
@@ -133,22 +150,25 @@ impl<const N: usize> DutyCycleTracker<N> {
     /// - `now_ms`: Current timestamp in milliseconds.
     pub fn remaining_ms(&mut self, now_ms: u64) -> u32 {
         self.evict_stale(now_ms);
-        let max_tx = (WINDOW_MS as f32 * self.duty_cycle) as u32;
+        let max_tx = self.max_tx_ms();
         let used = self.total_tx_in_window(now_ms);
         max_tx.saturating_sub(used)
     }
 
-    /// Returns current duty cycle usage as a percentage (0.0 to 100.0+).
+    /// Returns current duty cycle usage in permille (0 to 1000+).
     ///
-    /// Values over 100.0 indicate the node has exceeded its duty cycle limit.
+    /// Values over the configured limit indicate the node has exceeded its
+    /// duty cycle. For 1% duty cycle, 10 = at limit, >10 = over limit.
     ///
     /// # Arguments
     ///
     /// - `now_ms`: Current timestamp in milliseconds.
-    pub fn usage_percent(&mut self, now_ms: u64) -> f32 {
+    pub fn usage_permille(&mut self, now_ms: u64) -> u16 {
         self.evict_stale(now_ms);
         let used = self.total_tx_in_window(now_ms);
-        (used as f32 / WINDOW_MS as f32) * 100.0
+        // used_permille = (used * 1000) / WINDOW_MS
+        // Use u64 to avoid overflow
+        ((used as u64) * 1000 / WINDOW_MS) as u16
     }
 
     /// Returns when a transmission of the given duration will be allowed.
@@ -163,7 +183,7 @@ impl<const N: usize> DutyCycleTracker<N> {
     pub fn next_tx_available_ms(&mut self, now_ms: u64, duration_ms: u32) -> u64 {
         self.evict_stale(now_ms);
 
-        let max_tx = (WINDOW_MS as f32 * self.duty_cycle) as u32;
+        let max_tx = self.max_tx_ms();
         let used = self.total_tx_in_window(now_ms);
 
         // If we have enough budget now, return immediately
@@ -236,7 +256,7 @@ mod tests {
     fn new_tracker_has_full_budget() {
         let mut tracker: DutyCycleTracker<64> = DutyCycleTracker::new();
         assert_eq!(tracker.remaining_ms(0), MAX_TX_MS);
-        assert_eq!(tracker.usage_percent(0), 0.0);
+        assert_eq!(tracker.usage_permille(0), 0);
     }
 
     #[test]
@@ -249,15 +269,15 @@ mod tests {
     }
 
     #[test]
-    fn usage_percent_calculation() {
+    fn usage_permille_calculation() {
         let mut tracker: DutyCycleTracker<64> = DutyCycleTracker::new();
 
-        // 36000ms is 1% of 3600000ms window
+        // 36000ms is 1% of 3600000ms window = 10 permille
         tracker.record_tx(0, 36000);
 
-        // Should show 1% usage
-        let usage = tracker.usage_percent(0);
-        assert!((usage - 1.0).abs() < 0.001);
+        // Should show 10 permille (1%)
+        let usage = tracker.usage_permille(0);
+        assert_eq!(usage, 10);
     }
 
     #[test]
@@ -351,11 +371,12 @@ mod tests {
     }
 
     #[test]
-    fn custom_duty_cycle() {
-        let mut tracker: DutyCycleTracker<64> = DutyCycleTracker::with_duty_cycle(0.10);
+    fn custom_duty_permille() {
+        let mut tracker: DutyCycleTracker<64> = DutyCycleTracker::with_duty_permille(100);
 
-        // 10% duty cycle = 360000ms max
-        let expected_max = (WINDOW_MS as f32 * 0.10) as u32;
+        // 10% duty cycle (100 permille) = 360000ms max
+        // WINDOW_MS / 1000 * 100 = 3600 * 100 = 360000
+        let expected_max = (WINDOW_MS as u32 / 1000) * 100;
         assert_eq!(tracker.remaining_ms(0), expected_max);
     }
 
@@ -410,9 +431,9 @@ mod tests {
         }
 
         // After 12 packets in one hour: 12 * 370ms = 4440ms
-        // That's 4440 / 3600000 = 0.12% duty cycle - well under 1%
-        let usage = tracker.usage_percent(11 * interval_ms);
-        assert!(usage < 0.2);
+        // That's 4440 / 3600000 = 0.12% duty cycle = ~1.2 permille - well under 10 permille (1%)
+        let usage = tracker.usage_permille(11 * interval_ms);
+        assert!(usage < 2);
     }
 
     #[test]
@@ -476,7 +497,7 @@ mod tests {
     #[test]
     fn constants_are_correct() {
         assert_eq!(WINDOW_MS, 3_600_000);
-        assert!((DEFAULT_DUTY_CYCLE - 0.01).abs() < 0.0001);
+        assert_eq!(DEFAULT_DUTY_PERMILLE, 10); // 1% = 10 permille
         assert_eq!(MAX_TX_MS, 36000);
     }
 }

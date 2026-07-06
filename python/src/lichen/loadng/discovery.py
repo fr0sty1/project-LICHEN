@@ -21,6 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from ipaddress import IPv6Address
 
+from lichen.ipv6 import to_ipv6
 from lichen.gradient import (
     GRADIENT_TIMEOUT_MS,
     GradientEntry,
@@ -31,10 +32,6 @@ from lichen.loadng.cache import RouteCache, RouteEntry
 from lichen.loadng.messages import INITIAL_HOP_LIMIT, RREP, RREQ
 
 SUPPRESS_WINDOW_MS = 10_000  # duplicate-RREQ suppression window (spec B2.6)
-
-
-def _addr(value: IPv6Address | str) -> IPv6Address:
-    return value if isinstance(value, IPv6Address) else IPv6Address(value)
 
 
 @dataclass
@@ -68,7 +65,7 @@ class LoadngRouter:
         *,
         suppress_window_ms: int = SUPPRESS_WINDOW_MS,
     ) -> None:
-        self.node_address = _addr(node_address)
+        self.node_address = to_ipv6(node_address)
         self.gradient = gradient
         self.cache = cache
         self.suppress_window_ms = suppress_window_ms
@@ -85,7 +82,7 @@ class LoadngRouter:
         self._own_seq = (self._own_seq + 1) & 0xFFFF
         rreq = RREQ(
             originator=self.node_address,
-            destination=_addr(destination),
+            destination=to_ipv6(destination),
             seq_num=self._own_seq,
             hop_limit=hop_limit,
         )
@@ -95,7 +92,7 @@ class LoadngRouter:
     def process_rreq(
         self, rreq: RREQ, from_neighbor: IPv6Address | str, now: int
     ) -> RreqResult:
-        from_neighbor = _addr(from_neighbor)
+        from_neighbor = to_ipv6(from_neighbor)
         if rreq.originator == self.node_address:
             return RreqResult(suppressed=True)  # echo of our own RREQ
         if self._is_suppressed(rreq, now):
@@ -142,7 +139,7 @@ class LoadngRouter:
     def process_rrep(
         self, rrep: RREP, from_neighbor: IPv6Address | str, now: int
     ) -> RrepResult:
-        from_neighbor = _addr(from_neighbor)
+        from_neighbor = to_ipv6(from_neighbor)
         install_hops = rrep.hop_count + 1
 
         # Forward gradient toward the sought node (the RREP's originator).
@@ -181,7 +178,7 @@ class LoadngRouter:
         )
 
     def _rreq_key(self, rreq: RREQ) -> tuple[IPv6Address, IPv6Address, int]:
-        return (_addr(rreq.originator), _addr(rreq.destination), rreq.seq_num)
+        return (to_ipv6(rreq.originator), to_ipv6(rreq.destination), rreq.seq_num)
 
     def _mark_seen(self, rreq: RREQ, now: int) -> None:
         self._seen[self._rreq_key(rreq)] = now

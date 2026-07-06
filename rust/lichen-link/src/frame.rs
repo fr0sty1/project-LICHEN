@@ -202,6 +202,18 @@ impl From<TooShort> for FrameError {
 
 /// A parsed LICHEN link-layer frame.
 ///
+/// # Security: Unverified Structure
+///
+/// **This struct represents a *parsed* frame, not a *verified* one.**
+///
+/// The `signature` field indicates whether a signature is *present* in the wire
+/// format, NOT whether it has been cryptographically verified. Similarly, the
+/// `mic` field contains the raw MIC bytes but does not imply authentication.
+///
+/// Callers must use `LinkLayer::verify()` or equivalent to cryptographically
+/// validate frames before trusting their contents. A `LichenFrame` obtained
+/// from `from_bytes()` should be treated as untrusted input.
+///
 /// Payload is stored as a reference to avoid heap allocation in `no_std`
 /// contexts. Use [`LichenFrameBuf`] for an owned variant (future work).
 #[derive(Debug, PartialEq, Eq)]

@@ -7,27 +7,44 @@
 //! No heap allocation — all I/O through caller-supplied byte slices.
 
 use crate::record::Record;
+use lichen_core::error::BufferTooSmall;
 
 /// Error type for CBOR encode/decode.
 #[derive(Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum CborError {
-    BufferTooSmall,
+    /// Output buffer too small.
+    BufferTooSmall(BufferTooSmall),
+    /// Invalid CBOR input.
     InvalidInput,
+    /// CBOR feature not implemented.
     NotImplemented,
+}
+
+impl From<BufferTooSmall> for CborError {
+    fn from(e: BufferTooSmall) -> Self {
+        Self::BufferTooSmall(e)
+    }
 }
 
 impl core::fmt::Display for CborError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::BufferTooSmall => write!(f, "buffer too small"),
+            Self::BufferTooSmall(e) => write!(f, "SenML-CBOR {}", e),
             Self::InvalidInput => write!(f, "invalid CBOR input"),
             Self::NotImplemented => write!(f, "CBOR feature not implemented"),
         }
     }
 }
 
-impl core::error::Error for CborError {}
+impl core::error::Error for CborError {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            Self::BufferTooSmall(e) => Some(e),
+            _ => None,
+        }
+    }
+}
 
 // RFC 8428 §6 Table 4 integer labels
 const L_BN: i8 = -2; // base name
@@ -45,20 +62,20 @@ fn enc_head(out: &mut [u8], pos: usize, major: u8, n: u64) -> Result<usize, Cbor
     match n {
         0..=23 => {
             if pos >= out.len() {
-                return Err(CborError::BufferTooSmall);
+                return Err(BufferTooSmall::new(pos + 1, out.len()).into());
             }
             out[pos] = major | n as u8;
             Ok(1)
         }
         24..=0xff => {
             if pos + 2 > out.len() {
-                return Err(CborError::BufferTooSmall);
+                return Err(BufferTooSmall::new(pos + 2, out.len()).into());
             }
             out[pos] = major | 24;
             out[pos + 1] = n as u8;
             Ok(2)
         }
-        _ => Err(CborError::BufferTooSmall),
+        _ => Err(CborError::NotImplemented), // Values > 255 not supported
     }
 }
 
@@ -75,16 +92,18 @@ fn enc_key_neg(out: &mut [u8], pos: usize, k: i8) -> Result<usize, CborError> {
 fn enc_text(out: &mut [u8], pos: usize, s: &str) -> Result<usize, CborError> {
     let bytes = s.as_bytes();
     let h = enc_head(out, pos, 0x60, bytes.len() as u64)?;
-    if pos + h + bytes.len() > out.len() {
-        return Err(CborError::BufferTooSmall);
+    let needed = pos + h + bytes.len();
+    if needed > out.len() {
+        return Err(BufferTooSmall::new(needed, out.len()).into());
     }
     out[pos + h..pos + h + bytes.len()].copy_from_slice(bytes);
     Ok(h + bytes.len())
 }
 
 fn enc_f64(out: &mut [u8], pos: usize, f: f64) -> Result<usize, CborError> {
-    if pos + 9 > out.len() {
-        return Err(CborError::BufferTooSmall);
+    let needed = pos + 9;
+    if needed > out.len() {
+        return Err(BufferTooSmall::new(needed, out.len()).into());
     }
     out[pos] = 0xfb; // major 7, additional 27 (8-byte float)
     out[pos + 1..pos + 9].copy_from_slice(&f.to_bits().to_be_bytes());
@@ -93,7 +112,7 @@ fn enc_f64(out: &mut [u8], pos: usize, f: f64) -> Result<usize, CborError> {
 
 fn enc_bool(out: &mut [u8], pos: usize, b: bool) -> Result<usize, CborError> {
     if pos >= out.len() {
-        return Err(CborError::BufferTooSmall);
+        return Err(BufferTooSmall::new(pos + 1, out.len()).into());
     }
     out[pos] = if b { 0xf5 } else { 0xf4 };
     Ok(1)
@@ -522,7 +541,10 @@ mod tests {
             ..Record::empty()
         }];
         let mut buf = [0u8; 2];
-        assert_eq!(encode(&records, &mut buf), Err(CborError::BufferTooSmall));
+        assert!(matches!(
+            encode(&records, &mut buf),
+            Err(CborError::BufferTooSmall(_))
+        ));
     }
 
     #[test]

@@ -79,6 +79,19 @@ class FieldDescriptor:
             raise ValueError(f"{self.field_id}: mapping action requires a mapping")
         return (len(self.mapping) - 1).bit_length()
 
+    def requires_value(self) -> bool:
+        """Whether this field requires a value for compression/matching.
+
+        A value is required if the matching operator needs to compare against it
+        (EQUAL, MSB, MATCH_MAPPING) or if the compression action emits data
+        derived from it (VALUE_SENT, LSB, MAPPING_SENT).
+        """
+        return self.mo in (MO.EQUAL, MO.MSB, MO.MATCH_MAPPING) or self.cda in (
+            CDA.VALUE_SENT,
+            CDA.LSB,
+            CDA.MAPPING_SENT,
+        )
+
 
 @dataclass(frozen=True)
 class Rule:

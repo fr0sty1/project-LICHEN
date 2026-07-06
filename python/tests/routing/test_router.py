@@ -239,7 +239,7 @@ class TestExternalRouting:
             dodag_id="fd00::1",
             version=1,
             role=DodagRole.JOINED,
-            preferred_parent="fe80::abcd",
+            preferred_parent=IPv6Address("fe80::abcd"),
         )
 
         packet = make_packet("2001:db8::1")
@@ -427,7 +427,7 @@ class TestRootNode:
             dodag_id="fd00::1",
             version=1,
             role=DodagRole.ROOT,
-            preferred_parent="fe80::aaaa",  # Upstream gateway
+            preferred_parent=IPv6Address("fe80::aaaa"),  # Upstream gateway
         )
 
         packet = make_packet("2001:db8::1")

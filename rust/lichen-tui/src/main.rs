@@ -143,8 +143,9 @@ fn parse_neighbors(bytes: &[u8]) -> Vec<Neighbor> {
 
 async fn poll_node(node: SocketAddr) -> Result<NodeData, String> {
     let (sr, nr) = tokio::join!(coap::get(node, "status"), coap::get(node, "neighbors"));
-    if let (Err(e), Err(_)) = (&sr, &nr) {
-        return Err(e.clone());
+    // If both requests failed, return the status error (owned, no clone needed)
+    if sr.is_err() && nr.is_err() {
+        return Err(sr.unwrap_err());
     }
     Ok(NodeData {
         status: sr.ok().as_deref().map(parse_status).unwrap_or_default(),

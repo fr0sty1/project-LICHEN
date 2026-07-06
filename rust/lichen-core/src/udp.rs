@@ -4,6 +4,7 @@
 //! pseudo-header checksum support per RFC 8200.
 
 use crate::addr::Ipv6Addr;
+use crate::checksum::upper_layer_checksum;
 use crate::error::{BufferTooSmall, TooShort};
 
 /// UDP header length (always 8 bytes).
@@ -125,7 +126,7 @@ impl<'a> UdpHeader<'a> {
             return true;
         }
         // Compute checksum over pseudo-header + datagram; result should be 0xFFFF
-        let computed = udp_checksum(src, dst, self.data);
+        let computed = upper_layer_checksum(&src.0, &dst.0, UDP_NEXT_HEADER, self.data);
         computed == 0 || computed == 0xFFFF
     }
 
@@ -161,67 +162,12 @@ pub fn write_datagram(
     out[UDP_HEADER_LEN..total].copy_from_slice(payload);
 
     // Compute and fill checksum
-    let csum = udp_checksum(src_addr, dst_addr, &out[..total]);
+    let csum = upper_layer_checksum(&src_addr.0, &dst_addr.0, UDP_NEXT_HEADER, &out[..total]);
     // RFC 768: a computed checksum of zero is transmitted as all ones
     let csum = if csum == 0 { 0xFFFF } else { csum };
     out[6..8].copy_from_slice(&csum.to_be_bytes());
 
     Ok(total)
-}
-
-// ── One's-complement checksum (RFC 1071) ────────────────────────────────────
-
-fn oc_add(a: u32, b: u32) -> u32 {
-    let s = a + b;
-    if s >> 16 != 0 {
-        (s & 0xFFFF) + (s >> 16)
-    } else {
-        s
-    }
-}
-
-fn sum_words(data: &[u8]) -> u32 {
-    let mut sum: u32 = 0;
-    let mut i = 0;
-    while i + 1 < data.len() {
-        sum = oc_add(sum, u16::from_be_bytes([data[i], data[i + 1]]) as u32);
-        i += 2;
-    }
-    if data.len() % 2 == 1 {
-        sum = oc_add(sum, (data[data.len() - 1] as u32) << 8);
-    }
-    sum
-}
-
-/// Compute UDP checksum over IPv6 pseudo-header + UDP datagram.
-///
-/// The datagram should include the UDP header with checksum field zeroed
-/// (or the original value if verifying).
-fn udp_checksum(src: &Ipv6Addr, dst: &Ipv6Addr, datagram: &[u8]) -> u16 {
-    // Pseudo-header: src + dst + upper-layer-length (4 bytes) + zeros + NH=17
-    let mut sum: u32 = 0;
-
-    // Add source address
-    for i in (0..16).step_by(2) {
-        sum = oc_add(sum, u16::from_be_bytes([src.0[i], src.0[i + 1]]) as u32);
-    }
-    // Add destination address
-    for i in (0..16).step_by(2) {
-        sum = oc_add(sum, u16::from_be_bytes([dst.0[i], dst.0[i + 1]]) as u32);
-    }
-    // Upper-layer length (32 bits, big-endian, only low 16 bits should be nonzero)
-    sum = oc_add(sum, datagram.len() as u32);
-    // Next header = 17 (UDP)
-    sum = oc_add(sum, UDP_NEXT_HEADER as u32);
-
-    // Add UDP datagram
-    sum = oc_add(sum, sum_words(datagram));
-
-    // Fold to 16 bits and invert
-    while sum >> 16 != 0 {
-        sum = (sum & 0xFFFF) + (sum >> 16);
-    }
-    !(sum as u16)
 }
 
 #[cfg(test)]

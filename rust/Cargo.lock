@@ -1888,6 +1888,7 @@ dependencies = [
  "heapless",
  "hex-literal",
  "hkdf",
+ "lichen-core",
  "log",
  "rand_core",
  "sha2 0.11.0",

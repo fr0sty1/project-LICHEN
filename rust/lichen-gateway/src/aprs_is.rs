@@ -287,11 +287,11 @@ pub fn cot_to_aprs(callsign: &str, cot: &CompactCot) -> String {
 
     // Convert to APRS format: DDMM.mm
     let lat_deg = lat.abs().trunc() as u32;
-    let lat_min = (lat.abs().fract() * 60.0) as f64;
+    let lat_min = lat.abs().fract() * 60.0;
     let lat_hemi = if lat >= 0.0 { 'N' } else { 'S' };
 
     let lon_deg = lon.abs().trunc() as u32;
-    let lon_min = (lon.abs().fract() * 60.0) as f64;
+    let lon_min = lon.abs().fract() * 60.0;
     let lon_hemi = if lon >= 0.0 { 'E' } else { 'W' };
 
     // Symbol: / = primary table, - = house (generic position)

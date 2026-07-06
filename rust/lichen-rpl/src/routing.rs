@@ -16,6 +16,8 @@ use std::{
 use crate::message::{
     Dao, OptionIter, RplError, RplTarget, TransitInfo, OPT_RPL_TARGET, OPT_TRANSIT_INFO,
 };
+#[cfg(feature = "std")]
+use lichen_core::error::{BufferTooSmall, TooShort};
 
 #[cfg(feature = "std")]
 const MAX_CHAIN: usize = 64;
@@ -38,7 +40,7 @@ impl SourceRoutingHeader {
     pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
         let needed = 6 + self.addresses.len() * 16;
         if out.len() < needed {
-            return Err(RplError::BufferTooSmall);
+            return Err(BufferTooSmall::new(needed, out.len()).into());
         }
         out[0] = 3; // routing type
         out[1] = self.segments_left;
@@ -55,14 +57,14 @@ impl SourceRoutingHeader {
     /// Parse from SRH wire bytes (starting at the routing-type byte).
     pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
         if data.len() < 6 {
-            return Err(RplError::TooShort);
+            return Err(TooShort::new(6, data.len()).into());
         }
         if data[0] != 3 {
             return Err(RplError::BadRoutingType(data[0]));
         }
         let addr_bytes = &data[6..];
         if !addr_bytes.len().is_multiple_of(16) {
-            return Err(RplError::TooShort);
+            return Err(TooShort::new(data.len() + (16 - addr_bytes.len() % 16), data.len()).into());
         }
         let addresses: Vec<[u8; 16]> = addr_bytes
             .chunks_exact(16)
@@ -472,7 +474,7 @@ mod tests {
             addresses,
         };
         let mut buf = [0u8; 37]; // one byte short of needed 38
-        assert_eq!(srh.write_to(&mut buf), Err(RplError::BufferTooSmall));
+        assert!(matches!(srh.write_to(&mut buf), Err(RplError::BufferTooSmall(_))));
     }
 
     #[test]

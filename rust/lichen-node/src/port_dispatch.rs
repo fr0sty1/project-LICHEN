@@ -45,7 +45,7 @@ impl AppProtocol {
     }
 }
 
-/// Error returned when port dispatch fails.
+/// Error returned when port dispatch fails (for dispatch_by_port).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum DispatchError {
@@ -55,6 +55,45 @@ pub enum DispatchError {
     PayloadTooShort,
     /// Port 5684 is reserved (CoAPS/DTLS not used, OSCORE instead).
     ReservedPort,
+}
+
+/// Error returned when UDP dispatch fails (for dispatch_udp).
+///
+/// This type explicitly distinguishes between "not a UDP packet" and
+/// "UDP packet but dispatch failed" cases, avoiding the `Option<Result<...>>`
+/// anti-pattern that conflates these concerns.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum UdpDispatchError {
+    /// Packet is not UDP (wrong next header, invalid IPv6, or truncated headers).
+    NotUdp,
+    /// Port is not a recognized application protocol.
+    UnknownPort(u16),
+    /// Payload is too short for the protocol.
+    PayloadTooShort,
+    /// Port 5684 is reserved (CoAPS/DTLS not used, OSCORE instead).
+    ReservedPort,
+}
+
+impl core::fmt::Display for UdpDispatchError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::NotUdp => write!(f, "not a UDP packet"),
+            Self::UnknownPort(p) => write!(f, "unknown application port {}", p),
+            Self::PayloadTooShort => write!(f, "payload too short"),
+            Self::ReservedPort => write!(f, "port 5684 reserved (use OSCORE, not DTLS)"),
+        }
+    }
+}
+
+impl From<DispatchError> for UdpDispatchError {
+    fn from(e: DispatchError) -> Self {
+        match e {
+            DispatchError::UnknownPort(p) => Self::UnknownPort(p),
+            DispatchError::PayloadTooShort => Self::PayloadTooShort,
+            DispatchError::ReservedPort => Self::ReservedPort,
+        }
+    }
 }
 
 impl core::fmt::Display for DispatchError {

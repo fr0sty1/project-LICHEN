@@ -41,6 +41,10 @@ pub enum CoapError {
     InvalidBlockOption,
     /// Payload exceeds maximum size.
     PayloadTooLarge,
+    /// Block received out of order during blockwise transfer.
+    BlockOutOfOrder,
+    /// Option number overflow (cumulative delta exceeds u16::MAX).
+    OptionNumberOverflow,
 }
 
 impl core::fmt::Display for CoapError {
@@ -55,6 +59,8 @@ impl core::fmt::Display for CoapError {
             Self::BufferTooSmall(e) => write!(f, "CoAP {}", e),
             Self::InvalidBlockOption => write!(f, "invalid Block option value"),
             Self::PayloadTooLarge => write!(f, "payload exceeds maximum size"),
+            Self::BlockOutOfOrder => write!(f, "block received out of order"),
+            Self::OptionNumberOverflow => write!(f, "option number overflow"),
         }
     }
 }
@@ -357,7 +363,13 @@ impl<'a> Iterator for OptionIterator<'a> {
             return Some(Err(CoapError::TruncatedOption));
         }
 
-        self.current_number = self.current_number.saturating_add(delta);
+        // SECURITY: Reject overflow instead of saturating to prevent protocol violations.
+        // Saturating would allow malformed inputs to produce identical parsed output,
+        // break round-trip invariants, and potentially bypass URI-based authorization.
+        let Some(new_number) = self.current_number.checked_add(delta) else {
+            return Some(Err(CoapError::OptionNumberOverflow));
+        };
+        self.current_number = new_number;
         let value = &self.data[self.offset..self.offset + len];
         self.offset += len;
 
@@ -441,13 +453,12 @@ impl<'a> CoapBuilder<'a> {
 
     /// Add a Content-Format option.
     pub fn content_format(&mut self, format: u16) -> Result<&mut Self, CoapError> {
-        // Encode as minimal uint
-        let value = if format == 0 {
-            &[]
-        } else if format <= 0xFF {
-            &[format as u8][..]
-        } else {
-            &[(format >> 8) as u8, format as u8][..]
+        // Encode as minimal-length uint (CoAP spec)
+        let bytes = format.to_be_bytes();
+        let value = match format {
+            0 => &bytes[2..2],
+            1..=0xFF => &bytes[1..2],
+            _ => &bytes[0..2],
         };
         self.option(OptionNumber::ContentFormat as u16, value)
     }
@@ -724,5 +735,33 @@ mod tests {
             CoapPacket::from_bytes(&[0x40, 0x01]),
             Err(CoapError::TooShort(_))
         ));
+    }
+
+    #[test]
+    fn option_number_overflow_errors() {
+        // Build a message with two large deltas that would overflow u16.
+        // First option: delta = 60000 (uses extended 2-byte delta: nibble 14, ext = 60000-269 = 59731)
+        // Second option: delta = 10000 (uses extended 2-byte delta: nibble 14, ext = 10000-269 = 9731)
+        // Total would be 70000, which exceeds u16::MAX (65535).
+        let mut data = Vec::new();
+        // Header: CON GET, TKL=0, MID=1
+        data.extend_from_slice(&[0x40, 0x01, 0x00, 0x01]);
+        // Option 1: delta=60000 (nibble 14), length=0
+        // Extended delta = 60000 - 269 = 59731 = 0xE953
+        data.push(0xE0); // delta nibble=14, len nibble=0
+        data.push(0xE9); // hi byte of 59731
+        data.push(0x53); // lo byte of 59731
+        // Option 2: delta=10000 (nibble 14), length=0
+        // Extended delta = 10000 - 269 = 9731 = 0x2603
+        data.push(0xE0); // delta nibble=14, len nibble=0
+        data.push(0x26); // hi byte of 9731
+        data.push(0x03); // lo byte of 9731
+
+        let pkt = CoapPacket::from_bytes(&data).unwrap();
+        let opts: Vec<_> = pkt.options().collect();
+        assert_eq!(opts.len(), 2);
+        assert!(opts[0].is_ok());
+        assert_eq!(opts[0].as_ref().unwrap().number, 60000);
+        assert_eq!(opts[1], Err(CoapError::OptionNumberOverflow));
     }
 }

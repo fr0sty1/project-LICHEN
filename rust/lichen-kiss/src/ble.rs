@@ -12,6 +12,9 @@
 //!
 //! Available with feature `kiss-ble`.
 
+#[cfg(feature = "log")]
+use log::warn;
+
 use crate::framing::{KissCommand, KissError, KissReader, KissWriter};
 
 /// KISS BLE service UUID.
@@ -96,12 +99,28 @@ impl KissBleTnc {
 
     /// Try to get the next complete frame from the app.
     ///
-    /// Returns `None` if no complete frame is available.
+    /// Returns `None` if no complete frame is available or on parse error.
+    /// Parse errors are logged (with the `log` feature) for debuggability.
     /// The `buf` is used as scratch space for unescaping.
     pub fn try_get_app_frame(&mut self, buf: &mut [u8]) -> Option<AppFrame> {
-        let frame = self.reader.try_read_frame(buf).ok()??;
+        let frame = match self.reader.try_read_frame(buf) {
+            Ok(Some(f)) => f,
+            Ok(None) => return None,
+            Err(_e) => {
+                #[cfg(feature = "log")]
+                warn!("kiss_ble: try_get_app_frame parse error: {}", _e);
+                return None;
+            }
+        };
         let mut data: heapless::Vec<u8, 512> = heapless::Vec::new();
-        data.extend_from_slice(frame.data).ok()?;
+        if data.extend_from_slice(frame.data).is_err() {
+            #[cfg(feature = "log")]
+            warn!(
+                "kiss_ble: try_get_app_frame payload too large ({} bytes)",
+                frame.data.len()
+            );
+            return None;
+        }
         Some(AppFrame {
             port: frame.port,
             command: frame.command,

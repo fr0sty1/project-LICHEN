@@ -106,8 +106,6 @@ class _CoapUdpProfile(PacketProfile):
     def _addr_ok(self, addr: int) -> bool: ...
 
     def matches(self, raw: bytes) -> bool:
-        if len(raw) < HEADER_LENGTH + UDP_HEADER_LENGTH + _COAP_FIXED_HEADER:
-            return False
         try:
             header = IPv6Header.from_bytes(raw)
         except Exception:
@@ -186,8 +184,6 @@ class _RplProfile(PacketProfile):
     base_length: int
 
     def matches(self, raw: bytes) -> bool:
-        if len(raw) < HEADER_LENGTH + _ICMPV6_HEADER + self.base_length:
-            return False
         try:
             header = IPv6Header.from_bytes(raw)
         except Exception:
@@ -308,8 +304,6 @@ class Icmpv6EchoProfile(PacketProfile):
     rule = LINK_LOCAL_ICMPV6_ECHO_RULE
 
     def matches(self, raw: bytes) -> bool:
-        if len(raw) < HEADER_LENGTH + _ICMPV6_ECHO_BASE:
-            return False
         try:
             header = IPv6Header.from_bytes(raw)
         except Exception:

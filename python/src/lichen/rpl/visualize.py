@@ -23,7 +23,10 @@ Topology = dict[str, str | None]
 
 def topology_from_states(states: Mapping[str, DodagState]) -> Topology:
     """Extract a node -> preferred-parent topology from DODAG states."""
-    return {node_id: state.preferred_parent for node_id, state in states.items()}
+    return {
+        node_id: str(state.preferred_parent) if state.preferred_parent else None
+        for node_id, state in states.items()
+    }
 
 
 def ranks_from_states(states: Mapping[str, DodagState]) -> dict[str, int]:

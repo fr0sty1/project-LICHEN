@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from lichen.schc.codec import compress, decompress
 from lichen.schc.rules import (
-    CDA,
     MO,
     RULE_ID_UNCOMPRESSED,
     RULES,
@@ -28,13 +27,8 @@ def rule_matches(rule: Rule, fields: dict[str, int]) -> bool:
     """Whether ``fields`` satisfy every descriptor of ``rule``."""
     for fd in rule.fields:
         value = fields.get(fd.field_id)
-        needs_value = fd.mo in (MO.EQUAL, MO.MSB, MO.MATCH_MAPPING) or fd.cda in (
-            CDA.VALUE_SENT,
-            CDA.LSB,
-            CDA.MAPPING_SENT,
-        )
         if value is None:
-            if needs_value:
+            if fd.requires_value():
                 return False
             continue
         if fd.mo == MO.EQUAL and value != fd.target_value:

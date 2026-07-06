@@ -20,31 +20,107 @@
 
 use heapless::Vec;
 
+/// Error indicating input data was shorter than expected.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TooShort {
+    /// Minimum number of bytes expected.
+    pub expected: usize,
+    /// Actual number of bytes present.
+    pub actual: usize,
+}
+
+impl TooShort {
+    /// Create a new TooShort error.
+    #[inline]
+    pub const fn new(expected: usize, actual: usize) -> Self {
+        Self { expected, actual }
+    }
+}
+
+impl core::fmt::Display for TooShort {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "buffer too short: expected {} bytes, got {}",
+            self.expected, self.actual
+        )
+    }
+}
+
+impl core::error::Error for TooShort {}
+
+/// Error indicating an output buffer is too small to hold the result.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BufferTooSmall {
+    /// Minimum buffer size required.
+    pub required: usize,
+    /// Actual buffer size provided.
+    pub provided: usize,
+}
+
+impl BufferTooSmall {
+    /// Create a new BufferTooSmall error.
+    #[inline]
+    pub const fn new(required: usize, provided: usize) -> Self {
+        Self { required, provided }
+    }
+}
+
+impl core::fmt::Display for BufferTooSmall {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "output buffer too small: need {} bytes, have {}",
+            self.required, self.provided
+        )
+    }
+}
+
+impl core::error::Error for BufferTooSmall {}
+
 /// IPv6 parse error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Ipv6Error {
-    /// Buffer too short for header.
-    TooShort,
+    /// Buffer too short for the expected data.
+    TooShort(TooShort),
     /// Wrong IP version (expected 6).
     WrongVersion(u8),
     /// Output buffer too small for serialization.
-    BufferTooSmall { needed: usize, available: usize },
+    BufferTooSmall(BufferTooSmall),
+}
+
+impl From<TooShort> for Ipv6Error {
+    fn from(e: TooShort) -> Self {
+        Self::TooShort(e)
+    }
+}
+
+impl From<BufferTooSmall> for Ipv6Error {
+    fn from(e: BufferTooSmall) -> Self {
+        Self::BufferTooSmall(e)
+    }
 }
 
 impl core::fmt::Display for Ipv6Error {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::TooShort => write!(f, "buffer too short"),
+            Self::TooShort(e) => write!(f, "IPv6 {}", e),
             Self::WrongVersion(v) => write!(f, "wrong IP version: {} (expected 6)", v),
-            Self::BufferTooSmall { needed, available } => {
-                write!(f, "buffer too small: need {} bytes, have {}", needed, available)
-            }
+            Self::BufferTooSmall(e) => write!(f, "IPv6 {}", e),
         }
     }
 }
 
-impl core::error::Error for Ipv6Error {}
+impl core::error::Error for Ipv6Error {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            Self::TooShort(e) => Some(e),
+            Self::BufferTooSmall(e) => Some(e),
+            _ => None,
+        }
+    }
+}
 
 /// IPv6 header length (fixed, no extension headers for LICHEN).
 pub const IPV6_HEADER_LEN: usize = 40;
@@ -215,10 +291,7 @@ impl Ipv6Header {
     /// Returns the number of bytes written (always `IPV6_HEADER_LEN`).
     pub fn write_to(&self, payload_len: u16, out: &mut [u8]) -> Result<usize, Ipv6Error> {
         if out.len() < IPV6_HEADER_LEN {
-            return Err(Ipv6Error::BufferTooSmall {
-                needed: IPV6_HEADER_LEN,
-                available: out.len(),
-            });
+            return Err(BufferTooSmall::new(IPV6_HEADER_LEN, out.len()).into());
         }
 
         // Version (4) | Traffic Class (8) | Flow Label (20)
@@ -245,7 +318,7 @@ impl Ipv6Header {
     /// Parse header from bytes.
     pub fn from_bytes(buf: &[u8]) -> Result<Self, Ipv6Error> {
         if buf.len() < IPV6_HEADER_LEN {
-            return Err(Ipv6Error::TooShort);
+            return Err(TooShort::new(IPV6_HEADER_LEN, buf.len()).into());
         }
 
         // Check version
@@ -310,10 +383,7 @@ impl UdpHeader {
         out: &mut [u8],
     ) -> Result<usize, Ipv6Error> {
         if out.len() < UDP_HEADER_LEN {
-            return Err(Ipv6Error::BufferTooSmall {
-                needed: UDP_HEADER_LEN,
-                available: out.len(),
-            });
+            return Err(BufferTooSmall::new(UDP_HEADER_LEN, out.len()).into());
         }
 
         let length = (UDP_HEADER_LEN + payload_len) as u16;
@@ -336,7 +406,7 @@ impl UdpHeader {
     /// Parse header from bytes.
     pub fn from_bytes(buf: &[u8]) -> Result<Self, Ipv6Error> {
         if buf.len() < UDP_HEADER_LEN {
-            return Err(Ipv6Error::TooShort);
+            return Err(TooShort::new(UDP_HEADER_LEN, buf.len()).into());
         }
 
         Ok(Self {
@@ -411,7 +481,7 @@ impl Icmpv6Echo {
     /// Parse Echo message from ICMPv6 payload (after type/code/checksum).
     pub fn from_bytes(buf: &[u8]) -> Result<Self, Ipv6Error> {
         if buf.len() < 4 {
-            return Err(Ipv6Error::TooShort);
+            return Err(TooShort::new(4, buf.len()).into());
         }
 
         Ok(Self {
@@ -456,7 +526,7 @@ impl NeighborSolicitation {
     pub fn from_bytes(buf: &[u8]) -> Result<Self, Ipv6Error> {
         // After type/code/checksum: 4 reserved + 16 target
         if buf.len() < 20 {
-            return Err(Ipv6Error::TooShort);
+            return Err(TooShort::new(20, buf.len()).into());
         }
 
         let mut target = [0u8; 16];
@@ -613,7 +683,7 @@ pub fn parse_packet(buf: &[u8]) -> Result<(Ipv6Header, &[u8]), Ipv6Error> {
     let payload_end = payload_start + header.payload_len as usize;
 
     if buf.len() < payload_end {
-        return Err(Ipv6Error::TooShort);
+        return Err(TooShort::new(payload_end, buf.len()).into());
     }
 
     Ok((header, &buf[payload_start..payload_end]))

@@ -73,8 +73,8 @@ def test_srh_from_ext_data_rejects_wrong_type() -> None:
 def test_next_hop_upward_is_preferred_parent() -> None:
     dodag = DodagState(rpl_instance_id=0, dodag_id="fd00::1", version=1)
     assert next_hop_upward(dodag) is None
-    dodag.preferred_parent = "fe80::parent"
-    assert next_hop_upward(dodag) == "fe80::parent"
+    dodag.preferred_parent = IPv6Address("fe80::1234")
+    assert next_hop_upward(dodag) == IPv6Address("fe80::1234")
 
 
 def test_insert_source_route_single_hop_no_srh() -> None:

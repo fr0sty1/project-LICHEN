@@ -8,7 +8,7 @@
 
 use lichen_core::constants::{
     PORT_MQTT_SN, RULE_GLOBAL_COAP, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP, RULE_MQTT_SN,
-    RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED,
+    RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED, SCHC_MAX_DECOMPRESSED,
 };
 use lichen_core::error::{BufferTooSmall, TooShort};
 
@@ -81,6 +81,7 @@ impl<'a> BitWriter<'a> {
 
     /// Write the low `nbits` of `value`, MSB first.
     fn write(&mut self, value: u128, nbits: usize) -> Result<(), SchcError> {
+        // Reverse order: network bit order is MSB-first but we index from LSB.
         for i in (0..nbits).rev() {
             let bit = ((value >> i) & 1) as u8;
             let byte_pos = self.nbits / 8;
@@ -201,6 +202,37 @@ fn icmpv6_checksum(src: &[u8], dst: &[u8], icmpv6_payload: &[u8]) -> u16 {
     let mut sum = pseudo_sum(src, dst, 58, length);
     sum = oc_add(sum, checksum_bytes(icmpv6_payload));
     finalize(sum)
+}
+
+/// Write a 40-byte IPv6 header into `out`.
+///
+/// This helper extracts the common IPv6 header construction pattern used by
+/// all decompress functions. The header layout is:
+/// - `[0..4]`: Version (6), Traffic Class (0), Flow Label (0)
+/// - `[4..6]`: Payload Length (bytes following the 40-byte header)
+/// - `[6]`: Next Header (17=UDP, 58=ICMPv6)
+/// - `[7]`: Hop Limit
+/// - `[8..24]`: Source Address (16 bytes)
+/// - `[24..40]`: Destination Address (16 bytes)
+#[inline]
+fn write_ipv6_header(
+    out: &mut [u8],
+    payload_len: u16,
+    next_header: u8,
+    hop_limit: u8,
+    src: &[u8; 16],
+    dst: &[u8; 16],
+) {
+    out[0] = 0x60; // Version 6
+    out[1] = 0; // Traffic Class (low 4 bits) + Flow Label (high 4 bits)
+    out[2] = 0; // Flow Label (middle 8 bits)
+    out[3] = 0; // Flow Label (low 8 bits)
+    out[4] = (payload_len >> 8) as u8;
+    out[5] = payload_len as u8;
+    out[6] = next_header;
+    out[7] = hop_limit;
+    out[8..24].copy_from_slice(src);
+    out[24..40].copy_from_slice(dst);
 }
 
 // ─── per-rule compress ────────────────────────────────────────────────────────
@@ -483,10 +515,7 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let (src_int, dst_int) = if rule_id == RULE_LINK_LOCAL_COAP {
         let src_iid = r.read(64)?;
         let dst_iid = r.read(64)?;
-        (
-            LINK_LOCAL_PREFIX | src_iid,
-            LINK_LOCAL_PREFIX | dst_iid,
-        )
+        (LINK_LOCAL_PREFIX | src_iid, LINK_LOCAL_PREFIX | dst_iid)
     } else {
         (r.read(128)?, r.read(128)?)
     };
@@ -507,8 +536,7 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let udp_len = (8 + coap_len) as u16;
 
     // Build CoAP bytes for checksum.
-    // Buffer sized for max LoRa frame payload (255 bytes) which bounds the tail.
-    let mut coap_buf = [0u8; 256];
+    let mut coap_buf = [0u8; SCHC_MAX_DECOMPRESSED];
     coap_buf[0] = coap_b0;
     coap_buf[1] = coap_code;
     coap_buf[2] = (coap_mid >> 8) as u8;
@@ -517,23 +545,12 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let coap_slice = &coap_buf[..coap_len];
 
     let udp_cksum = udp_checksum(&src, &dst, src_port, dst_port, coap_slice);
-    let ipv6_payload_len = udp_len;
     let total = 40 + 8 + coap_len;
     if total > out.len() {
         return Err(BufferTooSmall::new(total, out.len()).into());
     }
 
-    // IPv6 header
-    out[0] = 0x60;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = (ipv6_payload_len >> 8) as u8;
-    out[5] = ipv6_payload_len as u8;
-    out[6] = 17; // UDP
-    out[7] = hop_limit;
-    out[8..24].copy_from_slice(&src);
-    out[24..40].copy_from_slice(&dst);
+    write_ipv6_header(out, udp_len, 17, hop_limit, &src, &dst);
 
     // UDP header
     out[40..42].copy_from_slice(&src_port.to_be_bytes());
@@ -569,8 +586,7 @@ fn decompress_icmpv6_echo(data: &[u8], out: &mut [u8]) -> Result<usize, SchcErro
     }
 
     // Build ICMPv6 with zero checksum for computation.
-    // Buffer sized for max LoRa frame payload (255 bytes) which bounds the tail.
-    let mut icmp_buf = [0u8; 256];
+    let mut icmp_buf = [0u8; SCHC_MAX_DECOMPRESSED];
     icmp_buf[0] = icmp_type;
     icmp_buf[1] = 0; // code NOT_SENT = 0
     icmp_buf[2] = 0; // checksum placeholder hi
@@ -584,17 +600,7 @@ fn decompress_icmpv6_echo(data: &[u8], out: &mut [u8]) -> Result<usize, SchcErro
 
     let cksum = icmpv6_checksum(&src, &dst, icmp_slice);
 
-    // IPv6 header
-    out[0] = 0x60;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = (icmp_len >> 8) as u8;
-    out[5] = icmp_len as u8;
-    out[6] = 58; // ICMPv6
-    out[7] = hop_limit;
-    out[8..24].copy_from_slice(&src);
-    out[24..40].copy_from_slice(&dst);
+    write_ipv6_header(out, icmp_len as u16, 58, hop_limit, &src, &dst);
 
     // ICMPv6
     out[40] = icmp_type;
@@ -636,8 +642,7 @@ fn decompress_rpl_dio(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
         return Err(BufferTooSmall::new(total, out.len()).into());
     }
 
-    // Buffer sized for max LoRa frame payload (255 bytes) which bounds the tail.
-    let mut icmp_buf = [0u8; 256];
+    let mut icmp_buf = [0u8; SCHC_MAX_DECOMPRESSED];
     icmp_buf[0] = 155; // RPL
     icmp_buf[1] = 1; // DIO code
     icmp_buf[2] = 0; // checksum placeholder
@@ -657,16 +662,7 @@ fn decompress_rpl_dio(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
 
     let cksum = icmpv6_checksum(&src, &dst, icmp_slice);
 
-    out[0] = 0x60;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = (icmp_len >> 8) as u8;
-    out[5] = icmp_len as u8;
-    out[6] = 58;
-    out[7] = hop_limit;
-    out[8..24].copy_from_slice(&src);
-    out[24..40].copy_from_slice(&dst);
+    write_ipv6_header(out, icmp_len as u16, 58, hop_limit, &src, &dst);
     out[40..40 + icmp_len].copy_from_slice(icmp_slice);
     out[42] = (cksum >> 8) as u8;
     out[43] = cksum as u8;
@@ -697,8 +693,7 @@ fn decompress_rpl_dao(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
         return Err(BufferTooSmall::new(total, out.len()).into());
     }
 
-    // Buffer sized for max LoRa frame payload (255 bytes) which bounds the tail.
-    let mut icmp_buf = [0u8; 256];
+    let mut icmp_buf = [0u8; SCHC_MAX_DECOMPRESSED];
     icmp_buf[0] = 155; // RPL
     icmp_buf[1] = 2; // DAO code
     icmp_buf[2] = 0; // checksum placeholder
@@ -714,16 +709,7 @@ fn decompress_rpl_dao(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
 
     let cksum = icmpv6_checksum(&src, &dst, icmp_slice);
 
-    out[0] = 0x60;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = (icmp_len >> 8) as u8;
-    out[5] = icmp_len as u8;
-    out[6] = 58;
-    out[7] = hop_limit;
-    out[8..24].copy_from_slice(&src);
-    out[24..40].copy_from_slice(&dst);
+    write_ipv6_header(out, icmp_len as u16, 58, hop_limit, &src, &dst);
     out[40..40 + icmp_len].copy_from_slice(icmp_slice);
     out[42] = (cksum >> 8) as u8;
     out[43] = cksum as u8;
@@ -771,17 +757,7 @@ fn decompress_mqtt_sn(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
         return Err(BufferTooSmall::new(total, out.len()).into());
     }
 
-    // IPv6 header
-    out[0] = 0x60;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = (udp_len >> 8) as u8;
-    out[5] = udp_len as u8;
-    out[6] = 17; // UDP
-    out[7] = hop_limit;
-    out[8..24].copy_from_slice(&src);
-    out[24..40].copy_from_slice(&dst);
+    write_ipv6_header(out, udp_len, 17, hop_limit, &src, &dst);
 
     // UDP header
     out[40..42].copy_from_slice(&src_port.to_be_bytes());

@@ -21,8 +21,9 @@ from dataclasses import dataclass
 from enum import Enum
 from ipaddress import IPv6Address
 
+from lichen.ipv6 import to_ipv6
+
 MAX_ENTRIES = 64
-DATA_GRADIENT_TIMEOUT_MS = 60_000  # opportunistic data gradients expire sooner
 GRADIENT_TIMEOUT_MS = 600_000  # announce/rrep gradients (spec section 9)
 
 
@@ -40,10 +41,6 @@ class GradientSource(Enum):
         return 0 if self is GradientSource.DATA else 1
 
 
-def _addr(value: IPv6Address | str) -> IPv6Address:
-    return value if isinstance(value, IPv6Address) else IPv6Address(value)
-
-
 @dataclass
 class GradientEntry:
     """A next-hop gradient toward ``destination`` (spec 11.1)."""
@@ -57,8 +54,8 @@ class GradientEntry:
     coords: tuple[float, float] | None = None  # (lat, lon) from app_data (spec 9.7)
 
     def __post_init__(self) -> None:
-        self.destination = _addr(self.destination)
-        self.next_hop = _addr(self.next_hop)
+        self.destination = to_ipv6(self.destination)
+        self.next_hop = to_ipv6(self.next_hop)
 
     def _rank(self) -> tuple[int, int, int]:
         # Larger is better: priority, then freshness, then fewer hops.
@@ -78,7 +75,7 @@ class GradientTable:
         self, destination: IPv6Address | str, now: int | None = None
     ) -> GradientEntry | None:
         """Return the gradient for ``destination`` (None if absent or expired)."""
-        dest = _addr(destination)
+        dest = to_ipv6(destination)
         entry = self._entries.get(dest)
         if entry is None:
             return None
@@ -107,11 +104,11 @@ class GradientTable:
 
     def remove(self, destination: IPv6Address | str) -> None:
         """Remove the gradient for ``destination`` if present."""
-        self._entries.pop(_addr(destination), None)
+        self._entries.pop(to_ipv6(destination), None)
 
     def remove_via(self, next_hop: IPv6Address | str) -> list[IPv6Address]:
         """Remove every gradient routing through ``next_hop``; return their dsts."""
-        nh = _addr(next_hop)
+        nh = to_ipv6(next_hop)
         dests = [d for d, e in self._entries.items() if e.next_hop == nh]
         for dest in dests:
             del self._entries[dest]
@@ -132,4 +129,4 @@ class GradientTable:
         return len(self._entries)
 
     def __contains__(self, destination: IPv6Address | str) -> bool:
-        return _addr(destination) in self._entries
+        return to_ipv6(destination) in self._entries

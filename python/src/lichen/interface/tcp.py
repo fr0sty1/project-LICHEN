@@ -44,6 +44,7 @@ class TcpConnection:
         try:
             return self.writer.get_extra_info("peername")
         except Exception:
+            log.debug("failed to get peername", exc_info=True)
             return None
 
     async def send(self, msg: Message) -> None:
@@ -114,7 +115,7 @@ class TcpConnection:
             self.writer.close()
             await self.writer.wait_closed()
         except Exception:
-            pass
+            log.debug("error closing connection", exc_info=True)
 
 
 async def connect(

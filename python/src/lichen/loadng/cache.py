@@ -15,13 +15,11 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from ipaddress import IPv6Address
 
+from lichen.ipv6 import to_ipv6
+
 ROUTE_CACHE_SIZE = 32
 ROUTE_TIMEOUT_MS = 300_000  # 300 s route validity with no traffic
 ROUTE_REFRESH_MS = 60_000  # refresh if used within 60 s of activity
-
-
-def _addr(value: IPv6Address | str) -> IPv6Address:
-    return value if isinstance(value, IPv6Address) else IPv6Address(value)
 
 
 @dataclass
@@ -36,8 +34,8 @@ class RouteEntry:
     valid_until: int
 
     def __post_init__(self) -> None:
-        self.destination = _addr(self.destination)
-        self.next_hop = _addr(self.next_hop)
+        self.destination = to_ipv6(self.destination)
+        self.next_hop = to_ipv6(self.next_hop)
 
 
 class RouteCache:
@@ -65,7 +63,7 @@ class RouteCache:
         self, destination: IPv6Address | str, now: int | None = None
     ) -> RouteEntry | None:
         """Return the route (None if absent or expired); marks it recently used."""
-        dest = _addr(destination)
+        dest = to_ipv6(destination)
         entry = self._entries.get(dest)
         if entry is None:
             return None
@@ -76,11 +74,11 @@ class RouteCache:
 
     def remove(self, destination: IPv6Address | str) -> None:
         """Remove the route to ``destination`` if present."""
-        self._entries.pop(_addr(destination), None)
+        self._entries.pop(to_ipv6(destination), None)
 
     def remove_via(self, next_hop: IPv6Address | str) -> list[IPv6Address]:
         """Remove every route through ``next_hop``; return their destinations."""
-        nh = _addr(next_hop)
+        nh = to_ipv6(next_hop)
         dests = [d for d, e in self._entries.items() if e.next_hop == nh]
         for dest in dests:
             del self._entries[dest]
@@ -88,7 +86,7 @@ class RouteCache:
 
     def refresh(self, destination: IPv6Address | str, now: int) -> bool:
         """Extend a route's validity to ``now + route_timeout``; True if found."""
-        dest = _addr(destination)
+        dest = to_ipv6(destination)
         entry = self._entries.get(dest)
         if entry is None:
             return False
@@ -107,4 +105,4 @@ class RouteCache:
         return len(self._entries)
 
     def __contains__(self, destination: IPv6Address | str) -> bool:
-        return _addr(destination) in self._entries
+        return to_ipv6(destination) in self._entries

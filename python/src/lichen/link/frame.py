@@ -38,8 +38,11 @@ class AddrMode(IntEnum):
     @property
     def addr_len(self) -> int:
         """Number of destination-address bytes for this mode."""
-        return {AddrMode.NONE: 0, AddrMode.SHORT: 2, AddrMode.EXTENDED: 8,
-                AddrMode.ELIDED: 0}[self]
+        return _ADDR_LEN_TABLE[self]
+
+
+# Lookup table for AddrMode.addr_len (avoids dict creation on each access).
+_ADDR_LEN_TABLE: tuple[int, ...] = (0, 2, 8, 0)  # indexed by AddrMode value
 
 
 class MicLength(IntEnum):

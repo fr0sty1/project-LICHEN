@@ -134,13 +134,8 @@ def compress(rule: Rule, fields: dict[str, int]) -> bytes:
 
     for fd in rule.fields:
         value = fields.get(fd.field_id)
-        needs_value = fd.mo in (MO.EQUAL, MO.MSB, MO.MATCH_MAPPING) or fd.cda in (
-            CDA.VALUE_SENT,
-            CDA.LSB,
-            CDA.MAPPING_SENT,
-        )
         if value is None:
-            if needs_value:
+            if fd.requires_value():
                 raise SchcError(f"{fd.field_id}: missing required field value")
             continue
 

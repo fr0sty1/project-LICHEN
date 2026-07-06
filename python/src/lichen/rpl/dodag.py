@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from ipaddress import IPv6Address
 
 from lichen.rpl.messages import DIO
 
@@ -45,7 +46,7 @@ class DodagRole(Enum):
 class ParentCandidate:
     """A neighbour advertising membership in the DODAG."""
 
-    neighbor_id: str
+    neighbor_id: IPv6Address
     rank: int
     link_etx: float
 
@@ -58,8 +59,7 @@ class ParentCandidate:
 class DodagState:
     """RPL DODAG membership state for a single node.
 
-    ``neighbor_id`` values are opaque identifiers for neighbours (e.g. their
-    link-local address as a string).
+    ``neighbor_id`` values are link-local IPv6 addresses identifying neighbours.
     """
 
     rpl_instance_id: int
@@ -67,8 +67,8 @@ class DodagState:
     version: int
     role: DodagRole = DodagRole.UNJOINED
     rank: int = INFINITE_RANK
-    preferred_parent: str | None = None
-    parents: dict[str, ParentCandidate] = field(default_factory=dict)
+    preferred_parent: IPv6Address | None = None
+    parents: dict[IPv6Address, ParentCandidate] = field(default_factory=dict)
     min_hop_rank_increase: int = MIN_HOP_RANK_INCREASE
     max_rank_increase: int = MAX_RANK_INCREASE
     parent_switch_threshold: int = PARENT_SWITCH_THRESHOLD
@@ -95,7 +95,7 @@ class DodagState:
     def get_rank(self) -> int:
         return self.rank
 
-    def process_dio(self, dio: DIO, neighbor_id: str, link_etx: float = 1.0) -> None:
+    def process_dio(self, dio: DIO, neighbor_id: IPv6Address, link_etx: float = 1.0) -> None:
         """Process a received DIO from ``neighbor_id`` and re-select a parent.
 
         Newer DODAG versions trigger a rejoin (parents cleared); older versions
@@ -150,11 +150,12 @@ class DodagState:
         best = min(admissible, key=lambda c: c.path_cost(self.min_hop_rank_increase))
         best_cost = best.path_cost(self.min_hop_rank_increase)
 
-        current = self.parents.get(self.preferred_parent or "")
+        current = self.parents.get(self.preferred_parent) if self.preferred_parent else None
         if current is not None and current.neighbor_id != best.neighbor_id:
             current_cost = current.path_cost(self.min_hop_rank_increase)
-            # Hysteresis: only switch on a meaningful improvement.
-            if best_cost > current_cost - self.parent_switch_threshold:
+            # Hysteresis: switch only if improvement exceeds threshold (RFC 6550 s3.6).
+            improvement = current_cost - best_cost
+            if improvement < self.parent_switch_threshold:
                 best, best_cost = current, current_cost
 
         self.preferred_parent = best.neighbor_id
@@ -162,7 +163,7 @@ class DodagState:
         self.role = DodagRole.JOINED
         self._lowest_rank = min(self._lowest_rank, best_cost)
 
-    def remove_parent(self, neighbor_id: str) -> None:
+    def remove_parent(self, neighbor_id: IPv6Address) -> None:
         """Drop a neighbour (e.g. on link failure) and re-select."""
         self.parents.pop(neighbor_id, None)
         self.select_parent()

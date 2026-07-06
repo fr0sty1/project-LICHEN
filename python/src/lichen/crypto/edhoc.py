@@ -316,13 +316,34 @@ class EdhocInitiator:
         pt2_items = _decode_cbor_sequence(plaintext_2)
 
         id_cred_r = pt2_items[0] if len(pt2_items) > 0 else b""
-        # Verify signature (simplified - full impl needs MAC_2 computation)
-        # For SIGN_SIGN: Signature_2 = Sign(SK_R, M_2)
-        # M_2 = (context_2, ID_CRED_R, TH_2, CRED_R, ?EAD_2)
-        # ponytail: simplified verification - real impl needs full MAC_2 structure
+        signature_2 = pt2_items[1] if len(pt2_items) > 1 else b""
 
-        # PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN
+        # PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
         self._prk_3e2m = self._prk_2e
+
+        # SECURITY: Verify Signature_2 from responder per RFC 9528 Section 4.3.2
+        # For SIGN_SIGN: Signature_2 = Sign(SK_R, M_2)
+        cred_r = peer_pubkey  # CRED_R = pubkey for simplified case
+
+        # Recompute MAC_2
+        context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
+        mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
+
+        # M_2 = ["Signature1", << ID_CRED_R >>, TH_2, << CRED_R, ?EAD_2 >>, MAC_2]
+        m_2 = cbor2.dumps([
+            "Signature1",
+            cbor2.dumps(id_cred_r),
+            self._th_2,
+            cbor2.dumps(cred_r),
+            mac_2,
+        ])
+        verify_key = VerifyKey(peer_pubkey)
+        try:
+            verify_key.verify(m_2, signature_2)
+        except Exception as e:
+            raise ValueError(f"Signature verification failed: {e}") from e
+
+        # PRK_3e2m already set above
 
         # TH_3 = H(TH_2, CIPHERTEXT_2, ID_CRED_R)
         th_3_input = cbor2.dumps(self._th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)

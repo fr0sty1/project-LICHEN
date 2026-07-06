@@ -5,6 +5,15 @@ pub const LORA_SYNC_WORD: u8 = 0x34;
 pub const LORA_SPREADING_FACTOR: u8 = 10;
 pub const LORA_BANDWIDTH_HZ: u32 = 125_000;
 pub const LORA_PREAMBLE_SYMBOLS: u8 = 8;
+/// Maximum LoRa frame payload in bytes (SX1262 limit).
+pub const LORA_MAX_PAYLOAD: usize = 255;
+
+// SCHC (RFC 8724)
+/// Maximum decompressed packet size for SCHC buffers.
+/// Sized to hold IPv6 header (40) + max UDP/ICMPv6 payload that fits in LoRa frame.
+/// Actual limit depends on SCHC rule compression ratio, but this conservative
+/// bound covers all current rules.
+pub const SCHC_MAX_DECOMPRESSED: usize = 256;
 
 // Well-known UDP ports (spec Section 9.1)
 pub const PORT_COMPACT_COT: u16 = 5681;

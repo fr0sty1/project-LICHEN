@@ -211,6 +211,10 @@ impl<R: Radio> SecureStack<R> {
 
         let ctx = self.get_context_mut(peer_iid).ok_or(SecureError::NoContext)?;
 
+        // SECURITY: unprotect_request works for responses because OSCORE uses
+        // symmetric AEAD encryption. The function decrypts using the recipient_key,
+        // which matches the responder's sender_key. RFC 8613 Section 8.3 specifies
+        // that responses use the same cryptographic structure as requests.
         let (code, _options, payload) = ctx
             .unprotect_request(oscore_opt, ciphertext)
             .map_err(|_| SecureError::DecryptFailed)?;

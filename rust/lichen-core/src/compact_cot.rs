@@ -301,7 +301,10 @@ impl ChatPayload {
         let header_size = 2 + dest_id_size + 1; // subtype + dest_type + dest_id + length
 
         if data.len() < header_size {
-            return Err(DecodeError::TooShort(TooShort::new(header_size, data.len())));
+            return Err(DecodeError::TooShort(TooShort::new(
+                header_size,
+                data.len(),
+            )));
         }
 
         let dest = match dest_type {
@@ -426,6 +429,19 @@ impl fmt::Display for EncodeError {
 
 impl core::error::Error for EncodeError {}
 
+/// Encode a PLI payload with its subtype byte.
+fn encode_pli(
+    subtype: CompactCotType,
+    payload: &PliPayload,
+    buf: &mut [u8],
+) -> Result<usize, EncodeError> {
+    buf[0] = subtype as u8;
+    payload
+        .encode(&mut buf[1..])
+        .map(|n| n + 1)
+        .map_err(EncodeError::BufferTooSmall)
+}
+
 /// Encode a compact CoT message to a buffer.
 ///
 /// Returns the number of bytes written on success.
@@ -440,30 +456,10 @@ pub fn encode(cot: &CompactCot, buf: &mut [u8]) -> Result<usize, EncodeError> {
 
     match cot {
         CompactCot::Chat(c) => c.encode(buf).map_err(EncodeError::BufferTooSmall),
-        CompactCot::FriendlyPli(p) => {
-            buf[0] = CompactCotType::FriendlyPli as u8;
-            p.encode(&mut buf[1..])
-                .map(|n| n + 1)
-                .map_err(EncodeError::BufferTooSmall)
-        }
-        CompactCot::HostilePli(p) => {
-            buf[0] = CompactCotType::HostilePli as u8;
-            p.encode(&mut buf[1..])
-                .map(|n| n + 1)
-                .map_err(EncodeError::BufferTooSmall)
-        }
-        CompactCot::NeutralPli(p) => {
-            buf[0] = CompactCotType::NeutralPli as u8;
-            p.encode(&mut buf[1..])
-                .map(|n| n + 1)
-                .map_err(EncodeError::BufferTooSmall)
-        }
-        CompactCot::UnknownPli(p) => {
-            buf[0] = CompactCotType::UnknownPli as u8;
-            p.encode(&mut buf[1..])
-                .map(|n| n + 1)
-                .map_err(EncodeError::BufferTooSmall)
-        }
+        CompactCot::FriendlyPli(p) => encode_pli(CompactCotType::FriendlyPli, p, buf),
+        CompactCot::HostilePli(p) => encode_pli(CompactCotType::HostilePli, p, buf),
+        CompactCot::NeutralPli(p) => encode_pli(CompactCotType::NeutralPli, p, buf),
+        CompactCot::UnknownPli(p) => encode_pli(CompactCotType::UnknownPli, p, buf),
         CompactCot::Marker => {
             buf[0] = CompactCotType::Marker as u8;
             Ok(1)
@@ -475,48 +471,41 @@ pub fn encode(cot: &CompactCot, buf: &mut [u8]) -> Result<usize, EncodeError> {
     }
 }
 
+/// Decode a PLI payload from data buffer, constructing the appropriate CompactCot variant.
+fn decode_pli(subtype: CompactCotType, data: &[u8]) -> Result<CompactCot, DecodeError> {
+    if data.len() < PLI_TOTAL_SIZE {
+        return Err(DecodeError::TooShort(TooShort::new(
+            PLI_TOTAL_SIZE,
+            data.len(),
+        )));
+    }
+    let payload = PliPayload::decode(&data[1..]).map_err(DecodeError::TooShort)?;
+    Ok(match subtype {
+        CompactCotType::FriendlyPli => CompactCot::FriendlyPli(payload),
+        CompactCotType::HostilePli => CompactCot::HostilePli(payload),
+        CompactCotType::NeutralPli => CompactCot::NeutralPli(payload),
+        CompactCotType::UnknownPli => CompactCot::UnknownPli(payload),
+        _ => unreachable!("decode_pli called with non-PLI subtype"),
+    })
+}
+
 /// Decode a compact CoT message from a buffer.
 pub fn decode(data: &[u8]) -> Result<CompactCot, DecodeError> {
     if data.is_empty() {
         return Err(DecodeError::TooShort(TooShort::new(1, 0)));
     }
 
-    let subtype =
-        CompactCotType::from_byte(data[0]).ok_or(DecodeError::UnknownSubtype(data[0]))?;
+    let subtype = CompactCotType::from_byte(data[0]).ok_or(DecodeError::UnknownSubtype(data[0]))?;
 
     match subtype {
         CompactCotType::Chat => {
             let payload = ChatPayload::decode(data)?;
             Ok(CompactCot::Chat(payload))
         }
-        CompactCotType::FriendlyPli => {
-            if data.len() < PLI_TOTAL_SIZE {
-                return Err(DecodeError::TooShort(TooShort::new(PLI_TOTAL_SIZE, data.len())));
-            }
-            let payload = PliPayload::decode(&data[1..]).map_err(DecodeError::TooShort)?;
-            Ok(CompactCot::FriendlyPli(payload))
-        }
-        CompactCotType::HostilePli => {
-            if data.len() < PLI_TOTAL_SIZE {
-                return Err(DecodeError::TooShort(TooShort::new(PLI_TOTAL_SIZE, data.len())));
-            }
-            let payload = PliPayload::decode(&data[1..]).map_err(DecodeError::TooShort)?;
-            Ok(CompactCot::HostilePli(payload))
-        }
-        CompactCotType::NeutralPli => {
-            if data.len() < PLI_TOTAL_SIZE {
-                return Err(DecodeError::TooShort(TooShort::new(PLI_TOTAL_SIZE, data.len())));
-            }
-            let payload = PliPayload::decode(&data[1..]).map_err(DecodeError::TooShort)?;
-            Ok(CompactCot::NeutralPli(payload))
-        }
-        CompactCotType::UnknownPli => {
-            if data.len() < PLI_TOTAL_SIZE {
-                return Err(DecodeError::TooShort(TooShort::new(PLI_TOTAL_SIZE, data.len())));
-            }
-            let payload = PliPayload::decode(&data[1..]).map_err(DecodeError::TooShort)?;
-            Ok(CompactCot::UnknownPli(payload))
-        }
+        CompactCotType::FriendlyPli
+        | CompactCotType::HostilePli
+        | CompactCotType::NeutralPli
+        | CompactCotType::UnknownPli => decode_pli(subtype, data),
         CompactCotType::Marker => Ok(CompactCot::Marker),
         CompactCotType::Alert => Ok(CompactCot::Alert),
     }

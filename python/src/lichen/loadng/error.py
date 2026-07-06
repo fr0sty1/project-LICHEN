@@ -18,13 +18,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from ipaddress import IPv6Address
 
+from lichen.ipv6 import to_ipv6
 from lichen.gradient import GradientTable
 from lichen.loadng.cache import RouteCache
 from lichen.loadng.messages import RERR
-
-
-def _addr(value: IPv6Address | str) -> IPv6Address:
-    return value if isinstance(value, IPv6Address) else IPv6Address(value)
 
 
 @dataclass
@@ -48,11 +45,11 @@ class RouteErrorManager:
         self, destination: IPv6Address | str, upstream: IPv6Address | str
     ) -> None:
         """Note that ``upstream`` forwards traffic to ``destination`` through us."""
-        self._precursors.setdefault(_addr(destination), set()).add(_addr(upstream))
+        self._precursors.setdefault(to_ipv6(destination), set()).add(to_ipv6(upstream))
 
     def on_link_failure(self, next_hop: IPv6Address | str) -> list[RerrAction]:
         """Invalidate routes through a failed ``next_hop`` and build RERRs."""
-        nh = _addr(next_hop)
+        nh = to_ipv6(next_hop)
         dests = set(self.cache.remove_via(nh)) | set(self.gradient.remove_via(nh))
         return [self._build_action(dest) for dest in sorted(dests, key=str)]
 
@@ -64,8 +61,8 @@ class RouteErrorManager:
         Only acts if a local route to the unreachable destination goes through
         ``from_neighbor`` (the neighbour that reported the failure).
         """
-        dest = _addr(rerr.unreachable)
-        from_neighbor = _addr(from_neighbor)
+        dest = to_ipv6(rerr.unreachable)
+        from_neighbor = to_ipv6(from_neighbor)
 
         grad = self.gradient.lookup(dest)
         route = self.cache.lookup(dest)

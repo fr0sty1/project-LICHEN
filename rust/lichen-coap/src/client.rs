@@ -11,8 +11,12 @@ use std::net::SocketAddr;
 use tokio::net::UdpSocket;
 use tokio::time::{timeout, Duration};
 
-const COAP_VERSION_CON: u8 = 0x40; // Ver=1 | T=CON
+use crate::codec::CoapBuilder;
+use crate::message::{MessageCode, MessageType};
+
 const TIMEOUT_S: u64 = 5;
+/// Content-Format value for CBOR (RFC 7049).
+const CONTENT_FORMAT_CBOR: u16 = 60;
 
 /// A decoded CoAP response.
 #[derive(Debug)]
@@ -37,22 +41,22 @@ impl Response {
 
 /// GET coap://[addr][path].
 pub async fn get(addr: SocketAddr, path: &str) -> std::io::Result<Response> {
-    request(addr, 0x01, path, None).await
+    request(addr, MessageCode::GET, path, None).await
 }
 
 /// POST coap://[addr][path] with CBOR body.
 pub async fn post(addr: SocketAddr, path: &str, body: &[u8]) -> std::io::Result<Response> {
-    request(addr, 0x02, path, Some(body)).await
+    request(addr, MessageCode::POST, path, Some(body)).await
 }
 
 /// PUT coap://[addr][path] with CBOR body.
 pub async fn put(addr: SocketAddr, path: &str, body: &[u8]) -> std::io::Result<Response> {
-    request(addr, 0x03, path, Some(body)).await
+    request(addr, MessageCode::PUT, path, Some(body)).await
 }
 
 /// DELETE coap://[addr][path].
 pub async fn delete(addr: SocketAddr, path: &str) -> std::io::Result<Response> {
-    request(addr, 0x04, path, None).await
+    request(addr, MessageCode::DELETE, path, None).await
 }
 
 // ---------------------------------------------------------------------------
@@ -61,7 +65,7 @@ pub async fn delete(addr: SocketAddr, path: &str) -> std::io::Result<Response> {
 
 async fn request(
     addr: SocketAddr,
-    code: u8,
+    code: MessageCode,
     path: &str,
     payload: Option<&[u8]>,
 ) -> std::io::Result<Response> {
@@ -83,65 +87,42 @@ async fn request(
     decode(&buf[..n])
 }
 
-/// Build a CoAP message.
-///
-/// Handles Uri-Path options (11) and Content-Format (12, value 60 = CBOR)
-/// when a payload is present.  Both delta and length must fit in 4 bits
-/// for these options, which holds for all LICHEN path segments and for
-/// Content-Format 60 (1-byte value).
+/// Build a CoAP message using CoapBuilder.
 fn encode(
-    code: u8,
+    code: MessageCode,
     mid: u16,
     token: &[u8],
     path: &str,
     payload: Option<&[u8]>,
 ) -> std::io::Result<Vec<u8>> {
-    let mut buf = Vec::with_capacity(256);
+    let mut buf = vec![0u8; 256];
 
-    // Header
-    buf.push(COAP_VERSION_CON | token.len() as u8);
-    buf.push(code);
-    buf.push((mid >> 8) as u8);
-    buf.push(mid as u8);
-    buf.extend_from_slice(token);
+    let mut builder = CoapBuilder::new(&mut buf, MessageType::Confirmable, code, mid, token)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()))?;
 
-    // Uri-Path options (option 11)
-    let mut prev: u16 = 0;
+    // Add Uri-Path options for each path segment
     for seg in path.trim_start_matches('/').split('/') {
-        if seg.is_empty() {
-            continue;
+        if !seg.is_empty() {
+            builder
+                .uri_path(seg)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()))?;
         }
-        let delta = 11u16 - prev;
-        if delta > 12 || seg.len() > 12 {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "path segment or option delta too large for basic encoder",
-            ));
-        }
-        buf.push(((delta as u8) << 4) | seg.len() as u8);
-        buf.extend_from_slice(seg.as_bytes());
-        prev = 11;
     }
 
-    // Content-Format 12 (value 60 = CBOR, 1 byte) when body is present
-    if payload.map(|p| !p.is_empty()).unwrap_or(false) {
-        let delta = 12u16 - prev;
-        if delta <= 12 {
-            buf.push(((delta as u8) << 4) | 1u8);
-            buf.push(60u8); // CBOR
-            prev = 12;
-        }
-        let _ = prev;
-    }
-
-    // Payload
+    // Add Content-Format (CBOR) and payload when body is present
     if let Some(p) = payload {
         if !p.is_empty() {
-            buf.push(0xff); // payload marker
-            buf.extend_from_slice(p);
+            builder
+                .content_format(CONTENT_FORMAT_CBOR)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()))?;
+            builder
+                .payload(p)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()))?;
         }
     }
 
+    let len = builder.finish();
+    buf.truncate(len);
     Ok(buf)
 }
 

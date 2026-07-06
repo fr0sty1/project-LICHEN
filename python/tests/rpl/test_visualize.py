@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from ipaddress import IPv6Address
+
 from lichen.rpl.dodag import DodagState
 from lichen.rpl.visualize import (
     format_source_route,
@@ -54,11 +56,12 @@ def test_to_ascii_handles_cycle_without_infinite_loop() -> None:
 def test_topology_and_ranks_from_states() -> None:
     root = DodagState.as_root(0, "fd00::1", 1)
     child = DodagState(rpl_instance_id=0, dodag_id="fd00::1", version=1)
-    child.process_dio(_dio(), "root", link_etx=1.0)
+    root_addr = IPv6Address("fe80::1")
+    child.process_dio(_dio(), root_addr, link_etx=1.0)
     states = {"root": root, "child": child}
     topo = topology_from_states(states)
     assert topo["root"] is None
-    assert topo["child"] == "root"
+    assert topo["child"] == str(root_addr)
     ranks = ranks_from_states(states)
     assert ranks["root"] == root.rank
     assert ranks["child"] == child.rank

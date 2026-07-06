@@ -365,5 +365,6 @@ class PacketDatagramChannel(DatagramChannel):
             source = str(parsed.header.src_addr)
             coap = unwrap_coap(packet)
         except Exception:
+            logger.debug("failed to parse packet", exc_info=True)
             return
         receiver(coap, source)

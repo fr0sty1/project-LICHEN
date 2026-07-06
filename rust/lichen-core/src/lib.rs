@@ -8,6 +8,7 @@
 
 pub mod addr;
 pub mod announce;
+pub mod checksum;
 pub mod compact_cot;
 pub mod constants;
 pub mod duty_cycle;

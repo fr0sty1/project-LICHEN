@@ -40,7 +40,7 @@ pub mod secure;
 
 pub use dispatch::{Dispatcher, Resource, Request, Response};
 pub use node::{Node, RplEvent};
-pub use port_dispatch::{dispatch_by_port, AppProtocol, DispatchError, Dispatched};
+pub use port_dispatch::{dispatch_by_port, AppProtocol, DispatchError, Dispatched, UdpDispatchError};
 #[cfg(feature = "std")]
 pub use node::RplNode;
 pub use routing::{NeighborTable, Neighbor};

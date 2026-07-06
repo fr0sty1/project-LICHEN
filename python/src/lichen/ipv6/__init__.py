@@ -21,6 +21,7 @@ from lichen.ipv6.addr import (
     make_link_local,
     make_ula,
     short_addr_to_iid,
+    to_ipv6,
 )
 from lichen.ipv6.icmpv6 import (
     DestUnreachableCode,
@@ -92,4 +93,5 @@ __all__ = [
     "make_time_exceeded",
     "make_ula",
     "short_addr_to_iid",
+    "to_ipv6",
 ]
