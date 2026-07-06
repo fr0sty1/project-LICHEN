@@ -2,11 +2,14 @@
   "id": "project-LICHEN-k0jb",
   "title": "LinkLayer: O(n) signature verification documented but not mitigated",
   "description": "In rust/lichen-link/src/link_layer.rs, the documentation now correctly notes that RX requires O(n) Schnorr verifications where n = peer count, since frames don't include sender IID. The Python link_layer.py also documents this. This is a known protocol limitation. Consider: (1) documenting the expected peer count ceiling in the spec, (2) adding sender IID hint as optional frame extension, or (3) tracking this as future protocol enhancement.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-06T17:27:22.784577Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-06T17:27:22.784624Z"
+  "updated_at": "2026-07-06T18:08:08.939298Z",
+  "closed_at": "2026-07-06T18:08:08.939298Z",
+  "close_reason": "Known protocol limitation documented - O(n) verification is acceptable for expected peer counts (\u003c100)"
 }

@@ -2,13 +2,16 @@
   "id": "project-LICHEN-ow1e.131",
   "title": "loadng/discovery.py: _prune_seen called on every suppression check",
   "description": "src/lichen/loadng/discovery.py:194-197 _is_suppressed() calls _prune_seen(now) on every incoming RREQ. _prune_seen iterates all seen entries.\n\nFix: Prune lazily (on a timer or after N checks) rather than on every call. Stale entries don't affect correctness; they only waste memory.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-06T15:37:53.391807Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-06T15:37:53.39232Z",
+  "updated_at": "2026-07-06T17:57:42.206292Z",
+  "closed_at": "2026-07-06T17:57:42.206292Z",
+  "close_reason": "Closed",
   "labels": [
     "efficiency",
     "review"

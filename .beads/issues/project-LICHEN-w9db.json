@@ -2,11 +2,14 @@
   "id": "project-LICHEN-w9db",
   "title": "OSCORE unprotect_request: SECURITY comment accuracy",
   "description": "In rust/lichen-node/src/secure.rs, a SECURITY comment was added explaining why unprotect_request works for responses. The comment states 'OSCORE uses symmetric AEAD encryption. The function decrypts using the recipient_key, which matches the responder's sender_key.' This is correct for the happy path, but verify that key derivation actually produces matching keys on both sides (initiator recipient_key == responder sender_key). RFC 8613 Section 3.2 confirms this but worth double-checking the implementation.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-06T17:28:00.492967Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-06T17:28:00.493008Z"
+  "updated_at": "2026-07-06T18:08:19.379205Z",
+  "closed_at": "2026-07-06T18:08:19.379205Z",
+  "close_reason": "OSCORE key derivation verified correct per RFC 8613 Section 3.2 - initiator recipient_key equals responder sender_key"
 }
