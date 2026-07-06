@@ -22,6 +22,7 @@ use heapless::Vec;
 
 /// IPv6 parse error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Ipv6Error {
     /// Buffer too short for header.
     TooShort,

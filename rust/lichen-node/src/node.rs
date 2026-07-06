@@ -7,11 +7,14 @@ use lichen_core::constants::RPL_ICMPV6_TYPE;
 use lichen_core::icmpv6::hdr_field;
 use lichen_core::icmpv6::{echo_field, ICMPV6_HEADER_LEN};
 use lichen_core::ipv6::{field, next_header, IPV6_HEADER_LEN};
+use lichen_core::udp::UDP_HEADER_LEN;
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
 use lichen_core::{addr::Ipv6Addr, addr::NodeId, icmpv6};
 use lichen_schc::codec;
+
+use crate::port_dispatch::{dispatch_by_port, DispatchError, Dispatched};
 
 /// IPv6 version number expected in the first 4 bits of the header.
 const IPV6_VERSION: u8 = 6;
@@ -149,6 +152,69 @@ impl Node {
             data,
             out,
         )
+    }
+
+    /// Dispatch a UDP payload based on destination port.
+    ///
+    /// Parses the IPv6/UDP headers and returns the identified application protocol
+    /// along with the UDP payload. Use this to route incoming UDP traffic to the
+    /// appropriate application handler.
+    ///
+    /// Returns `None` if the packet is not UDP or has invalid headers.
+    /// Returns `Err` if the port is unknown or reserved.
+    pub fn dispatch_udp<'a>(&self, ipv6: &'a [u8]) -> Option<Result<Dispatched<'a>, DispatchError>> {
+        let n = ipv6.len();
+        if n < IPV6_HEADER_LEN || ipv6[0] >> 4 != IPV6_VERSION {
+            return None;
+        }
+
+        let nh = ipv6[6];
+        if nh != next_header::UDP {
+            return None;
+        }
+
+        let min_udp_len = IPV6_HEADER_LEN + UDP_HEADER_LEN;
+        if n < min_udp_len {
+            return None;
+        }
+
+        let udp_start = IPV6_HEADER_LEN;
+        let dst_port = u16::from_be_bytes([ipv6[udp_start + 2], ipv6[udp_start + 3]]);
+        let udp_payload = &ipv6[min_udp_len..];
+
+        Some(dispatch_by_port(dst_port, udp_payload))
+    }
+
+    /// Get the UDP destination port from an IPv6 packet.
+    ///
+    /// Returns `None` if not a UDP packet or headers are invalid.
+    pub fn udp_dst_port(&self, ipv6: &[u8]) -> Option<u16> {
+        let n = ipv6.len();
+        if n < IPV6_HEADER_LEN + UDP_HEADER_LEN || ipv6[0] >> 4 != IPV6_VERSION {
+            return None;
+        }
+        if ipv6[6] != next_header::UDP {
+            return None;
+        }
+        let udp_start = IPV6_HEADER_LEN;
+        Some(u16::from_be_bytes([ipv6[udp_start + 2], ipv6[udp_start + 3]]))
+    }
+
+    /// Get both source and destination UDP ports from an IPv6 packet.
+    ///
+    /// Returns `None` if not a UDP packet or headers are invalid.
+    pub fn udp_ports(&self, ipv6: &[u8]) -> Option<(u16, u16)> {
+        let n = ipv6.len();
+        if n < IPV6_HEADER_LEN + UDP_HEADER_LEN || ipv6[0] >> 4 != IPV6_VERSION {
+            return None;
+        }
+        if ipv6[6] != next_header::UDP {
+            return None;
+        }
+        let udp_start = IPV6_HEADER_LEN;
+        let src_port = u16::from_be_bytes([ipv6[udp_start], ipv6[udp_start + 1]]);
+        let dst_port = u16::from_be_bytes([ipv6[udp_start + 2], ipv6[udp_start + 3]]);
+        Some((src_port, dst_port))
     }
 }
 
@@ -319,6 +385,7 @@ fn wrap_compressed_reply(ipv6: &[u8], reply: &mut [u8]) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::port_dispatch::AppProtocol;
 
     fn node(iid: u8) -> Node {
         Node::new(NodeId([0x02, 0, 0, 0, 0, 0, 0, iid]))
@@ -373,5 +440,147 @@ mod tests {
         let n = node(1);
         let mut reply = [0u8; 259];
         assert_eq!(n.handle_frame(&[0x02, 0x80], &mut reply), 0);
+    }
+
+    /// Build a minimal IPv6/UDP packet for testing port dispatch.
+    fn build_udp_packet(src_port: u16, dst_port: u16, payload: &[u8]) -> [u8; 128] {
+        let mut pkt = [0u8; 128];
+
+        // IPv6 header (40 bytes)
+        pkt[0] = 0x60; // Version 6
+        let udp_len = (UDP_HEADER_LEN + payload.len()) as u16;
+        pkt[4] = (udp_len >> 8) as u8;
+        pkt[5] = udp_len as u8;
+        pkt[6] = next_header::UDP;
+        pkt[7] = 64; // hop limit
+
+        // Source address (fe80::1)
+        pkt[8] = 0xfe;
+        pkt[9] = 0x80;
+        pkt[23] = 0x01;
+
+        // Dest address (fe80::2)
+        pkt[24] = 0xfe;
+        pkt[25] = 0x80;
+        pkt[39] = 0x02;
+
+        // UDP header (8 bytes at offset 40)
+        pkt[40] = (src_port >> 8) as u8;
+        pkt[41] = src_port as u8;
+        pkt[42] = (dst_port >> 8) as u8;
+        pkt[43] = dst_port as u8;
+        pkt[44] = (udp_len >> 8) as u8;
+        pkt[45] = udp_len as u8;
+        // checksum at 46-47 left as 0
+
+        // UDP payload
+        pkt[48..48 + payload.len()].copy_from_slice(payload);
+
+        pkt
+    }
+
+    #[test]
+    fn dispatch_udp_coap() {
+        use lichen_core::constants::PORT_COAP;
+
+        let n = node(1);
+        let coap_payload = [0x44, 0x01, 0x00, 0x01, 0xAB]; // GET request
+        let pkt = build_udp_packet(PORT_COAP, PORT_COAP, &coap_payload);
+        let pkt_len = IPV6_HEADER_LEN + UDP_HEADER_LEN + coap_payload.len();
+
+        let result = n.dispatch_udp(&pkt[..pkt_len]);
+        assert!(result.is_some());
+        let dispatched = result.unwrap().unwrap();
+        assert_eq!(dispatched.protocol, AppProtocol::CoAP);
+        assert_eq!(dispatched.payload, &coap_payload);
+    }
+
+    #[test]
+    fn dispatch_udp_mqtt_sn() {
+        use lichen_core::constants::PORT_MQTT_SN;
+
+        let n = node(1);
+        let mqtt_payload = [0x04, 0x04, 0x00, 0x01]; // CONNECT
+        let pkt = build_udp_packet(12345, PORT_MQTT_SN, &mqtt_payload);
+        let pkt_len = IPV6_HEADER_LEN + UDP_HEADER_LEN + mqtt_payload.len();
+
+        let result = n.dispatch_udp(&pkt[..pkt_len]);
+        assert!(result.is_some());
+        let dispatched = result.unwrap().unwrap();
+        assert_eq!(dispatched.protocol, AppProtocol::MqttSn);
+    }
+
+    #[test]
+    fn dispatch_udp_compact_cot() {
+        use lichen_core::constants::PORT_COMPACT_COT;
+
+        let n = node(1);
+        let cot_payload = [0x02, 0x00, 0x00, 0x01]; // PLI subtype
+        let pkt = build_udp_packet(PORT_COMPACT_COT, PORT_COMPACT_COT, &cot_payload);
+        let pkt_len = IPV6_HEADER_LEN + UDP_HEADER_LEN + cot_payload.len();
+
+        let result = n.dispatch_udp(&pkt[..pkt_len]);
+        assert!(result.is_some());
+        let dispatched = result.unwrap().unwrap();
+        assert_eq!(dispatched.protocol, AppProtocol::CompactCot);
+    }
+
+    #[test]
+    fn dispatch_udp_unknown_port() {
+        let n = node(1);
+        let pkt = build_udp_packet(8080, 8080, &[0x00]);
+        let pkt_len = IPV6_HEADER_LEN + UDP_HEADER_LEN + 1;
+
+        let result = n.dispatch_udp(&pkt[..pkt_len]);
+        assert!(result.is_some());
+        assert!(result.unwrap().is_err());
+    }
+
+    #[test]
+    fn dispatch_udp_reserved_port_5684() {
+        let n = node(1);
+        let pkt = build_udp_packet(5684, 5684, &[0x00]);
+        let pkt_len = IPV6_HEADER_LEN + UDP_HEADER_LEN + 1;
+
+        let result = n.dispatch_udp(&pkt[..pkt_len]);
+        assert!(result.is_some());
+        let err = result.unwrap().unwrap_err();
+        assert_eq!(err, DispatchError::ReservedPort);
+    }
+
+    #[test]
+    fn dispatch_non_udp_returns_none() {
+        let n = node(1);
+        // ICMPv6 packet (next header = 58)
+        let (req, _) = l2_echo_request(2, 1);
+        let mut ipv6 = [0u8; 256];
+        let ipv6_len = codec::decompress(l2_payload_body(&req), &mut ipv6).unwrap();
+
+        let result = n.dispatch_udp(&ipv6[..ipv6_len]);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn udp_ports_extraction() {
+        let n = node(1);
+        let pkt = build_udp_packet(5683, 10883, &[0x00]);
+        let pkt_len = IPV6_HEADER_LEN + UDP_HEADER_LEN + 1;
+
+        let ports = n.udp_ports(&pkt[..pkt_len]);
+        assert_eq!(ports, Some((5683, 10883)));
+
+        let dst = n.udp_dst_port(&pkt[..pkt_len]);
+        assert_eq!(dst, Some(10883));
+    }
+
+    #[test]
+    fn udp_ports_non_udp_returns_none() {
+        let n = node(1);
+        let (req, _) = l2_echo_request(2, 1);
+        let mut ipv6 = [0u8; 256];
+        let ipv6_len = codec::decompress(l2_payload_body(&req), &mut ipv6).unwrap();
+
+        assert!(n.udp_ports(&ipv6[..ipv6_len]).is_none());
+        assert!(n.udp_dst_port(&ipv6[..ipv6_len]).is_none());
     }
 }

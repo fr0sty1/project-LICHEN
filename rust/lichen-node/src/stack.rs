@@ -30,6 +30,7 @@ pub const MAX_FRAME_SIZE: usize = 255;
 
 /// TX path error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TxError {
     /// CoAP message encoding failed.
     CoapEncode,
@@ -59,6 +60,7 @@ impl core::error::Error for TxError {}
 
 /// RX path error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RxError {
     /// Radio receive failed.
     RadioRx,

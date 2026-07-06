@@ -21,6 +21,7 @@ pub const PAYLOAD_MARKER: u8 = 0xFF;
 
 /// CoAP parse error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CoapError {
     /// Message too short.
     TooShort(TooShort),

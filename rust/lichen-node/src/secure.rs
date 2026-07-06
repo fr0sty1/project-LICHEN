@@ -23,6 +23,7 @@ const OSCORE_OPTION: u16 = COAP_OPTION_OSCORE;
 
 /// Secure stack error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SecureError {
     /// No OSCORE context for peer.
     NoContext,

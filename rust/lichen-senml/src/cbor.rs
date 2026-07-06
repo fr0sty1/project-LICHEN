@@ -10,6 +10,7 @@ use crate::record::Record;
 
 /// Error type for CBOR encode/decode.
 #[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CborError {
     BufferTooSmall,
     InvalidInput,

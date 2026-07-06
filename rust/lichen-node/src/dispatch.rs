@@ -175,7 +175,7 @@ pub type Handler = fn(&Request) -> Response;
 ///
 /// All builder methods are `const fn` to enable compile-time dispatch table
 /// construction. See the [module documentation](self) for rationale.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Resource {
     pub path: &'static [&'static [u8]],
     pub get: Option<Handler>,

@@ -45,6 +45,7 @@ pub struct RadioConfig {
 /// Generic over `E` for hardware-specific errors (e.g., SPI errors).
 /// Implementations that cannot fail use `core::convert::Infallible` for `E`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RadioError<E> {
     /// Hardware bus error (SPI, I2C, etc).
     Bus(E),
@@ -152,6 +153,7 @@ pub trait NonVolatile {
 
 /// Display error types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum DisplayError {
     /// Display not initialized or initialization failed.
     NotInitialized,

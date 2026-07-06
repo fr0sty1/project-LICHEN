@@ -79,6 +79,7 @@ const fn hex_digit(c: u8) -> u8 {
 
 /// Error types for GATT operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum GattError {
     /// Write buffer overflow (message too large).
     BufferOverflow,

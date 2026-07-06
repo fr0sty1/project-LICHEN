@@ -5,6 +5,7 @@
 //! `python/src/lichen/sim/protocol.py`). The client must send REGISTER
 //! before any TX / RX / TIME messages.
 
+use std::borrow::Cow;
 use std::net::SocketAddr;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufReader},
@@ -29,12 +30,13 @@ const MSG_ERR: u8 = 0xFF;
 
 /// Errors returned by [`SimClient`].
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum SimError {
     Io(std::io::Error),
     /// Server returned an ERR response.
     Server {
         code: u8,
-        message: String,
+        message: Cow<'static, str>,
     },
     /// Response did not match the expected message type.
     Protocol(&'static str),
@@ -227,10 +229,10 @@ fn parse_err(payload: &[u8]) -> SimError {
     }
     let code = payload[0];
     let msg_len = payload[1] as usize;
-    let message = if payload.len() >= 2 + msg_len {
-        String::from_utf8_lossy(&payload[2..2 + msg_len]).into_owned()
+    let message: Cow<'static, str> = if payload.len() >= 2 + msg_len {
+        Cow::Owned(String::from_utf8_lossy(&payload[2..2 + msg_len]).into_owned())
     } else {
-        "(truncated)".to_string()
+        Cow::Borrowed("(truncated)")
     };
     SimError::Server { code, message }
 }
@@ -247,7 +249,7 @@ mod tests {
         match e {
             SimError::Server { code, message } => {
                 assert_eq!(code, 4);
-                assert_eq!(message, "hello");
+                assert_eq!(message.as_ref(), "hello");
             }
             _ => panic!("wrong variant"),
         }
