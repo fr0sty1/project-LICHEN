@@ -117,9 +117,9 @@ pub struct RouteEntry {
 
 #[cfg(feature = "std")]
 impl RouteEntry {
-    pub fn fresh(path: Vec<[u8; 16]>) -> Self {
+    pub fn fresh(path: &[[u8; 16]]) -> Self {
         Self {
-            path,
+            path: path.to_vec(),
             state: RouteEntryState::Fresh,
         }
     }
@@ -144,14 +144,14 @@ impl RouteEntry {
         self.transition_to(RouteEntryState::Expired)
     }
 
-    pub fn refresh(&mut self, path: Vec<[u8; 16]>) -> Result<(), InvalidRouteEntryTransition> {
+    pub fn refresh(&mut self, path: &[[u8; 16]]) -> Result<(), InvalidRouteEntryTransition> {
         if self.state == RouteEntryState::Expired {
             return Err(InvalidRouteEntryTransition {
                 from: self.state,
                 to: RouteEntryState::Fresh,
             });
         }
-        self.path = path;
+        self.path = path.to_vec();
         self.transition_to(RouteEntryState::Fresh)
     }
 
@@ -176,7 +176,7 @@ impl RoutingTable {
         Self::default()
     }
 
-    pub fn add_route(&mut self, target: [u8; 16], path: Vec<[u8; 16]>) {
+    pub fn add_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) {
         match self.routes.get_mut(&target) {
             Some(entry) if entry.state != RouteEntryState::Expired => {
                 entry
@@ -341,7 +341,7 @@ impl DaoManager {
         let targets: Vec<[u8; 16]> = self.parent_map.keys().copied().collect();
         for target in targets {
             if let Some(path) = self.assemble_path(target) {
-                self.routing_table.add_route(target, path);
+                self.routing_table.add_route(target, &path);
             }
         }
     }
@@ -394,8 +394,8 @@ mod tests {
     fn routing_table_add_lookup_remove() {
         let mut table = RoutingTable::new();
         let target = ll(3);
-        let path: Vec<[u8; 16]> = [ll(2), ll(3)].into_iter().collect();
-        table.add_route(target, path.clone());
+        let path = [ll(2), ll(3)];
+        table.add_route(target, &path);
 
         assert_eq!(table.len(), 1);
         assert_eq!(table.lookup(&target), Some(path.as_slice()));
@@ -407,19 +407,19 @@ mod tests {
 
     #[test]
     fn route_entry_state_machine_allows_stale_refresh_and_rejects_expired_refresh() {
-        let mut entry = RouteEntry::fresh([ll(2), ll(3)].into_iter().collect());
+        let mut entry = RouteEntry::fresh(&[ll(2), ll(3)]);
         assert_eq!(entry.state, RouteEntryState::Fresh);
 
         entry.mark_stale().unwrap();
         assert_eq!(entry.state, RouteEntryState::Stale);
 
-        entry.refresh([ll(4), ll(3)].into_iter().collect()).unwrap();
+        entry.refresh(&[ll(4), ll(3)]).unwrap();
         assert_eq!(entry.state, RouteEntryState::Fresh);
         assert_eq!(entry.path, [ll(4), ll(3)]);
 
         entry.mark_expired().unwrap();
         assert_eq!(
-            entry.refresh([ll(2), ll(3)].into_iter().collect()),
+            entry.refresh(&[ll(2), ll(3)]),
             Err(InvalidRouteEntryTransition {
                 from: RouteEntryState::Expired,
                 to: RouteEntryState::Fresh,
@@ -431,7 +431,7 @@ mod tests {
     fn routing_table_hides_expired_routes_but_keeps_state_visible() {
         let mut table = RoutingTable::new();
         let target = ll(3);
-        table.add_route(target, [ll(2), ll(3)].into_iter().collect());
+        table.add_route(target, &[ll(2), ll(3)]);
 
         table.mark_stale(&target).unwrap().unwrap();
         assert_eq!(table.entry_state(&target), Some(RouteEntryState::Stale));
@@ -441,7 +441,7 @@ mod tests {
         assert_eq!(table.entry_state(&target), Some(RouteEntryState::Expired));
         assert!(table.lookup(&target).is_none());
 
-        table.add_route(target, [ll(4), ll(3)].into_iter().collect());
+        table.add_route(target, &[ll(4), ll(3)]);
         assert_eq!(table.entry_state(&target), Some(RouteEntryState::Fresh));
         assert_eq!(table.lookup(&target).unwrap(), &[ll(4), ll(3)]);
     }

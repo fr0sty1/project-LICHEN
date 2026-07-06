@@ -7,6 +7,7 @@
 
 /// Error returned when a message or option is malformed.
 #[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RplError {
     TooShort,
     OptionOverrun,
