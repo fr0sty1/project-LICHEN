@@ -373,7 +373,7 @@ launch_instance() {
         --subnet-id "$SUBNET_ID"
         --placement "AvailabilityZone=$AVAILABILITY_ZONE"
         --associate-public-ip-address
-        --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=claude-runner-ephemeral},{Key=Purpose,Value=claude-headless}]"
+        --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=claude-runner-ephemeral},{Key=Purpose,Value=claude-headless},{Key=Project,Value=LICHEN},{Key=LaunchedBy,Value=ec2-claude-sh}]"
         --query 'Instances[0].InstanceId'
         --output text
     )
