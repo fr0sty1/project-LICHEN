@@ -77,14 +77,16 @@ class RenodeNode:
         """Start the Renode process."""
         sx1262_cs = project_root / "lichen/boards/renode/peripherals/SX1262.cs"
         platform = project_root / f"lichen/boards/renode/{self.board}/support/{self.board}.repl"
-        uart = "uart1" if self.board == "rak4631" else "uart0"
 
+        # Per-node FICR DEVICEID so each node derives a unique EUI-64 / IPv6.
         script = f"""\
 :name: TestNode{self.node_id}
 include @{sx1262_cs}
 mach create "node{self.node_id}"
 machine LoadPlatformDescription @{platform}
 spi1.sx1262 SimPort {self.port}
+sysbus Tag <0x10000060, 0x10000063> "DEVICEID[0]" 0x1CE1{self.node_id:04X}
+sysbus Tag <0x10000064, 0x10000067> "DEVICEID[1]" 0x1CE2{self.node_id:04X}
 sysbus LoadELF @{self.firmware}
 cpu PerformanceInMips 64
 start

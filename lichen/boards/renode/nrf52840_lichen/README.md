@@ -4,8 +4,11 @@ Renode platform definition for nRF52840-based LICHEN devices with external SX126
 
 ## Supported Boards
 
-- LilyGO T-Echo (`../t_echo/`)
-- RAK4631 (`../rak4631/`)
+- LilyGO T-Echo (`../t_echo/`) — validated (boot, SPI, L2 init, LoRa TX).
+- RAK4631 (`../rak4631/`) — **not yet functional in Renode.** The shared
+  platform wiring is T-Echo-specific (gpio0, easyDMA SPIM); the real RAK4631
+  wires the SX1262 on gpio1 and uses the legacy `nordic,nrf-spi` controller.
+  Tracked by bead `project-LICHEN-r7h4.9`.
 
 ## Installing Renode
 

@@ -35,6 +35,11 @@ machine LoadPlatformDescription @{platform}
 # Override SX1262 port for this node
 spi1.sx1262 SimPort {port}
 
+# Per-node FICR DEVICEID so every node derives a unique EUI-64 / IPv6 address.
+# Without this, all nodes share the platform's default id and collide.
+sysbus Tag <0x10000060, 0x10000063> "DEVICEID[0]" {devid0}
+sysbus Tag <0x10000064, 0x10000067> "DEVICEID[1]" {devid1}
+
 # Load firmware
 sysbus LoadELF @{elf}
 
@@ -98,18 +103,23 @@ async def run_simulation(boards: list[str]):
                 print(f"ERROR: Platform not found: {platform}")
                 return
 
-            # Try board-specific firmware, fall back to generic
-            board_elf = project_root / f"build/{board}/zephyr/zephyr.elf"
-            firmware = board_elf if board_elf.exists() else elf
-            if not firmware.exists():
+            # Try board-specific firmware (Renode console build first), else generic
+            candidates = [
+                project_root / f"build/{board}_renode/zephyr/zephyr.elf",
+                project_root / f"build/{board}/zephyr/zephyr.elf",
+                elf,
+            ]
+            firmware = next((c for c in candidates if c.exists()), None)
+            if firmware is None:
                 print(f"ERROR: Firmware not found for {board}")
-                print(f"  Tried: {board_elf}")
-                print(f"  Tried: {elf}")
-                print(f"Build with: west build -b {board}_nrf52840 ...")
+                for c in candidates:
+                    print(f"  Tried: {c}")
+                print(f"Build with: west build -b {board}/nrf52840 ...")
                 return
 
-            # UART depends on board (T-Echo=uart0, RAK4631=uart1)
-            uart = "uart1" if board == "rak4631" else "uart0"
+            # The renode_console.overlay routes the console to uart0 for all
+            # nRF52840 boards, so capture uart0 regardless of board default.
+            uart = "uart0"
 
             script = RENODE_SCRIPT_TEMPLATE.format(
                 node_id=i,
@@ -120,6 +130,8 @@ async def run_simulation(boards: list[str]):
                 log_file=log_file,
                 uart_file=uart_file,
                 uart=uart,
+                devid0=f"0x1CE1{i:04X}",
+                devid1=f"0x1CE2{i:04X}",
             )
 
             script_path = log_dir / f"_node{i}.resc"
