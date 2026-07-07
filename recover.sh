@@ -140,12 +140,19 @@ uf2_fallback() {  # T-Echo only: the wedged bootloader still serves USB MSC
     done
     [[ -n "$dev" ]] || { echo "TECHOBOOT volume never appeared" >&2; return 1; }
     vol=$(lsblk -rno MOUNTPOINT "$dev" | head -1)
+    if [[ -n "$vol" && ! -w "$vol" ]]; then
+        # Auto-mounted by root (e.g. /media/root/TECHOBOOT) — we can't write
+        # there. Drop it and remount as the invoking user via udisks.
+        echo "==> $vol not writable — remounting as $USER..."
+        udisksctl unmount -b "$dev" >/dev/null 2>&1 || true
+        vol=""
+    fi
     if [[ -z "$vol" ]]; then
         udisksctl mount -b "$dev" >/dev/null 2>&1 || true
         sleep 1
         vol=$(lsblk -rno MOUNTPOINT "$dev" | head -1)
     fi
-    [[ -n "$vol" ]] || { echo "TECHOBOOT would not mount" >&2; return 1; }
+    [[ -n "$vol" && -w "$vol" ]] || { echo "TECHOBOOT would not mount writable" >&2; return 1; }
     local uf2conv=zephyr/scripts/build/uf2conv.py
     python3 "$uf2conv" "$COMBINED" -c -f 0xADA52840 -b "$MCUBOOT_ADDR" \
         -o /tmp/t_echo_recover.uf2
