@@ -62,6 +62,7 @@ VOLUME_ATTACHED=false
 CLEANUP_DONE=false
 PUBLIC_IP=""
 SQS_QUEUE_URL=""
+ULTRACODE_MODE=false
 
 # === Colors (if terminal) ===
 if [[ -t 1 ]]; then
@@ -692,14 +693,26 @@ trap cleanup_sync EXIT
 
 sqs_status "Claude starting"
 
-# Build system prompt additions for resilience
-RESILIENCE_PROMPT="CRITICAL RESILIENCE RULES (instance may terminate at any time):
+# Build system prompt additions for resilience and quality
+RESILIENCE_PROMPT="CRITICAL RULES (instance may terminate at any time):
+
+RESILIENCE:
 1. Use 'bd' (beads) for task tracking. Run 'bd ready' to see work, 'bd close <id>' when done.
 2. Beads changes auto-sync to git every 30s. For code, commit and push frequently.
 3. Use conventional commit messages (feat:, fix:, etc.).
 4. If you hit an error 3 times, stop and document in a bead before proceeding.
 5. Before any destructive action, commit and push current work first.
-6. Work as if each commit could be your last."
+6. Work as if each commit could be your last.
+7. Commit and push after completing each logical unit of work.
+
+CODE QUALITY:
+The orchestrator will run 3 independent code review passes after your implementation.
+Each review focuses on different concerns (correctness, security, edge cases).
+Issues found will be filed as beads prefixed with [review].
+You will then be asked to fix those issues.
+This cycle repeats until reviews find no new issues.
+
+Your job: write clean code, commit frequently, and fix review issues when asked."
 
 # Run Claude Code headlessly with unbuffered output
 # stdbuf -oL forces line buffering so output streams through SSH
@@ -734,6 +747,164 @@ REMOTE_CLAUDE
             "bash -s -- '$escaped_prompt' '$SQS_QUEUE_URL'" <<< "$remote_script"
     fi
     sqs_status "Claude finished"
+}
+
+# === Get changed files on remote ===
+get_changed_files() {
+    ssh $SSH_OPTS -i "$SSH_KEY_PATH" "${SSH_USER}@${PUBLIC_IP}" \
+        "cd /mnt/lichen-zephyr/workspace && git diff --name-only HEAD~1 HEAD 2>/dev/null | head -50" 2>/dev/null || true
+}
+
+# === Run a single code review pass ===
+run_single_review() {
+    local review_num="$1"
+    local changed_files="$2"
+    local review_focus=""
+
+    case "$review_num" in
+        1) review_focus="correctness, logic errors, off-by-one bugs, null/undefined handling" ;;
+        2) review_focus="security vulnerabilities, input validation, injection risks, auth/authz" ;;
+        3) review_focus="edge cases, error handling, resource leaks, race conditions" ;;
+    esac
+
+    local review_prompt="CODE REVIEW PASS $review_num - Focus: $review_focus
+
+Review the following files that were just modified. Look ONLY for issues related to: $review_focus
+
+Files to review:
+$changed_files
+
+For each issue found:
+1. Run 'bd create --title=\"[review] <issue>\" --type=bug --priority=2 --description=\"<details>\"'
+2. Be specific about file, line, and the problem
+
+If no issues found for your focus area, say 'No issues found for $review_focus'
+
+Do NOT fix issues - only identify and file them as beads."
+
+    log_info "Review pass $review_num: $review_focus"
+    sqs_status "Review $review_num: $review_focus"
+
+    # Run review (simplified - reuse the remote script structure)
+    local escaped_review
+    escaped_review=$(printf '%s' "$review_prompt" | base64 | tr -d '\n')
+
+    ssh $SSH_OPTS -i "$SSH_KEY_PATH" "${SSH_USER}@${PUBLIC_IP}" "bash -s" << REVIEW_SCRIPT
+source /mnt/lichen-zephyr/env.sh 2>/dev/null || true
+cd /mnt/lichen-zephyr/workspace
+PROMPT=\$(printf '%s' "$escaped_review" | base64 -d)
+stdbuf -oL claude -p --permission-mode bypassPermissions --output-format text "\$PROMPT" 2>&1
+REVIEW_SCRIPT
+}
+
+# === Run 3 parallel code reviews ===
+run_3_reviews() {
+    local changed_files="$1"
+
+    if [[ -z "$changed_files" ]]; then
+        log_info "No changed files to review"
+        return 0
+    fi
+
+    log_info "Running 3 parallel code reviews..."
+    sqs_status "Starting 3 parallel reviews"
+
+    # Run reviews in parallel, capture output
+    local review1_out review2_out review3_out
+    local pids=()
+
+    run_single_review 1 "$changed_files" > /tmp/review1.out 2>&1 &
+    pids+=($!)
+    run_single_review 2 "$changed_files" > /tmp/review2.out 2>&1 &
+    pids+=($!)
+    run_single_review 3 "$changed_files" > /tmp/review3.out 2>&1 &
+    pids+=($!)
+
+    # Wait for all reviews
+    for pid in "${pids[@]}"; do
+        wait "$pid" || true
+    done
+
+    # Check if any issues were filed (look for bd create in output)
+    local issues_found=0
+    for f in /tmp/review1.out /tmp/review2.out /tmp/review3.out; do
+        if grep -q "bd create\|Created.*issue\|\[review\]" "$f" 2>/dev/null; then
+            issues_found=1
+        fi
+        # Show review output
+        cat "$f" 2>/dev/null || true
+    done
+
+    sqs_status "Reviews complete, issues_found=$issues_found"
+    return $issues_found
+}
+
+# === Fix issues found in reviews ===
+run_fix_pass() {
+    log_info "Running fix pass for review issues..."
+    sqs_status "Fixing review issues"
+
+    local fix_prompt="FIX REVIEW ISSUES
+
+Review issues were filed as beads. Find them with:
+  bd list --status=open | grep '\[review\]'
+
+For each review issue:
+1. Read the issue details
+2. Fix the code
+3. Close the issue: bd close <id> --reason='Fixed: <what you did>'
+4. Commit the fix: git add <files> && git commit -m 'fix: <description>'
+5. Push: git push
+
+Work through ALL open review issues until none remain."
+
+    local escaped_fix
+    escaped_fix=$(printf '%s' "$fix_prompt" | base64 | tr -d '\n')
+
+    ssh $SSH_OPTS -i "$SSH_KEY_PATH" "${SSH_USER}@${PUBLIC_IP}" "bash -s" << FIX_SCRIPT
+source /mnt/lichen-zephyr/env.sh 2>/dev/null || true
+cd /mnt/lichen-zephyr/workspace
+PROMPT=\$(printf '%s' "$escaped_fix" | base64 -d)
+stdbuf -oL claude -p --permission-mode bypassPermissions --output-format text "\$PROMPT" 2>&1
+FIX_SCRIPT
+}
+
+# === Orchestrated review loop (for ultracode mode) ===
+run_review_loop() {
+    local max_iterations=5
+    local iteration=0
+
+    while (( iteration < max_iterations )); do
+        ((iteration++))
+        log_info "=== Review cycle $iteration of $max_iterations ==="
+        sqs_status "Review cycle $iteration/$max_iterations"
+
+        # Get files changed since we started
+        local changed_files
+        changed_files=$(get_changed_files)
+
+        if [[ -z "$changed_files" ]]; then
+            log_info "No files changed, skipping review"
+            break
+        fi
+
+        log_info "Files to review: $(echo "$changed_files" | wc -l | tr -d ' ') files"
+
+        # Run 3 reviews
+        if ! run_3_reviews "$changed_files"; then
+            log_ok "All reviews passed - no issues found"
+            break
+        fi
+
+        # Issues were found, run fix pass
+        run_fix_pass
+
+        # Next iteration will review the fixes
+    done
+
+    if (( iteration >= max_iterations )); then
+        log_warn "Reached max review iterations ($max_iterations)"
+    fi
 }
 
 # === Send stop signal to SQS queue ===
@@ -792,6 +963,7 @@ Options:
   -r, --repo URL       Git repo to clone (clones to workspace/)
   -b, --branch NAME    Branch to checkout (default: main)
   --no-repo            Skip repo clone (use existing workspace)
+  --ultracode          Enable ultracode mode (workflow orchestration + 3x3 reviews)
   --stop <queue-url>   Send stop signal to running instance via SQS
   --poll <queue-url>   Poll status messages from SQS queue
   -h, --help           Show this help message
@@ -872,6 +1044,10 @@ main() {
                 REPO_URL=""
                 shift
                 ;;
+            --ultracode)
+                ULTRACODE_MODE=true
+                shift
+                ;;
             --stop)
                 [[ -z "${2:-}" ]] && { log_error "--stop requires a queue URL"; exit 1; }
                 send_stop_signal "$2"
@@ -912,6 +1088,12 @@ main() {
         usage
     fi
 
+    # Prepend ultracode keyword if enabled
+    if [[ "$ULTRACODE_MODE" == "true" ]]; then
+        prompt="ultracode $prompt"
+        log_info "Mode: ULTRACODE (workflow orchestration enabled)"
+    fi
+
     # Show what we're about to do
     local prompt_preview="${prompt:0:100}"
     (( ${#prompt} > 100 )) && prompt_preview+="..."
@@ -945,6 +1127,13 @@ main() {
     fi
 
     run_claude "$prompt" "$output_file"
+
+    # Run orchestrated review loop if ultracode mode
+    if [[ "$ULTRACODE_MODE" == "true" ]]; then
+        log_info "=== ULTRACODE: Starting 3x3 review cycles ==="
+        sqs_status "Starting review cycles"
+        run_review_loop
+    fi
 
     # Cleanup happens via EXIT trap
     sqs_status "Task complete"
