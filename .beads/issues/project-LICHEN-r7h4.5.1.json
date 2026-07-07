@@ -2,14 +2,16 @@
   "id": "project-LICHEN-r7h4.5.1",
   "title": "Renode UART console overlay for nRF52840 boards",
   "description": "T-Echo/RAK4631 use RTT/USB-CDC console which Renode cannot capture headlessly. Add a Renode-specific DT overlay + conf that routes the Zephyr console to uart0 (present in Renode nrf52840 platform at 0x40002000) so boot/log output is observable during Renode validation (bead project-LICHEN-r7h4.5).",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "Claude Code (EC2)",
   "owner": "claude@ec2.local",
   "created_at": "2026-07-07T01:59:43.647685893Z",
   "created_by": "Claude Code (EC2)",
-  "updated_at": "2026-07-07T01:59:46.801193529Z",
+  "updated_at": "2026-07-07T02:50:04.172607266Z",
+  "closed_at": "2026-07-07T02:50:04.172607266Z",
+  "close_reason": "Renode console overlay/conf added (renode_console.overlay + .conf) routing console RTT-\u003eUARTE0; boot output observable headlessly and validated in r7h4.5.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-r7h4.5.1",
