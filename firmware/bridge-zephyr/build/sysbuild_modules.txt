@@ -1,1 +1,1 @@
-"mcuboot":"/Volumes/Attic/Desktop/Projects/project-LICHEN/bootloader/mcuboot":"/Volumes/Attic/Desktop/Projects/project-LICHEN/bootloader/mcuboot/boot/zephyr/sysbuild"
+"mcuboot":"/mnt/lichen-zephyr/work/bootloader/mcuboot":"/mnt/lichen-zephyr/work/bootloader/mcuboot/boot/zephyr/sysbuild"

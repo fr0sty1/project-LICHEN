@@ -1,6 +1,3 @@
-config ZEPHYR_LICHEN_MODULE
-   bool
-   default y
 config ZEPHYR_ACPICA_MODULE
    bool
    default y
