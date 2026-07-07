@@ -13,7 +13,7 @@ mach create $name
 machine LoadPlatformDescription $ORIGIN/rak4631.repl
 
 # Set SX1262 sim port
-spi2.sx1262 SimPort $simPort
+spi1.sx1262 SimPort $simPort
 
 # UART1 console (per RAK4631 DTS chosen)
 showAnalyzer uart1

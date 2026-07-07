@@ -33,7 +33,7 @@ mach create "node{node_id}"
 machine LoadPlatformDescription @{platform}
 
 # Override SX1262 port for this node
-spi2.sx1262 SimPort {port}
+spi1.sx1262 SimPort {port}
 
 # Load firmware
 sysbus LoadELF @{elf}

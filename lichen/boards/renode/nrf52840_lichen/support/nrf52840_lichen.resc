@@ -14,7 +14,7 @@ machine LoadPlatformDescription $ORIGIN/nrf52840_lichen.repl
 
 # Set SX1262 sim port (can override via $simPort)
 # SPI slaves are namespaced under their bus
-spi2.sx1262 SimPort $simPort
+spi1.sx1262 SimPort $simPort
 
 # UART0 console (USB CDC-ACM in firmware, virtual UART in Renode)
 showAnalyzer uart0

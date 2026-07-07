@@ -1,0 +1,55 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: The contributors to the LICHEN project
+ *
+ * Renode console overlay for nRF52840 LICHEN boards (T-Echo, RAK4631).
+ *
+ * The physical boards use an RTT or USB CDC-ACM console, neither of which
+ * Renode can capture headlessly. This overlay routes the Zephyr console and
+ * shell to UARTE0 (0x40002000), which Renode's nrf52840 platform models and
+ * exposes via `showAnalyzer uart0` / a file backend.
+ *
+ * Pin assignments are arbitrary — Renode does not enforce pinctrl routing —
+ * but valid psels are required for the Zephyr build to configure the node.
+ *
+ * Usage:
+ *   west build -b t_echo/nrf52840 lichen/apps/puck -- \
+ *     -DEXTRA_DTC_OVERLAY_FILE=lichen/boards/renode/nrf52840_lichen/support/renode_console.overlay \
+ *     -DEXTRA_CONF_FILE=lichen/boards/renode/nrf52840_lichen/support/renode_console.conf
+ */
+
+&pinctrl {
+	uart0_default: uart0_default {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 0, 6)>;
+		};
+		group2 {
+			psels = <NRF_PSEL(UART_RX, 0, 8)>;
+			bias-pull-up;
+		};
+	};
+
+	uart0_sleep: uart0_sleep {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 0, 6)>,
+				<NRF_PSEL(UART_RX, 0, 8)>;
+			low-power-enable;
+		};
+	};
+};
+
+&uart0 {
+	compatible = "nordic,nrf-uarte";
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&uart0_default>;
+	pinctrl-1 = <&uart0_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+/ {
+	chosen {
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+	};
+};

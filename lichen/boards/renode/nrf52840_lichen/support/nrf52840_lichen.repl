@@ -2,28 +2,50 @@
 // SPDX-FileCopyrightText: The contributors to the LICHEN project
 //
 // nRF52840 platform for LICHEN with external SX1262 radio.
-// Extends Renode's stock nRF52840 with SPI1 and SX1262 peripheral.
-// ponytail: minimal platform, add peripherals as needed
+// Extends Renode's stock nRF52840 with SPI1 and the SX1262 peripheral.
 
 using "platforms/cpus/nrf52840.repl"
 
-// nRF52840 shares SPI1/TWI1 at 0x40004000 - base platform has TWI1 there.
-// We use SPI2 at 0x40023000 (already in base) for SX1262 instead.
-// ponytail: works for simulation - actual pin routing doesn't matter in Renode
+// The T-Echo and RAK4631 firmware drive the SX1262 on SPI1 (SPIM1), which on
+// the nRF52840 shares base address 0x40004000 with TWI1. Renode's stock
+// platform models that address as an I2C controller (twi1), so the firmware's
+// SPIM transfers never complete. Replace it with an SPI controller so the
+// SX1262 SPI bridge works.
+twi1: @ none
 
-// SX1262 LoRa radio on SPI2
-// GPIO wiring is board-specific (T-Echo vs RAK4631 differ)
-// Default config matches T-Echo: RESET=P0.25, BUSY=P0.17, DIO1=P0.20
-sx1262: Wireless.SX1262 @ spi2
+// easyDMA enables the SPIM (EasyDMA) register interface — TXD.PTR/MAXCNT,
+// RXD.PTR/MAXCNT, TASKS_START and EVENTS_END — which Zephyr's nordic,nrf-spim
+// driver requires. Without it the model only exposes the legacy SPI registers
+// and DMA transfers never complete.
+spi1: SPI.NRF52840_SPI @ sysbus 0x40004000
+    easyDMA: true
+    -> nvic@4
+
+// SX1262 LoRa radio on SPI1.
+// GPIO wiring matches the T-Echo/RAK4631 devicetree:
+// RESET=P0.25, BUSY=P0.17, DIO1=P0.20
+sx1262: Wireless.SX1262 @ spi1
     simHost: "127.0.0.1"
     simPort: 5555
 
 // Wire SX1262 GPIO pins (directly, board overlays can adjust)
-// RESET from GPIO0 pin 25 (directly driven by firmware)
+// RESET from GPIO0 pin 25 -> sx1262 input 0
+// CS (cs-gpios) from GPIO0 pin 24 -> sx1262 input 1 (SPI transaction framing)
 gpio0:
     25 -> sx1262@0
+    24 -> sx1262@1
 
 // SX1262 outputs
 sx1262:
     IRQ -> gpio0@20
     Busy -> gpio0@17
+
+// Populate FICR DEVICEID so Zephyr's hwinfo driver returns a stable, non-zero
+// hardware ID. Without this the LICHEN L2 refuses to initialise ("hardware ID
+// is all zeros, cannot generate unique EUI-64"). The stock platform tags the
+// whole FICR region as reads-as-zero; these narrower tags override the two
+// DEVICEID words (FICR offsets 0x060/0x064).
+sysbus:
+    init add:
+        Tag <0x10000060, 0x10000063> "DEVICEID[0]" 0x1CE00001
+        Tag <0x10000064, 0x10000067> "DEVICEID[1]" 0x1CE00002

@@ -13,7 +13,7 @@ mach create $name
 machine LoadPlatformDescription $ORIGIN/t_echo.repl
 
 # Set SX1262 sim port
-spi2.sx1262 SimPort $simPort
+spi1.sx1262 SimPort $simPort
 
 # UART0 console
 showAnalyzer uart0

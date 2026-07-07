@@ -61,6 +61,14 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 this.Log(LogLevel.Debug, "Reset asserted");
                 Reset();
             }
+            // Chip-select (active low, GPIO-driven via cs-gpios). Renode's SPIM
+            // EasyDMA controller does not call FinishTransmission between DMA
+            // transfers, so the opcode state machine would never reset. Use the
+            // CS deassert (rising edge) to end each SPI transaction.
+            else if (number == 1 && value)
+            {
+                FinishTransmission();
+            }
         }
 
         public void Reset()

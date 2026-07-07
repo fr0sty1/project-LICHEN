@@ -81,7 +81,7 @@ class RenodeNode:
 include @{sx1262_cs}
 mach create "node{self.node_id}"
 machine LoadPlatformDescription @{platform}
-spi2.sx1262 SimPort {self.port}
+spi1.sx1262 SimPort {self.port}
 sysbus LoadELF @{self.firmware}
 cpu PerformanceInMips 64
 start
