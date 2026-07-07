@@ -160,6 +160,18 @@ Use `SECURITY:` prefix for comments highlighting security-critical code paths (e
 - Fix the code. If unfixable within scope, escalate.
 - Tests must have independent oracles: known test vectors, cross-validation, or reference implementations. A test that uses code-under-test as its own oracle proves nothing.
 
+### 7. EC2 Instance Safety
+
+**Only terminate instances you created in the current session.**
+
+- Track every instance ID you launch (from `aws ec2 run-instances` output)
+- Before terminating ANY instance, verify its ID is one you created
+- Never terminate instances found via `describe-instances` unless you have the launch record
+- If multiple instances are running, check tags or launch time before assuming ownership
+- When in doubt, ask before terminating
+
+This applies to all cloud resources: volumes, security groups, queues, etc. If you didn't create it in this session, don't delete it.
+
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation.
