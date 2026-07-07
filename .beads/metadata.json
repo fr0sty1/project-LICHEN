@@ -1,6 +1,1 @@
-{
-  "database": "dolt",
-  "backend": "dolt",
-  "dolt_mode": "embedded",
-  "dolt_database": "workspace"
-}
+{"backend":"flatfile"}
