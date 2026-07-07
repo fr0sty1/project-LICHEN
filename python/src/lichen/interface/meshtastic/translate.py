@@ -5,7 +5,7 @@
 Translates MeshPacket payloads to/from LICHEN CoAP and announce messages.
 
 Supported port numbers:
-- TEXT_MESSAGE_APP (1): UTF-8 text → POST /msg
+- TEXT_MESSAGE_APP (1): UTF-8 text -> POST /msg/inbox
 - POSITION_APP (3): Position protobuf ↔ announce with position payload
 - NODEINFO_APP (4): User protobuf ↔ synthesized from peer identity
 
@@ -22,6 +22,8 @@ import struct
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import TYPE_CHECKING
+
+from lichen.announce.coords import decode_coords, encode_coords
 
 if TYPE_CHECKING:
     from lichen.interface.meshtastic.address import AddressMapper
@@ -244,9 +246,9 @@ class Translator:
     """Translates between Meshtastic and LICHEN messages.
 
     Handles:
-    - Text messages (portnum 1) ↔ CoAP POST /msg
-    - Position (portnum 3) ↔ announce with position payload
-    - NodeInfo (portnum 4) ↔ synthesized from IID
+    - Text messages (portnum 1) <-> CoAP POST /msg/inbox
+    - Position (portnum 3) <-> announce with position payload
+    - NodeInfo (portnum 4) <-> synthesized from IID
 
     The Translator uses an AddressMapper to resolve node_num ↔ IID.
     """
@@ -256,7 +258,7 @@ class Translator:
     # --- Text Messages (portnum 1) ---
 
     def text_to_coap_payload(self, payload: bytes) -> bytes:
-        """Extract text payload for CoAP POST /msg.
+        """Extract text payload for CoAP POST /msg/inbox.
 
         Text messages are raw UTF-8 in the Meshtastic payload.
 
@@ -264,16 +266,16 @@ class Translator:
             payload: Raw bytes from MeshPacket.decoded.payload
 
         Returns:
-            UTF-8 bytes to POST to /msg
+            UTF-8 bytes to POST to /msg/inbox
         """
         # Meshtastic text is already UTF-8
         return payload
 
     def coap_to_text_payload(self, payload: bytes) -> bytes:
-        """Convert CoAP /msg response to Meshtastic text payload.
+        """Convert CoAP /msg/inbox response to Meshtastic text payload.
 
         Args:
-            payload: Bytes received from /msg resource
+            payload: Bytes received from /msg/inbox resource
 
         Returns:
             Raw bytes for MeshPacket.decoded.payload
@@ -285,46 +287,34 @@ class Translator:
     def position_to_announce_payload(self, payload: bytes) -> bytes:
         """Convert Meshtastic Position to LICHEN announce payload.
 
-        The announce app_data format is CBOR:
-        {"lat": float, "lon": float, "alt": int}
+        The announce app_data format is Type 0x01 geographic coordinates:
+        type(1) + signed big-endian lat_e7(4) + lon_e7(4).
 
         Args:
             payload: Protobuf-encoded Position
 
         Returns:
-            CBOR-encoded position for announce app_data
+            Type 0x01 position app_data for announce
         """
-        import cbor2
-
         pos = Position.from_bytes(payload)
-        data: dict[str, int | float] = {}
-        if pos.latitude is not None:
-            data["lat"] = pos.latitude
-        if pos.longitude is not None:
-            data["lon"] = pos.longitude
-        if pos.altitude is not None:
-            data["alt"] = pos.altitude
-        return cbor2.dumps(data)
+        if pos.latitude is None or pos.longitude is None:
+            return b""
+        return encode_coords(pos.latitude, pos.longitude)
 
     def announce_to_position_payload(self, app_data: bytes) -> bytes:
         """Convert LICHEN announce payload to Meshtastic Position.
 
         Args:
-            app_data: CBOR-encoded position from announce
+            app_data: Type 0x01 position app_data from announce
 
         Returns:
             Protobuf-encoded Position
         """
-        import cbor2
-
-        data = cbor2.loads(app_data)
+        coords = decode_coords(app_data)
         pos = Position()
-        if "lat" in data:
-            pos.latitude_i = int(data["lat"] * 1e7)
-        if "lon" in data:
-            pos.longitude_i = int(data["lon"] * 1e7)
-        if "alt" in data:
-            pos.altitude = int(data["alt"])
+        if coords is not None:
+            pos.latitude_i = int(round(coords[0] * 1e7))
+            pos.longitude_i = int(round(coords[1] * 1e7))
         return pos.to_bytes()
 
     # --- NodeInfo (portnum 4) ---

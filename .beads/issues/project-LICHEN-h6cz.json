@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-h6cz",
+  "title": "Rust lichen-node stack.rs: Removed local checksum functions but depends on UdpHeader",
+  "description": "In rust/lichen-node/src/stack.rs, the local udp_checksum(), oc_add(), checksum_bytes(), pseudo_sum(), finalize() functions were removed in favor of using UdpHeader::write_to(). This is a good refactor that consolidates checksum logic. Verify that lichen-ipv6's UdpHeader::write_to() computes the checksum correctly (it delegates to checksum module). The consolidation is good for maintainability.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:27:33.652879Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T18:08:04.14999Z",
+  "closed_at": "2026-07-06T18:08:04.14999Z",
+  "close_reason": "Refactor verified correct - checksum logic consolidated in UdpHeader::write_to",
+  "labels": [
+    "cleanup"
+  ]
+}

@@ -14,12 +14,11 @@ from lichen.interface.kiss import (
     TFEND,
     TFESC,
     KissCommand,
-    KissFrame,
     KissHandler,
     KissReader,
     KissSerialConnection,
-    kiss_encode,
     kiss_decode,
+    kiss_encode,
     kiss_escape,
     kiss_unescape,
 )
@@ -242,7 +241,7 @@ class TestFuzz:
         frames = list(reader)
 
         assert len(frames) == len(expected)
-        for frame, (exp_port, exp_data) in zip(frames, expected):
+        for frame, (exp_port, exp_data) in zip(frames, expected, strict=True):
             assert frame.port == exp_port
             assert frame.data == exp_data
 

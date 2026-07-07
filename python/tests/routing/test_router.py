@@ -239,7 +239,7 @@ class TestExternalRouting:
             dodag_id="fd00::1",
             version=1,
             role=DodagRole.JOINED,
-            preferred_parent="fe80::abcd",
+            preferred_parent=IPv6Address("fe80::abcd"),
         )
 
         packet = make_packet("2001:db8::1")
@@ -427,7 +427,7 @@ class TestRootNode:
             dodag_id="fd00::1",
             version=1,
             role=DodagRole.ROOT,
-            preferred_parent="fe80::aaaa",  # Upstream gateway
+            preferred_parent=IPv6Address("fe80::aaaa"),  # Upstream gateway
         )
 
         packet = make_packet("2001:db8::1")
@@ -485,6 +485,45 @@ class TestGPSRFallback:
         next_hop = router.gpsr_forward((2.0, 0.0))
 
         assert next_hop is None
+
+    def test_gpsr_forward_nan_coords(self, router: Router):
+        """gpsr_forward returns None for NaN coordinates."""
+        router.node_coords = (0.0, 0.0)
+        router.neighbor_coords = {IPv6Address("fe80::a"): (1.0, 0.0)}
+
+        assert router.gpsr_forward((float("nan"), 0.0)) is None
+        assert router.gpsr_forward((0.0, float("nan"))) is None
+
+    def test_gpsr_forward_inf_coords(self, router: Router):
+        """gpsr_forward returns None for infinite coordinates."""
+        router.node_coords = (0.0, 0.0)
+        router.neighbor_coords = {IPv6Address("fe80::a"): (1.0, 0.0)}
+
+        assert router.gpsr_forward((float("inf"), 0.0)) is None
+        assert router.gpsr_forward((float("-inf"), 0.0)) is None
+
+    def test_gpsr_forward_invalid_latitude(self, router: Router):
+        """gpsr_forward returns None for out-of-range latitude."""
+        router.node_coords = (0.0, 0.0)
+        router.neighbor_coords = {IPv6Address("fe80::a"): (1.0, 0.0)}
+
+        assert router.gpsr_forward((91.0, 0.0)) is None
+        assert router.gpsr_forward((-91.0, 0.0)) is None
+
+    def test_gpsr_forward_invalid_longitude(self, router: Router):
+        """gpsr_forward returns None for out-of-range longitude."""
+        router.node_coords = (0.0, 0.0)
+        router.neighbor_coords = {IPv6Address("fe80::a"): (1.0, 0.0)}
+
+        assert router.gpsr_forward((0.0, 181.0)) is None
+        assert router.gpsr_forward((0.0, -181.0)) is None
+
+    def test_gpsr_forward_null_island(self, router: Router):
+        """gpsr_forward returns None for null island (0,0) sentinel."""
+        router.node_coords = (1.0, 1.0)
+        router.neighbor_coords = {IPv6Address("fe80::a"): (0.5, 0.5)}
+
+        assert router.gpsr_forward((0.0, 0.0)) is None
 
     def test_mesh_local_uses_gpsr_when_no_loadng(
         self, router: Router, gradient_table: GradientTable

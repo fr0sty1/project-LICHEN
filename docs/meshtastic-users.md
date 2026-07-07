@@ -24,7 +24,7 @@ LICHEN is a different mesh protocol than Meshtastic. The app hides most differen
 
 ### Channels Don't Work the Same Way
 
-Your app shows a "LICHEN" channel. You can't add more channels or change channel settings. LICHEN handles encryption differently—every message is already secured. The lock icon is always on.
+Your app shows a "LICHEN" channel. You can't add more channels or change channel settings. LICHEN handles encryption differently--every message is already secured. The lock icon is always on.
 
 If you try to configure channels, the app will accept your changes but nothing will happen. This is intentional.
 
@@ -38,7 +38,7 @@ Meshtastic nodes have short IDs like `!a1b2c3d4`. LICHEN nodes have longer ident
 
 ### Some Settings Do Nothing
 
-The app lets you change radio settings, power levels, and other configuration. Most of these are ignored—LICHEN manages the radio itself. Your changes will appear to save, but the actual radio behavior won't change.
+The app lets you change radio settings, power levels, and other configuration. Most of these are ignored--LICHEN manages the radio itself. Your changes will appear to save, but the actual radio behavior won't change.
 
 This includes:
 - LoRa region/frequency settings
@@ -72,7 +72,7 @@ LICHEN nodes announce themselves on their own schedule. Give it a few minutes. I
 
 ### "Messages not sending"
 
-Check Bluetooth connection. If connected, the LICHEN mesh may not have a route to the destination. Unlike Meshtastic, LICHEN won't flood messages endlessly—if there's no route, delivery fails.
+Check Bluetooth connection. If connected, the LICHEN mesh may not have a route to the destination. Unlike Meshtastic, LICHEN won't flood messages endlessly--if there's no route, delivery fails.
 
 ### "Settings won't save"
 
@@ -86,7 +86,7 @@ Make sure you're connecting to a LICHEN node (`LICHEN-XXXX`), not a Meshtastic d
 
 LICHEN is an open mesh protocol built on internet standards (IPv6, CoAP). It's designed to work with other networks and protocols, not just itself.
 
-We built Meshtastic compatibility so you can use a familiar app while we develop LICHEN-native apps. The goal isn't to replace Meshtastic—it's to give you a bridge while LICHEN matures.
+We built Meshtastic compatibility so you can use a familiar app while we develop LICHEN-native apps. The goal isn't to replace Meshtastic--it's to give you a bridge while LICHEN matures.
 
 If you want the full LICHEN experience, watch for native apps that expose all features.
 

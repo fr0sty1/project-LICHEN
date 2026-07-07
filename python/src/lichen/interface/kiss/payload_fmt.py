@@ -18,6 +18,8 @@ from __future__ import annotations
 import json
 import re
 
+from lichen.constants import L2_DISPATCH_ROUTING, L2_DISPATCH_SCHC
+
 # Try to import cbor2 for CBOR decoding (optional dependency)
 try:
     import cbor2
@@ -157,8 +159,12 @@ def _format_hex(data: bytes, max_len: int) -> str:
         # CoAP header detection (Ver=1, Type in 0-3)
         if (data[0] & 0xC0) == 0x40:
             prefix = "[CoAP] "
+        elif data[0] == L2_DISPATCH_SCHC:
+            prefix = "[L2/SCHC] "
+        elif data[0] == L2_DISPATCH_ROUTING:
+            prefix = "[L2/Routing] "
         # SCHC detection (rule ID patterns)
-        elif data[0] in (0x00, 0x01, 0x14, 0x15):
+        elif data[0] in (0x00, 0x01):
             prefix = "[SCHC] "
 
     # Format hex

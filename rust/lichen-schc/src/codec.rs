@@ -5,10 +5,21 @@
 //!
 //! Bit order: MSB-first (network bit order). The residue is zero-padded to
 //! a byte boundary. All computation is no_std.
+//!
+//! # Naming Convention
+//!
+//! This module uses `compress`/`decompress` rather than the `encode`/`decode`
+//! or `from_bytes`/`write_to` verbs used elsewhere in the workspace. This
+//! follows RFC 8724 terminology and reflects a semantic distinction: SCHC is
+//! true compression — it elides header fields entirely when they can be
+//! reconstructed from shared context, reducing a 40-byte IPv6 header to as
+//! little as 1-2 bytes. By contrast, SLIP and message serialization are
+//! *encodings* — bijective transformations with no information reduction.
+//! The verb choice signals that SCHC requires matching rules on both ends.
 
 use lichen_core::constants::{
-    RULE_GLOBAL_COAP, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP, RULE_RPL_DAO, RULE_RPL_DIO,
-    RULE_UNCOMPRESSED,
+    PORT_MQTT_SN, RULE_GLOBAL_COAP, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP, RULE_MQTT_SN,
+    RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED, SCHC_MAX_DECOMPRESSED,
 };
 use lichen_core::error::{BufferTooSmall, TooShort};
 
@@ -19,6 +30,7 @@ const LINK_LOCAL_PREFIX: u128 = 0xFE80_0000_0000_0000_u128 << 64;
 
 /// Error returned by compression/decompression.
 #[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SchcError {
     /// No rule matched the packet headers.
     NoMatchingRule,
@@ -80,6 +92,9 @@ impl<'a> BitWriter<'a> {
 
     /// Write the low `nbits` of `value`, MSB first.
     fn write(&mut self, value: u128, nbits: usize) -> Result<(), SchcError> {
+        // Iterate from the most significant bit down to the least significant.
+        // The reversed range (0..nbits).rev() processes bit positions MSB-first,
+        // which is the correct network bit order per RFC 8724.
         for i in (0..nbits).rev() {
             let bit = ((value >> i) & 1) as u8;
             let byte_pos = self.nbits / 8;
@@ -200,6 +215,37 @@ fn icmpv6_checksum(src: &[u8], dst: &[u8], icmpv6_payload: &[u8]) -> u16 {
     let mut sum = pseudo_sum(src, dst, 58, length);
     sum = oc_add(sum, checksum_bytes(icmpv6_payload));
     finalize(sum)
+}
+
+/// Write a 40-byte IPv6 header into `out`.
+///
+/// This helper extracts the common IPv6 header construction pattern used by
+/// all decompress functions. The header layout is:
+/// - `[0..4]`: Version (6), Traffic Class (0), Flow Label (0)
+/// - `[4..6]`: Payload Length (bytes following the 40-byte header)
+/// - `[6]`: Next Header (17=UDP, 58=ICMPv6)
+/// - `[7]`: Hop Limit
+/// - `[8..24]`: Source Address (16 bytes)
+/// - `[24..40]`: Destination Address (16 bytes)
+#[inline]
+fn write_ipv6_header(
+    out: &mut [u8],
+    payload_len: u16,
+    next_header: u8,
+    hop_limit: u8,
+    src: &[u8; 16],
+    dst: &[u8; 16],
+) {
+    out[0] = 0x60; // Version 6
+    out[1] = 0; // Traffic Class (low 4 bits) + Flow Label (high 4 bits)
+    out[2] = 0; // Flow Label (middle 8 bits)
+    out[3] = 0; // Flow Label (low 8 bits)
+    out[4] = (payload_len >> 8) as u8;
+    out[5] = payload_len as u8;
+    out[6] = next_header;
+    out[7] = hop_limit;
+    out[8..24].copy_from_slice(src);
+    out[24..40].copy_from_slice(dst);
 }
 
 // ─── per-rule compress ────────────────────────────────────────────────────────
@@ -400,6 +446,78 @@ fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     Ok(needed)
 }
 
+/// Rule 5: IPv6 + UDP with port 10883 (MQTT-SN).
+///
+/// Matches when either source or destination port is 10883. IPv6 addresses
+/// are compressed the same as Rule 0/1 (link-local IID only vs full global).
+/// The port that is NOT 10883 is sent as 16-bit residue; port 10883 is NOT_SENT.
+fn compress_mqtt_sn(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
+    // 40 (IPv6) + 8 (UDP header) minimum
+    if packet.len() < 40 + 8 {
+        return Err(SchcError::NoMatchingRule);
+    }
+    // IPv6 header fields
+    let hop_limit = packet[7];
+    let src = &packet[8..24];
+    let dst = &packet[24..40];
+    // UDP header starts immediately after IPv6
+    let udp = &packet[40..];
+    let src_port = u16::from_be_bytes([udp[0], udp[1]]);
+    let dst_port = u16::from_be_bytes([udp[2], udp[3]]);
+
+    // Must match port 10883 on at least one side
+    if src_port != PORT_MQTT_SN && dst_port != PORT_MQTT_SN {
+        return Err(SchcError::NoMatchingRule);
+    }
+
+    // Determine which port is the "other" port (the one that's not 10883)
+    let other_port = if src_port == PORT_MQTT_SN {
+        dst_port
+    } else {
+        src_port
+    };
+    // Direction bit: 0 = src is 10883, 1 = dst is 10883
+    let direction = if src_port == PORT_MQTT_SN { 0u8 } else { 1u8 };
+
+    let tail = &udp[8..]; // MQTT-SN payload after UDP header
+
+    if out.is_empty() {
+        return Err(BufferTooSmall::new(1, 0).into());
+    }
+    out[0] = RULE_MQTT_SN;
+
+    let mut w = BitWriter::new(&mut out[1..]);
+    w.write(hop_limit as u128, 8)?;
+
+    // Address compression: same logic as CoAP rules
+    if is_link_local(src) && is_link_local(dst) {
+        let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
+        let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
+        w.write(0, 1)?; // Address mode: 0 = link-local
+        w.write(src_iid as u128, 64)?;
+        w.write(dst_iid as u128, 64)?;
+    } else {
+        let src_int = u128::from_be_bytes(src.try_into().unwrap());
+        let dst_int = u128::from_be_bytes(dst.try_into().unwrap());
+        w.write(1, 1)?; // Address mode: 1 = full
+        w.write(src_int, 128)?;
+        w.write(dst_int, 128)?;
+    }
+
+    // Direction bit and other port
+    w.write(direction as u128, 1)?;
+    w.write(other_port as u128, 16)?;
+
+    let residue_len = w.byte_len();
+    let tail_start = 1 + residue_len;
+    let needed = tail_start + tail.len();
+    if needed > out.len() {
+        return Err(BufferTooSmall::new(needed, out.len()).into());
+    }
+    out[tail_start..needed].copy_from_slice(tail);
+    Ok(needed)
+}
+
 // ─── per-rule decompress ──────────────────────────────────────────────────────
 
 fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, SchcError> {
@@ -410,10 +528,7 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let (src_int, dst_int) = if rule_id == RULE_LINK_LOCAL_COAP {
         let src_iid = r.read(64)?;
         let dst_iid = r.read(64)?;
-        (
-            LINK_LOCAL_PREFIX | src_iid,
-            LINK_LOCAL_PREFIX | dst_iid,
-        )
+        (LINK_LOCAL_PREFIX | src_iid, LINK_LOCAL_PREFIX | dst_iid)
     } else {
         (r.read(128)?, r.read(128)?)
     };
@@ -434,8 +549,7 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let udp_len = (8 + coap_len) as u16;
 
     // Build CoAP bytes for checksum.
-    // Buffer sized for max LoRa frame payload (255 bytes) which bounds the tail.
-    let mut coap_buf = [0u8; 256];
+    let mut coap_buf = [0u8; SCHC_MAX_DECOMPRESSED];
     coap_buf[0] = coap_b0;
     coap_buf[1] = coap_code;
     coap_buf[2] = (coap_mid >> 8) as u8;
@@ -444,23 +558,12 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let coap_slice = &coap_buf[..coap_len];
 
     let udp_cksum = udp_checksum(&src, &dst, src_port, dst_port, coap_slice);
-    let ipv6_payload_len = udp_len;
     let total = 40 + 8 + coap_len;
     if total > out.len() {
         return Err(BufferTooSmall::new(total, out.len()).into());
     }
 
-    // IPv6 header
-    out[0] = 0x60;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = (ipv6_payload_len >> 8) as u8;
-    out[5] = ipv6_payload_len as u8;
-    out[6] = 17; // UDP
-    out[7] = hop_limit;
-    out[8..24].copy_from_slice(&src);
-    out[24..40].copy_from_slice(&dst);
+    write_ipv6_header(out, udp_len, 17, hop_limit, &src, &dst);
 
     // UDP header
     out[40..42].copy_from_slice(&src_port.to_be_bytes());
@@ -496,8 +599,7 @@ fn decompress_icmpv6_echo(data: &[u8], out: &mut [u8]) -> Result<usize, SchcErro
     }
 
     // Build ICMPv6 with zero checksum for computation.
-    // Buffer sized for max LoRa frame payload (255 bytes) which bounds the tail.
-    let mut icmp_buf = [0u8; 256];
+    let mut icmp_buf = [0u8; SCHC_MAX_DECOMPRESSED];
     icmp_buf[0] = icmp_type;
     icmp_buf[1] = 0; // code NOT_SENT = 0
     icmp_buf[2] = 0; // checksum placeholder hi
@@ -511,17 +613,7 @@ fn decompress_icmpv6_echo(data: &[u8], out: &mut [u8]) -> Result<usize, SchcErro
 
     let cksum = icmpv6_checksum(&src, &dst, icmp_slice);
 
-    // IPv6 header
-    out[0] = 0x60;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = (icmp_len >> 8) as u8;
-    out[5] = icmp_len as u8;
-    out[6] = 58; // ICMPv6
-    out[7] = hop_limit;
-    out[8..24].copy_from_slice(&src);
-    out[24..40].copy_from_slice(&dst);
+    write_ipv6_header(out, icmp_len as u16, 58, hop_limit, &src, &dst);
 
     // ICMPv6
     out[40] = icmp_type;
@@ -563,8 +655,7 @@ fn decompress_rpl_dio(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
         return Err(BufferTooSmall::new(total, out.len()).into());
     }
 
-    // Buffer sized for max LoRa frame payload (255 bytes) which bounds the tail.
-    let mut icmp_buf = [0u8; 256];
+    let mut icmp_buf = [0u8; SCHC_MAX_DECOMPRESSED];
     icmp_buf[0] = 155; // RPL
     icmp_buf[1] = 1; // DIO code
     icmp_buf[2] = 0; // checksum placeholder
@@ -584,16 +675,7 @@ fn decompress_rpl_dio(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
 
     let cksum = icmpv6_checksum(&src, &dst, icmp_slice);
 
-    out[0] = 0x60;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = (icmp_len >> 8) as u8;
-    out[5] = icmp_len as u8;
-    out[6] = 58;
-    out[7] = hop_limit;
-    out[8..24].copy_from_slice(&src);
-    out[24..40].copy_from_slice(&dst);
+    write_ipv6_header(out, icmp_len as u16, 58, hop_limit, &src, &dst);
     out[40..40 + icmp_len].copy_from_slice(icmp_slice);
     out[42] = (cksum >> 8) as u8;
     out[43] = cksum as u8;
@@ -624,8 +706,7 @@ fn decompress_rpl_dao(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
         return Err(BufferTooSmall::new(total, out.len()).into());
     }
 
-    // Buffer sized for max LoRa frame payload (255 bytes) which bounds the tail.
-    let mut icmp_buf = [0u8; 256];
+    let mut icmp_buf = [0u8; SCHC_MAX_DECOMPRESSED];
     icmp_buf[0] = 155; // RPL
     icmp_buf[1] = 2; // DAO code
     icmp_buf[2] = 0; // checksum placeholder
@@ -641,19 +722,64 @@ fn decompress_rpl_dao(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
 
     let cksum = icmpv6_checksum(&src, &dst, icmp_slice);
 
-    out[0] = 0x60;
-    out[1] = 0;
-    out[2] = 0;
-    out[3] = 0;
-    out[4] = (icmp_len >> 8) as u8;
-    out[5] = icmp_len as u8;
-    out[6] = 58;
-    out[7] = hop_limit;
-    out[8..24].copy_from_slice(&src);
-    out[24..40].copy_from_slice(&dst);
+    write_ipv6_header(out, icmp_len as u16, 58, hop_limit, &src, &dst);
     out[40..40 + icmp_len].copy_from_slice(icmp_slice);
     out[42] = (cksum >> 8) as u8;
     out[43] = cksum as u8;
+
+    Ok(total)
+}
+
+fn decompress_mqtt_sn(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
+    let mut r = BitReader::new(&data[1..]);
+
+    let hop_limit = r.read(8)? as u8;
+    let addr_mode = r.read(1)? as u8;
+
+    let (src, dst) = if addr_mode == 0 {
+        // Link-local
+        let src_iid = r.read(64)?;
+        let dst_iid = r.read(64)?;
+        (
+            (LINK_LOCAL_PREFIX | src_iid).to_be_bytes(),
+            (LINK_LOCAL_PREFIX | dst_iid).to_be_bytes(),
+        )
+    } else {
+        // Full addresses
+        let src_int = r.read(128)?;
+        let dst_int = r.read(128)?;
+        (src_int.to_be_bytes(), dst_int.to_be_bytes())
+    };
+
+    let direction = r.read(1)? as u8;
+    let other_port = r.read(16)? as u16;
+
+    // Reconstruct ports: direction 0 = src is 10883, direction 1 = dst is 10883
+    let (src_port, dst_port) = if direction == 0 {
+        (PORT_MQTT_SN, other_port)
+    } else {
+        (other_port, PORT_MQTT_SN)
+    };
+
+    let tail = &data[1 + r.residue_byte_end()..];
+
+    let udp_len = (8 + tail.len()) as u16;
+    let udp_cksum = udp_checksum(&src, &dst, src_port, dst_port, tail);
+    let total = 40 + 8 + tail.len();
+    if total > out.len() {
+        return Err(BufferTooSmall::new(total, out.len()).into());
+    }
+
+    write_ipv6_header(out, udp_len, 17, hop_limit, &src, &dst);
+
+    // UDP header
+    out[40..42].copy_from_slice(&src_port.to_be_bytes());
+    out[42..44].copy_from_slice(&dst_port.to_be_bytes());
+    out[44..46].copy_from_slice(&udp_len.to_be_bytes());
+    out[46..48].copy_from_slice(&udp_cksum.to_be_bytes());
+
+    // MQTT-SN payload
+    out[48..48 + tail.len()].copy_from_slice(tail);
 
     Ok(total)
 }
@@ -681,7 +807,16 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let dst = &packet[24..40];
 
     if nh == 17 {
-        // UDP — rules 0 or 1
+        // UDP — try MQTT-SN (rule 5) first if port matches, then CoAP (rules 0/1)
+        if packet.len() >= 40 + 8 {
+            let src_port = u16::from_be_bytes([packet[40], packet[41]]);
+            let dst_port = u16::from_be_bytes([packet[42], packet[43]]);
+            if src_port == PORT_MQTT_SN || dst_port == PORT_MQTT_SN {
+                if let Ok(n) = compress_mqtt_sn(packet, out) {
+                    return Ok(n);
+                }
+            }
+        }
         if is_link_local(src) && is_link_local(dst) {
             if let Ok(n) = compress_coap(packet, out, RULE_LINK_LOCAL_COAP) {
                 return Ok(n);
@@ -747,6 +882,7 @@ pub fn decompress(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
         RULE_ICMPV6_ECHO => decompress_icmpv6_echo(data, out),
         RULE_RPL_DIO => decompress_rpl_dio(data, out),
         RULE_RPL_DAO => decompress_rpl_dao(data, out),
+        RULE_MQTT_SN => decompress_mqtt_sn(data, out),
         RULE_UNCOMPRESSED => {
             let payload = &data[1..];
             if out.len() < payload.len() {
@@ -855,6 +991,127 @@ mod tests {
              fe800000000000000000000000000001",
             4,
         );
+    }
+
+    #[test]
+    fn mqtt_sn_round_trip_linklocal() {
+        // Test round-trip for link-local MQTT-SN (src=10883)
+        // Build packet manually and verify compression/decompression
+        let src_addr = hex("fe800000000000000000000000000001");
+        let dst_addr = hex("fe800000000000000000000000000002");
+        let src_port: u16 = PORT_MQTT_SN; // 10883
+        let dst_port: u16 = 5000;
+        let payload = b"test";
+
+        // Build UDP segment for checksum
+        let udp_len: u16 = 8 + payload.len() as u16;
+
+        // Compute UDP checksum
+        let cksum = udp_checksum(&src_addr, &dst_addr, src_port, dst_port, payload);
+
+        // Build full IPv6 packet
+        let mut packet = [0u8; 60];
+        packet[0] = 0x60; // Version 6
+        packet[4] = (udp_len >> 8) as u8;
+        packet[5] = udp_len as u8;
+        packet[6] = 17; // UDP
+        packet[7] = 64; // Hop limit
+        packet[8..24].copy_from_slice(&src_addr);
+        packet[24..40].copy_from_slice(&dst_addr);
+        packet[40..42].copy_from_slice(&src_port.to_be_bytes());
+        packet[42..44].copy_from_slice(&dst_port.to_be_bytes());
+        packet[44..46].copy_from_slice(&udp_len.to_be_bytes());
+        packet[46..48].copy_from_slice(&cksum.to_be_bytes());
+        packet[48..52].copy_from_slice(payload);
+
+        let packet_len = 52;
+        let packet = &packet[..packet_len];
+
+        // Compress
+        let mut comp_buf = [0u8; 256];
+        let n = compress(packet, &mut comp_buf).unwrap();
+        assert_eq!(comp_buf[0], RULE_MQTT_SN, "should use rule 5 for MQTT-SN");
+
+        // Decompress
+        let mut decomp_buf = [0u8; 256];
+        let m = decompress(&comp_buf[..n], &mut decomp_buf).unwrap();
+        assert_eq!(&decomp_buf[..m], packet, "round-trip should match");
+    }
+
+    #[test]
+    fn mqtt_sn_round_trip_dst_10883() {
+        // Test round-trip for MQTT-SN with dst=10883 (client -> server)
+        let src_addr = hex("fe800000000000000000000000000001");
+        let dst_addr = hex("fe800000000000000000000000000002");
+        let src_port: u16 = 12345;
+        let dst_port: u16 = PORT_MQTT_SN; // 10883
+        let payload = b"connect";
+
+        let udp_len: u16 = 8 + payload.len() as u16;
+        let cksum = udp_checksum(&src_addr, &dst_addr, src_port, dst_port, payload);
+
+        let mut packet = [0u8; 64];
+        packet[0] = 0x60;
+        packet[4] = (udp_len >> 8) as u8;
+        packet[5] = udp_len as u8;
+        packet[6] = 17;
+        packet[7] = 64;
+        packet[8..24].copy_from_slice(&src_addr);
+        packet[24..40].copy_from_slice(&dst_addr);
+        packet[40..42].copy_from_slice(&src_port.to_be_bytes());
+        packet[42..44].copy_from_slice(&dst_port.to_be_bytes());
+        packet[44..46].copy_from_slice(&udp_len.to_be_bytes());
+        packet[46..48].copy_from_slice(&cksum.to_be_bytes());
+        packet[48..55].copy_from_slice(payload);
+
+        let packet_len = 55;
+        let packet = &packet[..packet_len];
+
+        let mut comp_buf = [0u8; 256];
+        let n = compress(packet, &mut comp_buf).unwrap();
+        assert_eq!(comp_buf[0], RULE_MQTT_SN);
+
+        let mut decomp_buf = [0u8; 256];
+        let m = decompress(&comp_buf[..n], &mut decomp_buf).unwrap();
+        assert_eq!(&decomp_buf[..m], packet);
+    }
+
+    #[test]
+    fn mqtt_sn_global_addresses() {
+        // Test MQTT-SN with global addresses (uses full 128-bit addresses)
+        let src_addr = hex("20010db8000000000000000000000001");
+        let dst_addr = hex("20010db8000000000000000000000002");
+        let src_port: u16 = PORT_MQTT_SN;
+        let dst_port: u16 = 8888;
+        let payload = b"pub";
+
+        let udp_len: u16 = 8 + payload.len() as u16;
+        let cksum = udp_checksum(&src_addr, &dst_addr, src_port, dst_port, payload);
+
+        let mut packet = [0u8; 64];
+        packet[0] = 0x60;
+        packet[4] = (udp_len >> 8) as u8;
+        packet[5] = udp_len as u8;
+        packet[6] = 17;
+        packet[7] = 64;
+        packet[8..24].copy_from_slice(&src_addr);
+        packet[24..40].copy_from_slice(&dst_addr);
+        packet[40..42].copy_from_slice(&src_port.to_be_bytes());
+        packet[42..44].copy_from_slice(&dst_port.to_be_bytes());
+        packet[44..46].copy_from_slice(&udp_len.to_be_bytes());
+        packet[46..48].copy_from_slice(&cksum.to_be_bytes());
+        packet[48..51].copy_from_slice(payload);
+
+        let packet_len = 51;
+        let packet = &packet[..packet_len];
+
+        let mut comp_buf = [0u8; 256];
+        let n = compress(packet, &mut comp_buf).unwrap();
+        assert_eq!(comp_buf[0], RULE_MQTT_SN);
+
+        let mut decomp_buf = [0u8; 256];
+        let m = decompress(&comp_buf[..n], &mut decomp_buf).unwrap();
+        assert_eq!(&decomp_buf[..m], packet);
     }
 
     #[test]

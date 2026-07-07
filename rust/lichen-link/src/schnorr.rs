@@ -13,12 +13,18 @@ use curve25519_dalek::{
     traits::IsIdentity,
 };
 use sha2::{Digest, Sha512};
+use subtle::ConstantTimeEq;
 
 /// Derive an Ed25519 keypair from a seed.
 ///
 /// Returns `(privkey, pubkey)`:
 /// - `privkey` — clamped Ed25519 scalar (little-endian)
 /// - `pubkey`  — compressed Ed25519 point
+///
+/// # Panics
+///
+/// This function does not panic. Internal `.unwrap()` calls operate on
+/// fixed-size SHA-512 output slices that are provably the correct length.
 pub fn derive_keypair(seed: &Seed) -> (PrivateKey, PublicKey) {
     let hash = Sha512::digest(seed.as_bytes());
     // SAFETY: hash is 64 bytes, so hash[..32] is exactly 32 bytes
@@ -33,6 +39,11 @@ pub fn derive_keypair(seed: &Seed) -> (PrivateKey, PublicKey) {
 /// Sign `msg`. Returns 48-byte signature `e[16] || s[32]`.
 ///
 /// `privkey` and `pubkey` must come from [`derive_keypair`].
+///
+/// # Panics
+///
+/// This function does not panic. Internal `.unwrap()` calls operate on
+/// fixed-size SHA-512 output slices that are provably the correct length.
 pub fn sign(privkey: &PrivateKey, pubkey: &PublicKey, msg: &[u8]) -> [u8; 48] {
     // 1. Deterministic nonce: r = SHA-512(privkey || msg) mod L
     let nonce_hash = Sha512::new()
@@ -79,6 +90,11 @@ pub fn sign(privkey: &PrivateKey, pubkey: &PublicKey, msg: &[u8]) -> [u8; 48] {
 ///
 /// These checks prevent attacks on cofactor-sensitive operations and ensure
 /// the pubkey represents a legitimate Ed25519 public key.
+///
+/// # Panics
+///
+/// This function does not panic. Internal `.unwrap()` calls operate on the
+/// fixed-size 48-byte signature array, which is provably the correct length.
 pub fn verify(pubkey: &PublicKey, msg: &[u8], sig: &[u8; 48]) -> bool {
     // 1. Parse: e_received (16 bytes) || s (32 bytes)
     // SAFETY: sig is exactly 48 bytes, so [..16] = 16 bytes and [16..] = 32 bytes
@@ -111,14 +127,14 @@ pub fn verify(pubkey: &PublicKey, msg: &[u8], sig: &[u8; 48]) -> bool {
     let epk = e_scalar * pubkey_point;
     let r_prime = (sb - epk).compress();
 
-    // 6. Recompute challenge and compare
+    // 6. Recompute challenge and compare (constant-time)
     let e_check = Sha512::new()
         .chain_update(r_prime.as_bytes())
         .chain_update(pubkey.as_bytes())
         .chain_update(msg)
         .finalize();
 
-    e_check[..16] == e_received
+    e_check[..16].ct_eq(&e_received).into()
 }
 
 /// Length of a Schnorr48 signature in bytes.

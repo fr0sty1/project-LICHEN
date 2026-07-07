@@ -59,6 +59,14 @@ class FragmentReceiver:
         self.done = False
 
     def _abs_window(self, frag: Fragment) -> int:
+        """Map the 1-bit wire window to the monotonic absolute window number.
+
+        SCHC ACK-on-Error uses a single W bit on the wire that alternates 0/1
+        as windows advance. Internally, _current_window is a monotonically
+        increasing counter (0, 1, 2, ...). When the fragment's W bit matches
+        _current_window % 2, it belongs to the current window; if it differs,
+        the sender has advanced and this is the next window.
+        """
         if frag.window == self._current_window % 2:
             return self._current_window
         return self._current_window + 1  # advanced to the next window

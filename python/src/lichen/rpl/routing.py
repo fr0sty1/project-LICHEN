@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from ipaddress import IPv6Address
 
+from lichen.ipv6 import to_ipv6
 from lichen.ipv6.packet import ExtensionHeader, IPv6Packet, NextHeader
 from lichen.rpl.dodag import DodagState
 
@@ -26,10 +27,6 @@ _SRH_FIELDS_LENGTH = 6  # routing_type, segments_left, CmprI/E, 3-byte pad/reser
 
 class RoutingError(Exception):
     """Raised on malformed routes or source-routing headers."""
-
-
-def _addr(value: IPv6Address | str | bytes) -> IPv6Address:
-    return value if isinstance(value, IPv6Address) else IPv6Address(value)
 
 
 @dataclass
@@ -89,13 +86,13 @@ class RoutingTable:
     ) -> None:
         if not path:
             raise RoutingError("route path must not be empty")
-        self._routes[_addr(target)] = [_addr(a) for a in path]
+        self._routes[to_ipv6(target)] = [to_ipv6(a) for a in path]
 
     def remove_route(self, target: IPv6Address | str) -> None:
-        self._routes.pop(_addr(target), None)
+        self._routes.pop(to_ipv6(target), None)
 
     def lookup(self, target: IPv6Address | str) -> list[IPv6Address] | None:
-        path = self._routes.get(_addr(target))
+        path = self._routes.get(to_ipv6(target))
         return list(path) if path is not None else None
 
     def build_source_route(
@@ -108,10 +105,10 @@ class RoutingTable:
         return len(self._routes)
 
     def __contains__(self, target: IPv6Address | str) -> bool:
-        return _addr(target) in self._routes
+        return to_ipv6(target) in self._routes
 
 
-def next_hop_upward(dodag: DodagState) -> str | None:
+def next_hop_upward(dodag: DodagState) -> IPv6Address | None:
     """Next hop toward the root: the preferred parent (``None`` if unjoined)."""
     return dodag.preferred_parent
 
@@ -125,7 +122,7 @@ def insert_source_route(
     the first hop. A single-element path (destination is a direct neighbour)
     needs no SRH.
     """
-    hops = [_addr(a) for a in path]
+    hops = [to_ipv6(a) for a in path]
     if not hops:
         raise RoutingError("path must not be empty")
     first_hop = hops[0]

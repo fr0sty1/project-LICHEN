@@ -30,6 +30,24 @@ ULA_NETWORK = IPv6Network("fd00::/8")
 GUA_NETWORK = IPv6Network("2000::/3")
 
 
+def to_ipv6(value: IPv6Address | str | bytes) -> IPv6Address:
+    """Coerce a value to IPv6Address.
+
+    Accepts an existing IPv6Address (returned as-is), a string representation,
+    or 16 bytes of packed address data.
+
+    Raises:
+        AddrError: If bytes input is not exactly 16 bytes.
+        ValueError: If string input is not a valid IPv6 address.
+    """
+    if isinstance(value, IPv6Address):
+        return value
+    if isinstance(value, bytes):
+        if len(value) != 16:
+            raise AddrError(f"packed IPv6 address must be 16 bytes, got {len(value)}")
+    return IPv6Address(value)
+
+
 class AddrError(Exception):
     """Raised when address material is malformed."""
 

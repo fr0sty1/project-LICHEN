@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import math
+from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from ipaddress import IPv6Address, IPv6Network
@@ -125,7 +126,7 @@ class Router:
     dodag: DodagState | None = None
     loadng: LoadngRouter | None = None
     mesh_prefixes: set[IPv6Network] = field(default_factory=set)
-    pending_queue: dict[IPv6Address, list[PendingPacket]] = field(
+    pending_queue: dict[IPv6Address, deque[PendingPacket]] = field(
         default_factory=dict, repr=False
     )
     max_pending_per_dest: int = 3
@@ -137,8 +138,9 @@ class Router:
         default_factory=dict, repr=False
     )  # link-local -> queue depth (spec 11.4)
     # DTN store-and-forward buffer (spec 9.8)
-    dtn_buffer: list[DtnMessage] = field(default_factory=list, repr=False)
+    dtn_buffer: deque[DtnMessage] = field(default_factory=deque, repr=False)
     dtn_buffer_max_bytes: int = 65536  # 64KB default
+    _dtn_buffer_bytes: int = field(default=0, repr=False)  # Running total for O(1) size checks
 
     # Why fe80::/10: RFC 4291 link-local prefix. All link-local addresses
     # start with fe80:: through febf::, which is fe80::/10.
@@ -282,15 +284,7 @@ class Router:
             logger.warning("no preferred parent, cannot route external")
             return RouteDecision.DROP, None
 
-        # Why parse as IPv6Address: preferred_parent is stored as string
-        # in DodagState for flexibility, but we need an address here.
-        try:
-            next_hop = IPv6Address(parent)
-        except ValueError:
-            logger.error("invalid preferred_parent address: %s", parent)
-            return RouteDecision.DROP, None
-
-        return RouteDecision.FORWARD, next_hop
+        return RouteDecision.FORWARD, parent
 
     def _queue_pending(
         self,
@@ -309,12 +303,12 @@ class Router:
             queued_at_ms=now_ms,
         )
 
-        queue = self.pending_queue.setdefault(dst, [])
+        queue = self.pending_queue.setdefault(dst, deque())
 
         # Why limit: Prevent memory exhaustion during slow discovery.
         if len(queue) >= self.max_pending_per_dest:
-            # Drop oldest packet
-            queue.pop(0)
+            # Drop oldest packet (O(1) with deque.popleft())
+            queue.popleft()
             logger.debug("pending queue full for %s, dropped oldest", dst)
 
         queue.append(pending)
@@ -358,7 +352,9 @@ class Router:
         for dst in list(self.pending_queue.keys()):
             queue = self.pending_queue[dst]
             original_len = len(queue)
-            queue[:] = [p for p in queue if p.queued_at_ms > cutoff]
+            # deque doesn't support slice assignment; replace entirely
+            self.pending_queue[dst] = deque(p for p in queue if p.queued_at_ms > cutoff)
+            queue = self.pending_queue[dst]
             expired_count += original_len - len(queue)
 
             if not queue:
@@ -448,6 +444,7 @@ class Router:
         # Evict oldest messages until we have space
         self._dtn_evict_if_needed(msg.size())
         self.dtn_buffer.append(msg)
+        self._dtn_buffer_bytes += msg.size()
         logger.debug("dtn: buffered message for %s, expiry=%d, buffer_size=%d",
                     destination_iid.hex(), expiry_unix, len(self.dtn_buffer))
         return True
@@ -463,50 +460,94 @@ class Router:
         return result
 
     def dtn_retrieve_for(self, destination_iid: bytes) -> list[DtnMessage]:
-        """Retrieve and remove all messages for a destination IID."""
-        matching = [m for m in self.dtn_buffer if m.destination_iid == destination_iid]
-        self.dtn_buffer = [m for m in self.dtn_buffer if m.destination_iid != destination_iid]
+        """Retrieve and remove all messages for a destination IID.
+
+        Uses single-pass partitioning to avoid O(2n) double iteration.
+        """
+        matching: list[DtnMessage] = []
+        remaining: deque[DtnMessage] = deque()
+        for msg in self.dtn_buffer:
+            if msg.destination_iid == destination_iid:
+                matching.append(msg)
+                self._dtn_buffer_bytes -= msg.size()
+            else:
+                remaining.append(msg)
+        self.dtn_buffer = remaining
         logger.debug("dtn: retrieved %d messages for %s",
                     len(matching), destination_iid.hex())
         return matching
 
     def dtn_expire_old(self) -> int:
-        """Remove expired messages from buffer. Returns count removed."""
+        """Remove expired messages from buffer. Returns count removed.
+
+        Uses single-pass partitioning and updates running byte counter.
+        """
         import time
         now_unix = int(time.time())
-        original_len = len(self.dtn_buffer)
-        self.dtn_buffer = [m for m in self.dtn_buffer if m.expiry_unix > now_unix]
-        expired = original_len - len(self.dtn_buffer)
+        expired = 0
+        remaining: deque[DtnMessage] = deque()
+        for msg in self.dtn_buffer:
+            if msg.expiry_unix > now_unix:
+                remaining.append(msg)
+            else:
+                expired += 1
+                self._dtn_buffer_bytes -= msg.size()
+        self.dtn_buffer = remaining
         if expired > 0:
             logger.debug("dtn: expired %d messages", expired)
         return expired
 
     def _dtn_buffer_size(self) -> int:
-        """Current buffer size in bytes."""
-        return sum(m.size() for m in self.dtn_buffer)
+        """Current buffer size in bytes (O(1) via running counter)."""
+        return self._dtn_buffer_bytes
 
     def _dtn_evict_if_needed(self, new_msg_size: int) -> int:
-        """Evict oldest messages to make room. Returns count evicted."""
+        """Evict oldest messages to make room. Returns count evicted.
+
+        O(k) where k is evictions per insert, using running byte counter.
+        """
         evicted = 0
-        while self._dtn_buffer_size() + new_msg_size > self.dtn_buffer_max_bytes:
+        while self._dtn_buffer_bytes + new_msg_size > self.dtn_buffer_max_bytes:
             if not self.dtn_buffer:
                 break
-            oldest = self.dtn_buffer.pop(0)  # oldest-first eviction
+            oldest = self.dtn_buffer.popleft()  # oldest-first eviction (O(1))
+            self._dtn_buffer_bytes -= oldest.size()
             evicted += 1
             logger.debug("dtn: evicted message for %s to make room",
                         oldest.destination_iid.hex())
         return evicted
 
     def gpsr_forward(
-        self, dst_coords: tuple[float, float]
+        self, dst_coords: tuple[float, float] | None
     ) -> IPv6Address | None:
         """GPSR greedy forwarding: find neighbor closest to destination (spec 9.7).
 
-        Returns next-hop address, or None if no progress possible (local minimum).
+        Args:
+            dst_coords: (lat, lon) of destination. Must be valid coordinates.
+
+        Returns:
+            Next-hop address, or None if no progress possible (local minimum)
+            or if coords are invalid/missing.
         """
+        if dst_coords is None:
+            return None
         if self.node_coords is None:
             return None
         if not self.neighbor_coords:
+            return None
+        # Validate coords are in valid ranges.
+        # NaN/inf: checked first since NaN comparisons are always False,
+        # making the range check unreliable for invalid floats.
+        # (0,0): rejected as null island sentinel (almost always invalid GPS data).
+        lat, lon = dst_coords
+        if math.isnan(lat) or math.isnan(lon) or math.isinf(lat) or math.isinf(lon):
+            logger.warning("gpsr: dst_coords contain NaN/inf")
+            return None
+        if lat == 0.0 and lon == 0.0:
+            logger.warning("gpsr: rejecting null island coords (0, 0)")
+            return None
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            logger.warning("gpsr: invalid dst_coords (%s, %s)", lat, lon)
             return None
 
         my_dist = _haversine(self.node_coords, dst_coords)

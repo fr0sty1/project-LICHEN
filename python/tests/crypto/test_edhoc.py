@@ -4,7 +4,7 @@
 
 import pytest
 
-from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder, OscoreContext
+from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder
 from lichen.crypto.identity import Identity
 
 

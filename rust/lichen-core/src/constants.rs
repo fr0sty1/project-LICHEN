@@ -5,10 +5,24 @@ pub const LORA_SYNC_WORD: u8 = 0x34;
 pub const LORA_SPREADING_FACTOR: u8 = 10;
 pub const LORA_BANDWIDTH_HZ: u32 = 125_000;
 pub const LORA_PREAMBLE_SYMBOLS: u8 = 8;
+/// Maximum LoRa frame payload in bytes (SX1262 limit).
+pub const LORA_MAX_PAYLOAD: usize = 255;
 
-// Well-known UDP ports
+// SCHC (RFC 8724)
+/// Maximum decompressed packet size for SCHC buffers.
+/// Sized to hold IPv6 header (40) + max UDP/ICMPv6 payload that fits in LoRa frame.
+/// Actual limit depends on SCHC rule compression ratio, but this conservative
+/// bound covers all current rules.
+pub const SCHC_MAX_DECOMPRESSED: usize = 256;
+
+// Well-known UDP ports (spec Section 9.1)
+pub const PORT_COMPACT_COT: u16 = 5681;
+pub const PORT_SENML: u16 = 5682;
 pub const PORT_COAP: u16 = 5683;
-pub const PORT_COAP_DTLS: u16 = 5684;
+pub const PORT_COAP_DTLS: u16 = 5684; // Reserved, not used (OSCORE instead)
+pub const PORT_CAYENNE_LPP: u16 = 5685;
+pub const PORT_APRS_IS: u16 = 5686;
+pub const PORT_NMEA: u16 = 5687;
 pub const PORT_MQTT_SN: u16 = 10883;
 
 // SCHC rule IDs (RFC 8724) — spec appendix-schc.md
@@ -17,7 +31,12 @@ pub const RULE_GLOBAL_COAP: u8 = 1;
 pub const RULE_ICMPV6_ECHO: u8 = 2;
 pub const RULE_RPL_DIO: u8 = 3;
 pub const RULE_RPL_DAO: u8 = 4;
+pub const RULE_MQTT_SN: u8 = 5;
 pub const RULE_UNCOMPRESSED: u8 = 255;
+
+// Authenticated L2 inner-payload dispatch bytes.
+pub const L2_DISPATCH_SCHC: u8 = 0x14;
+pub const L2_DISPATCH_ROUTING: u8 = 0x15;
 
 // RPL constants (RFC 6550)
 pub const RPL_INSTANCE_ID: u8 = 0;

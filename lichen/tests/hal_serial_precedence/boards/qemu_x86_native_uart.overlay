@@ -1,0 +1,12 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* SPDX-FileCopyrightText: The contributors to the LICHEN project */
+
+/ {
+	chosen {
+		lichen,native-uart = &uart1;
+		zephyr,uart-pipe = &uart0;
+		zephyr,slip-uart = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,console = &uart0;
+	};
+};

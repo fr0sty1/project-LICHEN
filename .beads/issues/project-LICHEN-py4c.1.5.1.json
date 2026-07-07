@@ -1,0 +1,36 @@
+{
+  "id": "project-LICHEN-py4c.1.5.1",
+  "title": "Smoke-test Python BLE LCI transport on real devices",
+  "description": "Validate project-LICHEN-py4c.1.5 against physical BLE stacks and firmware. Scope: with a LICHEN native BLE LCI device, verify Linux BlueZ and macOS CoreBluetooth scanning, native LCI UUID discovery, optional explicit legacy NUS mode on boards configured for CONFIG_LORA_LICHEN_BLE_LEGACY_NUS, MTU chunked writes, TX notifications, reconnect after disconnect, and user-selection behavior. Record devices, OS versions, firmware commit, observed MTU, and any pairing/security prompts. This is blocked on physical BLE hardware/firmware and real host BLE adapters.",
+  "notes": "Blocked on unavailable physical BLE validation hardware: needs a LICHEN native BLE LCI device/firmware, Linux BlueZ host adapter, and macOS CoreBluetooth host to verify real scanning, pairing prompts, native LCI UUID discovery, explicit legacy NUS mode, ATT MTU/max-write behavior, TX notifications, disconnect/reconnect, and user-selection flows. No physical radios/phones/boards are available in this session; software fake-client coverage is handled in parent project-LICHEN-py4c.1.5.",
+  "status": "blocked",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T03:50:15.649578Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T03:53:19.365667Z",
+  "labels": [
+    "python",
+    "ble",
+    "lci",
+    "hardware-validation",
+    "tui",
+    "client-app",
+    "native-interface",
+    "coap",
+    "lilygo",
+    "zephyr",
+    "lichen",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-py4c.1.5.1",
+      "depends_on_id": "project-LICHEN-py4c.1.5",
+      "type": "parent-child",
+      "created_at": "2026-07-02T03:50:15.6522Z"
+    }
+  ]
+}

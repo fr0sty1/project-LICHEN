@@ -32,6 +32,11 @@
 #define LICHEN_MESHCORE_DEVICE_INFO_MODEL_LEN 40U
 #define LICHEN_MESHCORE_DEVICE_INFO_VERSION_OFF 60U
 #define LICHEN_MESHCORE_DEVICE_INFO_VERSION_LEN 20U
+#define LICHEN_MESHCORE_AUTOADD_CONFIG_LEN 2U
+#define LICHEN_MESHCORE_CHANNEL_SECRET_OFF 33U
+#define LICHEN_MESHCORE_DEFAULT_FLOOD_PAYLOAD_LEN \
+	(LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN + \
+	 LICHEN_MESHCORE_DEFAULT_FLOOD_KEY_LEN)
 
 BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_MAX_SERIAL_PAYLOAD <=
 	     LICHEN_MESHCORE_FRAME_MAX,
@@ -66,6 +71,37 @@ static int enqueue_error(struct lichen_meshcore_adapter *adapter, uint8_t err)
 		return ret;
 	}
 	return enqueue(adapter, out, (size_t)ret);
+}
+
+static int enqueue_ok(struct lichen_meshcore_adapter *adapter)
+{
+	uint8_t out[1];
+	int ret = lichen_meshcore_encode_ok(out, sizeof(out));
+
+	if (ret < 0) {
+		return ret;
+	}
+	return enqueue(adapter, out, (size_t)ret);
+}
+
+void lichen_meshcore_compat_settings_reset(
+	struct lichen_meshcore_compat_settings *settings)
+{
+	if (settings != NULL) {
+		memset(settings, 0, sizeof(*settings));
+	}
+}
+
+static struct lichen_meshcore_compat_settings *
+compat_settings(struct lichen_meshcore_adapter *adapter)
+{
+	return adapter != NULL ? adapter->ops.compat_settings : NULL;
+}
+
+static const struct lichen_meshcore_compat_settings *
+compat_settings_const(const struct lichen_meshcore_adapter *adapter)
+{
+	return adapter != NULL ? adapter->ops.compat_settings : NULL;
 }
 
 static void copy_fixed_string(uint8_t *dst, size_t dst_len,
@@ -125,6 +161,8 @@ static int enqueue_self_info(struct lichen_meshcore_adapter *adapter)
 		LICHEN_MESHCORE_RESP_SELF_INFO,
 	};
 	const char *name = "LICHEN";
+	const struct lichen_meshcore_compat_settings *settings =
+		compat_settings_const(adapter);
 #if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
 	struct lichen_app_identity_self identity;
 #endif
@@ -142,6 +180,9 @@ static int enqueue_self_info(struct lichen_meshcore_adapter *adapter)
 		}
 	}
 #endif
+	if (settings != NULL && settings->advert_name_valid) {
+		name = settings->advert_name;
+	}
 	out[44] = 0U;   /* multi ACKs */
 	out[45] = 0U;   /* location policy */
 	out[46] = 0U;   /* telemetry modes */
@@ -163,6 +204,8 @@ static int enqueue_device_info(struct lichen_meshcore_adapter *adapter)
 	const char *build = "LICHEN";
 	const char *model = "LICHEN";
 	const char *version = "0.0.0";
+	const struct lichen_meshcore_compat_settings *settings =
+		compat_settings_const(adapter);
 #if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
 	struct lichen_app_identity_self identity;
 
@@ -176,10 +219,16 @@ static int enqueue_device_info(struct lichen_meshcore_adapter *adapter)
 		}
 	}
 #endif
+	if (settings != NULL && settings->advert_name_valid) {
+		model = settings->advert_name;
+	}
 
 	out[1] = LICHEN_MESHCORE_APP_PROTOCOL_VERSION;
 	out[2] = 0U; /* max contacts / 2 */
 	out[3] = 1U; /* one placeholder public channel */
+	if (settings != NULL && settings->device_pin_valid) {
+		sys_put_le32(settings->device_pin, &out[4]);
+	}
 	copy_fixed_string(&out[LICHEN_MESHCORE_DEVICE_INFO_BUILD_OFF],
 			  LICHEN_MESHCORE_DEVICE_INFO_BUILD_LEN, "LICHEN",
 			  build);
@@ -345,12 +394,20 @@ static int enqueue_channel(struct lichen_meshcore_adapter *adapter,
 		LICHEN_MESHCORE_RESP_CHANNEL_INFO,
 	};
 	const char name[] = "Public";
+	const struct lichen_meshcore_compat_settings *settings =
+		compat_settings_const(adapter);
 
 	if (view->payload_len < 1U) {
 		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
 	}
 	if (view->payload[0] != 0U) {
 		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_NOT_FOUND);
+	}
+
+	if (settings != NULL && settings->channel0_valid) {
+		memcpy(&out[1], settings->channel0_body,
+		       sizeof(settings->channel0_body));
+		return enqueue(adapter, out, sizeof(out));
 	}
 
 	out[1] = 0U;
@@ -455,6 +512,329 @@ static bool valid_utf8_text(const uint8_t *payload, size_t payload_len)
 	return true;
 }
 
+static bool valid_decimal_pin(uint32_t pin)
+{
+	return pin == 0U || (pin >= 100000U && pin <= 999999U);
+}
+
+static bool valid_name_text(const uint8_t *payload, size_t payload_len)
+{
+	if (!valid_utf8_text(payload, payload_len)) {
+		return false;
+	}
+	for (size_t i = 0U; i < payload_len; i++) {
+		if (payload[i] == 0U) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool valid_default_flood_name(const uint8_t *payload)
+{
+	const uint8_t *nul = memchr(payload, 0,
+				    LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN);
+	size_t len;
+
+	if (nul == NULL || nul == payload) {
+		return false;
+	}
+
+	len = (size_t)(nul - payload);
+	if (len > 30U) {
+		return false;
+	}
+	return valid_utf8_text(payload, len);
+}
+
+static bool channel_body_has_secret(const uint8_t *payload)
+{
+	for (size_t i = LICHEN_MESHCORE_CHANNEL_SECRET_OFF;
+	     i < LICHEN_MESHCORE_CHANNEL_BODY_LEN; i++) {
+		if (payload[i] != 0U) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static int preflight_tx_slots(struct lichen_meshcore_adapter *adapter,
+			      uint32_t needed);
+static uint8_t meshcore_error_from_errno(int err);
+
+static int persist_settings_or_error(
+	struct lichen_meshcore_adapter *adapter,
+	const struct lichen_meshcore_compat_settings *old_settings)
+{
+	struct lichen_meshcore_compat_settings *settings =
+		compat_settings(adapter);
+	int ret;
+
+	if (adapter->ops.persist_settings == NULL) {
+		return 0;
+	}
+
+	ret = adapter->ops.persist_settings(settings, adapter->ops.user_data);
+	if (ret < 0) {
+		*settings = *old_settings;
+		return enqueue_error(adapter, meshcore_error_from_errno(ret));
+	}
+	return 0;
+}
+
+static int commit_settings_with_ok(
+	struct lichen_meshcore_adapter *adapter,
+	const struct lichen_meshcore_compat_settings *old_settings)
+{
+	struct lichen_meshcore_compat_settings *settings =
+		compat_settings(adapter);
+	int ret = persist_settings_or_error(adapter, old_settings);
+
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = enqueue_ok(adapter);
+	if (ret < 0) {
+		if (adapter->ops.persist_settings == NULL) {
+			*settings = *old_settings;
+		}
+	}
+	return ret;
+}
+
+static int reset_compat_settings(struct lichen_meshcore_adapter *adapter,
+				 const struct lichen_meshcore_frame_view *view)
+{
+	struct lichen_meshcore_compat_settings *settings =
+		compat_settings(adapter);
+	struct lichen_meshcore_compat_settings old_settings;
+	int ret;
+
+	if (settings == NULL) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	}
+	if (view->payload_len != 0U) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	}
+	if (preflight_tx_slots(adapter, 1U) < 0) {
+		return -ENOMEM;
+	}
+
+	old_settings = *settings;
+	lichen_meshcore_compat_settings_reset(settings);
+	if (adapter->ops.apply_pin != NULL &&
+	    adapter->ops.apply_pin(0U, adapter->ops.user_data) < 0) {
+		*settings = old_settings;
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_BAD_STATE);
+	}
+
+	ret = persist_settings_or_error(adapter, &old_settings);
+	if (ret < 0) {
+		if (adapter->ops.apply_pin != NULL) {
+			(void)adapter->ops.apply_pin(
+				old_settings.device_pin_valid ?
+					old_settings.device_pin : 0U,
+				adapter->ops.user_data);
+		}
+		return ret;
+	}
+
+	ret = enqueue_ok(adapter);
+	if (ret < 0 && adapter->ops.persist_settings == NULL) {
+		*settings = old_settings;
+		if (adapter->ops.apply_pin != NULL) {
+			(void)adapter->ops.apply_pin(
+				old_settings.device_pin_valid ?
+					old_settings.device_pin : 0U,
+				adapter->ops.user_data);
+		}
+	}
+	return ret;
+}
+
+static int store_advert_name(struct lichen_meshcore_adapter *adapter,
+			     const struct lichen_meshcore_frame_view *view)
+{
+	struct lichen_meshcore_compat_settings *settings =
+		compat_settings(adapter);
+	struct lichen_meshcore_compat_settings old_settings;
+	uint8_t len;
+
+	if (settings == NULL) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	}
+	if (view->payload_len == 0U ||
+	    view->payload_len >= LICHEN_MESHCORE_ADVERT_NAME_MAX ||
+	    !valid_name_text(view->payload, view->payload_len)) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	}
+	if (preflight_tx_slots(adapter, 1U) < 0) {
+		return -ENOMEM;
+	}
+
+	old_settings = *settings;
+	len = (uint8_t)view->payload_len;
+	memset(settings->advert_name, 0, sizeof(settings->advert_name));
+	memcpy(settings->advert_name, view->payload, len);
+	settings->advert_name_len = len;
+	settings->advert_name_valid = true;
+	return commit_settings_with_ok(adapter, &old_settings);
+}
+
+static int store_channel(struct lichen_meshcore_adapter *adapter,
+			 const struct lichen_meshcore_frame_view *view)
+{
+	struct lichen_meshcore_compat_settings *settings =
+		compat_settings(adapter);
+	struct lichen_meshcore_compat_settings old_settings;
+
+	if (settings == NULL) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	}
+	if (view->payload_len == 65U) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	}
+	if (view->payload_len != LICHEN_MESHCORE_CHANNEL_BODY_LEN) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	}
+	if (view->payload[0] != 0U) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_NOT_FOUND);
+	}
+	if (channel_body_has_secret(view->payload)) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	}
+	if (preflight_tx_slots(adapter, 1U) < 0) {
+		return -ENOMEM;
+	}
+
+	old_settings = *settings;
+	memcpy(settings->channel0_body, view->payload,
+	       sizeof(settings->channel0_body));
+	settings->channel0_valid = true;
+	return commit_settings_with_ok(adapter, &old_settings);
+}
+
+static int store_device_pin(struct lichen_meshcore_adapter *adapter,
+			    const struct lichen_meshcore_frame_view *view)
+{
+	struct lichen_meshcore_compat_settings *settings =
+		compat_settings(adapter);
+	struct lichen_meshcore_compat_settings old_settings;
+	uint32_t pin;
+	int ret;
+
+	if (settings == NULL) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	}
+	if (view->payload_len != sizeof(uint32_t)) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	}
+
+	pin = sys_get_le32(view->payload);
+	if (!valid_decimal_pin(pin)) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	}
+	if (adapter->ops.apply_pin == NULL) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	}
+	if (preflight_tx_slots(adapter, 1U) < 0) {
+		return -ENOMEM;
+	}
+	if (adapter->ops.apply_pin(pin, adapter->ops.user_data) < 0) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_BAD_STATE);
+	}
+
+	old_settings = *settings;
+	settings->device_pin = pin;
+	settings->device_pin_valid = true;
+	ret = persist_settings_or_error(adapter, &old_settings);
+	if (ret < 0) {
+		(void)adapter->ops.apply_pin(old_settings.device_pin_valid ?
+						     old_settings.device_pin : 0U,
+					     adapter->ops.user_data);
+		return ret;
+	}
+
+	ret = enqueue_ok(adapter);
+	if (ret < 0) {
+		if (adapter->ops.persist_settings == NULL) {
+			*settings = old_settings;
+			(void)adapter->ops.apply_pin(
+				old_settings.device_pin_valid ?
+					old_settings.device_pin : 0U,
+				adapter->ops.user_data);
+		}
+	}
+	return ret;
+}
+
+static int store_autoadd_config(struct lichen_meshcore_adapter *adapter,
+				const struct lichen_meshcore_frame_view *view)
+{
+	struct lichen_meshcore_compat_settings *settings =
+		compat_settings(adapter);
+	struct lichen_meshcore_compat_settings old_settings;
+
+	if (settings == NULL) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	}
+	if (view->payload_len != LICHEN_MESHCORE_AUTOADD_CONFIG_LEN) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	}
+	if (preflight_tx_slots(adapter, 1U) < 0) {
+		return -ENOMEM;
+	}
+
+	old_settings = *settings;
+	memcpy(settings->autoadd_config, view->payload,
+	       sizeof(settings->autoadd_config));
+	settings->autoadd_config_valid = true;
+	return commit_settings_with_ok(adapter, &old_settings);
+}
+
+static int store_default_flood_scope(
+	struct lichen_meshcore_adapter *adapter,
+	const struct lichen_meshcore_frame_view *view)
+{
+	struct lichen_meshcore_compat_settings *settings =
+		compat_settings(adapter);
+	struct lichen_meshcore_compat_settings old_settings;
+
+	if (settings == NULL) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	}
+	if (view->payload_len != 0U &&
+	    view->payload_len != LICHEN_MESHCORE_DEFAULT_FLOOD_PAYLOAD_LEN) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	}
+	if (view->payload_len == LICHEN_MESHCORE_DEFAULT_FLOOD_PAYLOAD_LEN &&
+	    !valid_default_flood_name(view->payload)) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	}
+	if (preflight_tx_slots(adapter, 1U) < 0) {
+		return -ENOMEM;
+	}
+
+	old_settings = *settings;
+	if (view->payload_len == 0U) {
+		memset(settings->default_flood_name, 0,
+		       sizeof(settings->default_flood_name));
+		memset(settings->default_flood_key, 0,
+		       sizeof(settings->default_flood_key));
+		settings->default_flood_scope_valid = false;
+		return commit_settings_with_ok(adapter, &old_settings);
+	}
+
+	memcpy(settings->default_flood_name, view->payload,
+	       sizeof(settings->default_flood_name));
+	memcpy(settings->default_flood_key,
+	       &view->payload[LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN],
+	       sizeof(settings->default_flood_key));
+	settings->default_flood_scope_valid = true;
+	return commit_settings_with_ok(adapter, &old_settings);
+}
+
 static int preflight_tx_slots(struct lichen_meshcore_adapter *adapter,
 			      uint32_t needed)
 {
@@ -505,8 +885,8 @@ static int enqueue_channel_text_send(
 		return ret;
 	}
 
-	ret = adapter->ops.submit_text(channel, text_type, payload, payload_len,
-				       adapter->ops.user_data);
+	ret = adapter->ops.submit_text(channel, text_type, NULL, payload,
+				       payload_len, adapter->ops.user_data);
 	if (ret < 0) {
 		return enqueue_error(adapter, meshcore_error_from_errno(ret));
 	}
@@ -523,14 +903,49 @@ static int enqueue_direct_text_send(
 	struct lichen_meshcore_adapter *adapter,
 	const struct lichen_meshcore_frame_view *view)
 {
+	uint8_t out[1];
+	uint8_t to_iid[8];
+	const uint8_t *payload;
+	size_t payload_len;
+	int ret;
+
 	if (view->payload_len < 6U) {
 		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
 	}
-	if (!valid_utf8_text(&view->payload[6], view->payload_len - 6U)) {
+	payload = &view->payload[6];
+	payload_len = view->payload_len - 6U;
+	if (!valid_utf8_text(payload, payload_len)) {
 		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
 	}
+	if (adapter->ops.resolve_peer_prefix == NULL) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_NOT_FOUND);
+	}
+	ret = adapter->ops.resolve_peer_prefix(view->payload, to_iid,
+					       adapter->ops.user_data);
+	if (ret < 0) {
+		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_NOT_FOUND);
+	}
+	if (adapter->ops.submit_text == NULL) {
+		return enqueue_error(adapter,
+				     LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	}
+	ret = preflight_tx_slots(adapter, 1U);
+	if (ret < 0) {
+		return ret;
+	}
 
-	return enqueue_error(adapter, LICHEN_MESHCORE_ERR_NOT_FOUND);
+	ret = adapter->ops.submit_text(0U, 0U, to_iid, payload, payload_len,
+				       adapter->ops.user_data);
+	if (ret < 0) {
+		return enqueue_error(adapter, meshcore_error_from_errno(ret));
+	}
+
+	ret = lichen_meshcore_encode_ok(out, sizeof(out));
+	if (ret < 0) {
+		return ret;
+	}
+	adapter->stats.submitted_text_count++;
+	return enqueue(adapter, out, (size_t)ret);
 }
 
 static int dispatch_supported(struct lichen_meshcore_adapter *adapter,
@@ -555,6 +970,12 @@ static int dispatch_supported(struct lichen_meshcore_adapter *adapter,
 		return enqueue_direct_text_send(adapter, view);
 	case LICHEN_MESHCORE_CMD_SEND_CHANNEL_TXT_MSG:
 		return enqueue_channel_text_send(adapter, view);
+	case LICHEN_MESHCORE_CMD_SET_ADVERT_NAME:
+		return store_advert_name(adapter, view);
+	case LICHEN_MESHCORE_CMD_SET_CHANNEL:
+		return store_channel(adapter, view);
+	case LICHEN_MESHCORE_CMD_SET_DEVICE_PIN:
+		return store_device_pin(adapter, view);
 	case LICHEN_MESHCORE_CMD_SYNC_NEXT_MESSAGE:
 		return view->payload_len == 0U ?
 			enqueue_next_pending(adapter) :
@@ -574,17 +995,44 @@ static int dispatch_supported(struct lichen_meshcore_adapter *adapter,
 			enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
 	}
 	case LICHEN_MESHCORE_CMD_GET_AUTOADD_CONFIG: {
-		const uint8_t out[] = { LICHEN_MESHCORE_RESP_AUTOADD_CONFIG, 0U, 0U };
+		uint8_t out[] = { LICHEN_MESHCORE_RESP_AUTOADD_CONFIG, 0U, 0U };
+		const struct lichen_meshcore_compat_settings *settings =
+			compat_settings_const(adapter);
+
+		if (settings != NULL && settings->autoadd_config_valid) {
+			memcpy(&out[1], settings->autoadd_config,
+			       sizeof(settings->autoadd_config));
+		}
 		return view->payload_len == 0U ?
 			enqueue(adapter, out, sizeof(out)) :
 			enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
 	}
+	case LICHEN_MESHCORE_CMD_SET_AUTOADD_CONFIG:
+		return store_autoadd_config(adapter, view);
 	case LICHEN_MESHCORE_CMD_GET_DEFAULT_FLOOD_SCOPE: {
-		uint8_t out = LICHEN_MESHCORE_RESP_DEFAULT_FLOOD_SCOPE;
-		return view->payload_len == 0U ?
-			enqueue(adapter, &out, sizeof(out)) :
-			enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+		uint8_t out[1U + LICHEN_MESHCORE_DEFAULT_FLOOD_PAYLOAD_LEN] = {
+			LICHEN_MESHCORE_RESP_DEFAULT_FLOOD_SCOPE,
+		};
+		const struct lichen_meshcore_compat_settings *settings =
+			compat_settings_const(adapter);
+
+		if (view->payload_len != 0U) {
+			return enqueue_error(adapter, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+		}
+		if (settings != NULL && settings->default_flood_scope_valid) {
+			memcpy(&out[1], settings->default_flood_name,
+			       sizeof(settings->default_flood_name));
+			memcpy(&out[1U + LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN],
+			       settings->default_flood_key,
+			       sizeof(settings->default_flood_key));
+			return enqueue(adapter, out, sizeof(out));
+		}
+		return enqueue(adapter, out, 1U);
 	}
+	case LICHEN_MESHCORE_CMD_SET_DEFAULT_FLOOD_SCOPE:
+		return store_default_flood_scope(adapter, view);
+	case LICHEN_MESHCORE_CMD_FACTORY_RESET:
+		return reset_compat_settings(adapter, view);
 	default:
 		return -ENOTSUP;
 	}

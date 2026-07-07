@@ -3,7 +3,7 @@
 """App data encodings for announce messages (spec 9.7, 11.4).
 
 Supports:
-- Geographic coordinates (type 0x01): 7 bytes
+- Geographic coordinates (type 0x01): 9 bytes
 - Congestion indicator (type 0x02): 2 bytes
 """
 
@@ -26,39 +26,45 @@ APP_DATA_TYPE_DTN_PENDING = 0x04
 # Header type for opportunistic forwarder list (spec 9.9)
 HEADER_TYPE_OPPORTUNISTIC = 0x05
 
-# Resolution: 1e-5 degrees per LSB
-_SCALE = 100_000
-
-# Range: 24-bit signed = +/- 8388607 LSBs = +/- 83.88607 degrees
-_MAX_RAW = (1 << 23) - 1  # 8388607
+# Resolution: 1e-7 degrees per LSB, matching firmware/HAL e7 coordinates.
+_SCALE = 10_000_000
+_LAT_MIN = -90
+_LAT_MAX = 90
+_LON_MIN = -180
+_LON_MAX = 180
+_LAT_E7_MIN = _LAT_MIN * _SCALE
+_LAT_E7_MAX = _LAT_MAX * _SCALE
+_LON_E7_MIN = _LON_MIN * _SCALE
+_LON_E7_MAX = _LON_MAX * _SCALE
 
 
 def encode_coords(lat: float, lon: float) -> bytes:
-    """Encode lat/lon to 7-byte app_data format.
+    """Encode lat/lon to 9-byte app_data format.
 
     Args:
-        lat: Latitude in degrees (-83.88 to +83.88).
-        lon: Longitude in degrees (-83.88 to +83.88).
+        lat: Latitude in degrees (-90 to +90).
+        lon: Longitude in degrees (-180 to +180).
 
     Returns:
-        7 bytes: type(1) + lat(3) + lon(3)
+        9 bytes: type(1) + lat_e7(4) + lon_e7(4)
 
     Raises:
         ValueError: If coordinates out of range.
     """
+    if not (_LAT_MIN <= lat <= _LAT_MAX):
+        raise ValueError(f"latitude {lat} out of range (+/-90)")
+    if not (_LON_MIN <= lon <= _LON_MAX):
+        raise ValueError(f"longitude {lon} out of range (+/-180)")
+
     lat_raw = int(round(lat * _SCALE))
     lon_raw = int(round(lon * _SCALE))
 
-    if not (-_MAX_RAW <= lat_raw <= _MAX_RAW):
-        raise ValueError(f"latitude {lat} out of range (+/-83.88)")
-    if not (-_MAX_RAW <= lon_raw <= _MAX_RAW):
-        raise ValueError(f"longitude {lon} out of range (+/-83.88)")
+    if not (_LAT_E7_MIN <= lat_raw <= _LAT_E7_MAX):
+        raise ValueError(f"latitude {lat} out of range (+/-90)")
+    if not (_LON_E7_MIN <= lon_raw <= _LON_E7_MAX):
+        raise ValueError(f"longitude {lon} out of range (+/-180)")
 
-    # Pack as signed 24-bit (3 bytes each, big-endian)
-    lat_bytes = _int24_to_bytes(lat_raw)
-    lon_bytes = _int24_to_bytes(lon_raw)
-
-    return bytes([APP_DATA_TYPE_COORDS]) + lat_bytes + lon_bytes
+    return bytes([APP_DATA_TYPE_COORDS]) + struct.pack(">ii", lat_raw, lon_raw)
 
 
 def decode_coords(app_data: bytes) -> tuple[float, float] | None:
@@ -70,31 +76,18 @@ def decode_coords(app_data: bytes) -> tuple[float, float] | None:
     Returns:
         (lat, lon) tuple in degrees, or None if no coords present.
     """
-    if len(app_data) < 7:
+    if len(app_data) < 9:
         return None
     if app_data[0] != APP_DATA_TYPE_COORDS:
         return None
 
-    lat_raw = _bytes_to_int24(app_data[1:4])
-    lon_raw = _bytes_to_int24(app_data[4:7])
+    lat_raw, lon_raw = struct.unpack(">ii", app_data[1:9])
+    if not (_LAT_E7_MIN <= lat_raw <= _LAT_E7_MAX):
+        return None
+    if not (_LON_E7_MIN <= lon_raw <= _LON_E7_MAX):
+        return None
 
     return (lat_raw / _SCALE, lon_raw / _SCALE)
-
-
-def _int24_to_bytes(value: int) -> bytes:
-    """Convert signed int to 3 bytes big-endian."""
-    if value < 0:
-        value += 1 << 24  # two's complement
-    return struct.pack(">I", value)[1:]  # drop high byte of 4-byte pack
-
-
-def _bytes_to_int24(data: bytes) -> int:
-    """Convert 3 bytes big-endian to signed int."""
-    # Pad to 4 bytes, unpack as unsigned, then sign-extend
-    value = struct.unpack(">I", b"\x00" + data)[0]
-    if value >= (1 << 23):
-        value -= 1 << 24  # sign extend
-    return value
 
 
 # --- Congestion encoding (spec 11.4) ---

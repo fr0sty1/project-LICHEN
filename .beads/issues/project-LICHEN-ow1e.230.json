@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-ow1e.230",
+  "title": "Codereview pass 1: Missing blank line after SignableDataTooLarge impl before imports",
+  "description": "In schnorr.rs line 35-36, there's no blank line between `impl core::error::Error for SignableDataTooLarge {}` and the `use curve25519_dalek` import. This is a minor formatting issue but breaks visual separation between the error type definition and unrelated imports.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:52:03.147886Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:19:17.757485Z",
+  "closed_at": "2026-07-06T17:19:17.757485Z",
+  "close_reason": "Minor formatting - schnorr.rs formatting already correct in current code",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.230",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:52:03.149141Z"
+    }
+  ]
+}

@@ -1,0 +1,245 @@
+{
+  "format_version": 1,
+  "description": "Compact CoT binary encoding test vectors per spec/07-transport-app.md Section 10.1.1. PLI encoding: subtype(1) + lat(4) + lon(4) + alt(2) + course(2) + speed(2) + team(1) + role(1) = 17 bytes. Chat encoding: subtype(1) + dest_type(1) + dest_id(0/1/8) + len(1) + text(N). All multi-byte integers are big-endian (network byte order). Note: spec states 18 bytes for PLI but field breakdown yields 17.",
+  "vectors": [
+    {
+      "name": "pli_friendly_ground_origin",
+      "description": "Friendly ground PLI at (0, 0) with zero altitude, course, and speed. Team Blue, role 1.",
+      "binary_hex": "0200000000000000000000000000000101",
+      "decoded_fields": {
+        "subtype": 2,
+        "subtype_name": "friendly_ground",
+        "latitude_microdegrees": 0,
+        "longitude_microdegrees": 0,
+        "altitude_decimeters": 0,
+        "course_centidegrees": 0,
+        "speed_cm_s": 0,
+        "team": 1,
+        "team_name": "Blue",
+        "role": 1
+      }
+    },
+    {
+      "name": "pli_hostile_ground_negative_coords",
+      "description": "Hostile ground PLI at (-45.5, -122.5) with 100m altitude, course 270 deg, speed 5 m/s. Team Red, role 1.",
+      "binary_hex": "03fd49b9a0f8b2cc6003e8697801f40201",
+      "decoded_fields": {
+        "subtype": 3,
+        "subtype_name": "hostile_ground",
+        "latitude_microdegrees": -45500000,
+        "longitude_microdegrees": -122500000,
+        "altitude_decimeters": 1000,
+        "course_centidegrees": 27000,
+        "speed_cm_s": 500,
+        "team": 2,
+        "team_name": "Red",
+        "role": 1
+      }
+    },
+    {
+      "name": "pli_neutral_ground_london",
+      "description": "Neutral ground PLI at (51.5074, -0.1278) London. Altitude 11m, course 45 deg, speed 1.5 m/s. Team Green, role 1.",
+      "binary_hex": "040311f0c8fffe0cc8006e119400960301",
+      "decoded_fields": {
+        "subtype": 4,
+        "subtype_name": "neutral_ground",
+        "latitude_microdegrees": 51507400,
+        "longitude_microdegrees": -127800,
+        "altitude_decimeters": 110,
+        "course_centidegrees": 4500,
+        "speed_cm_s": 150,
+        "team": 3,
+        "team_name": "Green",
+        "role": 1
+      }
+    },
+    {
+      "name": "pli_unknown_ground_tokyo",
+      "description": "Unknown ground PLI at (35.6762, 139.6503) Tokyo. Altitude 40m, course 180 deg, speed 0 m/s. Team White, role 1.",
+      "binary_hex": "05022060280852e4fc0190465000000901",
+      "decoded_fields": {
+        "subtype": 5,
+        "subtype_name": "unknown_ground",
+        "latitude_microdegrees": 35676200,
+        "longitude_microdegrees": 139650300,
+        "altitude_decimeters": 400,
+        "course_centidegrees": 18000,
+        "speed_cm_s": 0,
+        "team": 9,
+        "team_name": "White",
+        "role": 1
+      }
+    },
+    {
+      "name": "pli_friendly_max_positive_coords",
+      "description": "Friendly ground PLI at max positive coordinates (+90, +180). Max altitude 3276.7m, course 359.99 deg, max speed 655.35 m/s. Team Blue.",
+      "binary_hex": "02055d4a800aba95007fff8c9fffff0101",
+      "decoded_fields": {
+        "subtype": 2,
+        "subtype_name": "friendly_ground",
+        "latitude_microdegrees": 90000000,
+        "longitude_microdegrees": 180000000,
+        "altitude_decimeters": 32767,
+        "course_centidegrees": 35999,
+        "speed_cm_s": 65535,
+        "team": 1,
+        "team_name": "Blue",
+        "role": 1
+      }
+    },
+    {
+      "name": "pli_friendly_max_negative_coords",
+      "description": "Friendly ground PLI at max negative coordinates (-90, -180). Min altitude -3276.8m. Team Blue.",
+      "binary_hex": "02faa2b580f5456b008000000000000101",
+      "decoded_fields": {
+        "subtype": 2,
+        "subtype_name": "friendly_ground",
+        "latitude_microdegrees": -90000000,
+        "longitude_microdegrees": -180000000,
+        "altitude_decimeters": -32768,
+        "course_centidegrees": 0,
+        "speed_cm_s": 0,
+        "team": 1,
+        "team_name": "Blue",
+        "role": 1
+      }
+    },
+    {
+      "name": "pli_friendly_zero_altitude",
+      "description": "Friendly ground PLI at sea level (altitude = 0 decimeters). Location: London.",
+      "binary_hex": "020311f0c8fffe0cc80000000000000101",
+      "decoded_fields": {
+        "subtype": 2,
+        "subtype_name": "friendly_ground",
+        "latitude_microdegrees": 51507400,
+        "longitude_microdegrees": -127800,
+        "altitude_decimeters": 0,
+        "course_centidegrees": 0,
+        "speed_cm_s": 0,
+        "team": 1,
+        "team_name": "Blue",
+        "role": 1
+      }
+    },
+    {
+      "name": "pli_friendly_max_speed",
+      "description": "Friendly ground PLI with maximum speed (655.35 m/s). Altitude, course zero.",
+      "binary_hex": "02000000000000000000000000ffff0101",
+      "decoded_fields": {
+        "subtype": 2,
+        "subtype_name": "friendly_ground",
+        "latitude_microdegrees": 0,
+        "longitude_microdegrees": 0,
+        "altitude_decimeters": 0,
+        "course_centidegrees": 0,
+        "speed_cm_s": 65535,
+        "team": 1,
+        "team_name": "Blue",
+        "role": 1
+      }
+    },
+    {
+      "name": "chat_broadcast_hello",
+      "description": "Broadcast chat message: 'Hello'",
+      "binary_hex": "01000548656c6c6f",
+      "decoded_fields": {
+        "subtype": 1,
+        "subtype_name": "chat",
+        "dest_type": 0,
+        "dest_type_name": "broadcast",
+        "message_length": 5,
+        "message_utf8": "Hello"
+      }
+    },
+    {
+      "name": "chat_team_blue_move",
+      "description": "Team chat to Blue team: 'Move out'",
+      "binary_hex": "010101084d6f7665206f7574",
+      "decoded_fields": {
+        "subtype": 1,
+        "subtype_name": "chat",
+        "dest_type": 1,
+        "dest_type_name": "team",
+        "dest_team": 1,
+        "dest_team_name": "Blue",
+        "message_length": 8,
+        "message_utf8": "Move out"
+      }
+    },
+    {
+      "name": "chat_team_red_hold",
+      "description": "Team chat to Red team: 'Hold position'",
+      "binary_hex": "0101020d486f6c6420706f736974696f6e",
+      "decoded_fields": {
+        "subtype": 1,
+        "subtype_name": "chat",
+        "dest_type": 1,
+        "dest_type_name": "team",
+        "dest_team": 2,
+        "dest_team_name": "Red",
+        "message_length": 13,
+        "message_utf8": "Hold position"
+      }
+    },
+    {
+      "name": "chat_direct_ack",
+      "description": "Direct chat to IID 0x0011223344556677: 'Ack'",
+      "binary_hex": "010200112233445566770341636b",
+      "decoded_fields": {
+        "subtype": 1,
+        "subtype_name": "chat",
+        "dest_type": 2,
+        "dest_type_name": "direct",
+        "dest_iid_hex": "0011223344556677",
+        "message_length": 3,
+        "message_utf8": "Ack"
+      }
+    },
+    {
+      "name": "chat_broadcast_empty",
+      "description": "Broadcast chat with empty message (edge case).",
+      "binary_hex": "010000",
+      "decoded_fields": {
+        "subtype": 1,
+        "subtype_name": "chat",
+        "dest_type": 0,
+        "dest_type_name": "broadcast",
+        "message_length": 0,
+        "message_utf8": ""
+      }
+    },
+    {
+      "name": "chat_team_yellow",
+      "description": "Team chat to Yellow team: 'Check in'",
+      "binary_hex": "01010a08436865636b20696e",
+      "decoded_fields": {
+        "subtype": 1,
+        "subtype_name": "chat",
+        "dest_type": 1,
+        "dest_type_name": "team",
+        "dest_team": 10,
+        "dest_team_name": "Yellow",
+        "message_length": 8,
+        "message_utf8": "Check in"
+      }
+    },
+    {
+      "name": "marker_point",
+      "description": "Point marker (subtype 0x10). Encoding beyond subtype byte is TBD per spec.",
+      "binary_hex": "10",
+      "decoded_fields": {
+        "subtype": 16,
+        "subtype_name": "point_marker"
+      }
+    },
+    {
+      "name": "alert",
+      "description": "Alert (subtype 0x20). Encoding beyond subtype byte is TBD per spec.",
+      "binary_hex": "20",
+      "decoded_fields": {
+        "subtype": 32,
+        "subtype_name": "alert"
+      }
+    }
+  ]
+}

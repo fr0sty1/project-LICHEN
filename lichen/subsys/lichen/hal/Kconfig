@@ -50,13 +50,17 @@ config LICHEN_HAS_GNSS
 
 config LICHEN_HAS_BATTERY
 	bool "Board has battery measurement"
+	depends on SENSOR || FUEL_GAUGE
 	help
-	  Enable when devicetree provides an okay battery0 alias.
+	  Enable when devicetree provides an okay battery0 alias backed by a
+	  Zephyr voltage-divider sensor or fuel-gauge device.
 
 config LICHEN_HAS_PMIC
 	bool "Board has PMIC or charger control"
+	depends on CHARGER || SENSOR || I2C || GPIO || ADC
 	help
-	  Enable when devicetree provides an okay pmic0 alias.
+	  Enable when devicetree provides an okay pmic0 alias for a Zephyr
+	  charger, PMIC, or board-specific power telemetry/control device.
 
 config LICHEN_HAS_BUTTONS
 	bool "Board has user buttons"
@@ -163,6 +167,15 @@ config LICHEN_LOCATION_PROVIDER_GNSS
 
 endchoice
 
+config LICHEN_LOCATION_FRESHNESS_MAX_AGE_S
+	int "Maximum fresh location age in seconds"
+	default 300
+	range 1 86400
+	help
+	  Maximum age before a submitted location fix is treated as stale. Stale
+	  samples keep source metadata for status reporting but do not export
+	  position fields to app-compatibility consumers.
+
 choice LICHEN_TIME_PROVIDER
 	prompt "LICHEN time provider"
 	default LICHEN_TIME_PROVIDER_UPTIME
@@ -175,5 +188,57 @@ config LICHEN_TIME_PROVIDER_GNSS
 	depends on LICHEN_HAS_GNSS
 
 endchoice
+
+config LICHEN_TIME_BUILD_EPOCH_UNIX
+	int "Deterministic firmware build epoch floor"
+	default 1700000000
+	range 1 2147483647
+	help
+	  Deterministic Unix timestamp used as the minimum plausible wall-clock
+	  value. Production builds must set this from reproducible build
+	  metadata, preferably SOURCE_DATE_EPOCH, or an explicit release epoch.
+
+choice LICHEN_TIME_BUILD_EPOCH_SOURCE
+	prompt "Firmware build epoch metadata source"
+	default LICHEN_TIME_BUILD_EPOCH_SOURCE_FIXED
+	help
+	  Records where CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX came from. Production
+	  firmware entry points set this through lichen_build_epoch.cmake before
+	  Zephyr loads Kconfig.
+
+config LICHEN_TIME_BUILD_EPOCH_SOURCE_FIXED
+	bool "Fixed Kconfig default or test override"
+
+config LICHEN_TIME_BUILD_EPOCH_SOURCE_DATE_EPOCH
+	bool "SOURCE_DATE_EPOCH"
+
+config LICHEN_TIME_BUILD_EPOCH_SOURCE_RELEASE
+	bool "Explicit release epoch"
+
+config LICHEN_TIME_BUILD_EPOCH_SOURCE_DEVELOPER_GENERATED
+	bool "Explicit developer generated timestamp"
+
+config LICHEN_TIME_BUILD_EPOCH_SOURCE_DEVELOPER_FIXED
+	bool "Explicit developer fixed timestamp"
+
+endchoice
+
+config LICHEN_TIME_PROVISION_MAX_LEAD_S
+	int "Maximum provision epoch lead over build epoch"
+	default 31536000
+	range 0 2147483647
+	help
+	  Maximum accepted board provision timestamp lead over the firmware build
+	  epoch. This is a deterministic release policy bound, not a comparison
+	  with an untrusted runtime clock.
+
+config LICHEN_TIME_FRESHNESS_MAX_AGE_S
+	int "Maximum fresh wall-clock time age in seconds"
+	default 86400
+	range 1 2147483647
+	help
+	  Maximum age before an accepted wall-clock sample is considered stale.
+	  Stale samples remain visible as diagnostics but no longer establish
+	  wall-clock validity.
 
 endif # LICHEN_HAL

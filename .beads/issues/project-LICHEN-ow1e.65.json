@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ow1e.65",
+  "title": "good: rpl state transition tables in trickle.rs and dodag.rs",
+  "description": "trickle.rs:27-35 and dodag.rs:36-47 define explicit can_transition_to() state tables that make legal transitions explicit. This pattern is used consistently across all state machines in the crate. Tests validate the transition rules.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:36:53.547578Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:03:28.229283Z",
+  "closed_at": "2026-07-06T17:03:28.229283Z",
+  "close_reason": "acknowledged",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.65",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:36:53.548067Z"
+    }
+  ]
+}

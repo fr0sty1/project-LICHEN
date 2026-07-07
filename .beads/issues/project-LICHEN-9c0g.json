@@ -1,0 +1,55 @@
+{
+  "id": "project-LICHEN-9c0g",
+  "title": "Add production L2 raw announce dispatch to gateway announce ingestion",
+  "description": "Why this exists: project-LICHEN-r9bb added a software-only C announce parser/verifier/ingestion boundary, but the production L2 receive path currently assumes every authenticated LICHEN frame payload is SCHC-compressed IPv6 and injects it via net_recv_data(). Raw spec §9.2 announce routing messages are not represented in the C L2/routing dispatch path, so no RF/native_sim receive hook can honestly call gateway_announce_ingest_verified() yet. What needs to be done: define how raw announce routing payloads are distinguished from SCHC IPv6 payloads in C, add a production dispatch point after authentication and before/alongside IPv6 injection, update C TOFU/peer/gradient routing state, call gateway_announce_ingest_verified() for location app_data, and cover native_sim/qemu injection. Blocked until the C link/L2 payload demux and gradient table ownership are decided.",
+  "acceptance_criteria": "No-hardware native_sim/qemu tests inject signed announce bytes through the production L2/routing receive path and prove authenticated announces update peer/gradient state and gateway network-location ingestion. RF hardware validation is chained separately.",
+  "notes": "Blocked after no-hardware investigation for an unsafe protocol/layering gap, not hardware. Evidence: raw announce Type=0x01 in lichen/apps/gateway/src/announce_ingest.h collides with SCHC_RULE_GLOBAL_COAP=1 in lichen/subsys/lichen/schc/include/lichen/schc.h, and canonical test/vectors/schc_compression.json coap_global compressed bytes begin with 0x01. lichen_link_rx() currently authenticates/MIC-verifies then immediately SCHC-decompresses at lichen/subsys/lichen/link/lichen_link_rx.c, so lichen_l2_input() never receives authenticated raw inner payload bytes or link epoch/seq metadata for a safe raw announce dispatch. lichen/subsys/lichen/l2 is a reusable subsystem and must not directly call app-private lichen/apps/gateway/src/announce_ingest.c. Three independent subagents confirmed: Curie found first-byte demux unsafe; Copernicus mapped the authenticated pre-SCHC insertion point and metadata/layering constraints; Hypatia identified ping_l2 as the eventual production-path native_sim test surface once the API/discriminator exist. Created blockers: project-LICHEN-l812 for explicit payload discriminator, project-LICHEN-ct4d for authenticated raw link payload RX API, and project-LICHEN-8ko4 for neutral announce routing/gradient ownership between L2 and gateway app. No code changed for this Bead because the production dispatch would be ambiguous without those blockers.",
+  "status": "blocked",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T21:42:11.773855Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T22:27:10.274657Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "announce",
+    "l2",
+    "routing",
+    "network-source"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c0g",
+      "depends_on_id": "project-LICHEN-r9bb",
+      "type": "discovered-from",
+      "created_at": "2026-07-02T21:42:11.77923Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c0g",
+      "depends_on_id": "project-LICHEN-ua1r",
+      "type": "blocks",
+      "created_at": "2026-07-02T22:15:13.314493Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c0g",
+      "depends_on_id": "project-LICHEN-8ko4",
+      "type": "blocks",
+      "created_at": "2026-07-02T22:26:39.008026Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c0g",
+      "depends_on_id": "project-LICHEN-l812",
+      "type": "blocks",
+      "created_at": "2026-07-02T22:26:50.111296Z"
+    },
+    {
+      "issue_id": "project-LICHEN-9c0g",
+      "depends_on_id": "project-LICHEN-ct4d",
+      "type": "blocks",
+      "created_at": "2026-07-02T22:26:50.307203Z"
+    }
+  ]
+}

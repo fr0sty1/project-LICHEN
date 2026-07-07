@@ -9,15 +9,28 @@ target_include_directories(app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src
 )
 
-target_compile_definitions(app PRIVATE
-  CONFIG_LORA_LICHEN_GATEWAY_MESSAGE_QUEUE_DEPTH=3
-)
+if(TARGET drivers__bluetooth)
+  # Twister adds -Werror, but Zephyr 3.7 native_sim's Bluetooth user channel
+  # trips GCC 13's fortified read() stringop-overflow analysis. Keep the waiver
+  # scoped to Zephyr's Bluetooth driver library so LICHEN test sources still fail
+  # on the same diagnostic.
+  target_compile_options(drivers__bluetooth PRIVATE -Wno-error=stringop-overflow)
+endif()
 
 target_sources(app PRIVATE
   src/fake_ble_meshtastic.c
   src/main.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/announce_ingest.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/inbound_coap.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/inbound_events.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/message_contract.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/meshtastic_adapter.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/network_location.c
 )
+
+zephyr_linker_sources(DATA_SECTIONS
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/sections-ram.ld)
+zephyr_iterable_section(
+  NAME coap_resource_lichen_coap
+  GROUP DATA_REGION ${XIP_ALIGN_WITH_INPUT}
+  SUBALIGN CONFIG_LINKER_ITERABLE_SUBALIGN)

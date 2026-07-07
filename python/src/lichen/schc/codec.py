@@ -134,34 +134,24 @@ def compress(rule: Rule, fields: dict[str, int]) -> bytes:
 
     for fd in rule.fields:
         value = fields.get(fd.field_id)
-        needs_value = fd.mo in (MO.EQUAL, MO.MSB, MO.MATCH_MAPPING) or fd.cda in (
-            CDA.VALUE_SENT,
-            CDA.LSB,
-            CDA.MAPPING_SENT,
-        )
         if value is None:
-            if needs_value:
+            if fd.requires_value():
                 raise SchcError(f"{fd.field_id}: missing required field value")
             continue
 
         # Matching operator.
         if fd.mo == MO.EQUAL and value != fd.target_value:
-            raise SchcError(
-                f"{fd.field_id}: EQUAL mismatch — {value} != {fd.target_value}"
-            )
+            raise SchcError(f"{fd.field_id}: EQUAL mismatch — {value} != {fd.target_value}")
         if fd.mo == MO.MSB:
             _check_msb(fd, value)
-        if fd.mo == MO.MATCH_MAPPING and (
-            fd.mapping is None or value not in fd.mapping
-        ):
+        if fd.mo == MO.MATCH_MAPPING and (fd.mapping is None or value not in fd.mapping):
             raise SchcError(f"{fd.field_id}: value {value} not in mapping")
 
         # Compression action.
         if fd.cda == CDA.VALUE_SENT:
             if value < 0 or value >= (1 << fd.length_bits):
                 raise SchcError(
-                    f"{fd.field_id}: value {value} does not fit in "
-                    f"{fd.length_bits} bits"
+                    f"{fd.field_id}: value {value} does not fit in {fd.length_bits} bits"
                 )
             writer.write(value, fd.length_bits)
         elif fd.cda == CDA.LSB:
@@ -201,9 +191,7 @@ def decompress(data: bytes, rule: Rule | None = None) -> tuple[int, dict[str, in
         if rule is None:
             raise SchcError(f"unknown rule ID {rule_id}")
     elif rule.rule_id != rule_id:
-        raise SchcError(
-            f"rule ID mismatch: packet has {rule_id}, rule is {rule.rule_id}"
-        )
+        raise SchcError(f"rule ID mismatch: packet has {rule_id}, rule is {rule.rule_id}")
 
     reader = BitReader(data[1:])
     out: dict[str, int | None] = {}

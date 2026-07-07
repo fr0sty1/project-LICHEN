@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ow1e.267",
+  "title": "[CR] Rust error.rs: re-exports from lichen-ipv6 but no doc explaining the relationship",
+  "description": "File: rust/lichen-core/src/error.rs\n\nThe file was refactored from defining TooShort/BufferTooSmall locally to re-exporting them from lichen-ipv6:\n    pub use lichen_ipv6::{BufferTooSmall, TooShort};\n\nThis creates a dependency from lichen-core -\u003e lichen-ipv6 just for error types. The module doc says 'Re-exports structured error types from lichen-ipv6' but doesn't explain why lichen-ipv6 is the canonical source.\n\nConsider: The types are generic (not IPv6-specific), so having them in lichen-ipv6 vs lichen-core is an architectural choice that should be documented.\n\nLow priority: This is just a documentation/architecture clarity issue.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:17:39.195247Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:23:23.971747Z",
+  "closed_at": "2026-07-06T17:23:23.971747Z",
+  "close_reason": "Documentation suggestion - re-export relationship is clear from import; additional doc deferred",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.267",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T17:17:39.239766Z"
+    }
+  ]
+}

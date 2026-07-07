@@ -56,6 +56,9 @@ class DirectedRadio:
     def configure(self, freq_hz: int, tx_power_dbm: int) -> None:
         pass
 
+    async def cad(self, timeout_ms: int) -> bool:
+        return False
+
 
 # ---------------------------------------------------------------------------
 # CoAP server resource

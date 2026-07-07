@@ -48,6 +48,7 @@ def main():
         request = hex_bytes(vector["encoded"])
         response0 = hex_bytes(responses[0])
         response1 = hex_bytes(responses[1]) if len(responses) == 2 else b""
+        fixture = expect.get("fixture", "")
         req_arr = f"v_{ident}_request"
         resp0_arr = f"v_{ident}_response0"
         resp1_arr = f"v_{ident}_response1"
@@ -65,6 +66,7 @@ def main():
             resp1_arr if response1 else "NULL",
             len(response1),
             len(responses),
+            fixture,
         ))
 
     lines = [
@@ -86,19 +88,20 @@ def main():
         "\tsize_t request_len;",
         "\tconst uint8_t *response0;",
         "\tsize_t response0_len;",
-        "\tconst uint8_t *response1;",
-        "\tsize_t response1_len;",
-        "\tsize_t response_count;",
-        "};",
+	"\tconst uint8_t *response1;",
+	"\tsize_t response1_len;",
+	"\tsize_t response_count;",
+	"\tconst char *fixture;",
+	"};",
         "",
     ]
     lines.extend(arrays)
     lines.extend(["", "static const struct meshcore_vector meshcore_vectors[] = {"])
     for row in rows:
-        name, req, req_len, resp0, resp0_len, resp1, resp1_len, response_count = row
+        name, req, req_len, resp0, resp0_len, resp1, resp1_len, response_count, fixture = row
         lines.append(
             f'\t{{ "{name}", {req}, {req_len}U, {resp0}, {resp0_len}U, '
-            f'{resp1}, {resp1_len}U, {response_count}U }},'
+            f'{resp1}, {resp1_len}U, {response_count}U, "{fixture}" }},'
         )
     lines.extend(["};", "", "#endif /* LICHEN_TEST_MESHCORE_VECTORS_H_ */", ""])
     out.write_text("\n".join(lines))

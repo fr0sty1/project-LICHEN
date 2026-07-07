@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-fox3",
+  "title": "Evaluate build-time firmware timestamp as GNSS/time epoch seed",
+  "description": "User suggested using build-time stamps in firmware or board metadata to epoch GNSS/time. Evaluate software-only design: how build epoch is embedded, trust/freshness limits, interaction with GNSS cold start and network/manual time sources, and what hardware validation remains for RTC/GNSS behavior. Create implementation follow-ups if accepted.",
+  "notes": "User clarified the build-time timestamp idea: use build-time stamps in firmware or board metadata to epoch GNSS/time. Evaluation should compare immutable firmware build epoch, board/provisioning metadata epoch, and trust/staleness interactions with GNSS cold start, RTC, network/manual time, and rollback risk.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T20:16:18.097858Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T22:12:25.821255Z",
+  "closed_at": "2026-07-02T22:12:25.821255Z",
+  "close_reason": "Completed as design confirmation and de-duplication: existing closed Beads project-LICHEN-xj8k, project-LICHEN-ecq7, project-LICHEN-2067, and project-LICHEN-2067.1 already accept and implement the no-hardware policy that firmware build epoch and optional authenticated board/provision epoch are lower-bound freshness floors for GNSS/time, not authoritative clocks. Confirmed current implementation surfaces in docs/firmware-time-provider.md, lichen/cmake/lichen_build_epoch.cmake, lichen/subsys/lichen/hal, lichen/tests/build_epoch, lichen/tests/hal, and lichen/tests/puck_location. Physical validation remains blocked/tracked by existing GNSS hardware Beads. Created follow-ups project-LICHEN-7rmw, project-LICHEN-vfdi, and project-LICHEN-okar for newly identified spec/status/provision-persistence gaps.",
+  "labels": [
+    "time",
+    "gnss",
+    "firmware",
+    "software-design"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-fox3",
+      "depends_on_id": "project-LICHEN-zte2.9.1",
+      "type": "discovered-from",
+      "created_at": "2026-07-02T20:16:18.098371Z"
+    }
+  ]
+}

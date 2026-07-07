@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-ow1e.168",
+  "title": "gateway: mesh_to_upstream allocates vec![0u8; 1500] per call",
+  "description": "In gateway.rs:40-41 and 74, vec allocations happen on every call to mesh_to_upstream. In a hot path, consider a reusable buffer passed by caller to avoid repeated heap allocations.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:41:19.59445Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T18:04:08.957144Z",
+  "closed_at": "2026-07-06T18:04:08.957144Z",
+  "close_reason": "Gateway runs on Linux (border router), not embedded. 1500-byte allocations per packet are acceptable for a std-environment gateway.",
+  "labels": [
+    "efficiency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.168",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:41:19.594958Z"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-ajsn",
+  "title": "Review: Frame validation fix 2026-07-06",
+  "description": "Review of frame.py signature_present validation fix.\n\nReview confidence: 5% chance of missed bug.\nLeast confident areas: None - change is small and targeted.\nWould raise confidence if: Nothing needed, fix is straightforward.\n\nLanguage: Python\nMode: my-oss\nSupplements: review-crypto.md\n\nFindings: 0 bugs, 0 issues, 2 positive decisions.\n\nThe fix correctly validates that payload \u003e= 48 bytes when signature_present=True. SECURITY comment documents the attack scenario. Test uses independent oracle.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:44:55.411257Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:46:40.211411Z",
+  "closed_at": "2026-07-06T15:46:40.211411Z",
+  "close_reason": "Closed",
+  "labels": [
+    "review"
+  ]
+}

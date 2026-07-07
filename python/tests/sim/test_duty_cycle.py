@@ -189,3 +189,112 @@ class TestDutyCycleTracker:
         # 9 seconds out of 36 seconds allowed (1% of 3600s)
         expected_usage = 9_000_000 / (window_us * 0.01)
         assert usage == pytest.approx(expected_usage, rel=1e-6)
+
+
+class TestDutyCycleObservabilityAPI:
+    """Tests for duty cycle observability API methods (5g8t.1)."""
+
+    def test_remaining_ms_empty(self) -> None:
+        """Empty tracker has full budget remaining."""
+        tracker = DutyCycleTracker()
+        # 1% of 3600s = 36s = 36000ms
+        assert tracker.remaining_ms(0) == 36000
+
+    def test_remaining_ms_after_usage(self) -> None:
+        """remaining_ms decreases after transmission."""
+        tracker = DutyCycleTracker()
+        # Use 10 seconds of airtime (10_000ms = 10_000_000us)
+        tracker.record_tx(airtime_us=10_000_000, time_us=0)
+
+        # Should have 26 seconds remaining (36 - 10 = 26)
+        remaining = tracker.remaining_ms(0)
+        assert remaining == 26000
+
+    def test_remaining_ms_can_be_negative(self) -> None:
+        """remaining_ms can be negative if over limit."""
+        tracker = DutyCycleTracker()
+        # Use 50 seconds (more than 36s limit)
+        tracker.record_tx(airtime_us=50_000_000, time_us=0)
+
+        remaining = tracker.remaining_ms(0)
+        assert remaining == -14000  # 36 - 50 = -14
+
+    def test_usage_percent_empty(self) -> None:
+        """Empty tracker has 0% usage."""
+        tracker = DutyCycleTracker()
+        assert tracker.usage_percent(0) == 0.0
+
+    def test_usage_percent_half(self) -> None:
+        """50% usage when half of budget is consumed."""
+        tracker = DutyCycleTracker()
+        # Use 18 seconds (half of 36s)
+        tracker.record_tx(airtime_us=18_000_000, time_us=0)
+
+        usage_pct = tracker.usage_percent(0)
+        assert usage_pct == pytest.approx(50.0, rel=1e-6)
+
+    def test_usage_percent_over_limit(self) -> None:
+        """usage_percent can exceed 100%."""
+        tracker = DutyCycleTracker()
+        # Use 72 seconds (2x the limit)
+        tracker.record_tx(airtime_us=72_000_000, time_us=0)
+
+        usage_pct = tracker.usage_percent(0)
+        assert usage_pct == pytest.approx(200.0, rel=1e-6)
+
+    def test_time_until_budget_refill_empty(self) -> None:
+        """Empty tracker returns 0 (budget already available)."""
+        tracker = DutyCycleTracker()
+        assert tracker.time_until_budget_refill_ms(0) == 0
+
+    def test_time_until_budget_refill_with_tx(self) -> None:
+        """Returns time until oldest TX exits the window."""
+        tracker = DutyCycleTracker()
+        window_us = 3600 * 1_000_000
+        airtime_us = 1_000_000  # 1 second
+
+        # TX at time 0, ends at 1s
+        tracker.record_tx(airtime_us=airtime_us, time_us=0)
+
+        # At time 0, oldest TX end (1s) exits window at time window_us + airtime_us
+        # Time until that: window_us + airtime_us - 0 = window_us + 1s
+        # But the formula is: oldest_end - cutoff where cutoff = time - window
+        # At time 0: cutoff = 0 - window = -window, oldest_end = 1s
+        # time_until = 1s - (-window) = 1s + window = 3601s = 3601000ms
+        refill_ms = tracker.time_until_budget_refill_ms(0)
+        assert refill_ms == 3601000  # 1 hour + 1 second
+
+    def test_time_until_budget_refill_mid_window(self) -> None:
+        """Correct time calculation mid-window."""
+        tracker = DutyCycleTracker()
+        window_us = 3600 * 1_000_000
+        airtime_us = 1_000_000  # 1 second
+
+        # TX at time 0, ends at 1s
+        tracker.record_tx(airtime_us=airtime_us, time_us=0)
+
+        # At time window_us (3600s), the TX end (1s) should be expiring
+        # cutoff = window_us - window_us = 0
+        # oldest_end = 1s, time_until = 1s - 0 = 1s = 1000ms
+        refill_ms = tracker.time_until_budget_refill_ms(window_us)
+        assert refill_ms == 1000
+
+    def test_next_tx_available_ms_when_allowed(self) -> None:
+        """Returns 0 when TX is allowed now."""
+        tracker = DutyCycleTracker()
+        # 1ms airtime should be allowed
+        assert tracker.next_tx_available_ms(1000, 0) == 0
+
+    def test_next_tx_available_ms_when_blocked(self) -> None:
+        """Returns delay until TX is allowed."""
+        tracker = DutyCycleTracker()
+        # Max out the budget
+        max_airtime_us = int(3600 * 1_000_000 * 0.01)  # 36s
+        tracker.record_tx(airtime_us=max_airtime_us, time_us=0)
+
+        # Trying to TX 1ms should be blocked
+        delay_ms = tracker.next_tx_available_ms(1000, 0)
+        # Need to wait for the full window + airtime to expire
+        # The delay should be roughly window_us + 1ms (for the new TX)
+        # But since we used exact limit, we need to wait for old TX to fully exit
+        assert delay_ms > 0

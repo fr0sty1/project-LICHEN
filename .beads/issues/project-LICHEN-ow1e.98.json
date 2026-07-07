@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-ow1e.98",
+  "title": "link_layer.py: O(n) sender discovery tries all peers per frame",
+  "description": "src/lichen/link/link_layer.py:456-505 _find_sender() method tries all known peers to verify a signature for every received frame. For n peers, this is O(n) signature verifications per frame.\n\nEd25519 is fast (~15k verifications/sec), but on constrained devices with 100+ peers, this adds latency. Code has a TODO acknowledging this.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:37:24.296239Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T18:03:28.139461Z",
+  "closed_at": "2026-07-06T18:03:28.139461Z",
+  "close_reason": "Known limitation documented in code. Requires frame format change to include sender IID. TODOs acknowledge this.",
+  "labels": [
+    "efficiency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.98",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:37:24.296744Z"
+    }
+  ]
+}

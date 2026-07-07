@@ -33,7 +33,7 @@
 
 Every originated frame carries a Schnorr signature for sender authentication.
 
-**Signature Scheme: Schnorr (e₁₂₈, s) — 48 bytes**
+**Signature Scheme: Schnorr (e₁₂₈, s) -- 48 bytes**
 
 Standard Ed25519 signatures are 64 bytes, prohibitive for LoRa. We use a
 well-known Schnorr variant with truncated challenge, providing 128-bit security
@@ -310,7 +310,7 @@ Initiator                              Responder
 
 EDHOC Message 2 and 3 include signatures using Ed25519 (or the Schnorr
 variant). The initiator and responder authenticate each other using their
-existing link-layer keypairs—no additional certificates needed.
+existing link-layer keypairs--no additional certificates needed.
 
 **OSCORE Context Export:**
 

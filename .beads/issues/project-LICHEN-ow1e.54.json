@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-ow1e.54",
+  "title": "Link layer sender identification requires brute-force over all peers",
+  "description": "**Location:** python/src/lichen/link/link_layer.py:456-505\n\n**Risk:** The `_find_sender()` method must try every known peer's public key to verify who sent a frame (lines 500-504). The frame format does not include sender identification.\n\n**Trigger:** Large mesh with many peers (\u003e100). Each received frame requires O(n) signature verifications.\n\n**Bad behavior:** Quadratic CPU cost as mesh grows. On constrained devices, this becomes a denial-of-service vector: flood the receiver with frames from unknown senders, each requiring verification against all known peers.\n\n**Maintainer burden:** Users will report performance issues with larger meshes. The TODO on line 495 acknowledges this limitation.\n\n**Fix:** Add sender IID to the frame format (as noted in comments), or use a bloom filter/hint to narrow down candidates.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:36:40.790781Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:14:51.393826Z",
+  "closed_at": "2026-07-06T17:14:51.393826Z",
+  "close_reason": "Documented protocol limitation. O(n) signature verification is unavoidable without sender IID in frame format. Added comment noting protocol-level fix needed.",
+  "labels": [
+    "risk",
+    "maintainer-burden",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.54",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:36:40.791297Z"
+    }
+  ]
+}

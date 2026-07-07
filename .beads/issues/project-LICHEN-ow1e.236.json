@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ow1e.236",
+  "title": "duty_cycle.rs: total_tx_in_window may double-count partial overlap",
+  "description": "In DutyCycleTracker::total_tx_in_window(), when a transmission starts before the window but ends within it, the code adds the overlap. However, for records completely within the window, it adds the full duration. The logic is correct but the comment is misleading - 'Transmission started before window' should clarify this is for partial overlap only. More importantly, there's no test for this edge case.\n\nFile: rust/lichen-core/src/duty_cycle.rs lines 117-131",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:16:06.69899Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:45:24.222657Z",
+  "closed_at": "2026-07-06T17:45:24.222657Z",
+  "close_reason": "Closed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.236",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T17:16:06.777344Z"
+    }
+  ]
+}

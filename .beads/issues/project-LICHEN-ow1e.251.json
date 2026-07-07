@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ow1e.251",
+  "title": "GPSR forward: coord validation should reject (0,0)",
+  "description": "File: python/src/lichen/routing/router.py\nLine: 508-512\n\nThe gpsr_forward function validates lat/lon ranges and rejects NaN/inf, but does not reject the null island coordinates (0.0, 0.0). Coordinates at (0, 0) are almost always invalid GPS data and should be rejected as a sentinel value. This could lead to routing failures toward the Gulf of Guinea.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:16:41.885643Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:23:18.401421Z",
+  "closed_at": "2026-07-06T17:23:18.401421Z",
+  "close_reason": "Fixed: added rejection of null island (0,0) coordinates in gpsr_forward",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.251",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T17:16:41.886277Z"
+    }
+  ]
+}

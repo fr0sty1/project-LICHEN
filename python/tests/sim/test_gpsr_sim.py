@@ -125,18 +125,18 @@ class TestAnnounceWithCoords:
 
         PARANOID: Check encoding format byte-by-byte.
         """
-        # Seattle-ish coords (within +/- 83.88 range)
-        lat, lon = 47.6062, -70.0  # lon adjusted to be in range
+        # Seattle-ish coords; west-coast longitude exercises full-range encoding.
+        lat, lon = 47.6062, -122.3321
 
         # PARANOID: Verify coords are in valid range before encoding
-        assert -83.88 <= lat <= 83.88, f"lat {lat} out of range"
-        assert -83.88 <= lon <= 83.88, f"lon {lon} out of range"
+        assert -90 <= lat <= 90, f"lat {lat} out of range"
+        assert -180 <= lon <= 180, f"lon {lon} out of range"
 
         app_data = encode_coords(lat, lon)
 
         # PARANOID: Verify encoding structure
         assert app_data is not None, "encoding must not return None"
-        assert len(app_data) == 7, f"coords app_data must be 7 bytes, got {len(app_data)}"
+        assert len(app_data) == 9, f"coords app_data must be 9 bytes, got {len(app_data)}"
         assert app_data[0] == APP_DATA_TYPE_COORDS, "first byte must be coords type"
 
         # Verify round-trip decoding
@@ -144,9 +144,9 @@ class TestAnnounceWithCoords:
         assert decoded is not None, "decoding must succeed"
 
         decoded_lat, decoded_lon = decoded
-        # Resolution is 1e-5 degrees, allow small rounding
-        assert abs(decoded_lat - lat) < 1e-4, f"lat mismatch: {decoded_lat} vs {lat}"
-        assert abs(decoded_lon - lon) < 1e-4, f"lon mismatch: {decoded_lon} vs {lon}"
+        # Resolution is 1e-7 degrees, allow small floating point error.
+        assert abs(decoded_lat - lat) < 1e-7, f"lat mismatch: {decoded_lat} vs {lat}"
+        assert abs(decoded_lon - lon) < 1e-7, f"lon mismatch: {decoded_lon} vs {lon}"
 
     @pytest.mark.asyncio
     async def test_scheduler_builds_announce_with_coords(self) -> None:
@@ -155,11 +155,11 @@ class TestAnnounceWithCoords:
         PARANOID: Verify every field of the announce.
         """
         identity = make_identity(10)
-        lat, lon = 51.5074, -0.1278  # London (lon in range)
+        lat, lon = 51.5074, -0.1278
 
         # Encode coords as app_data
         app_data = encode_coords(lat, lon)
-        assert len(app_data) == 7, "coords must be 7 bytes"
+        assert len(app_data) == 9, "coords must be 9 bytes"
 
         mock_tx = MockTransmitter()
         scheduler = AnnounceScheduler(
@@ -282,7 +282,7 @@ class TestNeighborCoordsExtraction:
         assert node_port is not None, "must get node server port"
 
         identity_a = make_identity(30)
-        lat_a, lon_a = 35.6762, 10.0  # Tokyo-ish (lon in range)
+        lat_a, lon_a = 35.6762, 139.6503
 
         app_data = encode_coords(lat_a, lon_a)
 

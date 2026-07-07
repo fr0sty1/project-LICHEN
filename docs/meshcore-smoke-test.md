@@ -170,7 +170,11 @@ oracles live in `test/vectors/meshcore_app_compat.json`.
    - Nonzero channel index.
    - Non-plain text type.
    - Invalid UTF-8 payload.
-5. Send direct text with no resolvable peer prefix.
+5. Send direct text with a known 6-byte MeshCore public-key prefix and verify
+   the LICHEN message contract receives `has_to_iid=true` for the mapped peer
+   IID.
+6. Send direct text with no resolvable peer prefix and with an ambiguous prefix
+   shared by more than one known peer.
 
 Expected failures are explicit MeshCore errors. There must be no firmware log
 claiming a MeshCore RF transmit.
@@ -199,16 +203,17 @@ state:
 
 | Operation | Expected result |
 |-----------|-----------------|
-| `SET_ADVERT_NAME` | `ERR_UNSUPPORTED_CMD` until compatibility-local storage exists. |
-| `SET_AUTOADD_CONFIG` | `ERR_UNSUPPORTED_CMD` until compatibility-local storage exists; no auto-add policy changes. |
-| `SET_CHANNEL` | `ERR_UNSUPPORTED_CMD`; no LICHEN group, multicast, OSCORE, or link material changes. |
-| `SET_DEFAULT_FLOOD_SCOPE` | `ERR_UNSUPPORTED_CMD`; native flood/routing policy is unchanged. |
-| `SET_DEVICE_PIN` | `ERR_UNSUPPORTED_CMD` until settings-backed MeshCore PIN storage exists. |
+| `SET_ADVERT_NAME` | `OK`; only MeshCore-local display metadata changes. |
+| `SET_AUTOADD_CONFIG` | `OK`; only MeshCore-local auto-add metadata changes. |
+| `SET_CHANNEL` | `OK` for the slot `0` local record shape; secret-bearing channel imports return `ERR_UNSUPPORTED_CMD`; no LICHEN group, multicast, OSCORE, or link material changes. |
+| `SET_DEFAULT_FLOOD_SCOPE` | `OK` for empty clear or a 31-byte NUL-terminated name field plus 16-byte key; native flood/routing policy is unchanged. |
+| `SET_DEVICE_PIN` | `OK` only when the BLE passkey hook accepts `0` or a six-digit PIN. |
 | MeshCore radio/path/raw packet writes | `ERR_UNSUPPORTED_CMD`; no MeshCore RF packet path is invoked. |
 | Unknown command IDs `0x00`, `0x42`, `0xff` | `ERR_UNSUPPORTED_CMD`. |
 
-The smoke run fails if any unsupported write returns success without a matching
-Bead that documents the implemented compatibility-local storage and tests.
+The smoke run fails if a compatibility-local write mutates native LICHEN
+identity, security, group, radio, or routing state, or if `DEVICE_INFO` reports
+a PIN that does not match the compatibility pairing policy.
 
 ## BLE Raw-Frame Checks
 

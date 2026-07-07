@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ow1e.247",
+  "title": "rf_health.rs: EMA alpha=1/8 may converge too slowly for highly variable RF",
+  "description": "RfHealthMetrics uses an exponential moving average with alpha=1/8 for RSSI and SNR tracking. For rapidly changing RF conditions (mobile nodes, intermittent interference), this may be too slow to reflect current state. Consider making alpha configurable or using a faster default (e.g., 1/4).\n\nFile: rust/lichen-core/src/rf_health.rs lines 106-107, 161-162",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:16:35.030956Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:23:14.608866Z",
+  "closed_at": "2026-07-06T17:23:14.608866Z",
+  "close_reason": "Design suggestion - EMA alpha=1/8 is acceptable default, deferred to future configurability",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.247",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T17:16:35.032898Z"
+    }
+  ]
+}

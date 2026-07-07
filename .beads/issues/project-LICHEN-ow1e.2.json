@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-ow1e.2",
+  "title": "ruff format: 122 files need formatting",
+  "description": "122 files across src/ and tests/ need ruff formatting. Run: cd python \u0026\u0026 ruff format src/ tests/",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:34:49.672376Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:46:05.167083Z",
+  "closed_at": "2026-07-06T17:46:05.167083Z",
+  "close_reason": "Closed",
+  "labels": [
+    "python-standards",
+    "tooling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.2",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:34:49.69476Z"
+    }
+  ]
+}

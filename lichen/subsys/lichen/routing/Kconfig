@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+config LICHEN_ROUTING
+	bool "LICHEN authenticated routing-control payload handling"
+	depends on LICHEN
+	select TINYCRYPT
+	select TINYCRYPT_SHA256
+	select LICHEN_CRYPTO_MONOCYPHER
+	select LICHEN_LINK_SCHNORR if LICHEN_LINK
+	default n
+	help
+	  Enable neutral LICHEN routing-control helpers, including authenticated
+	  announce parsing, TOFU pinning, sequence tracking, and app-data
+	  observer dispatch. This subsystem is reusable by L2 and gateway apps.
+
+config LICHEN_ROUTING_MAX_PEERS
+	int "Maximum authenticated announce peer pins"
+	depends on LICHEN_ROUTING
+	default LICHEN_LINK_MAX_NEIGHBORS if LICHEN_LINK
+	default 8
+	help
+	  Maximum number of originator IID/pubkey TOFU pins retained by the
+	  neutral announce routing owner.
+
+config LICHEN_ROUTING_MAX_APP_DATA_OBSERVERS
+	int "Maximum announce app-data observers"
+	depends on LICHEN_ROUTING
+	default 2
+	help
+	  Maximum number of consumers that can observe verified announce app_data.
+	  One slot is intended for the gateway network-location bridge and another
+	  for common routing or tests.
+
+config LICHEN_ROUTING_STANDALONE_SCHNORR
+	bool
+	default y if LICHEN_ROUTING && !LICHEN_LINK

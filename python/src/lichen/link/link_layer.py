@@ -124,6 +124,9 @@ class LinkLayer:
     identity: Identity
     peer_lookup: Callable[[bytes], PeerIdentity | None]
     replay_protector: ReplayProtector = field(default_factory=ReplayProtector)
+    # peer_lookup_all: For brute-force sender identification when no hint available.
+    # NOTE: O(n) verification is unavoidable without sender IID in frame format.
+    # Protocol-level fix needed: add sender IID to frame header extension.
     peer_lookup_all: Callable[[], list[PeerIdentity]] | None = field(
         default=None, repr=False
     )
@@ -496,7 +499,8 @@ class LinkLayer:
         if peer is not None and verify(peer.pubkey, signable, signature):
             return peer
 
-        # If we have an all-peers iterator, try each one for broadcast frames.
+        # Brute-force: try each known peer until signature verifies.
+        # O(n) is unavoidable without sender IID in frame format.
         if self.peer_lookup_all is not None:
             for candidate in self.peer_lookup_all():
                 if candidate is not peer and verify(candidate.pubkey, signable, signature):

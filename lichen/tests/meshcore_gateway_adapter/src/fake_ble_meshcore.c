@@ -30,6 +30,7 @@ static size_t s_rx_count;
 static size_t s_tx_count;
 static uint32_t s_epoch = 1U;
 static uint32_t s_tx_cap = FAKE_QUEUE_DEPTH;
+static uint32_t s_passkey = 123456U;
 static bool s_connected = true;
 static bool s_disconnect_on_next_enqueue;
 static K_MUTEX_DEFINE(s_fake_mutex);
@@ -43,9 +44,20 @@ void fake_ble_meshcore_reset(uint32_t tx_cap)
 	s_tx_count = 0U;
 	s_epoch = 1U;
 	s_tx_cap = MIN(tx_cap, FAKE_QUEUE_DEPTH);
+	s_passkey = 123456U;
 	s_connected = true;
 	s_disconnect_on_next_enqueue = false;
 	k_mutex_unlock(&s_fake_mutex);
+}
+
+uint32_t fake_ble_meshcore_passkey(void)
+{
+	uint32_t passkey;
+
+	k_mutex_lock(&s_fake_mutex, K_FOREVER);
+	passkey = s_passkey;
+	k_mutex_unlock(&s_fake_mutex);
+	return passkey;
 }
 
 void fake_ble_meshcore_set_epoch(uint32_t session_epoch)
@@ -184,6 +196,18 @@ int ble_meshcore_enqueue_tx_if_session(uint32_t session_epoch,
 	s_tx[s_tx_count].len = len;
 	s_tx[s_tx_count].epoch = session_epoch;
 	s_tx_count++;
+	k_mutex_unlock(&s_fake_mutex);
+	return 0;
+}
+
+int ble_meshcore_set_passkey(uint32_t passkey)
+{
+	if (passkey != 0U && (passkey < 100000U || passkey > 999999U)) {
+		return -EINVAL;
+	}
+
+	k_mutex_lock(&s_fake_mutex, K_FOREVER);
+	s_passkey = passkey;
 	k_mutex_unlock(&s_fake_mutex);
 	return 0;
 }

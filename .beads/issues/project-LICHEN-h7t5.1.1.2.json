@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-h7t5.1.1.2",
+  "title": "Add proven HAL reset-cause clear support",
+  "description": "Why this exists: project-LICHEN-h7t5.1.1 exposes reset-cause read diagnostics, but Zephyr does not provide a non-destructive clear-support probe separate from hwinfo_clear_reset_cause(), so the initial HAL slice keeps reset-cause clearing unsupported instead of advertising unsupported/unproven behavior. What needs to be done: design a HAL-owned policy for reset-cause clear support, prove backend support without destructive snapshot side effects, add native_sim/qemu tests or backend-specific fixtures, and split physical target validation if required.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-03T02:15:42.122971Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T18:08:34.421078Z",
+  "closed_at": "2026-07-06T18:08:34.421078Z",
+  "close_reason": "Future work - HAL reset-cause clear support deferred to hardware validation phase",
+  "labels": [
+    "zephyr",
+    "hal",
+    "api",
+    "firmware",
+    "board-support",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.1.1.2",
+      "depends_on_id": "project-LICHEN-h7t5.1.1",
+      "type": "parent-child",
+      "created_at": "2026-07-03T02:15:42.12341Z"
+    }
+  ]
+}

@@ -30,9 +30,18 @@
 
 LOG_MODULE_REGISTER(gateway_meshtastic_adapter, LOG_LEVEL_INF);
 
+BUILD_ASSERT(CONFIG_LICHEN_APP_INTERFACE_MAX_PAYLOAD ==
+	     LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX,
+	     "CONFIG_LICHEN_APP_INTERFACE_MAX_PAYLOAD must match "
+	     "LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX");
+
 #define ADAPTER_STACK_SIZE 4096
 #define ADAPTER_PRIORITY 7
 #define ADAPTER_IDLE_SLEEP K_MSEC(20)
+#define MESHTASTIC_LOC_SOURCE_MANUAL 1U
+#define MESHTASTIC_LOC_SOURCE_INTERNAL 2U
+#define MESHTASTIC_LOC_SOURCE_EXTERNAL 3U
+#define MESHTASTIC_ALT_SOURCE_BAROMETRIC 4U
 
 static struct lichen_meshtastic_adapter s_adapter;
 static uint8_t s_to_radio[LICHEN_MESHTASTIC_TO_RADIO_MAX];
@@ -53,11 +62,16 @@ static struct lichen_hal_power_snapshot s_test_power_snapshot;
 static bool s_has_test_power_snapshot;
 static struct lichen_hal_location_time_snapshot s_test_location_time_snapshot;
 static bool s_has_test_location_time_snapshot;
+static struct lichen_hal_time_snapshot s_test_time_snapshot;
+static bool s_has_test_time_snapshot;
 #endif
 
 static int enqueue_from_radio(const uint8_t *from_radio, size_t len,
 			      void *user_data);
 static int handle_text(
+	const struct lichen_meshtastic_adapter_packet_info *packet,
+	void *user_data);
+static int handle_location(
 	const struct lichen_meshtastic_adapter_packet_info *packet,
 	void *user_data);
 static uint32_t queue_free(void *user_data);
@@ -66,6 +80,8 @@ static int get_local_info(struct lichen_meshtastic_local_info *info,
 static size_t get_peers(struct lichen_meshtastic_peer_snapshot *peers,
 			size_t peer_cap, void *user_data);
 static int process_once_internal(void);
+static const char *position_source_name(
+	const struct lichen_meshtastic_position_snapshot *position);
 #ifndef CONFIG_ZTEST
 static void adapter_thread(void *a, void *b, void *c);
 #endif
@@ -75,6 +91,7 @@ static struct lichen_meshtastic_adapter_ops adapter_ops(void)
 	return (struct lichen_meshtastic_adapter_ops){
 		.enqueue_from_radio = enqueue_from_radio,
 		.handle_text = handle_text,
+		.handle_location = handle_location,
 		.queue_free = queue_free,
 		.get_local_info = get_local_info,
 		.get_peers = get_peers,
@@ -123,6 +140,49 @@ static int handle_text(
 	return lichen_app_interface_submit_text(&event);
 }
 
+static int handle_location(
+	const struct lichen_meshtastic_adapter_packet_info *packet,
+	void *user_data)
+{
+	struct lichen_app_location_time_snapshot location;
+	const char *source_name;
+
+	ARG_UNUSED(user_data);
+
+	if (packet == NULL) {
+		return -EINVAL;
+	}
+	if (!ble_meshtastic_session_epoch_current(s_dispatch_epoch)) {
+		return -ESTALE;
+	}
+
+	location = (struct lichen_app_location_time_snapshot){
+		.latitude_e7_valid = packet->position.latitude_e7_valid,
+		.latitude_e7 = packet->position.latitude_e7,
+		.longitude_e7_valid = packet->position.longitude_e7_valid,
+		.longitude_e7 = packet->position.longitude_e7,
+		.altitude_m_valid = packet->position.altitude_m_valid,
+		.altitude_m = packet->position.altitude_m,
+		.fix_time_unix_valid = packet->position.fix_time_unix_valid,
+		.fix_time_unix = packet->position.fix_time_unix,
+		.satellites_valid = packet->position.satellites_valid,
+		.satellites = packet->position.satellites,
+		.source_class_valid = true,
+		.source_class = LICHEN_APP_LOCATION_SOURCE_LOCAL_CLIENT,
+		.age_seconds_valid = false,
+		.fix_state_valid = true,
+		.fix_state = packet->position.altitude_m_valid ?
+			     LICHEN_APP_LOCATION_FIX_3D :
+			     LICHEN_APP_LOCATION_FIX_2D,
+	};
+	source_name = position_source_name(&packet->position);
+	strncpy(location.source_name, source_name,
+		sizeof(location.source_name) - 1U);
+	location.source_name[sizeof(location.source_name) - 1U] = '\0';
+
+	return lichen_app_interface_submit_location(&location);
+}
+
 static uint32_t queue_free(void *user_data)
 {
 	ARG_UNUSED(user_data);
@@ -153,12 +213,24 @@ static void read_location_time_snapshot(
 	(void)lichen_hal_location_time_snapshot_get(location_time);
 }
 
+static void read_time_snapshot(struct lichen_hal_time_snapshot *time)
+{
+#ifdef CONFIG_ZTEST
+	if (s_has_test_time_snapshot) {
+		*time = s_test_time_snapshot;
+		return;
+	}
+#endif
+	(void)lichen_hal_time_snapshot_get(time);
+}
+
 static int get_local_info(struct lichen_meshtastic_local_info *info,
 			  void *user_data)
 {
 	struct lichen_hal_identity identity;
 	struct lichen_hal_power_snapshot power;
 	struct lichen_hal_location_time_snapshot location_time;
+	struct lichen_hal_time_snapshot time;
 	uint8_t eui64[8] = { 0 };
 	int ret = -ENODEV;
 
@@ -207,6 +279,7 @@ static int get_local_info(struct lichen_meshtastic_local_info *info,
 	info->has_external_power = power.external_power_valid;
 	info->external_power = power.external_power;
 	read_location_time_snapshot(&location_time);
+	read_time_snapshot(&time);
 	info->has_gnss = lichen_hal_has_capability(LICHEN_HAL_CAP_GNSS);
 	info->has_latitude_e7 = location_time.latitude_e7_valid;
 	info->latitude_e7 = location_time.latitude_e7;
@@ -216,6 +289,11 @@ static int get_local_info(struct lichen_meshtastic_local_info *info,
 	info->altitude_m = location_time.altitude_m;
 	info->has_fix_time_unix = location_time.fix_time_unix_valid;
 	info->fix_time_unix = location_time.fix_time_unix;
+	if (!info->has_fix_time_unix && time.wall_clock_valid &&
+	    time.unix_time_valid) {
+		info->has_fix_time_unix = true;
+		info->fix_time_unix = time.unix_time;
+	}
 	info->has_satellites = location_time.satellites_valid;
 	info->satellites = location_time.satellites;
 	info->has_gnss_fix = location_time.fix_source_valid &&
@@ -271,6 +349,29 @@ static size_t get_peers(struct lichen_meshtastic_peer_snapshot *peers,
 	ARG_UNUSED(user_data);
 	return 0U;
 #endif
+}
+
+static const char *position_source_name(
+	const struct lichen_meshtastic_position_snapshot *position)
+{
+	if (position == NULL || !position->location_source_valid) {
+		return "meshtastic-position";
+	}
+
+	switch (position->location_source) {
+	case MESHTASTIC_LOC_SOURCE_MANUAL:
+		return "mt-pos-manual";
+	case MESHTASTIC_LOC_SOURCE_INTERNAL:
+		return "mt-pos-internal";
+	case MESHTASTIC_LOC_SOURCE_EXTERNAL:
+		return "mt-pos-external";
+	default:
+		if (position->altitude_source_valid &&
+		    position->altitude_source == MESHTASTIC_ALT_SOURCE_BAROMETRIC) {
+			return "mt-pos-baro-alt";
+		}
+		return "mt-position";
+	}
 }
 
 int gateway_meshtastic_adapter_init(void)
@@ -350,6 +451,8 @@ void gateway_meshtastic_adapter_test_reset(void)
 	s_has_test_location_time_snapshot = false;
 	memset(&s_test_location_time_snapshot, 0,
 	       sizeof(s_test_location_time_snapshot));
+	s_has_test_time_snapshot = false;
+	memset(&s_test_time_snapshot, 0, sizeof(s_test_time_snapshot));
 	(void)gateway_meshtastic_adapter_init();
 	k_mutex_lock(&s_adapter_mutex, K_FOREVER);
 	s_dispatch_epoch = ble_meshtastic_session_epoch();
@@ -382,6 +485,19 @@ void gateway_meshtastic_adapter_test_set_location_time_snapshot(
 
 	s_test_location_time_snapshot = *snapshot;
 	s_has_test_location_time_snapshot = true;
+}
+
+void gateway_meshtastic_adapter_test_set_time_snapshot(
+	const struct lichen_hal_time_snapshot *snapshot)
+{
+	if (snapshot == NULL) {
+		s_has_test_time_snapshot = false;
+		memset(&s_test_time_snapshot, 0, sizeof(s_test_time_snapshot));
+		return;
+	}
+
+	s_test_time_snapshot = *snapshot;
+	s_has_test_time_snapshot = true;
 }
 
 int gateway_meshtastic_adapter_test_process_once(void)

@@ -1,18 +1,35 @@
 //! lichen-tui — terminal dashboard for a LICHEN mesh node.
 //!
-//! Layout:
+//! Layout (Node tab):
 //!   ┌─ Neighbors ──────────┬─ Node Info ────────────────────────┐
 //!   │ ● fe80::1  -108 dBm  │ node      [::1]:5683               │
 //!   │                      │ status    connected                 │
 //!   │ ● fe80::2  -115 dBm  │ uptime    1h 23m                   │
 //!   │                      │ firmware  0.1.0                     │
 //!   ├──────────────────────┴───────────────────────────────────┤
-//!   │ LICHEN  [::1]:5683  connected  ↑↓/jk:nav  q:quit         │
+//!   │ [Node] [Radio]  [::1]:5683  ↑↓/jk:nav  Tab:switch  q:quit│
 //!   └──────────────────────────────────────────────────────────┘
 //!
-//! Keys: ↑↓/jk — navigate neighbors  q/Ctrl-C — quit
+//! Layout (Radio tab):
+//!   ┌─ Duty Cycle (1% / 1h rolling) ───────────────────────────┐
+//!   │ ████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░  5.42%     │
+//!   │ Budget: 34048 ms   Window: 60 min                         │
+//!   │ Refill: Budget available                                  │
+//!   ├─ TX Queue ───────────────────────────────────────────────┤
+//!   │ Depth: 6   Bytes: 484   Drain: 32 ms                     │
+//!   │ Control  1 █                                              │
+//!   │ Routing  2 ██                                             │
+//!   │ User     2 ██                                             │
+//!   │ Bulk     1 █                                              │
+//!   ├──────────────────────────────────────────────────────────┤
+//!   │ [Node] [Radio]  Tab:switch  q:quit                       │
+//!   └──────────────────────────────────────────────────────────┘
+//!
+//! Keys: ↑↓/jk — navigate neighbors  Tab — switch tab  q/Ctrl-C — quit
 
 mod coap;
+mod radio;
+mod rf_health;
 
 use ciborium::value::Value;
 use clap::Parser;
@@ -29,6 +46,8 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
     Terminal,
 };
+use radio::{render_radio_tab, RadioState};
+use rf_health::{render_rf_health, RfHealthState};
 use std::{io, net::SocketAddr, time::Duration};
 use tokio::sync::watch;
 
@@ -124,8 +143,9 @@ fn parse_neighbors(bytes: &[u8]) -> Vec<Neighbor> {
 
 async fn poll_node(node: SocketAddr) -> Result<NodeData, String> {
     let (sr, nr) = tokio::join!(coap::get(node, "status"), coap::get(node, "neighbors"));
-    if let (Err(e), Err(_)) = (&sr, &nr) {
-        return Err(e.clone());
+    // If both requests failed, return the status error (owned, no clone needed)
+    if sr.is_err() && nr.is_err() {
+        return Err(sr.unwrap_err());
     }
     Ok(NodeData {
         status: sr.ok().as_deref().map(parse_status).unwrap_or_default(),
@@ -134,6 +154,25 @@ async fn poll_node(node: SocketAddr) -> Result<NodeData, String> {
 }
 
 // ── app state ─────────────────────────────────────────────────────────────────
+
+/// Active tab in the TUI.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum Tab {
+    #[default]
+    Node,
+    Radio,
+    RfHealth,
+}
+
+impl Tab {
+    fn next(self) -> Self {
+        match self {
+            Tab::Node => Tab::Radio,
+            Tab::Radio => Tab::RfHealth,
+            Tab::RfHealth => Tab::Node,
+        }
+    }
+}
 
 enum ConnState {
     Connecting,
@@ -148,6 +187,12 @@ struct App {
     list_state: ListState,
     should_quit: bool,
     rx: watch::Receiver<Option<Result<NodeData, String>>>,
+    /// Current active tab.
+    tab: Tab,
+    /// Radio statistics state.
+    radio: RadioState,
+    /// RF health and neighbor monitoring state.
+    rf_health: RfHealthState,
 }
 
 impl App {
@@ -159,6 +204,9 @@ impl App {
             list_state: ListState::default(),
             should_quit: false,
             rx,
+            tab: Tab::default(),
+            radio: RadioState::new(),
+            rf_health: RfHealthState::demo(),
         }
     }
 
@@ -192,14 +240,19 @@ impl App {
             (KeyCode::Char('q'), _) | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
                 self.should_quit = true;
             }
-            (KeyCode::Down, _) | (KeyCode::Char('j'), _) => {
+            (KeyCode::Tab, _) => {
+                self.tab = self.tab.next();
+            }
+            (KeyCode::Down, _) | (KeyCode::Char('j'), _) if self.tab == Tab::Node => {
                 let n = self.data.neighbors.len();
                 if n > 0 {
                     let i = self.list_state.selected().unwrap_or(0);
                     self.list_state.select(Some((i + 1).min(n - 1)));
                 }
             }
-            (KeyCode::Up, _) | (KeyCode::Char('k'), _) if !self.data.neighbors.is_empty() => {
+            (KeyCode::Up, _) | (KeyCode::Char('k'), _)
+                if self.tab == Tab::Node && !self.data.neighbors.is_empty() =>
+            {
                 let i = self.list_state.selected().unwrap_or(0);
                 self.list_state.select(Some(i.saturating_sub(1)));
             }
@@ -211,6 +264,14 @@ impl App {
 // ── drawing ───────────────────────────────────────────────────────────────────
 
 fn ui(f: &mut ratatui::Frame, app: &mut App) {
+    match app.tab {
+        Tab::Node => render_node_tab(f, app),
+        Tab::Radio => render_radio_tab(f, f.area(), &mut app.radio),
+        Tab::RfHealth => render_rf_health(f, f.area(), &app.rf_health),
+    }
+}
+
+fn render_node_tab(f: &mut ratatui::Frame, app: &mut App) {
     let area = f.area();
     let outer = Layout::default()
         .direction(Direction::Vertical)
@@ -224,7 +285,7 @@ fn ui(f: &mut ratatui::Frame, app: &mut App) {
     // ── Neighbors pane ────────────────────────────────────────────────────────
     let neighbor_items: Vec<ListItem> = if app.data.neighbors.is_empty() {
         let msg = match &app.conn {
-            ConnState::Connecting => " Connecting…".into(),
+            ConnState::Connecting => " Connecting...".into(),
             ConnState::Connected => " No neighbors".into(),
             ConnState::Error(e) => format!(" {e}"),
         };
@@ -242,7 +303,7 @@ fn ui(f: &mut ratatui::Frame, app: &mut App) {
                     .map(|r| format!("{r:+} dBm"))
                     .unwrap_or_else(|| "? dBm".into());
                 ListItem::new(Line::from(vec![
-                    Span::styled("● ", Style::default().fg(Color::Green)),
+                    Span::styled("* ", Style::default().fg(Color::Green)),
                     Span::styled(
                         format!("{:<16}", truncate(&nb.addr, 16)),
                         Style::default().fg(Color::Cyan),
@@ -264,7 +325,7 @@ fn ui(f: &mut ratatui::Frame, app: &mut App) {
 
     // ── Node info pane ────────────────────────────────────────────────────────
     let conn_str = match &app.conn {
-        ConnState::Connecting => Span::styled("connecting…", Style::default().fg(Color::Yellow)),
+        ConnState::Connecting => Span::styled("connecting...", Style::default().fg(Color::Yellow)),
         ConnState::Connected => Span::styled("connected", Style::default().fg(Color::Green)),
         ConnState::Error(e) => Span::styled(truncate(e, 30), Style::default().fg(Color::Red)),
     };
@@ -273,13 +334,13 @@ fn ui(f: &mut ratatui::Frame, app: &mut App) {
         .status
         .uptime_secs
         .map(fmt_uptime)
-        .unwrap_or_else(|| "—".into());
+        .unwrap_or_else(|| "-".into());
     let firmware_str = app
         .data
         .status
         .firmware
         .as_deref()
-        .unwrap_or("—")
+        .unwrap_or("-")
         .to_owned();
 
     let info_text = vec![
@@ -324,14 +385,24 @@ fn ui(f: &mut ratatui::Frame, app: &mut App) {
     f.render_widget(info, body[1]);
 
     // ── Status bar ────────────────────────────────────────────────────────────
+    let tab_indicator = format!(
+        " [{}Node{}] [{}Radio{}] [{}RF{}] ",
+        if app.tab == Tab::Node { ">" } else { " " },
+        if app.tab == Tab::Node { "<" } else { " " },
+        if app.tab == Tab::Radio { ">" } else { " " },
+        if app.tab == Tab::Radio { "<" } else { " " },
+        if app.tab == Tab::RfHealth { ">" } else { " " },
+        if app.tab == Tab::RfHealth { "<" } else { " " },
+    );
     let status = Paragraph::new(Line::from(vec![
         Span::styled(
             " LICHEN ",
             Style::default().fg(Color::Black).bg(Color::Green),
         ),
-        Span::raw(format!("  {}  ", app.node)),
-        Span::styled("SF10/125kHz  ", Style::default().fg(Color::DarkGray)),
-        Span::styled("↑↓/jk", Style::default().fg(Color::Yellow)),
+        Span::styled(tab_indicator, Style::default().fg(Color::Cyan)),
+        Span::styled("Tab", Style::default().fg(Color::Yellow)),
+        Span::raw(":switch  "),
+        Span::styled("jk", Style::default().fg(Color::Yellow)),
         Span::raw(":nav  "),
         Span::styled("q", Style::default().fg(Color::Yellow)),
         Span::raw(":quit"),

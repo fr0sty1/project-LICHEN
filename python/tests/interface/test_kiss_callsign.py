@@ -3,7 +3,6 @@
 import pytest
 
 from lichen.interface.kiss.callsign import (
-    BROADCAST_CALL,
     LICHEN_PREFIX,
     SimplePeerLookup,
     broadcast_iid,

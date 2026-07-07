@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-usqf.1",
+  "title": "Validate R1 Neo battery ADC on physical hardware",
+  "description": "Why this exists: project-LICHEN-usqf can model R1 Neo VBAT on P0.31/AIN7 with Zephyr voltage-divider devicetree and simulated ADC tests, but actual divider routing, ratio accuracy, ADC calibration/noise, battery range, and board power behavior require a physical R1 Neo. What needs to be done: flash the R1 Neo gateway firmware, compare HAL-reported battery_voltage_mv against a trusted meter or bench supply across representative voltages, verify no PMIC/power-gpio behavior is missing, and adjust devicetree ratio/calibration if needed. Hardware required.",
+  "notes": "Blocked on physical R1 Neo hardware. No-hardware parent project-LICHEN-usqf models VBAT as a Zephyr voltage-divider on P0.31/AIN7 and validates conversion via ADC emulator, but actual divider routing, multiplier accuracy, ADC calibration/noise, battery range, and board power behavior require flashing a physical R1 Neo and comparing HAL-reported battery_voltage_mv to a meter or bench supply.",
+  "status": "blocked",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T02:30:45.318889Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T02:50:10.477856Z",
+  "labels": [
+    "zephyr",
+    "firmware",
+    "hal",
+    "battery",
+    "hardware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-usqf.1",
+      "depends_on_id": "project-LICHEN-usqf",
+      "type": "parent-child",
+      "created_at": "2026-07-02T02:30:45.319358Z"
+    }
+  ]
+}

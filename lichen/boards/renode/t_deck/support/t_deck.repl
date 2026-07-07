@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: The contributors to the LICHEN project
+//
+// LilyGO T-Deck board for Renode
+// ESP32-S3 + SX1262 + ST7789 display + keyboard + trackball
+// ponytail: display/keyboard/trackball are stubs - LoRa is the focus
+
+using "../../esp32s3_lichen/support/esp32s3_lichen.repl"
+
+// T-Deck peripheral power enable (GPIO10)
+// Firmware asserts this before using keyboard, display, SD, trackball, audio
+sysbus:
+    init add:
+        Tag <0x60004028 4> "GPIO10_PERIPH_PWR" 0x1
+
+// ST7789 display (240x320) on SPI3 CS1 (GPIO12)
+// DC=GPIO11, BL=GPIO42
+// Stubbed - no display emulation needed for LoRa testing
+sysbus:
+    init add:
+        Tag <0x60025000 0x100> "SPI3_ST7789_STUB"
+
+// Keyboard controller (I2C0 addr 0x55)
+// lilygo_tdeck_keyboard driver talks to this
+// Stubbed - returns no keypresses
+sysbus:
+    init add:
+        Tag <0x60026055 1> "I2C0_KEYBOARD_STUB"
+
+// Trackball (I2C1)
+// Stubbed - returns no movement
+sysbus:
+    init add:
+        Tag <0x60027000 0x100> "I2C1_TRACKBALL_STUB"
+
+// SD card on SPI3 CS2 (GPIO39)
+// Stubbed - not needed for LoRa testing
+sysbus:
+    init add:
+        Tag <0x60025100 0x100> "SPI3_SD_STUB"
+
+// Display backlight GPIO (GPIO42 = gpio1[10])
+// Active high, controlled by led0 alias in DTS
+sysbus:
+    init add:
+        Tag <0x6000410A 1> "GPIO42_LCD_BL"

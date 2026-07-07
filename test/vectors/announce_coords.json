@@ -1,0 +1,42 @@
+{
+  "format_version": 1,
+  "description": "Announce app_data Type=0x01 geographic coordinate encoding: signed big-endian e7 latitude and longitude. Coordinates are peer-owned announce metadata; receivers do not treat them as local position without explicit NETWORK-source approximation policy.",
+  "vectors": [
+    {
+      "name": "zero",
+      "description": "Equator and prime meridian.",
+      "latitude_degrees": 0.0,
+      "longitude_degrees": 0.0,
+      "latitude_e7": 0,
+      "longitude_e7": 0,
+      "encoded": "010000000000000000"
+    },
+    {
+      "name": "seattle_west_longitude",
+      "description": "Representative west-coast longitude that the previous int24 1e-5 format could not represent.",
+      "latitude_degrees": 47.6062,
+      "longitude_degrees": -122.3321,
+      "latitude_e7": 476062000,
+      "longitude_e7": -1223321000,
+      "encoded": "011c602130b7159a58"
+    },
+    {
+      "name": "positive_limits",
+      "description": "Maximum valid latitude and longitude.",
+      "latitude_degrees": 90.0,
+      "longitude_degrees": 180.0,
+      "latitude_e7": 900000000,
+      "longitude_e7": 1800000000,
+      "encoded": "0135a4e9006b49d200"
+    },
+    {
+      "name": "negative_limits",
+      "description": "Minimum valid latitude and longitude.",
+      "latitude_degrees": -90.0,
+      "longitude_degrees": -180.0,
+      "latitude_e7": -900000000,
+      "longitude_e7": -1800000000,
+      "encoded": "01ca5b170094b62e00"
+    }
+  ]
+}

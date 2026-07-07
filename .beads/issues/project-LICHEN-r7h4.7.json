@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-r7h4.7",
+  "title": "RenodeServer\u003c-\u003eSimulation time-model mismatch (BARRIER_SYNC stalls at t=0; duplicate RX delivery)",
+  "description": "The RenodeServer TCP bridge (python/src/lichen/sim/renode_server.py) uses a non-blocking RX_POLL and never puts a node into RX_WAIT. With the Simulation default TimeMode.BARRIER_SYNC, maybe_advance_time() only advances when a node is in RX_WAIT, so sim time stays at 0: transmissions never expire and get_rx_result() re-delivers the same packet on every poll (observed ~80+ duplicate rx_success for a single tx_id, though metrics dedup). In TimeMode.REALTIME time advances correctly, but the non-blocking bridge polls do not reliably fall inside a transmission's airtime window, so identical/lockstep nodes miss each other. Decide the correct time model for the Renode bridge (likely REALTIME with the RX poll integrated into airtime windows, or a bridge-driven RX_WAIT in barrier mode) and make 2-node RX deterministic. Relates to project-LICHEN-r7h4.6.",
+  "acceptance_criteria": "Documented time-model choice for the Renode bridge; a 2-node Renode run delivers each frame exactly once to the receiving firmware.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "claude@ec2.local",
+  "created_at": "2026-07-07T02:33:06.108200242Z",
+  "created_by": "Claude Code (EC2)",
+  "updated_at": "2026-07-07T02:33:06.108418257Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-r7h4.7",
+      "depends_on_id": "project-LICHEN-r7h4",
+      "type": "parent-child",
+      "created_at": "2026-07-07T02:33:06.108418056Z"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ow1e.249",
+  "title": "[CR] router.py: gpsr_forward validation order allows NaN/inf haversine calculation",
+  "description": "File: python/src/lichen/routing/router.py:511-518\n\nAfter analysis: This is NOT a bug. The code correctly catches NaN/inf:\n- NaN: -90 \u003c= nan returns False, so full expression is False, not False = True, returns None\n- inf: -90 \u003c= inf \u003c= 90 is False (inf \u003e 90), so returns None\n\nThe second check for isnan/isinf is actually unreachable given the first check. This is dead code.\n\nDowngrade to P3: Remove the unreachable isnan/isinf check as dead code, or reorder so NaN check comes first with a comment explaining why.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:16:36.406245Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:23:17.13028Z",
+  "closed_at": "2026-07-06T17:23:17.13028Z",
+  "close_reason": "Fixed: reordered NaN/inf check before range check to make behavior clearer",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.249",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T17:16:36.40678Z"
+    }
+  ]
+}

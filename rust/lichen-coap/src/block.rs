@@ -112,16 +112,10 @@ impl BlockOption {
 
 /// Convert block size to SZX exponent (rounds down).
 pub fn size_to_szx(size: usize) -> u8 {
-    match size {
-        0..=15 => 0,
-        16..=31 => 0,
-        32..=63 => 1,
-        64..=127 => 2,
-        128..=255 => 3,
-        256..=511 => 4,
-        512..=1023 => 5,
-        _ => 6,
+    if size < 16 {
+        return 0;
     }
+    ((size.ilog2() as u8).saturating_sub(4)).min(6)
 }
 
 /// Convert SZX exponent to block size.
@@ -341,8 +335,7 @@ impl BlockReceiver {
     /// Receive a block. Returns true if this completes the transfer.
     pub fn receive_block(&mut self, block: BlockOption, data: &[u8]) -> Result<bool, CoapError> {
         if block.num != self.expected_block {
-            // Out of order - for now, reject
-            return Err(CoapError::InvalidOptionDelta);
+            return Err(CoapError::BlockOutOfOrder);
         }
         let offset = block.offset();
         let needed = offset + data.len();
@@ -535,5 +528,17 @@ mod tests {
             BlockSender::new(&payload, 64),
             Err(CoapError::PayloadTooLarge)
         ));
+    }
+
+    #[test]
+    fn receiver_out_of_order_block() {
+        let mut receiver = BlockReceiver::new(64);
+
+        // Sending block 1 before block 0 should fail
+        let block1 = BlockOption::new(1, true, 2).unwrap();
+        assert_eq!(
+            receiver.receive_block(block1, &[1u8; 64]),
+            Err(CoapError::BlockOutOfOrder)
+        );
     }
 }

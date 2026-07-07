@@ -1,0 +1,28 @@
+:name: Heltec-WiFi-LoRa32-V3
+:description: Run LICHEN firmware on Heltec WiFi LoRa32 V3 in Renode
+
+$name?="Heltec-WiFi-LoRa32-V3"
+$simPort?=5555
+
+using sysbus
+
+# Load SX1262 peripheral
+include $ORIGIN/../../peripherals/SX1262.cs
+
+mach create $name
+machine LoadPlatformDescription $ORIGIN/heltec_wifi_lora32_v3.repl
+
+# Set SX1262 sim port
+spi2.sx1262 SimPort $simPort
+
+# UART0 console
+showAnalyzer uart0
+
+# 240 MHz
+cpu0 PerformanceInMips 240
+
+macro reset
+"""
+    sysbus LoadELF $elf
+"""
+runMacro $reset

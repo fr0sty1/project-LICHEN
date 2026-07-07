@@ -25,24 +25,23 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
+      - name: Install uv
+        run: pip install uv
+
       - name: Install dependencies
-        # Installed explicitly (rather than `pip install -e .`) to keep CI
-        # independent of packaging-metadata quirks; mirrors the documented
-        # local test setup.
-        run: >
-          pip install
-          pytest pytest-asyncio pytest-timeout httpx ruff
-          aiocoap anyio starlette uvicorn pynacl structlog cbor2
+        run: |
+          uv lock --check
+          uv sync --locked --all-extras --dev
 
       - name: Lint (ruff)
-        run: ruff check src tests
+        run: uv run ruff check src tests pyproject.toml
 
       - name: Tests
         # The full suite runs, including the integration tests (the BARRIER_SYNC
         # deadlock fgk and the half-duplex self-collision euj are both fixed).
         # The per-test timeout is a safety net so any new hang fails instead of
         # stalling the runner (thread method is async-safe).
-        run: PYTHONPATH=src pytest -q --timeout=120 --timeout-method=thread
+        run: uv run pytest -q --timeout=120 --timeout-method=thread
 
   rust:
     name: Rust
@@ -125,6 +124,11 @@ jobs:
         env:
           ZEPHYR_TOOLCHAIN_VARIANT: host
         run: west twister -T lichen/tests/meshtastic_codec -p native_sim --inline-logs
+
+      - name: Check Meshtastic payload guard (native_sim)
+        env:
+          ZEPHYR_TOOLCHAIN_VARIANT: host
+        run: scripts/zephyr-meshtastic-negative-builds.sh
 
   zephyr-hardware:
     name: Zephyr hardware targets

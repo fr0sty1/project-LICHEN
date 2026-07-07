@@ -42,6 +42,7 @@ use crate::error::{BufferTooSmall, TooShort};
 
 /// LOADng message parse error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum LoadngError {
     TooShort(TooShort),
     BufferTooSmall(BufferTooSmall),
@@ -227,8 +228,8 @@ impl RouteDiscovery<Idle> {
     }
 
     /// Start discovery and emit the first expanding-ring RREQ.
+    /// Typestate: Idle -> Searching (enforced by type signature)
     pub fn start(self) -> (RouteDiscovery<Searching>, Rreq) {
-        debug_assert!(RouteDiscoveryState::Idle.can_transition_to(RouteDiscoveryState::Searching));
         let searching = RouteDiscovery {
             originator: self.originator,
             destination: self.destination,
@@ -254,13 +255,11 @@ impl RouteDiscovery<Searching> {
     }
 
     /// Advance to the next expanding ring or fail if all rings are exhausted.
+    /// Typestate: Searching -> Searching (self-loop, enforced by type signature)
     pub fn advance_ring(self) -> Result<(Self, Rreq), RouteDiscovery<Failed>> {
         if self.ring_index + 1 >= EXPANDING_RING.len() {
             return Err(self.fail());
         }
-        debug_assert!(
-            RouteDiscoveryState::Searching.can_transition_to(RouteDiscoveryState::Searching)
-        );
         let next = Self {
             ring_index: self.ring_index + 1,
             ..self
@@ -270,8 +269,8 @@ impl RouteDiscovery<Searching> {
     }
 
     /// Mark discovery failed.
+    /// Typestate: Searching -> Failed (enforced by type signature)
     pub fn fail(self) -> RouteDiscovery<Failed> {
-        debug_assert!(RouteDiscoveryState::Searching.can_transition_to(RouteDiscoveryState::Failed));
         RouteDiscovery {
             originator: self.originator,
             destination: self.destination,
@@ -282,6 +281,7 @@ impl RouteDiscovery<Searching> {
     }
 
     /// Accept a matching RREP and move to the terminal replied state.
+    /// Typestate: Searching -> Replied (enforced by type signature)
     pub fn receive_rrep(self, rrep: Rrep) -> Result<RouteDiscovery<Replied>, LoadngError> {
         if rrep.originator != self.destination
             || rrep.destination != self.originator
@@ -289,9 +289,6 @@ impl RouteDiscovery<Searching> {
         {
             return Err(LoadngError::InvalidDiscoveryReply);
         }
-        debug_assert!(
-            RouteDiscoveryState::Searching.can_transition_to(RouteDiscoveryState::Replied)
-        );
         Ok(RouteDiscovery {
             originator: self.originator,
             destination: self.destination,

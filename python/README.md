@@ -31,6 +31,43 @@ lichen-tui --host localhost --port 4444 --sim default --node mynode
 
 The TUI gives you a terminal interface to send and receive packets. Press `c` to connect, type a message, hit Enter to transmit. Press `r` to listen for incoming packets.
 
+The simulator TUI and native LCI client are separate commands:
+
+```bash
+# Simulator node TUI
+lichen-tui --host localhost --port 4444 --sim default --node mynode
+
+# Native LCI client over IP/CoAP
+lichen-native-client --coap-base-uri 'coap://[fe80::1%25en0]'
+
+# Backward-compatible native-client alias
+lichen-native-tui --coap-base-uri 'coap://[fe80::1%25en0]'
+```
+
+Install the native client dependencies from the project checkout with:
+
+```bash
+cd python
+uv pip install -e ".[native-client]"
+```
+
+BLE support is optional and uses `bleak`:
+
+```bash
+uv pip install -e ".[native-client,ble]"
+```
+
+On macOS, the first BLE run may trigger the system Bluetooth permission prompt
+for the terminal app. On Linux, real BLE use requires a running BlueZ stack,
+adapter access for the user running the command, and any distribution-specific
+permissions for D-Bus Bluetooth APIs. The default automated tests do not require
+BLE hardware.
+
+Native LCI means IPv6 + CoAP, as specified in `../spec/11-lci.md`. The older
+CBOR integer-key draft under `../spec/lichen-native/` is retained as a legacy
+prototype protocol and is not the BLE, USB, serial, or IP app contract for new
+native clients.
+
 ## What's Implemented
 
 | Layer | Status | What It Does |
@@ -80,6 +117,31 @@ pytest -v
 pytest tests/sim/test_announce.py tests/sim/test_topology_scenarios.py -v
 ```
 
+### Native TUI and Client Tests Without Hardware
+
+The native client tests are designed to run on developer macOS and Linux CI
+without BLE adapters, radios, or firmware. Use deterministic fakes for BLE,
+IP/CoAP, Observe subscriptions, and TUI client state:
+
+```bash
+cd python
+uv run pytest tests/tui tests/client -q
+```
+
+The BLE tests under `tests/client/test_ble.py` use fake scanners and fake BLE
+clients. They must not require BlueZ adapter access or macOS CoreBluetooth
+hardware. Any future test that needs a real phone, adapter, board, or radio
+must be separated from this default suite behind an explicit hardware marker or
+environment gate, and the software fake path must remain the default CI path.
+
+Native TUI snapshot coverage is assertion-based rather than committed generated
+SVG files: tests export terminal screenshots and assert stable text for the
+connection state, inbox, compose, status, mesh, config, logs, and diagnostics
+screens.
+
+For the full host/transport support matrix and manual smoke-test procedure, see
+`../docs/python-native-tui-support.md`.
+
 Check open issues:
 ```bash
 bd ready        # See available work
@@ -105,7 +167,8 @@ src/lichen/
 - **Protocol spec:** `../spec/` — Full protocol documentation
 - **Architecture:** `../spec/01-architecture.md` — Design principles
 - **Routing:** `../spec/05-routing.md` — Multi-tier routing explained
-- **API docs:** Run `lichen-sim --help` and `lichen-tui --help`
+- **API docs:** Run `lichen-sim --help`, `lichen-tui --help`, and
+  `lichen-native-client --help`
 
 ## License
 

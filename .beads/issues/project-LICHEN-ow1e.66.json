@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-ow1e.66",
+  "title": "codec.py: BitReader.read() is O(n) per bit, could use byte-aligned fast path",
+  "description": "src/lichen/schc/codec.py:97-103 reads bits one at a time in a loop. For 128-bit IPv6 addresses, this means 128 loop iterations per field.\n\nA byte-aligned fast path or reading bytes at a time would be more efficient. Not critical since SCHC packets are small, but the per-bit loop is avoidable.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:36:54.26512Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T18:03:08.525373Z",
+  "closed_at": "2026-07-06T18:03:08.525373Z",
+  "close_reason": "Acceptable - SCHC residues are typically \u003c200 bits. Per-bit loop is simple and correct. Optimize when profiling shows bottleneck.",
+  "labels": [
+    "efficiency",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.66",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:36:54.265632Z"
+    }
+  ]
+}

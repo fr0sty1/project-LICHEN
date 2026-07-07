@@ -12,7 +12,9 @@
       "items": {
         "oneOf": [
           {"$ref": "#/definitions/schc_vector"},
+          {"$ref": "#/definitions/l2_payload_vector"},
           {"$ref": "#/definitions/frame_vector"},
+          {"$ref": "#/definitions/announce_coords_vector"},
           {"$ref": "#/definitions/meshtastic_app_compat_vector"},
           {"$ref": "#/definitions/meshcore_app_compat_vector"}
         ]
@@ -55,6 +57,39 @@
           "description": "Full uncompressed IPv6 datagram."},
         "compressed": {"$ref": "#/definitions/hex",
           "description": "SCHC output: leading rule-id byte + residue + tail."}
+      }
+    },
+    "announce_coords_vector": {
+      "type": "object",
+      "required": ["name", "latitude_degrees", "longitude_degrees", "latitude_e7", "longitude_e7", "encoded"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "latitude_degrees": {"type": "number", "minimum": -90, "maximum": 90},
+        "longitude_degrees": {"type": "number", "minimum": -180, "maximum": 180},
+        "latitude_e7": {"type": "integer", "minimum": -900000000, "maximum": 900000000},
+        "longitude_e7": {"type": "integer", "minimum": -1800000000, "maximum": 1800000000},
+        "encoded": {
+          "type": "string",
+          "pattern": "^01[0-9a-f]{16}$",
+          "description": "Announce app_data Type=0x01 bytes: type + signed big-endian lat_e7 + signed big-endian lon_e7."
+        }
+      }
+    },
+    "l2_payload_vector": {
+      "type": "object",
+      "required": ["name", "dispatch", "kind", "body", "wrapped"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "dispatch": {"type": "integer", "minimum": 0, "maximum": 255},
+        "kind": {"type": "string", "enum": ["schc", "routing", "unknown"]},
+        "body": {"$ref": "#/definitions/hex",
+          "description": "Payload bytes after the dispatch byte."},
+        "wrapped": {"$ref": "#/definitions/hex",
+          "description": "Authenticated link inner payload: dispatch byte + body."}
       }
     },
     "frame_vector": {
@@ -111,6 +146,29 @@
           }
         },
         {
+          "if": {
+            "properties": {
+              "name": {
+                "enum": [
+                  "want_config_stage_69420",
+                  "legacy_full_sync_unknown_nonce"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "expect": {
+                "required": [
+                  "from_radio_sequence",
+                  "config_sections",
+                  "terminal_from_radio"
+                ]
+              }
+            }
+          }
+        },
+        {
           "if": {"properties": {"message": {"enum": ["invalid_stream_framing", "oversized"]}}},
           "then": {
             "properties": {
@@ -159,7 +217,7 @@
           "if": {
             "properties": {
               "protobuf": {"const": "FromRadio"},
-              "message": {"enum": ["moduleConfig", "region_presets"]}
+              "message": {"enum": ["config", "moduleConfig", "region_presets"]}
             }
           },
           "then": {
@@ -234,6 +292,58 @@
               "items": {"type": "string"},
               "minItems": 1
             },
+            "config_sections": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["section", "oneof_field", "payload", "fields"],
+                "additionalProperties": false,
+                "properties": {
+                  "section": {"type": "string"},
+                  "oneof_field": {"type": "integer", "minimum": 1},
+                  "payload": {"$ref": "#/definitions/hex"},
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["field", "wire_type", "value"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "field": {"type": "integer", "minimum": 1},
+                        "wire_type": {"type": "string", "enum": ["varint"]},
+                        "value": {"type": "integer", "minimum": 0}
+                      }
+                    },
+                    "minItems": 1
+                  }
+                }
+              },
+              "minItems": 1
+            },
+            "config_section": {
+              "type": "object",
+              "required": ["section", "oneof_field", "payload", "fields"],
+              "additionalProperties": false,
+              "properties": {
+                "section": {"type": "string"},
+                "oneof_field": {"type": "integer", "minimum": 1},
+                "payload": {"$ref": "#/definitions/hex"},
+                "fields": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["field", "wire_type", "value"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "field": {"type": "integer", "minimum": 1},
+                      "wire_type": {"type": "string", "enum": ["varint"]},
+                      "value": {"type": "integer", "minimum": 0}
+                    }
+                  },
+                  "minItems": 1
+                }
+              }
+            },
             "max_to_radio_bytes": {"type": "integer", "minimum": 1},
             "must_not_require_before_sync": {"type": "boolean"},
             "byte_order": {"type": "string", "enum": ["little-endian"]},
@@ -299,8 +409,10 @@
           "additionalProperties": true,
           "properties": {
             "adapter_test": {"type": "boolean"},
+            "compat_store": {"type": "string"},
             "drift_note": {"type": "string"},
             "emitted_by": {"type": "string"},
+            "fixture": {"type": "string"},
             "inner_frame": {"$ref": "#/definitions/hex"},
             "preceded_by": {"type": "string"},
             "response_len": {"type": "integer", "minimum": 0},

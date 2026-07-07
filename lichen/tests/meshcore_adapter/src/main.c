@@ -32,20 +32,35 @@ struct out_slot {
 
 struct test_ctx {
 	struct out_slot out[OUT_DEPTH];
+	struct lichen_meshcore_compat_settings settings;
 	size_t count;
 	size_t limit;
 	uint8_t submit_channel;
 	uint8_t submit_text_type;
+	uint8_t submit_to_iid[8];
 	uint8_t submit_payload[LICHEN_MESHCORE_FRAME_MAX];
 	size_t submit_payload_len;
 	uint32_t submit_count;
+	uint32_t persist_count;
+	uint32_t applied_pin;
+	uint32_t apply_pin_count;
 	int submit_ret;
+	int apply_pin_ret;
+	int persist_ret;
+	int enqueue_ret;
+	bool submit_has_to_iid;
+	bool resolve_match;
+	bool resolve_collision;
+	struct lichen_meshcore_compat_settings persisted_settings;
 };
 
 static int enqueue_cb(const uint8_t *frame, size_t len, void *user_data)
 {
 	struct test_ctx *ctx = user_data;
 
+	if (ctx != NULL && ctx->enqueue_ret < 0) {
+		return ctx->enqueue_ret;
+	}
 	if (frame == NULL || len == 0U || len > sizeof(ctx->out[0].data)) {
 		return -EINVAL;
 	}
@@ -56,6 +71,22 @@ static int enqueue_cb(const uint8_t *frame, size_t len, void *user_data)
 	memcpy(ctx->out[ctx->count].data, frame, len);
 	ctx->out[ctx->count].len = len;
 	ctx->count++;
+	return 0;
+}
+
+static int persist_settings_cb(
+	const struct lichen_meshcore_compat_settings *settings, void *user_data)
+{
+	struct test_ctx *ctx = user_data;
+
+	if (ctx == NULL || settings == NULL) {
+		return -EINVAL;
+	}
+	ctx->persist_count++;
+	if (ctx->persist_ret < 0) {
+		return ctx->persist_ret;
+	}
+	ctx->persisted_settings = *settings;
 	return 0;
 }
 
@@ -70,7 +101,8 @@ static uint32_t tx_free_cb(void *user_data)
 }
 
 static int submit_text_cb(uint8_t channel, uint8_t text_type,
-			  const uint8_t *payload, size_t payload_len,
+			  const uint8_t *to_iid, const uint8_t *payload,
+			  size_t payload_len,
 			  void *user_data)
 {
 	struct test_ctx *ctx = user_data;
@@ -85,11 +117,54 @@ static int submit_text_cb(uint8_t channel, uint8_t text_type,
 
 	ctx->submit_channel = channel;
 	ctx->submit_text_type = text_type;
+	ctx->submit_has_to_iid = to_iid != NULL;
+	if (to_iid != NULL) {
+		memcpy(ctx->submit_to_iid, to_iid, sizeof(ctx->submit_to_iid));
+	}
 	ctx->submit_payload_len = payload_len;
 	if (payload_len > 0U) {
 		memcpy(ctx->submit_payload, payload, payload_len);
 	}
 	ctx->submit_count++;
+	return 0;
+}
+
+static int resolve_peer_prefix_cb(const uint8_t prefix[6], uint8_t to_iid[8],
+				  void *user_data)
+{
+	struct test_ctx *ctx = user_data;
+	const uint8_t known_prefix[6] = { 0x01, 0x02, 0x03,
+					  0x04, 0x05, 0x06 };
+	const uint8_t known_iid[8] = { 0x00, 0xaa, 0x01, 0x02,
+				       0x03, 0x04, 0x05, 0x06 };
+
+	if (ctx == NULL || prefix == NULL || to_iid == NULL) {
+		return -EINVAL;
+	}
+	if (ctx->resolve_collision) {
+		return -ENOENT;
+	}
+	if (!ctx->resolve_match ||
+	    memcmp(prefix, known_prefix, sizeof(known_prefix)) != 0) {
+		return -ENOENT;
+	}
+
+	memcpy(to_iid, known_iid, sizeof(known_iid));
+	return 0;
+}
+
+static int apply_pin_cb(uint32_t pin, void *user_data)
+{
+	struct test_ctx *ctx = user_data;
+
+	if (ctx == NULL) {
+		return -EINVAL;
+	}
+	if (ctx->apply_pin_ret < 0) {
+		return ctx->apply_pin_ret;
+	}
+	ctx->applied_pin = pin;
+	ctx->apply_pin_count++;
 	return 0;
 }
 
@@ -99,6 +174,9 @@ static void init_adapter(struct lichen_meshcore_adapter *adapter,
 	const struct lichen_meshcore_adapter_ops ops = {
 		.enqueue_tx = enqueue_cb,
 		.tx_free = tx_free_cb,
+		.resolve_peer_prefix = resolve_peer_prefix_cb,
+		.apply_pin = apply_pin_cb,
+		.compat_settings = &ctx->settings,
 		.user_data = ctx,
 	};
 
@@ -114,6 +192,9 @@ static void init_adapter_with_submit(struct lichen_meshcore_adapter *adapter,
 		.enqueue_tx = enqueue_cb,
 		.tx_free = tx_free_cb,
 		.submit_text = submit_text_cb,
+		.resolve_peer_prefix = resolve_peer_prefix_cb,
+		.apply_pin = apply_pin_cb,
+		.compat_settings = &ctx->settings,
 		.user_data = ctx,
 	};
 
@@ -128,11 +209,50 @@ static void init_adapter_with_submit_no_tx_free(
 	const struct lichen_meshcore_adapter_ops ops = {
 		.enqueue_tx = enqueue_cb,
 		.submit_text = submit_text_cb,
+		.resolve_peer_prefix = resolve_peer_prefix_cb,
+		.apply_pin = apply_pin_cb,
+		.compat_settings = &ctx->settings,
 		.user_data = ctx,
 	};
 
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->limit = OUT_DEPTH;
+	lichen_meshcore_adapter_init(adapter, &ops);
+}
+
+static void init_adapter_with_submit_no_resolver(
+	struct lichen_meshcore_adapter *adapter, struct test_ctx *ctx,
+	size_t limit)
+{
+	const struct lichen_meshcore_adapter_ops ops = {
+		.enqueue_tx = enqueue_cb,
+		.tx_free = tx_free_cb,
+		.submit_text = submit_text_cb,
+		.apply_pin = apply_pin_cb,
+		.compat_settings = &ctx->settings,
+		.user_data = ctx,
+	};
+
+	memset(ctx, 0, sizeof(*ctx));
+	ctx->limit = limit;
+	lichen_meshcore_adapter_init(adapter, &ops);
+}
+
+static void init_adapter_with_persistence(struct lichen_meshcore_adapter *adapter,
+					  struct test_ctx *ctx, size_t limit)
+{
+	const struct lichen_meshcore_adapter_ops ops = {
+		.enqueue_tx = enqueue_cb,
+		.tx_free = tx_free_cb,
+		.resolve_peer_prefix = resolve_peer_prefix_cb,
+		.apply_pin = apply_pin_cb,
+		.compat_settings = &ctx->settings,
+		.user_data = ctx,
+		.persist_settings = persist_settings_cb,
+	};
+
+	memset(ctx, 0, sizeof(*ctx));
+	ctx->limit = limit;
 	lichen_meshcore_adapter_init(adapter, &ops);
 }
 
@@ -144,6 +264,13 @@ static void expect_error(const struct test_ctx *ctx, size_t slot, uint8_t err)
 	zassert_equal(ctx->out[slot].data[1], err);
 }
 
+static void expect_ok(const struct test_ctx *ctx, size_t slot)
+{
+	zassert_true(slot < ctx->count);
+	zassert_equal(ctx->out[slot].len, 1U);
+	zassert_equal(ctx->out[slot].data[0], LICHEN_MESHCORE_RESP_OK);
+}
+
 static void expect_bytes(const struct test_ctx *ctx, size_t slot,
 			 const uint8_t *expected, size_t expected_len)
 {
@@ -151,6 +278,27 @@ static void expect_bytes(const struct test_ctx *ctx, size_t slot,
 	zassert_equal(ctx->out[slot].len, expected_len, "slot %zu length", slot);
 	zassert_mem_equal(ctx->out[slot].data, expected, expected_len,
 			  "slot %zu bytes", slot);
+}
+
+static void fill_channel_body(uint8_t body[LICHEN_MESHCORE_CHANNEL_BODY_LEN],
+			      const char *name)
+{
+	memset(body, 0, LICHEN_MESHCORE_CHANNEL_BODY_LEN);
+	body[0] = 0U;
+	memcpy(&body[1], name, strlen(name));
+}
+
+static void fill_default_flood(uint8_t payload[
+	LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN +
+	LICHEN_MESHCORE_DEFAULT_FLOOD_KEY_LEN], const char *name)
+{
+	memset(payload, 0, LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN +
+		       LICHEN_MESHCORE_DEFAULT_FLOOD_KEY_LEN);
+	memcpy(payload, name, strlen(name));
+	for (uint8_t i = 0U; i < LICHEN_MESHCORE_DEFAULT_FLOOD_KEY_LEN; i++) {
+		payload[LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN + i] =
+			(uint8_t)(0xa0U + i);
+	}
 }
 
 #if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
@@ -186,15 +334,24 @@ ZTEST(meshcore_adapter, test_canonical_app_compat_vectors)
 
 	Z_TEST_SKIP_IFDEF(CONFIG_LICHEN_APP_IDENTITY);
 
-	zassert_equal(MESHCORE_VECTOR_SOURCE_COUNT, 33U);
+	zassert_equal(MESHCORE_VECTOR_SOURCE_COUNT, 38U);
 	zassert_equal(MESHCORE_VECTOR_ADAPTER_COUNT,
 		      ARRAY_SIZE(meshcore_vectors));
-	zassert_equal(MESHCORE_VECTOR_ADAPTER_COUNT, 27U);
+	zassert_equal(MESHCORE_VECTOR_ADAPTER_COUNT, 32U);
 
 	for (size_t i = 0U; i < ARRAY_SIZE(meshcore_vectors); i++) {
 		const struct meshcore_vector *v = &meshcore_vectors[i];
 
-		init_adapter(&adapter, &ctx, OUT_DEPTH);
+		if (strcmp(v->fixture, "direct-known-peer") == 0) {
+			init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+			ctx.resolve_match = true;
+		} else if (strcmp(v->fixture, "direct-colliding-peers") == 0) {
+			init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+			ctx.resolve_match = true;
+			ctx.resolve_collision = true;
+		} else {
+			init_adapter(&adapter, &ctx, OUT_DEPTH);
+		}
 		zassert_equal(lichen_meshcore_adapter_process_raw(
 				      &adapter, v->request, v->request_len),
 			      0, "%s dispatch failed", v->name);
@@ -204,6 +361,27 @@ ZTEST(meshcore_adapter, test_canonical_app_compat_vectors)
 		if (v->response_count == 2U) {
 			expect_bytes(&ctx, 1U, v->response1,
 				     v->response1_len);
+		}
+		if (strcmp(v->fixture, "direct-known-peer") == 0) {
+			const uint8_t expected_iid[8] = {
+				0x00, 0xaa, 0x01, 0x02,
+				0x03, 0x04, 0x05, 0x06,
+			};
+
+			zassert_equal(ctx.submit_count, 1U,
+				      "%s submit count", v->name);
+			zassert_true(ctx.submit_has_to_iid,
+				     "%s direct IID missing", v->name);
+			zassert_mem_equal(ctx.submit_to_iid, expected_iid,
+					  sizeof(expected_iid),
+					  "%s direct IID", v->name);
+			zassert_equal(ctx.submit_payload_len, 2U,
+				      "%s payload length", v->name);
+			zassert_mem_equal(ctx.submit_payload, "hi", 2U,
+					  "%s payload", v->name);
+		} else if (strcmp(v->fixture, "direct-colliding-peers") == 0) {
+			zassert_equal(ctx.submit_count, 0U,
+				      "%s should not submit", v->name);
 		}
 	}
 }
@@ -408,6 +586,388 @@ ZTEST(meshcore_adapter, test_phase1_startup_read_commands)
 	zassert_equal(ctx.out[0].len, 1U);
 }
 
+ZTEST(meshcore_adapter, test_compat_settings_round_trip)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	uint8_t channel_set[1U + LICHEN_MESHCORE_CHANNEL_BODY_LEN];
+	uint8_t channel_body[LICHEN_MESHCORE_CHANNEL_BODY_LEN];
+	uint8_t flood_set[1U + LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN +
+			  LICHEN_MESHCORE_DEFAULT_FLOOD_KEY_LEN];
+	uint8_t flood_payload[LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN +
+			      LICHEN_MESHCORE_DEFAULT_FLOOD_KEY_LEN];
+	const uint8_t set_name[] = {
+		LICHEN_MESHCORE_CMD_SET_ADVERT_NAME, 'F', 'i', 'e', 'l', 'd',
+	};
+	const uint8_t app_start[] = { LICHEN_MESHCORE_CMD_APP_START,
+				      0, 0, 0, 0, 0, 0, 0, 't' };
+	const uint8_t device_query[] = { LICHEN_MESHCORE_CMD_DEVICE_QUERY, 0x03 };
+	const uint8_t get_channel[] = { LICHEN_MESHCORE_CMD_GET_CHANNEL, 0x00 };
+	const uint8_t set_autoadd[] = {
+		LICHEN_MESHCORE_CMD_SET_AUTOADD_CONFIG, 0x01, 0x02,
+	};
+	const uint8_t get_autoadd[] = { LICHEN_MESHCORE_CMD_GET_AUTOADD_CONFIG };
+	const uint8_t get_flood[] = {
+		LICHEN_MESHCORE_CMD_GET_DEFAULT_FLOOD_SCOPE,
+	};
+	const uint8_t clear_flood[] = {
+		LICHEN_MESHCORE_CMD_SET_DEFAULT_FLOOD_SCOPE,
+	};
+	const uint8_t set_pin[] = {
+		LICHEN_MESHCORE_CMD_SET_DEVICE_PIN, 0x40, 0xe2, 0x01, 0x00,
+	};
+	size_t slot = 0U;
+
+	fill_channel_body(channel_body, "Field");
+	channel_set[0] = LICHEN_MESHCORE_CMD_SET_CHANNEL;
+	memcpy(&channel_set[1], channel_body, sizeof(channel_body));
+	fill_default_flood(flood_payload, "FieldScope");
+	flood_set[0] = LICHEN_MESHCORE_CMD_SET_DEFAULT_FLOOD_SCOPE;
+	memcpy(&flood_set[1], flood_payload, sizeof(flood_payload));
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, set_name,
+							  sizeof(set_name)), 0);
+	expect_ok(&ctx, slot++);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, app_start,
+							  sizeof(app_start)), 0);
+	zassert_mem_equal(&ctx.out[slot].data[SELF_INFO_NAME_OFF], "Field", 5U);
+	slot++;
+
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter,
+							  channel_set,
+							  sizeof(channel_set)), 0);
+	expect_ok(&ctx, slot++);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, get_channel,
+							  sizeof(get_channel)), 0);
+	zassert_equal(ctx.out[slot].len,
+		      1U + LICHEN_MESHCORE_CHANNEL_BODY_LEN);
+	zassert_mem_equal(&ctx.out[slot].data[1], channel_body,
+			  sizeof(channel_body));
+	slot++;
+
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, set_autoadd,
+							  sizeof(set_autoadd)), 0);
+	expect_ok(&ctx, slot++);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, get_autoadd,
+							  sizeof(get_autoadd)), 0);
+	expect_bytes(&ctx, slot++,
+		     (const uint8_t[]){ LICHEN_MESHCORE_RESP_AUTOADD_CONFIG,
+					0x01, 0x02 },
+		     3U);
+
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, flood_set,
+							  sizeof(flood_set)), 0);
+	expect_ok(&ctx, slot++);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, get_flood,
+							  sizeof(get_flood)), 0);
+	zassert_equal(ctx.out[slot].len, 1U + sizeof(flood_payload));
+	zassert_equal(ctx.out[slot].data[0],
+		      LICHEN_MESHCORE_RESP_DEFAULT_FLOOD_SCOPE);
+	zassert_mem_equal(&ctx.out[slot].data[1], flood_payload,
+			  sizeof(flood_payload));
+	slot++;
+	ctx.count = 0U;
+	slot = 0U;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, clear_flood,
+							  sizeof(clear_flood)), 0);
+	expect_ok(&ctx, slot++);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, get_flood,
+							  sizeof(get_flood)), 0);
+	expect_bytes(&ctx, slot++,
+		     (const uint8_t[]){ LICHEN_MESHCORE_RESP_DEFAULT_FLOOD_SCOPE },
+		     1U);
+
+	ctx.count = 0U;
+	slot = 0U;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, set_pin,
+							  sizeof(set_pin)), 0);
+	expect_ok(&ctx, slot++);
+	zassert_equal(ctx.apply_pin_count, 1U);
+	zassert_equal(ctx.applied_pin, 123456U);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter,
+							  device_query,
+							  sizeof(device_query)), 0);
+	zassert_equal(sys_get_le32(&ctx.out[slot].data[4]), 123456U);
+	zassert_mem_equal(&ctx.out[slot].data[DEVICE_INFO_MODEL_OFF], "Field",
+			  5U);
+}
+
+ZTEST(meshcore_adapter, test_compat_settings_survive_adapter_reset)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	uint8_t channel_set[1U + LICHEN_MESHCORE_CHANNEL_BODY_LEN];
+	uint8_t channel_body[LICHEN_MESHCORE_CHANNEL_BODY_LEN];
+	uint8_t flood_set[1U + LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN +
+			  LICHEN_MESHCORE_DEFAULT_FLOOD_KEY_LEN];
+	uint8_t flood_payload[LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN +
+			      LICHEN_MESHCORE_DEFAULT_FLOOD_KEY_LEN];
+	const uint8_t set_name[] = {
+		LICHEN_MESHCORE_CMD_SET_ADVERT_NAME, 'R', 'e', 's', 'e', 't',
+	};
+	const uint8_t app_start[] = { LICHEN_MESHCORE_CMD_APP_START,
+				      0, 0, 0, 0, 0, 0, 0, 't' };
+	const uint8_t get_channel[] = { LICHEN_MESHCORE_CMD_GET_CHANNEL, 0x00 };
+	const uint8_t set_autoadd[] = {
+		LICHEN_MESHCORE_CMD_SET_AUTOADD_CONFIG, 0x01, 0x00,
+	};
+	const uint8_t get_autoadd[] = { LICHEN_MESHCORE_CMD_GET_AUTOADD_CONFIG };
+	const uint8_t get_flood[] = {
+		LICHEN_MESHCORE_CMD_GET_DEFAULT_FLOOD_SCOPE,
+	};
+	const uint8_t set_pin[] = {
+		LICHEN_MESHCORE_CMD_SET_DEVICE_PIN, 0x40, 0xe2, 0x01, 0x00,
+	};
+	const uint8_t device_query[] = { LICHEN_MESHCORE_CMD_DEVICE_QUERY, 0x03 };
+	size_t slot = 0U;
+
+	fill_channel_body(channel_body, "Reset");
+	channel_set[0] = LICHEN_MESHCORE_CMD_SET_CHANNEL;
+	memcpy(&channel_set[1], channel_body, sizeof(channel_body));
+	fill_default_flood(flood_payload, "ResetScope");
+	flood_set[0] = LICHEN_MESHCORE_CMD_SET_DEFAULT_FLOOD_SCOPE;
+	memcpy(&flood_set[1], flood_payload, sizeof(flood_payload));
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, set_name,
+							  sizeof(set_name)), 0);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, set_autoadd,
+							  sizeof(set_autoadd)), 0);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, channel_set,
+							  sizeof(channel_set)), 0);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, flood_set,
+							  sizeof(flood_set)), 0);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, set_pin,
+							  sizeof(set_pin)), 0);
+
+	lichen_meshcore_adapter_reset(&adapter);
+	ctx.count = 0U;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, app_start,
+							  sizeof(app_start)), 0);
+	zassert_mem_equal(&ctx.out[slot].data[SELF_INFO_NAME_OFF], "Reset", 5U);
+	slot++;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, get_channel,
+							  sizeof(get_channel)), 0);
+	zassert_mem_equal(&ctx.out[slot].data[1], channel_body,
+			  sizeof(channel_body));
+	slot++;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, get_autoadd,
+							  sizeof(get_autoadd)), 0);
+	expect_bytes(&ctx, slot++,
+		     (const uint8_t[]){ LICHEN_MESHCORE_RESP_AUTOADD_CONFIG,
+					0x01, 0x00 },
+		     3U);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, get_flood,
+							  sizeof(get_flood)), 0);
+	zassert_mem_equal(&ctx.out[slot].data[1], flood_payload,
+			  sizeof(flood_payload));
+	slot++;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter,
+							  device_query,
+							  sizeof(device_query)), 0);
+	zassert_equal(sys_get_le32(&ctx.out[slot].data[4]), 123456U);
+
+	lichen_meshcore_compat_settings_reset(&ctx.settings);
+	ctx.count = 0U;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, get_autoadd,
+							  sizeof(get_autoadd)), 0);
+	expect_bytes(&ctx, 0U,
+		     (const uint8_t[]){ LICHEN_MESHCORE_RESP_AUTOADD_CONFIG,
+					0x00, 0x00 },
+		     3U);
+}
+
+ZTEST(meshcore_adapter, test_compat_settings_persist_failure_is_atomic)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t set_name[] = {
+		LICHEN_MESHCORE_CMD_SET_ADVERT_NAME, 'F', 'a', 'i', 'l',
+	};
+
+	init_adapter_with_persistence(&adapter, &ctx, OUT_DEPTH);
+	ctx.persist_ret = -ENOSPC;
+
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, set_name,
+							  sizeof(set_name)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_TABLE_FULL);
+	zassert_equal(ctx.persist_count, 1U);
+	zassert_false(ctx.settings.advert_name_valid);
+	zassert_false(ctx.persisted_settings.advert_name_valid);
+}
+
+ZTEST(meshcore_adapter, test_compat_settings_ack_failure_keeps_durable_commit)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t set_name[] = {
+		LICHEN_MESHCORE_CMD_SET_ADVERT_NAME, 'S', 'a', 'v', 'e', 'd',
+	};
+
+	init_adapter_with_persistence(&adapter, &ctx, OUT_DEPTH);
+	ctx.enqueue_ret = -ENOTCONN;
+
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, set_name,
+							  sizeof(set_name)),
+		      -ENOTCONN);
+	zassert_equal(ctx.persist_count, 1U);
+	zassert_true(ctx.settings.advert_name_valid);
+	zassert_mem_equal(ctx.settings.advert_name, "Saved", 5U);
+	zassert_true(ctx.persisted_settings.advert_name_valid);
+	zassert_mem_equal(ctx.persisted_settings.advert_name, "Saved", 5U);
+	zassert_equal(ctx.count, 0U);
+}
+
+ZTEST(meshcore_adapter, test_factory_reset_clears_compat_settings)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t set_name[] = {
+		LICHEN_MESHCORE_CMD_SET_ADVERT_NAME, 'C', 'l', 'e', 'a', 'r',
+	};
+	const uint8_t set_pin[] = {
+		LICHEN_MESHCORE_CMD_SET_DEVICE_PIN, 0xf1, 0xfb, 0x09, 0x00,
+	};
+	const uint8_t factory_reset[] = {
+		LICHEN_MESHCORE_CMD_FACTORY_RESET,
+	};
+
+	init_adapter_with_persistence(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, set_name,
+							  sizeof(set_name)), 0);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, set_pin,
+							  sizeof(set_pin)), 0);
+	zassert_true(ctx.settings.advert_name_valid);
+	zassert_true(ctx.settings.device_pin_valid);
+	zassert_equal(ctx.applied_pin, 654321U);
+
+	ctx.count = 0U;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter,
+							  factory_reset,
+							  sizeof(factory_reset)),
+		      0);
+	expect_ok(&ctx, 0U);
+	zassert_false(ctx.settings.advert_name_valid);
+	zassert_false(ctx.settings.device_pin_valid);
+	zassert_false(ctx.persisted_settings.advert_name_valid);
+	zassert_false(ctx.persisted_settings.device_pin_valid);
+	zassert_equal(ctx.applied_pin, 0U);
+}
+
+ZTEST(meshcore_adapter, test_compat_settings_validation_is_atomic)
+{
+	struct lichen_meshcore_adapter adapter;
+	struct test_ctx ctx;
+	const uint8_t set_name[] = {
+		LICHEN_MESHCORE_CMD_SET_ADVERT_NAME, 'o', 'k',
+	};
+	const uint8_t bad_name[] = {
+		LICHEN_MESHCORE_CMD_SET_ADVERT_NAME, 'b', 0x00, 'd',
+	};
+	uint8_t too_long_name[1U + LICHEN_MESHCORE_ADVERT_NAME_MAX] = {
+		LICHEN_MESHCORE_CMD_SET_ADVERT_NAME,
+	};
+	const uint8_t app_start[] = { LICHEN_MESHCORE_CMD_APP_START,
+				      0, 0, 0, 0, 0, 0, 0, 't' };
+	const uint8_t bad_channel_short[] = {
+		LICHEN_MESHCORE_CMD_SET_CHANNEL, 0x00,
+	};
+	uint8_t secret_channel16[1U + LICHEN_MESHCORE_CHANNEL_BODY_LEN] = {
+		LICHEN_MESHCORE_CMD_SET_CHANNEL,
+	};
+	uint8_t secret_channel32[1U + 65U] = {
+		LICHEN_MESHCORE_CMD_SET_CHANNEL,
+	};
+	const uint8_t bad_channel_index[1U + LICHEN_MESHCORE_CHANNEL_BODY_LEN] = {
+		LICHEN_MESHCORE_CMD_SET_CHANNEL, 0x01,
+	};
+	const uint8_t bad_autoadd[] = {
+		LICHEN_MESHCORE_CMD_SET_AUTOADD_CONFIG, 0x01,
+	};
+	const uint8_t bad_flood[] = {
+		LICHEN_MESHCORE_CMD_SET_DEFAULT_FLOOD_SCOPE, 0x03,
+	};
+	uint8_t bad_flood_name[1U + LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN +
+			       LICHEN_MESHCORE_DEFAULT_FLOOD_KEY_LEN] = {
+		LICHEN_MESHCORE_CMD_SET_DEFAULT_FLOOD_SCOPE,
+	};
+	const uint8_t bad_pin[] = {
+		LICHEN_MESHCORE_CMD_SET_DEVICE_PIN, 0x39, 0x30, 0x00, 0x00,
+	};
+	const uint8_t good_pin[] = {
+		LICHEN_MESHCORE_CMD_SET_DEVICE_PIN, 0x40, 0xe2, 0x01, 0x00,
+	};
+	const uint8_t disable_pin[] = {
+		LICHEN_MESHCORE_CMD_SET_DEVICE_PIN, 0x00, 0x00, 0x00, 0x00,
+	};
+
+	memset(&too_long_name[1], 'x', sizeof(too_long_name) - 1U);
+	secret_channel16[1U + 33U] = 0x01U;
+	memset(&bad_flood_name[1], 'n',
+	       LICHEN_MESHCORE_DEFAULT_FLOOD_NAME_LEN);
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, set_name,
+							  sizeof(set_name)), 0);
+	expect_ok(&ctx, 0U);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, bad_name,
+							  sizeof(bad_name)), 0);
+	expect_error(&ctx, 1U, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter,
+							  too_long_name,
+							  sizeof(too_long_name)), 0);
+	expect_error(&ctx, 2U, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, app_start,
+							  sizeof(app_start)), 0);
+	zassert_mem_equal(&ctx.out[3].data[SELF_INFO_NAME_OFF], "ok", 2U);
+
+	ctx.count = 0U;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter,
+							  bad_channel_short,
+							  sizeof(bad_channel_short)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter,
+							  secret_channel16,
+							  sizeof(secret_channel16)), 0);
+	expect_error(&ctx, 1U, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter,
+							  secret_channel32,
+							  sizeof(secret_channel32)), 0);
+	expect_error(&ctx, 2U, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter,
+							  bad_channel_index,
+							  sizeof(bad_channel_index)), 0);
+	expect_error(&ctx, 3U, LICHEN_MESHCORE_ERR_NOT_FOUND);
+
+	ctx.count = 0U;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, bad_autoadd,
+							  sizeof(bad_autoadd)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, bad_flood,
+							  sizeof(bad_flood)), 0);
+	expect_error(&ctx, 1U, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter,
+							  bad_flood_name,
+							  sizeof(bad_flood_name)), 0);
+	expect_error(&ctx, 2U, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, bad_pin,
+							  sizeof(bad_pin)), 0);
+	expect_error(&ctx, 3U, LICHEN_MESHCORE_ERR_ILLEGAL_ARG);
+	ctx.apply_pin_ret = -EIO;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, good_pin,
+							  sizeof(good_pin)), 0);
+	expect_error(&ctx, 4U, LICHEN_MESHCORE_ERR_BAD_STATE);
+	zassert_false(ctx.settings.device_pin_valid);
+	ctx.count = 0U;
+	ctx.apply_pin_ret = 0;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, disable_pin,
+							  sizeof(disable_pin)), 0);
+	expect_ok(&ctx, 0U);
+	zassert_true(ctx.settings.device_pin_valid);
+	zassert_equal(ctx.settings.device_pin, 0U);
+	zassert_equal(ctx.applied_pin, 0U);
+}
+
 ZTEST(meshcore_adapter, test_send_channel_text_submits_local_message)
 {
 	struct lichen_meshcore_adapter adapter;
@@ -515,10 +1075,13 @@ ZTEST(meshcore_adapter, test_send_channel_text_callback_errors_map)
 	zassert_equal(ctx.count, 0U);
 }
 
-ZTEST(meshcore_adapter, test_send_direct_text_without_peer_is_not_found)
+ZTEST(meshcore_adapter, test_send_direct_text_prefix_mapping)
 {
 	struct lichen_meshcore_adapter adapter;
 	struct test_ctx ctx;
+	const uint8_t expected_iid[8] = {
+		0x00, 0xaa, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
+	};
 	const uint8_t direct[] = {
 		LICHEN_MESHCORE_CMD_SEND_TXT_MSG,
 		0x01, 0x02, 0x03, 0x04, 0x05, 0x06,
@@ -538,6 +1101,49 @@ ZTEST(meshcore_adapter, test_send_direct_text_without_peer_is_not_found)
 	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, direct,
 							  sizeof(direct)), 0);
 	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_NOT_FOUND);
+	zassert_equal(ctx.submit_count, 0U);
+
+	init_adapter_with_submit_no_resolver(&adapter, &ctx, OUT_DEPTH);
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, direct,
+							  sizeof(direct)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_NOT_FOUND);
+	zassert_equal(ctx.submit_count, 0U);
+
+	init_adapter(&adapter, &ctx, OUT_DEPTH);
+	ctx.resolve_match = true;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, direct,
+							  sizeof(direct)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_UNSUPPORTED_CMD);
+	zassert_equal(ctx.submit_count, 0U);
+
+	init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+	ctx.resolve_match = true;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, direct,
+							  sizeof(direct)), 0);
+	expect_ok(&ctx, 0U);
+	zassert_equal(ctx.submit_count, 1U);
+	zassert_equal(ctx.submit_channel, 0U);
+	zassert_equal(ctx.submit_text_type, 0U);
+	zassert_true(ctx.submit_has_to_iid);
+	zassert_mem_equal(ctx.submit_to_iid, expected_iid,
+			  sizeof(expected_iid));
+	zassert_equal(ctx.submit_payload_len, 2U);
+	zassert_mem_equal(ctx.submit_payload, "hi", 2U);
+
+	init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+	ctx.resolve_match = true;
+	ctx.resolve_collision = true;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, direct,
+							  sizeof(direct)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_NOT_FOUND);
+	zassert_equal(ctx.submit_count, 0U);
+
+	init_adapter_with_submit(&adapter, &ctx, OUT_DEPTH);
+	ctx.resolve_match = true;
+	ctx.submit_ret = -ENOMEM;
+	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, direct,
+							  sizeof(direct)), 0);
+	expect_error(&ctx, 0U, LICHEN_MESHCORE_ERR_TABLE_FULL);
 
 	init_adapter(&adapter, &ctx, OUT_DEPTH);
 	zassert_equal(lichen_meshcore_adapter_process_raw(&adapter, direct_short,
@@ -590,13 +1196,19 @@ static bool is_phase1_supported(uint8_t cmd)
 	case LICHEN_MESHCORE_CMD_SEND_CHANNEL_TXT_MSG:
 	case LICHEN_MESHCORE_CMD_GET_CONTACTS:
 	case LICHEN_MESHCORE_CMD_GET_DEVICE_TIME:
+	case LICHEN_MESHCORE_CMD_SET_ADVERT_NAME:
 	case LICHEN_MESHCORE_CMD_SYNC_NEXT_MESSAGE:
 	case LICHEN_MESHCORE_CMD_GET_BATT_AND_STORAGE:
 	case LICHEN_MESHCORE_CMD_DEVICE_QUERY:
 	case LICHEN_MESHCORE_CMD_GET_CHANNEL:
+	case LICHEN_MESHCORE_CMD_SET_CHANNEL:
+	case LICHEN_MESHCORE_CMD_SET_DEVICE_PIN:
 	case LICHEN_MESHCORE_CMD_GET_CUSTOM_VARS:
+	case LICHEN_MESHCORE_CMD_SET_AUTOADD_CONFIG:
 	case LICHEN_MESHCORE_CMD_GET_AUTOADD_CONFIG:
+	case LICHEN_MESHCORE_CMD_SET_DEFAULT_FLOOD_SCOPE:
 	case LICHEN_MESHCORE_CMD_GET_DEFAULT_FLOOD_SCOPE:
+	case LICHEN_MESHCORE_CMD_FACTORY_RESET:
 		return true;
 	default:
 		return false;

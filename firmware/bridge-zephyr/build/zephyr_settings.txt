@@ -6,13 +6,11 @@
 # and/or the west manifest file.
 #
 # See the Modules guide for more information.
-"BOARD_ROOT":"/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen"
-"DTS_ROOT":"/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen"
-"DTS_ROOT":"/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/adi"
-"DTS_ROOT":"/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/atmel"
-"DTS_ROOT":"/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/espressif"
-"DTS_ROOT":"/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/gigadevice"
-"DTS_ROOT":"/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/microchip"
-"DTS_ROOT":"/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/nuvoton"
-"DTS_ROOT":"/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/nxp"
-"DTS_ROOT":"/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/stm32"
+"DTS_ROOT":"/mnt/lichen-zephyr/work/modules/hal/adi"
+"DTS_ROOT":"/mnt/lichen-zephyr/work/modules/hal/atmel"
+"DTS_ROOT":"/mnt/lichen-zephyr/work/modules/hal/espressif"
+"DTS_ROOT":"/mnt/lichen-zephyr/work/modules/hal/gigadevice"
+"DTS_ROOT":"/mnt/lichen-zephyr/work/modules/hal/microchip"
+"DTS_ROOT":"/mnt/lichen-zephyr/work/modules/hal/nuvoton"
+"DTS_ROOT":"/mnt/lichen-zephyr/work/modules/hal/nxp"
+"DTS_ROOT":"/mnt/lichen-zephyr/work/modules/hal/stm32"

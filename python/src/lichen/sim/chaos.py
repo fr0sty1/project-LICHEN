@@ -335,7 +335,8 @@ class TxJitterRule(ChaosRule):
             )
         if self.jitter_max_us < self.jitter_min_us:
             raise ValueError(
-                f"jitter_max_us ({self.jitter_max_us}) must be >= jitter_min_us ({self.jitter_min_us})"
+                f"jitter_max_us ({self.jitter_max_us}) must be >= "
+                f"jitter_min_us ({self.jitter_min_us})"
             )
 
     def matches(self, tx: Transmission, rx_node_id: str) -> bool:

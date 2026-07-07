@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-ow1e.19",
+  "title": "mypy: 4 untyped-decorator errors in tui/app.py",
+  "description": "4 untyped-decorator errors in src/lichen/tui/app.py:\n- Lines 329, 360, 409, 451 - decorators making functions _connect_to_sim, _disconnect, _transmit, _receive untyped\n\nThese are Textual decorators without type hints. Fix: Add # type: ignore[misc] or provide local type stubs for Textual decorators.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:35:38.660547Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:46:07.142955Z",
+  "closed_at": "2026-07-06T17:46:07.142955Z",
+  "close_reason": "Closed",
+  "labels": [
+    "python-standards",
+    "tooling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.19",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:35:38.661103Z"
+    }
+  ]
+}

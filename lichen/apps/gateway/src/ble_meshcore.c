@@ -294,10 +294,24 @@ static const struct bt_data s_sd[] = {
 		sizeof(CONFIG_LORA_LICHEN_MESHCORE_BLE_NAME) - 1U),
 };
 
+int ble_meshcore_set_passkey(uint32_t passkey)
+{
+	if (passkey != 0U && (passkey < 100000U || passkey > 999999U)) {
+		return -EINVAL;
+	}
+#if defined(CONFIG_BT_FIXED_PASSKEY) && !defined(CONFIG_ZTEST)
+	return bt_passkey_set(passkey == 0U ? BT_PASSKEY_INVALID : passkey);
+#else
+	ARG_UNUSED(passkey);
+	return 0;
+#endif
+}
+
 static int prepare_meshcore(void)
 {
 #if defined(CONFIG_BT_FIXED_PASSKEY) && !defined(CONFIG_ZTEST)
-	int err = bt_passkey_set(CONFIG_LORA_LICHEN_MESHCORE_BLE_PASSKEY);
+	int err = ble_meshcore_set_passkey(
+		CONFIG_LORA_LICHEN_MESHCORE_BLE_PASSKEY);
 
 	if (err) {
 		LOG_ERR("MeshCore BLE passkey setup failed: %d", err);

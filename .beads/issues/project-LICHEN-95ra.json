@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-95ra",
+  "title": "Rust lichen-oscore edhoc.rs: VecExt trait is private but useful",
+  "description": "In rust/lichen-oscore/src/edhoc.rs, a VecExt helper trait was added to provide push_err() and extend_err() methods that map heapless::Vec errors to EdhocError::BufferTooSmall. This pattern is useful but the trait is private to the module. Consider whether this pattern should be extracted to a shared utility module for reuse across other crates that use heapless::Vec.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:28:06.146791Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T18:07:53.529495Z",
+  "closed_at": "2026-07-06T18:07:53.529495Z",
+  "close_reason": "VecExt trait is appropriately scoped as private to edhoc.rs - extraction to shared utility would be premature",
+  "labels": [
+    "architecture"
+  ]
+}

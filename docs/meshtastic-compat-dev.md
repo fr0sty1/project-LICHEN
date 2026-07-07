@@ -1,4 +1,4 @@
-# Meshtastic Compatibility Layer — Developer Guide
+# Meshtastic Compatibility Layer -- Developer Guide
 
 This document describes how LICHEN nodes expose a Meshtastic-compatible BLE interface, allowing unmodified Meshtastic apps to connect.
 
@@ -13,6 +13,11 @@ This contract is based on the Meshtastic app/protocol research recorded in Bead 
 | `meshtastic/python` | `6d76edf8a7b192c51e3a5d26bc5868da556ac3d9` |
 | `meshtastic/Meshtastic-Android` | `eb3bd10757a312d1537874bfab245117c46c36a9` |
 | `meshtastic/Meshtastic-Apple` | `aeeb0cc49fbe0ed593e918ba2f95100ecf694256` |
+
+The vendored `PortNum` table was rechecked for Bead `project-LICHEN-llgw` against current
+`meshtastic/protobufs` `master` at `aa53c96b79d9cb49a38e71fc2bc9c46cec1fd7c6`. `LORA_OTA_APP = 79`
+is new since the pinned protobuf baseline above; the LICHEN minimal subset also now includes app-visible
+PortNum values that existed upstream but had not previously been vendored locally.
 
 `DeviceMetadata` was rechecked for Bead `project-LICHEN-t2hn.24` against the checked-in LICHEN revision
 `908b6d0f87aae73a248a30d0bb49e01c6f998255` and current `meshtastic/protobufs` `master` at
@@ -153,7 +158,7 @@ have it stick.
 - **short_name**: First 4 characters of long_name: `"LICH"` or `"5e6f"`
 - **App writes**: Acknowledged but discarded. LICHEN node identity comes from the Ed25519 keypair, not user config.
 
-The app may show a "saved" confirmation, but the name won't persist. This is intentional—LICHEN nodes don't store Meshtastic user profiles.
+The app may show a "saved" confirmation, but the name won't persist. This is intentional--LICHEN nodes don't store Meshtastic user profiles.
 
 ### Hardware Model
 
@@ -162,7 +167,7 @@ The app may show a "saved" confirmation, but the name won't persist. This is int
 **The solution:** Always report `PRIVATE_HW` (255) unless Meshtastic upstream adds an official LICHEN-specific enum
 value.
 
-The app will show "Unknown" or a generic icon. This is accurate—LICHEN runs on various hardware, and Meshtastic's model list doesn't apply.
+The app will show "Unknown" or a generic icon. This is accurate--LICHEN runs on various hardware, and Meshtastic's model list doesn't apply.
 
 ### Synthetic Metadata and Version Policy
 
@@ -181,7 +186,7 @@ Policy for `MyNodeInfo`, `DeviceMetadata`, and `User` fields:
 | `role` | `CLIENT` unless a later tested app flow requires a different local-app role |
 | `has_bluetooth` | True only when the Meshtastic-compatible BLE surface is active |
 | `has_wifi`, `has_ethernet`, `has_remote_hardware`, `has_pkc` | False for the MVP unless backed by an implemented LICHEN capability |
-| `position_flags` | Zero until HAL location/provider support is wired into this adapter |
+| `position_flags` | `0` for the MVP; Position support is exposed through NodeDB Position records, not Meshtastic device capability flags |
 | `excluded_modules` | Bitmask excludes unsupported Meshtastic modules/features for the MVP; Bluetooth config is excluded only when the compatibility BLE surface is absent |
 
 The user-visible device name and `User.long_name` SHOULD remain visibly LICHEN-branded, such as `"LICHEN R1 Neo"` or
@@ -231,7 +236,7 @@ Channel 0:
 **Why this works:**
 - LICHEN always encrypts (OSCORE + link signatures). The app shows the lock icon.
 - LICHEN doesn't have "channels" in Meshtastic's sense. All nodes on a mesh can communicate.
-- PSK config is meaningless—LICHEN uses Ed25519 keypairs and SCHC contexts.
+- PSK config is meaningless--LICHEN uses Ed25519 keypairs and SCHC contexts.
 
 **What the app sees:** One channel called "LICHEN", always encrypted, no way to add more. Channel config screens work but changes are discarded.
 
@@ -255,30 +260,106 @@ LICHEN nodes may auto-configure radio parameters based on mesh conditions. The a
 
 **The problem:** Meshtastic shows hop counts, SNR per hop, and sometimes routing paths. Users expect to see "3 hops away" or similar.
 
-**The solution:** Report all messages as direct (0 hops).
+**The solution:** Report all messages as direct (0 hops), except for NodeDB
+peer records that already carry an explicit LICHEN peer hop distance.
 
 LICHEN uses RPL (IPv6 routing) which doesn't expose per-packet hop counts to applications. The adapter has no way to know how many hops a packet took. Rather than guess, it reports 0.
 
-Users won't see routing metrics. Messages either arrive or they don't.
+Peer RSSI, SNR, and last-heard age remain internal LICHEN peer/status data for
+now. They are not encoded into Meshtastic `NodeInfo`, because that message's
+stable fields in this compatibility layer are identity, optional location,
+device metrics, channel, and `hops_away`; overloading it with link-quality or
+age data would make mobile clients treat adapter-derived diagnostics as native
+Meshtastic RF telemetry. If a later compatibility pass exposes those metrics,
+it must choose and test a concrete Meshtastic wire/status surface instead of
+piggybacking them onto NodeInfo.
+
+Users won't see packet path metrics. Messages either arrive or they don't.
 
 ### Position Handling
 
 **The problem:** Position formats match (lat/lon/alt), but Meshtastic positions are pushed; LICHEN uses the announce protocol.
 
-**The solution:** Two-way translation.
+**Current MVP behavior:** expose map-ready local NodeDB Position only when a
+LICHEN location snapshot has both latitude and longitude. App-originated
+`POSITION_APP` writes are accepted as local-client location submissions when
+the payload has valid latitude and longitude. Peer-position announce
+translation is handled by the network-location producer path, not by fabricating
+Meshtastic RF behavior.
+
+The firmware path is implemented in the Zephyr Meshtastic compatibility layer:
+`POSITION_APP` packets from a local Meshtastic client decode into the shared
+adapter position snapshot, the gateway submits accepted values through the
+LICHEN app-interface as `LOCAL_CLIENT` location updates, and local NodeDB sync
+can emit this node's current valid location back to the app. Malformed Position
+payloads return deterministic status and must not replace an existing HAL
+location snapshot. Native LICHEN location, time, and status resources remain
+authoritative for richer provider diagnostics.
+
+Peer coordinates learned from LICHEN announces are not Meshtastic peer-position
+messages and are not automatically this node's own location. If a gateway build
+enables approximate mesh-derived location fallback, those coordinates are
+submitted only as `NETWORK` source metadata with source name `mesh-announce` or
+a similarly explicit provenance string. They must remain lower priority than
+fresh local hardware, manual/static, or local-client location and must age out
+with the announce freshness window. Coordinate-only announce metadata carries no
+Unix fix time; build/provision epoch floors apply only if a separate network
+time or fix-time sample is submitted to the shared time provider. Builds that do
+not explicitly enable that fallback keep peer announce coordinates in
+routing/diagnostic state only.
 
 **Outbound (app → mesh):**
 1. App sends Position via MeshPacket
-2. Adapter extracts lat/lon/alt/timestamp
-3. Triggers LICHEN announce with position payload
+2. Adapter validates the payload shape and requires valid latitude/longitude
+3. Position is submitted to the LICHEN local-client location provider
+4. Queue status reports success when the local submission is accepted
 
 **Inbound (mesh → app):**
-1. LICHEN receives peer announce with position
-2. Adapter converts to Meshtastic Position protobuf
-3. Queues as MeshPacket with `POSITION_APP` portnum
-4. App displays on map
+1. Gateway reads local HAL/app-interface location metadata
+2. If both latitude and longitude are valid, NodeDB `NodeInfo.position` is encoded
+3. Optional altitude, fix time, and satellites are included only with that position
+4. App displays local node position from NodeDB sync
 
 Position precision is preserved (1e-7 degree resolution).
+
+Meshtastic Position payloads are emitted only when both latitude and longitude
+are valid. Time-only, altitude-only, and satellites-only GNSS metadata remains
+available through native LICHEN status/time resources, but it is not wrapped in
+a Meshtastic Position message because mobile clients treat the presence of that
+message as map-ready location data. When coordinates are valid, optional
+altitude, fix time, and satellites are included if available.
+
+For app-originated `POSITION_APP`, Meshtastic `timestamp` field 7 is treated as
+the actual fix timestamp and wins over legacy `time` field 4 when both are
+present. Field 4 is used only when field 7 is absent. A chosen timestamp below
+the deterministic firmware build epoch is stripped from the submitted location
+sample; the coordinates remain usable as local-client position metadata. A
+stricter authenticated board/provision epoch is not applied to the stored
+location `fix_time_unix` by the compatibility gateway; it is enforced only if
+Position-derived time is submitted through the shared firmware time provider.
+
+Meshtastic `location_source` and `altitude_source` describe the upstream
+Meshtastic fix provenance, but they do not upgrade trust for a value received
+from the local compatibility app surface. The submitted LICHEN source class
+remains `LOCAL_CLIENT`; the source name records the Meshtastic provenance, for
+example `mt-pos-internal`, `mt-pos-external`, or `mt-pos-manual`.
+Barometric altitude metadata does not imply a GNSS fix source.
+
+Meshtastic `gps_accuracy` is decoded as the raw GPS module accuracy constant in
+millimeters. It is not mapped to app-visible horizontal accuracy unless DOP
+fields are also available to calculate final positional accuracy.
+`precision_bits` is decoded and retained for diagnostics/vector coverage, but it
+is not currently mapped to a native location accuracy or emitted in NodeDB
+Position messages.
+
+No-hardware coverage for this contract lives in the Meshtastic adapter and
+gateway adapter ztests. Those tests cover valid full and minimal Position
+payloads, negative altitude, field 7 timestamp precedence over legacy field 4,
+duplicate field 4 last-wins behavior, below-build-epoch timestamp stripping
+while preserving coordinates, source/altitude/gps_accuracy/precision metadata,
+malformed payload rejection, and preservation of a prior HAL snapshot after
+malformed input. Physical phone/BLE smoke testing and RF validation remain
+separate from this software-only contract.
 
 ### Message Delivery Semantics
 
@@ -413,7 +494,7 @@ The adapter implements a subset of Meshtastic's protobuf schema.
 | Other `want_config_id` | Queue legacy/full sync and matching `config_complete_id`; log compatibility nonce |
 | `heartbeat` | Keepalive/liveness trigger; may queue `queueStatus`; never required before sync |
 | `packet` with `TEXT_MESSAGE_APP` | Validate broadcast primary-channel UTF-8 text up to 200 bytes, call the adapter text hook, and queue local `queueStatus` |
-| `packet` with `POSITION_APP` | Translate to LICHEN position/announce when available; otherwise deterministic no-op status |
+| `packet` with `POSITION_APP` | Valid app-originated positions are accepted as local-client location submissions; malformed or unsupported payloads return deterministic status |
 | `packet` with `NODEINFO_APP` | Update transient display metadata only; no persistent Meshtastic identity writes |
 | `packet` with `ADMIN_APP` read request | Deferred until `project-LICHEN-t2hn.23`; current firmware returns deterministic unsupported status. |
 | `packet` with `ADMIN_APP` write/command | Reject or no-op deterministically; do not mutate LICHEN radio/security settings. |
@@ -431,7 +512,7 @@ The adapter implements a subset of Meshtastic's protobuf schema.
 | `channel` | Synthetic primary channel plus disabled secondary channels when requested |
 | `metadata` | Synthetic device metadata and firmware/version policy |
 | `region_presets` | Region/preset constraints for current app sync; omission requires a separate tested safe-absence policy |
-| `packet` | Incoming mesh messages, node-info/position updates, and `ROUTING_APP` ACK/NAK |
+| `packet` | Incoming mesh messages, NodeInfo sync records with location-bearing positions, and `ROUTING_APP` ACK/NAK |
 | `queueStatus` | Local send queue status only |
 | `config_complete_id` | End marker that echoes the stage nonce |
 | `clientNotification` | Optional advisory error/notice when a client requires visible feedback |
@@ -440,6 +521,31 @@ The adapter implements a subset of Meshtastic's protobuf schema.
 the local queue. Delivered/failed state that the app can show against a message must be represented as a `ROUTING_APP`
 packet whose decoded `request_id` matches the original message request/id. If LICHEN cannot prove final delivery, the
 adapter should report queued/local state only and avoid fabricating a final delivered ACK.
+
+#### Queue preflight contract
+
+The Zephyr adapter API allows `queue_free` to be omitted for custom/non-gateway
+callers, but production gateway transports that expose a bounded FromRadio queue
+SHOULD provide it. When `queue_free` is present, WantConfig bursts are
+preflighted against the complete number of records before the first record is
+enqueued. If `queue_free` accurately reports the same queue used by
+`enqueue_from_radio` and the queue is not concurrently consumed, insufficient
+space for the whole static sync, node DB sync, or legacy full sync burst makes
+the adapter return `-ENOMEM`, increment `enqueue_fail_count`, and leave the
+FromRadio queue unchanged.
+
+`queue_free` is a preflight hook, not a reservation or rollback mechanism. If it
+reports stale capacity, measures the wrong queue, or `enqueue_from_radio` later
+fails mid-burst, earlier records can remain queued and the caller must handle
+the partial burst as a recoverable degraded sync.
+
+When `queue_free` is absent, the adapter deliberately falls back to best-effort
+degraded behavior for compatibility with simple callers: records are enqueued in
+order until `enqueue_from_radio` reports backpressure. The caller can then see a
+partial sync burst and must recover by draining/resetting its transport queue
+before requesting sync again. Do not rely on atomic WantConfig bursts unless the
+caller supplies an accurate same-queue `queue_free` hook and serializes the
+queue for the burst.
 
 ### MeshPacket
 
@@ -454,14 +560,18 @@ adapter should report queued/local state only and avoid fabricating a final deli
 | `decoded.portnum` | CoAP Uri-Path mapping (see below) |
 | `decoded.payload` | CoAP payload |
 
+Peer-table RSSI/SNR/last-heard values are retained for native LICHEN status
+and routing diagnostics, but the Meshtastic NodeDB sync does not emit them.
+Only explicit peer hop distance maps to `NodeInfo.hops_away`.
+
 ### Port Number Mapping
 
 Meshtastic uses `portnum` to identify message types. The adapter maps these to CoAP resources:
 
 | Meshtastic Portnum | CoAP Uri-Path | Notes |
 |--------------------|---------------|-------|
-| `TEXT_MESSAGE_APP` (1) | `/msg` | Plain text messages |
-| `POSITION_APP` (3) | `/pos` | Position updates |
+| `TEXT_MESSAGE_APP` (1) | `/msg/inbox` | Plain text messages |
+| `POSITION_APP` (3) | local-client location provider | Valid app-originated positions update the LICHEN location provider |
 | `NODEINFO_APP` (4) | `/node` | Node info exchange |
 | `TELEMETRY_APP` (67) | `/telem` | Device telemetry |
 | `TRACEROUTE_APP` (70) | N/A | Handled internally |
@@ -490,10 +600,16 @@ Meshtastic compatibility write.
 
 | Meshtastic | LICHEN | Notes |
 |------------|--------|-------|
-| `latitude_i` | Announce latitude | Scaled by 1e7 |
-| `longitude_i` | Announce longitude | Scaled by 1e7 |
-| `altitude` | Announce altitude | Meters |
-| `time` | Announce timestamp | Unix epoch |
+| `latitude_i` | Local-client location latitude | Scaled by 1e7; required with longitude for app-originated Position ingestion |
+| `longitude_i` | Local-client location longitude | Scaled by 1e7; required with latitude for app-originated Position ingestion |
+| `altitude` | Local-client location altitude | Meters; optional, and only emitted back to NodeDB Position with valid lat/lon |
+| `time` | Fix timestamp fallback | Unix epoch; only used when `timestamp` is absent |
+| `location_source` | Local-client source name suffix | Does not change LICHEN trust/source class |
+| `altitude_source` | Diagnostic provenance | Barometric altitude does not imply GNSS |
+| `timestamp` | Fix timestamp | Preferred over `time`; below-build-epoch values are stripped |
+| `gps_accuracy` | Raw GPS module accuracy constant | Millimeters; not exported as final horizontal accuracy without DOP |
+| `sats_in_view` | GNSS satellites | Only emitted with valid lat/lon |
+| `precision_bits` | Diagnostic precision metadata | Decoded but not mapped to app-visible accuracy |
 
 ### Channels
 
@@ -561,25 +677,22 @@ Adapter:
     4. Queues local queueStatus for the Meshtastic app
 
 LICHEN: The app-compat layer does not emit Meshtastic RF packets. The gateway currently reports unsupported for text
-send attempts until the concrete Zephyr `/msg` or local send contract is implemented in `project-LICHEN-t2hn.7.2`.
+send attempts until the concrete Zephyr `/msg/inbox` or local send contract is implemented in `project-LICHEN-t2hn.7.2`.
 Directed Meshtastic node-number resolution is tracked by `project-LICHEN-t2hn.7.1`.
 ```
 
-### Receiving a Position Update
+### Receiving a NodeDB Position Update
 
 ```
-LICHEN: Receives announce with position from peer
+LICHEN: Reads local location snapshot with valid latitude and longitude
 
 Adapter:
-    1. Extracts position from announce
-    2. Builds MeshPacket {
-        from: peer_iid & 0xFFFFFFFF,
-        decoded: Data { portnum: POSITION_APP, payload: Position {...} }
-    }
-    3. Queues in FromRadio buffer
+    1. Copies lat/lon and optional alt/time/satellites into local info
+    2. Encodes NodeInfo.position during NodeDB sync
+    3. Queues NodeInfo FromRadio record
     4. Increments FromNum, triggers notify
 
-App: Reads FromRadio, displays position on map
+App: Reads NodeDB sync, displays local node position on map
 ```
 
 ## Limitations
@@ -650,5 +763,5 @@ Use Meshtastic Android app with nRF Connect or similar to verify:
 1. Service discovery finds LICHEN node
 2. Config sync completes without errors
 3. Text messages send and receive
-4. Position updates appear on map
+4. NodeDB positions appear on the map only for records with latitude and longitude
 5. Node list populates with peers

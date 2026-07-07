@@ -92,6 +92,8 @@ static void reset_session_locked(void);
 #ifdef CONFIG_ZTEST
 static bool s_test_advance_owner_after_match;
 static struct bt_conn *s_test_advance_owner_conn;
+static struct ble_meshtastic_test_from_num_notify_state s_test_notify_state;
+static int s_test_notify_ret;
 #endif
 
 static uint32_t session_epoch_locked(void)
@@ -384,6 +386,44 @@ static void from_num_ccc_changed(const struct bt_gatt_attr *attr, uint16_t value
 		(value == BT_GATT_CCC_NOTIFY) ? "enabled" : "disabled");
 }
 
+#ifdef CONFIG_ZTEST
+int ble_meshtastic_test_set_from_num_notify(bool enabled, int notify_ret)
+{
+	memset(&s_test_notify_state, 0, sizeof(s_test_notify_state));
+	s_test_notify_ret = notify_ret;
+	from_num_ccc_changed(NULL, enabled ? BT_GATT_CCC_NOTIFY : 0U);
+	return 0;
+}
+
+int ble_meshtastic_test_copy_from_num_notify_state(
+	struct ble_meshtastic_test_from_num_notify_state *state)
+{
+	if (state == NULL) {
+		return -EINVAL;
+	}
+
+	*state = s_test_notify_state;
+	return 0;
+}
+#endif
+
+static int meshtastic_bt_gatt_notify(struct bt_conn *conn,
+				     const struct bt_gatt_attr *attr,
+				     const void *data, uint16_t len)
+{
+#ifdef CONFIG_ZTEST
+	ARG_UNUSED(attr);
+	s_test_notify_state.conn = conn;
+	s_test_notify_state.notify_count++;
+	s_test_notify_state.len = MIN(len,
+				      (uint16_t)sizeof(s_test_notify_state.data));
+	memcpy(s_test_notify_state.data, data, s_test_notify_state.len);
+	return s_test_notify_ret;
+#else
+	return bt_gatt_notify(conn, attr, data, len);
+#endif
+}
+
 /*
  * GATT attribute layout:
  *   0 service
@@ -431,8 +471,9 @@ static void notify_from_num(void)
 		return;
 	}
 
-	(void)bt_gatt_notify(conn, &meshtastic_svc.attrs[FROM_NUM_VAL_IDX],
-			     value, sizeof(value));
+	(void)meshtastic_bt_gatt_notify(conn,
+					&meshtastic_svc.attrs[FROM_NUM_VAL_IDX],
+					value, sizeof(value));
 	ble_app_owner_conn_unref(conn);
 }
 

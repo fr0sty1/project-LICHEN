@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: The contributors to the LICHEN project
+//
+// LilyGO T-Echo board for Renode
+// nRF52840 + SX1262 + LEDs + button
+// ponytail: minimal - no e-ink or GPS yet
+
+using "../../nrf52840_lichen/support/nrf52840_lichen.repl"
+
+// LEDs (active-low per T-Echo schematic)
+gpio0:
+    13 -> led0@0
+    14 -> led1@0
+    15 -> led2@0
+
+led0: Miscellaneous.LED @ gpio0 13
+    invert: true
+
+led1: Miscellaneous.LED @ gpio0 14
+    invert: true
+
+led2: Miscellaneous.LED @ gpio0 15
+    invert: true
+
+// User button on P1.10
+button0: Miscellaneous.Button @ gpio1 10
+    -> gpio1@10

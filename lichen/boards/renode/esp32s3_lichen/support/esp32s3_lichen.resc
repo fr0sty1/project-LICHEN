@@ -1,0 +1,28 @@
+:name: ESP32-S3-LICHEN
+:description: Run LICHEN firmware on ESP32-S3 with SX1262 radio in Renode
+
+$name?="ESP32-S3-LICHEN"
+$simPort?=5555
+
+using sysbus
+
+# Load SX1262 peripheral (bridges to lichen-sim)
+include $ORIGIN/../../peripherals/SX1262.cs
+
+mach create $name
+machine LoadPlatformDescription $ORIGIN/esp32s3_lichen.repl
+
+# Set SX1262 sim port (can override via $simPort)
+spi2.sx1262 SimPort $simPort
+
+# UART0 console
+showAnalyzer uart0
+
+# 240 MHz system clock (ESP32-S3 max)
+cpu0 PerformanceInMips 240
+
+macro reset
+"""
+    sysbus LoadELF $elf
+"""
+runMacro $reset

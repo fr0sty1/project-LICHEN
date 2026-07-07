@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-v7hs",
+  "title": "BitWriter write(): network bit order comment may be misleading",
+  "description": "In rust/lichen-schc/src/codec.rs BitWriter::write(), the comment says 'Reverse order: network bit order is MSB-first but we index from LSB'. This comment is confusing - the code iterates (0..nbits).rev() which processes bits from MSB to LSB, which IS the correct network order. The comment suggests there's a reversal happening but the iteration is actually correct for MSB-first transmission. Consider clarifying the comment.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:26:50.169214Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T18:07:42.490902Z",
+  "closed_at": "2026-07-06T18:07:42.490902Z",
+  "close_reason": "Clarified BitWriter::write() comment to accurately explain MSB-first iteration"
+}

@@ -8,6 +8,7 @@ node's CoAP resources.
 
 from lichen.coap.resources import (
     ConfigResource,
+    MessageReceiptsResource,
     NeighborsResource,
     NodeInfo,
     StaticNodeInfo,
@@ -32,6 +33,7 @@ __all__ = [
     "InMemoryNetwork",
     "LichenRemote",
     "LichenTransport",
+    "MessageReceiptsResource",
     "NeighborsResource",
     "NodeInfo",
     "SchcChannel",

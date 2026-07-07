@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ow1e.188",
+  "title": "Codereview pass 1: relay_seen eviction - hardcoded limit 128",
+  "description": "The relay_seen cache limit of 128 is hardcoded in two places (lines 392 and 482). Consider extracting to a named constant like RELAY_SEEN_MAX_SIZE for maintainability. Minor finding - P3.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:43:42.3485Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:18:30.664585Z",
+  "closed_at": "2026-07-06T17:18:30.664585Z",
+  "close_reason": "Extracted RELAY_SEEN_MAX_SIZE = 128 constant, replaced hardcoded values",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.188",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:43:42.349652Z"
+    }
+  ]
+}

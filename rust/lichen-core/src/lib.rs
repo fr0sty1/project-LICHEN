@@ -8,11 +8,18 @@
 
 pub mod addr;
 pub mod announce;
+pub mod checksum;
+pub mod compact_cot;
 pub mod constants;
+pub mod duty_cycle;
 pub mod error;
 pub mod icmpv6;
 pub mod ipv6;
+pub mod l2_payload;
 pub mod loadng;
+pub mod neighbor_monitor;
+pub mod rf_health;
+pub mod tx_queue;
 pub mod udp;
 
 #[cfg(feature = "std")]

@@ -367,9 +367,9 @@ static void assert_metadata_payload(const uint8_t *buf, size_t len,
 
 ZTEST(meshtastic_codec, test_generated_vectors_are_current)
 {
-	zassert_equal(MESHTASTIC_VECTOR_SOURCE_COUNT, 16U);
+	zassert_equal(MESHTASTIC_VECTOR_SOURCE_COUNT, 29U);
 	zassert_equal(MESHTASTIC_VECTOR_CODEC_COUNT, ARRAY_SIZE(meshtastic_vectors));
-	zassert_equal(MESHTASTIC_VECTOR_CODEC_COUNT, 14U);
+	zassert_equal(MESHTASTIC_VECTOR_CODEC_COUNT, 27U);
 }
 
 ZTEST(meshtastic_codec, test_canonical_codec_vectors)
@@ -438,6 +438,25 @@ ZTEST(meshtastic_codec, test_canonical_codec_vectors)
 			ret = lichen_meshtastic_encode_from_radio_queue_status(&status, buf,
 									       sizeof(buf));
 			zassert_true(ret > 0, "%s queueStatus failed: %d", v->name, ret);
+			expect_bytes(buf, (size_t)ret, v->encoded, v->encoded_len);
+			break;
+		case MESHTASTIC_VECTOR_FROM_CONFIG:
+			ret = lichen_meshtastic_encode_config_section_payload(
+				(enum lichen_meshtastic_config_section)v->value,
+				&(const struct lichen_meshtastic_local_info){
+					.has_bluetooth = true,
+					.has_lora = true,
+					.has_tx_power_dbm = true,
+					.tx_power_dbm = 14,
+				},
+				buf, sizeof(buf));
+			zassert_true(ret > 0, "%s config payload failed: %d", v->name,
+				     ret);
+			expect_bytes(buf, (size_t)ret, v->payload, v->payload_len);
+			ret = lichen_meshtastic_encode_from_radio_message(
+				LICHEN_MESHTASTIC_FROM_RADIO_CONFIG,
+				v->payload, v->payload_len, buf, sizeof(buf));
+			zassert_true(ret > 0, "%s config failed: %d", v->name, ret);
 			expect_bytes(buf, (size_t)ret, v->encoded, v->encoded_len);
 			break;
 		case MESHTASTIC_VECTOR_FROM_MODULE_CONFIG:
@@ -1212,27 +1231,68 @@ ZTEST(meshtastic_codec, test_node_info_encodes_negative_altitude_as_int32_varint
 
 ZTEST(meshtastic_codec, test_node_info_requires_lat_lon_for_position)
 {
-	struct lichen_meshtastic_local_info info = {
-		.node_num = 0xaabbccddU,
-		.uptime_seconds = 123U,
-		.long_name = "LICHEN native_sim",
-		.short_name = "LICH",
-		.has_fix_time_unix = true,
-		.fix_time_unix = 1710000000U,
-		.has_latitude_e7 = true,
-		.latitude_e7 = 476206130,
+	const struct lichen_meshtastic_local_info cases[] = {
+		{
+			.node_num = 0xaabbccddU,
+			.uptime_seconds = 123U,
+			.long_name = "LICHEN native_sim",
+			.short_name = "LICH",
+			.has_fix_time_unix = true,
+			.fix_time_unix = 1710000000U,
+		},
+		{
+			.node_num = 0xaabbccddU,
+			.uptime_seconds = 123U,
+			.long_name = "LICHEN native_sim",
+			.short_name = "LICH",
+			.has_altitude_m = true,
+			.altitude_m = 42,
+		},
+		{
+			.node_num = 0xaabbccddU,
+			.uptime_seconds = 123U,
+			.long_name = "LICHEN native_sim",
+			.short_name = "LICH",
+			.has_satellites = true,
+			.satellites = 9U,
+		},
+		{
+			.node_num = 0xaabbccddU,
+			.uptime_seconds = 123U,
+			.long_name = "LICHEN native_sim",
+			.short_name = "LICH",
+			.has_fix_time_unix = true,
+			.fix_time_unix = 1710000000U,
+			.has_latitude_e7 = true,
+			.latitude_e7 = 476206130,
+		},
+		{
+			.node_num = 0xaabbccddU,
+			.uptime_seconds = 123U,
+			.long_name = "LICHEN native_sim",
+			.short_name = "LICH",
+			.has_fix_time_unix = true,
+			.fix_time_unix = 1710000000U,
+			.has_longitude_e7 = true,
+			.longitude_e7 = -1223493000,
+		},
 	};
 	uint8_t payload[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	const uint8_t *position;
 	size_t position_len;
 	int ret;
 
-	ret = lichen_meshtastic_encode_node_info_payload(&info, payload,
-							 sizeof(payload));
+	for (size_t i = 0U; i < ARRAY_SIZE(cases); i++) {
+		ret = lichen_meshtastic_encode_node_info_payload(&cases[i],
+								 payload,
+								 sizeof(payload));
 
-	zassert_true(ret > 0, "node_info payload failed: %d", ret);
-	zassert_false(payload_get_len_field(payload, (size_t)ret, 3U, &position,
-					    &position_len));
+		zassert_true(ret > 0, "node_info payload %u failed: %d",
+			     (uint32_t)i, ret);
+		zassert_false(payload_get_len_field(payload, (size_t)ret, 3U,
+						    &position, &position_len),
+			      "case %u emitted partial Position", (uint32_t)i);
+	}
 }
 
 ZTEST(meshtastic_codec, test_node_info_encodes_valid_battery_metrics)

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-ow1e.105",
+  "title": "node/dispatch: dispatch_udp() returns Option\u003cResult\u003e conflating concerns",
+  "description": "In node.rs:165, dispatch_udp() returns Option\u003cResult\u003cDispatched, DispatchError\u003e\u003e which conflates 'is this UDP?' vs 'is this a recognized port?'. Consider returning Result\u003cDispatched, DispatchResult\u003e where DispatchResult has a NotUdp variant, or document the convention clearly.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:37:30.069019Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:12:34.202962Z",
+  "closed_at": "2026-07-06T17:12:34.202962Z",
+  "close_reason": "Closed",
+  "labels": [
+    "elegance",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.105",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:37:30.069617Z"
+    }
+  ]
+}

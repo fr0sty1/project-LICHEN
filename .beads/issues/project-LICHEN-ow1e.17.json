@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-ow1e.17",
+  "title": "mypy: 4 type-arg errors (missing generic type arguments)",
+  "description": "4 type-arg errors for missing generic type arguments:\n- src/lichen/interface/kiss/aprs_synth.py:371 - dict without type args\n- src/lichen/announce/scheduler.py:97 - Task without type args\n- src/lichen/interface/kiss/bridge.py:86 - Task without type args\n- src/lichen/crypto/edhoc.py:179 - list without type args\n\nFix: Add explicit type arguments, e.g., dict[str, Any], Task[None], list[bytes].",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:35:35.894981Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:46:06.980629Z",
+  "closed_at": "2026-07-06T17:46:06.980629Z",
+  "close_reason": "Closed",
+  "labels": [
+    "python-standards",
+    "tooling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.17",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:35:35.943798Z"
+    }
+  ]
+}

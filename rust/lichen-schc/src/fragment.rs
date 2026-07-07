@@ -24,6 +24,7 @@ pub const DEFAULT_WINDOW_SIZE: usize = 7;
 pub const MAX_WINDOW_SIZE: usize = 62;
 
 #[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FragmentError {
     TooShort(TooShort),
     InvalidFcn,

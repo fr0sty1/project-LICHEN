@@ -5,31 +5,60 @@
 //!
 //! All integer fields are big-endian. The module is no_std; no allocation.
 
+use lichen_core::error::{BufferTooSmall, TooShort};
+
 /// Error returned when a message or option is malformed.
 #[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RplError {
-    TooShort,
+    /// Buffer too short for the expected data.
+    TooShort(TooShort),
+    /// Option data overruns the buffer.
     OptionOverrun,
+    /// Unrecognized option type.
     BadOptionType(u8),
+    /// Unrecognized routing type.
     BadRoutingType(u8),
-    BufferTooSmall,
+    /// Output buffer too small.
+    BufferTooSmall(BufferTooSmall),
+    /// Invalid option value.
     InvalidOption,
+}
+
+impl From<TooShort> for RplError {
+    fn from(e: TooShort) -> Self {
+        Self::TooShort(e)
+    }
+}
+
+impl From<BufferTooSmall> for RplError {
+    fn from(e: BufferTooSmall) -> Self {
+        Self::BufferTooSmall(e)
+    }
 }
 
 impl core::fmt::Display for RplError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::TooShort => write!(f, "message too short"),
+            Self::TooShort(e) => write!(f, "RPL {}", e),
             Self::OptionOverrun => write!(f, "option overruns buffer"),
             Self::BadOptionType(t) => write!(f, "bad option type: {}", t),
             Self::BadRoutingType(t) => write!(f, "bad routing type: {}", t),
-            Self::BufferTooSmall => write!(f, "buffer too small"),
+            Self::BufferTooSmall(e) => write!(f, "RPL {}", e),
             Self::InvalidOption => write!(f, "invalid option value"),
         }
     }
 }
 
-impl core::error::Error for RplError {}
+impl core::error::Error for RplError {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            Self::TooShort(e) => Some(e),
+            Self::BufferTooSmall(e) => Some(e),
+            _ => None,
+        }
+    }
+}
 
 // ── Option type bytes ─────────────────────────────────────────────────────────
 
@@ -73,7 +102,7 @@ impl Dio {
 
     pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
         if data.len() < Self::BASE_LEN {
-            return Err(RplError::TooShort);
+            return Err(TooShort::new(Self::BASE_LEN, data.len()).into());
         }
         let gmop = data[4];
         Ok(Self {
@@ -93,7 +122,7 @@ impl Dio {
 
     pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
         if out.len() < Self::BASE_LEN {
-            return Err(RplError::BufferTooSmall);
+            return Err(BufferTooSmall::new(Self::BASE_LEN, out.len()).into());
         }
         let gmop = ((self.grounded as u8) << 7)
             | ((self.mode_of_operation & 0x7) << 3)
@@ -141,7 +170,7 @@ impl Dao {
 
     pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
         if data.len() < Self::BASE_LEN {
-            return Err(RplError::TooShort);
+            return Err(TooShort::new(Self::BASE_LEN, data.len()).into());
         }
         let kd = data[1];
         Ok(Self {
@@ -157,7 +186,7 @@ impl Dao {
 
     pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
         if out.len() < Self::BASE_LEN {
-            return Err(RplError::BufferTooSmall);
+            return Err(BufferTooSmall::new(Self::BASE_LEN, out.len()).into());
         }
         let kd = ((self.ack_requested as u8) << 7)
             | (1u8 << 6) // D-flag always set
@@ -213,7 +242,7 @@ impl Default for DodagConfig {
 impl DodagConfig {
     pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
         if data.len() < DODAG_CONFIG_DATA_LEN {
-            return Err(RplError::TooShort);
+            return Err(TooShort::new(DODAG_CONFIG_DATA_LEN, data.len()).into());
         }
         Ok(Self {
             dio_int_doublings: data[1],
@@ -230,7 +259,7 @@ impl DodagConfig {
     pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
         let needed = 2 + DODAG_CONFIG_DATA_LEN;
         if out.len() < needed {
-            return Err(RplError::BufferTooSmall);
+            return Err(BufferTooSmall::new(needed, out.len()).into());
         }
         out[0] = OPT_DODAG_CONFIG;
         out[1] = DODAG_CONFIG_DATA_LEN as u8;
@@ -265,7 +294,7 @@ impl RplTarget {
     /// Parse from the option data bytes (after type/length).
     pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
         if data.len() < 2 {
-            return Err(RplError::TooShort);
+            return Err(TooShort::new(2, data.len()).into());
         }
         let prefix_len = data[1];
         // IPv6 prefix cannot exceed 128 bits (16 bytes)
@@ -274,7 +303,7 @@ impl RplTarget {
         }
         let nbytes = (prefix_len as usize).div_ceil(8);
         if data.len() < 2 + nbytes {
-            return Err(RplError::TooShort);
+            return Err(TooShort::new(2 + nbytes, data.len()).into());
         }
         let mut prefix = [0u8; 16];
         prefix[..nbytes].copy_from_slice(&data[2..2 + nbytes]);
@@ -287,7 +316,7 @@ impl RplTarget {
         let data_len = 2 + nbytes;
         let needed = 2 + data_len;
         if out.len() < needed {
-            return Err(RplError::BufferTooSmall);
+            return Err(BufferTooSmall::new(needed, out.len()).into());
         }
         out[0] = OPT_RPL_TARGET;
         out[1] = data_len as u8;
@@ -316,7 +345,7 @@ impl TransitInfo {
 
     pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
         if data.len() < Self::DATA_LEN {
-            return Err(RplError::TooShort);
+            return Err(TooShort::new(Self::DATA_LEN, data.len()).into());
         }
         // SAFETY: length check above ensures data.len() >= DATA_LEN (20),
         // so 4..20 is within bounds and exactly 16 bytes
@@ -331,7 +360,7 @@ impl TransitInfo {
     pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
         let needed = 2 + Self::DATA_LEN;
         if out.len() < needed {
-            return Err(RplError::BufferTooSmall);
+            return Err(BufferTooSmall::new(needed, out.len()).into());
         }
         out[0] = OPT_TRANSIT_INFO;
         out[1] = Self::DATA_LEN as u8;
@@ -379,7 +408,7 @@ impl<'a> Iterator for OptionIter<'a> {
             return self.next();
         }
         if self.pos + 2 > self.data.len() {
-            return Some(Err(RplError::TooShort));
+            return Some(Err(TooShort::new(self.pos + 2, self.data.len()).into()));
         }
         let length = self.data[self.pos + 1] as usize;
         if self.pos + 2 + length > self.data.len() {
@@ -397,7 +426,7 @@ impl<'a> Iterator for OptionIter<'a> {
 pub fn append_option(buf: &mut [u8], pos: usize, option_bytes: &[u8]) -> Result<usize, RplError> {
     let end = pos + option_bytes.len();
     if end > buf.len() {
-        return Err(RplError::BufferTooSmall);
+        return Err(BufferTooSmall::new(end, buf.len()).into());
     }
     buf[pos..end].copy_from_slice(option_bytes);
     Ok(end)
@@ -444,7 +473,7 @@ mod tests {
 
     #[test]
     fn dio_too_short() {
-        assert_eq!(Dio::from_bytes(&[0u8; 23]), Err(RplError::TooShort));
+        assert_eq!(Dio::from_bytes(&[0u8; 23]), Err(TooShort::new(24, 23).into()));
     }
 
     // ── DAO round-trip ────────────────────────────────────────────────────────

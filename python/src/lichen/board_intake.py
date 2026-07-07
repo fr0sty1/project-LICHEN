@@ -15,10 +15,33 @@ import argparse
 import json
 import re
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
 FORMAT_VERSION = 1
+
+
+class Confidence(StrEnum):
+    """Confidence level for a parsed fact or inference."""
+
+    OBSERVED = "observed"
+    INFERRED = "inferred"
+
+
+class QuestionKind(StrEnum):
+    """Classification for unresolved questions requiring human review."""
+
+    CONFLICT = "conflict"
+    MISSING_FACT = "missing_fact"
+
+
+class ChecklistStatus(StrEnum):
+    """Status values for Zephyr port checklist items."""
+
+    NEEDS_VALIDATION = "needs_validation"
+    VALIDATED = "validated"
+    FAILED = "failed"
 
 RADIO_CAPABILITIES = {
     "SX1261": ("sx126x", "CONFIG_LICHEN_RADIO_MODEL_SX126X"),
@@ -80,7 +103,7 @@ class Fact:
             "kind": self.category,
             "key": self.key,
             "value": self.value,
-            "confidence": "observed",
+            "confidence": Confidence.OBSERVED,
             "sources": [ref.to_dict() for ref in self.source_refs],
         }
 
@@ -457,7 +480,7 @@ def find_unresolved_questions(facts: list[Fact]) -> list[dict[str, Any]]:
         questions.append(
             {
                 "id": question_id,
-                "kind": "conflict",
+                "kind": QuestionKind.CONFLICT,
                 "question": f"Conflicting {label} values found: {', '.join(values)}",
                 "sources": [ref.to_dict() for fact in matching_facts for ref in fact.source_refs],
             }
@@ -548,7 +571,7 @@ def find_unresolved_questions(facts: list[Fact]) -> list[dict[str, Any]]:
         questions.append(
             {
                 "id": "question.radio.conflict",
-                "kind": "conflict",
+                "kind": QuestionKind.CONFLICT,
                 "question": f"Conflicting radio chips found: {', '.join(radio_chips)}",
                 "sources": sources,
             }
@@ -557,7 +580,7 @@ def find_unresolved_questions(facts: list[Fact]) -> list[dict[str, Any]]:
         questions.append(
             {
                 "id": "question.radio.missing",
-                "kind": "missing_fact",
+                "kind": QuestionKind.MISSING_FACT,
                 "question": "No supported LoRa radio chip was identified.",
                 "sources": [],
             }
@@ -611,7 +634,7 @@ def find_unresolved_questions(facts: list[Fact]) -> list[dict[str, Any]]:
             questions.append(
                 {
                     "id": f"question.{key}.missing",
-                    "kind": "missing_fact",
+                    "kind": QuestionKind.MISSING_FACT,
                     "question": missing_prompts[key],
                     "sources": [],
                 }
@@ -627,19 +650,19 @@ def build_zephyr_port_checklist(board_id: str) -> list[dict[str, Any]]:
             "id": "checklist.zephyr_board",
             "title": f"Create or select Zephyr board definition for {board_id}",
             "evidence_required": ["board DTS", "Kconfig.board", "build log"],
-            "status": "needs_validation",
+            "status": ChecklistStatus.NEEDS_VALIDATION,
         },
         {
             "id": "checklist.app_overlay",
             "title": f"Map {board_id} peripherals to LICHEN app overlays",
             "evidence_required": ["devicetree chosen/alias nodes", "HAL capability review"],
-            "status": "needs_validation",
+            "status": ChecklistStatus.NEEDS_VALIDATION,
         },
         {
             "id": "checklist.smoke",
             "title": f"Run board-appropriate build and smoke validation for {board_id}",
             "evidence_required": ["Zephyr build", "hardware smoke test where applicable"],
-            "status": "needs_validation",
+            "status": ChecklistStatus.NEEDS_VALIDATION,
         },
     ]
 
@@ -696,7 +719,7 @@ def build_report(
         "unresolved_questions": find_unresolved_questions(facts),
         "zephyr_port_checklist": build_zephyr_port_checklist(board_id),
         "follow_up_beads": build_follow_up_beads(board_id, source_project),
-        "zephyr_support_status": "needs_validation",
+        "zephyr_support_status": ChecklistStatus.NEEDS_VALIDATION,
     }
 
 

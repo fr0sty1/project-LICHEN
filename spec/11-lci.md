@@ -22,6 +22,30 @@ interface, using the same CoAP protocol stack as mesh traffic.
 4. **Standard tools work:** Any CoAP client can control the node
 5. **Push via Observe:** Notifications use CoAP Observe (RFC 7641)
 
+### 17.1.1. Legacy Interface Deprecation
+
+An earlier draft protocol under `spec/lichen-native/` defined a CBOR integer-key
+framing scheme (0xC1 start byte, message type codes 0x01-0x61). That protocol
+was a prototype exploration and is **not authoritative** for LCI.
+
+**Deprecated elements (do not implement):**
+
+- 0xC1 + length + CBOR frame envelope
+- Integer message type codes (hello=0x01, config_get=0x10, raw_tx=0x60, etc.)
+- Integer configuration keys
+- `raw_tx` / `raw_rx` CBOR messages
+- `/messages` REST-style resource from Python demos
+
+**Current LCI contract:**
+
+- SLIP-framed IPv6 packets (or native IPv6 over BLE L2CAP / IPC)
+- CoAP resources at well-known paths (`/config`, `/status`, `/diag/raw/*`)
+- CBOR payloads with string keys for human readability and tooling compatibility
+
+The `spec/lichen-native/` directory is retained for historical reference. Each
+file there carries a status banner; implementers finding those files should
+follow the cross-references to this document.
+
 ### 17.2. Architecture
 
 ```
@@ -152,6 +176,12 @@ fe80::/10       -> local interface (direct)
 The node exposes a CoAP server on UDP port 5683. All resources below are
 relative to the node's link-local address.
 
+The LCI CoAP resources in this section are the authoritative native application
+contract. The older CBOR integer-key draft under `spec/lichen-native/` is a
+historical prototype contract only; new BLE, USB, serial, IP, simulator, and
+Python-native clients MUST NOT use its `0xC1` framing, integer config keys,
+`raw_tx`, or `raw_rx` messages as LCI.
+
 #### 17.5.1. Discovery
 
 ```
@@ -165,7 +195,10 @@ Response:
 </status/neighbors>;rt="status";obs,
 </status/routes>;rt="status",
 </keys>;rt="keystore",
-</mesh>;rt="proxy"
+</diag>;rt="diagnostics",
+</msg/inbox>;rt="msg.inbox";ct=60;obs,
+</msg/sent>;rt="msg.sent";ct=60,
+</msg/ack>;rt="msg.ack";ct=60
 ```
 
 #### 17.5.2. Configuration Resources
@@ -256,6 +289,13 @@ Content-Format: application/cbor
   "battery_pct": 87,
   "battery_mv": 3950,
   "mem_free_kb": 42,
+  "time": {
+    "wall_clock_valid": true,
+    "unix_time": 1716742800,
+    "source_class": "gnss",
+    "source_name": "onboard-gnss",
+    "age_s": 120
+  },
   "dodag": {
     "joined": true,
     "rank": 512,
@@ -270,6 +310,13 @@ Content-Format: application/cbor
   }
 }
 ```
+
+The `time` object exposes the firmware time provider state (see
+`docs/firmware-time-provider.md`). When `wall_clock_valid` is false, `unix_time`
+is omitted or zero and the node cannot provide authoritative timestamps. The
+`source_class` indicates how time was obtained (gnss, network, local-client,
+manual, internal-rtc). The `age_s` field shows seconds since the last accepted
+time sample.
 
 Status updates pushed via Observe on significant changes.
 
@@ -320,7 +367,104 @@ Content-Format: application/cbor
 }
 ```
 
-#### 17.5.4. Key Store
+#### 17.5.4. Diagnostic Resources
+
+Diagnostic resources are optional. Firmware MAY omit `/diag` and `/diag/raw/*`
+from `/.well-known/core`; clients MUST treat 4.04 Not Found or 5.01 Not
+Implemented as unsupported diagnostics rather than falling back to the legacy
+CBOR native protocol.
+
+**Diagnostics Summary**
+
+```
+GET /diag
+Content-Format: application/cbor
+
+{
+  "available": true,
+  "raw": {
+    "available": true,
+    "rx": "/diag/raw/rx",
+    "rx_events": "/diag/raw/rx/events",
+    "tx": "/diag/raw/tx",
+    "max_frame_len": 255
+  }
+}
+```
+
+**Raw RX Status and Arming**
+
+```
+GET /diag/raw/rx
+Content-Format: application/cbor
+
+{
+  "enabled": false,
+  "remaining_s": 0,
+  "max_ttl_s": 300
+}
+```
+
+```
+PUT /diag/raw/rx
+Content-Format: application/cbor
+
+{
+  "enabled": true,
+  "ttl_s": 60,
+  "include_payload": true
+}
+
+Response: 2.04 Changed
+```
+
+When raw RX is enabled, clients subscribe with CoAP Observe:
+
+```
+GET /diag/raw/rx/events
+Observe: 0
+Content-Format: application/cbor
+
+{
+  "frame": h'c1020304',
+  "rssi_dbm": -85,
+  "snr_db": 9,
+  "uptime_ms": 3662000,
+  "freq_hz": 915000000,
+  "crc_ok": true
+}
+```
+
+Raw RX MUST be disabled by default and MUST use a finite arming lifetime.
+Receiving raw frames MUST NOT divert frames from the normal IPv6 stack.
+
+**Raw TX**
+
+```
+POST /diag/raw/tx
+Content-Format: application/cbor
+
+{
+  "frame": h'c1020304',
+  "wait": true
+}
+
+Response: 2.04 Changed
+```
+
+Raw TX requests MAY include implementation-defined radio overrides only when
+the firmware can enforce regional limits. Implementations MUST rate-limit raw
+TX, MUST reject frames or overrides that violate configured PHY/regulatory
+constraints, and SHOULD omit raw TX entirely in production firmware.
+
+Raw diagnostics MUST require local administrative authorization. BLE transports
+MUST require LE Secure Connections for these resources; deployments that expose
+raw diagnostics beyond a local trusted link MUST protect them with OSCORE or an
+equivalent authenticated admin credential. Firmware SHOULD require a build-time
+diagnostic enablement flag and MAY require a local physical confirmation before
+arming raw RX or accepting raw TX.
+
+#### 17.5.5. Key Store
 
 **List Keys**
 
@@ -378,10 +522,12 @@ DELETE /keys/1234:5678:9abc:def0
 Response: 2.02 Deleted
 ```
 
-#### 17.5.5. Mesh Proxy
+#### 17.5.6. Mesh Reachability
 
 The client can reach any mesh node by addressing it directly. The local
-node routes the traffic. No special proxy resource is required.
+node routes the traffic. This direct IPv6 + CoAP path is the authoritative
+LCI mesh access model. No special proxy resource is required, and `/mesh` is
+not an LCI forward-proxy resource.
 
 ```
 # Client sends directly to mesh node
@@ -398,13 +544,25 @@ For discovery, the client can query the Resource Directory (if available):
 GET coap://[fd12:3456:789a:1::1]/rd-lookup/res?rt=temperature
 ```
 
-#### 17.5.6. Messaging (Application-Level)
+Implementations MAY expose an optional RFC 7252 forward proxy at `/proxy` for
+compatibility with constrained local transports or host stacks that cannot
+route directly to mesh IPv6 addresses. Clients MUST NOT require `/proxy` for
+normal LCI operation, and discovery of `</proxy>;rt="proxy"` only signals this
+compatibility helper. Proxy clients use the standard CoAP `Proxy-Uri` option to
+name the mesh target; the gateway strips proxy options before forwarding.
+
+```
+GET coap://[fe80::1]/proxy
+Proxy-Uri: coap://[fd12:3456:789a:1::aaaa:bbbb:cccc:dddd]/status
+```
+
+#### 17.5.7. Messaging (Application-Level)
 
 For human messaging (chat-like), nodes MAY implement:
 
 ```
 # Send message
-POST /msg
+POST /msg/inbox
 Content-Format: application/cbor
 
 {
@@ -414,7 +572,7 @@ Content-Format: application/cbor
 }
 
 Response: 2.01 Created
-Location-Path: /msg/outbox/42
+Location-Path: /msg/sent/42
 ```
 
 ```
@@ -436,6 +594,8 @@ Content-Format: application/cbor
 ```
 
 This is OPTIONAL. Applications MAY instead use CoAP directly to mesh nodes.
+The legacy Python demo `/messages` resource is not part of LCI and MUST NOT be
+advertised as a native messaging resource.
 
 ### 17.6. Security
 
@@ -464,9 +624,9 @@ Implementations SHOULD support restricting local client access:
 
 | Level | Allowed Operations |
 |-------|-------------------|
-| Read-only | GET on all resources |
-| Standard | GET, Observe, mesh proxy |
-| Admin | All operations including PUT /config, DELETE /keys |
+| Read-only | GET on non-sensitive resources; excludes `/diag/raw/*` |
+| Standard | GET, Observe, direct mesh CoAP reachability, optional `/proxy`; excludes `/diag/raw/*` |
+| Admin | All operations including PUT /config, DELETE /keys, `/diag/raw/*` |
 
 Access level determined by transport (e.g., USB = admin, BLE = standard).
 

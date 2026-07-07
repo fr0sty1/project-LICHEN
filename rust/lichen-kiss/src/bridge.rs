@@ -27,6 +27,7 @@ pub const MAX_PAYLOAD: usize = 256;
 
 /// Bridge error type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum BridgeError {
     /// KISS framing error.
     Kiss(KissError),

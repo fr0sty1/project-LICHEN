@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ow1e.261",
+  "title": "AprsIsClient::login accepts unverified connections silently",
+  "description": "AprsIsClient::login() returns Ok(()) for both 'verified' and 'unverified' login responses. While 'unverified' means receive-only (passcode -1), callers cannot distinguish between these states after login. Consider returning an enum indicating verification status or storing it in the struct.\n\nFile: rust/lichen-gateway/src/aprs_is.rs lines 205-214",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:17:13.105388Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:57:42.495597Z",
+  "closed_at": "2026-07-06T17:57:42.495597Z",
+  "close_reason": "Closed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.261",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T17:17:13.105936Z"
+    }
+  ]
+}

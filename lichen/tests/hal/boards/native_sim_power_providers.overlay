@@ -1,0 +1,36 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: The contributors to the LICHEN project
+ */
+
+#include <zephyr/dt-bindings/i2c/i2c.h>
+
+/ {
+	aliases {
+		battery0 = &smartbattery0;
+		pmic0 = &smartcharger0;
+	};
+
+	fake_i2c_bus: i2c@100 {
+		compatible = "zephyr,i2c-emul-controller";
+		clock-frequency = <I2C_BITRATE_STANDARD>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0x100 4>;
+		status = "okay";
+	};
+};
+
+&fake_i2c_bus {
+	smartbattery0: smartbattery@b {
+		compatible = "sbs,sbs-gauge-new-api";
+		reg = <0x0b>;
+		status = "okay";
+	};
+
+	smartcharger0: smartcharger@c {
+		compatible = "sbs,sbs-charger";
+		reg = <0x0c>;
+		status = "okay";
+	};
+};

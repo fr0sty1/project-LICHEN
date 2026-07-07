@@ -22,13 +22,13 @@ static void expect_bytes(const uint8_t *actual, size_t actual_len,
 
 ZTEST(meshcore_codec, test_generated_vectors_are_current)
 {
-	zassert_equal(MESHCORE_CODEC_VECTOR_SOURCE_COUNT, 33U);
+	zassert_equal(MESHCORE_CODEC_VECTOR_SOURCE_COUNT, 38U);
 	zassert_equal(MESHCORE_CODEC_VECTOR_COUNT,
 		      ARRAY_SIZE(meshcore_codec_vectors));
-	zassert_equal(MESHCORE_CODEC_VECTOR_COUNT, 33U);
+	zassert_equal(MESHCORE_CODEC_VECTOR_COUNT, 38U);
 	zassert_equal(MESHCORE_CODEC_ERROR_VECTOR_COUNT,
 		      ARRAY_SIZE(meshcore_codec_error_vectors));
-	zassert_equal(MESHCORE_CODEC_ERROR_VECTOR_COUNT, 18U);
+	zassert_equal(MESHCORE_CODEC_ERROR_VECTOR_COUNT, 16U);
 }
 
 ZTEST(meshcore_codec, test_canonical_inner_frame_vectors)

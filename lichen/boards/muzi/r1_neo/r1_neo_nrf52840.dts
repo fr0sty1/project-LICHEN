@@ -10,6 +10,8 @@
 
 /dts-v1/;
 #include <nordic/nrf52840_qiaa.dtsi>
+#include <zephyr/dt-bindings/adc/adc.h>
+#include <zephyr/dt-bindings/adc/nrf-adc.h>
 #include <zephyr/dt-bindings/lora/sx126x.h>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 #include "r1_neo-pinctrl.dtsi"
@@ -51,7 +53,16 @@
 		led1      = &blue_led;
 		sw0       = &button0;
 		lora0     = &lora0;
+		battery0  = &vbatt;
 		watchdog0 = &wdt0;
+	};
+
+	vbatt: vbatt {
+		compatible = "voltage-divider";
+		io-channels = <&adc 7>;
+		output-ohms = <100000>;
+		full-ohms = <166700>;
+		status = "okay";
 	};
 };
 
@@ -87,6 +98,17 @@
 
 &adc {
 	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	channel@7 {
+		reg = <7>;
+		zephyr,gain = "ADC_GAIN_1_6";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,input-positive = <NRF_SAADC_AIN7>; /* P0.31 */
+		zephyr,resolution = <12>;
+	};
 };
 
 /*

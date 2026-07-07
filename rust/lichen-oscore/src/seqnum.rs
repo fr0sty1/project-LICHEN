@@ -106,7 +106,22 @@ impl OscoreSeqNum {
     }
 
     /// Decode from variable-length big-endian PIV.
+    ///
+    /// PIV values exceeding u32::MAX (i.e., PIV > 4 bytes with high bits set)
+    /// saturate to u32::MAX rather than silently wrapping. Per RFC 8613 Section 5.2,
+    /// PIV is at most 5 bytes, but only 4 bytes fit in a u32.
     pub fn from_piv(piv: &[u8]) -> Self {
+        // Limit to 4 bytes to prevent overflow; extra bytes saturate to MAX
+        if piv.len() > 4 {
+            // Check if high bytes would cause overflow
+            let high_bytes = &piv[..piv.len() - 4];
+            if high_bytes.iter().any(|&b| b != 0) {
+                return Self(u32::MAX);
+            }
+            // Use only the last 4 bytes
+            let start = piv.len() - 4;
+            return Self(u32::from_be_bytes([piv[start], piv[start + 1], piv[start + 2], piv[start + 3]]));
+        }
         Self(piv.iter().fold(0u32, |acc, &b| (acc << 8) | (b as u32)))
     }
 }

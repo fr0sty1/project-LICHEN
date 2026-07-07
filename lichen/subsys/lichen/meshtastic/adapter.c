@@ -27,6 +27,17 @@
 #define DATA_PAYLOAD_FIELD 2U
 #define DATA_REQUEST_ID_FIELD 6U
 
+#define POSITION_LATITUDE_I_FIELD 1U
+#define POSITION_LONGITUDE_I_FIELD 2U
+#define POSITION_ALTITUDE_FIELD 3U
+#define POSITION_TIME_FIELD 4U
+#define POSITION_LOCATION_SOURCE_FIELD 5U
+#define POSITION_ALTITUDE_SOURCE_FIELD 6U
+#define POSITION_TIMESTAMP_FIELD 7U
+#define POSITION_GPS_ACCURACY_FIELD 14U
+#define POSITION_SATS_IN_VIEW_FIELD 19U
+#define POSITION_PRECISION_BITS_FIELD 23U
+
 #define ADMIN_GET_OWNER_REQUEST_FIELD 3U
 #define ADMIN_GET_DEVICE_METADATA_REQUEST_FIELD 12U
 #define ADMIN_GET_DEVICE_METADATA_RESPONSE_FIELD 13U
@@ -47,9 +58,15 @@
 #define MESHTASTIC_PORTNUM_WAYPOINT_APP 8U
 #define MESHTASTIC_PORTNUM_AUDIO_APP 9U
 #define MESHTASTIC_PORTNUM_DETECTION_SENSOR_APP 10U
+#define MESHTASTIC_PORTNUM_ALERT_APP 11U
+#define MESHTASTIC_PORTNUM_KEY_VERIFICATION_APP 12U
+#define MESHTASTIC_PORTNUM_REMOTE_SHELL_APP 13U
 #define MESHTASTIC_PORTNUM_REPLY_APP 32U
 #define MESHTASTIC_PORTNUM_IP_TUNNEL_APP 33U
 #define MESHTASTIC_PORTNUM_PAXCOUNTER_APP 34U
+#define MESHTASTIC_PORTNUM_STORE_FORWARD_PLUSPLUS_APP 35U
+#define MESHTASTIC_PORTNUM_NODE_STATUS_APP 36U
+#define MESHTASTIC_PORTNUM_MESH_BEACON_APP 37U
 #define MESHTASTIC_PORTNUM_SERIAL_APP 64U
 #define MESHTASTIC_PORTNUM_STORE_FORWARD_APP 65U
 #define MESHTASTIC_PORTNUM_RANGE_TEST_APP 66U
@@ -60,6 +77,13 @@
 #define MESHTASTIC_PORTNUM_NEIGHBORINFO_APP 71U
 #define MESHTASTIC_PORTNUM_ATAK_PLUGIN 72U
 #define MESHTASTIC_PORTNUM_MAP_REPORT_APP 73U
+#define MESHTASTIC_PORTNUM_POWERSTRESS_APP 74U
+#define MESHTASTIC_PORTNUM_LORAWAN_BRIDGE 75U
+#define MESHTASTIC_PORTNUM_RETICULUM_TUNNEL_APP 76U
+#define MESHTASTIC_PORTNUM_CAYENNE_APP 77U
+#define MESHTASTIC_PORTNUM_ATAK_PLUGIN_V2 78U
+#define MESHTASTIC_PORTNUM_LORA_OTA_APP 79U
+#define MESHTASTIC_PORTNUM_GROUPALARM_APP 112U
 #define MESHTASTIC_PORTNUM_PRIVATE_APP 256U
 #define MESHTASTIC_PORTNUM_ATAK_FORWARDER 257U
 #define MESHTASTIC_PORTNUM_MAX_SENTINEL 511U
@@ -71,9 +95,6 @@
 
 #define MESHTASTIC_CONFIG_STAGE_STATIC 69420U
 #define MESHTASTIC_CONFIG_STAGE_NODEDB 69421U
-#define MESHTASTIC_STATIC_SYNC_FIXED_RECORDS 5U
-#define MESHTASTIC_NODE_SYNC_RECORDS 1U
-#define MESHTASTIC_CONFIG_COMPLETE_RECORDS 1U
 #define MESHTASTIC_NODEDB_MAX_PEERS CONFIG_LICHEN_MESHTASTIC_NODEDB_MAX_PEERS
 #define LICHEN_BRAND "LICHEN"
 #define MESHTASTIC_BRAND "meshtastic"
@@ -158,6 +179,21 @@ static const struct lichen_meshtastic_adapter_unsupported_operation
 		.has_portnum = true,
 	},
 	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_ALERT,
+		.portnum = MESHTASTIC_PORTNUM_ALERT_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_KEY_VERIFICATION,
+		.portnum = MESHTASTIC_PORTNUM_KEY_VERIFICATION_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_REMOTE_SHELL,
+		.portnum = MESHTASTIC_PORTNUM_REMOTE_SHELL_APP,
+		.has_portnum = true,
+	},
+	{
 		.id = LICHEN_MESHTASTIC_UNSUPPORTED_REPLY,
 		.portnum = MESHTASTIC_PORTNUM_REPLY_APP,
 		.has_portnum = true,
@@ -173,6 +209,21 @@ static const struct lichen_meshtastic_adapter_unsupported_operation
 		.has_portnum = true,
 	},
 	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_STORE_FORWARD_PLUSPLUS,
+		.portnum = MESHTASTIC_PORTNUM_STORE_FORWARD_PLUSPLUS_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_NODE_STATUS,
+		.portnum = MESHTASTIC_PORTNUM_NODE_STATUS_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_MESH_BEACON,
+		.portnum = MESHTASTIC_PORTNUM_MESH_BEACON_APP,
+		.has_portnum = true,
+	},
+	{
 		.id = LICHEN_MESHTASTIC_UNSUPPORTED_SERIAL,
 		.portnum = MESHTASTIC_PORTNUM_SERIAL_APP,
 		.has_portnum = true,
@@ -180,11 +231,6 @@ static const struct lichen_meshtastic_adapter_unsupported_operation
 	{
 		.id = LICHEN_MESHTASTIC_UNSUPPORTED_REMOTE_HARDWARE,
 		.portnum = MESHTASTIC_PORTNUM_REMOTE_HARDWARE_APP,
-		.has_portnum = true,
-	},
-	{
-		.id = LICHEN_MESHTASTIC_UNSUPPORTED_POSITION_UPDATE,
-		.portnum = MESHTASTIC_PORTNUM_POSITION_APP,
 		.has_portnum = true,
 	},
 	{
@@ -233,6 +279,41 @@ static const struct lichen_meshtastic_adapter_unsupported_operation
 	{
 		.id = LICHEN_MESHTASTIC_UNSUPPORTED_MAP_REPORT,
 		.portnum = MESHTASTIC_PORTNUM_MAP_REPORT_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_POWERSTRESS,
+		.portnum = MESHTASTIC_PORTNUM_POWERSTRESS_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_LORAWAN_BRIDGE,
+		.portnum = MESHTASTIC_PORTNUM_LORAWAN_BRIDGE,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_RETICULUM_TUNNEL,
+		.portnum = MESHTASTIC_PORTNUM_RETICULUM_TUNNEL_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_CAYENNE,
+		.portnum = MESHTASTIC_PORTNUM_CAYENNE_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_ATAK_PLUGIN_V2,
+		.portnum = MESHTASTIC_PORTNUM_ATAK_PLUGIN_V2,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_LORA_OTA,
+		.portnum = MESHTASTIC_PORTNUM_LORA_OTA_APP,
+		.has_portnum = true,
+	},
+	{
+		.id = LICHEN_MESHTASTIC_UNSUPPORTED_GROUPALARM,
+		.portnum = MESHTASTIC_PORTNUM_GROUPALARM_APP,
 		.has_portnum = true,
 	},
 	{
@@ -397,6 +478,183 @@ static int pb_write_len_field(uint8_t *buf, size_t cap, size_t *pos,
 	return 0;
 }
 
+static int32_t read_le_i32_twos_complement(const uint8_t bytes[4])
+{
+	uint32_t raw = sys_get_le32(bytes);
+
+	if ((raw & BIT(31)) == 0U) {
+		return (int32_t)raw;
+	}
+
+	return -1 - (int32_t)(UINT32_MAX - raw);
+}
+
+static int int32_from_pb_varint(uint64_t raw, int32_t *out)
+{
+	if (out == NULL) {
+		return -EINVAL;
+	}
+	if (raw <= (uint64_t)INT32_MAX) {
+		*out = (int32_t)raw;
+		return 0;
+	}
+	if (raw >= UINT64_MAX - (uint64_t)INT32_MAX) {
+		*out = -1 - (int32_t)(UINT64_MAX - raw);
+		return 0;
+	}
+
+	return -ERANGE;
+}
+
+static bool valid_position_e7(int32_t latitude_e7, int32_t longitude_e7)
+{
+	return latitude_e7 >= -900000000 && latitude_e7 <= 900000000 &&
+	       longitude_e7 >= -1800000000 && longitude_e7 <= 1800000000;
+}
+
+static void set_position_fix_time(
+	struct lichen_meshtastic_position_snapshot *position, uint32_t unix_time)
+{
+	position->effective_epoch_floor =
+		(uint32_t)CONFIG_LICHEN_MESHTASTIC_POSITION_EPOCH_FLOOR_UNIX;
+	if (unix_time < position->effective_epoch_floor) {
+		position->fix_time_rejected_below_epoch_floor = true;
+		position->fix_time_unix_valid = false;
+		position->fix_time_unix = 0U;
+		return;
+	}
+
+	position->fix_time_rejected_below_epoch_floor = false;
+	position->fix_time_unix = unix_time;
+	position->fix_time_unix_valid = true;
+}
+
+static int parse_position_payload(
+	const uint8_t *payload, size_t len,
+	struct lichen_meshtastic_position_snapshot *position)
+{
+	struct pb_cursor cur = { .buf = payload, .len = len };
+
+	if (position == NULL || (payload == NULL && len > 0U)) {
+		return -EINVAL;
+	}
+	memset(position, 0, sizeof(*position));
+
+	while (cur.pos < cur.len) {
+		uint32_t field;
+		uint32_t wt;
+		uint64_t v;
+
+		if (pb_read_key(&cur, &field, &wt) < 0) {
+			return -EINVAL;
+		}
+
+		switch (field) {
+		case POSITION_LATITUDE_I_FIELD:
+			if (wt != PB_WT_32BIT ||
+			    cur.len - cur.pos < sizeof(uint32_t)) {
+				return -EINVAL;
+			}
+			position->latitude_e7 =
+				read_le_i32_twos_complement(&cur.buf[cur.pos]);
+			position->latitude_e7_valid = true;
+			cur.pos += sizeof(uint32_t);
+			break;
+		case POSITION_LONGITUDE_I_FIELD:
+			if (wt != PB_WT_32BIT ||
+			    cur.len - cur.pos < sizeof(uint32_t)) {
+				return -EINVAL;
+			}
+			position->longitude_e7 =
+				read_le_i32_twos_complement(&cur.buf[cur.pos]);
+			position->longitude_e7_valid = true;
+			cur.pos += sizeof(uint32_t);
+			break;
+		case POSITION_ALTITUDE_FIELD:
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0 ||
+			    int32_from_pb_varint(v, &position->altitude_m) < 0) {
+				return -EINVAL;
+			}
+			position->altitude_m_valid = true;
+			break;
+		case POSITION_TIME_FIELD:
+			if (wt != PB_WT_32BIT ||
+			    cur.len - cur.pos < sizeof(uint32_t)) {
+				return -EINVAL;
+			}
+			if (!position->timestamp_field_valid) {
+				set_position_fix_time(
+					position, sys_get_le32(&cur.buf[cur.pos]));
+			}
+			cur.pos += sizeof(uint32_t);
+			break;
+		case POSITION_LOCATION_SOURCE_FIELD:
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0 ||
+			    v > UINT32_MAX) {
+				return -EINVAL;
+			}
+			position->location_source = (uint32_t)v;
+			position->location_source_valid = true;
+			break;
+		case POSITION_ALTITUDE_SOURCE_FIELD:
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0 ||
+			    v > UINT32_MAX) {
+				return -EINVAL;
+			}
+			position->altitude_source = (uint32_t)v;
+			position->altitude_source_valid = true;
+			break;
+		case POSITION_TIMESTAMP_FIELD:
+			if (wt != PB_WT_32BIT ||
+			    cur.len - cur.pos < sizeof(uint32_t)) {
+				return -EINVAL;
+			}
+			position->timestamp_field_valid = true;
+			set_position_fix_time(position, sys_get_le32(&cur.buf[cur.pos]));
+			cur.pos += sizeof(uint32_t);
+			break;
+		case POSITION_GPS_ACCURACY_FIELD:
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0 ||
+			    v > UINT32_MAX) {
+				return -EINVAL;
+			}
+			position->gps_accuracy_mm = (uint32_t)v;
+			position->gps_accuracy_mm_valid = true;
+			break;
+		case POSITION_SATS_IN_VIEW_FIELD:
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0) {
+				return -EINVAL;
+			}
+			if (v <= UINT8_MAX) {
+				position->satellites = (uint8_t)v;
+				position->satellites_valid = true;
+			}
+			break;
+		case POSITION_PRECISION_BITS_FIELD:
+			if (wt != PB_WT_VARINT || pb_read_varint(&cur, &v) < 0) {
+				return -EINVAL;
+			}
+			if (v <= UINT8_MAX) {
+				position->precision_bits = (uint8_t)v;
+				position->precision_bits_valid = true;
+			}
+			break;
+		default:
+			if (pb_skip_value(&cur, wt) < 0) {
+				return -EINVAL;
+			}
+			break;
+		}
+	}
+
+	if (!position->latitude_e7_valid || !position->longitude_e7_valid ||
+	    !valid_position_e7(position->latitude_e7, position->longitude_e7)) {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static bool admin_payload_variant_field(uint32_t field)
 {
 	/* Current Meshtastic AdminMessage.payload_variant fields. Field 101 is
@@ -507,8 +765,19 @@ static int parse_data(const uint8_t *data, size_t len,
 	if (info->has_portnum) {
 		if (info->portnum == MESHTASTIC_PORTNUM_TEXT_MESSAGE_APP) {
 			info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP;
-		} else if (info->portnum == MESHTASTIC_PORTNUM_ADMIN_APP &&
-			   info->payload != NULL) {
+			} else if (info->portnum == MESHTASTIC_PORTNUM_POSITION_APP) {
+				if (info->payload == NULL ||
+				    parse_position_payload(info->payload,
+							   info->payload_len,
+							   &info->position) < 0) {
+					info->kind =
+						LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
+				} else {
+					info->kind =
+						LICHEN_MESHTASTIC_ADAPTER_PACKET_POSITION_APP;
+				}
+			} else if (info->portnum == MESHTASTIC_PORTNUM_ADMIN_APP &&
+				   info->payload != NULL) {
 			if (!parse_admin_payload(info->payload, info->payload_len,
 						 &info->kind)) {
 				info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
@@ -755,9 +1024,12 @@ static const enum lichen_meshtastic_config_section s_config_sections[] = {
 	LICHEN_MESHTASTIC_CONFIG_DEVICE_UI,
 };
 
+BUILD_ASSERT(ARRAY_SIZE(s_config_sections) ==
+	     LICHEN_MESHTASTIC_STATIC_SYNC_CONFIG_SECTIONS);
+
 static uint32_t static_sync_record_count(void)
 {
-	return MESHTASTIC_STATIC_SYNC_FIXED_RECORDS + ARRAY_SIZE(s_config_sections);
+	return LICHEN_MESHTASTIC_STATIC_SYNC_RECORDS;
 }
 
 static uint32_t peer_node_num(const uint8_t eui64[8])
@@ -876,13 +1148,13 @@ static void nodedb_peer_snapshot(struct lichen_meshtastic_adapter *adapter,
 
 static uint32_t node_sync_record_count(const struct nodedb_peer_state *state)
 {
-	return MESHTASTIC_NODE_SYNC_RECORDS + (uint32_t)state->emit_count;
+	return LICHEN_MESHTASTIC_NODE_SYNC_RECORDS((uint32_t)state->emit_count);
 }
 
 static uint32_t want_config_record_count(
 	uint32_t nonce, const struct nodedb_peer_state *state)
 {
-	uint32_t records = MESHTASTIC_CONFIG_COMPLETE_RECORDS;
+	uint32_t records = LICHEN_MESHTASTIC_CONFIG_COMPLETE_RECORDS;
 
 	if (nonce == MESHTASTIC_CONFIG_STAGE_STATIC) {
 		records += static_sync_record_count();
@@ -1304,7 +1576,7 @@ static int dispatch_packet(struct lichen_meshtastic_adapter *adapter,
 	}
 
 	switch (packet.kind) {
-	case LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP:
+		case LICHEN_MESHTASTIC_ADAPTER_PACKET_TEXT_MESSAGE_APP:
 		adapter->stats.text_packet_count++;
 		if (!text_packet_supported(adapter, &packet)) {
 			adapter->stats.unsupported_packet_count++;
@@ -1318,8 +1590,23 @@ static int dispatch_packet(struct lichen_meshtastic_adapter *adapter,
 		if (ret < 0) {
 			adapter->stats.unsupported_packet_count++;
 			return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED, &packet);
-		}
-		return queue_status(adapter, QUEUE_STATUS_OK, &packet);
+			}
+			return queue_status(adapter, QUEUE_STATUS_OK, &packet);
+		case LICHEN_MESHTASTIC_ADAPTER_PACKET_POSITION_APP:
+			adapter->stats.position_packet_count++;
+			if (adapter->ops.handle_location == NULL) {
+				adapter->stats.unsupported_packet_count++;
+				return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED,
+						    &packet);
+			}
+			ret = adapter->ops.handle_location(&packet,
+							   adapter->ops.user_data);
+			if (ret < 0) {
+				adapter->stats.unsupported_packet_count++;
+				return queue_status(adapter, QUEUE_STATUS_UNSUPPORTED,
+						    &packet);
+			}
+			return queue_status(adapter, QUEUE_STATUS_OK, &packet);
 	case LICHEN_MESHTASTIC_ADAPTER_PACKET_ADMIN_GET_DEVICE_METADATA:
 		return enqueue_admin_metadata_response(adapter, &packet);
 	case LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED:

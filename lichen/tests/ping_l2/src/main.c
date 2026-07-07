@@ -18,6 +18,7 @@
 #include <zephyr/ztest.h>
 
 #include <lichen/app_identity/app_identity.h>
+#include <lichen/hal.h>
 
 #include <string.h>
 
@@ -46,7 +47,7 @@ static const uint8_t test_link_key[16] = {
 	0x6c, 0x6f, 0x6f, 0x70, 0x62, 0x61, 0x63, 0x6b,
 };
 
-static const struct device *const lora_dev = DEVICE_DT_GET(DT_ALIAS(lora0));
+static const struct device *lora_dev;
 static struct net_if *test_iface;
 static struct in6_addr test_ll_addr;
 static struct in6_addr peer_ll_addr;
@@ -152,7 +153,8 @@ static void *ping_l2_setup(void)
 
 	zassert_true(IS_ENABLED(CONFIG_LICHEN_L2), "CONFIG_LICHEN_L2 is disabled");
 	zassert_false(IS_ENABLED(CONFIG_NET_L2_DUMMY), "dummy L2 bypass is enabled");
-	zassert_true(device_is_ready(lora_dev), "lora0 loopback device is not ready");
+	ret = lichen_hal_lora_device_get(&lora_dev);
+	zassert_equal(ret, 0, "failed to get HAL LoRa device: %d", ret);
 
 	test_iface = net_if_get_first_by_type(&NET_L2_GET_NAME(lichen_l2));
 	zassert_not_null(test_iface, "no default LICHEN interface");

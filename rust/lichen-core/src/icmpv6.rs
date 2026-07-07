@@ -4,6 +4,7 @@
 //! buffer. The IPv6 pseudo-header checksum is computed automatically.
 
 use crate::addr::Ipv6Addr;
+use crate::checksum::upper_layer_checksum;
 use crate::ipv6::{next_header, IPV6_HEADER_LEN};
 
 /// ICMPv6 fixed header length (type, code, checksum, message body).
@@ -95,59 +96,10 @@ fn build(
     out[48..total].copy_from_slice(data);
 
     // Compute and fill in checksum
-    let csum = icmpv6_checksum(&src.0, &dst.0, &out[40..total]);
+    let csum = upper_layer_checksum(&src.0, &dst.0, next_header::ICMPV6, &out[40..total]);
     out[42..44].copy_from_slice(&csum.to_be_bytes());
 
     total
-}
-
-// ── One's-complement checksum (RFC 1071) ────────────────────────────────────
-
-fn oc_add(a: u32, b: u32) -> u32 {
-    let s = a + b;
-    if s >> 16 != 0 {
-        (s & 0xFFFF) + (s >> 16)
-    } else {
-        s
-    }
-}
-
-fn sum_words(data: &[u8]) -> u32 {
-    let mut sum: u32 = 0;
-    let mut i = 0;
-    while i + 1 < data.len() {
-        sum = oc_add(sum, u16::from_be_bytes([data[i], data[i + 1]]) as u32);
-        i += 2;
-    }
-    if data.len() % 2 == 1 {
-        sum = oc_add(sum, (data[data.len() - 1] as u32) << 8);
-    }
-    sum
-}
-
-/// ICMPv6 checksum over IPv6 pseudo-header + ICMPv6 payload.
-///
-/// `icmpv6_payload` must include the ICMPv6 header with checksum field
-/// already zeroed. `src` and `dst` are 16-byte IPv6 addresses.
-fn icmpv6_checksum(src: &[u8], dst: &[u8], icmpv6_payload: &[u8]) -> u16 {
-    // Pseudo-header: src + dst + upper-layer length + zeros + next-header=58
-    let mut sum: u32 = 0;
-    for i in (0..16).step_by(2) {
-        sum = oc_add(sum, u16::from_be_bytes([src[i], src[i + 1]]) as u32);
-    }
-    for i in (0..16).step_by(2) {
-        sum = oc_add(sum, u16::from_be_bytes([dst[i], dst[i + 1]]) as u32);
-    }
-    sum = oc_add(sum, icmpv6_payload.len() as u32);
-    sum = oc_add(sum, next_header::ICMPV6 as u32);
-
-    sum = oc_add(sum, sum_words(icmpv6_payload));
-
-    // Fold 32-bit sum to 16 bits and invert
-    while sum >> 16 != 0 {
-        sum = (sum & 0xFFFF) + (sum >> 16);
-    }
-    !(sum as u16)
 }
 
 #[cfg(test)]

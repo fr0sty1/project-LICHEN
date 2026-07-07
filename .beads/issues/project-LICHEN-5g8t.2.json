@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-5g8t.2",
+  "title": "Detect neighbor duty cycle cheating",
+  "description": "Track observed TX from each neighbor (by L2 source). Flag neighbors exceeding expected duty cycle. Expose per-neighbor airtime stats. Could feed into routing decisions (avoid relaying through cheaters). Software-only: RX timestamp accounting.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-03T05:42:35.785906Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:26:35.020988Z",
+  "closed_at": "2026-07-06T15:26:35.020988Z",
+  "close_reason": "Implemented with triple code review",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-5g8t.2",
+      "depends_on_id": "project-LICHEN-5g8t",
+      "type": "parent-child",
+      "created_at": "2026-07-03T05:42:35.786386Z"
+    }
+  ]
+}

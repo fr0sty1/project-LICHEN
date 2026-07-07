@@ -19,11 +19,57 @@ from __future__ import annotations
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
+from functools import total_ordering
 from ipaddress import IPv6Address
 
+from lichen.ipv6 import to_ipv6
+
 MAX_ENTRIES = 64
-DATA_GRADIENT_TIMEOUT_MS = 60_000  # opportunistic data gradients expire sooner
 GRADIENT_TIMEOUT_MS = 600_000  # announce/rrep gradients (spec section 9)
+
+# Sequence number constants for RFC 1982 comparison
+SEQ_BITS = 16
+SEQ_HALF = 1 << (SEQ_BITS - 1)  # 32768
+
+
+@total_ordering
+class SeqNum:
+    """Wrapper for 16-bit sequence numbers with RFC 1982 comparison.
+
+    Why: Naive integer comparison fails when sequence numbers wrap from
+    65535 to 0. RFC 1982 defines "greater than" for serial numbers.
+    """
+
+    __slots__ = ("_value",)
+
+    def __init__(self, value: int) -> None:
+        self._value = value & 0xFFFF
+
+    @property
+    def value(self) -> int:
+        return self._value
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, SeqNum):
+            return self._value == other._value
+        if isinstance(other, int):
+            return self._value == (other & 0xFFFF)
+        return NotImplemented
+
+    def __lt__(self, other: SeqNum | int) -> bool:
+        if isinstance(other, int):
+            other = SeqNum(other)
+        if not isinstance(other, SeqNum):
+            return NotImplemented
+        # RFC 1982: a < b iff b > a iff (b - a) mod 2^N < 2^(N-1)
+        diff = (other._value - self._value) & 0xFFFF
+        return self._value != other._value and diff < SEQ_HALF
+
+    def __hash__(self) -> int:
+        return hash(self._value)
+
+    def __repr__(self) -> str:
+        return f"SeqNum({self._value})"
 
 
 class GradientSource(Enum):
@@ -40,10 +86,6 @@ class GradientSource(Enum):
         return 0 if self is GradientSource.DATA else 1
 
 
-def _addr(value: IPv6Address | str) -> IPv6Address:
-    return value if isinstance(value, IPv6Address) else IPv6Address(value)
-
-
 @dataclass
 class GradientEntry:
     """A next-hop gradient toward ``destination`` (spec 11.1)."""
@@ -57,12 +99,12 @@ class GradientEntry:
     coords: tuple[float, float] | None = None  # (lat, lon) from app_data (spec 9.7)
 
     def __post_init__(self) -> None:
-        self.destination = _addr(self.destination)
-        self.next_hop = _addr(self.next_hop)
+        self.destination = to_ipv6(self.destination)
+        self.next_hop = to_ipv6(self.next_hop)
 
-    def _rank(self) -> tuple[int, int, int]:
-        # Larger is better: priority, then freshness, then fewer hops.
-        return (self.source.priority, self.seq_num, -self.hop_count)
+    def _rank(self) -> tuple[int, SeqNum, int]:
+        # Larger is better: priority, then freshness (RFC 1982), then fewer hops.
+        return (self.source.priority, SeqNum(self.seq_num), -self.hop_count)
 
 
 class GradientTable:
@@ -78,7 +120,7 @@ class GradientTable:
         self, destination: IPv6Address | str, now: int | None = None
     ) -> GradientEntry | None:
         """Return the gradient for ``destination`` (None if absent or expired)."""
-        dest = _addr(destination)
+        dest = to_ipv6(destination)
         entry = self._entries.get(dest)
         if entry is None:
             return None
@@ -107,11 +149,11 @@ class GradientTable:
 
     def remove(self, destination: IPv6Address | str) -> None:
         """Remove the gradient for ``destination`` if present."""
-        self._entries.pop(_addr(destination), None)
+        self._entries.pop(to_ipv6(destination), None)
 
     def remove_via(self, next_hop: IPv6Address | str) -> list[IPv6Address]:
         """Remove every gradient routing through ``next_hop``; return their dsts."""
-        nh = _addr(next_hop)
+        nh = to_ipv6(next_hop)
         dests = [d for d, e in self._entries.items() if e.next_hop == nh]
         for dest in dests:
             del self._entries[dest]
@@ -132,4 +174,8 @@ class GradientTable:
         return len(self._entries)
 
     def __contains__(self, destination: IPv6Address | str) -> bool:
-        return _addr(destination) in self._entries
+        return to_ipv6(destination) in self._entries
+
+    def entries(self) -> list[GradientEntry]:
+        """Return a list of all gradient entries (public iteration API)."""
+        return list(self._entries.values())

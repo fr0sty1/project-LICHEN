@@ -120,7 +120,9 @@ async def partial_presence(request: Request) -> HTMLResponse:
 
 
 async def partial_messages(request: Request) -> HTMLResponse:
-    data = await _fetch("/messages")
+    data = await _fetch("/msg/inbox")
+    if isinstance(data, dict):
+        data = data.get("messages")
     return HTMLResponse(_render_list(data, "Inbox empty"))
 
 
@@ -192,7 +194,31 @@ _PAGE_HTML = """\
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LICHEN — {{NODE}}</title>
-  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <script>
+    function refreshElement(el) {
+      var target = el.getAttribute("hx-get");
+      if (!target) return;
+      var card = el.closest(".card");
+      if (card) card.classList.add("htmx-request");
+      fetch(target, { headers: { "HX-Request": "true" } })
+        .then(function (response) { return response.text(); })
+        .then(function (html) { el.innerHTML = html; })
+        .catch(function () { el.innerHTML = "<p class='err'>Unreachable</p>"; })
+        .finally(function () {
+          if (card) card.classList.remove("htmx-request");
+        });
+    }
+    document.addEventListener("DOMContentLoaded", function () {
+      document.querySelectorAll("[hx-get]").forEach(function (el) {
+        var trigger = el.getAttribute("hx-trigger") || "";
+        if (trigger.indexOf("load") !== -1) refreshElement(el);
+        var match = trigger.match(/every\\s+(\\d+)s/);
+        if (match) {
+          window.setInterval(function () { refreshElement(el); }, Number(match[1]) * 1000);
+        }
+      });
+    });
+  </script>
   <style>
     :root { --bg: #0d1117; --fg: #e6edf3; --border: #30363d;
             --accent: #238636; --err: #f85149; --muted: #8b949e; }

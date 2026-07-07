@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-ow1e.133",
+  "title": "ReplayProtector HashMap grows unbounded as peers arrive",
+  "description": "In rust/lichen-link/src/link_layer.rs:192-194, ReplayProtector uses a HashMap keyed by (PublicKey, epoch). Each new peer and epoch creates a new entry. There's no eviction policy. Over time, with many peers and epoch rollovers, this can exhaust memory. reset_peer exists but must be called explicitly. Consider: add a max_peers limit, LRU eviction, or periodic cleanup based on last-seen time.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:37:57.916791Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:45:48.740687Z",
+  "closed_at": "2026-07-06T17:45:48.740687Z",
+  "close_reason": "Closed",
+  "labels": [
+    "risk",
+    "maintainer-burden",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.133",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:37:57.91734Z"
+    }
+  ]
+}

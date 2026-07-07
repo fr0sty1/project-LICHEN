@@ -1,0 +1,30 @@
+{
+  "format_version": 1,
+  "description": "Authenticated L2 inner-payload dispatch vectors. 'wrapped' is the link inner payload; byte 0 is the dispatch namespace and 'body' is the SCHC packet or routing/control message after that byte.",
+  "vectors": [
+    {
+      "name": "schc_global_coap",
+      "description": "Authenticated L2 SCHC dispatch wrapping a SCHC global CoAP packet whose SCHC rule ID is 0x01.",
+      "dispatch": 20,
+      "kind": "schc",
+      "body": "014020010db800000000000000000000000120010db800000000000000000000000216331633000448d0ff737461747573",
+      "wrapped": "14014020010db800000000000000000000000120010db800000000000000000000000216331633000448d0ff737461747573"
+    },
+    {
+      "name": "routing_announce_min",
+      "description": "Authenticated L2 routing dispatch wrapping a minimal raw announce whose routing message type is 0x01.",
+      "dispatch": 21,
+      "kind": "routing",
+      "body": "010000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "wrapped": "15010000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "name": "unknown_unwrapped_0x01",
+      "description": "A payload beginning with 0x01 is not self-identifying at L2 and must not be treated as announce without dispatch=0x15.",
+      "dispatch": 1,
+      "kind": "unknown",
+      "body": "0040",
+      "wrapped": "010040"
+    }
+  ]
+}

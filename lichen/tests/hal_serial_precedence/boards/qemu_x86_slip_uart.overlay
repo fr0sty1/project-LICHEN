@@ -1,0 +1,11 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* SPDX-FileCopyrightText: The contributors to the LICHEN project */
+
+/ {
+	chosen {
+		/delete-property/ zephyr,uart-pipe;
+		zephyr,slip-uart = &uart1;
+		zephyr,shell-uart = &uart0;
+		zephyr,console = &uart0;
+	};
+};

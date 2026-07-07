@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-9c4y.21.1",
+  "title": "Add flash-backed MeshCore compatibility settings persistence",
+  "description": "Implement durable Zephyr settings/NVS persistence for MeshCore compatibility-local stores introduced by project-LICHEN-9c4y.21. This must cover reboot reload, clear/reset semantics, corruption/default handling, flash-backed validation, and must keep MeshCore compatibility state separate from native LICHEN identity, OSCORE/link/group/routing/radio state. No physical hardware is required for design/unit portions, but physical board flash validation should be chained separately if needed.",
+  "status": "in_progress",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T18:27:10.189496Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-03T04:10:54.603661Z",
+  "labels": [
+    "zephyr",
+    "meshcore",
+    "settings",
+    "compatibility",
+    "tests",
+    "app-interface",
+    "firmware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9c4y.21.1",
+      "depends_on_id": "project-LICHEN-9c4y.21",
+      "type": "parent-child",
+      "created_at": "2026-07-02T18:27:10.190708Z"
+    }
+  ]
+}

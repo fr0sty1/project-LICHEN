@@ -25,6 +25,8 @@ from lichen.schc.headers import compress_packet
 
 VECTORS_DIR = Path(__file__).resolve().parent
 FORMAT_VERSION = 1
+L2_DISPATCH_SCHC = 0x14
+L2_DISPATCH_ROUTING = 0x15
 
 LL_SRC = IPv6Address("fe80::1")
 LL_DST = IPv6Address("fe80::2")
@@ -45,6 +47,60 @@ MESHCORE_SOURCE_BASELINE = {
     "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
     "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425",
 }
+
+
+def _announce_coords_encode(latitude: float, longitude: float) -> bytes:
+    latitude_e7 = int(round(latitude * 10_000_000))
+    longitude_e7 = int(round(longitude * 10_000_000))
+    return bytes([0x01]) + latitude_e7.to_bytes(4, "big", signed=True) + longitude_e7.to_bytes(
+        4, "big", signed=True
+    )
+
+
+def announce_coords_vectors() -> list[dict]:
+    cases = [
+        (
+            "zero",
+            "Equator and prime meridian.",
+            0.0,
+            0.0,
+        ),
+        (
+            "seattle_west_longitude",
+            "Representative west-coast longitude that the previous int24 1e-5 format could not represent.",
+            47.6062,
+            -122.3321,
+        ),
+        (
+            "positive_limits",
+            "Maximum valid latitude and longitude.",
+            90.0,
+            180.0,
+        ),
+        (
+            "negative_limits",
+            "Minimum valid latitude and longitude.",
+            -90.0,
+            -180.0,
+        ),
+    ]
+
+    vectors = []
+    for name, description, latitude, longitude in cases:
+        latitude_e7 = int(round(latitude * 10_000_000))
+        longitude_e7 = int(round(longitude * 10_000_000))
+        vectors.append(
+            {
+                "name": name,
+                "description": description,
+                "latitude_degrees": latitude,
+                "longitude_degrees": longitude,
+                "latitude_e7": latitude_e7,
+                "longitude_e7": longitude_e7,
+                "encoded": _announce_coords_encode(latitude, longitude).hex(),
+            }
+        )
+    return vectors
 
 
 def _varint(value: int) -> bytes:
@@ -95,13 +151,80 @@ def _region_presets_default_us_long_fast() -> bytes:
     return _bytes_field(1, preset_group) + _bytes_field(2, region_group)
 
 
+CONFIG_SECTION_SPECS = [
+    ("device", 1, [(1, 0), (7, 900)]),
+    ("position", 2, [(3, 0), (5, 0), (7, 0), (13, 2)]),
+    ("power", 3, [(1, 0), (4, 0)]),
+    ("network", 4, [(1, 0), (6, 0), (11, 0)]),
+    ("display", 5, [(1, 0), (6, 0), (8, 0)]),
+    ("lora", 6, [(1, 1), (2, 0), (7, 1), (8, 3), (9, 1), (10, 14), (11, 0), (104, 1)]),
+    ("bluetooth", 7, [(1, 1), (2, 2)]),
+    ("security", 8, [(5, 0), (6, 0), (8, 0)]),
+    ("device_ui", 10, [(1, 0), (2, 1), (3, 0)]),
+]
+
+
+def _config_section_payload(fields: list[tuple[int, int]]) -> bytes:
+    return b"".join(_varint_field(field, value) for field, value in fields)
+
+
+def _config_section_entry(name: str, oneof_field: int, fields: list[tuple[int, int]]) -> dict:
+    payload = _config_section_payload(fields)
+    return {
+        "section": name,
+        "oneof_field": oneof_field,
+        "payload": _bytes_field(oneof_field, payload).hex(),
+        "fields": [{"field": field, "wire_type": "varint", "value": value}
+                   for field, value in fields],
+    }
+
+
+def _config_section_expectations() -> list[dict]:
+    return [_config_section_entry(*spec) for spec in CONFIG_SECTION_SPECS]
+
+
 def _data(portnum: int, payload: bytes = b"", request_id: int | None = None) -> bytes:
+	out = bytearray()
+	out += _varint_field(1, portnum)
+	if payload:
+		out += _bytes_field(2, payload)
+	if request_id is not None:
+		out += _fixed32_field(6, request_id)
+	return bytes(out)
+
+
+def _position_payload(
+    *,
+    latitude_i: int = 476206130,
+    longitude_i: int = -1223493000,
+    altitude: int | None = None,
+    time: int | None = None,
+    location_source: int | None = None,
+    altitude_source: int | None = None,
+    timestamp: int | None = None,
+    gps_accuracy: int | None = None,
+    sats_in_view: int | None = None,
+    precision_bits: int | None = None,
+) -> bytes:
     out = bytearray()
-    out += _varint_field(1, portnum)
-    if payload:
-        out += _bytes_field(2, payload)
-    if request_id is not None:
-        out += _fixed32_field(6, request_id)
+    out += _fixed32_field(1, latitude_i & 0xFFFFFFFF)
+    out += _fixed32_field(2, longitude_i & 0xFFFFFFFF)
+    if altitude is not None:
+        out += _varint_field(3, altitude & 0xFFFFFFFFFFFFFFFF)
+    if time is not None:
+        out += _fixed32_field(4, time)
+    if location_source is not None:
+        out += _varint_field(5, location_source)
+    if altitude_source is not None:
+        out += _varint_field(6, altitude_source)
+    if timestamp is not None:
+        out += _fixed32_field(7, timestamp)
+    if gps_accuracy is not None:
+        out += _varint_field(14, gps_accuracy)
+    if sats_in_view is not None:
+        out += _varint_field(19, sats_in_view)
+    if precision_bits is not None:
+        out += _varint_field(23, precision_bits)
     return bytes(out)
 
 
@@ -213,6 +336,47 @@ def schc_vectors() -> list[dict]:
     ]
 
 
+def l2_payload_vectors() -> list[dict]:
+    schc_global = next(v for v in schc_vectors() if v["name"] == "coap_global")
+    announce_min = bytes([0x01, 0x00, 0x00, 0x00, 0x01]) + bytes(8 + 32 + 48)
+    schc_body = bytes.fromhex(schc_global["compressed"])
+    return [
+        {
+            "name": "schc_global_coap",
+            "description": (
+                "Authenticated L2 SCHC dispatch wrapping a SCHC global CoAP "
+                "packet whose SCHC rule ID is 0x01."
+            ),
+            "dispatch": L2_DISPATCH_SCHC,
+            "kind": "schc",
+            "body": schc_global["compressed"],
+            "wrapped": (bytes([L2_DISPATCH_SCHC]) + schc_body).hex(),
+        },
+        {
+            "name": "routing_announce_min",
+            "description": (
+                "Authenticated L2 routing dispatch wrapping a minimal raw "
+                "announce whose routing message type is 0x01."
+            ),
+            "dispatch": L2_DISPATCH_ROUTING,
+            "kind": "routing",
+            "body": announce_min.hex(),
+            "wrapped": (bytes([L2_DISPATCH_ROUTING]) + announce_min).hex(),
+        },
+        {
+            "name": "unknown_unwrapped_0x01",
+            "description": (
+                "A payload beginning with 0x01 is not self-identifying at L2 "
+                "and must not be treated as announce without dispatch=0x15."
+            ),
+            "dispatch": 0x01,
+            "kind": "unknown",
+            "body": "0040",
+            "wrapped": "010040",
+        },
+    ]
+
+
 def frame_vectors() -> list[dict]:
     cases = [
         ("broadcast_min", "Broadcast, no address, 32-bit MIC",
@@ -272,6 +436,29 @@ def meshtastic_app_compat_vectors() -> list[dict]:
             want_ack=True,
         )
     )
+    position_time_timestamp_disagree = _position_payload(
+        altitude=42,
+        time=1710000000,
+        timestamp=1710000200,
+        sats_in_view=9,
+    )
+    position_accuracy_precision = _position_payload(
+        altitude=42,
+        timestamp=1710000200,
+        location_source=3,
+        altitude_source=4,
+        gps_accuracy=2500,
+        sats_in_view=9,
+        precision_bits=24,
+    )
+    position_below_epoch = _position_payload(
+        time=1700000010,
+        timestamp=1699999999,
+    )
+    position_duplicate_time = (
+        _position_payload(time=1700000010)
+        + _fixed32_field(4, 1699999999)
+    )
     inbound_text = _from_radio_packet(
         1,
         _mesh_packet(
@@ -302,6 +489,7 @@ def meshtastic_app_compat_vectors() -> list[dict]:
     heartbeat_queue_status = _from_radio_queue_status(
         _queue_status(res=0, free=4, maxlen=8, mesh_packet_id=packet_id),
     )
+    config_sections = _config_section_expectations()
 
     baseline = MESHTASTIC_SOURCE_BASELINE
     transport = {
@@ -375,6 +563,7 @@ def meshtastic_app_compat_vectors() -> list[dict]:
                     "moduleConfig",
                     "config_complete_id",
                 ],
+                "config_sections": config_sections,
                 "terminal_from_radio": _from_radio_config_complete(config_nonce).hex(),
             },
         },
@@ -446,6 +635,34 @@ def meshtastic_app_compat_vectors() -> list[dict]:
                 "from_radio_field": 19,
             },
         },
+        *[
+            {
+                "name": f"config_section_{section['section']}",
+                "description": (
+                    "MVP Config section payload for "
+                    f"{section['section']} during staged app sync."
+                ),
+                "source_baseline": baseline,
+                "transport": transport,
+                "direction": "node_to_app",
+                "protobuf": "FromRadio",
+                "message": "config",
+                "payload": section["payload"],
+                "encoded": _bytes_field(5, bytes.fromhex(section["payload"])).hex(),
+                "decoded": {
+                    "config": {
+                        "section": section["section"],
+                        "oneof_field": section["oneof_field"],
+                        "fields": section["fields"],
+                    },
+                },
+                "expect": {
+                    "from_radio_field": 5,
+                    "config_section": section,
+                },
+            }
+            for section in config_sections
+        ],
         {
             "name": "legacy_full_sync_unknown_nonce",
             "description": "Python/older clients may use a non-staged nonce and still need full sync data.",
@@ -475,6 +692,7 @@ def meshtastic_app_compat_vectors() -> list[dict]:
                     "node_info",
                     "config_complete_id",
                 ],
+                "config_sections": config_sections,
                 "terminal_from_radio": _from_radio_config_complete(0xA5A5A5A5).hex(),
             },
         },
@@ -499,6 +717,161 @@ def meshtastic_app_compat_vectors() -> list[dict]:
                 }
             },
             "expect": {"response": "queueStatus local enqueue status"},
+        },
+        {
+            "name": "position_time_and_timestamp_disagree",
+            "description": "POSITION_APP keeps field 7 timestamp as fix time when it disagrees with field 4 time.",
+            "source_baseline": baseline,
+            "transport": transport,
+            "direction": "app_to_node",
+            "protobuf": "ToRadio",
+            "message": "packet.POSITION_APP",
+            "encoded": _to_radio_packet(
+                _mesh_packet(
+                    to_num=broadcast,
+                    packet_id=0x1234567A,
+                    decoded=_data(3, position_time_timestamp_disagree),
+                )
+            ).hex(),
+            "decoded": {
+                "packet": {
+                    "to": broadcast,
+                    "id": 0x1234567A,
+                    "decoded": {
+                        "portnum": "POSITION_APP",
+                        "position": {
+                            "latitude_i": 476206130,
+                            "longitude_i": -1223493000,
+                            "altitude": 42,
+                            "time": 1710000000,
+                            "timestamp": 1710000200,
+                            "sats_in_view": 9,
+                        },
+                    },
+                },
+            },
+            "expect": {
+                "selected_fix_time_unix": 1710000200,
+                "time_field_policy": "timestamp field 7 wins over time field 4",
+                "response": "queueStatus local enqueue status",
+            },
+        },
+        {
+            "name": "position_accuracy_precision_metadata",
+            "description": "POSITION_APP source, altitude-source, accuracy, and precision metadata are decoded without upgrading local-client trust.",
+            "source_baseline": baseline,
+            "transport": transport,
+            "direction": "app_to_node",
+            "protobuf": "ToRadio",
+            "message": "packet.POSITION_APP",
+            "encoded": _to_radio_packet(
+                _mesh_packet(
+                    to_num=broadcast,
+                    packet_id=0x1234567B,
+                    decoded=_data(3, position_accuracy_precision),
+                )
+            ).hex(),
+            "decoded": {
+                "packet": {
+                    "to": broadcast,
+                    "id": 0x1234567B,
+                    "decoded": {
+                        "portnum": "POSITION_APP",
+                        "position": {
+                            "latitude_i": 476206130,
+                            "longitude_i": -1223493000,
+                            "altitude": 42,
+                            "location_source": 3,
+                            "altitude_source": 4,
+                            "timestamp": 1710000200,
+                            "gps_accuracy": 2500,
+                            "sats_in_view": 9,
+                            "precision_bits": 24,
+                        },
+                    },
+                },
+            },
+            "expect": {
+                "source_class": "LOCAL_CLIENT",
+                "source_name": "mt-pos-external",
+                "gps_accuracy_mm_retained_for_diagnostics": 2500,
+                "horizontal_accuracy_mm_valid": False,
+                "precision_bits_retained_for_diagnostics": 24,
+            },
+        },
+        {
+            "name": "position_epoch_floor_strips_timestamp",
+            "description": "POSITION_APP timestamps below the deterministic build epoch are stripped while coordinates remain local-client metadata.",
+            "source_baseline": baseline,
+            "transport": transport,
+            "direction": "app_to_node",
+            "protobuf": "ToRadio",
+            "message": "packet.POSITION_APP",
+            "encoded": _to_radio_packet(
+                _mesh_packet(
+                    to_num=broadcast,
+                    packet_id=0x1234567C,
+                    decoded=_data(3, position_below_epoch),
+                )
+            ).hex(),
+            "decoded": {
+                "packet": {
+                    "to": broadcast,
+                    "id": 0x1234567C,
+                    "decoded": {
+                        "portnum": "POSITION_APP",
+                        "position": {
+                            "latitude_i": 476206130,
+                            "longitude_i": -1223493000,
+                            "time": 1700000010,
+                            "timestamp": 1699999999,
+                        },
+                    },
+                },
+            },
+            "expect": {
+                "build_epoch_floor_unix": 1700000000,
+                "selected_fix_time_unix": None,
+                "time_field_policy": "timestamp field 7 wins over time field 4, then fails the epoch floor",
+                "coordinates_remain_valid": True,
+            },
+        },
+        {
+            "name": "position_duplicate_time_uses_last_field",
+            "description": "POSITION_APP duplicate field 4 time values use the last value when timestamp field 7 is absent.",
+            "source_baseline": baseline,
+            "transport": transport,
+            "direction": "app_to_node",
+            "protobuf": "ToRadio",
+            "message": "packet.POSITION_APP",
+            "encoded": _to_radio_packet(
+                _mesh_packet(
+                    to_num=broadcast,
+                    packet_id=0x1234567D,
+                    decoded=_data(3, position_duplicate_time),
+                )
+            ).hex(),
+            "decoded": {
+                "packet": {
+                    "to": broadcast,
+                    "id": 0x1234567D,
+                    "decoded": {
+                        "portnum": "POSITION_APP",
+                        "position": {
+                            "latitude_i": 476206130,
+                            "longitude_i": -1223493000,
+                            "time": 1699999999,
+                        },
+                    },
+                },
+            },
+            "expect": {
+                "build_epoch_floor_unix": 1700000000,
+                "selected_fix_time_unix": None,
+                "time_field_policy": "last time field 4 wins when timestamp field 7 is absent",
+                "encoded_duplicate_time_values": [1700000010, 1699999999],
+                "coordinates_remain_valid": True,
+            },
         },
         {
             "name": "unsupported_private_app_no_side_effect",
@@ -690,6 +1063,27 @@ def _meshcore_channel_info() -> bytes:
     return bytes(out)
 
 
+def _meshcore_channel_body(name: bytes = b"Public") -> bytes:
+    out = bytearray(49)
+    out[0] = 0
+    out[1:1 + len(name)] = name
+    return bytes(out)
+
+
+def _meshcore_channel_body_with_secret(name: bytes = b"Field") -> bytes:
+    out = bytearray(_meshcore_channel_body(name))
+    out[33:49] = bytes(range(1, 17))
+    return bytes(out)
+
+
+def _meshcore_default_flood_payload(name: bytes = b"FieldScope") -> bytes:
+    out = bytearray(47)
+    out[0:len(name)] = name
+    out[len(name)] = 0
+    out[31:47] = bytes(range(0xA0, 0xB0))
+    return bytes(out)
+
+
 def _meshcore_vector(
     *,
     name: str,
@@ -825,7 +1219,7 @@ def meshcore_app_compat_vectors() -> list[dict]:
         ),
         _meshcore_vector(
             name="get_default_flood_scope_null",
-            description="Default flood scope is null/empty until compatibility policy is expanded.",
+            description="Default flood scope is null/empty before a MeshCore-local default flood scope is stored.",
             direction="exchange",
             frame="command",
             encoded=bytes.fromhex("40"),
@@ -868,40 +1262,124 @@ def meshcore_app_compat_vectors() -> list[dict]:
             expect={"responses": ["0102"], "adapter_test": True},
         ),
         _meshcore_vector(
-            name="set_advert_name_unsupported",
-            description="Compatibility display-name writes are rejected until settings-backed local compatibility state exists.",
+            name="send_txt_msg_direct_known_peer",
+            description="A direct MeshCore public-key prefix that maps to exactly one known LICHEN peer submits text to that peer IID.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("020102030405066869"),
+            decoded={
+                "command": "SEND_TXT_MSG",
+                "prefix": "010203040506",
+                "payload_utf8": "hi",
+                "expected_iid": "00aa010203040506",
+            },
+            expect={
+                "responses": ["00"],
+                "adapter_test": True,
+                "fixture": "direct-known-peer",
+            },
+        ),
+        _meshcore_vector(
+            name="send_txt_msg_direct_colliding_peer",
+            description="A direct MeshCore public-key prefix that maps to multiple known peers fails closed as not found.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes.fromhex("020102030405066869"),
+            decoded={
+                "command": "SEND_TXT_MSG",
+                "prefix": "010203040506",
+                "payload_utf8": "hi",
+                "collision": True,
+            },
+            expect={
+                "responses": ["0102"],
+                "adapter_test": True,
+                "fixture": "direct-colliding-peers",
+            },
+        ),
+        _meshcore_vector(
+            name="set_advert_name_ok",
+            description="Compatibility display-name writes update MeshCore-local state and return OK without mutating native identity.",
             direction="exchange",
             frame="command",
             encoded=bytes.fromhex("084c494348454e"),
             decoded={"command": "SET_ADVERT_NAME", "name": "LICHEN"},
+            expect={
+                "responses": ["00"],
+                "adapter_test": True,
+                "compat_store": "meshcore-local advert name",
+            },
+        ),
+        _meshcore_vector(
+            name="set_channel0_ok",
+            description="Channel writes update a MeshCore-local channel record only; LICHEN does not accept MeshCore channel secrets as native group or OSCORE material.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes([0x20]) + _meshcore_channel_body(b"Field"),
+            decoded={"command": "SET_CHANNEL", "index": 0, "name": "Field"},
+            expect={
+                "responses": ["00"],
+                "adapter_test": True,
+                "compat_store": "meshcore-local channel slot 0",
+            },
+        ),
+        _meshcore_vector(
+            name="set_channel16_secret_unsupported",
+            description="Channel records carrying nonzero 16-byte secret material are recognized but unsupported and are not stored.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes([0x20]) + _meshcore_channel_body_with_secret(),
+            decoded={
+                "command": "SET_CHANNEL",
+                "index": 0,
+                "name": "Field",
+                "secret_len": 16,
+            },
             expect={"responses": [err_unsupported.hex()], "adapter_test": True},
         ),
         _meshcore_vector(
-            name="set_channel_unsupported",
-            description="Channel writes are rejected; LICHEN does not accept MeshCore channel secrets as native group or OSCORE material.",
+            name="set_channel_secret_unsupported",
+            description="Secret-bearing MeshCore channel writes are recognized but unsupported so MeshCore secrets are never imported as native LICHEN material.",
             direction="exchange",
             frame="command",
-            encoded=bytes.fromhex("2000"),
-            decoded={"command": "SET_CHANNEL", "index": 0},
+            encoded=(
+                bytes([0x20, 0x00])
+                + b"Field".ljust(32, b"\x00")
+                + bytes(range(32))
+            ),
+            decoded={
+                "command": "SET_CHANNEL",
+                "index": 0,
+                "name": "Field",
+                "secret_len": 32,
+            },
             expect={"responses": [err_unsupported.hex()], "adapter_test": True},
         ),
         _meshcore_vector(
-            name="set_device_pin_unsupported",
-            description="BLE PIN writes are rejected until a settings-backed MeshCore compatibility PIN store is implemented.",
+            name="set_device_pin_ok",
+            description="Device PIN writes apply and retain a MeshCore-local uint32 passkey without exposing native provisioning secrets.",
             direction="exchange",
             frame="command",
-            encoded=bytes.fromhex("25313233343536"),
-            decoded={"command": "SET_DEVICE_PIN", "pin": "123456"},
-            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+            encoded=bytes([0x25]) + _u32le(123456),
+            decoded={"command": "SET_DEVICE_PIN", "pin": 123456},
+            expect={
+                "responses": ["00"],
+                "adapter_test": True,
+                "compat_store": "meshcore-local BLE PIN applied through the BLE passkey hook",
+            },
         ),
         _meshcore_vector(
-            name="set_autoadd_config_unsupported",
-            description="Auto-add configuration writes are rejected until compatibility-local persistence exists.",
+            name="set_autoadd_config_ok",
+            description="Auto-add configuration writes retain the two-byte MeshCore-local compatibility value.",
             direction="exchange",
             frame="command",
-            encoded=bytes.fromhex("3a0000"),
-            decoded={"command": "SET_AUTOADD_CONFIG", "enabled": False},
-            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+            encoded=bytes.fromhex("3a0102"),
+            decoded={"command": "SET_AUTOADD_CONFIG", "raw": [1, 2]},
+            expect={
+                "responses": ["00"],
+                "adapter_test": True,
+                "compat_store": "meshcore-local auto-add config",
+            },
         ),
         _meshcore_vector(
             name="self_advert_unsupported",
@@ -931,13 +1409,34 @@ def meshcore_app_compat_vectors() -> list[dict]:
             expect={"responses": [err_unsupported.hex()], "adapter_test": True},
         ),
         _meshcore_vector(
-            name="newer_set_default_flood_scope_unsupported",
-            description="Newer firmware command 0x3f is recognized but unsupported by the MVP shim.",
+            name="newer_set_default_flood_scope_ok",
+            description="Default flood scope writes retain MeshCore-local name/key state without altering native RPL or routing state.",
             direction="exchange",
             frame="command",
-            encoded=bytes.fromhex("3f"),
-            decoded={"command": "SET_DEFAULT_FLOOD_SCOPE"},
-            expect={"responses": [err_unsupported.hex()], "adapter_test": True},
+            encoded=bytes([0x3F]) + _meshcore_default_flood_payload(),
+            decoded={
+                "command": "SET_DEFAULT_FLOOD_SCOPE",
+                "name": "FieldScope",
+                "key": bytes(range(0xA0, 0xB0)).hex(),
+            },
+            expect={
+                "responses": ["00"],
+                "adapter_test": True,
+                "compat_store": "meshcore-local default flood scope name/key",
+            },
+        ),
+        _meshcore_vector(
+            name="newer_clear_default_flood_scope_ok",
+            description="An empty default flood scope write clears only the MeshCore-local default flood scope store.",
+            direction="exchange",
+            frame="command",
+            encoded=bytes([0x3F]),
+            decoded={"command": "SET_DEFAULT_FLOOD_SCOPE", "clear": True},
+            expect={
+                "responses": ["00"],
+                "adapter_test": True,
+                "compat_store": "meshcore-local default flood scope clear",
+            },
         ),
         _meshcore_vector(
             name="newer_send_raw_packet_unsupported",
@@ -1071,6 +1570,21 @@ def main() -> None:
         "LICHEN link-layer frame vectors (spec section 4). 'fields' are the "
         "frame inputs; 'encoded' is LichenFrame(**fields).to_bytes().",
         frame_vectors(),
+    )
+    _write(
+        "l2_payload.json",
+        "Authenticated L2 inner-payload dispatch vectors. 'wrapped' is the "
+        "link inner payload; byte 0 is the dispatch namespace and 'body' is "
+        "the SCHC packet or routing/control message after that byte.",
+        l2_payload_vectors(),
+    )
+    _write(
+        "announce_coords.json",
+        "Announce app_data Type=0x01 geographic coordinate encoding: signed "
+        "big-endian e7 latitude and longitude. Coordinates are peer-owned "
+        "announce metadata; receivers do not treat them as local position "
+        "without explicit NETWORK-source approximation policy.",
+        announce_coords_vectors(),
     )
     _write(
         "meshtastic_app_compat.json",

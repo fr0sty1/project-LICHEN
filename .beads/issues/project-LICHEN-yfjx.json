@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-yfjx",
+  "title": "Node.set_config: ValueError message exposes internal implementation",
+  "description": "In python/src/lichen/node.py Node.set_config(), when unknown config keys are provided, the error message includes 'sorted(unknown)' which reveals all invalid keys. This is fine for internal use but could leak implementation details if exposed via CoAP. Consider whether this is acceptable for the threat model.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:26:36.67229Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T18:08:20.288486Z",
+  "closed_at": "2026-07-06T18:08:20.288486Z",
+  "close_reason": "ValueError message with unknown keys is appropriate - this is internal debugging info, not exposed via CoAP"
+}

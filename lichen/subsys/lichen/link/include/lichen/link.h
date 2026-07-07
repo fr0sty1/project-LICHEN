@@ -186,18 +186,67 @@ struct lichen_link_rx_ctx {
 };
 
 /**
+ * @brief Authenticated raw link payload metadata.
+ *
+ * Filled by lichen_link_rx_payload() after frame parse, signature/MIC
+ * verification, source identification, and replay commit. The payload bytes
+ * returned by that API are the authenticated inner payload, excluding any
+ * appended Schnorr-48 signature.
+ */
+struct lichen_link_rx_payload_info {
+	uint8_t src_eui64[LICHEN_EUI64_LEN]; /**< Immediate sender EUI-64 */
+	uint8_t dst_addr[LICHEN_ADDR_MAX];   /**< Destination address from frame */
+	uint8_t dst_addr_len;                /**< Destination address length */
+	uint8_t epoch;                       /**< Link epoch */
+	uint16_t seqnum;                     /**< Link sequence number */
+	enum lichen_addr_mode addr_mode;     /**< Destination address mode */
+	bool signature_present;              /**< Schnorr-48 signature verified */
+	bool encrypted;                      /**< Payload was AES-CCM encrypted */
+};
+
+/**
+ * @brief Parse a LICHEN frame and extract authenticated inner payload bytes.
+ *
+ * Takes a raw LICHEN frame, verifies signature/MIC/source context, commits
+ * replay protection, and returns the authenticated inner payload before any
+ * SCHC decompression. This is the production boundary for dispatching raw
+ * routing/control payloads such as 0x15||announce.
+ *
+ * @param[in]     ctx          RX context (must have peer_pubkey set for signed frames)
+ * @param[in,out] replay       Replay table (NULL to skip replay check)
+ * @param[in]     frame        Raw LICHEN frame bytes
+ * @param[in]     frame_len    Length of frame
+ * @param[out]    out_payload  Output buffer for authenticated inner payload
+ *                             (use LICHEN_MAX_PAYLOAD for any valid payload)
+ * @param[in,out] out_len      In: buffer size, Out: inner payload length
+ * @param[out]    info         Authenticated frame metadata
+ * @return 0 on success, negative error code on failure
+ *         -EINVAL: malformed frame
+ *         -LICHEN_EAUTH: signature/MIC verification failed
+ *         -EALREADY: replay detected
+ *         -ENOMEM: output buffer too small
+ */
+int lichen_link_rx_payload(struct lichen_link_rx_ctx *ctx,
+			   struct lichen_replay_table *replay,
+			   const uint8_t *frame, size_t frame_len,
+			   uint8_t *out_payload, size_t *out_len,
+			   struct lichen_link_rx_payload_info *info);
+
+/**
  * @brief Parse a LICHEN frame and extract the IPv6 packet.
  *
- * Takes a raw LICHEN frame, verifies replay protection and signatures,
- * and decompresses the payload to a full IPv6 packet.
+ * Takes a raw LICHEN frame, verifies signature/MIC/source context,
+ * decompresses accepted SCHC payloads to a full IPv6 packet, then commits
+ * replay protection.
  *
  * Steps:
  * 1. Parse frame header: length, LLSec, epoch, seqnum, dst addr
- * 2. Check replay window for this sender
+ * 2. Decrypt if needed and verify MIC
  * 3. If signature present, verify Schnorr-48 using sender's public key
- * 4. Verify MIC
- * 5. Decompress payload with SCHC
- * 6. Return decompressed IPv6 packet
+ * 4. Identify immediate sender
+ * 5. Decompress accepted SCHC payload with SCHC
+ * 6. Commit replay protection for authenticated frames
+ * 7. Return decompressed IPv6 packet
  *
  * @param[in]     ctx        RX context (must have peer_pubkey set for signed frames)
  * @param[in,out] replay     Replay table (NULL to skip replay check)

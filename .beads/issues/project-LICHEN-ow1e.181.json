@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ow1e.181",
+  "title": "Codereview pass 3: tun.rs SAFETY",
+  "description": "Review findings from codereview pass 3\n\nFinal review focusing on edge cases and completeness:\n\n**Findings:**\n1. All unsafe blocks covered: open, ioctl, close (x2), fcntl (x2), from_raw_fd, read, write = 9 unsafe keyword usages covering 10 operations\n2. Error handling paths properly close fd before returning errors\n3. SAFETY comments are appropriately concise while explaining key invariants\n4. Comments follow Rust unsafe documentation conventions (// SAFETY: prefix)\n\n**Verification:**\n- Counted unsafe blocks: 9 occurrences (fcntl appears twice in one condition)\n- All have SAFETY comments preceding them\n\n**No issues found in pass 3. SAFETY documentation is complete and accurate.**",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:42:57.892516Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:18:48.536964Z",
+  "closed_at": "2026-07-06T17:18:48.536964Z",
+  "close_reason": "SAFETY comment review - existing code is correct",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.181",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:42:57.893146Z"
+    }
+  ]
+}

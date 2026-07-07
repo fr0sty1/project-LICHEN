@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+tests:
+  lichen.hal_reset_unavailable.reboot_disabled:
+    tags:
+      - lichen
+      - hal
+      - reset
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "HAL reset unavailable PASS"
+    platform_allow:
+      - native_sim
+      - qemu_x86
+    integration_platforms:
+      - native_sim
+      - qemu_x86

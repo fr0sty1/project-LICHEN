@@ -19,9 +19,9 @@ from __future__ import annotations
 
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable
 
 
 class AprsPacketType(Enum):
@@ -47,8 +47,8 @@ class AprsMessage:
         addr = self.addressee.upper()[:9].ljust(9)
 
         if self.msg_id:
-            return f":{addr}:{self.text}{{{self.msg_id}".encode("utf-8")
-        return f":{addr}:{self.text}".encode("utf-8")
+            return f":{addr}:{self.text}{{{self.msg_id}".encode()
+        return f":{addr}:{self.text}".encode()
 
 
 @dataclass
@@ -61,7 +61,7 @@ class AprsAck:
     def encode(self) -> bytes:
         """Encode to APRS ack format."""
         addr = self.addressee.upper()[:9].ljust(9)
-        return f":{addr}:ack{self.msg_id}".encode("utf-8")
+        return f":{addr}:ack{self.msg_id}".encode()
 
 
 @dataclass
@@ -74,7 +74,7 @@ class AprsRej:
     def encode(self) -> bytes:
         """Encode to APRS reject format."""
         addr = self.addressee.upper()[:9].ljust(9)
-        return f":{addr}:rej{self.msg_id}".encode("utf-8")
+        return f":{addr}:rej{self.msg_id}".encode()
 
 
 # Regex patterns for parsing

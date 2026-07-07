@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ow1e.95",
+  "title": "good: core rf_health.rs Q16.16 fixed-point EMA",
+  "description": "In rf_health.rs:132-148, uses Q16.16 fixed-point for no_std compatibility. The EMA calculation (diff \u003e\u003e 3 for alpha=1/8) avoids floating point while maintaining sufficient precision for dBm values.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:37:22.055044Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:09:37.739673Z",
+  "closed_at": "2026-07-06T17:09:37.739673Z",
+  "close_reason": "Closed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.95",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:37:22.05564Z"
+    }
+  ]
+}

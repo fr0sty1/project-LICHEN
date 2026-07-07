@@ -33,6 +33,12 @@ rpl_dio          = 3    # RPL DIO over link-local ICMPv6
 rpl_dao          = 4    # RPL DAO with DODAGID over link-local ICMPv6
 uncompressed     = 255  # No compression; full headers follow
 
+[l2.payload_dispatch]
+# Authenticated link inner-payload namespace. SCHC rule IDs begin after
+# dispatch=0x14; routing/control message types begin after dispatch=0x15.
+schc    = 0x14
+routing = 0x15
+
 [rpl]
 # RPL configuration (spec appendix-rpl.md, RFC 6550)
 instance_id          = 0      # Default RPL instance
@@ -53,4 +59,4 @@ k               = 10    # Redundancy constant
 
 [announce]
 # LICHEN Announce message (spec §05-routing)
-type_byte = 0x01   # First byte of an Announce frame; rules 0x01 and SCHC global CoAP share this — Announce is detected first
+type_byte = 0x01   # First byte inside dispatch=0x15 routing/control payloads

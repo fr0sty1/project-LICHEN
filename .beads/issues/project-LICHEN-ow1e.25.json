@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ow1e.25",
+  "title": "good: replay.rs 64-slot bitmask window is efficient and correct",
+  "description": "replay.rs implements a 64-slot replay window using a u64 bitmask. The signed_diff() approach for wrapping sequence numbers and the bitmask shifting logic is elegant. The half-space rule for wrap-around detection (±32768) is correctly implemented in seqnum.rs. Clean separation of concerns.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:35:46.505676Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:18:37.031798Z",
+  "closed_at": "2026-07-06T17:18:37.031798Z",
+  "close_reason": "Positive finding - no changes needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.25",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:35:46.50627Z"
+    }
+  ]
+}

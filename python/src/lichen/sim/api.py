@@ -18,6 +18,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route, WebSocketRoute
 from starlette.websockets import WebSocket
 
+from lichen.sim.auth import BearerAuthMiddleware
 from lichen.sim.chaos import (
     ChaosEngine,
     ChaosRule,
@@ -97,6 +98,7 @@ class SimulatorAPI:
         self,
         on_simulation_created: Callable[[str], Awaitable[None]] | None = None,
         on_simulation_deleted: Callable[[str], Awaitable[None]] | None = None,
+        api_token: str | None = None,
     ) -> None:
         """Initialize the API with empty simulation and chaos engine stores.
 
@@ -105,6 +107,10 @@ class SimulatorAPI:
                 simulation ID after a simulation is created via the REST API.
             on_simulation_deleted: Optional async callback invoked with the
                 simulation ID just before a simulation is deleted via the API.
+            api_token: Optional bearer token for API authentication. When set,
+                all requests must include ``Authorization: Bearer <token>``
+                header. WebSocket connections use ``Sec-WebSocket-Protocol:
+                bearer.<token>`` to avoid exposing the token in URLs.
         """
         self._simulations: dict[str, Simulation] = {}
         self._chaos_engines: dict[str, ChaosEngine] = {}
@@ -113,6 +119,7 @@ class SimulatorAPI:
         self._app: Starlette | None = None
         self._on_simulation_created = on_simulation_created
         self._on_simulation_deleted = on_simulation_deleted
+        self._api_token = api_token
 
     def _get_simulation(self, sim_id: str) -> Simulation | None:
         """Get a simulation by ID.
@@ -723,4 +730,9 @@ class SimulatorAPI:
             WebSocketRoute("/sim/{sim_id}/ws", self.websocket_endpoint),
         ]
         self._app = Starlette(routes=routes)
+
+        # Add authentication middleware if token is configured
+        if self._api_token is not None:
+            self._app.add_middleware(BearerAuthMiddleware, token=self._api_token)
+
         return self._app

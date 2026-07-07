@@ -557,6 +557,10 @@ static uint32_t info_excluded_modules(
 
 static bool info_has_position(const struct lichen_meshtastic_local_info *info)
 {
+	/* Meshtastic Position is location-bearing. Do not emit a partial
+	 * Position for time-only, altitude-only, or satellites-only metadata:
+	 * many clients interpret the message as map-ready once present.
+	 */
 	return info != NULL && info->has_latitude_e7 && info->has_longitude_e7;
 }
 

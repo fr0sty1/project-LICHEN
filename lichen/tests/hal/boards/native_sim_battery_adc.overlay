@@ -1,0 +1,42 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: The contributors to the LICHEN project
+ */
+
+#include <zephyr/dt-bindings/adc/adc.h>
+
+/ {
+	aliases {
+		battery0 = &vbatt;
+	};
+
+	vbatt: vbatt {
+		compatible = "voltage-divider";
+		io-channels = <&adc0 7>;
+		output-ohms = <100000>;
+		full-ohms = <166700>;
+		status = "okay";
+	};
+
+	adc0: adc {
+		compatible = "zephyr,adc-emul";
+		nchannels = <8>;
+		ref-internal-mv = <3300>;
+		#io-channel-cells = <1>;
+		status = "okay";
+	};
+};
+
+&adc0 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	channel@7 {
+		reg = <7>;
+		zephyr,gain = "ADC_GAIN_1";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,vref-mv = <3300>;
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,resolution = <12>;
+	};
+};

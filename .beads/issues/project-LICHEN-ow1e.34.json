@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-ow1e.34",
+  "title": "GradientEntry._rank uses negative hop_count, ties go to higher hops",
+  "description": "**Location:** python/src/lichen/gradient.py:63-65\n\n**Bug:** The `_rank()` method returns `-self.hop_count` as the third tuple element. When comparing ranks, Python tuple comparison goes element-by-element, so when priority and seq_num are equal, the entry with the HIGHER hop_count wins (because -10 \u003e -20).\n\n**Trigger:** Two gradient entries for the same destination with equal priority and seq_num but different hop counts.\n\n**Bad behavior:** The router prefers the longer path (more hops) over the shorter path, leading to suboptimal routing and higher latency.\n\n**Fix:** The comment says 'fewer hops' should win, so the sign should be reversed or the comparison logic adjusted.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:36:01.712116Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:43:06.638582Z",
+  "closed_at": "2026-07-06T15:43:06.638582Z",
+  "close_reason": "Not a bug. The negative sign in `-self.hop_count` is CORRECT:\n\nThe _rank() method uses 'larger is better' tuple comparison:\n- hop_count=1 gives rank (p, s, -1)\n- hop_count=5 gives rank (p, s, -5)\n- Since -1 \u003e -5, shorter paths correctly have higher rank\n\nThe test test_lower_hop_count_wins_at_equal_priority_and_seq verifies this behavior and passes.\n\nThe issue description had the logic backwards - the current implementation correctly prefers shorter paths.",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.34",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:36:01.712644Z"
+    }
+  ]
+}

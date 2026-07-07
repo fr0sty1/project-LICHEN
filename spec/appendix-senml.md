@@ -193,7 +193,10 @@ Use hierarchical names (e.g., `batt/pct`) for namespacing.
 
 ## F.12. Timestamps
 
-**Base time (bt):** Absolute Unix timestamp (seconds since 1970-01-01T00:00:00Z).
+**Base time (bt):** Absolute Unix timestamp (seconds since 1970-01-01T00:00:00Z)
+from the firmware time provider. Senders SHOULD include `bt` only when the time
+provider reports `wall_clock_valid=true`. See `docs/firmware-time-provider.md`
+for epoch floor validation and source class precedence.
 
 **Relative time (t):** Offset from base time in seconds.
 

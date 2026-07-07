@@ -23,6 +23,7 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/sys/crc.h>
 
+#include <lichen/hal.h>
 #if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
 #include <lichen/app_identity/app_identity.h>
 #endif
@@ -53,11 +54,12 @@ BUILD_ASSERT(LICHEN_L2_ADDR_LEN == LICHEN_LORA_L2_ADDR_LEN,
  * Init-order contract with lora_l2.c (project-LICHEN-d7ub.59):
  * lichen_l2_iface_init() owns the network-interface startup path and calls
  * lichen_lora_l2_init() before copying the EUI-64, registering callbacks, or
- * enabling TX/RX. That init path requires an enabled lora0 device node; if the
- * board overlay disables it, no runtime ordering can make start() succeed.
+ * enabling TX/RX. That init path requires an enabled HAL-owned zephyr,lora
+ * chosen node; if the board overlay disables it, no runtime ordering can make
+ * start() succeed.
  */
-BUILD_ASSERT(DT_NODE_HAS_STATUS(DT_ALIAS(lora0), okay),
-	     "LICHEN L2 requires an enabled devicetree alias 'lora0' before "
+BUILD_ASSERT(LICHEN_HAL_HAS_LORA_DEVICE,
+	     "LICHEN L2 requires an enabled devicetree chosen zephyr,lora before "
 	     "NET_DEVICE_INIT runs lichen_l2_iface_init()");
 
 LOG_MODULE_REGISTER(lichen_l2, CONFIG_LICHEN_L2_LOG_LEVEL);
@@ -1571,10 +1573,11 @@ static struct net_if_api lichen_iface_api = {
  *
  * Initialization priority: CONFIG_KERNEL_INIT_PRIORITY_DEFAULT is correct
  * for network interfaces. Zephyr's driver subsystem initializes hardware
- * drivers (lora0, hwinfo) at earlier priorities (PRE_KERNEL_1/2 or
- * POST_KERNEL with lower priority values), so they are available when
- * lichen_l2_iface_init() runs. If a dependency is missing on a custom
- * board, the init function sets iface_init_failed and logs an error.
+	 * drivers (the HAL-selected zephyr,lora radio and hwinfo) at earlier
+	 * priorities (PRE_KERNEL_1/2 or POST_KERNEL with lower priority values),
+	 * so they are available when lichen_l2_iface_init() runs. If a dependency
+	 * is missing on a custom board, the init function sets iface_init_failed
+	 * and logs an error.
  *
  * Ordering contract with lora_l2.c: callers must not start the LoRa L2
  * service before lichen_l2_iface_init() has called lichen_lora_l2_init(),
@@ -1626,8 +1629,8 @@ static void lora_rx_callback(const uint8_t *data, size_t len,
  * 6. Registers the LoRa RX callback
  *
  * @note lichen_lora_l2_init() is the required first operation. It validates
- * lora0 readiness, generates the stable EUI-64, and transitions lora_l2.c
- * from LORA_UNINIT to LORA_STOPPED. The EUI-64 copy below is a runtime
+	 * the HAL LoRa device, generates the stable EUI-64, and transitions
+	 * lora_l2.c from LORA_UNINIT to LORA_STOPPED. The EUI-64 copy below is a runtime
  * invariant check that this ordering completed before any LICHEN link
  * context or net_if state observes the LoRa identity.
  *

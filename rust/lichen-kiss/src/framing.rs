@@ -64,6 +64,7 @@ impl KissCommand {
 
 /// KISS protocol error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum KissError {
     /// Frame is too short.
     TooShort,

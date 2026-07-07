@@ -1,0 +1,14 @@
+/*
+ * Muzi Works R1 Neo puck overlay - enables SX1262 for the puck app.
+ */
+
+/ {
+	chosen {
+		zephyr,lora = &lora0;
+		lichen,native-uart = &cdc_acm_uart0;
+	};
+};
+
+&lora0 {
+	status = "okay";
+};

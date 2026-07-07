@@ -77,6 +77,7 @@ impl Config {
 }
 
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum ConfigError {
     Io(io::Error),
     Parse(toml::de::Error),

@@ -1,0 +1,36 @@
+{
+  "id": "project-LICHEN-h7t5.7.8.1",
+  "title": "Physically validate LilyGO GNSS time provider epoch behavior",
+  "description": "Follow-up split from project-LICHEN-h7t5.7.8. No-hardware work now routes valid Zephyr GNSS UTC through the HAL time provider and build/provision epoch floor, with native_sim/qemu coverage. Remaining work requires physical LilyGO-class GNSS hardware: verify real GNSS lock publishes UTC only with a valid fix, below-floor/default epochs are rejected as diagnostics, valid GNSS UTC establishes wall clock, and location metadata still flows independently. Record board/revision, receiver/module, commands, logs, and observed HAL/app status.",
+  "notes": "No-hardware loop block 2026-07-02: acceptance requires unavailable physical hardware or real external endpoints (GNSS receivers/time behavior, battery/PMIC ADC telemetry, physical LCI firmware, real BLE app/phone/GATT policy, or board-level validation). No further software-only work is currently separable inside this Bead; resume with physical devices/endpoints available or split a new no-hardware child if a specific simulator/test-harness gap is discovered.",
+  "status": "blocked",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T11:18:16.83029Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-02T15:09:16.142032Z",
+  "labels": [
+    "zephyr",
+    "lilygo",
+    "gnss",
+    "time",
+    "hardware",
+    "validation",
+    "power",
+    "battery",
+    "hal",
+    "board-support",
+    "bringup",
+    "firmware",
+    "partner-handoff"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h7t5.7.8.1",
+      "depends_on_id": "project-LICHEN-h7t5.7.8",
+      "type": "parent-child",
+      "created_at": "2026-07-02T11:18:16.831179Z"
+    }
+  ]
+}

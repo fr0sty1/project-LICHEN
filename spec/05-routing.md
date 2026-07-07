@@ -81,14 +81,14 @@ Keywords per RFC 2119. Device classes:
 | Feature | Constrained | Router | BR |
 |---------|-------------|--------|-----|
 | Geographic coords in announce (§9.7) | MAY | MAY | MAY |
-| GPSR fallback (§9.7) | — | MAY | MAY |
-| Backpressure tracking (§11.4) | — | MAY | SHOULD |
-| Store-and-forward / DTN (§9.8) | — | MAY | SHOULD |
-| Opportunistic forwarding (§9.9) | — | MAY | MAY |
+| GPSR fallback (§9.7) | -- | MAY | MAY |
+| Backpressure tracking (§11.4) | -- | MAY | SHOULD |
+| Store-and-forward / DTN (§9.8) | -- | MAY | SHOULD |
+| Opportunistic forwarding (§9.9) | -- | MAY | MAY |
 
 **Notes:**
 
-- "—" means feature not applicable (insufficient resources).
+- "--" means feature not applicable (insufficient resources).
 - Constrained nodes MAY set DTN S-flag but do not buffer.
 - Constrained nodes use unicast forwarding only (no opportunistic).
 - All MAY features are independently optional; implement any subset.
@@ -156,7 +156,11 @@ Announce routing provides zero-latency peer-to-peer paths for active mesh partic
 
 ### 9.2. Announce Message
 
-Nodes broadcast announces periodically:
+Nodes broadcast announces periodically inside the L2 routing/control namespace.
+The authenticated link payload is `0x15 || announce`, where `0x15` is the L2
+routing/control dispatch byte and the announce bytes begin with Type `0x01`.
+Receivers MUST NOT treat an unwrapped link payload beginning with `0x01` as an
+announce because SCHC global CoAP also uses rule ID `0x01`.
 
 ```
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -252,15 +256,19 @@ When gradient is missing and LOADng times out, nodes with GPS can fall back to g
 
 ```
 App Data (coords present):
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| Type=0x01 | Lat (3 bytes)  | Lon (3 bytes)   |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| Type=0x01 |             LatE7 (4 bytes)        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                         LonE7 (4 bytes)        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
 - **Type 0x01:** Geographic coordinates present
-- **Lat/Lon:** Signed 24-bit fixed-point, 1e-5 degree resolution (~1m precision)
-  - Range: ±83.88° (sufficient for inhabited land)
-  - Encoding: `(degrees * 100000)` as int24
+- **LatE7/LonE7:** Signed 32-bit fixed-point, 1e-7 degree resolution
+  - Range: latitude MUST be within ±90°, longitude MUST be within ±180°
+  - Encoding: `(degrees * 10000000)` as a signed 32-bit integer in network byte order
+  - Rationale: e7 coordinates cover the full geographic range and match the
+    firmware/HAL and Meshtastic position representation.
 
 **GradientEntry Extension:**
 
@@ -268,6 +276,25 @@ Nodes store coords from announces:
 ```
 coords: (lat, lon) | None  # from app_data if present
 ```
+
+The coordinates are peer-owned routing metadata. A receiver MUST NOT treat
+coordinates from another node's announce as the receiver's own physical
+location by default. Border routers and gateways MAY expose a derived
+`NETWORK` location only when an explicit local policy enables approximate
+mesh-derived location fallback. Such a derived location MUST preserve
+provenance (`source_class=NETWORK`, source name such as `mesh-announce`), MUST
+be withdrawn or marked stale when the underlying announce expires, and MUST NOT
+upgrade the peer's fix source to local GNSS, manual/static, or local-client
+location. It MUST NOT outrank a fresh local position provider such as onboard
+GNSS, external GNSS, manual/static configuration, or a local-client position.
+The derived location is an approximation useful for diagnostics and coarse mesh
+context, not a privacy-neutral replacement for this node's own position
+provider.
+
+Type `0x01` coordinate app data carries no Unix fix timestamp. Firmware
+build/provision epoch floors apply only if another network source submits a
+wall-clock or fix timestamp to the shared time provider; they do not make
+coordinate-only announce metadata fresh or trustworthy by themselves.
 
 **GPSR Forwarding:**
 
@@ -302,6 +329,12 @@ def gpsr_forward(dst_coords, packet):
 
 Coords reveal physical location. Nodes MAY omit coords from announces if privacy is required. GPSR fallback unavailable for such nodes.
 
+Relays and border routers that store announce coordinates MUST apply the same
+freshness and provenance rules when presenting them outside the routing table.
+Publishing another peer's coordinates as local status without explicit
+approximate-location policy is forbidden, even when the announce signature and
+TOFU binding are valid.
+
 ### 9.8. Store-and-Forward (DTN)
 
 Border routers MAY buffer messages for unreachable destinations, delivering when a path appears.
@@ -323,7 +356,12 @@ S = Store-and-forward requested
 
 **Absolute TTL:**
 
-Store-and-forward messages carry absolute expiry (Unix timestamp, 4 bytes) instead of hop limit. Expired messages are dropped silently.
+Store-and-forward messages carry absolute expiry (Unix timestamp, 4 bytes)
+instead of hop limit. Expired messages are dropped silently. Expiry
+comparison requires valid wall-clock time from the firmware time provider
+(see `docs/firmware-time-provider.md`). Nodes without valid wall-clock time
+MUST NOT drop messages based on expiry timestamp alone; they SHOULD forward
+or store messages and let downstream nodes with valid time enforce expiry.
 
 ```
 App Data (DTN expiry):
@@ -356,7 +394,7 @@ When a node sees its IID in a pending list, it sends a pull request to retrieve 
 
 **Scope:**
 
-Border routers and powered routers only. Constrained nodes set the S flag but do not buffer—they forward or drop.
+Border routers and powered routers only. Constrained nodes set the S flag but do not buffer--they forward or drop.
 
 <!-- ponytail: spray-and-wait if single-copy delivery too slow -->
 
@@ -410,7 +448,7 @@ Sender chooses opportunistic mode when:
 
 **Scope:**
 
-Routers only. Constrained nodes use standard unicast forwarding—timing coordination adds code complexity.
+Routers only. Constrained nodes use standard unicast forwarding--timing coordination adds code complexity.
 
 <!-- ponytail: no ACK-based batch, add if throughput matters -->
 
@@ -587,7 +625,7 @@ def select_next_hop(candidates):
 
 **Scope:**
 
-Border routers and powered routers only. Constrained nodes (≤64KB RAM) skip backpressure tracking—the memory cost exceeds the benefit at low traffic volumes.
+Border routers and powered routers only. Constrained nodes (≤64KB RAM) skip backpressure tracking--the memory cost exceeds the benefit at low traffic volumes.
 
 <!-- ponytail: no per-flow fairness, add if starvation observed -->
 
@@ -617,10 +655,10 @@ Border routers and powered routers only. Constrained nodes (≤64KB RAM) skip ba
 
 | Traffic | Primary | Fallback |
 |---------|---------|----------|
-| To/from internet | RPL | — |
+| To/from internet | RPL | -- |
 | Peer (active node) | Announce gradient | LOADng |
 | Peer (unknown node) | LOADng | RPL via root (inefficient) |
-| Broadcast | Hop-limited flood | — |
+| Broadcast | Hop-limited flood | -- |
 
 The three-tier approach optimizes for each traffic pattern while providing fallbacks for edge cases.
 

@@ -34,14 +34,15 @@ class SimulatorServer:
     TCP server for node connections. The REST API provides endpoints for
     creating/deleting simulations and managing nodes and chaos rules.
 
-    Security note: The REST API has no authentication. Only bind to
-    ``127.0.0.1`` (the default) in development environments. Do not expose
-    the API port on a network interface accessible to untrusted hosts.
+    Security note: When binding to non-localhost addresses, enable API
+    authentication by passing an ``api_token``. Without authentication,
+    anyone who can reach the API port can control simulations.
 
     Attributes:
         node_port: Base TCP port for node connections.
         api_port: HTTP port for REST API.
         bind_host: Host address to bind both servers.
+        api_token: Bearer token for API authentication (if enabled).
     """
 
     def __init__(
@@ -50,6 +51,7 @@ class SimulatorServer:
         api_port: int = 4445,
         bind_host: str = "127.0.0.1",
         pcap_writer: PcapngWriter | None = None,
+        api_token: str | None = None,
     ) -> None:
         """Initialize the simulator server.
 
@@ -58,14 +60,19 @@ class SimulatorServer:
                 gets its own port starting from this value.
             api_port: HTTP port for the REST API.
             bind_host: Host address to bind. Defaults to ``127.0.0.1``
-                (loopback only). Set to ``0.0.0.0`` only on a trusted
-                network — the API has no authentication.
+                (loopback only). When binding to other addresses, consider
+                enabling authentication via ``api_token``.
             pcap_writer: Optional PcapngWriter to receive captured frames
                 from all simulations.  The caller owns the writer's lifetime.
+            api_token: Optional bearer token for API authentication. When set,
+                all HTTP requests must include ``Authorization: Bearer <token>``
+                header. WebSocket connections use ``Sec-WebSocket-Protocol:
+                bearer.<token>`` to avoid exposing the token in URLs.
         """
         self.node_port = node_port
         self.api_port = api_port
         self.bind_host = bind_host
+        self.api_token = api_token
         self._pcap_writer = pcap_writer
         self._simulations: dict[str, Simulation] = {}
         self._node_servers: dict[str, asyncio.Server] = {}
@@ -91,6 +98,7 @@ class SimulatorServer:
         self._api = SimulatorAPI(
             on_simulation_created=self._start_node_server_for_sim,
             on_simulation_deleted=self._stop_node_server_for_sim,
+            api_token=self.api_token,
         )
         # Share our simulations dict so both REST and programmatic paths agree.
         self._api._simulations = self._simulations
@@ -293,6 +301,10 @@ class SimulatorServer:
 def main() -> None:
     """CLI entry point for the LICHEN simulator server."""
     import argparse
+    import os
+    import sys
+
+    from lichen.sim.auth import WeakTokenError, generate_token, validate_token_strength
 
     parser = argparse.ArgumentParser(description="LICHEN Simulator Server")
     parser.add_argument(
@@ -313,7 +325,17 @@ def main() -> None:
         metavar="HOST",
         help=(
             "Host address to bind (default: 127.0.0.1). "
-            "The REST API has no authentication — only change this on a trusted network."
+            "When binding to non-localhost, use --api-token to enable authentication."
+        ),
+    )
+    parser.add_argument(
+        "--api-token",
+        metavar="TOKEN",
+        default=None,
+        help=(
+            "Bearer token for REST API authentication. "
+            "Use 'generate' to auto-generate a secure token, or provide your own. "
+            "Can also be set via LICHEN_SIM_API_TOKEN environment variable."
         ),
     )
     parser.add_argument(
@@ -330,6 +352,29 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # Resolve API token: CLI > env var > None
+    api_token = args.api_token or os.environ.get("LICHEN_SIM_API_TOKEN")
+    if api_token == "generate":
+        api_token = generate_token()
+        print(f"Generated API token: {api_token}", file=sys.stderr)
+    elif api_token is not None:
+        # SECURITY: Validate user-provided tokens meet minimum entropy requirements
+        try:
+            validate_token_strength(api_token)
+        except WeakTokenError as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    # SECURITY: Warn when binding to non-localhost without authentication
+    is_localhost = args.bind_address in ("127.0.0.1", "localhost", "::1")
+    if not is_localhost and api_token is None:
+        print(
+            "WARNING: Binding to non-localhost address without authentication. "
+            "Anyone who can reach the API can control simulations. "
+            "Consider using --api-token to enable authentication.",
+            file=sys.stderr,
+        )
+
     # Configure structlog
     structlog.configure(
         wrapper_class=structlog.make_filtering_bound_logger(
@@ -343,13 +388,14 @@ def main() -> None:
         format="%(message)s",
     )
 
-    # Create server (optionally with pcap capture)
+    # Create server (optionally with pcap capture and authentication)
     pcap_writer = PcapngWriter(args.pcap) if args.pcap else None
     server = SimulatorServer(
         node_port=args.node_port,
         api_port=args.api_port,
         bind_host=args.bind_address,
         pcap_writer=pcap_writer,
+        api_token=api_token,
     )
 
     async def run() -> None:

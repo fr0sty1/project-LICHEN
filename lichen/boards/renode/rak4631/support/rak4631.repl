@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: The contributors to the LICHEN project
+//
+// RAK4631 WisBlock board for Renode
+// nRF52840 + SX1262 + LEDs
+// ponytail: minimal - GPIO wiring simulated via lichen-sim anyway
+
+using "../../nrf52840_lichen/support/nrf52840_lichen.repl"
+
+// LEDs on P1 (active-low per RAK4631 schematic)
+gpio1:
+    3 -> led0@0
+    4 -> led1@0
+
+led0: Miscellaneous.LED @ gpio1 3
+    invert: true
+
+led1: Miscellaneous.LED @ gpio1 4
+    invert: true

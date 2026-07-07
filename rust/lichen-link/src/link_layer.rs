@@ -17,6 +17,7 @@ use lichen_core::error::TooShort;
 
 /// Error returned by [`LinkLayer::receive_frame`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum LinkRxError {
     Frame(FrameError),
     /// Frame has no signature but all LICHEN frames must be signed.
@@ -221,13 +222,23 @@ impl Default for ReplayProtector {
 
 /// LICHEN link layer: builds signed frames for TX and verifies them on RX.
 ///
-/// Peer table is keyed by IID (8 bytes). On RX, every known peer is tried;
-/// the first successful verify pins the sender. Unknown senders are rejected
-/// (no TOFU auto-enrolment — callers handle that via the Announce layer).
+/// Peer table is keyed by IID (8 bytes) in a HashMap for O(1) lookup.
+/// On RX, every known peer is tried; the first successful verify pins the
+/// sender. Unknown senders are rejected (no TOFU auto-enrolment — callers
+/// handle that via the Announce layer).
 ///
-/// Key pinning: once an IID is seen with a valid signature, its pubkey is
-/// stored in `pinned`. Subsequent frames from the same IID must match the
-/// pinned pubkey; a mismatch returns `LinkRxError::KeyChange`.
+/// # Signature Verification Cost
+///
+/// Since frames do not include the sender IID, RX must scan peers to find
+/// whose public key verifies the signature. Worst-case is O(n) Schnorr
+/// verifications where n = peer count. Keep peer count low (e.g., <20 direct
+/// neighbors) or implement sender IID hints in upper layers for larger networks.
+///
+/// # Key Pinning
+///
+/// Once an IID is seen with a valid signature, its pubkey is stored in
+/// `pinned`. Subsequent frames from the same IID must match the pinned
+/// pubkey; a mismatch returns `LinkRxError::KeyChange`.
 pub struct LinkLayer {
     identity: Identity,
     peers: HashMap<[u8; 8], PeerIdentity>,
@@ -603,8 +614,9 @@ mod tests {
         let alice = Identity::from_seed(Seed::new([0x01u8; 32]));
         let alice_peer = PeerIdentity::from_pubkey(alice.pubkey);
         let alice_iid = alice_peer.iid;
+        let alice_pubkey = alice_peer.pubkey;
         let mut ll_bob = make_ll(0x02);
-        ll_bob.add_peer(alice_peer.clone());
+        ll_bob.add_peer(alice_peer);
 
         let ll_alice = LinkLayer::new(alice);
         let mut wire1 = [0u8; 256];
@@ -614,10 +626,7 @@ mod tests {
 
         // First RX succeeds and pins alice_iid → alice's pubkey.
         ll_bob.receive_frame(&wire1[..n1]).unwrap();
-        assert_eq!(
-            ll_bob.pinned_pubkey_for(&alice_iid),
-            Some(&alice_peer.pubkey)
-        );
+        assert_eq!(ll_bob.pinned_pubkey_for(&alice_iid), Some(&alice_pubkey));
 
         // Simulate key change: overwrite pin with a different pubkey.
         let impostor_pk = Identity::from_seed(Seed::new([0x99u8; 32])).pubkey;
@@ -657,8 +666,10 @@ mod tests {
         // New key accepted and re-pinned.
         let new_alice = Identity::from_seed(Seed::new([0xAAu8; 32]));
         let new_alice_peer = PeerIdentity::from_pubkey(new_alice.pubkey);
+        let new_alice_iid = new_alice_peer.iid;
+        let new_alice_pubkey = new_alice_peer.pubkey;
         ll_bob.remove_peer(&alice_iid);
-        ll_bob.add_peer(new_alice_peer.clone());
+        ll_bob.add_peer(new_alice_peer);
 
         let ll_new = LinkLayer::new(new_alice);
         let mut wire2 = [0u8; 256];
@@ -667,8 +678,8 @@ mod tests {
             .unwrap();
         ll_bob.receive_frame(&wire2[..n2]).unwrap();
         assert_eq!(
-            ll_bob.pinned_pubkey_for(&new_alice_peer.iid),
-            Some(&new_alice_peer.pubkey)
+            ll_bob.pinned_pubkey_for(&new_alice_iid),
+            Some(&new_alice_pubkey)
         );
     }
 }

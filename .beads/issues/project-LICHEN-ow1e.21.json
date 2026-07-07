@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ow1e.21",
+  "title": "good: lichen-link key newtypes prevent key misuse",
+  "description": "keys.rs provides Seed, PrivateKey, PublicKey newtypes that prevent accidental misuse of raw [u8; 32] arrays. Debug output is redacted for sensitive keys. This is genuinely well-done - the compiler catches mistakes like passing a private key where a public key is expected.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "decision",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:35:40.839267Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:18:35.795715Z",
+  "closed_at": "2026-07-06T17:18:35.795715Z",
+  "close_reason": "Positive finding - no changes needed",
+  "labels": [
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.21",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:35:40.839893Z"
+    }
+  ]
+}

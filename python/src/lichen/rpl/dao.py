@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from ipaddress import IPv6Address
 
+from lichen.ipv6 import to_ipv6
 from lichen.rpl.messages import DAO, DAOAck, RplOption, RplOptionType
 from lichen.rpl.routing import RoutingTable
 
@@ -25,10 +26,6 @@ _MAX_CHAIN = 64  # loop / runaway guard when assembling source routes
 
 class DaoError(Exception):
     """Raised on malformed DAO options or misuse of the DAO manager."""
-
-
-def _addr(value: IPv6Address | str) -> IPv6Address:
-    return value if isinstance(value, IPv6Address) else IPv6Address(value)
 
 
 @dataclass
@@ -103,9 +100,9 @@ class DaoManager:
     _parent_map: dict[IPv6Address, IPv6Address] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        self.node_address = _addr(self.node_address)
+        self.node_address = to_ipv6(self.node_address)
         if self.dodag_id is not None:
-            self.dodag_id = _addr(self.dodag_id)
+            self.dodag_id = to_ipv6(self.dodag_id)
 
     def build_dao(
         self, parent_address: IPv6Address | str, *, ack_requested: bool = False
@@ -119,7 +116,7 @@ class DaoManager:
             ack_requested=ack_requested,
             options=[
                 RplTarget(self.node_address).to_option(),
-                TransitInformation(_addr(parent_address)).to_option(),
+                TransitInformation(to_ipv6(parent_address)).to_option(),
             ],
         )
 
@@ -141,7 +138,7 @@ class DaoManager:
 
     def remove_edge(self, target: IPv6Address | str) -> bool:
         """Remove a target's parent edge and its route. Returns True if removed."""
-        target = _addr(target)
+        target = to_ipv6(target)
         if target not in self._parent_map:
             return False
         del self._parent_map[target]

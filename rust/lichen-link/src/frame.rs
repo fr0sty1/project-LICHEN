@@ -160,6 +160,7 @@ pub const MAX_FRAME_BODY: usize = 255;
 
 /// Error type for link-layer frame parsing and serialisation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum FrameError {
     Empty,
     TooShort(TooShort),
@@ -200,6 +201,18 @@ impl From<TooShort> for FrameError {
 }
 
 /// A parsed LICHEN link-layer frame.
+///
+/// # Security: Unverified Structure
+///
+/// **This struct represents a *parsed* frame, not a *verified* one.**
+///
+/// The `signature` field indicates whether a signature is *present* in the wire
+/// format, NOT whether it has been cryptographically verified. Similarly, the
+/// `mic` field contains the raw MIC bytes but does not imply authentication.
+///
+/// Callers must use `LinkLayer::verify()` or equivalent to cryptographically
+/// validate frames before trusting their contents. A `LichenFrame` obtained
+/// from `from_bytes()` should be treated as untrusted input.
 ///
 /// Payload is stored as a reference to avoid heap allocation in `no_std`
 /// contexts. Use [`LichenFrameBuf`] for an owned variant (future work).
@@ -260,6 +273,12 @@ impl<'a> LichenFrame<'a> {
     }
 
     /// Parse a frame from a byte slice.
+    ///
+    /// # Panics
+    ///
+    /// This function does not panic. Internal `.expect()` calls guard state
+    /// machine transitions that are provably valid by control flow. Malformed
+    /// input returns `Err(FrameError)`, never a panic.
     pub fn from_bytes(data: &'a [u8]) -> Result<Self, FrameError> {
         let mut state = FrameProcessingState::Start;
         if data.is_empty() {

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-ow1e.93",
+  "title": "EDHOC edhoc_kdf uses .expect() for PRK length validation",
+  "description": "lichen-oscore/src/edhoc.rs:123-126:\n```rust\nlet hk = Hkdf::\u003cSha256\u003e::from_prk(prk).expect(\"PRK is correct length\");\nokm.resize(length, 0).expect(\"length \u003c= 32\");\nhk.expand(\u0026info, \u0026mut okm).expect(\"length \u003c= 255\");\n```\n\nThese expects are for programmer errors (wrong constant sizes), not runtime failures. Consider using debug_assert! or compile-time checks:\n\n```rust\nconst _: () = assert!(KEY_LEN_32 == 32); // compile-time PRK length check\n```\n\nAlternatively, make `edhoc_kdf` return Result and propagate errors for defensiveness.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:37:18.853487Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:01:14.504392Z",
+  "closed_at": "2026-07-06T17:01:14.504392Z",
+  "close_reason": "Added INFALLIBLE comments to edhoc_kdf .expect() calls in edhoc.rs",
+  "labels": [
+    "idiomatic-rust",
+    "error-handling",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.93",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:37:18.854049Z"
+    }
+  ]
+}

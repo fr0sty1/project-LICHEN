@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-ow1e.159",
+  "title": "OSCORE replay check before authentication allows window poisoning",
+  "description": "In lichen-oscore/src/lib.rs unprotect_request(), replay window is checked at line 280 BEFORE decryption at line 298. An attacker can send forged packets with arbitrary seqnums to update the replay window. When decryption fails, the window has already accepted the fake seqnum. This allows replay window poisoning to reject legitimate packets. Fix: update replay window only AFTER successful authenticated decryption. Affects integrity.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:38:33.652016Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:46:01.4845Z",
+  "closed_at": "2026-07-06T15:46:01.4845Z",
+  "close_reason": "Closed",
+  "labels": [
+    "crypto-security",
+    "untrusted-input",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.159",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:38:33.652591Z"
+    }
+  ]
+}

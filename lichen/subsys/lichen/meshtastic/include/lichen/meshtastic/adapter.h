@@ -15,6 +15,19 @@ extern "C" {
 #endif
 
 #define LICHEN_MESHTASTIC_STREAM_HEADER_LEN 4U
+#define LICHEN_MESHTASTIC_STATIC_SYNC_FIXED_RECORDS 5U
+#define LICHEN_MESHTASTIC_STATIC_SYNC_CONFIG_SECTIONS 9U
+#define LICHEN_MESHTASTIC_NODE_SYNC_FIXED_RECORDS 1U
+#define LICHEN_MESHTASTIC_CONFIG_COMPLETE_RECORDS 1U
+#define LICHEN_MESHTASTIC_STATIC_SYNC_RECORDS \
+	(LICHEN_MESHTASTIC_STATIC_SYNC_FIXED_RECORDS + \
+	 LICHEN_MESHTASTIC_STATIC_SYNC_CONFIG_SECTIONS)
+#define LICHEN_MESHTASTIC_NODE_SYNC_RECORDS(peer_count) \
+	(LICHEN_MESHTASTIC_NODE_SYNC_FIXED_RECORDS + (peer_count))
+#define LICHEN_MESHTASTIC_FULL_SYNC_RECORDS(peer_count) \
+	(LICHEN_MESHTASTIC_STATIC_SYNC_RECORDS + \
+	 LICHEN_MESHTASTIC_NODE_SYNC_RECORDS(peer_count) + \
+	 LICHEN_MESHTASTIC_CONFIG_COMPLETE_RECORDS)
 
 enum lichen_meshtastic_adapter_result {
 	LICHEN_MESHTASTIC_ADAPTER_DISPATCHED = 0,
@@ -27,6 +40,31 @@ enum lichen_meshtastic_adapter_packet_kind {
 	LICHEN_MESHTASTIC_ADAPTER_PACKET_ADMIN_GET_DEVICE_METADATA,
 	LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED,
 	LICHEN_MESHTASTIC_ADAPTER_PACKET_UNSUPPORTED,
+	LICHEN_MESHTASTIC_ADAPTER_PACKET_POSITION_APP,
+};
+
+struct lichen_meshtastic_position_snapshot {
+	bool latitude_e7_valid;
+	int32_t latitude_e7;
+	bool longitude_e7_valid;
+	int32_t longitude_e7;
+	bool altitude_m_valid;
+	int32_t altitude_m;
+	bool fix_time_unix_valid;
+	uint32_t fix_time_unix;
+	bool satellites_valid;
+	uint8_t satellites;
+	bool location_source_valid;
+	uint32_t location_source;
+	bool altitude_source_valid;
+	uint32_t altitude_source;
+	bool gps_accuracy_mm_valid;
+	uint32_t gps_accuracy_mm;
+	bool precision_bits_valid;
+	uint8_t precision_bits;
+	bool timestamp_field_valid;
+	bool fix_time_rejected_below_epoch_floor;
+	uint32_t effective_epoch_floor;
 };
 
 struct lichen_meshtastic_adapter_packet_info {
@@ -51,6 +89,7 @@ struct lichen_meshtastic_adapter_packet_info {
 	bool has_portnum;
 	bool has_to_peer;
 	bool want_ack;
+	struct lichen_meshtastic_position_snapshot position;
 };
 
 struct lichen_meshtastic_adapter_stats {
@@ -66,6 +105,7 @@ struct lichen_meshtastic_adapter_stats {
 	uint32_t incoming_status_count;
 	uint32_t nodedb_peer_collision_count;
 	uint32_t nodedb_peer_omitted_count;
+	uint32_t position_packet_count;
 };
 
 enum lichen_meshtastic_adapter_unsupported_operation_id {
@@ -98,6 +138,19 @@ enum lichen_meshtastic_adapter_unsupported_operation_id {
 	LICHEN_MESHTASTIC_UNSUPPORTED_PRIVATE_APP = 26,
 	LICHEN_MESHTASTIC_UNSUPPORTED_ATAK_FORWARDER = 27,
 	LICHEN_MESHTASTIC_UNSUPPORTED_MAX_SENTINEL = 28,
+	LICHEN_MESHTASTIC_UNSUPPORTED_ALERT = 29,
+	LICHEN_MESHTASTIC_UNSUPPORTED_KEY_VERIFICATION = 30,
+	LICHEN_MESHTASTIC_UNSUPPORTED_REMOTE_SHELL = 31,
+	LICHEN_MESHTASTIC_UNSUPPORTED_STORE_FORWARD_PLUSPLUS = 32,
+	LICHEN_MESHTASTIC_UNSUPPORTED_NODE_STATUS = 33,
+	LICHEN_MESHTASTIC_UNSUPPORTED_MESH_BEACON = 34,
+	LICHEN_MESHTASTIC_UNSUPPORTED_POWERSTRESS = 35,
+	LICHEN_MESHTASTIC_UNSUPPORTED_LORAWAN_BRIDGE = 36,
+	LICHEN_MESHTASTIC_UNSUPPORTED_RETICULUM_TUNNEL = 37,
+	LICHEN_MESHTASTIC_UNSUPPORTED_CAYENNE = 38,
+	LICHEN_MESHTASTIC_UNSUPPORTED_ATAK_PLUGIN_V2 = 39,
+	LICHEN_MESHTASTIC_UNSUPPORTED_LORA_OTA = 40,
+	LICHEN_MESHTASTIC_UNSUPPORTED_GROUPALARM = 41,
 };
 
 struct lichen_meshtastic_adapter_unsupported_operation {
@@ -131,6 +184,9 @@ typedef int (*lichen_meshtastic_adapter_enqueue_fn)(const uint8_t *from_radio,
 typedef int (*lichen_meshtastic_adapter_text_fn)(
 	const struct lichen_meshtastic_adapter_packet_info *packet,
 	void *user_data);
+typedef int (*lichen_meshtastic_adapter_location_fn)(
+	const struct lichen_meshtastic_adapter_packet_info *packet,
+	void *user_data);
 
 typedef uint32_t (*lichen_meshtastic_adapter_queue_free_fn)(void *user_data);
 typedef int (*lichen_meshtastic_adapter_local_info_fn)(
@@ -162,12 +218,27 @@ typedef size_t (*lichen_meshtastic_adapter_peer_snapshot_fn)(
 struct lichen_meshtastic_adapter_ops {
 	lichen_meshtastic_adapter_enqueue_fn enqueue_from_radio;
 	lichen_meshtastic_adapter_text_fn handle_text;
+	/*
+	 * Optional current free-slot hook for enqueue_from_radio. When provided,
+	 * WantConfig sync bursts are preflighted before the first record is
+	 * enqueued. The hook must report the same queue used by
+	 * enqueue_from_radio; it is not a reservation or rollback mechanism, so
+	 * stale hook values or later enqueue failures can still leave partial
+	 * output. When omitted, the adapter keeps best-effort degraded semantics:
+	 * records are enqueued until enqueue_from_radio fails, and the caller may
+	 * observe a partial sync.
+	 */
 	lichen_meshtastic_adapter_queue_free_fn queue_free;
 	lichen_meshtastic_adapter_local_info_fn get_local_info;
 	lichen_meshtastic_adapter_peer_snapshot_fn get_peers;
 	void *user_data;
+	/*
+	 * Total FromRadio queue capacity advertised in queueStatus. Set this to
+	 * the same queue measured by queue_free when queue_free is provided.
+	 */
 	uint32_t queue_maxlen;
 	bool heartbeat_queue_status;
+	lichen_meshtastic_adapter_location_fn handle_location;
 };
 
 struct lichen_meshtastic_adapter {

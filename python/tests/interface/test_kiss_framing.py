@@ -9,7 +9,6 @@ from lichen.interface.kiss import (
     TFESC,
     KissCommand,
     KissError,
-    KissFrame,
     KissReader,
     kiss_decode,
     kiss_encode,

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-jrej.2",
+  "title": "Implement compact CoT encoder/decoder",
+  "description": "Binary CoT codec per spec/07-transport-app.md Section 10.1.1. PLI encoding (18 bytes), chat with dest_type (broadcast/team/direct), team enumeration. Software-only: pure codec work with test vectors.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-03T05:38:29.565067Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T18:50:16.429093Z",
+  "closed_at": "2026-07-06T18:50:16.429093Z",
+  "close_reason": "Rust implementation complete at rust/lichen-core/src/compact_cot.rs with 20 tests passing.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-jrej.2",
+      "depends_on_id": "project-LICHEN-jrej",
+      "type": "parent-child",
+      "created_at": "2026-07-03T05:38:29.565525Z"
+    },
+    {
+      "issue_id": "project-LICHEN-jrej.2",
+      "depends_on_id": "project-LICHEN-jrej.4",
+      "type": "blocks",
+      "created_at": "2026-07-03T05:38:45.376453Z"
+    }
+  ]
+}

@@ -14,5 +14,6 @@ target_sources(app PRIVATE
   src/fake_l2_identity.c
   src/main.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/gateway_identity.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/message_contract.c
   ${CMAKE_CURRENT_SOURCE_DIR}/../../apps/gateway/src/meshcore_adapter.c
 )

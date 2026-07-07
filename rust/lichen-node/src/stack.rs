@@ -6,16 +6,19 @@
 #[cfg(feature = "std")]
 extern crate std;
 #[cfg(feature = "std")]
-use std::vec::Vec;
-#[cfg(feature = "std")]
 use std::vec;
+#[cfg(feature = "std")]
+use std::vec::Vec;
 
-use lichen_core::addr::NodeId;
-use lichen_core::constants::PORT_COAP;
 use lichen_coap::codec::CoapBuilder;
 use lichen_coap::message::{MessageCode, MessageType};
+use lichen_core::addr::NodeId;
+use lichen_core::constants::{L2_DISPATCH_SCHC, PORT_COAP};
+use lichen_core::l2_payload::{
+    body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
+};
 use lichen_hal::Radio;
-use lichen_ipv6::{next_header, Addr, Ipv6Header, IPV6_HEADER_LEN, UDP_HEADER_LEN};
+use lichen_ipv6::{next_header, Addr, Ipv6Header, UdpHeader, IPV6_HEADER_LEN, UDP_HEADER_LEN};
 use lichen_link::link_layer::LinkRxError;
 use lichen_link::seqnum::LinkSeqNum;
 use lichen_schc::codec;
@@ -27,6 +30,7 @@ pub const MAX_FRAME_SIZE: usize = 255;
 
 /// TX path error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum TxError {
     /// CoAP message encoding failed.
     CoapEncode,
@@ -56,6 +60,7 @@ impl core::error::Error for TxError {}
 
 /// RX path error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum RxError {
     /// Radio receive failed.
     RadioRx,
@@ -174,19 +179,15 @@ impl<R: Radio> Stack<R> {
     ) -> Result<u16, TxError> {
         let mid = self.next_message_id();
         let mut coap = [0u8; 192];
-        let mut builder = CoapBuilder::new(
-            &mut coap,
-            MessageType::Confirmable,
-            method,
-            mid,
-            token,
-        )
-        .map_err(|_| TxError::CoapEncode)?;
+        let mut builder = CoapBuilder::new(&mut coap, MessageType::Confirmable, method, mid, token)
+            .map_err(|_| TxError::CoapEncode)?;
         for seg in uri_path {
             builder.uri_path(seg).map_err(|_| TxError::CoapEncode)?;
         }
         if let Some(cf) = content_format {
-            builder.content_format(cf).map_err(|_| TxError::CoapEncode)?;
+            builder
+                .content_format(cf)
+                .map_err(|_| TxError::CoapEncode)?;
         }
         if let Some(p) = payload {
             builder.payload(p).map_err(|_| TxError::CoapEncode)?;
@@ -221,8 +222,15 @@ impl<R: Radio> Stack<R> {
         content_format: Option<u16>,
         payload: &[u8],
     ) -> Result<u16, TxError> {
-        self.send_coap_request(dst, MessageCode::POST, uri_path, token, content_format, Some(payload))
-            .await
+        self.send_coap_request(
+            dst,
+            MessageCode::POST,
+            uri_path,
+            token,
+            content_format,
+            Some(payload),
+        )
+        .await
     }
 
     /// Build a CoAP PUT request and transmit it.
@@ -236,8 +244,15 @@ impl<R: Radio> Stack<R> {
         content_format: Option<u16>,
         payload: &[u8],
     ) -> Result<u16, TxError> {
-        self.send_coap_request(dst, MessageCode::PUT, uri_path, token, content_format, Some(payload))
-            .await
+        self.send_coap_request(
+            dst,
+            MessageCode::PUT,
+            uri_path,
+            token,
+            content_format,
+            Some(payload),
+        )
+        .await
     }
 
     /// Send a raw CoAP message to destination.
@@ -247,36 +262,46 @@ impl<R: Radio> Stack<R> {
         let src = self.local_addr();
 
         // Build IPv6/UDP packet
-        let udp_len = (UDP_HEADER_LEN + coap.len()) as u16;
+        let udp_payload_len = coap.len();
+        let udp_len = (UDP_HEADER_LEN + udp_payload_len) as u16;
         let mut ipv6 = [0u8; 256];
-        let ip_hdr = Ipv6Header::new(next_header::UDP, src, *dst);
-        ip_hdr.write_to(udp_len, &mut ipv6[..IPV6_HEADER_LEN]).map_err(|_| TxError::BufferTooSmall)?;
 
-        // UDP header: src_port, dst_port, length, checksum
-        let src_port = PORT_COAP;
-        let dst_port = PORT_COAP;
-        ipv6[40..42].copy_from_slice(&src_port.to_be_bytes());
-        ipv6[42..44].copy_from_slice(&dst_port.to_be_bytes());
-        ipv6[44..46].copy_from_slice(&udp_len.to_be_bytes());
-        // Checksum computed by SCHC or set to zero (CoAP over UDP allows it)
-        let cksum = udp_checksum(&src.0, &dst.0, src_port, dst_port, coap);
-        ipv6[46..48].copy_from_slice(&cksum.to_be_bytes());
+        // IPv6 header
+        let ip_hdr = Ipv6Header::new(next_header::UDP, src, *dst);
+        ip_hdr
+            .write_to(udp_len, &mut ipv6[..IPV6_HEADER_LEN])
+            .map_err(|_| TxError::BufferTooSmall)?;
+
+        // UDP header (computes checksum via pseudo-header)
+        let udp_hdr = UdpHeader::new(PORT_COAP, PORT_COAP);
+        udp_hdr
+            .write_to(
+                udp_payload_len,
+                &src,
+                dst,
+                coap,
+                &mut ipv6[IPV6_HEADER_LEN..IPV6_HEADER_LEN + UDP_HEADER_LEN],
+            )
+            .map_err(|_| TxError::BufferTooSmall)?;
 
         // CoAP payload
-        let ipv6_len = IPV6_HEADER_LEN + UDP_HEADER_LEN + coap.len();
-        ipv6[48..ipv6_len].copy_from_slice(coap);
+        let ipv6_len = IPV6_HEADER_LEN + UDP_HEADER_LEN + udp_payload_len;
+        ipv6[IPV6_HEADER_LEN + UDP_HEADER_LEN..ipv6_len].copy_from_slice(coap);
 
         // SCHC compress
         let mut schc = [0u8; 200];
         let schc_len =
             codec::compress(&ipv6[..ipv6_len], &mut schc).map_err(|_| TxError::SchcCompress)?;
 
+        let mut l2_payload = [0u8; 201];
+        let l2_payload_len = wrap_schc_payload(&schc[..schc_len], &mut l2_payload)?;
+
         // L2 sign and frame
         let seqnum = self.next_seqnum();
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
             .link
-            .build_frame(self.epoch, seqnum, &[], &schc[..schc_len], &mut wire)
+            .build_frame(self.epoch, seqnum, &[], l2_payload_len, &mut wire)
             .map_err(|_| TxError::FrameEncode)?;
 
         // Radio TX
@@ -294,12 +319,14 @@ impl<R: Radio> Stack<R> {
     pub async fn send_ipv6_raw(&mut self, ipv6: &[u8]) -> Result<(), TxError> {
         let mut schc = [0u8; 200];
         let schc_len = codec::compress(ipv6, &mut schc).map_err(|_| TxError::SchcCompress)?;
+        let mut l2_payload = [0u8; 201];
+        let l2_payload_len = wrap_schc_payload(&schc[..schc_len], &mut l2_payload)?;
 
         let seqnum = self.next_seqnum();
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
             .link
-            .build_frame(self.epoch, seqnum, &[], &schc[..schc_len], &mut wire)
+            .build_frame(self.epoch, seqnum, &[], l2_payload_len, &mut wire)
             .map_err(|_| TxError::FrameEncode)?;
 
         self.radio
@@ -328,8 +355,13 @@ impl<R: Radio> Stack<R> {
         let wire = &buf[..pkt.len];
         let l2 = self.link.receive_frame(wire)?;
 
+        if classify_l2_payload(&l2.payload) != L2PayloadKind::Schc {
+            return Err(RxError::SchcDecompress);
+        }
+
         let mut ipv6 = vec![0u8; 256];
-        let n = codec::decompress(&l2.payload, &mut ipv6).map_err(|_| RxError::SchcDecompress)?;
+        let n = codec::decompress(l2_payload_body(&l2.payload), &mut ipv6)
+            .map_err(|_| RxError::SchcDecompress)?;
         ipv6.truncate(n);
 
         Ok(Some(ReceivedIpv6 {
@@ -396,57 +428,13 @@ impl<R: Radio> Stack<R> {
     }
 }
 
-/// Compute UDP checksum over pseudo-header and payload.
-fn udp_checksum(src: &[u8; 16], dst: &[u8; 16], src_port: u16, dst_port: u16, payload: &[u8]) -> u16 {
-    let udp_len = (8 + payload.len()) as u16;
-    let mut sum = pseudo_sum(src, dst, 17, udp_len);
-    sum = oc_add(sum, src_port as u32);
-    sum = oc_add(sum, dst_port as u32);
-    sum = oc_add(sum, udp_len as u32);
-    sum = oc_add(sum, checksum_bytes(payload));
-    finalize(sum)
-}
-
-fn oc_add(a: u32, b: u32) -> u32 {
-    let s = a + b;
-    if s >> 16 != 0 {
-        (s & 0xFFFF) + (s >> 16)
-    } else {
-        s
+fn wrap_schc_payload<'a>(schc: &[u8], out: &'a mut [u8]) -> Result<&'a [u8], TxError> {
+    if out.len() < schc.len() + 1 {
+        return Err(TxError::BufferTooSmall);
     }
-}
-
-fn checksum_bytes(data: &[u8]) -> u32 {
-    let mut sum: u32 = 0;
-    let chunks = data.chunks_exact(2);
-    let remainder = chunks.remainder();
-    for pair in chunks {
-        sum = oc_add(sum, u16::from_be_bytes([pair[0], pair[1]]) as u32);
-    }
-    if let Some(&last) = remainder.first() {
-        sum = oc_add(sum, (last as u32) << 8);
-    }
-    sum
-}
-
-fn pseudo_sum(src: &[u8], dst: &[u8], next_header: u8, length: u16) -> u32 {
-    let mut sum: u32 = 0;
-    for pair in src.chunks_exact(2) {
-        sum = oc_add(sum, u16::from_be_bytes([pair[0], pair[1]]) as u32);
-    }
-    for pair in dst.chunks_exact(2) {
-        sum = oc_add(sum, u16::from_be_bytes([pair[0], pair[1]]) as u32);
-    }
-    sum = oc_add(sum, length as u32);
-    oc_add(sum, next_header as u32)
-}
-
-fn finalize(sum: u32) -> u16 {
-    let mut s = sum;
-    while s >> 16 != 0 {
-        s = (s & 0xFFFF) + (s >> 16);
-    }
-    !(s as u16)
+    out[0] = L2_DISPATCH_SCHC;
+    out[1..1 + schc.len()].copy_from_slice(schc);
+    Ok(&out[..1 + schc.len()])
 }
 
 #[cfg(all(test, feature = "std"))]
@@ -510,7 +498,9 @@ mod tests {
         let icmp = echo.build_request(&alice_addr, &bob_addr, b"ping");
         let ip_hdr = Ipv6Header::new(next_header::ICMPV6, alice_addr, bob_addr);
         let mut ipv6 = vec![0u8; IPV6_HEADER_LEN];
-        ip_hdr.write_to(icmp.len() as u16, &mut ipv6[..IPV6_HEADER_LEN]).unwrap();
+        ip_hdr
+            .write_to(icmp.len() as u16, &mut ipv6[..IPV6_HEADER_LEN])
+            .unwrap();
         ipv6.extend_from_slice(&icmp);
 
         alice.send_ipv6_raw(&ipv6).await.unwrap();

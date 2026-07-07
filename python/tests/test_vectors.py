@@ -17,16 +17,39 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft7Validator
 
+from lichen.announce.coords import decode_coords, encode_coords
 from lichen.crypto.identity import Identity
 from lichen.crypto.schnorr48 import sign as schnorr_sign
 from lichen.crypto.schnorr48 import verify as schnorr_verify
+from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
 from lichen.link.frame import AddrMode, LichenFrame, MicLength
 from lichen.schc.headers import compress_packet, decompress_packet
 
 VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 
 sys.path.insert(0, str(VECTORS_DIR))
-from generate import meshcore_app_compat_vectors, meshtastic_app_compat_vectors  # noqa: E402
+from generate import (  # noqa: E402
+    announce_coords_vectors,
+    l2_payload_vectors,
+    meshcore_app_compat_vectors,
+    meshtastic_app_compat_vectors,
+)
+
+CONFIG_SECTION_EXPECTATIONS = [
+    ("device", 1, [(1, 0), (7, 900)]),
+    ("position", 2, [(3, 0), (5, 0), (7, 0), (13, 2)]),
+    ("power", 3, [(1, 0), (4, 0)]),
+    ("network", 4, [(1, 0), (6, 0), (11, 0)]),
+    ("display", 5, [(1, 0), (6, 0), (8, 0)]),
+    (
+        "lora",
+        6,
+        [(1, 1), (2, 0), (7, 1), (8, 3), (9, 1), (10, 14), (11, 0), (104, 1)],
+    ),
+    ("bluetooth", 7, [(1, 1), (2, 2)]),
+    ("security", 8, [(5, 0), (6, 0), (8, 0)]),
+    ("device_ui", 10, [(1, 0), (2, 1), (3, 0)]),
+]
 
 
 def _load(name: str) -> dict:
@@ -42,7 +65,9 @@ def test_vectors_directory_exists() -> None:
     "filename",
     [
         "schc_compression.json",
+        "l2_payload.json",
         "link_frame.json",
+        "announce_coords.json",
         "meshtastic_app_compat.json",
         "meshcore_app_compat.json",
     ],
@@ -66,8 +91,20 @@ def _frame_cases():
     return [(v["name"], v) for v in doc["vectors"]]
 
 
+def _l2_payload_cases():
+    doc = _load("l2_payload.json")
+    assert doc["format_version"] == 1
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
 def _meshtastic_cases():
     doc = _load("meshtastic_app_compat.json")
+    assert doc["format_version"] == 1
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+def _announce_coords_cases():
+    doc = _load("announce_coords.json")
     assert doc["format_version"] == 1
     return [(v["name"], v) for v in doc["vectors"]]
 
@@ -85,6 +122,21 @@ def test_schc_vector(name: str, vector: dict) -> None:
     assert compress_packet(packet) == compressed, f"compress drift: {name}"
     assert decompress_packet(compressed) == packet, f"decompress drift: {name}"
     assert compressed[0] == vector["rule_id"]
+
+
+@pytest.mark.parametrize("name,vector", _l2_payload_cases())
+def test_l2_payload_vector(name: str, vector: dict) -> None:
+    wrapped = bytes.fromhex(vector["wrapped"])
+    body = bytes.fromhex(vector["body"])
+    assert wrapped[0] == vector["dispatch"], f"dispatch drift: {name}"
+    assert l2_payload_body(wrapped) == body, f"body drift: {name}"
+
+    expected = {
+        "schc": L2PayloadKind.SCHC,
+        "routing": L2PayloadKind.ROUTING,
+        "unknown": L2PayloadKind.UNKNOWN,
+    }[vector["kind"]]
+    assert classify_l2_payload(wrapped) is expected, f"classify drift: {name}"
 
 
 @pytest.mark.parametrize("name,vector", _frame_cases())
@@ -116,9 +168,33 @@ def test_frame_vector(name: str, vector: dict) -> None:
     assert decoded.encrypted == f["encrypted"]
 
 
+@pytest.mark.parametrize("name,vector", _announce_coords_cases())
+def test_announce_coords_vector(name: str, vector: dict) -> None:
+    encoded = bytes.fromhex(vector["encoded"])
+    assert encode_coords(vector["latitude_degrees"], vector["longitude_degrees"]) == encoded
+
+    decoded = decode_coords(encoded)
+    assert decoded is not None, f"decode drift: {name}"
+    assert abs(decoded[0] - vector["latitude_degrees"]) < 1e-7
+    assert abs(decoded[1] - vector["longitude_degrees"]) < 1e-7
+
+    assert int.from_bytes(encoded[1:5], "big", signed=True) == vector["latitude_e7"]
+    assert int.from_bytes(encoded[5:9], "big", signed=True) == vector["longitude_e7"]
+
+
 def test_all_schc_rules_covered() -> None:
     rule_ids = {v["rule_id"] for _, v in _schc_cases()}
     assert {0, 1, 2, 3, 4} <= rule_ids  # every whole-packet rule has a vector
+
+
+def test_announce_coords_vectors_match_generator() -> None:
+    doc = _load("announce_coords.json")
+    assert doc["vectors"] == announce_coords_vectors()
+
+
+def test_l2_payload_vectors_match_generator() -> None:
+    doc = _load("l2_payload.json")
+    assert doc["vectors"] == l2_payload_vectors()
 
 
 def test_meshtastic_app_compat_vectors_match_generator() -> None:
@@ -194,12 +270,16 @@ def _assert_data(data: bytes, decoded: dict) -> None:
     by_field = {field: (wire_type, value) for field, wire_type, value in fields}
     portnums = {
         "TEXT_MESSAGE_APP": 1,
+        "POSITION_APP": 3,
         "ROUTING_APP": 5,
         "PRIVATE_APP": 256,
     }
     assert by_field[1] == (0, portnums[decoded["portnum"]])
     if "payload_utf8" in decoded:
         assert by_field[2] == (2, decoded["payload_utf8"].encode())
+    if "position" in decoded:
+        assert by_field[2][0] == 2
+        _assert_position(by_field[2][1], decoded["position"])
     if "routing_error_reason" in decoded:
         routing = by_field[2][1]
         assert by_field[2][0] == 2
@@ -207,6 +287,34 @@ def _assert_data(data: bytes, decoded: dict) -> None:
         assert _one_field(routing, 3, 0) == 1
     if "request_id" in decoded:
         assert by_field[6] == (5, decoded["request_id"])
+
+
+def _signed32(value: int) -> int:
+    return value if value < 0x80000000 else value - 0x100000000
+
+
+def _assert_position(data: bytes, decoded: dict) -> None:
+    fields = _read_fields(data)
+    by_field = {field: (wire_type, value) for field, wire_type, value in fields}
+    expected = {
+        "latitude_i": (1, 5, lambda value: _signed32(value)),
+        "longitude_i": (2, 5, lambda value: _signed32(value)),
+        "altitude": (3, 0, int),
+        "time": (4, 5, int),
+        "location_source": (5, 0, int),
+        "altitude_source": (6, 0, int),
+        "timestamp": (7, 5, int),
+        "gps_accuracy": (14, 0, int),
+        "sats_in_view": (19, 0, int),
+        "precision_bits": (23, 0, int),
+    }
+
+    for name, (field, wire_type, convert) in expected.items():
+        if name not in decoded:
+            continue
+        assert field in by_field, name
+        assert by_field[field][0] == wire_type, name
+        assert convert(by_field[field][1]) == decoded[name]
 
 
 def _assert_queue_status(data: bytes, decoded: dict) -> None:
@@ -269,6 +377,56 @@ def _assert_region_presets(data: bytes, decoded: dict) -> None:
     assert region_fields[1][2] == region_values["group_index"]
 
 
+def _assert_config_section(data: bytes, decoded: dict, expect: dict) -> None:
+    fields = _read_fields(data)
+    assert len(fields) == 1
+    section = expect["config_section"]
+    canonical = {
+        name: {"section": name, "oneof_field": oneof, "fields": [
+            {"field": field, "wire_type": "varint", "value": value}
+            for field, value in expected_fields
+        ]}
+        for name, oneof, expected_fields in CONFIG_SECTION_EXPECTATIONS
+    }[section["section"]]
+    assert {key: section[key] for key in ("section", "oneof_field", "fields")} == canonical
+    assert fields[0][0] == section["oneof_field"]
+    assert fields[0][1] == 2
+
+    inner = fields[0][2]
+    assert isinstance(inner, bytes)
+    inner_fields = _read_fields(inner)
+    assert [(field, wire_type) for field, wire_type, _ in inner_fields] == [
+        (field["field"], 0) for field in section["fields"]
+    ]
+
+    values = {field: value for field, _, value in inner_fields}
+    for field in section["fields"]:
+        assert field["wire_type"] == "varint"
+        assert values[field["field"]] == field["value"]
+
+    config = decoded["config"]
+    assert config["section"] == section["section"]
+    assert config["oneof_field"] == section["oneof_field"]
+    assert config["fields"] == section["fields"]
+
+
+def _assert_config_sequence(expect: dict) -> None:
+    sequence = expect["from_radio_sequence"]
+    if "config" not in sequence:
+        return
+    assert "config_sections" in expect
+    section_names = [section["section"] for section in expect["config_sections"]]
+    assert [item for item in sequence if item == "config"] == ["config"] * len(section_names)
+    assert section_names == [name for name, _, _ in CONFIG_SECTION_EXPECTATIONS]
+    assert [section["oneof_field"] for section in expect["config_sections"]] == [
+        oneof for _, oneof, _ in CONFIG_SECTION_EXPECTATIONS
+    ]
+    for section in expect["config_sections"]:
+        _assert_config_section(bytes.fromhex(section["payload"]), {"config": section}, {
+            "config_section": section
+        })
+
+
 @pytest.mark.parametrize("name,vector", _meshtastic_cases())
 def test_meshtastic_app_compat_vector_wire_schema(name: str, vector: dict) -> None:
     encoded = bytes.fromhex(vector["encoded"])
@@ -303,6 +461,7 @@ def test_meshtastic_app_compat_vector_wire_schema(name: str, vector: dict) -> No
         assert _one_field(encoded, 3, 0) == nonce
         terminal = bytes.fromhex(expect["terminal_from_radio"])
         assert _one_field(terminal, 7, 0) == nonce
+        _assert_config_sequence(expect)
     elif vector["protobuf"] == "ToRadio":
         mesh_packet = _one_field(encoded, 1, 2)
         _assert_mesh_packet(mesh_packet, vector["decoded"])
@@ -311,10 +470,12 @@ def test_meshtastic_app_compat_vector_wire_schema(name: str, vector: dict) -> No
             assert not [value for f, wt, value in _read_fields(encoded) if f == 1 and wt == 0]
             queue_status = _one_field(encoded, 11, 2)
             _assert_queue_status(queue_status, vector["decoded"]["queueStatus"])
-        elif vector["message"] in ("moduleConfig", "region_presets"):
+        elif vector["message"] in ("config", "moduleConfig", "region_presets"):
             payload = bytes.fromhex(vector["payload"])
             assert _one_field(encoded, expect["from_radio_field"], 2) == payload
-            if vector["message"] == "moduleConfig":
+            if vector["message"] == "config":
+                _assert_config_section(payload, vector["decoded"], expect)
+            elif vector["message"] == "moduleConfig":
                 _assert_module_config(payload, vector["decoded"])
             else:
                 _assert_region_presets(payload, vector["decoded"])

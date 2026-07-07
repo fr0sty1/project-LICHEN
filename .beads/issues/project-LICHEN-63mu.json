@@ -2,11 +2,12 @@
   "id": "project-LICHEN-63mu",
   "title": "Validate R1 Neo GNSS UART direction and AG3335 controls",
   "description": "Discovered while creating project-LICHEN-ev5b.4. R1 Neo facts confirm GPS_EN P1.01, PPS P0.02, and physical UART pins P0.24/P0.25, but Meshtastic and MeshCore naming conflicts leave nRF TX/RX direction uncertain and the current Zephyr AG3335 binding requires VRTC, SLEEP_INT, and RESET GPIOs that are not confirmed. Validate on hardware or schematic, then enable gnss0/CONFIG_LICHEN_HAS_GNSS if appropriate.",
-  "status": "open",
+  "notes": "Blocked for this no-hardware execution loop (2026-07-01): acceptance requires R1 Neo hardware or a schematic-level source for GNSS UART direction and AG3335 control lines. Local search found repo comments documenting uncertainty in  and , but no schematic file. Public pages found during search confirm R1 Neo has built-in GPS/GNSS but do not expose UART direction, VRTC, SLEEP_INT, or RESET pins. Leave / disabled until schematic or physical evidence is available.\nCorrected blocker evidence (2026-07-01): acceptance requires R1 Neo hardware or a schematic-level source for GNSS UART direction and AG3335 control lines. Local search found repo comments documenting uncertainty in `lichen/boards/muzi/r1_neo/r1_neo_nrf52840.dts` and `lichen/boards/muzi/r1_neo/r1_neo-pinctrl.dtsi`, but no schematic file. Public pages found during search confirm R1 Neo has built-in GPS/GNSS but do not expose UART direction, VRTC, SLEEP_INT, or RESET pins. Leave `gnss0` and `CONFIG_LICHEN_HAS_GNSS` disabled until schematic or physical evidence is available.",
+  "status": "blocked",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T16:35:19.906776Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-30T16:35:19.906797Z"
+  "updated_at": "2026-07-01T22:20:15.878521Z"
 }

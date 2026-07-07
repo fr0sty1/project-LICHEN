@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Test UDP CoAP server binding."""
 
-import pytest
 import aiocoap
+import pytest
 
 from lichen.coap.udp_server import bind_coap_udp
 from lichen.crypto.identity import Identity
@@ -53,7 +53,10 @@ async def test_bind_coap_udp_neighbors(node):
     try:
         client = await aiocoap.Context.create_client_context()
         try:
-            request = aiocoap.Message(code=aiocoap.GET, uri=f"coap://[::1]:{TEST_PORT + 1}/neighbors")
+            request = aiocoap.Message(
+                code=aiocoap.GET,
+                uri=f"coap://[::1]:{TEST_PORT + 1}/neighbors",
+            )
             response = await client.request(request).response
             assert response.code.is_successful()
         finally:

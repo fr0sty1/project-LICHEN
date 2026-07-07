@@ -13,8 +13,6 @@
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
-use core::marker::PhantomData;
-
 #[cfg(feature = "std")]
 use crate::message::Dio;
 
@@ -50,96 +48,6 @@ impl DodagRole {
 pub struct InvalidDodagTransition {
     pub from: DodagRole,
     pub to: DodagRole,
-}
-
-pub trait DodagMembership {
-    const ROLE: DodagRole;
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Unjoined;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Joined;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Root;
-
-impl DodagMembership for Unjoined {
-    const ROLE: DodagRole = DodagRole::Unjoined;
-}
-
-impl DodagMembership for Joined {
-    const ROLE: DodagRole = DodagRole::Joined;
-}
-
-impl DodagMembership for Root {
-    const ROLE: DodagRole = DodagRole::Root;
-}
-
-/// Compile-time DODAG membership state used to verify legal role transitions.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DodagMembershipState<S: DodagMembership> {
-    pub rpl_instance_id: u8,
-    pub dodag_id: [u8; 16],
-    pub version: u8,
-    pub rank: u16,
-    pub preferred_parent: Option<[u8; 16]>,
-    state: PhantomData<S>,
-}
-
-impl DodagMembershipState<Unjoined> {
-    pub fn new(rpl_instance_id: u8, dodag_id: [u8; 16], version: u8) -> Self {
-        Self {
-            rpl_instance_id,
-            dodag_id,
-            version,
-            rank: INFINITE_RANK,
-            preferred_parent: None,
-            state: PhantomData,
-        }
-    }
-
-    pub fn join(self, preferred_parent: [u8; 16], rank: u16) -> DodagMembershipState<Joined> {
-        DodagMembershipState {
-            rpl_instance_id: self.rpl_instance_id,
-            dodag_id: self.dodag_id,
-            version: self.version,
-            rank,
-            preferred_parent: Some(preferred_parent),
-            state: PhantomData,
-        }
-    }
-
-    pub fn become_root(self) -> DodagMembershipState<Root> {
-        DodagMembershipState {
-            rpl_instance_id: self.rpl_instance_id,
-            dodag_id: self.dodag_id,
-            version: self.version,
-            rank: ROOT_RANK,
-            preferred_parent: None,
-            state: PhantomData,
-        }
-    }
-}
-
-impl DodagMembershipState<Joined> {
-    pub fn leave(self) -> DodagMembershipState<Unjoined> {
-        DodagMembershipState {
-            rpl_instance_id: self.rpl_instance_id,
-            dodag_id: self.dodag_id,
-            version: self.version,
-            rank: INFINITE_RANK,
-            preferred_parent: None,
-            state: PhantomData,
-        }
-    }
-}
-
-impl<S: DodagMembership> DodagMembershipState<S> {
-    pub fn role(&self) -> DodagRole {
-        S::ROLE
-    }
 }
 
 /// A neighbour that is advertising membership in the DODAG.
@@ -314,24 +222,16 @@ impl DodagState {
         let best_cost = best.path_cost(mhri);
 
         // Hysteresis: only switch if improvement exceeds threshold.
-        let (chosen_addr, chosen_cost) = if let Some(cur_addr) = self.preferred_parent {
-            if cur_addr != best_addr {
-                if let Some(cur) = self.parents.get(&cur_addr) {
-                    let cur_cost = cur.path_cost(mhri);
-                    if best_cost > cur_cost.saturating_sub(threshold) {
-                        // Not a big enough improvement — stick with current.
-                        (cur_addr, cur_cost)
-                    } else {
-                        (best_addr, best_cost)
-                    }
-                } else {
-                    (best_addr, best_cost)
-                }
-            } else {
-                (best_addr, best_cost)
+        let (chosen_addr, chosen_cost) = match self.preferred_parent {
+            Some(cur_addr) if cur_addr != best_addr => {
+                // Check if current parent still exists and improvement is below threshold.
+                self.parents
+                    .get(&cur_addr)
+                    .map(|cur| cur.path_cost(mhri))
+                    .filter(|&cur_cost| best_cost > cur_cost.saturating_sub(threshold))
+                    .map_or((best_addr, best_cost), |cur_cost| (cur_addr, cur_cost))
             }
-        } else {
-            (best_addr, best_cost)
+            _ => (best_addr, best_cost),
         };
 
         self.preferred_parent = Some(chosen_addr);
@@ -392,26 +292,6 @@ mod tests {
         assert!(DodagRole::Root.can_transition_to(DodagRole::Root));
         assert!(!DodagRole::Root.can_transition_to(DodagRole::Unjoined));
         assert!(!DodagRole::Root.can_transition_to(DodagRole::Joined));
-    }
-
-    #[test]
-    fn dodag_membership_typestate_join_leave_root_paths() {
-        let unjoined = DodagMembershipState::<Unjoined>::new(0, dodag_id(), 0);
-        assert_eq!(unjoined.role(), DodagRole::Unjoined);
-
-        let joined = unjoined.join(ll(1), 512);
-        assert_eq!(joined.role(), DodagRole::Joined);
-        assert_eq!(joined.preferred_parent, Some(ll(1)));
-        assert_eq!(joined.rank, 512);
-
-        let unjoined = joined.leave();
-        assert_eq!(unjoined.role(), DodagRole::Unjoined);
-        assert_eq!(unjoined.rank, INFINITE_RANK);
-        assert_eq!(unjoined.preferred_parent, None);
-
-        let root = unjoined.become_root();
-        assert_eq!(root.role(), DodagRole::Root);
-        assert_eq!(root.rank, ROOT_RANK);
     }
 
     #[test]

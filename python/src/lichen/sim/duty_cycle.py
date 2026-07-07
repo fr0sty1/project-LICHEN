@@ -115,3 +115,103 @@ class DutyCycleTracker:
         total_airtime = self._airtime_in_window(time_us)
         max_airtime = self._window_us * self._limit_ratio
         return (total_airtime + airtime_us) <= max_airtime
+
+    def remaining_ms(self, time_us: int) -> int:
+        """Return remaining TX budget in milliseconds.
+
+        Args:
+            time_us: Current time in microseconds.
+
+        Returns:
+            Remaining airtime budget in milliseconds. Can be negative if
+            over the limit.
+        """
+        self._prune(time_us)
+        total_airtime = self._airtime_in_window(time_us)
+        max_airtime = self._window_us * self._limit_ratio
+        remaining_us = int(max_airtime - total_airtime)
+        return remaining_us // 1000
+
+    def usage_percent(self, time_us: int) -> float:
+        """Return current duty cycle usage as a percentage.
+
+        Args:
+            time_us: Current time in microseconds.
+
+        Returns:
+            Usage as a percentage from 0.0 to 100.0+. Values above 100.0
+            indicate the limit has been exceeded.
+        """
+        return self.get_usage(time_us) * 100.0
+
+    def time_until_budget_refill_ms(self, time_us: int) -> int:
+        """Return time until duty cycle budget begins to refill.
+
+        The budget refills as old transmissions slide out of the window.
+        Returns 0 if there are no transmissions or budget is already
+        available.
+
+        Args:
+            time_us: Current time in microseconds.
+
+        Returns:
+            Milliseconds until the oldest transmission exits the window,
+            or 0 if no transmissions are pending expiration.
+        """
+        self._prune(time_us)
+        if not self._transmissions:
+            return 0
+
+        # Find the oldest transmission's end time
+        oldest_end_us = min(t + d for t, d in self._transmissions)
+        cutoff = time_us - self._window_us
+
+        if oldest_end_us <= cutoff:
+            # Already expired
+            return 0
+
+        # Time until oldest TX end exits the window
+        time_until_us = oldest_end_us - cutoff
+        return max(0, time_until_us // 1000)
+
+    def next_tx_available_ms(self, airtime_us: int, time_us: int) -> int:
+        """Return when a TX of given airtime will be allowed.
+
+        Args:
+            airtime_us: Duration of proposed transmission in microseconds.
+            time_us: Current time in microseconds.
+
+        Returns:
+            0 if TX is allowed now, otherwise milliseconds until enough
+            budget is available.
+        """
+        if self.can_transmit(airtime_us, time_us):
+            return 0
+
+        # Need to wait for old TXs to expire
+        # Binary search would be more efficient, but simple linear scan
+        # is fine for typical usage
+        max_airtime = self._window_us * self._limit_ratio
+
+        # Sort transmissions by end time
+        sorted_txs = sorted(
+            ((t + d, d) for t, d in self._transmissions),
+            key=lambda x: x[0],
+        )
+
+        # Simulate time passing as TXs expire
+        total_airtime = self._airtime_in_window(time_us)
+        for end_time_us, _duration in sorted_txs:
+            if end_time_us <= time_us - self._window_us:
+                continue
+
+            # At this time, this TX will have fully expired
+            future_time = end_time_us + self._window_us
+            total_airtime = self._airtime_in_window(future_time)
+
+            if (total_airtime + airtime_us) <= max_airtime:
+                delay_us = future_time - time_us
+                return max(0, delay_us // 1000)
+
+        # Should not reach here if logic is correct
+        return self.time_until_budget_refill_ms(time_us)

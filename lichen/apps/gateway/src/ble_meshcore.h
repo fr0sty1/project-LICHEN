@@ -35,6 +35,7 @@ int ble_meshcore_dequeue_rx(uint8_t *frame, size_t buflen, size_t *out_len,
 int ble_meshcore_enqueue_tx(const uint8_t *frame, size_t len);
 int ble_meshcore_enqueue_tx_if_session(uint32_t session_epoch,
 				       const uint8_t *frame, size_t len);
+int ble_meshcore_set_passkey(uint32_t passkey);
 
 void ble_meshcore_reset_session(void);
 int ble_meshcore_reset_session_if_epoch(uint32_t session_epoch);

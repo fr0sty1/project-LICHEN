@@ -18,6 +18,8 @@ log = ["dep:log", "lichen-core/log"]
 curve25519-dalek = { version = "4.1.3", default-features = false, features = ["alloc"], optional = true }
 lichen-core = { path = "../lichen-core" }
 sha2 = { version = "0.11.0", default-features = false, optional = true }
+subtle = { version = "2.6", default-features = false }
+zeroize = { version = "1", default-features = false, features = ["derive"] }
 
 # Logging backends (optional, feature-gated)
 defmt = { version = "0.3", optional = true }

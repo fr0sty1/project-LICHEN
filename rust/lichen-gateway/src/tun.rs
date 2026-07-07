@@ -45,9 +45,15 @@ impl TunDevice {
         };
         if fd < 0 {
             let e = io::Error::last_os_error();
+            // Show actual error first, then suggest common causes based on error kind.
+            let hint = match e.kind() {
+                io::ErrorKind::NotFound => "device node missing (is tun module loaded?)",
+                io::ErrorKind::PermissionDenied => "requires CAP_NET_ADMIN or root",
+                _ => "check system logs for details",
+            };
             return Err(io::Error::new(
                 e.kind(),
-                format!("failed to open /dev/net/tun: {e} (requires CAP_NET_ADMIN or root)"),
+                format!("failed to open /dev/net/tun: {e} ({hint})"),
             ));
         }
 

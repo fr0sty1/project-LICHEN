@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-7rmw",
+  "title": "Align timing/spec docs with unified firmware time provider",
+  "description": "Why this exists: project-LICHEN-fox3 re-checked the build/provision epoch GNSS-time decision and found older protocol/spec text that still implies source-specific priority or unconditional absolute timestamps instead of the unified firmware time provider. What needs to be done: update spec/09-packets-timing.md to describe the unified provider and effective epoch floor instead of old GPS/gpsd/NTS/Roughtime/DIO priority rules; update spec/11-lci.md /status examples with wall-clock validity, source class/name, age, accuracy/quality, rejection, build_epoch, effective_epoch_floor, and provision diagnostics; update spec/appendix-senml.md so SenML absolute bt is emitted only when firmware wall clock is valid; keep build/provision epochs as freshness floors, not authoritative clocks or anti-rollback. Validate with docs checks or targeted tests where available.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-02T22:12:18.491419Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:26:36.126563Z",
+  "closed_at": "2026-07-06T15:26:36.126563Z",
+  "close_reason": "Implemented with triple code review",
+  "labels": [
+    "docs",
+    "spec",
+    "time",
+    "gnss",
+    "lci",
+    "no-hardware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-7rmw",
+      "depends_on_id": "project-LICHEN-fox3",
+      "type": "discovered-from",
+      "created_at": "2026-07-02T22:12:18.492Z"
+    }
+  ]
+}

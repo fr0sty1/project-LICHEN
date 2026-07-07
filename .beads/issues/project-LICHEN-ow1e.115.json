@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-ow1e.115",
+  "title": "decompress_packet raises generic ValueError for unknown rule IDs",
+  "description": "**Location:** python/src/lichen/schc/headers.py:383-399\n\n**Bug:** The `decompress_packet()` function raises `ValueError(f'no profile for rule ID {rule_id}')` when it encounters an unknown rule ID. This is caught by the generic `except Exception` in node.py:373, which then passes raw bytes to the app callback.\n\n**Trigger:** Receive a packet with a rule ID that's not in DEFAULT_PROFILES (e.g., a new rule added to firmware but not to this Python version).\n\n**Bad behavior:** The packet is passed to the application as raw bytes without decompression. The application receives garbage that looks like a valid packet but isn't.\n\n**Pattern:** The caller (node.py:370-377) catches all exceptions and falls back to raw delivery. This hides protocol mismatches that should be logged or rejected.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:37:41.761703Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T15:55:56.228484Z",
+  "closed_at": "2026-07-06T15:55:56.228484Z",
+  "close_reason": "Fixed in worktrees, verified by codereview passes",
+  "labels": [
+    "correctness",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.115",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:37:41.762211Z"
+    }
+  ]
+}

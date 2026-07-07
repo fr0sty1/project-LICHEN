@@ -1,12 +1,23 @@
 cmake_minimum_required(VERSION 3.20.0)
+include(${CMAKE_CURRENT_LIST_DIR}/../../cmake/lichen_build_epoch.cmake)
+lichen_configure_time_build_epoch()
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(lichen_gateway)
 
-target_sources(app PRIVATE src/main.c src/config_cbor.c)
+target_sources(app PRIVATE
+  src/announce_ingest.c
+  src/main.c
+  src/config_apply.c
+  src/config_cbor.c
+  src/network_location.c
+  src/status_cbor.c)
 target_sources_ifdef(CONFIG_LORA_LICHEN_BLE app PRIVATE
   src/ble_app_owner.c
   src/ble_uart.c
-  src/ble_ingress.c)
+  src/ble_lci_netif.c
+  src/ble_ingress.c
+  src/inbound_coap.c
+  src/inbound_events.c)
 target_sources_ifdef(CONFIG_LORA_LICHEN_MESHTASTIC_BLE app PRIVATE
   src/ble_app_owner.c
   src/ble_meshtastic.c

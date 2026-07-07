@@ -64,6 +64,8 @@ class TestWebSocketManager:
         ws.accept = AsyncMock()
         ws.send_text = AsyncMock()
         ws.send_json = AsyncMock()
+        # Provide scope for subprotocol handling
+        ws.scope = {"subprotocols": []}
         return ws
 
     async def test_connect_accepts_websocket(
@@ -112,10 +114,12 @@ class TestWebSocketManager:
         ws1 = AsyncMock()
         ws1.accept = AsyncMock()
         ws1.send_text = AsyncMock()
+        ws1.scope = {"subprotocols": []}
 
         ws2 = AsyncMock()
         ws2.accept = AsyncMock()
         ws2.send_text = AsyncMock()
+        ws2.scope = {"subprotocols": []}
 
         await manager.connect(ws1, "sim1", client_id="c1")
         await manager.connect(ws2, "sim2", client_id="c2")
@@ -139,10 +143,12 @@ class TestWebSocketManager:
         ws1 = AsyncMock()
         ws1.accept = AsyncMock()
         ws1.send_text = AsyncMock()
+        ws1.scope = {"subprotocols": []}
 
         ws2 = AsyncMock()
         ws2.accept = AsyncMock()
         ws2.send_text = AsyncMock()
+        ws2.scope = {"subprotocols": []}
 
         c1 = await manager.connect(ws1, "sim1", client_id="c1")
         _c2 = await manager.connect(ws2, "sim1", client_id="c2")
@@ -164,10 +170,12 @@ class TestWebSocketManager:
         ws_good = AsyncMock()
         ws_good.accept = AsyncMock()
         ws_good.send_text = AsyncMock()
+        ws_good.scope = {"subprotocols": []}
 
         ws_bad = AsyncMock()
         ws_bad.accept = AsyncMock()
         ws_bad.send_text = AsyncMock(side_effect=Exception("Connection closed"))
+        ws_bad.scope = {"subprotocols": []}
 
         await manager.connect(ws_good, "sim1", client_id="good")
         await manager.connect(ws_bad, "sim1", client_id="bad")
@@ -203,8 +211,10 @@ class TestWebSocketManager:
         """get_client_count returns correct counts."""
         ws1 = AsyncMock()
         ws1.accept = AsyncMock()
+        ws1.scope = {"subprotocols": []}
         ws2 = AsyncMock()
         ws2.accept = AsyncMock()
+        ws2.scope = {"subprotocols": []}
 
         assert manager.get_client_count() == 0
 
@@ -248,6 +258,7 @@ class TestWebSocketObserver:
         ws = AsyncMock()
         ws.accept = AsyncMock()
         ws.send_text = AsyncMock()
+        ws.scope = {"subprotocols": []}
 
         await manager.connect(ws, "sim1", client_id="c1")
 

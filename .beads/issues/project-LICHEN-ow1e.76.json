@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-ow1e.76",
+  "title": "core/duty_cycle: f32 usage inconsistent with fixed-point discipline",
+  "description": "In duty_cycle.rs:27-166, uses f32 for duty cycle ratios (DEFAULT_DUTY_CYCLE: f32 = 0.01). This is inconsistent with rf_health.rs which uses Q16.16 fixed-point. On soft-float embedded targets, f32 may be expensive. Consider duty_permille: u16 = 10 for 1%.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:37:07.571614Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:08:43.032034Z",
+  "closed_at": "2026-07-06T17:08:43.032034Z",
+  "close_reason": "Closed",
+  "labels": [
+    "readability",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.76",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:37:07.572151Z"
+    }
+  ]
+}

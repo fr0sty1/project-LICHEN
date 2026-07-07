@@ -23,6 +23,9 @@ SLOT_SIZE="0x59000"   # slot0_partition size (356 KB)
 
 export PYTHONPATH="/home/frosty/.local/lib/python3.10/site-packages:${PYTHONPATH:-}"
 export ZEPHYR_SDK_INSTALL_DIR=/home/frosty/.local/share/safe-agent/b9243483d7697056/zephyr-sdk-0.16.8
+# Build-epoch check (lichen/cmake/lichen_build_epoch.cmake) requires this;
+# upstream convention is the last commit's timestamp.
+export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct)}"
 
 BUILD_MCUBOOT=false
 BUILD_APP=true

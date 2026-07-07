@@ -30,6 +30,7 @@ use ccm::{
     Ccm,
 };
 use hkdf::Hkdf;
+use lichen_core::error::BufferTooSmall;
 use sha2::Sha256;
 use zeroize::Zeroize;
 
@@ -51,6 +52,28 @@ pub const ID_MAX_LEN: usize = 8;
 /// Maximum Partial IV length.
 pub const PIV_MAX_LEN: usize = 5;
 
+// Nonce layout constants (RFC 8613 Section 5.2):
+// +--------+------------------+------------------+
+// | 1 byte |     7 bytes      |     5 bytes      |
+// +--------+------------------+------------------+
+// |   S    | left-padded ID   | left-padded PIV  |
+// +--------+------------------+------------------+
+//   [0]        [1..8)             [8..13)
+
+/// Nonce field: ID region ends at byte 8 (bytes 1-7 = 7 bytes for ID).
+const NONCE_ID_END: usize = 8;
+
+/// Nonce field: PIV region starts at byte 8 (bytes 8-12 = 5 bytes for PIV).
+const NONCE_PIV_START: usize = 8;
+
+/// Nonce field: Maximum ID length (7 bytes, fits in bytes 1-7).
+const NONCE_ID_LEN: usize = NONCE_ID_END - 1; // = 7
+
+// Compile-time assertions: nonce layout must be consistent
+const _: () = assert!(NONCE_ID_END == NONCE_PIV_START, "ID and PIV fields must be adjacent");
+const _: () = assert!(NONCE_PIV_START + PIV_MAX_LEN == NONCE_LEN, "PIV field must fit exactly");
+const _: () = assert!(1 + NONCE_ID_LEN + PIV_MAX_LEN == NONCE_LEN, "nonce fields must sum to NONCE_LEN");
+
 /// COSE Algorithm ID for AES-CCM-16-64-128.
 pub const ALG_AEAD: u8 = 10;
 
@@ -62,6 +85,7 @@ pub const WINDOW_SIZE: u32 = 32;
 
 /// OSCORE error types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum OscoreError {
     /// Invalid parameter provided.
     InvalidParam,
@@ -74,11 +98,17 @@ pub enum OscoreError {
     /// Decryption/authentication failed.
     DecryptFailed,
     /// Output buffer too small.
-    BufferTooSmall,
+    BufferTooSmall(BufferTooSmall),
     /// Key derivation failed.
     KeyDerivation,
     /// Sender sequence exhausted, key rotation required.
     SeqExhausted,
+}
+
+impl From<BufferTooSmall> for OscoreError {
+    fn from(e: BufferTooSmall) -> Self {
+        Self::BufferTooSmall(e)
+    }
 }
 
 impl core::fmt::Display for OscoreError {
@@ -89,18 +119,40 @@ impl core::fmt::Display for OscoreError {
             Self::Replay => write!(f, "replay attack detected"),
             Self::EncryptFailed => write!(f, "encryption failed"),
             Self::DecryptFailed => write!(f, "decryption failed"),
-            Self::BufferTooSmall => write!(f, "buffer too small"),
+            Self::BufferTooSmall(e) => write!(f, "OSCORE {}", e),
             Self::KeyDerivation => write!(f, "key derivation failed"),
             Self::SeqExhausted => write!(f, "sender sequence exhausted, key rotation required"),
         }
     }
 }
 
-impl core::error::Error for OscoreError {}
+impl core::error::Error for OscoreError {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            Self::BufferTooSmall(e) => Some(e),
+            _ => None,
+        }
+    }
+}
 
 /// OSCORE security context.
 ///
 /// Contains cryptographic material and state for one peer.
+///
+/// # Thread Safety
+///
+/// This type is designed for single-threaded use on embedded targets. The replay
+/// window (`replay_window` and `recipient_seq`) is not thread-safe: concurrent calls
+/// to `check_replay` could race, allowing both to pass the candidate check and both
+/// to update the window, potentially losing state or allowing replays.
+///
+/// For multi-threaded use, wrap in a `Mutex` or use atomic operations.
+///
+/// # Key Lifecycle
+///
+/// All key material (master_secret, sender_key, recipient_key) is zeroized on drop
+/// via the `Zeroize` derive. Clone is intentionally supported for cases where multiple
+/// tasks need the context; both the original and clones will be zeroized when dropped.
 #[derive(Clone, Zeroize)]
 #[zeroize(drop)]
 pub struct Context {
@@ -126,17 +178,44 @@ pub struct Context {
     replay_window: u32,
 }
 
+impl core::fmt::Debug for Context {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Context")
+            .field("master_secret", &"[REDACTED]")
+            .field("master_salt", &"[REDACTED]")
+            .field("common_iv", &"[REDACTED]")
+            .field("id_context_len", &self.id_context_len)
+            .field("sender_id_len", &self.sender_id_len)
+            .field("sender_key", &"[REDACTED]")
+            .field("sender_seq", &self.sender_seq)
+            .field("recipient_id_len", &self.recipient_id_len)
+            .field("recipient_key", &"[REDACTED]")
+            .field("recipient_seq", &self.recipient_seq)
+            .field("replay_window", &self.replay_window)
+            .finish()
+    }
+}
+
 impl Context {
     /// Create a new OSCORE security context.
     ///
     /// Derives sender and recipient keys from master secret using HKDF-SHA256.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InvalidParam` if:
+    /// - `sender_id` or `recipient_id` exceeds 7 bytes (nonce capacity)
+    /// - `master_salt` exceeds 8 bytes
     pub fn new(
         master_secret: &[u8; KEY_LEN],
         master_salt: Option<&[u8]>,
         sender_id: &[u8],
         recipient_id: &[u8],
     ) -> Result<Self, OscoreError> {
-        if sender_id.len() > ID_MAX_LEN || recipient_id.len() > ID_MAX_LEN {
+        // SECURITY: Validate ID length against nonce capacity (7 bytes), not ID_MAX_LEN (8).
+        // RFC 8613 allows IDs up to 8 bytes, but only 7 bytes fit in the nonce layout.
+        // Accepting 8-byte IDs would cause silent truncation in compute_nonce.
+        if sender_id.len() > NONCE_ID_LEN || recipient_id.len() > NONCE_ID_LEN {
             return Err(OscoreError::InvalidParam);
         }
 
@@ -232,26 +311,35 @@ impl Context {
         // the options from the payload and is only present when payload is non-empty.
         // ponytail: empty AAD for now, proper AAD structure in RFC 8613 Section 5.4
         let cipher = AesCcm::new_from_slice(&self.sender_key).map_err(|_| OscoreError::KeyDerivation)?;
-        let mut ct_out = heapless::Vec::<u8, 280>::new();
-        ct_out.push(code).map_err(|_| OscoreError::BufferTooSmall)?;
-        ct_out.extend_from_slice(class_e_options).map_err(|_| OscoreError::BufferTooSmall)?;
+        const CT_CAP: usize = 280;
+        let mut ct_out = heapless::Vec::<u8, CT_CAP>::new();
+        // Calculate required size for error reporting
+        let ct_required = 1 + class_e_options.len()
+            + if payload.is_empty() { 0 } else { 1 + payload.len() }
+            + TAG_LEN;
+        let ct_err = || BufferTooSmall::new(ct_required, CT_CAP);
+        ct_out.push(code).map_err(|_| ct_err())?;
+        ct_out.extend_from_slice(class_e_options).map_err(|_| ct_err())?;
         if !payload.is_empty() {
-            ct_out.push(0xFF).map_err(|_| OscoreError::BufferTooSmall)?;
-            ct_out.extend_from_slice(payload).map_err(|_| OscoreError::BufferTooSmall)?;
+            ct_out.push(0xFF).map_err(|_| ct_err())?;
+            ct_out.extend_from_slice(payload).map_err(|_| ct_err())?;
         }
 
         // Encrypt in place using detached API (works with plain slices, no Buffer trait needed)
         let tag = cipher
             .encrypt_in_place_detached((&nonce).into(), &[], &mut ct_out)
             .map_err(|_| OscoreError::EncryptFailed)?;
-        ct_out.extend_from_slice(&tag).map_err(|_| OscoreError::BufferTooSmall)?;
+        ct_out.extend_from_slice(&tag).map_err(|_| ct_err())?;
 
         // Build OSCORE option
-        let mut opt = heapless::Vec::<u8, 16>::new();
+        const OPT_CAP: usize = 16;
+        let mut opt = heapless::Vec::<u8, OPT_CAP>::new();
         let flags = 0x08 | (piv_len as u8 & 0x07); // k=1, n=piv_len
-        opt.push(flags).map_err(|_| OscoreError::BufferTooSmall)?;
-        opt.extend_from_slice(&piv[..piv_len]).map_err(|_| OscoreError::BufferTooSmall)?;
-        opt.extend_from_slice(self.sender_id()).map_err(|_| OscoreError::BufferTooSmall)?;
+        let opt_required = 1 + piv_len + self.sender_id_len as usize;
+        let opt_err = || BufferTooSmall::new(opt_required, OPT_CAP);
+        opt.push(flags).map_err(|_| opt_err())?;
+        opt.extend_from_slice(&piv[..piv_len]).map_err(|_| opt_err())?;
+        opt.extend_from_slice(self.sender_id()).map_err(|_| opt_err())?;
 
         Ok((ct_out, opt))
     }
@@ -293,8 +381,11 @@ impl Context {
         let tag_start = ciphertext.len() - TAG_LEN;
         let tag = ccm::aead::Tag::<AesCcm>::from_slice(&ciphertext[tag_start..]);
         let cipher = AesCcm::new_from_slice(&self.recipient_key).map_err(|_| OscoreError::KeyDerivation)?;
-        let mut plaintext = heapless::Vec::<u8, 256>::new();
-        plaintext.extend_from_slice(&ciphertext[..tag_start]).map_err(|_| OscoreError::BufferTooSmall)?;
+        const PT_CAP: usize = 256;
+        let mut plaintext = heapless::Vec::<u8, PT_CAP>::new();
+        plaintext
+            .extend_from_slice(&ciphertext[..tag_start])
+            .map_err(|_| BufferTooSmall::new(tag_start, PT_CAP))?;
         cipher
             .decrypt_in_place_detached((&nonce).into(), &[], &mut plaintext, tag)
             .map_err(|_| OscoreError::DecryptFailed)?;
@@ -316,26 +407,29 @@ impl Context {
             None => (rest, &[][..]),
         };
 
-        let mut options = heapless::Vec::new();
-        options.extend_from_slice(options_slice).map_err(|_| OscoreError::BufferTooSmall)?;
+        const OUT_CAP: usize = 128;
+        let mut options = heapless::Vec::<u8, OUT_CAP>::new();
+        options
+            .extend_from_slice(options_slice)
+            .map_err(|_| BufferTooSmall::new(options_slice.len(), OUT_CAP))?;
 
-        let mut payload = heapless::Vec::new();
-        payload.extend_from_slice(payload_slice).map_err(|_| OscoreError::BufferTooSmall)?;
+        let mut payload = heapless::Vec::<u8, OUT_CAP>::new();
+        payload
+            .extend_from_slice(payload_slice)
+            .map_err(|_| BufferTooSmall::new(payload_slice.len(), OUT_CAP))?;
 
         Ok((code, options, payload))
     }
 
     /// Check replay window and update if valid.
     fn check_replay(&mut self, seq: OscoreSeqNum) -> bool {
-        const WINDOW_SIZE: u32 = 32;
-
         let seq_val = seq.get();
         let recipient_seq_val = self.recipient_seq.get();
 
         if seq_val > recipient_seq_val {
             // New highest - shift window
             let shift = seq_val - recipient_seq_val;
-            if shift >= 32 {
+            if shift >= WINDOW_SIZE {
                 self.replay_window = 0;
             } else {
                 self.replay_window <<= shift;
@@ -554,14 +648,14 @@ fn build_info_cbor(
 
 /// Compute nonce from Partial IV and Common IV per RFC 8613 Section 5.2.
 ///
-/// Nonce layout (13 bytes total, NONCE_LEN):
+/// Nonce layout (NONCE_LEN = 13 bytes):
 /// ```text
 /// +--------+------------------+------------------+
 /// | 1 byte |     7 bytes      |     5 bytes      |
 /// +--------+------------------+------------------+
 /// |   S    | left-padded ID   | left-padded PIV  |
 /// +--------+------------------+------------------+
-///   [0]        [1..7]             [8..12]
+///   [0]      [1..NONCE_ID_END)  [NONCE_PIV_START..NONCE_LEN)
 /// ```
 ///
 /// S = sender_id_len XOR piv_len (RFC 8613 Section 5.2)
@@ -572,16 +666,16 @@ fn compute_nonce(sender_id: &[u8], piv: &[u8], common_iv: &[u8; NONCE_LEN]) -> [
     // Byte 0: S = sender_id_len XOR piv_len
     nonce[0] = (sender_id.len() as u8) ^ (piv.len() as u8);
 
-    // Bytes 1-7: left-padded sender ID (max 7 bytes)
-    if sender_id.len() <= 7 {
-        let start = 8 - sender_id.len(); // bytes 1-7
-        nonce[start..start + sender_id.len()].copy_from_slice(sender_id);
+    // Bytes 1..NONCE_ID_END: left-padded sender ID (right-aligned, max NONCE_ID_LEN bytes)
+    if sender_id.len() <= NONCE_ID_LEN {
+        let start = NONCE_ID_END - sender_id.len();
+        nonce[start..NONCE_ID_END].copy_from_slice(sender_id);
     }
 
-    // Bytes 8-12: left-padded PIV (max 5 bytes)
-    if !piv.is_empty() && piv.len() <= 5 {
-        let piv_start = NONCE_LEN - piv.len();
-        nonce[piv_start..piv_start + piv.len()].copy_from_slice(piv);
+    // Bytes NONCE_PIV_START..NONCE_LEN: left-padded PIV (right-aligned, max PIV_MAX_LEN bytes)
+    if !piv.is_empty() && piv.len() <= PIV_MAX_LEN {
+        let piv_end = NONCE_LEN;
+        nonce[piv_end - piv.len()..piv_end].copy_from_slice(piv);
     }
 
     // XOR entire nonce with Common IV

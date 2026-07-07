@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-ow1e.38",
+  "title": "Vec param where slice would suffice in routing APIs",
+  "description": "Several functions take owned Vec where \u0026[T] would work:\n\n- lichen-rpl/src/routing.rs:120 `pub fn fresh(path: Vec\u003c[u8; 16]\u003e)`\n- lichen-rpl/src/routing.rs:147 `pub fn refresh(\u0026mut self, path: Vec\u003c[u8; 16]\u003e)`\n- lichen-rpl/src/routing.rs:179 `pub fn add_route(\u0026mut self, target: [u8; 16], path: Vec\u003c[u8; 16]\u003e)`\n\nThese force callers to allocate even when the path data is already available. Consider accepting `\u0026[[u8; 16]]` and cloning internally if storage is needed.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:36:08.375118Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T16:06:42.480917Z",
+  "closed_at": "2026-07-06T16:06:42.480917Z",
+  "close_reason": "Closed",
+  "labels": [
+    "idiomatic-rust",
+    "ownership",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.38",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:36:08.375662Z"
+    }
+  ]
+}

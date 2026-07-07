@@ -1,34 +1,28 @@
-menu "lichen (/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen)"
-osource "/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/zephyr/Kconfig"
-config ZEPHYR_LICHEN_MODULE
-	bool
-	default y
-endmenu
-menu "acpica (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/lib/acpica)"
+menu "acpica (/mnt/lichen-zephyr/work/modules/lib/acpica)"
 osource "$(ZEPHYR_ACPICA_KCONFIG)"
 config ZEPHYR_ACPICA_MODULE
 	bool
 	default y
 endmenu
-menu "cmsis (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/cmsis)"
+menu "cmsis (/mnt/lichen-zephyr/work/modules/hal/cmsis)"
 osource "$(ZEPHYR_CMSIS_KCONFIG)"
 config ZEPHYR_CMSIS_MODULE
 	bool
 	default y
 endmenu
-menu "cmsis-dsp (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/lib/cmsis-dsp)"
+menu "cmsis-dsp (/mnt/lichen-zephyr/work/modules/lib/cmsis-dsp)"
 osource "$(ZEPHYR_CMSIS_DSP_KCONFIG)"
 config ZEPHYR_CMSIS_DSP_MODULE
 	bool
 	default y
 endmenu
-menu "cmsis-nn (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/lib/cmsis-nn)"
+menu "cmsis-nn (/mnt/lichen-zephyr/work/modules/lib/cmsis-nn)"
 osource "$(ZEPHYR_CMSIS_NN_KCONFIG)"
 config ZEPHYR_CMSIS_NN_MODULE
 	bool
 	default y
 endmenu
-menu "fatfs (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/fs/fatfs)"
+menu "fatfs (/mnt/lichen-zephyr/work/modules/fs/fatfs)"
 osource "$(ZEPHYR_FATFS_KCONFIG)"
 config ZEPHYR_FATFS_MODULE
 	bool
@@ -40,7 +34,7 @@ config ZEPHYR_ADI_MODULE
 config ZEPHYR_ALTERA_MODULE
    bool
    default y
-menu "hal_ambiq (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/ambiq)"
+menu "hal_ambiq (/mnt/lichen-zephyr/work/modules/hal/ambiq)"
 osource "$(ZEPHYR_HAL_AMBIQ_KCONFIG)"
 config ZEPHYR_HAL_AMBIQ_MODULE
 	bool
@@ -49,32 +43,32 @@ endmenu
 config ZEPHYR_ATMEL_MODULE
    bool
    default y
-menu "hal_espressif (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/espressif)"
-osource "/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/espressif/zephyr/Kconfig"
+menu "hal_espressif (/mnt/lichen-zephyr/work/modules/hal/espressif)"
+osource "/mnt/lichen-zephyr/work/modules/hal/espressif/zephyr/Kconfig"
 config ZEPHYR_HAL_ESPRESSIF_MODULE
 	bool
 	default y
 endmenu
-menu "hal_ethos_u (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/ethos_u)"
+menu "hal_ethos_u (/mnt/lichen-zephyr/work/modules/hal/ethos_u)"
 osource "$(ZEPHYR_HAL_ETHOS_U_KCONFIG)"
 config ZEPHYR_HAL_ETHOS_U_MODULE
 	bool
 	default y
 endmenu
-menu "hal_gigadevice (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/gigadevice)"
+menu "hal_gigadevice (/mnt/lichen-zephyr/work/modules/hal/gigadevice)"
 osource "$(ZEPHYR_HAL_GIGADEVICE_KCONFIG)"
 config ZEPHYR_HAL_GIGADEVICE_MODULE
 	bool
 	default y
 endmenu
-menu "hal_infineon (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/infineon)"
+menu "hal_infineon (/mnt/lichen-zephyr/work/modules/hal/infineon)"
 osource "$(ZEPHYR_HAL_INFINEON_KCONFIG)"
 config ZEPHYR_HAL_INFINEON_MODULE
 	bool
 	default y
 endmenu
-menu "hal_intel (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/intel)"
-osource "/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/intel/zephyr/Kconfig"
+menu "hal_intel (/mnt/lichen-zephyr/work/modules/hal/intel)"
+osource "/mnt/lichen-zephyr/work/modules/hal/intel/zephyr/Kconfig"
 config ZEPHYR_HAL_INTEL_MODULE
 	bool
 	default y
@@ -82,7 +76,7 @@ endmenu
 config ZEPHYR_MICROCHIP_MODULE
    bool
    default y
-menu "hal_nordic (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/nordic)"
+menu "hal_nordic (/mnt/lichen-zephyr/work/modules/hal/nordic)"
 osource "$(ZEPHYR_HAL_NORDIC_KCONFIG)"
 config ZEPHYR_HAL_NORDIC_MODULE
 	bool
@@ -91,7 +85,7 @@ endmenu
 config ZEPHYR_NUVOTON_MODULE
    bool
    default y
-menu "hal_nxp (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/nxp)"
+menu "hal_nxp (/mnt/lichen-zephyr/work/modules/hal/nxp)"
 osource "$(ZEPHYR_HAL_NXP_KCONFIG)"
 config ZEPHYR_HAL_NXP_MODULE
 	bool
@@ -106,19 +100,19 @@ config ZEPHYR_QUICKLOGIC_MODULE
 config ZEPHYR_HAL_RENESAS_MODULE
    bool
    default y
-menu "hal_rpi_pico (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/rpi_pico)"
+menu "hal_rpi_pico (/mnt/lichen-zephyr/work/modules/hal/rpi_pico)"
 osource "$(ZEPHYR_HAL_RPI_PICO_KCONFIG)"
 config ZEPHYR_HAL_RPI_PICO_MODULE
 	bool
 	default y
 endmenu
-menu "hal_silabs (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/silabs)"
-osource "/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/silabs/zephyr/Kconfig"
+menu "hal_silabs (/mnt/lichen-zephyr/work/modules/hal/silabs)"
+osource "/mnt/lichen-zephyr/work/modules/hal/silabs/zephyr/Kconfig"
 config ZEPHYR_HAL_SILABS_MODULE
 	bool
 	default y
 endmenu
-menu "hal_st (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/st)"
+menu "hal_st (/mnt/lichen-zephyr/work/modules/hal/st)"
 osource "$(ZEPHYR_HAL_ST_KCONFIG)"
 config ZEPHYR_HAL_ST_MODULE
 	bool
@@ -127,8 +121,8 @@ endmenu
 config ZEPHYR_STM32_MODULE
    bool
    default y
-menu "hal_telink (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/telink)"
-osource "/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/hal/telink/Kconfig"
+menu "hal_telink (/mnt/lichen-zephyr/work/modules/hal/telink)"
+osource "/mnt/lichen-zephyr/work/modules/hal/telink/Kconfig"
 config ZEPHYR_HAL_TELINK_MODULE
 	bool
 	default y
@@ -142,7 +136,7 @@ config ZEPHYR_HAL_WURTHELEKTRONIK_MODULE
 config ZEPHYR_XTENSA_MODULE
    bool
    default y
-menu "hostap (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/lib/hostap)"
+menu "hostap (/mnt/lichen-zephyr/work/modules/lib/hostap)"
 osource "$(ZEPHYR_HOSTAP_KCONFIG)"
 config ZEPHYR_HOSTAP_MODULE
 	bool
@@ -151,31 +145,31 @@ endmenu
 config ZEPHYR_LIBMETAL_MODULE
    bool
    default y
-menu "liblc3 (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/lib/liblc3)"
+menu "liblc3 (/mnt/lichen-zephyr/work/modules/lib/liblc3)"
 osource "$(ZEPHYR_LIBLC3_KCONFIG)"
 config ZEPHYR_LIBLC3_MODULE
 	bool
 	default y
 endmenu
-menu "littlefs (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/fs/littlefs)"
+menu "littlefs (/mnt/lichen-zephyr/work/modules/fs/littlefs)"
 osource "$(ZEPHYR_LITTLEFS_KCONFIG)"
 config ZEPHYR_LITTLEFS_MODULE
 	bool
 	default y
 endmenu
-menu "loramac-node (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/lib/loramac-node)"
+menu "loramac-node (/mnt/lichen-zephyr/work/modules/lib/loramac-node)"
 osource "$(ZEPHYR_LORAMAC_NODE_KCONFIG)"
 config ZEPHYR_LORAMAC_NODE_MODULE
 	bool
 	default y
 endmenu
-menu "lvgl (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/lib/gui/lvgl)"
-osource "/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/lib/gui/lvgl/Kconfig"
+menu "lvgl (/mnt/lichen-zephyr/work/modules/lib/gui/lvgl)"
+osource "/mnt/lichen-zephyr/work/modules/lib/gui/lvgl/Kconfig"
 config ZEPHYR_LVGL_MODULE
 	bool
 	default y
 endmenu
-menu "mbedtls (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/crypto/mbedtls)"
+menu "mbedtls (/mnt/lichen-zephyr/work/modules/crypto/mbedtls)"
 osource "$(ZEPHYR_MBEDTLS_KCONFIG)"
 config ZEPHYR_MBEDTLS_MODULE
 	bool
@@ -193,25 +187,25 @@ config ZEPHYR_NRF_HW_MODELS_MODULE
 config ZEPHYR_OPEN_AMP_MODULE
    bool
    default y
-menu "openthread (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/lib/openthread)"
+menu "openthread (/mnt/lichen-zephyr/work/modules/lib/openthread)"
 osource "$(ZEPHYR_OPENTHREAD_KCONFIG)"
 config ZEPHYR_OPENTHREAD_MODULE
 	bool
 	default y
 endmenu
-menu "percepio (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/debug/percepio)"
-osource "/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/debug/percepio/zephyr/Kconfig"
+menu "percepio (/mnt/lichen-zephyr/work/modules/debug/percepio)"
+osource "/mnt/lichen-zephyr/work/modules/debug/percepio/zephyr/Kconfig"
 config ZEPHYR_PERCEPIO_MODULE
 	bool
 	default y
 endmenu
-menu "picolibc (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/lib/picolibc)"
-osource "/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/lib/picolibc/zephyr/Kconfig"
+menu "picolibc (/mnt/lichen-zephyr/work/modules/lib/picolibc)"
+osource "/mnt/lichen-zephyr/work/modules/lib/picolibc/zephyr/Kconfig"
 config ZEPHYR_PICOLIBC_MODULE
 	bool
 	default y
 endmenu
-menu "segger (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/debug/segger)"
+menu "segger (/mnt/lichen-zephyr/work/modules/debug/segger)"
 osource "$(ZEPHYR_SEGGER_KCONFIG)"
 config ZEPHYR_SEGGER_MODULE
 	bool
@@ -220,25 +214,25 @@ endmenu
 config ZEPHYR_TINYCRYPT_MODULE
    bool
    default y
-menu "trusted-firmware-m (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/tee/tf-m/trusted-firmware-m)"
+menu "trusted-firmware-m (/mnt/lichen-zephyr/work/modules/tee/tf-m/trusted-firmware-m)"
 osource "$(ZEPHYR_TRUSTED_FIRMWARE_M_KCONFIG)"
 config ZEPHYR_TRUSTED_FIRMWARE_M_MODULE
 	bool
 	default y
 endmenu
-menu "trusted-firmware-a (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/tee/tf-a/trusted-firmware-a)"
+menu "trusted-firmware-a (/mnt/lichen-zephyr/work/modules/tee/tf-a/trusted-firmware-a)"
 osource "$(ZEPHYR_TRUSTED_FIRMWARE_A_KCONFIG)"
 config ZEPHYR_TRUSTED_FIRMWARE_A_MODULE
 	bool
 	default y
 endmenu
-menu "uoscore-uedhoc (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/lib/uoscore-uedhoc)"
+menu "uoscore-uedhoc (/mnt/lichen-zephyr/work/modules/lib/uoscore-uedhoc)"
 osource "$(ZEPHYR_UOSCORE_UEDHOC_KCONFIG)"
 config ZEPHYR_UOSCORE_UEDHOC_MODULE
 	bool
 	default y
 endmenu
-menu "zcbor (/Volumes/Attic/Desktop/Projects/project-LICHEN/modules/lib/zcbor)"
+menu "zcbor (/mnt/lichen-zephyr/work/modules/lib/zcbor)"
 osource "$(ZEPHYR_ZCBOR_KCONFIG)"
 config ZEPHYR_ZCBOR_MODULE
 	bool

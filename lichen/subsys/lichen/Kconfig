@@ -25,5 +25,6 @@ rsource "oscore/Kconfig"
 rsource "schc/Kconfig"
 rsource "senml/Kconfig"
 rsource "rpl/Kconfig"
+rsource "routing/Kconfig"
 
 endif # LICHEN

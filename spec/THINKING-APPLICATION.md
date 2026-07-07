@@ -1,6 +1,15 @@
-# LICHEN Application Layer — Design Thinking
+# LICHEN Application Layer -- Design Thinking
 
-Working notes from design discussion. Not a spec yet.
+Working notes from design discussion.
+
+**Status:** Key decisions resolved and moved to spec. See:
+- `07-transport-app.md` Section 9.1 (port allocation)
+- `07-transport-app.md` Section 10.1 (raw UDP applications)
+- `03-adaptation.md` Section 5.5 (SCHC rules including MQTT-SN)
+
+This document is retained for historical context and rationale.
+
+---
 
 ## The Question
 
@@ -48,7 +57,7 @@ The tac/milsim lingua franca. XML-based event format:
 
 Type hierarchy: `a-f-G-U-C` = atoms → friendly → ground → unit → combat
 
-Origin: US Air Force Research Laboratory (AFRL), ~2005. Not IETF — DoD de facto standard. Open, documented, widely deployed.
+Origin: US Air Force Research Laboratory (AFRL), ~2005. Not IETF -- DoD de facto standard. Open, documented, widely deployed.
 
 What Meshtastic ATAK plugin actually sends over mesh (bandwidth-constrained):
 - PLI
@@ -107,7 +116,7 @@ LICHEN provides IPv6 mesh over LoRa. Applications run on top. Different applicat
 └─────────────────────────────────────────────────┘
 ```
 
-A tac handheld runs tac messaging. A Substrate building gateway runs CoAP/IPSO. A hybrid node runs both. The mesh doesn't care — it moves IPv6 packets.
+A tac handheld runs tac messaging. A Substrate building gateway runs CoAP/IPSO. A hybrid node runs both. The mesh doesn't care -- it moves IPv6 packets.
 
 ## Application Type Discriminator
 
@@ -116,10 +125,10 @@ One byte at the start of every application payload:
 ```
 [app_type:1][payload...]
 
-0x00  Raw       — opaque bytes, application-defined
-0x01  CoT       — compact binary CoT (PLI, chat, markers, alerts)
-0x02  SenML     — CBOR-encoded RFC 8428 sensor records
-0x03  CoAP      — full CoAP message (for PARLANCE/IPSO)
+0x00  Raw       -- opaque bytes, application-defined
+0x01  CoT       -- compact binary CoT (PLI, chat, markers, alerts)
+0x02  SenML     -- CBOR-encoded RFC 8428 sensor records
+0x03  CoAP      -- full CoAP message (for PARLANCE/IPSO)
 0x04+ reserved
 ```
 
@@ -183,12 +192,12 @@ Same problem, different tradeoffs:
 **Decision: Keep SenML, skip Cayenne.**
 
 Rationale:
-1. LICHEN's selling point is "IETF did this for us" — don't dilute it
+1. LICHEN's selling point is "IETF did this for us" -- don't dilute it
 2. SCHC compresses SenML field names across packets
-3. Not sending telemetry every second — extra bytes aren't critical
+3. Not sending telemetry every second -- extra bytes aren't critical
 4. One codec to implement vs two
 
-If bytes become critical, define a "SenML Compact Profile" (integer keys, implied units) — still RFC 8428 compliant.
+If bytes become critical, define a "SenML Compact Profile" (integer keys, implied units) -- still RFC 8428 compliant.
 
 ## The "Shape" Problem
 
@@ -265,16 +274,20 @@ Tac users never see CoAP overhead.
 | Device mgmt | CoAP | IETF RFC 7252 |
 | Device model | IPSO | OMA |
 
-Pitch: "LICHEN is IETF RFCs all the way down. For tac interop, we translate to CoT at the gateway — the format the DoD ecosystem already speaks."
+Pitch: "LICHEN is IETF RFCs all the way down. For tac interop, we translate to CoT at the gateway -- the format the DoD ecosystem already speaks."
 
 ## Open Questions
 
-1. Port assignments — different UDP ports per app type, or discriminator byte only?
+1. ~~Port assignments -- different UDP ports per app type, or discriminator byte only?~~
+   **Resolved:** Port-based dispatch. Ports 5681-5687 for raw UDP apps (compact CoT,
+   SenML, Cayenne, APRS-IS, NMEA), 5683 for CoAP, 10883 for MQTT-SN. See spec.
 2. Group/broadcast semantics for each app type
 3. ACK/delivery confirmation for tac messages (or rely on link layer?)
 4. Exact CBOR schemas for SenML profiles
 5. Profile registry format and distribution
-6. CoT subtype allocation (reserve ranges for extensions?)
+6. ~~CoT subtype allocation (reserve ranges for extensions?)~~
+   **Resolved:** Subtype byte defined in spec Section 10.1.1. Ranges: 0x01-0x0F PLI,
+   0x10-0x1F markers, 0x20-0x2F alerts.
 
 ## What CoAP Actually Buys You
 

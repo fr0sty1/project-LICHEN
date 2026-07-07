@@ -7,6 +7,12 @@ This matrix records the no-hardware board-support baseline for LICHEN firmware
 work. It is a planning and partner-handoff document, not a statement that every
 listed peripheral has been physically validated.
 
+For the Muzi Works family, the current first-party target is specifically
+`r1_neo_nrf52840` / Muzi Works R1 Neo. The original non-Neo R1, any SH1107
+display variant, and any LR1121 radio variant are not part of the MVP unless a
+separate board/driver task adds explicit devicetree, Kconfig, and build/test
+evidence.
+
 The HAL capability boundary is defined by `lichen_hal_capability` in
 `lichen/subsys/lichen/hal/include/lichen/hal.h`. Board ports should advertise
 capabilities through Kconfig and devicetree instead of app code matching on
@@ -49,6 +55,7 @@ variant.
 | TTGO LoRa32 / T-Beam v1 / Heltec V2 class | ESP32, older flash/RAM class | SX1276/78 | OLED on common variants | Buttons vary by board | T-Beam v1 class may have GNSS; board-specific validation required | Battery/PMIC varies | UART; ESP32 BLE path not selected for MVP | Internal flash | TTGO LoRa32 overlay exists; classic ESP32 family listed in top-level targets | Partner-owned long tail after SX127x path is stable |
 | T-Beam Supreme | ESP32-S3 class | SX1262 expected | Board-specific | Buttons vary | unknown from local repo evidence; current overlay is a stub | Battery/PMIC varies | UART; ESP32 BLE path still needs validation | Internal flash | LICHEN app overlay is explicitly a stub until Zephyr board support exists | Partner-owned until concrete board file and pins are available |
 | RAK11310 / RP2040 + SX126x | RP2040, 264 KB RAM / external flash class | SX1262 expected | Carrier-dependent | Carrier-dependent | none by default | Carrier-dependent | USB serial; no BLE on RP2040 | External flash | Top-level target family only; no concrete local board/overlay found | Partner-owned future target |
+| Muzi Works original/non-Neo R1 variants | unknown until a separate board fact Bead exists | SX1262, LR1121, or other variant not confirmed in repo evidence | SH1107 or other display variants are not modeled | unknown | unknown | unknown | unknown | unknown | No first-party Zephyr board target; do not alias to `r1_neo_nrf52840` | Unsupported for MVP; add separate board/driver Beads before claiming display or LR1121 support |
 | Linux gateway / simulator | Host-class | Simulated, external SPI, or serial-attached LoRa | Host UI, not firmware HAL | Host input, not firmware HAL | Host time, gpsd, or upstream time source | Host power, not firmware HAL | UDP/TUN/TAP, serial, TCP, BLE host tools | Host filesystem | Rust gateway/simulator, Zephyr `native_sim`/`qemu_x86`, RAK4631 serial bridge docs, and nRF52840 DK BLE shell cover no-hardware validation | LICHEN infrastructure reference |
 
 ## Partner-Owned Long Tail
@@ -67,6 +74,9 @@ instead of core protocol work:
   needs a separate receive/transmit validation path.
 - Any board whose display, keyboard, GNSS, PMIC, charger, fuel gauge, or flash
   device is not represented by a devicetree node or HAL capability yet.
+- Muzi Works original/non-Neo R1 variants, including possible SH1107 display or
+  LR1121 radio variants, until separate board files and driver work prove the
+  exact hardware boundary.
 
 Partner ports should contribute board files, overlays, and at least one
 board-agnostic build/test result before requesting ownership transfer into the
@@ -86,12 +96,17 @@ LICHEN reference set.
 - Hardware-blocked claims must stay explicit. R1 Neo radio reset, bootloader,
   GNSS, battery, and USB flashing evidence cannot be closed without physical
   hardware or vendor confirmation.
+- R1 Neo support must not imply support for original/non-Neo R1 hardware. Do
+  not reuse the R1 Neo board target for a non-Neo R1 unless the hardware facts,
+  devicetree compatible string, and app overlays are updated under a separate
+  Bead.
 
 ## Source Evidence
 
 - Target families and Zephyr-first strategy: `README.md`
 - Build examples and STM32WL memory budget: `lichen/README.md`
-- HAL capability contract: `lichen/subsys/lichen/hal/include/lichen/hal.h`
+- HAL contract: `docs/firmware-hal-contract.md`
+- HAL capability API: `lichen/subsys/lichen/hal/include/lichen/hal.h`
 - HAL Kconfig/devicetree contract: `lichen/subsys/lichen/hal/Kconfig`
 - Meshtastic app-compat board-identity policy:
   `docs/meshtastic-compat-dev.md`

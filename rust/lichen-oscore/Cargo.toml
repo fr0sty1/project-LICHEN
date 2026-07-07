@@ -9,6 +9,8 @@ version.workspace = true
 license.workspace = true
 
 [dependencies]
+lichen-core = { path = "../lichen-core" }
+
 # ponytail: using pure-Rust crypto crates until a battle-tested no_std OSCORE
 # crate exists (liboscore requires C FFI which complicates embedded cross-compile).
 # Switch to liboscore or coapcore when they mature for embedded targets.
@@ -40,5 +42,5 @@ std = []
 # Uses X25519/Ed25519 to match link-layer Schnorr48
 edhoc = ["dep:x25519-dalek", "dep:ed25519-dalek", "dep:rand_core"]
 # Logging: enable one or neither, not both
-defmt = ["dep:defmt"]
-log = ["dep:log"]
+defmt = ["dep:defmt", "lichen-core/defmt"]
+log = ["dep:log", "lichen-core/log"]

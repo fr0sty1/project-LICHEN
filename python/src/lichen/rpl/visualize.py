@@ -22,8 +22,17 @@ Topology = dict[str, str | None]
 
 
 def topology_from_states(states: Mapping[str, DodagState]) -> Topology:
-    """Extract a node -> preferred-parent topology from DODAG states."""
-    return {node_id: state.preferred_parent for node_id, state in states.items()}
+    """Extract a node -> preferred-parent topology from DODAG states.
+
+    The mapping keys must be IPv6Address strings (e.g., ``"fe80::1"``) that match
+    what ``DodagState.preferred_parent`` contains, so that parent values can be
+    looked up as keys in the resulting topology. Using arbitrary names will break
+    the parent lookup in ``to_ascii()`` and ``to_dot()``.
+    """
+    return {
+        node_id: str(state.preferred_parent) if state.preferred_parent else None
+        for node_id, state in states.items()
+    }
 
 
 def ranks_from_states(states: Mapping[str, DodagState]) -> dict[str, int]:

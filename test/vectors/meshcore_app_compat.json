@@ -305,7 +305,7 @@
     },
     {
       "name": "get_default_flood_scope_null",
-      "description": "Default flood scope is null/empty until compatibility policy is expanded.",
+      "description": "Default flood scope is null/empty before a MeshCore-local default flood scope is stored.",
       "source_baseline": {
         "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
         "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
@@ -419,8 +419,70 @@
       }
     },
     {
-      "name": "set_advert_name_unsupported",
-      "description": "Compatibility display-name writes are rejected until settings-backed local compatibility state exists.",
+      "name": "send_txt_msg_direct_known_peer",
+      "description": "A direct MeshCore public-key prefix that maps to exactly one known LICHEN peer submits text to that peer IID.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "020102030405066869",
+      "decoded": {
+        "command": "SEND_TXT_MSG",
+        "prefix": "010203040506",
+        "payload_utf8": "hi",
+        "expected_iid": "00aa010203040506"
+      },
+      "expect": {
+        "responses": [
+          "00"
+        ],
+        "adapter_test": true,
+        "fixture": "direct-known-peer"
+      }
+    },
+    {
+      "name": "send_txt_msg_direct_colliding_peer",
+      "description": "A direct MeshCore public-key prefix that maps to multiple known peers fails closed as not found.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "020102030405066869",
+      "decoded": {
+        "command": "SEND_TXT_MSG",
+        "prefix": "010203040506",
+        "payload_utf8": "hi",
+        "collision": true
+      },
+      "expect": {
+        "responses": [
+          "0102"
+        ],
+        "adapter_test": true,
+        "fixture": "direct-colliding-peers"
+      }
+    },
+    {
+      "name": "set_advert_name_ok",
+      "description": "Compatibility display-name writes update MeshCore-local state and return OK without mutating native identity.",
       "source_baseline": {
         "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
         "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
@@ -441,14 +503,15 @@
       },
       "expect": {
         "responses": [
-          "0101"
+          "00"
         ],
-        "adapter_test": true
+        "adapter_test": true,
+        "compat_store": "meshcore-local advert name"
       }
     },
     {
-      "name": "set_channel_unsupported",
-      "description": "Channel writes are rejected; LICHEN does not accept MeshCore channel secrets as native group or OSCORE material.",
+      "name": "set_channel0_ok",
+      "description": "Channel writes update a MeshCore-local channel record only; LICHEN does not accept MeshCore channel secrets as native group or OSCORE material.",
       "source_baseline": {
         "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
         "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
@@ -462,21 +525,23 @@
       },
       "direction": "exchange",
       "frame": "command",
-      "encoded": "2000",
+      "encoded": "20004669656c6400000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
       "decoded": {
         "command": "SET_CHANNEL",
-        "index": 0
+        "index": 0,
+        "name": "Field"
       },
       "expect": {
         "responses": [
-          "0101"
+          "00"
         ],
-        "adapter_test": true
+        "adapter_test": true,
+        "compat_store": "meshcore-local channel slot 0"
       }
     },
     {
-      "name": "set_device_pin_unsupported",
-      "description": "BLE PIN writes are rejected until a settings-backed MeshCore compatibility PIN store is implemented.",
+      "name": "set_channel16_secret_unsupported",
+      "description": "Channel records carrying nonzero 16-byte secret material are recognized but unsupported and are not stored.",
       "source_baseline": {
         "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
         "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
@@ -490,21 +555,82 @@
       },
       "direction": "exchange",
       "frame": "command",
-      "encoded": "25313233343536",
+      "encoded": "20004669656c640000000000000000000000000000000000000000000000000000000102030405060708090a0b0c0d0e0f10",
+      "decoded": {
+        "command": "SET_CHANNEL",
+        "index": 0,
+        "name": "Field",
+        "secret_len": 16
+      },
+      "expect": {
+        "responses": [
+          "0101"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "set_channel_secret_unsupported",
+      "description": "Secret-bearing MeshCore channel writes are recognized but unsupported so MeshCore secrets are never imported as native LICHEN material.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "20004669656c64000000000000000000000000000000000000000000000000000000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "decoded": {
+        "command": "SET_CHANNEL",
+        "index": 0,
+        "name": "Field",
+        "secret_len": 32
+      },
+      "expect": {
+        "responses": [
+          "0101"
+        ],
+        "adapter_test": true
+      }
+    },
+    {
+      "name": "set_device_pin_ok",
+      "description": "Device PIN writes apply and retain a MeshCore-local uint32 passkey without exposing native provisioning secrets.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "2540e20100",
       "decoded": {
         "command": "SET_DEVICE_PIN",
-        "pin": "123456"
+        "pin": 123456
       },
       "expect": {
         "responses": [
-          "0101"
+          "00"
         ],
-        "adapter_test": true
+        "adapter_test": true,
+        "compat_store": "meshcore-local BLE PIN applied through the BLE passkey hook"
       }
     },
     {
-      "name": "set_autoadd_config_unsupported",
-      "description": "Auto-add configuration writes are rejected until compatibility-local persistence exists.",
+      "name": "set_autoadd_config_ok",
+      "description": "Auto-add configuration writes retain the two-byte MeshCore-local compatibility value.",
       "source_baseline": {
         "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
         "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
@@ -518,16 +644,20 @@
       },
       "direction": "exchange",
       "frame": "command",
-      "encoded": "3a0000",
+      "encoded": "3a0102",
       "decoded": {
         "command": "SET_AUTOADD_CONFIG",
-        "enabled": false
+        "raw": [
+          1,
+          2
+        ]
       },
       "expect": {
         "responses": [
-          "0101"
+          "00"
         ],
-        "adapter_test": true
+        "adapter_test": true,
+        "compat_store": "meshcore-local auto-add config"
       }
     },
     {
@@ -612,8 +742,38 @@
       }
     },
     {
-      "name": "newer_set_default_flood_scope_unsupported",
-      "description": "Newer firmware command 0x3f is recognized but unsupported by the MVP shim.",
+      "name": "newer_set_default_flood_scope_ok",
+      "description": "Default flood scope writes retain MeshCore-local name/key state without altering native RPL or routing state.",
+      "source_baseline": {
+        "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
+        "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
+        "python": "5bac3573b51c4298062881885b6d15a994109076",
+        "cli": "3ad12c07beaac21210ed9b4b04c1fe8438722ecb",
+        "js": "306dadac1cdacfd071ab6899e5c84e7def7c4425"
+      },
+      "transport": {
+        "name": "ble-nus",
+        "framing": "one raw MeshCore inner frame per NUS value"
+      },
+      "direction": "exchange",
+      "frame": "command",
+      "encoded": "3f4669656c6453636f7065000000000000000000000000000000000000000000a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+      "decoded": {
+        "command": "SET_DEFAULT_FLOOD_SCOPE",
+        "name": "FieldScope",
+        "key": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf"
+      },
+      "expect": {
+        "responses": [
+          "00"
+        ],
+        "adapter_test": true,
+        "compat_store": "meshcore-local default flood scope name/key"
+      }
+    },
+    {
+      "name": "newer_clear_default_flood_scope_ok",
+      "description": "An empty default flood scope write clears only the MeshCore-local default flood scope store.",
       "source_baseline": {
         "firmware": "e8d3c53ba1ea863937081cd0caad759b832f3028",
         "flutter": "e1b8d6ec97d6ccca0eee8122864092f3af3f2062",
@@ -629,13 +789,15 @@
       "frame": "command",
       "encoded": "3f",
       "decoded": {
-        "command": "SET_DEFAULT_FLOOD_SCOPE"
+        "command": "SET_DEFAULT_FLOOD_SCOPE",
+        "clear": true
       },
       "expect": {
         "responses": [
-          "0101"
+          "00"
         ],
-        "adapter_test": true
+        "adapter_test": true,
+        "compat_store": "meshcore-local default flood scope clear"
       }
     },
     {

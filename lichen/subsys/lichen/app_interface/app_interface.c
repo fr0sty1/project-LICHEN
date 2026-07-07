@@ -11,6 +11,9 @@
 #include <zephyr/sys/util.h>
 
 #include <lichen/app_interface/app_interface.h>
+#if IS_ENABLED(CONFIG_LICHEN_HAL)
+#include <lichen/app_interface/hal_bridge.h>
+#endif
 
 #define SINK_MAX CONFIG_LICHEN_APP_INTERFACE_MAX_SUBSCRIBERS
 
@@ -22,6 +25,10 @@ struct sink_slot {
 static struct sink_slot s_sinks[SINK_MAX];
 static struct lichen_app_interface_stats s_stats;
 static K_MUTEX_DEFINE(s_mutex);
+#ifdef CONFIG_LICHEN_APP_INTERFACE_TEST_HOOKS
+static int s_test_next_location_submit_ret;
+static int s_test_next_clear_network_ret;
+#endif
 
 static bool same_sink(const struct lichen_app_interface_sink *a,
 		      const struct lichen_app_interface_sink *b)
@@ -449,6 +456,155 @@ int lichen_app_interface_set_config(
 	return accepted > 0U ? 0 : first_error;
 }
 
+static int submit_location_with_bridge(
+	const struct lichen_app_location_time_snapshot *location,
+	int (*submit)(const struct lichen_app_location_time_snapshot *location))
+{
+	int ret;
+
+	if (location == NULL) {
+		k_mutex_lock(&s_mutex, K_FOREVER);
+		s_stats.invalid_count++;
+		k_mutex_unlock(&s_mutex);
+		return -EINVAL;
+	}
+
+#ifdef CONFIG_LICHEN_APP_INTERFACE_TEST_HOOKS
+	k_mutex_lock(&s_mutex, K_FOREVER);
+	ret = s_test_next_location_submit_ret;
+	s_test_next_location_submit_ret = 0;
+	k_mutex_unlock(&s_mutex);
+	if (ret < 0) {
+		return ret;
+	}
+#endif
+
+#if IS_ENABLED(CONFIG_LICHEN_HAL)
+	ret = submit(location);
+	if (ret == -EINVAL) {
+		k_mutex_lock(&s_mutex, K_FOREVER);
+		s_stats.invalid_count++;
+		k_mutex_unlock(&s_mutex);
+	}
+	return ret;
+#else
+	ARG_UNUSED(ret);
+	ARG_UNUSED(submit);
+	return -ENOTSUP;
+#endif
+}
+
+int lichen_app_interface_submit_location(
+	const struct lichen_app_location_time_snapshot *location)
+{
+#if IS_ENABLED(CONFIG_LICHEN_HAL)
+	return submit_location_with_bridge(location,
+					   lichen_app_location_submit_to_hal);
+#else
+	return submit_location_with_bridge(location, NULL);
+#endif
+}
+
+int lichen_app_interface_submit_network_location(
+	const struct lichen_app_location_time_snapshot *location)
+{
+#if IS_ENABLED(CONFIG_LICHEN_HAL)
+	return submit_location_with_bridge(
+		location, lichen_app_network_location_submit_to_hal);
+#else
+	return submit_location_with_bridge(location, NULL);
+#endif
+}
+
+int lichen_app_interface_clear_network_location(void)
+{
+#ifdef CONFIG_LICHEN_APP_INTERFACE_TEST_HOOKS
+	int ret;
+
+	k_mutex_lock(&s_mutex, K_FOREVER);
+	ret = s_test_next_clear_network_ret;
+	s_test_next_clear_network_ret = 0;
+	k_mutex_unlock(&s_mutex);
+	if (ret < 0) {
+		return ret;
+	}
+#endif
+
+#if IS_ENABLED(CONFIG_LICHEN_HAL)
+	return lichen_app_network_location_clear_from_hal();
+#else
+	return -ENOTSUP;
+#endif
+}
+
+int lichen_app_interface_submit_manual_location(
+	const struct lichen_app_location_time_snapshot *location)
+{
+#if IS_ENABLED(CONFIG_LICHEN_HAL)
+	return submit_location_with_bridge(
+		location, lichen_app_manual_location_submit_to_hal);
+#else
+	return submit_location_with_bridge(location, NULL);
+#endif
+}
+
+static int submit_time_with_bridge(
+	const struct lichen_app_time_snapshot *time,
+	int (*submit)(const struct lichen_app_time_snapshot *time))
+{
+	int ret;
+
+	if (time == NULL) {
+		k_mutex_lock(&s_mutex, K_FOREVER);
+		s_stats.invalid_count++;
+		k_mutex_unlock(&s_mutex);
+		return -EINVAL;
+	}
+
+#if IS_ENABLED(CONFIG_LICHEN_HAL)
+	ret = submit(time);
+	if (ret == -EINVAL) {
+		k_mutex_lock(&s_mutex, K_FOREVER);
+		s_stats.invalid_count++;
+		k_mutex_unlock(&s_mutex);
+	}
+	return ret;
+#else
+	ARG_UNUSED(ret);
+	ARG_UNUSED(submit);
+	return -ENOTSUP;
+#endif
+}
+
+int lichen_app_interface_submit_time(const struct lichen_app_time_snapshot *time)
+{
+#if IS_ENABLED(CONFIG_LICHEN_HAL)
+	return submit_time_with_bridge(time, lichen_app_time_submit_to_hal);
+#else
+	return submit_time_with_bridge(time, NULL);
+#endif
+}
+
+int lichen_app_interface_submit_network_time(
+	const struct lichen_app_time_snapshot *time)
+{
+#if IS_ENABLED(CONFIG_LICHEN_HAL)
+	return submit_time_with_bridge(time, lichen_app_network_time_submit_to_hal);
+#else
+	return submit_time_with_bridge(time, NULL);
+#endif
+}
+
+int lichen_app_interface_submit_manual_time(
+	const struct lichen_app_time_snapshot *time)
+{
+#if IS_ENABLED(CONFIG_LICHEN_HAL)
+	return submit_time_with_bridge(time, lichen_app_manual_time_submit_to_hal);
+#else
+	return submit_time_with_bridge(time, NULL);
+#endif
+}
+
 int lichen_app_interface_copy_stats(
 	struct lichen_app_interface_stats *stats)
 {
@@ -468,6 +624,22 @@ void lichen_app_interface_test_reset(void)
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	memset(s_sinks, 0, sizeof(s_sinks));
 	memset(&s_stats, 0, sizeof(s_stats));
+	s_test_next_location_submit_ret = 0;
+	s_test_next_clear_network_ret = 0;
+	k_mutex_unlock(&s_mutex);
+}
+
+void lichen_app_interface_test_fail_next_location_submit(int ret)
+{
+	k_mutex_lock(&s_mutex, K_FOREVER);
+	s_test_next_location_submit_ret = ret < 0 ? ret : 0;
+	k_mutex_unlock(&s_mutex);
+}
+
+void lichen_app_interface_test_fail_next_clear_network(int ret)
+{
+	k_mutex_lock(&s_mutex, K_FOREVER);
+	s_test_next_clear_network_ret = ret < 0 ? ret : 0;
 	k_mutex_unlock(&s_mutex);
 }
 #endif

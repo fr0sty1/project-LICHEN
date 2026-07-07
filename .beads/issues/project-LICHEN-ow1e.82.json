@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-ow1e.82",
+  "title": "Return clone rather than return Err(e.clone())",
+  "description": "lichen-tui/src/main.rs:147 returns:\n```rust\nreturn Err(e.clone());\n```\n\nIf the error type is Clone but the original `e` is owned, the clone is unnecessary. Check if `e` can be returned directly without cloning.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T15:37:10.557966Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T17:04:17.912372Z",
+  "closed_at": "2026-07-06T17:04:17.912372Z",
+  "close_reason": "Changed poll_node() to use is_err() check and unwrap_err() to return owned error instead of cloning",
+  "labels": [
+    "idiomatic-rust",
+    "ownership",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ow1e.82",
+      "depends_on_id": "project-LICHEN-ow1e",
+      "type": "parent-child",
+      "created_at": "2026-07-06T15:37:10.558492Z"
+    }
+  ]
+}

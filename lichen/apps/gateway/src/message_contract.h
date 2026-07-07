@@ -25,9 +25,13 @@ struct gateway_message_contract_text {
  * Compatibility surfaces call lichen_app_interface_submit_text() when a phone
  * app asks LICHEN to send text. The gateway owns exactly one submit_text sink:
  * it accepts valid messages into this bounded queue and returns -ENOMEM when
- * the normal LICHEN sender has not drained it. This module does not transmit on
- * BLE or LoRa by itself; a mesh sender must call gateway_message_contract_pop_text()
- * and own the actual RF/network send path.
+ * the normal LICHEN sender has not drained it. Submit is an at-least-once app
+ * ingress boundary, not a BLE acknowledgement boundary: if a compatibility
+ * transport session drops after submit but before its OK/status frame is
+ * queued, the message remains committed and the dispatcher returns the
+ * transport enqueue error. This module does not transmit on BLE or LoRa by
+ * itself; a mesh sender must call gateway_message_contract_pop_text() and own
+ * the actual RF/network send path.
  */
 int gateway_message_contract_init(void);
 int gateway_message_contract_pop_text(

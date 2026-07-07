@@ -12,6 +12,38 @@ menuconfig LICHEN
 
 if LICHEN
 
+config LICHEN_TIME_BUILD_EPOCH_UNIX
+	int "Deterministic firmware build epoch floor"
+	default 1700000000
+	range 1 2147483647
+	help
+	  Deterministic Unix timestamp used as the minimum plausible wall-clock
+	  value. Production builds must set this from reproducible build
+	  metadata, preferably SOURCE_DATE_EPOCH, or an explicit release epoch.
+
+choice LICHEN_TIME_BUILD_EPOCH_SOURCE
+	prompt "Firmware build epoch metadata source"
+	default LICHEN_TIME_BUILD_EPOCH_SOURCE_FIXED
+	help
+	  Records where CONFIG_LICHEN_TIME_BUILD_EPOCH_UNIX came from.
+
+config LICHEN_TIME_BUILD_EPOCH_SOURCE_FIXED
+	bool "Fixed Kconfig default or test override"
+
+config LICHEN_TIME_BUILD_EPOCH_SOURCE_DATE_EPOCH
+	bool "SOURCE_DATE_EPOCH"
+
+config LICHEN_TIME_BUILD_EPOCH_SOURCE_RELEASE
+	bool "Explicit release epoch"
+
+config LICHEN_TIME_BUILD_EPOCH_SOURCE_DEVELOPER_GENERATED
+	bool "Explicit developer generated timestamp"
+
+config LICHEN_TIME_BUILD_EPOCH_SOURCE_DEVELOPER_FIXED
+	bool "Explicit developer fixed timestamp"
+
+endchoice
+
 config LICHEN_LORA_L2
 	bool "LICHEN LoRa L2 driver"
 	depends on LORA

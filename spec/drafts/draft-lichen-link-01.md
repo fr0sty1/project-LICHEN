@@ -96,8 +96,12 @@ Octets: 1        1       1      2       var     var      var
 - **DST** (0, 2, or 8 octets): Destination address. Present and length
   determined by AddrMode in LLSec. See Section 3.3.
 
-- **PLD** (variable): SCHC-compressed IPv6 payload. Length derived as
-  `LENGTH - fixed_header_size - DST_len - MIC_len`. MUST be at least 1 byte.
+- **PLD** (variable): authenticated inner payload. The first octet is a
+  dispatch value: `0x14` for SCHC, whose body begins with the SCHC rule ID, or
+  `0x15` for LICHEN routing/control messages, whose body begins with the
+  routing message type. Length derived as
+  `LENGTH - fixed_header_size - DST_len - MIC_len`. MUST be at least 2 bytes
+  for currently defined dispatch values.
 
 - **MIC** (4 or 8 octets): Message Integrity Code. Present and length
   determined by MicLength in LLSec. Absent when S=0. See Section 4.

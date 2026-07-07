@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-5b0k",
+  "title": "Python sim auth.py: WebSocket token in query string may be logged",
+  "description": "In python/src/lichen/sim/auth.py, WebSocket connections pass the token as a query parameter (?token=\u003ctoken\u003e). Query parameters can appear in server access logs, proxy logs, and browser history. While the constant-time comparison is good, consider documenting this logging risk or supporting a first-message auth protocol for WebSockets as an alternative.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-06T17:26:26.155374Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-06T18:53:05.653913Z",
+  "closed_at": "2026-07-06T18:53:05.653913Z",
+  "close_reason": "Fixed by workflow",
+  "labels": [
+    "security",
+    "documentation"
+  ]
+}
