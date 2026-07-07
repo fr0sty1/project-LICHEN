@@ -655,41 +655,8 @@ check_stop_signal() {
 
 STOP_FLAG="/tmp/ec2-claude-stop"
 
-# Start background beads sync + stop-check loop
-SYNC_PID_FILE="/tmp/beads-sync.pid"
-(
-    while true; do
-        sleep 15
-        # Check for stop signal
-        if check_stop_signal; then
-            touch "$STOP_FLAG"
-            sqs_status "Stop signal received - terminating"
-            # Kill Claude process if running
-            pkill -f "claude -p" 2>/dev/null || true
-            exit 0
-        fi
-        # Sync beads
-        cd /mnt/lichen-zephyr/workspace 2>/dev/null || continue
-        if git diff --quiet .beads 2>/dev/null && git diff --cached --quiet .beads 2>/dev/null; then
-            continue
-        fi
-        git add .beads 2>/dev/null || continue
-        git commit -m "beads: auto-sync" --no-verify 2>/dev/null || continue
-        git push 2>/dev/null || true
-        sqs_status "Beads auto-synced"
-    done
-) &
-echo \$! > "\$SYNC_PID_FILE"
-
-# Cleanup sync loop on exit
-cleanup_sync() {
-    if [[ -f "\$SYNC_PID_FILE" ]]; then
-        kill "\$(cat "\$SYNC_PID_FILE")" 2>/dev/null || true
-        rm -f "\$SYNC_PID_FILE"
-    fi
-    rm -f "$STOP_FLAG"
-}
-trap cleanup_sync EXIT
+# Note: Background beads sync disabled temporarily for simpler flow
+# Beads can be synced after Claude completes
 
 sqs_status "Claude starting"
 
@@ -724,29 +691,37 @@ stdbuf -oL claude -p \
     --permission-mode bypassPermissions \
     --append-system-prompt "$RESILIENCE_PROMPT" \
     --output-format text \
-    "$PROMPT" 2>&1 | while IFS= read -r line; do
-    echo "$line"
-    # Send periodic status via SQS (every 50 lines)
-    ((LINE_COUNT++)) || LINE_COUNT=1
-    if (( LINE_COUNT % 50 == 0 )); then
-        sqs_status "Output line $LINE_COUNT..."
-    fi
-done
+    "$PROMPT" 2>&1 | {
+    LINE_COUNT=0
+    while IFS= read -r line; do
+        echo "$line"
+        # Send periodic status via SQS (every 50 lines)
+        ((LINE_COUNT++))
+        if (( LINE_COUNT % 50 == 0 )); then
+            sqs_status "Output line $LINE_COUNT..."
+        fi
+    done
+}
+
+# Script done - cleanup runs via EXIT trap
+sqs_status "Claude done - exiting"
+exit 0
 REMOTE_CLAUDE
 
     send_ssh_key
     sqs_status "Running Claude on EC2"
     if [[ -n "$output_file" ]]; then
-        # Save output to file
+        # Save output to file - use || true to prevent exit on non-zero from remote
         ssh $SSH_OPTS -i "$SSH_KEY_PATH" "${SSH_USER}@${PUBLIC_IP}" \
-            "bash -s -- '$escaped_prompt' '$SQS_QUEUE_URL'" <<< "$remote_script" > "$output_file"
+            "bash -s -- '$escaped_prompt' '$SQS_QUEUE_URL'" <<< "$remote_script" > "$output_file" || true
         log_ok "Output saved to: $output_file"
     else
-        # Stream output to stdout
+        # Stream output to stdout - use || true to prevent exit on non-zero from remote
         ssh $SSH_OPTS -i "$SSH_KEY_PATH" "${SSH_USER}@${PUBLIC_IP}" \
-            "bash -s -- '$escaped_prompt' '$SQS_QUEUE_URL'" <<< "$remote_script"
+            "bash -s -- '$escaped_prompt' '$SQS_QUEUE_URL'" <<< "$remote_script" || true
     fi
     sqs_status "Claude finished"
+    log_info "run_claude complete, returning to main"
 }
 
 # === Get changed files on remote ===
@@ -1127,12 +1102,15 @@ main() {
     fi
 
     run_claude "$prompt" "$output_file"
+    log_info "Back from run_claude, ULTRACODE_MODE=$ULTRACODE_MODE"
 
     # Run orchestrated review loop if ultracode mode
     if [[ "$ULTRACODE_MODE" == "true" ]]; then
         log_info "=== ULTRACODE: Starting 3x3 review cycles ==="
         sqs_status "Starting review cycles"
         run_review_loop
+    else
+        log_info "Not ultracode mode, skipping reviews"
     fi
 
     # Cleanup happens via EXIT trap
