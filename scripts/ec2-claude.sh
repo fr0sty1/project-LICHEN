@@ -701,16 +701,24 @@ RESILIENCE_PROMPT="CRITICAL RESILIENCE RULES (instance may terminate at any time
 5. Before any destructive action, commit and push current work first.
 6. Work as if each commit could be your last."
 
-# Run Claude Code headlessly
+# Run Claude Code headlessly with unbuffered output
+# stdbuf -oL forces line buffering so output streams through SSH
 # -p / --print: non-interactive mode
 # --permission-mode bypassPermissions: skip permission prompts
 # --append-system-prompt: add resilience instructions
 # --output-format text: plain text output for streaming
-claude -p \
+stdbuf -oL claude -p \
     --permission-mode bypassPermissions \
     --append-system-prompt "$RESILIENCE_PROMPT" \
     --output-format text \
-    "$PROMPT"
+    "$PROMPT" 2>&1 | while IFS= read -r line; do
+    echo "$line"
+    # Send periodic status via SQS (every 50 lines)
+    ((LINE_COUNT++)) || LINE_COUNT=1
+    if (( LINE_COUNT % 50 == 0 )); then
+        sqs_status "Output line $LINE_COUNT..."
+    fi
+done
 REMOTE_CLAUDE
 
     send_ssh_key
