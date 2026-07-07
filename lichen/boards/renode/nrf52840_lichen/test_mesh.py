@@ -14,23 +14,19 @@ Usage:
 import asyncio
 import os
 import pytest
+import pytest_asyncio
 from pathlib import Path
 
 # Skip entire module if Renode not available
 pytest.importorskip("lichen.sim.simulation")
 
-project_root = Path(__file__).parent.parent.parent.parent
+# Repo root: .../lichen/boards/renode/nrf52840_lichen/test_mesh.py -> parents[4]
+project_root = Path(__file__).resolve().parents[4]
 import sys
 sys.path.insert(0, str(project_root / "python" / "src"))
 
 from lichen.sim.simulation import Simulation
 from lichen.sim.renode_server import start_renode_server
-
-
-def pytest_addoption(parser):
-    """Add command line options."""
-    parser.addoption("--board", default="t_echo", help="Board type (t_echo, rak4631)")
-    parser.addoption("--nodes", default=2, type=int, help="Number of nodes")
 
 
 @pytest.fixture
@@ -43,20 +39,27 @@ def num_nodes(request):
     return request.config.getoption("--nodes")
 
 
+def _find_firmware(board: str) -> Path | None:
+    """Locate a firmware ELF for the board, if one has been built."""
+    candidates = [
+        # Renode build with the UART console overlay (see renode_console.overlay)
+        project_root / f"build/{board}_renode/zephyr/zephyr.elf",
+        project_root / f"build/{board}/zephyr/zephyr.elf",
+        project_root / "build/zephyr/zephyr.elf",
+    ]
+    for elf in candidates:
+        if elf.exists():
+            return elf
+    return None
+
+
 @pytest.fixture
 def firmware_path(board):
     """Find firmware ELF for the board."""
-    # Try board-specific build first
-    board_elf = project_root / f"build/{board}/zephyr/zephyr.elf"
-    if board_elf.exists():
-        return board_elf
-
-    # Fall back to generic build
-    generic_elf = project_root / "build/zephyr/zephyr.elf"
-    if generic_elf.exists():
-        return generic_elf
-
-    pytest.skip(f"No firmware found for {board}")
+    elf = _find_firmware(board)
+    if elf is None:
+        pytest.skip(f"No firmware found for {board}")
+    return elf
 
 
 class RenodeNode:
@@ -108,7 +111,7 @@ start
                 self.proc.kill()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def mesh_simulation(board, num_nodes, firmware_path):
     """Create and manage a multi-node mesh simulation."""
     sim = Simulation("test-mesh")
@@ -150,12 +153,11 @@ async def mesh_simulation(board, num_nodes, firmware_path):
             script.unlink(missing_ok=True)
 
 
+_NO_FIRMWARE = _find_firmware("t_echo") is None and _find_firmware("rak4631") is None
+
+
 @pytest.mark.asyncio
-@pytest.mark.skipif(
-    not (project_root / "build/zephyr/zephyr.elf").exists()
-    and not (project_root / "build/t_echo/zephyr/zephyr.elf").exists(),
-    reason="No firmware built"
-)
+@pytest.mark.skipif(_NO_FIRMWARE, reason="No firmware built")
 async def test_mesh_boots(mesh_simulation):
     """Test that all nodes boot successfully."""
     nodes = mesh_simulation["nodes"]
@@ -167,20 +169,21 @@ async def test_mesh_boots(mesh_simulation):
 
 
 @pytest.mark.asyncio
-@pytest.mark.skipif(
-    not (project_root / "build/zephyr/zephyr.elf").exists()
-    and not (project_root / "build/t_echo/zephyr/zephyr.elf").exists(),
-    reason="No firmware built"
-)
-async def test_mesh_tx_rx(mesh_simulation):
-    """Test that nodes can transmit and receive packets."""
+@pytest.mark.skipif(_NO_FIRMWARE, reason="No firmware built")
+async def test_mesh_tx(mesh_simulation):
+    """Test that nodes transmit LoRa frames into lichen-sim.
+
+    Validated on Renode 1.16.1: the T-Echo puck firmware beacons over the
+    SX1262 bridge, so at least one transmission reaches the simulation.
+
+    Note: end-to-end RX into firmware is not asserted here — the SX1262.cs
+    RX path is one-shot at SetRx (see bead project-LICHEN-r7h4.6) and the
+    bridge/time-model interaction is unresolved (project-LICHEN-r7h4.7).
+    """
     sim = mesh_simulation["sim"]
 
-    # Wait for nodes to start transmitting
-    await asyncio.sleep(5)
+    # Wait for nodes to boot and emit their first beacon.
+    await asyncio.sleep(10)
 
-    # Check simulation statistics
-    stats = sim.get_stats()
-    # ponytail: basic smoke test - just verify simulation ran
-    # More detailed assertions would check specific packet counts
-    assert stats["time_ms"] > 0, "Simulation didn't advance"
+    # metrics.transmissions counts frames handed to the medium by any node.
+    assert sim.metrics.transmissions > 0, "No LoRa transmissions reached lichen-sim"

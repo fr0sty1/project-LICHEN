@@ -15,8 +15,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Add project python path
-project_root = Path(__file__).parent.parent.parent.parent
+# Repo root: .../lichen/boards/renode/nrf52840_lichen/run_multi_node.py -> parents[4]
+project_root = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(project_root / "python" / "src"))
 
 from lichen.sim.simulation import Simulation
