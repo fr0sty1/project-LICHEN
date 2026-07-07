@@ -1,1 +1,6 @@
-{"backend":"flatfile","project_id":"70cad240-9ec1-484e-83d7-4e7ba42616ef"}
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "workspace"
+}

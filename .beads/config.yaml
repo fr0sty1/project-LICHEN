@@ -40,7 +40,9 @@
 # This is full database backup only. Cross-machine sync uses Dolt remotes.
 # Disabled for flatfile backend (does not support backup operations).
 backup:
-  enabled: false
+    enabled: false
+sync:
+    remote: "git+https://github.com/MarkAtwood/project-LICHEN.git"
 
 # Optional JSONL auto-export for viewers, interchange, and issue-level migration.
 # Disabled by default; enable only when an integration needs fresh .beads/issues.jsonl.
