@@ -1,0 +1,11 @@
+{
+  "id": "project-LICHEN-w3wf",
+  "title": "Test auto-sync",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "owner": "claude@ec2.local",
+  "created_at": "2026-07-07T01:06:41.463396473Z",
+  "created_by": "Claude Code (EC2)",
+  "updated_at": "2026-07-07T01:06:41.463423442Z"
+}
