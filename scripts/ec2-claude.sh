@@ -61,6 +61,7 @@ INSTANCE_ID=""
 VOLUME_ATTACHED=false
 CLEANUP_DONE=false
 PUBLIC_IP=""
+SQS_QUEUE_URL=""
 
 # === Colors (if terminal) ===
 if [[ -t 1 ]]; then
@@ -82,6 +83,43 @@ log_error() { echo -e "${RED}ERROR:${NC} $*" >&2; }
 # === AWS CLI wrapper with profile ===
 aws_cmd() {
     aws --profile "$AWS_PROFILE" --region "$AWS_REGION" "$@"
+}
+
+# === SQS Status Queue ===
+create_sqs_queue() {
+    local queue_name="ec2-claude-status-$(date +%s)-$$"
+    log_info "Creating SQS status queue..."
+    SQS_QUEUE_URL=$(aws_cmd sqs create-queue \
+        --queue-name "$queue_name" \
+        --attributes '{"MessageRetentionPeriod":"3600"}' \
+        --query 'QueueUrl' --output text 2>/dev/null) || {
+        log_warn "Failed to create SQS queue - status updates disabled"
+        SQS_QUEUE_URL=""
+        return 1
+    }
+    log_ok "Status queue created"
+    echo "---"
+    echo "SQS Queue URL (for --poll / --stop):"
+    echo "  $SQS_QUEUE_URL"
+    echo "---"
+}
+
+delete_sqs_queue() {
+    if [[ -n "$SQS_QUEUE_URL" ]]; then
+        aws_cmd sqs delete-queue --queue-url "$SQS_QUEUE_URL" 2>/dev/null || true
+    fi
+}
+
+# Send status message (local caller)
+sqs_status() {
+    [[ -z "$SQS_QUEUE_URL" ]] && return 0
+    local msg="$1"
+    local ts
+    ts=$(date -u +"%H:%M:%S")
+    aws_cmd sqs send-message \
+        --queue-url "$SQS_QUEUE_URL" \
+        --message-body "{\"ts\":\"$ts\",\"src\":\"local\",\"msg\":\"$msg\"}" \
+        >/dev/null 2>&1 || true
 }
 
 # === Cleanup Handler ===
@@ -144,6 +182,9 @@ cleanup() {
             (( elapsed += 5 ))
         done
     fi
+
+    # Delete SQS queue
+    delete_sqs_queue
 
     log_ok "Cleanup complete"
     exit $exit_code
@@ -560,7 +601,7 @@ run_claude() {
     escaped_prompt=$(printf '%s' "$prompt" | base64 | tr -d '\n')
 
     # Build remote script that decodes and runs the prompt
-    # Using bash -s to receive script via stdin with argument
+    # Args: $1=base64_prompt, $2=sqs_queue_url
     local remote_script
     read -r -d '' remote_script <<'REMOTE_CLAUDE' || true
 set -euo pipefail
@@ -585,19 +626,56 @@ fi
 
 # Decode prompt from base64 (passed as $1)
 PROMPT=$(printf '%s' "$1" | base64 -d)
+SQS_QUEUE_URL="${2:-}"
 
-# Start background beads sync loop (commits .beads changes every 30s)
+# SQS helper functions
+sqs_status() {
+    [[ -z "$SQS_QUEUE_URL" ]] && return 0
+    local msg="$1"
+    local ts=$(date -u +"%H:%M:%S")
+    aws sqs send-message \
+        --queue-url "$SQS_QUEUE_URL" \
+        --message-body "{\"ts\":\"$ts\",\"src\":\"ec2\",\"msg\":\"$msg\"}" \
+        --region us-east-2 >/dev/null 2>&1 || true
+}
+
+check_stop_signal() {
+    [[ -z "$SQS_QUEUE_URL" ]] && return 1
+    local msg
+    msg=$(aws sqs receive-message \
+        --queue-url "$SQS_QUEUE_URL" \
+        --max-number-of-messages 1 \
+        --visibility-timeout 0 \
+        --region us-east-2 \
+        --query 'Messages[0].Body' --output text 2>/dev/null) || return 1
+    [[ "$msg" == *'"cmd":"stop"'* ]] && return 0
+    return 1
+}
+
+STOP_FLAG="/tmp/ec2-claude-stop"
+
+# Start background beads sync + stop-check loop
 SYNC_PID_FILE="/tmp/beads-sync.pid"
 (
     while true; do
-        sleep 30
+        sleep 15
+        # Check for stop signal
+        if check_stop_signal; then
+            touch "$STOP_FLAG"
+            sqs_status "Stop signal received - terminating"
+            # Kill Claude process if running
+            pkill -f "claude -p" 2>/dev/null || true
+            exit 0
+        fi
+        # Sync beads
         cd /mnt/lichen-zephyr/workspace 2>/dev/null || continue
         if git diff --quiet .beads 2>/dev/null && git diff --cached --quiet .beads 2>/dev/null; then
-            continue  # No changes
+            continue
         fi
         git add .beads 2>/dev/null || continue
         git commit -m "beads: auto-sync" --no-verify 2>/dev/null || continue
         git push 2>/dev/null || true
+        sqs_status "Beads auto-synced"
     done
 ) &
 echo \$! > "\$SYNC_PID_FILE"
@@ -608,8 +686,11 @@ cleanup_sync() {
         kill "\$(cat "\$SYNC_PID_FILE")" 2>/dev/null || true
         rm -f "\$SYNC_PID_FILE"
     fi
+    rm -f "$STOP_FLAG"
 }
 trap cleanup_sync EXIT
+
+sqs_status "Claude starting"
 
 # Build system prompt additions for resilience
 RESILIENCE_PROMPT="CRITICAL RESILIENCE RULES (instance may terminate at any time):
@@ -633,16 +714,57 @@ claude -p \
 REMOTE_CLAUDE
 
     send_ssh_key
+    sqs_status "Running Claude on EC2"
     if [[ -n "$output_file" ]]; then
         # Save output to file
         ssh $SSH_OPTS -i "$SSH_KEY_PATH" "${SSH_USER}@${PUBLIC_IP}" \
-            "bash -s -- '$escaped_prompt'" <<< "$remote_script" > "$output_file"
+            "bash -s -- '$escaped_prompt' '$SQS_QUEUE_URL'" <<< "$remote_script" > "$output_file"
         log_ok "Output saved to: $output_file"
     else
         # Stream output to stdout
         ssh $SSH_OPTS -i "$SSH_KEY_PATH" "${SSH_USER}@${PUBLIC_IP}" \
-            "bash -s -- '$escaped_prompt'" <<< "$remote_script"
+            "bash -s -- '$escaped_prompt' '$SQS_QUEUE_URL'" <<< "$remote_script"
     fi
+    sqs_status "Claude finished"
+}
+
+# === Send stop signal to SQS queue ===
+send_stop_signal() {
+    local queue_url="$1"
+    aws_cmd sqs send-message \
+        --queue-url "$queue_url" \
+        --message-body '{"cmd":"stop"}' \
+        >/dev/null 2>&1 && log_ok "Stop signal sent" || log_error "Failed to send stop signal"
+    exit 0
+}
+
+# === Poll SQS queue for status messages ===
+poll_status() {
+    local queue_url="$1"
+    log_info "Polling status queue (Ctrl+C to stop)..."
+    while true; do
+        local result
+        result=$(aws_cmd sqs receive-message \
+            --queue-url "$queue_url" \
+            --max-number-of-messages 10 \
+            --wait-time-seconds 5 \
+            --query 'Messages[*].[Body,ReceiptHandle]' \
+            --output json 2>/dev/null) || continue
+
+        if [[ "$result" != "null" && "$result" != "[]" ]]; then
+            echo "$result" | jq -r '.[] | .[0]' 2>/dev/null | while read -r body; do
+                local ts msg src
+                ts=$(echo "$body" | jq -r '.ts // empty' 2>/dev/null)
+                src=$(echo "$body" | jq -r '.src // "?"' 2>/dev/null)
+                msg=$(echo "$body" | jq -r '.msg // .cmd // empty' 2>/dev/null)
+                [[ -n "$msg" ]] && echo "[$ts][$src] $msg"
+            done
+            # Delete received messages
+            echo "$result" | jq -r '.[] | .[1]' 2>/dev/null | while read -r handle; do
+                aws_cmd sqs delete-message --queue-url "$queue_url" --receipt-handle "$handle" 2>/dev/null || true
+            done
+        fi
+    done
 }
 
 # === Usage ===
@@ -650,7 +772,8 @@ usage() {
     cat <<EOF
 Usage: $(basename "$0") [OPTIONS] <prompt>
        $(basename "$0") [OPTIONS] -f <prompt-file>
-       echo "prompt" | $(basename "$0") [OPTIONS] -
+       $(basename "$0") --stop <queue-url>
+       $(basename "$0") --poll <queue-url>
 
 Run Claude Code headlessly on an ephemeral EC2 instance.
 
@@ -661,6 +784,8 @@ Options:
   -r, --repo URL       Git repo to clone (clones to workspace/)
   -b, --branch NAME    Branch to checkout (default: main)
   --no-repo            Skip repo clone (use existing workspace)
+  --stop <queue-url>   Send stop signal to running instance via SQS
+  --poll <queue-url>   Poll status messages from SQS queue
   -h, --help           Show this help message
 
 Environment Variables:
@@ -680,14 +805,18 @@ Examples:
   # Save output to file
   $(basename "$0") -o results.md "Generate a test suite for the API module"
 
-  # Read from stdin
-  cat complex-prompt.txt | $(basename "$0") -
+  # Poll status from another terminal
+  $(basename "$0") --poll https://sqs.us-east-2.amazonaws.com/123/queue-name
+
+  # Stop a running instance
+  $(basename "$0") --stop https://sqs.us-east-2.amazonaws.com/123/queue-name
 
 Notes:
   - The EBS volume ($EBS_VOLUME_ID) must contain:
     - env.sh: exports ANTHROPIC_API_KEY and any other needed env vars
     - Optionally: workspace/ directory as working directory
   - Instance is automatically terminated on completion or interrupt
+  - SQS queue URL is printed at startup for use with --poll and --stop
   - Uses AWS profile: $AWS_PROFILE
 
 EOF
@@ -735,6 +864,14 @@ main() {
                 REPO_URL=""
                 shift
                 ;;
+            --stop)
+                [[ -z "${2:-}" ]] && { log_error "--stop requires a queue URL"; exit 1; }
+                send_stop_signal "$2"
+                ;;
+            --poll)
+                [[ -z "${2:-}" ]] && { log_error "--poll requires a queue URL"; exit 1; }
+                poll_status "$2"
+                ;;
             -)
                 # Read from stdin
                 prompt=$(cat)
@@ -777,23 +914,32 @@ main() {
 
     # Run the workflow
     check_prerequisites
+    create_sqs_queue
+
+    sqs_status "Launching instance"
     launch_instance
+
+    sqs_status "Attaching EBS volume"
     attach_volume
 
     log_info "Waiting for SSH to become available..."
+    sqs_status "Waiting for SSH"
     wait_ssh_ready "$PUBLIC_IP"
     log_ok "SSH ready"
 
+    sqs_status "Mounting volume"
     mount_volume
 
     # Set up workspace with git repo if specified
     if [[ -n "$REPO_URL" ]]; then
+        sqs_status "Setting up workspace"
         setup_workspace "$REPO_URL" "$REPO_BRANCH"
     fi
 
     run_claude "$prompt" "$output_file"
 
     # Cleanup happens via EXIT trap
+    sqs_status "Task complete"
     log_ok "Task complete"
 }
 
