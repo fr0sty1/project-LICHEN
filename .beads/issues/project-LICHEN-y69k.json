@@ -1,0 +1,32 @@
+{
+  "id": "project-LICHEN-y69k",
+  "title": "ThinkNode M3: flash and test hardware",
+  "description": "Build and flash LICHEN firmware to ThinkNode M3. Test: USB console, LoRa TX/RX, GNSS, WiFi scan if supported.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T22:18:55.236957Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T22:19:01.882608Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-y69k",
+      "depends_on_id": "project-LICHEN-iw00",
+      "type": "blocks",
+      "created_at": "2026-07-10T22:19:00.570647Z"
+    },
+    {
+      "issue_id": "project-LICHEN-y69k",
+      "depends_on_id": "project-LICHEN-iajk",
+      "type": "blocks",
+      "created_at": "2026-07-10T22:19:00.899785Z"
+    },
+    {
+      "issue_id": "project-LICHEN-y69k",
+      "depends_on_id": "project-LICHEN-eau6",
+      "type": "parent-child",
+      "created_at": "2026-07-10T22:19:01.882607Z"
+    }
+  ]
+}
