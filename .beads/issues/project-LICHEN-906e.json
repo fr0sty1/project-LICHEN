@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-906e",
   "title": "Remove deprecated RX_POLL from protocol and servers",
-  "description": "Delete polling code after push-based RX is working: (1) protocol.py: remove MSG_RX_POLL, encode_rx_poll, decode_rx_poll, RX_OK, RX_EMPTY, (2) renode_server.py: remove _handle_rx_poll(), (3) SX1262.cs: remove PollRx() and any polling timer. Grep for RX_POLL/0x20 to find all references.",
+  "description": "Delete polling code after ALL callers converted: (1) sim_client.py uses MSG_RX_OK/decode_rx_ok, (2) node_server.py uses MSG_RX/encode_rx_ok. Cannot remove from protocol.py until these are converted. Premature removal reverted.",
   "acceptance_criteria": "No RX_POLL references remain; 2-node test still passes with push-based RX",
   "status": "open",
   "priority": 3,
@@ -10,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T18:01:38.2542Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T18:01:38.256375Z",
+  "updated_at": "2026-07-10T22:19:53.035467Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-906e",
@@ -23,6 +23,24 @@
       "depends_on_id": "project-LICHEN-hit3",
       "type": "blocks",
       "created_at": "2026-07-10T18:01:38.256375Z"
+    },
+    {
+      "issue_id": "project-LICHEN-906e",
+      "depends_on_id": "project-LICHEN-iw00",
+      "type": "related",
+      "created_at": "2026-07-10T22:19:23.447918Z"
+    },
+    {
+      "issue_id": "project-LICHEN-906e",
+      "depends_on_id": "project-LICHEN-dpdn",
+      "type": "blocks",
+      "created_at": "2026-07-10T22:19:52.707348Z"
+    },
+    {
+      "issue_id": "project-LICHEN-906e",
+      "depends_on_id": "project-LICHEN-4t5u",
+      "type": "blocks",
+      "created_at": "2026-07-10T22:19:53.035467Z"
     }
   ]
 }
