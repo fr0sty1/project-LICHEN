@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-ca0y",
+  "title": "task",
+  "description": "Policy: appendix-c-safety.md. Grep for strcpy/strcat/sprintf/gets. Check buffer ops have explicit sizes. Fix violations.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:44:39.754433Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:44:47.809716Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ca0y",
+      "depends_on_id": "project-LICHEN-mahy",
+      "type": "blocks",
+      "created_at": "2026-07-10T23:44:47.809716Z"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-jxnz",
+  "title": "task",
+  "description": "Policy: appendix-c-safety.md. Add cppcheck as secondary static analyzer. Run on all C files in CI.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:46:01.068825Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:46:07.594175Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-jxnz",
+      "depends_on_id": "project-LICHEN-mahy",
+      "type": "blocks",
+      "created_at": "2026-07-10T23:46:07.594175Z"
+    }
+  ]
+}

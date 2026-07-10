@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-txlu",
+  "title": "task",
+  "description": "Policy: appendix-c-safety.md §Compiler Hardening. Add -Wall -Wextra -Werror -Wformat=2 -Wformat-security -Wshadow -Wconversion -fstack-protector-strong to top-level CMake. Verify all C files compile clean.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:44:02.168725Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:44:06.619163Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-txlu",
+      "depends_on_id": "project-LICHEN-mahy",
+      "type": "blocks",
+      "created_at": "2026-07-10T23:44:06.619163Z"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-b1lx",
+  "title": "task",
+  "description": "Policy: appendix-c-safety.md. Create spec/test-vectors/schnorr48.json. Load in Python, Rust, C tests for cross-validation.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:44:38.528332Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:44:47.405511Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-b1lx",
+      "depends_on_id": "project-LICHEN-mahy",
+      "type": "blocks",
+      "created_at": "2026-07-10T23:44:47.405511Z"
+    }
+  ]
+}
