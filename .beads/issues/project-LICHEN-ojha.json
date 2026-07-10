@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-ojha",
+  "title": "Implement /config resource handlers per LCI spec",
+  "description": "Implement /config, /config/radio, /config/identity CoAP resources per LCI spec 17.5.2. GET returns current config as CBOR, PUT updates config. Include validation, persistence hooks, and restart-required signaling. Integrate with existing Zephyr settings subsystem if applicable.",
+  "acceptance_criteria": "coap-client GET/PUT on /config/* works; changes persist across reboot; invalid config rejected with 4.00",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "grinder",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T19:19:00.279099Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T19:19:00.279742Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ojha",
+      "depends_on_id": "project-LICHEN-jy3f",
+      "type": "blocks",
+      "created_at": "2026-07-10T19:19:00.279742Z"
+    }
+  ]
+}
