@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-gbuw",
+  "title": "Create shared test vectors for Rust/Zephyr parity",
+  "description": "Both implementations must pass identical test vectors. Create JSON/CBOR test cases for: (1) SCHC compression/decompression, (2) Link frame encode/decode + MIC, (3) RPL DIO/DAO/DAO-ACK parse/generate, (4) OSCORE encrypt/decrypt. Store in spec/test-vectors/. Both CI pipelines run against these.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T22:47:26.496214Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T22:47:30.830689Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-gbuw",
+      "depends_on_id": "project-LICHEN-k5zk",
+      "type": "blocks",
+      "created_at": "2026-07-10T22:47:30.830689Z"
+    }
+  ]
+}

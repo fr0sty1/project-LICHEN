@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-tnok",
+  "title": "ThinkNode M7: border router with PoE + WiFi backhaul",
+  "description": "Enable M7 as border router. Options: (1) PoE for power only, WiFi for backhaul, (2) If Ethernet PHY present, native Ethernet backhaul. Implement RPL DODAG root, prefix delegation. Clean single-cable indoor deployment.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T22:38:44.763451Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T22:38:49.72221Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tnok",
+      "depends_on_id": "project-LICHEN-fxft",
+      "type": "parent-child",
+      "created_at": "2026-07-10T22:38:49.72221Z"
+    }
+  ]
+}
