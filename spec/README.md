@@ -55,6 +55,11 @@ hardware as a reflash -- same radios, new protocol.
 - [Appendix C-E: Miscellaneous](appendix-misc.md) - Resource Directory, Comparison, Example
 - [Appendix F: SenML Profile](appendix-senml.md) - Sensor Data Format
 - [Appendix G: Design Rationale](appendix-design-rationale.md) - Inspirations and Constraints
+- [Appendix H: Bufferbloat Avoidance](appendix-bufferbloat.md) - Queue Management and Latency
+
+### Acknowledgments
+
+- [Acknowledgments](99-acknowledgments.md) - In memoriam: Dave Täht
 
 ### Historical / Deprecated
 
