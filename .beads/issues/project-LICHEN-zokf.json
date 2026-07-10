@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-zokf",
+  "title": "[epic] Renode LoRa simulation ecosystem extraction",
+  "description": "Meta-epic: extract LICHEN Renode work as standalone open-source projects.\n\nTHESIS: We accidentally built the missing LoRa simulation ecosystem for Renode. Nobody else has because the intersection of Renode expertise + LoRa expertise + CI motivation is tiny, and hardware is cheap enough that most people just buy boards.\n\nCHILDREN:\n- ddcu: SX126x peripheral (the core)\n- 94ju: Meshtastic board definitions (T-Echo, RAK4631, T-Deck)\n- tg2h: STM32WL SubGHz peripheral\n\nSEQUENCING:\n1. ddcu first (SX126x is dependency for boards)\n2. 94ju second (boards need SX126x)\n3. tg2h parallel (independent chip family)\n\nVALUE:\n- Enables CI for Meshtastic, LoRaWAN, RadioLib projects\n- Reduces barrier to LoRa firmware development\n- Positions LICHEN as good ecosystem citizen\n\nTIMING: P3 - do after simulation is working for our own needs (sz52 gate)",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T19:51:04.616504Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T19:51:04.616537Z",
+  "labels": [
+    "renode",
+    "extraction"
+  ]
+}
