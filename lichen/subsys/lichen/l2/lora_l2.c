@@ -41,6 +41,15 @@
 
 LOG_MODULE_REGISTER(lichen_lora_l2, CONFIG_LICHEN_LORA_L2_LOG_LEVEL);
 
+/*
+ * Radio-liveness hook. Apps that gate a watchdog feed on radio progress
+ * (puck main.c) provide a strong definition; standalone builds fall back to
+ * this no-op. Same pattern as lichen/lib/native/native.c.
+ */
+__attribute__((weak)) void lichen_radio_progress(void)
+{
+}
+
 /* --------------------------------------------------------------------------
  * State machine
  * -------------------------------------------------------------------------- */
@@ -200,6 +209,22 @@ static K_MUTEX_DEFINE(tx_buf_mutex);
  * not an error.
  */
 static atomic_t tx_pending;
+
+/*
+ * Hard mutual exclusion for driver calls (modem_mutex).
+ *
+ * tx_pending alone only stops the RX thread from RE-ARMING lora_recv(); it
+ * does nothing about a recv that is already in flight. Drivers do not
+ * tolerate concurrent recv+send: the LR1110 driver has no internal locking
+ * at all, so a send() issued while recv() is mid-poll interleaves SPI
+ * transactions on the same chip — corrupting radio state, spinning both
+ * sides in error/retry storms (heavy enough SPIM traffic to wedge nRF52840
+ * USB enumeration as collateral), and putting nothing on the air. The
+ * sx12xx driver merely returns -EBUSY. Wrap every lora_recv()/lora_send()
+ * in modem_mutex so a send waits out the in-flight RX window (bounded by
+ * RX_TIMEOUT_MS; k_mutex priority inheritance protects against inversion).
+ */
+static K_MUTEX_DEFINE(modem_mutex);
 
 /*
  * Internal TX buffer - copied before lora_send() to protect caller's data.
@@ -448,6 +473,15 @@ static void rx_thread(void *arg1, void *arg2, void *arg3)
      */
     while (lora_get_state() == LORA_RUNNING) {
         /*
+         * Radio-liveness heartbeat: apps gate their watchdog feed on this
+         * (see puck main.c). Each loop pass proves the radio path is not
+         * wedged; without it, an app main thread legitimately blocked in a
+         * long network call (CoAP request, ND resolution) has no other
+         * progress source and the watchdog resets the SoC.
+         */
+        lichen_radio_progress();
+
+        /*
          * Yield the modem to a pending TX. Without this, back-to-back
          * lora_recv() calls hold the modem near-continuously and
          * lichen_lora_l2_tx() can never acquire it (see tx_pending above).
@@ -457,8 +491,10 @@ static void rx_thread(void *arg1, void *arg2, void *arg3)
             continue;
         }
 
+        k_mutex_lock(&modem_mutex, K_FOREVER);
         ret = lora_recv(dev, rx_buf, sizeof(rx_buf),
                         K_MSEC(RX_TIMEOUT_MS), &rssi, &snr);
+        k_mutex_unlock(&modem_mutex);
 
         if (ret < 0) {
             if (ret == -EAGAIN) {
@@ -1147,15 +1183,20 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
      */
     atomic_inc(&tx_pending);
     int ret;
-    int64_t tx_deadline = k_uptime_get() + RX_TIMEOUT_MS + 500;
 
-    do {
-        ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)len);
-        if (ret != -EBUSY || k_uptime_get() >= tx_deadline) {
-            break;
-        }
-        k_sleep(K_MSEC(20));
-    } while (lora_get_state() == LORA_RUNNING);
+    /* Wait out any in-flight RX window (bounded by RX_TIMEOUT_MS; margin for
+     * the driver's own polling granularity), then transmit with exclusive
+     * driver access. Lock timeout keeps a wedged recv from blocking TX
+     * callers forever — surface -EBUSY instead. */
+    if (k_mutex_lock(&modem_mutex, K_MSEC(RX_TIMEOUT_MS + 1000)) != 0) {
+        atomic_dec(&tx_pending);
+        secure_zero(tx_buf, sizeof(tx_buf));
+        k_mutex_unlock(&tx_buf_mutex);
+        LOG_ERR("lora_l2: TX modem acquire timed out");
+        return -EBUSY;
+    }
+    ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)len);
+    k_mutex_unlock(&modem_mutex);
 
     atomic_dec(&tx_pending);
 

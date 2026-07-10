@@ -94,6 +94,23 @@ int lichen_peer_add(const uint8_t eui64[8], const uint8_t pubkey[32]);
  */
 int lichen_peer_remove(const uint8_t eui64[8]);
 
+/**
+ * @brief Read the L2 TX outcome counters.
+ *
+ * attempts counts every lichen_l2_send() invocation; errors counts the ones
+ * that returned < 0; last_err is the most recent negative return (0 if none).
+ * Any pointer may be NULL.
+ */
+void lichen_l2_get_tx_stats(uint32_t *attempts, uint32_t *errors, int *last_err);
+
+/**
+ * @brief Read the L2 RX outcome counters.
+ *
+ * frames counts every frame handed up by the radio; accepted counts the ones
+ * injected into the IPv6 stack; last_err is the most recent RX failure code.
+ */
+void lichen_l2_get_rx_stats(uint32_t *frames, uint32_t *accepted, int *last_err);
+
 /*
  * Publish the local L2 link identity to the app-identity provider.
  *
@@ -103,6 +120,52 @@ int lichen_peer_remove(const uint8_t eui64[8]);
  */
 int lichen_l2_publish_app_identity(const char *display_name,
 				   const char *firmware_name);
+
+/**
+ * @brief Load the local Ed25519 signing keypair from a 32-byte seed.
+ *
+ * Enables Schnorr-48 signing of outgoing frames (link_ctx.has_key). On
+ * success, the derived public key is written to pubkey so the caller can
+ * publish it (e.g. to peers via announce or out-of-band provisioning).
+ *
+ * SECURITY: The seed is the long-term signing secret. It MUST come from a
+ * CSPRNG or secure storage. Thread-safe (takes both L2 mutexes).
+ *
+ * @return 0 on success, -EINVAL on NULL args, -ENODEV if iface init failed,
+ *         -EAGAIN if the link context is not yet initialized.
+ */
+int lichen_l2_load_key(const uint8_t seed[32], uint8_t pubkey[32]);
+
+/**
+ * @brief Load the shared AES-CCM link key (link_ctx.has_link_key).
+ *
+ * Enables payload encryption + MIC-64. Without it, TX falls back to the
+ * CRC32 MIC, which requires CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC.
+ *
+ * @return 0 on success, -EINVAL/-ENODEV/-EAGAIN as lichen_l2_load_key().
+ */
+int lichen_l2_load_link_key(const uint8_t link_key[16]);
+
+#ifdef CONFIG_LICHEN_L2_DEV_PROVISIONING
+/**
+ * @brief INSECURE bench provisioning: fixed dev keypair + one static peer.
+ *
+ * Loads the publicly-known development seed (shared by every node built
+ * with CONFIG_LICHEN_L2_DEV_PROVISIONING) and registers the peer named by
+ * CONFIG_LICHEN_L2_DEV_PEER_EUI64 with that same dev public key.
+ *
+ * SECURITY: Provides no real authentication — the seed is in the source
+ * tree. Exists only so the CoAP/IPv6 path can run on the bench before the
+ * announce/EDHOC provisioning path lands. Never enable in production.
+ *
+ * On success, the parsed peer EUI-64 is written to peer_eui64_out (if not
+ * NULL) so callers can derive the peer's link-local address.
+ *
+ * @return 0 on success, negative errno on failure (including -EINVAL for a
+ *         malformed CONFIG_LICHEN_L2_DEV_PEER_EUI64).
+ */
+int lichen_l2_dev_provision(uint8_t peer_eui64_out[8]);
+#endif
 
 #ifdef CONFIG_LICHEN_L2_TEST_HOOKS
 #define LICHEN_L2_TEST_CAPTURE_MAX 256
