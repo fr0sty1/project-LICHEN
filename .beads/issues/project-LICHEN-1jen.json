@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-1jen",
+  "title": "SX1262.cs: send RX_EXIT on SetStandby",
+  "description": "Send RX_EXIT to sim when firmware leaves RX mode via SetStandby (0x80) or SetTx (0x83). Do not send RX_EXIT after receiving RX_PACKET/RX_TIMEOUT since sim already transitioned node out of RX_WAIT. Track rxMode state and only send if currently in RX mode.",
+  "acceptance_criteria": "SetStandby/SetTx while in RX mode sends RX_EXIT; sim node state transitions to IDLE",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "grinder",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T18:01:28.669121Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T18:01:28.671414Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1jen",
+      "depends_on_id": "project-LICHEN-5gh4",
+      "type": "blocks",
+      "created_at": "2026-07-10T18:01:28.671414Z"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-1b56",
+  "title": "Implement /keys resource handlers per LCI spec",
+  "description": "Implement /keys CoAP resource per LCI spec 17.5.5. GET /keys lists peer IIDs, GET /keys/{iid} returns peer pubkey, PUT adds/updates peer key, DELETE removes peer. Keys stored in Zephyr settings or secure storage. Access control: require authentication for write operations.",
+  "acceptance_criteria": "coap-client can list, read, add, delete peer keys; unauthorized PUT/DELETE rejected",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "grinder",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T19:19:12.724437Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T19:19:12.725023Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1b56",
+      "depends_on_id": "project-LICHEN-jy3f",
+      "type": "blocks",
+      "created_at": "2026-07-10T19:19:12.725023Z"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-i60r",
+  "title": "Implement /msg resource handlers per LCI spec",
+  "description": "Implement /msg/inbox, /msg/sent, /msg/ack CoAP resources per LCI spec 17.5.7. POST to /msg/sent queues outbound message, GET /msg/inbox retrieves inbound (with Observe for push), POST /msg/ack acknowledges receipt. CBOR format with destination, payload, timestamp, status.",
+  "acceptance_criteria": "Messages can be sent via POST, received via GET/Observe, acknowledged; round-trip test with 2 nodes",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "grinder",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T19:19:12.798762Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T19:19:12.799358Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i60r",
+      "depends_on_id": "project-LICHEN-jy3f",
+      "type": "blocks",
+      "created_at": "2026-07-10T19:19:12.799358Z"
+    }
+  ]
+}

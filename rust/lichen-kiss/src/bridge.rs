@@ -119,6 +119,10 @@ pub struct DecodedKissFrame<'a> {
 #[derive(Debug, Clone, Default)]
 pub struct KissBridge {
     /// Default epoch for outgoing frames.
+    ///
+    /// For reboot resilience without flash persistence, callers should set this
+    /// to a random value in [128, 255] after construction. Half-space replay
+    /// arithmetic treats upper-half counters as "ahead" of stale receiver windows.
     pub default_epoch: u8,
     /// Default sequence number (incremented on each TX).
     pub seqnum: LinkSeqNum,

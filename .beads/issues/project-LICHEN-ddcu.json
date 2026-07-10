@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-ddcu",
+  "title": "[epic] Extract Renode SX126x LoRa peripheral as standalone project",
+  "description": "Phase 1: Extract SX1262.cs as core of renode-lora-peripherals monorepo.\n\nSCOPE:\n1. Create repo structure with peripherals/sx126x/\n2. Extract SX1262.cs, remove LICHEN-specific bits\n3. Add standalone loopback mode (no external sim needed for single-node TX/RX)\n4. Keep bridge mode for multi-node (TCP socket to external sim)\n5. README with Renode integration instructions\n6. CI: Renode boots, peripheral loads, basic SPI opcode test\n7. Example .repl snippet\n\nDELIVERABLE: renode-lora-peripherals repo exists with working SX126x peripheral\n\nACCEPTANCE: Someone can add SX126x to their Renode project without LICHEN",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T19:50:23.692651Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T19:52:32.390886Z",
+  "labels": [
+    "renode",
+    "extraction"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ddcu",
+      "depends_on_id": "project-LICHEN-zokf",
+      "type": "parent-child",
+      "created_at": "2026-07-10T19:51:10.974339Z"
+    }
+  ]
+}

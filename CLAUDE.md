@@ -160,6 +160,35 @@ Use `SECURITY:` prefix for comments highlighting security-critical code paths (e
 - Fix the code. If unfixable within scope, escalate.
 - Tests must have independent oracles: known test vectors, cross-validation, or reference implementations. A test that uses code-under-test as its own oracle proves nothing.
 
+### 7. AWS EC2 Access and Safety
+
+**Authentication:**
+```bash
+export AWS_PROFILE=AdministratorAccess-921772462201
+export AWS_REGION=us-east-2
+# If expired: aws sso login --profile AdministratorAccess-921772462201
+```
+
+**CRITICAL: This AWS account has multiple projects. Only touch LICHEN resources.**
+
+LICHEN resources are tagged `Project=LICHEN`. Before ANY destructive operation:
+```bash
+aws ec2 describe-tags --filters "Name=resource-id,Values=<id>" \
+  --query 'Tags[?Key==`Project`].Value' --output text
+# Must return "LICHEN" or be something YOU launched this session
+```
+
+**DO NOT TOUCH** (not LICHEN resources):
+- `ceph-fips-*`, `proxmox-fips-*`, `wolfssl-*`, `fenrir-*` instances
+- Any instance/volume/resource without `Project=LICHEN` tag
+
+**Safe operations:**
+- Launch instances with `Project=LICHEN` tag (use `./scripts/ec2-claude.sh`)
+- Terminate instances YOU launched this session (track IDs from launch output)
+- Attach/detach LICHEN EBS volume `vol-017cfe48bd75340d0`
+
+**When in doubt, ask before terminating.** See `AGENTS.md` for full AWS details.
+
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation.

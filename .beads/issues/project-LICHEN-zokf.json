@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-zokf",
+  "title": "[epic] Renode LoRa simulation ecosystem extraction",
+  "description": "Meta-epic: extract LICHEN Renode work as standalone open-source monorepo.\n\nREPO: renode-lora-peripherals (single repo, split later if demand)\n\nSTRUCTURE:\n  renode-lora-peripherals/\n  ├── peripherals/\n  │   ├── sx126x/           # SX1261/62/68 (490 lines)\n  │   └── stm32wl-subghz/   # STM32WL integrated radio (341 lines)\n  ├── boards/\n  │   ├── t-echo/\n  │   ├── rak4631/\n  │   ├── t-deck/\n  │   ├── heltec-wifi-lora32-v3/\n  │   └── nucleo-wl55jc/\n  ├── stubs/\n  │   ├── gps.cs            # NMEA over UART (218 lines)\n  │   └── ble.cs            # nRF52840 BLE stub (511 lines)\n  ├── examples/\n  │   ├── zephyr-lora-tx/\n  │   └── meshtastic-boot/\n  └── README.md\n\nWHY MONOREPO:\n- Audience is tiny, dont over-engineer\n- Boards depend on peripherals, avoids version skew\n- One CI matrix, one issue tracker\n- Can still upstream individual .cs files to Renode as PRs\n- Easy to fork out SX126x later if it takes off independently\n\nCHILDREN (now phases, not separate repos):\n- ddcu: Phase 1 - SX126x peripheral extraction\n- 94ju: Phase 2 - Board definitions extraction\n- tg2h: Phase 3 - STM32WL peripheral extraction\n\nTIMING: P3 - after simulation works for our needs (sz52 gate)",
+  "notes": "GitHub repo created: https://github.com/MarkAtwood/renode-lora-peripherals\n\nInitial commit includes:\n- README with quick start and structure\n- RATIONALE explaining the simulation gap\n- Directory scaffolding for all components\n- AGPL-3.0 license\n\nPending: actual peripheral extraction (phases ddcu/94ju/tg2h)",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T19:51:04.616504Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T19:57:09.001892Z",
+  "labels": [
+    "renode",
+    "extraction"
+  ]
+}

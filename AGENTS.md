@@ -333,15 +333,100 @@ When the user says "fix all issues," the correct response is to fix **every sing
 
 Test vectors live in `test/vectors/` as JSON. Both implementations read and verify against these.
 
-If a Zephyr build or test is Linux-only and cannot run on the local host, use AWS EC2 via the AWS CLI instead of skipping it. Whenever using EC2 for Zephyr work, attach and use the prepared EBS builder cache described below. The local AWS profile is `AdministratorAccess-921772462201`; keep instance lifetimes short, use the smallest practical instance type, tag temporary resources with the project/task, and shut them down or terminate them when finished. You can also connect to the EC2 instance console itself both over SSH and through the AWS API, so use those paths to watch instance boot, diagnose cloud-init or package-install failures, and confirm the builder is ready before starting long Zephyr builds.
+If a Zephyr build or test is Linux-only and cannot run on the local host, use AWS EC2 via the AWS CLI instead of skipping it. See the **AWS EC2 Access** section below for authentication and safety rules.
+
+## AWS EC2 Access
+
+### Authentication
+
+The AWS account is accessed via SSO. To authenticate:
+
+```bash
+# Profile name (already configured in ~/.aws/config)
+export AWS_PROFILE=AdministratorAccess-921772462201
+
+# Region for LICHEN resources
+export AWS_REGION=us-east-2
+
+# If SSO session expired, re-authenticate:
+aws sso login --profile AdministratorAccess-921772462201
+
+# Verify access:
+aws sts get-caller-identity
+```
+
+The profile uses SSO session `claudsession` with account `921772462201`.
+
+### CRITICAL: Resource Isolation
+
+**This AWS account contains resources for multiple projects.** You MUST only interact with LICHEN resources.
+
+#### Identifying LICHEN Resources
+
+LICHEN resources are tagged:
+- `Project=LICHEN`
+- `LaunchedBy=ec2-claude-sh` (for instances launched by the script)
+
+Before ANY destructive operation (terminate, delete, stop), verify the resource belongs to LICHEN:
+
+```bash
+# Check instance tags before terminating
+aws ec2 describe-tags --filters "Name=resource-id,Values=<instance-id>" \
+  --query 'Tags[?Key==`Project`].Value' --output text
+# Must return "LICHEN" or be an instance YOU launched this session
+
+# List only LICHEN instances
+aws ec2 describe-instances --filters "Name=tag:Project,Values=LICHEN" \
+  --query 'Reservations[*].Instances[*].[InstanceId,InstanceType,Tags[?Key==`Name`].Value|[0],State.Name]' \
+  --output table
+```
+
+#### Resources You MUST NOT Touch
+
+The following are NOT LICHEN resources — do not terminate, stop, modify, or delete:
+
+- `ceph-fips-*` instances (Ceph FIPS testing)
+- `proxmox-fips-*` instances (Proxmox FIPS lab)
+- `wolfssl-*` instances (wolfSSL projects)
+- `fenrir-*` instances (Fenrir project)
+- Any instance without `Project=LICHEN` tag
+- Any EBS volume not explicitly listed in this document
+- Any security group, VPC, or subnet you didn't create
+
+#### Safe Operations
+
+You MAY:
+- Launch new instances with `Project=LICHEN` and `LaunchedBy=<your-identifier>` tags
+- Terminate instances YOU launched in the current session (track instance IDs)
+- Attach/detach the LICHEN EBS volume (`vol-017cfe48bd75340d0`)
+- Create/delete temporary security groups tagged with `Project=LICHEN`
+
+You MUST NOT:
+- Terminate instances found via `describe-instances` unless you have the launch record
+- Delete or modify EBS volumes other than attaching/detaching the LICHEN cache volume
+- Modify VPCs, subnets, or route tables
+- Create resources without proper LICHEN tags
+
+### Launching EC2 Instances
+
+Use `./scripts/ec2-claude.sh` for standard LICHEN EC2 operations — it handles tagging, volume attachment, and cleanup automatically.
+
+For manual launches, always include tags:
+
+```bash
+aws ec2 run-instances \
+  --tag-specifications 'ResourceType=instance,Tags=[{Key=Project,Value=LICHEN},{Key=LaunchedBy,Value=claude-session},{Key=Name,Value=lichen-grinder-<task>}]' \
+  ...
+```
 
 ### AWS Zephyr Builder EBS Cache
 
 Always use the persistent single-AZ EBS builder cache for EC2 Zephyr builds/tests:
 
-- Volume: `vol-0875d0df8bdf82a58`
+- Volume: `vol-017cfe48bd75340d0`
 - Region/AZ: `us-east-2` / `us-east-2a`
-- Size/type: 100 GiB `gp3`
+- Size/type: 200 GiB `gp3`
+- Name tag: `lichen-zephyr-arm64`
 - Filesystem label: `LICHEN_ZEPHYR`
 - Mount point: `/mnt/lichen-zephyr`
 - Prepared contents: Zephyr SDK `0.16.8`, repo west workspace pinned to Zephyr `v3.7.0`, Zephyr Python venv, west modules, ccache, pip/uv cache directories, and helper scripts.
@@ -351,9 +436,9 @@ Workflow for a fresh EC2 instance in `us-east-2a`:
 
 ```bash
 aws ec2 attach-volume --profile AdministratorAccess-921772462201 --region us-east-2 \
-  --volume-id vol-0875d0df8bdf82a58 --instance-id <instance-id> --device /dev/sdf
+  --volume-id vol-017cfe48bd75340d0 --instance-id <instance-id> --device /dev/sdf
 
-sudo /mnt/lichen-zephyr/scripts/mount-volume.sh vol-0875d0df8bdf82a58 /mnt/lichen-zephyr
+sudo /mnt/lichen-zephyr/scripts/mount-volume.sh vol-017cfe48bd75340d0 /mnt/lichen-zephyr
 /mnt/lichen-zephyr/scripts/bootstrap-host.sh   # only if host packages are missing
 . /mnt/lichen-zephyr/env.sh
 cd /mnt/lichen-zephyr/work/project-LICHEN

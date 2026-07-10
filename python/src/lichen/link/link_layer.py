@@ -131,7 +131,10 @@ class LinkLayer:
         default=None, repr=False
     )
     cad_enabled: bool = field(default=True)
-    _epoch: int = field(default=0, repr=False)
+    # ponytail: random epoch in [128,255] for reboot resilience without flash.
+    # Half-space arithmetic treats upper-half counters as "ahead" of lower-half.
+    # SECURITY: ESP32 HW RNG is weak before radio init; see link_ctx.c for details.
+    _epoch: int = field(default_factory=lambda: random.randint(128, 255), repr=False)
     _seqnum: int = field(default=0, repr=False)
     _pinned_keys: dict[bytes, bytes] = field(default_factory=dict, repr=False)
 

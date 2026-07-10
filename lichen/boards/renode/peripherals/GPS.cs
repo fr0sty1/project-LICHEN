@@ -9,9 +9,9 @@
 //
 // Usage in .repl:
 //   gps: Sensors.GPS @ uart1
-//       latitude: 47.6062
-//       longitude: -122.3321
-//       altitude: 56.0
+//       latitude: 37.2350
+//       longitude: -115.8111
+//       altitude: 1360.0
 //
 // L76K on T-Echo uses 9600 baud UART (default for most GPS modules).
 
@@ -31,10 +31,10 @@ namespace Antmicro.Renode.Peripherals.Sensors
             this.machine = machine;
             txQueue = new Queue<byte>();
 
-            // Default position: Seattle
-            latitude = 47.6062;
-            longitude = -122.3321;
-            altitude = 56.0;
+            // Default position: Area 51 (neutral test coords)
+            latitude = 37.2350;
+            longitude = -115.8111;
+            altitude = 1360.0;
 
             // Track last output time to ensure 1Hz rate
             lastOutputTicks = 0;
