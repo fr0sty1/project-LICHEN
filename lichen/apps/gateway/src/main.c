@@ -17,6 +17,10 @@
 
 #include <lichen/hal.h>
 
+#if IS_ENABLED(CONFIG_LICHEN_L2_DEV_PROVISIONING)
+#include "lichen_l2.h"
+#endif
+
 #include "config_apply.h"
 #include "config_cbor.h"
 #include "status_cbor.h"
@@ -383,6 +387,17 @@ int main(void)
 	 * available to the IPv6 stack for sending/receiving packets over LoRa.
 	 */
 	LOG_INF("LICHEN L2 enabled - LoRa handled by network stack");
+
+#if IS_ENABLED(CONFIG_LICHEN_L2_DEV_PROVISIONING)
+	/* SECURITY: bench-only fixed key + static peer; see Kconfig warning. */
+	{
+		int prov = lichen_l2_dev_provision(NULL);
+
+		if (prov != 0) {
+			LOG_ERR("L2 dev provisioning failed: %d", prov);
+		}
+	}
+#endif
 #elif LICHEN_GATEWAY_HAS_LORA
 	int ret;
 

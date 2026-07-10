@@ -23,6 +23,14 @@
 
 #include "puck_location.h"
 
+#if IS_ENABLED(CONFIG_LICHEN_L2)
+#include <zephyr/net/net_if.h>
+#include <zephyr/net/socket.h>
+#include <lichen/coap_client.h>
+#include "lichen_l2.h"
+#include "ipv6_addr.h"
+#endif
+
 /* Stall-marker uses the nRF GPREGRET2 retention register (nRF boards only). */
 #if defined(CONFIG_SOC_FAMILY_NORDIC_NRF)
 #include <nrfx_power.h>
@@ -98,9 +106,11 @@ static void on_native_rx(uint8_t msg_type, const uint8_t *buf, size_t len)
 #endif
 
 /* --------------------------------------------------------------------------
- * LoRa helpers
+ * LoRa helpers (raw-radio mode only — under CONFIG_LICHEN_L2 the net
+ * interface owns the half-duplex radio and these would fight its RX thread)
  * -------------------------------------------------------------------------- */
 
+#if !IS_ENABLED(CONFIG_LICHEN_L2)
 static int lora_set_mode(const struct device *dev, bool tx)
 {
 	struct lora_modem_config cfg = {
@@ -115,6 +125,7 @@ static int lora_set_mode(const struct device *dev, bool tx)
 	};
 	return lora_config(dev, &cfg);
 }
+#endif /* !CONFIG_LICHEN_L2 */
 
 /* Main-loop phase marker (retained across watchdog reset — see stall_report).
  *
@@ -138,6 +149,7 @@ static inline void set_phase(enum stall_phase ph)
 #endif
 }
 
+#if !IS_ENABLED(CONFIG_LICHEN_L2)
 static void send_beacon(const struct device *dev)
 {
 	/* Build beacon header */
@@ -175,6 +187,25 @@ static void send_beacon(const struct device *dev)
 	set_phase(PH_CFG_RX);
 	lora_set_mode(dev, false);
 }
+#endif /* !CONFIG_LICHEN_L2 */
+
+#if IS_ENABLED(CONFIG_LICHEN_L2)
+static void on_coap_response(void *user_data, int status, uint8_t code,
+			     const uint8_t *payload, size_t payload_len)
+{
+	ARG_UNUSED(user_data);
+
+	if (status != LICHEN_COAP_OK) {
+		LOG_WRN("CoAP response error: %d", status);
+		return;
+	}
+	LOG_INF("CoAP %u.%02u response, %u B payload",
+		code >> 5, code & 0x1F, (unsigned int)payload_len);
+	if (payload_len > 0) {
+		LOG_HEXDUMP_INF(payload, MIN(payload_len, 64), "payload");
+	}
+}
+#endif /* CONFIG_LICHEN_L2 */
 
 /* --------------------------------------------------------------------------
  * Hardware watchdog — resilience against radio-driver lockups
@@ -316,12 +347,25 @@ static void stall_report(void)
 
 int main(void)
 {
-	const struct device *lora_dev;
 	struct lichen_hal_identity identity;
 	int ret;
 
 	LOG_INF("LICHEN puck starting");
 	stall_report();
+
+#if IS_ENABLED(CONFIG_LICHEN_L2)
+	/* Quiesce the radio before USB bring-up. The L2 RX thread polls the
+	 * radio over SPI (EasyDMA) continuously from NET_DEVICE_INIT — on
+	 * nRF52840 that traffic during USBD enumeration wedges USB into a
+	 * permanent -110 descriptor-read loop (both USB stacks, both radios;
+	 * bd lora_ipv6_mesh-r002). Brought back up after USB settles below. */
+	struct net_if *l2_iface =
+		net_if_get_first_by_type(&NET_L2_GET_NAME(lichen_l2));
+
+	if (l2_iface != NULL) {
+		net_if_down(l2_iface);
+	}
+#endif
 
 	/* Enable USB early so CDC-ACM enumerates before peripheral drivers
 	 * start — guarantees serial log visibility even if LoRa/GNSS fails. */
@@ -331,6 +375,9 @@ int main(void)
 #endif
 
 	lichen_hal_identity_get(&identity);
+
+#if !IS_ENABLED(CONFIG_LICHEN_L2)
+	const struct device *lora_dev;
 
 	/* LoRa radio (via the board-capability HAL) */
 	ret = lichen_hal_lora_device_get(&lora_dev);
@@ -343,6 +390,7 @@ int main(void)
 		k_sleep(K_FOREVER);
 	}
 	LOG_INF("LoRa SF10/125kHz/CR4-5 @ %u Hz", LORA_FREQ_HZ);
+#endif
 
 	/* GNSS power-on (PM_DEVICE start) */
 #if IS_ENABLED(CONFIG_LICHEN_HAS_GNSS)
@@ -366,6 +414,89 @@ int main(void)
 	 * wedge. */
 	wdt_init();
 
+#if IS_ENABLED(CONFIG_LICHEN_L2)
+	/* L2/CoAP mode: the LICHEN net interface owns the radio and delivers
+	 * IPv6 both ways; the app talks CoAP to the dev-provisioned peer.
+	 * GET /config rather than /status: the /status response (~294 B)
+	 * exceeds the L2 MTU until fragmentation or a trimmed payload lands
+	 * (bd lora_ipv6_mesh-r002). */
+	static const char *const req_path[] = { "config", NULL };
+	uint8_t peer_eui64[LICHEN_L2_ADDR_LEN];
+	uint8_t peer_iid[LICHEN_L2_ADDR_LEN];
+	struct sockaddr_in6 peer_addr = {
+		.sin6_family = AF_INET6,
+		.sin6_port = htons(5683),
+	};
+	LOG_INF("L2/CoAP mode on %s", identity.board_name);
+
+	if (l2_iface == NULL) {
+		LOG_ERR("no LICHEN L2 iface — idling for debug");
+		while (1) {
+			wdt_kick();
+			k_sleep(K_SECONDS(1));
+		}
+	}
+
+	/* USB settle: the iface (and its radio-polling RX thread) stays down
+	 * until enumeration is safely over — see the net_if_down() above. */
+	for (int i = 0; i < 10; i++) {
+		wdt_kick();
+		k_sleep(K_SECONDS(1));
+	}
+	net_if_up(l2_iface);
+	k_sleep(K_MSEC(500));
+
+	/* Provision AFTER net_if_up: the enable path re-initializes the link
+	 * context, which would wipe an earlier-loaded key. */
+#if IS_ENABLED(CONFIG_LICHEN_L2_DEV_PROVISIONING)
+	ret = -EAGAIN;
+	for (int i = 0; i < 50 && ret == -EAGAIN; i++) {
+		ret = lichen_l2_dev_provision(peer_eui64);
+		if (ret == -EAGAIN) {
+			wdt_kick();
+			k_sleep(K_MSEC(100));
+		}
+	}
+#else
+	/* No provisioning path yet besides the dev one: without a signing key
+	 * and a peer, nothing can authenticate. Stay up (USB/native alive)
+	 * but radio-idle. */
+	ret = -ENOTSUP;
+#endif
+	if (ret != 0) {
+		LOG_ERR("L2 provisioning unavailable (%d) — idling", ret);
+		while (1) {
+			wdt_kick();
+			k_sleep(K_SECONDS(1));
+		}
+	}
+
+	lichen_eui64_to_iid(peer_eui64, peer_iid);
+	lichen_make_link_local(peer_iid,
+			       (struct in6_addr *)&peer_addr.sin6_addr);
+	peer_addr.sin6_scope_id = net_if_get_by_iface(l2_iface);
+
+	ret = lichen_coap_client_init();
+	if (ret != 0) {
+		LOG_ERR("CoAP client init failed: %d", ret);
+	}
+
+	while (1) {
+		set_phase(PH_TX);
+		ret = lichen_coap_get(&peer_addr, req_path,
+				      on_coap_response, NULL);
+		if (ret != 0) {
+			LOG_WRN("CoAP GET send failed: %d", ret);
+		} else {
+			LOG_INF("CoAP GET /config sent");
+		}
+		set_phase(PH_RECV);
+		for (int i = 0; i < 15; i++) {
+			wdt_kick();
+			k_sleep(K_SECONDS(1));
+		}
+	}
+#else /* !CONFIG_LICHEN_L2 — raw-radio beacon mode */
 	/* Main loop: RX with 5s timeout, beacon every 60s. */
 	uint8_t buf[LORA_MAX_FRAME];
 	int16_t rssi;
@@ -430,4 +561,5 @@ int main(void)
 		}
 #endif
 	}
+#endif /* CONFIG_LICHEN_L2 */
 }
