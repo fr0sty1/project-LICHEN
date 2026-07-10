@@ -66,7 +66,12 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 
 	/* ponytail: random epoch in [128,255] for reboot resilience without flash.
 	 * Half-space arithmetic treats upper-half counters as "ahead" of lower-half.
-	 * Callers with persisted epoch should call lichen_link_set_epoch() after init. */
+	 * Callers with persisted epoch should call lichen_link_set_epoch() after init.
+	 *
+	 * SECURITY: ESP32 HW RNG produces weak/predictable output before WiFi/BT radio
+	 * init. On ESP32 without epoch persistence, an attacker who knows the boot
+	 * timing may predict the epoch. Mitigation: persist epoch to flash, or defer
+	 * this call until after radio subsystem init. */
 	uint8_t rand_byte;
 #ifdef __ZEPHYR__
 	sys_csrand_get(&rand_byte, 1);

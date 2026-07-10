@@ -120,6 +120,12 @@ distributed in [128, 255]. This ensures the 24-bit counter starts in the upper
 half of the counter space (8M-16M), so half-space arithmetic treats it as
 "ahead" of any counter value peers may have cached in the lower half.
 
+> **Security Note:** Some platforms (notably ESP32) have weak hardware RNG output
+> before the radio subsystem initializes. On such platforms without epoch
+> persistence, an attacker who knows boot timing may predict the epoch.
+> Implementations on affected platforms SHOULD either persist epoch to flash or
+> defer random initialization until after radio subsystem init.
+
 Epoch persistence is RECOMMENDED but not required. Implementations that persist
 epoch SHOULD:
 - Write epoch to flash on every increment
