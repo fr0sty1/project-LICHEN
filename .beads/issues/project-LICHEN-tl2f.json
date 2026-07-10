@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-tl2f",
+  "title": "Compliance: rust/lichen-link/link_layer.rs TOFU",
+  "description": "Policy: 06-security.md §8.6. File: rust/lichen-link/src/link_layer.rs. Status: COMPLIANT. First contact pins pubkey (line 407), subsequent contacts detect KeyChange (lines 382-391), unpin_peer() for rotation (lines 271-273). Tests verify behavior (lines 610-684).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:16:43.946303Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:17:06.02275Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tl2f",
+      "depends_on_id": "project-LICHEN-ygnk",
+      "type": "parent-child",
+      "created_at": "2026-07-10T23:17:06.02275Z"
+    }
+  ]
+}

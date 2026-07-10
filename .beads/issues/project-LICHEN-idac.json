@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-idac",
+  "title": "Compliance: oscore/oscore.c OSCORE",
+  "description": "Policy: 06-security.md §8.7. File: lichen/subsys/lichen/oscore/oscore.c. Status: COMPLIANT. Full RFC 8613 implementation with AES-CCM-16-64-128, HKDF-SHA256, replay protection, and proper nonce computation. OSCORE context creation, protect_request, unprotect_request, protect_response, unprotect_response all implemented.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:16:34.508138Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:16:34.508176Z"
+}

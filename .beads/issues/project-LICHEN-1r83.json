@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-1r83",
+  "title": "FIX: Python MeshtasticAdapter silent drop (python/src/lichen/interface/meshtastic/adapter.py)",
+  "description": "Policy VIOLATION: spec/appendix-bufferbloat.md §5 'No Silent Drops'. Current: deque maxlen=64 silently discards oldest. Fix: raise QueueFull error instead of silent drop. This is a bug, not just missing feature.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:10:51.46849Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:10:59.351237Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1r83",
+      "depends_on_id": "project-LICHEN-9j4k",
+      "type": "parent-child",
+      "created_at": "2026-07-10T23:10:59.351237Z"
+    }
+  ]
+}

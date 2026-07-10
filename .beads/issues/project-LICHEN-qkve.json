@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-qkve",
+  "title": "Parity: announce (Rust/Zephyr/Python)",
+  "description": "Policy: three-impl parity. Module: announce. Rust: partial (247 LoC codec only in lichen-core). Zephyr: complete (495 LoC). Python: complete (1141 LoC). Gap: Rust has only message codec. Missing processor (gradient tracking) and scheduler (periodic TX) that Zephyr/Python have.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:19:28.965333Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:19:49.619976Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-qkve",
+      "depends_on_id": "project-LICHEN-ij6t",
+      "type": "parent-child",
+      "created_at": "2026-07-10T23:19:49.619976Z"
+    }
+  ]
+}

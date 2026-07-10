@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-1uvh",
+  "title": "Compliance: python/src/lichen/crypto/identity.py key storage",
+  "description": "Policy: 06-security.md §15.2. File: python/src/lichen/crypto/identity.py. Status: COMPLIANT. Uses mutable bytearray for seed/privkey with zeroing. Explicit security note about Python limitations. Debug repr shows REDACTED. wipe() method and __del__ zeroing.",
+  "notes": "Links to epic: echd (Security Compliance Audit)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:16:44.953567Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:17:09.100728Z"
+}

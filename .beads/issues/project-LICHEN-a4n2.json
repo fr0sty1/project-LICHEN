@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-a4n2",
+  "title": "Implement: TX queue with priority (all implementations)",
+  "description": "Policy: spec/appendix-bufferbloat.md §3 TX Queue. Currently MISSING in Rust/Zephyr/Python. Implement: 4 packets max, 4 priority levels (0=routing, 1=ACK, 2=urgent, 3=bulk), deadline expiry, preemption.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:10:51.546478Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:10:59.68429Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-a4n2",
+      "depends_on_id": "project-LICHEN-9j4k",
+      "type": "parent-child",
+      "created_at": "2026-07-10T23:10:59.68429Z"
+    }
+  ]
+}

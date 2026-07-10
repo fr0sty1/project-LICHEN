@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-smva",
+  "title": "Compliance: rust/lichen-link/src/keys.rs key storage",
+  "description": "Policy: 06-security.md §15.2. File: rust/lichen-link/src/keys.rs. Status: COMPLIANT. PrivateKey and Seed types use ZeroizeOnDrop, Debug output is REDACTED. Never persisted directly per documentation.",
+  "notes": "Links to epic: echd (Security Compliance Audit)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:16:39.467526Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:17:06.812334Z"
+}

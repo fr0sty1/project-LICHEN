@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-c6d8",
+  "title": "Compliance: firmware/bridge-stm32wl/src/iv.rs polling",
+  "description": "Policy: No-polling. Status: CHECK NEEDED. Has RFBUSY polling. Verify if SUBGHZ_IRQn interrupt is used for RX, or if polling (iu1q).",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:11:27.881357Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:11:42.015962Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-c6d8",
+      "depends_on_id": "project-LICHEN-yjbn",
+      "type": "parent-child",
+      "created_at": "2026-07-10T23:11:34.611088Z"
+    },
+    {
+      "issue_id": "project-LICHEN-c6d8",
+      "depends_on_id": "project-LICHEN-iu1q",
+      "type": "blocks",
+      "created_at": "2026-07-10T23:11:42.015962Z"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-m45b",
+  "title": "VIOLATION: rust/lichen-kiss/src/bridge.rs unsigned frames",
+  "description": "Policy: 06-security.md §8.3 VIOLATION. File: rust/lichen-kiss/src/bridge.rs. Status: NON-COMPLIANT. encode_payload_as_frame (L263-297) creates frames with signature: Signature::Absent (L292). This violates spec 8.3 which states 'Every originated frame carries a Schnorr signature.' The convenience method bypasses the link layer signing path. Fix: Either remove this method, require caller to sign separately, or integrate with LinkLayer::build_frame().",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:17:08.44455Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:17:41.148244Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-m45b",
+      "depends_on_id": "project-LICHEN-4wst",
+      "type": "parent-child",
+      "created_at": "2026-07-10T23:17:41.148243Z"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-nd2t",
+  "title": "Parity: rpl (Rust/Zephyr/Python)",
+  "description": "Policy: three-impl parity. Module: rpl. Rust: complete (1945 LoC). Zephyr: complete (2668 LoC). Python: complete (1210 LoC). Gap: none - full parity across all three implementations.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:19:20.914195Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:19:46.396894Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-nd2t",
+      "depends_on_id": "project-LICHEN-ij6t",
+      "type": "parent-child",
+      "created_at": "2026-07-10T23:19:46.396893Z"
+    }
+  ]
+}

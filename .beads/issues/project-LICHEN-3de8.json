@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-3de8",
+  "title": "Compliance: C lichen_link_rx.c dispatch byte",
+  "description": "Policy: 02-physical-link.md §4.1. File: lichen/subsys/lichen/link/lichen_link_rx.c. Status: COMPLIANT. Lines 425-427 check lichen_l2_payload_classify != LICHEN_L2_PAYLOAD_SCHC before SCHC decompression.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:17:42.345214Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:18:21.866297Z",
+  "closed_at": "2026-07-10T23:18:17.519767Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-3de8",
+      "depends_on_id": "project-LICHEN-24qm",
+      "type": "parent-child",
+      "created_at": "2026-07-10T23:18:21.866297Z"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-83o3",
+  "title": "Compliance: rust/lichen-oscore/src/lib.rs key storage",
+  "description": "Policy: 06-security.md §15.2. File: rust/lichen-oscore/src/lib.rs. Status: COMPLIANT. Context struct zeroizes master_secret/sender_key/recipient_key on drop. Debug impl shows REDACTED for all key fields.",
+  "notes": "Links to epic: echd (Security Compliance Audit)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:16:48.535434Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:17:11.358932Z"
+}

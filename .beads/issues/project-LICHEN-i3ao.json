@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-i3ao",
+  "title": "Compliance: rust/lichen-hal/src/lib.rs poll_* functions",
+  "description": "Policy: No-polling. Status: ACCEPTABLE. poll_buttons/poll_encoder/poll_touch are hardware input polling - necessary when no interrupt available. Document as intentional exception.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:11:27.954172Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:11:34.944737Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i3ao",
+      "depends_on_id": "project-LICHEN-yjbn",
+      "type": "parent-child",
+      "created_at": "2026-07-10T23:11:34.944736Z"
+    }
+  ]
+}

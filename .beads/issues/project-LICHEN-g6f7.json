@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-g6f7",
+  "title": "Compliance: Rust link_layer.rs replay protection",
+  "description": "Policy: 02-physical-link.md §4.4. File: rust/lichen-link/src/link_layer.rs. Status: VIOLATION. Lines 191-210 ReplayProtector keyed by (pubkey,epoch) creates independent windows per epoch. An old epoch with fresh seqnum would be accepted. Spec requires rejecting epoch \u003c LastEpoch. Fix: track per-peer highest epoch and reject epoch \u003c LastEpoch.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:16:52.320231Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:17:04.260991Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-g6f7",
+      "depends_on_id": "project-LICHEN-9h2r",
+      "type": "parent-child",
+      "created_at": "2026-07-10T23:17:04.260991Z"
+    }
+  ]
+}
