@@ -74,5 +74,183 @@ async def test_renode_rx_poll_empty() -> None:
         await server.stop()
 
 
-# ponytail: complex RX test deferred - requires full simulation event loop
-# integration test with actual Renode will cover this path
+@pytest.mark.asyncio
+async def test_renode_push_to_renode() -> None:
+    """Test pushing unsolicited messages to Renode."""
+    sim = Simulation("test")
+    server, port = await start_renode_server(sim, "renode-node", port=0)
+
+    try:
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        # Wait briefly for connection to be established
+        await asyncio.sleep(0.01)
+
+        # Push a message to Renode
+        test_data = bytes([0x99, 0x01, 0x02, 0x03])
+        await server.push_to_renode(test_data)
+
+        # Client should receive it
+        resp = await _read_message(reader)
+        assert resp == test_data
+
+        writer.close()
+        await writer.wait_closed()
+    finally:
+        await server.stop()
+
+
+@pytest.mark.asyncio
+async def test_renode_push_no_client_raises() -> None:
+    """Test that push_to_renode raises when no client connected."""
+    sim = Simulation("test")
+    server, port = await start_renode_server(sim, "renode-node", port=0)
+
+    try:
+        # No client connected - should raise
+        with pytest.raises(RuntimeError, match="No Renode client connected"):
+            await server.push_to_renode(b"test")
+    finally:
+        await server.stop()
+
+
+@pytest.mark.asyncio
+async def test_renode_on_rx_packet_callback() -> None:
+    """Test _on_rx_packet callback sends RX_PACKET to client."""
+    from lichen.sim.protocol import MSG_RX_PACKET, decode_rx_packet
+
+    sim = Simulation("test")
+    server, port = await start_renode_server(sim, "renode-node", port=0)
+
+    try:
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        await asyncio.sleep(0.01)
+
+        # Trigger the callback
+        server._on_rx_packet(b"test payload", -80, 100)
+
+        # Client should receive RX_PACKET
+        resp = await _read_message(reader)
+        assert resp[0] == MSG_RX_PACKET
+        payload, rssi, snr = decode_rx_packet(resp[1:])
+        assert payload == b"test payload"
+        assert rssi == -80
+        assert snr == 100
+
+        writer.close()
+        await writer.wait_closed()
+    finally:
+        await server.stop()
+
+
+@pytest.mark.asyncio
+async def test_renode_on_rx_timeout_callback() -> None:
+    """Test _on_rx_timeout callback sends RX_TIMEOUT_PUSH to client."""
+    from lichen.sim.protocol import MSG_RX_TIMEOUT_PUSH
+
+    sim = Simulation("test")
+    server, port = await start_renode_server(sim, "renode-node", port=0)
+
+    try:
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        await asyncio.sleep(0.01)
+
+        # Trigger the callback
+        server._on_rx_timeout()
+
+        # Client should receive RX_TIMEOUT_PUSH
+        resp = await _read_message(reader)
+        assert resp[0] == MSG_RX_TIMEOUT_PUSH
+        assert len(resp) == 1  # Just the type byte
+
+        writer.close()
+        await writer.wait_closed()
+    finally:
+        await server.stop()
+
+
+@pytest.mark.asyncio
+async def test_renode_callbacks_no_client_logged() -> None:
+    """Test callbacks log warning when no client connected."""
+    sim = Simulation("test")
+    server, port = await start_renode_server(sim, "renode-node", port=0)
+
+    try:
+        # No client connected - callbacks should not raise, just log
+        server._on_rx_packet(b"test", -80, 100)
+        server._on_rx_timeout()
+        # No exception = success
+    finally:
+        await server.stop()
+
+
+@pytest.mark.asyncio
+async def test_renode_rx_enter_exit() -> None:
+    """Test RX_ENTER and RX_EXIT message handling."""
+    from lichen.sim.node import NodeState
+    from lichen.sim.protocol import encode_rx_enter, encode_rx_exit
+
+    sim = Simulation("test")
+    server, port = await start_renode_server(sim, "renode-node", port=0)
+
+    try:
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        await asyncio.sleep(0.01)
+
+        # Verify node starts IDLE
+        node = sim.get_node("renode-node")
+        assert node is not None
+        assert node.state == NodeState.IDLE
+
+        # Send RX_ENTER with 1 second timeout (1_000_000 us)
+        rx_enter_msg = encode_rx_enter(1_000_000)
+        await _send_message(writer, rx_enter_msg)
+        await asyncio.sleep(0.01)
+
+        # Verify node enters RX_WAIT state
+        assert node.state == NodeState.RX_WAIT
+
+        # Send RX_EXIT
+        rx_exit_msg = encode_rx_exit()
+        await _send_message(writer, rx_exit_msg)
+        await asyncio.sleep(0.01)
+
+        # Verify node returns to IDLE
+        assert node.state == NodeState.IDLE
+
+        writer.close()
+        await writer.wait_closed()
+    finally:
+        await server.stop()
+
+
+@pytest.mark.asyncio
+async def test_renode_rx_enter_sets_callbacks() -> None:
+    """Test that RX_ENTER properly registers callbacks with simulation."""
+    from lichen.sim.node import NodeState
+    from lichen.sim.protocol import encode_rx_enter
+
+    sim = Simulation("test")
+    server, port = await start_renode_server(sim, "renode-node", port=0)
+
+    try:
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        await asyncio.sleep(0.01)
+
+        # Enter RX mode
+        rx_enter_msg = encode_rx_enter(1_000_000)
+        await _send_message(writer, rx_enter_msg)
+        await asyncio.sleep(0.01)
+
+        # Verify node is in RX_WAIT and callbacks are set
+        node = sim.get_node("renode-node")
+        assert node is not None
+        assert node.state == NodeState.RX_WAIT
+        assert node.rx_callbacks is not None
+        # Callbacks should be the server's methods
+        assert node.rx_callbacks[0] == server._on_rx_packet
+        assert node.rx_callbacks[1] == server._on_rx_timeout
+
+        writer.close()
+        await writer.wait_closed()
+    finally:
+        await server.stop()

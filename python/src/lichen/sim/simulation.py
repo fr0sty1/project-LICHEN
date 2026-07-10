@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import random
 import time
+from collections.abc import Callable
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
@@ -381,8 +382,13 @@ class Simulation:
             event: The RxTimeoutEvent to handle.
         """
         node = self._nodes.get(event.node_id)
+        on_timeout: Callable[[], None] | None = None
         if node is not None and node.state == NodeState.RX_WAIT:
+            # Capture callback before clearing state
+            if node.rx_callbacks is not None:
+                on_timeout = node.rx_callbacks[1]
             node.state = NodeState.IDLE
+            node.rx_callbacks = None
         self._pending_rx_timeouts.pop(event.node_id, None)
         logger.debug(
             "rx_timeout",
@@ -398,6 +404,10 @@ class Simulation:
             node_id=event.node_id,
             time_us=event.time_us,
         )
+
+        # Call the timeout callback if set
+        if on_timeout is not None:
+            on_timeout()
 
     def maybe_advance_time(self) -> bool:
         """Attempt to advance time in BARRIER_SYNC mode.
@@ -608,6 +618,163 @@ class Simulation:
         logger.debug(
             "rx_start", sim_id=self._id, node_id=node_id, timeout_us=timeout_us
         )
+
+    def enter_rx_mode(
+        self,
+        node_id: str,
+        timeout_us: int,
+        on_packet: Callable[[bytes, int, int], None],
+        on_timeout: Callable[[], None],
+    ) -> None:
+        """Enter RX mode with callbacks (non-blocking).
+
+        Puts node in RX_WAIT state so BARRIER_SYNC can advance time.
+        Calls on_packet(payload, rssi, snr) when a packet arrives.
+        Calls on_timeout() if timeout_us expires with no packet.
+
+        Only one callback fires, then node exits RX_WAIT.
+
+        Args:
+            node_id: ID of the receiving node.
+            timeout_us: Receive timeout in microseconds.
+            on_packet: Callback for successful packet reception.
+            on_timeout: Callback for timeout expiry.
+
+        Raises:
+            ValueError: If node doesn't exist or is not connected.
+        """
+        node = self._nodes.get(node_id)
+        if node is None:
+            raise ValueError(f"Node '{node_id}' does not exist")
+        if not node.connected:
+            raise ValueError(f"Node '{node_id}' is not connected")
+
+        node.state = NodeState.RX_WAIT
+        node.rx_callbacks = (on_packet, on_timeout)
+
+        timeout_time_us = self._current_time_us + timeout_us
+        self._pending_rx_timeouts[node_id] = timeout_time_us
+
+        timeout_event = RxTimeoutEvent(
+            time_us=timeout_time_us,
+            node_id=node_id,
+        )
+        self._event_queue.push(timeout_event)
+        logger.debug(
+            "enter_rx_mode",
+            sim_id=self._id,
+            node_id=node_id,
+            timeout_us=timeout_time_us,
+        )
+
+    def exit_rx_mode(self, node_id: str) -> None:
+        """Exit RX mode, cancel pending timeout.
+
+        Args:
+            node_id: ID of the node to exit RX mode.
+        """
+        node = self._nodes.get(node_id)
+        if node is None:
+            return
+
+        node.state = NodeState.IDLE
+        node.rx_callbacks = None
+        self._pending_rx_timeouts.pop(node_id, None)
+        # Remove pending RxTimeoutEvent for this node
+        self._event_queue.remove_events_for_node(node_id)
+        logger.debug(
+            "exit_rx_mode",
+            sim_id=self._id,
+            node_id=node_id,
+        )
+
+    def deliver_pending_packets(self) -> int:
+        """Deliver packets to nodes in callback-based RX mode.
+
+        Checks all nodes in RX_WAIT with rx_callbacks set, and for each that
+        has a receivable packet, calls the on_packet callback and transitions
+        the node to IDLE.
+
+        Returns:
+            Number of packets delivered.
+        """
+        delivered = 0
+        for node_id, node in list(self._nodes.items()):
+            if node.state != NodeState.RX_WAIT or node.rx_callbacks is None:
+                continue
+
+            result = self._get_rx_result_internal(node_id)
+            if result is not None:
+                payload, rssi, snr = result
+                on_packet = node.rx_callbacks[0]
+
+                # Clear state before calling callback (callback might re-enter)
+                node.state = NodeState.IDLE
+                node.rx_callbacks = None
+                self._pending_rx_timeouts.pop(node_id, None)
+                # Remove pending timeout event for this node
+                self._event_queue.remove_events_for_node(node_id)
+
+                logger.debug(
+                    "deliver_packet",
+                    sim_id=self._id,
+                    node_id=node_id,
+                    payload_len=len(payload),
+                    rssi=rssi,
+                    snr=snr,
+                )
+
+                on_packet(payload, rssi, snr)
+                delivered += 1
+
+        return delivered
+
+    def _get_rx_result_internal(self, node_id: str) -> tuple[bytes, int, int] | None:
+        """Internal version of get_rx_result for callback delivery.
+
+        Does not raise on missing node, returns None instead.
+        """
+        node = self._nodes.get(node_id)
+        if node is None:
+            return None
+
+        candidates = self._medium.get_rx_candidates(
+            rx_node_id=node_id,
+            rx_position=node.position,
+            time_us=self._current_time_us,
+        )
+
+        # Apply chaos rules to filter/modify candidates
+        if self._chaos_engine is not None:
+            filtered_candidates = []
+            for candidate in candidates:
+                result = self._chaos_engine.apply_all(
+                    candidate=candidate,
+                    rx_node_id=node_id,
+                    rx_position=node.position,
+                )
+                if result is not None:
+                    filtered_candidates.append(result)
+            candidates = filtered_candidates
+
+        # Drop candidates whose LatencyRule-added delivery delay hasn't elapsed.
+        candidates = [
+            c for c in candidates
+            if c.added_latency_us == 0
+            or self._current_time_us
+            >= c.transmission.end_time_us + c.added_latency_us
+        ]
+
+        tx = self._medium.resolve_reception(candidates)
+        if tx is None:
+            return None
+
+        # Find the candidate to get RSSI/SNR
+        for candidate in candidates:
+            if candidate.transmission is tx:
+                return (tx.payload, int(candidate.rssi), int(candidate.snr))
+
+        return None
 
     def get_rx_result(self, node_id: str) -> tuple[bytes, int, int] | None:
         """Check if a transmission can be received by a node.

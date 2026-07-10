@@ -822,3 +822,287 @@ class TestRealtimeMode:
         # BARRIER_SYNC returns False when no nodes are waiting
         result = sim.maybe_advance_time()
         assert result is False
+
+
+class TestEnterRxMode:
+    """Test callback-based RX mode operations."""
+
+    def test_enter_rx_mode_sets_rx_wait_state(self) -> None:
+        """enter_rx_mode sets node to RX_WAIT state."""
+        sim = Simulation(sim_id="test-sim")
+        node = sim.add_node("node1", 0.0, 0.0, 0.0)
+
+        sim.enter_rx_mode(
+            "node1",
+            timeout_us=100_000,
+            on_packet=lambda p, r, s: None,
+            on_timeout=lambda: None,
+        )
+
+        assert node.state == NodeState.RX_WAIT
+
+    def test_enter_rx_mode_stores_callbacks(self) -> None:
+        """enter_rx_mode stores the callbacks in node state."""
+        sim = Simulation(sim_id="test-sim")
+        node = sim.add_node("node1", 0.0, 0.0, 0.0)
+
+        def on_packet(p: bytes, r: int, s: int) -> None:
+            pass
+
+        def on_timeout() -> None:
+            pass
+
+        sim.enter_rx_mode("node1", timeout_us=100_000, on_packet=on_packet, on_timeout=on_timeout)
+
+        assert node.rx_callbacks is not None
+        assert node.rx_callbacks[0] is on_packet
+        assert node.rx_callbacks[1] is on_timeout
+
+    def test_enter_rx_mode_queues_timeout_event(self) -> None:
+        """enter_rx_mode queues RxTimeoutEvent."""
+        sim = Simulation(sim_id="test-sim")
+        sim.add_node("node1", 0.0, 0.0, 0.0)
+
+        sim.enter_rx_mode(
+            "node1",
+            timeout_us=100_000,
+            on_packet=lambda p, r, s: None,
+            on_timeout=lambda: None,
+        )
+
+        event = sim.event_queue.peek()
+        assert isinstance(event, RxTimeoutEvent)
+        assert event.node_id == "node1"
+        assert event.time_us == 100_000
+
+    def test_enter_rx_mode_nonexistent_node_raises(self) -> None:
+        """enter_rx_mode raises ValueError for nonexistent node."""
+        sim = Simulation(sim_id="test-sim")
+
+        with pytest.raises(ValueError, match="does not exist"):
+            sim.enter_rx_mode(
+                "nonexistent",
+                timeout_us=100_000,
+                on_packet=lambda p, r, s: None,
+                on_timeout=lambda: None,
+            )
+
+    def test_enter_rx_mode_disconnected_node_raises(self) -> None:
+        """enter_rx_mode raises ValueError for disconnected node."""
+        sim = Simulation(sim_id="test-sim")
+        node = sim.add_node("node1", 0.0, 0.0, 0.0)
+        node.disconnect()
+
+        with pytest.raises(ValueError, match="not connected"):
+            sim.enter_rx_mode(
+                "node1",
+                timeout_us=100_000,
+                on_packet=lambda p, r, s: None,
+                on_timeout=lambda: None,
+            )
+
+    def test_timeout_callback_fires_on_timeout(self) -> None:
+        """on_timeout callback fires when timeout expires."""
+        sim = Simulation(sim_id="test-sim")
+        sim.add_node("node1", 0.0, 0.0, 0.0)
+
+        timeout_called = []
+
+        def on_timeout() -> None:
+            timeout_called.append(True)
+
+        sim.enter_rx_mode(
+            "node1",
+            timeout_us=100_000,
+            on_packet=lambda p, r, s: None,
+            on_timeout=on_timeout,
+        )
+
+        # Process the timeout event
+        sim.process_next_event()
+
+        assert len(timeout_called) == 1
+
+    def test_timeout_callback_clears_node_state(self) -> None:
+        """Timeout processing clears rx_callbacks and returns to IDLE."""
+        sim = Simulation(sim_id="test-sim")
+        node = sim.add_node("node1", 0.0, 0.0, 0.0)
+
+        sim.enter_rx_mode(
+            "node1",
+            timeout_us=100_000,
+            on_packet=lambda p, r, s: None,
+            on_timeout=lambda: None,
+        )
+
+        sim.process_next_event()
+
+        assert node.state == NodeState.IDLE
+        assert node.rx_callbacks is None
+
+    def test_packet_callback_fires_on_reception(self) -> None:
+        """on_packet callback fires when packet is received."""
+        sim = Simulation(sim_id="test-sim")
+        sim.add_node("tx_node", 0.0, 0.0, 0.0)
+        sim.add_node("rx_node", 100.0, 0.0, 0.0)
+
+        received = []
+
+        def on_packet(payload: bytes, rssi: int, snr: int) -> None:
+            received.append((payload, rssi, snr))
+
+        payload = b"hello world"
+        sim.start_transmission("tx_node", payload)
+
+        # Advance time into the transmission
+        sim.advance_to(1000)
+
+        # Now enter RX mode with callback
+        sim.enter_rx_mode(
+            "rx_node",
+            timeout_us=1_000_000,
+            on_packet=on_packet,
+            on_timeout=lambda: None,
+        )
+
+        # Deliver pending packets
+        delivered = sim.deliver_pending_packets()
+
+        assert delivered == 1
+        assert len(received) == 1
+        assert received[0][0] == payload
+        assert isinstance(received[0][1], int)  # rssi
+        assert isinstance(received[0][2], int)  # snr
+
+    def test_packet_callback_clears_node_state(self) -> None:
+        """Packet delivery clears rx_callbacks and returns to IDLE."""
+        sim = Simulation(sim_id="test-sim")
+        sim.add_node("tx_node", 0.0, 0.0, 0.0)
+        rx_node = sim.add_node("rx_node", 100.0, 0.0, 0.0)
+
+        sim.start_transmission("tx_node", b"test")
+        sim.advance_to(1000)
+
+        sim.enter_rx_mode(
+            "rx_node",
+            timeout_us=1_000_000,
+            on_packet=lambda p, r, s: None,
+            on_timeout=lambda: None,
+        )
+
+        sim.deliver_pending_packets()
+
+        assert rx_node.state == NodeState.IDLE
+        assert rx_node.rx_callbacks is None
+
+    def test_only_one_callback_fires(self) -> None:
+        """Only on_packet or on_timeout fires, not both."""
+        sim = Simulation(sim_id="test-sim")
+        sim.add_node("tx_node", 0.0, 0.0, 0.0)
+        sim.add_node("rx_node", 100.0, 0.0, 0.0)
+
+        packet_called = []
+        timeout_called = []
+
+        def on_packet(p: bytes, r: int, s: int) -> None:
+            packet_called.append(True)
+
+        def on_timeout() -> None:
+            timeout_called.append(True)
+
+        sim.start_transmission("tx_node", b"test")
+        sim.advance_to(1000)
+
+        sim.enter_rx_mode(
+            "rx_node",
+            timeout_us=100_000,
+            on_packet=on_packet,
+            on_timeout=on_timeout,
+        )
+
+        # Packet delivery should fire on_packet
+        sim.deliver_pending_packets()
+
+        # Process timeout event (should be no-op, node already back to IDLE)
+        sim.process_next_event()
+
+        assert len(packet_called) == 1
+        assert len(timeout_called) == 0
+
+    def test_exit_rx_mode_cancels_timeout(self) -> None:
+        """exit_rx_mode cancels pending timeout and clears state."""
+        sim = Simulation(sim_id="test-sim")
+        node = sim.add_node("node1", 0.0, 0.0, 0.0)
+
+        timeout_called = []
+
+        sim.enter_rx_mode(
+            "node1",
+            timeout_us=100_000,
+            on_packet=lambda p, r, s: None,
+            on_timeout=lambda: timeout_called.append(True),
+        )
+
+        assert not sim.event_queue.is_empty()
+
+        sim.exit_rx_mode("node1")
+
+        assert node.state == NodeState.IDLE
+        assert node.rx_callbacks is None
+        assert sim.event_queue.is_empty()
+
+    def test_exit_rx_mode_nonexistent_node_safe(self) -> None:
+        """exit_rx_mode with nonexistent ID does not raise."""
+        sim = Simulation(sim_id="test-sim")
+
+        sim.exit_rx_mode("nonexistent")  # Should not raise
+
+    def test_barrier_sync_advances_with_callback_rx(self) -> None:
+        """BARRIER_SYNC advances time when callback-based RX node is waiting."""
+        sim = Simulation(sim_id="test-sim", time_mode=TimeMode.BARRIER_SYNC)
+        sim.add_node("node1", 0.0, 0.0, 0.0)
+
+        sim.enter_rx_mode(
+            "node1",
+            timeout_us=100_000,
+            on_packet=lambda p, r, s: None,
+            on_timeout=lambda: None,
+        )
+
+        initial_time = sim.current_time_us
+        advanced = sim.maybe_advance_time()
+
+        assert advanced is True
+        assert sim.current_time_us > initial_time
+        assert sim.current_time_us == 100_000
+
+    def test_deliver_pending_packets_no_packet_returns_zero(self) -> None:
+        """deliver_pending_packets returns 0 when no packets available."""
+        sim = Simulation(sim_id="test-sim")
+        sim.add_node("node1", 0.0, 0.0, 0.0)
+
+        sim.enter_rx_mode(
+            "node1",
+            timeout_us=100_000,
+            on_packet=lambda p, r, s: None,
+            on_timeout=lambda: None,
+        )
+
+        delivered = sim.deliver_pending_packets()
+
+        assert delivered == 0
+
+    def test_deliver_pending_packets_no_callback_nodes_returns_zero(self) -> None:
+        """deliver_pending_packets returns 0 when no nodes have callbacks."""
+        sim = Simulation(sim_id="test-sim")
+        sim.add_node("tx_node", 0.0, 0.0, 0.0)
+        sim.add_node("rx_node", 100.0, 0.0, 0.0)
+
+        # Use regular start_receive (no callbacks)
+        sim.start_receive("rx_node", timeout_ms=1000)
+        sim.start_transmission("tx_node", b"test")
+        sim.advance_to(1000)
+
+        delivered = sim.deliver_pending_packets()
+
+        assert delivered == 0
