@@ -1,14 +1,14 @@
 {
   "id": "project-LICHEN-zokf",
   "title": "[epic] Renode LoRa simulation ecosystem extraction",
-  "description": "Meta-epic: extract LICHEN Renode work as standalone open-source projects.\n\nTHESIS: We accidentally built the missing LoRa simulation ecosystem for Renode. Nobody else has because the intersection of Renode expertise + LoRa expertise + CI motivation is tiny, and hardware is cheap enough that most people just buy boards.\n\nCHILDREN:\n- ddcu: SX126x peripheral (the core)\n- 94ju: Meshtastic board definitions (T-Echo, RAK4631, T-Deck)\n- tg2h: STM32WL SubGHz peripheral\n\nSEQUENCING:\n1. ddcu first (SX126x is dependency for boards)\n2. 94ju second (boards need SX126x)\n3. tg2h parallel (independent chip family)\n\nVALUE:\n- Enables CI for Meshtastic, LoRaWAN, RadioLib projects\n- Reduces barrier to LoRa firmware development\n- Positions LICHEN as good ecosystem citizen\n\nTIMING: P3 - do after simulation is working for our own needs (sz52 gate)",
+  "description": "Meta-epic: extract LICHEN Renode work as standalone open-source monorepo.\n\nREPO: renode-lora-peripherals (single repo, split later if demand)\n\nSTRUCTURE:\n  renode-lora-peripherals/\n  ├── peripherals/\n  │   ├── sx126x/           # SX1261/62/68 (490 lines)\n  │   └── stm32wl-subghz/   # STM32WL integrated radio (341 lines)\n  ├── boards/\n  │   ├── t-echo/\n  │   ├── rak4631/\n  │   ├── t-deck/\n  │   ├── heltec-wifi-lora32-v3/\n  │   └── nucleo-wl55jc/\n  ├── stubs/\n  │   ├── gps.cs            # NMEA over UART (218 lines)\n  │   └── ble.cs            # nRF52840 BLE stub (511 lines)\n  ├── examples/\n  │   ├── zephyr-lora-tx/\n  │   └── meshtastic-boot/\n  └── README.md\n\nWHY MONOREPO:\n- Audience is tiny, dont over-engineer\n- Boards depend on peripherals, avoids version skew\n- One CI matrix, one issue tracker\n- Can still upstream individual .cs files to Renode as PRs\n- Easy to fork out SX126x later if it takes off independently\n\nCHILDREN (now phases, not separate repos):\n- ddcu: Phase 1 - SX126x peripheral extraction\n- 94ju: Phase 2 - Board definitions extraction\n- tg2h: Phase 3 - STM32WL peripheral extraction\n\nTIMING: P3 - after simulation works for our needs (sz52 gate)",
   "status": "open",
   "priority": 3,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T19:51:04.616504Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T19:51:04.616537Z",
+  "updated_at": "2026-07-10T19:52:17.778351Z",
   "labels": [
     "renode",
     "extraction"

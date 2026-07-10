@@ -1,14 +1,14 @@
 {
   "id": "project-LICHEN-ddcu",
   "title": "[epic] Extract Renode SX126x LoRa peripheral as standalone project",
-  "description": "Extract SX1262.cs as standalone Renode peripheral package.\n\nWHY THIS DOESNT EXIST:\n- Niche intersection: Renode users + LoRa users + CI-focused = tiny\n- Hardware is cheap: Meshtastic devs buy 20 dollar boards, dont need sim\n- Renode learning curve: C# + Renode API + SX126x datasheet = high bar\n- No commercial pressure: LoRaWAN vendors ship hardware not simulators\n- Community fragmentation: Meshtastic/RadioLib/LoRaWAN are separate ecosystems\n\nWHAT WE HAVE:\n- SX1262.cs (490 lines) - SPI opcodes, TX/RX, IRQ, FIFO\n- Protocol bridge to external sim (TCP socket)\n- Works with Zephyr sx126x driver\n\nEXTRACTION SCOPE:\n1. Standalone repo: renode-sx126x-peripheral\n2. Pure Renode peripheral (no LICHEN dependency)\n3. Two modes: loopback (single-node) and bridge (multi-node via external sim)\n4. Example .repl snippets for common boards\n5. CI with Renode test suite\n\nTARGET USERS: Meshtastic devs, LoRaWAN stack devs, RadioLib users\n\nACCEPTANCE: Standalone MIT repo, works without LICHEN, README with quick-start",
+  "description": "Phase 1: Extract SX1262.cs as core of renode-lora-peripherals monorepo.\n\nSCOPE:\n1. Create repo structure with peripherals/sx126x/\n2. Extract SX1262.cs, remove LICHEN-specific bits\n3. Add standalone loopback mode (no external sim needed for single-node TX/RX)\n4. Keep bridge mode for multi-node (TCP socket to external sim)\n5. README with Renode integration instructions\n6. CI: Renode boots, peripheral loads, basic SPI opcode test\n7. Example .repl snippet\n\nDELIVERABLE: renode-lora-peripherals repo exists with working SX126x peripheral\n\nACCEPTANCE: Someone can add SX126x to their Renode project without LICHEN",
   "status": "open",
   "priority": 3,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T19:50:23.692651Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T19:51:10.974339Z",
+  "updated_at": "2026-07-10T19:52:32.390886Z",
   "labels": [
     "renode",
     "extraction"

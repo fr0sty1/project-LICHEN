@@ -1,14 +1,14 @@
 {
   "id": "project-LICHEN-tg2h",
   "title": "[epic] Extract Renode STM32WL SubGHz peripheral as standalone project",
-  "description": "Extract LichenSubGHz.cs and STM32WL support as standalone Renode package.\n\nWHY THIS DOESNT EXIST:\n- STM32WL is newer (2020), Renode support lagging\n- SubGHz radio is internal to chip, unusual architecture\n- ST provides CubeWL but no simulation\n- LoRaWAN certification done on hardware\n- Seeed Lora-E5 users are makers, not CI-focused\n\nWHAT WE HAVE:\n- LichenSubGHz.cs (341 lines) - STM32WL integrated SubGHz radio\n- STM32WL_PWR.cs (99 lines) - power controller stub\n- STM32WL_RCC.cs (117 lines) - clock controller stub\n- Nucleo-WL55JC .repl platform definition\n\nEXTRACTION SCOPE:\n1. Standalone repo: renode-stm32wl-subghz\n2. SubGHz peripheral with TX/RX support\n3. Power and clock stubs for boot\n4. Nucleo-WL55JC board definition\n5. Example: Zephyr LoRa sample boots and transmits\n\nTARGET USERS: STM32WL devs, Seeed Lora-E5 users, LoRaWAN stack devs\n\nACCEPTANCE: Zephyr lora_send sample runs in Renode on Nucleo-WL55JC",
+  "description": "Phase 3: Add STM32WL SubGHz peripheral to renode-lora-peripherals monorepo.\n\nSCOPE:\n1. Add peripherals/stm32wl-subghz/ with LichenSubGHz.cs\n2. Add STM32WL_PWR.cs and STM32WL_RCC.cs stubs\n3. Add boards/nucleo-wl55jc/ platform definition\n4. Example: Zephyr lora_send sample transmits\n5. CI: Nucleo-WL55JC boots and TX works\n\nPARALLEL TO: 94ju (different chip family, no dependency)\n\nDELIVERABLE: STM32WL devs can test LoRa firmware in Renode\n\nACCEPTANCE: Zephyr lora_send runs in Renode on Nucleo-WL55JC",
   "status": "open",
   "priority": 3,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T19:50:52.14164Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T19:51:11.626641Z",
+  "updated_at": "2026-07-10T19:52:52.82427Z",
   "labels": [
     "renode",
     "extraction"
