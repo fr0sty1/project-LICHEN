@@ -1,0 +1,43 @@
+diff --git a/src/radio/sx126x/radio.c b/src/radio/sx126x/radio.c
+index c4a40da..6566b22 100644
+--- a/src/radio/sx126x/radio.c
++++ b/src/radio/sx126x/radio.c
+@@ -476,6 +476,17 @@ static RadioPublicNetwork_t RadioPublicNetwork = { false };
+  */
+ static RadioEvents_t* RadioEvents;
+ 
++/*!
++ * RX-activity hook (local patch): called from RadioIrqProcess when the modem
++ * reports preamble detection, sync-word match, or a valid header — i.e. a
++ * frame is arriving. Platforms can override this (strong definition) to hold
++ * a host-side receive window open instead of aborting mid-frame. Weak no-op
++ * by default so unpatched consumers are unaffected.
++ */
++__attribute__(( weak )) void RadioRxActivity( void )
++{
++}
++
+ /*
+  * Public global variables
+  */
+@@ -1354,17 +1365,17 @@ void RadioIrqProcess( void )
+ 
+         if( ( irqRegs & IRQ_PREAMBLE_DETECTED ) == IRQ_PREAMBLE_DETECTED )
+         {
+-            //__NOP( );
++            RadioRxActivity( );
+         }
+ 
+         if( ( irqRegs & IRQ_SYNCWORD_VALID ) == IRQ_SYNCWORD_VALID )
+         {
+-            //__NOP( );
++            RadioRxActivity( );
+         }
+ 
+         if( ( irqRegs & IRQ_HEADER_VALID ) == IRQ_HEADER_VALID )
+         {
+-            //__NOP( );
++            RadioRxActivity( );
+         }
+ 
+         if( ( irqRegs & IRQ_HEADER_ERROR ) == IRQ_HEADER_ERROR )

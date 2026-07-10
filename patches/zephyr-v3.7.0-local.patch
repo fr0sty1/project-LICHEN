@@ -17,6 +17,77 @@ index aeb9efe8..63e28264 100644
  		k_sleep(K_MSEC(1));
  	}
  }
+diff --git a/drivers/lora/sx12xx_common.c b/drivers/lora/sx12xx_common.c
+index 947eb8a2..785c8fe3 100644
+--- a/drivers/lora/sx12xx_common.c
++++ b/drivers/lora/sx12xx_common.c
+@@ -39,6 +39,29 @@ static struct sx12xx_data {
+ 	struct sx12xx_rx_params rx_params;
+ } dev_data;
+ 
++/*
++ * RX-activity timestamp (local patch, pairs with the RadioRxActivity() weak
++ * hook added to the loramac-node sx126x radio.c): the modem reported
++ * preamble/sync/header for an incoming frame. sx12xx_lora_recv() uses this
++ * to hold its receive window open instead of aborting a reception that is
++ * already in progress — with 1 s application windows a ~0.7 s SF10 frame
++ * rarely survives a blind abort at the window boundary.
++ */
++static atomic_t rx_activity_ms;
++
++/* Strong definition overriding the weak no-op in the radio HAL. Runs in the
++ * radio IRQ work context. */
++void RadioRxActivity(void)
++{
++	atomic_set(&rx_activity_ms, (atomic_val_t)k_uptime_get());
++}
++
++/* Upper bound on one frame's remaining airtime after its header: a full
++ * 255-byte payload at SF10/125 kHz is ~2.2 s; SF12 would be longer but this
++ * driver's users run <= SF10. Bounded so a jammer or false detect cannot
++ * hold the window forever. */
++#define SX12XX_RX_HOLD_MS 2500
++
+ int __sx12xx_configure_pin(const struct gpio_dt_spec *gpio, gpio_flags_t flags)
+ {
+ 	int err;
+@@ -101,6 +124,10 @@ static void sx12xx_ev_rx_done(uint8_t *payload, uint16_t size, int16_t rssi,
+ {
+ 	struct k_poll_signal *sig = dev_data.operation_done;
+ 
++	/* The in-flight frame completed — stop holding the window for it
++	 * (see RadioRxActivity / sx12xx_lora_recv). */
++	atomic_set(&rx_activity_ms, 0);
++
+ 	/* Receiving in asynchronous mode */
+ 	if (dev_data.async_rx_cb) {
+ 		/* Start receiving again */
+@@ -261,6 +288,25 @@ int sx12xx_lora_recv(const struct device *dev, uint8_t *data, uint8_t size,
+ 	Radio.Rx(0);
+ 
+ 	ret = k_poll(&evt, 1, timeout);
++
++	/*
++	 * Hold the window open while a frame is arriving (local patch): if
++	 * the modem reported preamble/sync/header activity within the last
++	 * SX12XX_RX_HOLD_MS, the timeout expired mid-reception — releasing
++	 * the modem now would abort a frame that is already on the air.
++	 * Extend the wait, bounded by one maximum frame airtime past the
++	 * last activity.
++	 */
++	while (ret < 0) {
++		int64_t since = k_uptime_get() -
++				(int64_t)atomic_get(&rx_activity_ms);
++
++		if (since >= SX12XX_RX_HOLD_MS) {
++			break;
++		}
++		ret = k_poll(&evt, 1, K_MSEC(SX12XX_RX_HOLD_MS - since));
++	}
++
+ 	if (ret < 0) {
+ 		if (!modem_release(&dev_data)) {
+ 			/* Releasing the modem failed, which means that
 diff --git a/drivers/usb/device/usb_dc_nrfx.c b/drivers/usb/device/usb_dc_nrfx.c
 index 49cb4621..1bc3074a 100644
 --- a/drivers/usb/device/usb_dc_nrfx.c

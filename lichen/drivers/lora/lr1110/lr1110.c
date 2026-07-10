@@ -32,12 +32,21 @@ __attribute__((weak)) void lichen_radio_progress(void) { }
 BUILD_ASSERT(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) <= 1,
 	     "LR1110 driver supports only one instance (uses global state)");
 
-/* IRQ mask bits routed to DIO9 */
-#define LR1110_IRQ_RADIO (LR1110_SYSTEM_IRQ_TXDONE_MASK    | \
-			  LR1110_SYSTEM_IRQ_RXDONE_MASK    | \
-			  LR1110_SYSTEM_IRQ_HEADERERR_MASK | \
-			  LR1110_SYSTEM_IRQ_CRCERR_MASK    | \
+/* IRQ mask bits enabled for radio operations. PREAMBLEDETECTED and
+ * SYNCWORD_HEADERVALID are included so the recv poll loop can hold its
+ * window open while a frame is arriving instead of aborting mid-reception
+ * (the enable mask also gates the IRQ status register we poll). */
+#define LR1110_IRQ_RADIO (LR1110_SYSTEM_IRQ_TXDONE_MASK              | \
+			  LR1110_SYSTEM_IRQ_RXDONE_MASK              | \
+			  LR1110_SYSTEM_IRQ_PREAMBLEDETECTED_MASK    | \
+			  LR1110_SYSTEM_IRQ_SYNCWORD_HEADERVALID_MASK | \
+			  LR1110_SYSTEM_IRQ_HEADERERR_MASK           | \
+			  LR1110_SYSTEM_IRQ_CRCERR_MASK              | \
 			  LR1110_SYSTEM_IRQ_TIMEOUT_MASK)
+
+/* Hold-open bound: remaining airtime of a full 255-byte SF10/125 kHz frame
+ * after its preamble, with margin. */
+#define LR1110_RX_HOLD_MS 2500
 
 /* "Continuous RX" sentinel for lr1110_radio_set_rx */
 #define LR1110_RX_CONTINUOUS  0x00FFFFFFu
@@ -438,10 +447,27 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 	lr1110_system_stat1_t stat1;
 	lr1110_system_stat2_t stat2;
 	uint32_t irq = 0;
+	bool held = false;
 	do {
 		lichen_radio_progress();
 		k_sleep(K_MSEC(20));
 		lr1110_system_get_status(dev, &stat1, &stat2, &irq);
+
+		/* A frame is arriving (preamble/sync/header seen): hold the
+		 * window open long enough for it to finish instead of
+		 * aborting mid-reception. Single bounded extension — the
+		 * status bits latch until clear_irq below, so re-checking
+		 * would not re-extend anyway. */
+		if (!held &&
+		    (irq & (LR1110_SYSTEM_IRQ_PREAMBLEDETECTED_MASK |
+			    LR1110_SYSTEM_IRQ_SYNCWORD_HEADERVALID_MASK))) {
+			int64_t hold_until = k_uptime_get() + LR1110_RX_HOLD_MS;
+
+			if (hold_until > deadline) {
+				deadline = hold_until;
+			}
+			held = true;
+		}
 	} while (!(irq & (LR1110_SYSTEM_IRQ_RXDONE_MASK |
 			  LR1110_SYSTEM_IRQ_TIMEOUT_MASK)) &&
 		 k_uptime_get() < deadline);
