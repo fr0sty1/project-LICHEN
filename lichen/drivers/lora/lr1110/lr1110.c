@@ -219,6 +219,33 @@ static int lr1110_lora_config(const struct device *dev,
 
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_system_calibrate(dev, 0x3Fu)); /* all 6 calibration blocks */
 
+	/* RF switch: the T1000-E routes the antenna through a switch driven by
+	 * DIO5-DIO8. Without this the chip never selects the RX path — TX
+	 * happens to work on the default state, but RX is completely deaf
+	 * (RXDONE never fires; bd r002). Table from Meshtastic's proven
+	 * T1000-E support (variants/nrf52840/tracker-t1000-e/rfswitch.h):
+	 *   RX = DIO5+DIO8, TX = DIO5+DIO6+DIO8, TX_HP = DIO6+DIO8,
+	 *   GNSS = DIO7. */
+	{
+		const lr1110_system_rfswitch_config_t rfswitch = {
+			.enable = LR1110_SYSTEM_RFSW0_HIGH |
+				  LR1110_SYSTEM_RFSW1_HIGH |
+				  LR1110_SYSTEM_RFSW2_HIGH |
+				  LR1110_SYSTEM_RFSW3_HIGH,
+			.standby = 0,
+			.rx = LR1110_SYSTEM_RFSW0_HIGH | LR1110_SYSTEM_RFSW3_HIGH,
+			.tx = LR1110_SYSTEM_RFSW0_HIGH | LR1110_SYSTEM_RFSW1_HIGH |
+			      LR1110_SYSTEM_RFSW3_HIGH,
+			.tx_hp = LR1110_SYSTEM_RFSW1_HIGH | LR1110_SYSTEM_RFSW3_HIGH,
+			.tx_hf = 0,
+			.gnss = LR1110_SYSTEM_RFSW2_HIGH,
+			.wifi = 0,
+		};
+
+		LR1110_RETURN_ON_HAL_ERROR(
+			lr1110_system_set_dio_as_rf_switch(dev, &rfswitch));
+	}
+
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_system_clear_errors(dev));
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_packet_type(dev, LR1110_RADIO_PACKET_LORA));
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_rf_frequency(dev, cfg->frequency));
@@ -306,6 +333,14 @@ static int lr1110_lora_send(const struct device *dev, uint8_t *data,
 	 * Polling lets us observe the true status and bound the wait. */
 	gpio_pin_interrupt_configure_dt(&lr1110_gpio_dio9, GPIO_INT_DISABLE);
 
+	/* STANDBY_XOSC before loading the buffer: the recv() timeout path
+	 * parks the chip in STANDBY_RC, where it processes long WriteBuffer8
+	 * commands too slowly — payload bytes past ~32 are silently dropped
+	 * (the chip still reports TXDONE and transmits stale buffer contents;
+	 * bd lora_ipv6_mesh-r002). On XOSC the full payload lands. */
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_XOSC));
+
 	/* Set the real payload length for this TX (explicit header). Config
 	 * leaves it at LR1110_MAX_PAYLOAD for RX; without this the chip would
 	 * transmit a full 255-byte packet (real data + buffer garbage). */
@@ -313,7 +348,26 @@ static int lr1110_lora_send(const struct device *dev, uint8_t *data,
 	LR1110_RETURN_ON_HAL_ERROR(
 		lr1110_radio_set_packet_param_lora(dev, &drv->pkt_params));
 
-	LR1110_RETURN_ON_HAL_ERROR(lr1110_regmem_write_buffer8(dev, data, (uint8_t)data_len));
+	/* Load the TX buffer with the opcode and payload in ONE contiguous
+	 * SPI buffer. lr1110_regmem_write_buffer8() scatters {opcode, data}
+	 * across two spi_bufs, which the nRF SPIM driver executes as separate
+	 * DMA sub-transfers — and on this chip only the first ~32 payload
+	 * bytes of such a command ever land in the buffer (each retry
+	 * restarts at offset 0, so on-air frames carry stale bytes past
+	 * offset 32; bd r002). A single uninterrupted transfer carries the
+	 * whole command. */
+	{
+		static uint8_t txcmd[2 + LR1110_MAX_PAYLOAD];
+
+		txcmd[0] = 0x01; /* LR1110_REGMEM_WRITE_BUFFER8_OC >> 8 */
+		txcmd[1] = 0x09; /* LR1110_REGMEM_WRITE_BUFFER8_OC & 0xff */
+		memcpy(&txcmd[2], data, data_len);
+		if (lr1110_hal_write(dev, txcmd, (uint16_t)(2U + data_len),
+				     NULL, 0) != LR1110_HAL_STATUS_OK) {
+			return lr1110_hal_get_last_error();
+		}
+	}
+
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_tx(dev, 0));
 
 	/* SF10/BW125 airtime for a short frame is well under 1 s. Poll every
@@ -366,6 +420,18 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 	 * work-handler get_status sequence intermittently hard-freezes the CPU
 	 * when it runs on a received packet, so we drive RX by polling too. */
 	gpio_pin_interrupt_configure_dt(&lr1110_gpio_dio9, GPIO_INT_DISABLE);
+
+	/* Restore the RX accept ceiling: lora_send() rewrites the chip's
+	 * packet params with payload_length = the TX frame's length, and in
+	 * explicit-header mode that field caps what RX will accept — after a
+	 * 9-byte beacon TX the radio silently rejects every longer frame
+	 * (total RX deafness; bd r002). */
+	if (drv->pkt_params.payload_length_in_byte != LR1110_MAX_PAYLOAD) {
+		drv->pkt_params.payload_length_in_byte = LR1110_MAX_PAYLOAD;
+		LR1110_RETURN_ON_HAL_ERROR(
+			lr1110_radio_set_packet_param_lora(dev, &drv->pkt_params));
+	}
+
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_rx(dev, LR1110_RX_CONTINUOUS));
 
 	int64_t deadline = k_uptime_get() + k_ticks_to_ms_floor64(timeout.ticks);

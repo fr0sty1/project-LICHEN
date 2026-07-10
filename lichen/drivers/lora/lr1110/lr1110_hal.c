@@ -61,7 +61,12 @@ extern const struct gpio_dt_spec lr1110_gpio_reset;
  */
 #define LR1110_HAL_MAX_READ_DATA  256U
 #define LR1110_HAL_MAX_WRITE_DATA 256U
-static const uint8_t nop_pad[1U + LR1110_HAL_MAX_READ_DATA];
+/* RAM, not const/flash: the nRF SPIM driver bounces flash-resident TX
+ * buffers through an 8-byte RAM buffer, splitting the transfer into many
+ * DMA sub-chunks — and this chip corrupts multi-chunk commands (the same
+ * failure that truncated TX payloads at 32 B; bd r002). In RAM the NOP
+ * phase is one continuous DMA transfer. Zero-initialized = NOP bytes. */
+static uint8_t nop_pad[1U + LR1110_HAL_MAX_READ_DATA];
 static atomic_t last_error;
 
 /* Timeout for BUSY pin to go low after command. 1s is generous for any
