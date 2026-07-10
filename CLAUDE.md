@@ -160,17 +160,34 @@ Use `SECURITY:` prefix for comments highlighting security-critical code paths (e
 - Fix the code. If unfixable within scope, escalate.
 - Tests must have independent oracles: known test vectors, cross-validation, or reference implementations. A test that uses code-under-test as its own oracle proves nothing.
 
-### 7. EC2 Instance Safety
+### 7. AWS EC2 Access and Safety
 
-**Only terminate instances you created in the current session.**
+**Authentication:**
+```bash
+export AWS_PROFILE=AdministratorAccess-921772462201
+export AWS_REGION=us-east-2
+# If expired: aws sso login --profile AdministratorAccess-921772462201
+```
 
-- Track every instance ID you launch (from `aws ec2 run-instances` output)
-- Before terminating ANY instance, verify its ID is one you created
-- Never terminate instances found via `describe-instances` unless you have the launch record
-- Use tags to verify ownership: `ec2-claude.sh` tags instances with `Project=LICHEN` and `LaunchedBy=ec2-claude-sh`
-- When in doubt, ask before terminating
+**CRITICAL: This AWS account has multiple projects. Only touch LICHEN resources.**
 
-This applies to all cloud resources: volumes, security groups, queues, etc. If you didn't create it in this session, don't delete it.
+LICHEN resources are tagged `Project=LICHEN`. Before ANY destructive operation:
+```bash
+aws ec2 describe-tags --filters "Name=resource-id,Values=<id>" \
+  --query 'Tags[?Key==`Project`].Value' --output text
+# Must return "LICHEN" or be something YOU launched this session
+```
+
+**DO NOT TOUCH** (not LICHEN resources):
+- `ceph-fips-*`, `proxmox-fips-*`, `wolfssl-*`, `fenrir-*` instances
+- Any instance/volume/resource without `Project=LICHEN` tag
+
+**Safe operations:**
+- Launch instances with `Project=LICHEN` tag (use `./scripts/ec2-claude.sh`)
+- Terminate instances YOU launched this session (track IDs from launch output)
+- Attach/detach LICHEN EBS volume `vol-017cfe48bd75340d0`
+
+**When in doubt, ask before terminating.** See `AGENTS.md` for full AWS details.
 
 ---
 
