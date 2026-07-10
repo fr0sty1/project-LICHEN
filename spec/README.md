@@ -56,6 +56,7 @@ hardware as a reflash -- same radios, new protocol.
 - [Appendix F: SenML Profile](appendix-senml.md) - Sensor Data Format
 - [Appendix G: Design Rationale](appendix-design-rationale.md) - Inspirations and Constraints
 - [Appendix H: Bufferbloat Avoidance](appendix-bufferbloat.md) - Queue Management and Latency
+- [Appendix I: Border Router Hardware](appendix-border-router.md) - Hardware Options
 
 ### Acknowledgments
 

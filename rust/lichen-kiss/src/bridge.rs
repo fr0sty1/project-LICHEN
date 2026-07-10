@@ -246,8 +246,17 @@ impl KissBridge {
 
     /// Create a minimal LICHEN frame from payload and encode as KISS.
     ///
-    /// This is a convenience method for simple use cases where you just want
-    /// to send a payload without managing frame details.
+    /// # SECURITY: Creates UNSIGNED frames
+    ///
+    /// This method produces frames with `Signature::Absent`, violating spec 8.3
+    /// which requires "Every originated frame carries a Schnorr signature."
+    ///
+    /// **Use only for:**
+    /// - Loopback testing where signature verification is disabled
+    /// - Debugging with a known-permissive receiver
+    ///
+    /// **For production TX:** Use `lichen_link::LinkLayer::build_frame` (which
+    /// signs with the node's identity), then pass the result to `encode_link_frame`.
     ///
     /// # Arguments
     ///
