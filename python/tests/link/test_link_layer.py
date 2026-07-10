@@ -104,11 +104,13 @@ def link_layer(
             return next(iter(peer_db.values()))
         return None
 
-    return LinkLayer(
+    ll = LinkLayer(
         radio=mock_radio,
         identity=node_identity,
         peer_lookup=peer_lookup,
     )
+    ll.set_sequence(0, 0)  # deterministic epoch for tests
+    return ll
 
 
 class TestLinkLayerTx:
@@ -540,8 +542,10 @@ class TestKeyPinning:
             identity=node_identity,
             peer_lookup=peer_lookup,
         )
+        node_ll.set_sequence(0, 0)  # deterministic epoch for test
 
         peer_ll = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
+        peer_ll.set_sequence(0, 0)  # deterministic epoch for test
         await peer_ll.send(b"hello")
         mock_radio.queue_rx(peer_ll.radio.tx_history[0])
         await node_ll.receive(timeout_ms=100)
@@ -552,7 +556,7 @@ class TestKeyPinning:
 
         # Same peer can now re-establish trust (advance seqnum past replay window)
         peer_ll2 = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
-        peer_ll2.set_sequence(0, 1)  # seqnum=1 is fresh relative to the window
+        peer_ll2.set_sequence(0, 1)  # seqnum=1 is fresh relative to the window (epoch=0 matches)
         await peer_ll2.send(b"reintroduce")
         mock_radio.queue_rx(peer_ll2.radio.tx_history[0])
         result = await node_ll.receive(timeout_ms=100)

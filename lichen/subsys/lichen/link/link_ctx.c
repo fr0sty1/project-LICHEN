@@ -63,7 +63,19 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 	memset(ctx->ed25519_sk, 0, LICHEN_SK_LEN);
 	memset(ctx->ed25519_pk, 0, LICHEN_PK_LEN);
 	memset(ctx->link_key, 0, LICHEN_LINK_KEY_LEN);
-	ctx->epoch = 0;
+
+	/* ponytail: random epoch in [128,255] for reboot resilience without flash.
+	 * Half-space arithmetic treats upper-half counters as "ahead" of lower-half.
+	 * Callers with persisted epoch should call lichen_link_set_epoch() after init. */
+	uint8_t rand_byte;
+#ifdef __ZEPHYR__
+	sys_csrand_get(&rand_byte, 1);
+#elif defined(__linux__) || defined(__APPLE__)
+	(void)getentropy(&rand_byte, 1);
+#else
+	rand_byte = 0; /* fallback: no CSPRNG available */
+#endif
+	ctx->epoch = 128 + (rand_byte & 0x7F); /* [128, 255] */
 	ctx->tx_seq = 0;
 	ctx->has_key = false;
 	ctx->has_link_key = false;

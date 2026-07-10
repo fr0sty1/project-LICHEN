@@ -165,6 +165,16 @@ impl<R: Radio> Stack<R> {
         self.seqnum.fetch_increment()
     }
 
+    /// Set the epoch counter (for reboot resilience).
+    ///
+    /// Callers with persisted epoch should call this after construction.
+    /// Without persistence, callers should pass a random value in [128, 255]
+    /// so half-space replay arithmetic treats new frames as "ahead" of stale
+    /// receiver windows.
+    pub fn set_epoch(&mut self, epoch: u8) {
+        self.epoch = epoch;
+    }
+
     /// Build and send a CoAP request.
     ///
     /// Common helper for GET/POST/PUT. Returns the message ID for matching responses.

@@ -109,13 +109,22 @@ Replay protection uses a 24-bit logical counter: 8-bit epoch + 16-bit seqnum.
 
 The epoch counter increments on:
 1. **SeqNum wrap:** When SeqNum rolls over from 0xFFFF to 0x0000
-2. **Reboot:** Epoch MUST increment on every power cycle or reset
+2. **Reboot:** Epoch MUST advance on every power cycle or reset
 3. **Manual reset:** Operator-initiated counter reset
 
-Epoch MUST be persisted to non-volatile storage. Implementations SHOULD:
+**Epoch Initialization:**
+
+When no persisted epoch is available (cold boot without flash, or flash read
+failure), implementations MUST initialize epoch to a random value uniformly
+distributed in [128, 255]. This ensures the 24-bit counter starts in the upper
+half of the counter space (8M-16M), so half-space arithmetic treats it as
+"ahead" of any counter value peers may have cached in the lower half.
+
+Epoch persistence is RECOMMENDED but not required. Implementations that persist
+epoch SHOULD:
 - Write epoch to flash on every increment
 - Use wear-leveling or multiple slots to extend flash lifetime
-- On read failure, assume epoch = last_known + 1
+- On read failure, fall back to random initialization as above
 
 **Sequence Number (16 bits):**
 
