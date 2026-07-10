@@ -1,14 +1,14 @@
 {
   "id": "project-LICHEN-t2hn.10",
   "title": "Build native_sim Meshtastic app-compat test harness",
-  "description": "Why this exists: app compatibility work needs automated proof before hardware and mobile smoke tests. What needs to be done: create a native_sim or host-side test harness that feeds Meshtastic-framed protobuf bytes into the adapter and inspects FromRadio bytes and LICHEN local-interface calls. Cover connect/init, node info/status/config reads, text ingress, incoming message egress, malformed input, unsupported commands, and queue limits. Acceptance criteria: west build/twister test runs on Linux EC2 Zephyr cache; tests fail if handlers are bypassed or if raw Meshtastic RF path is used; CI-ready commands are recorded in Beads notes.",
+  "description": "Build native_sim Meshtastic app-compat test harness (NO HARDWARE REQUIRED).\n\n## Context\nMeshCore harness (9c4y.10) is the template - that used native_sim ztests with\ngenerated vectors from test/vectors/meshcore_app_compat.json.\n\n## Implementation\n\n1. **Vector generator**: Create python script to generate test vectors from\n   spec/meshtastic-app-compat.md and test/vectors/meshtastic_app_compat.json:\n   - ToRadio protobuf bytes for each supported request type\n   - Expected FromRadio protobuf bytes\n   - Expected LICHEN local interface calls\n   \n2. **Codec ztest** (lichen/tests/meshtastic_codec):\n   - Decode ToRadio → internal request struct\n   - Encode FromRadio from internal response struct\n   - Byte-for-byte match against vectors\n   - Malformed/truncated/oversized rejection\n   - Unknown packet type handling\n   \n3. **Adapter ztest** (lichen/tests/meshtastic_adapter):\n   - Feed ToRadio bytes via mock BLE NUS characteristic\n   - Verify FromRadio bytes match expected\n   - Verify LICHEN local interface calls (mock the LICHEN side)\n   - Test connect/init sequence (WantConfigId, MyInfo, Config*, etc)\n   - Test node info/status/config reads\n   - Test text message ingress → LICHEN send\n   - Test LICHEN receive → FromRadio egress\n   - Test unsupported commands → explicit errors\n   - Test queue limits and backpressure\n   \n4. **Build commands**:\n   ```bash\n   west build -p always -b native_sim lichen/tests/meshtastic_codec      -- -DZEPHYR_EXTRA_MODULES=$PWD/lichen\n   west build -t run\n   \n   west build -p always -b native_sim lichen/tests/meshtastic_adapter      -- -DZEPHYR_EXTRA_MODULES=$PWD/lichen\n   west build -t run\n   \n   west twister -T lichen/tests/meshtastic_codec      -T lichen/tests/meshtastic_adapter      -p native_sim --inline-logs\n   ```\n\n## NOT in scope\n- Real BLE stack (mocked at NUS characteristic level)\n- Real LoRa radio (mocked LICHEN interface)\n- Hardware flash (use RAM or simulated flash)\n\n## Acceptance criteria\n- west twister passes on native_sim\n- Tests fail if handlers are bypassed\n- Tests fail if raw Meshtastic RF path is accidentally used\n- CI-ready commands documented in notes",
   "status": "open",
   "priority": 0,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-06-30T17:15:25.277814Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-06-30T21:59:41.489809Z",
+  "updated_at": "2026-07-10T19:45:14.814842Z",
   "labels": [
     "zephyr",
     "meshtastic",
