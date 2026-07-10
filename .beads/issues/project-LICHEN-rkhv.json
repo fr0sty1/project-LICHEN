@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-rkhv",
+  "title": "Implement bounded TX/forwarding queues with backpressure",
+  "description": "Prevent LoRa bufferbloat: (1) Bounded TX queue (~4-8 packets), (2) Bounded forwarding buffer per-source, (3) Backpressure error to app when queue full, (4) Deadline-based expiry (drop packets older than ~10s), (5) Priority: routing control \u003e ACKs \u003e app data. CoDel-style AQM may be overkill but consider timestamp-based dropping.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T22:22:27.967075Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T22:22:32.476295Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rkhv",
+      "depends_on_id": "project-LICHEN-fzo3",
+      "type": "blocks",
+      "created_at": "2026-07-10T22:22:32.476294Z"
+    }
+  ]
+}
