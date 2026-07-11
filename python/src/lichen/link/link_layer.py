@@ -398,7 +398,8 @@ class LinkLayer:
 
         # Step 4 happened inside _find_sender (signature verification)
 
-        # Step 4.5: Key pinning — TOFU anchor + change detection.
+        # Step 4.5: Key pinning check — TOFU anchor + change detection.
+        # SECURITY: Only check here; actual pinning happens after MIC verification.
         pinned_pk = self._pinned_keys.get(sender.iid)
         if pinned_pk is not None and pinned_pk != sender.pubkey:
             logger.error(
@@ -408,12 +409,18 @@ class LinkLayer:
                 sender.pubkey.hex()[:16],
             )
             return None
-        self._pinned_keys[sender.iid] = sender.pubkey
 
         # Step 4.6: Verify MIC (stub - logs warning, always accepts)
         # TODO: Implement AES-CCM MIC verification when encryption is added.
         # The MIC covers: LLSec || epoch || seqnum || dst_addr || payload
-        _verify_mic_stub(frame)
+        if not _verify_mic_stub(frame):
+            logger.warning("MIC verification failed for frame from %s", sender.iid.hex())
+            return None
+
+        # Step 4.7: Pin key after MIC verification succeeds.
+        # SECURITY: Key pinning must happen AFTER MIC verification to prevent
+        # attackers from pinning forged keys before the MIC check rejects them.
+        self._pinned_keys[sender.iid] = sender.pubkey
 
         # Step 5: Replay protection
         # Why use pubkey as sender ID: It's the unique identifier for a node.
@@ -494,11 +501,9 @@ class LinkLayer:
         # sender IID so we can look up directly.
         #
         # For now, we rely on the peer_lookup callback to iterate candidates.
-        # The callback returns None if no match found.
-        #
-        # HACK: We use the frame dst_addr as a hint, but for broadcasts it's empty.
-        # A proper implementation would have sender IID in the frame.
-        peer = self.peer_lookup(frame.dst_addr if frame.dst_addr else b"")
+        # The callback returns None if no match found. We pass empty bytes as
+        # the hint since current frame format lacks sender IID.
+        peer = self.peer_lookup(b"")
         if peer is not None and verify(peer.pubkey, signable, signature):
             return peer
 
@@ -506,7 +511,7 @@ class LinkLayer:
         # O(n) is unavoidable without sender IID in frame format.
         if self.peer_lookup_all is not None:
             for candidate in self.peer_lookup_all():
-                if candidate is not peer and verify(candidate.pubkey, signable, signature):
+                if (peer is None or candidate.pubkey != peer.pubkey) and verify(candidate.pubkey, signable, signature):
                     return candidate
 
         return None

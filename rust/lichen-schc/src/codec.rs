@@ -339,6 +339,9 @@ fn compress_icmpv6_echo(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcErro
     let icmp_seq = u16::from_be_bytes([icmp[6], icmp[7]]);
     let tail = &icmp[8..];
 
+    if out.is_empty() {
+        return Err(BufferTooSmall::new(1, 0).into());
+    }
     out[0] = RULE_ICMPV6_ECHO;
     let mut w = BitWriter::new(&mut out[1..]);
     w.write(hop_limit as u128, 8)?;
@@ -381,6 +384,9 @@ fn compress_rpl_dio(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let dodagid = u128::from_be_bytes(rpl[8..24].try_into().unwrap());
     let tail = &rpl[24..];
 
+    if out.is_empty() {
+        return Err(BufferTooSmall::new(1, 0).into());
+    }
     out[0] = RULE_RPL_DIO;
     let mut w = BitWriter::new(&mut out[1..]);
     w.write(hop_limit as u128, 8)?;
@@ -424,6 +430,9 @@ fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let dodagid = u128::from_be_bytes(rpl[4..20].try_into().unwrap());
     let tail = &rpl[20..];
 
+    if out.is_empty() {
+        return Err(BufferTooSmall::new(1, 0).into());
+    }
     out[0] = RULE_RPL_DAO;
     let mut w = BitWriter::new(&mut out[1..]);
     w.write(hop_limit as u128, 8)?;
@@ -549,6 +558,9 @@ fn decompress_coap(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
     let udp_len = (8 + coap_len) as u16;
 
     // Build CoAP bytes for checksum.
+    if coap_len > SCHC_MAX_DECOMPRESSED {
+        return Err(BufferTooSmall::new(coap_len, SCHC_MAX_DECOMPRESSED).into());
+    }
     let mut coap_buf = [0u8; SCHC_MAX_DECOMPRESSED];
     coap_buf[0] = coap_b0;
     coap_buf[1] = coap_code;
@@ -599,6 +611,9 @@ fn decompress_icmpv6_echo(data: &[u8], out: &mut [u8]) -> Result<usize, SchcErro
     }
 
     // Build ICMPv6 with zero checksum for computation.
+    if icmp_len > SCHC_MAX_DECOMPRESSED {
+        return Err(BufferTooSmall::new(icmp_len, SCHC_MAX_DECOMPRESSED).into());
+    }
     let mut icmp_buf = [0u8; SCHC_MAX_DECOMPRESSED];
     icmp_buf[0] = icmp_type;
     icmp_buf[1] = 0; // code NOT_SENT = 0
@@ -654,6 +669,9 @@ fn decompress_rpl_dio(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     if total > out.len() {
         return Err(BufferTooSmall::new(total, out.len()).into());
     }
+    if icmp_len > SCHC_MAX_DECOMPRESSED {
+        return Err(BufferTooSmall::new(icmp_len, SCHC_MAX_DECOMPRESSED).into());
+    }
 
     let mut icmp_buf = [0u8; SCHC_MAX_DECOMPRESSED];
     icmp_buf[0] = 155; // RPL
@@ -704,6 +722,9 @@ fn decompress_rpl_dao(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let total = 40 + icmp_len;
     if total > out.len() {
         return Err(BufferTooSmall::new(total, out.len()).into());
+    }
+    if icmp_len > SCHC_MAX_DECOMPRESSED {
+        return Err(BufferTooSmall::new(icmp_len, SCHC_MAX_DECOMPRESSED).into());
     }
 
     let mut icmp_buf = [0u8; SCHC_MAX_DECOMPRESSED];

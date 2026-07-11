@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-4t5u",
+  "title": "Deprecate node_server.py in favor of RenodeServer",
+  "description": "NodeServer (node_server.py) uses poll-based RX with 1ms sleep loop. RenodeServer (renode_server.py) has push-based RX. Migrate all usages of NodeServer to RenodeServer, update SimulatorServer.get_node_server_port to spawn RenodeServer instances, then delete node_server.py.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T22:15:25.960134Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T22:20:07.689638Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-4t5u",
+      "depends_on_id": "project-LICHEN-578k",
+      "type": "blocks",
+      "created_at": "2026-07-10T22:15:48.033629Z"
+    }
+  ]
+}

@@ -13,6 +13,7 @@ Separation keeps the codec testable without crypto dependencies.
 from __future__ import annotations
 
 import logging
+from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -29,6 +30,7 @@ from lichen.gradient import (
     GradientEntry,
     GradientSource,
     GradientTable,
+    MAX_ENTRIES,
 )
 
 logger = logging.getLogger(__name__)
@@ -110,17 +112,20 @@ class AnnounceProcessor:
         address_builder: Callback to build IPv6 address from IID.
             Why a callback: The prefix (ULA or GUA) is network context.
             The processor doesn't know/care about prefix assignment.
-        _seen: Per-originator highest seq_num seen.
-            Why dict[bytes, int]: IID is the key, seq_num is the value.
-        _pinned_keys: IID → pinned pubkey (TOFU trust anchors).
+        _seen: Per-originator highest seq_num seen (LRU-bounded).
+            Why OrderedDict: Bounded to MAX_ENTRIES to prevent unbounded growth.
+            IID is the key, seq_num is the value.
+        _pinned_keys: IID → pinned pubkey (TOFU trust anchors, LRU-bounded).
             Why separate from _seen: An IID's seq_num resets on reboot;
             the pinned pubkey must NOT change (that would be a key change).
     """
 
     gradient_table: GradientTable
     address_builder: Callable[[bytes], IPv6Address]
-    _seen: dict[bytes, int] = field(default_factory=dict, repr=False)
-    _pinned_keys: dict[bytes, bytes] = field(default_factory=dict, repr=False)
+    _seen: OrderedDict[bytes, int] = field(default_factory=OrderedDict, repr=False)
+    _pinned_keys: OrderedDict[bytes, bytes] = field(
+        default_factory=OrderedDict, repr=False
+    )
 
     def process(
         self,
@@ -211,8 +216,16 @@ class AnnounceProcessor:
             )
 
         # Accept: pin pubkey (TOFU first-contact), update seen, update gradient.
+        # Use LRU eviction to bound memory: move to end, then evict oldest if over limit.
         self._pinned_keys[iid] = announce.pubkey
+        self._pinned_keys.move_to_end(iid)
+        while len(self._pinned_keys) > MAX_ENTRIES:
+            self._pinned_keys.popitem(last=False)
+
         self._seen[iid] = announce.seq_num
+        self._seen.move_to_end(iid)
+        while len(self._seen) > MAX_ENTRIES:
+            self._seen.popitem(last=False)
 
         # Step 5: Update gradient table
         # Why build full IPv6: Gradient table uses full addresses for lookup.

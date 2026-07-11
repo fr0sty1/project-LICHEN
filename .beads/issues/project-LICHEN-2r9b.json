@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2r9b",
+  "title": "Compliance: rust/lichen-link/src/link_layer.rs link signatures",
+  "description": "Policy: 06-security.md §8.3-8.5. File: rust/lichen-link/src/link_layer.rs. Status: COMPLIANT. TX path (build_frame L310-342): Signs with schnorr::sign_frame() before transmission, appends signature to payload, sets Signature::Present. RX path (receive_frame L345-422): Parses frame, checks signature present, verifies via schnorr::verify_frame(), performs replay check, implements key pinning for TOFU.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:16:55.510108Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:35:30.742114Z",
+  "closed_at": "2026-07-10T23:35:30.742114Z",
+  "close_reason": "done",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2r9b",
+      "depends_on_id": "project-LICHEN-4wst",
+      "type": "parent-child",
+      "created_at": "2026-07-10T23:17:38.608587Z"
+    }
+  ]
+}

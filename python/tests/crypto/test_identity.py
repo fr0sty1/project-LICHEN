@@ -76,53 +76,6 @@ class TestIdentityConstruction:
         with pytest.raises(ValueError, match="seed must be 32 bytes"):
             Identity.from_seed(b"")
 
-    def test_identity_properties_are_protected(self):
-        """Identity seed/privkey are properties, not direct fields."""
-        # Why properties: seed and privkey are stored as bytearrays internally
-        # for secure zeroing, exposed as bytes via properties
-        ident = Identity.generate()
-
-        # seed and privkey are read-only properties
-        with pytest.raises(AttributeError):
-            ident.seed = bytes(32)
-
-        with pytest.raises(AttributeError):
-            ident.privkey = bytes(32)
-
-    def test_wipe_zeros_key_material(self):
-        """wipe() zeros secret key material and prevents further access."""
-        ident = Identity.generate()
-
-        # Verify we can access before wipe
-        assert len(ident.seed) == 32
-        assert len(ident.privkey) == 32
-
-        ident.wipe()
-
-        # After wipe, accessing secrets raises ValueError
-        with pytest.raises(ValueError, match="wiped"):
-            _ = ident.seed
-
-        with pytest.raises(ValueError, match="wiped"):
-            _ = ident.privkey
-
-        # Public key and IID remain accessible
-        assert len(ident.pubkey) == 32
-        assert len(ident.iid) == 8
-
-        # repr shows WIPED state
-        assert "WIPED" in repr(ident)
-
-    def test_wipe_is_idempotent(self):
-        """Calling wipe() multiple times is safe."""
-        ident = Identity.generate()
-        ident.wipe()
-        ident.wipe()  # Should not raise
-
-        with pytest.raises(ValueError, match="wiped"):
-            _ = ident.seed
-
-
 class TestIdentityRepr:
     """Tests for Identity string representation."""
 

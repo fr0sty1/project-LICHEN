@@ -61,6 +61,8 @@ class SourceRoutingHeader:
             IPv6Address(addr_bytes[i : i + 16])
             for i in range(0, len(addr_bytes), 16)
         ]
+        if segments_left > len(addresses):
+            raise RoutingError("segments_left exceeds address count")
         return cls(segments_left=segments_left, addresses=addresses)
 
     def to_extension_header(self) -> ExtensionHeader:

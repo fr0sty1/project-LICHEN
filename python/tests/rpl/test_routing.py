@@ -70,6 +70,13 @@ def test_srh_from_ext_data_rejects_wrong_type() -> None:
         SourceRoutingHeader.from_ext_data(bytes([4, 0, 0, 0, 0, 0]))
 
 
+def test_srh_from_ext_data_rejects_segments_left_exceeds_addresses() -> None:
+    # segments_left=2 but only 1 address (16 bytes) provided
+    data = bytes([3, 2, 0, 0, 0, 0]) + DEST.packed
+    with pytest.raises(RoutingError, match="segments_left exceeds"):
+        SourceRoutingHeader.from_ext_data(data)
+
+
 def test_next_hop_upward_is_preferred_parent() -> None:
     dodag = DodagState(rpl_instance_id=0, dodag_id="fd00::1", version=1)
     assert next_hop_upward(dodag) is None

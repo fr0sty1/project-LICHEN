@@ -21,8 +21,9 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-# Queue size limit - drop oldest when full (spec: error handling)
+# Queue size limits
 MAX_QUEUE_SIZE = 64
+QUEUE_WARN_THRESHOLD = 48  # 75% - log warning when reached
 
 
 @dataclass
@@ -41,7 +42,7 @@ class MeshtasticAdapter:
     """
 
     node: Node
-    from_radio_queue: deque[bytes] = field(default_factory=lambda: deque(maxlen=MAX_QUEUE_SIZE))
+    from_radio_queue: deque[bytes] = field(default_factory=deque)
     from_num: int = field(default=0)
     config_sync_pending: int | None = field(default=None)
     connected: bool = field(default=False)
@@ -125,23 +126,34 @@ class MeshtasticAdapter:
 
     # --- LICHEN node events (called from node async context) ---
 
-    def queue_from_radio(self, data: bytes) -> None:
+    def queue_from_radio(self, data: bytes) -> bool:
         """Queue a FromRadio message and bump FromNum.
 
         Thread-safe. Invokes notify callback if set.
+        Returns False if queue is full (backpressure signal) - does NOT drop.
 
         Args:
             data: Raw protobuf bytes (FromRadio message).
+
+        Returns:
+            True if queued, False if full (caller must retry or handle).
         """
         with self._lock:
             if not self.connected:
-                return
+                return False
+            queue_len = len(self.from_radio_queue)
+            if queue_len >= MAX_QUEUE_SIZE:
+                log.warning("FromRadio queue full (%d), rejecting message", queue_len)
+                return False
+            if queue_len >= QUEUE_WARN_THRESHOLD:
+                log.warning("FromRadio queue near capacity (%d/%d)", queue_len, MAX_QUEUE_SIZE)
             self.from_radio_queue.append(data)
             self.from_num = (self.from_num + 1) & 0xFFFFFFFF
 
         # Notify outside lock to avoid deadlock
         if self._on_from_num_changed:
             self._on_from_num_changed()
+        return True
 
     def on_message_received(self, payload: bytes, from_iid: bytes) -> None:
         """Called when LICHEN node receives a message.

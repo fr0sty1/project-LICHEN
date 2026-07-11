@@ -425,7 +425,7 @@ Always use the persistent single-AZ EBS builder cache for EC2 Zephyr builds/test
 
 - Volume: `vol-017cfe48bd75340d0`
 - Region/AZ: `us-east-2` / `us-east-2a`
-- Size/type: 200 GiB `gp3`
+- Size/type: 400 GiB `gp3`
 - Name tag: `lichen-zephyr-arm64`
 - Filesystem label: `LICHEN_ZEPHYR`
 - Mount point: `/mnt/lichen-zephyr`

@@ -363,9 +363,10 @@ impl Context {
             return Err(OscoreError::InvalidParam);
         }
 
-        // Check replay
+        // SECURITY: Check replay BEFORE decryption, but update window AFTER.
+        // This prevents attackers from poisoning the replay window with forged packets.
         let seq = OscoreSeqNum::from_piv(&opt.piv[..opt.piv_len as usize]);
-        if !self.check_replay(seq) {
+        if self.is_replay(seq) {
             return Err(OscoreError::Replay);
         }
 
@@ -389,6 +390,9 @@ impl Context {
         cipher
             .decrypt_in_place_detached((&nonce).into(), &[], &mut plaintext, tag)
             .map_err(|_| OscoreError::DecryptFailed)?;
+
+        // SECURITY: Only update replay window AFTER successful decryption
+        self.update_replay_window(seq);
 
         // Parse plaintext: code || options || 0xFF || payload
         // 0xFF is the CoAP payload marker (RFC 7252 Section 3).
@@ -421,8 +425,30 @@ impl Context {
         Ok((code, options, payload))
     }
 
-    /// Check replay window and update if valid.
-    fn check_replay(&mut self, seq: OscoreSeqNum) -> bool {
+    /// Check if sequence number would be rejected as a replay.
+    /// Does NOT update the replay window - call update_replay_window after successful decryption.
+    fn is_replay(&self, seq: OscoreSeqNum) -> bool {
+        let seq_val = seq.get();
+        let recipient_seq_val = self.recipient_seq.get();
+
+        if seq_val > recipient_seq_val {
+            // New highest - always valid
+            false
+        } else {
+            // Check if within window
+            let diff = recipient_seq_val - seq_val;
+            if diff >= WINDOW_SIZE {
+                return true; // Too old
+            }
+
+            let mask = 1u32 << diff;
+            self.replay_window & mask != 0 // Already seen
+        }
+    }
+
+    /// Update replay window after successful decryption.
+    /// SECURITY: Must only be called AFTER decryption succeeds to prevent replay-window poisoning.
+    fn update_replay_window(&mut self, seq: OscoreSeqNum) {
         let seq_val = seq.get();
         let recipient_seq_val = self.recipient_seq.get();
 
@@ -436,21 +462,13 @@ impl Context {
             }
             self.replay_window |= 1;
             self.recipient_seq = seq;
-            true
         } else {
-            // Check if within window
+            // Mark as seen within window
             let diff = recipient_seq_val - seq_val;
-            if diff >= WINDOW_SIZE {
-                return false; // Too old
+            if diff < WINDOW_SIZE {
+                let mask = 1u32 << diff;
+                self.replay_window |= mask;
             }
-
-            let mask = 1u32 << diff;
-            if self.replay_window & mask != 0 {
-                return false; // Already seen
-            }
-
-            self.replay_window |= mask;
-            true
         }
     }
 }
@@ -743,17 +761,21 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut ctx = Context::new(&master_secret, None, &[0], &[1]).unwrap();
 
-        // First packet accepted
-        assert!(ctx.check_replay(seq(0)));
-        // Replay rejected
-        assert!(!ctx.check_replay(seq(0)));
+        // First packet accepted (is_replay returns false for valid packets)
+        assert!(!ctx.is_replay(seq(0)));
+        ctx.update_replay_window(seq(0));
+        // Replay rejected (is_replay returns true for replays)
+        assert!(ctx.is_replay(seq(0)));
         // New packet accepted
-        assert!(ctx.check_replay(seq(1)));
+        assert!(!ctx.is_replay(seq(1)));
+        ctx.update_replay_window(seq(1));
         // Earlier replay rejected
-        assert!(!ctx.check_replay(seq(0)));
-        // Out of window rejected
-        assert!(ctx.check_replay(seq(100)));
-        assert!(!ctx.check_replay(seq(50))); // Too old
+        assert!(ctx.is_replay(seq(0)));
+        // Jump ahead - accepted
+        assert!(!ctx.is_replay(seq(100)));
+        ctx.update_replay_window(seq(100));
+        // Now 50 is too old (outside window)
+        assert!(ctx.is_replay(seq(50)));
     }
 
     #[test]

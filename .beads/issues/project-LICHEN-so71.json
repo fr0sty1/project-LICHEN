@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-so71",
+  "title": "Compliance: python/src/lichen/sim/node_server.py polling",
+  "description": "Policy: No-polling. Status: VIOLATION. Has 1ms sleep poll loop. Fix: deprecate in favor of renode_server.py (4t5u) or convert to push-based callbacks.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:11:27.653427Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:11:42.344233Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-so71",
+      "depends_on_id": "project-LICHEN-yjbn",
+      "type": "parent-child",
+      "created_at": "2026-07-10T23:11:33.60933Z"
+    },
+    {
+      "issue_id": "project-LICHEN-so71",
+      "depends_on_id": "project-LICHEN-4t5u",
+      "type": "blocks",
+      "created_at": "2026-07-10T23:11:42.344233Z"
+    }
+  ]
+}

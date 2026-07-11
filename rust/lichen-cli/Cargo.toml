@@ -22,3 +22,6 @@ ciborium  = "0.2"
 tracing            = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 zeroize            = "1"
+sha2               = { version = "0.11", default-features = false }
+getrandom          = { version = "0.2", features = ["std"] }
+percent-encoding   = "2"

@@ -474,6 +474,14 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 
 	lr1110_system_clear_irq(dev, irq);
 
+	int ret = lr1110_hal_get_last_error();
+	if (ret < 0) {
+		/* HAL error during the poll — don't leave the radio in RX
+		 * (upstream error-path hygiene, adapted to the polled recv). */
+		lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_RC);
+		return ret;
+	}
+
 	if (!(irq & LR1110_SYSTEM_IRQ_RXDONE_MASK)) {
 		/* No packet — return the radio to standby (don't leave it in RX),
 		 * mirroring upstream's error-path hygiene. */

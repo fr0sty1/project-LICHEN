@@ -1,0 +1,124 @@
+# Coverity Scan static analysis for C/C++ code
+#
+# SETUP REQUIRED:
+# 1. Register this project at https://scan.coverity.com/
+#    - Use the GitHub repo URL as the project identifier
+#    - Note: Free for open-source projects
+#
+# 2. Add secrets to GitHub repo settings (Settings > Secrets > Actions):
+#    - COVERITY_SCAN_TOKEN: From scan.coverity.com project settings
+#    - COVERITY_SCAN_EMAIL: Email registered with Coverity Scan
+#
+# The workflow will skip submission if secrets are not configured.
+
+name: Coverity Scan
+
+on:
+  schedule:
+    # Run weekly on Sunday at midnight UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    # Allow manual trigger from Actions tab
+
+jobs:
+  coverity:
+    name: Coverity Scan
+    runs-on: ubuntu-latest
+    # Only run if secrets are configured (skip gracefully otherwise)
+    if: ${{ github.repository_owner == github.actor || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - name: Check for Coverity secrets
+        id: check-secrets
+        run: |
+          if [ -z "${{ secrets.COVERITY_SCAN_TOKEN }}" ] || [ -z "${{ secrets.COVERITY_SCAN_EMAIL }}" ]; then
+            echo "configured=false" >> $GITHUB_OUTPUT
+            echo "::warning::Coverity secrets not configured. Skipping scan."
+            echo "::warning::Add COVERITY_SCAN_TOKEN and COVERITY_SCAN_EMAIL to repository secrets."
+          else
+            echo "configured=true" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.check-secrets.outputs.configured == 'true'
+
+      - name: Install system dependencies
+        if: steps.check-secrets.outputs.configured == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build gcc gcc-multilib
+
+      - name: Install west and Python deps
+        if: steps.check-secrets.outputs.configured == 'true'
+        run: pip install west
+
+      - name: Cache Zephyr checkout
+        if: steps.check-secrets.outputs.configured == 'true'
+        id: cache-zephyr
+        uses: actions/cache@v4
+        with:
+          path: zephyr
+          key: zephyr-${{ hashFiles('lichen/west.yml') }}
+          restore-keys: zephyr-
+
+      - name: west init + update
+        if: steps.check-secrets.outputs.configured == 'true' && steps.cache-zephyr.outputs.cache-hit != 'true'
+        run: |
+          west init -l lichen/
+          west update
+
+      - name: west init (manifest only, Zephyr from cache)
+        if: steps.check-secrets.outputs.configured == 'true' && steps.cache-zephyr.outputs.cache-hit == 'true'
+        run: west init -l lichen/
+
+      - name: Install Zephyr Python requirements
+        if: steps.check-secrets.outputs.configured == 'true'
+        run: pip install -r zephyr/scripts/requirements.txt
+
+      - name: west zephyr-export
+        if: steps.check-secrets.outputs.configured == 'true'
+        run: west zephyr-export
+
+      - name: Download Coverity Build Tool
+        if: steps.check-secrets.outputs.configured == 'true'
+        run: |
+          curl -fsSL \
+            --data-urlencode "token=${{ secrets.COVERITY_SCAN_TOKEN }}" \
+            --data-urlencode "project=${{ github.repository }}" \
+            -o cov-analysis.tar.gz \
+            https://scan.coverity.com/download/linux64
+          mkdir -p cov-analysis
+          tar xzf cov-analysis.tar.gz --strip-components=1 -C cov-analysis
+          echo "$PWD/cov-analysis/bin" >> $GITHUB_PATH
+
+      - name: Build with cov-build (native_sim)
+        if: steps.check-secrets.outputs.configured == 'true'
+        env:
+          ZEPHYR_TOOLCHAIN_VARIANT: host
+        run: |
+          # Configure the build
+          west build -b native_sim lichen/apps/gateway --pristine -- -DZEPHYR_TOOLCHAIN_VARIANT=host
+
+          # Clean and rebuild under Coverity
+          rm -rf build
+          mkdir -p cov-int
+          cov-build --dir cov-int west build -b native_sim lichen/apps/gateway -- -DZEPHYR_TOOLCHAIN_VARIANT=host
+
+      - name: Package Coverity results
+        if: steps.check-secrets.outputs.configured == 'true'
+        run: |
+          tar czf cov-int.tar.gz cov-int
+          echo "Coverity build results packaged ($(du -h cov-int.tar.gz | cut -f1))"
+
+      - name: Submit to Coverity Scan
+        if: steps.check-secrets.outputs.configured == 'true'
+        run: |
+          curl -fsSL \
+            --form token="${{ secrets.COVERITY_SCAN_TOKEN }}" \
+            --form email="${{ secrets.COVERITY_SCAN_EMAIL }}" \
+            --form file=@cov-int.tar.gz \
+            --form version="${{ github.sha }}" \
+            --form description="Automated scan from GitHub Actions (branch: ${{ github.ref_name }})" \
+            "https://scan.coverity.com/builds?project=${{ github.repository }}"
+          echo "Coverity scan submitted successfully"

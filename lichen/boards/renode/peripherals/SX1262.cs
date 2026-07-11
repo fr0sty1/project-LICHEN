@@ -82,8 +82,10 @@ namespace Antmicro.Renode.Peripherals.Wireless
             rxRssi = 0;
             rxSnr = 0;
             irqFlags = 0;
+            rxMode = false;
             Array.Clear(txBuffer, 0, txBuffer.Length);
             Array.Clear(rxBuffer, 0, rxBuffer.Length);
+            Array.Clear(rxTimeoutBytes, 0, rxTimeoutBytes.Length);
             Busy.Set(false);
             IRQ.Set(false);
         }
@@ -144,13 +146,25 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     break;
 
                 case State.SetTx:
-                case State.SetRx:
                 case State.SetPacketParams:
                 case State.SetModulationParams:
                 case State.ClearIrqStatus:
                 case State.SetDioIrqParams:
                     // Consume parameter bytes, ignore values
                     byteIndex++;
+                    break;
+
+                case State.SetRx:
+                    // Collect 3 timeout bytes (24-bit big-endian from SX1262)
+                    if (byteIndex < 3)
+                    {
+                        rxTimeoutBytes[byteIndex] = data;
+                        byteIndex++;
+                        if (byteIndex == 3)
+                        {
+                            SendRxEnter();
+                        }
+                    }
                     break;
 
                 case State.GetStatus:
@@ -220,12 +234,16 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
                 case 0x83: // SetTx
                     state = State.SetTx;
+                    if (rxMode)
+                    {
+                        SendRxExit();
+                    }
                     TriggerTx();
                     break;
 
                 case 0x82: // SetRx
                     state = State.SetRx;
-                    PollRx();
+                    // Timeout bytes collected in Transmit(), then SendRxEnter() called
                     break;
 
                 case 0xC0: // GetStatus
@@ -264,6 +282,13 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     break;
 
                 case 0x80: // SetStandby
+                    if (rxMode)
+                    {
+                        SendRxExit();
+                    }
+                    state = State.Idle;
+                    break;
+
                 case 0x84: // SetCad
                 case 0x94: // SetSleep
                 case 0x86: // SetRfFrequency
@@ -331,6 +356,168 @@ namespace Antmicro.Renode.Peripherals.Wireless
             Busy.Set(false);
             txLen = 0;
             IRQ.Set(irqFlags != 0);
+        }
+
+        private void SendRxEnter()
+        {
+            EnsureConnected();
+            if (stream == null)
+            {
+                this.Log(LogLevel.Warning, "RX_ENTER failed: not connected to lichen-sim");
+                return;
+            }
+
+            // Convert SX1262 24-bit timeout (big-endian, 15.625us steps) to microseconds
+            uint timeoutSteps = (uint)((rxTimeoutBytes[0] << 16) | (rxTimeoutBytes[1] << 8) | rxTimeoutBytes[2]);
+            uint timeoutUs;
+            if (timeoutSteps == 0xFFFFFF)
+            {
+                // Continuous RX
+                timeoutUs = 0xFFFFFFFF;
+            }
+            else
+            {
+                // 15.625us per step = 15625/1000
+                timeoutUs = (uint)((timeoutSteps * 15625UL) / 1000UL);
+            }
+
+            rxMode = true;
+            this.Log(LogLevel.Debug, "RX_ENTER: timeout={0}us", timeoutUs == 0xFFFFFFFF ? "continuous" : timeoutUs.ToString());
+
+            try
+            {
+                // Protocol: [len:4][type:1][timeout_us:4]
+                var msg = new byte[9];
+                WriteLE32(msg, 0, 5); // message length
+                msg[4] = 0x24; // RX_ENTER
+                WriteLE32(msg, 5, timeoutUs);
+
+                stream.Write(msg, 0, msg.Length);
+
+                // Block waiting for RX_PACKET or RX_TIMEOUT from simulation
+                WaitForRxResponse();
+            }
+            catch (Exception e)
+            {
+                this.Log(LogLevel.Warning, "RX_ENTER error: {0}", e.Message);
+                Disconnect();
+                rxMode = false;
+            }
+        }
+
+        private void SendRxExit()
+        {
+            if (stream == null)
+            {
+                rxMode = false;
+                return;
+            }
+
+            this.Log(LogLevel.Debug, "RX_EXIT");
+
+            try
+            {
+                // Protocol: [len:4][type:1] - no payload
+                var msg = new byte[5];
+                WriteLE32(msg, 0, 1); // message length = 1 (just the type byte)
+                msg[4] = 0x26; // MSG_RX_EXIT
+
+                stream.Write(msg, 0, msg.Length);
+            }
+            catch (Exception e)
+            {
+                this.Log(LogLevel.Warning, "RX_EXIT error: {0}", e.Message);
+                Disconnect();
+            }
+
+            rxMode = false;
+        }
+
+        private void WaitForRxResponse()
+        {
+            // Block until we receive RX_PACKET (0x27) or RX_TIMEOUT (0x28)
+            // The simulation pushes these when a packet arrives or timeout expires
+            if (stream == null)
+                return;
+
+            Busy.Set(true);
+
+            try
+            {
+                // Remove receive timeout - we need to block until response
+                socket.ReceiveTimeout = 0;
+
+                var resp = ReadMessage();
+                if (resp == null || resp.Length < 1)
+                {
+                    this.Log(LogLevel.Warning, "RX: no response from simulation");
+                    rxMode = false;
+                    Busy.Set(false);
+                    return;
+                }
+
+                byte msgType = resp[0];
+
+                if (msgType == 0x27) // RX_PACKET
+                {
+                    // Format: type(1) + payload_len(2 LE) + payload + rssi(2 LE signed) + snr(2 LE signed)
+                    if (resp.Length < 5) // Minimum: type + len + rssi + snr
+                    {
+                        this.Log(LogLevel.Warning, "RX_PACKET: message too short");
+                        rxMode = false;
+                        Busy.Set(false);
+                        return;
+                    }
+
+                    rxLen = ReadLE16(resp, 1);
+                    int payloadEnd = 3 + rxLen;
+
+                    if (resp.Length < payloadEnd + 4)
+                    {
+                        this.Log(LogLevel.Warning, "RX_PACKET: payload/metadata truncated");
+                        rxMode = false;
+                        Busy.Set(false);
+                        return;
+                    }
+
+                    // Copy payload to RX buffer
+                    Array.Copy(resp, 3, rxBuffer, 0, Math.Min(rxLen, (ushort)256));
+
+                    // Read RSSI and SNR (signed 16-bit LE)
+                    rxRssi = (short)ReadLE16(resp, payloadEnd);
+                    rxSnr = (short)ReadLE16(resp, payloadEnd + 2);
+
+                    this.Log(LogLevel.Debug, "RX_PACKET: {0} bytes, RSSI={1}, SNR={2}", rxLen, rxRssi, rxSnr);
+
+                    irqFlags |= 0x0002; // RxDone
+                }
+                else if (msgType == 0x28) // RX_TIMEOUT
+                {
+                    this.Log(LogLevel.Debug, "RX_TIMEOUT");
+                    irqFlags |= 0x0200; // Timeout
+                }
+                else
+                {
+                    this.Log(LogLevel.Warning, "RX: unexpected message type 0x{0:X2}", msgType);
+                }
+
+                rxMode = false;
+                Busy.Set(false);
+                IRQ.Set(irqFlags != 0);
+            }
+            catch (Exception e)
+            {
+                this.Log(LogLevel.Warning, "WaitForRxResponse error: {0}", e.Message);
+                Disconnect();
+                rxMode = false;
+                Busy.Set(false);
+            }
+            finally
+            {
+                // Restore receive timeout for other operations
+                if (socket != null)
+                    socket.ReceiveTimeout = 100;
+            }
         }
 
         private void PollRx()
@@ -486,5 +673,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
         private short rxRssi;
         private short rxSnr;
         private ushort irqFlags;
+        private bool rxMode;
+        private byte[] rxTimeoutBytes = new byte[3];
     }
 }

@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-s932",
+  "title": "task",
+  "description": "rust/lichen-coap/src/client.rs:137,185. Reserved TKL values accepted.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:35:55.347242Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:59:44.98402Z",
+  "closed_at": "2026-07-11T00:59:44.98402Z",
+  "close_reason": "done",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-s932",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:37:01.900378Z"
+    }
+  ]
+}

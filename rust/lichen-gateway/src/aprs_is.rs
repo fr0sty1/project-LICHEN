@@ -374,6 +374,12 @@ pub fn aprs_to_cot(aprs: &str) -> Option<CompactCot> {
     // Find the data portion (after the last colon)
     let data = aprs.split(':').last()?;
 
+    // APRS position format is ASCII-only; reject non-ASCII to avoid
+    // panics from byte-index slicing on multi-byte UTF-8.
+    if !data.is_ascii() {
+        return None;
+    }
+
     // Identify position format
     let (pos_data, _has_timestamp) = if data.starts_with('!') || data.starts_with('=') {
         // Position without timestamp

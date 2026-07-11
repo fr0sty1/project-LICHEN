@@ -60,7 +60,14 @@ pub fn cbor_to_json(v: ciborium::value::Value) -> serde_json::Value {
         Value::Bool(b) => serde_json::Value::Bool(b),
         Value::Integer(i) => {
             let n: i128 = i.into();
-            serde_json::json!(n)
+            // Preserve precision: use i64/u64 when possible, string for out-of-range
+            if let Ok(small) = i64::try_from(n) {
+                serde_json::Value::Number(serde_json::Number::from(small))
+            } else if let Ok(big) = u64::try_from(n) {
+                serde_json::Value::Number(serde_json::Number::from(big))
+            } else {
+                serde_json::Value::String(n.to_string())
+            }
         }
         Value::Float(f) => serde_json::json!(f),
         Value::Bytes(b) => serde_json::Value::String(hex_encode(&b)),

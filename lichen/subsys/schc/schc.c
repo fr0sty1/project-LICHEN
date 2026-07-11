@@ -358,6 +358,11 @@ int schc_fragmenter_retransmit(const struct schc_fragmenter *fragmenter,
 	}
 
 	uint8_t all_1 = fragment_all_1(fcn_bits);
+
+	if (all_1 > 63) {
+		return SCHC_ERR_NOT_SUPPORTED;
+	}
+
 	size_t tiles_per_window = all_1;
 	size_t header_len = schc_fragment_header_len(&fragmenter->config);
 

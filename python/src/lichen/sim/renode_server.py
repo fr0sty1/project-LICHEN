@@ -19,9 +19,14 @@ import struct
 from typing import TYPE_CHECKING
 
 from lichen.sim.protocol import (
+    MSG_RX_ENTER,
+    MSG_RX_EXIT,
     MSG_TX,
+    decode_rx_enter,
     decode_tx,
     encode_rx_ok,
+    encode_rx_packet,
+    encode_rx_timeout_push,
     encode_tx_done,
     encode_tx_fail,
     get_message_payload,
@@ -85,6 +90,7 @@ class RenodeServer:
         self._position = position
         self._tx_power_dbm = tx_power_dbm
         self._server: asyncio.Server | None = None
+        self._writer: asyncio.StreamWriter | None = None
         self._connected = False
 
     async def start(self, host: str = "127.0.0.1", port: int = 5555) -> int:
@@ -123,6 +129,7 @@ class RenodeServer:
         peer = writer.get_extra_info("peername")
         logger.info("Renode connected from %s for node %s", peer, self._node_id)
         self._connected = True
+        self._writer = writer
 
         try:
             while True:
@@ -136,6 +143,10 @@ class RenodeServer:
                     await self._handle_tx(data, writer)
                 elif msg_type == MSG_RX_POLL:
                     await self._handle_rx_poll(writer)
+                elif msg_type == MSG_RX_ENTER:
+                    self._handle_rx_enter(data)
+                elif msg_type == MSG_RX_EXIT:
+                    self._handle_rx_exit()
                 else:
                     logger.warning("Unknown message 0x%02x from Renode", msg_type)
 
@@ -143,6 +154,7 @@ class RenodeServer:
             logger.exception("Error in Renode connection")
         finally:
             self._connected = False
+            self._writer = None
             writer.close()
 
     async def _handle_tx(self, data: bytes, writer: asyncio.StreamWriter) -> None:
@@ -177,6 +189,68 @@ class RenodeServer:
             await _write_message(writer, encode_rx_ok(payload, rssi, snr))
         else:
             await _write_message(writer, encode_rx_empty())
+
+    def _handle_rx_enter(self, data: bytes) -> None:
+        """Handle RX_ENTER - enter push-based RX mode.
+
+        Args:
+            data: Complete message bytes including type byte.
+        """
+        timeout_us = decode_rx_enter(get_message_payload(data))
+        logger.debug(
+            "Renode RX_ENTER: node=%s timeout_us=%d", self._node_id, timeout_us
+        )
+        self._simulation.enter_rx_mode(
+            self._node_id,
+            timeout_us,
+            self._on_rx_packet,
+            self._on_rx_timeout,
+        )
+
+    def _handle_rx_exit(self) -> None:
+        """Handle RX_EXIT - exit push-based RX mode."""
+        logger.debug("Renode RX_EXIT: node=%s", self._node_id)
+        self._simulation.exit_rx_mode(self._node_id)
+
+    async def push_to_renode(self, data: bytes) -> None:
+        """Push unsolicited message to Renode.
+
+        Args:
+            data: Protocol message to send (already encoded).
+
+        Raises:
+            RuntimeError: If no Renode client is connected.
+        """
+        if self._writer is None:
+            raise RuntimeError("No Renode client connected")
+        await _write_message(self._writer, data)
+
+    def _on_rx_packet(self, payload: bytes, rssi: int, snr: int) -> None:
+        """Callback for push-based packet arrival.
+
+        Schedules an unsolicited RX_PACKET message to Renode.
+
+        Args:
+            payload: Received packet data.
+            rssi: Received signal strength in dBm.
+            snr: Signal-to-noise ratio in dB * 10.
+        """
+        if self._writer is None:
+            logger.warning("RX packet but no Renode connected for %s", self._node_id)
+            return
+        msg = encode_rx_packet(payload, rssi, snr)
+        asyncio.create_task(self.push_to_renode(msg))
+
+    def _on_rx_timeout(self) -> None:
+        """Callback for push-based RX timeout.
+
+        Schedules an unsolicited RX_TIMEOUT_PUSH message to Renode.
+        """
+        if self._writer is None:
+            logger.warning("RX timeout but no Renode connected for %s", self._node_id)
+            return
+        msg = encode_rx_timeout_push()
+        asyncio.create_task(self.push_to_renode(msg))
 
 
 async def start_renode_server(

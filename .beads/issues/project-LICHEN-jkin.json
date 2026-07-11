@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-jkin",
+  "title": "LR1110: create Renode peripheral model",
+  "description": "Create LR1110.cs Renode peripheral similar to SX1262.cs. Intercept LR1110 SPI opcodes, bridge to lichen-sim. Key differences from SX126x: different command set, DIO9 interrupt line, built-in GNSS/WiFi (stub for simulation).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T22:18:50.814301Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T22:48:52.548196Z",
+  "closed_at": "2026-07-10T22:48:52.548196Z",
+  "close_reason": "Created LR1110.cs Renode peripheral based on SX1262.cs"
+}

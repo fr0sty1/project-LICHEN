@@ -17,6 +17,7 @@ covers the SCHC portion of the on-air path.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from ipaddress import IPv6Address
 
@@ -24,6 +25,8 @@ from lichen.coap.transport import DatagramChannel, ReceiveCallback
 from lichen.ipv6.packet import HEADER_LENGTH, IPv6Header, NextHeader
 from lichen.ipv6.udp import UDP_NEXT_HEADER, UdpDatagram
 from lichen.schc.headers import compress_packet, decompress_packet
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_COAP_PORT = 5683
 HostResolver = Callable[[str], IPv6Address]
@@ -93,7 +96,11 @@ class SchcChannel(DatagramChannel):
         self._inner.send_datagram(compress_packet(raw), dest)
 
     def _on_inner(self, data: bytes, source: str) -> None:
-        coap = unwrap_coap(decompress_packet(data))
+        try:
+            coap = unwrap_coap(decompress_packet(data))
+        except Exception as exc:
+            logger.debug("SchcChannel: failed to decompress/unwrap packet: %s", exc)
+            return
         if self._receiver is not None:
             self._receiver(coap, source)
 

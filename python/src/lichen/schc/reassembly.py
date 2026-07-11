@@ -110,15 +110,21 @@ class FragmentReceiver:
         return ReceiverResult()
 
     def _finalize(self) -> ReceiverResult:
-        bitmap = self._window_bitmap(self._all1_window)
-        nack = Ack(self._rule_id, self._all1_window % 2, bitmap, complete=False)
-
         regular_indices = sorted(self._tiles)
         contiguous = regular_indices == list(range(len(regular_indices)))
         if not contiguous:
+            # Find first missing tile and NACK its window (may be earlier than all1_window)
+            present = set(regular_indices)
+            first_missing = 0
+            while first_missing in present:
+                first_missing += 1
+            gap_window = first_missing // self.window_size
+            bitmap = self._window_bitmap(gap_window)
+            nack = Ack(self._rule_id, gap_window % 2, bitmap, complete=False)
             return ReceiverResult(ack=nack)
 
         data = b"".join(self._tiles[i] for i in regular_indices) + self._all1_payload
+        bitmap = self._window_bitmap(self._all1_window)
         if compute_mic(data) == self._mic:
             self.reassembled = data
             self.done = True
@@ -127,7 +133,8 @@ class FragmentReceiver:
                 reassembled=data,
                 mic_ok=True,
             )
-        # A tail regular tile is missing; request the whole final window.
+        # MIC mismatch: NACK the final window (a tile there may be missing or corrupt).
+        nack = Ack(self._rule_id, self._all1_window % 2, bitmap, complete=False)
         return ReceiverResult(ack=nack, mic_ok=False)
 
 

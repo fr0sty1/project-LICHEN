@@ -62,7 +62,12 @@ impl TrickleTimer {
     /// Create a new timer. `imax_doublings` is the number of times `imin` is
     /// doubled to reach the maximum interval (RFC 6206 uses this convention).
     pub fn new(imin_ms: u32, imax_doublings: u32, k: u32) -> Self {
-        let max_interval = imin_ms.checked_shl(imax_doublings).unwrap_or(u32::MAX);
+        // checked_shl only detects invalid shift counts, not multiplication overflow.
+        // Use checked_mul to properly detect when imin * 2^doublings overflows.
+        let max_interval = 1u32
+            .checked_shl(imax_doublings)
+            .and_then(|mult| imin_ms.checked_mul(mult))
+            .unwrap_or(u32::MAX);
         Self {
             imin: imin_ms,
             max_interval,
@@ -290,5 +295,21 @@ mod tests {
         let mut t = TrickleTimer::new(1000, 4, 10);
         t.start(0, 200); // rand_offset=200 < 500 → transmit at 700
         assert_eq!(t.transmit_time, 700);
+    }
+
+    #[test]
+    fn max_interval_saturates_on_overflow() {
+        // imin=1000, doublings=31 → 1000 * 2^31 overflows u32
+        // Bug: checked_shl doesn't detect this, would wrap to 0
+        let t = TrickleTimer::new(1000, 31, 10);
+        assert_eq!(t.max_interval, u32::MAX);
+
+        // Also test shift count >= 32 (original checked_shl case)
+        let t2 = TrickleTimer::new(1000, 32, 10);
+        assert_eq!(t2.max_interval, u32::MAX);
+
+        // Verify non-overflowing case still works
+        let t3 = TrickleTimer::new(1000, 4, 10); // 1000 * 16 = 16000
+        assert_eq!(t3.max_interval, 16000);
     }
 }

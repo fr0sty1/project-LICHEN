@@ -5,10 +5,16 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
 from lichen.state_machine import StateMachine
+
+# Type alias for RX callbacks: (on_packet, on_timeout)
+# on_packet: Callable[[bytes, int, int], None] -> (payload, rssi, snr)
+# on_timeout: Callable[[], None]
+RxCallbacks = tuple[Callable[[bytes, int, int], None], Callable[[], None]]
 
 
 class NodeState(Enum):
@@ -40,6 +46,7 @@ class SimNode:
     pending_rx_future: asyncio.Future[None] | None = field(repr=False)
     connected: bool
     last_seen_time_us: int
+    rx_callbacks: RxCallbacks | None = field(repr=False)
     _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
 
     def __init__(
@@ -51,6 +58,7 @@ class SimNode:
         pending_rx_future: asyncio.Future[None] | None = None,
         connected: bool = False,
         last_seen_time_us: int = 0,
+        rx_callbacks: RxCallbacks | None = None,
     ) -> None:
         self.id = id
         self.position = position
@@ -58,6 +66,7 @@ class SimNode:
         self.pending_rx_future = pending_rx_future
         self.connected = connected
         self.last_seen_time_us = last_seen_time_us
+        self.rx_callbacks = rx_callbacks
         self._state_machine = StateMachine(
             initial=state,
             transitions=NODE_STATE_TRANSITIONS,
@@ -86,12 +95,14 @@ class SimNode:
     def disconnect(self) -> None:
         """Disconnect the node and clean up pending operations.
 
-        Sets connected to False and cancels any pending RX future.
+        Sets connected to False, cancels any pending RX future, and clears
+        RX callbacks.
         """
         self.connected = False
         if self.pending_rx_future is not None and not self.pending_rx_future.done():
             self.pending_rx_future.cancel()
         self.pending_rx_future = None
+        self.rx_callbacks = None
 
     def is_online(self) -> bool:
         """Check if the node is currently connected.

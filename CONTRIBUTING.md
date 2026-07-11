@@ -68,6 +68,21 @@ Tests are fully deterministic; no external services are needed.
 
 ## Code style
 
+### C (Zephyr firmware)
+
+All C code MUST follow `spec/appendix-c-safety.md`:
+
+- **Compiler flags:** `-Wall -Wextra -Werror -Wformat=2 -fstack-protector-strong`
+- **Zephyr configs:** `CONFIG_STACK_CANARIES=y`, `CONFIG_ASSERT=y`
+- **Static analysis:** clang-tidy and cppcheck in CI (warnings = errors)
+- **Sanitizers:** ASan/UBSan for native_sim tests
+- **Annotations:** Use `__counted_by`, `_Nonnull`/`_Nullable` for new code
+- **No unsafe functions:** strcpy, strcat, sprintf, gets are banned — use snprintf
+
+CI will reject code that doesn't pass clang-tidy or cppcheck.
+
+### Python
+
 We use **ruff** for linting and formatting:
 
 ```bash

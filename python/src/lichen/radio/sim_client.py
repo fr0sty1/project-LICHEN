@@ -17,19 +17,20 @@ from lichen.sim.protocol import (
     MSG_CAD_RESULT,
     MSG_ERR,
     MSG_OK,
-    MSG_RX_OK,
-    MSG_RX_TIMEOUT,
+    MSG_RX_ENTER,
+    MSG_RX_PACKET,
+    MSG_RX_TIMEOUT_PUSH,
     MSG_TIME_OK,
     MSG_TX_DONE,
     MSG_TX_FAIL,
     ProtocolError,
     decode_cad_result,
     decode_err,
-    decode_rx_ok,
+    decode_rx_packet,
     decode_time_ok,
     encode_cad,
     encode_register,
-    encode_rx,
+    encode_rx_enter,
     encode_time,
     encode_tx,
     get_message_type,
@@ -163,9 +164,10 @@ class SimRadio:
             raise SimRadioError(f"Unexpected response to TX: 0x{msg_type:02x}")
 
     async def receive(self, timeout_ms: int) -> tuple[bytes, int, int] | None:
-        """Receive a payload from the simulated radio.
+        """Receive a payload from the simulated radio using push-based RX.
 
-        Blocks until a packet is received or timeout expires.
+        Sends RX_ENTER to enter receive mode, then blocks waiting for either
+        RX_PACKET (packet received) or RX_TIMEOUT_PUSH (timeout expired).
 
         Args:
             timeout_ms: Maximum time to wait for a packet, in milliseconds.
@@ -179,22 +181,24 @@ class SimRadio:
         """
         self._ensure_connected()
 
-        msg = encode_rx(timeout_ms)
+        # RX_ENTER takes timeout in microseconds
+        timeout_us = timeout_ms * 1000
+        msg = encode_rx_enter(timeout_us)
         async with self._lock:
             await self._send(msg)
             response = await self._recv()
         msg_type = get_message_type(response)
 
-        if msg_type == MSG_RX_OK:
-            payload, rssi, snr = decode_rx_ok(response[1:])
+        if msg_type == MSG_RX_PACKET:
+            payload, rssi, snr = decode_rx_packet(response[1:])
             return (payload, rssi, snr)
-        elif msg_type == MSG_RX_TIMEOUT:
+        elif msg_type == MSG_RX_TIMEOUT_PUSH:
             return None
         elif msg_type == MSG_ERR:
             code, err_msg = decode_err(response[1:])
             raise SimRadioError(f"RX error (code {code}): {err_msg}")
         else:
-            raise SimRadioError(f"Unexpected response to RX: 0x{msg_type:02x}")
+            raise SimRadioError(f"Unexpected response to RX_ENTER: 0x{msg_type:02x}")
 
     async def get_time(self) -> int:
         """Get the current simulation time.

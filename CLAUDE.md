@@ -160,7 +160,31 @@ Use `SECURITY:` prefix for comments highlighting security-critical code paths (e
 - Fix the code. If unfixable within scope, escalate.
 - Tests must have independent oracles: known test vectors, cross-validation, or reference implementations. A test that uses code-under-test as its own oracle proves nothing.
 
-### 7. AWS EC2 Access and Safety
+### 7. C Code Safety
+
+**All C code must follow `spec/appendix-c-safety.md`.**
+
+When writing or modifying C code:
+- Use `-Wall -Wextra -Werror` — no warnings allowed
+- Never use `strcpy`, `strcat`, `sprintf`, `gets` — use `snprintf` instead
+- Always pass explicit buffer sizes to functions
+- Add `__counted_by(n)` to flexible array members
+- Add `_Nonnull`/`_Nullable` to pointer parameters
+- Run clang-tidy before submitting: `clang-tidy --config-file=lichen/.clang-tidy <file>`
+
+When adding new structs with buffers:
+```c
+// WRONG
+struct msg { uint8_t data[256]; };
+
+// RIGHT
+struct msg {
+    uint16_t len;
+    uint8_t data[] __counted_by(len);
+};
+```
+
+### 8. AWS EC2 Access and Safety
 
 **Authentication:**
 ```bash

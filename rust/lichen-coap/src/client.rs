@@ -135,8 +135,20 @@ fn decode(data: &[u8]) -> std::io::Result<Response> {
         ));
     }
     let tkl = (data[0] & 0x0f) as usize;
+    if tkl > 8 {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "invalid TKL (>8 is reserved)",
+        ));
+    }
     let code = data[1];
 
+    if 4 + tkl > data.len() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "response too short for token",
+        ));
+    }
     let payload_start = skip_options(data, 4 + tkl)?;
     Ok(Response {
         code,
@@ -182,7 +194,10 @@ fn skip_options(data: &[u8], mut i: usize) -> std::io::Result<usize> {
             n => n as usize,
         };
 
-        i = i.saturating_add(opt_len);
+        i = i.checked_add(opt_len).ok_or_else(|| trunc())?;
+        if i > data.len() {
+            return Err(trunc());
+        }
     }
     Ok(data.len())
 }

@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-jcjj",
+  "title": "Compliance: KISS TX queue (rust/lichen-kiss/src/framing.rs)",
+  "description": "Policy: spec/appendix-bufferbloat.md sections 1,2,4,5. Current: bounded (8 frames), returns error. Missing: time-based expiry (§2), priority (§3). Fix: add timestamp, drop expired frames.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T23:10:51.390818Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T23:10:58.99984Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-jcjj",
+      "depends_on_id": "project-LICHEN-9j4k",
+      "type": "parent-child",
+      "created_at": "2026-07-10T23:10:58.99984Z"
+    }
+  ]
+}

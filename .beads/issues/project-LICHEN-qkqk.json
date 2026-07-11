@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-qkqk",
+  "title": "task",
+  "description": "rust/lichen-schc/src/fragment.rs:120-122. CRC32 of empty = 0, incorrectly rejected.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:35:08.920918Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:48:07.424073Z",
+  "closed_at": "2026-07-11T00:48:07.424073Z",
+  "close_reason": "done",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-qkqk",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:36:52.201785Z"
+    }
+  ]
+}

@@ -75,6 +75,11 @@ fn build(
     let icmpv6_len = ICMPV6_HEADER_LEN + data.len();
     let total = IPV6_HEADER_LEN + icmpv6_len;
 
+    // Bounds check: return 0 if buffer is too small
+    if out.len() < total {
+        return 0;
+    }
+
     // IPv6 fixed header (40 bytes)
     out[0] = 0x60; // version=6, TC=0, flow=0
     out[1] = 0;
@@ -145,5 +150,18 @@ mod tests {
         let mut buf2 = [0u8; 52];
         echo_request(&ll(1), &ll(2), 1, 1, b"test", &mut buf2);
         assert_eq!(buf, buf2);
+    }
+
+    #[test]
+    fn undersized_buffer_returns_zero() {
+        // Minimum required: 48 + data.len() = 52 for "ping"
+        let mut buf = [0u8; 51]; // one byte short
+        let n = echo_request(&ll(1), &ll(2), 0x1234, 7, b"ping", &mut buf);
+        assert_eq!(n, 0);
+
+        // Empty buffer
+        let mut empty: [u8; 0] = [];
+        let n = echo_request(&ll(1), &ll(2), 0x1234, 7, &[], &mut empty);
+        assert_eq!(n, 0);
     }
 }

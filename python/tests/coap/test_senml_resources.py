@@ -155,6 +155,21 @@ class TestSenMLSensorsObserve:
 
 
 class TestSenMLLocationGet:
+    async def test_empty_location_returns_empty_pack(self) -> None:
+        """Before update(), /location returns valid empty SenML (not raw empty bytes)."""
+        client, server, _sensors, _location = await _setup_with_sensors()
+        try:
+            resp = await client.request(
+                Message(code=GET, uri="coap://srv/location")
+            ).response
+            assert resp.code == aiocoap.CONTENT
+            assert resp.opt.content_format == 112  # application/senml+cbor
+            records = unpack(resp.payload)
+            assert records == []
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
     async def test_location_get_lat_lon(self) -> None:
         client, server, _sensors, location = await _setup_with_sensors()
         try:

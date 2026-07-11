@@ -76,8 +76,10 @@ class ReplayWindow:
             return True
 
         # Newer than anything seen: slide the window forward.
-        if counter > self._highest:
-            shift = counter - self._highest
+        # Use modular arithmetic to handle 24-bit counter wraparound (255->0).
+        diff = (counter - self._highest) & 0xFFFFFF
+        if 0 < diff < 0x800000:  # counter is in forward half of counter space
+            shift = diff
             if shift >= self._window_size:
                 self._bitmap = 1
             else:
@@ -87,8 +89,8 @@ class ReplayWindow:
             self._highest = counter
             return True
 
-        # Within or below the window.
-        offset = self._highest - counter
+        # Within or below the window (counter is behind or equal to highest).
+        offset = (self._highest - counter) & 0xFFFFFF
         if offset >= self._window_size:
             return False  # below the window floor: too old
         mask = 1 << offset

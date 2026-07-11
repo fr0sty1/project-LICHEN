@@ -8,7 +8,7 @@
 //!
 //! Protocol matches LichenSubGHz.cs (Renode peripheral):
 //! - TX: [len:4][0x10][payload_len:2][payload] → [len:4][0x11][airtime:4]
-//! - RX: [len:4][0x20] → [len:4][0x21][len:2][payload][rssi:2][snr:2] or [len:4][0x23]
+//! - RX: [len:4][0x24][timeout_us:4] → [len:4][0x27][len:2][payload][rssi:2][snr:2] or [len:4][0x28]
 
 use std::io::{Read, Write};
 use std::net::TcpStream;
@@ -106,73 +106,57 @@ impl Radio for SimRadio {
         buf: &mut [u8],
         timeout_ms: u32,
     ) -> Result<Option<RxPacket>, Self::Error> {
-        // Server returns immediately (non-blocking), so we poll in a loop
-        let start = std::time::Instant::now();
-        let timeout = Duration::from_millis(timeout_ms as u64);
+        // Convert timeout to microseconds
+        let timeout_us = (timeout_ms as u64) * 1000;
+        let timeout_us = timeout_us.min(u32::MAX as u64) as u32;
 
-        // Use short read timeout for individual polls
-        self.stream.set_read_timeout(Some(Duration::from_millis(50))).map_err(RadioError::Bus)?;
+        // Set read timeout to slightly longer than requested to allow server response
+        let read_timeout = Duration::from_millis(timeout_ms as u64 + 1000);
+        self.stream.set_read_timeout(Some(read_timeout)).map_err(RadioError::Bus)?;
 
-        loop {
-            // Send RX_POLL
-            self.send_message(&[0x20])?;  // Already returns SimError
+        // Send RX_ENTER: [0x24][timeout_us:4 LE]
+        let mut msg = [0u8; 5];
+        msg[0] = 0x24;
+        msg[1..5].copy_from_slice(&timeout_us.to_le_bytes());
+        self.send_message(&msg)?;
 
-            // Read response
-            let resp = match self.recv_message() {
-                Ok(r) => r,
-                Err(RadioError::Bus(e))
-                    if e.kind() == std::io::ErrorKind::TimedOut
-                        || e.kind() == std::io::ErrorKind::WouldBlock =>
-                {
-                    if start.elapsed() >= timeout {
-                        return Ok(None);
-                    }
-                    std::thread::sleep(Duration::from_millis(10));
-                    continue;
+        // Block reading response (push-based, no polling)
+        let resp = self.recv_message()?;
+
+        if resp.is_empty() {
+            return Err(RadioError::Protocol);
+        }
+
+        match resp[0] {
+            0x27 => {
+                // RX_PACKET: [0x27][payload_len:2 LE][payload][rssi:2 LE signed][snr:2 LE signed]
+                if resp.len() < 3 {
+                    return Err(RadioError::Protocol);
                 }
-                Err(e) => return Err(e),
-            };
 
-            if resp.is_empty() {
-                return Err(RadioError::Protocol);
+                let payload_len = u16::from_le_bytes([resp[1], resp[2]]) as usize;
+                if resp.len() < 3 + payload_len + 4 {
+                    return Err(RadioError::Protocol);
+                }
+
+                let copy_len = payload_len.min(buf.len());
+                buf[..copy_len].copy_from_slice(&resp[3..3 + copy_len]);
+
+                let rssi_offset = 3 + payload_len;
+                let rssi = i16::from_le_bytes([resp[rssi_offset], resp[rssi_offset + 1]]);
+                let snr = i16::from_le_bytes([resp[rssi_offset + 2], resp[rssi_offset + 3]]);
+
+                Ok(Some(RxPacket {
+                    len: copy_len,
+                    rssi: Some(rssi),
+                    snr: Some(snr as i8),
+                }))
             }
-
-            match resp[0] {
-                0x21 => {
-                    // RX_OK: [0x21][len:2][payload][rssi:2][snr:2]
-                    if resp.len() < 3 {
-                        return Err(RadioError::Protocol);
-                    }
-
-                    let payload_len = u16::from_le_bytes([resp[1], resp[2]]) as usize;
-                    if resp.len() < 3 + payload_len + 4 {
-                        return Err(RadioError::Protocol);
-                    }
-
-                    let copy_len = payload_len.min(buf.len());
-                    buf[..copy_len].copy_from_slice(&resp[3..3 + copy_len]);
-
-                    let rssi_offset = 3 + payload_len;
-                    let rssi = i16::from_le_bytes([resp[rssi_offset], resp[rssi_offset + 1]]);
-                    let snr = i16::from_le_bytes([resp[rssi_offset + 2], resp[rssi_offset + 3]]);
-
-                    return Ok(Some(RxPacket {
-                        len: payload_len,
-                        rssi: Some(rssi),
-                        snr: Some(snr as i8),
-                    }));
-                }
-                0x23 => {
-                    // RX_EMPTY - check timeout
-                    if start.elapsed() >= timeout {
-                        return Ok(None);
-                    }
-                    // ponytail: 10ms poll interval, good enough for simulation
-                    std::thread::sleep(Duration::from_millis(10));
-                    continue;
-                }
-                _ => return Err(RadioError::Protocol),
+            0x28 => {
+                // RX_TIMEOUT: no packet received within timeout
+                Ok(None)
             }
+            _ => Err(RadioError::Protocol),
         }
     }
 

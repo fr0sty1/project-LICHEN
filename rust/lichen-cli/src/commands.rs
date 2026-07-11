@@ -5,6 +5,8 @@
 
 use crate::{output, ConfigAction, KeyAction, OutputFormat, PositionAction, RdAction};
 use lichen_coap::client;
+use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+use sha2::{Digest, Sha256};
 use std::net::SocketAddr;
 use zeroize::Zeroize;
 
@@ -149,15 +151,17 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
         KeyAction::Generate { output: out_path } => {
             // Generate 32 random bytes for Ed25519 seed
             let mut seed = [0u8; 32];
-            getrandom(&mut seed)?;
+            fill_random(&mut seed)?;
 
             // Derive public key (Ed25519: first 32 bytes of SHA512(seed) as scalar, then multiply)
             // ponytail: using simple derivation without pulling in ed25519 crate
             // Real impl would use ed25519-dalek; this outputs raw seed for now
             let mut seed_hex: String = seed.iter().map(|b| format!("{b:02x}")).collect();
 
-            // Derive IID from pubkey hash (simplified: just use first 8 bytes of seed for demo)
-            let iid_hex: String = seed[..8].iter().map(|b| format!("{b:02x}")).collect();
+            // Derive IID from hashed seed (avoids leaking raw key material)
+            // SECURITY: raw seed bytes must never appear in the IID
+            let seed_hash = Sha256::digest(&seed);
+            let iid_hex: String = seed_hash[..8].iter().map(|b| format!("{b:02x}")).collect();
 
             // Zeroize seed bytes now that we have the hex representation
             seed.zeroize();
@@ -221,11 +225,8 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
     Ok(())
 }
 
-fn getrandom(buf: &mut [u8]) -> Result<(), Box<dyn std::error::Error>> {
-    use std::fs::File;
-    use std::io::Read;
-    let mut f = File::open("/dev/urandom")?;
-    f.read_exact(buf)?;
+fn fill_random(buf: &mut [u8]) -> Result<(), Box<dyn std::error::Error>> {
+    getrandom::getrandom(buf).map_err(|e| format!("getrandom failed: {e}"))?;
     Ok(())
 }
 
@@ -284,7 +285,10 @@ pub async fn rd(node: SocketAddr, action: RdAction, fmt: &OutputFormat) -> CmdRe
     match action {
         RdAction::List { ep } => {
             let path = match &ep {
-                Some(name) => format!("/rd?ep={name}"),
+                Some(name) => {
+                    let encoded = utf8_percent_encode(name, NON_ALPHANUMERIC);
+                    format!("/rd?ep={encoded}")
+                }
                 None => "/rd".to_owned(),
             };
             let resp = client::get(node, &path).await?;
@@ -298,7 +302,8 @@ pub async fn rd(node: SocketAddr, action: RdAction, fmt: &OutputFormat) -> CmdRe
         }
         RdAction::Register { ep, lt } => {
             let ep_name = ep.unwrap_or_else(|| node.to_string());
-            let path = format!("/rd?ep={ep_name}&lt={lt}");
+            let encoded = utf8_percent_encode(&ep_name, NON_ALPHANUMERIC);
+            let path = format!("/rd?ep={encoded}&lt={lt}");
             let resp = client::post(node, &path, &[]).await?;
             if resp.is_success() {
                 output::print_kv("registered", &ep_name, fmt);
@@ -308,7 +313,8 @@ pub async fn rd(node: SocketAddr, action: RdAction, fmt: &OutputFormat) -> CmdRe
             }
         }
         RdAction::Delete { id } => {
-            let path = format!("/rd/{id}");
+            let encoded_id = utf8_percent_encode(&id, NON_ALPHANUMERIC);
+            let path = format!("/rd/{encoded_id}");
             let resp = client::delete(node, &path).await?;
             if resp.is_success() {
                 output::print_kv("deleted", &id, fmt);

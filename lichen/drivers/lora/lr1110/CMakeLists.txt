@@ -18,4 +18,14 @@ zephyr_library_sources(
 	${LR1110_DRV_DIR}/lr1110_system.c
 )
 
+# Vendored Semtech driver sources are not written to the LICHEN C safety
+# policy (-Wconversion etc.); exempt them so the hardening flags applied to
+# this library don't fail third-party code we don't modify.
+set_source_files_properties(
+	${LR1110_DRV_DIR}/lr1110_radio.c
+	${LR1110_DRV_DIR}/lr1110_regmem.c
+	${LR1110_DRV_DIR}/lr1110_system.c
+	PROPERTIES COMPILE_OPTIONS "-Wno-conversion;-Wno-shadow;-Wno-extra"
+)
+
 zephyr_library_include_directories(${LR1110_DRV_DIR})

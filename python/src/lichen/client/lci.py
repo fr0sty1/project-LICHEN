@@ -665,10 +665,17 @@ def _raw_command_result(result: CoapResult) -> RawDiagnosticResult:
 def _payload_text(result: CoapResult) -> str:
     if isinstance(result.payload, str):
         return result.payload
-    if result.raw_payload:
-        return result.raw_payload.decode()
-    if isinstance(result.payload, bytes):
-        return result.payload.decode()
+    try:
+        if result.raw_payload:
+            return result.raw_payload.decode()
+        if isinstance(result.payload, bytes):
+            return result.payload.decode()
+    except UnicodeDecodeError as e:
+        raise LciClientError(
+            f"discovery payload is not valid UTF-8: {e}",
+            code=result.code,
+            payload=result.payload,
+        ) from e
     raise LciClientError("discovery payload is not text", code=result.code, payload=result.payload)
 
 

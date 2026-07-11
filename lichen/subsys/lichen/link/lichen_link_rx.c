@@ -90,42 +90,26 @@ static int verify_mic(const struct lichen_link_rx_ctx *ctx,
 	return 0;
 #else
 	if (frame->mic_len == 8) {
-		/* AES-CCM-64 MIC verification */
-		uint8_t nonce[AES_CCM_NONCE_LEN];
-		uint8_t expected_mic[AES_CCM_TAG_LEN];
-		size_t aad_len;
-
-		/* Require link key and peer EUI-64 for AES-CCM verification */
-		if (ctx->link_key == NULL || ctx->peer_eui64 == NULL) {
-			LOG_WRN("AES-CCM MIC verification requires link_key and peer_eui64\n");
-			return -LICHEN_EAUTH;
-		}
-
-		/* AAD is everything except the MIC itself */
-		aad_len = raw_len - frame->mic_len;
-
-		/* Build nonce from peer's EUI-64, epoch, and seqnum */
-		build_link_nonce(nonce, ctx->peer_eui64, frame->epoch, frame->seqnum);
-
-		/* Compute expected MIC (encrypt with empty plaintext) */
-		if (lichen_aes_ccm_encrypt(ctx->link_key, nonce,
-					   raw_frame, aad_len,
-					   NULL, 0,
-					   expected_mic) != 0) {
-			return -LICHEN_EAUTH;
-		}
-
-		/* Constant-time comparison of MIC */
-		uint8_t diff = 0;
-		for (int i = 0; i < AES_CCM_TAG_LEN; i++) {
-			diff |= frame->mic[i] ^ expected_mic[i];
-		}
-
-		if (diff != 0) {
-			return -LICHEN_EAUTH;
-		}
-
-		return 0;
+		/*
+		 * SECURITY: Non-encrypted frames MUST NOT use 64-bit MIC.
+		 *
+		 * TX always couples 64-bit MIC with encryption (see lichen_link_tx.c
+		 * lines 181-184: has_link_key sets both encrypted and 64-bit MIC).
+		 * A non-encrypted frame claiming 64-bit MIC is either:
+		 *   1. Malformed (from a buggy implementation)
+		 *   2. An attack attempting to exploit MIC verification logic
+		 *
+		 * verify_mic() is only called for non-encrypted frames. The MIC
+		 * computation below (AAD = header + payload, no plaintext) does not
+		 * match how TX computes the MIC for encrypted frames (AAD = header,
+		 * plaintext = payload authenticated via CCM). Accepting this invalid
+		 * combination could enable forgery by computing a MIC against a
+		 * method no legitimate sender uses.
+		 *
+		 * Reject outright to eliminate the attack surface.
+		 */
+		LOG_WRN("64-bit MIC on non-encrypted frame rejected (invalid combination)\n");
+		return -LICHEN_EAUTH;
 	} else {
 #ifdef CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC
 #warning "CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC is enabled - CRC32 MIC provides NO authentication, frames can be forged!"

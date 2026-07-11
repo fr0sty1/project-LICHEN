@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ep4y",
+  "title": "T1000-E: validate Zephyr build and flash",
+  "description": "Build and flash LICHEN firmware to T1000-E. Test: USB console, LoRa TX/RX, GNSS lock (AG3335 via LR1110). Board files exist at lichen/boards/seeed/t1000_e/.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T22:18:52.964436Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T22:19:01.22559Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ep4y",
+      "depends_on_id": "project-LICHEN-iw00",
+      "type": "blocks",
+      "created_at": "2026-07-10T22:19:00.238189Z"
+    },
+    {
+      "issue_id": "project-LICHEN-ep4y",
+      "depends_on_id": "project-LICHEN-dnko",
+      "type": "parent-child",
+      "created_at": "2026-07-10T22:19:01.22559Z"
+    }
+  ]
+}

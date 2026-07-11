@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-27vk",
+  "title": "Heltec V3: validate Renode simulation",
+  "description": "Boot firmware in Renode using heltec_wifi_lora32_v3.resc. Verify CPU starts, UART works, SX1262 connects to lichen-sim, basic TX works. Document ESP32-S3 Renode limitations.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-10T22:17:36.909985Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-10T22:17:46.060284Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-27vk",
+      "depends_on_id": "project-LICHEN-34lx",
+      "type": "parent-child",
+      "created_at": "2026-07-10T22:17:46.060284Z"
+    }
+  ]
+}

@@ -1544,14 +1544,14 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 *
 		 * This ordering ensures link_ctx cleanup is safe.
 		 */
-		int ret = lichen_lora_l2_stop();
+		int stop_ret = lichen_lora_l2_stop();
 		/*
 		 * If stop() aborted the RX thread (returned -ECANCELED), the thread
 		 * may have been holding rx_mutex during lichen_l2_input(). We must
 		 * call deinit() to reinitialize mutexes before acquiring them, or
 		 * we'll deadlock. (project-LICHEN-i1gk.67)
 		 */
-		if (ret == -ECANCELED) {
+		if (stop_ret == -ECANCELED) {
 			int deinit_ret = lichen_lora_l2_deinit();
 			if (deinit_ret != 0) {
 				LOG_ERR("lichen_l2: deinit after abort failed (%d)", deinit_ret);

@@ -117,9 +117,8 @@ impl<'a> Fragment<'a> {
         if self.fcn > ALL_1_FCN {
             return Err(FragmentError::InvalidFcn);
         }
-        if self.is_all_1() && self.mic == [0u8; MIC_LENGTH] {
-            return Err(FragmentError::MicMissing);
-        }
+        // Note: We don't validate MIC here because zero is a valid MIC
+        // (CRC32 of empty payload). MIC correctness is verified at reassembly.
         let extra = if self.is_all_1() { MIC_LENGTH } else { 0 };
         let needed = 2 + extra + self.payload.len();
         if out.len() < needed {
@@ -663,16 +662,36 @@ mod tests {
     }
 
     #[test]
-    fn all1_without_mic_errors() {
+    fn all1_with_zero_mic_succeeds() {
+        // Zero MIC is valid (CRC32 of empty payload), must not be rejected.
         let frag = Fragment {
             rule_id: 1,
             window: 0,
             fcn: ALL_1_FCN,
-            payload: b"x",
-            mic: [0u8; MIC_LENGTH],
+            payload: b"",
+            mic: compute_mic(b""), // [0,0,0,0]
         };
+        assert_eq!(frag.mic, [0u8; MIC_LENGTH]);
         let mut buf = [0u8; 16];
-        assert_eq!(frag.write_to(&mut buf), Err(FragmentError::MicMissing));
+        assert!(frag.write_to(&mut buf).is_ok());
+    }
+
+    #[test]
+    fn empty_payload_fragment_round_trip() {
+        // Empty datagram -> single All-1 fragment with zero MIC.
+        let sender = FragmentSender::new(b"", 20, 10, DEFAULT_WINDOW_SIZE).unwrap();
+        let frags: Vec<_> = sender.iter().collect();
+        assert_eq!(frags.len(), 1);
+        assert!(frags[0].is_all_1());
+        assert_eq!(frags[0].payload, b"");
+        assert_eq!(frags[0].mic, compute_mic(b""));
+
+        // Serialize and parse back.
+        let mut buf = [0u8; 16];
+        let n = frags[0].write_to(&mut buf).unwrap();
+        let restored = Fragment::from_bytes(&buf[..n]).unwrap();
+        assert!(restored.is_all_1());
+        assert_eq!(restored.mic, frags[0].mic);
     }
 
     #[test]

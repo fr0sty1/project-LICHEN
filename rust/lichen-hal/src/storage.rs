@@ -126,13 +126,17 @@ pub fn load_peer<S: NonVolatile>(storage: &S, index: usize) -> Option<PublicKey>
 /// Save peer table to storage.
 ///
 /// Overwrites existing peers. Pass a slice of pubkeys.
+///
+/// SECURITY: Writes entries before count to ensure crash safety - the count
+/// only reflects successfully written entries.
 pub fn save_peers<S: NonVolatile>(storage: &mut S, peers: &[PublicKey]) -> Result<(), S::Error> {
     let count = peers.len().min(MAX_PEERS);
-    storage.write(keys::PEER_COUNT, &[count as u8])?;
     for (i, pubkey) in peers.iter().take(count).enumerate() {
         let key = peer_key(i);
         storage.write(&key, pubkey.as_bytes())?;
     }
+    // Write count LAST so it only reflects successfully written entries
+    storage.write(keys::PEER_COUNT, &[count as u8])?;
     Ok(())
 }
 
