@@ -2,13 +2,14 @@
   "id": "project-LICHEN-52s0",
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Create libFuzzer harness for schc_decompress(). Run 1M iterations, fix crashes.",
+  "notes": "Partial: libFuzzer harness created (fuzz_schc.c) but: (1) not committed, (2) not in CMakeLists.txt, (3) no 1M iteration run performed, (4) no crash artifacts or fixes. Needs: commit harness, add to CMakeLists.txt, run fuzzer 1M iterations, fix any crashes.",
   "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:44:33.000106Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:44:46.643195Z",
+  "updated_at": "2026-07-10T23:59:23.815437Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-52s0",

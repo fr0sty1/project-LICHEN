@@ -9,6 +9,8 @@ cryptographic operations, and radio driver interaction.
 
 ## Compiler Hardening (Mandatory)
 
+### Basic Flags
+
 All C code MUST be compiled with these flags:
 
 ```cmake
@@ -36,6 +38,75 @@ endif()
 | `-Wshadow` | Variable shadowing bugs |
 | `-Wconversion -Wsign-conversion` | Implicit conversion bugs |
 | `-fstack-protector-strong` | Stack buffer overflow detection |
+
+### Advanced Hardening (Clang 18+)
+
+When toolchain supports it, enable these advanced protections:
+
+```cmake
+# Control Flow Integrity - prevents ROP/JOP attacks
+add_compile_options(-fsanitize=cfi -fvisibility=hidden)
+add_link_options(-fsanitize=cfi)
+
+# Bounds safety (Apple/LLVM extension)
+add_compile_options(-fbounds-safety)
+
+# Safe stack - separate stack for return addresses
+add_compile_options(-fsanitize=safe-stack)
+```
+
+| Flag | Purpose |
+|------|---------|
+| `-fsanitize=cfi` | Control Flow Integrity — blocks ROP/JOP exploits |
+| `-fbounds-safety` | Compile-time bounds checking (Clang 18+) |
+| `-fsanitize=safe-stack` | Isolate return addresses from buffer overflows |
+
+### Pointer Annotations (Mandatory for New Code)
+
+All new code MUST use bounds annotations where applicable:
+
+```c
+// __counted_by - Clang 18+ flexible array member bounds
+struct packet {
+    uint16_t len;
+    uint8_t data[] __counted_by(len);
+};
+
+// Nullability annotations
+void process(_Nonnull const uint8_t *buf, size_t len);
+_Nullable struct peer *find_peer(uint64_t id);
+
+// GCC/Clang nonnull attribute (older compilers)
+void send(const uint8_t *buf, size_t len) __attribute__((nonnull(1)));
+
+// Buffer size annotations (function contracts)
+void copy_frame(
+    uint8_t *dest __attribute__((pass_object_size(0))),
+    const uint8_t *src,
+    size_t n
+);
+```
+
+| Annotation | Purpose |
+|------------|---------|
+| `__counted_by(n)` | Bounds-check flexible array members at compile time |
+| `_Nonnull` / `_Nullable` | Document and check null pointer contracts |
+| `__attribute__((nonnull))` | Compiler warning on null arguments |
+| `__attribute__((returns_nonnull))` | Promise non-null return value |
+| `pass_object_size` | Enable `__builtin_object_size` bounds checks |
+
+### Future: Hardware Memory Safety
+
+When targeting capable hardware:
+
+| Hardware | Technique | Status |
+|----------|-----------|--------|
+| ARM Cortex-A (v8.5+) | MTE (Memory Tagging Extension) | Use `-fsanitize=memtag` |
+| ARM Morello | CHERI capabilities | Experimental |
+| Intel (12th gen+) | CET shadow stack | Use `-fcf-protection=full` |
+
+These are not yet applicable to Cortex-M (our primary target) but should be
+enabled when LICHEN runs on Linux/application processors (border routers).
 
 ## Zephyr Safety Config (Mandatory)
 

@@ -2,6 +2,7 @@
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
 #include <errno.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <zephyr/devicetree.h>
@@ -1637,7 +1638,8 @@ int lichen_hal_location_time_snapshot_get(
 	    snapshot->location_provider_available) {
 		snapshot->source_class_valid = true;
 		snapshot->source_class = LICHEN_HAL_LOCATION_SOURCE_ONBOARD_HARDWARE;
-		strcpy(snapshot->source_name, "gnss0");
+		snprintf(snapshot->source_name, sizeof(snapshot->source_name),
+			 "gnss0");
 		snapshot->fix_state_valid = true;
 		snapshot->fix_state = LICHEN_HAL_LOCATION_FIX_NO_FIX;
 		snapshot->fix_source = LICHEN_HAL_FIX_SOURCE_GNSS;

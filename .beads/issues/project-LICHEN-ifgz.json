@@ -2,13 +2,14 @@
   "id": "project-LICHEN-ifgz",
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Create libFuzzer harness for schnorr48_verify(). Run 1M iterations, fix crashes.",
+  "notes": "Partial: Harness created at lichen/tests/fuzz/fuzz_schnorr48.c but not yet compiled/run. Remaining: compile with libFuzzer, run 1M iterations, fix any crashes found.",
   "status": "open",
   "priority": 2,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:44:32.67507Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:44:46.241941Z",
+  "updated_at": "2026-07-10T23:59:17.076156Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-ifgz",
