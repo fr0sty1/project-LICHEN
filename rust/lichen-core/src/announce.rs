@@ -186,7 +186,7 @@ mod tests {
         buf[2] = 3; // hop_count
         buf[3] = 0x12; // seq_num high
         buf[4] = 0x34; // seq_num low
-        // iid at 5..13
+                       // iid at 5..13
         buf[5] = 0x02;
         buf[12] = 0x01;
         // pubkey at 13..45 (all zeros ok for test)
@@ -230,7 +230,10 @@ mod tests {
     fn wrong_type() {
         let mut wire = make_announce();
         wire[0] = 0xFF;
-        assert_eq!(Announce::from_bytes(&wire), Err(AnnounceError::WrongType(0xFF)));
+        assert_eq!(
+            Announce::from_bytes(&wire),
+            Err(AnnounceError::WrongType(0xFF))
+        );
     }
 
     #[test]

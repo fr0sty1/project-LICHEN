@@ -185,7 +185,8 @@ impl TxQueue {
     ///
     /// Returns `Err(data)` if the queue is full or payload exceeds max size.
     pub fn push(&mut self, priority: TxPriority, data: &[u8]) -> Result<(), TxQueueError> {
-        let item = TxItem::new(priority, self.sequence, data).ok_or(TxQueueError::PayloadTooLarge)?;
+        let item =
+            TxItem::new(priority, self.sequence, data).ok_or(TxQueueError::PayloadTooLarge)?;
 
         if self.heap.push(item).is_err() {
             return Err(TxQueueError::QueueFull);
@@ -251,7 +252,7 @@ impl TxQueue {
     pub fn estimated_drain_time_ms(&self, airtime_per_byte_us: u32) -> u64 {
         let total_us = (self.bytes_pending as u64) * (airtime_per_byte_us as u64);
         // Round up to next millisecond
-        (total_us + 999) / 1000
+        total_us.div_ceil(1000)
     }
 }
 

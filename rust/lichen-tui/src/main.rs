@@ -38,6 +38,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use radio::{render_radio_tab, RadioState};
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
@@ -46,7 +47,6 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
     Terminal,
 };
-use radio::{render_radio_tab, RadioState};
 use rf_health::{render_rf_health, RfHealthState};
 use std::{io, net::SocketAddr, time::Duration};
 use tokio::sync::watch;
@@ -144,13 +144,13 @@ fn parse_neighbors(bytes: &[u8]) -> Vec<Neighbor> {
 async fn poll_node(node: SocketAddr) -> Result<NodeData, String> {
     let (sr, nr) = tokio::join!(coap::get(node, "status"), coap::get(node, "neighbors"));
     // If both requests failed, return the status error (owned, no clone needed)
-    if sr.is_err() && nr.is_err() {
-        return Err(sr.unwrap_err());
+    match (sr, nr) {
+        (Err(se), Err(_)) => Err(se),
+        (sr, nr) => Ok(NodeData {
+            status: sr.ok().as_deref().map(parse_status).unwrap_or_default(),
+            neighbors: nr.ok().as_deref().map(parse_neighbors).unwrap_or_default(),
+        }),
     }
-    Ok(NodeData {
-        status: sr.ok().as_deref().map(parse_status).unwrap_or_default(),
-        neighbors: nr.ok().as_deref().map(parse_neighbors).unwrap_or_default(),
-    })
 }
 
 // ── app state ─────────────────────────────────────────────────────────────────

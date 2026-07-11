@@ -81,6 +81,7 @@ impl RadioState {
     }
 
     /// Advance simulated time (call from main event loop).
+    #[allow(dead_code)] // not yet wired into the event loop
     pub fn tick(&mut self, delta_ms: u64) {
         self.now_ms = self.now_ms.wrapping_add(delta_ms);
     }
@@ -132,7 +133,10 @@ pub fn render_radio_tab(f: &mut Frame, area: Rect, state: &mut RadioState) {
 
     // ── Status bar ──
     let status = Paragraph::new(Line::from(vec![
-        Span::styled(" RADIO ", Style::default().fg(Color::Black).bg(Color::Magenta)),
+        Span::styled(
+            " RADIO ",
+            Style::default().fg(Color::Black).bg(Color::Magenta),
+        ),
         Span::raw("  "),
         Span::styled("Tab", Style::default().fg(Color::Yellow)),
         Span::raw(":switch  "),
@@ -183,7 +187,11 @@ fn render_duty_cycle(f: &mut Frame, area: Rect, state: &mut RadioState) {
         Span::styled("Budget: ", Style::default().fg(Color::DarkGray)),
         Span::styled(
             format!("{} ms", remaining),
-            Style::default().fg(if remaining > 10000 { Color::Green } else { Color::Yellow }),
+            Style::default().fg(if remaining > 10000 {
+                Color::Green
+            } else {
+                Color::Yellow
+            }),
         ),
         Span::raw("  "),
         Span::styled("Window: ", Style::default().fg(Color::DarkGray)),
@@ -228,12 +236,18 @@ fn render_tx_queue(f: &mut Frame, area: Rect, state: &mut RadioState) {
         .split(inner);
 
     // Summary line
-    let drain_time = state.tx_queue.estimated_drain_time_ms(state.airtime_per_byte_us);
+    let drain_time = state
+        .tx_queue
+        .estimated_drain_time_ms(state.airtime_per_byte_us);
     let summary = Line::from(vec![
         Span::styled("Depth: ", Style::default().fg(Color::DarkGray)),
         Span::styled(
             format!("{}", stats.depth),
-            Style::default().fg(if stats.depth > 20 { Color::Red } else { Color::Cyan }),
+            Style::default().fg(if stats.depth > 20 {
+                Color::Red
+            } else {
+                Color::Cyan
+            }),
         ),
         Span::raw("  "),
         Span::styled("Bytes: ", Style::default().fg(Color::DarkGray)),
@@ -261,7 +275,9 @@ fn render_tx_queue(f: &mut Frame, area: Rect, state: &mut RadioState) {
             Span::styled(format!("{:<8}", name), Style::default().fg(*color)),
             Span::styled(
                 format!("{:>2}", count),
-                Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::raw(" "),
             Span::styled(bar, Style::default().fg(*color)),

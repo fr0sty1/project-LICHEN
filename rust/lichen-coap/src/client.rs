@@ -69,7 +69,11 @@ async fn request(
     path: &str,
     payload: Option<&[u8]>,
 ) -> std::io::Result<Response> {
-    let bind = if addr.is_ipv6() { "[::]:0" } else { "0.0.0.0:0" };
+    let bind = if addr.is_ipv6() {
+        "[::]:0"
+    } else {
+        "0.0.0.0:0"
+    };
     let sock = UdpSocket::bind(bind).await?;
     sock.connect(addr).await?;
 
@@ -103,21 +107,21 @@ fn encode(
     // Add Uri-Path options for each path segment
     for seg in path.trim_start_matches('/').split('/') {
         if !seg.is_empty() {
-            builder
-                .uri_path(seg)
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()))?;
+            builder.uri_path(seg).map_err(|e| {
+                std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string())
+            })?;
         }
     }
 
     // Add Content-Format (CBOR) and payload when body is present
     if let Some(p) = payload {
         if !p.is_empty() {
-            builder
-                .content_format(CONTENT_FORMAT_CBOR)
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()))?;
-            builder
-                .payload(p)
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string()))?;
+            builder.content_format(CONTENT_FORMAT_CBOR).map_err(|e| {
+                std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string())
+            })?;
+            builder.payload(p).map_err(|e| {
+                std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string())
+            })?;
         }
     }
 
@@ -169,32 +173,46 @@ fn skip_options(data: &[u8], mut i: usize) -> std::io::Result<usize> {
 
         // Extended delta
         i += match delta_nibble {
-            13 => { i += 1; 0 }
-            14 => { i += 2; 0 }
-            15 => return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData, "reserved option delta 15")),
+            13 => {
+                i += 1;
+                0
+            }
+            14 => {
+                i += 2;
+                0
+            }
+            15 => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "reserved option delta 15",
+                ))
+            }
             _ => 0,
         };
 
         // Extended length
         let opt_len = match len_nibble {
             13 => {
-                let v = *data.get(i).ok_or_else(|| trunc())? as usize + 13;
+                let v = *data.get(i).ok_or_else(trunc)? as usize + 13;
                 i += 1;
                 v
             }
             14 => {
-                let hi = *data.get(i).ok_or_else(|| trunc())? as usize;
-                let lo = *data.get(i + 1).ok_or_else(|| trunc())? as usize;
+                let hi = *data.get(i).ok_or_else(trunc)? as usize;
+                let lo = *data.get(i + 1).ok_or_else(trunc)? as usize;
                 i += 2;
                 (hi << 8 | lo) + 269
             }
-            15 => return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData, "reserved option length 15")),
+            15 => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "reserved option length 15",
+                ))
+            }
             n => n as usize,
         };
 
-        i = i.checked_add(opt_len).ok_or_else(|| trunc())?;
+        i = i.checked_add(opt_len).ok_or_else(trunc)?;
         if i > data.len() {
             return Err(trunc());
         }

@@ -70,9 +70,18 @@ const NONCE_PIV_START: usize = 8;
 const NONCE_ID_LEN: usize = NONCE_ID_END - 1; // = 7
 
 // Compile-time assertions: nonce layout must be consistent
-const _: () = assert!(NONCE_ID_END == NONCE_PIV_START, "ID and PIV fields must be adjacent");
-const _: () = assert!(NONCE_PIV_START + PIV_MAX_LEN == NONCE_LEN, "PIV field must fit exactly");
-const _: () = assert!(1 + NONCE_ID_LEN + PIV_MAX_LEN == NONCE_LEN, "nonce fields must sum to NONCE_LEN");
+const _: () = assert!(
+    NONCE_ID_END == NONCE_PIV_START,
+    "ID and PIV fields must be adjacent"
+);
+const _: () = assert!(
+    NONCE_PIV_START + PIV_MAX_LEN == NONCE_LEN,
+    "PIV field must fit exactly"
+);
+const _: () = assert!(
+    1 + NONCE_ID_LEN + PIV_MAX_LEN == NONCE_LEN,
+    "nonce fields must sum to NONCE_LEN"
+);
 
 /// COSE Algorithm ID for AES-CCM-16-64-128.
 pub const ALG_AEAD: u8 = 10;
@@ -300,26 +309,30 @@ impl Context {
         let piv_len = seq.encode_piv(&mut piv);
 
         // Compute nonce
-        let nonce = compute_nonce(
-            self.sender_id(),
-            &piv[..piv_len],
-            &self.common_iv,
-        );
+        let nonce = compute_nonce(self.sender_id(), &piv[..piv_len], &self.common_iv);
 
         // Build plaintext directly in ct_out: code || options || 0xFF || payload
         // 0xFF is the CoAP payload marker (RFC 7252 Section 3): it separates
         // the options from the payload and is only present when payload is non-empty.
         // ponytail: empty AAD for now, proper AAD structure in RFC 8613 Section 5.4
-        let cipher = AesCcm::new_from_slice(&self.sender_key).map_err(|_| OscoreError::KeyDerivation)?;
+        let cipher =
+            AesCcm::new_from_slice(&self.sender_key).map_err(|_| OscoreError::KeyDerivation)?;
         const CT_CAP: usize = 280;
         let mut ct_out = heapless::Vec::<u8, CT_CAP>::new();
         // Calculate required size for error reporting
-        let ct_required = 1 + class_e_options.len()
-            + if payload.is_empty() { 0 } else { 1 + payload.len() }
+        let ct_required = 1
+            + class_e_options.len()
+            + if payload.is_empty() {
+                0
+            } else {
+                1 + payload.len()
+            }
             + TAG_LEN;
         let ct_err = || BufferTooSmall::new(ct_required, CT_CAP);
         ct_out.push(code).map_err(|_| ct_err())?;
-        ct_out.extend_from_slice(class_e_options).map_err(|_| ct_err())?;
+        ct_out
+            .extend_from_slice(class_e_options)
+            .map_err(|_| ct_err())?;
         if !payload.is_empty() {
             ct_out.push(0xFF).map_err(|_| ct_err())?;
             ct_out.extend_from_slice(payload).map_err(|_| ct_err())?;
@@ -338,8 +351,10 @@ impl Context {
         let opt_required = 1 + piv_len + self.sender_id_len as usize;
         let opt_err = || BufferTooSmall::new(opt_required, OPT_CAP);
         opt.push(flags).map_err(|_| opt_err())?;
-        opt.extend_from_slice(&piv[..piv_len]).map_err(|_| opt_err())?;
-        opt.extend_from_slice(self.sender_id()).map_err(|_| opt_err())?;
+        opt.extend_from_slice(&piv[..piv_len])
+            .map_err(|_| opt_err())?;
+        opt.extend_from_slice(self.sender_id())
+            .map_err(|_| opt_err())?;
 
         Ok((ct_out, opt))
     }
@@ -381,7 +396,8 @@ impl Context {
         // Split ciphertext into encrypted data and tag
         let tag_start = ciphertext.len() - TAG_LEN;
         let tag = ccm::aead::Tag::<AesCcm>::from_slice(&ciphertext[tag_start..]);
-        let cipher = AesCcm::new_from_slice(&self.recipient_key).map_err(|_| OscoreError::KeyDerivation)?;
+        let cipher =
+            AesCcm::new_from_slice(&self.recipient_key).map_err(|_| OscoreError::KeyDerivation)?;
         const PT_CAP: usize = 256;
         let mut plaintext = heapless::Vec::<u8, PT_CAP>::new();
         plaintext
@@ -704,7 +720,6 @@ fn compute_nonce(sender_id: &[u8], piv: &[u8], common_iv: &[u8; NONCE_LEN]) -> [
     nonce
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -787,9 +802,7 @@ mod tests {
         let code = 0x01; // GET
         let payload = b"hello";
 
-        let (ciphertext, oscore_opt) = sender_ctx
-            .protect_request(code, &[], payload)
-            .unwrap();
+        let (ciphertext, oscore_opt) = sender_ctx.protect_request(code, &[], payload).unwrap();
 
         let (dec_code, _options, dec_payload) = recipient_ctx
             .unprotect_request(&oscore_opt, &ciphertext)

@@ -34,24 +34,26 @@ pub mod node;
 pub mod port_dispatch;
 pub mod routing;
 #[cfg(feature = "std")]
-pub mod stack;
-#[cfg(feature = "std")]
 pub mod secure;
+#[cfg(feature = "std")]
+pub mod stack;
 
-pub use dispatch::{Dispatcher, Resource, Request, Response};
-pub use node::{Node, RplEvent};
-pub use port_dispatch::{dispatch_by_port, AppProtocol, DispatchError, Dispatched, UdpDispatchError};
-#[cfg(feature = "std")]
-pub use node::RplNode;
-pub use routing::{NeighborTable, Neighbor};
-#[cfg(feature = "std")]
-pub use routing::Router;
-#[cfg(feature = "std")]
-pub use stack::{Stack, TxError, RxError, ReceivedIpv6};
+pub use dispatch::{Dispatcher, Request, Resource, Response};
 #[cfg(feature = "std")]
 pub use lichen_link::link_layer::LinkRxError;
 #[cfg(feature = "std")]
-pub use secure::{SecureStack, SecureError};
+pub use node::RplNode;
+pub use node::{Node, RplEvent};
+pub use port_dispatch::{
+    dispatch_by_port, AppProtocol, DispatchError, Dispatched, UdpDispatchError,
+};
+#[cfg(feature = "std")]
+pub use routing::Router;
+pub use routing::{Neighbor, NeighborTable};
+#[cfg(feature = "std")]
+pub use secure::{SecureError, SecureStack};
+#[cfg(feature = "std")]
+pub use stack::{ReceivedIpv6, RxError, Stack, TxError};
 
 #[cfg(feature = "std")]
 extern crate std;

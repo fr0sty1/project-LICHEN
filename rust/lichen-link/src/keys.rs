@@ -40,7 +40,7 @@ impl Seed {
     #[inline]
     pub fn into_bytes(self) -> [u8; 32] {
         let bytes = self.0;
-        core::mem::forget(self);  // Skip zeroization since caller takes ownership
+        core::mem::forget(self); // Skip zeroization since caller takes ownership
         bytes
     }
 }
@@ -99,7 +99,7 @@ impl PrivateKey {
     #[inline]
     pub fn into_bytes(self) -> [u8; 32] {
         let bytes = self.0;
-        core::mem::forget(self);  // Skip zeroization since caller takes ownership
+        core::mem::forget(self); // Skip zeroization since caller takes ownership
         bytes
     }
 }

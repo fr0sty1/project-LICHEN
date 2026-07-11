@@ -25,10 +25,8 @@ use lichen_core::addr::NodeId;
 /// Identity seed - in production, load from flash
 /// ponytail: hardcoded seed for initial bringup, replace with NonVolatile read
 const DEVICE_SEED: [u8; 32] = [
-    0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE,
-    0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE,
-    0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE,
-    0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE,
+    0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE, 0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE,
+    0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE, 0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE,
 ];
 
 /// Derive a simple IID from seed (simplified for no_std)
@@ -103,8 +101,14 @@ async fn main(spawner: Spawner) {
     let link_local = node_id.link_local_addr();
     info!(
         "Link-local: fe80::{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}:{:02x}{:02x}",
-        link_local.0[8], link_local.0[9], link_local.0[10], link_local.0[11],
-        link_local.0[12], link_local.0[13], link_local.0[14], link_local.0[15]
+        link_local.0[8],
+        link_local.0[9],
+        link_local.0[10],
+        link_local.0[11],
+        link_local.0[12],
+        link_local.0[13],
+        link_local.0[14],
+        link_local.0[15]
     );
 
     // Initialize LED (Wio-E5 has LED on PB5)

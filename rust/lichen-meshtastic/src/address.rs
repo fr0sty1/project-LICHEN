@@ -4,7 +4,7 @@
 //! derived from Ed25519 public keys. This module provides bidirectional
 //! mapping between the two address spaces.
 
-#[cfg(feature = "alloc")]
+#[cfg(any(feature = "alloc", test))]
 use alloc::vec::Vec;
 use core::fmt;
 use hashbrown::HashMap;
@@ -169,7 +169,7 @@ impl AddressMapper {
         self.by_node_id.get(&node_id).map(|e| &e.pubkey)
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(any(feature = "alloc", test))]
     pub fn known_nodes(&self) -> Vec<MeshtasticNodeId> {
         self.by_node_id.keys().copied().collect()
     }
@@ -201,18 +201,30 @@ fn iid_to_link_local(iid: &[u8; 8]) -> Ipv6Addr {
 fn synthetic_addr(node_id: MeshtasticNodeId) -> Ipv6Addr {
     let id_bytes = node_id.to_be_bytes();
     Ipv6Addr([
-        0xfe, 0x80, 0, 0, 0, 0, 0, 0,
-        SYNTHETIC_MARKER[0], SYNTHETIC_MARKER[1],
-        SYNTHETIC_MARKER[2], SYNTHETIC_MARKER[3],
-        id_bytes[0], id_bytes[1], id_bytes[2], id_bytes[3],
+        0xfe,
+        0x80,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        SYNTHETIC_MARKER[0],
+        SYNTHETIC_MARKER[1],
+        SYNTHETIC_MARKER[2],
+        SYNTHETIC_MARKER[3],
+        id_bytes[0],
+        id_bytes[1],
+        id_bytes[2],
+        id_bytes[3],
     ])
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::vec;
     use alloc::format;
+    use alloc::vec;
 
     #[test]
     fn test_meshtastic_node_id_display() {

@@ -48,6 +48,7 @@ pub struct RssiDisplay {
     /// Rolling average RSSI (dBm), None if no samples.
     pub avg: Option<i16>,
     /// Number of samples recorded.
+    #[allow(dead_code)] // populated but not yet rendered
     pub count: u32,
 }
 
@@ -61,6 +62,7 @@ pub struct SnrDisplay {
     /// Rolling average SNR (dB), None if no samples.
     pub avg: Option<i8>,
     /// Number of samples recorded.
+    #[allow(dead_code)] // populated but not yet rendered
     pub count: u32,
 }
 
@@ -151,9 +153,9 @@ pub fn render_rf_health(f: &mut Frame, area: Rect, state: &RfHealthState) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(8),  // Metrics section
-            Constraint::Min(0),     // Neighbors and cheaters
-            Constraint::Length(1),  // Status bar
+            Constraint::Length(8), // Metrics section
+            Constraint::Min(0),    // Neighbors and cheaters
+            Constraint::Length(1), // Status bar
         ])
         .split(area);
 
@@ -172,15 +174,30 @@ fn render_metrics(f: &mut Frame, area: Rect, metrics: &RfHealthDisplay) {
     // Left: Packet statistics
     let packet_stats = vec![
         Line::from(vec![
-            Span::styled(format!("{:<12}", "TX:"), Style::default().fg(Color::DarkGray)),
-            Span::styled(format!("{}", metrics.packets_tx), Style::default().fg(Color::Green)),
+            Span::styled(
+                format!("{:<12}", "TX:"),
+                Style::default().fg(Color::DarkGray),
+            ),
+            Span::styled(
+                format!("{}", metrics.packets_tx),
+                Style::default().fg(Color::Green),
+            ),
         ]),
         Line::from(vec![
-            Span::styled(format!("{:<12}", "RX:"), Style::default().fg(Color::DarkGray)),
-            Span::styled(format!("{}", metrics.packets_rx), Style::default().fg(Color::Cyan)),
+            Span::styled(
+                format!("{:<12}", "RX:"),
+                Style::default().fg(Color::DarkGray),
+            ),
+            Span::styled(
+                format!("{}", metrics.packets_rx),
+                Style::default().fg(Color::Cyan),
+            ),
         ]),
         Line::from(vec![
-            Span::styled(format!("{:<12}", "Dropped:"), Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("{:<12}", "Dropped:"),
+                Style::default().fg(Color::DarkGray),
+            ),
             Span::styled(
                 format!("{}", metrics.packets_dropped),
                 Style::default().fg(if metrics.packets_dropped > 0 {
@@ -191,7 +208,10 @@ fn render_metrics(f: &mut Frame, area: Rect, metrics: &RfHealthDisplay) {
             ),
         ]),
         Line::from(vec![
-            Span::styled(format!("{:<12}", "TX Fail:"), Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("{:<12}", "TX Fail:"),
+                Style::default().fg(Color::DarkGray),
+            ),
             Span::styled(
                 format!("{}", metrics.tx_failures),
                 Style::default().fg(if metrics.tx_failures > 0 {
@@ -202,7 +222,10 @@ fn render_metrics(f: &mut Frame, area: Rect, metrics: &RfHealthDisplay) {
             ),
         ]),
         Line::from(vec![
-            Span::styled(format!("{:<12}", "Loss:"), Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("{:<12}", "Loss:"),
+                Style::default().fg(Color::DarkGray),
+            ),
             Span::styled(
                 format_loss_rate(metrics.loss_percent, metrics.loss_permille),
                 Style::default().fg(loss_color(metrics.loss_percent)),
@@ -221,21 +244,35 @@ fn render_metrics(f: &mut Frame, area: Rect, metrics: &RfHealthDisplay) {
     // Right: Signal quality (RSSI/SNR)
     let signal_stats = vec![
         Line::from(vec![
-            Span::styled("RSSI", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "RSSI",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled(" (dBm)", Style::default().fg(Color::DarkGray)),
         ]),
         Line::from(vec![
-            Span::styled(format!("{:<6}", "min:"), Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("{:<6}", "min:"),
+                Style::default().fg(Color::DarkGray),
+            ),
             Span::styled(
                 format_opt_i16(metrics.rssi.min),
                 Style::default().fg(Color::White),
             ),
-            Span::styled(format!("  {:<6}", "max:"), Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("  {:<6}", "max:"),
+                Style::default().fg(Color::DarkGray),
+            ),
             Span::styled(
                 format_opt_i16(metrics.rssi.max),
                 Style::default().fg(Color::White),
             ),
-            Span::styled(format!("  {:<6}", "avg:"), Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("  {:<6}", "avg:"),
+                Style::default().fg(Color::DarkGray),
+            ),
             Span::styled(
                 format_opt_i16(metrics.rssi.avg),
                 Style::default().fg(rssi_color(metrics.rssi.avg)),
@@ -243,21 +280,35 @@ fn render_metrics(f: &mut Frame, area: Rect, metrics: &RfHealthDisplay) {
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("SNR", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "SNR",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled(" (dB)", Style::default().fg(Color::DarkGray)),
         ]),
         Line::from(vec![
-            Span::styled(format!("{:<6}", "min:"), Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("{:<6}", "min:"),
+                Style::default().fg(Color::DarkGray),
+            ),
             Span::styled(
                 format_opt_i8(metrics.snr.min),
                 Style::default().fg(Color::White),
             ),
-            Span::styled(format!("  {:<6}", "max:"), Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("  {:<6}", "max:"),
+                Style::default().fg(Color::DarkGray),
+            ),
             Span::styled(
                 format_opt_i8(metrics.snr.max),
                 Style::default().fg(Color::White),
             ),
-            Span::styled(format!("  {:<6}", "avg:"), Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("  {:<6}", "avg:"),
+                Style::default().fg(Color::DarkGray),
+            ),
             Span::styled(
                 format_opt_i8(metrics.snr.avg),
                 Style::default().fg(snr_color(metrics.snr.avg)),
@@ -283,7 +334,11 @@ fn render_neighbors_and_cheaters(f: &mut Frame, area: Rect, state: &RfHealthStat
 
     // Left: Neighbor table
     let header = Row::new(vec!["Node ID", "Pkts", "RSSI", "Status"])
-        .style(Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
+        .style(
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        )
         .bottom_margin(1);
 
     let rows: Vec<Row> = state
@@ -291,7 +346,10 @@ fn render_neighbors_and_cheaters(f: &mut Frame, area: Rect, state: &RfHealthStat
         .iter()
         .map(|n| {
             let (status, style) = if n.is_cheater {
-                ("CHEATER", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD))
+                (
+                    "CHEATER",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                )
             } else {
                 ("OK", Style::default().fg(Color::Green))
             };
@@ -299,7 +357,9 @@ fn render_neighbors_and_cheaters(f: &mut Frame, area: Rect, state: &RfHealthStat
             Row::new(vec![
                 truncate_node_id(&n.node_id),
                 format!("{}", n.packet_count),
-                n.last_rssi.map(|r| format!("{}", r)).unwrap_or_else(|| "-".into()),
+                n.last_rssi
+                    .map(|r| format!("{}", r))
+                    .unwrap_or_else(|| "-".into()),
                 status.into(),
             ])
             .style(style)
@@ -376,12 +436,14 @@ fn render_status_bar(f: &mut Frame, area: Rect) {
 
 /// Format optional i16 value for display.
 fn format_opt_i16(val: Option<i16>) -> String {
-    val.map(|v| format!("{:+}", v)).unwrap_or_else(|| "-".into())
+    val.map(|v| format!("{:+}", v))
+        .unwrap_or_else(|| "-".into())
 }
 
 /// Format optional i8 value for display.
 fn format_opt_i8(val: Option<i8>) -> String {
-    val.map(|v| format!("{:+}", v)).unwrap_or_else(|| "-".into())
+    val.map(|v| format!("{:+}", v))
+        .unwrap_or_else(|| "-".into())
 }
 
 /// Format loss rate for display, using permille for fractional percentages.
@@ -468,10 +530,7 @@ mod tests {
     #[test]
     fn test_truncate_node_id() {
         assert_eq!(truncate_node_id("short"), "short");
-        assert_eq!(
-            truncate_node_id("0102030405060708"),
-            "01020304..0708"
-        );
+        assert_eq!(truncate_node_id("0102030405060708"), "01020304..0708");
     }
 
     #[test]

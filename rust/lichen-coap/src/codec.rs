@@ -125,7 +125,7 @@ impl<'a> CoapPacket<'a> {
         // Find payload marker
         let (options_end, payload_start) = match find_payload_marker(&data[options_start..])? {
             Some(off) => (options_start + off, options_start + off + 1), // off is at 0xFF, +1 to skip
-            None => (data.len(), data.len()), // no marker, no payload
+            None => (data.len(), data.len()),                            // no marker, no payload
         };
 
         Ok(Self {
@@ -337,8 +337,7 @@ impl<'a> Iterator for OptionIterator<'a> {
                 if self.offset + 1 >= self.data.len() {
                     return Some(Err(CoapError::TruncatedOption));
                 }
-                let d = ((self.data[self.offset] as u16) << 8
-                    | self.data[self.offset + 1] as u16)
+                let d = ((self.data[self.offset] as u16) << 8 | self.data[self.offset + 1] as u16)
                     + 269;
                 self.offset += 2;
                 d
@@ -469,9 +468,9 @@ impl<'a> CoapBuilder<'a> {
         // format.to_be_bytes() returns [u8; 2] where [0] is high byte, [1] is low byte
         let bytes = format.to_be_bytes();
         let value: &[u8] = match format {
-            0 => &[],                    // Empty for zero
-            1..=0xFF => &bytes[1..2],    // Low byte only for 1-255
-            _ => &bytes[0..2],           // Both bytes for 256+
+            0 => &[],                 // Empty for zero
+            1..=0xFF => &bytes[1..2], // Low byte only for 1-255
+            _ => &bytes[0..2],        // Both bytes for 256+
         };
         self.option(OptionNumber::ContentFormat as u16, value)
     }
@@ -577,8 +576,8 @@ fn write_option(out: &mut [u8], delta: u16, value: &[u8]) -> usize {
 #[cfg(all(test, feature = "std"))]
 mod tests {
     extern crate std;
-    use std::vec::Vec;
     use super::*;
+    use std::vec::Vec;
 
     #[test]
     fn parse_minimal_message() {
@@ -739,7 +738,10 @@ mod tests {
     #[test]
     fn wrong_version() {
         let data = [0x80, 0x01, 0x00, 0x01]; // Ver=2
-        assert_eq!(CoapPacket::from_bytes(&data), Err(CoapError::WrongVersion(2)));
+        assert_eq!(
+            CoapPacket::from_bytes(&data),
+            Err(CoapError::WrongVersion(2))
+        );
     }
 
     #[test]
@@ -768,8 +770,8 @@ mod tests {
         data.push(0xE0); // delta nibble=14, len nibble=0
         data.push(0xE9); // hi byte of 59731
         data.push(0x53); // lo byte of 59731
-        // Option 2: delta=10000 (nibble 14), length=0
-        // Extended delta = 10000 - 269 = 9731 = 0x2603
+                         // Option 2: delta=10000 (nibble 14), length=0
+                         // Extended delta = 10000 - 269 = 9731 = 0x2603
         data.push(0xE0); // delta nibble=14, len nibble=0
         data.push(0x26); // hi byte of 9731
         data.push(0x03); // lo byte of 9731
@@ -811,7 +813,7 @@ mod tests {
         data.push(0xE0); // delta nibble=14, len nibble=0
         data.push(0xFE); // hi byte of 65266
         data.push(0xF2); // lo byte of 65266
-        // Option 2: delta=1 (overflow: 65535 + 1 = 65536)
+                         // Option 2: delta=1 (overflow: 65535 + 1 = 65536)
         data.push(0x10); // delta nibble=1, len nibble=0
 
         // Overflow is detected at parse time

@@ -473,7 +473,10 @@ mod tests {
 
     #[test]
     fn dio_too_short() {
-        assert_eq!(Dio::from_bytes(&[0u8; 23]), Err(TooShort::new(24, 23).into()));
+        assert_eq!(
+            Dio::from_bytes(&[0u8; 23]),
+            Err(TooShort::new(24, 23).into())
+        );
     }
 
     // ── DAO round-trip ────────────────────────────────────────────────────────

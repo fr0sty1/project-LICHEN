@@ -378,7 +378,7 @@ impl<R: Radio> Stack<R> {
             ipv6,
             sender_iid: l2.sender.iid,
             rssi: pkt.rssi,
-            snr: pkt.snr.map(|s| s as i8),
+            snr: pkt.snr,
         }))
     }
 

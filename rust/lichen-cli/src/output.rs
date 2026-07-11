@@ -72,9 +72,7 @@ pub fn cbor_to_json(v: ciborium::value::Value) -> serde_json::Value {
         Value::Float(f) => serde_json::json!(f),
         Value::Bytes(b) => serde_json::Value::String(hex_encode(&b)),
         Value::Text(s) => serde_json::Value::String(s),
-        Value::Array(arr) => {
-            serde_json::Value::Array(arr.into_iter().map(cbor_to_json).collect())
-        }
+        Value::Array(arr) => serde_json::Value::Array(arr.into_iter().map(cbor_to_json).collect()),
         Value::Map(map) => {
             let obj: serde_json::Map<String, serde_json::Value> = map
                 .into_iter()

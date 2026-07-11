@@ -157,14 +157,10 @@ impl Addr {
     pub const LOOPBACK: Self = Self([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
 
     /// All-nodes multicast (ff02::1).
-    pub const ALL_NODES: Self = Self([
-        0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01,
-    ]);
+    pub const ALL_NODES: Self = Self([0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01]);
 
     /// All-routers multicast (ff02::2).
-    pub const ALL_ROUTERS: Self = Self([
-        0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02,
-    ]);
+    pub const ALL_ROUTERS: Self = Self([0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02]);
 
     /// Create link-local address from 8-byte node ID (EUI-64).
     ///
@@ -328,8 +324,7 @@ impl Ipv6Header {
         }
 
         let traffic_class = ((buf[0] & 0x0f) << 4) | (buf[1] >> 4);
-        let flow_label =
-            ((buf[1] as u32 & 0x0f) << 16) | ((buf[2] as u32) << 8) | (buf[3] as u32);
+        let flow_label = ((buf[1] as u32 & 0x0f) << 16) | ((buf[2] as u32) << 8) | (buf[3] as u32);
         let payload_len = ((buf[4] as u16) << 8) | (buf[5] as u16);
         let next_header = buf[6];
         let hop_limit = buf[7];
@@ -427,32 +422,16 @@ pub struct Icmpv6Echo {
 
 impl Icmpv6Echo {
     /// Build Echo Request packet (header + data).
-    pub fn build_request(
-        &self,
-        src: &Addr,
-        dst: &Addr,
-        data: &[u8],
-    ) -> Vec<u8, 128> {
+    pub fn build_request(&self, src: &Addr, dst: &Addr, data: &[u8]) -> Vec<u8, 128> {
         self.build(icmpv6_type::ECHO_REQUEST, src, dst, data)
     }
 
     /// Build Echo Reply packet.
-    pub fn build_reply(
-        &self,
-        src: &Addr,
-        dst: &Addr,
-        data: &[u8],
-    ) -> Vec<u8, 128> {
+    pub fn build_reply(&self, src: &Addr, dst: &Addr, data: &[u8]) -> Vec<u8, 128> {
         self.build(icmpv6_type::ECHO_REPLY, src, dst, data)
     }
 
-    fn build(
-        &self,
-        msg_type: u8,
-        src: &Addr,
-        dst: &Addr,
-        data: &[u8],
-    ) -> Vec<u8, 128> {
+    fn build(&self, msg_type: u8, src: &Addr, dst: &Addr, data: &[u8]) -> Vec<u8, 128> {
         let mut pkt = Vec::new();
 
         // ICMPv6 header: type, code, checksum (placeholder)
@@ -736,7 +715,9 @@ pub fn handle_icmpv6(
 
             let mut pkt = Vec::new();
             let mut ip_buf = [0u8; IPV6_HEADER_LEN];
-            reply_ip.write_to(reply_icmp.len() as u16, &mut ip_buf).ok()?;
+            reply_ip
+                .write_to(reply_icmp.len() as u16, &mut ip_buf)
+                .ok()?;
             let _ = pkt.extend_from_slice(&ip_buf);
             let _ = pkt.extend_from_slice(&reply_icmp);
 
@@ -763,7 +744,9 @@ pub fn handle_icmpv6(
 
             let mut pkt = Vec::new();
             let mut ip_buf = [0u8; IPV6_HEADER_LEN];
-            reply_ip.write_to(reply_icmp.len() as u16, &mut ip_buf).ok()?;
+            reply_ip
+                .write_to(reply_icmp.len() as u16, &mut ip_buf)
+                .ok()?;
             let _ = pkt.extend_from_slice(&ip_buf);
             let _ = pkt.extend_from_slice(&reply_icmp);
 
@@ -786,10 +769,7 @@ mod tests {
 
         // fe80::0211:22ff:fe33:4455
         assert!(addr.is_link_local());
-        assert_eq!(
-            addr.0,
-            hex!("fe80 0000 0000 0000 0211 22ff fe33 4455")
-        );
+        assert_eq!(addr.0, hex!("fe80 0000 0000 0000 0211 22ff fe33 4455"));
     }
 
     #[test]
@@ -798,10 +778,7 @@ mod tests {
         let sn = addr.solicited_node();
 
         // ff02::1:ff33:4455
-        assert_eq!(
-            sn.0,
-            hex!("ff02 0000 0000 0000 0000 0001 ff33 4455")
-        );
+        assert_eq!(sn.0, hex!("ff02 0000 0000 0000 0000 0001 ff33 4455"));
     }
 
     #[test]

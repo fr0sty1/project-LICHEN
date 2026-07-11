@@ -8,9 +8,9 @@
 
 extern crate alloc;
 
-use alloc::vec::Vec;
 use crate::keys::{PrivateKey, PublicKey, Seed};
 use crate::seqnum::LinkSeqNum;
+use alloc::vec::Vec;
 use curve25519_dalek::{
     constants::ED25519_BASEPOINT_POINT, edwards::CompressedEdwardsY, scalar::Scalar,
     traits::IsIdentity,
@@ -184,12 +184,7 @@ pub fn verify_frame(
 }
 
 // epoch(1) || seqnum(2, BE) || dst_addr || inner_payload
-fn build_signable(
-    epoch: u8,
-    seqnum: LinkSeqNum,
-    dst_addr: &[u8],
-    inner_payload: &[u8],
-) -> Vec<u8> {
+fn build_signable(epoch: u8, seqnum: LinkSeqNum, dst_addr: &[u8], inner_payload: &[u8]) -> Vec<u8> {
     let mut buf = Vec::with_capacity(3 + dst_addr.len() + inner_payload.len());
     buf.push(epoch);
     buf.extend_from_slice(&seqnum.to_be_bytes());
@@ -399,7 +394,10 @@ mod tests {
         )));
         let msg = hex("74657374");
         let sig = arr48(&hex("c9bec10578943fc8d453252fb262fa03ad2220609d98dda4b561d4b02281f1e8706676c26685a806d6e0d74f345e2009"));
-        assert!(!verify(&pubkey, &msg, &sig), "identity point must be rejected");
+        assert!(
+            !verify(&pubkey, &msg, &sig),
+            "identity point must be rejected"
+        );
     }
 
     #[test]
@@ -410,7 +408,10 @@ mod tests {
         )));
         let msg = hex("74657374");
         let sig = arr48(&hex("c9bec10578943fc8d453252fb262fa03ad2220609d98dda4b561d4b02281f1e8706676c26685a806d6e0d74f345e2009"));
-        assert!(!verify(&pubkey, &msg, &sig), "low-order point must be rejected");
+        assert!(
+            !verify(&pubkey, &msg, &sig),
+            "low-order point must be rejected"
+        );
     }
 
     #[test]
@@ -421,7 +422,10 @@ mod tests {
         )));
         let msg = hex("74657374");
         let sig = arr48(&hex("c9bec10578943fc8d453252fb262fa03edd3f55c1a631258d69cf7a2def9de1400000000000000000000000000000010"));
-        assert!(!verify(&pubkey, &msg, &sig), "non-canonical s must be rejected");
+        assert!(
+            !verify(&pubkey, &msg, &sig),
+            "non-canonical s must be rejected"
+        );
     }
 
     #[test]

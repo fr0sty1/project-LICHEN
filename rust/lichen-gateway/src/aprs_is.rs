@@ -372,7 +372,7 @@ pub fn cot_to_aprs(callsign: &str, cot: &CompactCot) -> String {
 /// `Some(CompactCot)` if parsing succeeds, `None` otherwise.
 pub fn aprs_to_cot(aprs: &str) -> Option<CompactCot> {
     // Find the data portion (after the last colon)
-    let data = aprs.split(':').last()?;
+    let data = aprs.split(':').next_back()?;
 
     // APRS position format is ASCII-only; reject non-ASCII to avoid
     // panics from byte-index slicing on multi-byte UTF-8.
@@ -430,7 +430,9 @@ pub fn aprs_to_cot(aprs: &str) -> Option<CompactCot> {
     let comment = &pos_data[19..];
     let alt_dm = if let Some(idx) = comment.find("/A=") {
         let alt_str = &comment[idx + 3..];
-        let end = alt_str.find(|c: char| !c.is_ascii_digit()).unwrap_or(alt_str.len());
+        let end = alt_str
+            .find(|c: char| !c.is_ascii_digit())
+            .unwrap_or(alt_str.len());
         if end > 0 {
             let alt_ft: i32 = alt_str[..end].parse().ok()?;
             // Convert feet to decimeters: 1 foot = 3.048 decimeters
@@ -462,11 +464,11 @@ mod tests {
     fn compact_cot_roundtrip() {
         let cot = CompactCot {
             subtype: subtype::FRIENDLY_GROUND,
-            lat_microdeg: 37_774_900, // 37.7749
+            lat_microdeg: 37_774_900,   // 37.7749
             lon_microdeg: -122_419_400, // -122.4194
-            alt_dm: 1000, // 100m
-            course_cdeg: 9000, // 90 degrees
-            speed_cm_s: 500, // 5 m/s
+            alt_dm: 1000,               // 100m
+            course_cdeg: 9000,          // 90 degrees
+            speed_cm_s: 500,            // 5 m/s
             team: team::BLUE,
             role: 1,
         };
@@ -500,9 +502,9 @@ mod tests {
     fn cot_to_aprs_basic() {
         let cot = CompactCot {
             subtype: subtype::FRIENDLY_GROUND,
-            lat_microdeg: 49_058_333, // 49.0583333 -> 49 03.50
+            lat_microdeg: 49_058_333,  // 49.0583333 -> 49 03.50
             lon_microdeg: -72_029_167, // -72.0291667 -> 072 01.75
-            alt_dm: 1000, // 100m = 328 feet
+            alt_dm: 1000,              // 100m = 328 feet
             course_cdeg: 0,
             speed_cm_s: 0,
             team: team::BLUE,
