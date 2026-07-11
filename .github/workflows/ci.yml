@@ -87,19 +87,20 @@ jobs:
   cppcheck:
     name: C static analysis (cppcheck)
     runs-on: ubuntu-latest
-    # Informational for now: cppcheck without the Zephyr preprocessor state
-    # reports syntax errors on macro-heavy files (BT_GATT_CCC,
-    # MODEM_CHAT_MATCHES_DEFINE) and flags vendored code (monocypher) that
-    # the safety policy exempts. Keep the output visible without gating
-    # until the finding set is triaged and suppressed deliberately.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
       - name: Install cppcheck
         run: sudo apt-get install -y --no-install-recommends cppcheck
 
-      - name: Run cppcheck
+      - name: Run cppcheck (informational)
+        # Informational for now: cppcheck without the Zephyr preprocessor
+        # state reports syntax errors on macro-heavy files (BT_GATT_CCC,
+        # MODEM_CHAT_MATCHES_DEFINE) and flags vendored code (monocypher)
+        # that the safety policy exempts. Step-level continue-on-error keeps
+        # the output visible without gating until the finding set is triaged
+        # and suppressed deliberately.
+        continue-on-error: true
         run: cppcheck --error-exitcode=1 --enable=warning,style,performance --suppress=missingIncludeSystem lichen/
 
   zephyr-native-sim:
