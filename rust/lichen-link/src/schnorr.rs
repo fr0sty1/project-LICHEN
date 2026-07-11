@@ -6,6 +6,9 @@
 //! Curve25519-dalek provides timing-safe scalar multiplication.
 //! Nonce is deterministic (RFC 6979 style) to prevent nonce reuse.
 
+extern crate alloc;
+
+use alloc::vec::Vec;
 use crate::keys::{PrivateKey, PublicKey, Seed};
 use crate::seqnum::LinkSeqNum;
 use curve25519_dalek::{
@@ -152,9 +155,8 @@ pub fn sign_frame(
     privkey: &PrivateKey,
     pubkey: &PublicKey,
 ) -> [u8; 48] {
-    let mut buf = [0u8; 256];
-    let msg = build_signable(&mut buf, epoch, seqnum, dst_addr, inner_payload);
-    sign(privkey, pubkey, msg)
+    let msg = build_signable(epoch, seqnum, dst_addr, inner_payload);
+    sign(privkey, pubkey, &msg)
 }
 
 /// Verify a signed link-layer frame.
@@ -177,27 +179,23 @@ pub fn verify_frame(
     // SAFETY: length check above ensures payload_with_sig.len() >= 48,
     // so [split..] is exactly SIGNATURE_LENGTH (48) bytes
     let sig: [u8; 48] = payload_with_sig[split..].try_into().unwrap();
-    let mut buf = [0u8; 256];
-    let msg = build_signable(&mut buf, epoch, seqnum, dst_addr, inner_payload);
-    verify(sender_pubkey, msg, &sig)
+    let msg = build_signable(epoch, seqnum, dst_addr, inner_payload);
+    verify(sender_pubkey, &msg, &sig)
 }
 
-// epoch(1) || seqnum(2, BE) || dst_addr || inner_payload — max 202 bytes for LoRa.
-fn build_signable<'a>(
-    buf: &'a mut [u8; 256],
+// epoch(1) || seqnum(2, BE) || dst_addr || inner_payload
+fn build_signable(
     epoch: u8,
     seqnum: LinkSeqNum,
     dst_addr: &[u8],
     inner_payload: &[u8],
-) -> &'a [u8] {
-    buf[0] = epoch;
-    buf[1..3].copy_from_slice(&seqnum.to_be_bytes());
-    let mut off = 3;
-    buf[off..off + dst_addr.len()].copy_from_slice(dst_addr);
-    off += dst_addr.len();
-    buf[off..off + inner_payload.len()].copy_from_slice(inner_payload);
-    off += inner_payload.len();
-    &buf[..off]
+) -> Vec<u8> {
+    let mut buf = Vec::with_capacity(3 + dst_addr.len() + inner_payload.len());
+    buf.push(epoch);
+    buf.extend_from_slice(&seqnum.to_be_bytes());
+    buf.extend_from_slice(dst_addr);
+    buf.extend_from_slice(inner_payload);
+    buf
 }
 
 fn clamp(mut bytes: [u8; 32]) -> [u8; 32] {

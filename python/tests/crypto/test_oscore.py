@@ -96,3 +96,23 @@ class TestMemorySecurityContext:
                 sender_id=b"\x00" * 8,  # Too long
                 recipient_id=b"\x01",
             )
+
+    def test_sequence_number_overflow_raises(self) -> None:
+        """Sequence number overflow raises OverflowError to prevent nonce reuse."""
+        ctx = MemorySecurityContext(
+            master_secret=b"0" * 16,
+            master_salt=b"1" * 8,
+            sender_id=b"\x00",
+            recipient_id=b"\x01",
+        )
+
+        # Set sequence number to max (2^40 - 1)
+        ctx.sender_sequence_number = (1 << 40) - 1
+
+        # Last valid sequence number should succeed
+        seqno = ctx.new_sequence_number()
+        assert seqno == (1 << 40) - 1
+
+        # Next call should raise (would exceed 5-byte limit)
+        with pytest.raises(OverflowError, match="sequence number exhausted"):
+            ctx.new_sequence_number()

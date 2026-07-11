@@ -2,13 +2,16 @@
   "id": "project-LICHEN-bi0g",
   "title": "task",
   "description": "python/src/lichen/gateway/compact_cot.py:631. Wrong length corrupts encoding.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T00:36:24.28891Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T00:37:09.325382Z",
+  "updated_at": "2026-07-11T01:03:41.335884Z",
+  "closed_at": "2026-07-11T01:03:41.335884Z",
+  "close_reason": "done",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-bi0g",

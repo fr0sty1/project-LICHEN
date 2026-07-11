@@ -82,10 +82,13 @@ class KissSerialConnection:
             raise ConnectionError("serial port not open")
 
         data = self.handler.rx_frame(payload, port)
+        ser = self._serial  # Capture to avoid race with close()
 
         def _write():
-            self._serial.write(data)
-            self._serial.flush()
+            if ser is None or not ser.is_open:
+                return
+            ser.write(data)
+            ser.flush()
 
         await self._loop.run_in_executor(None, _write)
 

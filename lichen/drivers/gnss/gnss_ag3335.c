@@ -209,6 +209,7 @@ static int gnss_ag3335_resume(const struct device *dev)
 
 	ret = modem_chat_run_script(&data->chat, &gnss_ag3335_init_chat_script);
 	if (ret < 0) {
+		modem_chat_release(&data->chat);
 		modem_pipe_close(data->uart_pipe);
 		gnss_ag3335_power_off(dev);
 	}
@@ -220,6 +221,7 @@ static int gnss_ag3335_suspend(const struct device *dev)
 {
 	struct gnss_ag3335_data *data = dev->data;
 
+	modem_chat_release(&data->chat);
 	modem_pipe_close(data->uart_pipe);
 	return gnss_ag3335_power_off(dev);
 }

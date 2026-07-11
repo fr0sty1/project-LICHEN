@@ -2,13 +2,16 @@
   "id": "project-LICHEN-i1nf",
   "title": "task",
   "description": "lichen/subsys/schc/schc.c:370. fcn_bits=7 allows all_1=127.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T00:35:40.809637Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T00:37:00.796744Z",
+  "updated_at": "2026-07-11T00:55:57.51961Z",
+  "closed_at": "2026-07-11T00:55:57.51961Z",
+  "close_reason": "done",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-i1nf",

@@ -16,6 +16,15 @@ use std::{
 use crate::message::{
     Dao, OptionIter, RplError, RplTarget, TransitInfo, OPT_RPL_TARGET, OPT_TRANSIT_INFO,
 };
+
+/// RFC 6550 lollipop sequence comparison: returns true if `new_seq` is newer than `old_seq`.
+///
+/// Uses signed wrap-around comparison. A sequence S1 is considered newer than S2 if
+/// the signed difference (S1 - S2) is positive (within half the sequence space).
+#[cfg(feature = "std")]
+fn seq_is_newer(new_seq: u8, old_seq: u8) -> bool {
+    (new_seq.wrapping_sub(old_seq) as i8) > 0
+}
 #[cfg(feature = "std")]
 use lichen_core::error::{BufferTooSmall, TooShort};
 
@@ -246,6 +255,8 @@ pub struct DaoManager {
     pub routing_table: RoutingTable,
     dao_sequence: u8,
     parent_map: HashMap<[u8; 16], [u8; 16]>,
+    /// Last accepted DAO sequence per target (replay protection).
+    dao_seq_map: HashMap<[u8; 16], u8>,
 }
 
 #[cfg(feature = "std")]
@@ -259,6 +270,7 @@ impl DaoManager {
             routing_table: RoutingTable::new(),
             dao_sequence: 0,
             parent_map: HashMap::new(),
+            dao_seq_map: HashMap::new(),
         }
     }
 
@@ -307,13 +319,25 @@ impl DaoManager {
     /// Process a received DAO on the root. Returns `true` if a route was installed.
     ///
     /// `dao_bytes` is the raw DAO wire bytes (base object + options).
+    /// SECURITY: Validates DAO sequence to prevent replay attacks with stale routes.
     pub fn process_dao(&mut self, dao_bytes: &[u8]) -> bool {
         if !self.is_root {
             return false;
         }
+        // Parse DAO to get sequence number
+        let Ok(dao) = Dao::from_bytes(dao_bytes) else {
+            return false;
+        };
         let Some((target, parent)) = self.extract_edge(dao_bytes) else {
             return false;
         };
+        // SECURITY: Reject stale DAO sequences to prevent replay attacks
+        if let Some(&last_seq) = self.dao_seq_map.get(&target) {
+            if !seq_is_newer(dao.dao_sequence, last_seq) {
+                return false;
+            }
+        }
+        self.dao_seq_map.insert(target, dao.dao_sequence);
         self.parent_map.insert(target, parent);
         self.rebuild_routes();
         true
@@ -573,5 +597,43 @@ mod tests {
         let d1 = Dao::from_bytes(&mgr.build_dao(ll(1))).unwrap();
         let d2 = Dao::from_bytes(&mgr.build_dao(ll(1))).unwrap();
         assert_eq!(d2.dao_sequence, d1.dao_sequence + 1);
+    }
+
+    #[test]
+    fn replayed_dao_with_stale_sequence_rejected() {
+        let root_addr = ll(1);
+        let mut root = DaoManager::as_root(root_addr, 0, dodag_id());
+
+        // Node ll(2) sends DAO with sequence 1
+        let mut node2 = DaoManager::new(ll(2), 0, dodag_id());
+        let dao1 = node2.build_dao(root_addr);
+        assert!(root.process_dao(&dao1));
+        assert!(root.routing_table.lookup(&ll(2)).is_some());
+
+        // Node ll(2) sends DAO with sequence 2 (newer, should be accepted)
+        let dao2 = node2.build_dao(root_addr);
+        assert!(root.process_dao(&dao2));
+
+        // Replay attack: attacker replays dao1 (sequence 1, now stale)
+        assert!(!root.process_dao(&dao1), "stale DAO should be rejected");
+
+        // Same sequence should also be rejected
+        let dao2_copy = dao2.clone();
+        assert!(!root.process_dao(&dao2_copy), "same sequence should be rejected");
+    }
+
+    #[test]
+    fn dao_sequence_comparison_handles_wraparound() {
+        // Test the seq_is_newer function for wrap-around cases
+        assert!(super::seq_is_newer(1, 0));
+        assert!(super::seq_is_newer(128, 127));
+        assert!(super::seq_is_newer(255, 254));
+        // Wrap-around: 0 is newer than 255 (distance of 1 forward)
+        assert!(super::seq_is_newer(0, 255));
+        assert!(super::seq_is_newer(1, 255));
+        // But 254 is not newer than 255
+        assert!(!super::seq_is_newer(254, 255));
+        // Same sequence is not newer
+        assert!(!super::seq_is_newer(100, 100));
     }
 }

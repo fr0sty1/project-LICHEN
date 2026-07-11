@@ -2,13 +2,16 @@
   "id": "project-LICHEN-6rh3",
   "title": "task",
   "description": "python/src/lichen/link/link_layer.py:501. Misleading hint.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T00:36:32.692375Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T00:37:12.332534Z",
+  "updated_at": "2026-07-11T01:06:05.378275Z",
+  "closed_at": "2026-07-11T01:06:05.378275Z",
+  "close_reason": "done",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-6rh3",

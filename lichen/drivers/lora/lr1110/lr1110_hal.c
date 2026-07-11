@@ -71,18 +71,25 @@ static void record_error(int err)
 static int wait_busy(void)
 {
 	int timeout = LR1110_BUSY_TIMEOUT_MS;
+	int pin_val;
 
-	while (gpio_pin_get_dt(&lr1110_gpio_busy) > 0 && timeout > 0) {
+	while (timeout > 0) {
+		pin_val = gpio_pin_get_dt(&lr1110_gpio_busy);
+		if (pin_val < 0) {
+			LOG_ERR("GPIO read error: %d", pin_val);
+			record_error(pin_val);
+			return pin_val;
+		}
+		if (pin_val == 0) {
+			return 0; /* BUSY cleared */
+		}
 		k_sleep(K_MSEC(1));
 		timeout--;
 	}
 
-	if (timeout == 0) {
-		LOG_ERR("LR1110 BUSY timeout - hardware fault?");
-		record_error(-ETIMEDOUT);
-		return -ETIMEDOUT;
-	}
-	return 0;
+	LOG_ERR("LR1110 BUSY timeout - hardware fault?");
+	record_error(-ETIMEDOUT);
+	return -ETIMEDOUT;
 }
 
 lr1110_hal_status_t lr1110_hal_write(const void *context,

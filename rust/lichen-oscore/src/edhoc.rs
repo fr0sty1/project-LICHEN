@@ -114,7 +114,7 @@ fn edhoc_kdf(
     label: &str,
     context: &[u8],
     length: usize,
-) -> Result<heapless::Vec<u8, 32>, EdhocError> {
+) -> Result<heapless::Vec<u8, 128>, EdhocError> {
     // Build info: CBOR sequence of (length, TH, label, context)
     let mut info = heapless::Vec::<u8, 128>::new();
 
@@ -657,8 +657,7 @@ impl EdhocResponder {
         let g_xy = eph_secret.diffie_hellman(&peer_eph_public);
 
         // Store eph_secret back for later (we still need it)
-        // ponytail: wasteful but simpler than threading through ownership
-        self.eph_secret = Some(StaticSecret::random_from_rng(rand_core::OsRng));
+        self.eph_secret = Some(eph_secret);
 
         // TH_2 = H(G_Y || H(message_1))
         let h_msg1 = compute_th(msg1);
@@ -673,18 +672,38 @@ impl EdhocResponder {
         // PRK_3e2m = PRK_2e for SIGN_SIGN
         self.state.prk_3e2m = self.state.prk_2e;
 
-        // Build PLAINTEXT_2 = (ID_CRED_R, Signature_2)
-        let mut m_2 = heapless::Vec::<u8, 128>::new();
-        m_2.push_err(0x83)?;
+        // Compute MAC_2 for signature
+        let mut context_2 = heapless::Vec::<u8, 64>::new();
+        context_2.push_err(0x58)?;
+        context_2.push_err(32)?;
+        context_2.extend_err(self.pubkey.as_bytes())?;  // CRED_R
+        let mac_2 = edhoc_kdf(&self.state.prk_3e2m, &self.state.th_2, "MAC_2", &context_2, 8)?;
+
+        // M_2 = ["Signature1", << ID_CRED_R >>, TH_2, << CRED_R >>, MAC_2]
+        let mut m_2 = heapless::Vec::<u8, 160>::new();
+        m_2.push_err(0x85)?;  // array of 5
+        // "Signature1"
+        m_2.push_err(0x6A)?;  // tstr of 10 chars
+        m_2.extend_err(b"Signature1")?;
+        // << ID_CRED_R >> bstr-wrapped
+        m_2.push_err(0x58)?;
+        m_2.push_err(34)?;  // 2 + 32
         m_2.push_err(0x58)?;
         m_2.push_err(32)?;
         m_2.extend_err(self.pubkey.as_bytes())?;
+        // TH_2
         m_2.push_err(0x58)?;
         m_2.push_err(32)?;
         m_2.extend_err(&self.state.th_2)?;
+        // << CRED_R >> bstr-wrapped
+        m_2.push_err(0x58)?;
+        m_2.push_err(34)?;
         m_2.push_err(0x58)?;
         m_2.push_err(32)?;
         m_2.extend_err(self.pubkey.as_bytes())?;
+        // MAC_2
+        m_2.push_err(0x48)?;  // bstr of 8
+        m_2.extend_err(&mac_2)?;
 
         let signature_2 = self.signing_key.sign(&m_2);
 

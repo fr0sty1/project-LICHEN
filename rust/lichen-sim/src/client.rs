@@ -28,6 +28,10 @@ const MSG_TIME: u8 = 0x30;
 const MSG_TIME_OK: u8 = 0x31;
 const MSG_ERR: u8 = 0xFF;
 
+/// Maximum message size to prevent DoS via unbounded allocation.
+/// 64KB is generous for any legitimate simulator message.
+const MAX_MSG_LEN: usize = 64 * 1024;
+
 /// Errors returned by [`SimClient`].
 #[derive(Debug)]
 #[non_exhaustive]
@@ -112,6 +116,12 @@ impl SimClient {
     ) -> Result<(), SimError> {
         let sid = sim_id.as_bytes();
         let nid = node_id.as_bytes();
+        if sid.len() > u8::MAX as usize {
+            return Err(SimError::Protocol("sim_id exceeds 255 bytes"));
+        }
+        if nid.len() > u8::MAX as usize {
+            return Err(SimError::Protocol("node_id exceeds 255 bytes"));
+        }
         let mut body = Vec::with_capacity(1 + 1 + sid.len() + 1 + nid.len() + 24);
         body.push(MSG_REGISTER);
         body.push(sid.len() as u8);
@@ -135,6 +145,9 @@ impl SimClient {
     ///
     /// Returns airtime in microseconds on success.
     pub async fn transmit(&mut self, payload: &[u8]) -> Result<u32, SimError> {
+        if payload.len() > u16::MAX as usize {
+            return Err(SimError::Protocol("payload exceeds 65535 bytes"));
+        }
         let mut body = Vec::with_capacity(3 + payload.len());
         body.push(MSG_TX);
         body.extend_from_slice(&(payload.len() as u16).to_le_bytes());
@@ -217,6 +230,10 @@ impl SimClient {
         let mut len_bytes = [0u8; 4];
         self.reader.read_exact(&mut len_bytes).await?;
         let len = u32::from_le_bytes(len_bytes) as usize;
+        // SECURITY: Bound allocation to prevent DoS from malicious length values
+        if len > MAX_MSG_LEN {
+            return Err(SimError::Protocol("message too large"));
+        }
         let mut body = vec![0u8; len];
         self.reader.read_exact(&mut body).await?;
         Ok(body)

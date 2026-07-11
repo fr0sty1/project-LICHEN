@@ -127,6 +127,10 @@ class EchoRequest:
     data: bytes = b""
 
     def to_message(self) -> Icmpv6Message:
+        if not 0 <= self.identifier <= 0xFFFF:
+            raise Icmpv6Error(f"identifier out of range: {self.identifier}")
+        if not 0 <= self.sequence <= 0xFFFF:
+            raise Icmpv6Error(f"sequence out of range: {self.sequence}")
         body = (
             self.identifier.to_bytes(2, "big")
             + self.sequence.to_bytes(2, "big")
@@ -150,6 +154,10 @@ class EchoReply:
     data: bytes = b""
 
     def to_message(self) -> Icmpv6Message:
+        if not 0 <= self.identifier <= 0xFFFF:
+            raise Icmpv6Error(f"identifier out of range: {self.identifier}")
+        if not 0 <= self.sequence <= 0xFFFF:
+            raise Icmpv6Error(f"sequence out of range: {self.sequence}")
         body = (
             self.identifier.to_bytes(2, "big")
             + self.sequence.to_bytes(2, "big")

@@ -2,13 +2,16 @@
   "id": "project-LICHEN-ddoc",
   "title": "task",
   "description": "python/src/lichen/coap/resources.py:241-260. Empty bytes with wrong content-type.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T00:36:09.813829Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T00:37:05.20775Z",
+  "updated_at": "2026-07-11T01:02:01.263403Z",
+  "closed_at": "2026-07-11T01:02:01.263403Z",
+  "close_reason": "done",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-ddoc",

@@ -37,6 +37,11 @@ if TYPE_CHECKING:
     from .edhoc import OscoreContext
 
 
+# SECURITY: Maximum partial IV per RFC 8613 Section 5.2 (5 bytes = 40 bits).
+# Exceeding this would cause nonce reuse, breaking AEAD security.
+_MAX_SEQUENCE_NUMBER = (1 << 40) - 1
+
+
 class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
     """In-memory OSCORE security context for aiocoap.
 
@@ -129,7 +134,17 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
         )
 
     def new_sequence_number(self) -> int:
-        """Allocate and return the next sender sequence number."""
+        """Allocate and return the next sender sequence number.
+
+        Raises:
+            OverflowError: If sequence number would exceed RFC 8613 limit (2^40 - 1).
+                This prevents nonce reuse which would break AEAD security.
+        """
+        # SECURITY: Check BEFORE returning to prevent nonce reuse
+        if self.sender_sequence_number > _MAX_SEQUENCE_NUMBER:
+            raise OverflowError(
+                "OSCORE sequence number exhausted; context must be re-established"
+            )
         seqno = self.sender_sequence_number
         self.sender_sequence_number += 1
         return seqno

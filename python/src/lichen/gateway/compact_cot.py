@@ -628,7 +628,10 @@ def _encode_chat(chat: ChatPayload) -> bytes:
     if chat.dest_type == DestType.TEAM:
         parts.append(bytes([chat.dest_team or 0]))
     elif chat.dest_type == DestType.DIRECT:
-        parts.append(chat.dest_iid or bytes(8))
+        iid = chat.dest_iid or bytes(8)
+        if len(iid) != 8:
+            raise ValueError("dest_iid must be exactly 8 bytes")
+        parts.append(iid)
 
     parts.append(bytes([len(msg_bytes)]))
     parts.append(msg_bytes)
@@ -805,7 +808,11 @@ def _parse_xml_chat(root: Element, subtype: CompactCotType) -> CompactCot:
     if chat_elem is not None:
         chat_group = chat_elem.get("chatroom")
         if chat_group:
-            team = TEAM_BY_NAME.get(chat_group.lower())
+            # Handle both "Blue" and "Team Blue" formats (roundtrip)
+            team_name = chat_group.lower()
+            if team_name.startswith("team "):
+                team_name = team_name[5:]
+            team = TEAM_BY_NAME.get(team_name)
             if team:
                 dest_type = DestType.TEAM
                 dest_team = team

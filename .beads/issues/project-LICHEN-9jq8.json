@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-9jq8",
+  "title": "identity.rs test fails: seed moved twice",
+  "description": "File: rust/lichen-link/src/identity.rs:107-109. Test creates seed, passes it to from_seed twice (second call uses moved value). Fix: clone or pass by reference.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:48:29.687011Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:48:29.687041Z"
+}

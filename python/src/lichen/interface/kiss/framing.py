@@ -180,7 +180,7 @@ class KissReader:
         if len(self.buffer) > self.max_frame_size * 2:
             # Drop old data, keep from last FEND
             last_fend = self.buffer.rfind(FEND)
-            if last_fend > 0:
+            if last_fend >= 0:
                 del self.buffer[:last_fend]
             else:
                 self.buffer.clear()

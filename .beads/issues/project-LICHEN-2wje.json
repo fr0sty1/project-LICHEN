@@ -2,13 +2,16 @@
   "id": "project-LICHEN-2wje",
   "title": "task",
   "description": "rust/lichen-cli/src/output.rs:61-64. \u003e2^53 loses precision.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T00:36:32.856736Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T00:37:13.105374Z",
+  "updated_at": "2026-07-11T01:06:14.978349Z",
+  "closed_at": "2026-07-11T01:06:14.978349Z",
+  "close_reason": "done",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2wje",

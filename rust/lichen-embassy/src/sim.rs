@@ -147,7 +147,7 @@ impl Radio for SimRadio {
                 let snr = i16::from_le_bytes([resp[rssi_offset + 2], resp[rssi_offset + 3]]);
 
                 Ok(Some(RxPacket {
-                    len: payload_len,
+                    len: copy_len,
                     rssi: Some(rssi),
                     snr: Some(snr as i8),
                 }))

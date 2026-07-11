@@ -2,13 +2,16 @@
   "id": "project-LICHEN-24ng",
   "title": "task",
   "description": "lichen/subsys/lichen/link/lichen_link_rx.c:92-128. 64-bit MIC only authenticates header, not payload.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T00:34:51.138686Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T00:36:49.6255Z",
+  "updated_at": "2026-07-11T00:45:50.070532Z",
+  "closed_at": "2026-07-11T00:45:50.070532Z",
+  "close_reason": "done",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-24ng",

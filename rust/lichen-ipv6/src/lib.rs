@@ -621,6 +621,18 @@ fn icmpv6_checksum(src: &Addr, dst: &Addr, icmpv6_msg: &[u8]) -> u16 {
     !sum as u16
 }
 
+/// Verify ICMPv6 checksum.
+///
+/// Returns true if the checksum in the message is valid.
+fn verify_icmpv6_checksum(src: &Addr, dst: &Addr, icmpv6_msg: &[u8]) -> bool {
+    if icmpv6_msg.len() < ICMPV6_HEADER_LEN {
+        return false;
+    }
+    let received = ((icmpv6_msg[2] as u16) << 8) | (icmpv6_msg[3] as u16);
+    let computed = icmpv6_checksum(src, dst, icmpv6_msg);
+    received == computed
+}
+
 /// Compute UDP checksum over pseudo-header + UDP header + payload.
 fn udp_checksum(src: &Addr, dst: &Addr, udp_header: &[u8], payload: &[u8]) -> u16 {
     let mut sum: u32 = 0;
@@ -698,6 +710,13 @@ pub fn handle_icmpv6(
     icmpv6_payload: &[u8],
 ) -> Option<Vec<u8, 256>> {
     if icmpv6_payload.len() < ICMPV6_HEADER_LEN {
+        return None;
+    }
+
+    // SECURITY: Verify checksum before processing to prevent amplification attacks.
+    // Without this, an attacker could send spoofed packets with invalid checksums
+    // and we would still generate responses, amplifying traffic to the victim.
+    if !verify_icmpv6_checksum(&ip_header.src, local_addr, icmpv6_payload) {
         return None;
     }
 
@@ -841,6 +860,25 @@ mod tests {
         assert_eq!(resp_ip.src, local);
         assert_eq!(resp_ip.dst, remote);
         assert_eq!(resp_payload[0], icmpv6_type::ECHO_REPLY);
+    }
+
+    #[test]
+    fn test_reject_bad_checksum() {
+        let local = Addr::link_local_from_mac(&hex!("001122334455"));
+        let remote = Addr::link_local_from_mac(&hex!("665544332211"));
+
+        // Build a valid ping request
+        let echo = Icmpv6Echo { id: 42, seq: 1 };
+        let mut icmp_req = echo.build_request(&remote, &local, b"test");
+
+        // Corrupt the checksum (bytes 2-3)
+        icmp_req[2] ^= 0xFF;
+
+        let ip_hdr = Ipv6Header::new(next_header::ICMPV6, remote, local);
+
+        // Should reject due to bad checksum
+        let response = handle_icmpv6(&local, &ip_hdr, &icmp_req);
+        assert!(response.is_none(), "should reject packet with bad checksum");
     }
 
     #[test]

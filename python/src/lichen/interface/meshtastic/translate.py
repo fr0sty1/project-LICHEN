@@ -216,9 +216,8 @@ class User:
 def _encode_varint(value: int) -> bytes:
     """Encode an integer as a protobuf varint."""
     if value < 0:
-        # Negative values use zigzag for signed types, or full 64-bit for int32
-        # For simplicity, treat as unsigned (works for small negative values)
-        value = value & 0xFFFFFFFF
+        # Protobuf int32/int64: sign-extend to 64 bits, encode as 10-byte varint
+        value = value & 0xFFFFFFFFFFFFFFFF
     parts = []
     while value > 0x7F:
         parts.append((value & 0x7F) | 0x80)

@@ -282,8 +282,20 @@ fn dec_bool(data: &[u8], pos: usize) -> Result<(bool, usize), CborError> {
     }
 }
 
+/// Maximum nesting depth for CBOR arrays/maps to prevent stack overflow.
+/// SenML is flat (array of maps), so 16 is more than sufficient.
+const MAX_CBOR_DEPTH: usize = 16;
+
 /// Skip one CBOR item starting at `pos`; returns byte count consumed.
 fn skip_one(data: &[u8], pos: usize) -> Result<usize, CborError> {
+    skip_one_depth(data, pos, 0)
+}
+
+/// Skip one CBOR item with depth tracking to prevent stack overflow.
+fn skip_one_depth(data: &[u8], pos: usize, depth: usize) -> Result<usize, CborError> {
+    if depth > MAX_CBOR_DEPTH {
+        return Err(CborError::InvalidInput);
+    }
     if pos >= data.len() {
         return Err(CborError::InvalidInput);
     }
@@ -318,15 +330,15 @@ fn skip_one(data: &[u8], pos: usize) -> Result<usize, CborError> {
         4 => {
             let mut cur = pos + adv;
             for _ in 0..val {
-                cur += skip_one(data, cur)?;
+                cur += skip_one_depth(data, cur, depth + 1)?;
             }
             Ok(cur - pos)
         }
         5 => {
             let mut cur = pos + adv;
             for _ in 0..val {
-                cur += skip_one(data, cur)?;
-                cur += skip_one(data, cur)?;
+                cur += skip_one_depth(data, cur, depth + 1)?;
+                cur += skip_one_depth(data, cur, depth + 1)?;
             }
             Ok(cur - pos)
         }

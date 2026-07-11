@@ -262,7 +262,7 @@ static int lora_sim_send(const struct device *dev,
 	}
 	struct lora_sim_data *drv = dev->data;
 
-	if (drv->fd <= 0) {
+	if (drv->fd < 0) {
 		LOG_ERR("send: not connected to simulator");
 		return -ENOTCONN;
 	}
@@ -309,7 +309,7 @@ static int lora_sim_recv(const struct device *dev,
 
 	struct lora_sim_data *drv = dev->data;
 
-	if (drv->fd <= 0) {
+	if (drv->fd < 0) {
 		LOG_ERR("recv: not connected to simulator");
 		return -ENOTCONN;
 	}

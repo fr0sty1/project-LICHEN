@@ -321,11 +321,9 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 		return;
 	}
 
-	if (seq_lock(ctx) != 0) {
-		return;
-	}
+	int locked = (seq_lock(ctx) == 0);
 
-	/* Securely wipe all sensitive key material */
+	/* SECURITY: Always wipe keys, even if lock fails */
 	secure_wipe(ctx->ed25519_sk, LICHEN_SK_LEN);
 	secure_wipe(ctx->link_key, LICHEN_LINK_KEY_LEN);
 
@@ -339,5 +337,11 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 	ctx->tx_seq = 0;
 	ctx->nonce_exhausted = false;
 
-	(void)seq_unlock(ctx);
+	if (locked) {
+		(void)seq_unlock(ctx);
+	}
+
+#ifndef __ZEPHYR__
+	pthread_mutex_destroy(&ctx->seq_lock);
+#endif
 }

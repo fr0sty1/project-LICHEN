@@ -209,7 +209,7 @@ class SimulatorAPI:
                 sim.remove_observer(ws_observer)
 
         del self._simulations[sim_id]
-        del self._chaos_engines[sim_id]
+        self._chaos_engines.pop(sim_id, None)
 
         return JSONResponse({"status": "deleted"})
 

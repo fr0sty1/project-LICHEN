@@ -240,7 +240,8 @@ class AnnounceScheduler:
         initial_delay = self.config.initial_delay_ms
         if initial_delay == 0:
             # Random 1-30 seconds (at least 1s to receive some announces)
-            initial_delay = random.randint(1000, self.config.jitter_ms)
+            # Ensure upper bound >= 1000 to avoid ValueError if jitter_ms < 1000
+            initial_delay = random.randint(1000, max(1000, self.config.jitter_ms))
         try:
             await asyncio.sleep(initial_delay / 1000)
         except asyncio.CancelledError:

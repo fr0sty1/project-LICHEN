@@ -148,8 +148,18 @@ def _x25519_keypair() -> tuple[bytes, bytes]:
 
 
 def _x25519_shared_secret(my_sk: bytes, their_pk: bytes) -> bytes:
-    """Compute X25519 shared secret."""
-    return crypto_scalarmult(my_sk, their_pk)
+    """Compute X25519 shared secret.
+
+    Raises:
+        ValueError: If shared secret is all zeros (small subgroup attack).
+    """
+    shared = crypto_scalarmult(my_sk, their_pk)
+    # SECURITY: Reject all-zero shared secret - indicates peer sent a point
+    # in a small subgroup (identity element or low-order point). Accepting
+    # this enables attackers to predict the shared secret.
+    if shared == b"\x00" * X25519_KEY_LEN:
+        raise ValueError("X25519 shared secret is zero - possible small subgroup attack")
+    return shared
 
 
 def _encode_connection_id(c_x: bytes) -> bytes:

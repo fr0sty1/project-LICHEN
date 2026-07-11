@@ -172,13 +172,15 @@ impl<'a> CoapBuilder<'a> {
     /// Add a Size1 option (total request body size).
     pub fn size1(&mut self, size: u32) -> Result<&mut Self, CoapError> {
         let bytes = uint_to_bytes(size);
-        self.option(OptionNumber::Size1 as u16, &bytes[..uint_len(size)])
+        let len = uint_len(size);
+        self.option(OptionNumber::Size1 as u16, &bytes[4 - len..])
     }
 
     /// Add a Size2 option (total response body size).
     pub fn size2(&mut self, size: u32) -> Result<&mut Self, CoapError> {
         let bytes = uint_to_bytes(size);
-        self.option(OptionNumber::Size2 as u16, &bytes[..uint_len(size)])
+        let len = uint_len(size);
+        self.option(OptionNumber::Size2 as u16, &bytes[4 - len..])
     }
 }
 
@@ -337,7 +339,9 @@ impl BlockReceiver {
         if block.num != self.expected_block {
             return Err(CoapError::BlockOutOfOrder);
         }
-        let offset = block.offset();
+        // Use receiver's block_size for offset, not incoming block's szx.
+        // Mid-transfer szx changes would cause gaps if we used block.offset().
+        let offset = self.expected_block as usize * self.block_size;
         let needed = offset + data.len();
         if needed > Self::MAX_PAYLOAD {
             return Err(BufferTooSmall::new(needed, Self::MAX_PAYLOAD).into());
@@ -540,5 +544,49 @@ mod tests {
             receiver.receive_block(block1, &[1u8; 64]),
             Err(CoapError::BlockOutOfOrder)
         );
+    }
+
+    #[test]
+    fn receiver_handles_mid_transfer_szx_change() {
+        // Bug fix: mid-transfer szx change should not cause gaps.
+        // Receiver uses its own block_size for offset calculation.
+        let mut receiver = BlockReceiver::new(64); // szx=2
+
+        // Block 0 arrives with szx=2 (64 bytes)
+        let block0 = BlockOption::new(0, true, 2).unwrap();
+        assert!(!receiver.receive_block(block0, &[1u8; 64]).unwrap());
+
+        // Block 1 arrives with szx=3 (128 bytes) - sender changed szx mid-transfer
+        // Without fix: offset = 1 * 128 = 128, leaving 64-byte gap
+        // With fix: offset = 1 * 64 = 64, no gap
+        let block1 = BlockOption::new(1, false, 3).unwrap();
+        assert!(receiver.receive_block(block1, &[2u8; 64]).unwrap());
+
+        let payload = receiver.payload();
+        assert_eq!(payload.len(), 128);
+        assert!(payload[..64].iter().all(|&b| b == 1));
+        assert!(payload[64..128].iter().all(|&b| b == 2));
+    }
+
+    #[test]
+    fn uint_encoding_takes_last_bytes() {
+        // Verify uint_to_bytes + slice gives correct big-endian encoding
+        // Bug fix: was taking first N bytes instead of last N bytes
+        let cases: &[(u32, &[u8])] = &[
+            (0, &[]),
+            (1, &[0x01]),
+            (255, &[0xFF]),
+            (256, &[0x01, 0x00]),
+            (65535, &[0xFF, 0xFF]),
+            (65536, &[0x01, 0x00, 0x00]),
+            (0xFFFFFF, &[0xFF, 0xFF, 0xFF]),
+            (0x1000000, &[0x01, 0x00, 0x00, 0x00]),
+        ];
+        for &(val, expected) in cases {
+            let bytes = uint_to_bytes(val);
+            let len = uint_len(val);
+            let slice = &bytes[4 - len..];
+            assert_eq!(slice, expected, "encoding of {:#x}", val);
+        }
     }
 }

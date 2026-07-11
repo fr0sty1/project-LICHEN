@@ -301,6 +301,8 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 	}
 	int ret = lr1110_hal_get_last_error();
 	if (ret < 0) {
+		/* HAL error after IRQ - ensure radio is not left in RX mode */
+		lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_RC);
 		return ret;
 	}
 

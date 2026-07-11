@@ -114,6 +114,7 @@ class LossRule(ChaosRule):
     direction: Literal["tx", "rx", "both"] = "both"
     rng: random.Random = field(default_factory=random.Random)
     id: str = field(default_factory=lambda: str(uuid4()))
+    _loss_cache: dict[str, bool] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.loss_probability <= 1.0:
@@ -135,8 +136,16 @@ class LossRule(ChaosRule):
         candidate: RxCandidate,
         rx_position: tuple[float, float, float] | None = None,
     ) -> RxCandidate | None:
-        """Drop the packet with the configured probability, else pass it on."""
-        if self.rng.random() < self.loss_probability:
+        """Drop the packet with the configured probability, else pass it on.
+
+        The loss decision is cached per transmission to ensure consistent
+        behavior when apply() is called multiple times for the same packet
+        (e.g., on each simulation poll).
+        """
+        tx_id = candidate.transmission.id
+        if tx_id not in self._loss_cache:
+            self._loss_cache[tx_id] = self.rng.random() < self.loss_probability
+        if self._loss_cache[tx_id]:
             return None
         return candidate
 

@@ -275,9 +275,9 @@ pub fn kiss_decode(frame: &[u8]) -> Result<KissFrame<'_>, KissError> {
         return Err(KissError::MissingEndFend);
     }
 
-    // Find actual end (skip consecutive FENDs at end)
+    // Find actual end (skip consecutive FENDs at end, but not past CMD byte)
     let mut end = frame.len() - 1;
-    while end > 1 && frame[end - 1] == FEND {
+    while end > 2 && frame[end - 1] == FEND {
         end -= 1;
     }
 
@@ -418,11 +418,15 @@ impl KissReader {
         let escaped_data = &self.buffer[start + 1..end];
 
         // Unescape into output buffer
-        let unescaped_len = kiss_unescape(escaped_data, out)?;
+        let unescape_result = kiss_unescape(escaped_data, out);
 
-        // Remove frame from buffer (including trailing FEND)
+        // Remove frame from buffer (including trailing FEND) regardless of unescape success,
+        // otherwise malformed frames would leave the reader permanently stuck.
         self.buffer.copy_within(end + 1..self.len, 0);
         self.len -= end + 1;
+
+        // Now propagate any unescape error
+        let unescaped_len = unescape_result?;
 
         Ok(Some(KissFrame {
             port,
@@ -510,11 +514,18 @@ impl KissWriter {
 
     /// Try to get the next encoded frame from the queue.
     ///
-    /// Returns the number of bytes written to `out`, or `None` if queue is empty.
+    /// Returns the number of bytes written to `out`, or `None` if queue is empty
+    /// or the output buffer is too small. Use `pending_count()` to distinguish.
     pub fn try_get_frame(&mut self, out: &mut [u8]) -> Option<usize> {
-        let frame = self.queue.pop_front()?;
-        let len = frame.len().min(out.len());
-        out[..len].copy_from_slice(&frame[..len]);
+        // Peek first to avoid popping a frame we can't fully copy
+        let frame = self.queue.front()?;
+        if out.len() < frame.len() {
+            return None;
+        }
+        // Safe to unwrap: we just confirmed front() returned Some
+        let frame = self.queue.pop_front().unwrap();
+        let len = frame.len();
+        out[..len].copy_from_slice(&frame[..]);
         Some(len)
     }
 
@@ -709,6 +720,30 @@ mod tests {
     }
 
     #[test]
+    fn test_decode_cmd_equals_fend() {
+        // Regression: CMD byte 0xC0 (port=12, cmd=0) should not be treated as trailing FEND
+        let frame = &[FEND, 0xC0, FEND]; // port 12, cmd 0, no data
+        let decoded = kiss_decode(frame).unwrap();
+        assert_eq!(decoded.port, 12);
+        assert_eq!(decoded.command, 0);
+        assert_eq!(decoded.data, b"");
+
+        // With trailing FENDs
+        let frame2 = &[FEND, 0xC0, FEND, FEND, FEND];
+        let decoded2 = kiss_decode(frame2).unwrap();
+        assert_eq!(decoded2.port, 12);
+        assert_eq!(decoded2.command, 0);
+        assert_eq!(decoded2.data, b"");
+
+        // With data
+        let frame3 = &[FEND, 0xC0, 0x41, FEND];
+        let decoded3 = kiss_decode(frame3).unwrap();
+        assert_eq!(decoded3.port, 12);
+        assert_eq!(decoded3.command, 0);
+        assert_eq!(decoded3.data, b"A");
+    }
+
+    #[test]
     fn test_decode_too_short() {
         assert_eq!(kiss_decode(&[FEND, FEND]), Err(KissError::TooShort));
     }
@@ -804,6 +839,28 @@ mod tests {
 
         let frame = reader.try_read_frame(&mut out).unwrap().unwrap();
         assert_eq!(frame.data, &[0x41, FEND, 0x42]);
+    }
+
+    #[test]
+    fn test_reader_invalid_escape_does_not_stick() {
+        // Regression test: invalid escape sequence must not leave the reader stuck.
+        // Before fix, malformed frames stayed in buffer causing permanent failure.
+        let mut reader = KissReader::new();
+        let mut out = [0u8; 64];
+
+        // Frame with invalid escape (0xDB 0x00 is not valid; must be 0xDC or 0xDD)
+        reader.feed(&[FEND, 0x00, FESC, 0x00, FEND]);
+
+        // First call returns error
+        let err = reader.try_read_frame(&mut out).unwrap_err();
+        assert_eq!(err, KissError::InvalidEscape(0x00));
+
+        // Feed a valid frame
+        reader.feed(&[FEND, 0x00, 0x41, FEND]);
+
+        // Reader must not be stuck - should return the valid frame
+        let frame = reader.try_read_frame(&mut out).unwrap().unwrap();
+        assert_eq!(frame.data, b"A");
     }
 
     #[test]

@@ -82,10 +82,12 @@ class AiocoapResourceTransport(ResourceTransport):
         """Shutdown an owned aiocoap context."""
         if self._context is None:
             return
-        if self._owns_context:
-            await self._context.shutdown()
+        ctx = self._context
+        owns = self._owns_context
         self._context = None
         self._owns_context = False
+        if owns:
+            await ctx.shutdown()
 
     async def request(
         self,

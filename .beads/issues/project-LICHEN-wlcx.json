@@ -2,13 +2,16 @@
   "id": "project-LICHEN-wlcx",
   "title": "task",
   "description": "rust/lichen-hal/src/storage.rs:129-137. Crash leaves inconsistent state.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T00:35:26.696927Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T00:36:56.628412Z",
+  "updated_at": "2026-07-11T00:50:36.323318Z",
+  "closed_at": "2026-07-11T00:50:36.323318Z",
+  "close_reason": "done",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-wlcx",

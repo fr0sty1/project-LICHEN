@@ -147,6 +147,8 @@ class DodagState:
 
     def _admissible(self, candidate: ParentCandidate) -> bool:
         cost = candidate.path_cost(self.min_hop_rank_increase)
+        if cost >= INFINITE_RANK:
+            return False  # Rank overflow - not admissible
         if self._lowest_rank >= INFINITE_RANK:
             return True
         return cost <= self._lowest_rank + self.max_rank_increase

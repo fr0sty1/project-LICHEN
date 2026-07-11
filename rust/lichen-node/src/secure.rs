@@ -131,7 +131,7 @@ impl<R: Radio> SecureStack<R> {
 
         // Build inner CoAP (will be encrypted)
         // Inner message: code + Uri-Path options (class E)
-        let mut class_e = [0u8; 64];
+        let mut class_e = [0u8; 256];
         let mut class_e_len = 0;
 
         // Encode Uri-Path options using CoAP delta encoding (RFC 7252 section 3.1).
@@ -142,13 +142,33 @@ impl<R: Radio> SecureStack<R> {
         for seg in uri_path {
             let delta = if class_e_len == 0 { 11 } else { 0 };
             let seg_bytes = seg.as_bytes();
+            // RFC 7252 section 3.1: length encoding
+            // < 13: 4-bit nibble; 13-268: nibble=13 + 1 byte; 269-65804: nibble=14 + 2 bytes
+            let header_len = if seg_bytes.len() < 13 {
+                1
+            } else if seg_bytes.len() < 269 {
+                2
+            } else {
+                3
+            };
+            // Bounds check: ensure we have space for header + segment
+            if class_e_len + header_len + seg_bytes.len() > class_e.len() {
+                return Err(SecureError::CoapEncode);
+            }
             if seg_bytes.len() < 13 {
                 class_e[class_e_len] = ((delta as u8) << 4) | (seg_bytes.len() as u8);
                 class_e_len += 1;
-            } else {
+            } else if seg_bytes.len() < 269 {
                 class_e[class_e_len] = (delta as u8) << 4 | 13;
                 class_e[class_e_len + 1] = (seg_bytes.len() - 13) as u8;
                 class_e_len += 2;
+            } else {
+                // Extended 2-byte form: nibble=14, value = len - 269 (big-endian)
+                let ext_val = (seg_bytes.len() - 269) as u16;
+                class_e[class_e_len] = (delta as u8) << 4 | 14;
+                class_e[class_e_len + 1] = (ext_val >> 8) as u8;
+                class_e[class_e_len + 2] = (ext_val & 0xFF) as u8;
+                class_e_len += 3;
             }
             class_e[class_e_len..class_e_len + seg_bytes.len()].copy_from_slice(seg_bytes);
             class_e_len += seg_bytes.len();

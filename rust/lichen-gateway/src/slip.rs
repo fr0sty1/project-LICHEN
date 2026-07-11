@@ -198,31 +198,34 @@ impl SlipFramer {
     /// written, or `None` if queue is empty. Caller must provide a buffer
     /// large enough for worst-case encoding (2 + 2*packet_len bytes).
     pub fn try_get_tx(&mut self, out: &mut [u8]) -> Option<usize> {
-        let (offset, len) = self.tx_packets.pop_front()?;
+        // Peek first to check size before removing from queue
+        let &(offset, len) = self.tx_packets.front()?;
         let packet = &self.tx_buffer[offset..offset + len];
+
+        // Calculate worst-case encoded size: 2 FENDs + all bytes escaped
+        let worst_case = 2 + len * 2;
+        if out.len() < worst_case {
+            // Buffer too small - leave packet in queue, caller should retry with larger buffer
+            return None;
+        }
+
+        // Buffer is large enough, now remove from queue
+        self.tx_packets.pop_front();
 
         // Encode: leading FEND + escaped data + trailing FEND
         let mut pos = 0;
 
-        if pos >= out.len() {
-            return Some(0);
-        }
         out[pos] = FEND;
         pos += 1;
 
         for &byte in packet {
-            let (escaped, len) = slip_escape(byte);
-            if pos + len > out.len() {
-                return Some(pos);
-            }
-            out[pos..pos + len].copy_from_slice(&escaped[..len]);
-            pos += len;
+            let (escaped, esc_len) = slip_escape(byte);
+            out[pos..pos + esc_len].copy_from_slice(&escaped[..esc_len]);
+            pos += esc_len;
         }
 
-        if pos < out.len() {
-            out[pos] = FEND;
-            pos += 1;
-        }
+        out[pos] = FEND;
+        pos += 1;
 
         Some(pos)
     }

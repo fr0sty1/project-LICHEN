@@ -239,7 +239,6 @@ class SenMLLocationResource(resource.ObservableResource):
 
     def __init__(self) -> None:
         super().__init__()
-        self._payload: bytes = b""
 
     def update(self, lat: float, lon: float, alt: float | None = None) -> None:
         """Set the current position and notify all observers.
@@ -255,7 +254,9 @@ class SenMLLocationResource(resource.ObservableResource):
         self.updated_state()
 
     async def render_get(self, request: Message) -> Message:
-        msg = Message(code=CONTENT, payload=self._payload)
+        from lichen.senml.codec import pack
+        payload = getattr(self, "_payload", pack([]))
+        msg = Message(code=CONTENT, payload=payload)
         msg.opt.content_format = SENML_CBOR
         return msg
 
@@ -395,7 +396,10 @@ class SosResource(resource.ObservableResource):
             except Exception:
                 return Message(code=aiocoap.BAD_REQUEST)
 
-        eui64 = bytes.fromhex(from_hex) if from_hex else b"\x00" * 8
+        try:
+            eui64 = bytes.fromhex(from_hex) if from_hex else b"\x00" * 8
+        except ValueError:
+            return Message(code=aiocoap.BAD_REQUEST)
         self.activate(eui64, t if t is not None else 0.0)
         return Message(code=aiocoap.CHANGED)
 

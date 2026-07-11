@@ -141,14 +141,13 @@ impl Rng for MockRng {
     fn fill_bytes(&mut self, buf: &mut [u8]) {
         // SECURITY: Deterministic xorshift - NOT cryptographically secure.
         // ponytail: simple xorshift instead of pulling in rand crate
-        static mut SEED: u64 = 0xDEADBEEF;
+        static SEED: Mutex<u64> = Mutex::new(0xDEADBEEF);
+        let mut seed = SEED.lock().unwrap();
         for byte in buf.iter_mut() {
-            unsafe {
-                SEED ^= SEED << 13;
-                SEED ^= SEED >> 7;
-                SEED ^= SEED << 17;
-                *byte = SEED as u8;
-            }
+            *seed ^= *seed << 13;
+            *seed ^= *seed >> 7;
+            *seed ^= *seed << 17;
+            *byte = *seed as u8;
         }
     }
 }

@@ -2,11 +2,14 @@
   "id": "project-LICHEN-xxwz",
   "title": "epic",
   "description": "Findings from 39-agent code review across Rust, Python, and C. 8 critical, 29 high, 29 medium, 4 low issues identified.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T00:34:37.063102Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T00:34:37.063137Z"
+  "updated_at": "2026-07-11T01:08:22.629657Z",
+  "closed_at": "2026-07-11T01:08:22.629657Z",
+  "close_reason": "done"
 }
