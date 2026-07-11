@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-fnwu",
+  "title": "task",
+  "description": "lr1110.c:323-327 - In lr1110_lora_recv(), when buf_status.rx_payload_length \u003e size, the function returns -EMSGSIZE without putting the radio back to standby mode. Every other error path after lr1110_radio_set_rx() calls lr1110_system_set_standby() (lines 298-299, 305, 311), but this path does not. This leaves the radio in continuous RX mode after the error return, wasting power and potentially causing issues with subsequent TX/RX operations.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T05:44:31.088673Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T05:44:31.088702Z"
+}

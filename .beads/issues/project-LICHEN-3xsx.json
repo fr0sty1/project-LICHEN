@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-3xsx",
+  "title": "task",
+  "description": "rust/lichen-senml/src/cbor.rs:416-420 - The dec_f64 function only handles CBOR float types (0xfa float32, 0xfb float64), but RFC 8428 Section 4.3 allows integer values for the 'v' field. If another SenML implementation sends an integer value like {0: \"temp\", 2: 23} instead of a float {0: \"temp\", 2: 23.0}, the decoder returns InvalidInput. Same issue affects base_time (-3) and time (6) fields. Failure scenario: Receiving SenML from any implementation that optimizes by encoding whole numbers as CBOR integers (common in constrained environments) will fail to decode.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T05:25:01.809153Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T05:25:01.809184Z"
+}

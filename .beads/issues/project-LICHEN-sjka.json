@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-sjka",
+  "title": "task",
+  "description": "resources.py:168-188 - ProxyResource.render() forwards to any Proxy-Uri without validation. Docstring assumes mesh_ctx only routes to mesh nodes, but this is not enforced. Failure scenario: if mesh_ctx has UDP transport, attacker sends Proxy-Uri pointing to internal service (e.g., coap://192.168.1.1:5683/admin), enabling SSRF. Fix: validate target URI matches expected mesh address pattern before forwarding.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T05:31:32.551532Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T05:31:32.551578Z"
+}

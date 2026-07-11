@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-gje1",
+  "title": "task",
+  "description": "identity.rs:109 - Test identity_from_seed_consistent uses seed twice but Seed doesn't implement Copy (due to ZeroizeOnDrop). Need to clone seed for second call: Identity::from_seed(seed.clone()). Failure scenario: cargo test --all-features fails to compile.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T05:26:02.904418Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T05:26:02.90446Z"
+}

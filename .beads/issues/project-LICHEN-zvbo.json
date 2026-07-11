@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-zvbo",
+  "title": "task",
+  "description": "schc.c:485 - When bitmap_bits==63, the condition 'bitmap_bits \u003c 63' is false, so the bitmap masking is skipped. But 8 bytes of input are read, potentially setting bit 63 from untrusted input. Failure scenario: malformed ACK with high bit set in bitmap bytes causes incorrect retransmit behavior in ACK-on-error mode. Fix: change condition to 'bitmap_bits \u003c 64'.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T05:41:53.566647Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T05:41:53.566683Z"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-n393",
+  "title": "task",
+  "description": "rust/lichen-gateway/src/bin/lichend.rs:210-214 - When sim_task encounters a receive error and exits, the gateway task continues running indefinitely without notification. The select! loop keeps waiting on ctrl_c and TUN packets, while silently dropping outbound packets. Should detect sim_task termination and either exit or attempt reconnection.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T05:28:35.935981Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T05:28:35.936023Z"
+}

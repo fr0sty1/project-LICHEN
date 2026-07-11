@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-unvp",
+  "title": "task",
+  "description": "rust/lichen-gateway/src/bin/lichend.rs:232-233 - When the sim connection fails and sim_task exits, the channel tx_send becomes closed. The line 'let _ = tx_send.try_send(schc)' silently ignores the error, causing outbound packets to be dropped without any warning or error log. Should at minimum log when packets are dropped due to channel closure.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T05:28:33.822447Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T05:28:33.822489Z"
+}
