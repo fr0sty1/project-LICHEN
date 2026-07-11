@@ -122,13 +122,21 @@ jobs:
       - name: Install west and Python deps
         run: pip install west
 
-      - name: Cache Zephyr checkout
+      - name: Cache west workspace
         id: cache-zephyr
         uses: actions/cache@v4
         with:
-          path: zephyr
-          key: zephyr-${{ hashFiles('lichen/west.yml') }}
-          restore-keys: zephyr-
+          # The whole west workspace, not just zephyr/: the module Kconfigs
+          # (ZEPHYR_TINYCRYPT_MODULE, ZEPHYR_ZCBOR_MODULE, ...), vendor HALs
+          # and loramac-node live in modules/, and every build needs them.
+          # No restore-keys: a partial restore (e.g. the old zephyr-only
+          # cache) would silently skip west update and rebuild this failure.
+          path: |
+            zephyr
+            modules
+            bootloader
+            tools
+          key: west-workspace-${{ hashFiles('lichen/west.yml') }}
 
       - name: west init + update
         if: steps.cache-zephyr.outputs.cache-hit != 'true'
@@ -136,7 +144,7 @@ jobs:
           west init -l lichen/
           west update
 
-      - name: west init (manifest only, Zephyr from cache)
+      - name: west init (manifest only, workspace from cache)
         if: steps.cache-zephyr.outputs.cache-hit == 'true'
         run: west init -l lichen/
 
@@ -233,13 +241,21 @@ jobs:
           cd zephyr-sdk-0.16.8
           ./setup.sh -t arm-zephyr-eabi -h -c
 
-      - name: Cache Zephyr checkout
+      - name: Cache west workspace
         id: cache-zephyr
         uses: actions/cache@v4
         with:
-          path: zephyr
-          key: zephyr-${{ hashFiles('lichen/west.yml') }}
-          restore-keys: zephyr-
+          # The whole west workspace, not just zephyr/: the module Kconfigs
+          # (ZEPHYR_TINYCRYPT_MODULE, ZEPHYR_ZCBOR_MODULE, ...), vendor HALs
+          # and loramac-node live in modules/, and every build needs them.
+          # No restore-keys: a partial restore (e.g. the old zephyr-only
+          # cache) would silently skip west update and rebuild this failure.
+          path: |
+            zephyr
+            modules
+            bootloader
+            tools
+          key: west-workspace-${{ hashFiles('lichen/west.yml') }}
 
       - name: west init + update
         if: steps.cache-zephyr.outputs.cache-hit != 'true'
@@ -247,7 +263,7 @@ jobs:
           west init -l lichen/
           west update
 
-      - name: west init (manifest only, Zephyr from cache)
+      - name: west init (manifest only, workspace from cache)
         if: steps.cache-zephyr.outputs.cache-hit == 'true'
         run: west init -l lichen/
 
