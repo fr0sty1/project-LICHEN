@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-wuwt",
+  "title": "task",
+  "description": "rust/lichen-node/src/secure.rs:149-152. Overflows u8 cast.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:35:55.42184Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:37:02.258285Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wuwt",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:37:02.258285Z"
+    }
+  ]
+}

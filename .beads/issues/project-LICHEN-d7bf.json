@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-d7bf",
+  "title": "task",
+  "description": "rust/lichen-cli/src/commands.rs:287,301,311. ep=foo\u0026evil=true injects params.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:35:55.585145Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:37:02.978828Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-d7bf",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:37:02.978827Z"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-3040",
+  "title": "task",
+  "description": "python/src/lichen/interface/translate.py:220-221. Wrong encoding.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:36:10.506964Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:37:08.148856Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-3040",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:37:08.148856Z"
+    }
+  ]
+}

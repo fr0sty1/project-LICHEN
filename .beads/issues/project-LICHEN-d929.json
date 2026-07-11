@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-d929",
+  "title": "task",
+  "description": "lichen/drivers/lora/lora_sim.c:265,312. fd=0 wrongly invalid.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:36:24.777022Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:37:11.194992Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-d929",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:37:11.194992Z"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-e0q3",
+  "title": "task",
+  "description": "rust/lichen-embassy/src/mock.rs:144. Undefined behavior.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:35:26.621885Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:36:56.266705Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-e0q3",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:36:56.266705Z"
+    }
+  ]
+}

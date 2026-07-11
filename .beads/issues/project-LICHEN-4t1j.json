@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-4t1j",
+  "title": "task",
+  "description": "rust/lichen-rpl/src/dodag.rs:155. Version 255-\u003e0 rejected.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:35:09.230014Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:36:53.675719Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-4t1j",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:36:53.675719Z"
+    }
+  ]
+}

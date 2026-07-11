@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-ehd5",
+  "title": "task",
+  "description": "rust/lichen-cli/src/commands.rs:159-160. IID derived from private seed leaks key bits in IPv6 address.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:34:50.920381Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:36:48.817026Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ehd5",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:36:48.817025Z"
+    }
+  ]
+}

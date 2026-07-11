@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-ppss",
+  "title": "task",
+  "description": "rust/lichen-oscore/src/edhoc.rs:655-661. Second call computes wrong DH.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:35:55.257866Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:37:01.533226Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ppss",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:37:01.533226Z"
+    }
+  ]
+}

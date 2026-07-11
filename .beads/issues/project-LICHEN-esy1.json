@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-esy1",
+  "title": "task",
+  "description": "python/src/lichen/announce/processor.py:122-123. Memory leak.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:36:09.9781Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:37:05.960974Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-esy1",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:37:05.960974Z"
+    }
+  ]
+}

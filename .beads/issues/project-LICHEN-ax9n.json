@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-ax9n",
+  "title": "task",
+  "description": "rust/lichen-oscore/src/lib.rs:369. Attacker can block legitimate packets by sending forged packets with same seq.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:34:50.834434Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:36:48.465755Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ax9n",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:36:48.465755Z"
+    }
+  ]
+}

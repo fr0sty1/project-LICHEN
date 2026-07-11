@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-mqy2",
+  "title": "task",
+  "description": "python/src/lichen/client/lci.py:668-671. Wrong exception type.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:36:24.492209Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:37:10.098361Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-mqy2",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:37:10.098361Z"
+    }
+  ]
+}

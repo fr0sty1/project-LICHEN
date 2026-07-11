@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-tvj0",
+  "title": "task",
+  "description": "rust/lichen-coap/src/block.rs:341. Mid-transfer szx change causes gaps.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:35:09.084426Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:36:52.917151Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-tvj0",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:36:52.917151Z"
+    }
+  ]
+}

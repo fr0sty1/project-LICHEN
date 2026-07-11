@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-hjos",
+  "title": "task",
+  "description": "rust/lichen-sim/src/client.rs:117-140. Protocol corruption.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:35:26.940145Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:36:57.796792Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-hjos",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:36:57.796792Z"
+    }
+  ]
+}

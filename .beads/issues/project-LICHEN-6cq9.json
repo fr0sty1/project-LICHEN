@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-6cq9",
+  "title": "task",
+  "description": "python/src/lichen/routing/router.py:553-555. Silent failure.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:36:10.062703Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:37:06.343805Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-6cq9",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:37:06.343805Z"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-1kxm",
+  "title": "task",
+  "description": "rust/lichen-link/src/schnorr.rs:186-201. build_signable uses fixed buffer, panics on large payloads.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T00:35:08.67769Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T00:36:51.109705Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1kxm",
+      "depends_on_id": "project-LICHEN-xxwz",
+      "type": "blocks",
+      "created_at": "2026-07-11T00:36:51.109705Z"
+    }
+  ]
+}
