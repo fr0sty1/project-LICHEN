@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-f0er",
+  "title": "task",
+  "description": "commands.rs:218-223 - The Pin and Unpin subcommands print success messages ('pinned', 'unpinned') without making any CoAP calls. Users believe they have pinned/unpinned a peer key but nothing happened. If key pinning is meant for TOFU security, this creates a false sense of security.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T01:21:55.198083Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T01:21:55.198113Z"
+}

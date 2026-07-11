@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-3teb",
+  "title": "task",
+  "description": "commands.rs:272-273 - PositionAction::Broadcast prints '(not yet implemented)' but returns Ok(()), making it indistinguishable from success to callers. Should either return an error or be removed from the CLI.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T01:21:59.209297Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T01:21:59.209331Z"
+}

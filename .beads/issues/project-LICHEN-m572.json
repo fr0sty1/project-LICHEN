@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-m572",
+  "title": "task",
+  "description": "commands.rs:186-188 - On non-Unix platforms, format!(\"{seed_hex}\\n\") creates a temporary String containing the private key seed that is never zeroized. The seed hex copy remains in memory after the function returns, potentially recoverable by an attacker with memory access.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T01:21:57.873167Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T01:21:57.873192Z"
+}
