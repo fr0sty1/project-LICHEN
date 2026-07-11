@@ -17,7 +17,6 @@ from lichen.sim.protocol import (
     MSG_CAD_RESULT,
     MSG_ERR,
     MSG_OK,
-    MSG_RX_ENTER,
     MSG_RX_PACKET,
     MSG_RX_TIMEOUT_PUSH,
     MSG_TIME_OK,

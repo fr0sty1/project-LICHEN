@@ -27,15 +27,22 @@ def _run_cmake_script(
     else:
         env["SOURCE_DATE_EPOCH"] = source_date_epoch
 
-    return subprocess.run(
-        ["cmake", "-P", "/dev/stdin"],
-        cwd=ROOT,
-        env=env,
-        input=textwrap.dedent(script),
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    # A real file, not /dev/stdin: cmake -P seeks the script to check for a
+    # byte-order mark, which fails on a non-seekable pipe.
+    with tempfile.NamedTemporaryFile("w", suffix=".cmake", delete=False) as f:
+        f.write(textwrap.dedent(script))
+        script_path = f.name
+    try:
+        return subprocess.run(
+            ["cmake", "-P", script_path],
+            cwd=ROOT,
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    finally:
+        os.unlink(script_path)
 
 
 def test_production_fails_without_deterministic_metadata() -> None:

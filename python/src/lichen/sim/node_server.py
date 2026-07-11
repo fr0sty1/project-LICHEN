@@ -20,18 +20,22 @@ from lichen.sim.protocol import (
     MSG_CAD,
     MSG_REGISTER,
     MSG_RX,
+    MSG_RX_ENTER,
     MSG_TIME,
     MSG_TX,
     ProtocolError,
     decode_cad,
     decode_register,
     decode_rx,
+    decode_rx_enter,
     decode_tx,
     encode_cad_result,
     encode_err,
     encode_ok,
     encode_rx_ok,
+    encode_rx_packet,
     encode_rx_timeout,
+    encode_rx_timeout_push,
     encode_time_ok,
     encode_tx_done,
     encode_tx_fail,
@@ -182,6 +186,8 @@ class NodeServer:
                     await self._handle_tx(node_id, data, writer)
                 elif msg_type == MSG_RX:
                     await self._handle_rx(node_id, data, writer)
+                elif msg_type == MSG_RX_ENTER:
+                    await self._handle_rx_enter(node_id, data, writer)
                 elif msg_type == MSG_TIME:
                     await self._handle_time(writer)
                 elif msg_type == MSG_CAD:
@@ -357,24 +363,7 @@ class NodeServer:
             await write_message(writer, encode_err(7, str(e)))
             return
 
-        start_time_us = self._simulation.current_time_us
-        timeout_us = timeout_ms * 1000
-        result = None
-        while True:
-            # Check for received packet
-            result = self._simulation.get_rx_result(node_id)
-            if result is not None:
-                break
-
-            self._simulation.maybe_advance_time()
-
-            # Check if we've timed out
-            elapsed_us = self._simulation.current_time_us - start_time_us
-            if elapsed_us >= timeout_us:
-                break
-
-            # Brief delay before next check to avoid busy loop
-            await asyncio.sleep(0.001)  # 1ms polling interval
+        result = await self._await_rx_result(node_id, timeout_ms * 1000)
 
         if result is not None:
             rx_payload, rssi, snr = result
@@ -389,6 +378,89 @@ class NodeServer:
         else:
             logger.debug("RX timeout at %s after %d ms", node_id, timeout_ms)
             await write_message(writer, encode_rx_timeout())
+
+    async def _await_rx_result(
+        self,
+        node_id: str,
+        timeout_us: int,
+    ) -> tuple[bytes, int, int] | None:
+        """Wait for a packet or timeout on a node already in RX_WAIT.
+
+        Checks for a deliverable packet before advancing time so advancing
+        can never skip an in-range reception (see maybe_advance_time).
+
+        Args:
+            node_id: The receiving node's ID.
+            timeout_us: Receive timeout in microseconds.
+
+        Returns:
+            Tuple of (payload, rssi, snr), or None on timeout.
+        """
+        start_time_us = self._simulation.current_time_us
+        while True:
+            # Check for received packet
+            result = self._simulation.get_rx_result(node_id)
+            if result is not None:
+                return result
+
+            self._simulation.maybe_advance_time()
+
+            # Check if we've timed out
+            elapsed_us = self._simulation.current_time_us - start_time_us
+            if elapsed_us >= timeout_us:
+                return None
+
+            # Brief delay before next check to avoid busy loop
+            await asyncio.sleep(0.001)  # 1ms polling interval
+
+    async def _handle_rx_enter(
+        self,
+        node_id: str,
+        data: bytes,
+        writer: asyncio.StreamWriter,
+    ) -> None:
+        """Handle an RX_ENTER message (push-based RX).
+
+        Same receive semantics as _handle_rx, but the timeout is expressed
+        in microseconds and the reply uses the push-based message types
+        (RX_PACKET / RX_TIMEOUT_PUSH) that SimRadio.receive() expects.
+
+        Args:
+            node_id: The receiving node's ID.
+            data: The complete message bytes (including type byte).
+            writer: The stream writer for responses.
+        """
+        try:
+            timeout_us = decode_rx_enter(get_message_payload(data))
+        except ProtocolError as e:
+            logger.error("Failed to decode RX_ENTER from %s: %s", node_id, e)
+            await write_message(writer, encode_err(1, f"Invalid RX_ENTER: {e}"))
+            return
+
+        # Start receive in simulation (round up so a sub-ms timeout still
+        # queues a nonzero RxTimeoutEvent)
+        try:
+            self._simulation.start_receive(node_id, (timeout_us + 999) // 1000)
+        except ValueError as e:
+            logger.error("Failed to start RX for %s: %s", node_id, e)
+            await write_message(writer, encode_err(7, str(e)))
+            return
+
+        result = await self._await_rx_result(node_id, timeout_us)
+
+        if result is not None:
+            rx_payload, rssi, snr = result
+            logger.debug(
+                "RX at %s: %d bytes, RSSI %d, SNR %d",
+                node_id,
+                len(rx_payload),
+                rssi,
+                snr,
+            )
+            await write_message(writer, encode_rx_packet(rx_payload, rssi, snr))
+        else:
+            logger.debug("RX timeout at %s after %d us", node_id, timeout_us)
+            await write_message(writer, encode_rx_timeout_push())
 
     async def _handle_time(
         self,

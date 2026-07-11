@@ -250,7 +250,6 @@ class TestDutyCycleObservabilityAPI:
     def test_time_until_budget_refill_with_tx(self) -> None:
         """Returns time until oldest TX exits the window."""
         tracker = DutyCycleTracker()
-        window_us = 3600 * 1_000_000
         airtime_us = 1_000_000  # 1 second
 
         # TX at time 0, ends at 1s

@@ -27,10 +27,10 @@ from lichen.crypto.identity import PeerIdentity, _pubkey_to_iid
 from lichen.crypto.schnorr48 import verify
 from lichen.gradient import (
     GRADIENT_TIMEOUT_MS,
+    MAX_ENTRIES,
     GradientEntry,
     GradientSource,
     GradientTable,
-    MAX_ENTRIES,
 )
 
 logger = logging.getLogger(__name__)
