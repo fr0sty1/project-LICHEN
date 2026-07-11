@@ -417,10 +417,10 @@ int main(void)
 #if IS_ENABLED(CONFIG_LICHEN_L2)
 	/* L2/CoAP mode: the LICHEN net interface owns the radio and delivers
 	 * IPv6 both ways; the app talks CoAP to the dev-provisioned peer.
-	 * GET /config rather than /status: the /status response (~294 B)
-	 * exceeds the L2 MTU until fragmentation or a trimmed payload lands
-	 * (bd lora_ipv6_mesh-r002). */
-	static const char *const req_path[] = { "config", NULL };
+	 * The ~230 B /status payload arrives via CoAP Block2 (RFC 7959) —
+	 * the gateway slices it into 64-byte blocks that each fit the L2
+	 * MTU, and the CoAP client reassembles. */
+	static const char *const req_path[] = { "status", NULL };
 	uint8_t peer_eui64[LICHEN_L2_ADDR_LEN];
 	uint8_t peer_iid[LICHEN_L2_ADDR_LEN];
 	struct sockaddr_in6 peer_addr = {
@@ -488,7 +488,7 @@ int main(void)
 		if (ret != 0) {
 			LOG_WRN("CoAP GET send failed: %d", ret);
 		} else {
-			LOG_INF("CoAP GET /config sent");
+			LOG_INF("CoAP GET /status sent");
 		}
 		set_phase(PH_RECV);
 		for (int i = 0; i < 15; i++) {
