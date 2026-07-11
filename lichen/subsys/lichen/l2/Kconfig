@@ -6,6 +6,11 @@
 config LICHEN_IPV6
 	bool "LICHEN IPv6 address utilities"
 	depends on LICHEN
+	# The l2 library always compiles lichen_util.c (EUI-64 derivation),
+	# which needs TinyCrypt SHA-256 — select it here, not only from
+	# LICHEN_LORA_L2, so radio-less builds (native_sim) link too.
+	select TINYCRYPT
+	select TINYCRYPT_SHA256
 	default y
 	help
 	  Enable LICHEN IPv6 address utilities:

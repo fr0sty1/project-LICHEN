@@ -267,6 +267,11 @@ static void wdt_init(void)
 {
 	lichen_radio_progress(); /* seed a fresh heartbeat before arming */
 
+#if !DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay)
+	/* No watchdog on this board (e.g. native_sim) */
+	LOG_WRN("no watchdog0 alias — running without watchdog");
+	return;
+#else
 	s_wdt = DEVICE_DT_GET(DT_ALIAS(watchdog0));
 	if (!device_is_ready(s_wdt)) {
 		LOG_WRN("watchdog not ready — running without it");
@@ -296,6 +301,7 @@ static void wdt_init(void)
 	k_timer_start(&s_wdt_timer, K_MSEC(WDT_FEED_MS), K_MSEC(WDT_FEED_MS));
 	LOG_INF("watchdog armed (%d ms, stall %d ms, timer-fed)",
 		WDT_TIMEOUT_MS, WDT_STALL_MS);
+#endif /* DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) */
 }
 
 static inline void wdt_kick(void)
