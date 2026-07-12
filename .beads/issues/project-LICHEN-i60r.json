@@ -10,9 +10,9 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T19:19:12.798762Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T05:30:28.363267Z",
-  "closed_at": "2026-07-12T05:30:28.363267Z",
-  "close_reason": "Implemented /msg handlers - POST /msg/sent, GET /msg/inbox (Observable), POST /msg/ack; added COAP_URI_WILDCARD for /msg/sent/\u003cid\u003e",
+  "updated_at": "2026-07-12T05:30:45.904211Z",
+  "closed_at": "2026-07-12T05:30:45.904211Z",
+  "close_reason": "Already implemented: coap_msg.c (840 lines), POST/GET /msg/sent, GET/Observe /msg/inbox, POST /msg/ack",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-i60r",
