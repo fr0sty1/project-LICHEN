@@ -13,6 +13,7 @@
 #include <zephyr/drivers/gnss.h>
 #include <zephyr/kernel.h>
 #include <zephyr/pm/device.h>
+#include <zephyr/pm/device_runtime.h>
 #include <zephyr/sys/atomic.h>
 #include <zephyr/ztest.h>
 

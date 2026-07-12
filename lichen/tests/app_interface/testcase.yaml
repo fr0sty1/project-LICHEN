@@ -3,5 +3,7 @@
 
 tests:
   net.lichen.app_interface:
-    platform_allow: native_sim
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
     tags: lichen app-interface

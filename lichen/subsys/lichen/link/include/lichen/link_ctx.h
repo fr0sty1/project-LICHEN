@@ -18,6 +18,9 @@
 #include <stdbool.h>
 
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
 #if !defined(__clang__) || !__has_feature(nullability)
 #ifndef _Nonnull
 #define _Nonnull
@@ -102,7 +105,7 @@ int lichen_link_init(struct lichen_link_ctx *_Nonnull ctx,
  * @return 0 on success, -EINVAL if ctx or seed is NULL
  */
 int lichen_link_load_key(struct lichen_link_ctx *_Nonnull ctx,
-			 const uint8_t *_Nonnull seed);
+			 const uint8_t seed[_Nonnull 32]);
 
 /**
  * @brief Generate and load an Ed25519 keypair from the platform CSPRNG.
@@ -177,7 +180,7 @@ void lichen_link_set_epoch(struct lichen_link_ctx *_Nonnull ctx, uint8_t epoch);
  * @return 0 on success, -EINVAL if ctx or link_key is NULL
  */
 int lichen_link_load_link_key(struct lichen_link_ctx *_Nonnull ctx,
-			      const uint8_t *_Nonnull link_key);
+			      const uint8_t link_key[_Nonnull LICHEN_LINK_KEY_LEN]);
 
 /**
  * @brief Securely wipe all key material and reset the context.

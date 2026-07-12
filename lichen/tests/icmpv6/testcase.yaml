@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+tests:
+  lichen.icmpv6:
+    tags:
+      - lichen
+      - ipv6
+      - icmpv6
+    platform_allow:
+      - native_sim
+    integration_platforms:
+      - native_sim

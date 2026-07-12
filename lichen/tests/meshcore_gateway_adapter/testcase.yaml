@@ -3,14 +3,18 @@
 
 tests:
   net.lichen.meshcore_gateway_adapter:
-    platform_allow: native_sim
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
     tags: meshcore gateway
   net.lichen.meshcore_gateway_adapter.settings_nvs:
     platform_allow:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     integration_platforms:
       - native_sim
+      - native_sim/native/64
     tags: meshcore gateway settings nvs
     extra_args:
       - CONF_FILE=prj.conf;prj_settings_nvs.conf

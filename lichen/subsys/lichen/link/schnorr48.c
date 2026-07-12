@@ -35,9 +35,9 @@ LOG_MODULE_REGISTER(schnorr48, CONFIG_LICHEN_LINK_LOG_LEVEL);
 #include "monocypher.h"
 #include "monocypher-ed25519.h"
 
-void schnorr48_derive_keypair(const uint8_t seed[32],
-			      uint8_t privkey[32],
-			      uint8_t pubkey[32])
+void schnorr48_derive_keypair(const uint8_t *seed,
+			      uint8_t *privkey,
+			      uint8_t *pubkey)
 {
 	uint8_t hash[64];
 
@@ -55,10 +55,10 @@ void schnorr48_derive_keypair(const uint8_t seed[32],
 	crypto_wipe(hash, sizeof(hash));
 }
 
-int schnorr48_sign(const uint8_t privkey[32],
-		   const uint8_t pubkey[32],
+int schnorr48_sign(const uint8_t *privkey,
+		   const uint8_t *pubkey,
 		   const uint8_t *msg, size_t msg_len,
-		   uint8_t sig[48])
+		   uint8_t *sig)
 {
 	uint8_t nonce_hash[64];
 	uint8_t r_scalar[32];
@@ -132,9 +132,9 @@ int schnorr48_sign(const uint8_t privkey[32],
 	return 0;
 }
 
-bool schnorr48_verify(const uint8_t pubkey[32],
+bool schnorr48_verify(const uint8_t *pubkey,
 		      const uint8_t *msg, size_t msg_len,
-		      const uint8_t sig[48])
+		      const uint8_t *sig)
 {
 	const uint8_t *e_received = sig;
 	const uint8_t *s = sig + 16;
@@ -212,9 +212,9 @@ static void schnorr48_stub_abort(const char *func)
 	abort();
 }
 
-void schnorr48_derive_keypair(const uint8_t seed[32],
-			      uint8_t privkey[32],
-			      uint8_t pubkey[32])
+void schnorr48_derive_keypair(const uint8_t *seed,
+			      uint8_t *privkey,
+			      uint8_t *pubkey)
 {
 	(void)seed;
 	(void)privkey;
@@ -222,10 +222,10 @@ void schnorr48_derive_keypair(const uint8_t seed[32],
 	schnorr48_stub_abort("schnorr48_derive_keypair");
 }
 
-int schnorr48_sign(const uint8_t privkey[32],
-		   const uint8_t pubkey[32],
+int schnorr48_sign(const uint8_t *privkey,
+		   const uint8_t *pubkey,
 		   const uint8_t *msg, size_t msg_len,
-		   uint8_t sig[48])
+		   uint8_t *sig)
 {
 	(void)privkey;
 	(void)pubkey;
@@ -236,9 +236,9 @@ int schnorr48_sign(const uint8_t privkey[32],
 	return -1; /* unreachable, but satisfies compiler */
 }
 
-bool schnorr48_verify(const uint8_t pubkey[32],
+bool schnorr48_verify(const uint8_t *pubkey,
 		      const uint8_t *msg, size_t msg_len,
-		      const uint8_t sig[48])
+		      const uint8_t *sig)
 {
 	(void)pubkey;
 	(void)msg;
@@ -259,9 +259,9 @@ bool schnorr48_verify(const uint8_t pubkey[32],
 int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
 			 const uint8_t *dst_addr, size_t dst_addr_len,
 			 const uint8_t *payload, size_t payload_len,
-			 const uint8_t privkey[32],
-			 const uint8_t pubkey[32],
-			 uint8_t sig[48])
+			 const uint8_t *privkey,
+			 const uint8_t *pubkey,
+			 uint8_t *sig)
 {
 	uint8_t header[11]; /* epoch(1) + seqnum(2) + dst_addr(up to 8) */
 	size_t header_len = 0;
@@ -353,7 +353,7 @@ int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
 int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
 			   const uint8_t *dst_addr, size_t dst_addr_len,
 			   const uint8_t *payload, size_t payload_len,
-			   const uint8_t pubkey[32])
+			   const uint8_t *pubkey)
 {
 	/* Validate dst_addr_len before use */
 	if (dst_addr_len > SCHNORR48_MAX_ADDR_LEN) {
@@ -446,9 +446,9 @@ int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
 int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
 			 const uint8_t *dst_addr, size_t dst_addr_len,
 			 const uint8_t *payload, size_t payload_len,
-			 const uint8_t privkey[32],
-			 const uint8_t pubkey[32],
-			 uint8_t sig[48])
+			 const uint8_t *privkey,
+			 const uint8_t *pubkey,
+			 uint8_t *sig)
 {
 	(void)epoch;
 	(void)seqnum;
@@ -466,7 +466,7 @@ int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
 int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
 			   const uint8_t *dst_addr, size_t dst_addr_len,
 			   const uint8_t *payload, size_t payload_len,
-			   const uint8_t pubkey[32])
+			   const uint8_t *pubkey)
 {
 	(void)epoch;
 	(void)seqnum;

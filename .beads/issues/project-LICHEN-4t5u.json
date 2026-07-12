@@ -2,14 +2,14 @@
   "id": "project-LICHEN-4t5u",
   "title": "Deprecate node_server.py in favor of RenodeServer",
   "description": "NodeServer (node_server.py) uses poll-based RX with 1ms sleep loop. RenodeServer (renode_server.py) has push-based RX. Migrate all usages of NodeServer to RenodeServer, update SimulatorServer.get_node_server_port to spawn RenodeServer instances, then delete node_server.py.",
-  "notes": "Architecture analysis: NodeServer handles MSG_REGISTER/MSG_RX/MSG_TIME/MSG_CAD for SimRadio clients. RenodeServer uses a simpler per-node protocol (MSG_TX/MSG_RX_ENTER/MSG_RX_EXIT only, fixed node_id). Migration requires either: (1) extending RenodeServer to handle all messages, or (2) changing SimRadio to use per-node connections. This is a design decision, not a drop-in replacement.",
+  "notes": "Architecture analysis: NodeServer handles MSG_REGISTER/MSG_RX/MSG_TIME/MSG_CAD for SimRadio clients. RenodeServer uses a simpler per-node protocol (MSG_TX/MSG_RX_ENTER/MSG_RX_EXIT only, fixed node_id). Migration requires either: (1) extending RenodeServer to handle all messages, or (2) changing SimRadio to use per-node connections. This is a design decision, not a drop-in replacement.\nProgress: Fixed push-based RX_ENTER handler in NodeServer to use background simulation driver instead of polling.\n\nChanges:\n1. Added _sim_driver_task field and _simulation_driver() background task to NodeServer\n2. Added _ensure_simulation_driver() to start driver on first node registration\n3. Refactored _handle_rx_enter() to await event instead of polling loop\n4. Added deprecation notes to poll-based _handle_rx() and _await_rx_result()\n5. Updated module docstring to reflect current state\n\nThe push-based RX path (used by SimRadio) now uses proper event-driven I/O. The legacy poll-based MSG_RX handler still polls but is deprecated - SimRadio already uses RX_ENTER.\n\nAll tests pass (test_node_server.py, test_integration.py, test_sim_client.py, test_server.py, test_multinode.py).\n\nRemaining work:\n- Deprecate MSG_RX entirely (remove from protocol, update tests to use RX_ENTER)\n- Consider unifying NodeServer with RenodeServer architecture\n- This now unblocks project-LICHEN-906e (RX_POLL removal) for the push-based path",
   "status": "open",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T22:15:25.960134Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T04:54:09.079343Z",
+  "updated_at": "2026-07-12T05:26:44.878097Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-4t5u",

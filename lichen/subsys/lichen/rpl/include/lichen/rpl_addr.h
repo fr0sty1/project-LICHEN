@@ -14,6 +14,9 @@
 #include <string.h>
 
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
 #if !defined(__clang__) || !__has_feature(nullability)
 #ifndef _Nonnull
 #define _Nonnull

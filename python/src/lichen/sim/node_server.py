@@ -2,13 +2,15 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """TCP node server for LICHEN simulator.
 
-.. deprecated::
-    This module uses a 1ms polling loop in _handle_rx() which is inefficient.
-    TODO: Replace with RenodeServer which uses proper event-driven I/O.
-
 This module provides a TCP server that accepts connections from SimRadio clients
 and translates wire protocol messages into Simulation calls. Each client
 connection represents a single simulated node.
+
+Push-based RX (RX_ENTER/RX_EXIT) uses a background simulation driver task and
+does not poll. The legacy poll-based MSG_RX handler still uses a 1ms polling
+loop but is deprecated - SimRadio already uses push-based RX.
+
+Long-term, this module should be unified with or replaced by RenodeServer.
 """
 
 from __future__ import annotations
@@ -128,6 +130,29 @@ class NodeServer:
         self._duty_cycle_limit = duty_cycle_limit
         self._duty_trackers: dict[str, DutyCycleTracker] = {}
         self._connections: dict[str, asyncio.StreamWriter] = {}
+        self._sim_driver_task: asyncio.Task[None] | None = None
+
+    async def _simulation_driver(self) -> None:
+        """Background task that drives the simulation.
+
+        Periodically calls deliver_pending_packets() and maybe_advance_time()
+        to ensure push-based RX mode works without polling in handlers.
+        """
+        try:
+            while True:
+                # Deliver packets to nodes in callback-based RX mode
+                self._simulation.deliver_pending_packets()
+                # Advance time (fires TxEndEvent, RxTimeoutEvent)
+                self._simulation.maybe_advance_time()
+                # Brief delay to avoid busy loop
+                await asyncio.sleep(0.001)
+        except asyncio.CancelledError:
+            pass
+
+    def _ensure_simulation_driver(self) -> None:
+        """Start the simulation driver task if not already running."""
+        if self._sim_driver_task is None or self._sim_driver_task.done():
+            self._sim_driver_task = asyncio.create_task(self._simulation_driver())
 
     async def handle_connection(
         self,
@@ -276,6 +301,9 @@ class NodeServer:
         # Track connection
         self._connections[node_id] = writer
 
+        # Ensure simulation driver is running for push-based RX
+        self._ensure_simulation_driver()
+
         logger.info("Registered node %s at (%.1f, %.1f, %.1f)", node_id, x, y, z)
         await write_message(writer, encode_ok())
         return node_id
@@ -348,7 +376,11 @@ class NodeServer:
         data: bytes,
         writer: asyncio.StreamWriter,
     ) -> None:
-        """Handle an RX message.
+        """Handle an RX message (poll-based, deprecated).
+
+        .. deprecated::
+            This method uses a polling loop. New clients should use RX_ENTER
+            (push-based) instead. SimRadio already uses RX_ENTER.
 
         Starts a receive operation in the simulation and waits for
         either a packet or timeout.
@@ -400,6 +432,10 @@ class NodeServer:
     ) -> tuple[bytes, int, int] | None:
         """Wait for a packet or timeout on a node already in RX_WAIT.
 
+        .. deprecated::
+            This method uses a 1ms polling loop. It is used by the deprecated
+            MSG_RX handler. New code should use RX_ENTER with callbacks.
+
         Checks for a deliverable packet before advancing time so advancing
         can never skip an in-range reception (see maybe_advance_time).
 
@@ -435,8 +471,9 @@ class NodeServer:
     ) -> None:
         """Handle an RX_ENTER message (push-based RX mode).
 
-        Enters RX mode with callbacks and runs a simulation loop until
-        a packet arrives or timeout expires. Sends RX_PACKET or RX_TIMEOUT_PUSH.
+        Enters RX mode with callbacks and waits for a packet or timeout.
+        The background simulation driver task advances time and delivers
+        packets, firing the callbacks when appropriate.
 
         Args:
             node_id: The receiving node's ID.
@@ -475,19 +512,8 @@ class NodeServer:
             await write_message(writer, encode_err(7, str(e)))
             return
 
-        # Run simulation loop until packet or timeout
-        from lichen.sim.node import NodeState
-        node = self._simulation.get_node(node_id)
-        while node is not None and node.state == NodeState.RX_WAIT:
-            # Deliver any pending packets
-            self._simulation.deliver_pending_packets()
-            # Advance time (fires TxEndEvent, RxTimeoutEvent)
-            self._simulation.maybe_advance_time()
-            # Check if done
-            if rx_done.is_set():
-                break
-            # Brief delay to avoid busy loop
-            await asyncio.sleep(0.001)
+        # Wait for callback to fire - simulation driver handles time advancement
+        await rx_done.wait()
 
         # Send response
         if rx_result[0] is not None:

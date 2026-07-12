@@ -18,6 +18,9 @@
 #include <stdbool.h>
 
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
 #if !defined(__clang__) || !__has_feature(nullability)
 #ifndef _Nonnull
 #define _Nonnull
@@ -144,7 +147,7 @@ void lichen_replay_table_init(struct lichen_replay_table *_Nonnull table);
  */
 struct lichen_replay_window *_Nullable lichen_replay_get(
 	struct lichen_replay_table *_Nonnull table,
-	const uint8_t *_Nonnull eui64);
+	const uint8_t eui64[_Nonnull LICHEN_EUI64_LEN]);
 
 /**
  * @brief Remove a peer from the replay table.
@@ -153,7 +156,7 @@ struct lichen_replay_window *_Nullable lichen_replay_get(
  * @param[in]     eui64 Peer's EUI-64 address (8 bytes)
  */
 void lichen_replay_remove(struct lichen_replay_table *_Nonnull table,
-			  const uint8_t *_Nonnull eui64);
+			  const uint8_t eui64[_Nonnull LICHEN_EUI64_LEN]);
 
 #ifdef __cplusplus
 }

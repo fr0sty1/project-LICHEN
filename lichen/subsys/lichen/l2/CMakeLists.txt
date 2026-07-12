@@ -9,6 +9,7 @@ zephyr_library_sources(
 )
 
 zephyr_library_sources_ifdef(CONFIG_LICHEN_IPV6 ipv6_addr.c)
+zephyr_library_sources_ifdef(CONFIG_LICHEN_ICMPV6 icmpv6.c)
 zephyr_library_sources_ifdef(CONFIG_LICHEN_LORA_L2 lora_l2.c)
 zephyr_library_sources_ifdef(CONFIG_LICHEN_L2 lichen_l2.c)
 

@@ -26,5 +26,6 @@ rsource "schc/Kconfig"
 rsource "senml/Kconfig"
 rsource "rpl/Kconfig"
 rsource "routing/Kconfig"
+rsource "transport/Kconfig"
 
 endif # LICHEN

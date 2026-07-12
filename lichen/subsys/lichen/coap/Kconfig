@@ -4,17 +4,24 @@
 # LICHEN CoAP subsystem Kconfig
 
 menuconfig LICHEN_COAP
-	bool "LICHEN CoAP client"
+	bool "LICHEN CoAP support"
 	depends on LICHEN
 	select COAP
-	select COAP_CLIENT
 	help
-	  Enable LICHEN CoAP client for making requests to mesh nodes.
+	  Enable LICHEN CoAP support (client and/or server).
 
 if LICHEN_COAP
 
-config LICHEN_COAP_LOG_LEVEL
+config LICHEN_COAP_CLIENT
+	bool "LICHEN CoAP client"
+	select COAP_CLIENT
+	default y
+	help
+	  Enable LICHEN CoAP client for making requests to mesh nodes.
+
+config LICHEN_COAP_CLIENT_LOG_LEVEL
 	int "CoAP client log level"
+	depends on LICHEN_COAP_CLIENT
 	default 3
 	range 0 4
 	help
@@ -23,6 +30,7 @@ config LICHEN_COAP_LOG_LEVEL
 
 config LICHEN_COAP_CLIENT_OSCORE
 	bool "OSCORE protection for CoAP client"
+	depends on LICHEN_COAP_CLIENT
 	depends on LICHEN_OSCORE
 	default y
 	help
@@ -34,5 +42,168 @@ config LICHEN_COAP_CLIENT_OSCORE
 	  SECURITY: Per spec/06-security.md Section 8.7, OSCORE is
 	  recommended for all CoAP traffic to provide end-to-end security
 	  independent of the link layer.
+
+config LICHEN_COAP_SERVER
+	bool "LICHEN CoAP server"
+	select COAP_SERVER
+	default y
+	help
+	  Enable LICHEN CoAP server for responding to requests from mesh nodes.
+	  Exposes LCI resources: /status, /config, /neighbors, /key, /msg/inbox,
+	  and /.well-known/core for resource discovery.
+
+config LICHEN_COAP_SERVER_LOG_LEVEL
+	int "CoAP server log level"
+	depends on LICHEN_COAP_SERVER
+	default 3
+	range 0 4
+	help
+	  Log level for LICHEN CoAP server:
+	  0=off, 1=error, 2=warning, 3=info, 4=debug
+
+config LICHEN_COAP_SERVER_OSCORE
+	bool "OSCORE protection for CoAP server"
+	depends on LICHEN_COAP_SERVER
+	depends on LICHEN_OSCORE
+	default y
+	help
+	  Enable OSCORE (RFC 8613) end-to-end security for CoAP server.
+	  When enabled, the server can verify OSCORE-protected requests
+	  and send OSCORE-protected responses.
+
+	  SECURITY: Per spec/06-security.md Section 8.7, OSCORE is
+	  recommended for all CoAP traffic to provide end-to-end security
+	  independent of the link layer.
+
+config LICHEN_COAP_CONFIG
+	bool "LCI /config resource handlers"
+	depends on LICHEN_COAP_SERVER
+	select ZCBOR
+	help
+	  Enable CoAP server resources for node configuration per LCI spec
+	  section 17.5.2:
+	  - GET/PUT /config - node name and role
+	  - GET/PUT /config/radio - radio parameters
+	  - GET /config/identity - read-only identity info
+
+	  Requires a configuration provider to be registered via
+	  lichen_coap_config_register() before handling requests.
+
+config LICHEN_COAP_CONFIG_LOG_LEVEL
+	int "CoAP config log level"
+	depends on LICHEN_COAP_CONFIG
+	default 3
+	range 0 4
+	help
+	  Log level for LICHEN CoAP config handlers:
+	  0=off, 1=error, 2=warning, 3=info, 4=debug
+
+config LICHEN_COAP_STATUS
+	bool "LCI /status resource handlers"
+	depends on LICHEN_COAP_SERVER
+	default y
+	help
+	  Enable LCI /status resource handlers per spec section 17.5.3.
+	  Implements:
+	  - GET /status - Node status with DODAG, time, radio stats
+	  - GET /status/neighbors - Neighbor table with RSSI/SNR/ETX
+	  - GET /status/routes - Routing table
+
+	  All resources support RFC 7641 Observe for push notifications.
+
+config LICHEN_COAP_STATUS_MAX_NEIGHBORS
+	int "Maximum neighbors in /status/neighbors response"
+	depends on LICHEN_COAP_STATUS
+	default 8
+	range 1 32
+	help
+	  Maximum number of neighbor entries returned in a single
+	  /status/neighbors response.
+
+config LICHEN_COAP_STATUS_MAX_ROUTES
+	int "Maximum routes in /status/routes response"
+	depends on LICHEN_COAP_STATUS
+	default 8
+	range 1 32
+	help
+	  Maximum number of route entries returned in a single
+	  /status/routes response.
+
+config LICHEN_COAP_STATUS_LOG_LEVEL
+	int "CoAP status log level"
+	depends on LICHEN_COAP_STATUS
+	default 3
+	range 0 4
+	help
+	  Log level for LICHEN CoAP status handlers:
+	  0=off, 1=error, 2=warning, 3=info, 4=debug
+
+config LICHEN_COAP_MSG
+	bool "LCI /msg/* resource handlers"
+	depends on LICHEN_COAP_SERVER
+	select ZCBOR
+	help
+	  Enable CoAP server resources for application-level messaging per
+	  LCI spec section 17.5.7:
+	  - POST /msg/sent - queue outbound message
+	  - GET /msg/sent/<id> - get sent message status
+	  - GET /msg/inbox - retrieve inbound messages (Observable)
+	  - POST /msg/ack - acknowledge message receipt
+
+	  Messages are queued in memory with configurable limits. This is
+	  an optional feature for chat-like human messaging; applications
+	  may instead use CoAP directly to mesh nodes.
+
+config LICHEN_COAP_MSG_LOG_LEVEL
+	int "CoAP msg log level"
+	depends on LICHEN_COAP_MSG
+	default 3
+	range 0 4
+	help
+	  Log level for LICHEN CoAP messaging handlers:
+	  0=off, 1=error, 2=warning, 3=info, 4=debug
+
+config LICHEN_COAP_KEYS
+	bool "LCI /keys resource handlers"
+	depends on LICHEN_COAP_SERVER
+	select COAP_URI_WILDCARD
+	help
+	  Enable CoAP server resources for key store management per LCI spec
+	  section 17.5.5:
+	  - GET /keys - list peer IIDs with pubkey fingerprints, trust level
+	  - GET /keys/{iid} - get specific peer's full pubkey
+	  - PUT /keys/{iid} - add/update peer key (requires local admin)
+	  - DELETE /keys/{iid} - remove peer (requires local admin)
+
+	  Keys are stored in memory. TOFU key pinning is enforced: once a key
+	  is learned for an IID, it cannot be changed without explicit removal.
+
+	  SECURITY: Write operations require local admin access (loopback or
+	  BLE LCI interface).
+
+config LICHEN_COAP_KEYS_MAX_ENTRIES
+	int "Maximum key store entries"
+	depends on LICHEN_COAP_KEYS
+	default 16
+	range 4 64
+	help
+	  Maximum number of peer keys to store. Each entry requires
+	  approximately 80 bytes of RAM.
+
+config LICHEN_COAP_KEYS_LOG_LEVEL
+	int "CoAP keys log level"
+	depends on LICHEN_COAP_KEYS
+	default 3
+	range 0 4
+	help
+	  Log level for LICHEN CoAP keys handlers:
+	  0=off, 1=error, 2=warning, 3=info, 4=debug
+
+config LICHEN_COAP_KEYS_TEST_HOOKS
+	bool "Test hooks for key store"
+	depends on LICHEN_COAP_KEYS
+	depends on ZTEST
+	help
+	  Enable test hooks for resetting the key store. Only for testing.
 
 endif # LICHEN_COAP

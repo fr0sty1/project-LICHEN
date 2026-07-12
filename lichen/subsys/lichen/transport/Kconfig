@@ -1,0 +1,104 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+# BLE IPSP Transport configuration for LCI (spec/11-lci.md section 17.3.2)
+
+menuconfig LICHEN_BLE_TRANSPORT
+	bool "BLE IPSP transport for LCI"
+	depends on LICHEN
+	depends on BT
+	depends on BT_PERIPHERAL
+	help
+	  Enable BLE transport bindings for the Local Client Interface (LCI).
+	  This allows phones and laptops to communicate with the mesh node
+	  over Bluetooth Low Energy using standard IPv6/CoAP.
+
+	  Implements LCI spec 17.3.2:
+	  - Option A (always built): SLIP over Nordic UART Service (NUS)
+	  - Option B (optional): RFC 7668 6LoWPAN over BLE IPSP
+
+if LICHEN_BLE_TRANSPORT
+
+config LICHEN_BLE_SLIP
+	bool "SLIP over BLE UART (Option A)"
+	default y
+	help
+	  Enable SLIP-framed IPv6 over Nordic UART Service (NUS).
+	  This is the REQUIRED transport option per LCI spec.
+
+	  NUS UUID: 6E400001-B5A3-F393-E0A9-E50E24DCCA9E
+	  Works with standard BLE serial libraries on all platforms.
+
+config LICHEN_BLE_IPSP
+	bool "6LoWPAN over BLE IPSP (Option B)"
+	depends on NET_L2_BT
+	help
+	  Enable RFC 7668 6LoWPAN over BLE with Internet Protocol Support
+	  Profile (IPSP). This is the OPTIONAL standard-compliant transport.
+
+	  Requires Zephyr's BT L2 networking stack and provides:
+	  - Standard IPSP profile
+	  - L2CAP connection-oriented channels
+	  - 6LoWPAN IPHC header compression
+
+	  More protocol overhead but fully standards-compliant.
+
+config LICHEN_BLE_TRANSPORT_REQUIRE_SECURE
+	bool "Require LE Secure Connections"
+	default y
+	help
+	  Require LE Secure Connections (security level 4) for all
+	  BLE transport operations except read-only access.
+
+	  SECURITY: Should be enabled for production. Disabling allows
+	  unauthenticated access over BLE which is suitable only for
+	  development and debugging.
+
+config LICHEN_BLE_TRANSPORT_DIAG_REQUIRE_SECURE
+	bool "Require LE Secure Connections for diagnostics"
+	default y
+	help
+	  Require LE Secure Connections for diagnostic resources
+	  (/diag/raw/*) regardless of the general security setting.
+
+	  SECURITY: This MUST be enabled per LCI spec 17.6.1 table which
+	  requires BLE pairing for raw diagnostic access.
+
+config LICHEN_BLE_TRANSPORT_AUTO_START
+	bool "Automatically start BLE advertising"
+	default y
+	help
+	  Automatically start BLE advertising when the transport is
+	  initialized. If disabled, call lichen_ble_transport_start()
+	  explicitly.
+
+config LICHEN_BLE_TRANSPORT_LOG_LEVEL
+	int "BLE transport log level"
+	default 3
+	range 0 4
+	help
+	  Log level for BLE transport module:
+	    0 = Off
+	    1 = Error
+	    2 = Warning
+	    3 = Info
+	    4 = Debug
+
+config LICHEN_BLE_TRANSPORT_RX_TIMEOUT_MS
+	int "SLIP frame receive timeout (ms)"
+	default 5000
+	range 1000 30000
+	help
+	  Timeout for receiving a complete SLIP frame. If a frame is not
+	  completed within this time, the partial frame is discarded.
+
+config LICHEN_BLE_TRANSPORT_MAX_CONNECTIONS
+	int "Maximum concurrent BLE connections"
+	default 1
+	range 1 4
+	help
+	  Maximum number of concurrent BLE connections. For LCI, a single
+	  connection is typically sufficient. Multiple connections increase
+	  RAM usage.
+
+endif # LICHEN_BLE_TRANSPORT
