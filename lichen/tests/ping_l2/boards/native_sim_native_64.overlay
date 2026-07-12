@@ -1,0 +1,19 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: The contributors to the LICHEN project
+ */
+
+/ {
+	aliases {
+		lora0 = &lora_loopback0;
+	};
+
+	chosen {
+		zephyr,lora = &lora_loopback0;
+	};
+
+	lora_loopback0: lora {
+		compatible = "lichen,lora-loopback";
+		status = "okay";
+	};
+};
