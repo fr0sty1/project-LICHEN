@@ -5,6 +5,16 @@ zephyr_library()
 
 zephyr_library_sources(
   announce.c
+  gradient.c
+  router.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_LICHEN_LOADNG
+  loadng.c
+)
+
+zephyr_library_sources_ifdef(CONFIG_LICHEN_DTN
+  dtn.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_LICHEN_ROUTING_STANDALONE_SCHNORR

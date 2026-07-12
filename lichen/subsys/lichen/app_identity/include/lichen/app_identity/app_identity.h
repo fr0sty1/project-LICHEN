@@ -8,6 +8,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -50,7 +60,7 @@ struct lichen_app_identity_peer {
  * their fixed arrays. Private key material is not part of this structure.
  */
 int lichen_app_identity_set_self(
-	const struct lichen_app_identity_self *identity);
+	const struct lichen_app_identity_self *_Nonnull identity);
 
 /*
  * Convenience wrapper for link contexts. Callers must serialize this call with
@@ -59,21 +69,21 @@ int lichen_app_identity_set_self(
  * read lock for atomic key snapshots.
  */
 int lichen_app_identity_set_self_from_link_ctx(
-	const struct lichen_link_ctx *ctx, const char *display_name,
-	const char *firmware_name);
+	const struct lichen_link_ctx *_Nonnull ctx, const char *_Nullable display_name,
+	const char *_Nullable firmware_name);
 int lichen_app_identity_copy_self(
-	struct lichen_app_identity_self *out);
+	struct lichen_app_identity_self *_Nonnull out);
 
 int lichen_app_identity_upsert_peer(
-	const struct lichen_app_identity_peer *peer);
+	const struct lichen_app_identity_peer *_Nonnull peer);
 int lichen_app_identity_upsert_peer_key(
-	const uint8_t eui64[LICHEN_APP_IDENTITY_EUI64_LEN],
-	const uint8_t public_key[LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN]);
+	const uint8_t eui64[_Nonnull LICHEN_APP_IDENTITY_EUI64_LEN],
+	const uint8_t public_key[_Nonnull LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN]);
 int lichen_app_identity_copy_peer(
-	const uint8_t eui64[LICHEN_APP_IDENTITY_EUI64_LEN],
-	struct lichen_app_identity_peer *out);
+	const uint8_t eui64[_Nonnull LICHEN_APP_IDENTITY_EUI64_LEN],
+	struct lichen_app_identity_peer *_Nonnull out);
 size_t lichen_app_identity_copy_peers(
-	struct lichen_app_identity_peer *out, size_t out_len);
+	struct lichen_app_identity_peer *_Nonnull out, size_t out_len);
 size_t lichen_app_identity_peer_count(void);
 
 #ifdef CONFIG_LICHEN_APP_IDENTITY_TEST_HOOKS

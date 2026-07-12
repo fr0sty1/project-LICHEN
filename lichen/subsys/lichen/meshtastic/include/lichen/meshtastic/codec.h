@@ -8,6 +8,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -145,68 +155,68 @@ enum lichen_meshtastic_from_radio_message {
 	LICHEN_MESHTASTIC_FROM_RADIO_REGION_PRESETS = 19,
 };
 
-int lichen_meshtastic_decode_to_radio(const uint8_t *buf, size_t len,
-				      struct lichen_meshtastic_to_radio *out);
+int lichen_meshtastic_decode_to_radio(const uint8_t *_Nonnull buf, size_t len,
+				      struct lichen_meshtastic_to_radio *_Nonnull out);
 
 int lichen_meshtastic_encode_from_radio_config_complete(uint32_t nonce,
-							uint8_t *buf,
+							uint8_t *_Nonnull buf,
 							size_t buflen);
 
 int lichen_meshtastic_encode_from_radio_queue_status(
-	const struct lichen_meshtastic_queue_status *status,
-	uint8_t *buf, size_t buflen);
+	const struct lichen_meshtastic_queue_status *_Nonnull status,
+	uint8_t *_Nonnull buf, size_t buflen);
 
 int lichen_meshtastic_encode_from_radio_packet(uint32_t from_radio_id,
-					       const uint8_t *packet,
+					       const uint8_t *_Nonnull packet,
 					       size_t packet_len,
-					       uint8_t *buf,
+					       uint8_t *_Nonnull buf,
 					       size_t buflen);
 
 int lichen_meshtastic_encode_from_radio_message(
 	enum lichen_meshtastic_from_radio_message message,
-	const uint8_t *payload, size_t payload_len,
-	uint8_t *buf, size_t buflen);
+	const uint8_t *_Nonnull payload, size_t payload_len,
+	uint8_t *_Nonnull buf, size_t buflen);
 
 int lichen_meshtastic_encode_text_packet(
-	const struct lichen_meshtastic_text_packet *packet,
-	uint8_t *buf, size_t buflen);
+	const struct lichen_meshtastic_text_packet *_Nonnull packet,
+	uint8_t *_Nonnull buf, size_t buflen);
 
 int lichen_meshtastic_encode_routing_packet(
-	const struct lichen_meshtastic_routing_packet *packet,
-	uint8_t *buf, size_t buflen);
+	const struct lichen_meshtastic_routing_packet *_Nonnull packet,
+	uint8_t *_Nonnull buf, size_t buflen);
 
 int lichen_meshtastic_encode_my_info_payload(
-	const struct lichen_meshtastic_local_info *info,
-	uint8_t *buf, size_t buflen);
+	const struct lichen_meshtastic_local_info *_Nonnull info,
+	uint8_t *_Nonnull buf, size_t buflen);
 
 int lichen_meshtastic_encode_metadata_payload(
-	const struct lichen_meshtastic_local_info *info,
-	uint8_t *buf, size_t buflen);
+	const struct lichen_meshtastic_local_info *_Nonnull info,
+	uint8_t *_Nonnull buf, size_t buflen);
 
 int lichen_meshtastic_encode_config_payload(
-	const struct lichen_meshtastic_local_info *info,
-	uint8_t *buf, size_t buflen);
+	const struct lichen_meshtastic_local_info *_Nonnull info,
+	uint8_t *_Nonnull buf, size_t buflen);
 
 int lichen_meshtastic_encode_config_section_payload(
 	enum lichen_meshtastic_config_section section,
-	const struct lichen_meshtastic_local_info *info,
-	uint8_t *buf, size_t buflen);
+	const struct lichen_meshtastic_local_info *_Nonnull info,
+	uint8_t *_Nonnull buf, size_t buflen);
 
 int lichen_meshtastic_encode_module_config_payload(
-	const struct lichen_meshtastic_local_info *info,
-	uint8_t *buf, size_t buflen);
+	const struct lichen_meshtastic_local_info *_Nonnull info,
+	uint8_t *_Nonnull buf, size_t buflen);
 
 int lichen_meshtastic_encode_channel_payload(
-	const struct lichen_meshtastic_local_info *info,
-	uint8_t *buf, size_t buflen);
+	const struct lichen_meshtastic_local_info *_Nonnull info,
+	uint8_t *_Nonnull buf, size_t buflen);
 
 int lichen_meshtastic_encode_region_presets_payload(
-	const struct lichen_meshtastic_local_info *info,
-	uint8_t *buf, size_t buflen);
+	const struct lichen_meshtastic_local_info *_Nonnull info,
+	uint8_t *_Nonnull buf, size_t buflen);
 
 int lichen_meshtastic_encode_node_info_payload(
-	const struct lichen_meshtastic_local_info *info,
-	uint8_t *buf, size_t buflen);
+	const struct lichen_meshtastic_local_info *_Nonnull info,
+	uint8_t *_Nonnull buf, size_t buflen);
 
 #ifdef __cplusplus
 }

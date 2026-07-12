@@ -7,7 +7,7 @@ description = "LICHEN integration crate: combines link, SCHC, CoAP, and routing 
 
 [features]
 default = []
-std = ["lichen-hal/std", "lichen-link/std", "lichen-link/schnorr", "dep:lichen-rpl", "lichen-rpl?/std", "dep:lichen-oscore", "lichen-oscore?/std", "lichen-ipv6/std"]
+std = ["lichen-hal/std", "lichen-link/std", "lichen-link/schnorr", "dep:lichen-rpl", "lichen-rpl?/std", "dep:lichen-oscore", "lichen-oscore?/std", "lichen-ipv6/std", "dep:tokio"]
 # Logging: enable one or neither, not both
 defmt = ["dep:defmt", "lichen-core/defmt", "lichen-hal/defmt", "lichen-link/defmt", "lichen-schc/defmt", "lichen-coap/defmt", "lichen-ipv6/defmt", "lichen-rpl?/defmt", "lichen-oscore?/defmt"]
 log = ["dep:log", "lichen-core/log", "lichen-hal/log", "lichen-link/log", "lichen-schc/log", "lichen-coap/log", "lichen-ipv6/log", "lichen-rpl?/log", "lichen-oscore?/log"]
@@ -26,6 +26,9 @@ heapless = "0.8"
 # Logging backends (optional, feature-gated)
 defmt = { version = "0.3", optional = true }
 log = { version = "0.4", default-features = false, optional = true }
+
+# Async runtime for scheduler (std only)
+tokio = { version = "1", features = ["time"], optional = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }

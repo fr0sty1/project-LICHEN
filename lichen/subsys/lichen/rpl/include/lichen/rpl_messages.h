@@ -24,6 +24,16 @@
 #endif
 #endif
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -88,8 +98,8 @@ struct lichen_rpl_dio {
  * @return 0 on success, negative error code on failure
  */
 LICHEN_WARN_UNUSED_RESULT
-int lichen_rpl_dio_parse(struct lichen_rpl_dio *dio,
-			 const uint8_t *data, size_t len);
+int lichen_rpl_dio_parse(struct lichen_rpl_dio *_Nonnull dio,
+			 const uint8_t *_Nonnull data, size_t len);
 
 /**
  * @brief Serialize a DIO to wire bytes.
@@ -99,8 +109,8 @@ int lichen_rpl_dio_parse(struct lichen_rpl_dio *dio,
  * @param len  Buffer size
  * @return Number of bytes written (24), or negative error code
  */
-int lichen_rpl_dio_write(const struct lichen_rpl_dio *dio,
-			 uint8_t *buf, size_t len);
+int lichen_rpl_dio_write(const struct lichen_rpl_dio *_Nonnull dio,
+			 uint8_t *_Nonnull buf, size_t len);
 
 /**
  * @brief Get pointer to options following DIO base.
@@ -110,7 +120,7 @@ int lichen_rpl_dio_write(const struct lichen_rpl_dio *dio,
  * @param len  Total length of the DIO message.
  * @return Pointer to options, or NULL if no options present.
  */
-const uint8_t *lichen_rpl_dio_options(const uint8_t *data, size_t len);
+const uint8_t *_Nullable lichen_rpl_dio_options(const uint8_t *_Nonnull data, size_t len);
 
 /**
  * @brief Get length of options following DIO base.
@@ -149,8 +159,8 @@ struct lichen_rpl_dao {
  * @return 0 on success, negative error code on failure
  */
 LICHEN_WARN_UNUSED_RESULT
-int lichen_rpl_dao_parse(struct lichen_rpl_dao *dao,
-			 const uint8_t *data, size_t len);
+int lichen_rpl_dao_parse(struct lichen_rpl_dao *_Nonnull dao,
+			 const uint8_t *_Nonnull data, size_t len);
 
 /**
  * @brief Serialize a DAO to wire bytes.
@@ -160,13 +170,13 @@ int lichen_rpl_dao_parse(struct lichen_rpl_dao *dao,
  * @param len  Buffer size
  * @return Number of bytes written (20), or negative error code
  */
-int lichen_rpl_dao_write(const struct lichen_rpl_dao *dao,
-			 uint8_t *buf, size_t len);
+int lichen_rpl_dao_write(const struct lichen_rpl_dao *_Nonnull dao,
+			 uint8_t *_Nonnull buf, size_t len);
 
 /**
  * @brief Get pointer to options following DAO base.
  */
-const uint8_t *lichen_rpl_dao_options(const uint8_t *data, size_t len);
+const uint8_t *_Nullable lichen_rpl_dao_options(const uint8_t *_Nonnull data, size_t len);
 
 /**
  * @brief Get length of options following DAO base.
@@ -179,7 +189,7 @@ const uint8_t *lichen_rpl_dao_options(const uint8_t *data, size_t len);
  *       D=1: base is 20 bytes (with DODAGID)
  *       D=0: base is 4 bytes (no DODAGID)
  */
-static inline size_t lichen_rpl_dao_options_len_ex(const uint8_t *data,
+static inline size_t lichen_rpl_dao_options_len_ex(const uint8_t *_Nullable data,
 						   size_t total_len)
 {
 	if (data == NULL || total_len < 4) {
@@ -224,22 +234,22 @@ struct lichen_rpl_dodag_config {
 /**
  * @brief Initialize DODAG config with defaults.
  */
-void lichen_rpl_dodag_config_init(struct lichen_rpl_dodag_config *cfg);
+void lichen_rpl_dodag_config_init(struct lichen_rpl_dodag_config *_Nonnull cfg);
 
 /**
  * @brief Parse DODAG config from option data (after type/length bytes).
  */
 LICHEN_WARN_UNUSED_RESULT
-int lichen_rpl_dodag_config_parse(struct lichen_rpl_dodag_config *cfg,
-				  const uint8_t *data, size_t len);
+int lichen_rpl_dodag_config_parse(struct lichen_rpl_dodag_config *_Nonnull cfg,
+				  const uint8_t *_Nonnull data, size_t len);
 
 /**
  * @brief Serialize DODAG config as a complete TLV option.
  *
  * @return Bytes written (16 = 2 + 14), or negative error code
  */
-int lichen_rpl_dodag_config_write(const struct lichen_rpl_dodag_config *cfg,
-				  uint8_t *buf, size_t len);
+int lichen_rpl_dodag_config_write(const struct lichen_rpl_dodag_config *_Nonnull cfg,
+				  uint8_t *_Nonnull buf, size_t len);
 
 /* ── RPL Target option (type 5) ────────────────────────────────────────────── */
 
@@ -257,16 +267,16 @@ struct lichen_rpl_target {
  * @brief Parse RPL Target from option data (after type/length bytes).
  */
 LICHEN_WARN_UNUSED_RESULT
-int lichen_rpl_target_parse(struct lichen_rpl_target *target,
-			    const uint8_t *data, size_t len);
+int lichen_rpl_target_parse(struct lichen_rpl_target *_Nonnull target,
+			    const uint8_t *_Nonnull data, size_t len);
 
 /**
  * @brief Serialize RPL Target as a complete TLV option.
  *
  * @return Bytes written, or negative error code
  */
-int lichen_rpl_target_write(const struct lichen_rpl_target *target,
-			    uint8_t *buf, size_t len);
+int lichen_rpl_target_write(const struct lichen_rpl_target *_Nonnull target,
+			    uint8_t *_Nonnull buf, size_t len);
 
 /* ── Transit Information option (type 6) ──────────────────────────────────── */
 
@@ -289,16 +299,16 @@ struct lichen_rpl_transit_info {
  * @brief Parse Transit Info from option data (after type/length bytes).
  */
 LICHEN_WARN_UNUSED_RESULT
-int lichen_rpl_transit_info_parse(struct lichen_rpl_transit_info *ti,
-				  const uint8_t *data, size_t len);
+int lichen_rpl_transit_info_parse(struct lichen_rpl_transit_info *_Nonnull ti,
+				  const uint8_t *_Nonnull data, size_t len);
 
 /**
  * @brief Serialize Transit Info as a complete TLV option.
  *
  * @return Bytes written (22 = 2 + 20), or negative error code
  */
-int lichen_rpl_transit_info_write(const struct lichen_rpl_transit_info *ti,
-				  uint8_t *buf, size_t len);
+int lichen_rpl_transit_info_write(const struct lichen_rpl_transit_info *_Nonnull ti,
+				  uint8_t *_Nonnull buf, size_t len);
 
 /* ── TLV option iterator ───────────────────────────────────────────────────── */
 
@@ -323,8 +333,8 @@ struct lichen_rpl_raw_opt {
 /**
  * @brief Initialize an option iterator.
  */
-void lichen_rpl_opt_iter_init(struct lichen_rpl_opt_iter *it,
-			      const uint8_t *data, size_t len);
+void lichen_rpl_opt_iter_init(struct lichen_rpl_opt_iter *_Nonnull it,
+			      const uint8_t *_Nonnull data, size_t len);
 
 /**
  * @brief Get the next option from the iterator.
@@ -333,8 +343,8 @@ void lichen_rpl_opt_iter_init(struct lichen_rpl_opt_iter *it,
  * @param out Option to populate
  * @return 0 on success, 1 when exhausted, negative error code on parse error
  */
-int lichen_rpl_opt_iter_next(struct lichen_rpl_opt_iter *it,
-			     struct lichen_rpl_raw_opt *out);
+int lichen_rpl_opt_iter_next(struct lichen_rpl_opt_iter *_Nonnull it,
+			     struct lichen_rpl_raw_opt *_Nonnull out);
 
 #ifdef __cplusplus
 }

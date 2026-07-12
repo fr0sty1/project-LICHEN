@@ -242,6 +242,98 @@ COAP_RESOURCE_DEFINE(status, lichen_coap, {
 });
 
 /* --------------------------------------------------------------------------
+ * /status/queues (Observable)
+ * -------------------------------------------------------------------------- */
+
+/*
+ * Get queue statistics. Currently returns zeros as the tx_queue is not yet
+ * integrated into the L2 layer. A future change will populate these from
+ * the actual tx_queue_stats.
+ */
+static void get_queue_stats(struct lichen_gateway_queue_stats *stats)
+{
+	/* Placeholder: return zeros until tx_queue is integrated */
+	memset(stats, 0, sizeof(*stats));
+}
+
+static int queues_get(struct coap_resource *resource,
+		      struct coap_packet *request,
+		      struct sockaddr *addr, socklen_t addr_len)
+{
+	uint8_t cbor_buf[LICHEN_GATEWAY_QUEUES_CBOR_MAX_SIZE];
+	struct lichen_gateway_queue_stats stats;
+	size_t len;
+
+	get_queue_stats(&stats);
+	len = lichen_gateway_encode_queues_cbor(cbor_buf, sizeof(cbor_buf),
+						&stats);
+	if (len == 0) {
+		return coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+	}
+
+	return coap_respond(resource, request, addr, addr_len,
+			    COAP_RESPONSE_CODE_CONTENT, cbor_buf, len);
+}
+
+static void queues_notify(struct coap_resource *resource,
+			  struct coap_observer *observer)
+{
+	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	uint8_t cbor_buf[LICHEN_GATEWAY_QUEUES_CBOR_MAX_SIZE];
+	struct coap_packet notif;
+	struct lichen_gateway_queue_stats stats;
+	size_t cbor_len;
+	int r;
+
+	get_queue_stats(&stats);
+	cbor_len = lichen_gateway_encode_queues_cbor(cbor_buf, sizeof(cbor_buf),
+						     &stats);
+	if (cbor_len == 0) {
+		return;
+	}
+
+	r = coap_packet_init(&notif, buf, sizeof(buf), COAP_VERSION_1,
+			     COAP_TYPE_NON_CON,
+			     observer->tkl, observer->token,
+			     COAP_RESPONSE_CODE_CONTENT, 0);
+	if (r < 0) {
+		return;
+	}
+
+	r = coap_append_option_int(&notif, COAP_OPTION_OBSERVE, resource->age);
+	if (r < 0) {
+		return;
+	}
+
+	r = coap_append_option_int(&notif, COAP_OPTION_CONTENT_FORMAT,
+				   CBOR_CONTENT_FORMAT);
+	if (r < 0) {
+		return;
+	}
+
+	r = coap_packet_append_payload_marker(&notif);
+	if (r < 0) {
+		return;
+	}
+
+	r = coap_packet_append_payload(&notif, cbor_buf, cbor_len);
+	if (r < 0) {
+		return;
+	}
+
+	(void)coap_resource_send(resource, &notif,
+				 &observer->addr, sizeof(observer->addr), NULL);
+}
+
+static const char * const queues_path[] = { "status", "queues", NULL };
+COAP_RESOURCE_DEFINE(queues, lichen_coap, {
+	.get    = queues_get,
+	.notify = queues_notify,
+	.path   = queues_path,
+});
+
+/* --------------------------------------------------------------------------
  * /neighbors
  * -------------------------------------------------------------------------- */
 

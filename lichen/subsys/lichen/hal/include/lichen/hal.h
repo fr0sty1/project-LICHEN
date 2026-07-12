@@ -12,6 +12,16 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/sys/util.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -276,11 +286,11 @@ struct lichen_hal_reset_diagnostics_snapshot {
 
 #define LICHEN_HAL_HAS_LORA_DEVICE DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_lora), okay)
 
-const struct lichen_hal_capabilities *lichen_hal_capabilities_get(void);
+const struct lichen_hal_capabilities *_Nonnull lichen_hal_capabilities_get(void);
 bool lichen_hal_has_capability(enum lichen_hal_capability capability);
-void lichen_hal_identity_get(struct lichen_hal_identity *identity);
+void lichen_hal_identity_get(struct lichen_hal_identity *_Nonnull identity);
 bool lichen_hal_synthetic_device_identity_allowed(void);
-int lichen_hal_synthetic_device_identity_get(uint8_t *id, size_t id_len);
+int lichen_hal_synthetic_device_identity_get(uint8_t *_Nonnull id, size_t id_len);
 
 int lichen_hal_capability_status(enum lichen_hal_capability capability);
 int lichen_hal_lora_status(void);
@@ -296,16 +306,16 @@ int lichen_hal_external_flash_status(void);
 int lichen_hal_location_status(void);
 int lichen_hal_time_status(void);
 
-int lichen_hal_lora_device_get(const struct device **dev);
-int lichen_hal_gnss_device_get(const struct device **dev);
-int lichen_hal_display_device_get(const struct device **dev);
-int lichen_hal_serial_device_get(const struct device **dev);
-int lichen_hal_battery_device_get(const struct device **dev);
-int lichen_hal_pmic_device_get(const struct device **dev);
-int lichen_hal_external_flash_device_get(const struct device **dev);
-int lichen_hal_led_get(struct gpio_dt_spec *spec);
-int lichen_hal_button_get(struct gpio_dt_spec *spec);
-int lichen_hal_power_snapshot_get(struct lichen_hal_power_snapshot *snapshot);
+int lichen_hal_lora_device_get(const struct device *_Nullable *_Nonnull dev);
+int lichen_hal_gnss_device_get(const struct device *_Nullable *_Nonnull dev);
+int lichen_hal_display_device_get(const struct device *_Nullable *_Nonnull dev);
+int lichen_hal_serial_device_get(const struct device *_Nullable *_Nonnull dev);
+int lichen_hal_battery_device_get(const struct device *_Nullable *_Nonnull dev);
+int lichen_hal_pmic_device_get(const struct device *_Nullable *_Nonnull dev);
+int lichen_hal_external_flash_device_get(const struct device *_Nullable *_Nonnull dev);
+int lichen_hal_led_get(struct gpio_dt_spec *_Nonnull spec);
+int lichen_hal_button_get(struct gpio_dt_spec *_Nonnull spec);
+int lichen_hal_power_snapshot_get(struct lichen_hal_power_snapshot *_Nonnull snapshot);
 /*
  * Submit a location sample from any firmware source. The provider keeps one
  * sample per source class and selects the highest-priority fresh usable fix at
@@ -317,20 +327,20 @@ int lichen_hal_power_snapshot_get(struct lichen_hal_power_snapshot *snapshot);
  * LICHEN_HAL_LOCATION_FIX_STALE is a derived snapshot state; submitters should
  * provide NONE, NO_FIX, 2D, 3D, or ERROR.
  */
-int lichen_hal_location_submit(const struct lichen_hal_location_sample *sample);
+int lichen_hal_location_submit(const struct lichen_hal_location_sample *_Nonnull sample);
 int lichen_hal_location_clear_source(
 	enum lichen_hal_location_source_class source_class);
 void lichen_hal_location_clear(void);
 int lichen_hal_location_time_snapshot_get(
-	struct lichen_hal_location_time_snapshot *snapshot);
-int lichen_hal_time_submit(const struct lichen_hal_time_sample *sample);
+	struct lichen_hal_location_time_snapshot *_Nonnull snapshot);
+int lichen_hal_time_submit(const struct lichen_hal_time_sample *_Nonnull sample);
 void lichen_hal_time_clear(void);
-int lichen_hal_time_snapshot_get(struct lichen_hal_time_snapshot *snapshot);
+int lichen_hal_time_snapshot_get(struct lichen_hal_time_snapshot *_Nonnull snapshot);
 int lichen_hal_time_provision_epoch_set(uint32_t provision_epoch,
 					bool authenticated);
 void lichen_hal_time_provision_epoch_clear(void);
 int lichen_hal_reset_diagnostics_snapshot_get(
-	struct lichen_hal_reset_diagnostics_snapshot *snapshot);
+	struct lichen_hal_reset_diagnostics_snapshot *_Nonnull snapshot);
 int lichen_hal_reset_diagnostics_clear(void);
 int lichen_hal_reboot_status(void);
 int lichen_hal_reset_request(enum lichen_hal_reset_request request);
@@ -340,7 +350,7 @@ void lichen_hal_location_test_set_uptime_ms(int64_t uptime_ms);
 void lichen_hal_location_test_use_real_uptime(void);
 int64_t lichen_hal_location_test_now_ms(void);
 void lichen_hal_location_time_test_set_snapshot(
-	const struct lichen_hal_location_time_snapshot *snapshot);
+	const struct lichen_hal_location_time_snapshot *_Nonnull snapshot);
 bool lichen_hal_power_test_percent_valid(uint8_t percent);
 bool lichen_hal_power_test_charger_status_known(int status);
 bool lichen_hal_power_test_charger_status_is_charging(int status);

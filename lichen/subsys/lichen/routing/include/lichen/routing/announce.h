@@ -78,6 +78,122 @@ int lichen_announce_register_app_data_observer_ex(
 
 void lichen_announce_reset(void);
 
+#ifdef CONFIG_LICHEN_ANNOUNCE_SCHEDULER
+
+struct lichen_link_ctx;
+
+/**
+ * @brief Callback to transmit announce data.
+ *
+ * @param data     Serialized announce message (L2 routing payload format)
+ * @param data_len Length of the announce data
+ * @param user_data User-provided context
+ * @return 0 on success, negative errno on failure
+ */
+typedef int (*lichen_announce_tx_fn)(const uint8_t *_Nonnull data,
+				     size_t data_len, void *_Nullable user_data);
+
+/**
+ * @brief Callback when sequence number changes (for persistence).
+ *
+ * Production implementations MUST persist seq_num to non-volatile storage
+ * to avoid peers rejecting announces as stale after reboot.
+ *
+ * @param seq_num The new sequence number
+ * @param user_data User-provided context
+ */
+typedef void (*lichen_announce_seq_change_fn)(uint16_t seq_num,
+					      void *_Nullable user_data);
+
+/**
+ * @brief Announce scheduler configuration.
+ */
+struct lichen_announce_sched_config {
+	/** Link context for identity (EUI-64, keypair). Required. */
+	struct lichen_link_ctx *_Nonnull link_ctx;
+	/** Transmit callback. Required. */
+	lichen_announce_tx_fn _Nonnull tx_fn;
+	/** User data for transmit callback. */
+	void *_Nullable tx_user_data;
+	/** Sequence change callback for persistence. Optional. */
+	lichen_announce_seq_change_fn _Nullable seq_change_fn;
+	/** User data for sequence change callback. */
+	void *_Nullable seq_user_data;
+	/** Optional application data to include in announces (may be NULL). */
+	const uint8_t *_Nullable app_data;
+	/** Length of application data. */
+	size_t app_data_len;
+};
+
+/**
+ * @brief Initialize and start the announce scheduler.
+ *
+ * Begins periodic announce transmission. The first announce is sent after
+ * an initial delay (randomized 1-jitter_ms if CONFIG_LICHEN_ANNOUNCE_INITIAL_DELAY_MS
+ * is 0, otherwise the configured value).
+ *
+ * @param config Scheduler configuration. The caller must ensure link_ctx
+ *               and tx_fn remain valid for the lifetime of the scheduler.
+ * @return 0 on success, -EINVAL if required fields are NULL,
+ *         -EALREADY if scheduler is already running
+ */
+int lichen_announce_sched_start(const struct lichen_announce_sched_config *_Nonnull config);
+
+/**
+ * @brief Stop the announce scheduler.
+ *
+ * Cancels pending work. Safe to call even if not running.
+ */
+void lichen_announce_sched_stop(void);
+
+/**
+ * @brief Check if the scheduler is running.
+ *
+ * @return true if running, false otherwise
+ */
+bool lichen_announce_sched_is_running(void);
+
+/**
+ * @brief Set the current sequence number (for persistence restore).
+ *
+ * Call this before starting the scheduler to restore seq_num from flash.
+ *
+ * @param seq_num Sequence number to restore
+ */
+void lichen_announce_sched_set_seq(uint16_t seq_num);
+
+/**
+ * @brief Get the current sequence number (for persistence save).
+ *
+ * @return Current sequence number
+ */
+uint16_t lichen_announce_sched_get_seq(void);
+
+/**
+ * @brief Trigger an immediate announce transmission.
+ *
+ * Useful after significant events (topology change, link up).
+ * Does not affect the periodic schedule.
+ *
+ * @return 0 on success, -EAGAIN if scheduler not running,
+ *         negative errno from tx_fn on transmit failure
+ */
+int lichen_announce_sched_send_now(void);
+
+/**
+ * @brief Update application data for future announces.
+ *
+ * Changes take effect on the next announce transmission.
+ *
+ * @param app_data New application data (may be NULL to clear)
+ * @param app_data_len Length of new application data
+ * @return 0 on success, -EMSGSIZE if app_data_len exceeds limit
+ */
+int lichen_announce_sched_set_app_data(const uint8_t *_Nullable app_data,
+				       size_t app_data_len);
+
+#endif /* CONFIG_LICHEN_ANNOUNCE_SCHEDULER */
+
 #ifdef __cplusplus
 }
 #endif

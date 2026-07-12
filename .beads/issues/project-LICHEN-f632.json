@@ -2,11 +2,14 @@
   "id": "project-LICHEN-f632",
   "title": "task",
   "description": "Follow-up to project-LICHEN-57un. Remaining headers need nullability annotations:\n\nHAL: hal.h (many functions)\nRPL: rpl.h, rpl_trickle.h, rpl_messages.h, rpl_dodag.h, rpl_routing.h, rpl_addr.h\nCoAP: coap_client.h, coap_oscore.h\nSenML: senml.h\nApp: app_identity.h, app_interface.h, hal_bridge.h\nMesh adapters: meshcore/adapter.h, meshcore/codec.h, meshtastic/adapter.h, meshtastic/codec.h\n\nCore link-layer and crypto headers were annotated in project-LICHEN-57un.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T01:11:43.347594Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T01:11:43.347629Z"
+  "updated_at": "2026-07-12T01:50:51.708629Z",
+  "closed_at": "2026-07-12T01:50:51.708629Z",
+  "close_reason": "Implemented: Added _Nonnull/_Nullable pointer annotations to 15 headers - hal.h, rpl_trickle.h, rpl_messages.h, rpl_dodag.h, rpl_routing.h, rpl_addr.h, coap_client.h, coap_oscore.h, senml.h, app_identity.h, app_interface.h, hal_bridge.h, meshcore/adapter.h, meshcore/codec.h, meshtastic/adapter.h, meshtastic/codec.h. Each header now has the Clang/GCC compatibility macro block and annotated function pointer parameters."
 }

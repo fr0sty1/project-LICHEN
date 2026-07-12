@@ -36,6 +36,7 @@ from ..crypto.identity import Identity, PeerIdentity
 from ..crypto.schnorr48 import sign, verify
 from .frame import AddrMode, FrameError, LichenFrame, MicLength
 from .replay import ReplayProtector
+from .tx_queue import Priority, QueueFullError, TxQueue
 
 if TYPE_CHECKING:
     from ..radio.base import Radio
@@ -131,6 +132,7 @@ class LinkLayer:
         default=None, repr=False
     )
     cad_enabled: bool = field(default=True)
+    tx_queue: TxQueue = field(default_factory=TxQueue)
     # ponytail: random epoch in [128,255] for reboot resilience without flash.
     # Half-space arithmetic treats upper-half counters as "ahead" of lower-half.
     # SECURITY: ESP32 HW RNG is weak before radio init; see link_ctx.c for details.
@@ -208,27 +210,38 @@ class LinkLayer:
         payload: bytes,
         dst_addr: bytes = b"",
         addr_mode: AddrMode = AddrMode.NONE,
+        priority: Priority = Priority.BULK,
+        deadline_ms: int | None = None,
     ) -> bool:
-        """Transmit a signed frame.
+        """Transmit a signed frame via the TX queue.
 
         Why async: Radio transmission may block waiting for channel clear
         (listen-before-talk) or TX completion.
 
+        The frame is queued with the specified priority. Then the queue is
+        drained: packets are transmitted in priority order until the queue
+        is empty or CAD fails. Packets remaining in queue after CAD failure
+        will be transmitted on the next send() call.
+
         If cad_enabled is True, performs CAD before transmitting. On busy
         channel, backs off with exponential delay (0 to 2^attempt - 1 slots,
         capped at 31 slots). After 3 full backoff cycles without clearing,
-        returns False without transmitting.
+        packets remain queued for later retry.
 
         Args:
             payload: The data to send (typically SCHC-compressed packet).
             dst_addr: Destination address (empty for broadcast).
             addr_mode: How to encode the destination.
+            priority: Queue priority (ROUTING, ACK, URGENT, or BULK).
+            deadline_ms: Absolute deadline in ms. If None, uses default
+                         for the priority level.
 
         Returns:
-            True if transmission succeeded, False if CAD failed after max
-            retries or radio transmit failed.
+            True if at least one packet was transmitted from the queue,
+            False if CAD failed or queue was empty after expiry.
 
         Raises:
+            QueueFullError: If queue is full and cannot preempt lower priority.
             FrameError: If the frame cannot be constructed (e.g., too large).
         """
         epoch, seqnum = self._next_seqnum()
@@ -257,22 +270,66 @@ class LinkLayer:
         frame_bytes = frame.to_bytes()
 
         logger.debug(
-            "TX frame: epoch=%d seqnum=%d dst=%s payload=%d bytes",
+            "TX queue: epoch=%d seqnum=%d dst=%s payload=%d bytes priority=%s",
             epoch,
             seqnum,
             dst_addr.hex() if dst_addr else "broadcast",
             len(payload),
+            priority.name,
         )
 
-        # CAD with exponential backoff before transmit
-        if self.cad_enabled and not await self._wait_for_clear_channel():
-            logger.warning(
-                "TX aborted: channel busy after %d backoff cycles",
-                CAD_MAX_CYCLES,
-            )
-            return False
+        # Queue the frame (may raise QueueFullError)
+        self.tx_queue.push(frame_bytes, priority=priority, deadline_ms=deadline_ms)
 
-        return await self.radio.transmit(frame_bytes)
+        # Drain the queue
+        return await self.drain_tx_queue()
+
+    async def drain_tx_queue(self) -> bool:
+        """Transmit packets from the TX queue until empty or channel busy.
+
+        Expires stale packets before attempting transmission. Transmits
+        in priority order (highest priority = lowest numeric value first).
+
+        Returns:
+            True if at least one packet was transmitted, False otherwise.
+        """
+        transmitted_any = False
+
+        while True:
+            # Pop highest-priority packet (also expires stale)
+            frame_bytes = self.tx_queue.pop()
+            if frame_bytes is None:
+                break  # Queue empty
+
+            # CAD with exponential backoff before transmit
+            if self.cad_enabled and not await self._wait_for_clear_channel():
+                logger.warning(
+                    "TX deferred: channel busy after %d backoff cycles, "
+                    "%d packets remain queued",
+                    CAD_MAX_CYCLES,
+                    len(self.tx_queue),
+                )
+                # Re-queue the packet we just popped (it wasn't transmitted)
+                # Use ROUTING priority to ensure it goes back to front
+                # Note: This loses original priority, but preserves the packet
+                try:
+                    self.tx_queue.push(frame_bytes, priority=Priority.ROUTING)
+                except QueueFullError:
+                    logger.error("TX queue full on re-queue after CAD failure")
+                break
+
+            # Transmit
+            if await self.radio.transmit(frame_bytes):
+                transmitted_any = True
+                logger.debug(
+                    "TX success, %d packets remain queued",
+                    len(self.tx_queue),
+                )
+            else:
+                logger.warning("TX radio transmit failed")
+                break  # Radio failure - stop draining
+
+        return transmitted_any
 
     async def _wait_for_clear_channel(self) -> bool:
         """Perform CAD with exponential backoff until channel is clear.

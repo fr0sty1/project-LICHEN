@@ -11,6 +11,7 @@ zephyr_library_sources(
   lichen_link_tx.c
   link_ctx.c
   replay.c
+  tx_queue.c
 )
 
 zephyr_library_sources_ifdef(CONFIG_LICHEN_LINK_SCHNORR

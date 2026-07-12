@@ -2,13 +2,16 @@
   "id": "project-LICHEN-t7sl.1",
   "title": "[impl] BLE GATT queue time-based expiry",
   "description": "Add deadline-based expiry to the BLE GATT FromRadio queue per spec/appendix-bufferbloat.md §2.\n\nCurrent state:\n- Queue entries are `Vec\u003cu8, MAX_MESSAGE_SIZE\u003e` with no deadline field\n- No timestamp mechanism available\n\nRequired:\n1. Add a deadline_ms field to queued entries (or wrap in a struct)\n2. Record entry time when queueing (requires timestamp source)\n3. On dequeue/peek, check if entry is expired; drop silently if so\n4. Default deadline: 60s per policy (application data)\n\nConsiderations:\n- Need portable timestamp source (embassy-time::Instant, or abstract trait)\n- BLE GATT service is currently platform-agnostic; time source may need to be injected",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T00:38:15.239645Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T00:38:15.242047Z",
+  "updated_at": "2026-07-12T01:41:23.31675Z",
+  "closed_at": "2026-07-12T01:41:23.31675Z",
+  "close_reason": "Implemented: Added QueueEntry struct with deadline_ms field. Modified queue_from_radio to accept deadline parameter, peek_from_radio and pop_from_radio to accept now_ms and silently drain expired entries. Added DEFAULT_DEADLINE_MS constant (60s per spec). All 19 gatt tests pass.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-t7sl.1",

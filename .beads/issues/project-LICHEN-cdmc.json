@@ -2,11 +2,14 @@
   "id": "project-LICHEN-cdmc",
   "title": "Add standalone RPL message parse/generate vectors",
   "description": "RPL DIO/DAO/DAO-ACK are currently only tested via SCHC compression vectors (schc_compression.json rules 3-4). Need standalone JSON test vectors in test/vectors/rpl_messages.json for:\n- DIO base message encode/decode (24 bytes)\n- DAO base message encode/decode (20 bytes with DODAGID)\n- DAO-ACK encode/decode\n- RPL options: DODAG Config, RPL Target, Transit Info\n- Option iteration\n\nThe Rust lichen-rpl crate and Python prototype have unit tests but no shared cross-implementation vectors. This blocks parity verification.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T00:33:32.009462Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T00:33:32.009503Z"
+  "updated_at": "2026-07-12T01:47:09.527469Z",
+  "closed_at": "2026-07-12T01:47:09.527469Z",
+  "close_reason": "Implemented: Added test/vectors/rpl_messages.json with 17 vectors covering DIO/DAO/DAO-ACK/DIS base messages, DODAG Config/RPL Target/Transit Info options, and option iteration. Updated schema.json with rpl_messages_vector definition. Added test_rpl_messages_vector to python/tests/test_vectors.py for Python validation. All 128 vector tests pass."
 }

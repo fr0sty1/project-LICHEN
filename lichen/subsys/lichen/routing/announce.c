@@ -419,3 +419,354 @@ void lichen_announce_reset(void)
 	memset(announce_observers, 0, sizeof(announce_observers));
 	k_mutex_unlock(&observer_mutex);
 }
+
+/* =========================================================================
+ * Announce Scheduler (Periodic TX) - Spec 9.4
+ * ========================================================================= */
+
+#ifdef CONFIG_LICHEN_ANNOUNCE_SCHEDULER
+
+#include <zephyr/logging/log.h>
+#include <zephyr/random/random.h>
+#include <lichen/link_ctx.h>
+
+/* ENOKEY may not be defined on all platforms */
+#ifndef ENOKEY
+#define ENOKEY ENOENT
+#endif
+
+LOG_MODULE_REGISTER(announce_sched, LOG_LEVEL_INF);
+
+/* L2 routing/control dispatch byte (spec 9.2) */
+#define L2_ROUTING_DISPATCH 0x15U
+
+/* Maximum app data that fits in an announce (see ANNOUNCE_APP_DATA_MAX_LEN) */
+#define SCHED_APP_DATA_MAX_LEN (ANNOUNCE_SIGNED_MAX_LEN - ANNOUNCE_SIGNED_PREFIX_LEN)
+
+/* Announce frame buffer: dispatch + type + flags + hop_count + seq_num +
+ * iid + pubkey + signature + app_data */
+#define ANNOUNCE_FRAME_MAX_LEN (1U + LICHEN_ANNOUNCE_MIN_LEN + SCHED_APP_DATA_MAX_LEN)
+
+struct announce_scheduler {
+	bool running;
+	uint16_t seq_num;
+	struct k_work_delayable work;
+	struct k_mutex mutex;
+
+	/* Configuration (copied at start) */
+	struct lichen_link_ctx *link_ctx;
+	lichen_announce_tx_fn tx_fn;
+	void *tx_user_data;
+	lichen_announce_seq_change_fn seq_change_fn;
+	void *seq_user_data;
+	uint8_t app_data[SCHED_APP_DATA_MAX_LEN];
+	size_t app_data_len;
+};
+
+static struct announce_scheduler sched;
+
+static void sched_work_handler(struct k_work *work);
+
+static uint32_t random_range(uint32_t min_ms, uint32_t max_ms)
+{
+	uint32_t range;
+	uint32_t rand_val;
+
+	if (max_ms <= min_ms) {
+		return min_ms;
+	}
+	range = max_ms - min_ms + 1;
+	sys_csrand_get(&rand_val, sizeof(rand_val));
+	return min_ms + (rand_val % range);
+}
+
+static uint16_t increment_seq_locked(void)
+{
+	sched.seq_num = (sched.seq_num + 1U) & 0xFFFFU;
+
+	if (sched.seq_change_fn != NULL) {
+		sched.seq_change_fn(sched.seq_num, sched.seq_user_data);
+	}
+
+	return sched.seq_num;
+}
+
+static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
+{
+	uint8_t signed_data[ANNOUNCE_SIGNED_MAX_LEN];
+	size_t signed_len;
+	uint8_t signature[LICHEN_ANNOUNCE_SIGNATURE_LEN];
+	size_t pos = 0;
+	uint16_t seq;
+	int ret;
+
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+
+	if (sched.link_ctx == NULL || !sched.link_ctx->has_key) {
+		k_mutex_unlock(&sched.mutex);
+		return -ENOKEY;
+	}
+
+	/* Increment and get sequence number */
+	seq = increment_seq_locked();
+
+	/* Build signed data: iid || pubkey || seq_num || app_data */
+	/* SECURITY: IID is derived from pubkey hash, but for signing we use
+	 * the EUI-64 directly since IID = EUI-64 with bit 6 flipped. */
+	uint8_t iid[LICHEN_ANNOUNCE_IID_LEN];
+
+	memcpy(iid, sched.link_ctx->eui64, LICHEN_ANNOUNCE_IID_LEN);
+	iid[0] ^= 0x02U; /* EUI-64 to IID conversion */
+
+	signed_len = ANNOUNCE_SIGNED_PREFIX_LEN + sched.app_data_len;
+	if (signed_len > sizeof(signed_data)) {
+		k_mutex_unlock(&sched.mutex);
+		return -EMSGSIZE;
+	}
+
+	memcpy(&signed_data[0], iid, LICHEN_ANNOUNCE_IID_LEN);
+	memcpy(&signed_data[LICHEN_ANNOUNCE_IID_LEN], sched.link_ctx->ed25519_pk,
+	       LICHEN_ANNOUNCE_PUBKEY_LEN);
+	signed_data[LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN] =
+		(uint8_t)(seq >> 8);
+	signed_data[LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN + 1U] =
+		(uint8_t)seq;
+	if (sched.app_data_len > 0) {
+		memcpy(&signed_data[ANNOUNCE_SIGNED_PREFIX_LEN],
+		       sched.app_data, sched.app_data_len);
+	}
+
+	/* Sign the announce */
+	ret = schnorr48_sign(sched.link_ctx->ed25519_sk,
+			     sched.link_ctx->ed25519_pk,
+			     signed_data, signed_len, signature);
+
+	k_mutex_unlock(&sched.mutex);
+
+	if (ret < 0) {
+		return ret;
+	}
+
+	/* Build frame: dispatch || type || flags || hop_count || seq || iid ||
+	 * pubkey || signature || app_data */
+	size_t frame_len = 1U + LICHEN_ANNOUNCE_MIN_LEN + sched.app_data_len;
+
+	if (buf_len < frame_len) {
+		return -ENOMEM;
+	}
+
+	buf[pos++] = L2_ROUTING_DISPATCH;
+	buf[pos++] = LICHEN_ANNOUNCE_TYPE;
+	buf[pos++] = 0U; /* flags: reserved */
+	buf[pos++] = 0U; /* hop_count: 0 since we're the originator */
+	buf[pos++] = (uint8_t)(seq >> 8);
+	buf[pos++] = (uint8_t)seq;
+	memcpy(&buf[pos], iid, LICHEN_ANNOUNCE_IID_LEN);
+	pos += LICHEN_ANNOUNCE_IID_LEN;
+	memcpy(&buf[pos], sched.link_ctx->ed25519_pk, LICHEN_ANNOUNCE_PUBKEY_LEN);
+	pos += LICHEN_ANNOUNCE_PUBKEY_LEN;
+	memcpy(&buf[pos], signature, LICHEN_ANNOUNCE_SIGNATURE_LEN);
+	pos += LICHEN_ANNOUNCE_SIGNATURE_LEN;
+	if (sched.app_data_len > 0) {
+		k_mutex_lock(&sched.mutex, K_FOREVER);
+		memcpy(&buf[pos], sched.app_data, sched.app_data_len);
+		k_mutex_unlock(&sched.mutex);
+		pos += sched.app_data_len;
+	}
+
+	*out_len = pos;
+	return 0;
+}
+
+static int send_announce(void)
+{
+	uint8_t frame[ANNOUNCE_FRAME_MAX_LEN];
+	size_t frame_len;
+	int ret;
+
+	ret = build_announce_frame(frame, sizeof(frame), &frame_len);
+	if (ret < 0) {
+		LOG_WRN("failed to build announce: %d", ret);
+		return ret;
+	}
+
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	lichen_announce_tx_fn tx_fn = sched.tx_fn;
+	void *tx_user_data = sched.tx_user_data;
+	uint16_t seq = sched.seq_num;
+
+	k_mutex_unlock(&sched.mutex);
+
+	if (tx_fn == NULL) {
+		return -EINVAL;
+	}
+
+	ret = tx_fn(frame, frame_len, tx_user_data);
+	if (ret == 0) {
+		LOG_INF("sent announce seq=%u", seq);
+	} else {
+		LOG_WRN("failed to send announce seq=%u: %d", seq, ret);
+	}
+
+	return ret;
+}
+
+static void schedule_next(void)
+{
+	uint32_t interval_ms = CONFIG_LICHEN_ANNOUNCE_INTERVAL_MS;
+	uint32_t jitter_ms = random_range(0, CONFIG_LICHEN_ANNOUNCE_JITTER_MS);
+	uint32_t delay_ms = interval_ms + jitter_ms;
+
+	k_work_schedule(&sched.work, K_MSEC(delay_ms));
+	LOG_DBG("next announce in %u ms (interval=%u, jitter=%u)",
+		delay_ms, interval_ms, jitter_ms);
+}
+
+static void sched_work_handler(struct k_work *work)
+{
+	ARG_UNUSED(work);
+
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	bool running = sched.running;
+
+	k_mutex_unlock(&sched.mutex);
+
+	if (!running) {
+		return;
+	}
+
+	(void)send_announce();
+	schedule_next();
+}
+
+int lichen_announce_sched_start(
+	const struct lichen_announce_sched_config *config)
+{
+	if (config == NULL || config->link_ctx == NULL || config->tx_fn == NULL) {
+		return -EINVAL;
+	}
+	if (config->app_data_len > SCHED_APP_DATA_MAX_LEN) {
+		return -EMSGSIZE;
+	}
+
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	if (sched.running) {
+		k_mutex_unlock(&sched.mutex);
+		return -EALREADY;
+	}
+
+	sched.link_ctx = config->link_ctx;
+	sched.tx_fn = config->tx_fn;
+	sched.tx_user_data = config->tx_user_data;
+	sched.seq_change_fn = config->seq_change_fn;
+	sched.seq_user_data = config->seq_user_data;
+	if (config->app_data != NULL && config->app_data_len > 0) {
+		memcpy(sched.app_data, config->app_data, config->app_data_len);
+		sched.app_data_len = config->app_data_len;
+	} else {
+		sched.app_data_len = 0;
+	}
+	sched.running = true;
+	k_mutex_unlock(&sched.mutex);
+
+	/* Schedule first announce with initial delay.
+	 * Random delay (1-jitter_ms) prevents thundering herd on mass power-on. */
+	uint32_t initial_delay_ms = CONFIG_LICHEN_ANNOUNCE_INITIAL_DELAY_MS;
+
+	if (initial_delay_ms == 0) {
+		uint32_t jitter_max = CONFIG_LICHEN_ANNOUNCE_JITTER_MS;
+
+		initial_delay_ms = random_range(1000, (jitter_max > 1000) ? jitter_max : 1000);
+	}
+
+	k_work_schedule(&sched.work, K_MSEC(initial_delay_ms));
+	LOG_INF("announce scheduler started, first announce in %u ms", initial_delay_ms);
+
+	return 0;
+}
+
+void lichen_announce_sched_stop(void)
+{
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	if (!sched.running) {
+		k_mutex_unlock(&sched.mutex);
+		return;
+	}
+	sched.running = false;
+	k_mutex_unlock(&sched.mutex);
+
+	(void)k_work_cancel_delayable(&sched.work);
+	LOG_INF("announce scheduler stopped");
+}
+
+bool lichen_announce_sched_is_running(void)
+{
+	bool running;
+
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	running = sched.running;
+	k_mutex_unlock(&sched.mutex);
+
+	return running;
+}
+
+void lichen_announce_sched_set_seq(uint16_t seq_num)
+{
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	sched.seq_num = seq_num;
+	k_mutex_unlock(&sched.mutex);
+	LOG_INF("sequence number set to %u", seq_num);
+}
+
+uint16_t lichen_announce_sched_get_seq(void)
+{
+	uint16_t seq;
+
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	seq = sched.seq_num;
+	k_mutex_unlock(&sched.mutex);
+
+	return seq;
+}
+
+int lichen_announce_sched_send_now(void)
+{
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	if (!sched.running) {
+		k_mutex_unlock(&sched.mutex);
+		return -EAGAIN;
+	}
+	k_mutex_unlock(&sched.mutex);
+
+	return send_announce();
+}
+
+int lichen_announce_sched_set_app_data(const uint8_t *app_data, size_t app_data_len)
+{
+	if (app_data_len > SCHED_APP_DATA_MAX_LEN) {
+		return -EMSGSIZE;
+	}
+
+	k_mutex_lock(&sched.mutex, K_FOREVER);
+	if (app_data != NULL && app_data_len > 0) {
+		memcpy(sched.app_data, app_data, app_data_len);
+		sched.app_data_len = app_data_len;
+	} else {
+		sched.app_data_len = 0;
+	}
+	k_mutex_unlock(&sched.mutex);
+
+	return 0;
+}
+
+/* Static initialization of scheduler state */
+static int announce_sched_init(void)
+{
+	k_mutex_init(&sched.mutex);
+	k_work_init_delayable(&sched.work, sched_work_handler);
+	return 0;
+}
+
+SYS_INIT(announce_sched_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+
+#endif /* CONFIG_LICHEN_ANNOUNCE_SCHEDULER */

@@ -67,6 +67,16 @@
 #define EIO 5
 #endif
 
+/** No buffer space available (queue full) */
+#ifndef ENOBUFS
+#define ENOBUFS 105
+#endif
+
+/** Resource temporarily unavailable (queue empty) */
+#ifndef EAGAIN
+#define EAGAIN 11
+#endif
+
 #endif /* __ZEPHYR__ */
 
 /*

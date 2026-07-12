@@ -17,6 +17,16 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -64,7 +74,7 @@ struct lichen_trickle {
  * @param imax_doublings Number of times imin is doubled to reach max
  * @param k              Redundancy constant
  */
-void lichen_trickle_init(struct lichen_trickle *t,
+void lichen_trickle_init(struct lichen_trickle *_Nonnull t,
 			 uint32_t imin_ms,
 			 uint32_t imax_doublings,
 			 uint32_t k);
@@ -76,7 +86,7 @@ void lichen_trickle_init(struct lichen_trickle *t,
  * @param now         Current time in ms
  * @param rand_offset Random value in [0, imin/2) for transmit scheduling
  */
-void lichen_trickle_start(struct lichen_trickle *t,
+void lichen_trickle_start(struct lichen_trickle *_Nonnull t,
 			  uint32_t now,
 			  uint32_t rand_offset);
 
@@ -86,7 +96,7 @@ void lichen_trickle_start(struct lichen_trickle *t,
  * Uses saturating addition to handle time wraparound after ~49.7 days.
  * When saturated, returns UINT32_MAX to avoid scheduling events in the past.
  */
-static inline uint32_t lichen_trickle_interval_end(const struct lichen_trickle *t)
+static inline uint32_t lichen_trickle_interval_end(const struct lichen_trickle *_Nonnull t)
 {
 	uint32_t end = t->interval_start + t->interval;
 	/* Saturate on overflow: if result < start, we wrapped */
@@ -102,7 +112,7 @@ static inline uint32_t lichen_trickle_interval_end(const struct lichen_trickle *
  * Call this when receiving a DIO with the same DODAG version.
  * Uses saturating increment to prevent counter wrap causing spurious transmits.
  */
-static inline void lichen_trickle_heard_consistent(struct lichen_trickle *t)
+static inline void lichen_trickle_heard_consistent(struct lichen_trickle *_Nonnull t)
 {
 	if (t->counter < UINT32_MAX) {
 		t->counter++;
@@ -112,7 +122,7 @@ static inline void lichen_trickle_heard_consistent(struct lichen_trickle *t)
 /**
  * @brief Check if a DIO should be sent at transmit time (c < k, RFC 6206 step 4).
  */
-static inline bool lichen_trickle_should_transmit(const struct lichen_trickle *t)
+static inline bool lichen_trickle_should_transmit(const struct lichen_trickle *_Nonnull t)
 {
 	return t->counter < t->k;
 }
@@ -123,7 +133,7 @@ static inline bool lichen_trickle_should_transmit(const struct lichen_trickle *t
  * @pre t must be non-NULL and initialized via lichen_trickle_init()
  * @return true if a DIO should be sent (counter < k)
  */
-bool lichen_trickle_fire_transmit(struct lichen_trickle *t);
+bool lichen_trickle_fire_transmit(struct lichen_trickle *_Nonnull t);
 
 /**
  * @brief End the current interval: double (capped) and start the next (step 5).
@@ -133,7 +143,7 @@ bool lichen_trickle_fire_transmit(struct lichen_trickle *t);
  * @param now         Current time in ms
  * @param rand_offset Random value in [0, new_interval/2) for transmit scheduling
  */
-void lichen_trickle_expire(struct lichen_trickle *t,
+void lichen_trickle_expire(struct lichen_trickle *_Nonnull t,
 			   uint32_t now,
 			   uint32_t rand_offset);
 
@@ -147,7 +157,7 @@ void lichen_trickle_expire(struct lichen_trickle *t,
  * @param now         Current time in ms
  * @param rand_offset Random value in [0, imin/2) for transmit scheduling
  */
-void lichen_trickle_reset(struct lichen_trickle *t,
+void lichen_trickle_reset(struct lichen_trickle *_Nonnull t,
 			  uint32_t now,
 			  uint32_t rand_offset);
 
@@ -158,8 +168,8 @@ void lichen_trickle_reset(struct lichen_trickle *t,
  * @param t   Timer
  * @param out Event to populate
  */
-void lichen_trickle_next_event(const struct lichen_trickle *t,
-			       struct lichen_trickle_event *out);
+void lichen_trickle_next_event(const struct lichen_trickle *_Nonnull t,
+			       struct lichen_trickle_event *_Nonnull out);
 
 #ifdef __cplusplus
 }

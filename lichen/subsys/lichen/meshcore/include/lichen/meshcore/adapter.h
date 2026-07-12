@@ -8,29 +8,39 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #include <lichen/meshcore/codec.h>
 
 struct lichen_meshcore_compat_settings;
 
-typedef int (*lichen_meshcore_adapter_enqueue_fn)(const uint8_t *frame,
+typedef int (*lichen_meshcore_adapter_enqueue_fn)(const uint8_t *_Nonnull frame,
 						  size_t len,
-						  void *user_data);
-typedef uint32_t (*lichen_meshcore_adapter_tx_free_fn)(void *user_data);
+						  void *_Nullable user_data);
+typedef uint32_t (*lichen_meshcore_adapter_tx_free_fn)(void *_Nullable user_data);
 typedef int (*lichen_meshcore_adapter_submit_text_fn)(
-	uint8_t channel, uint8_t text_type, const uint8_t *to_iid,
-	const uint8_t *payload, size_t payload_len, void *user_data);
+	uint8_t channel, uint8_t text_type, const uint8_t *_Nullable to_iid,
+	const uint8_t *_Nonnull payload, size_t payload_len, void *_Nullable user_data);
 typedef int (*lichen_meshcore_adapter_apply_pin_fn)(uint32_t pin,
-						    void *user_data);
+						    void *_Nullable user_data);
 typedef int (*lichen_meshcore_adapter_persist_settings_fn)(
-	const struct lichen_meshcore_compat_settings *settings,
-	void *user_data);
+	const struct lichen_meshcore_compat_settings *_Nonnull settings,
+	void *_Nullable user_data);
 /*
  * Resolve a MeshCore 6-byte direct-send public-key prefix to one LICHEN peer
  * IID. Return 0 only for an exact single match. Return a negative errno for
  * no match, collision, unavailable peer table, or malformed arguments.
  */
 typedef int (*lichen_meshcore_adapter_resolve_peer_prefix_fn)(
-	const uint8_t prefix[6], uint8_t to_iid[8], void *user_data);
+	const uint8_t prefix[_Nonnull 6], uint8_t to_iid[_Nonnull 8], void *_Nullable user_data);
 
 #define LICHEN_MESHCORE_ADVERT_NAME_MAX 32U
 #define LICHEN_MESHCORE_CHANNEL_BODY_LEN 49U
@@ -133,25 +143,25 @@ struct lichen_meshcore_adapter {
 };
 
 void lichen_meshcore_adapter_init(
-	struct lichen_meshcore_adapter *adapter,
-	const struct lichen_meshcore_adapter_ops *ops);
-void lichen_meshcore_adapter_reset(struct lichen_meshcore_adapter *adapter);
+	struct lichen_meshcore_adapter *_Nonnull adapter,
+	const struct lichen_meshcore_adapter_ops *_Nonnull ops);
+void lichen_meshcore_adapter_reset(struct lichen_meshcore_adapter *_Nonnull adapter);
 int lichen_meshcore_adapter_process_raw(
-	struct lichen_meshcore_adapter *adapter,
-	const uint8_t *frame, size_t len);
+	struct lichen_meshcore_adapter *_Nonnull adapter,
+	const uint8_t *_Nonnull frame, size_t len);
 int lichen_meshcore_adapter_feed_stream(
-	struct lichen_meshcore_adapter *adapter,
-	const uint8_t *data, size_t len);
+	struct lichen_meshcore_adapter *_Nonnull adapter,
+	const uint8_t *_Nonnull data, size_t len);
 int lichen_meshcore_adapter_emit_text(
-	struct lichen_meshcore_adapter *adapter,
-	const struct lichen_meshcore_incoming_text *event);
+	struct lichen_meshcore_adapter *_Nonnull adapter,
+	const struct lichen_meshcore_incoming_text *_Nonnull event);
 int lichen_meshcore_adapter_emit_status(
-	struct lichen_meshcore_adapter *adapter,
-	const struct lichen_meshcore_incoming_status *event);
-const struct lichen_meshcore_adapter_stats *
+	struct lichen_meshcore_adapter *_Nonnull adapter,
+	const struct lichen_meshcore_incoming_status *_Nonnull event);
+const struct lichen_meshcore_adapter_stats *_Nonnull
 lichen_meshcore_adapter_get_stats(
-	const struct lichen_meshcore_adapter *adapter);
+	const struct lichen_meshcore_adapter *_Nonnull adapter);
 void lichen_meshcore_compat_settings_reset(
-	struct lichen_meshcore_compat_settings *settings);
+	struct lichen_meshcore_compat_settings *_Nonnull settings);
 
 #endif /* LICHEN_MESHCORE_ADAPTER_H_ */

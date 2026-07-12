@@ -672,3 +672,230 @@ class TestDtnBuffer:
 
         # Should have evicted oldest to stay under limit
         assert router._dtn_buffer_size() <= router.dtn_buffer_max_bytes
+
+
+class TestForwardingBuffer:
+    """Tests for per-source forwarding buffer with backpressure (spec appendix-bufferbloat.md)."""
+
+    def test_buffer_accepts_packet(self, router: Router):
+        """try_buffer accepts packet within limits."""
+        from lichen.routing.router import ForwardingResult
+
+        source_iid = b"\x01" * 8
+        packet = make_packet("fd00::100")
+        deadline_ms = 10000
+
+        result = router.forwarding_buffer.try_buffer(
+            packet, source_iid, now_ms=0, deadline_ms=deadline_ms
+        )
+
+        assert result == ForwardingResult.ACCEPTED
+        assert router.forwarding_buffer.count_for_source(source_iid) == 1
+
+    def test_buffer_backpressure_at_per_source_limit(self, router: Router):
+        """try_buffer returns BACKPRESSURE when source hits per-source limit."""
+        from lichen.routing.router import ForwardingResult
+
+        source_iid = b"\x01" * 8
+
+        # Fill to limit (default MAX_PACKETS_PER_SOURCE=2)
+        for i in range(2):
+            result = router.forwarding_buffer.try_buffer(
+                make_packet("fd00::100"),
+                source_iid,
+                now_ms=i,
+                deadline_ms=10000,
+            )
+            assert result == ForwardingResult.ACCEPTED
+
+        # Third packet should trigger backpressure
+        result = router.forwarding_buffer.try_buffer(
+            make_packet("fd00::100"),
+            source_iid,
+            now_ms=100,
+            deadline_ms=10000,
+        )
+
+        assert result == ForwardingResult.BACKPRESSURE
+        assert router.forwarding_buffer.count_for_source(source_iid) == 2
+
+    def test_buffer_evicts_oldest_source_when_full(self, router: Router):
+        """try_buffer evicts oldest source when max sources reached."""
+        from lichen.routing.router import ForwardingResult
+
+        # Use small limits for testing
+        router.forwarding_buffer.max_sources = 2
+        router.forwarding_buffer.max_per_source = 1
+
+        source1 = b"\x01" * 8
+        source2 = b"\x02" * 8
+        source3 = b"\x03" * 8
+
+        router.forwarding_buffer.try_buffer(
+            make_packet("fd00::1"), source1, now_ms=0, deadline_ms=10000
+        )
+        router.forwarding_buffer.try_buffer(
+            make_packet("fd00::2"), source2, now_ms=1, deadline_ms=10000
+        )
+
+        # Third source should evict source1 (oldest)
+        result = router.forwarding_buffer.try_buffer(
+            make_packet("fd00::3"), source3, now_ms=2, deadline_ms=10000
+        )
+
+        assert result == ForwardingResult.EVICTED
+        assert router.forwarding_buffer.source_count() == 2
+        assert router.forwarding_buffer.count_for_source(source1) == 0
+        assert router.forwarding_buffer.count_for_source(source2) == 1
+        assert router.forwarding_buffer.count_for_source(source3) == 1
+
+    def test_dequeue_returns_oldest_packet(self, router: Router):
+        """dequeue returns packets in FIFO order."""
+        source_iid = b"\x01" * 8
+        p1 = make_packet("fd00::1")
+        p2 = make_packet("fd00::2")
+
+        router.forwarding_buffer.try_buffer(p1, source_iid, now_ms=0, deadline_ms=10000)
+        router.forwarding_buffer.try_buffer(p2, source_iid, now_ms=1, deadline_ms=10000)
+
+        entry1 = router.forwarding_buffer.dequeue(source_iid)
+        entry2 = router.forwarding_buffer.dequeue(source_iid)
+        entry3 = router.forwarding_buffer.dequeue(source_iid)
+
+        assert entry1 is not None
+        assert entry1.packet == p1
+        assert entry2 is not None
+        assert entry2.packet == p2
+        assert entry3 is None
+
+    def test_dequeue_cleans_up_empty_source(self, router: Router):
+        """dequeue removes source from tracking when empty."""
+        source_iid = b"\x01" * 8
+
+        router.forwarding_buffer.try_buffer(
+            make_packet("fd00::1"), source_iid, now_ms=0, deadline_ms=10000
+        )
+        assert router.forwarding_buffer.source_count() == 1
+
+        router.forwarding_buffer.dequeue(source_iid)
+        assert router.forwarding_buffer.source_count() == 0
+
+    def test_expire_old_removes_past_deadline(self, router: Router):
+        """expire_old drops packets past their deadline."""
+        source_iid = b"\x01" * 8
+
+        # One packet expires at 100ms, one at 200ms
+        router.forwarding_buffer.try_buffer(
+            make_packet("fd00::1"), source_iid, now_ms=0, deadline_ms=100
+        )
+        router.forwarding_buffer.try_buffer(
+            make_packet("fd00::2"), source_iid, now_ms=1, deadline_ms=200
+        )
+
+        # At t=150, first packet is expired
+        expired = router.forwarding_buffer.expire_old(now_ms=150)
+
+        assert expired == 1
+        assert router.forwarding_buffer.count_for_source(source_iid) == 1
+
+    def test_expire_old_cleans_up_empty_sources(self, router: Router):
+        """expire_old removes source when all its packets expire."""
+        source_iid = b"\x01" * 8
+
+        router.forwarding_buffer.try_buffer(
+            make_packet("fd00::1"), source_iid, now_ms=0, deadline_ms=100
+        )
+
+        router.forwarding_buffer.expire_old(now_ms=200)
+
+        assert router.forwarding_buffer.source_count() == 0
+
+    def test_peek_does_not_remove(self, router: Router):
+        """peek returns packet without removing it."""
+        source_iid = b"\x01" * 8
+        packet = make_packet("fd00::1")
+
+        router.forwarding_buffer.try_buffer(
+            packet, source_iid, now_ms=0, deadline_ms=10000
+        )
+
+        entry = router.forwarding_buffer.peek(source_iid)
+        assert entry is not None
+        assert entry.packet == packet
+        assert router.forwarding_buffer.count_for_source(source_iid) == 1
+
+    def test_total_count(self, router: Router):
+        """total_count returns sum across all sources."""
+        source1 = b"\x01" * 8
+        source2 = b"\x02" * 8
+
+        router.forwarding_buffer.try_buffer(
+            make_packet("fd00::1"), source1, now_ms=0, deadline_ms=10000
+        )
+        router.forwarding_buffer.try_buffer(
+            make_packet("fd00::2"), source1, now_ms=1, deadline_ms=10000
+        )
+        router.forwarding_buffer.try_buffer(
+            make_packet("fd00::3"), source2, now_ms=2, deadline_ms=10000
+        )
+
+        assert router.forwarding_buffer.total_count() == 3
+
+    def test_get_stats(self, router: Router):
+        """get_stats returns diagnostic information."""
+        source_iid = b"\x01" * 8
+
+        # Add packets until backpressure
+        for i in range(3):
+            router.forwarding_buffer.try_buffer(
+                make_packet("fd00::1"), source_iid, now_ms=i, deadline_ms=10000
+            )
+
+        stats = router.forwarding_buffer.get_stats()
+
+        assert stats["total_packets"] == 2
+        assert stats["sources"] == 1
+        assert stats["accepted"] == 2
+        assert stats["backpressure"] == 1
+
+    def test_lru_eviction_order(self, router: Router):
+        """Most recently used source survives eviction."""
+        from lichen.routing.router import ForwardingResult
+
+        router.forwarding_buffer.max_sources = 2
+        router.forwarding_buffer.max_per_source = 2
+
+        source1 = b"\x01" * 8
+        source2 = b"\x02" * 8
+        source3 = b"\x03" * 8
+
+        # Add to source1, then source2
+        router.forwarding_buffer.try_buffer(
+            make_packet("fd00::1"), source1, now_ms=0, deadline_ms=10000
+        )
+        router.forwarding_buffer.try_buffer(
+            make_packet("fd00::2"), source2, now_ms=1, deadline_ms=10000
+        )
+        # Touch source1 again (moves to end of LRU)
+        router.forwarding_buffer.try_buffer(
+            make_packet("fd00::3"), source1, now_ms=2, deadline_ms=10000
+        )
+
+        # Add source3 - should evict source2 (least recently used)
+        result = router.forwarding_buffer.try_buffer(
+            make_packet("fd00::4"), source3, now_ms=3, deadline_ms=10000
+        )
+
+        assert result == ForwardingResult.EVICTED
+        assert router.forwarding_buffer.count_for_source(source1) == 2  # survived
+        assert router.forwarding_buffer.count_for_source(source2) == 0  # evicted
+        assert router.forwarding_buffer.count_for_source(source3) == 1  # new
+
+    def test_default_limits_match_spec(self, router: Router):
+        """Default limits match spec appendix-bufferbloat.md."""
+        from lichen.routing.router import MAX_FORWARDING_SOURCES, MAX_PACKETS_PER_SOURCE
+
+        assert router.forwarding_buffer.max_sources == MAX_FORWARDING_SOURCES
+        assert router.forwarding_buffer.max_per_source == MAX_PACKETS_PER_SOURCE
+        assert MAX_FORWARDING_SOURCES == 8
+        assert MAX_PACKETS_PER_SOURCE == 2

@@ -25,6 +25,16 @@
 #include <lichen/oscore.h>
 #endif
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -69,10 +79,10 @@ enum lichen_coap_result {
  * @param[in] payload     Response payload (may be NULL)
  * @param[in] payload_len Payload length
  */
-typedef void (*lichen_coap_response_cb)(void *user_data,
+typedef void (*lichen_coap_response_cb)(void *_Nullable user_data,
 					int status,
 					uint8_t code,
-					const uint8_t *payload,
+					const uint8_t *_Nullable payload,
 					size_t payload_len);
 
 /**
@@ -123,7 +133,7 @@ int lichen_coap_client_init(void);
  *                lichen_coap_request.
  * @return 0 on success (request sent), negative error code on failure
  */
-int lichen_coap_request(const struct lichen_coap_request *req);
+int lichen_coap_request(const struct lichen_coap_request *_Nonnull req);
 
 /**
  * @brief Send a simple GET request.
@@ -136,10 +146,10 @@ int lichen_coap_request(const struct lichen_coap_request *req);
  * @param[in] user_data User context
  * @return 0 on success, negative error code on failure
  */
-int lichen_coap_get(const struct sockaddr_in6 *addr,
-		    const char * const *path,
-		    lichen_coap_response_cb callback,
-		    void *user_data);
+int lichen_coap_get(const struct sockaddr_in6 *_Nonnull addr,
+		    const char * const *_Nonnull path,
+		    lichen_coap_response_cb _Nonnull callback,
+		    void *_Nullable user_data);
 
 /**
  * @brief Send a POST request with CBOR payload.
@@ -152,11 +162,11 @@ int lichen_coap_get(const struct sockaddr_in6 *addr,
  * @param[in] user_data   User context
  * @return 0 on success, negative error code on failure
  */
-int lichen_coap_post_cbor(const struct sockaddr_in6 *addr,
-			  const char * const *path,
-			  const uint8_t *payload, size_t payload_len,
-			  lichen_coap_response_cb callback,
-			  void *user_data);
+int lichen_coap_post_cbor(const struct sockaddr_in6 *_Nonnull addr,
+			  const char * const *_Nonnull path,
+			  const uint8_t *_Nonnull payload, size_t payload_len,
+			  lichen_coap_response_cb _Nonnull callback,
+			  void *_Nullable user_data);
 
 #ifdef __cplusplus
 }

@@ -25,6 +25,7 @@ from lichen.link.link_layer import (
     SIGNATURE_LENGTH,
     LinkLayer,
 )
+from lichen.link.tx_queue import Priority, QueueFullError
 
 
 class MockRadio:
@@ -454,6 +455,172 @@ class TestRxFrameMetadata:
         assert result is not None
         assert result.rssi_dbm == -75
         assert result.snr_db == 5
+
+
+class TestTxQueueIntegration:
+    """Tests for TX queue integration in LinkLayer."""
+
+    @pytest.mark.asyncio
+    async def test_send_with_priority(self, link_layer: LinkLayer, mock_radio: MockRadio):
+        """send() accepts priority parameter."""
+        await link_layer.send(b"routing data", priority=Priority.ROUTING)
+        await link_layer.send(b"bulk data", priority=Priority.BULK)
+
+        assert len(mock_radio.tx_history) == 2
+
+    @pytest.mark.asyncio
+    async def test_priority_ordering_on_drain(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ):
+        """Higher priority packets are transmitted first."""
+
+        def no_lookup(hint: bytes) -> PeerIdentity | None:
+            return None
+
+        # Create link layer with CAD disabled so packets go straight to radio
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=no_lookup,
+            cad_enabled=False,
+        )
+        ll.set_sequence(0, 0)
+
+        # Queue multiple packets (they'll be drained immediately)
+        # First send bulk, which gets transmitted immediately
+        await ll.send(b"bulk1", priority=Priority.BULK)
+
+        # Now queue another bulk and a routing packet
+        # Since queue is drained after each send, both go through
+        await ll.send(b"bulk2", priority=Priority.BULK)
+        await ll.send(b"routing", priority=Priority.ROUTING)
+
+        # All should be transmitted (no CAD delay)
+        assert len(mock_radio.tx_history) == 3
+
+    @pytest.mark.asyncio
+    async def test_queue_full_raises_error(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ):
+        """QueueFullError raised when queue is full and can't preempt."""
+
+        def no_lookup(hint: bytes) -> PeerIdentity | None:
+            return None
+
+        # Make CAD always return busy so packets stay queued
+        mock_radio.cad_returns = True
+
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=no_lookup,
+            cad_enabled=True,
+        )
+        ll.set_sequence(0, 0)
+
+        # Fill the queue with ROUTING packets (highest priority)
+        # Each send() will queue but fail to transmit due to busy CAD
+        for i in range(4):
+            await ll.send(f"routing{i}".encode(), priority=Priority.ROUTING)
+
+        # Queue should be full with ROUTING packets
+        assert len(ll.tx_queue) == 4
+
+        # Another ROUTING packet cannot preempt
+        with pytest.raises(QueueFullError):
+            await ll.send(b"overflow", priority=Priority.ROUTING)
+
+    @pytest.mark.asyncio
+    async def test_high_priority_preempts_low(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ):
+        """High priority packet preempts low priority when full."""
+
+        def no_lookup(hint: bytes) -> PeerIdentity | None:
+            return None
+
+        mock_radio.cad_returns = True  # Keep packets queued
+
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=no_lookup,
+            cad_enabled=True,
+        )
+        ll.set_sequence(0, 0)
+
+        # Fill queue with BULK packets
+        for i in range(4):
+            await ll.send(f"bulk{i}".encode(), priority=Priority.BULK)
+
+        assert len(ll.tx_queue) == 4
+
+        # ROUTING packet should preempt one BULK
+        await ll.send(b"routing", priority=Priority.ROUTING)
+
+        # Still 4 packets, but one was preempted
+        assert len(ll.tx_queue) == 4
+        assert ll.tx_queue.stats.packets_dropped_preempt == 1
+
+    @pytest.mark.asyncio
+    async def test_drain_tx_queue_transmits_pending(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ):
+        """drain_tx_queue() transmits pending packets."""
+
+        def no_lookup(hint: bytes) -> PeerIdentity | None:
+            return None
+
+        # Start with CAD busy to queue packets
+        mock_radio.cad_returns = True
+
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=no_lookup,
+            cad_enabled=True,
+        )
+        ll.set_sequence(0, 0)
+
+        # Queue some packets (won't transmit due to busy CAD)
+        await ll.send(b"queued1", priority=Priority.BULK)
+        await ll.send(b"queued2", priority=Priority.BULK)
+
+        assert len(mock_radio.tx_history) == 0  # Nothing transmitted yet
+        assert len(ll.tx_queue) == 2
+
+        # Now make CAD clear and drain
+        mock_radio.cad_returns = False
+        result = await ll.drain_tx_queue()
+
+        assert result is True
+        assert len(mock_radio.tx_history) == 2
+        assert len(ll.tx_queue) == 0
+
+    @pytest.mark.asyncio
+    async def test_cad_failure_keeps_packet_queued(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ):
+        """When CAD fails, packet remains queued for retry."""
+
+        def no_lookup(hint: bytes) -> PeerIdentity | None:
+            return None
+
+        mock_radio.cad_returns = True  # Always busy
+
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=no_lookup,
+            cad_enabled=True,
+        )
+        ll.set_sequence(0, 0)
+
+        await ll.send(b"deferred", priority=Priority.BULK)
+
+        # Packet should be in queue (CAD failed)
+        assert len(ll.tx_queue) == 1
+        assert len(mock_radio.tx_history) == 0
 
 
 class TestKeyPinning:

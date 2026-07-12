@@ -560,6 +560,27 @@ class Node:
             "firmware": "sim-0.1.0",
         }
 
+    def get_queue_stats(self) -> dict[str, int]:
+        """Get TX queue statistics for diagnostics.
+
+        Returns:
+            Dict with queue latency and drop counters per spec/appendix-bufferbloat.md.
+            Fields:
+                packets_queued: Total packets pushed to queue.
+                packets_dropped_deadline: Packets expired before transmission.
+                packets_dropped_full: Packets rejected due to full queue (backpressure).
+                max_latency_ms: Worst-case time a packet spent in queue.
+                avg_latency_ms: Smoothed average queue latency (EMA).
+        """
+        stats = self.link.tx_queue.stats
+        return {
+            "packets_queued": stats.packets_queued,
+            "packets_dropped_deadline": stats.packets_dropped_deadline,
+            "packets_dropped_full": stats.packets_dropped_full,
+            "max_latency_ms": stats.max_latency_ms,
+            "avg_latency_ms": stats.avg_latency_ms,
+        }
+
     def get_neighbors(self) -> list[dict[str, object]]:
         """Get neighbor list for CoAP /neighbors resource.
 

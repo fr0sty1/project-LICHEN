@@ -4,6 +4,10 @@
 
 A custom aiocoap transport that carries CoAP over the LICHEN stack, plus the
 node's CoAP resources.
+
+Security (spec section 8.7):
+    Use SecureDatagramChannel to wrap any DatagramChannel with OSCORE protection.
+    Contexts can be pre-provisioned via add_context() or established via EDHOC.
 """
 
 from lichen.coap.resources import (
@@ -16,6 +20,13 @@ from lichen.coap.resources import (
     build_site,
 )
 from lichen.coap.schc_channel import SchcChannel, unwrap_coap, wrap_coap
+from lichen.coap.secure import (
+    EdhocPeerResolver,
+    OscoreContextStore,
+    SecureDatagramChannel,
+    TofuPeerResolver,
+    create_secure_channel,
+)
 from lichen.coap.transport import (
     DatagramChannel,
     InMemoryChannel,
@@ -27,21 +38,31 @@ from lichen.coap.transport import (
 from lichen.coap.udp_server import bind_coap_udp
 
 __all__ = [
-    "ConfigResource",
+    # Transport
     "DatagramChannel",
     "InMemoryChannel",
     "InMemoryNetwork",
     "LichenRemote",
     "LichenTransport",
+    "SchcChannel",
+    "create_lichen_context",
+    # Security (OSCORE)
+    "EdhocPeerResolver",
+    "OscoreContextStore",
+    "SecureDatagramChannel",
+    "TofuPeerResolver",
+    "create_secure_channel",
+    # Resources
+    "ConfigResource",
     "MessageReceiptsResource",
     "NeighborsResource",
     "NodeInfo",
-    "SchcChannel",
     "StaticNodeInfo",
     "StatusResource",
-    "bind_coap_udp",
     "build_site",
-    "create_lichen_context",
+    # UDP
+    "bind_coap_udp",
+    # SCHC helpers
     "unwrap_coap",
     "wrap_coap",
 ]
