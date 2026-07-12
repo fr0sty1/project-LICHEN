@@ -90,7 +90,7 @@ pub use scheduler::{AnnounceScheduler, AnnounceTransmitter, SchedulerConfig, Sch
 #[cfg(feature = "std")]
 pub use forward_buffer::{ForwardBuffer, ForwardEntry, ForwardError, ForwardStats, MAX_FORWARDING_SOURCES, MAX_PACKETS_PER_SOURCE};
 #[cfg(feature = "std")]
-pub use announce::{AnnounceProcessor, AnnounceRejectReason, AnnounceResult, seq_gt, MAX_TRACKED_ORIGINATORS}
+pub use announce::{AnnounceProcessor, AnnounceRejectReason, AnnounceResult, seq_gt, MAX_TRACKED_ORIGINATORS};
 
 #[cfg(feature = "std")]
 extern crate std;
