@@ -103,7 +103,8 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
  *
  * @return 0 on success, -EINVAL on invalid parameters
  */
-int lichen_link_load_key(struct lichen_link_ctx *ctx, const uint8_t *seed)
+int lichen_link_load_key(struct lichen_link_ctx *ctx,
+			 const uint8_t seed[_Nonnull 32])
 {
 	uint8_t new_sk[LICHEN_SK_LEN];
 	uint8_t new_pk[LICHEN_PK_LEN];
@@ -255,7 +256,7 @@ void lichen_link_set_epoch(struct lichen_link_ctx *ctx, uint8_t epoch)
 }
 
 int lichen_link_load_link_key(struct lichen_link_ctx *ctx,
-			      const uint8_t *link_key)
+			      const uint8_t link_key[_Nonnull LICHEN_LINK_KEY_LEN])
 {
 	uint8_t new_link_key[LICHEN_LINK_KEY_LEN];
 
