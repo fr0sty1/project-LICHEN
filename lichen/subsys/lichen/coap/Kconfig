@@ -142,6 +142,7 @@ config LICHEN_COAP_MSG
 	bool "LCI /msg/* resource handlers"
 	depends on LICHEN_COAP_SERVER
 	select ZCBOR
+	select COAP_URI_WILDCARD
 	help
 	  Enable CoAP server resources for application-level messaging per
 	  LCI spec section 17.5.7:

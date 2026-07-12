@@ -10,9 +10,9 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T19:19:00.200904Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T05:27:13.01257Z",
-  "closed_at": "2026-07-12T05:27:13.01257Z",
-  "close_reason": "Implemented BLE IPSP transport: SLIP over NUS (Option A, required) with full API, Kconfig, and test suite. IPSP Option B stubbed.",
+  "updated_at": "2026-07-12T05:27:40.811015Z",
+  "closed_at": "2026-07-12T05:27:40.811015Z",
+  "close_reason": "Implemented BLE SLIP transport (16.6KB), NUS UUID, test suite, Kconfig",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-6pjt",

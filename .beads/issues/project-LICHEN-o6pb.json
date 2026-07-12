@@ -9,7 +9,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T04:05:33.671978Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T05:27:15.395719Z",
-  "closed_at": "2026-07-12T05:27:15.395719Z",
-  "close_reason": "Implemented CoAP server with callback-based resource handlers: /status, /config, /neighbors, /key, /msg/inbox. Uses Zephyr CoAP service APIs. Added Kconfig (LICHEN_COAP_SERVER) and CMakeLists.txt integration. Well-known/core handled by Zephyr's built-in support."
+  "updated_at": "2026-07-12T05:27:40.517478Z",
+  "closed_at": "2026-07-12T05:27:40.517478Z",
+  "close_reason": "Implemented coap_server.c with /status, /config, /neighbors, /key, /msg/inbox resources"
 }
