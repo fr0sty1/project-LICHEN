@@ -483,7 +483,7 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 			uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
 		}
 		ctx->stats.tx_packets++;
-		ctx->stats.tx_bytes += pkt_len;
+		ctx->stats.tx_bytes += (uint32_t)pkt_len;
 	} else {
 		ctx->stats.tx_errors++;
 		ret = -ENODEV;
@@ -558,7 +558,7 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 			uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
 		}
 		ctx->stats.tx_packets++;
-		ctx->stats.tx_bytes += len;
+		ctx->stats.tx_bytes += (uint32_t)len;
 	} else {
 		ctx->stats.tx_errors++;
 		k_mutex_unlock(&ctx->tx_mutex);

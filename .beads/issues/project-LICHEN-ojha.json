@@ -10,9 +10,9 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T19:19:00.279099Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T05:30:49.413296Z",
-  "closed_at": "2026-07-12T05:30:49.413296Z",
-  "close_reason": "Implemented /config, /config/radio, /config/identity CoAP handlers per LCI spec 17.5.2",
+  "updated_at": "2026-07-12T05:31:09.641205Z",
+  "closed_at": "2026-07-12T05:31:09.641205Z",
+  "close_reason": "Implemented coap_config.c: GET/PUT /config, /config/radio, GET /config/identity, verified on EC2",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-ojha",
