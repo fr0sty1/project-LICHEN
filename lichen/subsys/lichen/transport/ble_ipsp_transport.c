@@ -11,6 +11,8 @@
 
 #include <lichen/transport/ble_ipsp_transport.h>
 
+#include <errno.h>
+
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/bluetooth/bluetooth.h>

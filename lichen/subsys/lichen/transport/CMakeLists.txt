@@ -15,4 +15,8 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_BLE_TRANSPORT
   ble_ipsp_transport.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_LICHEN_KISS_TRANSPORT
+  kiss_transport.c
+)
+
 zephyr_include_directories(include)

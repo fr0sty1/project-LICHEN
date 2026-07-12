@@ -1,0 +1,250 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Extracted from https://github.com/meshtastic/protobufs
+// Module configuration for LICHEN Meshtastic bridge
+
+syntax = "proto3";
+
+package meshtastic;
+
+// Module configuration wrapper
+message ModuleConfig {
+  oneof payload_variant {
+    MQTTConfig mqtt = 1;
+    SerialConfig serial = 2;
+    ExternalNotificationConfig external_notification = 3;
+    StoreForwardConfig store_forward = 4;
+    RangeTestConfig range_test = 5;
+    TelemetryConfig telemetry = 6;
+    CannedMessageConfig canned_message = 7;
+    AudioConfig audio = 8;
+    RemoteHardwareConfig remote_hardware = 9;
+    NeighborInfoConfig neighbor_info = 10;
+    AmbientLightingConfig ambient_lighting = 11;
+    DetectionSensorConfig detection_sensor = 12;
+    PaxcounterConfig paxcounter = 13;
+  }
+}
+
+// MQTT gateway configuration
+message MQTTConfig {
+  bool enabled = 1;
+  string address = 2;
+  string username = 3;
+  string password = 4;
+  bool encryption_enabled = 5;
+  bool json_enabled = 6;
+  bool tls_enabled = 7;
+  string root = 8;
+  bool proxy_to_client_enabled = 9;
+  bool map_report_enabled = 10;
+  PositionSettings map_report_settings = 11;
+}
+
+// Position precision settings
+message PositionSettings {
+  uint32 position_precision = 1;
+  bool position_broadcast_secs = 2;
+  bool gps_disabled = 3;
+}
+
+// Serial module configuration
+message SerialConfig {
+  bool enabled = 1;
+  bool echo = 2;
+  uint32 rxd = 3;
+  uint32 txd = 4;
+
+  enum Serial_Baud {
+    BAUD_DEFAULT = 0;
+    BAUD_110 = 1;
+    BAUD_300 = 2;
+    BAUD_600 = 3;
+    BAUD_1200 = 4;
+    BAUD_2400 = 5;
+    BAUD_4800 = 6;
+    BAUD_9600 = 7;
+    BAUD_19200 = 8;
+    BAUD_38400 = 9;
+    BAUD_57600 = 10;
+    BAUD_115200 = 11;
+    BAUD_230400 = 12;
+    BAUD_460800 = 13;
+    BAUD_576000 = 14;
+    BAUD_921600 = 15;
+  }
+  Serial_Baud baud = 5;
+
+  uint32 timeout = 6;
+
+  enum Serial_Mode {
+    DEFAULT = 0;
+    SIMPLE = 1;
+    PROTO = 2;
+    TEXTMSG = 3;
+    NMEA = 4;
+    CALTOPO = 5;
+    WS85 = 6;
+  }
+  Serial_Mode mode = 7;
+
+  bool override_console_serial_port = 8;
+}
+
+// External notification (buzzer/LED) configuration
+message ExternalNotificationConfig {
+  bool enabled = 1;
+  uint32 output_ms = 2;
+  uint32 output = 3;
+  uint32 output_vibra = 4;
+  uint32 output_buzzer = 5;
+  bool active = 6;
+  bool alert_message = 7;
+  bool alert_message_vibra = 8;
+  bool alert_message_buzzer = 9;
+  bool alert_bell = 10;
+  bool alert_bell_vibra = 11;
+  bool alert_bell_buzzer = 12;
+  bool use_pwm = 13;
+  uint32 nag_timeout = 14;
+  bool use_i2s_as_buzzer = 15;
+}
+
+// Store and forward configuration
+message StoreForwardConfig {
+  bool enabled = 1;
+  bool heartbeat = 2;
+  uint32 records = 3;
+  uint32 history_return_max = 4;
+  uint32 history_return_window = 5;
+  bool is_server = 6;
+}
+
+// Range test module configuration
+message RangeTestConfig {
+  bool enabled = 1;
+  uint32 sender = 2;
+  bool save = 3;
+}
+
+// Telemetry module configuration
+message TelemetryConfig {
+  uint32 device_update_interval = 1;
+  uint32 environment_update_interval = 2;
+  uint32 environment_measurement_enabled = 3;
+  uint32 environment_screen_enabled = 4;
+  uint32 environment_display_fahrenheit = 5;
+  uint32 air_quality_enabled = 6;
+  uint32 air_quality_interval = 7;
+  bool power_measurement_enabled = 8;
+  uint32 power_update_interval = 9;
+  bool power_screen_enabled = 10;
+  bool health_measurement_enabled = 11;
+  uint32 health_update_interval = 12;
+  bool health_screen_enabled = 13;
+}
+
+// Canned message module configuration
+message CannedMessageConfig {
+  bool rotary1_enabled = 1;
+  uint32 inputbroker_pin_a = 2;
+  uint32 inputbroker_pin_b = 3;
+  uint32 inputbroker_pin_press = 4;
+
+  enum InputEventChar {
+    NONE = 0;
+    UP = 17;
+    DOWN = 18;
+    LEFT = 19;
+    RIGHT = 20;
+    SELECT = 10;
+    BACK = 27;
+    CANCEL = 24;
+  }
+  InputEventChar inputbroker_event_cw = 5;
+  InputEventChar inputbroker_event_ccw = 6;
+  InputEventChar inputbroker_event_press = 7;
+
+  bool updown1_enabled = 8;
+  bool enabled = 9;
+  string allow_input_source = 10;
+  bool send_bell = 11;
+}
+
+// Audio module configuration
+message AudioConfig {
+  bool codec2_enabled = 1;
+  uint32 ptt_pin = 2;
+
+  enum Audio_Baud {
+    CODEC2_DEFAULT = 0;
+    CODEC2_3200 = 1;
+    CODEC2_2400 = 2;
+    CODEC2_1600 = 3;
+    CODEC2_1400 = 4;
+    CODEC2_1300 = 5;
+    CODEC2_1200 = 6;
+    CODEC2_700 = 7;
+    CODEC2_700B = 8;
+  }
+  Audio_Baud bitrate = 3;
+
+  uint32 i2s_ws = 4;
+  uint32 i2s_sd = 5;
+  uint32 i2s_din = 6;
+  uint32 i2s_sck = 7;
+}
+
+// Remote hardware module configuration
+message RemoteHardwareConfig {
+  bool enabled = 1;
+  bool allow_undefined_pin_access = 2;
+  repeated RemoteHardwarePin available_pins = 3;
+}
+
+// Remote hardware pin definition
+message RemoteHardwarePin {
+  uint32 gpio_pin = 1;
+  string name = 2;
+
+  enum RemoteHardwarePinType {
+    UNKNOWN = 0;
+    DIGITAL_READ = 1;
+    DIGITAL_WRITE = 2;
+  }
+  RemoteHardwarePinType type = 3;
+}
+
+// Neighbor info module configuration
+message NeighborInfoConfig {
+  bool enabled = 1;
+  uint32 update_interval = 2;
+}
+
+// Ambient lighting module configuration
+message AmbientLightingConfig {
+  bool led_state = 1;
+  uint32 current = 2;
+  uint32 red = 3;
+  uint32 green = 4;
+  uint32 blue = 5;
+}
+
+// Detection sensor module configuration
+message DetectionSensorConfig {
+  bool enabled = 1;
+  uint32 minimum_broadcast_secs = 2;
+  uint32 state_broadcast_secs = 3;
+  bool send_bell = 4;
+  string name = 5;
+  uint32 monitor_pin = 6;
+  bool detection_triggered_high = 7;
+  bool use_pullup = 8;
+}
+
+// Paxcounter module configuration
+message PaxcounterConfig {
+  bool enabled = 1;
+  uint32 paxcounter_update_interval = 2;
+  bool wifi_enabled = 3;
+  bool ble_enabled = 4;
+}

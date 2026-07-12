@@ -34,9 +34,16 @@ class PortNum(IntEnum):
 
     UNKNOWN_APP = 0
     TEXT_MESSAGE_APP = 1
+    REMOTE_HARDWARE_APP = 2
     POSITION_APP = 3
     NODEINFO_APP = 4
+    ROUTING_APP = 5
+    ADMIN_APP = 6
+    TEXT_MESSAGE_COMPRESSED_APP = 7
+    WAYPOINT_APP = 8
     TELEMETRY_APP = 67
+    TRACEROUTE_APP = 70
+    NEIGHBORINFO_APP = 71
 
 
 class TranslationError(Exception):

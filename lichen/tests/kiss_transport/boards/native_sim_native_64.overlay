@@ -1,0 +1,17 @@
+/*
+ * native_sim overlay for KISS transport testing.
+ *
+ * Uses uart1 for KISS transport to avoid conflicts with console.
+ * The native_sim uart1 can be connected via PTY for testing with
+ * kissattach or custom KISS tools on the host.
+ */
+
+/ {
+	chosen {
+		lichen,kiss-uart = &uart1;
+	};
+};
+
+&uart1 {
+	status = "okay";
+};

@@ -1,0 +1,63 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Extracted from https://github.com/meshtastic/protobufs
+// Channel configuration for LICHEN Meshtastic bridge
+
+syntax = "proto3";
+
+package meshtastic;
+
+// Channel settings including encryption key and modem parameters
+message ChannelSettings {
+  // Channel hopping seed (deprecated in favor of channel hash)
+  uint32 channel_num = 1 [deprecated = true];
+
+  // Pre-shared key for channel encryption (0-32 bytes)
+  // Empty = no encryption, 1 byte = simple hash, 16/32 bytes = AES
+  bytes psk = 2;
+
+  // Human-readable channel name (max 11 characters for display)
+  string name = 3;
+
+  // Unique channel identifier (derived from settings)
+  fixed32 id = 4 [deprecated = true];
+
+  // Uplink enabled (gateway -> MQTT)
+  bool uplink_enabled = 5;
+
+  // Downlink enabled (MQTT -> gateway)
+  bool downlink_enabled = 6;
+
+  // Module settings for this channel
+  ModuleSettings module_settings = 7;
+}
+
+// Per-channel module settings
+message ModuleSettings {
+  // Position precision override (bits, 0 = use device default)
+  uint32 position_precision = 1;
+
+  // Disable sending position for this channel
+  bool is_client_muted = 2;
+}
+
+// Full channel definition including role and settings
+message Channel {
+  // Channel role determines how the channel is used
+  enum Role {
+    // Channel is disabled
+    DISABLED = 0;
+    // Primary channel for default communication
+    PRIMARY = 1;
+    // Secondary channel for additional groups
+    SECONDARY = 2;
+  }
+
+  // Index into the channel array (0-7)
+  int32 index = 1;
+
+  // Channel settings (encryption, name, etc.)
+  ChannelSettings settings = 2;
+
+  // How this channel slot is used
+  Role role = 3;
+}

@@ -1,4 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 
+# Source LICHEN subsystem before gateway - gateway Kconfig has 'depends on'
+# clauses for LICHEN symbols that must be defined first.
+rsource "../../subsys/Kconfig"
 rsource "../../apps/gateway/Kconfig"

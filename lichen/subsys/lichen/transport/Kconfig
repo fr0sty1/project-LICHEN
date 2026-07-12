@@ -176,3 +176,72 @@ config LICHEN_BLE_TRANSPORT_MAX_CONNECTIONS
 	  RAM usage.
 
 endif # LICHEN_BLE_TRANSPORT
+
+# ─── KISS TNC Transport (spec/kiss-framing.md) ──────────────────────────────
+
+menuconfig LICHEN_KISS_TRANSPORT
+	bool "KISS TNC transport"
+	depends on LICHEN
+	depends on SERIAL
+	depends on RING_BUFFER
+	help
+	  Enable KISS TNC protocol transport for host interface connectivity.
+	  Provides byte-stuffed framing over serial links, compatible with
+	  legacy amateur radio applications (APRSDroid, Direwolf, Xastir,
+	  Linux AX.25 stack).
+
+	  Per spec/kiss-framing.md:
+	  - Port 0: AX.25/APRS frames (legacy TNC app compatibility)
+	  - Port 1: Raw LICHEN link frames (debugging, native apps)
+	  - Commands: TxDelay, Persistence, SlotTime, SetHardware supported
+
+	  Reference: http://www.ka9q.net/papers/kiss.html
+
+if LICHEN_KISS_TRANSPORT
+
+config KISS_TRANSPORT_LOG_LEVEL
+	int "KISS transport log level"
+	default 3
+	range 0 4
+	help
+	  Log level for KISS transport module:
+	    0 = Off
+	    1 = Error
+	    2 = Warning
+	    3 = Info
+	    4 = Debug
+
+config KISS_TRANSPORT_RX_RING_SIZE
+	int "RX ring buffer size"
+	default 512
+	range 128 4096
+	help
+	  Size of the ring buffer used to transfer received bytes from
+	  the UART ISR to the RX processing thread. Should be large enough
+	  to hold at least one full KISS frame (up to ~2KB escaped).
+
+config KISS_TRANSPORT_RX_THREAD_STACK_SIZE
+	int "RX thread stack size"
+	default 1536
+	range 1024 4096
+	help
+	  Stack size for the KISS RX processing thread. Needs to be larger
+	  than SLIP due to frame dispatch callback overhead.
+
+config KISS_TRANSPORT_RX_THREAD_PRIORITY
+	int "RX thread priority"
+	default 7
+	range 0 15
+	help
+	  Priority of the KISS RX processing thread.
+	  Lower numbers are higher priority.
+
+config KISS_TRANSPORT_AUTO_INIT
+	bool "Automatically initialize KISS transport"
+	default n
+	help
+	  Automatically initialize the KISS transport at boot.
+	  If disabled (default), call kiss_transport_init() explicitly
+	  with the desired callbacks.
+
+endif # LICHEN_KISS_TRANSPORT

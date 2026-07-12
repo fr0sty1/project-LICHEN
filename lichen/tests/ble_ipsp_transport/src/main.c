@@ -11,6 +11,8 @@
 #include <zephyr/ztest.h>
 #include <zephyr/bluetooth/bluetooth.h>
 
+#include <string.h>
+
 #include <lichen/transport/ble_ipsp_transport.h>
 
 /* Test callback state */

@@ -231,6 +231,699 @@ pub struct DeviceMetrics {
     #[prost(uint32, optional, tag = "5")]
     pub uptime_seconds: ::core::option::Option<u32>,
 }
+/// Channel settings including encryption key and modem parameters
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ChannelSettings {
+    /// Channel hopping seed (deprecated in favor of channel hash)
+    #[deprecated]
+    #[prost(uint32, tag = "1")]
+    pub channel_num: u32,
+    /// Pre-shared key for channel encryption (0-32 bytes)
+    /// Empty = no encryption, 1 byte = simple hash, 16/32 bytes = AES
+    #[prost(bytes = "vec", tag = "2")]
+    pub psk: ::prost::alloc::vec::Vec<u8>,
+    /// Human-readable channel name (max 11 characters for display)
+    #[prost(string, tag = "3")]
+    pub name: ::prost::alloc::string::String,
+    /// Unique channel identifier (derived from settings)
+    #[deprecated]
+    #[prost(fixed32, tag = "4")]
+    pub id: u32,
+    /// Uplink enabled (gateway -> MQTT)
+    #[prost(bool, tag = "5")]
+    pub uplink_enabled: bool,
+    /// Downlink enabled (MQTT -> gateway)
+    #[prost(bool, tag = "6")]
+    pub downlink_enabled: bool,
+    /// Module settings for this channel
+    #[prost(message, optional, tag = "7")]
+    pub module_settings: ::core::option::Option<ModuleSettings>,
+}
+/// Per-channel module settings
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct ModuleSettings {
+    /// Position precision override (bits, 0 = use device default)
+    #[prost(uint32, tag = "1")]
+    pub position_precision: u32,
+    /// Disable sending position for this channel
+    #[prost(bool, tag = "2")]
+    pub is_client_muted: bool,
+}
+/// Full channel definition including role and settings
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Channel {
+    /// Index into the channel array (0-7)
+    #[prost(int32, tag = "1")]
+    pub index: i32,
+    /// Channel settings (encryption, name, etc.)
+    #[prost(message, optional, tag = "2")]
+    pub settings: ::core::option::Option<ChannelSettings>,
+    /// How this channel slot is used
+    #[prost(enumeration = "channel::Role", tag = "3")]
+    pub role: i32,
+}
+/// Nested message and enum types in `Channel`.
+pub mod channel {
+    /// Channel role determines how the channel is used
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum Role {
+        /// Channel is disabled
+        Disabled = 0,
+        /// Primary channel for default communication
+        Primary = 1,
+        /// Secondary channel for additional groups
+        Secondary = 2,
+    }
+    impl Role {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Disabled => "DISABLED",
+                Self::Primary => "PRIMARY",
+                Self::Secondary => "SECONDARY",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "DISABLED" => Some(Self::Disabled),
+                "PRIMARY" => Some(Self::Primary),
+                "SECONDARY" => Some(Self::Secondary),
+                _ => None,
+            }
+        }
+    }
+}
+/// Module configuration wrapper
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ModuleConfig {
+    #[prost(
+        oneof = "module_config::PayloadVariant",
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13"
+    )]
+    pub payload_variant: ::core::option::Option<module_config::PayloadVariant>,
+}
+/// Nested message and enum types in `ModuleConfig`.
+pub mod module_config {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum PayloadVariant {
+        #[prost(message, tag = "1")]
+        Mqtt(super::MqttConfig),
+        #[prost(message, tag = "2")]
+        Serial(super::SerialConfig),
+        #[prost(message, tag = "3")]
+        ExternalNotification(super::ExternalNotificationConfig),
+        #[prost(message, tag = "4")]
+        StoreForward(super::StoreForwardConfig),
+        #[prost(message, tag = "5")]
+        RangeTest(super::RangeTestConfig),
+        #[prost(message, tag = "6")]
+        Telemetry(super::TelemetryConfig),
+        #[prost(message, tag = "7")]
+        CannedMessage(super::CannedMessageConfig),
+        #[prost(message, tag = "8")]
+        Audio(super::AudioConfig),
+        #[prost(message, tag = "9")]
+        RemoteHardware(super::RemoteHardwareConfig),
+        #[prost(message, tag = "10")]
+        NeighborInfo(super::NeighborInfoConfig),
+        #[prost(message, tag = "11")]
+        AmbientLighting(super::AmbientLightingConfig),
+        #[prost(message, tag = "12")]
+        DetectionSensor(super::DetectionSensorConfig),
+        #[prost(message, tag = "13")]
+        Paxcounter(super::PaxcounterConfig),
+    }
+}
+/// MQTT gateway configuration
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MqttConfig {
+    #[prost(bool, tag = "1")]
+    pub enabled: bool,
+    #[prost(string, tag = "2")]
+    pub address: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub username: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub password: ::prost::alloc::string::String,
+    #[prost(bool, tag = "5")]
+    pub encryption_enabled: bool,
+    #[prost(bool, tag = "6")]
+    pub json_enabled: bool,
+    #[prost(bool, tag = "7")]
+    pub tls_enabled: bool,
+    #[prost(string, tag = "8")]
+    pub root: ::prost::alloc::string::String,
+    #[prost(bool, tag = "9")]
+    pub proxy_to_client_enabled: bool,
+    #[prost(bool, tag = "10")]
+    pub map_report_enabled: bool,
+    #[prost(message, optional, tag = "11")]
+    pub map_report_settings: ::core::option::Option<PositionSettings>,
+}
+/// Position precision settings
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct PositionSettings {
+    #[prost(uint32, tag = "1")]
+    pub position_precision: u32,
+    #[prost(bool, tag = "2")]
+    pub position_broadcast_secs: bool,
+    #[prost(bool, tag = "3")]
+    pub gps_disabled: bool,
+}
+/// Serial module configuration
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct SerialConfig {
+    #[prost(bool, tag = "1")]
+    pub enabled: bool,
+    #[prost(bool, tag = "2")]
+    pub echo: bool,
+    #[prost(uint32, tag = "3")]
+    pub rxd: u32,
+    #[prost(uint32, tag = "4")]
+    pub txd: u32,
+    #[prost(enumeration = "serial_config::SerialBaud", tag = "5")]
+    pub baud: i32,
+    #[prost(uint32, tag = "6")]
+    pub timeout: u32,
+    #[prost(enumeration = "serial_config::SerialMode", tag = "7")]
+    pub mode: i32,
+    #[prost(bool, tag = "8")]
+    pub override_console_serial_port: bool,
+}
+/// Nested message and enum types in `SerialConfig`.
+pub mod serial_config {
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum SerialBaud {
+        BaudDefault = 0,
+        Baud110 = 1,
+        Baud300 = 2,
+        Baud600 = 3,
+        Baud1200 = 4,
+        Baud2400 = 5,
+        Baud4800 = 6,
+        Baud9600 = 7,
+        Baud19200 = 8,
+        Baud38400 = 9,
+        Baud57600 = 10,
+        Baud115200 = 11,
+        Baud230400 = 12,
+        Baud460800 = 13,
+        Baud576000 = 14,
+        Baud921600 = 15,
+    }
+    impl SerialBaud {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::BaudDefault => "BAUD_DEFAULT",
+                Self::Baud110 => "BAUD_110",
+                Self::Baud300 => "BAUD_300",
+                Self::Baud600 => "BAUD_600",
+                Self::Baud1200 => "BAUD_1200",
+                Self::Baud2400 => "BAUD_2400",
+                Self::Baud4800 => "BAUD_4800",
+                Self::Baud9600 => "BAUD_9600",
+                Self::Baud19200 => "BAUD_19200",
+                Self::Baud38400 => "BAUD_38400",
+                Self::Baud57600 => "BAUD_57600",
+                Self::Baud115200 => "BAUD_115200",
+                Self::Baud230400 => "BAUD_230400",
+                Self::Baud460800 => "BAUD_460800",
+                Self::Baud576000 => "BAUD_576000",
+                Self::Baud921600 => "BAUD_921600",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "BAUD_DEFAULT" => Some(Self::BaudDefault),
+                "BAUD_110" => Some(Self::Baud110),
+                "BAUD_300" => Some(Self::Baud300),
+                "BAUD_600" => Some(Self::Baud600),
+                "BAUD_1200" => Some(Self::Baud1200),
+                "BAUD_2400" => Some(Self::Baud2400),
+                "BAUD_4800" => Some(Self::Baud4800),
+                "BAUD_9600" => Some(Self::Baud9600),
+                "BAUD_19200" => Some(Self::Baud19200),
+                "BAUD_38400" => Some(Self::Baud38400),
+                "BAUD_57600" => Some(Self::Baud57600),
+                "BAUD_115200" => Some(Self::Baud115200),
+                "BAUD_230400" => Some(Self::Baud230400),
+                "BAUD_460800" => Some(Self::Baud460800),
+                "BAUD_576000" => Some(Self::Baud576000),
+                "BAUD_921600" => Some(Self::Baud921600),
+                _ => None,
+            }
+        }
+    }
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum SerialMode {
+        Default = 0,
+        Simple = 1,
+        Proto = 2,
+        Textmsg = 3,
+        Nmea = 4,
+        Caltopo = 5,
+        Ws85 = 6,
+    }
+    impl SerialMode {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Default => "DEFAULT",
+                Self::Simple => "SIMPLE",
+                Self::Proto => "PROTO",
+                Self::Textmsg => "TEXTMSG",
+                Self::Nmea => "NMEA",
+                Self::Caltopo => "CALTOPO",
+                Self::Ws85 => "WS85",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "DEFAULT" => Some(Self::Default),
+                "SIMPLE" => Some(Self::Simple),
+                "PROTO" => Some(Self::Proto),
+                "TEXTMSG" => Some(Self::Textmsg),
+                "NMEA" => Some(Self::Nmea),
+                "CALTOPO" => Some(Self::Caltopo),
+                "WS85" => Some(Self::Ws85),
+                _ => None,
+            }
+        }
+    }
+}
+/// External notification (buzzer/LED) configuration
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct ExternalNotificationConfig {
+    #[prost(bool, tag = "1")]
+    pub enabled: bool,
+    #[prost(uint32, tag = "2")]
+    pub output_ms: u32,
+    #[prost(uint32, tag = "3")]
+    pub output: u32,
+    #[prost(uint32, tag = "4")]
+    pub output_vibra: u32,
+    #[prost(uint32, tag = "5")]
+    pub output_buzzer: u32,
+    #[prost(bool, tag = "6")]
+    pub active: bool,
+    #[prost(bool, tag = "7")]
+    pub alert_message: bool,
+    #[prost(bool, tag = "8")]
+    pub alert_message_vibra: bool,
+    #[prost(bool, tag = "9")]
+    pub alert_message_buzzer: bool,
+    #[prost(bool, tag = "10")]
+    pub alert_bell: bool,
+    #[prost(bool, tag = "11")]
+    pub alert_bell_vibra: bool,
+    #[prost(bool, tag = "12")]
+    pub alert_bell_buzzer: bool,
+    #[prost(bool, tag = "13")]
+    pub use_pwm: bool,
+    #[prost(uint32, tag = "14")]
+    pub nag_timeout: u32,
+    #[prost(bool, tag = "15")]
+    pub use_i2s_as_buzzer: bool,
+}
+/// Store and forward configuration
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct StoreForwardConfig {
+    #[prost(bool, tag = "1")]
+    pub enabled: bool,
+    #[prost(bool, tag = "2")]
+    pub heartbeat: bool,
+    #[prost(uint32, tag = "3")]
+    pub records: u32,
+    #[prost(uint32, tag = "4")]
+    pub history_return_max: u32,
+    #[prost(uint32, tag = "5")]
+    pub history_return_window: u32,
+    #[prost(bool, tag = "6")]
+    pub is_server: bool,
+}
+/// Range test module configuration
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct RangeTestConfig {
+    #[prost(bool, tag = "1")]
+    pub enabled: bool,
+    #[prost(uint32, tag = "2")]
+    pub sender: u32,
+    #[prost(bool, tag = "3")]
+    pub save: bool,
+}
+/// Telemetry module configuration
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct TelemetryConfig {
+    #[prost(uint32, tag = "1")]
+    pub device_update_interval: u32,
+    #[prost(uint32, tag = "2")]
+    pub environment_update_interval: u32,
+    #[prost(uint32, tag = "3")]
+    pub environment_measurement_enabled: u32,
+    #[prost(uint32, tag = "4")]
+    pub environment_screen_enabled: u32,
+    #[prost(uint32, tag = "5")]
+    pub environment_display_fahrenheit: u32,
+    #[prost(uint32, tag = "6")]
+    pub air_quality_enabled: u32,
+    #[prost(uint32, tag = "7")]
+    pub air_quality_interval: u32,
+    #[prost(bool, tag = "8")]
+    pub power_measurement_enabled: bool,
+    #[prost(uint32, tag = "9")]
+    pub power_update_interval: u32,
+    #[prost(bool, tag = "10")]
+    pub power_screen_enabled: bool,
+    #[prost(bool, tag = "11")]
+    pub health_measurement_enabled: bool,
+    #[prost(uint32, tag = "12")]
+    pub health_update_interval: u32,
+    #[prost(bool, tag = "13")]
+    pub health_screen_enabled: bool,
+}
+/// Canned message module configuration
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CannedMessageConfig {
+    #[prost(bool, tag = "1")]
+    pub rotary1_enabled: bool,
+    #[prost(uint32, tag = "2")]
+    pub inputbroker_pin_a: u32,
+    #[prost(uint32, tag = "3")]
+    pub inputbroker_pin_b: u32,
+    #[prost(uint32, tag = "4")]
+    pub inputbroker_pin_press: u32,
+    #[prost(enumeration = "canned_message_config::InputEventChar", tag = "5")]
+    pub inputbroker_event_cw: i32,
+    #[prost(enumeration = "canned_message_config::InputEventChar", tag = "6")]
+    pub inputbroker_event_ccw: i32,
+    #[prost(enumeration = "canned_message_config::InputEventChar", tag = "7")]
+    pub inputbroker_event_press: i32,
+    #[prost(bool, tag = "8")]
+    pub updown1_enabled: bool,
+    #[prost(bool, tag = "9")]
+    pub enabled: bool,
+    #[prost(string, tag = "10")]
+    pub allow_input_source: ::prost::alloc::string::String,
+    #[prost(bool, tag = "11")]
+    pub send_bell: bool,
+}
+/// Nested message and enum types in `CannedMessageConfig`.
+pub mod canned_message_config {
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum InputEventChar {
+        None = 0,
+        Up = 17,
+        Down = 18,
+        Left = 19,
+        Right = 20,
+        Select = 10,
+        Back = 27,
+        Cancel = 24,
+    }
+    impl InputEventChar {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::None => "NONE",
+                Self::Up => "UP",
+                Self::Down => "DOWN",
+                Self::Left => "LEFT",
+                Self::Right => "RIGHT",
+                Self::Select => "SELECT",
+                Self::Back => "BACK",
+                Self::Cancel => "CANCEL",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "NONE" => Some(Self::None),
+                "UP" => Some(Self::Up),
+                "DOWN" => Some(Self::Down),
+                "LEFT" => Some(Self::Left),
+                "RIGHT" => Some(Self::Right),
+                "SELECT" => Some(Self::Select),
+                "BACK" => Some(Self::Back),
+                "CANCEL" => Some(Self::Cancel),
+                _ => None,
+            }
+        }
+    }
+}
+/// Audio module configuration
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct AudioConfig {
+    #[prost(bool, tag = "1")]
+    pub codec2_enabled: bool,
+    #[prost(uint32, tag = "2")]
+    pub ptt_pin: u32,
+    #[prost(enumeration = "audio_config::AudioBaud", tag = "3")]
+    pub bitrate: i32,
+    #[prost(uint32, tag = "4")]
+    pub i2s_ws: u32,
+    #[prost(uint32, tag = "5")]
+    pub i2s_sd: u32,
+    #[prost(uint32, tag = "6")]
+    pub i2s_din: u32,
+    #[prost(uint32, tag = "7")]
+    pub i2s_sck: u32,
+}
+/// Nested message and enum types in `AudioConfig`.
+pub mod audio_config {
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum AudioBaud {
+        Codec2Default = 0,
+        Codec23200 = 1,
+        Codec22400 = 2,
+        Codec21600 = 3,
+        Codec21400 = 4,
+        Codec21300 = 5,
+        Codec21200 = 6,
+        Codec2700 = 7,
+        Codec2700b = 8,
+    }
+    impl AudioBaud {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Codec2Default => "CODEC2_DEFAULT",
+                Self::Codec23200 => "CODEC2_3200",
+                Self::Codec22400 => "CODEC2_2400",
+                Self::Codec21600 => "CODEC2_1600",
+                Self::Codec21400 => "CODEC2_1400",
+                Self::Codec21300 => "CODEC2_1300",
+                Self::Codec21200 => "CODEC2_1200",
+                Self::Codec2700 => "CODEC2_700",
+                Self::Codec2700b => "CODEC2_700B",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "CODEC2_DEFAULT" => Some(Self::Codec2Default),
+                "CODEC2_3200" => Some(Self::Codec23200),
+                "CODEC2_2400" => Some(Self::Codec22400),
+                "CODEC2_1600" => Some(Self::Codec21600),
+                "CODEC2_1400" => Some(Self::Codec21400),
+                "CODEC2_1300" => Some(Self::Codec21300),
+                "CODEC2_1200" => Some(Self::Codec21200),
+                "CODEC2_700" => Some(Self::Codec2700),
+                "CODEC2_700B" => Some(Self::Codec2700b),
+                _ => None,
+            }
+        }
+    }
+}
+/// Remote hardware module configuration
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RemoteHardwareConfig {
+    #[prost(bool, tag = "1")]
+    pub enabled: bool,
+    #[prost(bool, tag = "2")]
+    pub allow_undefined_pin_access: bool,
+    #[prost(message, repeated, tag = "3")]
+    pub available_pins: ::prost::alloc::vec::Vec<RemoteHardwarePin>,
+}
+/// Remote hardware pin definition
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RemoteHardwarePin {
+    #[prost(uint32, tag = "1")]
+    pub gpio_pin: u32,
+    #[prost(string, tag = "2")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(enumeration = "remote_hardware_pin::RemoteHardwarePinType", tag = "3")]
+    pub r#type: i32,
+}
+/// Nested message and enum types in `RemoteHardwarePin`.
+pub mod remote_hardware_pin {
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum RemoteHardwarePinType {
+        Unknown = 0,
+        DigitalRead = 1,
+        DigitalWrite = 2,
+    }
+    impl RemoteHardwarePinType {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unknown => "UNKNOWN",
+                Self::DigitalRead => "DIGITAL_READ",
+                Self::DigitalWrite => "DIGITAL_WRITE",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "UNKNOWN" => Some(Self::Unknown),
+                "DIGITAL_READ" => Some(Self::DigitalRead),
+                "DIGITAL_WRITE" => Some(Self::DigitalWrite),
+                _ => None,
+            }
+        }
+    }
+}
+/// Neighbor info module configuration
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct NeighborInfoConfig {
+    #[prost(bool, tag = "1")]
+    pub enabled: bool,
+    #[prost(uint32, tag = "2")]
+    pub update_interval: u32,
+}
+/// Ambient lighting module configuration
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct AmbientLightingConfig {
+    #[prost(bool, tag = "1")]
+    pub led_state: bool,
+    #[prost(uint32, tag = "2")]
+    pub current: u32,
+    #[prost(uint32, tag = "3")]
+    pub red: u32,
+    #[prost(uint32, tag = "4")]
+    pub green: u32,
+    #[prost(uint32, tag = "5")]
+    pub blue: u32,
+}
+/// Detection sensor module configuration
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DetectionSensorConfig {
+    #[prost(bool, tag = "1")]
+    pub enabled: bool,
+    #[prost(uint32, tag = "2")]
+    pub minimum_broadcast_secs: u32,
+    #[prost(uint32, tag = "3")]
+    pub state_broadcast_secs: u32,
+    #[prost(bool, tag = "4")]
+    pub send_bell: bool,
+    #[prost(string, tag = "5")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "6")]
+    pub monitor_pin: u32,
+    #[prost(bool, tag = "7")]
+    pub detection_triggered_high: bool,
+    #[prost(bool, tag = "8")]
+    pub use_pullup: bool,
+}
+/// Paxcounter module configuration
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct PaxcounterConfig {
+    #[prost(bool, tag = "1")]
+    pub enabled: bool,
+    #[prost(uint32, tag = "2")]
+    pub paxcounter_update_interval: u32,
+    #[prost(bool, tag = "3")]
+    pub wifi_enabled: bool,
+    #[prost(bool, tag = "4")]
+    pub ble_enabled: bool,
+}
 /// GPS Position
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct Position {
@@ -596,6 +1289,446 @@ pub mod mesh_packet {
         Decoded(super::Data),
         #[prost(bytes, tag = "5")]
         Encrypted(::prost::alloc::vec::Vec<u8>),
+    }
+}
+/// Routing layer ack/error codes
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct Routing {
+    #[prost(oneof = "routing::Variant", tags = "1, 2, 3")]
+    pub variant: ::core::option::Option<routing::Variant>,
+}
+/// Nested message and enum types in `Routing`.
+pub mod routing {
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum Error {
+        None = 0,
+        NoRoute = 1,
+        GotNak = 2,
+        Timeout = 3,
+        NoInterface = 4,
+        MaxRetransmit = 5,
+        NoChannel = 6,
+        TooLarge = 7,
+        NoResponse = 8,
+        DutyCycleLimit = 9,
+        BadRequest = 32,
+        NotAuthorized = 33,
+        PkiFailed = 34,
+        PkiUnknownPubkey = 35,
+    }
+    impl Error {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::None => "NONE",
+                Self::NoRoute => "NO_ROUTE",
+                Self::GotNak => "GOT_NAK",
+                Self::Timeout => "TIMEOUT",
+                Self::NoInterface => "NO_INTERFACE",
+                Self::MaxRetransmit => "MAX_RETRANSMIT",
+                Self::NoChannel => "NO_CHANNEL",
+                Self::TooLarge => "TOO_LARGE",
+                Self::NoResponse => "NO_RESPONSE",
+                Self::DutyCycleLimit => "DUTY_CYCLE_LIMIT",
+                Self::BadRequest => "BAD_REQUEST",
+                Self::NotAuthorized => "NOT_AUTHORIZED",
+                Self::PkiFailed => "PKI_FAILED",
+                Self::PkiUnknownPubkey => "PKI_UNKNOWN_PUBKEY",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "NONE" => Some(Self::None),
+                "NO_ROUTE" => Some(Self::NoRoute),
+                "GOT_NAK" => Some(Self::GotNak),
+                "TIMEOUT" => Some(Self::Timeout),
+                "NO_INTERFACE" => Some(Self::NoInterface),
+                "MAX_RETRANSMIT" => Some(Self::MaxRetransmit),
+                "NO_CHANNEL" => Some(Self::NoChannel),
+                "TOO_LARGE" => Some(Self::TooLarge),
+                "NO_RESPONSE" => Some(Self::NoResponse),
+                "DUTY_CYCLE_LIMIT" => Some(Self::DutyCycleLimit),
+                "BAD_REQUEST" => Some(Self::BadRequest),
+                "NOT_AUTHORIZED" => Some(Self::NotAuthorized),
+                "PKI_FAILED" => Some(Self::PkiFailed),
+                "PKI_UNKNOWN_PUBKEY" => Some(Self::PkiUnknownPubkey),
+                _ => None,
+            }
+        }
+    }
+    #[derive(Clone, Copy, PartialEq, ::prost::Oneof)]
+    pub enum Variant {
+        #[prost(fixed32, tag = "1")]
+        RouteRequest(u32),
+        #[prost(fixed32, tag = "2")]
+        RouteReply(u32),
+        #[prost(enumeration = "Error", tag = "3")]
+        ErrorReason(i32),
+    }
+}
+/// Device's own node information (device-to-phone)
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MyNodeInfo {
+    #[prost(uint32, tag = "1")]
+    pub my_node_num: u32,
+    #[deprecated]
+    #[prost(bool, tag = "2")]
+    pub has_gps: bool,
+    #[prost(uint32, tag = "3")]
+    pub max_channels: u32,
+    #[prost(string, tag = "4")]
+    pub firmware_version: ::prost::alloc::string::String,
+    #[prost(uint32, optional, tag = "5")]
+    pub error_code: ::core::option::Option<u32>,
+    #[prost(uint32, optional, tag = "6")]
+    pub error_address: ::core::option::Option<u32>,
+    #[prost(uint32, optional, tag = "7")]
+    pub error_count: ::core::option::Option<u32>,
+    #[prost(uint32, optional, tag = "8")]
+    pub reboot_count: ::core::option::Option<u32>,
+    #[prost(uint32, optional, tag = "9")]
+    pub bitrate: ::core::option::Option<u32>,
+    #[prost(uint32, optional, tag = "10")]
+    pub message_timeout_msec: ::core::option::Option<u32>,
+    #[prost(uint32, optional, tag = "11")]
+    pub min_app_version: ::core::option::Option<u32>,
+    #[deprecated]
+    #[prost(uint32, tag = "12")]
+    pub max_app_data_size: u32,
+    #[prost(bool, tag = "14")]
+    pub has_wifi: bool,
+    #[prost(bool, tag = "15")]
+    pub has_bluetooth: bool,
+    #[prost(bool, tag = "16")]
+    pub has_ethernet: bool,
+    #[prost(enumeration = "HardwareModel", tag = "17")]
+    pub hw_model: i32,
+    #[prost(bool, tag = "18")]
+    pub can_shutdown: bool,
+    #[prost(bool, tag = "19")]
+    pub has_pkc: bool,
+    #[prost(bool, tag = "20")]
+    pub has_position_flags: bool,
+    #[prost(uint32, tag = "21")]
+    pub device_id: u32,
+    #[prost(bool, tag = "22")]
+    pub is_managed: bool,
+}
+/// TX queue status for flow control
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct QueueStatus {
+    /// Reserved/result field
+    #[prost(int32, tag = "1")]
+    pub res: i32,
+    /// Number of free queue slots
+    #[prost(uint32, tag = "2")]
+    pub free: u32,
+    /// Maximum queue length
+    #[prost(uint32, tag = "3")]
+    pub maxlen: u32,
+    /// ID of packet being queued
+    #[prost(uint32, tag = "4")]
+    pub mesh_packet_id: u32,
+}
+/// Log record for debug output
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct LogRecord {
+    #[prost(string, tag = "1")]
+    pub message: ::prost::alloc::string::String,
+    #[prost(fixed32, tag = "2")]
+    pub time: u32,
+    #[prost(string, tag = "3")]
+    pub source: ::prost::alloc::string::String,
+    #[prost(enumeration = "log_record::Level", tag = "4")]
+    pub level: i32,
+}
+/// Nested message and enum types in `LogRecord`.
+pub mod log_record {
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum Level {
+        Unset = 0,
+        Critical = 50,
+        Error = 40,
+        Warning = 30,
+        Info = 20,
+        Debug = 10,
+        Trace = 5,
+    }
+    impl Level {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Unset => "UNSET",
+                Self::Critical => "CRITICAL",
+                Self::Error => "ERROR",
+                Self::Warning => "WARNING",
+                Self::Info => "INFO",
+                Self::Debug => "DEBUG",
+                Self::Trace => "TRACE",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "UNSET" => Some(Self::Unset),
+                "CRITICAL" => Some(Self::Critical),
+                "ERROR" => Some(Self::Error),
+                "WARNING" => Some(Self::Warning),
+                "INFO" => Some(Self::Info),
+                "DEBUG" => Some(Self::Debug),
+                "TRACE" => Some(Self::Trace),
+                _ => None,
+            }
+        }
+    }
+}
+/// XModem packet for firmware updates over BLE
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct XModemPacket {
+    #[prost(enumeration = "x_modem_packet::Control", tag = "1")]
+    pub control: i32,
+    #[prost(uint32, tag = "2")]
+    pub seq: u32,
+    #[prost(uint32, tag = "3")]
+    pub crc16: u32,
+    #[prost(bytes = "vec", tag = "4")]
+    pub buffer: ::prost::alloc::vec::Vec<u8>,
+}
+/// Nested message and enum types in `XModemPacket`.
+pub mod x_modem_packet {
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum Control {
+        Nul = 0,
+        Soh = 1,
+        Stx = 2,
+        Eot = 4,
+        Ack = 6,
+        Nak = 21,
+        Can = 24,
+        Ctrlz = 26,
+    }
+    impl Control {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                Self::Nul => "NUL",
+                Self::Soh => "SOH",
+                Self::Stx => "STX",
+                Self::Eot => "EOT",
+                Self::Ack => "ACK",
+                Self::Nak => "NAK",
+                Self::Can => "CAN",
+                Self::Ctrlz => "CTRLZ",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "NUL" => Some(Self::Nul),
+                "SOH" => Some(Self::Soh),
+                "STX" => Some(Self::Stx),
+                "EOT" => Some(Self::Eot),
+                "ACK" => Some(Self::Ack),
+                "NAK" => Some(Self::Nak),
+                "CAN" => Some(Self::Can),
+                "CTRLZ" => Some(Self::Ctrlz),
+                _ => None,
+            }
+        }
+    }
+}
+/// Device metadata
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DeviceMetadata {
+    #[prost(string, tag = "1")]
+    pub firmware_version: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "2")]
+    pub device_state_version: u32,
+    #[prost(bool, tag = "3")]
+    pub can_shutdown: bool,
+    #[prost(bool, tag = "4")]
+    pub has_wifi: bool,
+    #[prost(bool, tag = "5")]
+    pub has_bluetooth: bool,
+    #[prost(bool, tag = "6")]
+    pub has_ethernet: bool,
+    #[prost(enumeration = "config::device_config::Role", tag = "7")]
+    pub role: i32,
+    #[prost(uint32, tag = "8")]
+    pub position_flags: u32,
+    #[prost(enumeration = "HardwareModel", tag = "9")]
+    pub hw_model: i32,
+    #[prost(bool, tag = "10")]
+    pub has_remote_hardware: bool,
+    #[prost(bool, tag = "11")]
+    pub has_pkc: bool,
+}
+/// Waypoint for location sharing
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Waypoint {
+    #[prost(uint32, tag = "1")]
+    pub id: u32,
+    #[prost(sfixed32, tag = "2")]
+    pub latitude_i: i32,
+    #[prost(sfixed32, tag = "3")]
+    pub longitude_i: i32,
+    #[prost(int32, tag = "4")]
+    pub expire: i32,
+    #[prost(uint32, tag = "5")]
+    pub locked_to: u32,
+    #[prost(string, tag = "6")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag = "7")]
+    pub description: ::prost::alloc::string::String,
+    #[prost(fixed32, tag = "8")]
+    pub icon: u32,
+}
+/// MeshPacket queue (for FileInfo response)
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MeshPacketQueue {
+    #[prost(message, repeated, tag = "1")]
+    pub packets: ::prost::alloc::vec::Vec<MeshPacket>,
+}
+/// File info for firmware updates
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FileInfo {
+    #[prost(string, tag = "1")]
+    pub file_name: ::prost::alloc::string::String,
+    #[prost(uint32, tag = "2")]
+    pub size_bytes: u32,
+}
+/// Connection status for various interfaces
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct ConnectionStatus {
+    #[prost(bool, tag = "1")]
+    pub is_connected: bool,
+    #[prost(uint32, tag = "2")]
+    pub ip_address: u32,
+    #[prost(bool, tag = "3")]
+    pub is_mqtt_connected: bool,
+    #[prost(bool, tag = "4")]
+    pub is_syslog_connected: bool,
+}
+/// Phone-to-device BLE API envelope
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ToRadio {
+    #[prost(oneof = "to_radio::PayloadVariant", tags = "1, 3, 4, 5, 6")]
+    pub payload_variant: ::core::option::Option<to_radio::PayloadVariant>,
+}
+/// Nested message and enum types in `ToRadio`.
+pub mod to_radio {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum PayloadVariant {
+        #[prost(message, tag = "1")]
+        Packet(super::MeshPacket),
+        /// Request full config dump
+        #[prost(uint32, tag = "3")]
+        WantConfigId(u32),
+        /// Graceful disconnect
+        #[prost(bool, tag = "4")]
+        Disconnect(bool),
+        /// Firmware update packet
+        #[prost(message, tag = "5")]
+        XmodemPacket(super::XModemPacket),
+        #[prost(message, tag = "6")]
+        Heartbeat(super::Heartbeat),
+    }
+}
+/// Heartbeat message for connection keep-alive
+///
+/// Empty message, presence indicates heartbeat
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct Heartbeat {}
+/// Device-to-phone BLE API envelope
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FromRadio {
+    /// Packet ID for sequencing
+    #[prost(uint32, tag = "1")]
+    pub id: u32,
+    #[prost(
+        oneof = "from_radio::PayloadVariant",
+        tags = "2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16"
+    )]
+    pub payload_variant: ::core::option::Option<from_radio::PayloadVariant>,
+}
+/// Nested message and enum types in `FromRadio`.
+pub mod from_radio {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum PayloadVariant {
+        #[prost(message, tag = "2")]
+        Packet(super::MeshPacket),
+        #[prost(message, tag = "3")]
+        MyInfo(super::MyNodeInfo),
+        #[prost(message, tag = "4")]
+        NodeInfo(super::NodeInfo),
+        #[prost(message, tag = "5")]
+        Config(super::Config),
+        #[prost(message, tag = "6")]
+        LogRecord(super::LogRecord),
+        /// Signals end of config dump
+        #[prost(uint32, tag = "7")]
+        ConfigCompleteId(u32),
+        #[prost(bool, tag = "8")]
+        Rebooted(bool),
+        #[prost(message, tag = "9")]
+        ModuleConfig(super::ModuleConfig),
+        #[prost(message, tag = "10")]
+        Channel(super::Channel),
+        #[prost(message, tag = "11")]
+        QueueStatus(super::QueueStatus),
+        #[prost(message, tag = "12")]
+        XmodemPacket(super::XModemPacket),
+        #[prost(message, tag = "13")]
+        Metadata(super::DeviceMetadata),
+        #[prost(message, tag = "14")]
+        MqttClientProxyMessage(super::MeshPacketQueue),
+        #[prost(message, tag = "15")]
+        FileInfo(super::FileInfo),
+        #[prost(message, tag = "16")]
+        ClientNotification(super::ConnectionStatus),
     }
 }
 /// Hardware model identifiers (subset)

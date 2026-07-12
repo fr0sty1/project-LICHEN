@@ -1877,6 +1877,7 @@ dependencies = [
  "lichen-hal",
  "lichen-ipv6",
  "lichen-link",
+ "lichen-meshtastic",
  "lichen-oscore",
  "lichen-rpl",
  "lichen-schc",
