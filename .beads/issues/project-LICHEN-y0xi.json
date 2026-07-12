@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-y0xi",
+  "title": "senml: field_count uses bool array which may not optimize well",
+  "description": "File: rust/lichen-senml/src/cbor.rs\nLines: 130-144 (field_count function)\n\nThe field_count function creates an array of 8 booleans and filters/counts them:\n```rust\nfn field_count(r: \u0026Record\u003c'_\u003e) -\u003e u64 {\n    [\n        r.base_name.is_some(),\n        // ...8 fields...\n    ]\n    .iter()\n    .filter(|\u0026\u0026x| x)\n    .count() as u64\n}\n```\n\nThis is elegant code but may not optimize as well as direct counting for no_std embedded targets:\n1. Creates a stack array\n2. Iterates with closure allocations (though likely inlined)\n3. The closure capture `\u0026\u0026x` is unusual pattern\n\nA simpler version that's guaranteed to compile to efficient code:\n```rust\nfn field_count(r: \u0026Record\u003c'_\u003e) -\u003e u64 {\n    r.base_name.is_some() as u64\n        + r.base_time.is_some() as u64\n        + r.name.is_some() as u64\n        + r.unit.is_some() as u64\n        + r.value.is_some() as u64\n        + r.string_value.is_some() as u64\n        + r.bool_value.is_some() as u64\n        + r.time.is_some() as u64\n}\n```\n\nImpact: Minor performance/code size concern on embedded targets.\n\nNote: The compiler likely optimizes this well; benchmark before changing.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:41:13.008378Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:41:13.008417Z"
+}

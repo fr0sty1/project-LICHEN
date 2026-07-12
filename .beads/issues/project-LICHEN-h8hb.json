@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-h8hb",
+  "title": "app_identity: set_self_from_link_ctx reads link_ctx without synchronization",
+  "description": "File: lichen/subsys/lichen/app_identity/app_identity.c:137-167\n\nlichen_app_identity_set_self_from_link_ctx reads multiple fields from the link context without holding the context's seq_lock:\n- ctx-\u003ehas_key (line 147)\n- ctx-\u003eeui64 (line 152)\n- ctx-\u003eed25519_pk (line 153)\n\nWhile the function's doc comment warns callers to serialize with key operations, this is error-prone and easily violated.\n\nRace scenario:\n1. Thread A calls lichen_app_identity_set_self_from_link_ctx()\n2. Thread A checks ctx-\u003ehas_key (true) at line 147\n3. Thread B calls lichen_link_cleanup() which:\n   - Zeros ed25519_pk\n   - Sets has_key = false\n4. Thread A copies ctx-\u003eed25519_pk (now zeroed) at line 153\n5. Thread A publishes an identity with an all-zeros public key\n\nImpact: A zeroed public key breaks Schnorr-48 signature verification. Other nodes may cache this invalid key via TOFU, permanently breaking communication.\n\nThe link context has a seq_lock mutex but it only protects epoch/sequence allocation, not key reads. The app_identity module should not rely on caller discipline for security-critical operations.\n\nSuggested fix: Either:\n1. Acquire ctx-\u003eseq_lock (or a new key_lock) before reading key material\n2. Use atomic snapshot operations in link_ctx\n3. Document that has_key/eui64/ed25519_pk are immutable after load (but they aren't - cleanup zeros them)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:40:24.30856Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:40:24.308593Z"
+}

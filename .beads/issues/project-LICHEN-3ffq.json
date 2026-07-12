@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-3ffq",
+  "title": "peer_eui64_to_iid XOR operation not documented as IID derivation",
+  "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:1045-1049\n\n  static void peer_eui64_to_iid(const uint8_t eui64[8], uint8_t iid[8])\n  {\n      memcpy(iid, eui64, 8U);\n      iid[0] ^= 0x02U;\n  }\n\nThis XOR with 0x02 on the first byte is the IEEE 802.15.4 / RFC 4291 conversion from EUI-64 to IPv6 Interface Identifier. The 'universal/local' bit is flipped.\n\nHowever, this is not documented in the code. A maintainer might not recognize this as a standard transformation.\n\nAdd a comment: // RFC 4291 Section 2.5.1: flip the universal/local bit for IID derivation",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:49:22.489159Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:49:22.489194Z"
+}

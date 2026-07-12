@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-j7rk",
+  "title": "Schnorr signature domain separation vulnerability",
+  "description": "File: lichen/subsys/lichen/link/schnorr48.c\nLines: 291-306, 393-400\n\nThe Schnorr-48 frame signature lacks domain separation between address and payload fields. The signed message is constructed as:\n\n```c\nheader[header_len++] = epoch;\nheader[header_len++] = (uint8_t)(seqnum \u003e\u003e 8);\nheader[header_len++] = (uint8_t)(seqnum \u0026 0xFF);\nif (dst_addr_len \u003e 0) {\n    memcpy(\u0026header[header_len], dst_addr, dst_addr_len);\n    header_len += dst_addr_len;\n}\n// ... hash(R || pubkey || header || payload)\n```\n\nWithout length prefixes, the same hash is produced for different (dst_addr, payload) combinations:\n\n- Frame A: addr_mode=EUI64, dst_addr=0x0102030405060708, payload=0x0A0B\n- Frame B: addr_mode=BROADCAST, payload=0x01020304050607080A0B\n\nBoth produce SHA-512(R || pubkey || epoch || seqnum || 0x01...080A0B).\n\nAttack scenario for CRC32-MIC mode:\n1. Capture signed unicast frame\n2. Reparse as broadcast with extended payload\n3. Recompute CRC32 (no key needed)\n4. Signature still verifies\n\nMitigation: AES-CCM-64 MIC prevents this attack since the attacker cannot recompute the keyed MAC. For CRC32-MIC mode (already documented as insecure), this is exploitable.\n\nFix: Add dst_addr_len as a prefix in the signed message:\n```c\nheader[header_len++] = (uint8_t)dst_addr_len;  // Domain separation\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:49:09.145189Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:49:09.145227Z"
+}

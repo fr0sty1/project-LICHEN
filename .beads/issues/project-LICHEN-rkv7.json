@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-rkv7",
+  "title": "coap_keys.c: CBOR decoding assumes map header type without validation",
+  "description": "File: lichen/subsys/lichen/coap/coap_keys.c\nLines: 744-752\n\nThe CBOR decoder for PUT /keys/{iid} manually parses map header:\n```c\nif ((payload[0] \u0026 0xe0) == 0xa0) {\n    map_count = payload[0] \u0026 0x1f;\n} else if (payload[0] == 0xb8 \u0026\u0026 payload_len \u003e 1) {\n    map_count = payload[1];\n} else {\n    return -EINVAL;\n}\n```\n\nThis handles small maps (0xa0-0xb7) and 1-byte-length maps (0xb8 NN), but:\n1. Does not handle 2-byte or 4-byte length maps (0xb9, 0xba)\n2. Does not validate map_count against actual payload content\n3. Indefinite-length maps (0xbf) are rejected (correct, but not documented)\n\nIf a client sends a well-formed map with \u003e255 items or 2-byte length encoding, the request is incorrectly rejected.\n\nCategory: PROTOCOL - incomplete CBOR support",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:43:22.875128Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:43:22.875155Z"
+}

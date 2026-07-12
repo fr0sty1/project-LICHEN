@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-jaig",
+  "title": "Missing nullability annotation in lichen_meshtastic_adapter_disconnected",
+  "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:1919-1923\nFile: lichen/subsys/lichen/meshtastic/include/lichen/meshtastic/adapter.h:296-297\n\n  bool lichen_meshtastic_adapter_disconnected(\n      const struct lichen_meshtastic_adapter *_Nonnull adapter);\n\nThe adapter parameter is marked _Nonnull, but the implementation handles NULL:\n  return adapter != NULL \u0026\u0026 adapter-\u003edisconnected;\n\nThis is inconsistent with the annotation. If adapter is NULL, the function returns false (which could be interpreted as 'not disconnected' when it should be 'invalid').\n\nEither:\n1. Remove _Nonnull and document that NULL returns false\n2. Keep _Nonnull and add assertion/crash on NULL",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:50:34.354621Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:50:34.354652Z"
+}

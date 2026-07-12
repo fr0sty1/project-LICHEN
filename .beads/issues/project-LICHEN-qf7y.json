@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-qf7y",
+  "title": "Timer wraparound bug in parent expiration causes incorrect expiry",
+  "description": "File: lichen/subsys/lichen/rpl/dodag.c:398\n\nThe age calculation `uint32_t age = now - p-\u003elast_updated;` does not handle timestamp wraparound correctly. For a 32-bit millisecond counter, this wraps after ~49.7 days.\n\nWhen `now` wraps past `last_updated` (e.g., now=1000, last_updated=UINT32_MAX-1000), the subtraction produces a very large positive value due to unsigned arithmetic, causing entries to be incorrectly expired even if they were recently updated.\n\nImpact: After ~50 days of runtime, parent expiration logic may incorrectly expire valid parents or fail to expire stale ones.\n\nFix: Use saturating/wraparound-aware age calculation, similar to how `lichen_trickle_interval_end()` handles overflow in trickle.c.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:51:15.476037Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:51:15.476071Z"
+}
