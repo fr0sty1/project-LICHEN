@@ -12,7 +12,6 @@ import pytest
 
 from lichen.crypto.oscore import MemorySecurityContext
 
-
 # Load test vectors
 VECTORS_PATH = Path(__file__).parents[3] / "test" / "vectors" / "oscore.json"
 with open(VECTORS_PATH) as f:

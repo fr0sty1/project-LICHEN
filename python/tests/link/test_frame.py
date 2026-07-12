@@ -7,6 +7,9 @@ Byte oracles are hand-derived from the spec layout, independent of the code.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
@@ -165,9 +168,6 @@ class TestParseErrors:
 
 # ─── Cross-validation tests from spec/test-vectors/frame.json ─────────────────
 
-import json
-from pathlib import Path
-
 SPEC_VECTORS = Path(__file__).resolve().parents[3] / "spec" / "test-vectors" / "frame.json"
 
 
@@ -211,7 +211,8 @@ class TestSpecVectors:
 
         assert frame.addr_mode == expected["addr_mode"], f"{name}: addr_mode"
         assert frame.mic_length == expected["mic_length"], f"{name}: mic_length"
-        assert frame.signature_present == expected["signature_present"], f"{name}: signature_present"
+        assert frame.signature_present == expected["signature_present"], \
+            f"{name}: signature_present"
         assert frame.encrypted == expected["encrypted"], f"{name}: encrypted"
         assert frame.epoch == expected["epoch"], f"{name}: epoch"
         assert frame.seqnum == expected["seqnum"], f"{name}: seqnum"

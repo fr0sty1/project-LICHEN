@@ -3,14 +3,16 @@
   "title": "Document native LCI client usage and examples",
   "description": "Write docs/lci-client-guide.md covering: (1) transport setup (SLIP, BLE), (2) example coap-client commands for each resource, (3) Python aiocoap examples, (4) CBOR payload examples, (5) troubleshooting. Reference spec/11-lci.md for authoritative format.",
   "acceptance_criteria": "Guide exists with working examples that can be copy-pasted",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "assignee": "grinder",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T19:19:23.997714Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T19:19:23.998348Z",
+  "updated_at": "2026-07-12T04:55:24.027763Z",
+  "closed_at": "2026-07-12T04:55:24.027763Z",
+  "close_reason": "Created docs/lci-client-guide.md with transport setup, coap-client examples, Python aiocoap examples, CBOR payloads, and troubleshooting",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-0198",

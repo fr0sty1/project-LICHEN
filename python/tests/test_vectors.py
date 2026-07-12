@@ -24,7 +24,7 @@ from lichen.crypto.schnorr48 import verify as schnorr_verify
 from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
 from lichen.link.frame import AddrMode, LichenFrame, MicLength
 from lichen.rpl.dao import RplTarget, TransitInformation
-from lichen.rpl.messages import DAO, DAOAck, DIO, DIS, _parse_options
+from lichen.rpl.messages import DAO, DIO, DIS, DAOAck, _parse_options
 from lichen.schc.headers import compress_packet, decompress_packet
 
 VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"

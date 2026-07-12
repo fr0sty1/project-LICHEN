@@ -2,13 +2,14 @@
   "id": "project-LICHEN-4t5u",
   "title": "Deprecate node_server.py in favor of RenodeServer",
   "description": "NodeServer (node_server.py) uses poll-based RX with 1ms sleep loop. RenodeServer (renode_server.py) has push-based RX. Migrate all usages of NodeServer to RenodeServer, update SimulatorServer.get_node_server_port to spawn RenodeServer instances, then delete node_server.py.",
+  "notes": "Architecture analysis: NodeServer handles MSG_REGISTER/MSG_RX/MSG_TIME/MSG_CAD for SimRadio clients. RenodeServer uses a simpler per-node protocol (MSG_TX/MSG_RX_ENTER/MSG_RX_EXIT only, fixed node_id). Migration requires either: (1) extending RenodeServer to handle all messages, or (2) changing SimRadio to use per-node connections. This is a design decision, not a drop-in replacement.",
   "status": "open",
   "priority": 3,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T22:15:25.960134Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T22:20:07.689638Z",
+  "updated_at": "2026-07-12T04:54:09.079343Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-4t5u",

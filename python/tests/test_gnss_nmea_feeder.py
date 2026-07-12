@@ -6,13 +6,11 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 # Add tools directory to path so we can import the feeder
 TOOLS_DIR = Path(__file__).parent.parent.parent / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
-from gnss_nmea_feeder import make_gga, make_rmc, nmea_checksum
+from gnss_nmea_feeder import make_gga, make_rmc, nmea_checksum  # noqa: E402
 
 
 class TestNmeaChecksum:
