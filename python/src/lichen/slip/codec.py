@@ -88,23 +88,56 @@ class StreamDecoder:
 
     Feed arbitrary chunks of bytes from a UART or pipe; call :meth:`feed` and
     iterate the returned packets.  Partial packets are buffered between calls.
+
+    A maximum buffer size prevents memory exhaustion from malicious or faulty
+    peers sending continuous bytes without END delimiters.
+
+    Args:
+        max_size: Maximum bytes to buffer before discarding a partial packet.
+            Defaults to 2048, which accommodates IPv6 MTU (1280-1500) plus
+            escape expansion overhead.
     """
 
-    def __init__(self) -> None:
+    DEFAULT_MAX_SIZE = 2048
+
+    def __init__(self, max_size: int | None = None) -> None:
         self._buf: bytearray = bytearray()
         self._escaped: bool = False
+        self._max_size: int = max_size if max_size is not None else self.DEFAULT_MAX_SIZE
+        self._overflow: bool = False  # True when discarding bytes until next END
 
     def feed(self, data: bytes) -> list[bytes]:
-        """Process ``data`` and return all complete packets decoded so far."""
+        """Process ``data`` and return all complete packets decoded so far.
+
+        If the buffer exceeds ``max_size``, the partial packet is discarded and
+        all bytes are ignored until the next END delimiter. This prevents memory
+        exhaustion from malicious or faulty peers sending continuous bytes without
+        END, and ensures we resync cleanly at the next packet boundary.
+        """
         packets: list[bytes] = []
         for byte in data:
+            # Handle overflow mode first - discard bytes until END
+            if self._overflow:
+                if byte == END:
+                    self._overflow = False
+                continue
+
+            # SECURITY: Prevent memory exhaustion from missing END delimiters
+            if len(self._buf) >= self._max_size:
+                self._buf.clear()
+                self._escaped = False
+                self._overflow = True
+                continue
+
             if self._escaped:
                 self._escaped = False
                 if byte == ESC_END:
                     self._buf.append(END)
                 elif byte == ESC_ESC:
                     self._buf.append(ESC)
-                # else: invalid escape — silently drop (best-effort on lossy links)
+                else:
+                    # RFC 1055: invalid escape — ignore ESC, pass byte through as data
+                    self._buf.append(byte)
             elif byte == ESC:
                 self._escaped = True
             elif byte == END:
@@ -117,6 +150,7 @@ class StreamDecoder:
         return packets
 
     def reset(self) -> None:
-        """Discard any partial packet and reset escape state."""
+        """Discard any partial packet and reset all state."""
         self._buf = bytearray()
         self._escaped = False
+        self._overflow = False

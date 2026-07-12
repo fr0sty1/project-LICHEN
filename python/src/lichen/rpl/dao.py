@@ -127,6 +127,12 @@ class DaoManager:
         """
         if not self.is_root:
             raise DaoError("process_dao is only valid on the root")
+        # SECURITY: RFC 6550 Section 9.5 requires filtering DAOs by RPL Instance ID.
+        # Accepting DAOs from a different instance could corrupt the routing table.
+        if dao.rpl_instance_id != self.rpl_instance_id:
+            raise DaoError(
+                f"DAO instance ID {dao.rpl_instance_id} != {self.rpl_instance_id}"
+            )
 
         target, parent = self._extract_edge(dao)
         self._parent_map[target] = parent

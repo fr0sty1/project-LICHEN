@@ -41,6 +41,10 @@ extern "C" {
 #define CONFIG_LICHEN_ROUTER_PENDING_TIMEOUT_MS 15000
 #endif
 
+#ifndef CONFIG_LICHEN_ROUTER_MAX_PENDING_PACKET_SIZE
+#define CONFIG_LICHEN_ROUTER_MAX_PENDING_PACKET_SIZE 256
+#endif
+
 #ifndef CONFIG_LICHEN_ROUTER_MAX_MESH_PREFIXES
 #define CONFIG_LICHEN_ROUTER_MAX_MESH_PREFIXES 4
 #endif
@@ -52,6 +56,10 @@ extern "C" {
 
 #ifndef CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGES
 #define CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGES 8
+#endif
+
+#ifndef CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGE_SIZE
+#define CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGE_SIZE 512
 #endif
 
 /* Forwarding buffer with backpressure (spec appendix-bufferbloat) */
@@ -92,10 +100,13 @@ enum lichen_route_decision {
 
 /**
  * @brief A packet queued pending route discovery.
+ *
+ * SECURITY: packet_data is a static buffer; data is copied on enqueue to
+ * prevent use-after-free if caller frees their buffer before packet expires.
  */
 struct lichen_pending_packet {
 	uint8_t destination_iid[8]; /**< IID we're discovering route to */
-	uint8_t *packet_data;       /**< Pointer to queued packet data */
+	uint8_t packet_data[CONFIG_LICHEN_ROUTER_MAX_PENDING_PACKET_SIZE]; /**< Copied packet data */
 	size_t packet_len;          /**< Length of packet data */
 	uint32_t queued_at_ms;      /**< Timestamp when queued */
 	bool valid;                 /**< Slot in use */
@@ -112,10 +123,13 @@ struct lichen_mesh_prefix {
 
 /**
  * @brief DTN buffered message (spec 9.8).
+ *
+ * SECURITY: data is a static buffer; data is copied on enqueue to prevent
+ * use-after-free if caller frees their buffer before message expires.
  */
 struct lichen_dtn_message {
 	uint8_t destination_iid[8]; /**< 8-byte IID of destination */
-	uint8_t *data;              /**< Message data */
+	uint8_t data[CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGE_SIZE]; /**< Copied message data */
 	size_t len;                 /**< Message length */
 	uint32_t expiry_unix;       /**< Absolute Unix timestamp expiry */
 	uint32_t buffered_at_ms;    /**< When message was buffered */

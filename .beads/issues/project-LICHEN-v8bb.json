@@ -2,11 +2,14 @@
   "id": "project-LICHEN-v8bb",
   "title": "EDHOC test accesses private Context fields",
   "description": "File: rust/lichen-oscore/src/edhoc.rs\nLines: 1032-1045\n\nThe test_full_handshake test tries to access private fields of Context struct:\n- initiator_ctx.sender_key\n- responder_ctx.recipient_key\n- initiator_ctx.recipient_key\n- responder_ctx.sender_key\n- initiator_ctx.common_iv\n- responder_ctx.common_iv\n\nThese fields are private (no pub modifier in lib.rs:165-188). The edhoc module is a sibling module, not a descendant, so it cannot access private fields of Context defined in the parent crate module.\n\nThis test should fail to compile. Either:\n1. The test is dead code that never runs\n2. There's a visibility issue that needs fixing\n3. Public accessors need to be added for testing\n\nTo fix: Either add pub(crate) test accessors to Context, or restructure the test to use public APIs only (e.g., test roundtrip encryption/decryption instead of comparing raw keys).",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:36:54.626214Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:36:54.626245Z"
+  "updated_at": "2026-07-12T16:19:23.763854Z",
+  "closed_at": "2026-07-12T16:19:23.763854Z",
+  "close_reason": "Fixed: Replaced direct private field access (sender_key, recipient_key, common_iv) with functional roundtrip test. Test now verifies EDHOC-derived OSCORE contexts work by encrypting/decrypting requests and responses between initiator and responder, which is more robust than comparing raw keys and avoids relying on implementation details."
 }

@@ -162,6 +162,56 @@ class TestEdhocResource:
         await alice_ctx.shutdown()
         await bob_ctx.shutdown()
 
+    @pytest.mark.asyncio
+    async def test_edhoc_resource_rejects_unknown_peer(
+        self,
+        alice_identity: Identity,
+        bob_identity: Identity,
+        context_store: OscoreContextStore,
+        peer_resolver: TofuPeerResolver,
+    ) -> None:
+        """EdhocResource rejects Message 1 from unknown peer with UNAUTHORIZED.
+
+        SECURITY: Unknown peers must be rejected early in Message 1 processing,
+        not deferred to Message 3. This prevents wasted resources and ensures
+        no crypto operations are performed with dummy keys.
+        """
+        net = InMemoryNetwork()
+        alice_channel = net.channel("alice")
+        bob_channel = net.channel("bob")
+
+        # Note: We do NOT pin Alice's public key, so she is unknown to Bob
+        edhoc = EdhocResource(bob_identity, context_store, peer_resolver)
+        info = StaticNodeInfo()
+        site = build_site(info, edhoc_resource=edhoc)
+
+        alice_ctx = await create_lichen_context(alice_channel, "alice")
+        bob_ctx = await create_lichen_context(bob_channel, "bob", site=site)
+
+        # Alice initiates EDHOC
+        initiator = EdhocInitiator.create(alice_identity, c_i=b"\x00")
+        msg1 = initiator.create_message_1()
+
+        # Send Message 1 - should be rejected immediately
+        request = aiocoap.Message(
+            code=aiocoap.POST,
+            uri="coap://bob/.well-known/edhoc",
+            payload=msg1,
+        )
+        response = await asyncio.wait_for(
+            alice_ctx.request(request).response,
+            timeout=5.0,
+        )
+
+        # Must reject with UNAUTHORIZED (4.01), not proceed to Message 2
+        assert response.code == aiocoap.UNAUTHORIZED
+
+        # Verify no session was created
+        assert len(edhoc._sessions) == 0
+
+        await alice_ctx.shutdown()
+        await bob_ctx.shutdown()
+
 
 class TestEdhocContextDerivation:
     """Tests for OSCORE context derivation from EDHOC."""

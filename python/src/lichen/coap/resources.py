@@ -45,7 +45,17 @@ from urllib.parse import urlparse
 
 import aiocoap
 import cbor2
-from aiocoap import BAD_GATEWAY, BAD_REQUEST, CHANGED, CONTENT, CREATED, DELETED, Message, resource
+from aiocoap import (
+    BAD_GATEWAY,
+    BAD_REQUEST,
+    CHANGED,
+    CONTENT,
+    CREATED,
+    DELETED,
+    UNAUTHORIZED,
+    Message,
+    resource,
+)
 from aiocoap.numbers import ContentFormat
 
 CBOR = ContentFormat.CBOR
@@ -916,11 +926,17 @@ class EdhocResource(resource.Resource):
         from lichen.crypto.edhoc import EdhocResponder
 
         # Get peer's public key for authentication
+        # SECURITY: Reject unknown peers early rather than proceeding with a
+        # dummy key. An all-zeros key is a valid Ed25519 point, so passing it
+        # to crypto routines could allow attacks. TOFU would defer this check
+        # to Message 3, but we currently require pre-known peers.
         peer_pubkey = await self._peer_resolver.get_peer_pubkey(peer_host)
+        if peer_pubkey is None:
+            return Message(code=UNAUTHORIZED)
 
         # Create responder and process Message 1
         responder = EdhocResponder.create(self._identity)
-        msg2 = responder.process_message_1(msg1, peer_pubkey or b"\x00" * 32)
+        msg2 = responder.process_message_1(msg1, peer_pubkey)
 
         # Extract C_I from Message 1 for session tracking
         # Message 1: (METHOD_CORR, SUITES_I, G_X, C_I, ?EAD_1)
@@ -947,10 +963,11 @@ class EdhocResource(resource.Resource):
         peer_pubkey = session["peer_pubkey"]
 
         if peer_pubkey is None:
-            # TOFU: accept and pin the pubkey from Message 3
-            # For now, require pre-known pubkey
+            # SECURITY: Defense-in-depth check. Message 1 handler now rejects
+            # unknown peers early, but if a session somehow lacks a peer key,
+            # fail here rather than proceeding with verification.
             self._cleanup_session(peer_host)
-            return Message(code=BAD_REQUEST)
+            return Message(code=UNAUTHORIZED)
 
         # Process Message 3
         responder.process_message_3(msg3, peer_pubkey)

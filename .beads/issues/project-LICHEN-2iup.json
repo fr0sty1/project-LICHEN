@@ -2,11 +2,14 @@
   "id": "project-LICHEN-2iup",
   "title": "coap_keys.c: decode_key_put_cbor skips non-string values without advancing position",
   "description": "File: lichen/subsys/lichen/coap/coap_keys.c\nLines: 790-796\n\nWhen decoding PUT payload, non-string value types are skipped incorrectly:\n```c\n} else {\n    /* Skip other types */\n    continue;\n}\n```\n\nThis 'continue' skips to the next map iteration WITHOUT advancing 'pos' past the value. The parser position stays at the value byte, causing the next key decode to read garbage.\n\nExample: if payload contains {\"extra\": 42, \"pubkey\": \"...\"}, the integer 42 is not skipped properly, corrupting subsequent parsing.\n\nShould call a zcbor_any_skip equivalent or manually advance pos based on the CBOR type.\n\nCategory: CORRECTNESS - parsing logic error",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:43:31.242987Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:43:31.24302Z"
+  "updated_at": "2026-07-12T16:30:33.926691Z",
+  "closed_at": "2026-07-12T16:30:33.926691Z",
+  "close_reason": "Fixed: Added proper CBOR value skipping in decode_key_put_cbor. When encountering non-text-string values, the parser now correctly advances pos past integers (major types 0,1), byte strings (major type 2), and simple values (major type 7) instead of leaving pos pointing at the value byte."
 }

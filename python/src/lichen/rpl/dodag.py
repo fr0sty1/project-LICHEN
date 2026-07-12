@@ -92,6 +92,10 @@ class DodagState:
     parent_switch_threshold: int = PARENT_SWITCH_THRESHOLD
     _lowest_rank: int = INFINITE_RANK
 
+    def __post_init__(self) -> None:
+        """Make defensive copies of mutable arguments to prevent cross-state pollution."""
+        self.parents = dict(self.parents)
+
     @classmethod
     def as_root(cls, rpl_instance_id: int, dodag_id: str, version: int) -> DodagState:
         """Create a DODAG root (rank = MinHopRankIncrease)."""

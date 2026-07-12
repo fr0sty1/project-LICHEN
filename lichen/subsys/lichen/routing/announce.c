@@ -498,6 +498,7 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 	uint8_t signature[LICHEN_ANNOUNCE_SIGNATURE_LEN];
 	size_t pos = 0;
 	uint16_t seq;
+	size_t app_data_len_snapshot;
 	int ret;
 
 	k_mutex_lock(&sched.mutex, K_FOREVER);
@@ -518,7 +519,12 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 	memcpy(iid, sched.link_ctx->eui64, LICHEN_ANNOUNCE_IID_LEN);
 	iid[0] ^= 0x02U; /* EUI-64 to IID conversion */
 
-	signed_len = ANNOUNCE_SIGNED_PREFIX_LEN + sched.app_data_len;
+	/* SECURITY: Capture app_data_len while holding the lock to prevent race
+	 * condition with lichen_announce_sched_set_app_data(). Using this snapshot
+	 * consistently prevents buffer overflow if app_data_len increases after
+	 * we release the lock. */
+	app_data_len_snapshot = sched.app_data_len;
+	signed_len = ANNOUNCE_SIGNED_PREFIX_LEN + app_data_len_snapshot;
 	if (signed_len > sizeof(signed_data)) {
 		k_mutex_unlock(&sched.mutex);
 		return -EMSGSIZE;
@@ -531,9 +537,9 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 		(uint8_t)(seq >> 8);
 	signed_data[LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN + 1U] =
 		(uint8_t)seq;
-	if (sched.app_data_len > 0) {
+	if (app_data_len_snapshot > 0) {
 		memcpy(&signed_data[ANNOUNCE_SIGNED_PREFIX_LEN],
-		       sched.app_data, sched.app_data_len);
+		       sched.app_data, app_data_len_snapshot);
 	}
 
 	/* Sign the announce */
@@ -549,7 +555,7 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 
 	/* Build frame: dispatch || type || flags || hop_count || seq || iid ||
 	 * pubkey || signature || app_data */
-	size_t frame_len = 1U + LICHEN_ANNOUNCE_MIN_LEN + sched.app_data_len;
+	size_t frame_len = 1U + LICHEN_ANNOUNCE_MIN_LEN + app_data_len_snapshot;
 
 	if (buf_len < frame_len) {
 		return -ENOMEM;
@@ -567,11 +573,14 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 	pos += LICHEN_ANNOUNCE_PUBKEY_LEN;
 	memcpy(&buf[pos], signature, LICHEN_ANNOUNCE_SIGNATURE_LEN);
 	pos += LICHEN_ANNOUNCE_SIGNATURE_LEN;
-	if (sched.app_data_len > 0) {
-		k_mutex_lock(&sched.mutex, K_FOREVER);
-		memcpy(&buf[pos], sched.app_data, sched.app_data_len);
-		k_mutex_unlock(&sched.mutex);
-		pos += sched.app_data_len;
+	if (app_data_len_snapshot > 0) {
+		/* SECURITY: Copy from signed_data (captured under lock) rather than
+		 * re-reading sched.app_data. This ensures consistency: the app_data
+		 * in the frame matches exactly what was signed, and we use the same
+		 * length that was used for buffer sizing. */
+		memcpy(&buf[pos], &signed_data[ANNOUNCE_SIGNED_PREFIX_LEN],
+		       app_data_len_snapshot);
+		pos += app_data_len_snapshot;
 	}
 
 	*out_len = pos;

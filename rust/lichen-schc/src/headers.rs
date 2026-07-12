@@ -24,6 +24,8 @@ use crate::rules::Rule;
 const IPV6_HEADER_LEN: usize = 40;
 const UDP_HEADER_LEN: usize = 8;
 const COAP_FIXED_HEADER: usize = 4;
+const COAP_BUF_SIZE: usize = 256;
+const COAP_MAX_TAIL: usize = COAP_BUF_SIZE - COAP_FIXED_HEADER;
 const ICMPV6_HEADER: usize = 4;
 const ICMPV6_ECHO_BASE: usize = 8;
 const DIO_BASE: usize = 24;
@@ -403,8 +405,15 @@ fn build_coap_udp(fields: &[(FieldId, u128)], tail: &[u8], out: &mut [u8]) -> Re
     }
 
     // Build CoAP header
+    // SECURITY: Validate tail fits in buffer to prevent panic on oversized payloads
+    if tail.len() > COAP_MAX_TAIL {
+        return Err(PacketError::BufferTooSmall {
+            needed: COAP_FIXED_HEADER + tail.len(),
+            available: COAP_BUF_SIZE,
+        });
+    }
     let coap_b0 = (1u8 << 6) | ((coap_type & 0x3) << 4) | (coap_tkl & 0x0F);
-    let mut coap_buf = [0u8; 256];
+    let mut coap_buf = [0u8; COAP_BUF_SIZE];
     coap_buf[0] = coap_b0;
     coap_buf[1] = coap_code;
     coap_buf[2] = (coap_mid >> 8) as u8;
@@ -992,5 +1001,38 @@ mod tests {
         );
         let profile = RplDaoProfile;
         assert!(!profile.matches(&packet));
+    }
+
+    #[test]
+    fn build_coap_oversized_tail_returns_error() {
+        // Build a CoAP packet with a tail larger than COAP_MAX_TAIL (252 bytes)
+        let oversized_tail = [0u8; 300];
+        let fields: &[(FieldId, u128)] = &[
+            ("IPv6.version", 6),
+            ("IPv6.traffic_class", 0),
+            ("IPv6.flow_label", 0),
+            ("IPv6.hop_limit", 64),
+            ("IPv6.src", 0xfe80_0000_0000_0000_0000_0000_0000_0001),
+            ("IPv6.dst", 0xfe80_0000_0000_0000_0000_0000_0000_0002),
+            ("UDP.src_port", 5683),
+            ("UDP.dst_port", 5683),
+            ("CoAP.version", 1),
+            ("CoAP.type", 0),
+            ("CoAP.tkl", 0),
+            ("CoAP.code", 1),
+            ("CoAP.mid", 0x1234),
+        ];
+
+        let mut out = [0u8; 512];
+        let profile = CoapUdpLinkLocalProfile;
+        let result = profile.build(fields, &oversized_tail, &mut out);
+
+        assert!(result.is_err());
+        if let Err(PacketError::BufferTooSmall { needed, available }) = result {
+            assert_eq!(needed, COAP_FIXED_HEADER + 300);
+            assert_eq!(available, COAP_BUF_SIZE);
+        } else {
+            panic!("expected BufferTooSmall error");
+        }
     }
 }

@@ -2,11 +2,14 @@
   "id": "project-LICHEN-v5m3",
   "title": "DodagState mutable default for parents dict",
   "description": "File: python/src/lichen/rpl/dodag.py:89\n\nThe DodagState dataclass uses a mutable default factory correctly via field(default_factory=dict), but the class docstring and usage could lead to confusion.\n\nHowever, there's a more subtle issue: if someone creates a DodagState and passes a parents dict directly:\n\n```python\nshared_dict = {}\nstate1 = DodagState(..., parents=shared_dict)\nstate2 = DodagState(..., parents=shared_dict)  # shares same dict!\n```\n\nBoth states would share the same parents dictionary, causing cross-state pollution.\n\nWhile this is correct Python dataclass behavior, the class doesn't document or protect against this. The same applies to the options lists in DIS, DIO, DAO, DAOAck.\n\nFix: Add __post_init__ to copy mutable arguments:\n```python\ndef __post_init__(self):\n    self.parents = dict(self.parents)  # defensive copy\n```\n\nOr document that callers must not share mutable arguments.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:24:36.332904Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:24:36.33293Z"
+  "updated_at": "2026-07-12T16:29:37.362987Z",
+  "closed_at": "2026-07-12T16:29:37.362987Z",
+  "close_reason": "Fixed: Added __post_init__ to DodagState that makes a defensive copy of the parents dict, preventing cross-state pollution when callers share mutable dicts. Added test to verify the fix."
 }

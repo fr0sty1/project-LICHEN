@@ -20,6 +20,38 @@ from nacl.bindings import (
 # Group order L = 2^252 + 27742317777372353535851937790883648493
 L = 2**252 + 27742317777372353535851937790883648493
 
+# SECURITY: The 8 low-order points on Ed25519 (points with order dividing 8).
+# These must be rejected in verification to prevent signature forgery attacks.
+# If pubkey is a low-order point, e*pubkey = 0 for some e, enabling forgery.
+LOW_ORDER_POINTS: frozenset[bytes] = frozenset(
+    [
+        bytes.fromhex(
+            "0100000000000000000000000000000000000000000000000000000000000000"
+        ),  # identity
+        bytes.fromhex(
+            "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        ),
+        bytes.fromhex(
+            "0000000000000000000000000000000000000000000000000000000000000080"
+        ),
+        bytes.fromhex(
+            "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f"
+        ),
+        bytes.fromhex(
+            "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05"
+        ),
+        bytes.fromhex(
+            "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a"
+        ),
+        bytes.fromhex(
+            "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa"
+        ),
+        bytes.fromhex(
+            "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85"
+        ),
+    ]
+)
+
 
 def _scalar_from_bytes(b: bytes) -> int:
     """Little-endian bytes to int."""
@@ -127,6 +159,11 @@ def verify(pubkey: bytes, msg: bytes, sig: bytes) -> bool:
         return False
 
     if not crypto_core_ed25519_is_valid_point(pubkey):
+        return False
+
+    # SECURITY: Reject low-order points to prevent signature forgery.
+    # Low-order points have order dividing 8; e*pubkey = 0 for some e.
+    if pubkey in LOW_ORDER_POINTS:
         return False
 
     # 1. Parse signature

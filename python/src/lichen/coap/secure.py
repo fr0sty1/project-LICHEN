@@ -359,9 +359,11 @@ class SecureDatagramChannel(DatagramChannel):
                 unprotected_msg.mid = msg.mid
             if unprotected_msg.remote is None:
                 unprotected_msg.remote = msg.remote
-            # aiocoap's encode() requires direction == OUTGOING.
-            # Set it for encoding purposes - we're creating bytes to pass up,
-            # not sending on the network.
+            # aiocoap's encode() asserts direction == OUTGOING. This message is
+            # semantically INCOMING, but we must set OUTGOING to satisfy encode().
+            # This is safe because we return bytes (not this Message object), so
+            # the semantically-incorrect direction is never exposed to callers.
+            # The Message object is discarded after encoding.
             unprotected_msg.direction = Direction.OUTGOING
 
             # If this is a request, store request_id for the response

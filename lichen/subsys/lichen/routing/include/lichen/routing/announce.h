@@ -66,11 +66,11 @@ int lichen_announce_parse(const uint8_t *_Nonnull data, size_t len,
 
 int lichen_announce_ingest_authenticated(
 	const uint8_t *_Nonnull data, size_t len,
-	const struct lichen_announce_rx_meta *_Nonnull meta);
+	const struct lichen_announce_rx_meta *_Nullable meta);
 
 int lichen_announce_ingest_l2_payload(
 	const uint8_t *_Nonnull data, size_t len,
-	const struct lichen_announce_rx_meta *_Nonnull meta);
+	const struct lichen_announce_rx_meta *_Nullable meta);
 
 int lichen_announce_register_app_data_observer(
 	lichen_announce_app_data_fn _Nonnull cb, void *_Nullable user_data);

@@ -166,3 +166,34 @@ def test_dao_with_root_as_target_is_ignored() -> None:
     assert root.routing_table.lookup(N1) == [N1]
     # No route to root itself (empty path was skipped).
     assert root.routing_table.lookup(ROOT) is None
+
+
+def test_process_dao_rejects_wrong_rpl_instance_id() -> None:
+    """DAOs for a different RPL instance must be rejected (RFC 6550 9.5).
+
+    A malicious or misconfigured node could send a DAO for a different RPL
+    instance, and without this check the root would accept it and corrupt
+    its routing table with edges from a different routing domain.
+    """
+    root = DaoManager(node_address=ROOT, is_root=True, rpl_instance_id=0)
+    # Build a DAO with a different RPL instance ID.
+    sender = DaoManager(node_address=N1, rpl_instance_id=42)
+    dao = sender.build_dao(ROOT)
+    assert dao.rpl_instance_id == 42  # confirm setup
+
+    with pytest.raises(DaoError, match="instance ID 42 != 0"):
+        root.process_dao(dao)
+
+    # Routing table must remain empty.
+    assert root.routing_table.lookup(N1) is None
+
+
+def test_process_dao_accepts_matching_rpl_instance_id() -> None:
+    """DAOs with matching RPL instance ID are accepted normally."""
+    root = DaoManager(node_address=ROOT, is_root=True, rpl_instance_id=5)
+    sender = DaoManager(node_address=N1, rpl_instance_id=5)
+    dao = sender.build_dao(ROOT)
+
+    # Should succeed without error.
+    root.process_dao(dao)
+    assert root.routing_table.lookup(N1) == [N1]

@@ -153,9 +153,9 @@ impl KissBridge {
     ///
     /// # Panics
     ///
-    /// Debug builds panic if `epoch < 128` to catch non-compliant initialization.
+    /// Panics if `epoch < 128` to enforce spec-compliant initialization.
     pub fn with_epoch(epoch: u8) -> Self {
-        debug_assert!(
+        assert!(
             epoch >= 128,
             "SECURITY: epoch MUST be in [128, 255] per spec section 4.4"
         );
@@ -182,7 +182,15 @@ impl KissBridge {
     }
 
     /// Set the epoch (for reboot or epoch advance).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `epoch < 128` to enforce spec section 4.4 compliance.
     pub fn set_epoch(&mut self, epoch: u8) {
+        assert!(
+            epoch >= 128,
+            "SECURITY: epoch MUST be in [128, 255] per spec section 4.4"
+        );
         self.default_epoch = epoch;
     }
 
@@ -508,7 +516,7 @@ mod tests {
     #[test]
     fn test_encode_payload_as_frame_broadcast() {
         let mut bridge = KissBridge::with_epoch(200);
-        bridge.set_epoch(3); // Override for test (use low value for readability)
+        bridge.set_epoch(130); // Valid epoch in [128, 255] per spec section 4.4
         bridge.set_seqnum(LinkSeqNum::new(10));
 
         let mut work_buf = [0u8; 256];
@@ -526,7 +534,7 @@ mod tests {
             .handle_kiss_frame(&out[..len], &mut decode_buf)
             .unwrap();
 
-        assert_eq!(frame.epoch, 3);
+        assert_eq!(frame.epoch, 130);
         assert_eq!(frame.seqnum.get(), 10);
         assert_eq!(frame.payload, b"hello");
         assert_eq!(frame.addr_mode, AddrMode::None);
@@ -593,6 +601,51 @@ mod tests {
         let bridge = KissBridge::with_epoch(200);
         assert_eq!(bridge.epoch(), 200);
         assert_eq!(bridge.seqnum().get(), 0);
+    }
+
+    #[test]
+    fn test_bridge_with_epoch_boundary_valid() {
+        // SECURITY: Test boundary values per spec section 4.4
+        let bridge_min = KissBridge::with_epoch(128);
+        assert_eq!(bridge_min.epoch(), 128);
+
+        let bridge_max = KissBridge::with_epoch(255);
+        assert_eq!(bridge_max.epoch(), 255);
+    }
+
+    #[test]
+    #[should_panic(expected = "SECURITY: epoch MUST be in [128, 255]")]
+    fn test_bridge_with_epoch_rejects_invalid() {
+        // SECURITY: Epoch 127 is invalid per spec section 4.4
+        let _ = KissBridge::with_epoch(127);
+    }
+
+    #[test]
+    #[should_panic(expected = "SECURITY: epoch MUST be in [128, 255]")]
+    fn test_bridge_with_epoch_rejects_zero() {
+        // SECURITY: Epoch 0 is invalid per spec section 4.4
+        let _ = KissBridge::with_epoch(0);
+    }
+
+    #[test]
+    #[should_panic(expected = "SECURITY: epoch MUST be in [128, 255]")]
+    fn test_set_epoch_rejects_invalid() {
+        // SECURITY: set_epoch must also validate
+        let mut bridge = KissBridge::default();
+        bridge.set_epoch(100);
+    }
+
+    #[test]
+    fn test_set_epoch_accepts_valid() {
+        let mut bridge = KissBridge::default();
+        bridge.set_epoch(200);
+        assert_eq!(bridge.epoch(), 200);
+
+        bridge.set_epoch(128);
+        assert_eq!(bridge.epoch(), 128);
+
+        bridge.set_epoch(255);
+        assert_eq!(bridge.epoch(), 255);
     }
 
     #[test]

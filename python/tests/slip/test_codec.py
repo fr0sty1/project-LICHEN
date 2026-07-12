@@ -127,11 +127,51 @@ class TestStreamDecoder:
             packets.extend(dec.feed(bytes([b])))
         assert packets == [payload]
 
-    def test_invalid_escape_silently_dropped(self) -> None:
-        # StreamDecoder is best-effort on lossy links; bad escape drops the byte
+    def test_invalid_escape_passes_byte_through(self) -> None:
+        # RFC 1055: invalid escape — ignore ESC, pass byte through as data
         dec = StreamDecoder()
         # Build a frame with an invalid escape manually
         bad = bytes([END, ESC, 0x00, 0x41, END])  # ESC 0x00 is invalid
         packets = dec.feed(bad)
-        # The 0x41 ('A') after the bad escape is still captured
-        assert packets == [b"A"]
+        # Both 0x00 and 0x41 should be captured (ESC is discarded per RFC)
+        assert packets == [b"\x00A"]
+
+    def test_default_max_size(self) -> None:
+        dec = StreamDecoder()
+        assert dec._max_size == StreamDecoder.DEFAULT_MAX_SIZE
+
+    def test_custom_max_size(self) -> None:
+        dec = StreamDecoder(max_size=128)
+        assert dec._max_size == 128
+
+    def test_buffer_overflow_discards_partial_packet(self) -> None:
+        # Use a small max_size for testing
+        dec = StreamDecoder(max_size=10)
+        # Feed 15 bytes without END — should discard when buffer hits 10
+        # Bytes 0-9 fill buffer, byte 10 triggers overflow (clear + set overflow flag),
+        # bytes 11-14 are all discarded (in overflow mode, waiting for END)
+        dec.feed(bytes(range(15)))
+        assert len(dec._buf) == 0
+        assert dec._overflow is True
+
+    def test_buffer_overflow_allows_next_packet(self) -> None:
+        # Use a small max_size for testing
+        dec = StreamDecoder(max_size=10)
+        # Feed END, oversized data, END, then a valid packet
+        # The leading END establishes sync, then oversized data overflows,
+        # trailing END delimits the garbage, and valid packet decodes
+        overflow_data = bytes([END]) + bytes(range(20)) + bytes([END])
+        valid_packet = encode(b"ok")
+        packets = dec.feed(overflow_data + valid_packet)
+        # Garbage packets from overflow may appear, but "ok" should be last
+        assert packets[-1] == b"ok"
+
+    def test_buffer_overflow_clears_escape_state(self) -> None:
+        # Use a small max_size for testing
+        dec = StreamDecoder(max_size=5)
+        # Set escape state then overflow
+        dec.feed(bytes([ESC]))  # Escape state active
+        assert dec._escaped is True
+        dec.feed(bytes([1, 2, 3, 4, 5]))  # This should trigger overflow + clear
+        # Escape state should be cleared along with buffer
+        assert dec._escaped is False

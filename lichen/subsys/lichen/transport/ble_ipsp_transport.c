@@ -357,7 +357,8 @@ int lichen_ble_slip_init(const struct lichen_ble_transport_config *config)
 		return -EALREADY;
 	}
 
-	k_mutex_init(&transport_state.lock);
+	/* Zero state first, then initialize components */
+	memset(&transport_state, 0, sizeof(transport_state));
 
 	int err = bt_enable(NULL);
 	if (err && err != -EALREADY) {
@@ -365,7 +366,6 @@ int lichen_ble_slip_init(const struct lichen_ble_transport_config *config)
 		return err;
 	}
 
-	memset(&transport_state, 0, sizeof(transport_state));
 	k_mutex_init(&transport_state.lock);
 	transport_state.config = *config;
 	transport_state.initialized = true;
@@ -428,10 +428,20 @@ int lichen_ble_transport_stop(void)
 
 	k_mutex_lock(&transport_state.lock, K_FOREVER);
 	if (transport_state.conn) {
-		bt_conn_disconnect(transport_state.conn,
-				   BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+		struct bt_conn *conn = transport_state.conn;
+		transport_state.conn = NULL;
+		transport_state.state = LICHEN_BLE_DISCONNECTED;
+		k_mutex_unlock(&transport_state.lock);
+
+		bt_conn_disconnect(conn, BT_HCI_ERR_REMOTE_USER_TERM_CONN);
+		/* Unref here to guarantee cleanup even if disconnected_cb
+		 * doesn't fire (e.g., during BLE stack shutdown). Setting
+		 * transport_state.conn = NULL above prevents double-unref
+		 * if disconnected_cb does fire. */
+		bt_conn_unref(conn);
+	} else {
+		k_mutex_unlock(&transport_state.lock);
 	}
-	k_mutex_unlock(&transport_state.lock);
 
 	LOG_INF("BLE transport stopped");
 	return 0;

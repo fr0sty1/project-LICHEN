@@ -262,8 +262,15 @@ int lichen_router_queue_pending(struct lichen_router *router,
 				size_t packet_len,
 				uint32_t now_ms)
 {
-	if (router == NULL || dst_iid == NULL) {
+	if (router == NULL || dst_iid == NULL || packet_data == NULL) {
 		return -EINVAL;
+	}
+
+	/* SECURITY: Reject packets larger than our static buffer to prevent
+	 * truncation attacks. Caller must use smaller packets or increase
+	 * CONFIG_LICHEN_ROUTER_MAX_PENDING_PACKET_SIZE. */
+	if (packet_len > CONFIG_LICHEN_ROUTER_MAX_PENDING_PACKET_SIZE) {
+		return -EMSGSIZE;
 	}
 
 	/* Count existing packets for this destination */
@@ -328,7 +335,9 @@ int lichen_router_queue_pending(struct lichen_router *router,
 
 	memset(slot, 0, sizeof(*slot));
 	memcpy(slot->destination_iid, dst_iid, 8);
-	slot->packet_data = (uint8_t *)packet_data;  /* Note: caller owns data */
+	/* SECURITY: Copy data into static buffer to prevent use-after-free
+	 * if caller frees their buffer before packet is processed. */
+	memcpy(slot->packet_data, packet_data, packet_len);
 	slot->packet_len = packet_len;
 	slot->queued_at_ms = now_ms;
 	slot->valid = true;
@@ -631,7 +640,10 @@ int lichen_router_dtn_buffer(struct lichen_router *router,
 		return -EINVAL;
 	}
 
-	if (len > CONFIG_LICHEN_ROUTER_DTN_BUFFER_SIZE) {
+	/* SECURITY: Reject messages larger than our static buffer to prevent
+	 * truncation attacks. Caller must use smaller messages or increase
+	 * CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGE_SIZE. */
+	if (len > CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGE_SIZE) {
 		return -EMSGSIZE;
 	}
 
@@ -663,7 +675,9 @@ int lichen_router_dtn_buffer(struct lichen_router *router,
 
 	memset(slot, 0, sizeof(*slot));
 	memcpy(slot->destination_iid, dst_iid, 8);
-	slot->data = (uint8_t *)data;  /* Note: caller owns data */
+	/* SECURITY: Copy data into static buffer to prevent use-after-free
+	 * if caller frees their buffer before message is delivered. */
+	memcpy(slot->data, data, len);
 	slot->len = len;
 	slot->expiry_unix = expiry_unix;
 	slot->buffered_at_ms = now_ms;

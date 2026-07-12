@@ -679,7 +679,9 @@ def parse_cot_xml(xml_data: str | bytes) -> CompactCot:
     Raises:
         ValueError: If XML cannot be parsed or required elements are missing.
     """
-    from xml.etree.ElementTree import fromstring
+    # SECURITY: Use defusedxml to prevent XML entity expansion attacks
+    # (Billion Laughs, Quadratic Blowup) from untrusted ATAK sources
+    from defusedxml.ElementTree import fromstring
 
     if isinstance(xml_data, bytes):
         xml_data = xml_data.decode("utf-8")

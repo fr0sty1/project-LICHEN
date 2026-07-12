@@ -9,10 +9,14 @@
 
 #include <lichen/meshtastic/codec.h>
 
+/* Protobuf wire types per https://protobuf.dev/programming-guides/encoding/ */
 #define PB_WT_VARINT 0U
-#define PB_WT_LEN 2U
 #define PB_WT_64BIT 1U
+#define PB_WT_LEN 2U
+#define PB_WT_SGROUP 3U  /* Deprecated: proto2 start group marker */
+#define PB_WT_EGROUP 4U  /* Deprecated: proto2 end group marker */
 #define PB_WT_32BIT 5U
+/* Wire types 6 and 7 are reserved/undefined per protobuf spec */
 
 #define PB_MAX_FIELD_NUMBER 536870911ULL
 #define LICHEN_BRAND "LICHEN"
@@ -294,7 +298,20 @@ static int pb_skip_value(struct pb_cursor *cur, uint32_t wire_type)
 		}
 		cur->pos += 4U;
 		return 0;
+	case PB_WT_SGROUP:
+	case PB_WT_EGROUP:
+		/*
+		 * SECURITY: Deprecated proto2 group markers. Groups were removed
+		 * in proto3 and have no length prefix, making them impossible to
+		 * skip without schema knowledge. Reject to prevent parse confusion.
+		 */
+		return -EINVAL;
 	default:
+		/*
+		 * SECURITY: Wire types 6 and 7 are reserved/undefined per the
+		 * protobuf spec. Reject unknown wire types to prevent undefined
+		 * behavior from malformed or malicious input.
+		 */
 		return -EINVAL;
 	}
 }

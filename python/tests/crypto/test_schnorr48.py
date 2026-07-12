@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from lichen.crypto.schnorr48 import derive_keypair, sign, verify
+from lichen.crypto.schnorr48 import LOW_ORDER_POINTS, derive_keypair, sign, verify
 
 VECTORS_PATH = (
     Path(__file__).parent.parent.parent.parent / "spec" / "test-vectors" / "schnorr48.json"
@@ -91,3 +91,18 @@ def test_reject_invalid_signature_length():
     _, pub = derive_keypair(seed)
     assert not verify(pub, b"msg", b"0" * 47)
     assert not verify(pub, b"msg", b"0" * 49)
+
+
+def test_reject_low_order_pubkeys():
+    """Reject low-order public keys to prevent signature forgery.
+
+    Low-order points (order dividing 8) can be used in forgery attacks:
+    if pubkey is identity, e*pubkey = 0 for any e, allowing forgery.
+    """
+    # Use a plausible-looking signature (proper length, nonzero s)
+    fake_sig = bytes(16) + bytes([1] + [0] * 31)  # e=0, s=1
+
+    for low_order_point in LOW_ORDER_POINTS:
+        assert not verify(
+            low_order_point, b"test message", fake_sig
+        ), f"Should reject low-order point: {low_order_point.hex()}"

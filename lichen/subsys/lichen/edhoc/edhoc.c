@@ -218,6 +218,10 @@ static int edhoc_kdf(const uint8_t prk[32],
  * - body_protected = << ID_CRED >> (bstr-wrapped)
  * - external_aad = << TH, CRED >> (CBOR sequence as bstr)
  * - payload = MAC (from EDHOC-KDF)
+ *
+ * SECURITY: All CBOR encoding return values must be checked. If encoding
+ * fails (e.g., buffer overflow), operating on corrupted data could cause
+ * signature verification to fail or potentially accept invalid signatures.
  */
 static int build_sig_structure(const uint8_t *id_cred, size_t id_cred_len,
 			       const uint8_t *th,
@@ -228,24 +232,32 @@ static int build_sig_structure(const uint8_t *id_cred, size_t id_cred_len,
 	/* external_aad = << TH, CRED >> */
 	uint8_t ext_aad[96];
 	ZCBOR_STATE_E(zse_ext, 0, ext_aad, sizeof(ext_aad), 0);
-	zcbor_bstr_encode_ptr(zse_ext, th, 32);
-	zcbor_bstr_encode_ptr(zse_ext, cred, cred_len);
+	if (!zcbor_bstr_encode_ptr(zse_ext, th, 32)) {
+		return -EINVAL;
+	}
+	if (!zcbor_bstr_encode_ptr(zse_ext, cred, cred_len)) {
+		return -EINVAL;
+	}
 	size_t ext_aad_len = zse_ext->payload - ext_aad;
 
 	/* body_protected = << ID_CRED >> */
 	uint8_t body_prot[48];
 	ZCBOR_STATE_E(zse_bp, 0, body_prot, sizeof(body_prot), 0);
-	zcbor_bstr_encode_ptr(zse_bp, id_cred, id_cred_len);
+	if (!zcbor_bstr_encode_ptr(zse_bp, id_cred, id_cred_len)) {
+		return -EINVAL;
+	}
 	size_t body_prot_len = zse_bp->payload - body_prot;
 
 	/* Sig_structure = ["Signature1", body_protected, external_aad, MAC] */
 	ZCBOR_STATE_E(zse, 0, out, out_size, 0);
-	zcbor_list_start_encode(zse, 4);
-	zcbor_tstr_put_lit(zse, "Signature1");
-	zcbor_bstr_encode_ptr(zse, body_prot, body_prot_len);
-	zcbor_bstr_encode_ptr(zse, ext_aad, ext_aad_len);
-	zcbor_bstr_encode_ptr(zse, mac, mac_len);
-	zcbor_list_end_encode(zse, 4);
+	if (!zcbor_list_start_encode(zse, 4) ||
+	    !zcbor_tstr_put_lit(zse, "Signature1") ||
+	    !zcbor_bstr_encode_ptr(zse, body_prot, body_prot_len) ||
+	    !zcbor_bstr_encode_ptr(zse, ext_aad, ext_aad_len) ||
+	    !zcbor_bstr_encode_ptr(zse, mac, mac_len) ||
+	    !zcbor_list_end_encode(zse, 4)) {
+		return -EINVAL;
+	}
 
 	*out_len = zse->payload - out;
 	return 0;
@@ -613,8 +625,11 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 
 	uint8_t sig_struct_2[256];
 	size_t sig_struct_2_len;
-	build_sig_structure(peer_pubkey, 32, ctx->th_2, peer_pubkey, 32,
-			    mac_2, 32, sig_struct_2, sizeof(sig_struct_2), &sig_struct_2_len);
+	ret = build_sig_structure(peer_pubkey, 32, ctx->th_2, peer_pubkey, 32,
+				  mac_2, 32, sig_struct_2, sizeof(sig_struct_2), &sig_struct_2_len);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	if (ed25519_verify(peer_pubkey, signature_2.value, sig_struct_2, sig_struct_2_len) != 0) {
 		LOG_ERR("Signature_2 verification failed");
@@ -658,8 +673,11 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	/* Sig_structure_3 per RFC 9528/9052 */
 	uint8_t sig_struct_3[256];
 	size_t sig_struct_3_len;
-	build_sig_structure(ctx->ed_pubkey, 32, ctx->th_3, ctx->ed_pubkey, 32,
-			    mac_3, 32, sig_struct_3, sizeof(sig_struct_3), &sig_struct_3_len);
+	ret = build_sig_structure(ctx->ed_pubkey, 32, ctx->th_3, ctx->ed_pubkey, 32,
+				  mac_3, 32, sig_struct_3, sizeof(sig_struct_3), &sig_struct_3_len);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	ed25519_sign(signature_3, ctx->ed_seed, sig_struct_3, sig_struct_3_len);
 
@@ -934,8 +952,11 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	/* Sig_structure_2 per RFC 9528/9052 */
 	uint8_t sig_struct_2[256];
 	size_t sig_struct_2_len;
-	build_sig_structure(ctx->ed_pubkey, 32, ctx->th_2, ctx->ed_pubkey, 32,
-			    mac_2, 32, sig_struct_2, sizeof(sig_struct_2), &sig_struct_2_len);
+	ret = build_sig_structure(ctx->ed_pubkey, 32, ctx->th_2, ctx->ed_pubkey, 32,
+				  mac_2, 32, sig_struct_2, sizeof(sig_struct_2), &sig_struct_2_len);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	ed25519_sign(signature_2, ctx->ed_seed, sig_struct_2, sig_struct_2_len);
 
@@ -1110,8 +1131,11 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 
 	uint8_t sig_struct_3[256];
 	size_t sig_struct_3_len;
-	build_sig_structure(peer_pubkey, 32, ctx->th_3, peer_pubkey, 32,
-			    mac_3, 32, sig_struct_3, sizeof(sig_struct_3), &sig_struct_3_len);
+	ret = build_sig_structure(peer_pubkey, 32, ctx->th_3, peer_pubkey, 32,
+				  mac_3, 32, sig_struct_3, sizeof(sig_struct_3), &sig_struct_3_len);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	if (ed25519_verify(peer_pubkey, signature_3.value, sig_struct_3, sig_struct_3_len) != 0) {
 		LOG_ERR("Signature_3 verification failed");

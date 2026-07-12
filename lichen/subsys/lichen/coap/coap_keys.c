@@ -10,7 +10,7 @@
  *
  * SECURITY: Write operations (PUT/DELETE) require local admin access.
  * The access check verifies the request comes from a local client
- * (loopback or BLE LCI interface).
+ * (loopback or SLIP LCI interface only - NOT the LoRa mesh interface).
  */
 
 #include <errno.h>
@@ -20,9 +20,11 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap.h>
 #include <zephyr/net/coap_service.h>
+#include <zephyr/net/net_if.h>
 #include <zephyr/net/net_ip.h>
 
 #include <lichen/coap_keys.h>
+#include <lichen/transport/slip_transport.h>
 
 #ifdef CONFIG_TINYCRYPT_SHA256
 #include <tinycrypt/sha256.h>
@@ -791,7 +793,55 @@ static int decode_key_put_cbor(const uint8_t *payload, size_t payload_len,
 			val_len = payload[pos + 1];
 			pos += 2;
 		} else {
-			/* Skip other types */
+			/* Skip other CBOR types by advancing pos past the value */
+			uint8_t major = (val_type >> 5) & 0x07;
+			uint8_t info = val_type & 0x1f;
+
+			pos++; /* advance past the initial byte */
+
+			if (major == 0 || major == 1) {
+				/* Unsigned or negative integer */
+				if (info < 24) {
+					/* value is inline, no extra bytes */
+				} else if (info == 24) {
+					pos += 1;
+				} else if (info == 25) {
+					pos += 2;
+				} else if (info == 26) {
+					pos += 4;
+				} else if (info == 27) {
+					pos += 8;
+				} else {
+					return -EINVAL;
+				}
+			} else if (major == 2) {
+				/* Byte string - skip header + data */
+				size_t bstr_len;
+
+				if (info < 24) {
+					bstr_len = info;
+				} else if (info == 24 && pos < payload_len) {
+					bstr_len = payload[pos];
+					pos++;
+				} else {
+					return -EINVAL;
+				}
+				pos += bstr_len;
+			} else if (major == 7) {
+				/* Simple values: false(20), true(21), null(22), undefined(23) */
+				if (info < 24) {
+					/* value is inline, no extra bytes */
+				} else {
+					return -EINVAL;
+				}
+			} else {
+				/* Arrays, maps, tags - not expected in key PUT payload */
+				return -EINVAL;
+			}
+
+			if (pos > payload_len) {
+				return -EINVAL;
+			}
 			continue;
 		}
 
@@ -830,6 +880,10 @@ static int decode_key_put_cbor(const uint8_t *payload, size_t payload_len,
 /*
  * SECURITY: Check if request comes from a local admin client.
  * Write operations (PUT/DELETE) require local access.
+ *
+ * Link-local addresses are only accepted from the SLIP LCI interface,
+ * NOT from the LoRa mesh interface. This prevents mesh neighbors from
+ * modifying the key store via PUT/DELETE /keys/{iid}.
  */
 static bool is_local_admin(const struct sockaddr *addr, socklen_t addr_len)
 {
@@ -849,8 +903,32 @@ static bool is_local_admin(const struct sockaddr *addr, socklen_t addr_len)
 		return true;
 	}
 
-	/* Link-local addresses on BLE LCI interface are local */
+	/*
+	 * SECURITY: Link-local addresses require interface verification.
+	 * Only accept from SLIP LCI interface - reject LoRa mesh traffic.
+	 */
 	if (net_ipv6_is_ll_addr(&in6->sin6_addr)) {
+		struct net_if *slip_iface = slip_transport_iface_get();
+
+		if (slip_iface == NULL) {
+			/* SLIP not available - reject link-local admin access */
+			LOG_WRN("Admin rejected: SLIP interface not available");
+			return false;
+		}
+
+		int slip_idx = net_if_get_by_iface(slip_iface);
+
+		/*
+		 * sin6_scope_id holds the interface index for link-local.
+		 * Only accept if it matches the SLIP LCI interface.
+		 */
+		if (in6->sin6_scope_id != (uint32_t)slip_idx) {
+			LOG_WRN("Admin rejected: link-local from wrong interface "
+				"(scope_id=%u, slip_idx=%d)",
+				in6->sin6_scope_id, slip_idx);
+			return false;
+		}
+
 		return true;
 	}
 

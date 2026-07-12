@@ -90,6 +90,9 @@ impl core::error::Error for SlipError {}
 const TX_BUFFER_SIZE: usize = 4096;
 /// Maximum number of packets in TX queue.
 const TX_QUEUE_CAPACITY: usize = 8;
+/// Maximum size of RX buffer before discarding the frame.
+/// SECURITY: Prevents DoS via memory exhaustion from malicious/faulty senders.
+const RX_BUFFER_MAX: usize = 4096;
 
 /// Stateful SLIP framer with RX accumulation and TX queue.
 ///
@@ -284,6 +287,12 @@ impl SlipFramer {
         self.tx_packets.clear();
     }
 
+    /// Returns the current size of the RX buffer (for testing/diagnostics).
+    #[cfg(test)]
+    pub fn rx_buffer_len(&self) -> usize {
+        self.rx_buffer.len()
+    }
+
     /// Process one byte, returning a complete packet if FEND delimiter received.
     fn process_byte(&mut self, byte: u8) -> Option<Vec<u8>> {
         let (result, new_escape) = slip_decode_byte(byte, self.rx_in_escape);
@@ -298,8 +307,17 @@ impl SlipFramer {
                 }
             }
             SlipDecodeResult::Byte(b) => {
-                self.rx_buffer.push(b);
-                None
+                // SECURITY: Prevent DoS via memory exhaustion by discarding
+                // oversized frames. A malicious sender could transmit continuous
+                // data without FEND delimiters to grow the buffer indefinitely.
+                if self.rx_buffer.len() >= RX_BUFFER_MAX {
+                    self.rx_buffer.clear();
+                    self.rx_in_escape = false;
+                    None
+                } else {
+                    self.rx_buffer.push(b);
+                    None
+                }
             }
             SlipDecodeResult::None => None,
         }
@@ -499,6 +517,57 @@ mod tests {
         let packets: Vec<_> = rx_framer.feed(&wire[..len]).collect();
         assert_eq!(packets.len(), 1);
         assert_eq!(packets[0], b"Hello");
+    }
+
+    #[test]
+    fn framer_rx_buffer_bounded() {
+        // SECURITY: Verify RX buffer cannot grow beyond RX_BUFFER_MAX.
+        // A malicious sender could transmit continuous data without FEND
+        // delimiters to exhaust memory. The framer must discard such data.
+        use super::RX_BUFFER_MAX;
+
+        let mut framer = SlipFramer::new();
+
+        // Feed data much larger than RX_BUFFER_MAX without any FEND delimiter.
+        // Without the fix, this would allocate unbounded memory.
+        // With the fix, buffer resets at RX_BUFFER_MAX, then bytes continue
+        // accumulating until the next reset or FEND.
+        let oversized = vec![0x42; RX_BUFFER_MAX * 3];
+        let packets: Vec<_> = framer.feed(&oversized).collect();
+
+        // No complete packet (no FEND received)
+        assert!(packets.is_empty());
+
+        // The key assertion: internal buffer length is bounded.
+        // After processing 3*RX_BUFFER_MAX bytes, buffer would be ~12KB without fix.
+        // With fix, it's at most RX_BUFFER_MAX bytes.
+        assert!(framer.rx_buffer_len() <= RX_BUFFER_MAX);
+    }
+
+    #[test]
+    fn framer_rx_buffer_recovers_after_discard() {
+        // Verify that after discarding an oversized frame, normal operation resumes.
+        use super::RX_BUFFER_MAX;
+
+        let mut framer = SlipFramer::new();
+
+        // Start a normal frame
+        let _: Vec<_> = framer.feed(&[FEND, b'A', b'B']).collect();
+
+        // Feed enough data to exceed the limit multiple times
+        let attack_data = vec![0x99; RX_BUFFER_MAX * 2];
+        let packets: Vec<_> = framer.feed(&attack_data).collect();
+        assert!(packets.is_empty());
+
+        // Buffer should be bounded
+        assert!(framer.rx_buffer_len() <= RX_BUFFER_MAX);
+
+        // Send a FEND to flush any garbage, then a clean frame
+        let packets: Vec<_> = framer.feed(&[FEND, FEND, b'X', b'Y', b'Z', FEND]).collect();
+
+        // Should get the clean XYZ frame (maybe preceded by garbage packet)
+        let last_packet = packets.last().unwrap();
+        assert_eq!(last_packet, b"XYZ");
     }
 
     #[test]

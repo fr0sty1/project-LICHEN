@@ -1023,25 +1023,50 @@ mod tests {
             .expect("process_message_3 failed");
 
         // Step 5: Both export OSCORE contexts
-        let initiator_ctx = initiator.export_oscore().expect("initiator export_oscore failed");
-        let responder_ctx = responder.export_oscore().expect("responder export_oscore failed");
+        let mut initiator_ctx = initiator.export_oscore().expect("initiator export_oscore failed");
+        let mut responder_ctx = responder.export_oscore().expect("responder export_oscore failed");
 
-        // Step 6: Verify keys match (initiator sender = responder recipient, and vice versa)
-        // The sender_key of initiator should equal recipient_key of responder
-        // The recipient_key of initiator should equal sender_key of responder
-        assert_eq!(
-            initiator_ctx.sender_key, responder_ctx.recipient_key,
-            "initiator sender_key != responder recipient_key"
-        );
-        assert_eq!(
-            initiator_ctx.recipient_key, responder_ctx.sender_key,
-            "initiator recipient_key != responder sender_key"
-        );
+        // Step 6: Verify contexts can communicate via functional roundtrip test.
+        // This is more robust than comparing raw keys - it proves the derived
+        // key material is correct by demonstrating successful encrypt/decrypt.
 
-        // Also verify common IV matches
-        assert_eq!(
-            initiator_ctx.common_iv, responder_ctx.common_iv,
-            "common_iv mismatch"
-        );
+        // 6a: Initiator sends request to Responder
+        let test_code: u8 = 0x01; // GET
+        let test_options: &[u8] = &[0xB1, 0x61]; // Uri-Path "a"
+        let test_payload: &[u8] = b"hello from initiator";
+
+        let (ciphertext, oscore_opt) = initiator_ctx
+            .protect_request(test_code, test_options, test_payload)
+            .expect("initiator protect_request failed");
+
+        let (recv_code, recv_options, recv_payload) = responder_ctx
+            .unprotect_request(&oscore_opt, &ciphertext)
+            .expect("responder unprotect_request failed");
+
+        assert_eq!(recv_code, test_code, "request code mismatch");
+        assert_eq!(&recv_options[..], test_options, "request options mismatch");
+        assert_eq!(&recv_payload[..], test_payload, "request payload mismatch");
+
+        // 6b: Responder sends response back to Initiator
+        // Extract PIV from the request's OSCORE option for response AAD
+        let request_piv_len = (oscore_opt[0] & 0x07) as usize;
+        let request_piv = &oscore_opt[1..1 + request_piv_len];
+        let request_kid = &oscore_opt[1 + request_piv_len..];
+
+        let resp_code: u8 = 0x45; // 2.05 Content
+        let resp_options: &[u8] = &[];
+        let resp_payload: &[u8] = b"hello from responder";
+
+        let (resp_ciphertext, resp_oscore_opt) = responder_ctx
+            .protect_response(resp_code, resp_options, resp_payload, request_kid, request_piv, false)
+            .expect("responder protect_response failed");
+
+        let (recv_resp_code, recv_resp_options, recv_resp_payload) = initiator_ctx
+            .unprotect_response(&resp_oscore_opt, &resp_ciphertext, request_piv)
+            .expect("initiator unprotect_response failed");
+
+        assert_eq!(recv_resp_code, resp_code, "response code mismatch");
+        assert_eq!(&recv_resp_options[..], resp_options, "response options mismatch");
+        assert_eq!(&recv_resp_payload[..], resp_payload, "response payload mismatch");
     }
 }

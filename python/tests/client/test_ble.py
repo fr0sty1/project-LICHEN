@@ -152,7 +152,7 @@ class FakeScanner:
 
 async def test_ble_transport_connects_and_subscribes_to_lci_tx() -> None:
     client = FakeBleClient("AA:BB")
-    transport = BlePacketTransport("AA:BB", client_factory=lambda _address: client)
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _a, _c: client)
 
     await transport.connect()
 
@@ -169,7 +169,7 @@ async def test_ble_transport_connects_and_subscribes_to_lci_tx() -> None:
 
 async def test_ble_transport_writes_slip_chunks_to_lci_rx() -> None:
     client = FakeBleClient("AA:BB", mtu_size=8, max_write_size=None)
-    transport = BlePacketTransport("AA:BB", client_factory=lambda _address: client)
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _a, _c: client)
 
     await transport.connect()
     await transport.send_packet(b"abcdef")
@@ -183,7 +183,7 @@ async def test_ble_transport_writes_slip_chunks_to_lci_rx() -> None:
 
 async def test_ble_transport_prefers_characteristic_write_size() -> None:
     client = FakeBleClient("AA:BB", mtu_size=23, max_write_size=7)
-    transport = BlePacketTransport("AA:BB", client_factory=lambda _address: client)
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _a, _c: client)
 
     await transport.connect()
     await transport.send_packet(b"abcdefghi")
@@ -193,7 +193,7 @@ async def test_ble_transport_prefers_characteristic_write_size() -> None:
 
 async def test_ble_transport_decodes_notification_stream() -> None:
     client = FakeBleClient("AA:BB")
-    transport = BlePacketTransport("AA:BB", client_factory=lambda _address: client)
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _a, _c: client)
 
     await transport.connect()
     packets = transport.packets()
@@ -206,7 +206,7 @@ async def test_ble_transport_decodes_notification_stream() -> None:
 
 async def test_ble_transport_close_stops_notify_and_disconnects() -> None:
     client = FakeBleClient("AA:BB")
-    transport = BlePacketTransport("AA:BB", client_factory=lambda _address: client)
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _a, _c: client)
 
     await transport.connect()
     await transport.close()
@@ -218,7 +218,7 @@ async def test_ble_transport_close_stops_notify_and_disconnects() -> None:
 
 async def test_ble_transport_disconnect_callback_wakes_packet_iterator() -> None:
     client = FakeBleClient("AA:BB")
-    transport = BlePacketTransport("AA:BB", client_factory=lambda _address: client)
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _a, _c: client)
 
     await transport.connect()
     packets = transport.packets()
@@ -229,9 +229,35 @@ async def test_ble_transport_disconnect_callback_wakes_packet_iterator() -> None
     assert not transport.is_connected
 
 
+async def test_ble_transport_custom_factory_receives_disconnect_callback() -> None:
+    """Verify that custom client factories receive the disconnect callback."""
+    client = FakeBleClient("AA:BB")
+    captured_callback: list[Callable[[object], None]] = []
+
+    def factory(address: str, disconnect_cb: Callable[[object], None]) -> FakeBleClient:
+        captured_callback.append(disconnect_cb)
+        return client
+
+    transport = BlePacketTransport("AA:BB", client_factory=factory)
+
+    await transport.connect()
+    packets = transport.packets()
+
+    # The factory should have received the disconnect callback
+    assert len(captured_callback) == 1
+    assert callable(captured_callback[0])
+
+    # Simulating external disconnect via the callback should terminate the iterator
+    captured_callback[0](client)
+
+    with pytest.raises(StopAsyncIteration):
+        await asyncio.wait_for(anext(packets), timeout=1.0)
+    assert not transport.is_connected
+
+
 async def test_ble_transport_reconnect_resets_packet_queue() -> None:
     client = FakeBleClient("AA:BB")
-    transport = BlePacketTransport("AA:BB", client_factory=lambda _address: client)
+    transport = BlePacketTransport("AA:BB", client_factory=lambda _a, _c: client)
 
     await transport.connect()
     await transport.close()
@@ -243,7 +269,9 @@ async def test_ble_transport_reconnect_resets_packet_queue() -> None:
 
 
 async def test_ble_transport_raises_on_send_before_connect() -> None:
-    transport = BlePacketTransport("AA:BB", client_factory=lambda _address: FakeBleClient("AA:BB"))
+    transport = BlePacketTransport(
+        "AA:BB", client_factory=lambda _a, _c: FakeBleClient("AA:BB")
+    )
 
     with pytest.raises(BleTransportError, match="not connected"):
         await transport.send_packet(b"packet")
@@ -252,7 +280,7 @@ async def test_ble_transport_raises_on_send_before_connect() -> None:
 async def test_ble_transport_reports_connect_failures() -> None:
     transport = BlePacketTransport(
         "AA:BB",
-        client_factory=lambda _address: FakeBleClient("AA:BB", fail_connect=True),
+        client_factory=lambda _a, _c: FakeBleClient("AA:BB", fail_connect=True),
         timeout_s=0.1,
     )
 
@@ -262,7 +290,9 @@ async def test_ble_transport_reports_connect_failures() -> None:
 
 async def test_ble_transport_disconnects_when_notify_subscription_fails() -> None:
     client = FakeBleClient("AA:BB", fail_notify=True)
-    transport = BlePacketTransport("AA:BB", client_factory=lambda _address: client, timeout_s=0.1)
+    transport = BlePacketTransport(
+        "AA:BB", client_factory=lambda _a, _c: client, timeout_s=0.1
+    )
 
     with pytest.raises(BleTransportError, match="connect failed"):
         await transport.connect()
@@ -273,7 +303,9 @@ async def test_ble_transport_disconnects_when_notify_subscription_fails() -> Non
 
 async def test_ble_transport_wraps_write_failures() -> None:
     client = FakeBleClient("AA:BB", fail_write=True)
-    transport = BlePacketTransport("AA:BB", client_factory=lambda _address: client, timeout_s=0.1)
+    transport = BlePacketTransport(
+        "AA:BB", client_factory=lambda _a, _c: client, timeout_s=0.1
+    )
 
     await transport.connect()
 
@@ -289,7 +321,9 @@ async def test_ble_transport_rejects_bad_lci_metadata_lengths() -> None:
             LICHEN_LCI_PROFILE.capabilities_uuid or "": b"\x01\x00\x00\x00",
         },
     )
-    transport = BlePacketTransport("AA:BB", client_factory=lambda _address: client, timeout_s=0.1)
+    transport = BlePacketTransport(
+        "AA:BB", client_factory=lambda _a, _c: client, timeout_s=0.1
+    )
 
     with pytest.raises(BleTransportError, match="protocol version must be two octets"):
         await transport.connect()
@@ -306,7 +340,9 @@ async def test_ble_transport_rejects_bad_lci_capabilities_length() -> None:
             LICHEN_LCI_PROFILE.capabilities_uuid or "": b"\x01\x00\x00",
         },
     )
-    transport = BlePacketTransport("AA:BB", client_factory=lambda _address: client, timeout_s=0.1)
+    transport = BlePacketTransport(
+        "AA:BB", client_factory=lambda _a, _c: client, timeout_s=0.1
+    )
 
     with pytest.raises(BleTransportError, match="capabilities must be four octets"):
         await transport.connect()
@@ -330,7 +366,7 @@ async def test_ble_transport_skips_lci_metadata_reads_for_legacy_nus() -> None:
     transport = BlePacketTransport(
         "AA:BB",
         profile=NUS_LCI_PROFILE,
-        client_factory=lambda _address: client,
+        client_factory=lambda _a, _c: client,
     )
 
     await transport.connect()
@@ -384,9 +420,7 @@ async def test_discover_lci_devices_prefers_native_lci_before_legacy_nus() -> No
         profiles=(LICHEN_LCI_PROFILE, NUS_LCI_PROFILE),
     )
 
-    assert [(item.address, item.profile) for item in candidates] == [
-        ("AA:01", LICHEN_LCI_PROFILE)
-    ]
+    assert [(item.address, item.profile) for item in candidates] == [("AA:01", LICHEN_LCI_PROFILE)]
 
 
 async def test_discover_lci_devices_uses_bleak_advertisement_data() -> None:

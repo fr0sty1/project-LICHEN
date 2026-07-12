@@ -624,16 +624,27 @@ class TestTxQueueIntegration:
 
 
 class TestKeyPinning:
-    """Tests for link-layer TOFU key pinning and change detection."""
+    """Tests for link-layer TOFU key pinning and change detection.
+
+    SECURITY NOTE: Key pinning is disabled while MIC verification is a stub.
+    These tests verify the pinning infrastructure works correctly, but automatic
+    pinning on first RX is intentionally disabled until MIC is implemented.
+    See _should_pin_key() for details.
+    """
 
     @pytest.mark.asyncio
-    async def test_pins_pubkey_on_first_rx(
+    async def test_no_pinning_while_mic_is_stub(
         self,
         mock_radio: MockRadio,
         node_identity: Identity,
         peer_identity: Identity,
     ):
-        """After first successful RX from a peer, that peer's pubkey is pinned."""
+        """While MIC verification is a stub, key pinning is disabled for security.
+
+        SECURITY: Key pinning without MIC verification could allow attackers
+        to poison the pin table. Rather than provide false security, pinning
+        is disabled until MIC verification is implemented.
+        """
         peer_peer = PeerIdentity.from_pubkey(peer_identity.pubkey)
 
         def peer_lookup(hint: bytes) -> PeerIdentity | None:
@@ -651,7 +662,8 @@ class TestKeyPinning:
 
         result = await node_ll.receive(timeout_ms=100)
         assert result is not None
-        assert node_ll.pinned_pubkey_for(peer_peer.iid) == peer_identity.pubkey
+        # Key should NOT be pinned while MIC is a stub
+        assert node_ll.pinned_pubkey_for(peer_peer.iid) is None
 
     @pytest.mark.asyncio
     async def test_key_change_rejected(
@@ -697,8 +709,11 @@ class TestKeyPinning:
         node_identity: Identity,
         peer_identity: Identity,
     ):
-        """After unpin_peer(), a new peer with the same IID (after admin key rotation)
-        is accepted and re-pinned."""
+        """After unpin_peer(), a manually pinned key is cleared and frames are accepted.
+
+        This tests the unpin_peer() API that will be used for admin key rotation
+        once MIC verification is implemented and automatic pinning is enabled.
+        """
         peer_peer = PeerIdentity.from_pubkey(peer_identity.pubkey)
 
         def peer_lookup(hint: bytes) -> PeerIdentity | None:
@@ -711,21 +726,20 @@ class TestKeyPinning:
         )
         node_ll.set_sequence(0, 0)  # deterministic epoch for test
 
-        peer_ll = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
-        peer_ll.set_sequence(0, 0)  # deterministic epoch for test
-        await peer_ll.send(b"hello")
-        mock_radio.queue_rx(peer_ll.radio.tx_history[0])
-        await node_ll.receive(timeout_ms=100)
+        # Manually pin a different key to simulate previous pinning
+        fake_key = bytes([0xAA] * 32)
+        node_ll._pinned_keys[peer_peer.iid] = fake_key
 
         # Admin unpins
         node_ll.unpin_peer(peer_peer.iid)
         assert node_ll.pinned_pubkey_for(peer_peer.iid) is None
 
-        # Same peer can now re-establish trust (advance seqnum past replay window)
-        peer_ll2 = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
-        peer_ll2.set_sequence(0, 1)  # seqnum=1 is fresh relative to the window (epoch=0 matches)
-        await peer_ll2.send(b"reintroduce")
-        mock_radio.queue_rx(peer_ll2.radio.tx_history[0])
+        # Peer can now send frames (no pinned key to conflict with)
+        peer_ll = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
+        peer_ll.set_sequence(0, 0)  # deterministic epoch for test
+        await peer_ll.send(b"after_unpin")
+        mock_radio.queue_rx(peer_ll.radio.tx_history[0])
         result = await node_ll.receive(timeout_ms=100)
         assert result is not None
-        assert node_ll.pinned_pubkey_for(peer_peer.iid) == peer_identity.pubkey
+        # Key still not pinned (MIC stub active)
+        assert node_ll.pinned_pubkey_for(peer_peer.iid) is None

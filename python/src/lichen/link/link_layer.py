@@ -57,6 +57,11 @@ PLACEHOLDER_MIC = bytes(4)
 # Why module-level: Log the warning once per process, not per frame.
 _mic_verify_warned = False
 
+# Track whether we've warned about key pinning being disabled.
+# Why disabled: Key pinning without MIC verification is insecure.
+# See _pin_key_stub() for details.
+_key_pin_warned = False
+
 
 def _verify_mic_stub(frame: LichenFrame) -> bool:
     """Stub MIC verification - accepts all frames but warns once.
@@ -79,6 +84,39 @@ def _verify_mic_stub(frame: LichenFrame) -> bool:
         )
         _mic_verify_warned = True
     return True
+
+
+def _should_pin_key() -> bool:
+    """Check if key pinning should be performed.
+
+    SECURITY WARNING: Key pinning is DISABLED while MIC verification is a stub.
+
+    Why disabled: Key pinning provides TOFU (Trust On First Use) protection,
+    where the first key seen for an IID is remembered and changes are rejected.
+    However, this protection is only meaningful when combined with MIC verification.
+
+    Without MIC verification, an attacker could potentially:
+    1. Inject a frame that passes signature verification (using a valid key pair)
+    2. Have that frame's identity associated with a victim's IID
+    3. Get the attacker's key pinned for the victim's IID
+    4. Cause the real peer's frames to be rejected as 'KEY CHANGE DETECTED'
+
+    The SECURITY comment claiming "key pinning happens after MIC verification"
+    was misleading since MIC verification always returns True. Rather than
+    provide a false sense of security, key pinning is disabled until MIC
+    verification is properly implemented.
+
+    Returns:
+        False while MIC verification is a stub.
+    """
+    global _key_pin_warned
+    if not _key_pin_warned:
+        logger.warning(
+            "Key pinning DISABLED - MIC verification is a stub. "
+            "TOFU protection not available until MIC is implemented."
+        )
+        _key_pin_warned = True
+    return False
 
 
 @dataclass
@@ -456,7 +494,9 @@ class LinkLayer:
         # Step 4 happened inside _find_sender (signature verification)
 
         # Step 4.5: Key pinning check — TOFU anchor + change detection.
-        # SECURITY: Only check here; actual pinning happens after MIC verification.
+        # SECURITY: Key pinning is disabled while MIC verification is a stub.
+        # This check still runs for any previously pinned keys (from before
+        # the stub was introduced, or after MIC is implemented).
         pinned_pk = self._pinned_keys.get(sender.iid)
         if pinned_pk is not None and pinned_pk != sender.pubkey:
             logger.error(
@@ -475,9 +515,12 @@ class LinkLayer:
             return None
 
         # Step 4.7: Pin key after MIC verification succeeds.
-        # SECURITY: Key pinning must happen AFTER MIC verification to prevent
-        # attackers from pinning forged keys before the MIC check rejects them.
-        self._pinned_keys[sender.iid] = sender.pubkey
+        # SECURITY: Key pinning is disabled while MIC verification is a stub.
+        # Once MIC is implemented, uncomment this to enable TOFU protection.
+        # The pinning must happen AFTER MIC verification to prevent attackers
+        # from pinning forged keys before the MIC check rejects them.
+        if _should_pin_key():
+            self._pinned_keys[sender.iid] = sender.pubkey
 
         # Step 5: Replay protection
         # Why use pubkey as sender ID: It's the unique identifier for a node.
