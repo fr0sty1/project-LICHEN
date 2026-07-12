@@ -1119,14 +1119,8 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 		goto err_wipe;
 	}
 
-	/* TH_4 = H(TH_3 || CIPHERTEXT_3) */
-	uint8_t th4_input[256];
-	size_t th4_len = 0;
-	memcpy(th4_input + th4_len, ctx->th_3, 32);
-	th4_len += 32;
-	memcpy(th4_input + th4_len, msg3, msg3_len);
-	th4_len += msg3_len;
-	sha256_hash(th4_input, th4_len, ctx->th_4);
+	/* TH_4 = H(TH_3, PLAINTEXT_3, CRED_I) per RFC 9528 Section 4.2.2 */
+	compute_th(ctx->th_4, ctx->th_3, 32, plaintext_3, pt3_len, peer_pubkey, 32);
 
 	crypto_wipe(k_3, sizeof(k_3));
 	crypto_wipe(iv_3, sizeof(iv_3));

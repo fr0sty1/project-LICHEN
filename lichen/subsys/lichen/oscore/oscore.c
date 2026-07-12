@@ -377,6 +377,13 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 	} else {
 		return -1;
 	}
+	if (request_piv_len > 0) {
+		if (inner_off + request_piv_len > sizeof(inner)) {
+			return -1;
+		}
+		memcpy(inner + inner_off, request_piv, request_piv_len);
+		inner_off += request_piv_len;
+	}
 	/*
 	 * options: empty bstr (RFC 8613 Section 5.4, fifth element)
 	 * Class I options - not used in this implementation
