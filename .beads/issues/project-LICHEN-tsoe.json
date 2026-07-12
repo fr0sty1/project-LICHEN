@@ -2,13 +2,16 @@
   "id": "project-LICHEN-tsoe",
   "title": "Parity: oscore (Rust/Zephyr/Python)",
   "description": "Policy: three-impl parity. Module: oscore. Rust: complete (1888 LoC). Zephyr: complete (2794 LoC). Python: partial (1214 LoC in crypto/). Gap: Python OSCORE is in crypto module, not standalone oscore module. May lack full replay protection and context management found in Rust/Zephyr.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:19:24.299045Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:19:47.549687Z",
+  "updated_at": "2026-07-12T00:30:14.50377Z",
+  "closed_at": "2026-07-12T00:30:14.50377Z",
+  "close_reason": "Verified compliant: All three impls (Rust 2171, Zephyr 2243, Python 828 LoC) have functional parity. Python's lower LoC reflects intentional reuse of aiocoap for OSCORE primitives. All provide: context creation, key derivation, AES-CCM encrypt/decrypt, replay protection, protect/unprotect, sequence exhaustion checks, EDHOC Suite 0. Architecture differences (embedded vs simulator) are appropriate.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-tsoe",

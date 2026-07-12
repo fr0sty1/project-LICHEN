@@ -118,3 +118,65 @@ def test_manager_drop() -> None:
     mgr.receive("a", Fragment(rule_id=20, window=0, fcn=2, payload=b"x"))
     mgr.drop("a")
     assert len(mgr) == 0
+
+
+def test_fcn_out_of_range_ignored() -> None:
+    """Fragments with FCN >= window_size are silently discarded (no negative indices)."""
+    receiver = FragmentReceiver(window_size=3)
+    # Valid FCN values for window_size=3 are 0, 1, 2 (plus ALL_1 sentinel).
+    # FCN=10 would cause pos = 3 - 1 - 10 = -8 without validation.
+    bad_frag = Fragment(rule_id=20, window=0, fcn=10, payload=b"malicious")
+    result = receiver.receive(bad_frag)
+    # Fragment should be ignored: no ACK, no reassembly, tiles dict stays empty.
+    assert result.ack is None
+    assert result.reassembled is None
+    assert len(receiver._tiles) == 0
+
+
+def test_stale_retransmission_does_not_corrupt_later_window() -> None:
+    """A delayed fragment from window 0 must not overwrite window 2 data.
+
+    SCHC ACK-on-Error uses a 1-bit W field that alternates 0/1. Windows 0, 2, 4...
+    all have W=0. If a delayed retransmission from window 0 arrives when we're at
+    window 2, it must be rejected rather than stored at window 2's position.
+
+    Failure scenario (before fix):
+    1. Receiver completes windows 0 and 1, _current_window=2
+    2. Window 2's first tile arrives (index 6)
+    3. Delayed duplicate from window 0 position 0 (W=0, FCN=2) arrives
+    4. Bug: fragment mapped to window 2, overwrites index 6 with stale data
+    5. Reassembly produces corrupted output
+    """
+    window_size = 3
+    receiver = FragmentReceiver(window_size)
+
+    # Complete window 0 (tiles 0, 1, 2) - all with W=0
+    for fcn in [2, 1, 0]:  # FCN counts down
+        frag = Fragment(rule_id=20, window=0, fcn=fcn, payload=bytes([fcn]))
+        receiver.receive(frag)
+    assert 0 in receiver._completed_windows
+
+    # Complete window 1 (tiles 3, 4, 5) - all with W=1
+    for fcn in [2, 1, 0]:
+        frag = Fragment(rule_id=20, window=1, fcn=fcn, payload=bytes([10 + fcn]))
+        receiver.receive(frag)
+    assert 1 in receiver._completed_windows
+    assert receiver._current_window == 2
+
+    # Receive first tile of window 2 (index 6, FCN=2, W=0)
+    window2_tile0 = Fragment(rule_id=20, window=0, fcn=2, payload=b"\x20")
+    receiver.receive(window2_tile0)
+    assert receiver._tiles.get(6) == b"\x20"
+
+    # Now a delayed retransmission from window 0, position 0 (FCN=2, W=0)
+    # arrives. It has different payload than window 2's tile at same position.
+    stale_frag = Fragment(rule_id=20, window=0, fcn=2, payload=b"\x02")
+    result = receiver.receive(stale_frag)
+
+    # The stale fragment must be rejected:
+    # - No ACK generated (we already ACKed window 0)
+    # - Window 2 tile at index 6 must NOT be overwritten
+    # - _current_window must not regress
+    assert result.ack is None
+    assert receiver._tiles.get(6) == b"\x20", "Window 2 data was corrupted by stale fragment"
+    assert receiver._current_window == 2, "_current_window regressed"

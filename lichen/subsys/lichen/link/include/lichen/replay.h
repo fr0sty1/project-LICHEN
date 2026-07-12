@@ -17,6 +17,16 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -68,7 +78,7 @@ struct lichen_replay_table {
  *
  * @param[out] rw Replay window to initialize
  */
-void lichen_replay_init(struct lichen_replay_window *rw);
+void lichen_replay_init(struct lichen_replay_window *_Nonnull rw);
 
 /**
  * @brief Check and update replay window.
@@ -89,14 +99,15 @@ void lichen_replay_init(struct lichen_replay_window *rw);
  * @param[in]     seq    16-bit sequence number from frame header
  * @return true if frame should be accepted, false if replay
  */
-bool lichen_replay_check(struct lichen_replay_window *rw, uint8_t epoch, uint16_t seq);
+bool lichen_replay_check(struct lichen_replay_window *_Nonnull rw,
+			 uint8_t epoch, uint16_t seq);
 
 /**
  * @brief Initialize a replay table.
  *
  * @param[out] table Replay table to initialize
  */
-void lichen_replay_table_init(struct lichen_replay_table *table);
+void lichen_replay_table_init(struct lichen_replay_table *_Nonnull table);
 
 /**
  * @brief Get or create replay window for a peer.
@@ -131,8 +142,9 @@ void lichen_replay_table_init(struct lichen_replay_table *table);
  * @param[in]     eui64 Peer's EUI-64 address (8 bytes)
  * @return Pointer to replay window, or NULL only on invalid input
  */
-struct lichen_replay_window *lichen_replay_get(struct lichen_replay_table *table,
-					       const uint8_t eui64[LICHEN_EUI64_LEN]);
+struct lichen_replay_window *_Nullable lichen_replay_get(
+	struct lichen_replay_table *_Nonnull table,
+	const uint8_t *_Nonnull eui64);
 
 /**
  * @brief Remove a peer from the replay table.
@@ -140,8 +152,8 @@ struct lichen_replay_window *lichen_replay_get(struct lichen_replay_table *table
  * @param[in,out] table Replay table
  * @param[in]     eui64 Peer's EUI-64 address (8 bytes)
  */
-void lichen_replay_remove(struct lichen_replay_table *table,
-			  const uint8_t eui64[LICHEN_EUI64_LEN]);
+void lichen_replay_remove(struct lichen_replay_table *_Nonnull table,
+			  const uint8_t *_Nonnull eui64);
 
 #ifdef __cplusplus
 }

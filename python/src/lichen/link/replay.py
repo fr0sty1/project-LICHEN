@@ -29,7 +29,14 @@ is a legitimate out-of-order frame and is accepted once — exactly what the
 
 from __future__ import annotations
 
+import warnings
+
 WINDOW_SIZE = 32  # out-of-order tolerance, in counter positions (spec 4.4)
+
+# SECURITY: Warn when counter approaches 24-bit limit. After wraparound,
+# frames from ~8M-16M frames ago become replayable via half-space arithmetic.
+# At this threshold (~64K frames remaining), receiver should expect re-keying.
+WRAPAROUND_WARNING_THRESHOLD = 0xFF0000
 
 
 def logical_counter(epoch: int, seqnum: int) -> int:
@@ -54,6 +61,7 @@ class ReplayWindow:
         self._window_size = window_size
         self._highest = -1  # no frame accepted yet
         self._bitmap = 0
+        self._wraparound_warned = False
 
     @property
     def highest(self) -> int:
@@ -73,6 +81,15 @@ class ReplayWindow:
         if self._highest < 0:
             self._highest = counter
             self._bitmap = 1
+            # SECURITY: Warn if first frame is already near wraparound.
+            if counter >= WRAPAROUND_WARNING_THRESHOLD:
+                self._wraparound_warned = True
+                warnings.warn(
+                    f"Replay counter {counter:#x} approaching 24-bit limit (0xFFFFFF). "
+                    "Re-key this link before wraparound to prevent replay attacks.",
+                    UserWarning,
+                    stacklevel=2,
+                )
             return True
 
         # Newer than anything seen: slide the window forward.
@@ -87,6 +104,16 @@ class ReplayWindow:
                     (1 << self._window_size) - 1
                 )
             self._highest = counter
+            # SECURITY: Warn once when approaching 24-bit wraparound.
+            # After wrap, old frames become replayable; re-keying is required.
+            if not self._wraparound_warned and counter >= WRAPAROUND_WARNING_THRESHOLD:
+                self._wraparound_warned = True
+                warnings.warn(
+                    f"Replay counter {counter:#x} approaching 24-bit limit (0xFFFFFF). "
+                    "Re-key this link before wraparound to prevent replay attacks.",
+                    UserWarning,
+                    stacklevel=2,
+                )
             return True
 
         # Within or below the window (counter is behind or equal to highest).

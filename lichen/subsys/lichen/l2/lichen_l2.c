@@ -740,19 +740,22 @@ int lichen_peer_add(const uint8_t eui64[LICHEN_EUI64_LEN],
 	struct lichen_peer_entry *existing = peer_find_locked(eui64);
 	if (existing != NULL) {
 		/*
-		 * SECURITY: Clear replay window before updating pubkey.
-		 * A new pubkey means new key material, so old sequence numbers
-		 * are no longer valid. Without this, stale replay state could
-		 * reject valid packets from the rotated key or accept replays.
-		 * (project-LICHEN-0li1.36)
+		 * SECURITY: TOFU key pinning (spec 8.6). First contact pins
+		 * pubkey; subsequent contacts must present the same key.
+		 * Key rotation requires explicit removal (lichen_peer_remove)
+		 * followed by re-add. Silent key changes are rejected to
+		 * prevent impersonation attacks.
 		 */
-		lichen_replay_remove(&replay_table, eui64);
-		memcpy(existing->pubkey, pubkey, LICHEN_L2_PUBKEY_LEN);
+		if (memcmp(existing->pubkey, pubkey, LICHEN_L2_PUBKEY_LEN) != 0) {
+			LOG_WRN("lichen_l2: TOFU violation for ..%02x:%02x "
+				"(pubkey mismatch)", eui64[6], eui64[7]);
+			k_mutex_unlock(&rx_mutex);
+			return -EEXIST;
+		}
+		/* Same key — just refresh last_seen timestamp */
 		existing->last_seen = k_uptime_get();
-		LOG_INF("lichen_l2: peer updated ..%02x:%02x",
-			eui64[6], eui64[7]);
 		k_mutex_unlock(&rx_mutex);
-		return 0;  /* Update succeeded */
+		return 0;  /* Peer already known with same key */
 	}
 
 	/* Find an empty slot */

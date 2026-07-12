@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-qkve.3",
+  "title": "Zephyr announce scheduler (periodic TX)",
+  "description": "Implement announce scheduler for Zephyr.\n\nPython reference: python/src/lichen/announce/scheduler.py (303 LoC)\n\nThe Zephyr announce.c has the RX path (ingest, sig verify, peer tracking) but is missing the TX path.\n\nRequired functionality:\n- Periodic announce transmission (spec 9.4: 300s interval)\n- Random jitter (0-30s) using k_timer or k_delayed_work\n- Sequence number management (16-bit, wrapping)\n- Persistence to flash for seq_num (production requirement)\n- Integration with link layer for transmission\n\nNote: Zephyr already has peer tracking and signature verification in announce.c.\n",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T00:31:40.732955Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T00:31:40.735021Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-qkve.3",
+      "depends_on_id": "project-LICHEN-qkve",
+      "type": "parent-child",
+      "created_at": "2026-07-12T00:31:40.735021Z"
+    }
+  ]
+}

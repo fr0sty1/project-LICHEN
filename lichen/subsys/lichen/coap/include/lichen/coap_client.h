@@ -7,6 +7,10 @@
  *
  * Provides a simple API for making CoAP requests to other mesh nodes.
  * Wraps Zephyr's coap_client APIs with LICHEN-specific defaults.
+ *
+ * SECURITY: When CONFIG_LICHEN_COAP_CLIENT_OSCORE is enabled, requests
+ * with a non-NULL oscore_ctx are protected using RFC 8613. Responses are
+ * automatically decrypted before delivery to the callback.
  */
 
 #ifndef LICHEN_COAP_CLIENT_H_
@@ -16,6 +20,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <zephyr/net/coap.h>
+
+#if defined(CONFIG_LICHEN_COAP_CLIENT_OSCORE) || defined(__DOXYGEN__)
+#include <lichen/oscore.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,6 +54,8 @@ enum lichen_coap_result {
 	LICHEN_COAP_ERR_UNAUTHORIZED = -6,
 	LICHEN_COAP_ERR_INVALID_PARAM = -7,
 	LICHEN_COAP_ERR_TRANSPORT = -8,
+	LICHEN_COAP_ERR_OSCORE_PROTECT = -9,   /**< OSCORE protect failed */
+	LICHEN_COAP_ERR_OSCORE_UNPROTECT = -10, /**< OSCORE unprotect failed */
 };
 
 /**
@@ -84,6 +94,9 @@ struct lichen_coap_request {
 	lichen_coap_response_cb callback;   /**< Response callback */
 	void *user_data;                    /**< User context for callback */
 	uint32_t timeout_ms;                /**< Timeout in ms (0 = default, max UINT32_MAX / 2) */
+#if defined(CONFIG_LICHEN_COAP_CLIENT_OSCORE) || defined(__DOXYGEN__)
+	struct oscore_ctx *oscore_ctx;      /**< OSCORE context (NULL = unprotected) */
+#endif
 };
 
 /**

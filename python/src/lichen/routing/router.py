@@ -593,6 +593,7 @@ def _haversine(c1: tuple[float, float], c2: tuple[float, float]) -> float:
     dlon = lon2 - lon1
 
     a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    c = 2 * math.asin(math.sqrt(a))
+    # Clamp a to [0, 1] before sqrt to handle floating-point errors
+    c = 2 * math.asin(math.sqrt(min(1.0, a)))
 
     return 6_371_000 * c  # Earth radius in meters

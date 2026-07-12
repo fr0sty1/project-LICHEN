@@ -133,8 +133,10 @@ impl Ord for TxItem {
         match (other.priority as u8).cmp(&(self.priority as u8)) {
             Ordering::Equal => {
                 // Same priority: older (lower sequence) should come first.
-                // So reverse: other.sequence < self.sequence means self is "greater".
-                other.sequence.cmp(&self.sequence)
+                // Use wrapping subtraction to handle sequence counter wrap correctly:
+                // if other is newer (logically higher seq), the difference is positive,
+                // so self (older) compares as "greater" and is dequeued first.
+                (other.sequence.wrapping_sub(self.sequence) as i32).cmp(&0)
             }
             ord => ord,
         }
@@ -395,5 +397,25 @@ mod tests {
         assert_eq!(queue.peek().unwrap().data(), b"data");
         assert_eq!(queue.len(), 1);
         assert_eq!(queue.peek().unwrap().data(), b"data");
+    }
+
+    #[test]
+    fn fifo_across_sequence_wrap() {
+        let mut queue = TxQueue::new();
+
+        // Set sequence counter near wrap point
+        queue.sequence = u32::MAX - 1;
+
+        // Push items that span the wrap
+        queue.push(TxPriority::User, b"before_wrap_1").unwrap(); // seq = MAX-1
+        queue.push(TxPriority::User, b"before_wrap_2").unwrap(); // seq = MAX
+        queue.push(TxPriority::User, b"after_wrap_1").unwrap(); // seq = 0 (wrapped)
+        queue.push(TxPriority::User, b"after_wrap_2").unwrap(); // seq = 1
+
+        // FIFO should be preserved despite wrap
+        assert_eq!(queue.pop().unwrap().data(), b"before_wrap_1");
+        assert_eq!(queue.pop().unwrap().data(), b"before_wrap_2");
+        assert_eq!(queue.pop().unwrap().data(), b"after_wrap_1");
+        assert_eq!(queue.pop().unwrap().data(), b"after_wrap_2");
     }
 }

@@ -2,11 +2,14 @@
   "id": "project-LICHEN-fgko",
   "title": "task",
   "description": "compact_cot.py:807-818 - _parse_xml_chat only recognizes team destinations by matching chatroom name against team names. Direct messages have chatroom set to a hex UID (e.g., 'aabbccdd00112233') which doesn't match any team, so dest_type defaults to BROADCAST. This silently corrupts direct message routing - the recipient UID is lost entirely. Failure scenario: ATAK user sends direct message to specific user -\u003e gateway compresses to XML -\u003e parses back -\u003e message becomes broadcast to all users instead of private.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T01:31:29.317376Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T01:31:29.317408Z"
+  "updated_at": "2026-07-12T00:54:02.407794Z",
+  "closed_at": "2026-07-12T00:54:02.407794Z",
+  "close_reason": "Fixed: Added direct message detection to _parse_xml_chat() in compact_cot.py - 16-char hex chatroom values are now recognized as IIDs and routed as DIRECT messages instead of defaulting to BROADCAST. Added tests for direct and team message parsing."
 }

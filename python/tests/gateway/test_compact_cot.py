@@ -736,6 +736,50 @@ class TestParseXmlCot:
         with pytest.raises(ValueError, match="Cannot map"):
             parse_cot_xml(xml)
 
+    def test_parse_invalid_latitude(self) -> None:
+        """Latitude outside [-90, 90] raises ValueError."""
+        xml = """<event type="a-f-G-U-C" uid="TEST-1">
+          <point lat="999" lon="0" hae="0"/>
+        </event>"""
+
+        with pytest.raises(ValueError, match="Latitude 999.0 out of range"):
+            parse_cot_xml(xml)
+
+    def test_parse_invalid_longitude(self) -> None:
+        """Longitude outside [-180, 180] raises ValueError."""
+        xml = """<event type="a-f-G-U-C" uid="TEST-1">
+          <point lat="0" lon="200" hae="0"/>
+        </event>"""
+
+        with pytest.raises(ValueError, match="Longitude 200.0 out of range"):
+            parse_cot_xml(xml)
+
+    def test_parse_negative_speed(self) -> None:
+        """Negative speed raises ValueError."""
+        xml = """<event type="a-f-G-U-C" uid="TEST-1">
+          <point lat="0" lon="0" hae="0"/>
+          <detail>
+            <track course="45" speed="-5"/>
+          </detail>
+        </event>"""
+
+        with pytest.raises(ValueError, match="Speed .* cannot be negative"):
+            parse_cot_xml(xml)
+
+    def test_parse_course_normalization(self) -> None:
+        """Course >= 360 is normalized to [0, 360)."""
+        xml = """<event type="a-f-G-U-C" uid="TEST-1">
+          <point lat="0" lon="0" hae="0"/>
+          <detail>
+            <track course="400" speed="0"/>
+          </detail>
+        </event>"""
+
+        cot = parse_cot_xml(xml)
+        # 400 % 360 = 40 degrees
+        assert isinstance(cot.payload, PliPayload)
+        assert cot.payload.course_deg == pytest.approx(40.0, rel=0.01)
+
 
 class TestEncodeCompactCot:
     """Tests for encode_compact_cot() - CompactCot to binary."""

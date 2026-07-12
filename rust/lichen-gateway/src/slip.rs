@@ -98,7 +98,9 @@ const TX_QUEUE_CAPACITY: usize = 8;
 /// encoded bytes with `try_get_tx()`.
 ///
 /// TX packets are stored in a pre-allocated ring buffer and SLIP-encoded
-/// on-the-fly when retrieved, avoiding per-packet allocation.
+/// on-the-fly when retrieved, avoiding per-packet allocation. The ring buffer
+/// wraps around, so consumed space at the front can be reused even while
+/// packets are still pending.
 ///
 /// # Example
 ///
@@ -125,10 +127,12 @@ const TX_QUEUE_CAPACITY: usize = 8;
 pub struct SlipFramer {
     rx_buffer: Vec<u8>,
     rx_in_escape: bool,
-    /// Pre-allocated buffer for TX packet data (raw, not yet SLIP-encoded).
+    /// Pre-allocated ring buffer for TX packet data (raw, not yet SLIP-encoded).
     tx_buffer: Box<[u8; TX_BUFFER_SIZE]>,
-    /// Write position in tx_buffer.
-    tx_write: usize,
+    /// Start of first pending packet's data in ring buffer.
+    tx_head: usize,
+    /// Next write position in ring buffer (wraps around).
+    tx_tail: usize,
     /// Queue of (offset, length) for pending packets in tx_buffer.
     tx_packets: VecDeque<(usize, usize)>,
 }
@@ -146,7 +150,8 @@ impl SlipFramer {
             rx_buffer: Vec::with_capacity(2048),
             rx_in_escape: false,
             tx_buffer: Box::new([0u8; TX_BUFFER_SIZE]),
-            tx_write: 0,
+            tx_head: 0,
+            tx_tail: 0,
             tx_packets: VecDeque::with_capacity(TX_QUEUE_CAPACITY),
         }
     }
@@ -165,31 +170,54 @@ impl SlipFramer {
 
     /// Queue a packet for transmission.
     ///
-    /// The packet data is copied to a pre-allocated buffer and SLIP-encoded
+    /// The packet data is copied to a pre-allocated ring buffer and SLIP-encoded
     /// on retrieval. Returns error if queue is full (max 8 pending packets)
-    /// or if buffer space is exhausted.
+    /// or if buffer space is exhausted. The ring buffer wraps around, so
+    /// consumed space can be reused even while packets are pending.
     pub fn queue_send(&mut self, packet: &[u8]) -> Result<(), SlipError> {
         if self.tx_packets.len() >= TX_QUEUE_CAPACITY {
             return Err(SlipError::QueueFull);
         }
 
-        // Compact buffer if we've consumed all packets
+        // Reset both pointers when queue is empty
         if self.tx_packets.is_empty() {
-            self.tx_write = 0;
+            self.tx_head = 0;
+            self.tx_tail = 0;
         }
 
-        // Check if packet fits
-        if self.tx_write + packet.len() > TX_BUFFER_SIZE {
-            return Err(SlipError::PacketTooLarge);
+        // Ring buffer space calculation:
+        // - If tail >= head: data spans [head..tail), free is [tail..end) + [0..head)
+        // - If tail < head: data spans [head..end) + [0..tail), free is [tail..head)
+        if self.tx_tail >= self.tx_head {
+            // Normal case: try to fit at end first
+            let space_at_end = TX_BUFFER_SIZE - self.tx_tail;
+            if packet.len() <= space_at_end {
+                let offset = self.tx_tail;
+                self.tx_buffer[offset..offset + packet.len()].copy_from_slice(packet);
+                self.tx_tail += packet.len();
+                self.tx_packets.push_back((offset, packet.len()));
+                return Ok(());
+            }
+            // Doesn't fit at end, try wrapping to start (before head)
+            if packet.len() <= self.tx_head {
+                self.tx_buffer[..packet.len()].copy_from_slice(packet);
+                self.tx_tail = packet.len();
+                self.tx_packets.push_back((0, packet.len()));
+                return Ok(());
+            }
+        } else {
+            // Wrapped case: free space is [tail..head)
+            let space = self.tx_head - self.tx_tail;
+            if packet.len() <= space {
+                let offset = self.tx_tail;
+                self.tx_buffer[offset..offset + packet.len()].copy_from_slice(packet);
+                self.tx_tail += packet.len();
+                self.tx_packets.push_back((offset, packet.len()));
+                return Ok(());
+            }
         }
 
-        // Copy raw packet data to buffer
-        let offset = self.tx_write;
-        self.tx_buffer[offset..offset + packet.len()].copy_from_slice(packet);
-        self.tx_write += packet.len();
-        self.tx_packets.push_back((offset, packet.len()));
-
-        Ok(())
+        Err(SlipError::PacketTooLarge)
     }
 
     /// Try to get the next SLIP-encoded TX frame.
@@ -211,6 +239,13 @@ impl SlipFramer {
 
         // Buffer is large enough, now remove from queue
         self.tx_packets.pop_front();
+
+        // Update head to next packet's offset, or to tail if queue is now empty
+        self.tx_head = self
+            .tx_packets
+            .front()
+            .map(|&(next_offset, _)| next_offset)
+            .unwrap_or(self.tx_tail);
 
         // Encode: leading FEND + escaped data + trailing FEND
         let mut pos = 0;
@@ -244,7 +279,8 @@ impl SlipFramer {
     pub fn clear(&mut self) {
         self.rx_buffer.clear();
         self.rx_in_escape = false;
-        self.tx_write = 0;
+        self.tx_head = 0;
+        self.tx_tail = 0;
         self.tx_packets.clear();
     }
 
@@ -461,5 +497,54 @@ mod tests {
         let packets: Vec<_> = rx_framer.feed(&wire[..len]).collect();
         assert_eq!(packets.len(), 1);
         assert_eq!(packets[0], b"Hello");
+    }
+
+    #[test]
+    fn framer_tx_ring_wraps() {
+        // Test that TX ring buffer properly wraps around and reuses space
+        // from consumed packets, even while other packets are pending.
+        use super::TX_BUFFER_SIZE;
+
+        let mut framer = SlipFramer::new();
+        let mut out = [0u8; 8192];
+
+        // Fill most of the buffer with a large packet
+        let large = vec![0xAA; TX_BUFFER_SIZE - 100];
+        framer.queue_send(&large).unwrap();
+        assert_eq!(framer.tx_pending(), 1);
+
+        // Consume the large packet - frees space at the front
+        let len = framer.try_get_tx(&mut out).unwrap();
+        assert!(len > 0);
+        assert!(framer.tx_empty());
+
+        // Queue another large packet that uses the freed space
+        framer.queue_send(&large).unwrap();
+        assert_eq!(framer.tx_pending(), 1);
+
+        // Now the real test: queue + consume in a loop to force wrap
+        // With proper ring buffer, this should work indefinitely.
+        // With the old broken impl, it would fail after the buffer fills.
+        for i in 0..20 {
+            // Queue a small packet while another is pending
+            let small = [i as u8; 50];
+            framer.queue_send(&small).unwrap();
+            assert_eq!(framer.tx_pending(), 2);
+
+            // Consume the large packet
+            let _ = framer.try_get_tx(&mut out).unwrap();
+            assert_eq!(framer.tx_pending(), 1);
+
+            // Replace consumed large packet with new one
+            // This should wrap around to use space freed by consumed packets
+            framer.queue_send(&large).unwrap();
+            assert_eq!(framer.tx_pending(), 2);
+
+            // Consume the small packet
+            let len = framer.try_get_tx(&mut out).unwrap();
+            // Verify it decoded correctly (FEND + 50 bytes + FEND = 52)
+            assert_eq!(len, 52);
+            assert_eq!(framer.tx_pending(), 1);
+        }
     }
 }

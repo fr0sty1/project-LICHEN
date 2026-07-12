@@ -62,6 +62,16 @@
 #include <stddef.h>
 #include <schc/schc.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifndef LICHEN_WARN_UNUSED_RESULT
 #if defined(__GNUC__) || defined(__clang__)
 #define LICHEN_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
@@ -98,8 +108,8 @@ extern "C" {
  * @return Number of bytes written to @p out, or negative error code
  */
 LICHEN_WARN_UNUSED_RESULT
-int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
-			 uint8_t *out, size_t out_len);
+int lichen_schc_compress(const uint8_t *_Nonnull packet, size_t pkt_len,
+			 uint8_t *_Nonnull out, size_t out_len);
 
 /**
  * @brief Decompress a SCHC packet to full IPv6.
@@ -114,8 +124,8 @@ int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
  * @return Number of bytes written to @p out, or negative error code
  */
 LICHEN_WARN_UNUSED_RESULT
-int lichen_schc_decompress(const uint8_t *data, size_t data_len,
-			   uint8_t *out, size_t out_len);
+int lichen_schc_decompress(const uint8_t *_Nonnull data, size_t data_len,
+			   uint8_t *_Nonnull out, size_t out_len);
 
 /**
  * @brief Get the rule ID from compressed SCHC data.
@@ -123,7 +133,7 @@ int lichen_schc_decompress(const uint8_t *data, size_t data_len,
  * @param[in] data  Compressed SCHC data
  * @return Rule ID (first byte), or -1 if data is empty
  */
-static inline int lichen_schc_rule_id(const uint8_t *data, size_t len)
+static inline int lichen_schc_rule_id(const uint8_t *_Nullable data, size_t len)
 {
 	return schc_rule_id(data, len);
 }

@@ -2,6 +2,10 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """TCP node server for LICHEN simulator.
 
+.. deprecated::
+    This module uses a 1ms polling loop in _handle_rx() which is inefficient.
+    TODO: Replace with RenodeServer which uses proper event-driven I/O.
+
 This module provides a TCP server that accepts connections from SimRadio clients
 and translates wire protocol messages into Simulation calls. Each client
 connection represents a single simulated node.
@@ -17,6 +21,7 @@ from typing import TYPE_CHECKING
 
 from lichen.sim.duty_cycle import DutyCycleTracker
 from lichen.sim.protocol import (
+    MAX_PAYLOAD_LENGTH,
     MSG_CAD,
     MSG_REGISTER,
     MSG_RX,
@@ -66,6 +71,9 @@ async def read_message(reader: asyncio.StreamReader) -> bytes | None:
     (length,) = struct.unpack("<I", length_bytes)
     if length == 0:
         return b""
+    # SECURITY: Reject oversized lengths to prevent memory exhaustion attacks.
+    if length > MAX_PAYLOAD_LENGTH:
+        return None
 
     try:
         return await reader.readexactly(length)
@@ -368,6 +376,11 @@ class NodeServer:
 
             self._simulation.maybe_advance_time()
 
+            # Re-check after advancing time (TX may have completed, packet now available)
+            result = self._simulation.get_rx_result(node_id)
+            if result is not None:
+                break
+
             # Check if we've timed out
             elapsed_us = self._simulation.current_time_us - start_time_us
             if elapsed_us >= timeout_us:
@@ -375,6 +388,9 @@ class NodeServer:
 
             # Brief delay before next check to avoid busy loop
             await asyncio.sleep(0.001)  # 1ms polling interval
+
+        # Clean up RX state and cancel pending timeout event
+        self._simulation.exit_rx_mode(node_id)
 
         if result is not None:
             rx_payload, rssi, snr = result

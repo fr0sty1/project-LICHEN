@@ -151,6 +151,33 @@ pub enum AprsError {
     Io(io::Error),
     LoginFailed(String),
     ParseError(String),
+    /// Callsign contains invalid characters.
+    InvalidCallsign(String),
+}
+
+/// Validate an APRS callsign.
+///
+/// SECURITY: Callsigns are interpolated into protocol messages sent over TCP.
+/// Allowing CR/LF would enable command injection. Only A-Z, 0-9, and hyphen
+/// are permitted.
+///
+/// Valid format: 1-9 characters from [A-Z0-9-], typically like "W1ABC" or "W1ABC-9".
+pub fn validate_callsign(callsign: &str) -> Result<(), AprsError> {
+    if callsign.is_empty() || callsign.len() > 9 {
+        return Err(AprsError::InvalidCallsign(format!(
+            "callsign must be 1-9 characters, got {}",
+            callsign.len()
+        )));
+    }
+    for c in callsign.chars() {
+        if !matches!(c, 'A'..='Z' | '0'..='9' | '-') {
+            return Err(AprsError::InvalidCallsign(format!(
+                "invalid character '{}' in callsign (only A-Z, 0-9, hyphen allowed)",
+                c.escape_default()
+            )));
+        }
+    }
+    Ok(())
 }
 
 impl From<io::Error> for AprsError {
@@ -165,6 +192,7 @@ impl std::fmt::Display for AprsError {
             AprsError::Io(e) => write!(f, "I/O error: {}", e),
             AprsError::LoginFailed(msg) => write!(f, "login failed: {}", msg),
             AprsError::ParseError(msg) => write!(f, "parse error: {}", msg),
+            AprsError::InvalidCallsign(msg) => write!(f, "invalid callsign: {}", msg),
         }
     }
 }
@@ -217,7 +245,15 @@ impl AprsIsClient {
     /// * `passcode` - APRS-IS passcode (computed from callsign)
     ///
     /// For receive-only access, use passcode -1.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InvalidCallsign` if the callsign contains characters other than
+    /// A-Z, 0-9, or hyphen.
     pub fn login(&mut self, callsign: &str, passcode: i32) -> Result<(), AprsError> {
+        // SECURITY: Validate callsign to prevent CR/LF injection
+        validate_callsign(callsign)?;
+
         // Read server banner
         let mut banner = String::new();
         self.reader.read_line(&mut banner)?;
@@ -319,7 +355,15 @@ impl AprsIsClient {
 /// # Returns
 ///
 /// APRS packet string: `CALL>APRS,TCPIP*:!DDMM.mmN/DDDMM.mmW-/A=NNNNNN`
-pub fn cot_to_aprs(callsign: &str, cot: &CompactCot) -> String {
+///
+/// # Errors
+///
+/// Returns `InvalidCallsign` if the callsign contains characters other than
+/// A-Z, 0-9, or hyphen.
+pub fn cot_to_aprs(callsign: &str, cot: &CompactCot) -> Result<String, AprsError> {
+    // SECURITY: Validate callsign to prevent CR/LF injection
+    validate_callsign(callsign)?;
+
     let lat = cot.lat_deg();
     let lon = cot.lon_deg();
 
@@ -342,7 +386,7 @@ pub fn cot_to_aprs(callsign: &str, cot: &CompactCot) -> String {
 
     // Format: CALL>APRS,TCPIP*:!DDMM.mmN/DDDMM.mmWc/A=NNNNNN
     // where / is symbol table, c is symbol code
-    format!(
+    Ok(format!(
         "{}>APRS,TCPIP*:!{:02}{:05.2}{}{}{:03}{:05.2}{}{}/A={:06}",
         callsign,
         lat_deg,
@@ -354,7 +398,7 @@ pub fn cot_to_aprs(callsign: &str, cot: &CompactCot) -> String {
         lon_hemi,
         symbol_code,
         alt_ft
-    )
+    ))
 }
 
 /// Parse APRS position packet to Compact CoT PLI.
@@ -434,7 +478,9 @@ pub fn aprs_to_cot(aprs: &str) -> Option<CompactCot> {
         if end > 0 {
             let alt_ft: i32 = alt_str[..end].parse().ok()?;
             // Convert feet to decimeters: 1 foot = 3.048 decimeters
-            ((alt_ft as i64 * 3048) / 1000) as i16
+            // Clamp to i16 range to prevent overflow (i16::MAX = ~10,749 feet)
+            let alt_dm_unclamped = (alt_ft as i64 * 3048) / 1000;
+            alt_dm_unclamped.clamp(i16::MIN as i64, i16::MAX as i64) as i16
         } else {
             0
         }
@@ -509,7 +555,7 @@ mod tests {
             role: 0,
         };
 
-        let aprs = cot_to_aprs("W1TEST-9", &cot);
+        let aprs = cot_to_aprs("W1TEST-9", &cot).unwrap();
 
         // Should contain callsign and APRS path
         assert!(aprs.starts_with("W1TEST-9>APRS,TCPIP*:!"));
@@ -581,7 +627,7 @@ mod tests {
             role: 0,
         };
 
-        let aprs = cot_to_aprs("TEST", &original);
+        let aprs = cot_to_aprs("TEST", &original).unwrap();
         let recovered = aprs_to_cot(&aprs).unwrap();
 
         // Position should match within APRS precision (~18m)
@@ -612,5 +658,77 @@ mod tests {
         let mut data = [0u8; 17];
         data[0] = 0x06; // Invalid subtype (above UNKNOWN_GROUND)
         assert!(CompactCot::from_bytes(&data).is_none());
+    }
+
+    #[test]
+    fn aprs_to_cot_altitude_overflow_clamped() {
+        // 40,000 feet would overflow i16 when converted to decimeters
+        // 40000 ft * 3.048 dm/ft = 121920 dm, which exceeds i16::MAX (32767)
+        let aprs = "W1TEST-9>APRS,TCPIP*:!4903.50N/07201.75W-/A=040000";
+        let cot = aprs_to_cot(aprs).unwrap();
+        // Should clamp to i16::MAX instead of overflowing
+        assert_eq!(cot.alt_dm, i16::MAX);
+    }
+
+    #[test]
+    fn validate_callsign_valid() {
+        // Valid callsigns
+        assert!(validate_callsign("W1ABC").is_ok());
+        assert!(validate_callsign("W1ABC-9").is_ok());
+        assert!(validate_callsign("VK2TEST").is_ok());
+        assert!(validate_callsign("N0CALL").is_ok());
+        assert!(validate_callsign("A").is_ok());
+        assert!(validate_callsign("123456789").is_ok());
+    }
+
+    #[test]
+    fn validate_callsign_rejects_crlf() {
+        // SECURITY: CR/LF injection must be rejected
+        assert!(validate_callsign("W1ABC\r\n").is_err());
+        assert!(validate_callsign("W1ABC\n").is_err());
+        assert!(validate_callsign("W1ABC\r").is_err());
+        assert!(validate_callsign("\nW1ABC").is_err());
+    }
+
+    #[test]
+    fn validate_callsign_rejects_lowercase() {
+        // APRS callsigns are uppercase only
+        assert!(validate_callsign("w1abc").is_err());
+        assert!(validate_callsign("W1abc").is_err());
+    }
+
+    #[test]
+    fn validate_callsign_rejects_special_chars() {
+        assert!(validate_callsign("W1ABC>APRS").is_err());
+        assert!(validate_callsign("W1ABC:test").is_err());
+        assert!(validate_callsign("W1ABC,TCPIP").is_err());
+        assert!(validate_callsign("W1 ABC").is_err());
+    }
+
+    #[test]
+    fn validate_callsign_length_limits() {
+        // Empty callsign
+        assert!(validate_callsign("").is_err());
+        // Too long (>9 chars)
+        assert!(validate_callsign("W1ABCDEFGH").is_err());
+    }
+
+    #[test]
+    fn cot_to_aprs_rejects_invalid_callsign() {
+        let cot = CompactCot {
+            subtype: subtype::FRIENDLY_GROUND,
+            lat_microdeg: 37_774_900,
+            lon_microdeg: -122_419_400,
+            alt_dm: 1000,
+            course_cdeg: 0,
+            speed_cm_s: 0,
+            team: team::BLUE,
+            role: 0,
+        };
+
+        // CR/LF injection attempt
+        assert!(cot_to_aprs("W1ABC\r\nINJECT", &cot).is_err());
+        // Other invalid chars
+        assert!(cot_to_aprs("W1ABC>APRS", &cot).is_err());
     }
 }

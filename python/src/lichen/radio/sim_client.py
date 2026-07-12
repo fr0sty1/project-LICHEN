@@ -93,6 +93,9 @@ class SimRadio:
         # operations could interleave their _send/_recv calls and mismatch
         # responses to requests (or corrupt frame framing on the shared stream).
         self._lock = anyio.Lock()
+        # Serializes connect() calls to prevent leaking connections when
+        # multiple tasks call connect() concurrently.
+        self._connect_lock = anyio.Lock()
 
     @property
     def freq_hz(self) -> int:
@@ -109,29 +112,45 @@ class SimRadio:
 
         Sends a REGISTER message and waits for an OK response.
 
+        This method is safe to call concurrently; only one connection will be
+        established and subsequent calls will return immediately if already
+        connected.
+
         Raises:
             SimRadioError: If connection fails or registration is rejected.
         """
-        try:
-            self._stream = await anyio.connect_tcp(self._host, self._port)
-        except OSError as e:
-            raise SimRadioError(f"Failed to connect to {self._host}:{self._port}: {e}") from e
+        async with self._connect_lock:
+            # Already connected - nothing to do
+            if self._stream is not None:
+                return
 
-        # Send REGISTER message
-        x, y, z = self._position
-        msg = encode_register(self._sim_id, self._node_id, x, y, z)
-        async with self._lock:
-            await self._send(msg)
-            response = await self._recv()
-        msg_type = get_message_type(response)
+            try:
+                self._stream = await anyio.connect_tcp(self._host, self._port)
+            except OSError as e:
+                raise SimRadioError(f"Failed to connect to {self._host}:{self._port}: {e}") from e
 
-        if msg_type == MSG_OK:
-            return
-        elif msg_type == MSG_ERR:
-            code, err_msg = decode_err(response[1:])
-            raise SimRadioError(f"Registration failed (code {code}): {err_msg}")
-        else:
-            raise SimRadioError(f"Unexpected response to REGISTER: 0x{msg_type:02x}")
+            # Send REGISTER message
+            try:
+                x, y, z = self._position
+                msg = encode_register(self._sim_id, self._node_id, x, y, z)
+                async with self._lock:
+                    await self._send(msg)
+                    response = await self._recv()
+                msg_type = get_message_type(response)
+
+                if msg_type == MSG_OK:
+                    return
+                elif msg_type == MSG_ERR:
+                    code, err_msg = decode_err(response[1:])
+                    raise SimRadioError(f"Registration failed (code {code}): {err_msg}")
+                else:
+                    raise SimRadioError(f"Unexpected response to REGISTER: 0x{msg_type:02x}")
+            except BaseException:
+                # Close stream on any error during registration
+                if self._stream is not None:
+                    await self._stream.aclose()
+                    self._stream = None
+                raise
 
     async def transmit(self, payload: bytes) -> bool:
         """Transmit a payload over the simulated radio.
@@ -343,8 +362,16 @@ class SimRadio:
             (msg_len,) = struct.unpack("<I", length_data)
 
             if msg_len == 0:
+                # Close and invalidate stream on protocol error to prevent desync
+                await self._stream.aclose()
+                self._stream = None
                 raise ProtocolError("Received zero-length message")
             if msg_len > MAX_MESSAGE_LENGTH:
+                # Close and invalidate the stream: we've read the length header
+                # but not the body, so the protocol is now desynced. Closing
+                # prevents subsequent reads from starting mid-message.
+                await self._stream.aclose()
+                self._stream = None
                 raise ProtocolError(
                     f"Message length {msg_len} exceeds maximum {MAX_MESSAGE_LENGTH}"
                 )

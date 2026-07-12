@@ -2,11 +2,14 @@
   "id": "project-LICHEN-a8ac",
   "title": "task",
   "description": "rust/lichen-ipv6/src/lib.rs:377-404 - UdpHeader::write_to takes both 'payload_len: usize' and 'payload: \u0026[u8]'. The length field in the UDP header uses payload_len (line 388), but the checksum calculation uses payload.len() (via udp_checksum at line 399). If caller passes mismatched values, the UDP header length will not match the checksum's pseudo-header length, producing an invalid packet. Fix: remove payload_len parameter and use payload.len() consistently, or add assertion/check that payload_len == payload.len().",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T05:24:01.22138Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T05:24:01.221411Z"
+  "updated_at": "2026-07-11T06:02:46.181159Z",
+  "closed_at": "2026-07-11T06:02:46.181159Z",
+  "close_reason": "Fixed: Removed redundant payload_len parameter from UdpHeader::write_to; now derives length from payload.len() for consistency with checksum calculation"
 }

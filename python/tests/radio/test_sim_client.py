@@ -13,17 +13,17 @@ import pytest
 from lichen.radio.sim_client import MAX_MESSAGE_LENGTH, SimRadio, SimRadioError
 from lichen.sim.protocol import (
     MSG_REGISTER,
-    MSG_RX,
+    MSG_RX_ENTER,
     MSG_TIME,
     MSG_TX,
     ProtocolError,
     decode_register,
-    decode_rx,
+    decode_rx_enter,
     decode_tx,
     encode_err,
     encode_ok,
-    encode_rx_ok,
-    encode_rx_timeout,
+    encode_rx_packet,
+    encode_rx_timeout_push,
     encode_time_ok,
     encode_tx_done,
     encode_tx_fail,
@@ -175,10 +175,10 @@ async def test_transmit_failure(mock_server: MockServer) -> None:
 
 
 async def test_receive_success(mock_server: MockServer) -> None:
-    """Test successful reception."""
+    """Test successful reception using push-based RX_ENTER/RX_PACKET."""
     mock_server.responses = [
         encode_ok(),  # REGISTER response
-        encode_rx_ok(b"received data", -80, 100),  # RX response (snr in dB * 10)
+        encode_rx_packet(b"received data", -80, 100),  # RX_PACKET response
     ]
 
     radio = SimRadio("127.0.0.1", mock_server.port, "sim1", "node1", (0, 0, 0))
@@ -194,17 +194,17 @@ async def test_receive_success(mock_server: MockServer) -> None:
     assert rssi == -80
     assert snr == 100
 
-    # Verify RX request
+    # Verify RX_ENTER request (timeout in microseconds)
     rx_msg = mock_server.received_messages[1]
-    assert get_message_type(rx_msg) == MSG_RX
-    assert decode_rx(rx_msg[1:]) == 5000
+    assert get_message_type(rx_msg) == MSG_RX_ENTER
+    assert decode_rx_enter(rx_msg[1:]) == 5000 * 1000  # ms -> us
 
 
 async def test_receive_timeout(mock_server: MockServer) -> None:
-    """Test receive timeout."""
+    """Test receive timeout using push-based RX_TIMEOUT_PUSH."""
     mock_server.responses = [
         encode_ok(),  # REGISTER response
-        encode_rx_timeout(),  # RX response
+        encode_rx_timeout_push(),  # RX_TIMEOUT_PUSH response
     ]
 
     radio = SimRadio("127.0.0.1", mock_server.port, "sim1", "node1", (0, 0, 0))

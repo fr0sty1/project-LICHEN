@@ -235,21 +235,38 @@ lr1110_hal_status_t lr1110_hal_wakeup(const void *context)
 	 * gpio_pin_set_dt() interprets values relative to GPIO_ACTIVE_* flags:
 	 *   value=1 → logical active (asserted) → LOW for ACTIVE_LOW
 	 *   value=0 → logical inactive (deasserted) → HIGH for ACTIVE_LOW
+	 *
+	 * SECURITY: If cs-gpios is not specified in devicetree (hardware CS),
+	 * gpio.port will be NULL. Fall back to a zero-byte SPI transaction
+	 * which will pulse CS via the hardware controller.
 	 */
-	int ret = gpio_pin_set_dt(&lr1110_bus.config.cs.gpio, 1);
-	if (ret < 0) {
-		LOG_ERR("Failed to assert CS GPIO: %d", ret);
-		record_error(-EIO);
-		return LR1110_HAL_STATUS_ERROR;
-	}
-	k_busy_wait(100);
+	if (lr1110_bus.config.cs.gpio.port == NULL) {
+		/* Hardware CS: use zero-byte SPI transaction to pulse CS */
+		const struct spi_buf_set empty = { .buffers = NULL, .count = 0 };
 
-	ret = gpio_pin_set_dt(&lr1110_bus.config.cs.gpio, 0);
-	if (ret < 0) {
-		LOG_ERR("Failed to deassert CS GPIO: %d", ret);
-		record_error(-EIO);
-		return LR1110_HAL_STATUS_ERROR;
+		if (spi_write_dt(&lr1110_bus, &empty)) {
+			LOG_ERR("SPI wakeup pulse failed");
+			record_error(-EIO);
+			return LR1110_HAL_STATUS_ERROR;
+		}
+	} else {
+		/* Software CS: manual GPIO toggle */
+		int ret = gpio_pin_set_dt(&lr1110_bus.config.cs.gpio, 1);
+		if (ret < 0) {
+			LOG_ERR("Failed to assert CS GPIO: %d", ret);
+			record_error(-EIO);
+			return LR1110_HAL_STATUS_ERROR;
+		}
+		k_busy_wait(100);
+
+		ret = gpio_pin_set_dt(&lr1110_bus.config.cs.gpio, 0);
+		if (ret < 0) {
+			LOG_ERR("Failed to deassert CS GPIO: %d", ret);
+			record_error(-EIO);
+			return LR1110_HAL_STATUS_ERROR;
+		}
 	}
+
 	if (wait_busy() < 0) {
 		return LR1110_HAL_STATUS_ERROR;
 	}

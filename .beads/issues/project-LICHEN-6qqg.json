@@ -2,11 +2,14 @@
   "id": "project-LICHEN-6qqg",
   "title": "task",
   "description": "fragment.rs:527 - Integer underflow when fragment FCN \u003e= window_size. The calculation 'window_size - 1 - frag.fcn' underflows to a huge usize if a malformed fragment has FCN \u003e= window_size. This causes the tile to be stored at an incorrect index, corrupting reassembly. Failure scenario: Receiver with window_size=7 receives fragment with FCN=10. pos becomes wrapping subtraction result (~2^64-4), global_idx is huge, tile stored at wrong index, reassembly fails or produces garbage.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T01:16:22.143378Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T01:16:22.143424Z"
+  "updated_at": "2026-07-12T00:35:06.404122Z",
+  "closed_at": "2026-07-12T00:35:06.404122Z",
+  "close_reason": "Fixed: Added FCN \u003c window_size validation before pos calculation to prevent integer underflow."
 }

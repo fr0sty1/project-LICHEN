@@ -2,11 +2,14 @@
   "id": "project-LICHEN-osh8",
   "title": "task",
   "description": "rust/lichen-embassy/src/stm32wl.rs:16-26 - Uses `lora_phy::{RadioError, InterfaceVariant}` but these are private in lora-phy 3.x. Correct imports: `lora_phy::mod_params::RadioError` and `lora_phy::mod_traits::InterfaceVariant`. Also line 165 uses unqualified `RadioError::ReceiveTimeout` which is shadowed by lichen_hal::RadioError (which lacks that variant). Module fails to compile.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T05:26:04.60737Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T05:26:04.607407Z"
+  "updated_at": "2026-07-11T06:03:24.846063Z",
+  "closed_at": "2026-07-11T06:03:24.846063Z",
+  "close_reason": "Verified: imports already correct (RadioError aliased as LoraRadioError from mod_params, InterfaceVariant from mod_traits). Cargo check passes."
 }

@@ -2,13 +2,16 @@
   "id": "project-LICHEN-c6d8",
   "title": "Compliance: firmware/bridge-stm32wl/src/iv.rs polling",
   "description": "Policy: No-polling. Status: CHECK NEEDED. Has RFBUSY polling. Verify if SUBGHZ_IRQn interrupt is used for RX, or if polling (iu1q).",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:11:27.881357Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:11:42.015962Z",
+  "updated_at": "2026-07-12T00:40:55.158598Z",
+  "closed_at": "2026-07-12T00:40:55.158598Z",
+  "close_reason": "Fixed: wait_on_busy() spin loop now yields with Timer::after_micros(10).await; RX uses interrupt-driven await_irq()",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-c6d8",

@@ -28,6 +28,16 @@
 #include <stddef.h>
 #include <lichen/schc.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -46,8 +56,8 @@ extern "C" {
  * @return Number of bytes written to @p out, or negative error code:
  *         - SCHC_ERR_BUFFER_TOO_SMALL (-2): output buffer too small
  */
-static inline int lichen_link_compress(const uint8_t *ipv6, size_t ipv6_len,
-				       uint8_t *out, size_t out_max)
+static inline int lichen_link_compress(const uint8_t *_Nonnull ipv6, size_t ipv6_len,
+				       uint8_t *_Nonnull out, size_t out_max)
 {
 	return lichen_schc_compress(ipv6, ipv6_len, out, out_max);
 }
@@ -67,8 +77,8 @@ static inline int lichen_link_compress(const uint8_t *ipv6, size_t ipv6_len,
  *         - SCHC_ERR_UNKNOWN_RULE_ID (-3): unrecognized rule in data
  *         - SCHC_ERR_TOO_SHORT (-4): truncated compressed data
  */
-static inline int lichen_link_decompress(const uint8_t *schc, size_t schc_len,
-					 uint8_t *out, size_t out_max)
+static inline int lichen_link_decompress(const uint8_t *_Nonnull schc, size_t schc_len,
+					 uint8_t *_Nonnull out, size_t out_max)
 {
 	return lichen_schc_decompress(schc, schc_len, out, out_max);
 }

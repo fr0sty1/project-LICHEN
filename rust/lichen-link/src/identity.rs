@@ -105,7 +105,7 @@ mod tests {
     #[test]
     fn identity_from_seed_consistent() {
         let seed = Seed::new([0x01u8; 32]);
-        let id1 = Identity::from_seed(seed);
+        let id1 = Identity::from_seed(seed.clone());
         let id2 = Identity::from_seed(seed);
         assert_eq!(id1.privkey, id2.privkey);
         assert_eq!(id1.pubkey, id2.pubkey);

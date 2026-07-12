@@ -17,6 +17,16 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __ZEPHYR__
 #include <zephyr/kernel.h>
 #else
@@ -75,7 +85,8 @@ struct lichen_link_ctx {
  * @param[in]  eui64 8-byte EUI-64 address
  * @return 0 on success, -EINVAL if ctx or eui64 is NULL
  */
-int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64);
+int lichen_link_init(struct lichen_link_ctx *_Nonnull ctx,
+		     const uint8_t *_Nonnull eui64);
 
 /**
  * @brief Load an Ed25519 keypair from a 32-byte seed.
@@ -90,7 +101,8 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64);
  * @param[in]     seed 32-byte random seed (MUST be from a CSPRNG)
  * @return 0 on success, -EINVAL if ctx or seed is NULL
  */
-int lichen_link_load_key(struct lichen_link_ctx *ctx, const uint8_t seed[32]);
+int lichen_link_load_key(struct lichen_link_ctx *_Nonnull ctx,
+			 const uint8_t *_Nonnull seed);
 
 /**
  * @brief Generate and load an Ed25519 keypair from the platform CSPRNG.
@@ -101,7 +113,7 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx, const uint8_t seed[32]);
  * @param[in,out] ctx Link context
  * @return 0 on success, -EINVAL if ctx is NULL, -EIO if CSPRNG fails
  */
-int lichen_link_generate_key(struct lichen_link_ctx *ctx);
+int lichen_link_generate_key(struct lichen_link_ctx *_Nonnull ctx);
 
 /**
  * @brief Increment and return the next TX sequence number.
@@ -121,7 +133,8 @@ int lichen_link_generate_key(struct lichen_link_ctx *ctx);
  *
  * @return 0 on success, -EINVAL if ctx/seqnum is NULL, -EOVERFLOW if nonce exhausted
  */
-int lichen_link_next_seq(struct lichen_link_ctx *ctx, uint16_t *seqnum);
+int lichen_link_next_seq(struct lichen_link_ctx *_Nonnull ctx,
+			 uint16_t *_Nonnull seqnum);
 
 /**
  * @brief Allocate the next TX nonce tuple.
@@ -137,7 +150,9 @@ int lichen_link_next_seq(struct lichen_link_ctx *ctx, uint16_t *seqnum);
  *
  * @return 0 on success, -EINVAL if an argument is NULL, -EOVERFLOW if nonce exhausted
  */
-int lichen_link_next_tx(struct lichen_link_ctx *ctx, uint8_t *epoch, uint16_t *seqnum);
+int lichen_link_next_tx(struct lichen_link_ctx *_Nonnull ctx,
+			uint8_t *_Nonnull epoch,
+			uint16_t *_Nonnull seqnum);
 
 /**
  * @brief Set the current epoch.
@@ -148,7 +163,7 @@ int lichen_link_next_tx(struct lichen_link_ctx *ctx, uint8_t *epoch, uint16_t *s
  * @param[in,out] ctx   Link context
  * @param[in]     epoch New epoch value
  */
-void lichen_link_set_epoch(struct lichen_link_ctx *ctx, uint8_t epoch);
+void lichen_link_set_epoch(struct lichen_link_ctx *_Nonnull ctx, uint8_t epoch);
 
 /**
  * @brief Load a 128-bit AES key for link-layer MIC computation.
@@ -161,8 +176,8 @@ void lichen_link_set_epoch(struct lichen_link_ctx *ctx, uint8_t epoch);
  * @param[in]     link_key 16-byte AES-128 key
  * @return 0 on success, -EINVAL if ctx or link_key is NULL
  */
-int lichen_link_load_link_key(struct lichen_link_ctx *ctx,
-			      const uint8_t link_key[LICHEN_LINK_KEY_LEN]);
+int lichen_link_load_link_key(struct lichen_link_ctx *_Nonnull ctx,
+			      const uint8_t *_Nonnull link_key);
 
 /**
  * @brief Securely wipe all key material and reset the context.
@@ -180,7 +195,7 @@ int lichen_link_load_link_key(struct lichen_link_ctx *ctx,
  *
  * @param[in,out] ctx Link context to clean up (may be NULL, no-op)
  */
-void lichen_link_cleanup(struct lichen_link_ctx *ctx);
+void lichen_link_cleanup(struct lichen_link_ctx *_Nullable ctx);
 
 #ifdef __cplusplus
 }

@@ -2,13 +2,16 @@
   "id": "project-LICHEN-om67",
   "title": "Parity: routing (Rust/Zephyr/Python)",
   "description": "Policy: three-impl parity. Module: routing. Rust: partial (routing.rs in lichen-rpl). Zephyr: partial (announce.c only). Python: complete (610 LoC hybrid router). Gap: Rust/Zephyr lack unified hybrid routing abstraction combining RPL/Announce/LOADng tiers. Python is reference implementation.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:19:30.148779Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:19:50.308236Z",
+  "updated_at": "2026-07-12T00:32:50.368833Z",
+  "closed_at": "2026-07-12T00:32:50.368833Z",
+  "close_reason": "Verified gaps confirmed. Filed 6 sub-beads: (1) Rust missing hybrid Router, (2) Zephyr missing LOADng entirely, (3) Zephyr missing hybrid Router, (4) Both missing gradient table, (5) Both missing DTN store-and-forward, (6) Both missing GPSR. Python reference is complete (3,200 LoC routing); Rust has components but no orchestration (2,400 LoC); Zephyr lacks LOADng + orchestration (2,100 LoC).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-om67",

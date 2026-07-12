@@ -113,9 +113,9 @@ impl<RX: embassy_stm32::gpio::Pin, TX: embassy_stm32::gpio::Pin> InterfaceVarian
         const PWR_SR2: *const u32 = 0x5800_0414 as *const u32;
         const RFBUSYS_BIT: u32 = 1 << 1;
 
-        // Wait until RFBUSYS is cleared
+        // Wait until RFBUSYS is cleared, yielding to async executor
         while unsafe { core::ptr::read_volatile(PWR_SR2) } & RFBUSYS_BIT != 0 {
-            // Busy wait
+            embassy_time::Timer::after_micros(10).await;
         }
 
         Ok(())

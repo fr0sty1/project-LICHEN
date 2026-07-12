@@ -2,11 +2,14 @@
   "id": "project-LICHEN-9h2r",
   "title": "[policy] Replay protection compliance",
   "description": "Policy: spec/02-physical-link.md §4.4. MUST: (1) Epoch advances on reboot, (2) Epoch init random [128,255] without persistence, (3) Receivers reject epoch \u003c LastEpoch, (4) SeqNum window for out-of-order. When executing: grep for epoch/seqnum handling in all implementations, create compliance bead per code section.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "epic",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:13:53.16129Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:13:53.161322Z"
+  "updated_at": "2026-07-12T00:44:23.188818Z",
+  "closed_at": "2026-07-12T00:44:23.188818Z",
+  "close_reason": "All implementations verified compliant with spec section 4.4 replay protection. Fixed 3 Rust violations: (1) link_layer.rs ReplayProtector now rejects epoch \u003c LastEpoch with half-space wrap handling, (2) bridge.rs KissBridge defaults to epoch 128 with with_epoch() for spec-compliant init, (3) stack.rs Stack::new() now requires epoch param. All 58 tests pass."
 }

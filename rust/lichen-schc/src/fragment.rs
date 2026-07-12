@@ -524,6 +524,15 @@ mod std_ext {
                 return self.finalize();
             }
 
+            // Bounds check: FCN must not exceed window_size - 1 for non-All-1 fragments.
+            // Invalid FCN would cause underflow; ignore such fragments.
+            if frag.fcn as usize >= self.window_size {
+                return ReceiverResult {
+                    ack: None,
+                    reassembled: None,
+                    mic_ok: None,
+                };
+            }
             let pos = self.window_size - 1 - frag.fcn as usize;
             let global_idx = abs_window * self.window_size + pos;
             self.tiles.insert(global_idx, frag.payload.to_vec());
@@ -768,5 +777,26 @@ mod tests {
             }
         }
         assert_eq!(result.as_deref(), Some(payload.as_slice()));
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn receiver_ignores_fcn_exceeding_window_size() {
+        use super::std_ext::FragmentReceiver;
+
+        // Window size 4 means valid FCNs are 0..3. An FCN of 10 exceeds this.
+        let mut rx = FragmentReceiver::new(4);
+        let bad_frag = Fragment {
+            rule_id: 20,
+            window: 0,
+            fcn: 10, // Invalid: exceeds window_size - 1
+            payload: b"bad",
+            mic: [0u8; MIC_LENGTH],
+        };
+        // Should not panic, and should return empty result (fragment ignored).
+        let result = rx.receive(&bad_frag);
+        assert!(result.ack.is_none());
+        assert!(result.reassembled.is_none());
+        assert!(result.mic_ok.is_none());
     }
 }

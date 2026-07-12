@@ -199,44 +199,45 @@ class KissReader:
         Note: Port 12 with command 0 produces CMD byte 0xC0, which equals FEND.
         This is ambiguous with inter-frame padding and not supported. Use ports 0-11.
         """
-        # Skip leading non-FEND bytes (sync)
-        while self.buffer and self.buffer[0] != FEND:
-            del self.buffer[0]
+        while True:
+            # Skip leading non-FEND bytes (sync)
+            while self.buffer and self.buffer[0] != FEND:
+                del self.buffer[0]
 
-        if len(self.buffer) < 3:
-            return None
+            if len(self.buffer) < 3:
+                return None
 
-        # Skip inter-frame FEND padding to find frame content start.
-        # After this loop, start points to the CMD byte (first non-FEND).
-        # ponytail: port 12 cmd 0 = 0xC0 = FEND is unsupported, matches real TNCs
-        start = 0
-        while start < len(self.buffer) and self.buffer[start] == FEND:
-            start += 1
+            # Skip inter-frame FEND padding to find frame content start.
+            # After this loop, start points to the CMD byte (first non-FEND).
+            # ponytail: port 12 cmd 0 = 0xC0 = FEND is unsupported, matches real TNCs
+            start = 0
+            while start < len(self.buffer) and self.buffer[start] == FEND:
+                start += 1
 
-        if start >= len(self.buffer):
-            # Only FENDs in buffer
-            return None
+            if start >= len(self.buffer):
+                # Only FENDs in buffer
+                return None
 
-        # Find end FEND
-        end = start
-        while end < len(self.buffer) and self.buffer[end] != FEND:
-            end += 1
+            # Find end FEND
+            end = start
+            while end < len(self.buffer) and self.buffer[end] != FEND:
+                end += 1
 
-        if end >= len(self.buffer):
-            # No closing FEND yet
-            return None
+            if end >= len(self.buffer):
+                # No closing FEND yet
+                return None
 
-        # Extract frame: include start FEND and end FEND
-        frame_bytes = bytes([FEND]) + bytes(self.buffer[start:end]) + bytes([FEND])
+            # Extract frame: include start FEND and end FEND
+            frame_bytes = bytes([FEND]) + bytes(self.buffer[start:end]) + bytes([FEND])
 
-        # Remove from buffer (including trailing FEND)
-        del self.buffer[: end + 1]
+            # Remove from buffer (including trailing FEND)
+            del self.buffer[: end + 1]
 
-        try:
-            return kiss_decode(frame_bytes)
-        except KissError:
-            # Invalid frame, skip and try next
-            return self._try_extract_frame()
+            try:
+                return kiss_decode(frame_bytes)
+            except KissError:
+                # Invalid frame, skip and try next
+                continue
 
     def clear(self) -> None:
         """Clear the buffer."""

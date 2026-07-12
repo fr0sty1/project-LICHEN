@@ -103,7 +103,7 @@ pub struct DecodedKissFrame<'a> {
 /// # {
 /// use lichen_kiss::bridge::{KissBridge, PORT_RAW};
 ///
-/// let bridge = KissBridge::new();
+/// let bridge = KissBridge::default();
 ///
 /// // Encode a link frame payload as KISS
 /// let payload = b"Hello";
@@ -116,25 +116,84 @@ pub struct DecodedKissFrame<'a> {
 /// assert_eq!(decoded.payload, payload);
 /// # }
 /// ```
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct KissBridge {
-    /// Default epoch for outgoing frames.
+    /// Epoch for outgoing frames.
     ///
-    /// For reboot resilience without flash persistence, callers should set this
-    /// to a random value in [128, 255] after construction. Half-space replay
-    /// arithmetic treats upper-half counters as "ahead" of stale receiver windows.
-    pub default_epoch: u8,
-    /// Default sequence number (incremented on each TX).
-    pub seqnum: LinkSeqNum,
+    /// SECURITY: Per spec section 4.4, when no persisted epoch is available,
+    /// this MUST be initialized to a random value in [128, 255]. The upper-half
+    /// initialization ensures half-space replay arithmetic treats new frames
+    /// as "ahead" of any stale receiver windows.
+    ///
+    /// Use [`KissBridge::with_epoch`] to construct with a specific epoch value.
+    default_epoch: u8,
+    /// Sequence number (incremented on each TX).
+    seqnum: LinkSeqNum,
+}
+
+impl Default for KissBridge {
+    /// Creates a bridge with epoch=128 (minimum compliant value).
+    ///
+    /// SECURITY: For production use, prefer [`KissBridge::with_epoch`] with
+    /// a random value from the platform's RNG in range [128, 255].
+    fn default() -> Self {
+        Self {
+            default_epoch: 128,
+            seqnum: LinkSeqNum::new(0),
+        }
+    }
 }
 
 impl KissBridge {
-    /// Create a new bridge with default settings.
-    pub const fn new() -> Self {
+    /// Create a new bridge with the specified epoch.
+    ///
+    /// SECURITY: Per spec section 4.4, `epoch` MUST be:
+    /// - Read from persisted storage (if available), OR
+    /// - A random value uniformly distributed in [128, 255]
+    ///
+    /// # Panics
+    ///
+    /// Debug builds panic if `epoch < 128` to catch non-compliant initialization.
+    pub fn with_epoch(epoch: u8) -> Self {
+        debug_assert!(
+            epoch >= 128,
+            "SECURITY: epoch MUST be in [128, 255] per spec section 4.4"
+        );
         Self {
-            default_epoch: 0,
+            default_epoch: epoch,
             seqnum: LinkSeqNum::new(0),
         }
+    }
+
+    /// Create a new bridge with default settings.
+    ///
+    /// DEPRECATED: Use [`KissBridge::with_epoch`] for spec-compliant initialization.
+    #[deprecated(since = "0.2.0", note = "use KissBridge::with_epoch for spec-compliant initialization")]
+    pub const fn new() -> Self {
+        Self {
+            default_epoch: 128,
+            seqnum: LinkSeqNum::new(0),
+        }
+    }
+
+    /// Get the current epoch.
+    pub fn epoch(&self) -> u8 {
+        self.default_epoch
+    }
+
+    /// Set the epoch (for reboot or epoch advance).
+    pub fn set_epoch(&mut self, epoch: u8) {
+        self.default_epoch = epoch;
+    }
+
+    /// Get the current sequence number.
+    pub fn seqnum(&self) -> LinkSeqNum {
+        self.seqnum
+    }
+
+    /// Set the sequence number (for testing or state restore).
+    pub fn set_seqnum(&mut self, seqnum: LinkSeqNum) {
+        self.seqnum = seqnum;
     }
 
     /// Decode a KISS frame and extract payload for the link layer.
@@ -320,7 +379,7 @@ mod tests {
 
     #[test]
     fn test_decode_kiss_data_frame() {
-        let bridge = KissBridge::new();
+        let bridge = KissBridge::default();
 
         // Create a KISS data frame with "Hello" payload on port 0
         let mut kiss_buf = [0u8; 64];
@@ -335,7 +394,7 @@ mod tests {
 
     #[test]
     fn test_decode_kiss_port_1() {
-        let bridge = KissBridge::new();
+        let bridge = KissBridge::default();
 
         let mut kiss_buf = [0u8; 64];
         let len = kiss_encode(1, KissCommand::Data, b"Raw", &mut kiss_buf).unwrap();
@@ -349,7 +408,7 @@ mod tests {
 
     #[test]
     fn test_reject_non_data_frame() {
-        let bridge = KissBridge::new();
+        let bridge = KissBridge::default();
 
         // TXDELAY command
         let mut kiss_buf = [0u8; 64];
@@ -363,7 +422,7 @@ mod tests {
 
     #[test]
     fn test_encode_payload() {
-        let bridge = KissBridge::new();
+        let bridge = KissBridge::default();
 
         let mut out = [0u8; 64];
         let len = bridge.encode_payload(b"Test", PORT_RAW, &mut out).unwrap();
@@ -378,7 +437,7 @@ mod tests {
 
     #[test]
     fn test_handle_kiss_frame_raw_lichen() {
-        let bridge = KissBridge::new();
+        let bridge = KissBridge::default();
 
         // Create a minimal LICHEN frame: broadcast, epoch=1, seqnum=2, payload="abc", mic=4 zeros
         // Wire format: Length(0x0b) | LLSec(0x00) | Epoch(0x01) | SeqNum(0x0002) | Payload("abc") | MIC(4 zeros)
@@ -400,7 +459,7 @@ mod tests {
 
     #[test]
     fn test_encode_link_frame() {
-        let bridge = KissBridge::new();
+        let bridge = KissBridge::default();
 
         let mic = [0u8; 4];
         let frame = LichenFrame {
@@ -430,16 +489,16 @@ mod tests {
 
     #[test]
     fn test_encode_payload_as_frame_broadcast() {
-        let mut bridge = KissBridge::new();
-        bridge.default_epoch = 3;
-        bridge.seqnum = LinkSeqNum::new(10);
+        let mut bridge = KissBridge::with_epoch(200);
+        bridge.set_epoch(3); // Override for test (use low value for readability)
+        bridge.set_seqnum(LinkSeqNum::new(10));
 
         let mut work_buf = [0u8; 256];
         let mut out = [0u8; 128];
         let len = bridge.encode_payload_as_frame(b"hello", &[], PORT_RAW, &mut work_buf, &mut out).unwrap();
 
         // Verify seqnum incremented
-        assert_eq!(bridge.seqnum.get(), 11);
+        assert_eq!(bridge.seqnum().get(), 11);
 
         // Decode and verify
         let mut decode_buf = [0u8; 256];
@@ -453,7 +512,7 @@ mod tests {
 
     #[test]
     fn test_encode_payload_as_frame_short_addr() {
-        let mut bridge = KissBridge::new();
+        let mut bridge = KissBridge::default();
 
         let dst_addr = [0xAB, 0xCD];
         let mut work_buf = [0u8; 256];
@@ -470,7 +529,7 @@ mod tests {
 
     #[test]
     fn test_roundtrip_with_escaping() {
-        let bridge = KissBridge::new();
+        let bridge = KissBridge::default();
 
         // Payload containing bytes that need escaping (0xC0 = FEND, 0xDB = FESC)
         let payload_with_specials: &[u8] = &[0x41, 0xC0, 0xDB, 0x42];
@@ -494,13 +553,21 @@ mod tests {
     #[test]
     fn test_bridge_default() {
         let bridge = KissBridge::default();
-        assert_eq!(bridge.default_epoch, 0);
-        assert_eq!(bridge.seqnum.get(), 0);
+        // Default epoch is 128 (minimum spec-compliant value)
+        assert_eq!(bridge.epoch(), 128);
+        assert_eq!(bridge.seqnum().get(), 0);
+    }
+
+    #[test]
+    fn test_bridge_with_epoch() {
+        let bridge = KissBridge::with_epoch(200);
+        assert_eq!(bridge.epoch(), 200);
+        assert_eq!(bridge.seqnum().get(), 0);
     }
 
     #[test]
     fn test_handle_kiss_frame_rejects_port_ax25() {
-        let bridge = KissBridge::new();
+        let bridge = KissBridge::default();
 
         // Create a KISS data frame on port 0 (AX.25)
         let mut kiss_buf = [0u8; 64];

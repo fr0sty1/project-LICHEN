@@ -425,6 +425,97 @@ impl Context {
         Ok((code, options, payload))
     }
 
+    /// Unprotect (decrypt) an OSCORE-protected response.
+    ///
+    /// Unlike `unprotect_request`, responses:
+    /// - May omit PIV (use `request_piv` parameter for nonce if so)
+    /// - Don't need replay protection (correlated with the original request)
+    /// - Use different AAD structure per RFC 8613 Section 5.4 (includes request_kid/request_piv)
+    ///
+    /// Returns (code, class_e_options, payload).
+    ///
+    /// # Parameters
+    /// - `oscore_option`: The OSCORE option from the response
+    /// - `ciphertext`: The encrypted payload
+    /// - `request_piv`: The PIV from the original request, used if response omits PIV
+    ///
+    /// # ponytail: AAD structure
+    /// Full RFC 8613 Section 5.4 AAD (with request_kid, request_piv) not yet implemented.
+    /// Currently uses empty AAD like protect_request/unprotect_request.
+    pub fn unprotect_response(
+        &mut self,
+        oscore_option: &[u8],
+        ciphertext: &[u8],
+        request_piv: &[u8],
+    ) -> Result<(u8, heapless::Vec<u8, 128>, heapless::Vec<u8, 128>), OscoreError> {
+        if ciphertext.len() < TAG_LEN + 1 {
+            return Err(OscoreError::InvalidParam);
+        }
+
+        // Parse OSCORE option
+        let opt = parse_option(oscore_option)?;
+
+        // RFC 8613 Section 5.2: For responses, if PIV is absent, use request_piv for nonce
+        let piv = if opt.piv_len > 0 {
+            &opt.piv[..opt.piv_len as usize]
+        } else {
+            if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
+                return Err(OscoreError::InvalidParam);
+            }
+            request_piv
+        };
+
+        // Compute nonce using responder's sender_id (= our recipient_id)
+        let nonce = compute_nonce(
+            self.recipient_id(),
+            piv,
+            &self.common_iv,
+        );
+
+        // Decrypt in place using detached API
+        // SECURITY: No replay check for responses - they're correlated with requests
+        let tag_start = ciphertext.len() - TAG_LEN;
+        let tag = ccm::aead::Tag::<AesCcm>::from_slice(&ciphertext[tag_start..]);
+        let cipher = AesCcm::new_from_slice(&self.recipient_key).map_err(|_| OscoreError::KeyDerivation)?;
+        const PT_CAP: usize = 256;
+        let mut plaintext = heapless::Vec::<u8, PT_CAP>::new();
+        plaintext
+            .extend_from_slice(&ciphertext[..tag_start])
+            .map_err(|_| BufferTooSmall::new(tag_start, PT_CAP))?;
+        cipher
+            .decrypt_in_place_detached((&nonce).into(), &[], &mut plaintext, tag)
+            .map_err(|_| OscoreError::DecryptFailed)?;
+
+        // Parse plaintext: code || options || 0xFF || payload
+        if plaintext.is_empty() {
+            return Err(OscoreError::InvalidParam);
+        }
+
+        let code = plaintext[0];
+        let rest = &plaintext[1..];
+
+        // Find payload marker
+        let marker_pos = rest.iter().position(|&b| b == 0xFF);
+
+        let (options_slice, payload_slice) = match marker_pos {
+            Some(pos) => (&rest[..pos], &rest[pos + 1..]),
+            None => (rest, &[][..]),
+        };
+
+        const OUT_CAP: usize = 128;
+        let mut options = heapless::Vec::<u8, OUT_CAP>::new();
+        options
+            .extend_from_slice(options_slice)
+            .map_err(|_| BufferTooSmall::new(options_slice.len(), OUT_CAP))?;
+
+        let mut payload = heapless::Vec::<u8, OUT_CAP>::new();
+        payload
+            .extend_from_slice(payload_slice)
+            .map_err(|_| BufferTooSmall::new(payload_slice.len(), OUT_CAP))?;
+
+        Ok((code, options, payload))
+    }
+
     /// Check if sequence number would be rejected as a replay.
     /// Does NOT update the replay window - call update_replay_window after successful decryption.
     fn is_replay(&self, seq: OscoreSeqNum) -> bool {
@@ -646,8 +737,14 @@ fn build_info_cbor(
 
     // type: tstr
     let type_bytes = type_str.as_bytes();
-    buf[off] = 0x60 | (type_bytes.len() as u8);
-    off += 1;
+    if type_bytes.len() <= 23 {
+        buf[off] = 0x60 | (type_bytes.len() as u8);
+        off += 1;
+    } else {
+        buf[off] = 0x78;
+        buf[off + 1] = type_bytes.len() as u8;
+        off += 2;
+    }
     buf[off..off + type_bytes.len()].copy_from_slice(type_bytes);
     off += type_bytes.len();
 
@@ -809,5 +906,85 @@ mod tests {
 
         let result = ctx.protect_request(0x01, &[], b"test");
         assert_eq!(result.unwrap_err(), OscoreError::SeqExhausted);
+    }
+
+    #[test]
+    fn test_unprotect_response_with_piv() {
+        // Simulate Alice -> Bob request, Bob -> Alice response
+        let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
+        let mut alice_ctx = Context::new(&master_secret, None, &[0x00], &[0x01]).unwrap();
+        let mut bob_ctx = Context::new(&master_secret, None, &[0x01], &[0x00]).unwrap();
+
+        // Alice sends request, save request_piv
+        let (_ciphertext, request_opt) = alice_ctx
+            .protect_request(0x01, &[], b"request")
+            .unwrap();
+        let request_piv_len = (request_opt[0] & 0x07) as usize;
+        let request_piv = &request_opt[1..1 + request_piv_len];
+
+        // Bob sends response (using protect_request to simulate, since protect_response not implemented)
+        let response_code = 0x45; // 2.05 Content
+        let (response_ciphertext, response_opt) = bob_ctx
+            .protect_request(response_code, &[], b"response")
+            .unwrap();
+
+        // Alice decrypts response using unprotect_response
+        let (dec_code, _options, dec_payload) = alice_ctx
+            .unprotect_response(&response_opt, &response_ciphertext, request_piv)
+            .unwrap();
+
+        assert_eq!(dec_code, response_code);
+        assert_eq!(dec_payload.as_slice(), b"response");
+    }
+
+    #[test]
+    fn test_unprotect_response_without_piv_uses_request_piv() {
+        // Test that when response has no PIV, request_piv is used
+        let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
+        let mut alice_ctx = Context::new(&master_secret, None, &[0x00], &[0x01]).unwrap();
+        let bob_ctx = Context::new(&master_secret, None, &[0x01], &[0x00]).unwrap();
+
+        // Alice sends request
+        let (_ciphertext, request_opt) = alice_ctx
+            .protect_request(0x01, &[], b"request")
+            .unwrap();
+        let request_piv_len = (request_opt[0] & 0x07) as usize;
+        let request_piv = request_opt[1..1 + request_piv_len].to_vec();
+
+        // Bob creates response with same PIV (simulating echo)
+        // Manually construct ciphertext and option with no PIV (flags = 0x00)
+        let response_code = 0x45u8;
+        let payload = b"response";
+
+        // Build plaintext: code || options || 0xFF || payload
+        let mut plaintext = heapless::Vec::<u8, 256>::new();
+        plaintext.push(response_code).unwrap();
+        plaintext.push(0xFF).unwrap();
+        plaintext.extend_from_slice(payload).unwrap();
+
+        // Compute nonce using Bob's sender_id and request_piv (echoed)
+        let nonce = compute_nonce(
+            bob_ctx.sender_id(),
+            &request_piv,
+            &bob_ctx.common_iv,
+        );
+
+        // Encrypt
+        let cipher = AesCcm::new_from_slice(&bob_ctx.sender_key).unwrap();
+        let tag = cipher
+            .encrypt_in_place_detached((&nonce).into(), &[], &mut plaintext)
+            .unwrap();
+        plaintext.extend_from_slice(&tag).unwrap();
+
+        // Response option with no PIV (flags = 0x00)
+        let response_opt = [0x00u8];
+
+        // Alice decrypts using unprotect_response with request_piv
+        let (dec_code, _options, dec_payload) = alice_ctx
+            .unprotect_response(&response_opt, &plaintext, &request_piv)
+            .unwrap();
+
+        assert_eq!(dec_code, response_code);
+        assert_eq!(dec_payload.as_slice(), payload);
     }
 }

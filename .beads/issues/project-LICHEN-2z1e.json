@@ -2,11 +2,14 @@
   "id": "project-LICHEN-2z1e",
   "title": "task",
   "description": "rust/lichen-oscore/src/edhoc.rs:676-680 - The responder computes MAC_2 with only CRED_R in context_2, but per RFC 9528 Section 4.3.2 it should include both ID_CRED_R and CRED_R. The initiator correctly includes both (lines 385-392). This mismatch causes MAC verification to fail, breaking the EDHOC handshake entirely.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T01:16:19.088495Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T01:16:19.088529Z"
+  "updated_at": "2026-07-12T00:37:19.114264Z",
+  "closed_at": "2026-07-12T00:37:19.114264Z",
+  "close_reason": "Fixed: Added ID_CRED_R to context_2 in responder MAC_2 computation (lines 680-689), matching RFC 9528 Section 4.3.2 and initiator implementation. test_full_handshake validates end-to-end."
 }

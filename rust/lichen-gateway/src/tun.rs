@@ -121,14 +121,16 @@ impl TunDevice {
 
     /// Write one IPv6 packet to the TUN device (injects into the kernel).
     pub async fn send(&self, buf: &[u8]) -> io::Result<()> {
-        loop {
+        let mut written = 0;
+        while written < buf.len() {
             let mut guard = self.inner.writable().await?;
             match guard.try_io(|inner| {
+                let remaining = &buf[written..];
                 let n = unsafe {
                     libc::write(
                         inner.as_raw_fd(),
-                        buf.as_ptr() as *const libc::c_void,
-                        buf.len(),
+                        remaining.as_ptr() as *const libc::c_void,
+                        remaining.len(),
                     )
                 };
                 if n < 0 {
@@ -138,13 +140,15 @@ impl TunDevice {
                         format!("TUN write failed ({} bytes): {e}", buf.len()),
                     ))
                 } else {
-                    Ok(())
+                    Ok(n as usize)
                 }
             }) {
-                Ok(r) => return r,
+                Ok(Ok(n)) => written += n,
+                Ok(Err(e)) => return Err(e),
                 Err(_would_block) => continue,
             }
         }
+        Ok(())
     }
 }
 

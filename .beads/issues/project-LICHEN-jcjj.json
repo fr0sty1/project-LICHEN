@@ -2,13 +2,16 @@
   "id": "project-LICHEN-jcjj",
   "title": "Compliance: KISS TX queue (rust/lichen-kiss/src/framing.rs)",
   "description": "Policy: spec/appendix-bufferbloat.md sections 1,2,4,5. Current: bounded (8 frames), returns error. Missing: time-based expiry (§2), priority (§3). Fix: add timestamp, drop expired frames.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:10:51.390818Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:10:58.99984Z",
+  "updated_at": "2026-07-12T00:38:45.072703Z",
+  "closed_at": "2026-07-12T00:38:45.072703Z",
+  "close_reason": "Verified compliant: KissWriter TX queue is bounded at compile time using heapless::Deque\u003cheapless::Vec\u003cu8, 512\u003e, 8\u003e - max 8 frames of 512 bytes each (~4KB total). Returns KissError::BufferTooSmall when full.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-jcjj",

@@ -36,6 +36,16 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -63,7 +73,7 @@ extern "C" {
  *
  * @param[in,out] s 32-byte scalar to clamp in place
  */
-static inline void schnorr48_clamp_scalar(uint8_t s[32])
+static inline void schnorr48_clamp_scalar(uint8_t *_Nonnull s)
 {
 	s[0] &= 248;
 	s[31] &= 127;
@@ -77,9 +87,9 @@ static inline void schnorr48_clamp_scalar(uint8_t s[32])
  * @param[out] privkey 32-byte private key (clamped scalar)
  * @param[out] pubkey  32-byte public key (compressed point)
  */
-void schnorr48_derive_keypair(const uint8_t seed[32],
-			      uint8_t privkey[32],
-			      uint8_t pubkey[32]);
+void schnorr48_derive_keypair(const uint8_t *_Nonnull seed,
+			      uint8_t *_Nonnull privkey,
+			      uint8_t *_Nonnull pubkey);
 
 /**
  * @brief Sign a message with Schnorr-48.
@@ -91,10 +101,10 @@ void schnorr48_derive_keypair(const uint8_t seed[32],
  * @param[out] sig      48-byte signature output
  * @return 0 on success, -1 if msg is NULL with nonzero msg_len
  */
-int schnorr48_sign(const uint8_t privkey[32],
-		   const uint8_t pubkey[32],
-		   const uint8_t *msg, size_t msg_len,
-		   uint8_t sig[48]);
+int schnorr48_sign(const uint8_t *_Nonnull privkey,
+		   const uint8_t *_Nonnull pubkey,
+		   const uint8_t *_Nullable msg, size_t msg_len,
+		   uint8_t *_Nonnull sig);
 
 /**
  * @brief Verify a Schnorr-48 signature.
@@ -105,9 +115,9 @@ int schnorr48_sign(const uint8_t privkey[32],
  * @param[in] sig      48-byte signature
  * @return true if valid, false if invalid
  */
-bool schnorr48_verify(const uint8_t pubkey[32],
-		      const uint8_t *msg, size_t msg_len,
-		      const uint8_t sig[48]);
+bool schnorr48_verify(const uint8_t *_Nonnull pubkey,
+		      const uint8_t *_Nonnull msg, size_t msg_len,
+		      const uint8_t *_Nonnull sig);
 
 /**
  * @brief Sign a LICHEN link-layer frame.
@@ -127,11 +137,11 @@ bool schnorr48_verify(const uint8_t pubkey[32],
  * @return 0 on success, -1 if dst_addr_len > SCHNORR48_MAX_ADDR_LEN
  */
 int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
-			 const uint8_t *dst_addr, size_t dst_addr_len,
-			 const uint8_t *payload, size_t payload_len,
-			 const uint8_t privkey[32],
-			 const uint8_t pubkey[32],
-			 uint8_t sig[48]);
+			 const uint8_t *_Nullable dst_addr, size_t dst_addr_len,
+			 const uint8_t *_Nonnull payload, size_t payload_len,
+			 const uint8_t *_Nonnull privkey,
+			 const uint8_t *_Nonnull pubkey,
+			 uint8_t *_Nonnull sig);
 
 /**
  * @brief Verify a signed LICHEN link-layer frame.
@@ -147,9 +157,9 @@ int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
  *         -1 if malformed (dst_addr_len > max, payload too short, NULL payload)
  */
 int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
-			   const uint8_t *dst_addr, size_t dst_addr_len,
-			   const uint8_t *payload, size_t payload_len,
-			   const uint8_t pubkey[32]);
+			   const uint8_t *_Nullable dst_addr, size_t dst_addr_len,
+			   const uint8_t *_Nonnull payload, size_t payload_len,
+			   const uint8_t *_Nonnull pubkey);
 
 #ifdef __cplusplus
 }

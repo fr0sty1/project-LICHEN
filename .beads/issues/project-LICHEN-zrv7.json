@@ -2,11 +2,14 @@
   "id": "project-LICHEN-zrv7",
   "title": "task",
   "description": "python/src/lichen/ipv6/icmpv6.py:230-241 - The handle_icmpv6() function parses and processes ICMPv6 Echo Requests without verifying the checksum. Per RFC 4443 section 2.3: 'If a received ICMPv6 message contains a checksum that fails to verify, the message MUST be silently discarded.' Currently, corrupted or forged Echo Requests with invalid checksums will still trigger Echo Replies. The Icmpv6Message class has a verify_checksum() static method but it is never called. Fix: call Icmpv6Message.verify_checksum(packet.header.src_addr, packet.header.dst_addr, packet.payload) at the start of handle_icmpv6() and return None if it fails.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T05:34:11.565171Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T05:34:11.565202Z"
+  "updated_at": "2026-07-11T06:14:59.125343Z",
+  "closed_at": "2026-07-11T06:14:59.125343Z",
+  "close_reason": "Fixed: Added RFC 4443 section 2.3 compliant checksum verification to handle_icmpv6(). Packets with invalid checksums are now silently discarded before processing. Added test_handle_discards_invalid_checksum to verify the fix."
 }

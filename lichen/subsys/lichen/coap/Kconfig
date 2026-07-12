@@ -21,4 +21,18 @@ config LICHEN_COAP_LOG_LEVEL
 	  Log level for LICHEN CoAP client:
 	  0=off, 1=error, 2=warning, 3=info, 4=debug
 
+config LICHEN_COAP_CLIENT_OSCORE
+	bool "OSCORE protection for CoAP client"
+	depends on LICHEN_OSCORE
+	default y
+	help
+	  Enable OSCORE (RFC 8613) end-to-end security for CoAP requests.
+	  When enabled, requests with a non-NULL oscore_ctx are protected
+	  using AES-CCM-16-64-128. Responses are automatically decrypted
+	  before delivery to the callback.
+
+	  SECURITY: Per spec/06-security.md Section 8.7, OSCORE is
+	  recommended for all CoAP traffic to provide end-to-end security
+	  independent of the link layer.
+
 endif # LICHEN_COAP

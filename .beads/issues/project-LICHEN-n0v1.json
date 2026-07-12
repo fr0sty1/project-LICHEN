@@ -2,11 +2,14 @@
   "id": "project-LICHEN-n0v1",
   "title": "task",
   "description": "python/src/lichen/radio/sim_client.py:116 - If connect() is called concurrently (overlapping async calls), multiple TCP connections are opened. Each call overwrites self._stream, leaking the previous connection.\n\nFailure scenario: Two tasks call connect() before either completes:\n1. Task A: self._stream = await anyio.connect_tcp(...)  # opens connection A\n2. Task B: self._stream = await anyio.connect_tcp(...)  # opens connection B, overwrites A\nConnection A is now leaked - never closed, consuming OS resources.\n\nFix: Either guard connect() with a lock to serialize, or check/close any existing stream before opening a new one.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T01:30:35.609689Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T01:30:35.609726Z"
+  "updated_at": "2026-07-12T00:49:34.102981Z",
+  "closed_at": "2026-07-12T00:49:34.102981Z",
+  "close_reason": "Fixed: Added _connect_lock to serialize connect() calls, preventing connection leaks when called concurrently. Early-return if already connected."
 }

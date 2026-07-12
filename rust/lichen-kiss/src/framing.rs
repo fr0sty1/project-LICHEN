@@ -387,18 +387,15 @@ impl KissReader {
             return Ok(None);
         }
 
-        // Skip inter-frame FEND padding to find CMD byte
-        let mut start = 0;
-        while start < self.len && self.buffer[start] == FEND {
-            start += 1;
-        }
+        // Position 0 is opening FEND (guaranteed by sync above), position 1 is CMD.
+        // We intentionally do NOT skip inter-frame FEND padding because CMD=0xC0
+        // (port 12, cmd 0) is indistinguishable from FEND. This matches kiss_decode
+        // behavior which also uses frame[1] directly as CMD.
+        let start = 1;
 
-        if start >= self.len {
-            return Ok(None);
-        }
-
-        // Find end FEND
-        let mut end = start;
+        // Find closing FEND - start from position 2 (after CMD).
+        // Essential when CMD==FEND (0xC0), otherwise we'd immediately stop.
+        let mut end = start + 1;
         while end < self.len && self.buffer[end] != FEND {
             end += 1;
         }
@@ -861,6 +858,34 @@ mod tests {
         // Reader must not be stuck - should return the valid frame
         let frame = reader.try_read_frame(&mut out).unwrap().unwrap();
         assert_eq!(frame.data, b"A");
+    }
+
+    #[test]
+    fn test_reader_cmd_equals_fend() {
+        // Regression test: CMD byte 0xC0 (port=12, cmd=0) equals FEND.
+        // The FEND-skipping loop must not skip over the CMD byte.
+        let mut reader = KissReader::new();
+        let mut out = [0u8; 64];
+
+        // Frame on port 12, cmd 0, no data: [FEND, 0xC0, FEND]
+        reader.feed(&[FEND, 0xC0, FEND]);
+        let frame = reader.try_read_frame(&mut out).unwrap().unwrap();
+        assert_eq!(frame.port, 12);
+        assert_eq!(frame.command, 0);
+        assert_eq!(frame.data, b"");
+
+        // Frame on port 12 with data
+        reader.feed(&[FEND, 0xC0, 0x41, FEND]);
+        let frame = reader.try_read_frame(&mut out).unwrap().unwrap();
+        assert_eq!(frame.port, 12);
+        assert_eq!(frame.command, 0);
+        assert_eq!(frame.data, b"A");
+
+        // NOTE: Inter-frame FEND padding is NOT supported because CMD=0xC0 (port 12)
+        // is indistinguishable from FEND. [FEND, FEND, 0xC0, FEND] would be interpreted
+        // as: FEND (opening), FEND (CMD=0xC0=port 12), 0xC0 (data), FEND (closing).
+        // This matches kiss_decode behavior. Senders should not use inter-frame padding
+        // if port 12 frames are in use.
     }
 
     #[test]

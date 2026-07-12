@@ -2,11 +2,14 @@
   "id": "project-LICHEN-52l6",
   "title": "Compliance: secure.rs OSCORE",
   "description": "Policy: 06-security.md §8.7. File: rust/lichen-node/src/secure.rs. Status: COMPLIANT. SecureStack wrapper enforces OSCORE protection for all CoAP traffic. send_secure_get() encrypts via protect_request(), decrypt_response() decrypts responses.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:16:44.48151Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:16:44.481543Z"
+  "updated_at": "2026-07-12T00:34:37.742086Z",
+  "closed_at": "2026-07-12T00:34:37.742086Z",
+  "close_reason": "Verified compliant: SecureStack correctly implements OSCORE RFC 8613 - uses protect_request() for encryption, unprotect_response() with request_piv for decryption, proper PIV extraction, and has SECURITY comment documenting compliance"
 }

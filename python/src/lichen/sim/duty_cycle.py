@@ -182,16 +182,22 @@ class DutyCycleTracker:
             time_us: Current time in microseconds.
 
         Returns:
-            0 if TX is allowed now, otherwise milliseconds until enough
-            budget is available.
+            0 if TX is allowed now, -1 if TX exceeds maximum possible budget
+            (impossible even with empty window), otherwise milliseconds until
+            enough budget is available.
         """
+        max_airtime = self._window_us * self._limit_ratio
+
+        # Check if TX exceeds maximum possible budget - impossible even with empty window
+        if airtime_us > max_airtime:
+            return -1
+
         if self.can_transmit(airtime_us, time_us):
             return 0
 
         # Need to wait for old TXs to expire
         # Binary search would be more efficient, but simple linear scan
         # is fine for typical usage
-        max_airtime = self._window_us * self._limit_ratio
 
         # Sort transmissions by end time
         sorted_txs = sorted(

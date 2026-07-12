@@ -8,6 +8,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -27,10 +37,10 @@ struct lichen_announce_view {
 	uint16_t wire_seq_num;
 	uint32_t seq_num;
 	bool seq_stale;
-	const uint8_t *originator_iid;
-	const uint8_t *pubkey;
-	const uint8_t *signature;
-	const uint8_t *app_data;
+	const uint8_t *_Nonnull originator_iid;
+	const uint8_t *_Nonnull pubkey;
+	const uint8_t *_Nonnull signature;
+	const uint8_t *_Nullable app_data;
 	size_t app_data_len;
 };
 
@@ -44,26 +54,27 @@ struct lichen_announce_rx_meta {
 };
 
 typedef int (*lichen_announce_app_data_fn)(
-	const struct lichen_announce_view *announce,
-	const struct lichen_announce_rx_meta *meta,
-	void *user_data);
+	const struct lichen_announce_view *_Nonnull announce,
+	const struct lichen_announce_rx_meta *_Nonnull meta,
+	void *_Nullable user_data);
 
-int lichen_announce_parse(const uint8_t *data, size_t len,
-			  struct lichen_announce_view *announce);
+int lichen_announce_parse(const uint8_t *_Nonnull data, size_t len,
+			  struct lichen_announce_view *_Nonnull announce);
 
 int lichen_announce_ingest_authenticated(
-	const uint8_t *data, size_t len,
-	const struct lichen_announce_rx_meta *meta);
+	const uint8_t *_Nonnull data, size_t len,
+	const struct lichen_announce_rx_meta *_Nonnull meta);
 
 int lichen_announce_ingest_l2_payload(
-	const uint8_t *data, size_t len,
-	const struct lichen_announce_rx_meta *meta);
+	const uint8_t *_Nonnull data, size_t len,
+	const struct lichen_announce_rx_meta *_Nonnull meta);
 
 int lichen_announce_register_app_data_observer(
-	lichen_announce_app_data_fn cb, void *user_data);
+	lichen_announce_app_data_fn _Nonnull cb, void *_Nullable user_data);
 
 int lichen_announce_register_app_data_observer_ex(
-	lichen_announce_app_data_fn cb, void *user_data, uint8_t flags);
+	lichen_announce_app_data_fn _Nonnull cb, void *_Nullable user_data,
+	uint8_t flags);
 
 void lichen_announce_reset(void);
 

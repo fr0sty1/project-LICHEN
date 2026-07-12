@@ -2,11 +2,14 @@
   "id": "project-LICHEN-asgo",
   "title": "task",
   "description": "edhoc.rs tests - Only unit tests exist (test_initiator_creation, test_responder_creation, test_message_1_creation). No test exercises a full initiator\u003c-\u003eresponder handshake, which would have caught the context_2 mismatch bug. Need a test that: creates initiator and responder, exchanges message_1/message_2/message_3, and verifies both can export_oscore() successfully with matching keys.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T05:23:44.014963Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T05:23:44.014993Z"
+  "updated_at": "2026-07-11T06:13:44.20471Z",
+  "closed_at": "2026-07-11T06:13:44.20471Z",
+  "close_reason": "Fixed: Added test_full_handshake integration test. The test uncovered and fixed several bugs: (1) process_message_1 minimum length check was off-by-one (38 vs 37), (2) responder MAC_2 context was missing ID_CRED_R (only had CRED_R), (3) msg2 buffer was 128 bytes but needs 160, (4) th_3_input buffer was 128 bytes but needs 192."
 }

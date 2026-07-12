@@ -83,6 +83,16 @@ impl AddrMode {
             AddrMode::Extended => 8,
         }
     }
+
+    /// Try to determine AddrMode from address byte length.
+    pub fn from_addr_len(len: usize) -> Option<Self> {
+        match len {
+            0 => Some(Self::None),
+            2 => Some(Self::Short),
+            8 => Some(Self::Extended),
+            _ => None,
+        }
+    }
 }
 
 /// MIC length setting (LLSec bits 2-4, spec 4.2).
@@ -456,5 +466,157 @@ mod tests {
             LichenFrame::from_bytes(&wire),
             Err(FrameError::ReservedBitSet)
         );
+    }
+
+    // ─── Cross-validation tests from spec/test-vectors/frame.json ───────────────
+
+    mod spec_vectors {
+        use super::*;
+        use serde::Deserialize;
+        use std::string::String;
+        use std::vec::Vec;
+
+        const FRAME_VECTORS_JSON: &str =
+            include_str!("../../../spec/test-vectors/frame.json");
+
+        #[derive(Deserialize)]
+        struct VectorFile {
+            vectors: Vec<TestVector>,
+        }
+
+        #[derive(Deserialize)]
+        struct TestVector {
+            name: String,
+            input_hex: String,
+            expected: Expected,
+        }
+
+        #[derive(Deserialize)]
+        struct Expected {
+            #[serde(default)]
+            error: bool,
+            #[serde(default)]
+            addr_mode: u8,
+            #[serde(default)]
+            mic_length: u8,
+            #[serde(default)]
+            signature_present: bool,
+            #[serde(default)]
+            encrypted: bool,
+            #[serde(default)]
+            epoch: u8,
+            #[serde(default)]
+            seqnum: u16,
+            #[serde(default)]
+            dst_addr_hex: String,
+            #[serde(default)]
+            payload_hex: String,
+            #[serde(default)]
+            payload_len: Option<usize>,
+            #[serde(default)]
+            mic_hex: String,
+        }
+
+        fn hex_decode(s: &str) -> Vec<u8> {
+            (0..s.len())
+                .step_by(2)
+                .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+                .collect()
+        }
+
+        #[test]
+        fn cross_validate_parse() {
+            let file: VectorFile = serde_json::from_str(FRAME_VECTORS_JSON)
+                .expect("failed to parse frame.json");
+
+            for vector in &file.vectors {
+                let name = &vector.name;
+
+                // Empty frame
+                if vector.input_hex.is_empty() {
+                    assert!(
+                        LichenFrame::from_bytes(&[]).is_err(),
+                        "{}: empty should error",
+                        name
+                    );
+                    continue;
+                }
+
+                let data = hex_decode(&vector.input_hex);
+
+                // Error cases
+                if vector.expected.error {
+                    assert!(
+                        LichenFrame::from_bytes(&data).is_err(),
+                        "{}: expected error",
+                        name
+                    );
+                    continue;
+                }
+
+                // Valid frame - parse and verify
+                let frame = LichenFrame::from_bytes(&data)
+                    .unwrap_or_else(|e| panic!("{}: parse failed: {:?}", name, e));
+
+                assert_eq!(
+                    frame.addr_mode as u8, vector.expected.addr_mode,
+                    "{}: addr_mode", name
+                );
+                assert_eq!(
+                    frame.mic_length as u8, vector.expected.mic_length,
+                    "{}: mic_length", name
+                );
+                assert_eq!(
+                    frame.signature.is_present(), vector.expected.signature_present,
+                    "{}: signature_present", name
+                );
+                assert_eq!(
+                    frame.encryption.is_encrypted(), vector.expected.encrypted,
+                    "{}: encrypted", name
+                );
+                assert_eq!(frame.epoch, vector.expected.epoch, "{}: epoch", name);
+                assert_eq!(frame.seqnum.get(), vector.expected.seqnum, "{}: seqnum", name);
+                assert_eq!(
+                    frame.dst_addr, hex_decode(&vector.expected.dst_addr_hex).as_slice(),
+                    "{}: dst_addr", name
+                );
+                assert_eq!(
+                    frame.mic, hex_decode(&vector.expected.mic_hex).as_slice(),
+                    "{}: mic", name
+                );
+
+                // Payload - check by length if specified
+                if let Some(expected_len) = vector.expected.payload_len {
+                    assert_eq!(frame.payload.len(), expected_len, "{}: payload_len", name);
+                } else {
+                    assert_eq!(
+                        frame.payload, hex_decode(&vector.expected.payload_hex).as_slice(),
+                        "{}: payload", name
+                    );
+                }
+            }
+        }
+
+        #[test]
+        fn cross_validate_roundtrip() {
+            let file: VectorFile = serde_json::from_str(FRAME_VECTORS_JSON)
+                .expect("failed to parse frame.json");
+
+            for vector in &file.vectors {
+                // Skip error/empty cases
+                if vector.expected.error || vector.input_hex.is_empty() {
+                    continue;
+                }
+
+                let name = &vector.name;
+                let data = hex_decode(&vector.input_hex);
+                let frame = LichenFrame::from_bytes(&data).unwrap();
+
+                let mut buf = [0u8; 300];
+                let n = frame.write_to(&mut buf)
+                    .unwrap_or_else(|e| panic!("{}: write failed: {:?}", name, e));
+                assert_eq!(&buf[..n], &data[..], "{}: roundtrip", name);
+            }
+        }
     }
 }

@@ -25,6 +25,11 @@ from xml.etree.ElementTree import Element, SubElement, tostring
 PLI_PAYLOAD_SIZE = 16  # Excluding subtype byte
 PLI_TOTAL_SIZE = 17  # Including subtype byte
 
+# int16 range for altitude in decimeters (-3276.8m to +3276.7m)
+INT16_MIN = -32768
+INT16_MAX = 32767
+UINT16_MAX = 65535  # Max speed in cm/s (655.35 m/s)
+
 
 # -- Enums --
 
@@ -744,6 +749,12 @@ def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
     lat = float(lat_str)
     lon = float(lon_str)
 
+    # Validate geographic coordinates early for clear error messages
+    if not (-90.0 <= lat <= 90.0):
+        raise ValueError(f"Latitude {lat} out of range [-90, 90]")
+    if not (-180.0 <= lon <= 180.0):
+        raise ValueError(f"Longitude {lon} out of range [-180, 180]")
+
     # hae = height above ellipsoid (altitude in meters)
     hae_str = point.get("hae")
     alt_m = float(hae_str) if hae_str else 0.0
@@ -759,8 +770,12 @@ def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
             speed_str = track.get("speed")
             if course_str:
                 course_deg = float(course_str)
+                # Normalize course to [0, 360) for valid bearing
+                course_deg = course_deg % 360.0
             if speed_str:
                 speed_m_s = float(speed_str)
+                if speed_m_s < 0:
+                    raise ValueError(f"Speed {speed_m_s} cannot be negative")
 
     # Extract team/role from <__group> element
     team_val = Team.BLUE
@@ -775,12 +790,17 @@ def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
             if role_str:
                 role_val = ROLE_BY_NAME.get(role_str.lower(), 1)
 
+    # Clamp altitude to int16 range (-3276.8m to +3276.7m)
+    alt_dm = max(INT16_MIN, min(INT16_MAX, int(alt_m * 10)))
+    # Clamp speed to uint16 range (0 to 655.35 m/s)
+    speed_cm_s = min(UINT16_MAX, max(0, int(speed_m_s * 100)))
+
     pli = PliPayload(
         lat_microdeg=int(lat * 1_000_000),
         lon_microdeg=int(lon * 1_000_000),
-        alt_dm=int(alt_m * 10),
+        alt_dm=alt_dm,
         course_cdeg=int(course_deg * 100),
-        speed_cm_s=int(speed_m_s * 100),
+        speed_cm_s=speed_cm_s,
         team=team_val,
         role=role_val,
     )
@@ -808,14 +828,22 @@ def _parse_xml_chat(root: Element, subtype: CompactCotType) -> CompactCot:
     if chat_elem is not None:
         chat_group = chat_elem.get("chatroom")
         if chat_group:
-            # Handle both "Blue" and "Team Blue" formats (roundtrip)
-            team_name = chat_group.lower()
-            if team_name.startswith("team "):
-                team_name = team_name[5:]
-            team = TEAM_BY_NAME.get(team_name)
-            if team:
-                dest_type = DestType.TEAM
-                dest_team = team
+            # Check if it's a direct message (hex IID = 16 hex chars = 8 bytes)
+            if len(chat_group) == 16:
+                try:
+                    dest_iid = bytes.fromhex(chat_group)
+                    dest_type = DestType.DIRECT
+                except ValueError:
+                    pass  # Not valid hex, fall through to team lookup
+            if dest_type != DestType.DIRECT:
+                # Handle both "Blue" and "Team Blue" formats (roundtrip)
+                team_name = chat_group.lower()
+                if team_name.startswith("team "):
+                    team_name = team_name[5:]
+                team = TEAM_BY_NAME.get(team_name)
+                if team:
+                    dest_type = DestType.TEAM
+                    dest_team = team
 
     chat = ChatPayload(
         dest_type=dest_type,

@@ -101,40 +101,51 @@ class Position:
 
     @classmethod
     def from_bytes(cls, data: bytes) -> Position:
-        """Decode from protobuf."""
+        """Decode from protobuf.
+
+        Returns partial result if data is malformed or truncated.
+        """
         pos = cls()
         i = 0
-        while i < len(data):
-            if i >= len(data):
-                break
-            tag_byte = data[i]
-            field_num = tag_byte >> 3
-            wire_type = tag_byte & 0x07
-            i += 1
-
-            if wire_type == 5:  # fixed32
-                if i + 4 > len(data):
-                    break
-                if field_num == _POS_LATITUDE_I:
-                    pos.latitude_i = struct.unpack("<i", data[i : i + 4])[0]
-                elif field_num == _POS_LONGITUDE_I:
-                    pos.longitude_i = struct.unpack("<i", data[i : i + 4])[0]
-                elif field_num == _POS_TIME:
-                    pos.time = struct.unpack("<I", data[i : i + 4])[0]
-                i += 4
-            elif wire_type == 0:  # varint
-                val, consumed = _decode_varint(data[i:])
-                if field_num == _POS_ALTITUDE:
-                    pos.altitude = val
-                i += consumed
-            elif wire_type == 2:  # length-delimited (skip)
+        try:
+            while i < len(data):
                 if i >= len(data):
                     break
-                length, consumed = _decode_varint(data[i:])
-                i += consumed + length
-            else:
-                # Unknown wire type, can't skip safely
-                break
+                tag_byte = data[i]
+                field_num = tag_byte >> 3
+                wire_type = tag_byte & 0x07
+                i += 1
+
+                if wire_type == 5:  # fixed32
+                    if i + 4 > len(data):
+                        break
+                    if field_num == _POS_LATITUDE_I:
+                        pos.latitude_i = struct.unpack("<i", data[i : i + 4])[0]
+                    elif field_num == _POS_LONGITUDE_I:
+                        pos.longitude_i = struct.unpack("<i", data[i : i + 4])[0]
+                    elif field_num == _POS_TIME:
+                        pos.time = struct.unpack("<I", data[i : i + 4])[0]
+                    i += 4
+                elif wire_type == 0:  # varint
+                    val, consumed = _decode_varint(data[i:])
+                    if field_num == _POS_ALTITUDE:
+                        pos.altitude = val
+                    i += consumed
+                elif wire_type == 1:  # fixed64 (skip)
+                    if i + 8 > len(data):
+                        break
+                    i += 8
+                elif wire_type == 2:  # length-delimited (skip)
+                    if i >= len(data):
+                        break
+                    length, consumed = _decode_varint(data[i:])
+                    i += consumed + length
+                else:
+                    # Unknown wire type (3, 4 deprecated groups; 6, 7 reserved)
+                    break
+        except TranslationError:
+            # Malformed varint; return partial result
+            pass
 
         return pos
 
@@ -172,43 +183,54 @@ class User:
 
     @classmethod
     def from_bytes(cls, data: bytes) -> User:
-        """Decode from protobuf."""
+        """Decode from protobuf.
+
+        Returns partial result if data is malformed or truncated.
+        """
         user = cls()
         i = 0
-        while i < len(data):
-            if i >= len(data):
-                break
-            tag_byte = data[i]
-            field_num = tag_byte >> 3
-            wire_type = tag_byte & 0x07
-            i += 1
-
-            if wire_type == 2:  # length-delimited
+        try:
+            while i < len(data):
                 if i >= len(data):
                     break
-                length, consumed = _decode_varint(data[i:])
-                i += consumed
-                if i + length > len(data):
+                tag_byte = data[i]
+                field_num = tag_byte >> 3
+                wire_type = tag_byte & 0x07
+                i += 1
+
+                if wire_type == 2:  # length-delimited
+                    if i >= len(data):
+                        break
+                    length, consumed = _decode_varint(data[i:])
+                    i += consumed
+                    if i + length > len(data):
+                        break
+                    value = data[i : i + length]
+                    if field_num == _USER_ID:
+                        user.id = value.decode("utf-8", errors="replace")
+                    elif field_num == _USER_LONG_NAME:
+                        user.long_name = value.decode("utf-8", errors="replace")
+                    elif field_num == _USER_SHORT_NAME:
+                        user.short_name = value.decode("utf-8", errors="replace")
+                    i += length
+                elif wire_type == 0:  # varint
+                    val, consumed = _decode_varint(data[i:])
+                    if field_num == _USER_HW_MODEL:
+                        user.hw_model = val
+                    i += consumed
+                elif wire_type == 5:  # fixed32 (skip)
+                    if i + 4 > len(data):
+                        break
+                    i += 4
+                elif wire_type == 1:  # fixed64 (skip)
+                    if i + 8 > len(data):
+                        break
+                    i += 8
+                else:
                     break
-                value = data[i : i + length]
-                if field_num == _USER_ID:
-                    user.id = value.decode("utf-8", errors="replace")
-                elif field_num == _USER_LONG_NAME:
-                    user.long_name = value.decode("utf-8", errors="replace")
-                elif field_num == _USER_SHORT_NAME:
-                    user.short_name = value.decode("utf-8", errors="replace")
-                i += length
-            elif wire_type == 0:  # varint
-                val, consumed = _decode_varint(data[i:])
-                if field_num == _USER_HW_MODEL:
-                    user.hw_model = val
-                i += consumed
-            elif wire_type == 5:  # fixed32 (skip)
-                i += 4
-            elif wire_type == 1:  # fixed64 (skip)
-                i += 8
-            else:
-                break
+        except TranslationError:
+            # Malformed varint; return partial result
+            pass
 
         return user
 

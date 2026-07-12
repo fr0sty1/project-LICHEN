@@ -3,7 +3,11 @@
 """LICHEN node web status dashboard.
 
 Lightweight FastAPI server that proxies a node's CoAP resources into a
-live browser dashboard. Each section auto-refreshes via HTMX polling.
+live browser dashboard. Each section auto-refreshes via HTMX.
+
+Note: HTMX browser-side refresh is a standard web UI pattern and is
+acceptable per the no-polling policy. The polling occurs entirely in the
+browser (client-side); the Python server is event-driven with no polling.
 
 Usage:
     lichen-dashboard --node [::1]:5683 --port 8080

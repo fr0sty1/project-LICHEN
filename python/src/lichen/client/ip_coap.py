@@ -197,6 +197,8 @@ class AiocoapResourceSubscription(ResourceSubscription):
             task.cancel()
         if close_task in done:
             next_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await next_task
             return None
         with suppress(asyncio.CancelledError):
             await close_task

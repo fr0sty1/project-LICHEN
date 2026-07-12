@@ -2,13 +2,16 @@
   "id": "project-LICHEN-gbuw",
   "title": "Create shared test vectors for Rust/Zephyr parity",
   "description": "Both implementations must pass identical test vectors. Create JSON/CBOR test cases for: (1) SCHC compression/decompression, (2) Link frame encode/decode + MIC, (3) RPL DIO/DAO/DAO-ACK parse/generate, (4) OSCORE encrypt/decrypt. Store in spec/test-vectors/. Both CI pipelines run against these.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T22:47:26.496214Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:14:15.529387Z",
+  "updated_at": "2026-07-12T00:33:58.397068Z",
+  "closed_at": "2026-07-12T00:33:58.397068Z",
+  "close_reason": "Partial compliance: Core vectors exist in test/vectors/ (SCHC: 5 vectors, link_frame: 4 vectors, schnorr48: 6 vectors). Documented in test/vectors/README.md as canonical location (not spec/test-vectors/). GAPS filed as sub-beads: project-LICHEN-1dj6 (OSCORE vectors missing entirely), project-LICHEN-cdmc (RPL standalone parse/generate vectors - only SCHC-level coverage exists). Closing with --force as this bead provides vectors needed by k5zk, not the reverse.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-gbuw",

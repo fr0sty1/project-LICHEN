@@ -82,9 +82,12 @@ impl<R: Radio> SecureStack<R> {
         }
     }
 
-    /// Create from radio and identity directly.
+    /// Create from radio and identity directly with default epoch.
+    ///
+    /// SECURITY: Uses minimum compliant epoch (128). For production, prefer
+    /// constructing a Stack with a random epoch in [128, 255].
     pub fn from_radio(radio: R, identity: lichen_link::identity::Identity) -> Self {
-        Self::new(Stack::new(radio, identity))
+        Self::new(Stack::new_default_epoch(radio, identity))
     }
 
     /// Add an OSCORE security context for a peer.
@@ -120,13 +123,15 @@ impl<R: Radio> SecureStack<R> {
     }
 
     /// Send an OSCORE-protected GET request.
+    ///
+    /// Returns (message_id, request_piv) where request_piv is needed for decrypting the response.
     pub async fn send_secure_get(
         &mut self,
         dst: &Addr,
         peer_iid: &[u8; 8],
         uri_path: &[&str],
         token: &[u8],
-    ) -> Result<u16, SecureError> {
+    ) -> Result<(u16, Vec<u8>), SecureError> {
         let ctx = self.get_context_mut(peer_iid).ok_or(SecureError::NoContext)?;
 
         // Build inner CoAP (will be encrypted)
@@ -179,6 +184,11 @@ impl<R: Radio> SecureStack<R> {
             .protect_request(MessageCode::GET.0, &class_e[..class_e_len], &[])
             .map_err(|_| SecureError::EncryptFailed)?;
 
+        // Extract PIV from OSCORE option for response decryption
+        // Option format: flags(1) | piv(n) | kid(rest), where n = flags & 0x07
+        let piv_len = (oscore_opt[0] & 0x07) as usize;
+        let request_piv = oscore_opt[1..1 + piv_len].to_vec();
+
         // Build outer CoAP with OSCORE option
         let mid = self.stack.next_message_id();
         let mut outer = [0u8; 192];
@@ -204,14 +214,20 @@ impl<R: Radio> SecureStack<R> {
         let outer_len = builder.finish();
 
         self.stack.send_coap_raw(dst, &outer[..outer_len]).await?;
-        Ok(mid)
+        Ok((mid, request_piv))
     }
 
     /// Decrypt an OSCORE-protected response.
+    ///
+    /// # Parameters
+    /// - `peer_iid`: The IID of the peer who sent the response
+    /// - `coap`: The raw CoAP packet
+    /// - `request_piv`: The PIV from the original request (returned by send_secure_get)
     pub fn decrypt_response(
         &mut self,
         peer_iid: &[u8; 8],
         coap: &[u8],
+        request_piv: &[u8],
     ) -> Result<(MessageCode, Vec<u8>), SecureError> {
         let pkt = CoapPacket::from_bytes(coap).map_err(|_| SecureError::CoapEncode)?;
 
@@ -231,12 +247,10 @@ impl<R: Radio> SecureStack<R> {
 
         let ctx = self.get_context_mut(peer_iid).ok_or(SecureError::NoContext)?;
 
-        // SECURITY: unprotect_request works for responses because OSCORE uses
-        // symmetric AEAD encryption. The function decrypts using the recipient_key,
-        // which matches the responder's sender_key. RFC 8613 Section 8.3 specifies
-        // that responses use the same cryptographic structure as requests.
+        // SECURITY: Use unprotect_response for proper response semantics per RFC 8613.
+        // Responses may omit PIV (using request_piv instead) and don't need replay protection.
         let (code, _options, payload) = ctx
-            .unprotect_request(oscore_opt, ciphertext)
+            .unprotect_response(oscore_opt, ciphertext, request_piv)
             .map_err(|_| SecureError::DecryptFailed)?;
 
         Ok((MessageCode(code), payload.to_vec()))
@@ -271,10 +285,10 @@ mod tests {
 
         let (radio_a, radio_b) = LoopbackRadio::pair();
 
-        let mut alice_stack = Stack::new(radio_a, alice_id);
+        let mut alice_stack = Stack::new_default_epoch(radio_a, alice_id);
         alice_stack.add_peer(bob_peer);
 
-        let mut bob_stack = Stack::new(radio_b, bob_id);
+        let mut bob_stack = Stack::new_default_epoch(radio_b, bob_id);
         bob_stack.add_peer(alice_peer);
 
         let mut alice = SecureStack::new(alice_stack);
@@ -293,11 +307,12 @@ mod tests {
         let bob_addr = bob.local_addr();
 
         // Alice sends encrypted GET
-        let mid = alice
+        let (mid, request_piv) = alice
             .send_secure_get(&bob_addr, &bob_iid, &["sensors"], &[0xAB])
             .await
             .unwrap();
         assert!(mid < 0xFFFF);
+        assert!(!request_piv.is_empty());
 
         // Bob receives
         let frame = bob.receive(1000).await.unwrap().unwrap();

@@ -8,7 +8,8 @@ node_id is fixed at server creation.
 
 Protocol (length-prefixed, 4-byte LE):
     TX (0x10): 2-byte len + payload -> TX_DONE (0x11) with 4-byte airtime_us
-    RX_POLL (0x20): -> RX_OK (0x21) with payload/rssi/snr or RX_EMPTY (0x23)
+    RX_ENTER (0x24): Enter RX mode with timeout -> RX_PACKET (0x27) or RX_TIMEOUT_PUSH (0x28)
+    RX_EXIT (0x26): Exit RX mode
 """
 
 from __future__ import annotations
@@ -19,12 +20,12 @@ import struct
 from typing import TYPE_CHECKING
 
 from lichen.sim.protocol import (
+    MAX_PAYLOAD_LENGTH,
     MSG_RX_ENTER,
     MSG_RX_EXIT,
     MSG_TX,
     decode_rx_enter,
     decode_tx,
-    encode_rx_ok,
     encode_rx_packet,
     encode_rx_timeout_push,
     encode_tx_done,
@@ -39,16 +40,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# RX_POLL = check for packet, return immediately (no blocking)
-MSG_RX_POLL = 0x20
-# RX_EMPTY = no packet available
-MSG_RX_EMPTY = 0x23
-
-
-def encode_rx_empty() -> bytes:
-    """Encode RX_EMPTY response."""
-    return struct.pack("<B", MSG_RX_EMPTY)
-
 
 async def _read_message(reader: asyncio.StreamReader) -> bytes | None:
     """Read length-prefixed message."""
@@ -59,6 +50,9 @@ async def _read_message(reader: asyncio.StreamReader) -> bytes | None:
     (length,) = struct.unpack("<I", length_bytes)
     if length == 0:
         return b""
+    # SECURITY: Reject oversized lengths to prevent memory exhaustion attacks.
+    if length > MAX_PAYLOAD_LENGTH:
+        return None
     try:
         return await reader.readexactly(length)
     except asyncio.IncompleteReadError:
@@ -141,8 +135,6 @@ class RenodeServer:
 
                 if msg_type == MSG_TX:
                     await self._handle_tx(data, writer)
-                elif msg_type == MSG_RX_POLL:
-                    await self._handle_rx_poll(writer)
                 elif msg_type == MSG_RX_ENTER:
                     self._handle_rx_enter(data)
                 elif msg_type == MSG_RX_EXIT:
@@ -176,19 +168,6 @@ class RenodeServer:
         tx_airtime = airtime_us(len(payload))
         logger.debug("Renode TX: %d bytes, airtime %d us", len(payload), tx_airtime)
         await _write_message(writer, encode_tx_done(tx_airtime))
-
-    async def _handle_rx_poll(self, writer: asyncio.StreamWriter) -> None:
-        """Handle RX poll - non-blocking check for received packet."""
-        # Advance simulation time if needed
-        self._simulation.maybe_advance_time()
-
-        result = self._simulation.get_rx_result(self._node_id)
-        if result is not None:
-            payload, rssi, snr = result
-            logger.debug("Renode RX: %d bytes, RSSI %d", len(payload), rssi)
-            await _write_message(writer, encode_rx_ok(payload, rssi, snr))
-        else:
-            await _write_message(writer, encode_rx_empty())
 
     def _handle_rx_enter(self, data: bytes) -> None:
         """Handle RX_ENTER - enter push-based RX mode.

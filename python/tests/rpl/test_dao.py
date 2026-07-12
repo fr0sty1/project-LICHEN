@@ -143,3 +143,26 @@ def test_multi_target_dao_rejected() -> None:
     )
     with pytest.raises(DaoError, match="multi-target"):
         DaoManager._extract_edge(dao)
+
+
+def test_dao_with_root_as_target_is_ignored() -> None:
+    """A DAO with the root's own address as target yields empty path and is skipped.
+
+    Previously, _assemble_path() would return [] (empty list) instead of None,
+    and the check 'if path is not None' passed, then add_route() raised RoutingError.
+    This crashed the rebuild loop partway through, corrupting the routing table.
+    """
+    root = DaoManager(node_address=ROOT, is_root=True)
+    # First install a valid route.
+    root.process_dao(DaoManager(node_address=N1).build_dao(ROOT))
+    assert root.routing_table.lookup(N1) == [N1]
+
+    # Now send a malicious DAO with target=root (attacker scenario).
+    malicious_dao = DaoManager(node_address=ROOT).build_dao(N1)
+    # Should not raise; the empty path is silently skipped.
+    root.process_dao(malicious_dao)
+
+    # The existing route must still be intact.
+    assert root.routing_table.lookup(N1) == [N1]
+    # No route to root itself (empty path was skipped).
+    assert root.routing_table.lookup(ROOT) is None

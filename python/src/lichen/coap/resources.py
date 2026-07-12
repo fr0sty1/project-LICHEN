@@ -35,10 +35,13 @@ a node-backed provider once it lands.
 from __future__ import annotations
 
 import asyncio
+import copy
+import ipaddress
 import itertools
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
+from urllib.parse import urlparse
 
 import aiocoap
 import cbor2
@@ -47,6 +50,41 @@ from aiocoap.numbers import ContentFormat
 
 CBOR = ContentFormat.CBOR
 SENML_CBOR = ContentFormat(112)  # application/senml+cbor (RFC 8428)
+
+# SECURITY: Mesh address prefixes allowed for proxy forwarding.
+# IPv6 ULA (fd00::/8) is the LICHEN mesh address space.
+# Link-local (fe80::/10) may be used for direct neighbor access.
+_MESH_ALLOWED_PREFIXES = (
+    ipaddress.IPv6Network("fd00::/8"),
+    ipaddress.IPv6Network("fe80::/10"),
+)
+
+
+def _is_mesh_uri(uri: str) -> bool:
+    """Return True if *uri* targets a mesh-allowed address.
+
+    SECURITY: Validates that the target host is an IPv6 address within
+    the mesh address space (ULA fd00::/8 or link-local fe80::/10).
+    Rejects hostnames, IPv4 addresses, and non-mesh IPv6 addresses
+    to prevent SSRF attacks via the proxy.
+    """
+    try:
+        parsed = urlparse(uri)
+    except Exception:
+        return False
+    if parsed.scheme not in ("coap", "coaps"):
+        return False
+    host = parsed.hostname
+    if not host:
+        return False
+    # Strip brackets from IPv6 literal if present
+    if host.startswith("[") and host.endswith("]"):
+        host = host[1:-1]
+    try:
+        addr = ipaddress.IPv6Address(host)
+    except ValueError:
+        return False  # Not a valid IPv6 address (rejects hostnames, IPv4)
+    return any(addr in prefix for prefix in _MESH_ALLOWED_PREFIXES)
 
 
 class NodeInfo(Protocol):
@@ -155,7 +193,12 @@ class ProxyResource(resource.Resource):
     (e.g. a :class:`~lichen.coap.transport.LichenTransport` backed by a
     :class:`~lichen.coap.node_channel.NodeChannel`).
 
-    Per RFC 7252 §5.7, the Proxy-Uri option is stripped before forwarding.
+    Per RFC 7252 section 5.7, the Proxy-Uri option is stripped before forwarding.
+
+    SECURITY: To prevent SSRF, the proxy validates that the target URI is a
+    ``coap://`` or ``coaps://`` URI with an IPv6 address in the mesh address
+    space (ULA fd00::/8 or link-local fe80::/10). Requests to hostnames, IPv4
+    addresses, or non-mesh IPv6 addresses are rejected with 4.00 Bad Request.
     """
 
     rt = "proxy"
@@ -168,6 +211,10 @@ class ProxyResource(resource.Resource):
     async def render(self, request: Message) -> Message:
         target = request.opt.proxy_uri
         if not target:
+            return Message(code=BAD_REQUEST)
+
+        # SECURITY: Validate target is a mesh address to prevent SSRF
+        if not _is_mesh_uri(target):
             return Message(code=BAD_REQUEST)
 
         fwd = Message(code=request.code, uri=target, payload=request.payload)
@@ -396,9 +443,15 @@ class SosResource(resource.ObservableResource):
             except Exception:
                 return Message(code=aiocoap.BAD_REQUEST)
 
+        # SECURITY: Validate from_hex is a string before hex decoding;
+        # CBOR body could contain non-string types that would raise TypeError.
+        if from_hex is not None and not isinstance(from_hex, str):
+            return Message(code=aiocoap.BAD_REQUEST)
         try:
             eui64 = bytes.fromhex(from_hex) if from_hex else b"\x00" * 8
         except ValueError:
+            return Message(code=aiocoap.BAD_REQUEST)
+        if len(eui64) != 8:
             return Message(code=aiocoap.BAD_REQUEST)
         self.activate(eui64, t if t is not None else 0.0)
         return Message(code=aiocoap.CHANGED)
@@ -508,7 +561,7 @@ class MessagesResource(resource.ObservableResource):
             body["body"] = body["text"]
         self.deliver(body)
         msg_id = str(body["id"])
-        self._sent[msg_id] = body
+        self._sent[msg_id] = copy.deepcopy(body)
         if msg_id not in self._sent_order:
             self._sent_order.append(msg_id)
         if self._sent_detail_registrar is not None:

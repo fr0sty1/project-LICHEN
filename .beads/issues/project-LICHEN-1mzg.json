@@ -2,13 +2,16 @@
   "id": "project-LICHEN-1mzg",
   "title": "Compliance: Rust bridge.rs replay protection",
   "description": "Policy: 02-physical-link.md §4.4. File: rust/lichen-kiss/src/bridge.rs. Status: VIOLATION. Lines 126-136 default epoch to 0 instead of random [128,255]. Comment says caller must set it, but spec requires init, not deferred. Fix: initialize default_epoch with rand [128,255] in constructor.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:16:48.450299Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:17:02.975108Z",
+  "updated_at": "2026-07-12T00:44:12.849683Z",
+  "closed_at": "2026-07-12T00:44:12.849683Z",
+  "close_reason": "Fixed: KissBridge now defaults epoch to 128 (minimum compliant value), provides with_epoch() constructor with debug_assert for [128,255] range, deprecates new() in favor of explicit initialization.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-1mzg",

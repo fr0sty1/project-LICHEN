@@ -322,6 +322,43 @@ class TestXmlParsing:
         assert payload.message == b"Hello world"
         assert payload.dest.dest_type == DestType.BROADCAST
 
+    def test_parse_chat_direct(self) -> None:
+        """Test parsing direct message chat from XML.
+
+        Direct messages use a 16-char hex IID as the chatroom.
+        """
+        xml = """<event type="b-t-f" uid="CHAT-1">
+          <point lat="0" lon="0" hae="0"/>
+          <detail>
+            <remarks>Private message</remarks>
+            <__chat chatroom="aabbccdd00112233"/>
+          </detail>
+        </event>"""
+
+        subtype, payload = parse_xml_cot(xml)
+        assert subtype == CotSubtype.CHAT
+        assert isinstance(payload, ChatPayload)
+        assert payload.message == b"Private message"
+        assert payload.dest.dest_type == DestType.DIRECT
+        assert payload.dest.iid == bytes.fromhex("aabbccdd00112233")
+
+    def test_parse_chat_team(self) -> None:
+        """Test parsing team chat from XML."""
+        xml = """<event type="b-t-f" uid="CHAT-1">
+          <point lat="0" lon="0" hae="0"/>
+          <detail>
+            <remarks>Team message</remarks>
+            <__chat chatroom="Blue"/>
+          </detail>
+        </event>"""
+
+        subtype, payload = parse_xml_cot(xml)
+        assert subtype == CotSubtype.CHAT
+        assert isinstance(payload, ChatPayload)
+        assert payload.message == b"Team message"
+        assert payload.dest.dest_type == DestType.TEAM
+        assert payload.dest.team == Team.BLUE
+
     def test_parse_missing_point(self) -> None:
         """Test error when point element is missing."""
         xml = """<event type="a-f-G-U-C" uid="ALPHA-1">

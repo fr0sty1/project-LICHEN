@@ -211,17 +211,6 @@ fn synthetic_addr(node_id: MeshtasticNodeId) -> Ipv6Addr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::vec;
-    use alloc::format;
-
-    #[test]
-    fn test_meshtastic_node_id_display() {
-        let node = MeshtasticNodeId::new(0xDEADBEEF);
-        assert_eq!(format!("{}", node), "!deadbeef");
-
-        let node_small = MeshtasticNodeId::new(0x123);
-        assert_eq!(format!("{}", node_small), "!00000123");
-    }
 
     #[test]
     fn test_meshtastic_node_id_conversions() {
@@ -282,25 +271,6 @@ mod tests {
     }
 
     #[test]
-    fn test_known_nodes() {
-        let mut mapper = AddressMapper::new();
-        mapper.learn_mapping(MeshtasticNodeId::new(1), &PublicKey::new([0x11; 32]));
-        mapper.learn_mapping(MeshtasticNodeId::new(2), &PublicKey::new([0x22; 32]));
-        mapper.learn_mapping(MeshtasticNodeId::new(3), &PublicKey::new([0x33; 32]));
-
-        let mut nodes = mapper.known_nodes();
-        nodes.sort();
-        assert_eq!(
-            nodes,
-            vec![
-                MeshtasticNodeId::new(1),
-                MeshtasticNodeId::new(2),
-                MeshtasticNodeId::new(3)
-            ]
-        );
-    }
-
-    #[test]
     fn test_len_and_is_empty() {
         let mut mapper = AddressMapper::new();
         assert!(mapper.is_empty());
@@ -327,5 +297,41 @@ mod tests {
         let addr = mapper.meshtastic_to_ipv6(node_id);
         assert!(!addr.is_synthetic());
         assert_eq!(addr.synthetic_node_id(), None);
+    }
+
+    // Tests requiring alloc feature
+    #[cfg(feature = "alloc")]
+    mod alloc_tests {
+        use super::*;
+        use alloc::format;
+        use alloc::vec;
+
+        #[test]
+        fn test_meshtastic_node_id_display() {
+            let node = MeshtasticNodeId::new(0xDEADBEEF);
+            assert_eq!(format!("{}", node), "!deadbeef");
+
+            let node_small = MeshtasticNodeId::new(0x123);
+            assert_eq!(format!("{}", node_small), "!00000123");
+        }
+
+        #[test]
+        fn test_known_nodes() {
+            let mut mapper = AddressMapper::new();
+            mapper.learn_mapping(MeshtasticNodeId::new(1), &PublicKey::new([0x11; 32]));
+            mapper.learn_mapping(MeshtasticNodeId::new(2), &PublicKey::new([0x22; 32]));
+            mapper.learn_mapping(MeshtasticNodeId::new(3), &PublicKey::new([0x33; 32]));
+
+            let mut nodes = mapper.known_nodes();
+            nodes.sort();
+            assert_eq!(
+                nodes,
+                vec![
+                    MeshtasticNodeId::new(1),
+                    MeshtasticNodeId::new(2),
+                    MeshtasticNodeId::new(3)
+                ]
+            );
+        }
     }
 }

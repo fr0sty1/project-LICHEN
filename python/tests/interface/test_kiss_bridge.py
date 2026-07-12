@@ -393,7 +393,7 @@ class TestBridgeAprsTx:
     """Test APRS message transmission from app."""
 
     @pytest.mark.asyncio
-    async def test_aprs_message_sends_text_only(self, bridge, mock_link_layer, mock_peer):
+    async def test_aprs_message_sends_with_msg_id(self, bridge, mock_link_layer, mock_peer):
         # Add peer so we can resolve callsign
         bridge.add_peer(mock_peer)
         dst_call = iid_to_callsign(mock_peer.iid)
@@ -407,10 +407,10 @@ class TestBridgeAprsTx:
         bridge.handler.on_tx_frame(PORT_AX25, ax25_frame)
         await asyncio.sleep(0.01)
 
-        # Should send the TEXT only, not the APRS wrapper
+        # Should send text with msg_id for ack tracking (STX prefix + msg_id + NUL + text)
         assert len(mock_link_layer.sent_frames) == 1
         payload, dst = mock_link_layer.sent_frames[0]
-        assert payload == b"Hello from app"
+        assert payload == b"\x0242\x00Hello from app"
         assert dst == mock_peer.iid
 
     @pytest.mark.asyncio
@@ -427,6 +427,27 @@ class TestBridgeAprsTx:
 
         # Message should be tracked
         assert bridge._msg_tracker.pending_count() == 1
+
+    @pytest.mark.asyncio
+    async def test_aprs_message_without_msg_id_sends_raw(
+        self, bridge, mock_link_layer, mock_peer
+    ):
+        # Message without msg_id sends raw text (no prefix)
+        bridge.add_peer(mock_peer)
+        dst_call = iid_to_callsign(mock_peer.iid)
+
+        from lichen.interface.kiss.aprs import create_message
+        aprs_msg = create_message(dst_call, "No tracking", msg_id=None)
+        ax25_frame = ax25_encode("LSRC", dst_call, aprs_msg.encode())
+
+        bridge.handler.on_tx_frame(PORT_AX25, ax25_frame)
+        await asyncio.sleep(0.01)
+
+        assert len(mock_link_layer.sent_frames) == 1
+        payload, dst = mock_link_layer.sent_frames[0]
+        # No prefix - raw text only
+        assert payload == b"No tracking"
+        assert dst == mock_peer.iid
 
     @pytest.mark.asyncio
     async def test_aprs_broadcast_to_cq(self, bridge, mock_link_layer):
@@ -534,3 +555,48 @@ class TestBridgeAprsAckFlow:
         bridge._msg_tracker.handle_ack("77")
 
         assert bridge._msg_tracker.pending_count() == 0
+
+    @pytest.mark.asyncio
+    async def test_rx_with_embedded_msg_id_sends_correct_ack(
+        self, bridge, mock_link_layer, mock_peer
+    ):
+        # Start the bridge to enable async RX handling
+        await bridge.start(rx_timeout_ms=100)
+        bridge.add_peer(mock_peer)
+
+        # Simulate incoming message with embedded msg_id (STX + msg_id + NUL + text)
+        payload = b"\x02ABC\x00Hello receiver"
+        rx = MockRxFrame(
+            frame=MockLichenFrame(payload=payload),
+            sender=mock_peer,
+        )
+        await bridge.link_layer.rx_queue.put(rx)
+        await asyncio.sleep(0.05)
+
+        # Check that ack was sent with sender's msg_id "ABC"
+        ack_frames = [f for f, _ in mock_link_layer.sent_frames if f.startswith(b"\x06")]
+        assert len(ack_frames) == 1
+        assert ack_frames[0] == b"\x06ABC"  # Ack with sender's original msg_id
+
+        await bridge.stop()
+
+    @pytest.mark.asyncio
+    async def test_rx_without_msg_id_no_ack(self, bridge, mock_link_layer, mock_peer):
+        # Raw text without msg_id prefix shouldn't trigger auto-ack
+        await bridge.start(rx_timeout_ms=100)
+        bridge.add_peer(mock_peer)
+
+        # Simulate incoming raw message (no STX prefix)
+        payload = b"Raw message no tracking"
+        rx = MockRxFrame(
+            frame=MockLichenFrame(payload=payload),
+            sender=mock_peer,
+        )
+        await bridge.link_layer.rx_queue.put(rx)
+        await asyncio.sleep(0.05)
+
+        # No ack should be sent
+        ack_frames = [f for f, _ in mock_link_layer.sent_frames if f.startswith(b"\x06")]
+        assert len(ack_frames) == 0
+
+        await bridge.stop()

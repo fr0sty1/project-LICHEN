@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-om67.3",
+  "title": "Zephyr: Missing unified hybrid Router abstraction (spec 7.2)",
+  "description": "Same gap as Rust. Zephyr has rpl/ and routing/announce.c but no unified router combining address classification, gradient lookup, LOADng discovery, pending queue, DTN buffer. Reference: python/src/lichen/routing/router.py",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T00:32:38.367018Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T00:32:38.369749Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-om67.3",
+      "depends_on_id": "project-LICHEN-om67",
+      "type": "parent-child",
+      "created_at": "2026-07-12T00:32:38.369749Z"
+    }
+  ]
+}

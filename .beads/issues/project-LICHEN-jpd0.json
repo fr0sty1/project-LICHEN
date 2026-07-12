@@ -2,11 +2,14 @@
   "id": "project-LICHEN-jpd0",
   "title": "task",
   "description": "resources.py:399-402 - render_put() accepts any hex string for from_hex without validating it's exactly 8 bytes (EUI-64). A malicious or buggy client could send arbitrary length, causing inconsistent state. Failure scenario: client sends from='aabb' (2 bytes), downstream code expecting 8-byte EUI-64 fails or truncates. Fix: validate len(eui64) == 8 after bytes.fromhex().",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T05:31:27.074504Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T05:31:27.074541Z"
+  "updated_at": "2026-07-11T06:14:29.790695Z",
+  "closed_at": "2026-07-11T06:14:29.790695Z",
+  "close_reason": "Fixed: Added len(eui64) != 8 validation after bytes.fromhex() in SosResource.render_put() to ensure EUI-64 is exactly 8 bytes"
 }

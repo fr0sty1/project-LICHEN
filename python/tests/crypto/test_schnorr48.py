@@ -9,7 +9,7 @@ import pytest
 
 from lichen.crypto.schnorr48 import derive_keypair, sign, verify
 
-VECTORS_PATH = Path(__file__).parent.parent.parent.parent / "test" / "vectors" / "schnorr48.json"
+VECTORS_PATH = Path(__file__).parent.parent.parent.parent / "spec" / "test-vectors" / "schnorr48.json"
 
 
 @pytest.fixture

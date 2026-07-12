@@ -2,11 +2,12 @@
   "id": "project-LICHEN-9j4k",
   "title": "[policy] Bufferbloat avoidance compliance",
   "description": "Ensure all code sections comply with spec/appendix-bufferbloat.md. Covers: bounded queues, time-based expiry, priority queuing, explicit backpressure, no silent drops. Each queue location needs a compliance check bead.",
+  "notes": "Bounded queues verified compliant (2026-07-11): KISS 8-frame limit w/ error return, GATT 8-msg limit w/ QueueFull, Python adapter 64-msg limit w/ False return. Remaining work tracked in children: time-based expiry and priority queuing.",
   "status": "open",
   "priority": 2,
   "issue_type": "epic",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:10:32.896616Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:14:15.755745Z"
+  "updated_at": "2026-07-12T00:38:59.154046Z"
 }

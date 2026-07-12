@@ -2,11 +2,14 @@
   "id": "project-LICHEN-ylr5",
   "title": "task",
   "description": "simulation.py:174 - calculate_tx_jitter() calls randint(jitter_min_us, jitter_max_us) without validating min \u003c= max. If user passes jitter_min_us=5, jitter_max_us=3, random.randint raises ValueError: empty range for randrange(). Failure: Server crash on first TX with invalid jitter config.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T01:31:34.613162Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T01:31:34.613198Z"
+  "updated_at": "2026-07-12T00:51:27.614295Z",
+  "closed_at": "2026-07-12T00:51:27.614295Z",
+  "close_reason": "Fixed: Added validation in Simulation.__init__ to raise ValueError when jitter_min_us \u003e jitter_max_us (only when jitter is enabled)"
 }

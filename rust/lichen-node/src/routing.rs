@@ -76,13 +76,13 @@ impl NeighborTable {
             });
             return i;
         }
-        // Table full - evict oldest
+        // Table full - evict oldest (wraparound-safe, tie-break by index for stability)
         let oldest = self
             .entries
             .iter()
             .enumerate()
             .filter_map(|(i, e)| e.as_ref().map(|n| (i, n.last_seen_ms)))
-            .min_by_key(|(_, t)| *t)
+            .max_by_key(|(i, t)| (now_ms.wrapping_sub(*t), *i))
             .map(|(i, _)| i)
             .unwrap_or(0);
         self.entries[oldest] = Some(Neighbor {
@@ -360,5 +360,34 @@ mod tests {
         assert!(inconsistent, "should detect inconsistency on join");
         assert!(router.is_joined());
         assert_eq!(router.preferred_parent(), Some(root_addr));
+    }
+
+    #[test]
+    fn neighbor_table_eviction_wraparound() {
+        // Test that eviction is correct after u32 timestamp wraparound (~49 days)
+        let mut table = NeighborTable::new();
+
+        // Fill the table
+        for i in 0..MAX_NEIGHBORS {
+            let addr = link_local(i as u8);
+            // All entries have timestamps just before wraparound
+            table.update(&addr, 1.0, -50, 0xFFFF_FF00 + i as u32);
+        }
+        assert_eq!(table.count(), MAX_NEIGHBORS);
+
+        // Now time has wrapped around to a small value
+        let now_ms = 0x0000_1000_u32; // After wraparound
+
+        // Insert a new neighbor - should evict the oldest (lowest slot index)
+        let new_addr = link_local(0xFF);
+        let evicted_slot = table.update(&new_addr, 1.0, -50, now_ms);
+
+        // The oldest entry is slot 0 (timestamp 0xFFFF_FF00, largest age from now_ms)
+        assert_eq!(evicted_slot, 0);
+        assert_eq!(table.get_etx(&new_addr), Some(1.0));
+
+        // Verify slot 0 was evicted (original addr link_local(0) is gone)
+        let original_addr0 = link_local(0);
+        assert_eq!(table.get_etx(&original_addr0), None);
     }
 }

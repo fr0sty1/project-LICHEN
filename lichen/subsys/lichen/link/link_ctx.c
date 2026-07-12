@@ -339,9 +339,11 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 
 	if (locked) {
 		(void)seq_unlock(ctx);
-	}
-
 #ifndef __ZEPHYR__
-	pthread_mutex_destroy(&ctx->seq_lock);
+		/* Only destroy mutex if we successfully acquired and released it.
+		 * If lock failed, mutex may be held by another thread - destroying
+		 * would cause undefined behavior per POSIX. */
+		pthread_mutex_destroy(&ctx->seq_lock);
 #endif
+	}
 }

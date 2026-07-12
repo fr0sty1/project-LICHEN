@@ -137,7 +137,12 @@ fn edhoc_kdf(
 
     // label as CBOR tstr
     let label_bytes = label.as_bytes();
-    info.push_err(0x60 | label_bytes.len() as u8)?;
+    if label_bytes.len() <= 23 {
+        info.push_err(0x60 | label_bytes.len() as u8)?;
+    } else {
+        info.push_err(0x78)?;
+        info.push_err(label_bytes.len() as u8)?;
+    }
     info.extend_err(label_bytes)?;
 
     // context as CBOR bstr
@@ -326,10 +331,12 @@ impl EdhocInitiator {
             return Err(EdhocError::InvalidMessage);
         };
 
-        // Compute shared secret G_XY
+        // Compute shared secret G_XY (ephemeral key consumed - single use only)
         let eph_secret = self.eph_secret.take().ok_or(EdhocError::InvalidState)?;
         let peer_eph_public = PublicKey::from(self.state.g_y);
         let g_xy = eph_secret.diffie_hellman(&peer_eph_public);
+        // SECURITY: eph_secret is intentionally NOT stored back - single-use semantics
+        // prevent cryptographic weakness from ephemeral key reuse (RFC 9528 freshness).
 
         // TH_2 = H(G_Y || H(message_1))
         let h_msg1 = compute_th(&self.state.msg1);
@@ -426,7 +433,8 @@ impl EdhocInitiator {
 
         // TH_3 = H(TH_2, CIPHERTEXT_2, ID_CRED_R)
         // ponytail: simplified - ID_CRED_R is peer pubkey
-        let mut th_3_input = heapless::Vec::<u8, 128>::new();
+        // Size: 34 (TH_2) + 2 + ~100 (ciphertext) + 34 (ID_CRED_R) = ~170 bytes
+        let mut th_3_input = heapless::Vec::<u8, 192>::new();
         // TH_2 as CBOR bstr
         th_3_input.push_err(0x58)?;
         th_3_input.push_err(32)?;
@@ -615,12 +623,13 @@ impl EdhocResponder {
     }
 
     /// Process EDHOC Message 1 and create Message 2.
-    pub fn process_message_1(&mut self, msg1: &[u8]) -> Result<heapless::Vec<u8, 128>, EdhocError> {
+    pub fn process_message_1(&mut self, msg1: &[u8]) -> Result<heapless::Vec<u8, 160>, EdhocError> {
         self.state.msg1.clear();
         self.state.msg1.extend_err(msg1)?;
 
         // Parse message_1 = (METHOD_CORR, SUITES_I, G_X, C_I)
-        if msg1.len() < 38 {
+        // Minimum: 1 (method_corr) + 1 (suite) + 2 (bstr header) + 32 (G_X) + 1 (C_I) = 37
+        if msg1.len() < 37 {
             return Err(EdhocError::InvalidMessage);
         }
 
@@ -651,13 +660,13 @@ impl EdhocResponder {
             return Err(EdhocError::InvalidMessage);
         };
 
-        // Compute shared secret
+        // Compute shared secret (ephemeral key consumed - single use only)
         let eph_secret = self.eph_secret.take().ok_or(EdhocError::InvalidState)?;
         let peer_eph_public = PublicKey::from(self.state.g_x);
         let g_xy = eph_secret.diffie_hellman(&peer_eph_public);
-
-        // Store eph_secret back for later (we still need it)
-        self.eph_secret = Some(eph_secret);
+        // SECURITY: eph_secret is intentionally NOT stored back - single-use semantics
+        // prevent cryptographic weakness from ephemeral key reuse if this function
+        // is called multiple times (e.g., due to retransmission handling bugs).
 
         // TH_2 = H(G_Y || H(message_1))
         let h_msg1 = compute_th(msg1);
@@ -673,7 +682,11 @@ impl EdhocResponder {
         self.state.prk_3e2m = self.state.prk_2e;
 
         // Compute MAC_2 for signature
-        let mut context_2 = heapless::Vec::<u8, 64>::new();
+        // context_2 = << ID_CRED_R, CRED_R >> per RFC 9528 Section 4.3.2
+        let mut context_2 = heapless::Vec::<u8, 128>::new();
+        context_2.push_err(0x58)?;
+        context_2.push_err(32)?;
+        context_2.extend_err(self.pubkey.as_bytes())?;  // ID_CRED_R
         context_2.push_err(0x58)?;
         context_2.push_err(32)?;
         context_2.extend_err(self.pubkey.as_bytes())?;  // CRED_R
@@ -740,7 +753,8 @@ impl EdhocResponder {
         self.state.th_3 = compute_th(&th_3_input);
 
         // message_2 = (G_Y || CIPHERTEXT_2, C_R)
-        let mut msg2 = heapless::Vec::<u8, 128>::new();
+        // Size: 2 header + 32 G_Y + ~100 ciphertext_2 + 1-2 C_R = ~137 bytes
+        let mut msg2 = heapless::Vec::<u8, 160>::new();
         let g_y_ct2_len = 32 + ciphertext_2.len();
         msg2.push_err(0x58)?;
         msg2.push_err(g_y_ct2_len as u8)?;
@@ -900,5 +914,58 @@ mod tests {
         assert_eq!(msg1[3], 32); // G_X length
         // msg1[4..36] is G_X
         assert_eq!(msg1[36], 5); // C_I
+    }
+
+    /// Integration test: full EDHOC handshake with key verification.
+    #[test]
+    fn test_full_handshake() {
+        // Create initiator and responder with different seeds
+        let initiator_seed = [0x11u8; 32];
+        let responder_seed = [0x22u8; 32];
+
+        let mut initiator = EdhocInitiator::new(initiator_seed, 0x00);
+        let mut responder = EdhocResponder::new(responder_seed, 0x01);
+
+        // Get public keys for verification
+        let initiator_pubkey = initiator.pubkey.to_bytes();
+        let responder_pubkey = responder.pubkey.to_bytes();
+
+        // Step 1: Initiator creates Message 1
+        let msg1 = initiator.create_message_1().expect("create_message_1 failed");
+
+        // Step 2: Responder processes Message 1, creates Message 2
+        let msg2 = responder.process_message_1(&msg1).expect("process_message_1 failed");
+
+        // Step 3: Initiator processes Message 2, creates Message 3
+        let msg3 = initiator
+            .process_message_2(&msg2, &responder_pubkey)
+            .expect("process_message_2 failed");
+
+        // Step 4: Responder processes Message 3
+        responder
+            .process_message_3(&msg3, &initiator_pubkey)
+            .expect("process_message_3 failed");
+
+        // Step 5: Both export OSCORE contexts
+        let initiator_ctx = initiator.export_oscore().expect("initiator export_oscore failed");
+        let responder_ctx = responder.export_oscore().expect("responder export_oscore failed");
+
+        // Step 6: Verify keys match (initiator sender = responder recipient, and vice versa)
+        // The sender_key of initiator should equal recipient_key of responder
+        // The recipient_key of initiator should equal sender_key of responder
+        assert_eq!(
+            initiator_ctx.sender_key, responder_ctx.recipient_key,
+            "initiator sender_key != responder recipient_key"
+        );
+        assert_eq!(
+            initiator_ctx.recipient_key, responder_ctx.sender_key,
+            "initiator recipient_key != responder sender_key"
+        );
+
+        // Also verify common IV matches
+        assert_eq!(
+            initiator_ctx.common_iv, responder_ctx.common_iv,
+            "common_iv mismatch"
+        );
     }
 }

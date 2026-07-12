@@ -98,6 +98,10 @@ class Simulation:
         self._seed = seed
         self._rng = random.Random(seed)
         self._observers = ObserverRegistry()
+        if jitter_max_us > 0 and jitter_min_us > jitter_max_us:
+            raise ValueError(
+                f"jitter_min_us ({jitter_min_us}) must be <= jitter_max_us ({jitter_max_us})"
+            )
         self._jitter_min_us = jitter_min_us
         self._jitter_max_us = jitter_max_us
         self._realtime_epoch_us: int = time.monotonic_ns() // 1000

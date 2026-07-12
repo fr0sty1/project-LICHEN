@@ -2,11 +2,14 @@
   "id": "project-LICHEN-es14",
   "title": "task",
   "description": "lichen/subsys/lichen/link/frame.c:139-140 - On 32-bit systems, frame_len = LICHEN_FRAME_PAYLOAD_OFFSET(addr_len) + frame-\u003epayload_len + mic_len could overflow if frame-\u003epayload_len is attacker-controlled and extremely large (e.g., 0xFFFFFFF0). After overflow, frame_len could be small enough to pass the bounds checks at lines 142-147, leading to buffer overwrite. Impact is low because lichen_frame_write is a public API where callers control the frame struct - malicious input would be a caller bug. Defensive fix: check payload_len \u003c= LICHEN_MAX_PAYLOAD before computing frame_len.",
-  "status": "open",
+  "status": "closed",
   "priority": 4,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T05:45:06.721945Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T05:45:06.722018Z"
+  "updated_at": "2026-07-12T00:58:31.752631Z",
+  "closed_at": "2026-07-12T00:58:31.752631Z",
+  "close_reason": "Fixed: added LICHEN_MAX_PAYLOAD check before size_t arithmetic to prevent overflow on 32-bit systems"
 }

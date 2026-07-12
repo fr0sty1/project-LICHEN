@@ -188,29 +188,78 @@ pub struct AuthenticatedFrame {
     pub sender: PeerIdentity,
 }
 
-/// Per-peer replay-window tracker keyed by `(pubkey, epoch)`.
+/// Per-peer replay state: tracks highest epoch and current seqnum window.
+#[derive(Debug)]
+struct PeerReplayState {
+    /// Highest epoch accepted from this peer.
+    last_epoch: u8,
+    /// Replay window for `last_epoch`.
+    window: ReplayWindow,
+}
+
+impl PeerReplayState {
+    fn new(epoch: u8) -> Self {
+        Self {
+            last_epoch: epoch,
+            window: ReplayWindow::new(),
+        }
+    }
+}
+
+/// Per-peer replay-window tracker with epoch enforcement.
+///
+/// SECURITY: Enforces spec section 4.4 acceptance rules:
+/// - epoch > LastEpoch: accept, update state
+/// - epoch == LastEpoch, seqnum in/above window: accept if not seen
+/// - epoch < LastEpoch: reject (replay)
 #[derive(Debug)]
 pub struct ReplayProtector {
-    windows: HashMap<(PublicKey, u8), ReplayWindow>,
+    peers: HashMap<PublicKey, PeerReplayState>,
 }
 
 impl ReplayProtector {
     pub fn new() -> Self {
         ReplayProtector {
-            windows: HashMap::new(),
+            peers: HashMap::new(),
         }
     }
 
     /// Check and advance the window. Returns `true` if the frame is fresh.
+    ///
+    /// SECURITY: Epoch comparison uses half-space arithmetic to handle
+    /// 8-bit wrap-around correctly. An epoch difference in [-128, 0) is
+    /// considered "behind" (replay); a difference in (0, 128] is "ahead".
     pub fn check_and_update(&mut self, pubkey: &PublicKey, epoch: u8, seqnum: LinkSeqNum) -> bool {
-        self.windows
-            .entry((*pubkey, epoch))
-            .or_default()
-            .accept(seqnum)
+        match self.peers.get_mut(pubkey) {
+            None => {
+                // First frame from this peer: create state
+                let mut state = PeerReplayState::new(epoch);
+                let accepted = state.window.accept(seqnum);
+                self.peers.insert(*pubkey, state);
+                accepted
+            }
+            Some(state) => {
+                // SECURITY: Use signed diff for wrap-around safe comparison
+                let epoch_diff = epoch.wrapping_sub(state.last_epoch) as i8;
+
+                if epoch_diff > 0 {
+                    // Epoch advanced: reset window for new epoch
+                    state.last_epoch = epoch;
+                    state.window = ReplayWindow::new();
+                    state.window.accept(seqnum)
+                } else if epoch_diff < 0 {
+                    // SECURITY: Reject old epoch (replay or rollback attack)
+                    false
+                } else {
+                    // Same epoch: check seqnum window
+                    state.window.accept(seqnum)
+                }
+            }
+        }
     }
 
     pub fn reset_peer(&mut self, pubkey: &PublicKey) {
-        self.windows.retain(|(pk, _), _| pk != pubkey);
+        self.peers.remove(pubkey);
     }
 }
 
@@ -327,13 +376,16 @@ impl LinkLayer {
         signed.extend_from_slice(inner_payload);
         signed.extend_from_slice(&sig);
 
+        let addr_mode = crate::frame::AddrMode::from_addr_len(dst_addr.len())
+            .ok_or(FrameError::AddrLenMismatch)?;
+
         let frame = LichenFrame {
             epoch,
             seqnum,
             dst_addr,
             payload: &signed,
             mic: &[0u8; 4],
-            addr_mode: crate::frame::AddrMode::None,
+            addr_mode,
             mic_length: crate::frame::MicLength::Bits32,
             signature: Signature::Present,
             encryption: Encryption::Plaintext,
@@ -522,6 +574,83 @@ mod tests {
         ll_bob.receive_frame(&wire[..n]).unwrap();
         let err = ll_bob.receive_frame(&wire[..n]).unwrap_err();
         assert_eq!(err, LinkRxError::Replay);
+    }
+
+    #[test]
+    fn old_epoch_rejected() {
+        // SECURITY: Per spec section 4.4, epoch < LastEpoch must be rejected.
+        let alice = Identity::from_seed(Seed::new([0x01u8; 32]));
+        let alice_peer = PeerIdentity::from_pubkey(alice.pubkey);
+        let mut ll_bob = make_ll(0x02);
+        ll_bob.add_peer(alice_peer);
+
+        let ll_alice = LinkLayer::new(alice);
+
+        // Accept frame with epoch=10
+        let mut wire1 = [0u8; 256];
+        let n1 = ll_alice
+            .build_frame(10, seq(1), &[], b"epoch10", &mut wire1)
+            .unwrap();
+        ll_bob.receive_frame(&wire1[..n1]).unwrap();
+
+        // Reject frame with epoch=5 (< 10)
+        let mut wire2 = [0u8; 256];
+        let n2 = ll_alice
+            .build_frame(5, seq(1), &[], b"epoch5", &mut wire2)
+            .unwrap();
+        assert_eq!(
+            ll_bob.receive_frame(&wire2[..n2]).unwrap_err(),
+            LinkRxError::Replay
+        );
+
+        // Accept frame with epoch=11 (> 10)
+        let mut wire3 = [0u8; 256];
+        let n3 = ll_alice
+            .build_frame(11, seq(1), &[], b"epoch11", &mut wire3)
+            .unwrap();
+        ll_bob.receive_frame(&wire3[..n3]).unwrap();
+    }
+
+    #[test]
+    fn epoch_wraparound_handled() {
+        // SECURITY: Test epoch wrap-around (255 -> 0) is handled correctly.
+        let alice = Identity::from_seed(Seed::new([0x01u8; 32]));
+        let alice_peer = PeerIdentity::from_pubkey(alice.pubkey);
+        let mut ll_bob = make_ll(0x02);
+        ll_bob.add_peer(alice_peer);
+
+        let ll_alice = LinkLayer::new(alice);
+
+        // Accept frame with epoch=254
+        let mut wire1 = [0u8; 256];
+        let n1 = ll_alice
+            .build_frame(254, seq(1), &[], b"e254", &mut wire1)
+            .unwrap();
+        ll_bob.receive_frame(&wire1[..n1]).unwrap();
+
+        // Accept frame with epoch=255 (> 254)
+        let mut wire2 = [0u8; 256];
+        let n2 = ll_alice
+            .build_frame(255, seq(1), &[], b"e255", &mut wire2)
+            .unwrap();
+        ll_bob.receive_frame(&wire2[..n2]).unwrap();
+
+        // Accept frame with epoch=0 after wrap (0 is 1 step ahead of 255 in u8 arithmetic)
+        let mut wire3 = [0u8; 256];
+        let n3 = ll_alice
+            .build_frame(0, seq(1), &[], b"e0wrap", &mut wire3)
+            .unwrap();
+        ll_bob.receive_frame(&wire3[..n3]).unwrap();
+
+        // Reject frame with epoch=255 (now behind after wrap)
+        let mut wire4 = [0u8; 256];
+        let n4 = ll_alice
+            .build_frame(255, seq(2), &[], b"e255again", &mut wire4)
+            .unwrap();
+        assert_eq!(
+            ll_bob.receive_frame(&wire4[..n4]).unwrap_err(),
+            LinkRxError::Replay
+        );
     }
 
     #[test]

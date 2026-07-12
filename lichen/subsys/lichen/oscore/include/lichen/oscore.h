@@ -63,6 +63,16 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -209,11 +219,11 @@ int oscore_init(void);
  *         been called or a parameter is invalid, negative error code on other
  *         failures
  */
-int oscore_ctx_create(const uint8_t master_secret[OSCORE_KEY_LEN],
-		      const uint8_t *master_salt, size_t master_salt_len,
-		      const uint8_t *sender_id, size_t sender_id_len,
-		      const uint8_t *recipient_id, size_t recipient_id_len,
-		      struct oscore_ctx **ctx);
+int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
+		      const uint8_t *_Nullable master_salt, size_t master_salt_len,
+		      const uint8_t *_Nonnull sender_id, size_t sender_id_len,
+		      const uint8_t *_Nonnull recipient_id, size_t recipient_id_len,
+		      struct oscore_ctx *_Nullable *_Nonnull ctx);
 
 /**
  * @brief Free an OSCORE security context.
@@ -222,7 +232,7 @@ int oscore_ctx_create(const uint8_t master_secret[OSCORE_KEY_LEN],
  *
  * @param[in] ctx Context to free
  */
-void oscore_ctx_free(struct oscore_ctx *ctx);
+void oscore_ctx_free(struct oscore_ctx *_Nullable ctx);
 
 /**
  * @brief Set the sender sequence number for nonce persistence.
@@ -240,7 +250,7 @@ void oscore_ctx_free(struct oscore_ctx *ctx);
  * @param[in] sender_seq New sender sequence number (must be > any previously used)
  * @return 0 on success, OSCORE_ERR_INVALID_PARAM if ctx is NULL
  */
-int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq);
+int oscore_ctx_set_sender_seq(struct oscore_ctx *_Nonnull ctx, uint32_t sender_seq);
 
 /**
  * @brief Get the current sender sequence number for persistence.
@@ -249,7 +259,8 @@ int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq);
  * @param[out] sender_seq Current sender sequence number
  * @return 0 on success, OSCORE_ERR_INVALID_PARAM if ctx or sender_seq is NULL
  */
-int oscore_ctx_get_sender_seq(const struct oscore_ctx *ctx, uint32_t *sender_seq);
+int oscore_ctx_get_sender_seq(const struct oscore_ctx *_Nonnull ctx,
+			      uint32_t *_Nonnull sender_seq);
 
 /**
  * @brief Get remaining sender sequence budget before exhaustion.
@@ -268,7 +279,8 @@ int oscore_ctx_get_sender_seq(const struct oscore_ctx *ctx, uint32_t *sender_seq
  *
  * @see @ref oscore_key_rotation "Key Rotation" for the complete rotation pattern
  */
-int oscore_ctx_get_seq_remaining(const struct oscore_ctx *ctx, uint32_t *remaining);
+int oscore_ctx_get_seq_remaining(const struct oscore_ctx *_Nonnull ctx,
+				 uint32_t *_Nonnull remaining);
 
 /**
  * @brief Look up a security context by recipient ID (copy).
@@ -295,9 +307,9 @@ int oscore_ctx_get_seq_remaining(const struct oscore_ctx *ctx, uint32_t *remaini
  * @return 0 on success, OSCORE_ERR_NO_CONTEXT if not found,
  *         OSCORE_ERR_INVALID_PARAM if ctx_out is NULL
  */
-int oscore_ctx_lookup(const uint8_t *recipient_id,
+int oscore_ctx_lookup(const uint8_t *_Nonnull recipient_id,
 		      size_t recipient_id_len,
-		      struct oscore_ctx *ctx_out);
+		      struct oscore_ctx *_Nonnull ctx_out);
 
 /**
  * @brief Get a security context pointer by recipient ID.
@@ -312,9 +324,9 @@ int oscore_ctx_lookup(const uint8_t *recipient_id,
  * @return 0 on success, OSCORE_ERR_NO_CONTEXT if not found,
  *         OSCORE_ERR_INVALID_PARAM if ctx_out is NULL
  */
-int oscore_ctx_get(const uint8_t *recipient_id,
+int oscore_ctx_get(const uint8_t *_Nonnull recipient_id,
 		   size_t recipient_id_len,
-		   struct oscore_ctx **ctx_out);
+		   struct oscore_ctx *_Nullable *_Nonnull ctx_out);
 
 /**
  * @brief Parse an OSCORE CoAP option.
@@ -324,8 +336,8 @@ int oscore_ctx_get(const uint8_t *recipient_id,
  * @param[out] option   Parsed option structure
  * @return 0 on success, negative error code on failure
  */
-int oscore_option_parse(const uint8_t *data, size_t len,
-			struct oscore_option *option);
+int oscore_option_parse(const uint8_t *_Nonnull data, size_t len,
+			struct oscore_option *_Nonnull option);
 
 /**
  * @brief Build an OSCORE CoAP option value.
@@ -335,8 +347,8 @@ int oscore_option_parse(const uint8_t *data, size_t len,
  * @param[in]  buflen   Buffer size
  * @return Bytes written, or negative error code
  */
-int oscore_option_build(const struct oscore_option *option,
-			uint8_t *buf, size_t buflen);
+int oscore_option_build(const struct oscore_option *_Nonnull option,
+			uint8_t *_Nonnull buf, size_t buflen);
 
 /**
  * @brief Protect a CoAP request with OSCORE.
@@ -355,12 +367,12 @@ int oscore_option_build(const struct oscore_option *option,
  * @param[in,out] oscore_opt_len Input: buffer size, output: option length
  * @return 0 on success, negative error code on failure
  */
-int oscore_protect_request(struct oscore_ctx *ctx,
+int oscore_protect_request(struct oscore_ctx *_Nonnull ctx,
 			   uint8_t code,
-			   const uint8_t *options, size_t options_len,
-			   const uint8_t *payload, size_t payload_len,
-			   uint8_t *ciphertext, size_t *ciphertext_len,
-			   uint8_t *oscore_opt, size_t *oscore_opt_len);
+			   const uint8_t *_Nullable options, size_t options_len,
+			   const uint8_t *_Nullable payload, size_t payload_len,
+			   uint8_t *_Nonnull ciphertext, size_t *_Nonnull ciphertext_len,
+			   uint8_t *_Nonnull oscore_opt, size_t *_Nonnull oscore_opt_len);
 
 /**
  * @brief Unprotect an OSCORE-protected CoAP request.
@@ -379,12 +391,12 @@ int oscore_protect_request(struct oscore_ctx *ctx,
  * @param[in,out] payload_len   Input: buffer size, output: payload length
  * @return 0 on success, negative error code on failure
  */
-int oscore_unprotect_request(struct oscore_ctx *ctx,
-			     const uint8_t *oscore_opt, size_t oscore_opt_len,
-			     const uint8_t *ciphertext, size_t ciphertext_len,
-			     uint8_t *code,
-			     uint8_t *options, size_t *options_len,
-			     uint8_t *payload, size_t *payload_len);
+int oscore_unprotect_request(struct oscore_ctx *_Nonnull ctx,
+			     const uint8_t *_Nonnull oscore_opt, size_t oscore_opt_len,
+			     const uint8_t *_Nonnull ciphertext, size_t ciphertext_len,
+			     uint8_t *_Nonnull code,
+			     uint8_t *_Nonnull options, size_t *_Nonnull options_len,
+			     uint8_t *_Nonnull payload, size_t *_Nonnull payload_len);
 
 /**
  * @brief Protect a CoAP response with OSCORE.
@@ -403,13 +415,13 @@ int oscore_unprotect_request(struct oscore_ctx *ctx,
  * @param[in,out] oscore_opt_len Input: buffer size, output: option length
  * @return 0 on success, negative error code on failure
  */
-int oscore_protect_response(struct oscore_ctx *ctx,
-			    const uint8_t *request_piv, size_t request_piv_len,
+int oscore_protect_response(struct oscore_ctx *_Nonnull ctx,
+			    const uint8_t *_Nonnull request_piv, size_t request_piv_len,
 			    uint8_t code,
-			    const uint8_t *options, size_t options_len,
-			    const uint8_t *payload, size_t payload_len,
-			    uint8_t *ciphertext, size_t *ciphertext_len,
-			    uint8_t *oscore_opt, size_t *oscore_opt_len);
+			    const uint8_t *_Nullable options, size_t options_len,
+			    const uint8_t *_Nullable payload, size_t payload_len,
+			    uint8_t *_Nonnull ciphertext, size_t *_Nonnull ciphertext_len,
+			    uint8_t *_Nonnull oscore_opt, size_t *_Nonnull oscore_opt_len);
 
 /**
  * @brief Unprotect an OSCORE-protected CoAP response.
@@ -428,13 +440,13 @@ int oscore_protect_response(struct oscore_ctx *ctx,
  * @param[in,out] payload_len    Input: buffer size, output: payload length
  * @return 0 on success, negative error code on failure
  */
-int oscore_unprotect_response(struct oscore_ctx *ctx,
-			      const uint8_t *request_piv, size_t request_piv_len,
-			      const uint8_t *oscore_opt, size_t oscore_opt_len,
-			      const uint8_t *ciphertext, size_t ciphertext_len,
-			      uint8_t *code,
-			      uint8_t *options, size_t *options_len,
-			      uint8_t *payload, size_t *payload_len);
+int oscore_unprotect_response(struct oscore_ctx *_Nonnull ctx,
+			      const uint8_t *_Nonnull request_piv, size_t request_piv_len,
+			      const uint8_t *_Nonnull oscore_opt, size_t oscore_opt_len,
+			      const uint8_t *_Nonnull ciphertext, size_t ciphertext_len,
+			      uint8_t *_Nonnull code,
+			      uint8_t *_Nonnull options, size_t *_Nonnull options_len,
+			      uint8_t *_Nonnull payload, size_t *_Nonnull payload_len);
 
 #ifdef __cplusplus
 }

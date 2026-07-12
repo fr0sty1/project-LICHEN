@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-1dj6",
+  "title": "Add OSCORE encrypt/decrypt test vectors",
+  "description": "The OSCORE implementation in Rust (lichen-oscore) and Python (crypto/oscore.py) have only embedded unit tests. Need shared JSON test vectors in test/vectors/oscore.json for:\n- Key derivation from master secret (RFC 8613 Section 3.2)\n- Request protection/unprotection round-trip\n- Response protection/unprotection (with/without PIV echo)\n- Replay window behavior\n- Known test vectors from RFC 8613 Appendix C\n\nThis enables parity testing between Rust, Python, and future Zephyr implementations.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T00:33:25.613515Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T00:33:25.613558Z"
+}

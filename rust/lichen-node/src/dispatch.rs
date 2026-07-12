@@ -28,6 +28,11 @@
 //!
 //! The `DISPATCHER` is computed at compile time and placed in `.rodata`.
 
+#[cfg(feature = "defmt")]
+use defmt::warn;
+#[cfg(feature = "log")]
+use log::warn;
+
 use lichen_coap::codec::{CoapBuilder, CoapPacket};
 use lichen_coap::message::{MessageCode, MessageType};
 
@@ -135,9 +140,17 @@ impl<'a> Request<'a> {
 
         for opt_result in pkt.options() {
             let opt = opt_result.ok()?;
-            if opt.is_uri_path() && path_len < MAX_PATH_DEPTH {
-                path[path_len] = opt.value;
-                path_len += 1;
+            if opt.is_uri_path() {
+                if path_len < MAX_PATH_DEPTH {
+                    path[path_len] = opt.value;
+                    path_len += 1;
+                } else {
+                    #[cfg(any(feature = "defmt", feature = "log"))]
+                    warn!(
+                        "dispatch: dropping URI segment beyond MAX_PATH_DEPTH ({})",
+                        MAX_PATH_DEPTH
+                    );
+                }
             } else if opt.is_content_format() {
                 content_format = Some(opt.as_uint() as u16);
             }

@@ -232,10 +232,18 @@ def handle_icmpv6(packet: IPv6Packet) -> IPv6Packet | None:
 
     Only Echo Requests produce a reply (an Echo Reply with the source and
     destination swapped). Replies and error messages are consumed without a
-    response.
+    response. Per RFC 4443 section 2.3, messages with invalid checksums are
+    silently discarded.
     """
     if packet.header.next_header != ICMPV6_NEXT_HEADER:
         raise Icmpv6Error("packet does not carry ICMPv6")
+
+    # SECURITY: RFC 4443 section 2.3 requires checksum verification before
+    # processing. Silently discard packets with invalid checksums.
+    if not Icmpv6Message.verify_checksum(
+        packet.header.src_addr, packet.header.dst_addr, packet.payload
+    ):
+        return None
 
     msg = Icmpv6Message.from_bytes(packet.payload)
     if msg.type != Icmpv6Type.ECHO_REQUEST:

@@ -1,0 +1,5 @@
+/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/fuzz/build/CMakeFiles/fuzz_frame.dir
+/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/fuzz/build/CMakeFiles/fuzz_schnorr48.dir
+/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/fuzz/build/CMakeFiles/fuzz_schc.dir
+/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/fuzz/build/CMakeFiles/edit_cache.dir
+/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/fuzz/build/CMakeFiles/rebuild_cache.dir

@@ -34,6 +34,9 @@
 
 #define LICHEN_PROTECTED_PAYLOAD_MAX (LICHEN_MAX_PAYLOAD + LICHEN_SIG_LEN)
 
+/* Maximum decompressed IPv6 packet size: MTU payload (200) + base header (40) */
+#define LICHEN_MAX_IPV6_LEN (LICHEN_MAX_PAYLOAD + 40)
+
 struct lichen_link_auth_payload {
 	size_t payload_len;
 	struct lichen_link_rx_payload_info info;
@@ -388,8 +391,10 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 {
 	struct lichen_link_auth_payload auth;
 	uint8_t l2_payload[LICHEN_PROTECTED_PAYLOAD_MAX];
+	uint8_t ipv6_buf[LICHEN_MAX_IPV6_LEN];
 	const uint8_t *schc_data;
 	size_t l2_payload_len = sizeof(l2_payload);
+	size_t caller_len;
 	size_t ipv6_len;
 	size_t schc_len;
 	int ret;
@@ -398,6 +403,7 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 	    out_len == NULL || src_eui64 == NULL) {
 		return -EINVAL;
 	}
+	caller_len = *out_len;
 
 	ret = authenticate_inner_payload(ctx, frame, frame_len,
 					 l2_payload, sizeof(l2_payload),
@@ -419,12 +425,19 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 	}
 
 	/* Validate output buffer can hold minimum IPv6 header */
-	if (*out_len < 40) {
+	if (caller_len < 40) {
 		ret = -ENOMEM;
 		goto cleanup;
 	}
 
-	ret = lichen_schc_decompress(schc_data, schc_len, out_ipv6, *out_len);
+	/*
+	 * SECURITY: Decompress to local buffer first, then copy to caller's
+	 * buffer only after replay check passes. This prevents authenticated-
+	 * but-replayed data from being visible to the caller even if they
+	 * (incorrectly) ignore the error return code.
+	 */
+	ret = lichen_schc_decompress(schc_data, schc_len,
+				     ipv6_buf, sizeof(ipv6_buf));
 	if (ret < 0) {
 		if (ret == SCHC_ERR_BUFFER_TOO_SMALL) {
 			ret = -ENOMEM;
@@ -436,16 +449,25 @@ int lichen_link_rx(struct lichen_link_rx_ctx *ctx,
 
 	ipv6_len = (size_t)ret;
 
+	/* Verify caller's buffer can hold the decompressed packet */
+	if (caller_len < ipv6_len) {
+		ret = -ENOMEM;
+		goto cleanup;
+	}
+
 	ret = commit_replay(replay, &auth);
 	if (ret < 0) {
 		goto cleanup;
 	}
 
+	/* Only copy to caller's buffer after replay check passes */
+	memcpy(out_ipv6, ipv6_buf, ipv6_len);
 	*out_len = ipv6_len;
 	memcpy(src_eui64, auth.info.src_eui64, LICHEN_EUI64_LEN);
 	ret = 0;
 
 cleanup:
+	memset(ipv6_buf, 0, sizeof(ipv6_buf));
 	memset(l2_payload, 0, sizeof(l2_payload));
 	memset(&auth, 0, sizeof(auth));
 	return ret;

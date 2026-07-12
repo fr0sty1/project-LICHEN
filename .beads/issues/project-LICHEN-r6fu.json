@@ -2,11 +2,14 @@
   "id": "project-LICHEN-r6fu",
   "title": "[policy] OSCORE end-to-end encryption compliance",
   "description": "Policy: spec/06-security.md §8.7. Application payloads MUST be OSCORE encrypted for E2E security. Link signatures provide hop-by-hop auth but not confidentiality. When executing: grep for CoAP/application payload handling, verify OSCORE encryption, create compliance bead per code section.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "epic",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:14:08.12094Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:14:08.120972Z"
+  "updated_at": "2026-07-12T00:40:07.624892Z",
+  "closed_at": "2026-07-12T00:40:07.624892Z",
+  "close_reason": "VIOLATIONS FOUND: Application payloads are NOT OSCORE encrypted by default, violating spec/06-security.md section 8.7.\n\nAudit findings:\n1. Python: OSCORE library exists (lichen.crypto.oscore) but NOT integrated into CoAP transport (transport.py, node_channel.py send plaintext)\n2. C firmware: FIXME(OSCORE) comments indicate OSCORE not yet implemented\n3. Rust: SecureStack exists but Stack (plaintext) is used by default in tests/examples\n\nFiled 3 sub-beads for remediation:\n- project-LICHEN-r6fu.1: Python CoAP OSCORE integration\n- project-LICHEN-r6fu.2: C firmware OSCORE implementation\n- project-LICHEN-r6fu.3: Rust SecureStack as default\n\nOSCORE building blocks exist but E2E encryption is opt-in rather than enforced. Policy requires OSCORE for all CoAP traffic."
 }

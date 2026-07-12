@@ -158,6 +158,17 @@ class AddressMapper:
             # Log warning but use first match (spec behavior)
             pass
 
+        # SECURITY: TOFU key pinning (spec 8.6). First contact pins pubkey;
+        # subsequent contacts must match or be rejected. Key rotation requires
+        # explicit unpin (not implemented here — use forget()).
+        existing_pubkey = self._peers.get(iid)
+        if existing_pubkey is not None and existing_pubkey != pubkey:
+            raise ValueError(
+                f"TOFU violation: pubkey mismatch for IID {iid.hex()} "
+                f"(pinned={existing_pubkey.hex()[:16]}..., "
+                f"got={pubkey.hex()[:16]}...)"
+            )
+
         self._peers[iid] = pubkey
         self._by_node_num[node_num] = iid
 

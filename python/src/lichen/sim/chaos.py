@@ -11,6 +11,7 @@ from __future__ import annotations
 import math
 import random
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Literal
 from uuid import uuid4
@@ -114,7 +115,8 @@ class LossRule(ChaosRule):
     direction: Literal["tx", "rx", "both"] = "both"
     rng: random.Random = field(default_factory=random.Random)
     id: str = field(default_factory=lambda: str(uuid4()))
-    _loss_cache: dict[str, bool] = field(default_factory=dict, repr=False)
+    max_cache_size: int = 1024
+    _loss_cache: OrderedDict[str, bool] = field(default_factory=OrderedDict, repr=False)
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.loss_probability <= 1.0:
@@ -140,10 +142,17 @@ class LossRule(ChaosRule):
 
         The loss decision is cached per transmission to ensure consistent
         behavior when apply() is called multiple times for the same packet
-        (e.g., on each simulation poll).
+        (e.g., on each simulation poll). Cache is bounded to max_cache_size
+        entries using LRU eviction.
         """
         tx_id = candidate.transmission.id
-        if tx_id not in self._loss_cache:
+        if tx_id in self._loss_cache:
+            # Move to end (most recently used)
+            self._loss_cache.move_to_end(tx_id)
+        else:
+            # Evict oldest entries if cache is full
+            while len(self._loss_cache) >= self.max_cache_size:
+                self._loss_cache.popitem(last=False)
             self._loss_cache[tx_id] = self.rng.random() < self.loss_probability
         if self._loss_cache[tx_id]:
             return None

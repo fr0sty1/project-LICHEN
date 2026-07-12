@@ -200,7 +200,20 @@ int lichen_app_identity_upsert_peer(
 
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	slot = find_peer_locked(peer->eui64);
-	if (slot < 0) {
+	if (slot >= 0) {
+		/*
+		 * SECURITY: TOFU key pinning (spec 8.6). First contact pins
+		 * pubkey; subsequent contacts must present the same key.
+		 * Key rotation requires explicit removal followed by re-add.
+		 * Silent key changes are rejected to prevent impersonation.
+		 */
+		if (s_peers[slot].peer.has_public_key &&
+		    memcmp(s_peers[slot].peer.public_key, peer->public_key,
+			   LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN) != 0) {
+			k_mutex_unlock(&s_mutex);
+			return -EEXIST;  /* TOFU violation: pubkey mismatch */
+		}
+	} else {
 		slot = find_free_peer_locked();
 	}
 	if (slot < 0) {

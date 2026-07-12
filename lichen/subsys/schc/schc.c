@@ -482,7 +482,7 @@ int schc_ack_decode(struct schc_ack *ack, uint8_t dtag_bits,
 		decoded.bitmap |= data[SCHC_ACK_BASE_LEN + i];
 	}
 
-	if (bitmap_bits < 63) {
+	if (bitmap_bits < 64) {
 		uint64_t valid_mask = (1ULL << bitmap_bits) - 1ULL;
 
 		decoded.bitmap &= valid_mask;

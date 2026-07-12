@@ -298,3 +298,24 @@ class TestDutyCycleObservabilityAPI:
         # The delay should be roughly window_us + 1ms (for the new TX)
         # But since we used exact limit, we need to wait for old TX to fully exit
         assert delay_ms > 0
+
+    def test_next_tx_available_ms_exceeds_max_budget(self) -> None:
+        """Returns -1 when TX exceeds maximum possible budget.
+
+        If the requested airtime is larger than the entire duty cycle budget
+        allows (even with an empty window), waiting will never help.
+        """
+        tracker = DutyCycleTracker()  # 1% of 3600s = 36s max
+        # Try to TX 40s - more than the 36s max budget
+        impossible_airtime_us = 40_000_000  # 40 seconds
+
+        result = tracker.next_tx_available_ms(impossible_airtime_us, 0)
+        assert result == -1
+
+    def test_next_tx_available_ms_at_exact_max_budget(self) -> None:
+        """TX at exactly max budget is allowed (returns 0)."""
+        tracker = DutyCycleTracker()  # 1% of 3600s = 36s max
+        max_airtime_us = int(3600 * 1_000_000 * 0.01)  # 36s exactly
+
+        result = tracker.next_tx_available_ms(max_airtime_us, 0)
+        assert result == 0  # Should be allowed immediately on empty tracker

@@ -5,7 +5,7 @@ use crate::OutputFormat;
 pub fn print_kv(key: &str, value: &str, fmt: &OutputFormat) {
     match fmt {
         OutputFormat::Human => println!("  {key}: {value}"),
-        OutputFormat::Json => println!("{{\"key\": {key:?}, \"value\": {value:?}}}"),
+        OutputFormat::Json => println!("{}", serde_json::json!({"key": key, "value": value})),
     }
 }
 
@@ -85,7 +85,7 @@ pub fn cbor_to_json(v: ciborium::value::Value) -> serde_json::Value {
                             let n: i128 = i.into();
                             n.to_string()
                         }
-                        other => format!("{other:?}"),
+                        other => cbor_to_json(other).to_string(),
                     };
                     (key, cbor_to_json(v))
                 })

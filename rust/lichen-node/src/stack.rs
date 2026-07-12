@@ -118,6 +118,9 @@ pub struct Stack<R: Radio> {
     radio: R,
     link: lichen_link::link_layer::LinkLayer,
     node: Node,
+    /// SECURITY: Per spec section 4.4, epoch MUST be initialized to:
+    /// - A persisted value (if available), OR
+    /// - A random value in [128, 255] (if no persistence)
     epoch: u8,
     seqnum: LinkSeqNum,
     message_id: u16,
@@ -125,17 +128,37 @@ pub struct Stack<R: Radio> {
 
 #[cfg(feature = "std")]
 impl<R: Radio> Stack<R> {
-    /// Create a new stack with the given radio and identity.
-    pub fn new(radio: R, identity: lichen_link::identity::Identity) -> Self {
+    /// Create a new stack with the given radio, identity, and epoch.
+    ///
+    /// SECURITY: Per spec section 4.4, `epoch` MUST be:
+    /// - Read from persisted storage (if available), OR
+    /// - A random value uniformly distributed in [128, 255]
+    ///
+    /// # Panics
+    ///
+    /// Debug builds panic if `epoch < 128` to catch non-compliant initialization.
+    pub fn new(radio: R, identity: lichen_link::identity::Identity, epoch: u8) -> Self {
+        debug_assert!(
+            epoch >= 128,
+            "SECURITY: epoch MUST be in [128, 255] per spec section 4.4"
+        );
         let node_id = NodeId(identity.iid);
         Self {
             radio,
             link: lichen_link::link_layer::LinkLayer::new(identity),
             node: Node::new(node_id),
-            epoch: 0,
+            epoch,
             seqnum: LinkSeqNum::new(0),
             message_id: 0,
         }
+    }
+
+    /// Create a new stack with the default minimum compliant epoch (128).
+    ///
+    /// SECURITY: For production use, prefer [`Stack::new`] with a random
+    /// value from the platform's RNG in range [128, 255].
+    pub fn new_default_epoch(radio: R, identity: lichen_link::identity::Identity) -> Self {
+        Self::new(radio, identity, 128)
     }
 
     /// Get the local node ID.
@@ -286,7 +309,6 @@ impl<R: Radio> Stack<R> {
         let udp_hdr = UdpHeader::new(PORT_COAP, PORT_COAP);
         udp_hdr
             .write_to(
-                udp_payload_len,
                 &src,
                 dst,
                 coap,
@@ -467,10 +489,10 @@ mod tests {
 
         let (radio_a, radio_b) = LoopbackRadio::pair();
 
-        let mut alice = Stack::new(radio_a, alice_id);
+        let mut alice = Stack::new_default_epoch(radio_a, alice_id);
         alice.add_peer(bob_peer);
 
-        let mut bob = Stack::new(radio_b, bob_id);
+        let mut bob = Stack::new_default_epoch(radio_b, bob_id);
         bob.add_peer(alice_peer);
 
         let bob_addr = bob.local_addr();
@@ -494,10 +516,10 @@ mod tests {
 
         let (radio_a, radio_b) = LoopbackRadio::pair();
 
-        let mut alice = Stack::new(radio_a, alice_id);
+        let mut alice = Stack::new_default_epoch(radio_a, alice_id);
         alice.add_peer(bob_peer);
 
-        let mut bob = Stack::new(radio_b, bob_id);
+        let mut bob = Stack::new_default_epoch(radio_b, bob_id);
         bob.add_peer(alice_peer);
 
         // Build and send ICMPv6 Echo Request from Alice to Bob
@@ -505,7 +527,7 @@ mod tests {
         let bob_addr = bob.local_addr();
 
         let echo = lichen_ipv6::Icmpv6Echo { id: 42, seq: 1 };
-        let icmp = echo.build_request(&alice_addr, &bob_addr, b"ping");
+        let icmp = echo.build_request(&alice_addr, &bob_addr, b"ping").unwrap();
         let ip_hdr = Ipv6Header::new(next_header::ICMPV6, alice_addr, bob_addr);
         let mut ipv6 = vec![0u8; IPV6_HEADER_LEN];
         ip_hdr

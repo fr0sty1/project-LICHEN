@@ -50,6 +50,7 @@ class FragmentReceiver:
         self.window_size = window_size
         self._tiles: dict[int, bytes] = {}  # regular tiles: global index -> bytes
         self._current_window = 0
+        self._completed_windows: set[int] = set()  # windows fully received and ACKed
         self._all1_seen = False
         self._all1_window = 0
         self._all1_payload = b""
@@ -63,13 +64,45 @@ class FragmentReceiver:
 
         SCHC ACK-on-Error uses a single W bit on the wire that alternates 0/1
         as windows advance. Internally, _current_window is a monotonically
-        increasing counter (0, 1, 2, ...). When the fragment's W bit matches
-        _current_window % 2, it belongs to the current window; if it differs,
-        the sender has advanced and this is the next window.
+        increasing counter (0, 1, 2, ...).
+
+        To handle late retransmissions correctly, we scan backwards through
+        older windows with matching parity (same W bit value):
+        1. If an older window is INCOMPLETE, the fragment fills a gap there
+        2. If payload exactly matches an older completed window's tile, it's a
+           stale duplicate and receive() will filter it out
+        3. Otherwise, the fragment belongs to the current (same parity) or
+           next (different parity) window
         """
+        if not frag.is_all_1:
+            pos = self.window_size - 1 - frag.fcn
+
+            # Determine starting window for backward scan based on parity.
+            # We check windows with the same parity as the fragment's W bit.
+            if frag.window == self._current_window % 2:
+                # Same parity: check from current-2 back (current could be target)
+                start_window = self._current_window - 2 if self._current_window >= 2 else -1
+            else:
+                # Different parity: check from current-1 back
+                start_window = self._current_window - 1 if self._current_window >= 1 else -1
+
+            older = start_window
+            while older >= 0:
+                if older not in self._completed_windows:
+                    # Incomplete window with matching parity - fragment belongs
+                    # here to fill gaps from retransmissions
+                    return older
+                # Window complete; check for exact payload match (stale dup)
+                older_idx = older * self.window_size + pos
+                if older_idx in self._tiles and self._tiles[older_idx] == frag.payload:
+                    # Exact payload match - this is a stale retransmission
+                    return older
+                older -= 2
+
+        # No incomplete or stale-duplicate window found
         if frag.window == self._current_window % 2:
             return self._current_window
-        return self._current_window + 1  # advanced to the next window
+        return self._current_window + 1
 
     def _window_full(self, abs_window: int) -> bool:
         base = abs_window * self.window_size
@@ -82,9 +115,20 @@ class FragmentReceiver:
     def receive(self, frag: Fragment) -> ReceiverResult:
         if self.done:
             return ReceiverResult()
+        # Reject fragments with FCN >= window_size (except ALL_1 which has special FCN)
+        if not frag.is_all_1 and frag.fcn >= self.window_size:
+            return ReceiverResult()
         self._rule_id = frag.rule_id
         abs_window = self._abs_window(frag)
-        self._current_window = abs_window
+
+        # SECURITY: Reject stale retransmissions from completed windows to
+        # prevent delayed duplicates from corrupting current window data.
+        if abs_window in self._completed_windows:
+            return ReceiverResult()
+
+        # Never regress _current_window; only advance or stay the same.
+        if abs_window > self._current_window:
+            self._current_window = abs_window
 
         if frag.is_all_1:
             self._all1_seen = True
@@ -94,7 +138,15 @@ class FragmentReceiver:
             return self._finalize()
 
         pos = self.window_size - 1 - frag.fcn
-        self._tiles[abs_window * self.window_size + pos] = frag.payload
+        idx = abs_window * self.window_size + pos
+        # SECURITY: Don't overwrite existing tiles. A corrupted retransmission
+        # from an older window (with different payload) could bypass the payload
+        # comparison in _abs_window() and be mapped to the current window. By
+        # refusing to overwrite, we prevent it from corrupting already-received
+        # data. If the existing tile is itself corrupt, MIC will fail and we'll
+        # NACK for retransmission.
+        if idx not in self._tiles:
+            self._tiles[idx] = frag.payload
 
         if self._all1_seen:
             return self._finalize()
@@ -105,6 +157,7 @@ class FragmentReceiver:
                 complete=False,
             )
             if self._window_full(abs_window):
+                self._completed_windows.add(abs_window)
                 self._current_window = abs_window + 1
             return ReceiverResult(ack=ack)
         return ReceiverResult()

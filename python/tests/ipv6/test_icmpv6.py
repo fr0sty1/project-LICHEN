@@ -154,3 +154,19 @@ def test_handle_rejects_non_icmpv6() -> None:
     )
     with pytest.raises(Icmpv6Error):
         handle_icmpv6(packet)
+
+
+def test_handle_discards_invalid_checksum() -> None:
+    """RFC 4443 section 2.3: packets with invalid checksums are silently discarded."""
+    src = IPv6Address("fe80::a")
+    dst = IPv6Address("fe80::b")
+    req = EchoRequest(identifier=0x1111, sequence=5, data=b"payload")
+    valid_payload = bytearray(req.to_message().to_bytes(src, dst))
+    # Corrupt the payload to invalidate the checksum.
+    valid_payload[-1] ^= 0xFF
+    packet = IPv6Packet(
+        header=IPv6Header(src, dst, NextHeader.ICMPV6),
+        payload=bytes(valid_payload),
+    )
+    # Must return None (silent discard), not a reply.
+    assert handle_icmpv6(packet) is None

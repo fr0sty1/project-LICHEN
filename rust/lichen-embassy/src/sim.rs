@@ -139,17 +139,21 @@ impl Radio for SimRadio {
                     return Err(RadioError::Protocol);
                 }
 
-                let copy_len = payload_len.min(buf.len());
-                buf[..copy_len].copy_from_slice(&resp[3..3 + copy_len]);
+                // Reject packets that don't fit - truncation would corrupt the frame
+                if payload_len > buf.len() {
+                    return Err(RadioError::Protocol);
+                }
+                buf[..payload_len].copy_from_slice(&resp[3..3 + payload_len]);
 
                 let rssi_offset = 3 + payload_len;
                 let rssi = i16::from_le_bytes([resp[rssi_offset], resp[rssi_offset + 1]]);
                 let snr = i16::from_le_bytes([resp[rssi_offset + 2], resp[rssi_offset + 3]]);
 
                 Ok(Some(RxPacket {
-                    len: copy_len,
+                    len: payload_len,
                     rssi: Some(rssi),
-                    snr: Some(snr as i8),
+                    // Protocol uses i16, RxPacket uses i8; clamp to valid range
+                    snr: Some(snr.clamp(i8::MIN as i16, i8::MAX as i16) as i8),
                 }))
             }
             0x28 => {

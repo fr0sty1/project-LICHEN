@@ -2,13 +2,16 @@
   "id": "project-LICHEN-f5zc",
   "title": "Compliance: rust/lichen-embassy/src/sim.rs polling",
   "description": "Policy: No-polling. Status: COMPLIANT (578k). Converted to push-based RX_ENTER/RX_PACKET/RX_TIMEOUT. Verify no poll loops remain.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:11:27.502375Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:11:32.933493Z",
+  "updated_at": "2026-07-11T06:16:16.148425Z",
+  "closed_at": "2026-07-11T06:16:16.148425Z",
+  "close_reason": "Verified: Push-based RX compliant - uses blocking recv_message() after single RX_ENTER, no polling loops",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-f5zc",

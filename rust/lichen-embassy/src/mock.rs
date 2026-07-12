@@ -4,7 +4,7 @@
 //! to be tested without real hardware.
 
 use lichen_hal::{Clock, NonVolatile, RadioConfig, RadioError, Rng, RxPacket};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -13,7 +13,7 @@ use std::time::Instant;
 pub struct MockRadio {
     config: RadioConfig,
     tx_queue: Mutex<Vec<Vec<u8>>>,
-    rx_queue: Mutex<Vec<(Vec<u8>, RxPacket)>>,
+    rx_queue: Mutex<VecDeque<(Vec<u8>, RxPacket)>>,
 }
 
 impl MockRadio {
@@ -21,7 +21,7 @@ impl MockRadio {
         Self {
             config: RadioConfig::default(),
             tx_queue: Mutex::new(Vec::new()),
-            rx_queue: Mutex::new(Vec::new()),
+            rx_queue: Mutex::new(VecDeque::new()),
         }
     }
 
@@ -32,7 +32,7 @@ impl MockRadio {
 
     /// Feed a packet to be received.
     pub fn feed_rx(&self, data: &[u8], rssi: i16, snr: i8) {
-        self.rx_queue.lock().unwrap().push((
+        self.rx_queue.lock().unwrap().push_back((
             data.to_vec(),
             RxPacket {
                 len: data.len(),
@@ -64,7 +64,7 @@ impl lichen_hal::Radio for MockRadio {
     ) -> Result<Option<RxPacket>, Self::Error> {
         // Check for queued packet
         let mut queue = self.rx_queue.lock().unwrap();
-        if let Some((data, meta)) = queue.pop() {
+        if let Some((data, meta)) = queue.pop_front() {
             let len = data.len().min(buf.len());
             buf[..len].copy_from_slice(&data[..len]);
             return Ok(Some(RxPacket {

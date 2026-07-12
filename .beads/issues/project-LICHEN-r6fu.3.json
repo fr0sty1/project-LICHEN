@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-r6fu.3",
+  "title": "Rust Stack should default to SecureStack for E2E encryption",
+  "description": "VIOLATION of spec/06-security.md 8.7: Rust exports both Stack (plaintext) and SecureStack (OSCORE-protected) but integration tests and examples use Stack directly. OSCORE should be the default, not opt-in.\n\nCurrent state:\n- SecureStack exists and works (tested in secure_stack_oscore_roundtrip)\n- Stack is used in integration tests without OSCORE\n- Policy says 'Use OSCORE for all CoAP traffic'\n\nFIX REQUIRED:\n1. Make SecureStack the primary export / recommended path\n2. Update integration tests to use SecureStack by default\n3. Document when plaintext Stack is acceptable (if ever)\n\nFiles:\n- rust/lichen-node/src/lib.rs\n- rust/lichen-node/src/stack.rs (tests)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T00:39:53.979604Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T00:39:53.98088Z",
+  "labels": [
+    "security",
+    "oscore",
+    "rust"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-r6fu.3",
+      "depends_on_id": "project-LICHEN-r6fu",
+      "type": "parent-child",
+      "created_at": "2026-07-12T00:39:53.980879Z"
+    }
+  ]
+}

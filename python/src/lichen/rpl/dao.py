@@ -183,7 +183,7 @@ class DaoManager:
         self.routing_table._routes.clear()
         for target in self._parent_map:
             path = self._assemble_path(target)
-            if path is not None:
+            if path:  # Skip None (incomplete chain) and [] (target is root)
                 self.routing_table.add_route(target, path)
 
     def _assemble_path(self, target: IPv6Address) -> list[IPv6Address] | None:

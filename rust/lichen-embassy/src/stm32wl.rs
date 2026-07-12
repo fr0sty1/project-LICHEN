@@ -9,11 +9,10 @@
 //! ponytail: STM32WL is the cleanest target - no external SPI wiring needed.
 
 use embedded_hal_async::delay::DelayNs;
-use lora_phy::mod_params::{
-    Bandwidth, CodingRate, ModulationParams, PacketParams, SpreadingFactor,
-};
+use lora_phy::mod_params::{Bandwidth, CodingRate, RadioError as LoraRadioError, SpreadingFactor};
+use lora_phy::mod_traits::InterfaceVariant;
 use lora_phy::sx126x::{self, Stm32wl, Sx126x, TcxoCtrlVoltage};
-use lora_phy::{LoRa, RadioError, RxMode};
+use lora_phy::{LoRa, RxMode};
 
 use lichen_hal::{Radio, RadioConfig, RadioError, RxPacket};
 
@@ -23,7 +22,7 @@ use lichen_hal::{Radio, RadioConfig, RadioError, RxPacket};
 pub struct Stm32wlRadio<SPI, IV, D>
 where
     SPI: embedded_hal_async::spi::SpiDevice<u8>,
-    IV: sx126x::InterfaceVariant,
+    IV: InterfaceVariant,
     D: DelayNs,
 {
     lora: LoRa<Sx126x<SPI, IV, Stm32wl>, D>,
@@ -36,7 +35,7 @@ pub type Stm32wlError<E> = RadioError<E>;
 impl<SPI, IV, D> Stm32wlRadio<SPI, IV, D>
 where
     SPI: embedded_hal_async::spi::SpiDevice<u8>,
-    IV: sx126x::InterfaceVariant,
+    IV: InterfaceVariant,
     D: DelayNs,
 {
     /// Create a new STM32WL SubGHz radio.
@@ -56,7 +55,7 @@ where
             chip: Stm32wl { use_high_power_pa: true },
             tcxo_ctrl: tcxo_voltage,
             use_dcdc: true,
-            use_dio2_as_rfswitch: false, // STM32WL handles RF switch internally
+            rx_boost: false,
         };
 
         let sx126x = Sx126x::new(spi, iv, config);
@@ -70,9 +69,9 @@ where
         })
     }
 
-    /// Convert RadioConfig to lora-phy ModulationParams.
-    fn modulation_params(&self) -> ModulationParams {
-        let sf = match self.config.spreading_factor {
+    /// Get spreading factor enum from config.
+    fn spreading_factor(&self) -> SpreadingFactor {
+        match self.config.spreading_factor {
             7 => SpreadingFactor::_7,
             8 => SpreadingFactor::_8,
             9 => SpreadingFactor::_9,
@@ -80,29 +79,27 @@ where
             11 => SpreadingFactor::_11,
             12 => SpreadingFactor::_12,
             _ => SpreadingFactor::_10,
-        };
+        }
+    }
 
-        let bw = match self.config.bandwidth {
+    /// Get bandwidth enum from config.
+    fn bandwidth(&self) -> Bandwidth {
+        match self.config.bandwidth {
             125_000 => Bandwidth::_125KHz,
             250_000 => Bandwidth::_250KHz,
             500_000 => Bandwidth::_500KHz,
             _ => Bandwidth::_125KHz,
-        };
+        }
+    }
 
-        let cr = match self.config.coding_rate {
+    /// Get coding rate enum from config.
+    fn coding_rate(&self) -> CodingRate {
+        match self.config.coding_rate {
             5 => CodingRate::_4_5,
             6 => CodingRate::_4_6,
             7 => CodingRate::_4_7,
             8 => CodingRate::_4_8,
             _ => CodingRate::_4_5,
-        };
-
-        ModulationParams {
-            spreading_factor: sf,
-            bandwidth: bw,
-            coding_rate: cr,
-            low_data_rate_optimize: 0,
-            frequency_in_hz: self.config.frequency,
         }
     }
 }
@@ -110,21 +107,26 @@ where
 impl<SPI, IV, D> Radio for Stm32wlRadio<SPI, IV, D>
 where
     SPI: embedded_hal_async::spi::SpiDevice<u8>,
-    IV: sx126x::InterfaceVariant,
+    IV: InterfaceVariant,
     D: DelayNs,
 {
     type Error = Stm32wlError<SPI::Error>;
 
     async fn transmit(&mut self, payload: &[u8]) -> Result<(), Self::Error> {
-        let mdltn = self.modulation_params();
+        let mdltn = self
+            .lora
+            .create_modulation_params(
+                self.spreading_factor(),
+                self.bandwidth(),
+                self.coding_rate(),
+                self.config.frequency,
+            )
+            .map_err(|_| RadioError::Hardware)?;
 
-        let mut tx_params = PacketParams {
-            preamble_length: 8,
-            implicit_header: false,
-            payload_length: payload.len() as u8,
-            crc_on: true,
-            invert_iq: false,
-        };
+        let mut tx_params = self
+            .lora
+            .create_tx_packet_params(8, false, true, false, &mdltn)
+            .map_err(|_| RadioError::Hardware)?;
 
         self.lora
             .prepare_for_tx(&mdltn, &mut tx_params, self.config.tx_power as i32, payload)
@@ -141,18 +143,26 @@ where
         buf: &mut [u8],
         timeout_ms: u32,
     ) -> Result<Option<RxPacket>, Self::Error> {
-        let mdltn = self.modulation_params();
+        let mdltn = self
+            .lora
+            .create_modulation_params(
+                self.spreading_factor(),
+                self.bandwidth(),
+                self.coding_rate(),
+                self.config.frequency,
+            )
+            .map_err(|_| RadioError::Hardware)?;
 
-        let rx_params = PacketParams {
-            preamble_length: 8,
-            implicit_header: false,
-            payload_length: 255,
-            crc_on: true,
-            invert_iq: false,
-        };
+        let rx_params = self
+            .lora
+            .create_rx_packet_params(8, false, 255, true, false, &mdltn)
+            .map_err(|_| RadioError::Hardware)?;
+
+        // RxMode::Single takes u16, saturate if timeout exceeds u16::MAX
+        let timeout = timeout_ms.min(u16::MAX as u32) as u16;
 
         self.lora
-            .prepare_for_rx(RxMode::Single(timeout_ms), &mdltn, &rx_params)
+            .prepare_for_rx(RxMode::Single(timeout), &mdltn, &rx_params)
             .await
             .map_err(|_| RadioError::Hardware)?;
 
@@ -162,7 +172,7 @@ where
                 rssi: Some(status.rssi),
                 snr: Some(status.snr as i8),
             })),
-            Err(RadioError::ReceiveTimeout) => Ok(None),
+            Err(LoraRadioError::ReceiveTimeout) => Ok(None),
             Err(_) => Err(RadioError::Hardware),
         }
     }

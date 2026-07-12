@@ -8,7 +8,7 @@ use lichen_coap::client;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use sha2::{Digest, Sha256};
 use std::net::SocketAddr;
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 type CmdResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -156,7 +156,7 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
             // Derive public key (Ed25519: first 32 bytes of SHA512(seed) as scalar, then multiply)
             // ponytail: using simple derivation without pulling in ed25519 crate
             // Real impl would use ed25519-dalek; this outputs raw seed for now
-            let mut seed_hex: String = seed.iter().map(|b| format!("{b:02x}")).collect();
+            let seed_hex: Zeroizing<String> = Zeroizing::new(seed.iter().map(|b| format!("{b:02x}")).collect());
 
             // Derive IID from hashed seed (avoids leaking raw key material)
             // SECURITY: raw seed bytes must never appear in the IID
@@ -180,11 +180,17 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
                         .truncate(true)
                         .mode(0o600)
                         .open(&path)?;
-                    writeln!(file, "{seed_hex}")?;
+                    writeln!(file, "{}", &*seed_hex)?;
                 }
                 #[cfg(not(unix))]
                 {
-                    std::fs::write(&path, format!("{seed_hex}\n"))?;
+                    use std::fs::File;
+                    use std::io::Write;
+
+                    // SECURITY: Use writeln! instead of format! to avoid creating
+                    // a temporary String that would leak seed material in memory
+                    let mut file = File::create(&path)?;
+                    writeln!(file, "{}", &*seed_hex)?;
                     eprintln!("warning: could not set secure file permissions on non-Unix platform");
                 }
                 output::print_kv("private_key", path.display().to_string().as_str(), fmt);
@@ -194,9 +200,7 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
                 output::print_kv("private_key", &seed_hex, fmt);
             }
             output::print_kv("iid", &iid_hex, fmt);
-
-            // Zeroize hex string before dropping
-            seed_hex.zeroize();
+            // seed_hex auto-zeroized on drop via Zeroizing wrapper
         }
         KeyAction::Fingerprint => {
             let resp = client::get(node, "/key").await?;
@@ -215,11 +219,11 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
         KeyAction::List => {
             output::print_kv("peers", "(no peer-key endpoint yet)", fmt);
         }
-        KeyAction::Pin { peer } => {
-            output::print_kv("pinned", &peer, fmt);
+        KeyAction::Pin { peer: _ } => {
+            return Err("key pinning not implemented (no peer-key endpoint yet)".into());
         }
-        KeyAction::Unpin { peer } => {
-            output::print_kv("unpinned", &peer, fmt);
+        KeyAction::Unpin { peer: _ } => {
+            return Err("key unpinning not implemented (no peer-key endpoint yet)".into());
         }
     }
     Ok(())
@@ -270,7 +274,7 @@ pub async fn position(node: SocketAddr, action: PositionAction, fmt: &OutputForm
             output::print_cbor(cbor, fmt);
         }
         PositionAction::Broadcast => {
-            output::print_kv("broadcast", "(not yet implemented)", fmt);
+            return Err("position broadcast not implemented".into());
         }
         PositionAction::Peers => {
             let resp = client::get(node, "/presence").await?;

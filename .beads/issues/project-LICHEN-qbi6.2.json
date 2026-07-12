@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-qbi6.2",
+  "title": "Implement forwarding buffer with backpressure (Rust)",
+  "description": "Add per-source forwarding buffer to Rust stack (lichen-node or lichen-core):\n- Track packets per source IID (MAX_FORWARDING_SOURCES=8, MAX_PACKETS_PER_SOURCE=2)\n- Return QueueFull error when limit exceeded\n- Send NACK upstream when full (spec appendix-bufferbloat.md)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T00:40:28.514059Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T00:40:28.515247Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-qbi6.2",
+      "depends_on_id": "project-LICHEN-qbi6",
+      "type": "parent-child",
+      "created_at": "2026-07-12T00:40:28.515247Z"
+    }
+  ]
+}

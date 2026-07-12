@@ -161,3 +161,77 @@ class TestParseErrors:
         # addr_mode SHORT (2B) + 32-bit MIC (4B) need 4+2+4=10 body bytes; only 4.
         with pytest.raises(FrameError, match="declared address/MIC"):
             LichenFrame.from_bytes(b"\x04\x01\x00\x00\x00")
+
+
+# ─── Cross-validation tests from spec/test-vectors/frame.json ─────────────────
+
+import json
+from pathlib import Path
+
+SPEC_VECTORS = Path(__file__).resolve().parents[3] / "spec" / "test-vectors" / "frame.json"
+
+
+def _load_spec_vectors() -> list[tuple[str, dict]]:
+    """Load test vectors from spec/test-vectors/frame.json."""
+    if not SPEC_VECTORS.is_file():
+        return []  # Empty list will skip parametrized tests
+    doc = json.loads(SPEC_VECTORS.read_text())
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+class TestSpecVectors:
+    """Cross-validate Python frame parsing against spec/test-vectors/frame.json.
+
+    These vectors are shared with Rust and C implementations to ensure all
+    implementations parse frames identically (appendix-c-safety.md policy).
+    """
+
+    @pytest.mark.parametrize("name,vector", _load_spec_vectors())
+    def test_parse_vector(self, name: str, vector: dict) -> None:
+        """Parse each vector and verify fields match expected values."""
+        input_hex = vector["input_hex"]
+        expected = vector["expected"]
+
+        # Empty frame special case
+        if not input_hex:
+            with pytest.raises(FrameError, match="empty"):
+                LichenFrame.from_bytes(b"")
+            return
+
+        data = bytes.fromhex(input_hex)
+
+        # Error cases
+        if expected.get("error"):
+            with pytest.raises(FrameError):
+                LichenFrame.from_bytes(data)
+            return
+
+        # Valid frame - parse and verify all fields
+        frame = LichenFrame.from_bytes(data)
+
+        assert frame.addr_mode == expected["addr_mode"], f"{name}: addr_mode"
+        assert frame.mic_length == expected["mic_length"], f"{name}: mic_length"
+        assert frame.signature_present == expected["signature_present"], f"{name}: signature_present"
+        assert frame.encrypted == expected["encrypted"], f"{name}: encrypted"
+        assert frame.epoch == expected["epoch"], f"{name}: epoch"
+        assert frame.seqnum == expected["seqnum"], f"{name}: seqnum"
+        assert frame.dst_addr == bytes.fromhex(expected["dst_addr_hex"]), f"{name}: dst_addr"
+        assert frame.mic == bytes.fromhex(expected["mic_hex"]), f"{name}: mic"
+
+        # Payload - check by length if specified, else by content
+        if "payload_len" in expected:
+            assert len(frame.payload) == expected["payload_len"], f"{name}: payload_len"
+        else:
+            assert frame.payload == bytes.fromhex(expected["payload_hex"]), f"{name}: payload"
+
+    @pytest.mark.parametrize("name,vector", _load_spec_vectors())
+    def test_roundtrip_valid_vectors(self, name: str, vector: dict) -> None:
+        """Valid vectors should roundtrip: parse -> serialize -> same bytes."""
+        expected = vector["expected"]
+        if expected.get("error") or not vector["input_hex"]:
+            pytest.skip("Error case")
+
+        data = bytes.fromhex(vector["input_hex"])
+        frame = LichenFrame.from_bytes(data)
+        serialized = frame.to_bytes()
+        assert serialized == data, f"{name}: roundtrip failed"
