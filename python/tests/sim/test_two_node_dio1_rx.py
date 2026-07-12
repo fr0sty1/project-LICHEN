@@ -21,12 +21,10 @@ Run with:
 
 from __future__ import annotations
 
-import asyncio
-
 import pytest
 
-from lichen.sim.simulation import Simulation, TimeMode
 from lichen.sim.renode_server import RenodeServer
+from lichen.sim.simulation import Simulation, TimeMode
 
 
 class TestTwoNodeDIO1Rx:
@@ -43,8 +41,8 @@ class TestTwoNodeDIO1Rx:
         sim = Simulation("test-dio1-rx", time_mode=TimeMode.BARRIER_SYNC)
 
         # Add two nodes 50m apart (well within LoRa range)
-        node_a = sim.add_node("node-a", x=0.0, y=0.0, z=0.0)
-        node_b = sim.add_node("node-b", x=50.0, y=0.0, z=0.0)
+        sim.add_node("node-a", x=0.0, y=0.0, z=0.0)
+        sim.add_node("node-b", x=50.0, y=0.0, z=0.0)
 
         # Track RX events for node B
         rx_events: list[tuple[bytes, int, int]] = []
@@ -103,8 +101,8 @@ class TestTwoNodeDIO1Rx:
         server_a = RenodeServer(sim, "node-a", position=(0.0, 0.0, 0.0))
         server_b = RenodeServer(sim, "node-b", position=(50.0, 0.0, 0.0))
 
-        port_a = await server_a.start(host="127.0.0.1", port=0)
-        port_b = await server_b.start(host="127.0.0.1", port=0)
+        await server_a.start(host="127.0.0.1", port=0)
+        await server_b.start(host="127.0.0.1", port=0)
 
         try:
             # Verify nodes were added to simulation
@@ -236,8 +234,10 @@ class TestTwoNodeDIO1Rx:
         for test_frame in test_frames:
             rx_results: list[bytes] = []
 
-            def on_rx(payload: bytes, rssi: int, snr: int) -> None:
-                rx_results.append(payload)
+            def make_on_rx(results: list[bytes]):
+                def on_rx(payload: bytes, rssi: int, snr: int) -> None:
+                    results.append(payload)
+                return on_rx
 
             def on_timeout() -> None:
                 pass
@@ -245,7 +245,7 @@ class TestTwoNodeDIO1Rx:
             sim.enter_rx_mode(
                 "rx-node",
                 timeout_us=10_000_000,
-                on_packet=on_rx,
+                on_packet=make_on_rx(rx_results),
                 on_timeout=on_timeout,
             )
 
@@ -289,7 +289,9 @@ class TestTwoNodeDIO1Rx:
             pass
 
         # Alice transmits to Bob
-        sim.enter_rx_mode("bob", timeout_us=10_000_000, on_packet=bob_on_rx, on_timeout=noop_timeout)
+        sim.enter_rx_mode(
+            "bob", timeout_us=10_000_000, on_packet=bob_on_rx, on_timeout=noop_timeout
+        )
         alice_msg = b"Hello from Alice"
         sim.start_transmission("alice", alice_msg)
 
@@ -302,7 +304,9 @@ class TestTwoNodeDIO1Rx:
         assert bob_rx == [alice_msg]
 
         # Bob transmits to Alice
-        sim.enter_rx_mode("alice", timeout_us=10_000_000, on_packet=alice_on_rx, on_timeout=noop_timeout)
+        sim.enter_rx_mode(
+            "alice", timeout_us=10_000_000, on_packet=alice_on_rx, on_timeout=noop_timeout
+        )
         bob_msg = b"Hello from Bob"
         sim.start_transmission("bob", bob_msg)
 

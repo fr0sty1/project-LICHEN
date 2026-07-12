@@ -497,11 +497,11 @@ void oscore_nvm_register_callbacks(oscore_nvm_write_cb write_cb,
 		(void *)write_cb, (void *)read_cb);
 }
 
-int oscore_ctx_create(const uint8_t master_secret[OSCORE_KEY_LEN],
-		      const uint8_t *master_salt, size_t master_salt_len,
-		      const uint8_t *sender_id, size_t sender_id_len,
-		      const uint8_t *recipient_id, size_t recipient_id_len,
-		      struct oscore_ctx **ctx_out)
+int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
+		      const uint8_t *_Nullable master_salt, size_t master_salt_len,
+		      const uint8_t *_Nonnull sender_id, size_t sender_id_len,
+		      const uint8_t *_Nonnull recipient_id, size_t recipient_id_len,
+		      struct oscore_ctx *_Nullable *_Nonnull ctx_out)
 {
 	struct oscore_ctx *ctx = NULL;
 	int ret;
@@ -684,12 +684,12 @@ void oscore_ctx_free(struct oscore_ctx *ctx)
 	k_mutex_unlock(&s_ctx_mutex);
 }
 
-int oscore_ctx_create_with_eui64(const uint8_t master_secret[OSCORE_KEY_LEN],
-				 const uint8_t *master_salt, size_t master_salt_len,
-				 const uint8_t *sender_id, size_t sender_id_len,
-				 const uint8_t *recipient_id, size_t recipient_id_len,
-				 const uint8_t peer_eui64[OSCORE_EUI64_LEN],
-				 struct oscore_ctx **ctx_out)
+int oscore_ctx_create_with_eui64(const uint8_t *_Nonnull master_secret,
+				 const uint8_t *_Nullable master_salt, size_t master_salt_len,
+				 const uint8_t *_Nonnull sender_id, size_t sender_id_len,
+				 const uint8_t *_Nonnull recipient_id, size_t recipient_id_len,
+				 const uint8_t peer_eui64[_Nonnull OSCORE_EUI64_LEN],
+				 struct oscore_ctx *_Nullable *_Nonnull ctx_out)
 {
 	int ret;
 	struct oscore_ctx *ctx;

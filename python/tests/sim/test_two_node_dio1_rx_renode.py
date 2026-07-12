@@ -92,7 +92,8 @@ async def test_sx1262_peripheral_loads_and_connects(tmp_path: Path) -> None:
 
     try:
         sx1262_cs = PROJECT_ROOT / "lichen/boards/renode/peripherals/SX1262.cs"
-        platform = PROJECT_ROOT / "lichen/boards/renode/nrf52840_lichen/support/nrf52840_lichen.repl"
+        renode_support = PROJECT_ROOT / "lichen/boards/renode/nrf52840_lichen/support"
+        platform = renode_support / "nrf52840_lichen.repl"
 
         # Verify files exist
         assert sx1262_cs.exists(), f"SX1262.cs not found at {sx1262_cs}"
@@ -142,7 +143,7 @@ quit
             proc.kill()
             with contextlib.suppress(TimeoutError):
                 await asyncio.wait_for(proc.communicate(), timeout=5)
-            raise AssertionError("Renode test timed out")
+            raise AssertionError("Renode test timed out") from None
 
         # Check Renode exit status
         assert proc.returncode == 0, (
@@ -188,7 +189,8 @@ async def test_two_node_platforms_load(tmp_path: Path) -> None:
 
     try:
         sx1262_cs = PROJECT_ROOT / "lichen/boards/renode/peripherals/SX1262.cs"
-        platform = PROJECT_ROOT / "lichen/boards/renode/nrf52840_lichen/support/nrf52840_lichen.repl"
+        renode_support = PROJECT_ROOT / "lichen/boards/renode/nrf52840_lichen/support"
+        platform = renode_support / "nrf52840_lichen.repl"
 
         # Create scripts for both nodes
         script_a = f"""\
@@ -259,7 +261,7 @@ quit
                     asyncio.gather(proc_a.communicate(), proc_b.communicate()),
                     timeout=5,
                 )
-            raise AssertionError("Renode test timed out")
+            raise AssertionError("Renode test timed out") from None
 
         # Check both exit successfully
         assert proc_a.returncode == 0, (
