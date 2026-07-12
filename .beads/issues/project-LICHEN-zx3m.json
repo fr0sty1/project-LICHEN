@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-zx3m",
+  "title": "TUI rf_health_rows may show stale cheater count after neighbors update",
+  "description": "File: python/src/lichen/tui/native.py\nLines: 948-958\n\nIn rf_health_rows, the cheater count is displayed before the neighbor loop:\n\n    if state.cheater_count \u003e 0:\n        rows.append(\n            field_line(\n                \"CHEATERS\",\n                f\"{state.cheater_count} neighbor(s) exceeding duty cycle\",\n                \"WARNING\",\n                width,\n            )\n        )\n    \n    if not state.neighbors:\n        rows.append(field_line(\"neighbor\", \"--\", \"no neighbors\", width))\n\nIf neighbors is empty but cheater_count somehow returns \u003e 0 (shouldn't happen with current implementation, but could with future changes), the display would show both 'X CHEATERS' warning and 'no neighbors'.\n\nMore importantly, the cheater_count property iterates neighbors on each call. If this were called in a hot path, it would be inefficient. Currently it's fine since it's only called once per render.\n\nImpact: Minor - potential for confusing display in edge cases.\n\nFix: Add defensive check:\n    if state.neighbors and state.cheater_count \u003e 0:",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:30:26.000735Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:30:26.00077Z"
+}

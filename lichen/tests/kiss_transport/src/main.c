@@ -187,8 +187,8 @@ ZTEST(kiss_transport, test_encode_escape)
 			  frame, sizeof(frame), &frame_len);
 	zassert_equal(ret, 0, "Encode should succeed");
 
-	/* Expected: FEND + CMD + (FESC TFEND) + (FESC TFESC) + 0x42 + FEND */
-	zassert_equal(frame_len, 9, "Frame length should be 9");
+	/* Expected: FEND + CMD + (FESC TFEND) + (FESC TFESC) + 0x42 + FEND = 8 bytes */
+	zassert_equal(frame_len, 8, "Frame length should be 8");
 	zassert_equal(frame[0], KISS_FEND, "First byte");
 	zassert_equal(frame[1], 0x00, "CMD byte");
 	zassert_equal(frame[2], KISS_FESC, "Escape prefix for 0xC0");
@@ -492,7 +492,7 @@ ZTEST(kiss_transport, test_send_not_ready)
  */
 ZTEST(kiss_transport, test_send_oversized)
 {
-	uint8_t oversized[KISS_MAX_PAYLOAD + 100];
+	uint8_t oversized[KISS_MAX_PAYLOAD + 100] = {0};
 
 	int ret = kiss_transport_send_ax25(oversized, sizeof(oversized));
 	zassert_equal(ret, -EMSGSIZE, "Oversized data should be rejected");

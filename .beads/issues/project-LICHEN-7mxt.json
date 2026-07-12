@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-7mxt",
+  "title": "EDHOC responder rejects valid SUITES_I array format per RFC 9528",
+  "description": "File: rust/lichen-oscore/src/edhoc.rs\nLines: 679-682\n\nThe responder only accepts SUITES_I as a single byte:\n```rust\nlet suites_i = msg1[1];\nif suites_i != SUITE_0 {\n    return Err(EdhocError::UnsupportedSuite);\n}\n```\n\nPer RFC 9528 Section 3.3.2, SUITES_I can be either:\n- A single int (the selected suite)\n- An array of ints [selected_suite, ...other_supported_suites]\n\nIf initiator sends [0, 2] (prefer Suite 0, also supports Suite 2), msg1[1] would be 0x82 (CBOR array header), not 0x00, causing rejection.\n\nImpact: Interoperability failure with compliant EDHOC implementations that send suite arrays.\n\nFix: Parse SUITES_I as CBOR and extract the first element if it's an array.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:36:58.801906Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:36:58.80194Z"
+}

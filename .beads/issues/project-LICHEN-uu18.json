@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-uu18",
+  "title": "AiocoapResourceTransport.close() clears _owns_context before checking it",
+  "description": "File: python/src/lichen/client/ip_coap.py, lines 81-90\n\nThe close() method has a subtle ordering issue:\n\n```python\nasync def close(self) -\u003e None:\n    '''Shutdown an owned aiocoap context.'''\n    if self._context is None:\n        return\n    ctx = self._context\n    owns = self._owns_context\n    self._context = None       # Clear first\n    self._owns_context = False # Then check 'owns' below\n    if owns:\n        await ctx.shutdown()\n```\n\nIssue: While the current code correctly captures 'owns' before clearing, there's a conceptual issue: if close() is called concurrently from two coroutines:\n\n1. Coroutine A: captures ctx=context1, owns=True, clears self._context\n2. Coroutine B: sees self._context is None, returns early\n3. Coroutine A: calls ctx.shutdown()\n\nThis is safe because B returns early. However, consider:\n1. Coroutine A: captures ctx=context1, owns=True\n2. Coroutine A: sets self._context = None\n3. Coroutine B: calls connect(), creates new context2\n4. Coroutine A: calls ctx.shutdown() on context1\n5. Now context2 is active but context1 was shutdown\n\nImpact: After concurrent close()+connect(), the client may appear connected but have a mix of old and new state. This is a race condition during rapid disconnect/reconnect cycles.\n\nFix: Use an asyncio.Lock to serialize connect() and close() operations.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:19:31.285674Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:19:31.285724Z"
+}

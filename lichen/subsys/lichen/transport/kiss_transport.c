@@ -216,8 +216,8 @@ static void handle_timing_command(struct kiss_transport_ctx *ctx,
 
 	case KISS_CMD_PERSISTENCE:
 		ctx->params.persistence = data[0];
-		LOG_DBG("KISS: Persistence set to %u (p=%.2f)",
-			data[0], (float)data[0] / 255.0f);
+		LOG_DBG("KISS: Persistence set to %u (%u/255)",
+			data[0], data[0]);
 		break;
 
 	case KISS_CMD_SLOTTIME:
@@ -448,7 +448,7 @@ static int kiss_tx_frame(struct kiss_transport_ctx *ctx,
 
 		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_frames++;
-		ctx->stats.tx_bytes += frame_len;
+		ctx->stats.tx_bytes += (uint32_t)frame_len;
 		if (port == KISS_PORT_AX25) {
 			ctx->stats.tx_data_port0++;
 		} else if (port == KISS_PORT_LICHEN_RAW) {

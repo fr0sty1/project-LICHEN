@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-x4en",
+  "title": "discover_lci_devices timeout double-applied",
+  "description": "File: python/src/lichen/client/ble.py, lines 297-303\n\nThe discovery function applies timeout twice:\n\n```python\ntry:\n    discovered = await asyncio.wait_for(\n        _discover_with_advertisements(scanner_obj, timeout_s),  # Pass timeout to scanner\n        timeout=timeout_s + 1.0,  # AND wrap in wait_for with timeout+1\n    )\nexcept Exception as exc:\n    raise BleTransportError(f'BLE discovery failed: {exc}') from exc\n```\n\nWhile this is defensive (the outer wait_for catches a stuck scanner), it has issues:\n\n1. The scanner gets timeout_s, but we wait timeout_s + 1.0, so there's a 1 second window where we're waiting for nothing useful\n\n2. If the scanner implementation doesn't respect its timeout parameter, users get confusing error messages (the exception comes from wait_for, not the scanner)\n\n3. The +1.0 magic number is undocumented\n\nImpact: Minor - just wastes up to 1 second on slow scanners and the error message could be clearer.\n\nFix: Document the +1.0 buffer rationale, or use a single timeout source.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:19:32.298964Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:19:32.299009Z"
+}

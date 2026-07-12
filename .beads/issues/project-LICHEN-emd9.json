@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-emd9",
+  "title": "Missing #[must_use] on error types and Result-returning functions",
+  "description": "File: rust/lichen-ipv6/src/lib.rs\n\nSeveral functions return Result but lack #[must_use]:\n- Ipv6Header::write_to() (line 288)\n- Ipv6Header::from_bytes() (line 315)\n- UdpHeader::write_to() (line 372)\n- UdpHeader::from_bytes() (line 401)\n- Icmpv6Echo::build_request/build_reply (lines 429, 441)\n- NeighborSolicitation::from_bytes (line 538)\n- parse_packet (line 706)\n- handle_icmpv6 (line 722)\n\nWithout #[must_use], callers can accidentally ignore the Result, missing errors silently.\n\nError types also lack #[must_use]:\n- TooShort (line 25)\n- BufferTooSmall (line 54)\n- Ipv6Error (line 84)\n\nFix: Add #[must_use] attribute to all Result-returning functions and error types:\n```rust\n#[must_use]\npub fn from_bytes(buf: \u0026[u8]) -\u003e Result\u003cSelf, Ipv6Error\u003e { ... }\n\n#[must_use]\n#[derive(Debug, Clone, Copy, PartialEq, Eq)]\npub struct TooShort { ... }\n```",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:36:21.134527Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:36:21.134558Z"
+}

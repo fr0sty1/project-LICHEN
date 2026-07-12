@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-pe99",
+  "title": "decompress_packet does not validate residue length before slicing",
+  "description": "File: python/src/lichen/schc/headers.py:521-524\n\ndecompress_packet() slices the data based on computed residue length:\n  residue_len = residue_byte_length(profile.rule)\n  residue = data[: 1 + residue_len]\n  tail = data[1 + residue_len :]\n  _, fields = decompress(residue, profile.rule)\n\nIf len(data) \u003c 1 + residue_len, the slice operations produce truncated data without error. The subsequent decompress() call would then fail with 'residue underrun' from BitReader.read().\n\nWhile this eventually fails, the error message is confusing (mentions 'underrun' rather than 'packet too short for rule X').\n\nMore critically, if the tail is used for further parsing (e.g., CoAP options), a truncated residue could cause the tail to contain residue bits, leading to incorrect parsing.\n\nFix: Validate len(data) \u003e= 1 + residue_len before slicing, with a clear error message:\n  if len(data) \u003c 1 + residue_len:\n      raise ValueError(f'packet too short: need {1 + residue_len} bytes for rule {rule_id}')\n\nCategory: CORRECTNESS",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:29:25.497353Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:29:25.497383Z"
+}
