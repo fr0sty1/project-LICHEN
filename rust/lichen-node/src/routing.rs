@@ -140,12 +140,10 @@ impl NeighborTable {
 
     /// Update coordinates for an existing neighbor. Does nothing if neighbor not found.
     pub fn set_coords(&mut self, addr: &[u8; 16], coords: GeoCoords) {
-        for slot in self.entries.iter_mut() {
-            if let Some(n) = slot {
-                if n.addr == *addr {
-                    n.coords = Some(coords);
-                    return;
-                }
+        for n in self.entries.iter_mut().flatten() {
+            if n.addr == *addr {
+                n.coords = Some(coords);
+                return;
             }
         }
     }

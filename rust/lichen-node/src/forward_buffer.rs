@@ -192,12 +192,11 @@ impl ForwardBuffer {
         let mut count = 0;
 
         for entry in &self.entries {
-            if !seen[..count].contains(&entry.source_iid) {
-                if count < MAX_FORWARDING_SOURCES {
+            if !seen[..count].contains(&entry.source_iid)
+                && count < MAX_FORWARDING_SOURCES {
                     seen[count] = entry.source_iid;
                     count += 1;
                 }
-            }
         }
 
         count

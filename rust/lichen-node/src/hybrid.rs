@@ -306,7 +306,7 @@ impl HybridRouter {
             queued_at_ms: now_ms,
         };
 
-        let queue = self.pending_queue.entry(dst).or_insert_with(VecDeque::new);
+        let queue = self.pending_queue.entry(dst).or_default();
 
         // Limit queue size per destination
         if queue.len() >= self.max_pending_per_dest {
