@@ -10,9 +10,9 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T19:19:00.11619Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T05:37:00.298251Z",
-  "closed_at": "2026-07-12T05:37:00.298251Z",
-  "close_reason": "Implemented SLIP transport binding for LCI (spec 17.3.1): RFC 1055 framing over UART/USB-CDC, Zephyr network interface with fe80::1 addressing, ring-buffered async RX, statistics tracking. All 13 tests pass on native_sim.",
+  "updated_at": "2026-07-12T05:37:17.874359Z",
+  "closed_at": "2026-07-12T05:37:17.874359Z",
+  "close_reason": "Implemented slip_transport.c (567 lines): RFC 1055 SLIP, UART backend, net interface, 13/13 tests pass on EC2",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-1ym9",
