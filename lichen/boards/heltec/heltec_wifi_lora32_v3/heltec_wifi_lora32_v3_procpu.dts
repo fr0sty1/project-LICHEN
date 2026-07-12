@@ -116,7 +116,12 @@
 		dio2-tx-enable;
 		dio3-tcxo-voltage    = <SX126X_DIO3_TCXO_1V8>;
 		tcxo-power-startup-delay-ms = <5>;
-		spi-max-frequency    = <16000000>;
+		/* 2 MHz (from 16 MHz): the LoRa SPI pins route through the ESP32-S3
+		 * GPIO matrix (not FSPI IOMUX), where MISO read timing degrades above
+		 * ~8 MHz - writes stay clean but reads bit-shift. Symptom was an
+		 * asymmetric radio: TX on-air fine, RX stone deaf. RadioLib uses
+		 * 2 MHz on these boards; radio SPI traffic is tiny, speed is moot. */
+		spi-max-frequency    = <2000000>;
 	};
 };
 

@@ -21,6 +21,7 @@
 #include <zephyr/net/net_pkt.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
+#include <zephyr/sys/crc.h>
 
 #include <lichen/hal.h>
 #if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
@@ -28,6 +29,11 @@
 #endif
 
 #include <string.h>
+#ifdef CONFIG_LICHEN_L2_DEV_PROVISIONING
+#include <ctype.h>
+#include <stdlib.h>
+#include "ipv6.h" /* zephyr/subsys/net/ip — net_ipv6_nbr_add() */
+#endif
 
 /*
  * Compile-time assertion: MTU constants must match between layers.
@@ -935,8 +941,7 @@ int lichen_l2_publish_app_identity(const char *display_name,
 #endif
 }
 
-#ifdef CONFIG_LICHEN_L2_TEST_HOOKS
-int lichen_l2_test_load_key(const uint8_t seed[32], uint8_t pubkey[32])
+int lichen_l2_load_key(const uint8_t seed[32], uint8_t pubkey[32])
 {
 	int ret;
 
@@ -962,7 +967,7 @@ int lichen_l2_test_load_key(const uint8_t seed[32], uint8_t pubkey[32])
 	return ret;
 }
 
-int lichen_l2_test_load_link_key(const uint8_t link_key[LICHEN_LINK_KEY_LEN])
+int lichen_l2_load_link_key(const uint8_t link_key[LICHEN_LINK_KEY_LEN])
 {
 	int ret;
 
@@ -983,6 +988,123 @@ int lichen_l2_test_load_link_key(const uint8_t link_key[LICHEN_LINK_KEY_LEN])
 	k_mutex_unlock(&tx_mutex);
 
 	return ret;
+}
+
+#ifdef CONFIG_LICHEN_L2_DEV_PROVISIONING
+/*
+ * SECURITY: INSECURE dev-only provisioning. This seed is public (it lives
+ * in the source tree) and is shared by every node built with
+ * CONFIG_LICHEN_L2_DEV_PROVISIONING, so signatures made with it prove
+ * nothing. Bench bring-up only, until announce/EDHOC peer provisioning
+ * lands. The Kconfig help text carries the same warning.
+ */
+static const uint8_t dev_seed[32] = {
+	0x4c, 0x49, 0x43, 0x48, 0x45, 0x4e, 0x2d, 0x44, /* "LICHEN-D" */
+	0x45, 0x56, 0x2d, 0x53, 0x45, 0x45, 0x44, 0x2d, /* "EV-SEED-" */
+	0x30, 0x30, 0x30, 0x31, 0x2d, 0x49, 0x4e, 0x53, /* "0001-INS" */
+	0x45, 0x43, 0x55, 0x52, 0x45, 0x21, 0x21, 0x21, /* "ECURE!!!" */
+};
+
+/* Parse "aabb..." or "aa:bb:..." into 8 bytes. Returns 0 or -EINVAL. */
+static int dev_parse_eui64(const char *s, uint8_t out[LICHEN_EUI64_LEN])
+{
+	size_t n = 0;
+
+	while (*s != '\0' && n < LICHEN_EUI64_LEN) {
+		char hex[3] = { 0 };
+
+		if (*s == ':' || *s == '-') {
+			s++;
+			continue;
+		}
+		if (!isxdigit((unsigned char)s[0]) ||
+		    !isxdigit((unsigned char)s[1])) {
+			return -EINVAL;
+		}
+		hex[0] = s[0];
+		hex[1] = s[1];
+		out[n++] = (uint8_t)strtoul(hex, NULL, 16);
+		s += 2;
+	}
+
+	return (n == LICHEN_EUI64_LEN && *s == '\0') ? 0 : -EINVAL;
+}
+
+int lichen_l2_dev_provision(uint8_t peer_eui64_out[LICHEN_EUI64_LEN])
+{
+	uint8_t pubkey[LICHEN_L2_PUBKEY_LEN];
+	uint8_t peer_eui64[LICHEN_EUI64_LEN];
+	int ret;
+
+	ret = dev_parse_eui64(CONFIG_LICHEN_L2_DEV_PEER_EUI64, peer_eui64);
+	if (ret != 0) {
+		LOG_ERR("lichen_l2: bad CONFIG_LICHEN_L2_DEV_PEER_EUI64 '%s'",
+			CONFIG_LICHEN_L2_DEV_PEER_EUI64);
+		return ret;
+	}
+
+	ret = lichen_l2_load_key(dev_seed, pubkey);
+	if (ret != 0) {
+		LOG_ERR("lichen_l2: dev key load failed (%d)", ret);
+		return ret;
+	}
+
+	/* Every dev node derives the same keypair from the shared seed, so
+	 * the peer's pubkey is our own. */
+	ret = lichen_peer_add(peer_eui64, pubkey);
+	if (ret != 0) {
+		LOG_ERR("lichen_l2: dev peer add failed (%d)", ret);
+		return ret;
+	}
+
+	/*
+	 * Static IPv6 neighbor entry for the peer. IPv6 ND cannot run over
+	 * this link yet — there is no SCHC rule for ICMPv6 NS/NA, so the
+	 * solicitation is silently uncompressible and every unicast send
+	 * parks forever in the ND queue (bd lora_ipv6_mesh-r002). The dev
+	 * peer's link-layer address is knowable from its EUI-64, so resolve
+	 * it statically.
+	 */
+	{
+		uint8_t iid[LICHEN_EUI64_LEN];
+		struct in6_addr peer_ll;
+		struct net_linkaddr lladdr = {
+			.addr = peer_eui64,
+			.len = LICHEN_EUI64_LEN,
+			.type = NET_LINK_IEEE802154,
+		};
+
+		ret = lichen_eui64_to_iid(peer_eui64, iid);
+		if (ret == 0) {
+			ret = lichen_make_link_local(iid, &peer_ll);
+		}
+		if (ret != 0 || lichen_iface == NULL ||
+		    net_ipv6_nbr_add(lichen_iface, &peer_ll, &lladdr, false,
+				     NET_IPV6_NBR_STATE_STATIC) == NULL) {
+			LOG_ERR("lichen_l2: static neighbor add failed (%d)", ret);
+			return ret != 0 ? ret : -ENOMEM;
+		}
+	}
+
+	if (peer_eui64_out != NULL) {
+		memcpy(peer_eui64_out, peer_eui64, LICHEN_EUI64_LEN);
+	}
+
+	LOG_WRN("lichen_l2: INSECURE dev provisioning active (peer %02x%02x..%02x%02x)",
+		peer_eui64[0], peer_eui64[1], peer_eui64[6], peer_eui64[7]);
+	return 0;
+}
+#endif /* CONFIG_LICHEN_L2_DEV_PROVISIONING */
+
+#ifdef CONFIG_LICHEN_L2_TEST_HOOKS
+int lichen_l2_test_load_key(const uint8_t seed[32], uint8_t pubkey[32])
+{
+	return lichen_l2_load_key(seed, pubkey);
+}
+
+int lichen_l2_test_load_link_key(const uint8_t link_key[LICHEN_LINK_KEY_LEN])
+{
+	return lichen_l2_load_link_key(link_key);
 }
 
 void lichen_l2_test_reset_stats(void)
@@ -1013,6 +1135,52 @@ void lichen_l2_test_get_stats(struct lichen_l2_test_stats *stats)
 	k_mutex_unlock(&test_stats_mutex);
 }
 #endif
+
+/*
+ * TX/RX outcome counters — cheap ops visibility into the data path (which
+ * otherwise fails only into logs). Read via lichen_l2_get_tx_stats() /
+ * lichen_l2_get_rx_stats().
+ */
+static atomic_t tx_stat_attempts;
+static atomic_t tx_stat_errors;
+static atomic_t tx_stat_last_err;
+static atomic_t rx_stat_frames;
+static atomic_t rx_stat_accepted;
+static atomic_t rx_stat_last_err;
+
+void lichen_l2_get_tx_stats(uint32_t *attempts, uint32_t *errors, int *last_err)
+{
+	if (attempts != NULL) {
+		*attempts = (uint32_t)atomic_get(&tx_stat_attempts);
+	}
+	if (errors != NULL) {
+		*errors = (uint32_t)atomic_get(&tx_stat_errors);
+	}
+	if (last_err != NULL) {
+		*last_err = (int)atomic_get(&tx_stat_last_err);
+	}
+}
+
+void lichen_l2_get_rx_stats(uint32_t *frames, uint32_t *accepted, int *last_err)
+{
+	if (frames != NULL) {
+		*frames = (uint32_t)atomic_get(&rx_stat_frames);
+	}
+	if (accepted != NULL) {
+		*accepted = (uint32_t)atomic_get(&rx_stat_accepted);
+	}
+	if (last_err != NULL) {
+		*last_err = (int)atomic_get(&rx_stat_last_err);
+	}
+}
+
+static inline void tx_stat_result(int ret)
+{
+	if (ret < 0) {
+		atomic_inc(&tx_stat_errors);
+		atomic_set(&tx_stat_last_err, ret);
+	}
+}
 
 /* Forward declarations */
 static void lora_rx_callback(const uint8_t *data, size_t len,
@@ -1068,7 +1236,7 @@ static enum net_verdict lichen_l2_recv(struct net_if *iface,
  * this function takes ownership of @p pkt and calls net_pkt_unref(). On error
  * (return < 0), caller retains ownership and is responsible for cleanup.
  */
-static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
+static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 {
 	int ret;
 
@@ -1216,6 +1384,17 @@ static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
 	 */
 	net_pkt_unref(pkt);
 	return (int)pkt_len;
+}
+
+/* NET_L2_INIT-facing wrapper: keep the TX outcome counters in one place. */
+static int lichen_l2_send(struct net_if *iface, struct net_pkt *pkt)
+{
+	int ret;
+
+	atomic_inc(&tx_stat_attempts);
+	ret = lichen_l2_send_inner(iface, pkt);
+	tx_stat_result(ret);
+	return ret;
 }
 
 /**
@@ -1388,14 +1567,14 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		 *
 		 * This ordering ensures link_ctx cleanup is safe.
 		 */
-		int ret = lichen_lora_l2_stop();
+		int stop_ret = lichen_lora_l2_stop();
 		/*
 		 * If stop() aborted the RX thread (returned -ECANCELED), the thread
 		 * may have been holding rx_mutex during lichen_l2_input(). We must
 		 * call deinit() to reinitialize mutexes before acquiring them, or
 		 * we'll deadlock. (project-LICHEN-i1gk.67)
 		 */
-		if (ret == -ECANCELED) {
+		if (stop_ret == -ECANCELED) {
 			int deinit_ret = lichen_lora_l2_deinit();
 			if (deinit_ret != 0) {
 				LOG_ERR("lichen_l2: deinit after abort failed (%d)", deinit_ret);
@@ -2005,6 +2184,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 #endif
 
 	LOG_DBG("lichen_l2: RX %zu bytes (RSSI %d dBm, SNR %d dB)", len, rssi, snr);
+	atomic_inc(&rx_stat_frames);
 
 	k_mutex_lock(&rx_mutex, K_FOREVER);
 
@@ -2094,6 +2274,35 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	ret = peer_try_all_pubkeys(&rx_ctx, &replay_table, data, len,
 				   rx_ipv6_buf, &ipv6_len, src_eui64);
 	if (ret < 0) {
+		/*
+		 * Puck neighbor beacons are 9-byte broadcast link frames with no
+		 * SCHC/IPv6 payload: [len=9][LLSec=0x00][epoch][seq_hi][seq_lo]
+		 * [CRC32 over bytes 1..4, little-endian] (see puck send_beacon()).
+		 * lichen_link_rx() rightly rejects them (nothing to deliver), but
+		 * they are valid neighbor traffic, not errors — verify the CRC32
+		 * MIC and log at INF instead of WRN. (lora_ipv6_mesh-v6g6)
+		 *
+		 * SECURITY: CRC32 is error detection only, not authentication —
+		 * beacons are observational (logged, never routed or trusted).
+		 */
+		if (len == 9 && data[0] == 9 && data[1] == 0x00) {
+			uint32_t mic = crc32_ieee(&data[1], 4);
+			uint32_t rx_mic = (uint32_t)data[5] |
+					  ((uint32_t)data[6] << 8) |
+					  ((uint32_t)data[7] << 16) |
+					  ((uint32_t)data[8] << 24);
+			if (mic == rx_mic) {
+				LOG_INF("lichen_l2: neighbor beacon epoch=%u seq=%u "
+					"rssi=%d snr=%d",
+					data[2],
+					(uint16_t)(((uint16_t)data[3] << 8) | data[4]),
+					rssi, snr);
+				secure_zero(rx_link_key, sizeof(rx_link_key));
+				k_mutex_unlock(&rx_mutex);
+				return;
+			}
+		}
+		atomic_set(&rx_stat_last_err, ret);
 		LOG_WRN("lichen_l2: RX failed: %s (%d)",
 			lichen_link_strerror(ret), ret);
 		secure_zero(rx_link_key, sizeof(rx_link_key));
@@ -2213,5 +2422,6 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	k_mutex_unlock(&test_stats_mutex);
 	atomic_inc(&test_rx_injected_packets);
 #endif
+	atomic_inc(&rx_stat_accepted);
 	LOG_DBG("lichen_l2: injected %zu bytes to IPv6 stack", ipv6_len);
 }

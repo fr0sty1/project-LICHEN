@@ -247,7 +247,10 @@ mod tests {
         let mut buf = [0u8; 7];
         assert_eq!(
             write_datagram(&src, &dst, 1234, 5678, &[], &mut buf),
-            Err(UdpError::BufferTooSmall(BufferTooSmall::new(UDP_HEADER_LEN, 7)))
+            Err(UdpError::BufferTooSmall(BufferTooSmall::new(
+                UDP_HEADER_LEN,
+                7
+            )))
         );
     }
 

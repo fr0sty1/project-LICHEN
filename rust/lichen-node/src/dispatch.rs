@@ -168,7 +168,10 @@ impl<'a> Request<'a> {
     /// Check if path matches the given segments.
     pub fn path_matches(&self, segments: &[&[u8]]) -> bool {
         self.path_len == segments.len()
-            && self.path[..self.path_len].iter().zip(segments).all(|(a, b)| a == b)
+            && self.path[..self.path_len]
+                .iter()
+                .zip(segments)
+                .all(|(a, b)| a == b)
     }
 
     /// Get path segment at index.
@@ -265,7 +268,7 @@ impl<const N: usize> Dispatcher<N> {
     /// Handle a CoAP packet, returning the response bytes if a reply is needed.
     ///
     /// Writes the response CoAP message to `out` and returns the length.
-    pub fn handle_coap<'a>(&self, coap_bytes: &'a [u8], out: &mut [u8]) -> Option<usize> {
+    pub fn handle_coap(&self, coap_bytes: &[u8], out: &mut [u8]) -> Option<usize> {
         let pkt = CoapPacket::from_bytes(coap_bytes).ok()?;
         let req = Request::from_coap(&pkt)?;
         let resp = self.dispatch(&req);
@@ -334,9 +337,14 @@ mod tests {
     use super::*;
 
     fn build_get(path: &[&str], out: &mut [u8]) -> usize {
-        let mut builder =
-            CoapBuilder::new(out, MessageType::Confirmable, MessageCode::GET, 0x1234, &[0xAB])
-                .unwrap();
+        let mut builder = CoapBuilder::new(
+            out,
+            MessageType::Confirmable,
+            MessageCode::GET,
+            0x1234,
+            &[0xAB],
+        )
+        .unwrap();
         for seg in path {
             builder.uri_path(seg).unwrap();
         }
@@ -344,9 +352,14 @@ mod tests {
     }
 
     fn build_put(path: &[&str], payload: &[u8], out: &mut [u8]) -> usize {
-        let mut builder =
-            CoapBuilder::new(out, MessageType::Confirmable, MessageCode::PUT, 0x5678, &[0xCD])
-                .unwrap();
+        let mut builder = CoapBuilder::new(
+            out,
+            MessageType::Confirmable,
+            MessageCode::PUT,
+            0x5678,
+            &[0xCD],
+        )
+        .unwrap();
         for seg in path {
             builder.uri_path(seg).unwrap();
         }

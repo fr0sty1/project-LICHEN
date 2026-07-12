@@ -5,4 +5,5 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(lichen_puck)
 
 target_sources(app PRIVATE src/main.c src/puck_location.c)
-target_include_directories(app PRIVATE ../../lib/native/include)
+target_include_directories(app PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../lib/native/include)

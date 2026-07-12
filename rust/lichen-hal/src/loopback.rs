@@ -7,8 +7,8 @@
 //! TX on one side appears as RX on the other.
 
 use crate::{Radio, RadioConfig, RadioError, RxPacket};
-use std::sync::{Arc, Mutex};
 use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
 
 /// Shared channel between loopback radio pair.
 ///

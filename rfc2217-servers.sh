@@ -37,7 +37,7 @@ declare -A PORTS=(
     #   MCUboot/recovery:    usb-Seeed_Studio_T1000-E_...-if00
     #   LICHEN firmware:     usb-LICHEN_Node_...-if00  (LICHEN Native, console)
     [4004]="$BY_ID/usb-Seeed_Studio_T1000-E_891FA3226B7B0D14-if00"
-    [4005]="$BY_ID/usb-LICHEN_Node_891FA3226B7B0D14-if02"
+    [4005]="$BY_ID/usb-LICHEN_Project_LICHEN_Node_891FA3226B7B0D14-if02"
 )
 
 declare -A LABELS=(

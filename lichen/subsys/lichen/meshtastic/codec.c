@@ -575,7 +575,7 @@ static int write_user(uint8_t *buf, size_t buflen, size_t *pos,
 		uint8_t nibble = (uint8_t)((node_num >> ((7U - i) * 4U)) & 0x0fU);
 
 		id[i + 1U] = (char)(nibble < 10U ? '0' + nibble :
-				     'a' + (nibble - 10U));
+				     'a' + (nibble - 10));
 	}
 	id[9] = '\0';
 

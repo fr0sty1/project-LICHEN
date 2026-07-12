@@ -23,15 +23,30 @@ LOG_MODULE_REGISTER(lr1110, CONFIG_LORA_LOG_LEVEL);
 
 #define DT_DRV_COMPAT semtech_lr1110
 
+/* Heartbeat hook — the application overrides this (strong definition) to feed a
+ * progress watchdog from inside the TX/RX poll loops, so a genuinely stuck SPI
+ * transfer is caught quickly while normal multi-second waits are not. Weak
+ * no-op by default so the driver stands alone. */
+__attribute__((weak)) void lichen_radio_progress(void) { }
+
 BUILD_ASSERT(DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT) <= 1,
 	     "LR1110 driver supports only one instance (uses global state)");
 
-/* IRQ mask bits routed to DIO9 */
-#define LR1110_IRQ_RADIO (LR1110_SYSTEM_IRQ_TXDONE_MASK    | \
-			  LR1110_SYSTEM_IRQ_RXDONE_MASK    | \
-			  LR1110_SYSTEM_IRQ_HEADERERR_MASK | \
-			  LR1110_SYSTEM_IRQ_CRCERR_MASK    | \
+/* IRQ mask bits enabled for radio operations. PREAMBLEDETECTED and
+ * SYNCWORD_HEADERVALID are included so the recv poll loop can hold its
+ * window open while a frame is arriving instead of aborting mid-reception
+ * (the enable mask also gates the IRQ status register we poll). */
+#define LR1110_IRQ_RADIO (LR1110_SYSTEM_IRQ_TXDONE_MASK              | \
+			  LR1110_SYSTEM_IRQ_RXDONE_MASK              | \
+			  LR1110_SYSTEM_IRQ_PREAMBLEDETECTED_MASK    | \
+			  LR1110_SYSTEM_IRQ_SYNCWORD_HEADERVALID_MASK | \
+			  LR1110_SYSTEM_IRQ_HEADERERR_MASK           | \
+			  LR1110_SYSTEM_IRQ_CRCERR_MASK              | \
 			  LR1110_SYSTEM_IRQ_TIMEOUT_MASK)
+
+/* Hold-open bound: remaining airtime of a full 255-byte SF10/125 kHz frame
+ * after its preamble, with margin. */
+#define LR1110_RX_HOLD_MS 2500
 
 /* "Continuous RX" sentinel for lr1110_radio_set_rx */
 #define LR1110_RX_CONTINUOUS  0x00FFFFFFu
@@ -94,6 +109,10 @@ struct lr1110_data {
 	struct k_work        irq_work;
 	struct k_sem         radio_sem;
 	uint32_t             last_irq;
+	/* LoRa packet params from the last config, kept so lora_send() can set
+	 * the real payload length per-TX (explicit header). Without this the
+	 * chip transmits a full LR1110_MAX_PAYLOAD-byte packet every time. */
+	lr1110_radio_packet_param_lora_t pkt_params;
 };
 
 /*
@@ -162,6 +181,11 @@ static void lr1110_irq_work_handler(struct k_work *work)
 
 	data->last_irq = irq;
 	k_sem_give(&data->radio_sem);
+
+	/* Re-arm the DIO9 edge interrupt now that clear_irq has deasserted the
+	 * line. The hard ISR disables it on entry to prevent an interrupt storm
+	 * if DIO9 stays asserted (nRF GPIO SENSE re-triggers on a held level). */
+	gpio_pin_interrupt_configure_dt(&lr1110_gpio_dio9, GPIO_INT_EDGE_TO_ACTIVE);
 }
 
 static void lr1110_dio9_isr(const struct device *port,
@@ -171,6 +195,12 @@ static void lr1110_dio9_isr(const struct device *port,
 	ARG_UNUSED(pins);
 	struct lr1110_data *data = CONTAINER_OF(cb, struct lr1110_data, dio9_cb);
 
+	/* Disable the interrupt immediately: if DIO9 stays asserted (the LR1110
+	 * holds it high until the IRQ is cleared over SPI), an nRF SENSE-based
+	 * "edge" interrupt re-fires continuously and pegs the CPU in this ISR,
+	 * starving every thread — including the k_sem_take timeout. The work
+	 * handler re-arms it after clearing the chip IRQ (which deasserts DIO9). */
+	gpio_pin_interrupt_configure_dt(&lr1110_gpio_dio9, GPIO_INT_DISABLE);
 	k_work_submit(&data->irq_work);
 }
 
@@ -181,8 +211,49 @@ static void lr1110_dio9_isr(const struct device *port,
 static int lr1110_lora_config(const struct device *dev,
 			      struct lora_modem_config *cfg)
 {
+	/* Disable DIO9 interrupt before reset: the LR1110 asserts DIO9 during
+	 * its boot sequence. Without this, a spurious ISR races the SPI bus
+	 * against the calibration sequence. (We drive TX/RX by polling and never
+	 * re-enable this interrupt — see the note near clear_irq below.) */
+	gpio_pin_interrupt_configure_dt(&lr1110_gpio_dio9, GPIO_INT_DISABLE);
+
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_hal_reset(dev));
+
+	/* The Seeed T1000-E clocks the LR1110 from a TCXO. It must be powered
+	 * (via set_tcxo_mode) BEFORE calibration, otherwise the HF crystal never
+	 * starts and every RF command (set_tx) fails with a command error.
+	 * 1.8 V supply; timeout in 30.52 us RTC steps. */
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_system_set_tcxo_mode(dev, LR1110_SYSTEM_TCXO_SUPPLY_VOLTAGE_1_8V, 4096));
+
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_system_calibrate(dev, 0x3Fu)); /* all 6 calibration blocks */
+
+	/* RF switch: the T1000-E routes the antenna through a switch driven by
+	 * DIO5-DIO8. Without this the chip never selects the RX path — TX
+	 * happens to work on the default state, but RX is completely deaf
+	 * (RXDONE never fires; bd r002). Table from Meshtastic's proven
+	 * T1000-E support (variants/nrf52840/tracker-t1000-e/rfswitch.h):
+	 *   RX = DIO5+DIO8, TX = DIO5+DIO6+DIO8, TX_HP = DIO6+DIO8,
+	 *   GNSS = DIO7. */
+	{
+		const lr1110_system_rfswitch_config_t rfswitch = {
+			.enable = LR1110_SYSTEM_RFSW0_HIGH |
+				  LR1110_SYSTEM_RFSW1_HIGH |
+				  LR1110_SYSTEM_RFSW2_HIGH |
+				  LR1110_SYSTEM_RFSW3_HIGH,
+			.standby = 0,
+			.rx = LR1110_SYSTEM_RFSW0_HIGH | LR1110_SYSTEM_RFSW3_HIGH,
+			.tx = LR1110_SYSTEM_RFSW0_HIGH | LR1110_SYSTEM_RFSW1_HIGH |
+			      LR1110_SYSTEM_RFSW3_HIGH,
+			.tx_hp = LR1110_SYSTEM_RFSW1_HIGH | LR1110_SYSTEM_RFSW3_HIGH,
+			.tx_hf = 0,
+			.gnss = LR1110_SYSTEM_RFSW2_HIGH,
+			.wifi = 0,
+		};
+
+		LR1110_RETURN_ON_HAL_ERROR(
+			lr1110_system_set_dio_as_rf_switch(dev, &rfswitch));
+	}
 
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_system_clear_errors(dev));
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_packet_type(dev, LR1110_RADIO_PACKET_LORA));
@@ -196,15 +267,20 @@ static int lr1110_lora_config(const struct device *dev,
 	};
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_modulation_param_lora(dev, &mod));
 
-	lr1110_radio_packet_param_lora_t pkt = {
+	struct lr1110_data *cfg_data = dev->data;
+
+	cfg_data->pkt_params = (lr1110_radio_packet_param_lora_t){
 		.preamble_length_in_symb = cfg->preamble_len,
 		.header_type             = LR1110_RADIO_LORA_HEADER_EXPLICIT,
+		/* RX uses the max as the accept ceiling; TX overrides this with the
+		 * real length in lora_send(). */
 		.payload_length_in_byte  = LR1110_MAX_PAYLOAD,
 		.crc                     = LR1110_RADIO_LORA_CRC_ON,
 		.iq = cfg->iq_inverted ? LR1110_RADIO_LORA_IQ_INVERTED
 				       : LR1110_RADIO_LORA_IQ_STANDARD,
 	};
-	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_packet_param_lora(dev, &pkt));
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_radio_set_packet_param_lora(dev, &cfg_data->pkt_params));
 
 	lr1110_radio_pa_config_t pa = {
 		.pa_sel        = LR1110_PA_SEL,
@@ -228,7 +304,14 @@ static int lr1110_lora_config(const struct device *dev,
 	gpio_pin_set_dt(&lr1110_gpio_tx_enable, cfg->tx ? 1 : 0);
 #endif
 
-	gpio_pin_interrupt_configure_dt(&lr1110_gpio_dio9, GPIO_INT_EDGE_TO_ACTIVE);
+	/* Clear any IRQ flags the chip set during boot/calibration.
+	 *
+	 * NOTE: we deliberately DO NOT enable the DIO9 GPIO interrupt. TX and RX
+	 * both poll the IRQ status over SPI. Enabling the interrupt lets its
+	 * work handler issue SPI transactions concurrently with the polling
+	 * loop; that race intermittently wedges an SPI transfer and hangs the
+	 * main thread. Pure polling keeps all radio SPI on one thread. */
+	lr1110_system_clear_irq(dev, 0xFFFFFFFFu);
 
 	LOG_INF("LR1110 cfg: %u Hz SF%u BW%u CR4/%u pwr=%d tx=%d",
 		cfg->frequency,
@@ -253,24 +336,74 @@ static int lr1110_lora_send(const struct device *dev, uint8_t *data,
 		return -EMSGSIZE;
 	}
 
-	k_sem_reset(&drv->radio_sem);
-	LR1110_RETURN_ON_HAL_ERROR(lr1110_regmem_write_buffer8(dev, data, (uint8_t)data_len));
+	/* Poll for TXDONE over SPI rather than via the DIO9 interrupt: the LR1110
+	 * signals TX/RX errors (CMDERR, ERR) on IRQ bits that are NOT routed to
+	 * DIO9, so a failed TX would otherwise never wake a waiting semaphore.
+	 * Polling lets us observe the true status and bound the wait. */
+	gpio_pin_interrupt_configure_dt(&lr1110_gpio_dio9, GPIO_INT_DISABLE);
+
+	/* STANDBY_XOSC before loading the buffer: the recv() timeout path
+	 * parks the chip in STANDBY_RC, where it processes long WriteBuffer8
+	 * commands too slowly — payload bytes past ~32 are silently dropped
+	 * (the chip still reports TXDONE and transmits stale buffer contents;
+	 * bd lora_ipv6_mesh-r002). On XOSC the full payload lands. */
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_XOSC));
+
+	/* Set the real payload length for this TX (explicit header). Config
+	 * leaves it at LR1110_MAX_PAYLOAD for RX; without this the chip would
+	 * transmit a full 255-byte packet (real data + buffer garbage). */
+	drv->pkt_params.payload_length_in_byte = (uint8_t)data_len;
+	LR1110_RETURN_ON_HAL_ERROR(
+		lr1110_radio_set_packet_param_lora(dev, &drv->pkt_params));
+
+	/* Load the TX buffer with the opcode and payload in ONE contiguous
+	 * SPI buffer. lr1110_regmem_write_buffer8() scatters {opcode, data}
+	 * across two spi_bufs, which the nRF SPIM driver executes as separate
+	 * DMA sub-transfers — and on this chip only the first ~32 payload
+	 * bytes of such a command ever land in the buffer (each retry
+	 * restarts at offset 0, so on-air frames carry stale bytes past
+	 * offset 32; bd r002). A single uninterrupted transfer carries the
+	 * whole command. */
+	{
+		static uint8_t txcmd[2 + LR1110_MAX_PAYLOAD];
+
+		txcmd[0] = 0x01; /* LR1110_REGMEM_WRITE_BUFFER8_OC >> 8 */
+		txcmd[1] = 0x09; /* LR1110_REGMEM_WRITE_BUFFER8_OC & 0xff */
+		memcpy(&txcmd[2], data, data_len);
+		if (lr1110_hal_write(dev, txcmd, (uint16_t)(2U + data_len),
+				     NULL, 0) != LR1110_HAL_STATUS_OK) {
+			return lr1110_hal_get_last_error();
+		}
+	}
+
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_tx(dev, 0));
 
-	if (k_sem_take(&drv->radio_sem, K_SECONDS(10)) != 0) {
-		LOG_ERR("TX timeout");
-		return -ETIMEDOUT;
+	/* SF10/BW125 airtime for a short frame is well under 1 s. Poll every
+	 * 10 ms (up to 3 s) — infrequent enough to keep SPIM traffic light (it
+	 * contends with USB EasyDMA), fast enough for prompt TXDONE detection. */
+	lr1110_system_stat1_t stat1;
+	lr1110_system_stat2_t stat2;
+	uint32_t irq = 0;
+	for (int i = 0; i < 300; i++) {
+		lichen_radio_progress();
+		k_sleep(K_MSEC(10));
+		lr1110_system_get_status(dev, &stat1, &stat2, &irq);
+		if (irq & LR1110_SYSTEM_IRQ_TXDONE_MASK) {
+			break;
+		}
 	}
+	lr1110_system_clear_irq(dev, irq);
 	int ret = lr1110_hal_get_last_error();
 	if (ret < 0) {
 		return ret;
 	}
 
-	if (drv->last_irq & LR1110_SYSTEM_IRQ_TXDONE_MASK) {
+	if (irq & LR1110_SYSTEM_IRQ_TXDONE_MASK) {
 		return 0;
 	}
-	LOG_ERR("TX error irq=0x%08x", drv->last_irq);
-	return -EIO;
+	LOG_ERR("TX no TXDONE irq=0x%08x", irq);
+	return -ETIMEDOUT;
 }
 
 static int lr1110_lora_send_async(const struct device *dev, uint8_t *data,
@@ -290,31 +423,71 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 
 	struct lr1110_data *drv = dev->data;
 
-	k_sem_reset(&drv->radio_sem);
+	ARG_UNUSED(drv);
+
+	/* Poll for RXDONE over SPI, mirroring the TX path. The DIO9 interrupt +
+	 * work-handler get_status sequence intermittently hard-freezes the CPU
+	 * when it runs on a received packet, so we drive RX by polling too. */
+	gpio_pin_interrupt_configure_dt(&lr1110_gpio_dio9, GPIO_INT_DISABLE);
+
+	/* Restore the RX accept ceiling: lora_send() rewrites the chip's
+	 * packet params with payload_length = the TX frame's length, and in
+	 * explicit-header mode that field caps what RX will accept — after a
+	 * 9-byte beacon TX the radio silently rejects every longer frame
+	 * (total RX deafness; bd r002). */
+	if (drv->pkt_params.payload_length_in_byte != LR1110_MAX_PAYLOAD) {
+		drv->pkt_params.payload_length_in_byte = LR1110_MAX_PAYLOAD;
+		LR1110_RETURN_ON_HAL_ERROR(
+			lr1110_radio_set_packet_param_lora(dev, &drv->pkt_params));
+	}
+
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_rx(dev, LR1110_RX_CONTINUOUS));
 
-	if (k_sem_take(&drv->radio_sem, timeout) != 0) {
-		/* Timeout waiting for IRQ - put radio back to standby */
-		LR1110_RETURN_ON_HAL_ERROR(
-			lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_RC));
-		return -EAGAIN;
-	}
+	int64_t deadline = k_uptime_get() + k_ticks_to_ms_floor64(timeout.ticks);
+	lr1110_system_stat1_t stat1;
+	lr1110_system_stat2_t stat2;
+	uint32_t irq = 0;
+	bool held = false;
+	do {
+		lichen_radio_progress();
+		k_sleep(K_MSEC(20));
+		lr1110_system_get_status(dev, &stat1, &stat2, &irq);
+
+		/* A frame is arriving (preamble/sync/header seen): hold the
+		 * window open long enough for it to finish instead of
+		 * aborting mid-reception. Single bounded extension — the
+		 * status bits latch until clear_irq below, so re-checking
+		 * would not re-extend anyway. */
+		if (!held &&
+		    (irq & (LR1110_SYSTEM_IRQ_PREAMBLEDETECTED_MASK |
+			    LR1110_SYSTEM_IRQ_SYNCWORD_HEADERVALID_MASK))) {
+			int64_t hold_until = k_uptime_get() + LR1110_RX_HOLD_MS;
+
+			if (hold_until > deadline) {
+				deadline = hold_until;
+			}
+			held = true;
+		}
+	} while (!(irq & (LR1110_SYSTEM_IRQ_RXDONE_MASK |
+			  LR1110_SYSTEM_IRQ_TIMEOUT_MASK)) &&
+		 k_uptime_get() < deadline);
+
+	lr1110_system_clear_irq(dev, irq);
+
 	int ret = lr1110_hal_get_last_error();
 	if (ret < 0) {
-		/* HAL error after IRQ - ensure radio is not left in RX mode */
+		/* HAL error during the poll — don't leave the radio in RX
+		 * (upstream error-path hygiene, adapted to the polled recv). */
 		lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_RC);
 		return ret;
 	}
 
-	if (!(drv->last_irq & LR1110_SYSTEM_IRQ_RXDONE_MASK)) {
-		/* Error path - ensure radio is not left in RX mode */
+	if (!(irq & LR1110_SYSTEM_IRQ_RXDONE_MASK)) {
+		/* No packet — return the radio to standby (don't leave it in RX),
+		 * mirroring upstream's error-path hygiene. */
 		LR1110_RETURN_ON_HAL_ERROR(
 			lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_RC));
-		if (drv->last_irq & LR1110_SYSTEM_IRQ_TIMEOUT_MASK) {
-			return -EAGAIN;
-		}
-		LOG_WRN("RX error irq=0x%08x", drv->last_irq);
-		return -EIO;
+		return -EAGAIN;
 	}
 
 	lr1110_radio_rxbuffer_status_t buf_status;

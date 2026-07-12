@@ -50,8 +50,8 @@ pub mod bridge;
 // Re-export core types when kiss feature is enabled
 #[cfg(feature = "kiss")]
 pub use framing::{
-    KissCommand, KissError, KissFrame, KissReader, KissWriter, kiss_decode, kiss_encode,
-    kiss_escape, kiss_unescape, FEND, FESC, TFEND, TFESC,
+    kiss_decode, kiss_encode, kiss_escape, kiss_unescape, KissCommand, KissError, KissFrame,
+    KissReader, KissWriter, FEND, FESC, TFEND, TFESC,
 };
 
 // Re-export bridge types when bridge feature is enabled

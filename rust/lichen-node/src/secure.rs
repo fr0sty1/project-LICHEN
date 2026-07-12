@@ -14,7 +14,7 @@ use lichen_coap::message::{MessageCode, MessageType};
 use lichen_hal::Radio;
 use lichen_oscore::{Context, COAP_OPTION_OSCORE};
 
-use crate::stack::{Stack, TxError, RxError, ReceivedIpv6};
+use crate::stack::{ReceivedIpv6, RxError, Stack, TxError};
 use lichen_core::addr::NodeId;
 use lichen_ipv6::Addr;
 
@@ -98,6 +98,7 @@ impl<R: Radio> SecureStack<R> {
     }
 
     /// Get context for peer.
+    #[allow(dead_code)] // read-only counterpart of get_context_mut, unused so far
     fn get_context(&self, peer_iid: &[u8; 8]) -> Option<&Context> {
         self.contexts.get(peer_iid)
     }
@@ -132,7 +133,9 @@ impl<R: Radio> SecureStack<R> {
         uri_path: &[&str],
         token: &[u8],
     ) -> Result<(u16, Vec<u8>), SecureError> {
-        let ctx = self.get_context_mut(peer_iid).ok_or(SecureError::NoContext)?;
+        let ctx = self
+            .get_context_mut(peer_iid)
+            .ok_or(SecureError::NoContext)?;
 
         // Build inner CoAP (will be encrypted)
         // Inner message: code + Uri-Path options (class E)
@@ -233,19 +236,19 @@ impl<R: Radio> SecureStack<R> {
 
         // Find OSCORE option
         let mut oscore_opt = None;
-        for opt_result in pkt.options() {
-            if let Ok(opt) = opt_result {
-                if opt.number == OSCORE_OPTION {
-                    oscore_opt = Some(opt.value);
-                    break;
-                }
+        for opt in pkt.options().flatten() {
+            if opt.number == OSCORE_OPTION {
+                oscore_opt = Some(opt.value);
+                break;
             }
         }
 
         let oscore_opt = oscore_opt.ok_or(SecureError::DecryptFailed)?;
         let ciphertext = pkt.payload();
 
-        let ctx = self.get_context_mut(peer_iid).ok_or(SecureError::NoContext)?;
+        let ctx = self
+            .get_context_mut(peer_iid)
+            .ok_or(SecureError::NoContext)?;
 
         // SECURITY: Use unprotect_response for proper response semantics per RFC 8613.
         // Responses may omit PIV (using request_piv instead) and don't need replay protection.

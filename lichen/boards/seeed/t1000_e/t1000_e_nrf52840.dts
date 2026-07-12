@@ -76,7 +76,9 @@
 		reset-gpios = <&gpio1 10 GPIO_ACTIVE_LOW>;
 		busy-gpios  = <&gpio0  7 GPIO_ACTIVE_HIGH>;
 		dio9-gpios  = <&gpio1  1 GPIO_ACTIVE_HIGH>;
-		spi-max-frequency = <8000000>;
+		/* 1 MHz (from 8 MHz): conservative SPI clock — reduces USB-EasyDMA vs
+		 * SPIM-EasyDMA contention that intermittently wedges a transfer. */
+		spi-max-frequency = <1000000>;
 	};
 };
 
@@ -124,25 +126,25 @@ zephyr_udc0: &usbd {
 		/*
 		 * Adafruit UF2 bootloader layout for Seeed T1000-E:
 		 *   0x0000-0x0FFF  Nordic MBR (protected, not writeable via UF2)
-		 *   0x1000-0x25FFF SoftDevice placeholder (unused, 148 KB)
-		 *   0x26000        APP_START_ADDR — where the Adafruit bootloader jumps
-		 *   0xEA000+       Adafruit UF2 bootloader itself
+		 *   0x1000         APP_START_ADDR — where the Adafruit bootloader jumps
+		 *                  (no SoftDevice; LICHEN uses the Zephyr BLE stack)
+		 *   0xF4000+       Adafruit UF2 bootloader itself
 		 */
-		boot_partition: partition@26000 {
+		boot_partition: partition@1000 {
 			label = "mcuboot";
-			reg = <0x00026000 0x0000C000>;
+			reg = <0x00001000 0x0000C000>;
 		};
-		slot0_partition: partition@32000 {
+		slot0_partition: partition@d000 {
 			label = "image-0";
-			reg = <0x00032000 0x0005A000>;
+			reg = <0x0000D000 0x00059000>;
 		};
-		slot1_partition: partition@8c000 {
+		slot1_partition: partition@66000 {
 			label = "image-1";
-			reg = <0x0008C000 0x0005A000>;
+			reg = <0x00066000 0x00059000>;
 		};
-		storage_partition: partition@e6000 {
+		storage_partition: partition@bf000 {
 			label = "storage";
-			reg = <0x000e6000 0x00004000>;
+			reg = <0x000bf000 0x00004000>;
 		};
 	};
 };

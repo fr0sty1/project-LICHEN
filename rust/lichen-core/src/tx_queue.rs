@@ -466,7 +466,7 @@ impl TxQueue {
     pub fn estimated_drain_time_ms(&self, airtime_per_byte_us: u32) -> u64 {
         let total_us = (self.bytes_pending as u64) * (airtime_per_byte_us as u64);
         // Round up to next millisecond
-        (total_us + 999) / 1000
+        total_us.div_ceil(1000)
     }
 }
 

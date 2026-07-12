@@ -50,7 +50,10 @@ impl OscoreSeqNum {
     #[inline]
     #[must_use = "returns a new value; does not modify self"]
     pub fn increment(self) -> Self {
-        debug_assert!(self.0 < u32::MAX, "OSCORE sequence number overflow - context must be renegotiated");
+        debug_assert!(
+            self.0 < u32::MAX,
+            "OSCORE sequence number overflow - context must be renegotiated"
+        );
         Self(self.0.wrapping_add(1))
     }
 
@@ -120,7 +123,12 @@ impl OscoreSeqNum {
             }
             // Use only the last 4 bytes
             let start = piv.len() - 4;
-            return Self(u32::from_be_bytes([piv[start], piv[start + 1], piv[start + 2], piv[start + 3]]));
+            return Self(u32::from_be_bytes([
+                piv[start],
+                piv[start + 1],
+                piv[start + 2],
+                piv[start + 3],
+            ]));
         }
         Self(piv.iter().fold(0u32, |acc, &b| (acc << 8) | (b as u32)))
     }

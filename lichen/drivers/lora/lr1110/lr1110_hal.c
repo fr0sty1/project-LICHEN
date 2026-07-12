@@ -27,6 +27,22 @@ LOG_MODULE_DECLARE(lr1110, CONFIG_LORA_LOG_LEVEL);
 /* Provided by lr1110.c — single-instance statics */
 extern const struct spi_dt_spec  lr1110_bus;
 extern const struct gpio_dt_spec lr1110_gpio_busy;
+
+/* Application-provided progress hook (weak no-op in lr1110.c). */
+extern void lichen_radio_progress(void);
+
+/* The LR1110 uses the non-DMA nRF SPI (see the board DTS): its transfers are
+ * CPU-driven and can't wedge on USB/SPIM EasyDMA bus contention, so a plain
+ * blocking transfer is safe. Bump the progress heartbeat on completion. */
+static int lr1110_spi_bounded(const struct spi_buf_set *tx,
+			      const struct spi_buf_set *rx)
+{
+	int ret = rx ? spi_transceive_dt(&lr1110_bus, tx, rx)
+		     : spi_write_dt(&lr1110_bus, tx);
+
+	lichen_radio_progress();
+	return ret;
+}
 extern const struct gpio_dt_spec lr1110_gpio_reset;
 
 /* LR1110 SetSleep command opcode (puts chip to sleep immediately) */
@@ -45,7 +61,12 @@ extern const struct gpio_dt_spec lr1110_gpio_reset;
  */
 #define LR1110_HAL_MAX_READ_DATA  256U
 #define LR1110_HAL_MAX_WRITE_DATA 256U
-static const uint8_t nop_pad[1U + LR1110_HAL_MAX_READ_DATA];
+/* RAM, not const/flash: the nRF SPIM driver bounces flash-resident TX
+ * buffers through an 8-byte RAM buffer, splitting the transfer into many
+ * DMA sub-chunks — and this chip corrupts multi-chunk commands (the same
+ * failure that truncated TX payloads at 32 B; bd r002). In RAM the NOP
+ * phase is one continuous DMA transfer. Zero-initialized = NOP bytes. */
+static uint8_t nop_pad[1U + LR1110_HAL_MAX_READ_DATA];
 static atomic_t last_error;
 
 /* Timeout for BUSY pin to go low after command. 1s is generous for any
@@ -83,6 +104,7 @@ static int wait_busy(void)
 		if (pin_val == 0) {
 			return 0; /* BUSY cleared */
 		}
+		lichen_radio_progress(); /* slow-but-progressing: don't trip the WDT */
 		k_sleep(K_MSEC(1));
 		timeout--;
 	}
@@ -116,7 +138,7 @@ lr1110_hal_status_t lr1110_hal_write(const void *context,
 		.count   = data_length ? 2U : 1U,
 	};
 
-	if (spi_write_dt(&lr1110_bus, &tx)) {
+	if (lr1110_spi_bounded(&tx, NULL)) {
 		LOG_ERR("SPI write failed");
 		record_error(-EIO);
 		return LR1110_HAL_STATUS_ERROR;
@@ -154,7 +176,7 @@ lr1110_hal_status_t lr1110_hal_read(const void *context,
 	struct spi_buf cmd_buf = { .buf = (void *)command, .len = command_length };
 	const struct spi_buf_set cmd_tx = { .buffers = &cmd_buf, .count = 1 };
 
-	if (spi_write_dt(&lr1110_bus, &cmd_tx)) {
+	if (lr1110_spi_bounded(&cmd_tx, NULL)) {
 		LOG_ERR("SPI cmd write failed");
 		record_error(-EIO);
 		return LR1110_HAL_STATUS_ERROR;
@@ -173,7 +195,7 @@ lr1110_hal_status_t lr1110_hal_read(const void *context,
 	const struct spi_buf_set rx_tx = { .buffers = &tx_buf,  .count = 1 };
 	const struct spi_buf_set rx_rx = { .buffers = rx_bufs,  .count = 2 };
 
-	if (spi_transceive_dt(&lr1110_bus, &rx_tx, &rx_rx)) {
+	if (lr1110_spi_bounded(&rx_tx, &rx_rx)) {
 		LOG_ERR("SPI read failed");
 		record_error(-EIO);
 		return LR1110_HAL_STATUS_ERROR;
@@ -194,7 +216,7 @@ lr1110_hal_status_t lr1110_hal_write_read(const void *context,
 	const struct spi_buf_set tx = { .buffers = &tx_buf, .count = 1 };
 	const struct spi_buf_set rx = { .buffers = &rx_buf, .count = 1 };
 
-	if (spi_transceive_dt(&lr1110_bus, &tx, &rx)) {
+	if (lr1110_spi_bounded(&tx, &rx)) {
 		LOG_ERR("SPI write_read failed");
 		record_error(-EIO);
 		return LR1110_HAL_STATUS_ERROR;

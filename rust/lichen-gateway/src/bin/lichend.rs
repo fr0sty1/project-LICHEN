@@ -400,7 +400,7 @@ impl TunLike for () {
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 fn parse_node_id(hex: &str) -> Result<NodeId, String> {
-    if hex.len() % 2 != 0 {
+    if !hex.len().is_multiple_of(2) {
         return Err("hex string must have even length".to_string());
     }
     let bytes = (0..hex.len())

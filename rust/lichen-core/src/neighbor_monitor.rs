@@ -72,7 +72,10 @@ impl<const L: usize> NeighborTxLog<L> {
     /// Count packets within the current window.
     pub fn packet_count(&self, now_ms: u64) -> usize {
         let window_start = now_ms.saturating_sub(WINDOW_MS);
-        self.timestamps.iter().filter(|&&ts| ts >= window_start).count()
+        self.timestamps
+            .iter()
+            .filter(|&&ts| ts >= window_start)
+            .count()
     }
 
     /// Check if flagged as a cheater.
@@ -255,7 +258,7 @@ impl<const N: usize, const L: usize> NeighborMonitor<N, L> {
 
     /// Check if a specific neighbor is flagged as a cheater.
     pub fn is_cheater(&self, addr: NodeId) -> bool {
-        self.get_log(addr).map_or(false, |log| log.is_flagged())
+        self.get_log(addr).is_some_and(|log| log.is_flagged())
     }
 
     /// Get the packet count for a neighbor within the current window.
@@ -598,7 +601,11 @@ mod tests {
         let interval_ms = 5 * 60 * 1000u64;
         for i in 0..12 {
             let is_cheater = monitor.record_and_check(neighbor, i * interval_ms);
-            assert!(!is_cheater, "Honest neighbor wrongly flagged at packet {}", i);
+            assert!(
+                !is_cheater,
+                "Honest neighbor wrongly flagged at packet {}",
+                i
+            );
         }
 
         assert_eq!(monitor.packet_count(neighbor, 12 * interval_ms), Some(12));

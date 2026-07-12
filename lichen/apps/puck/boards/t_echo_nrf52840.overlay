@@ -1,15 +1,39 @@
 /*
- * T-Echo puck overlay — enables the SX1262 LoRa radio and wires it
- * into the Zephyr LoRa subsystem.
+ * T-Echo puck overlay — SX1262 LoRa + USB CDC-ACM.
+ *
+ * Three CDC-ACM UARTs:
+ *   cdc_acm_uart0 (if00) — LICHEN Native framing protocol
+ *   cdc_acm_uart1 (if02) — Zephyr console/log output
+ *   cdc_acm_uart2 (if04) — SMP image management (mcumgr / smp-flash.py)
+ *
+ * Separating them prevents console printk from corrupting LICHEN binary
+ * frames or SMP packets, and allows log output even when the host tool
+ * isn't attached. SMP on its own port makes reflash-over-running-firmware
+ * the routine dev path (no DFU / button press needed).
  */
 
 / {
 	chosen {
-		zephyr,lora = &lora;
+		zephyr,lora        = &lora;
+		zephyr,console     = &cdc_acm_uart1;
+		zephyr,shell-uart  = &cdc_acm_uart1;
+		lichen,native-uart = &cdc_acm_uart0;
+		zephyr,uart-mcumgr = &cdc_acm_uart2;
 	};
 };
 
-/* Enable the SX1262 node (disabled by default in the board DTS) */
 &lora {
 	status = "okay";
+};
+
+&zephyr_udc0 {
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+	cdc_acm_uart1: cdc_acm_uart1 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+	cdc_acm_uart2: cdc_acm_uart2 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
 };

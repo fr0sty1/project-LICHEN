@@ -386,7 +386,10 @@ mod tests {
     fn wrong_version() {
         let mut pkt = [0u8; 40];
         pkt[0] = 0x40; // version 4
-        assert_eq!(Ipv6Header::from_bytes(&pkt), Err(Ipv6Error::WrongVersion(4)));
+        assert_eq!(
+            Ipv6Header::from_bytes(&pkt),
+            Err(Ipv6Error::WrongVersion(4))
+        );
     }
 
     #[test]
@@ -425,7 +428,7 @@ mod tests {
         let mut ext = [0u8; 8];
         ext[0] = next_header::UDP; // next header
         ext[1] = 0; // hdr_ext_len = 0 means 8 bytes total
-        // bytes 2-7 are padding (already zero)
+                    // bytes 2-7 are padding (already zero)
 
         let (hdr, consumed) = ExtensionHeader::from_bytes(next_header::HOP_BY_HOP, &ext).unwrap();
         assert_eq!(consumed, 8);
@@ -455,13 +458,8 @@ mod tests {
         let mut buf = [0u8; 8];
         // 6 bytes of options data (+ 2 byte prefix = 8 bytes total)
         let opts = [0x01, 0x04, 0x00, 0x00, 0x00, 0x00]; // PadN(4)
-        let n = write_extension_header(
-            next_header::HOP_BY_HOP,
-            next_header::UDP,
-            &opts,
-            &mut buf,
-        )
-        .unwrap();
+        let n = write_extension_header(next_header::HOP_BY_HOP, next_header::UDP, &opts, &mut buf)
+            .unwrap();
         assert_eq!(n, 8);
         assert_eq!(buf[0], next_header::UDP);
         assert_eq!(buf[1], 0); // hdr_ext_len
@@ -497,7 +495,7 @@ mod tests {
         let mut payload = [0u8; 16];
         payload[0] = next_header::UDP; // next header after hop-by-hop
         payload[1] = 0; // hdr_ext_len=0 (8 bytes)
-        // UDP header would start at offset 8
+                        // UDP header would start at offset 8
 
         let info = walk_extension_chain(&payload, next_header::HOP_BY_HOP).unwrap();
         assert_eq!(info.upper_protocol, next_header::UDP);
@@ -511,7 +509,7 @@ mod tests {
         // Hop-by-Hop header
         payload[0] = next_header::ROUTING;
         payload[1] = 0; // 8 bytes
-        // Routing header at offset 8
+                        // Routing header at offset 8
         payload[8] = next_header::ICMPV6;
         payload[9] = 1; // 16 bytes
 

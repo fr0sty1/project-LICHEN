@@ -225,7 +225,7 @@ fn dec_int(data: &[u8], pos: usize) -> Result<(i64, usize), CborError> {
     }
 }
 
-fn dec_text<'a>(data: &'a [u8], pos: usize) -> Result<(&'a str, usize), CborError> {
+fn dec_text(data: &[u8], pos: usize) -> Result<(&str, usize), CborError> {
     let (major, len, adv) = dec_head(data, pos)?;
     if major != 3 {
         return Err(CborError::InvalidInput);
@@ -401,7 +401,7 @@ fn skip_one_depth(data: &[u8], pos: usize, depth: usize) -> Result<usize, CborEr
             Ok(cur - pos)
         }
         7 => match info {
-            20 | 21 | 22 | 23 => Ok(1),
+            20..=23 => Ok(1),
             25 => {
                 if pos + 3 > data.len() {
                     return Err(CborError::InvalidInput);
@@ -440,55 +440,55 @@ pub fn decode<'a>(data: &'a [u8], buf: &mut [Record<'a>]) -> Result<usize, CborE
     if n_recs > buf.len() {
         return Err(CborError::InvalidInput);
     }
-    for i in 0..n_recs {
+    for rec in buf.iter_mut().take(n_recs) {
         let (major, n_kv, adv) = dec_head(data, pos)?;
         if major != 5 {
             return Err(CborError::InvalidInput);
         }
         pos += adv;
-        buf[i] = Record::empty();
+        *rec = Record::empty();
         for _ in 0..n_kv {
             let (key, adv) = dec_int(data, pos)?;
             pos += adv;
             match key {
                 -2 => {
                     let (s, adv) = dec_text(data, pos)?;
-                    buf[i].base_name = Some(s);
+                    rec.base_name = Some(s);
                     pos += adv;
                 }
                 -3 => {
                     let (f, adv) = dec_f64(data, pos)?;
-                    buf[i].base_time = Some(f);
+                    rec.base_time = Some(f);
                     pos += adv;
                 }
                 0 => {
                     let (s, adv) = dec_text(data, pos)?;
-                    buf[i].name = Some(s);
+                    rec.name = Some(s);
                     pos += adv;
                 }
                 1 => {
                     let (s, adv) = dec_text(data, pos)?;
-                    buf[i].unit = Some(s);
+                    rec.unit = Some(s);
                     pos += adv;
                 }
                 2 => {
                     let (f, adv) = dec_f64(data, pos)?;
-                    buf[i].value = Some(f);
+                    rec.value = Some(f);
                     pos += adv;
                 }
                 3 => {
                     let (s, adv) = dec_text(data, pos)?;
-                    buf[i].string_value = Some(s);
+                    rec.string_value = Some(s);
                     pos += adv;
                 }
                 4 => {
                     let (b, adv) = dec_bool(data, pos)?;
-                    buf[i].bool_value = Some(b);
+                    rec.bool_value = Some(b);
                     pos += adv;
                 }
                 6 => {
                     let (f, adv) = dec_f64(data, pos)?;
-                    buf[i].time = Some(f);
+                    rec.time = Some(f);
                     pos += adv;
                 }
                 _ => {
@@ -569,10 +569,7 @@ mod tests {
         let mut decoded = [Record::empty()];
         let count = decode(&buf[..n], &mut decoded).unwrap();
         assert_eq!(count, 1);
-        assert_eq!(
-            decoded[0].base_name,
-            Some("urn:dev:mac:0123456789abcdef:")
-        );
+        assert_eq!(decoded[0].base_name, Some("urn:dev:mac:0123456789abcdef:"));
         assert_eq!(decoded[0].base_time, Some(1_700_000_000.0));
         assert_eq!(decoded[0].time, Some(0.0));
     }

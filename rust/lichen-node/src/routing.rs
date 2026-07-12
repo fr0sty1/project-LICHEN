@@ -186,6 +186,7 @@ pub struct Router {
     pub trickle: TrickleTimer,
     pub dao_manager: DaoManager,
     pub neighbors: NeighborTable,
+    #[allow(dead_code)] // stored at construction; not yet consulted
     node_addr: [u8; 16],
     dodag_id: [u8; 16],
     /// This node's geographic coordinates for GPSR (spec 9.7).
@@ -226,13 +227,7 @@ impl Router {
     ///
     /// Updates neighbor table, feeds DODAG state machine, and returns whether
     /// the trickle timer should be reset (inconsistent DIO heard).
-    pub fn process_dio(
-        &mut self,
-        dio: &Dio,
-        sender_addr: [u8; 16],
-        rssi: i8,
-        now_ms: u32,
-    ) -> bool {
+    pub fn process_dio(&mut self, dio: &Dio, sender_addr: [u8; 16], rssi: i8, now_ms: u32) -> bool {
         // Update neighbor table with default ETX (1.0 = perfect link)
         let etx = self.neighbors.get_etx(&sender_addr).unwrap_or(1.0);
         self.neighbors.update(&sender_addr, etx, rssi, now_ms);

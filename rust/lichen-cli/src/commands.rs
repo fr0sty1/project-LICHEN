@@ -160,7 +160,7 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
 
             // Derive IID from hashed seed (avoids leaking raw key material)
             // SECURITY: raw seed bytes must never appear in the IID
-            let seed_hash = Sha256::digest(&seed);
+            let seed_hash = Sha256::digest(seed);
             let iid_hex: String = seed_hash[..8].iter().map(|b| format!("{b:02x}")).collect();
 
             // Zeroize seed bytes now that we have the hex representation

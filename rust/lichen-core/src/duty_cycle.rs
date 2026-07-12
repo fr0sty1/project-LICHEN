@@ -96,7 +96,10 @@ impl<const N: usize> DutyCycleTracker<N> {
     /// Debug builds panic if `duty_permille` is 0 or > 1000 (invalid duty cycle).
     pub const fn with_duty_permille(duty_permille: u16) -> Self {
         debug_assert!(duty_permille > 0, "duty_permille must be > 0");
-        debug_assert!(duty_permille <= 1000, "duty_permille must be <= 1000 (100%)");
+        debug_assert!(
+            duty_permille <= 1000,
+            "duty_permille must be <= 1000 (100%)"
+        );
         Self {
             records: Deque::new(),
             duty_permille,
@@ -136,7 +139,9 @@ impl<const N: usize> DutyCycleTracker<N> {
                 total = total.saturating_add(record.duration_ms);
             } else {
                 // Transmission started before window - count only the portion within
-                let tx_end = record.timestamp_ms.saturating_add(record.duration_ms as u64);
+                let tx_end = record
+                    .timestamp_ms
+                    .saturating_add(record.duration_ms as u64);
                 if tx_end > window_start {
                     let overlap = (tx_end - window_start) as u32;
                     total = total.saturating_add(overlap);

@@ -30,7 +30,10 @@ const LOLLIPOP_CIRCULAR_BIT: u8 = 128;
 const LOLLIPOP_SEQUENCE_WINDOW: u8 = 16;
 
 fn version_is_newer(new_ver: u8, old_ver: u8) -> bool {
-    match (new_ver < LOLLIPOP_CIRCULAR_BIT, old_ver < LOLLIPOP_CIRCULAR_BIT) {
+    match (
+        new_ver < LOLLIPOP_CIRCULAR_BIT,
+        old_ver < LOLLIPOP_CIRCULAR_BIT,
+    ) {
         // Both in linear region (0-127): simple comparison
         (true, true) => new_ver > old_ver,
         // Both in circular region (128-255): modular comparison with window
@@ -455,7 +458,10 @@ mod tests {
             ..dio(ROOT_RANK)
         };
         node.process_dio(&restart_dio, ll(2), 1.0);
-        assert_eq!(node.version, 0, "lollipop: version 0 should be accepted as newer than 255");
+        assert_eq!(
+            node.version, 0,
+            "lollipop: version 0 should be accepted as newer than 255"
+        );
     }
 
     #[test]

@@ -374,29 +374,7 @@ class NodeServer:
             await write_message(writer, encode_err(7, str(e)))
             return
 
-        start_time_us = self._simulation.current_time_us
-        timeout_us = timeout_ms * 1000
-        result = None
-        while True:
-            # Check for received packet
-            result = self._simulation.get_rx_result(node_id)
-            if result is not None:
-                break
-
-            self._simulation.maybe_advance_time()
-
-            # Re-check after advancing time (TX may have completed, packet now available)
-            result = self._simulation.get_rx_result(node_id)
-            if result is not None:
-                break
-
-            # Check if we've timed out
-            elapsed_us = self._simulation.current_time_us - start_time_us
-            if elapsed_us >= timeout_us:
-                break
-
-            # Brief delay before next check to avoid busy loop
-            await asyncio.sleep(0.001)  # 1ms polling interval
+        result = await self._await_rx_result(node_id, timeout_ms * 1000)
 
         # Clean up RX state and cancel pending timeout event
         self._simulation.exit_rx_mode(node_id)
@@ -414,6 +392,40 @@ class NodeServer:
         else:
             logger.debug("RX timeout at %s after %d ms", node_id, timeout_ms)
             await write_message(writer, encode_rx_timeout())
+
+    async def _await_rx_result(
+        self,
+        node_id: str,
+        timeout_us: int,
+    ) -> tuple[bytes, int, int] | None:
+        """Wait for a packet or timeout on a node already in RX_WAIT.
+
+        Checks for a deliverable packet before advancing time so advancing
+        can never skip an in-range reception (see maybe_advance_time).
+
+        Args:
+            node_id: The receiving node's ID.
+            timeout_us: Receive timeout in microseconds.
+
+        Returns:
+            Tuple of (payload, rssi, snr), or None on timeout.
+        """
+        start_time_us = self._simulation.current_time_us
+        while True:
+            # Check for received packet
+            result = self._simulation.get_rx_result(node_id)
+            if result is not None:
+                return result
+
+            self._simulation.maybe_advance_time()
+
+            # Check if we've timed out
+            elapsed_us = self._simulation.current_time_us - start_time_us
+            if elapsed_us >= timeout_us:
+                return None
+
+            # Brief delay before next check to avoid busy loop
+            await asyncio.sleep(0.001)  # 1ms polling interval
 
     async def _handle_rx_enter(
         self,

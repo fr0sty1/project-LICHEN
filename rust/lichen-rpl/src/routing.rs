@@ -516,7 +516,10 @@ mod tests {
             addresses,
         };
         let mut buf = [0u8; 37]; // one byte short of needed 38
-        assert!(matches!(srh.write_to(&mut buf), Err(RplError::BufferTooSmall(_))));
+        assert!(matches!(
+            srh.write_to(&mut buf),
+            Err(RplError::BufferTooSmall(_))
+        ));
     }
 
     #[test]
@@ -636,7 +639,10 @@ mod tests {
 
         // Same sequence should also be rejected
         let dao2_copy = dao2.clone();
-        assert!(!root.process_dao(&dao2_copy), "same sequence should be rejected");
+        assert!(
+            !root.process_dao(&dao2_copy),
+            "same sequence should be rejected"
+        );
     }
 
     #[test]

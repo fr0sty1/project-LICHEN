@@ -29,4 +29,12 @@ config LICHEN_NATIVE_RX_STACK_SIZE
 	int "RX thread stack size (bytes)"
 	default 1024
 
+config LICHEN_NATIVE_BUZZER
+	bool "Enable startup buzzer beeps (T1000-E only)"
+	default n
+	help
+	  Emit two beep tones via P0.25/P1.05 on native transport init.
+	  Only for T1000-E which has a buzzer; must not be set on boards
+	  where P0.25 is used for another purpose (e.g. T-Echo LoRa RESET).
+
 endif # LICHEN_NATIVE

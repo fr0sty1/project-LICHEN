@@ -115,7 +115,9 @@ mod tests {
     fn is_gua_range() {
         // 2000::/3 means 2000:: through 3fff::
         let addr_2000 = Ipv6Addr([0x20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
-        let addr_3fff = Ipv6Addr([0x3f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 1]);
+        let addr_3fff = Ipv6Addr([
+            0x3f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 1,
+        ]);
         assert!(addr_2000.is_gua());
         assert!(addr_3fff.is_gua());
 

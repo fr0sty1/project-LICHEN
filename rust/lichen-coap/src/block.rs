@@ -5,8 +5,8 @@
 //! payloads (downloads).
 
 use crate::codec::{CoapBuilder, CoapError, CoapOption};
-use lichen_core::error::BufferTooSmall;
 use crate::option::OptionNumber;
+use lichen_core::error::BufferTooSmall;
 
 /// Block option value (Block1 or Block2).
 ///
@@ -247,7 +247,7 @@ impl BlockSender {
 
     /// Number of blocks needed.
     pub fn block_count(&self) -> u32 {
-        ((self.data_len + self.block_size - 1) / self.block_size) as u32
+        self.data_len.div_ceil(self.block_size) as u32
     }
 
     /// Get the next block to send. Returns (block_option, block_data).
@@ -383,10 +383,10 @@ mod tests {
     #[test]
     fn block_option_roundtrip() {
         let cases = [
-            BlockOption::new(0, false, 2).unwrap(),   // num=0, m=0, szx=2 (64 bytes)
-            BlockOption::new(0, true, 2).unwrap(),    // num=0, m=1, szx=2
-            BlockOption::new(15, false, 6).unwrap(),  // num=15, m=0, szx=6 (1024 bytes)
-            BlockOption::new(255, true, 4).unwrap(),  // num=255, m=1, szx=4
+            BlockOption::new(0, false, 2).unwrap(), // num=0, m=0, szx=2 (64 bytes)
+            BlockOption::new(0, true, 2).unwrap(),  // num=0, m=1, szx=2
+            BlockOption::new(15, false, 6).unwrap(), // num=15, m=0, szx=6 (1024 bytes)
+            BlockOption::new(255, true, 4).unwrap(), // num=255, m=1, szx=4
             BlockOption::new(4095, true, 0).unwrap(), // large block number
         ];
         for original in cases {

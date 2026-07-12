@@ -7,10 +7,10 @@ use lichen_core::constants::RPL_ICMPV6_TYPE;
 use lichen_core::icmpv6::hdr_field;
 use lichen_core::icmpv6::{echo_field, ICMPV6_HEADER_LEN};
 use lichen_core::ipv6::{field, next_header, IPV6_HEADER_LEN};
-use lichen_core::udp::UDP_HEADER_LEN;
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
+use lichen_core::udp::UDP_HEADER_LEN;
 use lichen_core::{addr::Ipv6Addr, addr::NodeId, icmpv6};
 use lichen_schc::codec;
 
@@ -202,7 +202,10 @@ impl Node {
             return None;
         }
         let udp_start = IPV6_HEADER_LEN;
-        Some(u16::from_be_bytes([ipv6[udp_start + 2], ipv6[udp_start + 3]]))
+        Some(u16::from_be_bytes([
+            ipv6[udp_start + 2],
+            ipv6[udp_start + 3],
+        ]))
     }
 
     /// Get both source and destination UDP ports from an IPv6 packet.

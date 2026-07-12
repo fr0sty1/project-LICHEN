@@ -382,10 +382,7 @@ impl<const MTU: usize> MeshtasticGattService<MTU> {
     /// Build a FromRadio response with the 4-byte length header.
     ///
     /// Used when sending data over the FromRadio characteristic.
-    pub fn build_from_radio_response(
-        data: &[u8],
-        out: &mut [u8],
-    ) -> Result<usize, GattError> {
+    pub fn build_from_radio_response(data: &[u8], out: &mut [u8]) -> Result<usize, GattError> {
         if data.len() > u16::MAX as usize {
             return Err(GattError::BufferOverflow);
         }

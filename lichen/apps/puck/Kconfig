@@ -1,0 +1,10 @@
+mainmenu "LICHEN Puck"
+
+config LICHEN_PUCK_BEACON_INTERVAL_MS
+	int "Beacon TX interval (ms)"
+	default 60000
+	help
+	  How often the puck transmits a bare LICHEN announce beacon.
+	  60 s is appropriate for field use; reduce to 5 s for bench testing.
+
+source "Kconfig.zephyr"

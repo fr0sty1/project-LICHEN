@@ -214,14 +214,24 @@ pub fn kiss_unescape(data: &[u8], out: &mut [u8]) -> Result<usize, KissError> {
 /// # Returns
 ///
 /// The number of bytes written to `out`, or an error.
-pub fn kiss_encode(port: u8, command: KissCommand, data: &[u8], out: &mut [u8]) -> Result<usize, KissError> {
+pub fn kiss_encode(
+    port: u8,
+    command: KissCommand,
+    data: &[u8],
+    out: &mut [u8],
+) -> Result<usize, KissError> {
     kiss_encode_raw(port, command as u8, data, out)
 }
 
 /// Encode a KISS frame with raw command byte.
 ///
 /// Use this for non-standard command values. Most callers should use `kiss_encode`.
-pub fn kiss_encode_raw(port: u8, command: u8, data: &[u8], out: &mut [u8]) -> Result<usize, KissError> {
+pub fn kiss_encode_raw(
+    port: u8,
+    command: u8,
+    data: &[u8],
+    out: &mut [u8],
+) -> Result<usize, KissError> {
     if port > 15 {
         return Err(KissError::PortOutOfRange(port));
     }
@@ -292,7 +302,11 @@ pub fn kiss_decode(frame: &[u8]) -> Result<KissFrame<'_>, KissError> {
     // Data is between CMD and final FEND (still escaped)
     let data = &frame[2..end];
 
-    Ok(KissFrame { port, command, data })
+    Ok(KissFrame {
+        port,
+        command,
+        data,
+    })
 }
 
 /// Incremental KISS frame reader for stream transports.
@@ -376,7 +390,10 @@ impl KissReader {
     /// Try to extract one complete frame from buffer.
     ///
     /// Returns the unescaped frame data in `out`, or `None` if no complete frame is available.
-    pub fn try_read_frame<'a>(&mut self, out: &'a mut [u8]) -> Result<Option<KissFrame<'a>>, KissError> {
+    pub fn try_read_frame<'a>(
+        &mut self,
+        out: &'a mut [u8],
+    ) -> Result<Option<KissFrame<'a>>, KissError> {
         // Skip leading non-FEND bytes (sync)
         while self.len > 0 && self.buffer[0] != FEND {
             self.buffer.copy_within(1..self.len, 0);
@@ -495,7 +512,12 @@ impl KissWriter {
     ///
     /// The frame is pre-encoded (FEND delimiters + escaping) and stored in the queue.
     /// Returns an error if the queue is full or the frame is too large.
-    pub fn queue_frame(&mut self, port: u8, cmd: KissCommand, data: &[u8]) -> Result<(), KissError> {
+    pub fn queue_frame(
+        &mut self,
+        port: u8,
+        cmd: KissCommand,
+        data: &[u8],
+    ) -> Result<(), KissError> {
         self.queue_frame_raw(port, cmd as u8, data)
     }
 
@@ -504,8 +526,12 @@ impl KissWriter {
         let mut frame: heapless::Vec<u8, 512> = heapless::Vec::new();
         let mut tmp = [0u8; 512];
         let len = kiss_encode_raw(port, cmd, data, &mut tmp)?;
-        frame.extend_from_slice(&tmp[..len]).map_err(|_| KissError::BufferTooSmall)?;
-        self.queue.push_back(frame).map_err(|_| KissError::BufferTooSmall)?;
+        frame
+            .extend_from_slice(&tmp[..len])
+            .map_err(|_| KissError::BufferTooSmall)?;
+        self.queue
+            .push_back(frame)
+            .map_err(|_| KissError::BufferTooSmall)?;
         Ok(())
     }
 
@@ -606,14 +632,20 @@ mod tests {
     fn test_unescape_truncated() {
         let data = &[FESC];
         let mut out = [0u8; 16];
-        assert_eq!(kiss_unescape(data, &mut out), Err(KissError::TruncatedEscape));
+        assert_eq!(
+            kiss_unescape(data, &mut out),
+            Err(KissError::TruncatedEscape)
+        );
     }
 
     #[test]
     fn test_unescape_invalid() {
         let data = &[FESC, 0x00];
         let mut out = [0u8; 16];
-        assert_eq!(kiss_unescape(data, &mut out), Err(KissError::InvalidEscape(0x00)));
+        assert_eq!(
+            kiss_unescape(data, &mut out),
+            Err(KissError::InvalidEscape(0x00))
+        );
     }
 
     #[test]
@@ -666,13 +698,19 @@ mod tests {
         let len = kiss_encode(0, KissCommand::Data, data, &mut out).unwrap();
 
         // FEND, CMD, A, ESC, TFEND, ESC, TFESC, B, FEND
-        assert_eq!(&out[..len], &[FEND, 0x00, 0x41, FESC, TFEND, FESC, TFESC, 0x42, FEND]);
+        assert_eq!(
+            &out[..len],
+            &[FEND, 0x00, 0x41, FESC, TFEND, FESC, TFESC, 0x42, FEND]
+        );
     }
 
     #[test]
     fn test_encode_port_out_of_range() {
         let mut out = [0u8; 64];
-        assert_eq!(kiss_encode(16, KissCommand::Data, b"", &mut out), Err(KissError::PortOutOfRange(16)));
+        assert_eq!(
+            kiss_encode(16, KissCommand::Data, b"", &mut out),
+            Err(KissError::PortOutOfRange(16))
+        );
     }
 
     #[test]
@@ -747,12 +785,18 @@ mod tests {
 
     #[test]
     fn test_decode_missing_start() {
-        assert_eq!(kiss_decode(&[0x00, 0x00, FEND]), Err(KissError::MissingStartFend));
+        assert_eq!(
+            kiss_decode(&[0x00, 0x00, FEND]),
+            Err(KissError::MissingStartFend)
+        );
     }
 
     #[test]
     fn test_decode_missing_end() {
-        assert_eq!(kiss_decode(&[FEND, 0x00, 0x41]), Err(KissError::MissingEndFend));
+        assert_eq!(
+            kiss_decode(&[FEND, 0x00, 0x41]),
+            Err(KissError::MissingEndFend)
+        );
     }
 
     #[test]
@@ -934,7 +978,9 @@ mod tests {
         let mut out = [0u8; 64];
 
         // Data containing FEND byte
-        writer.queue_frame(0, KissCommand::Data, &[0x41, FEND, 0x42]).unwrap();
+        writer
+            .queue_frame(0, KissCommand::Data, &[0x41, FEND, 0x42])
+            .unwrap();
 
         let len = writer.try_get_frame(&mut out).unwrap();
         assert_eq!(&out[..len], &[FEND, 0x00, 0x41, FESC, TFEND, 0x42, FEND]);

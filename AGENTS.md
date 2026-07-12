@@ -511,6 +511,69 @@ Check `bd list` for issues tracking these decisions.
 
 **We target all hardware that Meshtastic already supports.** This is a reflash, not new hardware. Users with existing Meshtastic devices can flash our firmware.
 
+### Seeed SenseCAP T1000-E
+
+The T1000-E is the primary development target. It uses nRF52840 + LR1110 (LoRa + GNSS) + AG3335 (standalone GNSS).
+
+**Bootloader:** Adafruit nRF52 UF2 bootloader v0.9.1 (Seeed build, family ID `0x28860057`)
+- `APP_START_ADDR = 0x1000` — immediately after the Nordic MBR, no SoftDevice
+- Serial number visible at `/dev/serial/by-id/usb-Seeed_Studio_T1000-E_<serial>-if00`
+
+**Flash layout (LICHEN, no SoftDevice):**
+
+| Partition | Address | Size | Notes |
+|-----------|---------|------|-------|
+| Nordic MBR | `0x0000` | 4 KB | Factory, do not touch |
+| `boot_partition` (MCUboot) | `0x1000` | 48 KB | `APP_START_ADDR` |
+| `slot0_partition` (active app) | `0xD000` | 356 KB | |
+| `slot1_partition` (OTA staging) | `0x66000` | 356 KB | SMP writes here |
+| `storage_partition` | `0xBF000` | 16 KB | |
+| UF2 bootloader | `0xF4000` | ~48 KB | Factory, do not touch |
+| `0xFF000` | `0xFF000` | 4 KB | DFU settings (CRC + image_size) |
+
+**USB enumeration:**
+
+| State | Product string | ttyACM0 | ttyACM1 |
+|-------|---------------|---------|---------|
+| UF2 bootloader | `T1000-E` (Seeed Studio) | DFU CDC | — |
+| LICHEN firmware | `LICHEN Node` (LICHEN Project) | LICHEN Native / console | SMP OTA |
+
+**Why UF2 drag-and-drop cannot be used for initial flash:**
+After the first serial DFU, the bootloader stores `image_size` (the size of what was flashed) in `0xFF000`. The UF2 writer silently rejects writes to addresses above `APP_START_ADDR + image_size`. If that image is 16 KB (a bare MCUboot), writes to `0xD000+` are ignored. Serial DFU is the only reliable initial-flash path.
+
+**Build:**
+```bash
+./build-t1000e.sh              # build puck app (MCUboot auto-built if missing)
+./build-t1000e.sh --mcuboot    # force MCUboot rebuild
+./build-t1000e.sh --clean      # clean and rebuild everything
+```
+
+**Initial flash** (requires UF2 bootloader mode — double-tap reset):
+```bash
+./flash-t1000e.sh              # build if needed, then flash via serial DFU
+./flash-t1000e.sh --rebuild    # force rebuild before flash
+# Override port: T1000E_PORT=/dev/ttyACM1 ./flash-t1000e.sh
+```
+
+**OTA app update** (no reset, LICHEN firmware must be running):
+```bash
+# Start rfc2217 bridge first (port 4005 = ttyACM1 = SMP transport):
+./rfc2217-servers.sh &
+# Then upload:
+python3 smp-flash.py rfc2217://localhost:4005 \
+    build_t1000e_puck/zephyr/zephyr.slot0.signed.bin
+```
+
+**Expected boot sequence:**
+1. `PRE_KERNEL_1` — 3 blinks on P0.24 (LED), via raw GPIO before any driver init
+2. `APPLICATION` — 1 beep (USB CDC init reached)
+3. `APPLICATION` — 2 beeps (LR1110 + GNSS ready, LICHEN Native transport starting)
+4. USB CDC enumerates: `LICHEN Node` on ttyACM0 (console) + ttyACM1 (SMP)
+
+**Board DTS:** `lichen/boards/seeed/t1000_e/t1000_e_nrf52840.dts`
+**App config:** `lichen/apps/puck/boards/t1000_e_nrf52840.conf`
+**Native lib:** `lichen/lib/native/native.c` — USB init, buzzer, PRE_KERNEL_1 blink
+
 Meshtastic-compatible boards include:
 
 | Family | Examples | Radio |

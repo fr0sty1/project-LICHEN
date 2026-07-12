@@ -52,7 +52,9 @@ where
         tcxo_voltage: Option<TcxoCtrlVoltage>,
     ) -> Result<Self, Stm32wlError<SPI::Error>> {
         let config = sx126x::Config {
-            chip: Stm32wl { use_high_power_pa: true },
+            chip: Stm32wl {
+                use_high_power_pa: true,
+            },
             tcxo_ctrl: tcxo_voltage,
             use_dcdc: true,
             rx_boost: false,

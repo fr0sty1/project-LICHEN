@@ -203,7 +203,10 @@ mod tests {
 
         // Get encoded frame
         let len = tnc.try_get_rx_notify(&mut buf).unwrap();
-        assert_eq!(&buf[..len], &[FEND, 0x00, b'H', b'e', b'l', b'l', b'o', FEND]);
+        assert_eq!(
+            &buf[..len],
+            &[FEND, 0x00, b'H', b'e', b'l', b'l', b'o', FEND]
+        );
         assert!(!tnc.has_rx_pending());
     }
 

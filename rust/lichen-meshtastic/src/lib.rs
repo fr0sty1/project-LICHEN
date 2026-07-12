@@ -7,7 +7,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(feature = "alloc")]
+#[cfg(any(feature = "alloc", test))]
 extern crate alloc;
 
 // Include generated protobuf code

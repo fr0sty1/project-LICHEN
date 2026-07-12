@@ -42,9 +42,8 @@ def to_ipv6(value: IPv6Address | str | bytes) -> IPv6Address:
     """
     if isinstance(value, IPv6Address):
         return value
-    if isinstance(value, bytes):
-        if len(value) != 16:
-            raise AddrError(f"packed IPv6 address must be 16 bytes, got {len(value)}")
+    if isinstance(value, bytes) and len(value) != 16:
+        raise AddrError(f"packed IPv6 address must be 16 bytes, got {len(value)}")
     return IPv6Address(value)
 
 

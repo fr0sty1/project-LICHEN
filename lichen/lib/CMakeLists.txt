@@ -1,3 +1,1 @@
-if (CONFIG_LICHEN_NATIVE)
-	add_subdirectory(native)
-endif()
+add_subdirectory(native)

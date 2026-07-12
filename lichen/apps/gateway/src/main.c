@@ -21,6 +21,10 @@
 #include "lora_l2.h"
 #endif
 
+#if IS_ENABLED(CONFIG_LICHEN_L2_DEV_PROVISIONING)
+#include "lichen_l2.h"
+#endif
+
 #include "config_apply.h"
 #include "config_cbor.h"
 #include "status_cbor.h"
@@ -60,9 +64,9 @@ LOG_MODULE_REGISTER(lichen_gateway, LOG_LEVEL_INF);
  */
 #if !IS_ENABLED(CONFIG_LICHEN_L2) && LICHEN_GATEWAY_HAS_LORA
 /* LoRa parameters per LICHEN spec: SF10 / 125 kHz / CR4-5.
- * Frequency is region-dependent; 868 MHz (EU) is the default.
+ * Frequency is region-dependent; 915 MHz (US915) is the default.
  * Override per board via a board-specific Kconfig once that lands. */
-#define LORA_FREQ_HZ     868000000U
+#define LORA_FREQ_HZ     915000000U
 #define LORA_MAX_FRAME   255
 #define LORA_RX_STACKSZ  1024
 #define LORA_RX_PRIORITY 7
@@ -171,6 +175,83 @@ static size_t encode_status_cbor(uint8_t *buf, size_t buf_size, uint16_t rank,
 /* Gateway status state (observable) */
 static uint16_t s_rank = LICHEN_GATEWAY_STATUS_RANK;
 
+/*
+ * Respond with Block2 slicing (RFC 7959) when the payload will not fit a
+ * single LICHEN L2 frame. 128-byte blocks keep each response packet well
+ * under the 240-byte L2 MTU after CoAP/UDP/IPv6 headers; small payloads
+ * still go out as one plain response.
+ */
+#define COAP_BLOCK2_SINGLE_MAX 128U
+
+static int coap_respond_block2(struct coap_resource *resource,
+			       struct coap_packet *request,
+			       struct sockaddr *addr, socklen_t addr_len,
+			       const uint8_t *payload, size_t payload_len)
+{
+	struct coap_block_context ctx;
+	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	struct coap_packet resp;
+	uint8_t token[COAP_TOKEN_MAX_LEN];
+	uint8_t tkl = coap_header_get_token(request, token);
+	uint8_t type = (coap_header_get_type(request) == COAP_TYPE_CON)
+		       ? COAP_TYPE_ACK : COAP_TYPE_NON_CON;
+	int block2 = coap_get_option_int(request, COAP_OPTION_BLOCK2);
+	size_t chunk;
+	int r;
+
+	if (block2 < 0 && payload_len <= COAP_BLOCK2_SINGLE_MAX) {
+		return coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_CONTENT,
+				    payload, payload_len);
+	}
+
+	enum coap_block_size blk = COAP_BLOCK_128;
+
+	if (block2 >= 0 && GET_BLOCK_SIZE(block2) < (int)blk) {
+		/* Serve at the client's (smaller) block size so its block
+		 * numbering stays aligned (RFC 7959 §2.4). Anything <= 128
+		 * fits the L2 MTU. */
+		blk = (enum coap_block_size)GET_BLOCK_SIZE(block2);
+	}
+	coap_block_transfer_init(&ctx, blk, payload_len);
+	if (block2 >= 0) {
+		ctx.current = GET_BLOCK_NUM(block2) *
+			      coap_block_size_to_bytes(blk);
+	}
+	if (ctx.current >= payload_len) {
+		return coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_BAD_OPTION, NULL, 0);
+	}
+
+	r = coap_packet_init(&resp, buf, sizeof(buf), COAP_VERSION_1,
+			     type, tkl, token, COAP_RESPONSE_CODE_CONTENT,
+			     coap_header_get_id(request));
+	if (r < 0) {
+		return r;
+	}
+	r = coap_append_option_int(&resp, COAP_OPTION_CONTENT_FORMAT,
+				   CBOR_CONTENT_FORMAT);
+	if (r < 0) {
+		return r;
+	}
+	r = coap_append_block2_option(&resp, &ctx);
+	if (r < 0) {
+		return r;
+	}
+	r = coap_packet_append_payload_marker(&resp);
+	if (r < 0) {
+		return r;
+	}
+	chunk = MIN((size_t)coap_block_size_to_bytes(blk),
+		    payload_len - ctx.current);
+	r = coap_packet_append_payload(&resp, payload + ctx.current, chunk);
+	if (r < 0) {
+		return r;
+	}
+
+	return coap_resource_send(resource, &resp, addr, addr_len, NULL);
+}
+
 static int status_get(struct coap_resource *resource,
 		      struct coap_packet *request,
 		      struct sockaddr *addr, socklen_t addr_len)
@@ -180,8 +261,8 @@ static int status_get(struct coap_resource *resource,
 					LICHEN_GATEWAY_STATUS_ROLE,
 					LICHEN_GATEWAY_STATUS_RPL_CAPABLE);
 
-	return coap_respond(resource, request, addr, addr_len,
-			    COAP_RESPONSE_CODE_CONTENT, cbor_buf, len);
+	return coap_respond_block2(resource, request, addr, addr_len,
+				   cbor_buf, len);
 }
 
 /*
@@ -494,6 +575,17 @@ int main(void)
 	 * available to the IPv6 stack for sending/receiving packets over LoRa.
 	 */
 	LOG_INF("LICHEN L2 enabled - LoRa handled by network stack");
+
+#if IS_ENABLED(CONFIG_LICHEN_L2_DEV_PROVISIONING)
+	/* SECURITY: bench-only fixed key + static peer; see Kconfig warning. */
+	{
+		int prov = lichen_l2_dev_provision(NULL);
+
+		if (prov != 0) {
+			LOG_ERR("L2 dev provisioning failed: %d", prov);
+		}
+	}
+#endif
 #elif LICHEN_GATEWAY_HAS_LORA
 	int ret;
 

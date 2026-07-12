@@ -43,7 +43,12 @@ fn sum_words(data: &[u8]) -> u32 {
 ///
 /// # Returns
 /// The 16-bit one's-complement checksum (inverted).
-pub fn upper_layer_checksum(src: &[u8; 16], dst: &[u8; 16], next_header: u8, payload: &[u8]) -> u16 {
+pub fn upper_layer_checksum(
+    src: &[u8; 16],
+    dst: &[u8; 16],
+    next_header: u8,
+    payload: &[u8],
+) -> u16 {
     // IPv6 pseudo-header: src + dst + upper-layer-length + zeros + next-header
     let mut sum: u32 = 0;
 

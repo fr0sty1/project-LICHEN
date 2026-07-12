@@ -37,7 +37,9 @@ impl SimRadio {
         let addr = format!("{}:{}", host, port);
         let stream = TcpStream::connect(&addr).map_err(RadioError::Bus)?;
         stream.set_nodelay(true).map_err(RadioError::Bus)?;
-        stream.set_read_timeout(Some(Duration::from_millis(100))).map_err(RadioError::Bus)?;
+        stream
+            .set_read_timeout(Some(Duration::from_millis(100)))
+            .map_err(RadioError::Bus)?;
 
         Ok(Self {
             stream,
@@ -53,7 +55,9 @@ impl SimRadio {
     fn send_message(&mut self, msg: &[u8]) -> Result<(), SimError> {
         // Length prefix (little-endian u32)
         let len = msg.len() as u32;
-        self.stream.write_all(&len.to_le_bytes()).map_err(RadioError::Bus)?;
+        self.stream
+            .write_all(&len.to_le_bytes())
+            .map_err(RadioError::Bus)?;
         self.stream.write_all(msg).map_err(RadioError::Bus)?;
         self.stream.flush().map_err(RadioError::Bus)?;
         Ok(())
@@ -62,7 +66,9 @@ impl SimRadio {
     fn recv_message(&mut self) -> Result<Vec<u8>, SimError> {
         // Read length prefix
         let mut len_buf = [0u8; 4];
-        self.stream.read_exact(&mut len_buf).map_err(RadioError::Bus)?;
+        self.stream
+            .read_exact(&mut len_buf)
+            .map_err(RadioError::Bus)?;
         let len = u32::from_le_bytes(len_buf) as usize;
 
         if len == 0 {
@@ -112,7 +118,9 @@ impl Radio for SimRadio {
 
         // Set read timeout to slightly longer than requested to allow server response
         let read_timeout = Duration::from_millis(timeout_ms as u64 + 1000);
-        self.stream.set_read_timeout(Some(read_timeout)).map_err(RadioError::Bus)?;
+        self.stream
+            .set_read_timeout(Some(read_timeout))
+            .map_err(RadioError::Bus)?;
 
         // Send RX_ENTER: [0x24][timeout_us:4 LE]
         let mut msg = [0u8; 5];

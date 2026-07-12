@@ -524,7 +524,7 @@ mod tests {
     fn rssi_negative_values() {
         let mut stats = RssiStats::new();
         stats.update(-120); // Very weak signal
-        stats.update(-30);  // Strong signal
+        stats.update(-30); // Strong signal
         assert_eq!(stats.min, -120);
         assert_eq!(stats.max, -30);
         // Average should be between -120 and -30
@@ -536,7 +536,7 @@ mod tests {
     fn snr_negative_values() {
         let mut stats = SnrStats::new();
         stats.update(-10); // Poor SNR
-        stats.update(20);  // Good SNR
+        stats.update(20); // Good SNR
         assert_eq!(stats.min, -10);
         assert_eq!(stats.max, 20);
     }
@@ -552,6 +552,10 @@ mod tests {
         }
         // Should be very close to -60 now
         let avg = stats.avg().unwrap();
-        assert!(avg >= -62 && avg <= -60, "avg was {} after convergence", avg);
+        assert!(
+            avg >= -62 && avg <= -60,
+            "avg was {} after convergence",
+            avg
+        );
     }
 }

@@ -113,6 +113,7 @@ struct request_ctx {
 	uint8_t response_buf[LICHEN_COAP_MAX_PAYLOAD];  /* Accumulated response */
 	size_t response_len;  /* Current accumulated length */
 	bool response_oversized;  /* True if any block exceeds response_buf */
+	uint32_t timeout_ms;  /* Per-request timeout, for blockwise re-arm */
 #ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
 	struct oscore_ctx *oscore_ctx;  /* OSCORE context for response decryption */
 	uint8_t request_piv[OSCORE_PIV_MAX_LEN];  /* Request PIV for response */
@@ -265,7 +266,25 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 		}
 	}
 
-	if (last_block) {
+	if (!last_block) {
+		/*
+		 * Intermediate block of a blockwise transfer: the exchange is
+		 * making progress, so push the fallback timeout out by a full
+		 * window. A multi-block response over a slow link (e.g. four
+		 * 64-byte blocks at ~3 s per round trip on SF10 LoRa) is
+		 * otherwise killed by a timeout that only ever measured the
+		 * first request. Timeout thus means "no progress", not
+		 * "not finished yet".
+		 */
+		if (atomic_get(&ctx->completed) == 0 &&
+		    atomic_get(&ctx->timeout_ref_held) == 1) {
+			k_work_reschedule(&ctx->timeout_work,
+					  K_MSEC(ctx->timeout_ms * 2));
+		}
+		return;
+	}
+
+	{
 		/* Claim ownership and clean up */
 		if (atomic_set(&ctx->completed, 1) != 0) {
 			return;  /* Lost race to timeout */
@@ -380,6 +399,7 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 	ctx->user_data = req->user_data;
 	ctx->response_len = 0;
 	ctx->response_oversized = false;
+	ctx->timeout_ms = timeout_ms;
 	atomic_set(&ctx->refs, 2);  /* CoAP callback path + submitter path */
 	atomic_set(&ctx->completed, 0);
 	atomic_set(&ctx->timeout_ref_held, 0);

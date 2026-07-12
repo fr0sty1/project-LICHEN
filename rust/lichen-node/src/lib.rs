@@ -53,16 +53,18 @@ pub mod routing;
 #[cfg(feature = "std")]
 pub mod scheduler;
 #[cfg(feature = "std")]
-pub mod stack;
-#[cfg(feature = "std")]
 pub mod secure;
+#[cfg(feature = "std")]
+pub mod stack;
 
-pub use dispatch::{Dispatcher, Resource, Request, Response};
+pub use dispatch::{Dispatcher, Request, Resource, Response};
 pub use node::{Node, RplEvent};
-pub use port_dispatch::{dispatch_by_port, AppProtocol, DispatchError, Dispatched, UdpDispatchError};
+pub use port_dispatch::{
+    dispatch_by_port, AppProtocol, DispatchError, Dispatched, UdpDispatchError,
+};
 #[cfg(feature = "std")]
 pub use node::RplNode;
-pub use routing::{NeighborTable, Neighbor};
+pub use routing::{Neighbor, NeighborTable};
 #[cfg(feature = "std")]
 pub use routing::{Router, DtnBuffer, DtnMessage, DTN_BUFFER_MAX_BYTES};
 pub use gradient::{GradientEntry, GradientSource, GeoCoords, GRADIENT_TIMEOUT_MS, DATA_GRADIENT_TIMEOUT_MS};
@@ -74,9 +76,9 @@ pub use hybrid::{HybridRouter, PendingPacket, MeshPrefix};
 // SECURITY: SecureStack is the primary export for CoAP traffic per spec section 8.7.
 // Use Stack (PlaintextStack) only for ICMPv6, diagnostics, or testing.
 #[cfg(feature = "std")]
-pub use secure::{SecureStack, SecureError};
+pub use secure::{SecureError, SecureStack};
 #[cfg(feature = "std")]
-pub use stack::{Stack, TxError, RxError, ReceivedIpv6};
+pub use stack::{ReceivedIpv6, RxError, Stack, TxError};
 /// Type alias for `Stack` — use only for ICMPv6, diagnostics, or testing.
 /// For CoAP traffic, use [`SecureStack`] instead (per spec section 8.7).
 #[cfg(feature = "std")]
@@ -88,7 +90,7 @@ pub use scheduler::{AnnounceScheduler, AnnounceTransmitter, SchedulerConfig, Sch
 #[cfg(feature = "std")]
 pub use forward_buffer::{ForwardBuffer, ForwardEntry, ForwardError, ForwardStats, MAX_FORWARDING_SOURCES, MAX_PACKETS_PER_SOURCE};
 #[cfg(feature = "std")]
-pub use announce::{AnnounceProcessor, AnnounceRejectReason, AnnounceResult, seq_gt, MAX_TRACKED_ORIGINATORS};
+pub use announce::{AnnounceProcessor, AnnounceRejectReason, AnnounceResult, seq_gt, MAX_TRACKED_ORIGINATORS}
 
 #[cfg(feature = "std")]
 extern crate std;

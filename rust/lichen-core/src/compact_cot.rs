@@ -444,7 +444,10 @@ fn encode_pli(
     buf: &mut [u8],
 ) -> Result<usize, EncodeError> {
     if buf.is_empty() {
-        return Err(EncodeError::BufferTooSmall(BufferTooSmall::new(PLI_TOTAL_SIZE, 0)));
+        return Err(EncodeError::BufferTooSmall(BufferTooSmall::new(
+            PLI_TOTAL_SIZE,
+            0,
+        )));
     }
     buf[0] = subtype as u8;
     payload

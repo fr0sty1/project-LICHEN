@@ -568,7 +568,9 @@ class LinkLayer:
         # O(n) is unavoidable without sender IID in frame format.
         if self.peer_lookup_all is not None:
             for candidate in self.peer_lookup_all():
-                if (peer is None or candidate.pubkey != peer.pubkey) and verify(candidate.pubkey, signable, signature):
+                if (peer is None or candidate.pubkey != peer.pubkey) and verify(
+                    candidate.pubkey, signable, signature
+                ):
                     return candidate
 
         return None

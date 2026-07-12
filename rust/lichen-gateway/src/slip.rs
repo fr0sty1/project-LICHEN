@@ -455,7 +455,9 @@ mod tests {
     fn framer_rx_with_escapes() {
         let mut framer = SlipFramer::new();
         // "A" + FEND (escaped) + "B"
-        let packets: Vec<_> = framer.feed(&[FEND, b'A', FESC, TFEND, b'B', FEND]).collect();
+        let packets: Vec<_> = framer
+            .feed(&[FEND, b'A', FESC, TFEND, b'B', FEND])
+            .collect();
         assert_eq!(packets.len(), 1);
         assert_eq!(packets[0], &[b'A', FEND, b'B']);
     }

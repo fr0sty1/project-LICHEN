@@ -238,7 +238,12 @@ impl KissBridge {
     /// # Returns
     ///
     /// Number of bytes written to `out`, or error.
-    pub fn encode_payload(&self, payload: &[u8], port: u8, out: &mut [u8]) -> Result<usize, BridgeError> {
+    pub fn encode_payload(
+        &self,
+        payload: &[u8],
+        port: u8,
+        out: &mut [u8],
+    ) -> Result<usize, BridgeError> {
         if payload.len() > MAX_PAYLOAD {
             return Err(BridgeError::PayloadTooLarge);
         }
@@ -386,7 +391,9 @@ mod tests {
         let len = kiss_encode(0, KissCommand::Data, b"Hello", &mut kiss_buf).unwrap();
 
         let mut payload_buf = [0u8; 64];
-        let decoded = bridge.decode_kiss_frame(&kiss_buf[..len], &mut payload_buf).unwrap();
+        let decoded = bridge
+            .decode_kiss_frame(&kiss_buf[..len], &mut payload_buf)
+            .unwrap();
 
         assert_eq!(decoded.port, 0);
         assert_eq!(decoded.payload, b"Hello");
@@ -400,7 +407,9 @@ mod tests {
         let len = kiss_encode(1, KissCommand::Data, b"Raw", &mut kiss_buf).unwrap();
 
         let mut payload_buf = [0u8; 64];
-        let decoded = bridge.decode_kiss_frame(&kiss_buf[..len], &mut payload_buf).unwrap();
+        let decoded = bridge
+            .decode_kiss_frame(&kiss_buf[..len], &mut payload_buf)
+            .unwrap();
 
         assert_eq!(decoded.port, 1);
         assert_eq!(decoded.payload, b"Raw");
@@ -429,7 +438,9 @@ mod tests {
 
         // Decode it back
         let mut payload_buf = [0u8; 64];
-        let decoded = bridge.decode_kiss_frame(&out[..len], &mut payload_buf).unwrap();
+        let decoded = bridge
+            .decode_kiss_frame(&out[..len], &mut payload_buf)
+            .unwrap();
 
         assert_eq!(decoded.port, PORT_RAW);
         assert_eq!(decoded.payload, b"Test");
@@ -445,11 +456,14 @@ mod tests {
 
         // Wrap in KISS frame on port 1 (raw)
         let mut kiss_buf = [0u8; 64];
-        let kiss_len = kiss_encode(PORT_RAW, KissCommand::Data, lichen_bytes, &mut kiss_buf).unwrap();
+        let kiss_len =
+            kiss_encode(PORT_RAW, KissCommand::Data, lichen_bytes, &mut kiss_buf).unwrap();
 
         // Decode through bridge
         let mut work_buf = [0u8; 256];
-        let frame = bridge.handle_kiss_frame(&kiss_buf[..kiss_len], &mut work_buf).unwrap();
+        let frame = bridge
+            .handle_kiss_frame(&kiss_buf[..kiss_len], &mut work_buf)
+            .unwrap();
 
         assert_eq!(frame.epoch, 1);
         assert_eq!(frame.seqnum.get(), 2);
@@ -476,11 +490,15 @@ mod tests {
 
         let mut work_buf = [0u8; 256];
         let mut out = [0u8; 64];
-        let len = bridge.encode_link_frame(&frame, PORT_RAW, &mut work_buf, &mut out).unwrap();
+        let len = bridge
+            .encode_link_frame(&frame, PORT_RAW, &mut work_buf, &mut out)
+            .unwrap();
 
         // Decode it back
         let mut decode_buf = [0u8; 256];
-        let decoded_frame = bridge.handle_kiss_frame(&out[..len], &mut decode_buf).unwrap();
+        let decoded_frame = bridge
+            .handle_kiss_frame(&out[..len], &mut decode_buf)
+            .unwrap();
 
         assert_eq!(decoded_frame.epoch, 5);
         assert_eq!(decoded_frame.seqnum.get(), 100);
@@ -495,14 +513,18 @@ mod tests {
 
         let mut work_buf = [0u8; 256];
         let mut out = [0u8; 128];
-        let len = bridge.encode_payload_as_frame(b"hello", &[], PORT_RAW, &mut work_buf, &mut out).unwrap();
+        let len = bridge
+            .encode_payload_as_frame(b"hello", &[], PORT_RAW, &mut work_buf, &mut out)
+            .unwrap();
 
         // Verify seqnum incremented
         assert_eq!(bridge.seqnum().get(), 11);
 
         // Decode and verify
         let mut decode_buf = [0u8; 256];
-        let frame = bridge.handle_kiss_frame(&out[..len], &mut decode_buf).unwrap();
+        let frame = bridge
+            .handle_kiss_frame(&out[..len], &mut decode_buf)
+            .unwrap();
 
         assert_eq!(frame.epoch, 3);
         assert_eq!(frame.seqnum.get(), 10);
@@ -517,10 +539,14 @@ mod tests {
         let dst_addr = [0xAB, 0xCD];
         let mut work_buf = [0u8; 256];
         let mut out = [0u8; 128];
-        let len = bridge.encode_payload_as_frame(b"hi", &dst_addr, PORT_RAW, &mut work_buf, &mut out).unwrap();
+        let len = bridge
+            .encode_payload_as_frame(b"hi", &dst_addr, PORT_RAW, &mut work_buf, &mut out)
+            .unwrap();
 
         let mut decode_buf = [0u8; 256];
-        let frame = bridge.handle_kiss_frame(&out[..len], &mut decode_buf).unwrap();
+        let frame = bridge
+            .handle_kiss_frame(&out[..len], &mut decode_buf)
+            .unwrap();
 
         assert_eq!(frame.dst_addr, &[0xAB, 0xCD]);
         assert_eq!(frame.addr_mode, AddrMode::Short);
@@ -535,10 +561,14 @@ mod tests {
         let payload_with_specials: &[u8] = &[0x41, 0xC0, 0xDB, 0x42];
 
         let mut out = [0u8; 64];
-        let len = bridge.encode_payload(payload_with_specials, PORT_RAW, &mut out).unwrap();
+        let len = bridge
+            .encode_payload(payload_with_specials, PORT_RAW, &mut out)
+            .unwrap();
 
         let mut decode_buf = [0u8; 64];
-        let decoded = bridge.decode_kiss_frame(&out[..len], &mut decode_buf).unwrap();
+        let decoded = bridge
+            .decode_kiss_frame(&out[..len], &mut decode_buf)
+            .unwrap();
 
         assert_eq!(decoded.payload, payload_with_specials);
     }
@@ -577,6 +607,9 @@ mod tests {
         let mut work_buf = [0u8; 256];
         let result = bridge.handle_kiss_frame(&kiss_buf[..len], &mut work_buf);
 
-        assert!(matches!(result, Err(BridgeError::UnsupportedPort(PORT_AX25))));
+        assert!(matches!(
+            result,
+            Err(BridgeError::UnsupportedPort(PORT_AX25))
+        ));
     }
 }

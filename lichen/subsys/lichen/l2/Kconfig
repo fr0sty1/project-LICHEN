@@ -6,6 +6,11 @@
 config LICHEN_IPV6
 	bool "LICHEN IPv6 address utilities"
 	depends on LICHEN
+	# The l2 library always compiles lichen_util.c (EUI-64 derivation),
+	# which needs TinyCrypt SHA-256 — select it here, not only from
+	# LICHEN_LORA_L2, so radio-less builds (native_sim) link too.
+	select TINYCRYPT
+	select TINYCRYPT_SHA256
 	default y
 	help
 	  Enable LICHEN IPv6 address utilities:
@@ -136,6 +141,30 @@ config LICHEN_L2_RX_ALLOC_TIMEOUT_MS
 	  For LoRa's low data rate, 50 ms is reasonable. If RX packet
 	  allocation fails under memory pressure, increase this value or add
 	  more NET_BUF_RX buffers.
+
+config LICHEN_L2_DEV_PROVISIONING
+	bool "INSECURE: fixed development link key and static peer"
+	depends on LICHEN_L2
+	default n
+	help
+	  Provision the link layer at boot with a fixed, publicly-known
+	  Ed25519 seed (shared by every node built with this option) and
+	  register the single peer named by LICHEN_L2_DEV_PEER_EUI64.
+
+	  SECURITY: This provides NO authentication — the seed is in the
+	  source tree, so anyone can forge frames. It exists only so the
+	  CoAP/IPv6-over-LoRa path can run on the bench before the real
+	  announce/EDHOC peer provisioning lands. Never enable in
+	  production builds.
+
+config LICHEN_L2_DEV_PEER_EUI64
+	string "Dev peer EUI-64 (16 hex chars, ':' separators allowed)"
+	depends on LICHEN_L2_DEV_PROVISIONING
+	default ""
+	help
+	  EUI-64 of the single peer to accept signed frames from, e.g.
+	  "f4ce36001234abcd" or "f4:ce:36:00:12:34:ab:cd". Each node logs
+	  its own EUI-64 / link-local address at boot.
 
 config LICHEN_L2_TEST_HOOKS
 	bool "LICHEN L2 ztest-only test hooks"
