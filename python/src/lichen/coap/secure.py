@@ -39,13 +39,15 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+import aiocoap
 from aiocoap import Message
+from aiocoap.numbers.codes import POST
 from aiocoap.oscore import Direction
 
 from lichen.crypto.edhoc import EdhocInitiator, OscoreContext
 from lichen.crypto.oscore import MemorySecurityContext
 
-from .transport import DatagramChannel, LichenRemote, ReceiveCallback
+from .transport import DatagramChannel, LichenRemote, LichenTransport, ReceiveCallback
 
 if TYPE_CHECKING:
     from lichen.crypto.identity import Identity
@@ -54,6 +56,39 @@ logger = logging.getLogger(__name__)
 
 # OSCORE option number (RFC 8613 Section 2)
 OSCORE_OPTION_NUMBER = 9
+
+
+class _EdhocChannel(DatagramChannel):
+    """A channel wrapper for EDHOC exchange that bypasses OSCORE.
+
+    EDHOC messages are sent as raw CoAP over the inner channel. This
+    wrapper ensures EDHOC traffic doesn't get OSCORE-protected (which
+    would fail since we don't have a context yet).
+
+    The SecureDatagramChannel holds a reference to this channel and
+    dispatches EDHOC-related plaintext to it.
+    """
+
+    def __init__(self, inner: DatagramChannel) -> None:
+        self._inner = inner
+        self._receiver: ReceiveCallback | None = None
+
+    def send_datagram(self, data: bytes, dest: str) -> None:
+        self._inner.send_datagram(data, dest)
+
+    def set_receiver(self, receiver: ReceiveCallback) -> None:
+        self._receiver = receiver
+
+    def dispatch(self, data: bytes, source: str) -> None:
+        """Dispatch received data to the registered receiver.
+
+        Called by SecureDatagramChannel when EDHOC-related plaintext arrives.
+        """
+        if self._receiver is not None:
+            self._receiver(data, source)
+
+    def close(self) -> None:
+        pass  # Don't close the inner channel
 
 
 def _monotonic_time() -> float:
@@ -208,6 +243,8 @@ class SecureDatagramChannel(DatagramChannel):
         peer_resolver: EdhocPeerResolver | None = None,
         *,
         require_oscore: bool = True,
+        local_host: str | None = None,
+        edhoc_timeout: float = 30.0,
     ) -> None:
         """Create a secure channel wrapping an inner channel.
 
@@ -219,14 +256,23 @@ class SecureDatagramChannel(DatagramChannel):
             require_oscore: If True, reject plaintext messages. If False,
                 allow passthrough for unprotected messages (useful for
                 transitional deployments).
+            local_host: Our host identifier for CoAP context (required for EDHOC).
+            edhoc_timeout: Timeout in seconds for EDHOC message exchange.
         """
         self._inner = inner
         self._identity = identity
         self._context_store = context_store or OscoreContextStore()
         self._peer_resolver = peer_resolver or TofuPeerResolver()
         self._require_oscore = require_oscore
+        self._local_host = local_host
+        self._edhoc_timeout = edhoc_timeout
         self._receiver: ReceiveCallback | None = None
         self._pending_edhoc: dict[str, asyncio.Future[None]] = {}
+        # Temporary CoAP context and channel for EDHOC exchange (created lazily)
+        self._edhoc_ctx: aiocoap.Context | None = None
+        self._edhoc_channel: _EdhocChannel | None = None
+        # Set of peers with active EDHOC exchange (allow plaintext from these)
+        self._edhoc_active_peers: set[str] = set()
 
     def set_receiver(self, receiver: ReceiveCallback) -> None:
         """Register a callback for received (unprotected) datagrams."""
@@ -259,6 +305,15 @@ class SecureDatagramChannel(DatagramChannel):
                 plaintext = await self._unprotect(msg, source)
                 if plaintext is not None and self._receiver is not None:
                     self._receiver(plaintext, source)
+            elif source in self._edhoc_active_peers:
+                # EDHOC in progress with this peer - allow plaintext
+                # (EDHOC responses are not OSCORE-protected)
+                logger.debug(
+                    "Allowing plaintext from %s (EDHOC in progress)", source
+                )
+                # Dispatch to EDHOC channel for response matching
+                if self._edhoc_channel is not None:
+                    self._edhoc_channel.dispatch(data, source)
             elif self._require_oscore:
                 # Plaintext not allowed
                 logger.warning(
@@ -294,6 +349,21 @@ class SecureDatagramChannel(DatagramChannel):
             # Unprotect using aiocoap's OSCORE
             unprotected_msg, new_request_id = peer_ctx.oscore.unprotect(msg, request_id)
 
+            # OSCORE creates a new message but doesn't preserve mtype/mid/remote.
+            # Copy them from the outer message for proper encoding.
+            # SECURITY: These are outer CoAP header fields, copied from the
+            # protected message to allow re-encoding the plaintext.
+            if unprotected_msg.mtype is None:
+                unprotected_msg.mtype = msg.mtype
+            if unprotected_msg.mid is None:
+                unprotected_msg.mid = msg.mid
+            if unprotected_msg.remote is None:
+                unprotected_msg.remote = msg.remote
+            # aiocoap's encode() requires direction == OUTGOING.
+            # Set it for encoding purposes - we're creating bytes to pass up,
+            # not sending on the network.
+            unprotected_msg.direction = Direction.OUTGOING
+
             # If this is a request, store request_id for the response
             if not is_response and new_request_id is not None:
                 peer_ctx.pending_requests[msg.token] = new_request_id
@@ -301,7 +371,7 @@ class SecureDatagramChannel(DatagramChannel):
             return unprotected_msg.encode()
 
         except Exception as e:
-            logger.warning("OSCORE unprotection failed for %s: %s", source, e)
+            logger.warning("OSCORE unprotection failed for %s: %r", source, e)
             return None
 
     def send_datagram(self, data: bytes, dest: str) -> None:
@@ -342,6 +412,16 @@ class SecureDatagramChannel(DatagramChannel):
             # Protect with OSCORE
             protected_msg, new_request_id = peer_ctx.oscore.protect(msg, request_id)
 
+            # OSCORE creates a new message but doesn't preserve mtype/mid/remote.
+            # Copy them from the original message for proper encoding.
+            # SECURITY: These are outer CoAP header fields, not protected by OSCORE.
+            if protected_msg.mtype is None:
+                protected_msg.mtype = msg.mtype
+            if protected_msg.mid is None:
+                protected_msg.mid = msg.mid
+            if protected_msg.remote is None:
+                protected_msg.remote = msg.remote
+
             # Store request_id for requests (to correlate responses)
             if msg.code.is_request() and new_request_id is not None:
                 peer_ctx.pending_requests[msg.token] = new_request_id
@@ -372,6 +452,9 @@ class SecureDatagramChannel(DatagramChannel):
         future: asyncio.Future[None] = asyncio.get_running_loop().create_future()
         self._pending_edhoc[dest] = future
 
+        # Mark peer as having active EDHOC (allow plaintext responses)
+        self._edhoc_active_peers.add(dest)
+
         try:
             # Run EDHOC as initiator
             initiator = EdhocInitiator.create(self._identity)
@@ -379,7 +462,7 @@ class SecureDatagramChannel(DatagramChannel):
             # Message 1: Initiator -> Responder
             msg1 = initiator.create_message_1()
 
-            # Send and wait for response (simplified - real impl needs CoAP)
+            # Send and wait for response
             msg2 = await self._edhoc_exchange(dest, msg1)
 
             # Process Message 2 and create Message 3
@@ -407,23 +490,80 @@ class SecureDatagramChannel(DatagramChannel):
             raise
         finally:
             self._pending_edhoc.pop(dest, None)
+            self._edhoc_active_peers.discard(dest)
+
+    async def _get_edhoc_context(self) -> aiocoap.Context:
+        """Get or create a temporary CoAP context for EDHOC exchange.
+
+        EDHOC messages are sent as raw CoAP (not OSCORE-protected) over
+        the inner channel. This context is separate from the main CoAP
+        context that uses OSCORE.
+        """
+        if self._edhoc_ctx is None:
+            if self._local_host is None:
+                raise ValueError(
+                    "local_host required for EDHOC exchange; "
+                    "pass local_host to SecureDatagramChannel"
+                )
+            # Create a dedicated channel for EDHOC that bypasses OSCORE
+            # We use a wrapper that just forwards to the inner channel
+            self._edhoc_channel = _EdhocChannel(self._inner)
+            self._edhoc_ctx = aiocoap.Context()
+            await self._edhoc_ctx._append_tokenmanaged_messagemanaged_transport(
+                lambda mm: LichenTransport.create(mm, self._edhoc_channel, self._local_host)
+            )
+        return self._edhoc_ctx
 
     async def _edhoc_exchange(self, dest: str, msg: bytes) -> bytes:
         """Send EDHOC message and wait for response.
 
-        This is a placeholder - real implementation would use CoAP
-        to POST to /.well-known/edhoc on the peer.
+        Sends a CoAP POST to coap://[dest]/.well-known/edhoc with the
+        EDHOC message as payload. Returns the response payload.
+
+        Args:
+            dest: Target host string.
+            msg: EDHOC message bytes (Message 1 or Message 3).
+
+        Returns:
+            Response payload (Message 2 or empty for Message 3 response).
+
+        Raises:
+            ValueError: If EDHOC exchange fails.
         """
-        raise NotImplementedError(
-            "EDHOC exchange requires CoAP POST to /.well-known/edhoc - "
-            "use pre-provisioned contexts or implement EDHOC CoAP resource"
+        ctx = await self._get_edhoc_context()
+
+        request = Message(
+            code=POST,
+            uri=f"coap://{dest}/.well-known/edhoc",
+            payload=msg,
         )
 
+        try:
+            response = await asyncio.wait_for(
+                ctx.request(request).response,
+                timeout=self._edhoc_timeout,
+            )
+        except TimeoutError:
+            raise ValueError(f"EDHOC exchange with {dest} timed out") from None
+        except Exception as e:
+            raise ValueError(f"EDHOC exchange with {dest} failed: {e}") from e
+
+        if not response.code.is_successful():
+            raise ValueError(
+                f"EDHOC exchange with {dest} returned error: {response.code}"
+            )
+
+        return response.payload or b""
+
     async def _edhoc_send(self, dest: str, msg: bytes) -> None:
-        """Send EDHOC message without waiting for response."""
-        raise NotImplementedError(
-            "EDHOC send requires CoAP POST to /.well-known/edhoc"
-        )
+        """Send EDHOC message without waiting for response.
+
+        Used for the final Message 3 when we don't need to wait for
+        a response (the context is already derived).
+        """
+        # For Message 3, we still do a full exchange to ensure delivery
+        # The response is empty (2.04 Changed) but confirms receipt
+        await self._edhoc_exchange(dest, msg)
 
     def close(self) -> None:
         """Close the channel."""
@@ -489,6 +629,8 @@ def create_secure_channel(
     context_store: OscoreContextStore | None = None,
     peer_resolver: EdhocPeerResolver | None = None,
     require_oscore: bool = True,
+    local_host: str | None = None,
+    edhoc_timeout: float = 30.0,
 ) -> SecureDatagramChannel:
     """Create an OSCORE-protected DatagramChannel.
 
@@ -500,6 +642,8 @@ def create_secure_channel(
         context_store: Optional custom context storage.
         peer_resolver: Optional custom peer resolution.
         require_oscore: Whether to reject plaintext messages.
+        local_host: Our host identifier (required for EDHOC lazy establishment).
+        edhoc_timeout: Timeout in seconds for EDHOC message exchange.
 
     Returns:
         A SecureDatagramChannel that encrypts/decrypts transparently.
@@ -510,4 +654,6 @@ def create_secure_channel(
         context_store=context_store,
         peer_resolver=peer_resolver,
         require_oscore=require_oscore,
+        local_host=local_host,
+        edhoc_timeout=edhoc_timeout,
     )

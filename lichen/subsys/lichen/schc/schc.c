@@ -122,6 +122,9 @@ enum schc_coap_layout {
 	SCHC_COAP_FIXED_LEN = 4,
 };
 
+/* OSCORE option number (RFC 8613) */
+#define COAP_OPTION_OSCORE 9
+
 enum schc_icmpv6_layout {
 	SCHC_ICMPV6_TYPE_OFFSET = 0,
 	SCHC_ICMPV6_CODE_OFFSET = 1,
@@ -304,6 +307,98 @@ static void coap_write_fixed(uint8_t *coap, uint8_t type, uint8_t tkl,
 		(1u << 6) | ((type & 0x3u) << 4) | (tkl & 0x0Fu);
 	coap[SCHC_COAP_CODE_OFFSET] = code;
 	write_be16(&coap[SCHC_COAP_MID_OFFSET], mid);
+}
+
+/**
+ * @brief Check if a CoAP packet contains the OSCORE option (option 9).
+ *
+ * OSCORE-protected CoAP packets have the Object-Security option present
+ * in the option list. This function scans the CoAP options to detect it.
+ *
+ * @param coap     Pointer to CoAP header (after UDP)
+ * @param coap_len Total length of CoAP data (header + options + payload)
+ * @return true if OSCORE option is present, false otherwise
+ */
+static bool coap_has_oscore_option(const uint8_t *coap, size_t coap_len)
+{
+	if (coap_len < SCHC_COAP_FIXED_LEN) {
+		return false;
+	}
+
+	uint8_t tkl = coap_tkl(coap);
+	if (tkl > 8) {
+		/* Invalid TKL (reserved values 9-15) */
+		return false;
+	}
+
+	size_t offset = SCHC_COAP_FIXED_LEN + tkl;
+	uint16_t option_number = 0;
+
+	while (offset < coap_len) {
+		uint8_t byte = coap[offset];
+
+		/* Check for payload marker (0xFF) */
+		if (byte == 0xFF) {
+			break;
+		}
+
+		/* Parse option delta */
+		uint8_t delta = (byte >> 4) & 0x0F;
+		uint8_t length = byte & 0x0F;
+		offset++;
+
+		if (delta == 13) {
+			if (offset >= coap_len) {
+				return false;
+			}
+			delta = coap[offset] + 13;
+			offset++;
+		} else if (delta == 14) {
+			if (offset + 1 >= coap_len) {
+				return false;
+			}
+			delta = read_be16(&coap[offset]) + 269;
+			offset += 2;
+		} else if (delta == 15) {
+			/* Reserved for payload marker context */
+			return false;
+		}
+
+		/* Parse option length */
+		if (length == 13) {
+			if (offset >= coap_len) {
+				return false;
+			}
+			length = coap[offset] + 13;
+			offset++;
+		} else if (length == 14) {
+			if (offset + 1 >= coap_len) {
+				return false;
+			}
+			length = read_be16(&coap[offset]) + 269;
+			offset += 2;
+		} else if (length == 15) {
+			/* Reserved */
+			return false;
+		}
+
+		option_number += delta;
+
+		/* Check if this is the OSCORE option */
+		if (option_number == COAP_OPTION_OSCORE) {
+			return true;
+		}
+
+		/* If we've passed option 9, no need to continue */
+		if (option_number > COAP_OPTION_OSCORE) {
+			return false;
+		}
+
+		/* Skip option value */
+		offset += length;
+	}
+
+	return false;
 }
 
 static uint8_t icmpv6_type(const uint8_t *icmpv6)
@@ -1278,7 +1373,84 @@ static int lichen_rule_decompress_rpl_dao(const struct schc_rule *rule,
 	return decompress_rpl_dao(data, data_len, out, out_len);
 }
 
+/**
+ * Rule 5/6: OSCORE-protected CoAP over link-local/global IPv6 + UDP.
+ *
+ * OSCORE packets have the same structure as regular CoAP packets, but contain
+ * the Object-Security option (option 9). The compression is identical to
+ * rules 0/1, but using distinct rule IDs allows:
+ * - Explicit identification of OSCORE-protected traffic
+ * - Future OSCORE-specific compression optimizations
+ * - Interoperability markers for security auditing
+ */
+static int lichen_rule_compress_oscore(const struct schc_rule *rule,
+				       const uint8_t *packet, size_t pkt_len,
+				       uint8_t *out, size_t out_len)
+{
+	if (pkt_len < IPV6_HDR_LEN || ipv6_version(packet) != 6 ||
+	    ipv6_next_header(packet) != IPV6_NH_UDP) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	if (pkt_len < IPV6_HDR_LEN + UDP_HDR_LEN + SCHC_COAP_FIXED_LEN) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	const uint8_t *src = ipv6_src(packet);
+	const uint8_t *dst = ipv6_dst(packet);
+
+	/* Validate addresses match the rule's scope */
+	if (rule->rule_id == SCHC_RULE_LINK_LOCAL_OSCORE) {
+		if (!is_link_local(src) || !is_link_local(dst)) {
+			return SCHC_ERR_NO_MATCHING_RULE;
+		}
+	} else if (rule->rule_id == SCHC_RULE_GLOBAL_OSCORE) {
+		if (!is_global(src) || !is_global(dst)) {
+			return SCHC_ERR_NO_MATCHING_RULE;
+		}
+	}
+
+	/* Check for OSCORE option presence */
+	const uint8_t *udp = ipv6_payload(packet);
+	const uint8_t *coap = udp_payload(udp);
+	size_t coap_len = pkt_len - IPV6_HDR_LEN - UDP_HDR_LEN;
+
+	if (!coap_has_oscore_option(coap, coap_len)) {
+		return SCHC_ERR_NO_MATCHING_RULE;
+	}
+
+	/* Compression is identical to regular CoAP */
+	return compress_coap(packet, pkt_len, out, out_len, rule->rule_id);
+}
+
+static int lichen_rule_decompress_oscore(const struct schc_rule *rule,
+					 const uint8_t *data, size_t data_len,
+					 uint8_t *out, size_t out_len)
+{
+	/*
+	 * Decompression is identical to regular CoAP rules. The rule ID
+	 * in the compressed data determines which decompress function is
+	 * called, and the reconstructed packet will contain the OSCORE
+	 * option in the tail (unchanged from compression).
+	 */
+	return decompress_coap(data, data_len, out, out_len, rule->rule_id);
+}
+
 static const struct schc_rule lichen_schc_rules[] = {
+	/*
+	 * OSCORE rules must come before regular CoAP rules so that
+	 * OSCORE-protected packets match on rules 5/6, not 0/1.
+	 */
+	{
+		.rule_id = SCHC_RULE_LINK_LOCAL_OSCORE,
+		.compress = lichen_rule_compress_oscore,
+		.decompress = lichen_rule_decompress_oscore,
+	},
+	{
+		.rule_id = SCHC_RULE_GLOBAL_OSCORE,
+		.compress = lichen_rule_compress_oscore,
+		.decompress = lichen_rule_decompress_oscore,
+	},
 	{
 		.rule_id = SCHC_RULE_LINK_LOCAL_COAP,
 		.compress = lichen_rule_compress_coap,

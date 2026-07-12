@@ -114,3 +114,51 @@ def test_dio_options_travel_as_tail() -> None:
     body = restored[HEADER_LENGTH:]
     parsed = from_icmpv6(Icmpv6Message.from_bytes(body))
     assert parsed.options[0].data == b"\x00\x00"
+
+
+def _coap_with_oscore(tkl: int = 2) -> bytes:
+    """Build a CoAP packet with OSCORE option (option 9).
+
+    Format: CoAP header + token + OSCORE option + payload marker + encrypted data.
+    OSCORE option: delta=9, len=2, value=0x09 0x00 (flags + partial IV).
+    """
+    # CoAP ver=1, type=0, tkl, code=0.01, mid=0x1234
+    b0 = 0x40 | (tkl & 0x0F)
+    header = bytes([b0, 0x01]) + (0x1234).to_bytes(2, "big")
+    token = bytes(range(tkl))  # 0x00, 0x01, ...
+    # OSCORE option: delta=9, len=2 -> 0x92; value=0x09 0x00
+    oscore_option = bytes([0x92, 0x09, 0x00])
+    payload = b"\xff\xde\xad\xbe\xef"  # payload marker + encrypted data
+    return header + token + oscore_option + payload
+
+
+def test_oscore_link_local_rule5_round_trip() -> None:
+    """OSCORE-protected CoAP over link-local IPv6 uses rule 5."""
+    raw = _udp_ipv6(LL_SRC, LL_DST, _coap_with_oscore())
+    compressed = compress_packet(raw)
+    assert compressed[0] == 5  # rule 5 (link-local OSCORE)
+    assert decompress_packet(compressed) == raw
+
+
+def test_oscore_global_rule6_round_trip() -> None:
+    """OSCORE-protected CoAP over global IPv6 uses rule 6."""
+    raw = _udp_ipv6(G_SRC, G_DST, _coap_with_oscore())
+    compressed = compress_packet(raw)
+    assert compressed[0] == 6  # rule 6 (global OSCORE)
+    assert decompress_packet(compressed) == raw
+
+
+def test_oscore_preferred_over_plain_coap() -> None:
+    """OSCORE packets must match rules 5/6, not 0/1."""
+    ll_raw = _udp_ipv6(LL_SRC, LL_DST, _coap_with_oscore())
+    g_raw = _udp_ipv6(G_SRC, G_DST, _coap_with_oscore())
+    # Link-local OSCORE -> rule 5, not rule 0
+    assert compress_packet(ll_raw)[0] == 5
+    # Global OSCORE -> rule 6, not rule 1
+    assert compress_packet(g_raw)[0] == 6
+
+
+def test_plain_coap_still_uses_rule0() -> None:
+    """Plain CoAP (no OSCORE option) should use rules 0/1, not 5/6."""
+    raw = _udp_ipv6(LL_SRC, LL_DST, _coap_fixed())
+    assert compress_packet(raw)[0] == 0

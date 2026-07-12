@@ -17,6 +17,10 @@
 
 #include <lichen/hal.h>
 
+#if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
+#include "lora_l2.h"
+#endif
+
 #include "config_apply.h"
 #include "config_cbor.h"
 #include "status_cbor.h"
@@ -246,14 +250,29 @@ COAP_RESOURCE_DEFINE(status, lichen_coap, {
  * -------------------------------------------------------------------------- */
 
 /*
- * Get queue statistics. Currently returns zeros as the tx_queue is not yet
- * integrated into the L2 layer. A future change will populate these from
- * the actual tx_queue_stats.
+ * Get queue statistics from the L2 TX queue.
+ * Converts from tx_queue_stats to lichen_gateway_queue_stats.
  */
 static void get_queue_stats(struct lichen_gateway_queue_stats *stats)
 {
-	/* Placeholder: return zeros until tx_queue is integrated */
 	memset(stats, 0, sizeof(*stats));
+
+#if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
+	struct tx_queue_stats tx_stats;
+
+	if (lichen_lora_l2_queue_stats_get(&tx_stats) == 0) {
+		stats->packets_queued = tx_stats.packets_queued;
+		stats->packets_dropped_deadline = tx_stats.packets_dropped_deadline;
+		stats->packets_dropped_full = tx_stats.packets_dropped_full;
+		stats->max_latency_ms = tx_stats.max_latency_ms;
+		/*
+		 * avg_latency_ms is not tracked by tx_queue - would require
+		 * storing enqueue timestamps and computing exponential average.
+		 * Left as 0 for now; can be added to tx_queue if needed.
+		 */
+		stats->avg_latency_ms = 0;
+	}
+#endif
 }
 
 static int queues_get(struct coap_resource *resource,

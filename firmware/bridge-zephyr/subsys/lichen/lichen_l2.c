@@ -241,16 +241,37 @@ BUILD_ASSERT(LICHEN_FRAME_BASE_OVERHEAD == 9,
 #define IPV6_BASE_HDR_LEN 40
 
 /*
+ * Maximum OSCORE overhead for buffer sizing.
+ *
+ * OSCORE (RFC 8613) adds an Object-Security option to CoAP requests/responses.
+ * The option size varies based on security context parameters:
+ *   - Partial IV: 0-5 bytes (typically 5 for freshness)
+ *   - kid context: 0-8 bytes (typically 0 for established contexts)
+ *   - kid: 0-8 bytes (typically 1-2 bytes for sender ID)
+ *   - Option overhead: ~3 bytes (option number + length encoding)
+ *
+ * Conservative estimate: 24 bytes covers typical deployments with room for
+ * larger context identifiers. SCHC compression will reduce this significantly
+ * on-air once OSCORE-specific rules are added (spec/schc-rules.py).
+ *
+ * SECURITY: This affects buffer sizing only, not MTU. The OSCORE overhead
+ * is present in the pre-compression IPv6/UDP/CoAP packet but gets compressed
+ * by SCHC before transmission.
+ */
+#define OSCORE_MAX_OVERHEAD 24
+
+/*
  * Scratch buffers for TX/RX processing.
  * Protected by mutexes since multiple threads may call L2 send/recv.
  *
- * Buffer sizing: LICHEN_L2_MTU + IPV6_BASE_HDR_LEN = 240 bytes.
+ * Buffer sizing: LICHEN_L2_MTU + IPV6_BASE_HDR_LEN + OSCORE_MAX_OVERHEAD = 264 bytes.
  *
- * LIMITATION (project-LICHEN-tvfm.97): IPv6 extension headers are NOT supported.
+ * LIMITATION (project-LICHEN-tvfm.97): IPv6 extension headers other than OSCORE
+ * are NOT supported.
  *
- * These buffers are sized for base IPv6 header (40 bytes) + payload only.
- * Packets with extension headers (Hop-by-Hop, Routing, Fragment, Destination,
- * OSCORE Object-Security, etc.) will be dropped:
+ * These buffers are sized for base IPv6 header (40 bytes) + OSCORE option
+ * overhead (24 bytes) + payload. Packets with other extension headers
+ * (Hop-by-Hop, Routing, Fragment, Destination, etc.) will be dropped:
  *
  * TX path: Oversized packets fail the pkt_len > sizeof(tx_ipv6_buf) check
  *          in lichen_l2_send() with -EMSGSIZE.
@@ -260,20 +281,19 @@ BUILD_ASSERT(LICHEN_FRAME_BASE_OVERHEAD == 9,
  *          to reject the packet.
  *
  * This is by design: LICHEN's SCHC rules (schc/rules.py) are defined for
- * specific protocol stacks (CoAP/UDP, ICMPv6, RPL) without extension headers.
- * Packets with extension headers fall back to SCHC rule 255 (uncompressed),
- * which exceeds the 200-byte MTU and gets rejected.
+ * specific protocol stacks (CoAP/UDP, ICMPv6, RPL) with OSCORE support.
+ * Packets with unsupported extension headers fall back to SCHC rule 255
+ * (uncompressed), which exceeds the 200-byte MTU and gets rejected.
  *
- * To support extension headers in the future:
+ * To support additional extension headers in the future:
  * 1. Add a dedicated SCHC rule in schc/rules.py for the specific extension
- * 2. Increase buffer sizes here (add extension header size to IPV6_BASE_HDR_LEN)
+ * 2. Increase buffer sizes here (add extension header size)
  * 3. Potentially update LICHEN_L2_MTU in lora_l2.h
  *
- * FIXME(OSCORE): When OSCORE support is added, its headers will need:
- * 1. A dedicated SCHC rule in schc/rules.py
- * 2. Buffer size increase here (OSCORE Object-Security option ~20+ bytes)
- * 3. Update LICHEN_L2_MTU in lora_l2.h
- * Search for "FIXME(OSCORE)" to find all locations needing update.
+ * OSCORE support (project-LICHEN-v1wq): Buffer sizing includes OSCORE_MAX_OVERHEAD.
+ * Remaining integration work:
+ * 1. Add OSCORE-specific SCHC rules in schc/rules.py
+ * 2. Wire up OSCORE context management
  */
 /*
  * TX/RX scratch buffers and their protecting mutexes.
@@ -296,11 +316,11 @@ BUILD_ASSERT(LICHEN_FRAME_BASE_OVERHEAD == 9,
  *   - Cache maintenance (clean/invalidate) around DMA transfers
  * Currently the LoRa driver abstracts DMA details, so no alignment is needed.
  */
-static uint8_t tx_ipv6_buf[LICHEN_L2_MTU + IPV6_BASE_HDR_LEN];
+static uint8_t tx_ipv6_buf[LICHEN_L2_MTU + IPV6_BASE_HDR_LEN + OSCORE_MAX_OVERHEAD];
 static uint8_t tx_frame_buf[MAX_LORA_FRAME];
 static K_MUTEX_DEFINE(tx_mutex);  /* Lock order: 1st (before rx_mutex) */
 
-static uint8_t rx_ipv6_buf[LICHEN_L2_MTU + IPV6_BASE_HDR_LEN];
+static uint8_t rx_ipv6_buf[LICHEN_L2_MTU + IPV6_BASE_HDR_LEN + OSCORE_MAX_OVERHEAD];
 static K_MUTEX_DEFINE(rx_mutex);  /* Lock order: 2nd (after tx_mutex) */
 
 /* Link context for framing */
@@ -1990,8 +2010,8 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 
 	/*
 	 * Copy the shared RX buffer before releasing rx_mutex. The copy is small
-	 * (240 bytes with the current MTU) and keeps potentially-blocking packet
-	 * allocation out of the RX critical section.
+	 * (264 bytes with the current MTU + OSCORE overhead) and keeps potentially-
+	 * blocking packet allocation out of the RX critical section.
 	 */
 	memcpy(rx_ipv6_copy, rx_ipv6_buf, ipv6_len);
 	k_mutex_unlock(&rx_mutex);

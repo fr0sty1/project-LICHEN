@@ -35,6 +35,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include <lichen/tx_queue.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -248,6 +250,17 @@ bool lichen_lora_l2_is_running(void);
  * @return true if re-initialization is required, false otherwise
  */
 bool lichen_lora_l2_needs_reinit(void);
+
+/**
+ * @brief Get TX queue statistics for diagnostics
+ *
+ * Returns statistics from the TX queue used for bufferbloat avoidance.
+ * Exposed for the /status/queues CoAP endpoint.
+ *
+ * @param stats Output buffer for queue statistics
+ * @return 0 on success, -EINVAL if stats is NULL, -ENODEV if not initialized
+ */
+int lichen_lora_l2_queue_stats_get(struct tx_queue_stats *stats);
 
 #ifdef __cplusplus
 }

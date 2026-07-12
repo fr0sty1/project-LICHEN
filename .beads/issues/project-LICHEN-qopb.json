@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-qopb",
+  "title": "task",
+  "description": "Rust lichen-schc has codec.rs, fragment.rs, rules.rs but is missing headers and context modules that Python has (headers.py ~526 lines, context.py ~95 lines). These handle IPv6/UDP header compression rules and compression context state.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T04:05:23.456741Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T04:05:23.456772Z"
+}

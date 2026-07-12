@@ -70,6 +70,11 @@ class RenodeServer:
 
     Each RenodeServer handles exactly one node. Create multiple servers
     on different ports for multiple Renode instances.
+
+    The server runs a background simulation driver task that periodically
+    calls deliver_pending_packets() and maybe_advance_time(). This allows
+    BARRIER_SYNC mode to work correctly even when multiple RenodeServers
+    are operating concurrently.
     """
 
     def __init__(
@@ -86,6 +91,7 @@ class RenodeServer:
         self._server: asyncio.Server | None = None
         self._writer: asyncio.StreamWriter | None = None
         self._connected = False
+        self._sim_driver_task: asyncio.Task[None] | None = None
 
     async def start(self, host: str = "127.0.0.1", port: int = 5555) -> int:
         """Start server and add node to simulation. Returns actual port."""
@@ -106,13 +112,43 @@ class RenodeServer:
             "Renode server for %s listening on %s:%d",
             self._node_id, host, actual_port
         )
+
+        # Start simulation driver task
+        self._sim_driver_task = asyncio.create_task(self._simulation_driver())
+
         return actual_port
 
     async def stop(self) -> None:
         """Stop server."""
+        import contextlib
+
+        # Cancel simulation driver
+        if self._sim_driver_task is not None:
+            self._sim_driver_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._sim_driver_task
+            self._sim_driver_task = None
+
         if self._server:
             self._server.close()
             await self._server.wait_closed()
+
+    async def _simulation_driver(self) -> None:
+        """Background task that drives the simulation.
+
+        Periodically calls deliver_pending_packets() and maybe_advance_time()
+        to ensure BARRIER_SYNC mode advances time and delivers packets.
+        """
+        try:
+            while True:
+                # Deliver packets to nodes in callback-based RX mode
+                self._simulation.deliver_pending_packets()
+                # Advance time (fires TxEndEvent, RxTimeoutEvent)
+                self._simulation.maybe_advance_time()
+                # Brief delay to avoid busy loop
+                await asyncio.sleep(0.001)
+        except asyncio.CancelledError:
+            pass
 
     async def _handle_connection(
         self,
@@ -171,6 +207,9 @@ class RenodeServer:
 
     def _handle_rx_enter(self, data: bytes) -> None:
         """Handle RX_ENTER - enter push-based RX mode.
+
+        Enters RX mode with callbacks. The background simulation driver task
+        handles time advancement and packet delivery.
 
         Args:
             data: Complete message bytes including type byte.

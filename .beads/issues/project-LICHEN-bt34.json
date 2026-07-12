@@ -2,11 +2,14 @@
   "id": "project-LICHEN-bt34",
   "title": "task",
   "description": "Implement per-peer OSCORE security context storage and management. Each peer requires its own sender/recipient context derived from EDHOC key establishment.\n\nRequired components:\n1. Security context storage (struct context from uoscore-uedhoc)\n2. Context lookup by peer EUI-64\n3. Sender sequence number (SSN) management and NVM persistence\n4. Context freshness checking per RFC 8613 section 7.2.1\n5. Replay protection via the library's server_replay_window_t\n\nUse uoscore-uedhoc library (modules/lib/uoscore-uedhoc/):\n- oscore_context_init() for context setup\n- check_context_freshness() for SSN overflow detection\n\nParent: project-LICHEN-r6fu.2",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T01:34:26.817228Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T01:34:26.817255Z"
+  "updated_at": "2026-07-12T03:56:08.782119Z",
+  "closed_at": "2026-07-12T03:56:08.782119Z",
+  "close_reason": "Implemented per-peer OSCORE security context storage with EUI-64 indexing, NVM persistence callbacks for SSN, and context freshness checking per RFC 8613 Section 7.2.1. Added: oscore_ctx_create_with_eui64(), oscore_ctx_set_peer_eui64(), oscore_ctx_get_by_eui64(), oscore_ctx_check_freshness(), oscore_ctx_persist_ssn(), oscore_nvm_register_callbacks(). Added enum oscore_freshness and NVM callback types. Extended oscore_ctx struct with peer_eui64 field. Added comprehensive tests."
 }

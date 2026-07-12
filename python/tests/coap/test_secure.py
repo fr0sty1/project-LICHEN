@@ -329,6 +329,23 @@ class TestNodeChannelOscoreIntegration:
     for multi-hop mesh delivery with end-to-end encryption.
     """
 
+    def _create_edhoc_contexts(
+        self, alice_id: Identity, bob_id: Identity
+    ) -> tuple[MemorySecurityContext, MemorySecurityContext]:
+        """Run EDHOC and create paired OSCORE contexts."""
+        initiator = EdhocInitiator.create(alice_id, c_i=b"\x00")
+        responder = EdhocResponder.create(bob_id, c_r=b"\x01")
+
+        msg1 = initiator.create_message_1()
+        msg2 = responder.process_message_1(msg1, alice_id.pubkey)
+        msg3 = initiator.process_message_2(msg2, bob_id.pubkey)
+        responder.process_message_3(msg3, alice_id.pubkey)
+
+        alice_ctx = MemorySecurityContext.from_edhoc(initiator.export_oscore())
+        bob_ctx = MemorySecurityContext.from_edhoc(responder.export_oscore())
+
+        return alice_ctx, bob_ctx
+
     @pytest.mark.asyncio
     async def test_secure_channel_wraps_any_datagram_channel(self) -> None:
         """SecureDatagramChannel can wrap any DatagramChannel implementation."""
@@ -345,3 +362,82 @@ class TestNodeChannelOscoreIntegration:
         assert hasattr(secure, "send_datagram")
         assert hasattr(secure, "set_receiver")
         assert hasattr(secure, "close")
+
+    @pytest.mark.asyncio
+    async def test_oscore_protect_unprotect_round_trip(self) -> None:
+        """OSCORE-protected message is correctly protected and unprotected."""
+        from aiocoap import GET, Message
+        from aiocoap.oscore import Direction
+
+        from lichen.coap.transport import LichenRemote
+
+        net = InMemoryNetwork()
+        alice_id = Identity.generate()
+        bob_id = Identity.generate()
+
+        alice_channel = net.channel("alice")
+        bob_channel = net.channel("bob")
+
+        alice_secure = create_secure_channel(alice_channel, alice_id)
+        bob_secure = create_secure_channel(bob_channel, bob_id)
+
+        # Pre-provision OSCORE contexts from EDHOC
+        alice_ctx, bob_ctx = self._create_edhoc_contexts(alice_id, bob_id)
+        alice_secure.add_context_sync("bob", alice_ctx, bob_id.pubkey)
+        bob_secure.add_context_sync("alice", bob_ctx, alice_id.pubkey)
+
+        received: list[tuple[bytes, str]] = []
+        bob_secure.set_receiver(lambda data, src: received.append((data, src)))
+
+        # Create a proper CoAP GET request using aiocoap
+        from aiocoap.numbers import types
+
+        request = Message(code=GET)
+        request.mtype = types.NON
+        request.mid = 1
+        request.remote = LichenRemote("bob")
+        request.direction = Direction.OUTGOING
+        plaintext_coap = request.encode()
+
+        alice_secure.send_datagram(plaintext_coap, "bob")
+
+        # Give event loop time to process
+        await asyncio.sleep(0.05)
+
+        # Bob should receive the unprotected plaintext
+        assert len(received) == 1
+        data, source = received[0]
+        assert source == "alice"
+        # Decode and verify the CoAP message content is preserved
+        # Note: OSCORE may not preserve token, so we compare code and MID
+        received_msg = Message.decode(data, LichenRemote("alice"))
+        assert received_msg.code == GET
+        assert received_msg.mtype == types.NON
+        assert received_msg.mid == 1
+
+    @pytest.mark.asyncio
+    async def test_oscore_without_context_rejected(self) -> None:
+        """Sending to peer without context fails to establish (no pubkey)."""
+        net = InMemoryNetwork()
+        alice_id = Identity.generate()
+
+        alice_channel = net.channel("alice")
+        bob_channel = net.channel("bob")
+
+        alice_secure = create_secure_channel(alice_channel, alice_id)
+        # Bob has no context for alice, and require_oscore=True (default)
+        bob_secure = create_secure_channel(
+            bob_channel, Identity.generate(), require_oscore=True
+        )
+
+        received: list[tuple[bytes, str]] = []
+        bob_secure.set_receiver(lambda data, src: received.append((data, src)))
+
+        # Alice has no context for bob - send fails without EDHOC
+        plaintext_coap = bytes([0x40, 0x01, 0x00, 0x01])
+        alice_secure.send_datagram(plaintext_coap, "bob")
+
+        await asyncio.sleep(0.05)
+
+        # Nothing received - no context could be established
+        assert len(received) == 0

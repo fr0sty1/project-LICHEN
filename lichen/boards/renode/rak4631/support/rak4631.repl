@@ -3,17 +3,64 @@
 //
 // RAK4631 WisBlock board for Renode
 // nRF52840 + SX1262 + LEDs
-// ponytail: minimal - GPIO wiring simulated via lichen-sim anyway
+//
+// RAK4631 uses different GPIO wiring than T-Echo for the SX1262:
+//   - SPI1 is legacy nrf-spi (no easyDMA), not nrf-spim
+//   - SX1262 control lines are on GPIO1 (not GPIO0):
+//       CS=P1.10, RESET=P1.6, BUSY=P1.14, DIO1/IRQ=P1.15
+//
+// This file is standalone (does not import nrf52840_lichen.repl which has
+// T-Echo-specific wiring).
 
-using "../../nrf52840_lichen/support/nrf52840_lichen.repl"
+using "platforms/cpus/nrf52840.repl"
 
-// LEDs on P1 (active-low per RAK4631 schematic)
+// The RAK4631 firmware drives the SX1262 on SPI1, which on the nRF52840 shares
+// base address 0x40004000 with TWI1. Renode's stock platform models that
+// address as an I2C controller (twi1), so the firmware's SPI transfers never
+// complete. Replace it with an SPI controller.
+twi1: @ none
+
+// RAK4631 uses legacy SPI (nordic,nrf-spi), not SPIM with easyDMA.
+// The easyDMA flag is NOT set, so the controller exposes the legacy SPI
+// registers that Zephyr's nordic,nrf-spi driver expects.
+spi1: SPI.NRF52840_SPI @ sysbus 0x40004000
+    -> nvic@4
+
+// SX1262 LoRa radio on SPI1.
+// GPIO wiring matches the RAK4631 devicetree (rak4631_nrf52840.dts):
+//   CS=P1.10, RESET=P1.6, BUSY=P1.14, DIO1=P1.15
+sx1262: Wireless.SX1262 @ spi1
+    simHost: "127.0.0.1"
+    simPort: 5555
+
+// Wire SX1262 GPIO pins on GPIO1 (RAK4631-specific)
+// RESET from GPIO1 pin 6 -> sx1262 input 0
+// CS from GPIO1 pin 10 -> sx1262 input 1 (SPI transaction framing)
 gpio1:
+    6 -> sx1262@0
+    10 -> sx1262@1
+    // LEDs (active-low per RAK4631 schematic)
     3 -> led0@0
     4 -> led1@0
 
+// SX1262 outputs to GPIO1
+sx1262:
+    IRQ -> gpio1@15
+    Busy -> gpio1@14
+
+// LEDs on GPIO1 P1.3 and P1.4 (active-low)
 led0: Miscellaneous.LED @ gpio1 3
     invert: true
 
 led1: Miscellaneous.LED @ gpio1 4
     invert: true
+
+// Populate FICR DEVICEID so Zephyr's hwinfo driver returns a stable, non-zero
+// hardware ID. Without this the LICHEN L2 refuses to initialise ("hardware ID
+// is all zeros, cannot generate unique EUI-64"). The stock platform tags the
+// whole FICR region as reads-as-zero; these narrower tags override the two
+// DEVICEID words (FICR offsets 0x060/0x064).
+sysbus:
+    init add:
+        Tag <0x10000060, 0x10000063> "DEVICEID[0]" 0x1CE00001
+        Tag <0x10000064, 0x10000067> "DEVICEID[1]" 0x1CE00002

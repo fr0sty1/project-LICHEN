@@ -3,11 +3,14 @@
   "title": "[policy] Bufferbloat avoidance compliance",
   "description": "Ensure all code sections comply with spec/appendix-bufferbloat.md. Covers: bounded queues, time-based expiry, priority queuing, explicit backpressure, no silent drops. Each queue location needs a compliance check bead.",
   "notes": "Bounded queues verified compliant (2026-07-11): KISS 8-frame limit w/ error return, GATT 8-msg limit w/ QueueFull, Python adapter 64-msg limit w/ False return. Remaining work tracked in children: time-based expiry and priority queuing.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "epic",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:10:32.896616Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T00:38:59.154046Z"
+  "updated_at": "2026-07-12T04:04:36.535532Z",
+  "closed_at": "2026-07-12T04:04:36.535532Z",
+  "close_reason": "Complete: All bufferbloat compliance verified. Bounded queues (KISS 8-frame, GATT 8-msg, Python adapter 64-msg with error returns). Time-based expiry implemented. Priority queuing implemented. Forwarding buffer with backpressure (8 sources x 2 packets/source = 16 max) implemented in Python/Rust/C. No silent drops - all queues return errors. All 6 child beads closed."
 }

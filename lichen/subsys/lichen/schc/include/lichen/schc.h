@@ -13,6 +13,8 @@
  *   Rule 2: ICMPv6 Echo (link-local)
  *   Rule 3: RPL DIO (link-local ICMPv6)
  *   Rule 4: RPL DAO (link-local ICMPv6)
+ *   Rule 5: link-local IPv6 + UDP + OSCORE-protected CoAP
+ *   Rule 6: global IPv6 + UDP + OSCORE-protected CoAP
  *   Rule 255: uncompressed passthrough
  *
  * Compression target: 48+ byte IPv6/UDP header to 3-6 bytes.
@@ -85,12 +87,14 @@ extern "C" {
 #endif
 
 /** SCHC rule IDs matching constants.toml */
-#define SCHC_RULE_LINK_LOCAL_COAP  0
-#define SCHC_RULE_GLOBAL_COAP      1
-#define SCHC_RULE_ICMPV6_ECHO      2
-#define SCHC_RULE_RPL_DIO          3
-#define SCHC_RULE_RPL_DAO          4
-#define SCHC_RULE_UNCOMPRESSED     255
+#define SCHC_RULE_LINK_LOCAL_COAP   0
+#define SCHC_RULE_GLOBAL_COAP       1
+#define SCHC_RULE_ICMPV6_ECHO       2
+#define SCHC_RULE_RPL_DIO           3
+#define SCHC_RULE_RPL_DAO           4
+#define SCHC_RULE_LINK_LOCAL_OSCORE 5
+#define SCHC_RULE_GLOBAL_OSCORE     6
+#define SCHC_RULE_UNCOMPRESSED      255
 
 /**
  * @brief Compress an IPv6 packet using SCHC.

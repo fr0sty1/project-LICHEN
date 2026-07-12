@@ -25,18 +25,23 @@ from lichen.sim.protocol import (
     MSG_CAD,
     MSG_REGISTER,
     MSG_RX,
+    MSG_RX_ENTER,
+    MSG_RX_EXIT,
     MSG_TIME,
     MSG_TX,
     ProtocolError,
     decode_cad,
     decode_register,
     decode_rx,
+    decode_rx_enter,
     decode_tx,
     encode_cad_result,
     encode_err,
     encode_ok,
     encode_rx_ok,
+    encode_rx_packet,
     encode_rx_timeout,
+    encode_rx_timeout_push,
     encode_time_ok,
     encode_tx_done,
     encode_tx_fail,
@@ -190,6 +195,10 @@ class NodeServer:
                     await self._handle_tx(node_id, data, writer)
                 elif msg_type == MSG_RX:
                     await self._handle_rx(node_id, data, writer)
+                elif msg_type == MSG_RX_ENTER:
+                    await self._handle_rx_enter(node_id, data, writer)
+                elif msg_type == MSG_RX_EXIT:
+                    self._handle_rx_exit(node_id)
                 elif msg_type == MSG_TIME:
                     await self._handle_time(writer)
                 elif msg_type == MSG_CAD:
@@ -405,6 +414,94 @@ class NodeServer:
         else:
             logger.debug("RX timeout at %s after %d ms", node_id, timeout_ms)
             await write_message(writer, encode_rx_timeout())
+
+    async def _handle_rx_enter(
+        self,
+        node_id: str,
+        data: bytes,
+        writer: asyncio.StreamWriter,
+    ) -> None:
+        """Handle an RX_ENTER message (push-based RX mode).
+
+        Enters RX mode with callbacks and runs a simulation loop until
+        a packet arrives or timeout expires. Sends RX_PACKET or RX_TIMEOUT_PUSH.
+
+        Args:
+            node_id: The receiving node's ID.
+            data: The complete message bytes (including type byte).
+            writer: The stream writer for responses.
+        """
+        try:
+            payload = get_message_payload(data)
+            timeout_us = decode_rx_enter(payload)
+        except ProtocolError as e:
+            logger.error("Failed to decode RX_ENTER from %s: %s", node_id, e)
+            await write_message(writer, encode_err(1, f"Invalid RX_ENTER: {e}"))
+            return
+
+        # Result holder for callbacks
+        rx_result: list[tuple[bytes, int, int] | None] = [None]
+        rx_done = asyncio.Event()
+
+        def on_packet(pkt_payload: bytes, rssi: int, snr: int) -> None:
+            rx_result[0] = (pkt_payload, rssi, snr)
+            rx_done.set()
+
+        def on_timeout() -> None:
+            rx_done.set()
+
+        # Enter push-based RX mode
+        try:
+            self._simulation.enter_rx_mode(
+                node_id,
+                timeout_us,
+                on_packet,
+                on_timeout,
+            )
+        except ValueError as e:
+            logger.error("Failed to enter RX mode for %s: %s", node_id, e)
+            await write_message(writer, encode_err(7, str(e)))
+            return
+
+        # Run simulation loop until packet or timeout
+        from lichen.sim.node import NodeState
+        node = self._simulation.get_node(node_id)
+        while node is not None and node.state == NodeState.RX_WAIT:
+            # Deliver any pending packets
+            self._simulation.deliver_pending_packets()
+            # Advance time (fires TxEndEvent, RxTimeoutEvent)
+            self._simulation.maybe_advance_time()
+            # Check if done
+            if rx_done.is_set():
+                break
+            # Brief delay to avoid busy loop
+            await asyncio.sleep(0.001)
+
+        # Send response
+        if rx_result[0] is not None:
+            pkt_payload, rssi, snr = rx_result[0]
+            logger.debug(
+                "RX_ENTER at %s: %d bytes, RSSI %d, SNR %d",
+                node_id,
+                len(pkt_payload),
+                rssi,
+                snr,
+            )
+            await write_message(writer, encode_rx_packet(pkt_payload, rssi, snr))
+        else:
+            logger.debug("RX_ENTER timeout at %s after %d us", node_id, timeout_us)
+            await write_message(writer, encode_rx_timeout_push())
+
+    def _handle_rx_exit(self, node_id: str) -> None:
+        """Handle an RX_EXIT message.
+
+        Exits push-based RX mode for the node.
+
+        Args:
+            node_id: The node ID to exit RX mode.
+        """
+        logger.debug("RX_EXIT from %s", node_id)
+        self._simulation.exit_rx_mode(node_id)
 
     async def _handle_time(
         self,

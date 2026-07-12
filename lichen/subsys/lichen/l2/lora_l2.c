@@ -36,6 +36,7 @@
 #include <zephyr/drivers/hwinfo.h>
 
 #include <lichen/hal.h>
+#include <lichen/tx_queue.h>
 
 #include "lichen_util.h"
 
@@ -189,6 +190,13 @@ static K_MUTEX_DEFINE(tx_buf_mutex);
  * may modify the buffer (e.g., for DMA alignment or in-place encryption).
  */
 static uint8_t tx_buf[LICHEN_LORA_MAX_PHY_PAYLOAD];
+
+/*
+ * TX queue for bufferbloat avoidance (spec/appendix-bufferbloat.md).
+ * Provides priority queuing, deadline expiry, and explicit backpressure.
+ * Protected by tx_buf_mutex (same mutex as tx_buf since they're used together).
+ */
+static struct tx_queue tx_queue;
 
 /*
  * Module data (not state - state is managed by current_state atomic).
@@ -600,6 +608,13 @@ int lichen_lora_l2_init(void)
     ret = generate_eui64(lora_data.eui64);
     if (ret < 0) {
         LOG_ERR("lora_l2: failed to generate stable EUI-64, cannot initialize");
+        goto out;
+    }
+
+    /* Initialize TX queue for bufferbloat avoidance */
+    ret = tx_queue_init(&tx_queue);
+    if (ret < 0) {
+        LOG_ERR("lora_l2: failed to initialize TX queue (%d)", ret);
         goto out;
     }
 
@@ -1055,8 +1070,8 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
     LOG_DBG("lora_l2: TX %zu bytes", len);
 
     /*
-     * Serialize TX operations with tx_buf_mutex. This protects the memcpy
-     * and lora_send() sequence from concurrent callers corrupting tx_buf.
+     * Serialize TX operations with tx_buf_mutex. This protects the queue
+     * and lora_send() sequence from concurrent callers.
      * The mutex is held for the full TX duration (~500ms at SF10/255 bytes),
      * which serializes concurrent transmissions - acceptable since the radio
      * can only transmit one packet at a time anyway.
@@ -1074,11 +1089,35 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
     }
 
     /*
-     * Copy into internal buffer before lora_send(). Zephyr's lora_send()
-     * takes a non-const pointer because some radio drivers may modify the
-     * buffer. Copying protects the caller's data.
+     * Push packet to TX queue. Uses default deadline based on priority.
+     * TX_PRIORITY_BULK is the default for application data.
+     * Queue tracks statistics for diagnostics (/status/queues endpoint).
+     *
+     * Note: Currently operating in synchronous mode - push then immediately
+     * pop and send. A future async TX thread could drain the queue
+     * asynchronously for better bufferbloat handling under contention.
      */
-    memcpy(tx_buf, data, len);
+    int ret = tx_queue_push_default_deadline(&tx_queue, data, (uint16_t)len,
+                                              TX_PRIORITY_BULK);
+    if (ret < 0) {
+        LOG_WRN("lora_l2: TX queue push failed (%d)", ret);
+        k_mutex_unlock(&tx_buf_mutex);
+        return ret;
+    }
+
+    /*
+     * Pop packet from queue into tx_buf for transmission.
+     * In sync mode this immediately retrieves what we just pushed.
+     */
+    uint16_t pop_len = sizeof(tx_buf);
+    uint32_t latency_ms = 0;
+    ret = tx_queue_pop(&tx_queue, tx_buf, &pop_len, &latency_ms);
+    if (ret < 0) {
+        /* Should not happen in sync mode - queue can't be empty */
+        LOG_ERR("lora_l2: TX queue pop failed (%d)", ret);
+        k_mutex_unlock(&tx_buf_mutex);
+        return ret;
+    }
 
     /*
      * lora_send() follows the same error semantics as lora_config():
@@ -1087,17 +1126,16 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
      *   -EIO: SPI/hardware communication failure
      *   -EINVAL: invalid parameters
      *
-     * Cast len (size_t) to uint32_t: lora_send() expects uint32_t data_len.
-     * This cast is safe because len was validated above to not exceed
-     * LICHEN_LORA_MAX_PHY_PAYLOAD.
+     * Cast pop_len (uint16_t) to uint32_t: lora_send() expects uint32_t data_len.
+     * This cast is safe because pop_len was bounded by TX_QUEUE_MAX_PACKET_SIZE.
      */
     BUILD_ASSERT(LICHEN_LORA_MAX_PHY_PAYLOAD <= UINT32_MAX,
                  "LoRa max PHY payload no longer fits lora_send() uint32_t length");
-    int ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)len);
+    ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)pop_len);
 
     /*
      * SECURITY: Zero tx_buf after use to prevent leaking previous payload
-     * data. While lora_send() only transmits `len` bytes, zeroing provides
+     * data. While lora_send() only transmits `pop_len` bytes, zeroing provides
      * defense-in-depth against:
      * - Driver bugs that read beyond len
      * - Debug logging that dumps the full buffer
@@ -1221,4 +1259,23 @@ bool lichen_lora_l2_is_running(void)
 bool lichen_lora_l2_needs_reinit(void)
 {
     return lora_get_state() == LORA_ABORTED;
+}
+
+int lichen_lora_l2_queue_stats_get(struct tx_queue_stats *stats)
+{
+    if (stats == NULL) {
+        return -EINVAL;
+    }
+
+    enum lora_state state = lora_get_state();
+    if (state == LORA_UNINIT) {
+        return -ENODEV;
+    }
+
+    /*
+     * tx_queue_stats_get() is documented as non-atomic for diagnostic
+     * purposes. We don't hold tx_buf_mutex here because queue stats
+     * reads don't need to be strictly synchronized with TX operations.
+     */
+    return tx_queue_stats_get(&tx_queue, stats);
 }

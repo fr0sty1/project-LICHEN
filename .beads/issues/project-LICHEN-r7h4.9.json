@@ -4,14 +4,16 @@
   "description": "rak4631/support/rak4631.repl reuses nrf52840_lichen.repl, which hardcodes the T-Echo SX1262 wiring on gpio0 (CS=P0.24, RESET=P0.25, BUSY=P0.17, DIO1=P0.20) and models SPI1 as an easyDMA SPIM. The real RAK4631 (work/zephyr/boards/rak/rak4631/rak4631_nrf52840.dts) wires the SX1262 on gpio1 (CS=P1.10, RESET=P1.6, BUSY=P1.14, DIO1=P1.15) and uses compatible nordic,nrf-spi (legacy, non-DMA). Consequences in Renode: CS-deassert never reaches the SX1262 (state machine never resets), BUSY/DIO1 are never driven, and the easyDMA SPIM model does not match the legacy driver. RAK4631 is therefore currently non-functional in Renode despite being listed as supported. Give RAK4631 its own platform repl (or parameterize nrf52840_lichen.repl) with gpio1 wiring and the correct SPI controller model, then validate boot/SPI/TX like T-Echo (bead project-LICHEN-r7h4.5). Found during 3x codereview of the r7h4.5 fixes.",
   "acceptance_criteria": "A RAK4631 firmware boots in Renode with the SX1262 reachable (real opcodes) and LoRa TX reaching lichen-sim; 3 codereview passes.",
   "notes": "Grindable: correct wiring already documented in description (from rak4631_nrf52840.dts). Task is mechanical: fork nrf52840_lichen.repl, change gpio0→gpio1 pins, switch SPIM→legacy SPI model, validate boot+TX.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "grinder",
   "owner": "claude@ec2.local",
   "created_at": "2026-07-07T02:49:00.896436376Z",
   "created_by": "Claude Code (EC2)",
-  "updated_at": "2026-07-10T18:37:40.667907Z",
+  "updated_at": "2026-07-12T04:08:24.339885Z",
+  "closed_at": "2026-07-12T04:08:24.339885Z",
+  "close_reason": "Fixed: Created standalone RAK4631 Renode platform (rak4631.repl) with correct GPIO1 wiring (CS=P1.10, RESET=P1.6, BUSY=P1.14, DIO1=P1.15) and legacy SPI (no easyDMA). Platform now matches rak4631_nrf52840.dts instead of reusing T-Echo wiring from nrf52840_lichen.repl. Added README documenting GPIO differences.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-r7h4.9",

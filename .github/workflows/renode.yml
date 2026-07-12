@@ -81,3 +81,105 @@ jobs:
               exit 1
             fi
           done
+
+  renode-firmware:
+    name: Renode nRF52840 Boot + TX
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system deps
+        run: sudo apt-get install -y --no-install-recommends cmake ninja-build
+
+      - name: Cache Renode
+        id: cache-renode
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/renode
+          key: renode-1.16.1-linux
+
+      - name: Install Renode
+        if: steps.cache-renode.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://github.com/renode/renode/releases/download/v1.16.1/renode-1.16.1.linux-portable.tar.gz
+          mkdir -p ~/.local/share/renode
+          tar -xzf renode-1.16.1.linux-portable.tar.gz -C ~/.local/share/renode --strip-components=1
+          rm renode-1.16.1.linux-portable.tar.gz
+
+      - name: Add Renode to PATH
+        run: echo "$HOME/.local/share/renode" >> $GITHUB_PATH
+
+      - name: Verify Renode installation
+        run: renode --version
+
+      - name: Install west and Python deps
+        run: pip install west
+
+      - name: Install Zephyr SDK
+        run: |
+          wget -q https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.8/zephyr-sdk-0.16.8_linux-x86_64_minimal.tar.xz
+          tar xf zephyr-sdk-0.16.8_linux-x86_64_minimal.tar.xz
+          cd zephyr-sdk-0.16.8
+          ./setup.sh -t arm-zephyr-eabi -h -c
+
+      - name: Cache Zephyr checkout
+        id: cache-zephyr
+        uses: actions/cache@v4
+        with:
+          path: zephyr
+          key: zephyr-${{ hashFiles('lichen/west.yml') }}
+          restore-keys: zephyr-
+
+      - name: west init + update
+        if: steps.cache-zephyr.outputs.cache-hit != 'true'
+        run: |
+          west init -l lichen/
+          west update
+
+      - name: west init (manifest only, Zephyr from cache)
+        if: steps.cache-zephyr.outputs.cache-hit == 'true'
+        run: west init -l lichen/
+
+      - name: Install Zephyr Python requirements
+        run: pip install -r zephyr/scripts/requirements.txt
+
+      - name: west zephyr-export
+        run: west zephyr-export
+
+      - name: Build t_echo puck firmware (Renode console)
+        env:
+          # Reproducible build timestamp
+          SOURCE_DATE_EPOCH: "0"
+        run: |
+          # Build with renode_console overlay for UART output in Renode.
+          # Output dir matches test harness expectation: build/{board}_renode/
+          west build -b t_echo_nrf52840 lichen/apps/puck -d build/t_echo_renode -- \
+            -DEXTRA_DTC_OVERLAY_FILE=$GITHUB_WORKSPACE/lichen/boards/renode/nrf52840_lichen/support/renode_console.overlay \
+            -DEXTRA_CONF_FILE=$GITHUB_WORKSPACE/lichen/boards/renode/nrf52840_lichen/support/renode_console.conf
+
+      - name: Set up Python (for pytest)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python test dependencies
+        working-directory: python
+        run: |
+          pip install uv
+          uv sync --locked --all-extras --dev
+
+      - name: Run Renode boot + TX test
+        working-directory: python
+        env:
+          # Needed for headless .NET on some runners
+          DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1"
+        run: |
+          # Run the mesh test harness against the built firmware.
+          # The test_mesh.py harness looks for firmware at build/{board}_renode/zephyr/zephyr.elf
+          # We built to build/t_echo_renode, so we need to tell it where to find the ELF.
+          # The harness has fallback logic that checks build/{board}_renode first.
+          uv run pytest -v ../lichen/boards/renode/nrf52840_lichen/test_mesh.py \
+            --board=t_echo \
+            --nodes=2 \
+            --timeout=120

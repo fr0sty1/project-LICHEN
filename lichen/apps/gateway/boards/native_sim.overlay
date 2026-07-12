@@ -4,11 +4,16 @@
  * Instantiates the loopback LoRa driver for testing without hardware.
  * For full simulation with multiple nodes, switch to "lichen,lora-sim"
  * and update native_sim.conf accordingly.
+ *
+ * GNSS: Uses uart1 with gnss-nmea-generic for NMEA injection via PTY.
+ * The UART path is printed at startup; connect with:
+ *   python tools/gnss_nmea_feeder.py /dev/pts/<N>
  */
 
 / {
 	aliases {
 		lora0 = &lora_sim;
+		gnss = &gnss;
 	};
 
 	chosen {
@@ -18,5 +23,12 @@
 	lora_sim: lora {
 		compatible = "lichen,lora-loopback";
 		status = "okay";
+	};
+};
+
+/* GNSS on uart1 — receives NMEA sentences via PTY */
+&uart1 {
+	gnss: gnss-nmea-generic {
+		compatible = "gnss-nmea-generic";
 	};
 };

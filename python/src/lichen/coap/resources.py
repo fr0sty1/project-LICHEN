@@ -828,6 +828,156 @@ class KeyResource(resource.Resource):
         return _cbor_response(data)
 
 
+class EdhocResource(resource.Resource):
+    """POST /.well-known/edhoc — EDHOC key establishment (RFC 9528, spec 8.8).
+
+    Handles the responder side of EDHOC key exchange. Messages are exchanged
+    as raw bytes (not CBOR-wrapped) per RFC 9528 Section 5.3.
+
+    Protocol flow:
+        1. Client POSTs Message 1 -> Server returns Message 2
+        2. Client POSTs Message 3 -> Server returns empty 2.04 Changed
+
+    After step 2, both sides have derived the OSCORE master secret and salt.
+
+    Usage::
+
+        from lichen.coap.resources import EdhocResource
+        from lichen.crypto.identity import Identity
+
+        identity = Identity.generate()
+        edhoc = EdhocResource(identity, context_store, peer_resolver)
+        site.add_resource([".well-known", "edhoc"], edhoc)
+    """
+
+    def __init__(
+        self,
+        identity: Any,
+        context_store: Any,
+        peer_resolver: Any,
+    ) -> None:
+        """Create an EDHOC responder resource.
+
+        Args:
+            identity: Our cryptographic Identity for signing.
+            context_store: OscoreContextStore to save derived contexts.
+            peer_resolver: EdhocPeerResolver to look up/pin peer pubkeys.
+        """
+        super().__init__()
+        self._identity = identity
+        self._context_store = context_store
+        self._peer_resolver = peer_resolver
+        # Active EDHOC sessions keyed by (peer_host, C_I)
+        self._sessions: dict[tuple[str, bytes], Any] = {}
+
+    async def render_post(self, request: Message) -> Message:
+        """Handle EDHOC POST request.
+
+        Expects Message 1 or Message 3 in the payload. Determines which
+        based on whether we have an active session for the sender.
+        """
+        if not request.payload:
+            return Message(code=BAD_REQUEST)
+
+        # Get peer address from remote
+        peer_host = request.remote.hostinfo if request.remote else None
+        if not peer_host:
+            return Message(code=BAD_REQUEST)
+
+        payload = request.payload
+
+        # Try to find an active session for this peer
+        # Session key is (peer_host, c_i) but we don't know c_i yet for msg1
+        active_session = None
+        for (host, _), session in list(self._sessions.items()):
+            if host == peer_host:
+                active_session = session
+                break
+
+        if active_session is None:
+            # This is Message 1 - start new session
+            try:
+                return await self._handle_message_1(peer_host, payload)
+            except Exception:
+                return Message(code=BAD_REQUEST)
+        else:
+            # This is Message 3 - complete handshake
+            try:
+                return await self._handle_message_3(
+                    peer_host, payload, active_session
+                )
+            except Exception:
+                # Clean up failed session
+                self._cleanup_session(peer_host)
+                return Message(code=BAD_REQUEST)
+
+    async def _handle_message_1(self, peer_host: str, msg1: bytes) -> Message:
+        """Process EDHOC Message 1 and return Message 2."""
+        from lichen.crypto.edhoc import EdhocResponder
+
+        # Get peer's public key for authentication
+        peer_pubkey = await self._peer_resolver.get_peer_pubkey(peer_host)
+
+        # Create responder and process Message 1
+        responder = EdhocResponder.create(self._identity)
+        msg2 = responder.process_message_1(msg1, peer_pubkey or b"\x00" * 32)
+
+        # Extract C_I from Message 1 for session tracking
+        # Message 1: (METHOD_CORR, SUITES_I, G_X, C_I, ?EAD_1)
+        c_i = responder._c_i
+
+        # Store session
+        self._sessions[(peer_host, c_i)] = {
+            "responder": responder,
+            "peer_pubkey": peer_pubkey,
+        }
+
+        # Return Message 2
+        response = Message(code=CHANGED, payload=msg2)
+        response.opt.content_format = ContentFormat(65535)  # application/edhoc
+        return response
+
+    async def _handle_message_3(
+        self, peer_host: str, msg3: bytes, session: dict[str, Any]
+    ) -> Message:
+        """Process EDHOC Message 3 and establish OSCORE context."""
+        from lichen.crypto.oscore import MemorySecurityContext
+
+        responder = session["responder"]
+        peer_pubkey = session["peer_pubkey"]
+
+        if peer_pubkey is None:
+            # TOFU: accept and pin the pubkey from Message 3
+            # For now, require pre-known pubkey
+            self._cleanup_session(peer_host)
+            return Message(code=BAD_REQUEST)
+
+        # Process Message 3
+        responder.process_message_3(msg3, peer_pubkey)
+
+        # Export OSCORE context
+        edhoc_ctx = responder.export_oscore()
+        oscore_ctx = MemorySecurityContext.from_edhoc(edhoc_ctx)
+
+        # Store context
+        self._context_store.put_sync(peer_host, oscore_ctx, peer_pubkey)
+
+        # Pin peer if using TOFU
+        # (handled by context_store.put or peer_resolver.pin_peer)
+
+        # Clean up session
+        self._cleanup_session(peer_host)
+
+        # Return success (empty payload per RFC 9528)
+        return Message(code=CHANGED)
+
+    def _cleanup_session(self, peer_host: str) -> None:
+        """Remove any active sessions for a peer."""
+        to_remove = [key for key in self._sessions if key[0] == peer_host]
+        for key in to_remove:
+            del self._sessions[key]
+
+
 def build_site(
     node_info: NodeInfo,
     *,
@@ -840,6 +990,7 @@ def build_site(
     message_receipts_resource: MessageReceiptsResource | None = None,
     sos_resource: SosResource | None = None,
     resource_directory: bool = False,
+    edhoc_resource: EdhocResource | None = None,
 ) -> resource.Site:
     """Build an aiocoap Site exposing the LICHEN node resources.
 
@@ -852,6 +1003,8 @@ def build_site(
     ``activate()`` to push data to observers.
     Pass ``resource_directory=True`` to expose a CoAP Resource Directory
     at ``/rd`` (RFC 9176).
+    Pass ``edhoc_resource`` to expose ``/.well-known/edhoc`` for EDHOC key
+    establishment (RFC 9528, spec section 8.8).
     """
     site = resource.Site()
     site.add_resource(
@@ -887,4 +1040,6 @@ def build_site(
         site.add_resource(["rd"], ResourceDirectoryResource(site))
     if pubkey is not None:
         site.add_resource(["key"], KeyResource(pubkey))
+    if edhoc_resource is not None:
+        site.add_resource([".well-known", "edhoc"], edhoc_resource)
     return site

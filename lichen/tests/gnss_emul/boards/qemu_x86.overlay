@@ -1,0 +1,18 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: The contributors to the LICHEN project
+ *
+ * qemu_x86 overlay for GNSS emulator testing.
+ * Uses zephyr,gnss-emul for simple synthetic GNSS data.
+ */
+
+/ {
+	aliases {
+		gnss = &gnss;
+	};
+
+	gnss: gnss {
+		compatible = "zephyr,gnss-emul";
+		status = "okay";
+	};
+};

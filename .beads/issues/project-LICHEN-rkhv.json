@@ -2,13 +2,16 @@
   "id": "project-LICHEN-rkhv",
   "title": "Implement bounded TX/forwarding queues with backpressure",
   "description": "Prevent LoRa bufferbloat: (1) Bounded TX queue (~4-8 packets), (2) Bounded forwarding buffer per-source, (3) Backpressure error to app when queue full, (4) Deadline-based expiry (drop packets older than ~10s), (5) Priority: routing control \u003e ACKs \u003e app data. CoDel-style AQM may be overkill but consider timestamp-based dropping.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T22:22:27.967075Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T22:22:32.476295Z",
+  "updated_at": "2026-07-12T04:06:40.254969Z",
+  "closed_at": "2026-07-12T04:06:40.254969Z",
+  "close_reason": "Verified complete: (1) TX Queue - C impl in lichen/subsys/lichen/link/tx_queue.c with 4-packet bound, 4 priority levels, deadline expiry, backpressure (-ENOBUFS), 17/17 tests pass; Python impl in python/src/lichen/link/tx_queue.py with same features + EMA latency, 32 tests pass. (2) Forwarding Buffer - C impl in lichen/subsys/lichen/routing/router.c with per-source limits (2 pkts/source, 8 sources max), LRU eviction, deadline expiry, backpressure; Python impl in ForwardingBuffer class, 12 tests pass. Spec doc: spec/appendix-bufferbloat.md. No additional work needed.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-rkhv",

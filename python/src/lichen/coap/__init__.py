@@ -12,6 +12,7 @@ Security (spec section 8.7):
 
 from lichen.coap.resources import (
     ConfigResource,
+    EdhocResource,
     MessageReceiptsResource,
     NeighborsResource,
     NodeInfo,
@@ -54,6 +55,7 @@ __all__ = [
     "create_secure_channel",
     # Resources
     "ConfigResource",
+    "EdhocResource",
     "MessageReceiptsResource",
     "NeighborsResource",
     "NodeInfo",
