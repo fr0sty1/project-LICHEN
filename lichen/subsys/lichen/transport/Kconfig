@@ -1,7 +1,81 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 
-# BLE IPSP Transport configuration for LCI (spec/11-lci.md section 17.3.2)
+# LCI Transport bindings (spec/11-lci.md section 17.3)
+#   - 17.3.1: SLIP over Serial/USB
+#   - 17.3.2: BLE (SLIP over NUS / RFC 7668 IPSP)
+
+# ─── SLIP Serial Transport (17.3.1) ─────────────────────────────────────────
+
+menuconfig LICHEN_SLIP_TRANSPORT
+	bool "SLIP transport for LCI (Serial/USB)"
+	depends on LICHEN
+	depends on SERIAL
+	depends on RING_BUFFER
+	depends on NET_L2_DUMMY
+	depends on NET_IPV6
+	help
+	  Enable SLIP transport binding for the Local Client Interface (LCI).
+	  Provides IPv6/CoAP connectivity over UART or USB-CDC using RFC 1055
+	  SLIP framing.
+
+	  This allows standard SLIP tools (slattach, tunslip6) to communicate
+	  with the mesh node using any CoAP client.
+
+	  Per LCI spec 17.3.1:
+	  - Framing: END=0xC0, ESC=0xDB, ESC_END=0xDC, ESC_ESC=0xDD
+	  - Node address: fe80::1
+	  - Client address: fe80::2
+	  - Recommended baud: 115200 or higher
+
+if LICHEN_SLIP_TRANSPORT
+
+config SLIP_TRANSPORT_LOG_LEVEL
+	int "SLIP transport log level"
+	default 3
+	range 0 4
+	help
+	  Log level for SLIP transport module:
+	    0 = Off
+	    1 = Error
+	    2 = Warning
+	    3 = Info
+	    4 = Debug
+
+config SLIP_TRANSPORT_RX_RING_SIZE
+	int "RX ring buffer size"
+	default 256
+	range 64 4096
+	help
+	  Size of the ring buffer used to transfer received bytes from
+	  the UART ISR to the RX processing thread. Should be large enough
+	  to hold multiple packets worth of SLIP-encoded data.
+
+config SLIP_TRANSPORT_RX_THREAD_STACK_SIZE
+	int "RX thread stack size"
+	default 1024
+	range 512 4096
+	help
+	  Stack size for the SLIP RX processing thread.
+
+config SLIP_TRANSPORT_RX_THREAD_PRIORITY
+	int "RX thread priority"
+	default 7
+	range 0 15
+	help
+	  Priority of the SLIP RX processing thread.
+	  Lower numbers are higher priority.
+
+config SLIP_TRANSPORT_AUTO_INIT
+	bool "Automatically initialize SLIP transport"
+	default y
+	help
+	  Automatically initialize the SLIP transport at boot.
+	  If disabled, call slip_transport_init() explicitly.
+
+endif # LICHEN_SLIP_TRANSPORT
+
+# ─── BLE Transport (17.3.2) ─────────────────────────────────────────────────
 
 menuconfig LICHEN_BLE_TRANSPORT
 	bool "BLE IPSP transport for LCI"

@@ -5,7 +5,7 @@
  * @file coap_msg.c
  * @brief CoAP messaging resources for LCI
  *
- * Implements /msg/* resources per LCI spec section 17.5.7.
+ * Implements /msg resources per LCI spec section 17.5.7.
  */
 
 #include <string.h>

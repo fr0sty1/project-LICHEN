@@ -7,6 +7,7 @@
  */
 
 #include <errno.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <zephyr/kernel.h>
@@ -622,7 +623,7 @@ static int coap_respond(struct coap_resource *resource,
 		if (r < 0) {
 			return r;
 		}
-		r = coap_packet_append_payload(&resp, payload, payload_len);
+		r = coap_packet_append_payload(&resp, payload, (uint16_t)payload_len);
 		if (r < 0) {
 			return r;
 		}

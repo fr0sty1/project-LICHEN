@@ -5,7 +5,7 @@
  * @file lichen/coap_msg.h
  * @brief CoAP messaging resources for LCI
  *
- * Implements /msg/* resources per LCI spec section 17.5.7:
+ * Implements /msg resources per LCI spec section 17.5.7:
  * - POST /msg/sent - queue outbound message
  * - GET /msg/inbox - retrieve inbound messages (observable)
  * - POST /msg/ack - acknowledge message receipt

@@ -6,3 +6,8 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(icmpv6)
 
 target_sources(app PRIVATE src/main.c)
+
+# Include LICHEN L2 directory for icmpv6.h and ipv6_addr.h
+target_include_directories(app PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../subsys/lichen/l2
+)

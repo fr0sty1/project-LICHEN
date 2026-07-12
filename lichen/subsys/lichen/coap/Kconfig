@@ -167,6 +167,7 @@ config LICHEN_COAP_KEYS
 	bool "LCI /keys resource handlers"
 	depends on LICHEN_COAP_SERVER
 	select COAP_URI_WILDCARD
+	select TINYCRYPT_SHA256
 	help
 	  Enable CoAP server resources for key store management per LCI spec
 	  section 17.5.5:

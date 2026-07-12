@@ -29,7 +29,7 @@
 #include <tinycrypt/constants.h>
 #endif
 
-LOG_MODULE_REGISTER(coap_keys, CONFIG_LICHEN_COAP_KEYS_LOG_LEVEL);
+LOG_MODULE_REGISTER(lichen_coap_keys, CONFIG_LICHEN_COAP_KEYS_LOG_LEVEL);
 
 /* Maximum keys to store */
 #ifndef CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES
@@ -82,22 +82,6 @@ static void cbor_put_tstr(uint8_t *buf, size_t *off, const char *value)
 		buf[(*off)++] = (uint8_t)(len & 0xffU);
 	}
 	memcpy(&buf[*off], value, len);
-	*off += len;
-}
-
-static void cbor_put_bstr(uint8_t *buf, size_t *off, const uint8_t *data, size_t len)
-{
-	if (len < 24U) {
-		buf[(*off)++] = 0x40U | (uint8_t)len;
-	} else if (len <= UINT8_MAX) {
-		buf[(*off)++] = 0x58;
-		buf[(*off)++] = (uint8_t)len;
-	} else {
-		buf[(*off)++] = 0x59;
-		buf[(*off)++] = (uint8_t)(len >> 8);
-		buf[(*off)++] = (uint8_t)(len & 0xffU);
-	}
-	memcpy(&buf[*off], data, len);
 	*off += len;
 }
 
