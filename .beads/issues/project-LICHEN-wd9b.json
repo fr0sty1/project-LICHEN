@@ -2,11 +2,14 @@
   "id": "project-LICHEN-wd9b",
   "title": "EDHOC: __ASSERT used for crypto validation - silent failures in production",
   "description": "SECURITY: Crypto operation return values are validated only with __ASSERT, which compiles to nothing in release builds (CONFIG_ASSERT=n).\n\nAffected lines in edhoc.c:\n- Lines 77, 80, 83: sha256_hash() - tc_sha256_* return values\n- Lines 97, 100, 103, 106: hmac_sha256() - tc_hmac_* return values  \n- Lines 147, 150, 154, 158, 161, 164: hkdf_expand() - tc_hmac_* return values\n\nIf any crypto operation fails in production, the function continues with uninitialized or corrupted output, potentially:\n1. Using uninitialized memory as cryptographic keys\n2. Producing predictable/weak keys\n3. Causing authentication bypass\n\nFix: Replace __ASSERT with proper error checking that returns error codes. Crypto failures should propagate up to callers.\n\nFile: lichen/subsys/lichen/edhoc/edhoc.c:77-164",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:44:17.563428Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:44:17.56346Z"
+  "updated_at": "2026-07-13T00:05:59.711111Z",
+  "closed_at": "2026-07-13T00:05:59.711111Z",
+  "close_reason": "Fixed: Replaced all __ASSERT calls in sha256_hash(), hmac_sha256(), hkdf_extract(), and hkdf_expand() with proper error checking that returns error codes (-EIO). Updated compute_th() to return int. Updated all 10 call sites (5 initiator, 5 responder) to check return values and goto err_wipe on failure. Crypto failures now properly propagate to callers."
 }
