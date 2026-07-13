@@ -12,6 +12,71 @@ on:
 # produce IDENTICAL wire bytes for all protocol vectors.
 
 jobs:
+  frame-parser-interop:
+    name: Python→Rust Frame Parsing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install protoc
+        run: sudo apt-get install -y protobuf-compiler
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Build frame-parser
+        run: |
+          cd rust
+          cargo build --release -p lichen-apps --bin frame-parser
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps
+        run: |
+          cd python
+          pip install uv
+          uv sync --locked --all-extras --dev
+
+      - name: Run Python→Rust interop tests
+        run: |
+          cd python
+          uv run pytest tests/sim/test_cross_impl_interop.py::TestPythonToRust -v
+
+  multinode-simulator:
+    name: Multi-Node Simulator Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps
+        run: |
+          cd python
+          pip install uv
+          uv sync --locked --all-extras --dev
+
+      - name: Run multi-node tests
+        run: |
+          cd python
+          uv run pytest tests/sim/test_multinode.py -v --timeout=60
+
+      - name: Run cross-impl baseline tests
+        run: |
+          cd python
+          uv run pytest tests/sim/test_cross_impl_interop.py::TestPythonToPythonBaseline -v
+
   vector-compatibility:
     name: Shared Vector Tests
     runs-on: ubuntu-latest
