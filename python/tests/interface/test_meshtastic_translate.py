@@ -72,6 +72,21 @@ class TestPosition:
         pos = Position.from_bytes(b"")
         assert pos.latitude_i is None
 
+    def test_negative_altitude(self) -> None:
+        """Negative altitude (below sea level) should decode correctly.
+
+        e.g., Dead Sea is at -430m.
+        """
+        original = Position(
+            latitude_i=314760000,  # 31.476 (Dead Sea area)
+            longitude_i=353930000,  # 35.393
+            altitude=-430,
+        )
+        data = original.to_bytes()
+        decoded = Position.from_bytes(data)
+
+        assert decoded.altitude == -430
+
 
 class TestUser:
     """Tests for User protobuf encoding/decoding."""

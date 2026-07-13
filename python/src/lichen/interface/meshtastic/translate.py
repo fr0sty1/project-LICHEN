@@ -136,6 +136,11 @@ class Position:
                 elif wire_type == 0:  # varint
                     val, consumed = _decode_varint(data[i:])
                     if field_num == _POS_ALTITUDE:
+                        # int32 can be negative - protobuf sign-extends to 64-bit,
+                        # so mask to 32 bits first, then reinterpret as signed
+                        val &= 0xFFFFFFFF
+                        if val > 0x7FFFFFFF:
+                            val -= 0x100000000
                         pos.altitude = val
                     i += consumed
                 elif wire_type == 1:  # fixed64 (skip)
