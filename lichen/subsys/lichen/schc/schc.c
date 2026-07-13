@@ -343,8 +343,10 @@ static bool coap_has_oscore_option(const uint8_t *coap, size_t coap_len)
 		}
 
 		/* Parse option delta */
-		uint8_t delta = (byte >> 4) & 0x0F;
-		uint8_t length = byte & 0x0F;
+		/* SECURITY: Use uint32_t/size_t to avoid truncation when extended
+		 * delta/length values exceed 255 (e.g., delta==14 can yield 65804) */
+		uint32_t delta = (byte >> 4) & 0x0F;
+		size_t length = byte & 0x0F;
 		offset++;
 
 		if (delta == 13) {

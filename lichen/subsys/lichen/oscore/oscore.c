@@ -1897,7 +1897,9 @@ int oscore_unprotect_response(struct oscore_ctx *ctx,
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
-	if (request_piv_len > OSCORE_PIV_MAX_LEN) {
+	/* SECURITY: Validate request_piv pointer when len > 0 to prevent NULL dereference */
+	if (request_piv_len > OSCORE_PIV_MAX_LEN ||
+	    (request_piv_len > 0 && request_piv == NULL)) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 

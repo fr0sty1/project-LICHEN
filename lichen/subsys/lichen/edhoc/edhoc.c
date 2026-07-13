@@ -39,18 +39,20 @@ LOG_MODULE_REGISTER(edhoc, CONFIG_LICHEN_EDHOC_LOG_LEVEL);
 
 /*
  * SHA-256 hash
+ * Returns 0 on success, -EIO on crypto failure
  */
-static void sha256_hash(const uint8_t *data, size_t len, uint8_t out[32]);
+static int sha256_hash(const uint8_t *data, size_t len, uint8_t out[32]);
 
 /*
  * Compute transcript hash per RFC 9528 Section 4.1.2
  * TH = H(CBOR(bstr1) || CBOR(bstr2) || CBOR(bstr3))
  * All inputs are CBOR-encoded as byte strings before hashing.
+ * Returns 0 on success, negative on error.
  */
-static void compute_th(uint8_t out[32],
-		       const uint8_t *b1, size_t b1_len,
-		       const uint8_t *b2, size_t b2_len,
-		       const uint8_t *b3, size_t b3_len)
+static int compute_th(uint8_t out[32],
+		      const uint8_t *b1, size_t b1_len,
+		      const uint8_t *b2, size_t b2_len,
+		      const uint8_t *b3, size_t b3_len)
 {
 	uint8_t cbor_buf[256];
 	ZCBOR_STATE_E(zse, 0, cbor_buf, sizeof(cbor_buf), 0);
@@ -62,68 +64,104 @@ static void compute_th(uint8_t out[32],
 	}
 
 	size_t cbor_len = zse->payload - cbor_buf;
-	sha256_hash(cbor_buf, cbor_len, out);
+	return sha256_hash(cbor_buf, cbor_len, out);
 }
 
 /*
  * SHA-256 hash
+ * SECURITY: All crypto return values must be checked - silent failures would
+ * produce uninitialized output, potentially usable as predictable keys.
+ * Returns 0 on success, -EIO on crypto failure.
  */
-static void sha256_hash(const uint8_t *data, size_t len, uint8_t out[32])
+static int sha256_hash(const uint8_t *data, size_t len, uint8_t out[32])
 {
 	struct tc_sha256_state_struct state;
-	int rc;
 
-	rc = tc_sha256_init(&state);
-	__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_sha256_init failed");
+	if (tc_sha256_init(&state) != TC_CRYPTO_SUCCESS) {
+		LOG_ERR("tc_sha256_init failed");
+		return -EIO;
+	}
 
-	rc = tc_sha256_update(&state, data, len);
-	__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_sha256_update failed");
+	if (tc_sha256_update(&state, data, len) != TC_CRYPTO_SUCCESS) {
+		LOG_ERR("tc_sha256_update failed");
+		crypto_wipe(&state, sizeof(state));
+		return -EIO;
+	}
 
-	rc = tc_sha256_final(out, &state);
-	__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_sha256_final failed");
+	if (tc_sha256_final(out, &state) != TC_CRYPTO_SUCCESS) {
+		LOG_ERR("tc_sha256_final failed");
+		crypto_wipe(&state, sizeof(state));
+		return -EIO;
+	}
+
+	crypto_wipe(&state, sizeof(state));
+	return 0;
 }
 
 /*
  * HMAC-SHA256
+ * SECURITY: All crypto return values must be checked - silent failures would
+ * produce uninitialized output, potentially usable as predictable keys.
+ * Returns 0 on success, -EIO on crypto failure.
  */
-static void hmac_sha256(const uint8_t *key, size_t key_len,
-			const uint8_t *data, size_t data_len,
-			uint8_t out[32])
+static int hmac_sha256(const uint8_t *key, size_t key_len,
+		       const uint8_t *data, size_t data_len,
+		       uint8_t out[32])
 {
 	struct tc_hmac_state_struct state;
-	int rc;
 
-	rc = tc_hmac_set_key(&state, key, key_len);
-	__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_set_key failed");
+	if (tc_hmac_set_key(&state, key, key_len) != TC_CRYPTO_SUCCESS) {
+		LOG_ERR("tc_hmac_set_key failed");
+		return -EIO;
+	}
 
-	rc = tc_hmac_init(&state);
-	__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_init failed");
+	if (tc_hmac_init(&state) != TC_CRYPTO_SUCCESS) {
+		LOG_ERR("tc_hmac_init failed");
+		crypto_wipe(&state, sizeof(state));
+		return -EIO;
+	}
 
-	rc = tc_hmac_update(&state, data, data_len);
-	__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_update failed");
+	if (tc_hmac_update(&state, data, data_len) != TC_CRYPTO_SUCCESS) {
+		LOG_ERR("tc_hmac_update failed");
+		crypto_wipe(&state, sizeof(state));
+		return -EIO;
+	}
 
-	rc = tc_hmac_final(out, TC_SHA256_DIGEST_SIZE, &state);
-	__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_final failed");
+	if (tc_hmac_final(out, TC_SHA256_DIGEST_SIZE, &state) != TC_CRYPTO_SUCCESS) {
+		LOG_ERR("tc_hmac_final failed");
+		crypto_wipe(&state, sizeof(state));
+		return -EIO;
+	}
+
+	crypto_wipe(&state, sizeof(state));
+	return 0;
 }
 
 /*
  * HKDF-Extract (RFC 5869)
+ * Returns 0 on success, negative on error.
  */
-static void hkdf_extract(const uint8_t *salt, size_t salt_len,
-			 const uint8_t *ikm, size_t ikm_len,
-			 uint8_t prk[32])
+static int hkdf_extract(const uint8_t *salt, size_t salt_len,
+			const uint8_t *ikm, size_t ikm_len,
+			uint8_t prk[32])
 {
 	uint8_t default_salt[32] = {0};
+	int ret;
+
 	if (salt == NULL || salt_len == 0) {
 		salt = default_salt;
 		salt_len = 32;
 	}
-	hmac_sha256(salt, salt_len, ikm, ikm_len, prk);
+	ret = hmac_sha256(salt, salt_len, ikm, ikm_len, prk);
 	crypto_wipe(default_salt, sizeof(default_salt));
+	return ret;
 }
 
 /*
  * HKDF-Expand (RFC 5869)
+ * SECURITY: All crypto return values must be checked - silent failures would
+ * produce uninitialized output, potentially usable as predictable keys.
+ * Returns 0 on success, negative on error.
  */
 static int hkdf_expand(const uint8_t prk[32],
 		       const uint8_t *info, size_t info_len,
@@ -141,27 +179,50 @@ static int hkdf_expand(const uint8_t prk[32],
 
 	while (offset < okm_len) {
 		struct tc_hmac_state_struct state;
-		int rc;
 
-		rc = tc_hmac_set_key(&state, prk, 32);
-		__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_set_key failed");
+		if (tc_hmac_set_key(&state, prk, 32) != TC_CRYPTO_SUCCESS) {
+			LOG_ERR("tc_hmac_set_key failed in HKDF-Expand");
+			crypto_wipe(t, sizeof(t));
+			return -EIO;
+		}
 
-		rc = tc_hmac_init(&state);
-		__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_init failed");
+		if (tc_hmac_init(&state) != TC_CRYPTO_SUCCESS) {
+			LOG_ERR("tc_hmac_init failed in HKDF-Expand");
+			crypto_wipe(&state, sizeof(state));
+			crypto_wipe(t, sizeof(t));
+			return -EIO;
+		}
 
 		if (t_len > 0) {
-			rc = tc_hmac_update(&state, t, t_len);
-			__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_update failed");
+			if (tc_hmac_update(&state, t, t_len) != TC_CRYPTO_SUCCESS) {
+				LOG_ERR("tc_hmac_update (T) failed in HKDF-Expand");
+				crypto_wipe(&state, sizeof(state));
+				crypto_wipe(t, sizeof(t));
+				return -EIO;
+			}
 		}
-		rc = tc_hmac_update(&state, info, info_len);
-		__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_update failed");
+		if (tc_hmac_update(&state, info, info_len) != TC_CRYPTO_SUCCESS) {
+			LOG_ERR("tc_hmac_update (info) failed in HKDF-Expand");
+			crypto_wipe(&state, sizeof(state));
+			crypto_wipe(t, sizeof(t));
+			return -EIO;
+		}
 
-		rc = tc_hmac_update(&state, &counter, 1);
-		__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_update failed");
+		if (tc_hmac_update(&state, &counter, 1) != TC_CRYPTO_SUCCESS) {
+			LOG_ERR("tc_hmac_update (counter) failed in HKDF-Expand");
+			crypto_wipe(&state, sizeof(state));
+			crypto_wipe(t, sizeof(t));
+			return -EIO;
+		}
 
-		rc = tc_hmac_final(t, TC_SHA256_DIGEST_SIZE, &state);
-		__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_final failed");
+		if (tc_hmac_final(t, TC_SHA256_DIGEST_SIZE, &state) != TC_CRYPTO_SUCCESS) {
+			LOG_ERR("tc_hmac_final failed in HKDF-Expand");
+			crypto_wipe(&state, sizeof(state));
+			crypto_wipe(t, sizeof(t));
+			return -EIO;
+		}
 
+		crypto_wipe(&state, sizeof(state));
 		t_len = 32;
 
 		size_t copy_len = MIN(32, okm_len - offset);
@@ -547,7 +608,10 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 
 	/* TH_2 = H(H(message_1) || G_Y || C_R) per RFC 9528 Section 4.1.2 */
 	uint8_t h_msg1[32];
-	sha256_hash(ctx->msg1, ctx->msg1_len, h_msg1);
+	ret = sha256_hash(ctx->msg1, ctx->msg1_len, h_msg1);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	uint8_t th2_input[72];  /* 32 + 32 + up to 8 for C_R */
 	size_t th2_input_len = 0;
@@ -557,10 +621,16 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	th2_input_len += 32;
 	memcpy(th2_input + th2_input_len, ctx->c_r, ctx->c_r_len);
 	th2_input_len += ctx->c_r_len;
-	sha256_hash(th2_input, th2_input_len, ctx->th_2);
+	ret = sha256_hash(th2_input, th2_input_len, ctx->th_2);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	/* PRK_2e = HKDF-Extract(TH_2, G_XY) */
-	hkdf_extract(ctx->th_2, 32, g_xy, 32, ctx->prk_2e);
+	ret = hkdf_extract(ctx->th_2, 32, g_xy, 32, ctx->prk_2e);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 	crypto_wipe(g_xy, sizeof(g_xy));
 
 	/*
@@ -647,7 +717,10 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	th3_len += ct2_len;
 	memcpy(th3_input + th3_len, peer_pubkey, 32);
 	th3_len += 32;
-	sha256_hash(th3_input, th3_len, ctx->th_3);
+	ret = sha256_hash(th3_input, th3_len, ctx->th_3);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	/* PRK_4e3m = PRK_3e2m for SIGN_SIGN */
 	memcpy(ctx->prk_4e3m, ctx->prk_3e2m, 32);
@@ -726,7 +799,10 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	*msg3_len = pt3_len + 8;
 
 	/* TH_4 = H(TH_3, PLAINTEXT_3, CRED_I) per RFC 9528 Section 4.1.2 */
-	compute_th(ctx->th_4, ctx->th_3, 32, plaintext_3, pt3_len, ctx->ed_pubkey, 32);
+	ret = compute_th(ctx->th_4, ctx->th_3, 32, plaintext_3, pt3_len, ctx->ed_pubkey, 32);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	crypto_wipe(k_3, sizeof(k_3));
 	crypto_wipe(iv_3, sizeof(iv_3));
@@ -914,7 +990,10 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 
 	/* TH_2 = H(H(message_1) || G_Y || C_R) per RFC 9528 Section 4.1.2 */
 	uint8_t h_msg1[32];
-	sha256_hash(ctx->msg1, ctx->msg1_len, h_msg1);
+	ret = sha256_hash(ctx->msg1, ctx->msg1_len, h_msg1);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	uint8_t th2_input[72];  /* 32 + 32 + up to 8 for C_R */
 	size_t th2_input_len = 0;
@@ -924,10 +1003,16 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	th2_input_len += 32;
 	memcpy(th2_input + th2_input_len, ctx->c_r, ctx->c_r_len);
 	th2_input_len += ctx->c_r_len;
-	sha256_hash(th2_input, th2_input_len, ctx->th_2);
+	ret = sha256_hash(th2_input, th2_input_len, ctx->th_2);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	/* PRK_2e */
-	hkdf_extract(ctx->th_2, 32, g_xy, 32, ctx->prk_2e);
+	ret = hkdf_extract(ctx->th_2, 32, g_xy, 32, ctx->prk_2e);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 	crypto_wipe(g_xy, sizeof(g_xy));
 
 	/* PRK_3e2m = PRK_2e for SIGN_SIGN */
@@ -996,7 +1081,10 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	th3_len += pt2_len;
 	memcpy(th3_input + th3_len, ctx->ed_pubkey, 32);
 	th3_len += 32;
-	sha256_hash(th3_input, th3_len, ctx->th_3);
+	ret = sha256_hash(th3_input, th3_len, ctx->th_3);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	/* Build message_2 = (G_Y || CIPHERTEXT_2, C_R) */
 	ZCBOR_STATE_E(zse, 0, msg2, msg2_size, 0);
@@ -1144,7 +1232,10 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	}
 
 	/* TH_4 = H(TH_3, PLAINTEXT_3, CRED_I) per RFC 9528 Section 4.2.2 */
-	compute_th(ctx->th_4, ctx->th_3, 32, plaintext_3, pt3_len, peer_pubkey, 32);
+	ret = compute_th(ctx->th_4, ctx->th_3, 32, plaintext_3, pt3_len, peer_pubkey, 32);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	crypto_wipe(k_3, sizeof(k_3));
 	crypto_wipe(iv_3, sizeof(iv_3));
