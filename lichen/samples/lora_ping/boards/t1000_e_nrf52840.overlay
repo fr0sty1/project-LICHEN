@@ -1,0 +1,13 @@
+/*
+ * Overlay for T1000-E board - enables LoRa and adds zephyr,lora to chosen
+ */
+
+/ {
+	chosen {
+		zephyr,lora = &lora0;
+	};
+};
+
+&lora0 {
+	status = "okay";
+};

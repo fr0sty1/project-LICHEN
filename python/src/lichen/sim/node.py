@@ -9,6 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
+from lichen.sim.metrics import NodeMetrics
 from lichen.state_machine import StateMachine
 
 # Type alias for RX callbacks: (on_packet, on_timeout)
@@ -47,6 +48,7 @@ class SimNode:
     connected: bool
     last_seen_time_us: int
     rx_callbacks: RxCallbacks | None = field(repr=False)
+    metrics: NodeMetrics = field(repr=False)
     _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
 
     def __init__(
@@ -59,6 +61,7 @@ class SimNode:
         connected: bool = False,
         last_seen_time_us: int = 0,
         rx_callbacks: RxCallbacks | None = None,
+        metrics: NodeMetrics | None = None,
     ) -> None:
         self.id = id
         self.position = position
@@ -67,6 +70,7 @@ class SimNode:
         self.connected = connected
         self.last_seen_time_us = last_seen_time_us
         self.rx_callbacks = rx_callbacks
+        self.metrics = metrics if metrics is not None else NodeMetrics()
         self._state_machine = StateMachine(
             initial=state,
             transitions=NODE_STATE_TRANSITIONS,

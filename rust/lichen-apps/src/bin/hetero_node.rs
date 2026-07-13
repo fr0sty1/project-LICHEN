@@ -9,8 +9,38 @@
 //! Usage:
 //!   hetero-node <node_id> <sim_host> <sim_port> <x_position> <duration_s>
 
+use std::collections::HashSet;
 use std::env;
 use std::time::{Duration, Instant};
+
+use sha2::{Digest, Sha256};
+
+/// Metrics collected during node operation.
+struct NodeMetrics {
+    tx_count: u32,
+    rx_count: u32,
+    tx_bytes: u64,
+    rx_bytes: u64,
+    unique_peers: HashSet<[u8; 8]>,
+    errors: Vec<String>,
+    packet_hashes_sent: HashSet<[u8; 16]>,
+    packet_hashes_received: HashSet<[u8; 16]>,
+}
+
+impl NodeMetrics {
+    fn new() -> Self {
+        Self {
+            tx_count: 0,
+            rx_count: 0,
+            tx_bytes: 0,
+            rx_bytes: 0,
+            unique_peers: HashSet::new(),
+            errors: Vec::new(),
+            packet_hashes_sent: HashSet::new(),
+            packet_hashes_received: HashSet::new(),
+        }
+    }
+}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -49,8 +79,7 @@ fn main() {
     eprintln!("rust-{}: IID={}", node_id, iid_hex);
 
     let start = Instant::now();
-    let mut tx_count = 0u32;
-    let mut rx_count = 0u32;
+    let mut metrics = NodeMetrics::new();
     let mut seq_num = 0u16;
     let mut buf = [0u8; 256];
 
@@ -71,10 +100,15 @@ fn main() {
         // Transmit
         match futures::executor::block_on(lichen_hal::Radio::transmit(&mut radio, &announce)) {
             Ok(()) => {
-                tx_count += 1;
+                metrics.tx_count += 1;
+                metrics.tx_bytes += announce.len() as u64;
+                let hash = Sha256::digest(&announce);
+                let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
+                metrics.packet_hashes_sent.insert(hash_prefix);
                 seq_num = seq_num.wrapping_add(1);
             }
             Err(e) => {
+                metrics.errors.push(format!("TX error: {:?}", e));
                 eprintln!("rust-{}: TX error: {:?}", node_id, e);
             }
         }
@@ -84,7 +118,14 @@ fn main() {
             match futures::executor::block_on(lichen_hal::Radio::receive(&mut radio, &mut buf, 1000))
             {
                 Ok(Some(pkt)) => {
-                    rx_count += 1;
+                    metrics.rx_count += 1;
+                    metrics.rx_bytes += pkt.len as u64;
+
+                    // Track packet hash
+                    let hash = Sha256::digest(&buf[..pkt.len]);
+                    let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
+                    metrics.packet_hashes_received.insert(hash_prefix);
+
                     // Check if it's from a different implementation
                     if pkt.len > 0 {
                         let dispatch = buf[0];
@@ -93,10 +134,24 @@ fn main() {
                             "rust-{}: RX {} bytes, dispatch={:#x} ({})",
                             node_id, pkt.len, dispatch, source
                         );
+
+                        // Parse announce to extract peer IID
+                        // Format: [0x15 dispatch][type=0x01][seq:2][hop:1][iid:8]...
+                        if pkt.len > 10 && buf[0] == 0x15 && buf[1] == 0x01 {
+                            let peer_iid: [u8; 8] = buf[5..13].try_into().unwrap();
+                            if peer_iid != identity.iid {
+                                metrics.unique_peers.insert(peer_iid);
+                                eprintln!(
+                                    "rust-{}: announce from peer {:02x?}",
+                                    node_id, peer_iid
+                                );
+                            }
+                        }
                     }
                 }
                 Ok(None) => {} // timeout
                 Err(e) => {
+                    metrics.errors.push(format!("RX error: {:?}", e));
                     eprintln!("rust-{}: RX error: {:?}", node_id, e);
                 }
             }
@@ -106,6 +161,23 @@ fn main() {
         std::thread::sleep(Duration::from_millis(8000 + (node_id as u64 % 4000)));
     }
 
-    // Final stats
-    println!("rust-{}: TX={} RX={}", node_id, tx_count, rx_count);
+    // Final stats (legacy format for compatibility)
+    println!(
+        "rust-{}: TX={} RX={}",
+        node_id, metrics.tx_count, metrics.rx_count
+    );
+
+    // Export metrics as JSON
+    let metrics_json = serde_json::json!({
+        "node_id": node_id,
+        "tx_count": metrics.tx_count,
+        "rx_count": metrics.rx_count,
+        "tx_bytes": metrics.tx_bytes,
+        "rx_bytes": metrics.rx_bytes,
+        "unique_peers": metrics.unique_peers.len(),
+        "errors": metrics.errors.len(),
+        "hashes_sent": metrics.packet_hashes_sent.len(),
+        "hashes_received": metrics.packet_hashes_received.len(),
+    });
+    println!("METRICS:{}", serde_json::to_string(&metrics_json).unwrap());
 }

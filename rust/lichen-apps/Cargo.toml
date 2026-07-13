@@ -20,6 +20,7 @@ lichen-hal = { path = "../lichen-hal" }
 serde_json = "1.0"
 hex = "0.4"
 futures = "0.3"
+sha2 = "0.10"
 
 [[bin]]
 name = "frame-parser"

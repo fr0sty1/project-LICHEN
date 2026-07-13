@@ -14,11 +14,66 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/lora.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/crc.h>
 
-LOG_MODULE_REGISTER(lora_ping, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(lora_ping, LOG_LEVEL_DBG);
 
 BUILD_ASSERT(DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_lora), okay),
 	     "lora_ping requires an enabled devicetree chosen zephyr,lora");
+
+/* Packet telemetry metrics */
+static struct {
+	uint32_t tx_count;
+	uint32_t rx_count;
+	uint32_t tx_bytes;
+	uint32_t rx_bytes;
+	uint32_t errors;
+	uint32_t unique_hashes_seen;
+	/* Simple hash set (fixed size for embedded) */
+	uint32_t seen_hashes[64];
+	uint8_t seen_hash_count;
+} metrics;
+
+/* Compute packet hash using CRC32 */
+static uint32_t packet_hash(const uint8_t *data, size_t len)
+{
+	return crc32_ieee(data, len);
+}
+
+/* Track unique packets by hash */
+static void track_hash(uint32_t hash)
+{
+	for (int i = 0; i < metrics.seen_hash_count; i++) {
+		if (metrics.seen_hashes[i] == hash) {
+			return;
+		}
+	}
+	if (metrics.seen_hash_count < ARRAY_SIZE(metrics.seen_hashes)) {
+		metrics.seen_hashes[metrics.seen_hash_count++] = hash;
+		metrics.unique_hashes_seen++;
+	}
+}
+
+/* Log metrics summary */
+static void log_metrics(void)
+{
+	LOG_INF("METRICS: tx=%u rx=%u tx_bytes=%u rx_bytes=%u errors=%u unique=%u",
+		metrics.tx_count, metrics.rx_count,
+		metrics.tx_bytes, metrics.rx_bytes,
+		metrics.errors, metrics.unique_hashes_seen);
+}
+
+/* Parse announce packet to extract peer IID */
+static void parse_announce(const uint8_t *data, size_t len)
+{
+	/* Announce format: dispatch=0x15, type=0x01, iid at offset 5 */
+	if (len >= 13 && data[0] == 0x15 && data[1] == 0x01) {
+		const uint8_t *peer_iid = &data[5];
+		LOG_INF("[RX] announce from %02x%02x%02x%02x%02x%02x%02x%02x",
+			peer_iid[0], peer_iid[1], peer_iid[2], peer_iid[3],
+			peer_iid[4], peer_iid[5], peer_iid[6], peer_iid[7]);
+	}
+}
 
 int main(void)
 {
@@ -52,14 +107,24 @@ int main(void)
 	int16_t rssi;
 	int8_t snr;
 	int count = 0;
+	uint32_t hash;
 
 	while (1) {
-		LOG_INF("TX: PING #%d", ++count);
+		/* TX path with telemetry */
+		hash = packet_hash(tx_buf, sizeof(tx_buf) - 1);
+		LOG_INF("[TX] len=%zu hash=%08x PING #%d",
+			sizeof(tx_buf) - 1, hash, ++count);
+		LOG_HEXDUMP_DBG(tx_buf, sizeof(tx_buf) - 1, "TX payload");
+
 		ret = lora_send(lora, tx_buf, sizeof(tx_buf) - 1);
 		if (ret < 0) {
 			LOG_ERR("lora_send failed: %d", ret);
+			metrics.errors++;
 		} else {
 			LOG_INF("TX done");
+			metrics.tx_count++;
+			metrics.tx_bytes += sizeof(tx_buf) - 1;
+			track_hash(hash);
 		}
 
 		/* Wait for response */
@@ -67,25 +132,43 @@ int main(void)
 		ret = lora_config(lora, &config);
 		if (ret < 0) {
 			LOG_ERR("lora_config (RX) failed: %d", ret);
+			metrics.errors++;
 			continue;
 		}
 
 		ret = lora_recv(lora, rx_buf, sizeof(rx_buf),
 				K_SECONDS(5), &rssi, &snr);
 		if (ret > 0) {
-			LOG_INF("RX: %d bytes, RSSI=%d, SNR=%d", ret, rssi, snr);
-			LOG_HEXDUMP_INF(rx_buf, ret, "payload");
+			/* RX path with telemetry */
+			hash = packet_hash(rx_buf, ret);
+			LOG_INF("[RX] len=%d rssi=%d snr=%d hash=%08x",
+				ret, rssi, snr, hash);
+			LOG_HEXDUMP_DBG(rx_buf, ret, "RX payload");
+
+			metrics.rx_count++;
+			metrics.rx_bytes += ret;
+			track_hash(hash);
+
+			/* Parse announce packets for peer IID */
+			parse_announce(rx_buf, ret);
 		} else if (ret == -EAGAIN) {
 			LOG_INF("RX timeout");
 		} else {
 			LOG_ERR("lora_recv failed: %d", ret);
+			metrics.errors++;
 		}
 
 		config.tx = true;
 		ret = lora_config(lora, &config);
 		if (ret < 0) {
 			LOG_ERR("lora_config (TX) failed: %d", ret);
+			metrics.errors++;
 			continue;
+		}
+
+		/* Log metrics every 5 iterations */
+		if (count % 5 == 0) {
+			log_metrics();
 		}
 
 		k_sleep(K_SECONDS(2));

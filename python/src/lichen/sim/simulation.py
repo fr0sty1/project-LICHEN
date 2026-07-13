@@ -9,10 +9,13 @@ medium.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import random
 import time
 from collections.abc import Callable
 from enum import Enum, auto
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import structlog
@@ -562,6 +565,12 @@ class Simulation:
 
         self._active_transmissions[node_id] = tx.id
         self._metrics.record_transmission_start(tx.id, tx.start_time_us)
+
+        # Record per-node metrics
+        if node is not None:
+            packet_hash = hashlib.sha256(payload).hexdigest()[:16]
+            node.metrics.record_tx(payload, packet_hash)
+
         logger.debug(
             "tx_start",
             sim_id=self._id,
@@ -773,6 +782,10 @@ class Simulation:
         if tx is None:
             return None
 
+        # Record per-node metrics
+        packet_hash = hashlib.sha256(tx.payload).hexdigest()[:16]
+        node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)
+
         # Find the candidate to get RSSI/SNR
         for candidate in candidates:
             if candidate.transmission is tx:
@@ -853,6 +866,10 @@ class Simulation:
 
         self._metrics.record_reception(node_id, tx.id, self._current_time_us)
 
+        # Record per-node metrics
+        packet_hash = hashlib.sha256(tx.payload).hexdigest()[:16]
+        node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)
+
         # Find the candidate to get RSSI/SNR
         for candidate in candidates:
             if candidate.transmission is tx:
@@ -900,3 +917,20 @@ class Simulation:
             List of all SimNode objects.
         """
         return list(self._nodes.values())
+
+    def export_metrics(self, path: Path | str) -> None:
+        """Export per-node metrics as JSON for analysis.
+
+        Writes a JSON file containing per-node telemetry metrics including
+        TX/RX counts, byte totals, unique peers seen, and packet hashes.
+        This enables post-test analysis for cross-implementation verification.
+
+        Args:
+            path: Path to the output JSON file.
+        """
+        path = Path(path)
+        metrics = {
+            node_id: node.metrics.to_dict()
+            for node_id, node in self._nodes.items()
+        }
+        path.write_text(json.dumps(metrics, indent=2))

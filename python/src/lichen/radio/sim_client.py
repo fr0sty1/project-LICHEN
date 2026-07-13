@@ -8,10 +8,12 @@ server over TCP, enabling simulated radio operations for testing and development
 
 from __future__ import annotations
 
+import hashlib
 import struct
 from typing import TYPE_CHECKING
 
 import anyio
+import structlog
 
 from lichen.sim.protocol import (
     MSG_CAD_RESULT,
@@ -44,6 +46,8 @@ if TYPE_CHECKING:
 # (1 type + 2 length + 65535 payload + 4 rssi/snr); 1 MiB leaves generous
 # headroom while bounding memory use.
 MAX_MESSAGE_LENGTH = 1 << 20
+
+logger = structlog.get_logger()
 
 
 class SimRadioError(Exception):
@@ -172,6 +176,14 @@ class SimRadio:
         msg_type = get_message_type(response)
 
         if msg_type == MSG_TX_DONE:
+            packet_hash = hashlib.sha256(payload).hexdigest()[:16]
+            logger.info(
+                "tx",
+                node_id=self._node_id,
+                len=len(payload),
+                hex=payload.hex(),
+                packet_hash=packet_hash,
+            )
             return True
         elif msg_type == MSG_TX_FAIL:
             return False
@@ -209,6 +221,16 @@ class SimRadio:
 
         if msg_type == MSG_RX_PACKET:
             payload, rssi, snr = decode_rx_packet(response[1:])
+            packet_hash = hashlib.sha256(payload).hexdigest()[:16]
+            logger.info(
+                "rx",
+                node_id=self._node_id,
+                len=len(payload),
+                hex=payload.hex(),
+                rssi=rssi,
+                snr=snr,
+                packet_hash=packet_hash,
+            )
             return (payload, rssi, snr)
         elif msg_type == MSG_RX_TIMEOUT_PUSH:
             return None

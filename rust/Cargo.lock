@@ -1775,6 +1775,7 @@ dependencies = [
  "lichen-node",
  "log",
  "serde_json",
+ "sha2 0.10.9",
 ]
 
 [[package]]
@@ -1826,10 +1827,12 @@ dependencies = [
  "embassy-time",
  "embedded-hal-async",
  "esp-hal",
+ "hex",
  "lichen-core",
  "lichen-hal",
  "log",
  "lora-phy",
+ "sha2 0.10.9",
  "tokio",
 ]
 

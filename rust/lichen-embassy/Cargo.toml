@@ -20,7 +20,7 @@ stm32wl = ["dep:embassy-stm32", "dep:lora-phy", "dep:embedded-hal-async"]
 
 # Mock/simulator targets for host testing (require std)
 mock = ["std"]
-sim = ["std"]  # Bridges to lichen-sim via TCP for QEMU/Renode
+sim = ["std", "dep:sha2", "dep:hex"]  # Bridges to lichen-sim via TCP for QEMU/Renode
 
 [dependencies]
 lichen-hal = { path = "../lichen-hal" }
@@ -33,6 +33,10 @@ log = { version = "0.4", default-features = false, optional = true }
 # Embassy core (always needed)
 embassy-time = "0.4"
 embassy-sync = "0.6"
+
+# Packet telemetry (sim feature only)
+sha2 = { version = "0.10", optional = true }
+hex = { version = "0.4", optional = true }
 
 # LoRa PHY driver (feature-gated for radio targets)
 lora-phy = { version = "3", default-features = false, optional = true }

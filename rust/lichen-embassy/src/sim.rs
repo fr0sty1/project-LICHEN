@@ -15,6 +15,7 @@ use std::net::TcpStream;
 use std::time::Duration;
 
 use lichen_hal::{Radio, RadioConfig, RadioError, RxPacket};
+use sha2::{Digest, Sha256};
 
 /// Radio that connects to lichen-sim for packet transfer.
 ///
@@ -103,6 +104,15 @@ impl Radio for SimRadio {
             return Err(RadioError::Protocol);
         }
 
+        // Log TX packet with hash
+        let hash = Sha256::digest(payload);
+        eprintln!(
+            "[TX] len={} hash={} hex={}",
+            payload.len(),
+            hex::encode(&hash[..8]),
+            hex::encode(payload)
+        );
+
         // resp[1..5] contains airtime in us (ignored for now)
         Ok(())
     }
@@ -156,6 +166,17 @@ impl Radio for SimRadio {
                 let rssi_offset = 3 + payload_len;
                 let rssi = i16::from_le_bytes([resp[rssi_offset], resp[rssi_offset + 1]]);
                 let snr = i16::from_le_bytes([resp[rssi_offset + 2], resp[rssi_offset + 3]]);
+
+                // Log RX packet with hash
+                let hash = Sha256::digest(&buf[..payload_len]);
+                eprintln!(
+                    "[RX] len={} rssi={} snr={} hash={} hex={}",
+                    payload_len,
+                    rssi,
+                    snr,
+                    hex::encode(&hash[..8]),
+                    hex::encode(&buf[..payload_len])
+                );
 
                 Ok(Some(RxPacket {
                     len: payload_len,
