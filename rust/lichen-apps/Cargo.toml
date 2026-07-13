@@ -14,3 +14,10 @@ log = ["dep:log", "lichen-node/log"]
 # Logging backend (optional, feature-gated)
 log = { version = "0.4", default-features = false, optional = true }
 lichen-node = { path = "../lichen-node", features = ["std"] }
+lichen-link = { path = "../lichen-link", features = ["std", "schnorr"] }
+serde_json = "1.0"
+hex = "0.4"
+
+[[bin]]
+name = "frame-parser"
+path = "src/bin/frame_parser.rs"
