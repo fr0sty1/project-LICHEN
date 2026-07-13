@@ -1,0 +1,36 @@
+[package]
+name = "lichen-schc-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+
+[dependencies.lichen-schc]
+path = ".."
+
+[[bin]]
+name = "fuzz_decompress"
+path = "fuzz_targets/fuzz_decompress.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_compress"
+path = "fuzz_targets/fuzz_compress.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_fragment"
+path = "fuzz_targets/fuzz_fragment.rs"
+test = false
+doc = false
+bench = false

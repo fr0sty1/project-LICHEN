@@ -1,0 +1,37 @@
+[package]
+name = "lichen-link-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+
+[dependencies.lichen-link]
+path = ".."
+features = ["std", "schnorr"]
+
+[[bin]]
+name = "fuzz_frame_parse"
+path = "fuzz_targets/fuzz_frame_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_signature"
+path = "fuzz_targets/fuzz_signature.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_identity"
+path = "fuzz_targets/fuzz_identity.rs"
+test = false
+doc = false
+bench = false
