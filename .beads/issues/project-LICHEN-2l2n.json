@@ -2,11 +2,12 @@
   "id": "project-LICHEN-2l2n",
   "title": "OptionIter PAD1 handling uses unbounded recursion",
   "description": "file: rust/lichen-rpl/src/message.rs\nline: 406-409\n\nThe OptionIter::next() method handles PAD1 bytes (type 0x00) via recursive self.next() call:\n\n```rust\nif opt_type == OPT_PAD1 {\n    self.pos += 1;\n    return self.next();  // Recursive\n}\n```\n\nA malicious packet with many consecutive PAD1 bytes could overflow the call stack. On constrained embedded devices with 4KB stack, ~60-100 PAD1 bytes could be enough to trigger overflow.\n\nFix: Convert to iterative loop that skips PAD1 bytes without recursion.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:15:08.324061Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T17:15:08.324098Z"
+  "updated_at": "2026-07-13T00:11:58.785774Z"
 }

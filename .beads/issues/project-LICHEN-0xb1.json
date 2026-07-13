@@ -2,12 +2,14 @@
   "id": "project-LICHEN-0xb1",
   "title": "translate.py: Position.altitude decoded as unsigned - negative altitudes incorrect",
   "description": "File: python/src/lichen/interface/meshtastic/translate.py\nLine: 139 (Position.from_bytes)\n\nBug: The _decode_varint() function returns unsigned values, but protobuf int32 field altitude can be negative (locations below sea level, e.g., Dead Sea at -430m). When decoded, negative altitudes become huge positive numbers.\n\nRoot cause: Line 258-269 _decode_varint() builds an unsigned value. Same issue as proto.py but in the separate translate.py varint decoder.\n\nImpact: Positions below sea level show incorrect altitude in Meshtastic app.\n\nFix: Add signed int32 conversion in Position.from_bytes for altitude field:\n```python\nval, consumed = _decode_varint(data[i:])\nif field_num == _POS_ALTITUDE:\n    # int32 can be negative - reinterpret as signed\n    if val \u003e 0x7FFFFFFF:\n        val -= 0x100000000\n    pos.altitude = val\n```",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T16:57:29.331399Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-13T00:08:35.746165Z"
+  "updated_at": "2026-07-13T00:10:05.123492Z",
+  "closed_at": "2026-07-13T00:10:05.123492Z",
+  "close_reason": "Fixed: Truncate varint to 32 bits before signed conversion (protobuf encodes negative int32 as 10-byte sign-extended 64-bit). Added test for Dead Sea altitude -430m. All 18 translate tests pass."
 }

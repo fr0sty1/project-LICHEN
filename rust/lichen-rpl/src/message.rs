@@ -399,14 +399,15 @@ impl<'a> Iterator for OptionIter<'a> {
     type Item = Result<RawOption<'a>, RplError>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        // SECURITY: Skip PAD1 bytes iteratively to prevent stack overflow
+        // from malicious packets with many consecutive PAD1 bytes
+        while self.pos < self.data.len() && self.data[self.pos] == OPT_PAD1 {
+            self.pos += 1;
+        }
         if self.pos >= self.data.len() {
             return None;
         }
         let opt_type = self.data[self.pos];
-        if opt_type == OPT_PAD1 {
-            self.pos += 1;
-            return self.next();
-        }
         if self.pos + 2 > self.data.len() {
             return Some(Err(TooShort::new(self.pos + 2, self.data.len()).into()));
         }

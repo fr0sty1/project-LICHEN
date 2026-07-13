@@ -379,24 +379,34 @@ fn skip_one_depth(data: &[u8], pos: usize, depth: usize) -> Result<usize, CborEr
     match major {
         0 | 1 => Ok(adv),
         2 | 3 => {
-            let end = pos + adv + val as usize;
+            // Use checked arithmetic to prevent overflow on 16-bit platforms.
+            // val can be up to 65535 from 2-byte length encoding, which would
+            // wrap on 16-bit usize if added carelessly.
+            let val_usize = usize::try_from(val).map_err(|_| CborError::InvalidInput)?;
+            let skip_len = adv.checked_add(val_usize).ok_or(CborError::InvalidInput)?;
+            let end = pos.checked_add(skip_len).ok_or(CborError::InvalidInput)?;
             if end > data.len() {
                 return Err(CborError::InvalidInput);
             }
-            Ok(adv + val as usize)
+            Ok(skip_len)
         }
         4 => {
-            let mut cur = pos + adv;
+            // Use checked arithmetic to prevent overflow on 16-bit platforms.
+            let mut cur = pos.checked_add(adv).ok_or(CborError::InvalidInput)?;
             for _ in 0..val {
-                cur += skip_one_depth(data, cur, depth + 1)?;
+                let skip = skip_one_depth(data, cur, depth + 1)?;
+                cur = cur.checked_add(skip).ok_or(CborError::InvalidInput)?;
             }
             Ok(cur - pos)
         }
         5 => {
-            let mut cur = pos + adv;
+            // Use checked arithmetic to prevent overflow on 16-bit platforms.
+            let mut cur = pos.checked_add(adv).ok_or(CborError::InvalidInput)?;
             for _ in 0..val {
-                cur += skip_one_depth(data, cur, depth + 1)?;
-                cur += skip_one_depth(data, cur, depth + 1)?;
+                let skip_key = skip_one_depth(data, cur, depth + 1)?;
+                cur = cur.checked_add(skip_key).ok_or(CborError::InvalidInput)?;
+                let skip_val = skip_one_depth(data, cur, depth + 1)?;
+                cur = cur.checked_add(skip_val).ok_or(CborError::InvalidInput)?;
             }
             Ok(cur - pos)
         }
