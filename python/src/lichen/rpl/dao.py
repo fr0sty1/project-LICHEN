@@ -186,10 +186,16 @@ class DaoManager:
         return target, parent
 
     def _rebuild_routes(self) -> None:
+        """Rebuild the routing table from the parent map.
+
+        Skips targets that cannot be routed:
+        - None: incomplete chain (parent not yet advertised) or loop detected
+        - []: target equals node_address (pathological: root routing to itself)
+        """
         self.routing_table._routes.clear()
         for target in self._parent_map:
             path = self._assemble_path(target)
-            if path:  # Skip None (incomplete chain) and [] (target is root)
+            if path:
                 self.routing_table.add_route(target, path)
 
     def _assemble_path(self, target: IPv6Address) -> list[IPv6Address] | None:

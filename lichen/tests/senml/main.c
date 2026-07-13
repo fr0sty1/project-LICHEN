@@ -15,6 +15,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 
 /* ─── test framework ──────────────────────────────────────────────────────── */
 
@@ -262,6 +263,105 @@ static int test_string_length_limits(void)
 	return 1;
 }
 
+static int test_location_rejects_nan_lat(void)
+{
+	uint8_t buf[128];
+	int ret;
+
+	ret = senml_encode_location(NULL, 0, NAN, -122.0f, 100.0f, buf, sizeof(buf));
+	ASSERT_EQ(ret, -EINVAL, "NaN latitude rejected with -EINVAL");
+
+	return 1;
+}
+
+static int test_location_rejects_nan_lon(void)
+{
+	uint8_t buf[128];
+	int ret;
+
+	ret = senml_encode_location(NULL, 0, 37.0f, NAN, 100.0f, buf, sizeof(buf));
+	ASSERT_EQ(ret, -EINVAL, "NaN longitude rejected with -EINVAL");
+
+	return 1;
+}
+
+static int test_location_rejects_inf_lat(void)
+{
+	uint8_t buf[128];
+	int ret;
+
+	ret = senml_encode_location(NULL, 0, INFINITY, -122.0f, 100.0f, buf, sizeof(buf));
+	ASSERT_EQ(ret, -EINVAL, "Inf latitude rejected with -EINVAL");
+
+	ret = senml_encode_location(NULL, 0, -INFINITY, -122.0f, 100.0f, buf, sizeof(buf));
+	ASSERT_EQ(ret, -EINVAL, "-Inf latitude rejected with -EINVAL");
+
+	return 1;
+}
+
+static int test_location_rejects_inf_lon(void)
+{
+	uint8_t buf[128];
+	int ret;
+
+	ret = senml_encode_location(NULL, 0, 37.0f, INFINITY, 100.0f, buf, sizeof(buf));
+	ASSERT_EQ(ret, -EINVAL, "Inf longitude rejected with -EINVAL");
+
+	ret = senml_encode_location(NULL, 0, 37.0f, -INFINITY, 100.0f, buf, sizeof(buf));
+	ASSERT_EQ(ret, -EINVAL, "-Inf longitude rejected with -EINVAL");
+
+	return 1;
+}
+
+static int test_location_rejects_out_of_range_lat(void)
+{
+	uint8_t buf[128];
+	int ret;
+
+	/* Latitude must be between -90 and +90 */
+	ret = senml_encode_location(NULL, 0, 91.0f, -122.0f, 100.0f, buf, sizeof(buf));
+	ASSERT_EQ(ret, -ERANGE, "latitude > 90 rejected with -ERANGE");
+
+	ret = senml_encode_location(NULL, 0, -91.0f, -122.0f, 100.0f, buf, sizeof(buf));
+	ASSERT_EQ(ret, -ERANGE, "latitude < -90 rejected with -ERANGE");
+
+	return 1;
+}
+
+static int test_location_rejects_out_of_range_lon(void)
+{
+	uint8_t buf[128];
+	int ret;
+
+	/* Longitude must be between -180 and +180 */
+	ret = senml_encode_location(NULL, 0, 37.0f, 181.0f, 100.0f, buf, sizeof(buf));
+	ASSERT_EQ(ret, -ERANGE, "longitude > 180 rejected with -ERANGE");
+
+	ret = senml_encode_location(NULL, 0, 37.0f, -181.0f, 100.0f, buf, sizeof(buf));
+	ASSERT_EQ(ret, -ERANGE, "longitude < -180 rejected with -ERANGE");
+
+	return 1;
+}
+
+static int test_location_valid_coordinates(void)
+{
+	uint8_t buf[128];
+	int ret;
+
+	/* Valid coordinates should encode successfully */
+	ret = senml_encode_location(NULL, 0, 37.7749f, -122.4194f, 10.0f, buf, sizeof(buf));
+	ASSERT_EQ(ret > 0, 1, "valid coordinates encode successfully");
+
+	/* Boundary values should also work */
+	ret = senml_encode_location(NULL, 0, 90.0f, 180.0f, NAN, buf, sizeof(buf));
+	ASSERT_EQ(ret > 0, 1, "boundary values (90, 180) encode successfully");
+
+	ret = senml_encode_location(NULL, 0, -90.0f, -180.0f, NAN, buf, sizeof(buf));
+	ASSERT_EQ(ret > 0, 1, "boundary values (-90, -180) encode successfully");
+
+	return 1;
+}
+
 /* ─── test runner ─────────────────────────────────────────────────────────── */
 
 #define RUN_TEST(fn) do { \
@@ -285,6 +385,13 @@ int main(void)
 	RUN_TEST(test_buffer_too_small);
 	RUN_TEST(test_pack_full);
 	RUN_TEST(test_string_length_limits);
+	RUN_TEST(test_location_rejects_nan_lat);
+	RUN_TEST(test_location_rejects_nan_lon);
+	RUN_TEST(test_location_rejects_inf_lat);
+	RUN_TEST(test_location_rejects_inf_lon);
+	RUN_TEST(test_location_rejects_out_of_range_lat);
+	RUN_TEST(test_location_rejects_out_of_range_lon);
+	RUN_TEST(test_location_valid_coordinates);
 
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 

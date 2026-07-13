@@ -1343,11 +1343,14 @@ static void replay_clear_pending_context_locked(int ctx_idx)
  * Update replay window after successful decryption.
  * Must be called ONLY after decryption succeeds (caller holds mutex).
  *
- * Returns true if update succeeded, false if seq is no longer acceptable
- * (another thread may have advanced the window during decryption).
+ * Returns true if update succeeded, false if seq is no longer acceptable:
+ * - Another thread may have advanced the window during decryption
+ * - The sequence may have fallen outside the replay window
+ * - The sequence may already be marked (duplicate delivery attempt)
  *
- * Concurrent decryptions are serialized by the pending replay reservations, so
- * a sequence that is already marked here is a replay and must not be delivered.
+ * SECURITY: We reject sequences that fell outside the window during
+ * processing, even though decryption succeeded. This is conservative
+ * but necessary to avoid gaps in replay protection.
  */
 static bool replay_update_window(struct oscore_ctx *ctx, uint32_t seq)
 {
@@ -1368,17 +1371,19 @@ static bool replay_update_window(struct oscore_ctx *ctx, uint32_t seq)
 	uint32_t diff = ctx->recipient_seq - seq;
 	if (diff >= CONFIG_LICHEN_OSCORE_REPLAY_WINDOW) {
 		/*
-		 * Seq fell outside window while we were decrypting -
+		 * SECURITY: Seq fell outside window while we were decrypting -
 		 * another thread advanced recipient_seq significantly.
-		 * We still accept this packet (decryption succeeded),
-		 * but we can't mark it in the window.
 		 *
-		 * This is safe: the packet was verified authentic, and
-		 * if a duplicate arrives later, it will either be caught
-		 * as a replay (if within the new window) or rejected as
-		 * too old (if outside). We just can't perfectly track it.
+		 * We REJECT this packet even though decryption succeeded.
+		 * Rationale: if we cannot mark the sequence in the replay
+		 * window, we cannot guarantee it wasn't already delivered.
+		 * The conservative choice is to reject packets we cannot
+		 * track rather than risk replay gaps.
+		 *
+		 * This may drop legitimate packets under extreme concurrent
+		 * load, but that is preferable to gaps in replay protection.
 		 */
-		return true;
+		return false;
 	}
 
 	/* Check if already marked by another thread */

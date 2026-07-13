@@ -191,8 +191,10 @@ static int64_t observed_uptime_from_age_seconds(uint32_t age_seconds)
 	const int64_t bounded_age_seconds =
 		(int64_t)MIN((uint64_t)age_seconds, (uint64_t)max_age_seconds);
 	const int64_t age_ms = bounded_age_seconds * 1000;
+	const int64_t result = now_ms - age_ms;
 
-	return now_ms - age_ms;
+	/* Clamp to zero: if age exceeds current uptime, return 0 instead of negative */
+	return (result < 0) ? 0 : result;
 }
 
 int lichen_app_location_time_from_hal(
@@ -323,6 +325,15 @@ static int submit_to_hal_as(
 	}
 	if (app->fix_source_valid &&
 	    app->fix_source != LICHEN_APP_FIX_SOURCE_NONE) {
+		return -EINVAL;
+	}
+	/* Validate geographic coordinate bounds when present */
+	if (app->latitude_e7_valid &&
+	    (app->latitude_e7 < -900000000 || app->latitude_e7 > 900000000)) {
+		return -EINVAL;
+	}
+	if (app->longitude_e7_valid &&
+	    (app->longitude_e7 < -1800000000 || app->longitude_e7 > 1800000000)) {
 		return -EINVAL;
 	}
 

@@ -547,11 +547,12 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 			     sched.link_ctx->ed25519_pk,
 			     signed_data, signed_len, signature);
 
-	k_mutex_unlock(&sched.mutex);
-
 	if (ret < 0) {
+		k_mutex_unlock(&sched.mutex);
 		return ret;
 	}
+
+	k_mutex_unlock(&sched.mutex);
 
 	/* Build frame: dispatch || type || flags || hop_count || seq || iid ||
 	 * pubkey || signature || app_data */
@@ -569,7 +570,11 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 	buf[pos++] = (uint8_t)seq;
 	memcpy(&buf[pos], iid, LICHEN_ANNOUNCE_IID_LEN);
 	pos += LICHEN_ANNOUNCE_IID_LEN;
-	memcpy(&buf[pos], sched.link_ctx->ed25519_pk, LICHEN_ANNOUNCE_PUBKEY_LEN);
+	/* SECURITY: Use pubkey copy from signed_data (captured under lock) rather
+	 * than re-reading sched.link_ctx->ed25519_pk. This prevents a race if
+	 * the link context changes after we release the mutex. */
+	memcpy(&buf[pos], &signed_data[LICHEN_ANNOUNCE_IID_LEN],
+	       LICHEN_ANNOUNCE_PUBKEY_LEN);
 	pos += LICHEN_ANNOUNCE_PUBKEY_LEN;
 	memcpy(&buf[pos], signature, LICHEN_ANNOUNCE_SIGNATURE_LEN);
 	pos += LICHEN_ANNOUNCE_SIGNATURE_LEN;

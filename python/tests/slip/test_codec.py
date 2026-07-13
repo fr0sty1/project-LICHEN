@@ -62,9 +62,11 @@ class TestDecode:
         with pytest.raises(ValueError, match="bare ESC"):
             decode(bytes([END, ESC]))
 
-    def test_invalid_escape_byte_raises(self) -> None:
-        with pytest.raises(ValueError, match="invalid escape"):
-            decode(bytes([END, ESC, 0x00, END]))
+    def test_invalid_escape_passes_byte_through(self) -> None:
+        # RFC 1055: invalid escape — ignore ESC, pass byte through as data
+        # ESC 0x00 is invalid; 0x00 should be captured (ESC discarded per RFC)
+        result = decode(bytes([END, ESC, 0x00, END]))
+        assert result == b"\x00"
 
     def test_round_trip(self) -> None:
         for payload in [b"", b"\x00", b"\xc0\xdb", bytes(range(256))]:

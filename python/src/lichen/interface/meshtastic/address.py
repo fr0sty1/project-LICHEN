@@ -16,7 +16,10 @@ This mirrors the Rust implementation in lichen-meshtastic/src/address.rs.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
 
 # Broadcast destination in Meshtastic
 BROADCAST_NODE_NUM: int = 0xFFFFFFFF
@@ -139,12 +142,16 @@ class AddressMapper:
     # node_num → IID cache for fast reverse lookup
     _by_node_num: dict[int, bytes] = field(default_factory=dict)
 
-    def learn(self, iid: bytes, pubkey: bytes) -> None:
+    def learn(self, iid: bytes, pubkey: bytes) -> bool:
         """Learn a peer's identity.
 
         Args:
             iid: 8-byte Interface Identifier
             pubkey: 32-byte Ed25519 public key
+
+        Returns:
+            True if the peer was learned (new or matching key),
+            False if rejected due to TOFU violation (key mismatch).
         """
         if len(iid) != 8:
             raise ValueError(f"IID must be 8 bytes, got {len(iid)}")
@@ -160,17 +167,21 @@ class AddressMapper:
 
         # SECURITY: TOFU key pinning (spec 8.6). First contact pins pubkey;
         # subsequent contacts must match or be rejected. Key rotation requires
-        # explicit unpin (not implemented here — use forget()).
+        # explicit unpin (not implemented here - use forget()).
         existing_pubkey = self._peers.get(iid)
         if existing_pubkey is not None and existing_pubkey != pubkey:
-            raise ValueError(
-                f"TOFU violation: pubkey mismatch for IID {iid.hex()} "
-                f"(pinned={existing_pubkey.hex()[:16]}..., "
-                f"got={pubkey.hex()[:16]}...)"
+            logger.warning(
+                "TOFU violation: pubkey mismatch for IID %s "
+                "(pinned=%s..., got=%s...) - rejecting",
+                iid.hex(),
+                existing_pubkey.hex()[:16],
+                pubkey.hex()[:16],
             )
+            return False
 
         self._peers[iid] = pubkey
         self._by_node_num[node_num] = iid
+        return True
 
     def iid_to_node_num(self, iid: bytes) -> int:
         """Convert IID to Meshtastic node_num."""

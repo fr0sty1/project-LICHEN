@@ -75,6 +75,8 @@ class RplOption:
             if self.data:
                 raise RplError("Pad1 option carries no data")
             return b"\x00"
+        if not 0 <= self.type <= 255:
+            raise RplError(f"option type out of range: {self.type}")
         if len(self.data) > 0xFF:
             raise RplError(f"option data too long: {len(self.data)} bytes")
         return bytes([self.type, len(self.data)]) + self.data

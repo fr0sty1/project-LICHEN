@@ -267,7 +267,7 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 			LOG_WRN("Schnorr signature verification failed\n");
 			ret = -LICHEN_EAUTH;
 			goto cleanup;
-		} else if (verify_result == -1) {
+		} else if (verify_result < 0) {
 			LOG_WRN("Schnorr verify: invalid parameters (check peer_pubkey)\n");
 			ret = -LICHEN_EAUTH;
 			goto cleanup;

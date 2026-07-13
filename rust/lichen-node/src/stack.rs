@@ -342,14 +342,14 @@ impl<R: Radio> Stack<R> {
             codec::compress(&ipv6[..ipv6_len], &mut schc).map_err(|_| TxError::SchcCompress)?;
 
         let mut l2_payload = [0u8; 201];
-        let l2_payload_len = wrap_schc_payload(&schc[..schc_len], &mut l2_payload)?;
+        let l2_data = wrap_schc_payload(&schc[..schc_len], &mut l2_payload)?;
 
         // L2 sign and frame
         let seqnum = self.next_seqnum();
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
             .link
-            .build_frame(self.epoch, seqnum, &[], l2_payload_len, &mut wire)
+            .build_frame(self.epoch, seqnum, &[], l2_data, &mut wire)
             .map_err(|_| TxError::FrameEncode)?;
 
         // Radio TX
@@ -368,13 +368,13 @@ impl<R: Radio> Stack<R> {
         let mut schc = [0u8; 200];
         let schc_len = codec::compress(ipv6, &mut schc).map_err(|_| TxError::SchcCompress)?;
         let mut l2_payload = [0u8; 201];
-        let l2_payload_len = wrap_schc_payload(&schc[..schc_len], &mut l2_payload)?;
+        let l2_data = wrap_schc_payload(&schc[..schc_len], &mut l2_payload)?;
 
         let seqnum = self.next_seqnum();
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
             .link
-            .build_frame(self.epoch, seqnum, &[], l2_payload_len, &mut wire)
+            .build_frame(self.epoch, seqnum, &[], l2_data, &mut wire)
             .map_err(|_| TxError::FrameEncode)?;
 
         self.radio

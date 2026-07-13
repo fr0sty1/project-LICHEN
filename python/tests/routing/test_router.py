@@ -354,10 +354,10 @@ class TestPendingQueue:
         assert len(pending) == 1
         assert pending[0].queued_at_ms == 200
 
-    def test_on_route_discovered_returns_pending(
+    def test_release_pending_for_returns_pending(
         self, router: Router, gradient_table: GradientTable
     ):
-        """on_route_discovered returns and clears pending packets."""
+        """release_pending_for returns and clears pending packets."""
         from lichen.loadng.cache import RouteCache
         from lichen.loadng.discovery import LoadngRouter
 
@@ -373,10 +373,9 @@ class TestPendingQueue:
         router.route(p1, now_ms=0)
         router.route(p2, now_ms=1)
 
-        # Discovery completes
-        pending = router.on_route_discovered(
-            dst, IPv6Address("fe80::1234"), now_ms=100
-        )
+        # Discovery completes - caller updates gradient_table first,
+        # then calls release_pending_for to get queued packets
+        pending = router.release_pending_for(dst)
 
         assert len(pending) == 2
         assert router.get_pending(dst) == []  # Cleared

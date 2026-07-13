@@ -72,16 +72,24 @@ class TestRoundTrip:
         ],
     )
     @pytest.mark.parametrize("mic_length", [MicLength.BITS32, MicLength.BITS64])
-    def test_roundtrip(self, addr_mode: AddrMode, dst: bytes, mic_length: MicLength) -> None:
+    @pytest.mark.parametrize("signature_present", [False, True])
+    def test_roundtrip(
+        self, addr_mode: AddrMode, dst: bytes, mic_length: MicLength, signature_present: bool
+    ) -> None:
+        # Payload must be >= 48 bytes when signature_present is True
+        if signature_present:
+            payload = b"signature-prefixed payload " + bytes(range(48))
+        else:
+            payload = b"hello link layer"
         original = LichenFrame(
             epoch=200,
             seqnum=0xBEEF,
             dst_addr=dst,
-            payload=b"hello link layer",
+            payload=payload,
             mic=bytes(range(mic_length.mic_len)),
             addr_mode=addr_mode,
             mic_length=mic_length,
-            signature_present=True,
+            signature_present=signature_present,
             encrypted=False,
         )
         assert LichenFrame.from_bytes(original.to_bytes()) == original
@@ -164,6 +172,14 @@ class TestParseErrors:
         # addr_mode SHORT (2B) + 32-bit MIC (4B) need 4+2+4=10 body bytes; only 4.
         with pytest.raises(FrameError, match="declared address/MIC"):
             LichenFrame.from_bytes(b"\x04\x01\x00\x00\x00")
+
+    def test_signature_present_requires_48_byte_payload(self) -> None:
+        # LLSec 0x20 = signature_present bit set, addr_mode NONE, 32-bit MIC
+        # body = LLSec(0x20) Epoch(00) SeqNum(0000) Payload(10 bytes) MIC(4 bytes)
+        # Total body = 1 + 1 + 2 + 10 + 4 = 18 bytes
+        data = bytes.fromhex("12" "20" "00" "0000" + "00" * 10 + "deadbeef")
+        with pytest.raises(FrameError, match="signature_present requires"):
+            LichenFrame.from_bytes(data)
 
 
 # ─── Cross-validation tests from spec/test-vectors/frame.json ─────────────────

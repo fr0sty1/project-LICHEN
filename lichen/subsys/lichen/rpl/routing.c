@@ -126,6 +126,13 @@ int lichen_rpl_srh_parse(struct lichen_rpl_srh *srh,
 		return LICHEN_RPL_ERR_BAD_RT;
 	}
 
+	/* SECURITY: Reject compressed SRHs (CmprI/CmprE > 0 per RFC 6554 Section 3).
+	 * We only support uncompressed addresses (16 bytes each). Compressed SRHs
+	 * would be parsed incorrectly, leading to misrouted packets. */
+	if (data[2] != 0 || data[3] != 0) {
+		return LICHEN_RPL_ERR_BAD_RT;
+	}
+
 	size_t addr_bytes = len - 6;
 	if (addr_bytes % 16 != 0) {
 		return LICHEN_RPL_ERR_TOO_SHORT;

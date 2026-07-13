@@ -57,7 +57,12 @@ def decode(frame: bytes) -> bytes:
     """Decode a single SLIP frame, stripping END bytes and un-escaping.
 
     ``frame`` may include leading/trailing END bytes; they are ignored.
-    Raises :class:`ValueError` on a malformed escape sequence.
+    Raises :class:`ValueError` if the frame ends with a bare ESC byte.
+
+    Invalid escape sequences (ESC followed by anything other than ESC_END
+    or ESC_ESC) are handled per RFC 1055: the ESC is discarded and the
+    following byte is passed through as data. This matches the behavior
+    of :class:`StreamDecoder`.
     """
     out = bytearray()
     i = 0
@@ -76,7 +81,8 @@ def decode(frame: bytes) -> bytes:
             elif nxt == ESC_ESC:
                 out.append(ESC)
             else:
-                raise ValueError(f"SLIP: invalid escape byte 0x{nxt:02x}")
+                # RFC 1055: invalid escape — ignore ESC, pass byte through as data
+                out.append(nxt)
         else:
             out.append(b)
         i += 1
@@ -91,6 +97,11 @@ class StreamDecoder:
 
     A maximum buffer size prevents memory exhaustion from malicious or faulty
     peers sending continuous bytes without END delimiters.
+
+    Error handling:
+        Invalid escape sequences (ESC followed by anything other than ESC_END
+        or ESC_ESC) are handled per RFC 1055: the ESC is discarded and the
+        following byte is passed through as data. This matches :func:`decode`.
 
     Args:
         max_size: Maximum bytes to buffer before discarding a partial packet.

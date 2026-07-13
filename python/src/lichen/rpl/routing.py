@@ -88,7 +88,11 @@ class RoutingTable:
     ) -> None:
         if not path:
             raise RoutingError("route path must not be empty")
-        self._routes[to_ipv6(target)] = [to_ipv6(a) for a in path]
+        converted_target = to_ipv6(target)
+        converted_path = [to_ipv6(a) for a in path]
+        if converted_path[-1] != converted_target:
+            raise RoutingError("route path must end at target")
+        self._routes[converted_target] = converted_path
 
     def remove_route(self, target: IPv6Address | str) -> None:
         self._routes.pop(to_ipv6(target), None)

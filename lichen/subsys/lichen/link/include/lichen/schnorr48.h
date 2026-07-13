@@ -102,7 +102,7 @@ void schnorr48_derive_keypair(const uint8_t *_Nonnull seed,
  * @param[in]  msg      Message to sign (may be NULL if msg_len is 0)
  * @param[in]  msg_len  Message length
  * @param[out] sig      48-byte signature output
- * @return 0 on success, -1 if msg is NULL with nonzero msg_len
+ * @return 0 on success, -EINVAL if msg is NULL with nonzero msg_len
  */
 int schnorr48_sign(const uint8_t *_Nonnull privkey,
 		   const uint8_t *_Nonnull pubkey,
@@ -137,7 +137,8 @@ bool schnorr48_verify(const uint8_t *_Nonnull pubkey,
  * @param[in]  privkey       32-byte private key
  * @param[in]  pubkey        32-byte public key
  * @param[out] sig           48-byte signature output
- * @return 0 on success, -1 if dst_addr_len > SCHNORR48_MAX_ADDR_LEN
+ * @return 0 on success, -EINVAL if dst_addr_len > SCHNORR48_MAX_ADDR_LEN
+ *         or if NULL pointers are passed with nonzero lengths
  */
 int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
 			 const uint8_t *_Nullable dst_addr, size_t dst_addr_len,
@@ -157,7 +158,7 @@ int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
  * @param[in] payload_len  Full payload length (must be >= 48)
  * @param[in] pubkey       32-byte sender public key
  * @return 1 if valid, 0 if invalid signature,
- *         -1 if malformed (dst_addr_len > max, payload too short, NULL payload)
+ *         -EINVAL if malformed (dst_addr_len > max, payload too short, NULL payload)
  */
 int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
 			   const uint8_t *_Nullable dst_addr, size_t dst_addr_len,

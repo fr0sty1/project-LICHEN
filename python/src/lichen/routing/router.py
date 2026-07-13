@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import math
+import time
 from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -572,6 +573,11 @@ class Router:
             Number of packets expired.
         """
         expired_count = 0
+        # Age-based expiry: cutoff is the oldest acceptable queue time.
+        # Packets queued before cutoff (queued_at_ms <= cutoff) are expired.
+        # This differs from ForwardingBuffer.expire_old() which uses deadline-based
+        # expiry (deadline_ms > now_ms), but both achieve the same goal: discard
+        # packets that have waited too long.
         cutoff = now_ms - timeout_ms
 
         # Why iterate copy: We're modifying the dict during iteration.
@@ -579,6 +585,7 @@ class Router:
             queue = self.pending_queue[dst]
             original_len = len(queue)
             # deque doesn't support slice assignment; replace entirely
+            # Keep packets queued after the cutoff (i.e., queued within timeout_ms)
             self.pending_queue[dst] = deque(p for p in queue if p.queued_at_ms > cutoff)
             queue = self.pending_queue[dst]
             expired_count += original_len - len(queue)
@@ -607,21 +614,19 @@ class Router:
             prefix = IPv6Network(prefix)
         self.mesh_prefixes.discard(prefix)
 
-    def on_route_discovered(
-        self, dst: IPv6Address, next_hop: IPv6Address, now_ms: int
-    ) -> list[PendingPacket]:
-        """Called when LOADng discovers a route.
+    def release_pending_for(self, dst: IPv6Address) -> list[PendingPacket]:
+        """Release pending packets for a destination after route discovery.
 
-        Why a callback: The Router owns the pending queue. When discovery
-        succeeds, it needs to return the queued packets for forwarding.
+        Call this after updating the gradient_table with a discovered route.
+        The Router owns the pending queue; this method returns queued packets
+        for forwarding once a route is available.
 
         Returns:
             List of pending packets that can now be forwarded.
         """
         pending = self.get_pending(dst)
         self.clear_pending(dst)
-        logger.debug("route discovered for %s, releasing %d pending packets",
-                    dst, len(pending))
+        logger.debug("releasing %d pending packets for %s", len(pending), dst)
         return pending
 
     def update_neighbor_coords(
@@ -653,7 +658,6 @@ class Router:
 
         Returns True if buffered, False if rejected (e.g., already expired).
         """
-        import time
         now_unix = int(time.time())
         if expiry_unix <= now_unix:
             logger.debug("dtn: rejecting expired message (expiry=%d, now=%d)",
@@ -714,7 +718,6 @@ class Router:
 
         Uses single-pass partitioning and updates running byte counter.
         """
-        import time
         now_unix = int(time.time())
         expired = 0
         remaining: deque[DtnMessage] = deque()

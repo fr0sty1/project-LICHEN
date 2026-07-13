@@ -394,8 +394,9 @@ static int aead_decrypt(const uint8_t key[16],
  */
 static int x25519_keypair(uint8_t sk[32], uint8_t pk[32])
 {
+	/* SECURITY: Generic error avoids exposing crypto implementation details */
 	if (sys_csrand_get(sk, 32) != 0) {
-		LOG_ERR("CSPRNG unavailable for X25519 key generation");
+		LOG_WRN("Key generation failed");
 		return -ENODEV;
 	}
 	crypto_x25519_public_key(pk, sk);
@@ -472,8 +473,9 @@ int edhoc_initiator_init(struct edhoc_initiator *ctx,
 		memcpy(ctx->c_i, c_i, c_i_len);
 		ctx->c_i_len = c_i_len;
 	} else {
+		/* SECURITY: Generic error avoids exposing protocol state */
 		if (sys_csrand_get(ctx->c_i, 1) != 0) {
-			LOG_ERR("CSPRNG unavailable for C_I generation");
+			LOG_WRN("Initialization failed");
 			return -ENODEV;
 		}
 		ctx->c_i_len = 1;
@@ -529,8 +531,9 @@ int edhoc_initiator_create_msg1(struct edhoc_initiator *ctx,
 	*msg1_len = zse->payload - msg1;
 
 	/* Save msg1 for TH computation */
+	/* SECURITY: Generic error hides internal buffer sizes */
 	if (*msg1_len > sizeof(ctx->msg1)) {
-		LOG_ERR("msg1 length %zu exceeds buffer %zu", *msg1_len, sizeof(ctx->msg1));
+		LOG_WRN("Message too large");
 		return -ENOMEM;
 	}
 	memcpy(ctx->msg1, msg1, *msg1_len);
@@ -600,8 +603,9 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 
 	/* Compute shared secret G_XY */
 	x25519_shared_secret(g_xy, ctx->eph_sk, ctx->g_y);
+	/* SECURITY: Generic error hides small-order point attack detection */
 	if (is_all_zeros(g_xy, sizeof(g_xy))) {
-		LOG_ERR("Rejected all-zero X25519 shared secret from message_2");
+		LOG_WRN("Key exchange failed");
 		ret = -EACCES;
 		goto err_wipe;
 	}
@@ -701,8 +705,9 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		goto err_wipe;
 	}
 
+	/* SECURITY: Generic error hides which verification step failed */
 	if (ed25519_verify(peer_pubkey, signature_2.value, sig_struct_2, sig_struct_2_len) != 0) {
-		LOG_ERR("Signature_2 verification failed");
+		LOG_WRN("Authentication failed");
 		ret = -EACCES;
 		goto err_wipe;
 	}
@@ -886,8 +891,9 @@ int edhoc_responder_init(struct edhoc_responder *ctx,
 		memcpy(ctx->c_r, c_r, c_r_len);
 		ctx->c_r_len = c_r_len;
 	} else {
+		/* SECURITY: Generic error avoids exposing protocol state */
 		if (sys_csrand_get(ctx->c_r, 1) != 0) {
-			LOG_ERR("CSPRNG unavailable for C_R generation");
+			LOG_WRN("Initialization failed");
 			return -ENODEV;
 		}
 		ctx->c_r_len = 1;
@@ -933,9 +939,10 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 		return -EINVAL;
 	}
 	/* METHOD_CORR = method * 4 + corr; extract method */
+	/* SECURITY: Generic errors hide negotiation details */
 	int method = method_corr / 4;
 	if (method != EDHOC_METHOD_SIGN_SIGN) {
-		LOG_ERR("Unsupported EDHOC method: %d (only SIGN_SIGN supported)", method);
+		LOG_WRN("Unsupported protocol parameters");
 		return -ENOTSUP;
 	}
 
@@ -944,7 +951,7 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 		return -EINVAL;
 	}
 	if (suites_i != EDHOC_SUITE_0) {
-		LOG_ERR("Unsupported EDHOC suite: %d (only Suite 0 supported)", suites_i);
+		LOG_WRN("Unsupported protocol parameters");
 		return -ENOTSUP;
 	}
 
@@ -982,8 +989,9 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 
 	/* Compute shared secret */
 	x25519_shared_secret(g_xy, ctx->eph_sk, ctx->g_x);
+	/* SECURITY: Generic error hides small-order point attack detection */
 	if (is_all_zeros(g_xy, sizeof(g_xy))) {
-		LOG_ERR("Rejected all-zero X25519 shared secret from message_1");
+		LOG_WRN("Key exchange failed");
 		ret = -EACCES;
 		goto err_wipe;
 	}
@@ -1174,8 +1182,9 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	/* Decrypt CIPHERTEXT_3 */
 	uint8_t plaintext_3[128];
 	ret = aead_decrypt(k_3, iv_3, a_3, a_3_len, msg3, msg3_len, plaintext_3);
+	/* SECURITY: Generic error hides decryption vs verification failure */
 	if (ret != 0) {
-		LOG_ERR("AEAD decryption failed");
+		LOG_WRN("Authentication failed");
 		goto err_wipe;
 	}
 	size_t pt3_len = msg3_len - 8;
@@ -1225,8 +1234,9 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 		goto err_wipe;
 	}
 
+	/* SECURITY: Generic error hides which verification step failed */
 	if (ed25519_verify(peer_pubkey, signature_3.value, sig_struct_3, sig_struct_3_len) != 0) {
-		LOG_ERR("Signature_3 verification failed");
+		LOG_WRN("Authentication failed");
 		ret = -EACCES;
 		goto err_wipe;
 	}

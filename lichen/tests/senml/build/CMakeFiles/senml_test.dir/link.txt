@@ -1,0 +1,1 @@
+/usr/bin/cc -Wno-nullability-completeness -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/senml_test.dir/main.c.o "CMakeFiles/senml_test.dir/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/senml/senml.c.o" CMakeFiles/senml_test.dir/zcbor_stub/zcbor_encode.c.o -o senml_test

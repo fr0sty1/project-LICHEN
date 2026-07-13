@@ -88,6 +88,8 @@ pub enum Ipv6Error {
     WrongVersion(u8),
     /// Output buffer too small for serialization.
     BufferTooSmall(BufferTooSmall),
+    /// Flow label exceeds 20-bit limit (RFC 6437).
+    InvalidFlowLabel(u32),
 }
 
 impl From<TooShort> for Ipv6Error {
@@ -108,6 +110,9 @@ impl core::fmt::Display for Ipv6Error {
             Self::TooShort(e) => write!(f, "IPv6 {}", e),
             Self::WrongVersion(v) => write!(f, "wrong IP version: {} (expected 6)", v),
             Self::BufferTooSmall(e) => write!(f, "IPv6 {}", e),
+            Self::InvalidFlowLabel(v) => {
+                write!(f, "flow label 0x{:x} exceeds 20-bit limit (max 0xfffff)", v)
+            }
         }
     }
 }
@@ -282,12 +287,19 @@ impl Ipv6Header {
         }
     }
 
+    /// Maximum valid flow label value (20 bits, per RFC 6437).
+    pub const MAX_FLOW_LABEL: u32 = 0xfffff;
+
     /// Write header to output buffer.
     ///
     /// Returns the number of bytes written (always `IPV6_HEADER_LEN`).
+    /// Returns `InvalidFlowLabel` if `flow_label` exceeds 20 bits.
     pub fn write_to(&self, payload_len: u16, out: &mut [u8]) -> Result<usize, Ipv6Error> {
         if out.len() < IPV6_HEADER_LEN {
             return Err(BufferTooSmall::new(IPV6_HEADER_LEN, out.len()).into());
+        }
+        if self.flow_label > Self::MAX_FLOW_LABEL {
+            return Err(Ipv6Error::InvalidFlowLabel(self.flow_label));
         }
 
         // Version (4) | Traffic Class (8) | Flow Label (20)
@@ -738,12 +750,16 @@ pub fn handle_icmpv6(
     }
 
     let msg_type = icmpv6_payload[0];
-    let _code = icmpv6_payload[1];
+    let code = icmpv6_payload[1];
     // checksum at [2..4]
     let body = &icmpv6_payload[ICMPV6_HEADER_LEN..];
 
     match msg_type {
         icmpv6_type::ECHO_REQUEST => {
+            // RFC 4443: code MUST be 0 for Echo Request
+            if code != 0 {
+                return Ok(None);
+            }
             // Reply to ping
             let echo = Icmpv6Echo::from_bytes(body)?;
             let data = &body[4..]; // After id+seq
@@ -773,6 +789,10 @@ pub fn handle_icmpv6(
         }
 
         icmpv6_type::NEIGHBOR_SOLICITATION => {
+            // RFC 4861: code MUST be 0 for Neighbor Solicitation
+            if code != 0 {
+                return Ok(None);
+            }
             let ns = NeighborSolicitation::from_bytes(body)?;
 
             // Only respond if target is us
@@ -975,5 +995,27 @@ mod tests {
         let addr = Addr(hex!("fe80 0000 0000 0000 0211 22ff fe33 4455"));
         let iid = addr.iid();
         assert_eq!(iid, hex!("0211 22ff fe33 4455"));
+    }
+
+    #[test]
+    fn test_flow_label_validation() {
+        let src = Addr::link_local_from_mac(&hex!("001122334455"));
+        let dst = Addr::link_local_from_mac(&hex!("665544332211"));
+        let mut buf = [0u8; IPV6_HEADER_LEN];
+
+        // Valid flow_label at maximum (20 bits = 0xfffff)
+        let mut hdr = Ipv6Header::new(next_header::ICMPV6, src, dst);
+        hdr.flow_label = 0xfffff;
+        assert!(hdr.write_to(0, &mut buf).is_ok());
+
+        // Invalid flow_label exceeds 20 bits
+        hdr.flow_label = 0x100000;
+        let result = hdr.write_to(0, &mut buf);
+        assert!(matches!(result, Err(Ipv6Error::InvalidFlowLabel(0x100000))));
+
+        // Also test a larger invalid value
+        hdr.flow_label = 0xffffffff;
+        let result = hdr.write_to(0, &mut buf);
+        assert!(matches!(result, Err(Ipv6Error::InvalidFlowLabel(0xffffffff))));
     }
 }

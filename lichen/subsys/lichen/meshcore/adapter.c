@@ -1115,7 +1115,7 @@ int lichen_meshcore_adapter_feed_stream(
 {
 	int last = 0;
 
-	if (adapter == NULL || (data == NULL && len > 0U)) {
+	if (adapter == NULL || data == NULL) {
 		return -EINVAL;
 	}
 

@@ -42,6 +42,11 @@ def test_routing_table_rejects_empty_path() -> None:
         RoutingTable().add_route(DEST, [])
 
 
+def test_routing_table_rejects_path_not_ending_at_target() -> None:
+    with pytest.raises(RoutingError, match="must end at target"):
+        RoutingTable().add_route(DEST, [A, B])  # path does not end with DEST
+
+
 def test_routing_table_accepts_string_addresses() -> None:
     table = RoutingTable()
     table.add_route("fd00::d", ["fd00::a", "fd00::d"])

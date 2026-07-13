@@ -77,6 +77,11 @@
 #define EAGAIN 11
 #endif
 
+/** Numerical result out of range */
+#ifndef ERANGE
+#define ERANGE 34
+#endif
+
 #endif /* __ZEPHYR__ */
 
 /*

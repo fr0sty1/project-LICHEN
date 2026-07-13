@@ -118,11 +118,20 @@ class OscoreContextStore:
 
     Thread-safe for concurrent access. Contexts are stored in memory;
     for persistent storage, subclass and override load/save hooks.
+
+    Note: This class can be instantiated before the event loop starts.
+    The internal lock is created lazily on first async access.
     """
 
     def __init__(self) -> None:
         self._contexts: dict[str, PeerContext] = {}
-        self._lock = asyncio.Lock()
+        self._lock: asyncio.Lock | None = None
+
+    def _get_lock(self) -> asyncio.Lock:
+        """Get or create the asyncio lock (must be called from async context)."""
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
 
     def get_sync(self, host: str) -> PeerContext | None:
         """Get OSCORE context for a peer (synchronous, for callbacks)."""
@@ -130,14 +139,14 @@ class OscoreContextStore:
 
     async def get(self, host: str) -> PeerContext | None:
         """Get OSCORE context for a peer, or None if not established."""
-        async with self._lock:
+        async with self._get_lock():
             return self._contexts.get(host)
 
     async def put(
         self, host: str, oscore_ctx: MemorySecurityContext, peer_pubkey: bytes
     ) -> None:
         """Store OSCORE context for a peer."""
-        async with self._lock:
+        async with self._get_lock():
             self._contexts[host] = PeerContext(
                 oscore=oscore_ctx,
                 peer_pubkey=peer_pubkey,
@@ -154,7 +163,7 @@ class OscoreContextStore:
 
     async def remove(self, host: str) -> None:
         """Remove OSCORE context for a peer."""
-        async with self._lock:
+        async with self._get_lock():
             self._contexts.pop(host, None)
 
     def has_context_sync(self, host: str) -> bool:
@@ -163,7 +172,7 @@ class OscoreContextStore:
 
     async def has_context(self, host: str) -> bool:
         """Check if we have a context for a peer."""
-        async with self._lock:
+        async with self._get_lock():
             return host in self._contexts
 
 
@@ -186,20 +195,29 @@ class TofuPeerResolver(EdhocPeerResolver):
     """Trust-On-First-Use peer resolution per spec section 8.6.
 
     Accepts any peer on first contact and pins their public key.
+
+    Note: This class can be instantiated before the event loop starts.
+    The internal lock is created lazily on first async access.
     """
 
     def __init__(self) -> None:
         self._pinned: dict[str, bytes] = {}
-        self._lock = asyncio.Lock()
+        self._lock: asyncio.Lock | None = None
+
+    def _get_lock(self) -> asyncio.Lock:
+        """Get or create the asyncio lock (must be called from async context)."""
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
 
     async def get_peer_pubkey(self, host: str) -> bytes | None:
         """Get pinned public key for a peer."""
-        async with self._lock:
+        async with self._get_lock():
             return self._pinned.get(host)
 
     async def pin_peer(self, host: str, pubkey: bytes) -> None:
         """Pin a peer's public key (TOFU)."""
-        async with self._lock:
+        async with self._get_lock():
             if host in self._pinned:
                 if self._pinned[host] != pubkey:
                     raise ValueError(

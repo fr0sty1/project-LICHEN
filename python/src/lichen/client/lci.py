@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import AsyncIterator, Mapping
 from typing import Any, Protocol
 
@@ -87,7 +88,8 @@ class MessageSubscription:
 
     async def close(self) -> None:
         """Cancel the inbox Observe relationship."""
-        await self._subscription.close()
+        with contextlib.suppress(Exception):
+            await self._subscription.close()
 
     async def _messages(self) -> AsyncIterator[list[MessageRecord]]:
         async for result in self._subscription.results():
@@ -115,7 +117,8 @@ class RawRxSubscription:
 
     async def close(self) -> None:
         """Cancel the raw RX Observe relationship."""
-        await self._subscription.close()
+        with contextlib.suppress(Exception):
+            await self._subscription.close()
 
     async def _events(self) -> AsyncIterator[RawRxEvent]:
         async for result in self._subscription.results():

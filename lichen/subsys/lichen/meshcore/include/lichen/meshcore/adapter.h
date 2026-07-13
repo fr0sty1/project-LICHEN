@@ -154,7 +154,7 @@ int lichen_meshcore_adapter_process_raw(
 	const uint8_t *_Nonnull frame, size_t len);
 int lichen_meshcore_adapter_feed_stream(
 	struct lichen_meshcore_adapter *_Nonnull adapter,
-	const uint8_t *_Nonnull data, size_t len);
+	const uint8_t *_Nullable data, size_t len);
 int lichen_meshcore_adapter_emit_text(
 	struct lichen_meshcore_adapter *_Nonnull adapter,
 	const struct lichen_meshcore_incoming_text *_Nonnull event);

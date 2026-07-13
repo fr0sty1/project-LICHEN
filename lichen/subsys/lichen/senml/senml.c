@@ -102,6 +102,7 @@ int senml_add_float(struct senml_pack *pack,
 	rec->unit = unit;
 	rec->type = SENML_VALUE_FLOAT;
 	rec->value.f = value;
+	rec->time_offset = 0;
 	rec->has_time = false;
 
 	return 0;
@@ -157,6 +158,7 @@ int senml_add_bool(struct senml_pack *pack,
 	rec->unit = NULL;
 	rec->type = SENML_VALUE_BOOL;
 	rec->value.b = value;
+	rec->time_offset = 0;
 	rec->has_time = false;
 
 	return 0;
@@ -311,6 +313,16 @@ int senml_encode_location(const char *base_name, uint64_t base_time,
 {
 	struct senml_pack pack;
 	int ret;
+
+	/* Validate lat/lon are finite (not NaN or Inf) */
+	if (isnan(lat) || isnan(lon) || isinf(lat) || isinf(lon)) {
+		return -EINVAL;
+	}
+
+	/* Validate WGS84 coordinate ranges */
+	if (lat < -90.0f || lat > 90.0f || lon < -180.0f || lon > 180.0f) {
+		return -ERANGE;
+	}
 
 	ret = senml_pack_init(&pack, base_name, base_time);
 	if (ret < 0) {

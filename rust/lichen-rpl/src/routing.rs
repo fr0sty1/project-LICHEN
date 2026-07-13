@@ -88,6 +88,12 @@ impl SourceRoutingHeader {
         if data[0] != 3 {
             return Err(RplError::BadRoutingType(data[0]));
         }
+        // SECURITY: Reject compressed SRHs (CmprI/CmprE > 0 per RFC 6554 Section 3).
+        // We only support uncompressed addresses (16 bytes each). Compressed SRHs
+        // would be parsed incorrectly, leading to misrouted packets.
+        if data[2] != 0 || data[3] != 0 {
+            return Err(RplError::InvalidOption);
+        }
         let addr_bytes = &data[6..];
         if !addr_bytes.len().is_multiple_of(16) {
             // Address bytes must be a multiple of 16; partial trailing address is invalid.
@@ -311,14 +317,18 @@ impl DaoManager {
         };
 
         let mut buf = [0u8; 64]; // DAO(20) + Target(20) + TransitInfo(22) = 62
-        let mut pos = dao.write_to(&mut buf).unwrap_or(0);
+        let mut pos = dao
+            .write_to(&mut buf)
+            .expect("DAO base (20 bytes) fits in 64-byte buffer");
 
         let target = RplTarget {
             prefix_len: 128,
             prefix: self.node_address,
         };
         let mut tmp = [0u8; 24];
-        let n = target.write_to(&mut tmp).unwrap_or(0);
+        let n = target
+            .write_to(&mut tmp)
+            .expect("RPL Target option (19 bytes) fits in 24-byte buffer");
         buf[pos..pos + n].copy_from_slice(&tmp[..n]);
         pos += n;
 
@@ -328,7 +338,9 @@ impl DaoManager {
             path_lifetime: 255,
             parent_address: parent_addr,
         };
-        pos += transit.write_to(&mut buf[pos..]).unwrap_or(0);
+        pos += transit
+            .write_to(&mut buf[pos..])
+            .expect("TransitInfo option (22 bytes) fits in remaining buffer");
 
         buf[..pos].to_vec()
     }

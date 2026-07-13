@@ -558,7 +558,8 @@ static int neighbors_get(struct coap_resource *resource,
 	count = s_config.neighbors_get(neighbors, ARRAY_SIZE(neighbors));
 	if (count < 0) {
 		LOG_WRN("neighbors_get callback failed: %d", count);
-		count = 0;
+		return coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
 	}
 
 	len = lichen_coap_encode_neighbors_cbor(cbor_buf, sizeof(cbor_buf),
@@ -655,14 +656,15 @@ static int routes_get(struct coap_resource *resource,
 	count = s_config.routes_get(routes, ARRAY_SIZE(routes), default_route);
 	if (count < 0) {
 		LOG_WRN("routes_get callback failed: %d", count);
-		count = 0;
-	} else {
-		/* Check if default_route was set (non-zero) */
-		for (int i = 0; i < 16; i++) {
-			if (default_route[i] != 0) {
-				has_default = true;
-				break;
-			}
+		return coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+	}
+
+	/* Check if default_route was set (non-zero) */
+	for (int i = 0; i < 16; i++) {
+		if (default_route[i] != 0) {
+			has_default = true;
+			break;
 		}
 	}
 

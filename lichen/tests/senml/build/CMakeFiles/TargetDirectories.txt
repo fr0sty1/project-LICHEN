@@ -1,0 +1,3 @@
+/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/senml/build/CMakeFiles/senml_test.dir
+/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/senml/build/CMakeFiles/edit_cache.dir
+/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/tests/senml/build/CMakeFiles/rebuild_cache.dir

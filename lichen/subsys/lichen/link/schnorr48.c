@@ -14,6 +14,7 @@
  */
 
 #include <lichen/schnorr48.h>
+#include <errno.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -74,7 +75,7 @@ int schnorr48_sign(const uint8_t *privkey,
 	if (msg_len > 0 && msg == NULL) {
 		/* Cannot sign: NULL message with nonzero length */
 		memset(sig, 0, SCHNORR48_SIG_LEN);
-		return -1;
+		return -EINVAL;
 	}
 
 	/*
@@ -233,7 +234,7 @@ int schnorr48_sign(const uint8_t *privkey,
 	(void)msg_len;
 	(void)sig;
 	schnorr48_stub_abort("schnorr48_sign");
-	return -1; /* unreachable, but satisfies compiler */
+	return -EINVAL; /* unreachable, but satisfies compiler */
 }
 
 bool schnorr48_verify(const uint8_t *pubkey,
@@ -274,17 +275,17 @@ int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
 
 	/* Validate dst_addr_len before use */
 	if (dst_addr_len > SCHNORR48_MAX_ADDR_LEN) {
-		return -1;
+		return -EINVAL;
 	}
 
 	/* Validate: if dst_addr_len > 0, dst_addr must not be NULL */
 	if (dst_addr_len > 0 && dst_addr == NULL) {
-		return -1;
+		return -EINVAL;
 	}
 
 	/* Validate: if payload_len > 0, payload must not be NULL */
 	if (payload_len > 0 && payload == NULL) {
-		return -1;
+		return -EINVAL;
 	}
 
 	/* Build header: epoch || seqnum (big-endian) || dst_addr */
@@ -357,25 +358,25 @@ int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
 {
 	/* Validate dst_addr_len before use */
 	if (dst_addr_len > SCHNORR48_MAX_ADDR_LEN) {
-		return -1;
+		return -EINVAL;
 	}
 
 	/* Validate: if dst_addr_len > 0, dst_addr must not be NULL */
 	if (dst_addr_len > 0 && dst_addr == NULL) {
-		return -1;
+		return -EINVAL;
 	}
 
 	/* Validate: payload must not be NULL (always needed for signature) */
 	if (payload == NULL) {
-		return -1;
+		return -EINVAL;
 	}
 
 	/*
 	 * Payload too short to contain signature (python-ano.17):
-	 * Return -1 for malformed frame, distinguishing from invalid signature (0).
+	 * Return -EINVAL for malformed frame, distinguishing from invalid signature (0).
 	 */
 	if (payload_len < SCHNORR48_SIG_LEN) {
-		return -1;
+		return -EINVAL;
 	}
 
 	size_t inner_len = payload_len - SCHNORR48_SIG_LEN;
@@ -460,7 +461,7 @@ int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
 	(void)pubkey;
 	(void)sig;
 	schnorr48_stub_abort("schnorr48_sign_frame");
-	return -1; /* unreachable, but satisfies compiler */
+	return -EINVAL; /* unreachable, but satisfies compiler */
 }
 
 int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
@@ -476,7 +477,7 @@ int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
 	(void)payload_len;
 	(void)pubkey;
 	schnorr48_stub_abort("schnorr48_verify_frame");
-	return -1; /* unreachable, but satisfies compiler */
+	return -EINVAL; /* unreachable, but satisfies compiler */
 }
 
 #endif /* CONFIG_LICHEN_CRYPTO_MONOCYPHER */
