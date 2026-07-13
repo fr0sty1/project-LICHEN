@@ -432,7 +432,6 @@ int lichen_msg_sent_post(struct coap_resource *resource,
 
 	while (!zcbor_array_at_end(zsd)) {
 		struct zcbor_string key;
-		zcbor_state_t key_state = *zsd;
 
 		if (!zcbor_tstr_decode(zsd, &key)) {
 			goto bad_request;
@@ -466,11 +465,8 @@ int lichen_msg_sent_post(struct coap_resource *resource,
 				goto bad_request;
 			}
 		} else {
-			/* Skip unknown key-value pair */
-			(void)zcbor_pop_error(zsd);
-			*zsd = key_state;
-			if (!zcbor_any_skip(zsd, NULL) ||
-			    !zcbor_any_skip(zsd, NULL)) {
+			/* Skip unknown value (key already decoded) */
+			if (!zcbor_any_skip(zsd, NULL)) {
 				goto bad_request;
 			}
 		}
@@ -766,7 +762,6 @@ int lichen_msg_ack_post(struct coap_resource *resource,
 
 	while (!zcbor_array_at_end(zsd)) {
 		struct zcbor_string key;
-		zcbor_state_t key_state = *zsd;
 
 		if (!zcbor_tstr_decode(zsd, &key)) {
 			goto bad_request;
@@ -778,10 +773,8 @@ int lichen_msg_ack_post(struct coap_resource *resource,
 			}
 			found_id = true;
 		} else {
-			(void)zcbor_pop_error(zsd);
-			*zsd = key_state;
-			if (!zcbor_any_skip(zsd, NULL) ||
-			    !zcbor_any_skip(zsd, NULL)) {
+			/* Skip unknown value (key already decoded) */
+			if (!zcbor_any_skip(zsd, NULL)) {
 				goto bad_request;
 			}
 		}

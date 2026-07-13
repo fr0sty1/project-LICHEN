@@ -20,6 +20,7 @@
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/bluetooth/gap.h>
+#include <zephyr/sys/atomic.h>
 
 #if IS_ENABLED(CONFIG_LICHEN_BLE_IPSP)
 #include <zephyr/bluetooth/l2cap.h>
@@ -306,13 +307,14 @@ static ssize_t nus_rx_cb(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 	return len;
 }
 
-static bool nus_tx_notify_enabled;
+static atomic_t nus_tx_notify_enabled;
 
 static void nus_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
 {
 	ARG_UNUSED(attr);
-	nus_tx_notify_enabled = (value == BT_GATT_CCC_NOTIFY);
-	LOG_DBG("NUS TX notifications %s", nus_tx_notify_enabled ? "enabled" : "disabled");
+	atomic_set(&nus_tx_notify_enabled, (value == BT_GATT_CCC_NOTIFY) ? 1 : 0);
+	LOG_DBG("NUS TX notifications %s",
+		atomic_get(&nus_tx_notify_enabled) ? "enabled" : "disabled");
 }
 
 /* NUS Service Definition */
@@ -467,7 +469,7 @@ int lichen_ble_slip_send(const uint8_t *data, size_t len)
 		return -ENOTCONN;
 	}
 
-	if (!nus_tx_notify_enabled) {
+	if (!atomic_get(&nus_tx_notify_enabled)) {
 		k_mutex_unlock(&transport_state.lock);
 		return -ENOTCONN;
 	}

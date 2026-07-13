@@ -1,0 +1,179 @@
+name: Fuzzing
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Run nightly at 3am UTC for deep fuzzing
+    - cron: '0 3 * * *'
+
+jobs:
+  python-hypothesis:
+    name: Python property-based testing
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv sync --locked --all-extras --dev
+
+      - name: Run hypothesis tests with extended examples
+        run: |
+          # Run property-based tests with more examples on schedule
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            uv run pytest tests/ -v --hypothesis-profile=ci-extended -k "hypothesis or property" --timeout=300
+          else
+            uv run pytest tests/ -v -k "hypothesis or property" --timeout=120
+          fi
+
+  rust-fuzz:
+    name: Rust fuzzing (cargo-fuzz)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz
+
+      - name: Cache Cargo artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Fuzz SCHC decompression (5 min)
+        working-directory: rust/lichen-schc
+        run: |
+          if [ -d fuzz ]; then
+            cargo +nightly fuzz run fuzz_decompress -- -max_total_time=300
+          else
+            echo "No fuzz targets in lichen-schc"
+          fi
+        continue-on-error: true
+
+      - name: Fuzz CBOR parsing (5 min)
+        working-directory: rust/lichen-coap
+        run: |
+          if [ -d fuzz ]; then
+            cargo +nightly fuzz run fuzz_cbor -- -max_total_time=300
+          else
+            echo "No fuzz targets in lichen-coap"
+          fi
+        continue-on-error: true
+
+      - name: Fuzz link frame parsing (5 min)
+        working-directory: rust/lichen-link
+        run: |
+          if [ -d fuzz ]; then
+            cargo +nightly fuzz run fuzz_frame -- -max_total_time=300
+          else
+            echo "No fuzz targets in lichen-link"
+          fi
+        continue-on-error: true
+
+      - name: Upload crash artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crashes
+          path: rust/*/fuzz/artifacts/
+
+  zephyr-fuzz:
+    name: Zephyr fuzzing (native_sim)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set SOURCE_DATE_EPOCH
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
+      - name: Install system deps
+        run: sudo apt-get install -y --no-install-recommends cmake ninja-build gcc gcc-multilib
+
+      - name: Install west
+        run: pip install west
+
+      - name: Cache west workspace
+        id: cache-zephyr
+        uses: actions/cache@v4
+        with:
+          path: |
+            zephyr
+            modules
+            bootloader
+            tools
+          key: west-workspace-${{ hashFiles('lichen/west.yml') }}
+
+      - name: west init + update
+        if: steps.cache-zephyr.outputs.cache-hit != 'true'
+        run: |
+          west init -l lichen/
+          west update
+
+      - name: west init (manifest only)
+        if: steps.cache-zephyr.outputs.cache-hit == 'true'
+        run: west init -l lichen/
+
+      - name: Install Zephyr Python requirements
+        run: pip install -r zephyr/scripts/requirements.txt
+
+      - name: west zephyr-export
+        run: west zephyr-export
+
+      - name: Run fuzz tests (if exist)
+        env:
+          ZEPHYR_TOOLCHAIN_VARIANT: host
+        run: |
+          if [ -d lichen/tests/fuzz ]; then
+            west twister -T lichen/tests/fuzz -p native_sim --inline-logs
+          else
+            echo "No Zephyr fuzz tests yet"
+          fi
+        timeout-minutes: 15
+
+  integration-stress:
+    name: Integration stress tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv sync --locked --all-extras --dev
+
+      - name: Run stress tests (extended timeouts)
+        run: |
+          # Run integration tests with stress markers
+          uv run pytest tests/sim/ tests/integration/ -v \
+            --timeout=600 \
+            -m "stress or slow" \
+            --tb=short
+        continue-on-error: true
+        timeout-minutes: 30

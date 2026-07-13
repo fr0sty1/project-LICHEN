@@ -491,6 +491,11 @@ static const char *info_short_name(const struct lichen_meshtastic_local_info *in
 		info->short_name[0] != '\0') ? info->short_name : "LICH";
 }
 
+/*
+ * SECURITY: The returned pointer is only valid while the info struct and its
+ * firmware_version string remain allocated and unmodified. Callers must encode
+ * or copy the result before freeing or reusing the info struct.
+ */
 static const char *info_firmware_version(
 	const struct lichen_meshtastic_local_info *info)
 {

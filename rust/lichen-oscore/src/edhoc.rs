@@ -880,6 +880,22 @@ impl EdhocResponder {
             return Err(EdhocError::InvalidMessage);
         }
 
+        // SECURITY: Verify CBOR structure for ID_CRED_I (bstr .size 32)
+        if plaintext_3[0] != 0x58 || plaintext_3[1] != 0x20 {
+            return Err(EdhocError::InvalidMessage);
+        }
+
+        // SECURITY: Verify ID_CRED_I matches expected peer public key
+        let id_cred_i = &plaintext_3[2..2 + 32];
+        if id_cred_i != peer_pubkey {
+            return Err(EdhocError::SignatureVerification);
+        }
+
+        // SECURITY: Verify CBOR structure for Signature_3 (bstr .size 64)
+        if plaintext_3[2 + 32] != 0x58 || plaintext_3[2 + 32 + 1] != 0x40 {
+            return Err(EdhocError::InvalidMessage);
+        }
+
         let sig_start = 2 + 32 + 2;
         let sig_bytes = &plaintext_3[sig_start..sig_start + 64];
         let signature = Signature::from_bytes(

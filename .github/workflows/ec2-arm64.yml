@@ -1,0 +1,101 @@
+name: EC2 ARM64 Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Use self-hosted ARM64 runner on EC2
+# Setup: https://docs.github.com/en/actions/hosting-your-own-runners
+jobs:
+  zephyr-arm64:
+    name: Zephyr native_sim/native/64 (ARM64)
+    runs-on: [self-hosted, linux, arm64, lichen]
+    if: github.repository == 'MarkAtwood/project-LICHEN'
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set SOURCE_DATE_EPOCH
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
+      - name: Verify ARM64
+        run: |
+          uname -m
+          test "$(uname -m)" = "aarch64" || { echo "Not ARM64!"; exit 1; }
+
+      - name: Install dependencies (if needed)
+        run: |
+          which west || pip3 install west
+          which cmake || sudo dnf install -y cmake ninja-build gcc
+
+      - name: Setup west workspace
+        run: |
+          if [ ! -d zephyr ]; then
+            west init -l lichen/
+            west update
+          fi
+          pip3 install -r zephyr/scripts/requirements.txt || true
+          west zephyr-export
+
+      - name: Run ALL tests on native_sim/native/64
+        env:
+          ZEPHYR_TOOLCHAIN_VARIANT: host
+        run: |
+          # ARM64-native tests - no 32-bit emulation needed
+          west twister -T lichen/tests -p native_sim/native/64 \
+            --inline-logs --overflow-as-errors -j$(nproc)
+        timeout-minutes: 45
+
+      - name: Upload twister results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: twister-arm64-results
+          path: twister-out/
+
+      - name: Build gateway for ARM64
+        run: west build -b native_sim/native/64 lichen/apps/gateway --pristine
+
+      - name: Build puck for ARM64
+        run: west build -b native_sim/native/64 lichen/apps/puck --pristine
+
+  python-arm64:
+    name: Python tests (ARM64)
+    runs-on: [self-hosted, linux, arm64, lichen]
+    if: github.repository == 'MarkAtwood/project-LICHEN'
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Python deps
+        run: |
+          pip3 install uv || true
+          uv sync --locked --all-extras --dev
+
+      - name: Run tests
+        run: uv run pytest -q --timeout=120 --timeout-method=thread
+
+  rust-arm64:
+    name: Rust tests (ARM64)
+    runs-on: [self-hosted, linux, arm64, lichen]
+    if: github.repository == 'MarkAtwood/project-LICHEN'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (if needed)
+        run: |
+          which rustc || curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          . "$HOME/.cargo/env" || true
+
+      - name: Install protoc
+        run: sudo dnf install -y protobuf-compiler || sudo apt-get install -y protobuf-compiler || true
+
+      - name: Build and test
+        working-directory: rust
+        run: |
+          cargo build --features lichen-link/schnorr,lichen-link/std
+          cargo test --features lichen-link/schnorr,lichen-link/std

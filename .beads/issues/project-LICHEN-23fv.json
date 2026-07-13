@@ -9,7 +9,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:16:40.230479Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-13T00:11:48.873661Z",
-  "closed_at": "2026-07-13T00:11:48.873661Z",
-  "close_reason": "Fixed: skip_one_depth now uses checked arithmetic (checked_add) to prevent overflow on 16-bit platforms when processing byte/text strings with 2-byte lengths"
+  "updated_at": "2026-07-13T00:12:22.408485Z",
+  "closed_at": "2026-07-13T00:12:22.408485Z",
+  "close_reason": "Fixed: Added checked arithmetic to skip_one_depth for major types 4 (arrays) and 5 (maps). Lines 393-408 now use pos.checked_add(adv) and cur.checked_add(skip) to prevent overflow on 16-bit platforms."
 }

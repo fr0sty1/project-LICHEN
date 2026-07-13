@@ -36,12 +36,19 @@ jobs:
       - name: Lint (ruff)
         run: uv run ruff check src tests pyproject.toml
 
-      - name: Tests
+      - name: Tests with coverage
         # The full suite runs, including the integration tests (the BARRIER_SYNC
         # deadlock fgk and the half-duplex self-collision euj are both fixed).
         # The per-test timeout is a safety net so any new hang fails instead of
         # stalling the runner (thread method is async-safe).
-        run: uv run pytest -q --timeout=120 --timeout-method=thread
+        run: uv run pytest -q --timeout=120 --timeout-method=thread --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Upload Python coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: python/coverage.xml
+          flags: python
+          fail_ci_if_error: false
 
   rust:
     name: Rust
@@ -72,9 +79,18 @@ jobs:
         run: cargo build --features lichen-link/schnorr,lichen-link/std
         working-directory: rust
 
-      - name: Test
-        run: cargo test --features lichen-link/schnorr,lichen-link/std
+      - name: Test with coverage
+        run: |
+          cargo install cargo-llvm-cov --locked || true
+          cargo llvm-cov --features lichen-link/schnorr,lichen-link/std --lcov --output-path lcov.info
         working-directory: rust
+
+      - name: Upload Rust coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: rust/lcov.info
+          flags: rust
+          fail_ci_if_error: false
 
       - name: Clippy
         run: cargo clippy --features lichen-link/schnorr,lichen-link/std -- -D warnings
@@ -188,10 +204,23 @@ jobs:
       - name: Build puck (native_sim)
         run: west build -b native_sim lichen/apps/puck --pristine -- -DZEPHYR_TOOLCHAIN_VARIANT=host
 
-      - name: Test Meshtastic codec (native_sim)
+      - name: Run ALL Zephyr tests (west twister)
         env:
           ZEPHYR_TOOLCHAIN_VARIANT: host
-        run: west twister -T lichen/tests/meshtastic_codec -p native_sim --inline-logs
+        run: |
+          # Run all 45 test suites on native_sim
+          # --inline-logs shows failures immediately
+          # --overflow-as-errors catches stack issues
+          # -j4 parallelizes for speed
+          west twister -T lichen/tests -p native_sim --inline-logs --overflow-as-errors -j4
+        timeout-minutes: 30
+
+      - name: Upload twister results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: twister-results
+          path: twister-out/
 
       - name: Check Meshtastic payload guard (native_sim)
         env:

@@ -138,7 +138,11 @@ class Routing:
             field_num, wire_type, offset = _decode_tag(data, offset)
             if field_num == 2 and wire_type == WIRE_VARINT:
                 val, offset = _decode_varint(data, offset)
-                routing.error_reason = RoutingError(val)
+                try:
+                    routing.error_reason = RoutingError(val)
+                except ValueError:
+                    # Unknown routing error code from newer Meshtastic version
+                    routing.error_reason = RoutingError.NONE
             else:
                 offset = _skip_field(data, offset, wire_type)
         return routing
@@ -373,7 +377,11 @@ class MeshPacket:
                 pkt.want_ack = val != 0
             elif field_num == 11 and wire_type == WIRE_VARINT:
                 val, offset = _decode_varint(data, offset)
-                pkt.priority = PacketPriority(val)
+                try:
+                    pkt.priority = PacketPriority(val)
+                except ValueError:
+                    # Unknown priority from newer Meshtastic version
+                    pkt.priority = PacketPriority.DEFAULT
             elif field_num == 12 and wire_type == WIRE_VARINT:
                 pkt.rx_rssi, offset = _decode_varint(data, offset)
             elif field_num == 14 and wire_type == WIRE_VARINT:

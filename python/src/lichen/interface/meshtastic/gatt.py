@@ -177,7 +177,10 @@ class MeshtasticGattService:
             and len(self._write_buffer) >= self._write_expected_len
         ):
             data = bytes(self._write_buffer[: self._write_expected_len])
+            # Preserve any trailing bytes that belong to the next message
+            remaining = bytes(self._write_buffer[self._write_expected_len :])
             self._write_buffer.clear()
+            self._write_buffer.extend(remaining)
             self._write_expected_len = None
             try:
                 msg = ToRadio.from_bytes(data)

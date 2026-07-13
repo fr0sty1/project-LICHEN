@@ -383,7 +383,7 @@ static int enqueue_next_pending(struct lichen_meshcore_adapter *adapter)
 	}
 
 	ret = enqueue(adapter, out, (size_t)ret);
-	if (ret == 0) {
+	if (ret >= 0) {
 		pending_pop(adapter);
 	}
 	return ret;
