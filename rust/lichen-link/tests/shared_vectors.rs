@@ -10,26 +10,29 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 struct VectorFile {
+    format_version: u32,
     vectors: Vec<LinkFrameVector>,
 }
 
 #[derive(Deserialize)]
 struct LinkFrameVector {
     name: String,
-    encoded: String,  // hex-encoded frame
+    description: String,
+    encoded: String,
     fields: LinkFrameFields,
 }
 
 #[derive(Deserialize)]
 struct LinkFrameFields {
-    length: u8,
-    llsec: u8,
     epoch: u8,
     seqnum: u16,
-    addr_mode: u8,
-    dest_addr: Option<String>,
+    dst_addr: String,
     payload: String,
     mic: String,
+    addr_mode: u8,
+    mic_length: u8,
+    signature_present: bool,
+    encrypted: bool,
 }
 
 fn hex_decode(s: &str) -> Vec<u8> {
@@ -57,27 +60,128 @@ fn test_link_frame_vectors() {
     let vectors: VectorFile = serde_json::from_str(&content)
         .expect("Failed to parse vectors JSON");
 
+    assert_eq!(vectors.format_version, 1, "Unexpected vector format version");
+
+    let mut failures = Vec::new();
+
     for vector in &vectors.vectors {
         let encoded = hex_decode(&vector.encoded);
         let fields = &vector.fields;
 
-        // Verify wire format structure
-        assert!(encoded.len() >= 5, "Vector '{}': frame too short", vector.name);
+        // Verify minimum frame size (header + MIC)
+        if encoded.len() < 5 {
+            failures.push(format!("Vector '{}': frame too short ({} bytes)", vector.name, encoded.len()));
+            continue;
+        }
 
-        // Check header fields match
-        assert_eq!(encoded[0], fields.length, "Vector '{}': length mismatch", vector.name);
-        assert_eq!(encoded[1], fields.llsec, "Vector '{}': llsec mismatch", vector.name);
-        assert_eq!(encoded[2], fields.epoch, "Vector '{}': epoch mismatch", vector.name);
+        // Parse LLSEC byte (byte 1)
+        // Layout: bits 0-1 = addr_mode, bits 2-4 = mic_len, bit 5 = sig, bit 6 = enc
+        let llsec = encoded[1];
+        let addr_mode = llsec & 0x03;
+        let mic_length_flag = (llsec >> 2) & 0x07;  // 3 bits
+        let sig_present = (llsec >> 5) & 0x01;      // bit 5
+        let encrypted = (llsec >> 6) & 0x01;        // bit 6
 
+        // Check addr_mode
+        if addr_mode != fields.addr_mode {
+            failures.push(format!(
+                "Vector '{}': addr_mode mismatch (encoded: {}, expected: {})",
+                vector.name, addr_mode, fields.addr_mode
+            ));
+        }
+
+        // Check MIC length flag
+        if mic_length_flag != fields.mic_length {
+            failures.push(format!(
+                "Vector '{}': mic_length mismatch (encoded: {}, expected: {})",
+                vector.name, mic_length_flag, fields.mic_length
+            ));
+        }
+
+        // Check signature_present flag
+        if (sig_present != 0) != fields.signature_present {
+            failures.push(format!(
+                "Vector '{}': signature_present mismatch (encoded: {}, expected: {})",
+                vector.name, sig_present != 0, fields.signature_present
+            ));
+        }
+
+        // Check encrypted flag
+        if (encrypted != 0) != fields.encrypted {
+            failures.push(format!(
+                "Vector '{}': encrypted mismatch (encoded: {}, expected: {})",
+                vector.name, encrypted != 0, fields.encrypted
+            ));
+        }
+
+        // Check epoch (byte 2)
+        if encoded[2] != fields.epoch {
+            failures.push(format!(
+                "Vector '{}': epoch mismatch (encoded: {}, expected: {})",
+                vector.name, encoded[2], fields.epoch
+            ));
+        }
+
+        // Check seqnum (bytes 3-4, big-endian)
         let seqnum = u16::from_be_bytes([encoded[3], encoded[4]]);
-        assert_eq!(seqnum, fields.seqnum, "Vector '{}': seqnum mismatch", vector.name);
+        if seqnum != fields.seqnum {
+            failures.push(format!(
+                "Vector '{}': seqnum mismatch (encoded: {}, expected: {})",
+                vector.name, seqnum, fields.seqnum
+            ));
+        }
 
-        // Verify addr_mode from llsec byte
-        let addr_mode = fields.llsec & 0x03;
-        assert_eq!(addr_mode, fields.addr_mode, "Vector '{}': addr_mode mismatch", vector.name);
+        // Actually parse using lichen-link's frame parser
+        match lichen_link::frame::LichenFrame::from_bytes(&encoded) {
+            Ok(frame) => {
+                if frame.epoch != fields.epoch {
+                    failures.push(format!(
+                        "Vector '{}': parsed epoch {} != expected {}",
+                        vector.name, frame.epoch, fields.epoch
+                    ));
+                }
+                if frame.seqnum.get() != fields.seqnum {
+                    failures.push(format!(
+                        "Vector '{}': parsed seqnum {} != expected {}",
+                        vector.name, frame.seqnum.get(), fields.seqnum
+                    ));
+                }
+                if (frame.addr_mode as u8) != fields.addr_mode {
+                    failures.push(format!(
+                        "Vector '{}': parsed addr_mode {:?} != expected {}",
+                        vector.name, frame.addr_mode, fields.addr_mode
+                    ));
+                }
+                let parsed_sig = matches!(frame.signature, lichen_link::frame::Signature::Present);
+                if parsed_sig != fields.signature_present {
+                    failures.push(format!(
+                        "Vector '{}': parsed signature_present {} != expected {}",
+                        vector.name, parsed_sig, fields.signature_present
+                    ));
+                }
+                let parsed_enc = matches!(frame.encryption, lichen_link::frame::Encryption::Encrypted);
+                if parsed_enc != fields.encrypted {
+                    failures.push(format!(
+                        "Vector '{}': parsed encrypted {} != expected {}",
+                        vector.name, parsed_enc, fields.encrypted
+                    ));
+                }
+            }
+            Err(e) => {
+                failures.push(format!("Vector '{}': parse failed: {:?}", vector.name, e));
+            }
+        }
 
-        println!("Vector '{}': {} bytes, epoch={}, seqnum={}, addr_mode={}",
-            vector.name, encoded.len(), fields.epoch, fields.seqnum, fields.addr_mode);
+        println!("Vector '{}': {} bytes, epoch={}, seqnum={}, addr_mode={}, mic_len={}, sig={}, enc={}",
+            vector.name, encoded.len(), fields.epoch, fields.seqnum,
+            fields.addr_mode, fields.mic_length, fields.signature_present, fields.encrypted);
+    }
+
+    if !failures.is_empty() {
+        for f in &failures {
+            eprintln!("FAIL: {}", f);
+        }
+        panic!("{} link frame vector(s) failed", failures.len());
     }
 
     println!("Validated {} link frame vectors", vectors.vectors.len());
@@ -98,12 +202,14 @@ fn test_l2_payload_vectors() {
 
     #[derive(Deserialize)]
     struct L2PayloadFile {
+        format_version: u32,
         vectors: Vec<L2PayloadVector>,
     }
 
     #[derive(Deserialize)]
     struct L2PayloadVector {
         name: String,
+        description: String,
         wrapped: String,
         dispatch: u8,
         kind: String,
@@ -113,31 +219,61 @@ fn test_l2_payload_vectors() {
     let vectors: L2PayloadFile = serde_json::from_str(&content)
         .expect("Failed to parse vectors JSON");
 
+    assert_eq!(vectors.format_version, 1, "Unexpected vector format version");
+
+    let mut failures = Vec::new();
+
     for vector in &vectors.vectors {
         let wrapped = hex_decode(&vector.wrapped);
         let body = hex_decode(&vector.body);
 
         // First byte must be dispatch
-        assert!(!wrapped.is_empty(), "Vector '{}': empty wrapped", vector.name);
-        assert_eq!(wrapped[0], vector.dispatch,
-            "Vector '{}': dispatch mismatch (expected {:#x}, got {:#x})",
-            vector.name, vector.dispatch, wrapped[0]);
+        if wrapped.is_empty() {
+            failures.push(format!("Vector '{}': empty wrapped", vector.name));
+            continue;
+        }
+
+        if wrapped[0] != vector.dispatch {
+            failures.push(format!(
+                "Vector '{}': dispatch mismatch (expected {:#x}, got {:#x})",
+                vector.name, vector.dispatch, wrapped[0]
+            ));
+        }
 
         // Body should match remaining bytes
-        assert_eq!(&wrapped[1..], &body[..],
-            "Vector '{}': body mismatch", vector.name);
+        if wrapped.len() > 1 && &wrapped[1..] != &body[..] {
+            failures.push(format!("Vector '{}': body mismatch", vector.name));
+        }
 
-        // Verify dispatch matches kind
+        // Verify dispatch matches known kinds
         let expected_dispatch = match vector.kind.as_str() {
-            "schc" => 0x14,
-            "routing" => 0x15,
-            _ => panic!("Unknown kind: {}", vector.kind),
+            "schc" => Some(0x14),
+            "routing" => Some(0x15),
+            "unknown" => None, // Unknown is intentionally unmatched
+            _ => {
+                failures.push(format!("Vector '{}': unrecognized kind '{}'", vector.name, vector.kind));
+                None
+            }
         };
-        assert_eq!(vector.dispatch, expected_dispatch,
-            "Vector '{}': kind/dispatch mismatch", vector.name);
+
+        if let Some(expected) = expected_dispatch {
+            if vector.dispatch != expected {
+                failures.push(format!(
+                    "Vector '{}': kind/dispatch mismatch (kind={}, dispatch={:#x}, expected={:#x})",
+                    vector.name, vector.kind, vector.dispatch, expected
+                ));
+            }
+        }
 
         println!("Vector '{}': {} bytes, kind={}, dispatch={:#x}",
             vector.name, wrapped.len(), vector.kind, vector.dispatch);
+    }
+
+    if !failures.is_empty() {
+        for f in &failures {
+            eprintln!("FAIL: {}", f);
+        }
+        panic!("{} L2 payload vector(s) failed", failures.len());
     }
 
     println!("Validated {} L2 payload vectors", vectors.vectors.len());

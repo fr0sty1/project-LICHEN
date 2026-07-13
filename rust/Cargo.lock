@@ -1923,6 +1923,8 @@ dependencies = [
  "defmt 0.3.100",
  "lichen-core",
  "log",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
