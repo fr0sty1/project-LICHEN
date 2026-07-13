@@ -41,7 +41,7 @@ jobs:
         # deadlock fgk and the half-duplex self-collision euj are both fixed).
         # The per-test timeout is a safety net so any new hang fails instead of
         # stalling the runner (thread method is async-safe).
-        run: uv run pytest -q --timeout=120 --timeout-method=thread --cov=src --cov-report=xml --cov-report=term-missing
+        run: uv run pytest -q --timeout=120 --timeout-method=thread --cov=src --cov-report=xml --cov-report=term-missing --junitxml=junit.xml
 
       - name: Upload Python coverage
         uses: codecov/codecov-action@v4
@@ -49,6 +49,13 @@ jobs:
           files: python/coverage.xml
           flags: python
           fail_ci_if_error: false
+
+      - name: Create beads from Python test failures
+        if: failure() && github.ref == 'refs/heads/main'
+        run: |
+          cd ..
+          python scripts/ci-to-beads.py pytest python/junit.xml --max 10
+        continue-on-error: true
 
   rust:
     name: Rust
@@ -221,6 +228,13 @@ jobs:
         with:
           name: twister-results
           path: twister-out/
+
+      - name: Create beads from test failures
+        if: failure() && github.ref == 'refs/heads/main'
+        run: |
+          pip install pyyaml  # bd might need it
+          python scripts/ci-to-beads.py twister twister-out/twister.xml --max 10
+        continue-on-error: true
 
       - name: Check Meshtastic payload guard (native_sim)
         env:
