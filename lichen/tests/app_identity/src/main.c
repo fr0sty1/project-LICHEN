@@ -159,8 +159,15 @@ ZTEST(app_identity, test_peer_lookup_and_enumeration)
 	zassert_equal(out.iid[0], peer1_eui64[0] ^ 0x02U);
 	zassert_true(out.has_public_key);
 
+	/*
+	 * SECURITY: TOFU key pinning (spec 8.6) - presenting a different key
+	 * for a known peer must be rejected and the pinned key retained.
+	 * Key rotation requires explicit removal followed by re-add.
+	 */
 	memset(key1, 0x44, sizeof(key1));
-	zassert_ok(lichen_app_identity_upsert_peer_key(peer1_eui64, key1));
+	zassert_equal(lichen_app_identity_upsert_peer_key(peer1_eui64, key1),
+		      -EEXIST);
+	memset(key1, 0x11, sizeof(key1));
 	zassert_ok(lichen_app_identity_copy_peer(peer1_eui64, &out));
 	zassert_mem_equal(out.public_key, key1, sizeof(key1));
 	zassert_equal(lichen_app_identity_peer_count(), 2U);
