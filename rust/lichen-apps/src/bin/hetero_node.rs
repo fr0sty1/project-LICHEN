@@ -55,7 +55,10 @@ fn main() {
     let x_pos: f64 = args[4].parse().expect("invalid x_pos");
     let duration_s: u64 = args[5].parse().expect("invalid duration");
 
-    eprintln!("rust-{}: connecting to {}:{} at x={}", node_id, host, port, x_pos);
+    eprintln!(
+        "rust-{}: connecting to {}:{} at x={}",
+        node_id, host, port, x_pos
+    );
 
     // Connect to lichen-sim
     let mut radio = match lichen_embassy::sim::SimRadio::connect(host, port) {
@@ -115,8 +118,9 @@ fn main() {
 
         // Receive window
         for _ in 0..5 {
-            match futures::executor::block_on(lichen_hal::Radio::receive(&mut radio, &mut buf, 1000))
-            {
+            match futures::executor::block_on(lichen_hal::Radio::receive(
+                &mut radio, &mut buf, 1000,
+            )) {
                 Ok(Some(pkt)) => {
                     metrics.rx_count += 1;
                     metrics.rx_bytes += pkt.len as u64;
@@ -129,7 +133,11 @@ fn main() {
                     // Check if it's from a different implementation
                     if pkt.len > 0 {
                         let dispatch = buf[0];
-                        let source = if dispatch == 0x15 { "announce" } else { "other" };
+                        let source = if dispatch == 0x15 {
+                            "announce"
+                        } else {
+                            "other"
+                        };
                         eprintln!(
                             "rust-{}: RX {} bytes, dispatch={:#x} ({})",
                             node_id, pkt.len, dispatch, source
@@ -141,10 +149,7 @@ fn main() {
                             let peer_iid: [u8; 8] = buf[5..13].try_into().unwrap();
                             if peer_iid != identity.iid {
                                 metrics.unique_peers.insert(peer_iid);
-                                eprintln!(
-                                    "rust-{}: announce from peer {:02x?}",
-                                    node_id, peer_iid
-                                );
+                                eprintln!("rust-{}: announce from peer {:02x?}", node_id, peer_iid);
                             }
                         }
                     }

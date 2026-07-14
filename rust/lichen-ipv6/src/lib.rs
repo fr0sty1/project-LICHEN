@@ -1016,6 +1016,9 @@ mod tests {
         // Also test a larger invalid value
         hdr.flow_label = 0xffffffff;
         let result = hdr.write_to(0, &mut buf);
-        assert!(matches!(result, Err(Ipv6Error::InvalidFlowLabel(0xffffffff))));
+        assert!(matches!(
+            result,
+            Err(Ipv6Error::InvalidFlowLabel(0xffffffff))
+        ));
     }
 }

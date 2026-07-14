@@ -168,7 +168,10 @@ impl KissBridge {
     /// Create a new bridge with default settings.
     ///
     /// DEPRECATED: Use [`KissBridge::with_epoch`] for spec-compliant initialization.
-    #[deprecated(since = "0.2.0", note = "use KissBridge::with_epoch for spec-compliant initialization")]
+    #[deprecated(
+        since = "0.2.0",
+        note = "use KissBridge::with_epoch for spec-compliant initialization"
+    )]
     pub const fn new() -> Self {
         Self {
             default_epoch: 128,

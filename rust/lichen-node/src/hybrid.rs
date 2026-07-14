@@ -13,7 +13,9 @@ extern crate std;
 #[cfg(feature = "std")]
 use std::{collections::VecDeque, vec::Vec};
 
-use crate::gradient::{GradientEntry, GradientSource, GradientTable, GeoCoords, GRADIENT_TIMEOUT_MS};
+use crate::gradient::{
+    GeoCoords, GradientEntry, GradientSource, GradientTable, GRADIENT_TIMEOUT_MS,
+};
 use lichen_core::loadng::{Idle, RouteDiscovery, Rreq, Searching};
 
 /// Classification of IPv6 destination address (spec 7.2 table).
@@ -271,7 +273,9 @@ impl HybridRouter {
         let my_coords = self.node_coords?;
 
         // Need destination coords (from gradient table entry, even if expired)
-        let dst_coords = self.gradient_table.iter()
+        let dst_coords = self
+            .gradient_table
+            .iter()
             .find(|e| e.destination == *dst)
             .and_then(|e| e.coords)?;
 
@@ -317,7 +321,10 @@ impl HybridRouter {
 
     /// Get pending packets for a destination (after route discovery succeeds).
     pub fn get_pending(&mut self, dst: &[u8; 16]) -> Vec<PendingPacket> {
-        self.pending_queue.remove(dst).map(|q| q.into_iter().collect()).unwrap_or_default()
+        self.pending_queue
+            .remove(dst)
+            .map(|q| q.into_iter().collect())
+            .unwrap_or_default()
     }
 
     /// Clear pending packets for a destination. Returns count cleared.
@@ -345,7 +352,9 @@ impl HybridRouter {
         // Check if discovery already active
         if self.active_discoveries.iter().any(|d| d.destination == dst) {
             // Return existing RREQ
-            let discovery = self.active_discoveries.iter()
+            let discovery = self
+                .active_discoveries
+                .iter()
                 .find(|d| d.destination == dst)
                 .unwrap();
             return discovery.discovery.rreq();
@@ -401,7 +410,10 @@ impl HybridRouter {
     /// Called when route discovery times out. Advances expanding ring or fails.
     /// Returns Some(Rreq) to retry, or None if all rings exhausted.
     pub fn on_discovery_timeout(&mut self, dst: &[u8; 16], now_ms: u32) -> Option<Rreq> {
-        let idx = self.active_discoveries.iter().position(|d| &d.destination == dst)?;
+        let idx = self
+            .active_discoveries
+            .iter()
+            .position(|d| &d.destination == dst)?;
         let discovery = self.active_discoveries.remove(idx);
 
         match discovery.discovery.advance_ring() {
@@ -451,12 +463,7 @@ impl HybridRouter {
     }
 
     /// Install a gradient from passive learning (forwarded data).
-    pub fn learn_from_data(
-        &mut self,
-        src: [u8; 16],
-        from_neighbor: [u8; 16],
-        now_ms: u32,
-    ) {
+    pub fn learn_from_data(&mut self, src: [u8; 16], from_neighbor: [u8; 16], now_ms: u32) {
         let entry = GradientEntry {
             destination: src,
             next_hop: from_neighbor,
@@ -513,8 +520,11 @@ impl HybridRouter {
 
 /// Validate geographic coordinates.
 fn is_valid_coords(coords: &GeoCoords) -> bool {
-    if coords.lat.is_nan() || coords.lat.is_infinite() ||
-       coords.lon.is_nan() || coords.lon.is_infinite() {
+    if coords.lat.is_nan()
+        || coords.lat.is_infinite()
+        || coords.lon.is_nan()
+        || coords.lon.is_infinite()
+    {
         return false;
     }
     // Reject null island (0, 0) as likely invalid GPS data
@@ -522,8 +532,7 @@ fn is_valid_coords(coords: &GeoCoords) -> bool {
         return false;
     }
     // Valid range
-    coords.lat >= -90.0 && coords.lat <= 90.0 &&
-    coords.lon >= -180.0 && coords.lon <= 180.0
+    coords.lat >= -90.0 && coords.lat <= 90.0 && coords.lon >= -180.0 && coords.lon <= 180.0
 }
 
 /// Haversine distance in meters between two (lat, lon) points.
@@ -538,8 +547,7 @@ fn haversine(c1: &GeoCoords, c2: &GeoCoords) -> f32 {
     let dlat = lat2 - lat1;
     let dlon = lon2 - lon1;
 
-    let a = (dlat / 2.0).sin().powi(2) +
-            lat1.cos() * lat2.cos() * (dlon / 2.0).sin().powi(2);
+    let a = (dlat / 2.0).sin().powi(2) + lat1.cos() * lat2.cos() * (dlon / 2.0).sin().powi(2);
     // Clamp for floating point errors
     let c = 2.0 * a.min(1.0).sqrt().asin();
 
@@ -577,7 +585,10 @@ mod tests {
     #[test]
     fn classify_link_local() {
         let router = HybridRouter::new(link_local(1));
-        assert_eq!(router.classify_address(&link_local(2)), AddressClass::LinkLocal);
+        assert_eq!(
+            router.classify_address(&link_local(2)),
+            AddressClass::LinkLocal
+        );
 
         // Test full fe80::/10 range (fe80:: through febf::)
         let mut addr = [0u8; 16];
@@ -747,8 +758,14 @@ mod tests {
     #[test]
     fn haversine_distance() {
         // Seattle (47.6, -122.3) to Portland (45.5, -122.7)
-        let seattle = GeoCoords { lat: 47.6, lon: -122.3 };
-        let portland = GeoCoords { lat: 45.5, lon: -122.7 };
+        let seattle = GeoCoords {
+            lat: 47.6,
+            lon: -122.3,
+        };
+        let portland = GeoCoords {
+            lat: 45.5,
+            lon: -122.7,
+        };
 
         let dist = haversine(&seattle, &portland);
         // Should be ~233 km
@@ -760,7 +777,10 @@ mod tests {
         let mut router = HybridRouter::new(link_local(1));
 
         // Set our coords (Seattle)
-        router.set_node_coords(GeoCoords { lat: 47.6, lon: -122.3 });
+        router.set_node_coords(GeoCoords {
+            lat: 47.6,
+            lon: -122.3,
+        });
 
         // Add destination with coords (San Francisco)
         let dst = ula(99);
@@ -771,15 +791,30 @@ mod tests {
             seq_num: 1,
             source: GradientSource::Announce,
             expires_ms: 0, // Expired, but coords still used
-            coords: Some(GeoCoords { lat: 37.8, lon: -122.4 }),
+            coords: Some(GeoCoords {
+                lat: 37.8,
+                lon: -122.4,
+            }),
         };
         router.gradient_table.update(entry, 0);
 
         // Add neighbors
         // Neighbor A (Portland) - closer to SF
-        router.update_neighbor_coords(link_local(10), GeoCoords { lat: 45.5, lon: -122.7 });
+        router.update_neighbor_coords(
+            link_local(10),
+            GeoCoords {
+                lat: 45.5,
+                lon: -122.7,
+            },
+        );
         // Neighbor B (Vancouver) - farther from SF
-        router.update_neighbor_coords(link_local(20), GeoCoords { lat: 49.3, lon: -123.1 });
+        router.update_neighbor_coords(
+            link_local(20),
+            GeoCoords {
+                lat: 49.3,
+                lon: -123.1,
+            },
+        );
 
         let result = router.gpsr_forward(&dst, 1000);
         assert_eq!(result, Some(link_local(10))); // Portland is closer

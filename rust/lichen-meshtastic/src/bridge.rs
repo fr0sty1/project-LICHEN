@@ -12,7 +12,7 @@
 //! TEXT_MESSAGE_APP for CoAP message tunneling where appropriate.
 
 use crate::address::{AddressMapper, MeshtasticNodeId};
-use crate::{Data, MeshPacket, PortNum, Routing, mesh_packet, routing};
+use crate::{mesh_packet, routing, Data, MeshPacket, PortNum, Routing};
 use heapless::Vec;
 use lichen_core::addr::Ipv6Addr;
 
@@ -460,7 +460,7 @@ mod tests {
         // Create a minimal IPv6 packet (40 byte header)
         let mut ipv6_data = [0u8; 48];
         ipv6_data[0] = 0x60; // Version 6
-        // Set destination address to match mapper
+                             // Set destination address to match mapper
         let dst_addr = bridge.mapper().meshtastic_to_ipv6(dst_node);
         ipv6_data[24..40].copy_from_slice(&dst_addr.0);
 

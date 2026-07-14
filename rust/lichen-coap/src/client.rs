@@ -296,7 +296,7 @@ mod tests {
         let request_mid = 0x1234;
         let attacker_mid = 0xDEAD;
         let token = [0x4c, 0x49, 0x43, 0x48]; // "LICH"
-        // Attacker knows token but guesses wrong MID
+                                              // Attacker knows token but guesses wrong MID
         let spoofed_resp = build_response(0x45, attacker_mid, &token, Some(b"fake"));
         let result = decode(&spoofed_resp, request_mid, &token);
         assert!(result.is_err());

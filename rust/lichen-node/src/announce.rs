@@ -20,7 +20,9 @@ use lichen_link::identity::{iid_from_pubkey, PeerIdentity};
 use lichen_link::keys::PublicKey;
 use lichen_link::schnorr;
 
-use crate::gradient::{GeoCoords, GradientEntry, GradientSource, GradientTable, GRADIENT_TIMEOUT_MS};
+use crate::gradient::{
+    GeoCoords, GradientEntry, GradientSource, GradientTable, GRADIENT_TIMEOUT_MS,
+};
 
 /// Maximum tracked originators (LRU eviction when exceeded).
 pub const MAX_TRACKED_ORIGINATORS: usize = 64;
@@ -228,17 +230,23 @@ impl AnnounceProcessor {
         let access = self.access_counter;
 
         // Update or insert pinned key with LRU eviction
-        self.pinned_keys.insert(iid, PinnedKeyEntry {
-            pubkey: *announce.pubkey,
-            last_access: access,
-        });
+        self.pinned_keys.insert(
+            iid,
+            PinnedKeyEntry {
+                pubkey: *announce.pubkey,
+                last_access: access,
+            },
+        );
         self.evict_pinned_if_needed();
 
         // Update or insert seen entry with LRU eviction
-        self.seen.insert(iid, SeenEntry {
-            seq_num: announce.seq_num,
-            last_access: access,
-        });
+        self.seen.insert(
+            iid,
+            SeenEntry {
+                seq_num: announce.seq_num,
+                last_access: access,
+            },
+        );
         self.evict_seen_if_needed();
 
         // Step 5: Update gradient table.
@@ -329,7 +337,8 @@ impl AnnounceProcessor {
     fn evict_pinned_if_needed(&mut self) {
         while self.pinned_keys.len() > self.max_entries {
             // Find oldest entry (lowest last_access)
-            let oldest_iid = self.pinned_keys
+            let oldest_iid = self
+                .pinned_keys
                 .iter()
                 .min_by_key(|(_, e)| e.last_access)
                 .map(|(k, _)| *k);
@@ -343,7 +352,8 @@ impl AnnounceProcessor {
     fn evict_seen_if_needed(&mut self) {
         while self.seen.len() > self.max_entries {
             // Find oldest entry (lowest last_access)
-            let oldest_iid = self.seen
+            let oldest_iid = self
+                .seen
                 .iter()
                 .min_by_key(|(_, e)| e.last_access)
                 .map(|(k, _)| *k);
@@ -426,7 +436,11 @@ mod tests {
         signed_data[42..signed_len].copy_from_slice(app_data);
 
         // Sign it
-        let sig = sign(&identity.privkey, &identity.pubkey, &signed_data[..signed_len]);
+        let sig = sign(
+            &identity.privkey,
+            &identity.pubkey,
+            &signed_data[..signed_len],
+        );
 
         // Build the announce
         let builder = AnnounceBuilder {
@@ -512,7 +526,10 @@ mod tests {
 
         let result = processor.process(&announce, link_local(0xAA), 1000);
         assert!(!result.accepted);
-        assert_eq!(result.reject_reason, Some(AnnounceRejectReason::IidMismatch));
+        assert_eq!(
+            result.reject_reason,
+            Some(AnnounceRejectReason::IidMismatch)
+        );
     }
 
     #[test]
@@ -538,7 +555,10 @@ mod tests {
 
         let result = processor.process(&announce, link_local(0xAA), 1000);
         assert!(!result.accepted);
-        assert_eq!(result.reject_reason, Some(AnnounceRejectReason::InvalidSignature));
+        assert_eq!(
+            result.reject_reason,
+            Some(AnnounceRejectReason::InvalidSignature)
+        );
     }
 
     #[test]
@@ -559,14 +579,20 @@ mod tests {
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
         let result = processor.process(&announce, link_local(0xAA), 2000);
         assert!(!result.accepted);
-        assert_eq!(result.reject_reason, Some(AnnounceRejectReason::StaleSeqNum));
+        assert_eq!(
+            result.reject_reason,
+            Some(AnnounceRejectReason::StaleSeqNum)
+        );
 
         // Reject announce with lower seq_num
         let len = make_signed_announce(&identity, 50, 3, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
         let result = processor.process(&announce, link_local(0xAA), 3000);
         assert!(!result.accepted);
-        assert_eq!(result.reject_reason, Some(AnnounceRejectReason::StaleSeqNum));
+        assert_eq!(
+            result.reject_reason,
+            Some(AnnounceRejectReason::StaleSeqNum)
+        );
 
         // Accept announce with higher seq_num
         let len = make_signed_announce(&identity, 200, 3, &[], &mut buf);
@@ -614,7 +640,10 @@ mod tests {
         let result = processor.process(&announce, link_local(0xAA), 2000);
         assert!(!result.accepted);
         // It should fail at IidMismatch before KeyChangeDetected
-        assert_eq!(result.reject_reason, Some(AnnounceRejectReason::IidMismatch));
+        assert_eq!(
+            result.reject_reason,
+            Some(AnnounceRejectReason::IidMismatch)
+        );
     }
 
     #[test]

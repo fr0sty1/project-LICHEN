@@ -728,7 +728,7 @@ impl EdhocResponder {
         let mut context_2 = heapless::Vec::<u8, 128>::new();
         context_2.push_err(0x58)?;
         context_2.push_err(32)?;
-        context_2.extend_err(self.pubkey.as_bytes())?;  // ID_CRED_R
+        context_2.extend_err(self.pubkey.as_bytes())?; // ID_CRED_R
         context_2.push_err(0x58)?;
         context_2.push_err(32)?;
         context_2.extend_err(self.pubkey.as_bytes())?; // CRED_R
@@ -1023,10 +1023,14 @@ mod tests {
         let responder_pubkey = responder.pubkey.to_bytes();
 
         // Step 1: Initiator creates Message 1
-        let msg1 = initiator.create_message_1().expect("create_message_1 failed");
+        let msg1 = initiator
+            .create_message_1()
+            .expect("create_message_1 failed");
 
         // Step 2: Responder processes Message 1, creates Message 2
-        let msg2 = responder.process_message_1(&msg1).expect("process_message_1 failed");
+        let msg2 = responder
+            .process_message_1(&msg1)
+            .expect("process_message_1 failed");
 
         // Step 3: Initiator processes Message 2, creates Message 3
         let msg3 = initiator
@@ -1039,8 +1043,12 @@ mod tests {
             .expect("process_message_3 failed");
 
         // Step 5: Both export OSCORE contexts
-        let mut initiator_ctx = initiator.export_oscore().expect("initiator export_oscore failed");
-        let mut responder_ctx = responder.export_oscore().expect("responder export_oscore failed");
+        let mut initiator_ctx = initiator
+            .export_oscore()
+            .expect("initiator export_oscore failed");
+        let mut responder_ctx = responder
+            .export_oscore()
+            .expect("responder export_oscore failed");
 
         // Step 6: Verify contexts can communicate via functional roundtrip test.
         // This is more robust than comparing raw keys - it proves the derived
@@ -1074,7 +1082,14 @@ mod tests {
         let resp_payload: &[u8] = b"hello from responder";
 
         let (resp_ciphertext, resp_oscore_opt) = responder_ctx
-            .protect_response(resp_code, resp_options, resp_payload, request_kid, request_piv, false)
+            .protect_response(
+                resp_code,
+                resp_options,
+                resp_payload,
+                request_kid,
+                request_piv,
+                false,
+            )
             .expect("responder protect_response failed");
 
         let (recv_resp_code, recv_resp_options, recv_resp_payload) = initiator_ctx
@@ -1082,7 +1097,15 @@ mod tests {
             .expect("initiator unprotect_response failed");
 
         assert_eq!(recv_resp_code, resp_code, "response code mismatch");
-        assert_eq!(&recv_resp_options[..], resp_options, "response options mismatch");
-        assert_eq!(&recv_resp_payload[..], resp_payload, "response payload mismatch");
+        assert_eq!(
+            &recv_resp_options[..],
+            resp_options,
+            "response options mismatch"
+        );
+        assert_eq!(
+            &recv_resp_payload[..],
+            resp_payload,
+            "response payload mismatch"
+        );
     }
 }

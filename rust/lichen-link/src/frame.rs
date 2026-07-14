@@ -476,8 +476,7 @@ mod tests {
         use std::string::String;
         use std::vec::Vec;
 
-        const FRAME_VECTORS_JSON: &str =
-            include_str!("../../../spec/test-vectors/frame.json");
+        const FRAME_VECTORS_JSON: &str = include_str!("../../../spec/test-vectors/frame.json");
 
         #[derive(Deserialize)]
         struct VectorFile {
@@ -526,8 +525,8 @@ mod tests {
 
         #[test]
         fn cross_validate_parse() {
-            let file: VectorFile = serde_json::from_str(FRAME_VECTORS_JSON)
-                .expect("failed to parse frame.json");
+            let file: VectorFile =
+                serde_json::from_str(FRAME_VECTORS_JSON).expect("failed to parse frame.json");
 
             for vector in &file.vectors {
                 let name = &vector.name;
@@ -560,29 +559,44 @@ mod tests {
 
                 assert_eq!(
                     frame.addr_mode as u8, vector.expected.addr_mode,
-                    "{}: addr_mode", name
+                    "{}: addr_mode",
+                    name
                 );
                 assert_eq!(
                     frame.mic_length as u8, vector.expected.mic_length,
-                    "{}: mic_length", name
+                    "{}: mic_length",
+                    name
                 );
                 assert_eq!(
-                    frame.signature.is_present(), vector.expected.signature_present,
-                    "{}: signature_present", name
+                    frame.signature.is_present(),
+                    vector.expected.signature_present,
+                    "{}: signature_present",
+                    name
                 );
                 assert_eq!(
-                    frame.encryption.is_encrypted(), vector.expected.encrypted,
-                    "{}: encrypted", name
+                    frame.encryption.is_encrypted(),
+                    vector.expected.encrypted,
+                    "{}: encrypted",
+                    name
                 );
                 assert_eq!(frame.epoch, vector.expected.epoch, "{}: epoch", name);
-                assert_eq!(frame.seqnum.get(), vector.expected.seqnum, "{}: seqnum", name);
                 assert_eq!(
-                    frame.dst_addr, hex_decode(&vector.expected.dst_addr_hex).as_slice(),
-                    "{}: dst_addr", name
+                    frame.seqnum.get(),
+                    vector.expected.seqnum,
+                    "{}: seqnum",
+                    name
                 );
                 assert_eq!(
-                    frame.mic, hex_decode(&vector.expected.mic_hex).as_slice(),
-                    "{}: mic", name
+                    frame.dst_addr,
+                    hex_decode(&vector.expected.dst_addr_hex).as_slice(),
+                    "{}: dst_addr",
+                    name
+                );
+                assert_eq!(
+                    frame.mic,
+                    hex_decode(&vector.expected.mic_hex).as_slice(),
+                    "{}: mic",
+                    name
                 );
 
                 // Payload - check by length if specified
@@ -590,8 +604,10 @@ mod tests {
                     assert_eq!(frame.payload.len(), expected_len, "{}: payload_len", name);
                 } else {
                     assert_eq!(
-                        frame.payload, hex_decode(&vector.expected.payload_hex).as_slice(),
-                        "{}: payload", name
+                        frame.payload,
+                        hex_decode(&vector.expected.payload_hex).as_slice(),
+                        "{}: payload",
+                        name
                     );
                 }
             }
@@ -599,8 +615,8 @@ mod tests {
 
         #[test]
         fn cross_validate_roundtrip() {
-            let file: VectorFile = serde_json::from_str(FRAME_VECTORS_JSON)
-                .expect("failed to parse frame.json");
+            let file: VectorFile =
+                serde_json::from_str(FRAME_VECTORS_JSON).expect("failed to parse frame.json");
 
             for vector in &file.vectors {
                 // Skip error/empty cases
@@ -613,7 +629,8 @@ mod tests {
                 let frame = LichenFrame::from_bytes(&data).unwrap();
 
                 let mut buf = [0u8; 300];
-                let n = frame.write_to(&mut buf)
+                let n = frame
+                    .write_to(&mut buf)
                     .unwrap_or_else(|e| panic!("{}: write failed: {:?}", name, e));
                 assert_eq!(&buf[..n], &data[..], "{}: roundtrip", name);
             }

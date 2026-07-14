@@ -99,7 +99,11 @@ fn hex_to_array<const N: usize>(hex: &str) -> [u8; N] {
 fn test_roundtrip_vectors() {
     let vectors = load_vectors();
 
-    for v in vectors.vectors.iter().filter(|v| v.vector_type == "roundtrip") {
+    for v in vectors
+        .vectors
+        .iter()
+        .filter(|v| v.vector_type == "roundtrip")
+    {
         let master_secret: [u8; 16] = hex_to_array(v.master_secret.as_ref().unwrap());
         let master_salt = v.master_salt.as_ref().map(|s| hex_to_bytes(s));
         let sender_id = hex_to_bytes(v.sender_id.as_ref().unwrap());
@@ -182,13 +186,16 @@ fn test_replay_vectors_documented() {
 fn test_invalid_inputs() {
     let vectors = load_vectors();
 
-    for v in vectors.vectors.iter().filter(|v| v.vector_type == "invalid") {
+    for v in vectors
+        .vectors
+        .iter()
+        .filter(|v| v.vector_type == "invalid")
+    {
         match v.expected_error.as_deref() {
             Some("invalid_param") => {
                 // Test ID too long
                 if v.sender_id.as_ref().map(|s| s.len()).unwrap_or(0) > 14 {
-                    let master_secret: [u8; 16] =
-                        hex_to_array(v.master_secret.as_ref().unwrap());
+                    let master_secret: [u8; 16] = hex_to_array(v.master_secret.as_ref().unwrap());
                     let sender_id = hex_to_bytes(v.sender_id.as_ref().unwrap());
                     let recipient_id = hex_to_bytes(v.recipient_id.as_ref().unwrap());
 

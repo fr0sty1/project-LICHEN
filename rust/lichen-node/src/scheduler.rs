@@ -241,7 +241,9 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
             flags: 0,
         };
 
-        builder.write_to(out).map_err(|_| SchedulerError::BufferTooSmall)
+        builder
+            .write_to(out)
+            .map_err(|_| SchedulerError::BufferTooSmall)
     }
 
     /// Start the announce scheduler.
@@ -387,9 +389,9 @@ fn random_range(min: u64, max: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lichen_link::Seed;
     use std::sync::atomic::AtomicUsize;
     use std::vec::Vec;
-    use lichen_link::Seed;
 
     /// Mock transmitter for testing.
     struct MockTransmitter {
@@ -518,9 +520,7 @@ mod tests {
         // Start in background
         let scheduler = Arc::new(scheduler);
         let scheduler_clone = scheduler.clone();
-        let handle = tokio::spawn(async move {
-            scheduler_clone.start().await
-        });
+        let handle = tokio::spawn(async move { scheduler_clone.start().await });
 
         // Wait a bit for it to start and send some announces
         tokio::time::sleep(Duration::from_millis(120)).await;

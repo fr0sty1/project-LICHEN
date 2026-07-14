@@ -47,20 +47,21 @@ fn hex_decode(s: &str) -> Vec<u8> {
 
 #[test]
 fn test_link_frame_vectors() {
-    let vectors_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../test/vectors/link_frame.json");
+    let vectors_path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/vectors/link_frame.json");
 
     if !vectors_path.exists() {
         eprintln!("Vectors file not found at {:?}, skipping", vectors_path);
         return;
     }
 
-    let content = fs::read_to_string(&vectors_path)
-        .expect("Failed to read vectors file");
-    let vectors: VectorFile = serde_json::from_str(&content)
-        .expect("Failed to parse vectors JSON");
+    let content = fs::read_to_string(&vectors_path).expect("Failed to read vectors file");
+    let vectors: VectorFile = serde_json::from_str(&content).expect("Failed to parse vectors JSON");
 
-    assert_eq!(vectors.format_version, 1, "Unexpected vector format version");
+    assert_eq!(
+        vectors.format_version, 1,
+        "Unexpected vector format version"
+    );
 
     let mut failures = Vec::new();
 
@@ -70,7 +71,11 @@ fn test_link_frame_vectors() {
 
         // Verify minimum frame size (header + MIC)
         if encoded.len() < 5 {
-            failures.push(format!("Vector '{}': frame too short ({} bytes)", vector.name, encoded.len()));
+            failures.push(format!(
+                "Vector '{}': frame too short ({} bytes)",
+                vector.name,
+                encoded.len()
+            ));
             continue;
         }
 
@@ -78,9 +83,9 @@ fn test_link_frame_vectors() {
         // Layout: bits 0-1 = addr_mode, bits 2-4 = mic_len, bit 5 = sig, bit 6 = enc
         let llsec = encoded[1];
         let addr_mode = llsec & 0x03;
-        let mic_length_flag = (llsec >> 2) & 0x07;  // 3 bits
-        let sig_present = (llsec >> 5) & 0x01;      // bit 5
-        let encrypted = (llsec >> 6) & 0x01;        // bit 6
+        let mic_length_flag = (llsec >> 2) & 0x07; // 3 bits
+        let sig_present = (llsec >> 5) & 0x01; // bit 5
+        let encrypted = (llsec >> 6) & 0x01; // bit 6
 
         // Check addr_mode
         if addr_mode != fields.addr_mode {
@@ -102,7 +107,9 @@ fn test_link_frame_vectors() {
         if (sig_present != 0) != fields.signature_present {
             failures.push(format!(
                 "Vector '{}': signature_present mismatch (encoded: {}, expected: {})",
-                vector.name, sig_present != 0, fields.signature_present
+                vector.name,
+                sig_present != 0,
+                fields.signature_present
             ));
         }
 
@@ -110,7 +117,9 @@ fn test_link_frame_vectors() {
         if (encrypted != 0) != fields.encrypted {
             failures.push(format!(
                 "Vector '{}': encrypted mismatch (encoded: {}, expected: {})",
-                vector.name, encrypted != 0, fields.encrypted
+                vector.name,
+                encrypted != 0,
+                fields.encrypted
             ));
         }
 
@@ -143,7 +152,9 @@ fn test_link_frame_vectors() {
                 if frame.seqnum.get() != fields.seqnum {
                     failures.push(format!(
                         "Vector '{}': parsed seqnum {} != expected {}",
-                        vector.name, frame.seqnum.get(), fields.seqnum
+                        vector.name,
+                        frame.seqnum.get(),
+                        fields.seqnum
                     ));
                 }
                 if (frame.addr_mode as u8) != fields.addr_mode {
@@ -159,7 +170,8 @@ fn test_link_frame_vectors() {
                         vector.name, parsed_sig, fields.signature_present
                     ));
                 }
-                let parsed_enc = matches!(frame.encryption, lichen_link::frame::Encryption::Encrypted);
+                let parsed_enc =
+                    matches!(frame.encryption, lichen_link::frame::Encryption::Encrypted);
                 if parsed_enc != fields.encrypted {
                     failures.push(format!(
                         "Vector '{}': parsed encrypted {} != expected {}",
@@ -172,9 +184,17 @@ fn test_link_frame_vectors() {
             }
         }
 
-        println!("Vector '{}': {} bytes, epoch={}, seqnum={}, addr_mode={}, mic_len={}, sig={}, enc={}",
-            vector.name, encoded.len(), fields.epoch, fields.seqnum,
-            fields.addr_mode, fields.mic_length, fields.signature_present, fields.encrypted);
+        println!(
+            "Vector '{}': {} bytes, epoch={}, seqnum={}, addr_mode={}, mic_len={}, sig={}, enc={}",
+            vector.name,
+            encoded.len(),
+            fields.epoch,
+            fields.seqnum,
+            fields.addr_mode,
+            fields.mic_length,
+            fields.signature_present,
+            fields.encrypted
+        );
     }
 
     if !failures.is_empty() {
@@ -189,16 +209,15 @@ fn test_link_frame_vectors() {
 
 #[test]
 fn test_l2_payload_vectors() {
-    let vectors_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../test/vectors/l2_payload.json");
+    let vectors_path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/vectors/l2_payload.json");
 
     if !vectors_path.exists() {
         eprintln!("Vectors file not found at {:?}, skipping", vectors_path);
         return;
     }
 
-    let content = fs::read_to_string(&vectors_path)
-        .expect("Failed to read vectors file");
+    let content = fs::read_to_string(&vectors_path).expect("Failed to read vectors file");
 
     #[derive(Deserialize)]
     struct L2PayloadFile {
@@ -216,10 +235,13 @@ fn test_l2_payload_vectors() {
         body: String,
     }
 
-    let vectors: L2PayloadFile = serde_json::from_str(&content)
-        .expect("Failed to parse vectors JSON");
+    let vectors: L2PayloadFile =
+        serde_json::from_str(&content).expect("Failed to parse vectors JSON");
 
-    assert_eq!(vectors.format_version, 1, "Unexpected vector format version");
+    assert_eq!(
+        vectors.format_version, 1,
+        "Unexpected vector format version"
+    );
 
     let mut failures = Vec::new();
 
@@ -251,7 +273,10 @@ fn test_l2_payload_vectors() {
             "routing" => Some(0x15),
             "unknown" => None, // Unknown is intentionally unmatched
             _ => {
-                failures.push(format!("Vector '{}': unrecognized kind '{}'", vector.name, vector.kind));
+                failures.push(format!(
+                    "Vector '{}': unrecognized kind '{}'",
+                    vector.name, vector.kind
+                ));
                 None
             }
         };
@@ -265,8 +290,13 @@ fn test_l2_payload_vectors() {
             }
         }
 
-        println!("Vector '{}': {} bytes, kind={}, dispatch={:#x}",
-            vector.name, wrapped.len(), vector.kind, vector.dispatch);
+        println!(
+            "Vector '{}': {} bytes, kind={}, dispatch={:#x}",
+            vector.name,
+            wrapped.len(),
+            vector.kind,
+            vector.dispatch
+        );
     }
 
     if !failures.is_empty() {

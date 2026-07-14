@@ -105,7 +105,11 @@ impl GradientEntry {
     /// Priority → seq_num (RFC 1982) → fewer hops.
     fn rank(&self) -> (u8, u16, i16) {
         // seq_num comparison via RFC 1982 handled separately
-        (self.source.priority(), self.seq_num, -(self.hop_count as i16))
+        (
+            self.source.priority(),
+            self.seq_num,
+            -(self.hop_count as i16),
+        )
     }
 
     /// Returns true if `self` should replace `other`.
@@ -147,23 +151,27 @@ impl GradientTable {
 
     /// Lookup gradient for destination. Returns None if absent or expired.
     pub fn lookup(&self, destination: &[u8; 16], now_ms: u32) -> Option<&GradientEntry> {
-        self.entries.iter().find(|e| {
-            e.destination == *destination && !is_expired(e.expires_ms, now_ms)
-        })
+        self.entries
+            .iter()
+            .find(|e| e.destination == *destination && !is_expired(e.expires_ms, now_ms))
     }
 
     /// Lookup gradient for destination by IID (last 8 bytes).
     pub fn lookup_by_iid(&self, iid: &[u8; 8], now_ms: u32) -> Option<&GradientEntry> {
-        self.entries.iter().find(|e| {
-            &e.destination[8..] == iid && !is_expired(e.expires_ms, now_ms)
-        })
+        self.entries
+            .iter()
+            .find(|e| &e.destination[8..] == iid && !is_expired(e.expires_ms, now_ms))
     }
 
     /// Insert or update a gradient entry.
     /// Returns true if the table was modified.
     pub fn update(&mut self, entry: GradientEntry, now_ms: u32) -> bool {
         // Find existing entry for this destination
-        if let Some(idx) = self.entries.iter().position(|e| e.destination == entry.destination) {
+        if let Some(idx) = self
+            .entries
+            .iter()
+            .position(|e| e.destination == entry.destination)
+        {
             let existing = &self.entries[idx];
             let expired = is_expired(existing.expires_ms, now_ms);
 

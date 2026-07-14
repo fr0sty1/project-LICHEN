@@ -686,7 +686,7 @@ mod tests {
         let msg3 = [3u8];
 
         // Queue with different deadlines
-        svc.queue_from_radio(&msg1, 5_000).unwrap();  // Expires at 5s
+        svc.queue_from_radio(&msg1, 5_000).unwrap(); // Expires at 5s
         svc.queue_from_radio(&msg2, 10_000).unwrap(); // Expires at 10s
         svc.queue_from_radio(&msg3, 15_000).unwrap(); // Expires at 15s
 
@@ -712,7 +712,8 @@ mod tests {
 
         // Queue several messages with short deadlines
         for i in 0..4 {
-            svc.queue_from_radio(&[i as u8], 1000 + i as u64 * 100).unwrap();
+            svc.queue_from_radio(&[i as u8], 1000 + i as u64 * 100)
+                .unwrap();
         }
         assert_eq!(svc.pending_count(), 4);
 
@@ -728,10 +729,10 @@ mod tests {
         let data: Vec<u8, MAX_MESSAGE_SIZE> = Vec::new();
         let entry = QueueEntry::new(data, 10_000);
 
-        assert!(!entry.is_expired(5_000));   // Before deadline
-        assert!(!entry.is_expired(9_999));   // Just before deadline
-        assert!(entry.is_expired(10_000));   // At deadline
-        assert!(entry.is_expired(10_001));   // After deadline
+        assert!(!entry.is_expired(5_000)); // Before deadline
+        assert!(!entry.is_expired(9_999)); // Just before deadline
+        assert!(entry.is_expired(10_000)); // At deadline
+        assert!(entry.is_expired(10_001)); // After deadline
     }
 
     #[test]
