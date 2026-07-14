@@ -8,6 +8,7 @@
  * Implements /status, /status/neighbors, /status/routes per LCI spec 17.5.3.
  */
 
+#include <stdio.h>
 #include <string.h>
 
 #include <zephyr/kernel.h>

@@ -9,9 +9,20 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_CLIENT
   coap_client.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_SERVER
+zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_SERVER_STANDALONE
   coap_server.c
 )
+
+# The standalone service defines COAP_SERVICE_DEFINE(lichen_coap_server),
+# so the linker needs its iterable section to resolve
+# _coap_resource_lichen_coap_server_list_start / _list_end.
+if(CONFIG_LICHEN_COAP_SERVER_STANDALONE)
+  zephyr_linker_sources(DATA_SECTIONS sections-ram.ld)
+  zephyr_iterable_section(
+    NAME coap_resource_lichen_coap_server
+    GROUP DATA_REGION ${XIP_ALIGN_WITH_INPUT}
+    SUBALIGN CONFIG_LINKER_ITERABLE_SUBALIGN)
+endif()
 
 zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_STATUS
   coap_status.c

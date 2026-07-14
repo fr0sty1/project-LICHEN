@@ -52,6 +52,21 @@ config LICHEN_COAP_SERVER
 	  Exposes LCI resources: /status, /config, /neighbors, /key, /msg/inbox,
 	  and /.well-known/core for resource discovery.
 
+config LICHEN_COAP_SERVER_STANDALONE
+	bool "Standalone subsystem-owned CoAP service (coap_server.c)"
+	depends on LICHEN_COAP_SERVER
+	default n
+	help
+	  Compile the subsystem-owned COAP_SERVICE (lichen_coap_server) from
+	  coap_server.c, which registers its own /status, /config, /neighbors,
+	  /key and /msg/inbox resources.
+
+	  Keep this off in applications that define their own CoAP service
+	  and use the per-resource handler modules (LICHEN_COAP_STATUS,
+	  LICHEN_COAP_CONFIG, LICHEN_COAP_KEYS, LICHEN_COAP_MSG) — the
+	  gateway app does this with its lichen_coap service — otherwise the
+	  same LCI paths are served twice on different sockets.
+
 config LICHEN_COAP_SERVER_LOG_LEVEL
 	int "CoAP server log level"
 	depends on LICHEN_COAP_SERVER
