@@ -119,14 +119,18 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 	memset(&transport_state.slip_rx, 0, sizeof(transport_state.slip_rx));
 
 	/* Get negotiated MTU */
+#if defined(CONFIG_BT_USER_DATA_LEN_UPDATE)
+	/* bt_conn_le_info carries data_len only with DLE support built in */
 	struct bt_conn_info info;
 	if (bt_conn_get_info(conn, &info) == 0) {
-		/* ATT MTU includes 3-byte ATT header, usable payload is MTU - 3 */
 		transport_state.mtu = info.le.data_len->tx_max_len;
 		LOG_DBG("Connected, MTU: %u", transport_state.mtu);
 	} else {
 		transport_state.mtu = 20; /* Default BLE 4.0 */
 	}
+#else
+	transport_state.mtu = 20; /* Default BLE 4.0 */
+#endif
 
 	k_mutex_unlock(&transport_state.lock);
 

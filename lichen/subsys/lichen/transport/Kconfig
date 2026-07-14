@@ -82,6 +82,9 @@ menuconfig LICHEN_BLE_TRANSPORT
 	depends on LICHEN
 	depends on BT
 	depends on BT_PERIPHERAL
+	# The transport tracks pairing via the security_changed callback and
+	# its REQUIRE_SECURE policy needs LE pairing support to mean anything.
+	select BT_SMP
 	help
 	  Enable BLE transport bindings for the Local Client Interface (LCI).
 	  This allows phones and laptops to communicate with the mesh node
