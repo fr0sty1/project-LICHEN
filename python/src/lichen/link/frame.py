@@ -66,6 +66,7 @@ _ENCRYPTED_BIT = 1 << 6
 _RESERVED_BIT = 1 << 7
 
 _MAX_FRAME_BODY = 255  # the Length field is a single byte
+_SIGNATURE_LENGTH = 48  # Ed25519 signature (Schnorr, 48 bytes)
 
 
 class FrameError(Exception):
@@ -188,6 +189,14 @@ class LichenFrame:
         payload = body[offset : len(body) - mic_len]
         mic = body[len(body) - mic_len :]
 
+        # SECURITY: Validate payload length when signature is expected
+        signature_present = bool(llsec & _SIGNATURE_BIT)
+        if signature_present and len(payload) < _SIGNATURE_LENGTH:
+            raise FrameError(
+                f"payload is {len(payload)} bytes but signature_present requires "
+                f"at least {_SIGNATURE_LENGTH}"
+            )
+
         return cls(
             epoch=epoch,
             seqnum=seqnum,
@@ -196,6 +205,6 @@ class LichenFrame:
             mic=mic,
             addr_mode=addr_mode,
             mic_length=mic_length,
-            signature_present=bool(llsec & _SIGNATURE_BIT),
+            signature_present=signature_present,
             encrypted=bool(llsec & _ENCRYPTED_BIT),
         )

@@ -60,7 +60,15 @@ class NodeChannel(DatagramChannel):
         ipv6_bytes = wrap_coap(
             self._local, dst, data, src_port=self._src_port, dst_port=self._dst_port
         )
-        asyncio.get_running_loop().create_task(self._node.send(ipv6_bytes))
+        task = asyncio.get_running_loop().create_task(self._node.send(ipv6_bytes))
+        task.add_done_callback(self._on_send_done)
+
+    def _on_send_done(self, task: asyncio.Task) -> None:
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc is not None:
+            logger.warning("NodeChannel: send failed: %s", exc)
 
     def _on_node_receive(self, payload: bytes, _sender: object) -> None:
         try:

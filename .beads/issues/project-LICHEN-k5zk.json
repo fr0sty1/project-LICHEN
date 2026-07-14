@@ -2,13 +2,16 @@
   "id": "project-LICHEN-k5zk",
   "title": "Audit Rust/Zephyr/Python implementation parity",
   "description": "THREE co-equal implementations: Rust, Zephyr (C), Python. Python also runs simulator (test oracle). When any disagree, SPEC decides. Need: (1) Feature matrix across all 3, (2) Shared test vectors all must pass (gbuw), (3) Python sim as interop test harness.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T22:46:55.354433Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:14:15.189633Z",
+  "updated_at": "2026-07-12T04:05:53.357996Z",
+  "closed_at": "2026-07-12T04:05:53.357996Z",
+  "close_reason": "Audit complete: Filed 7 sub-beads for implementation gaps. Key findings: (1) Zephyr SCHC lacks fragmentation/reassembly [bcds], (2) Rust SCHC missing headers/context [qopb], (3) Zephyr missing ICMPv6 [u54o], (4) Python CoAP block transfer needs verification [k1p9], (5) Zephyr needs CoAP server [o6pb], (6) DTN only in Zephyr [2bga], (7) Rust RPL DAO less complete [r6r8], (8) Rust OSCORE needs RFC 8613 AAD [2okc]. Core features (link layer, OSCORE, EDHOC, announce/gradient, LOADng) have good parity across all three implementations.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-k5zk",

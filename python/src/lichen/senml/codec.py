@@ -46,9 +46,6 @@ _LABEL_TO_FIELD: dict[int, str] = {
 
 _FIELD_TO_LABEL: dict[str, int] = {v: k for k, v in _LABEL_TO_FIELD.items()}
 
-# Sentinel so we can distinguish "not set" from 0 / False / ""
-_UNSET = object()
-
 
 @dataclass
 class SenmlRecord:

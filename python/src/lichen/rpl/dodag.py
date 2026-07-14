@@ -34,6 +34,23 @@ MAX_RANK_INCREASE = 2048
 PARENT_SWITCH_THRESHOLD = 192
 ROOT_RANK = MIN_HOP_RANK_INCREASE
 
+# DODAGVersionNumber is an 8-bit lollipop counter (RFC 6550 Section 7.2)
+_VERSION_MODULUS = 256
+_VERSION_HALF = 128
+
+
+def version_is_newer(new_version: int, old_version: int) -> bool:
+    """Check if new_version is newer than old_version using modular comparison.
+
+    RFC 6550 Section 7.2 defines DODAGVersionNumber as an 8-bit lollipop counter.
+    After wraparound (255 -> 0), simple integer comparison fails. This function
+    uses modular arithmetic: new > old iff (new - old) mod 256 is in (0, 128).
+
+    Example: version 5 is newer than version 250 because (5 - 250) mod 256 = 11.
+    """
+    diff = (new_version - old_version) % _VERSION_MODULUS
+    return 0 < diff < _VERSION_HALF
+
 
 class DodagRole(Enum):
     """A node's role within the DODAG."""
@@ -74,6 +91,10 @@ class DodagState:
     max_rank_increase: int = MAX_RANK_INCREASE
     parent_switch_threshold: int = PARENT_SWITCH_THRESHOLD
     _lowest_rank: int = INFINITE_RANK
+
+    def __post_init__(self) -> None:
+        """Make defensive copies of mutable arguments to prevent cross-state pollution."""
+        self.parents = dict(self.parents)
 
     @classmethod
     def as_root(cls, rpl_instance_id: int, dodag_id: str, version: int) -> DodagState:
@@ -120,10 +141,10 @@ class DodagState:
         if str(dio.dodag_id) != self.dodag_id and self.is_joined():
             return  # belongs to a different DODAG
 
-        if dio.version > self.version or not self.is_joined():
+        if version_is_newer(dio.version, self.version) or not self.is_joined():
             # Adopt this (newer or first-seen) DODAG version and rejoin.
             self._adopt_version(dio)
-        elif dio.version < self.version:
+        elif version_is_newer(self.version, dio.version):
             return  # stale advertisement
 
         if dio.rank >= INFINITE_RANK:

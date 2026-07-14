@@ -89,8 +89,12 @@ impl ParentCandidate {
     /// Rank this node would achieve via this parent (MRHOF, spec B.1).
     #[cfg(feature = "std")]
     pub fn path_cost(&self, mhri: u16) -> u16 {
-        self.rank
-            .saturating_add((self.link_etx * mhri as f32).round() as u16)
+        let link_cost = (self.link_etx * mhri as f32).round();
+        // NaN or negative -> saturate to max (treat invalid link as unusable)
+        if link_cost.is_nan() || link_cost < 0.0 {
+            return u16::MAX;
+        }
+        self.rank.saturating_add(link_cost as u16)
     }
 }
 
@@ -177,8 +181,8 @@ impl DodagState {
             return;
         }
 
-        if version_is_newer(dio.version, self.version) || !self.is_joined() {
-            // Newer (or first) version — rejoin.
+        if version_is_newer(dio.version, self.version) {
+            // Newer version — rejoin.
             self.adopt_version(dio);
         } else if version_is_newer(self.version, dio.version) {
             return; // stale

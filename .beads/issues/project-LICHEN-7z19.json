@@ -2,11 +2,14 @@
   "id": "project-LICHEN-7z19",
   "title": "Compliance: lichen-oscore lib.rs OSCORE",
   "description": "Policy: 06-security.md §8.7. File: rust/lichen-oscore/src/lib.rs. Status: COMPLIANT. Pure-Rust OSCORE implementation with AES-CCM-16-64-128, HKDF-SHA256, replay window, sequence number exhaustion check, and zeroize on drop.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:16:39.903547Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:16:39.903576Z"
+  "updated_at": "2026-07-12T00:35:00.796228Z",
+  "closed_at": "2026-07-12T00:35:00.796228Z",
+  "close_reason": "Verified compliant: AES-CCM-16-64-128 with HKDF-SHA256 key derivation, correct nonce computation per Section 5.2, replay window with post-decrypt update, sequence exhaustion check, zeroize-on-drop. One documented limitation (empty AAD vs Section 5.4 full structure) is marked ponytail for future work."
 }

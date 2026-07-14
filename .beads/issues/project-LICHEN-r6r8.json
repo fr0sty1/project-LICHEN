@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-r6r8",
+  "title": "task",
+  "description": "Python rpl/ has dao.py (~100+ lines) for Destination Advertisement Object handling. Rust lichen-rpl has dodag.rs, routing.rs, trickle.rs, message.rs but DAO appears less complete. Verify DAO parity or port Python implementation.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T04:05:40.669112Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T04:21:03.48629Z",
+  "closed_at": "2026-07-12T04:21:03.48629Z",
+  "close_reason": "Verified: Rust lichen-rpl/routing.rs has DaoManager with build_dao(), process_dao(), extract_edge(), rebuild_routes(), assemble_path(). Core DAO handling matches Python. Rust additionally has DAO sequence replay protection (dao_seq_map + seq_is_newer). Minor gaps: Rust missing remove_edge() and build_dao_ack() convenience methods - these can be added if needed but core functionality is complete."
+}

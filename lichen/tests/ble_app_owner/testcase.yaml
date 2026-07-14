@@ -3,25 +3,35 @@
 
 tests:
   net.lichen.ble_app_owner:
-    platform_allow: native_sim
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
     tags: bluetooth app-interface
   net.lichen.ble_app_owner.native:
-    platform_allow: native_sim
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
     extra_args:
       - BLE_APP_OWNER_TEST_MODE=native
     tags: bluetooth app-interface
   net.lichen.ble_app_owner.native_legacy:
-    platform_allow: native_sim
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
     extra_args:
       - BLE_APP_OWNER_TEST_MODE=native_legacy
     tags: bluetooth app-interface
   net.lichen.ble_app_owner.meshtastic:
-    platform_allow: native_sim
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
     extra_args:
       - BLE_APP_OWNER_TEST_MODE=meshtastic
     tags: bluetooth app-interface meshtastic
   net.lichen.ble_app_owner.meshcore:
-    platform_allow: native_sim
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
     extra_args:
       - BLE_APP_OWNER_TEST_MODE=meshcore
     tags: bluetooth app-interface meshcore

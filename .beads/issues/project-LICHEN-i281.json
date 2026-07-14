@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-i281",
+  "title": "No validation of DIOs from lower-rank neighbors",
+  "description": "File: lichen/subsys/lichen/rpl/dodag.c:270-352\n\nRFC 6550 Section 8.2.2.5 specifies that a node should not select a parent with equal or higher rank than itself (which would create loops or violate the DAG property).\n\nThe current implementation adds any neighbor as a parent candidate without checking:\n1. If the neighbor's rank is lower than the node's current rank\n2. If selecting this parent would violate rank ordering\n\nThe MRHOF parent selection does consider path cost (which includes rank), but doesn't explicitly reject parents that would cause rank to increase beyond MaxRankIncrease before they're added to the candidate table.\n\nImpact: Parent table could fill with inadmissible candidates, and edge cases in rank comparison could lead to routing loops.\n\nSuggested fix: Add explicit rank check when adding parent candidates:\n```c\nif (dio-\u003erank \u003e= d-\u003erank \u0026\u0026 d-\u003erank != LICHEN_RPL_INFINITE_RANK) {\n    // Reject parent with equal or higher rank (unless we're unjoined)\n    return;\n}\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:54:57.571452Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:54:57.571482Z"
+}

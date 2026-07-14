@@ -4,7 +4,7 @@
 //! to be tested without real hardware.
 
 use lichen_hal::{Clock, NonVolatile, RadioConfig, RadioError, Rng, RxPacket};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -13,7 +13,7 @@ use std::time::Instant;
 pub struct MockRadio {
     config: RadioConfig,
     tx_queue: Mutex<Vec<Vec<u8>>>,
-    rx_queue: Mutex<Vec<(Vec<u8>, RxPacket)>>,
+    rx_queue: Mutex<VecDeque<(Vec<u8>, RxPacket)>>,
 }
 
 impl MockRadio {
@@ -21,7 +21,7 @@ impl MockRadio {
         Self {
             config: RadioConfig::default(),
             tx_queue: Mutex::new(Vec::new()),
-            rx_queue: Mutex::new(Vec::new()),
+            rx_queue: Mutex::new(VecDeque::new()),
         }
     }
 
@@ -32,7 +32,7 @@ impl MockRadio {
 
     /// Feed a packet to be received.
     pub fn feed_rx(&self, data: &[u8], rssi: i16, snr: i8) {
-        self.rx_queue.lock().unwrap().push((
+        self.rx_queue.lock().unwrap().push_back((
             data.to_vec(),
             RxPacket {
                 len: data.len(),
@@ -62,13 +62,25 @@ impl lichen_hal::Radio for MockRadio {
         buf: &mut [u8],
         timeout_ms: u32,
     ) -> Result<Option<RxPacket>, Self::Error> {
+        // SECURITY: Enforce buffer contract from Radio trait docs.
+        // Buffer must be at least 255 bytes (max LoRa payload).
+        debug_assert!(
+            buf.len() >= 255,
+            "Radio::receive buffer too small: {} < 255",
+            buf.len()
+        );
+
         // Check for queued packet
         let mut queue = self.rx_queue.lock().unwrap();
-        if let Some((data, meta)) = queue.pop() {
-            let len = data.len().min(buf.len());
-            buf[..len].copy_from_slice(&data[..len]);
+        if let Some((data, meta)) = queue.pop_front() {
+            // Return error if packet exceeds buffer - silent truncation
+            // would cause protocol errors downstream.
+            if data.len() > buf.len() {
+                return Err(RadioError::Protocol);
+            }
+            buf[..data.len()].copy_from_slice(&data);
             return Ok(Some(RxPacket {
-                len,
+                len: data.len(),
                 rssi: meta.rssi,
                 snr: meta.snr,
             }));
@@ -250,7 +262,7 @@ mod tests {
         let mut radio = MockRadio::new();
         radio.feed_rx(b"incoming", -80, 10);
 
-        let mut buf = [0u8; 64];
+        let mut buf = [0u8; 255]; // Radio trait requires >= 255 byte buffer
         let pkt = radio.receive(&mut buf, 1000).await.unwrap().unwrap();
         assert_eq!(pkt.len, 8);
         assert_eq!(&buf[..8], b"incoming");

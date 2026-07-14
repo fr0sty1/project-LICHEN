@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-a4n2.2",
+  "title": "Python: Implement TX queue with priority",
+  "description": "python/src/lichen/link/link_layer.py has no TX queue - sends directly to radio.\n\nRequired:\n- Add TxQueue class with:\n  - 4 packets max capacity\n  - 4 priority levels (0=routing, 1=ACK, 2=urgent, 3=bulk)\n  - deadline_ms per entry (default: 5s routing, 10s ACK, 60s app)\n  - expire_stale() method to drop expired packets before TX\n  - preemption when full (evict lowest priority)\n  - Explicit backpressure (raise QueueFull error, not silent drop)\n- Integrate into LinkLayer.send()\n- Add tests in python/tests/link/\n\nSee spec/appendix-bufferbloat.md §3 TX Queue for requirements.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T00:40:15.336895Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T01:37:05.516005Z",
+  "closed_at": "2026-07-12T01:37:05.516005Z",
+  "close_reason": "Implemented TxQueue class with 4-packet capacity, 4 priority levels (ROUTING/ACK/URGENT/BULK), deadline expiry (5s/10s/60s defaults), priority-based preemption, and explicit backpressure (QueueFullError). Integrated into LinkLayer.send() with drain_tx_queue() method. Added comprehensive tests (30 tx_queue tests, 6 integration tests).",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-a4n2.2",
+      "depends_on_id": "project-LICHEN-a4n2",
+      "type": "parent-child",
+      "created_at": "2026-07-12T00:40:15.341768Z"
+    }
+  ]
+}

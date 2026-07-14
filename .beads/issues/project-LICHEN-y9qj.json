@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-y9qj",
+  "title": "PacketSendScope context var may leak across unrelated coroutines",
+  "description": "File: python/src/lichen/client/packet_coap.py, lines 235-270\n\nPacketSendScope uses a contextvars.ContextVar to track the active scope:\n\n```python\n_SEND_SCOPE: contextvars.ContextVar[Any] = contextvars.ContextVar(\n    'packet_coap_send_scope',\n    default=None,\n)\n\nclass PacketSendScope:\n    def __enter__(self) -\u003e PacketSendScope:\n        self._token = _SEND_SCOPE.set(self)\n        return self\n\n    def __exit__(self, _exc_type, _exc, _tb) -\u003e None:\n        if self._token is not None:\n            _SEND_SCOPE.reset(self._token)\n            self._token = None\n```\n\nIssue: The scope is entered in the 'with' block but send_datagram is called asynchronously later. If the coroutine that entered the scope yields (await) after exiting the 'with' block, the context var is reset. Then when send_datagram runs, _SEND_SCOPE.get() returns None.\n\nLooking at usage in line 130-131:\n```python\nwith scope:\n    observe_task = asyncio.create_task(...)\n```\n\nThe task is CREATED inside the scope, so it captures the context. But if the task yields and another task sets a different scope, the context could be incorrect.\n\nImpact: Send failures may not be tracked to the correct request scope, causing incorrect error handling.\n\nNote: contextvars are copied on task creation, so this may be fine. But the interaction is subtle and worth documenting.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:19:51.102536Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:19:51.10258Z"
+}

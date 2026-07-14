@@ -25,6 +25,7 @@ from lichen.link.link_layer import (
     SIGNATURE_LENGTH,
     LinkLayer,
 )
+from lichen.link.tx_queue import Priority, QueueFullError
 
 
 class MockRadio:
@@ -456,17 +457,194 @@ class TestRxFrameMetadata:
         assert result.snr_db == 5
 
 
-class TestKeyPinning:
-    """Tests for link-layer TOFU key pinning and change detection."""
+class TestTxQueueIntegration:
+    """Tests for TX queue integration in LinkLayer."""
 
     @pytest.mark.asyncio
-    async def test_pins_pubkey_on_first_rx(
+    async def test_send_with_priority(self, link_layer: LinkLayer, mock_radio: MockRadio):
+        """send() accepts priority parameter."""
+        await link_layer.send(b"routing data", priority=Priority.ROUTING)
+        await link_layer.send(b"bulk data", priority=Priority.BULK)
+
+        assert len(mock_radio.tx_history) == 2
+
+    @pytest.mark.asyncio
+    async def test_priority_ordering_on_drain(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ):
+        """Higher priority packets are transmitted first."""
+
+        def no_lookup(hint: bytes) -> PeerIdentity | None:
+            return None
+
+        # Create link layer with CAD disabled so packets go straight to radio
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=no_lookup,
+            cad_enabled=False,
+        )
+        ll.set_sequence(0, 0)
+
+        # Queue multiple packets (they'll be drained immediately)
+        # First send bulk, which gets transmitted immediately
+        await ll.send(b"bulk1", priority=Priority.BULK)
+
+        # Now queue another bulk and a routing packet
+        # Since queue is drained after each send, both go through
+        await ll.send(b"bulk2", priority=Priority.BULK)
+        await ll.send(b"routing", priority=Priority.ROUTING)
+
+        # All should be transmitted (no CAD delay)
+        assert len(mock_radio.tx_history) == 3
+
+    @pytest.mark.asyncio
+    async def test_queue_full_raises_error(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ):
+        """QueueFullError raised when queue is full and can't preempt."""
+
+        def no_lookup(hint: bytes) -> PeerIdentity | None:
+            return None
+
+        # Make CAD always return busy so packets stay queued
+        mock_radio.cad_returns = True
+
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=no_lookup,
+            cad_enabled=True,
+        )
+        ll.set_sequence(0, 0)
+
+        # Fill the queue with ROUTING packets (highest priority)
+        # Each send() will queue but fail to transmit due to busy CAD
+        for i in range(4):
+            await ll.send(f"routing{i}".encode(), priority=Priority.ROUTING)
+
+        # Queue should be full with ROUTING packets
+        assert len(ll.tx_queue) == 4
+
+        # Another ROUTING packet cannot preempt
+        with pytest.raises(QueueFullError):
+            await ll.send(b"overflow", priority=Priority.ROUTING)
+
+    @pytest.mark.asyncio
+    async def test_high_priority_preempts_low(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ):
+        """High priority packet preempts low priority when full."""
+
+        def no_lookup(hint: bytes) -> PeerIdentity | None:
+            return None
+
+        mock_radio.cad_returns = True  # Keep packets queued
+
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=no_lookup,
+            cad_enabled=True,
+        )
+        ll.set_sequence(0, 0)
+
+        # Fill queue with BULK packets
+        for i in range(4):
+            await ll.send(f"bulk{i}".encode(), priority=Priority.BULK)
+
+        assert len(ll.tx_queue) == 4
+
+        # ROUTING packet should preempt one BULK
+        await ll.send(b"routing", priority=Priority.ROUTING)
+
+        # Still 4 packets, but one was preempted
+        assert len(ll.tx_queue) == 4
+        assert ll.tx_queue.stats.packets_dropped_preempt == 1
+
+    @pytest.mark.asyncio
+    async def test_drain_tx_queue_transmits_pending(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ):
+        """drain_tx_queue() transmits pending packets."""
+
+        def no_lookup(hint: bytes) -> PeerIdentity | None:
+            return None
+
+        # Start with CAD busy to queue packets
+        mock_radio.cad_returns = True
+
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=no_lookup,
+            cad_enabled=True,
+        )
+        ll.set_sequence(0, 0)
+
+        # Queue some packets (won't transmit due to busy CAD)
+        await ll.send(b"queued1", priority=Priority.BULK)
+        await ll.send(b"queued2", priority=Priority.BULK)
+
+        assert len(mock_radio.tx_history) == 0  # Nothing transmitted yet
+        assert len(ll.tx_queue) == 2
+
+        # Now make CAD clear and drain
+        mock_radio.cad_returns = False
+        result = await ll.drain_tx_queue()
+
+        assert result is True
+        assert len(mock_radio.tx_history) == 2
+        assert len(ll.tx_queue) == 0
+
+    @pytest.mark.asyncio
+    async def test_cad_failure_keeps_packet_queued(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ):
+        """When CAD fails, packet remains queued for retry."""
+
+        def no_lookup(hint: bytes) -> PeerIdentity | None:
+            return None
+
+        mock_radio.cad_returns = True  # Always busy
+
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=no_lookup,
+            cad_enabled=True,
+        )
+        ll.set_sequence(0, 0)
+
+        await ll.send(b"deferred", priority=Priority.BULK)
+
+        # Packet should be in queue (CAD failed)
+        assert len(ll.tx_queue) == 1
+        assert len(mock_radio.tx_history) == 0
+
+
+class TestKeyPinning:
+    """Tests for link-layer TOFU key pinning and change detection.
+
+    SECURITY NOTE: Key pinning is disabled while MIC verification is a stub.
+    These tests verify the pinning infrastructure works correctly, but automatic
+    pinning on first RX is intentionally disabled until MIC is implemented.
+    See _should_pin_key() for details.
+    """
+
+    @pytest.mark.asyncio
+    async def test_no_pinning_while_mic_is_stub(
         self,
         mock_radio: MockRadio,
         node_identity: Identity,
         peer_identity: Identity,
     ):
-        """After first successful RX from a peer, that peer's pubkey is pinned."""
+        """While MIC verification is a stub, key pinning is disabled for security.
+
+        SECURITY: Key pinning without MIC verification could allow attackers
+        to poison the pin table. Rather than provide false security, pinning
+        is disabled until MIC verification is implemented.
+        """
         peer_peer = PeerIdentity.from_pubkey(peer_identity.pubkey)
 
         def peer_lookup(hint: bytes) -> PeerIdentity | None:
@@ -484,7 +662,8 @@ class TestKeyPinning:
 
         result = await node_ll.receive(timeout_ms=100)
         assert result is not None
-        assert node_ll.pinned_pubkey_for(peer_peer.iid) == peer_identity.pubkey
+        # Key should NOT be pinned while MIC is a stub
+        assert node_ll.pinned_pubkey_for(peer_peer.iid) is None
 
     @pytest.mark.asyncio
     async def test_key_change_rejected(
@@ -530,8 +709,11 @@ class TestKeyPinning:
         node_identity: Identity,
         peer_identity: Identity,
     ):
-        """After unpin_peer(), a new peer with the same IID (after admin key rotation)
-        is accepted and re-pinned."""
+        """After unpin_peer(), a manually pinned key is cleared and frames are accepted.
+
+        This tests the unpin_peer() API that will be used for admin key rotation
+        once MIC verification is implemented and automatic pinning is enabled.
+        """
         peer_peer = PeerIdentity.from_pubkey(peer_identity.pubkey)
 
         def peer_lookup(hint: bytes) -> PeerIdentity | None:
@@ -544,21 +726,20 @@ class TestKeyPinning:
         )
         node_ll.set_sequence(0, 0)  # deterministic epoch for test
 
-        peer_ll = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
-        peer_ll.set_sequence(0, 0)  # deterministic epoch for test
-        await peer_ll.send(b"hello")
-        mock_radio.queue_rx(peer_ll.radio.tx_history[0])
-        await node_ll.receive(timeout_ms=100)
+        # Manually pin a different key to simulate previous pinning
+        fake_key = bytes([0xAA] * 32)
+        node_ll._pinned_keys[peer_peer.iid] = fake_key
 
         # Admin unpins
         node_ll.unpin_peer(peer_peer.iid)
         assert node_ll.pinned_pubkey_for(peer_peer.iid) is None
 
-        # Same peer can now re-establish trust (advance seqnum past replay window)
-        peer_ll2 = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
-        peer_ll2.set_sequence(0, 1)  # seqnum=1 is fresh relative to the window (epoch=0 matches)
-        await peer_ll2.send(b"reintroduce")
-        mock_radio.queue_rx(peer_ll2.radio.tx_history[0])
+        # Peer can now send frames (no pinned key to conflict with)
+        peer_ll = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
+        peer_ll.set_sequence(0, 0)  # deterministic epoch for test
+        await peer_ll.send(b"after_unpin")
+        mock_radio.queue_rx(peer_ll.radio.tx_history[0])
         result = await node_ll.receive(timeout_ms=100)
         assert result is not None
-        assert node_ll.pinned_pubkey_for(peer_peer.iid) == peer_identity.pubkey
+        # Key still not pinned (MIC stub active)
+        assert node_ll.pinned_pubkey_for(peer_peer.iid) is None

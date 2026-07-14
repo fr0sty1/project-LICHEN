@@ -8,8 +8,10 @@ tests:
   net.lichen.inbound_lci_location.native:
     platform_allow:
       - native_sim
+      - native_sim/native/64
     integration_platforms:
       - native_sim
+      - native_sim/native/64
   net.lichen.inbound_lci_location.qemu:
     platform_allow:
       - qemu_x86

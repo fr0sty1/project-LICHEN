@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-dujw",
+  "title": "task",
+  "description": "Implement EDHOC (RFC 9528) key establishment for deriving OSCORE security contexts between peers.\n\nEDHOC protocol (from spec section 8.8):\n- 3-message handshake (~200 bytes total)\n- Uses Ed25519 keys from link layer (derive X25519 for DH)\n- Cipher suite 0: AES-CCM-16-64-128 + SHA-256 + X25519 + Ed25519\n- Export OSCORE master secret and salt via edhoc_exporter()\n\nImplementation components:\n1. EDHOC initiator state machine\n2. EDHOC responder state machine\n3. Message transport over CoAP (POST to /.well-known/edhoc)\n4. Key derivation: Ed25519 seed -\u003e X25519 keypair\n5. Context export: prk_out -\u003e OSCORE master_secret + master_salt\n\nUse uoscore-uedhoc library (modules/lib/uoscore-uedhoc/):\n- edhoc_initiator_run() / edhoc_responder_run()\n- prk_out2exporter() + edhoc_exporter()\n\nTrigger conditions (from spec 8.8):\n- Lazy: on first OSCORE-protected request to a peer without context\n- Explicit: POST to /.well-known/edhoc\n- Periodic: re-run every 24 hours or on SSN exhaustion\n\nParent: project-LICHEN-r6fu.2",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T01:34:48.204601Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T03:58:02.450163Z",
+  "closed_at": "2026-07-12T03:58:02.450163Z",
+  "close_reason": "Implemented EDHOC CoAP transport integration:\n\n1. Added EdhocResource class for /.well-known/edhoc endpoint (responder role):\n   - Handles POST requests for EDHOC Message 1 and Message 3\n   - Stores derived OSCORE contexts in context store\n   - Supports session tracking per peer\n\n2. Completed SecureDatagramChannel EDHOC initiator support:\n   - Implemented _edhoc_exchange() for CoAP POST to /.well-known/edhoc\n   - Implemented _edhoc_send() for final message delivery\n   - Added _EdhocChannel for bypassing OSCORE during handshake\n   - Added local_host and edhoc_timeout parameters\n\n3. Added lazy EDHOC establishment:\n   - Tracks active EDHOC peers to allow plaintext responses\n   - Context automatically established on first send to unknown peer\n\n4. Updated build_site() to accept optional edhoc_resource parameter\n\n5. Added comprehensive tests in test_edhoc_transport.py:\n   - test_edhoc_resource_creation\n   - test_edhoc_handshake_via_coap\n   - test_edhoc_resource_rejects_empty_payload\n   - test_derived_contexts_have_matching_keys\n\nFiles modified:\n- python/src/lichen/coap/resources.py (EdhocResource class)\n- python/src/lichen/coap/secure.py (EDHOC transport methods)\n- python/src/lichen/coap/__init__.py (exports)\n- python/tests/coap/test_edhoc_transport.py (new tests)"
+}

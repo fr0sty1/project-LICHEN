@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-gv40",
+  "title": "task",
+  "description": "lichen/subsys/lichen/link/lichen_link_rx.c:427 - lichen_schc_decompress() writes to caller's out_ipv6 buffer at line 427, but commit_replay() is called later at line 439. If replay is detected, out_ipv6 already contains authenticated-but-replayed data. This is inconsistent with lichen_link_rx_payload() which correctly copies to caller's buffer only after replay check passes (line 374 is after line 366). Failure scenario: caller calls lichen_link_rx(), ignores error return code (a caller bug), reads out_ipv6 - gets content from a replayed packet. The output buffer should be wiped on replay detection for defense-in-depth, or decompression should be deferred until after replay check.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T01:38:04.82418Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T00:58:59.85899Z",
+  "closed_at": "2026-07-12T00:58:59.85899Z",
+  "close_reason": "Fixed: lichen_link_rx() now decompresses to local ipv6_buf[240] first, then copies to caller's out_ipv6 only after commit_replay() passes. This matches the defense-in-depth pattern already used by lichen_link_rx_payload(). Added LICHEN_MAX_IPV6_LEN constant (240 = LICHEN_MAX_PAYLOAD + 40-byte header). Local buffer is zeroed on all exit paths."
+}

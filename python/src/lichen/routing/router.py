@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import math
+import time
 from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -26,6 +27,10 @@ from lichen.loadng.discovery import LoadngRouter
 from lichen.rpl.dodag import DodagState
 
 logger = logging.getLogger(__name__)
+
+# Forwarding buffer limits (spec appendix-bufferbloat.md)
+MAX_FORWARDING_SOURCES = 8
+MAX_PACKETS_PER_SOURCE = 2
 
 
 class RoutingError(Exception):
@@ -56,6 +61,35 @@ class RouteDecision(Enum):
     QUEUE = auto()        # Queue pending LOADng discovery
     DROP = auto()         # No route, cannot discover (unjoined, etc.)
     DELIVER_LOCAL = auto()  # Packet is for this node
+
+
+class ForwardingResult(Enum):
+    """Result of attempting to buffer a packet for forwarding.
+
+    Why explicit enum: Callers need to distinguish between success and
+    different failure modes (backpressure vs eviction).
+    """
+
+    ACCEPTED = auto()      # Packet buffered successfully
+    BACKPRESSURE = auto()  # Source at per-source limit, send NACK upstream
+    EVICTED = auto()       # Accepted, but evicted oldest from different source
+
+
+@dataclass
+class ForwardingEntry:
+    """A packet buffered for forwarding on behalf of another source.
+
+    Attributes:
+        packet: The IPv6 packet data to forward.
+        source_iid: 8-byte IID of the packet's originator.
+        buffered_at_ms: Timestamp when buffered (for deadline expiry).
+        deadline_ms: Absolute time after which packet should be dropped.
+    """
+
+    packet: IPv6Packet
+    source_iid: bytes
+    buffered_at_ms: int
+    deadline_ms: int
 
 
 @dataclass
@@ -95,6 +129,197 @@ class DtnMessage:
     def size(self) -> int:
         """Approximate size in bytes for buffer accounting."""
         return len(self.packet.payload) + 100  # header overhead estimate
+
+
+@dataclass
+class ForwardingBuffer:
+    """Per-source forwarding buffer with backpressure (spec appendix-bufferbloat.md).
+
+    Why per-source limits: Prevents one chatty node from monopolizing relay
+    capacity. Each source gets MAX_PACKETS_PER_SOURCE slots; when full, the
+    relay returns backpressure (NACK) rather than silently dropping.
+
+    Why total source limit: Bounded memory. With MAX_FORWARDING_SOURCES sources
+    and MAX_PACKETS_PER_SOURCE each, total capacity is 16 packets.
+
+    Attributes:
+        max_sources: Maximum unique sources to track.
+        max_per_source: Maximum packets buffered per source.
+        _buffer: Dict mapping source IID to deque of ForwardingEntry.
+        _source_order: List of source IIDs in LRU order (oldest first).
+        packets_accepted: Count of packets accepted.
+        packets_backpressure: Count of packets rejected due to backpressure.
+        packets_expired: Count of packets dropped due to deadline.
+    """
+
+    max_sources: int = MAX_FORWARDING_SOURCES
+    max_per_source: int = MAX_PACKETS_PER_SOURCE
+    _buffer: dict[bytes, deque[ForwardingEntry]] = field(
+        default_factory=dict, repr=False
+    )
+    _source_order: list[bytes] = field(default_factory=list, repr=False)
+    # Statistics
+    packets_accepted: int = 0
+    packets_backpressure: int = 0
+    packets_expired: int = 0
+
+    def try_buffer(
+        self,
+        packet: IPv6Packet,
+        source_iid: bytes,
+        now_ms: int,
+        deadline_ms: int,
+    ) -> ForwardingResult:
+        """Attempt to buffer a packet for forwarding.
+
+        Args:
+            packet: The IPv6 packet to forward.
+            source_iid: 8-byte IID of the packet's originator.
+            now_ms: Current time in milliseconds.
+            deadline_ms: Absolute deadline (packet dropped if not forwarded by then).
+
+        Returns:
+            ForwardingResult indicating success or failure mode.
+        """
+        entry = ForwardingEntry(
+            packet=packet,
+            source_iid=source_iid,
+            buffered_at_ms=now_ms,
+            deadline_ms=deadline_ms,
+        )
+
+        # Check if source already has a queue
+        if source_iid in self._buffer:
+            queue = self._buffer[source_iid]
+            if len(queue) >= self.max_per_source:
+                # SECURITY: Per-source limit reached, return backpressure.
+                # Caller should send NACK upstream.
+                self.packets_backpressure += 1
+                logger.debug(
+                    "forwarding buffer full for source %s, backpressure",
+                    source_iid.hex(),
+                )
+                return ForwardingResult.BACKPRESSURE
+
+            queue.append(entry)
+            self._touch_source(source_iid)
+            self.packets_accepted += 1
+            return ForwardingResult.ACCEPTED
+
+        # New source - check if we need to evict
+        result = ForwardingResult.ACCEPTED
+        if len(self._buffer) >= self.max_sources:
+            # Evict oldest source (LRU)
+            oldest_iid = self._source_order.pop(0)
+            evicted_count = len(self._buffer.pop(oldest_iid))
+            logger.debug(
+                "forwarding buffer evicting source %s (%d packets)",
+                oldest_iid.hex(),
+                evicted_count,
+            )
+            result = ForwardingResult.EVICTED
+
+        # Create new queue for this source
+        self._buffer[source_iid] = deque([entry])
+        self._source_order.append(source_iid)
+        self.packets_accepted += 1
+        return result
+
+    def dequeue(self, source_iid: bytes) -> ForwardingEntry | None:
+        """Remove and return the oldest packet for a source.
+
+        Returns:
+            ForwardingEntry if available, None if no packets for source.
+        """
+        if source_iid not in self._buffer:
+            return None
+
+        queue = self._buffer[source_iid]
+        if not queue:
+            return None
+
+        entry = queue.popleft()
+
+        # Clean up empty queues
+        if not queue:
+            del self._buffer[source_iid]
+            self._source_order.remove(source_iid)
+
+        return entry
+
+    def peek(self, source_iid: bytes) -> ForwardingEntry | None:
+        """Return the oldest packet for a source without removing it."""
+        if source_iid not in self._buffer:
+            return None
+        queue = self._buffer[source_iid]
+        return queue[0] if queue else None
+
+    def expire_old(self, now_ms: int) -> int:
+        """Remove packets past their deadline.
+
+        Args:
+            now_ms: Current time in milliseconds.
+
+        Returns:
+            Number of packets expired.
+        """
+        expired_count = 0
+        empty_sources: list[bytes] = []
+
+        for source_iid, queue in self._buffer.items():
+            original_len = len(queue)
+            # Keep only packets not past deadline
+            self._buffer[source_iid] = deque(
+                e for e in queue if e.deadline_ms > now_ms
+            )
+            expired = original_len - len(self._buffer[source_iid])
+            expired_count += expired
+
+            if not self._buffer[source_iid]:
+                empty_sources.append(source_iid)
+
+        # Clean up empty sources
+        for source_iid in empty_sources:
+            del self._buffer[source_iid]
+            self._source_order.remove(source_iid)
+
+        if expired_count > 0:
+            self.packets_expired += expired_count
+            logger.debug("forwarding buffer expired %d packets", expired_count)
+
+        return expired_count
+
+    def count_for_source(self, source_iid: bytes) -> int:
+        """Return number of packets buffered for a source."""
+        if source_iid not in self._buffer:
+            return 0
+        return len(self._buffer[source_iid])
+
+    def total_count(self) -> int:
+        """Return total number of packets in buffer."""
+        return sum(len(q) for q in self._buffer.values())
+
+    def source_count(self) -> int:
+        """Return number of unique sources being tracked."""
+        return len(self._buffer)
+
+    def get_stats(self) -> dict[str, int]:
+        """Return buffer statistics for diagnostics."""
+        return {
+            "total_packets": self.total_count(),
+            "sources": self.source_count(),
+            "max_sources": self.max_sources,
+            "max_per_source": self.max_per_source,
+            "accepted": self.packets_accepted,
+            "backpressure": self.packets_backpressure,
+            "expired": self.packets_expired,
+        }
+
+    def _touch_source(self, source_iid: bytes) -> None:
+        """Move source to end of LRU order (most recently used)."""
+        if source_iid in self._source_order:
+            self._source_order.remove(source_iid)
+        self._source_order.append(source_iid)
 
 
 @dataclass
@@ -141,6 +366,8 @@ class Router:
     dtn_buffer: deque[DtnMessage] = field(default_factory=deque, repr=False)
     dtn_buffer_max_bytes: int = 65536  # 64KB default
     _dtn_buffer_bytes: int = field(default=0, repr=False)  # Running total for O(1) size checks
+    # Forwarding buffer with backpressure (spec appendix-bufferbloat.md)
+    forwarding_buffer: ForwardingBuffer = field(default_factory=ForwardingBuffer, repr=False)
 
     # Why fe80::/10: RFC 4291 link-local prefix. All link-local addresses
     # start with fe80:: through febf::, which is fe80::/10.
@@ -346,6 +573,11 @@ class Router:
             Number of packets expired.
         """
         expired_count = 0
+        # Age-based expiry: cutoff is the oldest acceptable queue time.
+        # Packets queued before cutoff (queued_at_ms <= cutoff) are expired.
+        # This differs from ForwardingBuffer.expire_old() which uses deadline-based
+        # expiry (deadline_ms > now_ms), but both achieve the same goal: discard
+        # packets that have waited too long.
         cutoff = now_ms - timeout_ms
 
         # Why iterate copy: We're modifying the dict during iteration.
@@ -353,6 +585,7 @@ class Router:
             queue = self.pending_queue[dst]
             original_len = len(queue)
             # deque doesn't support slice assignment; replace entirely
+            # Keep packets queued after the cutoff (i.e., queued within timeout_ms)
             self.pending_queue[dst] = deque(p for p in queue if p.queued_at_ms > cutoff)
             queue = self.pending_queue[dst]
             expired_count += original_len - len(queue)
@@ -381,21 +614,19 @@ class Router:
             prefix = IPv6Network(prefix)
         self.mesh_prefixes.discard(prefix)
 
-    def on_route_discovered(
-        self, dst: IPv6Address, next_hop: IPv6Address, now_ms: int
-    ) -> list[PendingPacket]:
-        """Called when LOADng discovers a route.
+    def release_pending_for(self, dst: IPv6Address) -> list[PendingPacket]:
+        """Release pending packets for a destination after route discovery.
 
-        Why a callback: The Router owns the pending queue. When discovery
-        succeeds, it needs to return the queued packets for forwarding.
+        Call this after updating the gradient_table with a discovered route.
+        The Router owns the pending queue; this method returns queued packets
+        for forwarding once a route is available.
 
         Returns:
             List of pending packets that can now be forwarded.
         """
         pending = self.get_pending(dst)
         self.clear_pending(dst)
-        logger.debug("route discovered for %s, releasing %d pending packets",
-                    dst, len(pending))
+        logger.debug("releasing %d pending packets for %s", len(pending), dst)
         return pending
 
     def update_neighbor_coords(
@@ -427,7 +658,6 @@ class Router:
 
         Returns True if buffered, False if rejected (e.g., already expired).
         """
-        import time
         now_unix = int(time.time())
         if expiry_unix <= now_unix:
             logger.debug("dtn: rejecting expired message (expiry=%d, now=%d)",
@@ -488,7 +718,6 @@ class Router:
 
         Uses single-pass partitioning and updates running byte counter.
         """
-        import time
         now_unix = int(time.time())
         expired = 0
         remaining: deque[DtnMessage] = deque()
@@ -593,6 +822,7 @@ def _haversine(c1: tuple[float, float], c2: tuple[float, float]) -> float:
     dlon = lon2 - lon1
 
     a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    c = 2 * math.asin(math.sqrt(a))
+    # Clamp a to [0, 1] before sqrt to handle floating-point errors
+    c = 2 * math.asin(math.sqrt(min(1.0, a)))
 
     return 6_371_000 * c  # Earth radius in meters

@@ -39,18 +39,20 @@ LOG_MODULE_REGISTER(edhoc, CONFIG_LICHEN_EDHOC_LOG_LEVEL);
 
 /*
  * SHA-256 hash
+ * Returns 0 on success, -EIO on crypto failure
  */
-static void sha256_hash(const uint8_t *data, size_t len, uint8_t out[32]);
+static int sha256_hash(const uint8_t *data, size_t len, uint8_t out[32]);
 
 /*
  * Compute transcript hash per RFC 9528 Section 4.1.2
  * TH = H(CBOR(bstr1) || CBOR(bstr2) || CBOR(bstr3))
  * All inputs are CBOR-encoded as byte strings before hashing.
+ * Returns 0 on success, negative on error.
  */
-static void compute_th(uint8_t out[32],
-		       const uint8_t *b1, size_t b1_len,
-		       const uint8_t *b2, size_t b2_len,
-		       const uint8_t *b3, size_t b3_len)
+static int compute_th(uint8_t out[32],
+		      const uint8_t *b1, size_t b1_len,
+		      const uint8_t *b2, size_t b2_len,
+		      const uint8_t *b3, size_t b3_len)
 {
 	uint8_t cbor_buf[256];
 	ZCBOR_STATE_E(zse, 0, cbor_buf, sizeof(cbor_buf), 0);
@@ -62,68 +64,104 @@ static void compute_th(uint8_t out[32],
 	}
 
 	size_t cbor_len = zse->payload - cbor_buf;
-	sha256_hash(cbor_buf, cbor_len, out);
+	return sha256_hash(cbor_buf, cbor_len, out);
 }
 
 /*
  * SHA-256 hash
+ * SECURITY: All crypto return values must be checked - silent failures would
+ * produce uninitialized output, potentially usable as predictable keys.
+ * Returns 0 on success, -EIO on crypto failure.
  */
-static void sha256_hash(const uint8_t *data, size_t len, uint8_t out[32])
+static int sha256_hash(const uint8_t *data, size_t len, uint8_t out[32])
 {
 	struct tc_sha256_state_struct state;
-	int rc;
 
-	rc = tc_sha256_init(&state);
-	__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_sha256_init failed");
+	if (tc_sha256_init(&state) != TC_CRYPTO_SUCCESS) {
+		LOG_ERR("tc_sha256_init failed");
+		return -EIO;
+	}
 
-	rc = tc_sha256_update(&state, data, len);
-	__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_sha256_update failed");
+	if (tc_sha256_update(&state, data, len) != TC_CRYPTO_SUCCESS) {
+		LOG_ERR("tc_sha256_update failed");
+		crypto_wipe(&state, sizeof(state));
+		return -EIO;
+	}
 
-	rc = tc_sha256_final(out, &state);
-	__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_sha256_final failed");
+	if (tc_sha256_final(out, &state) != TC_CRYPTO_SUCCESS) {
+		LOG_ERR("tc_sha256_final failed");
+		crypto_wipe(&state, sizeof(state));
+		return -EIO;
+	}
+
+	crypto_wipe(&state, sizeof(state));
+	return 0;
 }
 
 /*
  * HMAC-SHA256
+ * SECURITY: All crypto return values must be checked - silent failures would
+ * produce uninitialized output, potentially usable as predictable keys.
+ * Returns 0 on success, -EIO on crypto failure.
  */
-static void hmac_sha256(const uint8_t *key, size_t key_len,
-			const uint8_t *data, size_t data_len,
-			uint8_t out[32])
+static int hmac_sha256(const uint8_t *key, size_t key_len,
+		       const uint8_t *data, size_t data_len,
+		       uint8_t out[32])
 {
 	struct tc_hmac_state_struct state;
-	int rc;
 
-	rc = tc_hmac_set_key(&state, key, key_len);
-	__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_set_key failed");
+	if (tc_hmac_set_key(&state, key, key_len) != TC_CRYPTO_SUCCESS) {
+		LOG_ERR("tc_hmac_set_key failed");
+		return -EIO;
+	}
 
-	rc = tc_hmac_init(&state);
-	__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_init failed");
+	if (tc_hmac_init(&state) != TC_CRYPTO_SUCCESS) {
+		LOG_ERR("tc_hmac_init failed");
+		crypto_wipe(&state, sizeof(state));
+		return -EIO;
+	}
 
-	rc = tc_hmac_update(&state, data, data_len);
-	__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_update failed");
+	if (tc_hmac_update(&state, data, data_len) != TC_CRYPTO_SUCCESS) {
+		LOG_ERR("tc_hmac_update failed");
+		crypto_wipe(&state, sizeof(state));
+		return -EIO;
+	}
 
-	rc = tc_hmac_final(out, TC_SHA256_DIGEST_SIZE, &state);
-	__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_final failed");
+	if (tc_hmac_final(out, TC_SHA256_DIGEST_SIZE, &state) != TC_CRYPTO_SUCCESS) {
+		LOG_ERR("tc_hmac_final failed");
+		crypto_wipe(&state, sizeof(state));
+		return -EIO;
+	}
+
+	crypto_wipe(&state, sizeof(state));
+	return 0;
 }
 
 /*
  * HKDF-Extract (RFC 5869)
+ * Returns 0 on success, negative on error.
  */
-static void hkdf_extract(const uint8_t *salt, size_t salt_len,
-			 const uint8_t *ikm, size_t ikm_len,
-			 uint8_t prk[32])
+static int hkdf_extract(const uint8_t *salt, size_t salt_len,
+			const uint8_t *ikm, size_t ikm_len,
+			uint8_t prk[32])
 {
 	uint8_t default_salt[32] = {0};
+	int ret;
+
 	if (salt == NULL || salt_len == 0) {
 		salt = default_salt;
 		salt_len = 32;
 	}
-	hmac_sha256(salt, salt_len, ikm, ikm_len, prk);
+	ret = hmac_sha256(salt, salt_len, ikm, ikm_len, prk);
 	crypto_wipe(default_salt, sizeof(default_salt));
+	return ret;
 }
 
 /*
  * HKDF-Expand (RFC 5869)
+ * SECURITY: All crypto return values must be checked - silent failures would
+ * produce uninitialized output, potentially usable as predictable keys.
+ * Returns 0 on success, negative on error.
  */
 static int hkdf_expand(const uint8_t prk[32],
 		       const uint8_t *info, size_t info_len,
@@ -141,27 +179,50 @@ static int hkdf_expand(const uint8_t prk[32],
 
 	while (offset < okm_len) {
 		struct tc_hmac_state_struct state;
-		int rc;
 
-		rc = tc_hmac_set_key(&state, prk, 32);
-		__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_set_key failed");
+		if (tc_hmac_set_key(&state, prk, 32) != TC_CRYPTO_SUCCESS) {
+			LOG_ERR("tc_hmac_set_key failed in HKDF-Expand");
+			crypto_wipe(t, sizeof(t));
+			return -EIO;
+		}
 
-		rc = tc_hmac_init(&state);
-		__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_init failed");
+		if (tc_hmac_init(&state) != TC_CRYPTO_SUCCESS) {
+			LOG_ERR("tc_hmac_init failed in HKDF-Expand");
+			crypto_wipe(&state, sizeof(state));
+			crypto_wipe(t, sizeof(t));
+			return -EIO;
+		}
 
 		if (t_len > 0) {
-			rc = tc_hmac_update(&state, t, t_len);
-			__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_update failed");
+			if (tc_hmac_update(&state, t, t_len) != TC_CRYPTO_SUCCESS) {
+				LOG_ERR("tc_hmac_update (T) failed in HKDF-Expand");
+				crypto_wipe(&state, sizeof(state));
+				crypto_wipe(t, sizeof(t));
+				return -EIO;
+			}
 		}
-		rc = tc_hmac_update(&state, info, info_len);
-		__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_update failed");
+		if (tc_hmac_update(&state, info, info_len) != TC_CRYPTO_SUCCESS) {
+			LOG_ERR("tc_hmac_update (info) failed in HKDF-Expand");
+			crypto_wipe(&state, sizeof(state));
+			crypto_wipe(t, sizeof(t));
+			return -EIO;
+		}
 
-		rc = tc_hmac_update(&state, &counter, 1);
-		__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_update failed");
+		if (tc_hmac_update(&state, &counter, 1) != TC_CRYPTO_SUCCESS) {
+			LOG_ERR("tc_hmac_update (counter) failed in HKDF-Expand");
+			crypto_wipe(&state, sizeof(state));
+			crypto_wipe(t, sizeof(t));
+			return -EIO;
+		}
 
-		rc = tc_hmac_final(t, TC_SHA256_DIGEST_SIZE, &state);
-		__ASSERT(rc == TC_CRYPTO_SUCCESS, "tc_hmac_final failed");
+		if (tc_hmac_final(t, TC_SHA256_DIGEST_SIZE, &state) != TC_CRYPTO_SUCCESS) {
+			LOG_ERR("tc_hmac_final failed in HKDF-Expand");
+			crypto_wipe(&state, sizeof(state));
+			crypto_wipe(t, sizeof(t));
+			return -EIO;
+		}
 
+		crypto_wipe(&state, sizeof(state));
 		t_len = 32;
 
 		size_t copy_len = MIN(32, okm_len - offset);
@@ -218,6 +279,10 @@ static int edhoc_kdf(const uint8_t prk[32],
  * - body_protected = << ID_CRED >> (bstr-wrapped)
  * - external_aad = << TH, CRED >> (CBOR sequence as bstr)
  * - payload = MAC (from EDHOC-KDF)
+ *
+ * SECURITY: All CBOR encoding return values must be checked. If encoding
+ * fails (e.g., buffer overflow), operating on corrupted data could cause
+ * signature verification to fail or potentially accept invalid signatures.
  */
 static int build_sig_structure(const uint8_t *id_cred, size_t id_cred_len,
 			       const uint8_t *th,
@@ -228,24 +293,32 @@ static int build_sig_structure(const uint8_t *id_cred, size_t id_cred_len,
 	/* external_aad = << TH, CRED >> */
 	uint8_t ext_aad[96];
 	ZCBOR_STATE_E(zse_ext, 0, ext_aad, sizeof(ext_aad), 0);
-	zcbor_bstr_encode_ptr(zse_ext, th, 32);
-	zcbor_bstr_encode_ptr(zse_ext, cred, cred_len);
+	if (!zcbor_bstr_encode_ptr(zse_ext, th, 32)) {
+		return -EINVAL;
+	}
+	if (!zcbor_bstr_encode_ptr(zse_ext, cred, cred_len)) {
+		return -EINVAL;
+	}
 	size_t ext_aad_len = zse_ext->payload - ext_aad;
 
 	/* body_protected = << ID_CRED >> */
 	uint8_t body_prot[48];
 	ZCBOR_STATE_E(zse_bp, 0, body_prot, sizeof(body_prot), 0);
-	zcbor_bstr_encode_ptr(zse_bp, id_cred, id_cred_len);
+	if (!zcbor_bstr_encode_ptr(zse_bp, id_cred, id_cred_len)) {
+		return -EINVAL;
+	}
 	size_t body_prot_len = zse_bp->payload - body_prot;
 
 	/* Sig_structure = ["Signature1", body_protected, external_aad, MAC] */
 	ZCBOR_STATE_E(zse, 0, out, out_size, 0);
-	zcbor_list_start_encode(zse, 4);
-	zcbor_tstr_put_lit(zse, "Signature1");
-	zcbor_bstr_encode_ptr(zse, body_prot, body_prot_len);
-	zcbor_bstr_encode_ptr(zse, ext_aad, ext_aad_len);
-	zcbor_bstr_encode_ptr(zse, mac, mac_len);
-	zcbor_list_end_encode(zse, 4);
+	if (!zcbor_list_start_encode(zse, 4) ||
+	    !zcbor_tstr_put_lit(zse, "Signature1") ||
+	    !zcbor_bstr_encode_ptr(zse, body_prot, body_prot_len) ||
+	    !zcbor_bstr_encode_ptr(zse, ext_aad, ext_aad_len) ||
+	    !zcbor_bstr_encode_ptr(zse, mac, mac_len) ||
+	    !zcbor_list_end_encode(zse, 4)) {
+		return -EINVAL;
+	}
 
 	*out_len = zse->payload - out;
 	return 0;
@@ -321,8 +394,9 @@ static int aead_decrypt(const uint8_t key[16],
  */
 static int x25519_keypair(uint8_t sk[32], uint8_t pk[32])
 {
+	/* SECURITY: Generic error avoids exposing crypto implementation details */
 	if (sys_csrand_get(sk, 32) != 0) {
-		LOG_ERR("CSPRNG unavailable for X25519 key generation");
+		LOG_WRN("Key generation failed");
 		return -ENODEV;
 	}
 	crypto_x25519_public_key(pk, sk);
@@ -399,8 +473,9 @@ int edhoc_initiator_init(struct edhoc_initiator *ctx,
 		memcpy(ctx->c_i, c_i, c_i_len);
 		ctx->c_i_len = c_i_len;
 	} else {
+		/* SECURITY: Generic error avoids exposing protocol state */
 		if (sys_csrand_get(ctx->c_i, 1) != 0) {
-			LOG_ERR("CSPRNG unavailable for C_I generation");
+			LOG_WRN("Initialization failed");
 			return -ENODEV;
 		}
 		ctx->c_i_len = 1;
@@ -456,8 +531,9 @@ int edhoc_initiator_create_msg1(struct edhoc_initiator *ctx,
 	*msg1_len = zse->payload - msg1;
 
 	/* Save msg1 for TH computation */
+	/* SECURITY: Generic error hides internal buffer sizes */
 	if (*msg1_len > sizeof(ctx->msg1)) {
-		LOG_ERR("msg1 length %zu exceeds buffer %zu", *msg1_len, sizeof(ctx->msg1));
+		LOG_WRN("Message too large");
 		return -ENOMEM;
 	}
 	memcpy(ctx->msg1, msg1, *msg1_len);
@@ -527,15 +603,19 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 
 	/* Compute shared secret G_XY */
 	x25519_shared_secret(g_xy, ctx->eph_sk, ctx->g_y);
+	/* SECURITY: Generic error hides small-order point attack detection */
 	if (is_all_zeros(g_xy, sizeof(g_xy))) {
-		LOG_ERR("Rejected all-zero X25519 shared secret from message_2");
+		LOG_WRN("Key exchange failed");
 		ret = -EACCES;
 		goto err_wipe;
 	}
 
 	/* TH_2 = H(H(message_1) || G_Y || C_R) per RFC 9528 Section 4.1.2 */
 	uint8_t h_msg1[32];
-	sha256_hash(ctx->msg1, ctx->msg1_len, h_msg1);
+	ret = sha256_hash(ctx->msg1, ctx->msg1_len, h_msg1);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	uint8_t th2_input[72];  /* 32 + 32 + up to 8 for C_R */
 	size_t th2_input_len = 0;
@@ -545,10 +625,16 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	th2_input_len += 32;
 	memcpy(th2_input + th2_input_len, ctx->c_r, ctx->c_r_len);
 	th2_input_len += ctx->c_r_len;
-	sha256_hash(th2_input, th2_input_len, ctx->th_2);
+	ret = sha256_hash(th2_input, th2_input_len, ctx->th_2);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	/* PRK_2e = HKDF-Extract(TH_2, G_XY) */
-	hkdf_extract(ctx->th_2, 32, g_xy, 32, ctx->prk_2e);
+	ret = hkdf_extract(ctx->th_2, 32, g_xy, 32, ctx->prk_2e);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 	crypto_wipe(g_xy, sizeof(g_xy));
 
 	/*
@@ -613,11 +699,15 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 
 	uint8_t sig_struct_2[256];
 	size_t sig_struct_2_len;
-	build_sig_structure(peer_pubkey, 32, ctx->th_2, peer_pubkey, 32,
-			    mac_2, 32, sig_struct_2, sizeof(sig_struct_2), &sig_struct_2_len);
+	ret = build_sig_structure(peer_pubkey, 32, ctx->th_2, peer_pubkey, 32,
+				  mac_2, 32, sig_struct_2, sizeof(sig_struct_2), &sig_struct_2_len);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
+	/* SECURITY: Generic error hides which verification step failed */
 	if (ed25519_verify(peer_pubkey, signature_2.value, sig_struct_2, sig_struct_2_len) != 0) {
-		LOG_ERR("Signature_2 verification failed");
+		LOG_WRN("Authentication failed");
 		ret = -EACCES;
 		goto err_wipe;
 	}
@@ -632,7 +722,10 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	th3_len += ct2_len;
 	memcpy(th3_input + th3_len, peer_pubkey, 32);
 	th3_len += 32;
-	sha256_hash(th3_input, th3_len, ctx->th_3);
+	ret = sha256_hash(th3_input, th3_len, ctx->th_3);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	/* PRK_4e3m = PRK_3e2m for SIGN_SIGN */
 	memcpy(ctx->prk_4e3m, ctx->prk_3e2m, 32);
@@ -658,8 +751,11 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	/* Sig_structure_3 per RFC 9528/9052 */
 	uint8_t sig_struct_3[256];
 	size_t sig_struct_3_len;
-	build_sig_structure(ctx->ed_pubkey, 32, ctx->th_3, ctx->ed_pubkey, 32,
-			    mac_3, 32, sig_struct_3, sizeof(sig_struct_3), &sig_struct_3_len);
+	ret = build_sig_structure(ctx->ed_pubkey, 32, ctx->th_3, ctx->ed_pubkey, 32,
+				  mac_3, 32, sig_struct_3, sizeof(sig_struct_3), &sig_struct_3_len);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	ed25519_sign(signature_3, ctx->ed_seed, sig_struct_3, sig_struct_3_len);
 
@@ -708,7 +804,10 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	*msg3_len = pt3_len + 8;
 
 	/* TH_4 = H(TH_3, PLAINTEXT_3, CRED_I) per RFC 9528 Section 4.1.2 */
-	compute_th(ctx->th_4, ctx->th_3, 32, plaintext_3, pt3_len, ctx->ed_pubkey, 32);
+	ret = compute_th(ctx->th_4, ctx->th_3, 32, plaintext_3, pt3_len, ctx->ed_pubkey, 32);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	crypto_wipe(k_3, sizeof(k_3));
 	crypto_wipe(iv_3, sizeof(iv_3));
@@ -792,8 +891,9 @@ int edhoc_responder_init(struct edhoc_responder *ctx,
 		memcpy(ctx->c_r, c_r, c_r_len);
 		ctx->c_r_len = c_r_len;
 	} else {
+		/* SECURITY: Generic error avoids exposing protocol state */
 		if (sys_csrand_get(ctx->c_r, 1) != 0) {
-			LOG_ERR("CSPRNG unavailable for C_R generation");
+			LOG_WRN("Initialization failed");
 			return -ENODEV;
 		}
 		ctx->c_r_len = 1;
@@ -839,9 +939,10 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 		return -EINVAL;
 	}
 	/* METHOD_CORR = method * 4 + corr; extract method */
+	/* SECURITY: Generic errors hide negotiation details */
 	int method = method_corr / 4;
 	if (method != EDHOC_METHOD_SIGN_SIGN) {
-		LOG_ERR("Unsupported EDHOC method: %d (only SIGN_SIGN supported)", method);
+		LOG_WRN("Unsupported protocol parameters");
 		return -ENOTSUP;
 	}
 
@@ -850,7 +951,7 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 		return -EINVAL;
 	}
 	if (suites_i != EDHOC_SUITE_0) {
-		LOG_ERR("Unsupported EDHOC suite: %d (only Suite 0 supported)", suites_i);
+		LOG_WRN("Unsupported protocol parameters");
 		return -ENOTSUP;
 	}
 
@@ -888,15 +989,19 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 
 	/* Compute shared secret */
 	x25519_shared_secret(g_xy, ctx->eph_sk, ctx->g_x);
+	/* SECURITY: Generic error hides small-order point attack detection */
 	if (is_all_zeros(g_xy, sizeof(g_xy))) {
-		LOG_ERR("Rejected all-zero X25519 shared secret from message_1");
+		LOG_WRN("Key exchange failed");
 		ret = -EACCES;
 		goto err_wipe;
 	}
 
 	/* TH_2 = H(H(message_1) || G_Y || C_R) per RFC 9528 Section 4.1.2 */
 	uint8_t h_msg1[32];
-	sha256_hash(ctx->msg1, ctx->msg1_len, h_msg1);
+	ret = sha256_hash(ctx->msg1, ctx->msg1_len, h_msg1);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	uint8_t th2_input[72];  /* 32 + 32 + up to 8 for C_R */
 	size_t th2_input_len = 0;
@@ -906,10 +1011,16 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	th2_input_len += 32;
 	memcpy(th2_input + th2_input_len, ctx->c_r, ctx->c_r_len);
 	th2_input_len += ctx->c_r_len;
-	sha256_hash(th2_input, th2_input_len, ctx->th_2);
+	ret = sha256_hash(th2_input, th2_input_len, ctx->th_2);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	/* PRK_2e */
-	hkdf_extract(ctx->th_2, 32, g_xy, 32, ctx->prk_2e);
+	ret = hkdf_extract(ctx->th_2, 32, g_xy, 32, ctx->prk_2e);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 	crypto_wipe(g_xy, sizeof(g_xy));
 
 	/* PRK_3e2m = PRK_2e for SIGN_SIGN */
@@ -934,8 +1045,11 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	/* Sig_structure_2 per RFC 9528/9052 */
 	uint8_t sig_struct_2[256];
 	size_t sig_struct_2_len;
-	build_sig_structure(ctx->ed_pubkey, 32, ctx->th_2, ctx->ed_pubkey, 32,
-			    mac_2, 32, sig_struct_2, sizeof(sig_struct_2), &sig_struct_2_len);
+	ret = build_sig_structure(ctx->ed_pubkey, 32, ctx->th_2, ctx->ed_pubkey, 32,
+				  mac_2, 32, sig_struct_2, sizeof(sig_struct_2), &sig_struct_2_len);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	ed25519_sign(signature_2, ctx->ed_seed, sig_struct_2, sig_struct_2_len);
 
@@ -975,7 +1089,10 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	th3_len += pt2_len;
 	memcpy(th3_input + th3_len, ctx->ed_pubkey, 32);
 	th3_len += 32;
-	sha256_hash(th3_input, th3_len, ctx->th_3);
+	ret = sha256_hash(th3_input, th3_len, ctx->th_3);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	/* Build message_2 = (G_Y || CIPHERTEXT_2, C_R) */
 	ZCBOR_STATE_E(zse, 0, msg2, msg2_size, 0);
@@ -1065,8 +1182,9 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	/* Decrypt CIPHERTEXT_3 */
 	uint8_t plaintext_3[128];
 	ret = aead_decrypt(k_3, iv_3, a_3, a_3_len, msg3, msg3_len, plaintext_3);
+	/* SECURITY: Generic error hides decryption vs verification failure */
 	if (ret != 0) {
-		LOG_ERR("AEAD decryption failed");
+		LOG_WRN("Authentication failed");
 		goto err_wipe;
 	}
 	size_t pt3_len = msg3_len - 8;
@@ -1110,23 +1228,24 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 
 	uint8_t sig_struct_3[256];
 	size_t sig_struct_3_len;
-	build_sig_structure(peer_pubkey, 32, ctx->th_3, peer_pubkey, 32,
-			    mac_3, 32, sig_struct_3, sizeof(sig_struct_3), &sig_struct_3_len);
+	ret = build_sig_structure(peer_pubkey, 32, ctx->th_3, peer_pubkey, 32,
+				  mac_3, 32, sig_struct_3, sizeof(sig_struct_3), &sig_struct_3_len);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
+	/* SECURITY: Generic error hides which verification step failed */
 	if (ed25519_verify(peer_pubkey, signature_3.value, sig_struct_3, sig_struct_3_len) != 0) {
-		LOG_ERR("Signature_3 verification failed");
+		LOG_WRN("Authentication failed");
 		ret = -EACCES;
 		goto err_wipe;
 	}
 
-	/* TH_4 = H(TH_3 || CIPHERTEXT_3) */
-	uint8_t th4_input[256];
-	size_t th4_len = 0;
-	memcpy(th4_input + th4_len, ctx->th_3, 32);
-	th4_len += 32;
-	memcpy(th4_input + th4_len, msg3, msg3_len);
-	th4_len += msg3_len;
-	sha256_hash(th4_input, th4_len, ctx->th_4);
+	/* TH_4 = H(TH_3, PLAINTEXT_3, CRED_I) per RFC 9528 Section 4.2.2 */
+	ret = compute_th(ctx->th_4, ctx->th_3, 32, plaintext_3, pt3_len, peer_pubkey, 32);
+	if (ret != 0) {
+		goto err_wipe;
+	}
 
 	crypto_wipe(k_3, sizeof(k_3));
 	crypto_wipe(iv_3, sizeof(iv_3));

@@ -8,6 +8,19 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #include <lichen/meshcore/limits.h>
 
 #define LICHEN_MESHCORE_SOURCE_MESHCORE_COMMIT \
@@ -122,14 +135,14 @@ struct lichen_meshcore_frame_view {
 	size_t payload_len;
 };
 
-int lichen_meshcore_decode_frame(const uint8_t *frame, size_t len,
-				 struct lichen_meshcore_frame_view *view);
+int lichen_meshcore_decode_frame(const uint8_t *_Nonnull frame, size_t len,
+				 struct lichen_meshcore_frame_view *_Nonnull view);
 bool lichen_meshcore_command_known(uint8_t cmd);
 
-int lichen_meshcore_encode_error(uint8_t err, uint8_t *out, size_t out_len);
-int lichen_meshcore_encode_ok(uint8_t *out, size_t out_len);
-int lichen_meshcore_encode_serial_frame(uint8_t marker, const uint8_t *payload,
-					size_t payload_len, uint8_t *out,
+int lichen_meshcore_encode_error(uint8_t err, uint8_t *_Nonnull out, size_t out_len);
+int lichen_meshcore_encode_ok(uint8_t *_Nonnull out, size_t out_len);
+int lichen_meshcore_encode_serial_frame(uint8_t marker, const uint8_t *_Nonnull payload,
+					size_t payload_len, uint8_t *_Nonnull out,
 					size_t out_len);
 
 #endif /* LICHEN_MESHCORE_CODEC_H_ */

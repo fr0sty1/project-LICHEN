@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-8dy2",
+  "title": "task",
+  "description": "compact_cot.py:791-827 - _parse_xml_chat never sets dest_type=DIRECT or dest_iid. When XML with chatroom='0011223344556677' (a hex IID) is parsed, it doesn't match any team name, so it defaults to DestType.BROADCAST. Direct messages sent ATAK-\u003emesh-\u003eATAK lose their recipient. Failure scenario: User A sends direct message to User B via LICHEN mesh. User B receives it as a broadcast message visible to everyone instead of a private message.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T05:36:22.027959Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T00:54:12.171095Z",
+  "closed_at": "2026-07-12T00:54:12.171095Z",
+  "close_reason": "Already fixed: _parse_xml_chat now handles direct messages - checks for 16-char hex IID and sets dest_type=DIRECT + dest_iid (uncommitted change in working tree)"
+}

@@ -1,0 +1,6 @@
+# ninja log v7
+1	51	1783902455280153504	CMakeFiles/schnorr48_test.dir/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/crypto/monocypher-ed25519.c.o	a730a0be4868c2f
+1	56	1783902455279863804	CMakeFiles/schnorr48_test.dir/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/link/schnorr48.c.o	be1926669a598c2d
+1	58	1783902455279628519	CMakeFiles/schnorr48_test.dir/main.c.o	7c7189cf6968ab1a
+1	96	1783902455280013508	CMakeFiles/schnorr48_test.dir/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/lichen/crypto/monocypher.c.o	f661707c58391bd5
+96	141	1783902455375093943	schnorr48_test	20313d91957bdd1b

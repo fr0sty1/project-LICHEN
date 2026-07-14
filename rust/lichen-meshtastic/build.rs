@@ -11,6 +11,8 @@ fn main() -> Result<()> {
             "proto/meshtastic/portnums.proto",
             "proto/meshtastic/config.proto",
             "proto/meshtastic/telemetry.proto",
+            "proto/meshtastic/channel.proto",
+            "proto/meshtastic/module_config.proto",
         ],
         &[proto_dir],
     )?;

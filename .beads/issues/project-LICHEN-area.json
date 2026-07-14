@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-area",
+  "title": "task",
+  "description": "dispatch.rs:138-140 - Request::from_coap silently drops URI path segments beyond MAX_PATH_DEPTH (4). A request to /a/b/c/d/e would be parsed as /a/b/c/d with path_len=4. If a resource is registered for /a/b/c/d, the request incorrectly matches. Failure scenario: Client sends GET /config/sensors/zone1/temp/history, server has resource at /config/sensors/zone1/temp, request matches wrong resource due to truncation.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T05:27:34.597518Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T06:09:37.296247Z",
+  "closed_at": "2026-07-11T06:09:37.296247Z",
+  "close_reason": "Fixed: Added conditional logging (defmt/log) in Request::from_coap to warn when URI path segments beyond MAX_PATH_DEPTH are dropped"
+}

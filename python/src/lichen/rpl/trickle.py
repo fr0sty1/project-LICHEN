@@ -53,6 +53,7 @@ class TrickleTimer:
         self.interval_start = 0
         self.transmit_time = 0
         self._transmitted = False
+        self._generation = 0  # Incremented on each interval start to detect resets
 
     def start(self, now: int = 0) -> None:
         """Begin the first interval at ``now`` (RFC 6206 step 1-2)."""
@@ -64,6 +65,7 @@ class TrickleTimer:
         self.interval_start = now
         self.counter = 0
         self._transmitted = False
+        self._generation += 1
         half = self.interval / 2
         self.transmit_time = now + int(half + self._rng() * half)
 
@@ -124,9 +126,19 @@ class TrickleTimer:
         self.start(now_fn())
         completed = 0
         while max_intervals is None or completed < max_intervals:
+            gen = self._generation
             await sleep(max(0, self.transmit_time - now_fn()))
+            if self._generation != gen:
+                # reset() was called during sleep; restart with the new interval
+                continue
             if self.fire_transmit():
                 await transmit()
+                if self._generation != gen:
+                    # reset() was called during transmit; restart with the new interval
+                    continue
             await sleep(max(0, self.interval_end - now_fn()))
+            if self._generation != gen:
+                # reset() was called during sleep; restart with the new interval
+                continue
             self.expire(now_fn())
             completed += 1

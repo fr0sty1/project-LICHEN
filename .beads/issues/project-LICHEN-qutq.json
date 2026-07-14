@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-qutq",
+  "title": "course_cdeg not validated in decoder - accepts values \u003e 35999",
+  "description": "File: python/src/lichen/gateway/compact_cot.py\nLines: 253, 166-168\n\nThe decoder reads course as a uint16 (0-65535):\n```python\ncourse = struct.unpack('\u003eH', data[11:13])[0]\n```\n\nBut course_cdeg should only be 0-35999 (0-359.99 degrees). The encoder normalizes course to [0, 360) via modulo at line 774, producing centidegrees 0-35999. However, a malformed message with course_cdeg=40000 (400 degrees) would:\n\n1. Be decoded without error\n2. Produce course_deg = 400.0 via the property at lines 166-168\n3. Be semantically invalid (bearing must be 0-360)\n\nImpact: Invalid bearing data could confuse ATAK or downstream systems.\n\nFix: Validate in decoder:\n```python\nif course \u003e 35999:\n    raise DecodeError(f'Course {course} centidegrees exceeds 359.99 degrees')\n```\n\nOr normalize on decode (less strict):\n```python\ncourse = course % 36000  # Normalize to valid range\n```",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:17:20.385947Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:17:20.385984Z"
+}

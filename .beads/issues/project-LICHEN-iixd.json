@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-iixd",
+  "title": "TUI SimNodeApp stores sensitive node_id in instance variable",
+  "description": "File: python/src/lichen/tui/app.py\nLines: 205-228\n\nThe SimNodeApp constructor stores the node_id in instance:\n\n    def __init__(\n        self,\n        host: str = \"localhost\",\n        port: int = 4444,\n        sim_id: str = \"default\",\n        node_id: str = \"tui-node\",\n        position: tuple[float, float, float] = (0.0, 0.0, 0.0),\n    ) -\u003e None:\n        ...\n        self._node_id = node_id\n\nThe node_id is then displayed in the connection status (line 346) and logs (line 256-257).\n\nIf node_id contains sensitive information (like a user identifier or device serial), it's exposed in the UI. Additionally, logging it to the event log (which uses Rich markup) could be another markup injection vector.\n\nImpact: Minor - node IDs are typically not sensitive, but coupling them to UI display without sanitization is a pattern to avoid.\n\nNote: This is more of a design consideration than a bug. The node_id should be treated as untrusted input if it comes from external sources.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:31:07.213278Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:31:07.213312Z"
+}

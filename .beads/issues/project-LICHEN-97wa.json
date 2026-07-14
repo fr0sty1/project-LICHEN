@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-97wa",
+  "title": "router.c: lichen_router_on_route_discovered clears pending before caller can forward",
+  "description": "File: lichen/subsys/lichen/routing/router.c\nLines: 449-475\n\nIn lichen_router_on_route_discovered():\n\n    /* Install gradient entry */\n    struct lichen_gradient_entry entry = {...};\n    lichen_gradient_update(\u0026router-\u003egradient_table, \u0026entry, now_ms);\n\n    /* Clear and return count of pending packets */\n    return lichen_router_clear_pending(router, dst_iid);\n\nThe function clears pending packets and returns the count, but the caller has no way to access the packets before they're cleared!\n\nThe intended flow appears to be:\n1. Discovery completes\n2. Call on_route_discovered() to install route\n3. Forward pending packets\n\nBut step 3 is impossible because on_route_discovered() already cleared them. The caller should:\n1. Get pending packets via lichen_router_get_pending()\n2. Forward them\n3. Then call on_route_discovered() or clear_pending()\n\nOr on_route_discovered() should return the packets rather than just a count. The current API forces callers to get_pending() BEFORE calling on_route_discovered(), which is error-prone.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:52:18.296828Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:52:18.296866Z"
+}

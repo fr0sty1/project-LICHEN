@@ -68,6 +68,11 @@ PLI_PAYLOAD_FORMAT = ">iihHHBB"  # Note: alt is signed, course/speed unsigned
 PLI_PAYLOAD_SIZE = struct.calcsize(PLI_PAYLOAD_FORMAT)  # 16 bytes
 PLI_TOTAL_SIZE = 1 + PLI_PAYLOAD_SIZE  # 17 bytes with subtype
 
+# int16 range for altitude in decimeters (-3276.8m to +3276.7m)
+INT16_MIN = -32768
+INT16_MAX = 32767
+UINT16_MAX = 65535
+
 
 @dataclass(frozen=True)
 class PliPayload:
@@ -113,12 +118,17 @@ class PliPayload:
             team: Team identifier.
             role: Role identifier.
         """
+        # Clamp altitude to int16 range (-3276.8m to +3276.7m)
+        alt_dm = max(INT16_MIN, min(INT16_MAX, int(alt_m * 10)))
+        # Clamp speed to uint16 range (0 to 655.35 m/s)
+        speed_cm_s = min(UINT16_MAX, max(0, int(speed_m_s * 100)))
+
         return cls(
             lat_microdeg=int(lat * 1_000_000),
             lon_microdeg=int(lon * 1_000_000),
-            alt_dm=int(alt_m * 10),
+            alt_dm=alt_dm,
             course_cdeg=int(course_deg * 100),
-            speed_cm_s=int(speed_m_s * 100),
+            speed_cm_s=speed_cm_s,
             team=team,
             role=role,
         )
@@ -625,14 +635,27 @@ def _parse_xml_chat(root: ET.Element) -> CompactCot:
     # <marti><dest callsign="..."/></marti> which we could parse later.
     dest = ChatDest.broadcast()
 
-    # Check for team destination in __chat element
+    # Check for team or direct destination in __chat element
     chat_elem = detail.find("__chat")
     if chat_elem is not None:
         chat_group = chat_elem.get("chatroom")
         if chat_group:
-            team = TEAM_BY_NAME.get(chat_group.lower())
-            if team:
-                dest = ChatDest.to_team(team)
+            # Check if it's a direct message (hex IID = 16 hex chars = 8 bytes)
+            if len(chat_group) == 16:
+                try:
+                    iid = bytes.fromhex(chat_group)
+                    dest = ChatDest.direct(iid)
+                except ValueError:
+                    pass  # Not valid hex, fall through to team lookup
+            if dest.dest_type == DestType.BROADCAST:
+                # Not a direct message, check for team destination
+                # Handle both "Blue" and "Team Blue" formats (roundtrip)
+                team_name = chat_group.lower()
+                if team_name.startswith("team "):
+                    team_name = team_name[5:]
+                team = TEAM_BY_NAME.get(team_name)
+                if team:
+                    dest = ChatDest.to_team(team)
 
     return (CotSubtype.CHAT, ChatPayload(dest=dest, message=message))
 

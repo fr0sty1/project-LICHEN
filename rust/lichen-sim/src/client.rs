@@ -84,6 +84,9 @@ impl std::error::Error for SimError {
 pub struct SimClient {
     reader: BufReader<OwnedReadHalf>,
     writer: OwnedWriteHalf,
+    /// Set when a protocol error leaves the stream in an inconsistent state.
+    /// Once poisoned, all further operations will fail.
+    poisoned: bool,
 }
 
 impl SimClient {
@@ -101,6 +104,7 @@ impl SimClient {
         let mut client = Self {
             reader: BufReader::new(r),
             writer: w,
+            poisoned: false,
         };
         client.register(sim_id, node_id, x, y, z).await?;
         Ok(client)
@@ -219,6 +223,9 @@ impl SimClient {
     }
 
     async fn send_msg(&mut self, body: &[u8]) -> Result<(), SimError> {
+        if self.poisoned {
+            return Err(SimError::Protocol("connection poisoned by prior protocol error"));
+        }
         self.writer
             .write_all(&(body.len() as u32).to_le_bytes())
             .await?;
@@ -227,11 +234,18 @@ impl SimClient {
     }
 
     async fn recv_msg(&mut self) -> Result<Vec<u8>, SimError> {
+        if self.poisoned {
+            return Err(SimError::Protocol("connection poisoned by prior protocol error"));
+        }
         let mut len_bytes = [0u8; 4];
         self.reader.read_exact(&mut len_bytes).await?;
         let len = u32::from_le_bytes(len_bytes) as usize;
-        // SECURITY: Bound allocation to prevent DoS from malicious length values
+        // SECURITY: Bound allocation to prevent DoS from malicious length values.
+        // If the message is too large, we've consumed the 4-byte header but cannot
+        // safely read the body (could be gigabytes). Mark connection poisoned to
+        // prevent desync on subsequent calls.
         if len > MAX_MSG_LEN {
+            self.poisoned = true;
             return Err(SimError::Protocol("message too large"));
         }
         let mut body = vec![0u8; len];

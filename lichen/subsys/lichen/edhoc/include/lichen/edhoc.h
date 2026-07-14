@@ -16,6 +16,19 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -173,10 +186,10 @@ struct edhoc_responder {
  * @param c_i_len Length of c_i
  * @return 0 on success, negative on error
  */
-int edhoc_initiator_init(struct edhoc_initiator *ctx,
-			 const uint8_t *ed_seed,
-			 const uint8_t *ed_pubkey,
-			 const uint8_t *c_i, size_t c_i_len);
+int edhoc_initiator_init(struct edhoc_initiator *_Nonnull ctx,
+			 const uint8_t *_Nonnull ed_seed,
+			 const uint8_t *_Nonnull ed_pubkey,
+			 const uint8_t *_Nonnull c_i, size_t c_i_len);
 
 /**
  * @brief Create EDHOC Message 1
@@ -187,9 +200,9 @@ int edhoc_initiator_init(struct edhoc_initiator *ctx,
  * @param msg1_len Output: actual message length
  * @return 0 on success, negative on error
  */
-int edhoc_initiator_create_msg1(struct edhoc_initiator *ctx,
-				uint8_t *msg1, size_t msg1_size,
-				size_t *msg1_len);
+int edhoc_initiator_create_msg1(struct edhoc_initiator *_Nonnull ctx,
+				uint8_t *_Nonnull msg1, size_t msg1_size,
+				size_t *_Nonnull msg1_len);
 
 /**
  * @brief Process EDHOC Message 2 and create Message 3
@@ -203,11 +216,11 @@ int edhoc_initiator_create_msg1(struct edhoc_initiator *ctx,
  * @param msg3_len Output: actual message length
  * @return 0 on success, negative on error
  */
-int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
-				 const uint8_t *msg2, size_t msg2_len,
-				 const uint8_t *peer_pubkey,
-				 uint8_t *msg3, size_t msg3_size,
-				 size_t *msg3_len);
+int edhoc_initiator_process_msg2(struct edhoc_initiator *_Nonnull ctx,
+				 const uint8_t *_Nonnull msg2, size_t msg2_len,
+				 const uint8_t *_Nonnull peer_pubkey,
+				 uint8_t *_Nonnull msg3, size_t msg3_size,
+				 size_t *_Nonnull msg3_len);
 
 /**
  * @brief Export OSCORE context from completed initiator
@@ -219,8 +232,8 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
  * @param oscore Output OSCORE context
  * @return 0 on success, negative on error
  */
-int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
-				  struct edhoc_oscore_ctx *oscore);
+int edhoc_initiator_export_oscore(struct edhoc_initiator *_Nonnull ctx,
+				  struct edhoc_oscore_ctx *_Nonnull oscore);
 
 /**
  * @brief Initialize EDHOC responder
@@ -232,10 +245,10 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
  * @param c_r_len Length of c_r
  * @return 0 on success, negative on error
  */
-int edhoc_responder_init(struct edhoc_responder *ctx,
-			 const uint8_t *ed_seed,
-			 const uint8_t *ed_pubkey,
-			 const uint8_t *c_r, size_t c_r_len);
+int edhoc_responder_init(struct edhoc_responder *_Nonnull ctx,
+			 const uint8_t *_Nonnull ed_seed,
+			 const uint8_t *_Nonnull ed_pubkey,
+			 const uint8_t *_Nonnull c_r, size_t c_r_len);
 
 /**
  * @brief Process EDHOC Message 1 and create Message 2
@@ -248,10 +261,10 @@ int edhoc_responder_init(struct edhoc_responder *ctx,
  * @param msg2_len Output: actual message length
  * @return 0 on success, negative on error
  */
-int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
-				 const uint8_t *msg1, size_t msg1_len,
-				 uint8_t *msg2, size_t msg2_size,
-				 size_t *msg2_len);
+int edhoc_responder_process_msg1(struct edhoc_responder *_Nonnull ctx,
+				 const uint8_t *_Nonnull msg1, size_t msg1_len,
+				 uint8_t *_Nonnull msg2, size_t msg2_size,
+				 size_t *_Nonnull msg2_len);
 
 /**
  * @brief Process EDHOC Message 3
@@ -262,9 +275,9 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
  * @param peer_pubkey Initiator's Ed25519 public key (32 bytes)
  * @return 0 on success, negative on error
  */
-int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
-				 const uint8_t *msg3, size_t msg3_len,
-				 const uint8_t *peer_pubkey);
+int edhoc_responder_process_msg3(struct edhoc_responder *_Nonnull ctx,
+				 const uint8_t *_Nonnull msg3, size_t msg3_len,
+				 const uint8_t *_Nonnull peer_pubkey);
 
 /**
  * @brief Export OSCORE context from completed responder
@@ -276,18 +289,18 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
  * @param oscore Output OSCORE context
  * @return 0 on success, negative on error
  */
-int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
-				  struct edhoc_oscore_ctx *oscore);
+int edhoc_responder_export_oscore(struct edhoc_responder *_Nonnull ctx,
+				  struct edhoc_oscore_ctx *_Nonnull oscore);
 
 /**
  * @brief Wipe sensitive data from initiator context
  */
-void edhoc_initiator_wipe(struct edhoc_initiator *ctx);
+void edhoc_initiator_wipe(struct edhoc_initiator *_Nullable ctx);
 
 /**
  * @brief Wipe sensitive data from responder context
  */
-void edhoc_responder_wipe(struct edhoc_responder *ctx);
+void edhoc_responder_wipe(struct edhoc_responder *_Nullable ctx);
 
 #ifdef __cplusplus
 }

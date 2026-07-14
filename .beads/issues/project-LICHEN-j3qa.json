@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-j3qa",
+  "title": "router.c: Dangling pointer risk - packet_data not copied despite header claiming copy",
+  "description": "File: lichen/subsys/lichen/routing/router.c\nLines: 331, 666\n\nIn lichen_router_queue_pending() line 331:\n    slot-\u003epacket_data = (uint8_t *)packet_data;  /* Note: caller owns data */\n\nIn lichen_router_dtn_buffer() line 666:\n    slot-\u003edata = (uint8_t *)data;  /* Note: caller owns data */\n\nThe header file router.h says 'copied' in the documentation:\n- Line 326: '@param packet_data Packet data to queue (copied).'\n- Line 441: '@param data Message data (copied).'\n\nBut the implementation does NOT copy the data - it stores the raw pointer. If the caller frees or reuses the buffer, these become dangling pointers leading to use-after-free bugs.\n\nEither the implementation should actually copy the data, or the header documentation must be corrected to reflect the actual ownership semantics.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:49:24.343242Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T16:20:21.371682Z",
+  "closed_at": "2026-07-12T16:20:21.371682Z",
+  "close_reason": "Fixed use-after-free vulnerability: lichen_router_queue_pending and lichen_router_dtn_buffer now copy data into static buffers instead of storing raw pointers. Added CONFIG_LICHEN_ROUTER_MAX_PENDING_PACKET_SIZE (256) and CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGE_SIZE (512) configs. Header documentation now matches implementation. Added SECURITY comments explaining the fix."
+}

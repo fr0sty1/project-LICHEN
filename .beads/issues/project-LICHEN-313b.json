@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-313b",
+  "title": "TUI message_preview uses str() on timestamp which may produce unreadable output",
+  "description": "File: python/src/lichen/tui/native.py\nLines: 389-400\n\nThe message_preview function converts timestamps using str():\n\n    def message_preview(record: MessageRecord, *, unread: bool = False) -\u003e MessagePreview:\n        target = record.sender or record.recipient or \"--\"\n        age = str(record.received or record.timestamp or \"--\")\n        ...\n\nIf record.received or record.timestamp is a datetime object, str() produces:\n    \"2026-07-11 14:30:45.123456\"\n\nThis is 26 characters, which doesn't fit well in the age field (line 380 uses {:\u003e5} which expects ~5 chars).\n\nIf it's an integer timestamp, str() produces the raw number which is also not human-friendly.\n\nImpact: Age column in message list may be unreadable or overflow its allocated space.\n\nFix: Format timestamps appropriately:\n    if isinstance(ts := (record.received or record.timestamp), datetime):\n        age = ts.strftime(\"%H:%M\")\n    elif isinstance(ts, int | float):\n        # Assume seconds since epoch\n        age = datetime.fromtimestamp(ts).strftime(\"%H:%M\")\n    else:\n        age = str(ts) if ts else \"--\"",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:30:58.063482Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:30:58.063514Z"
+}

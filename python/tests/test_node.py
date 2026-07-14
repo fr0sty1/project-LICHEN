@@ -228,6 +228,26 @@ class TestStatus:
         status = node.get_status()
         assert status["peers"] == 1
 
+    def test_get_queue_stats(self, node: Node):
+        """get_queue_stats returns expected fields per bufferbloat spec."""
+        stats = node.get_queue_stats()
+
+        # Fields from spec/appendix-bufferbloat.md lines 138-152
+        assert "packets_queued" in stats
+        assert "packets_dropped_deadline" in stats
+        assert "packets_dropped_full" in stats
+        assert "max_latency_ms" in stats
+        assert "avg_latency_ms" in stats
+
+        # All values should be integers
+        for key, value in stats.items():
+            assert isinstance(value, int), f"{key} should be int, got {type(value)}"
+
+        # Initial values should be zero
+        assert stats["packets_queued"] == 0
+        assert stats["max_latency_ms"] == 0
+        assert stats["avg_latency_ms"] == 0
+
 
 class TestCallback:
     """Tests for receive callback."""

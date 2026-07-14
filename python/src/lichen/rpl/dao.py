@@ -127,6 +127,12 @@ class DaoManager:
         """
         if not self.is_root:
             raise DaoError("process_dao is only valid on the root")
+        # SECURITY: RFC 6550 Section 9.5 requires filtering DAOs by RPL Instance ID.
+        # Accepting DAOs from a different instance could corrupt the routing table.
+        if dao.rpl_instance_id != self.rpl_instance_id:
+            raise DaoError(
+                f"DAO instance ID {dao.rpl_instance_id} != {self.rpl_instance_id}"
+            )
 
         target, parent = self._extract_edge(dao)
         self._parent_map[target] = parent
@@ -180,10 +186,16 @@ class DaoManager:
         return target, parent
 
     def _rebuild_routes(self) -> None:
+        """Rebuild the routing table from the parent map.
+
+        Skips targets that cannot be routed:
+        - None: incomplete chain (parent not yet advertised) or loop detected
+        - []: target equals node_address (pathological: root routing to itself)
+        """
         self.routing_table._routes.clear()
         for target in self._parent_map:
             path = self._assemble_path(target)
-            if path is not None:
+            if path:
                 self.routing_table.add_route(target, path)
 
     def _assemble_path(self, target: IPv6Address) -> list[IPv6Address] | None:

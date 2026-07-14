@@ -1,0 +1,14 @@
+common:
+  tags:
+    - lichen
+    - routing
+tests:
+  net.lichen.routing_gpsr:
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
+      - qemu_x86
+    integration_platforms:
+      - native_sim
+      - native_sim/native/64
+      - qemu_x86

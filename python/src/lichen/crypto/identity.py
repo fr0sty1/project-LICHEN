@@ -18,9 +18,15 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from hashlib import sha256
+from hashlib import sha256, sha512
+from typing import TYPE_CHECKING
+
+from nacl.bindings import crypto_scalarmult_base
 
 from .schnorr48 import derive_keypair
+
+if TYPE_CHECKING:
+    pass
 
 
 @dataclass(slots=True)
@@ -78,6 +84,35 @@ class Identity:
 
     def __repr__(self) -> str:
         return f"Identity(pubkey={self.pubkey.hex()[:16]}..., iid={self.iid.hex()})"
+
+    @property
+    def x25519_private(self) -> bytes:
+        """Derive X25519 private key from Ed25519 seed.
+
+        Per spec section 8.8 (EDHOC key agreement):
+            x25519_private = SHA-512(ed25519_seed)[0:32]
+
+        This allows reusing the Ed25519 keypair for EDHOC key agreement
+        without storing additional keys.
+
+        Returns:
+            32-byte X25519 private key suitable for ECDH operations.
+        """
+        # SECURITY: SHA-512 of seed, take first 32 bytes.
+        # X25519 operations internally apply clamping, so we return raw bytes.
+        return sha512(self.seed).digest()[:32]
+
+    @property
+    def x25519_public(self) -> bytes:
+        """Derive X25519 public key from Ed25519 seed.
+
+        Per spec section 8.8 (EDHOC key agreement):
+            x25519_public = X25519(x25519_private, basepoint)
+
+        Returns:
+            32-byte X25519 public key for ECDH key agreement.
+        """
+        return crypto_scalarmult_base(self.x25519_private)
 
 
 def _pubkey_to_iid(pubkey: bytes) -> bytes:

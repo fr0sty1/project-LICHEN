@@ -368,3 +368,35 @@ size_t lichen_gateway_encode_status_cbor(
 
 	return off;
 }
+
+size_t lichen_gateway_encode_queues_cbor(
+	uint8_t *buf, size_t buf_size,
+	const struct lichen_gateway_queue_stats *stats)
+{
+	size_t off = 0;
+
+	if (buf == NULL || stats == NULL ||
+	    buf_size < LICHEN_GATEWAY_QUEUES_CBOR_MAX_SIZE) {
+		return 0;
+	}
+
+	/* 5-element map */
+	cbor_put_map_header(buf, &off, 5);
+
+	cbor_put_key(buf, &off, "packets_queued");
+	cbor_put_uint(buf, &off, stats->packets_queued);
+
+	cbor_put_key(buf, &off, "dropped_deadline");
+	cbor_put_uint(buf, &off, stats->packets_dropped_deadline);
+
+	cbor_put_key(buf, &off, "dropped_full");
+	cbor_put_uint(buf, &off, stats->packets_dropped_full);
+
+	cbor_put_key(buf, &off, "max_latency_ms");
+	cbor_put_uint(buf, &off, stats->max_latency_ms);
+
+	cbor_put_key(buf, &off, "avg_latency_ms");
+	cbor_put_uint(buf, &off, stats->avg_latency_ms);
+
+	return off;
+}

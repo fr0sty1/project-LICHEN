@@ -1,0 +1,1 @@
+/usr/bin/clang -g -arch arm64 -Wl,-search_paths_first -Wl,-headerpad_max_install_names -fsanitize=address,undefined -fno-omit-frame-pointer CMakeFiles/fuzz_schc.dir/fuzz_schc.c.o "CMakeFiles/fuzz_schc.dir/Volumes/Attic/Desktop/Projects/project-LICHEN/lichen/subsys/schc/schc.c.o" -o fuzz_schc

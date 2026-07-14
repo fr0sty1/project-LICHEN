@@ -2364,11 +2364,13 @@ class NativeClientApp(App[None]):
             subscription = await self.client.observe_raw_rx_events()
             try:
                 async for event in subscription.events():
+                    # Trim raw_events to prevent unbounded memory growth (only last 3 displayed)
+                    raw_events = (self.diagnostics.raw_events + (event,))[-10:]
                     self._set_diagnostics_state(
                         DiagnosticsState(
                             rows=self.diagnostics.rows,
                             raw_rx_status=self.diagnostics.raw_rx_status,
-                            raw_events=self.diagnostics.raw_events + (event,),
+                            raw_events=raw_events,
                             raw_available=event.state is not RawDiagnosticState.UNSUPPORTED,
                             admin_enabled=True,
                             last_raw_action=self.diagnostics.last_raw_action,

@@ -8,6 +8,19 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -178,15 +191,15 @@ struct lichen_app_config_snapshot {
 };
 
 typedef int (*lichen_app_interface_text_fn)(
-	const struct lichen_app_text_event *event, void *user_data);
+	const struct lichen_app_text_event *_Nonnull event, void *_Nullable user_data);
 typedef int (*lichen_app_interface_status_fn)(
-	const struct lichen_app_status_event *event, void *user_data);
+	const struct lichen_app_status_event *_Nonnull event, void *_Nullable user_data);
 typedef int (*lichen_app_interface_get_status_fn)(
-	struct lichen_app_status_snapshot *status, void *user_data);
+	struct lichen_app_status_snapshot *_Nonnull status, void *_Nullable user_data);
 typedef int (*lichen_app_interface_get_config_fn)(
-	struct lichen_app_config_snapshot *config, void *user_data);
+	struct lichen_app_config_snapshot *_Nonnull config, void *_Nullable user_data);
 typedef int (*lichen_app_interface_set_config_fn)(
-	const struct lichen_app_config_snapshot *config, void *user_data);
+	const struct lichen_app_config_snapshot *_Nonnull config, void *_Nullable user_data);
 
 struct lichen_app_interface_sink {
 	lichen_app_interface_text_fn emit_text;
@@ -204,42 +217,42 @@ struct lichen_app_interface_sink {
  * storage valid until the caller has externally excluded concurrent emits.
  */
 int lichen_app_interface_register_sink(
-	const struct lichen_app_interface_sink *sink, uint8_t *out_id);
+	const struct lichen_app_interface_sink *_Nonnull sink, uint8_t *_Nonnull out_id);
 int lichen_app_interface_unregister_sink(uint8_t sink_id);
 
 int lichen_app_interface_emit_text(
-	const struct lichen_app_text_event *event);
+	const struct lichen_app_text_event *_Nonnull event);
 int lichen_app_interface_submit_text(
-	const struct lichen_app_text_event *event);
+	const struct lichen_app_text_event *_Nonnull event);
 int lichen_app_interface_emit_status(
-	const struct lichen_app_status_event *event);
+	const struct lichen_app_status_event *_Nonnull event);
 
 int lichen_app_interface_get_status(
-	struct lichen_app_status_snapshot *status);
+	struct lichen_app_status_snapshot *_Nonnull status);
 int lichen_app_interface_get_config(
-	struct lichen_app_config_snapshot *config);
+	struct lichen_app_config_snapshot *_Nonnull config);
 int lichen_app_interface_set_config(
-	const struct lichen_app_config_snapshot *config);
+	const struct lichen_app_config_snapshot *_Nonnull config);
 /*
  * Submit app/local-client location metadata into the firmware-wide location
  * provider. Omitted source_class defaults to LOCAL_CLIENT.
  */
 int lichen_app_interface_submit_location(
-	const struct lichen_app_location_time_snapshot *location);
+	const struct lichen_app_location_time_snapshot *_Nonnull location);
 int lichen_app_interface_submit_network_location(
-	const struct lichen_app_location_time_snapshot *location);
+	const struct lichen_app_location_time_snapshot *_Nonnull location);
 int lichen_app_interface_clear_network_location(void);
 int lichen_app_interface_submit_manual_location(
-	const struct lichen_app_location_time_snapshot *location);
+	const struct lichen_app_location_time_snapshot *_Nonnull location);
 int lichen_app_interface_submit_time(
-	const struct lichen_app_time_snapshot *time);
+	const struct lichen_app_time_snapshot *_Nonnull time);
 int lichen_app_interface_submit_network_time(
-	const struct lichen_app_time_snapshot *time);
+	const struct lichen_app_time_snapshot *_Nonnull time);
 int lichen_app_interface_submit_manual_time(
-	const struct lichen_app_time_snapshot *time);
+	const struct lichen_app_time_snapshot *_Nonnull time);
 
 int lichen_app_interface_copy_stats(
-	struct lichen_app_interface_stats *stats);
+	struct lichen_app_interface_stats *_Nonnull stats);
 
 #ifdef CONFIG_LICHEN_APP_INTERFACE_TEST_HOOKS
 void lichen_app_interface_test_reset(void);

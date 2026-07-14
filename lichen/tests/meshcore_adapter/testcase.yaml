@@ -3,10 +3,14 @@
 
 tests:
   net.lichen.meshcore_adapter:
-    platform_allow: native_sim
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
     tags: meshcore
   net.lichen.meshcore_adapter.identity:
-    platform_allow: native_sim
+    platform_allow:
+      - native_sim
+      - native_sim/native/64
     tags: meshcore app-identity
     extra_args:
       - CONF_FILE=prj.conf;prj_identity.conf

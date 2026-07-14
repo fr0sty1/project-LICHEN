@@ -176,3 +176,27 @@ def test_process_dio_rejects_invalid_neighbor_id_type() -> None:
 
     with pytest.raises(TypeError, match="neighbor_id must be IPv6Address or str"):
         node.process_dio(dio, ["fe80::1"], link_etx=1.0)  # type: ignore[arg-type]
+
+
+def test_parents_dict_defensive_copy() -> None:
+    """Verify that passing a shared parents dict does not cause cross-state pollution."""
+    from lichen.rpl.dodag import ParentCandidate
+
+    shared_dict: dict[IPv6Address, ParentCandidate] = {}
+    state1 = DodagState(
+        rpl_instance_id=0, dodag_id=DODAG_ID, version=1, parents=shared_dict
+    )
+    state2 = DodagState(
+        rpl_instance_id=0, dodag_id=DODAG_ID, version=1, parents=shared_dict
+    )
+
+    # Modify state1's parents
+    state1.process_dio(_dio(256), P1, link_etx=1.0)
+
+    # state2 should NOT see P1 in its parents (defensive copy prevents pollution)
+    assert P1 in state1.parents
+    assert P1 not in state2.parents
+    assert len(state2.parents) == 0
+
+    # Original shared_dict should be empty (it was copied, not used directly)
+    assert len(shared_dict) == 0

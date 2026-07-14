@@ -9,9 +9,11 @@ tests:
       - time
     platform_allow:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     integration_platforms:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     extra_args:
       - LICHEN_BUILD_EPOCH_TEST_CASE=source_date_epoch
@@ -22,9 +24,11 @@ tests:
       - time
     platform_allow:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     integration_platforms:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     extra_args:
       - LICHEN_BUILD_EPOCH_TEST_CASE=release
@@ -35,9 +39,11 @@ tests:
       - time
     platform_allow:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     integration_platforms:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     extra_args:
       - LICHEN_BUILD_EPOCH_TEST_CASE=developer_generated
@@ -48,9 +54,11 @@ tests:
       - time
     platform_allow:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     integration_platforms:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     extra_args:
       - LICHEN_BUILD_EPOCH_TEST_CASE=developer_fixed

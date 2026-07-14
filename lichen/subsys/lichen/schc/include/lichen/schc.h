@@ -13,6 +13,8 @@
  *   Rule 2: ICMPv6 Echo (link-local)
  *   Rule 3: RPL DIO (link-local ICMPv6)
  *   Rule 4: RPL DAO (link-local ICMPv6)
+ *   Rule 5: link-local IPv6 + UDP + OSCORE-protected CoAP
+ *   Rule 6: global IPv6 + UDP + OSCORE-protected CoAP
  *   Rule 255: uncompressed passthrough
  *
  * Compression target: 48+ byte IPv6/UDP header to 3-6 bytes.
@@ -62,6 +64,19 @@
 #include <stddef.h>
 #include <schc/schc.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifndef LICHEN_WARN_UNUSED_RESULT
 #if defined(__GNUC__) || defined(__clang__)
 #define LICHEN_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
@@ -75,12 +90,14 @@ extern "C" {
 #endif
 
 /** SCHC rule IDs matching constants.toml */
-#define SCHC_RULE_LINK_LOCAL_COAP  0
-#define SCHC_RULE_GLOBAL_COAP      1
-#define SCHC_RULE_ICMPV6_ECHO      2
-#define SCHC_RULE_RPL_DIO          3
-#define SCHC_RULE_RPL_DAO          4
-#define SCHC_RULE_UNCOMPRESSED     255
+#define SCHC_RULE_LINK_LOCAL_COAP   0
+#define SCHC_RULE_GLOBAL_COAP       1
+#define SCHC_RULE_ICMPV6_ECHO       2
+#define SCHC_RULE_RPL_DIO           3
+#define SCHC_RULE_RPL_DAO           4
+#define SCHC_RULE_LINK_LOCAL_OSCORE 5
+#define SCHC_RULE_GLOBAL_OSCORE     6
+#define SCHC_RULE_UNCOMPRESSED      255
 
 /**
  * @brief Compress an IPv6 packet using SCHC.
@@ -98,8 +115,8 @@ extern "C" {
  * @return Number of bytes written to @p out, or negative error code
  */
 LICHEN_WARN_UNUSED_RESULT
-int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
-			 uint8_t *out, size_t out_len);
+int lichen_schc_compress(const uint8_t *_Nonnull packet, size_t pkt_len,
+			 uint8_t *_Nonnull out, size_t out_len);
 
 /**
  * @brief Decompress a SCHC packet to full IPv6.
@@ -114,8 +131,8 @@ int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
  * @return Number of bytes written to @p out, or negative error code
  */
 LICHEN_WARN_UNUSED_RESULT
-int lichen_schc_decompress(const uint8_t *data, size_t data_len,
-			   uint8_t *out, size_t out_len);
+int lichen_schc_decompress(const uint8_t *_Nonnull data, size_t data_len,
+			   uint8_t *_Nonnull out, size_t out_len);
 
 /**
  * @brief Get the rule ID from compressed SCHC data.
@@ -123,7 +140,7 @@ int lichen_schc_decompress(const uint8_t *data, size_t data_len,
  * @param[in] data  Compressed SCHC data
  * @return Rule ID (first byte), or -1 if data is empty
  */
-static inline int lichen_schc_rule_id(const uint8_t *data, size_t len)
+static inline int lichen_schc_rule_id(const uint8_t *_Nullable data, size_t len)
 {
 	return schc_rule_id(data, len);
 }

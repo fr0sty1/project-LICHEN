@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-ag6g",
+  "title": "sort_peers_by_eui64 uses insertion sort - O(n^2) for large peer counts",
+  "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:1051-1065\n\n  static void sort_peers_by_eui64(struct nodedb_peer_state *state)\n  {\n      for (size_t i = 1U; i \u003c state-\u003epeer_count; i++) {\n          struct lichen_meshtastic_peer_snapshot peer = state-\u003epeers[i];\n          size_t j = i;\n          while (j \u003e 0U \u0026\u0026\n                 memcmp(state-\u003epeers[j - 1U].eui64, peer.eui64, sizeof(peer.eui64)) \u003e 0) {\n              state-\u003epeers[j] = state-\u003epeers[j - 1U];\n              j--;\n          }\n          state-\u003epeers[j] = peer;\n      }\n  }\n\nThis is O(n^2) insertion sort. With MESHTASTIC_NODEDB_MAX_PEERS potentially being a configurable value, large peer counts could cause performance issues.\n\nFor embedded systems with small peer counts (e.g., \u003c50), this is acceptable. But if peer_count could reach hundreds, consider qsort() or other O(n log n) algorithm.\n\nAlso, each swap copies the full lichen_meshtastic_peer_snapshot struct (56+ bytes). Consider sorting indices instead.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:49:28.186041Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:49:28.18608Z"
+}

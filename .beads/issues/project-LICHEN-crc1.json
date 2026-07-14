@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-crc1",
+  "title": "Duplicate _internet_checksum implementation across modules",
+  "description": "File: python/src/lichen/ipv6/udp.py:24-32 and python/src/lichen/ipv6/icmpv6.py:61-70\n\nThe _internet_checksum() function is duplicated identically in both udp.py and icmpv6.py:\n\n```python\ndef _internet_checksum(data: bytes) -\u003e int:\n    if len(data) % 2:\n        data += b'\\x00'\n    total = 0\n    for i in range(0, len(data), 2):\n        total += (data[i] \u003c\u003c 8) | data[i + 1]\n    while total \u003e\u003e 16:\n        total = (total \u0026 0xFFFF) + (total \u003e\u003e 16)\n    return (~total) \u0026 0xFFFF\n```\n\nThis violates DRY (Don't Repeat Yourself) and creates a maintenance burden - any fix to the checksum algorithm would need to be applied in two places.\n\nFix: Extract to a shared utility module (e.g., lichen/ipv6/checksum.py or lichen/util.py) and import from both locations.\n\nTags: maintenance, code-quality, ipv6",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "improvement",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:21:10.956162Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:21:10.956199Z"
+}

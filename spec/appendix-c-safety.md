@@ -185,6 +185,26 @@ Run in CI:
 clang-tidy --config-file=.clang-tidy lichen/subsys/lichen/**/*.c
 ```
 
+### Coverity Scan (Weekly)
+
+Coverity Scan provides deeper static analysis than clang-tidy. It is free for
+open-source projects and runs weekly via `.github/workflows/coverity.yml`.
+
+**Setup (required once per fork):**
+
+1. Register at https://scan.coverity.com/ using the GitHub repo URL
+2. Add repository secrets in GitHub (Settings > Secrets > Actions):
+   - `COVERITY_SCAN_TOKEN`: From Coverity project settings
+   - `COVERITY_SCAN_EMAIL`: Email registered with Coverity
+
+The workflow submits builds weekly and on manual trigger. Results are available
+on the Coverity Scan dashboard (not inline in CI).
+
+**Limitations:**
+- Coverity Scan does not provide synchronous CI results (no fail-fast on defects)
+- Review the dashboard manually after each weekly scan
+- New high-severity issues should be addressed before release
+
 ## Fuzzing (Mandatory for Parsers)
 
 All code that parses untrusted input MUST be fuzz-tested:

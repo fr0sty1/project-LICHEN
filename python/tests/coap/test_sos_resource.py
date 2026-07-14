@@ -145,6 +145,22 @@ class TestSosPutDelete:
             await client.shutdown()
             await server.shutdown()
 
+    async def test_put_nonstring_from_returns_bad_request(self) -> None:
+        """Non-string 'from' field (e.g. integer) must be rejected."""
+        client, server, sos = await _setup()
+        try:
+            # "from" as integer instead of hex string
+            body = cbor2.dumps({"from": 12345, "t": _T0})
+            resp = await client.request(
+                Message(code=PUT, uri="coap://srv/sos",
+                        payload=body, content_format=60)
+            ).response
+            assert resp.code == aiocoap.BAD_REQUEST
+            assert sos._active is False  # should not activate
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
     async def test_delete_cancels_sos(self) -> None:
         client, server, sos = await _setup()
         try:

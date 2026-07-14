@@ -295,9 +295,16 @@ class EdhocInitiator:
         # First item: bstr containing G_Y (32 bytes) concatenated with CIPHERTEXT_2
         # Second item: C_R (connection identifier)
         items = _decode_cbor_sequence(msg2)
+        if len(items) < 2:
+            raise ValueError(f"Malformed message_2: expected 2 CBOR items, got {len(items)}")
         g_y_ciphertext_2 = items[0]
         c_r_raw = items[1]
 
+        if len(g_y_ciphertext_2) < X25519_KEY_LEN:
+            raise ValueError(
+                f"Message 2 too short: G_Y requires {X25519_KEY_LEN} bytes, "
+                f"got {len(g_y_ciphertext_2)}"
+            )
         self._g_y = g_y_ciphertext_2[:X25519_KEY_LEN]
         ciphertext_2 = g_y_ciphertext_2[X25519_KEY_LEN:]
         self._c_r = _decode_connection_id(c_r_raw)
@@ -322,9 +329,13 @@ class EdhocInitiator:
         # PLAINTEXT_2 = (ID_CRED_R, Signature_or_MAC_2, ?EAD_2)
         # For SIGN_SIGN, ID_CRED_R is bstr (pubkey), followed by Signature_2
         pt2_items = _decode_cbor_sequence(plaintext_2)
+        if len(pt2_items) < 2:
+            raise ValueError(
+                f"Malformed PLAINTEXT_2: expected at least 2 CBOR items, got {len(pt2_items)}"
+            )
 
-        id_cred_r = pt2_items[0] if len(pt2_items) > 0 else b""
-        signature_2 = pt2_items[1] if len(pt2_items) > 1 else b""
+        id_cred_r = pt2_items[0]
+        signature_2 = pt2_items[1]
 
         # PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
         self._prk_3e2m = self._prk_2e
@@ -505,6 +516,10 @@ class EdhocResponder:
 
         # Decode message_1 = (METHOD_CORR, SUITES_I, G_X, C_I, ?EAD_1)
         items = _decode_cbor_sequence(msg1)
+        if len(items) < 4:
+            raise ValueError(
+                f"Malformed message_1: expected at least 4 CBOR items, got {len(items)}"
+            )
 
         suites_i = items[1]
         self._g_x = items[2]
@@ -591,6 +606,10 @@ class EdhocResponder:
 
         # Parse PLAINTEXT_3 = (ID_CRED_I, Signature_3, ?EAD_3)
         pt3_items = _decode_cbor_sequence(plaintext_3)
+        if len(pt3_items) < 2:
+            raise ValueError(
+                f"Malformed PLAINTEXT_3: expected at least 2 CBOR items, got {len(pt3_items)}"
+            )
         id_cred_i = pt3_items[0]
         signature_3 = pt3_items[1]
 

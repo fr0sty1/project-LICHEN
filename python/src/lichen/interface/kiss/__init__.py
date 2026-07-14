@@ -67,10 +67,17 @@ from lichen.interface.kiss.payload_fmt import (
     format_payload,
     is_printable_text,
 )
-from lichen.interface.kiss.serial import (
-    KissSerialConnection,
-    open_kiss_serial,
-)
+
+# Serial imports are conditional on pyserial being installed
+try:
+    from lichen.interface.kiss.serial import (
+        KissSerialConnection,
+        open_kiss_serial,
+    )
+except ImportError:
+    # pyserial not installed - provide stub for type checking
+    KissSerialConnection = None  # type: ignore[misc,assignment]
+    open_kiss_serial = None  # type: ignore[misc,assignment]
 
 __all__ = [
     "Ax25Error",

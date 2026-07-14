@@ -223,8 +223,16 @@ where
 
     loop {
         tokio::select! {
-            Some(frame) = rx_recv.recv() => {
-                forward_mesh_to_upstream(gw, &frame, &tun).await;
+            frame_opt = rx_recv.recv() => {
+                match frame_opt {
+                    Some(frame) => {
+                        forward_mesh_to_upstream(gw, &frame, &tun).await;
+                    }
+                    None => {
+                        error!("sim task exited, cannot receive inbound packets");
+                        break;
+                    }
+                }
             }
             result = async { match &tun {
                 Some(t) => t.recv_pkt(&mut tun_buf).await,
@@ -233,8 +241,16 @@ where
                 match result {
                     Ok(n) => {
                         if let Some(schc) = gw.upstream_to_mesh(&tun_buf[..n]) {
-                            // Best-effort: drop if sim task is behind.
-                            let _ = tx_send.try_send(schc);
+                            match tx_send.try_send(schc) {
+                                Ok(()) => {}
+                                Err(mpsc::error::TrySendError::Full(_)) => {
+                                    warn!("TX channel full, dropping outbound packet");
+                                }
+                                Err(mpsc::error::TrySendError::Closed(_)) => {
+                                    error!("sim task exited, cannot send outbound packets");
+                                    break;
+                                }
+                            }
                         }
                     }
                     Err(e) => { error!("TUN recv: {e}"); break; }

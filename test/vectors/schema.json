@@ -16,7 +16,9 @@
           {"$ref": "#/definitions/frame_vector"},
           {"$ref": "#/definitions/announce_coords_vector"},
           {"$ref": "#/definitions/meshtastic_app_compat_vector"},
-          {"$ref": "#/definitions/meshcore_app_compat_vector"}
+          {"$ref": "#/definitions/meshcore_app_compat_vector"},
+          {"$ref": "#/definitions/oscore_vector"},
+          {"$ref": "#/definitions/rpl_messages_vector"}
         ]
       }
     }
@@ -424,6 +426,123 @@
               "minItems": 1
             }
           }
+        }
+      }
+    },
+    "oscore_vector": {
+      "type": "object",
+      "required": ["name", "type"],
+      "description": "OSCORE (RFC 8613) test vector for key derivation, request/response protection, replay detection, or invalid input.",
+      "properties": {
+        "name": {"type": "string"},
+        "type": {
+          "type": "string",
+          "enum": ["key_derivation", "request_protection", "response_protection", "roundtrip", "replay", "invalid"]
+        },
+        "description": {"type": "string"},
+        "master_secret": {"$ref": "#/definitions/hex", "description": "16-byte master secret (AES-128)"},
+        "master_salt": {
+          "oneOf": [{"$ref": "#/definitions/hex"}, {"type": "null"}],
+          "description": "Optional master salt (up to 8 bytes)"
+        },
+        "sender_id": {"$ref": "#/definitions/hex", "description": "Sender ID (up to 7 bytes)"},
+        "recipient_id": {"$ref": "#/definitions/hex", "description": "Recipient ID (up to 7 bytes)"},
+        "id_context": {
+          "oneOf": [{"$ref": "#/definitions/hex"}, {"type": "null"}],
+          "description": "Optional ID Context"
+        },
+        "algorithm": {
+          "type": "integer",
+          "description": "COSE algorithm ID (10 = AES-CCM-16-64-128)"
+        },
+        "sender_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Sender sequence number for protection"
+        },
+        "request_piv": {
+          "$ref": "#/definitions/hex",
+          "description": "Request Partial IV (for response protection)"
+        },
+        "request_kid": {
+          "$ref": "#/definitions/hex",
+          "description": "Request KID (for response AAD)"
+        },
+        "plaintext": {
+          "type": "object",
+          "description": "Plaintext CoAP message components",
+          "properties": {
+            "code": {"type": "integer", "minimum": 0, "maximum": 255},
+            "options": {"$ref": "#/definitions/hex"},
+            "payload": {"$ref": "#/definitions/hex"}
+          }
+        },
+        "ciphertext": {"$ref": "#/definitions/hex"},
+        "highest_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Highest seen sequence number (replay tests)"
+        },
+        "window_bits": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Replay window bitmask (replay tests)"
+        },
+        "test_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Sequence number to test (replay tests)"
+        },
+        "expected": {
+          "type": "object",
+          "description": "Expected results",
+          "properties": {
+            "sender_key": {"$ref": "#/definitions/hex"},
+            "recipient_key": {"$ref": "#/definitions/hex"},
+            "common_iv": {"$ref": "#/definitions/hex"},
+            "oscore_option": {"$ref": "#/definitions/hex"},
+            "ciphertext": {"$ref": "#/definitions/hex"},
+            "is_replay": {"type": "boolean"},
+            "new_highest": {"type": "integer"},
+            "new_window": {"type": "integer"}
+          }
+        },
+        "expected_error": {
+          "type": "string",
+          "enum": ["invalid_param", "decrypt_failed", "replay", "seq_exhausted"]
+        }
+      }
+    },
+    "rpl_messages_vector": {
+      "type": "object",
+      "required": ["name", "type", "encoded"],
+      "description": "RPL control message (RFC 6550) parse/generate vector.",
+      "properties": {
+        "name": {"type": "string"},
+        "type": {
+          "type": "string",
+          "enum": ["dio", "dao", "dao_ack", "dis", "option", "dio_with_options", "dao_with_options", "option_chain"],
+          "description": "Message or option type being tested"
+        },
+        "option_type": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "RPL option type (for type=option vectors)"
+        },
+        "description": {"type": "string"},
+        "fields": {
+          "type": "object",
+          "description": "Decoded message fields (structure varies by type)"
+        },
+        "options": {
+          "type": "array",
+          "description": "Option chain (for type=option_chain vectors)",
+          "items": {"type": "object"}
+        },
+        "encoded": {
+          "$ref": "#/definitions/hex",
+          "description": "Encoded message bytes (excluding ICMPv6 header)"
         }
       }
     }

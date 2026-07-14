@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Extracted from https://github.com/meshtastic/protobufs
-// Minimal subset for LICHEN Meshtastic bridge
+// Subset for LICHEN Meshtastic bridge (BLE API envelope messages)
 
 syntax = "proto3";
 
@@ -9,6 +9,8 @@ package meshtastic;
 import "meshtastic/config.proto";
 import "meshtastic/portnums.proto";
 import "meshtastic/telemetry.proto";
+import "meshtastic/channel.proto";
+import "meshtastic/module_config.proto";
 
 // GPS Position
 message Position {
@@ -170,4 +172,185 @@ message MeshPacket {
   bool pki_encrypted = 17;
   uint32 next_hop = 18;
   uint32 relay_node = 19;
+}
+
+// Routing layer ack/error codes
+message Routing {
+  enum Error {
+    NONE = 0;
+    NO_ROUTE = 1;
+    GOT_NAK = 2;
+    TIMEOUT = 3;
+    NO_INTERFACE = 4;
+    MAX_RETRANSMIT = 5;
+    NO_CHANNEL = 6;
+    TOO_LARGE = 7;
+    NO_RESPONSE = 8;
+    DUTY_CYCLE_LIMIT = 9;
+    BAD_REQUEST = 32;
+    NOT_AUTHORIZED = 33;
+    PKI_FAILED = 34;
+    PKI_UNKNOWN_PUBKEY = 35;
+  }
+
+  oneof variant {
+    fixed32 route_request = 1;
+    fixed32 route_reply = 2;
+    Error error_reason = 3;
+  }
+}
+
+// Device's own node information (device-to-phone)
+message MyNodeInfo {
+  uint32 my_node_num = 1;
+  bool has_gps = 2 [deprecated = true];
+  uint32 max_channels = 3;
+  string firmware_version = 4;
+  optional uint32 error_code = 5;
+  optional uint32 error_address = 6;
+  optional uint32 error_count = 7;
+  optional uint32 reboot_count = 8;
+  optional uint32 bitrate = 9;
+  optional uint32 message_timeout_msec = 10;
+  optional uint32 min_app_version = 11;
+  uint32 max_app_data_size = 12 [deprecated = true];
+  bool has_wifi = 14;
+  bool has_bluetooth = 15;
+  bool has_ethernet = 16;
+  HardwareModel hw_model = 17;
+  bool can_shutdown = 18;
+  bool has_pkc = 19;
+  bool has_position_flags = 20;
+  uint32 device_id = 21;
+  bool is_managed = 22;
+}
+
+// TX queue status for flow control
+message QueueStatus {
+  int32 res = 1;        // Reserved/result field
+  uint32 free = 2;      // Number of free queue slots
+  uint32 maxlen = 3;    // Maximum queue length
+  uint32 mesh_packet_id = 4;  // ID of packet being queued
+}
+
+// Log record for debug output
+message LogRecord {
+  string message = 1;
+  fixed32 time = 2;
+  string source = 3;
+
+  enum Level {
+    UNSET = 0;
+    CRITICAL = 50;
+    ERROR = 40;
+    WARNING = 30;
+    INFO = 20;
+    DEBUG = 10;
+    TRACE = 5;
+  }
+  Level level = 4;
+}
+
+// XModem packet for firmware updates over BLE
+message XModemPacket {
+  enum Control {
+    NUL = 0;
+    SOH = 1;
+    STX = 2;
+    EOT = 4;
+    ACK = 6;
+    NAK = 21;
+    CAN = 24;
+    CTRLZ = 26;
+  }
+
+  Control control = 1;
+  uint32 seq = 2;
+  uint32 crc16 = 3;
+  bytes buffer = 4;
+}
+
+// Device metadata
+message DeviceMetadata {
+  string firmware_version = 1;
+  uint32 device_state_version = 2;
+  bool can_shutdown = 3;
+  bool has_wifi = 4;
+  bool has_bluetooth = 5;
+  bool has_ethernet = 6;
+  Config.DeviceConfig.Role role = 7;
+  uint32 position_flags = 8;
+  HardwareModel hw_model = 9;
+  bool has_remote_hardware = 10;
+  bool has_pkc = 11;
+}
+
+// Waypoint for location sharing
+message Waypoint {
+  uint32 id = 1;
+  sfixed32 latitude_i = 2;
+  sfixed32 longitude_i = 3;
+  int32 expire = 4;
+  uint32 locked_to = 5;
+  string name = 6;
+  string description = 7;
+  fixed32 icon = 8;
+}
+
+// MeshPacket queue (for FileInfo response)
+message MeshPacketQueue {
+  repeated MeshPacket packets = 1;
+}
+
+// File info for firmware updates
+message FileInfo {
+  string file_name = 1;
+  uint32 size_bytes = 2;
+}
+
+// Connection status for various interfaces
+message ConnectionStatus {
+  bool is_connected = 1;
+  uint32 ip_address = 2;
+  bool is_mqtt_connected = 3;
+  bool is_syslog_connected = 4;
+}
+
+// Phone-to-device BLE API envelope
+message ToRadio {
+  oneof payload_variant {
+    MeshPacket packet = 1;
+    uint32 want_config_id = 3;  // Request full config dump
+    bool disconnect = 4;        // Graceful disconnect
+    XModemPacket xmodemPacket = 5;  // Firmware update packet
+    Heartbeat heartbeat = 6;
+  }
+}
+
+// Heartbeat message for connection keep-alive
+message Heartbeat {
+  // Empty message, presence indicates heartbeat
+}
+
+// Device-to-phone BLE API envelope
+message FromRadio {
+  uint32 id = 1;  // Packet ID for sequencing
+
+  oneof payload_variant {
+    MeshPacket packet = 2;
+    MyNodeInfo my_info = 3;
+    NodeInfo node_info = 4;
+    Config config = 5;
+    LogRecord log_record = 6;
+    uint32 config_complete_id = 7;  // Signals end of config dump
+    bool rebooted = 8;
+    ModuleConfig moduleConfig = 9;
+    Channel channel = 10;
+    QueueStatus queueStatus = 11;
+    XModemPacket xmodemPacket = 12;
+    DeviceMetadata metadata = 13;
+    MeshPacketQueue mqttClientProxyMessage = 14;
+    FileInfo fileInfo = 15;
+    ConnectionStatus clientNotification = 16;
+  }
 }

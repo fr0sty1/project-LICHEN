@@ -3,13 +3,16 @@
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Create spec/test-vectors/frame.json. Load in Python, Rust, C tests for cross-validation.",
   "notes": "Partial: frame.json created at spec/test-vectors/frame.json, but cross-validation tests not yet implemented in Python, Rust, or C. Tests need to load and use this file.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:44:37.666369Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T00:00:28.757313Z",
+  "updated_at": "2026-07-12T01:10:25.714721Z",
+  "closed_at": "2026-07-12T01:10:25.714721Z",
+  "close_reason": "Fixed: Added cross-validation tests for spec/test-vectors/frame.json in Python (test_frame.py::TestSpecVectors) and Rust (frame::tests::spec_vectors). Both load the shared JSON vectors and validate frame parsing and roundtrip serialization. C tests deferred (requires Zephyr test infrastructure).",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-8dym",

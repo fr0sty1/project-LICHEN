@@ -107,7 +107,7 @@ class TestAddressMapper:
         mapper = AddressMapper()
         iid = bytes([0x01, 0x02, 0x03, 0x04, 0x12, 0x34, 0x56, 0x78])
         pubkey = bytes(32)
-        mapper.learn(iid, pubkey)
+        assert mapper.learn(iid, pubkey) is True
 
         assert len(mapper) == 1
         assert mapper.is_known(0x12345678)
@@ -139,3 +139,29 @@ class TestAddressMapper:
         mapper = AddressMapper()
         with pytest.raises(ValueError, match="must be 32 bytes"):
             mapper.learn(bytes(8), bytes(31))
+
+    def test_tofu_violation_returns_false(self) -> None:
+        """TOFU violation logs warning and returns False instead of raising."""
+        mapper = AddressMapper()
+        iid = bytes([0x01, 0x02, 0x03, 0x04, 0x12, 0x34, 0x56, 0x78])
+        pubkey1 = bytes(32)
+        pubkey2 = bytes([0xFF] * 32)  # Different key
+
+        # First contact succeeds
+        assert mapper.learn(iid, pubkey1) is True
+        assert mapper.get_pubkey(iid) == pubkey1
+
+        # Second contact with different key fails gracefully
+        assert mapper.learn(iid, pubkey2) is False
+
+        # Original key is still pinned
+        assert mapper.get_pubkey(iid) == pubkey1
+
+    def test_same_pubkey_succeeds(self) -> None:
+        """Relearning with same pubkey succeeds."""
+        mapper = AddressMapper()
+        iid = bytes([0x01, 0x02, 0x03, 0x04, 0x12, 0x34, 0x56, 0x78])
+        pubkey = bytes(32)
+
+        assert mapper.learn(iid, pubkey) is True
+        assert mapper.learn(iid, pubkey) is True  # Same key, should succeed

@@ -2,13 +2,16 @@
   "id": "project-LICHEN-c13l",
   "title": "task",
   "description": "Create Python Protocol classes that mirror Rust traits and C vtables. Interfaces: RadioDriver, LinkLayer, FrameParser, Signer/Verifier, ReplayWindow. These formalize the cross-implementation contract and enable mypy to catch parity bugs.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-11T00:01:12.26096Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-11T00:01:17.121329Z",
+  "updated_at": "2026-07-12T01:03:52.109153Z",
+  "closed_at": "2026-07-12T01:03:52.109153Z",
+  "close_reason": "Fixed: Created python/src/lichen/interface/protocols.py with 15 Protocol classes mirroring Rust traits and C vtables: RadioDriver, FrameParser, LinkLayerTx, LinkLayerRx, RxResult, Signer, Verifier, ReplayWindow, ReplayProtector, Identity, PeerIdentity, Clock, Rng, NonVolatile. All are runtime_checkable and documented with cross-implementation references.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-c13l",

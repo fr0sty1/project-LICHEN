@@ -8,7 +8,8 @@ node_id is fixed at server creation.
 
 Protocol (length-prefixed, 4-byte LE):
     TX (0x10): 2-byte len + payload -> TX_DONE (0x11) with 4-byte airtime_us
-    RX_POLL (0x20): -> RX_OK (0x21) with payload/rssi/snr or RX_EMPTY (0x23)
+    RX_ENTER (0x24): Enter RX mode with timeout -> RX_PACKET (0x27) or RX_TIMEOUT_PUSH (0x28)
+    RX_EXIT (0x26): Exit RX mode
 """
 
 from __future__ import annotations
@@ -19,12 +20,12 @@ import struct
 from typing import TYPE_CHECKING
 
 from lichen.sim.protocol import (
+    MAX_PAYLOAD_LENGTH,
     MSG_RX_ENTER,
     MSG_RX_EXIT,
     MSG_TX,
     decode_rx_enter,
     decode_tx,
-    encode_rx_ok,
     encode_rx_packet,
     encode_rx_timeout_push,
     encode_tx_done,
@@ -39,16 +40,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# RX_POLL = check for packet, return immediately (no blocking)
-MSG_RX_POLL = 0x20
-# RX_EMPTY = no packet available
-MSG_RX_EMPTY = 0x23
-
-
-def encode_rx_empty() -> bytes:
-    """Encode RX_EMPTY response."""
-    return struct.pack("<B", MSG_RX_EMPTY)
-
 
 async def _read_message(reader: asyncio.StreamReader) -> bytes | None:
     """Read length-prefixed message."""
@@ -59,6 +50,9 @@ async def _read_message(reader: asyncio.StreamReader) -> bytes | None:
     (length,) = struct.unpack("<I", length_bytes)
     if length == 0:
         return b""
+    # SECURITY: Reject oversized lengths to prevent memory exhaustion attacks.
+    if length > MAX_PAYLOAD_LENGTH:
+        return None
     try:
         return await reader.readexactly(length)
     except asyncio.IncompleteReadError:
@@ -76,6 +70,11 @@ class RenodeServer:
 
     Each RenodeServer handles exactly one node. Create multiple servers
     on different ports for multiple Renode instances.
+
+    The server runs a background simulation driver task that periodically
+    calls deliver_pending_packets() and maybe_advance_time(). This allows
+    BARRIER_SYNC mode to work correctly even when multiple RenodeServers
+    are operating concurrently.
     """
 
     def __init__(
@@ -92,6 +91,7 @@ class RenodeServer:
         self._server: asyncio.Server | None = None
         self._writer: asyncio.StreamWriter | None = None
         self._connected = False
+        self._sim_driver_task: asyncio.Task[None] | None = None
 
     async def start(self, host: str = "127.0.0.1", port: int = 5555) -> int:
         """Start server and add node to simulation. Returns actual port."""
@@ -112,13 +112,43 @@ class RenodeServer:
             "Renode server for %s listening on %s:%d",
             self._node_id, host, actual_port
         )
+
+        # Start simulation driver task
+        self._sim_driver_task = asyncio.create_task(self._simulation_driver())
+
         return actual_port
 
     async def stop(self) -> None:
         """Stop server."""
+        import contextlib
+
+        # Cancel simulation driver
+        if self._sim_driver_task is not None:
+            self._sim_driver_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._sim_driver_task
+            self._sim_driver_task = None
+
         if self._server:
             self._server.close()
             await self._server.wait_closed()
+
+    async def _simulation_driver(self) -> None:
+        """Background task that drives the simulation.
+
+        Periodically calls deliver_pending_packets() and maybe_advance_time()
+        to ensure BARRIER_SYNC mode advances time and delivers packets.
+        """
+        try:
+            while True:
+                # Deliver packets to nodes in callback-based RX mode
+                self._simulation.deliver_pending_packets()
+                # Advance time (fires TxEndEvent, RxTimeoutEvent)
+                self._simulation.maybe_advance_time()
+                # Brief delay to avoid busy loop
+                await asyncio.sleep(0.001)
+        except asyncio.CancelledError:
+            pass
 
     async def _handle_connection(
         self,
@@ -141,8 +171,6 @@ class RenodeServer:
 
                 if msg_type == MSG_TX:
                     await self._handle_tx(data, writer)
-                elif msg_type == MSG_RX_POLL:
-                    await self._handle_rx_poll(writer)
                 elif msg_type == MSG_RX_ENTER:
                     self._handle_rx_enter(data)
                 elif msg_type == MSG_RX_EXIT:
@@ -177,21 +205,11 @@ class RenodeServer:
         logger.debug("Renode TX: %d bytes, airtime %d us", len(payload), tx_airtime)
         await _write_message(writer, encode_tx_done(tx_airtime))
 
-    async def _handle_rx_poll(self, writer: asyncio.StreamWriter) -> None:
-        """Handle RX poll - non-blocking check for received packet."""
-        # Advance simulation time if needed
-        self._simulation.maybe_advance_time()
-
-        result = self._simulation.get_rx_result(self._node_id)
-        if result is not None:
-            payload, rssi, snr = result
-            logger.debug("Renode RX: %d bytes, RSSI %d", len(payload), rssi)
-            await _write_message(writer, encode_rx_ok(payload, rssi, snr))
-        else:
-            await _write_message(writer, encode_rx_empty())
-
     def _handle_rx_enter(self, data: bytes) -> None:
         """Handle RX_ENTER - enter push-based RX mode.
+
+        Enters RX mode with callbacks. The background simulation driver task
+        handles time advancement and packet delivery.
 
         Args:
             data: Complete message bytes including type byte.

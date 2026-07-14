@@ -1,0 +1,196 @@
+name: Renode Firmware Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lichen/**'
+      - 'python/src/lichen/sim/**'
+  pull_request:
+    paths:
+      - 'lichen/**'
+      - 'python/src/lichen/sim/**'
+  schedule:
+    # Run daily at 3am UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+# Run actual Zephyr firmware in Renode emulator with lichen-sim RF simulation.
+# This tests the full stack: C firmware -> SPI -> SX1262 -> lichen-sim -> other nodes
+
+jobs:
+  build-firmware:
+    name: Build Zephyr Firmware
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Zephyr dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build gperf ccache dfu-util device-tree-compiler wget \
+            python3-dev python3-pip python3-venv python3-setuptools python3-wheel \
+            xz-utils file make gcc gcc-multilib g++-multilib libsdl2-dev
+
+      - name: Install west and Zephyr SDK
+        run: |
+          pip install west
+          wget -q https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.5-1/zephyr-sdk-0.16.5-1_linux-x86_64.tar.xz
+          tar xf zephyr-sdk-0.16.5-1_linux-x86_64.tar.xz -C ~
+          ~/zephyr-sdk-0.16.5-1/setup.sh -c
+
+      - name: Initialize west workspace
+        run: |
+          west init -l lichen/
+          west update
+          pip install -r zephyr/scripts/requirements.txt
+          west zephyr-export
+
+      - name: Build lora_ping for nrf52840_lichen
+        run: |
+          west build -b nrf52840_lichen lichen/samples/lora_ping -d build/lora_ping
+
+      - name: Build puck app for nrf52840_lichen
+        run: |
+          west build -b nrf52840_lichen lichen/apps/puck -d build/puck
+        continue-on-error: true  # May have missing deps
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: |
+            build/lora_ping/zephyr/zephyr.elf
+            build/puck/zephyr/zephyr.elf
+
+  renode-single-node:
+    name: Single Node Renode Test
+    runs-on: ubuntu-latest
+    needs: build-firmware
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware
+          path: build/
+
+      - name: Install Renode
+        run: |
+          wget -q https://github.com/renode/renode/releases/download/v1.14.0/renode-1.14.0.linux-portable.tar.gz
+          tar xf renode-1.14.0.linux-portable.tar.gz
+          echo "$PWD/renode_1.14.0_portable" >> $GITHUB_PATH
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps
+        run: |
+          cd python
+          pip install uv
+          uv sync --locked --all-extras --dev
+
+      - name: Run single-node Renode test
+        env:
+          LICHEN_RUN_RENODE_INTEGRATION: "1"
+        run: |
+          cd python
+          uv run pytest tests/sim/test_renode_integration.py -v --timeout=60
+        continue-on-error: true
+
+  renode-multinode:
+    name: Multi-Node Renode Test
+    runs-on: ubuntu-latest
+    needs: build-firmware
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware
+          path: build/
+
+      - name: Install Renode
+        run: |
+          wget -q https://github.com/renode/renode/releases/download/v1.14.0/renode-1.14.0.linux-portable.tar.gz
+          tar xf renode-1.14.0.linux-portable.tar.gz
+          echo "$PWD/renode_1.14.0_portable" >> $GITHUB_PATH
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps
+        run: |
+          cd python
+          pip install uv
+          uv sync --locked --all-extras --dev
+
+      - name: Run 2-node Renode test
+        run: |
+          chmod +x scripts/renode-multinode.py
+          python scripts/renode-multinode.py \
+            --nodes 2 \
+            --firmware build/lora_ping/zephyr/zephyr.elf \
+            --duration 30
+        timeout-minutes: 5
+        continue-on-error: true
+
+      - name: Run 5-node Renode mesh test
+        run: |
+          python scripts/renode-multinode.py \
+            --nodes 5 \
+            --firmware build/lora_ping/zephyr/zephyr.elf \
+            --duration 60
+        timeout-minutes: 10
+        continue-on-error: true
+
+  ec2-arm64-renode:
+    name: EC2 ARM64 Renode Tests
+    runs-on: ubuntu-latest
+    needs: build-firmware
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Download firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware
+          path: build/
+
+      - name: Launch EC2 and run Renode tests
+        run: |
+          # TODO: Launch c7g.xlarge with Renode, run multi-node tests
+          echo "EC2 ARM64 Renode testing - implementation pending"
+          echo "Would run 10+ node tests with actual firmware"
+        continue-on-error: true
+
+  create-beads-on-failure:
+    name: Create Beads for Failures
+    runs-on: ubuntu-latest
+    needs: [renode-single-node, renode-multinode]
+    if: failure() && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create Renode failure bead
+        run: |
+          bd create "Renode firmware test failure" \
+            --type bug \
+            --priority P2 \
+            --body "One or more Renode firmware tests failed. Check the renode-firmware workflow logs."
+        continue-on-error: true

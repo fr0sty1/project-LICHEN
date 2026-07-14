@@ -399,14 +399,15 @@ impl<'a> Iterator for OptionIter<'a> {
     type Item = Result<RawOption<'a>, RplError>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        // SECURITY: Skip PAD1 bytes iteratively to prevent stack overflow
+        // from malicious packets with many consecutive PAD1 bytes
+        while self.pos < self.data.len() && self.data[self.pos] == OPT_PAD1 {
+            self.pos += 1;
+        }
         if self.pos >= self.data.len() {
             return None;
         }
         let opt_type = self.data[self.pos];
-        if opt_type == OPT_PAD1 {
-            self.pos += 1;
-            return self.next();
-        }
         if self.pos + 2 > self.data.len() {
             return Some(Err(TooShort::new(self.pos + 2, self.data.len()).into()));
         }
@@ -643,5 +644,44 @@ mod tests {
         }
         assert!(found_target);
         assert!(found_transit);
+    }
+
+    #[test]
+    fn option_iter_handles_many_pad1_bytes() {
+        // Regression test: many PAD1 bytes must not cause stack overflow
+        // (fixed by using iterative loop instead of recursion)
+        let mut buf = [0u8; 300];
+        // 200 PAD1 bytes followed by a valid target option
+        let pad1_count = 200;
+        for i in 0..pad1_count {
+            buf[i] = OPT_PAD1;
+        }
+        // Add a minimal RPL Target after the PAD1 bytes
+        let mut target_addr = [0u8; 16];
+        target_addr[15] = 0x42;
+        let target = RplTarget {
+            prefix_len: 128,
+            prefix: target_addr,
+        };
+        let mut tmp = [0u8; 25];
+        let n = target.write_to(&mut tmp).unwrap();
+        buf[pad1_count..pad1_count + n].copy_from_slice(&tmp[..n]);
+        let total_len = pad1_count + n;
+
+        // Verify iterator skips PAD1 bytes and finds the target
+        let mut iter = OptionIter::new(&buf[..total_len]);
+        let opt = iter.next().unwrap().unwrap();
+        assert_eq!(opt.opt_type, OPT_RPL_TARGET);
+        let decoded = RplTarget::from_bytes(opt.data).unwrap();
+        assert_eq!(decoded.prefix, target_addr);
+        assert!(iter.next().is_none());
+    }
+
+    #[test]
+    fn option_iter_all_pad1_returns_none() {
+        // Buffer with only PAD1 bytes should return None (no options)
+        let buf = [OPT_PAD1; 100];
+        let mut iter = OptionIter::new(&buf);
+        assert!(iter.next().is_none());
     }
 }

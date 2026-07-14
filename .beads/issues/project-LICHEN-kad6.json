@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-kad6",
+  "title": "task",
+  "description": "rust/lichen-embassy/src/esp32s3.rs:15-25 - Uses `lora_phy::{RadioError, InterfaceVariant}` but these are private in lora-phy 3.x. Correct imports: `lora_phy::mod_params::RadioError` and `lora_phy::mod_traits::InterfaceVariant`. Module fails to compile with feature `esp32s3`.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T05:26:05.943982Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T06:04:44.702685Z",
+  "closed_at": "2026-07-11T06:04:44.702685Z",
+  "close_reason": "Fixed: Added 'self' to sx126x import to allow sx126x::Config usage. Imports now correctly use lora_phy::mod_params::RadioError, lora_phy::mod_traits::InterfaceVariant, and lora_phy::sx126x::{self, ...} for lora-phy 3.x compatibility"
+}

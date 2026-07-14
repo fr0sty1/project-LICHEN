@@ -19,17 +19,17 @@ from lichen.sim.pcap import PcapngWriter
 from lichen.sim.protocol import (
     MSG_ERR,
     MSG_OK,
-    MSG_RX_OK,
-    MSG_RX_TIMEOUT,
+    MSG_RX_PACKET,
+    MSG_RX_TIMEOUT_PUSH,
     MSG_TIME_OK,
     MSG_TX_DONE,
     MSG_TX_FAIL,
     decode_err,
-    decode_rx_ok,
+    decode_rx_packet,
     decode_time_ok,
     decode_tx_done,
     encode_register,
-    encode_rx,
+    encode_rx_enter,
     encode_time,
     encode_tx,
     get_message_payload,
@@ -343,7 +343,7 @@ class TestNodeServerTx:
 
 
 class TestNodeServerRx:
-    """Test RX message handling."""
+    """Test RX message handling (push-based RX_ENTER)."""
 
     @pytest.mark.asyncio
     async def test_rx_timeout(self) -> None:
@@ -359,11 +359,11 @@ class TestNodeServerRx:
             register_msg = encode_register("test-sim", "node1", 0.0, 0.0, 0.0)
             await send_and_receive(reader, writer, register_msg)
 
-            # RX with timeout
-            rx_msg = encode_rx(100)  # 100ms timeout
+            # RX_ENTER with timeout (timeout_us = 100ms * 1000)
+            rx_msg = encode_rx_enter(100_000)  # 100ms timeout in microseconds
             response = await send_and_receive(reader, writer, rx_msg)
 
-            assert get_message_type(response) == MSG_RX_TIMEOUT
+            assert get_message_type(response) == MSG_RX_TIMEOUT_PUSH
 
             writer.close()
             await writer.wait_closed()
@@ -394,12 +394,12 @@ class TestNodeServerRx:
             tx_msg = encode_tx(payload)
             await send_and_receive(reader1, writer1, tx_msg)
 
-            # RX node receives
-            rx_msg = encode_rx(1000)  # 1s timeout
+            # RX node receives (RX_ENTER with timeout in microseconds)
+            rx_msg = encode_rx_enter(1_000_000)  # 1s timeout in microseconds
             response = await send_and_receive(reader2, writer2, rx_msg)
 
-            assert get_message_type(response) == MSG_RX_OK
-            rx_payload, rssi, snr = decode_rx_ok(get_message_payload(response))
+            assert get_message_type(response) == MSG_RX_PACKET
+            rx_payload, rssi, snr = decode_rx_packet(get_message_payload(response))
             assert rx_payload == payload
             assert rssi < 0  # RSSI is negative dBm
             assert snr > 0  # SNR is positive

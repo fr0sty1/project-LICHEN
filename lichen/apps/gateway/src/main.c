@@ -17,6 +17,10 @@
 
 #include <lichen/hal.h>
 
+#if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
+#include "lora_l2.h"
+#endif
+
 #if IS_ENABLED(CONFIG_LICHEN_L2_DEV_PROVISIONING)
 #include "lichen_l2.h"
 #endif
@@ -320,6 +324,113 @@ COAP_RESOURCE_DEFINE(status, lichen_coap, {
 	.get    = status_get,
 	.notify = status_notify,
 	.path   = status_path,
+});
+
+/* --------------------------------------------------------------------------
+ * /status/queues (Observable)
+ * -------------------------------------------------------------------------- */
+
+/*
+ * Get queue statistics from the L2 TX queue.
+ * Converts from tx_queue_stats to lichen_gateway_queue_stats.
+ */
+static void get_queue_stats(struct lichen_gateway_queue_stats *stats)
+{
+	memset(stats, 0, sizeof(*stats));
+
+#if IS_ENABLED(CONFIG_LICHEN_LORA_L2)
+	struct tx_queue_stats tx_stats;
+
+	if (lichen_lora_l2_queue_stats_get(&tx_stats) == 0) {
+		stats->packets_queued = tx_stats.packets_queued;
+		stats->packets_dropped_deadline = tx_stats.packets_dropped_deadline;
+		stats->packets_dropped_full = tx_stats.packets_dropped_full;
+		stats->max_latency_ms = tx_stats.max_latency_ms;
+		/*
+		 * avg_latency_ms is not tracked by tx_queue - would require
+		 * storing enqueue timestamps and computing exponential average.
+		 * Left as 0 for now; can be added to tx_queue if needed.
+		 */
+		stats->avg_latency_ms = 0;
+	}
+#endif
+}
+
+static int queues_get(struct coap_resource *resource,
+		      struct coap_packet *request,
+		      struct sockaddr *addr, socklen_t addr_len)
+{
+	uint8_t cbor_buf[LICHEN_GATEWAY_QUEUES_CBOR_MAX_SIZE];
+	struct lichen_gateway_queue_stats stats;
+	size_t len;
+
+	get_queue_stats(&stats);
+	len = lichen_gateway_encode_queues_cbor(cbor_buf, sizeof(cbor_buf),
+						&stats);
+	if (len == 0) {
+		return coap_respond(resource, request, addr, addr_len,
+				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+	}
+
+	return coap_respond(resource, request, addr, addr_len,
+			    COAP_RESPONSE_CODE_CONTENT, cbor_buf, len);
+}
+
+static void queues_notify(struct coap_resource *resource,
+			  struct coap_observer *observer)
+{
+	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	uint8_t cbor_buf[LICHEN_GATEWAY_QUEUES_CBOR_MAX_SIZE];
+	struct coap_packet notif;
+	struct lichen_gateway_queue_stats stats;
+	size_t cbor_len;
+	int r;
+
+	get_queue_stats(&stats);
+	cbor_len = lichen_gateway_encode_queues_cbor(cbor_buf, sizeof(cbor_buf),
+						     &stats);
+	if (cbor_len == 0) {
+		return;
+	}
+
+	r = coap_packet_init(&notif, buf, sizeof(buf), COAP_VERSION_1,
+			     COAP_TYPE_NON_CON,
+			     observer->tkl, observer->token,
+			     COAP_RESPONSE_CODE_CONTENT, 0);
+	if (r < 0) {
+		return;
+	}
+
+	r = coap_append_option_int(&notif, COAP_OPTION_OBSERVE, resource->age);
+	if (r < 0) {
+		return;
+	}
+
+	r = coap_append_option_int(&notif, COAP_OPTION_CONTENT_FORMAT,
+				   CBOR_CONTENT_FORMAT);
+	if (r < 0) {
+		return;
+	}
+
+	r = coap_packet_append_payload_marker(&notif);
+	if (r < 0) {
+		return;
+	}
+
+	r = coap_packet_append_payload(&notif, cbor_buf, cbor_len);
+	if (r < 0) {
+		return;
+	}
+
+	(void)coap_resource_send(resource, &notif,
+				 &observer->addr, sizeof(observer->addr), NULL);
+}
+
+static const char * const queues_path[] = { "status", "queues", NULL };
+COAP_RESOURCE_DEFINE(queues, lichen_coap, {
+	.get    = queues_get,
+	.notify = queues_notify,
+	.path   = queues_path,
 });
 
 /* --------------------------------------------------------------------------

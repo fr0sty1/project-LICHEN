@@ -59,3 +59,5 @@ dolt.shared-server: false
 sync.remote: "git+ssh://git@github.com/fr0sty1/project-LICHEN.git"
 
 dolt.port: 43215
+
+no-db: true

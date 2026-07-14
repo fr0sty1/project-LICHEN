@@ -66,11 +66,17 @@ def _decode_base36(s: str) -> int:
 
     Returns:
         Decoded integer
+
+    Raises:
+        ValueError: If input contains characters outside 0-9, A-Z
     """
     s = s.upper()
     result = 0
     for c in s:
-        result = result * 36 + B36_ALPHABET.index(c)
+        idx = B36_ALPHABET.find(c)
+        if idx < 0:
+            raise ValueError(f"Invalid base-36 character: {c!r}")
+        result = result * 36 + idx
     return result
 
 

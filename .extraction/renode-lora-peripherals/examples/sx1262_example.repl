@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// Example SX1262 integration for a generic nRF52840 board.
+// Adapt the GPIO pin numbers and SPI controller to match your board's wiring.
+//
+// This example shows:
+//   1. How to instantiate the SX1262 peripheral on an SPI bus
+//   2. How to wire GPIO pins for CS, RESET, BUSY, and IRQ
+//   3. Both loopback mode (single-node) and bridge mode (multi-node)
+
+using "platforms/cpus/nrf52840.repl"
+
+// Replace TWI1 with SPI1 at the same address (firmware expects SPI, not I2C)
+twi1: @ none
+
+spi1: SPI.NRF52840_SPI @ sysbus 0x40004000
+    -> nvic@4
+
+// ============================================================================
+// Option A: Loopback mode (no external simulator)
+// ============================================================================
+// Use this for single-node driver testing. TX data loops back to RX.
+//
+// sx1262: Wireless.SX1262 @ spi1
+//     loopback: true
+
+// ============================================================================
+// Option B: Bridge mode (connect to external RF simulator)
+// ============================================================================
+// Use this for multi-node simulation with an external RF propagation model.
+//
+sx1262: Wireless.SX1262 @ spi1
+    simHost: "127.0.0.1"
+    simPort: 5555
+    loopback: false
+
+// ============================================================================
+// GPIO wiring (adapt to your board's devicetree)
+// ============================================================================
+// These pin numbers are examples - check your board's schematic/devicetree.
+//
+// Input pins to SX1262:
+//   - GPIO input 0 = RESET (active low)
+//   - GPIO input 1 = CS (chip select, active low)
+//
+// Output pins from SX1262:
+//   - IRQ  = DIO1 interrupt line
+//   - Busy = BUSY status line
+
+// Wire RESET (P1.06) and CS (P1.10) to SX1262 inputs
+gpio1:
+    6 -> sx1262@0     // RESET
+    10 -> sx1262@1    // CS (for SPI transaction framing)
+
+// Wire SX1262 outputs to GPIO for firmware to read
+sx1262:
+    IRQ -> gpio1@15   // DIO1/IRQ
+    Busy -> gpio1@14  // BUSY
+
+// ============================================================================
+// FICR device ID (required by some firmware that reads hardware ID)
+// ============================================================================
+// Without this, hwinfo returns all zeros and some firmware refuses to boot.
+sysbus:
+    init add:
+        Tag <0x10000060, 0x10000063> "DEVICEID[0]" 0x12345678
+        Tag <0x10000064, 0x10000067> "DEVICEID[1]" 0xDEADBEEF

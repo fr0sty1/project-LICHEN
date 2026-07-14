@@ -2,13 +2,16 @@
   "id": "project-LICHEN-kpt8",
   "title": "Parity: schc (Rust/Zephyr/Python)",
   "description": "Policy: three-impl parity. Module: schc. Rust: complete (2011 LoC). Zephyr: complete (1489 LoC). Python: complete (1479 LoC). Gap: none - full parity across all three implementations.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:19:20.056671Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:19:45.392986Z",
+  "updated_at": "2026-07-12T00:30:44.053532Z",
+  "closed_at": "2026-07-12T00:30:44.053532Z",
+  "close_reason": "Verified compliant: All three SCHC implementations (Rust 2051 LoC, Python 1506 LoC, Zephyr ~2700 LoC combined) have full feature parity. Rules 0-4 plus 255 fallback are implemented identically. Fragmentation (ACK-on-Error mode) with FragmentSender, FragmentReceiver, ACK encode/decode, and CRC32 MIC is present in all three. Zephyr separates generic SCHC engine (fragmentation + profile dispatch in /subsys/schc/) from LICHEN-specific rules (/subsys/lichen/schc/), which is a good architectural split.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-kpt8",

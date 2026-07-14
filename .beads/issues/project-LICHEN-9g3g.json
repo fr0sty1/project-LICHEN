@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-9g3g",
+  "title": "senml: no validation of CBOR map ordering for deterministic encoding",
+  "description": "File: rust/lichen-senml/src/cbor.rs\nLines: 146-188 (encode function)\n\nRFC 8949 Section 4.2 defines deterministic CBOR encoding which requires map keys to be sorted by encoded length, then by encoded bytes. RFC 8428 recommends using deterministic encoding for SenML-CBOR.\n\nThe encoder outputs keys in a fixed order (bn, bt, n, u, v, vs, vb, t) which happens to NOT be sorted by numeric value:\n- L_BN = -2 (encodes as 0x21)\n- L_BT = -3 (encodes as 0x22)\n- L_N = 0 (encodes as 0x00)\n- L_U = 1 (encodes as 0x01)\n- L_V = 2 (encodes as 0x02)\n- L_VS = 3 (encodes as 0x03)\n- L_VB = 4 (encodes as 0x04)\n- L_T = 6 (encodes as 0x06)\n\nSorted order should be: 0, 1, 2, 3, 4, 6, -2, -3 (by encoded bytes: 0x00, 0x01, 0x02, 0x03, 0x04, 0x06, 0x21, 0x22)\n\nCurrent order: -2, -3, 0, 1, 2, 3, 4, 6\n\nImpact: Output is not deterministically encoded per RFC 8949. This affects:\n- Caching (different encodings for same data)\n- Signatures (hash differs based on encoding)\n- Interop with systems expecting deterministic CBOR\n\nFix: Reorder the encoding to output keys in sorted order:\nn(0), u(1), v(2), vs(3), vb(4), t(6), bn(-2), bt(-3)",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:40:49.060425Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:40:49.06047Z"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-tk93",
+  "title": "task",
+  "description": "python/src/lichen/routing/router.py:596 - The _haversine function computes a = sin²(Δlat/2) + cos(lat1)·cos(lat2)·sin²(Δlon/2), which theoretically maxes at 1.0 for antipodal points. Due to floating point errors, a can be slightly \u003e 1 (e.g., 1.0000000000001), causing math.sqrt(a) \u003e 1 and math.asin() to raise ValueError. Fix: clamp before sqrt with math.sqrt(min(1.0, a)).",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T01:27:17.031593Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T06:14:46.984131Z",
+  "closed_at": "2026-07-11T06:14:46.984131Z",
+  "close_reason": "Fixed: clamp a before sqrt in haversine to handle floating-point errors where a\u003e1"
+}

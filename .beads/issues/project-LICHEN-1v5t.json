@@ -2,13 +2,16 @@
   "id": "project-LICHEN-1v5t",
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Enable -fsanitize=memtag (ARM MTE) or -fcf-protection=full (Intel CET) for Linux border router builds.",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:52:14.653141Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:52:20.255628Z",
+  "updated_at": "2026-07-12T01:05:38.873141Z",
+  "closed_at": "2026-07-12T01:05:38.873141Z",
+  "close_reason": "Fixed: Added lichen/cmake/lichen_hardening.cmake with CMake checks for ARM MTE (-fsanitize=memtag) and Intel CET (-fcf-protection=full). Module provides lichen_check_arm_mte(), lichen_check_intel_cet(), and lichen_target_hardware_hardening() functions. Updated virtual-hub CMakeLists.txt as example usage.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-1v5t",

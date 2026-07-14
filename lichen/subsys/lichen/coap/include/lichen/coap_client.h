@@ -7,6 +7,10 @@
  *
  * Provides a simple API for making CoAP requests to other mesh nodes.
  * Wraps Zephyr's coap_client APIs with LICHEN-specific defaults.
+ *
+ * SECURITY: When CONFIG_LICHEN_COAP_CLIENT_OSCORE is enabled, requests
+ * with a non-NULL oscore_ctx are protected using RFC 8613. Responses are
+ * automatically decrypted before delivery to the callback.
  */
 
 #ifndef LICHEN_COAP_CLIENT_H_
@@ -16,6 +20,23 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <zephyr/net/coap.h>
+
+#if defined(CONFIG_LICHEN_COAP_CLIENT_OSCORE) || defined(__DOXYGEN__)
+#include <lichen/oscore.h>
+#endif
+
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,6 +67,8 @@ enum lichen_coap_result {
 	LICHEN_COAP_ERR_UNAUTHORIZED = -6,
 	LICHEN_COAP_ERR_INVALID_PARAM = -7,
 	LICHEN_COAP_ERR_TRANSPORT = -8,
+	LICHEN_COAP_ERR_OSCORE_PROTECT = -9,   /**< OSCORE protect failed */
+	LICHEN_COAP_ERR_OSCORE_UNPROTECT = -10, /**< OSCORE unprotect failed */
 };
 
 /**
@@ -59,10 +82,10 @@ enum lichen_coap_result {
  * @param[in] payload     Response payload (may be NULL)
  * @param[in] payload_len Payload length
  */
-typedef void (*lichen_coap_response_cb)(void *user_data,
+typedef void (*lichen_coap_response_cb)(void *_Nullable user_data,
 					int status,
 					uint8_t code,
-					const uint8_t *payload,
+					const uint8_t *_Nullable payload,
 					size_t payload_len);
 
 /**
@@ -84,6 +107,9 @@ struct lichen_coap_request {
 	lichen_coap_response_cb callback;   /**< Response callback */
 	void *user_data;                    /**< User context for callback */
 	uint32_t timeout_ms;                /**< Timeout in ms (0 = default, max UINT32_MAX / 2) */
+#if defined(CONFIG_LICHEN_COAP_CLIENT_OSCORE) || defined(__DOXYGEN__)
+	struct oscore_ctx *oscore_ctx;      /**< OSCORE context (NULL = unprotected) */
+#endif
 };
 
 /**
@@ -110,7 +136,7 @@ int lichen_coap_client_init(void);
  *                lichen_coap_request.
  * @return 0 on success (request sent), negative error code on failure
  */
-int lichen_coap_request(const struct lichen_coap_request *req);
+int lichen_coap_request(const struct lichen_coap_request *_Nonnull req);
 
 /**
  * @brief Send a simple GET request.
@@ -123,10 +149,10 @@ int lichen_coap_request(const struct lichen_coap_request *req);
  * @param[in] user_data User context
  * @return 0 on success, negative error code on failure
  */
-int lichen_coap_get(const struct sockaddr_in6 *addr,
-		    const char * const *path,
-		    lichen_coap_response_cb callback,
-		    void *user_data);
+int lichen_coap_get(const struct sockaddr_in6 *_Nonnull addr,
+		    const char * const *_Nonnull path,
+		    lichen_coap_response_cb _Nonnull callback,
+		    void *_Nullable user_data);
 
 /**
  * @brief Send a POST request with CBOR payload.
@@ -139,11 +165,11 @@ int lichen_coap_get(const struct sockaddr_in6 *addr,
  * @param[in] user_data   User context
  * @return 0 on success, negative error code on failure
  */
-int lichen_coap_post_cbor(const struct sockaddr_in6 *addr,
-			  const char * const *path,
-			  const uint8_t *payload, size_t payload_len,
-			  lichen_coap_response_cb callback,
-			  void *user_data);
+int lichen_coap_post_cbor(const struct sockaddr_in6 *_Nonnull addr,
+			  const char * const *_Nonnull path,
+			  const uint8_t *_Nonnull payload, size_t payload_len,
+			  lichen_coap_response_cb _Nonnull callback,
+			  void *_Nullable user_data);
 
 #ifdef __cplusplus
 }

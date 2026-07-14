@@ -30,6 +30,19 @@
 #endif
 #endif
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -91,8 +104,8 @@ struct senml_pack {
  * @return 0 on success, -EINVAL if pack is NULL, -EMSGSIZE if base_name is
  *         longer than SENML_MAX_NAME_LEN
  */
-int senml_pack_init(struct senml_pack *pack,
-		    const char *base_name,
+int senml_pack_init(struct senml_pack *_Nonnull pack,
+		    const char *_Nullable base_name,
 		    uint64_t base_time);
 
 /**
@@ -105,9 +118,9 @@ int senml_pack_init(struct senml_pack *pack,
  * @return 0 on success, -ENOMEM if pack is full, -EMSGSIZE if name or unit is
  *         too long
  */
-int senml_add_float(struct senml_pack *pack,
-		    const char *name,
-		    const char *unit,
+int senml_add_float(struct senml_pack *_Nonnull pack,
+		    const char *_Nonnull name,
+		    const char *_Nullable unit,
 		    float value);
 
 /**
@@ -121,9 +134,9 @@ int senml_add_float(struct senml_pack *pack,
  * @return 0 on success, -ENOMEM if pack is full, -EMSGSIZE if name or unit is
  *         too long
  */
-int senml_add_float_t(struct senml_pack *pack,
-		      const char *name,
-		      const char *unit,
+int senml_add_float_t(struct senml_pack *_Nonnull pack,
+		      const char *_Nonnull name,
+		      const char *_Nullable unit,
 		      float value,
 		      int32_t time_offset);
 
@@ -135,8 +148,8 @@ int senml_add_float_t(struct senml_pack *pack,
  * @param[in]     value Boolean value
  * @return 0 on success, -ENOMEM if pack is full, -EMSGSIZE if name is too long
  */
-int senml_add_bool(struct senml_pack *pack,
-		   const char *name,
+int senml_add_bool(struct senml_pack *_Nonnull pack,
+		   const char *_Nonnull name,
 		   bool value);
 
 /**
@@ -152,8 +165,8 @@ int senml_add_bool(struct senml_pack *pack,
  *         -EMSGSIZE if string too long to encode
  */
 LICHEN_WARN_UNUSED_RESULT
-int senml_encode_cbor(const struct senml_pack *pack,
-		      uint8_t *buf, size_t buflen);
+int senml_encode_cbor(const struct senml_pack *_Nonnull pack,
+		      uint8_t *_Nonnull buf, size_t buflen);
 
 /* --------------------------------------------------------------------------
  * Convenience functions for common sensor types
@@ -171,9 +184,9 @@ int senml_encode_cbor(const struct senml_pack *pack,
  * @param[in]  buflen     Buffer size
  * @return Bytes written, or negative error code
  */
-int senml_encode_location(const char *base_name, uint64_t base_time,
+int senml_encode_location(const char *_Nullable base_name, uint64_t base_time,
 			  float lat, float lon, float alt,
-			  uint8_t *buf, size_t buflen);
+			  uint8_t *_Nonnull buf, size_t buflen);
 
 /**
  * @brief Encode battery status as SenML.
@@ -187,9 +200,9 @@ int senml_encode_location(const char *base_name, uint64_t base_time,
  * @param[in]  buflen     Buffer size
  * @return Bytes written, or negative error code
  */
-int senml_encode_battery(const char *base_name, uint64_t base_time,
+int senml_encode_battery(const char *_Nullable base_name, uint64_t base_time,
 			 uint8_t percent, uint16_t mv, bool charging,
-			 uint8_t *buf, size_t buflen);
+			 uint8_t *_Nonnull buf, size_t buflen);
 
 /**
  * @brief Encode temperature as SenML.
@@ -201,9 +214,9 @@ int senml_encode_battery(const char *base_name, uint64_t base_time,
  * @param[in]  buflen     Buffer size
  * @return Bytes written, or negative error code
  */
-int senml_encode_temperature(const char *base_name, uint64_t base_time,
+int senml_encode_temperature(const char *_Nullable base_name, uint64_t base_time,
 			     float temp_c,
-			     uint8_t *buf, size_t buflen);
+			     uint8_t *_Nonnull buf, size_t buflen);
 
 #ifdef __cplusplus
 }

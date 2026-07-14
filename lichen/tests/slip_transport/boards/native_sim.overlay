@@ -1,0 +1,17 @@
+/*
+ * native_sim overlay for SLIP transport testing.
+ *
+ * Uses uart1 for SLIP transport to avoid conflicts with console.
+ * The native_sim uart1 can be connected via PTY for testing with
+ * slattach or tunslip6 on the host.
+ */
+
+/ {
+	chosen {
+		lichen,slip-uart = &uart1;
+	};
+};
+
+&uart1 {
+	status = "okay";
+};

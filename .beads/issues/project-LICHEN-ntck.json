@@ -3,14 +3,16 @@
   "title": "Implement /status resource handlers per LCI spec",
   "description": "Implement /status, /status/neighbors, /status/routes CoAP resources per LCI spec 17.5.3. GET returns current state as CBOR. /status and /status/neighbors support Observe (RFC 7641) for push notifications on change. Include RF stats, location, time, neighbor list with link quality, routing table.",
   "acceptance_criteria": "coap-client GET on /status/* returns valid CBOR; Observe on /status gets notifications on state change",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "grinder",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T19:19:12.646132Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T19:19:12.646797Z",
+  "updated_at": "2026-07-12T05:29:17.603175Z",
+  "closed_at": "2026-07-12T05:29:17.603175Z",
+  "close_reason": "Implemented coap_status.c: GET /status, /status/neighbors, /status/routes with RFC 7641 Observe",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-ntck",

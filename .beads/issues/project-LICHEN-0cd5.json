@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-0cd5",
+  "title": "IPv6Packet.from_bytes silently ignores trailing data",
+  "description": "File: python/src/lichen/ipv6/packet.py:213-249\n\nThe from_bytes() method extracts only the bytes specified by payload_length, silently ignoring any trailing data:\n\n```python\nbody = data[HEADER_LENGTH : HEADER_LENGTH + header.payload_length]\n```\n\nIf `data` contains more bytes than `HEADER_LENGTH + payload_length`, the extra bytes are discarded without notification.\n\nWhile this is often intentional behavior (e.g., parsing from a padded buffer), it could mask bugs where:\n1. A caller passes concatenated packets expecting each to be parsed\n2. Memory corruption adds unexpected trailing data\n3. An attacker appends extra data that should trigger an error\n\nImpact: Potential for subtle bugs when callers expect exact parsing.\n\nOptions:\n1. Add a `strict: bool = False` parameter that raises PacketError on trailing data\n2. Return the number of bytes consumed so callers can detect/handle trailing data\n3. Document the current behavior explicitly\n\nTags: api, ipv6",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "improvement",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:22:31.096035Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:22:31.096071Z"
+}

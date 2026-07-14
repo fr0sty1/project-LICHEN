@@ -1,8 +1,8 @@
 //! SCHC rule model (RFC 8724 §7).
 
 use lichen_core::constants::{
-    RULE_GLOBAL_COAP, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP, RULE_MQTT_SN, RULE_RPL_DAO,
-    RULE_RPL_DIO, RULE_UNCOMPRESSED,
+    RULE_GLOBAL_COAP, RULE_GLOBAL_OSCORE, RULE_ICMPV6_ECHO, RULE_LINK_LOCAL_COAP,
+    RULE_LINK_LOCAL_OSCORE, RULE_MQTT_SN, RULE_RPL_DAO, RULE_RPL_DIO, RULE_UNCOMPRESSED,
 };
 
 /// Matching Operator — decides whether a rule applies to a field value.
@@ -74,6 +74,16 @@ pub const RPL_DIO_RULE: Rule = Rule {
 };
 pub const RPL_DAO_RULE: Rule = Rule {
     rule_id: RULE_RPL_DAO,
+    fields: &[],
+};
+/// Link-local IPv6 + UDP + OSCORE-protected CoAP (RFC 8613).
+pub const LINK_LOCAL_OSCORE_RULE: Rule = Rule {
+    rule_id: RULE_LINK_LOCAL_OSCORE,
+    fields: &[],
+};
+/// Global IPv6 + UDP + OSCORE-protected CoAP (RFC 8613).
+pub const GLOBAL_OSCORE_RULE: Rule = Rule {
+    rule_id: RULE_GLOBAL_OSCORE,
     fields: &[],
 };
 pub const MQTT_SN_RULE: Rule = Rule {

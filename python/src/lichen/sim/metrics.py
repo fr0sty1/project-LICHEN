@@ -16,7 +16,76 @@ overlapping transmissions)`` keys.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
+
+
+@dataclass
+class NodeMetrics:
+    """Per-node telemetry metrics for cross-implementation tracking.
+
+    Tracks transmission/reception counts, byte totals, unique peers seen,
+    and packet hashes for verifying cross-implementation interoperability.
+    """
+
+    tx_count: int = 0
+    rx_count: int = 0
+    tx_bytes: int = 0
+    rx_bytes: int = 0
+    unique_peers: set[str] = field(default_factory=set)
+    errors: list[str] = field(default_factory=list)
+    packet_hashes_sent: set[str] = field(default_factory=set)
+    packet_hashes_received: set[str] = field(default_factory=set)
+
+    def record_tx(self, payload: bytes, packet_hash: str) -> None:
+        """Record a transmission.
+
+        Args:
+            payload: The transmitted payload bytes.
+            packet_hash: SHA256[:16] hash of the payload.
+        """
+        self.tx_count += 1
+        self.tx_bytes += len(payload)
+        self.packet_hashes_sent.add(packet_hash)
+
+    def record_rx(self, payload: bytes, packet_hash: str, from_peer: str | None = None) -> None:
+        """Record a reception.
+
+        Args:
+            payload: The received payload bytes.
+            packet_hash: SHA256[:16] hash of the payload.
+            from_peer: Optional IID or node ID of the sender.
+        """
+        self.rx_count += 1
+        self.rx_bytes += len(payload)
+        self.packet_hashes_received.add(packet_hash)
+        if from_peer is not None:
+            self.unique_peers.add(from_peer)
+
+    def record_error(self, error: str) -> None:
+        """Record an error message.
+
+        Args:
+            error: Description of the error.
+        """
+        self.errors.append(error)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable dictionary of all metrics.
+
+        Returns:
+            Dictionary containing all metrics, with sets converted to sorted lists.
+        """
+        return {
+            "tx_count": self.tx_count,
+            "rx_count": self.rx_count,
+            "tx_bytes": self.tx_bytes,
+            "rx_bytes": self.rx_bytes,
+            "unique_peers": sorted(self.unique_peers),
+            "errors": self.errors,
+            "packet_hashes_sent": sorted(self.packet_hashes_sent),
+            "packet_hashes_received": sorted(self.packet_hashes_received),
+        }
 
 
 @dataclass(frozen=True)

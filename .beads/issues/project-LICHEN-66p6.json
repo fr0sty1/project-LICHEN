@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-66p6",
+  "title": "senml: inconsistent error types for unsupported CBOR features",
+  "description": "File: rust/lichen-senml/src/cbor.rs\nLines: 87, 200-215, 363-377\n\nThe codebase has inconsistent error handling for unsupported CBOR features:\n\n1. enc_head (line 87): Returns CborError::NotImplemented for values \u003e 65535\n2. dec_head (lines 200-215): Returns CborError::InvalidInput for info 26/27 (32/64-bit lengths)\n3. skip_one_depth (lines 363-377): Returns CborError::InvalidInput for info \u003e= 26\n\nThese represent the same situation (unsupported CBOR feature) but use different error types. This makes it difficult for callers to distinguish between:\n- Malformed CBOR (truly invalid input)\n- Valid CBOR using features this implementation doesn't support\n\nImpact: Confusing error handling; callers cannot distinguish correctable errors from implementation limitations.\n\nFix: Use CborError::NotImplemented consistently for valid-but-unsupported CBOR constructs:\n- dec_head lines 215: change to NotImplemented\n- skip_one_depth line 377: change to NotImplemented",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:39:36.296142Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:39:36.296173Z"
+}

@@ -11,10 +11,14 @@ Test categories:
 1. Construction and validation
 2. Key derivation determinism
 3. IID derivation correctness
-4. Edge cases and error handling
+4. X25519 key derivation (for EDHOC)
+5. Edge cases and error handling
 """
 
+from hashlib import sha512
+
 import pytest
+from nacl.bindings import crypto_scalarmult, crypto_scalarmult_base
 
 from lichen.crypto.identity import Identity, PeerIdentity, _pubkey_to_iid
 
@@ -189,6 +193,85 @@ class TestPeerIdentity:
         assert pubkey.hex()[:16] in r
 
 
+class TestX25519KeyDerivation:
+    """Tests for Ed25519 to X25519 key derivation (spec section 8.8)."""
+
+    def test_x25519_private_length(self):
+        """x25519_private returns 32 bytes."""
+        ident = Identity.generate()
+        assert len(ident.x25519_private) == 32
+
+    def test_x25519_public_length(self):
+        """x25519_public returns 32 bytes."""
+        ident = Identity.generate()
+        assert len(ident.x25519_public) == 32
+
+    def test_x25519_private_is_deterministic(self):
+        """Same seed always produces same X25519 private key."""
+        seed = bytes(range(32))
+        ident1 = Identity.from_seed(seed)
+        ident2 = Identity.from_seed(seed)
+        assert ident1.x25519_private == ident2.x25519_private
+
+    def test_x25519_public_is_deterministic(self):
+        """Same seed always produces same X25519 public key."""
+        seed = bytes(range(32))
+        ident1 = Identity.from_seed(seed)
+        ident2 = Identity.from_seed(seed)
+        assert ident1.x25519_public == ident2.x25519_public
+
+    def test_x25519_derivation_matches_spec(self):
+        """X25519 derivation matches spec section 8.8 formula.
+
+        Spec:
+            x25519_private = SHA-512(ed25519_seed)[0:32]
+            x25519_public  = X25519(x25519_private, basepoint)
+        """
+        seed = bytes(range(32))
+        ident = Identity.from_seed(seed)
+
+        # Verify private key derivation
+        expected_private = sha512(seed).digest()[:32]
+        assert ident.x25519_private == expected_private
+
+        # Verify public key derivation
+        expected_public = crypto_scalarmult_base(expected_private)
+        assert ident.x25519_public == expected_public
+
+    def test_x25519_key_agreement_works(self):
+        """Two nodes can perform X25519 key agreement using derived keys."""
+        alice = Identity.generate()
+        bob = Identity.generate()
+
+        # Alice computes shared secret with Bob's public key
+        shared_alice = crypto_scalarmult(alice.x25519_private, bob.x25519_public)
+
+        # Bob computes shared secret with Alice's public key
+        shared_bob = crypto_scalarmult(bob.x25519_private, alice.x25519_public)
+
+        # Shared secrets must match (ECDH property)
+        assert shared_alice == shared_bob
+        assert len(shared_alice) == 32
+
+    def test_x25519_keys_differ_from_ed25519_keys(self):
+        """X25519 keys are different from Ed25519 keys (different curves)."""
+        ident = Identity.generate()
+
+        # Private keys differ (different derivation)
+        assert ident.x25519_private != ident.privkey
+
+        # Public keys differ (Ed25519 vs Curve25519)
+        assert ident.x25519_public != ident.pubkey
+
+    def test_different_seeds_produce_different_x25519_keys(self):
+        """Different seeds produce different X25519 keys."""
+        ident1 = Identity.from_seed(bytes(32))
+        ident2 = Identity.from_seed(bytes([1] + [0] * 31))
+
+        assert ident1.x25519_private != ident2.x25519_private
+        assert ident1.x25519_public != ident2.x25519_public
+
+
 class TestKnownVectors:
     """Test against known vectors for determinism verification."""
 
@@ -218,3 +301,30 @@ class TestKnownVectors:
 
         assert ident.iid == expected_iid
         assert len(ident.iid) == 8
+
+    def test_zero_seed_x25519_keys(self):
+        """All-zero seed produces specific X25519 keys.
+
+        Verifies the key derivation per spec section 8.8:
+            x25519_private = SHA-512(seed)[0:32]
+            x25519_public  = X25519(x25519_private, basepoint)
+        """
+        seed = bytes(32)
+        ident = Identity.from_seed(seed)
+
+        # SHA-512 of 32 zero bytes, first 32 bytes
+        # Computed via: hashlib.sha512(bytes(32)).digest()[:32].hex()
+        expected_x25519_private = bytes.fromhex(
+            "5046adc1dba838867b2bbbfdd0c3423e58b57970b5267a90f57960924a87f196"
+        )
+        assert ident.x25519_private == expected_x25519_private
+
+        # X25519 public key derived from the private key
+        # Computed via: nacl.bindings.crypto_scalarmult_base(expected_x25519_private).hex()
+        expected_x25519_public = bytes.fromhex(
+            "5bf55c73b82ebe22be80f3430667af570fae2556a6415e6b30d4065300aa947d"
+        )
+        assert ident.x25519_public == expected_x25519_public
+
+        # Cross-check: public key should be scalarmult_base of private key
+        assert ident.x25519_public == crypto_scalarmult_base(ident.x25519_private)

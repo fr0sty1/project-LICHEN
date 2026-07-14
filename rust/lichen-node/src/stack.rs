@@ -23,6 +23,7 @@ use lichen_link::link_layer::LinkRxError;
 use lichen_link::seqnum::LinkSeqNum;
 use lichen_schc::codec;
 
+use crate::forward_buffer::{ForwardBuffer, ForwardError};
 use crate::Node;
 
 /// Maximum wire frame size (LoRa MTU with some headroom).
@@ -42,6 +43,8 @@ pub enum TxError {
     RadioTx,
     /// Buffer too small for message.
     BufferTooSmall,
+    /// Forwarding queue full for source — send NACK upstream.
+    QueueFull,
 }
 
 impl core::fmt::Display for TxError {
@@ -52,6 +55,16 @@ impl core::fmt::Display for TxError {
             Self::FrameEncode => write!(f, "frame encoding failed"),
             Self::RadioTx => write!(f, "radio TX failed"),
             Self::BufferTooSmall => write!(f, "buffer too small"),
+            Self::QueueFull => write!(f, "forwarding queue full"),
+        }
+    }
+}
+
+impl From<ForwardError> for TxError {
+    fn from(e: ForwardError) -> Self {
+        match e {
+            ForwardError::QueueFull => TxError::QueueFull,
+            ForwardError::NotFound => TxError::BufferTooSmall, // Shouldn't happen in TX path
         }
     }
 }
@@ -118,24 +131,50 @@ pub struct Stack<R: Radio> {
     radio: R,
     link: lichen_link::link_layer::LinkLayer,
     node: Node,
+    /// SECURITY: Per spec section 4.4, epoch MUST be initialized to:
+    /// - A persisted value (if available), OR
+    /// - A random value in [128, 255] (if no persistence)
     epoch: u8,
     seqnum: LinkSeqNum,
     message_id: u16,
+    /// Forwarding buffer with per-source backpressure (spec appendix-bufferbloat.md).
+    forward_buffer: ForwardBuffer,
 }
 
 #[cfg(feature = "std")]
 impl<R: Radio> Stack<R> {
-    /// Create a new stack with the given radio and identity.
-    pub fn new(radio: R, identity: lichen_link::identity::Identity) -> Self {
+    /// Create a new stack with the given radio, identity, and epoch.
+    ///
+    /// SECURITY: Per spec section 4.4, `epoch` MUST be:
+    /// - Read from persisted storage (if available), OR
+    /// - A random value uniformly distributed in [128, 255]
+    ///
+    /// # Panics
+    ///
+    /// Debug builds panic if `epoch < 128` to catch non-compliant initialization.
+    pub fn new(radio: R, identity: lichen_link::identity::Identity, epoch: u8) -> Self {
+        debug_assert!(
+            epoch >= 128,
+            "SECURITY: epoch MUST be in [128, 255] per spec section 4.4"
+        );
         let node_id = NodeId(identity.iid);
         Self {
             radio,
             link: lichen_link::link_layer::LinkLayer::new(identity),
             node: Node::new(node_id),
-            epoch: 0,
+            epoch,
             seqnum: LinkSeqNum::new(0),
             message_id: 0,
+            forward_buffer: ForwardBuffer::new(),
         }
+    }
+
+    /// Create a new stack with the default minimum compliant epoch (128).
+    ///
+    /// SECURITY: For production use, prefer [`Stack::new`] with a random
+    /// value from the platform's RNG in range [128, 255].
+    pub fn new_default_epoch(radio: R, identity: lichen_link::identity::Identity) -> Self {
+        Self::new(radio, identity, 128)
     }
 
     /// Get the local node ID.
@@ -286,7 +325,6 @@ impl<R: Radio> Stack<R> {
         let udp_hdr = UdpHeader::new(PORT_COAP, PORT_COAP);
         udp_hdr
             .write_to(
-                udp_payload_len,
                 &src,
                 dst,
                 coap,
@@ -304,14 +342,14 @@ impl<R: Radio> Stack<R> {
             codec::compress(&ipv6[..ipv6_len], &mut schc).map_err(|_| TxError::SchcCompress)?;
 
         let mut l2_payload = [0u8; 201];
-        let l2_payload_len = wrap_schc_payload(&schc[..schc_len], &mut l2_payload)?;
+        let l2_data = wrap_schc_payload(&schc[..schc_len], &mut l2_payload)?;
 
         // L2 sign and frame
         let seqnum = self.next_seqnum();
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
             .link
-            .build_frame(self.epoch, seqnum, &[], l2_payload_len, &mut wire)
+            .build_frame(self.epoch, seqnum, &[], l2_data, &mut wire)
             .map_err(|_| TxError::FrameEncode)?;
 
         // Radio TX
@@ -330,13 +368,13 @@ impl<R: Radio> Stack<R> {
         let mut schc = [0u8; 200];
         let schc_len = codec::compress(ipv6, &mut schc).map_err(|_| TxError::SchcCompress)?;
         let mut l2_payload = [0u8; 201];
-        let l2_payload_len = wrap_schc_payload(&schc[..schc_len], &mut l2_payload)?;
+        let l2_data = wrap_schc_payload(&schc[..schc_len], &mut l2_payload)?;
 
         let seqnum = self.next_seqnum();
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
             .link
-            .build_frame(self.epoch, seqnum, &[], l2_payload_len, &mut wire)
+            .build_frame(self.epoch, seqnum, &[], l2_data, &mut wire)
             .map_err(|_| TxError::FrameEncode)?;
 
         self.radio
@@ -436,6 +474,75 @@ impl<R: Radio> Stack<R> {
     pub fn node(&self) -> &Node {
         &self.node
     }
+
+    // --- Forwarding Buffer API (spec appendix-bufferbloat.md) ---
+
+    /// Queue a packet for forwarding with backpressure.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TxError::QueueFull`] if the source already has
+    /// `MAX_PACKETS_PER_SOURCE` packets queued. The caller SHOULD send
+    /// a NACK upstream when this occurs.
+    ///
+    /// # Arguments
+    ///
+    /// * `packet` - Raw IPv6 packet to forward
+    /// * `source_iid` - 8-byte Interface Identifier of the original sender
+    /// * `now_ms` - Current monotonic time in milliseconds
+    /// * `deadline_ms` - Optional deadline; packets past deadline are dropped
+    /// * `priority` - Priority level (0=highest, 3=lowest per spec)
+    pub fn queue_forward(
+        &mut self,
+        packet: Vec<u8>,
+        source_iid: [u8; 8],
+        now_ms: u32,
+        deadline_ms: Option<u32>,
+        priority: u8,
+    ) -> Result<(), TxError> {
+        self.forward_buffer
+            .queue(packet, source_iid, now_ms, deadline_ms, priority)
+            .map_err(TxError::from)
+    }
+
+    /// Transmit the highest-priority queued forwarding packet.
+    ///
+    /// Returns `true` if a packet was transmitted, `false` if the buffer was empty.
+    pub async fn transmit_forward(&mut self, now_ms: u32) -> Result<bool, TxError> {
+        let Some(entry) = self.forward_buffer.dequeue(now_ms) else {
+            return Ok(false);
+        };
+
+        self.send_ipv6_raw(&entry.packet).await?;
+        Ok(true)
+    }
+
+    /// Check how many packets are queued for a specific source.
+    pub fn forward_count_for_source(&self, source_iid: &[u8; 8]) -> usize {
+        self.forward_buffer.count_for_source(source_iid)
+    }
+
+    /// Get forwarding buffer statistics.
+    pub fn forward_stats(&self) -> crate::forward_buffer::ForwardStats {
+        self.forward_buffer.stats()
+    }
+
+    /// Expire old packets from the forwarding buffer.
+    ///
+    /// Call this periodically to clean up packets past their deadline.
+    pub fn expire_forwards(&mut self, now_ms: u32) -> usize {
+        self.forward_buffer.expire(now_ms)
+    }
+
+    /// Clear all forwarding packets for a source (e.g., on link failure).
+    pub fn clear_forward_source(&mut self, source_iid: &[u8; 8]) -> usize {
+        self.forward_buffer.clear_source(source_iid)
+    }
+
+    /// Access the forwarding buffer directly for advanced operations.
+    pub fn forward_buffer(&mut self) -> &mut ForwardBuffer {
+        &mut self.forward_buffer
+    }
 }
 
 fn wrap_schc_payload<'a>(schc: &[u8], out: &'a mut [u8]) -> Result<&'a [u8], TxError> {
@@ -454,36 +561,15 @@ mod tests {
     use lichen_link::identity::{Identity, PeerIdentity};
     use lichen_link::Seed;
 
-    #[tokio::test]
-    async fn stack_send_get_loopback() {
-        let alice_id = Identity::from_seed(Seed::new([0x01; 32]));
-        let bob_id = Identity::from_seed(Seed::new([0x02; 32]));
+    // NOTE: CoAP tests use SecureStack (see secure.rs::secure_stack_oscore_roundtrip).
+    // Per spec section 8.7, all CoAP traffic MUST use OSCORE encryption.
+    // The plaintext Stack is only for ICMPv6 and diagnostics.
 
-        let alice_pubkey = alice_id.pubkey;
-        let bob_pubkey = bob_id.pubkey;
-
-        let alice_peer = PeerIdentity::from_pubkey(alice_pubkey);
-        let bob_peer = PeerIdentity::from_pubkey(bob_pubkey);
-
-        let (radio_a, radio_b) = LoopbackRadio::pair();
-
-        let mut alice = Stack::new(radio_a, alice_id);
-        alice.add_peer(bob_peer);
-
-        let mut bob = Stack::new(radio_b, bob_id);
-        bob.add_peer(alice_peer);
-
-        let bob_addr = bob.local_addr();
-
-        // Alice sends GET /test to Bob
-        let _mid = alice.send_get(&bob_addr, &["test"], &[0xAB]).await.unwrap();
-
-        // Bob receives
-        let frame = bob.receive(1000).await.unwrap().unwrap();
-        assert!(frame.ipv6.len() >= 40);
-        assert_eq!(frame.ipv6[6], next_header::UDP);
-    }
-
+    /// ICMPv6 ping-pong test using plaintext Stack.
+    ///
+    /// SECURITY: This uses plaintext Stack because OSCORE (RFC 8613) is CoAP-specific.
+    /// ICMPv6 does not use OSCORE, so plaintext Stack is appropriate here.
+    /// For CoAP traffic, use SecureStack per spec section 8.7.
     #[tokio::test]
     async fn stack_ping_pong() {
         let alice_id = Identity::from_seed(Seed::new([0x01; 32]));
@@ -494,10 +580,10 @@ mod tests {
 
         let (radio_a, radio_b) = LoopbackRadio::pair();
 
-        let mut alice = Stack::new(radio_a, alice_id);
+        let mut alice = Stack::new_default_epoch(radio_a, alice_id);
         alice.add_peer(bob_peer);
 
-        let mut bob = Stack::new(radio_b, bob_id);
+        let mut bob = Stack::new_default_epoch(radio_b, bob_id);
         bob.add_peer(alice_peer);
 
         // Build and send ICMPv6 Echo Request from Alice to Bob
@@ -505,7 +591,7 @@ mod tests {
         let bob_addr = bob.local_addr();
 
         let echo = lichen_ipv6::Icmpv6Echo { id: 42, seq: 1 };
-        let icmp = echo.build_request(&alice_addr, &bob_addr, b"ping");
+        let icmp = echo.build_request(&alice_addr, &bob_addr, b"ping").unwrap();
         let ip_hdr = Ipv6Header::new(next_header::ICMPV6, alice_addr, bob_addr);
         let mut ipv6 = vec![0u8; IPV6_HEADER_LEN];
         ip_hdr

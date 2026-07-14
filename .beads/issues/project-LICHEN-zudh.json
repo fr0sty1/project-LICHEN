@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-zudh",
+  "title": "task",
+  "description": "rust/lichen-embassy/src/sim.rs:152 - SNR received as i16 from protocol but truncated to i8 in RxPacket. While real LoRa SNR values are typically -20 to +10, edge cases (simulated extremes) could overflow. Should match protocol's i16 or validate range.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T01:20:03.428766Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T06:08:34.194149Z",
+  "closed_at": "2026-07-11T06:08:34.194149Z",
+  "close_reason": "Fixed: Clamp i16 SNR to i8 range before cast to prevent truncation"
+}

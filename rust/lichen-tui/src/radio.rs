@@ -7,7 +7,10 @@
 //!   - Estimated drain time
 
 use lichen_core::duty_cycle::{DutyCycleTracker, WINDOW_MS};
-use lichen_core::tx_queue::{TxPriority, TxQueue};
+use lichen_core::tx_queue::{
+    TxPriority, TxQueue, DEADLINE_BULK_MS, DEADLINE_CONTROL_MS, DEADLINE_ROUTING_MS,
+    DEADLINE_USER_MS,
+};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -71,13 +74,22 @@ impl RadioState {
         self.duty_cycle.record_tx(3_000_000, 350);
         self.duty_cycle.record_tx(3_600_000, 220);
 
-        // Add some items to the TX queue
-        let _ = self.tx_queue.push(TxPriority::Control, &[0u8; 12]); // ACK
-        let _ = self.tx_queue.push(TxPriority::Routing, &[0u8; 48]); // RPL DIO
-        let _ = self.tx_queue.push(TxPriority::Routing, &[0u8; 32]); // Announce
-        let _ = self.tx_queue.push(TxPriority::User, &[0u8; 64]); // User message
-        let _ = self.tx_queue.push(TxPriority::User, &[0u8; 128]); // User message
-        let _ = self.tx_queue.push(TxPriority::Bulk, &[0u8; 200]); // Firmware chunk
+        // Add some items to the TX queue (capacity is 4 per spec)
+        let now = self.now_ms;
+        let _ = self.tx_queue.push(
+            TxPriority::Control,
+            now + DEADLINE_CONTROL_MS,
+            now,
+            &[0u8; 12],
+        ); // ACK
+        let _ = self.tx_queue.push(
+            TxPriority::Routing,
+            now + DEADLINE_ROUTING_MS,
+            now,
+            &[0u8; 48],
+        ); // RPL DIO
+        let _ = self.tx_queue.push(TxPriority::User, now + DEADLINE_USER_MS, now, &[0u8; 64]); // User message
+        let _ = self.tx_queue.push(TxPriority::Bulk, now + DEADLINE_BULK_MS, now, &[0u8; 200]); // Firmware chunk
     }
 
     /// Advance simulated time (call from main event loop).

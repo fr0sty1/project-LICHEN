@@ -16,9 +16,16 @@
 #![no_std]
 
 pub mod codec;
+pub mod context;
 pub mod fragment;
+pub mod headers;
 pub mod rules;
 
+pub use context::{rule_matches, FieldId, NoMatchingRuleError, SchcContext};
+pub use headers::{
+    CoapUdpGlobalProfile, CoapUdpLinkLocalProfile, Icmpv6EchoProfile, PacketError, PacketProfile,
+    ParsedPacket, RplDaoProfile, RplDioProfile, DEFAULT_PROFILES, MAX_FIELDS,
+};
 pub use rules::{Cda, FieldDescriptor, Mo, Rule};
 
 #[cfg(feature = "std")]

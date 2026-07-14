@@ -88,7 +88,8 @@ async fn request(
         .await
         .map_err(|_| std::io::Error::new(std::io::ErrorKind::TimedOut, "CoAP timeout"))??;
 
-    decode(&buf[..n])
+    // SECURITY: Validate response MID and token match request (RFC 7252 Sections 4.4 and 5.3.1)
+    decode(&buf[..n], mid, &token)
 }
 
 /// Build a CoAP message using CoapBuilder.
@@ -131,7 +132,8 @@ fn encode(
 }
 
 /// Parse a CoAP response.  Returns code + payload; ignores option values.
-fn decode(data: &[u8]) -> std::io::Result<Response> {
+/// SECURITY: Validates response MID and token match expected values per RFC 7252 Section 4.4.
+fn decode(data: &[u8], expected_mid: u16, expected_token: &[u8]) -> std::io::Result<Response> {
     if data.len() < 4 {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
@@ -147,12 +149,34 @@ fn decode(data: &[u8]) -> std::io::Result<Response> {
     }
     let code = data[1];
 
+    // SECURITY: Validate response MID matches request MID (RFC 7252 Section 4.4).
+    // CON-ACK matching requires both MID and token. Without MID validation, an attacker
+    // with knowledge of the predictable MID could inject spoofed ACK responses.
+    let response_mid = u16::from_be_bytes([data[2], data[3]]);
+    if response_mid != expected_mid {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "response MID does not match request MID",
+        ));
+    }
+
     if 4 + tkl > data.len() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             "response too short for token",
         ));
     }
+
+    // SECURITY: Validate response token matches request token (RFC 7252 Section 5.3.1).
+    // Without this check, an attacker could inject spoofed responses with arbitrary tokens.
+    let response_token = &data[4..4 + tkl];
+    if response_token != expected_token {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "response token does not match request token",
+        ));
+    }
+
     let payload_start = skip_options(data, 4 + tkl)?;
     Ok(Response {
         code,
@@ -231,4 +255,114 @@ fn mid_from_time() -> u16 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.subsec_nanos() as u16)
         .unwrap_or(0x1234)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Build a minimal CoAP response: Ver=1, Type=ACK, TKL, Code, MID, Token, optional payload.
+    fn build_response(code: u8, mid: u16, token: &[u8], payload: Option<&[u8]>) -> Vec<u8> {
+        let tkl = token.len() as u8;
+        assert!(tkl <= 8, "token too long");
+        // Ver=1 (bits 7-6), Type=ACK=2 (bits 5-4), TKL (bits 3-0)
+        let byte0 = 0x60 | tkl; // Ver=1, T=2 (ACK), TKL
+        let mid_bytes = mid.to_be_bytes();
+        let mut data = vec![byte0, code, mid_bytes[0], mid_bytes[1]];
+        data.extend_from_slice(token);
+        if let Some(p) = payload {
+            if !p.is_empty() {
+                data.push(0xff); // payload marker
+                data.extend_from_slice(p);
+            }
+        }
+        data
+    }
+
+    #[test]
+    fn decode_accepts_matching_mid_and_token() {
+        let mid = 0x1234;
+        let token = [0x4c, 0x49, 0x43, 0x48]; // "LICH"
+        let resp_data = build_response(0x45, mid, &token, Some(b"hello")); // 2.05 Content
+        let result = decode(&resp_data, mid, &token);
+        assert!(result.is_ok());
+        let resp = result.unwrap();
+        assert_eq!(resp.code, 0x45);
+        assert_eq!(resp.payload, b"hello");
+    }
+
+    #[test]
+    fn decode_rejects_mismatched_mid() {
+        let request_mid = 0x1234;
+        let attacker_mid = 0xDEAD;
+        let token = [0x4c, 0x49, 0x43, 0x48]; // "LICH"
+        // Attacker knows token but guesses wrong MID
+        let spoofed_resp = build_response(0x45, attacker_mid, &token, Some(b"fake"));
+        let result = decode(&spoofed_resp, request_mid, &token);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("MID"));
+    }
+
+    #[test]
+    fn decode_rejects_mismatched_token() {
+        let mid = 0x1234;
+        let request_token = [0x4c, 0x49, 0x43, 0x48]; // "LICH"
+        let attacker_token = [0x45, 0x56, 0x49, 0x4c]; // "EVIL"
+        let spoofed_resp = build_response(0x45, mid, &attacker_token, Some(b"fake"));
+        let result = decode(&spoofed_resp, mid, &request_token);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("token"));
+    }
+
+    #[test]
+    fn decode_rejects_wrong_length_token() {
+        let mid = 0x1234;
+        let request_token = [0x4c, 0x49, 0x43, 0x48]; // 4 bytes
+        let short_token = [0x4c, 0x49]; // 2 bytes
+        let spoofed_resp = build_response(0x45, mid, &short_token, None);
+        let result = decode(&spoofed_resp, mid, &request_token);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    fn decode_accepts_empty_token_when_expected() {
+        let mid = 0x5678;
+        let empty_token: [u8; 0] = [];
+        let resp_data = build_response(0x45, mid, &empty_token, Some(b"data"));
+        let result = decode(&resp_data, mid, &empty_token);
+        assert!(result.is_ok());
+        let resp = result.unwrap();
+        assert_eq!(resp.payload, b"data");
+    }
+
+    #[test]
+    fn decode_rejects_nonempty_when_empty_expected() {
+        let mid = 0xABCD;
+        let empty_token: [u8; 0] = [];
+        let nonempty_token = [0x41, 0x42];
+        let resp_data = build_response(0x45, mid, &nonempty_token, None);
+        let result = decode(&resp_data, mid, &empty_token);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn decode_rejects_both_wrong_mid_and_token() {
+        // Even if attacker guesses one correctly, must match both
+        let request_mid = 0x1234;
+        let request_token = [0x4c, 0x49, 0x43, 0x48]; // "LICH"
+        let attacker_mid = 0xBEEF;
+        let attacker_token = [0x45, 0x56, 0x49, 0x4c]; // "EVIL"
+        let spoofed_resp = build_response(0x45, attacker_mid, &attacker_token, Some(b"pwned"));
+        let result = decode(&spoofed_resp, request_mid, &request_token);
+        assert!(result.is_err());
+        // Should fail on MID check first
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+    }
 }

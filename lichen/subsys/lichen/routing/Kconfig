@@ -32,6 +32,221 @@ config LICHEN_ROUTING_MAX_APP_DATA_OBSERVERS
 	  One slot is intended for the gateway network-location bridge and another
 	  for common routing or tests.
 
+config LICHEN_ROUTING_GRADIENT_MAX_ENTRIES
+	int "Maximum gradient table entries"
+	depends on LICHEN_ROUTING
+	default 32
+	help
+	  Maximum number of gradient entries in the unified routing table.
+	  Each entry is approximately 48 bytes. Constrained devices may use
+	  16-32 entries; routers may use 64 or more.
+
+config LICHEN_ROUTING_GRADIENT_TIMEOUT_MS
+	int "Gradient timeout in milliseconds"
+	depends on LICHEN_ROUTING
+	default 600000
+	help
+	  Expiry time for gradient entries learned from announces and RREPs.
+	  Default is 600 seconds (10 minutes, 2x announce interval per spec 9.4).
+
+config LICHEN_ROUTING_DATA_GRADIENT_TIMEOUT_MS
+	int "Data gradient timeout in milliseconds"
+	depends on LICHEN_ROUTING
+	default 60000
+	help
+	  Expiry time for gradient entries learned passively from forwarded data.
+	  Shorter than explicit routes since opportunistic (spec 11.2).
+
+config LICHEN_ROUTER
+	bool "Unified hybrid router (spec 7.2)"
+	depends on LICHEN_ROUTING
+	default y
+	help
+	  Enable the unified hybrid router that orchestrates address classification,
+	  gradient table lookup, RPL parent routing, and LOADng discovery.
+	  This is the main routing decision engine described in spec section 7.2.
+
+config LICHEN_ROUTER_MAX_PENDING
+	int "Maximum pending packets during discovery"
+	depends on LICHEN_ROUTER
+	default 8
+	help
+	  Maximum number of packets that can be queued across all destinations
+	  while waiting for LOADng route discovery to complete.
+
+config LICHEN_ROUTER_MAX_PENDING_PER_DEST
+	int "Maximum pending packets per destination"
+	depends on LICHEN_ROUTER
+	default 3
+	help
+	  Maximum packets to queue for a single destination during discovery.
+	  Prevents one destination from consuming all pending slots.
+
+config LICHEN_ROUTER_PENDING_TIMEOUT_MS
+	int "Pending packet timeout in milliseconds"
+	depends on LICHEN_ROUTER
+	default 15000
+	help
+	  How long to hold packets while waiting for route discovery.
+	  LOADng default is 3 retries * 5 seconds = 15 seconds.
+
+config LICHEN_ROUTER_MAX_MESH_PREFIXES
+	int "Maximum mesh-local prefixes"
+	depends on LICHEN_ROUTER
+	default 4
+	help
+	  Maximum number of IPv6 prefixes that are classified as mesh-local.
+	  Includes ULA (fd00::/8) by default plus GUA prefixes from DIO.
+
+config LICHEN_ROUTER_DTN_BUFFER_SIZE
+	int "DTN store-and-forward buffer size (bytes)"
+	depends on LICHEN_ROUTER
+	default 0
+	help
+	  Size of the DTN store-and-forward buffer in bytes. Set to 0 to disable.
+	  Spec 9.8 suggests 64KB for routers. Constrained devices should disable.
+
+config LICHEN_ROUTER_DTN_MAX_MESSAGES
+	int "Maximum DTN buffered messages"
+	depends on LICHEN_ROUTER
+	depends on LICHEN_ROUTER_DTN_BUFFER_SIZE > 0
+	default 8
+	help
+	  Maximum number of messages that can be stored in the DTN buffer.
+	  Each message slot has overhead beyond the data itself.
+
+config LICHEN_ROUTER_FORWARDING_BUFFER
+	bool "Forwarding buffer with backpressure (spec appendix-bufferbloat)"
+	depends on LICHEN_ROUTER
+	default y
+	help
+	  Enable per-source forwarding buffer to prevent one chatty source from
+	  monopolizing relay capacity. Returns -ENOBUFS when limit exceeded,
+	  signaling the caller to send a NACK upstream.
+
+config LICHEN_ROUTER_MAX_FORWARDING_SOURCES
+	int "Maximum forwarding sources"
+	depends on LICHEN_ROUTER_FORWARDING_BUFFER
+	default 8
+	help
+	  Maximum number of source IIDs tracked in the forwarding buffer.
+	  When full, the oldest source slot is evicted.
+
+config LICHEN_ROUTER_MAX_PACKETS_PER_SOURCE
+	int "Maximum packets per forwarding source"
+	depends on LICHEN_ROUTER_FORWARDING_BUFFER
+	default 2
+	help
+	  Maximum packets queued from a single source IID. Prevents one
+	  chatty source from filling the relay's forwarding capacity.
+	  Total buffer: MAX_SOURCES * MAX_PER_SOURCE = 16 packets default.
+
+config LICHEN_ROUTER_FORWARDING_DEADLINE_MS
+	int "Forwarding packet deadline in milliseconds"
+	depends on LICHEN_ROUTER_FORWARDING_BUFFER
+	default 10000
+	help
+	  Maximum time a packet can wait in the forwarding buffer before
+	  being dropped. Default 10 seconds per spec appendix-bufferbloat.
+
 config LICHEN_ROUTING_STANDALONE_SCHNORR
 	bool
 	default y if LICHEN_ROUTING && !LICHEN_LINK
+
+config LICHEN_DTN
+	bool "LICHEN DTN store-and-forward buffer"
+	depends on LICHEN_ROUTING
+	default n
+	help
+	  Enable DTN store-and-forward buffer (spec section 9.8). Border routers
+	  MAY buffer messages for unreachable destinations, delivering when a
+	  path appears. Uses absolute TTL (Unix timestamp) and oldest-first
+	  eviction when buffer is full.
+
+config LICHEN_DTN_MAX_BYTES
+	int "DTN buffer maximum size in bytes"
+	depends on LICHEN_DTN
+	default 65536
+	help
+	  Maximum buffer size in bytes. Spec 9.8 suggests 64KB for routers.
+	  Constrained devices should use a smaller value or disable DTN.
+
+config LICHEN_DTN_MAX_MESSAGES
+	int "DTN buffer maximum message count"
+	depends on LICHEN_DTN
+	default 32
+	help
+	  Maximum number of messages that can be stored in the DTN buffer.
+	  Each message slot uses approximately 1.4KB of RAM.
+
+config LICHEN_DTN_MAX_PACKET_SIZE
+	int "DTN maximum packet size"
+	depends on LICHEN_DTN
+	default 1280
+	help
+	  Maximum size of a single packet in the DTN buffer.
+	  Default is IPv6 minimum MTU (1280 bytes).
+
+config LICHEN_ANNOUNCE_SCHEDULER
+	bool "LICHEN announce scheduler (periodic TX)"
+	depends on LICHEN_ROUTING
+	depends on LICHEN_LINK
+	default n
+	help
+	  Enable periodic announce transmission (spec section 9.4). The scheduler
+	  broadcasts signed announce messages at configurable intervals with
+	  random jitter to prevent collision. Requires LICHEN_LINK for identity
+	  (keypair) and link-layer transmission.
+
+config LICHEN_ANNOUNCE_INTERVAL_MS
+	int "Announce interval in milliseconds"
+	depends on LICHEN_ANNOUNCE_SCHEDULER
+	default 300000
+	help
+	  Time between announce transmissions. Spec 9.4 recommends 300 seconds
+	  (300000 ms). Shorter intervals increase network overhead but improve
+	  route freshness for dynamic topologies.
+
+config LICHEN_ANNOUNCE_JITTER_MS
+	int "Announce jitter in milliseconds"
+	depends on LICHEN_ANNOUNCE_SCHEDULER
+	default 30000
+	help
+	  Maximum random jitter added to announce interval. Spec 9.4 recommends
+	  0-30 seconds (30000 ms). Jitter prevents collision when multiple nodes
+	  power on simultaneously.
+
+config LICHEN_ANNOUNCE_INITIAL_DELAY_MS
+	int "Initial delay before first announce"
+	depends on LICHEN_ANNOUNCE_SCHEDULER
+	default 0
+	help
+	  Delay before the first announce after starting the scheduler. If 0,
+	  a random delay (1-jitter_ms) is used to prevent thundering herd on
+	  mass power-on. Setting explicitly allows the node to receive announces
+	  from others first, building gradients before advertising itself.
+
+config LICHEN_LOADNG
+	bool "LICHEN LOADng reactive route discovery"
+	depends on LICHEN_ROUTING
+	default n
+	help
+	  Enable LOADng reactive peer-to-peer route discovery (spec section 10,
+	  appendix B2). LOADng is the fallback routing mechanism when no gradient
+	  route exists. It uses ICMPv6 type 158 messages: RREQ (0), RREP (1),
+	  RERR (2).
+
+config LICHEN_LOADNG_ROUTE_CACHE_SIZE
+	int "LOADng route cache size"
+	depends on LICHEN_LOADNG
+	default 32
+	help
+	  Maximum number of cached LOADng routes. Uses LRU eviction when full.
+
+config LICHEN_LOADNG_SEEN_TABLE_SIZE
+	int "LOADng RREQ suppression table size"
+	depends on LICHEN_LOADNG
+	default 16
+	help
+	  Maximum number of RREQ entries tracked for duplicate suppression.
+	  Entries expire after 10 seconds.

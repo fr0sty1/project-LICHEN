@@ -3,14 +3,16 @@
   "title": "Implement BLE IPSP transport binding for LCI",
   "description": "Implement BLE transport per LCI spec 17.3.2: Internet Protocol Support Profile (IPSP) for IPv6 over BLE (RFC 7668). Enables standard IPv6 stack on phone/laptop to talk CoAP to node. Requires Zephyr BLE + IPSP config. Test with Linux BLE + ping6/coap-client.",
   "acceptance_criteria": "Phone or laptop can ping6 and coap-client to node over BLE IPSP",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "assignee": "grinder",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T19:19:00.200904Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T19:19:00.201488Z",
+  "updated_at": "2026-07-12T05:27:40.811015Z",
+  "closed_at": "2026-07-12T05:27:40.811015Z",
+  "close_reason": "Implemented BLE SLIP transport (16.6KB), NUS UUID, test suite, Kconfig",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-6pjt",

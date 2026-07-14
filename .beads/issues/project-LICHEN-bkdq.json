@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-bkdq",
+  "title": "task",
+  "description": "python/src/lichen/sim/node_server.py:66 and renode_server.py:59 - read_message() unpacks a 4-byte length from the wire but does not validate it against MAX_PAYLOAD_LENGTH (65535). A malicious client can send length=0xFFFFFFFF, causing the server to attempt reading 4GB of data, leading to memory exhaustion or indefinite blocking. The protocol.py module defines MAX_PAYLOAD_LENGTH but it is only enforced at encoding time, not decoding. Fix: Add validation after unpacking length to reject values \u003e MAX_PAYLOAD_LENGTH.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T05:36:02.58871Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T00:50:33.476817Z",
+  "closed_at": "2026-07-12T00:50:33.476817Z",
+  "close_reason": "Fixed: Added MAX_PAYLOAD_LENGTH validation to renode_server.py _read_message(). The node_server.py already had this validation at lines 74-76; applied same pattern to renode_server.py to prevent memory exhaustion from malicious oversized length values."
+}

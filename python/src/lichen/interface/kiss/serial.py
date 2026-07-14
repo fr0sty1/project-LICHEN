@@ -105,13 +105,15 @@ class KissSerialConnection:
         if self._closed or self.handler.exited:
             return False
 
+        ser = self._serial  # Capture to avoid race with close()
+
         def _read():
-            if self._serial is None or not self._serial.is_open:
+            if ser is None or not ser.is_open:
                 return None
-            waiting = self._serial.in_waiting
+            waiting = ser.in_waiting
             if waiting > 0:
-                return self._serial.read(min(waiting, 4096))
-            return self._serial.read(1)
+                return ser.read(min(waiting, 4096))
+            return ser.read(1)
 
         try:
             chunk = await self._loop.run_in_executor(None, _read)
@@ -153,10 +155,11 @@ class KissSerialConnection:
             return
         self._closed = True
 
-        if self._serial is not None:
+        ser = self._serial
+        if ser is not None:
             def _close():
                 with contextlib.suppress(Exception):
-                    self._serial.close()
+                    ser.close()
 
             if self._loop:
                 await self._loop.run_in_executor(None, _close)

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-pw7o",
+  "title": "Echo reply uses local_addr instead of ip_header.dst for unicast",
+  "description": "File: rust/lichen-ipv6/src/lib.rs:760-761\n\nWhen building echo reply:\n```rust\nlet reply_icmp = echo.build_reply(local_addr, \u0026ip_header.src, truncated_data)?;\nlet reply_ip = Ipv6Header::new(next_header::ICMPV6, *local_addr, ip_header.src);\n```\n\nThe reply source is `local_addr`, not `ip_header.dst`. \n\nThis matters for nodes with multiple addresses:\n- If a ping arrives at a secondary address (e.g., ULA), the reply should come FROM that address\n- Currently, it always comes from `local_addr` (presumably the link-local)\n\nPer RFC 4443 Section 4.2: 'The source address of an Echo Reply...SHOULD be the same as the destination address of the Echo Request message.'\n\nThis could cause issues:\n1. Reply from wrong address confuses sender\n2. Checksum computed over wrong addresses (though local_addr is used consistently)\n3. Firewall rules expecting reply from requested address may block\n\nFix: Use `ip_header.dst` as reply source instead of `local_addr`.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:34:38.605382Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:34:38.605409Z"
+}

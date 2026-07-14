@@ -113,13 +113,13 @@ impl TrickleTimer {
         let half = self.interval / 2;
         // transmit_time is uniform in [now + half, now + interval)
         let offset = if half > 0 { rand_offset % half } else { 0 };
-        self.transmit_time = now + half + offset;
+        self.transmit_time = now.saturating_add(half).saturating_add(offset);
         self.transition_to(TrickleState::WaitingTransmit)
     }
 
     /// Absolute time when the current interval ends.
     pub fn interval_end(&self) -> u32 {
-        self.interval_start + self.interval
+        self.interval_start.saturating_add(self.interval)
     }
 
     /// Record a consistent transmission seen from a neighbour (RFC 6206 step 3).
@@ -311,5 +311,28 @@ mod tests {
         // Verify non-overflowing case still works
         let t3 = TrickleTimer::new(1000, 4, 10); // 1000 * 16 = 16000
         assert_eq!(t3.max_interval, 16000);
+    }
+
+    #[test]
+    fn interval_end_saturates_near_u32_max() {
+        // Test that interval_end uses saturating_add to avoid wraparound
+        let mut t = TrickleTimer::new(1000, 4, 10);
+        // Start at a time close to u32::MAX
+        let near_max = u32::MAX - 500;
+        t.start(near_max, 0);
+        // interval_end should saturate to u32::MAX, not wrap to ~499
+        assert_eq!(t.interval_end(), u32::MAX);
+    }
+
+    #[test]
+    fn transmit_time_saturates_near_u32_max() {
+        // Test that transmit_time uses saturating_add to avoid wraparound
+        let mut t = TrickleTimer::new(1000, 4, 10);
+        // Start at a time close to u32::MAX
+        let near_max = u32::MAX - 200;
+        t.start(near_max, 100);
+        // transmit_time = now + half + offset = near_max + 500 + 100
+        // Without saturation, this would wrap. With saturation, it hits u32::MAX.
+        assert_eq!(t.transmit_time, u32::MAX);
     }
 }

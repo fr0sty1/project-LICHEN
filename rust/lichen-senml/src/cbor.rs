@@ -239,10 +239,55 @@ fn dec_text(data: &[u8], pos: usize) -> Result<(&str, usize), CborError> {
     Ok((s, adv + len as usize))
 }
 
+/// Convert IEEE 754 half-precision (binary16) bits to f64.
+///
+/// Half-precision format: 1 sign bit, 5 exponent bits (bias 15), 10 mantissa bits.
+fn f16_to_f64(bits: u16) -> f64 {
+    let sign = (bits >> 15) & 1;
+    let exp = (bits >> 10) & 0x1f;
+    let mant = bits & 0x3ff;
+
+    let val = match exp {
+        0 => {
+            // Zero or subnormal
+            if mant == 0 {
+                0.0
+            } else {
+                // Subnormal: value = mant * 2^(-24)
+                // 2^(-24) = 1 / 16777216
+                (mant as f64) / 16777216.0
+            }
+        }
+        31 => {
+            // Infinity or NaN
+            if mant == 0 {
+                f64::INFINITY
+            } else {
+                f64::NAN
+            }
+        }
+        _ => {
+            // Normal: value = (1 + mant/1024) * 2^(exp - 15)
+            // Build the f64 directly via bit manipulation for exactness
+            let f64_exp = (exp as u64) - 15 + 1023; // f64 bias is 1023
+            let f64_mant = (mant as u64) << 42; // f64 has 52-bit mantissa, f16 has 10-bit
+            let f64_bits = (f64_exp << 52) | f64_mant;
+            f64::from_bits(f64_bits)
+        }
+    };
+
+    if sign == 1 {
+        -val
+    } else {
+        val
+    }
+}
+
 fn dec_f64(data: &[u8], pos: usize) -> Result<(f64, usize), CborError> {
     if pos >= data.len() {
         return Err(CborError::InvalidInput);
     }
+    let major = data[pos] >> 5;
     match data[pos] {
         0xfb => {
             if pos + 9 > data.len() {
@@ -266,6 +311,19 @@ fn dec_f64(data: &[u8], pos: usize) -> Result<(f64, usize), CborError> {
             }
             let b = [data[pos + 1], data[pos + 2], data[pos + 3], data[pos + 4]];
             Ok((f32::from_bits(u32::from_be_bytes(b)) as f64, 5))
+        }
+        0xf9 => {
+            // Half-precision float (16-bit)
+            if pos + 3 > data.len() {
+                return Err(CborError::InvalidInput);
+            }
+            let bits = u16::from_be_bytes([data[pos + 1], data[pos + 2]]);
+            Ok((f16_to_f64(bits), 3))
+        }
+        // RFC 8428 Section 4.3: numeric values can be CBOR integers
+        _ if major == 0 || major == 1 => {
+            let (i, adv) = dec_int(data, pos)?;
+            Ok((i as f64, adv))
         }
         _ => Err(CborError::InvalidInput),
     }
@@ -321,24 +379,34 @@ fn skip_one_depth(data: &[u8], pos: usize, depth: usize) -> Result<usize, CborEr
     match major {
         0 | 1 => Ok(adv),
         2 | 3 => {
-            let end = pos + adv + val as usize;
+            // Use checked arithmetic to prevent overflow on 16-bit platforms.
+            // val can be up to 65535 from 2-byte length encoding, which would
+            // wrap on 16-bit usize if added carelessly.
+            let val_usize = usize::try_from(val).map_err(|_| CborError::InvalidInput)?;
+            let skip_len = adv.checked_add(val_usize).ok_or(CborError::InvalidInput)?;
+            let end = pos.checked_add(skip_len).ok_or(CborError::InvalidInput)?;
             if end > data.len() {
                 return Err(CborError::InvalidInput);
             }
-            Ok(adv + val as usize)
+            Ok(skip_len)
         }
         4 => {
-            let mut cur = pos + adv;
+            // Use checked arithmetic to prevent overflow on 16-bit platforms.
+            let mut cur = pos.checked_add(adv).ok_or(CborError::InvalidInput)?;
             for _ in 0..val {
-                cur += skip_one_depth(data, cur, depth + 1)?;
+                let skip = skip_one_depth(data, cur, depth + 1)?;
+                cur = cur.checked_add(skip).ok_or(CborError::InvalidInput)?;
             }
             Ok(cur - pos)
         }
         5 => {
-            let mut cur = pos + adv;
+            // Use checked arithmetic to prevent overflow on 16-bit platforms.
+            let mut cur = pos.checked_add(adv).ok_or(CborError::InvalidInput)?;
             for _ in 0..val {
-                cur += skip_one_depth(data, cur, depth + 1)?;
-                cur += skip_one_depth(data, cur, depth + 1)?;
+                let skip_key = skip_one_depth(data, cur, depth + 1)?;
+                cur = cur.checked_add(skip_key).ok_or(CborError::InvalidInput)?;
+                let skip_val = skip_one_depth(data, cur, depth + 1)?;
+                cur = cur.checked_add(skip_val).ok_or(CborError::InvalidInput)?;
             }
             Ok(cur - pos)
         }
@@ -666,5 +734,98 @@ mod tests {
         let mut buf = [0u8; 8];
         let result = enc_head(&mut buf, 0, 0x00, 65536);
         assert_eq!(result, Err(CborError::NotImplemented));
+    }
+
+    #[test]
+    fn dec_f64_accepts_cbor_integers() {
+        // RFC 8428 Section 4.3: numeric values can be CBOR integers
+        // Positive integer 23 (0x17 = major 0, info 23)
+        assert_eq!(dec_f64(&[0x17], 0), Ok((23.0, 1)));
+        // Positive integer 100 (0x18 0x64 = major 0, info 24, value 100)
+        assert_eq!(dec_f64(&[0x18, 0x64], 0), Ok((100.0, 2)));
+        // Negative integer -1 (0x20 = major 1, info 0 = -(0+1) = -1)
+        assert_eq!(dec_f64(&[0x20], 0), Ok((-1.0, 1)));
+        // Negative integer -100 (0x38 0x63 = major 1, info 24, value 99 = -(99+1) = -100)
+        assert_eq!(dec_f64(&[0x38, 0x63], 0), Ok((-100.0, 2)));
+    }
+
+    #[test]
+    fn decode_record_with_integer_value() {
+        // SenML record with integer value: [{0: "temp", 2: 23}]
+        // CBOR: 81 a2 00 64 74656d70 02 17
+        //   81 = array(1)
+        //   a2 = map(2)
+        //   00 = key 0 (name)
+        //   64 74656d70 = text(4) "temp"
+        //   02 = key 2 (value)
+        //   17 = unsigned(23)
+        let data = [0x81, 0xa2, 0x00, 0x64, 0x74, 0x65, 0x6d, 0x70, 0x02, 0x17];
+        let mut decoded = [Record::empty()];
+        let count = decode(&data, &mut decoded).unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(decoded[0].name, Some("temp"));
+        assert_eq!(decoded[0].value, Some(23.0));
+    }
+
+    #[test]
+    fn dec_f64_accepts_half_precision() {
+        // 0xf9 = half-precision float marker
+        // 0x3c00 = 1.0 in half-precision
+        let data = [0xf9, 0x3c, 0x00];
+        let (val, adv) = dec_f64(&data, 0).unwrap();
+        assert_eq!(adv, 3);
+        assert!((val - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn dec_f64_half_precision_negative() {
+        // 0xbc00 = -1.0 in half-precision (sign bit set)
+        let data = [0xf9, 0xbc, 0x00];
+        let (val, _) = dec_f64(&data, 0).unwrap();
+        assert!((val - (-1.0)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn dec_f64_half_precision_zero() {
+        // 0x0000 = +0.0 in half-precision
+        let data = [0xf9, 0x00, 0x00];
+        let (val, _) = dec_f64(&data, 0).unwrap();
+        assert_eq!(val, 0.0);
+    }
+
+    #[test]
+    fn dec_f64_half_precision_infinity() {
+        // 0x7c00 = +Infinity in half-precision
+        let data = [0xf9, 0x7c, 0x00];
+        let (val, _) = dec_f64(&data, 0).unwrap();
+        assert!(val.is_infinite() && val.is_sign_positive());
+    }
+
+    #[test]
+    fn dec_f64_half_precision_nan() {
+        // 0x7e00 = NaN in half-precision
+        let data = [0xf9, 0x7e, 0x00];
+        let (val, _) = dec_f64(&data, 0).unwrap();
+        assert!(val.is_nan());
+    }
+
+    #[test]
+    fn decode_record_with_half_precision_value() {
+        // Hand-crafted: array(1) map(2) [key=0 val="temp"] [key=2 val=f16(1.5)]
+        // f16 1.5 = 0x3e00 (sign=0, exp=15, mant=512 -> (1+0.5)*2^0 = 1.5)
+        let data = [
+            0x81, // array(1)
+            0xa2, // map(2)
+            0x00, // key=0 (n)
+            0x64, b't', b'e', b'm', b'p', // text("temp")
+            0x02, // key=2 (v)
+            0xf9, 0x3e, 0x00, // f16(1.5)
+        ];
+        let mut buf = [Record::empty()];
+        let count = decode(&data, &mut buf).unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(buf[0].name, Some("temp"));
+        let val = buf[0].value.unwrap();
+        assert!((val - 1.5).abs() < 1e-10);
     }
 }

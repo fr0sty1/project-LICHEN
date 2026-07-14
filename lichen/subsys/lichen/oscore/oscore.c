@@ -28,6 +28,10 @@ static bool s_seq_initialized[CONFIG_LICHEN_OSCORE_MAX_CONTEXTS];
 static bool s_initialized;
 static K_MUTEX_DEFINE(s_ctx_mutex);
 
+/* NVM persistence callbacks */
+static oscore_nvm_write_cb s_nvm_write_cb;
+static oscore_nvm_read_cb s_nvm_read_cb;
+
 #define OSCORE_REPLAY_PENDING_MAX \
 	(CONFIG_LICHEN_OSCORE_MAX_CONTEXTS * CONFIG_LICHEN_OSCORE_REPLAY_WINDOW)
 
@@ -76,6 +80,30 @@ static struct oscore_ctx *ctx_find_by_recipient_locked(const uint8_t *recipient_
 			uint8_t len_diff = (uint8_t)(s_contexts[i].recipient_id_len ^
 						     (uint8_t)recipient_id_len);
 			if ((diff | len_diff) == 0) {
+				return &s_contexts[i];
+			}
+		}
+	}
+	return NULL;
+}
+
+/*
+ * Find context pointer by peer EUI-64 (internal, caller holds mutex).
+ * Returns NULL if not found.
+ *
+ * Security note: Uses constant-time comparison for EUI-64 to prevent
+ * timing side-channels.
+ */
+static struct oscore_ctx *ctx_find_by_eui64_locked(const uint8_t eui64[OSCORE_EUI64_LEN])
+{
+	for (int i = 0; i < CONFIG_LICHEN_OSCORE_MAX_CONTEXTS; i++) {
+		if (s_contexts[i].active && s_contexts[i].has_peer_eui64) {
+			/* Constant-time comparison */
+			uint8_t diff = 0;
+			for (size_t j = 0; j < OSCORE_EUI64_LEN; j++) {
+				diff |= s_contexts[i].peer_eui64[j] ^ eui64[j];
+			}
+			if (diff == 0) {
 				return &s_contexts[i];
 			}
 		}
@@ -349,6 +377,13 @@ static int build_oscore_aad(const uint8_t *request_kid, size_t request_kid_len,
 	} else {
 		return -1;
 	}
+	if (request_piv_len > 0) {
+		if (inner_off + request_piv_len > sizeof(inner)) {
+			return -1;
+		}
+		memcpy(inner + inner_off, request_piv, request_piv_len);
+		inner_off += request_piv_len;
+	}
 	/*
 	 * options: empty bstr (RFC 8613 Section 5.4, fifth element)
 	 * Class I options - not used in this implementation
@@ -457,11 +492,23 @@ int oscore_init(void)
 	return 0;
 }
 
-int oscore_ctx_create(const uint8_t master_secret[OSCORE_KEY_LEN],
-		      const uint8_t *master_salt, size_t master_salt_len,
-		      const uint8_t *sender_id, size_t sender_id_len,
-		      const uint8_t *recipient_id, size_t recipient_id_len,
-		      struct oscore_ctx **ctx_out)
+void oscore_nvm_register_callbacks(oscore_nvm_write_cb write_cb,
+				   oscore_nvm_read_cb read_cb)
+{
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+	s_nvm_write_cb = write_cb;
+	s_nvm_read_cb = read_cb;
+	k_mutex_unlock(&s_ctx_mutex);
+
+	LOG_DBG("NVM callbacks registered (write=%p, read=%p)",
+		(void *)write_cb, (void *)read_cb);
+}
+
+int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
+		      const uint8_t *_Nullable master_salt, size_t master_salt_len,
+		      const uint8_t *_Nonnull sender_id, size_t sender_id_len,
+		      const uint8_t *_Nonnull recipient_id, size_t recipient_id_len,
+		      struct oscore_ctx *_Nullable *_Nonnull ctx_out)
 {
 	struct oscore_ctx *ctx = NULL;
 	int ret;
@@ -638,9 +685,104 @@ void oscore_ctx_free(struct oscore_ctx *ctx)
 	crypto_wipe(ctx->recipient_key, sizeof(ctx->recipient_key));
 	crypto_wipe(ctx->common_iv, sizeof(ctx->common_iv));
 	crypto_wipe(ctx->id_context, sizeof(ctx->id_context)); /* python-ano.74 */
+	ctx->has_peer_eui64 = false;
 	ctx->active = false;
 
 	k_mutex_unlock(&s_ctx_mutex);
+}
+
+int oscore_ctx_create_with_eui64(const uint8_t *_Nonnull master_secret,
+				 const uint8_t *_Nullable master_salt, size_t master_salt_len,
+				 const uint8_t *_Nonnull sender_id, size_t sender_id_len,
+				 const uint8_t *_Nonnull recipient_id, size_t recipient_id_len,
+				 const uint8_t peer_eui64[_Nonnull OSCORE_EUI64_LEN],
+				 struct oscore_ctx *_Nullable *_Nonnull ctx_out)
+{
+	int ret;
+	struct oscore_ctx *ctx;
+	int ctx_idx;
+
+	if (peer_eui64 == NULL) {
+		LOG_ERR("peer_eui64 must not be NULL");
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	/* First, create the context using the base function */
+	ret = oscore_ctx_create(master_secret, master_salt, master_salt_len,
+				sender_id, sender_id_len,
+				recipient_id, recipient_id_len, ctx_out);
+	if (ret != OSCORE_OK) {
+		return ret;
+	}
+
+	ctx = *ctx_out;
+
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+
+	/* Set the EUI-64 */
+	memcpy(ctx->peer_eui64, peer_eui64, OSCORE_EUI64_LEN);
+	ctx->has_peer_eui64 = true;
+
+	/* Try to restore SSN from NVM if callback is registered */
+	if (s_nvm_read_cb != NULL) {
+		uint32_t stored_ssn;
+		ret = s_nvm_read_cb(peer_eui64, &stored_ssn);
+		if (ret == 0) {
+			ctx_idx = ctx_get_index(ctx);
+			if (ctx_idx >= 0) {
+				ctx->sender_seq = stored_ssn;
+				s_seq_initialized[ctx_idx] = true;
+				LOG_DBG("Restored SSN %u from NVM for peer", stored_ssn);
+			}
+		} else {
+			LOG_DBG("No SSN in NVM for peer, starting fresh");
+		}
+	}
+
+	k_mutex_unlock(&s_ctx_mutex);
+
+	LOG_DBG("Created OSCORE context with peer EUI-64");
+	return OSCORE_OK;
+}
+
+int oscore_ctx_set_peer_eui64(struct oscore_ctx *ctx,
+			      const uint8_t peer_eui64[OSCORE_EUI64_LEN])
+{
+	if (ctx == NULL || peer_eui64 == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+
+	memcpy(ctx->peer_eui64, peer_eui64, OSCORE_EUI64_LEN);
+	ctx->has_peer_eui64 = true;
+
+	k_mutex_unlock(&s_ctx_mutex);
+
+	LOG_DBG("Set peer EUI-64 for OSCORE context");
+	return OSCORE_OK;
+}
+
+int oscore_ctx_get_by_eui64(const uint8_t peer_eui64[OSCORE_EUI64_LEN],
+			    struct oscore_ctx **ctx_out)
+{
+	struct oscore_ctx *ctx;
+	int ret = OSCORE_ERR_NO_CONTEXT;
+
+	if (peer_eui64 == NULL || ctx_out == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+
+	ctx = ctx_find_by_eui64_locked(peer_eui64);
+	if (ctx != NULL) {
+		*ctx_out = ctx;
+		ret = OSCORE_OK;
+	}
+
+	k_mutex_unlock(&s_ctx_mutex);
+	return ret;
 }
 
 int oscore_ctx_set_sender_seq(struct oscore_ctx *ctx, uint32_t sender_seq)
@@ -696,6 +838,87 @@ int oscore_ctx_get_seq_remaining(const struct oscore_ctx *ctx, uint32_t *remaini
 	*remaining = UINT32_MAX - ctx->sender_seq;
 	k_mutex_unlock(&s_ctx_mutex);
 
+	return OSCORE_OK;
+}
+
+int oscore_ctx_check_freshness(const struct oscore_ctx *ctx,
+			       enum oscore_freshness *status)
+{
+	uint32_t remaining;
+
+	if (ctx == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+	remaining = UINT32_MAX - ctx->sender_seq;
+	k_mutex_unlock(&s_ctx_mutex);
+
+	enum oscore_freshness result;
+	if (remaining == 0) {
+		result = OSCORE_FRESHNESS_EXHAUSTED;
+	} else if (remaining <= OSCORE_SSN_ROTATION_CRITICAL) {
+		result = OSCORE_FRESHNESS_CRITICAL;
+	} else if (remaining <= OSCORE_SSN_ROTATION_WARNING) {
+		result = OSCORE_FRESHNESS_WARNING;
+	} else {
+		result = OSCORE_FRESHNESS_OK;
+	}
+
+	if (status != NULL) {
+		*status = result;
+	}
+
+	/* Return error if context is exhausted per RFC 8613 Section 7.2.1 */
+	if (result == OSCORE_FRESHNESS_EXHAUSTED) {
+		LOG_WRN("OSCORE context exhausted - key rotation required");
+		return OSCORE_ERR_CONTEXT_STALE;
+	}
+
+	if (result == OSCORE_FRESHNESS_CRITICAL) {
+		LOG_WRN("OSCORE context critical (%u remaining) - immediate key rotation needed",
+			remaining);
+	} else if (result == OSCORE_FRESHNESS_WARNING) {
+		LOG_INF("OSCORE context warning (%u remaining) - proactive key rotation recommended",
+			remaining);
+	}
+
+	return OSCORE_OK;
+}
+
+int oscore_ctx_persist_ssn(struct oscore_ctx *ctx)
+{
+	int ret = OSCORE_OK;
+	oscore_nvm_write_cb write_cb;
+	uint32_t ssn;
+	const uint8_t *eui64 = NULL;
+
+	if (ctx == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
+
+	write_cb = s_nvm_write_cb;
+	ssn = ctx->sender_seq;
+	if (ctx->has_peer_eui64) {
+		eui64 = ctx->peer_eui64;
+	}
+
+	k_mutex_unlock(&s_ctx_mutex);
+
+	if (write_cb == NULL) {
+		/* No callback registered, success (no-op) */
+		return OSCORE_OK;
+	}
+
+	ret = write_cb(eui64, ssn);
+	if (ret != 0) {
+		LOG_ERR("Failed to persist SSN to NVM: %d", ret);
+		return OSCORE_ERR_NVM_FAILED;
+	}
+
+	LOG_DBG("Persisted SSN %u to NVM", ssn);
 	return OSCORE_OK;
 }
 
@@ -1120,11 +1343,14 @@ static void replay_clear_pending_context_locked(int ctx_idx)
  * Update replay window after successful decryption.
  * Must be called ONLY after decryption succeeds (caller holds mutex).
  *
- * Returns true if update succeeded, false if seq is no longer acceptable
- * (another thread may have advanced the window during decryption).
+ * Returns true if update succeeded, false if seq is no longer acceptable:
+ * - Another thread may have advanced the window during decryption
+ * - The sequence may have fallen outside the replay window
+ * - The sequence may already be marked (duplicate delivery attempt)
  *
- * Concurrent decryptions are serialized by the pending replay reservations, so
- * a sequence that is already marked here is a replay and must not be delivered.
+ * SECURITY: We reject sequences that fell outside the window during
+ * processing, even though decryption succeeded. This is conservative
+ * but necessary to avoid gaps in replay protection.
  */
 static bool replay_update_window(struct oscore_ctx *ctx, uint32_t seq)
 {
@@ -1145,17 +1371,19 @@ static bool replay_update_window(struct oscore_ctx *ctx, uint32_t seq)
 	uint32_t diff = ctx->recipient_seq - seq;
 	if (diff >= CONFIG_LICHEN_OSCORE_REPLAY_WINDOW) {
 		/*
-		 * Seq fell outside window while we were decrypting -
+		 * SECURITY: Seq fell outside window while we were decrypting -
 		 * another thread advanced recipient_seq significantly.
-		 * We still accept this packet (decryption succeeded),
-		 * but we can't mark it in the window.
 		 *
-		 * This is safe: the packet was verified authentic, and
-		 * if a duplicate arrives later, it will either be caught
-		 * as a replay (if within the new window) or rejected as
-		 * too old (if outside). We just can't perfectly track it.
+		 * We REJECT this packet even though decryption succeeded.
+		 * Rationale: if we cannot mark the sequence in the replay
+		 * window, we cannot guarantee it wasn't already delivered.
+		 * The conservative choice is to reject packets we cannot
+		 * track rather than risk replay gaps.
+		 *
+		 * This may drop legitimate packets under extreme concurrent
+		 * load, but that is preferable to gaps in replay protection.
 		 */
-		return true;
+		return false;
 	}
 
 	/* Check if already marked by another thread */
@@ -1674,7 +1902,9 @@ int oscore_unprotect_response(struct oscore_ctx *ctx,
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
-	if (request_piv_len > OSCORE_PIV_MAX_LEN) {
+	/* SECURITY: Validate request_piv pointer when len > 0 to prevent NULL dereference */
+	if (request_piv_len > OSCORE_PIV_MAX_LEN ||
+	    (request_piv_len > 0 && request_piv == NULL)) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 

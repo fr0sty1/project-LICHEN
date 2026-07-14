@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-xjzb",
+  "title": "task",
+  "description": "node_channel.py:63 - create_task() returns a Task that is never awaited or stored. If self._node.send() raises an exception, the task's exception goes unhandled (only logged as 'Task exception was never retrieved' in stderr). Callers have no way to know sends failed. Failure scenario: node.send() fails due to routing error or link failure; message is silently dropped with no logging; debugging is difficult because no error is visible.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T01:27:09.922446Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T06:14:58.536871Z",
+  "closed_at": "2026-07-11T06:14:58.536871Z",
+  "close_reason": "Fixed: task ref stored with done callback to log exceptions (at coap/node_channel.py, not client/)"
+}

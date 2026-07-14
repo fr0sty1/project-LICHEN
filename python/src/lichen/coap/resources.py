@@ -35,18 +35,66 @@ a node-backed provider once it lands.
 from __future__ import annotations
 
 import asyncio
+import copy
+import ipaddress
 import itertools
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
+from urllib.parse import urlparse
 
 import aiocoap
 import cbor2
-from aiocoap import BAD_GATEWAY, BAD_REQUEST, CHANGED, CONTENT, CREATED, DELETED, Message, resource
+from aiocoap import (
+    BAD_GATEWAY,
+    BAD_REQUEST,
+    CHANGED,
+    CONTENT,
+    CREATED,
+    DELETED,
+    UNAUTHORIZED,
+    Message,
+    resource,
+)
 from aiocoap.numbers import ContentFormat
 
 CBOR = ContentFormat.CBOR
 SENML_CBOR = ContentFormat(112)  # application/senml+cbor (RFC 8428)
+
+# SECURITY: Mesh address prefixes allowed for proxy forwarding.
+# IPv6 ULA (fd00::/8) is the LICHEN mesh address space.
+# Link-local (fe80::/10) may be used for direct neighbor access.
+_MESH_ALLOWED_PREFIXES = (
+    ipaddress.IPv6Network("fd00::/8"),
+    ipaddress.IPv6Network("fe80::/10"),
+)
+
+
+def _is_mesh_uri(uri: str) -> bool:
+    """Return True if *uri* targets a mesh-allowed address.
+
+    SECURITY: Validates that the target host is an IPv6 address within
+    the mesh address space (ULA fd00::/8 or link-local fe80::/10).
+    Rejects hostnames, IPv4 addresses, and non-mesh IPv6 addresses
+    to prevent SSRF attacks via the proxy.
+    """
+    try:
+        parsed = urlparse(uri)
+    except Exception:
+        return False
+    if parsed.scheme not in ("coap", "coaps"):
+        return False
+    host = parsed.hostname
+    if not host:
+        return False
+    # Strip brackets from IPv6 literal if present
+    if host.startswith("[") and host.endswith("]"):
+        host = host[1:-1]
+    try:
+        addr = ipaddress.IPv6Address(host)
+    except ValueError:
+        return False  # Not a valid IPv6 address (rejects hostnames, IPv4)
+    return any(addr in prefix for prefix in _MESH_ALLOWED_PREFIXES)
 
 
 class NodeInfo(Protocol):
@@ -155,7 +203,12 @@ class ProxyResource(resource.Resource):
     (e.g. a :class:`~lichen.coap.transport.LichenTransport` backed by a
     :class:`~lichen.coap.node_channel.NodeChannel`).
 
-    Per RFC 7252 §5.7, the Proxy-Uri option is stripped before forwarding.
+    Per RFC 7252 section 5.7, the Proxy-Uri option is stripped before forwarding.
+
+    SECURITY: To prevent SSRF, the proxy validates that the target URI is a
+    ``coap://`` or ``coaps://`` URI with an IPv6 address in the mesh address
+    space (ULA fd00::/8 or link-local fe80::/10). Requests to hostnames, IPv4
+    addresses, or non-mesh IPv6 addresses are rejected with 4.00 Bad Request.
     """
 
     rt = "proxy"
@@ -168,6 +221,10 @@ class ProxyResource(resource.Resource):
     async def render(self, request: Message) -> Message:
         target = request.opt.proxy_uri
         if not target:
+            return Message(code=BAD_REQUEST)
+
+        # SECURITY: Validate target is a mesh address to prevent SSRF
+        if not _is_mesh_uri(target):
             return Message(code=BAD_REQUEST)
 
         fwd = Message(code=request.code, uri=target, payload=request.payload)
@@ -396,9 +453,15 @@ class SosResource(resource.ObservableResource):
             except Exception:
                 return Message(code=aiocoap.BAD_REQUEST)
 
+        # SECURITY: Validate from_hex is a string before hex decoding;
+        # CBOR body could contain non-string types that would raise TypeError.
+        if from_hex is not None and not isinstance(from_hex, str):
+            return Message(code=aiocoap.BAD_REQUEST)
         try:
             eui64 = bytes.fromhex(from_hex) if from_hex else b"\x00" * 8
         except ValueError:
+            return Message(code=aiocoap.BAD_REQUEST)
+        if len(eui64) != 8:
             return Message(code=aiocoap.BAD_REQUEST)
         self.activate(eui64, t if t is not None else 0.0)
         return Message(code=aiocoap.CHANGED)
@@ -508,7 +571,7 @@ class MessagesResource(resource.ObservableResource):
             body["body"] = body["text"]
         self.deliver(body)
         msg_id = str(body["id"])
-        self._sent[msg_id] = body
+        self._sent[msg_id] = copy.deepcopy(body)
         if msg_id not in self._sent_order:
             self._sent_order.append(msg_id)
         if self._sent_detail_registrar is not None:
@@ -775,6 +838,163 @@ class KeyResource(resource.Resource):
         return _cbor_response(data)
 
 
+class EdhocResource(resource.Resource):
+    """POST /.well-known/edhoc — EDHOC key establishment (RFC 9528, spec 8.8).
+
+    Handles the responder side of EDHOC key exchange. Messages are exchanged
+    as raw bytes (not CBOR-wrapped) per RFC 9528 Section 5.3.
+
+    Protocol flow:
+        1. Client POSTs Message 1 -> Server returns Message 2
+        2. Client POSTs Message 3 -> Server returns empty 2.04 Changed
+
+    After step 2, both sides have derived the OSCORE master secret and salt.
+
+    Usage::
+
+        from lichen.coap.resources import EdhocResource
+        from lichen.crypto.identity import Identity
+
+        identity = Identity.generate()
+        edhoc = EdhocResource(identity, context_store, peer_resolver)
+        site.add_resource([".well-known", "edhoc"], edhoc)
+    """
+
+    def __init__(
+        self,
+        identity: Any,
+        context_store: Any,
+        peer_resolver: Any,
+    ) -> None:
+        """Create an EDHOC responder resource.
+
+        Args:
+            identity: Our cryptographic Identity for signing.
+            context_store: OscoreContextStore to save derived contexts.
+            peer_resolver: EdhocPeerResolver to look up/pin peer pubkeys.
+        """
+        super().__init__()
+        self._identity = identity
+        self._context_store = context_store
+        self._peer_resolver = peer_resolver
+        # Active EDHOC sessions keyed by (peer_host, C_I)
+        self._sessions: dict[tuple[str, bytes], Any] = {}
+
+    async def render_post(self, request: Message) -> Message:
+        """Handle EDHOC POST request.
+
+        Expects Message 1 or Message 3 in the payload. Determines which
+        based on whether we have an active session for the sender.
+        """
+        if not request.payload:
+            return Message(code=BAD_REQUEST)
+
+        # Get peer address from remote
+        peer_host = request.remote.hostinfo if request.remote else None
+        if not peer_host:
+            return Message(code=BAD_REQUEST)
+
+        payload = request.payload
+
+        # Try to find an active session for this peer
+        # Session key is (peer_host, c_i) but we don't know c_i yet for msg1
+        active_session = None
+        for (host, _), session in list(self._sessions.items()):
+            if host == peer_host:
+                active_session = session
+                break
+
+        if active_session is None:
+            # This is Message 1 - start new session
+            try:
+                return await self._handle_message_1(peer_host, payload)
+            except Exception:
+                return Message(code=BAD_REQUEST)
+        else:
+            # This is Message 3 - complete handshake
+            try:
+                return await self._handle_message_3(
+                    peer_host, payload, active_session
+                )
+            except Exception:
+                # Clean up failed session
+                self._cleanup_session(peer_host)
+                return Message(code=BAD_REQUEST)
+
+    async def _handle_message_1(self, peer_host: str, msg1: bytes) -> Message:
+        """Process EDHOC Message 1 and return Message 2."""
+        from lichen.crypto.edhoc import EdhocResponder
+
+        # Get peer's public key for authentication
+        # SECURITY: Reject unknown peers early rather than proceeding with a
+        # dummy key. An all-zeros key is a valid Ed25519 point, so passing it
+        # to crypto routines could allow attacks. TOFU would defer this check
+        # to Message 3, but we currently require pre-known peers.
+        peer_pubkey = await self._peer_resolver.get_peer_pubkey(peer_host)
+        if peer_pubkey is None:
+            return Message(code=UNAUTHORIZED)
+
+        # Create responder and process Message 1
+        responder = EdhocResponder.create(self._identity)
+        msg2 = responder.process_message_1(msg1, peer_pubkey)
+
+        # Extract C_I from Message 1 for session tracking
+        # Message 1: (METHOD_CORR, SUITES_I, G_X, C_I, ?EAD_1)
+        c_i = responder._c_i
+
+        # Store session
+        self._sessions[(peer_host, c_i)] = {
+            "responder": responder,
+            "peer_pubkey": peer_pubkey,
+        }
+
+        # Return Message 2
+        response = Message(code=CHANGED, payload=msg2)
+        response.opt.content_format = ContentFormat(65535)  # application/edhoc
+        return response
+
+    async def _handle_message_3(
+        self, peer_host: str, msg3: bytes, session: dict[str, Any]
+    ) -> Message:
+        """Process EDHOC Message 3 and establish OSCORE context."""
+        from lichen.crypto.oscore import MemorySecurityContext
+
+        responder = session["responder"]
+        peer_pubkey = session["peer_pubkey"]
+
+        if peer_pubkey is None:
+            # SECURITY: Defense-in-depth check. Message 1 handler now rejects
+            # unknown peers early, but if a session somehow lacks a peer key,
+            # fail here rather than proceeding with verification.
+            self._cleanup_session(peer_host)
+            return Message(code=UNAUTHORIZED)
+
+        # Process Message 3
+        responder.process_message_3(msg3, peer_pubkey)
+
+        # Export OSCORE context
+        edhoc_ctx = responder.export_oscore()
+        oscore_ctx = MemorySecurityContext.from_edhoc(edhoc_ctx)
+
+        # Store context
+        self._context_store.put_sync(peer_host, oscore_ctx, peer_pubkey)
+
+        # Pin peer if using TOFU
+        # (handled by context_store.put or peer_resolver.pin_peer)
+
+        # Clean up session
+        self._cleanup_session(peer_host)
+
+        # Return success (empty payload per RFC 9528)
+        return Message(code=CHANGED)
+
+    def _cleanup_session(self, peer_host: str) -> None:
+        """Remove any active sessions for a peer."""
+        to_remove = [key for key in self._sessions if key[0] == peer_host]
+        for key in to_remove:
+            del self._sessions[key]
+
+
 def build_site(
     node_info: NodeInfo,
     *,
@@ -787,6 +1007,7 @@ def build_site(
     message_receipts_resource: MessageReceiptsResource | None = None,
     sos_resource: SosResource | None = None,
     resource_directory: bool = False,
+    edhoc_resource: EdhocResource | None = None,
 ) -> resource.Site:
     """Build an aiocoap Site exposing the LICHEN node resources.
 
@@ -799,6 +1020,8 @@ def build_site(
     ``activate()`` to push data to observers.
     Pass ``resource_directory=True`` to expose a CoAP Resource Directory
     at ``/rd`` (RFC 9176).
+    Pass ``edhoc_resource`` to expose ``/.well-known/edhoc`` for EDHOC key
+    establishment (RFC 9528, spec section 8.8).
     """
     site = resource.Site()
     site.add_resource(
@@ -834,4 +1057,6 @@ def build_site(
         site.add_resource(["rd"], ResourceDirectoryResource(site))
     if pubkey is not None:
         site.add_resource(["key"], KeyResource(pubkey))
+    if edhoc_resource is not None:
+        site.add_resource([".well-known", "edhoc"], edhoc_resource)
     return site

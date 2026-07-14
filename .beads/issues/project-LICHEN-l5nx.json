@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-l5nx",
+  "title": "DodagState.process_dio accepts negative link_etx causing path cost underflow",
+  "description": "File: python/src/lichen/rpl/dodag.py:120-157\n\nThe process_dio() method accepts link_etx as a float with default 1.0 but performs no validation that it is non-negative:\n\n    def process_dio(\n        self, dio: DIO, neighbor_id: IPv6Address | str, link_etx: float = 1.0\n    ) -\u003e None:\n\nParentCandidate.path_cost() computes:\n\n    return self.rank + round(self.link_etx * min_hop_rank_increase)\n\nIf link_etx is negative (e.g., -1.0), the path_cost could be LOWER than the parent's rank, violating the fundamental RPL DAG property that children must have higher rank than parents.\n\nImpact:\n1. A node could compute negative rank contribution, selecting itself as 'better' than it should be\n2. Routing loops possible if rank ordering is violated\n3. The _lowest_rank tracking becomes meaningless with negative costs\n\nScenario: Caller passes link_etx=-2.0 (e.g., from corrupted link quality estimate):\n- parent.rank = 512, link_etx = -2.0, min_hop_rank_increase = 256\n- path_cost = 512 + round(-2.0 * 256) = 512 - 512 = 0\n- Node appears to have rank 0, better than root (rank=256)\n\nFix: Add validation at the start of process_dio():\n    if link_etx \u003c 0:\n        raise ValueError('link_etx must be non-negative')\n\nOr clamp to a minimum (e.g., max(link_etx, 0.0)) if silent correction is preferred.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T17:04:27.684519Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T17:04:27.684551Z"
+}

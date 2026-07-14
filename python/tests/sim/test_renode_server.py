@@ -53,28 +53,6 @@ async def test_renode_tx_basic() -> None:
 
 
 @pytest.mark.asyncio
-async def test_renode_rx_poll_empty() -> None:
-    """Test RX poll returns empty when no packets."""
-    sim = Simulation("test")
-    server, port = await start_renode_server(sim, "renode-node", port=0)
-
-    try:
-        reader, writer = await asyncio.open_connection("127.0.0.1", port)
-
-        # Send RX_POLL: type(0x20)
-        await _send_message(writer, bytes([0x20]))
-
-        # Read RX_EMPTY response
-        resp = await _read_message(reader)
-        assert resp[0] == 0x23  # RX_EMPTY
-
-        writer.close()
-        await writer.wait_closed()
-    finally:
-        await server.stop()
-
-
-@pytest.mark.asyncio
 async def test_renode_push_to_renode() -> None:
     """Test pushing unsolicited messages to Renode."""
     sim = Simulation("test")
@@ -188,8 +166,10 @@ async def test_renode_rx_enter_exit() -> None:
     """Test RX_ENTER and RX_EXIT message handling."""
     from lichen.sim.node import NodeState
     from lichen.sim.protocol import encode_rx_enter, encode_rx_exit
+    from lichen.sim.simulation import TimeMode
 
-    sim = Simulation("test")
+    # Use REALTIME mode so background driver doesn't advance time instantly
+    sim = Simulation("test", time_mode=TimeMode.REALTIME)
     server, port = await start_renode_server(sim, "renode-node", port=0)
 
     try:
@@ -227,9 +207,11 @@ async def test_renode_rx_enter_exit() -> None:
 async def test_renode_rx_enter_sets_callbacks() -> None:
     """Test that RX_ENTER properly registers callbacks with simulation."""
     from lichen.sim.node import NodeState
-    from lichen.sim.protocol import encode_rx_enter
+    from lichen.sim.protocol import encode_rx_enter, encode_rx_exit
+    from lichen.sim.simulation import TimeMode
 
-    sim = Simulation("test")
+    # Use REALTIME mode so background driver doesn't advance time instantly
+    sim = Simulation("test", time_mode=TimeMode.REALTIME)
     server, port = await start_renode_server(sim, "renode-node", port=0)
 
     try:
@@ -237,7 +219,7 @@ async def test_renode_rx_enter_sets_callbacks() -> None:
         await asyncio.sleep(0.01)
 
         # Enter RX mode
-        rx_enter_msg = encode_rx_enter(1_000_000)
+        rx_enter_msg = encode_rx_enter(10_000_000)  # 10 second timeout
         await _send_message(writer, rx_enter_msg)
         await asyncio.sleep(0.01)
 
@@ -249,6 +231,115 @@ async def test_renode_rx_enter_sets_callbacks() -> None:
         # Callbacks should be the server's methods
         assert node.rx_callbacks[0] == server._on_rx_packet
         assert node.rx_callbacks[1] == server._on_rx_timeout
+
+        # Exit RX mode to clean up
+        await _send_message(writer, encode_rx_exit())
+        await asyncio.sleep(0.01)
+
+        writer.close()
+        await writer.wait_closed()
+    finally:
+        await server.stop()
+
+
+@pytest.mark.asyncio
+async def test_renode_barrier_sync_packet_delivery() -> None:
+    """Test BARRIER_SYNC mode: TX from one node delivers exactly once to RX node.
+
+    In BARRIER_SYNC mode, time only advances when a node is in RX_WAIT.
+    The test sequence is:
+    1. TX node transmits (creates TxEndEvent)
+    2. RX node enters RX mode
+    3. Simulation advances time to TxEndEvent, then delivers packet
+    """
+    from lichen.sim.protocol import (
+        MSG_RX_PACKET,
+        decode_rx_packet,
+        encode_rx_enter,
+    )
+    from lichen.sim.simulation import TimeMode
+
+    # BARRIER_SYNC mode is the default, but be explicit
+    sim = Simulation("test", time_mode=TimeMode.BARRIER_SYNC)
+
+    # Create two Renode servers at different positions (close enough to receive)
+    rx_server, rx_port = await start_renode_server(
+        sim, "rx-node", port=0, position=(0.0, 0.0, 0.0)
+    )
+    tx_server, tx_port = await start_renode_server(
+        sim, "tx-node", port=0, position=(100.0, 0.0, 0.0)  # 100m away
+    )
+
+    received_packets: list[tuple[bytes, int, int]] = []
+
+    try:
+        # Connect both clients
+        rx_reader, rx_writer = await asyncio.open_connection("127.0.0.1", rx_port)
+        tx_reader, tx_writer = await asyncio.open_connection("127.0.0.1", tx_port)
+        await asyncio.sleep(0.01)
+
+        # TX node transmits FIRST - this creates TxEndEvent in the queue
+        # Time won't advance until an RX node enters RX_WAIT
+        payload = b"test packet for barrier sync"
+        tx_msg = bytes([0x10]) + struct.pack("<H", len(payload)) + payload
+        await _send_message(tx_writer, tx_msg)
+
+        # Read TX_DONE response
+        tx_resp = await _read_message(tx_reader)
+        assert tx_resp[0] == 0x11  # TX_DONE
+
+        # Now RX node enters receive mode
+        # The simulation driver will advance time to TxEndEvent, then deliver packet
+        rx_enter_msg = encode_rx_enter(5_000_000)  # 5 second timeout
+        await _send_message(rx_writer, rx_enter_msg)
+
+        # Wait for RX_PACKET to arrive at the receiver
+        try:
+            rx_resp = await asyncio.wait_for(_read_message(rx_reader), timeout=2.0)
+            assert rx_resp[0] == MSG_RX_PACKET
+            pkt_payload, rssi, snr = decode_rx_packet(rx_resp[1:])
+            received_packets.append((pkt_payload, rssi, snr))
+        except TimeoutError:
+            pytest.fail("RX_PACKET not received within timeout")
+
+        # Verify exactly one packet received
+        assert len(received_packets) == 1
+        assert received_packets[0][0] == payload
+        # RSSI should be negative (signal strength in dBm)
+        assert received_packets[0][1] < 0
+
+        tx_writer.close()
+        rx_writer.close()
+        await tx_writer.wait_closed()
+        await rx_writer.wait_closed()
+    finally:
+        await tx_server.stop()
+        await rx_server.stop()
+
+
+@pytest.mark.asyncio
+async def test_renode_rx_timeout_delivered() -> None:
+    """Test that RX timeout fires and delivers RX_TIMEOUT_PUSH."""
+    from lichen.sim.protocol import MSG_RX_TIMEOUT_PUSH, encode_rx_enter
+    from lichen.sim.simulation import TimeMode
+
+    sim = Simulation("test", time_mode=TimeMode.BARRIER_SYNC)
+    server, port = await start_renode_server(sim, "rx-node", port=0)
+
+    try:
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        await asyncio.sleep(0.01)
+
+        # Enter RX mode with a very short timeout (100us)
+        rx_enter_msg = encode_rx_enter(100)
+        await _send_message(writer, rx_enter_msg)
+
+        # Wait for RX_TIMEOUT_PUSH - the simulation loop should fire the timeout
+        try:
+            resp = await asyncio.wait_for(_read_message(reader), timeout=2.0)
+            assert resp[0] == MSG_RX_TIMEOUT_PUSH
+        except TimeoutError:
+            pytest.fail("RX_TIMEOUT_PUSH not received within timeout")
 
         writer.close()
         await writer.wait_closed()

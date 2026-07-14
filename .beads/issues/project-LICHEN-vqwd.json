@@ -2,11 +2,14 @@
   "id": "project-LICHEN-vqwd",
   "title": "Compliance: lichen-oscore edhoc.rs OSCORE",
   "description": "Policy: 06-security.md §8.7 and §8.8. File: rust/lichen-oscore/src/edhoc.rs. Status: COMPLIANT. EDHOC RFC 9528 Suite 0 implementation for establishing OSCORE contexts. X25519 + Ed25519 + AES-CCM. export_oscore() derives OSCORE_Master_Secret and OSCORE_Master_Salt.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:16:42.397173Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:16:42.397203Z"
+  "updated_at": "2026-07-12T00:37:14.689192Z",
+  "closed_at": "2026-07-12T00:37:14.689192Z",
+  "close_reason": "Verified RFC 9528 compliant: Suite 0 (X25519+Ed25519+AES-CCM-16-64-128+SHA-256), correct EDHOC-KDF info structure, transcript hashes (TH_2/TH_3/TH_4), PRK derivation chain, both signature verifications, OSCORE export with correct labels. Tests pass. PRK secrets zeroized."
 }

@@ -14,6 +14,17 @@ Usage:
     # Use with aiocoap for protected messaging
     protected_msg, request_id = oscore_ctx.protect(request)
     response = oscore_ctx.unprotect(protected_response, request_id)
+
+SECURITY WARNING:
+    Each (master_secret, master_salt) pair MUST produce exactly ONE context
+    instance over its entire lifetime. Creating a new MemorySecurityContext
+    with the same key material (e.g., from replayed EDHOC, same ephemeral keys,
+    or state recovery without preserving sequence numbers) causes nonce reuse,
+    which breaks AEAD security and enables plaintext recovery attacks.
+
+    For state recovery scenarios, use the starting_sequence_number parameter
+    to resume from a persisted sequence number. The starting value MUST be
+    strictly greater than any sequence number previously used with this context.
 """
 
 from __future__ import annotations
@@ -66,6 +77,7 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
         hashfun: str = DEFAULT_HASHFUNCTION,
         window_size: int = DEFAULT_WINDOWSIZE,
         id_context: bytes | None = None,
+        starting_sequence_number: int = 0,
     ) -> None:
         """Create a security context from master key material.
 
@@ -78,7 +90,22 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
             hashfun: KDF hash function (default: SHA-256).
             window_size: Replay window size.
             id_context: Optional ID context for multi-context scenarios.
+            starting_sequence_number: Initial sender sequence number. For state
+                recovery, this MUST be strictly greater than any sequence number
+                previously used with this (master_secret, master_salt) pair to
+                prevent nonce reuse. See module docstring for security details.
+
+        Raises:
+            ValueError: If starting_sequence_number is negative or exceeds the
+                RFC 8613 limit (2^40 - 1).
         """
+        # SECURITY: Validate starting_sequence_number to prevent invalid state
+        if starting_sequence_number < 0:
+            raise ValueError("starting_sequence_number must be non-negative")
+        if starting_sequence_number > _MAX_SEQUENCE_NUMBER:
+            raise ValueError(
+                f"starting_sequence_number exceeds RFC 8613 limit ({_MAX_SEQUENCE_NUMBER})"
+            )
         self.alg_aead = algorithms[algorithm]
         self.hashfun = hashfunctions[hashfun]
         self.sender_id = sender_id
@@ -93,8 +120,10 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
         # Derive sender_key, recipient_key, common_iv
         self.derive_keys(master_salt, master_secret)
 
-        # Sequence number for outgoing messages
-        self.sender_sequence_number = 0
+        # SECURITY: Sequence number for outgoing messages. When recovering state,
+        # the caller MUST provide a starting value greater than any previously used
+        # to prevent nonce reuse (which breaks AEAD security).
+        self.sender_sequence_number = starting_sequence_number
 
         # Replay window for incoming messages
         self.recipient_replay_window = ReplayWindow(window_size, lambda: None)
@@ -111,6 +140,7 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
         algorithm: int = DEFAULT_ALGORITHM,
         hashfun: str = DEFAULT_HASHFUNCTION,
         window_size: int = DEFAULT_WINDOWSIZE,
+        starting_sequence_number: int = 0,
     ) -> MemorySecurityContext:
         """Create a security context from an EDHOC-exported OscoreContext.
 
@@ -119,9 +149,17 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
             algorithm: COSE algorithm ID.
             hashfun: KDF hash function.
             window_size: Replay window size.
+            starting_sequence_number: Initial sender sequence number for state
+                recovery. See __init__ for security requirements.
 
         Returns:
             A ready-to-use MemorySecurityContext.
+
+        SECURITY:
+            Each EDHOC handshake MUST produce unique key material. If the same
+            master_secret/master_salt could be derived again (e.g., ephemeral key
+            reuse in testing, or EDHOC message replay), a new context MUST use a
+            starting_sequence_number greater than any previously used value.
         """
         return cls(
             master_secret=edhoc_ctx.master_secret,
@@ -131,6 +169,7 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
             algorithm=algorithm,
             hashfun=hashfun,
             window_size=window_size,
+            starting_sequence_number=starting_sequence_number,
         )
 
     def new_sequence_number(self) -> int:
@@ -152,3 +191,21 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
     def post_seqnoincrease(self) -> None:
         """Hook called after sequence number increment (no-op for memory context)."""
         pass
+
+    def get_persisted_sequence_number(self) -> int:
+        """Return the sequence number to persist for state recovery.
+
+        When recovering state, pass this value as starting_sequence_number to
+        the new context. To provide margin for any in-flight messages, callers
+        may add a safety buffer (e.g., +100) before persisting.
+
+        Returns:
+            The current sender_sequence_number.
+
+        SECURITY:
+            The persisted value MUST be written to stable storage BEFORE any
+            message using that sequence number is transmitted. Otherwise, a
+            crash between transmission and persistence could cause the same
+            sequence number to be reused after recovery.
+        """
+        return self.sender_sequence_number

@@ -23,6 +23,8 @@ from lichen.crypto.schnorr48 import sign as schnorr_sign
 from lichen.crypto.schnorr48 import verify as schnorr_verify
 from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
 from lichen.link.frame import AddrMode, LichenFrame, MicLength
+from lichen.rpl.dao import RplTarget, TransitInformation
+from lichen.rpl.messages import DAO, DIO, DIS, DAOAck, _parse_options
 from lichen.schc.headers import compress_packet, decompress_packet
 
 VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
@@ -70,6 +72,7 @@ def test_vectors_directory_exists() -> None:
         "announce_coords.json",
         "meshtastic_app_compat.json",
         "meshcore_app_compat.json",
+        "rpl_messages.json",
     ],
 )
 def test_vector_file_schema(filename: str) -> None:
@@ -546,3 +549,129 @@ def test_schnorr_vector(desc: str, vector: dict) -> None:
         identity = Identity.from_seed(bytes.fromhex(vector["seed"]))
         computed = schnorr_sign(identity.privkey, identity.pubkey, msg)
         assert computed == sig, f"sign() output mismatch: {desc}"
+
+
+def _rpl_messages_cases():
+    doc = _load("rpl_messages.json")
+    assert doc["format_version"] == 1
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _rpl_messages_cases())
+def test_rpl_messages_vector(name: str, vector: dict) -> None:
+    """Validate RPL message encode/decode against cross-implementation vectors."""
+    from ipaddress import IPv6Address
+
+    encoded = bytes.fromhex(vector["encoded"])
+    msg_type = vector["type"]
+
+    if msg_type == "dio":
+        fields = vector["fields"]
+        # Decode
+        dio = DIO.from_bytes(encoded)
+        assert dio.rpl_instance_id == fields["rpl_instance_id"], f"{name}: rpl_instance_id"
+        assert dio.version == fields["version"], f"{name}: version"
+        assert dio.rank == fields["rank"], f"{name}: rank"
+        assert dio.grounded == fields["grounded"], f"{name}: grounded"
+        assert dio.mode_of_operation == fields["mode_of_operation"], f"{name}: mop"
+        assert dio.preference == fields["preference"], f"{name}: preference"
+        assert dio.dtsn == fields["dtsn"], f"{name}: dtsn"
+        assert str(dio.dodag_id) == fields["dodag_id"], f"{name}: dodag_id"
+        # Encode round-trip
+        rebuilt = DIO(
+            rpl_instance_id=fields["rpl_instance_id"],
+            version=fields["version"],
+            rank=fields["rank"],
+            grounded=fields["grounded"],
+            mode_of_operation=fields["mode_of_operation"],
+            preference=fields["preference"],
+            dtsn=fields["dtsn"],
+            flags=fields["flags"],
+            dodag_id=fields["dodag_id"],
+        )
+        assert rebuilt.to_bytes() == encoded, f"{name}: encode"
+
+    elif msg_type == "dao":
+        fields = vector["fields"]
+        dao = DAO.from_bytes(encoded)
+        assert dao.rpl_instance_id == fields["rpl_instance_id"], f"{name}: rpl_instance_id"
+        assert dao.ack_requested == fields["ack_requested"], f"{name}: ack_requested"
+        assert dao.dao_sequence == fields["dao_sequence"], f"{name}: dao_sequence"
+        dodag_str = str(dao.dodag_id) if dao.dodag_id else None
+        assert dodag_str == fields["dodag_id"], f"{name}: dodag_id"
+        rebuilt = DAO(
+            rpl_instance_id=fields["rpl_instance_id"],
+            ack_requested=fields["ack_requested"],
+            flags=fields["flags"],
+            dao_sequence=fields["dao_sequence"],
+            dodag_id=fields["dodag_id"],
+        )
+        assert rebuilt.to_bytes() == encoded, f"{name}: encode"
+
+    elif msg_type == "dao_ack":
+        fields = vector["fields"]
+        ack = DAOAck.from_bytes(encoded)
+        assert ack.rpl_instance_id == fields["rpl_instance_id"], f"{name}: rpl_instance_id"
+        assert ack.dao_sequence == fields["dao_sequence"], f"{name}: dao_sequence"
+        assert ack.status == fields["status"], f"{name}: status"
+        dodag_str = str(ack.dodag_id) if ack.dodag_id else None
+        assert dodag_str == fields["dodag_id"], f"{name}: dodag_id"
+        rebuilt = DAOAck(
+            rpl_instance_id=fields["rpl_instance_id"],
+            flags=fields["flags"],
+            dao_sequence=fields["dao_sequence"],
+            status=fields["status"],
+            dodag_id=fields["dodag_id"],
+        )
+        assert rebuilt.to_bytes() == encoded, f"{name}: encode"
+
+    elif msg_type == "dis":
+        fields = vector["fields"]
+        dis = DIS.from_bytes(encoded)
+        assert dis.flags == fields["flags"], f"{name}: flags"
+        assert dis.reserved == fields["reserved"], f"{name}: reserved"
+        rebuilt = DIS(flags=fields["flags"], reserved=fields["reserved"])
+        assert rebuilt.to_bytes() == encoded, f"{name}: encode"
+
+    elif msg_type == "option":
+        opt_type = vector["option_type"]
+        fields = vector["fields"]
+        if opt_type == 5:  # RPL Target
+            from lichen.rpl.messages import RplOption
+            opt = RplOption(5, encoded[2 : 2 + encoded[1]])
+            target = RplTarget.from_option(opt)
+            assert target.prefix_length == fields["prefix_length"], f"{name}: prefix_length"
+            assert target.target == IPv6Address(fields["prefix"]), f"{name}: prefix"
+        elif opt_type == 6:  # Transit Information
+            from lichen.rpl.messages import RplOption
+            opt = RplOption(6, encoded[2 : 2 + encoded[1]])
+            ti = TransitInformation.from_option(opt)
+            assert ti.path_control == fields["path_control"], f"{name}: path_control"
+            assert ti.path_sequence == fields["path_sequence"], f"{name}: path_sequence"
+            assert ti.path_lifetime == fields["path_lifetime"], f"{name}: path_lifetime"
+            assert ti.parent_address == IPv6Address(fields["parent_address"]), f"{name}: parent"
+            assert ti.to_option().to_bytes() == encoded, f"{name}: encode"
+
+    elif msg_type == "dio_with_options":
+        fields = vector["fields"]
+        dio = DIO.from_bytes(encoded)
+        assert dio.rpl_instance_id == fields["rpl_instance_id"], f"{name}: rpl_instance_id"
+        assert len(dio.options) == len(fields["options"]), f"{name}: options count"
+        for i, opt in enumerate(dio.options):
+            assert opt.type == fields["options"][i]["type"], f"{name}: option {i} type"
+
+    elif msg_type == "dao_with_options":
+        fields = vector["fields"]
+        dao = DAO.from_bytes(encoded)
+        assert dao.rpl_instance_id == fields["rpl_instance_id"], f"{name}: rpl_instance_id"
+        assert dao.dao_sequence == fields["dao_sequence"], f"{name}: dao_sequence"
+        assert len(dao.options) == len(fields["options"]), f"{name}: options count"
+        for i, opt in enumerate(dao.options):
+            assert opt.type == fields["options"][i]["type"], f"{name}: option {i} type"
+
+    elif msg_type == "option_chain":
+        options = _parse_options(encoded)
+        expected = vector["options"]
+        assert len(options) == len(expected), f"{name}: options count"
+        for i, opt in enumerate(options):
+            assert opt.type == expected[i]["type"], f"{name}: option {i} type"

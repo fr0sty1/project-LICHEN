@@ -116,3 +116,92 @@ class TestMemorySecurityContext:
         # Next call should raise (would exceed 5-byte limit)
         with pytest.raises(OverflowError, match="sequence number exhausted"):
             ctx.new_sequence_number()
+
+    def test_starting_sequence_number_parameter(self) -> None:
+        """starting_sequence_number allows state recovery to prevent nonce reuse."""
+        # Simulate state recovery: context recreated with persisted sequence number
+        starting_seq = 1000
+        ctx = MemorySecurityContext(
+            master_secret=b"0" * 16,
+            master_salt=b"1" * 8,
+            sender_id=b"\x00",
+            recipient_id=b"\x01",
+            starting_sequence_number=starting_seq,
+        )
+
+        # Sequence number starts at the provided value, not 0
+        assert ctx.sender_sequence_number == starting_seq
+
+        # Next sequence number continues from there
+        seqno = ctx.new_sequence_number()
+        assert seqno == starting_seq
+        assert ctx.sender_sequence_number == starting_seq + 1
+
+    def test_starting_sequence_number_negative_raises(self) -> None:
+        """Negative starting_sequence_number raises ValueError."""
+        with pytest.raises(ValueError, match="non-negative"):
+            MemorySecurityContext(
+                master_secret=b"0" * 16,
+                master_salt=b"1" * 8,
+                sender_id=b"\x00",
+                recipient_id=b"\x01",
+                starting_sequence_number=-1,
+            )
+
+    def test_starting_sequence_number_exceeds_max_raises(self) -> None:
+        """starting_sequence_number exceeding RFC 8613 limit raises ValueError."""
+        max_seq = (1 << 40) - 1
+        # Value at max should succeed
+        ctx = MemorySecurityContext(
+            master_secret=b"0" * 16,
+            master_salt=b"1" * 8,
+            sender_id=b"\x00",
+            recipient_id=b"\x01",
+            starting_sequence_number=max_seq,
+        )
+        assert ctx.sender_sequence_number == max_seq
+
+        # Value exceeding max should fail
+        with pytest.raises(ValueError, match="exceeds RFC 8613 limit"):
+            MemorySecurityContext(
+                master_secret=b"0" * 16,
+                master_salt=b"1" * 8,
+                sender_id=b"\x00",
+                recipient_id=b"\x01",
+                starting_sequence_number=max_seq + 1,
+            )
+
+    def test_get_persisted_sequence_number(self) -> None:
+        """get_persisted_sequence_number returns current value for persistence."""
+        ctx = MemorySecurityContext(
+            master_secret=b"0" * 16,
+            master_salt=b"1" * 8,
+            sender_id=b"\x00",
+            recipient_id=b"\x01",
+            starting_sequence_number=500,
+        )
+
+        assert ctx.get_persisted_sequence_number() == 500
+
+        ctx.new_sequence_number()
+        ctx.new_sequence_number()
+        assert ctx.get_persisted_sequence_number() == 502
+
+    def test_from_edhoc_with_starting_sequence_number(self) -> None:
+        """from_edhoc accepts starting_sequence_number for state recovery."""
+        initiator_id = Identity.generate()
+        responder_id = Identity.generate()
+
+        initiator = EdhocInitiator.create(initiator_id, c_i=b"\x00")
+        responder = EdhocResponder.create(responder_id, c_r=b"\x01")
+
+        msg1 = initiator.create_message_1()
+        msg2 = responder.process_message_1(msg1, initiator_id.pubkey)
+        msg3 = initiator.process_message_2(msg2, responder_id.pubkey)
+        responder.process_message_3(msg3, initiator_id.pubkey)
+
+        edhoc_ctx = initiator.export_oscore()
+
+        # Create context with recovered sequence number
+        ctx = MemorySecurityContext.from_edhoc(edhoc_ctx, starting_sequence_number=42)
+        assert ctx.sender_sequence_number == 42

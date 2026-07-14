@@ -96,7 +96,11 @@ class BleScannerLike(Protocol):
         """Return BLE devices with advertisement metadata."""
 
 
-BleClientFactory = Callable[[str], BleClientLike]
+# Disconnect callback signature: receives the client instance on disconnect.
+BleDisconnectCallback = Callable[[Any], None]
+
+# Client factory must accept address and disconnect callback to enable proper cleanup.
+BleClientFactory = Callable[[str, BleDisconnectCallback], BleClientLike]
 
 
 @dataclass(frozen=True)
@@ -248,7 +252,7 @@ class BlePacketTransport:
 
     def _build_client(self) -> BleClientLike:
         if self._client_factory is not None:
-            return self._client_factory(self.address)
+            return self._client_factory(self.address, self._on_disconnect)
         try:
             bleak = import_module("bleak")
         except ImportError as exc:

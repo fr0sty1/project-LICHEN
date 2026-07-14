@@ -124,14 +124,8 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 					 l2_payload, l2_payload_len,
 					 ctx->ed25519_sk, ctx->ed25519_pk,
 					 &payload_buf[l2_payload_len]) != 0) {
-			/*
-			 * SECURITY: Wipe buffers to avoid leaking partial data.
-			 * payload_buf may have uninitialized signature slot,
-			 * compressed[] contains SCHC-compressed packet data.
-			 */
-			memset(payload_buf, 0, sizeof(payload_buf));
-			memset(compressed, 0, sizeof(compressed));
-			return -EINVAL;
+			ret = -EINVAL;
+			goto cleanup;
 		}
 
 		payload_len = l2_payload_len + SCHNORR48_SIG_LEN;

@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-t5xn",
+  "title": "EdhocResource ContentFormat 65535 is unofficial",
+  "description": "File: python/src/lichen/coap/resources.py:937\n\nEDHOC response uses content format 65535:\n```python\nresponse.opt.content_format = ContentFormat(65535)  # application/edhoc\n```\n\nThe official IANA content format for EDHOC (RFC 9528) is 60 (application/edhoc), not 65535. The value 65535 is in the private-use range and will cause interoperability issues with standard EDHOC implementations.\n\nFix: Use the correct registered content format:\n```python\nEDHOC_CONTENT_FORMAT = ContentFormat(60)  # application/edhoc per RFC 9528\n```",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:18:50.090661Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:18:50.090696Z"
+}

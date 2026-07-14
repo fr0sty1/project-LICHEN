@@ -15,6 +15,19 @@
 #include <zephyr/net/coap_service.h>
 #include <lichen/oscore.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -25,7 +38,7 @@ extern "C" {
  * @param[in] request CoAP request packet
  * @return true if OSCORE option present, false otherwise
  */
-bool coap_oscore_is_protected(const struct coap_packet *request);
+bool coap_oscore_is_protected(const struct coap_packet *_Nonnull request);
 
 /**
  * @brief Extract OSCORE option from CoAP request
@@ -35,8 +48,8 @@ bool coap_oscore_is_protected(const struct coap_packet *request);
  * @param[out] opt_len     Option length
  * @return 0 on success, negative error code if not found
  */
-int coap_oscore_get_option(const struct coap_packet *request,
-			   uint8_t *opt_data, size_t *opt_len);
+int coap_oscore_get_option(const struct coap_packet *_Nonnull request,
+			   uint8_t *_Nonnull opt_data, size_t *_Nonnull opt_len);
 
 /**
  * @brief Unprotect an OSCORE-protected CoAP request
@@ -56,12 +69,12 @@ int coap_oscore_get_option(const struct coap_packet *request,
  * @param[out]    request_piv_len PIV length
  * @return 0 on success, negative error code on failure
  */
-int coap_oscore_unprotect_request(struct oscore_ctx *ctx,
-				  const struct coap_packet *request,
-				  uint8_t *original_code,
-				  uint8_t *options, size_t *options_len,
-				  uint8_t *payload, size_t *payload_len,
-				  uint8_t *request_piv, size_t *request_piv_len);
+int coap_oscore_unprotect_request(struct oscore_ctx *_Nonnull ctx,
+				  const struct coap_packet *_Nonnull request,
+				  uint8_t *_Nonnull original_code,
+				  uint8_t *_Nullable options, size_t *_Nullable options_len,
+				  uint8_t *_Nonnull payload, size_t *_Nonnull payload_len,
+				  uint8_t *_Nonnull request_piv, size_t *_Nonnull request_piv_len);
 
 /**
  * @brief Build an OSCORE-protected CoAP response
@@ -80,13 +93,13 @@ int coap_oscore_unprotect_request(struct oscore_ctx *ctx,
  * @param[in]     resp_buf_len   Response buffer size
  * @return 0 on success, negative error code on failure
  */
-int coap_oscore_protect_response(struct oscore_ctx *ctx,
-				 const uint8_t *request_piv, size_t request_piv_len,
-				 const struct coap_packet *original_request,
+int coap_oscore_protect_response(struct oscore_ctx *_Nonnull ctx,
+				 const uint8_t *_Nonnull request_piv, size_t request_piv_len,
+				 const struct coap_packet *_Nonnull original_request,
 				 uint8_t response_code,
-				 const uint8_t *payload, size_t payload_len,
-				 struct coap_packet *response,
-				 uint8_t *resp_buf, size_t resp_buf_len);
+				 const uint8_t *_Nonnull payload, size_t payload_len,
+				 struct coap_packet *_Nonnull response,
+				 uint8_t *_Nonnull resp_buf, size_t resp_buf_len);
 
 /**
  * @brief Send a 4.01 Unauthorized response for missing/invalid OSCORE
@@ -97,9 +110,9 @@ int coap_oscore_protect_response(struct oscore_ctx *ctx,
  * @param[in] addr_len Address length
  * @return 0 on success, negative error code on failure
  */
-int coap_oscore_send_unauthorized(struct coap_resource *resource,
-				  struct coap_packet *request,
-				  struct sockaddr *addr, socklen_t addr_len);
+int coap_oscore_send_unauthorized(struct coap_resource *_Nonnull resource,
+				  struct coap_packet *_Nonnull request,
+				  struct sockaddr *_Nonnull addr, socklen_t addr_len);
 
 #ifdef __cplusplus
 }

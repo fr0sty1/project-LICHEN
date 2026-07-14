@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-a4n2.1",
+  "title": "Rust: TX queue spec compliance (capacity, deadline, preemption)",
+  "description": "rust/lichen-core/src/tx_queue.rs partially implemented but not spec-compliant:\n\n1. TX_QUEUE_CAPACITY=32, spec §3 requires 4\n2. No deadline expiry (spec: 5s routing, 10s ACK, 60s app default)\n3. No preemption (when full, returns QueueFull instead of preempting lower priority)\n\nRequired changes:\n- Reduce capacity to 4\n- Add deadline_ms field to TxItem\n- Add expire_oldest() method to drop expired packets\n- Add preemption: when full and new packet has higher priority, evict lowest priority packet\n\nSee spec/appendix-bufferbloat.md §3 TX Queue for requirements.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T00:40:08.600028Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T01:38:51.94227Z",
+  "closed_at": "2026-07-12T01:38:51.94227Z",
+  "close_reason": "Implemented spec-compliant TX queue: capacity 4 (was 32), deadline_ms field with expiry (5s routing, 10s control, 60s user/bulk), priority preemption when full, latency tracking in stats",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-a4n2.1",
+      "depends_on_id": "project-LICHEN-a4n2",
+      "type": "parent-child",
+      "created_at": "2026-07-12T00:40:08.601236Z"
+    }
+  ]
+}

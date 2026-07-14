@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-qbi6.3",
+  "title": "Implement forwarding buffer with backpressure (C/Zephyr)",
+  "description": "Add per-source forwarding buffer to C subsystem (lichen/subsys/lichen/l2 or routing):\n- Track packets per source IID (MAX_FORWARDING_SOURCES=8, MAX_PACKETS_PER_SOURCE=2)\n- Return -ENOBUFS when limit exceeded\n- Send NACK upstream when full (spec appendix-bufferbloat.md)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T00:40:30.195048Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T01:34:18.590608Z",
+  "closed_at": "2026-07-12T01:34:18.590608Z",
+  "close_reason": "Implemented: Per-source forwarding buffer in routing/router.c with configurable MAX_FORWARDING_SOURCES (8) and MAX_PACKETS_PER_SOURCE (2). Returns -ENOBUFS when limit exceeded, tracks nacks_sent counter for caller to send NACK upstream. Added Kconfig options, header declarations, and Zephyr tests in lichen/tests/routing_fwd_buffer/.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-qbi6.3",
+      "depends_on_id": "project-LICHEN-qbi6",
+      "type": "parent-child",
+      "created_at": "2026-07-12T00:40:30.195986Z"
+    }
+  ]
+}

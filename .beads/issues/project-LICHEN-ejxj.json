@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-ejxj",
+  "title": "Trickle timer integer overflow in interval_end calculation",
+  "description": "File: rust/lichen-rpl/src/trickle.rs\nLines: 121-123\n\nThe interval_end() method does not handle integer overflow:\n```rust\npub fn interval_end(\u0026self) -\u003e u32 {\n    self.interval_start + self.interval\n}\n```\n\nImpact: Same as transmit_time overflow - if interval_start is close to u32::MAX, the addition will wrap around. The caller would see an interval_end that appears to be in the distant past, causing the interval to immediately expire and restart.\n\nThis would cause continuous rapid interval cycling, violating Trickle's exponential backoff behavior.\n\nFix: Use saturating_add:\n```rust\npub fn interval_end(\u0026self) -\u003e u32 {\n    self.interval_start.saturating_add(self.interval)\n}\n```",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:38:16.635847Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-13T00:16:46.313642Z",
+  "closed_at": "2026-07-13T00:16:46.313642Z",
+  "close_reason": "Fixed: Changed interval_end() to use saturating_add() instead of plain addition, preventing wraparound when interval_start is close to u32::MAX. Added test to verify saturation behavior."
+}

@@ -11,7 +11,12 @@ The Router class decides which tier to use based on address classification.
 """
 
 from lichen.routing.router import (
+    MAX_FORWARDING_SOURCES,
+    MAX_PACKETS_PER_SOURCE,
     AddressClass,
+    ForwardingBuffer,
+    ForwardingEntry,
+    ForwardingResult,
     PendingPacket,
     RouteDecision,
     Router,
@@ -20,6 +25,11 @@ from lichen.routing.router import (
 
 __all__ = [
     "AddressClass",
+    "ForwardingBuffer",
+    "ForwardingEntry",
+    "ForwardingResult",
+    "MAX_FORWARDING_SOURCES",
+    "MAX_PACKETS_PER_SOURCE",
     "PendingPacket",
     "RouteDecision",
     "Router",

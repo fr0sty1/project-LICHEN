@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-r6fu.1",
+  "title": "OSCORE integration missing in Python CoAP transport",
+  "description": "VIOLATION of spec/06-security.md 8.7: Python CoAP transport (transport.py, node_channel.py) sends plaintext datagrams without OSCORE protection. The OSCORE library exists (lichen.crypto.oscore.MemorySecurityContext) but is not integrated.\n\nFIX REQUIRED:\n1. Modify LichenTransport.send() to protect messages with OSCORE before encoding\n2. Modify LichenTransport._on_datagram() to unprotect OSCORE messages\n3. NodeChannel needs similar integration\n4. EDHOC handshake must run before first protected message exchange\n\nFiles to modify:\n- python/src/lichen/coap/transport.py\n- python/src/lichen/coap/node_channel.py\n\nReference implementation: rust/lichen-node/src/secure.rs",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T00:39:43.712093Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T01:39:49.603348Z",
+  "closed_at": "2026-07-12T01:39:49.603348Z",
+  "close_reason": "Implemented SecureDatagramChannel wrapper for OSCORE protection per spec 8.7. Created python/src/lichen/coap/secure.py with: OscoreContextStore for managing security contexts, TofuPeerResolver for TOFU key pinning, SecureDatagramChannel that wraps any DatagramChannel with transparent OSCORE protect/unprotect. Contexts can be pre-provisioned via add_context() or established via EDHOC (interface provided, full EDHOC CoAP exchange deferred to separate bead). Added 18 tests in tests/coap/test_secure.py.",
+  "labels": [
+    "security",
+    "oscore"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-r6fu.1",
+      "depends_on_id": "project-LICHEN-r6fu",
+      "type": "parent-child",
+      "created_at": "2026-07-12T00:39:43.712606Z"
+    }
+  ]
+}

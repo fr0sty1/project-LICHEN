@@ -17,13 +17,30 @@ use crate::message::{
     Dao, OptionIter, RplError, RplTarget, TransitInfo, OPT_RPL_TARGET, OPT_TRANSIT_INFO,
 };
 
-/// RFC 6550 lollipop sequence comparison: returns true if `new_seq` is newer than `old_seq`.
+/// RFC 6550 Section 9.1: Lollipop sequence comparison for DAO sequence.
 ///
-/// Uses signed wrap-around comparison. A sequence S1 is considered newer than S2 if
-/// the signed difference (S1 - S2) is positive (within half the sequence space).
+/// Values 0-127 are the linear region (restart); 128-255 are circular (normal).
+/// Returns true if `new_seq` is newer than `old_seq`.
+const LOLLIPOP_CIRCULAR_BIT: u8 = 128;
+const LOLLIPOP_SEQUENCE_WINDOW: u8 = 16;
+
 #[cfg(feature = "std")]
 fn seq_is_newer(new_seq: u8, old_seq: u8) -> bool {
-    (new_seq.wrapping_sub(old_seq) as i8) > 0
+    match (
+        new_seq < LOLLIPOP_CIRCULAR_BIT,
+        old_seq < LOLLIPOP_CIRCULAR_BIT,
+    ) {
+        // Both in linear region (0-127): simple comparison
+        (true, true) => new_seq > old_seq,
+        // Both in circular region (128-255): modular comparison with window
+        (false, false) => {
+            let diff = new_seq.wrapping_sub(old_seq) & 0x7F;
+            diff > 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW
+        }
+        // Mixed: linear (restart) is always newer than circular
+        (true, false) => true,
+        (false, true) => false,
+    }
 }
 #[cfg(feature = "std")]
 use lichen_core::error::{BufferTooSmall, TooShort};
@@ -70,6 +87,12 @@ impl SourceRoutingHeader {
         }
         if data[0] != 3 {
             return Err(RplError::BadRoutingType(data[0]));
+        }
+        // SECURITY: Reject compressed SRHs (CmprI/CmprE > 0 per RFC 6554 Section 3).
+        // We only support uncompressed addresses (16 bytes each). Compressed SRHs
+        // would be parsed incorrectly, leading to misrouted packets.
+        if data[2] != 0 || data[3] != 0 {
+            return Err(RplError::InvalidOption);
         }
         let addr_bytes = &data[6..];
         if !addr_bytes.len().is_multiple_of(16) {
@@ -294,14 +317,18 @@ impl DaoManager {
         };
 
         let mut buf = [0u8; 64]; // DAO(20) + Target(20) + TransitInfo(22) = 62
-        let mut pos = dao.write_to(&mut buf).unwrap_or(0);
+        let mut pos = dao
+            .write_to(&mut buf)
+            .expect("DAO base (20 bytes) fits in 64-byte buffer");
 
         let target = RplTarget {
             prefix_len: 128,
             prefix: self.node_address,
         };
         let mut tmp = [0u8; 24];
-        let n = target.write_to(&mut tmp).unwrap_or(0);
+        let n = target
+            .write_to(&mut tmp)
+            .expect("RPL Target option (19 bytes) fits in 24-byte buffer");
         buf[pos..pos + n].copy_from_slice(&tmp[..n]);
         pos += n;
 
@@ -311,7 +338,9 @@ impl DaoManager {
             path_lifetime: 255,
             parent_address: parent_addr,
         };
-        pos += transit.write_to(&mut buf[pos..]).unwrap_or(0);
+        pos += transit
+            .write_to(&mut buf[pos..])
+            .expect("TransitInfo option (22 bytes) fits in remaining buffer");
 
         buf[..pos].to_vec()
     }
@@ -629,17 +658,32 @@ mod tests {
     }
 
     #[test]
-    fn dao_sequence_comparison_handles_wraparound() {
-        // Test the seq_is_newer function for wrap-around cases
+    fn dao_sequence_comparison_handles_lollipop() {
+        // RFC 6550 Section 9.1: DAOSequence is a lollipop counter
+        // Linear region: 0-127, Circular region: 128-255
+
+        // Linear region: simple comparison
         assert!(super::seq_is_newer(1, 0));
-        assert!(super::seq_is_newer(128, 127));
+        assert!(super::seq_is_newer(127, 0));
+        assert!(!super::seq_is_newer(0, 1));
+
+        // Circular region: modular comparison with sequence window
+        assert!(super::seq_is_newer(129, 128));
+        assert!(super::seq_is_newer(144, 128)); // diff=16, within window
+        assert!(!super::seq_is_newer(145, 128)); // diff=17, outside window
         assert!(super::seq_is_newer(255, 254));
-        // Wrap-around: 0 is newer than 255 (distance of 1 forward)
+        assert!(super::seq_is_newer(128, 255)); // wraps around within circular
+
+        // Mixed: linear (restart) is always newer than circular
         assert!(super::seq_is_newer(0, 255));
-        assert!(super::seq_is_newer(1, 255));
-        // But 254 is not newer than 255
-        assert!(!super::seq_is_newer(254, 255));
+        assert!(super::seq_is_newer(0, 128));
+        assert!(super::seq_is_newer(127, 200));
+        assert!(super::seq_is_newer(127, 128)); // key bug case from bead
+        assert!(!super::seq_is_newer(200, 127)); // circular not newer than linear
+        assert!(!super::seq_is_newer(128, 127)); // circular not newer than linear
+
         // Same sequence is not newer
         assert!(!super::seq_is_newer(100, 100));
+        assert!(!super::seq_is_newer(200, 200));
     }
 }

@@ -286,6 +286,26 @@ RPL_DAO_RULE = Rule(
 )
 
 
+# Rule 5/6: OSCORE-protected CoAP over link-local/global IPv6 + UDP.
+#
+# OSCORE-protected CoAP packets (RFC 8613) have the same compression as
+# regular CoAP (rules 0/1), but use distinct rule IDs for:
+# - Explicit identification of OSCORE-protected traffic
+# - Future OSCORE-specific compression optimizations
+# - Interoperability markers for security auditing
+#
+# The OSCORE Object-Security option (option 9) and encrypted payload
+# travel verbatim in the tail, as with regular CoAP options/payload.
+LINK_LOCAL_OSCORE_RULE = Rule(
+    rule_id=5,
+    fields=_ipv6_header_fields(17, link_local=True) + _udp_fields() + _coap_fields(),
+)
+GLOBAL_OSCORE_RULE = Rule(
+    rule_id=6,
+    fields=_ipv6_header_fields(17, link_local=False) + _udp_fields() + _coap_fields(),
+)
+
+
 # Registry keyed by rule ID.
 RULES: dict[int, Rule] = {
     LINK_LOCAL_COAP_RULE.rule_id: LINK_LOCAL_COAP_RULE,
@@ -293,6 +313,8 @@ RULES: dict[int, Rule] = {
     LINK_LOCAL_ICMPV6_ECHO_RULE.rule_id: LINK_LOCAL_ICMPV6_ECHO_RULE,
     RPL_DIO_RULE.rule_id: RPL_DIO_RULE,
     RPL_DAO_RULE.rule_id: RPL_DAO_RULE,
+    LINK_LOCAL_OSCORE_RULE.rule_id: LINK_LOCAL_OSCORE_RULE,
+    GLOBAL_OSCORE_RULE.rule_id: GLOBAL_OSCORE_RULE,
     ICMPV6_ECHO_RULE.rule_id: ICMPV6_ECHO_RULE,
     COAP_RULE.rule_id: COAP_RULE,
     UDP_PORT_RULE.rule_id: UDP_PORT_RULE,

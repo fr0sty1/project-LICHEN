@@ -8,9 +8,11 @@ tests:
       - hal
     platform_allow:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     integration_platforms:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
   lichen.hal.reset_reboot_enabled:
     tags:
@@ -19,9 +21,11 @@ tests:
       - reset
     platform_allow:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     integration_platforms:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     extra_configs:
       - CONFIG_REBOOT=y
@@ -32,9 +36,11 @@ tests:
       - reset
     platform_allow:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     integration_platforms:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     extra_configs:
       - CONFIG_HWINFO=y
@@ -45,9 +51,11 @@ tests:
       - reset
     platform_allow:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     integration_platforms:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     extra_configs:
       - CONFIG_REBOOT=y
@@ -58,8 +66,10 @@ tests:
       - hal
     platform_allow:
       - native_sim
+      - native_sim/native/64
     integration_platforms:
       - native_sim
+      - native_sim/native/64
     extra_args:
       - CONF_FILE=prj.conf;prj_lora_loopback.conf
       - DTC_OVERLAY_FILE=boards/native_sim_lora_loopback.overlay
@@ -83,9 +93,11 @@ tests:
       - battery
     platform_allow:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     integration_platforms:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     extra_args:
       - DTC_OVERLAY_FILE=boards/native_sim_battery_adc.overlay
@@ -104,9 +116,11 @@ tests:
       - pmic
     platform_allow:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     integration_platforms:
       - native_sim
+      - native_sim/native/64
       - qemu_x86
     extra_args:
       - DTC_OVERLAY_FILE=boards/native_sim_power_providers.overlay

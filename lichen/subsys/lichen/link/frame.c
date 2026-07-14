@@ -135,6 +135,11 @@ int lichen_frame_write(const struct lichen_frame *frame,
 		return -EINVAL;
 	}
 
+	/* SECURITY: Check payload_len before arithmetic to prevent overflow on 32-bit size_t */
+	if (frame->payload_len > LICHEN_MAX_PAYLOAD) {
+		return -EMSGSIZE;
+	}
+
 	/* Calculate total frame size */
 	size_t frame_len = LICHEN_FRAME_PAYLOAD_OFFSET(addr_len) +
 			   frame->payload_len + mic_len;

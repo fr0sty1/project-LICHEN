@@ -22,6 +22,19 @@
 #include <stdbool.h>
 #include <lichen/rpl_messages.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -97,9 +110,9 @@ struct lichen_rpl_dodag {
  *
  * @return 0 on success, LICHEN_RPL_ERR_INVALID if d or dodag_id is NULL.
  */
-int lichen_rpl_dodag_init(struct lichen_rpl_dodag *d,
+int lichen_rpl_dodag_init(struct lichen_rpl_dodag *_Nonnull d,
 			  uint8_t rpl_instance_id,
-			  const uint8_t *dodag_id,
+			  const uint8_t *_Nonnull dodag_id,
 			  uint8_t version);
 
 /**
@@ -107,15 +120,15 @@ int lichen_rpl_dodag_init(struct lichen_rpl_dodag *d,
  *
  * @return 0 on success, LICHEN_RPL_ERR_INVALID if d or dodag_id is NULL.
  */
-int lichen_rpl_dodag_init_root(struct lichen_rpl_dodag *d,
+int lichen_rpl_dodag_init_root(struct lichen_rpl_dodag *_Nonnull d,
 			       uint8_t rpl_instance_id,
-			       const uint8_t *dodag_id,
+			       const uint8_t *_Nonnull dodag_id,
 			       uint8_t version);
 
 /**
  * @brief Check if node is root.
  */
-static inline bool lichen_rpl_dodag_is_root(const struct lichen_rpl_dodag *d)
+static inline bool lichen_rpl_dodag_is_root(const struct lichen_rpl_dodag *_Nonnull d)
 {
 	return d->role == LICHEN_RPL_ROOT;
 }
@@ -123,7 +136,7 @@ static inline bool lichen_rpl_dodag_is_root(const struct lichen_rpl_dodag *d)
 /**
  * @brief Check if node is joined (either JOINED or ROOT).
  */
-static inline bool lichen_rpl_dodag_is_joined(const struct lichen_rpl_dodag *d)
+static inline bool lichen_rpl_dodag_is_joined(const struct lichen_rpl_dodag *_Nonnull d)
 {
 	return d->role == LICHEN_RPL_JOINED || d->role == LICHEN_RPL_ROOT;
 }
@@ -137,9 +150,9 @@ static inline bool lichen_rpl_dodag_is_joined(const struct lichen_rpl_dodag *d)
  * @param link_etx     Fixed-point ETX estimate (256 = perfect link)
  * @param now          Current timestamp for lifetime tracking
  */
-void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
-				  const struct lichen_rpl_dio *dio,
-				  const uint8_t *neighbor_addr,
+void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *_Nonnull d,
+				  const struct lichen_rpl_dio *_Nonnull dio,
+				  const uint8_t *_Nonnull neighbor_addr,
 				  uint16_t link_etx,
 				  uint32_t now);
 
@@ -149,18 +162,18 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
  * @param d    DODAG state
  * @param addr IPv6 address of the neighbor to remove (16 bytes)
  */
-void lichen_rpl_dodag_remove_parent(struct lichen_rpl_dodag *d,
-				    const uint8_t *addr);
+void lichen_rpl_dodag_remove_parent(struct lichen_rpl_dodag *_Nonnull d,
+				    const uint8_t *_Nonnull addr);
 
 /**
  * @brief Get the number of parent candidates currently tracked.
  */
-int lichen_rpl_dodag_parent_count(const struct lichen_rpl_dodag *d);
+int lichen_rpl_dodag_parent_count(const struct lichen_rpl_dodag *_Nonnull d);
 
 /**
  * @brief Force parent re-selection (e.g., after link quality change).
  */
-void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d);
+void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *_Nonnull d);
 
 /**
  * @brief Expire stale parent candidates.
@@ -173,7 +186,7 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d);
  * @param max_age Maximum age in timestamp units before expiring
  * @return Number of parents expired
  */
-int lichen_rpl_dodag_expire_parents(struct lichen_rpl_dodag *d,
+int lichen_rpl_dodag_expire_parents(struct lichen_rpl_dodag *_Nullable d,
 				    uint32_t now, uint32_t max_age);
 
 #ifdef __cplusplus

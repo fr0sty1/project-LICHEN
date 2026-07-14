@@ -32,6 +32,24 @@ config LICHEN_IPV6_ULA_PREFIX
 	  Kconfig cannot validate string format at compile time. Runtime
 	  validation in lichen_make_ula() enforces the fd00::/8 requirement.
 
+config LICHEN_ICMPV6
+	bool "LICHEN ICMPv6 implementation"
+	depends on LICHEN_IPV6
+	default y
+	help
+	  Enable LICHEN ICMPv6 implementation (RFC 4443):
+	  - Echo Request/Reply (ping)
+	  - Destination Unreachable
+	  - Packet Too Big
+	  - Time Exceeded
+	  - Parameter Problem
+
+	  The checksum covers the IPv6 pseudo-header (source, destination,
+	  upper-layer length, Next Header = 58) followed by the ICMPv6 message.
+
+	  These utilities are standalone and can be used with or without
+	  Zephyr's full networking stack.
+
 config LICHEN_LORA_L2
 	bool "LICHEN LoRa L2 driver"
 	depends on LICHEN

@@ -24,6 +24,7 @@ BUILD_ASSERT(LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN == LICHEN_PK_LEN,
 
 struct peer_slot {
 	struct lichen_app_identity_peer peer;
+	int64_t last_updated_ticks;  /* k_uptime_ticks() at last upsert, for LRU eviction */
 	bool used;
 };
 
@@ -89,6 +90,26 @@ static int find_free_peer_locked(void)
 		}
 	}
 	return -ENOMEM;
+}
+
+/*
+ * Find the least-recently-updated peer slot for LRU eviction.
+ * Returns slot index of the peer with the oldest last_updated_ticks.
+ * Returns -ENOENT if no peers exist (should not happen when table is full).
+ */
+static int find_lru_peer_locked(void)
+{
+	int lru_slot = -1;
+	int64_t oldest_ticks = INT64_MAX;
+
+	for (uint8_t i = 0U; i < ARRAY_SIZE(s_peers); i++) {
+		if (s_peers[i].used &&
+		    s_peers[i].last_updated_ticks < oldest_ticks) {
+			oldest_ticks = s_peers[i].last_updated_ticks;
+			lru_slot = i;
+		}
+	}
+	return (lru_slot >= 0) ? lru_slot : -ENOENT;
 }
 
 int lichen_app_identity_set_self(
@@ -200,8 +221,29 @@ int lichen_app_identity_upsert_peer(
 
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	slot = find_peer_locked(peer->eui64);
-	if (slot < 0) {
+	if (slot >= 0) {
+		/*
+		 * SECURITY: TOFU key pinning (spec 8.6). First contact pins
+		 * pubkey; subsequent contacts must present the same key.
+		 * Key rotation requires explicit removal followed by re-add.
+		 * Silent key changes are rejected to prevent impersonation.
+		 */
+		if (s_peers[slot].peer.has_public_key &&
+		    memcmp(s_peers[slot].peer.public_key, peer->public_key,
+			   LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN) != 0) {
+			k_mutex_unlock(&s_mutex);
+			return -EEXIST;  /* TOFU violation: pubkey mismatch */
+		}
+	} else {
 		slot = find_free_peer_locked();
+		if (slot < 0) {
+			/*
+			 * Table full: evict least-recently-updated peer (LRU).
+			 * This prevents the 'first N peers win' lockout scenario
+			 * where early peers permanently occupy all slots.
+			 */
+			slot = find_lru_peer_locked();
+		}
 	}
 	if (slot < 0) {
 		k_mutex_unlock(&s_mutex);
@@ -214,6 +256,7 @@ int lichen_app_identity_upsert_peer(
 			  sizeof(s_peers[slot].peer.display_name),
 			  peer->display_name);
 	eui64_to_iid(s_peers[slot].peer.eui64, s_peers[slot].peer.iid);
+	s_peers[slot].last_updated_ticks = k_uptime_ticks();
 	s_peers[slot].used = true;
 	k_mutex_unlock(&s_mutex);
 	return 0;

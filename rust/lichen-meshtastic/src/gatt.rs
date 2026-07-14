@@ -38,6 +38,9 @@ pub const MAX_MESSAGE_SIZE: usize = 512;
 /// Maximum number of queued outbound messages.
 pub const MAX_QUEUE_DEPTH: usize = 8;
 
+/// Default deadline for application data (60 seconds per spec/appendix-bufferbloat.md).
+pub const DEFAULT_DEADLINE_MS: u64 = 60_000;
+
 /// Parse a UUID string at compile time into bytes (little-endian for BLE).
 const fn uuid_from_str(s: &str) -> [u8; 16] {
     let b = s.as_bytes();
@@ -107,6 +110,39 @@ impl core::fmt::Display for GattError {
 
 impl core::error::Error for GattError {}
 
+/// A queued FromRadio message with expiration deadline.
+#[derive(Debug, Clone)]
+pub struct QueueEntry {
+    /// Message data.
+    data: Vec<u8, MAX_MESSAGE_SIZE>,
+    /// Deadline timestamp in milliseconds (monotonic clock).
+    /// Entry is considered expired when `now_ms >= deadline_ms`.
+    deadline_ms: u64,
+}
+
+impl QueueEntry {
+    /// Create a new queue entry with the given data and deadline.
+    pub fn new(data: Vec<u8, MAX_MESSAGE_SIZE>, deadline_ms: u64) -> Self {
+        Self { data, deadline_ms }
+    }
+
+    /// Check if this entry has expired given the current time.
+    #[inline]
+    pub fn is_expired(&self, now_ms: u64) -> bool {
+        now_ms >= self.deadline_ms
+    }
+
+    /// Get the message data.
+    pub fn data(&self) -> &[u8] {
+        self.data.as_slice()
+    }
+
+    /// Consume the entry and return the message data.
+    pub fn into_data(self) -> Vec<u8, MAX_MESSAGE_SIZE> {
+        self.data
+    }
+}
+
 /// Trait for BLE peripheral abstraction.
 ///
 /// Implementors provide platform-specific BLE functionality.
@@ -139,8 +175,8 @@ pub struct MeshtasticGattService<const MTU: usize = 512> {
     write_buffer: Vec<u8, MAX_MESSAGE_SIZE>,
     /// Expected total length from the 4-byte header.
     write_expected_len: Option<u16>,
-    /// Queue of outbound FromRadio messages.
-    from_radio_queue: Deque<Vec<u8, MAX_MESSAGE_SIZE>, MAX_QUEUE_DEPTH>,
+    /// Queue of outbound FromRadio messages with expiration deadlines.
+    from_radio_queue: Deque<QueueEntry, MAX_QUEUE_DEPTH>,
     /// Counter incremented on each new outbound message.
     from_num: u32,
     /// Whether notifications are enabled for FromNum.
@@ -251,33 +287,71 @@ impl<const MTU: usize> MeshtasticGattService<MTU> {
         self.write_expected_len = None;
     }
 
-    /// Queue an outbound FromRadio message.
+    /// Queue an outbound FromRadio message with a deadline.
+    ///
+    /// The `deadline_ms` is an absolute timestamp (monotonic clock). The entry
+    /// will be silently dropped when dequeued if `now_ms >= deadline_ms`.
     ///
     /// Increments the FromNum counter and returns the new value.
-    pub fn queue_from_radio(&mut self, data: &[u8]) -> Result<u32, GattError> {
+    ///
+    /// # Example
+    /// ```ignore
+    /// let now = get_time_ms();
+    /// let deadline = now + DEFAULT_DEADLINE_MS; // 60 seconds from now
+    /// service.queue_from_radio(&data, deadline)?;
+    /// ```
+    pub fn queue_from_radio(&mut self, data: &[u8], deadline_ms: u64) -> Result<u32, GattError> {
         let mut msg = Vec::new();
         msg.extend_from_slice(data)
             .map_err(|_| GattError::BufferOverflow)?;
 
+        let entry = QueueEntry::new(msg, deadline_ms);
         self.from_radio_queue
-            .push_back(msg)
+            .push_back(entry)
             .map_err(|_| GattError::QueueFull)?;
 
         self.from_num = self.from_num.wrapping_add(1);
         Ok(self.from_num)
     }
 
-    /// Read the next FromRadio message (for characteristic read).
+    /// Read the next non-expired FromRadio message (for characteristic read).
     ///
-    /// Returns the message with a 4-byte length header prepended.
-    /// The message remains in the queue until `pop_from_radio` is called.
-    pub fn peek_from_radio(&self) -> Option<&[u8]> {
-        self.from_radio_queue.front().map(|v| v.as_slice())
+    /// Silently drops any expired entries from the front of the queue before
+    /// returning. The message remains in the queue until `pop_from_radio` is called.
+    ///
+    /// # Arguments
+    /// * `now_ms` - Current timestamp in milliseconds (monotonic clock)
+    pub fn peek_from_radio(&mut self, now_ms: u64) -> Option<&[u8]> {
+        self.drain_expired(now_ms);
+        self.from_radio_queue.front().map(|e| e.data())
     }
 
-    /// Remove and return the next FromRadio message.
-    pub fn pop_from_radio(&mut self) -> Option<Vec<u8, MAX_MESSAGE_SIZE>> {
-        self.from_radio_queue.pop_front()
+    /// Remove and return the next non-expired FromRadio message.
+    ///
+    /// Silently drops any expired entries from the front of the queue before
+    /// returning.
+    ///
+    /// # Arguments
+    /// * `now_ms` - Current timestamp in milliseconds (monotonic clock)
+    pub fn pop_from_radio(&mut self, now_ms: u64) -> Option<Vec<u8, MAX_MESSAGE_SIZE>> {
+        self.drain_expired(now_ms);
+        self.from_radio_queue.pop_front().map(|e| e.into_data())
+    }
+
+    /// Silently drop all expired entries from the front of the queue.
+    ///
+    /// Returns the number of entries dropped.
+    fn drain_expired(&mut self, now_ms: u64) -> usize {
+        let mut dropped = 0;
+        while let Some(front) = self.from_radio_queue.front() {
+            if front.is_expired(now_ms) {
+                self.from_radio_queue.pop_front();
+                dropped += 1;
+            } else {
+                break;
+            }
+        }
+        dropped
     }
 
     /// Get the current FromNum value.
@@ -399,42 +473,45 @@ mod tests {
 
         let msg1 = [1u8, 2, 3];
         let msg2 = [4u8, 5, 6, 7];
+        let now = 1000u64;
+        let deadline = now + DEFAULT_DEADLINE_MS;
 
         // Queue first message
-        let num1 = svc.queue_from_radio(&msg1).unwrap();
+        let num1 = svc.queue_from_radio(&msg1, deadline).unwrap();
         assert_eq!(num1, 1);
         assert!(svc.has_pending_messages());
         assert_eq!(svc.pending_count(), 1);
 
         // Queue second message
-        let num2 = svc.queue_from_radio(&msg2).unwrap();
+        let num2 = svc.queue_from_radio(&msg2, deadline).unwrap();
         assert_eq!(num2, 2);
         assert_eq!(svc.pending_count(), 2);
 
         // Peek should return first message
-        assert_eq!(svc.peek_from_radio(), Some(&msg1[..]));
+        assert_eq!(svc.peek_from_radio(now), Some(&msg1[..]));
 
         // Pop should remove first message
-        let popped = svc.pop_from_radio().unwrap();
+        let popped = svc.pop_from_radio(now).unwrap();
         assert_eq!(popped.as_slice(), &msg1);
         assert_eq!(svc.pending_count(), 1);
 
         // Now peek should return second message
-        assert_eq!(svc.peek_from_radio(), Some(&msg2[..]));
+        assert_eq!(svc.peek_from_radio(now), Some(&msg2[..]));
     }
 
     #[test]
     fn test_queue_full() {
         let mut svc: MeshtasticGattService = MeshtasticGattService::new();
+        let deadline = 100_000u64;
 
         // Fill the queue
         for i in 0..MAX_QUEUE_DEPTH {
             let msg = [i as u8];
-            assert!(svc.queue_from_radio(&msg).is_ok());
+            assert!(svc.queue_from_radio(&msg, deadline).is_ok());
         }
 
         // Next should fail
-        let result = svc.queue_from_radio(&[99]);
+        let result = svc.queue_from_radio(&[99], deadline);
         assert_eq!(result, Err(GattError::QueueFull));
     }
 
@@ -491,18 +568,20 @@ mod tests {
     #[test]
     fn test_from_num_wrapping() {
         let mut svc: MeshtasticGattService = MeshtasticGattService::new();
+        let now = 1000u64;
+        let deadline = now + DEFAULT_DEADLINE_MS;
 
         // Set from_num near max
         for _ in 0..5 {
-            svc.pop_from_radio(); // Drain any messages
+            svc.pop_from_radio(now); // Drain any messages
         }
 
         // Manually set near max (we'll need to queue many messages)
         // Instead, verify wrapping behavior by checking the increment
         let msg = [1u8];
-        let num1 = svc.queue_from_radio(&msg).unwrap();
-        svc.pop_from_radio();
-        let num2 = svc.queue_from_radio(&msg).unwrap();
+        let num1 = svc.queue_from_radio(&msg, deadline).unwrap();
+        svc.pop_from_radio(now);
+        let num2 = svc.queue_from_radio(&msg, deadline).unwrap();
         assert_eq!(num2, num1 + 1);
     }
 
@@ -563,5 +642,101 @@ mod tests {
         let result2 = svc.write_to_radio(&[0, 0, 10, 20, 30, 40]).unwrap();
         assert!(result2.is_some());
         assert_eq!(result2.unwrap(), &[10, 20, 30, 40]);
+    }
+
+    #[test]
+    fn test_queue_entry_expiry() {
+        let mut svc: MeshtasticGattService = MeshtasticGattService::new();
+
+        let msg = [1u8, 2, 3];
+        let deadline = 10_000u64; // Expires at 10 seconds
+
+        svc.queue_from_radio(&msg, deadline).unwrap();
+        assert_eq!(svc.pending_count(), 1);
+
+        // Before deadline: message is available
+        assert_eq!(svc.peek_from_radio(5_000), Some(&msg[..]));
+        assert_eq!(svc.pending_count(), 1);
+
+        // At deadline: message is expired and silently dropped
+        assert_eq!(svc.peek_from_radio(10_000), None);
+        assert_eq!(svc.pending_count(), 0);
+    }
+
+    #[test]
+    fn test_queue_entry_expiry_pop() {
+        let mut svc: MeshtasticGattService = MeshtasticGattService::new();
+
+        let msg = [1u8, 2, 3];
+        let deadline = 10_000u64;
+
+        svc.queue_from_radio(&msg, deadline).unwrap();
+
+        // Pop after deadline: returns None, entry silently dropped
+        assert_eq!(svc.pop_from_radio(15_000), None);
+        assert_eq!(svc.pending_count(), 0);
+    }
+
+    #[test]
+    fn test_queue_multiple_entries_partial_expiry() {
+        let mut svc: MeshtasticGattService = MeshtasticGattService::new();
+
+        let msg1 = [1u8];
+        let msg2 = [2u8];
+        let msg3 = [3u8];
+
+        // Queue with different deadlines
+        svc.queue_from_radio(&msg1, 5_000).unwrap();  // Expires at 5s
+        svc.queue_from_radio(&msg2, 10_000).unwrap(); // Expires at 10s
+        svc.queue_from_radio(&msg3, 15_000).unwrap(); // Expires at 15s
+
+        assert_eq!(svc.pending_count(), 3);
+
+        // At 7s: first message expired, second and third still valid
+        // peek_from_radio drains expired entries from front
+        assert_eq!(svc.peek_from_radio(7_000), Some(&msg2[..]));
+        assert_eq!(svc.pending_count(), 2);
+
+        // Pop the second message
+        let popped = svc.pop_from_radio(7_000).unwrap();
+        assert_eq!(popped.as_slice(), &msg2);
+        assert_eq!(svc.pending_count(), 1);
+
+        // Third message still available
+        assert_eq!(svc.peek_from_radio(7_000), Some(&msg3[..]));
+    }
+
+    #[test]
+    fn test_queue_all_expired() {
+        let mut svc: MeshtasticGattService = MeshtasticGattService::new();
+
+        // Queue several messages with short deadlines
+        for i in 0..4 {
+            svc.queue_from_radio(&[i as u8], 1000 + i as u64 * 100).unwrap();
+        }
+        assert_eq!(svc.pending_count(), 4);
+
+        // All expired
+        assert_eq!(svc.peek_from_radio(5000), None);
+        assert_eq!(svc.pending_count(), 0);
+    }
+
+    #[test]
+    fn test_queue_entry_is_expired() {
+        use heapless::Vec;
+
+        let data: Vec<u8, MAX_MESSAGE_SIZE> = Vec::new();
+        let entry = QueueEntry::new(data, 10_000);
+
+        assert!(!entry.is_expired(5_000));   // Before deadline
+        assert!(!entry.is_expired(9_999));   // Just before deadline
+        assert!(entry.is_expired(10_000));   // At deadline
+        assert!(entry.is_expired(10_001));   // After deadline
+    }
+
+    #[test]
+    fn test_default_deadline_constant() {
+        // Verify the default deadline is 60 seconds as per spec
+        assert_eq!(DEFAULT_DEADLINE_MS, 60_000);
     }
 }

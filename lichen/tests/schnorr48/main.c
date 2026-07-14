@@ -9,6 +9,7 @@
  */
 
 #include <lichen/schnorr48.h>
+#include <errno.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -384,14 +385,14 @@ static int test_frame_bounds_checking(void)
 	uint8_t inner_payload[] = "CoAP";
 	uint8_t sig[48];
 
-	/* sign_frame should return -1 for dst_addr_len > 8 */
+	/* sign_frame should return -EINVAL for dst_addr_len > 8 */
 	ASSERT_TRUE(schnorr48_sign_frame(1, 42, dst_addr, 9, inner_payload, 4,
-					 privkey, pubkey, sig) == -1,
+					 privkey, pubkey, sig) == -EINVAL,
 		    "sign_frame rejects dst_addr_len > 8");
 
-	/* verify_frame should return -1 for dst_addr_len > 8 */
+	/* verify_frame should return -EINVAL for dst_addr_len > 8 */
 	uint8_t full_payload[52] = { 0 };
-	ASSERT_TRUE(schnorr48_verify_frame(1, 42, dst_addr, 9, full_payload, 52, pubkey) == -1,
+	ASSERT_TRUE(schnorr48_verify_frame(1, 42, dst_addr, 9, full_payload, 52, pubkey) == -EINVAL,
 		    "verify_frame rejects dst_addr_len > 8");
 
 	return 1;

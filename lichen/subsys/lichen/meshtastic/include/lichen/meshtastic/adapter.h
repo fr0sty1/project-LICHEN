@@ -8,6 +8,19 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #include <lichen/meshtastic/codec.h>
 
 #ifdef __cplusplus
@@ -178,19 +191,19 @@ struct lichen_meshtastic_incoming_status {
 	bool has_error_reason;
 };
 
-typedef int (*lichen_meshtastic_adapter_enqueue_fn)(const uint8_t *from_radio,
-						    size_t len, void *user_data);
+typedef int (*lichen_meshtastic_adapter_enqueue_fn)(const uint8_t *_Nonnull from_radio,
+						    size_t len, void *_Nullable user_data);
 
 typedef int (*lichen_meshtastic_adapter_text_fn)(
-	const struct lichen_meshtastic_adapter_packet_info *packet,
-	void *user_data);
+	const struct lichen_meshtastic_adapter_packet_info *_Nonnull packet,
+	void *_Nullable user_data);
 typedef int (*lichen_meshtastic_adapter_location_fn)(
-	const struct lichen_meshtastic_adapter_packet_info *packet,
-	void *user_data);
+	const struct lichen_meshtastic_adapter_packet_info *_Nonnull packet,
+	void *_Nullable user_data);
 
-typedef uint32_t (*lichen_meshtastic_adapter_queue_free_fn)(void *user_data);
+typedef uint32_t (*lichen_meshtastic_adapter_queue_free_fn)(void *_Nullable user_data);
 typedef int (*lichen_meshtastic_adapter_local_info_fn)(
-	struct lichen_meshtastic_local_info *info, void *user_data);
+	struct lichen_meshtastic_local_info *_Nonnull info, void *_Nullable user_data);
 
 /*
  * Copy up to peer_cap peers into peers and return the number copied. The
@@ -212,8 +225,8 @@ struct lichen_meshtastic_peer_snapshot {
 };
 
 typedef size_t (*lichen_meshtastic_adapter_peer_snapshot_fn)(
-	struct lichen_meshtastic_peer_snapshot *peers, size_t peer_cap,
-	void *user_data);
+	struct lichen_meshtastic_peer_snapshot *_Nonnull peers, size_t peer_cap,
+	void *_Nullable user_data);
 
 struct lichen_meshtastic_adapter_ops {
 	lichen_meshtastic_adapter_enqueue_fn enqueue_from_radio;
@@ -255,36 +268,36 @@ struct lichen_meshtastic_adapter {
 };
 
 void lichen_meshtastic_adapter_init(
-	struct lichen_meshtastic_adapter *adapter,
-	const struct lichen_meshtastic_adapter_ops *ops);
+	struct lichen_meshtastic_adapter *_Nonnull adapter,
+	const struct lichen_meshtastic_adapter_ops *_Nonnull ops);
 
-void lichen_meshtastic_adapter_reset(struct lichen_meshtastic_adapter *adapter);
+void lichen_meshtastic_adapter_reset(struct lichen_meshtastic_adapter *_Nonnull adapter);
 
 int lichen_meshtastic_adapter_process_raw(
-	struct lichen_meshtastic_adapter *adapter,
-	const uint8_t *to_radio, size_t len);
+	struct lichen_meshtastic_adapter *_Nonnull adapter,
+	const uint8_t *_Nonnull to_radio, size_t len);
 
 int lichen_meshtastic_adapter_feed_stream(
-	struct lichen_meshtastic_adapter *adapter,
-	const uint8_t *data, size_t len);
+	struct lichen_meshtastic_adapter *_Nonnull adapter,
+	const uint8_t *_Nonnull data, size_t len);
 
 int lichen_meshtastic_adapter_emit_text(
-	struct lichen_meshtastic_adapter *adapter,
-	const struct lichen_meshtastic_incoming_text *event);
+	struct lichen_meshtastic_adapter *_Nonnull adapter,
+	const struct lichen_meshtastic_incoming_text *_Nonnull event);
 
 int lichen_meshtastic_adapter_emit_status(
-	struct lichen_meshtastic_adapter *adapter,
-	const struct lichen_meshtastic_incoming_status *event);
+	struct lichen_meshtastic_adapter *_Nonnull adapter,
+	const struct lichen_meshtastic_incoming_status *_Nonnull event);
 
-const struct lichen_meshtastic_adapter_stats *
+const struct lichen_meshtastic_adapter_stats *_Nonnull
 lichen_meshtastic_adapter_get_stats(
-	const struct lichen_meshtastic_adapter *adapter);
+	const struct lichen_meshtastic_adapter *_Nonnull adapter);
 
 bool lichen_meshtastic_adapter_disconnected(
-	const struct lichen_meshtastic_adapter *adapter);
+	const struct lichen_meshtastic_adapter *_Nonnull adapter);
 
 size_t lichen_meshtastic_adapter_unsupported_operations(
-	const struct lichen_meshtastic_adapter_unsupported_operation **operations);
+	const struct lichen_meshtastic_adapter_unsupported_operation *_Nullable *_Nonnull operations);
 
 #ifdef __cplusplus
 }

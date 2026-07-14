@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-nsw1",
+  "title": "dtn.c: Callback return value ignored, iteration continues after stop request",
+  "description": "File: lichen/subsys/lichen/routing/dtn.c\nLines: 262-284\n\nIn lichen_dtn_retrieve_for(), when the callback returns false to indicate 'stop iteration', the function still continues to the next loop iteration and processes more messages:\n\n    bool should_continue = callback(msg-\u003epacket, msg-\u003epacket_len, user_data);\n    if (!should_continue) {\n        /* Callback requested stop, but we still remove this message */\n    }\n\n    /* Remove from buffer */\n    buf-\u003ecurrent_bytes -= message_size(msg);\n    ...\n    retrieved++;\n\n    /* If callback returned false, stop iterating */\n    if (callback != NULL) {\n        /* Note: we already processed the message above */\n    }\n\nThe code handles the current message but then continues the for loop to the next iteration instead of breaking. The callback's false return value is effectively ignored for stopping iteration.\n\nShould add 'break;' after processing when should_continue is false.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:49:41.675597Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:49:41.675651Z"
+}

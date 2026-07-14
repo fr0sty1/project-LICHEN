@@ -67,6 +67,21 @@
 #define EIO 5
 #endif
 
+/** No buffer space available (queue full) */
+#ifndef ENOBUFS
+#define ENOBUFS 105
+#endif
+
+/** Resource temporarily unavailable (queue empty) */
+#ifndef EAGAIN
+#define EAGAIN 11
+#endif
+
+/** Numerical result out of range */
+#ifndef ERANGE
+#define ERANGE 34
+#endif
+
 #endif /* __ZEPHYR__ */
 
 /*

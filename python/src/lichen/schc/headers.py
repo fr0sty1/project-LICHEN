@@ -11,7 +11,9 @@ uncompressed rule (255) when nothing matches.
 
 Profiles implemented (spec appendix A.1):
 - rule 0 / 1: link-local / global IPv6 + UDP + CoAP
+- rule 2: ICMPv6 Echo Request/Reply over link-local IPv6
 - rule 3 / 4: RPL DIO / DAO over link-local ICMPv6
+- rule 5 / 6: link-local / global IPv6 + UDP + OSCORE-protected CoAP (RFC 8613)
 
 The variable trailer (CoAP token/options/payload, or RPL options) travels
 verbatim after the byte-aligned residue. Lengths and checksums are recomputed on
@@ -31,8 +33,10 @@ from lichen.ipv6.udp import UDP_HEADER_LENGTH, UDP_NEXT_HEADER, UdpDatagram
 from lichen.schc.codec import compress, decompress, residue_byte_length
 from lichen.schc.rules import (
     GLOBAL_COAP_RULE,
+    GLOBAL_OSCORE_RULE,
     LINK_LOCAL_COAP_RULE,
     LINK_LOCAL_ICMPV6_ECHO_RULE,
+    LINK_LOCAL_OSCORE_RULE,
     RPL_DAO_RULE,
     RPL_DIO_RULE,
     RULE_ID_UNCOMPRESSED,
@@ -41,6 +45,7 @@ from lichen.schc.rules import (
 
 _LINK_LOCAL_PREFIX64 = 0xFE80_0000_0000_0000  # top 64 bits of fe80::/64
 _COAP_FIXED_HEADER = 4
+_COAP_OPTION_OSCORE = 9  # RFC 8613 Object-Security option
 _ICMPV6_RPL_TYPE = 155
 _ICMPV6_ECHO_TYPES = (128, 129)  # Echo Request / Reply
 _ICMPV6_HEADER = 4  # type, code, checksum
@@ -55,6 +60,85 @@ def _is_link_local(addr: int) -> bool:
 
 def _is_global(addr: int) -> bool:
     return addr >> 125 == 0b001  # 2000::/3
+
+
+def _coap_has_oscore_option(coap: bytes) -> bool:
+    """Check if a CoAP packet contains the OSCORE option (option 9).
+
+    OSCORE-protected CoAP packets (RFC 8613) have the Object-Security option
+    present in the option list. This function scans the CoAP options to detect it.
+
+    Args:
+        coap: Raw CoAP packet bytes (header + options + payload).
+
+    Returns:
+        True if the OSCORE option is present, False otherwise.
+    """
+    if len(coap) < _COAP_FIXED_HEADER:
+        return False
+
+    tkl = coap[0] & 0x0F
+    if tkl > 8:  # Reserved values 9-15
+        return False
+
+    offset = _COAP_FIXED_HEADER + tkl
+    option_number = 0
+
+    while offset < len(coap):
+        byte = coap[offset]
+
+        # Payload marker (0xFF)
+        if byte == 0xFF:
+            break
+
+        # Parse option delta
+        delta = (byte >> 4) & 0x0F
+        length = byte & 0x0F
+        offset += 1
+
+        if delta == 13:
+            if offset >= len(coap):
+                return False
+            delta = coap[offset] + 13
+            offset += 1
+        elif delta == 14:
+            if offset + 1 >= len(coap):
+                return False
+            delta = int.from_bytes(coap[offset : offset + 2], "big") + 269
+            offset += 2
+        elif delta == 15:
+            # Reserved
+            return False
+
+        # Parse option length
+        if length == 13:
+            if offset >= len(coap):
+                return False
+            length = coap[offset] + 13
+            offset += 1
+        elif length == 14:
+            if offset + 1 >= len(coap):
+                return False
+            length = int.from_bytes(coap[offset : offset + 2], "big") + 269
+            offset += 2
+        elif length == 15:
+            # Reserved
+            return False
+
+        option_number += delta
+
+        # Check if this is the OSCORE option
+        if option_number == _COAP_OPTION_OSCORE:
+            return True
+
+        # Options are ordered by number; if we've passed 9, stop
+        if option_number > _COAP_OPTION_OSCORE:
+            return False
+
+        # Skip option value
+        offset += length
+
+    return False
 
 
 def _ipv6_fields(header: IPv6Header) -> dict[str, int]:
@@ -167,6 +251,42 @@ class CoapUdpGlobalProfile(_CoapUdpProfile):
     """Global IPv6 + UDP + CoAP (SCHC rule 1)."""
 
     rule = GLOBAL_COAP_RULE
+
+    def _addr_ok(self, addr: int) -> bool:
+        return _is_global(addr)
+
+
+class _OscoreUdpProfile(_CoapUdpProfile):
+    """IPv6 + UDP + OSCORE-protected CoAP; subclasses pick the address scope.
+
+    OSCORE-protected CoAP packets (RFC 8613) have the Object-Security option
+    present. These rules use distinct rule IDs to explicitly identify secured
+    traffic and enable future OSCORE-specific compression optimizations.
+    """
+
+    def matches(self, raw: bytes) -> bool:
+        # First check standard CoAP/UDP/IPv6 constraints
+        if not super().matches(raw):
+            return False
+        # Then check for OSCORE option presence
+        header = IPv6Header.from_bytes(raw)
+        udp = UdpDatagram.from_bytes(raw[HEADER_LENGTH : HEADER_LENGTH + header.payload_length])
+        return _coap_has_oscore_option(udp.payload)
+
+
+class OscoreUdpLinkLocalProfile(_OscoreUdpProfile):
+    """Link-local IPv6 + UDP + OSCORE-protected CoAP (SCHC rule 5)."""
+
+    rule = LINK_LOCAL_OSCORE_RULE
+
+    def _addr_ok(self, addr: int) -> bool:
+        return _is_link_local(addr)
+
+
+class OscoreUdpGlobalProfile(_OscoreUdpProfile):
+    """Global IPv6 + UDP + OSCORE-protected CoAP (SCHC rule 6)."""
+
+    rule = GLOBAL_OSCORE_RULE
 
     def _addr_ok(self, addr: int) -> bool:
         return _is_global(addr)
@@ -356,6 +476,10 @@ class Icmpv6EchoProfile(PacketProfile):
 
 
 DEFAULT_PROFILES: tuple[PacketProfile, ...] = (
+    # OSCORE profiles must come before regular CoAP profiles so that
+    # OSCORE-protected packets match on rules 5/6, not 0/1.
+    OscoreUdpLinkLocalProfile(),
+    OscoreUdpGlobalProfile(),
     CoapUdpLinkLocalProfile(),
     CoapUdpGlobalProfile(),
     Icmpv6EchoProfile(),

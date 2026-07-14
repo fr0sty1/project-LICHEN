@@ -12,6 +12,19 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -27,7 +40,7 @@ enum lichen_l2_payload_kind {
 };
 
 static inline enum lichen_l2_payload_kind
-lichen_l2_payload_classify(const uint8_t *payload, size_t len)
+lichen_l2_payload_classify(const uint8_t *_Nullable payload, size_t len)
 {
 	if (payload == NULL || len == 0U) {
 		return LICHEN_L2_PAYLOAD_UNKNOWN;
@@ -41,8 +54,9 @@ lichen_l2_payload_classify(const uint8_t *payload, size_t len)
 	return LICHEN_L2_PAYLOAD_UNKNOWN;
 }
 
-static inline const uint8_t *
-lichen_l2_payload_body(const uint8_t *payload, size_t len, size_t *body_len)
+static inline const uint8_t *_Nullable
+lichen_l2_payload_body(const uint8_t *_Nullable payload, size_t len,
+		       size_t *_Nullable body_len)
 {
 	if (body_len != NULL) {
 		*body_len = (payload != NULL && len > 0U) ? len - 1U : 0U;

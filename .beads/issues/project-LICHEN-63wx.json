@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-63wx",
+  "title": "announce.c: Potential mutex ordering issues between announce_mutex and ingest_mutex",
+  "description": "File: lichen/subsys/lichen/routing/announce.c\nLines: 283-336\n\nIn lichen_announce_ingest_authenticated(), mutexes are acquired in this order:\n- Line 283: k_mutex_lock(\u0026ingest_mutex, K_FOREVER);\n- Line 284: k_mutex_lock(\u0026announce_mutex, K_FOREVER);\n\nThis establishes the locking order as: ingest_mutex -\u003e announce_mutex\n\nHowever, looking at lichen_announce_reset() (lines 413-420):\n- Line 415: k_mutex_lock(\u0026announce_mutex, K_FOREVER);\n- Line 418: k_mutex_lock(\u0026observer_mutex, K_FOREVER);\n\nAnd the observer_mutex is used separately in snapshot_observers (line 152).\n\nThe code alternates between holding ingest_mutex then announce_mutex, and holding just announce_mutex. If any future code path takes announce_mutex then ingest_mutex, this creates a deadlock risk.\n\nRecommend documenting the required lock ordering and/or using a single mutex to simplify the locking strategy.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:50:03.977882Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:50:03.977914Z"
+}

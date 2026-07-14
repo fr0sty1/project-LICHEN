@@ -2,11 +2,14 @@
   "id": "project-LICHEN-8uws",
   "title": "Compliance: coap_client.c OSCORE",
   "description": "Policy: 06-security.md §8.7. File: lichen/subsys/lichen/coap/coap_client.c. Status: VIOLATION. CoAP client sends unprotected payloads without OSCORE. Per §8.7 recommendation: Use OSCORE for all CoAP traffic. Needs integration with oscore/coap_oscore.c or mandatory OSCORE wrapper.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:16:38.740852Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:16:38.740884Z"
+  "updated_at": "2026-07-12T01:03:59.089237Z",
+  "closed_at": "2026-07-12T01:03:59.089237Z",
+  "close_reason": "Fixed: Added CONFIG_LICHEN_COAP_CLIENT_OSCORE support. When oscore_ctx is set in lichen_coap_request, payloads are protected via oscore_protect_request() and responses decrypted via oscore_unprotect_response(). OSCORE option added to outer CoAP message per RFC 8613."
 }

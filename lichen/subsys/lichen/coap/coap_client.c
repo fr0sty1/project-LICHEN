@@ -34,6 +34,10 @@
 
 #include <lichen/coap_client.h>
 
+#ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
+#include <lichen/oscore.h>
+#endif
+
 LOG_MODULE_REGISTER(lichen_coap_client, LOG_LEVEL_INF);
 
 /* CBOR content-format code */
@@ -110,6 +114,11 @@ struct request_ctx {
 	size_t response_len;  /* Current accumulated length */
 	bool response_oversized;  /* True if any block exceeds response_buf */
 	uint32_t timeout_ms;  /* Per-request timeout, for blockwise re-arm */
+#ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
+	struct oscore_ctx *oscore_ctx;  /* OSCORE context for response decryption */
+	uint8_t request_piv[OSCORE_PIV_MAX_LEN];  /* Request PIV for response */
+	uint8_t request_piv_len;  /* PIV length */
+#endif
 };
 
 static void request_ctx_get(struct request_ctx *ctx)
@@ -286,6 +295,46 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 			if (ctx->response_oversized) {
 				ctx->callback(ctx->user_data, LICHEN_COAP_ERR_INVALID_RESPONSE,
 					      0, NULL, 0);
+#ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
+			} else if (ctx->oscore_ctx != NULL) {
+				/*
+				 * SECURITY: Unprotect OSCORE response before delivery.
+				 * The accumulated response_buf contains the OSCORE ciphertext.
+				 */
+				uint8_t plain_code;
+				uint8_t plaintext[LICHEN_COAP_MAX_PAYLOAD];
+				size_t plaintext_len = sizeof(plaintext);
+				uint8_t options[64];
+				size_t options_len = sizeof(options);
+				int ret;
+
+				/*
+				 * Parse OSCORE option from response.
+				 * For client responses, the OSCORE option is typically
+				 * empty (h=0, n=0) since the response uses the request PIV.
+				 */
+				uint8_t oscore_opt[1] = {0};  /* Empty option for response */
+				size_t oscore_opt_len = 0;
+
+				ret = oscore_unprotect_response(ctx->oscore_ctx,
+								ctx->request_piv,
+								ctx->request_piv_len,
+								oscore_opt, oscore_opt_len,
+								ctx->response_buf,
+								ctx->response_len,
+								&plain_code,
+								options, &options_len,
+								plaintext, &plaintext_len);
+				if (ret != OSCORE_OK) {
+					LOG_WRN("OSCORE unprotect response failed: %d", ret);
+					ctx->callback(ctx->user_data,
+						      LICHEN_COAP_ERR_OSCORE_UNPROTECT,
+						      0, NULL, 0);
+				} else {
+					ctx->callback(ctx->user_data, LICHEN_COAP_OK,
+						      plain_code, plaintext, plaintext_len);
+				}
+#endif
 			} else {
 				ctx->callback(ctx->user_data, LICHEN_COAP_OK, (uint8_t)code,
 					      ctx->response_buf, ctx->response_len);
@@ -303,6 +352,13 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 	int sock;
 	size_t path_components;
 	uint32_t timeout_ms;
+#ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
+	uint8_t ciphertext[LICHEN_COAP_MAX_PAYLOAD + OSCORE_TAG_LEN];
+	size_t ciphertext_len = sizeof(ciphertext);
+	uint8_t oscore_opt_buf[16];
+	size_t oscore_opt_len = sizeof(oscore_opt_buf);
+	struct coap_client_option oscore_option;
+#endif
 
 	if (req == NULL) {
 		return LICHEN_COAP_ERR_INVALID_PARAM;
@@ -348,6 +404,10 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 	atomic_set(&ctx->completed, 0);
 	atomic_set(&ctx->timeout_ref_held, 0);
 	k_work_init_delayable(&ctx->timeout_work, request_timeout_handler);
+#ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
+	ctx->oscore_ctx = req->oscore_ctx;
+	ctx->request_piv_len = 0;
+#endif
 
 	/*
 	 * Join path components into a single URI path string.
@@ -373,18 +433,86 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 	}
 	ctx->path_buf[path_pos] = '\0';
 
+#ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
+	/*
+	 * SECURITY: Protect request payload with OSCORE if context is provided.
+	 * The outer CoAP message will carry the OSCORE option and ciphertext.
+	 */
+	if (req->oscore_ctx != NULL) {
+		ret = oscore_protect_request(req->oscore_ctx,
+					     req->method,
+					     NULL, 0,  /* No Class E options for now */
+					     req->payload, req->payload_len,
+					     ciphertext, &ciphertext_len,
+					     oscore_opt_buf, &oscore_opt_len);
+		if (ret != OSCORE_OK) {
+			LOG_ERR("OSCORE protect request failed: %d", ret);
+			k_free(ctx);
+			return LICHEN_COAP_ERR_OSCORE_PROTECT;
+		}
+
+		/*
+		 * Extract PIV from the OSCORE option for response decryption.
+		 * The PIV is the sender sequence number used for this request.
+		 */
+		struct oscore_option opt;
+		ret = oscore_option_parse(oscore_opt_buf, oscore_opt_len, &opt);
+		if (ret == OSCORE_OK && opt.has_piv && opt.piv_len > 0) {
+			memcpy(ctx->request_piv, opt.piv, opt.piv_len);
+			ctx->request_piv_len = opt.piv_len;
+		}
+
+		/* Build OSCORE option for coap_client */
+		oscore_option.code = COAP_OPTION_OSCORE;
+		oscore_option.len = oscore_opt_len;
+		if (oscore_opt_len > sizeof(oscore_option.value)) {
+			LOG_ERR("OSCORE option too large: %zu", oscore_opt_len);
+			k_free(ctx);
+			return LICHEN_COAP_ERR_OSCORE_PROTECT;
+		}
+		memcpy(oscore_option.value, oscore_opt_buf, oscore_opt_len);
+
+		LOG_DBG("OSCORE protected request: ct_len=%zu, opt_len=%zu",
+			ciphertext_len, oscore_opt_len);
+	}
+#endif
+
 	/* Build request */
 	client_req.method = req->method;
 	client_req.confirmable = req->confirmable;
 	client_req.path = ctx->path_buf;
+#ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
+	if (req->oscore_ctx != NULL) {
+		/* Use protected payload */
+		client_req.payload = ciphertext;
+		client_req.len = ciphertext_len;
+	} else {
+		client_req.payload = (uint8_t *)req->payload;
+		client_req.len = req->payload_len;
+	}
+#else
 	client_req.payload = (uint8_t *)req->payload;
 	client_req.len = req->payload_len;
+#endif
 	client_req.cb = coap_response_handler;
 	client_req.user_data = ctx;
 
 	if (req->content_format != LICHEN_COAP_FMT_UNSET) {
 		client_req.fmt = req->content_format;
 	}
+
+#ifdef CONFIG_LICHEN_COAP_CLIENT_OSCORE
+	/* Add OSCORE option to protected requests */
+	if (req->oscore_ctx != NULL) {
+		client_req.options = &oscore_option;
+		client_req.num_options = 1;
+		/*
+		 * For OSCORE requests, outer code is always FETCH (0.05) per RFC 8613.
+		 * The actual method is encrypted in the payload.
+		 */
+		client_req.method = COAP_METHOD_FETCH;
+	}
+#endif
 
 	/* Send request using snapshotted socket */
 	ret = coap_client_req(&s_client, sock,

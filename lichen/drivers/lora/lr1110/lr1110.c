@@ -496,6 +496,8 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 	if (buf_status.rx_payload_length > size) {
 		LOG_ERR("recv: packet too large for buffer: %u > %u",
 			buf_status.rx_payload_length, size);
+		/* Put radio back to standby before returning */
+		lr1110_system_set_standby(dev, LR1110_SYSTEM_STDBY_CONFIG_RC);
 		return -EMSGSIZE;
 	}
 

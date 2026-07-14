@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-b4cc",
+  "title": "task",
+  "description": "ip_coap.py:199 - When close_task completes first, next_task is cancelled but never awaited before returning None. This leaves a dangling task and Python emits 'Task was destroyed but it is pending!' warning. The fix should await next_task after cancelling: 'with suppress(asyncio.CancelledError): await next_task'. Compare to packet_coap.py which correctly awaits cancelled tasks.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T01:33:34.589425Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T00:55:42.26064Z",
+  "closed_at": "2026-07-12T00:55:42.26064Z",
+  "close_reason": "Already fixed: duplicate of 57os, code at lines 199-201 already awaits next_task after cancel"
+}

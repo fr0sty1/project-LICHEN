@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-lllg",
+  "title": "TxQueue stats not thread-safe despite class docstring warning",
+  "description": "File: python/src/lichen/link/tx_queue.py:111-116, 143\n\nThe class docstring says:\n    '''Thread safety: Not thread-safe. Use external synchronization if\n    accessed from multiple async tasks.'''\n\nBut TxQueueStats is a plain dataclass with mutable integer fields:\n\n    @dataclass\n    class TxQueueStats:\n        packets_queued: int = 0\n        packets_dropped_deadline: int = 0\n        ...\n\nAnd stats are updated non-atomically:\n    self.stats.packets_queued += 1\n\nIn Python, += on integers is not atomic. If multiple coroutines access the queue (even with await points between operations), race conditions are possible.\n\nThe docstring warning is good, but consider:\n1. Using threading.Lock for stats updates\n2. Using atomic counters (not available in stdlib, but could use queue)\n3. Documenting which operations need external synchronization\n\nP4 since docstring warns about this.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:24:16.693285Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:24:16.693322Z"
+}

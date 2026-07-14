@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-rrig",
+  "title": "TUI select_connection has TOCTOU race in task state check",
+  "description": "File: python/src/lichen/tui/native.py\nLines: 1929-1950\n\nIn select_connection, there's a time-of-check-time-of-use pattern:\n\n    try:\n        await self._disconnect_current_client()\n    except Exception as exc:\n        if next_client is not None and candidate_ready:\n            with suppress(Exception):\n                await self._disconnect_client(next_client)\n        ...\n        return\n    await self._cancel_live_tasks()  # Tasks may have restarted after disconnect\n    self.client = next_client\n\nThe issue: _disconnect_current_client could trigger task restarts or modifications as part of its cleanup. Then _cancel_live_tasks cancels whatever tasks exist at that moment. If tasks were started between disconnect and cancel, they could be orphaned.\n\nAdditionally, between setting self.client = next_client and updating the status, other async code could observe inconsistent state.\n\nImpact: Potential for orphaned background tasks during connection switching. Low likelihood in practice due to single-threaded nature.\n\nFix: Use a connection lock or ensure task tracking is atomic with client swaps.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:29:38.549414Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:29:38.54945Z"
+}

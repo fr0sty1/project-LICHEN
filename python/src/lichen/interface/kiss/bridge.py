@@ -42,6 +42,8 @@ from .handler import KissHandler
 from .payload_fmt import format_payload
 
 KISS_REJ_PREFIX = b"\x7f\x15"
+# STX prefix for messages with embedded msg_id (for ack tracking)
+KISS_MSG_PREFIX = b"\x02"
 
 if TYPE_CHECKING:
     from ...crypto.identity import Identity, PeerIdentity
@@ -149,10 +151,13 @@ class KissBridge:
         # Track message for ack if it has an ID
         if msg.msg_id:
             self._msg_tracker.track_message(msg.addressee, msg.text, msg.msg_id)
+            # Include msg_id in payload so receiver can ack with correct ID
+            payload = _encode_msg_payload(msg.text, msg.msg_id)
+        else:
+            # No msg_id - send raw text (receiver won't auto-ack)
+            payload = msg.text.encode("utf-8")
 
-        # Send just the text as LICHEN payload
-        # Receiving side will wrap it back in APRS format
-        asyncio.create_task(self._send_frame(msg.text.encode("utf-8"), dst_addr))
+        asyncio.create_task(self._send_frame(payload, dst_addr))
         log.debug("APRS TX: %s -> %s: %s", src_call, msg.addressee, msg.text[:50])
 
     def _handle_aprs_ack_tx(self, ack: AprsAck) -> None:
@@ -224,14 +229,22 @@ class KissBridge:
 
         # Try to synthesize proper APRS packet (position, weather, telemetry)
         synth = synthesize_aprs(payload)
+        sender_msg_id: str | None = None  # msg_id from sender (for acking)
         if synth is not None:
             # Synthesized APRS packet - use directly
             aprs_payload = synth.aprs_payload
             log.debug("APRS RX synth %s from %s", synth.data_type.value, sender_call)
         else:
-            # Regular message - format as APRS message
-            msg_id = self._msg_tracker.next_msg_id()
-            text = format_payload(payload, max_len=67)
+            # Check for embedded msg_id from sender
+            decoded = _decode_msg_payload(payload)
+            if decoded is not None:
+                text, sender_msg_id = decoded
+            else:
+                # Raw text without msg_id - generate local ID for display only
+                text = format_payload(payload, max_len=67)
+
+            # Use sender's msg_id if present, else generate local for display
+            msg_id = sender_msg_id if sender_msg_id else self._msg_tracker.next_msg_id()
             aprs_msg = create_message(own_call, text, msg_id)
             aprs_payload = aprs_msg.encode()
             log.debug("APRS RX msg from %s: %s", sender_call, text[:50])
@@ -249,9 +262,9 @@ class KissBridge:
         if self.on_send_kiss:
             self.on_send_kiss(raw_kiss)
 
-        # Auto-ack back to sender (only for messages, not for position/weather/telemetry)
-        if synth is None:
-            await self._send_ack_to_sender(rx.sender.iid, sender_call, msg_id)
+        # Auto-ack back to sender (only if sender included msg_id for tracking)
+        if sender_msg_id is not None:
+            await self._send_ack_to_sender(rx.sender.iid, sender_call, sender_msg_id)
 
     def _handle_incoming_ack(self, sender_call: str, msg_id: str) -> None:
         """Handle incoming ack from peer."""
@@ -376,3 +389,28 @@ def _is_kiss_rej_payload(payload: bytes) -> bool:
 def _kiss_rej_msg_id(payload: bytes) -> str:
     payload = payload[len(KISS_REJ_PREFIX) :]
     return payload.decode("utf-8", errors="replace")
+
+
+def _encode_msg_payload(text: str, msg_id: str) -> bytes:
+    """Encode message with embedded msg_id for ack tracking.
+
+    Format: KISS_MSG_PREFIX + msg_id (null-terminated) + text
+    """
+    return KISS_MSG_PREFIX + msg_id.encode("utf-8") + b"\x00" + text.encode("utf-8")
+
+
+def _decode_msg_payload(payload: bytes) -> tuple[str, str] | None:
+    """Decode message with embedded msg_id.
+
+    Returns (text, msg_id) if payload has MSG prefix, else None.
+    """
+    if not payload.startswith(KISS_MSG_PREFIX):
+        return None
+    payload = payload[len(KISS_MSG_PREFIX) :]
+    try:
+        null_idx = payload.index(b"\x00")
+    except ValueError:
+        return None  # Malformed - no null terminator
+    msg_id = payload[:null_idx].decode("utf-8", errors="replace")
+    text = payload[null_idx + 1 :].decode("utf-8", errors="replace")
+    return (text, msg_id)

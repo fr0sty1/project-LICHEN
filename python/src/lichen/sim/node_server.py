@@ -5,6 +5,12 @@
 This module provides a TCP server that accepts connections from SimRadio clients
 and translates wire protocol messages into Simulation calls. Each client
 connection represents a single simulated node.
+
+Push-based RX (RX_ENTER/RX_EXIT) uses a background simulation driver task and
+does not poll. The legacy poll-based MSG_RX handler still uses a 1ms polling
+loop but is deprecated - SimRadio already uses push-based RX.
+
+Long-term, this module should be unified with or replaced by RenodeServer.
 """
 
 from __future__ import annotations
@@ -17,10 +23,12 @@ from typing import TYPE_CHECKING
 
 from lichen.sim.duty_cycle import DutyCycleTracker
 from lichen.sim.protocol import (
+    MAX_PAYLOAD_LENGTH,
     MSG_CAD,
     MSG_REGISTER,
     MSG_RX,
     MSG_RX_ENTER,
+    MSG_RX_EXIT,
     MSG_TIME,
     MSG_TX,
     ProtocolError,
@@ -70,6 +78,9 @@ async def read_message(reader: asyncio.StreamReader) -> bytes | None:
     (length,) = struct.unpack("<I", length_bytes)
     if length == 0:
         return b""
+    # SECURITY: Reject oversized lengths to prevent memory exhaustion attacks.
+    if length > MAX_PAYLOAD_LENGTH:
+        return None
 
     try:
         return await reader.readexactly(length)
@@ -119,6 +130,29 @@ class NodeServer:
         self._duty_cycle_limit = duty_cycle_limit
         self._duty_trackers: dict[str, DutyCycleTracker] = {}
         self._connections: dict[str, asyncio.StreamWriter] = {}
+        self._sim_driver_task: asyncio.Task[None] | None = None
+
+    async def _simulation_driver(self) -> None:
+        """Background task that drives the simulation.
+
+        Periodically calls deliver_pending_packets() and maybe_advance_time()
+        to ensure push-based RX mode works without polling in handlers.
+        """
+        try:
+            while True:
+                # Deliver packets to nodes in callback-based RX mode
+                self._simulation.deliver_pending_packets()
+                # Advance time (fires TxEndEvent, RxTimeoutEvent)
+                self._simulation.maybe_advance_time()
+                # Brief delay to avoid busy loop
+                await asyncio.sleep(0.001)
+        except asyncio.CancelledError:
+            pass
+
+    def _ensure_simulation_driver(self) -> None:
+        """Start the simulation driver task if not already running."""
+        if self._sim_driver_task is None or self._sim_driver_task.done():
+            self._sim_driver_task = asyncio.create_task(self._simulation_driver())
 
     async def handle_connection(
         self,
@@ -188,6 +222,8 @@ class NodeServer:
                     await self._handle_rx(node_id, data, writer)
                 elif msg_type == MSG_RX_ENTER:
                     await self._handle_rx_enter(node_id, data, writer)
+                elif msg_type == MSG_RX_EXIT:
+                    self._handle_rx_exit(node_id)
                 elif msg_type == MSG_TIME:
                     await self._handle_time(writer)
                 elif msg_type == MSG_CAD:
@@ -265,6 +301,9 @@ class NodeServer:
         # Track connection
         self._connections[node_id] = writer
 
+        # Ensure simulation driver is running for push-based RX
+        self._ensure_simulation_driver()
+
         logger.info("Registered node %s at (%.1f, %.1f, %.1f)", node_id, x, y, z)
         await write_message(writer, encode_ok())
         return node_id
@@ -337,7 +376,11 @@ class NodeServer:
         data: bytes,
         writer: asyncio.StreamWriter,
     ) -> None:
-        """Handle an RX message.
+        """Handle an RX message (poll-based, deprecated).
+
+        .. deprecated::
+            This method uses a polling loop. New clients should use RX_ENTER
+            (push-based) instead. SimRadio already uses RX_ENTER.
 
         Starts a receive operation in the simulation and waits for
         either a packet or timeout.
@@ -365,6 +408,9 @@ class NodeServer:
 
         result = await self._await_rx_result(node_id, timeout_ms * 1000)
 
+        # Clean up RX state and cancel pending timeout event
+        self._simulation.exit_rx_mode(node_id)
+
         if result is not None:
             rx_payload, rssi, snr = result
             logger.debug(
@@ -385,6 +431,10 @@ class NodeServer:
         timeout_us: int,
     ) -> tuple[bytes, int, int] | None:
         """Wait for a packet or timeout on a node already in RX_WAIT.
+
+        .. deprecated::
+            This method uses a 1ms polling loop. It is used by the deprecated
+            MSG_RX handler. New code should use RX_ENTER with callbacks.
 
         Checks for a deliverable packet before advancing time so advancing
         can never skip an in-range reception (see maybe_advance_time).
@@ -419,11 +469,11 @@ class NodeServer:
         data: bytes,
         writer: asyncio.StreamWriter,
     ) -> None:
-        """Handle an RX_ENTER message (push-based RX).
+        """Handle an RX_ENTER message (push-based RX mode).
 
-        Same receive semantics as _handle_rx, but the timeout is expressed
-        in microseconds and the reply uses the push-based message types
-        (RX_PACKET / RX_TIMEOUT_PUSH) that SimRadio.receive() expects.
+        Enters RX mode with callbacks and waits for a packet or timeout.
+        The background simulation driver task advances time and delivers
+        packets, firing the callbacks when appropriate.
 
         Args:
             node_id: The receiving node's ID.
@@ -431,36 +481,65 @@ class NodeServer:
             writer: The stream writer for responses.
         """
         try:
-            timeout_us = decode_rx_enter(get_message_payload(data))
+            payload = get_message_payload(data)
+            timeout_us = decode_rx_enter(payload)
         except ProtocolError as e:
             logger.error("Failed to decode RX_ENTER from %s: %s", node_id, e)
             await write_message(writer, encode_err(1, f"Invalid RX_ENTER: {e}"))
             return
 
-        # Start receive in simulation (round up so a sub-ms timeout still
-        # queues a nonzero RxTimeoutEvent)
+        # Result holder for callbacks
+        rx_result: list[tuple[bytes, int, int] | None] = [None]
+        rx_done = asyncio.Event()
+
+        def on_packet(pkt_payload: bytes, rssi: int, snr: int) -> None:
+            rx_result[0] = (pkt_payload, rssi, snr)
+            rx_done.set()
+
+        def on_timeout() -> None:
+            rx_done.set()
+
+        # Enter push-based RX mode
         try:
-            self._simulation.start_receive(node_id, (timeout_us + 999) // 1000)
+            self._simulation.enter_rx_mode(
+                node_id,
+                timeout_us,
+                on_packet,
+                on_timeout,
+            )
         except ValueError as e:
-            logger.error("Failed to start RX for %s: %s", node_id, e)
+            logger.error("Failed to enter RX mode for %s: %s", node_id, e)
             await write_message(writer, encode_err(7, str(e)))
             return
 
-        result = await self._await_rx_result(node_id, timeout_us)
+        # Wait for callback to fire - simulation driver handles time advancement
+        await rx_done.wait()
 
-        if result is not None:
-            rx_payload, rssi, snr = result
+        # Send response
+        if rx_result[0] is not None:
+            pkt_payload, rssi, snr = rx_result[0]
             logger.debug(
-                "RX at %s: %d bytes, RSSI %d, SNR %d",
+                "RX_ENTER at %s: %d bytes, RSSI %d, SNR %d",
                 node_id,
-                len(rx_payload),
+                len(pkt_payload),
                 rssi,
                 snr,
             )
-            await write_message(writer, encode_rx_packet(rx_payload, rssi, snr))
+            await write_message(writer, encode_rx_packet(pkt_payload, rssi, snr))
         else:
-            logger.debug("RX timeout at %s after %d us", node_id, timeout_us)
+            logger.debug("RX_ENTER timeout at %s after %d us", node_id, timeout_us)
             await write_message(writer, encode_rx_timeout_push())
+
+    def _handle_rx_exit(self, node_id: str) -> None:
+        """Handle an RX_EXIT message.
+
+        Exits push-based RX mode for the node.
+
+        Args:
+            node_id: The node ID to exit RX mode.
+        """
+        logger.debug("RX_EXIT from %s", node_id)
+        self._simulation.exit_rx_mode(node_id)
 
     async def _handle_time(
         self,

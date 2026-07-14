@@ -18,6 +18,19 @@
 #include <stdbool.h>
 #include <lichen/rpl_messages.h>
 
+/* Nullability annotations for pointer safety (Clang/GCC compatibility) */
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#if !defined(__clang__) || !__has_feature(nullability)
+#ifndef _Nonnull
+#define _Nonnull
+#endif
+#ifndef _Nullable
+#define _Nullable
+#endif
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -49,8 +62,8 @@ struct lichen_rpl_srh {
  * @param len Buffer size
  * @return Bytes written (6 + 16*num_addresses), or negative error
  */
-int lichen_rpl_srh_write(const struct lichen_rpl_srh *srh,
-			 uint8_t *buf, size_t len);
+int lichen_rpl_srh_write(const struct lichen_rpl_srh *_Nonnull srh,
+			 uint8_t *_Nonnull buf, size_t len);
 
 /**
  * @brief Parse SRH from wire bytes.
@@ -61,8 +74,8 @@ int lichen_rpl_srh_write(const struct lichen_rpl_srh *srh,
  * @return 0 on success, negative error code on failure
  */
 LICHEN_WARN_UNUSED_RESULT
-int lichen_rpl_srh_parse(struct lichen_rpl_srh *srh,
-			 const uint8_t *data, size_t len);
+int lichen_rpl_srh_parse(struct lichen_rpl_srh *_Nonnull srh,
+			 const uint8_t *_Nonnull data, size_t len);
 
 /* ── Routing Table ─────────────────────────────────────────────────────────── */
 
@@ -93,7 +106,7 @@ struct lichen_rpl_routing_table {
  *
  * @note No-op if @p rt is NULL.
  */
-void lichen_rpl_routing_table_init(struct lichen_rpl_routing_table *rt);
+void lichen_rpl_routing_table_init(struct lichen_rpl_routing_table *_Nullable rt);
 
 /**
  * @brief Add or update a route to a target.
@@ -105,8 +118,8 @@ void lichen_rpl_routing_table_init(struct lichen_rpl_routing_table *rt);
  * @return 0 on success, LICHEN_RPL_ERR_INVALID if NULL or path_len==0,
  *         LICHEN_RPL_ERR_OVERRUN if path too long or table full
  */
-int lichen_rpl_routing_table_add(struct lichen_rpl_routing_table *rt,
-				 const uint8_t *target,
+int lichen_rpl_routing_table_add(struct lichen_rpl_routing_table *_Nonnull rt,
+				 const uint8_t *_Nonnull target,
 				 const uint8_t path[][16],
 				 uint8_t path_len);
 
@@ -115,8 +128,8 @@ int lichen_rpl_routing_table_add(struct lichen_rpl_routing_table *rt,
  *
  * @note No-op if @p rt is NULL, @p target is NULL, or the target is not found.
  */
-void lichen_rpl_routing_table_remove(struct lichen_rpl_routing_table *rt,
-				     const uint8_t *target);
+void lichen_rpl_routing_table_remove(struct lichen_rpl_routing_table *_Nullable rt,
+				     const uint8_t *_Nullable target);
 
 /**
  * @brief Lookup a route to a target.
@@ -125,14 +138,14 @@ void lichen_rpl_routing_table_remove(struct lichen_rpl_routing_table *rt,
  * @param target Target address (16 bytes)
  * @return Pointer to route entry, or NULL if not found
  */
-const struct lichen_rpl_route *
-lichen_rpl_routing_table_lookup(const struct lichen_rpl_routing_table *rt,
-				const uint8_t *target);
+const struct lichen_rpl_route *_Nullable
+lichen_rpl_routing_table_lookup(const struct lichen_rpl_routing_table *_Nullable rt,
+				const uint8_t *_Nullable target);
 
 /**
  * @brief Get number of valid routes.
  */
-int lichen_rpl_routing_table_count(const struct lichen_rpl_routing_table *rt);
+int lichen_rpl_routing_table_count(const struct lichen_rpl_routing_table *_Nullable rt);
 
 /**
  * @brief Expire stale routes.
@@ -144,7 +157,7 @@ int lichen_rpl_routing_table_count(const struct lichen_rpl_routing_table *rt);
  * @param lifetime_unit Seconds per lifetime unit (RFC 6550 default: 60)
  * @return Number of routes expired
  */
-int lichen_rpl_routing_table_expire(struct lichen_rpl_routing_table *rt,
+int lichen_rpl_routing_table_expire(struct lichen_rpl_routing_table *_Nullable rt,
 				    uint32_t now, uint32_t lifetime_unit);
 
 /* ── DAO Manager ───────────────────────────────────────────────────────────── */
@@ -187,10 +200,10 @@ struct lichen_rpl_dao_manager {
  * @param dodag_id     DODAG ID (must not be NULL)
  * @return 0 on success, LICHEN_RPL_ERR_INVALID if any pointer is NULL
  */
-int lichen_rpl_dao_manager_init(struct lichen_rpl_dao_manager *dm,
-				const uint8_t *node_address,
+int lichen_rpl_dao_manager_init(struct lichen_rpl_dao_manager *_Nonnull dm,
+				const uint8_t *_Nonnull node_address,
 				uint8_t rpl_instance_id,
-				const uint8_t *dodag_id);
+				const uint8_t *_Nonnull dodag_id);
 
 /**
  * @brief Initialize DAO manager for root node.
@@ -201,10 +214,10 @@ int lichen_rpl_dao_manager_init(struct lichen_rpl_dao_manager *dm,
  * @param dodag_id     DODAG ID (must not be NULL)
  * @return 0 on success, LICHEN_RPL_ERR_INVALID if any pointer is NULL
  */
-int lichen_rpl_dao_manager_init_root(struct lichen_rpl_dao_manager *dm,
-				     const uint8_t *node_address,
+int lichen_rpl_dao_manager_init_root(struct lichen_rpl_dao_manager *_Nonnull dm,
+				     const uint8_t *_Nonnull node_address,
 				     uint8_t rpl_instance_id,
-				     const uint8_t *dodag_id);
+				     const uint8_t *_Nonnull dodag_id);
 
 /**
  * @brief Build a DAO advertising this node with given parent.
@@ -215,9 +228,9 @@ int lichen_rpl_dao_manager_init_root(struct lichen_rpl_dao_manager *dm,
  * @param len         Buffer size (needs ~64 bytes)
  * @return Number of bytes written, or negative error
  */
-int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *dm,
-				     const uint8_t *parent_addr,
-				     uint8_t *buf, size_t len);
+int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *_Nonnull dm,
+				     const uint8_t *_Nonnull parent_addr,
+				     uint8_t *_Nonnull buf, size_t len);
 
 /**
  * @brief Process a received DAO on the root.
@@ -236,8 +249,8 @@ int lichen_rpl_dao_manager_build_dao(struct lichen_rpl_dao_manager *dm,
  * @param now       Current timestamp for lifetime tracking
  * @return true if a route was installed, false otherwise
  */
-bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
-					const uint8_t *dao_bytes, size_t len,
+bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *_Nonnull dm,
+					const uint8_t *_Nonnull dao_bytes, size_t len,
 					uint32_t now);
 
 /**
@@ -248,7 +261,7 @@ bool lichen_rpl_dao_manager_process_dao(struct lichen_rpl_dao_manager *dm,
  * @param lifetime_unit Seconds per lifetime unit (RFC 6550 default: 60)
  * @return Number of entries expired
  */
-int lichen_rpl_dao_manager_expire(struct lichen_rpl_dao_manager *dm,
+int lichen_rpl_dao_manager_expire(struct lichen_rpl_dao_manager *_Nonnull dm,
 				  uint32_t now, uint32_t lifetime_unit);
 
 #ifdef __cplusplus

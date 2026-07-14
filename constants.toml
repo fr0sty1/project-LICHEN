@@ -31,6 +31,8 @@ global_coap      = 1    # Global IPv6 + UDP + CoAP
 icmpv6_echo      = 2    # ICMPv6 Echo Request/Reply
 rpl_dio          = 3    # RPL DIO over link-local ICMPv6
 rpl_dao          = 4    # RPL DAO with DODAGID over link-local ICMPv6
+link_local_oscore = 5   # Link-local IPv6 + UDP + OSCORE-protected CoAP
+global_oscore    = 6    # Global IPv6 + UDP + OSCORE-protected CoAP
 uncompressed     = 255  # No compression; full headers follow
 
 [l2.payload_dispatch]

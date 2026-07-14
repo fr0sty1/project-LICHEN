@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-my2c",
+  "title": "Confusing dual representation of routing success in IncomingResult::RoutingResponse",
+  "description": "File: rust/lichen-meshtastic/src/bridge.rs:116-120\n\nThe RoutingResponse struct uses Option\u003cRoutingErrorCode\u003e where success can be represented two ways:\n\n```rust\nRoutingResponse {\n    request_id: u32,\n    error: Option\u003cRoutingErrorCode\u003e,  // None = success, Some(None) = also success??\n}\n```\n\nAnd RoutingErrorCode has a None variant (line 62):\n```rust\npub enum RoutingErrorCode {\n    None,  // = 0, means no error\n    NoRoute,\n    ...\n}\n```\n\nThis creates ambiguity:\n- `error: None` means success (no error code present)\n- `error: Some(RoutingErrorCode::None)` also means success\n\nThe code handles this at line 230-235:\n```rust\nerror: if error_code == RoutingErrorCode::None {\n    None\n} else {\n    Some(error_code)\n}\n```\n\nBut callers might not expect this normalization, and the dual representation is confusing.\n\nFIX OPTIONS:\n1. Rename RoutingErrorCode::None to RoutingErrorCode::Success for clarity\n2. Use a dedicated RoutingResult enum: enum RoutingResult { Success, Error(RoutingErrorCode) }\n3. Add doc comments explaining the normalization",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T06:35:22.340006Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T06:35:22.340049Z"
+}

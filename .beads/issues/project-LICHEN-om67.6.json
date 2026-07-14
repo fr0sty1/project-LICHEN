@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-om67.6",
+  "title": "Rust/Zephyr: Missing GPSR geographic forwarding (spec 9.7)",
+  "description": "Python Router.gpsr_forward() uses haversine distance to select neighbor closest to destination. Neither Rust nor Zephyr implement GPSR. Reference: python/src/lichen/routing/router.py gpsr_forward()",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T00:32:43.761233Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T01:29:11.461039Z",
+  "closed_at": "2026-07-12T01:29:11.461039Z",
+  "close_reason": "Implemented GPSR geographic forwarding in Rust and Zephyr/C:\n\nRust (lichen-node/src/routing.rs):\n- Added GeoCoords type and coords field to Neighbor struct\n- Added node_coords to Router with set/clear methods\n- Implemented gpsr_forward() with haversine distance\n- Added is_valid_coords() for NaN/inf/null-island/range validation\n- Added 17 tests covering all edge cases\n\nC (lichen/subsys/lichen/routing/router.c):\n- Implemented lichen_router_gpsr_forward() with approximate distance calculation\n- Added is_valid_coords_e7() for coordinate validation\n- Uses gradient table entries with coords for neighbor lookup\n- Created test suite in lichen/tests/routing_gpsr/ with 8 test cases\n\nBoth implementations match Python reference (python/src/lichen/routing/router.py gpsr_forward()) behavior.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-om67.6",
+      "depends_on_id": "project-LICHEN-om67",
+      "type": "parent-child",
+      "created_at": "2026-07-12T00:32:43.761796Z"
+    }
+  ]
+}

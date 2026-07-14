@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-6cnm",
+  "title": "task",
+  "description": "rust/lichen-embassy/src/esp32s3.rs:15 - Imports lora_phy::RadioError and sx126x::InterfaceVariant which are private in lora-phy 3.0.1. Code fails to compile with --features esp32s3. Should use lora_phy::mod_params::RadioError and lora_phy::mod_traits::InterfaceVariant instead.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T01:19:54.870338Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T06:05:16.456697Z",
+  "closed_at": "2026-07-11T06:05:16.456697Z",
+  "close_reason": "Fixed: Use lora_phy::mod_params::RadioError and lora_phy::mod_traits::InterfaceVariant instead of private re-exports"
+}

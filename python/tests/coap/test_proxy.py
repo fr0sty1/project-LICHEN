@@ -179,6 +179,69 @@ class TestProxyErrors:
             await _teardown(local_client, gateway, mesh_node, gw_mesh)
 
 
+class TestProxySsrfProtection:
+    """SSRF protection: proxy rejects non-mesh target URIs."""
+
+    async def test_ipv4_address_rejected(self) -> None:
+        """Proxy-Uri with IPv4 address returns BAD_REQUEST (SSRF protection)."""
+        local_client, gateway, mesh_node, gw_mesh = await _setup()
+        try:
+            msg = Message(code=GET, uri="coap://gw/proxy")
+            msg.opt.proxy_uri = "coap://192.168.1.1/admin"
+            resp = await local_client.request(msg).response
+            assert resp.code == aiocoap.BAD_REQUEST
+        finally:
+            await _teardown(local_client, gateway, mesh_node, gw_mesh)
+
+    async def test_hostname_rejected(self) -> None:
+        """Proxy-Uri with hostname returns BAD_REQUEST (SSRF protection)."""
+        local_client, gateway, mesh_node, gw_mesh = await _setup()
+        try:
+            msg = Message(code=GET, uri="coap://gw/proxy")
+            msg.opt.proxy_uri = "coap://internal.service.local/secret"
+            resp = await local_client.request(msg).response
+            assert resp.code == aiocoap.BAD_REQUEST
+        finally:
+            await _teardown(local_client, gateway, mesh_node, gw_mesh)
+
+    async def test_global_ipv6_rejected(self) -> None:
+        """Proxy-Uri with global IPv6 address returns BAD_REQUEST (SSRF protection)."""
+        local_client, gateway, mesh_node, gw_mesh = await _setup()
+        try:
+            msg = Message(code=GET, uri="coap://gw/proxy")
+            msg.opt.proxy_uri = "coap://[2001:db8::1]/status"
+            resp = await local_client.request(msg).response
+            assert resp.code == aiocoap.BAD_REQUEST
+        finally:
+            await _teardown(local_client, gateway, mesh_node, gw_mesh)
+
+    async def test_http_scheme_rejected(self) -> None:
+        """Proxy-Uri with http:// scheme returns BAD_REQUEST."""
+        local_client, gateway, mesh_node, gw_mesh = await _setup()
+        try:
+            msg = Message(code=GET, uri="coap://gw/proxy")
+            msg.opt.proxy_uri = "http://[fd00::2]/status"
+            resp = await local_client.request(msg).response
+            assert resp.code == aiocoap.BAD_REQUEST
+        finally:
+            await _teardown(local_client, gateway, mesh_node, gw_mesh)
+
+    async def test_link_local_allowed(self) -> None:
+        """Proxy-Uri with link-local IPv6 (fe80::/10) is allowed."""
+        local_client, gateway, mesh_node, gw_mesh = await _setup()
+        try:
+            msg = Message(code=GET, uri="coap://gw/proxy")
+            # fe80:: is link-local, allowed for direct neighbor access
+            # This will fail with BAD_GATEWAY since no node is there,
+            # but it should NOT fail with BAD_REQUEST (the URI is valid)
+            msg.opt.proxy_uri = "coap://[fe80::1]/status"
+            resp = await local_client.request(msg).response
+            # Should be BAD_GATEWAY (no route), not BAD_REQUEST (invalid URI)
+            assert resp.code == aiocoap.BAD_GATEWAY
+        finally:
+            await _teardown(local_client, gateway, mesh_node, gw_mesh)
+
+
 class TestBuildSite:
     async def test_build_site_without_proxy(self) -> None:
         """build_site without mesh_client does not expose /proxy."""

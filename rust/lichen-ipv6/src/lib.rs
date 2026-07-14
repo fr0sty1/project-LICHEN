@@ -88,6 +88,8 @@ pub enum Ipv6Error {
     WrongVersion(u8),
     /// Output buffer too small for serialization.
     BufferTooSmall(BufferTooSmall),
+    /// Flow label exceeds 20-bit limit (RFC 6437).
+    InvalidFlowLabel(u32),
 }
 
 impl From<TooShort> for Ipv6Error {
@@ -108,6 +110,9 @@ impl core::fmt::Display for Ipv6Error {
             Self::TooShort(e) => write!(f, "IPv6 {}", e),
             Self::WrongVersion(v) => write!(f, "wrong IP version: {} (expected 6)", v),
             Self::BufferTooSmall(e) => write!(f, "IPv6 {}", e),
+            Self::InvalidFlowLabel(v) => {
+                write!(f, "flow label 0x{:x} exceeds 20-bit limit (max 0xfffff)", v)
+            }
         }
     }
 }
@@ -282,12 +287,19 @@ impl Ipv6Header {
         }
     }
 
+    /// Maximum valid flow label value (20 bits, per RFC 6437).
+    pub const MAX_FLOW_LABEL: u32 = 0xfffff;
+
     /// Write header to output buffer.
     ///
     /// Returns the number of bytes written (always `IPV6_HEADER_LEN`).
+    /// Returns `InvalidFlowLabel` if `flow_label` exceeds 20 bits.
     pub fn write_to(&self, payload_len: u16, out: &mut [u8]) -> Result<usize, Ipv6Error> {
         if out.len() < IPV6_HEADER_LEN {
             return Err(BufferTooSmall::new(IPV6_HEADER_LEN, out.len()).into());
+        }
+        if self.flow_label > Self::MAX_FLOW_LABEL {
+            return Err(Ipv6Error::InvalidFlowLabel(self.flow_label));
         }
 
         // Version (4) | Traffic Class (8) | Flow Label (20)
@@ -371,7 +383,6 @@ impl UdpHeader {
     /// Returns the number of bytes written (always `UDP_HEADER_LEN`).
     pub fn write_to(
         &self,
-        payload_len: usize,
         src: &Addr,
         dst: &Addr,
         payload: &[u8],
@@ -381,7 +392,7 @@ impl UdpHeader {
             return Err(BufferTooSmall::new(UDP_HEADER_LEN, out.len()).into());
         }
 
-        let length = (UDP_HEADER_LEN + payload_len) as u16;
+        let length = (UDP_HEADER_LEN + payload.len()) as u16;
 
         out[0] = (self.src_port >> 8) as u8;
         out[1] = self.src_port as u8;
@@ -420,41 +431,73 @@ pub struct Icmpv6Echo {
     pub seq: u16,
 }
 
+/// Maximum echo data that fits in build buffer (128-byte buffer minus 8-byte header).
+pub const MAX_ECHO_DATA: usize = 120;
+
 impl Icmpv6Echo {
     /// Build Echo Request packet (header + data).
-    pub fn build_request(&self, src: &Addr, dst: &Addr, data: &[u8]) -> Vec<u8, 128> {
+    ///
+    /// Returns `Err(BufferTooSmall)` if data exceeds [`MAX_ECHO_DATA`] (120 bytes).
+    pub fn build_request(
+        &self,
+        src: &Addr,
+        dst: &Addr,
+        data: &[u8],
+    ) -> Result<Vec<u8, 128>, BufferTooSmall> {
         self.build(icmpv6_type::ECHO_REQUEST, src, dst, data)
     }
 
     /// Build Echo Reply packet.
-    pub fn build_reply(&self, src: &Addr, dst: &Addr, data: &[u8]) -> Vec<u8, 128> {
+    ///
+    /// Returns `Err(BufferTooSmall)` if data exceeds [`MAX_ECHO_DATA`] (120 bytes).
+    pub fn build_reply(
+        &self,
+        src: &Addr,
+        dst: &Addr,
+        data: &[u8],
+    ) -> Result<Vec<u8, 128>, BufferTooSmall> {
         self.build(icmpv6_type::ECHO_REPLY, src, dst, data)
     }
 
-    fn build(&self, msg_type: u8, src: &Addr, dst: &Addr, data: &[u8]) -> Vec<u8, 128> {
+    fn build(
+        &self,
+        msg_type: u8,
+        src: &Addr,
+        dst: &Addr,
+        data: &[u8],
+    ) -> Result<Vec<u8, 128>, BufferTooSmall> {
+        const HEADER_LEN: usize = 8; // ICMPv6 header (4) + Echo header (4)
+        const CAPACITY: usize = 128;
+
+        let required = HEADER_LEN + data.len();
+        if required > CAPACITY {
+            return Err(BufferTooSmall::new(required, CAPACITY));
+        }
+
         let mut pkt = Vec::new();
 
         // ICMPv6 header: type, code, checksum (placeholder)
-        let _ = pkt.push(msg_type);
-        let _ = pkt.push(0); // code
-        let _ = pkt.push(0); // checksum high (placeholder)
-        let _ = pkt.push(0); // checksum low
+        // These pushes cannot fail - we checked capacity above
+        pkt.push(msg_type).unwrap();
+        pkt.push(0).unwrap(); // code
+        pkt.push(0).unwrap(); // checksum high (placeholder)
+        pkt.push(0).unwrap(); // checksum low
 
         // Echo header: id, seq
-        let _ = pkt.push((self.id >> 8) as u8);
-        let _ = pkt.push(self.id as u8);
-        let _ = pkt.push((self.seq >> 8) as u8);
-        let _ = pkt.push(self.seq as u8);
+        pkt.push((self.id >> 8) as u8).unwrap();
+        pkt.push(self.id as u8).unwrap();
+        pkt.push((self.seq >> 8) as u8).unwrap();
+        pkt.push(self.seq as u8).unwrap();
 
         // Data
-        let _ = pkt.extend_from_slice(data);
+        pkt.extend_from_slice(data).unwrap();
 
         // Compute checksum
         let checksum = icmpv6_checksum(src, dst, &pkt);
         pkt[2] = (checksum >> 8) as u8;
         pkt[3] = checksum as u8;
 
-        pkt
+        Ok(pkt)
     }
 
     /// Parse Echo message from ICMPv6 payload (after type/code/checksum).
@@ -478,20 +521,22 @@ pub struct NeighborSolicitation {
 
 impl NeighborSolicitation {
     /// Build NS packet.
+    ///
+    /// NS is fixed-size (24 bytes), so this cannot fail with the 64-byte buffer.
     pub fn build(&self, src: &Addr, dst: &Addr) -> Vec<u8, 64> {
         let mut pkt = Vec::new();
 
         // ICMPv6 header
-        let _ = pkt.push(icmpv6_type::NEIGHBOR_SOLICITATION);
-        let _ = pkt.push(0); // code
-        let _ = pkt.push(0); // checksum
-        let _ = pkt.push(0);
+        pkt.push(icmpv6_type::NEIGHBOR_SOLICITATION).unwrap();
+        pkt.push(0).unwrap(); // code
+        pkt.push(0).unwrap(); // checksum
+        pkt.push(0).unwrap();
 
         // Reserved (4 bytes)
-        let _ = pkt.extend_from_slice(&[0u8; 4]);
+        pkt.extend_from_slice(&[0u8; 4]).unwrap();
 
         // Target address (16 bytes)
-        let _ = pkt.extend_from_slice(&self.target.0);
+        pkt.extend_from_slice(&self.target.0).unwrap();
 
         // Compute checksum
         let checksum = icmpv6_checksum(src, dst, &pkt);
@@ -528,14 +573,16 @@ pub struct NeighborAdvertisement {
 
 impl NeighborAdvertisement {
     /// Build NA packet.
+    ///
+    /// NA is fixed-size (24 bytes), so this cannot fail with the 64-byte buffer.
     pub fn build(&self, src: &Addr, dst: &Addr) -> Vec<u8, 64> {
         let mut pkt = Vec::new();
 
         // ICMPv6 header
-        let _ = pkt.push(icmpv6_type::NEIGHBOR_ADVERTISEMENT);
-        let _ = pkt.push(0); // code
-        let _ = pkt.push(0); // checksum
-        let _ = pkt.push(0);
+        pkt.push(icmpv6_type::NEIGHBOR_ADVERTISEMENT).unwrap();
+        pkt.push(0).unwrap(); // code
+        pkt.push(0).unwrap(); // checksum
+        pkt.push(0).unwrap();
 
         // Flags + reserved (4 bytes)
         let mut flags = 0u8;
@@ -548,11 +595,11 @@ impl NeighborAdvertisement {
         if self.override_flag {
             flags |= 0x20;
         }
-        let _ = pkt.push(flags);
-        let _ = pkt.extend_from_slice(&[0u8; 3]);
+        pkt.push(flags).unwrap();
+        pkt.extend_from_slice(&[0u8; 3]).unwrap();
 
         // Target address
-        let _ = pkt.extend_from_slice(&self.target.0);
+        pkt.extend_from_slice(&self.target.0).unwrap();
 
         // Compute checksum
         let checksum = icmpv6_checksum(src, dst, &pkt);
@@ -682,54 +729,75 @@ pub fn parse_packet(buf: &[u8]) -> Result<(Ipv6Header, &[u8]), Ipv6Error> {
 
 /// Dispatch incoming ICMPv6 message.
 ///
-/// Returns response packet if one should be sent.
+/// Returns `Ok(Some(packet))` if a response should be sent, `Ok(None)` if no response
+/// is needed, or `Err` if parsing/building fails.
 pub fn handle_icmpv6(
     local_addr: &Addr,
     ip_header: &Ipv6Header,
     icmpv6_payload: &[u8],
-) -> Option<Vec<u8, 256>> {
+) -> Result<Option<Vec<u8, 256>>, Ipv6Error> {
     if icmpv6_payload.len() < ICMPV6_HEADER_LEN {
-        return None;
+        return Ok(None);
     }
 
     // SECURITY: Verify checksum before processing to prevent amplification attacks.
     // Without this, an attacker could send spoofed packets with invalid checksums
     // and we would still generate responses, amplifying traffic to the victim.
-    if !verify_icmpv6_checksum(&ip_header.src, local_addr, icmpv6_payload) {
-        return None;
+    // Use ip_header.dst (not local_addr) because multicast packets (e.g., solicited-node
+    // multicast for Neighbor Solicitation) have checksum computed over the multicast dst.
+    if !verify_icmpv6_checksum(&ip_header.src, &ip_header.dst, icmpv6_payload) {
+        return Ok(None);
     }
 
     let msg_type = icmpv6_payload[0];
-    let _code = icmpv6_payload[1];
+    let code = icmpv6_payload[1];
     // checksum at [2..4]
     let body = &icmpv6_payload[ICMPV6_HEADER_LEN..];
 
     match msg_type {
         icmpv6_type::ECHO_REQUEST => {
+            // RFC 4443: code MUST be 0 for Echo Request
+            if code != 0 {
+                return Ok(None);
+            }
             // Reply to ping
-            let echo = Icmpv6Echo::from_bytes(body).ok()?;
+            let echo = Icmpv6Echo::from_bytes(body)?;
             let data = &body[4..]; // After id+seq
 
-            let reply_icmp = echo.build_reply(local_addr, &ip_header.src, data);
+            // Truncate data if it would exceed reply buffer capacity.
+            // MAX_ECHO_DATA (120) + 8 header = 128 byte ICMPv6 reply.
+            // With 40-byte IPv6 header, total is 168 bytes, fits in 256.
+            let truncated_data = if data.len() > MAX_ECHO_DATA {
+                &data[..MAX_ECHO_DATA]
+            } else {
+                data
+            };
+
+            let reply_icmp = echo.build_reply(local_addr, &ip_header.src, truncated_data)?;
             let reply_ip = Ipv6Header::new(next_header::ICMPV6, *local_addr, ip_header.src);
 
             let mut pkt = Vec::new();
             let mut ip_buf = [0u8; IPV6_HEADER_LEN];
-            reply_ip
-                .write_to(reply_icmp.len() as u16, &mut ip_buf)
-                .ok()?;
-            let _ = pkt.extend_from_slice(&ip_buf);
-            let _ = pkt.extend_from_slice(&reply_icmp);
+            reply_ip.write_to(reply_icmp.len() as u16, &mut ip_buf)?;
+            // IPv6 header (40) + max ICMPv6 echo reply (128) = 168 bytes, fits in 256
+            pkt.extend_from_slice(&ip_buf)
+                .map_err(|()| BufferTooSmall::new(pkt.len() + ip_buf.len(), pkt.capacity()))?;
+            pkt.extend_from_slice(&reply_icmp)
+                .map_err(|()| BufferTooSmall::new(pkt.len() + reply_icmp.len(), pkt.capacity()))?;
 
-            Some(pkt)
+            Ok(Some(pkt))
         }
 
         icmpv6_type::NEIGHBOR_SOLICITATION => {
-            let ns = NeighborSolicitation::from_bytes(body).ok()?;
+            // RFC 4861: code MUST be 0 for Neighbor Solicitation
+            if code != 0 {
+                return Ok(None);
+            }
+            let ns = NeighborSolicitation::from_bytes(body)?;
 
             // Only respond if target is us
             if ns.target != *local_addr {
-                return None;
+                return Ok(None);
             }
 
             let na = NeighborAdvertisement {
@@ -744,16 +812,17 @@ pub fn handle_icmpv6(
 
             let mut pkt = Vec::new();
             let mut ip_buf = [0u8; IPV6_HEADER_LEN];
-            reply_ip
-                .write_to(reply_icmp.len() as u16, &mut ip_buf)
-                .ok()?;
-            let _ = pkt.extend_from_slice(&ip_buf);
-            let _ = pkt.extend_from_slice(&reply_icmp);
+            reply_ip.write_to(reply_icmp.len() as u16, &mut ip_buf)?;
+            // IPv6 header (40) + NA (24) = 64 bytes, fits easily in 256
+            pkt.extend_from_slice(&ip_buf)
+                .map_err(|()| BufferTooSmall::new(pkt.len() + ip_buf.len(), pkt.capacity()))?;
+            pkt.extend_from_slice(&reply_icmp)
+                .map_err(|()| BufferTooSmall::new(pkt.len() + reply_icmp.len(), pkt.capacity()))?;
 
-            Some(pkt)
+            Ok(Some(pkt))
         }
 
-        _ => None,
+        _ => Ok(None),
     }
 }
 
@@ -804,12 +873,12 @@ mod tests {
         let dst = Addr::link_local_from_mac(&hex!("665544332211"));
 
         let echo = Icmpv6Echo { id: 1, seq: 1 };
-        let request = echo.build_request(&src, &dst, b"ping");
+        let request = echo.build_request(&src, &dst, b"ping").unwrap();
 
         assert_eq!(request[0], icmpv6_type::ECHO_REQUEST);
         assert_eq!(request.len(), 8 + 4); // header + "ping"
 
-        let reply = echo.build_reply(&dst, &src, b"ping");
+        let reply = echo.build_reply(&dst, &src, b"ping").unwrap();
         assert_eq!(reply[0], icmpv6_type::ECHO_REPLY);
     }
 
@@ -820,12 +889,12 @@ mod tests {
 
         // Build a ping request
         let echo = Icmpv6Echo { id: 42, seq: 1 };
-        let icmp_req = echo.build_request(&remote, &local, b"test");
+        let icmp_req = echo.build_request(&remote, &local, b"test").unwrap();
 
         let ip_hdr = Ipv6Header::new(next_header::ICMPV6, remote, local);
 
         // Handle it
-        let response = handle_icmpv6(&local, &ip_hdr, &icmp_req);
+        let response = handle_icmpv6(&local, &ip_hdr, &icmp_req).unwrap();
         assert!(response.is_some());
 
         let pkt = response.unwrap();
@@ -846,16 +915,39 @@ mod tests {
 
         // Build a valid ping request
         let echo = Icmpv6Echo { id: 42, seq: 1 };
-        let mut icmp_req = echo.build_request(&remote, &local, b"test");
+        let mut icmp_req = echo.build_request(&remote, &local, b"test").unwrap();
 
         // Corrupt the checksum (bytes 2-3)
         icmp_req[2] ^= 0xFF;
 
         let ip_hdr = Ipv6Header::new(next_header::ICMPV6, remote, local);
 
-        // Should reject due to bad checksum
-        let response = handle_icmpv6(&local, &ip_hdr, &icmp_req);
+        // Should reject due to bad checksum (returns Ok(None), not an error)
+        let response = handle_icmpv6(&local, &ip_hdr, &icmp_req).unwrap();
         assert!(response.is_none(), "should reject packet with bad checksum");
+    }
+
+    #[test]
+    fn test_echo_data_too_large() {
+        let src = Addr::link_local_from_mac(&hex!("001122334455"));
+        let dst = Addr::link_local_from_mac(&hex!("665544332211"));
+
+        let echo = Icmpv6Echo { id: 1, seq: 1 };
+        // MAX_ECHO_DATA is 120 bytes (128 buffer - 8 header)
+        let large_data = [0u8; 121];
+
+        let result = echo.build_request(&src, &dst, &large_data);
+        assert!(result.is_err());
+
+        let err = result.unwrap_err();
+        assert_eq!(err.required, 129); // 8 header + 121 data
+        assert_eq!(err.provided, 128);
+
+        // Exactly at the limit should succeed
+        let max_data = [0u8; MAX_ECHO_DATA];
+        let result = echo.build_request(&src, &dst, &max_data);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 128);
     }
 
     #[test]
@@ -903,5 +995,27 @@ mod tests {
         let addr = Addr(hex!("fe80 0000 0000 0000 0211 22ff fe33 4455"));
         let iid = addr.iid();
         assert_eq!(iid, hex!("0211 22ff fe33 4455"));
+    }
+
+    #[test]
+    fn test_flow_label_validation() {
+        let src = Addr::link_local_from_mac(&hex!("001122334455"));
+        let dst = Addr::link_local_from_mac(&hex!("665544332211"));
+        let mut buf = [0u8; IPV6_HEADER_LEN];
+
+        // Valid flow_label at maximum (20 bits = 0xfffff)
+        let mut hdr = Ipv6Header::new(next_header::ICMPV6, src, dst);
+        hdr.flow_label = 0xfffff;
+        assert!(hdr.write_to(0, &mut buf).is_ok());
+
+        // Invalid flow_label exceeds 20 bits
+        hdr.flow_label = 0x100000;
+        let result = hdr.write_to(0, &mut buf);
+        assert!(matches!(result, Err(Ipv6Error::InvalidFlowLabel(0x100000))));
+
+        // Also test a larger invalid value
+        hdr.flow_label = 0xffffffff;
+        let result = hdr.write_to(0, &mut buf);
+        assert!(matches!(result, Err(Ipv6Error::InvalidFlowLabel(0xffffffff))));
     }
 }

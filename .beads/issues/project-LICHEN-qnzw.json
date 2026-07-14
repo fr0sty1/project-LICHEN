@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-qnzw",
+  "title": "task",
+  "description": "node_channel.py:63 - send_datagram() uses create_task() without storing the task reference. If node.send() raises an exception, it's logged to asyncio's default handler but otherwise lost. Failure scenario: routing failure or link error goes undetected, makes debugging difficult. Fix: add exception handler callback to the task, or at minimum log errors explicitly.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T05:31:40.369948Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T06:15:04.293896Z",
+  "closed_at": "2026-07-11T06:15:04.293896Z",
+  "close_reason": "Fixed: Added done callback to create_task() in send_datagram() that logs exceptions via logger.warning, ensuring send failures are no longer silently lost"
+}

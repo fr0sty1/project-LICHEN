@@ -25,13 +25,15 @@ pub const PORT_APRS_IS: u16 = 5686;
 pub const PORT_NMEA: u16 = 5687;
 pub const PORT_MQTT_SN: u16 = 10883;
 
-// SCHC rule IDs (RFC 8724) — spec appendix-schc.md
+// SCHC rule IDs (RFC 8724) — spec appendix-schc.md and constants.toml
 pub const RULE_LINK_LOCAL_COAP: u8 = 0;
 pub const RULE_GLOBAL_COAP: u8 = 1;
 pub const RULE_ICMPV6_ECHO: u8 = 2;
 pub const RULE_RPL_DIO: u8 = 3;
 pub const RULE_RPL_DAO: u8 = 4;
-pub const RULE_MQTT_SN: u8 = 5;
+pub const RULE_LINK_LOCAL_OSCORE: u8 = 5;
+pub const RULE_GLOBAL_OSCORE: u8 = 6;
+pub const RULE_MQTT_SN: u8 = 7; // Future use; not in constants.toml yet
 pub const RULE_UNCOMPRESSED: u8 = 255;
 
 // Authenticated L2 inner-payload dispatch bytes.

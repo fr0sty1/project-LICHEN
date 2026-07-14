@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-u46n",
+  "title": "task",
+  "description": "python/src/lichen/rpl/trickle.py:127-131 - If reset() is called from another coroutine during 'await transmit()', the new interval started by reset() has its transmit opportunity skipped. After transmit() completes, the run loop sleeps to interval_end (now the NEW interval's end) then calls expire() without ever evaluating whether to transmit in the reset interval. Failure scenario: Node receives inconsistent message during DIO transmission, calls reset(). The reset interval's transmit at [I/2, I) is never evaluated; instead the loop immediately expires to the next interval. This causes one missed DIO transmission opportunity.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-11T05:34:53.752402Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-11T06:15:51.266956Z",
+  "closed_at": "2026-07-11T06:15:51.266956Z",
+  "close_reason": "Fixed: Added generation counter to detect reset() calls during await points in run() loop. Loop now restarts the interval evaluation when generation changes, ensuring reset intervals get their transmit opportunity evaluated."
+}

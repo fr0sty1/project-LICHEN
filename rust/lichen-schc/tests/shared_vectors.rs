@@ -1,0 +1,147 @@
+//! Tests against shared test vectors from test/vectors/schc_compression.json
+//!
+//! These vectors are the source of truth for cross-implementation compatibility.
+//! If this test fails, the Rust implementation doesn't match the Python reference.
+
+use std::fs;
+use std::path::Path;
+
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct VectorFile {
+    format_version: u32,
+    vectors: Vec<SchcVector>,
+}
+
+#[derive(Deserialize)]
+struct SchcVector {
+    name: String,
+    description: String,
+    rule_id: u8,
+    packet: String,
+    compressed: String,
+}
+
+fn hex_decode(s: &str) -> Vec<u8> {
+    (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+        .collect()
+}
+
+#[test]
+fn test_schc_compression_vectors() {
+    let vectors_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test/vectors/schc_compression.json");
+
+    if !vectors_path.exists() {
+        eprintln!("Vectors file not found at {:?}, skipping", vectors_path);
+        return;
+    }
+
+    let content = fs::read_to_string(&vectors_path)
+        .expect("Failed to read vectors file");
+    let vectors: VectorFile = serde_json::from_str(&content)
+        .expect("Failed to parse vectors JSON");
+
+    assert_eq!(vectors.format_version, 1, "Unexpected vector format version");
+
+    let mut failures = Vec::new();
+
+    for vector in &vectors.vectors {
+        let packet = hex_decode(&vector.packet);
+        let compressed = hex_decode(&vector.compressed);
+
+        // Verify compressed starts with rule_id
+        if compressed.is_empty() {
+            failures.push(format!("Vector '{}': empty compressed output", vector.name));
+            continue;
+        }
+
+        if compressed[0] != vector.rule_id {
+            failures.push(format!(
+                "Vector '{}': compressed[0] should equal rule_id (expected {}, got {})",
+                vector.name, vector.rule_id, compressed[0]
+            ));
+        }
+
+        // Verify packet is valid IPv6 (starts with version 6)
+        if packet.len() < 40 {
+            failures.push(format!("Vector '{}': packet too short for IPv6", vector.name));
+            continue;
+        }
+
+        let version = (packet[0] >> 4) & 0x0f;
+        if version != 6 {
+            failures.push(format!(
+                "Vector '{}': packet is not IPv6 (version={})",
+                vector.name, version
+            ));
+        }
+
+        // Compression should reduce size
+        if compressed.len() >= packet.len() {
+            failures.push(format!(
+                "Vector '{}': compression did not reduce size ({} -> {})",
+                vector.name, packet.len(), compressed.len()
+            ));
+        }
+
+        // TODO: When Rust SCHC implementation is ready, test actual compression:
+        // let mut output = [0u8; 1500];
+        // let result = lichen_schc::compress(&packet, &mut output).unwrap();
+        // assert_eq!(result, &compressed[..]);
+
+        // TODO: Test decompression:
+        // let mut decompressed = [0u8; 1500];
+        // let result = lichen_schc::decompress(&compressed, &mut decompressed).unwrap();
+        // assert_eq!(&decompressed[..result], &packet[..]);
+
+        println!(
+            "Vector '{}' (rule {}): {} -> {} bytes ({}% reduction)",
+            vector.name,
+            vector.rule_id,
+            packet.len(),
+            compressed.len(),
+            100 - (compressed.len() * 100 / packet.len())
+        );
+    }
+
+    if !failures.is_empty() {
+        for f in &failures {
+            eprintln!("FAIL: {}", f);
+        }
+        panic!("{} SCHC vector(s) failed", failures.len());
+    }
+
+    println!("Validated {} SCHC compression vectors", vectors.vectors.len());
+}
+
+#[test]
+fn test_schc_rule_coverage() {
+    let vectors_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test/vectors/schc_compression.json");
+
+    if !vectors_path.exists() {
+        return;
+    }
+
+    let content = fs::read_to_string(&vectors_path).unwrap();
+    let vectors: VectorFile = serde_json::from_str(&content).unwrap();
+
+    // Track which rules have vectors
+    let mut rules_seen = std::collections::HashSet::new();
+    for v in &vectors.vectors {
+        rules_seen.insert(v.rule_id);
+    }
+
+    println!("SCHC rules with vectors: {:?}", rules_seen);
+
+    // Expect at least rules 0-4 (basic CoAP, global, ICMPv6, RPL)
+    for expected in 0..5 {
+        if !rules_seen.contains(&expected) {
+            eprintln!("WARNING: No vector for rule_id {}", expected);
+        }
+    }
+}

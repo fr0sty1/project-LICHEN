@@ -36,6 +36,12 @@ class RouteEntry:
     def __post_init__(self) -> None:
         self.destination = to_ipv6(self.destination)
         self.next_hop = to_ipv6(self.next_hop)
+        if not 0 <= self.hop_count <= 255:
+            raise ValueError(f"hop_count out of range: {self.hop_count}")
+        if not 0 <= self.metric <= 0xFFFF:
+            raise ValueError(f"metric out of range: {self.metric}")
+        if not 0 <= self.seq_num <= 0xFFFF:
+            raise ValueError(f"seq_num out of range: {self.seq_num}")
 
 
 class RouteCache:

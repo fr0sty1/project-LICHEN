@@ -2,13 +2,16 @@
   "id": "project-LICHEN-57un",
   "title": "task",
   "description": "Policy: appendix-c-safety.md. Add _Nonnull/_Nullable to pointer params and returns in public headers. Catches null bugs at compile time.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:52:11.914121Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:52:19.506574Z",
+  "updated_at": "2026-07-12T01:11:58.024197Z",
+  "closed_at": "2026-07-12T01:11:58.024197Z",
+  "close_reason": "Fixed: Added _Nonnull/_Nullable annotations to core public headers\n\nHeaders updated:\n- link_ctx.h: All 8 function signatures annotated\n- link.h: All 5 functions + lichen_frame.payload + lichen_link_rx_ctx struct fields\n- replay.h: All 5 functions (including return type for lichen_replay_get)\n- schnorr48.h: All 6 functions including inline clamp_scalar\n- l2_payload.h: Both inline functions with nullable parameters\n- oscore.h: All 15 functions including context create/free/protect/unprotect\n- edhoc.h: All 10 functions for initiator/responder\n- schc.h: All 3 functions\n- link_schc.h: Both inline wrapper functions\n- announce.h: Struct fields, typedef, and all 5 functions\n\nCompatibility macro added to each header. Follow-up bead project-LICHEN-f632 filed for remaining headers.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-57un",

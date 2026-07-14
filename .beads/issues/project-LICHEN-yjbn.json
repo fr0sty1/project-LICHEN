@@ -2,11 +2,14 @@
   "id": "project-LICHEN-yjbn",
   "title": "[policy] No-polling compliance",
   "description": "Push-based event handling over polling. Policy: use interrupts/callbacks instead of sleep loops. Each code section with potential polling needs a compliance check.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "epic",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T23:11:09.744836Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T23:14:15.982214Z"
+  "updated_at": "2026-07-12T00:41:04.315942Z",
+  "closed_at": "2026-07-12T00:41:04.315942Z",
+  "close_reason": "All 8 compliance checks complete. 1 fix applied (STM32WL wait_on_busy spin loop). All code uses event-driven async patterns."
 }

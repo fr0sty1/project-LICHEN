@@ -1,0 +1,247 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+# LCI Transport bindings (spec/11-lci.md section 17.3)
+#   - 17.3.1: SLIP over Serial/USB
+#   - 17.3.2: BLE (SLIP over NUS / RFC 7668 IPSP)
+
+# ─── SLIP Serial Transport (17.3.1) ─────────────────────────────────────────
+
+menuconfig LICHEN_SLIP_TRANSPORT
+	bool "SLIP transport for LCI (Serial/USB)"
+	depends on LICHEN
+	depends on SERIAL
+	depends on RING_BUFFER
+	depends on NET_L2_DUMMY
+	depends on NET_IPV6
+	help
+	  Enable SLIP transport binding for the Local Client Interface (LCI).
+	  Provides IPv6/CoAP connectivity over UART or USB-CDC using RFC 1055
+	  SLIP framing.
+
+	  This allows standard SLIP tools (slattach, tunslip6) to communicate
+	  with the mesh node using any CoAP client.
+
+	  Per LCI spec 17.3.1:
+	  - Framing: END=0xC0, ESC=0xDB, ESC_END=0xDC, ESC_ESC=0xDD
+	  - Node address: fe80::1
+	  - Client address: fe80::2
+	  - Recommended baud: 115200 or higher
+
+if LICHEN_SLIP_TRANSPORT
+
+config SLIP_TRANSPORT_LOG_LEVEL
+	int "SLIP transport log level"
+	default 3
+	range 0 4
+	help
+	  Log level for SLIP transport module:
+	    0 = Off
+	    1 = Error
+	    2 = Warning
+	    3 = Info
+	    4 = Debug
+
+config SLIP_TRANSPORT_RX_RING_SIZE
+	int "RX ring buffer size"
+	default 256
+	range 64 4096
+	help
+	  Size of the ring buffer used to transfer received bytes from
+	  the UART ISR to the RX processing thread. Should be large enough
+	  to hold multiple packets worth of SLIP-encoded data.
+
+config SLIP_TRANSPORT_RX_THREAD_STACK_SIZE
+	int "RX thread stack size"
+	default 1024
+	range 512 4096
+	help
+	  Stack size for the SLIP RX processing thread.
+
+config SLIP_TRANSPORT_RX_THREAD_PRIORITY
+	int "RX thread priority"
+	default 7
+	range 0 15
+	help
+	  Priority of the SLIP RX processing thread.
+	  Lower numbers are higher priority.
+
+config SLIP_TRANSPORT_AUTO_INIT
+	bool "Automatically initialize SLIP transport"
+	default y
+	help
+	  Automatically initialize the SLIP transport at boot.
+	  If disabled, call slip_transport_init() explicitly.
+
+endif # LICHEN_SLIP_TRANSPORT
+
+# ─── BLE Transport (17.3.2) ─────────────────────────────────────────────────
+
+menuconfig LICHEN_BLE_TRANSPORT
+	bool "BLE IPSP transport for LCI"
+	depends on LICHEN
+	depends on BT
+	depends on BT_PERIPHERAL
+	help
+	  Enable BLE transport bindings for the Local Client Interface (LCI).
+	  This allows phones and laptops to communicate with the mesh node
+	  over Bluetooth Low Energy using standard IPv6/CoAP.
+
+	  Implements LCI spec 17.3.2:
+	  - Option A (always built): SLIP over Nordic UART Service (NUS)
+	  - Option B (optional): RFC 7668 6LoWPAN over BLE IPSP
+
+if LICHEN_BLE_TRANSPORT
+
+config LICHEN_BLE_SLIP
+	bool "SLIP over BLE UART (Option A)"
+	default y
+	help
+	  Enable SLIP-framed IPv6 over Nordic UART Service (NUS).
+	  This is the REQUIRED transport option per LCI spec.
+
+	  NUS UUID: 6E400001-B5A3-F393-E0A9-E50E24DCCA9E
+	  Works with standard BLE serial libraries on all platforms.
+
+config LICHEN_BLE_IPSP
+	bool "6LoWPAN over BLE IPSP (Option B)"
+	depends on NET_L2_BT
+	help
+	  Enable RFC 7668 6LoWPAN over BLE with Internet Protocol Support
+	  Profile (IPSP). This is the OPTIONAL standard-compliant transport.
+
+	  Requires Zephyr's BT L2 networking stack and provides:
+	  - Standard IPSP profile
+	  - L2CAP connection-oriented channels
+	  - 6LoWPAN IPHC header compression
+
+	  More protocol overhead but fully standards-compliant.
+
+config LICHEN_BLE_TRANSPORT_REQUIRE_SECURE
+	bool "Require LE Secure Connections"
+	default y
+	help
+	  Require LE Secure Connections (security level 4) for all
+	  BLE transport operations except read-only access.
+
+	  SECURITY: Should be enabled for production. Disabling allows
+	  unauthenticated access over BLE which is suitable only for
+	  development and debugging.
+
+config LICHEN_BLE_TRANSPORT_DIAG_REQUIRE_SECURE
+	bool "Require LE Secure Connections for diagnostics"
+	default y
+	help
+	  Require LE Secure Connections for diagnostic resources
+	  (/diag/raw/*) regardless of the general security setting.
+
+	  SECURITY: This MUST be enabled per LCI spec 17.6.1 table which
+	  requires BLE pairing for raw diagnostic access.
+
+config LICHEN_BLE_TRANSPORT_AUTO_START
+	bool "Automatically start BLE advertising"
+	default y
+	help
+	  Automatically start BLE advertising when the transport is
+	  initialized. If disabled, call lichen_ble_transport_start()
+	  explicitly.
+
+config LICHEN_BLE_TRANSPORT_LOG_LEVEL
+	int "BLE transport log level"
+	default 3
+	range 0 4
+	help
+	  Log level for BLE transport module:
+	    0 = Off
+	    1 = Error
+	    2 = Warning
+	    3 = Info
+	    4 = Debug
+
+config LICHEN_BLE_TRANSPORT_RX_TIMEOUT_MS
+	int "SLIP frame receive timeout (ms)"
+	default 5000
+	range 1000 30000
+	help
+	  Timeout for receiving a complete SLIP frame. If a frame is not
+	  completed within this time, the partial frame is discarded.
+
+config LICHEN_BLE_TRANSPORT_MAX_CONNECTIONS
+	int "Maximum concurrent BLE connections"
+	default 1
+	range 1 4
+	help
+	  Maximum number of concurrent BLE connections. For LCI, a single
+	  connection is typically sufficient. Multiple connections increase
+	  RAM usage.
+
+endif # LICHEN_BLE_TRANSPORT
+
+# ─── KISS TNC Transport (spec/kiss-framing.md) ──────────────────────────────
+
+menuconfig LICHEN_KISS_TRANSPORT
+	bool "KISS TNC transport"
+	depends on LICHEN
+	depends on SERIAL
+	depends on RING_BUFFER
+	help
+	  Enable KISS TNC protocol transport for host interface connectivity.
+	  Provides byte-stuffed framing over serial links, compatible with
+	  legacy amateur radio applications (APRSDroid, Direwolf, Xastir,
+	  Linux AX.25 stack).
+
+	  Per spec/kiss-framing.md:
+	  - Port 0: AX.25/APRS frames (legacy TNC app compatibility)
+	  - Port 1: Raw LICHEN link frames (debugging, native apps)
+	  - Commands: TxDelay, Persistence, SlotTime, SetHardware supported
+
+	  Reference: http://www.ka9q.net/papers/kiss.html
+
+if LICHEN_KISS_TRANSPORT
+
+config KISS_TRANSPORT_LOG_LEVEL
+	int "KISS transport log level"
+	default 3
+	range 0 4
+	help
+	  Log level for KISS transport module:
+	    0 = Off
+	    1 = Error
+	    2 = Warning
+	    3 = Info
+	    4 = Debug
+
+config KISS_TRANSPORT_RX_RING_SIZE
+	int "RX ring buffer size"
+	default 512
+	range 128 4096
+	help
+	  Size of the ring buffer used to transfer received bytes from
+	  the UART ISR to the RX processing thread. Should be large enough
+	  to hold at least one full KISS frame (up to ~2KB escaped).
+
+config KISS_TRANSPORT_RX_THREAD_STACK_SIZE
+	int "RX thread stack size"
+	default 1536
+	range 1024 4096
+	help
+	  Stack size for the KISS RX processing thread. Needs to be larger
+	  than SLIP due to frame dispatch callback overhead.
+
+config KISS_TRANSPORT_RX_THREAD_PRIORITY
+	int "RX thread priority"
+	default 7
+	range 0 15
+	help
+	  Priority of the KISS RX processing thread.
+	  Lower numbers are higher priority.
+
+config KISS_TRANSPORT_AUTO_INIT
+	bool "Automatically initialize KISS transport"
+	default n
+	help
+	  Automatically initialize the KISS transport at boot.
+	  If disabled (default), call kiss_transport_init() explicitly
+	  with the desired callbacks.
+
+endif # LICHEN_KISS_TRANSPORT

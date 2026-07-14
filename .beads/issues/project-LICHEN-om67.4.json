@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-om67.4",
+  "title": "Rust/Zephyr: Missing gradient table",
+  "description": "Python has gradient.py (181 LoC) providing GradientTable for unified route lookup. Neither Rust nor Zephyr have equivalent. Required for hybrid router integration. Reference: python/src/lichen/gradient.py",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-12T00:32:40.065523Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-12T01:26:29.50709Z",
+  "closed_at": "2026-07-12T01:26:29.50709Z",
+  "close_reason": "Both Rust and Zephyr gradient tables already existed but were not properly integrated. Fixed: (1) Rust: exported gradient module in lib.rs with public types GradientEntry, GradientSource, GeoCoords, GradientTable, (2) Zephyr: added gradient.c to CMakeLists.txt, added CONFIG_LICHEN_ROUTING_GRADIENT_* options to Kconfig. Both implementations have complete functionality matching Python: LRU eviction, RFC 1982 seq comparison, priority-based replacement, expiry handling, coords support.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-om67.4",
+      "depends_on_id": "project-LICHEN-om67",
+      "type": "parent-child",
+      "created_at": "2026-07-12T00:32:40.066699Z"
+    }
+  ]
+}
