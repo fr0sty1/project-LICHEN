@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for manual protobuf encoding/decoding."""
 
-import struct
 
 import pytest
 

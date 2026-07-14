@@ -228,6 +228,24 @@ class TestLinkLayerRx:
         assert result is None
 
     @pytest.mark.asyncio
+    async def test_receive_rejects_short_signed_payload(
+        self, link_layer: LinkLayer, mock_radio: MockRadio
+    ):
+        """receive rejects signed frames whose payload cannot hold a signature."""
+        frame = LichenFrame(
+            epoch=0,
+            seqnum=0,
+            dst_addr=b"",
+            payload=bytes(SIGNATURE_LENGTH - 1),  # too short for a signature
+            mic=PLACEHOLDER_MIC,
+            signature_present=True,
+        )
+        mock_radio.queue_rx(frame.to_bytes())
+
+        result = await link_layer.receive(timeout_ms=100)
+        assert result is None
+
+    @pytest.mark.asyncio
     async def test_receive_rejects_bad_signature(
         self,
         link_layer: LinkLayer,

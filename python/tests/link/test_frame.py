@@ -173,13 +173,19 @@ class TestParseErrors:
         with pytest.raises(FrameError, match="declared address/MIC"):
             LichenFrame.from_bytes(b"\x04\x01\x00\x00\x00")
 
-    def test_signature_present_requires_48_byte_payload(self) -> None:
+    def test_signature_present_short_payload_parses(self) -> None:
         # LLSec 0x20 = signature_present bit set, addr_mode NONE, 32-bit MIC
         # body = LLSec(0x20) Epoch(00) SeqNum(0000) Payload(10 bytes) MIC(4 bytes)
         # Total body = 1 + 1 + 2 + 10 + 4 = 18 bytes
+        #
+        # The parser must accept this (matching the Rust parser and the
+        # committed link_frame vectors); rejecting a payload too short to hold
+        # the 48-byte signature is the link layer's job (see
+        # test_link_layer.py::test_receive_rejects_short_signed_payload).
         data = bytes.fromhex("12" "20" "00" "0000" + "00" * 10 + "deadbeef")
-        with pytest.raises(FrameError, match="signature_present requires"):
-            LichenFrame.from_bytes(data)
+        frame = LichenFrame.from_bytes(data)
+        assert frame.signature_present is True
+        assert frame.payload == bytes(10)
 
 
 # ─── Cross-validation tests from spec/test-vectors/frame.json ─────────────────

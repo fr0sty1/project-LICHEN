@@ -24,9 +24,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import shutil
 import subprocess
-import tempfile
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
@@ -35,7 +33,6 @@ import pytest
 from lichen.announce.messages import AnnounceMessage
 from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity
-from lichen.link.frame import LichenFrame, AddrMode, MicLength
 from lichen.radio.sim_client import SimRadio
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
@@ -173,17 +170,26 @@ class TestPythonToRust:
                 capture_output=True,
                 timeout=5,
             )
-            assert result.returncode == 0, f"Vector '{vector['name']}' parse failed: {result.stderr.decode()}"
+            assert result.returncode == 0, (
+                f"Vector '{vector['name']}' parse failed: {result.stderr.decode()}"
+            )
 
             parsed = json.loads(result.stdout)
             fields = vector["fields"]
+            name = vector["name"]
 
             # Verify fields match
-            assert parsed["epoch"] == fields["epoch"], f"Vector '{vector['name']}': epoch mismatch"
-            assert parsed["seqnum"] == fields["seqnum"], f"Vector '{vector['name']}': seqnum mismatch"
-            assert parsed["addr_mode"] == fields["addr_mode"], f"Vector '{vector['name']}': addr_mode mismatch"
-            assert parsed["signature_present"] == fields["signature_present"], f"Vector '{vector['name']}': signature_present mismatch"
-            assert parsed["encrypted"] == fields["encrypted"], f"Vector '{vector['name']}': encrypted mismatch"
+            assert parsed["epoch"] == fields["epoch"], f"Vector '{name}': epoch mismatch"
+            assert parsed["seqnum"] == fields["seqnum"], f"Vector '{name}': seqnum mismatch"
+            assert parsed["addr_mode"] == fields["addr_mode"], (
+                f"Vector '{name}': addr_mode mismatch"
+            )
+            assert parsed["signature_present"] == fields["signature_present"], (
+                f"Vector '{name}': signature_present mismatch"
+            )
+            assert parsed["encrypted"] == fields["encrypted"], (
+                f"Vector '{name}': encrypted mismatch"
+            )
 
     @pytest.mark.skipif(
         not RUN_CROSS_IMPL,
