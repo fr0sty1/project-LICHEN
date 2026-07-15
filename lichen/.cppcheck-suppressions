@@ -1,0 +1,51 @@
+# cppcheck suppressions — curated per bead lora_ipv6_mesh-2mla.
+# Every entry needs a rationale. The gate enforces everything not listed
+# here; correctness classes (uninitvar, comparePointers outside tests,
+# syntaxError outside the known macro-heavy files) stay hot.
+
+# ── Vendored code (exempt per spec/appendix-c-safety.md) ────────────────────
+*:lichen/subsys/lichen/crypto/monocypher*
+
+# ── cppcheck cannot parse Zephyr's declarative macros ───────────────────────
+# BT_GATT_SERVICE_DEFINE / MODEM_CHAT_MATCHES_DEFINE / NET_SOCKET_* expand to
+# constructs cppcheck's parser rejects without the full Zephyr preprocessor
+# state. Only syntaxError is suppressed, and only for these files.
+syntaxError:lichen/apps/gateway/src/ble_meshcore.c
+syntaxError:lichen/apps/gateway/src/ble_meshtastic.c
+syntaxError:lichen/apps/gateway/src/ble_uart.c
+syntaxError:lichen/drivers/gnss/gnss_ag3335.c
+syntaxError:lichen/subsys/lichen/transport/ble_ipsp_transport.c
+
+# ── Intentional constructs ──────────────────────────────────────────────────
+# Negative-build guard: the #error IS the test.
+preprocessorErrorDirective:lichen/tests/hal_serial_precedence/src/main.c
+# Linker-section iteration (_list_start.._list_end) is the standard Zephyr
+# iterable-section idiom; cppcheck sees two unrelated symbols.
+comparePointers:lichen/tests/*
+# CBOR major-type encoding writes "0x00 | val" for major type 0 on purpose —
+# it mirrors the RFC 8949 notation used for the other major types.
+badBitmaskCheck:lichen/lib/native/native.c
+# cppcheck cannot see all board configurations.
+toomanyconfigs
+
+# ── Accepted style classes (ratchet later, tracked in 2mla) ─────────────────
+# Defensive-programming idioms (dead guards on unsigned lengths, conditions
+# constant under the analyzed config) and const/scope polish across ~100
+# sites. Suppressed as categories so the gate can enforce the correctness
+# classes today; tighten by deleting lines here and fixing the findings.
+constVariablePointer
+constVariable
+constParameterPointer
+constParameterCallback
+variableScope
+unreadVariable
+shadowFunction
+shadowVariable
+knownConditionTrueFalse
+truncLongCastAssignment
+redundantAssignment
+redundantInitialization
+unusedVariable
+unusedStructMember
+duplicateCondition
+unsignedLessThanZero
