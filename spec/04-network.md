@@ -151,6 +151,15 @@ From 16-bit short address:
 IID = 0x0000_00FF_FE00_0000 | (short_addr << 48)
 ```
 
+**Stable IIDs only.** IIDs are stable and hardware-derived for the life of
+the node. Temporary addresses (RFC 4941) and opaque/random IIDs (RFC 7217)
+MUST NOT be used. This is a deliberate deviation from the RFC 8064 default:
+root election, short-address assignment, replay windows, and signature
+caching all key on a node's stable EUI-64, and every frame is already bound
+to a stable public key, so a rotating IID would break the mesh while
+providing no unlinkability. See Privacy in Security Considerations
+(section 15.5 in Security) for the full analysis.
+
 ### 6.3. Multicast and Broadcast
 
 #### 6.3.1. Multicast Scopes

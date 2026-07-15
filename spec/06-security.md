@@ -443,7 +443,46 @@ on wrap or reboot. See section 4.4 in Physical and Link Layers.
 3. **DoS possible:** Radio jamming cannot be prevented
 4. **Metadata visible:** Link-layer headers unencrypted
 
-### 15.5. Recommendations
+### 15.5. Privacy: No Address Randomization
+
+LICHEN does not implement MAC/EUI-64 randomization or IPv6 privacy
+addressing (RFC 4941 temporary addresses, RFC 7217 opaque IIDs), and
+implementations MUST NOT add them. Addresses are stable and
+hardware-derived (section 6.2 in Network Layer).
+
+**It would break the protocol:**
+
+- Root election is deterministic on lowest EUI-64 (section 6.1 in Network
+  Layer). Rotating addresses destabilizes election.
+- Short-address assignment binds `CRC16(EUI-64)` to a public key in a
+  mesh-wide table (section 4.5 in Physical and Link Layers). Rotation
+  forces continual DAD and table churn on an airtime-starved link.
+- Replay windows (15.3) and signature caching (8.5) are per-sender state
+  keyed on stable identity.
+
+**It would not provide privacy anyway:**
+
+- Every frame carries a link-layer signature bound to a long-term public
+  key (8.3). The key, not the address, is the trackable identifier.
+  Randomizing the address under a stable signing key is unlinkability
+  theater.
+- On a sparse LoRa mesh, traffic analysis and RF direction finding
+  identify a transmitter regardless of the address it wears (15.4,
+  metadata visible).
+
+**The Wi-Fi precedent does not transfer:** 802.11 MAC randomization helps
+only for unassociated probe requests; once a station associates, its MAC
+is stable for the session and the AP tracks it regardless. LICHEN nodes
+are persistently joined to the mesh, so even that narrow benefit has no
+analog here.
+
+The privacy controls that do work are specified where they work: position
+privacy (omit coords from announces, Routing; `/config/privacy` access
+control, Applications) and payload confidentiality (OSCORE, 8.7).
+Identity privacy is out of scope for a network whose security model binds
+every frame to a long-term key.
+
+### 15.6. Recommendations
 
 1. Rotate keys annually or on suspected compromise
 2. Use OSCORE for all CoAP traffic
