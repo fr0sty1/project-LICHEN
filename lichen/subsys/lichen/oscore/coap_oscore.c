@@ -30,8 +30,6 @@ static inline int coap_err_to_oscore(int err)
 	switch (err) {
 	case -ENOMEM:
 		return OSCORE_ERR_BUFFER_TOO_SMALL;
-	case -EINVAL:
-		return OSCORE_ERR_INVALID_PARAM;
 	default:
 		return OSCORE_ERR_INVALID_PARAM;
 	}

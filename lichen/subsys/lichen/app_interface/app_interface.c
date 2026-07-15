@@ -81,10 +81,10 @@ int lichen_app_interface_register_sink(
 	}
 
 	k_mutex_lock(&s_mutex, K_FOREVER);
-	for (uint8_t i = 0U; i < ARRAY_SIZE(s_sinks); i++) {
+	for (size_t i = 0U; i < ARRAY_SIZE(s_sinks); i++) {
 		if (s_sinks[i].used && same_sink(&s_sinks[i].sink, sink)) {
 			if (out_id != NULL) {
-				*out_id = i;
+				*out_id = (uint8_t)i;
 			}
 			k_mutex_unlock(&s_mutex);
 			return 0;

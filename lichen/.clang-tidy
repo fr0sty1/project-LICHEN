@@ -19,7 +19,27 @@ Checks: >
   -cert-dcl37-c,
   -cert-dcl51-cpp,
   -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
-  -misc-no-recursion
+  -misc-no-recursion,
+  -misc-include-cleaner,
+  -misc-redundant-expression,
+  -misc-unused-parameters,
+  -misc-header-include-cycle,
+  -bugprone-not-null-terminated-result,
+  -clang-diagnostic-conversion
+
+# Checks disabled in the 2mla curation (lora_ipv6_mesh-2mla):
+#   misc-include-cleaner: Zephyr umbrella headers (kernel.h et al) make
+#     direct-include analysis pure noise (441 findings).
+#   misc-redundant-expression: false-positives on side-effectful sequential
+#     calls (zcbor_any_skip twice = skip key, skip value) and on Zephyr
+#     COND_CODE_1 chains that collapse to 0|0 in a given config.
+#   misc-unused-parameters: config-conditional parameters; mirrors the
+#     project's -Wno-unused-parameter compiler policy.
+#   misc-header-include-cycle: fires inside Zephyr's tracing headers.
+#   bugprone-not-null-terminated-result: misfires on memcpy into binary
+#     CBOR buffers that must not be NUL-terminated.
+#   clang-diagnostic-conversion: mirrors the GCC hardening policy of
+#     -Wconversion as warning, not error (-Wno-error=conversion).
 
 WarningsAsErrors: '*'
 
