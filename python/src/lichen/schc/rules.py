@@ -71,6 +71,11 @@ class FieldDescriptor:
         """Number of residue bits for an LSB action (length_bits - MSB length)."""
         if self.mo_arg is None:
             raise ValueError(f"{self.field_id}: LSB requires mo_arg (MSB length)")
+        if self.mo_arg > self.length_bits:
+            raise ValueError(
+                f"{self.field_id}: mo_arg ({self.mo_arg}) exceeds "
+                f"length_bits ({self.length_bits})"
+            )
         return self.length_bits - self.mo_arg
 
     def mapping_bits(self) -> int:

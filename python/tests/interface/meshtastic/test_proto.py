@@ -1,8 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for manual protobuf encoding/decoding."""
 
-import struct
-
 import pytest
 
 from lichen.interface.meshtastic.proto import (
@@ -20,6 +18,7 @@ from lichen.interface.meshtastic.proto import (
     ToRadio,
     _decode_varint,
     _encode_varint,
+    _varint_to_int32,
 )
 
 
@@ -65,6 +64,20 @@ class TestVarint:
     def test_decode_truncated(self):
         with pytest.raises(ProtoError, match="truncated"):
             _decode_varint(b"\x80")  # Continuation bit set but no next byte
+
+    def test_varint_to_int32_positive(self):
+        assert _varint_to_int32(0) == 0
+        assert _varint_to_int32(1) == 1
+        assert _varint_to_int32(0x7FFFFFFF) == 0x7FFFFFFF  # Max positive int32
+
+    def test_varint_to_int32_negative(self):
+        """Test conversion of sign-extended varints to signed int32."""
+        # -1 encoded as 10-byte varint gives 0xFFFFFFFFFFFFFFFF (2^64 - 1)
+        assert _varint_to_int32(0xFFFFFFFFFFFFFFFF) == -1
+        # -60 encoded gives 0xFFFFFFFFFFFFFFC4
+        assert _varint_to_int32(0xFFFFFFFFFFFFFFC4) == -60
+        # -120 (typical weak RSSI) gives 0xFFFFFFFFFFFFFF88
+        assert _varint_to_int32(0xFFFFFFFFFFFFFF88) == -120
 
 
 class TestData:
@@ -188,6 +201,31 @@ class TestMeshPacket:
         encoded = pkt.to_bytes()
         decoded = MeshPacket.from_bytes(encoded)
         assert abs(decoded.rx_snr - 12.5) < 0.01
+
+    def test_rx_rssi_negative(self):
+        """Test that negative RSSI values are decoded correctly.
+
+        Protobuf int32 encodes negative values as 10-byte sign-extended
+        varints. RSSI values are typically -30 to -120 dBm.
+        """
+        pkt = MeshPacket(rx_rssi=-60)
+        encoded = pkt.to_bytes()
+        decoded = MeshPacket.from_bytes(encoded)
+        assert decoded.rx_rssi == -60
+
+    def test_rx_rssi_negative_boundary(self):
+        """Test RSSI at the signed int32 boundary."""
+        pkt = MeshPacket(rx_rssi=-1)
+        encoded = pkt.to_bytes()
+        decoded = MeshPacket.from_bytes(encoded)
+        assert decoded.rx_rssi == -1
+
+    def test_rx_rssi_positive(self):
+        """Test positive RSSI values still work."""
+        pkt = MeshPacket(rx_rssi=10)
+        encoded = pkt.to_bytes()
+        decoded = MeshPacket.from_bytes(encoded)
+        assert decoded.rx_rssi == 10
 
 
 class TestMyNodeInfo:

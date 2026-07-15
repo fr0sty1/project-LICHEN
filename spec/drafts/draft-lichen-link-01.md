@@ -32,8 +32,8 @@ adaptation layer. Its responsibilities are:
 2. Addressing: identify the destination node when needed.
 3. Replay protection: prevent injection of replayed frames.
 4. Authentication: prove the frame was sent by the claimed node.
-5. Encryption: optional payload encryption (OSCORE handles this at a higher
-   layer; the link layer provides a flag to indicate encrypted payloads).
+5. Encryption signaling: carry the encrypted-payload flag for format
+   compatibility. Encrypted link frames are not currently supported.
 
 The LICHEN link layer does **not** provide a source address field. The sender's
 identity is established by the signature (when present), and the IPv6 source
@@ -42,11 +42,17 @@ overhead minimal for the common case of authenticated unicast.
 
 ### 1.1. Design Goals
 
-- **Small overhead:** 5 bytes minimum header + optional address + MIC.
+  - **Small overhead:** 5 bytes minimum header + optional address + optional MIC.
 - **Replay-safe:** Epoch + sequence number support a sliding-window replay filter.
 - **Flexible addressing:** Broadcast, 16-bit short, EUI-64, or address-elided modes.
 - **Authentication optional:** Unsigned frames are valid for bootstrap/discovery.
-- **Encryption optional:** Flag signals payload is opaque (OSCORE-encrypted CoAP).
+  - **Encryption unsupported:** Frames with encrypted payloads are not part of
+    the current interoperable profile.
+
+The current interoperable profile does not support encrypted payloads. Frames
+with E=1 MUST NOT be transmitted and receivers MUST discard them. In
+particular, frames MUST NOT set both S=1 and E=1; signed encrypted frames are
+unsupported and MUST be rejected before signature processing.
 
 ### 1.2. Use Case
 
@@ -103,8 +109,9 @@ Octets: 1        1       1      2       var     var      var
   `LENGTH - fixed_header_size - DST_len - MIC_len`. MUST be at least 2 bytes
   for currently defined dispatch values.
 
-- **MIC** (4 or 8 octets): Message Integrity Code. Present and length
-  determined by MicLength in LLSec. Absent when S=0. See Section 4.
+- **MIC** (0 or 48 octets): Message Integrity Code. When S=0, the MIC is
+  absent regardless of MicLength. When S=1, the MIC is the full 48-byte
+  Schnorr signature and MicLength is ignored. See Section 4.
 
 ### 3.2. LLSec Byte
 
@@ -126,21 +133,23 @@ Octets: 1        1       1      2       var     var      var
 
 - **Bits 4-2 (MicLength): MIC size.**
 
-  | Value | MIC length | Security                              |
-  |-------|------------|---------------------------------------|
-  | 0b000 | 4 bytes    | 32-bit MIC                            |
-  | 0b001 | 8 bytes    | 64-bit MIC                            |
-  | 0b010–0b111 | —  | Reserved. Receivers MUST discard.    |
+   | Value | MIC length when S=0 | Meaning                              |
+   |-------|---------------------|--------------------------------------|
+   | 0b000 | 0 bytes             | No MIC                               |
+   | 0b001 | 0 bytes             | No MIC; compatibility selector      |
+   | 0b010–0b111 | —          | Reserved. Receivers MUST discard.    |
 
-  When the S bit is 0 (no signature present), the MicLength field is
-  RECOMMENDED to be 0b000. Receivers MUST NOT rely on MIC when S=0.
+   When the S bit is 1, the MIC is always 48 bytes regardless of MicLength.
+   When the S bit is 0 (no signature present), no MIC bytes are present.
+   MicLength is retained only as a header selector for compatibility and does
+   not affect parsing or serialization.
 
 - **Bit 5 (S): Signature present.** When set, the MIC field contains a
   cryptographic signature over the frame. See Section 4.
 
-- **Bit 6 (E): Encrypted.** Signals that PLD is an opaque encrypted blob
-  (typically an OSCORE-protected CoAP message). Does not imply link-layer
-  encryption; the link layer does not perform encryption.
+- **Bit 6 (E): Encrypted.** Indicates an encrypted payload. Encrypted link
+  frames are unsupported in the current interoperable profile; senders MUST
+  leave E clear and receivers MUST discard frames with E=1.
 
 - **Bit 7 (R): Reserved.** Senders MUST set to 0. Receivers MUST discard
   frames with R=1.
@@ -157,9 +166,8 @@ When AddrMode is None (0b00), the frame is a broadcast. All nodes MUST
 process the payload, subject to replay protection.
 
 When AddrMode is Elided (0b11), the destination is recoverable from context
-(e.g. the first IPv6 destination address in the SCHC payload). This mode is
-OPTIONAL and SHOULD be used only when the overhead reduction justifies the
-decoding complexity.
+(e.g. the first IPv6 destination address in the SCHC payload). No destination
+bytes are present on the wire in this mode.
 
 ### 3.4. Source Address
 
@@ -175,7 +183,7 @@ identity is established by:
 
 ### 4.1. MIC Field
 
-When S=1, the MIC field contains a truncated Schnorr signature as defined in
+When S=1, the MIC field contains the full 48-byte Schnorr signature as defined in
 [draft-lichen-schnorr-00]. The signature is computed over:
 
 ```
@@ -254,26 +262,27 @@ out-of-band trust re-establishment.
 
 Total frame: 27 bytes.
 
-### 6.2. Unicast CoAP Request (Extended Address, 32-bit MIC)
+### 6.2. Unicast CoAP Request (Extended Address, signed)
 
 ```
-  LENGTH = 0x1D  (29 bytes body)
-  LLSec  = 0x22  (AddrMode=Extended, MicLength=0b000→4B, S=1, E=0)
+  LENGTH = 0x3D  (61 bytes body)
+  LLSec  = 0x22  (AddrMode=Extended, S=1, E=0; MIC is 48B)
             = 0b0010_0010
   EPO    = 0x01
   SEQ    = 0x00, 0x01
   DST    = 8 bytes EUI-64
-  PLD    = <29 - 4 - 8 - 4 = 13 bytes SCHC-compressed CoAP>
-  MIC    = 4 bytes Schnorr signature truncation
+  PLD    = <1 byte SCHC-compressed CoAP>
+  MIC    = 48-byte Schnorr signature
 ```
 
-Total frame: 30 bytes.
+  The body LENGTH includes the 48-byte MIC.
 
-### 6.3. Unicast OSCORE-Encrypted CoAP (64-bit MIC)
+### 6.3. Encrypted Frame (Unsupported)
 
 ```
-  LLSec  = 0x63  = 0b0110_0011
-            (AddrMode=Extended, MicLength=0b001→8B, S=1, E=1)
+  LLSec  = 0x62  = 0b0110_0010
+            (AddrMode=Extended, MicLength=0b000, S=1, E=1)
+  Result: rejected; signed encrypted frames are unsupported.
 ```
 
 ## 7. IANA Considerations
@@ -284,10 +293,10 @@ This document has no IANA actions.
 
 ### 8.1. No Link-Layer Confidentiality
 
-The link layer provides authentication (MIC/signature) but not
-confidentiality. Payload privacy is provided by OSCORE (RFC 8613) at the
-CoAP layer, indicated by E=1 in LLSec. Observers on the LoRa channel can
-see frame headers (LENGTH, LLSec, EPO, SEQ, DST) even when E=1.
+The link layer provides authentication (the 48-byte Schnorr signature) but not
+confidentiality. Payload privacy may be provided by OSCORE (RFC 8613) at the
+CoAP layer, but encrypted link frames with E=1 are outside the current
+interoperable profile and MUST be discarded.
 
 ### 8.2. Replay Attack Resistance
 

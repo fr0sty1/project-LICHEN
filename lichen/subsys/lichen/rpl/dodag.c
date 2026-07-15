@@ -241,7 +241,10 @@ void lichen_rpl_dodag_select_parent(struct lichen_rpl_dodag *d)
 
 	if (d->has_preferred_parent && !rpl_addr_eq(d->preferred_parent, best_addr)) {
 		struct lichen_rpl_parent *cur = find_parent(d, d->preferred_parent);
-		if (cur != NULL) {
+		/* SECURITY: Only apply hysteresis if current parent is still admissible.
+		 * RFC 6550 Section 8.2.2.4: a node must not increase its rank beyond
+		 * DAGMaxRankIncrease + cur_min_path_cost. */
+		if (cur != NULL && is_admissible(d, cur)) {
 			uint16_t cur_cost = path_cost(cur, mhri);
 			/*
 			 * Hysteresis: only switch if improvement exceeds threshold.
@@ -310,6 +313,15 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 			p->valid = false;
 		}
 		lichen_rpl_dodag_select_parent(d);
+		return;
+	}
+
+	/*
+	 * SECURITY: RFC 6550 Section 8.2.2.5 - reject parents with equal or
+	 * higher rank to prevent routing loops. Only accept neighbors with
+	 * strictly lower rank (unless we're unjoined with infinite rank).
+	 */
+	if (d->rank != LICHEN_RPL_INFINITE_RANK && dio->rank >= d->rank) {
 		return;
 	}
 
@@ -395,8 +407,11 @@ int lichen_rpl_dodag_expire_parents(struct lichen_rpl_dodag *d,
 			continue;
 		}
 
-		uint32_t age = now - p->last_updated;
-		if (age > max_age) {
+		/* Use signed comparison for 32-bit timestamp wraparound safety.
+		 * Deadline is when entry should expire; entry is expired if
+		 * now is at or past the deadline. Works for wraparound within ~24 days. */
+		uint32_t deadline = p->last_updated + max_age;
+		if ((int32_t)(now - deadline) >= 0) {
 			p->valid = false;
 			expired++;
 		}

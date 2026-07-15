@@ -33,17 +33,17 @@ pub mod gatt;
 pub use address::{AddressMapper, Ipv6AddrMeshtasticExt, MeshtasticNodeId};
 #[cfg(any(feature = "alloc", test))]
 pub use bridge::{
-    BridgeError, IncomingResult, MeshtasticBridge, RoutingErrorCode, BROADCAST_ADDR,
-    MAX_BRIDGE_QUEUE, MAX_TUNNEL_PAYLOAD, is_broadcast,
+    is_broadcast, BridgeError, IncomingResult, MeshtasticBridge, RoutingErrorCode, BROADCAST_ADDR,
+    MAX_BRIDGE_QUEUE, MAX_TUNNEL_PAYLOAD,
 };
 
 #[cfg(test)]
 mod tests {
     extern crate alloc;
-    use alloc::vec;
-    use alloc::vec::Vec;
     #[allow(deprecated)]
     use super::*;
+    use alloc::vec;
+    use alloc::vec::Vec;
 
     #[test]
     fn test_portnum_values() {

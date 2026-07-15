@@ -197,3 +197,43 @@ def test_process_dao_accepts_matching_rpl_instance_id() -> None:
     # Should succeed without error.
     root.process_dao(dao)
     assert root.routing_table.lookup(N1) == [N1]
+
+
+def test_transit_information_e_flag_parsing() -> None:
+    """RFC 6550 6.7.8: Parent Address is only present when E flag is set.
+
+    The parser must check the E flag and only require/parse parent address
+    when E=1. Options with E=0 (no parent address) must parse successfully.
+    """
+    from lichen.rpl.messages import RplOption
+
+    # E=1 (0x80): parent address present (standard LICHEN case)
+    e1_data = bytes([0x80, 0, 1, 30]) + ROOT.packed  # E=1, path_seq=1, lifetime=30
+    opt_e1 = RplOption(RplOptionType.TRANSIT_INFORMATION, e1_data)
+    ti_e1 = TransitInformation.from_option(opt_e1)
+    assert ti_e1.parent_address == ROOT
+    assert ti_e1.path_sequence == 1
+    assert ti_e1.path_lifetime == 30
+
+    # E=0: no parent address (RFC-compliant option from other implementations)
+    e0_data = bytes([0x00, 0, 2, 60])  # E=0, path_seq=2, lifetime=60
+    opt_e0 = RplOption(RplOptionType.TRANSIT_INFORMATION, e0_data)
+    ti_e0 = TransitInformation.from_option(opt_e0)
+    assert ti_e0.parent_address is None
+    assert ti_e0.path_sequence == 2
+    assert ti_e0.path_lifetime == 60
+
+
+def test_transit_information_e_flag_encoding() -> None:
+    """Verify E flag is correctly encoded when serializing Transit Information."""
+    # With parent address: E flag should be set (0x80)
+    ti_with_parent = TransitInformation(parent_address=ROOT, path_lifetime=30)
+    opt = ti_with_parent.to_option()
+    assert opt.data[0] & 0x80 == 0x80  # E flag is set
+    assert len(opt.data) == 4 + 16  # includes parent address
+
+    # Without parent address: E flag should be clear
+    ti_no_parent = TransitInformation(parent_address=None, path_lifetime=30)
+    opt_no_parent = ti_no_parent.to_option()
+    assert opt_no_parent.data[0] & 0x80 == 0x00  # E flag is clear
+    assert len(opt_no_parent.data) == 4  # no parent address

@@ -54,6 +54,9 @@ class SourceRoutingHeader:
         if data[0] != ROUTING_TYPE_SOURCE_ROUTE:
             raise RoutingError(f"not a source routing header: type {data[0]}")
         segments_left = data[1]
+        cmpr = data[2]  # CmprI (upper 4 bits) + CmprE (lower 4 bits)
+        if cmpr != 0:
+            raise RoutingError("compressed source routing headers not supported")
         addr_bytes = data[_SRH_FIELDS_LENGTH:]
         if len(addr_bytes) % 16 != 0:
             raise RoutingError("source-route address list is not 16-byte aligned")
@@ -120,17 +123,38 @@ def next_hop_upward(dodag: DodagState) -> IPv6Address | None:
 
 
 def insert_source_route(
-    packet: IPv6Packet, path: list[IPv6Address | str]
+    packet: IPv6Packet,
+    path: list[IPv6Address | str],
+    *,
+    expected_destination: IPv6Address | str | None = None,
 ) -> tuple[IPv6Packet, IPv6Address]:
     """At the root: prepend an SRH for ``path`` and return (packet, first hop).
 
     ``path`` is ``[h1, ..., hk, destination]``. The IPv6 destination is set to
     the first hop. A single-element path (destination is a direct neighbour)
     needs no SRH.
+
+    IMPORTANT: The final element of ``path`` must be the intended destination.
+    This function replaces the packet's destination address with the first hop;
+    if the path does not end with the actual final destination, that destination
+    is lost and the packet will stop at the last hop in the path.
+
+    When ``expected_destination`` is provided, the function validates that
+    ``path[-1]`` matches it and raises :class:`RoutingError` if not. Use this
+    when the intended destination is known to catch routing table bugs early.
+    The :class:`RoutingTable` class guarantees this property for paths it
+    returns via :meth:`~RoutingTable.build_source_route`.
     """
     hops = [to_ipv6(a) for a in path]
     if not hops:
         raise RoutingError("path must not be empty")
+    if expected_destination is not None:
+        expected = to_ipv6(expected_destination)
+        if hops[-1] != expected:
+            raise RoutingError(
+                f"path does not end with expected destination: "
+                f"path ends with {hops[-1]}, expected {expected}"
+            )
     first_hop = hops[0]
     new_header = replace(packet.header, dst_addr=first_hop)
 
@@ -175,10 +199,10 @@ def advance_source_route(
     if not 0 <= i < len(srh.addresses):
         raise RoutingError("segments_left inconsistent with address list")
     next_hop = srh.addresses[i]
-    srh.segments_left -= 1
+    new_srh = replace(srh, segments_left=srh.segments_left - 1)
 
     new_exts = list(packet.extension_headers)
-    new_exts[idx] = srh.to_extension_header()
+    new_exts[idx] = new_srh.to_extension_header()
     new_header = replace(packet.header, dst_addr=next_hop)
     new_packet = replace(packet, header=new_header, extension_headers=new_exts)
     return new_packet, next_hop

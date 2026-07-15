@@ -379,21 +379,21 @@ def l2_payload_vectors() -> list[dict]:
 
 def frame_vectors() -> list[dict]:
     cases = [
-        ("broadcast_min", "Broadcast, no address, 32-bit MIC",
+        ("broadcast_min", "Broadcast, no address, unsigned",
          LichenFrame(epoch=1, seqnum=2, dst_addr=b"", payload=b"abc",
-                     mic=bytes([0x01, 0x02, 0x03, 0x04]), addr_mode=AddrMode.NONE,
+                     mic=b"", addr_mode=AddrMode.NONE,
                      mic_length=MicLength.BITS32)),
         ("short_addr", "16-bit short destination address",
          LichenFrame(epoch=0x10, seqnum=0x2030, dst_addr=bytes([0xAB, 0xCD]),
-                     payload=b"hi", mic=bytes(4), addr_mode=AddrMode.SHORT,
+                      payload=b"hi", mic=b"", addr_mode=AddrMode.SHORT,
                      mic_length=MicLength.BITS32)),
         ("extended_addr_mic64", "64-bit address, 64-bit MIC",
          LichenFrame(epoch=0xFF, seqnum=0xFFFF, dst_addr=bytes(range(8)),
-                     payload=b"data", mic=bytes(range(8)),
+                      payload=b"data", mic=b"",
                      addr_mode=AddrMode.EXTENDED, mic_length=MicLength.BITS64)),
-        ("signed_encrypted", "Signature + encrypted flags set",
+        ("signed_encrypted", "Unsupported signature + encrypted combination",
          LichenFrame(epoch=3, seqnum=4, dst_addr=b"", payload=b"x",
-                     mic=bytes(4), addr_mode=AddrMode.NONE,
+                     mic=bytes(48), addr_mode=AddrMode.NONE,
                      mic_length=MicLength.BITS32, signature_present=True,
                      encrypted=True)),
     ]
@@ -414,9 +414,15 @@ def frame_vectors() -> list[dict]:
                     "signature_present": frame.signature_present,
                     "encrypted": frame.encrypted,
                 },
-                "encoded": frame.to_bytes().hex(),
+                "encoded": (
+                    (bytes.fromhex("35 60 03 0004 78" + "00" * 48)
+                     if name == "signed_encrypted" else frame.to_bytes())
+                    .hex()
+                ),
             }
         )
+        if name == "signed_encrypted":
+            out[-1]["expect"] = {"error": "signed_encrypted_unsupported"}
     return out
 
 

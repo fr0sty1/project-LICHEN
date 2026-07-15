@@ -26,7 +26,15 @@ class NodeMetrics:
 
     Tracks transmission/reception counts, byte totals, unique peers seen,
     and packet hashes for verifying cross-implementation interoperability.
+
+    The packet hash sets are capped at ``_PACKET_HASH_SET_MAX_SIZE`` to prevent
+    unbounded memory growth in long-running simulations. Once the cap is reached,
+    no new hashes are added, but counts (tx_count, rx_count) remain accurate.
     """
+
+    # Maximum entries in packet_hashes_sent and packet_hashes_received.
+    # Prevents unbounded memory growth in long-running simulations.
+    _PACKET_HASH_SET_MAX_SIZE: int = field(default=10000, repr=False)
 
     tx_count: int = 0
     rx_count: int = 0
@@ -46,7 +54,8 @@ class NodeMetrics:
         """
         self.tx_count += 1
         self.tx_bytes += len(payload)
-        self.packet_hashes_sent.add(packet_hash)
+        if len(self.packet_hashes_sent) < self._PACKET_HASH_SET_MAX_SIZE:
+            self.packet_hashes_sent.add(packet_hash)
 
     def record_rx(self, payload: bytes, packet_hash: str, from_peer: str | None = None) -> None:
         """Record a reception.
@@ -58,7 +67,8 @@ class NodeMetrics:
         """
         self.rx_count += 1
         self.rx_bytes += len(payload)
-        self.packet_hashes_received.add(packet_hash)
+        if len(self.packet_hashes_received) < self._PACKET_HASH_SET_MAX_SIZE:
+            self.packet_hashes_received.add(packet_hash)
         if from_peer is not None:
             self.unique_peers.add(from_peer)
 
@@ -106,13 +116,23 @@ class Metrics:
     totals.
     """
 
+    # Max age for _tx_start_times entries (60 seconds in microseconds).
+    # Entries older than this are pruned to prevent unbounded memory growth.
+    _TX_START_TIMES_MAX_AGE_US = 60_000_000
+    # Only prune when dict exceeds this size (avoids overhead for small runs).
+    _TX_START_TIMES_PRUNE_THRESHOLD = 1000
+
     def __init__(self) -> None:
         self._transmissions = 0
         self._tx_start_times: dict[str, int] = {}  # tx_id -> start_time_us
         self._delivered: set[tuple[str, str]] = set()  # (rx_node_id, tx_id)
         self._collision_keys: set[tuple[str, frozenset[str]]] = set()
         self._collisions = 0
-        self._latencies_us: list[int] = []
+        # Running statistics for latency (O(1) memory vs unbounded list).
+        self._latency_count = 0
+        self._latency_sum_us = 0
+        self._latency_min_us: int | None = None
+        self._latency_max_us: int | None = None
 
     def record_transmission_start(self, tx_id: str, start_time_us: int) -> None:
         """Record that a transmission has started.
@@ -126,6 +146,13 @@ class Metrics:
             return
         self._tx_start_times[tx_id] = start_time_us
         self._transmissions += 1
+
+        # Prune old entries to prevent unbounded memory growth.
+        if len(self._tx_start_times) > self._TX_START_TIMES_PRUNE_THRESHOLD:
+            cutoff = start_time_us - self._TX_START_TIMES_MAX_AGE_US
+            old_keys = [k for k, v in self._tx_start_times.items() if v < cutoff]
+            for k in old_keys:
+                del self._tx_start_times[k]
 
     def record_reception(self, rx_node_id: str, tx_id: str, time_us: int) -> None:
         """Record a successful reception of a transmission by a node.
@@ -145,14 +172,21 @@ class Metrics:
         self._delivered.add(key)
         start = self._tx_start_times.get(tx_id)
         if start is not None and time_us >= start:
-            self._latencies_us.append(time_us - start)
+            latency = time_us - start
+            self._latency_count += 1
+            self._latency_sum_us += latency
+            if self._latency_min_us is None or latency < self._latency_min_us:
+                self._latency_min_us = latency
+            if self._latency_max_us is None or latency > self._latency_max_us:
+                self._latency_max_us = latency
 
-    def record_collision(self, rx_node_id: str, tx_ids: Iterable[str]) -> None:
+    def record_collision(self, rx_node_id: str, tx_ids: Iterable[str]) -> bool:
         """Record a collision at a receiver among overlapping transmissions.
 
         Idempotent per ``(rx_node_id, frozenset(tx_ids))``: while a given set
         of transmissions overlaps at a receiver, the polling loop observes the
-        same collision repeatedly; it is counted once.
+        same collision repeatedly; it is counted once. Returns ``True`` only
+        for the first observation of a collision identity.
 
         Args:
             rx_node_id: ID of the receiving node experiencing the collision.
@@ -160,9 +194,10 @@ class Metrics:
         """
         key = (rx_node_id, frozenset(tx_ids))
         if key in self._collision_keys:
-            return
+            return False
         self._collision_keys.add(key)
         self._collisions += 1
+        return True
 
     @property
     def transmissions(self) -> int:
@@ -204,13 +239,13 @@ class Metrics:
 
     def latency_stats(self) -> LatencyStats:
         """Return min/max/mean latency over all successful deliveries."""
-        if not self._latencies_us:
+        if self._latency_count == 0:
             return LatencyStats(count=0, min_us=None, max_us=None, mean_us=None)
         return LatencyStats(
-            count=len(self._latencies_us),
-            min_us=min(self._latencies_us),
-            max_us=max(self._latencies_us),
-            mean_us=sum(self._latencies_us) / len(self._latencies_us),
+            count=self._latency_count,
+            min_us=self._latency_min_us,
+            max_us=self._latency_max_us,
+            mean_us=self._latency_sum_us / self._latency_count,
         )
 
     def snapshot(self) -> dict[str, object]:
@@ -237,4 +272,7 @@ class Metrics:
         self._delivered.clear()
         self._collision_keys.clear()
         self._collisions = 0
-        self._latencies_us.clear()
+        self._latency_count = 0
+        self._latency_sum_us = 0
+        self._latency_min_us = None
+        self._latency_max_us = None

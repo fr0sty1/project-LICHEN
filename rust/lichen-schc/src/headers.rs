@@ -106,11 +106,19 @@ impl core::fmt::Display for PacketError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::TooShort { expected, actual } => {
-                write!(f, "packet too short: expected {} bytes, got {}", expected, actual)
+                write!(
+                    f,
+                    "packet too short: expected {} bytes, got {}",
+                    expected, actual
+                )
             }
             Self::InvalidPacket(msg) => write!(f, "invalid packet: {}", msg),
             Self::BufferTooSmall { needed, available } => {
-                write!(f, "buffer too small: need {} bytes, have {}", needed, available)
+                write!(
+                    f,
+                    "buffer too small: need {} bytes, have {}",
+                    needed, available
+                )
             }
         }
     }
@@ -186,7 +194,13 @@ fn finalize(sum: u32) -> u16 {
     !(s as u16)
 }
 
-fn udp_checksum(src: &[u8; 16], dst: &[u8; 16], src_port: u16, dst_port: u16, payload: &[u8]) -> u16 {
+fn udp_checksum(
+    src: &[u8; 16],
+    dst: &[u8; 16],
+    src_port: u16,
+    dst_port: u16,
+    payload: &[u8],
+) -> u16 {
     let udp_len = (8 + payload.len()) as u16;
     let mut sum = pseudo_sum(src, dst, NEXT_HEADER_UDP, udp_len);
     sum = oc_add(sum, src_port as u32);
@@ -221,9 +235,7 @@ fn parse_ipv6_fields<'a>(raw: &'a [u8], parsed: &mut ParsedPacket<'a>) -> Result
     }
 
     let traffic_class = ((raw[0] & 0x0F) << 4) | (raw[1] >> 4);
-    let flow_label = ((raw[1] as u32 & 0x0F) << 16)
-        | ((raw[2] as u32) << 8)
-        | (raw[3] as u32);
+    let flow_label = ((raw[1] as u32 & 0x0F) << 16) | ((raw[2] as u32) << 8) | (raw[3] as u32);
     let payload_length = u16::from_be_bytes([raw[4], raw[5]]);
     let next_header = raw[6];
     let hop_limit = raw[7];
@@ -282,7 +294,12 @@ pub trait PacketProfile {
     /// Build a packet from fields and a tail.
     ///
     /// Returns the number of bytes written to `out`.
-    fn build(&self, fields: &[(FieldId, u128)], tail: &[u8], out: &mut [u8]) -> Result<usize, PacketError>;
+    fn build(
+        &self,
+        fields: &[(FieldId, u128)],
+        tail: &[u8],
+        out: &mut [u8],
+    ) -> Result<usize, PacketError>;
 }
 
 // ============================================================================
@@ -338,6 +355,12 @@ fn parse_coap_udp<'a>(raw: &'a [u8]) -> Result<ParsedPacket<'a>, PacketError> {
     }
 
     let payload_length = u16::from_be_bytes([raw[4], raw[5]]) as usize;
+    if IPV6_HEADER_LEN + payload_length > raw.len() {
+        return Err(PacketError::TooShort {
+            expected: IPV6_HEADER_LEN + payload_length,
+            actual: raw.len(),
+        });
+    }
     let udp = &raw[IPV6_HEADER_LEN..IPV6_HEADER_LEN + payload_length];
     let coap = &udp[UDP_HEADER_LEN..];
     let tail = &coap[COAP_FIXED_HEADER..];
@@ -367,7 +390,11 @@ fn parse_coap_udp<'a>(raw: &'a [u8]) -> Result<ParsedPacket<'a>, PacketError> {
     Ok(parsed)
 }
 
-fn build_coap_udp(fields: &[(FieldId, u128)], tail: &[u8], out: &mut [u8]) -> Result<usize, PacketError> {
+fn build_coap_udp(
+    fields: &[(FieldId, u128)],
+    tail: &[u8],
+    out: &mut [u8],
+) -> Result<usize, PacketError> {
     // Helper to get required field
     let get = |id: &str| -> Result<u128, PacketError> {
         for (fid, val) in fields {
@@ -424,7 +451,16 @@ fn build_coap_udp(fields: &[(FieldId, u128)], tail: &[u8], out: &mut [u8]) -> Re
     let cksum = udp_checksum(&src, &dst, src_port, dst_port, &coap_buf[..coap_len]);
 
     // Write IPv6 header
-    write_ipv6_header(out, udp_len, NEXT_HEADER_UDP, hop_limit, traffic_class, flow_label, &src, &dst);
+    write_ipv6_header(
+        out,
+        udp_len,
+        NEXT_HEADER_UDP,
+        hop_limit,
+        traffic_class,
+        flow_label,
+        &src,
+        &dst,
+    );
 
     // Write UDP header
     out[40..42].copy_from_slice(&src_port.to_be_bytes());
@@ -451,7 +487,12 @@ impl PacketProfile for CoapUdpLinkLocalProfile {
         parse_coap_udp(raw)
     }
 
-    fn build(&self, fields: &[(FieldId, u128)], tail: &[u8], out: &mut [u8]) -> Result<usize, PacketError> {
+    fn build(
+        &self,
+        fields: &[(FieldId, u128)],
+        tail: &[u8],
+        out: &mut [u8],
+    ) -> Result<usize, PacketError> {
         build_coap_udp(fields, tail, out)
     }
 }
@@ -469,7 +510,12 @@ impl PacketProfile for CoapUdpGlobalProfile {
         parse_coap_udp(raw)
     }
 
-    fn build(&self, fields: &[(FieldId, u128)], tail: &[u8], out: &mut [u8]) -> Result<usize, PacketError> {
+    fn build(
+        &self,
+        fields: &[(FieldId, u128)],
+        tail: &[u8],
+        out: &mut [u8],
+    ) -> Result<usize, PacketError> {
         build_coap_udp(fields, tail, out)
     }
 }
@@ -521,6 +567,12 @@ impl PacketProfile for Icmpv6EchoProfile {
         }
 
         let payload_length = u16::from_be_bytes([raw[4], raw[5]]) as usize;
+        if IPV6_HEADER_LEN + payload_length > raw.len() {
+            return Err(PacketError::TooShort {
+                expected: IPV6_HEADER_LEN + payload_length,
+                actual: raw.len(),
+            });
+        }
         let icmpv6 = &raw[IPV6_HEADER_LEN..IPV6_HEADER_LEN + payload_length];
         let tail = &icmpv6[ICMPV6_ECHO_BASE..];
 
@@ -529,14 +581,28 @@ impl PacketProfile for Icmpv6EchoProfile {
 
         parsed.add_field("ICMPv6.type", icmpv6[0] as u128);
         parsed.add_field("ICMPv6.code", icmpv6[1] as u128);
-        parsed.add_field("ICMPv6.checksum", u16::from_be_bytes([icmpv6[2], icmpv6[3]]) as u128);
-        parsed.add_field("ICMPv6.identifier", u16::from_be_bytes([icmpv6[4], icmpv6[5]]) as u128);
-        parsed.add_field("ICMPv6.sequence", u16::from_be_bytes([icmpv6[6], icmpv6[7]]) as u128);
+        parsed.add_field(
+            "ICMPv6.checksum",
+            u16::from_be_bytes([icmpv6[2], icmpv6[3]]) as u128,
+        );
+        parsed.add_field(
+            "ICMPv6.identifier",
+            u16::from_be_bytes([icmpv6[4], icmpv6[5]]) as u128,
+        );
+        parsed.add_field(
+            "ICMPv6.sequence",
+            u16::from_be_bytes([icmpv6[6], icmpv6[7]]) as u128,
+        );
 
         Ok(parsed)
     }
 
-    fn build(&self, fields: &[(FieldId, u128)], tail: &[u8], out: &mut [u8]) -> Result<usize, PacketError> {
+    fn build(
+        &self,
+        fields: &[(FieldId, u128)],
+        tail: &[u8],
+        out: &mut [u8],
+    ) -> Result<usize, PacketError> {
         let get = |id: &str| -> Result<u128, PacketError> {
             for (fid, val) in fields {
                 if *fid == id {
@@ -581,7 +647,16 @@ impl PacketProfile for Icmpv6EchoProfile {
 
         let cksum = icmpv6_checksum(&src, &dst, &icmp_buf[..icmp_len]);
 
-        write_ipv6_header(out, icmp_len as u16, NEXT_HEADER_ICMPV6, hop_limit, traffic_class, flow_label, &src, &dst);
+        write_ipv6_header(
+            out,
+            icmp_len as u16,
+            NEXT_HEADER_ICMPV6,
+            hop_limit,
+            traffic_class,
+            flow_label,
+            &src,
+            &dst,
+        );
 
         out[40] = icmp_type;
         out[41] = icmp_code;
@@ -647,6 +722,12 @@ impl PacketProfile for RplDioProfile {
         }
 
         let payload_length = u16::from_be_bytes([raw[4], raw[5]]) as usize;
+        if IPV6_HEADER_LEN + payload_length > raw.len() {
+            return Err(PacketError::TooShort {
+                expected: IPV6_HEADER_LEN + payload_length,
+                actual: raw.len(),
+            });
+        }
         let icmpv6 = &raw[IPV6_HEADER_LEN..IPV6_HEADER_LEN + payload_length];
         let rpl = &icmpv6[ICMPV6_HEADER..];
         let tail = &rpl[DIO_BASE..];
@@ -656,7 +737,10 @@ impl PacketProfile for RplDioProfile {
 
         parsed.add_field("ICMPv6.type", icmpv6[0] as u128);
         parsed.add_field("ICMPv6.code", icmpv6[1] as u128);
-        parsed.add_field("ICMPv6.checksum", u16::from_be_bytes([icmpv6[2], icmpv6[3]]) as u128);
+        parsed.add_field(
+            "ICMPv6.checksum",
+            u16::from_be_bytes([icmpv6[2], icmpv6[3]]) as u128,
+        );
 
         parsed.add_field("RPL.instance", rpl[0] as u128);
         parsed.add_field("RPL.version", rpl[1] as u128);
@@ -672,7 +756,12 @@ impl PacketProfile for RplDioProfile {
         Ok(parsed)
     }
 
-    fn build(&self, fields: &[(FieldId, u128)], tail: &[u8], out: &mut [u8]) -> Result<usize, PacketError> {
+    fn build(
+        &self,
+        fields: &[(FieldId, u128)],
+        tail: &[u8],
+        out: &mut [u8],
+    ) -> Result<usize, PacketError> {
         let get = |id: &str| -> Result<u128, PacketError> {
             for (fid, val) in fields {
                 if *fid == id {
@@ -727,7 +816,16 @@ impl PacketProfile for RplDioProfile {
 
         let cksum = icmpv6_checksum(&src, &dst, &icmp_buf[..icmp_len]);
 
-        write_ipv6_header(out, icmp_len as u16, NEXT_HEADER_ICMPV6, hop_limit, traffic_class, flow_label, &src, &dst);
+        write_ipv6_header(
+            out,
+            icmp_len as u16,
+            NEXT_HEADER_ICMPV6,
+            hop_limit,
+            traffic_class,
+            flow_label,
+            &src,
+            &dst,
+        );
 
         out[40..40 + icmp_len].copy_from_slice(&icmp_buf[..icmp_len]);
         out[42] = (cksum >> 8) as u8;
@@ -782,6 +880,12 @@ impl PacketProfile for RplDaoProfile {
         }
 
         let payload_length = u16::from_be_bytes([raw[4], raw[5]]) as usize;
+        if IPV6_HEADER_LEN + payload_length > raw.len() {
+            return Err(PacketError::TooShort {
+                expected: IPV6_HEADER_LEN + payload_length,
+                actual: raw.len(),
+            });
+        }
         let icmpv6 = &raw[IPV6_HEADER_LEN..IPV6_HEADER_LEN + payload_length];
         let rpl = &icmpv6[ICMPV6_HEADER..];
         let tail = &rpl[DAO_BASE_WITH_DODAGID..];
@@ -791,7 +895,10 @@ impl PacketProfile for RplDaoProfile {
 
         parsed.add_field("ICMPv6.type", icmpv6[0] as u128);
         parsed.add_field("ICMPv6.code", icmpv6[1] as u128);
-        parsed.add_field("ICMPv6.checksum", u16::from_be_bytes([icmpv6[2], icmpv6[3]]) as u128);
+        parsed.add_field(
+            "ICMPv6.checksum",
+            u16::from_be_bytes([icmpv6[2], icmpv6[3]]) as u128,
+        );
 
         parsed.add_field("RPL.instance", rpl[0] as u128);
         parsed.add_field("RPL.kd_flags", rpl[1] as u128);
@@ -804,7 +911,12 @@ impl PacketProfile for RplDaoProfile {
         Ok(parsed)
     }
 
-    fn build(&self, fields: &[(FieldId, u128)], tail: &[u8], out: &mut [u8]) -> Result<usize, PacketError> {
+    fn build(
+        &self,
+        fields: &[(FieldId, u128)],
+        tail: &[u8],
+        out: &mut [u8],
+    ) -> Result<usize, PacketError> {
         let get = |id: &str| -> Result<u128, PacketError> {
             for (fid, val) in fields {
                 if *fid == id {
@@ -852,7 +964,16 @@ impl PacketProfile for RplDaoProfile {
 
         let cksum = icmpv6_checksum(&src, &dst, &icmp_buf[..icmp_len]);
 
-        write_ipv6_header(out, icmp_len as u16, NEXT_HEADER_ICMPV6, hop_limit, traffic_class, flow_label, &src, &dst);
+        write_ipv6_header(
+            out,
+            icmp_len as u16,
+            NEXT_HEADER_ICMPV6,
+            hop_limit,
+            traffic_class,
+            flow_label,
+            &src,
+            &dst,
+        );
 
         out[40..40 + icmp_len].copy_from_slice(&icmp_buf[..icmp_len]);
         out[42] = (cksum >> 8) as u8;
@@ -897,22 +1018,18 @@ mod tests {
 
     #[test]
     fn coap_linklocal_matches() {
-        let packet = hex(
-            "6000000000131140fe800000000000000000000000000001\
+        let packet = hex("6000000000131140fe800000000000000000000000000001\
              fe80000000000000000000000000000216331633001328dd\
-             40011234ff737461747573",
-        );
+             40011234ff737461747573");
         let profile = CoapUdpLinkLocalProfile;
         assert!(profile.matches(&packet));
     }
 
     #[test]
     fn coap_linklocal_parse_build_round_trip() {
-        let packet = hex(
-            "6000000000131140fe800000000000000000000000000001\
+        let packet = hex("6000000000131140fe800000000000000000000000000001\
              fe80000000000000000000000000000216331633001328dd\
-             40011234ff737461747573",
-        );
+             40011234ff737461747573");
         let profile = CoapUdpLinkLocalProfile;
 
         let parsed = profile.parse(&packet).unwrap();
@@ -925,17 +1042,17 @@ mod tests {
         assert_eq!(parsed.get("CoAP.mid"), Some(0x1234));
 
         let mut out = [0u8; 256];
-        let n = profile.build(parsed.as_slice(), parsed.tail, &mut out).unwrap();
+        let n = profile
+            .build(parsed.as_slice(), parsed.tail, &mut out)
+            .unwrap();
         assert_eq!(&out[..n], packet.as_slice());
     }
 
     #[test]
     fn coap_global_matches() {
-        let packet = hex(
-            "600000000013114020010db8000000000000000000000001\
+        let packet = hex("600000000013114020010db8000000000000000000000001\
              20010db800000000000000000000000216331633001\
-             3ca6c40011234ff737461747573",
-        );
+             3ca6c40011234ff737461747573");
         let profile = CoapUdpGlobalProfile;
         assert!(profile.matches(&packet));
         assert!(!CoapUdpLinkLocalProfile.matches(&packet));
@@ -943,11 +1060,9 @@ mod tests {
 
     #[test]
     fn icmpv6_echo_matches_and_parses() {
-        let packet = hex(
-            "60000000000c3a40fe800000000000000000000000000001\
+        let packet = hex("60000000000c3a40fe800000000000000000000000000001\
              fe8000000000000000000000000000028000f80eabcd0007\
-             70696e67",
-        );
+             70696e67");
         let profile = Icmpv6EchoProfile;
         assert!(profile.matches(&packet));
 
@@ -960,11 +1075,9 @@ mod tests {
 
     #[test]
     fn rpl_dio_matches_and_parses() {
-        let packet = hex(
-            "60000000001c3a40fe800000000000000000000000000001\
+        let packet = hex("60000000001c3a40fe800000000000000000000000000001\
              fe8000000000000000000000000000029b01e01f00010100\
-             88000000fe800000000000000000000000000001",
-        );
+             88000000fe800000000000000000000000000001");
         let profile = RplDioProfile;
         assert!(profile.matches(&packet));
 
@@ -977,11 +1090,9 @@ mod tests {
 
     #[test]
     fn rpl_dao_matches_and_parses() {
-        let packet = hex(
-            "6000000000183a40fe800000000000000000000000000001\
+        let packet = hex("6000000000183a40fe800000000000000000000000000001\
              fe8000000000000000000000000000029b0268df00400005\
-             fe800000000000000000000000000001",
-        );
+             fe800000000000000000000000000001");
         let profile = RplDaoProfile;
         assert!(profile.matches(&packet));
 
@@ -995,10 +1106,8 @@ mod tests {
     #[test]
     fn dao_without_d_flag_does_not_match() {
         // DAO with D flag clear (kd_flags = 0x00)
-        let packet = hex(
-            "6000000000083a40fe800000000000000000000000000001\
-             fe8000000000000000000000000000029b0200000005",
-        );
+        let packet = hex("6000000000083a40fe800000000000000000000000000001\
+             fe8000000000000000000000000000029b0200000005");
         let profile = RplDaoProfile;
         assert!(!profile.matches(&packet));
     }

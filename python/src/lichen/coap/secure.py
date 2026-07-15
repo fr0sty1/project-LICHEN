@@ -312,13 +312,16 @@ class SecureDatagramChannel(DatagramChannel):
             # Decode with a remote so aiocoap knows the source
             remote = LichenRemote(source)
             msg = Message.decode(data, remote)
-            msg.direction = Direction.INCOMING
 
             # Check for OSCORE option (option number 9)
             # Use 'oscore' attribute (aiocoap >= 0.4 naming)
             has_oscore = msg.opt.oscore is not None
 
             if has_oscore:
+                # Set direction only for OSCORE path where _unprotect needs it.
+                # EDHOC and passthrough paths dispatch raw bytes, so the decoded
+                # message (and its direction) is not used.
+                msg.direction = Direction.INCOMING
                 # OSCORE protected - unprotect it
                 plaintext = await self._unprotect(msg, source)
                 if plaintext is not None and self._receiver is not None:
@@ -359,10 +362,11 @@ class SecureDatagramChannel(DatagramChannel):
             # Determine if this is a request or response
             is_response = msg.code.is_response()
 
-            # For responses, we need the request_id from when we sent the request
+            # For responses, we need the request_id from when we sent the request.
+            # Use atomic pop(key, None) to avoid race between concurrent tasks.
             request_id = None
-            if is_response and msg.token in peer_ctx.pending_requests:
-                request_id = peer_ctx.pending_requests.pop(msg.token)
+            if is_response:
+                request_id = peer_ctx.pending_requests.pop(msg.token, None)
 
             # Unprotect using aiocoap's OSCORE
             unprotected_msg, new_request_id = peer_ctx.oscore.unprotect(msg, request_id)
@@ -424,10 +428,10 @@ class SecureDatagramChannel(DatagramChannel):
             msg = Message.decode(data, remote)
             msg.direction = Direction.OUTGOING
 
-            # Determine request_id for responses
+            # Determine request_id for responses (stored during _unprotect of the request)
             request_id = None
-            if msg.code.is_response() and msg.token in peer_ctx.pending_requests:
-                request_id = peer_ctx.pending_requests.get(msg.token)
+            if msg.code.is_response():
+                request_id = peer_ctx.pending_requests.pop(msg.token, None)
 
             # Protect with OSCORE
             protected_msg, new_request_id = peer_ctx.oscore.protect(msg, request_id)
@@ -495,12 +499,13 @@ class SecureDatagramChannel(DatagramChannel):
             edhoc_ctx = initiator.export_oscore()
             oscore_ctx = MemorySecurityContext.from_edhoc(edhoc_ctx)
 
-            # Store the context
-            await self._context_store.put(dest, oscore_ctx, peer_pubkey)
-
-            # Pin the peer key if using TOFU
+            # Pin the peer key if using TOFU (do this BEFORE storing context
+            # to avoid leaving invalid context if pin_peer raises on key mismatch)
             if isinstance(self._peer_resolver, TofuPeerResolver):
                 await self._peer_resolver.pin_peer(dest, peer_pubkey)
+
+            # Store the context (only after TOFU check passes)
+            await self._context_store.put(dest, oscore_ctx, peer_pubkey)
 
             logger.info("Established OSCORE context with %s via EDHOC", dest)
             future.set_result(None)

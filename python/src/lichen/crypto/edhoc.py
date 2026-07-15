@@ -235,7 +235,13 @@ class EdhocInitiator:
     def create(
         cls, identity: Identity, c_i: bytes | None = None, method: Method = Method.SIGN_SIGN
     ) -> EdhocInitiator:
-        """Create an EDHOC initiator with fresh ephemeral keys."""
+        """Create an EDHOC initiator with fresh ephemeral keys.
+
+        Note: For SIGN_SIGN mode, we generate fresh ephemeral X25519 keys
+        per-session rather than using Identity.x25519_*. The identity's
+        Ed25519 keys are used only for signatures. Static-DH modes would
+        use Identity.x25519_private for the DH exchange.
+        """
         if c_i is None:
             c_i = os.urandom(1)
         eph_sk, eph_pk = _x25519_keypair()
@@ -490,7 +496,13 @@ class EdhocResponder:
     def create(
         cls, identity: Identity, c_r: bytes | None = None, method: Method = Method.SIGN_SIGN
     ) -> EdhocResponder:
-        """Create an EDHOC responder with fresh ephemeral keys."""
+        """Create an EDHOC responder with fresh ephemeral keys.
+
+        Note: For SIGN_SIGN mode, we generate fresh ephemeral X25519 keys
+        per-session rather than using Identity.x25519_*. The identity's
+        Ed25519 keys are used only for signatures. Static-DH modes would
+        use Identity.x25519_private for the DH exchange.
+        """
         if c_r is None:
             c_r = os.urandom(1)
         eph_sk, eph_pk = _x25519_keypair()
@@ -519,6 +531,16 @@ class EdhocResponder:
         if len(items) < 4:
             raise ValueError(
                 f"Malformed message_1: expected at least 4 CBOR items, got {len(items)}"
+            )
+
+        # Extract and validate METHOD from METHOD_CORR
+        # METHOD_CORR = method * 4 + corr (RFC 9528 Section 3.2)
+        method_corr = items[0]
+        received_method = method_corr // 4
+        if received_method != self.method:
+            raise ValueError(
+                f"Method mismatch: initiator sent method={received_method}, "
+                f"responder expects method={self.method}"
             )
 
         suites_i = items[1]

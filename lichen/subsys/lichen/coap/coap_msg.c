@@ -644,7 +644,7 @@ static size_t encode_inbox_cbor(uint8_t *buf, size_t buf_size)
 	cbor_put_key(buf, &off, "messages");
 	cbor_put_array_header(buf, &off, (uint8_t)count);
 
-	for (size_t i = 0; i < count && off < buf_size - 100; i++) {
+	for (size_t i = 0; i < count && off + 100 < buf_size; i++) {
 		const struct lichen_msg *msg = &s_inbox[i];
 
 		if (format_ipv6_addr(msg->peer_addr, addr_str,

@@ -122,12 +122,16 @@ struct lichen_mesh_prefix {
 };
 
 /**
- * @brief DTN buffered message (spec 9.8).
+ * @brief DTN buffered message for router (spec 9.8).
  *
  * SECURITY: data is a static buffer; data is copied on enqueue to prevent
  * use-after-free if caller frees their buffer before message expires.
+ *
+ * Note: This is distinct from struct lichen_dtn_message in dtn.h, which is
+ * the standalone DTN module with larger buffers. This router-specific version
+ * is for the embedded DTN buffer feature.
  */
-struct lichen_dtn_message {
+struct lichen_router_dtn_message {
 	uint8_t destination_iid[8]; /**< 8-byte IID of destination */
 	uint8_t data[CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGE_SIZE]; /**< Copied message data */
 	size_t len;                 /**< Message length */
@@ -254,7 +258,7 @@ struct lichen_router {
 
 #if CONFIG_LICHEN_ROUTER_DTN_BUFFER_SIZE > 0
 	/* DTN store-and-forward buffer (spec 9.8) */
-	struct lichen_dtn_message dtn_buffer[CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGES];
+	struct lichen_router_dtn_message dtn_buffer[CONFIG_LICHEN_ROUTER_DTN_MAX_MESSAGES];
 	size_t dtn_buffer_bytes;
 #endif
 
@@ -399,13 +403,15 @@ void lichen_router_remove_mesh_prefix(struct lichen_router *router,
 /**
  * @brief Callback when LOADng discovers a route.
  *
- * Releases pending packets that can now be forwarded.
+ * Installs a gradient entry for the discovered route.
+ * Caller should then retrieve pending packets via lichen_router_get_pending(),
+ * forward them, and clear with lichen_router_clear_pending().
  *
  * @param router Router instance.
  * @param dst_iid 8-byte destination IID.
  * @param next_hop 16-byte next hop IPv6 address.
  * @param now_ms Current time in milliseconds.
- * @return Number of pending packets released.
+ * @return Number of pending packets awaiting forwarding.
  */
 int lichen_router_on_route_discovered(struct lichen_router *router,
 				      const uint8_t dst_iid[8],
@@ -469,7 +475,12 @@ int lichen_router_dtn_get_pending_iids(struct lichen_router *router,
 				       size_t max_iids);
 
 /**
- * @brief Retrieve and remove all DTN messages for a destination.
+ * @brief Retrieve all DTN messages for a destination.
+ *
+ * Returns pointers to messages in the DTN buffer for the given destination.
+ * The messages remain valid (reserved) until explicitly released via
+ * lichen_router_dtn_release(). The caller must release each message when
+ * done to free the slot for reuse.
  *
  * @param router Router instance.
  * @param dst_iid 8-byte destination IID.
@@ -479,8 +490,20 @@ int lichen_router_dtn_get_pending_iids(struct lichen_router *router,
  */
 int lichen_router_dtn_retrieve(struct lichen_router *router,
 			       const uint8_t dst_iid[8],
-			       struct lichen_dtn_message **out_messages,
+			       struct lichen_router_dtn_message **out_messages,
 			       size_t max_messages);
+
+/**
+ * @brief Release a DTN message after processing.
+ *
+ * Marks the message slot as free for reuse. Must be called for each message
+ * returned by lichen_router_dtn_retrieve() after the caller is done using it.
+ *
+ * @param router Router instance.
+ * @param msg Message to release.
+ */
+void lichen_router_dtn_release(struct lichen_router *router,
+			       struct lichen_router_dtn_message *msg);
 
 /**
  * @brief Expire old DTN messages.

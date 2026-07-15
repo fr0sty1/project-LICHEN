@@ -10,12 +10,12 @@
 #include <zephyr/kernel.h>
 #include <zephyr/pm/device.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/sys/crc.h>
 #if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
 #include <zephyr/usb/usb_device.h>
 #endif
 
 #include <lichen/hal.h>
+#include "../../../subsys/lichen/l2/lichen_util.h"
 
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 #include <lichen/native.h>
@@ -45,20 +45,38 @@ LOG_MODULE_REGISTER(lichen_puck, LOG_LEVEL_INF);
 #define BEACON_INTERVAL_MS CONFIG_LICHEN_PUCK_BEACON_INTERVAL_MS
 
 /*
- * LICHEN announce frame with 32-bit CRC MIC.
- *   [0] length = 9   (total frame size)
- *   [1] llsec  = 0x00  (AddrMode=0, MIC32, no sig, no enc)
+ * Unsigned LICHEN neighbor beacon.
+ *   [0] length = 4   (body length; total frame size is 5)
+ *   [1] llsec  = 0x00  (AddrMode=0, no signature, no encryption)
  *   [2] epoch  = 0
  *   [3] seqhi  = 0
  *   [4] seqlo  = incremented on each TX
- *   [5-8] MIC  = CRC32 of bytes 1-4 (llsec through seqlo)
  */
 #define BEACON_HDR_LEN 5
-#define BEACON_MIC_LEN 4
-#define BEACON_TOTAL_LEN (BEACON_HDR_LEN + BEACON_MIC_LEN)
+#define BEACON_TOTAL_LEN BEACON_HDR_LEN
 static uint8_t s_beacon[BEACON_TOTAL_LEN];
 static uint8_t s_seqnum;
 static uint8_t s_epoch;
+
+static void telemetry_packet(const char *event, const uint8_t *payload, size_t len,
+				     uint8_t seq, int16_t rssi, int8_t snr)
+{
+	uint8_t digest[32];
+	char hash[17];
+
+	if (lichen_sha256(payload, len, digest) != 0) {
+		LOG_ERR("TELEMETRY hash_failed event=%s", event);
+		return;
+	}
+	for (size_t i = 0; i < 8; i++) {
+		snprintk(&hash[i * 2], 3, "%02x", digest[i]);
+	}
+	hash[16] = '\0';
+	LOG_INF("TELEMETRY {\"schema\":\"lichen.telemetry.v1\",\"event\":\"%s\",\"ts_us\":%llu,\"node_id\":\"zephyr-t_echo\",\"impl\":\"zephyr\",\"tx_id\":\"%s\",\"packet_hash\":\"%s\",\"direction\":\"%s\",\"peer_id\":null,\"payload_len\":%u,\"rssi_dbm\":%d,\"snr_db\":%d,\"seq\":%u,\"status\":\"ok\"}",
+		 event, (unsigned long long)k_uptime_get() * 1000ULL, hash, hash,
+		 strcmp(event, "tx") == 0 ? "tx" : "rx", (unsigned int)len,
+		 rssi, snr, seq);
+}
 
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 /* Placeholder IID — in production derive from nRF52840 FICR. */
@@ -153,21 +171,14 @@ static inline void set_phase(enum stall_phase ph)
 static void send_beacon(const struct device *dev)
 {
 	/* Build beacon header */
-	s_beacon[0] = BEACON_TOTAL_LEN;
-	s_beacon[1] = 0x00;  /* LLSec: AddrMode=0, MIC32, no sig, no enc */
+	s_beacon[0] = BEACON_TOTAL_LEN - 1U;
+	s_beacon[1] = 0x00;  /* LLSec: broadcast, unsigned, plaintext */
 	if (++s_seqnum == 0) {
 		s_epoch++;  /* Increment epoch on seqnum wrap */
 	}
 	s_beacon[2] = s_epoch;   /* epoch */
 	s_beacon[3] = 0x00;      /* seqhi */
 	s_beacon[4] = s_seqnum;  /* seqlo */
-
-	/* Compute CRC32 MIC over header (bytes 1-4, excluding length byte) */
-	uint32_t mic = crc32_ieee(&s_beacon[1], BEACON_HDR_LEN - 1);
-	s_beacon[5] = (uint8_t)(mic & 0xFF);
-	s_beacon[6] = (uint8_t)((mic >> 8) & 0xFF);
-	s_beacon[7] = (uint8_t)((mic >> 16) & 0xFF);
-	s_beacon[8] = (uint8_t)((mic >> 24) & 0xFF);
 
 	set_phase(PH_CFG_TX);
 	if (lora_set_mode(dev, true) < 0) {
@@ -179,7 +190,8 @@ static void send_beacon(const struct device *dev)
 	if (ret < 0) {
 		LOG_ERR("beacon TX failed: %d", ret);
 	} else {
-		LOG_INF("beacon seq=%u mic=0x%08x", s_seqnum, mic);
+		LOG_INF("beacon seq=%u", s_seqnum);
+		telemetry_packet("tx", s_beacon, sizeof(s_beacon), s_seqnum, 0, 0);
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 		s_radio_stats.tx_pkts++;
 #endif
@@ -523,6 +535,7 @@ int main(void)
 			LOG_INF("RX %d B rssi=%d snr=%d [%02x %02x]",
 				len, rssi, snr,
 				buf[0], len > 1 ? buf[1] : 0u);
+			telemetry_packet("rx", buf, (size_t)len, 0, rssi, snr);
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 			s_radio_stats.rx_pkts++;
 			/* Forward to connected host.

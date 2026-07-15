@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-2auf.2",
+  "title": "Run heterogeneous EC2 fleet validation",
+  "description": "Once source fixes and quality gates are green, run the Python/Rust/Zephyr heterogeneous fleet on EC2, collect telemetry, analyze the reception matrix, and file any interop failures as Beads.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T04:40:23.024533Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T04:40:23.025121Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.2",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T04:40:23.025121Z"
+    }
+  ]
+}

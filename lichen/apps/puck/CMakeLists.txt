@@ -7,3 +7,5 @@ project(lichen_puck)
 target_sources(app PRIVATE src/main.c src/puck_location.c)
 target_include_directories(app PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/../../lib/native/include)
+
+zephyr_linker_sources(DATA_SECTIONS sections-ram.ld)

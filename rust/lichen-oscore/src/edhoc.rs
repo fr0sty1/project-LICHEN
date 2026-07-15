@@ -173,19 +173,95 @@ fn compute_th(input: &[u8]) -> [u8; 32] {
     Sha256::digest(input).into()
 }
 
+/// Parse SUITES_I from CBOR per RFC 9528 Section 3.3.2.
+///
+/// SUITES_I can be either:
+/// - A single int (the selected suite)
+/// - An array of ints [selected_suite, ...other_supported_suites]
+///
+/// Returns (selected_suite, bytes_consumed).
+fn parse_suites_i(data: &[u8]) -> Result<(u8, usize), EdhocError> {
+    if data.is_empty() {
+        return Err(EdhocError::InvalidMessage);
+    }
+
+    let first = data[0];
+
+    // CBOR major type 0 (unsigned int): 0x00-0x17 (0-23), 0x18 (1-byte follow)
+    if first <= 0x17 {
+        // Direct int 0-23
+        return Ok((first, 1));
+    } else if first == 0x18 {
+        // 1-byte follow
+        if data.len() < 2 {
+            return Err(EdhocError::InvalidMessage);
+        }
+        return Ok((data[1], 2));
+    }
+
+    // CBOR major type 4 (array): 0x80-0x97 (array of 0-23 items), 0x98 (1-byte length)
+    if first >= 0x80 && first <= 0x97 {
+        let arr_len = (first - 0x80) as usize;
+        if arr_len == 0 {
+            return Err(EdhocError::InvalidMessage); // Empty array not valid
+        }
+        // Parse first element (selected suite)
+        if data.len() < 2 {
+            return Err(EdhocError::InvalidMessage);
+        }
+        let elem = data[1];
+        if elem <= 0x17 {
+            // Count bytes: 1 (array header) + arr_len (each int 0-23 is 1 byte)
+            // We only support suite values 0-23 for simplicity
+            Ok((elem, 1 + arr_len))
+        } else if elem == 0x18 && data.len() >= 3 {
+            // First element is 1-byte int
+            // Remaining elements assumed to be 1-byte each
+            Ok((data[2], 1 + 1 + (arr_len - 1) + 1))
+        } else {
+            Err(EdhocError::InvalidMessage)
+        }
+    } else if first == 0x98 {
+        // Array with 1-byte length
+        if data.len() < 3 {
+            return Err(EdhocError::InvalidMessage);
+        }
+        let arr_len = data[1] as usize;
+        if arr_len == 0 {
+            return Err(EdhocError::InvalidMessage);
+        }
+        let elem = data[2];
+        if elem <= 0x17 {
+            // 1 (0x98) + 1 (length) + arr_len (elements)
+            Ok((elem, 2 + arr_len))
+        } else {
+            Err(EdhocError::InvalidMessage)
+        }
+    } else {
+        Err(EdhocError::InvalidMessage)
+    }
+}
+
 /// EDHOC Initiator (client role).
 ///
 /// Implements EDHOC method 0 (SIGN_SIGN) with Suite 0.
+// SECURITY: SigningKey and StaticSecret must be zeroized on drop.
+// SigningKey and StaticSecret implement ZeroizeOnDrop themselves.
+#[derive(Zeroize, ZeroizeOnDrop)]
 pub struct EdhocInitiator {
-    /// Our Ed25519 signing key.
+    /// Our Ed25519 signing key (implements ZeroizeOnDrop).
+    #[zeroize(skip)]
     signing_key: SigningKey,
     /// Our Ed25519 public key.
+    #[zeroize(skip)]
     pubkey: VerifyingKey,
     /// Our connection identifier.
     c_i: u8,
-    /// Ephemeral X25519 secret (consumed after use).
+    /// Ephemeral X25519 secret (implements ZeroizeOnDrop).
+    #[zeroize(skip)]
     eph_secret: Option<StaticSecret>,
     /// Ephemeral X25519 public key.
+    #[zeroize(skip)]
     eph_public: PublicKey,
     /// Protocol state.
     state: InitiatorState,
@@ -206,6 +282,8 @@ struct InitiatorState {
     th_2: [u8; 32],
     th_3: [u8; 32],
     th_4: [u8; 32],
+    /// True when handshake completed (process_message_2 succeeded).
+    completed: bool,
 }
 
 impl Default for InitiatorState {
@@ -220,6 +298,7 @@ impl Default for InitiatorState {
             th_2: [0; 32],
             th_3: [0; 32],
             th_4: [0; 32],
+            completed: false,
         }
     }
 }
@@ -557,11 +636,24 @@ impl EdhocInitiator {
         th_4_input.extend_err(&ciphertext_3)?;
         self.state.th_4 = compute_th(&th_4_input);
 
+        // Mark handshake as completed - export_oscore now safe to call
+        self.state.completed = true;
+
         Ok(ciphertext_3)
     }
 
     /// Export OSCORE security context.
+    ///
+    /// # Errors
+    /// Returns `OscoreError::NoContext` if called before handshake completes
+    /// (i.e., before `process_message_2` succeeds).
     pub fn export_oscore(&self) -> Result<Context, OscoreError> {
+        // SECURITY: Reject export before handshake completes. Without this check,
+        // keys would be derived from zeroed PRK/TH state, producing deterministic
+        // but wrong keys that won't match the peer's keys.
+        if !self.state.completed {
+            return Err(OscoreError::NoContext);
+        }
         // OSCORE Master Secret = EDHOC-KDF(PRK_4e3m, TH_4, "OSCORE_Master_Secret", h'', 16)
         let master_secret_vec = edhoc_kdf(
             &self.state.prk_4e3m,
@@ -597,16 +689,23 @@ impl EdhocInitiator {
 }
 
 /// EDHOC Responder (server role).
+// SECURITY: SigningKey and StaticSecret must be zeroized on drop.
+// SigningKey and StaticSecret implement ZeroizeOnDrop themselves.
+#[derive(Zeroize, ZeroizeOnDrop)]
 pub struct EdhocResponder {
-    /// Our Ed25519 signing key.
+    /// Our Ed25519 signing key (implements ZeroizeOnDrop).
+    #[zeroize(skip)]
     signing_key: SigningKey,
     /// Our Ed25519 public key.
+    #[zeroize(skip)]
     pubkey: VerifyingKey,
     /// Our connection identifier.
     c_r: u8,
-    /// Ephemeral X25519 secret.
+    /// Ephemeral X25519 secret (implements ZeroizeOnDrop).
+    #[zeroize(skip)]
     eph_secret: Option<StaticSecret>,
     /// Ephemeral X25519 public key.
+    #[zeroize(skip)]
     eph_public: PublicKey,
     /// Protocol state.
     state: ResponderState,
@@ -627,6 +726,8 @@ struct ResponderState {
     th_2: [u8; 32],
     th_3: [u8; 32],
     th_4: [u8; 32],
+    /// True when handshake completed (process_message_3 succeeded).
+    completed: bool,
 }
 
 impl Default for ResponderState {
@@ -641,6 +742,7 @@ impl Default for ResponderState {
             th_2: [0; 32],
             th_3: [0; 32],
             th_4: [0; 32],
+            completed: false,
         }
     }
 }
@@ -676,20 +778,30 @@ impl EdhocResponder {
         }
 
         let _method_corr = msg1[0];
-        let suites_i = msg1[1];
 
-        if suites_i != SUITE_0 {
+        // Parse SUITES_I per RFC 9528 Section 3.3.2:
+        // - Single int: the selected suite
+        // - Array of ints: [selected_suite, ...other_supported_suites]
+        let (selected_suite, suites_i_end) = parse_suites_i(&msg1[1..])?;
+
+        if selected_suite != SUITE_0 {
             return Err(EdhocError::UnsupportedSuite);
         }
 
-        // Parse G_X (32-byte bstr)
-        if msg1[2] != 0x58 || msg1[3] != 32 {
+        // Parse G_X (32-byte bstr) - starts after METHOD_CORR + SUITES_I
+        let g_x_start = 1 + suites_i_end;
+        if msg1.len() < g_x_start + 2 + 32 + 1 {
             return Err(EdhocError::InvalidMessage);
         }
-        self.state.g_x.copy_from_slice(&msg1[4..36]);
+        if msg1[g_x_start] != 0x58 || msg1[g_x_start + 1] != 32 {
+            return Err(EdhocError::InvalidMessage);
+        }
+        self.state
+            .g_x
+            .copy_from_slice(&msg1[g_x_start + 2..g_x_start + 2 + 32]);
 
         // Parse C_I
-        let rest = &msg1[36..];
+        let rest = &msg1[g_x_start + 2 + 32..];
         self.state.c_i = if !rest.is_empty() {
             if rest[0] <= 23 {
                 rest[0]
@@ -728,7 +840,7 @@ impl EdhocResponder {
         let mut context_2 = heapless::Vec::<u8, 128>::new();
         context_2.push_err(0x58)?;
         context_2.push_err(32)?;
-        context_2.extend_err(self.pubkey.as_bytes())?;  // ID_CRED_R
+        context_2.extend_err(self.pubkey.as_bytes())?; // ID_CRED_R
         context_2.push_err(0x58)?;
         context_2.push_err(32)?;
         context_2.extend_err(self.pubkey.as_bytes())?; // CRED_R
@@ -938,11 +1050,25 @@ impl EdhocResponder {
         th_4_input.extend_err(ciphertext_3)?;
         self.state.th_4 = compute_th(&th_4_input);
 
+        // Mark handshake as completed - export_oscore now safe to call
+        self.state.completed = true;
+
         Ok(())
     }
 
     /// Export OSCORE security context.
+    ///
+    /// # Errors
+    /// Returns `OscoreError::NoContext` if called before handshake completes
+    /// (i.e., before `process_message_3` succeeds).
     pub fn export_oscore(&self) -> Result<Context, OscoreError> {
+        // SECURITY: Reject export before handshake completes. Without this check,
+        // keys would be derived from zeroed PRK/TH state, producing deterministic
+        // but wrong keys that won't match the peer's keys.
+        if !self.state.completed {
+            return Err(OscoreError::NoContext);
+        }
+
         let master_secret_vec = edhoc_kdf(
             &self.state.prk_4e3m,
             &self.state.th_4,
@@ -1023,10 +1149,14 @@ mod tests {
         let responder_pubkey = responder.pubkey.to_bytes();
 
         // Step 1: Initiator creates Message 1
-        let msg1 = initiator.create_message_1().expect("create_message_1 failed");
+        let msg1 = initiator
+            .create_message_1()
+            .expect("create_message_1 failed");
 
         // Step 2: Responder processes Message 1, creates Message 2
-        let msg2 = responder.process_message_1(&msg1).expect("process_message_1 failed");
+        let msg2 = responder
+            .process_message_1(&msg1)
+            .expect("process_message_1 failed");
 
         // Step 3: Initiator processes Message 2, creates Message 3
         let msg3 = initiator
@@ -1039,8 +1169,12 @@ mod tests {
             .expect("process_message_3 failed");
 
         // Step 5: Both export OSCORE contexts
-        let mut initiator_ctx = initiator.export_oscore().expect("initiator export_oscore failed");
-        let mut responder_ctx = responder.export_oscore().expect("responder export_oscore failed");
+        let mut initiator_ctx = initiator
+            .export_oscore()
+            .expect("initiator export_oscore failed");
+        let mut responder_ctx = responder
+            .export_oscore()
+            .expect("responder export_oscore failed");
 
         // Step 6: Verify contexts can communicate via functional roundtrip test.
         // This is more robust than comparing raw keys - it proves the derived
@@ -1074,7 +1208,14 @@ mod tests {
         let resp_payload: &[u8] = b"hello from responder";
 
         let (resp_ciphertext, resp_oscore_opt) = responder_ctx
-            .protect_response(resp_code, resp_options, resp_payload, request_kid, request_piv, false)
+            .protect_response(
+                resp_code,
+                resp_options,
+                resp_payload,
+                request_kid,
+                request_piv,
+                false,
+            )
             .expect("responder protect_response failed");
 
         let (recv_resp_code, recv_resp_options, recv_resp_payload) = initiator_ctx
@@ -1082,7 +1223,126 @@ mod tests {
             .expect("initiator unprotect_response failed");
 
         assert_eq!(recv_resp_code, resp_code, "response code mismatch");
-        assert_eq!(&recv_resp_options[..], resp_options, "response options mismatch");
-        assert_eq!(&recv_resp_payload[..], resp_payload, "response payload mismatch");
+        assert_eq!(
+            &recv_resp_options[..],
+            resp_options,
+            "response options mismatch"
+        );
+        assert_eq!(
+            &recv_resp_payload[..],
+            resp_payload,
+            "response payload mismatch"
+        );
+    }
+
+    #[test]
+    fn test_parse_suites_i_single_int() {
+        // Single int 0
+        assert_eq!(parse_suites_i(&[0x00]).unwrap(), (0, 1));
+        // Single int 2
+        assert_eq!(parse_suites_i(&[0x02]).unwrap(), (2, 1));
+        // Single int 23 (max direct encoding)
+        assert_eq!(parse_suites_i(&[0x17]).unwrap(), (23, 1));
+        // Single int 24 (1-byte follow)
+        assert_eq!(parse_suites_i(&[0x18, 0x18]).unwrap(), (24, 2));
+    }
+
+    #[test]
+    fn test_parse_suites_i_array() {
+        // Array [0] - single element
+        assert_eq!(parse_suites_i(&[0x81, 0x00]).unwrap(), (0, 2));
+        // Array [0, 2] - prefer Suite 0, also supports Suite 2
+        assert_eq!(parse_suites_i(&[0x82, 0x00, 0x02]).unwrap(), (0, 3));
+        // Array [0, 2, 3] - three suites
+        assert_eq!(parse_suites_i(&[0x83, 0x00, 0x02, 0x03]).unwrap(), (0, 4));
+        // Array [2, 0] - prefer Suite 2
+        assert_eq!(parse_suites_i(&[0x82, 0x02, 0x00]).unwrap(), (2, 3));
+    }
+
+    #[test]
+    fn test_parse_suites_i_errors() {
+        // Empty input
+        assert!(parse_suites_i(&[]).is_err());
+        // Empty array
+        assert!(parse_suites_i(&[0x80]).is_err());
+        // Truncated 1-byte int
+        assert!(parse_suites_i(&[0x18]).is_err());
+    }
+
+    /// Test responder accepts Message 1 with array-format SUITES_I (RFC 9528 Section 3.3.2).
+    #[test]
+    fn test_responder_accepts_suites_i_array() {
+        let responder_seed = [0x22u8; 32];
+        let mut responder = EdhocResponder::new(responder_seed, 0x01);
+
+        // Build a Message 1 with SUITES_I as array [0, 2]
+        // Format: METHOD_CORR (1) | SUITES_I (array) | G_X (bstr 32) | C_I
+        let mut msg1 = heapless::Vec::<u8, 64>::new();
+        msg1.push(0x01).unwrap(); // METHOD_CORR = 1
+        msg1.push(0x82).unwrap(); // CBOR array of 2
+        msg1.push(0x00).unwrap(); // Suite 0 (selected)
+        msg1.push(0x02).unwrap(); // Suite 2 (also supported)
+        msg1.push(0x58).unwrap(); // bstr header
+        msg1.push(32).unwrap(); // length 32
+                                // G_X: 32 bytes of ephemeral public key (dummy)
+        let g_x = [0xAAu8; 32];
+        msg1.extend_from_slice(&g_x).unwrap();
+        msg1.push(0x05).unwrap(); // C_I = 5
+
+        // Responder should accept this Message 1
+        let result = responder.process_message_1(&msg1);
+        assert!(
+            result.is_ok(),
+            "Responder should accept array-format SUITES_I: {:?}",
+            result.err()
+        );
+    }
+
+    /// Test responder rejects unsupported suite even when sent as array.
+    #[test]
+    fn test_responder_rejects_unsupported_suite_in_array() {
+        let responder_seed = [0x22u8; 32];
+        let mut responder = EdhocResponder::new(responder_seed, 0x01);
+
+        // Build a Message 1 with SUITES_I as array [2, 0] - Suite 2 selected
+        let mut msg1 = heapless::Vec::<u8, 64>::new();
+        msg1.push(0x01).unwrap(); // METHOD_CORR = 1
+        msg1.push(0x82).unwrap(); // CBOR array of 2
+        msg1.push(0x02).unwrap(); // Suite 2 (selected - NOT supported)
+        msg1.push(0x00).unwrap(); // Suite 0 (also supported)
+        msg1.push(0x58).unwrap(); // bstr header
+        msg1.push(32).unwrap(); // length 32
+        let g_x = [0xAAu8; 32];
+        msg1.extend_from_slice(&g_x).unwrap();
+        msg1.push(0x05).unwrap(); // C_I = 5
+
+        let result = responder.process_message_1(&msg1);
+        assert!(matches!(result, Err(EdhocError::UnsupportedSuite)));
+    }
+
+    /// Test that export_oscore returns NoContext if called before handshake completes.
+    #[test]
+    fn test_export_before_handshake_returns_error() {
+        use crate::OscoreError;
+
+        // Initiator: export_oscore before process_message_2
+        let initiator_seed = [0x11u8; 32];
+        let mut initiator = EdhocInitiator::new(initiator_seed, 0x00);
+        let _msg1 = initiator.create_message_1().unwrap();
+        // Handshake incomplete - should fail
+        assert!(
+            matches!(initiator.export_oscore(), Err(OscoreError::NoContext)),
+            "Initiator export_oscore should fail before process_message_2"
+        );
+
+        // Responder: export_oscore before process_message_3
+        let responder_seed = [0x22u8; 32];
+        let mut responder = EdhocResponder::new(responder_seed, 0x01);
+        // Even after process_message_1, handshake is incomplete
+        let _msg2 = responder.process_message_1(&_msg1).unwrap();
+        assert!(
+            matches!(responder.export_oscore(), Err(OscoreError::NoContext)),
+            "Responder export_oscore should fail before process_message_3"
+        );
     }
 }

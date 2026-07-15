@@ -20,7 +20,9 @@ use lichen_link::identity::{iid_from_pubkey, PeerIdentity};
 use lichen_link::keys::PublicKey;
 use lichen_link::schnorr;
 
-use crate::gradient::{GeoCoords, GradientEntry, GradientSource, GradientTable, GRADIENT_TIMEOUT_MS};
+use crate::gradient::{
+    GeoCoords, GradientEntry, GradientSource, GradientTable, GRADIENT_TIMEOUT_MS,
+};
 
 /// Maximum tracked originators (LRU eviction when exceeded).
 pub const MAX_TRACKED_ORIGINATORS: usize = 64;
@@ -228,17 +230,23 @@ impl AnnounceProcessor {
         let access = self.access_counter;
 
         // Update or insert pinned key with LRU eviction
-        self.pinned_keys.insert(iid, PinnedKeyEntry {
-            pubkey: *announce.pubkey,
-            last_access: access,
-        });
+        self.pinned_keys.insert(
+            iid,
+            PinnedKeyEntry {
+                pubkey: *announce.pubkey,
+                last_access: access,
+            },
+        );
         self.evict_pinned_if_needed();
 
         // Update or insert seen entry with LRU eviction
-        self.seen.insert(iid, SeenEntry {
-            seq_num: announce.seq_num,
-            last_access: access,
-        });
+        self.seen.insert(
+            iid,
+            SeenEntry {
+                seq_num: announce.seq_num,
+                last_access: access,
+            },
+        );
         self.evict_seen_if_needed();
 
         // Step 5: Update gradient table.
@@ -329,7 +337,8 @@ impl AnnounceProcessor {
     fn evict_pinned_if_needed(&mut self) {
         while self.pinned_keys.len() > self.max_entries {
             // Find oldest entry (lowest last_access)
-            let oldest_iid = self.pinned_keys
+            let oldest_iid = self
+                .pinned_keys
                 .iter()
                 .min_by_key(|(_, e)| e.last_access)
                 .map(|(k, _)| *k);
@@ -343,7 +352,8 @@ impl AnnounceProcessor {
     fn evict_seen_if_needed(&mut self) {
         while self.seen.len() > self.max_entries {
             // Find oldest entry (lowest last_access)
-            let oldest_iid = self.seen
+            let oldest_iid = self
+                .seen
                 .iter()
                 .min_by_key(|(_, e)| e.last_access)
                 .map(|(k, _)| *k);
@@ -354,33 +364,30 @@ impl AnnounceProcessor {
     }
 }
 
-/// Parse congestion (type 0x02, 1 byte) from announce app_data.
+/// Parse congestion (type 0x02) from announce app_data TLV stream.
+///
+/// TLV format: Type (1 byte) | Length (1 byte) | Value (Length bytes)
+/// Unknown types are skipped using the length field.
 fn parse_congestion(app_data: &[u8]) -> Option<u8> {
-    // Scan for type 0x02 TLV
     let mut pos = 0;
-    while pos + 1 < app_data.len() {
+    while pos + 2 <= app_data.len() {
         let typ = app_data[pos];
-        match typ {
-            0x01 => {
-                // GeoCoords: type + 8 bytes
-                if pos + 9 <= app_data.len() {
-                    pos += 9;
-                } else {
-                    return None;
-                }
-            }
-            0x02 => {
-                // Congestion: type + 1 byte
-                if pos + 2 <= app_data.len() {
-                    return Some(app_data[pos + 1]);
-                }
-                return None;
-            }
-            _ => {
-                // Unknown type - can't parse further without length
-                return None;
-            }
+        let len = app_data[pos + 1] as usize;
+        let value_start = pos + 2;
+        let value_end = value_start + len;
+
+        if value_end > app_data.len() {
+            // Truncated TLV - stop parsing
+            return None;
         }
+
+        if typ == 0x02 && len >= 1 {
+            // Congestion: 1 byte queue depth
+            return Some(app_data[value_start]);
+        }
+
+        // Skip to next TLV (works for known and unknown types)
+        pos = value_end;
     }
     None
 }
@@ -426,7 +433,11 @@ mod tests {
         signed_data[42..signed_len].copy_from_slice(app_data);
 
         // Sign it
-        let sig = sign(&identity.privkey, &identity.pubkey, &signed_data[..signed_len]);
+        let sig = sign(
+            &identity.privkey,
+            &identity.pubkey,
+            &signed_data[..signed_len],
+        );
 
         // Build the announce
         let builder = AnnounceBuilder {
@@ -512,7 +523,10 @@ mod tests {
 
         let result = processor.process(&announce, link_local(0xAA), 1000);
         assert!(!result.accepted);
-        assert_eq!(result.reject_reason, Some(AnnounceRejectReason::IidMismatch));
+        assert_eq!(
+            result.reject_reason,
+            Some(AnnounceRejectReason::IidMismatch)
+        );
     }
 
     #[test]
@@ -538,7 +552,10 @@ mod tests {
 
         let result = processor.process(&announce, link_local(0xAA), 1000);
         assert!(!result.accepted);
-        assert_eq!(result.reject_reason, Some(AnnounceRejectReason::InvalidSignature));
+        assert_eq!(
+            result.reject_reason,
+            Some(AnnounceRejectReason::InvalidSignature)
+        );
     }
 
     #[test]
@@ -559,14 +576,20 @@ mod tests {
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
         let result = processor.process(&announce, link_local(0xAA), 2000);
         assert!(!result.accepted);
-        assert_eq!(result.reject_reason, Some(AnnounceRejectReason::StaleSeqNum));
+        assert_eq!(
+            result.reject_reason,
+            Some(AnnounceRejectReason::StaleSeqNum)
+        );
 
         // Reject announce with lower seq_num
         let len = make_signed_announce(&identity, 50, 3, &[], &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
         let result = processor.process(&announce, link_local(0xAA), 3000);
         assert!(!result.accepted);
-        assert_eq!(result.reject_reason, Some(AnnounceRejectReason::StaleSeqNum));
+        assert_eq!(
+            result.reject_reason,
+            Some(AnnounceRejectReason::StaleSeqNum)
+        );
 
         // Accept announce with higher seq_num
         let len = make_signed_announce(&identity, 200, 3, &[], &mut buf);
@@ -614,7 +637,10 @@ mod tests {
         let result = processor.process(&announce, link_local(0xAA), 2000);
         assert!(!result.accepted);
         // It should fail at IidMismatch before KeyChangeDetected
-        assert_eq!(result.reject_reason, Some(AnnounceRejectReason::IidMismatch));
+        assert_eq!(
+            result.reject_reason,
+            Some(AnnounceRejectReason::IidMismatch)
+        );
     }
 
     #[test]
@@ -720,8 +746,8 @@ mod tests {
         let gradient_table = GradientTable::new(64);
         let mut processor = AnnounceProcessor::new(gradient_table, ula_prefix());
 
-        // App data with congestion TLV (type 0x02, value 42)
-        let app_data = [0x02, 42];
+        // App data with congestion TLV: type=0x02, length=1, value=42
+        let app_data = [0x02, 0x01, 42];
         let mut buf = [0u8; 256];
         let len = make_signed_announce(&identity, 100, 3, &app_data, &mut buf);
         let announce = Announce::from_bytes(&buf[..len]).unwrap();
@@ -729,6 +755,25 @@ mod tests {
         let result = processor.process(&announce, link_local(0xAA), 1000);
         assert!(result.accepted);
         assert_eq!(result.congestion, Some(42));
+    }
+
+    #[test]
+    fn congestion_parsing_skips_unknown_types() {
+        let identity = make_identity(0x01);
+        let gradient_table = GradientTable::new(64);
+        let mut processor = AnnounceProcessor::new(gradient_table, ula_prefix());
+
+        // App data with unknown TLV (type=0xFF, length=2, value=[0xAA, 0xBB])
+        // followed by congestion TLV (type=0x02, length=1, value=77)
+        let app_data = [0xFF, 0x02, 0xAA, 0xBB, 0x02, 0x01, 77];
+        let mut buf = [0u8; 256];
+        let len = make_signed_announce(&identity, 100, 3, &app_data, &mut buf);
+        let announce = Announce::from_bytes(&buf[..len]).unwrap();
+
+        let result = processor.process(&announce, link_local(0xAA), 1000);
+        assert!(result.accepted);
+        // Parser should skip the unknown type and find congestion
+        assert_eq!(result.congestion, Some(77));
     }
 
     #[test]

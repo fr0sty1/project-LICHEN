@@ -37,6 +37,24 @@ if TYPE_CHECKING:
     from lichen.sim.chaos import ChaosEngine
 
 logger = structlog.get_logger()
+DEBUG_ENABLED = False
+
+
+def enable_debug() -> None:
+    """Enable enhanced simulation debugging for newly created simulations."""
+    global DEBUG_ENABLED
+    DEBUG_ENABLED = True
+
+
+def disable_debug() -> None:
+    """Disable enhanced simulation debugging for newly created simulations."""
+    global DEBUG_ENABLED
+    DEBUG_ENABLED = False
+
+
+def is_debug_enabled() -> bool:
+    """Return whether enhanced simulation debugging is enabled."""
+    return DEBUG_ENABLED
 
 
 class TimeMode(Enum):
@@ -101,6 +119,7 @@ class Simulation:
         self._seed = seed
         self._rng = random.Random(seed)
         self._observers = ObserverRegistry()
+        self._debug_enabled = DEBUG_ENABLED
         if jitter_max_us > 0 and jitter_min_us > jitter_max_us:
             raise ValueError(
                 f"jitter_min_us ({jitter_min_us}) must be <= jitter_max_us ({jitter_max_us})"
@@ -108,6 +127,19 @@ class Simulation:
         self._jitter_min_us = jitter_min_us
         self._jitter_max_us = jitter_max_us
         self._realtime_epoch_us: int = time.monotonic_ns() // 1000
+
+    def enable_debug(self) -> None:
+        """Enable enhanced debugging for this simulation instance."""
+        self._debug_enabled = True
+
+    def disable_debug(self) -> None:
+        """Disable enhanced debugging for this simulation instance."""
+        self._debug_enabled = False
+
+    @property
+    def debug_enabled(self) -> bool:
+        """Return whether enhanced debugging is enabled for this simulation."""
+        return self._debug_enabled
 
     @property
     def id(self) -> str:
@@ -118,6 +150,11 @@ class Simulation:
     def current_time_us(self) -> int:
         """Return the current simulation time in microseconds."""
         return self._current_time_us
+
+    def _debug_log(self, event: str, **fields: object) -> None:
+        """Emit simulation diagnostics only when debugging is enabled."""
+        if self._debug_enabled:
+            logger.debug(event, **fields)
 
     @property
     def time_mode(self) -> TimeMode:
@@ -292,9 +329,7 @@ class Simulation:
             ValueError: If time_us is less than current time.
         """
         if time_us < self._current_time_us:
-            raise ValueError(
-                f"Cannot advance backwards: {time_us} < {self._current_time_us}"
-            )
+            raise ValueError(f"Cannot advance backwards: {time_us} < {self._current_time_us}")
 
         while not self._event_queue.is_empty():
             next_event = self._event_queue.peek()
@@ -365,7 +400,7 @@ class Simulation:
             if node is not None and node.state == NodeState.TX:
                 node.state = NodeState.IDLE
             self._active_transmissions.pop(event.node_id, None)
-        logger.debug(
+        self._debug_log(
             "tx_end",
             sim_id=self._id,
             node_id=event.node_id,
@@ -397,7 +432,7 @@ class Simulation:
             node.state = NodeState.IDLE
             node.rx_callbacks = None
         self._pending_rx_timeouts.pop(event.node_id, None)
-        logger.debug(
+        self._debug_log(
             "rx_timeout",
             sim_id=self._id,
             node_id=event.node_id,
@@ -460,7 +495,7 @@ class Simulation:
         if next_event is None:
             return False
 
-        logger.debug(
+        self._debug_log(
             "time_advance",
             sim_id=self._id,
             from_us=self._current_time_us,
@@ -503,7 +538,7 @@ class Simulation:
                 position=node.position,
             )
             self._event_queue.push(delayed_event)
-            logger.debug(
+            self._debug_log(
                 "tx_delayed",
                 sim_id=self._id,
                 node_id=node_id,
@@ -571,16 +606,6 @@ class Simulation:
             packet_hash = hashlib.sha256(payload).hexdigest()[:16]
             node.metrics.record_tx(payload, packet_hash)
 
-        logger.debug(
-            "tx_start",
-            sim_id=self._id,
-            node_id=node_id,
-            tx_id=tx.id,
-            payload_len=len(payload),
-            start_us=tx.start_time_us,
-            end_us=tx.end_time_us,
-        )
-
         # Notify observers
         self._observers.notify(
             "on_tx_start",
@@ -597,6 +622,22 @@ class Simulation:
             transmission_id=tx.id,
         )
         self._event_queue.push(end_event)
+
+        tx_log = {
+            "sim_id": self._id,
+            "node_id": node_id,
+            "tx_id": tx.id,
+            "payload_len": len(payload),
+            "start_us": tx.start_time_us,
+            "end_us": tx.end_time_us,
+        }
+        if self._debug_enabled:
+            tx_log.update(
+                node_state=node.state.name if node is not None else None,
+                pending_txs=len(self._active_transmissions),
+                event_queue_len=len(self._event_queue),
+            )
+        self._debug_log("tx_start", **tx_log)
 
         return tx.id
 
@@ -628,9 +669,7 @@ class Simulation:
             node_id=node_id,
         )
         self._event_queue.push(timeout_event)
-        logger.debug(
-            "rx_start", sim_id=self._id, node_id=node_id, timeout_us=timeout_us
-        )
+        self._debug_log("rx_start", sim_id=self._id, node_id=node_id, timeout_us=timeout_us)
 
     def enter_rx_mode(
         self,
@@ -673,7 +712,7 @@ class Simulation:
             node_id=node_id,
         )
         self._event_queue.push(timeout_event)
-        logger.debug(
+        self._debug_log(
             "enter_rx_mode",
             sim_id=self._id,
             node_id=node_id,
@@ -695,7 +734,7 @@ class Simulation:
         self._pending_rx_timeouts.pop(node_id, None)
         # Remove pending RxTimeoutEvent for this node
         self._event_queue.remove_events_for_node(node_id)
-        logger.debug(
+        self._debug_log(
             "exit_rx_mode",
             sim_id=self._id,
             node_id=node_id,
@@ -718,8 +757,39 @@ class Simulation:
 
             result = self._get_rx_result_internal(node_id)
             if result is not None:
-                payload, rssi, snr = result
+                payload, rssi, snr, tx_id, source_node_id = result
                 on_packet = node.rx_callbacks[0]
+
+                rx_log = {
+                    "sim_id": self._id,
+                    "node_id": node_id,
+                    "tx_id": tx_id,
+                    "payload_len": len(payload),
+                    "rssi": rssi,
+                    "snr": snr,
+                    "time_us": self._current_time_us,
+                    "from_node_id": source_node_id,
+                }
+                if self._debug_enabled:
+                    rx_log.update(
+                        node_state=node.state.name,
+                        pending_timeouts=len(self._pending_rx_timeouts),
+                        event_queue_len=len(self._event_queue),
+                    )
+
+                self._metrics.record_reception(node_id, tx_id, self._current_time_us)
+                self._observers.notify(
+                    "on_rx_success",
+                    sim_id=self._id,
+                    node_id=node_id,
+                    tx_id=tx_id,
+                    from_node_id=source_node_id,
+                    payload_len=len(payload),
+                    rssi=rssi,
+                    snr=snr,
+                    time_us=self._current_time_us,
+                )
+                self._debug_log("rx_success", **rx_log)
 
                 # Clear state before calling callback (callback might re-enter)
                 node.state = NodeState.IDLE
@@ -728,7 +798,7 @@ class Simulation:
                 # Remove pending timeout event for this node
                 self._event_queue.remove_events_for_node(node_id)
 
-                logger.debug(
+                self._debug_log(
                     "deliver_packet",
                     sim_id=self._id,
                     node_id=node_id,
@@ -742,7 +812,7 @@ class Simulation:
 
         return delivered
 
-    def _get_rx_result_internal(self, node_id: str) -> tuple[bytes, int, int] | None:
+    def _get_rx_result_internal(self, node_id: str) -> tuple[bytes, int, int, str, str] | None:
         """Internal version of get_rx_result for callback delivery.
 
         Does not raise on missing node, returns None instead.
@@ -772,14 +842,31 @@ class Simulation:
 
         # Drop candidates whose LatencyRule-added delivery delay hasn't elapsed.
         candidates = [
-            c for c in candidates
+            c
+            for c in candidates
             if c.added_latency_us == 0
-            or self._current_time_us
-            >= c.transmission.end_time_us + c.added_latency_us
+            or self._current_time_us >= c.transmission.end_time_us + c.added_latency_us
         ]
 
         tx = self._medium.resolve_reception(candidates)
         if tx is None:
+            if len(candidates) >= 2:
+                tx_ids = [c.transmission.id for c in candidates]
+                if self._metrics.record_collision(node_id, tx_ids):
+                    self._debug_log(
+                        "collision",
+                        sim_id=self._id,
+                        node_id=node_id,
+                        time_us=self._current_time_us,
+                        tx_ids=tx_ids,
+                    )
+                    self._observers.notify(
+                        "on_collision",
+                        sim_id=self._id,
+                        node_id=node_id,
+                        tx_ids=tx_ids,
+                        time_us=self._current_time_us,
+                    )
             return None
 
         # Record per-node metrics
@@ -789,7 +876,13 @@ class Simulation:
         # Find the candidate to get RSSI/SNR
         for candidate in candidates:
             if candidate.transmission is tx:
-                return (tx.payload, int(candidate.rssi), int(candidate.snr))
+                return (
+                    tx.payload,
+                    int(candidate.rssi),
+                    int(candidate.snr),
+                    tx.id,
+                    tx.source_node_id,
+                )
 
         return None
 
@@ -834,10 +927,10 @@ class Simulation:
 
         # Drop candidates whose LatencyRule-added delivery delay hasn't elapsed.
         candidates = [
-            c for c in candidates
+            c
+            for c in candidates
             if c.added_latency_us == 0
-            or self._current_time_us
-            >= c.transmission.end_time_us + c.added_latency_us
+            or self._current_time_us >= c.transmission.end_time_us + c.added_latency_us
         ]
 
         tx = self._medium.resolve_reception(candidates)
@@ -846,22 +939,22 @@ class Simulation:
             # are a collision (deduplicated inside record_collision).
             if len(candidates) >= 2:
                 tx_ids = [c.transmission.id for c in candidates]
-                self._metrics.record_collision(node_id, tx_ids)
-                logger.debug(
-                    "collision",
-                    sim_id=self._id,
-                    node_id=node_id,
-                    time_us=self._current_time_us,
-                    tx_ids=tx_ids,
-                )
-                # Notify observers
-                self._observers.notify(
-                    "on_collision",
-                    sim_id=self._id,
-                    node_id=node_id,
-                    tx_ids=tx_ids,
-                    time_us=self._current_time_us,
-                )
+                if self._metrics.record_collision(node_id, tx_ids):
+                    self._debug_log(
+                        "collision",
+                        sim_id=self._id,
+                        node_id=node_id,
+                        time_us=self._current_time_us,
+                        tx_ids=tx_ids,
+                    )
+                    # Notify observers
+                    self._observers.notify(
+                        "on_collision",
+                        sim_id=self._id,
+                        node_id=node_id,
+                        tx_ids=tx_ids,
+                        time_us=self._current_time_us,
+                    )
             return None
 
         self._metrics.record_reception(node_id, tx.id, self._current_time_us)
@@ -873,15 +966,23 @@ class Simulation:
         # Find the candidate to get RSSI/SNR
         for candidate in candidates:
             if candidate.transmission is tx:
-                logger.debug(
-                    "rx_success",
-                    sim_id=self._id,
-                    node_id=node_id,
-                    tx_id=tx.id,
-                    rssi=int(candidate.rssi),
-                    snr=int(candidate.snr),
-                    time_us=self._current_time_us,
-                )
+                rx_log = {
+                    "sim_id": self._id,
+                    "node_id": node_id,
+                    "tx_id": tx.id,
+                    "payload_len": len(tx.payload),
+                    "rssi": int(candidate.rssi),
+                    "snr": int(candidate.snr),
+                    "time_us": self._current_time_us,
+                    "from_node_id": tx.source_node_id,
+                }
+                if self._debug_enabled:
+                    rx_log.update(
+                        node_state=node.state.name,
+                        pending_timeouts=len(self._pending_rx_timeouts),
+                        event_queue_len=len(self._event_queue),
+                    )
+                self._debug_log("rx_success", **rx_log)
                 # Notify observers
                 self._observers.notify(
                     "on_rx_success",
@@ -929,8 +1030,5 @@ class Simulation:
             path: Path to the output JSON file.
         """
         path = Path(path)
-        metrics = {
-            node_id: node.metrics.to_dict()
-            for node_id, node in self._nodes.items()
-        }
+        metrics = {node_id: node.metrics.to_dict() for node_id, node in self._nodes.items()}
         path.write_text(json.dumps(metrics, indent=2))

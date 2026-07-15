@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-c5fq",
+  "title": "Implement comprehensive test suite for debug features",
+  "description": "Create python/tests/sim/test_debug_features.py with tests for: debug control functions (enable/disable/is_debug_enabled), debug logging activation, node state tracking with debug, timing assertions with debug, fail-fast scenario testing, and system state observation during complex operations.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T03:22:31.767623Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T03:22:31.767679Z"
+}

@@ -13,6 +13,7 @@ Wire formats:
 
 from __future__ import annotations
 
+import hashlib
 import struct
 import uuid
 from dataclasses import dataclass
@@ -129,6 +130,64 @@ ROLE_NAMES = {
 def role_to_name(role: int) -> str:
     """Convert role byte to ATAK role name."""
     return ROLE_NAMES.get(role, "Team Member")
+
+
+# -- Deterministic UID generation --
+
+
+def _derive_uid(namespace: str, *parts: str | bytes) -> str:
+    """Derive a deterministic UUID-style UID from content parts.
+
+    Uses SHA-256 hash truncated to UUID format for deterministic,
+    content-based UID generation. This enables idempotent expansion
+    and proper message deduplication.
+
+    Args:
+        namespace: Namespace prefix for the hash (e.g., "sender", "message")
+        parts: Content parts to hash (strings or bytes)
+
+    Returns:
+        UUID-formatted string derived from content hash
+    """
+    h = hashlib.sha256()
+    h.update(namespace.encode("utf-8"))
+    for part in parts:
+        if isinstance(part, str):
+            h.update(part.encode("utf-8"))
+        else:
+            h.update(part)
+    # Take first 16 bytes and format as UUID
+    digest = h.digest()[:16]
+    return str(uuid.UUID(bytes=digest))
+
+
+def _derive_uid_from_cot(cot: CompactCot) -> str:
+    """Derive deterministic UID from CompactCot content.
+
+    Uses message content to generate a stable UID that remains
+    the same across multiple expansions of the same message.
+    """
+    parts: list[str | bytes] = [str(cot.subtype.value)]
+    if isinstance(cot.payload, PliPayload):
+        pli = cot.payload
+        parts.extend([
+            str(pli.lat_microdeg),
+            str(pli.lon_microdeg),
+            str(pli.alt_dm),
+            str(pli.course_cdeg),
+            str(pli.speed_cm_s),
+            str(pli.team),
+            str(pli.role),
+        ])
+    elif isinstance(cot.payload, ChatPayload):
+        chat = cot.payload
+        parts.append(str(chat.dest_type.value))
+        if chat.dest_team is not None:
+            parts.append(str(chat.dest_team))
+        if chat.dest_iid is not None:
+            parts.append(chat.dest_iid)
+        parts.append(chat.message)
+    return _derive_uid("sender", *parts)
 
 
 # -- Data classes --
@@ -255,6 +314,12 @@ def _decode_pli(subtype: CompactCotType, data: bytes) -> CompactCot:
     team = data[15]
     role = data[16]
 
+    # Validate geographic coordinate ranges (microdegrees)
+    if not (-90_000_000 <= lat <= 90_000_000):
+        raise DecodeError(f"Latitude {lat} out of range [-90000000, 90000000]")
+    if not (-180_000_000 <= lon <= 180_000_000):
+        raise DecodeError(f"Longitude {lon} out of range [-180000000, 180000000]")
+
     payload = PliPayload(
         lat_microdeg=lat,
         lon_microdeg=lon,
@@ -344,7 +409,8 @@ def expand_cot_to_xml(
         now = datetime.now(UTC)
 
     if sender_uid is None:
-        sender_uid = str(uuid.uuid4())
+        # Derive deterministic UID from message content for idempotent expansion
+        sender_uid = _derive_uid_from_cot(cot)
 
     stale = datetime.fromtimestamp(now.timestamp() + stale_seconds, tz=UTC)
 
@@ -373,7 +439,8 @@ def _expand_pli_to_xml(
     stale_str: str,
 ) -> str:
     """Expand PLI to CoT XML."""
-    assert isinstance(cot.payload, PliPayload)
+    if not isinstance(cot.payload, PliPayload):
+        raise TypeError(f"Expected PliPayload, got {type(cot.payload).__name__}")
     pli = cot.payload
 
     # Build event element
@@ -427,11 +494,13 @@ def _expand_chat_to_xml(
     stale_str: str,
 ) -> str:
     """Expand chat to GeoChat CoT XML."""
-    assert isinstance(cot.payload, ChatPayload)
+    if not isinstance(cot.payload, ChatPayload):
+        raise TypeError(f"Expected ChatPayload, got {type(cot.payload).__name__}")
     chat = cot.payload
 
-    # Generate unique message ID
-    message_id = str(uuid.uuid4())
+    # Derive deterministic message ID from sender + timestamp + content
+    # This enables idempotent expansion and proper deduplication
+    message_id = _derive_uid("message", sender_uid, time_str, chat.message)
 
     # Build event element
     event = Element("event")
@@ -830,22 +899,22 @@ def _parse_xml_chat(root: Element, subtype: CompactCotType) -> CompactCot:
     if chat_elem is not None:
         chat_group = chat_elem.get("chatroom")
         if chat_group:
-            # Check if it's a direct message (hex IID = 16 hex chars = 8 bytes)
-            if len(chat_group) == 16:
+            # Check team names first to avoid ambiguity with 16-char hex names
+            # Handle both "Blue" and "Team Blue" formats (roundtrip)
+            team_name = chat_group.lower()
+            if team_name.startswith("team "):
+                team_name = team_name[5:]
+            team = TEAM_BY_NAME.get(team_name)
+            if team:
+                dest_type = DestType.TEAM
+                dest_team = team
+            elif len(chat_group) == 16:
+                # Direct message: hex IID = 16 hex chars = 8 bytes
                 try:
                     dest_iid = bytes.fromhex(chat_group)
                     dest_type = DestType.DIRECT
                 except ValueError:
-                    pass  # Not valid hex, fall through to team lookup
-            if dest_type != DestType.DIRECT:
-                # Handle both "Blue" and "Team Blue" formats (roundtrip)
-                team_name = chat_group.lower()
-                if team_name.startswith("team "):
-                    team_name = team_name[5:]
-                team = TEAM_BY_NAME.get(team_name)
-                if team:
-                    dest_type = DestType.TEAM
-                    dest_team = team
+                    pass  # Not valid hex, leave as broadcast
 
     chat = ChatPayload(
         dest_type=dest_type,

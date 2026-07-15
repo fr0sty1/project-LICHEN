@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-2auf.3",
+  "title": "Run cross-language quality gates",
+  "description": "After audit, run relevant Python tests/lint, Rust fmt/test/clippy, and Linux-only Zephyr builds/tests through the prepared EC2/EBS environment. Record failures as child Beads and do not weaken tests.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T04:40:29.35389Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T13:25:42.574059Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.3",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T04:40:29.354393Z"
+    }
+  ]
+}

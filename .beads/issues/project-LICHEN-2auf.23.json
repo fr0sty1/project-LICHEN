@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2auf.23",
+  "title": "Synchronize link protocol documentation",
+  "description": "Update stale spec/physical-link and packet timing documentation, public protocol comments, and the active link draft examples to match current MIC placement, unsigned no-MIC semantics, elided addressing, and signed-encrypted rejection.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T06:12:59.226084Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T06:18:15.217383Z",
+  "closed_at": "2026-07-15T06:18:15.217383Z",
+  "close_reason": "Updated link protocol specs, examples, and public comments; verification passed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.23",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T06:12:59.226593Z"
+    }
+  ]
+}

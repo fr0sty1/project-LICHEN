@@ -358,6 +358,12 @@ static int build_error(uint8_t type,
         return -EINVAL;
     }
 
+    /* SECURITY: Prevent information disclosure from uninitialized memory */
+    if (invoking_len > 0 && invoking_packet == NULL) {
+        LOG_ERR("icmpv6: build_error failed (invoking_len > 0 but invoking_packet is NULL)");
+        return -EINVAL;
+    }
+
     /* Limit quoted packet to prevent bloat */
     quoted_len = invoking_len;
     if (quoted_len > LICHEN_ICMPV6_MAX_INVOKING_PACKET) {

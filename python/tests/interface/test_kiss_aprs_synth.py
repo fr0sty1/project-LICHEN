@@ -222,6 +222,21 @@ class TestFormatWeather:
         result = _format_weather(temp_c=0)
         assert "t032" in result  # 0C = 32F
 
+    def test_negative_fahrenheit(self):
+        # -30C = -22F, should produce exactly 3 chars after 't'
+        result = _format_weather(temp_c=-30)
+        assert "t-22" in result
+        # Verify field is exactly 3 chars
+        import re
+        match = re.search(r"t(...)", result)
+        assert match is not None
+        assert len(match.group(1)) == 3
+
+    def test_extreme_cold_uses_no_data(self):
+        # -74C = -101F, below -99F representable range
+        result = _format_weather(temp_c=-74)
+        assert "t..." in result  # Should use no-data marker
+
 
 class TestFormatTelemetry:
     def test_basic(self):

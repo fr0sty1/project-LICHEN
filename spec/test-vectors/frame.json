@@ -8,8 +8,8 @@
   "vectors": [
     {
       "name": "minimal_valid_frame",
-      "description": "Broadcast frame with no payload, 32-bit MIC",
-      "input_hex": "0800011234aabbccdd",
+      "description": "Broadcast unsigned frame with no payload",
+      "input_hex": "0400011234",
       "expected": {
         "addr_mode": 0,
         "mic_length": 0,
@@ -19,13 +19,13 @@
         "seqnum": 4660,
         "dst_addr_hex": "",
         "payload_hex": "",
-        "mic_hex": "aabbccdd"
+        "mic_hex": ""
       }
     },
     {
       "name": "frame_with_short_address",
-      "description": "Frame with 16-bit destination address and payload",
-      "input_hex": "0c0142567812344869deadbeef",
+      "description": "Unsigned frame with 16-bit destination address and payload",
+      "input_hex": "080142567812344869",
       "expected": {
         "addr_mode": 1,
         "mic_length": 0,
@@ -35,12 +35,12 @@
         "seqnum": 22136,
         "dst_addr_hex": "1234",
         "payload_hex": "4869",
-        "mic_hex": "deadbeef"
+        "mic_hex": ""
       }
     },
     {
       "name": "frame_with_signature",
-      "description": "Frame with signature_present flag set, payload contains 48-byte Schnorr-48 signature",
+      "description": "Frame with signature_present flag set, MIC contains Schnorr-48 signature",
       "input_hex": "3a2105abcdbeef55555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555511223344",
       "expected": {
         "addr_mode": 1,
@@ -50,14 +50,14 @@
         "epoch": 5,
         "seqnum": 43981,
         "dst_addr_hex": "beef",
-        "payload_hex": "555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555",
-        "mic_hex": "11223344",
-        "notes": "Payload is exactly LICHEN_SIG_LEN (48) bytes when signature_present is true"
+        "payload_hex": "55555555",
+        "mic_hex": "555555555555555555555555555555555555555555555555555555555555555555555555555555555555555511223344",
+        "notes": "MIC is exactly LICHEN_SIG_LEN (48) bytes when signature_present is true"
       }
     },
     {
       "name": "frame_with_64bit_mic",
-      "description": "Extended address (EUI-64) with 64-bit MIC",
+      "description": "Extended address (EUI-64), unsigned with MicLength=64",
       "input_hex": "1806ff0001010203040506070854455354deadbeefcafebabe",
       "expected": {
         "addr_mode": 2,
@@ -67,13 +67,13 @@
         "epoch": 255,
         "seqnum": 1,
         "dst_addr_hex": "0102030405060708",
-        "payload_hex": "54455354",
-        "mic_hex": "deadbeefcafebabe"
+        "payload_hex": "54455354deadbeefcafebabe",
+        "mic_hex": ""
       }
     },
     {
       "name": "encrypted_frame",
-      "description": "Encrypted frame with extended address and 64-bit MIC",
+      "description": "Encrypted unsigned frame with extended address",
       "input_hex": "1846102000aabbccddeeff001144415441123456789abcdef0",
       "expected": {
         "addr_mode": 2,
@@ -83,13 +83,22 @@
         "epoch": 16,
         "seqnum": 8192,
         "dst_addr_hex": "aabbccddeeff0011",
-        "payload_hex": "44415441",
-        "mic_hex": "123456789abcdef0"
+        "payload_hex": "44415441123456789abcdef0",
+        "mic_hex": ""
+      }
+    },
+    {
+      "name": "signed_encrypted_unsupported",
+      "description": "Signature and encryption flags are rejected together",
+      "input_hex": "356003000478000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "expected": {
+        "error": true,
+        "error_type": "signed_encrypted_unsupported"
       }
     },
     {
       "name": "max_size_frame",
-      "description": "Maximum frame size (255-byte body), broadcast with 32-bit MIC",
+      "description": "Maximum frame size (255-byte body), unsigned",
       "input_hex": "ff00000000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaffffffff",
       "expected": {
         "addr_mode": 0,
@@ -99,9 +108,9 @@
         "epoch": 0,
         "seqnum": 0,
         "dst_addr_hex": "",
-        "payload_len": 247,
-        "mic_hex": "ffffffff",
-        "notes": "Payload is 247 bytes of 0xAA (255 - 4 header - 4 MIC)"
+        "payload_len": 251,
+        "mic_hex": "",
+        "notes": "Payload is 251 bytes of 0xAA (255 - 4-byte fixed header)"
       }
     },
     {

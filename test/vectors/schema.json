@@ -118,7 +118,13 @@
           }
         },
         "encoded": {"$ref": "#/definitions/hex",
-          "description": "On-air frame bytes (length-prefixed)."}
+          "description": "On-air frame bytes (length-prefixed)."},
+        "expect": {
+          "type": "object",
+          "required": ["error"],
+          "additionalProperties": false,
+          "properties": {"error": {"type": "string"}}
+        }
       }
     },
     "meshtastic_app_compat_vector": {

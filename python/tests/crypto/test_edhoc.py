@@ -4,7 +4,7 @@
 
 import pytest
 
-from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder
+from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder, Method
 from lichen.crypto.identity import Identity
 
 
@@ -76,6 +76,24 @@ class TestEdhocHandshake:
 
         with pytest.raises(ValueError, match="not complete"):
             initiator.export_oscore()
+
+    def test_method_mismatch_raises(self) -> None:
+        """Responder rejects Message 1 if method does not match."""
+        initiator_id = Identity.generate()
+        responder_id = Identity.generate()
+
+        # Initiator uses SIGN_STATIC, responder expects SIGN_SIGN
+        initiator = EdhocInitiator.create(
+            initiator_id, c_i=b"\x00", method=Method.SIGN_STATIC
+        )
+        responder = EdhocResponder.create(
+            responder_id, c_r=b"\x01", method=Method.SIGN_SIGN
+        )
+
+        msg1 = initiator.create_message_1()
+
+        with pytest.raises(ValueError, match="Method mismatch"):
+            responder.process_message_1(msg1, initiator_id.pubkey)
 
 
 class TestOscoreContext:

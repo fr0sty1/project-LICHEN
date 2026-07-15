@@ -168,7 +168,7 @@
       "encoded": "050a0040fd00000000000000"
     },
     {
-      "name": "opt_transit_info",
+      "name": "opt_transit_info_parent",
       "type": "option",
       "option_type": 6,
       "description": "Transit Information option: parent address with path lifetime",
@@ -178,7 +178,20 @@
         "path_lifetime": 255,
         "parent_address": "fe80::2"
       },
-      "encoded": "0614000003fffe800000000000000000000000000002"
+      "encoded": "0614800003fffe800000000000000000000000000002"
+    },
+    {
+      "name": "opt_transit_info_no_parent",
+      "type": "option",
+      "option_type": 6,
+      "description": "Transit Information option without a parent address",
+      "fields": {
+        "path_control": 0,
+        "path_sequence": 3,
+        "path_lifetime": 255,
+        "parent_address": null
+      },
+      "encoded": "0604000003ff"
     },
     {
       "name": "dio_with_dodag_config",

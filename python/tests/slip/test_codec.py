@@ -177,3 +177,19 @@ class TestStreamDecoder:
         dec.feed(bytes([1, 2, 3, 4, 5]))  # This should trigger overflow + clear
         # Escape state should be cleared along with buffer
         assert dec._escaped is False
+
+    def test_buffer_overflow_at_end_delimiter_preserves_next_packet(self) -> None:
+        # Regression test: When END byte triggers overflow check, next packet must
+        # not be discarded. If max_size bytes are in buffer and next byte is END,
+        # we discard the oversized packet but do NOT enter overflow mode - because
+        # END already delimits the bad packet.
+        dec = StreamDecoder(max_size=10)
+        # Build: [10 bytes of data][END][valid packet][END]
+        oversized = bytes([END]) + bytes(range(10))  # 10 bytes in buffer
+        # Note: bytes(range(10)) = 0x00..0x09, none are END/ESC
+        # After feeding these 11 bytes: buffer has 10 bytes, next byte (END) triggers check
+        # Since it's END, we should discard buffer but NOT enter overflow mode
+        data = oversized + bytes([END]) + encode(b"valid")
+        packets = dec.feed(data)
+        # The valid packet should be received (not discarded as overflow)
+        assert b"valid" in packets

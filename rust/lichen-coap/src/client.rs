@@ -78,7 +78,7 @@ async fn request(
     sock.connect(addr).await?;
 
     let mid = mid_from_time();
-    let token = [0x4c, 0x49, 0x43, 0x48]; // "LICH"
+    let token = token_from_time();
     let frame = encode(code, mid, &token, path, payload)?;
 
     sock.send(&frame).await?;
@@ -257,6 +257,16 @@ fn mid_from_time() -> u16 {
         .unwrap_or(0x1234)
 }
 
+/// Generate a 4-byte token unique per request from the system clock.
+/// Uses all 32 bits of subsec_nanos to differentiate from MID (which uses only lower 16).
+fn token_from_time() -> [u8; 4] {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.subsec_nanos().to_be_bytes())
+        .unwrap_or([0x4c, 0x49, 0x43, 0x48]) // fallback to "LICH"
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -296,7 +306,7 @@ mod tests {
         let request_mid = 0x1234;
         let attacker_mid = 0xDEAD;
         let token = [0x4c, 0x49, 0x43, 0x48]; // "LICH"
-        // Attacker knows token but guesses wrong MID
+                                              // Attacker knows token but guesses wrong MID
         let spoofed_resp = build_response(0x45, attacker_mid, &token, Some(b"fake"));
         let result = decode(&spoofed_resp, request_mid, &token);
         assert!(result.is_err());

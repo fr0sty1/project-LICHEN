@@ -49,6 +49,17 @@ namespace Antmicro.Renode.Peripherals.Wireless
             }
         }
 
+        public string SimHost
+        {
+            get => simHost;
+            set
+            {
+                Disconnect();
+                simHost = value;
+                this.Log(LogLevel.Info, "SimHost set to {0}", value);
+            }
+        }
+
         // GPIO pins - directly expose for DTS wiring
         public GPIO IRQ { get; } = new GPIO();
         public GPIO Busy { get; } = new GPIO();
@@ -656,7 +667,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
         }
 
         private readonly IMachine machine;
-        private readonly string simHost;
+        private string simHost;
         private int simPort;
         private readonly byte[] txBuffer;
         private readonly byte[] rxBuffer;

@@ -53,8 +53,8 @@ extern "C" {
  *     Sequence number:                     2 bytes
  *     Subtotal:                            5 bytes
  *
- *   MIC (32-bit minimum):                  4 bytes
- *   Schnorr-48 signature:                 48 bytes (SCHNORR48_SIG_LEN)
+ *   Unsigned MIC:                           0 bytes
+ *   Schnorr-48 signature MIC:              48 bytes (SCHNORR48_SIG_LEN)
  *   ----------------------------------------
  *   Total fixed overhead:                 57 bytes
  *

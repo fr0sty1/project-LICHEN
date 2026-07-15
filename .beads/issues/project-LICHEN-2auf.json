@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-2auf",
+  "title": "Finish inherited fix-and-validate workflow",
+  "description": "Resume the interrupted Claude Code fix-all workflow. Audit the large uncommitted change set, reconcile completed and unfinished Beads, run appropriate Python/Rust/Zephyr quality gates, perform follow-up review, and validate the heterogeneous Python/Rust/Zephyr fleet on EC2 before committing. Do not discard inherited work or generated artifacts without inspection.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "epic",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T04:40:12.035246Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T04:40:12.03529Z"
+}

@@ -11,7 +11,7 @@ This module provides:
 2. Schnorr signature generation on TX
 3. Signature verification on RX
 4. Replay detection using per-sender sliding windows
-5. MIC computation (placeholder for AES-CCM when encryption is added)
+5. MIC handling: unsigned frames have no MIC; signed frames carry Schnorr-48
 
 Threading model: All methods are async. A single LinkLayer instance should be
 used by one task at a time. For concurrent access, use external synchronization.
@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import random
+import secrets
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -36,22 +37,18 @@ from ..crypto.identity import Identity, PeerIdentity
 from ..crypto.schnorr48 import sign, verify
 from .frame import AddrMode, FrameError, LichenFrame, MicLength
 from .replay import ReplayProtector
-from .tx_queue import Priority, QueueFullError, TxQueue
+from .tx_queue import Priority, TxQueue
 
 if TYPE_CHECKING:
     from ..radio.base import Radio
 
 logger = logging.getLogger(__name__)
 
-# Signature is appended to payload, not a separate field
-# Why: The frame format has a fixed structure. Signatures go in the payload
-# portion, after any SCHC-compressed content but before MIC.
+# A signed frame puts the full Schnorr-48 value in the MIC field.
 SIGNATURE_LENGTH = 48
 
-# MIC placeholder when no encryption
-# Why 4 bytes: MicLength.BITS32 is the default. Real MIC computed by AES-CCM
-# when encryption is enabled; for now we use zeros as a placeholder.
-PLACEHOLDER_MIC = bytes(4)
+# Placeholder MIC for unsigned development frames.
+PLACEHOLDER_MIC = b""
 
 # Track whether we've warned about MIC verification being disabled.
 # Why module-level: Log the warning once per process, not per frame.
@@ -62,6 +59,11 @@ _mic_verify_warned = False
 # See _pin_key_stub() for details.
 _key_pin_warned = False
 
+# Track whether we've warned about encrypted frames being rejected.
+# Why reject: Encryption is not implemented. Frames claiming to be encrypted
+# cannot be decrypted, so accepting them would misinterpret the payload.
+_encrypted_frame_warned = False
+
 
 def _verify_mic_stub(frame: LichenFrame) -> bool:
     """Stub MIC verification - accepts all frames but warns once.
@@ -70,7 +72,7 @@ def _verify_mic_stub(frame: LichenFrame) -> bool:
     accepted regardless of MIC value. This allows frame forgery by any
     attacker who can inject radio traffic.
 
-    Real implementation requires AES-CCM computation over:
+    Encrypted-frame MIC computation is unsupported. Signed frames use:
     (LLSec || epoch || seqnum || dst_addr || payload)
 
     Returns:
@@ -173,8 +175,8 @@ class LinkLayer:
     tx_queue: TxQueue = field(default_factory=TxQueue)
     # ponytail: random epoch in [128,255] for reboot resilience without flash.
     # Half-space arithmetic treats upper-half counters as "ahead" of lower-half.
-    # SECURITY: ESP32 HW RNG is weak before radio init; see link_ctx.c for details.
-    _epoch: int = field(default_factory=lambda: random.randint(128, 255), repr=False)
+    # SECURITY: Use secrets module for cryptographically secure random epoch.
+    _epoch: int = field(default_factory=lambda: secrets.randbelow(128) + 128, repr=False)
     _seqnum: int = field(default=0, repr=False)
     _pinned_keys: dict[bytes, bytes] = field(default_factory=dict, repr=False)
 
@@ -215,6 +217,8 @@ class LinkLayer:
         seqnum: int,
         dst_addr: bytes,
         payload: bytes,
+        length: int | None = None,
+        llsec: int | None = None,
     ) -> bytes:
         """Construct the data that gets signed.
 
@@ -222,22 +226,18 @@ class LinkLayer:
         function documents exactly what is signed, preventing subtle bugs
         where fields are added but not covered by the signature.
 
-        Signed fields (in order):
-        - epoch (1 byte): Prevents replay across epoch boundaries
-        - seqnum (2 bytes, big-endian): Prevents replay within epoch
-        - dst_addr (0-8 bytes): Prevents redirect attacks
-        - payload (variable): The actual content
-
-        NOT signed:
-        - LLSec byte: Contains mode flags, not security-relevant content
-        - MIC: Computed over different data (ciphertext for AES-CCM)
-        - Length: Derived from other fields
+        Signed fields follow the draft exactly:
+        LENGTH || LLSec || EPO || SEQ || DST || PLD.
 
         Returns:
             Bytes to be signed.
         """
+        if length is None:
+            length = 4 + len(dst_addr) + len(payload) + SIGNATURE_LENGTH
+        if llsec is None:
+            llsec = int(AddrMode.NONE) | (1 << 5)
         return (
-            bytes([epoch])
+            bytes([length, llsec, epoch])
             + seqnum.to_bytes(2, "big")
             + dst_addr
             + payload
@@ -268,7 +268,10 @@ class LinkLayer:
 
         Args:
             payload: The data to send (typically SCHC-compressed packet).
-            dst_addr: Destination address (empty for broadcast).
+            dst_addr: Destination address. Length must match addr_mode:
+                NONE/ELIDED require empty (b''), SHORT requires 2 bytes,
+                EXTENDED requires 8 bytes. ELIDED means address is derived
+                from upper-layer IPv6 destination by the receiver.
             addr_mode: How to encode the destination.
             priority: Queue priority (ROUTING, ACK, URGENT, or BULK).
             deadline_ms: Absolute deadline in ms. If None, uses default
@@ -281,24 +284,34 @@ class LinkLayer:
         Raises:
             QueueFullError: If queue is full and cannot preempt lower priority.
             FrameError: If the frame cannot be constructed (e.g., too large).
+            ValueError: If dst_addr length does not match addr_mode.
         """
-        epoch, seqnum = self._next_seqnum()
+        # Validate dst_addr length matches addr_mode early
+        expected_len = addr_mode.addr_len
+        if len(dst_addr) != expected_len:
+            raise ValueError(
+                f"dst_addr is {len(dst_addr)} bytes but {addr_mode.name} "
+                f"requires {expected_len} bytes"
+            )
 
-        # Why sign before building frame: We need the signature as part of
-        # the payload, so it must be computed first.
-        signable = self._build_signable_data(epoch, seqnum, dst_addr, payload)
+        # Peek at current sequence numbers without consuming
+        # Why peek first: If push() raises QueueFullError, we don't want to
+        # waste a sequence number. Only consume after successful push.
+        epoch, seqnum = self._epoch, self._seqnum
+
+        llsec = int(addr_mode) | (1 << 5)
+        frame_length = 4 + len(dst_addr) + len(payload) + SIGNATURE_LENGTH
+        signable = self._build_signable_data(
+            epoch, seqnum, dst_addr, payload, frame_length, llsec
+        )
         signature = sign(self.identity.privkey, self.identity.pubkey, signable)
-
-        # Why append signature to payload: The frame format doesn't have a
-        # dedicated signature field. Per spec, signature goes at end of payload.
-        signed_payload = payload + signature
 
         frame = LichenFrame(
             epoch=epoch,
             seqnum=seqnum,
             dst_addr=dst_addr,
-            payload=signed_payload,
-            mic=PLACEHOLDER_MIC,  # TODO: Real MIC when encryption added
+            payload=payload,
+            mic=signature,
             addr_mode=addr_mode,
             mic_length=MicLength.BITS32,
             signature_present=True,
@@ -319,6 +332,11 @@ class LinkLayer:
         # Queue the frame (may raise QueueFullError)
         self.tx_queue.push(frame_bytes, priority=priority, deadline_ms=deadline_ms)
 
+        # Push succeeded - now consume the sequence number
+        # Why call _next_seqnum(): It advances the counter for the next send.
+        # We ignore the return value since we already used epoch/seqnum above.
+        self._next_seqnum()
+
         # Drain the queue
         return await self.drain_tx_queue()
 
@@ -334,12 +352,15 @@ class LinkLayer:
         transmitted_any = False
 
         while True:
-            # Pop highest-priority packet (also expires stale)
-            frame_bytes = self.tx_queue.pop()
-            if frame_bytes is None:
+            # Expire stale packets and check if queue has work
+            self.tx_queue.expire_stale()
+            if len(self.tx_queue) == 0:
                 break  # Queue empty
 
-            # CAD with exponential backoff before transmit
+            # CAD before pop - on failure, packets remain safely queued.
+            # Why not pop first: Re-queuing after CAD failure can raise
+            # QueueFullError if queue is full of same-priority packets
+            # (e.g., ROUTING cannot preempt ROUTING), losing the packet.
             if self.cad_enabled and not await self._wait_for_clear_channel():
                 logger.warning(
                     "TX deferred: channel busy after %d backoff cycles, "
@@ -347,14 +368,12 @@ class LinkLayer:
                     CAD_MAX_CYCLES,
                     len(self.tx_queue),
                 )
-                # Re-queue the packet we just popped (it wasn't transmitted)
-                # Use ROUTING priority to ensure it goes back to front
-                # Note: This loses original priority, but preserves the packet
-                try:
-                    self.tx_queue.push(frame_bytes, priority=Priority.ROUTING)
-                except QueueFullError:
-                    logger.error("TX queue full on re-queue after CAD failure")
                 break
+
+            # Channel clear (or CAD disabled) - now safe to pop and transmit
+            frame_bytes = self.tx_queue.pop()
+            if frame_bytes is None:
+                break  # Packet expired during CAD (unlikely but possible)
 
             # Transmit
             if await self.radio.transmit(frame_bytes):
@@ -465,16 +484,26 @@ class LinkLayer:
             logger.warning("RX unsigned frame rejected (policy requires signatures)")
             return None
 
-        # Step 2: Extract signature from payload
-        if len(frame.payload) < SIGNATURE_LENGTH:
-            logger.warning(
-                "RX frame payload too short for signature: %d bytes",
-                len(frame.payload),
-            )
+        # SECURITY: Reject frames with encrypted=True until encryption is implemented.
+        # Why reject (not accept): An attacker could send a frame with encrypted=True
+        # but plaintext payload. Without decryption, we would misinterpret the payload
+        # (treating ciphertext as plaintext, or vice versa). Signature verification
+        # might coincidentally succeed, leading to accepted but corrupted data.
+        if frame.encrypted:
+            global _encrypted_frame_warned
+            if not _encrypted_frame_warned:
+                logger.warning(
+                    "Encrypted frames NOT SUPPORTED - rejecting. "
+                    "Encryption is not implemented; frames with encrypted=True are dropped."
+                )
+                _encrypted_frame_warned = True
+            else:
+                logger.debug("RX encrypted frame rejected (encryption not implemented)")
             return None
 
-        signature = frame.payload[-SIGNATURE_LENGTH:]
-        inner_payload = frame.payload[:-SIGNATURE_LENGTH]
+        # S=1 makes the MIC field the 48-byte Schnorr signature.
+        signature = frame.mic
+        inner_payload = frame.payload
 
         # Step 3: Look up sender
         # Why use IID from signature verification: We need the sender's pubkey
@@ -508,7 +537,7 @@ class LinkLayer:
             return None
 
         # Step 4.6: Verify MIC (stub - logs warning, always accepts)
-        # TODO: Implement AES-CCM MIC verification when encryption is added.
+        # Encrypted-frame processing is unsupported by the current profile.
         # The MIC covers: LLSec || epoch || seqnum || dst_addr || payload
         if not _verify_mic_stub(frame):
             logger.warning("MIC verification failed for frame from %s", sender.iid.hex())
@@ -551,7 +580,7 @@ class LinkLayer:
             epoch=frame.epoch,
             seqnum=frame.seqnum,
             dst_addr=frame.dst_addr,
-            payload=inner_payload,  # Without signature
+            payload=inner_payload,
             mic=frame.mic,
             addr_mode=frame.addr_mode,
             mic_length=frame.mic_length,
@@ -586,7 +615,12 @@ class LinkLayer:
             PeerIdentity if found and signature valid, None otherwise.
         """
         signable = self._build_signable_data(
-            frame.epoch, frame.seqnum, frame.dst_addr, payload
+            frame.epoch,
+            frame.seqnum,
+            frame.dst_addr,
+            payload,
+            4 + len(frame.dst_addr) + len(payload) + SIGNATURE_LENGTH,
+            frame.llsec_byte(),
         )
 
         # Why try self first: In loopback/testing scenarios, we might receive

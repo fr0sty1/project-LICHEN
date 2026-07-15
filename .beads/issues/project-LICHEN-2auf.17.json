@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2auf.17",
+  "title": "Deduplicate callback collision telemetry",
+  "description": "Callback/direct RX collision metrics are deduplicated but collision logs and observer callbacks repeat on every poll for the same collision. Deduplicate the side effects with the same collision identity and add a regression test.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T05:55:18.843687Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T05:57:14.201294Z",
+  "closed_at": "2026-07-15T05:57:14.201294Z",
+  "close_reason": "Implemented collision side-effect deduplication using Metrics collision identity; added direct/callback polling and log regressions; simulation suite and changed-file Ruff checks pass.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.17",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T05:55:18.844223Z"
+    }
+  ]
+}

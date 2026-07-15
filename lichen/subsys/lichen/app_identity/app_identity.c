@@ -165,14 +165,17 @@ int lichen_app_identity_set_self_from_link_ctx(
 	if (ctx == NULL) {
 		return -EINVAL;
 	}
-	if (!ctx->has_key) {
-		return -ENOKEY;
-	}
 
+	/*
+	 * SECURITY: Use lichen_link_copy_identity() to atomically snapshot
+	 * the EUI-64 and public key under the context's lock. This prevents
+	 * a race with lichen_link_cleanup() that could yield a zeroed key.
+	 */
 	memset(&identity, 0, sizeof(identity));
-	memcpy(identity.eui64, ctx->eui64, sizeof(identity.eui64));
-	memcpy(identity.public_key, ctx->ed25519_pk,
-	       sizeof(identity.public_key));
+	ret = lichen_link_copy_identity(ctx, identity.eui64, identity.public_key, NULL);
+	if (ret < 0) {
+		return ret;
+	}
 	identity.has_public_key = true;
 	ret = copy_string(identity.display_name,
 			  sizeof(identity.display_name), display_name);
@@ -331,6 +334,26 @@ size_t lichen_app_identity_peer_count(void)
 	}
 	k_mutex_unlock(&s_mutex);
 	return count;
+}
+
+int lichen_app_identity_remove_peer(
+	const uint8_t eui64[LICHEN_APP_IDENTITY_EUI64_LEN])
+{
+	int slot;
+
+	if (eui64 == NULL) {
+		return -EINVAL;
+	}
+
+	k_mutex_lock(&s_mutex, K_FOREVER);
+	slot = find_peer_locked(eui64);
+	if (slot < 0) {
+		k_mutex_unlock(&s_mutex);
+		return -ENOENT;
+	}
+	memset(&s_peers[slot], 0, sizeof(s_peers[slot]));
+	k_mutex_unlock(&s_mutex);
+	return 0;
 }
 
 #ifdef CONFIG_LICHEN_APP_IDENTITY_TEST_HOOKS

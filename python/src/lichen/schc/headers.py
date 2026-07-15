@@ -30,7 +30,7 @@ from ipaddress import IPv6Address
 from lichen.ipv6.icmpv6 import icmpv6_checksum
 from lichen.ipv6.packet import HEADER_LENGTH, IPv6Header, NextHeader, PacketError
 from lichen.ipv6.udp import UDP_HEADER_LENGTH, UDP_NEXT_HEADER, UdpDatagram
-from lichen.schc.codec import compress, decompress, residue_byte_length
+from lichen.schc.codec import SchcError, compress, decompress, residue_byte_length
 from lichen.schc.rules import (
     GLOBAL_COAP_RULE,
     GLOBAL_OSCORE_RULE,
@@ -135,7 +135,9 @@ def _coap_has_oscore_option(coap: bytes) -> bool:
         if option_number > _COAP_OPTION_OSCORE:
             return False
 
-        # Skip option value
+        # Skip option value, checking bounds first
+        if offset + length > len(coap):
+            return False  # Malformed: declared length exceeds remaining bytes
         offset += length
 
     return False
@@ -519,8 +521,14 @@ def decompress_packet(data: bytes, profiles: tuple[PacketProfile, ...] = DEFAULT
     for profile in profiles:
         if profile.rule.rule_id == rule_id:
             residue_len = residue_byte_length(profile.rule)
-            residue = data[: 1 + residue_len]
-            tail = data[1 + residue_len :]
+            required_len = 1 + residue_len
+            if len(data) < required_len:
+                raise SchcError(
+                    f"packet too short: need {required_len} bytes for rule {rule_id}, "
+                    f"got {len(data)}"
+                )
+            residue = data[:required_len]
+            tail = data[required_len:]
             _, fields = decompress(residue, profile.rule)
             return profile.build(fields, tail)
     raise ValueError(f"no profile for rule ID {rule_id}")

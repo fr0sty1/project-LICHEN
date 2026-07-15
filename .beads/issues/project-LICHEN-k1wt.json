@@ -2,11 +2,14 @@
   "id": "project-LICHEN-k1wt",
   "title": "senml: dec_text length cast could truncate on 16-bit targets",
   "description": "File: rust/lichen-senml/src/cbor.rs\nLines: 234, 239\n\nThe dec_text function casts length to usize:\n```rust\nlet end = start + len as usize;  // line 234\nOk((s, adv + len as usize))      // line 239\n```\n\nWhile dec_head limits len to 65535, on theoretical 16-bit targets where usize is 16 bits, values \u003e= 65536 would truncate. More importantly, even values up to 65535 would wrap when added to start if start is non-zero on a 16-bit target.\n\nRust's tier-1 targets all have 32+ bit usize, but the code is #![no_std] suggesting embedded use where 16-bit targets might be considered.\n\nActual risk on supported targets: None (min usize is 32-bit)\nTheoretical risk: Wraparound arithmetic on hypothetical 16-bit targets\n\nImpact: Theoretical only; defensive programming issue.\n\nNote: This is primarily a documentation issue - the crate should document minimum target requirements (32-bit usize).",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:41:24.403062Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:41:24.403092Z"
+  "updated_at": "2026-07-13T04:56:54.319129Z",
+  "closed_at": "2026-07-13T04:56:54.319129Z",
+  "close_reason": "Closed"
 }

@@ -39,8 +39,8 @@ static uint16_t s_coap_port = 5683;
 /* Registered handlers */
 static struct lichen_coap_server_handlers s_handlers;
 
-/* Response buffer (shared, handlers are serialized by CoAP service) */
-static uint8_t s_response_buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+/* Response buffer size for stack allocation */
+#define COAP_RESPONSE_BUF_SIZE CONFIG_COAP_SERVER_MESSAGE_SIZE
 
 /*
  * Helper to build a CBOR response.
@@ -52,6 +52,7 @@ static int build_response(struct coap_resource *resource,
 			  const uint8_t *payload, size_t payload_len)
 {
 	struct coap_packet response;
+	uint8_t response_buf[COAP_RESPONSE_BUF_SIZE];
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint16_t id;
 	uint8_t tkl;
@@ -60,7 +61,7 @@ static int build_response(struct coap_resource *resource,
 	id = coap_header_get_id(request);
 	tkl = coap_header_get_token(request, token);
 
-	ret = coap_packet_init(&response, s_response_buf, sizeof(s_response_buf),
+	ret = coap_packet_init(&response, response_buf, sizeof(response_buf),
 			       COAP_VERSION_1, COAP_TYPE_ACK, tkl, token,
 			       code, id);
 	if (ret < 0) {
@@ -102,6 +103,7 @@ static int send_ack(struct coap_resource *resource,
 		    uint8_t code)
 {
 	struct coap_packet response;
+	uint8_t response_buf[COAP_RESPONSE_BUF_SIZE];
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint16_t id;
 	uint8_t tkl;
@@ -110,7 +112,7 @@ static int send_ack(struct coap_resource *resource,
 	id = coap_header_get_id(request);
 	tkl = coap_header_get_token(request, token);
 
-	ret = coap_packet_init(&response, s_response_buf, sizeof(s_response_buf),
+	ret = coap_packet_init(&response, response_buf, sizeof(response_buf),
 			       COAP_VERSION_1, COAP_TYPE_ACK, tkl, token,
 			       code, id);
 	if (ret < 0) {
@@ -372,6 +374,7 @@ static int msg_inbox_post(struct coap_resource *resource,
 			  struct sockaddr *addr, socklen_t addr_len)
 {
 	struct coap_packet response;
+	uint8_t response_buf[COAP_RESPONSE_BUF_SIZE];
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint16_t id;
 	uint8_t tkl;
@@ -399,7 +402,7 @@ static int msg_inbox_post(struct coap_resource *resource,
 	id = coap_header_get_id(request);
 	tkl = coap_header_get_token(request, token);
 
-	ret = coap_packet_init(&response, s_response_buf, sizeof(s_response_buf),
+	ret = coap_packet_init(&response, response_buf, sizeof(response_buf),
 			       COAP_VERSION_1, COAP_TYPE_ACK, tkl, token,
 			       COAP_RESPONSE_CODE_CREATED, id);
 	if (ret < 0) {

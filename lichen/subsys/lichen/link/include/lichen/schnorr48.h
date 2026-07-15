@@ -125,14 +125,16 @@ bool schnorr48_verify(const uint8_t *_Nonnull pubkey,
 /**
  * @brief Sign a LICHEN link-layer frame.
  *
- * Builds the signable data (epoch || seqnum || dst_addr || inner_payload)
+ * Builds the signable data (length || LLSec || epoch || seqnum || dst_addr || payload)
  * and produces a 48-byte signature.
  *
+ * @param[in]  length        Frame body length byte
+ * @param[in]  llsec         Wire LLSec byte
  * @param[in]  epoch         Epoch byte
  * @param[in]  seqnum        Sequence number (big-endian in signable data)
  * @param[in]  dst_addr      Destination address (may be NULL if dst_addr_len is 0)
  * @param[in]  dst_addr_len  Address length (must be <= SCHNORR48_MAX_ADDR_LEN)
- * @param[in]  payload       Inner payload (without signature)
+ * @param[in]  payload       Inner payload
  * @param[in]  payload_len   Payload length
  * @param[in]  privkey       32-byte private key
  * @param[in]  pubkey        32-byte public key
@@ -140,7 +142,8 @@ bool schnorr48_verify(const uint8_t *_Nonnull pubkey,
  * @return 0 on success, -EINVAL if dst_addr_len > SCHNORR48_MAX_ADDR_LEN
  *         or if NULL pointers are passed with nonzero lengths
  */
-int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
+int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
+			 uint8_t epoch, uint16_t seqnum,
 			 const uint8_t *_Nullable dst_addr, size_t dst_addr_len,
 			 const uint8_t *_Nonnull payload, size_t payload_len,
 			 const uint8_t *_Nonnull privkey,
@@ -150,19 +153,24 @@ int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
 /**
  * @brief Verify a signed LICHEN link-layer frame.
  *
+ * @param[in] length       Frame body length byte
+ * @param[in] llsec        Wire LLSec byte
  * @param[in] epoch        Epoch byte
  * @param[in] seqnum       Sequence number
  * @param[in] dst_addr     Destination address (may be NULL if dst_addr_len is 0)
  * @param[in] dst_addr_len Address length (must be <= SCHNORR48_MAX_ADDR_LEN)
- * @param[in] payload      Full payload (inner || signature)
- * @param[in] payload_len  Full payload length (must be >= 48)
+ * @param[in] payload      Inner payload
+ * @param[in] payload_len  Inner payload length
+ * @param[in] sig          48-byte signature from the MIC field
  * @param[in] pubkey       32-byte sender public key
  * @return 1 if valid, 0 if invalid signature,
- *         -EINVAL if malformed (dst_addr_len > max, payload too short, NULL payload)
+ *         -EINVAL if malformed (dst_addr_len > max, NULL payload or signature)
  */
-int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
+int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
+			   uint8_t epoch, uint16_t seqnum,
 			   const uint8_t *_Nullable dst_addr, size_t dst_addr_len,
 			   const uint8_t *_Nonnull payload, size_t payload_len,
+			   const uint8_t *_Nonnull sig,
 			   const uint8_t *_Nonnull pubkey);
 
 #ifdef __cplusplus

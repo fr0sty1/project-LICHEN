@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-2auf.26",
+  "title": "Puck app missing CoAP resource linker section",
+  "description": "The Zephyr puck application links coap_server.c but does not add the coap_resource_lichen_coap_server iterable linker section, causing undefined _coap_resource_lichen_coap_server_list_start/end symbols on T-Echo firmware builds. Mirror the gateway sections-ram.ld integration and verify the puck firmware links.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T13:49:46.956346Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T13:49:46.957389Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.26",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T13:49:46.957389Z"
+    }
+  ]
+}

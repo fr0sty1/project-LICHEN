@@ -205,7 +205,7 @@ static size_t base64_encode(const uint8_t *data, size_t len, char *out, size_t o
 	size_t i;
 
 	for (i = 0; i + 2 < len; i += 3) {
-		if (out_idx + 4 >= out_len) {
+		if (out_idx + 4 > out_len) {
 			return 0;
 		}
 		out[out_idx++] = base64_chars[(data[i] >> 2) & 0x3f];
@@ -215,7 +215,7 @@ static size_t base64_encode(const uint8_t *data, size_t len, char *out, size_t o
 	}
 
 	if (i < len) {
-		if (out_idx + 4 >= out_len) {
+		if (out_idx + 4 > out_len) {
 			return 0;
 		}
 		out[out_idx++] = base64_chars[(data[i] >> 2) & 0x3f];
@@ -676,7 +676,7 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 		cbor_put_key(buf, &off, "last_seen");
 		cbor_put_tstr(buf, &off, last_str);
 
-		if (off > buf_size - 100) {
+		if (off + 100 > buf_size) {
 			/* Safety margin */
 			break;
 		}
@@ -741,24 +741,60 @@ static int decode_key_put_cbor(const uint8_t *payload, size_t payload_len,
 		return -EINVAL;
 	}
 
-	/* Check for map header */
-	uint8_t map_count;
+	/*
+	 * Parse CBOR map header (major type 5).
+	 * CBOR encoding for maps:
+	 *   0xa0-0xb7: Small map with 0-23 items (count in lower 5 bits)
+	 *   0xb8 NN:   Map with 1-byte length (up to 255 items)
+	 *   0xb9 NNNN: Map with 2-byte length (big-endian)
+	 *   0xba NNNNNNNN: Map with 4-byte length (big-endian)
+	 *   0xbf:      Indefinite-length map (not supported - requires break code)
+	 *
+	 * For key management, we limit map_count to 32 entries max.
+	 */
+	uint8_t first_byte = payload[0];
+	uint8_t major_type = first_byte >> 5;
+	uint8_t additional_info = first_byte & 0x1f;
+	size_t map_count;
+	size_t pos;
 
-	if ((payload[0] & 0xe0) == 0xa0) {
-		map_count = payload[0] & 0x1f;
-	} else if (payload[0] == 0xb8 && payload_len > 1) {
-		map_count = payload[1];
-	} else {
+	if (major_type != 5) {
+		/* Not a map */
 		return -EINVAL;
 	}
 
-	size_t pos = (payload[0] == 0xb8) ? 2 : 1;
+	if (additional_info < 24) {
+		/* Small map: count is in lower 5 bits */
+		map_count = additional_info;
+		pos = 1;
+	} else if (additional_info == 24 && payload_len > 1) {
+		/* 1-byte length */
+		map_count = payload[1];
+		pos = 2;
+	} else if (additional_info == 25 && payload_len > 2) {
+		/* 2-byte length (big-endian) */
+		map_count = ((size_t)payload[1] << 8) | payload[2];
+		pos = 3;
+	} else if (additional_info == 26 && payload_len > 4) {
+		/* 4-byte length (big-endian) */
+		map_count = ((size_t)payload[1] << 24) | ((size_t)payload[2] << 16) |
+			    ((size_t)payload[3] << 8) | payload[4];
+		pos = 5;
+	} else {
+		/* 8-byte length (27), indefinite-length (31), or reserved: not supported */
+		return -EINVAL;
+	}
+
+	/* Sanity check: key management payloads should not have huge maps */
+	if (map_count > 32) {
+		return -EINVAL;
+	}
 	bool has_pubkey = false;
 	bool has_trust = false;
 
 	*trust = LICHEN_KEY_TRUST_VERIFIED; /* default for manual add */
 
-	for (uint8_t i = 0; i < map_count && pos < payload_len; i++) {
+	for (size_t i = 0; i < map_count && pos < payload_len; i++) {
 		/* Read key (text string) */
 		uint8_t key_type = payload[pos];
 		size_t key_len;
@@ -779,6 +815,11 @@ static int decode_key_put_cbor(const uint8_t *payload, size_t payload_len,
 		}
 		key_str = (const char *)&payload[pos];
 		pos += key_len;
+
+		/* Bounds check before reading value type */
+		if (pos >= payload_len) {
+			return -EINVAL;
+		}
 
 		/* Read value */
 		uint8_t val_type = payload[pos];

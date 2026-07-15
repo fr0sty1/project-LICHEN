@@ -29,6 +29,11 @@ west build -d build/link_crypto -t run
 tools/zephyr-clean-worktree.sh verify "$PWD" build/link_crypto
 ```
 
+The `link_crypto` native_sim build is the required Zephyr verification for C
+link framing changes. It is not available in the macOS worktree; run the
+commands above on the prepared EC2 Zephyr workspace and record the build/run
+result with the change.
+
 For Twister, pass the same module path:
 
 ```bash

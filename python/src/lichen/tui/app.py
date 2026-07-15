@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import binascii
+import contextlib
 from datetime import datetime
 from typing import Any, ClassVar
 
@@ -281,7 +282,11 @@ class SimNodeApp(App[None]):
         """Quit the application with cleanup."""
         if self._receive_task is not None:
             self._receive_task.cancel()
-        self._disconnect_sync()
+        # Properly close the radio connection before exiting
+        if self._radio is not None:
+            with contextlib.suppress(Exception):
+                await self._radio.close()
+            self._radio = None
         self.exit()
 
     def action_connect(self) -> None:
@@ -378,11 +383,6 @@ class SimNodeApp(App[None]):
             status = self.query_one(ConnectionStatus)
             status.set_disconnected()
             self._log_event("info", "Disconnected")
-
-    def _disconnect_sync(self) -> None:
-        """Synchronous disconnect for shutdown path."""
-        # Just drop the reference; the connection will close when the process exits
-        self._radio = None
 
     def _do_transmit(self) -> None:
         """Start a transmit operation."""

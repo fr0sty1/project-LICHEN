@@ -102,7 +102,13 @@ pub struct TxItem {
 
 impl TxItem {
     /// Create a new TX item.
-    fn new(priority: TxPriority, sequence: u32, deadline_ms: u64, enqueue_time_ms: u64, data: &[u8]) -> Option<Self> {
+    fn new(
+        priority: TxPriority,
+        sequence: u32,
+        deadline_ms: u64,
+        enqueue_time_ms: u64,
+        data: &[u8],
+    ) -> Option<Self> {
         let mut vec = heapless::Vec::new();
         vec.extend_from_slice(data).ok()?;
         Some(Self {
@@ -269,8 +275,8 @@ impl TxQueue {
         now_ms: u64,
         data: &[u8],
     ) -> Result<(), TxQueueError> {
-        let item =
-            TxItem::new(priority, self.sequence, deadline_ms, now_ms, data).ok_or(TxQueueError::PayloadTooLarge)?;
+        let item = TxItem::new(priority, self.sequence, deadline_ms, now_ms, data)
+            .ok_or(TxQueueError::PayloadTooLarge)?;
 
         // Step 1: Expire stale items
         self.expire_before(now_ms);
@@ -497,7 +503,9 @@ mod tests {
         let now = 1000u64;
         let deadline = now + DEADLINE_USER_MS;
 
-        queue.push(TxPriority::User, deadline, now, b"hello").unwrap();
+        queue
+            .push(TxPriority::User, deadline, now, b"hello")
+            .unwrap();
         assert_eq!(queue.len(), 1);
 
         let pop_time = now + 50; // 50ms later
@@ -515,10 +523,18 @@ mod tests {
         let deadline = now + DEADLINE_USER_MS;
 
         // Push in reverse priority order (all 4 slots)
-        queue.push(TxPriority::Bulk, deadline, now, b"bulk").unwrap();
-        queue.push(TxPriority::User, deadline, now, b"user").unwrap();
-        queue.push(TxPriority::Routing, deadline, now, b"routing").unwrap();
-        queue.push(TxPriority::Control, deadline, now, b"control").unwrap();
+        queue
+            .push(TxPriority::Bulk, deadline, now, b"bulk")
+            .unwrap();
+        queue
+            .push(TxPriority::User, deadline, now, b"user")
+            .unwrap();
+        queue
+            .push(TxPriority::Routing, deadline, now, b"routing")
+            .unwrap();
+        queue
+            .push(TxPriority::Control, deadline, now, b"control")
+            .unwrap();
 
         // Should pop in priority order (lowest enum value first)
         assert_eq!(queue.pop(now).unwrap().priority, TxPriority::Control);
@@ -533,9 +549,15 @@ mod tests {
         let now = 1000u64;
         let deadline = now + DEADLINE_USER_MS;
 
-        queue.push(TxPriority::User, deadline, now, b"first").unwrap();
-        queue.push(TxPriority::User, deadline, now, b"second").unwrap();
-        queue.push(TxPriority::User, deadline, now, b"third").unwrap();
+        queue
+            .push(TxPriority::User, deadline, now, b"first")
+            .unwrap();
+        queue
+            .push(TxPriority::User, deadline, now, b"second")
+            .unwrap();
+        queue
+            .push(TxPriority::User, deadline, now, b"third")
+            .unwrap();
 
         assert_eq!(queue.pop(now).unwrap().data(), b"first");
         assert_eq!(queue.pop(now).unwrap().data(), b"second");
@@ -548,10 +570,18 @@ mod tests {
         let now = 1000u64;
         let deadline = now + DEADLINE_USER_MS;
 
-        queue.push(TxPriority::Control, deadline, now, b"ack").unwrap();
-        queue.push(TxPriority::User, deadline, now, b"hello world").unwrap();
-        queue.push(TxPriority::User, deadline, now, b"test").unwrap();
-        queue.push(TxPriority::Bulk, deadline, now, b"data").unwrap();
+        queue
+            .push(TxPriority::Control, deadline, now, b"ack")
+            .unwrap();
+        queue
+            .push(TxPriority::User, deadline, now, b"hello world")
+            .unwrap();
+        queue
+            .push(TxPriority::User, deadline, now, b"test")
+            .unwrap();
+        queue
+            .push(TxPriority::Bulk, deadline, now, b"data")
+            .unwrap();
 
         let stats = queue.stats();
         assert_eq!(stats.depth, 4);
@@ -577,7 +607,9 @@ mod tests {
         let deadline = now + DEADLINE_USER_MS;
 
         // 100 bytes total
-        queue.push(TxPriority::User, deadline, now, &[0u8; 100]).unwrap();
+        queue
+            .push(TxPriority::User, deadline, now, &[0u8; 100])
+            .unwrap();
 
         // At 1000 us/byte = 1ms/byte, 100 bytes = 100ms
         assert_eq!(queue.estimated_drain_time_ms(1000), 100);
@@ -597,7 +629,9 @@ mod tests {
         let deadline = now + DEADLINE_USER_MS;
 
         // 1 byte at 1 us/byte = 1 us, should round up to 1 ms
-        queue.push(TxPriority::User, deadline, now, &[0u8; 1]).unwrap();
+        queue
+            .push(TxPriority::User, deadline, now, &[0u8; 1])
+            .unwrap();
         assert_eq!(queue.estimated_drain_time_ms(1), 1);
     }
 
@@ -609,14 +643,20 @@ mod tests {
 
         // Fill queue with same priority items
         for i in 0..TX_QUEUE_CAPACITY {
-            queue.push(TxPriority::User, deadline, now, &[i as u8]).unwrap();
+            queue
+                .push(TxPriority::User, deadline, now, &[i as u8])
+                .unwrap();
         }
 
         assert!(queue.is_full());
         // Same priority cannot preempt, should fail
-        assert!(queue.push(TxPriority::User, deadline, now, b"overflow").is_err());
+        assert!(queue
+            .push(TxPriority::User, deadline, now, b"overflow")
+            .is_err());
         // Lower priority (Bulk) cannot preempt User, should fail
-        assert!(queue.push(TxPriority::Bulk, deadline, now, b"bulk").is_err());
+        assert!(queue
+            .push(TxPriority::Bulk, deadline, now, b"bulk")
+            .is_err());
     }
 
     #[test]
@@ -635,7 +675,9 @@ mod tests {
         let now = 1000u64;
         let deadline = now + DEADLINE_USER_MS;
 
-        queue.push(TxPriority::User, deadline, now, b"data").unwrap();
+        queue
+            .push(TxPriority::User, deadline, now, b"data")
+            .unwrap();
 
         assert_eq!(queue.peek().unwrap().data(), b"data");
         assert_eq!(queue.len(), 1);
@@ -652,10 +694,18 @@ mod tests {
         queue.sequence = u32::MAX - 1;
 
         // Push items that span the wrap (fills the queue of 4)
-        queue.push(TxPriority::User, deadline, now, b"before_wrap_1").unwrap(); // seq = MAX-1
-        queue.push(TxPriority::User, deadline, now, b"before_wrap_2").unwrap(); // seq = MAX
-        queue.push(TxPriority::User, deadline, now, b"after_wrap_1").unwrap(); // seq = 0 (wrapped)
-        queue.push(TxPriority::User, deadline, now, b"after_wrap_2").unwrap(); // seq = 1
+        queue
+            .push(TxPriority::User, deadline, now, b"before_wrap_1")
+            .unwrap(); // seq = MAX-1
+        queue
+            .push(TxPriority::User, deadline, now, b"before_wrap_2")
+            .unwrap(); // seq = MAX
+        queue
+            .push(TxPriority::User, deadline, now, b"after_wrap_1")
+            .unwrap(); // seq = 0 (wrapped)
+        queue
+            .push(TxPriority::User, deadline, now, b"after_wrap_2")
+            .unwrap(); // seq = 1
 
         // FIFO should be preserved despite wrap
         assert_eq!(queue.pop(now).unwrap().data(), b"before_wrap_1");
@@ -670,9 +720,13 @@ mod tests {
         let now = 1000u64;
 
         // Push item that expires at now + 100
-        queue.push(TxPriority::User, now + 100, now, b"short_lived").unwrap();
+        queue
+            .push(TxPriority::User, now + 100, now, b"short_lived")
+            .unwrap();
         // Push item that expires at now + 10000
-        queue.push(TxPriority::User, now + 10000, now, b"long_lived").unwrap();
+        queue
+            .push(TxPriority::User, now + 10000, now, b"long_lived")
+            .unwrap();
 
         assert_eq!(queue.len(), 2);
 
@@ -695,17 +749,27 @@ mod tests {
         let now = 1000u64;
 
         // Push item with short deadline
-        queue.push(TxPriority::User, now + 100, now, b"will_expire").unwrap();
+        queue
+            .push(TxPriority::User, now + 100, now, b"will_expire")
+            .unwrap();
         // Fill rest of queue
-        queue.push(TxPriority::User, now + 10000, now, b"keeper1").unwrap();
-        queue.push(TxPriority::User, now + 10000, now, b"keeper2").unwrap();
-        queue.push(TxPriority::User, now + 10000, now, b"keeper3").unwrap();
+        queue
+            .push(TxPriority::User, now + 10000, now, b"keeper1")
+            .unwrap();
+        queue
+            .push(TxPriority::User, now + 10000, now, b"keeper2")
+            .unwrap();
+        queue
+            .push(TxPriority::User, now + 10000, now, b"keeper3")
+            .unwrap();
 
         assert!(queue.is_full());
 
         // Push new item after first one expired - should succeed due to expiry
         let later = now + 500;
-        queue.push(TxPriority::User, later + 10000, later, b"new_item").unwrap();
+        queue
+            .push(TxPriority::User, later + 10000, later, b"new_item")
+            .unwrap();
 
         // Queue should still be full (4 items: 3 keepers + new_item)
         assert_eq!(queue.len(), 4);
@@ -720,15 +784,25 @@ mod tests {
         let deadline = now + DEADLINE_USER_MS;
 
         // Fill queue with Bulk priority
-        queue.push(TxPriority::Bulk, deadline, now, b"bulk1").unwrap();
-        queue.push(TxPriority::Bulk, deadline, now, b"bulk2").unwrap();
-        queue.push(TxPriority::Bulk, deadline, now, b"bulk3").unwrap();
-        queue.push(TxPriority::Bulk, deadline, now, b"bulk4").unwrap();
+        queue
+            .push(TxPriority::Bulk, deadline, now, b"bulk1")
+            .unwrap();
+        queue
+            .push(TxPriority::Bulk, deadline, now, b"bulk2")
+            .unwrap();
+        queue
+            .push(TxPriority::Bulk, deadline, now, b"bulk3")
+            .unwrap();
+        queue
+            .push(TxPriority::Bulk, deadline, now, b"bulk4")
+            .unwrap();
 
         assert!(queue.is_full());
 
         // Higher priority (Control) should preempt
-        queue.push(TxPriority::Control, deadline, now, b"urgent").unwrap();
+        queue
+            .push(TxPriority::Control, deadline, now, b"urgent")
+            .unwrap();
 
         // Verify preemption stats
         let stats = queue.stats();
@@ -746,15 +820,25 @@ mod tests {
         let deadline = now + DEADLINE_USER_MS;
 
         // Fill with mixed priorities
-        queue.push(TxPriority::Bulk, deadline, now, b"bulk_oldest").unwrap();
-        queue.push(TxPriority::User, deadline, now, b"user").unwrap();
-        queue.push(TxPriority::Bulk, deadline, now, b"bulk_newer").unwrap();
-        queue.push(TxPriority::User, deadline, now, b"user2").unwrap();
+        queue
+            .push(TxPriority::Bulk, deadline, now, b"bulk_oldest")
+            .unwrap();
+        queue
+            .push(TxPriority::User, deadline, now, b"user")
+            .unwrap();
+        queue
+            .push(TxPriority::Bulk, deadline, now, b"bulk_newer")
+            .unwrap();
+        queue
+            .push(TxPriority::User, deadline, now, b"user2")
+            .unwrap();
 
         assert!(queue.is_full());
 
         // Push higher priority item
-        queue.push(TxPriority::Control, deadline, now, b"control").unwrap();
+        queue
+            .push(TxPriority::Control, deadline, now, b"control")
+            .unwrap();
 
         // Should have preempted oldest Bulk item
         let stats = queue.stats();
@@ -798,14 +882,18 @@ mod tests {
         // Push 3 items
         queue.push(TxPriority::User, deadline, now, b"one").unwrap();
         queue.push(TxPriority::User, deadline, now, b"two").unwrap();
-        queue.push(TxPriority::User, deadline, now, b"three").unwrap();
+        queue
+            .push(TxPriority::User, deadline, now, b"three")
+            .unwrap();
 
         let stats = queue.stats();
         assert_eq!(stats.packets_queued, 3);
 
         // Pop one and push another - counter should still increment
         queue.pop(now);
-        queue.push(TxPriority::User, deadline, now, b"four").unwrap();
+        queue
+            .push(TxPriority::User, deadline, now, b"four")
+            .unwrap();
 
         let stats = queue.stats();
         assert_eq!(stats.packets_queued, 4); // Cumulative, not current depth
@@ -820,13 +908,21 @@ mod tests {
 
         // Fill queue with same priority items (4 slots)
         for i in 0..TX_QUEUE_CAPACITY {
-            queue.push(TxPriority::User, deadline, now, &[i as u8]).unwrap();
+            queue
+                .push(TxPriority::User, deadline, now, &[i as u8])
+                .unwrap();
         }
 
         // Try to push more - these should fail and increment dropped counter
-        assert!(queue.push(TxPriority::User, deadline, now, b"drop1").is_err());
-        assert!(queue.push(TxPriority::Bulk, deadline, now, b"drop2").is_err());
-        assert!(queue.push(TxPriority::User, deadline, now, b"drop3").is_err());
+        assert!(queue
+            .push(TxPriority::User, deadline, now, b"drop1")
+            .is_err());
+        assert!(queue
+            .push(TxPriority::Bulk, deadline, now, b"drop2")
+            .is_err());
+        assert!(queue
+            .push(TxPriority::User, deadline, now, b"drop3")
+            .is_err());
 
         let stats = queue.stats();
         assert_eq!(stats.packets_dropped_full, 3);
@@ -839,7 +935,9 @@ mod tests {
         let enqueue_time = 1000u64;
         let deadline = enqueue_time + DEADLINE_USER_MS;
 
-        queue.push(TxPriority::User, deadline, enqueue_time, b"test").unwrap();
+        queue
+            .push(TxPriority::User, deadline, enqueue_time, b"test")
+            .unwrap();
 
         // Pop 100ms later
         let pop_time = enqueue_time + 100;
@@ -861,8 +959,12 @@ mod tests {
 
         // Push three items
         queue.push(TxPriority::User, deadline, now, b"a").unwrap();
-        queue.push(TxPriority::User, deadline, now + 50, b"b").unwrap();
-        queue.push(TxPriority::User, deadline, now + 100, b"c").unwrap();
+        queue
+            .push(TxPriority::User, deadline, now + 50, b"b")
+            .unwrap();
+        queue
+            .push(TxPriority::User, deadline, now + 100, b"c")
+            .unwrap();
 
         // Pop at different times to create varying latencies
         // Item a: enqueued at 1000, popped at 1200 -> 200ms latency
@@ -893,12 +995,16 @@ mod tests {
         assert_eq!(queue.stats().avg_latency_ms, 10);
 
         // Sample 2: 80ms -> scaled = 80 - 10 + 80 = 150 -> avg = 18
-        queue.push(TxPriority::User, deadline, now + 100, b"2").unwrap();
+        queue
+            .push(TxPriority::User, deadline, now + 100, b"2")
+            .unwrap();
         queue.pop(now + 180);
         assert_eq!(queue.stats().avg_latency_ms, 18);
 
         // Sample 3: 80ms -> scaled = 150 - 18 + 80 = 212 -> avg = 26
-        queue.push(TxPriority::User, deadline, now + 200, b"3").unwrap();
+        queue
+            .push(TxPriority::User, deadline, now + 200, b"3")
+            .unwrap();
         queue.pop(now + 280);
         assert_eq!(queue.stats().avg_latency_ms, 26);
     }
@@ -909,7 +1015,9 @@ mod tests {
         let now = 1000u64;
         let deadline = now + DEADLINE_USER_MS;
 
-        queue.push(TxPriority::User, deadline, now, b"test").unwrap();
+        queue
+            .push(TxPriority::User, deadline, now, b"test")
+            .unwrap();
 
         let item = queue.pop(now + 50).unwrap();
         assert_eq!(item.enqueue_time_ms(), now);

@@ -31,6 +31,8 @@ All byte strings are lowercase hex (possibly empty).
 **Link frames** (`link_frame.json`): for each vector,
 - encoding a frame built from `fields` MUST equal `hex_decode(encoded)`, and
 - decoding `hex_decode(encoded)` MUST reproduce `fields`.
+- A vector with `expect.error` is negative: decoding `encoded` MUST reject it,
+  and encoders MUST NOT emit it.
 
 `addr_mode`: 0=none/broadcast, 1=16-bit short, 2=EUI-64, 3=elided.
 `mic_length`: 0=32-bit, 1=64-bit.

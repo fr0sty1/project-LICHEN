@@ -156,7 +156,8 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
             // Derive public key (Ed25519: first 32 bytes of SHA512(seed) as scalar, then multiply)
             // ponytail: using simple derivation without pulling in ed25519 crate
             // Real impl would use ed25519-dalek; this outputs raw seed for now
-            let seed_hex: Zeroizing<String> = Zeroizing::new(seed.iter().map(|b| format!("{b:02x}")).collect());
+            let seed_hex: Zeroizing<String> =
+                Zeroizing::new(seed.iter().map(|b| format!("{b:02x}")).collect());
 
             // Derive IID from hashed seed (avoids leaking raw key material)
             // SECURITY: raw seed bytes must never appear in the IID
@@ -191,7 +192,9 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
                     // a temporary String that would leak seed material in memory
                     let mut file = File::create(&path)?;
                     writeln!(file, "{}", &*seed_hex)?;
-                    eprintln!("warning: could not set secure file permissions on non-Unix platform");
+                    eprintln!(
+                        "warning: could not set secure file permissions on non-Unix platform"
+                    );
                 }
                 output::print_kv("private_key", path.display().to_string().as_str(), fmt);
             } else {

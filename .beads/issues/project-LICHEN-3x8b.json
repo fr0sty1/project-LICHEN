@@ -2,11 +2,14 @@
   "id": "project-LICHEN-3x8b",
   "title": "EDHOC responder: CBOR encoding errors not checked in context building",
   "description": "CORRECTNESS: Context encoding for MAC_2 and MAC_3 in responder ignores CBOR encoding errors.\n\nThis is the responder-side equivalent of project-LICHEN-g45h (which covers initiator only).\n\nLocations in edhoc.c:\n- Lines 939-944: context_2 encoding for MAC_2 - no error checks\n- Lines 1120-1124: context_3 encoding for MAC_3 - no error checks\n\nCode (responder_process_msg1 context_2):\n```c\nZCBOR_STATE_E(zse_ctx2, 0, context_2, sizeof(context_2), 0);\nzcbor_bstr_encode_ptr(zse_ctx2, ctx-\u003ec_r, ctx-\u003ec_r_len);    // unchecked\nzcbor_bstr_encode_ptr(zse_ctx2, ctx-\u003eed_pubkey, 32);        // unchecked\nzcbor_bstr_encode_ptr(zse_ctx2, ctx-\u003eth_2, 32);             // unchecked\nzcbor_bstr_encode_ptr(zse_ctx2, ctx-\u003eed_pubkey, 32);        // unchecked\n```\n\nIf buffer overflow occurs, context_2_len will be computed from corrupted state, leading to incorrect MAC computation and potential security issues.\n\nFix: Check return values of all zcbor_bstr_encode_ptr calls and return error on failure.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:21:10.216587Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T17:21:10.216619Z"
+  "updated_at": "2026-07-13T04:26:23.510916Z",
+  "closed_at": "2026-07-13T04:26:23.510916Z",
+  "close_reason": "Closed"
 }

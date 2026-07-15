@@ -2,11 +2,14 @@
   "id": "project-LICHEN-kqj0",
   "title": "SCHC: Potential integer overflow in uncompressed fallback size calculation",
   "description": "File: lichen/subsys/lichen/schc/schc.c\nLine: 1505\n\nIn lichen_schc_compress(), when falling back to uncompressed passthrough:\n\n```c\nsize_t needed = 1 + pkt_len;\nif (out_len \u003c needed) {\n    return SCHC_ERR_BUFFER_TOO_SMALL;\n}\n```\n\nIf pkt_len is close to SIZE_MAX (theoretically possible on 32-bit systems), the addition could wrap around, causing needed to be smaller than pkt_len. This would pass the bounds check incorrectly, then memcpy would write beyond the buffer.\n\nImpact:\n- Buffer overflow on 32-bit systems with malicious/corrupted packet sizes\n- Practically unlikely but theoretically exploitable in embedded contexts\n\nFix: Check for overflow before the addition:\n```c\nif (pkt_len \u003e SIZE_MAX - 1) {\n    return SCHC_ERR_BUFFER_TOO_SMALL;\n}\nsize_t needed = 1 + pkt_len;\n```\n\nOr use safe arithmetic.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:51:27.213958Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:51:27.213988Z"
+  "updated_at": "2026-07-13T04:58:30.741236Z",
+  "closed_at": "2026-07-13T04:58:30.741236Z",
+  "close_reason": "Closed"
 }

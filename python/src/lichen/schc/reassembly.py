@@ -88,14 +88,16 @@ class FragmentReceiver:
 
             older = start_window
             while older >= 0:
-                if older not in self._completed_windows:
-                    # Incomplete window with matching parity - fragment belongs
-                    # here to fill gaps from retransmissions
-                    return older
-                # Window complete; check for exact payload match (stale dup)
                 older_idx = older * self.window_size + pos
-                if older_idx in self._tiles and self._tiles[older_idx] == frag.payload:
-                    # Exact payload match - this is a stale retransmission
+                if older not in self._completed_windows:
+                    # Incomplete window with matching parity. Only assign here
+                    # if the specific tile slot is empty (gap to fill). If the
+                    # slot is already filled, this is a new fragment, not a
+                    # retransmission for this window.
+                    if older_idx not in self._tiles:
+                        return older
+                elif older_idx in self._tiles and self._tiles[older_idx] == frag.payload:
+                    # Window complete; exact payload match - stale retransmission
                     return older
                 older -= 2
 
@@ -111,6 +113,17 @@ class FragmentReceiver:
     def _window_bitmap(self, abs_window: int) -> tuple[bool, ...]:
         base = abs_window * self.window_size
         return tuple(base + p in self._tiles for p in range(self.window_size))
+
+    def _window_bitmap_with_all1(self, abs_window: int, all1_pos: int) -> tuple[bool, ...]:
+        """Compute bitmap including the All-1 position.
+
+        Only call after MIC verification confirms the All-1's position.
+        """
+        base = abs_window * self.window_size
+        bitmap = [base + p in self._tiles for p in range(self.window_size)]
+        if 0 <= all1_pos < self.window_size:
+            bitmap[all1_pos] = True
+        return tuple(bitmap)
 
     def receive(self, frag: Fragment) -> ReceiverResult:
         if self.done:
@@ -177,8 +190,12 @@ class FragmentReceiver:
             return ReceiverResult(ack=nack)
 
         data = b"".join(self._tiles[i] for i in regular_indices) + self._all1_payload
-        bitmap = self._window_bitmap(self._all1_window)
         if compute_mic(data) == self._mic:
+            # MIC passed: All-1's position is confirmed at len(regular_indices).
+            # Include it in the bitmap for accurate reporting.
+            base = self._all1_window * self.window_size
+            all1_pos = len(regular_indices) - base
+            bitmap = self._window_bitmap_with_all1(self._all1_window, all1_pos)
             self.reassembled = data
             self.done = True
             return ReceiverResult(
@@ -187,6 +204,9 @@ class FragmentReceiver:
                 mic_ok=True,
             )
         # MIC mismatch: NACK the final window (a tile there may be missing or corrupt).
+        # Don't include All-1 position here since we can't be certain about it without
+        # MIC verification - there could be missing tiles we don't know about.
+        bitmap = self._window_bitmap(self._all1_window)
         nack = Ack(self._rule_id, self._all1_window % 2, bitmap, complete=False)
         return ReceiverResult(ack=nack, mic_ok=False)
 

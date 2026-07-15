@@ -64,7 +64,8 @@ struct slip_transport_ctx {
 	size_t last_tx_len;
 #endif
 
-	/* RX state */
+	/* RX state - protected by rx_mutex */
+	struct k_mutex rx_mutex;
 	enum slip_rx_state rx_state;
 	uint8_t rx_pkt[SLIP_LCI_MTU];
 	size_t rx_len;
@@ -75,7 +76,8 @@ struct slip_transport_ctx {
 	struct ring_buf rx_ring;
 	struct k_sem rx_sem;
 
-	/* Statistics */
+	/* Statistics - protected by stats_mutex */
+	struct k_mutex stats_mutex;
 	struct slip_transport_stats stats;
 
 	/* Link address (8 bytes for consistency with other LCI interfaces) */
@@ -241,7 +243,9 @@ static int slip_decode_byte(struct slip_transport_ctx *ctx, uint8_t b)
 			}
 			/* Empty or overflow frame - discard */
 			if (ctx->rx_overflow) {
+				k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 				ctx->stats.rx_overflow++;
+				k_mutex_unlock(&ctx->stats_mutex);
 			}
 			ctx->rx_len = 0;
 			ctx->rx_overflow = false;
@@ -262,9 +266,15 @@ static int slip_decode_byte(struct slip_transport_ctx *ctx, uint8_t b)
 		} else if (b == SLIP_ESC_ESC) {
 			b = SLIP_ESC;
 		} else {
-			/* Invalid escape sequence - treat as regular byte */
-			LOG_WRN("SLIP RX: invalid escape sequence 0x%02x", b);
+			/* Invalid escape sequence - discard entire frame per RFC 1055 */
+			LOG_WRN("SLIP RX: invalid escape sequence 0x%02x, discarding frame", b);
+			k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 			ctx->stats.slip_frame_errors++;
+			k_mutex_unlock(&ctx->stats_mutex);
+			ctx->rx_state = SLIP_STATE_IDLE;
+			ctx->rx_len = 0;
+			ctx->rx_overflow = false;
+			break;
 		}
 
 		ctx->rx_state = SLIP_STATE_DATA;
@@ -291,20 +301,26 @@ static void slip_dispatch_packet(struct slip_transport_ctx *ctx)
 
 	if (ctx->rx_overflow) {
 		LOG_WRN("SLIP RX: frame dropped (overflow)");
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.rx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
 		return;
 	}
 
 	ret = validate_ipv6_packet(ctx->rx_pkt, ctx->rx_len);
 	if (ret < 0) {
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.rx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
 		return;
 	}
 
 	iface = slip_transport_iface_get();
 	if (iface == NULL) {
 		LOG_WRN("SLIP RX: no interface available");
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.rx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
 		return;
 	}
 
@@ -312,7 +328,9 @@ static void slip_dispatch_packet(struct slip_transport_ctx *ctx)
 					   IPPROTO_RAW, K_NO_WAIT);
 	if (pkt == NULL) {
 		LOG_WRN("SLIP RX: failed to allocate packet buffer");
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.rx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
 		return;
 	}
 
@@ -320,7 +338,9 @@ static void slip_dispatch_packet(struct slip_transport_ctx *ctx)
 	if (ret < 0) {
 		LOG_WRN("SLIP RX: failed to write packet data: %d", ret);
 		net_pkt_unref(pkt);
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.rx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
 		return;
 	}
 
@@ -328,12 +348,16 @@ static void slip_dispatch_packet(struct slip_transport_ctx *ctx)
 	if (ret < 0) {
 		LOG_WRN("SLIP RX: net_recv_data failed: %d", ret);
 		net_pkt_unref(pkt);
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.rx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
 		return;
 	}
 
+	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 	ctx->stats.rx_packets++;
 	ctx->stats.rx_bytes += ctx->rx_len;
+	k_mutex_unlock(&ctx->stats_mutex);
 	LOG_DBG("SLIP RX: %zu bytes delivered to network stack", ctx->rx_len);
 }
 
@@ -378,6 +402,8 @@ static void slip_rx_thread_fn(void *p1, void *p2, void *p3)
 	while (true) {
 		k_sem_take(&ctx->rx_sem, K_FOREVER);
 
+		k_mutex_lock(&ctx->rx_mutex, K_FOREVER);
+
 		/* Drain the ring buffer */
 		while ((n = ring_buf_get(&ctx->rx_ring, buf, sizeof(buf))) > 0) {
 			for (uint32_t i = 0; i < n; i++) {
@@ -388,6 +414,8 @@ static void slip_rx_thread_fn(void *p1, void *p2, void *p3)
 				}
 			}
 		}
+
+		k_mutex_unlock(&ctx->rx_mutex);
 	}
 }
 
@@ -446,7 +474,9 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 
 	if (pkt_len > sizeof(pkt_buf)) {
 		LOG_WRN("SLIP TX: packet too large (%zu > %zu)", pkt_len, sizeof(pkt_buf));
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
 		return -EMSGSIZE;
 	}
 
@@ -457,7 +487,9 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 	ret = net_pkt_read(pkt, pkt_buf, pkt_len);
 	if (ret < 0) {
 		LOG_WRN("SLIP TX: failed to read packet: %d", ret);
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
 		k_mutex_unlock(&ctx->tx_mutex);
 		return ret;
 	}
@@ -467,7 +499,9 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 			  &frame_len);
 	if (ret < 0) {
 		LOG_WRN("SLIP TX: encode failed: %d", ret);
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
 		k_mutex_unlock(&ctx->tx_mutex);
 		return ret;
 	}
@@ -482,10 +516,14 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 		for (size_t i = 0; i < frame_len; i++) {
 			uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
 		}
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_packets++;
 		ctx->stats.tx_bytes += (uint32_t)pkt_len;
+		k_mutex_unlock(&ctx->stats_mutex);
 	} else {
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
 		ret = -ENODEV;
 	}
 
@@ -543,7 +581,9 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 	ret = slip_encode(ipv6, len, ctx->tx_frame, sizeof(ctx->tx_frame),
 			  &frame_len);
 	if (ret < 0) {
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
 		k_mutex_unlock(&ctx->tx_mutex);
 		return ret;
 	}
@@ -557,10 +597,14 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 		for (size_t i = 0; i < frame_len; i++) {
 			uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
 		}
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_packets++;
 		ctx->stats.tx_bytes += (uint32_t)len;
+		k_mutex_unlock(&ctx->stats_mutex);
 	} else {
+		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_errors++;
+		k_mutex_unlock(&ctx->stats_mutex);
 		k_mutex_unlock(&ctx->tx_mutex);
 		return -ENODEV;
 	}
@@ -577,7 +621,9 @@ int slip_transport_get_stats(struct slip_transport_stats *stats)
 		return -EINVAL;
 	}
 
+	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 	*stats = ctx->stats;
+	k_mutex_unlock(&ctx->stats_mutex);
 	return 0;
 }
 
@@ -585,7 +631,9 @@ void slip_transport_reset_stats(void)
 {
 	struct slip_transport_ctx *ctx = &s_ctx;
 
+	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 	memset(&ctx->stats, 0, sizeof(ctx->stats));
+	k_mutex_unlock(&ctx->stats_mutex);
 }
 
 bool slip_transport_is_ready(void)
@@ -606,6 +654,8 @@ int slip_transport_init(void)
 
 	/* Initialize synchronization primitives */
 	k_mutex_init(&ctx->tx_mutex);
+	k_mutex_init(&ctx->rx_mutex);
+	k_mutex_init(&ctx->stats_mutex);
 	k_sem_init(&ctx->rx_sem, 0, K_SEM_MAX_LIMIT);
 	ring_buf_init(&ctx->rx_ring, sizeof(ctx->rx_ring_buf), ctx->rx_ring_buf);
 
@@ -659,6 +709,8 @@ int slip_transport_test_inject_rx(const uint8_t *data, size_t len)
 	struct slip_transport_ctx *ctx = &s_ctx;
 	int packets = 0;
 
+	k_mutex_lock(&ctx->rx_mutex, K_FOREVER);
+
 	for (size_t i = 0; i < len; i++) {
 		if (slip_decode_byte(ctx, data[i])) {
 			slip_dispatch_packet(ctx);
@@ -667,6 +719,8 @@ int slip_transport_test_inject_rx(const uint8_t *data, size_t len)
 			packets++;
 		}
 	}
+
+	k_mutex_unlock(&ctx->rx_mutex);
 
 	return packets;
 }
@@ -698,6 +752,8 @@ void slip_transport_test_reset(void)
 	struct slip_transport_ctx *ctx = &s_ctx;
 
 	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
+	k_mutex_lock(&ctx->rx_mutex, K_FOREVER);
+	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 
 	ctx->rx_state = SLIP_STATE_IDLE;
 	ctx->rx_len = 0;
@@ -706,6 +762,8 @@ void slip_transport_test_reset(void)
 	ring_buf_reset(&ctx->rx_ring);
 	memset(&ctx->stats, 0, sizeof(ctx->stats));
 
+	k_mutex_unlock(&ctx->stats_mutex);
+	k_mutex_unlock(&ctx->rx_mutex);
 	k_mutex_unlock(&ctx->tx_mutex);
 }
 #endif /* CONFIG_ZTEST */

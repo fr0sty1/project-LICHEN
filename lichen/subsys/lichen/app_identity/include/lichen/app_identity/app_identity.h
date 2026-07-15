@@ -89,6 +89,14 @@ size_t lichen_app_identity_copy_peers(
 	struct lichen_app_identity_peer *_Nonnull out, size_t out_len);
 size_t lichen_app_identity_peer_count(void);
 
+/*
+ * Remove a peer by EUI-64. This is required for TOFU key rotation: the old
+ * pinned key must be explicitly removed before the peer can re-add with a new
+ * public key. Returns 0 on success, -ENOENT if peer not found, -EINVAL if NULL.
+ */
+int lichen_app_identity_remove_peer(
+	const uint8_t eui64[_Nonnull LICHEN_APP_IDENTITY_EUI64_LEN]);
+
 #ifdef CONFIG_LICHEN_APP_IDENTITY_TEST_HOOKS
 void lichen_app_identity_test_reset(void);
 #endif

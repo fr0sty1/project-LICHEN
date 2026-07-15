@@ -143,6 +143,12 @@ impl TunDevice {
                     Ok(n as usize)
                 }
             }) {
+                Ok(Ok(0)) => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::WriteZero,
+                        "TUN write returned 0 bytes",
+                    ));
+                }
                 Ok(Ok(n)) => written += n,
                 Ok(Err(e)) => return Err(e),
                 Err(_would_block) => continue,

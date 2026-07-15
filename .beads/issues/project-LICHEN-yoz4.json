@@ -2,11 +2,14 @@
   "id": "project-LICHEN-yoz4",
   "title": "Add comprehensive telemetry for cross-impl debugging",
   "description": "The heterogeneous mesh testing (ec2-hetero-fleet.sh) needs proper telemetry to debug interop failures. Currently logging is sparse and inconsistent across implementations.\n\nRequirements:\n1. Every TX/RX logged with: timestamp, packet hex, length, RSSI/SNR (RX only)\n2. Structured JSON metrics per node: tx_count, rx_count, unique_peers, errors\n3. Pcap capture for wire-level Wireshark analysis\n4. Cross-impl packet tracking: hash each packet so we can verify 'Python sent X, Rust received X'\n\nThis epic covers all three implementations: Python, Rust, Zephyr C.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "epic",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-13T03:57:01.182492Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-13T03:57:01.18253Z"
+  "updated_at": "2026-07-13T04:02:32.857417Z",
+  "closed_at": "2026-07-13T04:02:32.857417Z",
+  "close_reason": "Closed"
 }

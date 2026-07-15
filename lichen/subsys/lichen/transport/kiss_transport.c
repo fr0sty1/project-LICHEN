@@ -35,6 +35,7 @@ LOG_MODULE_REGISTER(kiss_transport, CONFIG_KISS_TRANSPORT_LOG_LEVEL);
 struct kiss_transport_ctx {
 	const struct device *uart_dev;
 	bool initialized;
+	volatile bool shutdown;  /* Signal RX thread to exit */
 	struct kiss_transport_config config;
 
 	/* KISS timing parameters */
@@ -380,8 +381,13 @@ static void kiss_rx_thread_fn(void *p1, void *p2, void *p3)
 
 	LOG_INF("KISS RX thread started");
 
-	while (true) {
+	while (!ctx->shutdown) {
 		k_sem_take(&ctx->rx_sem, K_FOREVER);
+
+		/* Check shutdown after waking from semaphore */
+		if (ctx->shutdown) {
+			break;
+		}
 
 		/* Drain the ring buffer */
 		while ((n = ring_buf_get(&ctx->rx_ring, buf, sizeof(buf))) > 0) {
@@ -409,6 +415,8 @@ static void kiss_rx_thread_fn(void *p1, void *p2, void *p3)
 			}
 		}
 	}
+
+	LOG_INF("KISS RX thread exiting");
 }
 
 /* ─── TX helper ───────────────────────────────────────────────────────────── */
@@ -493,6 +501,7 @@ int kiss_transport_init(const struct kiss_transport_config *config)
 	k_mutex_init(&ctx->stats_mutex);
 	k_sem_init(&ctx->rx_sem, 0, K_SEM_MAX_LIMIT);
 	ring_buf_init(&ctx->rx_ring, sizeof(ctx->rx_ring_buf), ctx->rx_ring_buf);
+	ctx->shutdown = false;
 
 	/* Initialize RX decoder */
 	kiss_decode_init(&ctx->rx_ctx);
@@ -550,13 +559,21 @@ void kiss_transport_deinit(void)
 		return;
 	}
 
-	/* Disable UART interrupts */
+	/* Disable UART interrupts first to prevent new data arriving */
 	if (ctx->uart_dev != NULL) {
 		uart_irq_rx_disable(ctx->uart_dev);
 	}
 
-	/* Note: k_thread_abort() would be needed to stop the RX thread,
-	 * but that can cause issues. In practice, deinit is rarely called. */
+	/* Signal the RX thread to shut down */
+	ctx->shutdown = true;
+	k_sem_give(&ctx->rx_sem);  /* Wake thread if waiting on semaphore */
+
+	/* Wait for the RX thread to exit gracefully */
+	int ret = k_thread_join(&s_rx_thread, K_MSEC(1000));
+	if (ret != 0) {
+		LOG_WRN("KISS RX thread join failed: %d, aborting", ret);
+		k_thread_abort(&s_rx_thread);
+	}
 
 	ctx->initialized = false;
 	LOG_INF("KISS transport deinitialized");

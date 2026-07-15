@@ -162,3 +162,21 @@ def test_plain_coap_still_uses_rule0() -> None:
     """Plain CoAP (no OSCORE option) should use rules 0/1, not 5/6."""
     raw = _udp_ipv6(LL_SRC, LL_DST, _coap_fixed())
     assert compress_packet(raw)[0] == 0
+
+
+def test_malformed_coap_option_length_falls_back() -> None:
+    """CoAP with option length exceeding remaining bytes must not match OSCORE.
+
+    A malformed packet where an option declares more bytes than remain
+    should be handled gracefully (returned as non-OSCORE), not crash.
+    """
+    # CoAP header: ver=1, type=0, tkl=0, code=0.01, mid=0x1234
+    header = bytes([0x40, 0x01, 0x12, 0x34])
+    # Option byte: delta=9 (OSCORE), length=15 (claims 15 bytes follow)
+    # But we only supply 2 bytes of value - malformed packet
+    malformed_option = bytes([0x9F, 0xAB, 0xCD])  # delta=9, len=15, only 2 value bytes
+    coap = header + malformed_option
+    raw = _udp_ipv6(LL_SRC, LL_DST, coap)
+    # Should fall back to rule 0 (plain CoAP), not crash or match rule 5 (OSCORE)
+    compressed = compress_packet(raw)
+    assert compressed[0] == 0  # Falls back to plain CoAP rule

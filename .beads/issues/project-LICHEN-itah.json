@@ -2,11 +2,14 @@
   "id": "project-LICHEN-itah",
   "title": "SenML from_cbor_map lacks type validation for CBOR values",
   "description": "File: python/src/lichen/senml/codec.py\nLines: 106-114\n\nThe `from_cbor_map` classmethod accepts any CBOR value types without validating they match RFC 8428 requirements:\n- bn, n, bu, u, vs must be strings\n- bt, bv, bs, v, s, t, ut must be numbers (float/int)\n- bver must be integer\n- vb must be boolean\n- vd must be bytes\n\nIf malformed CBOR provides wrong types (e.g., `v` as a string instead of number), it gets stored without error, violating the SenmlRecord type annotations. This causes:\n1. Runtime type errors downstream when code expects float but gets str\n2. Silent data corruption if types are coerced unexpectedly\n3. Potential security issues if type confusion is exploitable\n\nExample: A CBOR map {2: \"not_a_number\"} creates a SenmlRecord with v=\"not_a_number\" when v: float|None is expected.\n\nFix: Add type checks in from_cbor_map and raise ValueError for type mismatches.",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:26:33.081498Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:26:33.081546Z"
+  "updated_at": "2026-07-13T04:56:24.2443Z",
+  "closed_at": "2026-07-13T04:56:24.2443Z",
+  "close_reason": "Closed"
 }

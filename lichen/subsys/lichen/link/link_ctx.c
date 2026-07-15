@@ -316,6 +316,52 @@ static int seq_unlock(struct lichen_link_ctx *ctx)
 #endif
 }
 
+int lichen_link_copy_identity(const struct lichen_link_ctx *ctx,
+			      uint8_t eui64[LICHEN_EUI64_LEN],
+			      uint8_t pk[LICHEN_PK_LEN],
+			      bool *has_key)
+{
+	if (ctx == NULL) {
+		return -EINVAL;
+	}
+
+	/*
+	 * SECURITY: Acquire seq_lock to ensure atomic read of key material.
+	 * This prevents a race where has_key is true but cleanup zeros the
+	 * key between our check and copy. The cleanup function also holds
+	 * this lock when modifying key state.
+	 *
+	 * Cast away const for lock acquisition - the lock protects the data,
+	 * we are only reading, and mutex_lock requires non-const.
+	 */
+	struct lichen_link_ctx *mutable_ctx = (struct lichen_link_ctx *)ctx;
+
+	if (seq_lock(mutable_ctx) != 0) {
+		return -EIO;
+	}
+
+	bool key_loaded = ctx->has_key;
+
+	if (has_key != NULL) {
+		*has_key = key_loaded;
+	}
+
+	if (!key_loaded) {
+		(void)seq_unlock(mutable_ctx);
+		return -ENOKEY;
+	}
+
+	if (eui64 != NULL) {
+		memcpy(eui64, ctx->eui64, LICHEN_EUI64_LEN);
+	}
+	if (pk != NULL) {
+		memcpy(pk, ctx->ed25519_pk, LICHEN_PK_LEN);
+	}
+
+	(void)seq_unlock(mutable_ctx);
+	return 0;
+}
+
 void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 {
 	if (ctx == NULL) {
@@ -324,7 +370,17 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 
 	int locked = (seq_lock(ctx) == 0);
 
-	/* SECURITY: Always wipe keys, even if lock fails */
+	/*
+	 * SECURITY: Always wipe keys, even if lock fails. This prioritizes
+	 * key erasure over correctness of concurrent operations.
+	 *
+	 * If the lock failed, another thread is using this context - this
+	 * indicates improper usage (cleanup was called without ensuring
+	 * exclusive access). Log a warning but proceed with the wipe.
+	 */
+	if (!locked) {
+		LOG_WRN("cleanup called while context is locked - potential race condition\n");
+	}
 	secure_wipe(ctx->ed25519_sk, LICHEN_SK_LEN);
 	secure_wipe(ctx->link_key, LICHEN_LINK_KEY_LEN);
 

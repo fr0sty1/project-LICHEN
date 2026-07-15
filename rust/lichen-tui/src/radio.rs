@@ -88,8 +88,12 @@ impl RadioState {
             now,
             &[0u8; 48],
         ); // RPL DIO
-        let _ = self.tx_queue.push(TxPriority::User, now + DEADLINE_USER_MS, now, &[0u8; 64]); // User message
-        let _ = self.tx_queue.push(TxPriority::Bulk, now + DEADLINE_BULK_MS, now, &[0u8; 200]); // Firmware chunk
+        let _ = self
+            .tx_queue
+            .push(TxPriority::User, now + DEADLINE_USER_MS, now, &[0u8; 64]); // User message
+        let _ = self
+            .tx_queue
+            .push(TxPriority::Bulk, now + DEADLINE_BULK_MS, now, &[0u8; 200]); // Firmware chunk
     }
 
     /// Advance simulated time (call from main event loop).

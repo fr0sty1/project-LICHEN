@@ -2,11 +2,14 @@
   "id": "project-LICHEN-5qls",
   "title": "_coap_has_oscore_option does not handle malformed option lengths",
   "description": "File: python/src/lichen/schc/headers.py:139\n\nIn _coap_has_oscore_option(), after parsing delta and length, the function skips the option value:\n  offset += length\n\nIf 'length' is parsed from extended format (delta 13/14), it could be a large value (up to 65804 with delta=14). The function then does:\n  while offset \u003c len(coap):\n      ...\n      offset += length\n\nIf length causes offset to exceed len(coap), the while loop exits cleanly. However, if a malicious packet sets length to a value that would cause offset to overflow (extremely large length on 32-bit systems), this could cause issues.\n\nMore practically, if length is, say, 100 but only 50 bytes remain, offset jumps past the end, and the loop exits. This is handled correctly, but the function returns False rather than indicating a parse error. This silent handling could mask malformed packets.\n\nAdditionally, the bounds check at line 105 uses 'offset + 1 \u003e= len(coap)' which is off-by-one:\n- We need 2 bytes starting at offset\n- 'offset + 1 \u003e= len(coap)' means offset + 1 must be \u003c len(coap)\n- This is equivalent to offset \u003c len(coap) - 1, ensuring coap[offset] and coap[offset+1] exist\n\nActually this check is correct. But similar checks at lines 100, 114, 119 use different patterns, making the code harder to audit.\n\nFix: Standardize bounds checking pattern and consider raising an error for clearly malformed packets.\n\nCategory: CORRECTNESS",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:29:45.289998Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:29:45.290031Z"
+  "updated_at": "2026-07-13T04:25:31.473138Z",
+  "closed_at": "2026-07-13T04:25:31.473138Z",
+  "close_reason": "Closed"
 }

@@ -42,6 +42,7 @@ sysbus Tag <0x10000064, 0x10000067> "DEVICEID[1]" {devid1}
 
 # Load firmware
 sysbus LoadELF @{elf}
+cpu SetPCFromResetVector
 
 # Console output to file (headless mode)
 logFile @{log_file} true
@@ -49,6 +50,8 @@ logFile @{log_file} true
 
 # 64 MHz nRF52840
 cpu PerformanceInMips 64
+# The MCUboot application starts at the configured flash load offset.
+cpu VectorTableOffset 0x32000
 
 start
 """

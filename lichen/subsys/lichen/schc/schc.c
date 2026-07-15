@@ -1504,6 +1504,10 @@ int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
 
 	if (pkt_len < IPV6_HDR_LEN || ipv6_version(packet) != 6) {
 		/* Not IPv6 - uncompressed fallback */
+		/* SECURITY: Check for overflow before addition */
+		if (pkt_len > SIZE_MAX - 1) {
+			return SCHC_ERR_BUFFER_TOO_SMALL;
+		}
 		size_t needed = 1 + pkt_len;
 		if (out_len < needed) {
 			return SCHC_ERR_BUFFER_TOO_SMALL;

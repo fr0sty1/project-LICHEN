@@ -189,10 +189,7 @@ mod tests {
 
     #[test]
     fn rule_matches_equal_satisfied() {
-        let fields: &[(FieldId, u128)] = &[
-            ("IPv6.version", 6),
-            ("IPv6.hop_limit", 64),
-        ];
+        let fields: &[(FieldId, u128)] = &[("IPv6.version", 6), ("IPv6.hop_limit", 64)];
         assert!(rule_matches(&TEST_RULE, fields));
     }
 
@@ -218,10 +215,7 @@ mod tests {
     #[test]
     fn context_select_rule() {
         let ctx = SchcContext::new(TEST_RULES);
-        let fields: &[(FieldId, u128)] = &[
-            ("IPv6.version", 6),
-            ("IPv6.hop_limit", 64),
-        ];
+        let fields: &[(FieldId, u128)] = &[("IPv6.version", 6), ("IPv6.hop_limit", 64)];
         let rule = ctx.select_rule(fields);
         assert!(rule.is_some());
         assert_eq!(rule.unwrap().rule_id, 0);
@@ -248,31 +242,25 @@ mod tests {
     #[test]
     fn msb_matching() {
         // Test MSB matching operator
-        const MSB_FIELDS: &[FieldDescriptor] = &[
-            FieldDescriptor {
-                field_id: "IPv6.src",
-                length_bits: 128,
-                mo: Mo::Msb,
-                cda: Cda::Lsb,
-                target_value: 0xFE80_0000_0000_0000_0000_0000_0000_0000,
-                mo_arg: Some(64), // Match first 64 bits
-            },
-        ];
+        const MSB_FIELDS: &[FieldDescriptor] = &[FieldDescriptor {
+            field_id: "IPv6.src",
+            length_bits: 128,
+            mo: Mo::Msb,
+            cda: Cda::Lsb,
+            target_value: 0xFE80_0000_0000_0000_0000_0000_0000_0000,
+            mo_arg: Some(64), // Match first 64 bits
+        }];
         const MSB_RULE: Rule = Rule {
             rule_id: 1,
             fields: MSB_FIELDS,
         };
 
         // Link-local address should match
-        let fields: &[(FieldId, u128)] = &[
-            ("IPv6.src", 0xFE80_0000_0000_0000_1234_5678_9ABC_DEF0),
-        ];
+        let fields: &[(FieldId, u128)] = &[("IPv6.src", 0xFE80_0000_0000_0000_1234_5678_9ABC_DEF0)];
         assert!(rule_matches(&MSB_RULE, fields));
 
         // Global address should not match
-        let fields: &[(FieldId, u128)] = &[
-            ("IPv6.src", 0x2001_0DB8_0000_0000_1234_5678_9ABC_DEF0),
-        ];
+        let fields: &[(FieldId, u128)] = &[("IPv6.src", 0x2001_0DB8_0000_0000_1234_5678_9ABC_DEF0)];
         assert!(!rule_matches(&MSB_RULE, fields));
     }
 }

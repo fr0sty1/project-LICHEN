@@ -408,8 +408,8 @@ fn haversine(c1: GeoCoords, c2: GeoCoords) -> f64 {
     let dlat = (lat2 - lat1).to_radians();
     let dlon = (lon2 - lon1).to_radians();
 
-    let a = (dlat / 2.0).sin().powi(2)
-        + lat1_rad.cos() * lat2_rad.cos() * (dlon / 2.0).sin().powi(2);
+    let a =
+        (dlat / 2.0).sin().powi(2) + lat1_rad.cos() * lat2_rad.cos() * (dlon / 2.0).sin().powi(2);
     // Clamp a to [0, 1] before sqrt to handle floating-point errors
     let c = 2.0 * a.min(1.0).sqrt().asin();
 

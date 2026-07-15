@@ -261,10 +261,15 @@ def _format_weather(
             pass
 
     # Temperature (Fahrenheit)
+    # APRS requires exactly 3 chars after 't'. Valid range is -99 to 999.
     if temp_c is not None:
         try:
             temp_f = float(temp_c) * 9 / 5 + 32
-            parts.append(f"t{int(temp_f):03d}")
+            temp_f_int = int(temp_f)
+            if -99 <= temp_f_int <= 999:
+                parts.append(f"t{temp_f_int:03d}")
+            else:
+                parts.append("t...")  # Outside representable range
         except (TypeError, ValueError):
             pass
 

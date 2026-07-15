@@ -55,11 +55,19 @@ static struct oscore_replay_pending s_replay_pending[OSCORE_REPLAY_PENDING_MAX];
 static struct oscore_ctx *ctx_find_by_recipient_locked(const uint8_t *recipient_id,
 						       size_t recipient_id_len)
 {
+	/*
+	 * SECURITY: Reject oversized recipient_id_len early to prevent:
+	 * 1. The padded_input staying all zeros (no memcpy executed)
+	 * 2. Truncation when casting to uint8_t for length comparison
+	 * These could cause false matches (e.g., len=256 matching len=0).
+	 */
+	if (recipient_id_len > OSCORE_ID_MAX_LEN) {
+		return NULL;
+	}
+
 	/* Pad input to OSCORE_ID_MAX_LEN with zeros for constant-time compare */
 	uint8_t padded_input[OSCORE_ID_MAX_LEN] = {0};
-	if (recipient_id_len <= OSCORE_ID_MAX_LEN) {
-		memcpy(padded_input, recipient_id, recipient_id_len);
-	}
+	memcpy(padded_input, recipient_id, recipient_id_len);
 
 	for (int i = 0; i < CONFIG_LICHEN_OSCORE_MAX_CONTEXTS; i++) {
 		if (s_contexts[i].active) {
@@ -550,13 +558,14 @@ int oscore_ctx_create(const uint8_t *_Nonnull master_secret,
 	}
 
 	/*
-	 * Reject sender_id == recipient_id for unicast OSCORE because both peers
-	 * would derive identical keys. Group OSCORE (RFC 9203) may allow this,
-	 * but we don't support it yet.
+	 * SECURITY: Reject sender_id == recipient_id for unicast OSCORE because
+	 * both peers would derive identical keys. This includes the case where
+	 * both IDs are empty (zero-length). Group OSCORE (RFC 9203) may allow
+	 * this, but we don't support it yet.
 	 */
-	if (sender_id_len > 0 &&
-	    sender_id_len == recipient_id_len &&
-	    memcmp(sender_id, recipient_id, sender_id_len) == 0) {
+	if ((sender_id_len == 0 && recipient_id_len == 0) ||
+	    (sender_id_len > 0 && sender_id_len == recipient_id_len &&
+	     memcmp(sender_id, recipient_id, sender_id_len) == 0)) {
 		LOG_ERR("sender_id and recipient_id must differ for unicast OSCORE");
 		return OSCORE_ERR_INVALID_PARAM;
 	}
@@ -733,6 +742,19 @@ int oscore_ctx_create_with_eui64(const uint8_t *_Nonnull master_secret,
 				ctx->sender_seq = stored_ssn;
 				s_seq_initialized[ctx_idx] = true;
 				LOG_DBG("Restored SSN %u from NVM for peer", stored_ssn);
+
+				/* SECURITY: Warn if restored SSN is near exhaustion.
+				 * Per RFC 8613 Section 7.5, implementations must
+				 * persist SSN with a safety margin. If we're this
+				 * close to exhaustion, key rotation is urgent.
+				 */
+				if (stored_ssn >= OSCORE_SSN_MAX - OSCORE_SSN_ROTATION_CRITICAL) {
+					LOG_WRN("Restored SSN %u near exhaustion, "
+						"key rotation required", stored_ssn);
+				} else if (stored_ssn >= OSCORE_SSN_MAX - OSCORE_SSN_ROTATION_WARNING) {
+					LOG_WRN("Restored SSN %u approaching exhaustion, "
+						"key rotation recommended", stored_ssn);
+				}
 			}
 		} else {
 			LOG_DBG("No SSN in NVM for peer, starting fresh");
@@ -891,6 +913,7 @@ int oscore_ctx_persist_ssn(struct oscore_ctx *ctx)
 	int ret = OSCORE_OK;
 	oscore_nvm_write_cb write_cb;
 	uint32_t ssn;
+	uint8_t eui64_copy[OSCORE_EUI64_LEN];
 	const uint8_t *eui64 = NULL;
 
 	if (ctx == NULL) {
@@ -902,7 +925,8 @@ int oscore_ctx_persist_ssn(struct oscore_ctx *ctx)
 	write_cb = s_nvm_write_cb;
 	ssn = ctx->sender_seq;
 	if (ctx->has_peer_eui64) {
-		eui64 = ctx->peer_eui64;
+		memcpy(eui64_copy, ctx->peer_eui64, OSCORE_EUI64_LEN);
+		eui64 = eui64_copy;
 	}
 
 	k_mutex_unlock(&s_ctx_mutex);
@@ -933,6 +957,11 @@ int oscore_ctx_lookup(const uint8_t *recipient_id,
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
+	/* SECURITY: Prevent NULL dereference in ctx_find_by_recipient_locked */
+	if (recipient_id == NULL && recipient_id_len > 0) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
 	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
 
 	ctx = ctx_find_by_recipient_locked(recipient_id, recipient_id_len);
@@ -949,9 +978,9 @@ int oscore_ctx_lookup(const uint8_t *recipient_id,
 		 * works with protect/unprotect operations.
 		 *
 		 * SECURITY: The copy contains key material (sender_key,
-		 * recipient_key, common_iv). Caller MUST wipe ctx_out with
-		 * memset(ctx_out, 0, sizeof(*ctx_out)) before it goes out
-		 * of scope to prevent key material persisting on stack.
+		 * recipient_key, common_iv). Caller MUST call oscore_ctx_wipe()
+		 * on ctx_out before it goes out of scope to prevent key
+		 * material persisting on stack.
 		 */
 		memcpy(ctx_out, ctx, sizeof(*ctx_out));
 		ret = OSCORE_OK;
@@ -959,6 +988,13 @@ int oscore_ctx_lookup(const uint8_t *recipient_id,
 
 	k_mutex_unlock(&s_ctx_mutex);
 	return ret;
+}
+
+void oscore_ctx_wipe(struct oscore_ctx *ctx)
+{
+	if (ctx != NULL) {
+		crypto_wipe(ctx, sizeof(*ctx));
+	}
 }
 
 /**
@@ -975,6 +1011,11 @@ int oscore_ctx_get(const uint8_t *recipient_id,
 	int ret = OSCORE_ERR_NO_CONTEXT;
 
 	if (ctx_out == NULL) {
+		return OSCORE_ERR_INVALID_PARAM;
+	}
+
+	/* SECURITY: Prevent NULL dereference in ctx_find_by_recipient_locked */
+	if (recipient_id == NULL && recipient_id_len > 0) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
@@ -1110,7 +1151,7 @@ int oscore_option_build(const struct oscore_option *option,
 		flags |= 0x08;
 	}
 	if (option->has_piv) {
-		flags |= option->piv_len;  /* piv_len <= 5 validated above */
+		flags |= (option->piv_len & 0x07);  /* Lower 3 bits per RFC 8613 */
 	}
 
 	if (off >= buflen) {
@@ -1161,6 +1202,10 @@ int oscore_option_build(const struct oscore_option *option,
  * For sender_id_len == 7, the first byte of sender_id occupies position 6,
  * which is the same position as sender_id_len. Per RFC 8613, this is XORed:
  *   nonce[6] = sender_id_len XOR sender_id[0]
+ *
+ * Note: sender_id may be NULL when sender_id_len == 0, and piv may be NULL
+ * when piv_len == 0. The function does not dereference these pointers when
+ * their lengths are zero.
  */
 static void compute_nonce(const uint8_t *sender_id, size_t sender_id_len,
 			  const uint8_t *piv, size_t piv_len,
@@ -1887,12 +1932,12 @@ int oscore_unprotect_response(struct oscore_ctx *ctx,
 			      uint8_t *options, size_t *options_len,
 			      uint8_t *payload, size_t *payload_len)
 {
+	struct oscore_option resp_opt;
 	uint8_t nonce[OSCORE_NONCE_LEN];
 	uint8_t plaintext[CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX];
 	int ret;
-
-	(void)oscore_opt;
-	(void)oscore_opt_len;
+	const uint8_t *nonce_piv;
+	size_t nonce_piv_len;
 
 	if (ctx == NULL || ciphertext == NULL || code == NULL) {
 		return OSCORE_ERR_INVALID_PARAM;
@@ -1908,9 +1953,27 @@ int oscore_unprotect_response(struct oscore_ctx *ctx,
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
-	/* Response uses request's PIV for nonce */
+	/*
+	 * RFC 8613 Section 8.4: OSCORE responses MAY include a Partial IV
+	 * in the OSCORE option. When present, use response PIV for nonce.
+	 */
+	nonce_piv = request_piv;
+	nonce_piv_len = request_piv_len;
+
+	if (oscore_opt_len > 0) {
+		ret = oscore_option_parse(oscore_opt, oscore_opt_len, &resp_opt);
+		if (ret != OSCORE_OK) {
+			return ret;
+		}
+		if (resp_opt.has_piv && resp_opt.piv_len > 0) {
+			nonce_piv = resp_opt.piv;
+			nonce_piv_len = resp_opt.piv_len;
+		}
+	}
+
+	/* Response nonce uses response PIV if present, else request PIV */
 	compute_nonce(ctx->sender_id, ctx->sender_id_len,
-		      request_piv, request_piv_len, ctx->common_iv, nonce);
+		      nonce_piv, nonce_piv_len, ctx->common_iv, nonce);
 
 	/* Build AAD per RFC 8613 Section 5.4 - use request KID/PIV */
 	uint8_t aad[64];

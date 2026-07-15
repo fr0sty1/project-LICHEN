@@ -88,6 +88,19 @@ ZTEST(oscore_ctx, test_rejects_identical_nonempty_sender_and_recipient_ids)
 	zassert_is_null(ctx);
 }
 
+ZTEST(oscore_ctx, test_rejects_both_empty_sender_and_recipient_ids)
+{
+	struct oscore_ctx *ctx = NULL;
+
+	/* Both empty IDs would derive identical keys - must reject */
+	zassert_equal(oscore_ctx_create(master_secret, NULL, 0,
+					NULL, 0,
+					NULL, 0,
+					&ctx),
+		      OSCORE_ERR_INVALID_PARAM);
+	zassert_is_null(ctx);
+}
+
 ZTEST(oscore_ctx, test_create_with_eui64_associates_peer)
 {
 	struct oscore_ctx *ctx = NULL;

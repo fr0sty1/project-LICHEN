@@ -14,7 +14,7 @@ use std::env;
 use std::fs;
 use std::process;
 
-use lichen_link::frame::{LichenFrame, Signature, Encryption};
+use lichen_link::frame::{Encryption, LichenFrame, Signature};
 
 fn hex_decode(s: &str) -> Result<Vec<u8>, String> {
     if s.len() % 2 != 0 {

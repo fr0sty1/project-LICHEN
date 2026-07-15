@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2auf.7",
+  "title": "Fix Rust RPL integration rank regression",
+  "description": "The new RFC rank gate makes rust/lichen-rpl/tests/mesh_formation.rs advertise a backup parent at the same rank as the node, so the integration test fails when the preferred parent is removed. Update the test fixture to represent a valid lower-rank backup and verify the scenario remains meaningful.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T04:49:42.06696Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T04:52:09.77539Z",
+  "closed_at": "2026-07-15T04:52:09.77539Z",
+  "close_reason": "Updated parent_switch_on_link_failure backup to rank 512 with ETX 2.0, preserving the worse 1024 path cost while keeping the backup rank below the node. Verified integration tests pass.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.7",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T04:49:42.067751Z"
+    }
+  ]
+}

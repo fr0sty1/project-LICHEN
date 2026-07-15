@@ -32,6 +32,10 @@ logger = logging.getLogger(__name__)
 MAX_FORWARDING_SOURCES = 8
 MAX_PACKETS_PER_SOURCE = 2
 
+# GPSR null island detection threshold (~111 meters).
+# GPS sensors often produce near-zero garbage, not exactly (0, 0).
+NULL_ISLAND_EPSILON = 0.001
+
 
 class RoutingError(Exception):
     """Raised on routing failures that shouldn't happen."""
@@ -478,7 +482,11 @@ class Router:
         # Why check loadng: If LOADng isn't configured, try GPSR fallback.
         if self.loadng is None:
             # Try GPSR if we know destination coords (spec 9.7)
-            dst_entry = self.gradient_table.lookup(dst)  # may be expired but has coords
+            # SECURITY: Pass now_ms to reject expired entries. Using stale
+            # coordinates could route packets to a node's old location in
+            # mobile deployments, or allow an attacker to advertise false
+            # coordinates and let the entry expire while routing continues.
+            dst_entry = self.gradient_table.lookup(dst, now=now_ms)
             if dst_entry is not None and dst_entry.coords is not None:
                 next_hop = self.gpsr_forward(dst_entry.coords)
                 if next_hop is not None:
@@ -631,9 +639,22 @@ class Router:
 
     def update_neighbor_coords(
         self, neighbor: IPv6Address, coords: tuple[float, float]
-    ) -> None:
-        """Update coords for a neighbor (from their announce)."""
+    ) -> bool:
+        """Update coords for a neighbor (from their announce).
+
+        Validates coordinates before storing. Invalid coordinates
+        (NaN, inf, null island, out-of-range) are rejected.
+
+        Returns:
+            True if coords were stored, False if rejected as invalid.
+        """
+        lat, lon = coords
+        if not _validate_coords(lat, lon):
+            logger.warning("rejecting invalid coords for neighbor %s: (%s, %s)",
+                          neighbor, lat, lon)
+            return False
         self.neighbor_coords[neighbor] = coords
+        return True
 
     def update_neighbor_queue_depth(
         self, neighbor: IPv6Address, depth: int
@@ -783,8 +804,8 @@ class Router:
         if math.isnan(lat) or math.isnan(lon) or math.isinf(lat) or math.isinf(lon):
             logger.warning("gpsr: dst_coords contain NaN/inf")
             return None
-        if lat == 0.0 and lon == 0.0:
-            logger.warning("gpsr: rejecting null island coords (0, 0)")
+        if abs(lat) < NULL_ISLAND_EPSILON and abs(lon) < NULL_ISLAND_EPSILON:
+            logger.warning("gpsr: rejecting null island coords (%s, %s)", lat, lon)
             return None
         if not (-90 <= lat <= 90 and -180 <= lon <= 180):
             logger.warning("gpsr: invalid dst_coords (%s, %s)", lat, lon)
@@ -813,6 +834,29 @@ class Router:
         return best_neighbor
 
 
+def _validate_coords(lat: float, lon: float) -> bool:
+    """Validate geographic coordinates.
+
+    Rejects:
+    - NaN or infinite values
+    - Null island (0, 0) which is almost always invalid GPS data
+    - Out-of-range values (lat must be -90..90, lon must be -180..180)
+
+    Returns:
+        True if coordinates are valid, False otherwise.
+    """
+    # NaN/inf: checked first since NaN comparisons are always False,
+    # making the range check unreliable for invalid floats.
+    if math.isnan(lat) or math.isnan(lon) or math.isinf(lat) or math.isinf(lon):
+        return False
+    # Near (0,0): rejected as null island sentinel (almost always invalid GPS data).
+    if abs(lat) < NULL_ISLAND_EPSILON and abs(lon) < NULL_ISLAND_EPSILON:
+        return False
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        return False
+    return True
+
+
 def _haversine(c1: tuple[float, float], c2: tuple[float, float]) -> float:
     """Haversine distance in meters between two (lat, lon) points."""
     lat1, lon1 = math.radians(c1[0]), math.radians(c1[1])
@@ -823,6 +867,6 @@ def _haversine(c1: tuple[float, float], c2: tuple[float, float]) -> float:
 
     a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
     # Clamp a to [0, 1] before sqrt to handle floating-point errors
-    c = 2 * math.asin(math.sqrt(min(1.0, a)))
+    c = 2 * math.asin(math.sqrt(max(0.0, min(1.0, a))))
 
     return 6_371_000 * c  # Earth radius in meters

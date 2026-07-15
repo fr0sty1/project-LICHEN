@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2auf.30",
+  "title": "Run full three-way fleet",
+  "description": "Run Python, Rust, and T-Echo Zephyr nodes together through lichen-sim. Require per-implementation TX/RX and cross-reception evidence; aggregate traffic alone is insufficient.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T15:17:15.387926Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T15:31:55.317758Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.30",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T15:17:15.389302Z"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.30",
+      "depends_on_id": "project-LICHEN-2auf.34",
+      "type": "blocks",
+      "created_at": "2026-07-15T15:31:55.317758Z"
+    }
+  ]
+}

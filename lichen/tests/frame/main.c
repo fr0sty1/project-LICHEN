@@ -58,7 +58,7 @@ static int test_write_rejects_null_buf(void)
 	struct lichen_frame frame;
 
 	memset(&frame, 0, sizeof(frame));
-	frame.mic_len = LICHEN_MIC_32_LEN;
+	frame.mic_len = 0U;
 
 	ASSERT_EQ(lichen_frame_write(&frame, NULL, 16), -EINVAL,
 		  "write rejects NULL buf");
@@ -73,7 +73,7 @@ static int test_write_rejects_invalid_addr_mode(void)
 
 	memset(&frame, 0, sizeof(frame));
 	frame.addr_mode = (enum lichen_addr_mode)4;
-	frame.mic_len = LICHEN_MIC_32_LEN;
+	frame.mic_len = 0U;
 
 	ASSERT_EQ(lichen_frame_write(&frame, buf, sizeof(buf)), -EINVAL,
 		  "write rejects invalid address mode");
@@ -81,7 +81,7 @@ static int test_write_rejects_invalid_addr_mode(void)
 	return 1;
 }
 
-static int test_write_rejects_inconsistent_mic_metadata(void)
+static int test_write_accepts_mic_selector_without_mic(void)
 {
 	struct lichen_frame frame;
 	uint8_t buf[16];
@@ -89,10 +89,103 @@ static int test_write_rejects_inconsistent_mic_metadata(void)
 	memset(&frame, 0, sizeof(frame));
 	frame.addr_mode = LICHEN_ADDR_BROADCAST;
 	frame.mic_length = LICHEN_MIC_64;
-	frame.mic_len = LICHEN_MIC_32_LEN;
+	frame.mic_len = 0U;
 
-	ASSERT_EQ(lichen_frame_write(&frame, buf, sizeof(buf)), -EINVAL,
-		  "write rejects inconsistent MIC metadata");
+	ASSERT_EQ(lichen_frame_write(&frame, buf, sizeof(buf)), 5,
+		  "write accepts unsigned frame without MIC");
+
+	return 1;
+}
+
+static int test_write_parse_round_trip_64_bit_mic(void)
+{
+	static const uint8_t payload[] = { 0x15, 0x01, 0x02 };
+	struct lichen_frame input;
+	struct lichen_frame output;
+	uint8_t buf[32];
+	int frame_len;
+
+	memset(&input, 0, sizeof(input));
+	input.epoch = 7;
+	input.seqnum = 0x1234;
+	input.payload = payload;
+	input.payload_len = sizeof(payload);
+	input.mic_len = 0U;
+	input.addr_mode = LICHEN_ADDR_BROADCAST;
+	input.mic_length = LICHEN_MIC_64;
+
+	frame_len = lichen_frame_write(&input, buf, sizeof(buf));
+	ASSERT_EQ(frame_len, 8, "write omits unsigned MIC");
+	ASSERT_EQ(buf[1], 0x04, "64-bit MIC uses enum LLSec encoding");
+
+	memset(&output, 0, sizeof(output));
+	ASSERT_EQ(lichen_frame_parse(&output, buf, (size_t)frame_len), 0,
+		  "parse accepts serialized 64-bit MIC");
+	ASSERT_EQ(output.epoch, input.epoch, "round-trip preserves epoch");
+	ASSERT_EQ(output.seqnum, input.seqnum, "round-trip preserves sequence number");
+	ASSERT_EQ(output.mic_length, LICHEN_MIC_64, "round-trip preserves MIC length");
+	ASSERT_EQ(output.mic_len, 0, "round-trip preserves absent MIC");
+	ASSERT_EQ(output.payload_len, sizeof(payload), "round-trip preserves payload length");
+	if (memcmp(output.payload, payload, sizeof(payload)) != 0) {
+		printf("  FAIL: round-trip preserves payload\n");
+		return 0;
+	}
+
+	return 1;
+}
+
+static int test_signed_encrypted_is_rejected(void)
+{
+	uint8_t wire[54] = { 0 };
+	struct lichen_frame frame;
+
+	wire[0] = 53U;
+	wire[1] = 0x60U;
+	wire[2] = 3U;
+	wire[4] = 4U;
+	wire[5] = 0x78U;
+	ASSERT_EQ(lichen_frame_parse(&frame, wire, sizeof(wire)), -EPROTONOSUPPORT,
+		  "parse rejects encrypted frame as unsupported");
+
+	memset(&frame, 0, sizeof(frame));
+	frame.signature_present = true;
+	frame.encrypted = true;
+	frame.mic_len = LICHEN_SIG_LEN;
+	frame.payload = &wire[5];
+	frame.payload_len = 1U;
+	ASSERT_EQ(lichen_frame_write(&frame, wire, sizeof(wire)), -EPROTONOSUPPORT,
+		  "write rejects encrypted frame as unsupported");
+
+	return 1;
+}
+
+static int test_authoritative_signed_vector(void)
+{
+	uint8_t wire[59] = { 0x3a, 0x21, 0x05, 0xab, 0xcd, 0xbe, 0xef };
+	struct lichen_frame frame;
+	uint8_t rebuilt[sizeof(wire)];
+
+	memset(&wire[7], 0x55, 48);
+	wire[55] = 0x11;
+	wire[56] = 0x22;
+	wire[57] = 0x33;
+	wire[58] = 0x44;
+
+	ASSERT_EQ(lichen_frame_parse(&frame, wire, sizeof(wire)), 0,
+		  "parse authoritative signed vector");
+	ASSERT_EQ(frame.payload_len, 4, "signed vector payload length");
+	ASSERT_EQ(frame.mic_len, LICHEN_SIG_LEN, "signed vector MIC length");
+	if (memcmp(frame.payload, (uint8_t[]){ 0x55, 0x55, 0x55, 0x55 }, 4) != 0 ||
+	    memcmp(frame.mic, &wire[11], LICHEN_SIG_LEN) != 0) {
+		printf("  FAIL: signed vector payload/MIC bytes\n");
+		return 0;
+	}
+	ASSERT_EQ(lichen_frame_write(&frame, rebuilt, sizeof(rebuilt)), sizeof(wire),
+		  "serialize authoritative signed vector");
+	if (memcmp(rebuilt, wire, sizeof(wire)) != 0) {
+		printf("  FAIL: signed vector encoded bytes\n");
+		return 0;
+	}
 
 	return 1;
 }
@@ -116,7 +209,10 @@ int main(void)
 	RUN_TEST(test_write_rejects_null_frame);
 	RUN_TEST(test_write_rejects_null_buf);
 	RUN_TEST(test_write_rejects_invalid_addr_mode);
-	RUN_TEST(test_write_rejects_inconsistent_mic_metadata);
+	RUN_TEST(test_write_accepts_mic_selector_without_mic);
+	RUN_TEST(test_write_parse_round_trip_64_bit_mic);
+	RUN_TEST(test_signed_encrypted_is_rejected);
+	RUN_TEST(test_authoritative_signed_vector);
 
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 

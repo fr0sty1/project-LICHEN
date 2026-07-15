@@ -23,6 +23,12 @@ use std::time::Duration;
 /// APRS-IS default TCP port.
 pub const APRS_IS_PORT: u16 = 14580;
 
+/// Maximum line length accepted from APRS-IS server.
+///
+/// SECURITY: Bounds memory usage against malicious servers. APRS packets are
+/// typically under 256 bytes; 512 provides margin for server comments.
+const MAX_LINE_LEN: usize = 512;
+
 /// Compact CoT PLI (Position Location Information) from spec Section 10.1.1.
 ///
 /// Binary encoding:
@@ -306,12 +312,25 @@ impl AprsIsClient {
     /// Returns None on timeout or EOF, Some(packet) on success. Server comment
     /// lines (starting with #) are skipped internally — the method loops until
     /// it finds a real packet or hits timeout/EOF.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ParseError` if a line exceeds [`MAX_LINE_LEN`] bytes. This
+    /// bounds memory usage against malicious servers.
     pub fn recv(&mut self) -> Result<Option<String>, AprsError> {
         loop {
             let mut line = String::new();
             match self.reader.read_line(&mut line) {
                 Ok(0) => return Ok(None), // EOF
                 Ok(_) => {
+                    // SECURITY: Reject excessively long lines to bound memory usage
+                    if line.len() > MAX_LINE_LEN {
+                        return Err(AprsError::ParseError(format!(
+                            "line too long ({} bytes, max {})",
+                            line.len(),
+                            MAX_LINE_LEN
+                        )));
+                    }
                     // Skip server comments (lines starting with #) and continue
                     if line.starts_with('#') {
                         continue;
@@ -732,5 +751,21 @@ mod tests {
         assert!(cot_to_aprs("W1ABC\r\nINJECT", &cot).is_err());
         // Other invalid chars
         assert!(cot_to_aprs("W1ABC>APRS", &cot).is_err());
+    }
+
+    #[test]
+    fn max_line_len_allows_typical_aprs_packets() {
+        // APRS packets are typically under 256 bytes. The APRS-IS protocol
+        // doesn't define a strict max, but 512 should accommodate all valid
+        // packets plus server comment lines.
+        assert!(MAX_LINE_LEN >= 256, "MAX_LINE_LEN too small for APRS");
+        assert!(MAX_LINE_LEN <= 4096, "MAX_LINE_LEN unnecessarily large");
+
+        // Typical APRS position packet is ~60-100 bytes
+        let typical_packet = "W1TEST-9>APRS,TCPIP*:!4903.50N/07201.75W-Test station /A=000328";
+        assert!(
+            typical_packet.len() < MAX_LINE_LEN,
+            "typical packet should fit within MAX_LINE_LEN"
+        );
     }
 }

@@ -1,232 +1,265 @@
 # LICHEN Simulation Infrastructure Deployment Guide
 
-This document provides a comprehensive guide for deploying the LICHEN simulation infrastructure across multiple AWS EC2 instances for large-scale distributed testing.
+This guide provides comprehensive instructions for deploying the LICHEN simulation infrastructure across multiple AWS EC2 instances for large-scale distributed mesh testing.
 
 ## Overview
 
-LICHEN's simulation infrastructure allows for large-scale distributed mesh testing across heterogenous implementations (Zephyr C, Rust, and Python). The infrastructure leverages AWS EC2 instances to distribute simulation load and test interoperability between different codebases.
+The LICHEN simulation infrastructure supports distributed testing across multiple EC2 instances through:
+- A coordinator service running the core simulation engine
+- Multiple node types (Python, Rust, C/Zephyr) that connect to the coordinator
+- Support for both heterogeneous mesh testing and Renode-based clusters
 
 ## Architecture
 
 ```
-┌─────────────────┐    ┌─────────────────┐
-│  Coordinator    │    │   Coordinator   │
-│  (lichen-sim)   │    │  (lichen-sim)   │
-│  Single instance│    │  Single instance│
-│                 │    │                 │
-│  TCP/REST API   │◄──►│  TCP/REST API   │
-└─────────┬───────┘    └─────────┬───────┘
-          │                        │
-          ▼                        ▼
-┌─────────────────┐    ┌─────────────────┐
-│  Simulation     │    │  Simulation     │
-│  Nodes (Zephyr) │    │  Nodes (Rust/   │
-│  C firmware)    │    │  Python)        │
-└─────────────────┘    └─────────────────┘
-        │                       │
-        └───────────────────────┘
-                     │
-        ┌──────────────────────────┐
-        │  AWS EC2 Clusters        │
-        │  (100+ nodes per cluster)│
-        └──────────────────────────┘
+[Coordinator Node] ← TCP → [Python Nodes] 
+         ↑
+[Redis/MQTT] ← TCP → [Rust Nodes] 
+         ↑
+[Renode Nodes] ← TCP → [Zephyr Nodes]
 ```
 
 ## Components
 
-### 1. Simulation Coordinator (lichen-sim)
-- **Role**: Centralized simulation control and RF propagation
-- **Protocol**: TCP (node port) and REST (API port)
-- **Implementation**: Python-based simulation server
-- **Ports**: Default `5555` (node port), `5556` (API port)
+1. **lichen-sim**: The central simulation coordinator responsible for:
+   - Managing time advancement
+   - Handling packet propagation and reception
+   - Coordinating multiple heterogeneous node types
+   - Providing metrics and observability
 
-### 2. Simulation Nodes 
-- **Zephyr C Implementation**: Running on Renode emulators in EC2
-- **Rust Implementation**: Native Rust nodes
-- **Python Implementation**: Native Python nodes
+2. **Implementation Nodes**: Each node type connects to the coordinator:
+   - Python: Using `liche-radio` client
+   - Rust: Using `lichend` binary
+   - C/Zephyr: Using embedded `lichen` stack with Renode bridge
+   
+3. **Support Services**:
+   - Redis/MQTT: For message queuing between nodes (optional)
+   - Load balancer: Distributing node connections
 
-### 3. Cluster Management Scripts
-Scripts to automate deployment of simulation clusters:
-- `ec2-hetero-fleet.sh`: Deploy heterogeneous mesh testing
-- `ec2-renode-fleet.sh`: Deploy Renode-based Zephyr nodes  
+## Deployment Methods
 
-## Deployment Methodology
+### Method 1: Heterogeneous Mesh Testing
 
-### A. Heterogeneous Mesh Testing (Recommended for Large Scale)
+This approach uses mixed implementation node types to test cross-platform compatibility.
 
-Use the `ec2-hetero-fleet.sh` script for comprehensive large-scale testing:
+#### Prerequisites:
+- Python (3.9+) on coordinator instance
+- Rust compiler for `lichend` on coordinator instance  
+- Python virtual environment setup
+- Existing Docker image containing simulation services
 
-#### Usage:
-```bash
-./scripts/ec2-hetero-fleet.sh --zephyr 50 --rust 50 --python 50
-./scripts/ec2-hetero-fleet.sh --total 150
-```
+#### Deployment Steps:
+1. Launch coordinator instance with sufficient resources
+2. Deploy Python node implementation containers
+3. Deploy Rust node implementation containers  
+4. Configure node connectivity to coordinator
+5. Start all services and monitor metrics
 
-#### Deployment Process:
-1. **Initialize Coordinator**:
-   - Launch one simulation coordinator instance
-   - Start lichen-sim server with REALTIME time mode
+#### Resource Allocation:
+- Coordinator: m5.large or m5.xlarge (2vCPU, 8GB RAM minimum)
+- Node Instances: t3.medium or t3.large per node (2vCPU, 4GB RAM minimum)
+- Additional: t3.small for Redis/MQTT if needed (1vCPU, 2GB RAM)
 
-2. **Deploy Implementation Nodes**:
-   - Zephyr nodes: EC2 instances with Renode emulators
-   - Rust nodes: Local native binaries
-   - Python nodes: Local native binaries
+### Method 2: Renode-Based Zephyr Cluster
 
-3. **Connect Nodes**:
-   - All nodes connect to coordinator via TCP
-   - Simulated RF propagation handles all node communications
+This approach emulates Zephyr nodes using Renode peripherals.
 
-#### Key Considerations:
-- **Network Partitioning**: Configure AWS security groups to allow traffic between instances
-- **Resource Allocation**: 
-  - Coordinator: c7g.xlarge (recommended for high node count)
-  - Zephyr clusters: c7g.xlarge instances (20 nodes per instance)
-- **Instance Limits**: Account for AWS instance limits when scaling
+#### Prerequisites:
+- Renode installation (using provided scripts)
+- ARM64 container support for cross-compilation  
+- Access to `renode-hetero-fleet.sh` script
 
-### B. Renode-Based Zephyr Cluster Deployment
+#### Deployment Steps:
+1. Launch base EC2 instance with Renode support
+2. Deploy Renode fleet with `ec2-renode-fleet.sh` command
+3. Launch Zephyr node instances using Renode bridge
+4. Configure position-based simulation parameters
+5. Monitor via logs and metrics exporter
 
-Use `ec2-renode-fleet.sh` for Zephyr firmware testing:
-
-#### Usage:
-```bash
-./scripts/ec2-renode-fleet.sh --cluster 50
-```
-
-#### Architecture:
-- **Renode Emulation**: Each EC2 instance runs multiple Renode emulators (20 by default)
-- **SX1262 Peripheral**: Simulated LoRa radio for accurate RF modeling
-- **Zephyr Integration**: Firmware compiled for specific hardware targets
-
-### C. Mixed Implementation Testing
-
-For testing cross-implementation interoperability:
-- Combine Zephyr (C), Rust, and Python simulation nodes
-- Run all nodes connected to same coordinator
-- Monitor packet exchange across implementations
+#### Resource Allocation:
+- Renode Coordinator: c5.2xlarge or c5.4xlarge (8vCPU, 16GB RAM minimum)
+- Zephyr Emulation Instances: m5.large per node (2vCPU, 8GB RAM)
+- Storage: EBS 100GB SSD per instance for logs and cache
 
 ## Scaling Strategies
 
-### 1. Horizontal Scaling
-- Increase node count per cluster
-- Deploy multiple coordinator instances in different regions
-- Use load balancing for high-throughput simulations
+### Horizontal Scaling:
+- Add more node instances to increase mesh density  
+- Use Auto Scaling Groups for dynamic scaling based on demand
+- Distribute nodes geographically for realistic WAN simulation
 
-### 2. Vertical Scaling
-- Up-size EC2 instance types:
-  - Standard: c7g.xlarge (default for medium clusters)  
-  - High-performance: c7g.2xlarge or c7g.4xlarge
-- Optimize node counts per instance (20-50 nodes per EC2 instance)
-
-### 3. Distributed Simulation Clusters
-- Multiple coordinators across regions for geo-distributed testing
-- Each coordinator manages limited node count for stability
+### Vertical Scaling:
+- Increase instance types for higher computational requirements
+- Use compute-optimized instances (c5, c6i) for intensive simulation calculations
+- Add GPU instances for specialized packet simulation workloads
 
 ## AWS Resource Requirements
 
-### Recommended Setup
-| Component        | Instance Type | Purpose                    |
-|------------------|---------------|----------------------------|
-| Coordinator      | c7g.xlarge    | Central simulation control |
-| Zephyr Cluster   | c7g.xlarge    | Zephyr node emulation      |
-| Compute          | c7g.xlarge    | Rust/Python node execution |
+### Required Resources:
+1. **VPC** with:
+   - Public/private subnets
+   - Internet Gateway for external access
+   - Security groups allowing internal communication
 
-### Security Requirements
-- Security Group: Allow TCP ports 22 (SSH), 5555 (node), 5556 (API)
-- EBS Volume: Shared storage for simulation data (400GB gp3)
-- IAM Role: EC2 instances require access to S3/EBS operations
+2. **EC2 Instances**:
+   - At least one coordinator (t3.medium minimum)
+   - Variable number of node instances (depending on scaling needs)
+
+3. **Storage**:
+   - EBS volumes for logs and state (100GB minimum)
+   - S3 bucket for long-term metric aggregation
+
+### Security Considerations:
+1. Restrict inbound access to coordinator ports
+2. Use SSH key pairs for secure shell access
+3. Implement AWS IAM policies for EC2 access
+4. Enable CloudWatch monitoring for all instances
 
 ## Best Practices
 
-### 1. Resource Management
-- Monitor EC2 instance CPU and memory usage
-- Set appropriate timeouts for long-running simulations
-- Implement clean shutdown procedures
+### Resource Management:
+1. Monitor CPU and memory utilization on coordinator instances
+2. Set appropriate timeouts for network operations  
+3. Implement graceful shutdown procedures
+4. Configure health checks for node availability
 
-### 2. Node Distribution
-- Distribute nodes spatially to simulate realistic mesh topologies
-- Configure varying node densities for different testing scenarios
-- Use consistent positioning for reproducible tests
+### Node Placement:
+1. Distribute nodes geographically for realistic WAN testing
+2. Use same AZ for low-latency communication
+3. Maintain balanced load across instances
+4. Reserve capacity for future scaling
 
-### 3. Monitoring
-- Implement logging for all simulation components
-- Monitor packet transmission rates across implementations
-- Track connection drops and reconnections
+### Monitoring & Logging:
+1. Enable CloudWatch Logs for detailed event visibility
+2. Implement centralized metric collection (Prometheus/Grafana)
+3. Set up alerting for simulation performance degradation
+4. Archive logs for retrospective analysis
 
-## Automation Commands
+### Performance Optimization:
+1. Tune simulation parameters based on instance capabilities
+2. Adjust network buffer sizes for optimal throughput
+3. Use caching where appropriate for repetitive computations
+4. Optimize message serialization for reduced overhead
 
-### Launch Heterogeneous Fleet:
+## Deployment Automation
+
+### Example commands:
 ```bash
-./scripts/ec2-hetero-fleet.sh --total 200 --duration 600
+# Deploy coordinator node
+./ec2-launch-instance.sh --type m5.large --ami ami-12345678 --key my-key
+
+# Deploy Python node fleet
+./ec2-hetero-fleet.sh --count 10 --node-type python --region us-east-2
+
+# Deploy Renode Zephyr cluster  
+./ec2-renode-fleet.sh --count 5 --region us-west-2
+
+# Deploy with custom parameters
+./ec2-deploy-fleet.sh --type c5.2xlarge --count 20 --config simulation-config.yaml
 ```
 
-### Deploy Zephyr Cluster:
-```bash
-./scripts/ec2-renode-fleet.sh --cluster 100
+### Docker Deployment:
+```dockerfile
+FROM python:3.9
+RUN pip install lichen-sim
+COPY ./simulation-scripts/ /app/
+CMD ["python", "/app/coordinate.py"]
 ```
 
-### Monitor Simulation:
-```bash
-# Check node connectivity
-watch -n 5 "curl http://COORDINATOR_IP:5556/sim/TEST_SIM/topology"
+## Testing Scenarios
 
-# Collect test results
-scp ec2-user@COORDINATOR_IP:/tmp/simulation-results/* .
-```
+### Interoperability Testing:
+1. Verify Python-Rust communication
+2. Validate C/Zephyr node integration 
+3. Test heterogeneous mesh behavior
+4. Measure packet delivery consistency
+
+### Load Testing:
+1. Simulate varying node densities
+2. Test collision handling under stress
+3. Evaluate scalability limits
+4. Assess performance degradation
+
+### Failure Injection:
+1. Simulate node disconnections
+2. Test fault recovery mechanisms
+3. Verify robustness under network partitioning
+4. Validate graceful degradation
+
+## Maintenance Procedures
+
+### Routine Operations:
+1. Backup simulation state regularly
+2. Rotate log files to prevent disk exhaustion
+3. Update node software with security patches
+4. Optimize resource utilization based on trends
+
+### Incident Response:
+1. Monitor for packet loss spikes
+2. Identify connectivity issues between nodes
+3. Track performance bottlenecks on coordinator
+4. Diagnose implementation-specific failures
 
 ## Troubleshooting
 
 ### Common Issues:
-1. **Node Connection Failures**: Check network security groups  
-2. **Instance Limit Exceeded**: Request limits increase from AWS
-3. **Simulation Crashes**: Monitor coordinator memory usage
-4. **Interoperability Issues**: Verify all nodes use same protocol version
+1. **Node connection failures**: Verify security groups and network ACLs
+2. **Insufficient memory**: Scale to larger instance types or optimize allocations
+3. **High latency**: Move instances to closer AZs or adjust instance types
+4. **Packet loss**: Tune transmission parameters and check network throughput
 
-### Debugging Tips:
-- Use `--debug` flag for verbose logs
-- Monitor lichen-sim logs for connection issues
-- Validate hardware-specific implementations with smaller node counts first
+### Diagnostic Commands:
+```bash
+# Check instance status
+aws ec2 describe-instances --filters "Name=tag:Project,Values=LICHEN"
 
-## Performance Optimization
+# Monitor logs
+aws logs tail /aws/ecs/lichen-sim
 
-### 1. Coordinator Tuning:
-- Increase virtual memory for high node counts
-- Set appropriate TCP buffer sizes
-- Enable connection reuse to reduce overhead
+# Check network performance
+iostat -x 1 10
 
-### 2. Node Resource Allocation:
-- Optimize Renode configuration for Zephyr nodes
-- Adjust Python/GIL threads for multi-core processing
-- Tune Rust binary compilation flags for performance
+# Monitor CPU usage
+top -b -n 1 | head -20
+```
 
-### 3. Network Optimization:
-- Use instance types in same availability zone
-- Minimize instance-to-instance network latency
-- Leverage AWS Direct Connect for geographically-separated coordinators
+## Performance Metrics & Monitoring
 
-## Testing Scenarios
+Track these key metrics:
+1. **Throughput**: Packets/sec transmitted/received
+2. **Latency**: Transmission delay and propagation time
+3. **Availability**: Node uptime and connection stability   
+4. **Errors**: Failed transmissions and collision rates
+5. **Resource Utilization**: CPU, memory, and disk usage
 
-### 1. Basic Interoperability
-- Test node communications across all implementations
-- Measure packet delivery rates between C, Rust, and Python nodes
+## Cost Optimization
 
-### 2. Scalability Testing
-- Gradually increase node count to find limits
-- Monitor performance degradation curves
-- Validate stability with 1000+ active nodes
+### Budget Control:
+1. Use spot instances for non-critical testing
+2. Auto-scale based on workload demands
+3. Terminate unused instances after testing
+4. Monitor hourly costs using AWS Cost Explorer
+5. Implement tagging for easy cost allocation
 
-### 3. Failure Injection
-- Test resilience with simulated network partitions
-- Evaluate convergence after link failures
-- Validate recovery mechanisms across implementations
+### Cost Estimation Formula:
+``` 
+Estimated Monthly Cost = (Coordinator Instances × Hourly Rate) 
+                      + (Node Instances × Hourly Rate × Node Count) 
+                      + (Storage × Monthly Rate)
+```
 
-## Maintenance Procedures
+## Future Enhancements
 
-### Regular Operations:
-1. **Daily Check**: Monitor running instances and resource usage
-2. **Weekly Cleanup**: Remove terminated instances and obsolete volumes
-3. **Monthly Backup**: Backup simulation data and configurations
+Consider these improvements for larger-scale deployments:
+1. Kubernetes orchestration for easier scaling
+2. Container clustering with Docker Compose
+3. Automated backup and restoration procedures
+4. Integration with existing CI/CD pipelines
+5. Enhanced monitoring using Prometheus/Grafana
 
-### Incident Response:
-1. **Emergency Shutdown**: Immediately terminate stuck instances
-2. **Recovery Planning**: Restore simulation from backups
-3. **Post-mortem Analysis**: Document root causes for future prevention
+## References
+
+- **LICHEN AGENTS.md**: Main project documentation for EC2 setup
+- **Scripts**: `ec2-hetero-fleet.sh`, `ec2-renode-fleet.sh`
+- **AWS CLI Documentation**: Official AWS EC2 and CloudWatch documentation
+- **Simulation Protocol**: `lichen/sim/protocol.py` for wire format details

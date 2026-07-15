@@ -90,6 +90,8 @@ pub enum Ipv6Error {
     BufferTooSmall(BufferTooSmall),
     /// Flow label exceeds 20-bit limit (RFC 6437).
     InvalidFlowLabel(u32),
+    /// Payload exceeds the maximum size for a UDP datagram (65527 bytes).
+    PayloadTooLarge(usize),
 }
 
 impl From<TooShort> for Ipv6Error {
@@ -112,6 +114,9 @@ impl core::fmt::Display for Ipv6Error {
             Self::BufferTooSmall(e) => write!(f, "IPv6 {}", e),
             Self::InvalidFlowLabel(v) => {
                 write!(f, "flow label 0x{:x} exceeds 20-bit limit (max 0xfffff)", v)
+            }
+            Self::PayloadTooLarge(size) => {
+                write!(f, "UDP payload too large: {} bytes (max 65527)", size)
             }
         }
     }
@@ -392,7 +397,12 @@ impl UdpHeader {
             return Err(BufferTooSmall::new(UDP_HEADER_LEN, out.len()).into());
         }
 
-        let length = (UDP_HEADER_LEN + payload.len()) as u16;
+        // UDP length field is u16, max payload = 65535 - 8 = 65527 bytes
+        let total = UDP_HEADER_LEN + payload.len();
+        if total > u16::MAX as usize {
+            return Err(Ipv6Error::PayloadTooLarge(payload.len()));
+        }
+        let length = total as u16;
 
         out[0] = (self.src_port >> 8) as u8;
         out[1] = self.src_port as u8;
@@ -760,6 +770,13 @@ pub fn handle_icmpv6(
             if code != 0 {
                 return Ok(None);
             }
+            // SECURITY: RFC 4443 Section 4.2 - "An Echo Reply MUST NOT be sent in
+            // response to a request sent to any multicast address." The RFC actually
+            // refers to the destination, but we also reject multicast sources to
+            // prevent reflection attacks where an attacker spoofs a multicast source.
+            if ip_header.src.is_multicast() {
+                return Ok(None);
+            }
             // Reply to ping
             let echo = Icmpv6Echo::from_bytes(body)?;
             let data = &body[4..]; // After id+seq
@@ -773,8 +790,10 @@ pub fn handle_icmpv6(
                 data
             };
 
-            let reply_icmp = echo.build_reply(local_addr, &ip_header.src, truncated_data)?;
-            let reply_ip = Ipv6Header::new(next_header::ICMPV6, *local_addr, ip_header.src);
+            // RFC 4443 Section 4.2: reply source SHOULD be the destination of the request.
+            // This ensures nodes with multiple addresses reply from the address that was pinged.
+            let reply_icmp = echo.build_reply(&ip_header.dst, &ip_header.src, truncated_data)?;
+            let reply_ip = Ipv6Header::new(next_header::ICMPV6, ip_header.dst, ip_header.src);
 
             let mut pkt = Vec::new();
             let mut ip_buf = [0u8; IPV6_HEADER_LEN];
@@ -795,20 +814,47 @@ pub fn handle_icmpv6(
             }
             let ns = NeighborSolicitation::from_bytes(body)?;
 
+            // SECURITY: RFC 4861 Section 7.1.1 - Target address MUST NOT be multicast
+            if ns.target.is_multicast() {
+                return Ok(None);
+            }
+
             // Only respond if target is us
             if ns.target != *local_addr {
                 return Ok(None);
             }
 
+            // RFC 4861: DAD probe has unspecified source (::)
+            // Response to DAD must use dst=all-nodes multicast, solicited=false
+            let is_dad = ip_header.src == Addr::UNSPECIFIED;
+
+            // SECURITY: RFC 4861 Section 7.1.1 - If source is unspecified (DAD),
+            // the NS MUST be sent to the solicited-node multicast address of the target.
+            // This prevents attackers from using unspecified source with arbitrary destinations.
+            if is_dad && ip_header.dst != ns.target.solicited_node() {
+                return Ok(None);
+            }
+
+            // SECURITY: RFC 4861 Section 7.1.1 - Source address must be unicast or unspecified.
+            // Multicast source addresses are invalid for NS messages.
+            if ip_header.src.is_multicast() {
+                return Ok(None);
+            }
+            let (reply_dst, solicited) = if is_dad {
+                (Addr::ALL_NODES, false)
+            } else {
+                (ip_header.src, true)
+            };
+
             let na = NeighborAdvertisement {
                 target: *local_addr,
                 router: false,
-                solicited: true,
+                solicited,
                 override_flag: true,
             };
 
-            let reply_icmp = na.build(local_addr, &ip_header.src);
-            let reply_ip = Ipv6Header::new(next_header::ICMPV6, *local_addr, ip_header.src);
+            let reply_icmp = na.build(local_addr, &reply_dst);
+            let reply_ip = Ipv6Header::new(next_header::ICMPV6, *local_addr, reply_dst);
 
             let mut pkt = Vec::new();
             let mut ip_buf = [0u8; IPV6_HEADER_LEN];
@@ -1016,6 +1062,9 @@ mod tests {
         // Also test a larger invalid value
         hdr.flow_label = 0xffffffff;
         let result = hdr.write_to(0, &mut buf);
-        assert!(matches!(result, Err(Ipv6Error::InvalidFlowLabel(0xffffffff))));
+        assert!(matches!(
+            result,
+            Err(Ipv6Error::InvalidFlowLabel(0xffffffff))
+        ));
     }
 }

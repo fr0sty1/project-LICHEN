@@ -74,6 +74,10 @@ For native_sim, just run the produced ELF directly:
 ./build/zephyr/zephyr.exe
 ```
 
+The standalone C frame tests run locally with CMake on macOS. Zephyr
+`native_sim` tests require a Linux host in the current Zephyr setup; run those
+on the project EC2 builder when local native_sim is unavailable.
+
 ## Memory Budget (validated 2026-06-24)
 
 STM32WL55 (nucleo_wl55jc) — 256 KB flash, 64 KB RAM:

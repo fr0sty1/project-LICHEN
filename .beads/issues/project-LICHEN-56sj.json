@@ -2,11 +2,14 @@
   "id": "project-LICHEN-56sj",
   "title": "encode_pending_text writes beyond header without payload length check",
   "description": "File: lichen/subsys/lichen/meshcore/adapter.c\nLines: 314-337\n\nThe function calculates output length and writes payload:\n```c\nstatic int encode_pending_text(const struct lichen_meshcore_pending_event *event,\n                   uint8_t *out, size_t out_len)\n{\n    size_t len = LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN +\n             event-\u003epayload_len;\n\n    if (out == NULL || out_len \u003c len) {\n        return -ENOMEM;\n    }\n    // ... writes header ...\n    if (event-\u003epayload_len \u003e 0U) {\n        memcpy(\u0026out[LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN],\n               event-\u003epayload, event-\u003epayload_len);\n    }\n    return (int)len;\n}\n```\n\nThe issue: event-\u003epayload_len is uint16_t. The addition at line 317-318 could theoretically exceed size_t on 16-bit platforms where size_t is 16 bits. However, on any reasonable platform (32-bit size_t), 11 + 65535 = 65546 fits.\n\nMore importantly, there's no check that event-\u003epayload_len \u003c= sizeof(event-\u003epayload). If payload_len is corrupted or set incorrectly, the memcpy could read beyond the payload buffer.\n\nAt the emit_text entry point (line 1176-1179), there is a check:\n```c\nif (event-\u003epayload_len \u003e\n    LICHEN_MESHCORE_FRAME_MAX - LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN) {\n    return -EMSGSIZE;\n}\n```\n\nBut this uses incoming event's payload_len, not the stored one. If pending-\u003epayload_len is corrupted after storage, no check catches it here.\n\nConsider adding: assert(event-\u003epayload_len \u003c= sizeof(event-\u003epayload));",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:47:02.088119Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:47:02.088155Z"
+  "updated_at": "2026-07-13T04:26:18.011084Z",
+  "closed_at": "2026-07-13T04:26:18.011084Z",
+  "close_reason": "Closed"
 }

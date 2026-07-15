@@ -5,17 +5,18 @@ Run with: pytest tests/test_hypothesis.py -v --hypothesis-show-statistics
 """
 
 import pytest
+from ipaddress import IPv6Address
 from hypothesis import given, settings, strategies as st, assume, HealthCheck
 from hypothesis.stateful import RuleBasedStateMachine, rule, invariant
 
 # Import modules to test
-from lichen.link.frame import LichenFrame, InvalidFrame
-from lichen.link.seqnum import LinkSeqNum
-from lichen.schc.rules import compress, decompress, RuleId
-from lichen.coap.message import CoapMessage, MessageType, Code
-from lichen.ipv6.address import Ipv6Address, iid_from_pubkey
+from lichen.link.frame import FrameError, LichenFrame
+from lichen.schc.codec import compress, decompress
+from lichen.schc.rules import COAP_RULE
+from lichen.coap.schc_channel import unwrap_coap, wrap_coap
+from lichen.ipv6.addr import eui64_to_iid
 from lichen.announce.messages import AnnounceMessage
-from lichen.interface.kiss.framing import kiss_encode, kiss_decode, KISS_END
+from lichen.interface.kiss.framing import FEND, KissCommand, kiss_decode, kiss_encode
 
 
 # ============================================================================
@@ -36,44 +37,47 @@ def test_frame_roundtrip(length, llsec, epoch, seqnum, payload):
     frame_bytes = bytes([length, llsec, epoch]) + seqnum.to_bytes(2, "big") + payload
 
     try:
-        frame = LichenFrame.parse(frame_bytes)
+        frame = LichenFrame.from_bytes(frame_bytes)
         # Re-encode and compare
         rebuilt = frame.to_bytes()
-        reparsed = LichenFrame.parse(rebuilt)
+        reparsed = LichenFrame.from_bytes(rebuilt)
         assert frame.epoch == reparsed.epoch
         assert frame.seqnum == reparsed.seqnum
-    except InvalidFrame:
+    except FrameError:
         pass  # Invalid input is OK
 
 
-@given(seqnum=st.integers(min_value=0, max_value=65535))
-def test_seqnum_wrap(seqnum):
-    """Sequence numbers should wrap correctly at 65535."""
-    seq = LinkSeqNum(seqnum)
-    next_seq = seq.next()
-
-    if seqnum == 65535:
-        assert next_seq.value == 0
-    else:
-        assert next_seq.value == seqnum + 1
-
-
 @given(
-    a=st.integers(min_value=0, max_value=65535),
-    b=st.integers(min_value=0, max_value=65535),
+    epoch=st.integers(min_value=0, max_value=255),
+    seqnum=st.integers(min_value=0, max_value=65535),
+    payload=st.binary(max_size=200),
 )
-def test_seqnum_comparison(a, b):
-    """Sequence number comparison should handle wraparound."""
-    seq_a = LinkSeqNum(a)
-    seq_b = LinkSeqNum(b)
+def test_integer_seqnum_frame_roundtrip(epoch, seqnum, payload):
+    """The integer 16-bit sequence number survives frame encoding."""
+    frame = LichenFrame(
+        epoch=epoch,
+        seqnum=seqnum,
+        dst_addr=b"",
+        payload=payload,
+        mic=b"",
+    )
 
-    # Comparison should be consistent
-    if a == b:
-        assert not seq_a.is_after(seq_b)
-        assert not seq_b.is_after(seq_a)
-    else:
-        # One must be after the other (considering wrap)
-        assert seq_a.is_after(seq_b) != seq_b.is_after(seq_a)
+    decoded = LichenFrame.from_bytes(frame.to_bytes())
+
+    assert decoded.epoch == epoch
+    assert decoded.seqnum == seqnum
+    assert decoded.payload == payload
+
+
+def test_replay_accepts_epoch_transition_at_seqnum_wrap():
+    """A wrapped sequence number is newer when its epoch advances."""
+    from lichen.link.replay import ReplayWindow
+
+    window = ReplayWindow()
+
+    assert window.check_and_update(0, 0xFFFF)
+    assert window.check_and_update(1, 0)
+    assert not window.check_and_update(1, 0)
 
 
 # ============================================================================
@@ -81,28 +85,43 @@ def test_seqnum_comparison(a, b):
 # ============================================================================
 
 
-@given(payload=st.binary(min_size=40, max_size=1280))
+@given(
+    msg_type=st.integers(min_value=0, max_value=3),
+    token_length=st.integers(min_value=0, max_value=8),
+    code=st.integers(min_value=0, max_value=255),
+    message_id=st.integers(min_value=0, max_value=65535),
+)
 @settings(suppress_health_check=[HealthCheck.too_slow])
-def test_schc_roundtrip(payload):
-    """SCHC compress/decompress should preserve original packet."""
-    # Need a valid IPv6 packet structure
-    if len(payload) < 40:
-        return
+def test_schc_coap_rule_roundtrip(msg_type, token_length, code, message_id):
+    """SCHC compression preserves fields in the current CoAP rule."""
+    fields = {
+        "CoAP.Version": 1,
+        "CoAP.Type": msg_type,
+        "CoAP.TKL": token_length,
+        "CoAP.Code": code,
+        "CoAP.MID": message_id,
+    }
 
-    # Try to compress
-    try:
-        compressed, rule_id = compress(payload)
-        decompressed = decompress(compressed, rule_id)
-        assert decompressed == payload
-    except Exception:
-        pass  # Invalid packet structure is OK
+    compressed = compress(COAP_RULE, fields)
+    _, decompressed = decompress(compressed, COAP_RULE)
+
+    assert decompressed == fields
 
 
-@given(rule_id=st.integers(min_value=0, max_value=255))
-def test_rule_id_validity(rule_id):
-    """Rule IDs should be handled without panic."""
-    rid = RuleId(rule_id)
-    assert 0 <= rid.value <= 255
+def test_schc_rule_id_is_encoded_as_one_byte():
+    """SCHC rule IDs use the one-byte wire representation."""
+    compressed = compress(
+        COAP_RULE,
+        {
+            "CoAP.Version": 1,
+            "CoAP.Type": 0,
+            "CoAP.TKL": 0,
+            "CoAP.Code": 0,
+            "CoAP.MID": 0,
+        },
+    )
+
+    assert compressed[0] == COAP_RULE.rule_id
 
 
 # ============================================================================
@@ -110,38 +129,23 @@ def test_rule_id_validity(rule_id):
 # ============================================================================
 
 
-@given(
-    msg_type=st.sampled_from(list(MessageType)),
-    code=st.sampled_from(list(Code)),
-    message_id=st.integers(min_value=0, max_value=65535),
-    token=st.binary(min_size=0, max_size=8),
-    payload=st.binary(min_size=0, max_size=1024),
-)
-def test_coap_roundtrip(msg_type, code, message_id, token, payload):
-    """CoAP encode/decode should preserve message content."""
-    msg = CoapMessage(
-        msg_type=msg_type,
-        code=code,
-        message_id=message_id,
-        token=token,
-        payload=payload,
+@given(payload=st.binary(max_size=1024))
+def test_coap_datagram_roundtrip(payload):
+    """CoAP bytes survive IPv6/UDP framing and extraction."""
+    encoded = wrap_coap(
+        IPv6Address("fe80::1"),
+        IPv6Address("fe80::2"),
+        payload,
     )
 
-    encoded = msg.to_bytes()
-    decoded = CoapMessage.parse(encoded)
-
-    assert decoded.msg_type == msg_type
-    assert decoded.code == code
-    assert decoded.message_id == message_id
-    assert decoded.token == token
-    assert decoded.payload == payload
+    assert unwrap_coap(encoded) == payload
 
 
 @given(data=st.binary(min_size=0, max_size=100))
 def test_coap_parse_no_panic(data):
     """CoAP parser should never panic on arbitrary input."""
     try:
-        CoapMessage.parse(data)
+        unwrap_coap(data)
     except Exception:
         pass  # Exceptions are fine, panics are not
 
@@ -151,24 +155,24 @@ def test_coap_parse_no_panic(data):
 # ============================================================================
 
 
-@given(pubkey=st.binary(min_size=32, max_size=32))
-def test_iid_derivation_deterministic(pubkey):
-    """IID derivation from pubkey should be deterministic."""
-    iid1 = iid_from_pubkey(pubkey)
-    iid2 = iid_from_pubkey(pubkey)
+@given(eui64=st.binary(min_size=8, max_size=8))
+def test_iid_derivation_deterministic(eui64):
+    """IID derivation from EUI-64 should be deterministic."""
+    iid1 = eui64_to_iid(eui64)
+    iid2 = eui64_to_iid(eui64)
     assert iid1 == iid2
     assert len(iid1) == 8
-    # U/L bit should be clear (locally administered)
-    assert (iid1[0] & 0x02) == 0
+    # IID derivation flips the EUI-64 universal/local bit.
+    assert iid1[0] == (eui64[0] ^ 0x02)
 
 
 @given(addr_bytes=st.binary(min_size=16, max_size=16))
 def test_ipv6_address_roundtrip(addr_bytes):
     """IPv6 address string conversion should roundtrip."""
-    addr = Ipv6Address(addr_bytes)
+    addr = IPv6Address(addr_bytes)
     addr_str = str(addr)
-    parsed = Ipv6Address.from_string(addr_str)
-    assert parsed.bytes == addr_bytes
+    parsed = IPv6Address(addr_str)
+    assert parsed.packed == addr_bytes
 
 
 # ============================================================================
@@ -179,26 +183,27 @@ def test_ipv6_address_roundtrip(addr_bytes):
 @given(payload=st.binary(min_size=0, max_size=500))
 def test_kiss_roundtrip(payload):
     """KISS frame encode/decode should preserve payload."""
-    encoded = kiss_encode(payload)
+    encoded = kiss_encode(0, KissCommand.DATA, payload)
 
     # Encoded should start and end with KISS_END
-    assert encoded[0] == KISS_END
-    assert encoded[-1] == KISS_END
+    assert encoded[0] == FEND
+    assert encoded[-1] == FEND
 
     # Decode should recover original
     decoded = kiss_decode(encoded)
-    assert decoded == payload
+    assert decoded.data == payload
 
 
 @given(payload=st.binary(min_size=0, max_size=100))
 def test_kiss_escaping(payload):
     """KISS escaping should handle special bytes correctly."""
-    encoded = kiss_encode(payload)
+    encoded = kiss_encode(0, KissCommand.DATA, payload)
 
     # No raw KISS_END (0xC0) should appear in middle of frame
     middle = encoded[1:-1]
     # 0xC0 should only appear escaped as 0xDB 0xDC
     # This is a property that should hold
+    assert FEND not in middle
 
 
 # ============================================================================
@@ -218,8 +223,8 @@ def test_announce_fields(seq_num, hop_count, originator_iid):
         seq_num=seq_num,
         hop_count=hop_count,
         originator_iid=originator_iid,
+        pubkey=b"\x00" * 32,
         app_data=b"",
-        signature=b"\x00" * 48,
     )
 
     assert msg.seq_num == seq_num
@@ -245,7 +250,7 @@ class ReplayWindowMachine(RuleBasedStateMachine):
     def receive_seqnum(self, seqnum):
         """Receive a sequence number and check replay detection."""
         is_replay = seqnum in self.seen
-        result = self.window.check_and_update(seqnum)
+        result = self.window.check_and_update(0, seqnum)
 
         if is_replay:
             # Should be detected as replay

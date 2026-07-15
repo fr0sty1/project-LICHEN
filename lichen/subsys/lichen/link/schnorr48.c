@@ -257,14 +257,16 @@ bool schnorr48_verify(const uint8_t *pubkey,
  */
 #ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
 
-int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
+int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
+			 uint8_t epoch, uint16_t seqnum,
 			 const uint8_t *dst_addr, size_t dst_addr_len,
 			 const uint8_t *payload, size_t payload_len,
 			 const uint8_t *privkey,
 			 const uint8_t *pubkey,
 			 uint8_t *sig)
 {
-	uint8_t header[11]; /* epoch(1) + seqnum(2) + dst_addr(up to 8) */
+	/* length(1) + LLSec(1) + epoch(1) + seqnum(2) + dst_addr(up to 8) */
+	uint8_t header[13];
 	size_t header_len = 0;
 	uint8_t nonce_hash[64];
 	uint8_t r_scalar[32];
@@ -288,7 +290,9 @@ int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
 		return -EINVAL;
 	}
 
-	/* Build header: epoch || seqnum (big-endian) || dst_addr */
+	/* Build the exact wire prefix, excluding the signature MIC. */
+	header[header_len++] = length;
+	header[header_len++] = llsec;
 	header[header_len++] = epoch;
 	header[header_len++] = (uint8_t)(seqnum >> 8);
 	header[header_len++] = (uint8_t)(seqnum & 0xFF);
@@ -351,9 +355,11 @@ int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
 	return 0;
 }
 
-int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
+int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
+			   uint8_t epoch, uint16_t seqnum,
 			   const uint8_t *dst_addr, size_t dst_addr_len,
 			   const uint8_t *payload, size_t payload_len,
+			   const uint8_t *sig,
 			   const uint8_t *pubkey)
 {
 	/* Validate dst_addr_len before use */
@@ -371,27 +377,28 @@ int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
 		return -EINVAL;
 	}
 
-	/*
-	 * Payload too short to contain signature (python-ano.17):
-	 * Return -EINVAL for malformed frame, distinguishing from invalid signature (0).
-	 */
-	if (payload_len < SCHNORR48_SIG_LEN) {
+	/* Validate: pubkey must not be NULL (needed for signature verification) */
+	if (pubkey == NULL) {
 		return -EINVAL;
 	}
 
-	size_t inner_len = payload_len - SCHNORR48_SIG_LEN;
-	const uint8_t *sig = &payload[inner_len];
+	if (sig == NULL) {
+		return -EINVAL;
+	}
 	const uint8_t *e_received = sig;
 	const uint8_t *s = sig + 16;
 
-	uint8_t header[11]; /* epoch(1) + seqnum(2) + dst_addr(up to 8) */
+	/* length(1) + LLSec(1) + epoch(1) + seqnum(2) + dst_addr(up to 8) */
+	uint8_t header[13];
 	size_t header_len = 0;
 	uint8_t e_extended[32];
 	uint8_t R_prime[32];
 	uint8_t e_hash[64];
 	crypto_sha512_ctx ctx;
 
-	/* Build header: epoch || seqnum (big-endian) || dst_addr */
+	/* Build the exact wire prefix, excluding the signature MIC. */
+	header[header_len++] = length;
+	header[header_len++] = llsec;
 	header[header_len++] = epoch;
 	header[header_len++] = (uint8_t)(seqnum >> 8);
 	header[header_len++] = (uint8_t)(seqnum & 0xFF);
@@ -431,8 +438,8 @@ int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
 	crypto_sha512_update(&ctx, R_prime, 32);
 	crypto_sha512_update(&ctx, pubkey, 32);
 	crypto_sha512_update(&ctx, header, header_len);
-	if (inner_len > 0) {
-		crypto_sha512_update(&ctx, payload, inner_len);
+	if (payload_len > 0) {
+		crypto_sha512_update(&ctx, payload, payload_len);
 	}
 	crypto_sha512_final(&ctx, e_hash);
 
@@ -444,13 +451,16 @@ int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
 
 #else /* !CONFIG_LICHEN_CRYPTO_MONOCYPHER */
 
-int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
+int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
+			 uint8_t epoch, uint16_t seqnum,
 			 const uint8_t *dst_addr, size_t dst_addr_len,
 			 const uint8_t *payload, size_t payload_len,
 			 const uint8_t *privkey,
 			 const uint8_t *pubkey,
 			 uint8_t *sig)
 {
+	(void)length;
+	(void)llsec;
 	(void)epoch;
 	(void)seqnum;
 	(void)dst_addr;
@@ -464,17 +474,22 @@ int schnorr48_sign_frame(uint8_t epoch, uint16_t seqnum,
 	return -EINVAL; /* unreachable, but satisfies compiler */
 }
 
-int schnorr48_verify_frame(uint8_t epoch, uint16_t seqnum,
+int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
+			   uint8_t epoch, uint16_t seqnum,
 			   const uint8_t *dst_addr, size_t dst_addr_len,
 			   const uint8_t *payload, size_t payload_len,
+			   const uint8_t *sig,
 			   const uint8_t *pubkey)
 {
+	(void)length;
+	(void)llsec;
 	(void)epoch;
 	(void)seqnum;
 	(void)dst_addr;
 	(void)dst_addr_len;
 	(void)payload;
 	(void)payload_len;
+	(void)sig;
 	(void)pubkey;
 	schnorr48_stub_abort("schnorr48_verify_frame");
 	return -EINVAL; /* unreachable, but satisfies compiler */

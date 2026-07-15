@@ -658,8 +658,11 @@ int lichen_rpl_routing_table_expire(struct lichen_rpl_routing_table *rt,
 		}
 
 		uint32_t max_age = (uint32_t)r->path_lifetime * lifetime_unit;
-		uint32_t age = now - r->last_updated;
-		if (age > max_age) {
+		/* Use signed comparison for 32-bit timestamp wraparound safety.
+		 * Deadline is when entry should expire; entry is expired if
+		 * now is at or past the deadline. Works for wraparound within ~24 days. */
+		uint32_t deadline = r->last_updated + max_age;
+		if ((int32_t)(now - deadline) >= 0) {
 			r->valid = false;
 			expired++;
 		}
@@ -690,8 +693,11 @@ int lichen_rpl_dao_manager_expire(struct lichen_rpl_dao_manager *dm,
 		}
 
 		uint32_t max_age = (uint32_t)e->path_lifetime * lifetime_unit;
-		uint32_t age = now - e->last_updated;
-		if (age > max_age) {
+		/* Use signed comparison for 32-bit timestamp wraparound safety.
+		 * Deadline is when entry should expire; entry is expired if
+		 * now is at or past the deadline. Works for wraparound within ~24 days. */
+		uint32_t deadline = e->last_updated + max_age;
+		if ((int32_t)(now - deadline) >= 0) {
 			e->valid = false;
 			expired++;
 		}

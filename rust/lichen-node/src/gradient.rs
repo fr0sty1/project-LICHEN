@@ -52,18 +52,48 @@ pub struct GeoCoords {
 }
 
 impl GeoCoords {
-    /// Parse from announce app_data (Type 0x01, 8 bytes).
+    /// Parse from announce app_data TLV stream (Type 0x01, 8-byte value).
+    ///
+    /// TLV format: Type (1 byte) | Length (1 byte) | Value (Length bytes)
     /// LatE7/LonE7 are signed 32-bit fixed-point (1e-7 degree resolution).
+    /// Unknown types are skipped using the length field.
     pub fn from_app_data(data: &[u8]) -> Option<Self> {
-        if data.len() < 9 || data[0] != 0x01 {
-            return None;
+        let mut pos = 0;
+        while pos + 2 <= data.len() {
+            let typ = data[pos];
+            let len = data[pos + 1] as usize;
+            let value_start = pos + 2;
+            let value_end = value_start + len;
+
+            if value_end > data.len() {
+                // Truncated TLV - stop parsing
+                return None;
+            }
+
+            if typ == 0x01 && len == 8 {
+                // GeoCoords: 8 bytes (4 lat + 4 lon)
+                let lat_e7 = i32::from_be_bytes([
+                    data[value_start],
+                    data[value_start + 1],
+                    data[value_start + 2],
+                    data[value_start + 3],
+                ]);
+                let lon_e7 = i32::from_be_bytes([
+                    data[value_start + 4],
+                    data[value_start + 5],
+                    data[value_start + 6],
+                    data[value_start + 7],
+                ]);
+                return Some(Self {
+                    lat: lat_e7 as f32 / 1e7,
+                    lon: lon_e7 as f32 / 1e7,
+                });
+            }
+
+            // Skip to next TLV (works for known and unknown types)
+            pos = value_end;
         }
-        let lat_e7 = i32::from_be_bytes([data[1], data[2], data[3], data[4]]);
-        let lon_e7 = i32::from_be_bytes([data[5], data[6], data[7], data[8]]);
-        Some(Self {
-            lat: lat_e7 as f32 / 1e7,
-            lon: lon_e7 as f32 / 1e7,
-        })
+        None
     }
 }
 
@@ -105,7 +135,11 @@ impl GradientEntry {
     /// Priority → seq_num (RFC 1982) → fewer hops.
     fn rank(&self) -> (u8, u16, i16) {
         // seq_num comparison via RFC 1982 handled separately
-        (self.source.priority(), self.seq_num, -(self.hop_count as i16))
+        (
+            self.source.priority(),
+            self.seq_num,
+            -(self.hop_count as i16),
+        )
     }
 
     /// Returns true if `self` should replace `other`.
@@ -147,23 +181,27 @@ impl GradientTable {
 
     /// Lookup gradient for destination. Returns None if absent or expired.
     pub fn lookup(&self, destination: &[u8; 16], now_ms: u32) -> Option<&GradientEntry> {
-        self.entries.iter().find(|e| {
-            e.destination == *destination && !is_expired(e.expires_ms, now_ms)
-        })
+        self.entries
+            .iter()
+            .find(|e| e.destination == *destination && !is_expired(e.expires_ms, now_ms))
     }
 
     /// Lookup gradient for destination by IID (last 8 bytes).
     pub fn lookup_by_iid(&self, iid: &[u8; 8], now_ms: u32) -> Option<&GradientEntry> {
-        self.entries.iter().find(|e| {
-            &e.destination[8..] == iid && !is_expired(e.expires_ms, now_ms)
-        })
+        self.entries
+            .iter()
+            .find(|e| &e.destination[8..] == iid && !is_expired(e.expires_ms, now_ms))
     }
 
     /// Insert or update a gradient entry.
     /// Returns true if the table was modified.
     pub fn update(&mut self, entry: GradientEntry, now_ms: u32) -> bool {
         // Find existing entry for this destination
-        if let Some(idx) = self.entries.iter().position(|e| e.destination == entry.destination) {
+        if let Some(idx) = self
+            .entries
+            .iter()
+            .position(|e| e.destination == entry.destination)
+        {
             let existing = &self.entries[idx];
             let expired = is_expired(existing.expires_ms, now_ms);
 
@@ -400,14 +438,38 @@ mod tests {
 
     #[test]
     fn geo_coords_parsing() {
-        // Type 0x01 + LatE7 (45.0° = 450_000_000) + LonE7 (-122.0° = -1_220_000_000)
+        // TLV format: Type=0x01, Length=8, Value=LatE7+LonE7
+        // LatE7 (45.0° = 450_000_000), LonE7 (-122.0° = -1_220_000_000)
         let lat_e7: i32 = 450_000_000;
         let lon_e7: i32 = -1_220_000_000;
-        let mut data = [0u8; 9];
-        data[0] = 0x01;
-        data[1..5].copy_from_slice(&lat_e7.to_be_bytes());
-        data[5..9].copy_from_slice(&lon_e7.to_be_bytes());
+        let mut data = [0u8; 10];
+        data[0] = 0x01; // Type
+        data[1] = 0x08; // Length (8 bytes of coords)
+        data[2..6].copy_from_slice(&lat_e7.to_be_bytes());
+        data[6..10].copy_from_slice(&lon_e7.to_be_bytes());
 
+        let coords = GeoCoords::from_app_data(&data).unwrap();
+        assert!((coords.lat - 45.0).abs() < 0.001);
+        assert!((coords.lon - (-122.0)).abs() < 0.001);
+    }
+
+    #[test]
+    fn geo_coords_parsing_skips_unknown_types() {
+        // TLV stream: Unknown(type=0xFF, len=3, value=[1,2,3]) + GeoCoords(type=0x01, len=8, value=...)
+        let lat_e7: i32 = 450_000_000;
+        let lon_e7: i32 = -1_220_000_000;
+        let mut data = [0u8; 16];
+        // Unknown TLV first
+        data[0] = 0xFF; // Type (unknown)
+        data[1] = 0x03; // Length
+        data[2..5].copy_from_slice(&[0x01, 0x02, 0x03]);
+        // GeoCoords TLV second
+        data[5] = 0x01; // Type
+        data[6] = 0x08; // Length
+        data[7..11].copy_from_slice(&lat_e7.to_be_bytes());
+        data[11..15].copy_from_slice(&lon_e7.to_be_bytes());
+
+        // Parser should skip unknown type and find GeoCoords
         let coords = GeoCoords::from_app_data(&data).unwrap();
         assert!((coords.lat - 45.0).abs() < 0.001);
         assert!((coords.lon - (-122.0)).abs() < 0.001);

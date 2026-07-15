@@ -83,6 +83,7 @@ enum edhoc_state {
 	EDHOC_STATE_MSG2_RCVD,
 	EDHOC_STATE_MSG3_SENT,
 	EDHOC_STATE_COMPLETED,
+	EDHOC_STATE_EXPORTED,   /* OSCORE keys derived; PRK wiped; no re-export allowed */
 	EDHOC_STATE_ERROR
 };
 

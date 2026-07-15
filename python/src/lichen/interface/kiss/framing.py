@@ -178,11 +178,18 @@ class KissReader:
 
         # Limit buffer size to prevent memory exhaustion
         if len(self.buffer) > self.max_frame_size * 2:
-            # Drop old data, keep from last FEND
-            last_fend = self.buffer.rfind(FEND)
-            if last_fend >= 0:
-                del self.buffer[:last_fend]
-            else:
+            # Find last frame start boundary: FEND followed by non-FEND (CMD byte).
+            # This preserves frame boundaries instead of corrupting partial frames.
+            # rfind(FEND) is wrong: it may find a closing FEND and discard the frame's
+            # CMD byte while keeping only its trailing FEND.
+            cut_point = -1
+            for i in range(len(self.buffer) - 1):
+                if self.buffer[i] == FEND and self.buffer[i + 1] != FEND:
+                    cut_point = i
+            if cut_point > 0:
+                del self.buffer[:cut_point]
+            elif cut_point == -1:
+                # No frame boundary found (all FENDs or no FENDs)
                 self.buffer.clear()
 
     def __iter__(self) -> Iterator[KissFrame]:

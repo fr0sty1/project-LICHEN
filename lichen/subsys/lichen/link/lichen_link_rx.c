@@ -19,12 +19,7 @@
 #include <string.h>
 #include <stdint.h>
 
-/* AES-CCM for link-layer MIC verification */
-#include "aes_ccm.h"
-#include "link_nonce.h"
-
 /* CRC32 for non-crypto MIC fallback */
-#include <zephyr/sys/crc.h>
 
 /* SHA-256 for fallback EUI-64 derivation (when peer_eui64 not provided) */
 #include <tinycrypt/sha256.h>
@@ -63,20 +58,15 @@ LOG_MODULE_REGISTER(lichen_link_rx, CONFIG_LICHEN_LINK_LOG_LEVEL);
  * CONFIG_LICHEN_LINK_MIC_SKIP_VERIFY=y — this is a dangerous option that
  * should NEVER be used in production as it allows frame forgery.
  *
- * For AES-CCM-64 MIC (mic_len == 8):
- * - Requires ctx->link_key and ctx->peer_eui64 to be set
- * - AAD = entire frame body up to MIC
- * - Nonce = peer_eui64 || epoch || seqnum || 0x0000
- *
- * For CRC32 MIC (mic_len == 4):
- * - Fallback verification (no cryptographic authentication)
+ * For unsigned frames (mic_len == 0):
+ * - No MIC verification is performed.
  */
 static int verify_mic(const struct lichen_link_rx_ctx *ctx,
 		      const struct lichen_frame *frame,
 		      const uint8_t *raw_frame, size_t raw_len)
 {
-/*
- * Compile-time warning if MIC verification is disabled.
+	/*
+	 * Compile-time warning if MIC verification is disabled.
  * This makes the insecure configuration visible in build logs.
  */
 #ifdef CONFIG_LICHEN_LINK_MIC_SKIP_VERIFY
@@ -92,13 +82,18 @@ static int verify_mic(const struct lichen_link_rx_ctx *ctx,
 	LOG_WRN("MIC verification DISABLED — accepting unverified frame\n");
 	return 0;
 #else
-	if (frame->mic_len == 8) {
+	(void)ctx;
+	(void)raw_frame;
+	(void)raw_len;
+	if (frame->mic_len == 0U) {
+		/* S=0 frames deliberately carry no MIC. */
+		return 0;
+	} else if (frame->mic_len == 8) {
 		/*
 		 * SECURITY: Non-encrypted frames MUST NOT use 64-bit MIC.
 		 *
-		 * TX always couples 64-bit MIC with encryption (see lichen_link_tx.c
-		 * lines 181-184: has_link_key sets both encrypted and 64-bit MIC).
-		 * A non-encrypted frame claiming 64-bit MIC is either:
+		 * Link-layer encryption is unsupported, so a non-encrypted frame
+		 * claiming a 64-bit MIC is either:
 		 *   1. Malformed (from a buggy implementation)
 		 *   2. An attack attempting to exploit MIC verification logic
 		 *
@@ -114,78 +109,9 @@ static int verify_mic(const struct lichen_link_rx_ctx *ctx,
 		LOG_WRN("64-bit MIC on non-encrypted frame rejected (invalid combination)\n");
 		return -LICHEN_EAUTH;
 	} else {
-#ifdef CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC
-#warning "CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC is enabled - CRC32 MIC provides NO authentication, frames can be forged!"
-		/*
-		 * CRC32 fallback - verifies data integrity (transmission errors)
-		 * but provides NO cryptographic authentication. An attacker can
-		 * forge frames by computing a valid CRC32.
-		 *
-		 * WARNING: This mode should only be used for testing or when
-		 * authentication is provided by a higher layer (e.g., OSCORE).
-		 */
-		size_t aad_len = raw_len - frame->mic_len;
-		uint32_t expected_crc = crc32_ieee(&raw_frame[1], aad_len - 1);
-
-		/* Extract received CRC32 (little-endian per TX convention) */
-		uint32_t received_crc = (uint32_t)frame->mic[0] |
-					((uint32_t)frame->mic[1] << 8) |
-					((uint32_t)frame->mic[2] << 16) |
-					((uint32_t)frame->mic[3] << 24);
-
-		uint32_t diff = expected_crc ^ received_crc;
-		if (diff != 0) {
-			LOG_WRN("CRC32 mismatch: expected 0x%08x, got 0x%08x\n",
-				expected_crc, received_crc);
-			return -LICHEN_EAUTH;
-		}
-
-		return 0;
-#else
-		/*
-		 * No link key and CRC32 fallback not enabled.
-		 * Require CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC=y to use CRC32 mode.
-		 */
-		LOG_WRN("CRC32 MIC received but CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC not enabled\n");
 		return -LICHEN_EAUTH;
-#endif
 	}
 #endif
-}
-
-static int decrypt_payload(const struct lichen_link_rx_ctx *ctx,
-			   const struct lichen_frame *frame,
-			   const uint8_t *raw_frame,
-			   uint8_t *payload_buf, size_t payload_buf_len)
-{
-	uint8_t nonce[AES_CCM_NONCE_LEN];
-	size_t aad_len;
-	size_t ciphertext_len;
-
-	if (ctx->link_key == NULL || ctx->peer_eui64 == NULL) {
-		LOG_WRN("Encrypted frame requires link_key and peer_eui64\n");
-		return -LICHEN_EAUTH;
-	}
-	if (frame->mic_len != AES_CCM_TAG_LEN) {
-		return -LICHEN_EAUTH;
-	}
-	if (frame->payload_len > payload_buf_len) {
-		return -ENOMEM;
-	}
-
-	aad_len = LICHEN_FRAME_PAYLOAD_OFFSET(frame->dst_addr_len);
-	ciphertext_len = frame->payload_len + frame->mic_len;
-
-	build_link_nonce(nonce, ctx->peer_eui64, frame->epoch, frame->seqnum);
-
-	if (lichen_aes_ccm_decrypt(ctx->link_key, nonce,
-				   raw_frame, aad_len,
-				   frame->payload, ciphertext_len,
-				   payload_buf) != 0) {
-		return -LICHEN_EAUTH;
-	}
-
-	return 0;
 }
 
 static int commit_replay(struct lichen_replay_table *replay,
@@ -227,29 +153,14 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 
 	ret = lichen_frame_parse(&parsed, frame, frame_len);
 	if (ret < 0) {
-		return -EINVAL;
+		return ret;
 	}
 
-	if (parsed.encrypted) {
-		if (parsed.payload_len > LICHEN_PROTECTED_PAYLOAD_MAX) {
-			ret = -EMSGSIZE;
-			goto cleanup;
-		}
-		if (work_len < parsed.payload_len) {
-			ret = -ENOMEM;
-			goto cleanup;
-		}
-		ret = decrypt_payload(ctx, &parsed, frame,
-				      work_payload, work_len);
-		if (ret < 0) {
-			goto cleanup;
-		}
-		auth_payload = work_payload;
-		auth_payload_len = parsed.payload_len;
-	} else {
-		auth_payload = parsed.payload;
-		auth_payload_len = parsed.payload_len;
-	}
+	(void)work_payload;
+	(void)work_len;
+	auth_payload = parsed.payload;
+	auth_payload_len = parsed.payload_len;
+	parsed.inner_payload_len = auth_payload_len;
 
 	if (parsed.signature_present) {
 		if (ctx->peer_pubkey == NULL) {
@@ -257,11 +168,13 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 			goto cleanup;
 		}
 
-		int verify_result = schnorr48_verify_frame(parsed.epoch, parsed.seqnum,
+		int verify_result = schnorr48_verify_frame(frame[0], frame[1],
+							   parsed.epoch, parsed.seqnum,
 							   parsed.dst_addr,
 							   parsed.dst_addr_len,
 							   auth_payload,
 							   auth_payload_len,
+							   parsed.mic,
 							   ctx->peer_pubkey);
 		if (verify_result == 0) {
 			LOG_WRN("Schnorr signature verification failed\n");
@@ -294,7 +207,7 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 		goto cleanup;
 	}
 
-	if (!parsed.encrypted) {
+	if (!parsed.encrypted && !parsed.signature_present) {
 		ret = verify_mic(ctx, &parsed, frame, frame_len);
 		if (ret < 0) {
 			ret = -LICHEN_EAUTH;

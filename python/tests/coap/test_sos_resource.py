@@ -161,6 +161,22 @@ class TestSosPutDelete:
             await client.shutdown()
             await server.shutdown()
 
+    async def test_put_nonnumeric_t_returns_bad_request(self) -> None:
+        """Non-numeric 't' field (e.g. string) must be rejected."""
+        client, server, sos = await _setup()
+        try:
+            # "t" as string instead of numeric
+            body = cbor2.dumps({"from": _EUI.hex(), "t": "not-a-number"})
+            resp = await client.request(
+                Message(code=PUT, uri="coap://srv/sos",
+                        payload=body, content_format=60)
+            ).response
+            assert resp.code == aiocoap.BAD_REQUEST
+            assert sos._active is False  # should not activate
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
     async def test_delete_cancels_sos(self) -> None:
         client, server, sos = await _setup()
         try:

@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-2auf.34",
+  "title": "Add Zephyr fleet telemetry",
+  "description": "Standardize lichen.telemetry.v1 JSONL events across Python, Rust, and Zephyr with packet hashes, timestamps, identity, direction, status, radio fields, and analyzer support. Python/Rust compile and parser fixture pass; Zephyr fleet ELF builds. Three-way EC2 validation remains blocked by Renode EC2 provisioning/startup timeout after correcting invalid URL, architecture mismatch, and expiring Instance Connect polling.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T15:31:47.900688Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T16:12:17.607942Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.34",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T15:31:47.90235Z"
+    }
+  ]
+}

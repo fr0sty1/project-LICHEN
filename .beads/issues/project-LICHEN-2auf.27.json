@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-2auf.27",
+  "title": "Register Rust nodes with simulator before TX",
+  "description": "The heterogeneous fleet Rust node uses lichen_embassy::sim::SimRadio::connect, which opens TCP but does not send the required simulator REGISTER message. The server rejects the first TX (0x10), causing zero Rust TX/RX and false interop failure. Add registered connection support with sim_id, node_id, and position, then verify Rust/Python fleet exchange.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T14:07:43.216233Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T14:07:43.216799Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.27",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T14:07:43.216798Z"
+    }
+  ]
+}

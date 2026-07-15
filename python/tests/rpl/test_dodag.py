@@ -178,6 +178,25 @@ def test_process_dio_rejects_invalid_neighbor_id_type() -> None:
         node.process_dio(dio, ["fe80::1"], link_etx=1.0)  # type: ignore[arg-type]
 
 
+def test_joined_node_ignores_dio_from_different_instance() -> None:
+    """RFC 6550 Section 8.2: filter DIOs by RPL Instance ID."""
+    node = _node()
+    node.process_dio(_dio(256), P1, link_etx=1.0)
+    assert node.role is DodagRole.JOINED
+    # DIO from a different RPL instance should be ignored
+    different_instance_dio = DIO(
+        rpl_instance_id=1,  # different from node's rpl_instance_id=0
+        version=1,
+        rank=10,
+        dtsn=0,
+        dodag_id=DODAG_ID,
+    )
+    node.process_dio(different_instance_dio, P2, link_etx=1.0)
+    # P2 should not be added as a parent
+    assert P2 not in node.parents
+    assert node.preferred_parent == P1
+
+
 def test_parents_dict_defensive_copy() -> None:
     """Verify that passing a shared parents dict does not cause cross-state pollution."""
     from lichen.rpl.dodag import ParentCandidate
@@ -200,3 +219,49 @@ def test_parents_dict_defensive_copy() -> None:
 
     # Original shared_dict should be empty (it was copied, not used directly)
     assert len(shared_dict) == 0
+
+
+def test_process_dio_rejects_self_as_parent() -> None:
+    """RFC 6550 Section 8.2.2.5: nodes MUST NOT select themselves as parent."""
+    own_addr = IPv6Address("fe80::1234")
+    node = DodagState(
+        rpl_instance_id=0, dodag_id=DODAG_ID, version=1, node_address=own_addr
+    )
+    # DIO appearing to come from the node's own address should be ignored
+    node.process_dio(_dio(256), own_addr, link_etx=1.0)
+    assert own_addr not in node.parents
+    assert node.role is DodagRole.UNJOINED
+    assert node.preferred_parent is None
+
+
+def test_process_dio_rejects_self_as_parent_string_form() -> None:
+    """RFC 6550 Section 8.2.2.5: self-rejection works with string neighbor_id."""
+    own_addr = IPv6Address("fe80::1234")
+    node = DodagState(
+        rpl_instance_id=0, dodag_id=DODAG_ID, version=1, node_address=own_addr
+    )
+    # String form of the same address should also be rejected
+    node.process_dio(_dio(256), "fe80::1234", link_etx=1.0)
+    assert own_addr not in node.parents
+    assert node.role is DodagRole.UNJOINED
+
+
+def test_process_dio_allows_others_when_node_address_set() -> None:
+    """Verify that setting node_address does not block legitimate neighbors."""
+    own_addr = IPv6Address("fe80::1234")
+    node = DodagState(
+        rpl_instance_id=0, dodag_id=DODAG_ID, version=1, node_address=own_addr
+    )
+    # DIO from a different address should still be processed
+    node.process_dio(_dio(256), P1, link_etx=1.0)
+    assert node.role is DodagRole.JOINED
+    assert node.preferred_parent == P1
+
+
+def test_process_dio_without_node_address_backward_compatible() -> None:
+    """Verify backward compatibility: no node_address means no self-rejection check."""
+    node = DodagState(rpl_instance_id=0, dodag_id=DODAG_ID, version=1)
+    # Without node_address, DIOs are processed (caller is responsible for filtering)
+    node.process_dio(_dio(256), P1, link_etx=1.0)
+    assert node.role is DodagRole.JOINED
+    assert node.preferred_parent == P1

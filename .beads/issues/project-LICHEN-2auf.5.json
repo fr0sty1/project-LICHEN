@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2auf.5",
+  "title": "Complete simulation debug toggle API",
+  "description": "The inherited debug test imports enable_debug, disable_debug, and is_debug_enabled and expects Simulation._debug_enabled, but simulation.py provides none. Implement the documented module-level toggle plus Simulation instance enable_debug/disable_debug methods and initialize the per-instance flag. Preserve existing logger.debug behavior and add no unrelated logging framework.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T04:44:49.453078Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T04:45:41.997346Z",
+  "closed_at": "2026-07-15T04:45:41.997346Z",
+  "close_reason": "Implemented module and instance debug toggles; corrected inherited test airtime and global-state isolation; debug tests pass without warnings.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.5",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T04:44:49.453546Z"
+    }
+  ]
+}

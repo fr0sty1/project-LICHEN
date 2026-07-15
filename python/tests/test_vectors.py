@@ -22,7 +22,7 @@ from lichen.crypto.identity import Identity
 from lichen.crypto.schnorr48 import sign as schnorr_sign
 from lichen.crypto.schnorr48 import verify as schnorr_verify
 from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
-from lichen.link.frame import AddrMode, LichenFrame, MicLength
+from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
 from lichen.rpl.dao import RplTarget, TransitInformation
 from lichen.rpl.messages import DAO, DIO, DIS, DAOAck, _parse_options
 from lichen.schc.headers import compress_packet, decompress_packet
@@ -157,6 +157,12 @@ def test_frame_vector(name: str, vector: dict) -> None:
         encrypted=f["encrypted"],
     )
     encoded = bytes.fromhex(vector["encoded"])
+    if vector.get("expect", {}).get("error"):
+        with pytest.raises(FrameError):
+            LichenFrame.from_bytes(encoded)
+        with pytest.raises(FrameError):
+            frame.to_bytes()
+        return
     assert frame.to_bytes() == encoded, f"encode drift: {name}"
 
     decoded = LichenFrame.from_bytes(encoded)
@@ -649,7 +655,12 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
             assert ti.path_control == fields["path_control"], f"{name}: path_control"
             assert ti.path_sequence == fields["path_sequence"], f"{name}: path_sequence"
             assert ti.path_lifetime == fields["path_lifetime"], f"{name}: path_lifetime"
-            assert ti.parent_address == IPv6Address(fields["parent_address"]), f"{name}: parent"
+            expected_parent = (
+                IPv6Address(fields["parent_address"])
+                if fields["parent_address"] is not None
+                else None
+            )
+            assert ti.parent_address == expected_parent, f"{name}: parent"
             assert ti.to_option().to_bytes() == encoded, f"{name}: encode"
 
     elif msg_type == "dio_with_options":

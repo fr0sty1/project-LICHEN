@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2auf.12",
+  "title": "Harden Rust RPL boundary and DODAG state handling",
+  "description": "Fix review findings in rust/lichen-rpl: reject finite candidates whose path cost saturates to INFINITE_RANK, and prevent an unjoined node from adopting a same-version foreign DODAG without explicit identity handling. Add independent regression tests.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T05:45:47.603861Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T05:48:48.196108Z",
+  "closed_at": "2026-07-15T05:48:48.196108Z",
+  "close_reason": "Implemented RPL rank saturation and same-version foreign DODAG guards; tests, clippy, and fmt pass.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.12",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T05:45:47.60437Z"
+    }
+  ]
+}

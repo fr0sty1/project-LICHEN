@@ -350,25 +350,20 @@ static int test_frame_sign_verify(void)
 	uint8_t sig[48];
 
 	/* schnorr48_sign_frame returns 0 on success */
-	ASSERT_TRUE(schnorr48_sign_frame(1, 42, dst_addr, 2, inner_payload, 4,
+	ASSERT_TRUE(schnorr48_sign_frame(58, 0x21, 1, 42, dst_addr, 2, inner_payload, 4,
 					 privkey, pubkey, sig) == 0,
 		    "sign_frame returns 0 on success");
 
-	/* Build full payload: inner || sig */
-	uint8_t full_payload[4 + 48];
-	memcpy(full_payload, inner_payload, 4);
-	memcpy(full_payload + 4, sig, 48);
-
 	/* schnorr48_verify_frame returns 1 on valid signature */
-	ASSERT_TRUE(schnorr48_verify_frame(1, 42, dst_addr, 2, full_payload, 52, pubkey) == 1,
+	ASSERT_TRUE(schnorr48_verify_frame(58, 0x21, 1, 42, dst_addr, 2, inner_payload, 4, sig, pubkey) == 1,
 		    "frame verify");
 
 	/* Wrong epoch - returns 0 (invalid signature) */
-	ASSERT_TRUE(schnorr48_verify_frame(2, 42, dst_addr, 2, full_payload, 52, pubkey) == 0,
+	ASSERT_TRUE(schnorr48_verify_frame(58, 0x21, 2, 42, dst_addr, 2, inner_payload, 4, sig, pubkey) == 0,
 		    "wrong epoch should fail");
 
 	/* Wrong seqnum - returns 0 (invalid signature) */
-	ASSERT_TRUE(schnorr48_verify_frame(1, 43, dst_addr, 2, full_payload, 52, pubkey) == 0,
+	ASSERT_TRUE(schnorr48_verify_frame(58, 0x21, 1, 43, dst_addr, 2, inner_payload, 4, sig, pubkey) == 0,
 		    "wrong seqnum should fail");
 
 	return 1;
@@ -386,13 +381,13 @@ static int test_frame_bounds_checking(void)
 	uint8_t sig[48];
 
 	/* sign_frame should return -EINVAL for dst_addr_len > 8 */
-	ASSERT_TRUE(schnorr48_sign_frame(1, 42, dst_addr, 9, inner_payload, 4,
+	ASSERT_TRUE(schnorr48_sign_frame(58, 0x21, 1, 42, dst_addr, 9, inner_payload, 4,
 					 privkey, pubkey, sig) == -EINVAL,
 		    "sign_frame rejects dst_addr_len > 8");
 
 	/* verify_frame should return -EINVAL for dst_addr_len > 8 */
-	uint8_t full_payload[52] = { 0 };
-	ASSERT_TRUE(schnorr48_verify_frame(1, 42, dst_addr, 9, full_payload, 52, pubkey) == -EINVAL,
+	uint8_t sig[48] = { 0 };
+	ASSERT_TRUE(schnorr48_verify_frame(58, 0x21, 1, 42, dst_addr, 9, inner_payload, 4, sig, pubkey) == -EINVAL,
 		    "verify_frame rejects dst_addr_len > 8");
 
 	return 1;

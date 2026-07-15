@@ -170,3 +170,79 @@ def test_handle_discards_invalid_checksum() -> None:
     )
     # Must return None (silent discard), not a reply.
     assert handle_icmpv6(packet) is None
+
+
+def test_handle_unspecified_src_drops() -> None:
+    """RFC 4443 section 2.4(e): do not reply to the unspecified address (::)."""
+    src = IPv6Address("::")  # Unspecified address
+    dst = IPv6Address("fe80::b")
+    req = EchoRequest(identifier=0x4444, sequence=1, data=b"bad")
+    packet = IPv6Packet(
+        header=IPv6Header(src, dst, NextHeader.ICMPV6),
+        payload=req.to_message().to_bytes(src, dst),
+    )
+    # Must silently drop, not reply.
+    assert handle_icmpv6(packet) is None
+
+
+def test_handle_multicast_src_drops() -> None:
+    """RFC 4443 section 2.4(e): do not reply to multicast source addresses."""
+    src = IPv6Address("ff02::1")  # Multicast address
+    dst = IPv6Address("fe80::b")
+    req = EchoRequest(identifier=0x5555, sequence=1, data=b"bad")
+    packet = IPv6Packet(
+        header=IPv6Header(src, dst, NextHeader.ICMPV6),
+        payload=req.to_message().to_bytes(src, dst),
+    )
+    # Must silently drop, not reply.
+    assert handle_icmpv6(packet) is None
+
+
+def test_handle_multicast_dst_without_local_addr_drops() -> None:
+    """RFC 4443 section 4.2: replies to multicast require a unicast source.
+
+    Without a local_addr, multicast Echo Requests are dropped because we cannot
+    produce a valid reply (multicast addresses cannot be used as sources).
+    """
+    src = IPv6Address("fe80::a")
+    dst = IPv6Address("ff02::1")  # All-nodes multicast
+    req = EchoRequest(identifier=0x2222, sequence=1, data=b"test")
+    packet = IPv6Packet(
+        header=IPv6Header(src, dst, NextHeader.ICMPV6),
+        payload=req.to_message().to_bytes(src, dst),
+    )
+    # No local_addr provided, so the packet is dropped.
+    assert handle_icmpv6(packet) is None
+
+
+def test_handle_multicast_dst_with_local_addr_replies() -> None:
+    """RFC 4443 section 4.2: replies to multicast use local_addr as source.
+
+    When local_addr is provided, the reply uses it as the source address
+    (instead of the multicast destination), making the reply valid.
+    """
+    src = IPv6Address("fe80::a")
+    dst = IPv6Address("ff02::1")  # All-nodes multicast
+    local = IPv6Address("fe80::b")  # Our unicast address
+    req = EchoRequest(identifier=0x3333, sequence=2, data=b"mcast")
+    packet = IPv6Packet(
+        header=IPv6Header(src, dst, NextHeader.ICMPV6),
+        payload=req.to_message().to_bytes(src, dst),
+    )
+
+    reply = handle_icmpv6(packet, local_addr=local)
+    assert reply is not None
+    # Source is our unicast address, NOT the multicast destination.
+    assert reply.header.src_addr == local
+    assert reply.header.dst_addr == src
+
+    reply_msg = Icmpv6Message.from_bytes(reply.payload)
+    assert reply_msg.type == Icmpv6Type.ECHO_REPLY
+    parsed = EchoReply.from_message(reply_msg)
+    assert (parsed.identifier, parsed.sequence, parsed.data) == (
+        req.identifier,
+        req.sequence,
+        req.data,
+    )
+    # Checksum is valid for the reply addresses.
+    assert Icmpv6Message.verify_checksum(local, src, reply.payload)

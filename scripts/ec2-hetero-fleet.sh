@@ -113,6 +113,11 @@ AWS_PROFILE="${AWS_PROFILE:-AdministratorAccess-921772462201}"
 AWS_REGION="us-east-2"
 AMI_ID="ami-03a84069f5e253220"
 KEY_NAME="lichen-ct4d-20260702232050"
+EC2_SSH_KEY="${EC2_SSH_KEY:-$HOME/.ssh/id_ed25519}"
+ZEPHYR_ELF="${ZEPHYR_ELF:-$PROJECT_ROOT/build/t_echo_renode/zephyr/zephyr.elf}"
+ZEPHYR_VECTOR_OFFSET="${ZEPHYR_VECTOR_OFFSET:-0x32200}"
+ZEPHYR_SP="${ZEPHYR_SP:-0x2000d8c0}"
+ZEPHYR_PC="${ZEPHYR_PC:-0x35f1d}"
 
 aws_cmd() {
     aws --profile "$AWS_PROFILE" --region "$AWS_REGION" "$@"
@@ -122,9 +127,9 @@ aws_cmd() {
 check_prereqs() {
     # Zephyr firmware
     if [[ $ZEPHYR_NODES -gt 0 ]]; then
-        if [[ ! -f "$PROJECT_ROOT/build/lora_ping/zephyr/zephyr.elf" ]]; then
+        if [[ ! -f "$ZEPHYR_ELF" ]]; then
             log_error "Zephyr firmware not found. Build it:"
-            log_error "  west build -b nrf52840_lichen lichen/samples/lora_ping -d build/lora_ping"
+            log_error "  west build -b t_echo/nrf52840 lichen/apps/puck -d build/t_echo_renode"
             exit 1
         fi
     fi
@@ -152,10 +157,10 @@ cleanup() {
 
     # Kill local processes
     [[ -n "$SIM_PID" ]] && kill "$SIM_PID" 2>/dev/null || true
-    for pid in "${RUST_PIDS[@]}"; do
+    for pid in "${RUST_PIDS[@]-}"; do
         kill "$pid" 2>/dev/null || true
     done
-    for pid in "${PYTHON_PIDS[@]}"; do
+    for pid in "${PYTHON_PIDS[@]-}"; do
         kill "$pid" 2>/dev/null || true
     done
 
@@ -183,7 +188,7 @@ from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import TimeMode
 
 async def main():
-    server = SimulatorServer(node_port=5555, api_port=5556, host="0.0.0.0")
+    server = SimulatorServer(node_port=5555, api_port=5556, bind_host="0.0.0.0")
     await server.start()
     sim = await server.create_simulation("hetero-mesh", TimeMode.REALTIME)
     print("lichen-sim ready on 0.0.0.0:5555", flush=True)
@@ -218,13 +223,35 @@ if [[ $PYTHON_NODES -gt 0 ]]; then
 
     cat > /tmp/python-node.py << 'PYNODE'
 import asyncio
+import hashlib
+import json
 import sys
-import os
+import time
 sys.path.insert(0, "src")
 
 from lichen.radio.sim_client import SimRadio
 from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity
+
+def telemetry(event, node_id, payload, status="ok", rssi=None, snr=None):
+    packet_hash = hashlib.sha256(payload).hexdigest()[:16]
+    record = {
+        "schema": "lichen.telemetry.v1",
+        "event": event,
+        "ts_us": time.monotonic_ns() // 1000,
+        "node_id": f"py-{node_id}",
+        "impl": "python",
+        "tx_id": packet_hash,
+        "packet_hash": packet_hash,
+        "direction": "tx" if event.startswith("tx") else "rx",
+        "peer_id": None,
+        "payload_len": len(payload),
+        "rssi_dbm": rssi,
+        "snr_db": snr,
+        "seq": None,
+        "status": status,
+    }
+    print("TELEMETRY " + json.dumps(record, sort_keys=True), flush=True)
 
 async def run_node(node_id, host, port, position, duration):
     """Run a Python LICHEN node."""
@@ -253,13 +280,17 @@ async def run_node(node_id, host, port, position, duration):
         while asyncio.get_event_loop().time() - start < duration:
             # Send announce
             announce = scheduler.build_announce()
-            await radio.transmit(announce.to_bytes())
-            tx_count += 1
+            payload = announce.to_bytes()
+            if await radio.transmit(payload):
+                telemetry("tx", node_id, payload)
+                tx_count += 1
 
             # Listen for a bit
             for _ in range(5):
                 result = await radio.receive(1000)
                 if result:
+                    payload, rssi, snr = result
+                    telemetry("rx", node_id, payload, rssi=rssi, snr=snr)
                     rx_count += 1
 
         print(f"py-{node_id}: TX={tx_count} RX={rx_count}", flush=True)
@@ -290,7 +321,7 @@ if [[ $RUST_NODES -gt 0 ]]; then
 
     # Create Rust hetero-node binary if needed
     RUST_BIN="$PROJECT_ROOT/rust/target/release/hetero-node"
-    if [[ ! -f "$RUST_BIN" ]]; then
+    if [[ ! -f "$RUST_BIN" || "$PROJECT_ROOT/rust/lichen-apps/src/bin/hetero_node.rs" -nt "$RUST_BIN" ]]; then
         # Create the binary
         mkdir -p "$PROJECT_ROOT/rust/lichen-apps/src/bin"
         cat > "$PROJECT_ROOT/rust/lichen-apps/src/bin/hetero_node.rs" << 'RUSTNODE'
@@ -394,7 +425,7 @@ CARGO
         for i in $(seq 0 $((RUST_NODES - 1))); do
             NODE_ID=$((2000 + i))  # Rust nodes: 2000+
 
-            "$RUST_BIN" "$NODE_ID" "127.0.0.1" 5555 "$DURATION_S" \
+            "$RUST_BIN" "$NODE_ID" "127.0.0.1" 5555 "$X_POS" "$DURATION_S" \
                 > "$RESULTS_DIR/rust-$NODE_ID.log" 2>&1 &
             RUST_PIDS+=($!)
         done
@@ -426,10 +457,13 @@ if [[ $ZEPHYR_NODES -gt 0 ]]; then
     # User data for Renode installation
     USER_DATA=$(cat << 'EOF' | base64 -w0
 #!/bin/bash
-dnf install -y python3 wget mono-core
-wget -q https://github.com/renode/renode/releases/download/v1.14.0/renode-1.14.0.linux-portable-dotnet.tar.gz -O /tmp/renode.tar.gz
+set -euxo pipefail
+dnf install -y python3 wget
+wget -q https://github.com/renode/renode/releases/download/v1.16.1/renode-1.16.1.linux-arm64-portable-dotnet.tar.gz -O /tmp/renode.tar.gz
 tar xf /tmp/renode.tar.gz -C /opt
-ln -s /opt/renode_1.14.0_portable/renode /usr/local/bin/renode
+test -x /opt/renode_1.16.1-dotnet_portable/renode
+ln -sfn /opt/renode_1.16.1-dotnet_portable/renode /usr/local/bin/renode
+test -x /usr/local/bin/renode
 touch /tmp/renode-ready
 EOF
 )
@@ -462,41 +496,77 @@ EOF
     aws_cmd ec2 wait instance-running --instance-ids "${INSTANCE_IDS[@]}"
 
     # Get IPs and wait for Renode
-    declare -A EC2_IPS
+    INSTANCE_IPS=()
+    EC2_INDEX=0
     for id in "${INSTANCE_IDS[@]}"; do
         IP=$(aws_cmd ec2 describe-instances --instance-ids "$id" \
             --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
-        EC2_IPS[$id]=$IP
+        AZ=$(aws_cmd ec2 describe-instances --instance-ids "$id" \
+            --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' --output text)
+        INSTANCE_IPS+=("$IP")
 
+        aws --profile "$AWS_PROFILE" --region "$AWS_REGION" ec2-instance-connect \
+            send-ssh-public-key \
+            --instance-id "$id" \
+            --instance-os-user ec2-user \
+            --availability-zone "$AZ" \
+            --ssh-public-key "file://${EC2_SSH_KEY}.pub" >/dev/null
+
+        READY=0
         for attempt in {1..30}; do
-            if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 ec2-user@"$IP" \
+            aws --profile "$AWS_PROFILE" --region "$AWS_REGION" ec2-instance-connect \
+                send-ssh-public-key \
+                --instance-id "$id" \
+                --instance-os-user ec2-user \
+                --availability-zone "$AZ" \
+                --ssh-public-key "file://${EC2_SSH_KEY}.pub" >/dev/null
+            if ssh -i "$EC2_SSH_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 ec2-user@"$IP" \
                 "test -f /tmp/renode-ready" 2>/dev/null; then
+                READY=1
                 break
             fi
             sleep 10
         done
+        if [[ $READY -ne 1 ]]; then
+            log_error "EC2 instance $id did not complete Renode setup"
+            exit 1
+        fi
+        EC2_INDEX=$((EC2_INDEX + 1))
     done
     log_ok "EC2 instances ready"
 
     # Upload files
     log_info "Uploading firmware to EC2..."
+    EC2_INDEX=0
     for id in "${INSTANCE_IDS[@]}"; do
-        IP="${EC2_IPS[$id]}"
-        scp -o StrictHostKeyChecking=no -q \
-            "$PROJECT_ROOT/build/lora_ping/zephyr/zephyr.elf" \
+        IP="${INSTANCE_IPS[$EC2_INDEX]}"
+        AZ=$(aws_cmd ec2 describe-instances --instance-ids "$id" \
+            --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' --output text)
+        aws --profile "$AWS_PROFILE" --region "$AWS_REGION" ec2-instance-connect \
+            send-ssh-public-key \
+            --instance-id "$id" \
+            --instance-os-user ec2-user \
+            --availability-zone "$AZ" \
+            --ssh-public-key "file://${EC2_SSH_KEY}.pub" >/dev/null
+        timeout 60 scp -O -i "$EC2_SSH_KEY" \
+            -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
+            -o ServerAliveInterval=5 -o ServerAliveCountMax=2 -q \
+            "$ZEPHYR_ELF" \
             "$PROJECT_ROOT/lichen/boards/renode/peripherals/SX1262.cs" \
             "$PROJECT_ROOT/lichen/boards/renode/nrf52840_lichen/support/nrf52840_lichen.repl" \
-            ec2-user@"$IP":/tmp/ &
+            "$PROJECT_ROOT/lichen/boards/renode/t_echo/support/t_echo.repl" \
+            ec2-user@"$IP":/tmp/
+        EC2_INDEX=$((EC2_INDEX + 1))
     done
-    wait
 
     # Start Renodes
     log_info "Starting Renode instances..."
     NODE_ID=3000  # Zephyr nodes: 3000+
     EC2_NUM=0
 
+    EC2_INDEX=0
     for id in "${INSTANCE_IDS[@]}"; do
-        IP="${EC2_IPS[$id]}"
+        IP="${INSTANCE_IPS[$EC2_INDEX]}"
         EC2_NUM=$((EC2_NUM + 1))
 
         if [[ $EC2_NUM -eq $NUM_EC2 ]]; then
@@ -505,8 +575,10 @@ EOF
             NODES_THIS=$RENODES_PER_EC2
         fi
 
-        ssh -o StrictHostKeyChecking=no ec2-user@"$IP" bash -s << REMOTE
+        ssh -i "$EC2_SSH_KEY" -o StrictHostKeyChecking=no ec2-user@"$IP" bash -s << REMOTE
 cd /tmp
+sed 's#using "../../nrf52840_lichen/support/nrf52840_lichen.repl"#using "/tmp/nrf52840_lichen.repl"#' \
+    /tmp/t_echo.repl > /tmp/t_echo_runtime.repl
 for i in \$(seq 0 $((NODES_THIS - 1))); do
     NID=\$((${NODE_ID} + i))
     X_POS=\$((NID * 50))
@@ -515,20 +587,28 @@ for i in \$(seq 0 $((NODES_THIS - 1))); do
 :name: zephyr-\$NID
 include @/tmp/SX1262.cs
 mach create "zephyr-\$NID"
-machine LoadPlatformDescription @/tmp/nrf52840_lichen.repl
+machine LoadPlatformDescription @/tmp/t_echo_runtime.repl
 spi1.sx1262 SimHost "$PUBLIC_IP"
 spi1.sx1262 SimPort 5555
 sysbus Tag <0x10000060, 0x10000063> "DEVICEID[0]" \$((0x1CE00000 + NID))
 sysbus Tag <0x10000064, 0x10000067> "DEVICEID[1]" \$((0x1CE10000 + NID))
+sysbus Tag <0x10000130, 0x10000133> "DEVICEID[0]" \$((0x1CE00000 + NID))
+sysbus Tag <0x10000134, 0x10000137> "DEVICEID[1]" \$((0x1CE10000 + NID))
 sysbus LoadELF @/tmp/zephyr.elf
+cpu VectorTableOffset $ZEPHYR_VECTOR_OFFSET
+cpu SP $ZEPHYR_SP
+cpu PC $ZEPHYR_PC
+cpu PerformanceInMips 64
 logFile @/tmp/zephyr-\$NID.log true
+uart0 CreateFileBackend @/tmp/zephyr-\$NID-uart.log true
 start
 RESC
 
-    renode --disable-gui --port \$((50000 + NID)) node-\$NID.resc > /dev/null 2>&1 &
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 /opt/renode_1.16.1-dotnet_portable/renode --disable-xwt --console --port \$((50000 + NID)) node-\$NID.resc > /tmp/renode-\$NID.log 2>&1 &
 done
 REMOTE
         NODE_ID=$((NODE_ID + NODES_THIS))
+        EC2_INDEX=$((EC2_INDEX + 1))
     done &
 
     log_ok "Started $ZEPHYR_NODES Zephyr nodes on ${#INSTANCE_IDS[@]} EC2 instances"
@@ -552,20 +632,47 @@ while true; do
 done
 echo ""
 
+# Let node processes flush their final metrics before collecting logs.
+for pid in "${PYTHON_PIDS[@]-}" "${RUST_PIDS[@]-}"; do
+    [[ -n "$pid" ]] && wait "$pid" 2>/dev/null || true
+done
+
 log_ok "Test complete"
 
 # === COLLECT RESULTS ===
 log_info "Collecting results..."
 
-# Get Zephyr logs from EC2
-for id in "${INSTANCE_IDS[@]}"; do
-    IP="${EC2_IPS[$id]}"
-    scp -o StrictHostKeyChecking=no -q \
-        ec2-user@"$IP":/tmp/zephyr-*.log "$RESULTS_DIR/" 2>/dev/null || true
-done
+# Get Zephyr logs from EC2 when the fleet includes Zephyr nodes.
+if [[ ${#INSTANCE_IDS[@]} -gt 0 ]]; then
+    EC2_INDEX=0
+    for id in "${INSTANCE_IDS[@]}"; do
+        IP="${INSTANCE_IPS[$EC2_INDEX]}"
+        AZ=$(aws_cmd ec2 describe-instances --instance-ids "$id" \
+            --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' --output text)
+        aws --profile "$AWS_PROFILE" --region "$AWS_REGION" ec2-instance-connect \
+            send-ssh-public-key \
+            --instance-id "$id" \
+            --instance-os-user ec2-user \
+            --availability-zone "$AZ" \
+            --ssh-public-key "file://${EC2_SSH_KEY}.pub" >/dev/null
+        ssh -i "$EC2_SSH_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
+            ec2-user@"$IP" \
+             "find /tmp -maxdepth 1 -type f \( -name 'zephyr-*' -o -name 'renode-*' \) -print -exec cat {} \\;" \
+             > "$RESULTS_DIR/zephyr-remote-$EC2_INDEX.log" 2>&1 || true
+        scp -O -i "$EC2_SSH_KEY" -o StrictHostKeyChecking=no -q \
+            ec2-user@"$IP":/tmp/zephyr-* "$RESULTS_DIR/" 2>/dev/null || true
+        EC2_INDEX=$((EC2_INDEX + 1))
+    done
+fi
 
 # Analyze
 echo ""
+REPORT_PATH="$RESULTS_DIR/telemetry-report.md"
+if python3 "$PROJECT_ROOT/scripts/analyze-hetero-fleet.py" "$RESULTS_DIR" -o "$REPORT_PATH"; then
+    log_ok "Telemetry report: $REPORT_PATH"
+else
+    log_error "Telemetry analyzer failed; raw logs remain at $RESULTS_DIR"
+fi
 log_ok "=== HETEROGENEOUS MESH RESULTS ==="
 
 # Python results
@@ -601,8 +708,10 @@ ZEPHYR_TX=0
 ZEPHYR_RX=0
 for log in "$RESULTS_DIR"/zephyr-*.log; do
     [[ -f "$log" ]] || continue
-    ZEPHYR_TX=$((ZEPHYR_TX + $(grep -c "TX\|Send" "$log" 2>/dev/null || echo 0)))
-    ZEPHYR_RX=$((ZEPHYR_RX + $(grep -c "RX\|Recv" "$log" 2>/dev/null || echo 0)))
+    tx_lines=$(grep -c -E "TX|Send|beacon seq" "$log" 2>/dev/null || true)
+    rx_lines=$(grep -c -E "RX|Recv" "$log" 2>/dev/null || true)
+    ZEPHYR_TX=$((ZEPHYR_TX + ${tx_lines:-0}))
+    ZEPHYR_RX=$((ZEPHYR_RX + ${rx_lines:-0}))
 done
 echo "  Zephyr:  TX=$ZEPHYR_TX  RX=$ZEPHYR_RX"
 
@@ -614,7 +723,19 @@ echo "  Total:   TX=$TOTAL_TX  RX=$TOTAL_RX"
 echo "  Logs:    $RESULTS_DIR"
 
 # Check for interop issues
-if [[ $TOTAL_RX -eq 0 ]] && [[ $TOTAL_TX -gt 0 ]]; then
+if [[ $TOTAL_TX -eq 0 ]]; then
+    log_error "NO TRANSMISSIONS RECORDED - fleet nodes did not produce metrics!"
+    exit 1
+elif [[ $PYTHON_NODES -gt 0 && ( $PY_TX -eq 0 || $PY_RX -eq 0 ) ]]; then
+    log_error "Python nodes did not produce bidirectional traffic (TX=$PY_TX RX=$PY_RX)"
+    exit 1
+elif [[ $RUST_NODES -gt 0 && ( $RUST_TX -eq 0 || $RUST_RX -eq 0 ) ]]; then
+    log_error "Rust nodes did not produce bidirectional traffic (TX=$RUST_TX RX=$RUST_RX)"
+    exit 1
+elif [[ $ZEPHYR_NODES -gt 0 && ( $ZEPHYR_TX -eq 0 || $ZEPHYR_RX -eq 0 ) ]]; then
+    log_error "Zephyr nodes did not produce bidirectional traffic (TX=$ZEPHYR_TX RX=$ZEPHYR_RX)"
+    exit 1
+elif [[ $TOTAL_RX -eq 0 ]]; then
     log_error "NO CROSS-IMPL RECEPTION - implementations may not interop!"
     cd "$PROJECT_ROOT"
     bd create "Hetero mesh: $TOTAL_TX TX but 0 RX - interop failure" \

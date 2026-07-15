@@ -114,6 +114,44 @@ class TestMetricsUnit:
         assert snap["latency_us"]["count"] == 1
         assert snap["latency_us"]["min"] == 5
 
+    def test_tx_start_times_pruned_after_threshold(self) -> None:
+        """Old entries in _tx_start_times are pruned to prevent unbounded growth."""
+        m = Metrics()
+        # Record more than the prune threshold transmissions
+        threshold = Metrics._TX_START_TIMES_PRUNE_THRESHOLD
+        max_age = Metrics._TX_START_TIMES_MAX_AGE_US
+
+        # Add threshold + 1 old transmissions
+        for i in range(threshold + 1):
+            m.record_transmission_start(f"old_tx_{i}", i * 1000)
+
+        # All should be stored initially
+        assert len(m._tx_start_times) == threshold + 1
+
+        # Add a new transmission far in the future to trigger pruning
+        future_time = max_age + 1_000_000_000  # well past max age
+        m.record_transmission_start("new_tx", future_time)
+
+        # Old entries should be pruned (only the new one remains)
+        assert len(m._tx_start_times) == 1
+        assert "new_tx" in m._tx_start_times
+
+        # Transmission count should still reflect all recorded transmissions
+        assert m.transmissions == threshold + 2
+
+    def test_tx_start_times_recent_not_pruned(self) -> None:
+        """Recent transmissions are not pruned even when threshold exceeded."""
+        m = Metrics()
+        threshold = Metrics._TX_START_TIMES_PRUNE_THRESHOLD
+        base_time = 1_000_000_000_000  # 1 million seconds
+
+        # Add threshold + 10 recent transmissions, all within max age
+        for i in range(threshold + 10):
+            m.record_transmission_start(f"tx_{i}", base_time + i * 1000)
+
+        # All should still be present (none are old enough to prune)
+        assert len(m._tx_start_times) == threshold + 10
+
 
 class TestMetricsIntegration:
     """Metrics wired into the Simulation engine via real TX/RX flows."""

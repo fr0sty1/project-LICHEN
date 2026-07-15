@@ -20,7 +20,7 @@ def _mesh_node_info() -> StaticNodeInfo:
     )
 
 
-async def _setup():
+async def _setup(*, config_allow_writes: bool = False):
     """Create: mesh-node server, gateway (proxy), local client.
 
     Topology::
@@ -33,7 +33,8 @@ async def _setup():
     # Mesh node: serves /status, /neighbors, /config
     node_info = _mesh_node_info()
     mesh_node = await create_lichen_context(
-        mesh_net.channel("fd00::2"), "fd00::2", site=build_site(node_info)
+        mesh_net.channel("fd00::2"), "fd00::2",
+        site=build_site(node_info, config_allow_writes=config_allow_writes),
     )
 
     # Gateway mesh-side client (used by the proxy to forward requests)
@@ -121,7 +122,7 @@ class TestProxyForwardGet:
 class TestProxyForwardPut:
     async def test_proxy_put_config_to_mesh_node(self) -> None:
         """PUT with Proxy-Uri updates the remote node's config."""
-        local_client, gateway, mesh_node, gw_mesh = await _setup()
+        local_client, gateway, mesh_node, gw_mesh = await _setup(config_allow_writes=True)
         try:
             update = {"tx_power_dbm": 20}
             msg = Message(

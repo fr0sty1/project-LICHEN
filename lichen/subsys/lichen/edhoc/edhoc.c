@@ -27,6 +27,24 @@
 
 LOG_MODULE_REGISTER(edhoc, CONFIG_LICHEN_EDHOC_LOG_LEVEL);
 
+/*
+ * SECURITY: Compile-time checks to ensure struct field sizes match the
+ * constants used in memcpy operations. Prevents maintenance hazards if
+ * constants are changed without updating struct definitions.
+ */
+BUILD_ASSERT(sizeof(((struct edhoc_initiator *)0)->g_y) >= EDHOC_X25519_KEY_LEN,
+	     "g_y too small for EDHOC_X25519_KEY_LEN");
+BUILD_ASSERT(sizeof(((struct edhoc_initiator *)0)->ed_seed) >= EDHOC_ED25519_SK_LEN,
+	     "ed_seed too small for EDHOC_ED25519_SK_LEN");
+BUILD_ASSERT(sizeof(((struct edhoc_initiator *)0)->ed_pubkey) >= EDHOC_ED25519_PK_LEN,
+	     "ed_pubkey too small for EDHOC_ED25519_PK_LEN");
+BUILD_ASSERT(sizeof(((struct edhoc_responder *)0)->g_x) >= EDHOC_X25519_KEY_LEN,
+	     "g_x too small for EDHOC_X25519_KEY_LEN");
+BUILD_ASSERT(sizeof(((struct edhoc_responder *)0)->ed_seed) >= EDHOC_ED25519_SK_LEN,
+	     "ed_seed too small for EDHOC_ED25519_SK_LEN");
+BUILD_ASSERT(sizeof(((struct edhoc_responder *)0)->ed_pubkey) >= EDHOC_ED25519_PK_LEN,
+	     "ed_pubkey too small for EDHOC_ED25519_PK_LEN");
+
 /* CBOR encoding buffer size */
 #define CBOR_BUF_SIZE 128
 
@@ -517,9 +535,18 @@ int edhoc_initiator_create_msg1(struct edhoc_initiator *ctx,
 		return -ENOMEM;
 	}
 
-	/* C_I encoding */
+	/* C_I encoding per RFC 9528 Section 3.3.2 (bstr_identifier):
+	 * - Values 0-23: encode as CBOR positive integer
+	 * - Values -24 to -1 (stored as 232-255): encode as CBOR negative integer
+	 * - Other values: encode as CBOR byte string
+	 */
 	if (ctx->c_i_len == 1 && ctx->c_i[0] <= 23) {
 		if (!zcbor_int32_put(zse, ctx->c_i[0])) {
+			return -ENOMEM;
+		}
+	} else if (ctx->c_i_len == 1 && ctx->c_i[0] >= 232) {
+		/* Negative integer: stored as (original + 256), reverse it */
+		if (!zcbor_int32_put(zse, (int32_t)ctx->c_i[0] - 256)) {
 			return -ENOMEM;
 		}
 	} else {
@@ -554,6 +581,13 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	uint8_t k_3[16] = {0};
 	uint8_t iv_3[13] = {0};
 	uint8_t signature_3[64] = {0};
+	uint8_t keystream_2[128] = {0};
+	uint8_t plaintext_2[128] = {0};
+	uint8_t mac_2[32] = {0};
+	uint8_t sig_struct_2[256] = {0};
+	uint8_t mac_3[32] = {0};
+	uint8_t sig_struct_3[256] = {0};
+	uint8_t plaintext_3[128] = {0};
 
 	if (ctx == NULL || msg2 == NULL || peer_pubkey == NULL ||
 	    msg3 == NULL || msg3_len == NULL) {
@@ -642,7 +676,6 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	 * RFC 9528 Section 4.3: message_2 uses XOR-only encryption without MAC.
 	 * Authenticity comes from Signature_2 which covers MAC_2 over TH_2.
 	 */
-	uint8_t keystream_2[128];
 	if (ct2_len > sizeof(keystream_2)) {
 		ret = -ENOMEM;
 		goto err_wipe;
@@ -653,7 +686,6 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		goto err_wipe;
 	}
 
-	uint8_t plaintext_2[128];
 	for (size_t i = 0; i < ct2_len; i++) {
 		plaintext_2[i] = ciphertext_2[i] ^ keystream_2[i];
 	}
@@ -665,6 +697,19 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	struct zcbor_string id_cred_r;
 	if (!zcbor_bstr_decode(zsd_pt2, &id_cred_r)) {
 		ret = -EINVAL;
+		goto err_wipe;
+	}
+
+	/*
+	 * SECURITY: Validate ID_CRED_R against expected peer identity.
+	 * RFC 9528 requires that ID_CRED corresponds to the credential used
+	 * for verification. Without this check, a malicious party could include
+	 * arbitrary ID_CRED data while we verify against a different key.
+	 */
+	if (id_cred_r.len != EDHOC_ED25519_PK_LEN ||
+	    crypto_verify32(id_cred_r.value, peer_pubkey) != 0) {
+		LOG_WRN("Peer identity mismatch");
+		ret = -EACCES;
 		goto err_wipe;
 	}
 
@@ -685,19 +730,20 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	/* MAC_2 = EDHOC-KDF(PRK_3e2m, TH_2, "MAC_2", context_2, 32) */
 	uint8_t context_2[128];
 	ZCBOR_STATE_E(zse_ctx2, 0, context_2, sizeof(context_2), 0);
-	zcbor_bstr_encode_ptr(zse_ctx2, ctx->c_r, ctx->c_r_len);
-	zcbor_bstr_encode_ptr(zse_ctx2, peer_pubkey, 32);
-	zcbor_bstr_encode_ptr(zse_ctx2, ctx->th_2, 32);
-	zcbor_bstr_encode_ptr(zse_ctx2, peer_pubkey, 32);
+	if (!zcbor_bstr_encode_ptr(zse_ctx2, ctx->c_r, ctx->c_r_len) ||
+	    !zcbor_bstr_encode_ptr(zse_ctx2, peer_pubkey, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_ctx2, ctx->th_2, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_ctx2, peer_pubkey, 32)) {
+		ret = -ENOMEM;
+		goto err_wipe;
+	}
 	size_t context_2_len = zse_ctx2->payload - context_2;
 
-	uint8_t mac_2[32];
 	ret = edhoc_kdf(ctx->prk_3e2m, ctx->th_2, "MAC_2", context_2, context_2_len, mac_2, 32);
 	if (ret != 0) {
 		goto err_wipe;
 	}
 
-	uint8_t sig_struct_2[256];
 	size_t sig_struct_2_len;
 	ret = build_sig_structure(peer_pubkey, 32, ctx->th_2, peer_pubkey, 32,
 				  mac_2, 32, sig_struct_2, sizeof(sig_struct_2), &sig_struct_2_len);
@@ -705,9 +751,16 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		goto err_wipe;
 	}
 
-	/* SECURITY: Generic error hides which verification step failed */
-	if (ed25519_verify(peer_pubkey, signature_2.value, sig_struct_2, sig_struct_2_len) != 0) {
-		LOG_WRN("Authentication failed");
+	/*
+	 * SECURITY: Constant-time signature verification.
+	 * - crypto_ed25519_check is constant-time internally
+	 * - volatile prevents compiler from optimizing away the check
+	 * - No logging here to avoid timing variation from log backends
+	 * - Generic error hides which verification step failed
+	 */
+	volatile int sig2_result = ed25519_verify(peer_pubkey, signature_2.value,
+						  sig_struct_2, sig_struct_2_len);
+	if (sig2_result != 0) {
 		ret = -EACCES;
 		goto err_wipe;
 	}
@@ -737,19 +790,20 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	/* context_3 = << ID_CRED_I, TH_3, CRED_I >> */
 	uint8_t context_3[128];
 	ZCBOR_STATE_E(zse_ctx3, 0, context_3, sizeof(context_3), 0);
-	zcbor_bstr_encode_ptr(zse_ctx3, ctx->ed_pubkey, 32);
-	zcbor_bstr_encode_ptr(zse_ctx3, ctx->th_3, 32);
-	zcbor_bstr_encode_ptr(zse_ctx3, ctx->ed_pubkey, 32);
+	if (!zcbor_bstr_encode_ptr(zse_ctx3, ctx->ed_pubkey, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_ctx3, ctx->th_3, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_ctx3, ctx->ed_pubkey, 32)) {
+		ret = -ENOMEM;
+		goto err_wipe;
+	}
 	size_t context_3_len = zse_ctx3->payload - context_3;
 
-	uint8_t mac_3[32];
 	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_3, "MAC_3", context_3, context_3_len, mac_3, 32);
 	if (ret != 0) {
 		goto err_wipe;
 	}
 
 	/* Sig_structure_3 per RFC 9528/9052 */
-	uint8_t sig_struct_3[256];
 	size_t sig_struct_3_len;
 	ret = build_sig_structure(ctx->ed_pubkey, 32, ctx->th_3, ctx->ed_pubkey, 32,
 				  mac_3, 32, sig_struct_3, sizeof(sig_struct_3), &sig_struct_3_len);
@@ -760,7 +814,6 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	ed25519_sign(signature_3, ctx->ed_seed, sig_struct_3, sig_struct_3_len);
 
 	/* Encode PLAINTEXT_3 */
-	uint8_t plaintext_3[128];
 	ZCBOR_STATE_E(zse_pt3, 0, plaintext_3, sizeof(plaintext_3), 0);
 	if (!zcbor_bstr_encode_ptr(zse_pt3, ctx->ed_pubkey, 32) ||
 	    !zcbor_bstr_encode_ptr(zse_pt3, signature_3, 64)) {
@@ -812,6 +865,13 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	crypto_wipe(k_3, sizeof(k_3));
 	crypto_wipe(iv_3, sizeof(iv_3));
 	crypto_wipe(signature_3, sizeof(signature_3));
+	crypto_wipe(keystream_2, sizeof(keystream_2));
+	crypto_wipe(plaintext_2, sizeof(plaintext_2));
+	crypto_wipe(mac_2, sizeof(mac_2));
+	crypto_wipe(sig_struct_2, sizeof(sig_struct_2));
+	crypto_wipe(mac_3, sizeof(mac_3));
+	crypto_wipe(sig_struct_3, sizeof(sig_struct_3));
+	crypto_wipe(plaintext_3, sizeof(plaintext_3));
 	crypto_wipe(ctx->eph_sk, sizeof(ctx->eph_sk));
 
 	ctx->state = EDHOC_STATE_COMPLETED;
@@ -822,6 +882,13 @@ err_wipe:
 	crypto_wipe(k_3, sizeof(k_3));
 	crypto_wipe(iv_3, sizeof(iv_3));
 	crypto_wipe(signature_3, sizeof(signature_3));
+	crypto_wipe(keystream_2, sizeof(keystream_2));
+	crypto_wipe(plaintext_2, sizeof(plaintext_2));
+	crypto_wipe(mac_2, sizeof(mac_2));
+	crypto_wipe(sig_struct_2, sizeof(sig_struct_2));
+	crypto_wipe(mac_3, sizeof(mac_3));
+	crypto_wipe(sig_struct_3, sizeof(sig_struct_3));
+	crypto_wipe(plaintext_3, sizeof(plaintext_3));
 	crypto_wipe(ctx->eph_sk, sizeof(ctx->eph_sk));
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
@@ -865,6 +932,9 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
 	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
+
+	/* SECURITY: Prevent double-export which would derive from zeroed PRK */
+	ctx->state = EDHOC_STATE_EXPORTED;
 
 	return 0;
 }
@@ -915,6 +985,11 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	int ret;
 	uint8_t g_xy[32] = {0};
 	uint8_t signature_2[64] = {0};
+	uint8_t mac_2[32] = {0};
+	uint8_t sig_struct_2[256] = {0};
+	uint8_t plaintext_2[128] = {0};
+	uint8_t keystream_2[128] = {0};
+	uint8_t ciphertext_2[128] = {0};
 
 	if (ctx == NULL || msg1 == NULL ||
 	    msg2 == NULL || msg2_len == NULL) {
@@ -1030,20 +1105,21 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	/* context_2 = << C_R, ID_CRED_R, TH_2, CRED_R >> */
 	uint8_t context_2[128];
 	ZCBOR_STATE_E(zse_ctx2, 0, context_2, sizeof(context_2), 0);
-	zcbor_bstr_encode_ptr(zse_ctx2, ctx->c_r, ctx->c_r_len);
-	zcbor_bstr_encode_ptr(zse_ctx2, ctx->ed_pubkey, 32);
-	zcbor_bstr_encode_ptr(zse_ctx2, ctx->th_2, 32);
-	zcbor_bstr_encode_ptr(zse_ctx2, ctx->ed_pubkey, 32);
+	if (!zcbor_bstr_encode_ptr(zse_ctx2, ctx->c_r, ctx->c_r_len) ||
+	    !zcbor_bstr_encode_ptr(zse_ctx2, ctx->ed_pubkey, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_ctx2, ctx->th_2, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_ctx2, ctx->ed_pubkey, 32)) {
+		ret = -ENOMEM;
+		goto err_wipe;
+	}
 	size_t context_2_len = zse_ctx2->payload - context_2;
 
-	uint8_t mac_2[32];
 	ret = edhoc_kdf(ctx->prk_3e2m, ctx->th_2, "MAC_2", context_2, context_2_len, mac_2, 32);
 	if (ret != 0) {
 		goto err_wipe;
 	}
 
 	/* Sig_structure_2 per RFC 9528/9052 */
-	uint8_t sig_struct_2[256];
 	size_t sig_struct_2_len;
 	ret = build_sig_structure(ctx->ed_pubkey, 32, ctx->th_2, ctx->ed_pubkey, 32,
 				  mac_2, 32, sig_struct_2, sizeof(sig_struct_2), &sig_struct_2_len);
@@ -1053,7 +1129,6 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 
 	ed25519_sign(signature_2, ctx->ed_seed, sig_struct_2, sig_struct_2_len);
 
-	uint8_t plaintext_2[128];
 	ZCBOR_STATE_E(zse_pt2, 0, plaintext_2, sizeof(plaintext_2), 0);
 	if (!zcbor_bstr_encode_ptr(zse_pt2, ctx->ed_pubkey, 32) ||
 	    !zcbor_bstr_encode_ptr(zse_pt2, signature_2, 64)) {
@@ -1067,14 +1142,12 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	 * RFC 9528 Section 4.3: message_2 uses XOR-only encryption without MAC.
 	 * Authenticity comes from Signature_2 which covers MAC_2 over TH_2.
 	 */
-	uint8_t keystream_2[128];
 	ret = edhoc_kdf(ctx->prk_2e, ctx->th_2, "KEYSTREAM_2", NULL, 0,
 			keystream_2, pt2_len);
 	if (ret != 0) {
 		goto err_wipe;
 	}
 
-	uint8_t ciphertext_2[128];
 	for (size_t i = 0; i < pt2_len; i++) {
 		ciphertext_2[i] = plaintext_2[i] ^ keystream_2[i];
 	}
@@ -1107,9 +1180,19 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 		goto err_wipe;
 	}
 
-	/* C_R encoding */
+	/* C_R encoding per RFC 9528 Section 3.3.2 (bstr_identifier):
+	 * - Values 0-23: encode as CBOR positive integer
+	 * - Values -24 to -1 (stored as 232-255): encode as CBOR negative integer
+	 * - Other values: encode as CBOR byte string
+	 */
 	if (ctx->c_r_len == 1 && ctx->c_r[0] <= 23) {
 		if (!zcbor_int32_put(zse, ctx->c_r[0])) {
+			ret = -ENOMEM;
+			goto err_wipe;
+		}
+	} else if (ctx->c_r_len == 1 && ctx->c_r[0] >= 232) {
+		/* Negative integer: stored as (original + 256), reverse it */
+		if (!zcbor_int32_put(zse, (int32_t)ctx->c_r[0] - 256)) {
 			ret = -ENOMEM;
 			goto err_wipe;
 		}
@@ -1123,6 +1206,11 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	*msg2_len = zse->payload - msg2;
 
 	crypto_wipe(signature_2, sizeof(signature_2));
+	crypto_wipe(plaintext_2, sizeof(plaintext_2));
+	crypto_wipe(keystream_2, sizeof(keystream_2));
+	crypto_wipe(mac_2, sizeof(mac_2));
+	crypto_wipe(sig_struct_2, sizeof(sig_struct_2));
+	crypto_wipe(ciphertext_2, sizeof(ciphertext_2));
 	crypto_wipe(ctx->eph_sk, sizeof(ctx->eph_sk));
 
 	ctx->state = EDHOC_STATE_MSG2_SENT;
@@ -1131,6 +1219,11 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 err_wipe:
 	crypto_wipe(g_xy, sizeof(g_xy));
 	crypto_wipe(signature_2, sizeof(signature_2));
+	crypto_wipe(plaintext_2, sizeof(plaintext_2));
+	crypto_wipe(keystream_2, sizeof(keystream_2));
+	crypto_wipe(mac_2, sizeof(mac_2));
+	crypto_wipe(sig_struct_2, sizeof(sig_struct_2));
+	crypto_wipe(ciphertext_2, sizeof(ciphertext_2));
 	crypto_wipe(ctx->eph_sk, sizeof(ctx->eph_sk));
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
@@ -1144,6 +1237,9 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	int ret;
 	uint8_t k_3[16] = {0};
 	uint8_t iv_3[13] = {0};
+	uint8_t plaintext_3[128] = {0};
+	uint8_t mac_3[32] = {0};
+	uint8_t sig_struct_3[256] = {0};
 
 	if (ctx == NULL || msg3 == NULL || peer_pubkey == NULL) {
 		return -EINVAL;
@@ -1180,7 +1276,6 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	size_t a_3_len = zse_a3->payload - a_3;
 
 	/* Decrypt CIPHERTEXT_3 */
-	uint8_t plaintext_3[128];
 	ret = aead_decrypt(k_3, iv_3, a_3, a_3_len, msg3, msg3_len, plaintext_3);
 	/* SECURITY: Generic error hides decryption vs verification failure */
 	if (ret != 0) {
@@ -1195,6 +1290,19 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	struct zcbor_string id_cred_i;
 	if (!zcbor_bstr_decode(zsd, &id_cred_i)) {
 		ret = -EINVAL;
+		goto err_wipe;
+	}
+
+	/*
+	 * SECURITY: Validate ID_CRED_I against expected peer identity.
+	 * RFC 9528 requires that ID_CRED corresponds to the credential used
+	 * for verification. Without this check, a malicious party could include
+	 * arbitrary ID_CRED data while we verify against a different key.
+	 */
+	if (id_cred_i.len != EDHOC_ED25519_PK_LEN ||
+	    crypto_verify32(id_cred_i.value, peer_pubkey) != 0) {
+		LOG_WRN("Peer identity mismatch");
+		ret = -EACCES;
 		goto err_wipe;
 	}
 
@@ -1215,18 +1323,19 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	/* MAC_3 = EDHOC-KDF(PRK_4e3m, TH_3, "MAC_3", context_3, 32) */
 	uint8_t context_3[128];
 	ZCBOR_STATE_E(zse_ctx3, 0, context_3, sizeof(context_3), 0);
-	zcbor_bstr_encode_ptr(zse_ctx3, peer_pubkey, 32);
-	zcbor_bstr_encode_ptr(zse_ctx3, ctx->th_3, 32);
-	zcbor_bstr_encode_ptr(zse_ctx3, peer_pubkey, 32);
+	if (!zcbor_bstr_encode_ptr(zse_ctx3, peer_pubkey, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_ctx3, ctx->th_3, 32) ||
+	    !zcbor_bstr_encode_ptr(zse_ctx3, peer_pubkey, 32)) {
+		ret = -ENOMEM;
+		goto err_wipe;
+	}
 	size_t context_3_len = zse_ctx3->payload - context_3;
 
-	uint8_t mac_3[32];
 	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_3, "MAC_3", context_3, context_3_len, mac_3, 32);
 	if (ret != 0) {
 		goto err_wipe;
 	}
 
-	uint8_t sig_struct_3[256];
 	size_t sig_struct_3_len;
 	ret = build_sig_structure(peer_pubkey, 32, ctx->th_3, peer_pubkey, 32,
 				  mac_3, 32, sig_struct_3, sizeof(sig_struct_3), &sig_struct_3_len);
@@ -1234,9 +1343,16 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 		goto err_wipe;
 	}
 
-	/* SECURITY: Generic error hides which verification step failed */
-	if (ed25519_verify(peer_pubkey, signature_3.value, sig_struct_3, sig_struct_3_len) != 0) {
-		LOG_WRN("Authentication failed");
+	/*
+	 * SECURITY: Constant-time signature verification.
+	 * - crypto_ed25519_check is constant-time internally
+	 * - volatile prevents compiler from optimizing away the check
+	 * - No logging here to avoid timing variation from log backends
+	 * - Generic error hides which verification step failed
+	 */
+	volatile int sig3_result = ed25519_verify(peer_pubkey, signature_3.value,
+						  sig_struct_3, sig_struct_3_len);
+	if (sig3_result != 0) {
 		ret = -EACCES;
 		goto err_wipe;
 	}
@@ -1249,6 +1365,9 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 
 	crypto_wipe(k_3, sizeof(k_3));
 	crypto_wipe(iv_3, sizeof(iv_3));
+	crypto_wipe(plaintext_3, sizeof(plaintext_3));
+	crypto_wipe(mac_3, sizeof(mac_3));
+	crypto_wipe(sig_struct_3, sizeof(sig_struct_3));
 	crypto_wipe(ctx->eph_sk, sizeof(ctx->eph_sk));
 
 	ctx->state = EDHOC_STATE_COMPLETED;
@@ -1257,6 +1376,9 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 err_wipe:
 	crypto_wipe(k_3, sizeof(k_3));
 	crypto_wipe(iv_3, sizeof(iv_3));
+	crypto_wipe(plaintext_3, sizeof(plaintext_3));
+	crypto_wipe(mac_3, sizeof(mac_3));
+	crypto_wipe(sig_struct_3, sizeof(sig_struct_3));
 	crypto_wipe(ctx->eph_sk, sizeof(ctx->eph_sk));
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
@@ -1298,6 +1420,9 @@ int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
 	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
+
+	/* SECURITY: Prevent double-export which would derive from zeroed PRK */
+	ctx->state = EDHOC_STATE_EXPORTED;
 
 	return 0;
 }

@@ -21,7 +21,6 @@
 #include <zephyr/net/net_pkt.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
-#include <zephyr/sys/crc.h>
 
 #include <lichen/hal.h>
 #if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
@@ -156,10 +155,10 @@ BUILD_ASSERT(LICHEN_L2_PUBKEY_LEN == 32,
  * Minimum valid LICHEN frame size.
  *
  * Wire format (spec section 4, python/src/lichen/link/frame.py):
- *   Length(1) + LLSec(1) + Epoch(1) + SeqNum(2) + DstAddr(0-8) + Payload + MIC(4-8)
+ *   Length(1) + LLSec(1) + Epoch(1) + SeqNum(2) + DstAddr(0-8) + Payload + MIC(0/48)
  *
- * Absolute minimum (broadcast, 32-bit MIC, empty payload):
- *   1 + 1 + 1 + 2 + 0 + 0 + 4 = 9 bytes
+ * Absolute minimum (broadcast, unsigned, empty payload):
+ *   1 + 1 + 1 + 2 + 0 + 0 + 0 = 5 bytes
  *
  * Note: source address is NOT in the wire format; it's derived from context
  * (signature verification or out-of-band information).
@@ -167,14 +166,10 @@ BUILD_ASSERT(LICHEN_L2_PUBKEY_LEN == 32,
  * SECURITY: Early rejection of runt frames prevents out-of-bounds reads
  * in lichen_link_rx() before MIC validation can occur.
  *
- * MIC size note: 32-bit MIC (4 bytes) is the smallest supported MIC size.
- * Frames using 64-bit MIC (8 bytes) are always longer than this minimum.
- * If a security level requires 64-bit MIC but the frame only has 32-bit,
- * the frame passes this length check but fails during MIC verification
- * in lichen_link_rx(). This is correct - length check is a fast early-
- * reject for malformed frames, not a security policy enforcement point.
+ * MIC size note: unsigned frames have no MIC. Signed frames carry a
+ * 48-byte Schnorr signature, which is validated by lichen_link_rx().
  */
-#define LICHEN_MIN_FRAME_LEN 9
+#define LICHEN_MIN_FRAME_LEN 5
 
 /*
  * Validate LICHEN_MIN_FRAME_LEN derivation.
@@ -185,13 +180,13 @@ BUILD_ASSERT(LICHEN_L2_PUBKEY_LEN == 32,
  * (project-LICHEN-1www.41): Use authoritative constants from link.h where
  * available (LICHEN_MIC_32_LEN) to catch drift. Header field sizes are
  * protocol-defined with no shared constant, so we define them locally but
- * validate against LICHEN_MIN_FRAME_LEN = 9 per spec.
+ * validate against LICHEN_MIN_FRAME_LEN = 5 per spec.
  */
 #define LICHEN_FRAME_LENGTH_FIELD 1
 #define LICHEN_FRAME_LLSEC_FIELD  1
 #define LICHEN_FRAME_EPOCH_FIELD  1
 #define LICHEN_FRAME_SEQNUM_FIELD 2
-#define LICHEN_FRAME_MIN_MIC      LICHEN_MIC_32_LEN  /* Use authoritative constant from link.h */
+#define LICHEN_FRAME_MIN_MIC      0
 #define LICHEN_FRAME_MIN_ADDR     0  /* broadcast/NONE mode has 0 addr bytes */
 
 BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
@@ -218,7 +213,7 @@ BUILD_ASSERT(LICHEN_MIN_FRAME_LEN ==
  * to ensure signed frames still fit within the LoRa PHY limit.
  *
  * Constant naming (project-LICHEN-tvfm.106, project-LICHEN-tvfm.107):
- * - LICHEN_FRAME_BASE_OVERHEAD (9 bytes): Minimum frame size for validation.
+ * - LICHEN_FRAME_BASE_OVERHEAD (5 bytes): Minimum frame size for validation.
  *   Used in LICHEN_MIN_FRAME_LEN to reject malformed runt frames early.
  *   Does NOT include signature (signature is conditional on has_key).
  * - LICHEN_LORA_FRAME_OVERHEAD (55 bytes): Conservative MTU overhead.
@@ -244,10 +239,10 @@ BUILD_ASSERT(LICHEN_SIG_LEN == 48,
 
 /*
  * Assert: frame header size has not changed.
- * LICHEN_LORA_FRAME_OVERHEAD assumes 9-byte minimum frame (broadcast + 32-bit MIC).
+ * LICHEN_LORA_FRAME_OVERHEAD is independent of the 5-byte unsigned minimum.
  * If this assertion fails, recalculate the overhead constant.
  */
-BUILD_ASSERT(LICHEN_FRAME_BASE_OVERHEAD == 9,
+BUILD_ASSERT(LICHEN_FRAME_BASE_OVERHEAD == 5,
 	     "Frame header size changed - update LICHEN_LORA_FRAME_OVERHEAD in lora_l2.h");
 
 /* IPv6 base header size (RFC 8200). Does NOT include extension headers. */
@@ -2275,23 +2270,14 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 				   rx_ipv6_buf, &ipv6_len, src_eui64);
 	if (ret < 0) {
 		/*
-		 * Puck neighbor beacons are 9-byte broadcast link frames with no
-		 * SCHC/IPv6 payload: [len=9][LLSec=0x00][epoch][seq_hi][seq_lo]
-		 * [CRC32 over bytes 1..4, little-endian] (see puck send_beacon()).
+		 * Puck neighbor beacons are 5-byte unsigned broadcast link frames
+		 * with no SCHC/IPv6 payload: [len=4][LLSec=0x00][epoch][seq_hi][seq_lo]
+		 * (see puck send_beacon()).
 		 * lichen_link_rx() rightly rejects them (nothing to deliver), but
-		 * they are valid neighbor traffic, not errors — verify the CRC32
-		 * MIC and log at INF instead of WRN. (lora_ipv6_mesh-v6g6)
-		 *
-		 * SECURITY: CRC32 is error detection only, not authentication —
-		 * beacons are observational (logged, never routed or trusted).
+		 * they are valid neighbor traffic, not errors — log at INF instead
+		 * of WRN. (lora_ipv6_mesh-v6g6)
 		 */
-		if (len == 9 && data[0] == 9 && data[1] == 0x00) {
-			uint32_t mic = crc32_ieee(&data[1], 4);
-			uint32_t rx_mic = (uint32_t)data[5] |
-					  ((uint32_t)data[6] << 8) |
-					  ((uint32_t)data[7] << 16) |
-					  ((uint32_t)data[8] << 24);
-			if (mic == rx_mic) {
+		if (len == 5 && data[0] == 4 && data[1] == 0x00) {
 				LOG_INF("lichen_l2: neighbor beacon epoch=%u seq=%u "
 					"rssi=%d snr=%d",
 					data[2],
@@ -2300,7 +2286,6 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 				secure_zero(rx_link_key, sizeof(rx_link_key));
 				k_mutex_unlock(&rx_mutex);
 				return;
-			}
 		}
 		atomic_set(&rx_stat_last_err, ret);
 		LOG_WRN("lichen_l2: RX failed: %s (%d)",

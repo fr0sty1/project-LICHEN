@@ -43,18 +43,13 @@ impl OscoreSeqNum {
 
     /// Increment by one, returning the new value.
     ///
-    /// # Panics
-    ///
-    /// Panics in debug builds if the sequence number would overflow.
-    /// In release builds, wraps (but this is a security violation).
+    /// Returns `None` if the sequence number is at `u32::MAX` (would overflow).
+    /// SECURITY: Callers must handle `None` by renegotiating the security context
+    /// to prevent nonce reuse, which would compromise AES-CCM confidentiality.
     #[inline]
     #[must_use = "returns a new value; does not modify self"]
-    pub fn increment(self) -> Self {
-        debug_assert!(
-            self.0 < u32::MAX,
-            "OSCORE sequence number overflow - context must be renegotiated"
-        );
-        Self(self.0.wrapping_add(1))
+    pub fn increment(self) -> Option<Self> {
+        self.0.checked_add(1).map(Self)
     }
 
     /// Increment in place, returning the old value.
@@ -62,14 +57,14 @@ impl OscoreSeqNum {
     /// Useful for the sender path where you want to use the current
     /// sequence number and advance to the next.
     ///
-    /// # Panics
-    ///
-    /// Panics in debug builds if the sequence number would overflow.
+    /// Returns `None` if the sequence number is at `u32::MAX` (would overflow).
+    /// SECURITY: Callers must handle `None` by renegotiating the security context
+    /// to prevent nonce reuse, which would compromise AES-CCM confidentiality.
     #[inline]
-    pub fn fetch_increment(&mut self) -> Self {
+    pub fn fetch_increment(&mut self) -> Option<Self> {
         let old = *self;
-        *self = self.increment();
-        old
+        *self = self.increment()?;
+        Some(old)
     }
 
     /// Check if the sequence number is near exhaustion.
@@ -163,9 +158,27 @@ mod tests {
         let mut seq = OscoreSeqNum::new(0);
         assert_eq!(seq.get(), 0);
 
-        let old = seq.fetch_increment();
+        let old = seq.fetch_increment().expect("should not overflow from 0");
         assert_eq!(old.get(), 0);
         assert_eq!(seq.get(), 1);
+    }
+
+    #[test]
+    fn increment_at_max_returns_none() {
+        let seq = OscoreSeqNum::new(u32::MAX);
+        assert!(seq.increment().is_none());
+
+        let mut seq_mut = OscoreSeqNum::new(u32::MAX);
+        assert!(seq_mut.fetch_increment().is_none());
+        // Value unchanged after failed increment
+        assert_eq!(seq_mut.get(), u32::MAX);
+    }
+
+    #[test]
+    fn increment_near_max_succeeds() {
+        let seq = OscoreSeqNum::new(u32::MAX - 1);
+        let next = seq.increment().expect("should succeed at MAX-1");
+        assert_eq!(next.get(), u32::MAX);
     }
 
     #[test]

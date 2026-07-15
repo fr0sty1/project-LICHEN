@@ -7,7 +7,9 @@ use std::vec::Vec;
 #[cfg(feature = "log")]
 use log::{debug, warn};
 
-use crate::frame::{Encryption, FrameError, LichenFrame, Signature};
+use crate::frame::{
+    AddrMode, Encryption, FrameError, LichenFrame, MicLength, Signature, MAX_FRAME_BODY,
+};
 use crate::identity::{Identity, PeerIdentity};
 use crate::keys::PublicKey;
 use crate::replay::ReplayWindow;
@@ -27,7 +29,7 @@ pub enum LinkRxError {
     UnknownSender,
     /// Replay-window check failed (duplicate or too-old seqnum).
     Replay,
-    /// Payload shorter than the mandatory 48-byte signature trailer.
+    /// Signed MIC is not the required 48-byte Schnorr signature.
     TooShort(TooShort),
     /// A previously-pinned IID appeared with a different public key.
     KeyChange,
@@ -175,14 +177,14 @@ impl<S: PeerAuthMarker> PeerAuthentication<S> {
 ///
 /// Returned by [`LinkLayer::receive_frame`] after signature verification
 /// and replay protection pass. The payload excludes the 48-byte Schnorr
-/// signature trailer; it contains the SCHC-compressed IPv6 packet ready
+/// MIC; it contains the SCHC-compressed IPv6 packet ready
 /// for decompression.
 ///
 /// Note: This is distinct from `lichen_node::ReceivedIpv6` which represents
 /// a fully decompressed IPv6 packet with radio metadata attached.
 #[derive(Debug)]
 pub struct AuthenticatedFrame {
-    /// The inner payload (everything before the 48-byte signature trailer).
+    /// The inner payload, excluding link-layer MIC bytes.
     pub payload: Vec<u8>,
     /// Identity of the authenticated sender.
     pub sender: PeerIdentity,
@@ -348,14 +350,13 @@ impl LinkLayer {
 
     /// Serialise a signed frame into `out`. Returns bytes written.
     ///
-    /// inner_payload is signed; the resulting wire frame contains
-    /// `inner_payload || sig(48B)` as its payload field.
+    /// The 48-byte signature occupies the frame MIC field.
     ///
     /// # Panics
     ///
     /// Returns an error if `out` is smaller than the serialised frame size.
-    /// Callers must provide a buffer of at least `inner_payload.len() + 48 + 6`
-    /// bytes (frame header + signature trailer).
+    /// Callers must provide a buffer of at least `inner_payload.len() + 48 + 5`
+    /// bytes (frame header + signature MIC).
     pub fn build_frame(
         &self,
         epoch: u8,
@@ -364,7 +365,41 @@ impl LinkLayer {
         inner_payload: &[u8],
         out: &mut [u8],
     ) -> Result<usize, FrameError> {
+        let addr_mode =
+            AddrMode::from_addr_len(dst_addr.len()).ok_or(FrameError::AddrLenMismatch)?;
+        self.build_frame_with_addr_mode(epoch, seqnum, dst_addr, inner_payload, addr_mode, out)
+    }
+
+    /// Serialise a signed frame with an explicit destination addressing mode.
+    ///
+    /// Unlike [`LinkLayer::build_frame`], this method can emit
+    /// [`AddrMode::Elided`] for an empty destination. Elided addressing means
+    /// the destination is derived from the upper-layer IPv6 packet; an empty
+    /// destination passed to `build_frame` remains broadcast (`AddrMode::None`)
+    /// for compatibility with existing callers.
+    ///
+    /// Returns [`FrameError::AddrLenMismatch`] when `dst_addr` does not have
+    /// the length required by `addr_mode`.
+    pub fn build_frame_with_addr_mode(
+        &self,
+        epoch: u8,
+        seqnum: LinkSeqNum,
+        dst_addr: &[u8],
+        inner_payload: &[u8],
+        addr_mode: AddrMode,
+        out: &mut [u8],
+    ) -> Result<usize, FrameError> {
+        if addr_mode.addr_len() != dst_addr.len() {
+            return Err(FrameError::AddrLenMismatch);
+        }
+        let llsec = (addr_mode as u8) | (1 << 5);
+        let frame_length = 4 + dst_addr.len() + inner_payload.len() + SIGNATURE_LENGTH;
+        if frame_length > MAX_FRAME_BODY {
+            return Err(FrameError::FrameTooLarge);
+        }
         let sig = schnorr::sign_frame(
+            frame_length as u8,
+            llsec,
             epoch,
             seqnum,
             dst_addr,
@@ -372,21 +407,14 @@ impl LinkLayer {
             &self.identity.privkey,
             &self.identity.pubkey,
         );
-        let mut signed = Vec::with_capacity(inner_payload.len() + SIGNATURE_LENGTH);
-        signed.extend_from_slice(inner_payload);
-        signed.extend_from_slice(&sig);
-
-        let addr_mode = crate::frame::AddrMode::from_addr_len(dst_addr.len())
-            .ok_or(FrameError::AddrLenMismatch)?;
-
         let frame = LichenFrame {
             epoch,
             seqnum,
             dst_addr,
-            payload: &signed,
-            mic: &[0u8; 4],
+            payload: inner_payload,
+            mic: &sig,
             addr_mode,
-            mic_length: crate::frame::MicLength::Bits32,
+            mic_length: MicLength::Bits32,
             signature: Signature::Present,
             encryption: Encryption::Plaintext,
         };
@@ -402,12 +430,12 @@ impl LinkLayer {
             warn!("link_layer: received unsigned frame");
             return Err(LinkRxError::Unsigned);
         }
-        if frame.payload.len() < SIGNATURE_LENGTH {
-            return Err(TooShort::new(SIGNATURE_LENGTH, frame.payload.len()).into());
+        if frame.mic.len() != SIGNATURE_LENGTH {
+            return Err(TooShort::new(SIGNATURE_LENGTH, frame.mic.len()).into());
         }
 
-        let inner_len = frame.payload.len() - SIGNATURE_LENGTH;
-        let inner_payload = &frame.payload[..inner_len];
+        let inner_payload = frame.payload;
+        let frame_length = 4 + frame.dst_addr.len() + inner_payload.len() + SIGNATURE_LENGTH;
 
         // O(n) scan — try every known peer
         let Some(sender) = self
@@ -415,10 +443,13 @@ impl LinkLayer {
             .values()
             .find(|peer| {
                 schnorr::verify_frame(
+                    frame_length as u8,
+                    frame.llsec_byte(),
                     frame.epoch,
                     frame.seqnum,
                     frame.dst_addr,
                     frame.payload,
+                    frame.mic,
                     &peer.pubkey,
                 )
             })
@@ -504,6 +535,57 @@ mod tests {
 
         let rx = ll_bob.receive_frame(&wire[..n]).unwrap();
         assert_eq!(rx.payload, b"hello");
+    }
+
+    #[test]
+    fn explicit_elided_destination_roundtrips_and_authenticates() {
+        let alice = Identity::from_seed(Seed::new([0x01u8; 32]));
+        let mut bob = make_ll(0x02);
+        bob.add_peer(PeerIdentity::from_pubkey(alice.pubkey));
+
+        let alice_layer = LinkLayer::new(alice);
+        let mut wire = [0u8; 256];
+        let n = alice_layer
+            .build_frame_with_addr_mode(1, seq(1), &[], b"hello", AddrMode::Elided, &mut wire)
+            .unwrap();
+
+        let frame = LichenFrame::from_bytes(&wire[..n]).unwrap();
+        assert_eq!(frame.addr_mode, AddrMode::Elided);
+        assert_eq!(frame.dst_addr, &[] as &[u8]);
+        assert_eq!(bob.receive_frame(&wire[..n]).unwrap().payload, b"hello");
+    }
+
+    #[test]
+    fn explicit_address_mode_rejects_wrong_destination_length() {
+        let layer = make_ll(0x01);
+        let mut wire = [0u8; 256];
+
+        assert_eq!(
+            layer.build_frame_with_addr_mode(
+                1,
+                seq(1),
+                &[0xaa],
+                b"hello",
+                AddrMode::Elided,
+                &mut wire,
+            ),
+            Err(FrameError::AddrLenMismatch)
+        );
+    }
+
+    #[test]
+    fn receive_accepts_short_payload_with_48_byte_mic() {
+        let alice = Identity::from_seed(Seed::new([0x01u8; 32]));
+        let mut bob = make_ll(0x02);
+        bob.add_peer(PeerIdentity::from_pubkey(alice.pubkey));
+        let alice_layer = LinkLayer::new(alice);
+        let mut wire = [0u8; 128];
+        let n = alice_layer
+            .build_frame(1, seq(1), &[], &[0xaa], &mut wire)
+            .unwrap();
+
+        let received = bob.receive_frame(&wire[..n]).unwrap();
+        assert_eq!(received.payload, &[0xaa]);
     }
 
     #[test]

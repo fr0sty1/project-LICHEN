@@ -46,6 +46,54 @@ _LABEL_TO_FIELD: dict[int, str] = {
 
 _FIELD_TO_LABEL: dict[str, int] = {v: k for k, v in _LABEL_TO_FIELD.items()}
 
+# RFC 8428 type requirements for each field
+# str = string, num = float or int, int = int only, bool = boolean, bytes = bytes
+_FIELD_TYPES: dict[str, str] = {
+    "bn": "str", "n": "str", "bu": "str", "u": "str", "vs": "str",
+    "bt": "num", "bv": "num", "bs": "num", "v": "num", "s": "num", "t": "num", "ut": "num",
+    "bver": "int",
+    "vb": "bool",
+    "vd": "bytes",
+}
+
+
+def _validate_field_type(name: str, value: object) -> None:
+    """Validate that a SenML field value has the correct type per RFC 8428.
+
+    Raises:
+        ValueError: If the value type does not match the field's expected type.
+    """
+    expected = _FIELD_TYPES.get(name)
+    if expected is None:
+        return  # Unknown field, skip validation
+
+    if expected == "str":
+        if not isinstance(value, str):
+            raise ValueError(
+                f"SenML field '{name}' must be a string, got {type(value).__name__}"
+            )
+    elif expected == "num":
+        # Accept int or float, but not bool (bool is subclass of int in Python)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(
+                f"SenML field '{name}' must be a number, got {type(value).__name__}"
+            )
+    elif expected == "int":
+        # Must be int, not float, not bool
+        if isinstance(value, bool) or not isinstance(value, int) or isinstance(value, float):
+            raise ValueError(
+                f"SenML field '{name}' must be an integer, got {type(value).__name__}"
+            )
+    elif expected == "bool":
+        if not isinstance(value, bool):
+            raise ValueError(
+                f"SenML field '{name}' must be a boolean, got {type(value).__name__}"
+            )
+    elif expected == "bytes" and not isinstance(value, bytes):
+        raise ValueError(
+            f"SenML field '{name}' must be bytes, got {type(value).__name__}"
+        )
+
 
 @dataclass
 class SenmlRecord:
@@ -102,11 +150,16 @@ class SenmlRecord:
 
     @classmethod
     def from_cbor_map(cls, m: dict[int, Any]) -> SenmlRecord:
-        """Deserialise from a numeric-keyed CBOR map."""
+        """Deserialise from a numeric-keyed CBOR map.
+
+        Raises:
+            ValueError: If a field value has the wrong type per RFC 8428.
+        """
         kwargs: dict[str, Any] = {}
         for label, val in m.items():
             name = _LABEL_TO_FIELD.get(label)
             if name is not None:
+                _validate_field_type(name, val)
                 kwargs[name] = val
         return cls(**kwargs)
 

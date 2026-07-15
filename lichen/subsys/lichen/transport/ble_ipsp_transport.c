@@ -53,6 +53,10 @@ LOG_MODULE_REGISTER(ble_ipsp_transport, CONFIG_LICHEN_BLE_TRANSPORT_LOG_LEVEL);
 /* Maximum SLIP-encoded frame: worst case 2x IPv6 + 2 END bytes */
 #define SLIP_RX_BUF_SIZE (LICHEN_BLE_IPV6_MTU * 2 + 2)
 
+/* Compile-time check that SLIP buffer is sized for worst-case encoding */
+BUILD_ASSERT(SLIP_RX_BUF_SIZE >= LICHEN_BLE_IPV6_MTU * 2 + 2,
+	     "SLIP_RX_BUF_SIZE too small for worst-case encoding");
+
 struct slip_rx_state {
 	uint8_t buf[SLIP_RX_BUF_SIZE];
 	size_t len;
@@ -71,7 +75,6 @@ struct ble_transport_state {
 	struct slip_rx_state slip_rx;
 	struct lichen_ble_transport_stats stats;
 	struct k_mutex lock;
-	uint16_t mtu; /* Negotiated ATT MTU */
 };
 
 static struct ble_transport_state transport_state;
@@ -118,15 +121,7 @@ static void connected_cb(struct bt_conn *conn, uint8_t err)
 	/* Reset SLIP state for new connection */
 	memset(&transport_state.slip_rx, 0, sizeof(transport_state.slip_rx));
 
-	/* Get negotiated MTU */
-	struct bt_conn_info info;
-	if (bt_conn_get_info(conn, &info) == 0) {
-		/* ATT MTU includes 3-byte ATT header, usable payload is MTU - 3 */
-		transport_state.mtu = info.le.data_len->tx_max_len;
-		LOG_DBG("Connected, MTU: %u", transport_state.mtu);
-	} else {
-		transport_state.mtu = 20; /* Default BLE 4.0 */
-	}
+	LOG_DBG("Connected, initial ATT MTU: %u", bt_gatt_get_mtu(conn));
 
 	k_mutex_unlock(&transport_state.lock);
 
@@ -490,6 +485,12 @@ int lichen_ble_slip_send(const uint8_t *data, size_t len)
 	slip_buf[slip_len++] = SLIP_END;
 
 	for (size_t i = 0; i < len; i++) {
+		/* Bounds check: need at least 2 bytes for escape sequences */
+		if (slip_len + 2 > SLIP_RX_BUF_SIZE) {
+			k_mutex_unlock(&transport_state.lock);
+			LOG_ERR("SLIP encoding overflow at byte %zu", i);
+			return -EOVERFLOW;
+		}
 		switch (data[i]) {
 		case SLIP_END:
 			slip_buf[slip_len++] = SLIP_ESC;
@@ -505,6 +506,13 @@ int lichen_ble_slip_send(const uint8_t *data, size_t len)
 		}
 	}
 
+	/* Final bounds check for trailing END byte */
+	if (slip_len >= SLIP_RX_BUF_SIZE) {
+		k_mutex_unlock(&transport_state.lock);
+		LOG_ERR("SLIP encoding overflow before trailing END");
+		return -EOVERFLOW;
+	}
+
 	/* End with END byte */
 	slip_buf[slip_len++] = SLIP_END;
 
@@ -517,8 +525,12 @@ int lichen_ble_slip_send(const uint8_t *data, size_t len)
 		return -ENOENT;
 	}
 
-	/* Send in chunks matching the negotiated MTU */
-	uint16_t chunk_size = transport_state.mtu > 3 ? transport_state.mtu - 3 : 20;
+	/* Get current ATT MTU and calculate max GATT notification payload.
+	 * ATT MTU is fetched at send time because MTU exchange may occur
+	 * after the connection is established. The 3-byte overhead is for
+	 * the ATT notification header (1 byte opcode + 2 bytes handle). */
+	uint16_t att_mtu = bt_gatt_get_mtu(transport_state.conn);
+	uint16_t chunk_size = att_mtu > 3 ? att_mtu - 3 : 20;
 	size_t offset = 0;
 	int err = 0;
 

@@ -68,6 +68,13 @@ class SchedulerConfig:
     # ponytail: initial delay randomized to prevent thundering herd on mass power-on
     initial_delay_ms: int = 0  # Will be randomized at runtime if 0
 
+    def __post_init__(self) -> None:
+        """Validate configuration values."""
+        if self.interval_ms <= 0:
+            raise ValueError(f"interval_ms must be > 0, got {self.interval_ms}")
+        if self.jitter_ms < 0:
+            raise ValueError(f"jitter_ms must be >= 0, got {self.jitter_ms}")
+
 
 @dataclass
 class AnnounceScheduler:

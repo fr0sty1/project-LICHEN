@@ -21,6 +21,23 @@
 #define ANNOUNCE_APP_DATA_MAX_LEN \
 	(ANNOUNCE_SIGNED_MAX_LEN - ANNOUNCE_SIGNED_PREFIX_LEN)
 
+/*
+ * LOCK ORDERING:
+ *
+ * When acquiring multiple mutexes, the following order MUST be respected
+ * to prevent deadlock:
+ *
+ *   1. ingest_mutex   (outermost - serializes ingest operations)
+ *   2. announce_mutex (protects announce_peers[])
+ *   3. observer_mutex (protects announce_observers[])
+ *
+ * Rules:
+ * - ingest_mutex and announce_mutex may be held together (ingest first)
+ * - observer_mutex is always acquired and released independently
+ * - Never acquire ingest_mutex while holding announce_mutex
+ * - Never acquire announce_mutex while holding observer_mutex
+ */
+
 struct announce_peer_pin {
 	bool active;
 	uint8_t iid[LICHEN_ANNOUNCE_IID_LEN];
@@ -373,13 +390,11 @@ int lichen_announce_register_app_data_observer_ex(
 {
 	struct announce_observer *free_slot = NULL;
 
-	k_mutex_lock(&observer_mutex, K_FOREVER);
 	if (cb == NULL) {
-		memset(announce_observers, 0, sizeof(announce_observers));
-		k_mutex_unlock(&observer_mutex);
-		return 0;
+		return -EINVAL;
 	}
 
+	k_mutex_lock(&observer_mutex, K_FOREVER);
 	for (size_t i = 0U; i < ARRAY_SIZE(announce_observers); i++) {
 		if (!announce_observers[i].active) {
 			if (free_slot == NULL) {
@@ -512,12 +527,15 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 	seq = increment_seq_locked();
 
 	/* Build signed data: iid || pubkey || seq_num || app_data */
-	/* SECURITY: IID is derived from pubkey hash, but for signing we use
-	 * the EUI-64 directly since IID = EUI-64 with bit 6 flipped. */
+	/* SECURITY: IID is derived from pubkey hash to bind identity to the
+	 * cryptographic key material. Must match RX path (pubkey_to_iid). */
 	uint8_t iid[LICHEN_ANNOUNCE_IID_LEN];
 
-	memcpy(iid, sched.link_ctx->eui64, LICHEN_ANNOUNCE_IID_LEN);
-	iid[0] ^= 0x02U; /* EUI-64 to IID conversion */
+	ret = pubkey_to_iid(sched.link_ctx->ed25519_pk, iid);
+	if (ret < 0) {
+		k_mutex_unlock(&sched.mutex);
+		return ret;
+	}
 
 	/* SECURITY: Capture app_data_len while holding the lock to prevent race
 	 * condition with lichen_announce_sched_set_app_data(). Using this snapshot
@@ -548,6 +566,7 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 			     signed_data, signed_len, signature);
 
 	if (ret < 0) {
+		memset(signature, 0, sizeof(signature));
 		k_mutex_unlock(&sched.mutex);
 		return ret;
 	}
@@ -559,6 +578,7 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 	size_t frame_len = 1U + LICHEN_ANNOUNCE_MIN_LEN + app_data_len_snapshot;
 
 	if (buf_len < frame_len) {
+		memset(signature, 0, sizeof(signature));
 		return -ENOMEM;
 	}
 
@@ -578,6 +598,7 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 	pos += LICHEN_ANNOUNCE_PUBKEY_LEN;
 	memcpy(&buf[pos], signature, LICHEN_ANNOUNCE_SIGNATURE_LEN);
 	pos += LICHEN_ANNOUNCE_SIGNATURE_LEN;
+	memset(signature, 0, sizeof(signature));
 	if (app_data_len_snapshot > 0) {
 		/* SECURITY: Copy from signed_data (captured under lock) rather than
 		 * re-reading sched.app_data. This ensures consistency: the app_data

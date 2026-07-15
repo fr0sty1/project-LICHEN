@@ -19,6 +19,8 @@ pub enum CborError {
     InvalidInput,
     /// CBOR feature not implemented.
     NotImplemented,
+    /// Multiple value fields set in a single record (RFC 8428 violation).
+    MultipleValues,
 }
 
 impl From<BufferTooSmall> for CborError {
@@ -33,6 +35,7 @@ impl core::fmt::Display for CborError {
             Self::BufferTooSmall(e) => write!(f, "SenML-CBOR {}", e),
             Self::InvalidInput => write!(f, "invalid CBOR input"),
             Self::NotImplemented => write!(f, "CBOR feature not implemented"),
+            Self::MultipleValues => write!(f, "multiple value fields set (RFC 8428 violation)"),
         }
     }
 }
@@ -61,7 +64,7 @@ const L_T: u8 = 6; // time
 fn enc_head(out: &mut [u8], pos: usize, major: u8, n: u64) -> Result<usize, CborError> {
     match n {
         0..=23 => {
-            if pos >= out.len() {
+            if pos + 1 > out.len() {
                 return Err(BufferTooSmall::new(pos + 1, out.len()).into());
             }
             out[pos] = major | n as u8;
@@ -120,7 +123,7 @@ fn enc_f64(out: &mut [u8], pos: usize, f: f64) -> Result<usize, CborError> {
 }
 
 fn enc_bool(out: &mut [u8], pos: usize, b: bool) -> Result<usize, CborError> {
-    if pos >= out.len() {
+    if pos + 1 > out.len() {
         return Err(BufferTooSmall::new(pos + 1, out.len()).into());
     }
     out[pos] = if b { 0xf5 } else { 0xf4 };
@@ -143,10 +146,33 @@ fn field_count(r: &Record<'_>) -> u64 {
     .count() as u64
 }
 
+/// Count how many value fields are set in a record.
+/// RFC 8428 Section 4.2 requires at most one of: value, string_value, bool_value.
+fn value_field_count(r: &Record<'_>) -> usize {
+    [
+        r.value.is_some(),
+        r.string_value.is_some(),
+        r.bool_value.is_some(),
+    ]
+    .iter()
+    .filter(|&&x| x)
+    .count()
+}
+
 /// Encode a slice of records into `out` as SenML-CBOR.
 ///
 /// Returns the number of bytes written, or an error if `out` is too small.
+/// Returns `CborError::MultipleValues` if any record has more than one value
+/// field set (RFC 8428 Section 4.2 requires at most one of value/string_value/bool_value).
 pub fn encode<'a>(records: &[Record<'a>], out: &mut [u8]) -> Result<usize, CborError> {
+    // SECURITY: Validate RFC 8428 Section 4.2 constraint before encoding.
+    // At most one of value/string_value/bool_value may be present per record.
+    for r in records {
+        if value_field_count(r) > 1 {
+            return Err(CborError::MultipleValues);
+        }
+    }
+
     let mut p = 0;
     p += enc_head(out, p, 0x80, records.len() as u64)?;
     for r in records {
@@ -220,7 +246,14 @@ fn dec_int(data: &[u8], pos: usize) -> Result<(i64, usize), CborError> {
     let (major, val, adv) = dec_head(data, pos)?;
     match major {
         0 => Ok((val as i64, adv)),
-        1 => Ok(((-(val as i64)).wrapping_sub(1), adv)),
+        1 => {
+            // CBOR major type 1 encodes -(n+1), so we compute -1 - val.
+            // Validate that val fits in i64 before casting to avoid wrapping.
+            if val > i64::MAX as u64 {
+                return Err(CborError::InvalidInput);
+            }
+            Ok((-(val as i64) - 1, adv))
+        }
         _ => Err(CborError::InvalidInput),
     }
 }
@@ -230,13 +263,20 @@ fn dec_text(data: &[u8], pos: usize) -> Result<(&str, usize), CborError> {
     if major != 3 {
         return Err(CborError::InvalidInput);
     }
-    let start = pos + adv;
-    let end = start + len as usize;
+    // Use checked arithmetic to prevent overflow on 16-bit platforms.
+    // len can be up to 65535 from 2-byte length encoding, which would
+    // wrap on 16-bit usize if added carelessly.
+    let len_usize = usize::try_from(len).map_err(|_| CborError::InvalidInput)?;
+    let start = pos.checked_add(adv).ok_or(CborError::InvalidInput)?;
+    let end = start
+        .checked_add(len_usize)
+        .ok_or(CborError::InvalidInput)?;
     if end > data.len() {
         return Err(CborError::InvalidInput);
     }
     let s = core::str::from_utf8(&data[start..end]).map_err(|_| CborError::InvalidInput)?;
-    Ok((s, adv + len as usize))
+    let total_adv = adv.checked_add(len_usize).ok_or(CborError::InvalidInput)?;
+    Ok((s, total_adv))
 }
 
 /// Convert IEEE 754 half-precision (binary16) bits to f64.
@@ -448,7 +488,10 @@ pub fn decode<'a>(data: &'a [u8], buf: &mut [Record<'a>]) -> Result<usize, CborE
     }
     let n_recs = n_recs as usize;
     if n_recs > buf.len() {
-        return Err(CborError::InvalidInput);
+        return Err(CborError::BufferTooSmall(BufferTooSmall::new(
+            n_recs,
+            buf.len(),
+        )));
     }
     for rec in buf.iter_mut().take(n_recs) {
         let (major, n_kv, adv) = dec_head(data, pos)?;
@@ -641,6 +684,64 @@ mod tests {
     }
 
     #[test]
+    fn encode_rejects_multiple_value_fields() {
+        // RFC 8428 Section 4.2: at most one of value/string_value/bool_value
+        let records = [Record {
+            name: Some("test"),
+            value: Some(42.0),
+            string_value: Some("also set"),
+            ..Record::empty()
+        }];
+        let mut buf = [0u8; 128];
+        assert_eq!(encode(&records, &mut buf), Err(CborError::MultipleValues));
+    }
+
+    #[test]
+    fn encode_rejects_all_three_value_fields() {
+        let records = [Record {
+            name: Some("test"),
+            value: Some(1.0),
+            string_value: Some("s"),
+            bool_value: Some(true),
+            ..Record::empty()
+        }];
+        let mut buf = [0u8; 128];
+        assert_eq!(encode(&records, &mut buf), Err(CborError::MultipleValues));
+    }
+
+    #[test]
+    fn encode_allows_single_value_field() {
+        // Each variant should work individually
+        let r1 = [Record {
+            value: Some(1.0),
+            ..Record::empty()
+        }];
+        let r2 = [Record {
+            string_value: Some("x"),
+            ..Record::empty()
+        }];
+        let r3 = [Record {
+            bool_value: Some(true),
+            ..Record::empty()
+        }];
+        let mut buf = [0u8; 64];
+        assert!(encode(&r1, &mut buf).is_ok());
+        assert!(encode(&r2, &mut buf).is_ok());
+        assert!(encode(&r3, &mut buf).is_ok());
+    }
+
+    #[test]
+    fn encode_allows_no_value_fields() {
+        // "Removed" records have no value field (RFC 8428 Section 4.2)
+        let records = [Record {
+            name: Some("temp"),
+            ..Record::empty()
+        }];
+        let mut buf = [0u8; 32];
+        assert!(encode(&records, &mut buf).is_ok());
+    }
+
+    #[test]
     fn decode_skips_unknown_keys() {
         // Hand-crafted: array(1) map(2) [key=99 val="x"] [key=0 val="temp"]
         // 0x81 = array(1), 0xa2 = map(2), 0x18 0x63 = uint(99), 0x61 0x78 = text("x")
@@ -690,7 +791,11 @@ mod tests {
         ];
         let mut buf = [0u8; 64];
         let n = encode(&records, &mut buf).unwrap();
-        assert_eq!(Record::parse(&buf[..n]), Err(CborError::InvalidInput));
+        // Record::parse uses a 1-element buffer, so 2 records => BufferTooSmall
+        assert!(matches!(
+            Record::parse(&buf[..n]),
+            Err(CborError::BufferTooSmall(_))
+        ));
     }
 
     #[test]

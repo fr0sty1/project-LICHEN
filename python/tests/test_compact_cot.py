@@ -252,6 +252,40 @@ class TestDecodeErrors:
         with pytest.raises(DecodeError, match="requires 17 bytes"):
             decode_pli(b"\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00")
 
+    def test_pli_latitude_out_of_range(self) -> None:
+        """Test decoding PLI with latitude outside [-90, 90] degrees."""
+        import struct
+
+        # Build a 17-byte PLI with lat=100_000_000 (out of range)
+        data = (
+            b"\x02"  # subtype: friendly ground
+            + struct.pack(">i", 100_000_000)  # lat: out of range
+            + struct.pack(">i", 0)  # lon: valid
+            + struct.pack(">h", 0)  # alt
+            + struct.pack(">H", 0)  # course
+            + struct.pack(">H", 0)  # speed
+            + b"\x00\x00"  # team, role
+        )
+        with pytest.raises(DecodeError, match="Latitude .* out of range"):
+            decode_pli(data)
+
+    def test_pli_longitude_out_of_range(self) -> None:
+        """Test decoding PLI with longitude outside [-180, 180] degrees."""
+        import struct
+
+        # Build a 17-byte PLI with lon=200_000_000 (out of range)
+        data = (
+            b"\x02"  # subtype: friendly ground
+            + struct.pack(">i", 0)  # lat: valid
+            + struct.pack(">i", 200_000_000)  # lon: out of range
+            + struct.pack(">h", 0)  # alt
+            + struct.pack(">H", 0)  # course
+            + struct.pack(">H", 0)  # speed
+            + b"\x00\x00"  # team, role
+        )
+        with pytest.raises(DecodeError, match="Longitude .* out of range"):
+            decode_pli(data)
+
     def test_chat_too_short(self) -> None:
         """Test decoding truncated chat."""
         with pytest.raises(DecodeError, match="requires at least 3 bytes"):

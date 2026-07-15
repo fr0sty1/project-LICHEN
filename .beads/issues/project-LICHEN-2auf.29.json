@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-2auf.29",
+  "title": "Fix child EC2 firmware upload",
+  "description": "Diagnose and fix the heterogeneous fleet runner firmware upload to temporary Zephyr EC2 instances. Verify SSH key injection, SCP transfer, explicit timeout/failure behavior, and successful ELF upload.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-15T15:17:09.515352Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-15T15:18:10.451292Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.29",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-15T15:17:09.51606Z"
+    }
+  ]
+}

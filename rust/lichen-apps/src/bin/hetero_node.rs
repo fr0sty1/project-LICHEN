@@ -55,10 +55,20 @@ fn main() {
     let x_pos: f64 = args[4].parse().expect("invalid x_pos");
     let duration_s: u64 = args[5].parse().expect("invalid duration");
 
-    eprintln!("rust-{}: connecting to {}:{} at x={}", node_id, host, port, x_pos);
+    eprintln!(
+        "rust-{}: connecting to {}:{} at x={}",
+        node_id, host, port, x_pos
+    );
 
     // Connect to lichen-sim
-    let mut radio = match lichen_embassy::sim::SimRadio::connect(host, port) {
+    let node_name = format!("rust-{}", node_id);
+    let mut radio = match lichen_embassy::sim::SimRadio::connect_registered(
+        host,
+        port,
+        "hetero-mesh",
+        &node_name,
+        (x_pos, 0.0, 0.0),
+    ) {
         Ok(r) => r,
         Err(e) => {
             eprintln!("rust-{}: connect failed: {:?}", node_id, e);
@@ -83,6 +93,36 @@ fn main() {
     let mut seq_num = 0u16;
     let mut buf = [0u8; 256];
 
+    let emit = |event: &str,
+                payload: &[u8],
+                status: &str,
+                ts_us: u128,
+                seq: Option<u16>,
+                peer_id: Option<String>,
+                rssi: Option<i32>,
+                snr: Option<i32>| {
+        let hash = format!("{:x}", Sha256::digest(payload));
+        println!(
+            "TELEMETRY {}",
+            serde_json::json!({
+                "schema": "lichen.telemetry.v1",
+                "event": event,
+                "ts_us": ts_us,
+                "node_id": format!("rust-{}", node_id),
+                "impl": "rust",
+                "tx_id": hash[..16].to_string(),
+                "packet_hash": hash[..16].to_string(),
+                "direction": if event.starts_with("tx") { "tx" } else { "rx" },
+                "peer_id": peer_id,
+                "payload_len": payload.len(),
+                "rssi_dbm": rssi,
+                "snr_db": snr,
+                "seq": seq,
+                "status": status,
+            })
+        );
+    };
+
     // Main loop
     while start.elapsed() < Duration::from_secs(duration_s) {
         // Build announce-like message
@@ -105,6 +145,16 @@ fn main() {
                 let hash = Sha256::digest(&announce);
                 let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
                 metrics.packet_hashes_sent.insert(hash_prefix);
+                emit(
+                    "tx",
+                    &announce,
+                    "ok",
+                    start.elapsed().as_micros(),
+                    Some(seq_num),
+                    None,
+                    None,
+                    None,
+                );
                 seq_num = seq_num.wrapping_add(1);
             }
             Err(e) => {
@@ -115,8 +165,9 @@ fn main() {
 
         // Receive window
         for _ in 0..5 {
-            match futures::executor::block_on(lichen_hal::Radio::receive(&mut radio, &mut buf, 1000))
-            {
+            match futures::executor::block_on(lichen_hal::Radio::receive(
+                &mut radio, &mut buf, 1000,
+            )) {
                 Ok(Some(pkt)) => {
                     metrics.rx_count += 1;
                     metrics.rx_bytes += pkt.len as u64;
@@ -125,11 +176,30 @@ fn main() {
                     let hash = Sha256::digest(&buf[..pkt.len]);
                     let hash_prefix: [u8; 16] = hash[..16].try_into().unwrap();
                     metrics.packet_hashes_received.insert(hash_prefix);
+                    let peer_id = if pkt.len > 12 && buf[0] == 0x15 && buf[1] == 0x01 {
+                        Some(buf[5..13].iter().map(|b| format!("{b:02x}")).collect())
+                    } else {
+                        None
+                    };
+                    emit(
+                        "rx",
+                        &buf[..pkt.len],
+                        "ok",
+                        start.elapsed().as_micros(),
+                        None,
+                        peer_id,
+                        None,
+                        None,
+                    );
 
                     // Check if it's from a different implementation
                     if pkt.len > 0 {
                         let dispatch = buf[0];
-                        let source = if dispatch == 0x15 { "announce" } else { "other" };
+                        let source = if dispatch == 0x15 {
+                            "announce"
+                        } else {
+                            "other"
+                        };
                         eprintln!(
                             "rust-{}: RX {} bytes, dispatch={:#x} ({})",
                             node_id, pkt.len, dispatch, source
@@ -141,10 +211,7 @@ fn main() {
                             let peer_iid: [u8; 8] = buf[5..13].try_into().unwrap();
                             if peer_iid != identity.iid {
                                 metrics.unique_peers.insert(peer_iid);
-                                eprintln!(
-                                    "rust-{}: announce from peer {:02x?}",
-                                    node_id, peer_iid
-                                );
+                                eprintln!("rust-{}: announce from peer {:02x?}", node_id, peer_iid);
                             }
                         }
                     }

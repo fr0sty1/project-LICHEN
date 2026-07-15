@@ -173,6 +173,11 @@ impl Dao {
             return Err(TooShort::new(Self::BASE_LEN, data.len()).into());
         }
         let kd = data[1];
+        // SECURITY: D-flag (bit 6) must be set; LICHEN requires DODAGID present (SCHC rule 4).
+        // If D=0, DAO base is only 4 bytes with no DODAGID, which would cause misparse.
+        if (kd >> 6) & 1 == 0 {
+            return Err(RplError::InvalidOption);
+        }
         Ok(Self {
             rpl_instance_id: data[0],
             ack_requested: (kd >> 7) & 1 == 1,
@@ -525,6 +530,34 @@ mod tests {
         assert_eq!(buf[1], 0xC0); // K=1, D=1
     }
 
+    #[test]
+    fn dao_rejects_d_flag_zero() {
+        // DAO with D=0 is invalid for LICHEN (requires DODAGID present)
+        let mut buf = [0u8; 20];
+        buf[0] = 0; // rpl_instance_id
+        buf[1] = 0x00; // K=0, D=0, flags=0 (invalid: D must be 1)
+        buf[2] = 0; // reserved
+        buf[3] = 1; // dao_sequence
+                    // buf[4..20] would be DODAGID, but D=0 means it shouldn't be present
+        assert_eq!(Dao::from_bytes(&buf), Err(RplError::InvalidOption));
+    }
+
+    #[test]
+    fn dao_accepts_d_flag_one() {
+        // DAO with D=1 should be accepted
+        let mut buf = [0u8; 20];
+        buf[0] = 0; // rpl_instance_id
+        buf[1] = 0x40; // K=0, D=1, flags=0 (valid)
+        buf[2] = 0; // reserved
+        buf[3] = 5; // dao_sequence
+        buf[4] = 0xfd; // DODAGID starts here
+        let dao = Dao::from_bytes(&buf).unwrap();
+        assert_eq!(dao.rpl_instance_id, 0);
+        assert!(!dao.ack_requested);
+        assert_eq!(dao.dao_sequence, 5);
+        assert_eq!(dao.dodag_id[0], 0xfd);
+    }
+
     // ── RPL Target option ─────────────────────────────────────────────────────
 
     #[test]
@@ -653,8 +686,8 @@ mod tests {
         let mut buf = [0u8; 300];
         // 200 PAD1 bytes followed by a valid target option
         let pad1_count = 200;
-        for i in 0..pad1_count {
-            buf[i] = OPT_PAD1;
+        for byte in buf.iter_mut().take(pad1_count) {
+            *byte = OPT_PAD1;
         }
         // Add a minimal RPL Target after the PAD1 bytes
         let mut target_addr = [0u8; 16];

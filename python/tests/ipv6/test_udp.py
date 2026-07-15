@@ -38,6 +38,22 @@ def test_checksum_is_nonzero_and_verifies() -> None:
     assert udp_checksum(SRC, DST, raw) == 0
 
 
+def test_verify_checksum_valid() -> None:
+    raw = UdpDatagram(5683, 5683, b"hello").to_bytes(SRC, DST)
+    assert UdpDatagram.verify_checksum(SRC, DST, raw) is True
+
+
+def test_verify_checksum_invalid() -> None:
+    raw = bytearray(UdpDatagram(5683, 5683, b"hello").to_bytes(SRC, DST))
+    raw[8] ^= 0xFF  # corrupt a payload byte
+    assert UdpDatagram.verify_checksum(SRC, DST, bytes(raw)) is False
+
+
+def test_verify_checksum_short_data() -> None:
+    # Data shorter than UDP_HEADER_LENGTH should return False
+    assert UdpDatagram.verify_checksum(SRC, DST, b"\x00" * 7) is False
+
+
 def test_from_bytes_rejects_short() -> None:
     with pytest.raises(UdpError):
         UdpDatagram.from_bytes(bytes(4))

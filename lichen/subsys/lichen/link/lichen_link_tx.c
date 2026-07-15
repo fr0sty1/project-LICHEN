@@ -19,15 +19,6 @@
 /* Error codes */
 #include <lichen/errno.h>
 
-/* AES-CCM for link-layer MIC */
-#include "aes_ccm.h"
-
-/* CRC32 for non-crypto MIC fallback */
-#include <zephyr/sys/crc.h>
-
-/* Shared nonce construction */
-#include "link_nonce.h"
-
 int lichen_link_tx(struct lichen_link_ctx *ctx,
 		   const uint8_t *ipv6_pkt, size_t ipv6_len,
 		   const uint8_t *dst_eui64,
@@ -36,6 +27,7 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	uint8_t compressed[256];
 	uint8_t l2_payload[256];
 	uint8_t payload_buf[256];
+	uint8_t signature[SCHNORR48_SIG_LEN];
 	int compressed_len;
 	size_t l2_payload_len;
 	size_t payload_len;
@@ -46,7 +38,6 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	uint16_t seqnum;
 	size_t off;
 	size_t frame_body_len;
-	size_t aad_len;
 	uint8_t mic_len;
 	int ret;
 
@@ -71,13 +62,18 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	 * - 2 bytes seqnum
 	 * - 0-8 bytes dst_addr (variable)
 	 * - at least 1 byte payload
-	 * - 4-8 bytes MIC
+	 * - 0 bytes for unsigned or 48-byte signature
 	 *
 	 * Absolute minimum: 1+1+1+2+1+4 = 10 bytes (broadcast, CRC32, 1-byte payload)
 	 * Practical minimum: 16 bytes handles most cases
 	 */
 	if (*out_len < 16) {
 		return -ENOMEM;
+	}
+
+	/* Link-layer encryption is reserved until all implementations support it. */
+	if (ctx->has_link_key) {
+		return -EPROTONOSUPPORT;
 	}
 
 	/* Step 1: Compress IPv6 packet with SCHC */
@@ -110,25 +106,31 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		return seq_err;
 	}
 
-	/* Step 2: If signing enabled (has_key set), compute Schnorr-48 signature */
+	/* Step 2: A signature occupies the MIC field, not the payload. */
 	if (ctx->has_key) {
-		/* Signature is appended to the authenticated L2 payload. */
-		if (l2_payload_len + SCHNORR48_SIG_LEN > sizeof(payload_buf)) {
+		if (l2_payload_len > sizeof(payload_buf)) {
 			return -EMSGSIZE;
 		}
 
 		memcpy(payload_buf, l2_payload, l2_payload_len);
+		payload_len = l2_payload_len;
+		mic_len = SCHNORR48_SIG_LEN;
+		frame_body_len = (LICHEN_FRAME_PAYLOAD_OFFSET(dst_addr_len) -
+				  LICHEN_FRAME_LEN_FIELD_LEN) + payload_len + mic_len;
+		if (frame_body_len > 255) {
+			return -EMSGSIZE;
+		}
 
-		if (schnorr48_sign_frame(epoch, seqnum,
+		if (schnorr48_sign_frame((uint8_t)frame_body_len,
+					 (uint8_t)(addr_mode | 0x20),
+					 epoch, seqnum,
 					 dst_addr, dst_addr_len,
 					 l2_payload, l2_payload_len,
 					 ctx->ed25519_sk, ctx->ed25519_pk,
-					 &payload_buf[l2_payload_len]) != 0) {
+					 signature) != 0) {
 			ret = -EINVAL;
 			goto cleanup;
 		}
-
-		payload_len = l2_payload_len + SCHNORR48_SIG_LEN;
 	} else {
 		/* No signature */
 		if (l2_payload_len > sizeof(payload_buf)) {
@@ -138,12 +140,12 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		payload_len = l2_payload_len;
 	}
 
-	/* MIC length: 8 bytes for AES-CCM-64, 4 bytes for CRC32 fallback */
-	mic_len = ctx->has_link_key ? LICHEN_MIC_64_LEN : LICHEN_MIC_32_LEN;
+	/* S=0 frames have no MIC. */
+	if (!ctx->has_key) {
+		mic_len = 0U;
+	}
 
-	/* Calculate frame body length (everything after the length byte):
-	 * LLSec(1) + Epoch(1) + SeqNum(2) + DstAddr(0/2/8) + Payload + MIC(4/8)
-	 */
+	/* Calculate frame body length (everything after the length byte). */
 	frame_body_len = (LICHEN_FRAME_PAYLOAD_OFFSET(dst_addr_len) -
 			  LICHEN_FRAME_LEN_FIELD_LEN) + payload_len + mic_len;
 
@@ -166,16 +168,12 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 
 	/* LLSec byte:
 	 * bits 0-1: AddrMode
-	 * bit 2: MicLength (0 = 32-bit, 1 = 64-bit)
+	 * bit 2: MicLength selector (retained when S=0 has no MIC)
 	 * bit 5: signature present
-	 * bit 6: encrypted when a link key is present
+	 * bit 6: encrypted (unsupported at this layer)
 	 * bit 7: reserved (0)
 	 */
 	out_frame[off] = addr_mode & 0x03;
-	if (ctx->has_link_key) {
-		out_frame[off] |= 0x04; /* 64-bit MIC */
-		out_frame[off] |= 0x40; /* encrypted */
-	}
 	if (ctx->has_key) {
 		out_frame[off] |= 0x20; /* signature present */
 	}
@@ -194,64 +192,12 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		off += dst_addr_len;
 	}
 
-	aad_len = off;
-
-	/* Step 4/5: Protect payload and append MIC */
-	if (ctx->has_link_key) {
-		/*
-		 * AES-CCM-64 encryption and MIC.
-		 *
-		 * AAD = length || LLSec || epoch || seqnum || dst_addr.
-		 * Plaintext = compressed payload plus optional Schnorr-48 signature.
-		 * Nonce = eui64 || epoch || seqnum || 0x0000
-		 */
-		uint8_t nonce[AES_CCM_NONCE_LEN];
-
-		build_link_nonce(nonce, ctx->eui64, epoch, seqnum);
-
-		if (lichen_aes_ccm_encrypt(ctx->link_key, nonce,
-					   &out_frame[0], aad_len,
-					   payload_buf, payload_len,
-					   &out_frame[off]) != 0) {
-			ret = -EINVAL;
-			goto cleanup;
-		}
-
-		off += payload_len + AES_CCM_TAG_LEN;
-	} else {
-		/* Append plaintext payload before computing the CRC32 fallback. */
-		memcpy(&out_frame[off], payload_buf, payload_len);
-		off += payload_len;
-#ifdef CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC
-#warning "CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC is enabled - CRC32 MIC provides NO authentication, frames can be forged!"
-		/*
-		 * CRC32 fallback (no link key configured).
-		 *
-		 * SECURITY LIMITATION: CRC32 provides error detection only, NOT
-		 * authentication. An attacker can trivially compute valid CRC32
-		 * values and forge frames. This mode is suitable only for:
-		 *   - Development and testing
-		 *   - Environments where link-layer forgery is acceptable
-		 *   - Networks with higher-layer authentication (e.g., OSCORE)
-		 *
-		 * For production deployments requiring link-layer authentication,
-		 * configure CONFIG_LICHEN_LINK_KEY to enable AES-CCM-64 MIC.
-		 */
-		uint32_t mic = crc32_ieee(&out_frame[1], off - 1);
-
-		/* Append 32-bit MIC (little-endian per CRC32 convention) */
-		out_frame[off++] = (uint8_t)(mic & 0xFF);
-		out_frame[off++] = (uint8_t)((mic >> 8) & 0xFF);
-		out_frame[off++] = (uint8_t)((mic >> 16) & 0xFF);
-		out_frame[off++] = (uint8_t)((mic >> 24) & 0xFF);
-#else
-		/*
-		 * No link key and CRC32 fallback not enabled.
-		 * Require CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC=y to use CRC32 mode.
-		 */
-		ret = -EINVAL;
-		goto cleanup;
-#endif
+	/* Append plaintext payload before the signature (if any). */
+	memcpy(&out_frame[off], payload_buf, payload_len);
+	off += payload_len;
+	if (ctx->has_key) {
+		memcpy(&out_frame[off], signature, SCHNORR48_SIG_LEN);
+		off += SCHNORR48_SIG_LEN;
 	}
 
 	*out_len = off;
@@ -263,6 +209,7 @@ cleanup:
 	 * compressed packet data, signatures, or partial frame data.
 	 */
 	memset(payload_buf, 0, sizeof(payload_buf));
+	memset(signature, 0, sizeof(signature));
 	memset(l2_payload, 0, sizeof(l2_payload));
 	memset(compressed, 0, sizeof(compressed));
 	return ret;

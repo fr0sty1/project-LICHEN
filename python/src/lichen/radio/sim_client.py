@@ -186,6 +186,14 @@ class SimRadio:
             )
             return True
         elif msg_type == MSG_TX_FAIL:
+            packet_hash = hashlib.sha256(payload).hexdigest()[:16]
+            logger.warning(
+                "tx_fail",
+                node_id=self._node_id,
+                len=len(payload),
+                hex=payload.hex(),
+                packet_hash=packet_hash,
+            )
             return False
         elif msg_type == MSG_ERR:
             code, err_msg = decode_err(response[1:])
@@ -383,16 +391,22 @@ class SimRadio:
             (msg_len,) = struct.unpack("<I", length_data)
 
             if msg_len == 0:
-                # Close and invalidate stream on protocol error to prevent desync
-                await self._stream.aclose()
-                self._stream = None
+                # Close and invalidate stream on protocol error to prevent desync.
+                # Use try/finally to ensure _stream is cleared even if aclose() fails.
+                try:
+                    await self._stream.aclose()
+                finally:
+                    self._stream = None
                 raise ProtocolError("Received zero-length message")
             if msg_len > MAX_MESSAGE_LENGTH:
                 # Close and invalidate the stream: we've read the length header
                 # but not the body, so the protocol is now desynced. Closing
                 # prevents subsequent reads from starting mid-message.
-                await self._stream.aclose()
-                self._stream = None
+                # Use try/finally to ensure _stream is cleared even if aclose() fails.
+                try:
+                    await self._stream.aclose()
+                finally:
+                    self._stream = None
                 raise ProtocolError(
                     f"Message length {msg_len} exceeds maximum {MAX_MESSAGE_LENGTH}"
                 )

@@ -46,6 +46,8 @@ BUILD_ASSERT(LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN <
 	     "MeshCore channel V3 header must fit in a frame");
 BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_PENDING_EVENTS <= UINT8_MAX,
 	     "Pending event queue indices are uint8_t");
+BUILD_ASSERT(LICHEN_MESHCORE_FRAME_MAX <= UINT16_MAX,
+	     "Frame max exceeds uint16_t limit for length fields");
 
 static int enqueue(struct lichen_meshcore_adapter *adapter,
 		   const uint8_t *frame, size_t len)
@@ -122,6 +124,9 @@ static void copy_fixed_string(uint8_t *dst, size_t dst_len,
 		len = dst_len;
 	}
 	memcpy(dst, src, len);
+	if (len < dst_len) {
+		memset(dst + len, 0, dst_len - len);
+	}
 }
 
 #if IS_ENABLED(CONFIG_LICHEN_APP_IDENTITY)
@@ -317,6 +322,10 @@ static int encode_pending_text(const struct lichen_meshcore_pending_event *event
 	size_t len = LICHEN_MESHCORE_CHANNEL_MSG_V3_HEADER_LEN +
 		     event->payload_len;
 
+	/* SECURITY: Guard against corrupted payload_len reading beyond buffer */
+	if (event->payload_len > LICHEN_MESHCORE_FRAME_MAX) {
+		return -EINVAL;
+	}
 	if (out == NULL || out_len < len) {
 		return -ENOMEM;
 	}
@@ -1252,7 +1261,7 @@ int lichen_meshcore_adapter_emit_status(
 
 const struct lichen_meshcore_adapter_stats *
 lichen_meshcore_adapter_get_stats(
-	const struct lichen_meshcore_adapter *adapter)
+	const struct lichen_meshcore_adapter *_Nonnull adapter)
 {
-	return adapter == NULL ? NULL : &adapter->stats;
+	return &adapter->stats;
 }

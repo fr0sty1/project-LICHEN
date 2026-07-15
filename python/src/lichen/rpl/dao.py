@@ -56,28 +56,41 @@ class RplTarget:
 
 @dataclass
 class TransitInformation:
-    """Transit Information option (RFC 6550 6.7.8) carrying the parent address."""
+    """Transit Information option (RFC 6550 6.7.8) carrying the parent address.
 
-    parent_address: IPv6Address
+    Per RFC 6550, the Parent Address field is only present when the E (External)
+    flag is set in the first byte.
+    """
+
+    parent_address: IPv6Address | None = None
     path_lifetime: int = 255
     path_sequence: int = 0
     path_control: int = 0
 
     def to_option(self) -> RplOption:
-        data = (
-            bytes([0, self.path_control, self.path_sequence, self.path_lifetime])
-            + self.parent_address.packed
-        )
+        # E flag (bit 7) indicates Parent Address field is present
+        e_flag = 0x80 if self.parent_address is not None else 0x00
+        data = bytes([e_flag, self.path_control, self.path_sequence, self.path_lifetime])
+        if self.parent_address is not None:
+            data += self.parent_address.packed
         return RplOption(RplOptionType.TRANSIT_INFORMATION, data)
 
     @classmethod
     def from_option(cls, opt: RplOption) -> TransitInformation:
         if opt.type != RplOptionType.TRANSIT_INFORMATION:
             raise DaoError(f"not a Transit Information option: type {opt.type}")
-        if len(opt.data) < 4 + 16:
-            raise DaoError("Transit Information option missing parent address")
+        if len(opt.data) < 4:
+            raise DaoError("Transit Information option too short")
+        # E flag (bit 7) indicates Parent Address field is present (RFC 6550 6.7.8)
+        e_flag = opt.data[0] & 0x80
+        if e_flag:
+            if len(opt.data) < 4 + 16:
+                raise DaoError("Transit Information option missing parent address")
+            parent = IPv6Address(opt.data[4:20])
+        else:
+            parent = None
         return cls(
-            parent_address=IPv6Address(opt.data[4:20]),
+            parent_address=parent,
             path_control=opt.data[1],
             path_sequence=opt.data[2],
             path_lifetime=opt.data[3],

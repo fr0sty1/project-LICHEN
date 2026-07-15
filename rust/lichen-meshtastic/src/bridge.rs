@@ -12,7 +12,7 @@
 //! TEXT_MESSAGE_APP for CoAP message tunneling where appropriate.
 
 use crate::address::{AddressMapper, MeshtasticNodeId};
-use crate::{Data, MeshPacket, PortNum, Routing, mesh_packet, routing};
+use crate::{mesh_packet, routing, Data, MeshPacket, PortNum, Routing};
 use heapless::Vec;
 use lichen_core::addr::Ipv6Addr;
 
@@ -241,6 +241,12 @@ impl MeshtasticBridge {
                                 error: None,
                             })
                         }
+                        Some(routing::Variant::RouteRequest(id)) => {
+                            Ok(IncomingResult::RoutingResponse {
+                                request_id: id,
+                                error: None,
+                            })
+                        }
                         _ => Ok(IncomingResult::RoutingResponse {
                             request_id: data.request_id,
                             error: None,
@@ -382,7 +388,10 @@ impl MeshtasticBridge {
         };
 
         let mut payload = alloc::vec::Vec::new();
-        routing.encode(&mut payload).ok();
+        // Encoding to a growable Vec cannot fail (no I/O, no size limits)
+        routing
+            .encode(&mut payload)
+            .expect("protobuf encode to Vec cannot fail");
 
         let packet_id = self.next_packet_id;
         self.next_packet_id = self.next_packet_id.wrapping_add(1);
@@ -460,7 +469,7 @@ mod tests {
         // Create a minimal IPv6 packet (40 byte header)
         let mut ipv6_data = [0u8; 48];
         ipv6_data[0] = 0x60; // Version 6
-        // Set destination address to match mapper
+                             // Set destination address to match mapper
         let dst_addr = bridge.mapper().meshtastic_to_ipv6(dst_node);
         ipv6_data[24..40].copy_from_slice(&dst_addr.0);
 

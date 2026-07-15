@@ -336,6 +336,8 @@ pub fn kiss_decode(frame: &[u8]) -> Result<KissFrame<'_>, KissError> {
 pub struct KissReader {
     buffer: [u8; MAX_FRAME_SIZE * 2],
     len: usize,
+    /// Bytes discarded due to buffer overflow (cumulative).
+    discarded: usize,
 }
 
 impl Default for KissReader {
@@ -350,6 +352,7 @@ impl KissReader {
         Self {
             buffer: [0u8; MAX_FRAME_SIZE * 2],
             len: 0,
+            discarded: 0,
         }
     }
 
@@ -381,9 +384,15 @@ impl KissReader {
 
             // Now add remaining input
             let remaining = &data[to_copy..];
-            let to_copy2 = remaining.len().min(self.buffer.len() - self.len);
+            let available = self.buffer.len() - self.len;
+            let to_copy2 = remaining.len().min(available);
             self.buffer[self.len..self.len + to_copy2].copy_from_slice(&remaining[..to_copy2]);
             self.len += to_copy2;
+
+            // Track bytes that couldn't fit
+            if remaining.len() > available {
+                self.discarded += remaining.len() - available;
+            }
         }
     }
 
@@ -462,6 +471,20 @@ impl KissReader {
     /// Check if buffer is empty.
     pub fn is_empty(&self) -> bool {
         self.len == 0
+    }
+
+    /// Get the cumulative count of bytes discarded due to buffer overflow.
+    ///
+    /// This counter increments when `feed()` receives more data than can fit
+    /// in the buffer after overflow recovery. Check this periodically to detect
+    /// data loss in high-throughput scenarios.
+    pub fn discarded_bytes(&self) -> usize {
+        self.discarded
+    }
+
+    /// Reset the discarded byte counter to zero.
+    pub fn reset_discarded(&mut self) {
+        self.discarded = 0;
     }
 }
 
@@ -570,6 +593,9 @@ impl KissWriter {
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
+    use std::vec;
+
     use super::*;
 
     #[test]
@@ -939,6 +965,44 @@ mod tests {
         assert_eq!(KissCommand::from_u8(0x0F), Some(KissCommand::Return));
         assert_eq!(KissCommand::from_u8(0x07), None);
         assert_eq!(KissCommand::from_u8(0x10), None);
+    }
+
+    #[test]
+    fn test_reader_overflow_tracks_discarded() {
+        // Buffer is MAX_FRAME_SIZE * 2 = 4096 bytes
+        let mut reader = KissReader::new();
+        assert_eq!(reader.discarded_bytes(), 0);
+
+        // Fill the buffer with a FEND near the end
+        // Put a FEND at position 3996, so 100 bytes follow it
+        let mut fill = vec![0x41u8; MAX_FRAME_SIZE * 2 - 100];
+        fill.push(FEND);
+        fill.extend(vec![0x42u8; 99]);
+        reader.feed(&fill);
+        assert_eq!(reader.len(), MAX_FRAME_SIZE * 2);
+        assert_eq!(reader.discarded_bytes(), 0); // No overflow yet
+
+        // Now feed a huge amount that exceeds capacity even after shift
+        // After shift, buffer will have 100 bytes (from FEND to end)
+        // Available space: 4096 - 100 = 3996
+        // Feed 5000 bytes: first 0 fit (buffer full), triggers shift,
+        // then we copy remaining 5000 bytes but only 3996 fit.
+        // Discard: 5000 - 3996 = 1004
+        let big_feed = vec![0x43u8; 5000];
+        reader.feed(&big_feed);
+
+        // Should have discarded some bytes
+        let expected_discard = 5000 - (MAX_FRAME_SIZE * 2 - 100);
+        assert_eq!(
+            reader.discarded_bytes(),
+            expected_discard,
+            "Expected {} bytes to be discarded",
+            expected_discard
+        );
+
+        // Test reset
+        reader.reset_discarded();
+        assert_eq!(reader.discarded_bytes(), 0);
     }
 
     #[test]

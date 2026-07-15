@@ -2,11 +2,14 @@
   "id": "project-LICHEN-kd14",
   "title": "RREQ/RREP hop_limit and hop_count not validated before serialization",
   "description": "File: python/src/lichen/loadng/messages.py\nLines: 64, 100\n\nThe `hop_limit` and `hop_count` fields are serialized with `\u0026 0xFF` masking but no validation that they are in valid range (0-255 or more strictly 0-15 per MAX_HOP_LIMIT).\n\nProblem: If hop_limit is -1, `(-1) \u0026 0xFF = 255` which silently produces an invalid wire format. If hop_limit is 300, it becomes 44 silently.\n\nUnlike seq_num (which raises LoadngError if out of range), these fields are silently truncated.\n\nFix: Add validation before serialization:\n```python\nif not 0 \u003c= self.hop_limit \u003c= MAX_HOP_LIMIT:\n    raise LoadngError(f'hop_limit out of range: {self.hop_limit}')\n```",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:21:40.074327Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:21:40.074369Z"
+  "updated_at": "2026-07-13T04:57:42.839712Z",
+  "closed_at": "2026-07-13T04:57:42.839712Z",
+  "close_reason": "Closed"
 }

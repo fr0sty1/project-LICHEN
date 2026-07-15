@@ -92,6 +92,7 @@ class RenodeServer:
         self._writer: asyncio.StreamWriter | None = None
         self._connected = False
         self._sim_driver_task: asyncio.Task[None] | None = None
+        self._pending_tasks: set[asyncio.Task[None]] = set()
 
     async def start(self, host: str = "127.0.0.1", port: int = 5555) -> int:
         """Start server and add node to simulation. Returns actual port."""
@@ -128,6 +129,14 @@ class RenodeServer:
             with contextlib.suppress(asyncio.CancelledError):
                 await self._sim_driver_task
             self._sim_driver_task = None
+
+        # Cancel pending background tasks
+        for task in list(self._pending_tasks):
+            task.cancel()
+        if self._pending_tasks:
+            with contextlib.suppress(asyncio.CancelledError):
+                await asyncio.gather(*self._pending_tasks, return_exceptions=True)
+        self._pending_tasks.clear()
 
         if self._server:
             self._server.close()
@@ -243,6 +252,27 @@ class RenodeServer:
             raise RuntimeError("No Renode client connected")
         await _write_message(self._writer, data)
 
+    def _create_background_task(self, coro: asyncio.Coroutine[None, None, None]) -> None:
+        """Create a tracked background task with exception handling.
+
+        The task is added to _pending_tasks and automatically removed when done.
+        Exceptions are logged rather than left unhandled.
+        """
+        task = asyncio.create_task(coro)
+        self._pending_tasks.add(task)
+
+        def on_done(t: asyncio.Task[None]) -> None:
+            self._pending_tasks.discard(t)
+            if t.cancelled():
+                return
+            exc = t.exception()
+            if exc is not None:
+                logger.debug(
+                    "Background task failed for %s: %s", self._node_id, exc
+                )
+
+        task.add_done_callback(on_done)
+
     def _on_rx_packet(self, payload: bytes, rssi: int, snr: int) -> None:
         """Callback for push-based packet arrival.
 
@@ -257,7 +287,7 @@ class RenodeServer:
             logger.warning("RX packet but no Renode connected for %s", self._node_id)
             return
         msg = encode_rx_packet(payload, rssi, snr)
-        asyncio.create_task(self.push_to_renode(msg))
+        self._create_background_task(self.push_to_renode(msg))
 
     def _on_rx_timeout(self) -> None:
         """Callback for push-based RX timeout.
@@ -268,7 +298,7 @@ class RenodeServer:
             logger.warning("RX timeout but no Renode connected for %s", self._node_id)
             return
         msg = encode_rx_timeout_push()
-        asyncio.create_task(self.push_to_renode(msg))
+        self._create_background_task(self.push_to_renode(msg))
 
 
 async def start_renode_server(
