@@ -206,6 +206,36 @@ int lichen_link_next_tx(struct lichen_link_ctx *_Nonnull ctx,
  */
 void lichen_link_set_epoch(struct lichen_link_ctx *_Nonnull ctx, uint8_t epoch);
 
+#ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
+/**
+ * @brief Compute and persist this boot's TX epoch.
+ *
+ * Loads the epoch saved by the previous boot from the settings subsystem,
+ * advances it by one (with 8-bit wrap), persists the new value, and
+ * returns it. Idempotent within a boot: repeated calls return the same
+ * value without advancing or re-writing. Install the result with
+ * lichen_link_set_epoch() after lichen_link_init().
+ *
+ * Advancing by one keeps the node's (epoch, seqnum) counter monotonically
+ * ahead of what peers remember in their replay windows, so frames after a
+ * reboot are not rejected as replays (lora_ipv6_mesh-3uhb).
+ *
+ * @return the TX epoch to use for this boot
+ */
+uint8_t lichen_link_epoch_advance_for_boot(void);
+
+#ifdef CONFIG_LICHEN_LINK_EPOCH_TEST_HOOKS
+/**
+ * @brief Test hook: clear the in-RAM boot-epoch cache (simulate a reboot).
+ *
+ * The persisted value in the settings backend is retained, so a following
+ * lichen_link_epoch_advance_for_boot() re-loads it and advances as if the
+ * node had rebooted. Testing only.
+ */
+void lichen_link_epoch_test_reset(void);
+#endif
+#endif /* CONFIG_LICHEN_LINK_EPOCH_PERSIST */
+
 /**
  * @brief Load a 128-bit AES key for link-layer MIC computation.
  *

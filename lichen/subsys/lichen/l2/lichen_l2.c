@@ -1558,6 +1558,13 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 			 * (project-LICHEN-725z.9) */
 			secure_zero(&link_ctx, sizeof(link_ctx));
 			lichen_link_init(&link_ctx, eui64_copy);
+#ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
+			/* Override the random boot epoch with the persisted,
+			 * monotonically-advancing one (lora_ipv6_mesh-3uhb).
+			 * Idempotent within a boot. */
+			lichen_link_set_epoch(&link_ctx,
+					      lichen_link_epoch_advance_for_boot());
+#endif
 			/*
 			 * Re-init replay table to match iface_init() behavior.
 			 * Without this, stale replay windows could persist or be
@@ -2051,6 +2058,12 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * is set (after RX callback registration). (project-LICHEN-i1gk.81)
 	 */
 	lichen_link_init(&link_ctx, eui64);
+#ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
+	/* Override the random boot epoch with the persisted, monotonically-
+	 * advancing one so a rebooted node is never seen as a replay
+	 * (lora_ipv6_mesh-3uhb). Idempotent within a boot. */
+	lichen_link_set_epoch(&link_ctx, lichen_link_epoch_advance_for_boot());
+#endif
 	lichen_replay_table_init(&replay_table);
 	/*
 	 * Explicitly initialize peer_table at boot.
