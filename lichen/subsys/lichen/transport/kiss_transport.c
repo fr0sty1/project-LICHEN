@@ -162,17 +162,27 @@ int kiss_encode(uint8_t port, uint8_t cmd,
 		return -EINVAL;
 	}
 
-	/* Check worst-case size: 2*data + cmd + 2 delimiters */
-	if (frame_max < data_len * 2u + 3u) {
+	/* Check worst-case size: 2*data + escaped cmd (2) + 2 delimiters */
+	if (frame_max < data_len * 2u + 4u) {
 		return -ENOMEM;
 	}
 
 	/* Start with FEND */
 	frame[fi++] = KISS_FEND;
 
-	/* Command byte: port in high nibble, command in low nibble */
+	/* Command byte: port in high nibble, command in low nibble.
+	 * Escape it like payload bytes: (port=12, cmd=0) makes it collide
+	 * with FEND (0xC0) and would corrupt the framing on the wire. */
 	cmd_byte = KISS_CMD_MAKE(port, cmd);
-	frame[fi++] = cmd_byte;
+	if (cmd_byte == KISS_FEND) {
+		frame[fi++] = KISS_FESC;
+		frame[fi++] = KISS_TFEND;
+	} else if (cmd_byte == KISS_FESC) {
+		frame[fi++] = KISS_FESC;
+		frame[fi++] = KISS_TFESC;
+	} else {
+		frame[fi++] = cmd_byte;
+	}
 
 	/* Encode data with escaping */
 	for (size_t i = 0; i < data_len; i++) {

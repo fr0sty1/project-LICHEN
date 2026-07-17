@@ -200,6 +200,45 @@ ZTEST(kiss_transport, test_encode_escape)
 }
 
 /**
+ * Test that a command byte colliding with FEND is escaped on the wire.
+ *
+ * (port=12, cmd=0) makes the command byte 0xC0 == FEND; an unescaped
+ * encoding produces a frame the decoder rejects as empty.
+ */
+ZTEST(kiss_transport, test_encode_cmd_byte_escaped)
+{
+	uint8_t data[] = { 0x01 };
+	uint8_t frame[32];
+	size_t frame_len;
+	struct kiss_decode_ctx ctx;
+	int ret;
+
+	ret = kiss_encode(12, KISS_CMD_DATA, data, sizeof(data),
+			  frame, sizeof(frame), &frame_len);
+	zassert_equal(ret, 0, "Encode should succeed");
+
+	/* Expected: FEND + FESC + TFEND + data + FEND */
+	zassert_equal(frame_len, 5, "Frame length should be 5");
+	zassert_equal(frame[0], KISS_FEND, "First byte should be FEND");
+	zassert_equal(frame[1], KISS_FESC, "Escaped cmd: FESC");
+	zassert_equal(frame[2], KISS_TFEND, "Escaped cmd: TFEND");
+	zassert_equal(frame[3], 0x01, "Data byte");
+	zassert_equal(frame[4], KISS_FEND, "Last byte should be FEND");
+
+	/* Round-trip through the stream decoder */
+	kiss_decode_init(&ctx);
+	for (size_t i = 0; i < frame_len - 1; i++) {
+		ret = kiss_decode_byte(&ctx, frame[i]);
+		zassert_equal(ret, 0, "Intermediate bytes should return 0");
+	}
+	ret = kiss_decode_byte(&ctx, frame[frame_len - 1]);
+	zassert_equal(ret, 1, "Final FEND should complete frame");
+	zassert_equal(ctx.cmd, 0xC0, "CMD should be 0xC0 (port 12, data)");
+	zassert_equal(ctx.len, 1, "Data length should be 1");
+	zassert_equal(ctx.buf[0], 0x01, "Data byte");
+}
+
+/**
  * Test KISS frame decoding.
  */
 ZTEST(kiss_transport, test_decode_simple)

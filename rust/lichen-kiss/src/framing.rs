@@ -247,19 +247,43 @@ pub fn kiss_encode_raw(
     let cmd_byte = (port << 4) | command;
 
     out[0] = FEND;
-    out[1] = cmd_byte;
+
+    // Escape the command byte too: (port=12, command=0) makes cmd_byte ==
+    // FEND (0xC0), which would corrupt the framing on the wire.
+    let data_start = match cmd_byte {
+        FEND => {
+            if out.len() < 4 {
+                return Err(KissError::BufferTooSmall);
+            }
+            out[1] = FESC;
+            out[2] = TFEND;
+            3
+        }
+        FESC => {
+            if out.len() < 4 {
+                return Err(KissError::BufferTooSmall);
+            }
+            out[1] = FESC;
+            out[2] = TFESC;
+            3
+        }
+        _ => {
+            out[1] = cmd_byte;
+            2
+        }
+    };
 
     // Escape data into remaining buffer (after FEND + CMD, before final FEND)
-    let escaped_len = kiss_escape(data, &mut out[2..])?;
+    let escaped_len = kiss_escape(data, &mut out[data_start..])?;
 
     // Check we have room for final FEND
-    if 2 + escaped_len >= out.len() {
+    if data_start + escaped_len >= out.len() {
         return Err(KissError::BufferTooSmall);
     }
 
-    out[2 + escaped_len] = FEND;
+    out[data_start + escaped_len] = FEND;
 
-    Ok(3 + escaped_len)
+    Ok(data_start + escaped_len + 1)
 }
 
 /// Decode a KISS frame.
@@ -295,12 +319,26 @@ pub fn kiss_decode(frame: &[u8]) -> Result<KissFrame<'_>, KissError> {
         return Err(KissError::EmptyFrame);
     }
 
-    let cmd_byte = frame[1];
+    // The command byte may be escaped on the wire (e.g. port=12, command=0
+    // makes it collide with FEND). Handle the two-byte escape form without
+    // giving up zero-copy for the data slice.
+    let (cmd_byte, data_start) = if frame[1] == FESC {
+        if end < 3 {
+            return Err(KissError::EmptyFrame);
+        }
+        match frame[2] {
+            TFEND => (FEND, 3),
+            TFESC => (FESC, 3),
+            b => return Err(KissError::InvalidEscape(b)),
+        }
+    } else {
+        (frame[1], 2)
+    };
     let port = (cmd_byte >> 4) & 0x0F;
     let command = cmd_byte & 0x0F;
 
     // Data is between CMD and final FEND (still escaped)
-    let data = &frame[2..end];
+    let data = &frame[data_start..end];
 
     Ok(KissFrame {
         port,
@@ -670,6 +708,38 @@ mod tests {
         assert_eq!(&out[2..4], b"Hi");
         assert_eq!(out[4], FEND);
         assert_eq!(len, 5);
+    }
+
+    #[test]
+    fn test_cmd_byte_colliding_with_fend_is_escaped() {
+        // (port=12, command=0) -> cmd_byte 0xC0 == FEND: must be escaped,
+        // and decode must reverse it.
+        let mut out = [0u8; 64];
+        let len = kiss_encode(12, KissCommand::Data, b"Hi", &mut out).unwrap();
+
+        assert_eq!(out[0], FEND);
+        assert_eq!(out[1], FESC);
+        assert_eq!(out[2], TFEND);
+
+        let frame = kiss_decode(&out[..len]).unwrap();
+        assert_eq!(frame.port, 12);
+        assert_eq!(frame.command, 0);
+        assert_eq!(frame.data, b"Hi");
+    }
+
+    #[test]
+    fn test_cmd_byte_colliding_with_fesc_is_escaped() {
+        // (port=13, command=11) -> cmd_byte 0xDB == FESC.
+        let mut out = [0u8; 64];
+        let len = kiss_encode_raw(13, 11, b"", &mut out).unwrap();
+
+        assert_eq!(out[1], FESC);
+        assert_eq!(out[2], TFESC);
+
+        let frame = kiss_decode(&out[..len]).unwrap();
+        assert_eq!(frame.port, 13);
+        assert_eq!(frame.command, 11);
+        assert!(frame.data.is_empty());
     }
 
     #[test]
