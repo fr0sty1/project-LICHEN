@@ -648,8 +648,8 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 				     out_ipv6, out_len, src_eui64);
 		if (ret == 0) {
 			/*
-			 * Signature verified - record but don't return yet.
-			 * Continue checking all remaining peers for constant time.
+			 * Signature verified - record it. In secure builds we keep
+			 * scanning all remaining peers for constant time (below).
 			 * Save output bytes and source address because later failed
 			 * attempts reuse the same caller-provided buffers.
 			 */
@@ -666,7 +666,23 @@ static int peer_try_all_pubkeys(struct lichen_link_rx_ctx *ctx,
 				memcpy(found_ipv6, out_ipv6, found_out_len);
 				memcpy(found_src_eui64, src_eui64, sizeof(found_src_eui64));
 			}
+#ifdef CONFIG_LICHEN_L2_DEV_PROVISIONING
+			/*
+			 * SECURITY: the constant-time all-peers scan defends peer
+			 * identity against a timing side-channel. Dev provisioning is
+			 * INSECURE by definition - its keys are publicly derivable
+			 * (lichen_l2_dev_provision) - so that defense protects nothing,
+			 * while each extra Schnorr-48 verify keeps the LoRa RX thread
+			 * from re-arming the radio. On a 64 MHz nRF52840 that made every
+			 * ambient frame cost N_peers verifies of deafness, dropping RX to
+			 * zero with a second pinned peer (bd shbh). The delivered result
+			 * is identical either way (first match always wins), so in dev
+			 * mode stop at the first match.
+			 */
+			break;
+#else
 			continue;
+#endif
 		}
 
 		/*
