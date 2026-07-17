@@ -478,8 +478,10 @@ static size_t base64_encode(const uint8_t *src, size_t src_len,
 
 		dst[j++] = base64_table[(n >> 18) & 0x3F];
 		dst[j++] = base64_table[(n >> 12) & 0x3F];
-		dst[j++] = (i + 1 < src_len) ? base64_table[(n >> 6) & 0x3F] : (char)'=';
-		dst[j++] = (i + 2 < src_len) ? base64_table[n & 0x3F] : (char)'=';
+		/* Cast the whole ternary: both char branches promote to int,
+		 * so the ternary's type is int and the store to dst narrows. */
+		dst[j++] = (char)((i + 1 < src_len) ? base64_table[(n >> 6) & 0x3F] : '=');
+		dst[j++] = (char)((i + 2 < src_len) ? base64_table[n & 0x3F] : '=');
 	}
 	dst[j] = '\0';
 	return j;

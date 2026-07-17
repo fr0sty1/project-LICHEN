@@ -156,7 +156,9 @@ jobs:
         run: |
           # Build with renode_console overlay for UART output in Renode.
           # Output dir matches test harness expectation: build/{board}_renode/
-          west build -b t_echo_nrf52840 lichen/apps/puck -d build/t_echo_renode -- \
+          # Hardware-model-v2 name; "t_echo_nrf52840" is not a valid board
+          # target in Zephyr 3.7 (t_echo has no hwmv1 compatibility alias).
+          west build -b t_echo/nrf52840 lichen/apps/puck -d build/t_echo_renode -- \
             -DEXTRA_DTC_OVERLAY_FILE=$GITHUB_WORKSPACE/lichen/boards/renode/nrf52840_lichen/support/renode_console.overlay \
             -DEXTRA_CONF_FILE=$GITHUB_WORKSPACE/lichen/boards/renode/nrf52840_lichen/support/renode_console.conf
 
