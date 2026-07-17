@@ -14,6 +14,7 @@
  */
 
 #include <errno.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <zephyr/kernel.h>
@@ -92,26 +93,6 @@ static void cbor_put_key(uint8_t *buf, size_t *off, const char *key)
 	cbor_put_tstr(buf, off, key);
 }
 
-static void cbor_put_uint(uint8_t *buf, size_t *off, uint32_t value)
-{
-	if (value < 24U) {
-		buf[(*off)++] = (uint8_t)value;
-	} else if (value <= UINT8_MAX) {
-		buf[(*off)++] = 0x18;
-		buf[(*off)++] = (uint8_t)value;
-	} else if (value <= UINT16_MAX) {
-		buf[(*off)++] = 0x19;
-		buf[(*off)++] = (uint8_t)(value >> 8);
-		buf[(*off)++] = (uint8_t)(value & 0xffU);
-	} else {
-		buf[(*off)++] = 0x1a;
-		buf[(*off)++] = (uint8_t)(value >> 24);
-		buf[(*off)++] = (uint8_t)(value >> 16);
-		buf[(*off)++] = (uint8_t)(value >> 8);
-		buf[(*off)++] = (uint8_t)(value & 0xffU);
-	}
-}
-
 /* --------------------------------------------------------------------------
  * IID and fingerprint formatting
  * -------------------------------------------------------------------------- */
@@ -128,7 +109,7 @@ int lichen_key_iid_to_str(const uint8_t iid[LICHEN_KEY_IID_LEN],
 	/* Format: xxxx:xxxx:xxxx:xxxx */
 	size_t pos = 0;
 
-	for (int i = 0; i < LICHEN_KEY_IID_LEN; i++) {
+	for (size_t i = 0; i < LICHEN_KEY_IID_LEN; i++) {
 		if (i > 0 && (i % 2) == 0) {
 			buf[pos++] = ':';
 		}
@@ -631,7 +612,6 @@ static size_t encode_iso8601_timestamp(uint32_t unix_time, char *buf, size_t buf
 static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 {
 	size_t off = 0;
-	size_t count = lichen_key_store_count();
 
 	if (buf == NULL || buf_size < 32) {
 		return 0;

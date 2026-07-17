@@ -46,8 +46,11 @@ extern "C" {
 /** IID string length: "xxxx:xxxx:xxxx:xxxx" + NUL */
 #define LICHEN_KEY_IID_STR_LEN 20U
 
-/** Fingerprint string length: "SHA256:" + 43 base64 chars + NUL */
-#define LICHEN_KEY_FINGERPRINT_STR_LEN 51U
+/* Fingerprint string length: "SHA256:" (7) + base64(32-byte SHA-256) + NUL.
+ * base64_encode() pads, so a 32-byte hash is 44 chars, not 43 → 7+44+1 = 52.
+ * The previous value (51) made lichen_key_pubkey_fingerprint() always fail:
+ * base64_encode needs out_len >= 45 for 44 chars + NUL, but 51-7 = 44. */
+#define LICHEN_KEY_FINGERPRINT_STR_LEN 52U
 
 /**
  * @brief Key trust levels per LCI spec

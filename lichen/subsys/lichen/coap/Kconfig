@@ -182,6 +182,12 @@ config LICHEN_COAP_MSG_LOG_LEVEL
 config LICHEN_COAP_KEYS
 	bool "LCI /keys resource handlers"
 	depends on LICHEN_COAP_SERVER
+	# coap_keys.c calls slip_transport_iface_get() and includes
+	# <lichen/transport/slip_transport.h> to scope admin (PUT/DELETE)
+	# access to the SLIP LCI interface. Without the SLIP transport the
+	# header is off the include path and the symbol is undefined at link,
+	# so this option genuinely requires it (bd a2a2).
+	depends on LICHEN_SLIP_TRANSPORT
 	select COAP_URI_WILDCARD
 	select TINYCRYPT_SHA256
 	help
