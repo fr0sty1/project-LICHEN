@@ -617,4 +617,100 @@ ZTEST(link_crypto, test_l2_payload_dispatch_distinguishes_global_coap_from_annou
 		      LICHEN_L2_PAYLOAD_UNKNOWN);
 }
 
+ZTEST(link_crypto, test_derive_seed_matches_sha512_vector)
+{
+	/* Independent oracle: Python hashlib,
+	 * SHA-512(test_seed || test_eui64)[0:32] */
+	static const uint8_t expected[LICHEN_SEED_LEN] = {
+		0x6d, 0x8c, 0x7e, 0x05, 0x86, 0x45, 0x07, 0x1d,
+		0x27, 0x00, 0x39, 0x21, 0x71, 0xb1, 0xeb, 0x47,
+		0xad, 0xfa, 0x47, 0x92, 0x96, 0xe8, 0xa1, 0x0a,
+		0xbc, 0xcb, 0xe1, 0x6d, 0x5e, 0x04, 0x15, 0x2d,
+	};
+	uint8_t derived[LICHEN_SEED_LEN];
+	int ret;
+
+	ret = lichen_link_derive_seed(test_seed, test_eui64, derived);
+	zassert_equal(ret, 0, "derive_seed failed: %d", ret);
+	zassert_mem_equal(derived, expected, sizeof(expected),
+			  "derived seed does not match SHA-512 vector");
+}
+
+ZTEST(link_crypto, test_derive_pubkey_matches_load_key)
+{
+	struct lichen_link_ctx ctx;
+	uint8_t pk[LICHEN_PK_LEN];
+	int ret;
+
+	ret = lichen_link_init(&ctx, test_eui64);
+	zassert_equal(ret, 0, "link init failed: %d", ret);
+	ret = lichen_link_load_key(&ctx, test_seed);
+	zassert_equal(ret, 0, "load_key failed: %d", ret);
+
+	ret = lichen_link_derive_pubkey(test_seed, pk);
+	zassert_equal(ret, 0, "derive_pubkey failed: %d", ret);
+	zassert_mem_equal(pk, ctx.ed25519_pk, LICHEN_PK_LEN,
+			  "derive_pubkey disagrees with load_key");
+}
+
+ZTEST(link_crypto, test_derived_node_keys_authenticate_cross_node)
+{
+	/* The property dev provisioning relies on: node B can verify node A's
+	 * signatures using only A's EUI-64 and the shared base seed. Also
+	 * checks distinct EUIs yield distinct keys. */
+	static const uint8_t eui_a[LICHEN_EUI64_LEN] = {
+		0x7a, 0x7f, 0xf0, 0x9d, 0xc8, 0x6c, 0x2c, 0x10
+	};
+	static const uint8_t eui_b[LICHEN_EUI64_LEN] = {
+		0xee, 0x45, 0x2f, 0x74, 0x41, 0x9c, 0xf2, 0x81
+	};
+	static const uint8_t payload[8] = "lichen!";
+	struct lichen_link_ctx node_a;
+	uint8_t seed_a[LICHEN_SEED_LEN];
+	uint8_t seed_b[LICHEN_SEED_LEN];
+	uint8_t pk_a[LICHEN_PK_LEN];
+	uint8_t pk_b[LICHEN_PK_LEN];
+	uint8_t signed_payload[sizeof(payload) + LICHEN_SIG_LEN];
+	int ret;
+
+	ret = lichen_link_derive_seed(test_seed, eui_a, seed_a);
+	zassert_equal(ret, 0, "derive seed A failed: %d", ret);
+	ret = lichen_link_derive_seed(test_seed, eui_b, seed_b);
+	zassert_equal(ret, 0, "derive seed B failed: %d", ret);
+	zassert_true(memcmp(seed_a, seed_b, LICHEN_SEED_LEN) != 0,
+		     "distinct EUIs must derive distinct seeds");
+
+	/* Node A loads its own derived key */
+	ret = lichen_link_init(&node_a, eui_a);
+	zassert_equal(ret, 0, "node A init failed: %d", ret);
+	ret = lichen_link_load_key(&node_a, seed_a);
+	zassert_equal(ret, 0, "node A load_key failed: %d", ret);
+
+	/* Node B derives A's (and its own) pubkey without loading */
+	ret = lichen_link_derive_pubkey(seed_a, pk_a);
+	zassert_equal(ret, 0, "derive pubkey A failed: %d", ret);
+	ret = lichen_link_derive_pubkey(seed_b, pk_b);
+	zassert_equal(ret, 0, "derive pubkey B failed: %d", ret);
+	zassert_true(memcmp(pk_a, pk_b, LICHEN_PK_LEN) != 0,
+		     "distinct EUIs must derive distinct pubkeys");
+
+	/* A signs; B verifies with the derived pubkey */
+	memcpy(signed_payload, payload, sizeof(payload));
+	ret = schnorr48_sign_frame(1, 42, NULL, 0U,
+				   payload, sizeof(payload),
+				   node_a.ed25519_sk, node_a.ed25519_pk,
+				   &signed_payload[sizeof(payload)]);
+	zassert_equal(ret, 0, "sign failed: %d", ret);
+	ret = schnorr48_verify_frame(1, 42, NULL, 0U,
+				     signed_payload, sizeof(signed_payload),
+				     pk_a);
+	zassert_equal(ret, 1, "verify with derived pubkey failed: %d", ret);
+
+	/* B's key must NOT verify A's signature */
+	ret = schnorr48_verify_frame(1, 42, NULL, 0U,
+				     signed_payload, sizeof(signed_payload),
+				     pk_b);
+	zassert_equal(ret, 0, "wrong pubkey must not verify");
+}
+
 ZTEST_SUITE(link_crypto, NULL, NULL, NULL, NULL, NULL);

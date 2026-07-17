@@ -119,6 +119,44 @@ int lichen_link_load_key(struct lichen_link_ctx *_Nonnull ctx,
 int lichen_link_generate_key(struct lichen_link_ctx *_Nonnull ctx);
 
 /**
+ * @brief Derive a per-node seed from a base seed and an EUI-64.
+ *
+ * out_seed = SHA-512(base_seed || eui64)[0:32]. Deterministic: any node
+ * that knows base_seed and a peer's EUI-64 can derive that peer's seed
+ * (and via lichen_link_derive_pubkey() its public key).
+ *
+ * SECURITY: This is a domain-separation helper, not a key-strengthening
+ * one. If base_seed is public (e.g. the INSECURE dev-provisioning seed),
+ * every derived key is public too. Its purpose is to give distinct nodes
+ * distinct keypairs so signature verification attributes frames to the
+ * correct peer (see project-LICHEN-wp4o for the shared-key replay-window
+ * collision this prevents).
+ *
+ * @param[in]  base_seed 32-byte base seed
+ * @param[in]  eui64     Node's EUI-64 address
+ * @param[out] out_seed  Derived 32-byte seed
+ * @return 0 on success, -EINVAL on NULL parameters
+ */
+int lichen_link_derive_seed(const uint8_t base_seed[_Nonnull LICHEN_SEED_LEN],
+			    const uint8_t eui64[_Nonnull LICHEN_EUI64_LEN],
+			    uint8_t out_seed[_Nonnull LICHEN_SEED_LEN]);
+
+/**
+ * @brief Compute the public key for a seed without loading it.
+ *
+ * Uses the same derivation as lichen_link_load_key() (SHA-512 + clamp +
+ * scalar-base multiply), so the result equals the ed25519_pk that
+ * lichen_link_load_key() would install for the same seed. Does not touch
+ * any link context or retain the secret key.
+ *
+ * @param[in]  seed   32-byte seed
+ * @param[out] out_pk Ed25519 public key
+ * @return 0 on success, -EINVAL on NULL parameters
+ */
+int lichen_link_derive_pubkey(const uint8_t seed[_Nonnull LICHEN_SEED_LEN],
+			      uint8_t out_pk[_Nonnull LICHEN_PK_LEN]);
+
+/**
  * @brief Increment and return the next TX sequence number.
  *
  * The sequence number wraps from 0xFFFF to 0x0000. When this happens,

@@ -1033,7 +1033,10 @@ static int dev_parse_eui64(const char *s, uint8_t out[LICHEN_EUI64_LEN])
 int lichen_l2_dev_provision(uint8_t peer_eui64_out[LICHEN_EUI64_LEN])
 {
 	uint8_t pubkey[LICHEN_L2_PUBKEY_LEN];
+	uint8_t peer_pubkey[LICHEN_L2_PUBKEY_LEN];
+	uint8_t self_eui64[LICHEN_EUI64_LEN];
 	uint8_t peer_eui64[LICHEN_EUI64_LEN];
+	uint8_t node_seed[LICHEN_SEED_LEN];
 	int ret;
 
 	ret = dev_parse_eui64(CONFIG_LICHEN_L2_DEV_PEER_EUI64, peer_eui64);
@@ -1043,15 +1046,42 @@ int lichen_l2_dev_provision(uint8_t peer_eui64_out[LICHEN_EUI64_LEN])
 		return ret;
 	}
 
-	ret = lichen_l2_load_key(dev_seed, pubkey);
+	/*
+	 * SECURITY: Per-node dev keys, derived as SHA-512(dev_seed || EUI-64).
+	 * Still INSECURE (dev_seed is public, so anyone can derive any node's
+	 * key), but each node now has a DISTINCT keypair so signature
+	 * verification attributes frames to the correct peer. With one shared
+	 * keypair, every dev node in RF range verified as "the" pinned peer
+	 * and all transmitters collapsed into a single replay window per
+	 * receiver; the highest random boot epoch then permanently starved
+	 * the others (project-LICHEN-wp4o).
+	 */
+	ret = lichen_lora_l2_copy_eui64(self_eui64);
+	if (ret != 0) {
+		LOG_ERR("lichen_l2: dev self EUI-64 read failed (%d)", ret);
+		return ret;
+	}
+	ret = lichen_link_derive_seed(dev_seed, self_eui64, node_seed);
+	if (ret == 0) {
+		ret = lichen_l2_load_key(node_seed, pubkey);
+	}
+	secure_zero(node_seed, sizeof(node_seed));
 	if (ret != 0) {
 		LOG_ERR("lichen_l2: dev key load failed (%d)", ret);
 		return ret;
 	}
 
-	/* Every dev node derives the same keypair from the shared seed, so
-	 * the peer's pubkey is our own. */
-	ret = lichen_peer_add(peer_eui64, pubkey);
+	ret = lichen_link_derive_seed(dev_seed, peer_eui64, node_seed);
+	if (ret == 0) {
+		ret = lichen_link_derive_pubkey(node_seed, peer_pubkey);
+	}
+	secure_zero(node_seed, sizeof(node_seed));
+	if (ret != 0) {
+		LOG_ERR("lichen_l2: dev peer key derivation failed (%d)", ret);
+		return ret;
+	}
+
+	ret = lichen_peer_add(peer_eui64, peer_pubkey);
 	if (ret != 0) {
 		LOG_ERR("lichen_l2: dev peer add failed (%d)", ret);
 		return ret;
