@@ -520,19 +520,47 @@ int main(void)
 				    K_MSEC(RX_WINDOW_MS), &rssi, &snr);
 
 		if (len > 0) {
-			LOG_INF("RX %d B rssi=%d snr=%d [%02x %02x]",
-				len, rssi, snr,
-				buf[0], len > 1 ? buf[1] : 0u);
+			/*
+			 * SECURITY: verify the beacon CRC32 MIC before trusting
+			 * or forwarding. Beacons are 9-byte broadcast frames:
+			 * [len=9][llsec=0x00][epoch][seqhi][seqlo][CRC32 LE over
+			 * bytes 1..4]. A corrupted or malformed beacon must not
+			 * be reported to the host as a neighbor. CRC32 is error
+			 * detection only, not authentication — beacons are
+			 * observational (mirrors lichen_l2.c). (lora_ipv6_mesh-dgnd)
+			 */
+			bool forward = true;
+
+			if (len == BEACON_TOTAL_LEN && buf[1] == 0x00) {
+				uint32_t mic = crc32_ieee(&buf[1], BEACON_HDR_LEN - 1);
+				uint32_t rx_mic = (uint32_t)buf[5] |
+						  ((uint32_t)buf[6] << 8) |
+						  ((uint32_t)buf[7] << 16) |
+						  ((uint32_t)buf[8] << 24);
+
+				if (mic != rx_mic) {
+					LOG_WRN("RX beacon CRC32 mismatch "
+						"(got 0x%08x want 0x%08x), dropping",
+						rx_mic, mic);
+					forward = false;
+				}
+			}
+
+			if (forward) {
+				LOG_INF("RX %d B rssi=%d snr=%d [%02x %02x]",
+					len, rssi, snr,
+					buf[0], len > 1 ? buf[1] : 0u);
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
-			s_radio_stats.rx_pkts++;
-			/* Forward to connected host.
-			 * src_iid is unknown at this layer — send zeros. */
-			static const uint8_t unknown_iid[8];
-			set_phase(PH_RX_FORWARD);
-			lichen_native_send_message_received(unknown_iid,
-							    buf, len,
-							    rssi, snr);
+				s_radio_stats.rx_pkts++;
+				/* Forward to connected host.
+				 * src_iid is unknown at this layer — send zeros. */
+				static const uint8_t unknown_iid[8];
+				set_phase(PH_RX_FORWARD);
+				lichen_native_send_message_received(unknown_iid,
+								    buf, len,
+								    rssi, snr);
 #endif
+			}
 		}
 
 		int64_t now = k_uptime_get();
