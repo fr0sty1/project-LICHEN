@@ -19,14 +19,22 @@ use std::vec::Vec;
 #[cfg(feature = "std")]
 pub use lichen_rpl::dodag::{DodagRole, DodagState, ParentCandidate, ROOT_RANK};
 #[cfg(feature = "std")]
-pub use lichen_rpl::message::{Dao, Dio, DodagConfig, RplError};
+pub use lichen_rpl::message::{
+    Dao, Dio, DodagConfig, OptionIter, RplError, RplTarget, TransitInfo, OPT_DODAG_CONFIG,
+    OPT_RPL_TARGET, OPT_TRANSIT_INFO,
+};
 #[cfg(feature = "std")]
 pub use lichen_rpl::routing::{DaoManager, RoutingTable, SourceRoutingHeader};
 #[cfg(feature = "std")]
-pub use lichen_rpl::trickle::{TrickleEvent, TrickleTimer};
+pub use lichen_rpl::trickle::{TrickleEvent, TrickleState, TrickleTimer};
 
 /// Maximum neighbors tracked.
 pub const MAX_NEIGHBORS: usize = 16;
+
+#[cfg(feature = "std")]
+const NON_STORING_MOP: u8 = 1;
+#[cfg(feature = "std")]
+const MRHOF_OCP: u16 = 1;
 
 /// Link quality estimate (ETX as f32: 1.0 = perfect link).
 pub type LinkEtx = f32;
@@ -187,6 +195,9 @@ pub struct Router {
     #[allow(dead_code)] // stored at construction; not yet consulted
     node_addr: [u8; 16],
     dodag_id: [u8; 16],
+    dodag_config: DodagConfig,
+    last_now_ms: Option<u32>,
+    monotonic_ms: u64,
     /// This node's geographic coordinates for GPSR (spec 9.7).
     /// None if GPS unavailable or privacy mode enabled.
     pub node_coords: Option<GeoCoords>,
@@ -196,13 +207,17 @@ pub struct Router {
 impl Router {
     /// Create a new router for a non-root node.
     pub fn new(node_addr: [u8; 16], dodag_id: [u8; 16]) -> Self {
+        let dodag_config = DodagConfig::default();
         Self {
             dodag: DodagState::new(RPL_INSTANCE_ID, dodag_id, 0),
-            trickle: TrickleTimer::new(256, 8, 10), // Imin=256ms, doublings=8, k=10
+            trickle: trickle_from_config(&dodag_config).expect("default Trickle config is valid"),
             dao_manager: DaoManager::new(node_addr, RPL_INSTANCE_ID, dodag_id),
             neighbors: NeighborTable::new(),
             node_addr,
             dodag_id,
+            dodag_config,
+            last_now_ms: None,
+            monotonic_ms: 0,
             node_coords: None,
         }
     }
@@ -210,13 +225,17 @@ impl Router {
     /// Create a new router as DODAG root.
     pub fn new_root(node_addr: [u8; 16]) -> Self {
         let dodag_id = node_addr; // Root's address is DODAG ID
+        let dodag_config = DodagConfig::default();
         Self {
             dodag: DodagState::as_root(RPL_INSTANCE_ID, dodag_id, 0),
-            trickle: TrickleTimer::new(256, 8, 10),
+            trickle: trickle_from_config(&dodag_config).expect("default Trickle config is valid"),
             dao_manager: DaoManager::as_root(node_addr, RPL_INSTANCE_ID, dodag_id),
             neighbors: NeighborTable::new(),
             node_addr,
             dodag_id,
+            dodag_config,
+            last_now_ms: None,
+            monotonic_ms: 0,
             node_coords: None,
         }
     }
@@ -225,32 +244,132 @@ impl Router {
     ///
     /// Updates neighbor table, feeds DODAG state machine, and returns whether
     /// the trickle timer should be reset (inconsistent DIO heard).
-    pub fn process_dio(&mut self, dio: &Dio, sender_addr: [u8; 16], rssi: i8, now_ms: u32) -> bool {
-        // Update neighbor table with default ETX (1.0 = perfect link)
-        let etx = self.neighbors.get_etx(&sender_addr).unwrap_or(1.0);
-        self.neighbors.update(&sender_addr, etx, rssi, now_ms);
+    pub fn process_dio(
+        &mut self,
+        dio: &Dio,
+        dio_bytes: &[u8],
+        sender_addr: [u8; 16],
+        rssi: i8,
+        now_ms: u32,
+    ) -> bool {
+        if self.dodag.is_root()
+            || dio.rpl_instance_id != self.dodag.rpl_instance_id
+            || dio.dodag_id != self.dodag_id
+            || dio.mode_of_operation != NON_STORING_MOP
+        {
+            return false;
+        }
 
-        // Check consistency before processing
+        let mut proposed_config = self.dodag_config.clone();
+        for option in OptionIter::new(Dio::options_tail(dio_bytes)) {
+            let Ok(option) = option else {
+                return false;
+            };
+            if option.opt_type == OPT_DODAG_CONFIG {
+                let Ok(parsed) = DodagConfig::from_bytes(option.data) else {
+                    return false;
+                };
+                if parsed.min_hop_rank_increase == 0
+                    || parsed.lifetime_unit == 0
+                    || parsed.ocp != MRHOF_OCP
+                    || trickle_from_config(&parsed).is_none()
+                {
+                    return false;
+                }
+                proposed_config = parsed;
+            }
+        }
+
+        let etx = self.neighbors.get_etx(&sender_addr).unwrap_or(1.0);
+        if version_cmp(dio.version, self.dodag.version).is_none_or(|ordering| ordering.is_lt()) {
+            return false;
+        }
+        if dio.rank != u16::MAX && !dio_is_admissible(&self.dodag, dio, etx, &proposed_config) {
+            return false;
+        }
+
         let was_joined = self.dodag.is_joined();
         let old_parent = self.dodag.preferred_parent;
+        let old_rank = self.dodag.rank;
+        let config_changed = proposed_config != self.dodag_config;
 
-        // Feed to DODAG state machine
+        // All fallible validation is complete; commit the staged configuration and DIO.
+        let applied = self.dodag.set_rank_config(
+            proposed_config.min_hop_rank_increase,
+            proposed_config.max_rank_increase,
+        );
+        debug_assert!(applied, "staged MinHopRankIncrease is non-zero");
+        self.dodag_config = proposed_config;
+        self.neighbors.update(&sender_addr, etx, rssi, now_ms);
         self.dodag.process_dio(dio, sender_addr, etx);
 
-        // Detect inconsistency: joined state changed, or parent changed
         let now_joined = self.dodag.is_joined();
         let new_parent = self.dodag.preferred_parent;
-        was_joined != now_joined || old_parent != new_parent
+        let inconsistent = config_changed
+            || old_rank != self.dodag.rank
+            || was_joined != now_joined
+            || old_parent != new_parent;
+        if inconsistent {
+            if config_changed {
+                self.trickle = trickle_from_config(&self.dodag_config)
+                    .expect("accepted Trickle config was validated");
+                self.trickle.start(now_ms, 0);
+            } else if self.trickle.state == TrickleState::Stopped {
+                self.trickle.start(now_ms, 0);
+            } else {
+                self.trickle.reset(now_ms, 0);
+            }
+        }
+        inconsistent
     }
 
     /// Process a received DAO message (root only).
     ///
     /// Returns true if a route was updated.
-    pub fn process_dao(&mut self, dao_bytes: &[u8]) -> bool {
+    pub fn process_dao(
+        &mut self,
+        dao_bytes: &[u8],
+        packet_source: [u8; 16],
+        authenticated_sender: [u8; 16],
+        now_seconds: u64,
+    ) -> bool {
         if !self.dodag.is_root() {
             return false;
         }
-        self.dao_manager.process_dao(dao_bytes)
+
+        self.dao_manager.expire_routes(now_seconds);
+
+        let Some(parents) = dao_parents_for_source(dao_bytes, &packet_source) else {
+            return false;
+        };
+        // A direct child signs its own DAO. Beyond one hop, L2 authentication
+        // establishes only the forwarding neighbor, not the DAO originator.
+        if parents
+            .iter()
+            .any(|parent| same_interface(parent, &self.node_addr))
+            && !same_interface(&authenticated_sender, &packet_source)
+        {
+            return false;
+        }
+
+        self.dao_manager.process_dao_at(
+            dao_bytes,
+            packet_source,
+            now_seconds,
+            u64::from(self.dodag_config.lifetime_unit),
+        )
+    }
+
+    /// Process a DAO using a wrapping millisecond clock.
+    pub fn process_dao_at_ms(
+        &mut self,
+        dao_bytes: &[u8],
+        packet_source: [u8; 16],
+        authenticated_sender: [u8; 16],
+        now_ms: u32,
+    ) -> bool {
+        let now_seconds = self.extend_now_ms(now_ms) / 1_000;
+        self.process_dao(dao_bytes, packet_source, authenticated_sender, now_seconds)
     }
 
     /// Build a DAO message to send to parent.
@@ -258,7 +377,8 @@ impl Router {
     /// Returns the DAO bytes, or empty vec if not joined.
     pub fn build_dao(&mut self) -> Vec<u8> {
         if let Some(parent) = self.dodag.preferred_parent {
-            self.dao_manager.build_dao(parent)
+            self.dao_manager
+                .build_dao_with_lifetime(parent, self.dodag_config.def_lifetime)
         } else {
             Vec::new()
         }
@@ -279,12 +399,24 @@ impl Router {
             flags: 0,
             dodag_id: self.dodag_id,
         };
-        dio.write_to(out).unwrap_or(0)
+        let Ok(base_len) = dio.write_to(out) else {
+            return 0;
+        };
+        let Ok(config_len) = self.dodag_config.write_to(&mut out[base_len..]) else {
+            return 0;
+        };
+        base_len + config_len
     }
 
     /// Get the route path for a destination (root only).
     pub fn lookup_route(&self, dst: &[u8; 16]) -> Option<&[[u8; 16]]> {
         self.dao_manager.routing_table.lookup(dst)
+    }
+
+    /// Expire finite routes and look up a destination using a wrapping clock.
+    pub fn lookup_route_at(&mut self, dst: &[u8; 16], now_ms: u32) -> Option<&[[u8; 16]]> {
+        self.expire_routes_at(now_ms);
+        self.lookup_route(dst)
     }
 
     /// Check trickle timer and return pending event.
@@ -299,16 +431,19 @@ impl Router {
 
     /// Handle trickle expire event. Doubles interval.
     pub fn trickle_expire(&mut self, now_ms: u32, rand_offset: u32) {
+        self.expire_routes_at(now_ms);
         self.trickle.expire(now_ms, rand_offset);
     }
 
     /// Reset trickle on inconsistency.
     pub fn trickle_reset(&mut self, now_ms: u32, rand_offset: u32) {
+        self.expire_routes_at(now_ms);
         self.trickle.reset(now_ms, rand_offset);
     }
 
     /// Start trickle timer.
     pub fn trickle_start(&mut self, now_ms: u32, rand_offset: u32) {
+        self.expire_routes_at(now_ms);
         self.trickle.start(now_ms, rand_offset);
     }
 
@@ -331,6 +466,41 @@ impl Router {
 
     pub fn preferred_parent(&self) -> Option<[u8; 16]> {
         self.dodag.preferred_parent
+    }
+
+    pub fn dodag_id(&self) -> [u8; 16] {
+        self.dodag_id
+    }
+
+    /// Set the active DODAG Configuration Lifetime Unit for DAO paths.
+    #[must_use]
+    pub fn set_dao_lifetime_unit(&mut self, lifetime_unit_seconds: u16) -> bool {
+        if lifetime_unit_seconds == 0 {
+            return false;
+        }
+        self.dodag_config.lifetime_unit = lifetime_unit_seconds;
+        true
+    }
+
+    fn expire_routes_at(&mut self, now_ms: u32) {
+        let now_seconds = self.extend_now_ms(now_ms) / 1_000;
+        self.dao_manager.expire_routes(now_seconds);
+    }
+
+    fn extend_now_ms(&mut self, now_ms: u32) -> u64 {
+        match self.last_now_ms {
+            None => self.monotonic_ms = 0,
+            Some(last) => {
+                let elapsed = now_ms.wrapping_sub(last);
+                if elapsed <= u32::MAX / 2 {
+                    self.monotonic_ms += u64::from(elapsed);
+                }
+            }
+        }
+        // An ambiguous large jump contributes no elapsed time, but rebasing here
+        // lets subsequent periodic ticks resume monotonic progress.
+        self.last_now_ms = Some(now_ms);
+        self.monotonic_ms
     }
 
     /// Set this node's geographic coordinates (from GPS or config).
@@ -396,6 +566,113 @@ impl Router {
     }
 }
 
+#[cfg(feature = "std")]
+fn trickle_from_config(config: &DodagConfig) -> Option<TrickleTimer> {
+    let imin = 1u32.checked_shl(u32::from(config.dio_int_min))?;
+    let multiplier = 1u32.checked_shl(u32::from(config.dio_int_doublings))?;
+    imin.checked_mul(multiplier)?;
+    Some(TrickleTimer::new(
+        imin,
+        u32::from(config.dio_int_doublings),
+        u32::from(config.dio_redundancy_const),
+    ))
+}
+
+#[cfg(feature = "std")]
+fn dio_is_admissible(dodag: &DodagState, dio: &Dio, etx: LinkEtx, config: &DodagConfig) -> bool {
+    if version_cmp(dio.version, dodag.version).is_none_or(|ordering| ordering.is_lt()) {
+        return false;
+    }
+    let link_cost = (etx * f32::from(config.min_hop_rank_increase)).round();
+    if !link_cost.is_finite() || link_cost < 0.0 {
+        return false;
+    }
+    let cost = dio.rank.saturating_add(link_cost as u16);
+    dio.rank >= config.min_hop_rank_increase
+        && cost != u16::MAX
+        && cost / config.min_hop_rank_increase > dio.rank / config.min_hop_rank_increase
+        && (dio.version != dodag.version
+            || dodag.rank == u16::MAX
+            || dio.rank / config.min_hop_rank_increase < dodag.rank / config.min_hop_rank_increase)
+}
+
+#[cfg(feature = "std")]
+fn version_cmp(new: u8, old: u8) -> Option<core::cmp::Ordering> {
+    if new == old {
+        return Some(core::cmp::Ordering::Equal);
+    }
+    if (new, old) == (0, 127) {
+        return Some(core::cmp::Ordering::Greater);
+    }
+    if (new < 128) == (old < 128) {
+        return (new.abs_diff(old) <= 16).then(|| new.cmp(&old));
+    }
+    let (linear, circular, new_is_linear) = if new >= 128 {
+        (new, old, true)
+    } else {
+        (old, new, false)
+    };
+    let circular_is_newer = 256u16 + u16::from(circular) - u16::from(linear) <= 16;
+    Some(match (new_is_linear, circular_is_newer) {
+        (true, true) | (false, false) => core::cmp::Ordering::Less,
+        (true, false) | (false, true) => core::cmp::Ordering::Greater,
+    })
+}
+
+#[cfg(feature = "std")]
+pub(crate) fn dao_parents_for_source(
+    dao_bytes: &[u8],
+    packet_source: &[u8; 16],
+) -> Option<Vec<[u8; 16]>> {
+    let dao = Dao::from_bytes(dao_bytes).ok()?;
+    let mut group_has_targets = false;
+    let mut group_contains_source = false;
+    let mut group_has_transit = false;
+    let mut source_group_finished = false;
+    let mut source_parents = Vec::new();
+    for option in OptionIter::new(dao.options_tail(dao_bytes)) {
+        let option = option.ok()?;
+        match option.opt_type {
+            OPT_RPL_TARGET => {
+                if group_has_transit {
+                    source_group_finished |= group_contains_source;
+                    group_contains_source = false;
+                    group_has_transit = false;
+                }
+                let advertised = RplTarget::from_bytes(option.data).ok()?;
+                if advertised.prefix_len != 128 {
+                    return None;
+                }
+                group_has_targets = true;
+                if source_group_finished && advertised.prefix == *packet_source {
+                    return None;
+                }
+                group_contains_source |= advertised.prefix == *packet_source;
+            }
+            OPT_TRANSIT_INFO => {
+                if !group_has_targets {
+                    return None;
+                }
+                let parsed = TransitInfo::from_bytes(option.data).ok()?;
+                if group_contains_source && !source_parents.contains(&parsed.parent_address) {
+                    source_parents.push(parsed.parent_address);
+                }
+                group_has_transit = true;
+            }
+            _ => {}
+        }
+    }
+    if !group_has_targets || !group_has_transit || source_parents.is_empty() {
+        return None;
+    }
+    Some(source_parents)
+}
+
+#[cfg(feature = "std")]
+fn same_interface(left: &[u8; 16], right: &[u8; 16]) -> bool {
+    left[8..] == right[8..]
+}
+
 /// Haversine distance in meters between two (lat, lon) points.
 fn haversine(c1: GeoCoords, c2: GeoCoords) -> f64 {
     const EARTH_RADIUS_M: f64 = 6_371_000.0;
@@ -408,8 +685,8 @@ fn haversine(c1: GeoCoords, c2: GeoCoords) -> f64 {
     let dlat = (lat2 - lat1).to_radians();
     let dlon = (lon2 - lon1).to_radians();
 
-    let a = (dlat / 2.0).sin().powi(2)
-        + lat1_rad.cos() * lat2_rad.cos() * (dlon / 2.0).sin().powi(2);
+    let a =
+        (dlat / 2.0).sin().powi(2) + lat1_rad.cos() * lat2_rad.cos() * (dlon / 2.0).sin().powi(2);
     // Clamp a to [0, 1] before sqrt to handle floating-point errors
     let c = 2.0 * a.min(1.0).sqrt().asin();
 
@@ -635,6 +912,19 @@ mod tests {
         addr
     }
 
+    fn ula(iid: u8) -> [u8; 16] {
+        let mut addr = [0u8; 16];
+        addr[0] = 0xfd;
+        addr[15] = iid;
+        addr
+    }
+
+    fn dio_bytes(dio: &Dio) -> [u8; Dio::BASE_LEN] {
+        let mut bytes = [0u8; Dio::BASE_LEN];
+        dio.write_to(&mut bytes).unwrap();
+        bytes
+    }
+
     #[test]
     fn neighbor_table_update_and_lookup() {
         let mut table = NeighborTable::new();
@@ -690,10 +980,477 @@ mod tests {
             dodag_id: link_local(0),
         };
         let root_addr = link_local(0);
-        let inconsistent = router.process_dio(&dio, root_addr, -40, 1000);
+        let inconsistent = router.process_dio(&dio, &dio_bytes(&dio), root_addr, -40, 1000);
         assert!(inconsistent, "should detect inconsistency on join");
         assert!(router.is_joined());
         assert_eq!(router.preferred_parent(), Some(root_addr));
+    }
+
+    #[test]
+    fn foreign_dios_do_not_mutate_neighbors() {
+        let dodag_id = link_local(0);
+        let mut router = Router::new(link_local(2), dodag_id);
+        let mut dio = Dio {
+            rpl_instance_id: RPL_INSTANCE_ID.wrapping_add(1),
+            version: 0,
+            rank: ROOT_RANK,
+            grounded: true,
+            mode_of_operation: 1,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+
+        assert!(!router.process_dio(&dio, &dio_bytes(&dio), link_local(3), -40, 1000));
+        assert_eq!(router.neighbors.count(), 0);
+
+        dio.rpl_instance_id = RPL_INSTANCE_ID;
+        dio.dodag_id = link_local(9);
+        assert!(!router.process_dio(&dio, &dio_bytes(&dio), link_local(4), -40, 2000));
+        assert_eq!(router.neighbors.count(), 0);
+    }
+
+    #[test]
+    fn dodag_config_literal_roundtrips_through_router() {
+        let dodag_id = link_local(1);
+        let sender = link_local(2);
+        let bytes = [
+            RPL_INSTANCE_ID,
+            0,
+            1,
+            0,
+            0x88,
+            0,
+            0,
+            0,
+            0xfe,
+            0x80,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            4,
+            14,
+            0,
+            8,
+            3,
+            10,
+            4,
+            0,
+            0,
+            128,
+            0,
+            1,
+            0,
+            255,
+            0,
+            30,
+        ];
+        let dio = Dio::from_bytes(&bytes).unwrap();
+        let mut router = Router::new(sender, dodag_id);
+
+        assert!(router.process_dio(&dio, &bytes, dodag_id, -40, 1000));
+        assert_eq!(router.dodag.min_hop_rank_increase, 128);
+        assert_eq!(router.dodag.max_rank_increase, 1024);
+        assert_eq!(router.dodag_config.lifetime_unit, 30);
+
+        let mut encoded = [0u8; 40];
+        assert_eq!(router.build_dio(&mut encoded), encoded.len());
+        assert_eq!(&encoded[Dio::BASE_LEN..], &bytes[Dio::BASE_LEN..]);
+        assert_eq!(router.build_dio(&mut [0u8; 39]), 0);
+    }
+
+    #[test]
+    fn malformed_dodag_config_does_not_mutate_router() {
+        let dodag_id = link_local(1);
+        let sender = link_local(2);
+        let mut router = Router::new(link_local(3), dodag_id);
+        let dio = Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: ROOT_RANK,
+            grounded: true,
+            mode_of_operation: 1,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+        let mut bytes = [0u8; 40];
+        dio.write_to(&mut bytes).unwrap();
+        DodagConfig::default()
+            .write_to(&mut bytes[Dio::BASE_LEN..])
+            .unwrap();
+
+        for offset in [32, 38] {
+            let mut malformed = bytes;
+            malformed[offset] = 0;
+            malformed[offset + 1] = 0;
+            assert!(!router.process_dio(&dio, &malformed, sender, -40, 1000));
+            assert_eq!(router.neighbors.count(), 0);
+            assert!(!router.is_joined());
+            assert_eq!(router.rank(), u16::MAX);
+            assert_eq!(router.preferred_parent(), None);
+            assert_eq!(router.dodag.min_hop_rank_increase, 256);
+            assert_eq!(router.dodag_config, DodagConfig::default());
+        }
+
+        assert!(!router.process_dio(&dio, &bytes[..39], sender, -40, 1000));
+        assert_eq!(router.neighbors.count(), 0);
+        assert!(!router.is_joined());
+        assert_eq!(router.dodag_config, DodagConfig::default());
+    }
+
+    fn dio_with_config(dio: &Dio, config: &DodagConfig) -> Vec<u8> {
+        let mut bytes = vec![0u8; Dio::BASE_LEN + 16];
+        dio.write_to(&mut bytes).unwrap();
+        config.write_to(&mut bytes[Dio::BASE_LEN..]).unwrap();
+        bytes
+    }
+
+    #[test]
+    fn stale_dio_config_does_not_mutate_router() {
+        let dodag_id = link_local(1);
+        let mut router = Router::new(link_local(3), dodag_id);
+        let mut dio = Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 1,
+            rank: ROOT_RANK,
+            grounded: true,
+            mode_of_operation: NON_STORING_MOP,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+        assert!(router.process_dio(&dio, &dio_bytes(&dio), link_local(2), -40, 1000));
+        let original_config = router.dodag_config.clone();
+        let original_parent = router.preferred_parent();
+        let original_timer = (
+            router.trickle.imin,
+            router.trickle.max_interval,
+            router.trickle.k,
+            router.trickle.interval_start,
+        );
+
+        dio.version = 0;
+        let mut stale_config = original_config.clone();
+        stale_config.min_hop_rank_increase = 128;
+        let bytes = dio_with_config(&dio, &stale_config);
+        assert!(!router.process_dio(&dio, &bytes, link_local(4), -30, 2000));
+        assert_eq!(router.dodag_config, original_config);
+        assert_eq!(router.preferred_parent(), original_parent);
+        assert_eq!(router.neighbors.count(), 1);
+        assert_eq!(
+            (
+                router.trickle.imin,
+                router.trickle.max_interval,
+                router.trickle.k,
+                router.trickle.interval_start,
+            ),
+            original_timer
+        );
+    }
+
+    #[test]
+    fn poisoned_parent_is_removed_and_resets_trickle() {
+        let dodag_id = link_local(1);
+        let parent = link_local(2);
+        let mut router = Router::new(link_local(3), dodag_id);
+        let mut dio = Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: ROOT_RANK,
+            grounded: true,
+            mode_of_operation: NON_STORING_MOP,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+        assert!(router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 1_000));
+        assert!(router.trickle.fire_transmit());
+        router.trickle.expire(1_008, 0);
+        assert_eq!(router.trickle.interval, 16);
+
+        dio.rank = u16::MAX;
+        assert!(router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 2_000));
+        assert!(!router.is_joined());
+        assert_eq!(router.preferred_parent(), None);
+        assert_eq!(router.trickle.interval, router.trickle.imin);
+        assert_eq!(router.trickle.interval_start, 2_000);
+    }
+
+    #[test]
+    fn accepted_config_applies_and_resets_trickle() {
+        let dodag_id = link_local(1);
+        let parent = link_local(2);
+        let mut router = Router::new(link_local(3), dodag_id);
+        let dio = Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: ROOT_RANK,
+            grounded: true,
+            mode_of_operation: NON_STORING_MOP,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+        let mut config = DodagConfig::default();
+        config.dio_int_min = 5;
+        config.dio_int_doublings = 4;
+        config.dio_redundancy_const = 7;
+        let bytes = dio_with_config(&dio, &config);
+
+        assert!(router.process_dio(&dio, &bytes, parent, -40, 1_000));
+        assert_eq!(router.trickle.imin, 32);
+        assert_eq!(router.trickle.max_interval, 512);
+        assert_eq!(router.trickle.k, 7);
+        assert_eq!(router.trickle.interval_start, 1_000);
+
+        config.dio_int_min = 31;
+        config.dio_int_doublings = 1;
+        let invalid = dio_with_config(&dio, &config);
+        assert!(!router.process_dio(&dio, &invalid, parent, -40, 2_000));
+        assert_eq!(router.trickle.imin, 32);
+        assert_eq!(router.trickle.interval_start, 1_000);
+    }
+
+    #[test]
+    fn root_advertises_its_actual_trickle_config() {
+        let root = Router::new_root(link_local(1));
+        let mut bytes = [0u8; Dio::BASE_LEN + 16];
+        assert_eq!(root.build_dio(&mut bytes), bytes.len());
+        let advertised = DodagConfig::from_bytes(&bytes[Dio::BASE_LEN + 2..]).unwrap();
+
+        assert_eq!(root.trickle.imin, 1 << advertised.dio_int_min);
+        assert_eq!(
+            root.trickle.max_interval,
+            root.trickle.imin << advertised.dio_int_doublings
+        );
+        assert_eq!(root.trickle.k, u32::from(advertised.dio_redundancy_const));
+    }
+
+    #[test]
+    fn root_ignores_neighbor_dodag_config() {
+        let root_addr = link_local(1);
+        let mut root = Router::new_root(root_addr);
+        let dio = Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 1,
+            rank: ROOT_RANK,
+            grounded: true,
+            mode_of_operation: NON_STORING_MOP,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id: root_addr,
+        };
+        let mut config = DodagConfig::default();
+        config.min_hop_rank_increase = 128;
+        let bytes = dio_with_config(&dio, &config);
+
+        assert!(!root.process_dio(&dio, &bytes, link_local(2), -40, 1000));
+        assert_eq!(root.rank(), ROOT_RANK);
+        assert_eq!(root.dodag_config, DodagConfig::default());
+        assert_eq!(root.neighbors.count(), 0);
+    }
+
+    #[test]
+    fn unsupported_mop_and_ocp_are_rejected_without_mutation() {
+        let dodag_id = link_local(1);
+        let mut router = Router::new(link_local(3), dodag_id);
+        let mut dio = Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: ROOT_RANK,
+            grounded: true,
+            mode_of_operation: 2,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+        assert!(!router.process_dio(&dio, &dio_bytes(&dio), link_local(2), -40, 1000));
+
+        dio.mode_of_operation = NON_STORING_MOP;
+        let mut config = DodagConfig::default();
+        config.ocp = 0;
+        let bytes = dio_with_config(&dio, &config);
+        assert!(!router.process_dio(&dio, &bytes, link_local(2), -40, 1000));
+        assert!(!router.is_joined());
+        assert_eq!(router.dodag_config, DodagConfig::default());
+        assert_eq!(router.neighbors.count(), 0);
+    }
+
+    #[test]
+    fn spoofed_dao_target_is_rejected_before_replay_state_changes() {
+        let root_addr = link_local(1);
+        let target = link_local(2);
+        let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
+        let dao = sender.build_dao(root_addr);
+        let mut root = Router::new_root(root_addr);
+
+        assert!(!root.process_dao(&dao, target, link_local(3), 0));
+        assert!(root.lookup_route(&target).is_none());
+        assert!(root.process_dao(&dao, target, target, 0));
+        assert_eq!(root.lookup_route(&target), Some([target].as_slice()));
+    }
+
+    #[test]
+    fn aggregated_dao_uses_parent_for_packet_source_group() {
+        let root_addr = ula(1);
+        let first_target = ula(2);
+        let packet_source = ula(3);
+        let source_parent = ula(2);
+        let mut first = DaoManager::new(first_target, RPL_INSTANCE_ID, root_addr);
+        let mut second = DaoManager::new(packet_source, RPL_INSTANCE_ID, root_addr);
+        let mut dao = first.build_dao(root_addr);
+        let second_dao = second.build_dao(source_parent);
+        let parsed = Dao::from_bytes(&second_dao).unwrap();
+        dao.extend_from_slice(parsed.options_tail(&second_dao));
+
+        assert_eq!(
+            dao_parents_for_source(&dao, &packet_source),
+            Some(vec![source_parent])
+        );
+    }
+
+    #[test]
+    fn dao_helper_returns_every_parent_for_source_group() {
+        let root_addr = ula(1);
+        let packet_source = ula(2);
+        let alternate_parent = ula(3);
+        let mut sender = DaoManager::new(packet_source, RPL_INSTANCE_ID, root_addr);
+        let mut dao = sender.build_dao(root_addr);
+        let transit = TransitInfo {
+            path_control: 1,
+            path_sequence: 241,
+            path_lifetime: 255,
+            parent_address: alternate_parent,
+        };
+        let mut option = [0u8; 22];
+        let option_len = transit.write_to(&mut option).unwrap();
+        dao.extend_from_slice(&option[..option_len]);
+
+        assert_eq!(
+            dao_parents_for_source(&dao, &packet_source),
+            Some(vec![root_addr, alternate_parent])
+        );
+    }
+
+    #[test]
+    fn processing_dao_expires_routes_with_active_lifetime_unit() {
+        let root_addr = link_local(1);
+        let first_target = link_local(2);
+        let second_target = link_local(3);
+        let mut first = DaoManager::new(first_target, RPL_INSTANCE_ID, root_addr);
+        let mut second = DaoManager::new(second_target, RPL_INSTANCE_ID, root_addr);
+        let first_dao = first.build_dao_with_lifetime(root_addr, 1);
+        let second_dao = second.build_dao(root_addr);
+        let mut root = Router::new_root(root_addr);
+        assert!(root.set_dao_lifetime_unit(10));
+
+        assert!(root.process_dao(&first_dao, first_target, first_target, 100));
+        assert!(root.lookup_route(&first_target).is_some());
+        assert!(root.process_dao(&second_dao, second_target, second_target, 110));
+        assert!(root.lookup_route(&first_target).is_none());
+        assert!(root.lookup_route(&second_target).is_some());
+    }
+
+    #[test]
+    fn finite_route_expires_during_idle_lookup_and_timer() {
+        let root_addr = link_local(1);
+        let target = link_local(2);
+        let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
+        let dao = sender.build_dao_with_lifetime(root_addr, 1);
+        let mut root = Router::new_root(root_addr);
+        assert!(root.set_dao_lifetime_unit(1));
+
+        assert!(root.process_dao_at_ms(&dao, target, target, 1_000));
+        assert!(root.lookup_route_at(&target, 1_999).is_some());
+        root.trickle_start(2_000, 0);
+        assert!(root.lookup_route(&target).is_none());
+    }
+
+    #[test]
+    fn dao_clock_extends_across_u32_wrap() {
+        let root_addr = link_local(1);
+        let target = link_local(2);
+        let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
+        let dao = sender.build_dao_with_lifetime(root_addr, 1);
+        let mut root = Router::new_root(root_addr);
+        assert!(root.set_dao_lifetime_unit(1));
+
+        assert!(root.process_dao_at_ms(&dao, target, target, u32::MAX - 500));
+        assert!(root.lookup_route_at(&target, 400).is_some());
+        assert!(root.lookup_route_at(&target, 600).is_none());
+    }
+
+    #[test]
+    fn dao_clock_resumes_after_ambiguous_large_gap() {
+        let root_addr = link_local(1);
+        let target = link_local(2);
+        let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
+        let dao = sender.build_dao_with_lifetime(root_addr, 1);
+        let mut root = Router::new_root(root_addr);
+        assert!(root.set_dao_lifetime_unit(1));
+
+        let start = 1_000u32;
+        let resumed = start.wrapping_add(u32::MAX / 2 + 1);
+        assert!(root.process_dao_at_ms(&dao, target, target, start));
+        assert!(root.lookup_route_at(&target, resumed).is_some());
+        assert!(root
+            .lookup_route_at(&target, resumed.wrapping_add(999))
+            .is_some());
+        assert!(root
+            .lookup_route_at(&target, resumed.wrapping_add(1_000))
+            .is_none());
+    }
+
+    #[test]
+    fn dao_uses_active_default_lifetime_and_zero_unit_is_rejected() {
+        let dodag_id = link_local(1);
+        let parent = link_local(2);
+        let mut router = Router::new(link_local(3), dodag_id);
+        let dio = Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: ROOT_RANK,
+            grounded: true,
+            mode_of_operation: NON_STORING_MOP,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+        let mut config = DodagConfig::default();
+        config.def_lifetime = 9;
+        let bytes = dio_with_config(&dio, &config);
+        assert!(router.process_dio(&dio, &bytes, parent, -40, 0));
+
+        let dao = router.build_dao();
+        let parsed = Dao::from_bytes(&dao).unwrap();
+        let lifetime = OptionIter::new(parsed.options_tail(&dao))
+            .filter_map(Result::ok)
+            .find(|option| option.opt_type == OPT_TRANSIT_INFO)
+            .map(|option| TransitInfo::from_bytes(option.data).unwrap().path_lifetime);
+        assert_eq!(lifetime, Some(9));
+
+        assert!(!router.set_dao_lifetime_unit(0));
+        assert_eq!(router.dodag_config.lifetime_unit, config.lifetime_unit);
     }
 
     #[test]

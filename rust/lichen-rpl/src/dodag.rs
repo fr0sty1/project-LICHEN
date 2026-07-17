@@ -14,37 +14,90 @@
 use std::collections::HashMap;
 
 #[cfg(feature = "std")]
+use core::cmp::Ordering;
+
+#[cfg(feature = "std")]
 use crate::message::Dio;
 
 pub const INFINITE_RANK: u16 = 0xFFFF;
-pub const ROOT_RANK: u16 = 256; // MinHopRankIncrease
 pub const MIN_HOP_RANK_INCREASE: u16 = 256;
+pub const ROOT_RANK: u16 = MIN_HOP_RANK_INCREASE;
 pub const MAX_RANK_INCREASE: u16 = 2048;
 pub const PARENT_SWITCH_THRESHOLD: u16 = 192;
+pub const MAX_PARENT_CANDIDATES: usize = 16;
 
 /// RFC 6550 Section 7.2: Lollipop sequence comparison for DODAG version.
 ///
-/// Values 0-127 are the linear region (restart); 128-255 are circular (normal).
-/// Returns true if `new_ver` is newer than `old_ver`.
+/// Values 128-255 are linear; 0-127 are circular. Values farther apart than
+/// the comparison window in the same region are incomparable.
+#[cfg(feature = "std")]
 const LOLLIPOP_CIRCULAR_BIT: u8 = 128;
+#[cfg(feature = "std")]
 const LOLLIPOP_SEQUENCE_WINDOW: u8 = 16;
 
-fn version_is_newer(new_ver: u8, old_ver: u8) -> bool {
-    match (
-        new_ver < LOLLIPOP_CIRCULAR_BIT,
-        old_ver < LOLLIPOP_CIRCULAR_BIT,
-    ) {
-        // Both in linear region (0-127): simple comparison
-        (true, true) => new_ver > old_ver,
-        // Both in circular region (128-255): modular comparison with window
-        (false, false) => {
-            let diff = new_ver.wrapping_sub(old_ver) & 0x7F;
-            diff > 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW
-        }
-        // Mixed: linear (restart) is always newer than circular
-        (true, false) => true,
-        (false, true) => false,
+#[cfg(feature = "std")]
+pub(crate) fn lollipop_cmp(a: u8, b: u8) -> Option<Ordering> {
+    if a == b {
+        return Some(Ordering::Equal);
     }
+    if (a < LOLLIPOP_CIRCULAR_BIT) == (b < LOLLIPOP_CIRCULAR_BIT) {
+        return (a.abs_diff(b) <= LOLLIPOP_SEQUENCE_WINDOW).then(|| a.cmp(&b));
+    }
+
+    let (linear, circular, a_is_linear) = if a >= LOLLIPOP_CIRCULAR_BIT {
+        (a, b, true)
+    } else {
+        (b, a, false)
+    };
+    let circular_is_newer =
+        256u16 + u16::from(circular) - u16::from(linear) <= u16::from(LOLLIPOP_SEQUENCE_WINDOW);
+    Some(match (a_is_linear, circular_is_newer) {
+        (true, true) | (false, false) => Ordering::Less,
+        (true, false) | (false, true) => Ordering::Greater,
+    })
+}
+
+#[cfg(feature = "std")]
+fn version_is_newer(new_ver: u8, old_ver: u8) -> bool {
+    (new_ver, old_ver) == (0, 127) || lollipop_cmp(new_ver, old_ver) == Some(Ordering::Greater)
+}
+
+#[cfg(feature = "std")]
+fn version_is_equal(new_ver: u8, old_ver: u8) -> bool {
+    lollipop_cmp(new_ver, old_ver) == Some(Ordering::Equal)
+}
+
+#[cfg(feature = "std")]
+fn version_is_older_or_incomparable(new_ver: u8, old_ver: u8) -> bool {
+    !version_is_newer(new_ver, old_ver) && !version_is_equal(new_ver, old_ver)
+}
+
+#[cfg(feature = "std")]
+fn candidate_admissible(
+    candidate: &ParentCandidate,
+    node_rank: u16,
+    lowest_rank: u16,
+    min_hop_rank_increase: u16,
+    max_rank_increase: u16,
+) -> bool {
+    if min_hop_rank_increase == 0 {
+        return false;
+    }
+    let cost = candidate.path_cost(min_hop_rank_increase);
+    if candidate.rank < min_hop_rank_increase
+        || cost == INFINITE_RANK
+        || cost / min_hop_rank_increase <= candidate.rank / min_hop_rank_increase
+    {
+        return false;
+    }
+    if node_rank != INFINITE_RANK
+        && candidate.rank / min_hop_rank_increase >= node_rank / min_hop_rank_increase
+    {
+        return false;
+    }
+    max_rank_increase == 0
+        || lowest_rank == INFINITE_RANK
+        || cost <= lowest_rank.saturating_add(max_rank_increase)
 }
 
 /// Node's role in the DODAG.
@@ -134,21 +187,68 @@ impl DodagState {
         }
     }
 
-    /// Create a DODAG root with rank = ROOT_RANK.
+    /// Create a DODAG root using the default rank configuration.
     pub fn as_root(rpl_instance_id: u8, dodag_id: [u8; 16], version: u8) -> Self {
-        Self {
+        Self::as_root_with_rank_config(
+            rpl_instance_id,
+            dodag_id,
+            version,
+            MIN_HOP_RANK_INCREASE,
+            MAX_RANK_INCREASE,
+        )
+        .expect("default MinHopRankIncrease is non-zero")
+    }
+
+    /// Create a DODAG root whose rank is the configured MinHopRankIncrease.
+    pub fn as_root_with_rank_config(
+        rpl_instance_id: u8,
+        dodag_id: [u8; 16],
+        version: u8,
+        min_hop_rank_increase: u16,
+        max_rank_increase: u16,
+    ) -> Option<Self> {
+        if min_hop_rank_increase == 0 {
+            return None;
+        }
+        Some(Self {
             rpl_instance_id,
             dodag_id,
             version,
             role: DodagRole::Root,
-            rank: ROOT_RANK,
+            rank: min_hop_rank_increase,
             preferred_parent: None,
-            min_hop_rank_increase: MIN_HOP_RANK_INCREASE,
-            max_rank_increase: MAX_RANK_INCREASE,
+            min_hop_rank_increase,
+            max_rank_increase,
             parent_switch_threshold: PARENT_SWITCH_THRESHOLD,
             parents: HashMap::new(),
-            lowest_rank: ROOT_RANK,
+            lowest_rank: min_hop_rank_increase,
+        })
+    }
+
+    /// Apply rank values from a DODAG Configuration option.
+    ///
+    /// Returns `false` without changing state when MinHopRankIncrease is zero.
+    #[must_use]
+    pub fn set_rank_config(&mut self, min_hop_rank_increase: u16, max_rank_increase: u16) -> bool {
+        if min_hop_rank_increase == 0 {
+            return false;
         }
+        if (min_hop_rank_increase, max_rank_increase)
+            == (self.min_hop_rank_increase, self.max_rank_increase)
+        {
+            return true;
+        }
+        self.min_hop_rank_increase = min_hop_rank_increase;
+        self.max_rank_increase = max_rank_increase;
+        if self.role == DodagRole::Root {
+            self.rank = min_hop_rank_increase;
+            self.lowest_rank = min_hop_rank_increase;
+        } else if self.role == DodagRole::Joined {
+            self.rank = INFINITE_RANK;
+            self.lowest_rank = INFINITE_RANK;
+            self.select_parent();
+        }
+        true
     }
 
     pub fn is_root(&self) -> bool {
@@ -176,16 +276,33 @@ impl DodagState {
         if self.role == DodagRole::Root {
             return;
         }
-        // Only accept DIOs from the same DODAG once joined.
-        if self.is_joined() && dio.dodag_id != self.dodag_id {
+        if dio.rpl_instance_id != self.rpl_instance_id || dio.dodag_id != self.dodag_id {
             return;
         }
 
-        if version_is_newer(dio.version, self.version) {
-            // Newer version — rejoin.
-            self.adopt_version(dio);
-        } else if version_is_newer(self.version, dio.version) {
-            return; // stale
+        let newer_version = version_is_newer(dio.version, self.version);
+        if !newer_version && version_is_older_or_incomparable(dio.version, self.version) {
+            return;
+        }
+
+        let candidate = ParentCandidate {
+            addr: neighbor_addr,
+            rank: dio.rank,
+            link_etx,
+        };
+        if newer_version
+            && !candidate_admissible(
+                &candidate,
+                INFINITE_RANK,
+                INFINITE_RANK,
+                self.min_hop_rank_increase,
+                self.max_rank_increase,
+            )
+        {
+            return;
+        }
+        if newer_version {
+            self.adopt_version(dio.version);
         }
 
         if dio.rank == INFINITE_RANK {
@@ -195,21 +312,21 @@ impl DodagState {
             return;
         }
 
-        self.parents.insert(
-            neighbor_addr,
-            ParentCandidate {
-                addr: neighbor_addr,
-                rank: dio.rank,
-                link_etx,
-            },
-        );
+        if !self.admissible(&candidate) {
+            self.parents.remove(&neighbor_addr);
+            self.select_parent();
+            return;
+        }
+        if !self.parents.contains_key(&neighbor_addr) && self.parents.len() >= MAX_PARENT_CANDIDATES
+        {
+            return;
+        }
+        self.parents.insert(neighbor_addr, candidate);
         self.select_parent();
     }
 
-    fn adopt_version(&mut self, dio: &Dio) {
-        self.dodag_id = dio.dodag_id;
-        self.rpl_instance_id = dio.rpl_instance_id;
-        self.version = dio.version;
+    fn adopt_version(&mut self, version: u8) {
+        self.version = version;
         self.parents.clear();
         self.preferred_parent = None;
         self.rank = INFINITE_RANK;
@@ -219,15 +336,34 @@ impl DodagState {
     }
 
     fn admissible(&self, candidate: &ParentCandidate) -> bool {
-        let cost = candidate.path_cost(self.min_hop_rank_increase);
-        if self.lowest_rank == INFINITE_RANK {
-            return true;
-        }
-        cost <= self.lowest_rank.saturating_add(self.max_rank_increase)
+        candidate_admissible(
+            candidate,
+            self.rank,
+            self.lowest_rank,
+            self.min_hop_rank_increase,
+            self.max_rank_increase,
+        )
+    }
+
+    fn prune_inadmissible_parents(&mut self) {
+        let node_rank = self.rank;
+        let lowest_rank = self.lowest_rank;
+        let min_hop_rank_increase = self.min_hop_rank_increase;
+        let max_rank_increase = self.max_rank_increase;
+        self.parents.retain(|_, candidate| {
+            candidate_admissible(
+                candidate,
+                node_rank,
+                lowest_rank,
+                min_hop_rank_increase,
+                max_rank_increase,
+            )
+        });
     }
 
     /// MRHOF parent selection with hysteresis.
     pub fn select_parent(&mut self) {
+        self.prune_inadmissible_parents();
         let mhri = self.min_hop_rank_increase;
         let threshold = self.parent_switch_threshold;
 
@@ -270,6 +406,7 @@ impl DodagState {
         if chosen_cost < self.lowest_rank {
             self.lowest_rank = chosen_cost;
         }
+        self.prune_inadmissible_parents();
     }
 
     /// Drop a neighbour (e.g. link failure) and re-select.
@@ -332,6 +469,21 @@ mod tests {
     }
 
     #[test]
+    fn configured_min_hop_rank_increase_is_root_rank() {
+        let mut root = DodagState::as_root_with_rank_config(0, dodag_id(), 0, 128, 1024)
+            .expect("non-zero MinHopRankIncrease");
+        assert_eq!(root.rank, 128);
+        assert_eq!(root.min_hop_rank_increase, 128);
+        assert_eq!(root.max_rank_increase, 1024);
+
+        assert!(root.set_rank_config(64, 512));
+        assert_eq!(root.rank, 64);
+        assert_eq!(root.lowest_rank, 64);
+        assert!(!root.set_rank_config(0, 512));
+        assert_eq!(root.rank, 64);
+    }
+
+    #[test]
     fn node_joins_on_first_dio() {
         let mut node = DodagState::new(0, dodag_id(), 0);
         assert!(!node.is_joined());
@@ -386,14 +538,14 @@ mod tests {
     fn parent_failure_triggers_re_selection() {
         let mut node = DodagState::new(0, dodag_id(), 0);
         node.process_dio(&dio(ROOT_RANK), ll(1), 1.0); // cost 512
-        node.process_dio(&dio(512), ll(2), 1.0); // cost 768 — worse
+        node.process_dio(&dio(450), ll(2), 1.0); // cost 706 — worse but valid
 
         assert_eq!(node.preferred_parent, Some(ll(1)));
 
         // Remove preferred parent → falls back to ll(2)
         node.remove_parent(&ll(1));
         assert_eq!(node.preferred_parent, Some(ll(2)));
-        assert_eq!(node.rank, 768);
+        assert_eq!(node.rank, 706);
     }
 
     #[test]
@@ -441,6 +593,75 @@ mod tests {
     }
 
     #[test]
+    fn invalid_newer_version_dio_preserves_parent_state() {
+        let mut node = DodagState::new(0, dodag_id(), 0);
+        node.process_dio(&dio(ROOT_RANK), ll(1), 1.0);
+
+        for (rank, link_etx) in [(ROOT_RANK - 1, 1.0), (ROOT_RANK, f32::MAX)] {
+            let invalid = Dio {
+                version: 1,
+                rank,
+                ..dio(ROOT_RANK)
+            };
+            node.process_dio(&invalid, ll(2), link_etx);
+
+            assert_eq!(node.version, 0);
+            assert_eq!(node.preferred_parent, Some(ll(1)));
+            assert_eq!(node.rank, ROOT_RANK + MIN_HOP_RANK_INCREASE);
+            assert_eq!(node.parent_count(), 1);
+        }
+    }
+
+    #[test]
+    fn configured_rank_is_used_when_adopting_a_version() {
+        let mut node = DodagState::new(0, dodag_id(), 0);
+        assert!(node.set_rank_config(128, 1024));
+        node.process_dio(&dio(128), ll(1), 1.0);
+        assert_eq!(node.rank, 256);
+
+        let newer = Dio {
+            version: 1,
+            ..dio(128)
+        };
+        node.process_dio(&newer, ll(2), 1.0);
+        assert_eq!(node.version, 1);
+        assert_eq!(node.rank, 256);
+    }
+
+    #[test]
+    fn repeated_unchanged_rank_config_preserves_lowest_rank() {
+        let mut node = DodagState::new(0, dodag_id(), 0);
+        assert!(node.set_rank_config(MIN_HOP_RANK_INCREASE, 300));
+        node.process_dio(&dio(ROOT_RANK), ll(1), 1.0);
+        node.process_dio(&dio(450), ll(2), 1.0);
+        node.remove_parent(&ll(1));
+        assert_eq!(node.rank, 706);
+        assert_eq!(node.lowest_rank, 512);
+
+        assert!(node.set_rank_config(MIN_HOP_RANK_INCREASE, 300));
+
+        assert_eq!(node.rank, 706);
+        assert_eq!(node.lowest_rank, 512);
+        assert_eq!(node.preferred_parent, Some(ll(2)));
+    }
+
+    #[test]
+    fn unchanged_rank_config_preserves_max_rank_increase_floor() {
+        let mut node = DodagState::new(0, dodag_id(), 0);
+        assert!(node.set_rank_config(MIN_HOP_RANK_INCREASE, 300));
+        node.process_dio(&dio(ROOT_RANK), ll(1), 1.0);
+        node.process_dio(&dio(450), ll(2), 1.0);
+        node.remove_parent(&ll(1));
+
+        assert!(node.set_rank_config(MIN_HOP_RANK_INCREASE, 300));
+        node.process_dio(&dio(450), ll(3), 2.0);
+
+        assert_eq!(node.parent_count(), 1);
+        assert_eq!(node.preferred_parent, Some(ll(2)));
+        assert_eq!(node.rank, 706);
+    }
+
+    #[test]
     fn version_lollipop_wraparound_255_to_0() {
         // Node at version 255 (circular region) should accept version 0 (linear region)
         let mut node = DodagState::new(0, dodag_id(), 255);
@@ -466,22 +687,183 @@ mod tests {
 
     #[test]
     fn version_lollipop_semantics() {
-        // Test the version_is_newer function directly
-        // Linear region comparisons (0-127)
-        assert!(super::version_is_newer(1, 0));
-        assert!(super::version_is_newer(127, 0));
-        assert!(!super::version_is_newer(0, 1));
+        use core::cmp::Ordering::{Equal, Greater, Less};
 
-        // Circular region comparisons (128-255) with window
-        assert!(super::version_is_newer(129, 128));
-        assert!(super::version_is_newer(144, 128)); // diff=16, within window
-        assert!(!super::version_is_newer(145, 128)); // diff=17, outside window
-        assert!(super::version_is_newer(128, 255)); // wraps around within circular region
+        let cases = [
+            (0, 0, Some(Equal)),
+            (128, 128, Some(Equal)),
+            (16, 0, Some(Greater)),
+            (17, 0, None),
+            (0, 16, Some(Less)),
+            (0, 17, None),
+            (0, 127, None),
+            (127, 0, None),
+            (120, 5, None),
+            (255, 239, Some(Greater)),
+            (255, 238, None),
+            (5, 250, Some(Greater)),
+            (5, 240, Some(Less)),
+            (0, 240, Some(Greater)),
+            (0, 239, Some(Less)),
+        ];
+        for (a, b, expected) in cases {
+            assert_eq!(super::lollipop_cmp(a, b), expected, "{a} vs {b}");
+        }
+    }
 
-        // Mixed region: linear is always newer than circular
-        assert!(super::version_is_newer(0, 255));
-        assert!(super::version_is_newer(0, 128));
-        assert!(super::version_is_newer(127, 200));
-        assert!(!super::version_is_newer(200, 127)); // circular not newer than linear
+    #[test]
+    fn dodag_version_accepts_only_observed_adjacent_circular_wrap() {
+        assert!(version_is_newer(0, 127));
+        assert!(!version_is_newer(127, 0));
+        assert!(!version_is_newer(5, 120));
+    }
+
+    #[test]
+    fn foreign_and_incomparable_dios_do_not_change_state() {
+        let mut node = DodagState::new(0, dodag_id(), 0);
+        node.process_dio(&dio(ROOT_RANK), ll(1), 1.0);
+
+        let foreign_instance = Dio {
+            rpl_instance_id: 1,
+            version: 1,
+            ..dio(ROOT_RANK)
+        };
+        node.process_dio(&foreign_instance, ll(2), 1.0);
+        let mut foreign_dodag = dio(ROOT_RANK);
+        foreign_dodag.version = 1;
+        foreign_dodag.dodag_id[15] = 2;
+        node.process_dio(&foreign_dodag, ll(3), 1.0);
+        let incomparable = Dio {
+            version: 17,
+            ..dio(ROOT_RANK)
+        };
+        node.process_dio(&incomparable, ll(4), 1.0);
+
+        assert_eq!(node.version, 0);
+        assert_eq!(node.preferred_parent, Some(ll(1)));
+        assert_eq!(node.rank, 512);
+        assert_eq!(node.parent_count(), 1);
+    }
+
+    #[test]
+    fn saturated_and_max_rank_parents_are_removed() {
+        let mut saturated = DodagState::new(0, dodag_id(), 0);
+        saturated.process_dio(&dio(ROOT_RANK), ll(1), f32::MAX);
+        assert!(!saturated.is_joined());
+        assert_eq!(saturated.parent_count(), 0);
+
+        let mut bounded = DodagState::new(0, dodag_id(), 0);
+        bounded.max_rank_increase = 300;
+        bounded.process_dio(&dio(ROOT_RANK), ll(1), 1.0);
+        bounded.process_dio(&dio(450), ll(2), 2.0);
+        assert_eq!(bounded.parent_count(), 1);
+        assert_eq!(bounded.preferred_parent, Some(ll(1)));
+    }
+
+    #[test]
+    fn admissibility_uses_dag_rank_boundaries() {
+        let cost_in_parent_dag_rank = ParentCandidate {
+            addr: ll(1),
+            rank: 256,
+            link_etx: 0.5,
+        };
+        assert!(!candidate_admissible(
+            &cost_in_parent_dag_rank,
+            INFINITE_RANK,
+            INFINITE_RANK,
+            256,
+            2048
+        ));
+
+        let same_dag_rank = ParentCandidate {
+            addr: ll(2),
+            rank: 256,
+            link_etx: 1.0,
+        };
+        assert!(!candidate_admissible(&same_dag_rank, 511, 511, 256, 2048));
+
+        let lower_dag_rank = ParentCandidate {
+            addr: ll(3),
+            rank: 256,
+            link_etx: 1.0,
+        };
+        assert!(candidate_admissible(&lower_dag_rank, 512, 512, 256, 2048));
+    }
+
+    #[test]
+    fn finite_rank_below_root_is_inadmissible() {
+        let candidate = ParentCandidate {
+            addr: ll(1),
+            rank: 255,
+            link_etx: 1.0,
+        };
+        assert!(!candidate_admissible(&candidate, 65535, 65535, 256, 2048));
+    }
+
+    #[test]
+    fn admissibility_derives_root_rank_from_min_hop_rank_increase() {
+        let below_root = ParentCandidate {
+            addr: ll(1),
+            rank: 127,
+            link_etx: 1.0,
+        };
+        assert!(!candidate_admissible(
+            &below_root,
+            INFINITE_RANK,
+            INFINITE_RANK,
+            128,
+            2048
+        ));
+
+        let root = ParentCandidate {
+            addr: ll(2),
+            rank: 128,
+            link_etx: 1.0,
+        };
+        assert!(candidate_admissible(
+            &root,
+            INFINITE_RANK,
+            INFINITE_RANK,
+            128,
+            2048
+        ));
+    }
+
+    #[test]
+    fn zero_max_rank_increase_disables_the_bound() {
+        let candidate = ParentCandidate {
+            addr: ll(1),
+            rank: 512,
+            link_etx: 2.0,
+        };
+        assert!(candidate_admissible(&candidate, 65535, 512, 256, 0));
+    }
+
+    #[test]
+    fn valid_downward_failover_remains_available() {
+        let mut node = DodagState::new(0, dodag_id(), 0);
+        node.process_dio(&dio(ROOT_RANK), ll(1), 1.0);
+        node.process_dio(&dio(450), ll(2), 1.0);
+
+        assert_eq!(node.parent_count(), 2);
+        node.remove_parent(&ll(1));
+        assert_eq!(node.preferred_parent, Some(ll(2)));
+        assert_eq!(node.rank, 706);
+    }
+
+    #[test]
+    fn parent_candidates_fail_closed_at_neighbor_limit() {
+        let mut node = DodagState::new(0, dodag_id(), 0);
+        for iid in 1..=MAX_PARENT_CANDIDATES as u8 {
+            node.process_dio(&dio(ROOT_RANK), ll(iid), 1.0);
+        }
+        assert_eq!(node.parent_count(), MAX_PARENT_CANDIDATES);
+
+        node.process_dio(&dio(ROOT_RANK), ll(17), 1.0);
+        assert_eq!(node.parent_count(), MAX_PARENT_CANDIDATES);
+
+        node.process_dio(&dio(ROOT_RANK), ll(1), 1.25);
+        assert_eq!(node.parent_count(), MAX_PARENT_CANDIDATES);
+        assert_eq!(node.parents[&ll(1)].link_etx, 1.25);
     }
 }

@@ -155,7 +155,7 @@ fn parent_switch_on_link_failure() {
     // n4 sees both n2 (cost 768) and n3 (cost 1024). Prefers n2.
     let mut n4 = DodagState::new(0, dodag_id(), 0);
     n4.process_dio(&dio(512), ll(2), 1.0); // cost 768
-    n4.process_dio(&dio(768), ll(3), 1.0); // cost 1024
+    n4.process_dio(&dio(512), ll(3), 2.0); // cost 1024
     assert_eq!(n4.preferred_parent, Some(ll(2)));
     assert_eq!(n4.rank, 768);
 
