@@ -181,7 +181,7 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
                         .truncate(true)
                         .mode(0o600)
                         .open(&path)?;
-                    writeln!(file, "{}", &*seed_hex)?;
+                    writeln!(file, "{}", *seed_hex)?;
                 }
                 #[cfg(not(unix))]
                 {
@@ -191,7 +191,7 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
                     // SECURITY: Use writeln! instead of format! to avoid creating
                     // a temporary String that would leak seed material in memory
                     let mut file = File::create(&path)?;
-                    writeln!(file, "{}", &*seed_hex)?;
+                    writeln!(file, "{}", *seed_hex)?;
                     eprintln!(
                         "warning: could not set secure file permissions on non-Unix platform"
                     );

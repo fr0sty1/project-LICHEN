@@ -72,7 +72,7 @@ int coap_oscore_get_option(const struct coap_packet *_Nonnull request,
 int coap_oscore_unprotect_request(struct oscore_ctx *_Nonnull ctx,
 				  const struct coap_packet *_Nonnull request,
 				  uint8_t *_Nonnull original_code,
-				  uint8_t *_Nullable options, size_t *_Nullable options_len,
+				  uint8_t *_Nonnull options, size_t *_Nonnull options_len,
 				  uint8_t *_Nonnull payload, size_t *_Nonnull payload_len,
 				  uint8_t *_Nonnull request_piv, size_t *_Nonnull request_piv_len);
 

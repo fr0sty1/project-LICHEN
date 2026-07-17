@@ -146,10 +146,13 @@ jobs:
       - name: west zephyr-export
         run: west zephyr-export
 
+      - name: Set SOURCE_DATE_EPOCH
+        # The build-epoch policy (lichen/cmake/lichen_build_epoch.cmake)
+        # requires an epoch in 1..2^31-1, so the previous literal "0" was
+        # rejected at configure time. Use the commit timestamp like ci.yml.
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
       - name: Build t_echo puck firmware (Renode console)
-        env:
-          # Reproducible build timestamp
-          SOURCE_DATE_EPOCH: "0"
         run: |
           # Build with renode_console overlay for UART output in Renode.
           # Output dir matches test harness expectation: build/{board}_renode/

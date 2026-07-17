@@ -276,7 +276,6 @@ int lichen_router_queue_pending(struct lichen_router *router,
 	/* Count existing packets for this destination */
 	int dest_count = 0;
 	struct lichen_pending_packet *oldest_for_dest = NULL;
-	uint32_t oldest_time = 0xFFFFFFFF;
 
 	for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_MAX_PENDING; i++) {
 		struct lichen_pending_packet *p = &router->pending[i];
@@ -288,7 +287,6 @@ int lichen_router_queue_pending(struct lichen_router *router,
 			if (oldest_for_dest == NULL ||
 			    (int32_t)(p->queued_at_ms - oldest_for_dest->queued_at_ms) < 0) {
 				oldest_for_dest = p;
-				oldest_time = p->queued_at_ms;
 			}
 		}
 	}

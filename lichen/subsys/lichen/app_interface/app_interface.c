@@ -94,7 +94,7 @@ int lichen_app_interface_register_sink(
 			return -EALREADY;
 		}
 		if (!s_sinks[i].used && free_idx < 0) {
-			free_idx = i;
+			free_idx = (int)i;
 		}
 	}
 	if (free_idx < 0) {

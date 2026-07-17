@@ -346,7 +346,9 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 
 int lichen_coap_request(const struct lichen_coap_request *req)
 {
-	struct coap_client_request client_req = {0};
+	/* Designated initializer: method must start as a valid enum value
+	 * (0 is outside enum coap_method); it is overwritten below. */
+	struct coap_client_request client_req = { .method = COAP_METHOD_GET };
 	struct request_ctx *ctx;
 	int ret;
 	int sock;

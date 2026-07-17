@@ -161,52 +161,53 @@ jobs:
           uv sync --locked --all-extras --dev
 
       - name: Generate wire samples from Python
+        # The original version of this step was written against imagined
+        # APIs (lichen.schc.rules.compress, lichen.coap.message) and never
+        # ran. This uses the real LichenFrame and aiocoap APIs.
         run: |
           cd python
-          uv run python3 -c "
-          from lichen.link.frame import LichenFrame
-          from lichen.schc.rules import compress, decompress
-          from lichen.coap.message import CoapMessage, MessageType, Code
+          uv run python3 - <<'PYEOF'
+          from lichen.link.frame import AddrMode, LichenFrame, MicLength
           import json
 
           samples = []
 
-          # Generate various frame types
+          # Link frames across the epoch/seqnum corners
           for epoch in [0, 127, 255]:
               for seqnum in [0, 1, 32767, 65535]:
-                  frame = LichenFrame.build(
+                  frame = LichenFrame(
                       epoch=epoch,
                       seqnum=seqnum,
-                      payload=b'test' * 10,
-                      addr_mode=0,
+                      dst_addr=b"",
+                      payload=b"test" * 10,
+                      mic=bytes(MicLength.BITS32.mic_len),
+                      addr_mode=AddrMode.NONE,
+                      mic_length=MicLength.BITS32,
                   )
                   samples.append({
-                      'type': 'link_frame',
-                      'epoch': epoch,
-                      'seqnum': seqnum,
-                      'bytes': frame.hex(),
+                      "type": "link_frame",
+                      "epoch": epoch,
+                      "seqnum": seqnum,
+                      "bytes": frame.to_bytes().hex(),
                   })
 
-          # Generate CoAP messages
-          for code in [Code.GET, Code.POST, Code.CONTENT]:
-              msg = CoapMessage(
-                  msg_type=MessageType.CON,
-                  code=code,
-                  message_id=12345,
-                  token=b'\\x01\\x02\\x03\\x04',
-                  payload=b'hello',
-              )
-              samples.append({
-                  'type': 'coap',
-                  'code': code.name,
-                  'bytes': msg.to_bytes().hex(),
-              })
+          # CoAP messages (deterministic mid/token on purpose - these are
+          # wire vectors; the aiocoap deprecation warnings are expected)
+          from aiocoap import Message
+          from aiocoap.numbers.codes import Code
+          from aiocoap.numbers.types import Type
 
-          with open('/tmp/wire_samples.json', 'w') as f:
+          for code in [Code.GET, Code.POST, Code.CONTENT]:
+              msg = Message(mtype=Type.CON, code=code, mid=12345,
+                            token=b"\x01\x02\x03\x04", payload=b"hello")
+              samples.append({"type": "coap", "code": str(code),
+                              "bytes": msg.encode().hex()})
+
+          with open("/tmp/wire_samples.json", "w") as f:
               json.dump(samples, f, indent=2)
 
-          print(f'Generated {len(samples)} wire samples')
-          "
+          print(f"Generated {len(samples)} wire samples")
+          PYEOF
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable

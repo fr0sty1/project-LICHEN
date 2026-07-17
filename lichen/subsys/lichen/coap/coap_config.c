@@ -183,7 +183,7 @@ static int eui64_to_hex(const uint8_t eui64[8], char *buf, size_t buf_size)
 	buf[0] = '0';
 	buf[1] = 'x';
 	for (int i = 0; i < 8; i++) {
-		snprintf(&buf[2 + i * 2], 3, "%02x", eui64[i]);
+		(void)snprintf(&buf[2 + i * 2], 3, "%02x", eui64[i]);
 	}
 	return 0;
 }
@@ -331,7 +331,7 @@ size_t lichen_config_encode_radio_cbor(uint8_t *buf, size_t buf_size,
 
 	/* "sync_word": as hex string "0x34" */
 	char sync_buf[8];
-	snprintf(sync_buf, sizeof(sync_buf), "0x%02x", config->sync_word);
+	(void)snprintf(sync_buf, sizeof(sync_buf), "0x%02x", config->sync_word);
 	if (!put_tstr_kv(state, KEY_SYNC_WORD, sync_buf)) {
 		return 0;
 	}
@@ -478,8 +478,8 @@ static size_t base64_encode(const uint8_t *src, size_t src_len,
 
 		dst[j++] = base64_table[(n >> 18) & 0x3F];
 		dst[j++] = base64_table[(n >> 12) & 0x3F];
-		dst[j++] = (i + 1 < src_len) ? base64_table[(n >> 6) & 0x3F] : '=';
-		dst[j++] = (i + 2 < src_len) ? base64_table[n & 0x3F] : '=';
+		dst[j++] = (i + 1 < src_len) ? base64_table[(n >> 6) & 0x3F] : (char)'=';
+		dst[j++] = (i + 2 < src_len) ? base64_table[n & 0x3F] : (char)'=';
 	}
 	dst[j] = '\0';
 	return j;
@@ -494,7 +494,7 @@ static void compute_pubkey_fingerprint(const uint8_t pubkey[32],
 		return;
 	}
 	/* Simplified: just use "SHA256:" prefix + base64 of first 12 bytes */
-	strcpy(buf, "SHA256:");
+	(void)snprintf(buf, buf_size, "SHA256:");
 	base64_encode(pubkey, 12, buf + 7, buf_size - 7);
 }
 

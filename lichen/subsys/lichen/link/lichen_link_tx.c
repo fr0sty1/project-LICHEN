@@ -221,8 +221,8 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 	} else {
 		/* Append plaintext payload before computing the CRC32 fallback. */
 		memcpy(&out_frame[off], payload_buf, payload_len);
-		off += payload_len;
 #ifdef CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC
+		off += payload_len;
 #warning "CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC is enabled - CRC32 MIC provides NO authentication, frames can be forged!"
 		/*
 		 * CRC32 fallback (no link key configured).

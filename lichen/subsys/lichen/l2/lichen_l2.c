@@ -2332,9 +2332,22 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	 * preventing the replay window poisoning attack described in
 	 * replay.h:100-120.
 	 */
+	/*
+	 * Defensive initialization: zero src_eui64 in case peer_try_all_pubkeys()
+	 * fails before setting it. On success, src_eui64 is filled with the
+	 * authenticated peer's address. On failure, we return early and never
+	 * use this array. (project-LICHEN-tvfm.68)
+	 */
+	uint8_t src_eui64[8] = {0};
 	struct lichen_link_rx_ctx rx_ctx = {
 		.peer_pubkey = NULL,  /* Set by peer_try_all_pubkeys() */
-		.peer_eui64 = NULL,   /* Set by peer_try_all_pubkeys() */
+		/*
+		 * peer_eui64 is _Nonnull; point it at the zeroed src_eui64 buffer
+		 * as a valid placeholder until peer_try_all_pubkeys() overwrites it
+		 * with the matched peer's address. Never used for crypto in this
+		 * state (the pubkey trial sets it before any nonce is built).
+		 */
+		.peer_eui64 = src_eui64,
 		.link_key = rx_link_key_ptr,
 		/*
 		 * current_time: Reserved for time-based replay aging (not currently
@@ -2345,13 +2358,6 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 		 */
 		.current_time = 0,
 	};
-	/*
-	 * Defensive initialization: zero src_eui64 in case peer_try_all_pubkeys()
-	 * fails before setting it. On success, src_eui64 is filled with the
-	 * authenticated peer's address. On failure, we return early and never
-	 * use this array. (project-LICHEN-tvfm.68)
-	 */
-	uint8_t src_eui64[8] = {0};
 
 	ipv6_len = sizeof(rx_ipv6_buf);
 	ret = peer_try_all_pubkeys(&rx_ctx, &replay_table, data, len,
