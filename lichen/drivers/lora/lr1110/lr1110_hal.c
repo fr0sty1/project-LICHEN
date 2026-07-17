@@ -243,7 +243,15 @@ void lr1110_hal_reset(const void *context)
 		return;
 	}
 	k_busy_wait(1000);
-	k_sleep(K_MSEC(200)); /* wait for internal firmware to load */
+	/* LR1110 boot (firmware load + self-test) is ~273 ms typical, and
+	 * commands clocked while BUSY is high are silently ignored - a fixed
+	 * 200 ms wait intermittently dropped the first post-reset command
+	 * (SetTcxoMode), leaving the HF clock dead. Wait 300 ms then confirm
+	 * BUSY is low, matching RadioLib's LR11x0 reset sequence. */
+	k_sleep(K_MSEC(300));
+	if (wait_busy() != 0) {
+		record_error(-EIO);
+	}
 }
 
 lr1110_hal_status_t lr1110_hal_wakeup(const void *context)

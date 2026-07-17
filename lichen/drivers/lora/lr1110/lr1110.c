@@ -228,6 +228,22 @@ static int lr1110_lora_config(const struct device *dev,
 
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_system_calibrate(dev, 0x3Fu)); /* all 6 calibration blocks */
 
+	/* Image (IF) rejection calibration for the operating band.
+	 * Calibrate(0x3F) only calibrates at the default frequency; without
+	 * CalibImage for the actual band the receiver's image rejection is
+	 * uncalibrated and the demodulator never fires any RX IRQ - TX works,
+	 * RX is deaf (bd qpc0). RadioLib issues this from setFrequency();
+	 * freq1/freq2 bracket the band in 4 MHz steps (915 MHz -> 0xE3,0xE6;
+	 * matches RadioLib's {0xE1,0xE4} for 906.875 MHz). */
+	{
+		uint32_t freq_mhz = cfg->frequency / 1000000U;
+		uint8_t freq1 = (uint8_t)((freq_mhz - 4U) / 4U);
+		uint8_t freq2 = (uint8_t)((freq_mhz + 4U + 3U) / 4U); /* ceil */
+
+		LR1110_RETURN_ON_HAL_ERROR(
+			lr1110_system_calibrate_image(dev, freq1, freq2));
+	}
+
 	/* RF switch: the T1000-E routes the antenna through a switch driven by
 	 * DIO5-DIO8. Without this the chip never selects the RX path — TX
 	 * happens to work on the default state, but RX is completely deaf
@@ -255,6 +271,16 @@ static int lr1110_lora_config(const struct device *dev,
 			lr1110_system_set_dio_as_rf_switch(dev, &rfswitch));
 	}
 
+	/* Read error flags before clearing them - a failed XOSC/PLL/IMG
+	 * calibration is otherwise invisible and the radio limps on deaf. */
+	{
+		uint16_t errors = 0;
+
+		LR1110_RETURN_ON_HAL_ERROR(lr1110_system_get_errors(dev, &errors));
+		if (errors != 0U) {
+			LOG_WRN("LR1110 errors after calibration: 0x%04x", errors);
+		}
+	}
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_system_clear_errors(dev));
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_packet_type(dev, LR1110_RADIO_PACKET_LORA));
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_rf_frequency(dev, cfg->frequency));

@@ -1030,46 +1030,13 @@ static int dev_parse_eui64(const char *s, uint8_t out[LICHEN_EUI64_LEN])
 	return (n == LICHEN_EUI64_LEN && *s == '\0') ? 0 : -EINVAL;
 }
 
-int lichen_l2_dev_provision(uint8_t peer_eui64_out[LICHEN_EUI64_LEN])
+/* Provision one dev peer: derive its pubkey, pin it, and add a static
+ * IPv6 neighbor entry. See lichen_l2_dev_provision() for context. */
+static int dev_provision_peer(uint8_t peer_eui64[LICHEN_EUI64_LEN])
 {
-	uint8_t pubkey[LICHEN_L2_PUBKEY_LEN];
 	uint8_t peer_pubkey[LICHEN_L2_PUBKEY_LEN];
-	uint8_t self_eui64[LICHEN_EUI64_LEN];
-	uint8_t peer_eui64[LICHEN_EUI64_LEN];
 	uint8_t node_seed[LICHEN_SEED_LEN];
 	int ret;
-
-	ret = dev_parse_eui64(CONFIG_LICHEN_L2_DEV_PEER_EUI64, peer_eui64);
-	if (ret != 0) {
-		LOG_ERR("lichen_l2: bad CONFIG_LICHEN_L2_DEV_PEER_EUI64 '%s'",
-			CONFIG_LICHEN_L2_DEV_PEER_EUI64);
-		return ret;
-	}
-
-	/*
-	 * SECURITY: Per-node dev keys, derived as SHA-512(dev_seed || EUI-64).
-	 * Still INSECURE (dev_seed is public, so anyone can derive any node's
-	 * key), but each node now has a DISTINCT keypair so signature
-	 * verification attributes frames to the correct peer. With one shared
-	 * keypair, every dev node in RF range verified as "the" pinned peer
-	 * and all transmitters collapsed into a single replay window per
-	 * receiver; the highest random boot epoch then permanently starved
-	 * the others (project-LICHEN-wp4o).
-	 */
-	ret = lichen_lora_l2_copy_eui64(self_eui64);
-	if (ret != 0) {
-		LOG_ERR("lichen_l2: dev self EUI-64 read failed (%d)", ret);
-		return ret;
-	}
-	ret = lichen_link_derive_seed(dev_seed, self_eui64, node_seed);
-	if (ret == 0) {
-		ret = lichen_l2_load_key(node_seed, pubkey);
-	}
-	secure_zero(node_seed, sizeof(node_seed));
-	if (ret != 0) {
-		LOG_ERR("lichen_l2: dev key load failed (%d)", ret);
-		return ret;
-	}
 
 	ret = lichen_link_derive_seed(dev_seed, peer_eui64, node_seed);
 	if (ret == 0) {
@@ -1116,12 +1083,92 @@ int lichen_l2_dev_provision(uint8_t peer_eui64_out[LICHEN_EUI64_LEN])
 		}
 	}
 
-	if (peer_eui64_out != NULL) {
-		memcpy(peer_eui64_out, peer_eui64, LICHEN_EUI64_LEN);
-	}
-
 	LOG_WRN("lichen_l2: INSECURE dev provisioning active (peer %02x%02x..%02x%02x)",
 		peer_eui64[0], peer_eui64[1], peer_eui64[6], peer_eui64[7]);
+	return 0;
+}
+
+int lichen_l2_dev_provision(uint8_t peer_eui64_out[LICHEN_EUI64_LEN])
+{
+	uint8_t pubkey[LICHEN_L2_PUBKEY_LEN];
+	uint8_t self_eui64[LICHEN_EUI64_LEN];
+	uint8_t peer_eui64[LICHEN_EUI64_LEN];
+	uint8_t node_seed[LICHEN_SEED_LEN];
+	const char *s = CONFIG_LICHEN_L2_DEV_PEER_EUI64;
+	size_t peers_added = 0;
+	int ret;
+
+	/*
+	 * SECURITY: Per-node dev keys, derived as SHA-512(dev_seed || EUI-64).
+	 * Still INSECURE (dev_seed is public, so anyone can derive any node's
+	 * key), but each node now has a DISTINCT keypair so signature
+	 * verification attributes frames to the correct peer. With one shared
+	 * keypair, every dev node in RF range verified as "the" pinned peer
+	 * and all transmitters collapsed into a single replay window per
+	 * receiver; the highest random boot epoch then permanently starved
+	 * the others (project-LICHEN-wp4o).
+	 */
+	ret = lichen_lora_l2_copy_eui64(self_eui64);
+	if (ret != 0) {
+		LOG_ERR("lichen_l2: dev self EUI-64 read failed (%d)", ret);
+		return ret;
+	}
+	ret = lichen_link_derive_seed(dev_seed, self_eui64, node_seed);
+	if (ret == 0) {
+		ret = lichen_l2_load_key(node_seed, pubkey);
+	}
+	secure_zero(node_seed, sizeof(node_seed));
+	if (ret != 0) {
+		LOG_ERR("lichen_l2: dev key load failed (%d)", ret);
+		return ret;
+	}
+
+	/* CONFIG_LICHEN_L2_DEV_PEER_EUI64 is a comma-separated list of
+	 * EUI-64s; each entry is pinned as a dev peer. */
+	while (*s != '\0') {
+		char token[24]; /* "aa:bb:cc:dd:ee:ff:00:11" = 23 chars */
+		size_t n = 0;
+
+		while (*s == ',' || *s == ' ') {
+			s++;
+		}
+		while (*s != '\0' && *s != ',') {
+			if (n >= sizeof(token) - 1) {
+				LOG_ERR("lichen_l2: bad CONFIG_LICHEN_L2_DEV_PEER_EUI64 '%s'",
+					CONFIG_LICHEN_L2_DEV_PEER_EUI64);
+				return -EINVAL;
+			}
+			token[n++] = *s++;
+		}
+		token[n] = '\0';
+		if (n == 0) {
+			continue;
+		}
+
+		ret = dev_parse_eui64(token, peer_eui64);
+		if (ret != 0) {
+			LOG_ERR("lichen_l2: bad CONFIG_LICHEN_L2_DEV_PEER_EUI64 '%s'",
+				CONFIG_LICHEN_L2_DEV_PEER_EUI64);
+			return ret;
+		}
+
+		ret = dev_provision_peer(peer_eui64);
+		if (ret != 0) {
+			return ret;
+		}
+
+		if (peers_added == 0 && peer_eui64_out != NULL) {
+			memcpy(peer_eui64_out, peer_eui64, LICHEN_EUI64_LEN);
+		}
+		peers_added++;
+	}
+
+	if (peers_added == 0) {
+		LOG_ERR("lichen_l2: bad CONFIG_LICHEN_L2_DEV_PEER_EUI64 '%s'",
+			CONFIG_LICHEN_L2_DEV_PEER_EUI64);
+		return -EINVAL;
+	}
+
 	return 0;
 }
 #endif /* CONFIG_LICHEN_L2_DEV_PROVISIONING */
