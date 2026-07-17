@@ -183,7 +183,7 @@ from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import TimeMode
 
 async def main():
-    server = SimulatorServer(node_port=5555, api_port=5556, host="0.0.0.0")
+    server = SimulatorServer(node_port=5555, api_port=5556, bind_host="0.0.0.0")
     await server.start()
     sim = await server.create_simulation("hetero-mesh", TimeMode.REALTIME)
     print("lichen-sim ready on 0.0.0.0:5555", flush=True)
@@ -288,118 +288,26 @@ fi
 if [[ $RUST_NODES -gt 0 ]]; then
     log_info "Building and starting $RUST_NODES Rust nodes..."
 
-    # Create Rust hetero-node binary if needed
     RUST_BIN="$PROJECT_ROOT/rust/target/release/hetero-node"
-    if [[ ! -f "$RUST_BIN" ]]; then
-        # Create the binary
-        mkdir -p "$PROJECT_ROOT/rust/lichen-apps/src/bin"
-        cat > "$PROJECT_ROOT/rust/lichen-apps/src/bin/hetero_node.rs" << 'RUSTNODE'
-//! Heterogeneous mesh node - connects to lichen-sim and participates in mesh.
-
-use std::env;
-use std::time::{Duration, Instant};
-
-use lichen_link::identity::Identity;
-use lichen_node::announce::{AnnounceMessage, AnnounceScheduler};
-
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 5 {
-        eprintln!("Usage: hetero-node <node_id> <sim_host> <sim_port> <duration_s>");
-        std::process::exit(1);
+    (cd "$PROJECT_ROOT/rust" && cargo build --release --target-dir "$PROJECT_ROOT/rust/target" \
+        -p lichen-apps --bin hetero-node) || {
+        log_error "Rust hetero-node build failed"
+        exit 1
     }
-
-    let node_id: u32 = args[1].parse().unwrap();
-    let host = &args[2];
-    let port: u16 = args[3].parse().unwrap();
-    let duration_s: u64 = args[4].parse().unwrap();
-
-    // Create identity from node_id
-    let mut seed = [0u8; 32];
-    seed[0] = (node_id & 0xFF) as u8;
-    seed[1] = ((node_id >> 8) & 0xFF) as u8;
-    let identity = Identity::from_seed(&seed);
-
-    println!("rust-{}: connecting to {}:{}", node_id, host, port);
-
-    // Connect to lichen-sim
-    let mut radio = match lichen_embassy::sim::SimRadio::connect(host, port) {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("rust-{}: connect failed: {:?}", node_id, e);
-            std::process::exit(1);
-        }
-    };
-
-    let start = Instant::now();
-    let mut tx_count = 0u32;
-    let mut rx_count = 0u32;
-    let mut buf = [0u8; 256];
-
-    while start.elapsed() < Duration::from_secs(duration_s) {
-        // Build and send announce
-        // (simplified - real impl would use full scheduler)
-        let announce_data = format!("RUST-{}-{}", node_id, tx_count);
-
-        if let Err(e) = futures::executor::block_on(
-            lichen_hal::Radio::transmit(&mut radio, announce_data.as_bytes())
-        ) {
-            eprintln!("rust-{}: TX error: {:?}", node_id, e);
-        } else {
-            tx_count += 1;
-        }
-
-        // Listen
-        for _ in 0..5 {
-            match futures::executor::block_on(
-                lichen_hal::Radio::receive(&mut radio, &mut buf, 1000)
-            ) {
-                Ok(Some(_)) => rx_count += 1,
-                Ok(None) => {}
-                Err(e) => eprintln!("rust-{}: RX error: {:?}", node_id, e),
-            }
-        }
-
-        std::thread::sleep(Duration::from_secs(10));
-    }
-
-    println!("rust-{}: TX={} RX={}", node_id, tx_count, rx_count);
-}
-RUSTNODE
-
-        # Add to Cargo.toml
-        if ! grep -q "hetero-node" "$PROJECT_ROOT/rust/lichen-apps/Cargo.toml"; then
-            cat >> "$PROJECT_ROOT/rust/lichen-apps/Cargo.toml" << 'CARGO'
-
-[[bin]]
-name = "hetero-node"
-path = "src/bin/hetero_node.rs"
-CARGO
-        fi
-
-        # Add dependencies
-        if ! grep -q "lichen-embassy" "$PROJECT_ROOT/rust/lichen-apps/Cargo.toml"; then
-            sed -i '' 's/\[dependencies\]/[dependencies]\nlichen-embassy = { path = "..\/lichen-embassy" }\nlichen-hal = { path = "..\/lichen-hal" }\nfutures = "0.3"/' \
-                "$PROJECT_ROOT/rust/lichen-apps/Cargo.toml" 2>/dev/null || true
-        fi
-
-        cd "$PROJECT_ROOT/rust"
-        cargo build --release -p lichen-apps --bin hetero-node 2>/dev/null || {
-            log_warn "Rust build failed - skipping Rust nodes"
-            RUST_NODES=0
-        }
+    if [[ ! -x "$RUST_BIN" ]]; then
+        log_error "Rust hetero-node binary missing after successful build"
+        exit 1
     fi
 
-    if [[ $RUST_NODES -gt 0 ]] && [[ -f "$RUST_BIN" ]]; then
-        for i in $(seq 0 $((RUST_NODES - 1))); do
-            NODE_ID=$((2000 + i))  # Rust nodes: 2000+
+    for i in $(seq 0 $((RUST_NODES - 1))); do
+        NODE_ID=$((2000 + i))  # Rust nodes: 2000+
+        X_POS=$((i * 50))
 
-            "$RUST_BIN" "$NODE_ID" "127.0.0.1" 5555 "$DURATION_S" \
-                > "$RESULTS_DIR/rust-$NODE_ID.log" 2>&1 &
-            RUST_PIDS+=($!)
-        done
-        log_ok "Started $RUST_NODES Rust nodes"
-    fi
+        "$RUST_BIN" "$NODE_ID" "127.0.0.1" 5555 "$X_POS" "$DURATION_S" \
+            > "$RESULTS_DIR/rust-$NODE_ID.log" 2>&1 &
+        RUST_PIDS+=($!)
+    done
+    log_ok "Started $RUST_NODES Rust nodes"
 fi
 
 # === ZEPHYR NODES (EC2 + Renode) ===
@@ -552,6 +460,17 @@ while true; do
 done
 echo ""
 
+RUST_PROCESS_FAILURE=0
+for pid in "${RUST_PIDS[@]-}"; do
+    if [[ -n "$pid" ]] && ! wait "$pid"; then
+        RUST_PROCESS_FAILURE=1
+    fi
+done
+if [[ $RUST_PROCESS_FAILURE -ne 0 ]]; then
+    log_error "One or more Rust nodes exited unsuccessfully"
+    exit 1
+fi
+
 log_ok "Test complete"
 
 # === COLLECT RESULTS ===
@@ -614,11 +533,15 @@ echo "  Total:   TX=$TOTAL_TX  RX=$TOTAL_RX"
 echo "  Logs:    $RESULTS_DIR"
 
 # Check for interop issues
-if [[ $TOTAL_RX -eq 0 ]] && [[ $TOTAL_TX -gt 0 ]]; then
+if [[ $RUST_NODES -gt 0 && $RUST_TX -eq 0 ]]; then
+    log_error "Rust nodes produced no transmissions"
+    exit 1
+elif [[ $TOTAL_RX -eq 0 ]] && [[ $TOTAL_TX -gt 0 ]]; then
     log_error "NO CROSS-IMPL RECEPTION - implementations may not interop!"
     cd "$PROJECT_ROOT"
     bd create "Hetero mesh: $TOTAL_TX TX but 0 RX - interop failure" \
         --type bug --priority P0 2>/dev/null || true
+    exit 1
 elif [[ $TOTAL_RX -lt $((TOTAL_TX / 10)) ]]; then
     log_warn "Low reception rate - possible interop issues"
     cd "$PROJECT_ROOT"

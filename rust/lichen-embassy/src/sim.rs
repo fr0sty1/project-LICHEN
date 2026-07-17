@@ -48,6 +48,36 @@ impl SimRadio {
         })
     }
 
+    /// Connect and register this node with the simulator before using the radio.
+    pub fn connect_registered(
+        host: &str,
+        port: u16,
+        sim_id: &str,
+        node_id: &str,
+        position: (f64, f64, f64),
+    ) -> Result<Self, SimError> {
+        if sim_id.len() > u8::MAX as usize || node_id.len() > u8::MAX as usize {
+            return Err(RadioError::Protocol);
+        }
+
+        let mut radio = Self::connect(host, port)?;
+        let mut message = Vec::with_capacity(3 + sim_id.len() + node_id.len() + 24);
+        message.push(0x01); // MSG_REGISTER
+        message.push(sim_id.len() as u8);
+        message.extend_from_slice(sim_id.as_bytes());
+        message.push(node_id.len() as u8);
+        message.extend_from_slice(node_id.as_bytes());
+        message.extend_from_slice(&position.0.to_le_bytes());
+        message.extend_from_slice(&position.1.to_le_bytes());
+        message.extend_from_slice(&position.2.to_le_bytes());
+        radio.send_message(&message)?;
+
+        if radio.recv_message()?.as_slice() != [0x00] {
+            return Err(RadioError::Protocol);
+        }
+        Ok(radio)
+    }
+
     /// Connect to default lichen-sim address (127.0.0.1:5555).
     pub fn connect_default() -> Result<Self, SimError> {
         Self::connect("127.0.0.1", 5555)
@@ -202,10 +232,41 @@ impl Radio for SimRadio {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::net::TcpListener;
+    use std::thread;
 
     #[test]
     fn sim_radio_error_display() {
         let err: SimError = RadioError::Protocol;
         assert!(format!("{:?}", err).contains("Protocol"));
+    }
+
+    #[test]
+    fn connect_registered_sends_register_before_returning() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut length = [0u8; 4];
+            stream.read_exact(&mut length).unwrap();
+            let mut message = vec![0u8; u32::from_le_bytes(length) as usize];
+            stream.read_exact(&mut message).unwrap();
+
+            let mut expected = vec![0x01, 4];
+            expected.extend_from_slice(b"mesh");
+            expected.push(6);
+            expected.extend_from_slice(b"rust-1");
+            expected.extend_from_slice(&1.5f64.to_le_bytes());
+            expected.extend_from_slice(&(-2.0f64).to_le_bytes());
+            expected.extend_from_slice(&3.25f64.to_le_bytes());
+            assert_eq!(message, expected);
+
+            stream.write_all(&1u32.to_le_bytes()).unwrap();
+            stream.write_all(&[0x00]).unwrap();
+        });
+
+        SimRadio::connect_registered("127.0.0.1", port, "mesh", "rust-1", (1.5, -2.0, 3.25))
+            .unwrap();
+        server.join().unwrap();
     }
 }
