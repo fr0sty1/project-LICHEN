@@ -151,60 +151,78 @@ impl Dio {
 
 // ── DAO ──────────────────────────────────────────────────────────────────────
 
-/// DAO base object with DODAGID always present (D-flag = 1), as required by
-/// SCHC rule 4. The base is 20 bytes.
-///
-/// In a full decompressed packet the DAO base starts at offset 44; options
-/// start at offset 64.
+/// DAO base object. The DODAGID is present only when the D flag is set.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Dao {
     pub rpl_instance_id: u8,
     pub ack_requested: bool,
     pub flags: u8,
     pub dao_sequence: u8,
-    pub dodag_id: [u8; 16],
+    pub dodag_id: Option<[u8; 16]>,
 }
 
 impl Dao {
-    pub const BASE_LEN: usize = 20;
+    pub const MIN_BASE_LEN: usize = 4;
+    pub const DODAG_BASE_LEN: usize = 20;
 
     pub fn from_bytes(data: &[u8]) -> Result<Self, RplError> {
-        if data.len() < Self::BASE_LEN {
-            return Err(TooShort::new(Self::BASE_LEN, data.len()).into());
+        if data.len() < Self::MIN_BASE_LEN {
+            return Err(TooShort::new(Self::MIN_BASE_LEN, data.len()).into());
         }
         let kd = data[1];
+        let has_dodag_id = kd & 0x40 != 0;
+        if data[0] & 0x80 != 0 && !has_dodag_id {
+            return Err(RplError::InvalidOption);
+        }
+        let dodag_id = if has_dodag_id {
+            if data.len() < Self::DODAG_BASE_LEN {
+                return Err(TooShort::new(Self::DODAG_BASE_LEN, data.len()).into());
+            }
+            Some(data[4..20].try_into().unwrap())
+        } else {
+            None
+        };
         Ok(Self {
             rpl_instance_id: data[0],
             ack_requested: (kd >> 7) & 1 == 1,
             flags: kd & 0x3F,
             dao_sequence: data[3],
-            // SAFETY: length check above ensures data.len() >= BASE_LEN (20),
-            // so 4..20 is within bounds and exactly 16 bytes
-            dodag_id: data[4..20].try_into().unwrap(),
+            dodag_id,
         })
     }
 
     pub fn write_to(&self, out: &mut [u8]) -> Result<usize, RplError> {
-        if out.len() < Self::BASE_LEN {
-            return Err(BufferTooSmall::new(Self::BASE_LEN, out.len()).into());
+        if self.rpl_instance_id & 0x80 != 0 && self.dodag_id.is_none() {
+            return Err(RplError::InvalidOption);
+        }
+        let base_len = if self.dodag_id.is_some() {
+            Self::DODAG_BASE_LEN
+        } else {
+            Self::MIN_BASE_LEN
+        };
+        if out.len() < base_len {
+            return Err(BufferTooSmall::new(base_len, out.len()).into());
         }
         let kd = ((self.ack_requested as u8) << 7)
-            | (1u8 << 6) // D-flag always set
+            | ((self.dodag_id.is_some() as u8) << 6)
             | (self.flags & 0x3F);
         out[0] = self.rpl_instance_id;
         out[1] = kd;
         out[2] = 0; // reserved
         out[3] = self.dao_sequence;
-        out[4..20].copy_from_slice(&self.dodag_id);
-        Ok(Self::BASE_LEN)
+        if let Some(dodag_id) = self.dodag_id {
+            out[4..20].copy_from_slice(&dodag_id);
+        }
+        Ok(base_len)
     }
 
-    pub fn options_tail(data: &[u8]) -> &[u8] {
-        if data.len() > Self::BASE_LEN {
-            &data[Self::BASE_LEN..]
+    pub fn options_tail<'a>(&self, data: &'a [u8]) -> &'a [u8] {
+        let base_len = if self.dodag_id.is_some() {
+            Self::DODAG_BASE_LEN
         } else {
-            &[]
-        }
+            Self::MIN_BASE_LEN
+        };
+        data.get(base_len..).unwrap_or_default()
     }
 }
 
@@ -492,7 +510,7 @@ mod tests {
             ack_requested: false,
             flags: 0,
             dao_sequence: 7,
-            dodag_id,
+            dodag_id: Some(dodag_id),
         };
 
         let mut buf = [0u8; 20];
@@ -518,11 +536,97 @@ mod tests {
             ack_requested: true,
             flags: 0,
             dao_sequence: 1,
-            dodag_id,
+            dodag_id: Some(dodag_id),
         };
         let mut buf = [0u8; 20];
         dao.write_to(&mut buf).unwrap();
         assert_eq!(buf[1], 0xC0); // K=1, D=1
+    }
+
+    #[test]
+    fn global_dao_without_dodag_id_uses_four_byte_base() {
+        let wire = [0x00, 0x00, 0x00, 0x2a, OPT_RPL_TARGET, 0x00];
+        let dao = Dao::from_bytes(&wire).unwrap();
+
+        assert_eq!(dao.dodag_id, None);
+        assert_eq!(dao.options_tail(&wire), &wire[4..]);
+
+        let mut out = [0xff; 4];
+        assert_eq!(dao.write_to(&mut out).unwrap(), 4);
+        assert_eq!(out, wire[..4]);
+    }
+
+    #[test]
+    fn local_instance_ids_without_dodag_id_are_invalid() {
+        for wire in [
+            [0x80, 0x00, 0x00, 0x01],
+            [0xc0, 0x00, 0x00, 0x01],
+            [0xff, 0x00, 0x00, 0x01],
+        ] {
+            assert_eq!(Dao::from_bytes(&wire), Err(RplError::InvalidOption));
+
+            let dao = Dao {
+                rpl_instance_id: wire[0],
+                ack_requested: false,
+                flags: 0,
+                dao_sequence: 1,
+                dodag_id: None,
+            };
+            assert_eq!(dao.write_to(&mut [0u8; 4]), Err(RplError::InvalidOption));
+        }
+    }
+
+    #[test]
+    fn local_instance_id_boundaries_with_dodag_id_roundtrip() {
+        for wire in [
+            [
+                0x80, 0x40, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            ],
+            [
+                0xc0, 0x40, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            ],
+            [
+                0xff, 0x40, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            ],
+        ] {
+            let dao = Dao::from_bytes(&wire).unwrap();
+            let mut out = [0u8; 20];
+            assert_eq!(dao.write_to(&mut out).unwrap(), 20);
+            assert_eq!(out, wire);
+        }
+    }
+
+    #[test]
+    fn dao_with_dodag_id_requires_twenty_bytes() {
+        let mut wire = [0u8; 19];
+        wire[1] = 0x40;
+        assert_eq!(Dao::from_bytes(&wire), Err(TooShort::new(20, 19).into()));
+    }
+
+    #[test]
+    fn dao_with_dodag_id_matches_committed_wire_vector() {
+        let wire = [
+            0x00, 0xc0, 0x00, 0x8d, 0xfd, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+        ];
+        let mut dodag_id = [0u8; 16];
+        dodag_id[0] = 0xfd;
+        dodag_id[15] = 1;
+        let expected = Dao {
+            rpl_instance_id: 0,
+            ack_requested: true,
+            flags: 0,
+            dao_sequence: 0x8d,
+            dodag_id: Some(dodag_id),
+        };
+
+        assert_eq!(Dao::from_bytes(&wire).unwrap(), expected);
+        let mut out = [0u8; 20];
+        assert_eq!(expected.write_to(&mut out).unwrap(), 20);
+        assert_eq!(out, wire);
     }
 
     // ── RPL Target option ─────────────────────────────────────────────────────
@@ -653,9 +757,7 @@ mod tests {
         let mut buf = [0u8; 300];
         // 200 PAD1 bytes followed by a valid target option
         let pad1_count = 200;
-        for i in 0..pad1_count {
-            buf[i] = OPT_PAD1;
-        }
+        buf[..pad1_count].fill(OPT_PAD1);
         // Add a minimal RPL Target after the PAD1 bytes
         let mut target_addr = [0u8; 16];
         target_addr[15] = 0x42;
