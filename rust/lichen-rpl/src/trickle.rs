@@ -10,10 +10,12 @@
 /// The next scheduled timer event.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TrickleEvent {
+    /// No event can be represented after the monotonic clock is exhausted.
+    Stopped,
     /// Transmit at or after `at_ms` if `counter < k`.
-    Transmit { at_ms: u32 },
+    Transmit { at_ms: u64 },
     /// Current interval ends at `at_ms`; call `expire`.
-    Expire { at_ms: u32 },
+    Expire { at_ms: u64 },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -27,7 +29,8 @@ impl TrickleState {
     pub fn can_transition_to(self, next: Self) -> bool {
         matches!(
             (self, next),
-            (Self::Stopped, Self::WaitingTransmit)
+            (_, Self::Stopped)
+                | (Self::Stopped, Self::WaitingTransmit)
                 | (Self::WaitingTransmit, Self::WaitingTransmit)
                 | (Self::WaitingTransmit, Self::WaitingExpire)
                 | (Self::WaitingExpire, Self::WaitingTransmit)
@@ -52,8 +55,8 @@ pub struct TrickleTimer {
     pub k: u32,
     pub interval: u32,
     pub counter: u32,
-    pub interval_start: u32,
-    pub transmit_time: u32,
+    pub interval_start: u64,
+    pub transmit_time: u64,
     pub state: TrickleState,
     transmitted: bool,
 }
@@ -96,7 +99,7 @@ impl TrickleTimer {
     /// Begin the first interval (RFC 6206 step 1-2).
     ///
     /// `rand_offset` is a caller-supplied random value in `[0, imin/2)`.
-    pub fn start(&mut self, now: u32, rand_offset: u32) {
+    pub fn start(&mut self, now: u64, rand_offset: u32) {
         self.interval = self.imin;
         self.begin_interval(now, rand_offset)
             .expect("stopped or active Trickle timer can begin an interval");
@@ -104,27 +107,32 @@ impl TrickleTimer {
 
     fn begin_interval(
         &mut self,
-        now: u32,
+        now: u64,
         rand_offset: u32,
     ) -> Result<(), InvalidTrickleTransition> {
+        if now.checked_add(u64::from(self.interval)).is_none() {
+            return self.transition_to(TrickleState::Stopped);
+        }
         self.interval_start = now;
         self.counter = 0;
         self.transmitted = false;
         let half = self.interval / 2;
         // transmit_time is uniform in [now + half, now + interval)
         let offset = if half > 0 { rand_offset % half } else { 0 };
-        self.transmit_time = now.saturating_add(half).saturating_add(offset);
+        self.transmit_time = now
+            .saturating_add(u64::from(half))
+            .saturating_add(u64::from(offset));
         self.transition_to(TrickleState::WaitingTransmit)
     }
 
     /// Absolute time when the current interval ends.
-    pub fn interval_end(&self) -> u32 {
-        self.interval_start.saturating_add(self.interval)
+    pub fn interval_end(&self) -> u64 {
+        self.interval_start.saturating_add(u64::from(self.interval))
     }
 
     /// Record a consistent transmission seen from a neighbour (RFC 6206 step 3).
     pub fn heard_consistent(&mut self) {
-        self.counter += 1;
+        self.counter = self.counter.saturating_add(1);
     }
 
     /// Whether a DIO should be sent at transmit time (c < k, RFC 6206 step 4).
@@ -146,13 +154,13 @@ impl TrickleTimer {
     /// End the current interval: double (capped) and start the next one (step 5).
     ///
     /// `rand_offset` is a caller-supplied random value in `[0, new_interval/2)`.
-    pub fn expire(&mut self, now: u32, rand_offset: u32) {
+    pub fn expire(&mut self, now: u64, rand_offset: u32) {
         let _ = self.try_expire(now, rand_offset);
     }
 
     pub fn try_expire(
         &mut self,
-        now: u32,
+        now: u64,
         rand_offset: u32,
     ) -> Result<(), InvalidTrickleTransition> {
         if self.state != TrickleState::WaitingExpire {
@@ -168,13 +176,13 @@ impl TrickleTimer {
     /// Handle an inconsistency: shrink to `imin` and restart (RFC 6206 step 6).
     ///
     /// No-op if the interval is already `imin` (RFC 6206 §4.2).
-    pub fn reset(&mut self, now: u32, rand_offset: u32) {
+    pub fn reset(&mut self, now: u64, rand_offset: u32) {
         let _ = self.try_reset(now, rand_offset);
     }
 
     pub fn try_reset(
         &mut self,
-        now: u32,
+        now: u64,
         rand_offset: u32,
     ) -> Result<(), InvalidTrickleTransition> {
         if self.interval != self.imin {
@@ -186,7 +194,9 @@ impl TrickleTimer {
 
     /// The next scheduled event.
     pub fn next_event(&self) -> TrickleEvent {
-        if !self.transmitted {
+        if self.state == TrickleState::Stopped {
+            TrickleEvent::Stopped
+        } else if !self.transmitted {
             TrickleEvent::Transmit {
                 at_ms: self.transmit_time,
             }
@@ -252,6 +262,9 @@ mod tests {
         t.heard_consistent(); // counter = 2 = k
         assert!(!t.should_transmit());
         assert!(!t.fire_transmit());
+        t.counter = u32::MAX;
+        t.heard_consistent();
+        assert_eq!(t.counter, u32::MAX);
     }
 
     #[test]
@@ -314,25 +327,27 @@ mod tests {
     }
 
     #[test]
-    fn interval_end_saturates_near_u32_max() {
-        // Test that interval_end uses saturating_add to avoid wraparound
+    fn interval_end_crosses_u32_boundary() {
+        const WRAP: u64 = 0x1_0000_0000;
         let mut t = TrickleTimer::new(1000, 4, 10);
-        // Start at a time close to u32::MAX
-        let near_max = u32::MAX - 500;
+        let near_max = WRAP - 500;
         t.start(near_max, 0);
-        // interval_end should saturate to u32::MAX, not wrap to ~499
-        assert_eq!(t.interval_end(), u32::MAX);
+        assert_eq!(t.interval_end(), WRAP + 500);
     }
 
     #[test]
-    fn transmit_time_saturates_near_u32_max() {
-        // Test that transmit_time uses saturating_add to avoid wraparound
+    fn transmit_time_crosses_u32_boundary() {
+        const WRAP: u64 = 0x1_0000_0000;
         let mut t = TrickleTimer::new(1000, 4, 10);
-        // Start at a time close to u32::MAX
-        let near_max = u32::MAX - 200;
+        let near_max = WRAP - 200;
         t.start(near_max, 100);
-        // transmit_time = now + half + offset = near_max + 500 + 100
-        // Without saturation, this would wrap. With saturation, it hits u32::MAX.
-        assert_eq!(t.transmit_time, u32::MAX);
+        assert_eq!(t.transmit_time, WRAP + 400);
+    }
+
+    #[test]
+    fn clock_exhaustion_stops_timer() {
+        let mut t = TrickleTimer::new(1000, 4, 10);
+        t.start(u64::MAX - 999, 0);
+        assert_eq!(t.next_event(), TrickleEvent::Stopped);
     }
 }

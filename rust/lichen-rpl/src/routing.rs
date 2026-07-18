@@ -345,6 +345,14 @@ struct DaoUpdate {
 }
 
 #[cfg(feature = "std")]
+#[derive(Clone, Copy)]
+struct DaoTiming {
+    now_seconds: u64,
+    lifetime_unit_seconds: u64,
+    max_deadline_seconds: u64,
+}
+
+#[cfg(feature = "std")]
 impl DaoManager {
     pub fn new(node_address: [u8; 16], rpl_instance_id: u8, dodag_id: [u8; 16]) -> Self {
         Self {
@@ -463,8 +471,11 @@ impl DaoManager {
             updates,
             update_count,
             origin,
-            0,
-            DEFAULT_LIFETIME_UNIT_SECONDS,
+            DaoTiming {
+                now_seconds: 0,
+                lifetime_unit_seconds: DEFAULT_LIFETIME_UNIT_SECONDS,
+                max_deadline_seconds: u64::MAX,
+            },
         )
     }
 
@@ -493,8 +504,41 @@ impl DaoManager {
             updates,
             update_count,
             origin,
-            now_seconds,
-            lifetime_unit_seconds,
+            DaoTiming {
+                now_seconds,
+                lifetime_unit_seconds,
+                max_deadline_seconds: u64::MAX,
+            },
+        )
+    }
+
+    pub fn process_dao_at_bounded(
+        &mut self,
+        dao_bytes: &[u8],
+        origin: [u8; 16],
+        now_seconds: u64,
+        lifetime_unit_seconds: u64,
+        max_deadline_seconds: u64,
+    ) -> bool {
+        if !self.is_root {
+            return false;
+        }
+        let Ok(dao) = Dao::from_bytes(dao_bytes) else {
+            return false;
+        };
+        let Some((updates, update_count)) = self.extract_updates(&dao, dao_bytes) else {
+            return false;
+        };
+        self.process_dao_inner(
+            dao,
+            updates,
+            update_count,
+            origin,
+            DaoTiming {
+                now_seconds,
+                lifetime_unit_seconds,
+                max_deadline_seconds,
+            },
         )
     }
 
@@ -504,9 +548,13 @@ impl DaoManager {
         updates: [Option<DaoUpdate>; MAX_DAO_UPDATES],
         update_count: usize,
         origin: [u8; 16],
-        now_seconds: u64,
-        lifetime_unit_seconds: u64,
+        timing: DaoTiming,
     ) -> bool {
+        let DaoTiming {
+            now_seconds,
+            lifetime_unit_seconds,
+            max_deadline_seconds,
+        } = timing;
         if !self.is_root {
             return false;
         }
@@ -558,12 +606,12 @@ impl DaoManager {
                     }
                 }
             }
-            let expires_at = if update.path_lifetime == 255 {
+            if update.path_lifetime != 255 && lifetime_unit_seconds == 0 {
+                return false;
+            }
+            let expires_at = if matches!(update.path_lifetime, 0 | 255) {
                 None
             } else {
-                if lifetime_unit_seconds == 0 {
-                    return false;
-                }
                 let lifetime = u64::from(update.path_lifetime.max(1));
                 let Some(deadline) = lifetime
                     .checked_mul(lifetime_unit_seconds)
@@ -571,6 +619,9 @@ impl DaoManager {
                 else {
                     return false;
                 };
+                if deadline > max_deadline_seconds {
+                    return false;
+                }
                 Some(deadline)
             };
             if update.path_lifetime != 0 {
