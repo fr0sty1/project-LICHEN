@@ -271,9 +271,11 @@ static int status_get(struct coap_resource *resource,
 	 * The T-Echo (SX1262) turns around fast enough not to need it, but the
 	 * delay is harmless for it.
 	 */
-	if (CONFIG_LICHEN_GATEWAY_RX1_DELAY_MS > 0) {
-		k_sleep(K_MSEC(CONFIG_LICHEN_GATEWAY_RX1_DELAY_MS));
-	}
+	/* Compile-time guard: with the default 0, K_MSEC(0) -> MAX(0, 0) trips
+	 * bugprone-branch-clone, so drop the call entirely when disabled. */
+#if CONFIG_LICHEN_GATEWAY_RX1_DELAY_MS > 0
+	k_sleep(K_MSEC(CONFIG_LICHEN_GATEWAY_RX1_DELAY_MS));
+#endif
 
 	/* Diagnostic (lora_ipv6_mesh-fe1z): which peer's GET reached the server,
 	 * and did the response send succeed? IID last 2 bytes = EUI tail
