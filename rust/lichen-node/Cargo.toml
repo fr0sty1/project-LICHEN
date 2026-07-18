@@ -10,7 +10,7 @@ default = []
 std = ["lichen-hal/std", "lichen-link/std", "lichen-link/schnorr", "dep:lichen-rpl", "lichen-rpl?/std", "dep:lichen-oscore", "lichen-oscore?/std", "lichen-ipv6/std", "dep:tokio", "lichen-meshtastic?/std"]
 # Meshtastic bridge integration
 meshtastic = ["dep:lichen-meshtastic", "lichen-meshtastic/alloc"]
-# Logging: enable one or neither, not both
+# Logging: defmt takes precedence when both are enabled
 defmt = ["dep:defmt", "lichen-core/defmt", "lichen-hal/defmt", "lichen-link/defmt", "lichen-schc/defmt", "lichen-coap/defmt", "lichen-ipv6/defmt", "lichen-rpl?/defmt", "lichen-oscore?/defmt"]
 log = ["dep:log", "lichen-core/log", "lichen-hal/log", "lichen-link/log", "lichen-schc/log", "lichen-coap/log", "lichen-ipv6/log", "lichen-rpl?/log", "lichen-oscore?/log"]
 
@@ -25,6 +25,7 @@ lichen-rpl = { path = "../lichen-rpl", optional = true }
 lichen-oscore = { path = "../lichen-oscore", optional = true, default-features = false }
 lichen-meshtastic = { path = "../lichen-meshtastic", optional = true, default-features = false }
 heapless = "0.8"
+libm = "0.2"
 
 # Logging backends (optional, feature-gated)
 defmt = { version = "0.3", optional = true }

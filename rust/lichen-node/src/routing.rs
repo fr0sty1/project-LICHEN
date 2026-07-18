@@ -397,6 +397,7 @@ impl Router {
 }
 
 /// Haversine distance in meters between two (lat, lon) points.
+#[cfg(feature = "std")]
 fn haversine(c1: GeoCoords, c2: GeoCoords) -> f64 {
     const EARTH_RADIUS_M: f64 = 6_371_000.0;
 
@@ -408,16 +409,18 @@ fn haversine(c1: GeoCoords, c2: GeoCoords) -> f64 {
     let dlat = (lat2 - lat1).to_radians();
     let dlon = (lon2 - lon1).to_radians();
 
-    let a = (dlat / 2.0).sin().powi(2)
-        + lat1_rad.cos() * lat2_rad.cos() * (dlon / 2.0).sin().powi(2);
+    let sin_dlat = libm::sin(dlat / 2.0);
+    let sin_dlon = libm::sin(dlon / 2.0);
+    let a = sin_dlat * sin_dlat + libm::cos(lat1_rad) * libm::cos(lat2_rad) * sin_dlon * sin_dlon;
     // Clamp a to [0, 1] before sqrt to handle floating-point errors
-    let c = 2.0 * a.min(1.0).sqrt().asin();
+    let c = 2.0 * libm::asin(libm::sqrt(a.min(1.0)));
 
     EARTH_RADIUS_M * c
 }
 
 /// Validate geographic coordinates.
 /// Returns false for NaN, inf, out-of-range, or null island (0,0).
+#[cfg(feature = "std")]
 fn is_valid_coords(coords: GeoCoords) -> bool {
     let (lat, lon) = coords;
 
