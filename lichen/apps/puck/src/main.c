@@ -39,6 +39,33 @@
 
 LOG_MODULE_REGISTER(lichen_puck, LOG_LEVEL_INF);
 
+#if IS_ENABLED(CONFIG_LICHEN_L2) && IS_ENABLED(CONFIG_STATS)
+#include <zephyr/stats/stats.h>
+
+/*
+ * CoAP round-trip counters, exported over SMP as the "coap" STATS group so
+ * the round trip can be confirmed on the console-less T1000-E via if02
+ * (qpc0 end-to-end validation): sent GETs vs successful 2.05 responses vs
+ * errors/timeouts.
+ */
+STATS_SECT_START(lichen_coap_stats)
+STATS_SECT_ENTRY32(sent)
+STATS_SECT_ENTRY32(ok)
+STATS_SECT_ENTRY32(err)
+STATS_SECT_END;
+
+STATS_NAME_START(lichen_coap_stats)
+STATS_NAME(lichen_coap_stats, sent)
+STATS_NAME(lichen_coap_stats, ok)
+STATS_NAME(lichen_coap_stats, err)
+STATS_NAME_END(lichen_coap_stats);
+
+STATS_SECT_DECL(lichen_coap_stats) lichen_coap_stats;
+#define COAP_STAT_INC(f) STATS_INC(lichen_coap_stats, f)
+#else
+#define COAP_STAT_INC(f) do { } while (0)
+#endif
+
 /* LoRa parameters per LICHEN spec: SF10 / 125 kHz / CR4-5 @ 915 MHz (US915). */
 #define LORA_FREQ_HZ       915000000U
 #define LORA_MAX_FRAME     255
@@ -197,8 +224,10 @@ static void on_coap_response(void *user_data, int status, uint8_t code,
 
 	if (status != LICHEN_COAP_OK) {
 		LOG_WRN("CoAP response error: %d", status);
+		COAP_STAT_INC(err);
 		return;
 	}
+	COAP_STAT_INC(ok);
 	LOG_INF("CoAP %u.%02u response, %u B payload",
 		code >> 5, code & 0x1F, (unsigned int)payload_len);
 	if (payload_len > 0) {
@@ -487,6 +516,10 @@ int main(void)
 		LOG_ERR("CoAP client init failed: %d", ret);
 	}
 
+#if IS_ENABLED(CONFIG_STATS)
+	(void)STATS_INIT_AND_REG(lichen_coap_stats, STATS_SIZE_32, "coap");
+#endif
+
 	while (1) {
 		set_phase(PH_TX);
 		ret = lichen_coap_get(&peer_addr, req_path,
@@ -494,6 +527,7 @@ int main(void)
 		if (ret != 0) {
 			LOG_WRN("CoAP GET send failed: %d", ret);
 		} else {
+			COAP_STAT_INC(sent);
 			LOG_INF("CoAP GET /status sent");
 		}
 		set_phase(PH_RECV);
