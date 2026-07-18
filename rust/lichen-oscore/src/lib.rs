@@ -144,6 +144,15 @@ impl core::error::Error for OscoreError {
     }
 }
 
+/// Sender sequence state that must be persisted before transmitting a message.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SenderSequenceState {
+    /// Next sender sequence that may be used.
+    pub next_sequence: u64,
+    /// Whether the terminal sequence has already been consumed.
+    pub exhausted: bool,
+}
+
 /// OSCORE security context.
 ///
 /// Contains cryptographic material and state for one peer.
@@ -160,9 +169,16 @@ impl core::error::Error for OscoreError {
 /// # Key Lifecycle
 ///
 /// All key material (master_secret, sender_key, recipient_key) is zeroized on drop
-/// via the `Zeroize` derive. Clone is intentionally supported for cases where multiple
-/// tasks need the context; both the original and clones will be zeroized when dropped.
-#[derive(Clone, Zeroize)]
+/// via the `Zeroize` derive. A context cannot be cloned because its sender sequence and
+/// replay state must have exactly one synchronized owner.
+///
+/// ```compile_fail
+/// # use lichen_oscore::Context;
+/// # let secret = [0; 16];
+/// let context = Context::new(&secret, None, b"a", b"b").unwrap();
+/// let duplicate = context.clone();
+/// ```
+#[derive(Zeroize)]
 #[zeroize(drop)]
 pub struct Context {
     // Common context
@@ -179,6 +195,7 @@ pub struct Context {
     sender_key: [u8; KEY_LEN],
     sender_seq: OscoreSeqNum,
     sender_seq_exhausted: bool,
+    restored: bool,
 
     // Recipient context
     recipient_id: [u8; ID_MAX_LEN],
@@ -186,6 +203,12 @@ pub struct Context {
     recipient_key: [u8; KEY_LEN],
     recipient_seq: OscoreSeqNum,
     replay_window: u32,
+
+    // Requests for which a response without a fresh PIV has already been protected.
+    response_seq: OscoreSeqNum,
+    response_window: u32,
+    response_window_initialized: bool,
+    allow_no_piv_response: bool,
 }
 
 impl core::fmt::Debug for Context {
@@ -199,18 +222,24 @@ impl core::fmt::Debug for Context {
             .field("sender_key", &"[REDACTED]")
             .field("sender_seq", &self.sender_seq)
             .field("sender_seq_exhausted", &self.sender_seq_exhausted)
+            .field("restored", &self.restored)
             .field("recipient_id_len", &self.recipient_id_len)
             .field("recipient_key", &"[REDACTED]")
             .field("recipient_seq", &self.recipient_seq)
             .field("replay_window", &self.replay_window)
+            .field("response_seq", &self.response_seq)
+            .field("response_window", &self.response_window)
             .finish()
     }
 }
 
 impl Context {
-    /// Create a new OSCORE security context.
+    /// Create a new OSCORE security context from cryptographically fresh key material.
     ///
     /// Derives sender and recipient keys from master secret using HKDF-SHA256.
+    /// This starts the sender sequence at zero and MUST NOT be used to reopen a
+    /// previously persisted context. Use [`Context::restore`] with persisted sender
+    /// state instead, or nonce reuse can compromise confidentiality.
     ///
     /// # Errors
     ///
@@ -223,6 +252,61 @@ impl Context {
         master_salt: Option<&[u8]>,
         sender_id: &[u8],
         recipient_id: &[u8],
+    ) -> Result<Self, OscoreError> {
+        Self::from_sender_state(
+            master_secret,
+            master_salt,
+            sender_id,
+            recipient_id,
+            OscoreSeqNum::default(),
+            false,
+            false,
+        )
+    }
+
+    /// Restore an OSCORE context from persisted sender state.
+    ///
+    /// `next_sender_sequence` is the next reserved sequence number that may be used.
+    /// Persist the advanced reservation before transmitting a protected message. An
+    /// exhausted context is represented by `next_sender_sequence == OscoreSeqNum::MAX`
+    /// and `sender_sequence_exhausted == true` and cannot protect further messages.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InvalidParam` for invalid IDs or salt, a sequence above the 40-bit
+    /// maximum, or an inconsistent exhausted state.
+    pub fn restore(
+        master_secret: &[u8; KEY_LEN],
+        master_salt: Option<&[u8]>,
+        sender_id: &[u8],
+        recipient_id: &[u8],
+        next_sender_sequence: u64,
+        sender_sequence_exhausted: bool,
+    ) -> Result<Self, OscoreError> {
+        let sender_seq =
+            OscoreSeqNum::new(next_sender_sequence).ok_or(OscoreError::InvalidParam)?;
+        if sender_sequence_exhausted && next_sender_sequence != OscoreSeqNum::MAX {
+            return Err(OscoreError::InvalidParam);
+        }
+        Self::from_sender_state(
+            master_secret,
+            master_salt,
+            sender_id,
+            recipient_id,
+            sender_seq,
+            sender_sequence_exhausted,
+            true,
+        )
+    }
+
+    fn from_sender_state(
+        master_secret: &[u8; KEY_LEN],
+        master_salt: Option<&[u8]>,
+        sender_id: &[u8],
+        recipient_id: &[u8],
+        sender_seq: OscoreSeqNum,
+        sender_seq_exhausted: bool,
+        restored: bool,
     ) -> Result<Self, OscoreError> {
         // SECURITY: Validate ID length against nonce capacity (7 bytes), not ID_MAX_LEN (8).
         // RFC 8613 allows IDs up to 8 bytes, but only 7 bytes fit in the nonce layout.
@@ -249,13 +333,18 @@ impl Context {
             sender_id: [0u8; ID_MAX_LEN],
             sender_id_len: sender_id.len() as u8,
             sender_key: [0u8; KEY_LEN],
-            sender_seq: OscoreSeqNum::default(),
-            sender_seq_exhausted: false,
+            sender_seq,
+            sender_seq_exhausted,
+            restored,
             recipient_id: [0u8; ID_MAX_LEN],
             recipient_id_len: recipient_id.len() as u8,
             recipient_key: [0u8; KEY_LEN],
             recipient_seq: OscoreSeqNum::default(),
             replay_window: 0,
+            response_seq: OscoreSeqNum::default(),
+            response_window: 0,
+            response_window_initialized: false,
+            allow_no_piv_response: !restored,
         };
 
         ctx.master_salt[..salt.len()].copy_from_slice(salt);
@@ -275,6 +364,19 @@ impl Context {
     /// Get the next sender sequence number, or `None` if it is exhausted.
     pub fn sender_seq(&self) -> Option<OscoreSeqNum> {
         (!self.sender_seq_exhausted).then_some(self.sender_seq)
+    }
+
+    /// Return the sender reservation that must be durable before transmission.
+    pub fn sender_sequence_state(&self) -> SenderSequenceState {
+        SenderSequenceState {
+            next_sequence: self.sender_seq.get(),
+            exhausted: self.sender_seq_exhausted,
+        }
+    }
+
+    /// Return whether this context was reconstructed from persisted state.
+    pub fn is_restored(&self) -> bool {
+        self.restored
     }
 
     /// Get sender ID.
@@ -463,7 +565,9 @@ impl Context {
     ///
     /// Per RFC 8613 Section 5.2, when a response includes a PIV, the nonce uses
     /// the responder's sender_id and the responder's PIV. When omitting PIV, the
-    /// nonce uses the requester's ID and the original request's PIV.
+    /// nonce uses the requester's ID and the original request's PIV. A response
+    /// without a PIV is therefore allowed only once per request KID/PIV. Requests
+    /// older than the bounded response window are also rejected conservatively.
     ///
     /// Returns (ciphertext, oscore_option_value).
     ///
@@ -485,9 +589,15 @@ impl Context {
     ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, 16>), OscoreError> {
         if request_kid.len() > NONCE_ID_LEN
             || OscoreSeqNum::from_piv(request_piv).is_none()
-            || (!include_piv && request_kid != self.recipient_id())
+            || request_kid != self.recipient_id()
+            || (!include_piv && !self.allow_no_piv_response)
         {
             return Err(OscoreError::InvalidParam);
+        }
+
+        let request_seq = OscoreSeqNum::from_piv(request_piv).ok_or(OscoreError::InvalidParam)?;
+        if !include_piv && self.is_response_reuse(request_seq) {
+            return Err(OscoreError::Replay);
         }
 
         // Determine PIV for nonce: own sequence if including, else request's PIV
@@ -560,7 +670,33 @@ impl Context {
             // An all-zero option value is encoded as a zero-length option.
         }
 
+        if !include_piv {
+            self.mark_response_used(request_seq);
+        }
+
         Ok((ct_out, opt))
+    }
+
+    /// Protect a response with a fresh sender PIV.
+    ///
+    /// Use this for Observe notifications or any request that can produce multiple
+    /// responses. Each call consumes a sender sequence and therefore uses a unique nonce.
+    pub fn protect_response_with_piv(
+        &mut self,
+        code: u8,
+        class_e_options: &[u8],
+        payload: &[u8],
+        request_kid: &[u8],
+        request_piv: &[u8],
+    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, 16>), OscoreError> {
+        self.protect_response(
+            code,
+            class_e_options,
+            payload,
+            request_kid,
+            request_piv,
+            true,
+        )
     }
 
     /// Unprotect (decrypt) an OSCORE-protected response.
@@ -582,6 +718,29 @@ impl Context {
         ciphertext: &[u8],
         request_piv: &[u8],
     ) -> Result<(u8, heapless::Vec<u8, 128>, heapless::Vec<u8, 128>), OscoreError> {
+        self.unprotect_response_inner(oscore_option, ciphertext, request_piv, false)
+    }
+
+    /// Unprotect an Observe notification or another response with a fresh PIV.
+    ///
+    /// Unlike [`Context::unprotect_response`], this applies the peer sender replay
+    /// window and rejects responses that omit a fresh PIV.
+    pub fn unprotect_notification(
+        &mut self,
+        oscore_option: &[u8],
+        ciphertext: &[u8],
+        request_piv: &[u8],
+    ) -> Result<(u8, heapless::Vec<u8, 128>, heapless::Vec<u8, 128>), OscoreError> {
+        self.unprotect_response_inner(oscore_option, ciphertext, request_piv, true)
+    }
+
+    fn unprotect_response_inner(
+        &mut self,
+        oscore_option: &[u8],
+        ciphertext: &[u8],
+        request_piv: &[u8],
+        check_replay: bool,
+    ) -> Result<(u8, heapless::Vec<u8, 128>, heapless::Vec<u8, 128>), OscoreError> {
         if ciphertext.len() < TAG_LEN + 1 {
             return Err(OscoreError::InvalidParam);
         }
@@ -596,18 +755,25 @@ impl Context {
         }
 
         // RFC 8613 Section 5.2: For responses, if PIV is absent, use request_piv for nonce
-        let (piv, has_response_piv) = if opt.piv_len > 0 {
+        let (piv, response_seq) = if opt.piv_len > 0 {
             let piv = &opt.piv[..opt.piv_len as usize];
-            OscoreSeqNum::from_piv(piv).ok_or(OscoreError::InvalidParam)?;
-            (piv, true)
+            let seq = OscoreSeqNum::from_piv(piv).ok_or(OscoreError::InvalidParam)?;
+            (piv, Some(seq))
         } else {
+            if check_replay {
+                return Err(OscoreError::InvalidParam);
+            }
             if OscoreSeqNum::from_piv(request_piv).is_none() {
                 return Err(OscoreError::InvalidParam);
             }
-            (request_piv, false)
+            (request_piv, None)
         };
 
-        let nonce_id = if has_response_piv {
+        if response_seq.is_some_and(|seq| check_replay && self.is_replay(seq)) {
+            return Err(OscoreError::Replay);
+        }
+
+        let nonce_id = if response_seq.is_some() {
             self.recipient_id()
         } else {
             self.sender_id()
@@ -631,6 +797,10 @@ impl Context {
         cipher
             .decrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut plaintext, tag)
             .map_err(|_| OscoreError::DecryptFailed)?;
+
+        if check_replay {
+            self.update_replay_window(response_seq.expect("notification requires a fresh PIV"));
+        }
 
         // Parse plaintext: code || options || 0xFF || payload
         if plaintext.is_empty() {
@@ -668,6 +838,34 @@ impl Context {
             self.sender_seq_exhausted = true;
         }
         Ok(seq)
+    }
+
+    fn is_response_reuse(&self, seq: OscoreSeqNum) -> bool {
+        if !self.response_window_initialized || seq.get() > self.response_seq.get() {
+            return false;
+        }
+
+        let diff = self.response_seq.get() - seq.get();
+        diff >= u64::from(WINDOW_SIZE) || self.response_window & (1 << diff as u32) != 0
+    }
+
+    fn mark_response_used(&mut self, seq: OscoreSeqNum) {
+        if !self.response_window_initialized {
+            self.response_seq = seq;
+            self.response_window = 1;
+            self.response_window_initialized = true;
+        } else if seq.get() > self.response_seq.get() {
+            let shift = seq.get() - self.response_seq.get();
+            self.response_window = if shift >= u64::from(WINDOW_SIZE) {
+                1
+            } else {
+                (self.response_window << shift as u32) | 1
+            };
+            self.response_seq = seq;
+        } else {
+            let diff = self.response_seq.get() - seq.get();
+            self.response_window |= 1 << diff as u32;
+        }
     }
 
     /// Check if sequence number would be rejected as a replay.
@@ -1200,6 +1398,59 @@ mod tests {
     }
 
     #[test]
+    fn restored_context_continues_at_reserved_sequence() {
+        let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
+        let mut ctx = Context::restore(&master_secret, None, &[0], &[1], 0x0102, false).unwrap();
+
+        let (_, option) = ctx.protect_request(0x01, &[], b"restored").unwrap();
+
+        assert_eq!(option.as_slice(), b"\x0a\x01\x02\x00");
+        assert_eq!(ctx.sender_seq().unwrap().get(), 0x0103);
+        assert!(ctx.is_restored());
+        assert_eq!(
+            ctx.sender_sequence_state(),
+            SenderSequenceState {
+                next_sequence: 0x0103,
+                exhausted: false
+            }
+        );
+    }
+
+    #[test]
+    fn restored_context_rejects_response_without_piv() {
+        let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
+        let mut ctx = Context::restore(&master_secret, None, &[1], &[0], 7, false).unwrap();
+
+        assert_eq!(
+            ctx.protect_response(0x45, &[], b"response", &[0], &[3], false)
+                .unwrap_err(),
+            OscoreError::InvalidParam
+        );
+    }
+
+    #[test]
+    fn restore_rejects_invalid_sender_state() {
+        let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
+
+        assert_eq!(
+            Context::restore(
+                &master_secret,
+                None,
+                &[0],
+                &[1],
+                OscoreSeqNum::MAX + 1,
+                false
+            )
+            .unwrap_err(),
+            OscoreError::InvalidParam
+        );
+        assert_eq!(
+            Context::restore(&master_secret, None, &[0], &[1], 7, true).unwrap_err(),
+            OscoreError::InvalidParam
+        );
+    }
+
+    #[test]
     fn rfc8613_nonce_formula_literal() {
         assert_eq!(
             compute_nonce(&[0xaa, 0xbb], &[0x01, 0x02, 0x03], &[0; NONCE_LEN]),
@@ -1513,6 +1764,28 @@ mod tests {
     }
 
     #[test]
+    fn notification_rejects_duplicate_response_piv() {
+        let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
+        let mut alice = Context::new(&master_secret, None, &[0], &[1]).unwrap();
+        let mut bob = Context::new(&master_secret, None, &[1], &[0]).unwrap();
+        let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
+        let request_piv = &request_option[1..2];
+        let response = bob
+            .protect_response_with_piv(0x45, &[], b"notification", &[0], request_piv)
+            .unwrap();
+
+        alice
+            .unprotect_notification(&response.1, &response.0, request_piv)
+            .unwrap();
+        assert_eq!(
+            alice
+                .unprotect_notification(&response.1, &response.0, request_piv)
+                .unwrap_err(),
+            OscoreError::Replay
+        );
+    }
+
+    #[test]
     fn explicit_response_pivs_do_not_use_request_replay_window() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut alice = Context::new(&master_secret, None, &[0], &[1]).unwrap();
@@ -1522,10 +1795,10 @@ mod tests {
         bob.sender_seq = seq(0x1_0000_0000);
 
         let first = bob
-            .protect_response(0x45, &[], b"first", &[0], request_piv, true)
+            .protect_response_with_piv(0x45, &[], b"first", &[0], request_piv)
             .unwrap();
         let second = bob
-            .protect_response(0x45, &[], b"second", &[0], request_piv, true)
+            .protect_response_with_piv(0x45, &[], b"second", &[0], request_piv)
             .unwrap();
         assert_eq!(first.1.as_slice(), b"\x05\x01\x00\x00\x00\x00");
         assert_eq!(second.1.as_slice(), b"\x05\x01\x00\x00\x00\x01");
@@ -1578,6 +1851,45 @@ mod tests {
         responder
             .protect_response(0x45, &[], b"response", b"\x00", b"\x00", false)
             .unwrap();
+    }
+
+    #[test]
+    fn response_with_piv_requires_requester_identity() {
+        let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
+        let mut responder = Context::new(&master_secret, None, b"\x01", b"\x00").unwrap();
+
+        assert_eq!(
+            responder
+                .protect_response_with_piv(0x45, &[], b"response", b"\x02", b"\x00")
+                .unwrap_err(),
+            OscoreError::InvalidParam
+        );
+    }
+
+    #[test]
+    fn response_without_piv_is_one_shot_per_request() {
+        let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
+        let mut responder = Context::new(&master_secret, None, b"\x01", b"\x00").unwrap();
+
+        responder
+            .protect_response(0x45, &[], b"first", b"\x00", b"\x07", false)
+            .unwrap();
+        assert_eq!(
+            responder
+                .protect_response(0x45, &[], b"second", b"\x00", b"\x07", false)
+                .unwrap_err(),
+            OscoreError::Replay
+        );
+
+        responder
+            .protect_response(0x45, &[], b"later", b"\x00", b"\x28", false)
+            .unwrap();
+        assert_eq!(
+            responder
+                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07", false)
+                .unwrap_err(),
+            OscoreError::Replay
+        );
     }
 
     #[test]
