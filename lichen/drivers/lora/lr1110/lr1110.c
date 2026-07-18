@@ -19,6 +19,53 @@
 #include "lr1110_regmem.h"
 #include "lr1110_system.h"
 
+#if IS_ENABLED(CONFIG_STATS)
+#include <zephyr/stats/stats.h>
+
+/*
+ * RX diagnostic counters (lora_ipv6_mesh-qpc0), exported over SMP as the
+ * "lr1110" STATS group so the LR1110's RX behaviour can be observed on the
+ * console-less T1000-E via if02. Answers "does any demod IRQ ever fire?":
+ *   windows  - RX windows armed (recv calls)
+ *   preamble - PREAMBLEDETECTED latched
+ *   synchdr  - SYNCWORD_HEADERVALID latched
+ *   rxdone   - RXDONE latched (a frame was demodulated)
+ *   timeout  - RX window timed out with no packet (the deaf-radio outcome)
+ *   crcerr   - CRC error (demodulated but corrupt)
+ *   hdrerr   - header error
+ *   cmderr   - a GetStatus reported command_status != OK
+ *   notrx    - a GetStatus reported the chip was not in RX mode
+ */
+STATS_SECT_START(lr1110_rx_stats)
+STATS_SECT_ENTRY32(windows)
+STATS_SECT_ENTRY32(preamble)
+STATS_SECT_ENTRY32(synchdr)
+STATS_SECT_ENTRY32(rxdone)
+STATS_SECT_ENTRY32(timeout)
+STATS_SECT_ENTRY32(crcerr)
+STATS_SECT_ENTRY32(hdrerr)
+STATS_SECT_ENTRY32(cmderr)
+STATS_SECT_ENTRY32(notrx)
+STATS_SECT_END;
+
+STATS_NAME_START(lr1110_rx_stats)
+STATS_NAME(lr1110_rx_stats, windows)
+STATS_NAME(lr1110_rx_stats, preamble)
+STATS_NAME(lr1110_rx_stats, synchdr)
+STATS_NAME(lr1110_rx_stats, rxdone)
+STATS_NAME(lr1110_rx_stats, timeout)
+STATS_NAME(lr1110_rx_stats, crcerr)
+STATS_NAME(lr1110_rx_stats, hdrerr)
+STATS_NAME(lr1110_rx_stats, cmderr)
+STATS_NAME(lr1110_rx_stats, notrx)
+STATS_NAME_END(lr1110_rx_stats);
+
+STATS_SECT_DECL(lr1110_rx_stats) lr1110_rx_stats;
+#define LR_RX_STAT_INC(f) STATS_INC(lr1110_rx_stats, f)
+#else
+#define LR_RX_STAT_INC(f) do { } while (0)
+#endif /* CONFIG_STATS */
+
 LOG_MODULE_REGISTER(lr1110, CONFIG_LORA_LOG_LEVEL);
 
 #define DT_DRV_COMPAT semtech_lr1110
@@ -468,6 +515,7 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 	}
 
 	LR1110_RETURN_ON_HAL_ERROR(lr1110_radio_set_rx(dev, LR1110_RX_CONTINUOUS));
+	LR_RX_STAT_INC(windows);
 
 	int64_t deadline = k_uptime_get() + k_ticks_to_ms_floor64(timeout.ticks);
 	lr1110_system_stat1_t stat1;
@@ -478,6 +526,15 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 		lichen_radio_progress();
 		k_sleep(K_MSEC(20));
 		lr1110_system_get_status(dev, &stat1, &stat2, &irq);
+
+		/* Diagnostic (qpc0): confirm the chip stays armed in RX with
+		 * commands succeeding while we poll. */
+		if (stat1.command_status != LR1110_SYSTEM_CMD_STATUS_OK) {
+			LR_RX_STAT_INC(cmderr);
+		}
+		if (stat2.chip_mode != LR1110_SYSTEM_CHIP_MODE_RX) {
+			LR_RX_STAT_INC(notrx);
+		}
 
 		/* A frame is arriving (preamble/sync/header seen): hold the
 		 * window open long enough for it to finish instead of
@@ -497,6 +554,26 @@ static int lr1110_lora_recv(const struct device *dev, uint8_t *data,
 	} while (!(irq & (LR1110_SYSTEM_IRQ_RXDONE_MASK |
 			  LR1110_SYSTEM_IRQ_TIMEOUT_MASK)) &&
 		 k_uptime_get() < deadline);
+
+	/* Diagnostic (qpc0): record which IRQs the demod latched this window. */
+	if (irq & LR1110_SYSTEM_IRQ_PREAMBLEDETECTED_MASK) {
+		LR_RX_STAT_INC(preamble);
+	}
+	if (irq & LR1110_SYSTEM_IRQ_SYNCWORD_HEADERVALID_MASK) {
+		LR_RX_STAT_INC(synchdr);
+	}
+	if (irq & LR1110_SYSTEM_IRQ_RXDONE_MASK) {
+		LR_RX_STAT_INC(rxdone);
+	}
+	if (irq & LR1110_SYSTEM_IRQ_TIMEOUT_MASK) {
+		LR_RX_STAT_INC(timeout);
+	}
+	if (irq & LR1110_SYSTEM_IRQ_CRCERR_MASK) {
+		LR_RX_STAT_INC(crcerr);
+	}
+	if (irq & LR1110_SYSTEM_IRQ_HEADERERR_MASK) {
+		LR_RX_STAT_INC(hdrerr);
+	}
 
 	lr1110_system_clear_irq(dev, irq);
 
@@ -599,6 +676,10 @@ static int lr1110_init(const struct device *dev)
 		return -EIO;
 	}
 	gpio_pin_interrupt_configure_dt(&lr1110_gpio_dio9, GPIO_INT_DISABLE);
+
+#if IS_ENABLED(CONFIG_STATS)
+	(void)STATS_INIT_AND_REG(lr1110_rx_stats, STATS_SIZE_32, "lr1110");
+#endif
 
 	LOG_DBG("LR1110 initialized");
 	return 0;
