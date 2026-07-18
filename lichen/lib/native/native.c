@@ -27,6 +27,9 @@
 #include <zephyr/sys/reboot.h>
 #if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
 #include <zephyr/usb/usb_device.h>
+#if IS_ENABLED(CONFIG_STATS)
+#include <zephyr/stats/stats.h>
+#endif
 #elif IS_ENABLED(CONFIG_USB_DEVICE_STACK_NEXT)
 #include <zephyr/usb/usbd.h>
 #endif
@@ -50,11 +53,133 @@ LOG_MODULE_REGISTER(lichen_native, LOG_LEVEL_INF);
 __attribute__((weak)) void lichen_radio_progress(void) { }
 
 #if IS_ENABLED(CONFIG_USB_DEVICE_STACK)
+/*
+ * USB bus-health monitoring + wedge recovery (lora_ipv6_mesh-1jqj).
+ *
+ * Opening/closing/DTR-churning the CDC port can wedge the nRF USBD: the host
+ * loops on "device descriptor read, error -110" and, until now, only a
+ * physical replug recovered. The firmware keeps running throughout, so a
+ * low-priority monitor thread can detect the wedge (a bus-reset storm with no
+ * successful configure) and reset the USBD peripheral via usb_disable() +
+ * usb_enable() — the software equivalent of the VBUS cycle a replug provides.
+ *
+ * Counters are exported as a Zephyr STATS group ("usb"), readable over the
+ * SMP transport (if02) so the USB state can be observed without opening the
+ * native port that triggers the wedge.
+ */
+#if IS_ENABLED(CONFIG_STATS)
+STATS_SECT_START(lichen_usb_stats)
+STATS_SECT_ENTRY32(reset)
+STATS_SECT_ENTRY32(configured)
+STATS_SECT_ENTRY32(suspend)
+STATS_SECT_ENTRY32(error)
+STATS_SECT_ENTRY32(disconnect)
+STATS_SECT_ENTRY32(recovery)
+STATS_SECT_END;
+
+STATS_NAME_START(lichen_usb_stats)
+STATS_NAME(lichen_usb_stats, reset)
+STATS_NAME(lichen_usb_stats, configured)
+STATS_NAME(lichen_usb_stats, suspend)
+STATS_NAME(lichen_usb_stats, error)
+STATS_NAME(lichen_usb_stats, disconnect)
+STATS_NAME(lichen_usb_stats, recovery)
+STATS_NAME_END(lichen_usb_stats);
+
+STATS_SECT_DECL(lichen_usb_stats) lichen_usb_stats;
+#define USB_STAT_INC(field) STATS_INC(lichen_usb_stats, field)
+#else
+#define USB_STAT_INC(field) do { } while (0)
+#endif /* CONFIG_STATS */
+
+static atomic_t s_usb_resets_since_cfg;
+static atomic_t s_usb_last_cfg_ms;
+
+static void lichen_usb_status_cb(enum usb_dc_status_code status,
+				 const uint8_t *param)
+{
+	ARG_UNUSED(param);
+
+	switch (status) {
+	case USB_DC_CONFIGURED:
+		atomic_set(&s_usb_resets_since_cfg, 0);
+		atomic_set(&s_usb_last_cfg_ms, (atomic_val_t)k_uptime_get());
+		USB_STAT_INC(configured);
+		break;
+	case USB_DC_RESET:
+		atomic_inc(&s_usb_resets_since_cfg);
+		USB_STAT_INC(reset);
+		break;
+	case USB_DC_SUSPEND:
+		USB_STAT_INC(suspend);
+		break;
+	case USB_DC_ERROR:
+		USB_STAT_INC(error);
+		break;
+	case USB_DC_DISCONNECTED:
+		USB_STAT_INC(disconnect);
+		break;
+	default:
+		break;
+	}
+}
+
+/*
+ * Wedge = many bus resets with no successful configure for a while. BOTH
+ * thresholds must trip, so normal enumeration (1-2 resets then configure)
+ * and a headless node (no host -> no resets) never trigger a spurious reset.
+ */
+#define USB_WEDGE_RESET_THRESHOLD 8
+#define USB_WEDGE_QUIET_MS        3000
+#define USB_MONITOR_PERIOD_MS     1000
+
+static void lichen_usb_monitor_fn(void *a, void *b, void *c)
+{
+	ARG_UNUSED(a);
+	ARG_UNUSED(b);
+	ARG_UNUSED(c);
+
+	while (true) {
+		k_sleep(K_MSEC(USB_MONITOR_PERIOD_MS));
+
+		int32_t resets = (int32_t)atomic_get(&s_usb_resets_since_cfg);
+
+		if (resets < USB_WEDGE_RESET_THRESHOLD) {
+			continue;
+		}
+
+		int64_t since_cfg =
+			k_uptime_get() - (int64_t)atomic_get(&s_usb_last_cfg_ms);
+
+		if (since_cfg < USB_WEDGE_QUIET_MS) {
+			continue;
+		}
+
+		LOG_WRN("USB wedge (%d resets, %lld ms since configure); "
+			"resetting USBD peripheral", resets, (long long)since_cfg);
+		USB_STAT_INC(recovery);
+
+		(void)usb_disable();
+		k_sleep(K_MSEC(100));
+		(void)usb_enable(lichen_usb_status_cb);
+
+		atomic_set(&s_usb_resets_since_cfg, 0);
+		atomic_set(&s_usb_last_cfg_ms, (atomic_val_t)k_uptime_get());
+	}
+}
+
+K_THREAD_DEFINE(lichen_usb_monitor, 1024, lichen_usb_monitor_fn, NULL, NULL,
+		NULL, K_LOWEST_APPLICATION_THREAD_PRIO, 0, 0);
+
 /* Enable USB early so CDC-ACM enumerates before peripheral drivers start,
  * allowing console output even if LoRa/GNSS init fails. */
 static int lichen_usb_early_init(void)
 {
-	int ret = usb_enable(NULL);
+#if IS_ENABLED(CONFIG_STATS)
+	(void)STATS_INIT_AND_REG(lichen_usb_stats, STATS_SIZE_32, "usb");
+#endif
+	int ret = usb_enable(lichen_usb_status_cb);
+
 	return (ret == -EALREADY) ? 0 : ret;
 }
 SYS_INIT(lichen_usb_early_init, APPLICATION, 0);
