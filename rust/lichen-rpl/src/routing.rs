@@ -208,14 +208,67 @@ impl RouteEntry {
     }
 }
 
-/// Root-side map from target address to the ordered hop list `[h1, ..., target]`.
+/// Canonical IPv6 route prefix.
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct RouteTarget {
+    prefix: [u8; 16],
+    prefix_len: u8,
+}
+
+#[cfg(feature = "std")]
+impl RouteTarget {
+    pub fn new(mut prefix: [u8; 16], prefix_len: u8) -> Option<Self> {
+        if prefix_len > 128 {
+            return None;
+        }
+        let whole_bytes = usize::from(prefix_len / 8);
+        let remaining_bits = prefix_len % 8;
+        let used_bytes = whole_bytes + usize::from(remaining_bits != 0);
+        if remaining_bits != 0 {
+            prefix[whole_bytes] &= u8::MAX << (8 - remaining_bits);
+        }
+        prefix[used_bytes..].fill(0);
+        Some(Self { prefix, prefix_len })
+    }
+
+    pub const fn host(address: [u8; 16]) -> Self {
+        Self {
+            prefix: address,
+            prefix_len: 128,
+        }
+    }
+
+    pub const fn prefix(&self) -> &[u8; 16] {
+        &self.prefix
+    }
+
+    pub const fn prefix_len(&self) -> u8 {
+        self.prefix_len
+    }
+
+    pub fn contains(&self, address: &[u8; 16]) -> bool {
+        let whole_bytes = usize::from(self.prefix_len / 8);
+        if self.prefix[..whole_bytes] != address[..whole_bytes] {
+            return false;
+        }
+        let remaining_bits = self.prefix_len % 8;
+        remaining_bits == 0
+            || (self.prefix[whole_bytes] ^ address[whole_bytes]) & (u8::MAX << (8 - remaining_bits))
+                == 0
+    }
+}
+
+/// Root-side map from route target to an ordered root-to-egress hop list.
 ///
-/// The first element is the root's direct neighbour; the last is the target.
-/// A single-hop target has a one-element path containing only itself.
+/// Host routes use `/128` targets and keep the existing `[h1, ..., target]`
+/// path shape. Prefix routes store a path to their egress, never to the
+/// canonical prefix address.
 #[cfg(feature = "std")]
 #[derive(Clone, Debug, Default)]
 pub struct RoutingTable {
-    routes: HashMap<[u8; 16], RouteEntry>,
+    routes: HashMap<RouteTarget, RouteEntry>,
+    prefix_route_count: usize,
 }
 
 #[cfg(feature = "std")]
@@ -226,7 +279,28 @@ impl RoutingTable {
 
     /// Add or replace a route, returning `false` if a new entry would exceed capacity.
     pub fn add_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) -> bool {
-        if !self.routes.contains_key(&target) && self.routes.len() == MAX_ROUTES {
+        self.add_target_route(RouteTarget::host(target), path)
+    }
+
+    /// Add a non-host prefix route to its egress path.
+    pub fn add_prefix_route(
+        &mut self,
+        target: RouteTarget,
+        egress: [u8; 16],
+        path: &[[u8; 16]],
+    ) -> bool {
+        if target.prefix_len == 128
+            || path.last() != Some(&egress)
+            || path.iter().any(|hop| hop == target.prefix())
+        {
+            return false;
+        }
+        self.add_target_route(target, path)
+    }
+
+    fn add_target_route(&mut self, target: RouteTarget, path: &[[u8; 16]]) -> bool {
+        let is_new = !self.routes.contains_key(&target);
+        if is_new && self.routes.len() == MAX_ROUTES {
             return false;
         }
         match self.routes.get_mut(&target) {
@@ -239,37 +313,69 @@ impl RoutingTable {
                 self.routes.insert(target, RouteEntry::fresh(path));
             }
         }
+        if is_new && target.prefix_len < 128 {
+            self.prefix_route_count += 1;
+        }
         true
     }
 
     pub fn remove_route(&mut self, target: &[u8; 16]) {
-        self.routes.remove(target);
+        self.routes.remove(&RouteTarget::host(*target));
+    }
+
+    pub fn remove_prefix_route(&mut self, target: RouteTarget) {
+        if target.prefix_len < 128 && self.routes.remove(&target).is_some() {
+            self.prefix_route_count -= 1;
+        }
     }
 
     pub fn mark_stale(
         &mut self,
         target: &[u8; 16],
     ) -> Option<Result<(), InvalidRouteEntryTransition>> {
-        self.routes.get_mut(target).map(RouteEntry::mark_stale)
+        self.routes
+            .get_mut(&RouteTarget::host(*target))
+            .map(RouteEntry::mark_stale)
     }
 
     pub fn mark_expired(
         &mut self,
         target: &[u8; 16],
     ) -> Option<Result<(), InvalidRouteEntryTransition>> {
-        self.routes.get_mut(target).map(RouteEntry::mark_expired)
+        self.routes
+            .get_mut(&RouteTarget::host(*target))
+            .map(RouteEntry::mark_expired)
     }
 
     pub fn entry_state(&self, target: &[u8; 16]) -> Option<RouteEntryState> {
-        self.routes.get(target).map(|entry| entry.state)
+        self.routes
+            .get(&RouteTarget::host(*target))
+            .map(|entry| entry.state)
     }
 
-    /// Return the path for `target`, or `None` if no route is known.
+    pub fn mark_prefix_expired(
+        &mut self,
+        target: RouteTarget,
+    ) -> Option<Result<(), InvalidRouteEntryTransition>> {
+        (target.prefix_len < 128)
+            .then(|| self.routes.get_mut(&target).map(RouteEntry::mark_expired))
+            .flatten()
+    }
+
+    /// Return the longest-prefix path for `target`, or `None` if no route is known.
     pub fn lookup(&self, target: &[u8; 16]) -> Option<&[[u8; 16]]> {
+        if self.prefix_route_count == 0 {
+            return self
+                .routes
+                .get(&RouteTarget::host(*target))
+                .filter(|entry| entry.is_usable())
+                .map(|entry| entry.path.as_slice());
+        }
         self.routes
-            .get(target)
-            .filter(|entry| entry.is_usable())
-            .map(|entry| entry.path.as_slice())
+            .iter()
+            .filter(|(route_target, entry)| route_target.contains(target) && entry.is_usable())
+            .max_by_key(|(route_target, _)| route_target.prefix_len)
+            .map(|(_, entry)| entry.path.as_slice())
     }
 
     pub fn len(&self) -> usize {
@@ -894,25 +1000,38 @@ impl DaoManager {
     ) -> Option<RoutingTable> {
         let mut targets: Vec<[u8; 16]> = parent_map.keys().copied().collect();
         targets.sort_unstable();
-        let mut routes = HashMap::with_capacity(targets.len().min(MAX_ROUTES));
+        let mut routes: HashMap<RouteTarget, RouteEntry> = routing_table
+            .routes
+            .iter()
+            .filter(|(target, _)| target.prefix_len < 128)
+            .map(|(target, entry)| (*target, entry.clone()))
+            .collect();
         for target in targets {
             if let Some(path) = Self::assemble_path(root, parent_map, target) {
-                if routes.len() == MAX_ROUTES {
+                let route_target = RouteTarget::host(target);
+                if !routes.contains_key(&route_target) && routes.len() == MAX_ROUTES {
                     return None;
                 }
                 let mut entry = routing_table
                     .routes
-                    .get(&target)
+                    .get(&route_target)
                     .filter(|entry| entry.state != RouteEntryState::Expired)
                     .cloned()
                     .unwrap_or_else(|| RouteEntry::fresh(&path));
                 entry
                     .refresh(&path)
                     .expect("fresh or stale route entry can refresh");
-                routes.insert(target, entry);
+                routes.insert(route_target, entry);
             }
         }
-        Some(RoutingTable { routes })
+        let prefix_route_count = routes
+            .keys()
+            .filter(|target| target.prefix_len < 128)
+            .count();
+        Some(RoutingTable {
+            routes,
+            prefix_route_count,
+        })
     }
 
     /// Walk target → parent → … → root and return the reversed downward path.
@@ -997,6 +1116,92 @@ mod tests {
         table.remove_route(&target);
         assert!(table.lookup(&target).is_none());
         assert!(table.is_empty());
+    }
+
+    #[test]
+    fn route_target_canonicalizes_prefix() {
+        let all = [0xff; 16];
+        assert_eq!(RouteTarget::new(all, 0).unwrap().prefix, [0; 16]);
+
+        let mut prefix64 = [0xff; 16];
+        prefix64[8..].fill(0);
+        assert_eq!(RouteTarget::new(all, 64).unwrap().prefix, prefix64);
+
+        let mut prefix127 = [0xff; 16];
+        prefix127[15] = 0xfe;
+        assert_eq!(RouteTarget::new(all, 127).unwrap().prefix, prefix127);
+        assert_eq!(RouteTarget::new(all, 128), Some(RouteTarget::host(all)));
+        assert_eq!(RouteTarget::new(all, 129), None);
+
+        let mut equivalent = [0xff; 16];
+        equivalent[8] = 0x80;
+        equivalent[9..].fill(0);
+        assert_eq!(RouteTarget::new(all, 65), RouteTarget::new(equivalent, 65));
+    }
+
+    #[test]
+    fn routing_table_uses_longest_prefix_match() {
+        let mut table = RoutingTable::new();
+        let default = RouteTarget::new([0xff; 16], 0).unwrap();
+        let mut network = [0u8; 16];
+        network[..8].copy_from_slice(&[0xfd, 0, 0, 0, 0, 0, 0, 1]);
+        let prefix64 = RouteTarget::new(network, 64).unwrap();
+        let mut pair = network;
+        pair[15] = 2;
+        let prefix127 = RouteTarget::new(pair, 127).unwrap();
+        let mut host = pair;
+        host[15] = 3;
+
+        assert!(!table.add_prefix_route(prefix64, *prefix64.prefix(), &[*prefix64.prefix()]));
+        assert!(table.add_prefix_route(default, ll(10), &[ll(10)]));
+        assert!(table.add_prefix_route(prefix64, ll(11), &[ll(11)]));
+        assert!(table.add_prefix_route(prefix127, ll(12), &[ll(12)]));
+        assert!(table.add_route(host, &[ll(13)]));
+
+        assert_eq!(table.lookup(&host), Some([ll(13)].as_slice()));
+        assert_eq!(table.lookup(&pair), Some([ll(12)].as_slice()));
+        let mut network_host = network;
+        network_host[15] = 99;
+        assert_eq!(table.lookup(&network_host), Some([ll(11)].as_slice()));
+        assert_eq!(table.lookup(&ll(99)), Some([ll(10)].as_slice()));
+
+        table.mark_expired(&host).unwrap().unwrap();
+        assert_eq!(table.lookup(&host), Some([ll(12)].as_slice()));
+        table.remove_route(&host);
+        assert_eq!(table.lookup(&host), Some([ll(12)].as_slice()));
+        table.mark_prefix_expired(prefix127).unwrap().unwrap();
+        assert_eq!(table.lookup(&host), Some([ll(11)].as_slice()));
+        assert_eq!(table.lookup(&network_host), Some([ll(11)].as_slice()));
+    }
+
+    #[test]
+    fn dao_rebuild_preserves_prefix_routes_and_shared_capacity() {
+        let root = ll(1);
+        let prefix = RouteTarget::new([0xfd; 16], 64).unwrap();
+        let mut table = RoutingTable::new();
+        assert!(table.add_prefix_route(prefix, ll(9), &[ll(9)]));
+
+        let mut parents = HashMap::new();
+        parents.insert(ll(2), vec![root]);
+        let rebuilt = DaoManager::rebuilt_routes(root, &parents, &table).unwrap();
+        let mut prefix_destination = [0xfd; 16];
+        prefix_destination[8..].fill(1);
+        assert_eq!(
+            rebuilt.lookup(&prefix_destination),
+            Some([ll(9)].as_slice())
+        );
+        assert_eq!(rebuilt.lookup(&ll(2)), Some([ll(2)].as_slice()));
+
+        let rebuilt = DaoManager::rebuilt_routes(root, &HashMap::new(), &rebuilt).unwrap();
+        assert_eq!(
+            rebuilt.lookup(&prefix_destination),
+            Some([ll(9)].as_slice())
+        );
+
+        let full_parents: HashMap<[u8; 16], Vec<[u8; 16]>> = (0..MAX_ROUTES as u16)
+            .map(|value| (addr(value), vec![root]))
+            .collect();
+        assert!(DaoManager::rebuilt_routes(root, &full_parents, &table).is_none());
     }
 
     #[test]
@@ -1650,13 +1855,17 @@ mod tests {
 
     #[test]
     fn non_host_target_prefix_is_rejected() {
-        let mut root = DaoManager::as_root(ll(1), 0, dodag_id());
-        let mut wire = global_dao_wire(0, 1, ll(2), ll(1));
-        wire[7] = 64;
+        for prefix_len in 0..128 {
+            let mut root = DaoManager::as_root(ll(1), 0, dodag_id());
+            let mut wire = global_dao_wire(0, 1, ll(2), ll(1));
+            wire[7] = prefix_len;
 
-        assert!(!root.process_dao(&wire));
-        assert!(root.parent_map.is_empty());
-        assert!(root.path_seq_map.is_empty());
+            assert!(!root.process_dao(&wire));
+            assert!(root.parent_map.is_empty());
+            assert!(root.path_seq_map.is_empty());
+            assert!(root.origin_seq_map.is_empty());
+            assert!(root.routing_table.is_empty());
+        }
     }
 
     #[test]

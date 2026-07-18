@@ -28,7 +28,7 @@ pub use lichen_rpl::message::{
     OPT_RPL_TARGET, OPT_TRANSIT_INFO,
 };
 #[cfg(feature = "std")]
-pub use lichen_rpl::routing::{DaoManager, RoutingTable, SourceRoutingHeader};
+pub use lichen_rpl::routing::{DaoManager, RouteTarget, RoutingTable, SourceRoutingHeader};
 #[cfg(feature = "std")]
 pub use lichen_rpl::trickle::{TrickleEvent, TrickleState, TrickleTimer};
 
