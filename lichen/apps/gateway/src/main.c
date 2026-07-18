@@ -261,8 +261,19 @@ static int status_get(struct coap_resource *resource,
 					LICHEN_GATEWAY_STATUS_ROLE,
 					LICHEN_GATEWAY_STATUS_RPL_CAPABLE);
 
-	return coap_respond_block2(resource, request, addr, addr_len,
-				   cbor_buf, len);
+	/* Diagnostic (lora_ipv6_mesh-fe1z): which peer's GET reached the server,
+	 * and did the response send succeed? IID last 2 bytes = EUI tail
+	 * (..2c:ab = T1000-E, ..2c:10 = T-Echo). */
+	int _rr = coap_respond_block2(resource, request, addr, addr_len,
+				      cbor_buf, len);
+	if (addr != NULL && addr->sa_family == AF_INET6) {
+		const struct sockaddr_in6 *_a6 = (const struct sockaddr_in6 *)addr;
+
+		LOG_INF("status GET from ..%02x:%02x -> respond %zu B ret=%d",
+			_a6->sin6_addr.s6_addr[14], _a6->sin6_addr.s6_addr[15],
+			len, _rr);
+	}
+	return _rr;
 }
 
 /*
