@@ -12,7 +12,7 @@ use std::vec::Vec;
 use lichen_coap::codec::{CoapBuilder, CoapPacket};
 use lichen_coap::message::{MessageCode, MessageType};
 use lichen_hal::Radio;
-use lichen_oscore::{Context, COAP_OPTION_OSCORE};
+use lichen_oscore::{Context, OscoreError, SenderSequenceState, COAP_OPTION_OSCORE};
 
 use crate::stack::{ReceivedIpv6, RxError, Stack, TxError};
 use lichen_core::addr::NodeId;
@@ -29,6 +29,12 @@ pub enum SecureError {
     NoContext,
     /// OSCORE encryption failed.
     EncryptFailed,
+    /// OSCORE sender sequence is exhausted; rotate the context before retrying.
+    ContextExhausted,
+    /// Restored contexts require durable sender-sequence reservation.
+    PersistenceRequired,
+    /// Persisting the sender-sequence reservation failed.
+    PersistenceFailed,
     /// OSCORE decryption failed.
     DecryptFailed,
     /// CoAP encoding error.
@@ -42,6 +48,11 @@ impl core::fmt::Display for SecureError {
         match self {
             Self::NoContext => write!(f, "no OSCORE context for peer"),
             Self::EncryptFailed => write!(f, "OSCORE encryption failed"),
+            Self::ContextExhausted => {
+                write!(f, "OSCORE context exhausted; key rotation required")
+            }
+            Self::PersistenceRequired => write!(f, "sender-sequence persistence required"),
+            Self::PersistenceFailed => write!(f, "sender-sequence persistence failed"),
             Self::DecryptFailed => write!(f, "OSCORE decryption failed"),
             Self::CoapEncode => write!(f, "CoAP encoding failed"),
             Self::Tx(e) => write!(f, "TX error: {}", e),
@@ -61,6 +72,13 @@ impl core::error::Error for SecureError {
 impl From<TxError> for SecureError {
     fn from(e: TxError) -> Self {
         SecureError::Tx(e)
+    }
+}
+
+fn map_protect_error(error: OscoreError) -> SecureError {
+    match error {
+        OscoreError::SeqExhausted => SecureError::ContextExhausted,
+        _ => SecureError::EncryptFailed,
     }
 }
 
@@ -97,9 +115,8 @@ impl<R: Radio> SecureStack<R> {
         self.contexts.insert(peer_iid, context);
     }
 
-    /// Get context for peer.
-    #[allow(dead_code)] // read-only counterpart of get_context_mut, unused so far
-    fn get_context(&self, peer_iid: &[u8; 8]) -> Option<&Context> {
+    /// Get read-only context state for a peer.
+    pub fn context(&self, peer_iid: &[u8; 8]) -> Option<&Context> {
         self.contexts.get(peer_iid)
     }
 
@@ -123,9 +140,10 @@ impl<R: Radio> SecureStack<R> {
         self.stack.node_id()
     }
 
-    /// Send an OSCORE-protected GET request.
+    /// Send an OSCORE-protected GET using a fresh, ephemeral context.
     ///
-    /// Returns (message_id, request_piv) where request_piv is needed for decrypting the response.
+    /// This convenience API does not provide crash-safe sequence persistence and
+    /// therefore rejects contexts created with [`Context::restore`].
     pub async fn send_secure_get(
         &mut self,
         dst: &Addr,
@@ -133,6 +151,49 @@ impl<R: Radio> SecureStack<R> {
         uri_path: &[&str],
         token: &[u8],
     ) -> Result<(u16, Vec<u8>), SecureError> {
+        if self
+            .context(peer_iid)
+            .ok_or(SecureError::NoContext)?
+            .is_restored()
+        {
+            return Err(SecureError::PersistenceRequired);
+        }
+
+        self.send_secure_get_inner(dst, peer_iid, uri_path, token, |_| Ok::<(), ()>(()))
+            .await
+    }
+
+    /// Send an OSCORE-protected GET after durably reserving its sender sequence.
+    ///
+    /// `persist` receives the advanced sender state and MUST make it durable before
+    /// returning success. A persistence error prevents transmission; the consumed
+    /// sequence remains skipped so retrying cannot reuse its nonce.
+    pub async fn send_secure_get_with_reservation<F, E>(
+        &mut self,
+        dst: &Addr,
+        peer_iid: &[u8; 8],
+        uri_path: &[&str],
+        token: &[u8],
+        persist: F,
+    ) -> Result<(u16, Vec<u8>), SecureError>
+    where
+        F: FnOnce(SenderSequenceState) -> Result<(), E>,
+    {
+        self.send_secure_get_inner(dst, peer_iid, uri_path, token, persist)
+            .await
+    }
+
+    async fn send_secure_get_inner<F, E>(
+        &mut self,
+        dst: &Addr,
+        peer_iid: &[u8; 8],
+        uri_path: &[&str],
+        token: &[u8],
+        persist: F,
+    ) -> Result<(u16, Vec<u8>), SecureError>
+    where
+        F: FnOnce(SenderSequenceState) -> Result<(), E>,
+    {
         let ctx = self
             .get_context_mut(peer_iid)
             .ok_or(SecureError::NoContext)?;
@@ -185,12 +246,15 @@ impl<R: Radio> SecureStack<R> {
         // Protect request
         let (ciphertext, oscore_opt) = ctx
             .protect_request(MessageCode::GET.0, &class_e[..class_e_len], &[])
-            .map_err(|_| SecureError::EncryptFailed)?;
+            .map_err(map_protect_error)?;
 
         // Extract PIV from OSCORE option for response decryption
         // Option format: flags(1) | piv(n) | kid(rest), where n = flags & 0x07
         let piv_len = (oscore_opt[0] & 0x07) as usize;
         let request_piv = oscore_opt[1..1 + piv_len].to_vec();
+        let sender_state = ctx.sender_sequence_state();
+
+        persist(sender_state).map_err(|_| SecureError::PersistenceFailed)?;
 
         // Build outer CoAP with OSCORE option
         let mid = self.stack.next_message_id();
@@ -268,10 +332,116 @@ impl<R: Radio> SecureStack<R> {
 #[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
+    use core::convert::Infallible;
     use lichen_hal::loopback::LoopbackRadio;
+    use lichen_hal::{RadioConfig, RxPacket};
     use lichen_link::identity::{Identity, PeerIdentity};
     use lichen_link::Seed;
     use lichen_oscore::Context as OscoreContext;
+    use std::sync::{Arc, Mutex};
+
+    struct RecordingRadio {
+        events: Arc<Mutex<Vec<&'static str>>>,
+    }
+
+    impl Radio for RecordingRadio {
+        type Error = Infallible;
+
+        async fn transmit(&mut self, _payload: &[u8]) -> Result<(), Self::Error> {
+            self.events.lock().unwrap().push("transmit");
+            Ok(())
+        }
+
+        async fn receive(
+            &mut self,
+            _buf: &mut [u8],
+            _timeout_ms: u32,
+        ) -> Result<Option<RxPacket>, Self::Error> {
+            Ok(None)
+        }
+
+        fn configure(&mut self, _config: &RadioConfig) {}
+    }
+
+    #[test]
+    fn sequence_exhaustion_requires_context_rotation() {
+        assert_eq!(
+            map_protect_error(OscoreError::SeqExhausted),
+            SecureError::ContextExhausted
+        );
+        assert_eq!(
+            map_protect_error(OscoreError::EncryptFailed),
+            SecureError::EncryptFailed
+        );
+    }
+
+    #[tokio::test]
+    async fn reservation_is_persisted_before_transmit_and_failure_stops_send() {
+        let alice_id = Identity::from_seed(Seed::new([0x11; 32]));
+        let bob_id = Identity::from_seed(Seed::new([0x22; 32]));
+        let bob_iid = bob_id.iid;
+        let bob_addr = Addr::link_local_from_eui64(&bob_iid);
+        let events = Arc::new(Mutex::new(Vec::new()));
+        let radio = RecordingRadio {
+            events: Arc::clone(&events),
+        };
+        let mut stack = Stack::new_default_epoch(radio, alice_id);
+        stack.add_peer(PeerIdentity::from_pubkey(bob_id.pubkey));
+        let mut secure = SecureStack::new(stack);
+        secure.add_context(
+            bob_iid,
+            OscoreContext::restore(&[0xab; 16], None, &[0], &[1], 7, false).unwrap(),
+        );
+
+        assert_eq!(
+            secure
+                .send_secure_get(&bob_addr, &bob_iid, &["sensors"], &[1])
+                .await
+                .unwrap_err(),
+            SecureError::PersistenceRequired
+        );
+        assert!(events.lock().unwrap().is_empty());
+
+        let failed_events = Arc::clone(&events);
+        assert_eq!(
+            secure
+                .send_secure_get_with_reservation(
+                    &bob_addr,
+                    &bob_iid,
+                    &["sensors"],
+                    &[1],
+                    move |state| {
+                        assert_eq!(state.next_sequence, 8);
+                        failed_events.lock().unwrap().push("persist-failed");
+                        Err(())
+                    },
+                )
+                .await
+                .unwrap_err(),
+            SecureError::PersistenceFailed
+        );
+        assert_eq!(&*events.lock().unwrap(), &["persist-failed"]);
+
+        let persisted_events = Arc::clone(&events);
+        secure
+            .send_secure_get_with_reservation(
+                &bob_addr,
+                &bob_iid,
+                &["sensors"],
+                &[1],
+                move |state| {
+                    assert_eq!(state.next_sequence, 9);
+                    persisted_events.lock().unwrap().push("persist");
+                    Ok::<(), ()>(())
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            &*events.lock().unwrap(),
+            &["persist-failed", "persist", "transmit"]
+        );
+    }
 
     #[tokio::test]
     async fn secure_stack_oscore_roundtrip() {
