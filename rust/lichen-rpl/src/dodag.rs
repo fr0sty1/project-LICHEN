@@ -138,6 +138,13 @@ pub struct ParentCandidate {
     pub link_etx: f32,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DioOutcome {
+    Accepted,
+    Removed,
+    Rejected,
+}
+
 impl ParentCandidate {
     /// Rank this node would achieve via this parent (MRHOF, spec B.1).
     #[cfg(feature = "std")]
@@ -153,7 +160,7 @@ impl ParentCandidate {
 
 /// RPL DODAG membership state for a single node.
 #[cfg(feature = "std")]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct DodagState {
     pub rpl_instance_id: u8,
     pub dodag_id: [u8; 16],
@@ -207,7 +214,7 @@ impl DodagState {
         min_hop_rank_increase: u16,
         max_rank_increase: u16,
     ) -> Option<Self> {
-        if min_hop_rank_increase == 0 {
+        if min_hop_rank_increase == 0 || min_hop_rank_increase > INFINITE_RANK / 2 {
             return None;
         }
         Some(Self {
@@ -230,7 +237,7 @@ impl DodagState {
     /// Returns `false` without changing state when MinHopRankIncrease is zero.
     #[must_use]
     pub fn set_rank_config(&mut self, min_hop_rank_increase: u16, max_rank_increase: u16) -> bool {
-        if min_hop_rank_increase == 0 {
+        if min_hop_rank_increase == 0 || min_hop_rank_increase > INFINITE_RANK / 2 {
             return false;
         }
         if (min_hop_rank_increase, max_rank_increase)
@@ -272,17 +279,20 @@ impl DodagState {
     }
 
     /// Process a received DIO from `neighbor_addr` with `link_etx` quality.
-    pub fn process_dio(&mut self, dio: &Dio, neighbor_addr: [u8; 16], link_etx: f32) {
+    pub fn process_dio(&mut self, dio: &Dio, neighbor_addr: [u8; 16], link_etx: f32) -> DioOutcome {
+        if !link_etx.is_finite() || link_etx < 1.0 {
+            return DioOutcome::Rejected;
+        }
         if self.role == DodagRole::Root {
-            return;
+            return DioOutcome::Rejected;
         }
         if dio.rpl_instance_id != self.rpl_instance_id || dio.dodag_id != self.dodag_id {
-            return;
+            return DioOutcome::Rejected;
         }
 
         let newer_version = version_is_newer(dio.version, self.version);
         if !newer_version && version_is_older_or_incomparable(dio.version, self.version) {
-            return;
+            return DioOutcome::Rejected;
         }
 
         let candidate = ParentCandidate {
@@ -299,7 +309,7 @@ impl DodagState {
                 self.max_rank_increase,
             )
         {
-            return;
+            return DioOutcome::Rejected;
         }
         if newer_version {
             self.adopt_version(dio.version);
@@ -307,22 +317,31 @@ impl DodagState {
 
         if dio.rank == INFINITE_RANK {
             // Poisoned route; drop this candidate.
-            self.parents.remove(&neighbor_addr);
+            let removed = self.parents.remove(&neighbor_addr).is_some();
             self.select_parent();
-            return;
+            return if removed {
+                DioOutcome::Removed
+            } else {
+                DioOutcome::Rejected
+            };
         }
 
         if !self.admissible(&candidate) {
-            self.parents.remove(&neighbor_addr);
+            let removed = self.parents.remove(&neighbor_addr).is_some();
             self.select_parent();
-            return;
+            return if removed {
+                DioOutcome::Removed
+            } else {
+                DioOutcome::Rejected
+            };
         }
         if !self.parents.contains_key(&neighbor_addr) && self.parents.len() >= MAX_PARENT_CANDIDATES
         {
-            return;
+            return DioOutcome::Rejected;
         }
         self.parents.insert(neighbor_addr, candidate);
         self.select_parent();
+        DioOutcome::Accepted
     }
 
     fn adopt_version(&mut self, version: u8) {
@@ -411,7 +430,14 @@ impl DodagState {
 
     /// Drop a neighbour (e.g. link failure) and re-select.
     pub fn remove_parent(&mut self, addr: &[u8; 16]) {
-        self.parents.remove(addr);
+        self.remove_parents(core::slice::from_ref(addr));
+    }
+
+    /// Drop multiple neighbours and re-select once after the batch.
+    pub fn remove_parents(&mut self, addrs: &[[u8; 16]]) {
+        for addr in addrs {
+            self.parents.remove(addr);
+        }
         self.select_parent();
     }
 
@@ -481,6 +507,36 @@ mod tests {
         assert_eq!(root.lowest_rank, 64);
         assert!(!root.set_rank_config(0, 512));
         assert_eq!(root.rank, 64);
+    }
+
+    #[test]
+    fn root_rejects_rank_increment_without_finite_one_hop_rank() {
+        for invalid in [32_768, INFINITE_RANK] {
+            assert!(DodagState::as_root_with_rank_config(0, dodag_id(), 0, invalid, 0).is_none());
+        }
+
+        let mut root = DodagState::as_root(0, dodag_id(), 0);
+        assert!(!root.set_rank_config(32_768, 0));
+        assert_eq!(root.rank, ROOT_RANK);
+        assert_eq!(root.min_hop_rank_increase, ROOT_RANK);
+    }
+
+    #[test]
+    fn invalid_etx_does_not_remove_existing_parent() {
+        let mut node = DodagState::new(0, dodag_id(), 0);
+        assert_eq!(
+            node.process_dio(&dio(ROOT_RANK), ll(1), 1.0),
+            DioOutcome::Accepted
+        );
+
+        for invalid in [f32::NAN, f32::INFINITY, 0.0, 0.9] {
+            assert_eq!(
+                node.process_dio(&dio(ROOT_RANK), ll(1), invalid),
+                DioOutcome::Rejected
+            );
+            assert_eq!(node.preferred_parent, Some(ll(1)));
+            assert_eq!(node.parent_count(), 1);
+        }
     }
 
     #[test]
@@ -853,13 +909,14 @@ mod tests {
 
     #[test]
     fn parent_candidates_fail_closed_at_neighbor_limit() {
+        assert_eq!(MAX_PARENT_CANDIDATES, 16);
         let mut node = DodagState::new(0, dodag_id(), 0);
         for iid in 1..=MAX_PARENT_CANDIDATES as u8 {
             node.process_dio(&dio(ROOT_RANK), ll(iid), 1.0);
         }
         assert_eq!(node.parent_count(), MAX_PARENT_CANDIDATES);
 
-        node.process_dio(&dio(ROOT_RANK), ll(17), 1.0);
+        node.process_dio(&dio(ROOT_RANK), ll(MAX_PARENT_CANDIDATES as u8 + 1), 1.0);
         assert_eq!(node.parent_count(), MAX_PARENT_CANDIDATES);
 
         node.process_dio(&dio(ROOT_RANK), ll(1), 1.25);

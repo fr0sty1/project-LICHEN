@@ -263,6 +263,30 @@ impl RplNode {
         reply: &mut [u8],
         now_ms: u32,
     ) -> (usize, RplEvent) {
+        self.handle_frame_rpl_inner(l2_payload, sender_iid, reply, now_ms, None)
+    }
+
+    /// Process an authenticated SCHC payload with measured link quality.
+    pub fn handle_frame_rpl_with_link(
+        &mut self,
+        l2_payload: &[u8],
+        sender_iid: [u8; 8],
+        reply: &mut [u8],
+        now_ms: u32,
+        etx: f32,
+        rssi: i8,
+    ) -> (usize, RplEvent) {
+        self.handle_frame_rpl_inner(l2_payload, sender_iid, reply, now_ms, Some((etx, rssi)))
+    }
+
+    fn handle_frame_rpl_inner(
+        &mut self,
+        l2_payload: &[u8],
+        sender_iid: [u8; 8],
+        reply: &mut [u8],
+        now_ms: u32,
+        link: Option<(f32, i8)>,
+    ) -> (usize, RplEvent) {
         if classify_l2_payload(l2_payload) != L2PayloadKind::Schc {
             return (0, RplEvent::None);
         }
@@ -313,10 +337,20 @@ impl RplNode {
                         }
                         let dio_bytes = &pkt[body_offset..];
                         if let Ok(dio) = lichen_rpl::message::Dio::from_bytes(dio_bytes) {
-                            // ponytail: use 0 for rssi, real radio would provide it
-                            let inconsistent =
-                                self.router
-                                    .process_dio(&dio, dio_bytes, sender_addr, 0, now_ms);
+                            let inconsistent = match link {
+                                Some((etx, rssi)) => self.router.process_dio_with_etx(
+                                    &dio,
+                                    dio_bytes,
+                                    sender_addr,
+                                    etx,
+                                    rssi,
+                                    now_ms,
+                                ),
+                                None => {
+                                    self.router
+                                        .process_dio(&dio, dio_bytes, sender_addr, 0, now_ms)
+                                }
+                            };
                             return (0, RplEvent::DioReceived { inconsistent });
                         }
                     }
@@ -497,8 +531,13 @@ mod tests {
     }
 
     #[cfg(feature = "std")]
-    fn l2_dao_packet(source: [u8; 16], destination: [u8; 16], dao: &[u8]) -> std::vec::Vec<u8> {
-        let icmpv6_len = hdr_field::BODY_OFFSET + dao.len();
+    fn l2_rpl_packet(
+        source: [u8; 16],
+        destination: [u8; 16],
+        code: u8,
+        body: &[u8],
+    ) -> std::vec::Vec<u8> {
+        let icmpv6_len = hdr_field::BODY_OFFSET + body.len();
         let mut ipv6 = std::vec![0u8; IPV6_HEADER_LEN + icmpv6_len];
         ipv6[0] = 0x60;
         ipv6[4..6].copy_from_slice(&(icmpv6_len as u16).to_be_bytes());
@@ -507,14 +546,59 @@ mod tests {
         ipv6[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&source);
         ipv6[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&destination);
         ipv6[IPV6_HEADER_LEN] = RPL_ICMPV6_TYPE;
-        ipv6[IPV6_HEADER_LEN + 1] = rpl_code::DAO;
-        ipv6[IPV6_HEADER_LEN + hdr_field::BODY_OFFSET..].copy_from_slice(dao);
+        ipv6[IPV6_HEADER_LEN + 1] = code;
+        ipv6[IPV6_HEADER_LEN + hdr_field::BODY_OFFSET..].copy_from_slice(body);
 
         let mut l2 = std::vec![0u8; 260];
         l2[0] = L2_DISPATCH_SCHC;
         let n = codec::compress(&ipv6, &mut l2[1..]).unwrap();
         l2.truncate(n + 1);
         l2
+    }
+
+    #[cfg(feature = "std")]
+    fn l2_dao_packet(source: [u8; 16], destination: [u8; 16], dao: &[u8]) -> std::vec::Vec<u8> {
+        l2_rpl_packet(source, destination, rpl_code::DAO, dao)
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn measured_link_quality_reaches_rpl_router() {
+        let root_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
+        let child_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 2]);
+        let root_addr = root_id.link_local_addr().0;
+        let child_addr = child_id.link_local_addr().0;
+        let mut child = RplNode {
+            node: Node::new(child_id),
+            router: Router::new(child_addr, root_addr),
+        };
+        let dio = lichen_rpl::message::Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: crate::routing::ROOT_RANK,
+            grounded: true,
+            mode_of_operation: 1,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id: root_addr,
+        };
+        let mut dio_bytes = [0u8; lichen_rpl::message::Dio::BASE_LEN];
+        dio.write_to(&mut dio_bytes).unwrap();
+        let packet = l2_rpl_packet(root_addr, child_addr, rpl_code::DIO, &dio_bytes);
+
+        assert_eq!(
+            child.handle_frame_rpl_with_link(&packet, root_id.0, &mut [0u8; 260], 100, 2.0, -70,),
+            (0, RplEvent::DioReceived { inconsistent: true })
+        );
+        assert_eq!(child.router.rank(), 768);
+        let neighbor = child.router.neighbors().iter().next().unwrap();
+        assert_eq!(neighbor.etx, 2.0);
+        assert_eq!(neighbor.rssi, -70);
+
+        child.handle_frame_rpl(&packet, root_id.0, &mut [0u8; 260], 200);
+        assert_eq!(child.router.rank(), 768);
+        assert_eq!(child.router.neighbors().iter().next().unwrap().etx, 2.0);
     }
 
     #[cfg(feature = "std")]
