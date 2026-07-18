@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import random
+import secrets
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -36,7 +37,7 @@ from ..crypto.identity import Identity, PeerIdentity
 from ..crypto.schnorr48 import sign, verify
 from .frame import AddrMode, FrameError, LichenFrame, MicLength
 from .replay import ReplayProtector
-from .tx_queue import Priority, QueueFullError, TxQueue
+from .tx_queue import Priority, TxQueue
 
 if TYPE_CHECKING:
     from ..radio.base import Radio
@@ -174,7 +175,7 @@ class LinkLayer:
     # ponytail: random epoch in [128,255] for reboot resilience without flash.
     # Half-space arithmetic treats upper-half counters as "ahead" of lower-half.
     # SECURITY: ESP32 HW RNG is weak before radio init; see link_ctx.c for details.
-    _epoch: int = field(default_factory=lambda: random.randint(128, 255), repr=False)
+    _epoch: int = field(default_factory=lambda: secrets.randbelow(128) + 128, repr=False)
     _seqnum: int = field(default=0, repr=False)
     _pinned_keys: dict[bytes, bytes] = field(default_factory=dict, repr=False)
 
@@ -282,7 +283,7 @@ class LinkLayer:
             QueueFullError: If queue is full and cannot preempt lower priority.
             FrameError: If the frame cannot be constructed (e.g., too large).
         """
-        epoch, seqnum = self._next_seqnum()
+        epoch, seqnum = self._epoch, self._seqnum
 
         # Why sign before building frame: We need the signature as part of
         # the payload, so it must be computed first.
@@ -318,6 +319,7 @@ class LinkLayer:
 
         # Queue the frame (may raise QueueFullError)
         self.tx_queue.push(frame_bytes, priority=priority, deadline_ms=deadline_ms)
+        self._next_seqnum()
 
         # Drain the queue
         return await self.drain_tx_queue()
@@ -334,9 +336,9 @@ class LinkLayer:
         transmitted_any = False
 
         while True:
-            # Pop highest-priority packet (also expires stale)
-            frame_bytes = self.tx_queue.pop()
-            if frame_bytes is None:
+            self.tx_queue.expire_stale()
+            queued = self.tx_queue.peek()
+            if queued is None:
                 break  # Queue empty
 
             # CAD with exponential backoff before transmit
@@ -347,13 +349,10 @@ class LinkLayer:
                     CAD_MAX_CYCLES,
                     len(self.tx_queue),
                 )
-                # Re-queue the packet we just popped (it wasn't transmitted)
-                # Use ROUTING priority to ensure it goes back to front
-                # Note: This loses original priority, but preserves the packet
-                try:
-                    self.tx_queue.push(frame_bytes, priority=Priority.ROUTING)
-                except QueueFullError:
-                    logger.error("TX queue full on re-queue after CAD failure")
+                break
+
+            frame_bytes = self.tx_queue.pop()
+            if frame_bytes is None:
                 break
 
             # Transmit
