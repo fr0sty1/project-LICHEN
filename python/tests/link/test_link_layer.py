@@ -110,6 +110,41 @@ def link_layer(
     return ll
 
 
+class TestLinkLayerEpoch:
+    """Tests for unpredictable reboot epoch initialization."""
+
+    def test_epoch_uses_system_entropy(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_radio: MockRadio,
+        node_identity: Identity,
+    ) -> None:
+        calls: list[int] = []
+
+        def randbelow(limit: int) -> int:
+            calls.append(limit)
+            return 127
+
+        monkeypatch.setattr("lichen.link.link_layer.secrets.randbelow", randbelow)
+        ll = LinkLayer(radio=mock_radio, identity=node_identity, peer_lookup=lambda _: None)
+
+        assert calls == [128]
+        assert ll.get_sequence() == (255, 0)
+
+    def test_entropy_failure_propagates(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        mock_radio: MockRadio,
+        node_identity: Identity,
+    ) -> None:
+        def fail(_: int) -> int:
+            raise RuntimeError("entropy unavailable")
+
+        monkeypatch.setattr("lichen.link.link_layer.secrets.randbelow", fail)
+        with pytest.raises(RuntimeError, match="entropy unavailable"):
+            LinkLayer(radio=mock_radio, identity=node_identity, peer_lookup=lambda _: None)
+
+
 class TestLinkLayerTx:
     """Tests for frame transmission."""
 
@@ -764,3 +799,29 @@ class TestTxQueueIntegration:
         # Packet should be in queue (CAD failed)
         assert len(ll.tx_queue) == 1
         assert len(mock_radio.tx_history) == 0
+
+    @pytest.mark.asyncio
+    async def test_cad_busy_preserves_full_same_priority_queue(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ) -> None:
+        mock_radio.cad_returns = True
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=lambda _: None,
+            cad_enabled=True,
+        )
+        ll.set_sequence(0, 0)
+
+        for i in range(4):
+            await ll.send(f"routing{i}".encode(), priority=Priority.ROUTING)
+
+        assert len(ll.tx_queue) == 4
+        mock_radio.cad_returns = False
+        assert await ll.drain_tx_queue() is True
+        assert [LichenFrame.from_bytes(raw).seqnum for raw in mock_radio.tx_history] == [
+            0,
+            1,
+            2,
+            3,
+        ]
