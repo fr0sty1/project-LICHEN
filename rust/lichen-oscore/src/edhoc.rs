@@ -13,6 +13,11 @@
 //! - Python simulator uses Suite 0, so interop requires Suite 0
 //!
 //! Uses existing crates: x25519-dalek, ed25519-dalek, aes/ccm, hkdf/sha2.
+//! Their zeroize features wipe owned secret keys, hash state, and expanded AES schedules on drop.
+//! HMAC 0.13 key setup and HKDF 0.13 expansion also use private call-local arrays which their
+//! APIs do not expose for wiping. Replacing those vetted primitives locally would violate the
+//! project's crypto policy; remediation requires upstream support. Rust likewise cannot
+//! guarantee removal of compiler-created register or stack copies.
 
 use crate::{Context, OscoreError, KEY_LEN, NONCE_LEN, TAG_LEN};
 use aes::Aes128;
@@ -956,6 +961,12 @@ impl PendingMessage2 {
     }
 }
 
+impl Drop for PendingMessage2 {
+    fn drop(&mut self) {
+        self.plaintext.as_mut_slice().zeroize();
+    }
+}
+
 /// Authenticated-decrypted Message 3 awaiting peer signature verification.
 pub struct PendingMessage3 {
     id_cred: IdCred,
@@ -968,6 +979,12 @@ impl PendingMessage3 {
     /// Return the peer credential reference revealed by Message 3.
     pub fn id_cred(&self) -> &IdCred {
         &self.id_cred
+    }
+}
+
+impl Drop for PendingMessage3 {
+    fn drop(&mut self) {
+        self.plaintext.as_mut_slice().zeroize();
     }
 }
 
@@ -1712,6 +1729,14 @@ mod tests {
     use crate::{ContextId, SenderSequenceState, SenderStateStore};
     use core::num::NonZeroU32;
     use hex_literal::hex;
+
+    #[test]
+    fn crypto_schedules_zeroize_on_drop() {
+        fn assert_zeroize_on_drop<T: ZeroizeOnDrop>() {}
+
+        assert_zeroize_on_drop::<Aes128>();
+        assert_zeroize_on_drop::<Sha256>();
+    }
 
     struct TestStore {
         context_id: ContextId,
