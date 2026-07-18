@@ -17,7 +17,11 @@ extern crate std;
 use std::vec::Vec;
 
 #[cfg(feature = "std")]
+use lichen_rpl::dodag::DioOutcome;
+#[cfg(feature = "std")]
 pub use lichen_rpl::dodag::{DodagRole, DodagState, ParentCandidate, ROOT_RANK};
+#[cfg(feature = "std")]
+use lichen_rpl::message::DODAG_CONFIG_DATA_LEN;
 #[cfg(feature = "std")]
 pub use lichen_rpl::message::{
     Dao, Dio, DodagConfig, OptionIter, RplError, RplTarget, TransitInfo, OPT_DODAG_CONFIG,
@@ -55,7 +59,7 @@ pub struct Neighbor {
 }
 
 /// Neighbor table for link quality tracking.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct NeighborTable {
     entries: [Option<Neighbor>; MAX_NEIGHBORS],
 }
@@ -81,6 +85,19 @@ impl NeighborTable {
         now_ms: u32,
         coords: Option<GeoCoords>,
     ) -> usize {
+        self.update_with_coords_and_eviction(addr, etx, rssi, now_ms, coords, None)
+            .0
+    }
+
+    fn update_with_coords_and_eviction(
+        &mut self,
+        addr: &[u8; 16],
+        etx: LinkEtx,
+        rssi: i8,
+        now_ms: u32,
+        coords: Option<GeoCoords>,
+        protected: Option<[u8; 16]>,
+    ) -> (usize, Option<[u8; 16]>) {
         // Find existing or empty slot
         let mut empty_slot = None;
         for (i, slot) in self.entries.iter_mut().enumerate() {
@@ -92,7 +109,7 @@ impl NeighborTable {
                     if coords.is_some() {
                         n.coords = coords;
                     }
-                    return i;
+                    return (i, None);
                 }
                 None if empty_slot.is_none() => empty_slot = Some(i),
                 _ => {}
@@ -107,17 +124,23 @@ impl NeighborTable {
                 last_seen_ms: now_ms,
                 coords,
             });
-            return i;
+            return (i, None);
         }
         // Table full - evict oldest (wraparound-safe, tie-break by index for stability)
         let oldest = self
             .entries
             .iter()
             .enumerate()
-            .filter_map(|(i, e)| e.as_ref().map(|n| (i, n.last_seen_ms)))
+            .filter_map(|(i, entry)| {
+                entry
+                    .as_ref()
+                    .filter(|neighbor| protected != Some(neighbor.addr))
+                    .map(|neighbor| (i, neighbor.last_seen_ms))
+            })
             .max_by_key(|(i, t)| (now_ms.wrapping_sub(*t), *i))
             .map(|(i, _)| i)
             .unwrap_or(0);
+        let evicted = self.entries[oldest].as_ref().map(|neighbor| neighbor.addr);
         self.entries[oldest] = Some(Neighbor {
             addr: *addr,
             etx,
@@ -125,7 +148,7 @@ impl NeighborTable {
             last_seen_ms: now_ms,
             coords,
         });
-        oldest
+        (oldest, evicted)
     }
 
     /// Get neighbor ETX, or None if unknown.
@@ -158,12 +181,22 @@ impl NeighborTable {
 
     /// Remove stale entries older than `max_age_ms`.
     pub fn prune(&mut self, now_ms: u32, max_age_ms: u32) {
+        self.prune_with_removed(now_ms, max_age_ms, |_| {});
+    }
+
+    fn prune_with_removed(
+        &mut self,
+        now_ms: u32,
+        max_age_ms: u32,
+        mut removed: impl FnMut([u8; 16]),
+    ) {
         for slot in self.entries.iter_mut() {
-            if let Some(n) = slot {
-                // Handles u32 overflow after ~49 days
-                if now_ms.wrapping_sub(n.last_seen_ms) > max_age_ms {
-                    *slot = None;
-                }
+            let is_stale = slot
+                .as_ref()
+                .is_some_and(|neighbor| now_ms.wrapping_sub(neighbor.last_seen_ms) > max_age_ms);
+            if is_stale {
+                let neighbor = slot.take().expect("stale slot contains a neighbor");
+                removed(neighbor.addr);
             }
         }
     }
@@ -188,10 +221,10 @@ impl Default for NeighborTable {
 #[cfg(feature = "std")]
 #[derive(Debug)]
 pub struct Router {
-    pub dodag: DodagState,
+    dodag: DodagState,
     pub trickle: TrickleTimer,
     pub dao_manager: DaoManager,
-    pub neighbors: NeighborTable,
+    neighbors: NeighborTable,
     #[allow(dead_code)] // stored at construction; not yet consulted
     node_addr: [u8; 16],
     dodag_id: [u8; 16],
@@ -224,11 +257,30 @@ impl Router {
 
     /// Create a new router as DODAG root.
     pub fn new_root(node_addr: [u8; 16]) -> Self {
+        Self::new_root_with_config(node_addr, DodagConfig::default())
+            .expect("default DODAG config is valid")
+    }
+
+    /// Create a DODAG root with an explicit advertised configuration.
+    pub fn new_root_with_config(node_addr: [u8; 16], dodag_config: DodagConfig) -> Option<Self> {
+        if dodag_config.min_hop_rank_increase == 0
+            || dodag_config.lifetime_unit == 0
+            || dodag_config.ocp != MRHOF_OCP
+        {
+            return None;
+        }
+        let trickle = trickle_from_config(&dodag_config)?;
         let dodag_id = node_addr; // Root's address is DODAG ID
-        let dodag_config = DodagConfig::default();
-        Self {
-            dodag: DodagState::as_root(RPL_INSTANCE_ID, dodag_id, 0),
-            trickle: trickle_from_config(&dodag_config).expect("default Trickle config is valid"),
+        let dodag = DodagState::as_root_with_rank_config(
+            RPL_INSTANCE_ID,
+            dodag_id,
+            0,
+            dodag_config.min_hop_rank_increase,
+            dodag_config.max_rank_increase,
+        )?;
+        Some(Self {
+            dodag,
+            trickle,
             dao_manager: DaoManager::as_root(node_addr, RPL_INSTANCE_ID, dodag_id),
             neighbors: NeighborTable::new(),
             node_addr,
@@ -237,7 +289,7 @@ impl Router {
             last_now_ms: None,
             monotonic_ms: 0,
             node_coords: None,
-        }
+        })
     }
 
     /// Process a received DIO message from a neighbor.
@@ -252,11 +304,38 @@ impl Router {
         rssi: i8,
         now_ms: u32,
     ) -> bool {
+        let etx = self.neighbors.get_etx(&sender_addr).unwrap_or(1.0);
+        self.process_dio_with_etx(dio, dio_bytes, sender_addr, etx, rssi, now_ms)
+    }
+
+    /// Process a DIO using a measured link ETX.
+    pub fn process_dio_with_etx(
+        &mut self,
+        dio: &Dio,
+        dio_bytes: &[u8],
+        sender_addr: [u8; 16],
+        etx: LinkEtx,
+        rssi: i8,
+        now_ms: u32,
+    ) -> bool {
+        if !etx.is_finite() || etx < 1.0 {
+            return false;
+        }
+        if Dio::from_bytes(dio_bytes).as_ref() != Ok(dio) {
+            return false;
+        }
         if self.dodag.is_root()
             || dio.rpl_instance_id != self.dodag.rpl_instance_id
             || dio.dodag_id != self.dodag_id
             || dio.mode_of_operation != NON_STORING_MOP
         {
+            return false;
+        }
+
+        let Some(version_order) = version_cmp(dio.version, self.dodag.version) else {
+            return false;
+        };
+        if version_order.is_lt() {
             return false;
         }
 
@@ -266,10 +345,14 @@ impl Router {
                 return false;
             };
             if option.opt_type == OPT_DODAG_CONFIG {
+                if option.data.len() != DODAG_CONFIG_DATA_LEN {
+                    return false;
+                }
                 let Ok(parsed) = DodagConfig::from_bytes(option.data) else {
                     return false;
                 };
                 if parsed.min_hop_rank_increase == 0
+                    || parsed.min_hop_rank_increase > u16::MAX / 2
                     || parsed.lifetime_unit == 0
                     || parsed.ocp != MRHOF_OCP
                     || trickle_from_config(&parsed).is_none()
@@ -280,32 +363,83 @@ impl Router {
             }
         }
 
-        let etx = self.neighbors.get_etx(&sender_addr).unwrap_or(1.0);
-        if version_cmp(dio.version, self.dodag.version).is_none_or(|ordering| ordering.is_lt()) {
-            return false;
-        }
-        if dio.rank != u16::MAX && !dio_is_admissible(&self.dodag, dio, etx, &proposed_config) {
-            return false;
+        let neighbor_known = self.neighbors.get_etx(&sender_addr).is_some();
+        if dio.rank == u16::MAX {
+            if !version_order.is_eq() || !neighbor_known {
+                return false;
+            }
+            let was_joined = self.dodag.is_joined();
+            let old_parent = self.dodag.preferred_parent;
+            let old_rank = self.dodag.rank;
+            self.neighbors.update(&sender_addr, etx, rssi, now_ms);
+            self.dodag.remove_parent(&sender_addr);
+            let inconsistent = old_rank != self.dodag.rank
+                || was_joined != self.dodag.is_joined()
+                || old_parent != self.dodag.preferred_parent;
+            if inconsistent {
+                if self.trickle.state == TrickleState::Stopped {
+                    self.trickle.start(now_ms, 0);
+                } else {
+                    self.trickle.reset(now_ms, 0);
+                }
+            }
+            return inconsistent;
         }
 
         let was_joined = self.dodag.is_joined();
         let old_parent = self.dodag.preferred_parent;
         let old_rank = self.dodag.rank;
+        let old_version = self.dodag.version;
         let config_changed = proposed_config != self.dodag_config;
 
-        // All fallible validation is complete; commit the staged configuration and DIO.
-        let applied = self.dodag.set_rank_config(
+        let mut staged_dodag = self.dodag.clone();
+        let applied = staged_dodag.set_rank_config(
             proposed_config.min_hop_rank_increase,
             proposed_config.max_rank_increase,
         );
-        debug_assert!(applied, "staged MinHopRankIncrease is non-zero");
+        if !applied {
+            return false;
+        }
+        let mut staged_neighbors = self.neighbors.clone();
+        let (_, evicted) = staged_neighbors.update_with_coords_and_eviction(
+            &sender_addr,
+            etx,
+            rssi,
+            now_ms,
+            None,
+            staged_dodag.preferred_parent,
+        );
+        if let Some(evicted) = evicted {
+            staged_dodag.remove_parent(&evicted);
+        }
+        match staged_dodag.process_dio(dio, sender_addr, etx) {
+            DioOutcome::Accepted => {}
+            DioOutcome::Removed if !config_changed => {
+                self.dodag = staged_dodag;
+                self.neighbors = staged_neighbors;
+                let inconsistent = old_rank != self.dodag.rank
+                    || was_joined != self.dodag.is_joined()
+                    || old_parent != self.dodag.preferred_parent;
+                if inconsistent {
+                    if self.trickle.state == TrickleState::Stopped {
+                        self.trickle.start(now_ms, 0);
+                    } else {
+                        self.trickle.reset(now_ms, 0);
+                    }
+                }
+                return inconsistent;
+            }
+            DioOutcome::Removed | DioOutcome::Rejected => return false,
+        }
+
+        self.dodag = staged_dodag;
+        self.neighbors = staged_neighbors;
         self.dodag_config = proposed_config;
-        self.neighbors.update(&sender_addr, etx, rssi, now_ms);
-        self.dodag.process_dio(dio, sender_addr, etx);
 
         let now_joined = self.dodag.is_joined();
         let new_parent = self.dodag.preferred_parent;
         let inconsistent = config_changed
+            || old_version != self.dodag.version
             || old_rank != self.dodag.rank
             || was_joined != now_joined
             || old_parent != new_parent;
@@ -468,6 +602,44 @@ impl Router {
         self.dodag.preferred_parent
     }
 
+    pub fn dodag(&self) -> &DodagState {
+        &self.dodag
+    }
+
+    /// Read-only access to the synchronized neighbor table.
+    pub fn neighbors(&self) -> &NeighborTable {
+        &self.neighbors
+    }
+
+    /// Remove stale neighbors and their corresponding DODAG parent candidates.
+    pub fn prune_neighbors(&mut self, now_ms: u32, max_age_ms: u32) -> bool {
+        let was_joined = self.dodag.is_joined();
+        let old_parent = self.dodag.preferred_parent;
+        let old_rank = self.dodag.rank;
+        let mut removed = [[0u8; 16]; MAX_NEIGHBORS];
+        let mut removed_len = 0;
+        self.neighbors
+            .prune_with_removed(now_ms, max_age_ms, |addr| {
+                removed[removed_len] = addr;
+                removed_len += 1;
+            });
+        if removed_len != 0 {
+            self.dodag.remove_parents(&removed[..removed_len]);
+        }
+
+        let inconsistent = old_rank != self.dodag.rank
+            || was_joined != self.dodag.is_joined()
+            || old_parent != self.dodag.preferred_parent;
+        if inconsistent {
+            if self.trickle.state == TrickleState::Stopped {
+                self.trickle.start(now_ms, 0);
+            } else {
+                self.trickle.reset(now_ms, 0);
+            }
+        }
+        inconsistent
+    }
+
     pub fn dodag_id(&self) -> [u8; 16] {
         self.dodag_id
     }
@@ -576,24 +748,6 @@ fn trickle_from_config(config: &DodagConfig) -> Option<TrickleTimer> {
         u32::from(config.dio_int_doublings),
         u32::from(config.dio_redundancy_const),
     ))
-}
-
-#[cfg(feature = "std")]
-fn dio_is_admissible(dodag: &DodagState, dio: &Dio, etx: LinkEtx, config: &DodagConfig) -> bool {
-    if version_cmp(dio.version, dodag.version).is_none_or(|ordering| ordering.is_lt()) {
-        return false;
-    }
-    let link_cost = (etx * f32::from(config.min_hop_rank_increase)).round();
-    if !link_cost.is_finite() || link_cost < 0.0 {
-        return false;
-    }
-    let cost = dio.rank.saturating_add(link_cost as u16);
-    dio.rank >= config.min_hop_rank_increase
-        && cost != u16::MAX
-        && cost / config.min_hop_rank_increase > dio.rank / config.min_hop_rank_increase
-        && (dio.version != dodag.version
-            || dodag.rank == u16::MAX
-            || dio.rank / config.min_hop_rank_increase < dodag.rank / config.min_hop_rank_increase)
 }
 
 #[cfg(feature = "std")]
@@ -987,6 +1141,42 @@ mod tests {
     }
 
     #[test]
+    fn router_uses_measured_etx_for_parent_rank() {
+        let dodag_id = link_local(0);
+        let parent = link_local(1);
+        let mut router = Router::new(link_local(2), dodag_id);
+        let dio = Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: ROOT_RANK,
+            grounded: true,
+            mode_of_operation: NON_STORING_MOP,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+
+        assert!(router.process_dio_with_etx(&dio, &dio_bytes(&dio), parent, 2.0, -40, 100,));
+        assert_eq!(router.rank(), 768);
+        assert_eq!(router.neighbors.get_etx(&parent), Some(2.0));
+
+        let mut rejected = Router::new(link_local(3), dodag_id);
+        assert!(!rejected.process_dio_with_etx(&dio, &dio_bytes(&dio), parent, f32::NAN, -40, 100,));
+        assert_eq!(rejected.neighbors.count(), 0);
+        assert!(!rejected.is_joined());
+
+        assert!(!rejected.process_dio_with_etx(&dio, &dio_bytes(&dio), parent, 0.9, -40, 100,));
+        assert_eq!(rejected.neighbors.count(), 0);
+
+        assert!(!rejected.process_dio(&dio, &[], parent, -40, 100));
+        let mut mismatched = dio.clone();
+        mismatched.rank = 300;
+        assert!(!rejected.process_dio(&dio, &dio_bytes(&mismatched), parent, -40, 100,));
+        assert_eq!(rejected.neighbors.count(), 0);
+    }
+
+    #[test]
     fn foreign_dios_do_not_mutate_neighbors() {
         let dodag_id = link_local(0);
         let mut router = Router::new(link_local(2), dodag_id);
@@ -1110,6 +1300,22 @@ mod tests {
         assert_eq!(router.neighbors.count(), 0);
         assert!(!router.is_joined());
         assert_eq!(router.dodag_config, DodagConfig::default());
+
+        let mut overlong = bytes.to_vec();
+        overlong[Dio::BASE_LEN + 1] = (DODAG_CONFIG_DATA_LEN + 1) as u8;
+        overlong.push(0);
+        assert!(!router.process_dio(&dio, &overlong, sender, -40, 1000));
+        assert_eq!(router.neighbors.count(), 0);
+        assert_eq!(router.dodag_config, DodagConfig::default());
+
+        let invalid_rank = DodagConfig {
+            min_hop_rank_increase: 32_768,
+            ..DodagConfig::default()
+        };
+        let invalid_rank = dio_with_config(&dio, &invalid_rank);
+        assert!(!router.process_dio(&dio, &invalid_rank, sender, -40, 1000));
+        assert_eq!(router.neighbors.count(), 0);
+        assert_eq!(router.dodag_config, DodagConfig::default());
     }
 
     fn dio_with_config(dio: &Dio, config: &DodagConfig) -> Vec<u8> {
@@ -1185,11 +1391,168 @@ mod tests {
         assert_eq!(router.trickle.interval, 16);
 
         dio.rank = u16::MAX;
-        assert!(router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 2_000));
+        let ignored_config = DodagConfig {
+            min_hop_rank_increase: 128,
+            ..DodagConfig::default()
+        };
+        let bytes = dio_with_config(&dio, &ignored_config);
+        assert!(router.process_dio(&dio, &bytes, parent, -40, 2_000));
         assert!(!router.is_joined());
         assert_eq!(router.preferred_parent(), None);
+        assert_eq!(router.dodag_config, DodagConfig::default());
         assert_eq!(router.trickle.interval, router.trickle.imin);
         assert_eq!(router.trickle.interval_start, 2_000);
+    }
+
+    #[test]
+    fn malformed_poison_does_not_remove_parent() {
+        let dodag_id = link_local(1);
+        let parent = link_local(2);
+        let mut router = Router::new(link_local(3), dodag_id);
+        let mut dio = Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: ROOT_RANK,
+            grounded: true,
+            mode_of_operation: NON_STORING_MOP,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+        router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 0);
+
+        dio.rank = u16::MAX;
+        let mut malformed = dio_bytes(&dio).to_vec();
+        malformed.extend_from_slice(&[OPT_DODAG_CONFIG, 14, 0]);
+        assert!(!router.process_dio(&dio, &malformed, parent, -20, 1_000));
+        assert_eq!(router.preferred_parent(), Some(parent));
+        assert_eq!(router.dodag.parent_count(), 1);
+        let neighbor = router
+            .neighbors
+            .iter()
+            .find(|neighbor| neighbor.addr == parent)
+            .unwrap();
+        assert_eq!(neighbor.last_seen_ms, 0);
+        assert_eq!(neighbor.rssi, -40);
+    }
+
+    #[test]
+    fn newer_version_can_adopt_a_higher_rank_and_resets_trickle() {
+        let dodag_id = link_local(1);
+        let parent = link_local(2);
+        let mut router = Router::new(link_local(3), dodag_id);
+        let mut dio = Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: ROOT_RANK,
+            grounded: true,
+            mode_of_operation: NON_STORING_MOP,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+        assert!(router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 0));
+        assert!(router.trickle.fire_transmit());
+        router.trickle.expire(8, 0);
+        assert_eq!(router.trickle.interval, 16);
+
+        dio.version = 1;
+        dio.rank = 1_400;
+        assert!(router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 100));
+        assert_eq!(router.dodag.version, 1);
+        assert_eq!(router.preferred_parent(), Some(parent));
+        assert_eq!(router.rank(), 1_656);
+        assert_eq!(router.trickle.interval, router.trickle.imin);
+        assert_eq!(router.trickle.interval_start, 100);
+    }
+
+    #[test]
+    fn router_accepts_version_wrap_from_127_to_zero() {
+        let dodag_id = link_local(1);
+        let parent = link_local(2);
+        let mut router = Router::new(link_local(3), dodag_id);
+        router.dodag = DodagState::new(RPL_INSTANCE_ID, dodag_id, 127);
+        let dio = Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: ROOT_RANK,
+            grounded: true,
+            mode_of_operation: NON_STORING_MOP,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+
+        assert!(router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 100));
+        assert_eq!(router.dodag.version, 0);
+        assert_eq!(router.preferred_parent(), Some(parent));
+    }
+
+    #[test]
+    fn rejected_newer_version_does_not_commit_config_or_neighbor_refresh() {
+        let dodag_id = link_local(1);
+        let parent = link_local(2);
+        let mut router = Router::new(link_local(3), dodag_id);
+        let mut dio = Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: ROOT_RANK,
+            grounded: true,
+            mode_of_operation: NON_STORING_MOP,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+        router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 10);
+        let original_config = router.dodag_config.clone();
+
+        dio.version = 1;
+        dio.rank = 64;
+        let mut proposed = original_config.clone();
+        proposed.min_hop_rank_increase = 128;
+        let bytes = dio_with_config(&dio, &proposed);
+        assert!(!router.process_dio(&dio, &bytes, parent, -20, 1_000));
+
+        assert_eq!(router.dodag.version, 0);
+        assert_eq!(router.dodag_config, original_config);
+        assert_eq!(router.preferred_parent(), Some(parent));
+        let neighbor = router
+            .neighbors
+            .iter()
+            .find(|neighbor| neighbor.addr == parent)
+            .unwrap();
+        assert_eq!(neighbor.last_seen_ms, 10);
+        assert_eq!(neighbor.rssi, -40);
+    }
+
+    #[test]
+    fn finite_inadmissible_update_removes_existing_parent() {
+        let dodag_id = link_local(1);
+        let parent = link_local(2);
+        let mut router = Router::new(link_local(3), dodag_id);
+        let mut dio = Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: ROOT_RANK,
+            grounded: true,
+            mode_of_operation: NON_STORING_MOP,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+        router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 0);
+
+        dio.rank = u16::MAX - 1;
+        assert!(router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 1_000));
+        assert!(!router.is_joined());
+        assert_eq!(router.preferred_parent(), None);
+        assert_eq!(router.dodag.parent_count(), 0);
+        assert_eq!(router.neighbors.get_etx(&parent), Some(1.0));
     }
 
     #[test]
@@ -1208,10 +1571,12 @@ mod tests {
             flags: 0,
             dodag_id,
         };
-        let mut config = DodagConfig::default();
-        config.dio_int_min = 5;
-        config.dio_int_doublings = 4;
-        config.dio_redundancy_const = 7;
+        let mut config = DodagConfig {
+            dio_int_min: 5,
+            dio_int_doublings: 4,
+            dio_redundancy_const: 7,
+            ..DodagConfig::default()
+        };
         let bytes = dio_with_config(&dio, &config);
 
         assert!(router.process_dio(&dio, &bytes, parent, -40, 1_000));
@@ -1244,6 +1609,33 @@ mod tests {
     }
 
     #[test]
+    fn configured_root_advertises_its_rank_and_lifetime() {
+        let config = DodagConfig {
+            min_hop_rank_increase: 128,
+            max_rank_increase: 1_024,
+            lifetime_unit: 30,
+            ..DodagConfig::default()
+        };
+        let root = Router::new_root_with_config(link_local(1), config.clone()).unwrap();
+
+        assert_eq!(root.rank(), 128);
+        let mut bytes = [0u8; Dio::BASE_LEN + 16];
+        assert_eq!(root.build_dio(&mut bytes), bytes.len());
+        let dio = Dio::from_bytes(&bytes).unwrap();
+        let advertised = DodagConfig::from_bytes(&bytes[Dio::BASE_LEN + 2..]).unwrap();
+        assert_eq!(dio.rank, 128);
+        assert_eq!(advertised, config);
+
+        for invalid in [32_768, u16::MAX] {
+            let config = DodagConfig {
+                min_hop_rank_increase: invalid,
+                ..DodagConfig::default()
+            };
+            assert!(Router::new_root_with_config(link_local(1), config).is_none());
+        }
+    }
+
+    #[test]
     fn root_ignores_neighbor_dodag_config() {
         let root_addr = link_local(1);
         let mut root = Router::new_root(root_addr);
@@ -1258,8 +1650,10 @@ mod tests {
             flags: 0,
             dodag_id: root_addr,
         };
-        let mut config = DodagConfig::default();
-        config.min_hop_rank_increase = 128;
+        let config = DodagConfig {
+            min_hop_rank_increase: 128,
+            ..DodagConfig::default()
+        };
         let bytes = dio_with_config(&dio, &config);
 
         assert!(!root.process_dio(&dio, &bytes, link_local(2), -40, 1000));
@@ -1286,8 +1680,10 @@ mod tests {
         assert!(!router.process_dio(&dio, &dio_bytes(&dio), link_local(2), -40, 1000));
 
         dio.mode_of_operation = NON_STORING_MOP;
-        let mut config = DodagConfig::default();
-        config.ocp = 0;
+        let config = DodagConfig {
+            ocp: 0,
+            ..DodagConfig::default()
+        };
         let bytes = dio_with_config(&dio, &config);
         assert!(!router.process_dio(&dio, &bytes, link_local(2), -40, 1000));
         assert!(!router.is_joined());
@@ -1436,8 +1832,10 @@ mod tests {
             flags: 0,
             dodag_id,
         };
-        let mut config = DodagConfig::default();
-        config.def_lifetime = 9;
+        let config = DodagConfig {
+            def_lifetime: 9,
+            ..DodagConfig::default()
+        };
         let bytes = dio_with_config(&dio, &config);
         assert!(router.process_dio(&dio, &bytes, parent, -40, 0));
 
@@ -1480,6 +1878,158 @@ mod tests {
         // Verify slot 0 was evicted (original addr link_local(0) is gone)
         let original_addr0 = link_local(0);
         assert_eq!(table.get_etx(&original_addr0), None);
+    }
+
+    #[test]
+    fn router_neighbor_eviction_removes_dodag_parent() {
+        let dodag_id = link_local(0);
+        let mut router = Router::new(link_local(200), dodag_id);
+        let dio = |rank| Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank,
+            grounded: true,
+            mode_of_operation: NON_STORING_MOP,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+
+        let parent = link_local(1);
+        let message = dio(ROOT_RANK);
+        assert!(router.process_dio(&message, &dio_bytes(&message), parent, -40, 0));
+
+        let fallback = link_local(2);
+        let message = dio(300);
+        router.process_dio(&message, &dio_bytes(&message), fallback, -40, 100);
+
+        for iid in 3..=MAX_NEIGHBORS as u8 {
+            let message = dio(400);
+            router.process_dio(&message, &dio_bytes(&message), link_local(iid), -40, 990);
+        }
+
+        assert_eq!(router.neighbors.count(), MAX_NEIGHBORS);
+        assert_eq!(router.dodag.parent_count(), MAX_NEIGHBORS);
+        assert_eq!(router.preferred_parent(), Some(parent));
+
+        let replacement = link_local(17);
+        let message = dio(400);
+        router.process_dio(&message, &dio_bytes(&message), replacement, -40, 1_000);
+
+        assert_eq!(router.neighbors.get_etx(&parent), Some(1.0));
+        assert_eq!(router.neighbors.get_etx(&fallback), None);
+        assert_eq!(router.neighbors.count(), MAX_NEIGHBORS);
+        assert_eq!(router.dodag.parent_count(), MAX_NEIGHBORS);
+        assert_eq!(router.preferred_parent(), Some(parent));
+        assert_eq!(router.rank(), 512);
+        assert!(router.is_joined());
+
+        let poison = dio(u16::MAX);
+        router.process_dio(&poison, &dio_bytes(&poison), replacement, -40, 1_001);
+        assert_eq!(router.dodag.parent_count(), MAX_NEIGHBORS - 1);
+    }
+
+    #[test]
+    fn unknown_poison_does_not_evict_a_parent() {
+        let dodag_id = link_local(0);
+        let mut router = Router::new(link_local(200), dodag_id);
+        let dio = |rank| Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank,
+            grounded: true,
+            mode_of_operation: NON_STORING_MOP,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+
+        for iid in 1..=MAX_NEIGHBORS as u8 {
+            let message = dio(ROOT_RANK + u16::from(iid));
+            router.process_dio(
+                &message,
+                &dio_bytes(&message),
+                link_local(iid),
+                -40,
+                u32::from(iid),
+            );
+        }
+        let old_parent = router.preferred_parent();
+
+        let poison = dio(u16::MAX);
+        assert!(!router.process_dio(&poison, &dio_bytes(&poison), link_local(17), -40, 1_000,));
+        assert_eq!(router.neighbors.count(), MAX_NEIGHBORS);
+        assert_eq!(router.dodag.parent_count(), MAX_NEIGHBORS);
+        assert_eq!(router.preferred_parent(), old_parent);
+    }
+
+    #[test]
+    fn inadmissible_rank_config_does_not_mutate_router() {
+        let dodag_id = link_local(0);
+        let mut router = Router::new(link_local(200), dodag_id);
+        let dio = |rank| Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank,
+            grounded: true,
+            mode_of_operation: NON_STORING_MOP,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+
+        let parent = link_local(1);
+        let message = dio(ROOT_RANK);
+        router.process_dio(&message, &dio_bytes(&message), parent, -40, 0);
+        let original_config = router.dodag_config.clone();
+
+        let sender = link_local(2);
+        let message = dio(300);
+        let mut restrictive = original_config.clone();
+        restrictive.max_rank_increase = 1;
+        let bytes = dio_with_config(&message, &restrictive);
+        assert!(!router.process_dio(&message, &bytes, sender, -40, 1_000));
+
+        assert_eq!(router.dodag_config, original_config);
+        assert_eq!(router.neighbors.get_etx(&sender), None);
+        assert_eq!(router.neighbors.count(), 1);
+        assert_eq!(router.dodag.parent_count(), 1);
+        assert_eq!(router.preferred_parent(), Some(parent));
+        assert_eq!(router.rank(), 512);
+    }
+
+    #[test]
+    fn pruning_neighbors_removes_dodag_parents() {
+        let dodag_id = link_local(0);
+        let mut router = Router::new(link_local(200), dodag_id);
+        let dio = |rank| Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank,
+            grounded: true,
+            mode_of_operation: NON_STORING_MOP,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id,
+        };
+
+        let stale_parent = link_local(1);
+        let message = dio(ROOT_RANK);
+        router.process_dio(&message, &dio_bytes(&message), stale_parent, -40, 0);
+        let fallback = link_local(2);
+        let message = dio(300);
+        router.process_dio(&message, &dio_bytes(&message), fallback, -40, 900);
+
+        assert!(router.prune_neighbors(1_000, 500));
+        assert_eq!(router.neighbors.get_etx(&stale_parent), None);
+        assert_eq!(router.neighbors.count(), 1);
+        assert_eq!(router.dodag.parent_count(), 1);
+        assert_eq!(router.preferred_parent(), Some(fallback));
+        assert_eq!(router.rank(), 556);
     }
 
     // --- DTN Buffer Tests ---
