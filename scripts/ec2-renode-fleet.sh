@@ -81,7 +81,7 @@ Example:
   $0 --nodes 200 --duration 300
 
   # Run with custom firmware
-  west build -b nrf52840_lichen lichen/apps/puck -d build/puck
+  west build -b t_echo/nrf52840 lichen/apps/puck -d build/puck
   $0 --nodes 100 --firmware build/puck/zephyr/zephyr.elf
 EOF
     exit 0
@@ -117,7 +117,7 @@ fi
 
 if [[ ! -f "$FIRMWARE_PATH" ]]; then
     log_error "Firmware not found: $FIRMWARE_PATH"
-    log_error "Build it first: west build -b nrf52840_lichen lichen/samples/lora_ping -d build/lora_ping"
+    log_error "Build it first: west build -b t_echo/nrf52840 lichen/samples/lora_ping -d build/lora_ping"
     exit 1
 fi
 

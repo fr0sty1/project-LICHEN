@@ -47,13 +47,26 @@ jobs:
           pip install -r zephyr/scripts/requirements.txt
           west zephyr-export
 
-      - name: Build lora_ping for nrf52840_lichen
-        run: |
-          west build -b nrf52840_lichen lichen/samples/lora_ping -d build/lora_ping
+      - name: Set SOURCE_DATE_EPOCH
+        # The build-epoch policy (lichen/cmake/lichen_build_epoch.cmake)
+        # requires an epoch in 1..2^31-1. Use the commit timestamp like ci.yml.
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
 
-      - name: Build puck app for nrf52840_lichen
+      # nrf52840_lichen is the Renode *platform* name, not a Zephyr board.
+      # The firmware is built for the real t_echo/nrf52840 board with the
+      # renode_console overlay/conf (UARTE0 console Renode can capture), and
+      # the ELF is loaded into the nrf52840_lichen Renode machine downstream.
+      - name: Build lora_ping for Renode (t_echo/nrf52840)
         run: |
-          west build -b nrf52840_lichen lichen/apps/puck -d build/puck
+          west build -b t_echo/nrf52840 lichen/samples/lora_ping -d build/lora_ping -- \
+            -DEXTRA_DTC_OVERLAY_FILE=$GITHUB_WORKSPACE/lichen/boards/renode/nrf52840_lichen/support/renode_console.overlay \
+            -DEXTRA_CONF_FILE=$GITHUB_WORKSPACE/lichen/boards/renode/nrf52840_lichen/support/renode_console.conf
+
+      - name: Build puck app for Renode (t_echo/nrf52840)
+        run: |
+          west build -b t_echo/nrf52840 lichen/apps/puck -d build/puck -- \
+            -DEXTRA_DTC_OVERLAY_FILE=$GITHUB_WORKSPACE/lichen/boards/renode/nrf52840_lichen/support/renode_console.overlay \
+            -DEXTRA_CONF_FILE=$GITHUB_WORKSPACE/lichen/boards/renode/nrf52840_lichen/support/renode_console.conf
         continue-on-error: true  # May have missing deps
 
       - name: Upload firmware artifacts

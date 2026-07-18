@@ -1,0 +1,15 @@
+/*
+ * Overlay for LilyGo T-Echo (nRF52840 + SX1262) - enables the LoRa radio
+ * and adds zephyr,lora to chosen so the lora_ping sample can bind it.
+ * Used for headless Renode validation via the nrf52840_lichen platform.
+ */
+
+/ {
+	chosen {
+		zephyr,lora = &lora;
+	};
+};
+
+&lora {
+	status = "okay";
+};

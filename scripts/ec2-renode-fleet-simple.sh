@@ -31,7 +31,7 @@ log_error() { echo -e "\033[0;31mERROR:\033[0m $*" >&2; }
 FIRMWARE="$PROJECT_ROOT/build/lora_ping/zephyr/zephyr.elf"
 if [[ ! -f "$FIRMWARE" ]]; then
     log_error "Firmware not found. Build it first:"
-    log_error "  west build -b nrf52840_lichen lichen/samples/lora_ping -d build/lora_ping"
+    log_error "  west build -b t_echo/nrf52840 lichen/samples/lora_ping -d build/lora_ping"
     exit 1
 fi
 

@@ -124,7 +124,7 @@ check_prereqs() {
     if [[ $ZEPHYR_NODES -gt 0 ]]; then
         if [[ ! -f "$PROJECT_ROOT/build/lora_ping/zephyr/zephyr.elf" ]]; then
             log_error "Zephyr firmware not found. Build it:"
-            log_error "  west build -b nrf52840_lichen lichen/samples/lora_ping -d build/lora_ping"
+            log_error "  west build -b t_echo/nrf52840 lichen/samples/lora_ping -d build/lora_ping"
             exit 1
         fi
     fi

@@ -138,7 +138,14 @@ jobs:
 
       - name: west init (manifest only, Zephyr from cache)
         if: steps.cache-zephyr.outputs.cache-hit == 'true'
-        run: west init -l lichen/
+        # The cache only stores zephyr/, not the sibling modules (hal_nordic,
+        # loramac-node, zcbor, mcumgr, ...). west update is still required to
+        # fetch them; without it HAS_NRFX/ZCBOR/MCUMGR resolve to n and the
+        # t_echo puck build aborts on Kconfig warnings. zephyr/ being cached
+        # keeps west update fast (its largest clone is already present).
+        run: |
+          west init -l lichen/
+          west update
 
       - name: Install Zephyr Python requirements
         run: pip install -r zephyr/scripts/requirements.txt
