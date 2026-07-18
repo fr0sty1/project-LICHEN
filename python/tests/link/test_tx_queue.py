@@ -108,6 +108,29 @@ class TestTxQueueBasic:
         q = TxQueue()
         assert q.peek() is None
 
+    def test_confirm_transmitted_removes_expected_front(self):
+        clock = FakeClock(100)
+        q = TxQueue(clock=clock)
+        q.push(b"first")
+        q.push(b"second")
+        clock.advance(25)
+
+        q.confirm_transmitted(b"first")
+
+        assert q.peek() == (b"second", Priority.BULK)
+        assert q.stats.packets_transmitted == 1
+        assert q.stats.max_latency_ms == 25
+
+    def test_confirm_transmitted_mismatch_preserves_queue(self):
+        q = TxQueue()
+        q.push(b"first")
+
+        with pytest.raises(ValueError, match="not at queue front"):
+            q.confirm_transmitted(b"other")
+
+        assert q.peek() == (b"first", Priority.BULK)
+        assert q.stats.packets_transmitted == 0
+
 
 class TestPriorityOrdering:
     """Tests for priority-based packet ordering."""
@@ -232,8 +255,8 @@ class TestDeadlineExpiry:
         assert len(q) == 1
         assert q.pop() == b"long"
 
-    def test_packet_at_deadline_not_expired(self):
-        """Packet exactly at deadline is NOT expired (deadline > now)."""
+    def test_packet_at_deadline_is_expired(self):
+        """Packet expires exactly at its deadline."""
         clock = FakeClock(0)
         q = TxQueue(clock=clock)
 
@@ -370,15 +393,22 @@ class TestStatistics:
         assert q.stats.packets_queued == 3
 
     def test_packets_transmitted_count(self):
-        """packets_transmitted tracks successful pops."""
+        """packets_transmitted tracks radio-confirmed packets only."""
         q = TxQueue()
         q.push(b"one")
         q.push(b"two")
 
-        q.pop()
-        q.pop()
+        q.confirm_transmitted(b"one")
+        q.confirm_transmitted(b"two")
 
         assert q.stats.packets_transmitted == 2
+
+    def test_pop_does_not_claim_radio_transmission(self):
+        q = TxQueue()
+        q.push(b"one")
+
+        assert q.pop() == b"one"
+        assert q.stats.packets_transmitted == 0
 
     def test_max_latency_tracking(self):
         """max_latency_ms tracks worst-case queue time."""
@@ -390,9 +420,8 @@ class TestStatistics:
         q.push(b"fast")
         clock.advance(50)
 
-        # Pop both - slow had 150ms latency, fast had 50ms
-        q.pop()  # slow (priority equal, FIFO)
-        q.pop()  # fast
+        q.confirm_transmitted(b"slow")
+        q.confirm_transmitted(b"fast")
 
         assert q.stats.max_latency_ms == 150
 
@@ -411,17 +440,17 @@ class TestStatistics:
 
         q.push(b"p1")
         clock.advance(100)
-        q.pop()
+        q.confirm_transmitted(b"p1")
         assert q.stats.avg_latency_ms == 10  # First sample: 0.1 * 100 = 10
 
         q.push(b"p2")
         clock.advance(100)
-        q.pop()
+        q.confirm_transmitted(b"p2")
         assert q.stats.avg_latency_ms == 19  # 0.1*100 + 0.9*10 = 19
 
         q.push(b"p3")
         clock.advance(100)
-        q.pop()
+        q.confirm_transmitted(b"p3")
         assert q.stats.avg_latency_ms == 27  # 0.1*100 + 0.9*19 = 27.1 -> 27
 
     def test_avg_latency_responds_to_variance(self):
@@ -433,7 +462,7 @@ class TestStatistics:
         for latency in [200, 10, 200, 10, 200, 10]:
             q.push(b"packet")
             clock.advance(latency)
-            q.pop()
+            q.confirm_transmitted(b"packet")
 
         # EMA should smooth out the variance
         # After 6 samples alternating 200/10, EMA is somewhere in between
