@@ -133,8 +133,10 @@ int tx_queue_init(struct tx_queue *_Nonnull queue);
  * @param[in]     data     Packet data
  * @param[in]     len      Packet length (must be <= TX_QUEUE_MAX_PACKET_SIZE)
  * @param[in]     priority Packet priority (0 = highest)
- * @param[in]     deadline_ms Absolute deadline in uptime milliseconds
- * @return 0 on success, -EINVAL on bad args, -ENOBUFS if full and cannot preempt
+ * @param[in]     deadline_ms Absolute deadline in uptime milliseconds; must be
+ *                            less than 2^31 ms ahead of the current uptime
+ * @return 0 on success, -EINVAL on bad args, -ENOBUFS if full and cannot preempt,
+ *         -EIO if the monotonic clock cannot be read
  */
 int tx_queue_push(struct tx_queue *_Nonnull queue,
 		  const uint8_t *_Nonnull data, uint16_t len,
@@ -152,7 +154,8 @@ int tx_queue_push(struct tx_queue *_Nonnull queue,
  * @param[in]     data     Packet data
  * @param[in]     len      Packet length
  * @param[in]     priority Packet priority
- * @return 0 on success, -EINVAL on bad args, -ENOBUFS if full
+ * @return 0 on success, -EINVAL on bad args, -ENOBUFS if full,
+ *         -EIO if the monotonic clock cannot be read
  */
 int tx_queue_push_default_deadline(struct tx_queue *_Nonnull queue,
 				   const uint8_t *_Nonnull data, uint16_t len,
@@ -169,7 +172,7 @@ int tx_queue_push_default_deadline(struct tx_queue *_Nonnull queue,
  * @param[in,out] len     In: buffer size, Out: packet length
  * @param[out]    latency_ms Optional: time packet spent in queue (NULL to skip)
  * @return 0 on success, -EAGAIN if queue is empty, -EINVAL on bad args,
- *         -ENOMEM if buffer too small
+ *         -ENOMEM if buffer too small, -EIO if the monotonic clock cannot be read
  */
 int tx_queue_pop(struct tx_queue *_Nonnull queue,
 		 uint8_t *_Nonnull data, uint16_t *_Nonnull len,

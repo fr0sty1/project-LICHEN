@@ -24,6 +24,7 @@
 /* Test time control (defined in tx_queue.c when CONFIG_TX_QUEUE_TEST_TIME) */
 extern void tx_queue_test_set_time(uint32_t time_ms);
 extern void tx_queue_test_use_real_time(void);
+extern void tx_queue_test_fail_time(bool fail);
 
 static int tests_run;
 static int tests_passed;
@@ -415,6 +416,55 @@ static int test_pop_buffer_too_small(void)
 	return 1;
 }
 
+static int test_clock_failure_preserves_queue(void)
+{
+	struct tx_queue queue;
+	struct tx_queue_stats before;
+	struct tx_queue_stats after;
+	uint8_t queued_data[4] = {1, 2, 3, 4};
+	uint8_t new_data[4] = {5, 6, 7, 8};
+	uint8_t out_data[TX_QUEUE_MAX_PACKET_SIZE];
+	uint8_t untouched[TX_QUEUE_MAX_PACKET_SIZE];
+	uint16_t out_len = sizeof(out_data);
+
+	memset(out_data, 0xA5, sizeof(out_data));
+	memset(untouched, 0xA5, sizeof(untouched));
+	tx_queue_test_set_time(1000);
+	tx_queue_test_fail_time(false);
+	tx_queue_init(&queue);
+	ASSERT_EQ(tx_queue_push(&queue, queued_data, sizeof(queued_data),
+				TX_PRIORITY_BULK, 60000), 0, "initial push succeeds");
+	tx_queue_stats_get(&queue, &before);
+
+	tx_queue_test_fail_time(true);
+	ASSERT_EQ(tx_queue_push_default_deadline(NULL, new_data, sizeof(new_data),
+					  TX_PRIORITY_ROUTING), -EINVAL,
+		  "invalid arguments take precedence over clock failure");
+	ASSERT_EQ(tx_queue_push(&queue, new_data, sizeof(new_data),
+				TX_PRIORITY_ROUTING, 60000), -EIO,
+		  "explicit-deadline push reports clock failure");
+	ASSERT_EQ(tx_queue_push_default_deadline(&queue, new_data, sizeof(new_data),
+					  TX_PRIORITY_ROUTING), -EIO,
+		  "default-deadline push reports clock failure");
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), -EIO,
+		  "pop reports clock failure");
+	ASSERT_EQ(tx_queue_count(&queue), 1, "clock failure preserves queued packet");
+	tx_queue_stats_get(&queue, &after);
+	ASSERT_TRUE(memcmp(&before, &after, sizeof(before)) == 0,
+		    "clock failure preserves queue statistics");
+	ASSERT_EQ(out_len, sizeof(out_data), "failed pop preserves output length");
+	ASSERT_TRUE(memcmp(out_data, untouched, sizeof(out_data)) == 0,
+		    "failed pop preserves output bytes");
+
+	tx_queue_test_fail_time(false);
+	ASSERT_EQ(tx_queue_pop(&queue, out_data, &out_len, NULL), 0,
+		  "packet can be popped after clock recovers");
+	ASSERT_TRUE(memcmp(out_data, queued_data, sizeof(queued_data)) == 0,
+		    "clock failure preserves queued packet data");
+
+	return 1;
+}
+
 #define RUN_TEST(fn) do { \
 	printf("  %s...", #fn); \
 	tests_run++; \
@@ -443,6 +493,7 @@ int main(void)
 	RUN_TEST(test_push_and_pop_single);
 	RUN_TEST(test_pop_empty_returns_eagain);
 	RUN_TEST(test_pop_buffer_too_small);
+	RUN_TEST(test_clock_failure_preserves_queue);
 
 	printf("\nBackpressure tests:\n");
 	RUN_TEST(test_queue_full_returns_enobufs);
@@ -463,6 +514,7 @@ int main(void)
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 
 	tx_queue_test_use_real_time();
+	tx_queue_test_fail_time(false);
 
 	return (tests_passed == tests_run) ? 0 : 1;
 }
