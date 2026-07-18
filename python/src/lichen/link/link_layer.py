@@ -178,6 +178,8 @@ class LinkLayer:
     _epoch: int = field(default_factory=lambda: secrets.randbelow(128) + 128, repr=False)
     _seqnum: int = field(default=0, repr=False)
     _pinned_keys: dict[bytes, bytes] = field(default_factory=dict, repr=False)
+    _tx_lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False)
+    _sequence_started: bool = field(default=False, init=False, repr=False)
 
     def __post_init__(self) -> None:
         # Why validate: Catch misconfiguration early
@@ -252,20 +254,19 @@ class LinkLayer:
         priority: Priority = Priority.BULK,
         deadline_ms: int | None = None,
     ) -> bool:
-        """Transmit a signed frame via the TX queue.
+        """Queue and transmit one frame while serializing TX state."""
+        async with self._tx_lock:
+            return await self._send_locked(payload, dst_addr, addr_mode, priority, deadline_ms)
 
-        Why async: Radio transmission may block waiting for channel clear
-        (listen-before-talk) or TX completion.
-
-        The frame is queued with the specified priority. Then the queue is
-        drained: packets are transmitted in priority order until the queue
-        is empty or CAD fails. Packets remaining in queue after CAD failure
-        will be transmitted on the next send() call.
-
-        If cad_enabled is True, performs CAD before transmitting. On busy
-        channel, backs off with exponential delay (0 to 2^attempt - 1 slots,
-        capped at 31 slots). After 3 full backoff cycles without clearing,
-        packets remain queued for later retry.
+    async def _send_locked(
+        self,
+        payload: bytes,
+        dst_addr: bytes = b"",
+        addr_mode: AddrMode = AddrMode.NONE,
+        priority: Priority = Priority.BULK,
+        deadline_ms: int | None = None,
+    ) -> bool:
+        """Build, enqueue, and drain while the TX lock is held.
 
         Args:
             payload: The data to send (typically SCHC-compressed packet).
@@ -274,10 +275,6 @@ class LinkLayer:
             priority: Queue priority (ROUTING, ACK, URGENT, or BULK).
             deadline_ms: Absolute deadline in ms. If None, uses default
                          for the priority level.
-
-        Returns:
-            True if at least one packet was transmitted from the queue,
-            False if CAD failed or queue was empty after expiry.
 
         Raises:
             QueueFullError: If queue is full and cannot preempt lower priority.
@@ -320,12 +317,16 @@ class LinkLayer:
         # Queue the frame (may raise QueueFullError)
         self.tx_queue.push(frame_bytes, priority=priority, deadline_ms=deadline_ms)
         self._next_seqnum()
-
-        # Drain the queue
-        return await self.drain_tx_queue()
+        self._sequence_started = True
+        return await self._drain_tx_queue_locked(target=frame_bytes)
 
     async def drain_tx_queue(self) -> bool:
-        """Transmit packets from the TX queue until empty or channel busy.
+        """Transmit queued packets while serializing TX state."""
+        async with self._tx_lock:
+            return await self._drain_tx_queue_locked()
+
+    async def _drain_tx_queue_locked(self, target: bytes | None = None) -> bool:
+        """Transmit queued packets until empty or channel access fails.
 
         Expires stale packets before attempting transmission. Transmits
         in priority order (highest priority = lowest numeric value first).
@@ -334,14 +335,13 @@ class LinkLayer:
             True if at least one packet was transmitted, False otherwise.
         """
         transmitted_any = False
-
+        target_confirmed = False
         while True:
             self.tx_queue.expire_stale()
             queued = self.tx_queue.peek()
             if queued is None:
-                break  # Queue empty
+                return target_confirmed if target is not None else transmitted_any
 
-            # CAD with exponential backoff before transmit
             if self.cad_enabled and not await self._wait_for_clear_channel():
                 logger.warning(
                     "TX deferred: channel busy after %d backoff cycles, "
@@ -349,24 +349,21 @@ class LinkLayer:
                     CAD_MAX_CYCLES,
                     len(self.tx_queue),
                 )
-                break
+                return target_confirmed if target is not None else transmitted_any
 
-            frame_bytes = self.tx_queue.pop()
-            if frame_bytes is None:
-                break
+            self.tx_queue.expire_stale()
+            if self.tx_queue.peek() != queued:
+                continue
 
-            # Transmit
-            if await self.radio.transmit(frame_bytes):
-                transmitted_any = True
-                logger.debug(
-                    "TX success, %d packets remain queued",
-                    len(self.tx_queue),
-                )
-            else:
+            frame_bytes, _ = queued
+            if not await self.radio.transmit(frame_bytes):
                 logger.warning("TX radio transmit failed")
-                break  # Radio failure - stop draining
+                return target_confirmed if target is not None else transmitted_any
 
-        return transmitted_any
+            self.tx_queue.confirm_transmitted(frame_bytes)
+            transmitted_any = True
+            target_confirmed |= frame_bytes == target
+            logger.debug("TX success, %d packets remain queued", len(self.tx_queue))
 
     async def _wait_for_clear_channel(self) -> bool:
         """Perform CAD with exponential backoff until channel is clear.
@@ -630,11 +627,14 @@ class LinkLayer:
 
         Raises:
             ValueError: If values are out of range.
+            RuntimeError: If any frame has already been accepted for transmission.
         """
         if not 0 <= epoch <= 0xFF:
             raise ValueError(f"epoch out of range: {epoch}")
         if not 0 <= seqnum <= 0xFFFF:
             raise ValueError(f"seqnum out of range: {seqnum}")
+        if self._sequence_started:
+            raise RuntimeError("cannot reset sequence after transmission starts")
         self._epoch = epoch
         self._seqnum = seqnum
         logger.info("sequence set to epoch=%d seqnum=%d", epoch, seqnum)

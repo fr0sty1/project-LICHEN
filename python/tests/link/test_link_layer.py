@@ -15,6 +15,8 @@ Test categories:
 4. Error cases: Malformed frames, bad signatures, replays
 """
 
+import asyncio
+
 import pytest
 
 from lichen.crypto.identity import Identity, PeerIdentity
@@ -25,7 +27,7 @@ from lichen.link.link_layer import (
     SIGNATURE_LENGTH,
     LinkLayer,
 )
-from lichen.link.tx_queue import Priority, QueueFullError
+from lichen.link.tx_queue import Priority, QueueFullError, TxQueue
 
 
 class MockRadio:
@@ -37,13 +39,41 @@ class MockRadio:
 
     def __init__(self):
         self.tx_history: list[bytes] = []
+        self.tx_attempts: list[bytes] = []
         self.rx_queue: list[tuple[bytes, int, int]] = []
         self.cad_returns: bool = False  # False = channel clear
+        self.transmit_returns: bool = True
+        self.transmit_results: list[bool] = []
+        self.transmit_error: Exception | None = None
+        self.transmit_started: asyncio.Event | None = None
+        self.transmit_release: asyncio.Event | None = None
+        self.active_transmits = 0
+        self.max_active_transmits = 0
+        self.cad_started: asyncio.Event | None = None
+        self.cad_release: asyncio.Event | None = None
 
     async def transmit(self, payload: bytes) -> bool:
         """Record transmitted frames."""
-        self.tx_history.append(payload)
-        return True
+        self.active_transmits += 1
+        self.max_active_transmits = max(self.max_active_transmits, self.active_transmits)
+        self.tx_attempts.append(payload)
+        try:
+            if self.transmit_error is not None:
+                raise self.transmit_error
+            if self.transmit_started is not None:
+                self.transmit_started.set()
+            if self.transmit_release is not None:
+                await self.transmit_release.wait()
+            result = (
+                self.transmit_results.pop(0)
+                if self.transmit_results
+                else self.transmit_returns
+            )
+            if result:
+                self.tx_history.append(payload)
+            return result
+        finally:
+            self.active_transmits -= 1
 
     async def receive(self, timeout_ms: int) -> tuple[bytes, int, int] | None:
         """Return next queued frame or None."""
@@ -57,6 +87,10 @@ class MockRadio:
 
     async def cad(self, timeout_ms: int) -> bool:
         """Return configured CAD result (default: channel clear)."""
+        if self.cad_started is not None:
+            self.cad_started.set()
+        if self.cad_release is not None:
+            await self.cad_release.wait()
         return self.cad_returns
 
     def queue_rx(self, data: bytes, rssi: int = -50, snr: int = 10) -> None:
@@ -430,6 +464,29 @@ class TestSequenceManagement:
         with pytest.raises(ValueError, match="seqnum out of range"):
             link_layer.set_sequence(0, -1)
 
+    @pytest.mark.asyncio
+    async def test_set_sequence_rejects_queued_frame(
+        self, link_layer: LinkLayer, mock_radio: MockRadio
+    ) -> None:
+        mock_radio.cad_returns = True
+        assert await link_layer.send(b"queued") is False
+
+        with pytest.raises(RuntimeError, match="transmission starts"):
+            link_layer.set_sequence(0, 0)
+
+        assert link_layer.get_sequence() == (0, 1)
+        assert len(link_layer.tx_queue) == 1
+
+    @pytest.mark.asyncio
+    async def test_set_sequence_rejects_used_counter(self, link_layer: LinkLayer) -> None:
+        assert await link_layer.send(b"sent") is True
+        assert len(link_layer.tx_queue) == 0
+
+        with pytest.raises(RuntimeError, match="transmission starts"):
+            link_layer.set_sequence(0, 0)
+
+        assert link_layer.get_sequence() == (0, 1)
+
 
 class TestLinkLayerConstruction:
     """Tests for LinkLayer construction and validation."""
@@ -703,6 +760,196 @@ class TestTxQueueIntegration:
             2,
             3,
         ]
+
+    @pytest.mark.asyncio
+    async def test_radio_false_preserves_packet_for_retry(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ) -> None:
+        mock_radio.transmit_returns = False
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=lambda _: None,
+            cad_enabled=False,
+        )
+        ll.set_sequence(0, 0)
+
+        assert await ll.send(b"retry", priority=Priority.ACK) is False
+        queued = ll.tx_queue.peek()
+        assert queued is not None
+        frame_bytes, priority = queued
+        assert priority == Priority.ACK
+        assert LichenFrame.from_bytes(frame_bytes).seqnum == 0
+        assert ll.tx_queue.stats.packets_transmitted == 0
+
+        mock_radio.transmit_returns = True
+        assert await ll.drain_tx_queue() is True
+        assert len(ll.tx_queue) == 0
+        assert ll.tx_queue.stats.packets_transmitted == 1
+        assert mock_radio.tx_attempts == [frame_bytes, frame_bytes]
+        assert mock_radio.tx_history == [frame_bytes]
+
+    @pytest.mark.asyncio
+    async def test_radio_exception_preserves_packet_for_retry(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ) -> None:
+        mock_radio.transmit_error = RuntimeError("radio failed")
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=lambda _: None,
+            cad_enabled=False,
+        )
+        ll.set_sequence(0, 0)
+
+        with pytest.raises(RuntimeError, match="radio failed"):
+            await ll.send(b"retry", priority=Priority.URGENT)
+        queued = ll.tx_queue.peek()
+        assert queued is not None
+        frame_bytes, priority = queued
+        assert priority == Priority.URGENT
+        assert LichenFrame.from_bytes(frame_bytes).seqnum == 0
+        assert ll.tx_queue.stats.packets_transmitted == 0
+
+        mock_radio.transmit_error = None
+        assert await ll.drain_tx_queue() is True
+        assert len(ll.tx_queue) == 0
+        assert ll.tx_queue.stats.packets_transmitted == 1
+        assert mock_radio.tx_attempts == [frame_bytes, frame_bytes]
+        assert mock_radio.tx_history == [frame_bytes]
+
+    @pytest.mark.asyncio
+    async def test_concurrent_send_cannot_replace_in_flight_packet(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ) -> None:
+        mock_radio.transmit_started = asyncio.Event()
+        mock_radio.transmit_release = asyncio.Event()
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=lambda _: None,
+            cad_enabled=False,
+        )
+        ll.set_sequence(0, 0)
+
+        first = asyncio.create_task(ll.send(b"first", priority=Priority.BULK))
+        await mock_radio.transmit_started.wait()
+        second = asyncio.create_task(ll.send(b"second", priority=Priority.ROUTING))
+        await asyncio.sleep(0)
+
+        assert not second.done()
+        assert len(ll.tx_queue) == 1
+        mock_radio.transmit_release.set()
+        assert await first is True
+        assert await second is True
+        assert [LichenFrame.from_bytes(raw).seqnum for raw in mock_radio.tx_history] == [0, 1]
+        assert ll.tx_queue.stats.packets_transmitted == 2
+
+    @pytest.mark.asyncio
+    async def test_cancelled_transmit_preserves_packet_and_releases_lock(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ) -> None:
+        mock_radio.transmit_started = asyncio.Event()
+        mock_radio.transmit_release = asyncio.Event()
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=lambda _: None,
+            cad_enabled=False,
+        )
+        ll.set_sequence(0, 0)
+
+        send = asyncio.create_task(ll.send(b"cancelled", priority=Priority.ACK))
+        await mock_radio.transmit_started.wait()
+        send.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await send
+
+        queued = ll.tx_queue.peek()
+        assert queued is not None
+        frame_bytes, priority = queued
+        assert priority == Priority.ACK
+        assert ll.tx_queue.stats.packets_transmitted == 0
+        mock_radio.transmit_started = None
+        mock_radio.transmit_release = None
+        assert await ll.drain_tx_queue() is True
+        assert mock_radio.tx_attempts == [frame_bytes, frame_bytes]
+        assert mock_radio.tx_history == [frame_bytes]
+
+    @pytest.mark.asyncio
+    async def test_concurrent_public_drain_does_not_overlap_radio(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ) -> None:
+        mock_radio.transmit_started = asyncio.Event()
+        mock_radio.transmit_release = asyncio.Event()
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=lambda _: None,
+            cad_enabled=False,
+        )
+
+        send = asyncio.create_task(ll.send(b"one"))
+        await mock_radio.transmit_started.wait()
+        drain = asyncio.create_task(ll.drain_tx_queue())
+        await asyncio.sleep(0)
+        assert not drain.done()
+
+        mock_radio.transmit_release.set()
+        assert await send is True
+        assert await drain is False
+        assert mock_radio.max_active_transmits == 1
+
+    @pytest.mark.asyncio
+    async def test_send_reports_its_own_frame_failure(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ) -> None:
+        mock_radio.cad_returns = True
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=lambda _: None,
+            cad_enabled=True,
+        )
+        ll.set_sequence(0, 0)
+        assert await ll.send(b"older", priority=Priority.ROUTING) is False
+
+        mock_radio.cad_returns = False
+        mock_radio.transmit_results = [True, False]
+        assert await ll.send(b"submitted", priority=Priority.BULK) is False
+        queued = ll.tx_queue.peek()
+        assert queued is not None
+        frame_bytes, _ = queued
+        assert LichenFrame.from_bytes(frame_bytes).seqnum == 1
+        assert ll.tx_queue.stats.packets_transmitted == 1
+
+        mock_radio.transmit_returns = True
+        assert await ll.drain_tx_queue() is True
+        assert ll.tx_queue.stats.packets_transmitted == 2
+
+    @pytest.mark.asyncio
+    async def test_packet_expiring_during_cad_is_not_transmitted(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ) -> None:
+        now = 0
+        mock_radio.cad_started = asyncio.Event()
+        mock_radio.cad_release = asyncio.Event()
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=lambda _: None,
+            cad_enabled=True,
+            tx_queue=TxQueue(clock=lambda: now),
+        )
+
+        send = asyncio.create_task(ll.send(b"stale", deadline_ms=100))
+        await mock_radio.cad_started.wait()
+        now = 100
+        mock_radio.cad_release.set()
+
+        assert await send is False
+        assert mock_radio.tx_attempts == []
+        assert ll.tx_queue.stats.packets_dropped_deadline == 1
 
 
 class TestKeyPinning:

@@ -94,7 +94,7 @@ class TxQueueStats:
         packets_dropped_deadline: Packets dropped due to deadline expiry.
         packets_dropped_preempt: Packets evicted by higher-priority preemption.
         packets_dropped_full: Packets rejected with QueueFullError.
-        packets_transmitted: Packets successfully popped for transmission.
+        packets_transmitted: Packets confirmed transmitted by the radio.
         max_latency_ms: Maximum time any packet spent in queue.
         avg_latency_ms: Smoothed average queue latency (EMA, alpha=0.1).
     """
@@ -266,7 +266,20 @@ class TxQueue:
         if not self._entries:
             return None
 
-        # Entries are sorted: highest priority (lowest value) first
+        return self._entries.pop(0).data
+
+    def confirm_transmitted(self, expected: bytes) -> None:
+        """Remove the front packet after the radio confirms transmission.
+
+        The expected bytes bind confirmation to the packet selected by peek().
+        No expiry runs here because the packet has already been transmitted.
+        """
+        if not self._entries or self._entries[0].data != expected:
+            raise ValueError("transmitted packet is not at queue front")
+        self._remove_first()
+
+    def _remove_first(self) -> TxQueueEntry:
+        """Remove the front entry and update successful-transmission stats."""
         entry = self._entries.pop(0)
 
         # Track latency stats
@@ -292,7 +305,7 @@ class TxQueue:
             self._capacity,
         )
 
-        return entry.data
+        return entry
 
     def peek(self) -> tuple[bytes, Priority] | None:
         """Peek at the highest-priority packet without removing it.
