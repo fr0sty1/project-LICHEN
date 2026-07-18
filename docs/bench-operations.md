@@ -157,13 +157,15 @@ frame after the reboot is rejected as a replay (`-120`) — a ~50 % coin flip pe
 reboot, per peer, and it is **silent on the sender** (the receiver just drops).
 Any single-node reboot or reflash can trigger one-way deafness.
 
-- **Fix in progress:** `CONFIG_LICHEN_LINK_EPOCH_PERSIST` persists the epoch and
-  advances it +1 per boot (monotonic; half-space arithmetic handles the 255→0
-  wrap). When enabled on the bench boards this eliminates the coin-flip.
-- **Manual recovery until then:** reset *both* endpoints within ~2 s so their
-  fresh windows adopt each other's new epochs on first exchange. The verified
-  sequence: bounce the gateway CP2102 port, then SMP-reset the puck within ~2 s.
-  This restored a stuck link to 9/13 immediately.
+- **Fix (validated, enabled on the bench):** `CONFIG_LICHEN_LINK_EPOCH_PERSIST`
+  persists the epoch and advances it +1 per boot (monotonic; half-space
+  arithmetic handles the 255→0 wrap). Enabled in the T-Echo puck and gateway
+  confs. Hardware-validated 2026-07-17: 8/8 T-Echo reboots produced **zero**
+  gateway replay rejections (vs ~4/8 expected without it).
+- **Manual recovery (older firmware without the fix):** reset *both* endpoints
+  within ~2 s so their fresh windows adopt each other's new epochs on first
+  exchange. The verified sequence: bounce the gateway CP2102 port, then
+  SMP-reset the puck within ~2 s. This restored a stuck link to 9/13 immediately.
 
 ---
 
@@ -182,14 +184,14 @@ the correct sender.
 
 `CONFIG_LICHEN_L2_DEV_PEER_EUI64` is a **comma-separated** peer list. But:
 
-- **Do not pin more than one peer on an nRF52840** (bd `shbh`). The RX path
-  Schnorr-verifies every demodulated frame against *all* pinned peers
-  (constant-time, no early exit), and the LoRa RX thread does not re-arm the
-  radio during verification. On the 64 MHz nRF52840 a second peer made every
-  ambient frame cost N verifies of deafness — measured drop from ~43 % to 0 %
-  round trips. The gateway (ESP32-S3 @ 240 MHz) handles two peers fine.
-  A dev-mode early-exit fix is committed (gated on dev provisioning) and awaits
-  hardware confirmation.
+- **Multi-peer pinning on nRF52840 is fixed** (bd `shbh`, validated). In *secure*
+  builds the RX path Schnorr-verifies every frame against *all* pinned peers
+  (constant-time). On the 64 MHz nRF52840 that made a second peer cost N verifies
+  of radio-deafness per frame — round trips dropped from ~43 % to 0 %. The
+  **dev-mode early-exit** (gated on dev provisioning, where the timing-side-channel
+  defense is moot) stops at the first match. Hardware-validated 2026-07-17: two
+  pinned peers now sustain 6/9 (67 %) round trips vs 0/24 before. List the most
+  frequent responder (the gateway) first so its frames exit on iteration 1.
 - **Three active nodes exceed the SF10 ALOHA airtime budget.** With the deaf
   T1000-E (bd `qpc0`) retransmitting every cycle, offered load approaches the
   duty limit and collisions climb. Keep the bench to two active nodes unless
