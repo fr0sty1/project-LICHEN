@@ -17,7 +17,6 @@ struct VectorFile {
 #[derive(Deserialize)]
 struct SchcVector {
     name: String,
-    description: String,
     rule_id: u8,
     packet: String,
     compressed: String,
@@ -32,20 +31,21 @@ fn hex_decode(s: &str) -> Vec<u8> {
 
 #[test]
 fn test_schc_compression_vectors() {
-    let vectors_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../test/vectors/schc_compression.json");
+    let vectors_path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/vectors/schc_compression.json");
 
     if !vectors_path.exists() {
         eprintln!("Vectors file not found at {:?}, skipping", vectors_path);
         return;
     }
 
-    let content = fs::read_to_string(&vectors_path)
-        .expect("Failed to read vectors file");
-    let vectors: VectorFile = serde_json::from_str(&content)
-        .expect("Failed to parse vectors JSON");
+    let content = fs::read_to_string(&vectors_path).expect("Failed to read vectors file");
+    let vectors: VectorFile = serde_json::from_str(&content).expect("Failed to parse vectors JSON");
 
-    assert_eq!(vectors.format_version, 1, "Unexpected vector format version");
+    assert_eq!(
+        vectors.format_version, 1,
+        "Unexpected vector format version"
+    );
 
     let mut failures = Vec::new();
 
@@ -68,7 +68,10 @@ fn test_schc_compression_vectors() {
 
         // Verify packet is valid IPv6 (starts with version 6)
         if packet.len() < 40 {
-            failures.push(format!("Vector '{}': packet too short for IPv6", vector.name));
+            failures.push(format!(
+                "Vector '{}': packet too short for IPv6",
+                vector.name
+            ));
             continue;
         }
 
@@ -84,7 +87,9 @@ fn test_schc_compression_vectors() {
         if compressed.len() >= packet.len() {
             failures.push(format!(
                 "Vector '{}': compression did not reduce size ({} -> {})",
-                vector.name, packet.len(), compressed.len()
+                vector.name,
+                packet.len(),
+                compressed.len()
             ));
         }
 
@@ -115,13 +120,16 @@ fn test_schc_compression_vectors() {
         panic!("{} SCHC vector(s) failed", failures.len());
     }
 
-    println!("Validated {} SCHC compression vectors", vectors.vectors.len());
+    println!(
+        "Validated {} SCHC compression vectors",
+        vectors.vectors.len()
+    );
 }
 
 #[test]
 fn test_schc_rule_coverage() {
-    let vectors_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../test/vectors/schc_compression.json");
+    let vectors_path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/vectors/schc_compression.json");
 
     if !vectors_path.exists() {
         return;
