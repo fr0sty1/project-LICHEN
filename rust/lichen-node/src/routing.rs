@@ -51,7 +51,8 @@ pub type GeoCoords = (f64, f64);
 pub struct Neighbor {
     pub addr: [u8; 16],
     pub etx: LinkEtx,
-    pub last_seen_ms: u32,
+    /// Last observation on the caller's monotonic millisecond timeline.
+    pub last_seen_ms: u64,
     pub rssi: i8,
     /// Geographic coordinates from announce app_data (spec 9.7).
     /// None if neighbor hasn't advertised coords.
@@ -62,17 +63,21 @@ pub struct Neighbor {
 #[derive(Clone, Debug)]
 pub struct NeighborTable {
     entries: [Option<Neighbor>; MAX_NEIGHBORS],
+    last_now_ms: u64,
 }
 
 impl NeighborTable {
     pub const fn new() -> Self {
         Self {
             entries: [const { None }; MAX_NEIGHBORS],
+            last_now_ms: 0,
         }
     }
 
     /// Update or insert a neighbor. Returns the slot index.
-    pub fn update(&mut self, addr: &[u8; 16], etx: LinkEtx, rssi: i8, now_ms: u32) -> usize {
+    ///
+    /// `now_ms` must use one nondecreasing monotonic `u64` timeline.
+    pub fn update(&mut self, addr: &[u8; 16], etx: LinkEtx, rssi: i8, now_ms: u64) -> usize {
         self.update_with_coords(addr, etx, rssi, now_ms, None)
     }
 
@@ -82,7 +87,7 @@ impl NeighborTable {
         addr: &[u8; 16],
         etx: LinkEtx,
         rssi: i8,
-        now_ms: u32,
+        now_ms: u64,
         coords: Option<GeoCoords>,
     ) -> usize {
         self.update_with_coords_and_eviction(addr, etx, rssi, now_ms, coords, None)
@@ -94,10 +99,12 @@ impl NeighborTable {
         addr: &[u8; 16],
         etx: LinkEtx,
         rssi: i8,
-        now_ms: u32,
+        now_ms: u64,
         coords: Option<GeoCoords>,
         protected: Option<[u8; 16]>,
     ) -> (usize, Option<[u8; 16]>) {
+        let now_ms = now_ms.max(self.last_now_ms);
+        self.last_now_ms = now_ms;
         // Find existing or empty slot
         let mut empty_slot = None;
         for (i, slot) in self.entries.iter_mut().enumerate() {
@@ -126,7 +133,7 @@ impl NeighborTable {
             });
             return (i, None);
         }
-        // Table full - evict oldest (wraparound-safe, tie-break by index for stability)
+        // Table full - evict oldest, tie-breaking by index for stability.
         let oldest = self
             .entries
             .iter()
@@ -137,7 +144,7 @@ impl NeighborTable {
                     .filter(|neighbor| protected != Some(neighbor.addr))
                     .map(|neighbor| (i, neighbor.last_seen_ms))
             })
-            .max_by_key(|(i, t)| (now_ms.wrapping_sub(*t), *i))
+            .min_by_key(|(i, timestamp)| (*timestamp, core::cmp::Reverse(*i)))
             .map(|(i, _)| i)
             .unwrap_or(0);
         let evicted = self.entries[oldest].as_ref().map(|neighbor| neighbor.addr);
@@ -180,20 +187,24 @@ impl NeighborTable {
     }
 
     /// Remove stale entries older than `max_age_ms`.
-    pub fn prune(&mut self, now_ms: u32, max_age_ms: u32) {
+    ///
+    /// Both values use the same monotonic `u64` millisecond timeline as [`Self::update`].
+    pub fn prune(&mut self, now_ms: u64, max_age_ms: u64) {
         self.prune_with_removed(now_ms, max_age_ms, |_| {});
     }
 
     fn prune_with_removed(
         &mut self,
-        now_ms: u32,
-        max_age_ms: u32,
+        now_ms: u64,
+        max_age_ms: u64,
         mut removed: impl FnMut([u8; 16]),
     ) {
+        let now_ms = now_ms.max(self.last_now_ms);
+        self.last_now_ms = now_ms;
         for slot in self.entries.iter_mut() {
             let is_stale = slot
                 .as_ref()
-                .is_some_and(|neighbor| now_ms.wrapping_sub(neighbor.last_seen_ms) > max_age_ms);
+                .is_some_and(|neighbor| now_ms.saturating_sub(neighbor.last_seen_ms) > max_age_ms);
             if is_stale {
                 let neighbor = slot.take().expect("stale slot contains a neighbor");
                 removed(neighbor.addr);
@@ -222,15 +233,14 @@ impl Default for NeighborTable {
 #[derive(Debug)]
 pub struct Router {
     dodag: DodagState,
-    pub trickle: TrickleTimer,
-    pub dao_manager: DaoManager,
+    trickle: TrickleTimer,
+    dao_manager: DaoManager,
     neighbors: NeighborTable,
     #[allow(dead_code)] // stored at construction; not yet consulted
     node_addr: [u8; 16],
     dodag_id: [u8; 16],
     dodag_config: DodagConfig,
-    last_now_ms: Option<u32>,
-    monotonic_ms: u64,
+    last_now_ms: u64,
     /// This node's geographic coordinates for GPSR (spec 9.7).
     /// None if GPS unavailable or privacy mode enabled.
     pub node_coords: Option<GeoCoords>,
@@ -249,8 +259,7 @@ impl Router {
             node_addr,
             dodag_id,
             dodag_config,
-            last_now_ms: None,
-            monotonic_ms: 0,
+            last_now_ms: 0,
             node_coords: None,
         }
     }
@@ -286,8 +295,7 @@ impl Router {
             node_addr,
             dodag_id,
             dodag_config,
-            last_now_ms: None,
-            monotonic_ms: 0,
+            last_now_ms: 0,
             node_coords: None,
         })
     }
@@ -295,14 +303,15 @@ impl Router {
     /// Process a received DIO message from a neighbor.
     ///
     /// Updates neighbor table, feeds DODAG state machine, and returns whether
-    /// the trickle timer should be reset (inconsistent DIO heard).
+    /// the trickle timer should be reset (inconsistent DIO heard). `now_ms`
+    /// must use one nondecreasing monotonic `u64` timeline.
     pub fn process_dio(
         &mut self,
         dio: &Dio,
         dio_bytes: &[u8],
         sender_addr: [u8; 16],
         rssi: i8,
-        now_ms: u32,
+        now_ms: u64,
     ) -> bool {
         let etx = self.neighbors.get_etx(&sender_addr).unwrap_or(1.0);
         self.process_dio_with_etx(dio, dio_bytes, sender_addr, etx, rssi, now_ms)
@@ -316,8 +325,9 @@ impl Router {
         sender_addr: [u8; 16],
         etx: LinkEtx,
         rssi: i8,
-        now_ms: u32,
+        now_ms: u64,
     ) -> bool {
+        let now_ms = self.observe_now(now_ms);
         if !etx.is_finite() || etx < 1.0 {
             return false;
         }
@@ -362,7 +372,6 @@ impl Router {
                 proposed_config = parsed;
             }
         }
-
         let neighbor_known = self.neighbors.get_etx(&sender_addr).is_some();
         if dio.rank == u16::MAX {
             if !version_order.is_eq() || !neighbor_known {
@@ -457,21 +466,19 @@ impl Router {
         inconsistent
     }
 
-    /// Process a received DAO message (root only).
-    ///
-    /// Returns true if a route was updated.
-    pub fn process_dao(
+    fn process_dao_at_times(
         &mut self,
         dao_bytes: &[u8],
         packet_source: [u8; 16],
         authenticated_sender: [u8; 16],
-        now_seconds: u64,
+        expire_seconds: u64,
+        lifetime_start_seconds: u64,
     ) -> bool {
         if !self.dodag.is_root() {
             return false;
         }
 
-        self.dao_manager.expire_routes(now_seconds);
+        self.dao_manager.expire_routes(expire_seconds);
 
         let Some(parents) = dao_parents_for_source(dao_bytes, &packet_source) else {
             return false;
@@ -486,24 +493,33 @@ impl Router {
             return false;
         }
 
-        self.dao_manager.process_dao_at(
+        self.dao_manager.process_dao_at_bounded(
             dao_bytes,
             packet_source,
-            now_seconds,
+            lifetime_start_seconds,
             u64::from(self.dodag_config.lifetime_unit),
+            u64::MAX / 1_000,
         )
     }
 
-    /// Process a DAO using a wrapping millisecond clock.
+    /// Process a DAO using the router's monotonic millisecond timeline.
     pub fn process_dao_at_ms(
         &mut self,
         dao_bytes: &[u8],
         packet_source: [u8; 16],
         authenticated_sender: [u8; 16],
-        now_ms: u32,
+        now_ms: u64,
     ) -> bool {
-        let now_seconds = self.extend_now_ms(now_ms) / 1_000;
-        self.process_dao(dao_bytes, packet_source, authenticated_sender, now_seconds)
+        let now_ms = self.observe_now(now_ms);
+        let expire_seconds = now_ms / 1_000;
+        let lifetime_start_seconds = expire_seconds + u64::from(!now_ms.is_multiple_of(1_000));
+        self.process_dao_at_times(
+            dao_bytes,
+            packet_source,
+            authenticated_sender,
+            expire_seconds,
+            lifetime_start_seconds,
+        )
     }
 
     /// Build a DAO message to send to parent.
@@ -547,8 +563,8 @@ impl Router {
         self.dao_manager.routing_table.lookup(dst)
     }
 
-    /// Expire finite routes and look up a destination using a wrapping clock.
-    pub fn lookup_route_at(&mut self, dst: &[u8; 16], now_ms: u32) -> Option<&[[u8; 16]]> {
+    /// Expire finite routes and look up a destination using monotonic time.
+    pub fn lookup_route_at(&mut self, dst: &[u8; 16], now_ms: u64) -> Option<&[[u8; 16]]> {
         self.expire_routes_at(now_ms);
         self.lookup_route(dst)
     }
@@ -564,20 +580,20 @@ impl Router {
     }
 
     /// Handle trickle expire event. Doubles interval.
-    pub fn trickle_expire(&mut self, now_ms: u32, rand_offset: u32) {
-        self.expire_routes_at(now_ms);
+    pub fn trickle_expire(&mut self, now_ms: u64, rand_offset: u32) {
+        let now_ms = self.expire_routes_at(now_ms);
         self.trickle.expire(now_ms, rand_offset);
     }
 
     /// Reset trickle on inconsistency.
-    pub fn trickle_reset(&mut self, now_ms: u32, rand_offset: u32) {
-        self.expire_routes_at(now_ms);
+    pub fn trickle_reset(&mut self, now_ms: u64, rand_offset: u32) {
+        let now_ms = self.expire_routes_at(now_ms);
         self.trickle.reset(now_ms, rand_offset);
     }
 
     /// Start trickle timer.
-    pub fn trickle_start(&mut self, now_ms: u32, rand_offset: u32) {
-        self.expire_routes_at(now_ms);
+    pub fn trickle_start(&mut self, now_ms: u64, rand_offset: u32) {
+        let now_ms = self.expire_routes_at(now_ms);
         self.trickle.start(now_ms, rand_offset);
     }
 
@@ -612,7 +628,9 @@ impl Router {
     }
 
     /// Remove stale neighbors and their corresponding DODAG parent candidates.
-    pub fn prune_neighbors(&mut self, now_ms: u32, max_age_ms: u32) -> bool {
+    /// Times use the same monotonic `u64` millisecond timeline as DIO processing.
+    pub fn prune_neighbors(&mut self, now_ms: u64, max_age_ms: u64) -> bool {
+        let now_ms = self.observe_now(now_ms);
         let was_joined = self.dodag.is_joined();
         let old_parent = self.dodag.preferred_parent;
         let old_rank = self.dodag.rank;
@@ -654,25 +672,15 @@ impl Router {
         true
     }
 
-    fn expire_routes_at(&mut self, now_ms: u32) {
-        let now_seconds = self.extend_now_ms(now_ms) / 1_000;
-        self.dao_manager.expire_routes(now_seconds);
+    fn expire_routes_at(&mut self, now_ms: u64) -> u64 {
+        let now_ms = self.observe_now(now_ms);
+        self.dao_manager.expire_routes(now_ms / 1_000);
+        now_ms
     }
 
-    fn extend_now_ms(&mut self, now_ms: u32) -> u64 {
-        match self.last_now_ms {
-            None => self.monotonic_ms = 0,
-            Some(last) => {
-                let elapsed = now_ms.wrapping_sub(last);
-                if elapsed <= u32::MAX / 2 {
-                    self.monotonic_ms += u64::from(elapsed);
-                }
-            }
-        }
-        // An ambiguous large jump contributes no elapsed time, but rebasing here
-        // lets subsequent periodic ticks resume monotonic progress.
-        self.last_now_ms = Some(now_ms);
-        self.monotonic_ms
+    fn observe_now(&mut self, now_ms: u64) -> u64 {
+        self.last_now_ms = self.last_now_ms.max(now_ms);
+        self.last_now_ms
     }
 
     /// Set this node's geographic coordinates (from GPS or config).
@@ -1316,6 +1324,9 @@ mod tests {
         assert!(!router.process_dio(&dio, &invalid_rank, sender, -40, 1000));
         assert_eq!(router.neighbors.count(), 0);
         assert_eq!(router.dodag_config, DodagConfig::default());
+
+        assert!(router.process_dio(&dio, &bytes, sender, -40, 50));
+        assert_eq!(router.neighbors.iter().next().unwrap().last_seen_ms, 1_000);
     }
 
     fn dio_with_config(dio: &Dio, config: &DodagConfig) -> Vec<u8> {
@@ -1386,8 +1397,8 @@ mod tests {
             dodag_id,
         };
         assert!(router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 1_000));
-        assert!(router.trickle.fire_transmit());
-        router.trickle.expire(1_008, 0);
+        assert!(router.trickle_transmit());
+        router.trickle_expire(1_008, 0);
         assert_eq!(router.trickle.interval, 16);
 
         dio.rank = u16::MAX;
@@ -1439,6 +1450,7 @@ mod tests {
 
     #[test]
     fn newer_version_can_adopt_a_higher_rank_and_resets_trickle() {
+        const WRAP: u64 = 0x1_0000_0000;
         let dodag_id = link_local(1);
         let parent = link_local(2);
         let mut router = Router::new(link_local(3), dodag_id);
@@ -1453,19 +1465,19 @@ mod tests {
             flags: 0,
             dodag_id,
         };
-        assert!(router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 0));
-        assert!(router.trickle.fire_transmit());
-        router.trickle.expire(8, 0);
+        assert!(router.process_dio(&dio, &dio_bytes(&dio), parent, -40, WRAP + 100));
+        assert!(router.trickle_transmit());
+        router.trickle_expire(WRAP + 108, 0);
         assert_eq!(router.trickle.interval, 16);
 
         dio.version = 1;
         dio.rank = 1_400;
-        assert!(router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 100));
+        assert!(router.process_dio(&dio, &dio_bytes(&dio), parent, -40, 50));
         assert_eq!(router.dodag.version, 1);
         assert_eq!(router.preferred_parent(), Some(parent));
         assert_eq!(router.rank(), 1_656);
         assert_eq!(router.trickle.interval, router.trickle.imin);
-        assert_eq!(router.trickle.interval_start, 100);
+        assert_eq!(router.trickle.interval_start, WRAP + 108);
     }
 
     #[test]
@@ -1699,9 +1711,9 @@ mod tests {
         let dao = sender.build_dao(root_addr);
         let mut root = Router::new_root(root_addr);
 
-        assert!(!root.process_dao(&dao, target, link_local(3), 0));
+        assert!(!root.process_dao_at_ms(&dao, target, link_local(3), 0));
         assert!(root.lookup_route(&target).is_none());
-        assert!(root.process_dao(&dao, target, target, 0));
+        assert!(root.process_dao_at_ms(&dao, target, target, 0));
         assert_eq!(root.lookup_route(&target), Some([target].as_slice()));
     }
 
@@ -1759,9 +1771,9 @@ mod tests {
         let mut root = Router::new_root(root_addr);
         assert!(root.set_dao_lifetime_unit(10));
 
-        assert!(root.process_dao(&first_dao, first_target, first_target, 100));
+        assert!(root.process_dao_at_ms(&first_dao, first_target, first_target, 100_000));
         assert!(root.lookup_route(&first_target).is_some());
-        assert!(root.process_dao(&second_dao, second_target, second_target, 110));
+        assert!(root.process_dao_at_ms(&second_dao, second_target, second_target, 110_000));
         assert!(root.lookup_route(&first_target).is_none());
         assert!(root.lookup_route(&second_target).is_some());
     }
@@ -1782,7 +1794,8 @@ mod tests {
     }
 
     #[test]
-    fn dao_clock_extends_across_u32_wrap() {
+    fn dao_clock_expires_across_u32_boundary() {
+        const WRAP: u64 = 0x1_0000_0000;
         let root_addr = link_local(1);
         let target = link_local(2);
         let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
@@ -1790,13 +1803,14 @@ mod tests {
         let mut root = Router::new_root(root_addr);
         assert!(root.set_dao_lifetime_unit(1));
 
-        assert!(root.process_dao_at_ms(&dao, target, target, u32::MAX - 500));
-        assert!(root.lookup_route_at(&target, 400).is_some());
-        assert!(root.lookup_route_at(&target, 600).is_none());
+        assert!(root.process_dao_at_ms(&dao, target, target, WRAP - 296));
+        assert!(root.lookup_route_at(&target, WRAP + 703).is_some());
+        assert!(root.lookup_route_at(&target, WRAP + 704).is_none());
     }
 
     #[test]
-    fn dao_clock_resumes_after_ambiguous_large_gap() {
+    fn dao_clock_expires_after_half_range_gap() {
+        const HALF: u64 = 0x8000_0000;
         let root_addr = link_local(1);
         let target = link_local(2);
         let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
@@ -1804,16 +1818,37 @@ mod tests {
         let mut root = Router::new_root(root_addr);
         assert!(root.set_dao_lifetime_unit(1));
 
-        let start = 1_000u32;
-        let resumed = start.wrapping_add(u32::MAX / 2 + 1);
+        let start = 1_000u64;
         assert!(root.process_dao_at_ms(&dao, target, target, start));
-        assert!(root.lookup_route_at(&target, resumed).is_some());
-        assert!(root
-            .lookup_route_at(&target, resumed.wrapping_add(999))
-            .is_some());
-        assert!(root
-            .lookup_route_at(&target, resumed.wrapping_add(1_000))
-            .is_none());
+        assert!(root.lookup_route_at(&target, start + HALF).is_none());
+    }
+
+    #[test]
+    fn dao_is_rejected_when_no_future_deadline_is_representable() {
+        let root_addr = link_local(1);
+        let target = link_local(2);
+        let infinite_target = link_local(3);
+        let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
+        let mut infinite = DaoManager::new(infinite_target, RPL_INSTANCE_ID, root_addr);
+        let dao = sender.build_dao_with_lifetime(root_addr, 1);
+        let mut root = Router::new_root(root_addr);
+
+        assert!(!root.process_dao_at_ms(&dao, target, target, u64::MAX - 1_000));
+        assert!(root.lookup_route(&target).is_none());
+        assert!(root.process_dao_at_ms(
+            &infinite.build_dao(root_addr),
+            infinite_target,
+            infinite_target,
+            u64::MAX,
+        ));
+        assert!(root.lookup_route(&infinite_target).is_some());
+        assert!(root.process_dao_at_ms(
+            &infinite.build_dao_with_lifetime(root_addr, 0),
+            infinite_target,
+            infinite_target,
+            u64::MAX,
+        ));
+        assert!(root.lookup_route(&infinite_target).is_none());
     }
 
     #[test]
@@ -1852,32 +1887,46 @@ mod tests {
     }
 
     #[test]
-    fn neighbor_table_eviction_wraparound() {
-        // Test that eviction is correct after u32 timestamp wraparound (~49 days)
+    fn neighbor_table_eviction_distinguishes_complete_wraps() {
+        const WRAP: u64 = 0x1_0000_0000;
         let mut table = NeighborTable::new();
 
-        // Fill the table
-        for i in 0..MAX_NEIGHBORS {
+        table.update(&link_local(0), 1.0, -50, 100);
+        for i in 1..MAX_NEIGHBORS {
             let addr = link_local(i as u8);
-            // All entries have timestamps just before wraparound
-            table.update(&addr, 1.0, -50, 0xFFFF_FF00 + i as u32);
+            table.update(&addr, 1.0, -50, WRAP + 90 + i as u64);
         }
         assert_eq!(table.count(), MAX_NEIGHBORS);
 
-        // Now time has wrapped around to a small value
-        let now_ms = 0x0000_1000_u32; // After wraparound
-
-        // Insert a new neighbor - should evict the oldest (lowest slot index)
         let new_addr = link_local(0xFF);
-        let evicted_slot = table.update(&new_addr, 1.0, -50, now_ms);
+        let evicted_slot = table.update(&new_addr, 1.0, -50, WRAP + 200);
 
-        // The oldest entry is slot 0 (timestamp 0xFFFF_FF00, largest age from now_ms)
         assert_eq!(evicted_slot, 0);
         assert_eq!(table.get_etx(&new_addr), Some(1.0));
+        assert_eq!(table.get_etx(&link_local(0)), None);
+    }
 
-        // Verify slot 0 was evicted (original addr link_local(0) is gone)
-        let original_addr0 = link_local(0);
-        assert_eq!(table.get_etx(&original_addr0), None);
+    #[test]
+    fn neighbor_pruning_handles_half_range_and_complete_wrap() {
+        const HALF: u64 = 0x8000_0000;
+        const WRAP: u64 = 0x1_0000_0000;
+        let mut table = NeighborTable::new();
+
+        table.update(&link_local(1), 1.0, -50, 0);
+        table.prune(HALF, HALF);
+        assert_eq!(table.count(), 1);
+        table.prune(HALF + 1, HALF);
+        assert_eq!(table.count(), 0);
+
+        table.update(&link_local(2), 1.0, -50, 100);
+        table.prune(WRAP + 100, 1);
+        assert_eq!(table.count(), 0);
+
+        table.update(&link_local(3), 1.0, -50, WRAP + 200);
+        table.update(&link_local(3), 1.0, -40, 50);
+        assert_eq!(table.iter().next().unwrap().last_seen_ms, WRAP + 200);
+        table.prune(WRAP + 201, 0);
+        assert_eq!(table.count(), 0);
     }
 
     #[test]
@@ -1953,7 +2002,7 @@ mod tests {
                 &dio_bytes(&message),
                 link_local(iid),
                 -40,
-                u32::from(iid),
+                u64::from(iid),
             );
         }
         let old_parent = router.preferred_parent();
@@ -2003,6 +2052,7 @@ mod tests {
 
     #[test]
     fn pruning_neighbors_removes_dodag_parents() {
+        const WRAP: u64 = 0x1_0000_0000;
         let dodag_id = link_local(0);
         let mut router = Router::new(link_local(200), dodag_id);
         let dio = |rank| Dio {
@@ -2019,17 +2069,20 @@ mod tests {
 
         let stale_parent = link_local(1);
         let message = dio(ROOT_RANK);
-        router.process_dio(&message, &dio_bytes(&message), stale_parent, -40, 0);
+        router.process_dio(&message, &dio_bytes(&message), stale_parent, -40, 100);
         let fallback = link_local(2);
         let message = dio(300);
-        router.process_dio(&message, &dio_bytes(&message), fallback, -40, 900);
+        router.process_dio(&message, &dio_bytes(&message), fallback, -40, WRAP + 90);
+        assert!(router.trickle_transmit());
+        router.trickle_expire(WRAP + 100, 0);
 
-        assert!(router.prune_neighbors(1_000, 500));
+        assert!(router.prune_neighbors(50, 5));
         assert_eq!(router.neighbors.get_etx(&stale_parent), None);
-        assert_eq!(router.neighbors.count(), 1);
-        assert_eq!(router.dodag.parent_count(), 1);
-        assert_eq!(router.preferred_parent(), Some(fallback));
-        assert_eq!(router.rank(), 556);
+        assert_eq!(router.neighbors.count(), 0);
+        assert_eq!(router.dodag.parent_count(), 0);
+        assert_eq!(router.preferred_parent(), None);
+        assert_eq!(router.rank(), u16::MAX);
+        assert_eq!(router.trickle.interval_start, WRAP + 100);
     }
 
     // --- DTN Buffer Tests ---

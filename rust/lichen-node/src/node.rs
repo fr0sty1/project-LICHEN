@@ -261,18 +261,19 @@ impl RplNode {
         l2_payload: &[u8],
         sender_iid: [u8; 8],
         reply: &mut [u8],
-        now_ms: u32,
+        now_ms: u64,
     ) -> (usize, RplEvent) {
         self.handle_frame_rpl_inner(l2_payload, sender_iid, reply, now_ms, None)
     }
 
     /// Process an authenticated SCHC payload with measured link quality.
+    /// `now_ms` must use one nondecreasing monotonic `u64` timeline.
     pub fn handle_frame_rpl_with_link(
         &mut self,
         l2_payload: &[u8],
         sender_iid: [u8; 8],
         reply: &mut [u8],
-        now_ms: u32,
+        now_ms: u64,
         etx: f32,
         rssi: i8,
     ) -> (usize, RplEvent) {
@@ -284,7 +285,7 @@ impl RplNode {
         l2_payload: &[u8],
         sender_iid: [u8; 8],
         reply: &mut [u8],
-        now_ms: u32,
+        now_ms: u64,
         link: Option<(f32, i8)>,
     ) -> (usize, RplEvent) {
         if classify_l2_payload(l2_payload) != L2PayloadKind::Schc {
@@ -459,17 +460,17 @@ impl RplNode {
     }
 
     /// Handle trickle timer expiry.
-    pub fn trickle_expire(&mut self, now_ms: u32, rand_offset: u32) {
+    pub fn trickle_expire(&mut self, now_ms: u64, rand_offset: u32) {
         self.router.trickle_expire(now_ms, rand_offset);
     }
 
     /// Reset trickle timer on inconsistency.
-    pub fn trickle_reset(&mut self, now_ms: u32, rand_offset: u32) {
+    pub fn trickle_reset(&mut self, now_ms: u64, rand_offset: u32) {
         self.router.trickle_reset(now_ms, rand_offset);
     }
 
     /// Start trickle timer.
-    pub fn trickle_start(&mut self, now_ms: u32, rand_offset: u32) {
+    pub fn trickle_start(&mut self, now_ms: u64, rand_offset: u32) {
         self.router.trickle_start(now_ms, rand_offset);
     }
 }
@@ -564,6 +565,7 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn measured_link_quality_reaches_rpl_router() {
+        const WRAP: u64 = 0x1_0000_0000;
         let root_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
         let child_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 2]);
         let root_addr = root_id.link_local_addr().0;
@@ -588,15 +590,27 @@ mod tests {
         let packet = l2_rpl_packet(root_addr, child_addr, rpl_code::DIO, &dio_bytes);
 
         assert_eq!(
-            child.handle_frame_rpl_with_link(&packet, root_id.0, &mut [0u8; 260], 100, 2.0, -70,),
+            child.handle_frame_rpl_with_link(
+                &packet,
+                root_id.0,
+                &mut [0u8; 260],
+                WRAP + 100,
+                2.0,
+                -70,
+            ),
             (0, RplEvent::DioReceived { inconsistent: true })
         );
         assert_eq!(child.router.rank(), 768);
+        assert_eq!(
+            child.router.poll_trickle(),
+            lichen_rpl::trickle::TrickleEvent::Transmit { at_ms: WRAP + 104 }
+        );
         let neighbor = child.router.neighbors().iter().next().unwrap();
         assert_eq!(neighbor.etx, 2.0);
         assert_eq!(neighbor.rssi, -70);
+        assert_eq!(neighbor.last_seen_ms, WRAP + 100);
 
-        child.handle_frame_rpl(&packet, root_id.0, &mut [0u8; 260], 200);
+        child.handle_frame_rpl(&packet, root_id.0, &mut [0u8; 260], WRAP + 200);
         assert_eq!(child.router.rank(), 768);
         assert_eq!(child.router.neighbors().iter().next().unwrap().etx, 2.0);
     }
@@ -704,10 +718,8 @@ mod tests {
     fn production_dao_time_is_seconds_and_expires_routes() {
         let root_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
         let first_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 2]);
-        let second_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 3]);
         let root_addr = ula(root_id);
         let first_addr = ula(first_id);
-        let second_addr = ula(second_id);
         let mut root = RplNode {
             node: Node::new(root_id),
             router: Router::new_root(root_addr),
@@ -715,14 +727,11 @@ mod tests {
         assert!(root.router.set_dao_lifetime_unit(1));
         let mut first =
             lichen_rpl::routing::DaoManager::new(first_addr, RPL_INSTANCE_ID, root_addr);
-        let mut second =
-            lichen_rpl::routing::DaoManager::new(second_addr, RPL_INSTANCE_ID, root_addr);
         let first_packet = l2_dao_packet(
             first_addr,
             root_addr,
             &first.build_dao_with_lifetime(root_addr, 1),
         );
-        let second_packet = l2_dao_packet(second_addr, root_addr, &second.build_dao(root_addr));
 
         assert_eq!(
             root.handle_frame_rpl(&first_packet, first_id.0, &mut [0u8; 260], 1_999),
@@ -733,18 +742,18 @@ mod tests {
                 }
             )
         );
-        assert!(root.router.lookup_route(&first_addr).is_some());
+        assert!(root.router.lookup_route_at(&first_addr, 2_999).is_some());
         assert_eq!(
-            root.handle_frame_rpl(&second_packet, second_id.0, &mut [0u8; 260], 2_999),
+            root.handle_frame_rpl(&first_packet, first_id.0, &mut [0u8; 260], 2_999),
             (
                 0,
                 RplEvent::DaoReceived {
-                    route_updated: true
+                    route_updated: false
                 }
             )
         );
-        assert!(root.router.lookup_route(&first_addr).is_none());
-        assert!(root.router.lookup_route(&second_addr).is_some());
+        assert!(root.router.lookup_route(&first_addr).is_some());
+        assert!(root.router.lookup_route_at(&first_addr, 3_000).is_none());
     }
 
     #[cfg(feature = "std")]
