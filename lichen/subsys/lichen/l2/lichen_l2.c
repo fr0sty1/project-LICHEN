@@ -69,6 +69,42 @@ BUILD_ASSERT(LICHEN_HAL_HAS_LORA_DEVICE,
 
 LOG_MODULE_REGISTER(lichen_l2, CONFIG_LICHEN_L2_LOG_LEVEL);
 
+#if IS_ENABLED(CONFIG_STATS)
+#include <zephyr/stats/stats.h>
+
+/*
+ * L2 RX funnel counters (lora_ipv6_mesh: T1000-E round-trip diagnosis),
+ * exported over SMP as the "l2rx" STATS group so the console-less T1000-E's
+ * receive path can be localized via if02:
+ *   frames   - frames handed to L2 by the radio
+ *   verified - passed peer signature verification + decompressed (for a
+ *              pinned peer); about to be injected to the IPv6 stack
+ *   rejected - failed verification or replay (non-beacon)
+ *   injected - successfully injected to the IPv6 stack (net_recv_data ok)
+ * If verified/injected climb but the app sees no CoAP response, the gap is
+ * above L2 (addressing/CoAP); if they stay flat, the gateway's response is
+ * not reaching L2-verified (routing/replay).
+ */
+STATS_SECT_START(lichen_l2rx_stats)
+STATS_SECT_ENTRY32(frames)
+STATS_SECT_ENTRY32(verified)
+STATS_SECT_ENTRY32(rejected)
+STATS_SECT_ENTRY32(injected)
+STATS_SECT_END;
+
+STATS_NAME_START(lichen_l2rx_stats)
+STATS_NAME(lichen_l2rx_stats, frames)
+STATS_NAME(lichen_l2rx_stats, verified)
+STATS_NAME(lichen_l2rx_stats, rejected)
+STATS_NAME(lichen_l2rx_stats, injected)
+STATS_NAME_END(lichen_l2rx_stats);
+
+STATS_SECT_DECL(lichen_l2rx_stats) lichen_l2rx_stats;
+#define L2RX_STAT_INC(f) STATS_INC(lichen_l2rx_stats, f)
+#else
+#define L2RX_STAT_INC(f) do { } while (0)
+#endif /* CONFIG_STATS */
+
 /*
  * Log level policy:
  *   LOG_ERR: Initialization failures, resource exhaustion, programming errors
@@ -2136,6 +2172,9 @@ void lichen_l2_iface_init(struct net_if *iface)
 	}
 
 #if HAVE_LICHEN_LINK
+#if IS_ENABLED(CONFIG_STATS)
+	(void)STATS_INIT_AND_REG(lichen_l2rx_stats, STATS_SIZE_32, "l2rx");
+#endif
 	LOG_INF("lichen_l2: initialized (full framing)");
 #else
 	LOG_WRN("lichen_l2: initialized (RAW MODE - no framing/crypto)");
@@ -2297,6 +2336,7 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 
 	LOG_DBG("lichen_l2: RX %zu bytes (RSSI %d dBm, SNR %d dB)", len, rssi, snr);
 	atomic_inc(&rx_stat_frames);
+	L2RX_STAT_INC(frames);
 
 	k_mutex_lock(&rx_mutex, K_FOREVER);
 
@@ -2421,12 +2461,14 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 			}
 		}
 		atomic_set(&rx_stat_last_err, ret);
+		L2RX_STAT_INC(rejected);
 		LOG_WRN("lichen_l2: RX failed: %s (%d)",
 			lichen_link_strerror(ret), ret);
 		secure_zero(rx_link_key, sizeof(rx_link_key));
 		k_mutex_unlock(&rx_mutex);
 		return;
 	}
+	L2RX_STAT_INC(verified);
 
 	/* SECURITY: Validate ipv6_len before using it (project-LICHEN-3pun.5) */
 	if (ipv6_len > sizeof(rx_ipv6_buf)) {
@@ -2541,5 +2583,6 @@ void lichen_l2_input(struct net_if *iface, const uint8_t *data, size_t len,
 	atomic_inc(&test_rx_injected_packets);
 #endif
 	atomic_inc(&rx_stat_accepted);
+	L2RX_STAT_INC(injected);
 	LOG_DBG("lichen_l2: injected %zu bytes to IPv6 stack", ipv6_len);
 }
