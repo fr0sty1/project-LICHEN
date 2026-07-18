@@ -1433,13 +1433,6 @@ static int lichen_l2_send_inner(struct net_if *iface, struct net_pkt *pkt)
 	}
 
 	LOG_DBG("lichen_l2: TX IPv6 %zu bytes", pkt_len);
-	/* Diagnostic (lora_ipv6_mesh-fe1z): log the dest EUI tail for unicast
-	 * link-local TX (CoAP responses to peers) — shows whether the gateway
-	 * actually L2-transmits to the T1000-E (..2c:ab) or only the T-Echo. */
-	if (pkt_len >= 40 && tx_ipv6_buf[24] == 0xfeU && tx_ipv6_buf[25] == 0x80U) {
-		LOG_INF("lichen_l2: TX -> ..%02x:%02x (%zu B)",
-			tx_ipv6_buf[38], tx_ipv6_buf[39], pkt_len);
-	}
 
 #if HAVE_LICHEN_LINK
 	/*

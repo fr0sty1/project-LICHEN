@@ -201,6 +201,17 @@ config LORA_LICHEN_GATEWAY_RPL_ROOT
 	  non-RPL-capable in /status so users do not mistake it for a complete
 	  mesh root.
 
+config LICHEN_GATEWAY_RX1_DELAY_MS
+	int "RX1-style delay before answering a CoAP request (ms)"
+	default 0
+	help
+	  Milliseconds to wait after receiving a CoAP request before sending
+	  the response, giving a half-duplex requesting node time to switch
+	  its radio from TX (the request it just sent) to RX. Without it, the
+	  reply can arrive during the requester's TX->RX turnaround and be
+	  missed (lora_ipv6_mesh-fe1z, observed on the T1000-E/LR1110). 0
+	  disables the delay. ~100 ms is a safe LoRa value.
+
 endmenu
 
 source "Kconfig.zephyr"
