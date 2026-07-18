@@ -328,7 +328,11 @@ When the user says "fix all issues," the correct response is to fix **every sing
 1. **Unit tests** - Each crate/module in isolation
 2. **Integration tests** - Multi-node scenarios in simulator
 3. **Interop tests** - Rust ↔ C produce identical output
-4. **Hardware tests** - Real LoRa radios on real MCUs
+4. **Hardware tests** - Real LoRa radios on real MCUs. Bench inventory,
+   port-safety rules, flash/OTA procedures, over-the-air verification, and
+   findings are in [`docs/bench-operations.md`](docs/bench-operations.md).
+   **Read the port-safety rules before opening any device port** — several
+   ports wedge the node or block forever on the wrong access.
 5. **Fuzz tests** - All parsing code (SCHC, CoAP, RPL messages)
 
 Test vectors live in `test/vectors/` as JSON. Both implementations read and verify against these.
