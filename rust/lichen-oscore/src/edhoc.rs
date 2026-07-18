@@ -40,8 +40,8 @@ pub const SIG_LEN: usize = 64;
 /// Suite 0 identifier.
 pub const SUITE_0: u8 = 0;
 
-/// Maximum connection identifier length supported by the OSCORE nonce layout.
-pub const CONNECTION_ID_MAX_LEN: usize = 7;
+/// Connection identifier capacity supported by this implementation's OSCORE nonce layout.
+pub const CONNECTION_ID_CAPACITY: usize = 7;
 
 /// Maximum encoded ID_CRED length accepted by this implementation.
 pub const ID_CRED_MAX_LEN: usize = 64;
@@ -51,7 +51,7 @@ pub const ID_CRED_MAX_PARAMETERS: usize = 8;
 
 /// An EDHOC connection identifier in its raw byte-string form.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ConnectionId(heapless::Vec<u8, CONNECTION_ID_MAX_LEN>);
+pub struct ConnectionId(heapless::Vec<u8, CONNECTION_ID_CAPACITY>);
 
 impl ConnectionId {
     /// Create a bounded connection identifier.
@@ -279,9 +279,10 @@ fn export_context(
     let mut master_salt = Zeroizing::new([0u8; 8]);
     master_salt.copy_from_slice(&master_salt_vec);
 
-    Context::new(
+    Context::new_fresh(
         &master_secret,
         Some(&master_salt[..]),
+        None,
         sender_id,
         recipient_id,
     )
@@ -1069,7 +1070,7 @@ impl EdhocInitiator {
     ///
     /// # Arguments
     /// * `seed` - Ed25519 seed (32 bytes)
-    /// * `c_i` - Connection identifier (up to [`CONNECTION_ID_MAX_LEN`] bytes)
+    /// * `c_i` - Connection identifier (up to [`CONNECTION_ID_CAPACITY`] bytes)
     #[cfg(feature = "std")]
     pub fn new<C: Into<ConnectionId>>(seed: [u8; 32], c_i: C) -> Result<Self, OscoreError> {
         Self::new_with_rng(seed, c_i, &mut rand_core::OsRng)
@@ -1708,8 +1709,49 @@ impl EdhocResponder {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{ContextId, SenderSequenceState, SenderStateStore};
     use core::num::NonZeroU32;
     use hex_literal::hex;
+
+    struct TestStore {
+        context_id: ContextId,
+        state: Option<SenderSequenceState>,
+    }
+
+    impl TestStore {
+        fn empty_for(context: &Context) -> Self {
+            Self {
+                context_id: context.context_id(),
+                state: None,
+            }
+        }
+    }
+
+    impl SenderStateStore for TestStore {
+        type Error = core::convert::Infallible;
+
+        fn load(
+            &mut self,
+            context_id: &ContextId,
+        ) -> Result<Option<SenderSequenceState>, Self::Error> {
+            Ok((*context_id == self.context_id)
+                .then_some(self.state)
+                .flatten())
+        }
+
+        fn compare_exchange(
+            &mut self,
+            context_id: &ContextId,
+            expected: Option<SenderSequenceState>,
+            next: SenderSequenceState,
+        ) -> Result<bool, Self::Error> {
+            if *context_id != self.context_id || expected != self.state {
+                return Ok(false);
+            }
+            self.state = Some(next);
+            Ok(true)
+        }
+    }
 
     struct TestRng(u64);
 
@@ -2590,6 +2632,21 @@ mod tests {
         assert_eq!(responder_ctx.sender_id(), &[]);
         assert_eq!(responder_ctx.recipient_id(), &[0xaa, 0xbb]);
 
+        assert_eq!(
+            responder_ctx
+                .protect_response(0x45, &[], b"response", &[0xaa, 0xbb], &[0])
+                .unwrap_err(),
+            OscoreError::InvalidParam
+        );
+        let mut initiator_store = TestStore::empty_for(&initiator_ctx);
+        let mut responder_store = TestStore::empty_for(&responder_ctx);
+        initiator_ctx = initiator_ctx
+            .register_fresh(&mut initiator_store)
+            .expect("initiator registration failed");
+        responder_ctx = responder_ctx
+            .register_fresh(&mut responder_store)
+            .expect("responder registration failed");
+
         // Step 6: Verify contexts can communicate via functional roundtrip test.
         // This is more robust than comparing raw keys - it proves the derived
         // key material is correct by demonstrating successful encrypt/decrypt.
@@ -2600,6 +2657,8 @@ mod tests {
         let test_payload: &[u8] = b"hello from initiator";
 
         let (ciphertext, oscore_opt) = initiator_ctx
+            .reserve_sender(&mut initiator_store)
+            .expect("initiator reserve failed")
             .protect_request(test_code, test_options, test_payload)
             .expect("initiator protect_request failed");
 
@@ -2628,7 +2687,6 @@ mod tests {
                 resp_payload,
                 request_kid,
                 request_piv,
-                false,
             )
             .expect("responder protect_response failed");
 

@@ -11,13 +11,6 @@
 //! **all CoAP traffic MUST use OSCORE end-to-end encryption**.
 //!
 //! - **[`SecureStack`]** — OSCORE-protected CoAP. Use this for all application traffic.
-//! - **[`Stack`]** — Plaintext stack for ICMPv6, diagnostics, or testing only.
-//!
-//! The plaintext [`Stack`] is acceptable for:
-//! - ICMPv6 (ping) — OSCORE is CoAP-specific per RFC 8613
-//! - Link-layer testing and diagnostics
-//! - Development/debugging (never in production)
-//!
 //! # Integration Testing
 //!
 //! This crate has integration tests that exercise the full protocol path without mocking:
@@ -59,9 +52,20 @@ pub mod scheduler;
 #[cfg(feature = "std")]
 pub mod secure;
 #[cfg(feature = "std")]
-pub mod stack;
+// Internal ICMP and hardware diagnostic paths remain available to SecureStack and tests.
+#[allow(dead_code)]
+mod stack;
 
+#[cfg(feature = "std")]
+pub use announce::{
+    seq_gt, AnnounceProcessor, AnnounceRejectReason, AnnounceResult, MAX_TRACKED_ORIGINATORS,
+};
 pub use dispatch::{Dispatcher, Request, Resource, Response};
+#[cfg(feature = "std")]
+pub use forward_buffer::{
+    ForwardBuffer, ForwardEntry, ForwardError, ForwardStats, MAX_FORWARDING_SOURCES,
+    MAX_PACKETS_PER_SOURCE,
+};
 #[cfg(feature = "std")]
 pub use gradient::GradientTable;
 pub use gradient::{
@@ -70,6 +74,8 @@ pub use gradient::{
 pub use hybrid::{AddressClass, RouteDecision, RouteResult};
 #[cfg(feature = "std")]
 pub use hybrid::{HybridRouter, MeshPrefix, PendingPacket};
+#[cfg(feature = "std")]
+pub use lichen_link::link_layer::LinkRxError;
 #[cfg(feature = "std")]
 pub use node::DaoHandlingOutcome;
 #[cfg(feature = "std")]
@@ -83,38 +89,24 @@ pub use routing::{DtnBuffer, DtnMessage, Router, RplMaintenanceOutcome, DTN_BUFF
 pub use routing::{Neighbor, NeighborTable};
 #[cfg(feature = "std")]
 pub use rpl_stack::{
-    DaoAdmissionError, DaoSendError, RplControlError, RplReceiveError, RplReceiveOutcome, RplStack,
-    RplRuntimeReceiveError, RplRuntimeReceiveOutcome, RplRuntimeTrickleError, RplStackOpenError,
-    RplStackProvisionError, RplTrickleTransmitOutcome,
+    DaoAdmissionError, DaoSendError, RplControlError, RplReceiveError, RplReceiveOutcome,
+    RplRuntimeReceiveError, RplRuntimeReceiveOutcome, RplRuntimeTrickleError, RplStack,
+    RplStackOpenError, RplStackProvisionError, RplTrickleTransmitOutcome,
 };
 #[cfg(feature = "std")]
 pub use runtime::{
     RplRuntime, RplRuntimeAction, RplRuntimeActionError, RplRuntimeConfig, RplRuntimeConfigError,
     RplRuntimePoll, DEFAULT_MAINTENANCE_INTERVAL_MS, DEFAULT_NEIGHBOR_TIMEOUT_MS,
 };
-// SECURITY: SecureStack is the primary export for CoAP traffic per spec section 8.7.
-// Use Stack (PlaintextStack) only for ICMPv6, diagnostics, or testing.
-#[cfg(feature = "std")]
-pub use secure::{SecureError, SecureStack};
-#[cfg(feature = "std")]
-pub use stack::{ReceivedIpv6, RxError, Stack, TxError};
-/// Type alias for `Stack` — use only for ICMPv6, diagnostics, or testing.
-/// For CoAP traffic, use [`SecureStack`] instead (per spec section 8.7).
-#[cfg(feature = "std")]
-pub type PlaintextStack<R> = Stack<R>;
-#[cfg(feature = "std")]
-pub use announce::{
-    seq_gt, AnnounceProcessor, AnnounceRejectReason, AnnounceResult, MAX_TRACKED_ORIGINATORS,
-};
-#[cfg(feature = "std")]
-pub use forward_buffer::{
-    ForwardBuffer, ForwardEntry, ForwardError, ForwardStats, MAX_FORWARDING_SOURCES,
-    MAX_PACKETS_PER_SOURCE,
-};
-#[cfg(feature = "std")]
-pub use lichen_link::link_layer::LinkRxError;
 #[cfg(feature = "std")]
 pub use scheduler::{AnnounceScheduler, AnnounceTransmitter, SchedulerConfig, SchedulerError};
+#[cfg(feature = "std")]
+pub use secure::{
+    ReceivedSecureDatagram, RequestCorrelation, SecureError, SecureRequest, SecureResponse,
+    SecureStack,
+};
+#[cfg(feature = "std")]
+pub use stack::{ReceivedIpv6, RxError, TxError};
 
 #[cfg(feature = "std")]
 extern crate std;

@@ -31,7 +31,7 @@ use ccm::{
 };
 use hkdf::Hkdf;
 use lichen_core::error::BufferTooSmall;
-use sha2::Sha256;
+use sha2::{Digest, Sha256};
 use zeroize::Zeroize;
 
 /// AES-CCM-16-64-128: 128-bit key, 13-byte nonce, 8-byte tag.
@@ -46,11 +46,17 @@ pub const NONCE_LEN: usize = 13;
 /// Authentication tag length (8 bytes).
 pub const TAG_LEN: usize = 8;
 
-/// Maximum sender/recipient ID length.
+/// Embedded storage capacity for sender/recipient IDs.
 pub const ID_MAX_LEN: usize = 8;
+
+/// Embedded storage capacity for an ID Context; RFC 8613 does not impose this limit.
+pub const ID_CONTEXT_CAPACITY: usize = 8;
 
 /// Maximum Partial IV length.
 pub const PIV_MAX_LEN: usize = 5;
+
+/// Maximum encoded OSCORE option value within this implementation's capacities.
+pub const OSCORE_OPTION_MAX_LEN: usize = 1 + PIV_MAX_LEN + 1 + ID_CONTEXT_CAPACITY + NONCE_ID_LEN;
 
 // Nonce layout constants (RFC 8613 Section 5.2):
 // +--------+------------------+------------------+
@@ -153,6 +159,100 @@ pub struct SenderSequenceState {
     pub exhausted: bool,
 }
 
+/// Stable identifier for one directional OSCORE sender context.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Zeroize)]
+pub struct ContextId([u8; 32]);
+
+impl ContextId {
+    /// Return the identifier bytes for use as a durable-store key.
+    pub fn as_bytes(&self) -> &[u8; 32] {
+        &self.0
+    }
+}
+
+/// Atomic durable storage for an OSCORE sender sequence.
+///
+/// Implementations MUST update `expected` to `next` atomically and return
+/// `Ok(false)` without changing storage when the current value differs.
+pub trait SenderStateStore {
+    /// Storage-specific failure.
+    type Error;
+
+    /// Load state for exactly `context_id`.
+    fn load(&mut self, context_id: &ContextId) -> Result<Option<SenderSequenceState>, Self::Error>;
+
+    /// Atomically replace `expected` with `next` for exactly `context_id`.
+    fn compare_exchange(
+        &mut self,
+        context_id: &ContextId,
+        expected: Option<SenderSequenceState>,
+        next: SenderSequenceState,
+    ) -> Result<bool, Self::Error>;
+}
+
+/// Failure to construct a context against its authoritative sender-state store.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContextStoreError<E> {
+    /// OSCORE material or sender state was invalid.
+    Oscore(OscoreError),
+    /// Durable storage failed.
+    Storage(E),
+    /// No durable sender state exists for this context.
+    Missing,
+    /// The store changed incompatibly during registration.
+    Conflict,
+}
+
+/// Failure to reserve a sender sequence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReservationError<E> {
+    /// The context has consumed every sender sequence.
+    SequenceExhausted,
+    /// Another context owner advanced the durable state first.
+    Conflict,
+    /// Durable storage failed.
+    Storage(E),
+}
+
+/// Exclusive, one-use capability for sender-sequence encryption.
+pub struct ReservedSender<'a> {
+    context: &'a mut Context,
+    sequence: OscoreSeqNum,
+}
+
+/// Authenticated response awaiting atomic replay-state acceptance.
+///
+/// Plaintext is intentionally inaccessible until [`PendingResponse::commit`]. Dropping this
+/// value leaves the context unchanged, so transport acknowledgement failure remains retryable.
+pub struct PendingResponse<'a> {
+    context: &'a mut Context,
+    request_seq: OscoreSeqNum,
+    code: u8,
+    options: heapless::Vec<u8, 128>,
+    payload: heapless::Vec<u8, 128>,
+}
+
+impl PendingResponse<'_> {
+    /// Accept the request Partial IV exactly once and release the authenticated plaintext.
+    pub fn commit(
+        self,
+    ) -> Result<(u8, heapless::Vec<u8, 128>, heapless::Vec<u8, 128>), OscoreError> {
+        if !matches!(self.code >> 5, 2..=5) {
+            return Err(OscoreError::InvalidParam);
+        }
+        self.context.mark_received_response(self.request_seq);
+        Ok((self.code, self.options, self.payload))
+    }
+}
+
+enum Construction {
+    #[cfg(any(feature = "edhoc", test))]
+    Fresh,
+    #[cfg(test)]
+    Ephemeral,
+    Stored(SenderSequenceState),
+}
+
 /// OSCORE security context.
 ///
 /// Contains cryptographic material and state for one peer.
@@ -174,9 +274,8 @@ pub struct SenderSequenceState {
 ///
 /// ```compile_fail
 /// # use lichen_oscore::Context;
-/// # let secret = [0; 16];
-/// let context = Context::new(&secret, None, b"a", b"b").unwrap();
-/// let duplicate = context.clone();
+/// fn requires_clone<T: Clone>() {}
+/// requires_clone::<Context>();
 /// ```
 #[derive(Zeroize)]
 #[zeroize(drop)]
@@ -186,8 +285,9 @@ pub struct Context {
     master_salt: [u8; 8],
     master_salt_len: u8,
     common_iv: [u8; NONCE_LEN],
-    id_context: [u8; 8],
+    id_context: [u8; ID_CONTEXT_CAPACITY],
     id_context_len: u8,
+    id_context_present: bool,
 
     // Sender context
     sender_id: [u8; ID_MAX_LEN],
@@ -196,6 +296,7 @@ pub struct Context {
     sender_seq: OscoreSeqNum,
     sender_seq_exhausted: bool,
     restored: bool,
+    active: bool,
 
     // Recipient context
     recipient_id: [u8; ID_MAX_LEN],
@@ -208,7 +309,11 @@ pub struct Context {
     response_seq: OscoreSeqNum,
     response_window: u32,
     response_window_initialized: bool,
+    received_response_seq: OscoreSeqNum,
+    received_response_window: u32,
+    received_response_window_initialized: bool,
     allow_no_piv_response: bool,
+    context_id: ContextId,
 }
 
 impl core::fmt::Debug for Context {
@@ -218,6 +323,7 @@ impl core::fmt::Debug for Context {
             .field("master_salt", &"[REDACTED]")
             .field("common_iv", &"[REDACTED]")
             .field("id_context_len", &self.id_context_len)
+            .field("id_context_present", &self.id_context_present)
             .field("sender_id_len", &self.sender_id_len)
             .field("sender_key", &"[REDACTED]")
             .field("sender_seq", &self.sender_seq)
@@ -234,12 +340,50 @@ impl core::fmt::Debug for Context {
 }
 
 impl Context {
-    /// Create a new OSCORE security context from cryptographically fresh key material.
+    /// Atomically activate a newly established context in its authoritative store.
+    ///
+    /// This consumes an EDHOC-exported context and registers its initial sender state
+    /// with a single `None -> initial` compare-and-swap. Existing state is never used.
+    pub fn register_fresh<S: SenderStateStore>(
+        mut self,
+        store: &mut S,
+    ) -> Result<Self, ContextStoreError<S::Error>> {
+        if self.restored || self.active {
+            return Err(ContextStoreError::Oscore(OscoreError::InvalidParam));
+        }
+        if !store
+            .compare_exchange(&self.context_id, None, self.sender_sequence_state())
+            .map_err(ContextStoreError::Storage)?
+        {
+            return Err(ContextStoreError::Conflict);
+        }
+        self.active = true;
+        self.allow_no_piv_response = true;
+        Ok(self)
+    }
+
+    /// Activate a context using sender state already present in its authoritative store.
+    pub fn restore_existing<S: SenderStateStore>(
+        mut self,
+        store: &mut S,
+    ) -> Result<Self, ContextStoreError<S::Error>> {
+        let state = store
+            .load(&self.context_id)
+            .map_err(ContextStoreError::Storage)?
+            .ok_or(ContextStoreError::Missing)?;
+        self.set_sender_state(state)
+            .map_err(ContextStoreError::Oscore)?;
+        self.restored = true;
+        self.active = true;
+        self.allow_no_piv_response = false;
+        Ok(self)
+    }
+
+    /// Restore externally supplied OSCORE key material from durable sender state.
     ///
     /// Derives sender and recipient keys from master secret using HKDF-SHA256.
-    /// This starts the sender sequence at zero and MUST NOT be used to reopen a
-    /// previously persisted context. Use [`Context::restore`] with persisted sender
-    /// state instead, or nonce reuse can compromise confidentiality.
+    /// Existing state is loaded by the derived [`ContextId`]. Missing state is
+    /// rejected; only EDHOC-exported fresh contexts may register sequence zero.
     ///
     /// # Errors
     ///
@@ -247,7 +391,56 @@ impl Context {
     /// - `sender_id` or `recipient_id` exceeds 7 bytes (nonce capacity)
     /// - `sender_id` and `recipient_id` are equal
     /// - `master_salt` exceeds 8 bytes
-    pub fn new(
+    pub fn load_existing<S: SenderStateStore>(
+        master_secret: &[u8; KEY_LEN],
+        master_salt: Option<&[u8]>,
+        id_context: Option<&[u8]>,
+        sender_id: &[u8],
+        recipient_id: &[u8],
+        store: &mut S,
+    ) -> Result<Self, ContextStoreError<S::Error>> {
+        let mut context = Self::from_sender_state(
+            master_secret,
+            master_salt,
+            id_context,
+            sender_id,
+            recipient_id,
+            Construction::Stored(SenderSequenceState {
+                next_sequence: 0,
+                exhausted: false,
+            }),
+        )
+        .map_err(ContextStoreError::Oscore)?;
+        let stored = store
+            .load(&context.context_id)
+            .map_err(ContextStoreError::Storage)?
+            .ok_or(ContextStoreError::Missing)?;
+        context
+            .set_sender_state(stored)
+            .map_err(ContextStoreError::Oscore)?;
+        Ok(context)
+    }
+
+    #[cfg(any(feature = "edhoc", test))]
+    fn new_fresh(
+        master_secret: &[u8; KEY_LEN],
+        master_salt: Option<&[u8]>,
+        id_context: Option<&[u8]>,
+        sender_id: &[u8],
+        recipient_id: &[u8],
+    ) -> Result<Self, OscoreError> {
+        Self::from_sender_state(
+            master_secret,
+            master_salt,
+            id_context,
+            sender_id,
+            recipient_id,
+            Construction::Fresh,
+        )
+    }
+
+    #[cfg(test)]
+    fn new_ephemeral(
         master_secret: &[u8; KEY_LEN],
         master_salt: Option<&[u8]>,
         sender_id: &[u8],
@@ -256,26 +449,15 @@ impl Context {
         Self::from_sender_state(
             master_secret,
             master_salt,
+            None,
             sender_id,
             recipient_id,
-            OscoreSeqNum::default(),
-            false,
-            false,
+            Construction::Ephemeral,
         )
     }
 
-    /// Restore an OSCORE context from persisted sender state.
-    ///
-    /// `next_sender_sequence` is the next reserved sequence number that may be used.
-    /// Persist the advanced reservation before transmitting a protected message. An
-    /// exhausted context is represented by `next_sender_sequence == OscoreSeqNum::MAX`
-    /// and `sender_sequence_exhausted == true` and cannot protect further messages.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InvalidParam` for invalid IDs or salt, a sequence above the 40-bit
-    /// maximum, or an inconsistent exhausted state.
-    pub fn restore(
+    #[cfg(test)]
+    fn restore(
         master_secret: &[u8; KEY_LEN],
         master_salt: Option<&[u8]>,
         sender_id: &[u8],
@@ -283,30 +465,30 @@ impl Context {
         next_sender_sequence: u64,
         sender_sequence_exhausted: bool,
     ) -> Result<Self, OscoreError> {
-        let sender_seq =
-            OscoreSeqNum::new(next_sender_sequence).ok_or(OscoreError::InvalidParam)?;
+        let sequence = OscoreSeqNum::new(next_sender_sequence).ok_or(OscoreError::InvalidParam)?;
         if sender_sequence_exhausted && next_sender_sequence != OscoreSeqNum::MAX {
             return Err(OscoreError::InvalidParam);
         }
         Self::from_sender_state(
             master_secret,
             master_salt,
+            None,
             sender_id,
             recipient_id,
-            sender_seq,
-            sender_sequence_exhausted,
-            true,
+            Construction::Stored(SenderSequenceState {
+                next_sequence: sequence.get(),
+                exhausted: sender_sequence_exhausted,
+            }),
         )
     }
 
     fn from_sender_state(
         master_secret: &[u8; KEY_LEN],
         master_salt: Option<&[u8]>,
+        id_context: Option<&[u8]>,
         sender_id: &[u8],
         recipient_id: &[u8],
-        sender_seq: OscoreSeqNum,
-        sender_seq_exhausted: bool,
-        restored: bool,
+        construction: Construction,
     ) -> Result<Self, OscoreError> {
         // SECURITY: Validate ID length against nonce capacity (7 bytes), not ID_MAX_LEN (8).
         // RFC 8613 allows IDs up to 8 bytes, but only 7 bytes fit in the nonce layout.
@@ -319,7 +501,38 @@ impl Context {
         }
 
         let salt = master_salt.unwrap_or(&[]);
-        if salt.len() > 8 {
+        if salt.len() > 8 || id_context.is_some_and(|value| value.len() > ID_CONTEXT_CAPACITY) {
+            return Err(OscoreError::InvalidParam);
+        }
+        let id_context_value = id_context.unwrap_or(&[]);
+
+        let context_id = derive_context_id(master_secret, salt, id_context, sender_id);
+        let (sender_state, restored, active, allow_no_piv_response) = match construction {
+            #[cfg(any(feature = "edhoc", test))]
+            Construction::Fresh => (
+                SenderSequenceState {
+                    next_sequence: 0,
+                    exhausted: false,
+                },
+                false,
+                false,
+                false,
+            ),
+            #[cfg(test)]
+            Construction::Ephemeral => (
+                SenderSequenceState {
+                    next_sequence: 0,
+                    exhausted: false,
+                },
+                false,
+                true,
+                true,
+            ),
+            Construction::Stored(state) => (state, true, true, false),
+        };
+        let sender_seq =
+            OscoreSeqNum::new(sender_state.next_sequence).ok_or(OscoreError::InvalidParam)?;
+        if sender_state.exhausted && sender_state.next_sequence != OscoreSeqNum::MAX {
             return Err(OscoreError::InvalidParam);
         }
 
@@ -328,14 +541,16 @@ impl Context {
             master_salt: [0u8; 8],
             master_salt_len: salt.len() as u8,
             common_iv: [0u8; NONCE_LEN],
-            id_context: [0u8; 8],
-            id_context_len: 0,
+            id_context: [0u8; ID_CONTEXT_CAPACITY],
+            id_context_len: id_context_value.len() as u8,
+            id_context_present: id_context.is_some(),
             sender_id: [0u8; ID_MAX_LEN],
             sender_id_len: sender_id.len() as u8,
             sender_key: [0u8; KEY_LEN],
             sender_seq,
-            sender_seq_exhausted,
+            sender_seq_exhausted: sender_state.exhausted,
             restored,
+            active,
             recipient_id: [0u8; ID_MAX_LEN],
             recipient_id_len: recipient_id.len() as u8,
             recipient_key: [0u8; KEY_LEN],
@@ -344,21 +559,41 @@ impl Context {
             response_seq: OscoreSeqNum::default(),
             response_window: 0,
             response_window_initialized: false,
-            allow_no_piv_response: !restored,
+            received_response_seq: OscoreSeqNum::default(),
+            received_response_window: 0,
+            received_response_window_initialized: false,
+            allow_no_piv_response,
+            context_id,
         };
 
         ctx.master_salt[..salt.len()].copy_from_slice(salt);
+        ctx.id_context[..id_context_value.len()].copy_from_slice(id_context_value);
         ctx.sender_id[..sender_id.len()].copy_from_slice(sender_id);
         ctx.recipient_id[..recipient_id.len()].copy_from_slice(recipient_id);
 
         // Derive keys
-        ctx.sender_key = derive_key(master_secret, salt, sender_id, &[])?;
-        ctx.recipient_key = derive_key(master_secret, salt, recipient_id, &[])?;
+        ctx.sender_key = derive_key(master_secret, salt, sender_id, id_context)?;
+        ctx.recipient_key = derive_key(master_secret, salt, recipient_id, id_context)?;
 
         // Derive Common IV
-        ctx.common_iv = derive_iv(master_secret, salt, &[])?;
+        ctx.common_iv = derive_iv(master_secret, salt, id_context)?;
 
         Ok(ctx)
+    }
+
+    fn set_sender_state(&mut self, state: SenderSequenceState) -> Result<(), OscoreError> {
+        let sequence = OscoreSeqNum::new(state.next_sequence).ok_or(OscoreError::InvalidParam)?;
+        if state.exhausted && state.next_sequence != OscoreSeqNum::MAX {
+            return Err(OscoreError::InvalidParam);
+        }
+        self.sender_seq = sequence;
+        self.sender_seq_exhausted = state.exhausted;
+        Ok(())
+    }
+
+    /// Return the durable-store identifier for this directional context.
+    pub fn context_id(&self) -> ContextId {
+        self.context_id
     }
 
     /// Get the next sender sequence number, or `None` if it is exhausted.
@@ -372,6 +607,87 @@ impl Context {
             next_sequence: self.sender_seq.get(),
             exhausted: self.sender_seq_exhausted,
         }
+    }
+
+    /// Atomically reserve the next sender sequence in durable storage.
+    ///
+    /// Storage advances before this returns, so a crash can only skip the reserved
+    /// sequence. A competing context restored from the same state receives
+    /// [`ReservationError::Conflict`] and cannot encrypt with that sequence.
+    pub fn reserve_sender<S: SenderStateStore>(
+        &mut self,
+        store: &mut S,
+    ) -> Result<ReservedSender<'_>, ReservationError<S::Error>> {
+        if !self.active {
+            return Err(ReservationError::Conflict);
+        }
+        if self.sender_seq_exhausted {
+            return Err(ReservationError::SequenceExhausted);
+        }
+
+        let sequence = self.sender_seq;
+        let expected = self.sender_sequence_state();
+        let next = match sequence.increment() {
+            Some(next) => SenderSequenceState {
+                next_sequence: next.get(),
+                exhausted: false,
+            },
+            None => SenderSequenceState {
+                next_sequence: OscoreSeqNum::MAX,
+                exhausted: true,
+            },
+        };
+
+        if !store
+            .compare_exchange(&self.context_id, Some(expected), next)
+            .map_err(ReservationError::Storage)?
+        {
+            return Err(ReservationError::Conflict);
+        }
+
+        self.sender_seq = OscoreSeqNum::new(next.next_sequence).expect("validated sequence");
+        self.sender_seq_exhausted = next.exhausted;
+        Ok(ReservedSender {
+            context: self,
+            sequence,
+        })
+    }
+
+    /// Check that request protection can fit all bounded outputs before reserving a PIV.
+    pub fn preflight_protect_request(
+        &self,
+        class_e_options: &[u8],
+        payload: &[u8],
+    ) -> Result<(), OscoreError> {
+        if !self.active {
+            return Err(OscoreError::InvalidParam);
+        }
+        const RECEIVER_OUTPUT_CAP: usize = 128;
+        if class_e_options.len() > RECEIVER_OUTPUT_CAP {
+            return Err(BufferTooSmall::new(class_e_options.len(), RECEIVER_OUTPUT_CAP).into());
+        }
+        if payload.len() > RECEIVER_OUTPUT_CAP {
+            return Err(BufferTooSmall::new(payload.len(), RECEIVER_OUTPUT_CAP).into());
+        }
+
+        let required = 1usize
+            .checked_add(class_e_options.len())
+            .and_then(|n| n.checked_add(usize::from(!payload.is_empty())))
+            .and_then(|n| n.checked_add(payload.len()))
+            .and_then(|n| n.checked_add(TAG_LEN))
+            .ok_or(OscoreError::InvalidParam)?;
+        if required > 280 {
+            return Err(BufferTooSmall::new(required, 280).into());
+        }
+
+        let option_required = 1
+            + PIV_MAX_LEN
+            + usize::from(self.id_context_present) * (1 + self.id_context_len as usize)
+            + self.sender_id_len as usize;
+        if option_required > OSCORE_OPTION_MAX_LEN {
+            return Err(BufferTooSmall::new(option_required, OSCORE_OPTION_MAX_LEN).into());
+        }
+        Ok(())
     }
 
     /// Return whether this context was reconstructed from persisted state.
@@ -398,14 +714,19 @@ impl Context {
     /// Returns `SeqExhausted` when the sender sequence number reaches the 40-bit maximum.
     /// The security context must be renegotiated before this happens to prevent
     /// nonce reuse (RFC 8613 Section 7.2.1).
-    pub fn protect_request(
+    fn protect_request_reserved(
         &mut self,
+        seq: OscoreSeqNum,
         code: u8,
         class_e_options: &[u8],
         payload: &[u8],
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, 16>), OscoreError> {
-        let seq = self.next_sender_seq()?;
-
+    ) -> Result<
+        (
+            heapless::Vec<u8, 280>,
+            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+        ),
+        OscoreError,
+    > {
         // Encode PIV
         let mut piv = [0u8; PIV_MAX_LEN];
         let piv_len = seq.encode_piv(&mut piv);
@@ -451,14 +772,21 @@ impl Context {
         ct_out.extend_from_slice(&tag).map_err(|_| ct_err())?;
 
         // Build OSCORE option
-        const OPT_CAP: usize = 16;
+        const OPT_CAP: usize = OSCORE_OPTION_MAX_LEN;
         let mut opt = heapless::Vec::<u8, OPT_CAP>::new();
-        let flags = 0x08 | (piv_len as u8 & 0x07); // k=1, n=piv_len
-        let opt_required = 1 + piv_len + self.sender_id_len as usize;
+        let has_context = self.id_context_present;
+        let flags = 0x08 | u8::from(has_context) << 4 | (piv_len as u8 & 0x07);
+        let context_len = usize::from(has_context) * (1 + self.id_context_len as usize);
+        let opt_required = 1 + piv_len + context_len + self.sender_id_len as usize;
         let opt_err = || BufferTooSmall::new(opt_required, OPT_CAP);
         opt.push(flags).map_err(|_| opt_err())?;
         opt.extend_from_slice(&piv[..piv_len])
             .map_err(|_| opt_err())?;
+        if has_context {
+            opt.push(self.id_context_len).map_err(|_| opt_err())?;
+            opt.extend_from_slice(&self.id_context[..self.id_context_len as usize])
+                .map_err(|_| opt_err())?;
+        }
         opt.extend_from_slice(self.sender_id())
             .map_err(|_| opt_err())?;
 
@@ -483,9 +811,13 @@ impl Context {
         if opt.piv_len == 0 || !opt.kid_present {
             return Err(OscoreError::InvalidParam);
         }
+        if &opt.kid[..opt.kid_len as usize] != self.recipient_id() {
+            return Err(OscoreError::NoContext);
+        }
         if opt.kid_context_present
-            && opt.kid_context[..opt.kid_context_len as usize]
-                != self.id_context[..self.id_context_len as usize]
+            && (!self.id_context_present
+                || opt.kid_context[..opt.kid_context_len as usize]
+                    != self.id_context[..self.id_context_len as usize])
         {
             return Err(OscoreError::NoContext);
         }
@@ -528,9 +860,6 @@ impl Context {
             .decrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut plaintext, tag)
             .map_err(|_| OscoreError::DecryptFailed)?;
 
-        // SECURITY: Only update replay window AFTER successful decryption
-        self.update_replay_window(seq);
-
         // Parse plaintext: code || options || 0xFF || payload
         // 0xFF is the CoAP payload marker (RFC 7252 Section 3).
         if plaintext.is_empty() {
@@ -553,6 +882,9 @@ impl Context {
             .extend_from_slice(payload_slice)
             .map_err(|_| BufferTooSmall::new(payload_slice.len(), OUT_CAP))?;
 
+        // Commit only after every authenticated output fits its public bound.
+        self.update_replay_window(seq);
+
         Ok((code, options, payload))
     }
 
@@ -560,8 +892,8 @@ impl Context {
     ///
     /// Unlike `protect_request`, responses:
     /// - Use the ORIGINAL request's KID and PIV for the AAD (ties response to request)
-    /// - May omit PIV from the OSCORE option (when not generating a new sequence)
-    /// - Reuse the request nonce when omitting the response PIV
+    /// - Omits PIV from the OSCORE option
+    /// - Reuses the request nonce
     ///
     /// Per RFC 8613 Section 5.2, when a response includes a PIV, the nonce uses
     /// the responder's sender_id and the responder's PIV. When omitting PIV, the
@@ -577,7 +909,6 @@ impl Context {
     /// - `payload`: Response payload to encrypt
     /// - `request_kid`: The KID from the original request (requester's sender_id)
     /// - `request_piv`: The PIV from the original request
-    /// - `include_piv`: If true, generate new PIV and include in option; if false, use request_piv
     pub fn protect_response(
         &mut self,
         code: u8,
@@ -585,42 +916,28 @@ impl Context {
         payload: &[u8],
         request_kid: &[u8],
         request_piv: &[u8],
-        include_piv: bool,
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, 16>), OscoreError> {
+    ) -> Result<
+        (
+            heapless::Vec<u8, 280>,
+            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+        ),
+        OscoreError,
+    > {
         if request_kid.len() > NONCE_ID_LEN
             || OscoreSeqNum::from_piv(request_piv).is_none()
             || request_kid != self.recipient_id()
-            || (!include_piv && !self.allow_no_piv_response)
+            || !self.active
+            || !self.allow_no_piv_response
         {
             return Err(OscoreError::InvalidParam);
         }
 
         let request_seq = OscoreSeqNum::from_piv(request_piv).ok_or(OscoreError::InvalidParam)?;
-        if !include_piv && self.is_response_reuse(request_seq) {
+        if self.is_response_reuse(request_seq) {
             return Err(OscoreError::Replay);
         }
 
-        // Determine PIV for nonce: own sequence if including, else request's PIV
-        let (nonce_piv, piv_len, piv_for_option): ([u8; PIV_MAX_LEN], usize, Option<usize>) =
-            if include_piv {
-                // Generate own PIV
-                let seq = self.next_sender_seq()?;
-                let mut piv = [0u8; PIV_MAX_LEN];
-                let len = seq.encode_piv(&mut piv);
-                (piv, len, Some(len))
-            } else {
-                // Use request PIV for nonce (no new sequence generated)
-                let mut piv = [0u8; PIV_MAX_LEN];
-                piv[..request_piv.len()].copy_from_slice(request_piv);
-                (piv, request_piv.len(), None)
-            };
-
-        let nonce_id = if include_piv {
-            self.sender_id()
-        } else {
-            request_kid
-        };
-        let nonce = compute_nonce(nonce_id, &nonce_piv[..piv_len], &self.common_iv);
+        let nonce = compute_nonce(request_kid, request_piv, &self.common_iv);
 
         // Build plaintext: code || options || 0xFF || payload
         const CT_CAP: usize = 280;
@@ -656,91 +973,123 @@ impl Context {
         ct_out.extend_from_slice(&tag).map_err(|_| ct_err())?;
 
         // Build OSCORE option
-        const OPT_CAP: usize = 16;
-        let mut opt = heapless::Vec::<u8, OPT_CAP>::new();
+        const OPT_CAP: usize = OSCORE_OPTION_MAX_LEN;
+        let opt = heapless::Vec::<u8, OPT_CAP>::new();
 
-        if let Some(len) = piv_for_option {
-            // Include PIV in option
-            let flags = len as u8 & 0x07;
-            opt.push(flags)
-                .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
-            opt.extend_from_slice(&nonce_piv[..len])
-                .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
-        } else {
-            // An all-zero option value is encoded as a zero-length option.
-        }
-
-        if !include_piv {
-            self.mark_response_used(request_seq);
-        }
+        self.mark_response_used(request_seq);
 
         Ok((ct_out, opt))
     }
 
-    /// Protect a response with a fresh sender PIV.
-    ///
-    /// Use this for Observe notifications or any request that can produce multiple
-    /// responses. Each call consumes a sender sequence and therefore uses a unique nonce.
-    pub fn protect_response_with_piv(
+    fn protect_response_with_reserved_piv(
+        &mut self,
+        seq: OscoreSeqNum,
+        code: u8,
+        class_e_options: &[u8],
+        payload: &[u8],
+        request_kid: &[u8],
+        request_piv: &[u8],
+    ) -> Result<
+        (
+            heapless::Vec<u8, 280>,
+            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+        ),
+        OscoreError,
+    > {
+        if request_kid.len() > NONCE_ID_LEN
+            || OscoreSeqNum::from_piv(request_piv).is_none()
+            || request_kid != self.recipient_id()
+        {
+            return Err(OscoreError::InvalidParam);
+        }
+
+        let mut piv = [0u8; PIV_MAX_LEN];
+        let piv_len = seq.encode_piv(&mut piv);
+        self.protect_response_with_piv_inner(
+            code,
+            class_e_options,
+            payload,
+            request_kid,
+            request_piv,
+            &piv[..piv_len],
+        )
+    }
+
+    fn protect_response_with_piv_inner(
         &mut self,
         code: u8,
         class_e_options: &[u8],
         payload: &[u8],
         request_kid: &[u8],
         request_piv: &[u8],
-    ) -> Result<(heapless::Vec<u8, 280>, heapless::Vec<u8, 16>), OscoreError> {
-        self.protect_response(
-            code,
-            class_e_options,
-            payload,
-            request_kid,
-            request_piv,
-            true,
-        )
+        response_piv: &[u8],
+    ) -> Result<
+        (
+            heapless::Vec<u8, 280>,
+            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+        ),
+        OscoreError,
+    > {
+        let nonce = compute_nonce(self.sender_id(), response_piv, &self.common_iv);
+        let mut ct_out = heapless::Vec::<u8, 280>::new();
+        let required =
+            1 + class_e_options.len() + usize::from(!payload.is_empty()) + payload.len() + TAG_LEN;
+        ct_out
+            .push(code)
+            .map_err(|_| BufferTooSmall::new(required, 280))?;
+        ct_out
+            .extend_from_slice(class_e_options)
+            .map_err(|_| BufferTooSmall::new(required, 280))?;
+        if !payload.is_empty() {
+            ct_out
+                .push(0xff)
+                .map_err(|_| BufferTooSmall::new(required, 280))?;
+            ct_out
+                .extend_from_slice(payload)
+                .map_err(|_| BufferTooSmall::new(required, 280))?;
+        }
+        let mut aad_buf = [0u8; 64];
+        let aad_len = build_aad_cbor(request_kid, request_piv, &mut aad_buf)?;
+        let cipher =
+            AesCcm::new_from_slice(&self.sender_key).map_err(|_| OscoreError::KeyDerivation)?;
+        let tag = cipher
+            .encrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut ct_out)
+            .map_err(|_| OscoreError::EncryptFailed)?;
+        ct_out
+            .extend_from_slice(&tag)
+            .map_err(|_| BufferTooSmall::new(required, 280))?;
+
+        let mut option = heapless::Vec::<u8, OSCORE_OPTION_MAX_LEN>::new();
+        option
+            .push(response_piv.len() as u8 & 0x07)
+            .map_err(|_| BufferTooSmall::new(1 + response_piv.len(), OSCORE_OPTION_MAX_LEN))?;
+        option
+            .extend_from_slice(response_piv)
+            .map_err(|_| BufferTooSmall::new(1 + response_piv.len(), OSCORE_OPTION_MAX_LEN))?;
+        Ok((ct_out, option))
     }
 
-    /// Unprotect (decrypt) an OSCORE-protected response.
+    /// Authenticate and parse an OSCORE-protected response without accepting its request PIV.
     ///
     /// Unlike `unprotect_request`, responses:
     /// - May omit PIV (use `request_piv` parameter for nonce if so)
     /// - Do not use the incoming request replay window
     /// - Use different AAD structure per RFC 8613 Section 5.4 (includes request_kid/request_piv)
     ///
-    /// Returns (code, class_e_options, payload).
+    /// The returned capability does not expose plaintext. Call [`PendingResponse::commit`] only
+    /// after any required transport acknowledgement succeeds. Dropping it changes no replay or
+    /// response one-shot state.
     ///
     /// # Parameters
     /// - `oscore_option`: The OSCORE option from the response
     /// - `ciphertext`: The encrypted payload
     /// - `request_piv`: The PIV from the original request, used if response omits PIV
-    pub fn unprotect_response(
+    pub fn begin_unprotect_response(
         &mut self,
         oscore_option: &[u8],
         ciphertext: &[u8],
         request_piv: &[u8],
-    ) -> Result<(u8, heapless::Vec<u8, 128>, heapless::Vec<u8, 128>), OscoreError> {
-        self.unprotect_response_inner(oscore_option, ciphertext, request_piv, false)
-    }
-
-    /// Unprotect an Observe notification or another response with a fresh PIV.
-    ///
-    /// Unlike [`Context::unprotect_response`], this applies the peer sender replay
-    /// window and rejects responses that omit a fresh PIV.
-    pub fn unprotect_notification(
-        &mut self,
-        oscore_option: &[u8],
-        ciphertext: &[u8],
-        request_piv: &[u8],
-    ) -> Result<(u8, heapless::Vec<u8, 128>, heapless::Vec<u8, 128>), OscoreError> {
-        self.unprotect_response_inner(oscore_option, ciphertext, request_piv, true)
-    }
-
-    fn unprotect_response_inner(
-        &mut self,
-        oscore_option: &[u8],
-        ciphertext: &[u8],
-        request_piv: &[u8],
-        check_replay: bool,
-    ) -> Result<(u8, heapless::Vec<u8, 128>, heapless::Vec<u8, 128>), OscoreError> {
+    ) -> Result<PendingResponse<'_>, OscoreError> {
         if ciphertext.len() < TAG_LEN + 1 {
             return Err(OscoreError::InvalidParam);
         }
@@ -748,32 +1097,31 @@ impl Context {
         // Parse OSCORE option
         let opt = parse_option(oscore_option)?;
         if opt.kid_context_present
-            && opt.kid_context[..opt.kid_context_len as usize]
-                != self.id_context[..self.id_context_len as usize]
+            && (!self.id_context_present
+                || opt.kid_context[..opt.kid_context_len as usize]
+                    != self.id_context[..self.id_context_len as usize])
         {
             return Err(OscoreError::NoContext);
         }
+        if opt.kid_present && &opt.kid[..opt.kid_len as usize] != self.recipient_id() {
+            return Err(OscoreError::NoContext);
+        }
 
-        // RFC 8613 Section 5.2: For responses, if PIV is absent, use request_piv for nonce
-        let (piv, response_seq) = if opt.piv_len > 0 {
-            let piv = &opt.piv[..opt.piv_len as usize];
-            let seq = OscoreSeqNum::from_piv(piv).ok_or(OscoreError::InvalidParam)?;
-            (piv, Some(seq))
-        } else {
-            if check_replay {
-                return Err(OscoreError::InvalidParam);
-            }
-            if OscoreSeqNum::from_piv(request_piv).is_none() {
-                return Err(OscoreError::InvalidParam);
-            }
-            (request_piv, None)
-        };
-
-        if response_seq.is_some_and(|seq| check_replay && self.is_replay(seq)) {
+        let request_seq = OscoreSeqNum::from_piv(request_piv).ok_or(OscoreError::InvalidParam)?;
+        if self.is_received_response_reuse(request_seq) {
             return Err(OscoreError::Replay);
         }
 
-        let nonce_id = if response_seq.is_some() {
+        // RFC 8613 Section 5.2: For responses, if PIV is absent, use request_piv for nonce
+        let (piv, response_has_piv) = if opt.piv_len > 0 {
+            let piv = &opt.piv[..opt.piv_len as usize];
+            OscoreSeqNum::from_piv(piv).ok_or(OscoreError::InvalidParam)?;
+            (piv, true)
+        } else {
+            (request_piv, false)
+        };
+
+        let nonce_id = if response_has_piv {
             self.recipient_id()
         } else {
             self.sender_id()
@@ -798,16 +1146,15 @@ impl Context {
             .decrypt_in_place_detached((&nonce).into(), &aad_buf[..aad_len], &mut plaintext, tag)
             .map_err(|_| OscoreError::DecryptFailed)?;
 
-        if check_replay {
-            self.update_replay_window(response_seq.expect("notification requires a fresh PIV"));
-        }
-
         // Parse plaintext: code || options || 0xFF || payload
         if plaintext.is_empty() {
             return Err(OscoreError::InvalidParam);
         }
 
         let code = plaintext[0];
+        if !matches!(code >> 5, 2..=5) {
+            return Err(OscoreError::InvalidParam);
+        }
         let rest = &plaintext[1..];
 
         let (options_slice, payload_slice) = parse_inner_body(rest)?;
@@ -823,21 +1170,24 @@ impl Context {
             .extend_from_slice(payload_slice)
             .map_err(|_| BufferTooSmall::new(payload_slice.len(), OUT_CAP))?;
 
-        Ok((code, options, payload))
+        Ok(PendingResponse {
+            context: self,
+            request_seq,
+            code,
+            options,
+            payload,
+        })
     }
 
-    fn next_sender_seq(&mut self) -> Result<OscoreSeqNum, OscoreError> {
-        if self.sender_seq_exhausted {
-            return Err(OscoreError::SeqExhausted);
-        }
-
-        let seq = self.sender_seq;
-        if let Some(next) = seq.increment() {
-            self.sender_seq = next;
-        } else {
-            self.sender_seq_exhausted = true;
-        }
-        Ok(seq)
+    /// Unprotect and immediately accept an ordinary OSCORE response.
+    pub fn unprotect_response(
+        &mut self,
+        oscore_option: &[u8],
+        ciphertext: &[u8],
+        request_piv: &[u8],
+    ) -> Result<(u8, heapless::Vec<u8, 128>, heapless::Vec<u8, 128>), OscoreError> {
+        self.begin_unprotect_response(oscore_option, ciphertext, request_piv)?
+            .commit()
     }
 
     fn is_response_reuse(&self, seq: OscoreSeqNum) -> bool {
@@ -865,6 +1215,36 @@ impl Context {
         } else {
             let diff = self.response_seq.get() - seq.get();
             self.response_window |= 1 << diff as u32;
+        }
+    }
+
+    fn is_received_response_reuse(&self, seq: OscoreSeqNum) -> bool {
+        if !self.received_response_window_initialized
+            || seq.get() > self.received_response_seq.get()
+        {
+            return false;
+        }
+
+        let diff = self.received_response_seq.get() - seq.get();
+        diff >= u64::from(WINDOW_SIZE) || self.received_response_window & (1 << diff as u32) != 0
+    }
+
+    fn mark_received_response(&mut self, seq: OscoreSeqNum) {
+        if !self.received_response_window_initialized {
+            self.received_response_seq = seq;
+            self.received_response_window = 1;
+            self.received_response_window_initialized = true;
+        } else if seq.get() > self.received_response_seq.get() {
+            let shift = seq.get() - self.received_response_seq.get();
+            self.received_response_window = if shift >= u64::from(WINDOW_SIZE) {
+                1
+            } else {
+                (self.received_response_window << shift as u32) | 1
+            };
+            self.received_response_seq = seq;
+        } else {
+            let diff = self.received_response_seq.get() - seq.get();
+            self.received_response_window |= 1 << diff as u32;
         }
     }
 
@@ -916,12 +1296,56 @@ impl Context {
     }
 }
 
+impl ReservedSender<'_> {
+    /// Protect a request using this durably reserved sender sequence.
+    pub fn protect_request(
+        self,
+        code: u8,
+        class_e_options: &[u8],
+        payload: &[u8],
+    ) -> Result<
+        (
+            heapless::Vec<u8, 280>,
+            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+        ),
+        OscoreError,
+    > {
+        self.context
+            .protect_request_reserved(self.sequence, code, class_e_options, payload)
+    }
+
+    /// Protect a response with a fresh, durably reserved sender PIV.
+    pub fn protect_response_with_piv(
+        self,
+        code: u8,
+        class_e_options: &[u8],
+        payload: &[u8],
+        request_kid: &[u8],
+        request_piv: &[u8],
+    ) -> Result<
+        (
+            heapless::Vec<u8, 280>,
+            heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+        ),
+        OscoreError,
+    > {
+        self.context.protect_response_with_reserved_piv(
+            self.sequence,
+            code,
+            class_e_options,
+            payload,
+            request_kid,
+            request_piv,
+        )
+    }
+}
+
 /// Parsed OSCORE option.
 #[derive(Debug)]
 struct OscoreOption {
     piv: [u8; PIV_MAX_LEN],
     piv_len: u8,
-    kid_context: [u8; 8],
+    kid_context: [u8; ID_CONTEXT_CAPACITY],
     kid_context_len: u8,
     kid_context_present: bool,
     kid: [u8; ID_MAX_LEN],
@@ -929,11 +1353,16 @@ struct OscoreOption {
     kid_present: bool,
 }
 
+/// Validate an encoded OSCORE option without requiring an OSCORE context.
+pub fn validate_option(data: &[u8]) -> Result<(), OscoreError> {
+    parse_option(data).map(|_| ())
+}
+
 fn parse_option(data: &[u8]) -> Result<OscoreOption, OscoreError> {
     let mut opt = OscoreOption {
         piv: [0; PIV_MAX_LEN],
         piv_len: 0,
-        kid_context: [0; 8],
+        kid_context: [0; ID_CONTEXT_CAPACITY],
         kid_context_len: 0,
         kid_context_present: false,
         kid: [0; ID_MAX_LEN],
@@ -966,6 +1395,9 @@ fn parse_option(data: &[u8]) -> Result<OscoreOption, OscoreError> {
             return Err(OscoreError::InvalidParam);
         }
         opt.piv[..n].copy_from_slice(&data[pos..pos + n]);
+        if OscoreSeqNum::from_piv(&opt.piv[..n]).is_none() {
+            return Err(OscoreError::InvalidParam);
+        }
         opt.piv_len = n as u8;
         pos += n;
     }
@@ -990,7 +1422,7 @@ fn parse_option(data: &[u8]) -> Result<OscoreOption, OscoreError> {
     if k_flag {
         opt.kid_present = true;
         let remaining = data.len() - pos;
-        if remaining > ID_MAX_LEN {
+        if remaining > NONCE_ID_LEN {
             return Err(OscoreError::InvalidParam);
         }
         opt.kid[..remaining].copy_from_slice(&data[pos..]);
@@ -1057,11 +1489,34 @@ fn parse_inner_body(data: &[u8]) -> Result<(&[u8], &[u8]), OscoreError> {
 }
 
 /// Derive sender/recipient key using HKDF-SHA256 (returns 16-byte AES key).
+fn derive_context_id(
+    master_secret: &[u8; KEY_LEN],
+    master_salt: &[u8],
+    id_context: Option<&[u8]>,
+    sender_id: &[u8],
+) -> ContextId {
+    let mut hash = Sha256::new();
+    hash.update(b"LICHEN OSCORE sender context\0");
+    for part in [master_secret.as_slice(), master_salt] {
+        hash.update([part.len() as u8]);
+        hash.update(part);
+    }
+    hash.update([u8::from(id_context.is_some())]);
+    if let Some(id_context) = id_context {
+        hash.update([id_context.len() as u8]);
+        hash.update(id_context);
+    }
+    hash.update([sender_id.len() as u8]);
+    hash.update(sender_id);
+    ContextId(hash.finalize().into())
+}
+
+/// Derive sender/recipient key using HKDF-SHA256 (returns 16-byte AES key).
 fn derive_key(
     master_secret: &[u8],
     master_salt: &[u8],
     id: &[u8],
-    id_context: &[u8],
+    id_context: Option<&[u8]>,
 ) -> Result<[u8; KEY_LEN], OscoreError> {
     // Build CBOR info structure per RFC 8613 Section 3.2.1
     let mut info = [0u8; 64];
@@ -1079,7 +1534,7 @@ fn derive_key(
 fn derive_iv(
     master_secret: &[u8],
     master_salt: &[u8],
-    id_context: &[u8],
+    id_context: Option<&[u8]>,
 ) -> Result<[u8; NONCE_LEN], OscoreError> {
     // Build CBOR info structure per RFC 8613 Section 3.2.1
     // Common IV uses empty ID per RFC 8613 Section 3.2.1
@@ -1114,7 +1569,7 @@ fn derive_iv(
 /// - `L`: Output length in bytes (16 for Key, 13 for IV)
 fn build_info_cbor(
     id: &[u8],
-    id_context: &[u8],
+    id_context: Option<&[u8]>,
     type_str: &str,
     out_len: usize,
     buf: &mut [u8],
@@ -1138,10 +1593,7 @@ fn build_info_cbor(
     off += id.len();
 
     // id_context: bstr or null
-    if id_context.is_empty() {
-        buf[off] = 0xf6; // null
-        off += 1;
-    } else {
+    if let Some(id_context) = id_context {
         if id_context.len() <= 23 {
             buf[off] = 0x40 | (id_context.len() as u8);
             off += 1;
@@ -1152,6 +1604,9 @@ fn build_info_cbor(
         }
         buf[off..off + id_context.len()].copy_from_slice(id_context);
         off += id_context.len();
+    } else {
+        buf[off] = 0xf6; // null
+        off += 1;
     }
 
     // alg_aead: int (10)
@@ -1351,6 +1806,114 @@ mod tests {
     use super::*;
     use hex_literal::hex;
 
+    struct TestStore {
+        context_id: ContextId,
+        state: SenderSequenceState,
+    }
+
+    impl TestStore {
+        fn for_context(context: &Context) -> Self {
+            Self {
+                context_id: context.context_id(),
+                state: context.sender_sequence_state(),
+            }
+        }
+    }
+
+    impl SenderStateStore for TestStore {
+        type Error = core::convert::Infallible;
+
+        fn load(
+            &mut self,
+            context_id: &ContextId,
+        ) -> Result<Option<SenderSequenceState>, Self::Error> {
+            Ok((*context_id == self.context_id).then_some(self.state))
+        }
+
+        fn compare_exchange(
+            &mut self,
+            context_id: &ContextId,
+            expected: Option<SenderSequenceState>,
+            next: SenderSequenceState,
+        ) -> Result<bool, Self::Error> {
+            if *context_id != self.context_id || expected != Some(self.state) {
+                return Ok(false);
+            }
+            self.state = next;
+            Ok(true)
+        }
+    }
+
+    trait TestProtect {
+        fn protect_request(
+            &mut self,
+            code: u8,
+            options: &[u8],
+            payload: &[u8],
+        ) -> Result<
+            (
+                heapless::Vec<u8, 280>,
+                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+            ),
+            OscoreError,
+        >;
+
+        fn protect_response_with_piv(
+            &mut self,
+            code: u8,
+            options: &[u8],
+            payload: &[u8],
+            request_kid: &[u8],
+            request_piv: &[u8],
+        ) -> Result<
+            (
+                heapless::Vec<u8, 280>,
+                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+            ),
+            OscoreError,
+        >;
+    }
+
+    impl TestProtect for Context {
+        fn protect_request(
+            &mut self,
+            code: u8,
+            options: &[u8],
+            payload: &[u8],
+        ) -> Result<
+            (
+                heapless::Vec<u8, 280>,
+                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+            ),
+            OscoreError,
+        > {
+            let mut store = TestStore::for_context(self);
+            self.reserve_sender(&mut store)
+                .map_err(|_| OscoreError::SeqExhausted)?
+                .protect_request(code, options, payload)
+        }
+
+        fn protect_response_with_piv(
+            &mut self,
+            code: u8,
+            options: &[u8],
+            payload: &[u8],
+            request_kid: &[u8],
+            request_piv: &[u8],
+        ) -> Result<
+            (
+                heapless::Vec<u8, 280>,
+                heapless::Vec<u8, OSCORE_OPTION_MAX_LEN>,
+            ),
+            OscoreError,
+        > {
+            let mut store = TestStore::for_context(self);
+            self.reserve_sender(&mut store)
+                .map_err(|_| OscoreError::SeqExhausted)?
+                .protect_response_with_piv(code, options, payload, request_kid, request_piv)
+        }
+    }
+
     #[test]
     fn test_piv_encode_decode() {
         let mut piv = [0u8; PIV_MAX_LEN];
@@ -1386,14 +1949,80 @@ mod tests {
         let sender_id = &[0x00];
         let recipient_id = &[0x01];
 
-        let ctx = Context::new(&master_secret, None, sender_id, recipient_id).unwrap();
+        let ctx = Context::new_ephemeral(&master_secret, None, sender_id, recipient_id).unwrap();
 
         assert_eq!(ctx.sender_id(), &[0x00]);
         assert_eq!(ctx.recipient_id(), &[0x01]);
         assert_eq!(ctx.sender_seq().unwrap().get(), 0);
         assert_eq!(
-            Context::new(&master_secret, None, sender_id, sender_id).unwrap_err(),
+            Context::new_ephemeral(&master_secret, None, sender_id, sender_id).unwrap_err(),
             OscoreError::InvalidParam
+        );
+    }
+
+    #[test]
+    fn present_empty_id_context_has_distinct_literal_derivation_and_option() {
+        let master_secret = hex!("000102030405060708090a0b0c0d0e0f");
+        let absent = Context::new_fresh(&master_secret, None, None, &[0], &[1]).unwrap();
+        let mut present = Context::new_fresh(&master_secret, None, Some(&[]), &[0], &[1]).unwrap();
+
+        assert_eq!(absent.sender_key, hex!("624bcd37ebc31fd9fa757b0fe7974b97"));
+        assert_eq!(present.sender_key, hex!("e74a10155402072b63b54ab7bfd9ea73"));
+        assert_eq!(
+            absent.context_id().as_bytes(),
+            &hex!("d5880fe273b739c21dbf005764bee790f7c4d99573db246c93f8a2f4e1ad6447")
+        );
+        assert_eq!(
+            present.context_id().as_bytes(),
+            &hex!("bd32b23ac2dd7c5a60a2349929dc5bc953d335a90d575e39b8fdf6589174d65b")
+        );
+
+        present.active = true;
+        let mut store = TestStore::for_context(&present);
+        let (_, option) = present
+            .reserve_sender(&mut store)
+            .unwrap()
+            .protect_request(0x01, &[], &[])
+            .unwrap();
+        assert_eq!(option.as_slice(), &hex!("19000000"));
+        let parsed = parse_option(&option).unwrap();
+        assert!(parsed.kid_context_present);
+        assert_eq!(parsed.kid_context_len, 0);
+    }
+
+    #[test]
+    fn id_context_over_implementation_capacity_is_rejected() {
+        assert_eq!(
+            Context::new_fresh(&[0; KEY_LEN], None, Some(&[0; 9]), &[0], &[1]).unwrap_err(),
+            OscoreError::InvalidParam
+        );
+    }
+
+    #[test]
+    fn rfc8613_c7_c8_response_protection_literals() {
+        let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
+        let master_salt = hex!("9e7ca92223786340");
+        let payload = b"Hello World!";
+
+        let mut c7 = Context::new_ephemeral(&master_secret, Some(&master_salt), &[1], &[]).unwrap();
+        let (ciphertext, option) = c7
+            .protect_response(0x45, &[], payload, &[], &[0x14])
+            .unwrap();
+        assert_eq!(option.as_slice(), b"");
+        assert_eq!(
+            ciphertext.as_slice(),
+            &hex!("dbaad1e9a7e7b2a813d3c31524378303cdafae119106")
+        );
+
+        let mut c8 =
+            Context::restore(&master_secret, Some(&master_salt), &[1], &[], 0, false).unwrap();
+        let (ciphertext, option) = c8
+            .protect_response_with_piv(0x45, &[], payload, &[], &[0x14])
+            .unwrap();
+        assert_eq!(option.as_slice(), &hex!("0100"));
+        assert_eq!(
+            ciphertext.as_slice(),
+            &hex!("4d4c13669384b67354b2b6175ff4b8658c666a6cf88e")
         );
     }
 
@@ -1402,7 +2031,12 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut ctx = Context::restore(&master_secret, None, &[0], &[1], 0x0102, false).unwrap();
 
-        let (_, option) = ctx.protect_request(0x01, &[], b"restored").unwrap();
+        let mut store = TestStore::for_context(&ctx);
+        let (_, option) = ctx
+            .reserve_sender(&mut store)
+            .unwrap()
+            .protect_request(0x01, &[], b"restored")
+            .unwrap();
 
         assert_eq!(option.as_slice(), b"\x0a\x01\x02\x00");
         assert_eq!(ctx.sender_seq().unwrap().get(), 0x0103);
@@ -1417,12 +2051,413 @@ mod tests {
     }
 
     #[test]
+    fn restored_contexts_race_and_exactly_one_can_encrypt() {
+        let secret = [0x42; KEY_LEN];
+        let mut first = Context::restore(&secret, None, &[0], &[1], 9, false).unwrap();
+        let mut second = Context::restore(&secret, None, &[0], &[1], 9, false).unwrap();
+        let mut store = TestStore::for_context(&first);
+
+        let (_, option) = first
+            .reserve_sender(&mut store)
+            .unwrap()
+            .protect_request(0x01, &[], b"winner")
+            .unwrap();
+
+        assert_eq!(option.as_slice(), b"\x09\x09\x00");
+        assert!(matches!(
+            second.reserve_sender(&mut store),
+            Err(ReservationError::Conflict)
+        ));
+        assert_eq!(second.sender_sequence_state().next_sequence, 9);
+        assert_eq!(store.state.next_sequence, 10);
+    }
+
+    #[test]
+    fn sender_store_rejects_a_context_using_b_record() {
+        let secret = [0x43; KEY_LEN];
+        let mut context_a = Context::new_ephemeral(&secret, None, &[0], &[1]).unwrap();
+        let context_b = Context::new_ephemeral(&secret, None, &[2], &[1]).unwrap();
+        let mut store = TestStore::for_context(&context_b);
+
+        assert!(matches!(
+            context_a.reserve_sender(&mut store),
+            Err(ReservationError::Conflict)
+        ));
+        assert_eq!(store.state.next_sequence, 0);
+    }
+
+    #[test]
+    fn context_id_is_stable_directional_context_bound_and_recipient_independent() {
+        let secret = [0x46; KEY_LEN];
+        let first = Context::new_fresh(&secret, Some(&[7]), Some(&[8]), &[0], &[1]).unwrap();
+        let same = Context::new_fresh(&secret, Some(&[7]), Some(&[8]), &[0], &[1]).unwrap();
+        let other_recipient =
+            Context::new_fresh(&secret, Some(&[7]), Some(&[8]), &[0], &[2]).unwrap();
+        let reverse = Context::new_fresh(&secret, Some(&[7]), Some(&[8]), &[1], &[0]).unwrap();
+        let other_context =
+            Context::new_fresh(&secret, Some(&[7]), Some(&[9]), &[0], &[1]).unwrap();
+
+        assert_eq!(first.context_id(), same.context_id());
+        assert_eq!(first.context_id(), other_recipient.context_id());
+        assert_ne!(first.context_id(), reverse.context_id());
+        assert_ne!(first.context_id(), other_context.context_id());
+    }
+
+    #[test]
+    fn same_sender_material_with_different_recipients_shares_sequence_record() {
+        let secret = [0x4b; KEY_LEN];
+        let mut first = Context::new_ephemeral(&secret, Some(&[7]), &[0], &[1]).unwrap();
+        let mut other_recipient = Context::new_ephemeral(&secret, Some(&[7]), &[0], &[2]).unwrap();
+        let mut store = TestStore::for_context(&first);
+
+        assert_eq!(first.context_id(), other_recipient.context_id());
+        first.reserve_sender(&mut store).unwrap();
+        assert!(matches!(
+            other_recipient.reserve_sender(&mut store),
+            Err(ReservationError::Conflict)
+        ));
+    }
+
+    #[test]
+    fn fresh_context_activates_only_after_atomic_registration() {
+        struct EmptyStore(Option<(ContextId, SenderSequenceState)>);
+
+        impl SenderStateStore for EmptyStore {
+            type Error = core::convert::Infallible;
+
+            fn load(
+                &mut self,
+                context_id: &ContextId,
+            ) -> Result<Option<SenderSequenceState>, Self::Error> {
+                Ok(self
+                    .0
+                    .filter(|(stored_id, _)| stored_id == context_id)
+                    .map(|(_, state)| state))
+            }
+
+            fn compare_exchange(
+                &mut self,
+                context_id: &ContextId,
+                expected: Option<SenderSequenceState>,
+                next: SenderSequenceState,
+            ) -> Result<bool, Self::Error> {
+                if self.load(context_id)? != expected {
+                    return Ok(false);
+                }
+                self.0 = Some((*context_id, next));
+                Ok(true)
+            }
+        }
+
+        let secret = [0x4c; KEY_LEN];
+        let mut context = Context::new_fresh(&secret, None, None, &[1], &[0]).unwrap();
+        assert_eq!(
+            context
+                .protect_response(0x45, &[], b"response", &[0], &[3])
+                .unwrap_err(),
+            OscoreError::InvalidParam
+        );
+
+        let mut store = EmptyStore(None);
+        let mut context = context.register_fresh(&mut store).unwrap();
+        assert!(context
+            .protect_response(0x45, &[], b"response", &[0], &[3])
+            .is_ok());
+    }
+
+    #[test]
+    fn supplied_material_restores_authoritative_state_and_disables_no_piv() {
+        let secret = [0x44; KEY_LEN];
+        let template = Context::new_ephemeral(&secret, None, &[1], &[0]).unwrap();
+        let mut store = TestStore {
+            context_id: template.context_id(),
+            state: SenderSequenceState {
+                next_sequence: 7,
+                exhausted: false,
+            },
+        };
+        let mut context =
+            Context::load_existing(&secret, None, None, &[1], &[0], &mut store).unwrap();
+
+        assert_eq!(context.sender_sequence_state(), store.state);
+        assert_eq!(
+            context
+                .protect_response(0x45, &[], b"response", &[0], &[3])
+                .unwrap_err(),
+            OscoreError::InvalidParam
+        );
+    }
+
+    #[test]
+    fn supplied_material_requires_existing_durable_state() {
+        struct EmptyStore;
+
+        impl SenderStateStore for EmptyStore {
+            type Error = core::convert::Infallible;
+
+            fn load(
+                &mut self,
+                _context_id: &ContextId,
+            ) -> Result<Option<SenderSequenceState>, Self::Error> {
+                Ok(None)
+            }
+
+            fn compare_exchange(
+                &mut self,
+                _context_id: &ContextId,
+                _expected: Option<SenderSequenceState>,
+                _next: SenderSequenceState,
+            ) -> Result<bool, Self::Error> {
+                panic!("load_existing must not write")
+            }
+        }
+
+        assert!(matches!(
+            Context::load_existing(&[0x44; KEY_LEN], None, None, &[1], &[0], &mut EmptyStore),
+            Err(ContextStoreError::Missing)
+        ));
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn independent_store_handles_race_one_durable_record() {
+        use std::sync::{Arc, Barrier, Mutex};
+        use std::thread;
+
+        #[derive(Clone)]
+        struct SharedStore {
+            record: Arc<Mutex<(ContextId, SenderSequenceState)>>,
+            barrier: Arc<Barrier>,
+        }
+
+        impl SenderStateStore for SharedStore {
+            type Error = core::convert::Infallible;
+
+            fn load(
+                &mut self,
+                context_id: &ContextId,
+            ) -> Result<Option<SenderSequenceState>, Self::Error> {
+                let record = self.record.lock().unwrap();
+                Ok((*context_id == record.0).then_some(record.1))
+            }
+
+            fn compare_exchange(
+                &mut self,
+                context_id: &ContextId,
+                expected: Option<SenderSequenceState>,
+                next: SenderSequenceState,
+            ) -> Result<bool, Self::Error> {
+                self.barrier.wait();
+                let mut record = self.record.lock().unwrap();
+                if *context_id != record.0 || expected != Some(record.1) {
+                    return Ok(false);
+                }
+                record.1 = next;
+                Ok(true)
+            }
+        }
+
+        let secret = [0x45; KEY_LEN];
+        let template = Context::new_ephemeral(&secret, None, &[0], &[1]).unwrap();
+        let record = Arc::new(Mutex::new((
+            template.context_id(),
+            template.sender_sequence_state(),
+        )));
+        let barrier = Arc::new(Barrier::new(2));
+        let mut first_store = SharedStore {
+            record: Arc::clone(&record),
+            barrier: Arc::clone(&barrier),
+        };
+        let mut second_store = first_store.clone();
+        let mut first =
+            Context::load_existing(&secret, None, None, &[0], &[1], &mut first_store).unwrap();
+        let mut second =
+            Context::load_existing(&secret, None, None, &[0], &[1], &mut second_store).unwrap();
+
+        let first = thread::spawn(move || first.reserve_sender(&mut first_store).is_ok());
+        let second = thread::spawn(move || second.reserve_sender(&mut second_store).is_ok());
+
+        assert_ne!(first.join().unwrap(), second.join().unwrap());
+        assert_eq!(record.lock().unwrap().1.next_sequence, 1);
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn fresh_context_registration_race_has_one_winner() {
+        use std::sync::{Arc, Barrier, Mutex};
+        use std::thread;
+
+        #[derive(Clone)]
+        struct SharedEmptyStore {
+            record: Arc<Mutex<Option<(ContextId, SenderSequenceState)>>>,
+            barrier: Arc<Barrier>,
+        }
+
+        impl SenderStateStore for SharedEmptyStore {
+            type Error = core::convert::Infallible;
+
+            fn load(
+                &mut self,
+                context_id: &ContextId,
+            ) -> Result<Option<SenderSequenceState>, Self::Error> {
+                Ok(self
+                    .record
+                    .lock()
+                    .unwrap()
+                    .filter(|(stored_id, _)| stored_id == context_id)
+                    .map(|(_, state)| state))
+            }
+
+            fn compare_exchange(
+                &mut self,
+                context_id: &ContextId,
+                expected: Option<SenderSequenceState>,
+                next: SenderSequenceState,
+            ) -> Result<bool, Self::Error> {
+                self.barrier.wait();
+                let mut record = self.record.lock().unwrap();
+                let current = record
+                    .filter(|(stored_id, _)| stored_id == context_id)
+                    .map(|(_, state)| state);
+                if current != expected {
+                    return Ok(false);
+                }
+                *record = Some((*context_id, next));
+                Ok(true)
+            }
+        }
+
+        let secret = [0x47; KEY_LEN];
+        let first = Context::new_fresh(&secret, None, None, &[0], &[1]).unwrap();
+        let second = Context::new_fresh(&secret, None, None, &[0], &[1]).unwrap();
+        let record = Arc::new(Mutex::new(None));
+        let barrier = Arc::new(Barrier::new(2));
+        let mut first_store = SharedEmptyStore {
+            record: Arc::clone(&record),
+            barrier: Arc::clone(&barrier),
+        };
+        let mut second_store = first_store.clone();
+
+        let first = thread::spawn(move || first.register_fresh(&mut first_store).is_ok());
+        let second = thread::spawn(move || second.register_fresh(&mut second_store).is_ok());
+
+        assert_ne!(first.join().unwrap(), second.join().unwrap());
+        assert_eq!(record.lock().unwrap().unwrap().1.next_sequence, 0);
+    }
+
+    #[test]
+    fn oscore_option_has_literal_implementation_capacity() {
+        let secret = [0x48; KEY_LEN];
+        let mut context = Context::from_sender_state(
+            &secret,
+            None,
+            Some(&hex!("1011121314151617")),
+            &hex!("00010203040506"),
+            &[0x20],
+            Construction::Ephemeral,
+        )
+        .unwrap();
+        context.sender_seq = OscoreSeqNum::new(OscoreSeqNum::MAX).unwrap();
+        let mut store = TestStore::for_context(&context);
+
+        let (_, option) = context
+            .reserve_sender(&mut store)
+            .unwrap()
+            .protect_request(0x01, &[], &[])
+            .unwrap();
+
+        assert_eq!(option.len(), OSCORE_OPTION_MAX_LEN);
+        assert_eq!(
+            option.as_slice(),
+            &hex!("1dffffffffff08101112131415161700010203040506")
+        );
+    }
+
+    #[test]
+    fn oversized_request_does_not_poison_valid_same_sequence_retry() {
+        let secret = [0x49; KEY_LEN];
+        let mut oversized_sender = Context::new_ephemeral(&secret, None, &[0], &[1]).unwrap();
+        let mut valid_sender = Context::new_ephemeral(&secret, None, &[0], &[1]).unwrap();
+        let mut recipient = Context::new_ephemeral(&secret, None, &[1], &[0]).unwrap();
+        let oversized = oversized_sender
+            .protect_request(0x02, &[], &[0x55; 129])
+            .unwrap();
+        let valid = valid_sender.protect_request(0x02, &[], b"valid").unwrap();
+
+        assert!(matches!(
+            recipient.unprotect_request(&oversized.1, &oversized.0),
+            Err(OscoreError::BufferTooSmall(_))
+        ));
+        assert_eq!(
+            recipient.unprotect_request(&valid.1, &valid.0).unwrap().2,
+            b"valid"
+        );
+    }
+
+    #[test]
+    fn oversized_explicit_piv_response_does_not_poison_valid_retry() {
+        let secret = [0x4a; KEY_LEN];
+        let mut client = Context::new_ephemeral(&secret, None, &[0], &[1]).unwrap();
+        let mut oversized_server = Context::new_ephemeral(&secret, None, &[1], &[0]).unwrap();
+        let mut valid_server = Context::new_ephemeral(&secret, None, &[1], &[0]).unwrap();
+        let (_, request_option) = client.protect_request(0x01, &[], &[]).unwrap();
+        let request_piv = &request_option[1..2];
+        let oversized = oversized_server
+            .protect_response_with_piv(0x45, &[], &[0x55; 129], &[0], request_piv)
+            .unwrap();
+        let valid = valid_server
+            .protect_response_with_piv(0x45, &[], b"valid", &[0], request_piv)
+            .unwrap();
+
+        assert!(matches!(
+            client.unprotect_response(&oversized.1, &oversized.0, request_piv),
+            Err(OscoreError::BufferTooSmall(_))
+        ));
+        assert_eq!(
+            client
+                .unprotect_response(&valid.1, &valid.0, request_piv)
+                .unwrap()
+                .2,
+            b"valid"
+        );
+    }
+
+    #[test]
+    fn crash_after_reservation_skips_sequence_after_restore() {
+        let secret = [0x24; KEY_LEN];
+        let mut crashed = Context::restore(&secret, None, &[0], &[1], 3, false).unwrap();
+        let mut store = TestStore::for_context(&crashed);
+
+        {
+            let _unused = crashed.reserve_sender(&mut store).unwrap();
+        }
+
+        let mut restarted = Context::restore(
+            &secret,
+            None,
+            &[0],
+            &[1],
+            store.state.next_sequence,
+            store.state.exhausted,
+        )
+        .unwrap();
+        let (_, option) = restarted
+            .reserve_sender(&mut store)
+            .unwrap()
+            .protect_request(0x01, &[], b"after crash")
+            .unwrap();
+
+        assert_eq!(option.as_slice(), b"\x09\x04\x00");
+        assert_eq!(store.state.next_sequence, 5);
+    }
+
+    #[test]
     fn restored_context_rejects_response_without_piv() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
         let mut ctx = Context::restore(&master_secret, None, &[1], &[0], 7, false).unwrap();
 
         assert_eq!(
-            ctx.protect_response(0x45, &[], b"response", &[0], &[3], false)
+            ctx.protect_response(0x45, &[], b"response", &[0], &[3])
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
@@ -1498,12 +2533,13 @@ mod tests {
     #[test]
     fn response_without_piv_uses_literal_request_nonce() {
         let master_secret = [0; KEY_LEN];
-        let mut responder = Context::new(&master_secret, None, b"\xbb\xcc", b"\xaa").unwrap();
+        let mut responder =
+            Context::new_ephemeral(&master_secret, None, b"\xbb\xcc", b"\xaa").unwrap();
         responder.sender_key = [0x11; KEY_LEN];
         responder.common_iv = [0; NONCE_LEN];
 
         let (ciphertext, option) = responder
-            .protect_response(0x45, &[], &[], b"\xaa", b"\x05", false)
+            .protect_response(0x45, &[], &[], b"\xaa", b"\x05")
             .unwrap();
 
         assert_eq!(ciphertext.as_slice(), &hex!("26f4d77f5a397d9c0a"));
@@ -1517,7 +2553,7 @@ mod tests {
     #[test]
     fn test_replay_window() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut ctx = Context::new(&master_secret, None, &[0], &[1]).unwrap();
+        let mut ctx = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
 
         // First packet accepted (is_replay returns false for valid packets)
         assert!(!ctx.is_replay(seq(0)));
@@ -1539,8 +2575,8 @@ mod tests {
     #[test]
     fn five_byte_replay_ordering_and_duplicates() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut sender = Context::new(&master_secret, None, &[0], &[1]).unwrap();
-        let mut recipient = Context::new(&master_secret, None, &[1], &[0]).unwrap();
+        let mut sender = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
+        let mut recipient = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
         sender.sender_seq = seq(0x1_0000_0000);
 
         let first = sender.protect_request(0x01, &[], b"first").unwrap();
@@ -1558,8 +2594,10 @@ mod tests {
     #[test]
     fn test_protect_unprotect_roundtrip() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut sender_ctx = Context::new(&master_secret, None, &[0x00], &[0x01]).unwrap();
-        let mut recipient_ctx = Context::new(&master_secret, None, &[0x01], &[0x00]).unwrap();
+        let mut sender_ctx =
+            Context::new_ephemeral(&master_secret, None, &[0x00], &[0x01]).unwrap();
+        let mut recipient_ctx =
+            Context::new_ephemeral(&master_secret, None, &[0x01], &[0x00]).unwrap();
 
         let code = 0x01; // GET
         let payload = b"hello";
@@ -1577,11 +2615,17 @@ mod tests {
     #[test]
     fn empty_request_kid_still_requires_k_flag() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut sender = Context::new(&master_secret, None, b"", b"\x01").unwrap();
-        let mut recipient = Context::new(&master_secret, None, b"\x01", b"").unwrap();
+        let mut sender = Context::new_ephemeral(&master_secret, None, b"", b"\x01").unwrap();
+        let mut recipient = Context::new_ephemeral(&master_secret, None, b"\x01", b"").unwrap();
         let (ciphertext, option) = sender.protect_request(0x01, &[], b"request").unwrap();
 
         assert_eq!(option.as_slice(), b"\x09\x00");
+        assert_eq!(
+            recipient
+                .unprotect_request(b"\x09\x00\x02", &ciphertext)
+                .unwrap_err(),
+            OscoreError::NoContext
+        );
         assert_eq!(
             recipient
                 .unprotect_request(b"\x01\x00", &ciphertext)
@@ -1594,19 +2638,21 @@ mod tests {
     #[test]
     fn unprotect_request_compares_literal_id_context() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut sender = Context::new(&master_secret, None, b"\x00", b"\x01").unwrap();
+        let mut sender = Context::new_ephemeral(&master_secret, None, b"\x00", b"\x01").unwrap();
         let (ciphertext, _) = sender.protect_request(0x01, &[], b"request").unwrap();
-        let mut matching = Context::new(&master_secret, None, b"\x01", b"\x00").unwrap();
+        let mut matching = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
         matching.id_context[0] = 0xaa;
         matching.id_context_len = 1;
+        matching.id_context_present = true;
 
         matching
             .unprotect_request(b"\x19\x00\x01\xaa\x00", &ciphertext)
             .unwrap();
 
-        let mut tampered = Context::new(&master_secret, None, b"\x01", b"\x00").unwrap();
+        let mut tampered = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
         tampered.id_context[0] = 0xaa;
         tampered.id_context_len = 1;
+        tampered.id_context_present = true;
         assert_eq!(
             tampered
                 .unprotect_request(b"\x19\x00\x01\xbb\x00", &ciphertext)
@@ -1618,7 +2664,7 @@ mod tests {
     #[test]
     fn terminal_sender_sequence_is_used_once_then_exhausted() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut ctx = Context::new(&master_secret, None, &[0x00], &[0x01]).unwrap();
+        let mut ctx = Context::new_ephemeral(&master_secret, None, &[0x00], &[0x01]).unwrap();
 
         ctx.sender_seq = OscoreSeqNum::new(OscoreSeqNum::MAX).unwrap();
 
@@ -1630,7 +2676,7 @@ mod tests {
             OscoreError::SeqExhausted
         );
         assert_eq!(
-            ctx.protect_response(0x45, &[], b"again", &[1], &[0], true)
+            ctx.protect_response_with_piv(0x45, &[], b"again", &[1], &[0])
                 .unwrap_err(),
             OscoreError::SeqExhausted
         );
@@ -1669,8 +2715,8 @@ mod tests {
     #[test]
     fn public_roundtrip_preserves_embedded_ff_option_value() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut sender = Context::new(&master_secret, None, &[0], &[1]).unwrap();
-        let mut recipient = Context::new(&master_secret, None, &[1], &[0]).unwrap();
+        let mut sender = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
+        let mut recipient = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
         let options = [0x13, 0xaa, 0xff, 0xbb];
 
         let (ciphertext, oscore_option) =
@@ -1700,8 +2746,8 @@ mod tests {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
 
         for options in malformed {
-            let mut sender = Context::new(&master_secret, None, &[0], &[1]).unwrap();
-            let mut recipient = Context::new(&master_secret, None, &[1], &[0]).unwrap();
+            let mut sender = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
+            let mut recipient = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
             let (ciphertext, oscore_option) = sender.protect_request(0x02, options, &[]).unwrap();
 
             assert_eq!(
@@ -1718,8 +2764,8 @@ mod tests {
     fn test_unprotect_response_with_piv() {
         // Simulate Alice -> Bob request, Bob -> Alice response
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut alice_ctx = Context::new(&master_secret, None, &[0x00], &[0x01]).unwrap();
-        let mut bob_ctx = Context::new(&master_secret, None, &[0x01], &[0x00]).unwrap();
+        let mut alice_ctx = Context::new_ephemeral(&master_secret, None, &[0x00], &[0x01]).unwrap();
+        let mut bob_ctx = Context::new_ephemeral(&master_secret, None, &[0x01], &[0x00]).unwrap();
 
         // Alice sends request, save request_kid and request_piv
         let (_ciphertext, request_opt) = alice_ctx.protect_request(0x01, &[], b"request").unwrap();
@@ -1731,14 +2777,7 @@ mod tests {
         // Bob sends response using protect_response (with proper AAD)
         let response_code = 0x45; // 2.05 Content
         let (response_ciphertext, response_opt) = bob_ctx
-            .protect_response(
-                response_code,
-                &[],
-                b"response",
-                request_kid,
-                request_piv,
-                true,
-            )
+            .protect_response_with_piv(response_code, &[], b"response", request_kid, request_piv)
             .unwrap();
 
         let mut forged = response_ciphertext.clone();
@@ -1751,83 +2790,178 @@ mod tests {
             OscoreError::DecryptFailed
         );
 
-        // Alice decrypts response using unprotect_response
+        // Alice decrypts response using unprotect_response.
         let (dec_code, _options, dec_payload) = alice_ctx
             .unprotect_response(&response_opt, &response_ciphertext, request_piv)
             .unwrap();
 
         assert_eq!(dec_code, response_code);
         assert_eq!(dec_payload.as_slice(), b"response");
-        alice_ctx
-            .unprotect_response(&response_opt, &response_ciphertext, request_piv)
-            .unwrap();
-    }
-
-    #[test]
-    fn notification_rejects_duplicate_response_piv() {
-        let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut alice = Context::new(&master_secret, None, &[0], &[1]).unwrap();
-        let mut bob = Context::new(&master_secret, None, &[1], &[0]).unwrap();
-        let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
-        let request_piv = &request_option[1..2];
-        let response = bob
-            .protect_response_with_piv(0x45, &[], b"notification", &[0], request_piv)
-            .unwrap();
-
-        alice
-            .unprotect_notification(&response.1, &response.0, request_piv)
-            .unwrap();
         assert_eq!(
-            alice
-                .unprotect_notification(&response.1, &response.0, request_piv)
+            alice_ctx
+                .unprotect_response(&response_opt, &response_ciphertext, request_piv)
                 .unwrap_err(),
             OscoreError::Replay
         );
     }
 
     #[test]
-    fn explicit_response_pivs_do_not_use_request_replay_window() {
+    fn ordinary_response_rejects_duplicate_request_piv() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut alice = Context::new(&master_secret, None, &[0], &[1]).unwrap();
-        let mut bob = Context::new(&master_secret, None, &[1], &[0]).unwrap();
+        let mut alice = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
+        let mut bob = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
+        let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
+        let request_piv = &request_option[1..2];
+        let response = bob
+            .protect_response_with_piv(0x45, &[], b"response", &[0], request_piv)
+            .unwrap();
+
+        alice
+            .unprotect_response(&response.1, &response.0, request_piv)
+            .unwrap();
+        assert_eq!(
+            alice
+                .unprotect_response(&response.1, &response.0, request_piv)
+                .unwrap_err(),
+            OscoreError::Replay
+        );
+    }
+
+    #[test]
+    fn dropped_pending_response_preserves_committed_window_across_large_jump() {
+        let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
+        let mut alice = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
+        let mut bob = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
+        let prior_piv = [0];
+        let current_piv = [64];
+        let prior = bob
+            .protect_response_with_piv(0x45, &[], b"prior", &[0], &prior_piv)
+            .unwrap();
+        let current = bob
+            .protect_response_with_piv(0x45, &[], b"current", &[0], &current_piv)
+            .unwrap();
+
+        alice
+            .unprotect_response(&prior.1, &prior.0, &prior_piv)
+            .unwrap();
+        drop(
+            alice
+                .begin_unprotect_response(&current.1, &current.0, &current_piv)
+                .unwrap(),
+        );
+
+        assert_eq!(
+            alice
+                .unprotect_response(&prior.1, &prior.0, &prior_piv)
+                .unwrap_err(),
+            OscoreError::Replay
+        );
+        let (_, _, payload) = alice
+            .begin_unprotect_response(&current.1, &current.0, &current_piv)
+            .unwrap()
+            .commit()
+            .unwrap();
+        assert_eq!(payload.as_slice(), b"current");
+        assert_eq!(
+            alice
+                .unprotect_response(&current.1, &current.0, &current_piv)
+                .unwrap_err(),
+            OscoreError::Replay
+        );
+    }
+
+    #[test]
+    fn invalid_response_code_does_not_consume_request_piv() {
+        let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
+        let mut alice = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
+        let mut bob = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
+        let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
+        let request_piv = &request_option[1..2];
+
+        for code in [0x01, 0xc1] {
+            let invalid = bob
+                .protect_response_with_piv(code, &[], b"invalid", &[0], request_piv)
+                .unwrap();
+            assert!(matches!(
+                alice.begin_unprotect_response(&invalid.1, &invalid.0, request_piv),
+                Err(OscoreError::InvalidParam)
+            ));
+        }
+
+        let valid = bob
+            .protect_response_with_piv(0x45, &[], b"valid", &[0], request_piv)
+            .unwrap();
+        assert_eq!(
+            alice
+                .unprotect_response(&valid.1, &valid.0, request_piv)
+                .unwrap()
+                .2,
+            b"valid"
+        );
+    }
+
+    #[test]
+    fn delayed_explicit_piv_ordinary_response_ignores_peer_replay_window() {
+        let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
+        let mut alice = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
+        let mut bob = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
         let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
         let request_piv = &request_option[1..2];
         bob.sender_seq = seq(0x1_0000_0000);
 
-        let first = bob
-            .protect_response_with_piv(0x45, &[], b"first", &[0], request_piv)
+        let delayed = bob
+            .protect_response_with_piv(0x45, &[], b"delayed", &[0], request_piv)
             .unwrap();
-        let second = bob
-            .protect_response_with_piv(0x45, &[], b"second", &[0], request_piv)
-            .unwrap();
-        assert_eq!(first.1.as_slice(), b"\x05\x01\x00\x00\x00\x00");
-        assert_eq!(second.1.as_slice(), b"\x05\x01\x00\x00\x00\x01");
-
-        alice.recipient_seq = seq(0x1_0000_0001);
+        assert_eq!(delayed.1.as_slice(), b"\x05\x01\x00\x00\x00\x00");
+        alice.recipient_seq = seq(0x1_0000_0020);
         alice.replay_window = u32::MAX;
-        let replay_state = (alice.recipient_seq, alice.replay_window);
 
         alice
-            .unprotect_response(&second.1, &second.0, request_piv)
+            .unprotect_response(&delayed.1, &delayed.0, request_piv)
             .unwrap();
+        assert_eq!(
+            alice
+                .unprotect_response(&delayed.1, &delayed.0, request_piv)
+                .unwrap_err(),
+            OscoreError::Replay
+        );
+    }
+
+    #[test]
+    fn response_kid_mismatch_does_not_consume_request() {
+        let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
+        let mut alice = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
+        let mut bob = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
+        let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
+        let request_piv = &request_option[1..2];
+        let response = bob
+            .protect_response_with_piv(0x45, &[], b"response", &[0], request_piv)
+            .unwrap();
+
+        assert_eq!(
+            alice
+                .unprotect_response(b"\x09\x00\x02", &response.0, request_piv)
+                .unwrap_err(),
+            OscoreError::NoContext
+        );
         alice
-            .unprotect_response(&first.1, &first.0, request_piv)
+            .unprotect_response(&response.1, &response.0, request_piv)
             .unwrap();
-        assert_eq!((alice.recipient_seq, alice.replay_window), replay_state);
     }
 
     #[test]
     fn response_id_context_is_checked_before_decryption() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut alice = Context::new(&master_secret, None, b"\x00", b"\x01").unwrap();
-        let mut bob = Context::new(&master_secret, None, b"\x01", b"\x00").unwrap();
+        let mut alice = Context::new_ephemeral(&master_secret, None, b"\x00", b"\x01").unwrap();
+        let mut bob = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
         let (_, request_option) = alice.protect_request(0x01, &[], b"request").unwrap();
         let request_piv = &request_option[1..2];
         let (ciphertext, _) = bob
-            .protect_response(0x45, &[], b"response", b"\x00", request_piv, true)
+            .protect_response_with_piv(0x45, &[], b"response", b"\x00", request_piv)
             .unwrap();
         alice.id_context[0] = 0xaa;
         alice.id_context_len = 1;
+        alice.id_context_present = true;
 
         assert_eq!(
             alice
@@ -1840,23 +2974,23 @@ mod tests {
     #[test]
     fn response_without_piv_requires_requester_identity() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut responder = Context::new(&master_secret, None, b"\x01", b"\x00").unwrap();
+        let mut responder = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
 
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"response", b"\x02", b"\x00", false)
+                .protect_response(0x45, &[], b"response", b"\x02", b"\x00")
                 .unwrap_err(),
             OscoreError::InvalidParam
         );
         responder
-            .protect_response(0x45, &[], b"response", b"\x00", b"\x00", false)
+            .protect_response(0x45, &[], b"response", b"\x00", b"\x00")
             .unwrap();
     }
 
     #[test]
     fn response_with_piv_requires_requester_identity() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut responder = Context::new(&master_secret, None, b"\x01", b"\x00").unwrap();
+        let mut responder = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
 
         assert_eq!(
             responder
@@ -1869,24 +3003,24 @@ mod tests {
     #[test]
     fn response_without_piv_is_one_shot_per_request() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut responder = Context::new(&master_secret, None, b"\x01", b"\x00").unwrap();
+        let mut responder = Context::new_ephemeral(&master_secret, None, b"\x01", b"\x00").unwrap();
 
         responder
-            .protect_response(0x45, &[], b"first", b"\x00", b"\x07", false)
+            .protect_response(0x45, &[], b"first", b"\x00", b"\x07")
             .unwrap();
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"second", b"\x00", b"\x07", false)
+                .protect_response(0x45, &[], b"second", b"\x00", b"\x07")
                 .unwrap_err(),
             OscoreError::Replay
         );
 
         responder
-            .protect_response(0x45, &[], b"later", b"\x00", b"\x28", false)
+            .protect_response(0x45, &[], b"later", b"\x00", b"\x28")
             .unwrap();
         assert_eq!(
             responder
-                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07", false)
+                .protect_response(0x45, &[], b"stale", b"\x00", b"\x07")
                 .unwrap_err(),
             OscoreError::Replay
         );
@@ -1895,8 +3029,8 @@ mod tests {
     #[test]
     fn public_unprotect_rejects_nonminimal_piv() {
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut sender = Context::new(&master_secret, None, &[0], &[1]).unwrap();
-        let mut recipient = Context::new(&master_secret, None, &[1], &[0]).unwrap();
+        let mut sender = Context::new_ephemeral(&master_secret, None, &[0], &[1]).unwrap();
+        let mut recipient = Context::new_ephemeral(&master_secret, None, &[1], &[0]).unwrap();
         let (ciphertext, _) = sender.protect_request(0x01, &[], b"request").unwrap();
 
         assert_eq!(
@@ -1911,8 +3045,8 @@ mod tests {
     fn test_unprotect_response_without_piv_uses_request_piv() {
         // Test that when response has no PIV in OSCORE option, request_piv is used for nonce
         let master_secret = hex!("0102030405060708090a0b0c0d0e0f10");
-        let mut alice_ctx = Context::new(&master_secret, None, &[0x00], &[0x01]).unwrap();
-        let mut bob_ctx = Context::new(&master_secret, None, &[0x01], &[0x00]).unwrap();
+        let mut alice_ctx = Context::new_ephemeral(&master_secret, None, &[0x00], &[0x01]).unwrap();
+        let mut bob_ctx = Context::new_ephemeral(&master_secret, None, &[0x01], &[0x00]).unwrap();
 
         // Alice sends request, save request_kid and request_piv
         let (_ciphertext, request_opt) = alice_ctx.protect_request(0x01, &[], b"request").unwrap();
@@ -1924,17 +3058,20 @@ mod tests {
         let response_code = 0x45u8;
         let payload = b"response";
         let (response_ciphertext, response_opt) = bob_ctx
-            .protect_response(
-                response_code,
-                &[],
-                payload,
-                request_kid,
-                &request_piv,
-                false,
-            )
+            .protect_response(response_code, &[], payload, request_kid, &request_piv)
             .unwrap();
 
         assert!(response_opt.is_empty());
+
+        let mut forged = response_ciphertext.clone();
+        let last = forged.len() - 1;
+        forged[last] ^= 1;
+        assert_eq!(
+            alice_ctx
+                .unprotect_response(&response_opt, &forged, &request_piv)
+                .unwrap_err(),
+            OscoreError::DecryptFailed
+        );
 
         // Alice decrypts using unprotect_response with request_piv
         let (dec_code, _options, dec_payload) = alice_ctx
@@ -1943,5 +3080,11 @@ mod tests {
 
         assert_eq!(dec_code, response_code);
         assert_eq!(dec_payload.as_slice(), payload);
+        assert_eq!(
+            alice_ctx
+                .unprotect_response(&response_opt, &response_ciphertext, &request_piv)
+                .unwrap_err(),
+            OscoreError::Replay
+        );
     }
 }
