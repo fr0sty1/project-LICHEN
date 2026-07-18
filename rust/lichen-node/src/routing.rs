@@ -478,8 +478,6 @@ impl Router {
             return false;
         }
 
-        self.dao_manager.expire_routes(expire_seconds);
-
         let Some(parents) = dao_parents_for_source(dao_bytes, &packet_source) else {
             return false;
         };
@@ -493,13 +491,15 @@ impl Router {
             return false;
         }
 
-        self.dao_manager.process_dao_at_bounded(
+        let routes_expired = self.dao_manager.expire_routes(expire_seconds);
+        let dao_updated = self.dao_manager.process_dao_at_bounded(
             dao_bytes,
             packet_source,
             lifetime_start_seconds,
             u64::from(self.dodag_config.lifetime_unit),
             u64::MAX / 1_000,
-        )
+        );
+        routes_expired || dao_updated
     }
 
     /// Process a DAO using the router's monotonic millisecond timeline.
@@ -1776,6 +1776,23 @@ mod tests {
         assert!(root.process_dao_at_ms(&second_dao, second_target, second_target, 110_000));
         assert!(root.lookup_route(&first_target).is_none());
         assert!(root.lookup_route(&second_target).is_some());
+    }
+
+    #[test]
+    fn exact_dao_at_expiry_reports_route_update() {
+        let root_addr = link_local(1);
+        let target = link_local(2);
+        let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
+        let dao = sender.build_dao_with_lifetime(root_addr, 1);
+        let exact = sender.build_dao_copy_with_lifetime(root_addr, 1);
+        let mut root = Router::new_root(root_addr);
+        assert!(root.set_dao_lifetime_unit(1));
+
+        assert!(root.process_dao_at_ms(&dao, target, target, 1_000));
+        assert!(!root.process_dao_at_ms(&exact, target, link_local(3), 2_000));
+        assert!(root.lookup_route(&target).is_some());
+        assert!(root.process_dao_at_ms(&exact, target, target, 2_000));
+        assert!(root.lookup_route(&target).is_none());
     }
 
     #[test]

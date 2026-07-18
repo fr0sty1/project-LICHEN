@@ -408,6 +408,7 @@ pub struct DaoManager {
     origin_seq_map: HashMap<[u8; 16], Freshness>,
     /// Last accepted Transit Path Sequence per target (route freshness).
     path_seq_map: HashMap<[u8; 16], Freshness>,
+    candidate_map: HashMap<[u8; 16], Vec<DaoCandidate>>,
 }
 
 #[cfg(feature = "std")]
@@ -446,7 +447,16 @@ impl Freshness {
 struct DaoUpdate {
     target: [u8; 16],
     parent: [u8; 16],
+    path_control: u8,
     path_sequence: u8,
+    path_lifetime: u8,
+}
+
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct DaoCandidate {
+    parent: [u8; 16],
+    path_control: u8,
     path_lifetime: u8,
 }
 
@@ -473,6 +483,7 @@ impl DaoManager {
             edge_expiry: HashMap::new(),
             origin_seq_map: HashMap::new(),
             path_seq_map: HashMap::new(),
+            candidate_map: HashMap::new(),
         }
     }
 
@@ -551,7 +562,7 @@ impl DaoManager {
         buf[..pos].to_vec()
     }
 
-    /// Process a received DAO on the root. Returns `true` if a route was installed.
+    /// Process a received DAO on the root. Returns `true` if route state changed.
     ///
     /// `dao_bytes` is the raw DAO wire bytes (base object + options).
     ///
@@ -685,35 +696,67 @@ impl DaoManager {
         let mut proposed_expiry = self.edge_expiry.clone();
         let mut proposed_path_sequences = self.path_seq_map.clone();
         let mut proposed_origin_sequences = self.origin_seq_map.clone();
+        let mut proposed_candidates = self.candidate_map.clone();
         proposed_expiry.retain(|_, deadline| Self::is_active(*deadline, now_seconds));
         proposed_parents.retain(|target, parents| {
             parents.retain(|parent| proposed_expiry.contains_key(&(*target, *parent)));
             !parents.is_empty()
         });
 
-        let mut updated_targets = HashSet::new();
+        let mut incoming_candidates: HashMap<[u8; 16], Vec<DaoCandidate>> = HashMap::new();
         for update in updates[..update_count].iter().flatten() {
-            if updated_targets.insert(update.target) {
-                if let Some(last) = proposed_path_sequences.get(&update.target) {
-                    if update.path_sequence == last.sequence {
-                        // Equal sequence denotes another copy of the same logical update.
-                        // It may add redundant paths, but cannot revive an expired target.
-                        if !proposed_parents.contains_key(&update.target) {
-                            return false;
-                        }
-                    } else if seq_is_newer(update.path_sequence, last.sequence) {
-                        if let Some(parents) = proposed_parents.remove(&update.target) {
-                            for parent in parents {
-                                proposed_expiry.remove(&(update.target, parent));
-                            }
-                        }
-                    } else {
+            incoming_candidates
+                .entry(update.target)
+                .or_default()
+                .push(DaoCandidate {
+                    parent: update.parent,
+                    path_control: update.path_control,
+                    path_lifetime: update.path_lifetime,
+                });
+        }
+        for candidates in incoming_candidates.values_mut() {
+            candidates.sort_unstable();
+            candidates.dedup();
+        }
+        if lifetime_unit_seconds == 0
+            && updates[..update_count]
+                .iter()
+                .flatten()
+                .any(|update| update.path_lifetime != 255)
+        {
+            return false;
+        }
+
+        let mut changed_targets = HashSet::new();
+        for (target, candidates) in &incoming_candidates {
+            let sequence = updates[..update_count]
+                .iter()
+                .flatten()
+                .find(|update| update.target == *target)
+                .expect("candidate target has an update")
+                .path_sequence;
+            if let Some(last) = proposed_path_sequences.get(target) {
+                if sequence == last.sequence {
+                    if proposed_candidates.get(target) != Some(candidates) {
                         return false;
+                    }
+                    continue;
+                }
+                if !seq_is_newer(sequence, last.sequence) {
+                    return false;
+                }
+                if let Some(parents) = proposed_parents.remove(target) {
+                    for parent in parents {
+                        proposed_expiry.remove(&(*target, parent));
                     }
                 }
             }
-            if update.path_lifetime != 255 && lifetime_unit_seconds == 0 {
-                return false;
+            proposed_candidates.insert(*target, candidates.clone());
+            changed_targets.insert(*target);
+        }
+        for update in updates[..update_count].iter().flatten() {
+            if !changed_targets.contains(&update.target) {
+                continue;
             }
             let expires_at = if matches!(update.path_lifetime, 0 | 255) {
                 None
@@ -732,23 +775,14 @@ impl DaoManager {
             };
             if update.path_lifetime != 0 {
                 let parents = proposed_parents.entry(update.target).or_default();
-                if parents.contains(&update.parent) {
-                    // Equal-sequence copies must be additive; accepting changed lifetime
-                    // data for an existing edge would let stale data overwrite it.
-                    if proposed_path_sequences
-                        .get(&update.target)
-                        .is_some_and(|last| last.sequence == update.path_sequence)
-                    {
-                        return false;
-                    }
-                } else {
+                if !parents.contains(&update.parent) {
                     parents.push(update.parent);
                     parents.sort_unstable();
                 }
                 proposed_expiry.insert((update.target, update.parent), expires_at);
             }
         }
-        for target in &updated_targets {
+        for target in &changed_targets {
             let active_until = Self::target_active_until(*target, &proposed_expiry);
             let sequence = updates[..update_count]
                 .iter()
@@ -768,6 +802,7 @@ impl DaoManager {
             proposed_path_sequences
                 .insert(*target, Freshness::new(sequence, active_until, now_seconds));
         }
+        proposed_candidates.retain(|target, _| proposed_path_sequences.contains_key(target));
         if !proposed_origin_sequences.contains_key(&origin)
             && !Self::make_freshness_room(
                 &mut proposed_origin_sequences,
@@ -796,17 +831,25 @@ impl DaoManager {
             return false;
         }
 
-        let Some(proposed_routes) =
-            Self::rebuilt_routes(self.node_address, &proposed_parents, &self.routing_table)
-        else {
+        let Some(proposed_routes) = Self::rebuilt_routes(
+            self.node_address,
+            &proposed_parents,
+            &self.routing_table,
+            &changed_targets,
+        ) else {
             return false;
         };
+        let route_state_changed = !changed_targets.is_empty()
+            || proposed_parents != self.parent_map
+            || proposed_expiry != self.edge_expiry
+            || proposed_routes.routes != self.routing_table.routes;
         self.parent_map = proposed_parents;
         self.edge_expiry = proposed_expiry;
         self.path_seq_map = proposed_path_sequences;
         self.origin_seq_map = proposed_origin_sequences;
+        self.candidate_map = proposed_candidates;
         self.routing_table = proposed_routes;
-        true
+        route_state_changed
     }
 
     /// Expire finite paths at monotonic `now_seconds` and rebuild dependent routes.
@@ -818,15 +861,21 @@ impl DaoManager {
             parents.retain(|parent| edge_expiry.contains_key(&(*target, *parent)));
             !parents.is_empty()
         });
-        let Some(routes) =
-            Self::rebuilt_routes(self.node_address, &parent_map, &self.routing_table)
-        else {
+        let Some(routes) = Self::rebuilt_routes(
+            self.node_address,
+            &parent_map,
+            &self.routing_table,
+            &HashSet::new(),
+        ) else {
             return false;
         };
+        let route_state_changed = edge_expiry != self.edge_expiry
+            || parent_map != self.parent_map
+            || routes.routes != self.routing_table.routes;
         self.edge_expiry = edge_expiry;
         self.parent_map = parent_map;
         self.routing_table = routes;
-        true
+        route_state_changed
     }
 
     fn is_active(deadline: Option<u64>, now_seconds: u64) -> bool {
@@ -916,11 +965,15 @@ impl DaoManager {
                     }) {
                         return None;
                     }
-                    if !transits[..transit_count]
+                    if let Some(existing) = transits[..transit_count]
                         .iter()
                         .flatten()
-                        .any(|transit| transit.parent_address == parsed.parent_address)
+                        .find(|transit| transit.parent_address == parsed.parent_address)
                     {
+                        if existing != &parsed {
+                            return None;
+                        }
+                    } else {
                         if transit_count == MAX_DAO_UPDATES {
                             return None;
                         }
@@ -968,6 +1021,7 @@ impl DaoManager {
                 updates[*update_count] = Some(DaoUpdate {
                     target: *target,
                     parent: transit.parent_address,
+                    path_control: transit.path_control,
                     path_sequence: transit.path_sequence,
                     path_lifetime: transit.path_lifetime,
                 });
@@ -997,6 +1051,7 @@ impl DaoManager {
         root: [u8; 16],
         parent_map: &HashMap<[u8; 16], Vec<[u8; 16]>>,
         routing_table: &RoutingTable,
+        refresh_targets: &HashSet<[u8; 16]>,
     ) -> Option<RoutingTable> {
         let mut targets: Vec<[u8; 16]> = parent_map.keys().copied().collect();
         targets.sort_unstable();
@@ -1012,15 +1067,22 @@ impl DaoManager {
                 if !routes.contains_key(&route_target) && routes.len() == MAX_ROUTES {
                     return None;
                 }
-                let mut entry = routing_table
-                    .routes
-                    .get(&route_target)
-                    .filter(|entry| entry.state != RouteEntryState::Expired)
-                    .cloned()
-                    .unwrap_or_else(|| RouteEntry::fresh(&path));
-                entry
-                    .refresh(&path)
-                    .expect("fresh or stale route entry can refresh");
+                let mut entry = match routing_table.routes.get(&route_target) {
+                    Some(entry)
+                        if entry.state == RouteEntryState::Expired
+                            && !refresh_targets.contains(&target)
+                            && entry.path == path =>
+                    {
+                        entry.clone()
+                    }
+                    Some(entry) if entry.state != RouteEntryState::Expired => entry.clone(),
+                    _ => RouteEntry::fresh(&path),
+                };
+                if refresh_targets.contains(&target) || entry.path != path {
+                    entry
+                        .refresh(&path)
+                        .expect("fresh or stale route entry can refresh");
+                }
                 routes.insert(route_target, entry);
             }
         }
@@ -1183,7 +1245,7 @@ mod tests {
 
         let mut parents = HashMap::new();
         parents.insert(ll(2), vec![root]);
-        let rebuilt = DaoManager::rebuilt_routes(root, &parents, &table).unwrap();
+        let rebuilt = DaoManager::rebuilt_routes(root, &parents, &table, &HashSet::new()).unwrap();
         let mut prefix_destination = [0xfd; 16];
         prefix_destination[8..].fill(1);
         assert_eq!(
@@ -1192,7 +1254,8 @@ mod tests {
         );
         assert_eq!(rebuilt.lookup(&ll(2)), Some([ll(2)].as_slice()));
 
-        let rebuilt = DaoManager::rebuilt_routes(root, &HashMap::new(), &rebuilt).unwrap();
+        let rebuilt =
+            DaoManager::rebuilt_routes(root, &HashMap::new(), &rebuilt, &HashSet::new()).unwrap();
         assert_eq!(
             rebuilt.lookup(&prefix_destination),
             Some([ll(9)].as_slice())
@@ -1201,7 +1264,7 @@ mod tests {
         let full_parents: HashMap<[u8; 16], Vec<[u8; 16]>> = (0..MAX_ROUTES as u16)
             .map(|value| (addr(value), vec![root]))
             .collect();
-        assert!(DaoManager::rebuilt_routes(root, &full_parents, &table).is_none());
+        assert!(DaoManager::rebuilt_routes(root, &full_parents, &table, &HashSet::new()).is_none());
     }
 
     #[test]
@@ -1482,9 +1545,10 @@ mod tests {
             ll(1),
             255,
         )));
+        assert_eq!(root.origin_seq_map[&ll(2)].sequence, 251);
         assert!(root.process_dao(&global_dao_wire_with_sequences(
             0,
-            251,
+            252,
             241,
             ll(2),
             ll(1),
@@ -1540,8 +1604,11 @@ mod tests {
         assert_eq!(root.path_seq_map.get(&ll(2)).unwrap().sequence, 240);
 
         assert!(!root.process_dao_at(&dao, ll(20), 111, 10));
-        let stale_path = global_dao_wire_with_sequences(0, 241, 240, ll(2), ll(1), 1);
-        assert!(!root.process_dao_at(&stale_path, ll(20), 111, 10));
+        let exact = global_dao_wire_with_sequences(0, 241, 240, ll(2), ll(1), 1);
+        assert!(!root.process_dao_at(&exact, ll(20), 111, 10));
+        let changed = global_dao_wire_with_sequences(0, 242, 240, ll(2), ll(3), 1);
+        assert!(!root.process_dao_at(&changed, ll(20), 111, 10));
+        assert_eq!(root.origin_seq_map.get(&ll(20)).unwrap().sequence, 241);
         assert!(root.routing_table.lookup(&ll(2)).is_none());
         assert!(!root.parent_map.contains_key(&ll(2)));
     }
@@ -1569,6 +1636,14 @@ mod tests {
         assert!(root.parent_map.is_empty());
         assert!(root.origin_seq_map.is_empty());
         assert!(root.path_seq_map.is_empty());
+
+        let first = global_dao_wire_with_sequences(0, 10, 10, ll(2), ll(1), 1);
+        assert!(root.process_dao_at(&first, ll(2), 100, 1));
+        let mut exact = first;
+        exact[3] = 11;
+        assert!(!root.process_dao_at(&exact, ll(2), 101, 0));
+        assert_eq!(root.origin_seq_map[&ll(2)].sequence, 10);
+        assert_eq!(root.edge_expiry[&(ll(2), ll(1))], Some(101));
     }
 
     #[test]
@@ -1744,21 +1819,72 @@ mod tests {
     }
 
     #[test]
-    fn equal_path_sequence_adds_only_a_distinct_live_parent() {
+    fn equal_path_sequence_accepts_only_an_exact_snapshot() {
         let mut root = DaoManager::as_root(ll(1), 0, dodag_id());
         assert!(root.process_dao(&global_dao_wire(0, 1, ll(2), ll(1))));
         assert!(root.process_dao(&global_dao_wire(0, 1, ll(3), ll(1))));
 
         let first = global_dao_wire_with_sequences(0, 10, 10, ll(4), ll(2), 10);
         assert!(root.process_dao_at(&first, ll(4), 100, 1));
-        let redundant = global_dao_wire_with_sequences(0, 11, 10, ll(4), ll(3), 20);
-        assert!(root.process_dao_at(&redundant, ll(4), 101, 1));
-        assert_eq!(root.parent_map.get(&ll(4)), Some(&vec![ll(2), ll(3)]));
+        let target_updated_at = root.path_seq_map[&ll(4)].updated_at;
+        root.routing_table.mark_stale(&ll(4)).unwrap().unwrap();
 
-        let conflicting = global_dao_wire_with_sequences(0, 12, 10, ll(4), ll(2), 30);
-        assert!(!root.process_dao_at(&conflicting, ll(4), 102, 1));
+        let mut exact = first.clone();
+        exact[3] = 11;
+        assert!(!root.process_dao_at(&exact, ll(4), 105, 1));
+        assert_eq!(root.parent_map.get(&ll(4)), Some(&vec![ll(2)]));
         assert_eq!(root.edge_expiry.get(&(ll(4), ll(2))), Some(&Some(110)));
-        assert_eq!(root.edge_expiry.get(&(ll(4), ll(3))), Some(&Some(121)));
+        assert_eq!(root.path_seq_map[&ll(4)].updated_at, target_updated_at);
+        assert_eq!(root.origin_seq_map[&ll(4)].sequence, 11);
+        assert_eq!(
+            root.routing_table.entry_state(&ll(4)),
+            Some(RouteEntryState::Stale)
+        );
+
+        let added_parent = global_dao_wire_with_sequences(0, 12, 10, ll(4), ll(3), 10);
+        assert!(!root.process_dao_at(&added_parent, ll(4), 106, 1));
+
+        let changed_lifetime = global_dao_wire_with_sequences(0, 12, 10, ll(4), ll(2), 20);
+        assert!(!root.process_dao_at(&changed_lifetime, ll(4), 106, 1));
+
+        let mut changed_control = global_dao_wire_with_sequences(0, 12, 10, ll(4), ll(2), 10);
+        changed_control[27] = 1;
+        assert!(!root.process_dao_at(&changed_control, ll(4), 106, 1));
+
+        assert_eq!(root.origin_seq_map[&ll(4)].sequence, 11);
+        assert_eq!(root.parent_map.get(&ll(4)), Some(&vec![ll(2)]));
+        assert_eq!(root.edge_expiry.get(&(ll(4), ll(2))), Some(&Some(110)));
+        assert!(!root.edge_expiry.contains_key(&(ll(4), ll(3))));
+
+        let mut expired = exact;
+        expired[3] = 12;
+        assert!(root.process_dao_at(&expired, ll(4), 110, 1));
+        assert_eq!(root.origin_seq_map[&ll(4)].sequence, 12);
+        assert!(root.routing_table.lookup(&ll(4)).is_none());
+    }
+
+    #[test]
+    fn newer_path_sequence_replaces_complete_candidate_snapshot() {
+        let mut root = DaoManager::as_root(ll(1), 0, dodag_id());
+        for parent in [ll(2), ll(3), ll(4)] {
+            assert!(root.process_dao(&global_dao_wire(0, 1, parent, ll(1))));
+        }
+        let first = global_dao_wire_with_sequences(0, 10, 10, ll(5), ll(2), 10);
+        assert!(root.process_dao_at(&first, ll(5), 100, 1));
+
+        let mut replacement = global_dao_wire_with_sequences(0, 11, 11, ll(5), ll(3), 20);
+        replacement.extend_from_slice(&[OPT_TRANSIT_INFO, 20, 0, 0, 11, 20]);
+        replacement.extend_from_slice(&ll(4));
+        assert!(root.process_dao_at(&replacement, ll(5), 101, 1));
+        assert_eq!(root.parent_map.get(&ll(5)), Some(&vec![ll(3), ll(4)]));
+        assert!(!root.edge_expiry.contains_key(&(ll(5), ll(2))));
+        assert_eq!(root.edge_expiry.get(&(ll(5), ll(3))), Some(&Some(121)));
+        assert_eq!(root.edge_expiry.get(&(ll(5), ll(4))), Some(&Some(121)));
+
+        let addition = global_dao_wire_with_sequences(0, 12, 11, ll(5), ll(2), 20);
+        assert!(!root.process_dao_at(&addition, ll(5), 102, 1));
+        assert_eq!(root.parent_map.get(&ll(5)), Some(&vec![ll(3), ll(4)]));
+        assert_eq!(root.origin_seq_map[&ll(5)].sequence, 11);
     }
 
     #[test]
@@ -1768,9 +1894,50 @@ mod tests {
         assert!(root.process_dao_at(&first, ll(2), 100, 1));
         assert!(root.expire_routes(101));
 
-        let replay = global_dao_wire_with_sequences(0, 11, 10, ll(2), ll(3), 1);
+        let mut exact = first.clone();
+        exact[3] = 11;
+        assert!(!root.process_dao_at(&exact, ll(2), 101, 1));
+        assert_eq!(root.origin_seq_map[&ll(2)].sequence, 11);
+        assert!(!root.parent_map.contains_key(&ll(2)));
+
+        let replay = global_dao_wire_with_sequences(0, 12, 10, ll(2), ll(3), 1);
         assert!(!root.process_dao_at(&replay, ll(2), 101, 1));
         assert!(!root.parent_map.contains_key(&ll(2)));
+    }
+
+    #[test]
+    fn equal_path_sequence_does_not_revive_an_expired_route_entry() {
+        let mut root = DaoManager::as_root(ll(1), 0, dodag_id());
+        let first = global_dao_wire_with_sequences(0, 10, 10, ll(2), ll(1), 10);
+        assert!(root.process_dao_at(&first, ll(2), 100, 1));
+        root.routing_table.mark_expired(&ll(2)).unwrap().unwrap();
+
+        let mut exact = first;
+        exact[3] = 11;
+        assert!(!root.process_dao_at(&exact, ll(2), 105, 1));
+        assert_eq!(root.origin_seq_map[&ll(2)].sequence, 11);
+        assert_eq!(
+            root.routing_table.entry_state(&ll(2)),
+            Some(RouteEntryState::Expired)
+        );
+    }
+
+    #[test]
+    fn ancestor_reparenting_rebuilds_expired_descendant_without_panic() {
+        let mut root = DaoManager::as_root(ll(1), 0, dodag_id());
+        let mut alternate = DaoManager::new(ll(4), 0, dodag_id());
+        let mut parent = DaoManager::new(ll(2), 0, dodag_id());
+        let mut child = DaoManager::new(ll(3), 0, dodag_id());
+        assert!(root.process_dao(&alternate.build_dao(ll(1))));
+        assert!(root.process_dao(&parent.build_dao(ll(1))));
+        assert!(root.process_dao(&child.build_dao(ll(2))));
+        root.routing_table.mark_expired(&ll(3)).unwrap().unwrap();
+
+        assert!(root.process_dao(&parent.build_dao(ll(4))));
+        assert_eq!(
+            root.routing_table.lookup(&ll(3)),
+            Some(&[ll(4), ll(2), ll(3)][..])
+        );
     }
 
     #[test]
@@ -1802,7 +1969,7 @@ mod tests {
         let desired = addr(300);
         let parents = HashMap::from([(desired, vec![root])]);
 
-        let rebuilt = DaoManager::rebuilt_routes(root, &parents, &table).unwrap();
+        let rebuilt = DaoManager::rebuilt_routes(root, &parents, &table, &HashSet::new()).unwrap();
         assert_eq!(rebuilt.len(), 1);
         assert_eq!(rebuilt.lookup(&desired), Some(&[desired][..]));
         assert!(rebuilt.lookup(&addr(0)).is_none());
@@ -1821,7 +1988,7 @@ mod tests {
         let parents: HashMap<_, _> = (0..=MAX_ROUTES as u16)
             .map(|value| (addr(value), vec![root]))
             .collect();
-        assert!(DaoManager::rebuilt_routes(root, &parents, &table).is_none());
+        assert!(DaoManager::rebuilt_routes(root, &parents, &table, &HashSet::new()).is_none());
         assert_eq!(table.len(), MAX_ROUTES);
         assert_eq!(table.lookup(&addr(0)), Some(&[addr(0)][..]));
     }
