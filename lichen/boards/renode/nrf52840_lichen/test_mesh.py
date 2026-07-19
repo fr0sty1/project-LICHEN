@@ -196,22 +196,26 @@ async def test_mesh_boots(mesh_simulation):
 async def test_mesh_tx(mesh_simulation):
     """Test that nodes transmit LoRa frames into lichen-sim.
 
-    KNOWN-FAILING (lora_ipv6_mesh-yot8): with the MCUboot-app boot fix above the
-    firmware now boots and drives the SX1262 over SPI, but the SX1262.cs model
-    does not decode the driver's register/config opcodes (0x0D WriteReg, 0x1D
-    ReadReg, 0x95, 0x97, ...) and the SPIM-EasyDMA chip-select framing desyncs
-    (bursts of "Unknown opcode: 0x00"), so the LoRa driver init stalls before it
-    ever issues SetTx (0x83). No frame reaches the medium. Completing the
-    SX1262.cs opcode/CS handling is required to make this pass.
+    KNOWN-FAILING (lora_ipv6_mesh-yot8): the firmware now boots (MCUboot-app boot
+    fix above), disables its Renode-useless USB (renode_console.conf), reaches
+    main(), provisions its dev peers, and drives a real LoRa TX — the console
+    shows "CoAP GET /status sent" followed by "sx12xx_common: Packet transmission
+    failed! / lora_l2: TX failed (-11 EAGAIN)". The loramac sx126x driver issues
+    the transmit but the SX1262.cs model does not complete the TX handshake
+    (SetTx -> TriggerTx -> TxDone IRQ) it expects, so it times out and no frame
+    reaches the medium. Completing the SX1262.cs model against the real driver's
+    TX/IRQ sequence is the remaining work.
 
-    (The earlier "validated: firmware beacons" claim was incorrect — the
-    firmware never actually booted in Renode; it halted at reset on an empty
-    vector table. See yot8 for the full analysis.)
+    (The earlier "validated: firmware beacons" claim was incorrect — the firmware
+    never actually booted in Renode; it halted at reset on an empty vector table,
+    then spun forever in nRF USBD enable. See yot8 for the full analysis.)
     """
     sim = mesh_simulation["sim"]
 
-    # Wait for nodes to boot and emit their first beacon.
-    await asyncio.sleep(10)
+    # The puck holds its net interface (and radio RX thread) down for a ~10 s
+    # "USB settle" window before net_if_up(); the first CoAP TX follows shortly
+    # after. Wait past that so a transmission has a chance to occur.
+    await asyncio.sleep(20)
 
     # metrics.transmissions counts frames handed to the medium by any node.
     assert sim.metrics.transmissions > 0, "No LoRa transmissions reached lichen-sim"
