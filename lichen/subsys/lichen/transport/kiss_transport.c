@@ -300,6 +300,14 @@ static void dispatch_frame(struct kiss_transport_ctx *ctx)
 						       ctx->config.user_ctx);
 			}
 		} else if (port == KISS_PORT_LICHEN_RAW) {
+			if (ctx->rx_ctx.len > KISS_RAW_MAX_PAYLOAD) {
+				k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+				ctx->stats.frame_errors++;
+				k_mutex_unlock(&ctx->stats_mutex);
+				LOG_WRN("KISS: oversized raw LICHEN frame (%zu bytes)",
+					ctx->rx_ctx.len);
+				break;
+			}
 			k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 			ctx->stats.rx_data_port1++;
 			k_mutex_unlock(&ctx->stats_mutex);
@@ -424,6 +432,9 @@ static int kiss_tx_frame(struct kiss_transport_ctx *ctx,
 	}
 
 	if (len > KISS_MAX_PAYLOAD) {
+		return -EMSGSIZE;
+	}
+	if (port == KISS_PORT_LICHEN_RAW && len > KISS_RAW_MAX_PAYLOAD) {
 		return -EMSGSIZE;
 	}
 

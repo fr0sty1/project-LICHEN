@@ -45,6 +45,8 @@ pub enum TxError {
     BufferTooSmall,
     /// Forwarding queue full for source — send NACK upstream.
     QueueFull,
+    /// Every link-layer epoch/sequence tuple has been consumed.
+    SequenceExhausted,
 }
 
 impl core::fmt::Display for TxError {
@@ -56,6 +58,7 @@ impl core::fmt::Display for TxError {
             Self::RadioTx => write!(f, "radio TX failed"),
             Self::BufferTooSmall => write!(f, "buffer too small"),
             Self::QueueFull => write!(f, "forwarding queue full"),
+            Self::SequenceExhausted => write!(f, "link-layer sequence exhausted"),
         }
     }
 }
@@ -136,6 +139,7 @@ pub struct Stack<R: Radio> {
     /// - A random value in [128, 255] (if no persistence)
     epoch: u8,
     seqnum: LinkSeqNum,
+    sequence_exhausted: bool,
     message_id: u16,
     /// Forwarding buffer with per-source backpressure (spec appendix-bufferbloat.md).
     forward_buffer: ForwardBuffer,
@@ -166,6 +170,7 @@ impl<R: Radio> Stack<R> {
             node: Node::new(node_id),
             epoch,
             seqnum: LinkSeqNum::new(0),
+            sequence_exhausted: false,
             message_id: 0,
             forward_buffer: ForwardBuffer::new(),
         }
@@ -205,19 +210,22 @@ impl<R: Radio> Stack<R> {
         mid
     }
 
-    /// Get the next sequence number.
-    pub fn next_seqnum(&mut self) -> LinkSeqNum {
-        self.seqnum.fetch_increment()
-    }
+    /// Allocate the next epoch and sequence tuple.
+    pub fn try_next_link_tuple(&mut self) -> Result<(u8, LinkSeqNum), TxError> {
+        if self.sequence_exhausted {
+            return Err(TxError::SequenceExhausted);
+        }
 
-    /// Set the epoch counter (for reboot resilience).
-    ///
-    /// Callers with persisted epoch should call this after construction.
-    /// Without persistence, callers should pass a random value in [128, 255]
-    /// so half-space replay arithmetic treats new frames as "ahead" of stale
-    /// receiver windows.
-    pub fn set_epoch(&mut self, epoch: u8) {
-        self.epoch = epoch;
+        let tuple = (self.epoch, self.seqnum);
+        if self.epoch == u8::MAX && self.seqnum.get() == u16::MAX {
+            self.sequence_exhausted = true;
+        } else if self.seqnum.get() == u16::MAX {
+            self.epoch += 1;
+            self.seqnum = LinkSeqNum::new(0);
+        } else {
+            self.seqnum.fetch_increment();
+        }
+        Ok(tuple)
     }
 
     /// Build and send a CoAP request.
@@ -351,11 +359,11 @@ impl<R: Radio> Stack<R> {
         let l2_data = wrap_schc_payload(&schc[..schc_len], &mut l2_payload)?;
 
         // L2 sign and frame
-        let seqnum = self.next_seqnum();
+        let (epoch, seqnum) = self.try_next_link_tuple()?;
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
             .link
-            .build_frame(self.epoch, seqnum, &[], l2_data, &mut wire)
+            .build_frame(epoch, seqnum, &[], l2_data, &mut wire)
             .map_err(|_| TxError::FrameEncode)?;
 
         // Radio TX
@@ -392,11 +400,11 @@ impl<R: Radio> Stack<R> {
         l2_payload: &[u8],
         dst_addr: &[u8],
     ) -> Result<(), TxError> {
-        let seqnum = self.next_seqnum();
+        let (epoch, seqnum) = self.try_next_link_tuple()?;
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
             .link
-            .build_frame(self.epoch, seqnum, dst_addr, l2_payload, &mut wire)
+            .build_frame(epoch, seqnum, dst_addr, l2_payload, &mut wire)
             .map_err(|_| TxError::FrameEncode)?;
 
         self.radio
@@ -485,11 +493,6 @@ impl<R: Radio> Stack<R> {
     /// Access the underlying radio.
     pub fn radio(&mut self) -> &mut R {
         &mut self.radio
-    }
-
-    /// Access the link layer.
-    pub fn link(&mut self) -> &mut lichen_link::link_layer::LinkLayer {
-        &mut self.link
     }
 
     /// Access the node state.
@@ -586,6 +589,37 @@ mod tests {
     // NOTE: CoAP tests use SecureStack (see secure.rs::secure_stack_oscore_roundtrip).
     // Per spec section 8.7, all CoAP traffic MUST use OSCORE encryption.
     // The plaintext Stack is only for ICMPv6 and diagnostics.
+
+    fn test_stack(epoch: u8) -> Stack<LoopbackRadio> {
+        let identity = Identity::from_seed(Seed::new([0x01; 32]));
+        let (radio, _) = LoopbackRadio::pair();
+        Stack::new(radio, identity, epoch)
+    }
+
+    #[test]
+    fn link_tuple_rollover_advances_epoch() {
+        let mut stack = test_stack(128);
+        stack.seqnum = LinkSeqNum::new(u16::MAX);
+
+        assert_eq!(
+            stack.try_next_link_tuple(),
+            Ok((128, LinkSeqNum::new(u16::MAX)))
+        );
+        assert_eq!(stack.try_next_link_tuple(), Ok((129, LinkSeqNum::new(0))));
+    }
+
+    #[test]
+    fn terminal_link_tuple_is_allocated_once() {
+        let mut stack = test_stack(u8::MAX);
+        stack.seqnum = LinkSeqNum::new(u16::MAX);
+
+        assert_eq!(
+            stack.try_next_link_tuple(),
+            Ok((u8::MAX, LinkSeqNum::new(u16::MAX)))
+        );
+        assert_eq!(stack.try_next_link_tuple(), Err(TxError::SequenceExhausted));
+        assert_eq!(stack.try_next_link_tuple(), Err(TxError::SequenceExhausted));
+    }
 
     /// ICMPv6 ping-pong test using plaintext Stack.
     ///

@@ -44,14 +44,14 @@ Total: 22 bytes
 
 **Link-layer frame:**
 ```
-Length: 39 (1 byte)
-LLSec: 0x20 (signature, no encryption, short addr) (1 byte)
+Length: 76 (0x4C, body bytes after Length)
+LLSec: 0x21 (signature, no encryption, short addr) (1 byte)
 Epoch: 0x01 (1 byte)
 SeqNum: 0x0042 (2 bytes)
 DstAddr: 0x0001 (border router short) (2 bytes)
 Payload: dispatch 0x14 + SCHC packet (22 bytes)
 Signature: (48 bytes, Schnorr e₁₂₈+s)
-Total: 77 bytes
+Total: 77 bytes (Length byte plus 76-byte body)
 ```
 
 **LoRa PHY:**
@@ -70,13 +70,13 @@ CRC: 2 bytes
 | Security (E2E) | 10 | 0* | 2 |
 | Transport + Network | 2 | 16 | - |
 | Routing overhead | 0-6 | 0-7 | 0-64 |
-| Link security | 52 | 0 | 4 |
-| **Total** | **81-87** | **33-40** | **23-87** |
+| Link security | 53 | 0 | 4 |
+| **Total** | **82-88** | **33-40** | **23-87** |
 
 *Meshtastic AES-CTR has no auth overhead; this is a weakness.
 
 Link security breakdown: Length(1) + LLSec(1) + Epoch(1) + SeqNum(2) + Signature(48) = 53 bytes
-(DstAddr counted separately in addressing mode)
+(DstAddr counted separately in addressing mode). Unsigned frames carry no MIC bytes.
 
 ### 13.3. RPL DIO Packet
 

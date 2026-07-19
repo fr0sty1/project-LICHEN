@@ -24,9 +24,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import shutil
 import subprocess
-import tempfile
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
@@ -35,7 +33,7 @@ import pytest
 from lichen.announce.messages import AnnounceMessage
 from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity
-from lichen.link.frame import LichenFrame, AddrMode, MicLength
+from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
 from lichen.radio.sim_client import SimRadio
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
@@ -50,6 +48,7 @@ class MockTransmitter:
     async def transmit_announce(self, data: bytes) -> bool:
         self.last_data = data
         return True
+
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 RUN_CROSS_IMPL = os.environ.get("LICHEN_RUN_CROSS_IMPL") == "1"
@@ -86,11 +85,14 @@ class TestPythonToPythonBaseline:
         # Build a raw payload to transmit (the sim doesn't require valid frames)
         payload = b"hello cross-impl test"
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "cross-impl-test", "tx-node", (0.0, 0.0, 0.0)
-        ) as radio_tx, SimRadio(
-            "127.0.0.1", node_port, "cross-impl-test", "rx-node", (50.0, 0.0, 0.0)
-        ) as radio_rx:
+        async with (
+            SimRadio(
+                "127.0.0.1", node_port, "cross-impl-test", "tx-node", (0.0, 0.0, 0.0)
+            ) as radio_tx,
+            SimRadio(
+                "127.0.0.1", node_port, "cross-impl-test", "rx-node", (50.0, 0.0, 0.0)
+            ) as radio_rx,
+        ):
             # TX
             tx_ok = await radio_tx.transmit(payload)
             assert tx_ok is True
@@ -124,11 +126,14 @@ class TestPythonToPythonBaseline:
         announce = scheduler.build_announce()
         announce_bytes = announce.to_bytes()
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "cross-impl-test", "announce-tx", (0.0, 0.0, 0.0)
-        ) as radio_tx, SimRadio(
-            "127.0.0.1", node_port, "cross-impl-test", "announce-rx", (50.0, 0.0, 0.0)
-        ) as radio_rx:
+        async with (
+            SimRadio(
+                "127.0.0.1", node_port, "cross-impl-test", "announce-tx", (0.0, 0.0, 0.0)
+            ) as radio_tx,
+            SimRadio(
+                "127.0.0.1", node_port, "cross-impl-test", "announce-rx", (50.0, 0.0, 0.0)
+            ) as radio_rx,
+        ):
             # TX
             tx_ok = await radio_tx.transmit(announce_bytes)
             assert tx_ok is True
@@ -158,32 +163,112 @@ class TestPythonToRust:
         vectors_path = PROJECT_ROOT / "test/vectors/link_frame.json"
 
         if not rust_binary.exists():
+            if RUN_CROSS_IMPL:
+                pytest.fail("Rust frame-parser binary not built")
             pytest.skip("Rust frame-parser binary not built (cargo build --release -p lichen-apps)")
 
         if not vectors_path.exists():
+            if RUN_CROSS_IMPL:
+                pytest.fail("Test vectors not found")
             pytest.skip("Test vectors not found")
 
         with open(vectors_path) as f:
             vectors = json.load(f)
 
         for vector in vectors["vectors"]:
+            fields = vector["fields"]
+            dst_addr = bytes.fromhex(fields["dst_addr"])
+            payload = bytes.fromhex(fields["payload"])
+            mic = bytes.fromhex(fields["mic"])
+            assert len(dst_addr) == (0, 2, 8, 0)[fields["addr_mode"]]
+            assert len(mic) == (48 if fields["signature_present"] else 0)
+            llsec = (
+                fields["addr_mode"]
+                | (fields["mic_length"] << 2)
+                | (int(fields["signature_present"]) << 5)
+                | (int(fields["encrypted"]) << 6)
+            )
+            body = (
+                bytes([llsec, fields["epoch"]])
+                + fields["seqnum"].to_bytes(2, "big")
+                + dst_addr
+                + payload
+                + mic
+            )
+            encoded = bytes.fromhex(vector["encoded"])
+            expected_error = vector.get("expect", {}).get("error")
+            if expected_error == "frame_too_large":
+                assert len(encoded) == 256
+                assert encoded[0] == 255
+            else:
+                assert len(body) <= 254
+                assert len(encoded) <= 255
+                assert encoded[0] == len(body)
+                assert encoded[1:] == body
+
+            frame = LichenFrame(
+                epoch=fields["epoch"],
+                seqnum=fields["seqnum"],
+                dst_addr=dst_addr,
+                payload=payload,
+                mic=mic,
+                addr_mode=AddrMode(fields["addr_mode"]),
+                mic_length=MicLength(fields["mic_length"]),
+                signature_present=fields["signature_present"],
+                encrypted=fields["encrypted"],
+            )
+            if expected_error == "encryption_unsupported":
+                python_error = {
+                    "encryption_unsupported": "encrypted frames are unsupported",
+                }[expected_error]
+                with pytest.raises(FrameError) as exc_info:
+                    frame.to_bytes()
+                assert str(exc_info.value) == python_error
+            else:
+                if expected_error is None:
+                    assert frame.to_bytes().hex() == vector["encoded"]
+
             # Parse with Rust
             result = subprocess.run(
                 [str(rust_binary), "--hex", vector["encoded"]],
                 capture_output=True,
                 timeout=5,
             )
-            assert result.returncode == 0, f"Vector '{vector['name']}' parse failed: {result.stderr.decode()}"
+            if expected_error:
+                assert result.returncode == 2, (
+                    f"Vector '{vector['name']}' unexpectedly returned {result.returncode}: "
+                    f"{result.stderr.decode()}"
+                )
+                parsed = json.loads(result.stdout)
+                rust_error = {
+                    "encryption_unsupported": "EncryptionUnsupported",
+                    "frame_too_large": "FrameTooLarge",
+                }[expected_error]
+                assert parsed["error"] == rust_error
+                continue
+
+            assert result.returncode == 0, (
+                f"Vector '{vector['name']}' parse failed: {result.stderr.decode()}"
+            )
 
             parsed = json.loads(result.stdout)
-            fields = vector["fields"]
+            context = f"Vector '{vector['name']}'"
 
             # Verify fields match
-            assert parsed["epoch"] == fields["epoch"], f"Vector '{vector['name']}': epoch mismatch"
-            assert parsed["seqnum"] == fields["seqnum"], f"Vector '{vector['name']}': seqnum mismatch"
-            assert parsed["addr_mode"] == fields["addr_mode"], f"Vector '{vector['name']}': addr_mode mismatch"
-            assert parsed["signature_present"] == fields["signature_present"], f"Vector '{vector['name']}': signature_present mismatch"
-            assert parsed["encrypted"] == fields["encrypted"], f"Vector '{vector['name']}': encrypted mismatch"
+            assert parsed["epoch"] == fields["epoch"], f"{context}: epoch mismatch"
+            assert parsed["seqnum"] == fields["seqnum"], f"{context}: seqnum mismatch"
+            assert parsed["addr_mode"] == fields["addr_mode"], f"{context}: addr_mode mismatch"
+            assert parsed["mic_length"] == fields["mic_length"], f"{context}: mic_length mismatch"
+            assert parsed["signature_present"] == fields["signature_present"], (
+                f"{context}: signature_present mismatch"
+            )
+            assert parsed["encrypted"] == fields["encrypted"], f"{context}: encrypted mismatch"
+            assert parsed["dst_addr"] == fields["dst_addr"], f"{context}: dst_addr mismatch"
+            assert parsed["payload"] == fields["payload"], f"{context}: payload mismatch"
+            assert parsed["mic"] == fields["mic"], f"{context}: mic mismatch"
+            assert parsed["total_len"] == len(bytes.fromhex(vector["encoded"])), (
+                f"{context}: total_len mismatch"
+            )
 
     @pytest.mark.skipif(
         not RUN_CROSS_IMPL,
@@ -200,18 +285,31 @@ class TestPythonToRust:
 
         rust_binary = PROJECT_ROOT / "rust/target/release/frame-parser"
         if not rust_binary.exists():
+            if RUN_CROSS_IMPL:
+                pytest.fail("Rust frame-parser binary not built")
             pytest.skip("Rust frame-parser binary not built")
 
-        # Build frame using test vector data
-        frame_hex = "0b0001000261626301020304"  # broadcast_min
+        frame = LichenFrame(
+            epoch=1,
+            seqnum=2,
+            dst_addr=b"",
+            payload=b"abc",
+            mic=b"",
+            addr_mode=AddrMode.NONE,
+            mic_length=MicLength.BITS32,
+        )
+        frame_bytes = frame.to_bytes()
+        assert frame_bytes.hex() == "0700010002616263"
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "cross-impl-test", "tx-node", (0.0, 0.0, 0.0)
-        ) as radio_tx, SimRadio(
-            "127.0.0.1", node_port, "cross-impl-test", "rx-node", (50.0, 0.0, 0.0)
-        ) as radio_rx:
+        async with (
+            SimRadio(
+                "127.0.0.1", node_port, "cross-impl-test", "tx-node", (0.0, 0.0, 0.0)
+            ) as radio_tx,
+            SimRadio(
+                "127.0.0.1", node_port, "cross-impl-test", "rx-node", (50.0, 0.0, 0.0)
+            ) as radio_rx,
+        ):
             # TX
-            frame_bytes = bytes.fromhex(frame_hex)
             tx_ok = await radio_tx.transmit(frame_bytes)
             assert tx_ok is True
 
@@ -219,6 +317,7 @@ class TestPythonToRust:
             result = await radio_rx.receive(1000)
             assert result is not None
             rx_data, _, _ = result
+            assert rx_data == frame_bytes
 
             # Parse received data with Rust
             rx_hex = rx_data.hex()
@@ -232,7 +331,14 @@ class TestPythonToRust:
             parsed = json.loads(proc.stdout)
             assert parsed["epoch"] == 1
             assert parsed["seqnum"] == 2
+            assert parsed["addr_mode"] == 0
+            assert parsed["mic_length"] == 0
+            assert parsed["signature_present"] is False
+            assert parsed["encrypted"] is False
+            assert parsed["dst_addr"] == ""
             assert parsed["payload"] == "616263"  # "abc"
+            assert parsed["mic"] == ""
+            assert parsed["total_len"] == len(frame_bytes)
 
 
 @pytest.mark.skipif(
@@ -263,9 +369,7 @@ class TestMultiNodeMesh:
         radios = []
 
         for i, pos in enumerate(positions):
-            radio = SimRadio(
-                "127.0.0.1", node_port, "cross-impl-test", f"node-{i}", pos
-            )
+            radio = SimRadio("127.0.0.1", node_port, "cross-impl-test", f"node-{i}", pos)
             await radio.connect()
             radios.append(radio)
 
@@ -317,13 +421,17 @@ class TestMultiNodeMesh:
         node_port = server.get_node_server_port("cross-impl-test")
         assert node_port is not None
 
-        async with SimRadio(
-            "127.0.0.1", node_port, "cross-impl-test", "node-a", (0.0, 0.0, 0.0)
-        ) as radio_a, SimRadio(
-            "127.0.0.1", node_port, "cross-impl-test", "node-b", (100.0, 0.0, 0.0)
-        ) as radio_b, SimRadio(
-            "127.0.0.1", node_port, "cross-impl-test", "node-c", (200.0, 0.0, 0.0)
-        ) as radio_c:
+        async with (
+            SimRadio(
+                "127.0.0.1", node_port, "cross-impl-test", "node-a", (0.0, 0.0, 0.0)
+            ) as radio_a,
+            SimRadio(
+                "127.0.0.1", node_port, "cross-impl-test", "node-b", (100.0, 0.0, 0.0)
+            ) as radio_b,
+            SimRadio(
+                "127.0.0.1", node_port, "cross-impl-test", "node-c", (200.0, 0.0, 0.0)
+            ) as radio_c,
+        ):
             # A and C both transmit different payloads
             payload_a = b"from-a"
             payload_b = b"from-c"

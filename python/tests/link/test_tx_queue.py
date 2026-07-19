@@ -298,6 +298,27 @@ class TestBackpressure:
         with pytest.raises(QueueFullError):
             q.push(b"three", priority=Priority.BULK)
 
+    def test_preemptible_admission_does_not_mutate_queue(self):
+        q = TxQueue(capacity=1)
+        q.push(b"bulk", priority=Priority.BULK)
+
+        q.ensure_can_push(Priority.ROUTING)
+
+        assert len(q) == 1
+        assert q.stats.packets_dropped_preempt == 0
+        assert q.pop() == b"bulk"
+
+    def test_admission_does_not_remove_stale_entries(self):
+        clock = FakeClock(0)
+        q = TxQueue(capacity=1, clock=clock)
+        q.push(b"stale", deadline_ms=1)
+        clock.advance(2)
+
+        q.ensure_can_push(Priority.BULK)
+
+        assert len(q) == 1
+        assert q.stats.packets_dropped_deadline == 0
+
     def test_queue_full_lower_priority(self):
         """QueueFullError raised when full and lower priority."""
         q = TxQueue(capacity=2)

@@ -197,8 +197,8 @@ class TxQueue:
         Raises:
             QueueFullError: If queue is full and preemption not possible.
         """
-        # Expire stale packets first - might make room
         self.expire_stale()
+        self.ensure_can_push(priority)
 
         now = self._clock()
         if deadline_ms is None:
@@ -227,29 +227,38 @@ class TxQueue:
         # Find lowest-priority (highest numeric value) packet
         lowest = max(self._entries, key=lambda e: e.priority)
 
+        # ensure_can_push() established that a full queue is preemptible.
+        self._entries.remove(lowest)
+        self.stats.packets_dropped_preempt += 1
+        logger.debug(
+            "TX queue preempt: evicted priority=%s for priority=%s",
+            Priority(lowest.priority).name,
+            priority.name,
+        )
+        self._insert_sorted(entry)
+        self.stats.packets_queued += 1
+
+    def ensure_can_push(self, priority: Priority) -> None:
+        """Reject a non-preemptible full queue without mutating live entries."""
+        now = self._clock()
+        active_entries = [entry for entry in self._entries if entry.deadline_ms > now]
+        if len(active_entries) < self._capacity:
+            return
+
+        lowest = max(active_entries, key=lambda entry: entry.priority)
         if priority < lowest.priority:
-            # New packet is higher priority - preempt
-            self._entries.remove(lowest)
-            self.stats.packets_dropped_preempt += 1
-            logger.debug(
-                "TX queue preempt: evicted priority=%s for priority=%s",
-                Priority(lowest.priority).name,
-                priority.name,
-            )
-            self._insert_sorted(entry)
-            self.stats.packets_queued += 1
-        else:
-            # Cannot preempt - raise backpressure error
-            self.stats.packets_dropped_full += 1
-            logger.warning(
-                "TX queue full: rejected priority=%s (lowest queued=%s)",
-                priority.name,
-                Priority(lowest.priority).name,
-            )
-            raise QueueFullError(
-                f"TX queue full ({self._capacity} packets), "
-                f"cannot preempt priority {Priority(lowest.priority).name}"
-            )
+            return
+
+        self.stats.packets_dropped_full += 1
+        logger.warning(
+            "TX queue full: rejected priority=%s (lowest queued=%s)",
+            priority.name,
+            Priority(lowest.priority).name,
+        )
+        raise QueueFullError(
+            f"TX queue full ({self._capacity} packets), "
+            f"cannot preempt priority {Priority(lowest.priority).name}"
+        )
 
     def pop(self) -> bytes | None:
         """Remove and return the highest-priority packet.

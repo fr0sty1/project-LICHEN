@@ -87,6 +87,7 @@
         "description": {"type": "string"},
         "fields": {
           "type": "object",
+          "additionalProperties": false,
           "required": ["epoch", "seqnum", "dst_addr", "payload", "mic",
                        "addr_mode", "mic_length", "signature_present", "encrypted"],
           "properties": {
@@ -101,9 +102,91 @@
             "encrypted": {"type": "boolean"}
           }
         },
-        "encoded": {"$ref": "#/definitions/hex",
-          "description": "On-air frame bytes (length-prefixed)."}
-      }
+        "encoded": {
+          "$ref": "#/definitions/hex",
+          "description": "On-air frame bytes, including malformed negative test inputs."
+        },
+        "expect": {
+          "type": "object",
+          "required": ["error"],
+          "additionalProperties": false,
+          "properties": {"error": {"type": "string"}}
+        },
+        "crypto": {
+          "type": "object",
+          "required": ["seed", "private_key", "public_key", "preimage", "signature", "provenance"],
+          "additionalProperties": false,
+          "properties": {
+            "seed": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+            "private_key": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+            "public_key": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+            "preimage": {"$ref": "#/definitions/hex"},
+            "signature": {"type": "string", "pattern": "^[0-9a-fA-F]{96}$"},
+            "provenance": {"type": "string"}
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["expect"],
+            "properties": {
+              "expect": {
+                "required": ["error"],
+                "properties": {"error": {"const": "frame_too_large"}}
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "encoded": {"pattern": "^ff(?:[0-9a-f]{2}){255}$"}
+            }
+          },
+          "else": {
+            "properties": {
+              "encoded": {"maxLength": 510, "pattern": "^(?!ff)"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"fields": {"properties": {"addr_mode": {"enum": [0, 3]}}}}},
+          "then": {"properties": {"fields": {"properties": {"dst_addr": {"pattern": "^$"}}}}}
+        },
+        {
+          "if": {"properties": {"fields": {"properties": {"addr_mode": {"const": 1}}}}},
+          "then": {"properties": {"fields": {"properties": {"dst_addr": {"pattern": "^[0-9a-fA-F]{4}$"}}}}}
+        },
+        {
+          "if": {"properties": {"fields": {"properties": {"addr_mode": {"const": 2}}}}},
+          "then": {"properties": {"fields": {"properties": {"dst_addr": {"pattern": "^[0-9a-fA-F]{16}$"}}}}}
+        },
+        {
+          "if": {"properties": {"fields": {"properties": {"signature_present": {"const": true}}}}},
+          "then": {"properties": {"fields": {"properties": {"mic": {"pattern": "^[0-9a-fA-F]{96}$"}}}}}
+        },
+        {
+          "if": {"properties": {"fields": {"properties": {"signature_present": {"const": false}}}}},
+          "then": {"properties": {"fields": {"properties": {"mic": {"pattern": "^$"}}}}}
+        },
+        {
+          "if": {"required": ["crypto"]},
+          "then": {
+            "properties": {
+              "fields": {
+                "properties": {
+                  "signature_present": {"const": true},
+                  "encrypted": {"const": false}
+                }
+              },
+              "crypto": {
+                "properties": {
+                  "preimage": {"pattern": "^(?:[0-9a-fA-F]{2}){5,207}$"}
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "meshtastic_app_compat_vector": {
       "type": "object",

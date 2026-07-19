@@ -50,18 +50,24 @@ Nodes SHOULD implement ADR to optimize SF/TX power based on link quality:
 +--------+--------+-------+--------+----------+---------+--------+
 | Length | LLSec  | Epoch | SeqNum | Dst Addr | Payload | MIC    |
 +--------+--------+-------+--------+----------+---------+--------+
-   1B       1B       1B      2B       2-8B      var      4-8B
+   1B       1B       1B      2B       0/2/8B    var      0/48B
 ```
 
 | Field | Size | Description |
 |-------|------|-------------|
-| Length | 1 byte | Total frame length (excl. Length field) |
+| Length | 1 byte | Frame body length (excludes this field), 4-254 bytes |
 | LLSec | 1 byte | Link-layer security flags |
 | Epoch | 1 byte | Epoch counter (see 4.4) |
 | SeqNum | 2 bytes | Sequence number (replay protection) |
-| Dst Addr | 2-8 bytes | Compressed destination address |
+| Dst Addr | 0/2/8 bytes | Destination address; 0 bytes for broadcast or elided mode |
 | Payload | Variable | Authenticated inner payload (dispatch byte + body) |
-| MIC | 4-8 bytes | Message Integrity Code |
+| MIC | 0 or 48 bytes | No bytes when unsigned; full Schnorr-48 signature when signed |
+
+The complete frame, including the Length field, MUST NOT exceed 255 bytes.
+Therefore, Length MUST NOT exceed 254. Receivers MUST reject frames with
+Length 255 as too large and MUST reject frames whose Length does not equal the
+received frame size minus one. The maximum unsigned broadcast payload is 250 bytes:
+254 body bytes minus the 4-byte LLSec, Epoch, and SeqNum header.
 
 The first byte of the authenticated inner payload is a dispatch value:
 
@@ -73,23 +79,23 @@ The first byte of the authenticated inner payload is a dispatch value:
 Receivers MUST NOT infer the payload namespace from the first body byte. This
 is required because SCHC rule `0x01` is global CoAP and LICHEN routing
 announce type `0x01` would otherwise collide. The dispatch byte is covered by
-the link signature and MIC because it is part of the frame payload.
+the link signature in the MIC field because it is part of the frame payload.
 
 ### 4.2. Link-Layer Security (LLSec) Byte
 
 ```
   7   6   5   4   3   2   1   0
 +---+---+---+---+---+---+---+---+
-| E | S |  MIC Len  | Addr Mode |
+| R | E | S |  MIC Len  | Addr Mode |
 +---+---+---+---+---+---+---+---+
 ```
 
 | Field | Bits | Values |
 |-------|------|--------|
 | Addr Mode | 0-1 | 0=none, 1=16-bit, 2=64-bit, 3=elided |
-| MIC Length | 2-4 | 0=32-bit, 1=64-bit, 2=reserved |
-| Signature | 5 | 1=Ed25519 signature present |
-| Encrypted | 6 | 1=payload encrypted (AES-CCM) |
+| MIC Length | 2-4 | 0 or 1=compatibility selector; 2-7=reserved |
+| Signature | 5 | 1=48-byte Schnorr signature present; 0=no MIC |
+| Encrypted | 6 | 1=encrypted frame unsupported; receivers MUST reject |
 | Reserved | 7 | Must be 0 |
 
 ### 4.3. Addressing Modes
@@ -99,26 +105,35 @@ the link signature and MIC because it is part of the frame payload.
 | None (0) | 0B | Broadcast |
 | Short (1) | 2B | 16-bit short address (assigned by coordinator) |
 | Extended (2) | 8B | EUI-64 derived from hardware |
-| Elided (3) | 0B | Derived from IPv6 destination |
+| Elided (3) | 0B | Destination derived from context |
 
 ### 4.4. Epoch and Sequence Number
 
-Replay protection uses a 24-bit logical counter: 8-bit epoch + 16-bit seqnum.
+Replay protection uses EPO and SeqNum as one finite 24-bit unsigned counter:
+`counter = (EPO << 16) | SeqNum`, in the range 0x000000 through 0xFFFFFF.
+Counter comparisons use ordinary unsigned integer ordering, not serial-number
+arithmetic or modulo arithmetic.
 
 **Epoch (8 bits):**
 
-The epoch counter increments on:
-1. **SeqNum wrap:** When SeqNum rolls over from 0xFFFF to 0x0000
-2. **Reboot:** Epoch MUST advance on every power cycle or reset
-3. **Manual reset:** Operator-initiated counter reset
+The epoch counter increments when SeqNum reaches 0xFFFF and another tuple is
+needed. SeqNum then restarts at zero in the new epoch. EPO MUST NOT wrap from
+0xFF to 0x00. After using `(EPO=0xFF, SeqNum=0xFFFF)`, the sender MUST rotate
+its link key before transmitting another authenticated frame.
+
+On reboot or manual reset, a sender MUST resume above its last used counter
+under the current key. It MUST NOT reset or wrap either component under that
+key.
 
 **Epoch Initialization:**
 
 When no persisted epoch is available (cold boot without flash, or flash read
 failure), implementations MUST initialize epoch to a random value uniformly
-distributed in [128, 255]. This ensures the 24-bit counter starts in the upper
-half of the counter space (8M-16M), so half-space arithmetic treats it as
-"ahead" of any counter value peers may have cached in the lower half.
+distributed in [128, 255]. This reduces the probability of reusing a tuple
+when no prior counter state exists, but does not prove freshness. A receiver
+with replay state for the same key MUST apply the normal numeric acceptance
+rules and can reject the randomized value. If the sender cannot establish a
+counter above its last use, it MUST rotate its link key before transmitting.
 
 > **Security Note:** Some platforms (notably ESP32) have weak hardware RNG output
 > before the radio subsystem initializes. On such platforms without epoch
@@ -157,16 +172,24 @@ Sender State Entry:
 | Epoch < LastEpoch | Reject (replay) |
 | Epoch == LastEpoch, SeqNum ≤ window floor | Reject (replay) |
 
+A lower epoch is always stale. Within the current epoch, a decrease from a
+high SeqNum to a low SeqNum is evaluated only as an old or out-of-window
+packet; it MUST NOT be interpreted as sequence-number wrap.
+
 **Wrap Behavior:**
 
-At ~1 packet/second, 16-bit seqnum wraps every ~18 hours. The epoch
-increment ensures the 24-bit logical counter advances monotonically.
-At maximum traffic (10 pkt/sec), epoch wraps in ~7.5 years--acceptable.
+At ~1 packet/second, SeqNum reaches 0xFFFF every ~18 hours. Incrementing EPO
+continues the finite 24-bit counter without wrapping SeqNum in place. The
+terminal tuple `(0xFF, 0xFFFF)` exhausts the counter for that key and requires
+key rotation.
 
 **Reboot Resilience:**
 
-On reboot, the node increments epoch and starts seqnum at 0. Receivers
-see epoch advance and accept packets immediately. No time sync required.
+With persisted state, a rebooted node resumes at a greater unused tuple, for
+example by incrementing EPO and starting SeqNum at zero. Without persisted
+state, random initialization does not guarantee acceptance by receivers that
+retain replay state; key rotation is required when freshness cannot otherwise
+be established. No time synchronization is required.
 
 ### 4.5. Short Address Assignment
 

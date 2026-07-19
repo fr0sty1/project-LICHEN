@@ -6,8 +6,6 @@
 menuconfig LICHEN_LINK
 	bool "LICHEN link layer"
 	depends on LICHEN
-	select CRC
-	select LICHEN_CRYPTO_AES_CCM
 	select LICHEN_SCHC
 	select TINYCRYPT_SHA256
 	help
@@ -18,8 +16,8 @@ menuconfig LICHEN_LINK
 if LICHEN_LINK
 
 config LICHEN_LINK_SCHNORR
-	bool "Schnorr-48 link signatures"
-	default y
+	def_bool y
+	select LICHEN_CRYPTO_MONOCYPHER
 	help
 	  Enable 48-byte Schnorr signatures per draft-lichen-schnorr-00.
 	  This provides sender authentication for every link-layer frame.
@@ -30,8 +28,8 @@ config LICHEN_LINK_MAX_NEIGHBORS
 	range 4 64
 	help
 	  Maximum number of neighbors to track replay state for.
-	  Each neighbor uses approximately 20 bytes of RAM (EUI-64 +
-	  64-bit replay window + metadata).
+	  Each neighbor uses approximately 48 bytes of RAM (public key +
+	  32-bit replay window + metadata).
 
 config LICHEN_LINK_LOG_LEVEL
 	int "Link layer log level"
@@ -40,38 +38,5 @@ config LICHEN_LINK_LOG_LEVEL
 	help
 	  Log level for LICHEN link layer:
 	  0=off, 1=error, 2=warning, 3=info, 4=debug
-
-config LICHEN_LINK_MIC_SKIP_VERIFY
-	bool "Skip MIC verification (DANGEROUS)"
-	default n
-	help
-	  DANGER: Disables MIC verification, allowing forged frames to be
-	  accepted. This option exists ONLY for testing environments where
-	  link-layer keys are not yet provisioned.
-
-	  NEVER enable this in production — it completely disables frame
-	  authentication and allows any attacker to inject packets.
-
-	  When enabled, a warning is logged for every received frame to
-	  make the insecure state obvious.
-
-config LICHEN_LINK_INSECURE_CRC32_MIC
-	bool "Allow CRC32 MIC fallback (INSECURE)"
-	default n
-	help
-	  DANGER: Allows CRC32 to be used as the MIC when no link key is
-	  configured. CRC32 provides error detection ONLY — it provides NO
-	  cryptographic authentication. Any attacker can compute valid CRC32
-	  values and forge frames.
-
-	  This option exists ONLY for:
-	  - Development and testing
-	  - Networks with higher-layer authentication (e.g., OSCORE)
-
-	  For production deployments requiring link-layer security, configure
-	  a link key to enable AES-CCM-64 MIC instead of enabling this option.
-
-	  When enabled, a compile-time warning is emitted to ensure the
-	  insecure configuration is visible in build logs.
 
 endif # LICHEN_LINK

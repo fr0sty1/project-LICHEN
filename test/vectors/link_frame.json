@@ -1,22 +1,22 @@
 {
   "format_version": 1,
-  "description": "LICHEN link-layer frame vectors (spec section 4). 'fields' are the frame inputs; 'encoded' is LichenFrame(**fields).to_bytes().",
+  "description": "LICHEN link-layer frame vectors (spec section 4). Complete frames are at most 255 bytes (LENGTH at most 254). 'fields' are the frame inputs; 'encoded' is LichenFrame(**fields).to_bytes().",
   "vectors": [
     {
       "name": "broadcast_min",
-      "description": "Broadcast, no address, 32-bit MIC",
+      "description": "Broadcast, no address, unsigned",
       "fields": {
         "epoch": 1,
         "seqnum": 2,
         "dst_addr": "",
         "payload": "616263",
-        "mic": "01020304",
+        "mic": "",
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": false,
         "encrypted": false
       },
-      "encoded": "0b0001000261626301020304"
+      "encoded": "0700010002616263"
     },
     {
       "name": "short_addr",
@@ -26,45 +26,142 @@
         "seqnum": 8240,
         "dst_addr": "abcd",
         "payload": "6869",
-        "mic": "00000000",
+        "mic": "",
         "addr_mode": 1,
         "mic_length": 0,
         "signature_present": false,
         "encrypted": false
       },
-      "encoded": "0c01102030abcd686900000000"
+      "encoded": "0801102030abcd6869"
     },
     {
-      "name": "extended_addr_mic64",
-      "description": "64-bit address, 64-bit MIC",
+      "name": "extended_addr_selector1",
+      "description": "64-bit address, compatibility MIC selector 1",
       "fields": {
         "epoch": 255,
         "seqnum": 65535,
         "dst_addr": "0001020304050607",
         "payload": "64617461",
-        "mic": "0001020304050607",
+        "mic": "",
         "addr_mode": 2,
         "mic_length": 1,
         "signature_present": false,
         "encrypted": false
       },
-      "encoded": "1806ffffff0001020304050607646174610001020304050607"
+      "encoded": "1006ffffff000102030405060764617461"
     },
     {
-      "name": "signed_encrypted",
-      "description": "Signature + encrypted flags set",
+      "name": "elided_addr",
+      "description": "Destination address derived from the inner IPv6 packet",
+      "fields": {
+        "epoch": 2,
+        "seqnum": 3,
+        "dst_addr": "",
+        "payload": "656c69646564",
+        "mic": "",
+        "addr_mode": 3,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false
+      },
+      "encoded": "0a03020003656c69646564"
+    },
+    {
+      "name": "max_unsigned_broadcast",
+      "description": "Maximum 255-byte total frame",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 0,
+        "dst_addr": "",
+        "payload": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false
+      },
+      "encoded": "fe00000000aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "name": "unsigned_encrypted",
+      "description": "Unsupported encrypted unsigned frame",
       "fields": {
         "epoch": 3,
         "seqnum": 4,
         "dst_addr": "",
         "payload": "78",
-        "mic": "00000000",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": true
+      },
+      "encoded": "054003000478",
+      "expect": {
+        "error": "encryption_unsupported"
+      }
+    },
+    {
+      "name": "signed_encrypted",
+      "description": "Unsupported signature + encrypted combination",
+      "fields": {
+        "epoch": 3,
+        "seqnum": 4,
+        "dst_addr": "",
+        "payload": "78",
+        "mic": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
         "addr_mode": 0,
         "mic_length": 0,
         "signature_present": true,
         "encrypted": true
       },
-      "encoded": "09600300047800000000"
+      "encoded": "356003000478000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "expect": {
+        "error": "encryption_unsupported"
+      }
+    },
+    {
+      "name": "length_255_frame_too_large",
+      "description": "LENGTH 255 would require a forbidden 256-byte frame",
+      "fields": {
+        "epoch": 0,
+        "seqnum": 0,
+        "dst_addr": "",
+        "payload": "",
+        "mic": "",
+        "addr_mode": 0,
+        "mic_length": 0,
+        "signature_present": false,
+        "encrypted": false
+      },
+      "encoded": "ff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "expect": {
+        "error": "frame_too_large"
+      }
+    },
+    {
+      "name": "signed_plaintext_oracle",
+      "description": "Deterministic Schnorr-48 signed frame cross-language oracle",
+      "fields": {
+        "epoch": 18,
+        "seqnum": 13398,
+        "dst_addr": "beef",
+        "payload": "147369676e6564",
+        "mic": "bc6fe764bf7f37be5152ad40a8d2dcc2b06cf4da946e1690d3398874a5686dcca3ace783caf4d3950699082eea0f5b09",
+        "addr_mode": 1,
+        "mic_length": 0,
+        "signature_present": true,
+        "encrypted": false
+      },
+      "encoded": "3d21123456beef147369676e6564bc6fe764bf7f37be5152ad40a8d2dcc2b06cf4da946e1690d3398874a5686dcca3ace783caf4d3950699082eea0f5b09",
+      "crypto": {
+        "seed": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+        "private_key": "3894eea49c580aef816935762be049559d6d1440dede12e6a125f1841fff8e6f",
+        "public_key": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+        "preimage": "3d21123456beef147369676e6564",
+        "signature": "bc6fe764bf7f37be5152ad40a8d2dcc2b06cf4da946e1690d3398874a5686dcca3ace783caf4d3950699082eea0f5b09",
+        "provenance": "Fixed Python vector, independently reproduced by Rust and C tests"
+      }
     }
   ]
 }

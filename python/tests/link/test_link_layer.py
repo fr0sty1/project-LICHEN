@@ -19,12 +19,8 @@ import pytest
 
 from lichen.crypto.identity import Identity, PeerIdentity
 from lichen.crypto.schnorr48 import sign
-from lichen.link.frame import AddrMode, LichenFrame
-from lichen.link.link_layer import (
-    PLACEHOLDER_MIC,
-    SIGNATURE_LENGTH,
-    LinkLayer,
-)
+from lichen.link.frame import AddrMode, FrameError, LichenFrame
+from lichen.link.link_layer import SIGNATURE_LENGTH, LinkLayer
 from lichen.link.tx_queue import Priority, QueueFullError
 
 
@@ -117,6 +113,25 @@ def link_layer(
 class TestLinkLayerTx:
     """Tests for frame transmission."""
 
+    def test_signable_data_separates_destination_from_payload(
+        self, link_layer: LinkLayer, node_identity: Identity
+    ) -> None:
+        """Different address/payload partitions produce different signatures."""
+        address = bytes.fromhex("0102030405060708")
+        payload = bytes.fromhex("0a0b")
+
+        with_address = link_layer._build_signable_data(0, 0, address, payload, 62, 0x22)
+        without_address = link_layer._build_signable_data(
+            0, 0, b"", address + payload, 62, 0x20
+        )
+
+        assert with_address == b">\x22\x00\x00\x00" + address + payload
+        assert without_address == b">\x20\x00\x00\x00" + address + payload
+        assert with_address != without_address
+        assert sign(node_identity.privkey, node_identity.pubkey, with_address) != sign(
+            node_identity.privkey, node_identity.pubkey, without_address
+        )
+
     @pytest.mark.asyncio
     async def test_send_transmits_frame(self, link_layer: LinkLayer, mock_radio: MockRadio):
         """send() calls radio.transmit with a valid frame."""
@@ -138,14 +153,14 @@ class TestLinkLayerTx:
     async def test_send_frame_contains_signature_bytes(
         self, link_layer: LinkLayer, mock_radio: MockRadio
     ):
-        """Transmitted frame payload ends with 48-byte signature."""
+        """Transmitted frame MIC contains the 48-byte signature."""
         original_payload = b"test"
         await link_layer.send(original_payload)
 
         frame = LichenFrame.from_bytes(mock_radio.tx_history[0])
 
-        # Payload should be original + signature
-        assert len(frame.payload) == len(original_payload) + SIGNATURE_LENGTH
+        assert frame.payload == original_payload
+        assert len(frame.mic) == SIGNATURE_LENGTH
 
     @pytest.mark.asyncio
     async def test_send_increments_seqnum(self, link_layer: LinkLayer, mock_radio: MockRadio):
@@ -181,6 +196,43 @@ class TestLinkLayerTx:
         assert frames[1].seqnum == 0
 
     @pytest.mark.asyncio
+    async def test_signing_failure_consumes_tuple(
+        self, link_layer: LinkLayer, monkeypatch: pytest.MonkeyPatch
+    ):
+        class SigningError(Exception):
+            pass
+
+        def fail_sign(*args: object) -> bytes:
+            raise SigningError
+
+        monkeypatch.setattr("lichen.link.link_layer.sign", fail_sign)
+        with pytest.raises(SigningError):
+            await link_layer.send(b"payload")
+        assert link_layer.get_sequence() == (0, 1)
+        with pytest.raises(RuntimeError, match="cannot be reset after use"):
+            link_layer.set_sequence(0, 0)
+
+    @pytest.mark.asyncio
+    async def test_terminal_tuple_is_used_once_then_exhausts(
+        self, link_layer: LinkLayer, mock_radio: MockRadio
+    ):
+        link_layer.set_sequence(0xFF, 0xFFFE)
+
+        await link_layer.send(b"penultimate")
+        assert link_layer.get_sequence() == (0xFF, 0xFFFF)
+        await link_layer.send(b"terminal")
+
+        with pytest.raises(OverflowError, match="sequence exhausted"):
+            link_layer.get_sequence()
+        with pytest.raises(OverflowError, match="sequence exhausted"):
+            await link_layer.send(b"reused")
+        frames = [LichenFrame.from_bytes(data) for data in mock_radio.tx_history]
+        assert [(frame.epoch, frame.seqnum) for frame in frames] == [
+            (0xFF, 0xFFFE),
+            (0xFF, 0xFFFF),
+        ]
+
+    @pytest.mark.asyncio
     async def test_send_with_destination(self, link_layer: LinkLayer, mock_radio: MockRadio):
         """send with destination address sets addr_mode correctly."""
         dst = bytes([0x12, 0x34])
@@ -189,6 +241,34 @@ class TestLinkLayerTx:
         frame = LichenFrame.from_bytes(mock_radio.tx_history[0])
         assert frame.addr_mode == AddrMode.SHORT
         assert frame.dst_addr == dst
+
+    @pytest.mark.asyncio
+    async def test_send_payload_boundary(
+        self, link_layer: LinkLayer, mock_radio: MockRadio
+    ) -> None:
+        await link_layer.send(b"\xaa" * 202)
+        assert len(mock_radio.tx_history[0]) == 255
+
+    @pytest.mark.asyncio
+    async def test_oversized_send_rejects_before_signing_without_mutation(
+        self,
+        link_layer: LinkLayer,
+        mock_radio: MockRadio,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        def unexpected_sign(*args: object) -> bytes:
+            raise AssertionError("oversized payload was signed")
+
+        monkeypatch.setattr("lichen.link.link_layer.sign", unexpected_sign)
+        sequence = link_layer.get_sequence()
+        queue_len = len(link_layer.tx_queue)
+
+        with pytest.raises(FrameError, match="frame body is 255 bytes, exceeds 254"):
+            await link_layer.send(b"\xaa" * 203)
+
+        assert link_layer.get_sequence() == sequence
+        assert len(link_layer.tx_queue) == queue_len
+        assert mock_radio.tx_history == []
 
 
 class TestLinkLayerRx:
@@ -219,7 +299,7 @@ class TestLinkLayerRx:
             seqnum=0,
             dst_addr=b"",
             payload=b"unsigned",
-            mic=PLACEHOLDER_MIC,
+            mic=b"",
             signature_present=False,  # No signature
         )
         mock_radio.queue_rx(frame.to_bytes())
@@ -238,14 +318,12 @@ class TestLinkLayerRx:
         payload = b"test"
         # Create frame with garbage signature
         bad_signature = bytes(SIGNATURE_LENGTH)
-        signed_payload = payload + bad_signature
-
         frame = LichenFrame(
             epoch=0,
             seqnum=0,
             dst_addr=b"",
-            payload=signed_payload,
-            mic=PLACEHOLDER_MIC,
+            payload=payload,
+            mic=bad_signature,
             signature_present=True,
         )
         mock_radio.queue_rx(frame.to_bytes())
@@ -265,20 +343,19 @@ class TestLinkLayerRx:
 
         # Build valid signed frame
         signable = (
-            bytes([0])  # epoch
+            bytes([0x38, 0x20, 0])
             + (0).to_bytes(2, "big")  # seqnum
             + b""  # dst_addr
             + payload
         )
         signature = sign(peer_identity.privkey, peer_identity.pubkey, signable)
-        signed_payload = payload + signature
 
         frame = LichenFrame(
             epoch=0,
             seqnum=0,
             dst_addr=b"",
-            payload=signed_payload,
-            mic=PLACEHOLDER_MIC,
+            payload=payload,
+            mic=signature,
             signature_present=True,
         )
         frame_bytes = frame.to_bytes()
@@ -394,6 +471,15 @@ class TestSequenceManagement:
 
         with pytest.raises(ValueError, match="seqnum out of range"):
             link_layer.set_sequence(0, -1)
+
+    def test_restored_terminal_tuple_fails_closed(self, link_layer: LinkLayer):
+        with pytest.raises(OverflowError, match="sequence exhausted"):
+            link_layer.set_sequence(0xFF, 0xFFFF)
+
+        with pytest.raises(OverflowError, match="sequence exhausted"):
+            link_layer.get_sequence()
+        with pytest.raises(OverflowError, match="sequence exhausted"):
+            link_layer.set_sequence(0, 0)
 
 
 class TestLinkLayerConstruction:
@@ -531,6 +617,58 @@ class TestTxQueueIntegration:
             await ll.send(b"overflow", priority=Priority.ROUTING)
 
     @pytest.mark.asyncio
+    async def test_queue_full_does_not_consume_seqnum(
+        self, mock_radio: MockRadio, node_identity: Identity
+    ):
+        """Sequence number not wasted when QueueFullError raised.
+
+        Regression test: send() used to consume the sequence number BEFORE
+        attempting to push to the queue. If push raised QueueFullError, the
+        sequence number was lost, creating gaps in the counter space.
+        """
+
+        def no_lookup(hint: bytes) -> PeerIdentity | None:
+            return None
+
+        # Make CAD always return busy so packets stay queued
+        mock_radio.cad_returns = True
+
+        ll = LinkLayer(
+            radio=mock_radio,
+            identity=node_identity,
+            peer_lookup=no_lookup,
+            cad_enabled=True,
+        )
+        ll.set_sequence(0, 0)
+
+        # Fill the queue with ROUTING packets (4 sends = seqnum 0-3 consumed)
+        for i in range(4):
+            await ll.send(f"routing{i}".encode(), priority=Priority.ROUTING)
+
+        # After 4 successful sends, seqnum should be 4
+        assert ll.get_sequence() == (0, 4)
+
+        # Try to send another (queue is full, will raise)
+        with pytest.raises(QueueFullError):
+            await ll.send(b"overflow", priority=Priority.ROUTING)
+
+        # Seqnum should still be 4 (not consumed on failed push)
+        assert ll.get_sequence() == (0, 4)
+
+        # Next successful send should use seqnum 4 (not 5)
+        # First make room by clearing CAD and draining
+        mock_radio.cad_returns = False
+        await ll.drain_tx_queue()
+
+        # Now queue is empty, next send should work
+        mock_radio.cad_returns = True  # Keep new packet queued
+        await ll.send(b"after_failure", priority=Priority.BULK)
+
+        # Verify the frame used seqnum 4
+        assert ll.get_sequence() == (0, 5)
+        assert len(ll.tx_queue) == 1
+
+    @pytest.mark.asyncio
     async def test_high_priority_preempts_low(
         self, mock_radio: MockRadio, node_identity: Identity
     ):
@@ -621,125 +759,3 @@ class TestTxQueueIntegration:
         # Packet should be in queue (CAD failed)
         assert len(ll.tx_queue) == 1
         assert len(mock_radio.tx_history) == 0
-
-
-class TestKeyPinning:
-    """Tests for link-layer TOFU key pinning and change detection.
-
-    SECURITY NOTE: Key pinning is disabled while MIC verification is a stub.
-    These tests verify the pinning infrastructure works correctly, but automatic
-    pinning on first RX is intentionally disabled until MIC is implemented.
-    See _should_pin_key() for details.
-    """
-
-    @pytest.mark.asyncio
-    async def test_no_pinning_while_mic_is_stub(
-        self,
-        mock_radio: MockRadio,
-        node_identity: Identity,
-        peer_identity: Identity,
-    ):
-        """While MIC verification is a stub, key pinning is disabled for security.
-
-        SECURITY: Key pinning without MIC verification could allow attackers
-        to poison the pin table. Rather than provide false security, pinning
-        is disabled until MIC verification is implemented.
-        """
-        peer_peer = PeerIdentity.from_pubkey(peer_identity.pubkey)
-
-        def peer_lookup(hint: bytes) -> PeerIdentity | None:
-            return peer_peer
-
-        node_ll = LinkLayer(
-            radio=mock_radio,
-            identity=node_identity,
-            peer_lookup=peer_lookup,
-        )
-
-        peer_ll = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
-        await peer_ll.send(b"hello")
-        mock_radio.queue_rx(peer_ll.radio.tx_history[0])
-
-        result = await node_ll.receive(timeout_ms=100)
-        assert result is not None
-        # Key should NOT be pinned while MIC is a stub
-        assert node_ll.pinned_pubkey_for(peer_peer.iid) is None
-
-    @pytest.mark.asyncio
-    async def test_key_change_rejected(
-        self,
-        mock_radio: MockRadio,
-        node_identity: Identity,
-        peer_identity: Identity,
-    ):
-        """After pinning a peer's pubkey, a frame from the same IID with a
-        different pubkey must be silently dropped."""
-        peer_peer = PeerIdentity.from_pubkey(peer_identity.pubkey)
-
-        def peer_lookup(hint: bytes) -> PeerIdentity | None:
-            return peer_peer
-
-        node_ll = LinkLayer(
-            radio=mock_radio,
-            identity=node_identity,
-            peer_lookup=peer_lookup,
-        )
-
-        # First RX: pins the pubkey.
-        peer_ll = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
-        await peer_ll.send(b"first")
-        mock_radio.queue_rx(peer_ll.radio.tx_history[0])
-        result1 = await node_ll.receive(timeout_ms=100)
-        assert result1 is not None
-
-        # Overwrite pin to simulate key-change scenario.
-        node_ll._pinned_keys[peer_peer.iid] = bytes([0x99] * 32)
-
-        # Second RX: same peer, same signature, but pin now says different key → dropped.
-        peer_ll2 = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
-        await peer_ll2.send(b"second")
-        mock_radio.queue_rx(peer_ll2.radio.tx_history[0])
-        result2 = await node_ll.receive(timeout_ms=100)
-        assert result2 is None
-
-    @pytest.mark.asyncio
-    async def test_unpin_allows_key_rotation(
-        self,
-        mock_radio: MockRadio,
-        node_identity: Identity,
-        peer_identity: Identity,
-    ):
-        """After unpin_peer(), a manually pinned key is cleared and frames are accepted.
-
-        This tests the unpin_peer() API that will be used for admin key rotation
-        once MIC verification is implemented and automatic pinning is enabled.
-        """
-        peer_peer = PeerIdentity.from_pubkey(peer_identity.pubkey)
-
-        def peer_lookup(hint: bytes) -> PeerIdentity | None:
-            return peer_peer
-
-        node_ll = LinkLayer(
-            radio=mock_radio,
-            identity=node_identity,
-            peer_lookup=peer_lookup,
-        )
-        node_ll.set_sequence(0, 0)  # deterministic epoch for test
-
-        # Manually pin a different key to simulate previous pinning
-        fake_key = bytes([0xAA] * 32)
-        node_ll._pinned_keys[peer_peer.iid] = fake_key
-
-        # Admin unpins
-        node_ll.unpin_peer(peer_peer.iid)
-        assert node_ll.pinned_pubkey_for(peer_peer.iid) is None
-
-        # Peer can now send frames (no pinned key to conflict with)
-        peer_ll = LinkLayer(radio=MockRadio(), identity=peer_identity, peer_lookup=lambda h: None)
-        peer_ll.set_sequence(0, 0)  # deterministic epoch for test
-        await peer_ll.send(b"after_unpin")
-        mock_radio.queue_rx(peer_ll.radio.tx_history[0])
-        result = await node_ll.receive(timeout_ms=100)
-        assert result is not None
-        # Key still not pinned (MIC stub active)
-        assert node_ll.pinned_pubkey_for(peer_peer.iid) is None

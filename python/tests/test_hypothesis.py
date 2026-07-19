@@ -245,7 +245,7 @@ class ReplayWindowMachine(RuleBasedStateMachine):
     def receive_seqnum(self, seqnum):
         """Receive a sequence number and check replay detection."""
         is_replay = seqnum in self.seen
-        result = self.window.check_and_update(seqnum)
+        result = self.window.check_and_update(0, seqnum)
 
         if is_replay:
             # Should be detected as replay

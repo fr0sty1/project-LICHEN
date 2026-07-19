@@ -77,12 +77,25 @@
 #define EAGAIN 11
 #endif
 
+/** Protocol feature is not supported */
+#ifndef EPROTONOSUPPORT
+#define EPROTONOSUPPORT 93
+#endif
+
 /** Numerical result out of range */
 #ifndef ERANGE
 #define ERANGE 34
 #endif
 
 #endif /* __ZEPHYR__ */
+
+/* ENOKEY is not exposed by every Zephyr errno configuration. */
+#ifndef ENOKEY
+#ifndef ENOENT
+#define ENOENT 2
+#endif
+#define ENOKEY ENOENT
+#endif
 
 /*
  * LICHEN-specific error codes.

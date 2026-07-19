@@ -7,7 +7,7 @@ Wire layout (spec 4.1)::
     +--------+--------+-------+--------+----------+---------+--------+
     | Length | LLSec  | Epoch | SeqNum | Dst Addr | Payload | MIC    |
     +--------+--------+-------+--------+----------+---------+--------+
-       1B       1B       1B      2B       2-8B      var      4-8B
+       1B       1B       1B      2B       0/2/8B    var      0/48B
 
 ``Length`` is the total frame length excluding the Length field itself.
 Multi-byte integer fields are big-endian.
@@ -15,9 +15,9 @@ Multi-byte integer fields are big-endian.
 The LLSec byte (spec 4.2) packs, from the least-significant bit::
 
     bits 0-1 : Addr Mode  (0=none/broadcast, 1=16-bit, 2=64-bit, 3=elided)
-    bits 2-4 : MIC Length  (0=32-bit, 1=64-bit, 2=reserved)
-    bit  5   : Signature present (Ed25519)
-    bit  6   : Encrypted (AES-CCM)
+    bits 2-4 : MIC selector (0 or 1; ignored for wire MIC length)
+    bit  5   : Signature present (Schnorr-48, 48 bytes)
+    bit  6   : Encrypted (unsupported)
     bit  7   : Reserved (must be 0)
 """
 
@@ -48,14 +48,8 @@ _ADDR_LEN_TABLE: tuple[int, ...] = (0, 2, 8, 0)  # indexed by AddrMode value
 class MicLength(IntEnum):
     """Message Integrity Code length (LLSec bits 2-4, spec 4.2)."""
 
-    BITS32 = 0  # 4-byte MIC
-    BITS64 = 1  # 8-byte MIC
-
-    @property
-    def mic_len(self) -> int:
-        """Number of MIC bytes for this setting."""
-        return 4 if self == MicLength.BITS32 else 8
-
+    BITS32 = 0  # compatibility selector; unsigned frames have no MIC
+    BITS64 = 1  # compatibility selector; unsigned frames have no MIC
 
 # LLSec bit fields.
 _ADDR_MODE_MASK = 0b0000_0011
@@ -65,8 +59,8 @@ _SIGNATURE_BIT = 1 << 5
 _ENCRYPTED_BIT = 1 << 6
 _RESERVED_BIT = 1 << 7
 
-_MAX_FRAME_BODY = 255  # the Length field is a single byte
-_SIGNATURE_LENGTH = 48  # Ed25519 signature (Schnorr, 48 bytes)
+MAX_FRAME_BODY = 254  # total frame, including the Length field, is at most 255 bytes
+_SIGNATURE_LENGTH = 48  # Schnorr-48 signature
 
 
 class FrameError(Exception):
@@ -86,7 +80,7 @@ class LichenFrame:
         addr_mode: Destination addressing mode.
         mic_length: MIC length setting.
         signature_present: Whether an Ed25519 signature is present.
-        encrypted: Whether the payload is AES-CCM encrypted.
+        encrypted: Whether the unsupported encrypted-frame flag is set.
     """
 
     epoch: int
@@ -100,6 +94,10 @@ class LichenFrame:
     encrypted: bool = False
 
     def _validate(self) -> None:
+        if self.encrypted:
+            raise FrameError("encrypted frames are unsupported")
+        if not isinstance(self.mic_length, MicLength):
+            raise FrameError(f"reserved MIC-length value: {self.mic_length}")
         if not 0 <= self.epoch <= 0xFF:
             raise FrameError(f"epoch out of range: {self.epoch}")
         if not 0 <= self.seqnum <= 0xFFFF:
@@ -109,10 +107,10 @@ class LichenFrame:
                 f"dst_addr is {len(self.dst_addr)} bytes but {self.addr_mode.name} "
                 f"requires {self.addr_mode.addr_len}"
             )
-        if len(self.mic) != self.mic_length.mic_len:
+        expected_mic_len = _SIGNATURE_LENGTH if self.signature_present else 0
+        if len(self.mic) != expected_mic_len:
             raise FrameError(
-                f"mic is {len(self.mic)} bytes but {self.mic_length.name} "
-                f"requires {self.mic_length.mic_len}"
+                f"mic is {len(self.mic)} bytes but {expected_mic_len} are required"
             )
 
     def llsec_byte(self) -> int:
@@ -130,9 +128,14 @@ class LichenFrame:
 
         Raises:
             FrameError: If a field is out of range, lengths are inconsistent
-                with the LLSec modes, or the frame exceeds 255 body bytes.
+                with the LLSec modes, or the frame exceeds 254 body bytes.
         """
         self._validate()
+        body_len = 4 + len(self.dst_addr) + len(self.payload) + len(self.mic)
+        if body_len > MAX_FRAME_BODY:
+            raise FrameError(
+                f"frame body is {body_len} bytes, exceeds {MAX_FRAME_BODY}"
+            )
         body = (
             bytes([self.llsec_byte(), self.epoch])
             + self.seqnum.to_bytes(2, "big")
@@ -140,10 +143,6 @@ class LichenFrame:
             + self.payload
             + self.mic
         )
-        if len(body) > _MAX_FRAME_BODY:
-            raise FrameError(
-                f"frame body is {len(body)} bytes, exceeds {_MAX_FRAME_BODY}"
-            )
         return bytes([len(body)]) + body
 
     @classmethod
@@ -156,12 +155,21 @@ class LichenFrame:
         """
         if len(data) < 1:
             raise FrameError("frame is empty")
-        length = data[0]
-        body = data[1:]
-        if len(body) != length:
+        if len(data) > MAX_FRAME_BODY + 1:
             raise FrameError(
-                f"length field says {length} but {len(body)} body bytes present"
+                f"frame is {len(data)} bytes, exceeds {MAX_FRAME_BODY + 1}"
             )
+        length = data[0]
+        if length > MAX_FRAME_BODY:
+            raise FrameError(
+                f"frame body is {length} bytes, exceeds {MAX_FRAME_BODY}"
+            )
+        received_body_len = len(data) - 1
+        if received_body_len != length:
+            raise FrameError(
+                f"length field says {length} but {received_body_len} body bytes present"
+            )
+        body = data[1:]
         # Fixed fields: LLSec(1) + Epoch(1) + SeqNum(2) = 4 bytes minimum.
         if length < 4:
             raise FrameError(f"frame body too short: {length} bytes")
@@ -180,7 +188,10 @@ class LichenFrame:
 
         offset = 4
         addr_len = addr_mode.addr_len
-        mic_len = mic_length.mic_len
+        signature_present = bool(llsec & _SIGNATURE_BIT)
+        if llsec & _ENCRYPTED_BIT:
+            raise FrameError("encrypted frames are unsupported")
+        mic_len = _SIGNATURE_LENGTH if signature_present else 0
         if length < offset + addr_len + mic_len:
             raise FrameError("frame too short for declared address/MIC sizes")
 
@@ -188,14 +199,6 @@ class LichenFrame:
         offset += addr_len
         payload = body[offset : len(body) - mic_len]
         mic = body[len(body) - mic_len :]
-
-        # SECURITY: Validate payload length when signature is expected
-        signature_present = bool(llsec & _SIGNATURE_BIT)
-        if signature_present and len(payload) < _SIGNATURE_LENGTH:
-            raise FrameError(
-                f"payload is {len(payload)} bytes but signature_present requires "
-                f"at least {_SIGNATURE_LENGTH}"
-            )
 
         return cls(
             epoch=epoch,

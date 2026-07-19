@@ -265,6 +265,8 @@ For high-security pairing without infrastructure:
 
 - Nodes SHOULD support key rotation announcements
 - Key change with valid signature from old key -> accept new key
+- An authenticated new key creates fresh per-peer replay state; counters from
+  the old key MUST NOT constrain the new key
 - Key change without signature -> reject, require re-verification
 - Revocation: remove from local key store; no global revocation list
 
@@ -444,9 +446,14 @@ Private keys MUST be stored in:
 
 **Link-Layer Replay Window:**
 
-Receivers track per-sender (epoch, seqnum) state with a 32-entry sliding
-window for out-of-order tolerance. Epoch persisted to flash; increments
-on wrap or reboot. See section 4.4 in Physical and Link Layers.
+Receivers track per-(sender, authenticated link key) (epoch, seqnum) state with
+a 32-entry sliding window for out-of-order tolerance. EPO and SeqNum form a
+finite 24-bit unsigned counter compared with ordinary numeric ordering, not
+serial or modulo arithmetic. A lower epoch and a same-epoch sequence-number
+wrap are stale and MUST be rejected. The terminal tuple `(0xFF, 0xFFFF)`
+requires key rotation before another authenticated frame is sent. Once a new
+key is authenticated, the receiver creates fresh replay state for that key.
+See section 4.4 in Physical and Link Layers.
 
 ### 15.4. Known Limitations
 

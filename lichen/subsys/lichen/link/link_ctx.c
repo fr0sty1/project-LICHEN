@@ -108,10 +108,24 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx,
 {
 	uint8_t new_sk[LICHEN_SK_LEN];
 	uint8_t new_pk[LICHEN_PK_LEN];
+	uint8_t new_epoch;
 
 	if (ctx == NULL || seed == NULL) {
 		return -EINVAL;
 	}
+
+#ifdef __ZEPHYR__
+	if (sys_csrand_get(&new_epoch, 1) != 0) {
+		return -EIO;
+	}
+#elif defined(__linux__) || defined(__APPLE__)
+	if (getentropy(&new_epoch, 1) != 0) {
+		return -EIO;
+	}
+#else
+	return -EIO;
+#endif
+	new_epoch = 128 + (new_epoch & 0x7F);
 
 #ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
 	uint8_t hash[64];
@@ -143,14 +157,32 @@ int lichen_link_load_key(struct lichen_link_ctx *ctx,
 	new_pk[0] = 0x01;
 #endif
 
+	if (seq_lock(ctx) != 0) {
+		secure_wipe(new_sk, sizeof(new_sk));
+		secure_wipe(new_pk, sizeof(new_pk));
+		return -EIO;
+	}
+	bool rotating_key = ctx->has_key &&
+		memcmp(ctx->ed25519_pk, new_pk, LICHEN_PK_LEN) != 0;
 	if (ctx->has_key) {
 		secure_wipe(ctx->ed25519_sk, LICHEN_SK_LEN);
 	}
-
 	memcpy(ctx->ed25519_sk, new_sk, LICHEN_SK_LEN);
 	memcpy(ctx->ed25519_pk, new_pk, LICHEN_PK_LEN);
-	secure_wipe(new_sk, sizeof(new_sk));
 	ctx->has_key = true;
+	if (rotating_key) {
+		ctx->epoch = new_epoch;
+		ctx->tx_seq = 0;
+		ctx->nonce_exhausted = false;
+	}
+	if (seq_unlock(ctx) != 0) {
+		secure_wipe(new_sk, sizeof(new_sk));
+		secure_wipe(new_pk, sizeof(new_pk));
+		return -EIO;
+	}
+
+	secure_wipe(new_sk, sizeof(new_sk));
+	secure_wipe(new_pk, sizeof(new_pk));
 	return 0;
 }
 
@@ -316,6 +348,85 @@ static int seq_unlock(struct lichen_link_ctx *ctx)
 #endif
 }
 
+int lichen_link_copy_identity(const struct lichen_link_ctx *ctx,
+			      uint8_t eui64[LICHEN_EUI64_LEN],
+			      uint8_t pk[LICHEN_PK_LEN],
+			      bool *has_key)
+{
+	if (ctx == NULL) {
+		return -EINVAL;
+	}
+
+	/*
+	 * SECURITY: Acquire seq_lock to ensure atomic read of key material.
+	 * This prevents a race where has_key is true but cleanup zeros the
+	 * key between our check and copy. The cleanup function also holds
+	 * this lock when modifying key state.
+	 *
+	 * Cast away const for lock acquisition - the lock protects the data,
+	 * we are only reading, and mutex_lock requires non-const.
+	 */
+	struct lichen_link_ctx *mutable_ctx = (struct lichen_link_ctx *)ctx;
+
+	if (seq_lock(mutable_ctx) != 0) {
+		return -EIO;
+	}
+
+	bool key_loaded = ctx->has_key;
+
+	if (has_key != NULL) {
+		*has_key = key_loaded;
+	}
+
+	if (!key_loaded) {
+		return seq_unlock(mutable_ctx) == 0 ? -ENOKEY : -EIO;
+	}
+
+	if (eui64 != NULL) {
+		memcpy(eui64, ctx->eui64, LICHEN_EUI64_LEN);
+	}
+	if (pk != NULL) {
+		memcpy(pk, ctx->ed25519_pk, LICHEN_PK_LEN);
+	}
+
+	return seq_unlock(mutable_ctx) == 0 ? 0 : -EIO;
+}
+
+int lichen_link_snapshot_keypair(
+	const struct lichen_link_ctx *ctx,
+	struct lichen_link_keypair_snapshot *snapshot)
+{
+	struct lichen_link_ctx *mutable_ctx;
+
+	if (ctx == NULL || snapshot == NULL) {
+		return -EINVAL;
+	}
+	memset(snapshot, 0, sizeof(*snapshot));
+	mutable_ctx = (struct lichen_link_ctx *)ctx;
+	if (seq_lock(mutable_ctx) != 0) {
+		return -EIO;
+	}
+	if (!ctx->has_key) {
+		return seq_unlock(mutable_ctx) == 0 ? -ENOKEY : -EIO;
+	}
+	memcpy(snapshot->eui64, ctx->eui64, sizeof(snapshot->eui64));
+	memcpy(snapshot->sk, ctx->ed25519_sk, sizeof(snapshot->sk));
+	memcpy(snapshot->pk, ctx->ed25519_pk, sizeof(snapshot->pk));
+	if (seq_unlock(mutable_ctx) != 0) {
+		secure_wipe(snapshot, sizeof(*snapshot));
+		return -EIO;
+	}
+	return 0;
+}
+
+void lichen_link_clear_keypair_snapshot(
+	struct lichen_link_keypair_snapshot *snapshot)
+{
+	if (snapshot != NULL) {
+		secure_wipe(snapshot, sizeof(*snapshot));
+	}
+}
+
 void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 {
 	if (ctx == NULL) {
@@ -324,7 +435,17 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 
 	int locked = (seq_lock(ctx) == 0);
 
-	/* SECURITY: Always wipe keys, even if lock fails */
+	/*
+	 * SECURITY: Always wipe keys, even if lock fails. This prioritizes
+	 * key erasure over correctness of concurrent operations.
+	 *
+	 * If the lock failed, another thread is using this context - this
+	 * indicates improper usage (cleanup was called without ensuring
+	 * exclusive access). Log a warning but proceed with the wipe.
+	 */
+	if (!locked) {
+		LOG_WRN("cleanup called while context is locked - potential race condition\n");
+	}
 	secure_wipe(ctx->ed25519_sk, LICHEN_SK_LEN);
 	secure_wipe(ctx->link_key, LICHEN_LINK_KEY_LEN);
 

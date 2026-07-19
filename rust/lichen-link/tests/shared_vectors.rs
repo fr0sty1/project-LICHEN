@@ -8,6 +8,8 @@ use std::path::Path;
 
 use serde::Deserialize;
 
+use lichen_link::frame::{FrameError, LichenFrame, MAX_FRAME_LEN};
+
 #[derive(Deserialize)]
 struct VectorFile {
     format_version: u32,
@@ -17,9 +19,28 @@ struct VectorFile {
 #[derive(Deserialize)]
 struct LinkFrameVector {
     name: String,
-    description: String,
     encoded: String,
     fields: LinkFrameFields,
+    #[serde(default)]
+    expect: Option<ExpectedError>,
+    #[cfg(feature = "schnorr")]
+    #[serde(default)]
+    crypto: Option<CryptoOracle>,
+}
+
+#[derive(Deserialize)]
+struct ExpectedError {
+    error: String,
+}
+
+#[cfg(feature = "schnorr")]
+#[derive(Deserialize)]
+struct CryptoOracle {
+    seed: String,
+    private_key: String,
+    public_key: String,
+    preimage: String,
+    signature: String,
 }
 
 #[derive(Deserialize)]
@@ -46,21 +67,33 @@ fn hex_decode(s: &str) -> Vec<u8> {
 }
 
 #[test]
+fn parser_rejects_length_255_frame() {
+    let mut encoded = vec![0; MAX_FRAME_LEN + 1];
+    encoded[0] = u8::MAX;
+    assert_eq!(
+        LichenFrame::from_bytes(&encoded),
+        Err(FrameError::FrameTooLarge)
+    );
+}
+
+#[test]
 fn test_link_frame_vectors() {
-    let vectors_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../test/vectors/link_frame.json");
+    let vectors_path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/vectors/link_frame.json");
 
-    if !vectors_path.exists() {
-        eprintln!("Vectors file not found at {:?}, skipping", vectors_path);
-        return;
-    }
+    assert!(
+        vectors_path.exists(),
+        "Vectors file not found at {:?}",
+        vectors_path
+    );
 
-    let content = fs::read_to_string(&vectors_path)
-        .expect("Failed to read vectors file");
-    let vectors: VectorFile = serde_json::from_str(&content)
-        .expect("Failed to parse vectors JSON");
+    let content = fs::read_to_string(&vectors_path).expect("Failed to read vectors file");
+    let vectors: VectorFile = serde_json::from_str(&content).expect("Failed to parse vectors JSON");
 
-    assert_eq!(vectors.format_version, 1, "Unexpected vector format version");
+    assert_eq!(
+        vectors.format_version, 1,
+        "Unexpected vector format version"
+    );
 
     let mut failures = Vec::new();
 
@@ -68,9 +101,132 @@ fn test_link_frame_vectors() {
         let encoded = hex_decode(&vector.encoded);
         let fields = &vector.fields;
 
+        #[cfg(feature = "schnorr")]
+        if let Some(crypto) = &vector.crypto {
+            use lichen_link::schnorr::{derive_keypair, sign_frame, verify_frame};
+            use lichen_link::{LinkSeqNum, Seed};
+
+            let seed: [u8; 32] = hex_decode(&crypto.seed).try_into().unwrap();
+            let expected_private = hex_decode(&crypto.private_key);
+            let expected_public = hex_decode(&crypto.public_key);
+            let expected_preimage = hex_decode(&crypto.preimage);
+            let expected_signature: [u8; 48] = hex_decode(&crypto.signature).try_into().unwrap();
+            let (private_key, public_key) = derive_keypair(&Seed::new(seed));
+            assert_eq!(private_key.as_bytes().as_slice(), expected_private);
+            assert_eq!(public_key.as_bytes().as_slice(), expected_public);
+            assert_eq!(&encoded[..encoded.len() - 48], expected_preimage);
+
+            let dst_addr = hex_decode(&fields.dst_addr);
+            let payload = hex_decode(&fields.payload);
+            let signature = sign_frame(
+                encoded[0],
+                encoded[1],
+                fields.epoch,
+                LinkSeqNum::new(fields.seqnum),
+                &dst_addr,
+                &payload,
+                &private_key,
+                &public_key,
+            );
+            assert_eq!(signature, expected_signature);
+            assert_eq!(hex_decode(&fields.mic), expected_signature);
+            assert_eq!(&encoded[encoded.len() - 48..], expected_signature);
+            assert!(verify_frame(
+                encoded[0],
+                encoded[1],
+                fields.epoch,
+                LinkSeqNum::new(fields.seqnum),
+                &dst_addr,
+                &payload,
+                &signature,
+                &public_key,
+            ));
+
+            let mut tampered_dst = dst_addr.clone();
+            tampered_dst[0] ^= 1;
+            let mut tampered_payload = payload.clone();
+            tampered_payload[0] ^= 1;
+            let mut tampered_signature = signature;
+            tampered_signature[0] ^= 1;
+            assert!(!verify_frame(
+                encoded[0] ^ 1,
+                encoded[1],
+                fields.epoch,
+                LinkSeqNum::new(fields.seqnum),
+                &dst_addr,
+                &payload,
+                &signature,
+                &public_key
+            ));
+            assert!(!verify_frame(
+                encoded[0],
+                encoded[1],
+                fields.epoch ^ 1,
+                LinkSeqNum::new(fields.seqnum),
+                &dst_addr,
+                &payload,
+                &signature,
+                &public_key
+            ));
+            assert!(!verify_frame(
+                encoded[0],
+                encoded[1],
+                fields.epoch,
+                LinkSeqNum::new(fields.seqnum ^ 1),
+                &dst_addr,
+                &payload,
+                &signature,
+                &public_key
+            ));
+            assert!(!verify_frame(
+                encoded[0],
+                encoded[1] ^ 1,
+                fields.epoch,
+                LinkSeqNum::new(fields.seqnum),
+                &dst_addr,
+                &payload,
+                &signature,
+                &public_key
+            ));
+            assert!(!verify_frame(
+                encoded[0],
+                encoded[1],
+                fields.epoch,
+                LinkSeqNum::new(fields.seqnum),
+                &tampered_dst,
+                &payload,
+                &signature,
+                &public_key
+            ));
+            assert!(!verify_frame(
+                encoded[0],
+                encoded[1],
+                fields.epoch,
+                LinkSeqNum::new(fields.seqnum),
+                &dst_addr,
+                &tampered_payload,
+                &signature,
+                &public_key
+            ));
+            assert!(!verify_frame(
+                encoded[0],
+                encoded[1],
+                fields.epoch,
+                LinkSeqNum::new(fields.seqnum),
+                &dst_addr,
+                &payload,
+                &tampered_signature,
+                &public_key
+            ));
+        }
+
         // Verify minimum frame size (header + MIC)
         if encoded.len() < 5 {
-            failures.push(format!("Vector '{}': frame too short ({} bytes)", vector.name, encoded.len()));
+            failures.push(format!(
+                "Vector '{}': frame too short ({} bytes)",
+                vector.name,
+                encoded.len()
+            ));
             continue;
         }
 
@@ -78,9 +234,9 @@ fn test_link_frame_vectors() {
         // Layout: bits 0-1 = addr_mode, bits 2-4 = mic_len, bit 5 = sig, bit 6 = enc
         let llsec = encoded[1];
         let addr_mode = llsec & 0x03;
-        let mic_length_flag = (llsec >> 2) & 0x07;  // 3 bits
-        let sig_present = (llsec >> 5) & 0x01;      // bit 5
-        let encrypted = (llsec >> 6) & 0x01;        // bit 6
+        let mic_length_flag = (llsec >> 2) & 0x07; // 3 bits
+        let sig_present = (llsec >> 5) & 0x01; // bit 5
+        let encrypted = (llsec >> 6) & 0x01; // bit 6
 
         // Check addr_mode
         if addr_mode != fields.addr_mode {
@@ -102,7 +258,9 @@ fn test_link_frame_vectors() {
         if (sig_present != 0) != fields.signature_present {
             failures.push(format!(
                 "Vector '{}': signature_present mismatch (encoded: {}, expected: {})",
-                vector.name, sig_present != 0, fields.signature_present
+                vector.name,
+                sig_present != 0,
+                fields.signature_present
             ));
         }
 
@@ -110,7 +268,9 @@ fn test_link_frame_vectors() {
         if (encrypted != 0) != fields.encrypted {
             failures.push(format!(
                 "Vector '{}': encrypted mismatch (encoded: {}, expected: {})",
-                vector.name, encrypted != 0, fields.encrypted
+                vector.name,
+                encrypted != 0,
+                fields.encrypted
             ));
         }
 
@@ -134,6 +294,10 @@ fn test_link_frame_vectors() {
         // Actually parse using lichen-link's frame parser
         match lichen_link::frame::LichenFrame::from_bytes(&encoded) {
             Ok(frame) => {
+                if vector.expect.is_some() {
+                    failures.push(format!("Vector '{}': expected parse failure", vector.name));
+                    continue;
+                }
                 if frame.epoch != fields.epoch {
                     failures.push(format!(
                         "Vector '{}': parsed epoch {} != expected {}",
@@ -143,7 +307,9 @@ fn test_link_frame_vectors() {
                 if frame.seqnum.get() != fields.seqnum {
                     failures.push(format!(
                         "Vector '{}': parsed seqnum {} != expected {}",
-                        vector.name, frame.seqnum.get(), fields.seqnum
+                        vector.name,
+                        frame.seqnum.get(),
+                        fields.seqnum
                     ));
                 }
                 if (frame.addr_mode as u8) != fields.addr_mode {
@@ -159,22 +325,76 @@ fn test_link_frame_vectors() {
                         vector.name, parsed_sig, fields.signature_present
                     ));
                 }
-                let parsed_enc = matches!(frame.encryption, lichen_link::frame::Encryption::Encrypted);
+                let parsed_enc =
+                    matches!(frame.encryption, lichen_link::frame::Encryption::Encrypted);
                 if parsed_enc != fields.encrypted {
                     failures.push(format!(
                         "Vector '{}': parsed encrypted {} != expected {}",
                         vector.name, parsed_enc, fields.encrypted
                     ));
                 }
+                if frame.dst_addr != hex_decode(&fields.dst_addr) {
+                    failures.push(format!(
+                        "Vector '{}': parsed dst_addr mismatch",
+                        vector.name
+                    ));
+                }
+                if frame.payload != hex_decode(&fields.payload) {
+                    failures.push(format!("Vector '{}': parsed payload mismatch", vector.name));
+                }
+                if frame.mic != hex_decode(&fields.mic) {
+                    failures.push(format!("Vector '{}': parsed MIC mismatch", vector.name));
+                }
+                if frame.mic_length as u8 != fields.mic_length {
+                    failures.push(format!(
+                        "Vector '{}': parsed mic_length mismatch",
+                        vector.name
+                    ));
+                }
+
+                let mut rebuilt = vec![0u8; encoded.len()];
+                match frame.write_to(&mut rebuilt) {
+                    Ok(written) if rebuilt[..written] == encoded => {}
+                    Ok(written) => failures.push(format!(
+                        "Vector '{}': re-encoded bytes differ ({} bytes != {} bytes)",
+                        vector.name,
+                        written,
+                        encoded.len()
+                    )),
+                    Err(e) => failures.push(format!(
+                        "Vector '{}': re-encode failed: {:?}",
+                        vector.name, e
+                    )),
+                }
             }
-            Err(e) => {
-                failures.push(format!("Vector '{}': parse failed: {:?}", vector.name, e));
-            }
+            Err(e) => match vector.expect.as_ref() {
+                Some(expected)
+                    if expected.error == "encryption_unsupported"
+                        && e == lichen_link::frame::FrameError::EncryptionUnsupported => {}
+                Some(expected)
+                    if expected.error == "frame_too_large"
+                        && e == lichen_link::frame::FrameError::FrameTooLarge => {}
+                Some(expected) => failures.push(format!(
+                    "Vector '{}': expected error {}, got {:?}",
+                    vector.name, expected.error, e
+                )),
+                None => {
+                    failures.push(format!("Vector '{}': parse failed: {:?}", vector.name, e));
+                }
+            },
         }
 
-        println!("Vector '{}': {} bytes, epoch={}, seqnum={}, addr_mode={}, mic_len={}, sig={}, enc={}",
-            vector.name, encoded.len(), fields.epoch, fields.seqnum,
-            fields.addr_mode, fields.mic_length, fields.signature_present, fields.encrypted);
+        println!(
+            "Vector '{}': {} bytes, epoch={}, seqnum={}, addr_mode={}, mic_len={}, sig={}, enc={}",
+            vector.name,
+            encoded.len(),
+            fields.epoch,
+            fields.seqnum,
+            fields.addr_mode,
+            fields.mic_length,
+            fields.signature_present,
+            fields.encrypted
+        );
     }
 
     if !failures.is_empty() {
@@ -189,16 +409,16 @@ fn test_link_frame_vectors() {
 
 #[test]
 fn test_l2_payload_vectors() {
-    let vectors_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../test/vectors/l2_payload.json");
+    let vectors_path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/vectors/l2_payload.json");
 
-    if !vectors_path.exists() {
-        eprintln!("Vectors file not found at {:?}, skipping", vectors_path);
-        return;
-    }
+    assert!(
+        vectors_path.exists(),
+        "Vectors file not found at {:?}",
+        vectors_path
+    );
 
-    let content = fs::read_to_string(&vectors_path)
-        .expect("Failed to read vectors file");
+    let content = fs::read_to_string(&vectors_path).expect("Failed to read vectors file");
 
     #[derive(Deserialize)]
     struct L2PayloadFile {
@@ -209,17 +429,19 @@ fn test_l2_payload_vectors() {
     #[derive(Deserialize)]
     struct L2PayloadVector {
         name: String,
-        description: String,
         wrapped: String,
         dispatch: u8,
         kind: String,
         body: String,
     }
 
-    let vectors: L2PayloadFile = serde_json::from_str(&content)
-        .expect("Failed to parse vectors JSON");
+    let vectors: L2PayloadFile =
+        serde_json::from_str(&content).expect("Failed to parse vectors JSON");
 
-    assert_eq!(vectors.format_version, 1, "Unexpected vector format version");
+    assert_eq!(
+        vectors.format_version, 1,
+        "Unexpected vector format version"
+    );
 
     let mut failures = Vec::new();
 
@@ -241,7 +463,7 @@ fn test_l2_payload_vectors() {
         }
 
         // Body should match remaining bytes
-        if wrapped.len() > 1 && &wrapped[1..] != &body[..] {
+        if wrapped.len() > 1 && wrapped[1..] != body[..] {
             failures.push(format!("Vector '{}': body mismatch", vector.name));
         }
 
@@ -251,7 +473,10 @@ fn test_l2_payload_vectors() {
             "routing" => Some(0x15),
             "unknown" => None, // Unknown is intentionally unmatched
             _ => {
-                failures.push(format!("Vector '{}': unrecognized kind '{}'", vector.name, vector.kind));
+                failures.push(format!(
+                    "Vector '{}': unrecognized kind '{}'",
+                    vector.name, vector.kind
+                ));
                 None
             }
         };
@@ -265,8 +490,13 @@ fn test_l2_payload_vectors() {
             }
         }
 
-        println!("Vector '{}': {} bytes, kind={}, dispatch={:#x}",
-            vector.name, wrapped.len(), vector.kind, vector.dispatch);
+        println!(
+            "Vector '{}': {} bytes, kind={}, dispatch={:#x}",
+            vector.name,
+            wrapped.len(),
+            vector.kind,
+            vector.dispatch
+        );
     }
 
     if !failures.is_empty() {
