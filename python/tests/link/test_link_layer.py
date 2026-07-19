@@ -364,6 +364,8 @@ class TestLinkLayerRx:
         mock_radio.queue_rx(frame_bytes)
         result1 = await link_layer.receive(timeout_ms=100)
         assert result1 is not None
+        assert result1.frame.payload == payload
+        assert result1.frame.mic == signature
 
         # Second receive (replay) should fail
         mock_radio.queue_rx(frame_bytes)
@@ -541,6 +543,9 @@ class TestRxFrameMetadata:
         assert result is not None
         assert result.rssi_dbm == -75
         assert result.snr_db == 5
+        assert result.payload == b"test"
+        assert result.sender_iid == node_identity.iid
+        assert result.sender_pubkey == node_identity.pubkey
 
 
 class TestTxQueueIntegration:
