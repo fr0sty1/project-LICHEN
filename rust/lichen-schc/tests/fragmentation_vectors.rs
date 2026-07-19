@@ -1,8 +1,13 @@
-//! Fixture-integrity checks for the shared RFC 8724 fragmentation vectors.
+//! Production integration against independently derived shared vectors.
 
 use std::collections::BTreeSet;
 
+use lichen_schc::fragment::{
+    ack_request, compute_mic, receiver_abort, sender_abort, Ack, Fragment, FragmentReceiver,
+    FragmentSender, ReceiverResponse, SenderStatus, MAX_PACKET_SIZE, TILE_SIZE,
+};
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
 
 const VECTORS_JSON: &str = include_str!("../../../test/vectors/schc_fragmentation.json");
 
@@ -27,7 +32,7 @@ struct Vector {
     rcs: Option<String>,
     fragment_count: Option<usize>,
     #[serde(default)]
-    fragments: Vec<Fragment>,
+    fragments: Vec<FragmentVector>,
     loss: Option<Loss>,
     controls: Option<Controls>,
     attempts_before: Option<u8>,
@@ -55,7 +60,7 @@ enum BytePart {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Fragment {
+struct FragmentVector {
     name: String,
     kind: String,
     window: u8,
@@ -123,129 +128,42 @@ fn expand(value: &BytesValue) -> Vec<u8> {
     }
 }
 
+fn write_fragment(fragment: &Fragment<'_>) -> Vec<u8> {
+    let mut wire = [0u8; TILE_SIZE + 6];
+    let length = fragment.write_to(&mut wire).unwrap();
+    wire[..length].to_vec()
+}
+
+fn write_response(response: ReceiverResponse) -> Vec<u8> {
+    let mut wire = [0u8; 10];
+    let length = response.write_to(&mut wire).unwrap();
+    wire[..length].to_vec()
+}
+
 #[test]
-fn shared_fragmentation_vectors_are_complete_and_well_formed() {
+fn shared_vectors_drive_production_implementations() {
     let document: Document = serde_json::from_str(VECTORS_JSON).expect("invalid vector JSON");
     assert_eq!(document.format_version, 1);
     assert!(!document.description.is_empty());
-
-    let mut names = BTreeSet::new();
     let mut categories = BTreeSet::new();
+
     for vector in &document.vectors {
-        assert!(names.insert(&vector.name), "duplicate vector name");
         categories.insert(vector.category.as_str());
+        assert!(!vector.name.is_empty());
         assert!(!vector.provenance.is_empty());
-
         if let Some(packet) = &vector.packet {
-            assert_eq!(
-                expand(packet).len(),
-                vector.packet_length.expect("packet length")
-            );
-            assert_eq!(vector.packet_sha256.as_ref().map(String::len), Some(64));
-        }
-        if let Some(rcs) = &vector.rcs {
-            assert_eq!(decode_hex(rcs).len(), 4);
-        }
-        if let Some(rule_id) = vector.rule_id {
-            assert!(matches!(rule_id, 0x78 | 0x79));
+            let digest = Sha256::digest(expand(packet));
+            let expected = decode_hex(vector.packet_sha256.as_ref().unwrap());
+            assert_eq!(&digest[..], expected);
         }
 
-        for fragment in &vector.fragments {
-            let wire = expand(&fragment.wire);
-            assert_eq!(wire.first().copied(), vector.rule_id);
-            assert_eq!(wire[1] >> 7, fragment.window);
-            assert_eq!((wire[1] >> 1) & 0x3f, fragment.fcn);
-            assert!(matches!(
-                fragment.kind.as_str(),
-                "regular" | "all0" | "all1"
-            ));
-            assert!(fragment.tile_ordinal < 126);
-            assert!(!fragment.name.is_empty());
-        }
-        assert_eq!(
-            vector
-                .fragments
-                .iter()
-                .map(|fragment| fragment.name.as_str())
-                .collect::<BTreeSet<_>>()
-                .len(),
-            vector.fragments.len(),
-            "duplicate fragment name in {}",
-            vector.name
-        );
-
-        if let Some(loss) = &vector.loss {
-            let dropped = vector
-                .fragments
-                .iter()
-                .find(|fragment| fragment.name == loss.drop_fragment)
-                .expect("loss target");
-            if let Some(retransmission) = &loss.retransmission {
-                assert_eq!(expand(retransmission), expand(&dropped.wire));
-            }
-            for message in [
-                Some(&loss.ack_failure),
-                Some(&loss.ack_req),
-                Some(&loss.ack_success),
-                loss.corrupt_all1.as_ref(),
-                loss.rcs_failure_ack.as_ref(),
-                loss.next_sender_message.as_ref(),
-            ]
-            .into_iter()
-            .flatten()
-            {
-                assert_eq!(expand(message)[0], vector.rule_id.expect("loss rule"));
-            }
-        }
-
-        if let Some(controls) = &vector.controls {
-            for (rule_id, control_set) in [(0x78, &controls.rule_78), (0x79, &controls.rule_79)] {
-                for message in [
-                    &control_set.ack_success_w0,
-                    &control_set.ack_success_w1,
-                    &control_set.ack_req_w0,
-                    &control_set.ack_req_w1,
-                    &control_set.sender_abort,
-                    &control_set.receiver_abort,
-                ] {
-                    assert_eq!(expand(message)[0], rule_id);
-                }
-            }
-        }
-
-        if vector.category == "malformed" {
-            assert!(!expand(vector.wire.as_ref().expect("malformed wire")).is_empty());
-            assert!(vector
-                .expect_error
-                .as_ref()
-                .is_some_and(|error| !error.is_empty()));
-        }
-
-        if vector.category == "retry_exhaustion" {
-            assert_eq!(vector.attempts_before, Some(4));
-            assert_eq!(
-                expand(vector.trigger.as_ref().expect("retry trigger"))[0],
-                vector.rule_id.expect("retry rule")
-            );
-            let expected = expand(
-                vector
-                    .expected_message
-                    .as_ref()
-                    .expect("retry expected message"),
-            );
-            assert_eq!(expected[0], vector.rule_id.expect("retry rule"));
-            assert!(matches!(
-                expected.as_slice(),
-                [0x78, 0xfe] | [0x78, 0xff, 0xff]
-            ));
-            assert_eq!(vector.expect_status.as_deref(), Some("aborted"));
-        }
-
-        if let Some(fcns) = &vector.assigned_fcns {
-            assert_eq!(
-                fcns.iter().copied().collect::<BTreeSet<_>>().len(),
-                fcns.len()
-            );
+        match vector.category.as_str() {
+            "recovery" | "window_transition" => exercise_transfer(vector),
+            "controls" => exercise_controls(vector.controls.as_ref().unwrap()),
+            "retry_exhaustion" => exercise_retry(vector),
+            "capacity" => exercise_capacity(vector),
+            "malformed" => exercise_malformed(vector),
+            category => panic!("unhandled category {category}"),
         }
     }
 
@@ -257,15 +175,207 @@ fn shared_fragmentation_vectors_are_complete_and_well_formed() {
             "malformed",
             "recovery",
             "retry_exhaustion",
-            "window_transition"
+            "window_transition",
         ])
     );
-    assert!(document
-        .vectors
+}
+
+fn exercise_transfer(vector: &Vector) {
+    let packet = expand(vector.packet.as_ref().unwrap());
+    assert_eq!(packet.len(), vector.packet_length.unwrap());
+    let rule_id = vector.rule_id.unwrap();
+    let sender = FragmentSender::new(&packet, rule_id, packet.len()).unwrap();
+    if let Some(count) = vector.fragment_count {
+        assert_eq!(sender.fragment_count(), count, "{}", vector.name);
+    }
+    assert_eq!(
+        compute_mic(&packet).to_vec(),
+        decode_hex(vector.rcs.as_ref().unwrap())
+    );
+
+    for expected in &vector.fragments {
+        assert!(matches!(
+            expected.kind.as_str(),
+            "regular" | "all0" | "all1"
+        ));
+        assert!(!expected.name.is_empty());
+        let fragment = sender.get_fragment(expected.tile_ordinal).unwrap();
+        assert_eq!(fragment.window, expected.window);
+        assert_eq!(fragment.fcn, expected.fcn);
+        let wire = expand(&expected.wire);
+        assert_eq!(
+            write_fragment(&fragment),
+            wire,
+            "{} {}",
+            vector.name,
+            expected.name
+        );
+        let mut tile = [0u8; TILE_SIZE];
+        let parsed = Fragment::from_bytes(&wire, &mut tile).unwrap();
+        assert_eq!(parsed, fragment);
+    }
+
+    let loss = vector.loss.as_ref().unwrap();
+    let dropped = vector
+        .fragments
         .iter()
-        .any(|vector| vector.fragment_count == Some(126)));
-    assert!(document
-        .vectors
-        .iter()
-        .any(|vector| vector.packet_length == Some(23_563) && vector.fragment_count == Some(0)));
+        .find(|fragment| fragment.name == loss.drop_fragment)
+        .unwrap();
+    let mut storage = vec![0u8; packet.len()];
+    let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
+    let mut failure = None;
+    for index in 0..sender.fragment_count() {
+        if index == dropped.tile_ordinal {
+            continue;
+        }
+        let result = receiver.receive(&sender.get_fragment(index).unwrap());
+        if result.response.is_some() {
+            failure = result.response;
+        }
+    }
+    assert_eq!(write_response(failure.unwrap()), expand(&loss.ack_failure));
+
+    if let Some(retransmission) = &loss.retransmission {
+        let wire = expand(retransmission);
+        let mut tile = [0u8; TILE_SIZE];
+        let fragment = Fragment::from_bytes(&wire, &mut tile).unwrap();
+        assert_eq!(receiver.receive(&fragment).response, None);
+        let result = receiver.receive_bytes(&expand(&loss.ack_req)).unwrap();
+        assert_eq!(
+            write_response(result.response.unwrap()),
+            expand(&loss.ack_success)
+        );
+        assert_eq!(receiver.packet(), Some(packet.as_slice()));
+    }
+
+    if let (Some(corrupt), Some(expected)) = (&loss.corrupt_all1, &loss.rcs_failure_ack) {
+        let mut storage = vec![0u8; packet.len()];
+        let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
+        for index in 0..sender.fragment_count() - 1 {
+            receiver.receive(&sender.get_fragment(index).unwrap());
+        }
+        let result = receiver.receive_bytes(&expand(corrupt)).unwrap();
+        assert_eq!(result.mic_ok, Some(false));
+        assert_eq!(write_response(result.response.unwrap()), expand(expected));
+
+        let mut sender = FragmentSender::new(&packet, rule_id, packet.len()).unwrap();
+        sender.start().unwrap();
+        let mut output = sender.handle_ack_bytes(&expand(expected)).unwrap();
+        let mut wire = [0u8; TILE_SIZE + 6];
+        let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
+        assert_eq!(
+            &wire[..length],
+            expand(loss.next_sender_message.as_ref().unwrap())
+        );
+    }
+}
+
+fn exercise_controls(controls: &Controls) {
+    for (rule_id, set) in [(0x78, &controls.rule_78), (0x79, &controls.rule_79)] {
+        for (window, expected) in [(0, &set.ack_success_w0), (1, &set.ack_success_w1)] {
+            let ack = Ack::new(rule_id, window, 0, true);
+            let mut wire = [0u8; 10];
+            let length = ack.write_to(&mut wire).unwrap();
+            assert_eq!(&wire[..length], expand(expected));
+            assert_eq!(Ack::from_bytes(&wire[..length]).unwrap(), ack);
+        }
+        for (window, expected) in [(0, &set.ack_req_w0), (1, &set.ack_req_w1)] {
+            let mut wire = [0u8; 3];
+            let length = ack_request(rule_id, window).write_to(&mut wire).unwrap();
+            assert_eq!(&wire[..length], expand(expected));
+        }
+        let mut wire = [0u8; 3];
+        let length = sender_abort(rule_id).write_to(&mut wire).unwrap();
+        assert_eq!(&wire[..length], expand(&set.sender_abort));
+        let length = receiver_abort(rule_id).write_to(&mut wire).unwrap();
+        assert_eq!(&wire[..length], expand(&set.receiver_abort));
+    }
+}
+
+fn exercise_retry(vector: &Vector) {
+    assert_eq!(vector.attempts_before, Some(4));
+    assert_eq!(vector.expect_status.as_deref(), Some("aborted"));
+    let rule_id = vector.rule_id.unwrap();
+    let expected = expand(vector.expected_message.as_ref().unwrap());
+    assert_eq!(
+        expand(vector.trigger.as_ref().unwrap()),
+        vec![rule_id, 0x80]
+    );
+    if vector.name.starts_with("sender") {
+        let packet = [0xa5];
+        let mut sender = FragmentSender::new(&packet, rule_id, 1).unwrap();
+        sender.start().unwrap();
+        for _ in 1..4 {
+            sender.timeout().unwrap();
+        }
+        let mut output = sender.timeout().unwrap();
+        let mut wire = [0u8; 3];
+        let length = sender.write_next(&mut output, &mut wire).unwrap().unwrap();
+        assert_eq!(&wire[..length], expected);
+        assert_eq!(sender.status(), SenderStatus::Aborted);
+    } else {
+        let mut storage = [0u8; 1];
+        let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
+        for _ in 0..4 {
+            receiver.receive_bytes(&[rule_id, 0x80]).unwrap();
+        }
+        let result = receiver.receive_bytes(&[rule_id, 0x80]).unwrap();
+        assert!(result.aborted);
+        assert_eq!(write_response(result.response.unwrap()), expected);
+    }
+}
+
+fn exercise_capacity(vector: &Vector) {
+    let packet = expand(vector.packet.as_ref().unwrap());
+    assert_eq!(packet.len(), vector.packet_length.unwrap());
+    let result = FragmentSender::new(&packet, 0x78, MAX_PACKET_SIZE);
+    if packet.len() > MAX_PACKET_SIZE {
+        assert!(result.is_err());
+        assert_eq!(vector.fragment_count, Some(0));
+        assert_eq!(vector.expect_status.as_deref(), Some("packet_too_large"));
+        return;
+    }
+    let sender = result.unwrap();
+    assert_eq!(sender.fragment_count(), vector.fragment_count.unwrap());
+    assert_eq!(
+        compute_mic(&packet).to_vec(),
+        decode_hex(vector.rcs.as_ref().unwrap())
+    );
+    assert_eq!(vector.expect_status.as_deref(), Some("ok"));
+    if packet.len() <= 1281 {
+        let mut storage = vec![0u8; packet.len()];
+        let mut receiver = FragmentReceiver::new(&mut storage).unwrap();
+        let mut result = None;
+        for fragment in sender.iter() {
+            result = Some(receiver.receive(&fragment));
+        }
+        assert_eq!(result.unwrap().packet_len, Some(packet.len()));
+        assert_eq!(receiver.packet(), Some(packet.as_slice()));
+    }
+}
+
+fn exercise_malformed(vector: &Vector) {
+    assert!(vector
+        .expect_error
+        .as_ref()
+        .is_some_and(|error| !error.is_empty()));
+    let wire = expand(vector.wire.as_ref().unwrap());
+    let mut tile = [0u8; TILE_SIZE];
+    match vector.name.as_str() {
+        "ack_success_extra_octet" | "malformed_control" => {
+            assert!(Ack::from_bytes(&wire).is_err());
+        }
+        "unassigned_bitmap_bit" => {
+            let mask = vector
+                .assigned_fcns
+                .as_ref()
+                .unwrap()
+                .iter()
+                .fold(0, |mask, &fcn| {
+                    mask | if fcn == 63 { 1 } else { 1u64 << fcn }
+                });
+            assert!(Ack::from_bytes_for(&wire, Some(mask)).is_err());
+        }
+        _ => assert!(Fragment::from_bytes(&wire, &mut tile).is_err()),
+    }
 }
