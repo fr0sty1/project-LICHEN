@@ -8,8 +8,43 @@
 #include <schc/bitstream.h>
 #include <schc/schc.h>
 
+#include "schc_fragmentation_vectors.h"
+
 #define TEST_RULE_ID 0x2a
 #define TEST_UNCOMPRESSED_RULE_ID 0xff
+
+ZTEST(schc_generic, test_shared_fragmentation_vector_fixture)
+{
+	zassert_equal(ARRAY_SIZE(schc_fragment_scenarios),
+		      SCHC_FRAGMENT_VECTOR_SOURCE_COUNT);
+	zassert_equal(ARRAY_SIZE(schc_fragment_byte_vectors),
+		      SCHC_FRAGMENT_BYTE_VECTOR_COUNT);
+	zassert_equal(ARRAY_SIZE(schc_fragment_fragments),
+		      SCHC_FRAGMENT_FRAGMENT_VECTOR_COUNT);
+	zassert_true(SCHC_FRAGMENT_VECTOR_SOURCE_COUNT >= 12U);
+	zassert_true(SCHC_FRAGMENT_BYTE_VECTOR_COUNT >= 20U);
+
+	for (size_t i = 0; i < ARRAY_SIZE(schc_fragment_byte_vectors); i++) {
+		zassert_not_null(schc_fragment_byte_vectors[i].scenario);
+		zassert_not_null(schc_fragment_byte_vectors[i].field);
+		zassert_not_null(schc_fragment_byte_vectors[i].data);
+		zassert_true(schc_fragment_byte_vectors[i].len > 0U);
+	}
+
+	for (size_t i = 0; i < ARRAY_SIZE(schc_fragment_fragments); i++) {
+		zassert_not_null(schc_fragment_fragments[i].scenario);
+		zassert_not_null(schc_fragment_fragments[i].name);
+		zassert_not_null(schc_fragment_fragments[i].kind);
+		zassert_not_null(schc_fragment_fragments[i].wire);
+		zassert_true(schc_fragment_fragments[i].wire_len > 0U);
+	}
+
+	for (size_t i = 0; i < ARRAY_SIZE(schc_fragment_scenarios); i++) {
+		zassert_not_null(schc_fragment_scenarios[i].name);
+		zassert_not_null(schc_fragment_scenarios[i].category);
+		zassert_not_null(schc_fragment_scenarios[i].provenance);
+	}
+}
 
 static int test_rule_compress(const struct schc_rule *rule,
 			      const uint8_t *packet, size_t packet_len,
