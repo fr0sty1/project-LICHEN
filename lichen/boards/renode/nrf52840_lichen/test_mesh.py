@@ -12,7 +12,9 @@ Usage:
 """
 
 import asyncio
+import contextlib
 import os
+import signal
 import pytest
 import pytest_asyncio
 from pathlib import Path
@@ -47,6 +49,16 @@ cpu VectorTableOffset $vt
 cpu SP `sysbus ReadDoubleWord $vt`
 cpu PC `sysbus GetSymbolAddress "__start"`
 cpu IsHalted false"""
+
+# Rotating base for each test's sim ports (and the +4000 Renode monitor ports),
+# so consecutive test cases in one run never reuse the same ports.
+_port_base_counter = [6000]
+
+
+def _next_port_base() -> int:
+    base = _port_base_counter[0]
+    _port_base_counter[0] += 20
+    return base
 
 
 @pytest.fixture
@@ -118,20 +130,31 @@ start
         self.proc = await asyncio.create_subprocess_exec(
             "renode",
             "--disable-gui",
-            "--port", str(10100 + self.node_id),
+            # Monitor port derived from the (per-test rotated) sim port so two
+            # test cases never collide on a lingering Renode's fixed port.
+            "--port", str(self.port + 4000),
             str(script_path),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
+            # Own session/process group: Renode runs under Mono and spawns
+            # children that a plain terminate() on the parent leaves alive,
+            # holding ports and corrupting the next test. Kill the whole group.
+            start_new_session=True,
         )
 
     async def stop(self):
         """Stop the Renode process."""
-        if self.proc:
+        if self.proc is None:
+            return
+        try:
+            os.killpg(os.getpgid(self.proc.pid), signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
             self.proc.terminate()
-            try:
-                await asyncio.wait_for(self.proc.wait(), timeout=5)
-            except TimeoutError:
-                self.proc.kill()
+        try:
+            await asyncio.wait_for(self.proc.wait(), timeout=5)
+        except (TimeoutError, asyncio.TimeoutError):
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.killpg(os.getpgid(self.proc.pid), signal.SIGKILL)
 
 
 @pytest_asyncio.fixture
@@ -141,10 +164,14 @@ async def mesh_simulation(board, num_nodes, firmware_path):
     servers = []
     nodes = []
 
+    # Fresh sim-port range per test so a lingering Renode from a prior test
+    # cannot reconnect onto this test's node sockets.
+    base_port = _next_port_base()
+
     try:
         # Start simulation servers
         for i in range(num_nodes):
-            port = 6000 + i
+            port = base_port + i
             x = i * 50.0  # 50m spacing
             server, _ = await start_renode_server(
                 sim, f"node{i}", port=port, position=(x, 0.0, 0.0)
@@ -212,3 +239,38 @@ async def test_mesh_tx(mesh_simulation):
 
     # metrics.transmissions counts frames handed to the medium by any node.
     assert sim.metrics.transmissions > 0, "No LoRa transmissions reached lichen-sim"
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(_NO_FIRMWARE, reason="No firmware built")
+@pytest.mark.xfail(
+    strict=False,
+    reason="inter-node delivery is not yet deterministic — the two Renode "
+    "processes and lichen-sim lack a hard time-sync barrier, so RX/TX windows "
+    "do not always line up (lora_ipv6_mesh-f7sx). Exercises the path and "
+    "xpasses when the nodes sync.",
+)
+async def test_mesh_rx(mesh_simulation):
+    """Test that a frame from one node is delivered to another over the air.
+
+    Exercises the full receive path that the async SX1262 reader unlocked
+    (yot8): node A transmits, the sim medium propagates the frame to node B
+    within range, and the SX1262 bridge delivers it (RX_PACKET) into B's
+    firmware. Unlike test_mesh_tx (a frame merely *reaching* the medium), this
+    asserts inter-node *delivery*, so it requires >= 2 nodes.
+    """
+    sim = mesh_simulation["sim"]
+    nodes = mesh_simulation["nodes"]
+    if len(nodes) < 2:
+        pytest.skip("inter-node delivery needs >= 2 nodes")
+
+    # Wait past the ~10 s settle, then poll: once both nodes are up, deliveries
+    # are frequent, but a single half-duplex RX/TX alignment is timing-
+    # dependent, so poll rather than sampling one fixed instant. Pass as soon
+    # as any frame is delivered.
+    for _ in range(12):
+        await asyncio.sleep(5)
+        if sim.metrics.receptions > 0:
+            break
+
+    assert sim.metrics.receptions > 0, "No frames were delivered between nodes"
