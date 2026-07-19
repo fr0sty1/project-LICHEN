@@ -233,9 +233,13 @@ impl<R: Radio> Stack<R> {
         let src = self.local_addr();
 
         // Build IPv6/UDP packet
+        let mut ipv6 = [0u8; 256];
+        let header_len = IPV6_HEADER_LEN + UDP_HEADER_LEN;
+        if coap.len() > ipv6.len() - header_len {
+            return Err(TxError::BufferTooSmall);
+        }
         let udp_payload_len = coap.len();
         let udp_len = (UDP_HEADER_LEN + udp_payload_len) as u16;
-        let mut ipv6 = [0u8; 256];
 
         // IPv6 header
         let ip_hdr = Ipv6Header::new(next_header::UDP, src, *dst);
@@ -577,5 +581,26 @@ mod tests {
         // Alice receives reply
         let reply = alice.receive(1000).await.unwrap().unwrap();
         assert_eq!(reply.ipv6[40], 129); // ICMPv6 Echo Reply
+    }
+
+    #[tokio::test]
+    async fn raw_coap_rejects_payload_beyond_ipv6_buffer() {
+        let mut stack = test_stack(128);
+        let dst = stack.local_addr();
+        let coap = [0u8; 209];
+
+        assert_ne!(
+            stack.send_coap_raw(&dst, &coap[..208]).await,
+            Err(TxError::BufferTooSmall)
+        );
+        let tuple_state = (stack.epoch, stack.seqnum, stack.sequence_exhausted);
+        assert_eq!(
+            stack.send_coap_raw(&dst, &coap).await,
+            Err(TxError::BufferTooSmall)
+        );
+        assert_eq!(
+            (stack.epoch, stack.seqnum, stack.sequence_exhausted),
+            tuple_state
+        );
     }
 }
