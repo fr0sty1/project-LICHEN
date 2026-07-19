@@ -66,6 +66,21 @@ class RxFrame:
     rssi_dbm: int
     snr_db: int
 
+    @property
+    def payload(self) -> bytes:
+        """Authenticated frame payload."""
+        return self.frame.payload
+
+    @property
+    def sender_iid(self) -> bytes:
+        """Authenticated sender IID."""
+        return self.sender.iid
+
+    @property
+    def sender_pubkey(self) -> bytes:
+        """Authenticated sender public key."""
+        return self.sender.pubkey
+
 
 @dataclass
 class LinkLayer:
@@ -375,14 +390,14 @@ class LinkLayer:
 
         Validation steps (in order):
         1. Parse frame structure (FrameError on malformed)
-        2. Extract signature from payload
+        2. Read signature from MIC
         3. Look up sender by IID (reject if unknown)
         4. Verify signature (reject if invalid)
         5. Check replay protection (reject if replay)
 
         Why this order:
         - Parsing first: Can't do anything else with garbage
-        - Signature extraction: Need to know what to verify
+        - Signature read: Need to know what to verify
         - Sender lookup: Need pubkey for verification
         - Signature verify: Proves authenticity before trusting content
         - Replay last: Only matters if signature is valid
@@ -459,8 +474,7 @@ class LinkLayer:
             len(inner_payload),
         )
 
-        # Why create new frame with inner payload: The caller shouldn't see
-        # the signature bytes - they're link-layer overhead, not application data.
+        # Preserve the authenticated payload; signature bytes live in MIC.
         validated_frame = LichenFrame(
             epoch=frame.epoch,
             seqnum=frame.seqnum,
