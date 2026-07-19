@@ -16,12 +16,14 @@
 //!
 //! Full packet: `CALL>APRS,TCPIP*:!DDMM.mmN/DDDMM.mmW-comment\r\n`
 
-use std::io::{self, BufRead, BufReader, Write};
-use std::net::TcpStream;
+use std::io::{self, BufRead, BufReader, Read, Write};
+use std::net::{Shutdown, TcpStream};
 use std::time::Duration;
 
 /// APRS-IS default TCP port.
 pub const APRS_IS_PORT: u16 = 14580;
+
+const MAX_APRS_IS_LINE: usize = 512;
 
 /// Compact CoT PLI (Position Location Information) from spec Section 10.1.1.
 ///
@@ -153,6 +155,12 @@ pub enum AprsError {
     ParseError(String),
     /// Callsign contains invalid characters.
     InvalidCallsign(String),
+    /// An inbound APRS-IS line exceeded the wire-size limit.
+    LineTooLong {
+        limit: usize,
+    },
+    /// The connection ended after a partial line without a line terminator.
+    UnterminatedLine,
 }
 
 /// Validate an APRS callsign.
@@ -193,6 +201,10 @@ impl std::fmt::Display for AprsError {
             AprsError::LoginFailed(msg) => write!(f, "login failed: {}", msg),
             AprsError::ParseError(msg) => write!(f, "parse error: {}", msg),
             AprsError::InvalidCallsign(msg) => write!(f, "invalid callsign: {}", msg),
+            AprsError::LineTooLong { limit } => {
+                write!(f, "APRS-IS line exceeds {limit} bytes")
+            }
+            AprsError::UnterminatedLine => write!(f, "unterminated APRS-IS line"),
         }
     }
 }
@@ -214,6 +226,7 @@ pub struct AprsIsClient {
     reader: BufReader<TcpStream>,
     callsign: String,
     verification: Option<AprsVerification>,
+    poisoned: bool,
 }
 
 impl AprsIsClient {
@@ -234,6 +247,7 @@ impl AprsIsClient {
             reader,
             callsign: String::new(),
             verification: None,
+            poisoned: false,
         })
     }
 
@@ -255,20 +269,17 @@ impl AprsIsClient {
         validate_callsign(callsign)?;
 
         // Read server banner
-        let mut banner = String::new();
-        self.reader.read_line(&mut banner)?;
+        self.read_required_line("missing APRS-IS banner")?;
 
         // Send login
         let login_cmd = format!(
             "user {} pass {} vers LICHEN 0.1 filter r/0/0/100\r\n",
             callsign, passcode
         );
-        self.stream.write_all(login_cmd.as_bytes())?;
-        self.stream.flush()?;
+        self.write_bytes(login_cmd.as_bytes())?;
 
         // Read login response
-        let mut response = String::new();
-        self.reader.read_line(&mut response)?;
+        let response = self.read_required_line("missing APRS-IS login response")?;
 
         if response.contains("logresp") && response.contains("verified") {
             self.callsign = callsign.to_string();
@@ -291,14 +302,13 @@ impl AprsIsClient {
 
     /// Send an APRS packet to the server.
     pub fn send(&mut self, packet: &str) -> Result<(), AprsError> {
+        self.ensure_connected()?;
         let line = if packet.ends_with("\r\n") {
             packet.to_string()
         } else {
             format!("{}\r\n", packet)
         };
-        self.stream.write_all(line.as_bytes())?;
-        self.stream.flush()?;
-        Ok(())
+        self.write_bytes(line.as_bytes())
     }
 
     /// Receive the next APRS packet from the server.
@@ -308,21 +318,67 @@ impl AprsIsClient {
     /// it finds a real packet or hits timeout/EOF.
     pub fn recv(&mut self) -> Result<Option<String>, AprsError> {
         loop {
-            let mut line = String::new();
-            match self.reader.read_line(&mut line) {
-                Ok(0) => return Ok(None), // EOF
-                Ok(_) => {
+            match self.read_line()? {
+                None => return Ok(None),
+                Some(line) => {
                     // Skip server comments (lines starting with #) and continue
                     if line.starts_with('#') {
                         continue;
                     }
                     return Ok(Some(line.trim_end().to_string()));
                 }
-                Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(None),
-                Err(e) if e.kind() == io::ErrorKind::TimedOut => return Ok(None),
-                Err(e) => return Err(e.into()),
             }
         }
+    }
+
+    fn read_line(&mut self) -> Result<Option<String>, AprsError> {
+        self.ensure_connected()?;
+        match read_line_bounded(&mut self.reader) {
+            Ok(line) => Ok(line),
+            Err(error) => {
+                self.poison();
+                Err(error)
+            }
+        }
+    }
+
+    fn read_required_line(&mut self, message: &'static str) -> Result<String, AprsError> {
+        match self.read_line()? {
+            Some(line) => Ok(line),
+            None => {
+                self.poison();
+                Err(io::Error::new(io::ErrorKind::UnexpectedEof, message).into())
+            }
+        }
+    }
+
+    fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), AprsError> {
+        self.ensure_connected()?;
+        if let Err(error) = self
+            .stream
+            .write_all(bytes)
+            .and_then(|()| self.stream.flush())
+        {
+            self.poison();
+            return Err(error.into());
+        }
+        Ok(())
+    }
+
+    fn poison(&mut self) {
+        self.poisoned = true;
+        let _ = self.stream.shutdown(Shutdown::Both);
+    }
+
+    fn ensure_connected(&self) -> Result<(), AprsError> {
+        if self.poisoned {
+            return Err(io::Error::new(
+                io::ErrorKind::NotConnected,
+                "APRS-IS connection is unusable",
+            )
+            .into());
+        }
+        Ok(())
     }
 
     /// Get the logged-in callsign.
@@ -341,8 +397,42 @@ impl AprsIsClient {
 
     /// Check if this connection can transmit (is verified).
     pub fn can_transmit(&self) -> bool {
-        self.verification == Some(AprsVerification::Verified)
+        !self.poisoned && self.verification == Some(AprsVerification::Verified)
     }
+}
+
+fn read_line_bounded<R: BufRead>(reader: &mut R) -> Result<Option<String>, AprsError> {
+    let mut bytes = Vec::with_capacity(MAX_APRS_IS_LINE + 1);
+    let result = reader
+        .take((MAX_APRS_IS_LINE + 1) as u64)
+        .read_until(b'\n', &mut bytes);
+
+    if let Err(error) = result {
+        if bytes.is_empty()
+            && matches!(
+                error.kind(),
+                io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
+            )
+        {
+            return Ok(None);
+        }
+        return Err(error.into());
+    }
+    if bytes.is_empty() {
+        return Ok(None);
+    }
+    if bytes.len() > MAX_APRS_IS_LINE {
+        return Err(AprsError::LineTooLong {
+            limit: MAX_APRS_IS_LINE,
+        });
+    }
+    if !bytes.ends_with(b"\n") {
+        return Err(AprsError::UnterminatedLine);
+    }
+
+    String::from_utf8(bytes)
+        .map(Some)
+        .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error).into())
 }
 
 /// Convert Compact CoT PLI to APRS position packet.
@@ -505,6 +595,142 @@ pub fn aprs_to_cot(aprs: &str) -> Option<CompactCot> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Cursor;
+    use std::net::TcpListener;
+    use std::thread;
+
+    fn loopback_client() -> (AprsIsClient, TcpStream) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let stream = TcpStream::connect(address).unwrap();
+        let server = listener.accept().unwrap().0;
+        let reader = BufReader::new(stream.try_clone().unwrap());
+        let client = AprsIsClient {
+            stream,
+            reader,
+            callsign: String::new(),
+            verification: None,
+            poisoned: false,
+        };
+        (client, server)
+    }
+
+    #[test]
+    fn bounded_line_accepts_512_wire_bytes() {
+        let mut input = vec![b'A'; 511];
+        input.push(b'\n');
+        assert_eq!(
+            read_line_bounded(&mut Cursor::new(input))
+                .unwrap()
+                .unwrap()
+                .len(),
+            512
+        );
+    }
+
+    #[test]
+    fn bounded_line_accepts_512_wire_bytes_with_crlf() {
+        let mut input = vec![b'A'; 510];
+        input.extend_from_slice(b"\r\n");
+        assert_eq!(
+            read_line_bounded(&mut Cursor::new(input))
+                .unwrap()
+                .unwrap()
+                .len(),
+            512
+        );
+    }
+
+    #[test]
+    fn bounded_line_rejects_513_wire_bytes() {
+        let mut input = vec![b'A'; 512];
+        input.push(b'\n');
+        assert!(matches!(
+            read_line_bounded(&mut Cursor::new(input)),
+            Err(AprsError::LineTooLong { limit: 512 })
+        ));
+    }
+
+    #[test]
+    fn bounded_line_stops_after_513_bytes() {
+        let mut input = Cursor::new(vec![b'A'; 4096]);
+        assert!(matches!(
+            read_line_bounded(&mut input),
+            Err(AprsError::LineTooLong { limit: 512 })
+        ));
+        assert_eq!(input.position(), 513);
+    }
+
+    #[test]
+    fn bounded_line_rejects_unterminated_eof() {
+        assert!(matches!(
+            read_line_bounded(&mut Cursor::new(vec![b'A'; 511])),
+            Err(AprsError::UnterminatedLine)
+        ));
+    }
+
+    #[test]
+    fn bounded_line_accepts_empty_eof() {
+        assert!(read_line_bounded(&mut Cursor::new(Vec::new()))
+            .unwrap()
+            .is_none());
+    }
+
+    #[test]
+    fn bounded_line_rejects_invalid_utf8() {
+        let error = read_line_bounded(&mut Cursor::new(vec![0xff, b'\n'])).unwrap_err();
+        assert!(
+            matches!(error, AprsError::Io(ref error) if error.kind() == io::ErrorKind::InvalidData)
+        );
+    }
+
+    #[test]
+    fn oversized_line_poisons_buffered_connection() {
+        let (mut client, mut server) = loopback_client();
+        client.verification = Some(AprsVerification::Verified);
+        let mut input = vec![b'A'; 512];
+        input.extend_from_slice(b"\nVALID\n");
+        server.write_all(&input).unwrap();
+
+        assert!(client.can_transmit());
+        assert!(matches!(
+            client.recv(),
+            Err(AprsError::LineTooLong { limit: 512 })
+        ));
+        assert!(!client.can_transmit());
+        assert!(matches!(
+            client.recv(),
+            Err(AprsError::Io(ref error)) if error.kind() == io::ErrorKind::NotConnected
+        ));
+        assert!(matches!(
+            client.send("TEST>APRS:payload"),
+            Err(AprsError::Io(ref error)) if error.kind() == io::ErrorKind::NotConnected
+        ));
+    }
+
+    #[test]
+    fn missing_login_response_poisons_connection() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let mut stream = listener.accept().unwrap().0;
+            stream.write_all(b"# banner\n").unwrap();
+            let mut command = [0u8; 128];
+            let _ = stream.read(&mut command).unwrap();
+            stream.shutdown(Shutdown::Write).unwrap();
+        });
+        let mut client = AprsIsClient::connect("127.0.0.1", address.port()).unwrap();
+
+        assert!(matches!(
+            client.login("N0CALL", -1),
+            Err(AprsError::Io(ref error)) if error.kind() == io::ErrorKind::UnexpectedEof
+        ));
+        assert!(matches!(
+            client.send("N0CALL>APRS:payload"),
+            Err(AprsError::Io(ref error)) if error.kind() == io::ErrorKind::NotConnected
+        ));
+        server.join().unwrap();
+    }
 
     #[test]
     fn compact_cot_roundtrip() {
