@@ -12,6 +12,7 @@ path = "src/main.rs"
 [dependencies]
 lichen-core   = { path = "../lichen-core" }
 lichen-client = { path = "../lichen-client" }
+lichen-coap   = { path = "../lichen-coap", features = ["tokio"] }
 
 clap      = { version = "4", features = ["derive", "env"] }
 ratatui   = "0.30"

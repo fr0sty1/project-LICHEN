@@ -2029,6 +2029,7 @@ dependencies = [
  "clap",
  "crossterm",
  "lichen-client",
+ "lichen-coap",
  "lichen-core",
  "ratatui",
  "tokio",
