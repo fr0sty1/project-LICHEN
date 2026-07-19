@@ -6,6 +6,7 @@
 use crate::{output, ConfigAction, KeyAction, OutputFormat, PositionAction, RdAction};
 use lichen_client::msg::{Inbox, OutgoingMessage, SentMessage};
 use lichen_client::paths;
+use lichen_client::pos::Position;
 use lichen_coap::client;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use sha2::{Digest, Sha256};
@@ -294,9 +295,31 @@ pub async fn config(node: SocketAddr, action: ConfigAction, fmt: &OutputFormat) 
 pub async fn position(node: SocketAddr, action: PositionAction, fmt: &OutputFormat) -> CmdResult {
     match action {
         PositionAction::Show => {
-            let resp = client::get(node, "/location").await?;
-            let cbor = decode_cbor(&resp)?;
-            output::print_cbor(cbor, fmt);
+            // Spec §18.2.2: GET /sensors/location -> application/senml+cbor.
+            let resp = client::get(node, paths::SENSORS_LOCATION).await?;
+            if !resp.is_success() {
+                return Err(format!("position query failed: {}", resp.code_str()).into());
+            }
+            let p = Position::from_senml_cbor(&resp.payload)?;
+            match fmt {
+                OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&p)?),
+                OutputFormat::Human => {
+                    println!("  device: {}", p.device);
+                    println!("  lat: {}  lon: {}", p.lat, p.lon);
+                    if let Some(alt) = p.alt {
+                        println!("  alt: {alt} m");
+                    }
+                    if let Some(speed) = p.speed {
+                        println!("  speed: {speed} m/s");
+                    }
+                    if let Some(heading) = p.heading {
+                        println!("  heading: {heading} deg");
+                    }
+                    if let Some(time) = p.time {
+                        println!("  time: {time}");
+                    }
+                }
+            }
         }
         PositionAction::Broadcast => {
             return Err("position broadcast not implemented".into());

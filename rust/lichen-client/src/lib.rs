@@ -15,6 +15,7 @@
 
 pub mod msg;
 pub mod paths;
+pub mod pos;
 
 mod error;
 pub use error::Error;

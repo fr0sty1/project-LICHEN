@@ -9,7 +9,8 @@ license.workspace = true
 description = "Shared client-side domain models and CBOR wire codecs for LICHEN apps (CLI, TUI, GUI)."
 
 [dependencies]
-serde    = { version = "1", features = ["derive"] }
-ciborium = "0.2"
+serde        = { version = "1", features = ["derive"] }
+ciborium     = "0.2"
+lichen-senml = { path = "../lichen-senml" }
 
 [dev-dependencies]
