@@ -4,6 +4,8 @@
 //! response, and prints it using the selected output format.
 
 use crate::{output, ConfigAction, KeyAction, OutputFormat, PositionAction, RdAction};
+use lichen_client::msg::{Inbox, OutgoingMessage, SentMessage};
+use lichen_client::paths;
 use lichen_coap::client;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use sha2::{Digest, Sha256};
@@ -95,26 +97,46 @@ pub async fn presence(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
 }
 
 pub async fn send(node: SocketAddr, to: &str, message: &str, fmt: &OutputFormat) -> CmdResult {
-    let body_json = serde_json::json!({ "to": to, "text": message });
-    let body = encode_cbor(&body_json)?;
-    let resp = client::post(node, "/messages", &body).await?;
-    if resp.is_success() {
-        output::print_kv("sent", message, fmt);
-        output::print_kv("to", to, fmt);
-    } else {
+    let msg = OutgoingMessage::new(to, message);
+    let resp = client::post(node, paths::MSG_INBOX, &msg.to_cbor()).await?;
+    if !resp.is_success() {
         return Err(format!("send failed: {}", resp.code_str()).into());
+    }
+    // The firmware answers with {id, to, body, timestamp, status}; a bodyless
+    // 2.01 Created is also valid, so fall back to echoing the request.
+    match SentMessage::from_cbor(&resp.payload) {
+        Ok(sent) => match fmt {
+            OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&sent)?),
+            OutputFormat::Human => {
+                println!("  sent [{}] to {}: {}", sent.id, sent.to, sent.body);
+                println!("  status: {}", sent.status);
+            }
+        },
+        Err(_) => {
+            output::print_kv("sent", message, fmt);
+            output::print_kv("to", to, fmt);
+        }
     }
     Ok(())
 }
 
 pub async fn inbox(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
-    let resp = client::get(node, "/messages").await?;
-    let cbor = decode_cbor(&resp)?;
-    match &cbor {
-        ciborium::value::Value::Array(arr) if arr.is_empty() => {
-            println!("(inbox empty)");
+    let resp = client::get(node, paths::MSG_INBOX).await?;
+    let inbox = Inbox::from_cbor(&resp.payload)?;
+    match fmt {
+        OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&inbox)?),
+        OutputFormat::Human => {
+            if inbox.messages.is_empty() {
+                println!("(inbox empty)");
+            } else {
+                for m in &inbox.messages {
+                    println!(
+                        "  [{}] from {} (t={}): {}",
+                        m.id, m.from, m.received, m.body
+                    );
+                }
+            }
         }
-        _ => output::print_cbor(cbor, fmt),
     }
     Ok(())
 }
