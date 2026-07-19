@@ -6,6 +6,7 @@
  * @brief LICHEN encrypted link-frame TX/RX tests
  */
 
+#include <zephyr/fff.h>
 #include <zephyr/ztest.h>
 
 #include <lichen/errno.h>
@@ -16,6 +17,34 @@
 #include <lichen/schnorr48.h>
 
 #include <string.h>
+
+DEFINE_FFF_GLOBALS;
+FAKE_VALUE_FUNC(int, __wrap_z_impl_sys_csrand_get, void *, size_t);
+
+static int csrand_success(void *dst, size_t len)
+{
+	memset(dst, 0xa5, len);
+	return 0;
+}
+
+static void reset_csrand_fake(void)
+{
+	RESET_FAKE(__wrap_z_impl_sys_csrand_get);
+	FFF_RESET_HISTORY();
+	__wrap_z_impl_sys_csrand_get_fake.custom_fake = csrand_success;
+}
+
+static void link_crypto_before(void *fixture)
+{
+	ARG_UNUSED(fixture);
+	reset_csrand_fake();
+}
+
+static void link_crypto_after(void *fixture)
+{
+	ARG_UNUSED(fixture);
+	reset_csrand_fake();
+}
 
 static const uint8_t test_eui64[LICHEN_EUI64_LEN] = {
 	0x02, 0x00, 0x5e, 0x10, 0x20, 0x30, 0x40, 0x50
@@ -40,6 +69,21 @@ static const uint8_t test_ipv6[40] = {
 	0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02
 };
+
+ZTEST(link_crypto, test_init_rejects_csrand_failure_without_mutation)
+{
+	struct lichen_link_ctx ctx;
+	struct lichen_link_ctx before;
+
+	memset(&ctx, 0xa5, sizeof(ctx));
+	memcpy(&before, &ctx, sizeof(before));
+	__wrap_z_impl_sys_csrand_get_fake.custom_fake = NULL;
+	__wrap_z_impl_sys_csrand_get_fake.return_val = -EIO;
+
+	zassert_equal(lichen_link_init(&ctx, test_eui64), -EIO);
+	zassert_equal(__wrap_z_impl_sys_csrand_get_fake.call_count, 1U);
+	zassert_mem_equal(&ctx, &before, sizeof(ctx));
+}
 
 static void init_tx_ctx(struct lichen_link_ctx *tx)
 {
@@ -422,4 +466,5 @@ ZTEST(link_crypto, test_l2_payload_dispatch_distinguishes_global_coap_from_annou
 		      LICHEN_L2_PAYLOAD_UNKNOWN);
 }
 
-ZTEST_SUITE(link_crypto, NULL, NULL, NULL, NULL, NULL);
+ZTEST_SUITE(link_crypto, NULL, NULL,
+	    link_crypto_before, link_crypto_after, NULL);

@@ -1432,7 +1432,13 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 			/* SECURITY: Defensive zero of any stale key material before re-init
 			 * (project-LICHEN-725z.9) */
 			secure_zero(&link_ctx, sizeof(link_ctx));
-			lichen_link_init(&link_ctx, eui64_copy);
+			ret = lichen_link_init(&link_ctx, eui64_copy);
+			if (ret < 0) {
+				LOG_ERR("lichen_l2: link context init failed (%d)", ret);
+				k_mutex_unlock(&rx_mutex);
+				k_mutex_unlock(&tx_mutex);
+				return ret;
+			}
 			/*
 			 * Re-init replay table to match iface_init() behavior.
 			 * Without this, stale replay windows could persist or be
@@ -1816,6 +1822,10 @@ void lichen_l2_iface_init(struct net_if *iface)
 	int ret;
 
 	LOG_INF("lichen_l2: initializing interface");
+	if (atomic_get(&iface_init_failed)) {
+		LOG_ERR("lichen_l2: refusing retry after failed initialization");
+		return;
+	}
 
 	/*
 	 * Do NOT clear iface_init_failed here (project-LICHEN-i1gk.63).
@@ -1831,8 +1841,8 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * - Never explicitly cleared here; first boot starts at 0 (static init)
 	 * - Checked by send/recv/enable to reject operations on half-initialized state
 	 *
-	 * After a failed init, the lichen_iface != NULL check (see below) catches
-	 * retry attempts, ensuring failure is permanent until system restart.
+	 * After a failed init, the check above rejects retry attempts, ensuring
+	 * failure is permanent until system restart.
 	 * This is fail-safe by design.
 	 */
 
@@ -1919,7 +1929,12 @@ void lichen_l2_iface_init(struct net_if *iface)
 	 * depend on replay_table, and no async access occurs before link_ctx_initialized
 	 * is set (after RX callback registration). (project-LICHEN-i1gk.81)
 	 */
-	lichen_link_init(&link_ctx, eui64);
+	ret = lichen_link_init(&link_ctx, eui64);
+	if (ret < 0) {
+		LOG_ERR("lichen_l2: link context init failed (%d)", ret);
+		atomic_set(&iface_init_failed, 1);
+		return;
+	}
 	lichen_replay_table_init(&replay_table);
 	/*
 	 * Explicitly initialize peer_table at boot.

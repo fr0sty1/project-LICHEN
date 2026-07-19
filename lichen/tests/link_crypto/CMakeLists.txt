@@ -6,3 +6,5 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(link_crypto)
 
 target_sources(app PRIVATE src/main.c)
+
+zephyr_ld_options(-Wl,--wrap=z_impl_sys_csrand_get)
