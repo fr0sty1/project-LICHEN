@@ -29,6 +29,22 @@ from lichen.sim.simulation import Simulation
 from lichen.sim.renode_server import start_renode_server
 
 
+# The T-Echo/RAK4631 firmware is built as an MCUboot slot-0 application: its
+# vector table lives at `_vector_table` (slot0 base + CONFIG_ROM_START_OFFSET,
+# e.g. 0x32200), NOT at flash 0x0. On real hardware MCUboot chain-loads it; in
+# Renode there is no MCUboot, so a bare `LoadELF` + `start` leaves the Cortex-M
+# reading its initial SP/PC from an empty 0x0 -> "PC and SP are equal to zero.
+# CPU was halted." -> the firmware never runs (and no LoRa frames are sent).
+#
+# Seed the reset state from the application's own vector table so the CPU boots
+# the image directly. Symbol-based so it works regardless of the exact offset.
+_BOOT_MCUBOOT_APP = """\
+cpu VectorTableOffset `sysbus GetSymbolAddress "_vector_table"`
+cpu SP `sysbus ReadDoubleWord (sysbus GetSymbolAddress "_vector_table")`
+cpu PC `sysbus GetSymbolAddress "__start"`
+cpu IsHalted false"""
+
+
 @pytest.fixture
 def board(request):
     return request.config.getoption("--board")
@@ -88,6 +104,7 @@ spi1.sx1262 SimPort {self.port}
 sysbus Tag <0x10000060, 0x10000063> "DEVICEID[0]" 0x1CE1{self.node_id:04X}
 sysbus Tag <0x10000064, 0x10000067> "DEVICEID[1]" 0x1CE2{self.node_id:04X}
 sysbus LoadELF @{self.firmware}
+{_BOOT_MCUBOOT_APP}
 cpu PerformanceInMips 64
 start
 """
@@ -175,12 +192,17 @@ async def test_mesh_boots(mesh_simulation):
 async def test_mesh_tx(mesh_simulation):
     """Test that nodes transmit LoRa frames into lichen-sim.
 
-    Validated on Renode 1.16.1: the T-Echo puck firmware beacons over the
-    SX1262 bridge, so at least one transmission reaches the simulation.
+    KNOWN-FAILING (lora_ipv6_mesh-yot8): with the MCUboot-app boot fix above the
+    firmware now boots and drives the SX1262 over SPI, but the SX1262.cs model
+    does not decode the driver's register/config opcodes (0x0D WriteReg, 0x1D
+    ReadReg, 0x95, 0x97, ...) and the SPIM-EasyDMA chip-select framing desyncs
+    (bursts of "Unknown opcode: 0x00"), so the LoRa driver init stalls before it
+    ever issues SetTx (0x83). No frame reaches the medium. Completing the
+    SX1262.cs opcode/CS handling is required to make this pass.
 
-    Note: end-to-end RX into firmware is not asserted here — the SX1262.cs
-    RX path is one-shot at SetRx (see bead project-LICHEN-r7h4.6) and the
-    bridge/time-model interaction is unresolved (project-LICHEN-r7h4.7).
+    (The earlier "validated: firmware beacons" claim was incorrect — the
+    firmware never actually booted in Renode; it halted at reset on an empty
+    vector table. See yot8 for the full analysis.)
     """
     sim = mesh_simulation["sim"]
 
