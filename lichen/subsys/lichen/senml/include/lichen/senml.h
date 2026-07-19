@@ -73,8 +73,8 @@ enum senml_value_type {
  * @brief SenML record
  */
 struct senml_record {
-	const char *name;          /**< Record name (n) */
-	const char *unit;          /**< Unit (u) - may be NULL */
+	const char *_Nullable name; /**< Record name (n) */
+	const char *_Nullable unit; /**< Unit (u) - may be NULL */
 	enum senml_value_type type;
 	union {
 		float f;           /**< Float value */
@@ -88,7 +88,7 @@ struct senml_record {
  * @brief SenML pack (array of records with common base)
  */
 struct senml_pack {
-	const char *base_name;     /**< Base name (bn) - may be NULL */
+	const char *_Nullable base_name; /**< Base name (bn) - may be NULL */
 	uint64_t base_time;        /**< Base time (bt) - 0 means not set */
 	bool has_base_time;        /**< Include base time */
 	struct senml_record records[SENML_MAX_RECORDS];
@@ -104,7 +104,7 @@ struct senml_pack {
  * @return 0 on success, -EINVAL if pack is NULL, -EMSGSIZE if base_name is
  *         longer than SENML_MAX_NAME_LEN
  */
-int senml_pack_init(struct senml_pack *_Nonnull pack,
+int senml_pack_init(struct senml_pack *_Nullable pack,
 		    const char *_Nullable base_name,
 		    uint64_t base_time);
 
@@ -115,11 +115,11 @@ int senml_pack_init(struct senml_pack *_Nonnull pack,
  * @param[in]     name  Record name (e.g., "temp")
  * @param[in]     unit  Unit string (e.g., "Cel") or NULL
  * @param[in]     value Float value
- * @return 0 on success, -ENOMEM if pack is full, -EMSGSIZE if name or unit is
- *         too long
+ * @return 0 on success, -EINVAL if pack or name is NULL, -ENOMEM if pack is
+ *         full, -EMSGSIZE if name or unit is too long
  */
-int senml_add_float(struct senml_pack *_Nonnull pack,
-		    const char *_Nonnull name,
+int senml_add_float(struct senml_pack *_Nullable pack,
+		    const char *_Nullable name,
 		    const char *_Nullable unit,
 		    float value);
 
@@ -131,11 +131,11 @@ int senml_add_float(struct senml_pack *_Nonnull pack,
  * @param[in]     unit        Unit string or NULL
  * @param[in]     value       Float value
  * @param[in]     time_offset Seconds from base_time
- * @return 0 on success, -ENOMEM if pack is full, -EMSGSIZE if name or unit is
- *         too long
+ * @return 0 on success, -EINVAL if pack or name is NULL, -ENOMEM if pack is
+ *         full, -EMSGSIZE if name or unit is too long
  */
-int senml_add_float_t(struct senml_pack *_Nonnull pack,
-		      const char *_Nonnull name,
+int senml_add_float_t(struct senml_pack *_Nullable pack,
+		      const char *_Nullable name,
 		      const char *_Nullable unit,
 		      float value,
 		      int32_t time_offset);
@@ -146,10 +146,11 @@ int senml_add_float_t(struct senml_pack *_Nonnull pack,
  * @param[in,out] pack  SenML pack
  * @param[in]     name  Record name (e.g., "charging")
  * @param[in]     value Boolean value
- * @return 0 on success, -ENOMEM if pack is full, -EMSGSIZE if name is too long
+ * @return 0 on success, -EINVAL if pack or name is NULL, -ENOMEM if pack is
+ *         full, -EMSGSIZE if name is too long
  */
-int senml_add_bool(struct senml_pack *_Nonnull pack,
-		   const char *_Nonnull name,
+int senml_add_bool(struct senml_pack *_Nullable pack,
+		   const char *_Nullable name,
 		   bool value);
 
 /**
