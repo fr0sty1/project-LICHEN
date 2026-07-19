@@ -2026,9 +2026,9 @@ dependencies = [
 name = "lichen-tui"
 version = "0.1.0"
 dependencies = [
- "ciborium",
  "clap",
  "crossterm",
+ "lichen-client",
  "lichen-core",
  "ratatui",
  "tokio",

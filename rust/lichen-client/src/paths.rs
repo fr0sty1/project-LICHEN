@@ -10,6 +10,12 @@
 //!
 //! Sources: `lichen/subsys/lichen/coap/coap_msg.c`, `spec/12-apps.md` §18.1.
 
+/// Node status snapshot (GET, Observable).
+pub const STATUS: &str = "/status";
+
+/// Neighbor / link-quality table (GET).
+pub const STATUS_NEIGHBORS: &str = "/status/neighbors";
+
 /// Send a message (POST) or read the inbox (GET, Observable).
 pub const MSG_INBOX: &str = "/msg/inbox";
 

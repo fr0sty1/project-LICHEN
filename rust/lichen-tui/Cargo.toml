@@ -10,9 +10,9 @@ name = "lichen-tui"
 path = "src/main.rs"
 
 [dependencies]
-lichen-core = { path = "../lichen-core" }
+lichen-core   = { path = "../lichen-core" }
+lichen-client = { path = "../lichen-client" }
 
-ciborium  = "0.2"
 clap      = { version = "4", features = ["derive", "env"] }
 ratatui   = "0.30"
 crossterm = "0.29"

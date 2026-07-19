@@ -31,7 +31,6 @@ mod coap;
 mod radio;
 mod rf_health;
 
-use ciborium::value::Value;
 use clap::Parser;
 use crossterm::{
     event::{self, Event, KeyCode, KeyModifiers},
@@ -83,66 +82,39 @@ struct NodeData {
 // ── CBOR decoding ─────────────────────────────────────────────────────────────
 
 fn parse_status(bytes: &[u8]) -> NodeStatus {
-    let Ok(Value::Map(entries)) = ciborium::de::from_reader(bytes) else {
-        return NodeStatus::default();
-    };
-    let mut s = NodeStatus::default();
-    for (k, v) in entries {
-        let Value::Text(key) = k else { continue };
-        match key.as_str() {
-            "uptime" => {
-                if let Value::Integer(n) = v {
-                    s.uptime_secs = Some(i128::from(n) as u64);
-                }
-            }
-            "firmware" => {
-                if let Value::Text(fw) = v {
-                    s.firmware = Some(fw);
-                }
-            }
-            _ => {}
-        }
+    // Decode via the shared client wire codec, then project onto the fields
+    // this UI shows. The firmware /status map has no version field, so
+    // `firmware` stays None as before.
+    match lichen_client::status::NodeStatus::from_cbor(bytes) {
+        Ok(s) => NodeStatus {
+            uptime_secs: Some(s.uptime_s),
+            firmware: None,
+        },
+        Err(_) => NodeStatus::default(),
     }
-    s
 }
 
 fn parse_neighbors(bytes: &[u8]) -> Vec<Neighbor> {
-    let Ok(Value::Array(items)) = ciborium::de::from_reader(bytes) else {
-        return vec![];
-    };
-    items
-        .into_iter()
-        .filter_map(|item| {
-            let Value::Map(entries) = item else {
-                return None;
-            };
-            let mut addr = None;
-            let mut rssi = None;
-            for (k, v) in entries {
-                let Value::Text(key) = k else { continue };
-                match key.as_str() {
-                    "addr" => {
-                        if let Value::Text(a) = v {
-                            addr = Some(a);
-                        }
-                    }
-                    "rssi" => {
-                        if let Value::Integer(r) = v {
-                            rssi = Some(i128::from(r) as i32);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            addr.map(|a| Neighbor { addr: a, rssi })
-        })
-        .collect()
+    match lichen_client::status::Neighbors::from_cbor(bytes) {
+        Ok(ns) => ns
+            .neighbors
+            .into_iter()
+            .map(|n| Neighbor {
+                addr: n.addr,
+                rssi: Some(n.rssi_dbm),
+            })
+            .collect(),
+        Err(_) => Vec::new(),
+    }
 }
 
 // ── background polling ────────────────────────────────────────────────────────
 
 async fn poll_node(node: SocketAddr) -> Result<NodeData, String> {
-    let (sr, nr) = tokio::join!(coap::get(node, "status"), coap::get(node, "neighbors"));
+    let (sr, nr) = tokio::join!(
+        coap::get(node, "status"),
+        coap::get(node, "status/neighbors")
+    );
     // If both requests failed, return the status error (owned, no clone needed)
     match (sr, nr) {
         (Err(se), Err(_)) => Err(se),
