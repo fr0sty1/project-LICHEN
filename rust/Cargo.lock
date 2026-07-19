@@ -1785,6 +1785,7 @@ dependencies = [
  "ciborium",
  "clap",
  "getrandom 0.2.17",
+ "lichen-client",
  "lichen-coap",
  "lichen-core",
  "percent-encoding",
@@ -1795,6 +1796,14 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "zeroize",
+]
+
+[[package]]
+name = "lichen-client"
+version = "0.1.0"
+dependencies = [
+ "ciborium",
+ "serde",
 ]
 
 [[package]]
