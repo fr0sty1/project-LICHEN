@@ -61,42 +61,30 @@ valid = (e'[0:16] == e_received)
 
 ### 8.4. Signed vs Relay-Mutable Fields
 
-Signatures cover the **immutable** portion of the packet. Relays modify
-routing headers without re-signing.
+LICHEN signatures are hop-by-hop. Each transmitter signs the complete link
+frame for its selected next hop. A relay verifies the incoming frame,
+reassembles and decompresses SCHC as needed, performs IPv6 forwarding changes,
+then builds and signs a new link frame for the next hop.
 
-**Signed (immutable):**
+**Covered by each link signature:**
 | Field | Notes |
 |-------|-------|
-| Source IPv6 address | Origin identity |
-| Destination IPv6 address | Final destination |
-| Payload | Application data |
-| Sequence number | Replay protection |
+| Link-layer destination | Binds the frame to its immediate next hop |
+| SCHC fragment or packet payload | Authenticates the immediate transmitter |
+| Epoch and sequence number | Per-peer replay protection |
 | LLSec flags | Security parameters |
 
-**Unsigned (relay-mutable):**
-| Field | Notes |
-|-------|-------|
-| Hop Limit / TTL | Decremented per hop |
-| 6LoRH source routing headers | Inserted/consumed by relays |
-| Link-layer destination | Changes each hop |
-| Link-layer source | Relay's address |
-
-**Implication:** Relays forward packets without re-signing. The original
-signature remains valid because signed fields are unchanged.
+IPv6 source and destination remain end-to-end network-layer fields, while Hop
+Limit and routing headers are updated before the relay signs its outgoing
+frame. End-to-end application authenticity and confidentiality use OSCORE or an
+application signature; the link signature is not an origin signature.
 
 ### 8.5. Signature Caching
 
-To reduce verification overhead:
-
-1. **First-hop verification:** Verify signature when packet first arrives
-2. **Cache result:** Mark packet as "verified from <IID>" in forwarding state
-3. **Relay without re-verify:** Subsequent hops trust first-hop verification
-4. **Cache keyed by:** (source IID, sequence number) with TTL
-
-Cache entries expire after 2× expected mesh traversal time (default: 30 seconds).
-
-**Security note:** A compromised relay could inject unverified packets. In
-high-security deployments, enable per-hop verification (costs CPU, not bytes).
+Every receiver MUST verify every signed incoming link frame before replay-window
+acceptance, SCHC reassembly, or forwarding. Implementations MAY cache parsed
+public keys or verification precomputation, but MUST NOT cache a prior frame's
+verification result as authorization for a different frame.
 
 ### 8.6. Key Management
 
