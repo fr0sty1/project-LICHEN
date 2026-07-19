@@ -122,6 +122,9 @@ jobs:
           cmake -S lichen/tests/frame -B /tmp/lichen-frame
           cmake --build /tmp/lichen-frame
           ctest --test-dir /tmp/lichen-frame --output-on-failure
+          cmake -S lichen/tests/link_ctx -B /tmp/lichen-link-ctx
+          cmake --build /tmp/lichen-link-ctx
+          ctest --test-dir /tmp/lichen-link-ctx --output-on-failure
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
