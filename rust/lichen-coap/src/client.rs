@@ -7,7 +7,13 @@
 //! block-wise transfer.  It is suitable for CLI and TUI tools that talk to a
 //! local LICHEN node over the loopback or LAN.
 
+use std::collections::hash_map::RandomState;
+use std::hash::BuildHasher;
 use std::net::SocketAddr;
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    OnceLock,
+};
 use tokio::net::UdpSocket;
 use tokio::time::{timeout, Duration};
 
@@ -17,6 +23,7 @@ use crate::message::{MessageCode, MessageType};
 const TIMEOUT_S: u64 = 5;
 /// Content-Format value for CBOR (RFC 7049).
 const CONTENT_FORMAT_CBOR: u16 = 60;
+static REQUEST_SEQUENCE: OnceLock<AtomicU64> = OnceLock::new();
 
 /// A decoded CoAP response.
 #[derive(Debug)]
@@ -77,8 +84,7 @@ async fn request(
     let sock = UdpSocket::bind(bind).await?;
     sock.connect(addr).await?;
 
-    let mid = mid_from_time();
-    let token = [0x4c, 0x49, 0x43, 0x48]; // "LICH"
+    let (mid, token) = next_request_id(request_sequence())?;
     let frame = encode(code, mid, &token, path, payload)?;
 
     sock.send(&frame).await?;
@@ -248,18 +254,28 @@ fn trunc() -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "truncated CoAP option")
 }
 
-/// Generate a pseudo-random 16-bit message ID from the system clock.
-fn mid_from_time() -> u16 {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.subsec_nanos() as u16)
-        .unwrap_or(0x1234)
+fn next_request_id(sequence: &AtomicU64) -> std::io::Result<(u16, [u8; 8])> {
+    let value = sequence
+        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |value| {
+            value.checked_add(1)
+        })
+        .map_err(|_| std::io::Error::other("CoAP request ID space exhausted"))?;
+    Ok((value as u16, value.to_be_bytes()))
+}
+
+fn request_sequence() -> &'static AtomicU64 {
+    REQUEST_SEQUENCE.get_or_init(|| {
+        let seed = RandomState::new().hash_one("LICHEN CoAP request sequence") & (u64::MAX >> 1);
+        AtomicU64::new(seed)
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
+    use std::sync::Arc;
+    use std::thread;
 
     /// Build a minimal CoAP response: Ver=1, Type=ACK, TKL, Code, MID, Token, optional payload.
     fn build_response(code: u8, mid: u16, token: &[u8], payload: Option<&[u8]>) -> Vec<u8> {
@@ -364,5 +380,51 @@ mod tests {
         // Should fail on MID check first
         let err = result.unwrap_err();
         assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+    }
+
+    #[test]
+    fn request_ids_are_unique_concurrently() {
+        let sequence = Arc::new(AtomicU64::new(0));
+        let threads: Vec<_> = (0..8)
+            .map(|_| {
+                let sequence = Arc::clone(&sequence);
+                thread::spawn(move || {
+                    (0..1000)
+                        .map(|_| next_request_id(&sequence).unwrap())
+                        .collect::<Vec<_>>()
+                })
+            })
+            .collect();
+        let mut seen = HashSet::new();
+
+        for thread in threads {
+            for id in thread.join().unwrap() {
+                assert!(seen.insert(id));
+            }
+        }
+        assert_eq!(seen.len(), 8000);
+    }
+
+    #[test]
+    fn request_ids_remain_unique_across_mid_rollover() {
+        let sequence = AtomicU64::new(u16::MAX as u64);
+        let first = next_request_id(&sequence).unwrap();
+        let second = next_request_id(&sequence).unwrap();
+
+        assert_eq!(first.0, u16::MAX);
+        assert_eq!(second.0, 0);
+        assert_ne!(first.1, second.1);
+        assert_ne!(first, second);
+    }
+
+    #[test]
+    fn request_id_exhaustion_does_not_wrap() {
+        let sequence = AtomicU64::new(u64::MAX - 1);
+        let last = next_request_id(&sequence).unwrap();
+
+        assert_eq!(last.1, (u64::MAX - 1).to_be_bytes());
+        assert!(next_request_id(&sequence).is_err());
+        assert!(next_request_id(&sequence).is_err());
+        assert_eq!(sequence.load(Ordering::Relaxed), u64::MAX);
     }
 }
