@@ -269,7 +269,7 @@ struct lichen_meshtastic_adapter {
 
 void lichen_meshtastic_adapter_init(
 	struct lichen_meshtastic_adapter *_Nonnull adapter,
-	const struct lichen_meshtastic_adapter_ops *_Nonnull ops);
+	const struct lichen_meshtastic_adapter_ops *_Nullable ops);
 
 void lichen_meshtastic_adapter_reset(struct lichen_meshtastic_adapter *_Nonnull adapter);
 
@@ -296,8 +296,15 @@ lichen_meshtastic_adapter_get_stats(
 bool lichen_meshtastic_adapter_disconnected(
 	const struct lichen_meshtastic_adapter *_Nonnull adapter);
 
+/*
+ * Return the table of unsupported Meshtastic operations.
+ *
+ * Sets *operations to a static array and returns its size. If operations is
+ * NULL, only the count is returned. Callers must check has_portnum before
+ * reading an entry's portnum.
+ */
 size_t lichen_meshtastic_adapter_unsupported_operations(
-	const struct lichen_meshtastic_adapter_unsupported_operation *_Nullable *_Nonnull operations);
+	const struct lichen_meshtastic_adapter_unsupported_operation *_Nonnull *_Nullable operations);
 
 #ifdef __cplusplus
 }
