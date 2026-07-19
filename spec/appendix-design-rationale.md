@@ -246,6 +246,30 @@ This is deliberate. A protocol that handles every edge case optimally is a
 protocol too complex to implement correctly on a microcontroller. LICHEN
 handles common cases well and degrades gracefully on edge cases.
 
+### 6.5. No MAC or Address Randomization
+
+Consumer devices randomize MAC addresses to frustrate passive tracking.
+LICHEN does not, and will not. Unlike 6.1-6.3, this is not a complexity
+trade-off — the feature is counterproductive here:
+
+- **It breaks the mesh.** Root election, short-address assignment, replay
+  windows, and signature caching all key on stable EUI-64 identity.
+  Rotating addresses means election instability, constant re-DAD, and
+  table churn on a link budget measured in bytes per second.
+- **It provides nothing.** Every LICHEN frame is signed by a long-term
+  public key. An observer tracks the key, not the address. Randomizing
+  the address under a stable signing key is privacy theater.
+- **It barely works where it came from.** Wi-Fi MAC randomization
+  protects unassociated probe requests only; the moment a station
+  associates, its MAC is stable for the session and the AP tracks it
+  regardless. LICHEN nodes are permanently "associated" to the mesh, so
+  even the narrow Wi-Fi benefit has no analog.
+
+Privacy effort goes where it can actually work: position privacy (omit
+coords from announces, Section 5; `/config/privacy` access control,
+Section 12 Apps) and payload confidentiality via OSCORE (Section 6).
+See Security Considerations 15.5 for the normative statement.
+
 ## 7. Physical Layer Parameter Choices
 
 The LoRa PHY parameters are chosen as a middle-ground compromise:
