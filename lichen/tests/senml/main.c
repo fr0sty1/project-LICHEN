@@ -362,6 +362,30 @@ static int test_location_valid_coordinates(void)
 	return 1;
 }
 
+static int test_null_name_rejected(void)
+{
+	struct senml_pack pack;
+	volatile const char *null_name = NULL;
+	int ret;
+
+	ret = senml_pack_init(&pack, NULL, 0);
+	ASSERT_EQ(ret, 0, "senml_pack_init");
+
+	ret = senml_add_float(&pack, (const char *)null_name, "Cel", 25.0f);
+	ASSERT_EQ(ret, -EINVAL, "NULL name rejected by senml_add_float");
+	ASSERT_EQ(pack.record_count, 0, "rejected NULL name not counted");
+
+	ret = senml_add_float_t(&pack, (const char *)null_name, "Cel", 25.0f, 0);
+	ASSERT_EQ(ret, -EINVAL, "NULL name rejected by senml_add_float_t");
+	ASSERT_EQ(pack.record_count, 0, "rejected NULL name not counted");
+
+	ret = senml_add_bool(&pack, (const char *)null_name, true);
+	ASSERT_EQ(ret, -EINVAL, "NULL name rejected by senml_add_bool");
+	ASSERT_EQ(pack.record_count, 0, "rejected NULL name not counted");
+
+	return 1;
+}
+
 /* ─── test runner ─────────────────────────────────────────────────────────── */
 
 #define RUN_TEST(fn) do { \
@@ -392,6 +416,7 @@ int main(void)
 	RUN_TEST(test_location_rejects_out_of_range_lat);
 	RUN_TEST(test_location_rejects_out_of_range_lon);
 	RUN_TEST(test_location_valid_coordinates);
+	RUN_TEST(test_null_name_rejected);
 
 	printf("\n%d/%d tests passed\n", tests_passed, tests_run);
 
