@@ -28,6 +28,12 @@ pub const MSG_ACK: &str = "/msg/ack";
 /// Peer link-key table (GET). Per-key detail is `/keys/{iid}`.
 pub const KEYS: &str = "/keys";
 
+/// Per-peer key resource `/keys/{iid}` (GET detail, PUT pin, DELETE unpin).
+/// `iid` is the peer's interface identifier as `xxxx:xxxx:xxxx:xxxx`.
+pub fn keys_iid(iid: &str) -> String {
+    format!("/keys/{iid}")
+}
+
 // --- Position sharing (spec §18.2) -----------------------------------------
 // NOTE: these resources are specified but not yet served by the firmware; the
 // `lichen-client` position codec targets them so clients are ready in advance.

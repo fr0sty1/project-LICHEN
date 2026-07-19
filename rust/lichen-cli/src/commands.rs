@@ -4,14 +4,14 @@
 //! response, and prints it using the selected output format.
 
 use crate::{output, ConfigAction, KeyAction, OutputFormat, PositionAction, RdAction};
-use lichen_client::keys::KeyList;
+use lichen_client::keys::{KeyEntry, KeyList, KeyPin};
 use lichen_client::msg::{Inbox, OutgoingMessage, SentMessage};
 use lichen_client::paths;
 use lichen_client::pos::Position;
 use lichen_coap::client;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use sha2::{Digest, Sha256};
-use std::net::SocketAddr;
+use std::net::{Ipv6Addr, SocketAddr};
 use zeroize::{Zeroize, Zeroizing};
 
 type CmdResult = Result<(), Box<dyn std::error::Error>>;
@@ -38,6 +38,21 @@ fn encode_cbor(v: &serde_json::Value) -> Result<Vec<u8>, Box<dyn std::error::Err
     let mut buf = Vec::new();
     ciborium::ser::into_writer(&cbor_val, &mut buf)?;
     Ok(buf)
+}
+
+/// Derive a peer's key-store interface identifier from its IPv6 address.
+///
+/// The IID is the address's lower 64 bits, formatted as the firmware's
+/// `xxxx:xxxx:xxxx:xxxx` key path segment (see `coap_keys.c`).
+fn iid_from_ipv6(peer: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let addr: Ipv6Addr = peer
+        .parse()
+        .map_err(|_| format!("invalid IPv6 address: {peer}"))?;
+    let s = addr.segments();
+    Ok(format!(
+        "{:04x}:{:04x}:{:04x}:{:04x}",
+        s[4], s[5], s[6], s[7]
+    ))
 }
 
 fn json_to_cbor(v: &serde_json::Value) -> ciborium::value::Value {
@@ -265,11 +280,44 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
                 }
             }
         }
-        KeyAction::Pin { peer: _ } => {
-            return Err("key pinning not implemented (no peer-key endpoint yet)".into());
+        KeyAction::Pin { peer } => {
+            let iid = iid_from_ipv6(&peer)?;
+            let path = paths::keys_iid(&iid);
+            // Read the key the node already pinned (TOFU) for this peer.
+            let resp = client::get(node, &path).await?;
+            if !resp.is_success() {
+                return Err(format!(
+                    "no key on record for {peer} (iid {iid}): {} — the node must \
+                     have seen this peer before its key can be confirmed",
+                    resp.code_str()
+                )
+                .into());
+            }
+            let entry = KeyEntry::from_cbor(&resp.payload)?;
+            // SECURITY: re-send the SAME pubkey with trust=verified. The node
+            // TOFU-rejects any pubkey change, so this only elevates trust on the
+            // already-seen key; it cannot inject a new key for this IID.
+            let pin = KeyPin {
+                pubkey: entry.pubkey.clone(),
+                trust: "verified".to_string(),
+            };
+            let put = client::put(node, &path, &pin.to_cbor()).await?;
+            if !put.is_success() {
+                return Err(format!("pin failed: {}", put.code_str()).into());
+            }
+            output::print_kv(
+                "pinned",
+                &format!("{peer} (iid {iid}): {} -> verified", entry.trust),
+                fmt,
+            );
         }
-        KeyAction::Unpin { peer: _ } => {
-            return Err("key unpinning not implemented (no peer-key endpoint yet)".into());
+        KeyAction::Unpin { peer } => {
+            let iid = iid_from_ipv6(&peer)?;
+            let resp = client::delete(node, &paths::keys_iid(&iid)).await?;
+            if !resp.is_success() {
+                return Err(format!("unpin failed: {}", resp.code_str()).into());
+            }
+            output::print_kv("unpinned", &format!("{peer} (iid {iid})"), fmt);
         }
     }
     Ok(())
