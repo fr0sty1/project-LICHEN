@@ -25,12 +25,16 @@ from lichen.schc.rules import (
 
 def rule_matches(rule: Rule, fields: dict[str, int]) -> bool:
     """Whether ``fields`` satisfy every descriptor of ``rule``."""
+    if not fields.keys() <= {fd.field_id for fd in rule.fields}:
+        return False
     for fd in rule.fields:
         value = fields.get(fd.field_id)
         if value is None:
             if fd.requires_value():
                 return False
             continue
+        if type(value) is not int or not 0 <= value < (1 << fd.length_bits):
+            return False
         if fd.mo == MO.EQUAL and value != fd.target_value:
             return False
         if fd.mo == MO.MSB:
@@ -51,8 +55,16 @@ class SchcContext:
 
     def __init__(self, rules: dict[int, Rule] | None = None) -> None:
         source = RULES if rules is None else rules
+        if any(type(key) is not int for key in source):
+            raise ValueError("rule dictionary keys must be integers")
         # Keep rules ordered by ascending rule ID for deterministic selection.
-        self._rules: dict[int, Rule] = dict(sorted(source.items()))
+        ordered = sorted(source.items())
+        for key, rule in ordered:
+            if not isinstance(rule, Rule):
+                raise ValueError("rule dictionary values must be Rule instances")
+            if type(key) is not int or key != rule.rule_id:
+                raise ValueError(f"rule dictionary key {key} does not match rule ID {rule.rule_id}")
+        self._rules: dict[int, Rule] = dict(ordered)
 
     def get(self, rule_id: int) -> Rule | None:
         """Look up a rule by ID."""

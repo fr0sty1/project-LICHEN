@@ -98,7 +98,7 @@ def test_wrap_unwrap_round_trip() -> None:
 def test_channel_emits_schc_compressed_bytes() -> None:
     cap = _Capture()
     channel = SchcChannel(cap, CLI)
-    channel.send_datagram(b"\x40\x01\x12\x34hello", SRV)  # minimal CoAP-ish bytes
+    channel.send_datagram(b"\x40\x01\x12\x34\xffhello", SRV)
     assert len(cap.sent) == 1
     wire, dest = cap.sent[0]
     assert dest == f"[{SRV}]"
@@ -272,7 +272,7 @@ def test_channel_round_trips_through_peer() -> None:
     receiver_channel = SchcChannel(_Capture(), SRV)
     receiver_channel.set_receiver(lambda data, src: received.append((data, src)))
 
-    coap = b"\x40\x01\x12\x34payload"
+    coap = b"\x40\x01\x12\x34\xffpayload"
     sender.send_datagram(coap, SRV)
     wire, _ = cap.sent[0]
     receiver_channel._on_inner(wire, CLI)
