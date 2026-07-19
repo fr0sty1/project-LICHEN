@@ -29,8 +29,14 @@ from ipaddress import IPv6Address
 
 from lichen.ipv6.icmpv6 import icmpv6_checksum
 from lichen.ipv6.packet import HEADER_LENGTH, IPv6Header, NextHeader, PacketError
-from lichen.ipv6.udp import UDP_HEADER_LENGTH, UDP_NEXT_HEADER, UdpDatagram
-from lichen.schc.codec import compress, decompress, residue_byte_length
+from lichen.ipv6.udp import (
+    UDP_HEADER_LENGTH,
+    UDP_NEXT_HEADER,
+    UdpDatagram,
+    UdpError,
+    udp_checksum,
+)
+from lichen.schc.codec import SchcError, compress, decompress, residue_byte_length
 from lichen.schc.rules import (
     GLOBAL_COAP_RULE,
     GLOBAL_OSCORE_RULE,
@@ -62,8 +68,34 @@ def _is_global(addr: int) -> bool:
     return addr >> 125 == 0b001  # 2000::/3
 
 
-def _coap_has_oscore_option(coap: bytes) -> bool:
-    """Check if a CoAP packet contains the OSCORE option (option 9).
+def _valid_oscore_option(value: bytes) -> bool:
+    if not value:
+        return True
+    if len(value) > 255:
+        return False
+
+    flags = value[0]
+    partial_iv_len = flags & 0x07
+    if flags & 0xE0 or partial_iv_len > 5 or flags == 0:
+        return False
+
+    offset = 1 + partial_iv_len
+    if offset > len(value):
+        return False
+    if partial_iv_len > 1 and value[1] == 0:
+        return False
+    if flags & 0x10:
+        if offset >= len(value):
+            return False
+        context_len = value[offset]
+        offset += 1 + context_len
+        if offset > len(value):
+            return False
+    return bool(flags & 0x08) or offset == len(value)
+
+
+def _coap_oscore_status(coap: bytes) -> bool | None:
+    """Return OSCORE presence, or None when the CoAP framing is malformed.
 
     OSCORE-protected CoAP packets (RFC 8613) have the Object-Security option
     present in the option list. This function scans the CoAP options to detect it.
@@ -72,24 +104,29 @@ def _coap_has_oscore_option(coap: bytes) -> bool:
         coap: Raw CoAP packet bytes (header + options + payload).
 
     Returns:
-        True if the OSCORE option is present, False otherwise.
+        True if OSCORE is present, False if it is absent, or None if malformed.
     """
     if len(coap) < _COAP_FIXED_HEADER:
-        return False
+        return None
+    if coap[0] >> 6 != 1:
+        return None
 
     tkl = coap[0] & 0x0F
     if tkl > 8:  # Reserved values 9-15
-        return False
+        return None
 
     offset = _COAP_FIXED_HEADER + tkl
+    if offset > len(coap):
+        return None
     option_number = 0
+    oscore_found = False
 
     while offset < len(coap):
         byte = coap[offset]
 
         # Payload marker (0xFF)
         if byte == 0xFF:
-            break
+            return oscore_found if offset + 1 < len(coap) else None
 
         # Parse option delta
         delta = (byte >> 4) & 0x0F
@@ -98,47 +135,47 @@ def _coap_has_oscore_option(coap: bytes) -> bool:
 
         if delta == 13:
             if offset >= len(coap):
-                return False
+                return None
             delta = coap[offset] + 13
             offset += 1
         elif delta == 14:
             if offset + 1 >= len(coap):
-                return False
+                return None
             delta = int.from_bytes(coap[offset : offset + 2], "big") + 269
             offset += 2
         elif delta == 15:
             # Reserved
-            return False
+            return None
 
         # Parse option length
         if length == 13:
             if offset >= len(coap):
-                return False
+                return None
             length = coap[offset] + 13
             offset += 1
         elif length == 14:
             if offset + 1 >= len(coap):
-                return False
+                return None
             length = int.from_bytes(coap[offset : offset + 2], "big") + 269
             offset += 2
         elif length == 15:
             # Reserved
-            return False
+            return None
 
         option_number += delta
 
-        # Check if this is the OSCORE option
-        if option_number == _COAP_OPTION_OSCORE:
-            return True
+        if offset + length > len(coap):
+            return None
 
-        # Options are ordered by number; if we've passed 9, stop
-        if option_number > _COAP_OPTION_OSCORE:
-            return False
+        if option_number == _COAP_OPTION_OSCORE:
+            if oscore_found or not _valid_oscore_option(coap[offset : offset + length]):
+                return None
+            oscore_found = True
 
         # Skip option value
         offset += length
 
-    return False
+    return None if oscore_found else False
 
 
 def _ipv6_fields(header: IPv6Header) -> dict[str, int]:
@@ -199,9 +236,21 @@ class _CoapUdpProfile(PacketProfile):
             return False
         if header.next_header != UDP_NEXT_HEADER:
             return False
-        if len(raw) < HEADER_LENGTH + header.payload_length:
+        if len(raw) != HEADER_LENGTH + header.payload_length:
             return False
         if header.payload_length < UDP_HEADER_LENGTH + _COAP_FIXED_HEADER:
+            return False
+        try:
+            udp = UdpDatagram.from_bytes(raw[HEADER_LENGTH:])
+        except UdpError:
+            return False
+        if udp.checksum == 0 or udp_checksum(header.src_addr, header.dst_addr, raw[HEADER_LENGTH:]):
+            return False
+        coap = udp.payload
+        tkl = coap[0] & 0x0F
+        if coap[0] >> 6 != 1 or tkl > 8 or _COAP_FIXED_HEADER + tkl > len(coap):
+            return False
+        if _coap_oscore_status(coap) is None:
             return False
         return self._addr_ok(int(header.src_addr)) and self._addr_ok(int(header.dst_addr))
 
@@ -271,7 +320,7 @@ class _OscoreUdpProfile(_CoapUdpProfile):
         # Then check for OSCORE option presence
         header = IPv6Header.from_bytes(raw)
         udp = UdpDatagram.from_bytes(raw[HEADER_LENGTH : HEADER_LENGTH + header.payload_length])
-        return _coap_has_oscore_option(udp.payload)
+        return _coap_oscore_status(udp.payload) is True
 
 
 class OscoreUdpLinkLocalProfile(_OscoreUdpProfile):
@@ -308,13 +357,15 @@ class _RplProfile(PacketProfile):
             return False
         if header.next_header != NextHeader.ICMPV6:
             return False
-        if len(raw) < HEADER_LENGTH + header.payload_length:
+        if len(raw) != HEADER_LENGTH + header.payload_length:
             return False
         if header.payload_length < _ICMPV6_HEADER + self.base_length:
             return False
         if not (_is_link_local(int(header.src_addr)) and _is_link_local(int(header.dst_addr))):
             return False
         icmpv6 = raw[HEADER_LENGTH:]
+        if icmpv6_checksum(header.src_addr, header.dst_addr, icmpv6):
+            return False
         return icmpv6[0] == _ICMPV6_RPL_TYPE and icmpv6[1] == self.code
 
     def parse(self, raw: bytes) -> tuple[dict[str, int], bytes]:
@@ -434,13 +485,15 @@ class Icmpv6EchoProfile(PacketProfile):
             return False
         if header.next_header != NextHeader.ICMPV6:
             return False
-        if len(raw) < HEADER_LENGTH + header.payload_length:
+        if len(raw) != HEADER_LENGTH + header.payload_length:
             return False
         if header.payload_length < _ICMPV6_ECHO_BASE:
             return False
         if not (_is_link_local(int(header.src_addr)) and _is_link_local(int(header.dst_addr))):
             return False
         icmpv6 = raw[HEADER_LENGTH:]
+        if icmpv6_checksum(header.src_addr, header.dst_addr, icmpv6):
+            return False
         return icmpv6[0] in _ICMPV6_ECHO_TYPES and icmpv6[1] == 0
 
     def parse(self, raw: bytes) -> tuple[dict[str, int], bytes]:
@@ -519,8 +572,24 @@ def decompress_packet(data: bytes, profiles: tuple[PacketProfile, ...] = DEFAULT
     for profile in profiles:
         if profile.rule.rule_id == rule_id:
             residue_len = residue_byte_length(profile.rule)
+            if len(data) < 1 + residue_len:
+                raise SchcError(
+                    f"truncated SCHC packet: rule {rule_id} requires {residue_len} residue bytes"
+                )
             residue = data[: 1 + residue_len]
             tail = data[1 + residue_len :]
             _, fields = decompress(residue, profile.rule)
-            return profile.build(fields, tail)
+            raw = profile.build(fields, tail)
+            if not profile.matches(raw):
+                raise SchcError(f"rule {rule_id} residue does not reconstruct its packet profile")
+            if isinstance(profile, _CoapUdpProfile) and not isinstance(
+                profile, _OscoreUdpProfile
+            ):
+                header = IPv6Header.from_bytes(raw)
+                udp = UdpDatagram.from_bytes(
+                    raw[HEADER_LENGTH : HEADER_LENGTH + header.payload_length]
+                )
+                if _coap_oscore_status(udp.payload) is True:
+                    raise SchcError(f"OSCORE content requires an OSCORE rule, got {rule_id}")
+            return raw
     raise ValueError(f"no profile for rule ID {rule_id}")

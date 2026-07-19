@@ -6,12 +6,14 @@ from __future__ import annotations
 
 import pytest
 
-from lichen.schc.context import NoMatchingRuleError, SchcContext, rule_matches
-from lichen.schc.rules import (
+from lichen.schc import (
     CDA,
     MO,
     FieldDescriptor,
+    NoMatchingRuleError,
     Rule,
+    SchcContext,
+    rule_matches,
 )
 
 # A small two-rule context with disjoint EQUAL matches for deterministic tests.
@@ -45,6 +47,10 @@ def test_rule_matches_requires_value_sent_field() -> None:
     assert rule_matches(RULE_A, {"F.kind": 1}) is False
 
 
+def test_rule_matches_rejects_undeclared_fields() -> None:
+    assert rule_matches(RULE_A, {"F.kind": 1, "F.val": 2, "F.extra": 3}) is False
+
+
 def test_rule_matches_msb() -> None:
     rule = Rule(
         rule_id=12,
@@ -70,6 +76,35 @@ def test_select_rule_is_deterministic_by_ascending_id() -> None:
     r_hi = Rule(6, (FieldDescriptor("X", 8, MO.IGNORE, CDA.VALUE_SENT),))
     ctx = SchcContext({6: r_hi, 5: r_lo})
     assert ctx.select_rule({"X": 1}).rule_id == 5
+
+
+def test_context_rejects_dictionary_key_rule_id_mismatch() -> None:
+    rule = Rule(5, ())
+    with pytest.raises(ValueError) as exc_info:
+        SchcContext({6: rule})
+    assert str(exc_info.value) == "rule dictionary key 6 does not match rule ID 5"
+
+
+def test_context_rejects_non_integer_key_before_sorting() -> None:
+    with pytest.raises(ValueError, match="rule dictionary keys must be integers"):
+        SchcContext({5: Rule(5, ()), "6": Rule(6, ())})  # type: ignore[dict-item]
+
+
+def test_context_rejects_non_rule_value() -> None:
+    with pytest.raises(ValueError, match="rule dictionary values must be Rule instances"):
+        SchcContext({5: object()})  # type: ignore[dict-item]
+
+
+@pytest.mark.parametrize("value", [-1, 256, True, 1.0])
+def test_select_rule_rejects_invalid_field_values(value: object) -> None:
+    rule = Rule(5, (FieldDescriptor("X", 8, MO.IGNORE, CDA.VALUE_SENT),))
+    assert SchcContext({5: rule}).select_rule({"X": value}) is None  # type: ignore[dict-item]
+
+
+@pytest.mark.parametrize("value", [0, 255])
+def test_select_rule_accepts_field_width_boundaries(value: int) -> None:
+    rule = Rule(5, (FieldDescriptor("X", 8, MO.IGNORE, CDA.VALUE_SENT),))
+    assert SchcContext({5: rule}).select_rule({"X": value}) is rule
 
 
 def test_compress_decompress_round_trip_via_context() -> None:

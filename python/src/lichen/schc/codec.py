@@ -138,6 +138,10 @@ def compress(rule: Rule, fields: dict[str, int]) -> bytes:
             if fd.requires_value():
                 raise SchcError(f"{fd.field_id}: missing required field value")
             continue
+        if type(value) is not int or not 0 <= value < (1 << fd.length_bits):
+            raise SchcError(
+                f"{fd.field_id}: value {value} does not fit in {fd.length_bits} bits"
+            )
 
         # Matching operator.
         if fd.mo == MO.EQUAL and value != fd.target_value:
@@ -149,10 +153,6 @@ def compress(rule: Rule, fields: dict[str, int]) -> bytes:
 
         # Compression action.
         if fd.cda == CDA.VALUE_SENT:
-            if value < 0 or value >= (1 << fd.length_bits):
-                raise SchcError(
-                    f"{fd.field_id}: value {value} does not fit in {fd.length_bits} bits"
-                )
             writer.write(value, fd.length_bits)
         elif fd.cda == CDA.LSB:
             k = fd.lsb_bits()
@@ -192,6 +192,16 @@ def decompress(data: bytes, rule: Rule | None = None) -> tuple[int, dict[str, in
             raise SchcError(f"unknown rule ID {rule_id}")
     elif rule.rule_id != rule_id:
         raise SchcError(f"rule ID mismatch: packet has {rule_id}, rule is {rule.rule_id}")
+
+    expected_bits = residue_bit_length(rule)
+    expected_bytes = residue_byte_length(rule)
+    if len(data) != 1 + expected_bytes:
+        raise SchcError(
+            f"rule {rule_id} requires exactly {expected_bytes} residue bytes, got {len(data) - 1}"
+        )
+    padding_bits = expected_bytes * 8 - expected_bits
+    if padding_bits and data[-1] & ((1 << padding_bits) - 1):
+        raise SchcError(f"rule {rule_id} residue has non-zero padding bits")
 
     reader = BitReader(data[1:])
     out: dict[str, int | None] = {}

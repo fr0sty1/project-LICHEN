@@ -6,10 +6,13 @@ from __future__ import annotations
 
 from ipaddress import IPv6Address
 
+import pytest
+
 from lichen.ipv6.icmpv6 import Icmpv6Message
 from lichen.ipv6.packet import HEADER_LENGTH, IPv6Header, NextHeader
 from lichen.ipv6.udp import UdpDatagram
 from lichen.rpl.messages import DAO, DIO, to_icmpv6
+from lichen.schc.codec import SchcError
 from lichen.schc.headers import compress_packet, decompress_packet
 
 LL_SRC = IPv6Address("fe80::1")
@@ -116,6 +119,32 @@ def test_dio_options_travel_as_tail() -> None:
     assert parsed.options[0].data == b"\x00\x00"
 
 
+def test_rpl_with_trailing_bytes_falls_back() -> None:
+    dio = DIO(rpl_instance_id=0, version=1, rank=256, dtsn=0, dodag_id="fe80::1")
+    raw = _icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dio)) + b"junk"
+    assert compress_packet(raw)[0] == 255
+
+
+def test_rpl_with_invalid_checksum_falls_back() -> None:
+    dio = DIO(rpl_instance_id=0, version=1, rank=256, dtsn=0, dodag_id="fe80::1")
+    raw = bytearray(_icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dio)))
+    raw[HEADER_LENGTH + 2] ^= 0x01
+    assert compress_packet(bytes(raw))[0] == 255
+
+
+def test_icmpv6_echo_with_trailing_bytes_falls_back() -> None:
+    message = Icmpv6Message(128, 0, bytes.fromhex("abcd0007") + b"ping")
+    raw = _icmpv6_ipv6(LL_SRC, LL_DST, message) + b"junk"
+    assert compress_packet(raw)[0] == 255
+
+
+def test_icmpv6_echo_with_invalid_checksum_falls_back() -> None:
+    message = Icmpv6Message(128, 0, bytes.fromhex("abcd0007") + b"ping")
+    raw = bytearray(_icmpv6_ipv6(LL_SRC, LL_DST, message))
+    raw[HEADER_LENGTH + 2] ^= 0x01
+    assert compress_packet(bytes(raw))[0] == 255
+
+
 def _coap_with_oscore(tkl: int = 2) -> bytes:
     """Build a CoAP packet with OSCORE option (option 9).
 
@@ -158,7 +187,155 @@ def test_oscore_preferred_over_plain_coap() -> None:
     assert compress_packet(g_raw)[0] == 6
 
 
+def test_oscore_option_with_empty_payload_marker_is_not_recognized() -> None:
+    raw = _udp_ipv6(LL_SRC, LL_DST, _coap_with_oscore()[:-4])
+    assert compress_packet(raw)[0] == 255
+
+
 def test_plain_coap_still_uses_rule0() -> None:
     """Plain CoAP (no OSCORE option) should use rules 0/1, not 5/6."""
     raw = _udp_ipv6(LL_SRC, LL_DST, _coap_fixed())
     assert compress_packet(raw)[0] == 0
+
+
+def test_oscore_option_without_payload_uses_uncompressed_rule() -> None:
+    coap = bytes([0x40, 0x01, 0x12, 0x34, 0x92, 0x09, 0x00])
+    assert compress_packet(_udp_ipv6(LL_SRC, LL_DST, coap))[0] == 255
+
+
+def test_oscore_followed_by_valid_option_uses_rule5() -> None:
+    coap = bytes([0x40, 0x01, 0x12, 0x34, 0x90, 0x11, 0x00, 0xFF, 0x01])
+    assert compress_packet(_udp_ipv6(LL_SRC, LL_DST, coap))[0] == 5
+
+
+def test_oscore_preceded_by_valid_option_uses_rule5() -> None:
+    coap = bytes([0x40, 0x01, 0x12, 0x34, 0x11, 0x00, 0x80, 0xFF, 0x01])
+    assert compress_packet(_udp_ipv6(LL_SRC, LL_DST, coap))[0] == 5
+
+
+def test_duplicate_oscore_option_uses_uncompressed_rule() -> None:
+    coap = bytes([0x40, 0x01, 0x12, 0x34, 0x90, 0x00, 0xFF, 0x01])
+    assert compress_packet(_udp_ipv6(LL_SRC, LL_DST, coap))[0] == 255
+
+
+def test_invalid_coap_version_does_not_select_oscore() -> None:
+    coap = bytes([0x80, 0x01, 0x12, 0x34, 0x90, 0xFF, 0x01])
+    assert compress_packet(_udp_ipv6(LL_SRC, LL_DST, coap))[0] == 255
+
+
+@pytest.mark.parametrize(
+    "coap",
+    [
+        bytes([0x49, 0x01, 0x12, 0x34]) + bytes(9),
+        bytes([0x42, 0x01, 0x12, 0x34, 0x00]),
+    ],
+)
+def test_invalid_coap_token_framing_uses_uncompressed_rule(coap: bytes) -> None:
+    assert compress_packet(_udp_ipv6(LL_SRC, LL_DST, coap))[0] == 255
+
+
+@pytest.mark.parametrize(
+    "trailing_option",
+    [
+        b"\xf0",  # reserved delta nibble
+        b"\x11",  # truncated one-byte value
+    ],
+)
+def test_oscore_followed_by_malformed_option_uses_uncompressed_rule(
+    trailing_option: bytes,
+) -> None:
+    coap = bytes([0x40, 0x01, 0x12, 0x34, 0x90]) + trailing_option
+    assert compress_packet(_udp_ipv6(LL_SRC, LL_DST, coap))[0] == 255
+
+
+def test_oscore_exact_extended_length_13_uses_rule5() -> None:
+    value = b"\x08" + bytes(12)
+    coap = bytes([0x40, 0x01, 0x12, 0x34, 0x9D, 0x00]) + value + b"\xff\x01"
+    assert compress_packet(_udp_ipv6(LL_SRC, LL_DST, coap))[0] == 5
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        b"\x00",  # all-zero flags must use the empty representation
+        b"\x20",  # reserved flag
+        b"\x06" + bytes(6),  # reserved Partial IV length
+        b"\x01",  # truncated Partial IV
+        b"\x0a\x00\x01",  # noncanonical Partial IV with a leading zero
+        b"\x10\x01",  # truncated kid context
+    ],
+)
+def test_invalid_oscore_value_uses_uncompressed_rule(value: bytes) -> None:
+    coap = bytes([0x40, 0x01, 0x12, 0x34, 0x90 | len(value)]) + value + b"\xff\x01"
+    assert compress_packet(_udp_ipv6(LL_SRC, LL_DST, coap))[0] == 255
+
+
+def test_oversized_oscore_value_uses_uncompressed_rule() -> None:
+    value = b"\x08" + bytes(268)
+    coap = bytes([0x40, 0x01, 0x12, 0x34, 0x9E, 0x00, 0x00]) + value + b"\xff\x01"
+    assert compress_packet(_udp_ipv6(LL_SRC, LL_DST, coap))[0] == 255
+
+
+@pytest.mark.parametrize(
+    "coap",
+    [
+        bytes([0x48, 0x01, 0x12, 0x34]) + bytes(8) + b"\x90\xff\x01",
+        bytes([0x40, 0x01, 0x12, 0x34, 0x96, 0x0D]) + bytes.fromhex("0102030405") + b"\xff\x01",
+        bytes([0x40, 0x01, 0x12, 0x34, 0x95, 0x18, 0x02, 0xAA, 0xBB, 0x01])
+        + b"\xff\x01",
+    ],
+)
+def test_valid_oscore_boundaries_use_rule5(coap: bytes) -> None:
+    assert compress_packet(_udp_ipv6(LL_SRC, LL_DST, coap))[0] == 5
+
+
+def test_maximum_oscore_option_length_uses_rule5() -> None:
+    value = b"\x08" + bytes(254)
+    coap = bytes([0x40, 0x01, 0x12, 0x34, 0x9D, 242]) + value + b"\xff\x01"
+    assert compress_packet(_udp_ipv6(LL_SRC, LL_DST, coap))[0] == 5
+
+
+def test_decompress_rejects_oscore_content_under_plain_rule() -> None:
+    compressed = bytearray(compress_packet(_udp_ipv6(LL_SRC, LL_DST, _coap_with_oscore())))
+    compressed[0] = 0
+    with pytest.raises(SchcError, match="OSCORE content requires an OSCORE rule"):
+        decompress_packet(bytes(compressed))
+
+
+@pytest.mark.parametrize(
+    "option",
+    [
+        b"\x9d",  # truncated 13-form length
+        b"\x9e\x00",  # truncated 14-form length
+    ],
+)
+def test_oscore_truncated_extended_length_uses_uncompressed_rule(option: bytes) -> None:
+    coap = bytes([0x40, 0x01, 0x12, 0x34]) + option
+    assert compress_packet(_udp_ipv6(LL_SRC, LL_DST, coap))[0] == 255
+
+
+@pytest.mark.parametrize("option", [b"\xf0", b"\x9f"])
+def test_oscore_reserved_nibble_15_uses_uncompressed_rule(option: bytes) -> None:
+    coap = bytes([0x40, 0x01, 0x12, 0x34]) + option
+    assert compress_packet(_udp_ipv6(LL_SRC, LL_DST, coap))[0] == 255
+
+
+def test_truncated_oscore_option_value_uses_uncompressed_rule() -> None:
+    coap = bytes([0x40, 0x01, 0x12, 0x34, 0x92, 0x09])
+    assert compress_packet(_udp_ipv6(LL_SRC, LL_DST, coap))[0] == 255
+
+
+@pytest.mark.parametrize(
+    "option",
+    [
+        b"\xd0",  # truncated 13-form delta
+        b"\xe0\x00",  # truncated 14-form delta
+        b"\xf0",  # reserved delta nibble
+        b"\x9d",  # truncated 13-form length
+        b"\x9e\x00",  # truncated 14-form length
+        b"\x9f",  # reserved length nibble
+    ],
+)
+def test_malformed_option_encoding_does_not_select_oscore(option: bytes) -> None:
+    coap = bytes([0x40, 0x01, 0x12, 0x34]) + option
+    assert compress_packet(_udp_ipv6(LL_SRC, LL_DST, coap))[0] == 255
