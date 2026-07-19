@@ -108,11 +108,6 @@ impl<R: Radio> SecureStack<R> {
         self.contexts.get_mut(peer_iid)
     }
 
-    /// Get the underlying stack.
-    pub fn stack(&mut self) -> &mut Stack<R> {
-        &mut self.stack
-    }
-
     /// Get local address.
     pub fn local_addr(&self) -> Addr {
         self.stack.local_addr()

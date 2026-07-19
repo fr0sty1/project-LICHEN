@@ -10,8 +10,6 @@ use std::vec;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-use lichen_coap::codec::CoapBuilder;
-use lichen_coap::message::{MessageCode, MessageType};
 use lichen_core::addr::NodeId;
 use lichen_core::constants::{L2_DISPATCH_SCHC, PORT_COAP};
 use lichen_core::l2_payload::{
@@ -222,100 +220,10 @@ impl<R: Radio> Stack<R> {
         Ok(tuple)
     }
 
-    /// Build and send a CoAP request.
-    ///
-    /// Common helper for GET/POST/PUT. Returns the message ID for matching responses.
-    async fn send_coap_request(
-        &mut self,
-        dst: &Addr,
-        method: MessageCode,
-        uri_path: &[&str],
-        token: &[u8],
-        content_format: Option<u16>,
-        payload: Option<&[u8]>,
-    ) -> Result<u16, TxError> {
-        let mid = self.next_message_id();
-        let mut coap = [0u8; 192];
-        let mut builder = CoapBuilder::new(&mut coap, MessageType::Confirmable, method, mid, token)
-            .map_err(|_| TxError::CoapEncode)?;
-        for seg in uri_path {
-            builder.uri_path(seg).map_err(|_| TxError::CoapEncode)?;
-        }
-        if let Some(cf) = content_format {
-            builder
-                .content_format(cf)
-                .map_err(|_| TxError::CoapEncode)?;
-        }
-        if let Some(p) = payload {
-            builder.payload(p).map_err(|_| TxError::CoapEncode)?;
-        }
-        let coap_len = builder.finish();
-
-        self.send_coap_raw(dst, &coap[..coap_len]).await?;
-        Ok(mid)
-    }
-
-    /// Build a CoAP GET request and transmit it.
-    ///
-    /// Returns the message ID for matching responses.
-    pub async fn send_get(
-        &mut self,
-        dst: &Addr,
-        uri_path: &[&str],
-        token: &[u8],
-    ) -> Result<u16, TxError> {
-        self.send_coap_request(dst, MessageCode::GET, uri_path, token, None, None)
-            .await
-    }
-
-    /// Build a CoAP POST request and transmit it.
-    ///
-    /// Returns the message ID for matching responses.
-    pub async fn send_post(
-        &mut self,
-        dst: &Addr,
-        uri_path: &[&str],
-        token: &[u8],
-        content_format: Option<u16>,
-        payload: &[u8],
-    ) -> Result<u16, TxError> {
-        self.send_coap_request(
-            dst,
-            MessageCode::POST,
-            uri_path,
-            token,
-            content_format,
-            Some(payload),
-        )
-        .await
-    }
-
-    /// Build a CoAP PUT request and transmit it.
-    ///
-    /// Returns the message ID for matching responses.
-    pub async fn send_put(
-        &mut self,
-        dst: &Addr,
-        uri_path: &[&str],
-        token: &[u8],
-        content_format: Option<u16>,
-        payload: &[u8],
-    ) -> Result<u16, TxError> {
-        self.send_coap_request(
-            dst,
-            MessageCode::PUT,
-            uri_path,
-            token,
-            content_format,
-            Some(payload),
-        )
-        .await
-    }
-
-    /// Send a raw CoAP message to destination.
+    /// Send an OSCORE-protected CoAP message to destination.
     ///
     /// Path: CoAP → IPv6/UDP → SCHC compress → L2 sign → Radio TX
-    pub async fn send_coap_raw(&mut self, dst: &Addr, coap: &[u8]) -> Result<(), TxError> {
+    pub(crate) async fn send_coap_raw(&mut self, dst: &Addr, coap: &[u8]) -> Result<(), TxError> {
         let src = self.local_addr();
 
         // Build IPv6/UDP packet
