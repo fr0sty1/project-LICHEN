@@ -74,6 +74,7 @@
 
 #include <lichen/schc.h>
 #include <schc/bitstream.h>
+#include <limits.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -1504,6 +1505,9 @@ int lichen_schc_compress(const uint8_t *packet, size_t pkt_len,
 
 	if (pkt_len < IPV6_HDR_LEN || ipv6_version(packet) != 6) {
 		/* Not IPv6 - uncompressed fallback */
+		if (pkt_len > (size_t)INT_MAX - 1U) {
+			return SCHC_ERR_BUFFER_TOO_SMALL;
+		}
 		size_t needed = 1 + pkt_len;
 		if (out_len < needed) {
 			return SCHC_ERR_BUFFER_TOO_SMALL;
