@@ -10,7 +10,11 @@
 
 use clap::Parser;
 use lichen_core::addr::NodeId;
-use lichen_gateway::{config::Config, slip::SlipFramer, Gateway};
+use lichen_gateway::{
+    config::Config,
+    slip::{SlipFramer, SLIP_TX_BUF_SIZE},
+    Gateway,
+};
 use lichen_sim::SimClient;
 use std::path::PathBuf;
 use tokio::{
@@ -294,7 +298,7 @@ where
     let mut slip = SlipFramer::new();
     let mut rx_buf = vec![0u8; 1500];
     let mut tun_buf = vec![0u8; 1500];
-    let mut tx_buf = vec![0u8; 1500];
+    let mut tx_buf = vec![0u8; SLIP_TX_BUF_SIZE];
 
     loop {
         tokio::select! {
