@@ -1,182 +1,194 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""Tests for SCHC reassembly — receiver side (RFC 8724 section 8)."""
+"""Fixed-profile SCHC receiver and context manager tests."""
 
 from __future__ import annotations
 
-from lichen.schc.fragment import Fragment, FragmentSender
+import pytest
+
+from lichen.schc.fragment import Fragment, FragmentError
 from lichen.schc.reassembly import FragmentReceiver, ReassemblyManager
 
-
-def _deliver(payload, tile_size, window_size, drop_once=()):
-    """Run a full ACK-on-Error exchange; return the receiver.
-
-    ``drop_once`` is a set of global tile indices dropped on first transmission.
-    """
-    sender = FragmentSender(payload, rule_id=20, tile_size=tile_size, window_size=window_size)
-    receiver = FragmentReceiver(window_size)
-    dropped: set[int] = set(drop_once)
-
-    for abs_w in range(sender.window_count):
-        window_frags = sender.fragments_in_window(abs_w)
-        result = None
-        for pos, frag in enumerate(window_frags):
-            gidx = abs_w * window_size + pos
-            if gidx in dropped:
-                dropped.discard(gidx)  # only dropped once
-                continue
-            result = receiver.receive(frag)
-
-        # Retransmit until this window is satisfied (bounded loop).
-        for _ in range(10):
-            if receiver.done or result is None or result.ack is None:
-                break
-            missing = sender.retransmit(abs_w, result.ack.bitmap)
-            if not missing:
-                break
-            for frag in missing:
-                result = receiver.receive(frag)
-    return receiver
+RECOVERY_PACKET = bytes(187) + b"\x11" * 187 + b"\xa5"
+TILE_0 = bytes.fromhex("787c") + bytes(187)
+TILE_1 = bytes.fromhex("787a") + b"\x22" * 187
+ALL_1 = bytes.fromhex("787fd90535ad4a")
 
 
-def test_clean_multi_window_reassembly() -> None:
-    payload = bytes(range(7))
-    receiver = _deliver(payload, tile_size=1, window_size=3)
+def test_clean_reassembly_uses_literal_recovery_wires() -> None:
+    receiver = FragmentReceiver()
+
+    assert receiver.receive_bytes(TILE_0).response is None
+    assert receiver.receive_bytes(TILE_1).response is None
+    result = receiver.receive_bytes(ALL_1)
+    assert result.response == bytes.fromhex("7840")
+    assert result.reassembled == RECOVERY_PACKET
     assert receiver.done
-    assert receiver.reassembled == payload
+    assert receiver._tiles == {}
 
 
-def test_single_fragment_reassembly() -> None:
-    payload = b"hello"
-    receiver = _deliver(payload, tile_size=64, window_size=3)
-    assert receiver.done
-    assert receiver.reassembled == payload
+def test_dropped_regular_tile_uses_literal_recovery_wires() -> None:
+    receiver = FragmentReceiver()
+
+    assert receiver.receive_bytes(TILE_0).response is None
+    assert receiver.receive_bytes(ALL_1).response == bytes.fromhex("782000000000000000")
+    assert receiver.receive_bytes(TILE_1).response is None
+    result = receiver.receive_bytes(bytes.fromhex("7800"))
+    assert result.response == bytes.fromhex("7840")
+    assert result.reassembled == RECOVERY_PACKET
 
 
-def test_reassembly_with_dropped_regular_fragment() -> None:
-    payload = bytes(range(7))
-    # Drop window 0, position 1 (global index 1) on first send.
-    receiver = _deliver(payload, tile_size=1, window_size=3, drop_once={1})
-    assert receiver.done
-    assert receiver.reassembled == payload
+def test_two_window_all0_no_ack_and_w1_completion() -> None:
+    final = Fragment(0x78, 1, 63, b"\xa5", bytes.fromhex("8727c8e5"))
+    incomplete = FragmentReceiver(max_size=11782)
+    assert incomplete.receive(final).response == bytes.fromhex("78000000000000000000")
+
+    receiver = FragmentReceiver(max_size=11782)
+    for fcn in range(62, -1, -1):
+        result = receiver.receive(Fragment(0x78, 0, fcn, b"\xa5" * 187))
+        assert result.response is None
+    completed = receiver.receive(final)
+    assert completed.response == bytes.fromhex("78c0")
+    assert completed.reassembled == b"\xa5" * 11782
 
 
-def test_reassembly_with_dropped_final_window_fragment() -> None:
-    payload = bytes(range(8))  # 8 tiles, window_size 3 -> windows 0,1,2(2 tiles)
-    # Drop a tile in the final window (global index 6 = window 2, pos 0).
-    receiver = _deliver(payload, tile_size=1, window_size=3, drop_once={6})
-    assert receiver.done
-    assert receiver.reassembled == payload
+def test_mandatory_receiver_limit_and_configured_overflow() -> None:
+    packet = b"\xa5" * 1281
+    fragments = [Fragment(0x78, 0, fcn, b"\xa5" * 187) for fcn in range(62, 56, -1)]
+    fragments.append(Fragment(0x78, 0, 63, b"\xa5" * 159, bytes.fromhex("daca2bc3")))
 
-
-def test_larger_payload_round_trip() -> None:
-    payload = bytes((i * 7) % 256 for i in range(50))
-    receiver = _deliver(payload, tile_size=4, window_size=5)
-    assert receiver.done
-    assert receiver.reassembled == payload
-
-
-def test_mic_failure_does_not_complete() -> None:
-    payload = b"abcdef"
-    sender = FragmentSender(payload, rule_id=20, tile_size=2, window_size=3)
-    receiver = FragmentReceiver(window_size=3)
-    frags = sender.all_fragments()
-    # Corrupt the payload of the first fragment before delivery.
-    frags[0] = Fragment(
-        frags[0].rule_id, frags[0].window, frags[0].fcn, b"ZZ", frags[0].mic
-    )
+    receiver = FragmentReceiver()
     result = None
-    for frag in frags:
-        result = receiver.receive(frag)
-    assert receiver.done is False
-    assert result is not None and result.mic_ok is False
+    for fragment in fragments:
+        result = receiver.receive(fragment)
+    assert result is not None and result.response == bytes.fromhex("7840")
+    assert result.reassembled == packet
+
+    receiver = FragmentReceiver(max_size=1280)
+    for fragment in fragments:
+        result = receiver.receive(fragment)
+    assert result is not None and result.response == bytes.fromhex("78ffff")
+    assert result.aborted and receiver.done and receiver._tiles == {}
 
 
-def test_manager_completes_and_clears_context() -> None:
-    payload = bytes(range(4))
-    sender = FragmentSender(payload, rule_id=20, tile_size=1, window_size=3)
-    mgr = ReassemblyManager(window_size=3)
-    result = None
-    for frag in sender.all_fragments():
-        result = mgr.receive("nodeA", frag)
-    assert result is not None and result.reassembled == payload
-    assert len(mgr) == 0  # cleared on completion
+def test_identical_repeated_all1_repeats_current_ack() -> None:
+    receiver = FragmentReceiver()
+    expected = bytes.fromhex("780000000000000000")
+    assert receiver.receive_bytes(ALL_1).response == expected
+    assert receiver.receive_bytes(ALL_1).response == expected
+    assert receiver.attempts == 2
 
 
-def test_manager_evicts_oldest() -> None:
-    mgr = ReassemblyManager(window_size=3, max_contexts=2)
-    # Start three partial reassemblies; the first should be evicted.
-    f = Fragment(rule_id=20, window=0, fcn=2, payload=b"x")
-    mgr.receive("a", f)
-    mgr.receive("b", f)
-    mgr.receive("c", f)
-    assert len(mgr) == 2
+def test_one_tile_all1() -> None:
+    receiver = FragmentReceiver()
+    result = receiver.receive_bytes(bytes.fromhex("787f4c7fc202f0"))
+    assert result.response == bytes.fromhex("7840")
+    assert result.reassembled == b"x"
 
 
-def test_manager_drop() -> None:
-    mgr = ReassemblyManager(window_size=3)
-    mgr.receive("a", Fragment(rule_id=20, window=0, fcn=2, payload=b"x"))
-    mgr.drop("a")
-    assert len(mgr) == 0
+def test_rule_79_one_tile_reassembly_literal() -> None:
+    result = FragmentReceiver().receive_bytes(bytes.fromhex("797f4c7fc202f0"))
+    assert result.response == bytes.fromhex("7940")
+    assert result.reassembled == b"x"
 
 
-def test_fcn_out_of_range_ignored() -> None:
-    """Fragments with FCN >= window_size are silently discarded (no negative indices)."""
-    receiver = FragmentReceiver(window_size=3)
-    # Valid FCN values for window_size=3 are 0, 1, 2 (plus ALL_1 sentinel).
-    # FCN=10 would cause pos = 3 - 1 - 10 = -8 without validation.
-    bad_frag = Fragment(rule_id=20, window=0, fcn=10, payload=b"malicious")
-    result = receiver.receive(bad_frag)
-    # Fragment should be ignored: no ACK, no reassembly, tiles dict stays empty.
-    assert result.ack is None
-    assert result.reassembled is None
-    assert len(receiver._tiles) == 0
+def test_all1_first_capacity_includes_retained_final_tile() -> None:
+    receiver = FragmentReceiver(max_size=100)
+    oversized = Fragment(0x78, 0, 63, bytes(101), bytes(4))
+    result = receiver.receive(oversized)
+    assert result.response == bytes.fromhex("78ffff")
+    assert result.aborted and receiver.done and receiver._all1 is None
+
+    receiver = FragmentReceiver(max_size=187)
+    assert receiver.receive_bytes(ALL_1).response == bytes.fromhex("780000000000000000")
+    result = receiver.receive_bytes(TILE_0)
+    assert result.response == bytes.fromhex("78ffff")
+    assert result.aborted and receiver.done and receiver._all1 is None
 
 
-def test_stale_retransmission_does_not_corrupt_later_window() -> None:
-    """A delayed fragment from window 0 must not overwrite window 2 data.
+def test_rcs_failure_ack_literal() -> None:
+    receiver = FragmentReceiver()
+    receiver.receive_bytes(TILE_0)
+    receiver.receive_bytes(TILE_1)
+    result = receiver.receive_bytes(bytes.fromhex("787fd80535ad4a"))
+    assert result.response == bytes.fromhex("783000000000000000")
+    assert result.mic_ok is False
 
-    SCHC ACK-on-Error uses a 1-bit W field that alternates 0/1. Windows 0, 2, 4...
-    all have W=0. If a delayed retransmission from window 0 arrives when we're at
-    window 2, it must be rejected rather than stored at window 2's position.
 
-    Failure scenario (before fix):
-    1. Receiver completes windows 0 and 1, _current_window=2
-    2. Window 2's first tile arrives (index 6)
-    3. Delayed duplicate from window 0 position 0 (W=0, FCN=2) arrives
-    4. Bug: fragment mapped to window 2, overwrites index 6 with stale data
-    5. Reassembly produces corrupted output
-    """
-    window_size = 3
-    receiver = FragmentReceiver(window_size)
+def test_ack_request_without_state_and_retry_exhaustion() -> None:
+    receiver = FragmentReceiver()
+    expected = bytes.fromhex("78000000000000000000")
 
-    # Complete window 0 (tiles 0, 1, 2) - all with W=0
-    for fcn in [2, 1, 0]:  # FCN counts down
-        frag = Fragment(rule_id=20, window=0, fcn=fcn, payload=bytes([fcn]))
-        receiver.receive(frag)
-    assert 0 in receiver._completed_windows
+    for _ in range(4):
+        assert receiver.receive_bytes(bytes.fromhex("7880")).response == expected
+    result = receiver.receive_bytes(bytes.fromhex("7880"))
+    assert result.response == bytes.fromhex("78ffff")
+    assert result.aborted and receiver.done
 
-    # Complete window 1 (tiles 3, 4, 5) - all with W=1
-    for fcn in [2, 1, 0]:
-        frag = Fragment(rule_id=20, window=1, fcn=fcn, payload=bytes([10 + fcn]))
-        receiver.receive(frag)
-    assert 1 in receiver._completed_windows
-    assert receiver._current_window == 2
 
-    # Receive first tile of window 2 (index 6, FCN=2, W=0)
-    window2_tile0 = Fragment(rule_id=20, window=0, fcn=2, payload=b"\x20")
-    receiver.receive(window2_tile0)
-    assert receiver._tiles.get(6) == b"\x20"
+def test_duplicate_conflicts_abort() -> None:
+    receiver = FragmentReceiver()
+    assert receiver.receive_bytes(TILE_0).response is None
+    assert receiver.receive_bytes(TILE_0).response is None
+    conflict = Fragment(0x78, 0, 62, b"x" * 187)
+    assert receiver.receive(conflict).response == bytes.fromhex("78ffff")
 
-    # Now a delayed retransmission from window 0, position 0 (FCN=2, W=0)
-    # arrives. It has different payload than window 2's tile at same position.
-    stale_frag = Fragment(rule_id=20, window=0, fcn=2, payload=b"\x02")
-    result = receiver.receive(stale_frag)
+    receiver = FragmentReceiver()
+    receiver.receive_bytes(ALL_1)
+    conflict = Fragment(0x78, 0, 63, b"y", bytes.fromhex("ec829ad6"))
+    assert receiver.receive(conflict).response == bytes.fromhex("78ffff")
 
-    # The stale fragment must be rejected:
-    # - No ACK generated (we already ACKed window 0)
-    # - Window 2 tile at index 6 must NOT be overwritten
-    # - _current_window must not regress
-    assert result.ack is None
-    assert receiver._tiles.get(6) == b"\x20", "Window 2 data was corrupted by stale fragment"
-    assert receiver._current_window == 2, "_current_window regressed"
+
+def test_expire_and_abort_controls_release() -> None:
+    receiver = FragmentReceiver()
+    receiver.receive_bytes(TILE_0)
+    assert receiver.expire() == bytes.fromhex("78ffff")
+    assert receiver.expire() is None
+
+    for control in (bytes.fromhex("78fe"), bytes.fromhex("78ffff")):
+        receiver = FragmentReceiver()
+        receiver.receive_bytes(TILE_0)
+        result = receiver.receive_bytes(control)
+        assert result.aborted and result.response is None and receiver.done
+
+
+def test_malformed_input_and_resource_limit_abort() -> None:
+    receiver = FragmentReceiver()
+    assert receiver.receive_bytes(bytes.fromhex("78ff")).response == bytes.fromhex("78ffff")
+
+    receiver = FragmentReceiver(max_size=187)
+    assert receiver.receive_bytes(TILE_0).response is None
+    second = Fragment(0x78, 0, 61, bytes(187))
+    assert receiver.receive(second).response == bytes.fromhex("78ffff")
+
+
+def test_manager_validates_before_allocating_and_never_evicts() -> None:
+    manager = ReassemblyManager(max_contexts=1)
+    assert manager.receive_bytes("bad", bytes.fromhex("78")).response == bytes.fromhex("78ffff")
+    assert len(manager) == 0
+    assert manager.receive_bytes("bad", bytes.fromhex("78ff")).response == bytes.fromhex("78ffff")
+    assert len(manager) == 0
+
+    with pytest.raises(FragmentError):
+        manager.receive("bad", Fragment(0x77, 0, 62, bytes(187)))
+    assert len(manager) == 0
+
+    malformed = Fragment(0x78, 0, 62, b"short")
+    assert manager.receive("bad", malformed).response == bytes.fromhex("78ffff")
+    assert len(manager) == 0
+
+    assert manager.receive_bytes("peer", TILE_0).response is None
+    assert manager.receive_bytes("other", bytes.fromhex("78ff")).aborted
+    assert len(manager) == 1
+    rejected = manager.receive_bytes("other", TILE_0)
+    assert rejected.response == bytes.fromhex("78ffff")
+    assert len(manager) == 1
+
+    assert manager.receive_bytes("peer", bytes.fromhex("78ff")).aborted
+    assert len(manager) == 0
+
+
+@pytest.mark.parametrize("max_size", [0, 23563])
+def test_manager_rejects_invalid_max_size(max_size: int) -> None:
+    with pytest.raises(ValueError, match="max_size"):
+        ReassemblyManager(max_size=max_size)

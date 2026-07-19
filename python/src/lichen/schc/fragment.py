@@ -1,54 +1,48 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""SCHC fragmentation — ACK-on-Error sender side (RFC 8724 section 8).
-
-A compressed packet larger than the link MTU is split into *tiles* carried by
-SCHC fragments. Each fragment header is a fragmentation Rule ID byte followed by
-a byte holding the 1-bit window (W) and 6-bit fragment counter (FCN), per spec
-5.6. FCN counts down within a window; the final fragment of the datagram uses
-the All-1 FCN and carries a CRC32 Reassembly Check Sequence (the MIC).
-
-This module implements the fragment wire format, the MIC, and the sender
-(:class:`FragmentSender`): tiling, the per-tile window/FCN schedule, and
-ACK-driven retransmission. The receiver-side reassembly state machine lives in
-:mod:`lichen.schc.reassembly` (issue e2m). The sender is deterministic; the
-caller drives the radio and feeds back ACK bitmaps.
-"""
+"""LICHEN SCHC ACK-on-Error fragment codec and sender."""
 
 from __future__ import annotations
 
 import zlib
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 
-N_FCN_BITS = 6
-ALL_1 = (1 << N_FCN_BITS) - 1  # 63 — marks the last fragment of the datagram
-MAX_WINDOW_SIZE = ALL_1 - 1  # 62 regular FCNs (62..0) per full window
-DEFAULT_WINDOW_SIZE = 7
-MIC_LENGTH = 4  # CRC32
+RULE_IDS = (0x78, 0x79)
+ALL_1 = 63
+WINDOW_SIZE = 63
+DEFAULT_WINDOW_SIZE = WINDOW_SIZE
+TILE_SIZE = 187
+MIC_LENGTH = 4
+MAX_TILES = 126
+MAX_PACKET_SIZE = MAX_TILES * TILE_SIZE
+DEFAULT_RECEIVER_LIMIT = 1281
+MAX_ACK_REQUESTS = 4
 
-_W_SHIFT = 6
-_FCN_MASK = 0x3F
+
+class FragmentError(ValueError):
+    """Raised when a SCHC fragmentation message is invalid."""
 
 
-class FragmentError(Exception):
-    """Raised when a SCHC fragment is malformed."""
+def _check_rule(rule_id: int) -> None:
+    if rule_id not in RULE_IDS:
+        raise FragmentError(f"unsupported fragmentation rule: {rule_id:#x}")
 
 
 def compute_mic(payload: bytes) -> bytes:
-    """Reassembly Check Sequence over the full datagram (RFC 8724 default CRC32)."""
-    return zlib.crc32(payload).to_bytes(MIC_LENGTH, "big")
+    """Return the profile CRC-32/ISO-HDLC RCS."""
+    return zlib.crc32(payload + b"\x00").to_bytes(MIC_LENGTH, "big")
 
 
-@dataclass
+@dataclass(frozen=True)
 class Fragment:
-    """A single SCHC fragment (spec 5.6)."""
+    """One fixed-profile Regular or All-1 Fragment."""
 
     rule_id: int
-    window: int  # 1-bit window indicator (W)
-    fcn: int  # 6-bit fragment counter
+    window: int
+    fcn: int
     payload: bytes
-    mic: bytes = b""  # 4-byte CRC32, present only on the All-1 fragment
+    mic: bytes = b""
 
     @property
     def is_all_1(self) -> bool:
@@ -59,124 +53,166 @@ class Fragment:
         return self.fcn == 0
 
     def to_bytes(self) -> bytes:
-        if not 0 <= self.rule_id <= 0xFF:
-            raise FragmentError(f"rule_id out of range: {self.rule_id}")
-        if not 0 <= self.fcn <= ALL_1:
-            raise FragmentError(f"fcn out of range: {self.fcn}")
-        if self.window not in (0, 1):
-            raise FragmentError(f"window must be 0 or 1: {self.window}")
-        header = bytes(
-            [self.rule_id, ((self.window & 1) << _W_SHIFT) | (self.fcn & _FCN_MASK)]
-        )
+        _check_rule(self.rule_id)
+        if self.window not in (0, 1) or not 0 <= self.fcn <= ALL_1:
+            raise FragmentError("window or FCN out of range")
         if self.is_all_1:
             if len(self.mic) != MIC_LENGTH:
-                raise FragmentError("All-1 fragment requires a 4-byte MIC")
-            return header + self.mic + self.payload
-        return header + self.payload
+                raise FragmentError("All-1 requires a four-byte RCS")
+            if not 1 <= len(self.payload) <= TILE_SIZE:
+                raise FragmentError("All-1 final tile must contain 1..187 bytes")
+            content = self.mic + self.payload
+        else:
+            if len(self.payload) != TILE_SIZE:
+                raise FragmentError("Regular Fragment tile must contain 187 bytes")
+            if self.window == 1 and self.is_all_0:
+                raise FragmentError("the final tile must be carried in All-1")
+            if self.mic:
+                raise FragmentError("Regular Fragment cannot carry an RCS")
+            content = self.payload
+        body = (
+            ((self.window << 6) | self.fcn) << (8 * len(content)) | int.from_bytes(content)
+        ) << 1
+        return bytes([self.rule_id]) + body.to_bytes(len(content) + 1, "big")
 
     @classmethod
     def from_bytes(cls, data: bytes) -> Fragment:
         if len(data) < 2:
             raise FragmentError("fragment too short")
-        rule_id = data[0]
-        window = (data[1] >> _W_SHIFT) & 1
-        fcn = data[1] & _FCN_MASK
-        rest = data[2:]
+        _check_rule(data[0])
+        if data[-1] & 1:
+            raise FragmentError("non-zero end padding")
+        value = int.from_bytes(data[1:], "big") >> 1
+        content_len = len(data) - 2
+        header = value >> (8 * content_len)
+        window, fcn = header >> 6, header & 0x3F
+        content = (value & ((1 << (8 * content_len)) - 1)).to_bytes(content_len, "big")
         if fcn == ALL_1:
-            if len(rest) < MIC_LENGTH:
-                raise FragmentError("All-1 fragment missing MIC")
-            return cls(rule_id, window, fcn, rest[MIC_LENGTH:], rest[:MIC_LENGTH])
-        return cls(rule_id, window, fcn, rest)
+            if not 5 <= content_len <= MIC_LENGTH + TILE_SIZE:
+                raise FragmentError("All-1 requires an RCS and non-empty final tile")
+            return cls(data[0], window, fcn, content[MIC_LENGTH:], content[:MIC_LENGTH])
+        if len(data) != TILE_SIZE + 2:
+            raise FragmentError("Regular Fragment tile must contain 187 bytes")
+        if window == 1 and fcn == 0:
+            raise FragmentError("the final tile must be carried in All-1")
+        return cls(data[0], window, fcn, content)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Ack:
-    """An ACK-on-Error acknowledgement: a positional receipt bitmap for a window.
-
-    ``bitmap[p]`` is True if the p-th fragment (transmission order) of the window
-    was received. ``complete`` is True when the whole datagram is reassembled.
-    """
+    """A C=0 bitmap ACK or exact C=1 success ACK."""
 
     rule_id: int
     window: int
-    bitmap: tuple[bool, ...]
+    bitmap: tuple[bool, ...] = ()
     complete: bool = False
 
     def to_bytes(self) -> bytes:
-        # Byte 1: window bit in top position (bit 6), complete flag in LSB (bit 0)
-        byte1 = ((self.window & 1) << _W_SHIFT) | (0x01 if self.complete else 0)
-        # Pack bitmap into big-endian bytes: first fragment's bit is MSB of first byte.
-        # Shift-accumulate: for each bool, shift left and OR in 1 or 0.
-        # Example: bitmap (T,F,T,T,F) -> bits = 0b10110 = 22
-        bits = 0
-        for received in self.bitmap:
-            bits = (bits << 1) | (1 if received else 0)
-        n = len(self.bitmap)
-        # Pad to a whole number of bytes: if n=5, pad=3, so we shift left 3
-        # to align the 5 bits to the MSB of a single byte (0b10110 -> 0b10110000).
-        pad = (-n) % 8
-        body = (bits << pad).to_bytes((n + pad) // 8, "big") if n else b""
-        return bytes([self.rule_id, byte1, n]) + body
+        _check_rule(self.rule_id)
+        if self.window not in (0, 1):
+            raise FragmentError("ACK window out of range")
+        if self.complete:
+            if self.bitmap:
+                raise FragmentError("C=1 ACK cannot carry a bitmap")
+            return bytes([self.rule_id, (self.window << 7) | 0x40])
+        if len(self.bitmap) != WINDOW_SIZE:
+            raise FragmentError("C=0 ACK requires a 63-bit bitmap")
+        bits = list(self.bitmap)
+        trailing = 0
+        for bit in reversed(bits):
+            if not bit:
+                break
+            trailing += 1
+        if trailing:
+            kept = WINDOW_SIZE - trailing
+            restored = (-(2 + kept)) % 8
+            encoded = bits[:kept] + [True] * restored
+            padding = 0
+        else:
+            encoded = bits
+            padding = (-(2 + len(encoded))) % 8
+        value = self.window << 1  # W followed by C=0
+        for bit in encoded:
+            value = (value << 1) | bit
+        value <<= padding
+        return bytes([self.rule_id]) + value.to_bytes((2 + len(encoded) + padding) // 8, "big")
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> Ack:
-        if len(data) < 3:
+    def from_bytes(cls, data: bytes, *, assigned_fcns: Iterable[int] | None = None) -> Ack:
+        if len(data) < 2:
             raise FragmentError("ACK too short")
-        rule_id = data[0]
-        window = (data[1] >> _W_SHIFT) & 1
-        complete = bool(data[1] & 0x01)
-        n = data[2]
-        body = data[3:]
-        required_bytes = (n + 7) // 8
-        if len(body) < required_bytes:
-            raise FragmentError(
-                f"ACK bitmap truncated: need {required_bytes} bytes, got {len(body)}"
-            )
-        bitmap = []
-        for i in range(n):
-            byte = body[i // 8]
-            bitmap.append(bool((byte >> (7 - (i % 8))) & 1))
-        return cls(rule_id, window, tuple(bitmap), complete)
+        _check_rule(data[0])
+        window = data[1] >> 7
+        complete = bool(data[1] & 0x40)
+        if complete:
+            if len(data) != 2 or data[1] & 0x3F:
+                raise FragmentError("malformed C=1 ACK or control")
+            return cls(data[0], window, (), True)
+        bit_count = len(data[1:]) * 8 - 2
+        raw = int.from_bytes(data[1:], "big") & ((1 << bit_count) - 1)
+        if bit_count >= WINDOW_SIZE:
+            padding = bit_count - WINDOW_SIZE
+            if padding > 7 or raw & ((1 << padding) - 1):
+                raise FragmentError("invalid ACK padding")
+            raw >>= padding
+            bitmap = tuple(bool(raw & (1 << (WINDOW_SIZE - 1 - i))) for i in range(WINDOW_SIZE))
+        else:
+            prefix = tuple(bool(raw & (1 << (bit_count - 1 - i))) for i in range(bit_count))
+            bitmap = prefix + (True,) * (WINDOW_SIZE - bit_count)
+        ack = cls(data[0], window, bitmap)
+        if ack.to_bytes() != data:
+            raise FragmentError("non-canonical compressed ACK")
+        if assigned_fcns is not None:
+            assigned = {62 - fcn if fcn != ALL_1 else 62 for fcn in assigned_fcns}
+            if any(bit and i not in assigned for i, bit in enumerate(bitmap)):
+                raise FragmentError("unassigned bitmap bit is set")
+        return ack
+
+
+def ack_request(rule_id: int, window: int) -> bytes:
+    _check_rule(rule_id)
+    if window not in (0, 1):
+        raise FragmentError("ACK REQ window out of range")
+    return bytes([rule_id, window << 7])
+
+
+def sender_abort(rule_id: int) -> bytes:
+    _check_rule(rule_id)
+    return bytes([rule_id, 0xFE])
+
+
+def receiver_abort(rule_id: int) -> bytes:
+    _check_rule(rule_id)
+    return bytes([rule_id, 0xFF, 0xFF])
 
 
 @dataclass
 class FragmentSender:
-    """Splits a payload into SCHC fragments and handles retransmission."""
+    """Bounded fixed-profile sender driven by ACKs and explicit timeouts."""
 
     payload: bytes
-    rule_id: int
-    tile_size: int
-    window_size: int = DEFAULT_WINDOW_SIZE
-    _fragments: list[Fragment] = field(default_factory=list, init=False)
+    rule_id: int = 0x78
+    receiver_limit: int = DEFAULT_RECEIVER_LIMIT
+    _fragments: list[Fragment] = field(init=False, repr=False)
+    attempts: int = field(default=0, init=False)
+    status: str = field(default="ready", init=False)
 
     def __post_init__(self) -> None:
-        if self.tile_size <= 0:
-            raise FragmentError("tile_size must be positive")
-        if not 1 <= self.window_size <= MAX_WINDOW_SIZE:
-            raise FragmentError(f"window_size must be 1..{MAX_WINDOW_SIZE}")
-        self._fragments = self._build()
-
-    def _build(self) -> list[Fragment]:
-        tiles = [
-            self.payload[i : i + self.tile_size]
-            for i in range(0, max(len(self.payload), 1), self.tile_size)
-        ]
+        _check_rule(self.rule_id)
+        if not 1 <= self.receiver_limit <= MAX_PACKET_SIZE:
+            raise FragmentError("receiver limit out of range")
+        if not self.payload:
+            raise FragmentError("empty packets cannot be fragmented")
+        if len(self.payload) > self.receiver_limit:
+            raise FragmentError("packet exceeds receiver reassembly limit")
+        tiles = [self.payload[i : i + TILE_SIZE] for i in range(0, len(self.payload), TILE_SIZE)]
         mic = compute_mic(self.payload)
-        n = len(tiles)
-        frags: list[Fragment] = []
-        for i, tile in enumerate(tiles):
-            wire_window = (i // self.window_size) % 2
-            pos = i % self.window_size
-            is_last = i == n - 1
-            fcn = ALL_1 if is_last else (self.window_size - 1 - pos)
-            frags.append(
-                Fragment(self.rule_id, wire_window, fcn, tile, mic if is_last else b"")
-            )
-        return frags
-
-    def all_fragments(self) -> list[Fragment]:
-        """Every fragment of the datagram in transmission order."""
-        return list(self._fragments)
+        self._fragments = []
+        for ordinal, tile in enumerate(tiles):
+            final = ordinal == len(tiles) - 1
+            window = ordinal // WINDOW_SIZE
+            fcn = ALL_1 if final else 62 - ordinal % WINDOW_SIZE
+            self._fragments.append(Fragment(self.rule_id, window, fcn, tile, mic if final else b""))
 
     @property
     def fragment_count(self) -> int:
@@ -184,20 +220,92 @@ class FragmentSender:
 
     @property
     def window_count(self) -> int:
-        return (self.fragment_count + self.window_size - 1) // self.window_size
+        return self._fragments[-1].window + 1
 
-    def fragments_in_window(self, abs_window: int) -> list[Fragment]:
-        """Fragments belonging to absolute window ``abs_window`` (transmission order)."""
-        start = abs_window * self.window_size
-        return self._fragments[start : start + self.window_size]
+    @property
+    def final_window(self) -> int:
+        return self._fragments[-1].window
 
-    def retransmit(
-        self, abs_window: int, bitmap: Sequence[bool]
-    ) -> list[Fragment]:
-        """Fragments in ``abs_window`` not acknowledged by ``bitmap`` (positional)."""
-        window_frags = self.fragments_in_window(abs_window)
-        missing: list[Fragment] = []
-        for pos, frag in enumerate(window_frags):
-            if pos >= len(bitmap) or not bitmap[pos]:
-                missing.append(frag)
-        return missing
+    def all_fragments(self) -> list[Fragment]:
+        return list(self._fragments)
+
+    def fragments_in_window(self, window: int) -> list[Fragment]:
+        return [fragment for fragment in self._fragments if fragment.window == window]
+
+    def retransmit(self, window: int, bitmap: Sequence[bool]) -> list[Fragment]:
+        if len(bitmap) != WINDOW_SIZE:
+            raise FragmentError("ACK bitmap must contain 63 bits")
+        return [
+            fragment
+            for fragment in self.fragments_in_window(window)
+            if not bitmap[62 if fragment.is_all_1 else 62 - fragment.fcn]
+        ]
+
+    def start(self) -> list[bytes]:
+        if self.status != "ready":
+            raise FragmentError("sender has already started")
+        self.status = "active"
+        self.attempts = 1
+        return [fragment.to_bytes() for fragment in self._fragments]
+
+    def _abort(self) -> list[bytes]:
+        self.status = "aborted"
+        self.payload = b""
+        self._fragments.clear()
+        return [sender_abort(self.rule_id)]
+
+    def _request(self, message: bytes) -> list[bytes]:
+        if self.attempts >= MAX_ACK_REQUESTS:
+            return self._abort()
+        self.attempts += 1
+        return [message]
+
+    def handle_ack(self, ack: Ack) -> list[bytes]:
+        if self.status != "active" or ack.rule_id != self.rule_id:
+            return []
+        if ack.complete:
+            if ack.window != self.final_window:
+                return []
+            self.status = "succeeded"
+            self.payload = b""
+            self._fragments.clear()
+            return []
+        if ack.window not in {fragment.window for fragment in self._fragments}:
+            return []
+        missing = self.retransmit(ack.window, ack.bitmap)
+        if not missing:
+            return self._abort() if ack.window == self.final_window else []
+        wires = [fragment.to_bytes() for fragment in missing]
+        all1 = next((fragment for fragment in missing if fragment.is_all_1), None)
+        request = (
+            all1.to_bytes() if all1 is not None else ack_request(self.rule_id, self.final_window)
+        )
+        requested = self._request(request)
+        if requested and requested[0] == sender_abort(self.rule_id):
+            return requested
+        if all1 is None:
+            wires.extend(requested)
+        return wires
+
+    def handle_ack_bytes(self, data: bytes) -> list[bytes]:
+        if self.status != "active" or not data or data[0] != self.rule_id:
+            return []
+        if len(data) == 3 and data[1:] == b"\xff\xff":
+            self.status = "aborted"
+            self.payload = b""
+            self._fragments.clear()
+            return []
+        ack = Ack.from_bytes(data)
+        if not ack.complete:
+            if ack.window not in {fragment.window for fragment in self._fragments}:
+                return []
+            assigned = [
+                fragment.fcn for fragment in self._fragments if fragment.window == ack.window
+            ]
+            ack = Ack.from_bytes(data, assigned_fcns=assigned)
+        return self.handle_ack(ack)
+
+    def timeout(self) -> bytes:
+        if self.status != "active":
+            raise FragmentError("sender is not active")
+        return self._request(ack_request(self.rule_id, self.final_window))[0]
