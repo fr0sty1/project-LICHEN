@@ -38,9 +38,13 @@ from lichen.sim.renode_server import start_renode_server
 #
 # Seed the reset state from the application's own vector table so the CPU boots
 # the image directly. Symbol-based so it works regardless of the exact offset.
+# Seed VTOR, initial MSP, and PC from the app vector table. A `$vt` variable
+# holds the table address so the SP read is a single un-nested monitor
+# expression (the nested-parens form intermittently fails to tokenize).
 _BOOT_MCUBOOT_APP = """\
-cpu VectorTableOffset `sysbus GetSymbolAddress "_vector_table"`
-cpu SP `sysbus ReadDoubleWord (sysbus GetSymbolAddress "_vector_table")`
+$vt=`sysbus GetSymbolAddress "_vector_table"`
+cpu VectorTableOffset $vt
+cpu SP `sysbus ReadDoubleWord $vt`
 cpu PC `sysbus GetSymbolAddress "__start"`
 cpu IsHalted false"""
 

@@ -26,8 +26,9 @@ macro reset
     sysbus LoadELF $elf
     # MCUboot slot-0 app: boot from its own vector table (see test_mesh.py),
     # not the empty 0x0 the Cortex-M would otherwise reset from.
-    cpu VectorTableOffset `sysbus GetSymbolAddress "_vector_table"`
-    cpu SP `sysbus ReadDoubleWord (sysbus GetSymbolAddress "_vector_table")`
+    $vt=`sysbus GetSymbolAddress "_vector_table"`
+    cpu VectorTableOffset $vt
+    cpu SP `sysbus ReadDoubleWord $vt`
     cpu PC `sysbus GetSymbolAddress "__start"`
     cpu IsHalted false
 """
