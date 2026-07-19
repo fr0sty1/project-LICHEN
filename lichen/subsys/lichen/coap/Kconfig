@@ -229,4 +229,25 @@ config LICHEN_COAP_KEYS_TEST_HOOKS
 	help
 	  Enable test hooks for resetting the key store. Only for testing.
 
+config LICHEN_COAP_LOCATION
+	bool "CoAP /sensors/location resource (SenML position)"
+	depends on LICHEN_SENML
+	depends on LICHEN_HAL
+	depends on LICHEN_LORA_L2
+	default n
+	help
+	  Serve GET /sensors/location as a SenML pack (application/senml+cbor,
+	  spec 12-apps.md section 18.2.2) describing the node's current position,
+	  or 4.04 when it has no valid fix. Requires the SenML encoder, the HAL
+	  location provider, and the LoRa L2 (for the node EUI-64 base name).
+
+config LICHEN_COAP_LOCATION_LOG_LEVEL
+	int "CoAP location log level"
+	depends on LICHEN_COAP_LOCATION
+	default 3
+	range 0 4
+	help
+	  Log level for the LICHEN CoAP location handler:
+	  0=off, 1=error, 2=warning, 3=info, 4=debug
+
 endif # LICHEN_COAP
