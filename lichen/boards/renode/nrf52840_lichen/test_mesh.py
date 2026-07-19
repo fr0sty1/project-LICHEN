@@ -196,19 +196,12 @@ async def test_mesh_boots(mesh_simulation):
 async def test_mesh_tx(mesh_simulation):
     """Test that nodes transmit LoRa frames into lichen-sim.
 
-    KNOWN-FAILING (lora_ipv6_mesh-yot8): the firmware now boots (MCUboot-app boot
-    fix above), disables its Renode-useless USB (renode_console.conf), reaches
-    main(), provisions its dev peers, and drives a real LoRa TX — the console
-    shows "CoAP GET /status sent" followed by "sx12xx_common: Packet transmission
-    failed! / lora_l2: TX failed (-11 EAGAIN)". The loramac sx126x driver issues
-    the transmit but the SX1262.cs model does not complete the TX handshake
-    (SetTx -> TriggerTx -> TxDone IRQ) it expects, so it times out and no frame
-    reaches the medium. Completing the SX1262.cs model against the real driver's
-    TX/IRQ sequence is the remaining work.
-
-    (The earlier "validated: firmware beacons" claim was incorrect — the firmware
-    never actually booted in Renode; it halted at reset on an empty vector table,
-    then spun forever in nRF USBD enable. See yot8 for the full analysis.)
+    Passes on Renode 1.16.1 after the yot8 fix chain: boot the MCUboot slot-0
+    app from its own vector table, disable Renode-useless USB
+    (renode_console.conf) so the app reaches main(), wait past the puck's ~10 s
+    USB-settle window, and make the SX1262 RX path asynchronous so a node can
+    leave RX to transmit (SX1262.cs). The puck then boots, provisions its dev
+    peers, sends a CoAP GET, and the frame reaches the simulation medium.
     """
     sim = mesh_simulation["sim"]
 
