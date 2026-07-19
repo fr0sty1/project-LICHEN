@@ -1,0 +1,123 @@
+{
+  "format_version": 1,
+  "description": "LICHEN Rule Set Version 2 SCHC ACK-on-Error fragmentation vectors. Expected bytes were independently derived from RFC 8724 and verified with CRC-32/ISO-HDLC and SHA-256 implementations outside the LICHEN SCHC code.",
+  "vectors": [
+    {
+      "name": "recover_missing_regular_tile",
+      "category": "recovery",
+      "provenance": "Hand-packed MSB-first from RFC 8724 Sections 8.2-8.4; CRC-32/ISO-HDLC independently verified with zlib over packet || 00.",
+      "rule_id": 120,
+      "packet": {"parts": [{"repeat_byte": "00", "count": 187}, {"repeat_byte": "11", "count": 187}, "a5"]},
+      "packet_length": 375,
+      "packet_sha256": "46e9ca78b5880bbe18c102a561023e6308cdbd9b04d9971f42bd6cf93e1968db",
+      "rcs": "ec829ad6",
+      "fragments": [
+        {"name": "tile_0", "kind": "regular", "window": 0, "fcn": 62, "tile_ordinal": 0, "wire": {"parts": ["787c", {"repeat_byte": "00", "count": 187}]}},
+        {"name": "tile_1", "kind": "regular", "window": 0, "fcn": 61, "tile_ordinal": 1, "wire": {"parts": ["787a", {"repeat_byte": "22", "count": 187}]}},
+        {"name": "final", "kind": "all1", "window": 0, "fcn": 63, "tile_ordinal": 2, "wire": "787fd90535ad4a"}
+      ],
+      "loss": {
+        "drop_fragment": "tile_1",
+        "ack_failure": "782000000000000000",
+        "retransmission": {"parts": ["787a", {"repeat_byte": "22", "count": 187}]},
+        "ack_req": "7800",
+        "ack_success": "7840",
+        "corrupt_all1": "787fd80535ad4a",
+        "rcs_failure_ack": "783000000000000000",
+        "next_sender_message": "78fe"
+      }
+    },
+    {
+      "name": "all0_window_transition",
+      "category": "window_transition",
+      "provenance": "Hand-packed boundary fragments; packet hashes and CRC-32/ISO-HDLC independently verified with hashlib and zlib.",
+      "rule_id": 120,
+      "packet": {"parts": [{"repeat_byte": "a5", "count": 11782}]},
+      "packet_length": 11782,
+      "packet_sha256": "d3216251952bde6e549f09cf783ffad2c0153eb8b6ae25cd3b33493d6e7eb5c2",
+      "rcs": "8727c8e5",
+      "fragment_count": 64,
+      "fragments": [
+        {"name": "first", "kind": "regular", "window": 0, "fcn": 62, "tile_ordinal": 0, "wire": {"parts": ["787d", {"repeat_byte": "4b", "count": 186}, "4a"]}},
+        {"name": "fcn_31", "kind": "regular", "window": 0, "fcn": 31, "tile_ordinal": 31, "wire": {"parts": ["783f", {"repeat_byte": "4b", "count": 186}, "4a"]}},
+        {"name": "all0", "kind": "all0", "window": 0, "fcn": 0, "tile_ordinal": 62, "wire": {"parts": ["7801", {"repeat_byte": "4b", "count": 186}, "4a"]}},
+        {"name": "final", "kind": "all1", "window": 1, "fcn": 63, "tile_ordinal": 63, "wire": "78ff0e4f91cb4a"}
+      ],
+      "loss": {
+        "drop_fragment": "fcn_31",
+        "ack_failure": "783fffffffbf",
+        "retransmission": {"parts": ["783f", {"repeat_byte": "4b", "count": 186}, "4a"]},
+        "ack_req": "7880",
+        "ack_success": "78c0"
+      }
+    },
+    {
+      "name": "control_messages",
+      "category": "controls",
+      "provenance": "Direct RFC 8724 Section 8.3 bit packing with 8-bit L2 words and zero padding.",
+      "controls": {
+        "rule_78": {"ack_success_w0": "7840", "ack_success_w1": "78c0", "ack_req_w0": "7800", "ack_req_w1": "7880", "sender_abort": "78fe", "receiver_abort": "78ffff"},
+        "rule_79": {"ack_success_w0": "7940", "ack_success_w1": "79c0", "ack_req_w0": "7900", "ack_req_w1": "7980", "sender_abort": "79fe", "receiver_abort": "79ffff"}
+      }
+    },
+    {
+      "name": "sender_retry_exhaustion",
+      "category": "retry_exhaustion",
+      "provenance": "MAX_ACK_REQUESTS=4 replaces the fifth final-window ACK REQ with Sender-Abort.",
+      "rule_id": 120,
+      "attempts_before": 4,
+      "trigger": "7880",
+      "expected_message": "78fe",
+      "expect_status": "aborted"
+    },
+    {
+      "name": "receiver_retry_exhaustion",
+      "category": "retry_exhaustion",
+      "provenance": "A receiver at MAX_ACK_REQUESTS emits Receiver-Abort instead of a fifth ACK.",
+      "rule_id": 120,
+      "attempts_before": 4,
+      "trigger": "7880",
+      "expected_message": "78ffff",
+      "expect_status": "aborted"
+    },
+    {
+      "name": "mandatory_receiver_boundary",
+      "category": "capacity",
+      "provenance": "Repeated-byte source expanded mechanically; SHA-256 and CRC-32/ISO-HDLC independently verified.",
+      "packet": {"parts": [{"repeat_byte": "a5", "count": 1281}]},
+      "packet_length": 1281,
+      "packet_sha256": "286b8087b0561b17aacd3f353165fb9870e9a388472a9d7e6fb07221002c53a6",
+      "rcs": "daca2bc3",
+      "fragment_count": 7,
+      "expect_status": "ok"
+    },
+    {
+      "name": "profile_capacity",
+      "category": "capacity",
+      "provenance": "Repeated-byte source expanded mechanically; SHA-256 and CRC-32/ISO-HDLC independently verified.",
+      "packet": {"parts": [{"repeat_byte": "a5", "count": 23562}]},
+      "packet_length": 23562,
+      "packet_sha256": "3244f334e7c253590ab7f631436942ef1deb38a14fd04a3758a1ab72c24f2ce5",
+      "rcs": "c4cd8ded",
+      "fragment_count": 126,
+      "expect_status": "ok"
+    },
+    {
+      "name": "over_profile_capacity",
+      "category": "capacity",
+      "provenance": "Repeated-byte source expanded mechanically; SHA-256 independently verified.",
+      "packet": {"parts": [{"repeat_byte": "a5", "count": 23563}]},
+      "packet_length": 23563,
+      "packet_sha256": "4417b95c72c7593cda41c3120091c2124f4413aaac2d025adaca4d667ff26a5f",
+      "fragment_count": 0,
+      "expect_status": "packet_too_large"
+    },
+    {"name": "regular_short_tile", "category": "malformed", "provenance": "187-byte regular tiles are mandatory.", "wire": "787c00", "expect_error": "regular_tile_length"},
+    {"name": "regular_nonzero_padding", "category": "malformed", "provenance": "RFC 8724 Section 9 and the profile require zero end padding.", "wire": {"parts": ["787c", {"repeat_byte": "00", "count": 186}, "01"]}, "expect_error": "nonzero_padding"},
+    {"name": "all1_without_final_tile", "category": "malformed", "provenance": "The profile requires a non-empty final tile in All-1.", "wire": "787e00000000", "expect_error": "empty_final_tile"},
+    {"name": "ack_success_extra_octet", "category": "malformed", "provenance": "C=1 carries no bitmap and only end padding.", "wire": "784000", "expect_error": "ack_success_trailing_bits"},
+    {"name": "malformed_control", "category": "malformed", "provenance": "Neither a complete Receiver-Abort nor a valid padded C=1 ACK.", "wire": "78ff", "expect_error": "malformed_control"},
+    {"name": "final_window_all0", "category": "malformed", "provenance": "The final tile is carried only in All-1.", "wire": {"parts": ["7880", {"repeat_byte": "00", "count": 187}]}, "expect_error": "final_window_all0_tile"},
+    {"name": "unassigned_bitmap_bit", "category": "malformed", "provenance": "Unassigned short-final-window bitmap positions must be zero.", "wire": "783800000000000000", "assigned_fcns": [62, 61, 63], "expect_error": "unassigned_bitmap_bit_set"}
+  ]
+}

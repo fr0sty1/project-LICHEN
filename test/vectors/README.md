@@ -3,9 +3,10 @@
 
 # LICHEN Test Vectors
 
-Language-neutral conformance vectors for the LICHEN protocol. The **Python
-prototype is the source of truth**; the Rust and C implementations MUST validate
-against these files (issue `ajr`, gate `ijj`).
+Language-neutral conformance vectors for the LICHEN protocol. The committed
+independently derived literals are the source of truth; Python, Rust, and C
+implementations MUST validate against these files. A vector MUST NOT use the
+implementation under test to generate its own expected output.
 
 ## Files
 
@@ -13,6 +14,7 @@ against these files (issue `ajr`, gate `ijj`).
 |------|--------|
 | `schema.json` | JSON Schema (draft-07) for the envelope and vector shapes |
 | `schc_compression.json` | SCHC whole-packet compression (RFC 8724), rules 0–4 |
+| `schc_fragmentation.json` | LICHEN Rule Set Version 2 SCHC ACK-on-Error wire, recovery, capacity, and malformed cases |
 | `l2_payload.json` | Authenticated L2 inner-payload dispatch wrapping SCHC and routing/control bodies |
 | `link_frame.json` | LICHEN link-layer frame encoding (spec section 4) |
 | `announce_coords.json` | Announce app_data Type=0x01 geographic coordinate encoding |
@@ -27,6 +29,20 @@ All byte strings are lowercase hex (possibly empty).
 - `compress(hex_decode(packet))` MUST equal `hex_decode(compressed)`, and
 - `decompress(hex_decode(compressed))` MUST equal `hex_decode(packet)`.
 - The first byte of `compressed` equals `rule_id`.
+
+**SCHC fragmentation** (`schc_fragmentation.json`):
+- `packet`, fragment `wire`, ACK, and control values are exact byte strings.
+- A byte value is either lowercase literal hex or a `parts` list. A part is
+  literal hex or `{"repeat_byte": "aa", "count": N}`; expansion only
+  concatenates bytes and MUST NOT calculate protocol fields.
+- RCS is CRC-32/ISO-HDLC over the SCHC Packet followed by one zero octet.
+- Fragment fields are packed MSB-first and bit-contiguously per Rule Set
+  Version 2; bitmap 1 means received and 0 means missing.
+- `recovery` and `window_transition` are deterministic transcripts;
+  `capacity` checks preflight limits; `malformed` inputs MUST be rejected.
+- Expected bytes were hand-derived from RFC 8724 and independently checked
+  with non-LICHEN CRC-32 and SHA-256 implementations. This file is not emitted
+  by `generate.py`.
 
 **Link frames** (`link_frame.json`): for each vector,
 - encoding a frame built from `fields` MUST equal `hex_decode(encoded)`, and
