@@ -215,18 +215,6 @@ class AnnounceProcessor:
                 reject_reason=AnnounceRejectReason.STALE_SEQNUM,
             )
 
-        # Accept: pin pubkey (TOFU first-contact), update seen, update gradient.
-        # Use LRU eviction to bound memory: move to end, then evict oldest if over limit.
-        self._pinned_keys[iid] = announce.pubkey
-        self._pinned_keys.move_to_end(iid)
-        while len(self._pinned_keys) > MAX_ENTRIES:
-            self._pinned_keys.popitem(last=False)
-
-        self._seen[iid] = announce.seq_num
-        self._seen.move_to_end(iid)
-        while len(self._seen) > MAX_ENTRIES:
-            self._seen.popitem(last=False)
-
         # Step 5: Update gradient table
         # Why build full IPv6: Gradient table uses full addresses for lookup.
         destination = self.address_builder(iid)
@@ -242,6 +230,17 @@ class AnnounceProcessor:
             coords=coords,
         )
         self.gradient_table.update(entry, now=now_ms)
+
+        # Publish replay and TOFU state only after route installation succeeds.
+        self._pinned_keys[iid] = announce.pubkey
+        self._pinned_keys.move_to_end(iid)
+        while len(self._pinned_keys) > MAX_ENTRIES:
+            self._pinned_keys.popitem(last=False)
+
+        self._seen[iid] = announce.seq_num
+        self._seen.move_to_end(iid)
+        while len(self._seen) > MAX_ENTRIES:
+            self._seen.popitem(last=False)
 
         logger.debug(
             "announce accepted: originator=%s seq=%d hops=%d via=%s",

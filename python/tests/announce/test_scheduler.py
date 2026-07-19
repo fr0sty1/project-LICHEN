@@ -73,12 +73,53 @@ def scheduler(identity: Identity, transmitter: MockTransmitter) -> AnnounceSched
     )
 
 
+class TestSchedulerConfig:
+    @pytest.mark.parametrize("interval_ms", [0, -1])
+    def test_rejects_nonpositive_interval(self, interval_ms: int):
+        with pytest.raises(ValueError, match="interval_ms must be > 0"):
+            SchedulerConfig(interval_ms=interval_ms)
+
+    def test_rejects_negative_jitter(self):
+        with pytest.raises(ValueError, match="jitter_ms must be >= 0"):
+            SchedulerConfig(jitter_ms=-1)
+
+    def test_rejects_negative_initial_delay(self):
+        with pytest.raises(ValueError, match="initial_delay_ms must be >= 0"):
+            SchedulerConfig(initial_delay_ms=-1)
+
 class TestSchedulerLifecycle:
     """Tests for scheduler start/stop lifecycle."""
 
     def test_initial_state(self, scheduler: AnnounceScheduler):
         """Scheduler starts not running."""
         assert scheduler.is_running is False
+
+    @pytest.mark.asyncio
+    async def test_start_revalidates_runtime_config(
+        self, scheduler: AnnounceScheduler
+    ):
+        scheduler.config.interval_ms = 0
+
+        with pytest.raises(ValueError, match="interval_ms must be > 0"):
+            await scheduler.start()
+
+        assert scheduler.is_running is False
+        assert scheduler._task is None
+
+    @pytest.mark.asyncio
+    async def test_runtime_config_error_does_not_wedge_stop(
+        self, scheduler: AnnounceScheduler
+    ):
+        await scheduler.start()
+        scheduler.config.interval_ms = 0
+        await asyncio.sleep(0)
+
+        assert scheduler._task is not None
+        assert scheduler._task.done() is False
+
+        await scheduler.stop()
+        assert scheduler.is_running is False
+        assert scheduler._task is None
 
     @pytest.mark.asyncio
     async def test_start_sets_running(self, scheduler: AnnounceScheduler):

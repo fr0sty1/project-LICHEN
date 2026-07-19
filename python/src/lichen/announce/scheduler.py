@@ -68,6 +68,17 @@ class SchedulerConfig:
     # ponytail: initial delay randomized to prevent thundering herd on mass power-on
     initial_delay_ms: int = 0  # Will be randomized at runtime if 0
 
+    def __post_init__(self) -> None:
+        self.validate()
+
+    def validate(self) -> None:
+        if self.interval_ms <= 0:
+            raise ValueError("interval_ms must be > 0")
+        if self.jitter_ms < 0:
+            raise ValueError("jitter_ms must be >= 0")
+        if self.initial_delay_ms < 0:
+            raise ValueError("initial_delay_ms must be >= 0")
+
 
 @dataclass
 class AnnounceScheduler:
@@ -94,7 +105,7 @@ class AnnounceScheduler:
     # Internal state
     _seq_num: int = field(default=0, init=False, repr=False)
     _running: bool = field(default=False, init=False, repr=False)
-    _task: asyncio.Task | None = field(default=None, init=False, repr=False)
+    _task: asyncio.Task[None] | None = field(default=None, init=False, repr=False)
 
     # Callbacks for persistence (optional)
     _on_seq_change: Callable[[int], None] | None = field(
@@ -197,6 +208,7 @@ class AnnounceScheduler:
         if self._running:
             raise RuntimeError("scheduler already running")
 
+        self.config.validate()
         self._running = True
         self._task = asyncio.create_task(
             self._loop(),
@@ -234,21 +246,27 @@ class AnnounceScheduler:
            a. Build and send announce
            b. Wait interval + random jitter
         """
-        # Why initial delay: Let node receive announces from others first.
-        # This builds gradients before we advertise ourselves.
-        # Why randomize: Prevents thundering herd if many nodes power on together.
-        initial_delay = self.config.initial_delay_ms
-        if initial_delay == 0:
-            # Random 1-30 seconds (at least 1s to receive some announces)
-            # Ensure upper bound >= 1000 to avoid ValueError if jitter_ms < 1000
-            initial_delay = random.randint(1000, max(1000, self.config.jitter_ms))
-        try:
-            await asyncio.sleep(initial_delay / 1000)
-        except asyncio.CancelledError:
-            return
+        while self._running:
+            try:
+                # Why initial delay: Let node receive announces from others first.
+                # Why randomize: Prevents a thundering herd on mass power-on.
+                self.config.validate()
+                initial_delay = self.config.initial_delay_ms
+                if initial_delay == 0:
+                    initial_delay = random.randint(
+                        1000, max(1000, self.config.jitter_ms)
+                    )
+                await asyncio.sleep(initial_delay / 1000)
+                break
+            except asyncio.CancelledError:
+                return
+            except ValueError as e:
+                logger.error("invalid announce scheduler config: %s", e)
+                await asyncio.sleep(1)
 
         while self._running:
             try:
+                self.config.validate()
                 # Send announce
                 await self._send_announce()
 
