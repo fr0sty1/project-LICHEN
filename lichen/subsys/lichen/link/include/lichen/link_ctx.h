@@ -90,10 +90,12 @@ struct lichen_link_keypair_snapshot {
  *
  * Sets the node's EUI-64 identity and clears all cryptographic state.
  * After calling this, the context has no keypair loaded (has_key = false).
+ * If CSPRNG acquisition fails, the context is left unmodified.
  *
  * @param[out] ctx   Link context to initialize
  * @param[in]  eui64 8-byte EUI-64 address
- * @return 0 on success, -EINVAL if ctx or eui64 is NULL
+ * @return 0 on success, -EINVAL if ctx or eui64 is NULL, -EIO if the
+ *         platform CSPRNG or mutex initialization fails
  */
 int lichen_link_init(struct lichen_link_ctx *_Nonnull ctx,
 		     const uint8_t *_Nonnull eui64);
