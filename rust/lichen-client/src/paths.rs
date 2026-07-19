@@ -25,6 +25,9 @@ pub const MSG_SENT: &str = "/msg/sent";
 /// Acknowledge a received message (POST `{id}`).
 pub const MSG_ACK: &str = "/msg/ack";
 
+/// Peer link-key table (GET). Per-key detail is `/keys/{iid}`.
+pub const KEYS: &str = "/keys";
+
 // --- Position sharing (spec §18.2) -----------------------------------------
 // NOTE: these resources are specified but not yet served by the firmware; the
 // `lichen-client` position codec targets them so clients are ready in advance.

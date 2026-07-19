@@ -13,6 +13,7 @@
 //! Transport (UDP/SLIP/BLE) is intentionally out of scope here; apps pair
 //! these types with a CoAP transport such as `lichen-coap`.
 
+pub mod keys;
 pub mod msg;
 pub mod paths;
 pub mod pos;

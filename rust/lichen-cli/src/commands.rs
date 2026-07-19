@@ -4,6 +4,7 @@
 //! response, and prints it using the selected output format.
 
 use crate::{output, ConfigAction, KeyAction, OutputFormat, PositionAction, RdAction};
+use lichen_client::keys::KeyList;
 use lichen_client::msg::{Inbox, OutgoingMessage, SentMessage};
 use lichen_client::paths;
 use lichen_client::pos::Position;
@@ -243,7 +244,26 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
             output::print_cbor(cbor, fmt);
         }
         KeyAction::List => {
-            output::print_kv("peers", "(no peer-key endpoint yet)", fmt);
+            let resp = client::get(node, paths::KEYS).await?;
+            if !resp.is_success() {
+                return Err(format!("key list failed: {}", resp.code_str()).into());
+            }
+            let list = KeyList::from_cbor(&resp.payload)?;
+            match fmt {
+                OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&list)?),
+                OutputFormat::Human => {
+                    if list.keys.is_empty() {
+                        println!("(no peer keys)");
+                    } else {
+                        for k in &list.keys {
+                            println!(
+                                "  {} [{}] {} (last seen {})",
+                                k.iid, k.trust, k.pubkey_fp, k.last_seen
+                            );
+                        }
+                    }
+                }
+            }
         }
         KeyAction::Pin { peer: _ } => {
             return Err("key pinning not implemented (no peer-key endpoint yet)".into());
