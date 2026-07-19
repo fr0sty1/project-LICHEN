@@ -290,6 +290,69 @@ class TestDuplicateDetection:
 class TestGradientUpdate:
     """Tests for gradient table updates."""
 
+    def test_address_failure_leaves_state_retryable(
+        self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
+    ):
+        announce = make_signed_announce(identity, seq_num=1)
+        build_address = processor.address_builder
+
+        def fail_address(_iid: bytes) -> IPv6Address:
+            raise RuntimeError("address unavailable")
+
+        processor.address_builder = fail_address
+        with pytest.raises(RuntimeError, match="address unavailable"):
+            processor.process(announce, neighbor, now_ms=0)
+
+        assert processor.known_originators() == []
+        assert processor.pinned_pubkey_for(identity.iid) is None
+        assert len(processor.gradient_table) == 0
+
+        processor.address_builder = build_address
+        result = processor.process(announce, neighbor, now_ms=1)
+
+        assert result.accepted is True
+        assert processor.known_originators() == [identity.iid]
+        assert processor.pinned_pubkey_for(identity.iid) == identity.pubkey
+        route = processor.gradient_table.lookup(build_address(identity.iid), now=1)
+        assert route is not None
+        assert route.next_hop == neighbor
+        assert route.seq_num == 1
+        assert route.source == GradientSource.ANNOUNCE
+
+    def test_gradient_exception_leaves_state_retryable(
+        self,
+        processor: AnnounceProcessor,
+        identity: Identity,
+        neighbor: IPv6Address,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        announce = make_signed_announce(identity, seq_num=1)
+        update = processor.gradient_table.update
+
+        def fail_update(*_args: object, **_kwargs: object) -> bool:
+            raise RuntimeError("gradient unavailable")
+
+        monkeypatch.setattr(processor.gradient_table, "update", fail_update)
+        with pytest.raises(RuntimeError, match="gradient unavailable"):
+            processor.process(announce, neighbor, now_ms=0)
+
+        assert processor.known_originators() == []
+        assert processor.pinned_pubkey_for(identity.iid) is None
+        assert len(processor.gradient_table) == 0
+
+        monkeypatch.setattr(processor.gradient_table, "update", update)
+        result = processor.process(announce, neighbor, now_ms=1)
+
+        assert result.accepted is True
+        assert processor.known_originators() == [identity.iid]
+        assert processor.pinned_pubkey_for(identity.iid) == identity.pubkey
+        destination = processor.address_builder(identity.iid)
+        route = processor.gradient_table.lookup(destination, now=1)
+        assert route is not None
+        assert route.next_hop == neighbor
+        assert route.seq_num == 1
+        assert route.source == GradientSource.ANNOUNCE
+
     def test_installs_gradient_on_accept(
         self, processor: AnnounceProcessor, identity: Identity, neighbor: IPv6Address
     ):
