@@ -15,11 +15,7 @@
 #include <lichen/schc.h>
 #include <lichen/schnorr48.h>
 
-#include "aes_ccm.h"
-
 #include <string.h>
-
-#define TEST_PROTECTED_PAYLOAD_MAX (LICHEN_MAX_PAYLOAD + LICHEN_SIG_LEN)
 
 static const uint8_t test_eui64[LICHEN_EUI64_LEN] = {
 	0x02, 0x00, 0x5e, 0x10, 0x20, 0x30, 0x40, 0x50
@@ -65,114 +61,113 @@ static void init_rx_ctx(struct lichen_link_rx_ctx *rx,
 	memset(rx, 0, sizeof(*rx));
 	rx->peer_pubkey = tx->ed25519_pk;
 	rx->peer_eui64 = test_eui64;
-	rx->link_key = test_link_key;
 }
 
-static void build_nonce(uint8_t nonce[AES_CCM_NONCE_LEN],
-			const uint8_t eui64[LICHEN_EUI64_LEN],
-			uint8_t epoch, uint16_t seqnum)
+ZTEST(link_crypto, test_keypair_snapshot_matches_and_clears)
 {
-	memcpy(&nonce[0], eui64, LICHEN_EUI64_LEN);
-	nonce[8] = epoch;
-	nonce[9] = (uint8_t)(seqnum >> 8);
-	nonce[10] = (uint8_t)(seqnum & 0xff);
-	nonce[11] = 0x00;
-	nonce[12] = 0x00;
+	struct lichen_link_ctx tx;
+	struct lichen_link_keypair_snapshot snapshot;
+	const uint8_t zeros[sizeof(snapshot)] = { 0 };
+
+	init_tx_ctx(&tx);
+	zassert_equal(lichen_link_snapshot_keypair(&tx, &snapshot), 0);
+	zassert_mem_equal(snapshot.eui64, tx.eui64, sizeof(snapshot.eui64));
+	zassert_mem_equal(snapshot.sk, tx.ed25519_sk, sizeof(snapshot.sk));
+	zassert_mem_equal(snapshot.pk, tx.ed25519_pk, sizeof(snapshot.pk));
+	lichen_link_clear_keypair_snapshot(&snapshot);
+	zassert_mem_equal(&snapshot, zeros, sizeof(snapshot));
+	lichen_link_cleanup(&tx);
 }
 
-static int build_raw_l2_frame(struct lichen_link_ctx *tx,
-			      const uint8_t *l2_payload, size_t l2_payload_len,
-			      bool sign, bool encrypt,
-			      uint8_t *out_frame, size_t *out_len)
+ZTEST(link_crypto, test_key_rotation_resets_exhaustion_only_for_new_key)
 {
-	uint8_t payload_buf[TEST_PROTECTED_PAYLOAD_MAX];
-	uint8_t epoch;
-	uint16_t seqnum;
-	size_t payload_len;
-	size_t frame_body_len;
-	size_t aad_len;
-	size_t off;
+	struct lichen_link_ctx tx;
+	uint8_t rotated_seed[LICHEN_SEED_LEN];
+
+	init_tx_ctx(&tx);
+	tx.epoch = UINT8_MAX;
+	tx.tx_seq = UINT16_MAX;
+	tx.nonce_exhausted = true;
+
+	zassert_equal(lichen_link_load_key(&tx, test_seed), 0);
+	zassert_true(tx.nonce_exhausted,
+		     "same-key reload must not reopen exhausted tuple space");
+
+	memcpy(rotated_seed, test_seed, sizeof(rotated_seed));
+	rotated_seed[sizeof(rotated_seed) - 1] ^= 1U;
+	zassert_equal(lichen_link_load_key(&tx, rotated_seed), 0);
+	zassert_false(tx.nonce_exhausted,
+		      "new signing key must create a fresh tuple domain");
+	zassert_equal(tx.tx_seq, 0U);
+	zassert_true(tx.epoch >= 128U);
+	lichen_link_cleanup(&tx);
+}
+
+ZTEST(link_crypto, test_frame_accepts_elided_address)
+{
+	struct lichen_frame frame = { 0 };
+	uint8_t wire[32] = { 0 };
+	uint8_t payload[] = { 0x15, 0x01 };
 	int ret;
 
-	if (tx == NULL || l2_payload == NULL || out_frame == NULL ||
-	    out_len == NULL || l2_payload_len == 0U ||
-	    l2_payload_len > LICHEN_MAX_PAYLOAD) {
-		return -EINVAL;
-	}
-	if (sign && l2_payload_len + LICHEN_SIG_LEN > sizeof(payload_buf)) {
-		return -EMSGSIZE;
-	}
+	wire[0] = 6U;
+	wire[1] = LICHEN_ADDR_ELIDED;
+	wire[2] = 1U;
+	wire[3] = 0U;
+	wire[4] = 1U;
+	wire[5] = payload[0];
+	wire[6] = payload[1];
 
-	ret = lichen_link_next_tx(tx, &epoch, &seqnum);
-	if (ret != 0) {
-		return ret;
-	}
+	ret = lichen_frame_parse(&frame, wire, 7U);
+	zassert_equal(ret, 0, "elided address frame must parse: %d", ret);
+	zassert_equal(frame.addr_mode, LICHEN_ADDR_ELIDED);
+	zassert_equal(frame.dst_addr_len, 0U);
+	zassert_equal(frame.payload_len, sizeof(payload));
 
-	memcpy(payload_buf, l2_payload, l2_payload_len);
-	payload_len = l2_payload_len;
-	if (sign) {
-		ret = schnorr48_sign_frame(epoch, seqnum, NULL, 0U,
-					   l2_payload, l2_payload_len,
-					   tx->ed25519_sk, tx->ed25519_pk,
-					   &payload_buf[l2_payload_len]);
-		if (ret != 0) {
-			memset(payload_buf, 0, sizeof(payload_buf));
-			return -EINVAL;
-		}
-		payload_len += LICHEN_SIG_LEN;
-	}
-
-	frame_body_len = (LICHEN_FRAME_PAYLOAD_OFFSET(0U) -
-			  LICHEN_FRAME_LEN_FIELD_LEN) + payload_len +
-			 (encrypt ? LICHEN_MIC_64_LEN : LICHEN_MIC_32_LEN);
-	if (frame_body_len > 255U) {
-		memset(payload_buf, 0, sizeof(payload_buf));
-		return -EMSGSIZE;
-	}
-	if (*out_len < frame_body_len + LICHEN_FRAME_LEN_FIELD_LEN) {
-		memset(payload_buf, 0, sizeof(payload_buf));
-		return -ENOMEM;
-	}
-
-	off = 0U;
-	out_frame[off++] = (uint8_t)frame_body_len;
-	out_frame[off] = LICHEN_ADDR_BROADCAST;
-	if (encrypt) {
-		out_frame[off] |= 0x04;
-		out_frame[off] |= 0x40;
-	}
-	if (sign) {
-		out_frame[off] |= 0x20;
-	}
-	off++;
-	out_frame[off++] = epoch;
-	out_frame[off++] = (uint8_t)(seqnum >> 8);
-	out_frame[off++] = (uint8_t)(seqnum & 0xff);
-	aad_len = off;
-
-	if (encrypt) {
-		uint8_t nonce[AES_CCM_NONCE_LEN];
-
-		build_nonce(nonce, tx->eui64, epoch, seqnum);
-		ret = lichen_aes_ccm_encrypt(tx->link_key, nonce,
-					     out_frame, aad_len,
-					     payload_buf, payload_len,
-					     &out_frame[off]);
-		if (ret != 0) {
-			memset(payload_buf, 0, sizeof(payload_buf));
-			return -EINVAL;
-		}
-		off += payload_len + AES_CCM_TAG_LEN;
-	} else {
-		return -EINVAL;
-	}
-
-	*out_len = off;
-	memset(payload_buf, 0, sizeof(payload_buf));
-	return 0;
+	frame.payload = payload;
+	frame.payload_len = sizeof(payload);
+	frame.mic_len = 0U;
+	frame.mic_length = LICHEN_MIC_32;
+	ret = lichen_frame_write(&frame, wire, sizeof(wire));
+	zassert_equal(ret, 7, "elided address frame must serialize: %d", ret);
+	zassert_equal(wire[1], LICHEN_ADDR_ELIDED);
 }
 
-ZTEST(link_crypto, test_encrypted_tx_rx_round_trip)
+ZTEST(link_crypto, test_authenticated_rx_rejects_unsigned_frame)
+{
+	struct lichen_link_ctx tx;
+	struct lichen_link_rx_ctx rx;
+	struct lichen_replay_table replay;
+	struct lichen_link_rx_payload_info info;
+	uint8_t wire[] = { 0x06, 0x00, 0x01, 0x00, 0x01, 0x15, 0x01 };
+	uint8_t payload[8];
+	size_t payload_len = sizeof(payload);
+
+	init_tx_ctx(&tx);
+	init_rx_ctx(&rx, &tx);
+	lichen_replay_table_init(&replay);
+	zassert_equal(lichen_link_rx_payload(&rx, &replay, wire, sizeof(wire),
+					     payload, &payload_len, &info),
+		      -LICHEN_EAUTH);
+	lichen_link_cleanup(&tx);
+}
+
+ZTEST(link_crypto, test_frame_rejects_reserved_mic_length)
+{
+	uint8_t wire[16] = { 0 };
+	struct lichen_frame frame;
+
+	wire[0] = 8U;
+	wire[1] = 0x08U; /* MicLength = 0b010, reserved. */
+	zassert_equal(lichen_frame_parse(&frame, wire, 9U), -EINVAL,
+		      "reserved MIC length must be rejected");
+
+	wire[1] = 0x28U; /* Reserved MIC length remains invalid when signed. */
+	zassert_equal(lichen_frame_parse(&frame, wire, 9U), -EINVAL,
+		      "signed reserved MIC length must be rejected");
+}
+
+ZTEST(link_crypto, test_signed_tx_rx_round_trip_with_retained_link_key)
 {
 	struct lichen_link_ctx tx;
 	struct lichen_link_rx_ctx rx;
@@ -189,69 +184,32 @@ ZTEST(link_crypto, test_encrypted_tx_rx_round_trip)
 
 	init_tx_ctx(&tx);
 	init_rx_ctx(&rx, &tx);
+	zassert_true(tx.has_link_key, "test must retain legacy link key state");
 
 	ret = lichen_link_tx(&tx, test_ipv6, sizeof(test_ipv6), NULL,
 			     frame, &frame_len);
-	zassert_equal(ret, 0, "encrypted TX failed: %d", ret);
+	zassert_equal(ret, 0, "signed TX failed: %d", ret);
 
 	ret = lichen_frame_parse(&parsed, frame, frame_len);
 	zassert_equal(ret, 0, "frame parse failed: %d", ret);
-	zassert_true(parsed.encrypted, "link-key TX must set encrypted flag");
-	zassert_true(parsed.signature_present, "signed TX must keep signature flag");
-	zassert_equal(parsed.mic_len, LICHEN_MIC_64_LEN,
-		      "encrypted frame must use 64-bit CCM tag");
+	zassert_true(parsed.signature_present);
+	zassert_false(parsed.encrypted);
+	zassert_equal(parsed.mic_len, LICHEN_SIG_LEN);
 
 	schc_len = lichen_schc_compress(test_ipv6, sizeof(test_ipv6),
 					schc, sizeof(schc));
 	zassert_true(schc_len > 0, "SCHC compression failed: %d", schc_len);
 	l2_payload[0] = LICHEN_L2_DISPATCH_SCHC;
 	memcpy(&l2_payload[1], schc, (size_t)schc_len);
-	zassert_not_equal(memcmp(parsed.payload, schc, (size_t)schc_len), 0,
-			  "encrypted payload leaked SCHC plaintext");
-	zassert_not_equal(memcmp(parsed.payload, l2_payload,
-				 (size_t)schc_len + 1U), 0,
-			  "encrypted payload leaked L2 plaintext");
+	zassert_equal(parsed.payload_len, (size_t)schc_len + 1U);
+	zassert_mem_equal(parsed.payload, l2_payload, parsed.payload_len);
 
 	ret = lichen_link_rx(&rx, NULL, frame, frame_len,
 			     out_ipv6, &out_len, src_eui64);
-	zassert_equal(ret, 0, "encrypted RX failed: %d", ret);
-	zassert_equal(out_len, sizeof(test_ipv6), "unexpected RX packet length");
-	zassert_mem_equal(out_ipv6, test_ipv6, sizeof(test_ipv6),
-			  "RX packet mismatch");
-	zassert_mem_equal(src_eui64, test_eui64, sizeof(test_eui64),
-			  "source EUI-64 mismatch");
-
-	lichen_link_cleanup(&tx);
-}
-
-ZTEST(link_crypto, test_encrypted_rx_rejects_tampered_payload)
-{
-	struct lichen_link_ctx tx;
-	struct lichen_link_rx_ctx rx;
-	struct lichen_frame parsed;
-	uint8_t frame[160];
-	uint8_t out_ipv6[80];
-	uint8_t src_eui64[LICHEN_EUI64_LEN];
-	size_t frame_len = sizeof(frame);
-	size_t out_len = sizeof(out_ipv6);
-	int ret;
-
-	init_tx_ctx(&tx);
-	init_rx_ctx(&rx, &tx);
-
-	ret = lichen_link_tx(&tx, test_ipv6, sizeof(test_ipv6), NULL,
-			     frame, &frame_len);
-	zassert_equal(ret, 0, "encrypted TX failed: %d", ret);
-
-	ret = lichen_frame_parse(&parsed, frame, frame_len);
-	zassert_equal(ret, 0, "frame parse failed: %d", ret);
-
-	frame[LICHEN_FRAME_PAYLOAD_OFFSET(parsed.dst_addr_len)] ^= 0x01;
-
-	ret = lichen_link_rx(&rx, NULL, frame, frame_len,
-			     out_ipv6, &out_len, src_eui64);
-	zassert_equal(ret, -LICHEN_EAUTH,
-		      "tampered encrypted frame must fail authentication");
+	zassert_equal(ret, 0, "signed RX failed: %d", ret);
+	zassert_equal(out_len, sizeof(test_ipv6));
+	zassert_mem_equal(out_ipv6, test_ipv6, sizeof(test_ipv6));
+	zassert_mem_equal(src_eui64, test_eui64, sizeof(test_eui64));
 
 	lichen_link_cleanup(&tx);
 }
@@ -272,17 +230,14 @@ ZTEST(link_crypto, test_rx_payload_returns_authenticated_l2_payload)
 
 	init_tx_ctx(&tx);
 	init_rx_ctx(&rx, &tx);
-
 	ret = lichen_link_tx(&tx, test_ipv6, sizeof(test_ipv6), NULL,
 			     frame, &frame_len);
-	zassert_equal(ret, 0, "encrypted TX failed: %d", ret);
-	ret = lichen_frame_parse(&parsed, frame, frame_len);
-	zassert_equal(ret, 0, "frame parse failed: %d", ret);
+	zassert_equal(ret, 0, "signed TX failed: %d", ret);
+	zassert_equal(lichen_frame_parse(&parsed, frame, frame_len), 0);
 
 	schc_len = lichen_schc_compress(test_ipv6, sizeof(test_ipv6),
 					schc, sizeof(schc));
-	zassert_true(schc_len > 0, "SCHC compression failed: %d", schc_len);
-
+	zassert_true(schc_len > 0);
 	ret = lichen_link_rx_payload(&rx, NULL, frame, frame_len,
 				     payload, &payload_len, &info);
 	zassert_equal(ret, 0, "raw payload RX failed: %d", ret);
@@ -293,115 +248,25 @@ ZTEST(link_crypto, test_rx_payload_returns_authenticated_l2_payload)
 	zassert_equal(info.epoch, parsed.epoch);
 	zassert_equal(info.seqnum, parsed.seqnum);
 	zassert_true(info.signature_present);
-	zassert_true(info.encrypted);
-	zassert_equal(info.addr_mode, LICHEN_ADDR_BROADCAST);
-	zassert_equal(info.dst_addr_len, 0U);
-
+	zassert_false(info.encrypted);
 	lichen_link_cleanup(&tx);
 }
 
-ZTEST(link_crypto, test_rx_payload_returns_authenticated_routing_payload)
+ZTEST(link_crypto, test_rx_payload_rejects_encrypted_frame)
 {
-	struct lichen_link_ctx tx;
-	struct lichen_link_rx_ctx rx;
-	struct lichen_replay_table replay;
+	struct lichen_link_rx_ctx rx = { 0 };
 	struct lichen_link_rx_payload_info info;
-	const uint8_t routing_payload[] = {
-		LICHEN_L2_DISPATCH_ROUTING,
-		LICHEN_L2_ROUTING_TYPE_ANNOUNCE,
-		0x01, 0x02, 0x03, 0x04
-	};
-	uint8_t frame[160];
-	uint8_t frame2[160];
+	uint8_t frame[] = { 8U, 0x40U, 3U, 0U, 4U, 0xaa, 0xbb, 0xcc, 0xdd };
 	uint8_t payload[160];
-	uint8_t out_ipv6[80];
-	uint8_t src_eui64[LICHEN_EUI64_LEN];
-	size_t frame_len = sizeof(frame);
-	size_t frame2_len = sizeof(frame2);
 	size_t payload_len = sizeof(payload);
-	size_t out_len = sizeof(out_ipv6);
-	int ret;
 
-	init_tx_ctx(&tx);
-	init_rx_ctx(&rx, &tx);
-	lichen_replay_table_init(&replay);
-
-	ret = build_raw_l2_frame(&tx, routing_payload, sizeof(routing_payload),
-				 true, true, frame, &frame_len);
-	zassert_equal(ret, 0, "raw routing frame build failed: %d", ret);
-
-	ret = lichen_link_rx_payload(&rx, &replay, frame, frame_len,
-				     payload, &payload_len, &info);
-	zassert_equal(ret, 0, "raw routing payload RX failed: %d", ret);
-	zassert_equal(payload_len, sizeof(routing_payload));
-	zassert_mem_equal(payload, routing_payload, sizeof(routing_payload));
-	zassert_mem_equal(info.src_eui64, test_eui64, sizeof(test_eui64));
-	zassert_true(info.signature_present);
-	zassert_true(info.encrypted);
-
-	payload_len = sizeof(payload);
-	memset(payload, 0xcc, sizeof(payload));
-	memset(&info, 0xdd, sizeof(info));
-	ret = lichen_link_rx_payload(&rx, &replay, frame, frame_len,
-				     payload, &payload_len, &info);
-	zassert_equal(ret, -EALREADY,
-		      "raw routing replay must be rejected");
-	zassert_equal(payload_len, sizeof(payload),
-		      "replay failure must not rewrite payload length");
-	for (size_t i = 0U; i < sizeof(payload); i++) {
-		zassert_equal(payload[i], 0xcc,
-			      "replay failure wrote payload byte %zu", i);
-	}
-	zassert_equal(info.epoch, 0xdd,
-		      "replay failure must not publish metadata");
-
-	ret = build_raw_l2_frame(&tx, routing_payload, sizeof(routing_payload),
-				 true, true, frame2, &frame2_len);
-	zassert_equal(ret, 0, "second raw routing frame build failed: %d", ret);
-	ret = lichen_link_rx(&rx, NULL, frame2, frame2_len,
-			     out_ipv6, &out_len, src_eui64);
-	zassert_equal(ret, -EPROTONOSUPPORT,
-		      "IPv6 RX must reject authenticated routing dispatch");
-
-	lichen_link_cleanup(&tx);
+	zassert_equal(lichen_link_rx_payload(&rx, NULL, frame, sizeof(frame),
+				      payload, &payload_len, &info),
+		      -EPROTONOSUPPORT,
+		      "encrypted RX must reject unsupported encryption");
 }
 
-ZTEST(link_crypto, test_rx_payload_accepts_large_signed_encrypted_inner_payload)
-{
-	struct lichen_link_ctx tx;
-	struct lichen_link_rx_ctx rx;
-	struct lichen_link_rx_payload_info info;
-	uint8_t l2_payload[170];
-	uint8_t frame[240];
-	uint8_t payload[LICHEN_MAX_PAYLOAD];
-	size_t frame_len = sizeof(frame);
-	size_t payload_len = sizeof(payload);
-	int ret;
-
-	init_tx_ctx(&tx);
-	init_rx_ctx(&rx, &tx);
-
-	memset(l2_payload, 0xa5, sizeof(l2_payload));
-	l2_payload[0] = LICHEN_L2_DISPATCH_ROUTING;
-	l2_payload[1] = LICHEN_L2_ROUTING_TYPE_ANNOUNCE;
-
-	ret = build_raw_l2_frame(&tx, l2_payload, sizeof(l2_payload),
-				 true, true, frame, &frame_len);
-	zassert_equal(ret, 0, "large signed encrypted frame build failed: %d", ret);
-
-	ret = lichen_link_rx_payload(&rx, NULL, frame, frame_len,
-				     payload, &payload_len, &info);
-	zassert_equal(ret, 0,
-		      "large signed encrypted raw payload RX failed: %d", ret);
-	zassert_equal(payload_len, sizeof(l2_payload));
-	zassert_mem_equal(payload, l2_payload, sizeof(l2_payload));
-	zassert_true(info.signature_present);
-	zassert_true(info.encrypted);
-
-	lichen_link_cleanup(&tx);
-}
-
-ZTEST(link_crypto, test_rx_payload_rejects_tampered_payload)
+ZTEST(link_crypto, test_rx_payload_rejects_tampered_payload_and_mic)
 {
 	struct lichen_link_ctx tx;
 	struct lichen_link_rx_ctx rx;
@@ -415,77 +280,21 @@ ZTEST(link_crypto, test_rx_payload_rejects_tampered_payload)
 
 	init_tx_ctx(&tx);
 	init_rx_ctx(&rx, &tx);
-
 	ret = lichen_link_tx(&tx, test_ipv6, sizeof(test_ipv6), NULL,
 			     frame, &frame_len);
-	zassert_equal(ret, 0, "encrypted TX failed: %d", ret);
-	ret = lichen_frame_parse(&parsed, frame, frame_len);
-	zassert_equal(ret, 0, "frame parse failed: %d", ret);
+	zassert_equal(ret, 0, "signed TX failed: %d", ret);
+	zassert_equal(lichen_frame_parse(&parsed, frame, frame_len), 0);
 
-	frame[LICHEN_FRAME_PAYLOAD_OFFSET(parsed.dst_addr_len)] ^= 0x01;
-
+	frame[LICHEN_FRAME_PAYLOAD_OFFSET(parsed.dst_addr_len)] ^= 1U;
 	ret = lichen_link_rx_payload(&rx, NULL, frame, frame_len,
 				     payload, &payload_len, &info);
-	zassert_equal(ret, -LICHEN_EAUTH,
-		      "tampered encrypted frame must fail raw payload auth");
-
-	lichen_link_cleanup(&tx);
-}
-
-ZTEST(link_crypto, test_rx_payload_replays_encrypted_unsigned_frames)
-{
-	struct lichen_link_ctx tx;
-	struct lichen_link_rx_ctx rx;
-	struct lichen_replay_table replay;
-	struct lichen_link_rx_payload_info info;
-	const uint8_t routing_payload[] = {
-		LICHEN_L2_DISPATCH_ROUTING,
-		LICHEN_L2_ROUTING_TYPE_ANNOUNCE,
-		0xaa, 0xbb
-	};
-	uint8_t frame[160];
-	uint8_t payload[160];
-	size_t frame_len = sizeof(frame);
-	size_t payload_len = sizeof(payload);
-	int ret;
-
-	ret = lichen_link_init(&tx, test_eui64);
-	zassert_equal(ret, 0, "link init failed: %d", ret);
-	ret = lichen_link_load_link_key(&tx, test_link_key);
-	zassert_equal(ret, 0, "link key load failed: %d", ret);
-
-	memset(&rx, 0, sizeof(rx));
-	rx.peer_eui64 = test_eui64;
-	rx.link_key = test_link_key;
-	lichen_replay_table_init(&replay);
-
-	ret = build_raw_l2_frame(&tx, routing_payload, sizeof(routing_payload),
-				 false, true, frame, &frame_len);
-	zassert_equal(ret, 0, "unsigned encrypted frame build failed: %d", ret);
-
-	ret = lichen_link_rx_payload(&rx, &replay, frame, frame_len,
-				     payload, &payload_len, &info);
-	zassert_equal(ret, 0, "first unsigned encrypted RX failed: %d", ret);
-	zassert_false(info.signature_present);
-	zassert_true(info.encrypted);
-	zassert_mem_equal(payload, routing_payload, sizeof(routing_payload));
-
+	zassert_equal(ret, -LICHEN_EAUTH, "tampered payload must fail");
+	frame[LICHEN_FRAME_PAYLOAD_OFFSET(parsed.dst_addr_len)] ^= 1U;
+	frame[frame_len - 1U] ^= 1U;
 	payload_len = sizeof(payload);
-	memset(payload, 0xcc, sizeof(payload));
-	memset(&info, 0xdd, sizeof(info));
-	ret = lichen_link_rx_payload(&rx, &replay, frame, frame_len,
+	ret = lichen_link_rx_payload(&rx, NULL, frame, frame_len,
 				     payload, &payload_len, &info);
-	zassert_equal(ret, -EALREADY,
-		      "second unsigned encrypted RX must be replay rejected");
-	zassert_equal(payload_len, sizeof(payload),
-		      "replay failure must not rewrite payload length");
-	for (size_t i = 0U; i < sizeof(payload); i++) {
-		zassert_equal(payload[i], 0xcc,
-			      "replay failure wrote payload byte %zu", i);
-	}
-	zassert_equal(info.epoch, 0xdd,
-		      "replay failure must not publish metadata");
-
+	zassert_equal(ret, -LICHEN_EAUTH, "tampered MIC signature must fail");
 	lichen_link_cleanup(&tx);
 }
 
@@ -507,37 +316,38 @@ ZTEST(link_crypto, test_rx_payload_replay_commit_matches_ipv6_rx)
 	init_tx_ctx(&tx);
 	init_rx_ctx(&rx, &tx);
 	lichen_replay_table_init(&replay);
-
 	ret = lichen_link_tx(&tx, test_ipv6, sizeof(test_ipv6), NULL,
 			     frame, &frame_len);
-	zassert_equal(ret, 0, "encrypted TX failed: %d", ret);
-
+	zassert_equal(ret, 0, "signed TX failed: %d", ret);
 	ret = lichen_link_rx_payload(&rx, &replay, frame, frame_len,
 				     payload, &payload_len, &info);
-	zassert_equal(ret, 0, "first raw payload RX failed: %d", ret);
+	zassert_equal(ret, 0);
 
 	payload_len = sizeof(payload);
 	memset(payload, 0xcc, sizeof(payload));
 	memset(&info, 0xdd, sizeof(info));
+	struct lichen_link_rx_payload_info expected_info = info;
 	ret = lichen_link_rx_payload(&rx, &replay, frame, frame_len,
 				     payload, &payload_len, &info);
-	zassert_equal(ret, -EALREADY,
-		      "second raw payload RX must be replay rejected");
-	zassert_equal(payload_len, sizeof(payload),
-		      "replay failure must not rewrite payload length");
+	zassert_equal(ret, -EALREADY);
+	zassert_equal(payload_len, sizeof(payload));
 	for (size_t i = 0U; i < sizeof(payload); i++) {
-		zassert_equal(payload[i], 0xcc,
-			      "replay failure wrote payload byte %zu", i);
+		zassert_equal(payload[i], 0xcc);
 	}
-	zassert_equal(info.epoch, 0xdd,
-		      "replay failure must not publish metadata");
+	zassert_mem_equal(&info, &expected_info, sizeof(info));
 
-	out_len = sizeof(out_ipv6);
+	memset(out_ipv6, 0xcc, sizeof(out_ipv6));
+	memset(src_eui64, 0xdd, sizeof(src_eui64));
+	uint8_t expected_ipv6[sizeof(out_ipv6)];
+	uint8_t expected_src[sizeof(src_eui64)];
+	memcpy(expected_ipv6, out_ipv6, sizeof(expected_ipv6));
+	memcpy(expected_src, src_eui64, sizeof(expected_src));
 	ret = lichen_link_rx(&rx, &replay, frame, frame_len,
 			     out_ipv6, &out_len, src_eui64);
-	zassert_equal(ret, -EALREADY,
-		      "IPv6 RX after raw payload RX must be replay rejected");
-
+	zassert_equal(ret, -EALREADY);
+	zassert_equal(out_len, sizeof(out_ipv6));
+	zassert_mem_equal(out_ipv6, expected_ipv6, sizeof(out_ipv6));
+	zassert_mem_equal(src_eui64, expected_src, sizeof(src_eui64));
 	lichen_link_cleanup(&tx);
 }
 
@@ -559,22 +369,17 @@ ZTEST(link_crypto, test_rx_payload_output_buffer_too_small_does_not_commit_repla
 	init_tx_ctx(&tx);
 	init_rx_ctx(&rx, &tx);
 	lichen_replay_table_init(&replay);
-
 	ret = lichen_link_tx(&tx, test_ipv6, sizeof(test_ipv6), NULL,
 			     frame, &frame_len);
-	zassert_equal(ret, 0, "encrypted TX failed: %d", ret);
-
+	zassert_equal(ret, 0, "signed TX failed: %d", ret);
 	ret = lichen_link_rx_payload(&rx, &replay, frame, frame_len,
 				     tiny_payload, &payload_len, &info);
-	zassert_equal(ret, -ENOMEM,
-		      "too-small raw payload buffer must fail before replay commit");
+	zassert_equal(ret, -ENOMEM);
 
 	ret = lichen_link_rx(&rx, &replay, frame, frame_len,
 			     out_ipv6, &out_len, src_eui64);
-	zassert_equal(ret, 0,
-		      "IPv6 RX after raw payload buffer failure should still pass");
+	zassert_equal(ret, 0, "buffer failure must not commit replay");
 	zassert_mem_equal(out_ipv6, test_ipv6, sizeof(test_ipv6));
-
 	lichen_link_cleanup(&tx);
 }
 

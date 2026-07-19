@@ -22,7 +22,7 @@ from lichen.crypto.identity import Identity
 from lichen.crypto.schnorr48 import sign as schnorr_sign
 from lichen.crypto.schnorr48 import verify as schnorr_verify
 from lichen.l2_payload import L2PayloadKind, classify_l2_payload, l2_payload_body
-from lichen.link.frame import AddrMode, LichenFrame, MicLength
+from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
 from lichen.rpl.dao import RplTarget, TransitInformation
 from lichen.rpl.messages import DAO, DIO, DIS, DAOAck, _parse_options
 from lichen.schc.headers import compress_packet, decompress_packet
@@ -32,6 +32,7 @@ VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 sys.path.insert(0, str(VECTORS_DIR))
 from generate import (  # noqa: E402
     announce_coords_vectors,
+    frame_vectors,
     l2_payload_vectors,
     meshcore_app_compat_vectors,
     meshtastic_app_compat_vectors,
@@ -157,6 +158,46 @@ def test_frame_vector(name: str, vector: dict) -> None:
         encrypted=f["encrypted"],
     )
     encoded = bytes.fromhex(vector["encoded"])
+    expected_error = vector.get("expect", {}).get("error")
+    if expected_error == "frame_too_large":
+        assert len(encoded) == 256, f"wrong oversized-frame oracle: {name}"
+        assert encoded[0] == 255, f"wrong oversized LENGTH oracle: {name}"
+    else:
+        assert len(encoded) <= 255, f"frame exceeds on-air limit: {name}"
+        assert encoded[0] <= 254, f"LENGTH exceeds body limit: {name}"
+    crypto = vector.get("crypto")
+    if crypto:
+        identity = Identity.from_seed(bytes.fromhex(crypto["seed"]))
+        assert identity.privkey.hex() == crypto["private_key"]
+        assert identity.pubkey.hex() == crypto["public_key"]
+        preimage = bytes.fromhex(crypto["preimage"])
+        signature = bytes.fromhex(crypto["signature"])
+        assert encoded[:-48] == preimage
+        assert encoded[-48:] == signature
+        assert schnorr_sign(identity.privkey, identity.pubkey, preimage) == signature
+        assert schnorr_verify(identity.pubkey, preimage, signature)
+
+        for index in (0, 1, 2, 3, 5, 7):
+            tampered = bytearray(preimage)
+            tampered[index] ^= 1
+            assert not schnorr_verify(identity.pubkey, bytes(tampered), signature)
+        tampered_signature = bytearray(signature)
+        tampered_signature[0] ^= 1
+        assert not schnorr_verify(identity.pubkey, preimage, bytes(tampered_signature))
+
+    if expected_error:
+        error_pattern = {
+            "encryption_unsupported": "encrypted frames are unsupported",
+            "frame_too_large": "frame is 256 bytes, exceeds 255",
+        }[expected_error]
+        with pytest.raises(FrameError) as parse_error:
+            LichenFrame.from_bytes(encoded)
+        assert str(parse_error.value) == error_pattern
+        if expected_error != "frame_too_large":
+            with pytest.raises(FrameError) as write_error:
+                frame.to_bytes()
+            assert str(write_error.value) == error_pattern
+        return
     assert frame.to_bytes() == encoded, f"encode drift: {name}"
 
     decoded = LichenFrame.from_bytes(encoded)
@@ -198,6 +239,11 @@ def test_announce_coords_vectors_match_generator() -> None:
 def test_l2_payload_vectors_match_generator() -> None:
     doc = _load("l2_payload.json")
     assert doc["vectors"] == l2_payload_vectors()
+
+
+def test_frame_vectors_match_generator() -> None:
+    doc = _load("link_frame.json")
+    assert doc["vectors"] == frame_vectors()
 
 
 def test_meshtastic_app_compat_vectors_match_generator() -> None:
@@ -649,7 +695,12 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
             assert ti.path_control == fields["path_control"], f"{name}: path_control"
             assert ti.path_sequence == fields["path_sequence"], f"{name}: path_sequence"
             assert ti.path_lifetime == fields["path_lifetime"], f"{name}: path_lifetime"
-            assert ti.parent_address == IPv6Address(fields["parent_address"]), f"{name}: parent"
+            expected_parent = (
+                IPv6Address(fields["parent_address"])
+                if fields["parent_address"] is not None
+                else None
+            )
+            assert ti.parent_address == expected_parent, f"{name}: parent"
             assert ti.to_option().to_bytes() == encoded, f"{name}: encode"
 
     elif msg_type == "dio_with_options":

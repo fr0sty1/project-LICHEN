@@ -11,7 +11,9 @@
 
 use core::fmt;
 
-use lichen_link::frame::{AddrMode, Encryption, FrameError, LichenFrame, MicLength, Signature};
+use lichen_link::frame::{
+    AddrMode, Encryption, FrameError, LichenFrame, MicLength, Signature, MAX_FRAME_LEN,
+};
 use lichen_link::seqnum::LinkSeqNum;
 
 use crate::framing::{kiss_decode, kiss_encode, kiss_unescape, KissCommand, KissError, FEND};
@@ -22,8 +24,8 @@ pub const PORT_AX25: u8 = 0;
 /// KISS port for raw LICHEN payload.
 pub const PORT_RAW: u8 = 1;
 
-/// Maximum payload size for bridge operations.
-pub const MAX_PAYLOAD: usize = 256;
+/// Maximum LoRa wire frame size accepted by the bridge.
+pub const MAX_PAYLOAD: usize = MAX_FRAME_LEN;
 
 /// Bridge error type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -168,7 +170,10 @@ impl KissBridge {
     /// Create a new bridge with default settings.
     ///
     /// DEPRECATED: Use [`KissBridge::with_epoch`] for spec-compliant initialization.
-    #[deprecated(since = "0.2.0", note = "use KissBridge::with_epoch for spec-compliant initialization")]
+    #[deprecated(
+        since = "0.2.0",
+        note = "use KissBridge::with_epoch for spec-compliant initialization"
+    )]
     pub const fn new() -> Self {
         Self {
             default_epoch: 128,
@@ -228,6 +233,9 @@ impl KissBridge {
 
         // Unescape the payload
         let payload_len = kiss_unescape(frame.data, payload_buf)?;
+        if payload_len > MAX_PAYLOAD {
+            return Err(BridgeError::PayloadTooLarge);
+        }
 
         Ok(DecodedKissFrame {
             port: frame.port,
@@ -357,8 +365,8 @@ impl KissBridge {
             len => return Err(BridgeError::InvalidAddressLength(len)),
         };
 
-        // Placeholder MIC (4 bytes of zeros - real MIC computed by security layer)
-        let mic = [0u8; 4];
+        // Unsigned frames have no MIC; signed frames are built by the security layer.
+        let mic = [];
 
         let seqnum = self.seqnum.fetch_increment();
 
@@ -455,12 +463,42 @@ mod tests {
     }
 
     #[test]
+    fn test_wire_frame_size_boundary() {
+        let bridge = KissBridge::default();
+        let mut kiss_buf = [0u8; 520];
+        let accepted = [0u8; MAX_PAYLOAD];
+
+        let kiss_len = bridge
+            .encode_payload(&accepted, PORT_RAW, &mut kiss_buf)
+            .unwrap();
+        let mut decoded = [0u8; MAX_PAYLOAD + 1];
+        assert_eq!(
+            bridge
+                .decode_kiss_frame(&kiss_buf[..kiss_len], &mut decoded)
+                .unwrap()
+                .payload,
+            accepted
+        );
+
+        let oversized = [0u8; MAX_PAYLOAD + 1];
+        assert_eq!(
+            bridge.encode_payload(&oversized, PORT_RAW, &mut kiss_buf),
+            Err(BridgeError::PayloadTooLarge)
+        );
+
+        let kiss_len = kiss_encode(PORT_RAW, KissCommand::Data, &oversized, &mut kiss_buf).unwrap();
+        assert!(matches!(
+            bridge.decode_kiss_frame(&kiss_buf[..kiss_len], &mut decoded),
+            Err(BridgeError::PayloadTooLarge)
+        ));
+    }
+
+    #[test]
     fn test_handle_kiss_frame_raw_lichen() {
         let bridge = KissBridge::default();
 
-        // Create a minimal LICHEN frame: broadcast, epoch=1, seqnum=2, payload="abc", mic=4 zeros
-        // Wire format: Length(0x0b) | LLSec(0x00) | Epoch(0x01) | SeqNum(0x0002) | Payload("abc") | MIC(4 zeros)
-        let lichen_bytes: &[u8] = &[0x0b, 0x00, 0x01, 0x00, 0x02, b'a', b'b', b'c', 0, 0, 0, 0];
+        // Wire format: Length(0x07) | LLSec(0x00) | Epoch(0x01) | SeqNum(0x0002) | Payload("abc")
+        let lichen_bytes: &[u8] = &[0x07, 0x00, 0x01, 0x00, 0x02, b'a', b'b', b'c'];
 
         // Wrap in KISS frame on port 1 (raw)
         let mut kiss_buf = [0u8; 64];
@@ -483,7 +521,7 @@ mod tests {
     fn test_encode_link_frame() {
         let bridge = KissBridge::default();
 
-        let mic = [0u8; 4];
+        let mic = [];
         let frame = LichenFrame {
             epoch: 5,
             seqnum: LinkSeqNum::new(100),

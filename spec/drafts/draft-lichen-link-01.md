@@ -32,8 +32,8 @@ adaptation layer. Its responsibilities are:
 2. Addressing: identify the destination node when needed.
 3. Replay protection: prevent injection of replayed frames.
 4. Authentication: prove the frame was sent by the claimed node.
-5. Encryption: optional payload encryption (OSCORE handles this at a higher
-   layer; the link layer provides a flag to indicate encrypted payloads).
+5. Encryption signaling: carry the encrypted-payload flag for format
+   compatibility. Encrypted link frames are not currently supported.
 
 The LICHEN link layer does **not** provide a source address field. The sender's
 identity is established by the signature (when present), and the IPv6 source
@@ -42,11 +42,17 @@ overhead minimal for the common case of authenticated unicast.
 
 ### 1.1. Design Goals
 
-- **Small overhead:** 5 bytes minimum header + optional address + MIC.
+  - **Small overhead:** 5 bytes minimum header + optional address + optional MIC.
 - **Replay-safe:** Epoch + sequence number support a sliding-window replay filter.
 - **Flexible addressing:** Broadcast, 16-bit short, EUI-64, or address-elided modes.
 - **Authentication optional:** Unsigned frames are valid for bootstrap/discovery.
-- **Encryption optional:** Flag signals payload is opaque (OSCORE-encrypted CoAP).
+  - **Encryption unsupported:** Frames with encrypted payloads are not part of
+    the current interoperable profile.
+
+The current interoperable profile does not support encrypted payloads. Frames
+with E=1 MUST NOT be transmitted and receivers MUST discard them. In
+particular, frames MUST NOT set both S=1 and E=1; signed encrypted frames are
+unsupported and MUST be rejected before signature processing.
 
 ### 1.2. Use Case
 
@@ -64,8 +70,7 @@ document are to be interpreted as described in RFC 2119.
 - **MIC:** Message Integrity Code — the cryptographic authentication tag.
 - **EUI-64:** An IEEE 64-bit extended unique identifier, typically derived
   from the LoRa module's hardware address.
-- **Epoch:** A key generation counter used to invalidate old sequence numbers
-  when a node reboots or rotates its link key.
+- **Epoch:** The high-order octet of the finite 24-bit replay counter.
 
 ## 3. Frame Format
 
@@ -79,19 +84,21 @@ Octets: 1        1       1      2       var     var      var
 ```
 
 - **LENGTH** (1 octet): Number of bytes in the frame body (everything after
-  the LENGTH byte). Implementations MUST NOT transmit frames with LENGTH > 255.
-  Receivers MUST discard frames where LENGTH exceeds the received byte count.
+  the LENGTH byte). The complete frame MUST NOT exceed 255 octets, so LENGTH
+  MUST NOT exceed 254. Receivers MUST discard frames with LENGTH=255 or when
+  LENGTH does not equal the received frame size minus the LENGTH byte. The maximum
+  unsigned broadcast PLD is 250 octets (254 minus the 4-octet fixed header).
 
 - **LLSec** (1 octet): Link-layer security flags. See Section 3.2.
 
-- **EPO** (1 octet): Key epoch. Incremented when the node's link key changes
-  (e.g. after a reboot or key rotation). Receivers use the (EPO, SEQ) tuple
-  for replay detection. Wraps modulo 256.
+- **EPO** (1 octet): High-order octet of the replay counter. Receivers use the
+  (EPO, SEQ) tuple for replay detection. EPO does not wrap; exhausting EPO and
+  SEQ requires link-key rotation.
 
 - **SEQ** (2 octets, big-endian): Sequence number. Monotonically increasing
   within an epoch. Receivers MUST maintain a replay window per (peer, epoch)
   pair and MUST discard frames whose (EPO, SEQ) has already been accepted.
-  Wraps modulo 65536; see Section 5.2 for epoch management on wrap.
+  After 0xFFFF, the next tuple uses the next EPO and SEQ zero. See Section 5.2.
 
 - **DST** (0, 2, or 8 octets): Destination address. Present and length
   determined by AddrMode in LLSec. See Section 3.3.
@@ -100,11 +107,13 @@ Octets: 1        1       1      2       var     var      var
   dispatch value: `0x14` for SCHC, whose body begins with the SCHC rule ID, or
   `0x15` for LICHEN routing/control messages, whose body begins with the
   routing message type. Length derived as
-  `LENGTH - fixed_header_size - DST_len - MIC_len`. MUST be at least 2 bytes
-  for currently defined dispatch values.
+  `LENGTH - fixed_header_size - DST_len - MIC_len`. Link framing permits an
+  empty PLD; a PLD using a currently defined dispatch value MUST be at least
+  2 bytes.
 
-- **MIC** (4 or 8 octets): Message Integrity Code. Present and length
-  determined by MicLength in LLSec. Absent when S=0. See Section 4.
+- **MIC** (0 or 48 octets): Message Integrity Code. When S=0, the MIC is
+  absent regardless of MicLength. When S=1, the MIC is the full 48-byte
+  Schnorr signature and MicLength is ignored. See Section 4.
 
 ### 3.2. LLSec Byte
 
@@ -126,21 +135,23 @@ Octets: 1        1       1      2       var     var      var
 
 - **Bits 4-2 (MicLength): MIC size.**
 
-  | Value | MIC length | Security                              |
-  |-------|------------|---------------------------------------|
-  | 0b000 | 4 bytes    | 32-bit MIC                            |
-  | 0b001 | 8 bytes    | 64-bit MIC                            |
-  | 0b010–0b111 | —  | Reserved. Receivers MUST discard.    |
+   | Value | MIC length when S=0 | Meaning                              |
+   |-------|---------------------|--------------------------------------|
+   | 0b000 | 0 bytes             | No MIC                               |
+   | 0b001 | 0 bytes             | No MIC; compatibility selector      |
+   | 0b010–0b111 | —          | Reserved. Receivers MUST discard.    |
 
-  When the S bit is 0 (no signature present), the MicLength field is
-  RECOMMENDED to be 0b000. Receivers MUST NOT rely on MIC when S=0.
+   When the S bit is 1, the MIC is always 48 bytes regardless of MicLength.
+   When the S bit is 0 (no signature present), no MIC bytes are present.
+   MicLength is retained only as a header selector for compatibility and does
+   not affect parsing or serialization.
 
 - **Bit 5 (S): Signature present.** When set, the MIC field contains a
   cryptographic signature over the frame. See Section 4.
 
-- **Bit 6 (E): Encrypted.** Signals that PLD is an opaque encrypted blob
-  (typically an OSCORE-protected CoAP message). Does not imply link-layer
-  encryption; the link layer does not perform encryption.
+- **Bit 6 (E): Encrypted.** Indicates an encrypted payload. Encrypted link
+  frames are unsupported in the current interoperable profile; senders MUST
+  leave E clear and receivers MUST discard frames with E=1.
 
 - **Bit 7 (R): Reserved.** Senders MUST set to 0. Receivers MUST discard
   frames with R=1.
@@ -157,9 +168,8 @@ When AddrMode is None (0b00), the frame is a broadcast. All nodes MUST
 process the payload, subject to replay protection.
 
 When AddrMode is Elided (0b11), the destination is recoverable from context
-(e.g. the first IPv6 destination address in the SCHC payload). This mode is
-OPTIONAL and SHOULD be used only when the overhead reduction justifies the
-decoding complexity.
+(e.g. the first IPv6 destination address in the SCHC payload). No destination
+bytes are present on the wire in this mode.
 
 ### 3.4. Source Address
 
@@ -175,7 +185,7 @@ identity is established by:
 
 ### 4.1. MIC Field
 
-When S=1, the MIC field contains a truncated Schnorr signature as defined in
+When S=1, the MIC field contains the full 48-byte Schnorr signature as defined in
 [draft-lichen-schnorr-00]. The signature is computed over:
 
 ```
@@ -218,8 +228,13 @@ node tracks:
 - The highest accepted SEQ value within that EPO.
 - A bitmask of recently accepted SEQ values (sliding window).
 
-The minimum window size is 64 frames. Implementations SHOULD use at least a
-128-bit window.
+The replay window size is 32 frames.
+
+EPO and SEQ form the finite unsigned integer
+`counter = (EPO << 16) | SEQ`, ranging from 0x000000 through 0xFFFFFF.
+Implementations MUST compare counters using ordinary unsigned integer ordering
+and MUST NOT use serial-number or modulo arithmetic. Replay state is scoped to
+the peer's authenticated link key.
 
 A frame MUST be discarded if:
 
@@ -227,16 +242,29 @@ A frame MUST be discarded if:
 2. EPO == highest accepted EPO and SEQ falls outside the window or has
    already been accepted.
 
+A lower EPO MUST always be rejected. When EPO is unchanged, a decrease from a
+high SEQ to a low SEQ is stale or outside the replay window and MUST NOT be
+accepted as sequence-number wrap.
+
 ### 5.2. Epoch Transitions
 
-When SEQ reaches 0xFFFF, the sender MUST increment EPO and reset SEQ to 0
-before sending further frames. Receivers MUST accept EPO increments even
-without a signed epoch-change notification.
+When SEQ reaches 0xFFFF, the sender MUST increment EPO and use SEQ zero for
+the next frame. Receivers apply ordinary numeric ordering to that next tuple;
+no separate epoch-change notification is required.
 
-When a node reboots, it SHOULD increment EPO to invalidate old sequence
-numbers. Receivers MUST accept EPO values higher than previously seen,
-within the range [previous_EPO, previous_EPO + 4]. Larger EPO jumps require
-out-of-band trust re-establishment.
+EPO MUST NOT wrap from 0xFF to 0x00. After sending the terminal tuple
+`(EPO=0xFF, SEQ=0xFFFF)`, the sender MUST rotate its link key before sending
+another authenticated frame. A receiver MUST reject `(0x00, 0x0000)` and all
+other lower tuples under the exhausted key. After authenticating a new link
+key according to the LICHEN security architecture, the receiver MUST create
+fresh replay state for that key.
+
+On reboot, a node SHOULD resume above its last used counter, for example by
+incrementing EPO and restarting SEQ at zero. If no persisted counter is
+available, a random initial EPO reduces accidental tuple reuse but does not
+establish freshness: receivers retaining state for the same key apply the
+normal numeric rules and may reject it. The node MUST rotate its link key if
+it cannot establish an unused greater tuple under the existing key.
 
 ## 6. Examples
 
@@ -254,26 +282,27 @@ out-of-band trust re-establishment.
 
 Total frame: 27 bytes.
 
-### 6.2. Unicast CoAP Request (Extended Address, 32-bit MIC)
+### 6.2. Unicast CoAP Request (Extended Address, signed)
 
 ```
-  LENGTH = 0x1D  (29 bytes body)
-  LLSec  = 0x22  (AddrMode=Extended, MicLength=0b000→4B, S=1, E=0)
+  LENGTH = 0x3D  (61 bytes body)
+  LLSec  = 0x22  (AddrMode=Extended, S=1, E=0; MIC is 48B)
             = 0b0010_0010
   EPO    = 0x01
   SEQ    = 0x00, 0x01
   DST    = 8 bytes EUI-64
-  PLD    = <29 - 4 - 8 - 4 = 13 bytes SCHC-compressed CoAP>
-  MIC    = 4 bytes Schnorr signature truncation
+  PLD    = <1 byte SCHC-compressed CoAP>
+  MIC    = 48-byte Schnorr signature
 ```
 
-Total frame: 30 bytes.
+  The body LENGTH includes the 48-byte MIC.
 
-### 6.3. Unicast OSCORE-Encrypted CoAP (64-bit MIC)
+### 6.3. Encrypted Frame (Unsupported)
 
 ```
-  LLSec  = 0x63  = 0b0110_0011
-            (AddrMode=Extended, MicLength=0b001→8B, S=1, E=1)
+  LLSec  = 0x62  = 0b0110_0010
+            (AddrMode=Extended, MicLength=0b000, S=1, E=1)
+  Result: rejected; signed encrypted frames are unsupported.
 ```
 
 ## 7. IANA Considerations
@@ -284,10 +313,10 @@ This document has no IANA actions.
 
 ### 8.1. No Link-Layer Confidentiality
 
-The link layer provides authentication (MIC/signature) but not
-confidentiality. Payload privacy is provided by OSCORE (RFC 8613) at the
-CoAP layer, indicated by E=1 in LLSec. Observers on the LoRa channel can
-see frame headers (LENGTH, LLSec, EPO, SEQ, DST) even when E=1.
+The link layer provides authentication (the 48-byte Schnorr signature) but not
+confidentiality. Payload privacy may be provided by OSCORE (RFC 8613) at the
+CoAP layer, but encrypted link frames with E=1 are outside the current
+interoperable profile and MUST be discarded.
 
 ### 8.2. Replay Attack Resistance
 

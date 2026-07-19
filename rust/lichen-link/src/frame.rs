@@ -99,9 +99,9 @@ impl AddrMode {
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum MicLength {
-    /// 4-byte (32-bit) MIC.
+    /// Compatibility selector; unsigned frames have no MIC.
     Bits32 = 0,
-    /// 8-byte (64-bit) MIC.
+    /// Compatibility selector; unsigned frames have no MIC.
     Bits64 = 1,
 }
 
@@ -114,19 +114,12 @@ impl MicLength {
             _ => None,
         }
     }
-
-    pub fn mic_len(self) -> usize {
-        match self {
-            MicLength::Bits32 => 4,
-            MicLength::Bits64 => 8,
-        }
-    }
 }
 
 /// Whether the frame includes a Schnorr signature (LLSec bit 5, spec 4.4).
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum Signature {
-    /// No signature appended.
+    /// No signature present in the MIC field.
     #[default]
     Absent,
     /// 48-byte Schnorr signature present.
@@ -146,7 +139,7 @@ pub enum Encryption {
     /// Payload is plaintext.
     #[default]
     Plaintext,
-    /// Payload is AES-CCM encrypted.
+    /// Encrypted payload flag; encrypted link frames are unsupported.
     Encrypted,
 }
 
@@ -165,8 +158,11 @@ const SIGNATURE_BIT: u8 = 1 << 5;
 const ENCRYPTED_BIT: u8 = 1 << 6;
 const RESERVED_BIT: u8 = 1 << 7;
 
-/// Maximum body length in bytes (the Length field is a single byte).
-pub const MAX_FRAME_BODY: usize = 255;
+/// Maximum serialized LoRa frame length, including the Length field.
+pub const MAX_FRAME_LEN: usize = 255;
+
+/// Maximum body length represented by the Length field.
+pub const MAX_FRAME_BODY: usize = MAX_FRAME_LEN - 1;
 
 /// Error type for link-layer frame parsing and serialisation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -178,6 +174,9 @@ pub enum FrameError {
     ReservedMicLength(u8),
     AddrLenMismatch,
     MicLenMismatch,
+    SignatureMicMismatch,
+    EncryptionUnsupported,
+    TrailingBytes,
     FrameTooLarge,
 }
 
@@ -190,6 +189,11 @@ impl core::fmt::Display for FrameError {
             Self::ReservedMicLength(v) => write!(f, "reserved MIC length: {}", v),
             Self::AddrLenMismatch => write!(f, "address length mismatch"),
             Self::MicLenMismatch => write!(f, "MIC length mismatch"),
+            Self::SignatureMicMismatch => write!(f, "signature MIC must be 48 bytes"),
+            Self::EncryptionUnsupported => {
+                write!(f, "encrypted frames are unsupported")
+            }
+            Self::TrailingBytes => write!(f, "trailing bytes after frame"),
             Self::FrameTooLarge => write!(f, "frame too large"),
         }
     }
@@ -255,9 +259,23 @@ impl<'a> LichenFrame<'a> {
 
     /// Serialize the frame into `buf`, returning the number of bytes written.
     ///
-    /// Returns `FrameError::FrameTooLarge` if the body exceeds 255 bytes.
+    /// Returns `FrameError::FrameTooLarge` if the body exceeds 254 bytes.
     pub fn write_to(&self, buf: &mut [u8]) -> Result<usize, FrameError> {
+        if self.encryption.is_encrypted() {
+            return Err(FrameError::EncryptionUnsupported);
+        }
         // body = LLSec(1) + epoch(1) + seqnum(2) + dst_addr + payload + MIC
+        if self.addr_mode.addr_len() != self.dst_addr.len() {
+            return Err(FrameError::AddrLenMismatch);
+        }
+        let expected_mic_len = if self.signature.is_present() { 48 } else { 0 };
+        if self.mic.len() != expected_mic_len {
+            return Err(if self.signature.is_present() {
+                FrameError::SignatureMicMismatch
+            } else {
+                FrameError::MicLenMismatch
+            });
+        }
         let body_len = 4 + self.dst_addr.len() + self.payload.len() + self.mic.len();
         if body_len > MAX_FRAME_BODY {
             return Err(FrameError::FrameTooLarge);
@@ -296,10 +314,25 @@ impl<'a> LichenFrame<'a> {
                 .expect("empty input can fail before length read");
             return Err(FrameError::Empty);
         }
+        if data.len() > MAX_FRAME_LEN {
+            transition_frame_state(&mut state, FrameProcessingState::Failed)
+                .expect("oversized input can fail before length read");
+            return Err(FrameError::FrameTooLarge);
+        }
         let length = data[0] as usize;
         transition_frame_state(&mut state, FrameProcessingState::LengthRead)
             .expect("non-empty frame can read length");
+        if length > MAX_FRAME_BODY {
+            transition_frame_state(&mut state, FrameProcessingState::Failed)
+                .expect("length-read frame can fail size check");
+            return Err(FrameError::FrameTooLarge);
+        }
         let expected_total = 1 + length;
+        if data.len() > expected_total {
+            transition_frame_state(&mut state, FrameProcessingState::Failed)
+                .expect("length-read frame can fail trailing-bytes check");
+            return Err(FrameError::TrailingBytes);
+        }
         let Some(body) = data.get(1..expected_total) else {
             transition_frame_state(&mut state, FrameProcessingState::Failed)
                 .expect("length-read frame can fail bounds check");
@@ -329,7 +362,13 @@ impl<'a> LichenFrame<'a> {
         transition_frame_state(&mut state, FrameProcessingState::HeaderRead)
             .expect("valid fixed header can advance to header-read");
         let addr_len = addr_mode.addr_len();
-        let mic_len = mic_length.mic_len();
+        let signature = llsec & SIGNATURE_BIT != 0;
+        if llsec & ENCRYPTED_BIT != 0 {
+            transition_frame_state(&mut state, FrameProcessingState::Failed)
+                .expect("header-read frame can reject unsupported encryption");
+            return Err(FrameError::EncryptionUnsupported);
+        }
+        let mic_len = if signature { 48 } else { 0 };
         let min_body = 4 + addr_len + mic_len;
         if body.len() < min_body {
             transition_frame_state(&mut state, FrameProcessingState::Failed)
@@ -350,7 +389,7 @@ impl<'a> LichenFrame<'a> {
             mic,
             addr_mode,
             mic_length,
-            signature: if llsec & SIGNATURE_BIT != 0 {
+            signature: if signature {
                 Signature::Present
             } else {
                 Signature::Absent
@@ -368,6 +407,7 @@ impl<'a> LichenFrame<'a> {
 mod tests {
     use super::*;
     use crate::test_utils::from_hex;
+    use std::vec;
 
     #[test]
     fn frame_processing_transition_table_rejects_recovery_from_failure() {
@@ -382,13 +422,13 @@ mod tests {
 
     #[test]
     fn broadcast_min_roundtrip() {
-        let wire = from_hex("0b0001000261626301020304");
+        let wire = from_hex("0700010002616263");
         let frame = LichenFrame::from_bytes(&wire).unwrap();
         assert_eq!(frame.epoch, 1);
         assert_eq!(frame.seqnum.get(), 2);
         assert_eq!(frame.dst_addr, &[] as &[u8]);
         assert_eq!(frame.payload, b"abc");
-        assert_eq!(frame.mic, &[0x01, 0x02, 0x03, 0x04]);
+        assert_eq!(frame.mic, &[] as &[u8]);
         assert_eq!(frame.addr_mode, AddrMode::None);
         assert_eq!(frame.mic_length, MicLength::Bits32);
         assert_eq!(frame.signature, Signature::Absent);
@@ -400,13 +440,13 @@ mod tests {
 
     #[test]
     fn short_addr_roundtrip() {
-        let wire = from_hex("0c01102030abcd686900000000");
+        let wire = from_hex("0801102030abcd6869");
         let frame = LichenFrame::from_bytes(&wire).unwrap();
         assert_eq!(frame.epoch, 16);
         assert_eq!(frame.seqnum.get(), 0x2030);
         assert_eq!(frame.dst_addr, &[0xab, 0xcd]);
         assert_eq!(frame.payload, b"hi");
-        assert_eq!(frame.mic, &[0u8; 4]);
+        assert_eq!(frame.mic, &[] as &[u8]);
         assert_eq!(frame.addr_mode, AddrMode::Short);
         assert_eq!(frame.mic_length, MicLength::Bits32);
         let mut buf = [0u8; 64];
@@ -415,14 +455,14 @@ mod tests {
     }
 
     #[test]
-    fn extended_addr_mic64_roundtrip() {
-        let wire = from_hex("1806ffffff0001020304050607646174610001020304050607");
+    fn extended_addr_selector1_roundtrip() {
+        let wire = from_hex("1006ffffff000102030405060764617461");
         let frame = LichenFrame::from_bytes(&wire).unwrap();
         assert_eq!(frame.epoch, 255);
         assert_eq!(frame.seqnum.get(), 0xffff);
         assert_eq!(frame.dst_addr, &[0, 1, 2, 3, 4, 5, 6, 7]);
         assert_eq!(frame.payload, b"data");
-        assert_eq!(frame.mic, &[0, 1, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(frame.mic, &[] as &[u8]);
         assert_eq!(frame.addr_mode, AddrMode::Extended);
         assert_eq!(frame.mic_length, MicLength::Bits64);
         let mut buf = [0u8; 64];
@@ -431,19 +471,76 @@ mod tests {
     }
 
     #[test]
-    fn signed_encrypted_roundtrip() {
-        let wire = from_hex("09600300047800000000");
-        let frame = LichenFrame::from_bytes(&wire).unwrap();
-        assert_eq!(frame.epoch, 3);
-        assert_eq!(frame.seqnum.get(), 4);
-        assert_eq!(frame.dst_addr, &[] as &[u8]);
-        assert_eq!(frame.payload, &[0x78]);
-        assert_eq!(frame.mic, &[0u8; 4]);
-        assert_eq!(frame.signature, Signature::Present);
-        assert_eq!(frame.encryption, Encryption::Encrypted);
-        let mut buf = [0u8; 64];
-        let n = frame.write_to(&mut buf).unwrap();
-        assert_eq!(&buf[..n], &wire[..]);
+    fn encrypted_frames_are_rejected() {
+        let unsigned = from_hex("054003000478");
+        assert_eq!(
+            LichenFrame::from_bytes(&unsigned),
+            Err(FrameError::EncryptionUnsupported)
+        );
+
+        let frame = LichenFrame {
+            epoch: 3,
+            seqnum: LinkSeqNum::new(4),
+            dst_addr: &[],
+            payload: b"x",
+            mic: &[],
+            addr_mode: AddrMode::None,
+            mic_length: MicLength::Bits32,
+            signature: Signature::Absent,
+            encryption: Encryption::Encrypted,
+        };
+        assert_eq!(
+            frame.write_to(&mut [0u8; 16]),
+            Err(FrameError::EncryptionUnsupported)
+        );
+
+        let mut wire = vec![0x35, 0x60, 0x03, 0x00, 0x04, 0x78];
+        wire.extend([0u8; 48]);
+        assert_eq!(
+            LichenFrame::from_bytes(&wire),
+            Err(FrameError::EncryptionUnsupported)
+        );
+    }
+
+    #[test]
+    fn maximum_unsigned_frame_boundary() {
+        let payload = [0xaau8; 250];
+        let frame = LichenFrame {
+            epoch: 0,
+            seqnum: LinkSeqNum::new(0),
+            dst_addr: &[],
+            payload: &payload,
+            mic: &[],
+            addr_mode: AddrMode::None,
+            mic_length: MicLength::Bits32,
+            signature: Signature::Absent,
+            encryption: Encryption::Plaintext,
+        };
+        let mut encoded = [0u8; MAX_FRAME_LEN];
+        assert_eq!(frame.write_to(&mut encoded), Ok(MAX_FRAME_LEN));
+        assert_eq!(&encoded[5..], &payload);
+        assert_eq!(LichenFrame::from_bytes(&encoded).unwrap().payload, payload);
+
+        let too_large = [0xaau8; 251];
+        let frame = LichenFrame {
+            payload: &too_large,
+            ..frame
+        };
+        assert_eq!(frame.write_to(&mut encoded), Err(FrameError::FrameTooLarge));
+    }
+
+    #[test]
+    fn parser_rejects_length_255_frame() {
+        let mut wire = [0u8; MAX_FRAME_LEN + 1];
+        wire[0] = u8::MAX;
+        assert_eq!(
+            LichenFrame::from_bytes(&wire),
+            Err(FrameError::FrameTooLarge)
+        );
+        assert_eq!(
+            LichenFrame::from_bytes(&[u8::MAX, 0]),
+            Err(FrameError::FrameTooLarge)
+        );
     }
 
     #[test]
@@ -468,6 +565,67 @@ mod tests {
         );
     }
 
+    #[test]
+    fn reserved_mic_selectors_are_rejected() {
+        for selector in 2..=7 {
+            let wire = [4, selector << MIC_LEN_SHIFT, 0, 0, 0];
+            assert_eq!(
+                LichenFrame::from_bytes(&wire),
+                Err(FrameError::ReservedMicLength(selector))
+            );
+        }
+    }
+
+    #[test]
+    fn trailing_bytes_error() {
+        let mut wire = from_hex("0700010002616263");
+        wire.push(0xff);
+        assert_eq!(
+            LichenFrame::from_bytes(&wire),
+            Err(FrameError::TrailingBytes)
+        );
+    }
+
+    #[test]
+    fn signed_short_mic_error() {
+        let wire = [9, 0x20, 1, 0, 0, 0, 0, 0, 0, 0];
+        assert!(matches!(
+            LichenFrame::from_bytes(&wire),
+            Err(FrameError::TooShort(_))
+        ));
+    }
+
+    #[test]
+    fn serializer_rejects_inconsistent_lengths() {
+        let frame = LichenFrame {
+            epoch: 0,
+            seqnum: LinkSeqNum::new(0),
+            dst_addr: &[0xaa],
+            payload: &[],
+            mic: &[],
+            addr_mode: AddrMode::Short,
+            mic_length: MicLength::Bits32,
+            signature: Signature::Absent,
+            encryption: Encryption::Plaintext,
+        };
+        assert_eq!(
+            frame.write_to(&mut [0; 32]),
+            Err(FrameError::AddrLenMismatch)
+        );
+
+        let frame = LichenFrame {
+            dst_addr: &[],
+            mic: &[],
+            addr_mode: AddrMode::None,
+            signature: Signature::Present,
+            ..frame
+        };
+        assert_eq!(
+            frame.write_to(&mut [0; 64]),
+            Err(FrameError::SignatureMicMismatch)
+        );
+    }
+
     // ─── Cross-validation tests from spec/test-vectors/frame.json ───────────────
 
     mod spec_vectors {
@@ -476,8 +634,7 @@ mod tests {
         use std::string::String;
         use std::vec::Vec;
 
-        const FRAME_VECTORS_JSON: &str =
-            include_str!("../../../spec/test-vectors/frame.json");
+        const FRAME_VECTORS_JSON: &str = include_str!("../../../spec/test-vectors/frame.json");
 
         #[derive(Deserialize)]
         struct VectorFile {
@@ -495,6 +652,8 @@ mod tests {
         struct Expected {
             #[serde(default)]
             error: bool,
+            #[serde(default)]
+            error_type: String,
             #[serde(default)]
             addr_mode: u8,
             #[serde(default)]
@@ -514,6 +673,12 @@ mod tests {
             #[serde(default)]
             payload_len: Option<usize>,
             #[serde(default)]
+            payload_fill_hex: String,
+            #[serde(default)]
+            payload_fill_len: Option<usize>,
+            #[serde(default)]
+            payload_suffix_hex: String,
+            #[serde(default)]
             mic_hex: String,
         }
 
@@ -526,30 +691,33 @@ mod tests {
 
         #[test]
         fn cross_validate_parse() {
-            let file: VectorFile = serde_json::from_str(FRAME_VECTORS_JSON)
-                .expect("failed to parse frame.json");
+            let file: VectorFile =
+                serde_json::from_str(FRAME_VECTORS_JSON).expect("failed to parse frame.json");
 
             for vector in &file.vectors {
                 let name = &vector.name;
-
-                // Empty frame
-                if vector.input_hex.is_empty() {
-                    assert!(
-                        LichenFrame::from_bytes(&[]).is_err(),
-                        "{}: empty should error",
-                        name
-                    );
-                    continue;
-                }
 
                 let data = hex_decode(&vector.input_hex);
 
                 // Error cases
                 if vector.expected.error {
+                    let error = LichenFrame::from_bytes(&data)
+                        .expect_err("invalid vector unexpectedly parsed");
+                    let matches_type = match vector.expected.error_type.as_str() {
+                        "empty_frame" => error == FrameError::Empty,
+                        "length_mismatch" | "frame_too_short" => {
+                            matches!(error, FrameError::TooShort(_))
+                        }
+                        "reserved_bit_set" => error == FrameError::ReservedBitSet,
+                        "reserved_mic_length" => error == FrameError::ReservedMicLength(2),
+                        "encryption_unsupported" => error == FrameError::EncryptionUnsupported,
+                        "frame_too_large" => error == FrameError::FrameTooLarge,
+                        _ => false,
+                    };
                     assert!(
-                        LichenFrame::from_bytes(&data).is_err(),
-                        "{}: expected error",
-                        name
+                        matches_type,
+                        "{}: expected {}, got {:?}",
+                        name, vector.expected.error_type, error
                     );
                     continue;
                 }
@@ -560,38 +728,72 @@ mod tests {
 
                 assert_eq!(
                     frame.addr_mode as u8, vector.expected.addr_mode,
-                    "{}: addr_mode", name
+                    "{}: addr_mode",
+                    name
                 );
                 assert_eq!(
                     frame.mic_length as u8, vector.expected.mic_length,
-                    "{}: mic_length", name
+                    "{}: mic_length",
+                    name
                 );
                 assert_eq!(
-                    frame.signature.is_present(), vector.expected.signature_present,
-                    "{}: signature_present", name
+                    frame.signature.is_present(),
+                    vector.expected.signature_present,
+                    "{}: signature_present",
+                    name
                 );
                 assert_eq!(
-                    frame.encryption.is_encrypted(), vector.expected.encrypted,
-                    "{}: encrypted", name
+                    frame.encryption.is_encrypted(),
+                    vector.expected.encrypted,
+                    "{}: encrypted",
+                    name
                 );
                 assert_eq!(frame.epoch, vector.expected.epoch, "{}: epoch", name);
-                assert_eq!(frame.seqnum.get(), vector.expected.seqnum, "{}: seqnum", name);
                 assert_eq!(
-                    frame.dst_addr, hex_decode(&vector.expected.dst_addr_hex).as_slice(),
-                    "{}: dst_addr", name
+                    frame.seqnum.get(),
+                    vector.expected.seqnum,
+                    "{}: seqnum",
+                    name
                 );
                 assert_eq!(
-                    frame.mic, hex_decode(&vector.expected.mic_hex).as_slice(),
-                    "{}: mic", name
+                    frame.dst_addr,
+                    hex_decode(&vector.expected.dst_addr_hex).as_slice(),
+                    "{}: dst_addr",
+                    name
+                );
+                assert_eq!(
+                    frame.mic,
+                    hex_decode(&vector.expected.mic_hex).as_slice(),
+                    "{}: mic",
+                    name
                 );
 
                 // Payload - check by length if specified
                 if let Some(expected_len) = vector.expected.payload_len {
                     assert_eq!(frame.payload.len(), expected_len, "{}: payload_len", name);
+                    if let Some(fill_len) = vector.expected.payload_fill_len {
+                        let fill = hex_decode(&vector.expected.payload_fill_hex);
+                        assert_eq!(fill.len(), 1, "{}: payload fill byte", name);
+                        assert!(
+                            frame.payload[..fill_len]
+                                .iter()
+                                .all(|byte| *byte == fill[0]),
+                            "{}: payload fill",
+                            name
+                        );
+                        assert_eq!(
+                            &frame.payload[fill_len..],
+                            hex_decode(&vector.expected.payload_suffix_hex).as_slice(),
+                            "{}: payload suffix",
+                            name
+                        );
+                    }
                 } else {
                     assert_eq!(
-                        frame.payload, hex_decode(&vector.expected.payload_hex).as_slice(),
-                        "{}: payload", name
+                        frame.payload,
+                        hex_decode(&vector.expected.payload_hex).as_slice(),
+                        "{}: payload",
+                        name
                     );
                 }
             }
@@ -599,8 +801,8 @@ mod tests {
 
         #[test]
         fn cross_validate_roundtrip() {
-            let file: VectorFile = serde_json::from_str(FRAME_VECTORS_JSON)
-                .expect("failed to parse frame.json");
+            let file: VectorFile =
+                serde_json::from_str(FRAME_VECTORS_JSON).expect("failed to parse frame.json");
 
             for vector in &file.vectors {
                 // Skip error/empty cases
@@ -613,7 +815,8 @@ mod tests {
                 let frame = LichenFrame::from_bytes(&data).unwrap();
 
                 let mut buf = [0u8; 300];
-                let n = frame.write_to(&mut buf)
+                let n = frame
+                    .write_to(&mut buf)
                     .unwrap_or_else(|e| panic!("{}: write failed: {:?}", name, e));
                 assert_eq!(&buf[..n], &data[..], "{}: roundtrip", name);
             }

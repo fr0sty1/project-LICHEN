@@ -13,7 +13,7 @@
 /* LLSec byte bit positions */
 #define LLSEC_ADDR_MODE_MASK  0x03
 #define LLSEC_MIC_LEN_SHIFT   2
-#define LLSEC_MIC_LEN_MASK    0x04
+#define LLSEC_MIC_LEN_MASK    0x1c
 #define LLSEC_SIG_PRESENT     0x20
 #define LLSEC_ENCRYPTED       0x40
 #define LLSEC_RESERVED        0x80
@@ -25,8 +25,8 @@ static const uint8_t addr_lens[] = { 0, 2, 8, 0 };
 /* Compile-time assertions: ensure struct field sizes match max values */
 _Static_assert(sizeof(((struct lichen_frame *)0)->dst_addr) >= 8,
 	       "dst_addr must hold at least 8 bytes (EUI-64)");
-_Static_assert(sizeof(((struct lichen_frame *)0)->mic) >= 8,
-	       "mic must hold at least 8 bytes (64-bit MIC)");
+_Static_assert(sizeof(((struct lichen_frame *)0)->mic) >= LICHEN_SIG_LEN,
+	       "mic must hold a Schnorr-48 signature");
 
 int lichen_frame_parse(struct lichen_frame *frame,
 		       const uint8_t *data, size_t len)
@@ -34,14 +34,17 @@ int lichen_frame_parse(struct lichen_frame *frame,
 	if (frame == NULL || data == NULL) {
 		return -EINVAL;
 	}
+	if (len > LICHEN_MAX_FRAME_LEN ||
+	    (len > 0U && data[0] > LICHEN_MAX_FRAME_BODY_LEN)) {
+		return -EMSGSIZE;
+	}
 
 	/*
-	 * Minimum frame size: 9 bytes
-	 *   length(1) + llsec(1) + epoch(1) + seqnum(2) + mic(4) = 9
-	 * With 64-bit MIC it's 13 bytes, but we can't know MIC length
-	 * until we parse LLSec, so check for minimum 32-bit MIC first.
+	 * Minimum frame size: 5 bytes
+	 *   length(1) + llsec(1) + epoch(1) + seqnum(2). Unsigned
+	 * frames have no MIC; signed frames are checked after LLSec parsing.
 	 */
-	if (len < LICHEN_FRAME_FIXED_HEADER_LEN + LICHEN_MIC_32_LEN) {
+	if (len < LICHEN_FRAME_FIXED_HEADER_LEN) {
 		return -EINVAL;
 	}
 
@@ -60,17 +63,21 @@ int lichen_frame_parse(struct lichen_frame *frame,
 
 	frame->addr_mode = llsec & LLSEC_ADDR_MODE_MASK;
 
-	/* Reject ELIDED (addr_mode=3) - context-dependent addressing not yet supported */
-	if (frame->addr_mode == LICHEN_ADDR_ELIDED) {
+	/* Only 0b000 (32-bit) and 0b001 (64-bit) MIC lengths are defined. */
+	uint8_t mic_length = (llsec & LLSEC_MIC_LEN_MASK) >> LLSEC_MIC_LEN_SHIFT;
+	if (mic_length > LICHEN_MIC_64) {
 		return -EINVAL;
 	}
 
-	frame->mic_length = (llsec & LLSEC_MIC_LEN_MASK) ? LICHEN_MIC_64 : LICHEN_MIC_32;
+	frame->mic_length = (enum lichen_mic_len)mic_length;
 	frame->signature_present = (llsec & LLSEC_SIG_PRESENT) != 0;
 	frame->encrypted = (llsec & LLSEC_ENCRYPTED) != 0;
+	if (frame->encrypted) {
+		return -EPROTONOSUPPORT;
+	}
 
 	/* Now that we know MIC length, verify frame is long enough */
-	frame->mic_len = (frame->mic_length == LICHEN_MIC_64) ? LICHEN_MIC_64_LEN : LICHEN_MIC_32_LEN;
+	frame->mic_len = frame->signature_present ? LICHEN_SIG_LEN : 0U;
 	uint8_t addr_len = addr_lens[frame->addr_mode];
 
 	/* Check total required length: fixed header + address + MIC */
@@ -94,15 +101,7 @@ int lichen_frame_parse(struct lichen_frame *frame,
 	frame->payload = &data[off];
 	frame->payload_len = len - off - frame->mic_len;
 
-	/* Compute inner payload length (excluding signature if present) */
-	if (frame->signature_present) {
-		if (frame->payload_len < LICHEN_SIG_LEN) {
-			return -EINVAL;  /* Payload too short for signature */
-		}
-		frame->inner_payload_len = frame->payload_len - LICHEN_SIG_LEN;
-	} else {
-		frame->inner_payload_len = frame->payload_len;
-	}
+	frame->inner_payload_len = frame->payload_len;
 
 	return 0;
 }
@@ -118,9 +117,12 @@ int lichen_frame_write(const struct lichen_frame *frame,
 		return -EINVAL;
 	}
 
-	/* Reject ELIDED mode - not yet supported (matches parse behavior) */
-	if (frame->addr_mode == LICHEN_ADDR_ELIDED) {
+	if (frame->dst_addr_len != addr_lens[frame->addr_mode]) {
 		return -EINVAL;
+	}
+
+	if (frame->encrypted) {
+		return -EPROTONOSUPPORT;
 	}
 
 	/*
@@ -129,26 +131,26 @@ int lichen_frame_write(const struct lichen_frame *frame,
 	 * the frame data and stored in frame->mic before serialization.
 	 */
 	uint8_t addr_len = addr_lens[frame->addr_mode];
-	uint8_t mic_len = (frame->mic_length == LICHEN_MIC_64) ? LICHEN_MIC_64_LEN : LICHEN_MIC_32_LEN;
+	uint8_t mic_len = frame->signature_present ? LICHEN_SIG_LEN : 0U;
 
 	if (frame->mic_len != mic_len) {
 		return -EINVAL;
 	}
+	if (frame->mic_length != LICHEN_MIC_32 &&
+	    frame->mic_length != LICHEN_MIC_64) {
+		return -EINVAL;
+	}
 
-	/* SECURITY: Check payload_len before arithmetic to prevent overflow on 32-bit size_t */
-	if (frame->payload_len > LICHEN_MAX_PAYLOAD) {
+	size_t non_payload_len = LICHEN_FRAME_PAYLOAD_OFFSET(addr_len) + mic_len;
+
+	if (frame->payload_len > LICHEN_MAX_FRAME_LEN - non_payload_len) {
 		return -EMSGSIZE;
 	}
 
-	/* Calculate total frame size */
-	size_t frame_len = LICHEN_FRAME_PAYLOAD_OFFSET(addr_len) +
-			   frame->payload_len + mic_len;
+	size_t frame_len = non_payload_len + frame->payload_len;
 
 	if (frame_len > buflen) {
-		return -ENOMEM; /* Buffer too small */
-	}
-	if (frame_len > 256) {
-		return -EMSGSIZE; /* Frame too large */
+		return -ENOMEM;
 	}
 
 	size_t off = 0;
@@ -159,7 +161,7 @@ int lichen_frame_write(const struct lichen_frame *frame,
 	/* LLSec byte */
 	uint8_t llsec = frame->addr_mode & LLSEC_ADDR_MODE_MASK;
 	if (frame->mic_length == LICHEN_MIC_64) {
-		llsec |= LLSEC_MIC_LEN_MASK;
+		llsec |= (uint8_t)(LICHEN_MIC_64 << LLSEC_MIC_LEN_SHIFT);
 	}
 	if (frame->signature_present) {
 		llsec |= LLSEC_SIG_PRESENT;
@@ -177,7 +179,9 @@ int lichen_frame_write(const struct lichen_frame *frame,
 	buf[off++] = (uint8_t)(frame->seqnum & 0xFF);
 
 	/* Destination address */
-	memcpy(&buf[off], frame->dst_addr, addr_len);
+	if (addr_len > 0) {
+		memcpy(&buf[off], frame->dst_addr, addr_len);
+	}
 	off += addr_len;
 
 	/* Payload */

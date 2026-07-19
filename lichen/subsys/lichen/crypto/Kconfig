@@ -10,12 +10,10 @@ config LICHEN_CRYPTO_AES_CCM
 	select TINYCRYPT_AES
 	select TINYCRYPT_AES_CCM
 	help
-	  Include the shared AES-CCM-16-64-128 helper used by link-layer
-	  encrypted frames and OSCORE.
+	  Include the AES-CCM-16-64-128 helper used by OSCORE.
 
 config LICHEN_CRYPTO_MONOCYPHER
 	bool "Monocypher cryptographic library"
-	default y if LICHEN_LINK_SCHNORR
 	help
 	  Include the Monocypher cryptographic library (v4.0.3).
 	  Provides Ed25519/EdDSA primitives, SHA-512, X25519, and

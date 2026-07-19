@@ -165,14 +165,12 @@ int lichen_app_identity_set_self_from_link_ctx(
 	if (ctx == NULL) {
 		return -EINVAL;
 	}
-	if (!ctx->has_key) {
-		return -ENOKEY;
-	}
-
 	memset(&identity, 0, sizeof(identity));
-	memcpy(identity.eui64, ctx->eui64, sizeof(identity.eui64));
-	memcpy(identity.public_key, ctx->ed25519_pk,
-	       sizeof(identity.public_key));
+	ret = lichen_link_copy_identity(ctx, identity.eui64,
+					identity.public_key, NULL);
+	if (ret < 0) {
+		return ret;
+	}
 	identity.has_public_key = true;
 	ret = copy_string(identity.display_name,
 			  sizeof(identity.display_name), display_name);

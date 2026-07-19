@@ -2,10 +2,11 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Link-layer replay protection (spec section 4.4).
 
-Replay protection uses a 24-bit logical counter formed from the 8-bit epoch
-and 16-bit sequence number: ``counter = (epoch << 16) | seqnum``. Because the
-epoch increments whenever the sequence number wraps (or on reboot), this
-counter advances monotonically for a well-behaved sender.
+Replay protection orders the 8-bit epoch as a finite value and uses a sliding
+window only for the 16-bit sequence number within that epoch. A higher epoch
+starts a fresh sequence window; a lower epoch is always stale. Epoch 255 is
+terminal, so advancing from ``(255, 65535)`` to ``(0, 0)`` requires a new key
+and replay state.
 
 Each receiver keeps, per sender, the highest counter seen plus a sliding
 bitmap window so that out-of-order-but-recent frames are still accepted exactly
@@ -17,14 +18,8 @@ once. This implements the spec's acceptance rules:
     Epoch  < LastEpoch                          -> reject (replay)
     Epoch == LastEpoch, SeqNum <= window floor  -> reject (replay)
 
-Note on the epoch boundary: the rules above are expressed over a single
-monotonic 24-bit counter and a sliding window, so "Epoch < LastEpoch -> reject"
-holds whenever the frame is beyond the window. The one refinement is that a
-frame from the previous epoch that lands *within* the window (e.g. a frame from
-just before a seqnum wrap, reordered behind the first frame of the next epoch)
-is a legitimate out-of-order frame and is accepted once — exactly what the
-"out-of-order tolerance" window exists for. This matches the spec's stated
-24-bit-counter data model; the acceptance table is a per-field summary of it.
+Sequence numbers do not wrap within an epoch. Ordinary sequence exhaustion is
+handled by advancing to the next epoch, up to the finite epoch limit.
 """
 
 from __future__ import annotations
@@ -33,9 +28,8 @@ import warnings
 
 WINDOW_SIZE = 32  # out-of-order tolerance, in counter positions (spec 4.4)
 
-# SECURITY: Warn when counter approaches 24-bit limit. After wraparound,
-# frames from ~8M-16M frames ago become replayable via half-space arithmetic.
-# At this threshold (~64K frames remaining), receiver should expect re-keying.
+# SECURITY: Warn when the finite counter approaches its terminal value. At this
+# threshold (~64K frames remaining), the receiver should expect re-keying.
 WRAPAROUND_WARNING_THRESHOLD = 0xFF0000
 
 
@@ -51,13 +45,13 @@ def logical_counter(epoch: int, seqnum: int) -> int:
 class ReplayWindow:
     """Anti-replay sliding window over the logical counter, for a single sender.
 
-    The window tracks the highest accepted counter and a bitmap where bit ``i``
-    means ``highest - i`` has been seen (bit 0 is ``highest`` itself).
+    The window tracks the highest accepted counter and a same-epoch sequence
+    bitmap where bit ``i`` means ``highest_seqnum - i`` has been seen.
     """
 
     def __init__(self, window_size: int = WINDOW_SIZE) -> None:
-        if window_size <= 0:
-            raise ValueError(f"window_size must be positive, got {window_size}")
+        if window_size != WINDOW_SIZE:
+            raise ValueError(f"window_size must be {WINDOW_SIZE}, got {window_size}")
         self._window_size = window_size
         self._highest = -1  # no frame accepted yet
         self._bitmap = 0
@@ -81,22 +75,37 @@ class ReplayWindow:
         if self._highest < 0:
             self._highest = counter
             self._bitmap = 1
-            # SECURITY: Warn if first frame is already near wraparound.
+            # SECURITY: Warn if the first frame is already near exhaustion.
             if counter >= WRAPAROUND_WARNING_THRESHOLD:
                 self._wraparound_warned = True
                 warnings.warn(
                     f"Replay counter {counter:#x} approaching 24-bit limit (0xFFFFFF). "
-                    "Re-key this link before wraparound to prevent replay attacks.",
+                    "Re-key this link before counter exhaustion.",
                     UserWarning,
                     stacklevel=2,
                 )
             return True
 
-        # Newer than anything seen: slide the window forward.
-        # Use modular arithmetic to handle 24-bit counter wraparound (255->0).
-        diff = (counter - self._highest) & 0xFFFFFF
-        if 0 < diff < 0x800000:  # counter is in forward half of counter space
-            shift = diff
+        highest_epoch = self._highest >> 16
+        if epoch < highest_epoch:
+            return False
+
+        if epoch > highest_epoch:
+            self._highest = counter
+            self._bitmap = 1
+            if not self._wraparound_warned and counter >= WRAPAROUND_WARNING_THRESHOLD:
+                self._wraparound_warned = True
+                warnings.warn(
+                    f"Replay counter {counter:#x} approaching 24-bit limit (0xFFFFFF). "
+                    "Re-key this link before counter exhaustion.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            return True
+
+        highest_seqnum = self._highest & 0xFFFF
+        if seqnum > highest_seqnum:
+            shift = seqnum - highest_seqnum
             if shift >= self._window_size:
                 self._bitmap = 1
             else:
@@ -104,20 +113,19 @@ class ReplayWindow:
                     (1 << self._window_size) - 1
                 )
             self._highest = counter
-            # SECURITY: Warn once when approaching 24-bit wraparound.
-            # After wrap, old frames become replayable; re-keying is required.
+            # SECURITY: Warn once when approaching the terminal counter value.
             if not self._wraparound_warned and counter >= WRAPAROUND_WARNING_THRESHOLD:
                 self._wraparound_warned = True
                 warnings.warn(
                     f"Replay counter {counter:#x} approaching 24-bit limit (0xFFFFFF). "
-                    "Re-key this link before wraparound to prevent replay attacks.",
+                    "Re-key this link before counter exhaustion.",
                     UserWarning,
                     stacklevel=2,
                 )
             return True
 
-        # Within or below the window (counter is behind or equal to highest).
-        offset = (self._highest - counter) & 0xFFFFFF
+        # Within or below the same-epoch window.
+        offset = highest_seqnum - seqnum
         if offset >= self._window_size:
             return False  # below the window floor: too old
         mask = 1 << offset
@@ -135,6 +143,8 @@ class ReplayProtector:
     """
 
     def __init__(self, window_size: int = WINDOW_SIZE) -> None:
+        if window_size != WINDOW_SIZE:
+            raise ValueError(f"window_size must be {WINDOW_SIZE}, got {window_size}")
         self._window_size = window_size
         self._windows: dict[bytes | str | int, ReplayWindow] = {}
 

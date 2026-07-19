@@ -54,21 +54,37 @@ class TestReplayWindow:
         assert w.check_and_update(0, 5000) is True
         assert w.check_and_update(1, 0) is True  # epoch > last -> accept
 
-    def test_old_epoch_beyond_window_rejected(self) -> None:
-        # An earlier epoch that is far behind (beyond the window) is a replay.
+    def test_lower_epoch_rejected(self) -> None:
         w = ReplayWindow()
         assert w.check_and_update(5, 0) is True
-        assert w.check_and_update(2, 0) is False  # counter ~196k behind -> reject
+        assert w.check_and_update(2, 0) is False
 
-    def test_epoch_boundary_reordering_accepted(self) -> None:
-        # (5,0) then (4,0xFFFF): the latter is logical counter one below the
-        # high-water mark — a legitimate frame reordered across a seqnum wrap,
-        # NOT a replay. The 24-bit-counter+window model accepts it; a naive
-        # "epoch < last -> reject" rule would wrongly drop it.
+    def test_lower_epoch_rejected_at_adjacent_boundary(self) -> None:
         w = ReplayWindow()
         assert w.check_and_update(5, 0) is True
+        assert w.check_and_update(4, 0xFFFF) is False
+
+    def test_ordinary_epoch_increment_accepted(self) -> None:
+        w = ReplayWindow()
         assert w.check_and_update(4, 0xFFFF) is True
-        assert w.check_and_update(4, 0xFFFF) is False  # but only once
+        assert w.check_and_update(5, 0) is True
+
+    def test_higher_epoch_resets_sequence_window(self) -> None:
+        w = ReplayWindow()
+        assert w.check_and_update(4, 100) is True
+        assert w.check_and_update(5, 100) is True
+        assert w.check_and_update(5, 99) is True
+
+    def test_same_epoch_sequence_wrap_rejected(self) -> None:
+        w = ReplayWindow()
+        assert w.check_and_update(7, 0xFFFF) is True
+        assert w.check_and_update(7, 0) is False
+
+    def test_terminal_counter_wrap_rejected(self) -> None:
+        w = ReplayWindow()
+        with pytest.warns(UserWarning, match="approaching 24-bit limit"):
+            assert w.check_and_update(0xFF, 0xFFFF) is True
+        assert w.check_and_update(0, 0) is False
 
     def test_out_of_order_within_window_accepted_once(self) -> None:
         w = ReplayWindow()
@@ -120,11 +136,23 @@ class TestReplayProtector:
         p.reset("node1")
         assert p.check_and_update("node1", 0, 5) is True  # state cleared
 
-    def test_custom_window_size(self) -> None:
-        p = ReplayProtector(window_size=4)
-        assert p.check_and_update(1, 0, 10) is True
-        assert p.check_and_update(1, 0, 6) is False  # offset 4 >= window 4
-        assert p.check_and_update(1, 0, 7) is True  # offset 3 < 4
+    def test_reset_allows_fresh_state_after_terminal_counter(self) -> None:
+        p = ReplayProtector()
+        with pytest.warns(UserWarning, match="approaching 24-bit limit"):
+            assert p.check_and_update("old-key", 0xFF, 0xFFFF) is True
+        assert p.check_and_update("old-key", 0, 0) is False
+        p.reset("old-key")
+        assert p.check_and_update("old-key", 0, 0) is True
+
+    def test_new_public_key_state_is_fresh(self) -> None:
+        p = ReplayProtector()
+        with pytest.warns(UserWarning, match="approaching 24-bit limit"):
+            assert p.check_and_update(b"old-public-key", 0xFF, 0xFFFF) is True
+        assert p.check_and_update(b"new-public-key", 0, 0) is True
+
+    def test_non_profile_window_size_rejected(self) -> None:
+        with pytest.raises(ValueError, match="window_size must be 32"):
+            ReplayProtector(window_size=4)
 
     def test_window_size_constant(self) -> None:
         assert WINDOW_SIZE == 32

@@ -17,21 +17,21 @@ from lichen.link.frame import AddrMode, FrameError, LichenFrame, MicLength
 
 class TestSerialize:
     def test_spec_vector(self) -> None:
-        """Hand-computed frame: short addr, 32-bit MIC, no flags.
+        """Hand-computed frame: short addr, unsigned, no MIC.
 
         body = LLSec(0x01) Epoch(0x01) SeqNum(0x0102) Dst(0xAABB)
-               Payload(0x1020) MIC(0xDEADBEEF) = 12 bytes; Length = 0x0C.
+         Payload(0x1020) = 8 bytes; Length = 0x08.
         """
         frame = LichenFrame(
             epoch=1,
             seqnum=0x0102,
             dst_addr=b"\xaa\xbb",
             payload=b"\x10\x20",
-            mic=b"\xde\xad\xbe\xef",
+            mic=b"",
             addr_mode=AddrMode.SHORT,
             mic_length=MicLength.BITS32,
         )
-        assert frame.to_bytes() == bytes.fromhex("0c 0101 0102 aabb 1020 deadbeef".replace(" ", ""))
+        assert frame.to_bytes() == bytes.fromhex("08 0101 0102 aabb 1020".replace(" ", ""))
 
     def test_broadcast_no_address(self) -> None:
         frame = LichenFrame(
@@ -39,26 +39,28 @@ class TestSerialize:
             seqnum=0,
             dst_addr=b"",
             payload=b"\x99",
-            mic=b"\x00\x00\x00\x00",
+            mic=b"",
             addr_mode=AddrMode.NONE,
         )
-        # body = LLSec(00) Epoch(00) SeqNum(0000) Payload(99) MIC(00000000) = 9 bytes
-        assert frame.to_bytes() == bytes.fromhex("09" "00" "00" "0000" "99" "00000000")
+        # body = LLSec(00) Epoch(00) SeqNum(0000) Payload(99) = 5 bytes
+        assert frame.to_bytes() == bytes.fromhex("05" "00" "00" "0000" "99")
 
     def test_llsec_flag_packing(self) -> None:
-        """EXTENDED addr + 64-bit MIC + signature + encrypted -> 0x66."""
+        """LLSec independently packs the signature and encryption bits."""
         frame = LichenFrame(
             epoch=0,
             seqnum=0,
             dst_addr=b"\x00" * 8,
             payload=b"",
-            mic=b"\x00" * 8,
+            mic=b"\x00" * 48,
             addr_mode=AddrMode.EXTENDED,
             mic_length=MicLength.BITS64,
             signature_present=True,
             encrypted=True,
         )
         assert frame.llsec_byte() == 0x66
+        with pytest.raises(FrameError, match="encrypted frames are unsupported"):
+            frame.to_bytes()
 
 
 class TestRoundTrip:
@@ -76,7 +78,7 @@ class TestRoundTrip:
     def test_roundtrip(
         self, addr_mode: AddrMode, dst: bytes, mic_length: MicLength, signature_present: bool
     ) -> None:
-        # Payload must be >= 48 bytes when signature_present is True
+        # Signed frames carry the 48-byte signature in MIC.
         if signature_present:
             payload = b"signature-prefixed payload " + bytes(range(48))
         else:
@@ -86,7 +88,7 @@ class TestRoundTrip:
             seqnum=0xBEEF,
             dst_addr=dst,
             payload=payload,
-            mic=bytes(range(mic_length.mic_len)),
+            mic=bytes(range(48 if signature_present else 0)),
             addr_mode=addr_mode,
             mic_length=mic_length,
             signature_present=signature_present,
@@ -99,7 +101,7 @@ class TestValidation:
     def _base(self, **kw: object) -> LichenFrame:
         defaults: dict[str, object] = {
             "epoch": 1, "seqnum": 1, "dst_addr": b"\xaa\xbb",
-            "payload": b"", "mic": b"\x00\x00\x00\x00",
+            "payload": b"", "mic": b"",
             "addr_mode": AddrMode.SHORT, "mic_length": MicLength.BITS32,
         }
         defaults.update(kw)
@@ -110,8 +112,14 @@ class TestValidation:
             self._base(dst_addr=b"\xaa").to_bytes()
 
     def test_mic_len_mismatch(self) -> None:
-        with pytest.raises(FrameError, match="requires 4"):
-            self._base(mic=b"\x00\x00").to_bytes()
+        with pytest.raises(FrameError, match="0 are required"):
+            self._base(mic=b"\x00").to_bytes()
+
+    @pytest.mark.parametrize("selector", range(2, 8))
+    def test_reserved_mic_selector(self, selector: int) -> None:
+        with pytest.raises(FrameError) as exc_info:
+            self._base(mic_length=selector).to_bytes()
+        assert str(exc_info.value) == f"reserved MIC-length value: {selector}"
 
     def test_epoch_out_of_range(self) -> None:
         with pytest.raises(FrameError, match="epoch"):
@@ -121,9 +129,44 @@ class TestValidation:
         with pytest.raises(FrameError, match="seqnum"):
             self._base(seqnum=0x10000).to_bytes()
 
-    def test_frame_too_large(self) -> None:
-        with pytest.raises(FrameError, match="exceeds 255"):
-            self._base(payload=b"\x00" * 300).to_bytes()
+    @pytest.mark.parametrize(
+        "signature_present,mic,max_payload",
+        [(False, b"", 250), (True, b"\x00" * 48, 202)],
+    )
+    def test_broadcast_payload_boundary(
+        self, signature_present: bool, mic: bytes, max_payload: int
+    ) -> None:
+        frame = self._base(
+            dst_addr=b"",
+            addr_mode=AddrMode.NONE,
+            payload=b"\xaa" * max_payload,
+            mic=mic,
+            signature_present=signature_present,
+        )
+        encoded = frame.to_bytes()
+        assert len(encoded) == 255
+        assert encoded[0] == 254
+        assert LichenFrame.from_bytes(encoded) == frame
+
+        frame.payload += b"\xaa"
+        with pytest.raises(FrameError, match="frame body is 255 bytes, exceeds 254"):
+            frame.to_bytes()
+
+        with pytest.raises(FrameError, match="frame body is 255 bytes, exceeds 254"):
+            LichenFrame.from_bytes(b"\xff\x00")
+
+    def test_frame_limit_is_checked_before_concatenation(self) -> None:
+        class ExplodingPayload:
+            def __len__(self) -> int:
+                return 251
+
+            def __radd__(self, other: object) -> bytes:
+                raise AssertionError("payload was concatenated before bounds check")
+
+        with pytest.raises(FrameError, match="exceeds 254"):
+            self._base(
+                dst_addr=b"", addr_mode=AddrMode.NONE, payload=ExplodingPayload()
+            ).to_bytes()
 
 
 class TestAddrModeLookup:
@@ -153,6 +196,26 @@ class TestParseErrors:
         with pytest.raises(FrameError, match="length field"):
             LichenFrame.from_bytes(b"\x05\x00\x00\x00\x00")
 
+    def test_frame_limit_is_checked_before_body_slice(self) -> None:
+        class ExplodingSlice(bytes):
+            def __getitem__(self, key: object) -> object:
+                if isinstance(key, slice):
+                    raise AssertionError("body was sliced before length check")
+                return super().__getitem__(key)
+
+        with pytest.raises(FrameError, match="frame is 257 bytes, exceeds 255"):
+            LichenFrame.from_bytes(ExplodingSlice(b"\x00" + b"x" * 256))
+
+    @pytest.mark.parametrize("signed", [False, True])
+    def test_parser_rejects_256_byte_frame(self, signed: bool) -> None:
+        llsec = 0x20 if signed else 0
+        mic = b"\x00" * (48 if signed else 0)
+        payload = b"\xaa" * (203 if signed else 251)
+        data = bytes([255, llsec, 0, 0, 0]) + payload + mic
+        assert len(data) == 256
+        with pytest.raises(FrameError, match="frame is 256 bytes, exceeds 255"):
+            LichenFrame.from_bytes(data)
+
     def test_reserved_bit_set(self) -> None:
         # Valid 12-byte body but LLSec bit 7 set (0x81).
         data = bytes.fromhex("0c 81 01 0102 aabb 1020 deadbeef".replace(" ", ""))
@@ -160,9 +223,11 @@ class TestParseErrors:
             LichenFrame.from_bytes(data)
 
     def test_reserved_mic_length(self) -> None:
-        # LLSec 0x09 -> addr_mode 1, mic-length field = 2 (reserved).
-        with pytest.raises(FrameError, match="reserved MIC-length"):
-            LichenFrame.from_bytes(b"\x04\x09\x00\x00\x00")
+        for selector in range(2, 8):
+            llsec = selector << 2
+            with pytest.raises(FrameError) as exc_info:
+                LichenFrame.from_bytes(bytes([4, llsec, 0, 0, 0]))
+            assert str(exc_info.value) == f"reserved MIC-length value: {selector}"
 
     def test_too_short_body(self) -> None:
         with pytest.raises(FrameError, match="too short"):
@@ -173,12 +238,17 @@ class TestParseErrors:
         with pytest.raises(FrameError, match="declared address/MIC"):
             LichenFrame.from_bytes(b"\x04\x01\x00\x00\x00")
 
-    def test_signature_present_requires_48_byte_payload(self) -> None:
-        # LLSec 0x20 = signature_present bit set, addr_mode NONE, 32-bit MIC
-        # body = LLSec(0x20) Epoch(00) SeqNum(0000) Payload(10 bytes) MIC(4 bytes)
-        # Total body = 1 + 1 + 2 + 10 + 4 = 18 bytes
+    def test_signature_present_requires_48_byte_mic(self) -> None:
         data = bytes.fromhex("12" "20" "00" "0000" + "00" * 10 + "deadbeef")
-        with pytest.raises(FrameError, match="signature_present requires"):
+        with pytest.raises(FrameError, match="declared address/MIC"):
+            LichenFrame.from_bytes(data)
+
+    def test_encrypted_frames_are_rejected(self) -> None:
+        with pytest.raises(FrameError, match="encrypted frames are unsupported"):
+            LichenFrame.from_bytes(bytes.fromhex("054003000478"))
+
+        data = bytes.fromhex("35 60 03 0004 78" + "00" * 48)
+        with pytest.raises(FrameError, match="encrypted frames are unsupported"):
             LichenFrame.from_bytes(data)
 
 
@@ -208,18 +278,22 @@ class TestSpecVectors:
         input_hex = vector["input_hex"]
         expected = vector["expected"]
 
-        # Empty frame special case
-        if not input_hex:
-            with pytest.raises(FrameError, match="empty"):
-                LichenFrame.from_bytes(b"")
-            return
-
         data = bytes.fromhex(input_hex)
 
         # Error cases
         if expected.get("error"):
-            with pytest.raises(FrameError):
+            error_message = {
+                "empty_frame": "frame is empty",
+                "length_mismatch": "length field says 20 but 8 body bytes present",
+                "reserved_bit_set": "LLSec reserved bit (7) must be 0",
+                "reserved_mic_length": "reserved MIC-length value: 2",
+                "frame_too_short": "frame body too short: 2 bytes",
+                "encryption_unsupported": "encrypted frames are unsupported",
+                "frame_too_large": "frame is 256 bytes, exceeds 255",
+            }[expected["error_type"]]
+            with pytest.raises(FrameError) as exc_info:
                 LichenFrame.from_bytes(data)
+            assert str(exc_info.value) == error_message
             return
 
         # Valid frame - parse and verify all fields
@@ -233,11 +307,22 @@ class TestSpecVectors:
         assert frame.epoch == expected["epoch"], f"{name}: epoch"
         assert frame.seqnum == expected["seqnum"], f"{name}: seqnum"
         assert frame.dst_addr == bytes.fromhex(expected["dst_addr_hex"]), f"{name}: dst_addr"
-        assert frame.mic == bytes.fromhex(expected["mic_hex"]), f"{name}: mic"
+        if expected["signature_present"]:
+            assert frame.mic == bytes.fromhex(expected["mic_hex"]), f"{name}: mic"
+        else:
+            assert frame.mic == bytes.fromhex(expected["mic_hex"]), f"{name}: mic"
 
         # Payload - check by length if specified, else by content
         if "payload_len" in expected:
             assert len(frame.payload) == expected["payload_len"], f"{name}: payload_len"
+            if "payload_fill_len" in expected:
+                fill_len = expected["payload_fill_len"]
+                assert frame.payload[:fill_len] == (
+                    bytes.fromhex(expected["payload_fill_hex"]) * fill_len
+                )
+                assert frame.payload[fill_len:] == bytes.fromhex(
+                    expected.get("payload_suffix_hex", "")
+                )
         else:
             assert frame.payload == bytes.fromhex(expected["payload_hex"]), f"{name}: payload"
 
@@ -245,10 +330,10 @@ class TestSpecVectors:
     def test_roundtrip_valid_vectors(self, name: str, vector: dict) -> None:
         """Valid vectors should roundtrip: parse -> serialize -> same bytes."""
         expected = vector["expected"]
-        if expected.get("error") or not vector["input_hex"]:
+        data = bytes.fromhex(vector["input_hex"])
+        if expected.get("error") or not vector["input_hex"] or len(data) > 255:
             pytest.skip("Error case")
 
-        data = bytes.fromhex(vector["input_hex"])
         frame = LichenFrame.from_bytes(data)
         serialized = frame.to_bytes()
         assert serialized == data, f"{name}: roundtrip failed"

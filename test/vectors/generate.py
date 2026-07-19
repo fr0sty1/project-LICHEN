@@ -16,6 +16,8 @@ import json
 from ipaddress import IPv6Address
 from pathlib import Path
 
+from lichen.crypto.identity import Identity
+from lichen.crypto.schnorr48 import sign
 from lichen.ipv6.icmpv6 import EchoRequest
 from lichen.ipv6.packet import IPv6Header, NextHeader
 from lichen.ipv6.udp import UdpDatagram
@@ -379,21 +381,33 @@ def l2_payload_vectors() -> list[dict]:
 
 def frame_vectors() -> list[dict]:
     cases = [
-        ("broadcast_min", "Broadcast, no address, 32-bit MIC",
+        ("broadcast_min", "Broadcast, no address, unsigned",
          LichenFrame(epoch=1, seqnum=2, dst_addr=b"", payload=b"abc",
-                     mic=bytes([0x01, 0x02, 0x03, 0x04]), addr_mode=AddrMode.NONE,
+                     mic=b"", addr_mode=AddrMode.NONE,
                      mic_length=MicLength.BITS32)),
         ("short_addr", "16-bit short destination address",
          LichenFrame(epoch=0x10, seqnum=0x2030, dst_addr=bytes([0xAB, 0xCD]),
-                     payload=b"hi", mic=bytes(4), addr_mode=AddrMode.SHORT,
+                      payload=b"hi", mic=b"", addr_mode=AddrMode.SHORT,
                      mic_length=MicLength.BITS32)),
-        ("extended_addr_mic64", "64-bit address, 64-bit MIC",
+        ("extended_addr_selector1", "64-bit address, compatibility MIC selector 1",
          LichenFrame(epoch=0xFF, seqnum=0xFFFF, dst_addr=bytes(range(8)),
-                     payload=b"data", mic=bytes(range(8)),
+                      payload=b"data", mic=b"",
                      addr_mode=AddrMode.EXTENDED, mic_length=MicLength.BITS64)),
-        ("signed_encrypted", "Signature + encrypted flags set",
+        ("elided_addr", "Destination address derived from the inner IPv6 packet",
+         LichenFrame(epoch=2, seqnum=3, dst_addr=b"", payload=b"elided",
+                     mic=b"", addr_mode=AddrMode.ELIDED,
+                     mic_length=MicLength.BITS32)),
+        ("max_unsigned_broadcast", "Maximum 255-byte total frame",
+         LichenFrame(epoch=0, seqnum=0, dst_addr=b"", payload=bytes([0xAA]) * 250,
+                     mic=b"", addr_mode=AddrMode.NONE,
+                     mic_length=MicLength.BITS32)),
+        ("unsigned_encrypted", "Unsupported encrypted unsigned frame",
          LichenFrame(epoch=3, seqnum=4, dst_addr=b"", payload=b"x",
-                     mic=bytes(4), addr_mode=AddrMode.NONE,
+                     mic=b"", addr_mode=AddrMode.NONE,
+                     mic_length=MicLength.BITS32, encrypted=True)),
+        ("signed_encrypted", "Unsupported signature + encrypted combination",
+         LichenFrame(epoch=3, seqnum=4, dst_addr=b"", payload=b"x",
+                     mic=bytes(48), addr_mode=AddrMode.NONE,
                      mic_length=MicLength.BITS32, signature_present=True,
                      encrypted=True)),
     ]
@@ -414,9 +428,90 @@ def frame_vectors() -> list[dict]:
                     "signature_present": frame.signature_present,
                     "encrypted": frame.encrypted,
                 },
-                "encoded": frame.to_bytes().hex(),
+                "encoded": ({
+                    "unsigned_encrypted": bytes.fromhex("05 40 03 0004 78"),
+                    "signed_encrypted": bytes.fromhex("35 60 03 0004 78" + "00" * 48),
+                }.get(name) or frame.to_bytes()).hex(),
             }
         )
+        if frame.encrypted:
+            out[-1]["expect"] = {"error": "encryption_unsupported"}
+
+    out.append({
+        "name": "length_255_frame_too_large",
+        "description": "LENGTH 255 would require a forbidden 256-byte frame",
+        "fields": {
+            "epoch": 0,
+            "seqnum": 0,
+            "dst_addr": "",
+            "payload": "",
+            "mic": "",
+            "addr_mode": int(AddrMode.NONE),
+            "mic_length": int(MicLength.BITS32),
+            "signature_present": False,
+            "encrypted": False,
+        },
+        "encoded": (bytes([0xFF]) + bytes(255)).hex(),
+        "expect": {"error": "frame_too_large"},
+    })
+
+    seed = bytes(range(32))
+    identity = Identity.from_seed(seed)
+    expected_private = bytes.fromhex(
+        "3894eea49c580aef816935762be049559d6d1440dede12e6a125f1841fff8e6f"
+    )
+    expected_public = bytes.fromhex(
+        "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8"
+    )
+    epoch = 0x12
+    seqnum = 0x3456
+    dst_addr = bytes.fromhex("beef")
+    payload = b"\x14signed"
+    llsec = int(AddrMode.SHORT) | (1 << 5)
+    length = 4 + len(dst_addr) + len(payload) + 48
+    preimage = bytes([length, llsec, epoch]) + seqnum.to_bytes(2, "big") + dst_addr + payload
+    expected_signature = bytes.fromhex(
+        "bc6fe764bf7f37be5152ad40a8d2dcc2b06cf4da946e1690d3398874a5686dc"
+        "ca3ace783caf4d3950699082eea0f5b09"
+    )
+    assert identity.privkey == expected_private
+    assert identity.pubkey == expected_public
+    assert sign(identity.privkey, identity.pubkey, preimage) == expected_signature
+
+    signed_frame = LichenFrame(
+        epoch=epoch,
+        seqnum=seqnum,
+        dst_addr=dst_addr,
+        payload=payload,
+        mic=expected_signature,
+        addr_mode=AddrMode.SHORT,
+        mic_length=MicLength.BITS32,
+        signature_present=True,
+    )
+    out.append({
+        "name": "signed_plaintext_oracle",
+        "description": "Deterministic Schnorr-48 signed frame cross-language oracle",
+        "fields": {
+            "epoch": epoch,
+            "seqnum": seqnum,
+            "dst_addr": dst_addr.hex(),
+            "payload": payload.hex(),
+            "mic": expected_signature.hex(),
+            "addr_mode": int(AddrMode.SHORT),
+            "mic_length": int(MicLength.BITS32),
+            "signature_present": True,
+            "encrypted": False,
+        },
+        "encoded": signed_frame.to_bytes().hex(),
+        "crypto": {
+            "seed": seed.hex(),
+            "private_key": expected_private.hex(),
+            "public_key": expected_public.hex(),
+            "preimage": preimage.hex(),
+            "signature": expected_signature.hex(),
+            "provenance": "Fixed Python vector, independently reproduced by Rust and C tests",
+        },
+    })
     return out
 
 
@@ -1567,8 +1662,9 @@ def main() -> None:
     )
     _write(
         "link_frame.json",
-        "LICHEN link-layer frame vectors (spec section 4). 'fields' are the "
-        "frame inputs; 'encoded' is LichenFrame(**fields).to_bytes().",
+        "LICHEN link-layer frame vectors (spec section 4). Complete frames are "
+        "at most 255 bytes (LENGTH at most 254). 'fields' are the frame inputs; "
+        "'encoded' is LichenFrame(**fields).to_bytes().",
         frame_vectors(),
     )
     _write(

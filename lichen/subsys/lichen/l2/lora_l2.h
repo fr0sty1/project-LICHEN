@@ -55,25 +55,21 @@ extern "C" {
  *     Sequence number:                     2 bytes
  *     Subtotal:                            5 bytes
  *
- *   MIC (32-bit minimum):                  4 bytes
- *   Schnorr-48 signature:                 48 bytes (SCHNORR48_SIG_LEN)
+ *   Unsigned MIC:                           0 bytes
+ *   Schnorr-48 signature MIC:              48 bytes (SCHNORR48_SIG_LEN)
  *   ----------------------------------------
- *   Total fixed overhead:                 57 bytes
+ *   Total signed overhead:                53 bytes
  *
- *   We use 55 rather than 57 (project-LICHEN-tvfm.95):
+ *   We reserve 55 bytes rather than 53:
  *   The MTU computation is: 255 - FRAME_OVERHEAD = MTU.
- *   Using 55 yields MTU=200 (vs 198 with 57). The 2-byte "savings" means:
- *   - SCHC rule ID (1-2 bytes) is accounted for in the 57-byte real overhead
- *   - We're optimistically assuming rule IDs fit within header space
- *   - If compressed payload + rule ID exceeds 200 bytes, TX will fail at
- *     the size check in lichen_l2_send()
+ *   Using 55 yields MTU=200 and leaves two bytes of additional headroom.
  *
  *   Result: 255 - 55 = 200 bytes nominal MTU for IPv6 payload
  *
  * If frame format or signature size changes, update this constant.
  */
 #define LICHEN_LORA_MAX_PHY_PAYLOAD 255
-#define LICHEN_LORA_FRAME_OVERHEAD   55  /* 57 (header+MIC+sig) rounded to 55 for SCHC rule ID headroom */
+#define LICHEN_LORA_FRAME_OVERHEAD   55  /* 53-byte signed overhead plus 2 bytes headroom */
 #define LICHEN_LORA_MTU (LICHEN_LORA_MAX_PHY_PAYLOAD - LICHEN_LORA_FRAME_OVERHEAD)
 
 /**

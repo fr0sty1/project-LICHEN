@@ -139,8 +139,8 @@ int lichen_l2_load_key(const uint8_t seed[32], uint8_t pubkey[32]);
 /**
  * @brief Load the shared AES-CCM link key (link_ctx.has_link_key).
  *
- * Enables payload encryption + MIC-64. Without it, TX falls back to the
- * CRC32 MIC, which requires CONFIG_LICHEN_LINK_INSECURE_CRC32_MIC.
+ * Retains a provisioned legacy link key. Current framing does not support
+ * link encryption; TX remains unsigned or uses Schnorr-48 signing.
  *
  * @return 0 on success, -EINVAL/-ENODEV/-EAGAIN as lichen_l2_load_key().
  */
