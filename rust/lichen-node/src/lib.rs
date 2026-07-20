@@ -51,6 +51,8 @@ pub mod node;
 pub mod port_dispatch;
 pub mod routing;
 #[cfg(feature = "std")]
+pub mod rpl_stack;
+#[cfg(feature = "std")]
 pub mod scheduler;
 #[cfg(feature = "std")]
 pub mod secure;
@@ -77,6 +79,11 @@ pub use port_dispatch::{
 #[cfg(feature = "std")]
 pub use routing::{DtnBuffer, DtnMessage, Router, DTN_BUFFER_MAX_BYTES};
 pub use routing::{Neighbor, NeighborTable};
+#[cfg(feature = "std")]
+pub use rpl_stack::{
+    DaoAdmissionError, DaoSendError, RplControlError, RplReceiveError, RplReceiveOutcome, RplStack,
+    RplStackOpenError, RplStackProvisionError,
+};
 // SECURITY: SecureStack is the primary export for CoAP traffic per spec section 8.7.
 // Use Stack (PlaintextStack) only for ICMPv6, diagnostics, or testing.
 #[cfg(feature = "std")]

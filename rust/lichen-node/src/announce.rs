@@ -82,6 +82,8 @@ pub struct AnnounceResult {
     pub peer: Option<PeerIdentity>,
     /// Queue depth from announce app_data (spec 11.4), or None.
     pub congestion: Option<u8>,
+    /// Pin evicted by the bounded LRU while accepting this announce.
+    pub evicted_iid: Option<[u8; 8]>,
 }
 
 impl AnnounceResult {
@@ -92,16 +94,23 @@ impl AnnounceResult {
             reject_reason: Some(reason),
             peer: None,
             congestion: None,
+            evicted_iid: None,
         }
     }
 
-    fn accepted(should_relay: bool, peer: PeerIdentity, congestion: Option<u8>) -> Self {
+    fn accepted(
+        should_relay: bool,
+        peer: PeerIdentity,
+        congestion: Option<u8>,
+        evicted_iid: Option<[u8; 8]>,
+    ) -> Self {
         Self {
             accepted: true,
             should_relay,
             reject_reason: None,
             peer: Some(peer),
             congestion,
+            evicted_iid,
         }
     }
 }
@@ -132,6 +141,7 @@ struct PinnedKeyEntry {
 /// - pinned_keys: IID -> pubkey (TOFU trust anchors)
 /// - address_builder: How to convert IID to full IPv6 (prefix is context)
 #[cfg(feature = "std")]
+#[derive(Clone)]
 pub struct AnnounceProcessor {
     /// Unified routing table (spec section 11).
     gradient_table: GradientTable,
@@ -237,7 +247,7 @@ impl AnnounceProcessor {
                 last_access: access,
             },
         );
-        self.evict_pinned_if_needed();
+        let evicted_iid = self.evict_pinned_if_needed();
 
         // Update or insert seen entry with LRU eviction
         self.seen.insert(
@@ -277,7 +287,7 @@ impl AnnounceProcessor {
         let should_relay = announce.should_relay();
 
         let peer = PeerIdentity::from_pubkey(pubkey);
-        AnnounceResult::accepted(should_relay, peer, congestion)
+        AnnounceResult::accepted(should_relay, peer, congestion, evicted_iid)
     }
 
     /// Forget the seq_num for an originator (e.g., on key rotation).
@@ -348,7 +358,8 @@ impl AnnounceProcessor {
     }
 
     /// Evict oldest pinned key entry if over capacity.
-    fn evict_pinned_if_needed(&mut self) {
+    fn evict_pinned_if_needed(&mut self) -> Option<[u8; 8]> {
+        let mut evicted = None;
         while self.pinned_keys.len() > self.max_entries {
             // Find oldest entry (lowest last_access)
             let oldest_iid = self
@@ -358,8 +369,10 @@ impl AnnounceProcessor {
                 .map(|(k, _)| *k);
             if let Some(iid) = oldest_iid {
                 self.pinned_keys.remove(&iid);
+                evicted = Some(iid);
             }
         }
+        evicted
     }
 
     /// Evict oldest seen entry if over capacity.

@@ -49,7 +49,7 @@ fn identity(byte: u8) -> Identity {
 
 fn origin(identity: &Identity) -> [u8; 16] {
     let mut address = [0u8; 16];
-    address[..2].copy_from_slice(&[0xfe, 0x80]);
+    address[..8].copy_from_slice(&dodag_id()[..8]);
     address[8..].copy_from_slice(&identity.iid);
     address
 }
@@ -85,6 +85,7 @@ fn apply(
     assert_eq!(
         root.process_signature_verified(
             &verified,
+            identity.iid,
             state,
             storage,
             DaoProcessTiming {

@@ -189,6 +189,10 @@ impl<R: Radio> Stack<R> {
         Addr::link_local_from_eui64(&self.node.node_id.0)
     }
 
+    pub fn local_public_key(&self) -> lichen_link::keys::PublicKey {
+        self.link.local_public_key()
+    }
+
     /// Add a peer for signature verification.
     pub fn add_peer(&mut self, peer: lichen_link::identity::PeerIdentity) {
         self.link.add_peer(peer);
@@ -367,16 +371,32 @@ impl<R: Radio> Stack<R> {
     ///
     /// Path: IPv6 → SCHC compress → L2 sign → Radio TX
     pub async fn send_ipv6_raw(&mut self, ipv6: &[u8]) -> Result<(), TxError> {
+        self.send_ipv6_to(ipv6, &[]).await
+    }
+
+    pub(crate) async fn send_ipv6_to(
+        &mut self,
+        ipv6: &[u8],
+        dst_addr: &[u8],
+    ) -> Result<(), TxError> {
         let mut schc = [0u8; 200];
         let schc_len = codec::compress(ipv6, &mut schc).map_err(|_| TxError::SchcCompress)?;
         let mut l2_payload = [0u8; 201];
         let l2_data = wrap_schc_payload(&schc[..schc_len], &mut l2_payload)?;
 
+        self.send_l2_payload_to(l2_data, dst_addr).await
+    }
+
+    pub(crate) async fn send_l2_payload_to(
+        &mut self,
+        l2_payload: &[u8],
+        dst_addr: &[u8],
+    ) -> Result<(), TxError> {
         let seqnum = self.next_seqnum();
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
             .link
-            .build_frame(self.epoch, seqnum, &[], l2_data, &mut wire)
+            .build_frame(self.epoch, seqnum, dst_addr, l2_payload, &mut wire)
             .map_err(|_| TxError::FrameEncode)?;
 
         self.radio
