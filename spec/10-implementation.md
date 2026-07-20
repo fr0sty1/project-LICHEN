@@ -120,7 +120,8 @@ Integration: Bridge APRS/packet ↔ LICHEN mesh via border router.
 
 *Tracking: `bd show python-dqc`*
 
-Border routers benefit from good antennas and elevated placement -- more direct reach = fewer hops to internet.
+Border routers benefit from good antennas and elevated placement -- more direct
+reach means fewer hops to the root and its application services.
 
 | Platform | Config | Cost | Notes |
 |----------|--------|------|-------|
@@ -278,7 +279,7 @@ RAM (64 KB available):
 |----------|---------|
 | draft-lichen-link | Link layer, LLSec, Ed25519 |
 | draft-lichen-schc | SCHC profile for LICHEN |
-| draft-lichen-addr | IPv6 addressing, ULA, isolated mesh |
+| draft-lichen-addr | Key-derived Yggdrasil addressing, link-local control, isolated mesh |
 | draft-lichen-rpl | RPL configuration, MRHOF |
 | draft-lichen-security | TOFU, DANE, OSCORE profile |
 | draft-lichen-lci | Local Client Interface |

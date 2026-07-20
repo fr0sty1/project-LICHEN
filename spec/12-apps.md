@@ -11,6 +11,14 @@ This section defines standard application-layer features using IETF protocols.
 All features use CoAP (RFC 7252) with CBOR payloads and leverage existing
 standards wherever possible.
 
+Every operation that asserts an application origin or mutates remote state MUST
+have end-to-end origin authentication using OSCORE or an application signature
+that binds the native source and complete operation. A hop link signature alone
+is insufficient because a compromised relay can replace it. Unless a subsection
+defines a byte-exact relayed-multicast signature, group delivery uses
+origin-authenticated unicast fanout; only SOS defines relayed multicast in this
+baseline.
+
 ### 18.1. Messaging
 
 Text messaging between nodes, supporting unicast, multicast, and broadcast.
@@ -25,8 +33,8 @@ Text messaging between nodes, supporting unicast, multicast, and broadcast.
 ```cbor
 {
   "id": 12345,                    ; unique message ID (uint)
-  "from": "fd12:...:1111",        ; sender IPv6 (string)
-  "to": "fd12:...:2222",          ; recipient or "ff02::1" for broadcast (string)
+  "from": "200:...:1111",         ; sender native IPv6 (string)
+  "to": "200:...:2222",           ; recipient or "ff03::1" for mesh broadcast (string)
   "ts": 1716742800,               ; Unix timestamp (uint)
   "body": "Hello from the mesh",  ; message text (tstr)
   "ack": true,                    ; request delivery receipt (bool, optional)
@@ -65,8 +73,8 @@ Response: 2.01 Created
 Location-Path: /msg/sent/12345
 ```
 
-For broadcast, POST to `coap://[ff02::1]/msg/inbox` (link-local all-nodes)
-or use the mesh multicast address.
+Baseline mesh broadcast sends the same OSCORE-protected operation by unicast to
+each selected recipient. Relayed multicast requires a future messaging profile.
 
 **Receive Messages (Observable):**
 
@@ -234,10 +242,11 @@ Real-time location sharing for mutual awareness ("blue force tracking").
 
 #### 18.2.1. Position Beacon
 
-Nodes with GPS SHOULD periodically broadcast position:
+Nodes with GPS SHOULD periodically share position by authenticated unicast
+fanout:
 
 ```
-PUT coap://[ff02::1]/pos
+PUT coap://[recipient]/pos
 Content-Format: application/senml+cbor
 
 [
@@ -258,7 +267,7 @@ Content-Format: application/cbor
 {
   "positions": [
     {
-      "node": "fd12:...:1111",
+      "node": "200:...:1111",
       "lat": 37.774929,
       "lon": -122.419416,
       "alt": 10.5,
@@ -346,7 +355,7 @@ Content-Format: application/cbor
 In `group` mode, position beacons are encrypted with the group OSCORE key:
 
 ```
-PUT coap://[ff35:...group-mcast]/pos
+PUT coap://[ff13::29c4:834a]/pos
 Content-Format: application/senml+cbor
 OSCORE: <group context, key_id=key-alpha-001>
 
@@ -368,7 +377,7 @@ In `private` mode:
 PUT coap://[node]/config/privacy/allowed
 Content-Format: application/cbor
 
-{"peers": ["fd12:...:1111", "fd12:...:2222"]}
+{"peers": ["200:...:1111", "200:...:2222"]}
 ```
 
 Only whitelisted peers' OSCORE-protected queries are answered.
@@ -415,7 +424,7 @@ Shareable points of interest with metadata.
   "color": "#FF0000",           ; color hint (tstr, optional)
   "notes": "Meet here at 1400", ; description (tstr, optional)
   "created": 1716742800,        ; creation time (uint)
-  "creator": "fd12:...:1111",   ; creator node (tstr)
+  "creator": "200:...:1111",    ; creator node (tstr)
   "expires": 1716829200         ; expiration time (uint, optional)
 }
 ```
@@ -476,20 +485,22 @@ Content-Format: application/cbor
   "lat": 37.774929,
   "lon": -122.419416,
   "notes": "Meet here at 1400",
-  "creator": "fd12:...:1111"
+  "creator": "200:...:1111"
 }
 
 Response: 2.01 Created
 ```
 
-**Broadcast Waypoint:**
+**Share Waypoint With a Group:**
 
 ```
-POST coap://[ff02::1]/waypoints
+POST coap://[group-member]/waypoints
 Content-Format: application/cbor
 
 {...waypoint...}
 ```
+
+The sender repeats the authenticated unicast request for each selected member.
 
 **Delete Waypoint:**
 
@@ -510,7 +521,7 @@ Ordered list of waypoints:
   "waypoints": ["wpt-001", "wpt-002", "wpt-003"],
   "distance_m": 2500,           ; total distance (uint, optional)
   "created": 1716742800,
-  "creator": "fd12:...:1111"
+  "creator": "200:...:1111"
 }
 ```
 
@@ -526,18 +537,43 @@ Priority alerting for emergencies.
 
 #### 18.4.1. SOS Authentication and Rate Limiting
 
-SOS messages are high-priority and trigger network-wide flooding. Without
+SOS messages are high-priority and trigger DODAG-realm flooding. Without
 controls, fake SOS floods cause denial of service. All SOS messages MUST
 be authenticated and rate-limited.
 
+A node joined to multiple DODAG realms sends one copy per realm. Cross-realm
+delivery is application-layer unicast fanout, not multicast forwarding.
+
 **Authentication (REQUIRED):**
 
-SOS messages MUST carry a valid link-layer signature from the originating
-node. The Ed25519/Schnorr signature is verified at each receiving node
-before rebroadcast. Unsigned or invalid SOS messages are silently dropped.
+Every hop MUST carry a valid immediate-sender link signature. In addition, the
+SOS object MUST carry the origin public key and an origin Schnorr48 signature
+over the following exact bytes:
 
 ```
-SOS frame = [LLSec header] [SOS payload] [Schnorr signature (48B)]
+UTF8("LICHEN-SOS-v1") || IPv6Source:16 || IPv6Destination:16 ||
+RPLInstanceID:u8 || DODAGID:16 || OriginalHopLimit:u8 ||
+BroadcastSequence:u32be || CoAPCode:u8 || UriPathLength:u16be ||
+UTF8("sos") || ContentFormat:u16be || CanonicalSOS
+```
+
+`CoAPCode` MUST be POST, `UriPathLength` is 3, `ContentFormat` is 60, and no
+other CoAP option changes the operation semantics. `CanonicalSOS` is the
+deterministic CBOR encoding of every SOS field except `origin_signature`; the
+domain string has no terminating NUL.
+Receivers MUST parse the `node` field as an IPv6 address and verify that it,
+`IPv6Source`, and `AddrForKey(origin_public_key)` are identical. They MUST also
+verify that the signed realm identifier equals the multicast Hop-by-Hop option
+before relay. The origin object remains unchanged while link signatures are
+replaced at each hop. Unsigned or invalid SOS objects are silently dropped.
+
+The SOS `seq` is a persistent 32-bit origin counter and MUST equal the LICHEN
+Broadcast Sequence. Receivers maintain a serial replay window for each verified
+SOS origin for as long as its trust binding. An SOS outside that window MUST be
+dropped even if the generic duplicate cache has expired.
+
+```
+SOS frame = [signed hop frame [SOS object + origin signature (48B)]]
 ```
 
 **Rate Limiting (REQUIRED):**
@@ -550,7 +586,7 @@ Each node enforces per-source SOS rate limits:
 | Max SOS per hour | 3 | Limits intentional abuse |
 | Burst allowance | 2 | Allows rapid updates to same SOS |
 
-Nodes track (source IID, SOS count, last SOS uptime). Rate limiting uses
+Nodes track (verified native source address, SOS count, last SOS uptime). Rate limiting uses
 monotonic uptime rather than wall-clock time to ensure enforcement works even
 when wall-clock is unavailable. An SOS from a node that exceeds rate limits
 is dropped and logged but not relayed.
@@ -582,12 +618,14 @@ Nodes SHOULD support operator commands to:
 ```cbor
 {
   "type": "sos",               ; "sos", "medical", "security", "cancel" (tstr)
-  "node": "fd12:...:1111",     ; originating node (tstr)
+  "node": "200:...:1111",      ; originating node (tstr)
   "ts": 1716742800,            ; timestamp (uint)
   "lat": 37.774929,            ; position if available (float, optional)
   "lon": -122.419416,          ; (float, optional)
   "msg": "Injured, need evac", ; details (tstr, optional)
-  "seq": 1                     ; sequence for updates (uint)
+  "seq": 1,                    ; sequence for updates (uint)
+  "origin_public_key": h'...', ; raw Ed25519 public key (bstr)
+  "origin_signature": h'...'   ; Schnorr48 signature (bstr)
 }
 ```
 
@@ -606,7 +644,7 @@ Alert types:
 **Dedicated SOS endpoint with multicast:**
 
 ```
-POST coap://[ff02::1]/sos
+POST coap://[fe80::7002:e7b4:4a75:c734]/sos
 Content-Format: application/cbor
 
 {
@@ -616,6 +654,11 @@ Content-Format: application/cbor
 
 Response: 2.01 Created
 ```
+
+This is a local application endpoint, not a proxied multicast request. The node
+fills `node`, `ts`, `seq`, `origin_public_key`, and `origin_signature`, then
+originates the authenticated `ff03::1` SOS in each selected DODAG realm. An LCI
+client does not hold the node private key.
 
 Nodes receiving SOS:
 1. Display alert prominently
@@ -644,7 +687,7 @@ Content-Format: application/cbor
 {
   "active": [
     {
-      "node": "fd12:...:1111",
+      "node": "200:...:1111",
       "type": "medical",
       "ts": 1716742800,
       "lat": 37.77,
@@ -755,8 +798,8 @@ Content-Format: application/cbor
 
 {
   "nodes": [
-    {"addr": "fd12:...:1111", "status": "available", "battery": 87, "age_s": 30},
-    {"addr": "fd12:...:2222", "status": "away", "battery": 45, "age_s": 120}
+    {"addr": "200:...:1111", "status": "available", "battery": 87, "age_s": 30},
+    {"addr": "200:...:2222", "status": "away", "battery": 45, "age_s": 120}
   ]
 }
 ```
@@ -790,7 +833,7 @@ POST coap://[leader]/checkin
 Content-Format: application/cbor
 
 {
-  "node": "fd12:...:1111",
+  "node": "200:...:1111",
   "ts": 1716742800,
   "lat": 37.77,
   "lon": -122.42,
@@ -803,15 +846,15 @@ Response: 2.04 Changed
 
 #### 18.6.2. Roll Call (Group Query)
 
-Leader initiates roll call via multicast:
+Leader initiates roll call by authenticated unicast fanout:
 
 ```
-POST coap://[ff02::mesh]/rollcall
+POST coap://[group-member]/rollcall
 Content-Format: application/cbor
 
 {
   "id": "roll-001",
-  "from": "fd12:...:leader",
+  "from": "200:...:1111",
   "ts": 1716742800,
   "timeout_s": 60
 }
@@ -832,11 +875,11 @@ Content-Format: application/cbor
   "started": 1716742800,
   "timeout_s": 60,
   "responded": [
-    {"node": "fd12:...:1111", "ts": 1716742810, "status": "ok"},
-    {"node": "fd12:...:2222", "ts": 1716742815, "status": "ok"}
+    {"node": "200:...:1111", "ts": 1716742810, "status": "ok"},
+    {"node": "200:...:2222", "ts": 1716742815, "status": "ok"}
   ],
   "missing": [
-    {"node": "fd12:...:3333", "last_seen": 1716740000}
+    {"node": "200:...:3333", "last_seen": 1716740000}
   ]
 }
 ```
@@ -851,7 +894,7 @@ Content-Format: application/cbor
 
 {
   "enabled": true,
-  "target": "fd12:...:leader",
+  "target": "200:...:1111",
   "interval_s": 900,           ; every 15 minutes
   "include_location": true
 }
@@ -872,7 +915,7 @@ Link quality diagnostics.
 Standard ICMPv6 Echo Request/Reply for reachability:
 
 ```
-ping6 fd12:3456:789a:1::1111
+ping6 200:848a:604f:bb7e:4384:65db:8db6:6895
 ```
 
 Returns: RTT, reachable/unreachable.
@@ -945,7 +988,7 @@ Logical separation of communication.
 
 **Relevant Standards:**
 - CoAP Group Communication (RFC 7390)
-- OSCORE Group (RFC 9203) for group encryption
+- Group OSCORE (RFC 9594) for group encryption
 
 #### 18.8.1. Group Concept
 
@@ -958,13 +1001,13 @@ Groups provide:
 {
   "id": "team-alpha",
   "name": "Team Alpha",
-  "mcast": "ff35:40:fd12:3456:789a:1::1",  ; mesh-local multicast
-  "owner": "fd12:...:1111",                ; group creator
-  "admins": ["fd12:...:2222"],             ; delegated admins
+  "mcast": "ff13::29c4:834a",       ; transient realm-local multicast
+  "owner": "200:...:1111",         ; group creator
+  "admins": ["200:...:2222"],      ; delegated admins
   "members": [
-    "fd12:...:1111",
-    "fd12:...:2222",
-    "fd12:...:3333"
+    "200:...:1111",
+    "200:...:2222",
+    "200:...:3333"
   ],
   "key_id": "key-alpha-001",   ; OSCORE Group key reference (optional)
   "created": 1716742800,
@@ -1001,7 +1044,7 @@ Content-Format: application/cbor
 
 {
   "id": "team-alpha",
-  "mcast": "ff35:0040:...",
+  "mcast": "ff13::29c4:834a",
   "key_id": "key-alpha-001",   ; if encrypted
   "master_secret": "<base64>"  ; only in creation response
 }
@@ -1021,8 +1064,8 @@ Content-Format: application/cbor
 {
   "group_id": "team-alpha",
   "group_name": "Team Alpha",
-  "mcast": "ff35:0040:...",
-  "inviter": "fd12:...:1111",
+  "mcast": "ff13::29c4:834a",
+  "inviter": "200:...:1111",
   "role": "member",            ; "member" or "admin"
   "expires": 1716829200,       ; invitation expiry
   "signature": "<inviter's signature over above fields>"
@@ -1045,7 +1088,7 @@ OSCORE: <secured with pairwise context>
 
 {
   "request": "join_key",
-  "node": "fd12:...:3333"
+  "node": "200:...:3333"
 }
 
 Response: 2.05 Content
@@ -1084,7 +1127,7 @@ Content-Format: application/cbor
 
 {
   "group_id": "team-alpha",
-  "removed_by": "fd12:...:1111",
+  "removed_by": "200:...:1111",
   "reason": "no longer on team",
   "signature": "<remover's signature>"
 }
@@ -1108,9 +1151,9 @@ OSCORE: <group context>
 
 Response: 2.05 Content
 {
-  "owner": "fd12:...:1111",
-  "admins": ["fd12:...:2222"],
-  "members": ["fd12:...:3333", "fd12:...:4444"]
+  "owner": "200:...:1111",
+  "admins": ["200:...:2222"],
+  "members": ["200:...:3333", "200:...:4444"]
 }
 ```
 
@@ -1134,7 +1177,7 @@ Content-Format: application/cbor
 
 {
   "action": "promote",
-  "node": "fd12:...:2222"
+  "node": "200:...:2222"
 }
 
 Response: 2.04 Changed
@@ -1144,16 +1187,25 @@ Only owner can promote/demote admins.
 
 #### 18.8.3. Group Multicast Addressing
 
-Per RFC 7390 and RFC 3306 (unicast-prefix-based multicast):
+Groups use transient realm-local multicast (RFC 7346 scope 3):
 
 ```
-ff35:0040:<64-bit ULA prefix>::<16-bit group ID>
+ff13::GGGG:GGGG
 ```
 
-Example: Group 1 on mesh `fd12:3456:789a:1::/64`:
+`GGGG:GGGG` is the first 32 bits of SHA-256 over the exact UTF-8 bytes of the
+group `id` returned at creation. A local collision is resolved by hashing the identifier followed
+by a zero octet and an incrementing 32-bit counter. Group membership and Group
+OSCORE, not the multicast address, provide authorization.
+
+Example:
 ```
-ff35:0040:fd12:3456:789a:0001::0001
+ff13::29c4:834a
 ```
+
+The multicast address is reserved for a future Group OSCORE relay profile.
+Baseline group delivery uses authenticated unicast fanout. Gateways MUST NOT
+forward realm-local groups into Yggdrasil.
 
 #### 18.8.4. Group Resources
 
@@ -1191,7 +1243,7 @@ Content-Format: application/senml+cbor
 
 #### 18.8.5. Group Key Management
 
-For encrypted groups (OSCORE Group per RFC 9203):
+For encrypted groups (Group OSCORE per RFC 9594):
 
 ```
 GET coap://[node]/groups/team-alpha/key

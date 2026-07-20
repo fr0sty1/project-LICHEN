@@ -29,19 +29,24 @@ LICHEN uses a three-tier routing architecture optimized for different traffic pa
 
 ```
 def route_packet(dst):
-    if is_off_mesh(dst):
-        # External destination (GUA not in mesh, or unknown)
+    if is_link_local(dst):
+        return send_to_direct_neighbor(dst)
+
+    if dst == local_native_address:
+        return deliver_locally()
+
+    if selected_root and dst == selected_root.native_address:
         return forward_to_rpl_parent()
 
     gradient = gradient_table.lookup(dst)
     if gradient and not gradient.expired:
-        # Known peer - follow gradient
         return forward_to(gradient.next_hop)
 
-    else:
-        # Unknown peer - reactive discovery
+    if recent_local_evidence(dst):
         loadng_discover(dst)
         return queue_pending(dst, packet)
+
+    return destination_unreachable()
 ```
 
 **Address classification:**
@@ -49,10 +54,28 @@ def route_packet(dst):
 | Address Type | Classification | Routing |
 |--------------|----------------|---------|
 | Link-local (fe80::/10) | Direct neighbor | Send to neighbor |
-| ULA (fd00::/8) in mesh prefix | Mesh peer | Gradient or LOADng |
-| GUA in mesh prefix | Mesh peer | Gradient or LOADng |
-| Other GUA | Off-mesh | RPL to border router |
-| Unknown | Off-mesh | RPL to border router |
+| Local native `/128` | This node | Deliver locally |
+| Selected root native `/128` | RPL root | Preferred RPL parent |
+| Native `/128` with live local route | Mesh peer | Gradient or LOADng |
+| Other native `/128` | Non-local | Destination Unreachable in the baseline |
+| Unknown or unsupported | Unreachable | ICMPv6 Destination Unreachable |
+
+Routers MUST NOT flood LOADng merely because a destination is in `0200::/8`.
+Recent authenticated local evidence is required. A separate Yggdrasil
+transport profile may add external forwarding, but MUST preserve each node's
+identity and MUST forward ingress onto LoRa only for a live local `/128` route.
+
+`recent_local_evidence(dst)` is true only for:
+
+- an authenticated announce or gradient for `dst` that expired no more than
+  `LOCAL_EVIDENCE_LIFETIME` ago;
+- a still-valid local DAO/host-route record; or
+- an operator-provisioned local peer binding.
+
+`LOCAL_EVIDENCE_LIFETIME` is 1200 seconds (twice `GRADIENT_TIMEOUT`). Nodes
+MUST retain the evidence timestamp separately from the live route and MUST NOT
+treat prefix membership, unauthenticated traffic, or a failed external lookup
+as local evidence.
 
 ### 7.3. Conformance Requirements
 
@@ -62,13 +85,13 @@ Keywords per RFC 2119. Device classes:
 |-------|---------|-----|-------------|
 | **Constrained** | STM32WL | ≤64 KB | Battery-powered sensors/actuators |
 | **Router** | ESP32, RPi | ≥256 KB | Powered relay nodes |
-| **Border Router** | RPi, server | ≥1 MB | Internet gateway |
+| **Border Router** | RPi, server | ≥1 MB | Identity-preserving backhaul |
 
 **Core Protocol (All Devices):**
 
 | Feature | Constrained | Router | BR |
 |---------|-------------|--------|-----|
-| RPL join (DIO/DIS/DAO) | MUST | MUST | MUST |
+| RPL leaf join (DIO/DIS/DAO) | MUST | MUST | MUST |
 | Announce send | MUST | MUST | MUST |
 | Announce receive + gradient install | MUST | MUST | MUST |
 | Announce relay | SHOULD | MUST | MUST |
@@ -100,8 +123,8 @@ Keywords per RFC 2119. Device classes:
 ### 8.1. Purpose
 
 RPL (RFC 6550) handles traffic to and from border routers:
-- **Upward:** Mesh nodes → Border router → Internet
-- **Downward:** Internet → Border router → Mesh nodes (source routed)
+- **Upward:** Mesh nodes → border router → identity-preserving backhaul
+- **Downward:** Backhaul → border router → mesh nodes (source routed)
 
 RPL is NOT used for peer-to-peer mesh traffic (see Sections 9-10).
 
@@ -164,9 +187,9 @@ announce because SCHC global CoAP also uses rule ID `0x01`.
 
 ```
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| Type=ANN  | Flags     | Hop Count   | Seq Num               |
+| Type=ANN  | Flags     | Hop Count   | Origin Epoch | Seq Num |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                    Originator IID (8 bytes)                   |
+|                    Originator Key Token (8 bytes)             |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                    Public Key (32 bytes)                      |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -176,17 +199,42 @@ announce because SCHC global CoAP also uses rule ID `0x01`.
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-Total: ~92 bytes minimum.
+Total: 94 bytes minimum.
 
 **Fields:**
 - **Type:** Announce message identifier
 - **Flags:** Reserved
 - **Hop Count:** Incremented at each relay
+- **Origin Epoch:** Persistent 8-bit origin epoch; advances on reboot or wrap
 - **Seq Num:** Monotonic, detects duplicates and freshness
-- **Originator IID:** 8-byte Interface Identifier of announcer
+- **Originator Key Token:** Key-derived IID from Network section 6.2
 - **Public Key:** Ed25519 public key (32 bytes)
-- **Signature:** Schnorr signature over (IID, pubkey, seq, app_data)
+- **Signature:** Schnorr signature over `"LICHEN-ANN-v1"`, Type, Flags, key
+  token, public key, origin epoch, sequence, and app data. Hop Count is excluded
+  because relays increment it.
 - **App Data:** Optional application data (node name, capabilities, etc.)
+
+The exact signature input is:
+
+```
+UTF8("LICHEN-ANN-v1") || Type:u8 || Flags:u8 ||
+OriginatorKeyToken:8 || PublicKey:32 || OriginEpoch:u8 ||
+SeqNum:u16be || AppDataLength:u16be || AppData
+```
+
+The domain string has no terminating NUL. Integer fields use network byte
+order. App Data Length is the exact octet length of App Data.
+
+Every Announce hop frame MUST be signed and therefore binds Hop Count and the
+immediate sender. For an origin transmission (`Hop Count=0`), a receiver MAY
+bootstrap link verification from the public key carried in the inner Announce,
+but only when the outer frame uses the extended `SENDER` form and its IID, the
+inner key token, and the IID derived from the inner public key are identical.
+Once an authenticated short-address binding exists, later origin transmissions
+MAY use the short `SENDER` form. For a relayed Announce (`Hop Count>0`), the
+outer sender key MUST already be pinned. Relays preserve the inner origin
+signature, increment Hop Count, replace the outer sender and replay counter,
+and sign the new hop frame.
 
 ### 9.3. Announce Processing
 
@@ -199,15 +247,37 @@ def process_announce(announce, from_neighbor):
         drop("invalid signature")
         return
 
+    if key_token(announce.pubkey) != announce.originator:
+        drop("key token mismatch")
+        return
+
+    native_address = AddrForKey(announce.pubkey)
+
+    if trust_store.conflicts(native_address, announce.originator, announce.pubkey):
+        mark_ambiguous(native_address, announce.originator)
+        drop("identity collision")
+        return
+
+    trust_store.pin_if_new(
+        native_address, announce.originator, announce.pubkey, trust="tofu"
+    )
+
     # Check for duplicate/old
-    existing = gradient_table.get(announce.originator)
-    if existing and existing.seq_num >= announce.seq_num:
+    high_water = announce_replay.get(native_address, announce.pubkey)
+    if high_water and not serial_newer(
+        (announce.origin_epoch, announce.seq_num), high_water
+    ):
         drop("stale announce")
         return
 
+    announce_replay.update(
+        native_address, announce.pubkey,
+        announce.origin_epoch, announce.seq_num
+    )
+
     # Install/update gradient
     gradient_table.update(
-        destination=announce.originator,
+        destination=native_address,
         next_hop=from_neighbor,
         hop_count=announce.hop_count,
         seq_num=announce.seq_num,
@@ -221,6 +291,13 @@ def process_announce(announce, from_neighbor):
         broadcast(announce)
 ```
 
+Announce replay state is independent of gradient lifetime and MUST NOT expire
+when a route expires. Origins use the epoch and sequence persistence and
+24-bit serial arithmetic defined for link replay protection in Physical and
+Link Layers section 4.4. The high-water mark SHOULD persist for as long as the
+TOFU binding; resource-constrained nodes MAY discard it only when they discard
+the corresponding trust entry.
+
 ### 9.4. Announce Parameters
 
 | Parameter | Value | Description |
@@ -232,19 +309,24 @@ def process_announce(announce, from_neighbor):
 
 ### 9.5. Bandwidth Budget
 
-For a 20-node mesh:
-- 20 nodes × 92 bytes × 12 announces/hr = 22 KB/hr
-- At SF10/125kHz: ~15 seconds airtime/hr network-wide
-- ~0.04% of 1% duty cycle
+For a 20-node DODAG:
 
-Acceptable overhead for instant peer-to-peer routing.
+- Steady-state origin-signed announce in a short-SenderID hop frame: 150 bytes
+- 20 nodes × 150 bytes × 12 announces/hr = 36 KB/hr
+- At SF10/125kHz, CR 4/5, 8-symbol preamble: about 345 seconds of channel
+  occupancy per hour (9.6%)
+- Each node transmits about 17.2 seconds/hour (0.48%) before retries and other
+  traffic
+
+Deployments MUST include announces in regional duty-cycle and channel-capacity
+budgets and increase the interval when the combined budget would be exceeded.
 
 ### 9.6. Security
 
 Announces are self-authenticating:
 1. Signature proves sender holds private key for pubkey
-2. TOFU binding associates pubkey with IID
-3. Cannot forge announce for another node's address
+2. The receiver verifies that both key token and `AddrForKey` match the key
+3. An address collision does not establish trust in a different public key
 
 First announce from a new node establishes TOFU binding.
 
@@ -458,16 +540,19 @@ Routers only. Constrained nodes use standard unicast forwarding--timing coordina
 
 ### 10.1. Purpose
 
-LOADng provides reactive route discovery when no gradient exists:
-- New nodes not yet heard announcing
-- Nodes that stopped announcing (sleeping, failed)
-- First contact before any announce received
+LOADng provides reactive route discovery when no gradient exists but recent
+authenticated evidence indicates that the destination is local, for example a
+recently expired announce or route from a sleeping node. Prefix membership
+alone is not evidence because every native node address is in `0200::/8`.
 
 ### 10.2. When LOADng is Used
 
 ```
-if gradient_table.lookup(dst) returns None or expired:
+if gradient_table.lookup(dst) returns None or expired
+   and recent_local_evidence(dst):
     initiate LOADng discovery
+else:
+    return Destination Unreachable
 ```
 
 ### 10.3. Route Request (RREQ)
@@ -520,6 +605,9 @@ gradient_table.update(
 )
 ```
 
+RREP processing MUST reject a destination marked ambiguous by the identity
+table. Route discovery cannot resolve an address or key-token collision.
+
 Once discovered, the destination is in gradient table. Future traffic uses gradient, not LOADng.
 
 ### 10.6. Route Error (RERR)
@@ -547,7 +635,7 @@ All routing methods populate a single gradient table:
 
 ```
 GradientEntry:
-    destination: IID or IPv6Address
+    destination: native IPv6Address
     next_hop: link-local address of neighbor
     hop_count: distance in hops
     seq_num: for freshness comparison
@@ -564,13 +652,21 @@ Forwarding nodes can learn gradients from data traffic:
 on_forward_packet(packet, from_neighbor):
     # I just received a packet FROM this source
     # Therefore, to REACH this source, send to from_neighbor
-    gradient_table.update(
-        destination=packet.source,
-        next_hop=from_neighbor,
-        source="data",
-        expires=now() + DATA_GRADIENT_TIMEOUT
-    )
+    if (identity_table.is_unambiguous(packet.source)
+            and packet.origin_authentication_valid_for(packet.source)):
+        gradient_table.update(
+            destination=packet.source,
+            next_hop=from_neighbor,
+            source="data",
+            expires=now() + DATA_GRADIENT_TIMEOUT
+        )
 ```
+
+All gradient insertion paths, including announces, RREP, passive learning, and
+RPL DAO processing, MUST reject native destinations marked ambiguous. A route
+entry never replaces or resolves a trust binding. Passive learning additionally
+requires OSCORE or a protocol-specific origin signature that binds the packet's
+native source to its pinned key; a hop signature alone is insufficient.
 
 DATA_GRADIENT_TIMEOUT is shorter (60 sec) since it's opportunistic.
 
@@ -636,7 +732,7 @@ Border routers and powered routers only. Constrained nodes (≤64KB RAM) skip ba
 ```
                          ┌─────────────────┐
                          │  Border Router  │
-                         │   (Internet)    │
+                         │  (Yggdrasil)   │
                          └────────┬────────┘
                                   │
                             RPL (DODAG)
@@ -655,9 +751,10 @@ Border routers and powered routers only. Constrained nodes (≤64KB RAM) skip ba
 
 | Traffic | Primary | Fallback |
 |---------|---------|----------|
-| To/from internet | RPL | -- |
+| External Yggdrasil | Outside baseline | -- |
 | Peer (active node) | Announce gradient | LOADng |
-| Peer (unknown node) | LOADng | RPL via root (inefficient) |
+| Peer (local evidence) | LOADng | -- |
+| Unknown native node | Unreachable | -- |
 | Broadcast | Hop-limited flood | -- |
 
 The three-tier approach optimizes for each traffic pattern while providing fallbacks for edge cases.

@@ -1,14 +1,14 @@
 {
   "id": "project-LICHEN-zt3c.3",
   "title": "Gateway: Inter-mesh routing via Yggdrasil",
-  "description": "## Overview\n\nRoute packets between local mesh and remote meshes via Yggdrasil backbone.\n\n## Packet flow\n\n### Local mesh → Remote mesh\n1. Node A sends packet to Node B (different mesh)\n2. Gateway A receives via LoRa\n3. Lookup destination:\n   - Not in local mesh\n   - Destination is Yggdrasil address (02xx::/7)\n4. Forward to Yggdrasil interface\n5. Yggdrasil routes to Gateway B\n6. Gateway B delivers via LoRa\n\n### Remote mesh → Local mesh\n1. Packet arrives on Yggdrasil interface\n2. Destination is local mesh node\n3. Lookup in RPL routing table\n4. Forward via LoRa\n\n## Routing table integration\n\n### Local routes (from RPL)\n- Populated by DAO messages\n- Direct delivery via LoRa\n\n### Remote routes (from Yggdrasil)\n- All 02xx::/7 → Yggdrasil interface\n- Yggdrasil handles next-hop selection\n\n### Decision logic\n```\nif dst in local_rpl_table:\n    forward_via_lora(dst)\nelif dst.is_yggdrasil_address():\n    forward_via_yggdrasil(dst)\nelif dst.is_internet():\n    forward_via_backhaul(dst)  # Tailscale/WireGuard\nelse:\n    icmpv6_unreachable()\n```\n\n## Address recognition\n\nHow to know if address is Yggdrasil vs internet:\n- 02xx::/7 → Yggdrasil\n- fd00:lichen::/32 → Local ULA (shouldn't route globally)\n- Everything else → Internet (via backhaul)\n\n## MTU considerations\n\n- Yggdrasil has its own encapsulation\n- Effective MTU may be reduced\n- SCHC compression helps\n- May need path MTU discovery",
+  "description": "Implement inter-mesh routing only after project-LICHEN-zt3c.2 defines per-node identity-preserving Yggdrasil participation. Local native 0200::/8 /128 host routes win. A participant may hand non-local native /128s to Yggdrasil under the owning node identity; 0300::/8 routed subnets, ULA, generic /7 forwarding, and gateway source spoofing are excluded.",
   "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-16T20:42:34.602457Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-16T20:42:34.602457Z",
+  "updated_at": "2026-07-20T06:31:00.469096Z",
   "labels": [
     "gateway",
     "routing",

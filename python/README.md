@@ -38,10 +38,10 @@ The simulator TUI and native LCI client are separate commands:
 lichen-tui --host localhost --port 4444 --sim default --node mynode
 
 # Native LCI client over IP/CoAP
-lichen-native-client --coap-base-uri 'coap://[fe80::1%25en0]'
+lichen-native-client --coap-base-uri 'coap://[fe80::7002:e7b4:4a75:c734%25en0]'
 
 # Backward-compatible native-client alias
-lichen-native-tui --coap-base-uri 'coap://[fe80::1%25en0]'
+lichen-native-tui --coap-base-uri 'coap://[fe80::7002:e7b4:4a75:c734%25en0]'
 ```
 
 Install the native client dependencies from the project checkout with:
@@ -87,7 +87,9 @@ If you use Meshtastic and you're curious about LICHEN:
 
 **Same hardware.** LICHEN runs on the same boards — T-Beam, Heltec, RAK4631, etc. Different firmware, same radios.
 
-**Real IPv6.** Every node gets a real IPv6 address. You can ping nodes, run standard tools, connect to the internet through a border router.
+**Real IPv6.** Every node gets a native key-derived IPv6 address. You can ping
+local mesh nodes and use standard tools; conventional Internet integration is
+provided by explicit application gateways.
 
 **Real routing.** No flooding. Packets take specific paths through the mesh. The network scales beyond a few dozen nodes.
 
@@ -102,7 +104,7 @@ We need help with:
 1. **Rust implementation** — Reference implementation for embedded targets
 2. **Zephyr port** — Real firmware for real hardware
 3. **Radio drivers** — SX126x/SX127x integration
-4. **Border router** — Linux daemon connecting mesh to internet
+4. **Border router** — Linux daemon providing root and application services
 5. **Flutter app** — Cross-platform mobile client
 6. **TypeScript client** — Web-based mesh interface
 7. **Testing** — More scenarios, edge cases, stress tests

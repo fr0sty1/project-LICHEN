@@ -84,7 +84,7 @@ From the architecture:
 Application:  CoAP / MQTT-SN / Raw UDP
 Security:     OSCORE (E2E) + Schnorr link signatures
 Transport:    UDP (compressed via SCHC)
-Network:      IPv6 (link-local + ULA/GUA)
+Network:      IPv6 (link-local control + native Yggdrasil /128)
 ```
 
 SenML profiles for sensor data:

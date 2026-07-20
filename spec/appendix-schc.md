@@ -9,11 +9,11 @@
 
 | Rule ID | Use Case | Compressed Size |
 |---------|----------|-----------------|
-| 0 | Link-local IPv6 + UDP + CoAP | 4-6 bytes |
-| 1 | Global IPv6 + UDP + CoAP | 12-14 bytes |
-| 2 | ICMPv6 Echo | 3 bytes |
-| 3 | RPL DIO | 8 bytes |
-| 4 | RPL DAO | 6 bytes |
+| 0 | Link-local IPv6 + UDP + CoAP | 18 bytes plus CoAP |
+| 1 | Native Yggdrasil IPv6 + UDP + CoAP | 33 bytes plus CoAP |
+| 2 | Native Yggdrasil IPv6 + MQTT-SN | 32 bytes |
+| 3 | RPL multicast control | 10 bytes |
+| 4 | RPL unicast control | 18 bytes |
 | 255 | No compression | Full headers |
 
 ## A.2. CoAP Compression

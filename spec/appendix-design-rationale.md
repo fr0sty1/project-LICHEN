@@ -105,8 +105,9 @@ every packet, secure enough for authentication.
 ### 3.2. SCHC Instead of 6LoWPAN (Section 5)
 
 6LoWPAN assumes 127-byte IEEE 802.15.4 frames. LoRa frames are smaller and
-airtime is precious. SCHC compresses IPv6+UDP headers to 6-15 bytes instead of
-6LoWPAN's 20-40 bytes. Every saved byte is real airtime returned.
+airtime is precious. The baseline compresses link-local IPv6+UDP to 18 bytes
+and native-address IPv6+UDP to 32-33 bytes without synchronized per-peer key
+context. Every saved byte is real airtime returned.
 
 ### 3.3. Announce-Based Routing (Sections 9 and 14)
 
@@ -254,7 +255,7 @@ LICHEN does not, and will not. Unlike 6.1-6.3, this is not a complexity
 trade-off — the feature is counterproductive here:
 
 - **It breaks the mesh.** Root election, short-address assignment, replay
-  windows, and signature caching all key on stable EUI-64 identity.
+  windows, and signature caching all key on stable key-derived identity.
   Rotating addresses means election instability, constant re-DAD, and
   table churn on a link budget measured in bytes per second.
 - **It provides nothing.** Every LICHEN frame is signed by a long-term

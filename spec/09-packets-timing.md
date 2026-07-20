@@ -29,70 +29,72 @@ OSCORE option + encrypted payload + tag
 (adds ~10 bytes)
 ```
 
-**After SCHC compression (Rule 0):**
+**After SCHC compression (Rule 1):**
 ```
-Rule ID: 0x00 (1 byte)
-Residue: SrcPort[3:0], DstPort[3:0] (1 byte)
-Compressed CoAP header: 0x42 0x45 (2 bytes)
+Rule ID: 0x01 (1 byte)
+Residue: HopLimit + SrcAddr[119:0] + DstAddr[119:0] + ports (32 bytes)
+CoAP header, token, option, and payload marker: 8 bytes
 Payload: (16 bytes)
-Total: 20 bytes
+Total: 57 bytes
 ```
 
 **With authenticated L2 payload dispatch:**
 ```
 SCHC dispatch: 0x14 (1 byte)
-SCHC packet: (20 bytes)
-Total: 21 bytes
+SCHC packet: (57 bytes)
+Total: 58 bytes
 ```
 
 **Link-layer frame:**
 ```
-Length: 75 (0x4B, body bytes after Length)
-LLSec: 0x21 (signature, no encryption, short addr) (1 byte)
+Length: 114 (0x72, body bytes after Length)
+LLSec: 0xA1 (sender ID, signature, no encryption, short addr) (1 byte)
 Epoch: 0x01 (1 byte)
 SeqNum: 0x0042 (2 bytes)
 DstAddr: 0x0001 (border router short) (2 bytes)
-Payload: dispatch 0x14 + SCHC packet (21 bytes)
+SenderID: immediate sender short address (2 bytes)
+Payload: dispatch 0x14 + SCHC packet (58 bytes)
 Signature: (48 bytes, Schnorr e₁₂₈+s)
-Total: 76 bytes (Length byte plus 75-byte body)
+Total: 115 bytes (Length byte plus 114-byte body)
 ```
 
 **LoRa PHY:**
 ```
 Preamble: 8 symbols
 Header: explicit mode
-Payload: 76 bytes
+Payload: 115 bytes
 CRC: 2 bytes
 ```
 
 The complete link frame is the PHY payload. Airtime MUST be calculated from the
 actual payload length and configured SF, bandwidth, coding rate, preamble,
 header mode, CRC, and low-data-rate optimization. Implementations MUST NOT use
-the former 60-byte approximation for this example.
+the former 76-byte approximation for this example.
 
 ### 13.2. Packet Size Summary
 
 | Component | Bytes in example |
 |-----------|------------------|
 | Application payload | 16 |
-| Compressed headers and SCHC residue | 4 |
+| IPv6/UDP SCHC residue and CoAP overhead | 41 |
 | L2 dispatch | 1 |
 | Destination address | 2 |
-| Link security and framing | 53 |
-| **Total without OSCORE** | **76** |
-| **Approximate total with OSCORE** | **86** |
+| Link security and framing | 55 |
+| **Total without OSCORE** | **115** |
+| **Approximate total with OSCORE** | **125** |
 
-Link security breakdown: Length(1) + LLSec(1) + Epoch(1) + SeqNum(2) + Signature(48) = 53 bytes
+Link security breakdown: Length(1) + LLSec(1) + Epoch(1) + SeqNum(2) + SenderID(2) + Signature(48) = 55 bytes
 (DstAddr counted separately in addressing mode). Unsigned frames carry no MIC bytes.
 
 ### 13.3. RPL DIO Packet
 
 ```
 Link-layer:
-  [Len] [LLSec] [Epoch] [SeqNum] [DstAddr=ff02::1a] [Payload] [Sig]
+  [Len] [LLSec] [Epoch] [SeqNum] [SenderID] [Payload] [Sig]
+  (broadcast AddrMode; no link-layer destination bytes)
 
 IPv6 (compressed):
-  [SCHC Rule 2] [HopLimit] [Multicast flag]
+  [RPL multicast SCHC rule] [source IID] [ICMPv6 code]
 
 ICMPv6:
   Type=155, Code=1 (DIO)
@@ -101,7 +103,7 @@ DIO payload:
   [RPLInstanceID] [Version] [Rank] [Flags] [DODAGID]
 
 Options:
-  [DODAG Configuration] [Prefix Information]
+  [DODAG Configuration] [SCHC Rule Version] [Root Authorization]
 ```
 
 ---
@@ -225,8 +227,9 @@ epoch floor.
 **Constrained Node Behavior:**
 
 Nodes without a valid wall-clock source:
-- Use sequence numbers for replay protection (works within power cycle)
-- SHOULD persist replay epoch counter across reboots (increment on boot)
+- Use sequence numbers for replay protection independently of wall clock
+- MUST persist the replay epoch while retaining the long-term key and increment
+  it on boot
 - MAY omit absolute timestamps from SenML (use relative `t` offsets only)
 - MUST NOT originate time-sensitive operations (scheduled check-in, message
   TTL that requires wall-clock comparison)

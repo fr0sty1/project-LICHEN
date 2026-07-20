@@ -388,12 +388,16 @@ schedule update that does not grant a new node.
 cell list, sorted by slot offset, channel index, transmitter IID, then receiver
 IID, and serialized as concatenated 19-byte records. Each SCHEDULE frame is a
 root-signed page for one recipient and carries exactly one cell record. With an
-extended link destination, the complete frame body is 253 bytes; a second cell
-would exceed the 255-byte length field. Page indices start at zero and follow
+extended link destination and short SenderID, the complete frame body is 255
+bytes; a second cell would exceed the 255-byte length field. Page indices start
+at zero and follow
 the canonical cell order. Common authority fields and digest are identical
 across pages; page index and cell record differ. `Page count` equals the
 recipient's cell count. A recipient MUST receive every page before activation
 or remain in baseline mode.
+
+The root MUST use its authenticated short SenderID for SCHEDULE pages; the
+extended SenderID form does not fit this maximum-size frame.
 
 All pages in one schedule transaction share an authority sequence. Replay state
 is keyed by `(root IID, authority sequence, page index)`: each page index MAY be

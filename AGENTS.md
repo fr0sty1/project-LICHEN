@@ -33,7 +33,10 @@ Run `bd prime` for full command reference. See the Beads section at the end of t
 
 ## Project Overview
 
-**What we're building:** LICHEN — a LoRa mesh network that uses real IPv6 addressing (not proprietary node IDs), enabling direct communication with internet hosts via border routers. Think "Meshtastic but with proper IP."
+**What we're building:** LICHEN -- a LoRa mesh network that uses real IPv6
+addressing rather than proprietary node IDs. Native key-derived addresses route
+inside isolated meshes; global Yggdrasil participation is a separate profile.
+Think "Meshtastic but with proper IP."
 
 **Relationship to Meshtastic:** LICHEN runs on the same hardware (reflash), but the protocol is **not backward compatible**. Different sync word (0x34 vs 0x2B), different framing, real IPv6 instead of proprietary addressing. A device runs one or the other, not both.
 
@@ -50,7 +53,7 @@ Run `bd prime` for full command reference. See the Beads section at the end of t
 Application:  CoAP / MQTT-SN / Raw UDP
 Security:     OSCORE (E2E) + Ed25519 link signatures
 Transport:    UDP (compressed via SCHC)
-Network:      IPv6 (link-local fe80::/10 or global /64)
+Network:      IPv6 (link-local fe80::/10 or native 0200::/8 /128)
 Routing:      RPL (DODAG mesh formation)
 Adaptation:   6LoWPAN + SCHC header compression
 Link:         Custom frame format with truncated Ed25519 sigs
@@ -87,7 +90,7 @@ Physical:     LoRa CSS (SX126x/SX127x)
 
 1. **Ed25519 truncated signatures (32 bytes)** - Non-standard but necessary for LoRa bandwidth. Security analysis required.
 
-2. **SCHC compression** - Header compression from 48+ bytes to 3-6 bytes. Rules are pre-provisioned, not negotiated.
+2. **SCHC compression** - Baseline IPv6/UDP headers compress from 48 bytes to 18-33 bytes. Rules are pre-provisioned, not negotiated.
 
 3. **RPL Non-Storing Mode** - Border router holds all routes, uses 6LoRH source routing for downward traffic.
 
@@ -515,10 +518,12 @@ Check `bd list` for issues tracking these decisions.
 - **Embedded RTOS**: Zephyr (primary), RIOT (STM32WL fallback if needed)
 - **Why not Arduino**: No native IPv6/6LoWPAN/RPL/CoAP; Zephyr has all
 - **IPv6 addressing** (see spec 6.1, 12):
-  - Link-local always (fe80:: + IID)
-  - ULA default when DODAG root present (fd00::/8)
-  - GUA optional when BR has upstream prefix
-  - Isolated meshes work (self-elected root generates ULA)
+  - Link-local always (`fe80::` + key-derived IID) for control traffic
+  - Native Yggdrasil `/128` in `0200::/8` for application unicast
+  - Both derive from the node Ed25519 public key; ULA is not used
+  - Isolated meshes route native addresses without a Yggdrasil daemon
+  - Global reachability requires identity-preserving Yggdrasil participation
+    defined by a separate profile
   - Multiple BRs tolerated (no coordination required)
 - **Local Client Interface** (see spec 17):
   - IPv6 + CoAP over SLIP/BLE/IPC (not proprietary protobuf)

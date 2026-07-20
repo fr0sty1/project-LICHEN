@@ -3,7 +3,12 @@
 
 # Border Router Hardware Options
 
-A border router bridges the LICHEN LoRa mesh to IP infrastructure (home network, internet, or cloud). It runs the full IPv6 stack, terminates RPL as DODAG root, and forwards packets between the constrained mesh and conventional networks.
+A border router terminates RPL as a DODAG root and connects a LICHEN mesh to
+backhaul infrastructure. Native node `/128`s may enter Yggdrasil only through
+an identity-preserving transport for the owning node; a gateway-owned
+Yggdrasil daemon MUST NOT spoof node source addresses. Conventional Internet
+and cloud integration therefore uses explicit application proxies unless a
+separate routed service is configured.
 
 | Hardware | Connectivity | Notes |
 |----------|--------------|-------|

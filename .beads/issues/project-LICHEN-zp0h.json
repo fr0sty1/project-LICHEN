@@ -1,14 +1,14 @@
 {
   "id": "project-LICHEN-zp0h",
   "title": "Python impl: Yggdrasil address as primary",
-  "description": "## Overview\n\nUpdate Python implementation to use Yggdrasil-derived 02xx addresses as primary.\n\n## Changes\n\n### Address derivation (lichen/crypto/identity.py or similar)\n- Add: derive_yggdrasil_address(pubkey) → 02xx address\n- Use same Ed25519 key as existing identity\n\n### Node addressing (lichen/node.py or similar)\n- Remove: ULA address assignment\n- Add: Yggdrasil address from identity\n- Keep: link-local for control plane\n\n### Routing (lichen/routing/ or similar)\n- Update destination checks:\n  - link-local → neighbor\n  - 02xx + in local mesh → mesh routing\n  - 02xx + not local → Yggdrasil (gateway)\n  - other → backhaul\n\n### Simulator\n- Update simulated nodes to use 02xx addresses\n- Remove ULA prefix configuration\n\n## Tests\n- Test Yggdrasil address derivation matches reference\n- Test local routing with 02xx addresses\n- Test routing decision: local vs remote 02xx",
+  "description": "Implement native Yggdrasil addressing in Python and the simulator from spec rule-set v2: current AddrForKey, key-derived link-local IID, no baseline ULA, full-/128 local routing, collision handling, and canonical address/SCHC vectors. Simulate non-local destinations as unreachable pending project-LICHEN-zt3c.2.",
   "status": "open",
   "priority": 2,
   "issue_type": "feature",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-16T20:55:13.658958Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-16T20:55:13.658958Z",
+  "updated_at": "2026-07-20T06:30:29.16929Z",
   "labels": [
     "python",
     "addressing",
@@ -20,6 +20,14 @@
       "depends_on_id": "project-LICHEN-nqz6",
       "type": "blocks",
       "created_at": "2026-07-16T20:55:13.802263Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-zp0h",
+      "depends_on_id": "project-LICHEN-85z6",
+      "type": "blocks",
+      "created_at": "2026-07-20T06:34:04.520417Z",
       "created_by": "Mark Atwood",
       "metadata": "{}"
     }

@@ -56,10 +56,10 @@ CoAP application traffic.
 
 ### 1.1. Design Goals
 
-- **Aggressive compression:** Reduce IPv6+UDP+CoAP headers from 60+ bytes
-  to 6-12 bytes for common cases
+- **Compression:** Reduce native IPv6+UDP+common CoAP headers from 60+ bytes
+  to approximately 41 bytes without synchronized per-peer key context
 - **Efficient fragmentation:** Use ACK-on-Error mode to minimize overhead
-- **Mesh-friendly:** Support multi-hop routing without per-hop decompression
+- **Mesh-friendly:** Support deterministic per-hop decompression and forwarding
 - **Versioned rules:** Enable firmware updates without breaking interoperability
 
 ### 1.2. Relationship to Other Specifications
@@ -112,8 +112,12 @@ SCHC compression/decompression occurs at:
 - **Origin:** Compress before transmission
 - **Destination:** Decompress after reception
 
-Intermediate routers (relays) forward compressed packets without
-decompression. This requires end-to-end rule synchronization.
+An intermediate router parses the Rule ID and the fields required for
+forwarding. For Rules 1 and 2 it decrements the Hop Limit residue in place,
+drops the packet when the result is zero, and replaces the hop link signature.
+IPv6 Hop Limit is not covered by the UDP checksum. Full decompression is not
+required, but every relay requires the matching rule set and MUST NOT forward a
+rule whose forwarding fields it cannot locate.
 
 ### 3.3. Context Provisioning
 
@@ -143,7 +147,7 @@ Most common case: link-local communication with CoAP.
 **Applicability:**
 - IPv6 source and destination are link-local (fe80::/10)
 - Next header is UDP
-- UDP ports are in CoAP range (5683 ± 15)
+- UDP ports are in the compressed range 5680-5695
 
 **Rule Definition:**
 
@@ -154,81 +158,83 @@ Most common case: link-local communication with CoAP.
 | IPv6.FlowLabel | 0 | equal | not-sent | 0 |
 | IPv6.PayloadLength | - | ignore | compute | 0 |
 | IPv6.NextHeader | 17 | equal | not-sent | 0 |
-| IPv6.HopLimit | 64 | ignore | not-sent | 0 |
+| IPv6.HopLimit | 64 | equal | not-sent | 0 |
 | IPv6.SrcPrefix | fe80::/64 | equal | not-sent | 0 |
-| IPv6.SrcIID | - | ignore | deviid | 0 |
+| IPv6.SrcIID | - | ignore | value-sent | 64 bits |
 | IPv6.DstPrefix | fe80::/64 | equal | not-sent | 0 |
-| IPv6.DstIID | - | ignore | deviid | 0 |
-| UDP.SrcPort | 5683 | MSB(12) | LSB | 4 bits |
-| UDP.DstPort | 5683 | MSB(12) | LSB | 4 bits |
-| UDP.Length | - | ignore | compute | 0 |
-| UDP.Checksum | - | ignore | compute | 0 |
-
-**Compressed size:** 2 bytes (1 byte Rule ID + 1 byte port residue)
-
-**deviid:** Derive IID from link-layer address (EUI-64 or short address).
-
-### 4.3. Rule 1: Mesh-Local IPv6 + UDP
-
-For ULA (mesh-routable) traffic where source is local, destination is
-within mesh.
-
-**Applicability:**
-- IPv6 source is mesh ULA (fd00::/8)
-- IPv6 destination is mesh ULA (fd00::/8)
-- Same mesh prefix (known from DODAG)
-
-**Rule Definition:**
-
-| Field | TV | MO | CDA | Sent |
-|-------|----|----|-----|------|
-| IPv6.Version | 6 | equal | not-sent | 0 |
-| IPv6.TrafficClass | 0 | equal | not-sent | 0 |
-| IPv6.FlowLabel | 0 | equal | not-sent | 0 |
-| IPv6.PayloadLength | - | ignore | compute | 0 |
-| IPv6.NextHeader | 17 | equal | not-sent | 0 |
-| IPv6.HopLimit | - | ignore | value-sent | 8 bits |
-| IPv6.SrcPrefix | <mesh-prefix> | equal | not-sent | 0 |
-| IPv6.SrcIID | - | ignore | deviid | 0 |
-| IPv6.DstPrefix | <mesh-prefix> | equal | not-sent | 0 |
 | IPv6.DstIID | - | ignore | value-sent | 64 bits |
 | UDP.SrcPort | 5683 | MSB(12) | LSB | 4 bits |
 | UDP.DstPort | 5683 | MSB(12) | LSB | 4 bits |
 | UDP.Length | - | ignore | compute | 0 |
 | UDP.Checksum | - | ignore | compute | 0 |
 
-**Compressed size:** 10 bytes (Rule ID + HopLimit + DstIID + ports)
+**Compressed size:** 18 bytes (Rule ID + two IIDs + port residue)
 
-### 4.4. Rule 2: Global IPv6 + UDP
+The immediate sender identified by the link header can differ from the IPv6
+origin after relaying. Both source and destination IIDs are therefore carried
+explicitly.
 
-For traffic to/from internet via border router.
+### 4.3. Rule 1: Native Yggdrasil IPv6 + UDP
+
+For application unicast between native Yggdrasil node addresses.
 
 **Applicability:**
-- IPv6 source is mesh (ULA or GUA)
-- IPv6 destination is global (2000::/3) or vice versa
+- IPv6 source and destination are native node addresses in `0200::/8`
 
 **Rule Definition:**
 
 | Field | TV | MO | CDA | Sent |
 |-------|----|----|-----|------|
 | IPv6.Version | 6 | equal | not-sent | 0 |
-| IPv6.TrafficClass | 0 | ignore | value-sent | 8 bits |
-| IPv6.FlowLabel | 0 | ignore | value-sent | 20 bits |
+| IPv6.TrafficClass | 0 | equal | not-sent | 0 |
+| IPv6.FlowLabel | 0 | equal | not-sent | 0 |
 | IPv6.PayloadLength | - | ignore | compute | 0 |
 | IPv6.NextHeader | 17 | equal | not-sent | 0 |
 | IPv6.HopLimit | - | ignore | value-sent | 8 bits |
-| IPv6.SrcAddr | - | ignore | value-sent | 128 bits |
-| IPv6.DstAddr | - | ignore | value-sent | 128 bits |
-| UDP.SrcPort | - | ignore | value-sent | 16 bits |
-| UDP.DstPort | - | ignore | value-sent | 16 bits |
+| IPv6.SrcAddr | 0200::/8 | MSB(8) | LSB | 120 bits |
+| IPv6.DstAddr | 0200::/8 | MSB(8) | LSB | 120 bits |
+| UDP.SrcPort | 5683 | MSB(12) | LSB | 4 bits |
+| UDP.DstPort | 5683 | MSB(12) | LSB | 4 bits |
 | UDP.Length | - | ignore | compute | 0 |
 | UDP.Checksum | - | ignore | compute | 0 |
 
-**Compressed size:** 41 bytes (minimal compression for global traffic)
+**Compressed size:** 33 bytes (Rule ID + HopLimit + two address residues + ports)
 
-### 4.5. Rule 3: ICMPv6 (RPL Control)
+Native addresses are flat identifiers. A compressor MUST NOT assume a shared
+`/64` or derive the packet origin from the immediate link-layer sender.
+Deployment-specific public-key-context rules require synchronized,
+authenticated context at every forwarding node and are outside this baseline.
 
-For RPL control messages (DIO, DAO, DIS).
+### 4.4. Rule 2: Native Yggdrasil IPv6 + MQTT-SN
+
+For MQTT-SN application unicast on UDP port 10883.
+
+**Applicability:**
+- IPv6 source and destination are native node addresses in `0200::/8`
+- UDP source and destination ports are 10883
+
+**Rule Definition:**
+
+| Field | TV | MO | CDA | Sent |
+|-------|----|----|-----|------|
+| IPv6.Version | 6 | equal | not-sent | 0 |
+| IPv6.TrafficClass | 0 | equal | not-sent | 0 |
+| IPv6.FlowLabel | 0 | equal | not-sent | 0 |
+| IPv6.PayloadLength | - | ignore | compute | 0 |
+| IPv6.NextHeader | 17 | equal | not-sent | 0 |
+| IPv6.HopLimit | - | ignore | value-sent | 8 bits |
+| IPv6.SrcAddr | 0200::/8 | MSB(8) | LSB | 120 bits |
+| IPv6.DstAddr | 0200::/8 | MSB(8) | LSB | 120 bits |
+| UDP.SrcPort | 10883 | equal | not-sent | 0 |
+| UDP.DstPort | 10883 | equal | not-sent | 0 |
+| UDP.Length | - | ignore | compute | 0 |
+| UDP.Checksum | - | ignore | compute | 0 |
+
+**Compressed size:** 32 bytes (Rule ID + HopLimit + two address residues)
+
+### 4.5. Rule 3: Multicast RPL Control
+
+For link-local multicast RPL control messages (DIO and DIS).
 
 **Applicability:**
 - Next header is ICMPv6 (58)
@@ -245,15 +251,24 @@ For RPL control messages (DIO, DAO, DIS).
 | IPv6.NextHeader | 58 | equal | not-sent | 0 |
 | IPv6.HopLimit | 255 | equal | not-sent | 0 |
 | IPv6.SrcPrefix | fe80::/64 | equal | not-sent | 0 |
-| IPv6.SrcIID | - | ignore | deviid | 0 |
+| IPv6.SrcIID | - | ignore | value-sent | 64 bits |
 | IPv6.DstAddr | ff02::1a | equal | not-sent | 0 |
 | ICMPv6.Type | 155 | equal | not-sent | 0 |
 | ICMPv6.Code | - | ignore | value-sent | 8 bits |
 | ICMPv6.Checksum | - | ignore | compute | 0 |
 
-**Compressed size:** 2 bytes (Rule ID + ICMPv6 code)
+**Compressed size:** 10 bytes (Rule ID + source IID + ICMPv6 code)
 
-### 4.6. Rule 255: No Compression (Fallback)
+### 4.6. Rule 4: Unicast RPL Control
+
+For link-local unicast RPL control messages (DAO and DAO-ACK). It is identical
+to Rule 3 except that the destination is `fe80::/64` plus an explicit 64-bit
+destination IID.
+
+**Compressed size:** 18 bytes (Rule ID + source IID + destination IID +
+ICMPv6 code)
+
+### 4.7. Rule 255: No Compression (Fallback)
 
 When no rule matches or for interoperability fallback.
 
@@ -266,7 +281,7 @@ When no rule matches or for interoperability fallback.
 
 All implementations MUST support Rule 255.
 
-### 4.7. CoAP Compression
+### 4.8. CoAP Compression
 
 CoAP header compression MAY be applied after IPv6/UDP compression using
 SCHC for CoAP (RFC 8824). This profile does not mandate CoAP compression
@@ -360,25 +375,27 @@ Each firmware release defines a Rule Set Version (8-bit integer):
 | Version | Meaning |
 |---------|---------|
 | 0 | Reserved |
-| 1 | Initial LICHEN release |
-| 2+ | Future versions |
+| 1 | Legacy shared-prefix and sender-less rules |
+| 2 | Native Yggdrasil address rules in this document |
+| 3+ | Future versions |
 
 ### 6.2. DIO Advertisement
 
 DODAG roots advertise Rule Set Version in DIO messages:
 
 ```
-DIO Rule Version Option (Type TBD):
+DIO Rule Version Option (provisional Type 0xF0):
 +--------+--------+--------+
-| Type   | Length | Version|
+| 0xF0   | Length | Version|
 +--------+--------+--------+
    1B       1B       1B
 ```
 
 ### 6.3. Version Compatibility
 
-- Nodes SHOULD only join DODAG if Rule Set Version matches
-- Mismatched nodes MAY communicate via Rule 255 (no compression)
+- Nodes MUST join a DODAG only if Rule Set Version matches
+- Rule 255 handles unmatched packets within a matching version; it does not
+  override DODAG version compatibility
 - Version changes require coordinated firmware update
 
 ### 6.4. Adding Rules
@@ -466,12 +483,13 @@ Future versions may request:
 ## Appendix A. Complete Rule Set
 
 ```
-Rule Set Version: 1
+Rule Set Version: 2
 
-Rule 0: Link-local IPv6 + UDP (2 bytes compressed)
-Rule 1: Mesh-local IPv6 + UDP (10 bytes compressed)
-Rule 2: Global IPv6 + UDP (41 bytes compressed)
-Rule 3: ICMPv6 RPL control (2 bytes compressed)
+Rule 0: Link-local IPv6 + UDP (18 bytes compressed)
+Rule 1: Native Yggdrasil IPv6 + UDP (33 bytes compressed)
+Rule 2: Native Yggdrasil IPv6 + MQTT-SN (32 bytes compressed)
+Rule 3: Multicast RPL control (10 bytes compressed)
+Rule 4: Unicast RPL control (18 bytes compressed)
 Rule 255: No compression (fallback)
 ```
 

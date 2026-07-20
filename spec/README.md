@@ -23,11 +23,13 @@ constrained bandwidth, and cryptographic authentication of all packets.
 LICHEN uses a three-tier routing architecture: RPL for border router traffic
 (efficient tree routing), announce-based gradient routing for peer-to-peer
 between active nodes (zero discovery latency), and LOADng as fallback for
-unknown destinations (reactive discovery).
+locally evidenced destinations (reactive discovery).
 
-Unlike Meshtastic and MeshCore, LICHEN uses real IPv6 addressing, enabling
-direct communication with internet hosts via border routers and compatibility
-with the broader IoT ecosystem. LICHEN runs on existing Meshtastic-compatible
+Unlike Meshtastic and MeshCore, LICHEN uses real IPv6 addressing. Stable
+key-derived addresses route locally and are compatible with native Yggdrasil.
+Constrained-node Yggdrasil participation is outside the baseline;
+conventional Internet services use explicit application gateways. LICHEN runs
+on existing Meshtastic-compatible
 hardware as a reflash -- same radios, new protocol.
 
 ## Table of Contents

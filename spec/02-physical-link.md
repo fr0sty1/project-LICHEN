@@ -55,10 +55,10 @@ Nodes SHOULD implement ADR to optimize SF/TX power based on link quality:
 ### 4.1. Frame Format
 
 ```
-+--------+--------+-------+--------+----------+---------+--------+
-| Length | LLSec  | Epoch | SeqNum | Dst Addr | Payload | MIC    |
-+--------+--------+-------+--------+----------+---------+--------+
-   1B       1B       1B      2B       0/2/8B    var      0/48B
++--------+--------+-------+--------+----------+----------+---------+--------+
+| Length | LLSec  | Epoch | SeqNum | Dst Addr | SenderID | Payload | MIC    |
++--------+--------+-------+--------+----------+----------+---------+--------+
+   1B       1B       1B      2B       0/2/8B    0/2/10B     var      0/48B
 ```
 
 | Field | Size | Description |
@@ -68,6 +68,7 @@ Nodes SHOULD implement ADR to optimize SF/TX power based on link quality:
 | Epoch | 1 byte | Epoch counter (see 4.4) |
 | SeqNum | 2 bytes | Sequence number (replay protection) |
 | Dst Addr | 0/2/8 bytes | Destination address; 0 bytes for broadcast or elided mode |
+| SenderID | 0, 2, or 10 bytes | Immediate sender short address, or `0xffff` + key-derived IID; present when Signature=1 |
 | Payload | Variable | Authenticated inner payload (dispatch byte + body) |
 | MIC | 0 or 48 bytes | No bytes when unsigned; full Schnorr-48 signature when signed |
 
@@ -79,9 +80,17 @@ The first byte of the authenticated inner payload is a dispatch value:
 | `0x15` | LICHEN routing/control message: message type followed by message body |
 
 Receivers MUST NOT infer the payload namespace from the first body byte. This
-is required because SCHC rule `0x01` is global CoAP and LICHEN routing
+is required because SCHC rule `0x01` is native-address CoAP and LICHEN routing
 announce type `0x01` would otherwise collide. The dispatch byte is covered by
 the link signature and MIC because it is part of the frame payload.
+
+For signed frames, `SenderID` is a 16-bit short address when the sender has an
+unambiguous authenticated short-address binding. Otherwise it is the reserved
+value `0xffff` followed by the sender's key-derived 64-bit IID. Receivers use
+that binding to select the immediate sender key, verify the binding, and then
+verify the MIC. Relays replace `SenderID`, epoch, sequence number, and
+destination and sign the outgoing frame with their own key. Unsigned frames
+omit `SenderID`.
 
 Routing/control message type `0x02` is provisionally allocated to the optional
 Coordinated Capacity Profile. Unknown routing/control message types and
@@ -93,7 +102,7 @@ delivered as application payload.
 ```
   7   6   5   4   3   2   1   0
 +---+---+---+---+---+---+---+---+
-| E | S |  MIC Len  | Addr Mode |
+| I | E | S | MIC Len | Addr Mode |
 +---+---+---+---+---+---+---+---+
 ```
 
@@ -103,7 +112,11 @@ delivered as application payload.
 | MIC Length | 2-4 | 0 or 1=compatibility selector; 2-7=reserved |
 | Signature | 5 | 1=48-byte Schnorr signature present; 0=no MIC |
 | Encrypted | 6 | 1=encrypted frame unsupported; receivers MUST reject |
-| Reserved | 7 | Must be 0 |
+| Sender ID | 7 | 1=SenderID present; version 2 requires this to equal Signature |
+
+Version 2 receivers MUST reject frames where Sender ID and Signature differ.
+This makes the sender-bearing signed format self-identifying; legacy signed
+frames with bit 7 clear are not valid version 2 frames.
 
 ### 4.3. Addressing Modes
 
@@ -127,23 +140,13 @@ The epoch counter increments on:
 
 **Epoch Initialization:**
 
-When no persisted epoch is available (cold boot without flash, or flash read
-failure), implementations MUST initialize epoch to a random value uniformly
-distributed in [128, 255]. This ensures the 24-bit counter starts in the upper
-half of the counter space (8M-16M), so half-space arithmetic treats it as
-"ahead" of any counter value peers may have cached in the lower half.
-
-> **Security Note:** Some platforms (notably ESP32) have weak hardware RNG output
-> before the radio subsystem initializes. On such platforms without epoch
-> persistence, an attacker who knows boot timing may predict the epoch.
-> Implementations on affected platforms SHOULD either persist epoch to flash or
-> defer random initialization until after radio subsystem init.
-
-Epoch persistence is RECOMMENDED but not required. Implementations that persist
-epoch SHOULD:
+Epoch persistence is REQUIRED while a long-term key remains active. A node that
+cannot recover its epoch MUST NOT transmit signed frames under that key until
+it restores the counter through secure provisioning or generates a new
+identity. Implementations SHOULD:
 - Write epoch to flash on every increment
 - Use wear-leveling or multiple slots to extend flash lifetime
-- On read failure, fall back to random initialization as above
+- Treat read failure as a fail-closed key-state error
 
 **Sequence Number (16 bits):**
 
@@ -157,24 +160,36 @@ Sender State Entry:
   IID: <sender IID>
   LastEpoch: <8 bits>
   LastSeqNum: <16 bits>
-  Window: <32-bit bitmap for out-of-order tolerance>
+  Window: <at least 64 bits for out-of-order tolerance>
 ```
+
+This receive state MUST persist for as long as the sender's trust binding. If
+it is lost, the receiver MUST discard the binding and re-establish trust before
+accepting another frame from that sender.
 
 **Acceptance Rules:**
 
 | Received | Action |
 |----------|--------|
-| Epoch > LastEpoch | Accept, update state |
-| Epoch == LastEpoch, SeqNum > LastSeqNum | Accept, update state |
-| Epoch == LastEpoch, SeqNum in window | Accept if not seen, mark seen |
-| Epoch < LastEpoch | Reject (replay) |
-| Epoch == LastEpoch, SeqNum ≤ window floor | Reject (replay) |
+| `serial_newer(received, highest)` | Accept, advance window |
+| Received counter in current window | Accept if unseen, mark seen |
+| Received counter older than window | Reject |
+| Serial delta exactly `0x800000` | Reject as ambiguous |
 
 **Wrap Behavior:**
 
 At ~1 packet/second, 16-bit seqnum wraps every ~18 hours. The epoch
 increment ensures the 24-bit logical counter advances monotonically.
-At maximum traffic (10 pkt/sec), epoch wraps in ~7.5 years--acceptable.
+At 10 packets/second, the complete 24-bit counter wraps in about 19.4 days and
+the half-space is about 9.7 days. Wrap is safe while receivers observe progress
+within a half-space. A peer that may have missed `2^23` transmissions MUST
+re-establish replay state through an authenticated exchange before accepting
+new traffic.
+
+Counters use 24-bit serial arithmetic. Let `C = (Epoch << 16) | SeqNum` and
+`delta = (received - highest) mod 2^24`. `received` is newer exactly when
+`0 < delta < 2^23`; a delta of `2^23` is ambiguous and rejected. This rule
+handles epoch wrap without ordinary integer comparisons.
 
 **Reboot Resilience:**
 
@@ -209,7 +224,8 @@ Address 0x0000 is reserved (broadcast). Range 0xFFF0-0xFFFF reserved for future 
 
 Nodes self-assign using hash-based allocation with DAD:
 
-1. **Compute candidate:** `short_addr = CRC16(EUI-64) | 0x0001` (ensure non-zero)
+1. **Compute candidate:** `short_addr = (CRC16(EUI-64) mod 0xffef) + 1`,
+   producing the interoperable range `0x0001`-`0xffef`
 2. **DAD probe:** Broadcast 3 DAD requests with random jitter (0-500ms between)
    ```
    DAD Request:
@@ -228,7 +244,8 @@ Nodes self-assign using hash-based allocation with DAD:
      PubKey: <holder's public key>
    ```
 5. **Resolution:**
-   - If conflict received: increment candidate, retry from step 2
+   - If conflict received: set `candidate = (candidate mod 0xffef) + 1` and
+     retry from step 2
    - If no conflict after 3 probes: claim address
    - After 5 failed attempts: fall back to EUI-64 only
 

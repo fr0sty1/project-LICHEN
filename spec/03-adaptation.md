@@ -51,9 +51,9 @@ carry only a Rule ID and residue (changed fields).
 
 | Headers | Uncompressed | SCHC Compressed |
 |---------|--------------|-----------------|
-| IPv6 | 40 bytes | 1-2 bytes (link-local) |
-| IPv6 + UDP | 48 bytes | 3-6 bytes |
-| IPv6 + UDP + CoAP | 60+ bytes | 6-12 bytes |
+| Link-local IPv6 + UDP | 48 bytes | 18 bytes |
+| Native IPv6 + UDP | 48 bytes | 32-33 bytes |
+| Native IPv6 + UDP + common CoAP | 60+ bytes | About 41 bytes |
 
 ### 5.4. Rule Structure
 
@@ -67,7 +67,7 @@ Each rule specifies, for each header field:
 Rule IDs 0-127 are for compression rules. Rule ID 255 is reserved for
 uncompressed fallback (see 5.7).
 
-**Rule 0: Link-local IPv6 + UDP (most common)**
+**Rule 0: Link-local IPv6 + UDP**
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|
@@ -76,29 +76,38 @@ uncompressed fallback (see 5.7).
 | IPv6.FlowLabel | 0 | equal | not-sent |
 | IPv6.PayloadLength | - | ignore | compute |
 | IPv6.NextHeader | 17 (UDP) | equal | not-sent |
-| IPv6.HopLimit | 64 | ignore | not-sent |
+| IPv6.HopLimit | 64 | equal | not-sent |
 | IPv6.SrcPrefix | fe80::/64 | equal | not-sent |
-| IPv6.SrcIID | - | equal | not-sent (from L2) |
+| IPv6.SrcIID | - | ignore | value-sent (64 bits) |
 | IPv6.DstPrefix | fe80::/64 | equal | not-sent |
-| IPv6.DstIID | - | equal | not-sent (from L2) |
+| IPv6.DstIID | - | ignore | value-sent (64 bits) |
 | UDP.SrcPort | 5683 | MSB(12) | LSB(4) |
 | UDP.DstPort | 5683 | MSB(12) | LSB(4) |
 | UDP.Length | - | ignore | compute |
 | UDP.Checksum | - | ignore | compute |
 
-**Compressed size: 2 bytes** (Rule ID + 2x 4-bit port residue)
+**Compressed size: 18 bytes** (Rule ID, two IIDs, and port residue)
 
-**Rule 1: Global IPv6 + UDP (internet-routable)**
+**Rule 1: Native Yggdrasil IPv6 + UDP**
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|
-| IPv6.SrcPrefix | mesh_prefix/64 | equal | not-sent |
-| IPv6.DstPrefix | 0 | ignore | value-sent (64 bits) |
-| (other fields as Rule 0) | | | |
+| IPv6.HopLimit | - | ignore | value-sent (8 bits) |
+| IPv6.SrcAddr | 0200::/8 | MSB(8) | LSB(120) |
+| IPv6.DstAddr | 0200::/8 | MSB(8) | LSB(120) |
+| (UDP fields as Rule 0) | | | |
 
-**Compressed size: 10 bytes** (includes full destination prefix)
+Native addresses are flat `/128` identifiers, not a shared prefix plus IID.
+Only the fixed `0x02` byte can be elided without synchronized key context.
+**Compressed size: 33 bytes** (Rule ID, Hop Limit, two 120-bit address
+residues, and port residues).
 
-**Rule 2: Link-local IPv6 + UDP + MQTT-SN**
+A deployment-specific rule MAY derive an address from a public-key context,
+but only when every forwarding node on the path has that authenticated SCHC
+context. The baseline does not define context distribution and MUST fall back
+to Rule 1 or Rule 255 instead of assuming that an IID identifies a key.
+
+**Rule 2: Native Yggdrasil IPv6 + UDP + MQTT-SN**
 
 MQTT-SN uses port 10883, which lies outside the 5680-5695 range compressed
 by Rules 0 and 1. Rule 2 provides equivalent compression for MQTT-SN traffic.
@@ -110,17 +119,16 @@ by Rules 0 and 1. Rule 2 provides equivalent compression for MQTT-SN traffic.
 | IPv6.FlowLabel | 0 | equal | not-sent |
 | IPv6.PayloadLength | - | ignore | compute |
 | IPv6.NextHeader | 17 (UDP) | equal | not-sent |
-| IPv6.HopLimit | 64 | ignore | not-sent |
-| IPv6.SrcPrefix | fe80::/64 | equal | not-sent |
-| IPv6.SrcIID | - | equal | not-sent (from L2) |
-| IPv6.DstPrefix | fe80::/64 | equal | not-sent |
-| IPv6.DstIID | - | equal | not-sent (from L2) |
+| IPv6.HopLimit | - | ignore | value-sent (8 bits) |
+| IPv6.SrcAddr | 0200::/8 | MSB(8) | LSB(120) |
+| IPv6.DstAddr | 0200::/8 | MSB(8) | LSB(120) |
 | UDP.SrcPort | 10883 | equal | not-sent |
 | UDP.DstPort | 10883 | equal | not-sent |
 | UDP.Length | - | ignore | compute |
 | UDP.Checksum | - | ignore | compute |
 
-**Compressed size: 1 byte** (Rule ID only; both ports exactly match)
+**Compressed size: 32 bytes** (Rule ID, Hop Limit, and two address residues;
+both ports exactly match)
 
 **Port Compression Note:**
 
@@ -160,27 +168,31 @@ Version increments when rules are added, removed, or modified.
 | Version | Description |
 |---------|-------------|
 | 0 | Reserved (uncompressed fallback) |
-| 1 | Initial LICHEN release |
-| 2+ | Future versions |
+| 1 | Legacy shared-prefix rules |
+| 2 | Native Yggdrasil address rules in this specification |
+| 3+ | Future versions |
 
-**DIO Rule Version Option (Type TBD):**
+Version 1 wire vectors MUST NOT be interpreted using the version 2 tables.
+
+**DIO Rule Version Option (provisional Type 0xF0):**
 
 DODAG roots advertise their rule set version in DIO messages:
 
 ```
 +--------+--------+--------+
-| Type   | Length | Version|
+| 0xF0   | Length | Version|
 +--------+--------+--------+
    1B       1B       1B
 ```
 
-Nodes SHOULD only join a DODAG if their rule set version matches the
-advertised version. Version mismatch indicates firmware incompatibility.
+Nodes MUST join a DODAG only when their rule set version matches the advertised
+version. An absent or mismatched version is firmware incompatibility.
 
 **Fallback Rule (Rule ID 255): No Compression**
 
-Rule 255 is reserved for uncompressed packets. All implementations MUST
-support Rule 255 regardless of version:
+Rule 255 is reserved for packets that do not match another rule within a
+matching rule-set version. All implementations MUST support it, but it does
+not permit joining a DODAG with an absent or mismatched version:
 
 ```
 Rule 255 packet:
@@ -191,10 +203,8 @@ Rule 255 packet:
 ```
 
 **When to use Rule 255:**
-- Decompression failure (unknown rule ID)
-- Version mismatch detected
-- Debugging / diagnostics
-- Communicating with legacy nodes
+- A sender has a packet that matches no compression rule
+- Debugging or diagnostics within a matching rule-set version
 
 **Decompression Failure Handling:**
 
@@ -209,7 +219,7 @@ Rule 255 packet:
 Explicit version negotiation is NOT required. The DIO advertisement
 provides passive discovery. Nodes with mismatched versions:
 1. Cannot join the same DODAG (DIO filter)
-2. Can still communicate via Rule 255 (degraded performance)
+2. Cannot exchange SCHC packets, including Rule 255, in that DODAG
 3. Should be upgraded to matching firmware
 
 **Backward Compatibility:**

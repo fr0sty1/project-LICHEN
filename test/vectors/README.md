@@ -3,36 +3,43 @@
 
 # LICHEN Test Vectors
 
-Language-neutral conformance vectors for the LICHEN protocol. The **Python
-prototype is the source of truth**; the Rust and C implementations MUST validate
-against these files (issue `ajr`, gate `ijj`).
+Language-neutral conformance vectors for the LICHEN protocol. Rust, Python, and
+C implementations MUST validate against these files. Vector files identify an
+independent external source when one exists.
 
 ## Files
 
 | File | Covers |
 |------|--------|
 | `schema.json` | JSON Schema (draft-07) for the envelope and vector shapes |
-| `schc_compression.json` | SCHC whole-packet compression (RFC 8724), rules 0–4 |
+| `schc_compression.json` | Legacy SCHC rule-set v1 migration vectors |
 | `l2_payload.json` | Authenticated L2 inner-payload dispatch wrapping SCHC and routing/control bodies |
-| `link_frame.json` | LICHEN link-layer frame encoding (spec section 4) |
+| `link_frame.json` | Legacy sender-less link-frame v1 migration vectors |
 | `announce_coords.json` | Announce app_data Type=0x01 geographic coordinate encoding |
 | `meshtastic_app_compat.json` | Meshtastic BLE raw-protobuf app compatibility exchanges |
 | `meshcore_app_compat.json` | MeshCore byte-command app compatibility exchanges |
+| `yggdrasil_address.json` | Native `AddrForKey` vector from upstream Yggdrasil |
+| `rpl_messages.json` | Generic RFC 6550 codec vectors; historical addresses are non-profile data |
 
 All byte strings are lowercase hex (possibly empty).
 
 ## How to validate (any implementation)
 
-**SCHC** (`schc_compression.json`): for each vector,
-- `compress(hex_decode(packet))` MUST equal `hex_decode(compressed)`, and
-- `decompress(hex_decode(compressed))` MUST equal `hex_decode(packet)`.
+**Legacy SCHC v1** (`schc_compression.json`): select the version 1 codec; for
+each vector,
+- `compress_v1(hex_decode(packet))` MUST equal `hex_decode(compressed)`, and
+- `decompress_v1(hex_decode(compressed))` MUST equal `hex_decode(packet)`.
 - The first byte of `compressed` equals `rule_id`.
 
-**Link frames** (`link_frame.json`): for each vector,
-- encoding a frame built from `fields` MUST equal `hex_decode(encoded)`, and
-- decoding `hex_decode(encoded)` MUST reproduce `fields`.
+**Legacy link frames v1** (`link_frame.json`): select the sender-less version 1
+codec; for each vector,
+- encoding a v1 frame built from `fields` MUST equal `hex_decode(encoded)`, and
+- v1 decoding of `hex_decode(encoded)` MUST reproduce `fields`.
 - A vector with `expect.error` is negative: decoding `encoded` MUST reject it,
   and encoders MUST NOT emit it.
+
+Current v2 vectors are tracked by `project-LICHEN-85z6`; version 1 fixtures
+MUST NOT be fed to a version 2-only codec.
 
 `addr_mode`: 0=none/broadcast, 1=16-bit short, 2=EUI-64, 3=elided.
 `mic_length`: 0=32-bit, 1=64-bit.

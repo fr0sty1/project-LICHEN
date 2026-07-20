@@ -61,11 +61,12 @@ valid = (e'[0:16] == e_received)
 
 ### 8.4. Signed vs Relay-Mutable Fields
 
-This section describes end-to-end data forwarding. Its origin signature covers
-the **immutable** portion of the packet; relays modify routing headers without
-replacing that signature.
+The link signature authenticates one hop. A receiver verifies the complete
+incoming frame before forwarding. A relay that changes the link destination,
+Hop Limit, source-routing header, or any other covered byte MUST construct and
+sign a new outgoing frame with its own key.
 
-**Signed (immutable):**
+**Covered by each hop's link signature:**
 | Field | Notes |
 |-------|-------|
 | Source IPv6 address | Origin identity |
@@ -74,7 +75,7 @@ replacing that signature.
 | Sequence number | Replay protection |
 | LLSec flags | Security parameters |
 
-**Unsigned (relay-mutable):**
+**Relay-mutable before re-signing:**
 | Field | Notes |
 |-------|-------|
 | Hop Limit / TTL | Decremented per hop |
@@ -82,27 +83,23 @@ replacing that signature.
 | Link-layer destination | Changes each hop |
 | Link-layer source | Relay's address |
 
-**Implication:** Relays forward packets without re-signing. The original
-signature remains valid because signed fields are unchanged.
-
-Hop-by-hop routing/control protocols MAY instead define an outer link frame
-that every relay signs anew. Such protocols MUST separate any preserved
-origin/root authorization object from the mutable hop envelope. The
-Coordinated Capacity Profile uses this construction.
+**Implication:** Relays MUST verify, mutate, and re-sign. Link signatures do
+not provide end-to-end origin authentication through a compromised relay;
+OSCORE or another end-to-end object security mechanism provides that property.
+Routing objects that preserve origin/root authorization carry their own
+signature inside the mutable hop envelope.
 
 ### 8.5. Signature Caching
 
-To reduce verification overhead:
-
-1. **First-hop verification:** Verify signature when packet first arrives
-2. **Cache result:** Mark packet as "verified from <IID>" in forwarding state
-3. **Relay without re-verify:** Subsequent hops trust first-hop verification
-4. **Cache keyed by:** (source IID, sequence number) with TTL
+Every receiver MUST verify the immediate sender's link signature. To reduce
+lookup overhead, implementations MAY cache the resolved verification key and
+parsed sender state by `(sender IID, epoch, sequence number)`, but MUST NOT
+reuse another node's verification result in place of local verification.
 
 Cache entries expire after 2× expected mesh traversal time (default: 30 seconds).
 
-**Security note:** A compromised relay could inject unverified packets. In
-high-security deployments, enable per-hop verification (costs CPU, not bytes).
+Duplicate frames may reuse a cached rejection result. Accepted retransmissions
+still pass replay-window processing.
 
 ### 8.6. Key Management
 
@@ -116,13 +113,13 @@ high-security deployments, enable per-hop verification (costs CPU, not bytes).
 
 *Self-Provisioned (default):*
 1. Device generates Ed25519 keypair at first boot
-2. Public key bound to node identifier (EUI-64 -> IPv6 IID)
+2. Link-local IID and native Yggdrasil `/128` derived from the public key
 3. Private key stored securely, never transmitted
 
 *BR-Provisioned (optional):*
 1. Device boots in commissioning mode (no keypair)
 2. Border router provisions keypair via secure channel
-3. IID may be assigned by border router (not derived from EUI-64)
+3. Node derives its addresses from the provisioned public key
 
 See "BR-Provisioned" section below for full provisioning flow.
 
@@ -140,14 +137,14 @@ Implementations MUST support TOFU. Other methods are OPTIONAL.
 **1. TOFU (Trust On First Use) -- Baseline**
 
 - On first contact, accept peer's public key and pin it
-- Bind key to peer's IPv6 IID (derived from EUI-64)
+- Bind key to the peer's full native `/128`; recompute it with `AddrForKey`
 - On subsequent contacts, verify key matches pinned value
 - Key change -> reject and alert (potential MITM or hardware swap)
 - Works entirely offline, no external infrastructure
 
 ```
 Key Store Entry:
-  IID: 1234:5678:9abc:def0
+  Address: 200:848a:604f:bb7e:4384:65db:8db6:6895
   PubKey: <32 bytes>
   TrustLevel: TOFU
   FirstSeen: <timestamp>
@@ -164,10 +161,10 @@ during commissioning. This enables central control over network membership.
 1. Node boots in commissioning mode (no keypair yet)
 2. Node connects to border router via secure channel (USB, BLE, or LCI)
 3. Border router generates Ed25519 keypair for node
-4. Border router assigns IID (may differ from EUI-64)
+4. Node derives its link-local IID and native `/128` from the key
 5. Border router transmits keypair to node over secure channel
 6. Node stores keypair; exits commissioning mode
-7. Border router records (IID, PubKey) in its trust anchor list
+7. Border router records (native address, PubKey) in its trust anchor list
 8. Border router distributes trust anchor to other managed nodes
 
 **Security Requirements:**
@@ -183,25 +180,26 @@ The border router maintains an authoritative list of provisioned nodes:
 
 ```
 Trust Anchor List:
-  - IID: 1234:5678:9abc:def0, PubKey: <32 bytes>, Provisioned: <timestamp>
-  - IID: 1234:5678:9abc:def1, PubKey: <32 bytes>, Provisioned: <timestamp>
+  - Address: 200:848a:604f:bb7e:4384:65db:8db6:6895, PubKey: <32 bytes>, Provisioned: <timestamp>
 ```
 
-Managed nodes MAY fetch this list via CoAP:
+Managed nodes MAY fetch this list via CoAP protected by an OSCORE context whose
+peer is an already provisioned or TOFU-pinned authorized border-router key:
 
 ```
 GET coap://[border-router]/.well-known/trust-anchors
 Content-Format: application/cbor
 
 [
-  [h'12345678...', h'<pubkey>'],  ; [IID, PubKey]
-  [h'12345678...', h'<pubkey>']
+  [h'0200848a604fbb7e438465db8db66895', h'<pubkey>']
 ]
 ```
 
 Nodes receiving trust anchors from the border router trust those keys
 without TOFU. This enables instant mesh formation without first-contact
-verification delays.
+verification delays. Plain CoAP MUST NOT be used for this resource. The OSCORE
+sender sequence and replay state MUST persist across reboot so an attacker
+cannot restore a revoked key by replaying an older response.
 
 **Revocation:**
 
@@ -258,10 +256,12 @@ For high-security pairing without infrastructure:
 
 **Key Compromise and Rotation:**
 
-- Nodes SHOULD support key rotation announcements
-- Key change with valid signature from old key -> accept new key
-- Key change without signature -> reject, require re-verification
-- Revocation: remove from local key store; no global revocation list
+- A new key creates a new native `/128` and is a new identity by default.
+- A deployment MAY migrate application state with a separate object signed by
+  the old key, but the baseline announce format does not encode key rotation.
+- A new key without out-of-band verification MUST enter normal TOFU handling.
+- Revocation removes the old address and key from the local store; there is no
+  global revocation list.
 
 ### 8.7. OSCORE (RFC 8613)
 
@@ -359,7 +359,7 @@ defense-in-depth.
 
 **Baseline: Link-Layer Signatures (REQUIRED)**
 
-All RPL control messages are frames, and all frames carry Schnorr signatures.
+All RPL control messages carry hop link signatures.
 This provides:
 - **Sender authentication:** DIO originates from claimed node
 - **Integrity:** Message not modified in transit
@@ -367,6 +367,14 @@ This provides:
 
 This is sufficient for most deployments. Attackers cannot forge DIOs or
 inject fake routing information without a valid keypair.
+
+Every DIO additionally carries the immutable Root Authorization Option defined
+by the RPL profile. The root signature binds RPL Instance ID, DODAG Version,
+Grounded, MOP, Preference, DODAGID, the complete DODAG Configuration option,
+root public key, and SCHC rule-set version. Receivers MUST
+verify that `DODAGID == AddrForKey(root_public_key)` and validate the root
+signature before accepting root identity, grounded state, or a version change.
+Relays may advertise their own rank but cannot replace this option.
 
 **Limitation of link-layer signatures:**
 
@@ -438,8 +446,8 @@ Private keys MUST be stored in:
 
 **Link-Layer Replay Window:**
 
-Receivers track per-sender (epoch, seqnum) state with a 32-entry sliding
-window for out-of-order tolerance. Epoch persisted to flash; increments
+Receivers track per-sender (epoch, seqnum) state with a sliding window of at
+least 64 entries for out-of-order tolerance. Epoch persisted to flash; increments
 on wrap or reboot. See section 4.4 in Physical and Link Layers.
 
 ### 15.4. Known Limitations
@@ -451,15 +459,15 @@ on wrap or reboot. See section 4.4 in Physical and Link Layers.
 
 ### 15.5. Privacy: No Address Randomization
 
-LICHEN does not implement MAC/EUI-64 randomization or IPv6 privacy
+LICHEN does not implement link-identity randomization or IPv6 privacy
 addressing (RFC 4941 temporary addresses, RFC 7217 opaque IIDs), and
-implementations MUST NOT add them. Addresses are stable and
-hardware-derived (section 6.2 in Network Layer).
+implementations MUST NOT add them. Link-local IIDs and native addresses are
+stable derivations of the node's public key (sections 6.1-6.2 in Network).
 
 **It would break the protocol:**
 
-- Root election is deterministic on lowest EUI-64 (section 6.1 in Network
-  Layer). Rotating addresses destabilizes election.
+- Root election is deterministic on the lowest authenticated native `/128`
+  (section 6.1 in Network Layer). Rotating keys destabilizes election.
 - Short-address assignment binds `CRC16(EUI-64)` to a public key in a
   mesh-wide table (section 4.5 in Physical and Link Layers). Rotation
   forces continual DAD and table churn on an airtime-starved link.

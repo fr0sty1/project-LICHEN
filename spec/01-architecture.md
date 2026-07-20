@@ -23,12 +23,12 @@ Every protocol layer uses existing IETF standards:
 
 ### 1.2. Design Goals
 
-1. **Real IPv6:** Globally routable addresses, not proprietary node IDs
-2. **Efficient:** SCHC compresses headers to 6-15 bytes
+1. **Real IPv6:** Stable, key-derived IPv6 addresses, not proprietary node IDs
+2. **Efficient:** SCHC compresses baseline IPv6/UDP headers to 18-33 bytes
 3. **Authenticated:** Every packet cryptographically signed
 4. **Interoperable:** Standard CoAP/MQTT-SN applications work unmodified
 5. **Mesh:** RPL provides multi-hop routing without central coordination
-6. **Gateway-friendly:** Border routers connect mesh to internet
+6. **Gateway-friendly:** Border routers connect meshes through identity-preserving backhauls
 
 ### 1.3. Non-Goals
 
@@ -53,7 +53,7 @@ Every protocol layer uses existing IETF standards:
 +----------------------------------------------------------+
 |                    Network Layer                          |
 |  IPv6 (RFC 8200) - compressed via SCHC                    |
-|  Link-local (fe80::/10) or Global (/64 prefix)            |
+|  Link-local control + native Yggdrasil application /128    |
 +----------------------------------------------------------+
 |                    Routing Layer                          |
 |  RPL (RFC 6550) - DODAG mesh formation                    |
@@ -73,6 +73,14 @@ Every protocol layer uses existing IETF standards:
 |  LoRa CSS (Semtech SX126x/SX127x)                         |
 +----------------------------------------------------------+
 ```
+
+Every node has a link-local address for one-hop control and a native
+Yggdrasil address in `0200::/8` for application unicast. The latter is derived
+from the node's Ed25519 public key and is routed locally over LICHEN even when
+no Yggdrasil backhaul exists. The address format is compatible with native
+Yggdrasil, but the baseline does not specify how constrained nodes participate
+in its control plane. A gateway MUST NOT impersonate node identities. See
+[Network Layer](04-network.md).
 
 The optional [Coordinated Capacity Profile](02a-coordinated-capacity.md)
 borrows slot-clock concepts from TSCH but does not implement the IEEE 802.15.4

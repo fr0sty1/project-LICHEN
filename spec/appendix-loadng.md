@@ -5,7 +5,9 @@
 
 # Appendix B2: LOADng Configuration
 
-LOADng is used for mesh-internal peer-to-peer traffic. See Section 9 for details.
+LOADng is used for mesh-internal peer-to-peer traffic only when recent
+authenticated evidence indicates that the destination is local. It MUST NOT
+probe an arbitrary `0200::/8` destination. See Section 9 for details.
 For border router traffic, see Appendix B (RPL).
 
 ## B2.1. Protocol Parameters
@@ -52,7 +54,7 @@ LOADng messages use ICMPv6 type 158 (experimental range):
 
 ## B2.5. Expanding Ring Search
 
-To minimize flood scope for nearby destinations:
+After the local-evidence gate passes, minimize flood scope for nearby destinations:
 
 | Attempt | Hop Limit |
 |---------|-----------|

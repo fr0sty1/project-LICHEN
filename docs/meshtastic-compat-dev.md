@@ -144,8 +144,8 @@ Meshtastic id string:  "!5e6f7a8b"
 routing is unaffected; only the app display is wrong.
 
 **Reverse lookup:** When the app sends to a 32-bit destination, the adapter searches the peer table for an IID ending
-in those 32 bits. If no match, the message is dropped. Broadcast (0xFFFFFFFF) maps to IPv6 link-local all-nodes
-multicast.
+in those 32 bits. If no match, the message is dropped. Broadcast (0xFFFFFFFF)
+maps to IPv6 realm-local all-nodes multicast (`ff03::1`).
 
 ### User Names (short_name, long_name)
 

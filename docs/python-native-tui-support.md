@@ -13,7 +13,7 @@ tests without hiding unsupported paths.
 |---------|---------|-------------------|
 | `lichen-native-client --help` | Packaging and CLI smoke check. | No |
 | `lichen-native-client` | Launch native TUI in disconnected demo mode. | No |
-| `lichen-native-client --coap-base-uri 'coap://[fe80::1%25en0]'` | Native LCI over IP/CoAP. | Requires reachable LCI CoAP endpoint for live traffic |
+| `lichen-native-client --coap-base-uri 'coap://[fe80::7002:e7b4:4a75:c734%25en0]'` | Native LCI over IP/CoAP. | Requires reachable LCI CoAP endpoint for live traffic |
 | `lichen-native-tui ...` | Backward-compatible alias for `lichen-native-client`. | Same as native client |
 | `lichen-tui ...` | Simulator node TUI, not the native LCI client. | No |
 
@@ -50,11 +50,11 @@ The Python native client follows the LCI IPv6 + CoAP contract in
 `spec/11-lci.md`. It does not implement the historical CBOR native framing in
 `spec/lichen-native/` for BLE, USB, serial, or IP LCI sessions.
 
-Mesh-node access follows the same contract: when the host transport can route
-to mesh IPv6 addresses, clients address the target node directly with normal
-CoAP URIs. A discovered `/proxy` resource is an optional RFC 7252 compatibility
-helper for transports that cannot route mesh IPv6 directly; `/mesh` is not a
-native LCI proxy endpoint.
+Mesh-node access follows the same contract: baseline link-local clients send
+requests to the node's RFC 7252 forward proxy with the target native address in
+`Proxy-Uri`. Direct mesh routing requires a separately provisioned
+client identity and participation profile; `/mesh` is not a native LCI proxy
+endpoint.
 
 The legacy Python demo/simulator `/messages` resource is not a native LCI
 messaging contract. Native clients use `/msg/inbox`; `/messages` may be used
@@ -106,12 +106,12 @@ Use this only when a local LCI CoAP endpoint is reachable.
 3. Launch:
 
    ```bash
-   lichen-native-client --coap-base-uri 'coap://[fe80::1%25en0]'
+   lichen-native-client --coap-base-uri 'coap://[fe80::7002:e7b4:4a75:c734%25en0]'
    ```
 
    Replace `en0` with the host interface that reaches the node. For Linux this
-   may be `wlan0`, `eth0`, or a bridge/tap interface. If the node has a ULA or
-   GUA address, prefer that address and omit the link-local zone.
+   may be `wlan0`, `eth0`, or a bridge/tap interface. A native Yggdrasil
+   address may be used when the host has a route to the LICHEN mesh.
 
 4. Press `r` on Dashboard and confirm device, battery/time placeholders,
    resources, radio, and DODAG rows render without secret material.

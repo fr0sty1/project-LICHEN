@@ -35,14 +35,13 @@ adaptation layer. Its responsibilities are:
 5. Encryption signaling: carry the encrypted-payload flag for format
    compatibility. Encrypted link frames are not currently supported.
 
-The LICHEN link layer does **not** provide a source address field. The sender's
-identity is established by the signature (when present), and the IPv6 source
-address in the SCHC payload provides the network-layer source. This keeps the
-overhead minimal for the common case of authenticated unicast.
+Signed version 2 frames carry a compact immediate-sender identifier. The IPv6
+source in the SCHC payload remains the network-layer packet origin and may
+differ from the immediate sender after relaying.
 
 ### 1.1. Design Goals
 
-  - **Small overhead:** 5 bytes minimum header + optional address + optional MIC.
+- **Small overhead:** 5 bytes minimum header + optional destination, sender ID, and MIC.
 - **Replay-safe:** Epoch + sequence number support a sliding-window replay filter.
 - **Flexible addressing:** Broadcast, 16-bit short, EUI-64, or address-elided modes.
 - **Authentication optional:** Unsigned frames are valid for bootstrap/discovery.
@@ -78,15 +77,16 @@ document are to be interpreted as described in RFC 2119.
 ### 3.1. Overall Structure
 
 ```
-Octets: 1        1       1      2       var     var      var
-       +--------+-------+------+-------+-------+--------+-----+
-       | LENGTH | LLSec | EPO  | SEQ   |  DST  |  PLD   | MIC |
-       +--------+-------+------+-------+-------+--------+-----+
+Octets: 1        1       1      2       var     0/2/10   var      var
+       +--------+-------+------+-------+-------+--------+--------+-----+
+       | LENGTH | LLSec | EPO  | SEQ   |  DST  | SENDER |  PLD   | MIC |
+       +--------+-------+------+-------+-------+--------+--------+-----+
 ```
 
 - **LENGTH** (1 octet): Number of bytes in the frame body (everything after
   the LENGTH byte). Implementations MUST NOT transmit frames with LENGTH > 255.
-  Receivers MUST discard frames where LENGTH exceeds the received byte count.
+  Receivers MUST discard frames unless the received frame is exactly
+  `LENGTH + 1` octets; trailing bytes are not permitted.
 
 - **LLSec** (1 octet): Link-layer security flags. See Section 3.2.
 
@@ -102,20 +102,23 @@ Octets: 1        1       1      2       var     var      var
 - **DST** (0, 2, or 8 octets): Destination address. Present and length
   determined by AddrMode in LLSec. See Section 3.3.
 
+- **SENDER** (0, 2, or 10 octets): Immediate sender identifier. Present exactly
+  when S=1 and absent when S=0. A normal value is the sender's authenticated
+  16-bit short address. The reserved value `0xffff` is followed by the sender's
+  key-derived 64-bit IID. Receivers use the binding to select the pinned
+  verification key and MUST verify it before accepting the signature.
+
 - **PLD** (variable): authenticated inner payload. The first octet is a
   dispatch value: `0x14` for SCHC, whose body begins with the SCHC rule ID, or
   `0x15` for LICHEN routing/control messages, whose body begins with the
   routing message type. Length derived as
-  `LENGTH - fixed_header_size - DST_len - MIC_len`. MUST be at least 2 bytes
+  `LENGTH - fixed_header_size - DST_len - SENDER_len - MIC_len`. MUST be at least 2 bytes
   for currently defined dispatch values.
 
   Receivers that do not support a routing/control message type or version MUST
   ignore it after link validation. They MUST NOT deliver unknown control bodies
-  as application payload. A non-SCHC control protocol that replaces the link
-  signature at each hop MUST carry the immediate sender IID in its
-  protocol-defined hop envelope so the receiver can select a pinned verification
-  key. End-to-end signed protocols such as Announce continue to identify and
-  authenticate their originator in their own immutable body.
+  as application payload. End-to-end signed protocols such as Announce continue
+  to identify and authenticate their originator in their own immutable body.
 
 - **MIC** (0 or 48 octets): Message Integrity Code. When S=0, the MIC is
   absent regardless of MicLength. When S=1, the MIC is the full 48-byte
@@ -126,7 +129,7 @@ Octets: 1        1       1      2       var     var      var
 ```
   Bit:  7   6   5   4   3   2   1   0
        +---+---+---+---+---+---+---+---+
-       | R | E | S |  MicLength  | AM  |
+       | I | E | S |  MicLength  | AM  |
        +---+---+---+---+---+---+---+---+
 ```
 
@@ -159,19 +162,22 @@ Octets: 1        1       1      2       var     var      var
   frames are unsupported in the current interoperable profile; senders MUST
   leave E clear and receivers MUST discard frames with E=1.
 
-- **Bit 7 (R): Reserved.** Senders MUST set to 0. Receivers MUST discard
-  frames with R=1.
+- **Bit 7 (I): Sender ID present.** Version 2 requires I=S. Receivers MUST
+  reject version 2 frames where these bits differ.
 
 ### 3.3. Destination Address
 
 When AddrMode is Extended (0b10), DST is an 8-byte EUI-64 in network byte
 order.
 
-When AddrMode is Short (0b01), DST is a 2-byte short address assigned by the
-DODAG root or derived from the lower 16 bits of the link-local IPv6 address.
+When AddrMode is Short (0b01), DST is the authenticated 2-byte short address
+assigned or derived by the algorithm in Physical and Link Layers section 4.5.
 
 When AddrMode is None (0b00), the frame is a broadcast. All nodes MUST
-process the payload, subject to replay protection.
+process an authenticated payload, subject to replay protection. Unsigned
+broadcasts have no link-layer sender identity or replay window and MUST NOT be
+relayed; any end-to-end replay protection is the responsibility of their
+payload protocol.
 
 When AddrMode is Elided (0b11), the destination is recoverable from context
 (e.g. the first IPv6 destination address in the SCHC payload). No destination
@@ -179,13 +185,16 @@ bytes are present on the wire in this mode.
 
 ### 3.4. Source Address
 
-The frame format intentionally omits a source address field. The sender's
-identity is established by:
+The frame format intentionally omits a source address field. The immediate
+sender identity is established by:
 
 1. The Schnorr signature in MIC (Section 4), whose verification key is the
    sender's public key.
-2. The IPv6 source address in the SCHC-decompressed payload, which is
-   link-local and derived from the sender's EUI-64.
+2. `SENDER`, which selects the authenticated immediate-sender key binding.
+
+The IPv6 source identifies the packet origin, which can differ from the
+immediate sender after a relay. End-to-end origin authentication is supplied by
+OSCORE or a protocol-specific signed object such as Announce.
 
 ## 4. Authentication
 
@@ -195,7 +204,7 @@ When S=1, the MIC field contains the full 48-byte Schnorr signature as defined i
 [draft-lichen-schnorr-00]. The signature is computed over:
 
 ```
-signed_data = LENGTH || LLSec || EPO || SEQ || DST || PLD
+signed_data = LENGTH || LLSec || EPO || SEQ || DST || SENDER || PLD
 ```
 
 (All fields before the MIC, in wire order, excluding the MIC itself.)
@@ -213,15 +222,22 @@ Unsigned frames SHOULD be limited to:
 - Simulator and test traffic
 - Frames where the payload itself carries authentication (OSCORE)
 
-Nodes SHOULD NOT accept routing-affecting messages (RPL DIO/DAO) from
-unsigned frames unless the node is in a permissive mode.
+Nodes MUST NOT accept routing-affecting messages from unsigned frames. An
+origin Announce without an existing short-address binding MUST use the extended
+`SENDER` form and may bootstrap verification of its signed hop frame from the
+public key carried in its inner signed object as specified by the routing
+profile. Relayed Announces require an already pinned immediate-sender key.
 
 ### 4.3. Key Lookup
 
-Receivers identify the signing key by the sender's link-local IPv6 address
-extracted from the SCHC-decompressed payload. The key material is maintained
-in a local trust store indexed by EUI-64. See the LICHEN security architecture
-for trust establishment procedures.
+Receivers identify the immediate signing key from `SENDER`. For the 2-byte
+form, the short-address table MUST contain one authenticated, unambiguous
+mapping to `(IID, public key)`. For the extended form, the eight octets after
+`0xffff` MUST equal the IID derived from the selected public key. Trust entries
+for data traffic are indexed by the full native `/128` and include both
+bindings. After decompression, the receiver MUST also recompute
+`AddrForKey(origin_public_key)` whenever it validates an end-to-end origin
+binding and reject a native source mismatch.
 
 ## 5. Replay Protection
 
@@ -237,11 +253,12 @@ node tracks:
 The minimum window size is 64 frames. Implementations SHOULD use at least a
 128-bit window.
 
-A frame MUST be discarded if:
-
-1. EPO < highest accepted EPO for this peer (old epoch).
-2. EPO == highest accepted EPO and SEQ falls outside the window or has
-   already been accepted.
+A frame MUST be discarded when its 24-bit `(EPO, SEQ)` counter is outside the
+replay window under the serial arithmetic defined in the main specification,
+already accepted, or exactly half the 24-bit space from the high-water mark.
+The receive high-water mark and replay bitmap MUST persist for as long as the
+peer trust binding. A receiver that loses this state MUST discard that binding
+and re-establish trust before accepting frames from the peer.
 
 ### 5.2. Epoch Transitions
 
@@ -249,37 +266,38 @@ When SEQ reaches 0xFFFF, the sender MUST increment EPO and reset SEQ to 0
 before sending further frames. Receivers MUST accept EPO increments even
 without a signed epoch-change notification.
 
-When a node reboots, it SHOULD increment EPO to invalidate old sequence
-numbers. Receivers MUST accept EPO values higher than previously seen,
-within the range [previous_EPO, previous_EPO + 4]. Larger EPO jumps require
-out-of-band trust re-establishment.
+When a node reboots, it MUST recover and increment its persisted EPO before
+transmitting under the same key. Loss of persisted state requires secure
+counter reprovisioning or a new node identity.
 
 ## 6. Examples
 
-### 6.1. Broadcast RPL DIO (No Signature)
+### 6.1. Broadcast RPL DIO (Signed Hop Frame)
 
 ```
-  LENGTH = 0x1A  (26 bytes body)
-  LLSec  = 0x00  (AddrMode=None, MicLength=0, S=0, E=0)
+  LENGTH = 54 + N  (body bytes; N is PLD length)
+  LLSec  = 0xA0  (I=1, AddrMode=None, S=1, E=0)
   EPO    = 0x03
   SEQ    = 0x00, 0x2C
   DST    = (absent, AddrMode=None)
-  PLD    = <26 - 4 bytes of SCHC-compressed RPL DIO>
-  MIC    = (absent, S=0)
+  SENDER = 2-byte authenticated short address
+  PLD    = <N bytes of SCHC-compressed RPL DIO>
+  MIC    = 48-byte Schnorr signature
 ```
 
-Total frame: 27 bytes.
+Total frame: `55 + N` bytes.
 
 ### 6.2. Unicast CoAP Request (Extended Address, signed)
 
 ```
-  LENGTH = 0x3D  (61 bytes body)
-  LLSec  = 0x22  (AddrMode=Extended, S=1, E=0; MIC is 48B)
-            = 0b0010_0010
+  LENGTH = 0x40  (64 bytes body)
+  LLSec  = 0xA2  (I=1, AddrMode=Extended, S=1, E=0; MIC is 48B)
+            = 0b1010_0010
   EPO    = 0x01
   SEQ    = 0x00, 0x01
   DST    = 8 bytes EUI-64
-  PLD    = <1 byte SCHC-compressed CoAP>
+  SENDER = 2-byte authenticated short address
+  PLD    = <2 bytes: dispatch + SCHC-compressed CoAP body>
   MIC    = 48-byte Schnorr signature
 ```
 
@@ -288,8 +306,8 @@ Total frame: 27 bytes.
 ### 6.3. Encrypted Frame (Unsupported)
 
 ```
-  LLSec  = 0x62  = 0b0110_0010
-            (AddrMode=Extended, MicLength=0b000, S=1, E=1)
+  LLSec  = 0xE2  = 0b1110_0010
+            (I=1, AddrMode=Extended, MicLength=0b000, S=1, E=1)
   Result: rejected; signed encrypted frames are unsupported.
 ```
 

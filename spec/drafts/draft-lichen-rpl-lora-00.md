@@ -144,7 +144,7 @@ minimizes RAM requirements at routers.
 | RPLInstanceID | 0 | Single instance |
 | Mode | Non-Storing | Memory efficiency |
 | MOP | 1 | Non-Storing, no multicast |
-| Grounded | Yes (if BR) | Internet connectivity |
+| Grounded | Yes only with usable backhaul | External objective available |
 | DAG Metric Container | Yes | Required for MRHOF |
 
 ### 4.3. Multiple DODAGs
@@ -343,9 +343,9 @@ For high-security deployments:
 
 ### 8.4. Root Verification
 
-Nodes SHOULD verify root legitimacy:
-- Root's public key should be pre-provisioned or TOFU-pinned
-- Unexpected root changes should alert operator
+Nodes MUST verify root legitimacy with the Root Authorization Option:
+- Root's public key is pre-provisioned or TOFU-pinned
+- Unexpected root changes alert the operator
 - Multiple roots with different keys may indicate attack
 
 ## 9. DIO Options
@@ -355,8 +355,9 @@ Nodes SHOULD verify root legitimacy:
 | Option | When |
 |--------|------|
 | DODAG Configuration | Every DIO |
-| Prefix Information | When advertising prefix |
 | DAG Metric Container | When using MRHOF |
+| SCHC Rule Version | Every DIO |
+| Root Authorization | Every DIO |
 
 ### 9.2. LICHEN-Specific Options
 
@@ -366,10 +367,49 @@ Nodes SHOULD verify root legitimacy:
 +--------+--------+--------+
 | Type   | Length | Version|
 +--------+--------+--------+
-  TBD      1        1 (uint8)
+  0xF0     1        1 (uint8)
 ```
 
-Advertises SCHC rule set version for compression compatibility.
+Advertises SCHC rule set version for compression compatibility. This option is
+mandatory in every LICHEN DIO; nodes MUST NOT join when it is absent or
+unsupported. `0xF0` is the provisional LICHEN profile value pending IANA
+allocation.
+
+**Root Authorization Option:**
+
+The option has this complete wire format:
+
+```
++--------+--------+--------------------+---------------------+
+| 0xF1   | 0x50   | Root Public Key    | Schnorr48 Signature |
++--------+--------+--------------------+---------------------+
+   1B       1B             32B                   48B
+```
+
+`0xF1` is the provisional LICHEN profile value pending IANA allocation. The
+exact signature input is:
+
+```
+UTF8("LICHEN-RPL-ROOT-v1") || RPLInstanceID:u8 ||
+DODAGVersionNumber:u8 || G_MOP_Prf:u8 || DODAGID:16 ||
+DODAGConfigurationOption:16 || RootPublicKey:32 || SchcRuleVersion:u8
+```
+
+The domain string has no terminating NUL and integers use network byte order.
+`G_MOP_Prf` is the exact DIO Grounded/MOP/Preference octet with its reserved
+bit clear. `DODAGConfigurationOption` is the complete 16-octet option including
+Type and Length. Every DIO relay copies the Root Authorization, SCHC Rule
+Version, and DODAG Configuration options unchanged. A receiver MUST verify
+`DODAGID == AddrForKey(RootPublicKey)`, verify the root signature, and apply
+TOFU or configured root trust before accepting the DODAG identity, grounded
+state, MOP, Preference, version, DODAG configuration, or SCHC rule version.
+Rank is deliberately outside this object because each relay advertises its own
+rank. DTSN is also outside this object because each DIO sender controls its own
+DAO trigger state; relays do not copy the root's DTSN.
+
+A conforming DIO MUST contain exactly one Root Authorization, one SCHC Rule
+Version, and one DODAG Configuration option. Receivers MUST discard a DIO with
+a missing or duplicate instance of any of these options.
 
 **Time Synchronization Option:**
 
@@ -393,26 +433,11 @@ Provides time synchronization for replay protection.
 
 Advertises node congestion for routing decisions.
 
-### 9.3. Prefix Information Option
+### 9.3. Address Prefixes
 
-When DODAG root advertises prefix:
-
-```
-+--------+--------+--------+--------+
-| Type   | Length |  Flags |PrefLen |
-+--------+--------+--------+--------+
-|            Valid Lifetime         |
-+--------+--------+--------+--------+
-|          Preferred Lifetime       |
-+--------+--------+--------+--------+
-|              Reserved             |
-+--------+--------+--------+--------+
-|                                   |
-|            Prefix (16 bytes)      |
-|                                   |
-|                                   |
-+--------+--------+--------+--------+
-```
+The baseline LICHEN profile MUST NOT include a Prefix Information Option.
+Nodes use key-derived native `/128` addresses, so a DODAG root neither assigns
+nor advertises an address prefix.
 
 ## 10. Implementation Considerations
 
@@ -455,7 +480,7 @@ When DODAG root advertises prefix:
 
 | Attack | Mitigation |
 |--------|------------|
-| DIO spoofing | Link-layer signatures |
+| DIO spoofing | Hop link signature + root authorization signature |
 | Rank manipulation | Hysteresis, neighbor validation |
 | DAO flooding | Rate limiting, lifetime enforcement |
 | DODAG partition | Root demotion protocol |
@@ -485,6 +510,7 @@ This document requests allocation of:
 
 - RPL DIO Option Types for:
   - SCHC Rule Version
+  - Root Authorization
   - Time Synchronization
   - Congestion Level
 
@@ -509,7 +535,7 @@ Specific values TBD.
 
 ```
 RPLInstanceID: 0
-DODAGID: fd12:3456:789a:1::1
+DODAGID: 200:848a:604f:bb7e:4384:65db:8db6:6895
 Version: 1
 Rank: 256 (root)
 Mode: Non-Storing
@@ -522,9 +548,7 @@ Trickle:
   Imax: 8 doublings (17 min)
   k: 10
 
-Prefix: fd12:3456:789a:1::/64
-Valid Lifetime: 86400s (1 day)
-Preferred Lifetime: 43200s (12 hours)
+Prefix: none (node addresses are key-derived /128s)
 ```
 
 ## Appendix B. Parent Selection Example

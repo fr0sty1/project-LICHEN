@@ -19,30 +19,31 @@ verify(pubkey, msg, sig):
 
 ## draft-lichen-link-01: Link Layer Frame Format
 ```
-+--------+-------+------+-------+-------+--------+-----+
-| LENGTH | LLSec | EPO  | SEQ   |  DST  |  PLD   | MIC |
-+--------+-------+------+-------+-------+--------+-----+
-   1B       1B     1B     2B    0/2/8B   var   0/4/8B
++--------+-------+------+-------+-------+----------+--------+-----+
+| LENGTH | LLSec | EPO  | SEQ   |  DST  | SENDER   |  PLD   | MIC |
++--------+-------+------+-------+-------+----------+--------+-----+
+   1B       1B     1B     2B    0/2/8B   0/2/10B    var     0/48B
 
-LLSec: [R:1][E:1][S:1][MicLen:3][AddrMode:2]
-  R=reserved(0)  E=encrypted  S=signed  MicLen: 0=4B,1=8B
+LLSec: [I:1][E:1][S:1][MicLen:3][AddrMode:2]
+  v2 requires I=S; E is unsupported; S=1 means a 48B Schnorr48 signature
   AddrMode: 0=None(bcast), 1=Short(2B), 2=Extended(EUI-64,8B), 3=Elided
+  SENDER: authenticated short address, or 0xffff + key-derived IID
 
 EPO = epoch (wraps 256, inc on reboot)
 SEQ = sequence (big-endian, wraps 65536)
-MIC_INPUT = LENGTH || LLSec || EPO || SEQ || DST || PLD
+MIC_INPUT = LENGTH || LLSec || EPO || SEQ || DST || SENDER || PLD
 
-MIN_HEADER=5B  REPLAY_WINDOW>=64  EPO_JUMP_MAX=4
+MIN_HEADER=5B  REPLAY_WINDOW>=64  PERSIST_EPOCH_OR_REKEY
 ```
 
 ## draft-lichen-schc-lora-00: SCHC Profile
 ```
 RULE_ID = 8 bits
 
-RULE 0: Link-local IPv6+UDP    | fe80:: src+dst, port 5683±15 | 2B
-RULE 1: Mesh-local IPv6+UDP    | fd00::/8 same prefix         | 10B
-RULE 2: Global IPv6+UDP        | 2000::/3                     | 41B
-RULE 3: ICMPv6 RPL (DIO/DAO)   | NH=58, Type=155              | 2B
+RULE 0: Link-local IPv6+UDP    | explicit src+dst IIDs        | 18B
+RULE 1: Native Yggdrasil+UDP   | 0200::/8, two 120b residues  | 33B
+RULE 2: Native Yggdrasil+MQTT  | 0200::/8, fixed port 10883   | 32B
+RULE 3: ICMPv6 RPL multicast   | explicit source IID          | 10B
 RULE 255: No compression (fallback)
 
 FRAGMENTATION (ACK-on-Error):

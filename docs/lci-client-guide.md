@@ -5,8 +5,9 @@ How to connect to a LICHEN mesh node using the Local Client Interface (LCI).
 ## Overview
 
 LCI treats the local connection as an IPv6 interface. Your client gets a
-link-local address and talks CoAP to the node at `fe80::1`. Standard CoAP
-tools work out of the box.
+link-local address and talks CoAP to the node's key-derived link-local address.
+The examples use `fe80::7002:e7b4:4a75:c734`. Standard CoAP tools work out of
+the box.
 
 ## Transport Setup
 
@@ -29,14 +30,14 @@ socat -d -d pty,raw,echo=0 file:/dev/ttyACM0,b115200,raw,echo=0
 ```bash
 sudo ip link set sl0 up
 sudo ip -6 addr add fe80::2/64 dev sl0
-sudo ip -6 route add default via fe80::1 dev sl0
 ```
 
-### BLE (Nordic UART Service)
+### BLE (Native LICHEN LCI Service)
 
 1. Scan for the node's BLE advertisement
-2. Connect to NUS UUID: `6E400001-B5A3-F393-E0A9-E50E24DCCA9E`
-3. SLIP frames go over the TX/RX characteristics
+2. Connect to service `e665960c-7c84-5606-a8d3-884507d0b7a8`
+3. Write SLIP frames to `5e6e304a-29af-52d9-a813-306f0f888586` and subscribe
+   to `be4d4a23-876b-592b-b252-440367e18e43`
 4. Same IPv6 setup as serial, but over the BLE channel
 
 ## CoAP Client Examples
@@ -47,7 +48,7 @@ Using [aiocoap](https://aiocoap.readthedocs.io/) or `coap-client` (libcoap).
 
 ```bash
 # List available resources
-coap-client -m get coap://[fe80::1%sl0]/.well-known/core
+coap-client -m get coap://[fe80::7002:e7b4:4a75:c734%25sl0]/.well-known/core
 
 # Output:
 # </config>;rt="config",</status>;rt="status";obs,...
@@ -56,7 +57,7 @@ coap-client -m get coap://[fe80::1%sl0]/.well-known/core
 ### Read Node Status
 
 ```bash
-coap-client -m get coap://[fe80::1%sl0]/status
+coap-client -m get coap://[fe80::7002:e7b4:4a75:c734%25sl0]/status
 
 # Returns CBOR with uptime, battery, radio stats, DODAG info
 ```
@@ -64,20 +65,20 @@ coap-client -m get coap://[fe80::1%sl0]/status
 Decode CBOR with `cbor2`:
 
 ```bash
-coap-client -m get coap://[fe80::1%sl0]/status | python3 -m cbor2.tool
+coap-client -m get coap://[fe80::7002:e7b4:4a75:c734%25sl0]/status | python3 -m cbor2.tool
 ```
 
 ### Read Configuration
 
 ```bash
 # Node config
-coap-client -m get coap://[fe80::1%sl0]/config
+coap-client -m get coap://[fe80::7002:e7b4:4a75:c734%25sl0]/config
 
 # Radio config
-coap-client -m get coap://[fe80::1%sl0]/config/radio
+coap-client -m get coap://[fe80::7002:e7b4:4a75:c734%25sl0]/config/radio
 
 # Identity (EUI-64, public key, addresses)
-coap-client -m get coap://[fe80::1%sl0]/config/identity
+coap-client -m get coap://[fe80::7002:e7b4:4a75:c734%25sl0]/config/identity
 ```
 
 ### Update Configuration
@@ -85,41 +86,43 @@ coap-client -m get coap://[fe80::1%sl0]/config/identity
 ```bash
 # Change node name
 echo '{"name": "my-node"}' | python3 -c "import sys,cbor2; cbor2.dump(cbor2.load(sys.stdin), sys.stdout.buffer)" | \
-  coap-client -m put -f - coap://[fe80::1%sl0]/config
+  coap-client -m put -f - coap://[fe80::7002:e7b4:4a75:c734%25sl0]/config
 
 # Change radio SF
 echo '{"sf": 10}' | python3 -c "import sys,json,cbor2; cbor2.dump(json.load(sys.stdin), sys.stdout.buffer)" | \
-  coap-client -m put -f - coap://[fe80::1%sl0]/config/radio
+  coap-client -m put -f - coap://[fe80::7002:e7b4:4a75:c734%25sl0]/config/radio
 ```
 
 ### Observe Status Changes
 
 ```bash
 # Subscribe to status updates
-coap-client -m get -s coap://[fe80::1%sl0]/status
+coap-client -m get -s coap://[fe80::7002:e7b4:4a75:c734%25sl0]/status
 
 # Subscribe to neighbor table changes
-coap-client -m get -s coap://[fe80::1%sl0]/status/neighbors
+coap-client -m get -s coap://[fe80::7002:e7b4:4a75:c734%25sl0]/status/neighbors
 ```
 
 ### Key Management
 
 ```bash
 # List known peers
-coap-client -m get coap://[fe80::1%sl0]/keys
+coap-client -m get coap://[fe80::7002:e7b4:4a75:c734%25sl0]/keys
 
 # Get specific peer's key
-coap-client -m get coap://[fe80::1%sl0]/keys/1234:5678:9abc:def0
+coap-client -m get coap://[fe80::7002:e7b4:4a75:c734%25sl0]/keys/200:848a:604f:bb7e:4384:65db:8db6:6895/<key-id>
 
 # Delete a peer
-coap-client -m delete coap://[fe80::1%sl0]/keys/1234:5678:9abc:def0
+coap-client -m delete coap://[fe80::7002:e7b4:4a75:c734%25sl0]/keys/200:848a:604f:bb7e:4384:65db:8db6:6895/<key-id>
 ```
 
 ### Send Message to Mesh
 
 ```bash
-# Direct to mesh node (node routes via LoRa)
-coap-client -m get coap://[fd12:3456:789a:1::aaaa:bbbb:cccc:dddd]/sensors/temp
+# Proxy to mesh node; link-local sources are not routed over LoRa
+coap-client -m get \
+  -O 35,coap://[200:848a:604f:bb7e:4384:65db:8db6:6895]/sensors/temp \
+  coap://[fe80::7002:e7b4:4a75:c734%25sl0]
 ```
 
 ## Python aiocoap Examples
@@ -133,21 +136,21 @@ async def main():
     ctx = await Context.create_client_context()
 
     # GET /status
-    req = Message(code=GET, uri="coap://[fe80::1%sl0]/status")
+    req = Message(code=GET, uri="coap://[fe80::7002:e7b4:4a75:c734%25sl0]/status")
     resp = await ctx.request(req).response
     status = cbor2.loads(resp.payload)
     print(f"Uptime: {status['uptime_s']}s, Battery: {status['battery_pct']}%")
 
     # PUT /config/radio
     new_config = {"sf": 10, "tx_power_dbm": 17}
-    req = Message(code=PUT, uri="coap://[fe80::1%sl0]/config/radio",
+    req = Message(code=PUT, uri="coap://[fe80::7002:e7b4:4a75:c734%25sl0]/config/radio",
                   payload=cbor2.dumps(new_config))
     req.opt.content_format = 60  # application/cbor
     resp = await ctx.request(req).response
     print(f"Config update: {resp.code}")
 
     # Observe /status/neighbors
-    req = Message(code=GET, uri="coap://[fe80::1%sl0]/status/neighbors",
+    req = Message(code=GET, uri="coap://[fe80::7002:e7b4:4a75:c734%25sl0]/status/neighbors",
                   observe=0)
     obs = ctx.request(req)
     async for resp in obs.observation:
@@ -201,11 +204,11 @@ All payloads use CBOR (RFC 8949) with string keys.
 }
 ```
 
-### /keys/{iid}
+### /keys/{native-address}/{key-id}
 
 ```json
 {
-  "iid": "1234:5678:9abc:def0",
+  "address": "200:848a:604f:bb7e:4384:65db:8db6:6895",
   "pubkey": "<base64 Ed25519>",
   "trust": "tofu",
   "first_seen": "2026-05-26T12:00:00Z",
@@ -220,14 +223,14 @@ All payloads use CBOR (RFC 8949) with string keys.
 1. Check serial connection: `screen /dev/ttyACM0 115200`
 2. Verify SLIP daemon is running
 3. Check IPv6 address: `ip -6 addr show sl0`
-4. Ping the node: `ping6 fe80::1%sl0`
+4. Ping the node: `ping6 fe80::7002:e7b4:4a75:c734%sl0`
 
 ### CBOR decode errors
 
 Content-Format must be 60 (application/cbor). Check with:
 
 ```bash
-coap-client -m get -v coap://[fe80::1%sl0]/status 2>&1 | grep Content-Format
+coap-client -m get -v coap://[fe80::7002:e7b4:4a75:c734%25sl0]/status 2>&1 | grep Content-Format
 ```
 
 ### BLE connection drops

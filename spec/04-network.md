@@ -14,15 +14,12 @@
 - Multiple border routers MUST be tolerated
 - No central address authority required
 
-**Address Types (Layered):**
+**Address Types:**
 
-| Type | Prefix | When Available | Routable To |
-|------|--------|----------------|-------------|
-| Link-local | fe80::/10 | Always | Direct neighbors |
-| ULA | fd00::/8 | DODAG root present | Entire mesh |
-| GUA | 2000::/3 | BR with upstream prefix | Internet |
-
-All addresses use the same IID, derived from EUI-64 (see 6.2).
+| Type | Construction | Use |
+|------|--------------|-----|
+| Link-local | `fe80::/64 + IID` | NDP, RPL control, and direct-neighbor diagnostics |
+| Native unicast | `AddrForKey(Ed25519 public key)` | All application unicast, locally and through Yggdrasil |
 
 **1. Link-Local -- Always Available**
 
@@ -33,35 +30,43 @@ fe80::<IID>
 Works without any infrastructure. Sufficient for single-hop communication
 and mesh formation. RPL control messages use link-local.
 
-**2. ULA -- Mesh-Routable (Default)**
+**2. Native Yggdrasil Address -- Primary Unicast**
 
-When a DODAG root is present, it advertises a ULA /64 prefix via RPL DIO:
-```
-fd<40-bit random>:<16-bit subnet>::<IID>
-```
+Every node MUST derive one native Yggdrasil `/128` from the same raw 32-byte
+Ed25519 public key used for LICHEN authentication. Native node addresses occupy
+`0200::/8`; `0200::/7` also contains Yggdrasil's routed `0300::/8` subnet
+space, which LICHEN does not use for node identity.
 
-ULA prefix generation (at DODAG root):
-- Generate 40-bit random value per RFC 4193
-- Persist across reboots (stable prefix)
-- 16-bit subnet ID: 0x0001 for primary mesh
+`AddrForKey` is compatible with current `yggdrasil-go`:
 
-Nodes derive their ULA address from the advertised prefix + their IID.
-Traffic is routable throughout the mesh but not to the internet.
+1. Complement every byte of the public key.
+2. Scan the result most-significant bit first and count its leading one bits
+   as `n`.
+3. Discard those `n` one bits and the following zero bit.
+4. Set address byte 0 to `0x02` and byte 1 to `n`.
+5. Pack the remaining bits most-significant bit first into complete octets,
+   discarding any incomplete trailing octet.
+6. Copy at most the first 14 packed octets into address bytes 2 through 15 and
+   leave any unfilled address bytes as zero.
 
-**3. GUA -- Internet-Routable (Optional)**
+No SHA hash, EUI-64, gateway prefix, or link-local IID participates in this
+derivation. The input MUST be a 32-byte Ed25519 public key accepted by signature
+verification. A receiver that knows the public key MUST reject a claimed native
+address that does not equal `AddrForKey(public_key)`.
 
-When a border router has an upstream prefix, it advertises a GUA /64:
-```
-<delegated prefix>::<IID>
-```
+`AddrForKey` is a lossy encoding, so the address alone is not proof of a unique
+public key. If two authenticated keys produce the same native `/128` or key
+token, implementations MUST mark the mapping ambiguous, reject compressed
+context that depends on it, and require explicit operator resolution. TOFU
+MUST NOT replace an existing binding silently.
 
-Sources of GUA prefix:
-- DHCPv6-PD from upstream ISP
-- Static configuration
-- Tunnel broker (e.g., Hurricane Electric)
-- Own PI space
-
-Nodes MAY have both ULA and GUA addresses simultaneously.
+The address works as a flat identifier on an isolated LICHEN mesh; no
+Yggdrasil daemon is required for local forwarding. Global reachability requires
+the node to participate in Yggdrasil under the same key. The required
+constrained-node transport is outside this baseline, so implementations MUST
+treat non-local native destinations as unreachable unless another
+specification defines that participation. A gateway-owned Yggdrasil identity
+MUST NOT emit traffic with a node's native source address.
 
 **Isolated Meshes (No Border Router):**
 
@@ -69,8 +74,8 @@ When no border router is present, the mesh self-organizes:
 
 **Root Election:**
 - Any router MAY elect itself as DODAG root
-- Election: lowest EUI-64 wins (deterministic, no negotiation)
-- Self-elected root generates and advertises ULA prefix
+- Election: lexicographically lowest authenticated native `/128` wins
+- Self-elected root forms the DODAG but advertises no address prefix
 - If a "real" border router appears, nodes prefer it (lower rank)
 
 **Root Failure Detection:**
@@ -83,9 +88,9 @@ Nodes monitor root health via DIO reception:
 | Root unreachable + no alternate path | Initiate re-election |
 
 Re-election process:
-1. Node with next-lowest EUI-64 waits random delay (0-5 seconds)
+1. Node with next-lowest authenticated native `/128` waits random delay (0-5 seconds)
 2. If no DIO received during delay, self-elect as root
-3. Generate new ULA prefix (or reuse if known)
+3. Form a new DODAG without assigning an address prefix
 4. Advertise DIO; other candidates stand down
 
 **Root Demotion:**
@@ -99,18 +104,19 @@ Nodes MAY vote to demote a misbehaving root:
 | Resource exhaustion | Root stops responding to DAO |
 
 Demotion protocol:
-1. Detecting node broadcasts DEMOTION_REQUEST with evidence hash
+1. Detecting node broadcasts DEMOTION_REQUEST naming the root's native `/128`
+   and carrying an evidence hash
 2. Other nodes validate evidence independently
 3. If >50% of mesh (by node count) agree, root is demoted
 4. Demoted node MUST NOT self-elect for 1 hour
-5. Next-lowest EUI-64 becomes root
+5. Next-lowest authenticated native `/128` becomes root
 
 DEMOTION_REQUEST format (ICMPv6 RPL Control Message):
 ```
 +--------+--------+--------+--------+
 | Type   | Code   | Checksum        |
 +--------+--------+--------+--------+
-| Target EUI-64 (8 bytes)           |
+| Target Native Address (16 bytes)  |
 +--------+--------+--------+--------+
 | Evidence Hash (16 bytes, SHA-256 truncated) |
 +--------+--------+--------+--------+
@@ -122,40 +128,45 @@ Nodes track demotion votes per-target. Votes expire after 10 minutes.
 
 **Limitations:**
 
-- EUI-64 gaming requires hardware access; if attacker controls hardware,
-  network is already compromised
+- Identity rotation can evade a prior demotion, but the new key derives a new
+  native address and loses the old identity's trust
 - Demotion requires >50% honest nodes (Byzantine assumption)
 - Small meshes (<5 nodes) should use manual root configuration
 
 **Multiple Border Routers:**
 
 Multiple BRs are supported. Each BR:
-- Advertises its own prefix(es) via RPL DIO
+- Advertises its grounded state and routing objective via RPL DIO
 - Forms its own DODAG (same or different RPL Instance)
-- Nodes may join multiple DODAGs or pick the best one
+- Nodes may join multiple DODAGs only when they use distinct RPL Instance IDs,
+  or pick the best DODAG within one Instance
 
-Coordination between BRs is NOT required. Nodes handle multiple prefixes:
-- May have multiple addresses (one per prefix)
-- Route selection based on destination prefix
-- Default route via any BR with GUA prefix
+Coordination between BRs is NOT required. Nodes retain the same native `/128`
+across DODAG changes and select a preferred grounded root using the RPL
+objective function.
 
 ### 6.2. Interface Identifier (IID) Derivation
 
-From EUI-64 (IEEE method):
+From the node public key:
 ```
-IID = EUI-64 XOR 0x0200_0000_0000_0000
+IID = SHA-256(public_key)[0:8]
+IID[0] = IID[0] AND 0xfd
 ```
+
+The cleared U/L bit marks this synthetic IID as locally administered. This
+IID is used only in link-local and hop-local identifiers; it is not the low
+half of the native Yggdrasil address.
 
 From 16-bit short address:
 ```
 IID = 0x0000_00FF_FE00_0000 | (short_addr << 48)
 ```
 
-**Stable IIDs only.** IIDs are stable and hardware-derived for the life of
+**Stable IIDs only.** IIDs are stable and key-derived for the life of
 the node. Temporary addresses (RFC 4941) and opaque/random IIDs (RFC 7217)
 MUST NOT be used. This is a deliberate deviation from the RFC 8064 default:
 root election, short-address assignment, replay windows, and signature
-caching all key on a node's stable EUI-64, and every frame is already bound
+caching all key on a stable node identity, and every frame is already bound
 to a stable public key, so a rotating IID would break the mesh while
 providing no unlinkability. See Privacy in Security Considerations
 (section 15.5 in Security) for the full analysis.
@@ -170,7 +181,7 @@ IPv6 multicast addresses encode scope in bits 8-11:
 |-------|-------|----------------|---------|
 | Interface-local | 1 | ff01:: | Loopback only |
 | Link-local | 2 | ff02:: | Single hop (direct neighbors) |
-| Mesh-local | 3 | ff03:: | Within DODAG (LICHEN extension) |
+| Realm-local | 3 | ff03:: | Within one LICHEN DODAG realm (RFC 7346) |
 | Site-local | 5 | ff05:: | Administrative domain |
 | Global | 14 | ff0e:: | Internet-wide |
 
@@ -181,8 +192,8 @@ IPv6 multicast addresses encode scope in bits 8-11:
 | ff02::1 | Link-local | All nodes (1 hop) |
 | ff02::1a | Link-local | All RPL nodes (1 hop) |
 | ff02::2 | Link-local | All routers (1 hop) |
-| ff03::1 | Mesh-local | All nodes (entire mesh) |
-| ff03::fc | Mesh-local | All LICHEN nodes |
+| ff03::1 | Realm-local | All nodes in the DODAG |
+| ff03::fc | Realm-local | All LICHEN nodes in the DODAG |
 
 #### 6.3.2. Hop-Limited Broadcast
 
@@ -194,19 +205,63 @@ For scoped flooding without full multicast routing, use **Hop Limit**:
 | 2 | 2 hops | Local announcement |
 | 3-4 | Small cluster | Team coordination |
 | 5-7 | Mesh diameter | Mesh-wide alert |
-| 255 | Unlimited | Flood (bounded by topology) |
 
 **How it works:**
 
-1. Sender sets Hop Limit (e.g., 4)
-2. Sender broadcasts to ff03::1 (mesh-local all nodes)
+Every realm-local application multicast that may be relayed MUST carry its
+RPL Instance ID, DODAGID, original Hop Limit, and a 32-bit LICHEN Broadcast
+Sequence in an IPv6 Hop-by-Hop option. Together the RPL Instance ID and DODAGID
+identify the realm. The original Hop Limit MUST be in the range 1-7.
+Origins persist this counter while retaining their key and increment it for
+each new multicast.
+Loss of sequence state is a fail-closed key-state error. Relays preserve this
+option. Retransmission of the same origin packet reuses the same value. RPL
+control messages use RPL's own duplicate suppression instead.
+
+```
++--------+--------+----------+---------------+----------+----------------+
+| TBD1   | Len=22 | Instance | DODAGID (16) | Orig. HL | Broadcast Seq. |
++--------+--------+----------+---------------+----------+----------------+
+   1B       1B        1B          16B           1B           4B
+```
+
+The option type is pending IANA allocation. Implementations MUST make it
+configurable and MUST NOT ship RFC 4727 experimental value `0x1e` as a default.
+LICHEN development and canonical-vector configurations explicitly select
+`0x1e`; production deployments require an allocated or explicitly coordinated
+value.
+The allocated type's action bits will permit nodes that do not implement realm
+forwarding to skip the option, and its change-en-route bit will be clear because
+relays MUST NOT modify it.
+
+Relayed application multicast MUST also carry byte-exact end-to-end origin
+authentication that binds the native source address, destination, realm
+identifier, original Hop Limit, Broadcast Sequence, and application operation. The
+baseline defines this only for SOS in Applications section 18.4. Other
+application multicast remains single-hop until its application profile defines
+an equivalent signed input. A packet without valid end-to-end origin
+authentication MUST be dropped, not consumed or relayed. Rate limiting keys on
+the verified origin identity, not an unverified IPv6 source supplied by a relay.
+
+Receivers maintain a persistent 32-bit serial replay window per verified
+origin identity. The serial comparison uses the same half-space rule as link
+replay, widened to 32 bits. A packet outside that window MUST NOT be delivered
+or relayed even after the short-lived duplicate cache expires.
+
+1. Sender sets Hop Limit and the immutable original Hop Limit to the same value
+2. Sender includes the selected realm identifier and broadcasts to ff03::1
 3. Each relay:
-   - Receives packet
+   - Verifies that the identified realm is one of its active DODAG memberships
+   - Drops the packet if it arrived outside that realm
+   - Drops the packet unless current Hop Limit is at most original Hop Limit
    - Decrements Hop Limit
-   - If Hop Limit > 0: rebroadcast
+   - If Hop Limit > 0: rebroadcast only within the same realm
    - If Hop Limit = 0: consume locally, don't relay
 
-No routing table consulted. Purely local decision at each hop.
+No destination route is consulted. Forwarding uses the receiving interface and
+active DODAG membership to preserve the identified realm. A node joined to
+multiple DODAGs MUST NOT copy a received realm-local multicast into another
+realm.
 
 #### 6.3.3. Broadcast Rate Limiting
 
@@ -215,12 +270,16 @@ Without limits, a single node can flood the network.
 
 **Distributed rate limiting (no central authority):**
 
-Each node tracks broadcasts it relays, per sender:
+Each node tracks broadcasts by verified origin, authenticated immediate sender,
+and realm-wide aggregate. A packet is relayed only when all three budgets allow
+it, preventing identity rotation from creating unbounded aggregate capacity:
 
 ```
 Broadcast Relay State:
-  sender_iid: <IID of original sender>
+  origin_id: <verified native source address>
+  immediate_sender_id: <authenticated hop sender>
   hop_bucket[1-7]: <count in rolling 1-hour window>
+  realm_bucket[1-7]: <aggregate count in rolling 1-hour window>
   last_seen: <timestamp>
 ```
 
@@ -240,8 +299,20 @@ Higher Hop Limit = larger blast radius = stricter limit:
 
 ```
 on_receive_broadcast(packet):
-  sender = packet.source_iid
-  hl = packet.hop_limit
+  sender = packet.source_identity
+  hl = packet.original_hop_limit
+  if hl < 1 or hl > 7 or packet.hop_limit > hl:
+    drop(packet)
+    return
+  packet_id = SHA256(
+      packet.source || packet.destination || packet.realm ||
+      packet.broadcast_sequence
+  )[0:8]
+
+  if seen_cache.contains(packet_id):
+    drop(packet)
+    return
+  seen_cache.insert(packet_id, expires=now() + 2 * MAX_MESH_TRAVERSAL_TIME)
 
   if sender not in relay_state:
     relay_state[sender] = new_entry()
@@ -273,28 +344,33 @@ on_receive_broadcast(packet):
 - **Spammers isolated:** Immediate neighbors stop relaying
 - **Graceful degradation:** Probabilistic relay in yellow zone
 - **Memory bounded:** Expire old entries after 2 hours idle
+- **Loop suppression:** Immutable packet IDs are cached before relay
 
 **State size:**
 
-Per-sender entry: ~20 bytes (IID + 7 bucket counters + timestamp)
-At 100 active senders: ~2 KB
+Implementations MUST bound both sender-rate and packet-ID caches. Packet IDs
+exclude Hop Limit, link addresses, link replay counters, and link signatures,
+so every re-signed copy of one origin packet has the same ID. A hash collision
+may suppress a packet but MUST NOT bypass authentication or rate limits.
 
 #### 6.3.4. Border Router Multicast Filtering
 
-Border routers MUST NOT forward mesh multicasts to the internet:
+When a separately specified identity-preserving Yggdrasil profile is active,
+border routers apply this filter:
 
 | Direction | Unicast | Multicast |
 |-----------|---------|-----------|
-| Mesh → Internet | Forward (route normally) | **Drop** |
-| Internet → Mesh | Forward (route normally) | **Drop** (unless explicit config) |
+| Mesh → Yggdrasil | Profile MAY forward native unicast | **Drop** |
+| Yggdrasil → Mesh | Profile MAY forward known local native unicast | **Drop** |
 
 Rationale:
 - Mesh broadcasts are not meaningful globally
 - Prevents accidental flood amplification
 - Protects mesh from external multicast storms
 
-**Exception:** Explicitly configured multicast peering between meshes
-(future work -- requires multicast routing protocol like PIM).
+Cross-mesh multicast is outside this profile. A future non-Yggdrasil transport
+may define authenticated multicast peering; Yggdrasil forwarding remains
+unicast-only.
 
 ### 6.4. ICMPv6
 
@@ -313,22 +389,21 @@ Standard ICMPv6 (RFC 4443) for:
 See Section 6.1 for full addressing design. Summary:
 
 ```
-Link-local:  fe80::<IID>                    (always available)
-ULA:         fd<40-bit random>:<subnet>::<IID>  (mesh-routable)
-GUA:         <delegated prefix>::<IID>      (internet-routable)
+Link-local:  fe80::<IID>                    (control plane)
+Native:      02xx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx
+             (application unicast)
 ```
 
-IID is derived from EUI-64 (see Section 6.2), ensuring stable identity.
+The IID and native address are distinct derivations from the same public key.
 
 ### 12.2. Example Addresses
 
 | Type | Example | Routable To |
 |------|---------|-------------|
 | Link-local | fe80::1234:5678:9abc:def0 | Direct neighbors |
-| ULA | fd12:3456:789a:0001::1234:5678:9abc:def0 | Entire mesh |
-| GUA | 2001:db8:1234:1::1234:5678:9abc:def0 | Internet |
+| Native | 200:848a:604f:bb7e:4384:65db:8db6:6895 | Local mesh and Yggdrasil |
 
-A node typically has all three when a BR with upstream connectivity is present.
+A node has both addresses regardless of whether a border router is present.
 
 ### 12.3. Short Address Assignment
 

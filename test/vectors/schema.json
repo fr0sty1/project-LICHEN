@@ -18,7 +18,8 @@
           {"$ref": "#/definitions/meshtastic_app_compat_vector"},
           {"$ref": "#/definitions/meshcore_app_compat_vector"},
           {"$ref": "#/definitions/oscore_vector"},
-          {"$ref": "#/definitions/rpl_messages_vector"}
+          {"$ref": "#/definitions/rpl_messages_vector"},
+          {"$ref": "#/definitions/yggdrasil_address_vector"}
         ]
       }
     }
@@ -517,6 +518,17 @@
           "type": "string",
           "enum": ["invalid_param", "decrypt_failed", "replay", "seq_exhausted"]
         }
+      }
+    },
+    "yggdrasil_address_vector": {
+      "type": "object",
+      "required": ["name", "public_key", "address", "ipv6"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "public_key": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "address": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+        "ipv6": {"type": "string"}
       }
     },
     "rpl_messages_vector": {

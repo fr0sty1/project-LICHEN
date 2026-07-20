@@ -45,11 +45,11 @@ LICHEN assembles these existing standards into a working LoRa mesh. No novel pro
 
 **Key properties:**
 
-- **Real IPv6 addresses** — Every node has link-local, ULA, and optionally global addresses
+- **Real IPv6 addresses** — Every node has link-local control and a native key-derived Yggdrasil `/128`
 - **Real mesh routing** — Three-tier architecture (RPL + Announce + LOADng), not naive flooding
 - **Real security** — Every packet signed; optional end-to-end encryption
-- **Real interop** — Border routers connect mesh to internet; standard CoAP APIs
-- **Bandwidth efficient** — SCHC compresses IPv6+UDP+CoAP from 60+ bytes to 6-12 bytes
+- **Real interop** — Yggdrasil backhauls and application gateways use standard CoAP APIs
+- **Bandwidth efficient** — SCHC compresses baseline IPv6+UDP headers to 18-33 bytes
 
 ## What It's For
 
@@ -107,15 +107,16 @@ Primary embedded target: **Zephyr RTOS** (native IPv6 stack).
 
 ### Addressing
 
-Every node has an IPv6 address derived from its hardware ID:
+Every node derives two IPv6 addresses from its Ed25519 public key:
 
 ```
-Link-local:  fe80::1234:5678:9abc:def0        (always)
-ULA:         fd12:3456:789a:1::1234:5678:...  (when mesh has root)
-Global:      2001:db8:1::1234:5678:...        (when border router present)
+Link-local:  fe80::<key-derived IID>           (control plane)
+Native:      0200::/8 key-derived /128         (application unicast)
 ```
 
-Addresses are stable, routable, and work with standard IPv6 tools.
+The native address routes locally without a gateway. Its format is compatible
+with Yggdrasil, but constrained-node participation in the global Yggdrasil
+control plane is a separate profile. It is not a conventional Internet GUA.
 
 ### Routing
 
@@ -125,13 +126,16 @@ LICHEN uses multi-tier hybrid routing, not one-size-fits-all:
 |------|----------|--------------|
 | 1 | **RPL** | Border router ↔ mesh (tree-shaped, upward/downward) |
 | 2 | **Announce** | Peer-to-peer between active nodes (instant, proactive) |
-| 3 | **LOADng** | Unknown destinations (reactive discovery fallback) |
+| 3 | **LOADng** | Locally evidenced destinations with no live route |
 | 4 | **GPSR** | Geographic routing using GPS coordinates |
 | 5 | **Backpressure** | Congestion-aware path selection via queue depth |
 | 6 | **DTN** | Store-and-forward for partitioned networks |
 | 7 | **Opportunistic** | Coordinated multi-forwarder broadcast (ExOR-style) |
 
-RPL builds a tree rooted at the border router for internet traffic. Announce routing builds gradients toward active mesh participants — nodes periodically broadcast signed announcements, so peers can reach each other instantly. LOADng provides reactive route discovery for new or sleeping nodes.
+RPL builds a tree rooted at the border router for root and application-gateway
+traffic. Announce routing builds gradients toward active mesh participants.
+LOADng reactively rediscovers a node only after authenticated local evidence;
+it does not flood for arbitrary native addresses.
 
 The advanced routing extensions (GPSR, backpressure, DTN, opportunistic) draw from techniques proven in tactical MANET radios like TSM-X and Wave Relay, adapted to LoRa's constrained bandwidth. See `spec/appendix-design-rationale.md` for inspirations and tradeoffs.
 
@@ -141,7 +145,7 @@ All methods populate a unified gradient table. No flooding for unicast traffic.
 
 SCHC (RFC 8724) compresses headers. A typical CoAP request:
 - Uncompressed: 60+ bytes (IPv6 + UDP + CoAP)
-- Compressed: 6-12 bytes (rule ID + residue)
+- Compressed: about 41 bytes for native-address traffic in the baseline
 
 ### Security
 
@@ -157,7 +161,7 @@ Standard CoAP resources:
 GET  coap://[node]/sensors/location     # Position
 POST coap://[node]/msg/inbox            # Send message
 GET  coap://[node]/msg/inbox            # Receive/observe inbox
-POST coap://[ff02::1]/sos               # Emergency broadcast
+POST coap://[ff03::1]/sos               # DODAG-realm emergency broadcast
 GET  coap://[node]/.well-known/core     # Resource discovery
 ```
 
@@ -306,7 +310,7 @@ LoRaWAN is star topology — every node talks to a gateway, no mesh. Good for ci
 
 **Why so many routing protocols?**
 
-Each solves a different problem. RPL excels at tree-shaped sensor→gateway traffic. Announce routing gives instant peer-to-peer between active nodes. LOADng discovers unknown destinations reactively. GPSR uses geographic coordinates when topology is unknown but positions are. Backpressure routes around congested nodes. DTN handles network partitions via store-and-forward. Opportunistic forwarding uses coordinated broadcast when multiple paths exist. These aren't all active simultaneously—they're tools selected based on conditions. See `spec/appendix-design-rationale.md` for how this draws from tactical MANET experience.
+Each solves a different problem. RPL excels at tree-shaped sensor-to-gateway traffic. Announce routing gives instant peer-to-peer between active nodes. LOADng discovers destinations only when recent authenticated evidence says they are local. GPSR uses geographic coordinates when topology is unknown but positions are. Backpressure routes around congested nodes. DTN handles network partitions via store-and-forward. Opportunistic forwarding uses coordinated broadcast when multiple paths exist. These aren't all active simultaneously; they are tools selected based on conditions. See `spec/appendix-design-rationale.md` for how this draws from tactical MANET experience.
 
 **Why Schnorr instead of Ed25519?**
 

@@ -10,10 +10,10 @@ Ultra-concise reference for implementing LICHEN. Constants, sizes, pitfalls only
 - Fields: version(4b)=6, traffic-class(8b), flow-label(20b), payload-len(16b), next-hdr(8b), hop-limit(8b), src(128b), dst(128b)
 - Next header: 17=UDP, 58=ICMPv6, 43=Routing, 44=Fragment, 59=NoNext
 - Min MTU: 1280 bytes
-- Link-local: fe80::/10 | Multicast: ff00::/8 | ULA: fd00::/8
+- Link-local: fe80::/10 | Multicast: ff00::/8 | native LICHEN: 0200::/8
 - Scope: 1=interface, 2=link, 5=site, e=global
 - Multicast: ff02::1 (all-nodes), ff02::2 (all-routers)
-- IID from EUI-64: invert bit 6 of first byte
+- LICHEN link-local IID: SHA-256(public key)[0:8], clear U/L bit
 
 ## UDP (RFC 768)
 
@@ -113,7 +113,7 @@ Ultra-concise reference for implementing LICHEN. Constants, sizes, pitfalls only
 - Sequence number: Partial IV, must not repeat with same key
 - Replay window: server tracks
 
-## Group OSCORE (RFC 9203)
+## Group OSCORE (RFC 9594)
 
 - Group ID in KID context
 - Signature mode for source authentication

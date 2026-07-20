@@ -68,7 +68,7 @@ follow the cross-references to this document.
 +----------------------------|--------------------------------------+
 |                      +------+-------+          Mesh Node          |
 |                      | Local I/F    |                             |
-|                      | fe80::1      |                             |
+|                      | fe80::7002:e7b4:4a75:c734                 |
 |                      +------+-------+                             |
 |                             |                                     |
 |                      +------+-------+                             |
@@ -84,8 +84,9 @@ follow the cross-references to this document.
 +-------------------------------------------------------------------+
 ```
 
-The client and node communicate via link-local IPv6. The node acts as a
-router: traffic to mesh addresses is forwarded over LoRa.
+The client and node communicate via link-local IPv6. For baseline mesh access,
+the node acts as a CoAP forward proxy and originates the LoRa exchange under
+its own native identity.
 
 ### 17.3. Transport Bindings
 
@@ -110,11 +111,14 @@ Recommended baud: 115200 or higher.
 
 #### 17.3.2. Bluetooth Low Energy
 
-**Option A: SLIP over BLE UART (Nordic UART Service or similar)**
+**Option A: SLIP over native LICHEN GATT service**
 
-- UUID: vendor-specific or 6E400001-B5A3-F393-E0A9-E50E24DCCA9E (NUS)
+- Service: `e665960c-7c84-5606-a8d3-884507d0b7a8`
+- RX: `5e6e304a-29af-52d9-a813-306f0f888586`
+- TX: `be4d4a23-876b-592b-b252-440367e18e43`
 - TX/RX characteristics carry SLIP-framed IPv6
-- Simple, works with existing BLE serial libraries
+- NUS fallback is permitted only for a known legacy native-LCI image and MUST
+  NOT be used when MeshCore compatibility is advertised
 
 **Option B: 6LoWPAN over BLE (RFC 7668)**
 
@@ -152,24 +156,27 @@ No framing needed; packets are discrete.
 
 The client obtains a link-local address for the local interface:
 
-**Static (simple):**
+**Static client (simple):**
 ```
 Client: fe80::2
-Node:   fe80::1
+Node:   fe80::<IID from node public key>
 ```
 
 **EUI-64 derived:**
 ```
 Client: fe80::<IID from device MAC>
-Node:   fe80::<IID from node EUI-64>
+Node:   fe80::<IID from node public key>
 ```
 
-The node acts as default router for the client. Client's routing table:
+The baseline client installs only the directly attached route:
 
 ```
 fe80::/10       -> local interface (direct)
-::/0            -> fe80::1 (node)
 ```
+
+Link-local IPv6 sources MUST NOT be forwarded onto LoRa. A client provisioned
+with its own Ed25519 identity and native `/128` may use direct routing under a
+separate client-participation profile; the baseline uses the CoAP proxy below.
 
 ### 17.5. CoAP Resources
 
@@ -185,7 +192,7 @@ Python-native clients MUST NOT use its `0xC1` framing, integer config keys,
 #### 17.5.1. Discovery
 
 ```
-GET coap://[fe80::1]/.well-known/core
+GET coap://[fe80::7002:e7b4:4a75:c734]/.well-known/core
 
 Response:
 </config>;rt="config",
@@ -194,6 +201,7 @@ Response:
 </status>;rt="status";obs,
 </status/neighbors>;rt="status";obs,
 </status/routes>;rt="status",
+</>;rt="core.proxy",
 </keys>;rt="keystore",
 </diag>;rt="diagnostics",
 </msg/inbox>;rt="msg.inbox";ct=60;obs,
@@ -265,12 +273,11 @@ Content-Format: application/cbor
 
 {
   "eui64": "0x0011223344556677",
-  "pubkey": "<base64 Ed25519 public key>",
+  "pubkey": "vbrP2CJA3j3NEjkky7VSVvuNqwiqmOMFUoq4T0Gebvs=",
   "pubkey_fingerprint": "SHA256:xY7...",
   "addrs": {
-    "link_local": "fe80::0211:22ff:fe33:4455",
-    "ula": "fd12:3456:789a:1::0211:22ff:fe33:4455",
-    "gua": null
+    "link_local": "fe80::7002:e7b4:4a75:c734",
+    "yggdrasil": "200:848a:604f:bb7e:4384:65db:8db6:6895"
   }
 }
 ```
@@ -300,7 +307,7 @@ Content-Format: application/cbor
     "joined": true,
     "rank": 512,
     "parent": "fe80::1234:5678:9abc:def0",
-    "root": "fd12:3456:789a:1::1"
+    "root": "200:848a:604f:bb7e:4384:65db:8db6:6895"
   },
   "radio": {
     "rx_packets": 1234,
@@ -357,13 +364,12 @@ Content-Format: application/cbor
 {
   "routes": [
     {
-      "prefix": "fd12:3456:789a:1::/64",
+      "prefix": "200:848a:604f:bb7e:4384:65db:8db6:6895/128",
       "via": "fe80::1234:5678:9abc:def0",
       "metric": 512,
       "lifetime_s": 1800
     }
-  ],
-  "default_route": "fe80::1234:5678:9abc:def0"
+  ]
 }
 ```
 
@@ -475,8 +481,8 @@ Content-Format: application/cbor
 {
   "keys": [
     {
-      "iid": "1234:5678:9abc:def0",
-      "pubkey_fp": "SHA256:xY7...",
+      "address": "200:848a:604f:bb7e:4384:65db:8db6:6895",
+      "key_id": "<hex SHA-256 of public key>",
       "trust": "tofu",
       "first_seen": "2026-05-26T12:00:00Z",
       "last_seen": "2026-05-26T14:30:00Z"
@@ -488,11 +494,11 @@ Content-Format: application/cbor
 **Get Single Key**
 
 ```
-GET /keys/1234:5678:9abc:def0
+GET /keys/200:848a:604f:bb7e:4384:65db:8db6:6895/<key-id>
 Content-Format: application/cbor
 
 {
-  "iid": "1234:5678:9abc:def0",
+  "address": "200:848a:604f:bb7e:4384:65db:8db6:6895",
   "pubkey": "<base64>",
   "trust": "tofu",
   "first_seen": "2026-05-26T12:00:00Z",
@@ -500,10 +506,14 @@ Content-Format: application/cbor
 }
 ```
 
+The key ID is the lowercase hexadecimal SHA-256 digest of the raw public key.
+An address-only lookup that has more than one key returns `4.09 Conflict` and
+the records remain available through their full address/key-ID paths.
+
 **Add/Update Key (Manual Trust)**
 
 ```
-PUT /keys/1234:5678:9abc:def0
+PUT /keys/200:848a:604f:bb7e:4384:65db:8db6:6895/<key-id>
 Content-Format: application/cbor
 
 {
@@ -514,24 +524,27 @@ Content-Format: application/cbor
 Response: 2.04 Changed
 ```
 
+The server MUST verify both `AddrForKey(pubkey)` and the key ID. PUT updates
+trust metadata for that exact key and MUST NOT replace another public key.
+
 **Delete Key**
 
 ```
-DELETE /keys/1234:5678:9abc:def0
+DELETE /keys/200:848a:604f:bb7e:4384:65db:8db6:6895/<key-id>
 
 Response: 2.02 Deleted
 ```
 
 #### 17.5.6. Mesh Reachability
 
-The client can reach any mesh node by addressing it directly. The local
-node routes the traffic. This direct IPv6 + CoAP path is the authoritative
-LCI mesh access model. No special proxy resource is required, and `/mesh` is
-not an LCI forward-proxy resource.
+The baseline link-local client reaches mesh nodes through the node's RFC 7252
+forward proxy. The node terminates the local CoAP exchange and
+originates the mesh request under its native identity.
 
 ```
-# Client sends directly to mesh node
-GET coap://[fd12:3456:789a:1::aaaa:bbbb:cccc:dddd]/sensors/temp
+# Client sends to local proxy
+GET coap://[fe80::7002:e7b4:4a75:c734]
+Proxy-Uri: coap://[200:848a:604f:bb7e:4384:65db:8db6:6895]/sensors/temp
 
 # Node routes via LoRa mesh, returns response to client
 Response: 2.05 Content
@@ -541,19 +554,23 @@ Response: 2.05 Content
 For discovery, the client can query the Resource Directory (if available):
 
 ```
-GET coap://[fd12:3456:789a:1::1]/rd-lookup/res?rt=temperature
+GET coap://[fe80::7002:e7b4:4a75:c734]/rd-lookup/res?rt=temperature
 ```
 
-Implementations MAY expose an optional RFC 7252 forward proxy at `/proxy` for
-compatibility with constrained local transports or host stacks that cannot
-route directly to mesh IPv6 addresses. Clients MUST NOT require `/proxy` for
-normal LCI operation, and discovery of `</proxy>;rt="proxy"` only signals this
-compatibility helper. Proxy clients use the standard CoAP `Proxy-Uri` option to
-name the mesh target; the gateway strips proxy options before forwarding.
+Implementations MUST expose the RFC 7252 forward proxy for baseline LCI mesh
+access. Clients send the request to the node with the standard CoAP `Proxy-Uri`
+option and no `Uri-Host`, `Uri-Port`, `Uri-Path`, or `Uri-Query` options, as
+required by RFC 7252. The node strips the proxy option before forwarding.
+
+Before originating a request, the proxy MUST authenticate the local principal
+and authorize the method, target native address, and resource. Read-only and
+Standard principals MUST NOT proxy unsafe methods (`POST`, `PUT`, or `DELETE`)
+or realm-local multicast. The proxy MUST NOT apply node-held OSCORE credentials
+unless an explicit per-principal policy delegates that target and operation.
 
 ```
-GET coap://[fe80::1]/proxy
-Proxy-Uri: coap://[fd12:3456:789a:1::aaaa:bbbb:cccc:dddd]/status
+GET coap://[fe80::7002:e7b4:4a75:c734]
+Proxy-Uri: coap://[200:848a:604f:bb7e:4384:65db:8db6:6895]/status
 ```
 
 #### 17.5.7. Messaging (Application-Level)
@@ -566,7 +583,7 @@ POST /msg/inbox
 Content-Format: application/cbor
 
 {
-  "to": "fd12:3456:789a:1::aaaa:bbbb:cccc:dddd",
+  "to": "200:848a:604f:bb7e:4384:65db:8db6:6895",
   "body": "Hello from the mesh!",
   "ack": true
 }
@@ -585,7 +602,7 @@ Content-Format: application/cbor
   "messages": [
     {
       "id": 17,
-      "from": "fd12:3456:789a:1::1111:2222:3333:4444",
+      "from": "200:848a:604f:bb7e:4384:65db:8db6:6895",
       "body": "Hi there!",
       "received": "2026-05-26T14:35:00Z"
     }
@@ -593,7 +610,8 @@ Content-Format: application/cbor
 }
 ```
 
-This is OPTIONAL. Applications MAY instead use CoAP directly to mesh nodes.
+This is OPTIONAL. A separately provisioned client-participation profile MAY
+use CoAP directly to mesh nodes; baseline link-local clients use the forward proxy.
 The legacy Python demo `/messages` resource is not part of LCI and MUST NOT be
 advertised as a native messaging resource.
 
@@ -612,7 +630,7 @@ The local link may be unencrypted (trusted physical access) or encrypted:
 
 #### 17.6.2. Application Security
 
-For sensitive operations, use OSCORE over the local link:
+Sensitive operations MUST use authenticated OSCORE over the local link:
 
 - OSCORE context established via pairing
 - Protects against compromised transport
@@ -620,15 +638,18 @@ For sensitive operations, use OSCORE over the local link:
 
 #### 17.6.3. Access Control
 
-Implementations SHOULD support restricting local client access:
+Implementations MUST restrict local client access. State-changing radio,
+identity, security, and trust-store operations require authenticated Admin
+authorization:
 
 | Level | Allowed Operations |
 |-------|-------------------|
 | Read-only | GET on non-sensitive resources; excludes `/diag/raw/*` |
-| Standard | GET, Observe, direct mesh CoAP reachability, optional `/proxy`; excludes `/diag/raw/*` |
+| Standard | GET, Observe, and mesh CoAP through the forward proxy; excludes `/diag/raw/*` |
 | Admin | All operations including PUT /config, DELETE /keys, `/diag/raw/*` |
 
-Access level determined by transport (e.g., USB = admin, BLE = standard).
+Access level is determined by authenticated deployment policy. A transport type
+alone MUST NOT confer Admin access.
 
 ### 17.7. Implementation Notes
 
