@@ -339,23 +339,22 @@ If a Zephyr build or test is Linux-only and cannot run on the local host, use AW
 
 ### Authentication
 
-The AWS account is accessed via SSO. To authenticate:
+Use the personal AWS CLI profile:
 
 ```bash
 # Profile name (already configured in ~/.aws/config)
-export AWS_PROFILE=AdministratorAccess-921772462201
+export AWS_PROFILE=personal
 
 # Region for LICHEN resources
-export AWS_REGION=us-east-2
-
-# If SSO session expired, re-authenticate:
-aws sso login --profile AdministratorAccess-921772462201
+export AWS_REGION=us-west-2
 
 # Verify access:
 aws sts get-caller-identity
 ```
 
-The profile uses SSO session `claudsession` with account `921772462201`.
+The profile MUST resolve to personal account `210337117346`.
+EC2 Serial Console access is enabled for the account in `us-west-2`; callers
+still need `ec2-instance-connect:SendSerialConsoleSSHPublicKey` permission.
 
 ### CRITICAL: Resource Isolation
 
@@ -366,6 +365,9 @@ The profile uses SSO session `claudsession` with account `921772462201`.
 LICHEN resources are tagged:
 - `Project=LICHEN`
 - `LaunchedBy=ec2-claude-sh` (for instances launched by the script)
+
+The copied Zephyr builder EBS volume is the sole untagged exception. Identify it
+by the exact volume ID and `Name=lichen-zephyr-arm64` listed below.
 
 Before ANY destructive operation (terminate, delete, stop), verify the resource belongs to LICHEN:
 
@@ -385,10 +387,6 @@ aws ec2 describe-instances --filters "Name=tag:Project,Values=LICHEN" \
 
 The following are NOT LICHEN resources — do not terminate, stop, modify, or delete:
 
-- `ceph-fips-*` instances (Ceph FIPS testing)
-- `proxmox-fips-*` instances (Proxmox FIPS lab)
-- `wolfssl-*` instances (wolfSSL projects)
-- `fenrir-*` instances (Fenrir project)
 - Any instance without `Project=LICHEN` tag
 - Any EBS volume not explicitly listed in this document
 - Any security group, VPC, or subnet you didn't create
@@ -398,7 +396,7 @@ The following are NOT LICHEN resources — do not terminate, stop, modify, or de
 You MAY:
 - Launch new instances with `Project=LICHEN` and `LaunchedBy=<your-identifier>` tags
 - Terminate instances YOU launched in the current session (track instance IDs)
-- Attach/detach the LICHEN EBS volume (`vol-017cfe48bd75340d0`)
+- Attach/detach the LICHEN EBS volume (`vol-0a95eee8d1d8461eb`)
 - Create/delete temporary security groups tagged with `Project=LICHEN`
 
 You MUST NOT:
@@ -423,8 +421,8 @@ aws ec2 run-instances \
 
 Always use the persistent single-AZ EBS builder cache for EC2 Zephyr builds/tests:
 
-- Volume: `vol-017cfe48bd75340d0`
-- Region/AZ: `us-east-2` / `us-east-2a`
+- Volume: `vol-0a95eee8d1d8461eb`
+- Region/AZ: `us-west-2` / `us-west-2c`
 - Size/type: 400 GiB `gp3`
 - Name tag: `lichen-zephyr-arm64`
 - Filesystem label: `LICHEN_ZEPHYR`
@@ -432,13 +430,13 @@ Always use the persistent single-AZ EBS builder cache for EC2 Zephyr builds/test
 - Prepared contents: Zephyr SDK `0.16.8`, repo west workspace pinned to Zephyr `v3.7.0`, Zephyr Python venv, west modules, ccache, pip/uv cache directories, and helper scripts.
 - Validation: `west build -b native_sim ... lichen/tests/link_crypto` plus `west build -t run` passed with `link_crypto` 2/2.
 
-Workflow for a fresh EC2 instance in `us-east-2a`:
+Workflow for a fresh EC2 instance in `us-west-2c`:
 
 ```bash
-aws ec2 attach-volume --profile AdministratorAccess-921772462201 --region us-east-2 \
-  --volume-id vol-017cfe48bd75340d0 --instance-id <instance-id> --device /dev/sdf
+aws ec2 attach-volume --profile personal --region us-west-2 \
+  --volume-id vol-0a95eee8d1d8461eb --instance-id <instance-id> --device /dev/sdf
 
-sudo /mnt/lichen-zephyr/scripts/mount-volume.sh vol-017cfe48bd75340d0 /mnt/lichen-zephyr
+sudo /mnt/lichen-zephyr/scripts/mount-volume.sh vol-0a95eee8d1d8461eb /mnt/lichen-zephyr
 /mnt/lichen-zephyr/scripts/bootstrap-host.sh   # only if host packages are missing
 . /mnt/lichen-zephyr/env.sh
 cd /mnt/lichen-zephyr/work/project-LICHEN
@@ -458,6 +456,22 @@ tools/zephyr-clean-worktree.sh verify "$PWD" <build-dir>
 ```
 
 The volume is single-attach. Before terminating a builder, run `sync`, unmount `/mnt/lichen-zephyr`, detach the volume, and wait for it to return to `available` so the next builder can attach it.
+
+### AWS Fleet Runtime AMI
+
+Use the fleet AMI for parallel Renode, Rust, and Python simulation workers. Do
+not attach the single-use Zephyr builder EBS cache to fleet instances.
+
+- AMI: `ami-0764d1b512e22671f`
+- Region/architecture: `us-west-2` / ARM64
+- Root snapshot: `snap-084be3acfc62d508a` (30 GiB encrypted)
+- Contents: Renode `1.16.1`, Rust/Cargo `1.97.0`, Python `3.11.15`, `uv` `0.11.18`, and locked LICHEN Python runtime dependencies
+- Source policy: no repository checkout or credentials are baked into the image; provide current source and artifacts at launch
+- Validation: clean-boot SSH and Serial Console API, headless Renode, locked `hetero-node` build/invocation, and LICHEN Python package import passed
+
+The `ec2-renode-fleet.sh`, `ec2-renode-fleet-simple.sh`, and
+`ec2-hetero-fleet.sh` launchers default to this AMI. Override with `EC2_AMI_ID`
+only for an explicitly validated replacement image.
 
 ## IETF I-D Documents
 

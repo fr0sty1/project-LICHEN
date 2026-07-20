@@ -2,7 +2,7 @@
 #
 # ec2-claude.sh - Run Claude Code headlessly on an ephemeral EC2 instance
 #
-# Launches a Graviton instance in us-east-2a, attaches the LICHEN EBS volume
+# Launches a Graviton instance in us-west-2c, attaches the LICHEN EBS volume
 # containing Claude Code and credentials, runs a prompt, then cleans up.
 #
 # Usage:
@@ -13,21 +13,21 @@
 #
 # Requirements:
 #   - AWS CLI v2 configured
-#   - SSH key pair in us-east-2
-#   - EBS volume vol-017cfe48bd75340d0 in us-east-2a with Claude Code + env.sh
+#   - EBS volume vol-0a95eee8d1d8461eb in us-west-2c with Claude Code + env.sh
 #
 set -euo pipefail
 
 # === Configuration ===
-AWS_PROFILE="AdministratorAccess-921772462201"
-AWS_REGION="us-east-2"
-AVAILABILITY_ZONE="us-east-2a"
+AWS_PROFILE="${AWS_PROFILE:-personal}"
+AWS_REGION="${AWS_REGION:-us-west-2}"
+EXPECTED_AWS_ACCOUNT="210337117346"
+AVAILABILITY_ZONE="${EC2_CLAUDE_AZ:-us-west-2c}"
 INSTANCE_TYPE="c7g.xlarge"
-EBS_VOLUME_ID="vol-017cfe48bd75340d0"
+EBS_VOLUME_ID="${EC2_CLAUDE_EBS_VOLUME_ID:-vol-0a95eee8d1d8461eb}"
 
-# AMI: Amazon Linux 2023 ARM64 in us-east-2 (update periodically)
+# AMI: Amazon Linux 2023 ARM64 in us-west-2 (update periodically)
 # Find latest: aws ec2 describe-images --owners amazon --filters "Name=name,Values=al2023-ami-*-arm64" --query 'Images | sort_by(@, &CreationDate) | [-1].ImageId'
-AMI_ID="${EC2_CLAUDE_AMI_ID:-ami-03a84069f5e253220}"
+AMI_ID="${EC2_CLAUDE_AMI_ID:-ami-0f67ee33b59cb8565}"
 
 # SSH key - uses ec2-instance-connect by default (no persistent keypair needed)
 # If you prefer a traditional key pair, set these:
@@ -35,7 +35,7 @@ KEY_NAME="${EC2_CLAUDE_KEY_NAME:-}"  # Empty = no key pair (use ec2-instance-con
 SSH_KEY_PATH="${EC2_CLAUDE_SSH_KEY:-$HOME/.ssh/id_ed25519}"
 USE_INSTANCE_CONNECT="${EC2_CLAUDE_USE_INSTANCE_CONNECT:-true}"
 
-# Subnet in us-east-2a (same AZ as EBS volume) - discovered automatically if not set
+# Subnet in us-west-2c (same AZ as EBS volume) - discovered automatically if not set
 SUBNET_ID="${EC2_CLAUDE_SUBNET:-}"
 
 # EBS mount configuration
@@ -84,6 +84,18 @@ log_error() { echo -e "${RED}ERROR:${NC} $*" >&2; }
 # === AWS CLI wrapper with profile ===
 aws_cmd() {
     aws --profile "$AWS_PROFILE" --region "$AWS_REGION" "$@"
+}
+
+check_aws_account() {
+    local caller_account
+    if ! caller_account=$(aws_cmd sts get-caller-identity --query Account --output text 2>/dev/null); then
+        log_error "AWS credentials not configured or expired for profile: $AWS_PROFILE"
+        exit 1
+    fi
+    if [[ "$caller_account" != "$EXPECTED_AWS_ACCOUNT" ]]; then
+        log_error "AWS profile $AWS_PROFILE resolves to account $caller_account, expected $EXPECTED_AWS_ACCOUNT"
+        exit 1
+    fi
 }
 
 # === SQS Status Queue ===
@@ -326,11 +338,7 @@ check_prerequisites() {
     fi
 
     # Verify AWS credentials work
-    if ! aws_cmd sts get-caller-identity &>/dev/null; then
-        log_error "AWS credentials not configured or expired for profile: $AWS_PROFILE"
-        log_error "Run: aws sso login --profile $AWS_PROFILE"
-        exit 1
-    fi
+    check_aws_account
 
     # Verify EBS volume exists and is available
     local vol_state
@@ -347,7 +355,7 @@ check_prerequisites() {
         exit 1
     fi
 
-    # Auto-discover subnet in us-east-2a if not set
+    # Auto-discover subnet in the EBS volume's AZ if not set
     if [[ -z "$SUBNET_ID" ]]; then
         log_info "Discovering subnet in $AVAILABILITY_ZONE..."
         SUBNET_ID=$(aws_cmd ec2 describe-subnets \
@@ -602,7 +610,7 @@ run_claude() {
     escaped_prompt=$(printf '%s' "$prompt" | base64 | tr -d '\n')
 
     # Build remote script that decodes and runs the prompt
-    # Args: $1=base64_prompt, $2=sqs_queue_url
+    # Args: $1=base64_prompt, $2=sqs_queue_url, $3=aws_region
     local remote_script
     read -r -d '' remote_script <<'REMOTE_CLAUDE' || true
 set -euo pipefail
@@ -628,6 +636,7 @@ fi
 # Decode prompt from base64 (passed as $1)
 PROMPT=$(printf '%s' "$1" | base64 -d)
 SQS_QUEUE_URL="${2:-}"
+AWS_REGION="${3:-us-west-2}"
 
 # SQS helper functions
 sqs_status() {
@@ -637,7 +646,7 @@ sqs_status() {
     aws sqs send-message \
         --queue-url "$SQS_QUEUE_URL" \
         --message-body "{\"ts\":\"$ts\",\"src\":\"ec2\",\"msg\":\"$msg\"}" \
-        --region us-east-2 >/dev/null 2>&1 || true
+        --region "$AWS_REGION" >/dev/null 2>&1 || true
 }
 
 check_stop_signal() {
@@ -647,7 +656,7 @@ check_stop_signal() {
         --queue-url "$SQS_QUEUE_URL" \
         --max-number-of-messages 1 \
         --visibility-timeout 0 \
-        --region us-east-2 \
+        --region "$AWS_REGION" \
         --query 'Messages[0].Body' --output text 2>/dev/null) || return 1
     [[ "$msg" == *'"cmd":"stop"'* ]] && return 0
     return 1
@@ -713,12 +722,12 @@ REMOTE_CLAUDE
     if [[ -n "$output_file" ]]; then
         # Save output to file - use || true to prevent exit on non-zero from remote
         ssh $SSH_OPTS -i "$SSH_KEY_PATH" "${SSH_USER}@${PUBLIC_IP}" \
-            "bash -s -- '$escaped_prompt' '$SQS_QUEUE_URL'" <<< "$remote_script" > "$output_file" || true
+            "bash -s -- '$escaped_prompt' '$SQS_QUEUE_URL' '$AWS_REGION'" <<< "$remote_script" > "$output_file" || true
         log_ok "Output saved to: $output_file"
     else
         # Stream output to stdout - use || true to prevent exit on non-zero from remote
         ssh $SSH_OPTS -i "$SSH_KEY_PATH" "${SSH_USER}@${PUBLIC_IP}" \
-            "bash -s -- '$escaped_prompt' '$SQS_QUEUE_URL'" <<< "$remote_script" || true
+            "bash -s -- '$escaped_prompt' '$SQS_QUEUE_URL' '$AWS_REGION'" <<< "$remote_script" || true
     fi
     sqs_status "Claude finished"
     log_info "run_claude complete, returning to main"
@@ -948,7 +957,7 @@ Environment Variables:
   EC2_CLAUDE_KEY_NAME  EC2 key pair name (default: claude-runner)
   EC2_CLAUDE_SSH_KEY   Path to SSH private key (default: ~/.ssh/claude-runner.pem)
   EC2_CLAUDE_SG        Security group ID (must allow SSH)
-  EC2_CLAUDE_SUBNET    Subnet ID in us-east-2a
+  EC2_CLAUDE_SUBNET    Subnet ID in us-west-2c
 
 Examples:
   # Simple prompt
@@ -961,10 +970,10 @@ Examples:
   $(basename "$0") -o results.md "Generate a test suite for the API module"
 
   # Poll status from another terminal
-  $(basename "$0") --poll https://sqs.us-east-2.amazonaws.com/123/queue-name
+  $(basename "$0") --poll https://sqs.us-west-2.amazonaws.com/210337117346/queue-name
 
   # Stop a running instance
-  $(basename "$0") --stop https://sqs.us-east-2.amazonaws.com/123/queue-name
+  $(basename "$0") --stop https://sqs.us-west-2.amazonaws.com/210337117346/queue-name
 
 Notes:
   - The EBS volume ($EBS_VOLUME_ID) must contain:
@@ -1025,10 +1034,12 @@ main() {
                 ;;
             --stop)
                 [[ -z "${2:-}" ]] && { log_error "--stop requires a queue URL"; exit 1; }
+                check_aws_account
                 send_stop_signal "$2"
                 ;;
             --poll)
                 [[ -z "${2:-}" ]] && { log_error "--poll requires a queue URL"; exit 1; }
+                check_aws_account
                 poll_status "$2"
                 ;;
             -)
