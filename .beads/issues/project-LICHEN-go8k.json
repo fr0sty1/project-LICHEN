@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-go8k",
+  "title": "Jitter multicast DIS and suppress DIO",
+  "description": "Use bounded node-differentiated Trickle jitter for multicast DIS and distinguish accepted-consistent, accepted-inconsistent, and rejected DIOs so only valid consistent DIOs increment redundancy.",
+  "acceptance_criteria": "Multiple nodes schedule different bounded multicast-DIS transmit times; accepted consistent DIO suppresses by k; rejected DIO does not increment redundancy.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "created_at": "2026-07-20T07:09:20.555732721Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-20T07:09:20.555732721Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-go8k",
+      "depends_on_id": "project-LICHEN-d7uj",
+      "type": "parent-child",
+      "created_at": "2026-07-20T07:09:20.639389986Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
