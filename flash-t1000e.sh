@@ -22,6 +22,7 @@
 # Usage:
 #   ./flash-t1000e.sh              # build puck app if needed, then flash
 #   ./flash-t1000e.sh --rebuild    # force-rebuild MCUboot + puck, then flash
+#   T1000E_PORT=<path> T1000E_PORT_STATE=app|dfu ./flash-t1000e.sh
 #
 # Device state required:
 #   - LICHEN firmware running: 1200-bps touch on ttyACM0 triggers bootloader
@@ -101,17 +102,74 @@ adafruit-nrfutil dfu genpkg \
 # -----------------------------------------------------------------------
 echo ""
 
-find_port() {
-    local pattern="$1"
-    ls "$BY_ID/"*"${pattern}"* 2>/dev/null | head -1
+find_unique_port() {
+    local pattern="$1" suffix="${2:-}" matches=()
+    shopt -s nullglob
+    matches=("$BY_ID/"*"${pattern}"*"${suffix}"*)
+    shopt -u nullglob
+    if [[ ${#matches[@]} -gt 1 ]]; then
+        echo "ERROR: Multiple ports match $pattern" >&2
+        return 2
+    fi
+    [[ ${#matches[@]} -eq 1 ]] || return 1
+    echo "${matches[0]}"
 }
+
+wait_for_port() {
+    local pattern="$1" port="" status
+    for _ in $(seq 1 20); do
+        set +e
+        port=$(find_unique_port "$pattern")
+        status=$?
+        set -e
+        [[ $status -eq 2 ]] && return 2
+        [[ -n "$port" ]] && { echo "$port"; return 0; }
+        sleep 1
+    done
+    return 1
+}
+
+NEED_TOUCH=false
+SERIAL=""
+APP_PORT=""
+DFU_PORT=""
+if [[ -z "${T1000E_PORT:-}" ]]; then
+    set +e
+    APP_PORT=$(find_unique_port "LICHEN" "if00")
+    APP_STATUS=$?
+    DFU_PORT=$(find_unique_port "T1000-E")
+    DFU_STATUS=$?
+    set -e
+    if [[ $APP_STATUS -eq 2 || $DFU_STATUS -eq 2 ]]; then
+        exit 1
+    fi
+fi
 
 if [[ -n "${T1000E_PORT:-}" ]]; then
     PORT="$T1000E_PORT"
     echo "==> Using T1000E_PORT=$PORT"
-elif PORT=$(find_port "LICHEN"); [ -n "$PORT" ]; then
-    echo "==> Found LICHEN app on $PORT — 1200-bps touch will trigger DFU"
-elif PORT=$(find_port "T1000-E"); [ -n "$PORT" ]; then
+    case "${T1000E_PORT_STATE:-}" in
+        app) NEED_TOUCH=true ;;
+        dfu) ;;
+        "")
+            if [[ "$PORT" == *LICHEN_Node_* ]]; then
+                NEED_TOUCH=true
+            elif [[ "$PORT" != *T1000-E_* ]]; then
+                echo "ERROR: Set T1000E_PORT_STATE=app or dfu for this port" >&2
+                exit 1
+            fi
+            ;;
+        *)
+            echo "ERROR: T1000E_PORT_STATE must be app or dfu" >&2
+            exit 1
+            ;;
+    esac
+elif [[ -n "$APP_PORT" ]]; then
+    PORT="$APP_PORT"
+    echo "==> Found LICHEN app on $PORT — triggering DFU"
+    NEED_TOUCH=true
+elif [[ -n "$DFU_PORT" ]]; then
+    PORT="$DFU_PORT"
     echo "==> Found T1000-E DFU bootloader on $PORT — flashing directly"
 else
     echo "ERROR: No T1000-E serial port found in $BY_ID/"
@@ -122,13 +180,39 @@ else
     exit 1
 fi
 
+if [[ "$NEED_TOUCH" == "true" ]]; then
+    if [[ "$PORT" == *LICHEN_Node_* ]]; then
+        SERIAL=${PORT##*LICHEN_Node_}
+        SERIAL=${SERIAL%%-if*}
+    fi
+    python3 - "$PORT" <<'PYEOF'
+import sys
+import time
+import serial
+
+port = serial.serial_for_url(sys.argv[1], baudrate=1200, timeout=1,
+                            do_not_open=True)
+port.dtr = False
+port.rts = False
+port.open()
+time.sleep(0.5)
+port.close()
+PYEOF
+    pattern="T1000-E"
+    [[ -n "$SERIAL" ]] && pattern="T1000-E_${SERIAL}"
+    if ! PORT=$(wait_for_port "$pattern"); then
+        echo "ERROR: T1000-E did not re-enumerate in DFU mode"
+        exit 1
+    fi
+    echo "==> Found T1000-E DFU bootloader on $PORT"
+fi
+
 echo "==> Flashing via serial DFU on $PORT..."
 adafruit-nrfutil --verbose dfu serial \
     --package "$COMBINED_DFU" \
     -p "$PORT" \
     -b 115200 \
-    --singlebank \
-    --touch 1200
+    --singlebank
 
 echo ""
 echo "Done. Expected USB devices after boot (~3 s):"
