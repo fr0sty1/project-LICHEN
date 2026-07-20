@@ -17,6 +17,10 @@ extern crate std;
 use std::vec::Vec;
 
 #[cfg(feature = "std")]
+use lichen_hal::NonVolatile;
+#[cfg(feature = "std")]
+use lichen_link::{identity::iid_from_pubkey, link_layer::LinkLayer};
+#[cfg(feature = "std")]
 use lichen_rpl::dodag::DioOutcome;
 #[cfg(feature = "std")]
 pub use lichen_rpl::dodag::{DodagRole, DodagState, ParentCandidate, ROOT_RANK};
@@ -24,11 +28,17 @@ pub use lichen_rpl::dodag::{DodagRole, DodagState, ParentCandidate, ROOT_RANK};
 use lichen_rpl::message::DODAG_CONFIG_DATA_LEN;
 #[cfg(feature = "std")]
 pub use lichen_rpl::message::{
-    Dao, Dio, DodagConfig, OptionIter, RplError, RplTarget, TransitInfo, OPT_DODAG_CONFIG,
-    OPT_RPL_TARGET, OPT_TRANSIT_INFO,
+    Dao, DaoOriginSignature, Dio, DodagConfig, OptionIter, RplError, RplTarget, SignedDaoEnvelope,
+    TransitInfo, DAO_ORIGIN_SIGNATURE_LEN, OPT_DODAG_CONFIG, OPT_RPL_TARGET, OPT_TRANSIT_INFO,
 };
 #[cfg(feature = "std")]
-pub use lichen_rpl::routing::{DaoManager, RoutingTable, SourceRoutingHeader};
+use lichen_rpl::routing::SignatureVerifiedDao;
+#[cfg(feature = "std")]
+pub use lichen_rpl::routing::{
+    dao_origin_digest, DaoManager, DaoOriginHighWater, DaoPersistentOpenError, DaoProcessError,
+    DaoProcessOutcome, DaoProcessTiming, DaoProvisionError, DaoRxState, DaoTxError, DaoTxState,
+    DaoVerifyError, RoutingTable, SourceRoutingHeader,
+};
 #[cfg(feature = "std")]
 pub use lichen_rpl::trickle::{TrickleEvent, TrickleState, TrickleTimer};
 
@@ -39,6 +49,36 @@ pub const MAX_NEIGHBORS: usize = 16;
 const NON_STORING_MOP: u8 = 1;
 #[cfg(feature = "std")]
 const MRHOF_OCP: u16 = 1;
+#[cfg(feature = "std")]
+fn sign_dao(
+    unsigned_dao: &[u8],
+    origin: [u8; 16],
+    active_dodag_id: [u8; 16],
+    origin_sequence: u64,
+    link: &LinkLayer,
+) -> Option<Vec<u8>> {
+    if origin_sequence == 0 || origin[8..] != iid_from_pubkey(&link.local_public_key()) {
+        return None;
+    }
+    let dao = Dao::from_bytes(unsigned_dao).ok()?;
+    for option in OptionIter::new(dao.options_tail(unsigned_dao)) {
+        if option.ok()?.opt_type == lichen_rpl::message::OPT_DAO_ORIGIN_SIGNATURE {
+            return None;
+        }
+    }
+    let dodag_id = dao.dodag_id.unwrap_or(active_dodag_id);
+    if dao.dodag_id.is_some_and(|id| id != active_dodag_id) {
+        return None;
+    }
+    let digest = dao_origin_digest(origin, dodag_id, origin_sequence, unsigned_dao);
+    let signature = link.sign_digest(&digest);
+    let mut wire = Vec::with_capacity(unsigned_dao.len() + DAO_ORIGIN_SIGNATURE_LEN);
+    wire.extend_from_slice(unsigned_dao);
+    let old_len = wire.len();
+    wire.resize(old_len + DAO_ORIGIN_SIGNATURE_LEN, 0);
+    DaoOriginSignature::write_to(origin_sequence, &signature, &mut wire[old_len..]).ok()?;
+    Some(wire)
+}
 
 /// Link quality estimate (ETX as f32: 1.0 = perfect link).
 pub type LinkEtx = f32;
@@ -236,14 +276,18 @@ pub struct Router {
     trickle: TrickleTimer,
     dao_manager: DaoManager,
     neighbors: NeighborTable,
-    #[allow(dead_code)] // stored at construction; not yet consulted
-    node_addr: [u8; 16],
     dodag_id: [u8; 16],
     dodag_config: DodagConfig,
     last_now_ms: u64,
     /// This node's geographic coordinates for GPSR (spec 9.7).
     /// None if GPS unavailable or privacy mode enabled.
     pub node_coords: Option<GeoCoords>,
+    #[cfg(test)]
+    test_storage: lichen_hal::storage::mem::MemStorage,
+    #[cfg(test)]
+    test_rx_state: Option<DaoRxState>,
+    #[cfg(test)]
+    test_origin_sequence: u64,
 }
 
 #[cfg(feature = "std")]
@@ -256,22 +300,24 @@ impl Router {
             trickle: trickle_from_config(&dodag_config).expect("default Trickle config is valid"),
             dao_manager: DaoManager::new(node_addr, RPL_INSTANCE_ID, dodag_id),
             neighbors: NeighborTable::new(),
-            node_addr,
             dodag_id,
             dodag_config,
             last_now_ms: 0,
             node_coords: None,
+            #[cfg(test)]
+            test_storage: lichen_hal::storage::mem::MemStorage::new(),
+            #[cfg(test)]
+            test_rx_state: None,
+            #[cfg(test)]
+            test_origin_sequence: 0,
         }
     }
 
-    /// Create a new router as DODAG root.
-    pub fn new_root(node_addr: [u8; 16]) -> Self {
-        Self::new_root_with_config(node_addr, DodagConfig::default())
-            .expect("default DODAG config is valid")
-    }
-
-    /// Create a DODAG root with an explicit advertised configuration.
-    pub fn new_root_with_config(node_addr: [u8; 16], dodag_config: DodagConfig) -> Option<Self> {
+    fn root_with_manager(
+        node_addr: [u8; 16],
+        dodag_config: DodagConfig,
+        dao_manager: DaoManager,
+    ) -> Option<Self> {
         if dodag_config.min_hop_rank_increase == 0
             || dodag_config.lifetime_unit == 0
             || dodag_config.ocp != MRHOF_OCP
@@ -290,14 +336,61 @@ impl Router {
         Some(Self {
             dodag,
             trickle,
-            dao_manager: DaoManager::as_root(node_addr, RPL_INSTANCE_ID, dodag_id),
+            dao_manager,
             neighbors: NeighborTable::new(),
-            node_addr,
             dodag_id,
             dodag_config,
             last_now_ms: 0,
             node_coords: None,
+            #[cfg(test)]
+            test_storage: lichen_hal::storage::mem::MemStorage::new(),
+            #[cfg(test)]
+            test_rx_state: None,
+            #[cfg(test)]
+            test_origin_sequence: 0,
         })
+    }
+
+    pub fn provision_root<S: NonVolatile>(
+        storage: &mut S,
+        node_addr: [u8; 16],
+    ) -> Result<(Self, DaoRxState), DaoProvisionError<S::Error>> {
+        let (manager, state) =
+            DaoManager::provision_root(storage, node_addr, RPL_INSTANCE_ID, node_addr)?;
+        let router = Self::root_with_manager(node_addr, DodagConfig::default(), manager)
+            .expect("default DODAG config is valid");
+        Ok((router, state))
+    }
+
+    pub fn open_root<S: NonVolatile>(
+        storage: &S,
+        node_addr: [u8; 16],
+    ) -> Result<(Self, DaoRxState), DaoPersistentOpenError<S::Error>> {
+        let (manager, state) =
+            DaoManager::open_root(storage, node_addr, RPL_INSTANCE_ID, node_addr)?;
+        let router = Self::root_with_manager(node_addr, DodagConfig::default(), manager)
+            .expect("default DODAG config is valid");
+        Ok((router, state))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn new_root(node_addr: [u8; 16]) -> Self {
+        Self::new_root_with_config(node_addr, DodagConfig::default()).unwrap()
+    }
+
+    #[cfg(test)]
+    fn new_root_with_config(node_addr: [u8; 16], config: DodagConfig) -> Option<Self> {
+        if config.min_hop_rank_increase == 0 || config.lifetime_unit == 0 || config.ocp != MRHOF_OCP
+        {
+            return None;
+        }
+        let mut storage = lichen_hal::storage::mem::MemStorage::new();
+        let (manager, state) =
+            DaoManager::provision_root(&mut storage, node_addr, RPL_INSTANCE_ID, node_addr).ok()?;
+        let mut router = Self::root_with_manager(node_addr, config, manager)?;
+        router.test_storage = storage;
+        router.test_rx_state = Some(state);
+        Some(router)
     }
 
     /// Process a received DIO message from a neighbor.
@@ -466,19 +559,18 @@ impl Router {
         inconsistent
     }
 
+    #[cfg(test)]
     fn process_dao_at_times(
         &mut self,
         dao_bytes: &[u8],
         packet_source: [u8; 16],
         authenticated_sender: [u8; 16],
-        expire_seconds: u64,
+        _expire_seconds: u64,
         lifetime_start_seconds: u64,
     ) -> bool {
         if !self.dodag.is_root() {
             return false;
         }
-
-        self.dao_manager.expire_routes(expire_seconds);
 
         let Some(parents) = dao_parents_for_source(dao_bytes, &packet_source) else {
             return false;
@@ -487,23 +579,95 @@ impl Router {
         // establishes only the forwarding neighbor, not the DAO originator.
         if parents
             .iter()
-            .any(|parent| same_interface(parent, &self.node_addr))
+            .any(|parent| same_interface(parent, &self.dodag_id))
             && !same_interface(&authenticated_sender, &packet_source)
         {
             return false;
         }
 
-        self.dao_manager.process_dao_at_bounded(
-            dao_bytes,
-            packet_source,
-            lifetime_start_seconds,
-            u64::from(self.dodag_config.lifetime_unit),
-            u64::MAX / 1_000,
-        )
+        #[cfg(test)]
+        {
+            use lichen_link::{identity::Identity, keys::Seed};
+            let Some(identity) = (0u8..=u8::MAX)
+                .map(|seed| Identity::from_seed(Seed::new([seed; 32])))
+                .find(|identity| identity.iid == packet_source[8..])
+            else {
+                return false;
+            };
+            let mut origin = [0u8; 16];
+            origin[..2].copy_from_slice(&[0xfe, 0x80]);
+            origin[8..].copy_from_slice(&identity.iid);
+            self.test_origin_sequence += 1;
+            let Some(wire) = sign_dao(
+                dao_bytes,
+                origin,
+                self.dodag_id,
+                self.test_origin_sequence,
+                &LinkLayer::new(identity.clone()),
+            ) else {
+                return false;
+            };
+            let Ok(verified) = SignatureVerifiedDao::verify_signature(
+                &wire,
+                origin,
+                RPL_INSTANCE_ID,
+                self.dodag_id,
+                Some(identity.pubkey),
+            ) else {
+                return false;
+            };
+            let state = self.test_rx_state.as_mut().expect("test root has RX state");
+            self.dao_manager
+                .process_signature_verified(
+                    &verified,
+                    state,
+                    &mut self.test_storage,
+                    DaoProcessTiming {
+                        now_seconds: lifetime_start_seconds,
+                        lifetime_unit_seconds: u64::from(self.dodag_config.lifetime_unit),
+                        max_deadline_seconds: u64::MAX / 1_000,
+                    },
+                )
+                .is_ok()
+        }
+        #[cfg(not(test))]
+        {
+            let _ = (expire_seconds, lifetime_start_seconds);
+            false
+        }
     }
 
-    /// Process a DAO using the router's monotonic millisecond timeline.
-    pub fn process_dao_at_ms(
+    pub(crate) fn process_signature_verified_dao_at_ms<S: NonVolatile>(
+        &mut self,
+        dao: &SignatureVerifiedDao<'_>,
+        rx_state: &mut DaoRxState,
+        storage: &mut S,
+        now_ms: u64,
+    ) -> Result<DaoProcessOutcome, DaoProcessError<S::Error>> {
+        if !self.dodag.is_root() {
+            return Err(DaoProcessError::RouteRejected);
+        }
+        let now_ms = now_ms.max(self.last_now_ms);
+        let expire_seconds = now_ms / 1_000;
+        let lifetime_start_seconds = expire_seconds + u64::from(!now_ms.is_multiple_of(1_000));
+        let outcome = self.dao_manager.process_signature_verified(
+            dao,
+            rx_state,
+            storage,
+            DaoProcessTiming {
+                now_seconds: lifetime_start_seconds,
+                lifetime_unit_seconds: u64::from(self.dodag_config.lifetime_unit),
+                max_deadline_seconds: u64::MAX / 1_000,
+            },
+        )?;
+        if outcome == DaoProcessOutcome::Applied {
+            self.last_now_ms = now_ms;
+        }
+        Ok(outcome)
+    }
+
+    #[cfg(test)]
+    fn process_dao_at_ms(
         &mut self,
         dao_bytes: &[u8],
         packet_source: [u8; 16],
@@ -525,13 +689,42 @@ impl Router {
     /// Build a DAO message to send to parent.
     ///
     /// Returns the DAO bytes, or empty vec if not joined.
-    pub fn build_dao(&mut self) -> Vec<u8> {
+    #[cfg(test)]
+    pub(crate) fn build_dao(&mut self) -> Vec<u8> {
         if let Some(parent) = self.dodag.preferred_parent {
             self.dao_manager
                 .build_dao_with_lifetime(parent, self.dodag_config.def_lifetime)
         } else {
             Vec::new()
         }
+    }
+
+    /// Build and sign one logical DAO with a caller-persisted origin sequence.
+    /// Retransmissions must resend the returned bytes rather than call this again.
+    pub fn build_signed_dao<S: NonVolatile>(
+        &mut self,
+        origin_ipv6: [u8; 16],
+        tx_state: &mut DaoTxState,
+        storage: &mut S,
+        link: &LinkLayer,
+    ) -> Result<Vec<u8>, DaoTxError<S::Error>> {
+        let Some(parent) = self.dodag.preferred_parent else {
+            return Err(DaoTxError::NotJoined);
+        };
+        if origin_ipv6[8..] != iid_from_pubkey(&link.local_public_key()) {
+            return Err(DaoTxError::InvalidOrigin);
+        }
+        if !tx_state.is_for_public_key(&link.local_public_key()) {
+            return Err(DaoTxError::KeyMismatch);
+        }
+        let sequence = tx_state.reserve_next(storage)?;
+        let unsigned = self
+            .dao_manager
+            .build_dao_with_lifetime(parent, self.dodag_config.def_lifetime);
+        let wire = sign_dao(&unsigned, origin_ipv6, self.dodag_id, sequence, link)
+            .ok_or(DaoTxError::Encoding)?;
+        tx_state.finalize_signed(storage, sequence, &wire)?;
+        Ok(wire)
     }
 
     /// Build a DIO message to advertise.
@@ -560,7 +753,7 @@ impl Router {
 
     /// Get the route path for a destination (root only).
     pub fn lookup_route(&self, dst: &[u8; 16]) -> Option<&[[u8; 16]]> {
-        self.dao_manager.routing_table.lookup(dst)
+        self.dao_manager.routing_table().lookup(dst)
     }
 
     /// Expire finite routes and look up a destination using monotonic time.
@@ -831,6 +1024,7 @@ pub(crate) fn dao_parents_for_source(
 }
 
 #[cfg(feature = "std")]
+#[cfg(test)]
 fn same_interface(left: &[u8; 16], right: &[u8; 16]) -> bool {
     left[8..] == right[8..]
 }
@@ -1064,6 +1258,7 @@ impl Default for DtnBuffer {
 #[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
+    use lichen_link::{identity::Identity, keys::Seed};
     use std::vec;
 
     fn link_local(iid: u8) -> [u8; 16] {
@@ -1079,6 +1274,14 @@ mod tests {
         addr[0] = 0xfd;
         addr[15] = iid;
         addr
+    }
+
+    fn test_origin(seed: u8) -> [u8; 16] {
+        let identity = Identity::from_seed(Seed::new([seed; 32]));
+        let mut address = [0u8; 16];
+        address[..2].copy_from_slice(&[0xfe, 0x80]);
+        address[8..].copy_from_slice(&identity.iid);
+        address
     }
 
     fn dio_bytes(dio: &Dio) -> [u8; Dio::BASE_LEN] {
@@ -1706,7 +1909,7 @@ mod tests {
     #[test]
     fn spoofed_dao_target_is_rejected_before_replay_state_changes() {
         let root_addr = link_local(1);
-        let target = link_local(2);
+        let target = test_origin(2);
         let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
         let dao = sender.build_dao(root_addr);
         let mut root = Router::new_root(root_addr);
@@ -1762,8 +1965,8 @@ mod tests {
     #[test]
     fn processing_dao_expires_routes_with_active_lifetime_unit() {
         let root_addr = link_local(1);
-        let first_target = link_local(2);
-        let second_target = link_local(3);
+        let first_target = test_origin(2);
+        let second_target = test_origin(3);
         let mut first = DaoManager::new(first_target, RPL_INSTANCE_ID, root_addr);
         let mut second = DaoManager::new(second_target, RPL_INSTANCE_ID, root_addr);
         let first_dao = first.build_dao_with_lifetime(root_addr, 1);
@@ -1781,7 +1984,7 @@ mod tests {
     #[test]
     fn finite_route_expires_during_idle_lookup_and_timer() {
         let root_addr = link_local(1);
-        let target = link_local(2);
+        let target = test_origin(2);
         let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
         let dao = sender.build_dao_with_lifetime(root_addr, 1);
         let mut root = Router::new_root(root_addr);
@@ -1797,7 +2000,7 @@ mod tests {
     fn dao_clock_expires_across_u32_boundary() {
         const WRAP: u64 = 0x1_0000_0000;
         let root_addr = link_local(1);
-        let target = link_local(2);
+        let target = test_origin(2);
         let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
         let dao = sender.build_dao_with_lifetime(root_addr, 1);
         let mut root = Router::new_root(root_addr);
@@ -1812,7 +2015,7 @@ mod tests {
     fn dao_clock_expires_after_half_range_gap() {
         const HALF: u64 = 0x8000_0000;
         let root_addr = link_local(1);
-        let target = link_local(2);
+        let target = test_origin(2);
         let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
         let dao = sender.build_dao_with_lifetime(root_addr, 1);
         let mut root = Router::new_root(root_addr);
@@ -1826,8 +2029,8 @@ mod tests {
     #[test]
     fn dao_is_rejected_when_no_future_deadline_is_representable() {
         let root_addr = link_local(1);
-        let target = link_local(2);
-        let infinite_target = link_local(3);
+        let target = test_origin(2);
+        let infinite_target = test_origin(3);
         let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
         let mut infinite = DaoManager::new(infinite_target, RPL_INSTANCE_ID, root_addr);
         let dao = sender.build_dao_with_lifetime(root_addr, 1);
@@ -2445,5 +2648,210 @@ mod tests {
         assert!(super::is_valid_coords((-33.8688, 151.2093))); // Sydney
         assert!(super::is_valid_coords((90.0, 0.0))); // North pole
         assert!(super::is_valid_coords((-90.0, 180.0))); // South pole
+    }
+
+    fn signed_dao(
+        identity: &Identity,
+        parent: [u8; 16],
+        dodag: [u8; 16],
+        sequence: u64,
+    ) -> ([u8; 16], Vec<u8>) {
+        let mut origin = [0u8; 16];
+        origin[0] = 0xfd;
+        origin[8..].copy_from_slice(&identity.iid);
+        let mut manager = DaoManager::new(origin, RPL_INSTANCE_ID, dodag);
+        let unsigned = manager.build_dao(parent);
+        let link = LinkLayer::new(identity.clone());
+        let wire = sign_dao(&unsigned, origin, dodag, sequence, &link).unwrap();
+        (origin, wire)
+    }
+
+    #[test]
+    fn tx_sequence_is_persisted_before_bytes_and_write_failure_returns_no_bytes() {
+        let identity = Identity::from_seed(Seed::new([1; 32]));
+        let root = [0x44; 16];
+        let mut router = Router::new(origin_for(&identity), root);
+        let dio = Dio {
+            rpl_instance_id: RPL_INSTANCE_ID,
+            version: 0,
+            rank: ROOT_RANK,
+            grounded: true,
+            mode_of_operation: NON_STORING_MOP,
+            preference: 0,
+            dtsn: 0,
+            flags: 0,
+            dodag_id: root,
+        };
+        router.process_dio(&dio, &dio_bytes(&dio), root, -40, 0);
+        let other = Identity::from_seed(Seed::new([2; 32]));
+        let mut wrong_storage = lichen_hal::storage::mem::MemStorage::new();
+        let mut wrong_tx = DaoTxState::provision(&mut wrong_storage, other.pubkey).unwrap();
+        let before_a = wrong_storage.raw("rpl.tx.a").map(<[u8]>::to_vec);
+        let before_b = wrong_storage.raw("rpl.tx.b").map(<[u8]>::to_vec);
+        assert_eq!(
+            router.build_signed_dao(
+                origin_for(&identity),
+                &mut wrong_tx,
+                &mut wrong_storage,
+                &LinkLayer::new(identity.clone()),
+            ),
+            Err(DaoTxError::KeyMismatch)
+        );
+        assert_eq!(wrong_storage.raw("rpl.tx.a"), before_a.as_deref());
+        assert_eq!(wrong_storage.raw("rpl.tx.b"), before_b.as_deref());
+
+        let mut storage = lichen_hal::storage::mem::MemStorage::new();
+        let mut tx = DaoTxState::provision(&mut storage, identity.pubkey).unwrap();
+        storage.fail_next_write();
+        assert!(matches!(
+            router.build_signed_dao(
+                origin_for(&identity),
+                &mut tx,
+                &mut storage,
+                &LinkLayer::new(identity.clone())
+            ),
+            Err(DaoTxError::Persistence(_))
+        ));
+        let wire = router
+            .build_signed_dao(
+                origin_for(&identity),
+                &mut tx,
+                &mut storage,
+                &LinkLayer::new(identity.clone()),
+            )
+            .unwrap();
+        assert_eq!(
+            SignedDaoEnvelope::from_bytes(&wire)
+                .unwrap()
+                .origin
+                .origin_sequence,
+            1
+        );
+        assert_eq!(
+            DaoTxState::open(&storage, identity.pubkey)
+                .unwrap()
+                .last_signed_dao(),
+            Some(wire.as_slice())
+        );
+
+        storage.fail_after_writes(1);
+        assert!(matches!(
+            router.build_signed_dao(
+                origin_for(&identity),
+                &mut tx,
+                &mut storage,
+                &LinkLayer::new(identity.clone()),
+            ),
+            Err(DaoTxError::Persistence(_))
+        ));
+        assert_eq!(
+            DaoTxState::open(&storage, identity.pubkey)
+                .unwrap()
+                .last_signed_dao(),
+            Some(wire.as_slice())
+        );
+        let after_failure = router
+            .build_signed_dao(
+                origin_for(&identity),
+                &mut tx,
+                &mut storage,
+                &LinkLayer::new(identity),
+            )
+            .unwrap();
+        assert_eq!(
+            SignedDaoEnvelope::from_bytes(&after_failure)
+                .unwrap()
+                .origin
+                .origin_sequence,
+            3
+        );
+    }
+
+    fn origin_for(identity: &Identity) -> [u8; 16] {
+        let mut origin = [0u8; 16];
+        origin[0] = 0xfd;
+        origin[8..].copy_from_slice(&identity.iid);
+        origin
+    }
+
+    #[test]
+    fn stable_key_floor_duplicate_changed_equal_prefix_and_reboot() {
+        let identity = Identity::from_seed(Seed::new([2; 32]));
+        let root_addr = [0x55; 16];
+        let (origin, wire) = signed_dao(&identity, root_addr, root_addr, 1);
+        let verified = SignatureVerifiedDao::verify_signature(
+            &wire,
+            origin,
+            RPL_INSTANCE_ID,
+            root_addr,
+            Some(identity.pubkey),
+        )
+        .unwrap();
+        let mut storage = lichen_hal::storage::mem::MemStorage::new();
+        let (mut root, mut state) = Router::provision_root(&mut storage, root_addr).unwrap();
+        assert_eq!(
+            root.process_signature_verified_dao_at_ms(&verified, &mut state, &mut storage, 0),
+            Ok(DaoProcessOutcome::Applied)
+        );
+        assert_eq!(
+            root.process_signature_verified_dao_at_ms(&verified, &mut state, &mut storage, 1),
+            Ok(DaoProcessOutcome::Duplicate)
+        );
+        let mut other_prefix = origin;
+        other_prefix[0] ^= 0x20;
+        let changed = sign_dao(
+            SignedDaoEnvelope::from_bytes(&wire).unwrap().unsigned_bytes,
+            other_prefix,
+            root_addr,
+            1,
+            &LinkLayer::new(identity.clone()),
+        )
+        .unwrap();
+        let changed = SignatureVerifiedDao::verify_signature(
+            &changed,
+            other_prefix,
+            RPL_INSTANCE_ID,
+            root_addr,
+            Some(identity.pubkey),
+        )
+        .unwrap();
+        assert!(matches!(
+            root.process_signature_verified_dao_at_ms(&changed, &mut state, &mut storage, 2),
+            Err(DaoProcessError::Replay)
+        ));
+        let (mut rebooted, mut rebooted_state) = Router::open_root(&storage, root_addr).unwrap();
+        assert_eq!(
+            rebooted.process_signature_verified_dao_at_ms(
+                &verified,
+                &mut rebooted_state,
+                &mut storage,
+                3
+            ),
+            Ok(DaoProcessOutcome::Duplicate)
+        );
+    }
+
+    #[test]
+    fn production_handler_requires_announce_pin() {
+        let identity = Identity::from_seed(Seed::new([3; 32]));
+        let root_id = lichen_core::addr::NodeId([9; 8]);
+        let root_addr = root_id.link_local_addr().0;
+        let (origin, wire) = signed_dao(&identity, root_addr, root_addr, 1);
+        let mut storage = lichen_hal::storage::mem::MemStorage::new();
+        let (mut node, mut state) =
+            crate::node::RplNode::provision_root(root_id, &mut storage).unwrap();
+        let mut announces = crate::announce::AnnounceProcessor::new(
+            crate::gradient::GradientTable::new(crate::announce::MAX_TRACKED_ORIGINATORS),
+            [0xfd; 8],
+        );
+        assert_eq!(
+            node.handle_dao(&wire, origin, &announces, &mut state, &mut storage, 0,),
+            crate::node::DaoHandlingOutcome::UnknownKey
+        );
+        announces.pin_for_test(identity.pubkey);
+        assert_eq!(
+            node.handle_dao(&wire, origin, &announces, &mut state, &mut storage, 0,),
+            crate::node::DaoHandlingOutcome::Applied
+        );
     }
 }
