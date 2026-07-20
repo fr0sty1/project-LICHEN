@@ -3,12 +3,16 @@
   "title": "Allowlist RPL multicast before replay",
   "description": "Accept RPL control only for local unicast or ff02::1a; reject unrelated multicast before link replay consumption when destination is inspectable.",
   "acceptance_criteria": "ff02::1a RPL control is accepted; unrelated multicast is ignored/rejected without consuming sender replay; application multicast membership remains outside RplStack.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-20T06:37:32.410555363Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-20T06:37:32.410555363Z",
+  "updated_at": "2026-07-20T06:56:44.909077742Z",
+  "started_at": "2026-07-20T06:56:44.909077742Z",
+  "lease_expires_at": "2026-07-20T07:01:44.909077742Z",
+  "heartbeat_at": "2026-07-20T06:56:44.909077742Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2auf.44.7.2.1",
