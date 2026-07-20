@@ -83,8 +83,10 @@ static struct ble_transport_state transport_state;
 
 static void connected_cb(struct bt_conn *conn, uint8_t err);
 static void disconnected_cb(struct bt_conn *conn, uint8_t reason);
+#if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
 static void security_changed_cb(struct bt_conn *conn, bt_security_t level,
 				enum bt_security_err err);
+#endif
 static ssize_t nus_rx_cb(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 			 const void *buf, uint16_t len, uint16_t offset,
 			 uint8_t flags);
@@ -95,7 +97,9 @@ static void nus_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
 BT_CONN_CB_DEFINE(conn_callbacks) = {
 	.connected = connected_cb,
 	.disconnected = disconnected_cb,
+#if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
 	.security_changed = security_changed_cb,
+#endif
 };
 
 static void connected_cb(struct bt_conn *conn, uint8_t err)
@@ -156,6 +160,7 @@ static void disconnected_cb(struct bt_conn *conn, uint8_t reason)
 	}
 }
 
+#if defined(CONFIG_BT_SMP) || defined(CONFIG_BT_CLASSIC)
 static void security_changed_cb(struct bt_conn *conn, bt_security_t level,
 				enum bt_security_err err)
 {
@@ -184,6 +189,7 @@ static void security_changed_cb(struct bt_conn *conn, bt_security_t level,
 					       transport_state.config.user_ctx);
 	}
 }
+#endif
 
 /* ─── SLIP processing ───────────────────────────────────────────────────────── */
 

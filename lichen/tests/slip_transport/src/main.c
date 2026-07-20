@@ -98,7 +98,7 @@ ZTEST(slip_transport, test_send_zero_length)
  */
 ZTEST(slip_transport, test_send_oversized)
 {
-	uint8_t oversized[SLIP_LCI_MTU + 100];
+	uint8_t oversized[SLIP_LCI_MTU + 100] = {0};
 
 	int ret = slip_transport_send(oversized, sizeof(oversized));
 	zassert_equal(ret, -EMSGSIZE, "Oversized packet should be rejected");
