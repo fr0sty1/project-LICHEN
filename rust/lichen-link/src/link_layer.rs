@@ -346,6 +346,16 @@ impl LinkLayer {
         self.peers.len()
     }
 
+    /// Return a copy of this node's public identity key.
+    pub fn local_public_key(&self) -> PublicKey {
+        self.identity.pubkey
+    }
+
+    /// Sign an already domain-separated digest without exposing private key material.
+    pub fn sign_digest(&self, digest: &[u8; 64]) -> [u8; SIGNATURE_LENGTH] {
+        schnorr::sign(&self.identity.privkey, &self.identity.pubkey, digest)
+    }
+
     /// Serialise a signed frame into `out`. Returns bytes written.
     ///
     /// inner_payload is signed; the resulting wire frame contains
