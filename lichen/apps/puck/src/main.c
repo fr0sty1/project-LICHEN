@@ -249,6 +249,12 @@ static void on_coap_response(void *user_data, int status, uint8_t code,
 #define WDT_STALL_MS     4000   /* feeder withholds the feed after no progress this long */
 #define WDT_FEED_MS      500    /* feeder cadence */
 #define RX_WINDOW_MS     2000   /* per-iteration RX listen window */
+#define WDT_PROGRESS_FRESH(now, last) \
+	((uint32_t)((uint32_t)(now) - (uint32_t)(last)) < WDT_STALL_MS)
+
+BUILD_ASSERT(WDT_PROGRESS_FRESH(0x00000010U, 0xfffffff0U));
+BUILD_ASSERT(WDT_PROGRESS_FRESH(0x00000f8fU, 0xfffffff0U));
+BUILD_ASSERT(!WDT_PROGRESS_FRESH(0x00000f90U, 0xfffffff0U));
 
 static const struct device *s_wdt;
 static int s_wdt_channel = -1;
@@ -258,16 +264,17 @@ static atomic_t s_last_progress_ms;
  * stub, so the driver's poll loops bump this heartbeat too. */
 void lichen_radio_progress(void)
 {
-	atomic_set(&s_last_progress_ms, (atomic_val_t)k_uptime_get());
+	atomic_set(&s_last_progress_ms, (atomic_val_t)k_uptime_get_32());
 }
 
 /* Runs in system-clock ISR context — feed only while progress is fresh. */
 static void wdt_feed_timer_fn(struct k_timer *t)
 {
 	ARG_UNUSED(t);
-	int64_t age = k_uptime_get() - (int64_t)atomic_get(&s_last_progress_ms);
+	uint32_t now = k_uptime_get_32();
+	uint32_t last = (uint32_t)atomic_get(&s_last_progress_ms);
 
-	if (s_wdt && age < WDT_STALL_MS) {
+	if (s_wdt && WDT_PROGRESS_FRESH(now, last)) {
 		wdt_feed(s_wdt, s_wdt_channel);
 	}
 	/* else: no forward progress → withhold feed → SoC resets */
