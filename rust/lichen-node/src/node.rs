@@ -3,7 +3,7 @@
 use lichen_core::constants::L2_DISPATCH_SCHC;
 #[cfg(feature = "std")]
 use lichen_core::constants::RPL_ICMPV6_TYPE;
-#[cfg(all(feature = "std", test))]
+#[cfg(feature = "std")]
 use lichen_core::constants::RPL_INSTANCE_ID;
 #[cfg(feature = "std")]
 use lichen_core::icmpv6::hdr_field;
@@ -23,6 +23,15 @@ const IPV6_VERSION: u8 = 6;
 
 #[cfg(feature = "std")]
 use crate::routing::Router;
+#[cfg(feature = "std")]
+use crate::{
+    announce::AnnounceProcessor,
+    routing::{DaoProcessError, DaoProcessOutcome, DaoProvisionError, DaoRxState, DaoVerifyError},
+};
+#[cfg(feature = "std")]
+use lichen_hal::NonVolatile;
+#[cfg(feature = "std")]
+use lichen_rpl::routing::SignatureVerifiedDao;
 
 /// ICMPv6 RPL message codes.
 pub mod rpl_code {
@@ -47,11 +56,29 @@ pub enum RplEvent {
     /// DIO received, trickle should be reset if inconsistent.
     DioReceived { inconsistent: bool },
     /// DAO received (root only).
-    DaoReceived { route_updated: bool },
+    DaoReceived,
     /// DAO packet forwarded unchanged in source and payload toward the root.
     DaoForwarded { next_hop: [u8; 16] },
     /// DIS received, should send DIO.
     DisReceived,
+}
+
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DaoHandlingOutcome {
+    Applied,
+    Duplicate,
+    Malformed,
+    UnknownKey,
+    WrongScope,
+    IidMismatch,
+    BadSignature,
+    Replay,
+    Persistence,
+    Stale,
+    Exhausted,
+    Corrupt,
+    RouteRejected,
 }
 
 /// Top-level node state.
@@ -241,12 +268,74 @@ impl RplNode {
         }
     }
 
-    /// Create a new RPL-enabled node as DODAG root.
-    pub fn new_root(node_id: NodeId) -> Self {
+    pub fn provision_root<S: NonVolatile>(
+        node_id: NodeId,
+        storage: &mut S,
+    ) -> Result<(Self, DaoRxState), DaoProvisionError<S::Error>> {
         let node_addr = node_id.link_local_addr().0;
-        Self {
-            node: Node::new(node_id),
-            router: Router::new_root(node_addr),
+        let (router, state) = Router::provision_root(storage, node_addr)?;
+        Ok((
+            Self {
+                node: Node::new(node_id),
+                router,
+            },
+            state,
+        ))
+    }
+
+    pub fn open_root<S: NonVolatile>(
+        node_id: NodeId,
+        storage: &S,
+    ) -> Result<(Self, DaoRxState), crate::routing::DaoPersistentOpenError<S::Error>> {
+        let node_addr = node_id.link_local_addr().0;
+        let (router, state) = Router::open_root(storage, node_addr)?;
+        Ok((
+            Self {
+                node: Node::new(node_id),
+                router,
+            },
+            state,
+        ))
+    }
+
+    pub fn handle_dao<S: NonVolatile>(
+        &mut self,
+        dao_bytes: &[u8],
+        origin: [u8; 16],
+        announces: &AnnounceProcessor,
+        rx_state: &mut DaoRxState,
+        storage: &mut S,
+        now_ms: u64,
+    ) -> DaoHandlingOutcome {
+        let iid = origin[8..].try_into().expect("IPv6 IID is eight bytes");
+        let verified = match SignatureVerifiedDao::verify_signature(
+            dao_bytes,
+            origin,
+            RPL_INSTANCE_ID,
+            self.router.dodag_id(),
+            announces.pinned_pubkey_for(&iid),
+        ) {
+            Ok(verified) => verified,
+            Err(DaoVerifyError::Malformed(_)) => return DaoHandlingOutcome::Malformed,
+            Err(DaoVerifyError::UnknownKey) => return DaoHandlingOutcome::UnknownKey,
+            Err(DaoVerifyError::WrongInstance | DaoVerifyError::WrongDodag) => {
+                return DaoHandlingOutcome::WrongScope
+            }
+            Err(DaoVerifyError::IidMismatch) => return DaoHandlingOutcome::IidMismatch,
+            Err(DaoVerifyError::BadSignature) => return DaoHandlingOutcome::BadSignature,
+        };
+        match self
+            .router
+            .process_signature_verified_dao_at_ms(&verified, rx_state, storage, now_ms)
+        {
+            Ok(DaoProcessOutcome::Applied) => DaoHandlingOutcome::Applied,
+            Ok(DaoProcessOutcome::Duplicate) => DaoHandlingOutcome::Duplicate,
+            Err(DaoProcessError::Replay) => DaoHandlingOutcome::Replay,
+            Err(DaoProcessError::Persistence(_)) => DaoHandlingOutcome::Persistence,
+            Err(DaoProcessError::Stale) => DaoHandlingOutcome::Stale,
+            Err(DaoProcessError::Exhausted) => DaoHandlingOutcome::Exhausted,
+            Err(DaoProcessError::Corrupt) => DaoHandlingOutcome::Corrupt,
+            Err(DaoProcessError::RouteRejected) => DaoHandlingOutcome::RouteRejected,
         }
     }
 
@@ -383,13 +472,7 @@ impl RplNode {
                             {
                                 return (0, RplEvent::None);
                             }
-                            let route_updated = self.router.process_dao_at_ms(
-                                dao_bytes,
-                                sender_addr,
-                                NodeId(sender_iid).link_local_addr().0,
-                                now_ms,
-                            );
-                            return (0, RplEvent::DaoReceived { route_updated });
+                            return (0, RplEvent::DaoReceived);
                         }
 
                         if !is_ula_or_global(&sender_addr) || !is_ula_or_global(&dst) {
@@ -428,10 +511,17 @@ impl RplNode {
         self.router.build_dio(out)
     }
 
-    /// Build a DAO message for transmission to parent.
-    #[cfg(feature = "std")]
-    pub fn build_dao(&mut self) -> std::vec::Vec<u8> {
-        self.router.build_dao()
+    /// Build one signed logical DAO after durably reserving its origin sequence.
+    /// Retain the returned bytes unchanged for retransmission.
+    pub fn build_signed_dao<S: NonVolatile>(
+        &mut self,
+        origin_ipv6: [u8; 16],
+        tx_state: &mut crate::routing::DaoTxState,
+        storage: &mut S,
+        link: &lichen_link::link_layer::LinkLayer,
+    ) -> Result<std::vec::Vec<u8>, crate::routing::DaoTxError<S::Error>> {
+        self.router
+            .build_signed_dao(origin_ipv6, tx_state, storage, link)
     }
 
     /// Check if this node is joined to the DODAG.
@@ -477,7 +567,7 @@ impl RplNode {
 
 #[cfg(feature = "std")]
 fn source_matches_sender_iid(source: &[u8; 16], sender_iid: &[u8; 8]) -> bool {
-    same_interface(source, &NodeId(*sender_iid).link_local_addr().0)
+    source[8..] == *sender_iid
 }
 
 #[cfg(feature = "std")]
@@ -517,14 +607,17 @@ mod tests {
     }
 
     #[cfg(feature = "std")]
+    fn address_iid(address: [u8; 16]) -> [u8; 8] {
+        address[8..].try_into().unwrap()
+    }
+
+    #[cfg(feature = "std")]
     #[test]
     fn rpl_source_must_match_authenticated_sender() {
         let source = NodeId([0x02, 0, 0, 0, 0, 0, 0, 2]).link_local_addr().0;
+        let source_iid: [u8; 8] = source[8..].try_into().unwrap();
 
-        assert!(source_matches_sender_iid(
-            &source,
-            &[0x02, 0, 0, 0, 0, 0, 0, 2]
-        ));
+        assert!(source_matches_sender_iid(&source, &source_iid));
         assert!(!source_matches_sender_iid(
             &source,
             &[0x02, 0, 0, 0, 0, 0, 0, 3]
@@ -592,7 +685,7 @@ mod tests {
         assert_eq!(
             child.handle_frame_rpl_with_link(
                 &packet,
-                root_id.0,
+                address_iid(root_addr),
                 &mut [0u8; 260],
                 WRAP + 100,
                 2.0,
@@ -610,7 +703,7 @@ mod tests {
         assert_eq!(neighbor.rssi, -70);
         assert_eq!(neighbor.last_seen_ms, WRAP + 100);
 
-        child.handle_frame_rpl(&packet, root_id.0, &mut [0u8; 260], WRAP + 200);
+        child.handle_frame_rpl(&packet, address_iid(root_addr), &mut [0u8; 260], WRAP + 200);
         assert_eq!(child.router.rank(), 768);
         assert_eq!(child.router.neighbors().iter().next().unwrap().etx, 2.0);
     }
@@ -618,22 +711,45 @@ mod tests {
     #[cfg(feature = "std")]
     #[test]
     fn leaf_dao_is_forwarded_by_parent_and_processed_by_root() {
+        use crate::{announce::AnnounceProcessor, gradient::GradientTable};
+        use lichen_hal::storage::mem::MemStorage;
+        use lichen_link::{identity::Identity, keys::Seed, link_layer::LinkLayer};
+
         let root_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
-        let parent_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 2]);
-        let leaf_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 3]);
+        let parent_identity = Identity::from_seed(Seed::new([2; 32]));
+        let leaf_identity = Identity::from_seed(Seed::new([3; 32]));
+        let mut parent_eui64 = parent_identity.iid;
+        parent_eui64[0] ^= 0x02;
+        let mut leaf_eui64 = leaf_identity.iid;
+        leaf_eui64[0] ^= 0x02;
+        let parent_id = NodeId(parent_eui64);
+        let leaf_id = NodeId(leaf_eui64);
         let root_addr = ula(root_id);
         let parent_addr = ula(parent_id);
         let leaf_addr = ula(leaf_id);
+        let mut root_storage = MemStorage::new();
+        let (root_router, mut root_rx) =
+            Router::provision_root(&mut root_storage, root_addr).unwrap();
         let mut root = RplNode {
             node: Node::new(root_id),
-            router: Router::new_root(root_addr),
+            router: root_router,
         };
         let mut parent = RplNode {
             node: Node::new(parent_id),
             router: Router::new(parent_addr, root_addr),
         };
+        let mut leaf = RplNode {
+            node: Node::new(leaf_id),
+            router: Router::new(leaf_addr, root_addr),
+        };
+        let mut announces = AnnounceProcessor::new(
+            GradientTable::new(crate::announce::MAX_TRACKED_ORIGINATORS),
+            root_addr[..8].try_into().unwrap(),
+        );
+        announces.pin_for_test(parent_identity.pubkey);
+        announces.pin_for_test(leaf_identity.pubkey);
 
-        let dio = lichen_rpl::message::Dio {
+        let root_dio = lichen_rpl::message::Dio {
             rpl_instance_id: RPL_INSTANCE_ID,
             version: 0,
             rank: crate::routing::ROOT_RANK,
@@ -645,34 +761,67 @@ mod tests {
             dodag_id: root_addr,
         };
         let mut dio_bytes = [0u8; lichen_rpl::message::Dio::BASE_LEN];
-        dio.write_to(&mut dio_bytes).unwrap();
-        assert!(parent.router.process_dio(&dio, &dio_bytes, root_addr, 0, 0));
+        root_dio.write_to(&mut dio_bytes).unwrap();
+        assert!(parent
+            .router
+            .process_dio(&root_dio, &dio_bytes, root_addr, 0, 0));
+        let parent_dio = lichen_rpl::message::Dio {
+            rank: parent.router.rank(),
+            ..root_dio
+        };
+        parent_dio.write_to(&mut dio_bytes).unwrap();
+        assert!(leaf
+            .router
+            .process_dio(&parent_dio, &dio_bytes, parent_addr, 0, 0));
 
-        let mut parent_daos =
-            lichen_rpl::routing::DaoManager::new(parent_addr, RPL_INSTANCE_ID, root_addr);
-        let parent_dao = parent_daos.build_dao(root_addr);
+        let mut parent_storage = MemStorage::new();
+        let mut parent_tx =
+            crate::routing::DaoTxState::provision(&mut parent_storage, parent_identity.pubkey)
+                .unwrap();
+        let parent_dao = parent
+            .build_signed_dao(
+                parent_addr,
+                &mut parent_tx,
+                &mut parent_storage,
+                &LinkLayer::new(parent_identity.clone()),
+            )
+            .unwrap();
         let parent_packet = l2_dao_packet(parent_addr, root_addr, &parent_dao);
         let mut output = [0u8; 260];
         assert_eq!(
-            root.handle_frame_rpl(&parent_packet, parent_id.0, &mut output, 0),
-            (
+            root.handle_frame_rpl(&parent_packet, parent_identity.iid, &mut output, 0),
+            (0, RplEvent::DaoReceived)
+        );
+        assert_eq!(
+            root.handle_dao(
+                &parent_dao,
+                parent_addr,
+                &announces,
+                &mut root_rx,
+                &mut root_storage,
                 0,
-                RplEvent::DaoReceived {
-                    route_updated: true
-                }
-            )
+            ),
+            DaoHandlingOutcome::Applied
         );
 
-        let mut leaf_daos =
-            lichen_rpl::routing::DaoManager::new(leaf_addr, RPL_INSTANCE_ID, root_addr);
-        let leaf_dao = leaf_daos.build_dao(parent_addr);
+        let mut leaf_storage = MemStorage::new();
+        let mut leaf_tx =
+            crate::routing::DaoTxState::provision(&mut leaf_storage, leaf_identity.pubkey).unwrap();
+        let leaf_dao = leaf
+            .build_signed_dao(
+                leaf_addr,
+                &mut leaf_tx,
+                &mut leaf_storage,
+                &LinkLayer::new(leaf_identity.clone()),
+            )
+            .unwrap();
         let leaf_packet = l2_dao_packet(leaf_addr, root_addr, &leaf_dao);
         assert_eq!(
             parent.handle_frame_rpl(&leaf_packet, [0x02, 0, 0, 0, 0, 0, 0, 4], &mut output, 0,),
             (0, RplEvent::None)
         );
         let (forwarded_len, event) =
-            parent.handle_frame_rpl(&leaf_packet, leaf_id.0, &mut output, 0);
+            parent.handle_frame_rpl(&leaf_packet, leaf_identity.iid, &mut output, 0);
         assert_eq!(
             event,
             RplEvent::DaoForwarded {
@@ -681,7 +830,7 @@ mod tests {
         );
 
         let mut forwarded_ipv6 = [0u8; 256];
-        codec::decompress(
+        let forwarded_n = codec::decompress(
             l2_payload_body(&output[..forwarded_len]),
             &mut forwarded_ipv6,
         )
@@ -691,25 +840,65 @@ mod tests {
             &leaf_addr
         );
         assert_eq!(forwarded_ipv6[7], 63);
+        let body_offset = IPV6_HEADER_LEN + hdr_field::BODY_OFFSET;
+        let forwarded_dao = &forwarded_ipv6[body_offset..forwarded_n];
+        assert_eq!(forwarded_dao, leaf_dao);
+        assert!(parent.router.lookup_route(&leaf_addr).is_none());
 
         assert_eq!(
-            root.handle_frame_rpl(&output[..forwarded_len], parent_id.0, &mut [0u8; 260], 0,),
-            (
+            root.handle_frame_rpl(
+                &output[..forwarded_len],
+                parent_identity.iid,
+                &mut [0u8; 260],
                 0,
-                RplEvent::DaoReceived {
-                    route_updated: true
-                }
-            )
+            ),
+            (0, RplEvent::DaoReceived)
+        );
+        assert!(root.router.lookup_route(&leaf_addr).is_none());
+
+        let mut tampered = forwarded_dao.to_vec();
+        tampered[3] ^= 1;
+        assert_eq!(
+            root.handle_dao(
+                &tampered,
+                leaf_addr,
+                &announces,
+                &mut root_rx,
+                &mut root_storage,
+                0,
+            ),
+            DaoHandlingOutcome::BadSignature
+        );
+        assert!(root.router.lookup_route(&leaf_addr).is_none());
+        assert_eq!(
+            root.handle_dao(
+                forwarded_dao,
+                leaf_addr,
+                &announces,
+                &mut root_rx,
+                &mut root_storage,
+                0,
+            ),
+            DaoHandlingOutcome::Applied
         );
         assert_eq!(
             root.router.lookup_route(&leaf_addr),
             Some([parent_addr, leaf_addr].as_slice())
         );
-
-        let spoofed = l2_dao_packet(parent_addr, root_addr, &leaf_dao);
         assert_eq!(
-            root.handle_frame_rpl(&spoofed, parent_id.0, &mut output, 0),
-            (0, RplEvent::None)
+            root.handle_dao(
+                forwarded_dao,
+                leaf_addr,
+                &announces,
+                &mut root_rx,
+                &mut root_storage,
+                0,
+            ),
+            DaoHandlingOutcome::Duplicate
+        );
+        assert_eq!(
+            root.router.lookup_route(&leaf_addr),
+            Some([parent_addr, leaf_addr].as_slice())
         );
     }
 
@@ -734,25 +923,25 @@ mod tests {
         );
 
         assert_eq!(
-            root.handle_frame_rpl(&first_packet, first_id.0, &mut [0u8; 260], 1_999),
-            (
-                0,
-                RplEvent::DaoReceived {
-                    route_updated: true
-                }
-            )
+            root.handle_frame_rpl(
+                &first_packet,
+                address_iid(first_addr),
+                &mut [0u8; 260],
+                1_999,
+            ),
+            (0, RplEvent::DaoReceived)
         );
-        assert!(root.router.lookup_route_at(&first_addr, 2_999).is_some());
+        assert!(root.router.lookup_route_at(&first_addr, 2_999).is_none());
         assert_eq!(
-            root.handle_frame_rpl(&first_packet, first_id.0, &mut [0u8; 260], 2_999),
-            (
-                0,
-                RplEvent::DaoReceived {
-                    route_updated: false
-                }
-            )
+            root.handle_frame_rpl(
+                &first_packet,
+                address_iid(first_addr),
+                &mut [0u8; 260],
+                2_999,
+            ),
+            (0, RplEvent::DaoReceived)
         );
-        assert!(root.router.lookup_route(&first_addr).is_some());
+        assert!(root.router.lookup_route(&first_addr).is_none());
         assert!(root.router.lookup_route_at(&first_addr, 3_000).is_none());
     }
 
@@ -787,7 +976,7 @@ mod tests {
         let packet = l2_dao_packet(leaf_addr, root_addr, &dao);
 
         assert_eq!(
-            parent.handle_frame_rpl(&packet, leaf_id.0, &mut [0u8; 260], 0),
+            parent.handle_frame_rpl(&packet, address_iid(leaf_addr), &mut [0u8; 260], 0),
             (0, RplEvent::None)
         );
     }

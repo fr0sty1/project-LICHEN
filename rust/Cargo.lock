@@ -1980,8 +1980,12 @@ version = "0.1.0"
 dependencies = [
  "defmt 0.3.100",
  "lichen-core",
+ "lichen-hal",
+ "lichen-link",
  "lichen-rpl",
  "log",
+ "serde_json",
+ "sha2 0.11.0",
 ]
 
 [[package]]
