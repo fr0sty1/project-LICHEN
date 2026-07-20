@@ -81,6 +81,45 @@ native clients.
 | **LOADng** | Complete | Reactive route discovery |
 | **CoAP** | Partial | Basic resources, OSCORE in progress |
 
+### Durable OSCORE Contexts
+
+`TransactionalOscoreContextStore` is the structural transactional store contract.
+`OscoreContextStore()` remains the backward-compatible concrete in-memory store;
+`InMemoryOscoreContextStore` is its explicitly named base implementation, while
+`SqliteOscoreContextStore(path)` is the durable reference backend. Existing callers
+may continue constructing `OscoreContextStore`; custom backend and dependency type
+annotations should migrate to `TransactionalOscoreContextStore`. Stores are
+runtime-validated against the complete callable contract. DatagramChannel endpoint
+keys are opaque, case-sensitive strings preserved exactly in storage and transport;
+`normalize_host()` remains only as a compatibility alias for validation and does
+not normalize. Each endpoint has one authoritative record containing its pinned
+public key, OSCORE reconstruction parameters, and context generation. Context
+replacement requires the current generation and rejects peer key changes. Removal
+leaves a generation tombstone and preserves the peer binding.
+
+Publication and sequence reservation are asynchronous and must be awaited. The
+secure datagram channel reserves and durably commits sender sequence blocks before
+protecting or transmitting messages. Reopening a SQLite store starts at the last
+committed block high-water, intentionally skipping unused values after a crash.
+High-water values live in permanent ledgers keyed by the effective sender crypto
+identity, so key rotation back to earlier material cannot reset its nonce space.
+Ledger identities use the canonical numeric COSE algorithm ID, derived key/common
+IV, sender or recipient ID, and ID context under domain separation; Python class,
+module, and backend names are deliberately excluded.
+Recipient replay windows are committed before plaintext delivery and restored on
+reopen. Replay updates use expected-state compare-and-set transactions, making
+validation and delivery linearizable across channels and processes; a concurrent
+conflict drops plaintext. SQLite files are owner-verified, mode `0600`, securely
+deleted, and use DELETE journaling rather than persistent WAL files. Standalone
+TOFU pins supplied to a channel are lazily migrated into this same authoritative
+store before lookup or publication and removed from the resolver after success.
+
+After `fork()`, SQLite stores discard inherited caches and reload at durable
+high-water values. In-memory stores fail closed because their inherited sequence
+leases cannot be proven safe. Synchronous provisioning is supported only by the
+in-memory store before event-loop activity; SQLite provisioning must use
+`await channel.add_context(...)`.
+
 ## For Meshtastic Users
 
 If you use Meshtastic and you're curious about LICHEN:

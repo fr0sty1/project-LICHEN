@@ -40,7 +40,7 @@ import ipaddress
 import itertools
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 from urllib.parse import urlparse
 
 import aiocoap
@@ -57,6 +57,12 @@ from aiocoap import (
     resource,
 )
 from aiocoap.numbers import ContentFormat
+
+if TYPE_CHECKING:
+    from lichen.coap.secure import (
+        EdhocPeerResolver,
+        TransactionalOscoreContextStore,
+    )
 
 CBOR = ContentFormat.CBOR
 SENML_CBOR = ContentFormat(112)  # application/senml+cbor (RFC 8428)
@@ -863,20 +869,21 @@ class EdhocResource(resource.Resource):
     def __init__(
         self,
         identity: Any,
-        context_store: Any,
-        peer_resolver: Any,
+        context_store: TransactionalOscoreContextStore,
+        peer_resolver: EdhocPeerResolver,
     ) -> None:
         """Create an EDHOC responder resource.
 
         Args:
             identity: Our cryptographic Identity for signing.
-            context_store: OscoreContextStore to save derived contexts.
+            context_store: Transactional store for derived contexts.
             peer_resolver: EdhocPeerResolver to look up/pin peer pubkeys.
         """
         super().__init__()
         self._identity = identity
         self._context_store = context_store
         self._peer_resolver = peer_resolver
+        self._peer_resolver.bind_context_store(self._context_store)
         # Active EDHOC sessions keyed by (peer_host, C_I)
         self._sessions: dict[tuple[str, bytes], Any] = {}
 
@@ -930,9 +937,11 @@ class EdhocResource(resource.Resource):
         # dummy key. An all-zeros key is a valid Ed25519 point, so passing it
         # to crypto routines could allow attacks. TOFU would defer this check
         # to Message 3, but we currently require pre-known peers.
+        await self._peer_resolver.ensure_bound()
         peer_pubkey = await self._peer_resolver.get_peer_pubkey(peer_host)
         if peer_pubkey is None:
             return Message(code=UNAUTHORIZED)
+        expected_generation = await self._context_store.get_generation(peer_host)
 
         # Create responder and process Message 1
         responder = EdhocResponder.create(self._identity)
@@ -946,6 +955,7 @@ class EdhocResource(resource.Resource):
         self._sessions[(peer_host, c_i)] = {
             "responder": responder,
             "peer_pubkey": peer_pubkey,
+            "expected_generation": expected_generation,
         }
 
         # Return Message 2
@@ -961,6 +971,7 @@ class EdhocResource(resource.Resource):
 
         responder = session["responder"]
         peer_pubkey = session["peer_pubkey"]
+        expected_generation = session["expected_generation"]
 
         if peer_pubkey is None:
             # SECURITY: Defense-in-depth check. Message 1 handler now rejects
@@ -976,11 +987,14 @@ class EdhocResource(resource.Resource):
         edhoc_ctx = responder.export_oscore()
         oscore_ctx = MemorySecurityContext.from_edhoc(edhoc_ctx)
 
-        # Store context
-        self._context_store.put_sync(peer_host, oscore_ctx, peer_pubkey)
-
-        # Pin peer if using TOFU
-        # (handled by context_store.put or peer_resolver.pin_peer)
+        # Publication is durable before Message 3 is acknowledged.
+        await self._peer_resolver.ensure_bound()
+        await self._context_store.put(
+            peer_host,
+            oscore_ctx,
+            peer_pubkey,
+            expected_generation=expected_generation,
+        )
 
         # Clean up session
         self._cleanup_session(peer_host)

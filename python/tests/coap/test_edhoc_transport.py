@@ -5,12 +5,18 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
 import aiocoap
 import pytest
 
 from lichen.coap.resources import EdhocResource, StaticNodeInfo, build_site
-from lichen.coap.secure import OscoreContextStore, TofuPeerResolver
+from lichen.coap.secure import (
+    OscoreContextStore,
+    SqliteOscoreContextStore,
+    TofuPeerResolver,
+    TransactionalOscoreContextStore,
+)
 from lichen.coap.transport import InMemoryNetwork, create_lichen_context
 from lichen.crypto.edhoc import EdhocInitiator
 from lichen.crypto.identity import Identity
@@ -29,7 +35,7 @@ class TestEdhocResource:
         return Identity.generate()
 
     @pytest.fixture
-    def context_store(self) -> OscoreContextStore:
+    def context_store(self) -> TransactionalOscoreContextStore:
         return OscoreContextStore()
 
     @pytest.fixture
@@ -40,7 +46,7 @@ class TestEdhocResource:
     async def test_edhoc_resource_creation(
         self,
         bob_identity: Identity,
-        context_store: OscoreContextStore,
+        context_store: TransactionalOscoreContextStore,
         peer_resolver: TofuPeerResolver,
     ) -> None:
         """EdhocResource can be created and added to a site."""
@@ -58,7 +64,7 @@ class TestEdhocResource:
         self,
         alice_identity: Identity,
         bob_identity: Identity,
-        context_store: OscoreContextStore,
+        context_store: TransactionalOscoreContextStore,
         peer_resolver: TofuPeerResolver,
     ) -> None:
         """Complete EDHOC handshake via CoAP POST to /.well-known/edhoc."""
@@ -132,7 +138,7 @@ class TestEdhocResource:
     async def test_edhoc_resource_rejects_empty_payload(
         self,
         bob_identity: Identity,
-        context_store: OscoreContextStore,
+        context_store: TransactionalOscoreContextStore,
         peer_resolver: TofuPeerResolver,
     ) -> None:
         """EdhocResource rejects POST with empty payload."""
@@ -167,7 +173,7 @@ class TestEdhocResource:
         self,
         alice_identity: Identity,
         bob_identity: Identity,
-        context_store: OscoreContextStore,
+        context_store: TransactionalOscoreContextStore,
         peer_resolver: TofuPeerResolver,
     ) -> None:
         """EdhocResource rejects Message 1 from unknown peer with UNAUTHORIZED.
@@ -211,6 +217,37 @@ class TestEdhocResource:
 
         await alice_ctx.shutdown()
         await bob_ctx.shutdown()
+
+    @pytest.mark.asyncio
+    async def test_responder_restart_resolves_durable_store_pin(
+        self,
+        tmp_path: Path,
+        alice_identity: Identity,
+        bob_identity: Identity,
+    ) -> None:
+        path = tmp_path / "contexts.sqlite3"
+        initial_store = SqliteOscoreContextStore(path)
+        await initial_store.pin_peer("alice", alice_identity.pubkey)
+
+        restarted_store = SqliteOscoreContextStore(path)
+        fresh_resolver = TofuPeerResolver()
+        edhoc = EdhocResource(bob_identity, restarted_store, fresh_resolver)
+        initiator = EdhocInitiator.create(alice_identity, c_i=b"\x00")
+
+        response = await edhoc._handle_message_1("alice", initiator.create_message_1())
+
+        assert response.code.is_successful()
+        assert await fresh_resolver.get_peer_pubkey("alice") == alice_identity.pubkey
+        assert fresh_resolver._context_store is restarted_store
+        assert fresh_resolver._pinned == {}
+
+    def test_responder_rejects_resolver_bound_to_different_store(
+        self, bob_identity: Identity
+    ) -> None:
+        resolver = TofuPeerResolver(OscoreContextStore())
+
+        with pytest.raises(ValueError, match="different context store"):
+            EdhocResource(bob_identity, OscoreContextStore(), resolver)
 
 
 class TestEdhocContextDerivation:
@@ -261,6 +298,7 @@ class TestEdhocContextDerivation:
         # Verify derived contexts
         alice_oscore = MemorySecurityContext.from_edhoc(initiator.export_oscore())
         bob_peer_ctx = context_store.get_sync("alice")
+        assert bob_peer_ctx is not None
         bob_oscore = bob_peer_ctx.oscore
 
         # Common IV must match
