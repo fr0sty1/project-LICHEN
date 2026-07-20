@@ -1,0 +1,7 @@
+{
+  "id": "1784561249576537551-1",
+  "issue_id": "project-LICHEN-2auf.39.3",
+  "author": "ec2-user",
+  "text": "2auf.64 audit confirmed broader pre-existing RFC 9528 incompatibility in Python EDHOC: legacy METHOD_CORR and CoAP framing, C_R placement, TH_3/TH_4 inputs, KDF/exporter stages, compact C_I encoding, and sender/recipient IDs require independent RFC 9529 vectors. Deliberately excluded from the single-use state-machine fix; address here as protocol validation/migration.",
+  "created_at": "2026-07-20T15:27:29.576537551Z"
+}
