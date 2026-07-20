@@ -4,8 +4,8 @@
  *
  * Usage:
  *   west build -b nucleo_wl55jc -- \
- *     -DDTC_OVERLAY_FILE=lichen/boards/renode/nucleo_wl55jc/nucleo_wl55jc_renode.overlay \
- *     -DCONFIG_LORA_LICHEN_RENODE=y
+ *     -DEXTRA_DTC_OVERLAY_FILE=lichen/boards/renode/nucleo_wl55jc/nucleo_wl55jc_renode.overlay \
+ *     -DEXTRA_CONF_FILE=lichen/boards/renode/nucleo_wl55jc/renode.conf
  */
 
 /* Disable the real SubGHz radio */
@@ -14,6 +14,10 @@
 };
 
 / {
+	chosen {
+		zephyr,lora = &lora_renode;
+	};
+
 	/* Add our simulator radio at the SubGHz peripheral address */
 	lora_renode: lora@58010000 {
 		compatible = "lichen,lora-renode";
