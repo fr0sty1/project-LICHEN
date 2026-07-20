@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-2auf.44.7.2.5",
+  "title": "Persist explicit DAO admissions separately",
+  "description": "Persist bounded key-based explicit root DAO admissions atomically in separate redundant scope-bound storage before first accepted DAO; provision initializes and open reconciles with high-water.",
+  "acceptance_criteria": "Admission survives restart before first DAO; write failure leaves RAM/storage unchanged; high-water keys are admitted and consistency fails closed; no retirement API.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "created_at": "2026-07-20T06:37:33.778760426Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-20T06:37:33.778760426Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.7.2.5",
+      "depends_on_id": "project-LICHEN-2auf.44.7.2",
+      "type": "parent-child",
+      "created_at": "2026-07-20T06:37:33.861308693Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
