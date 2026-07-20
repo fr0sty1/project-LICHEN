@@ -1,0 +1,7 @@
+{
+  "id": "019f71c9-5d9c-7658-a2e7-1834165daddf",
+  "issue_id": "lora_ipv6_mesh-93zo",
+  "author": "Mark Frost",
+  "text": "2026-07-17 CI repair on feat/t1000e (PR #2) — most of it fixed and pushed (commits through 8e62c183). GREEN now: Python 3.11/3.12 (pytest-cov was undeclared), Rust clippy+fmt (useless writeln borrow), Wire Format Roundtrip (generator imported nonexistent APIs), C static analysis clang-tidy (all 23 findings cleared — verified locally with clang-tidy), cppcheck, all hardware-target builds, multi-node sim, interop, property-based. 15/18 non-skipped checks pass. Also fixed a real cross-language KISS wire bug found by hypothesis (command byte colliding with FEND/FESC was unescaped). THREE failures remain, all PRE-EXISTING and unrelated to the agent-fleet code merge, and all UN-VALIDATABLE in this sandbox (no gcc-multilib for 32-bit native_sim, no sudo, no Renode): filed as separate beads. See child beads for details.",
+  "created_at": "2026-07-17T20:34:10Z"
+}

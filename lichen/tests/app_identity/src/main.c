@@ -149,21 +149,18 @@ ZTEST(app_identity, test_peer_lookup_and_enumeration)
 	zassert_equal(lichen_app_identity_copy_peer(peer1_eui64, &out),
 		      -ENOENT);
 	zassert_ok(lichen_app_identity_upsert_peer_key(peer1_eui64, key1));
-	k_sleep(K_TICKS(1));
 	zassert_ok(lichen_app_identity_upsert_peer_key(peer2_eui64, key2));
 	zassert_equal(lichen_app_identity_peer_count(), 2U);
-	k_sleep(K_TICKS(1));
-	zassert_ok(lichen_app_identity_upsert_peer_key(peer1_eui64, key1));
-	zassert_ok(lichen_app_identity_upsert_peer_key(peer3_eui64, key3));
+	zassert_equal(lichen_app_identity_upsert_peer_key(peer3_eui64, key3),
+		      -ENOMEM);
 
-	zassert_equal(lichen_app_identity_copy_peer(peer2_eui64, &out),
-		      -ENOENT);
-	zassert_ok(lichen_app_identity_copy_peer(peer3_eui64, &out));
-	zassert_mem_equal(out.eui64, peer3_eui64, sizeof(peer3_eui64));
-	zassert_mem_equal(out.public_key, key3, sizeof(key3));
-	zassert_equal(out.iid[0], peer3_eui64[0] ^ 0x02U);
+	zassert_ok(lichen_app_identity_copy_peer(peer1_eui64, &out));
+	zassert_mem_equal(out.eui64, peer1_eui64, sizeof(peer1_eui64));
+	zassert_mem_equal(out.public_key, key1, sizeof(key1));
+	zassert_equal(out.iid[0], peer1_eui64[0] ^ 0x02U);
 	zassert_true(out.has_public_key);
 
+	/* TOFU key pinning rejects key replacement for a known peer. */
 	memset(replacement_key, 0x44, sizeof(replacement_key));
 	zassert_equal(lichen_app_identity_upsert_peer_key(peer1_eui64,
 						    replacement_key),

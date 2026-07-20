@@ -47,14 +47,26 @@ jobs:
           pip install -r zephyr/scripts/requirements.txt
           west zephyr-export
 
-      - name: Build lora_ping for nrf52840_lichen
-        run: |
-          west build -b nrf52840_lichen lichen/samples/lora_ping -d build/lora_ping
+      - name: Set SOURCE_DATE_EPOCH
+        # The build-epoch policy (lichen/cmake/lichen_build_epoch.cmake)
+        # requires an epoch in 1..2^31-1. Use the commit timestamp like ci.yml.
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
 
-      - name: Build puck app for nrf52840_lichen
+      # nrf52840_lichen is the Renode *platform* name, not a Zephyr board.
+      # The firmware is built for the real t_echo/nrf52840 board with the
+      # renode_console overlay/conf (UARTE0 console Renode can capture), and
+      # the ELF is loaded into the nrf52840_lichen Renode machine downstream.
+      - name: Build lora_ping for Renode (t_echo/nrf52840)
         run: |
-          west build -b nrf52840_lichen lichen/apps/puck -d build/puck
-        continue-on-error: true  # May have missing deps
+          west build -b t_echo/nrf52840 lichen/samples/lora_ping -d build/lora_ping -- \
+            -DEXTRA_DTC_OVERLAY_FILE=$GITHUB_WORKSPACE/lichen/boards/renode/nrf52840_lichen/support/renode_console.overlay \
+            -DEXTRA_CONF_FILE=$GITHUB_WORKSPACE/lichen/boards/renode/nrf52840_lichen/support/renode_console.conf
+
+      - name: Build puck app for Renode (t_echo/nrf52840)
+        run: |
+          west build -b t_echo/nrf52840 lichen/apps/puck -d build/puck -- \
+            -DEXTRA_DTC_OVERLAY_FILE=$GITHUB_WORKSPACE/lichen/boards/renode/nrf52840_lichen/support/renode_console.overlay \
+            -DEXTRA_CONF_FILE=$GITHUB_WORKSPACE/lichen/boards/renode/nrf52840_lichen/support/renode_console.conf
 
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
@@ -79,9 +91,10 @@ jobs:
 
       - name: Install Renode
         run: |
-          wget -q https://github.com/renode/renode/releases/download/v1.14.0/renode-1.14.0.linux-portable.tar.gz
-          tar xf renode-1.14.0.linux-portable.tar.gz
-          echo "$PWD/renode_1.14.0_portable" >> $GITHUB_PATH
+          wget -q https://github.com/renode/renode/releases/download/v1.16.1/renode-1.16.1.linux-portable.tar.gz
+          mkdir -p "$HOME/.local/share/renode"
+          tar -xzf renode-1.16.1.linux-portable.tar.gz -C "$HOME/.local/share/renode" --strip-components=1
+          echo "$HOME/.local/share/renode" >> "$GITHUB_PATH"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -100,7 +113,6 @@ jobs:
         run: |
           cd python
           uv run pytest tests/sim/test_renode_integration.py -v --timeout=60
-        continue-on-error: true
 
   renode-multinode:
     name: Multi-Node Renode Test
@@ -117,9 +129,10 @@ jobs:
 
       - name: Install Renode
         run: |
-          wget -q https://github.com/renode/renode/releases/download/v1.14.0/renode-1.14.0.linux-portable.tar.gz
-          tar xf renode-1.14.0.linux-portable.tar.gz
-          echo "$PWD/renode_1.14.0_portable" >> $GITHUB_PATH
+          wget -q https://github.com/renode/renode/releases/download/v1.16.1/renode-1.16.1.linux-portable.tar.gz
+          mkdir -p "$HOME/.local/share/renode"
+          tar -xzf renode-1.16.1.linux-portable.tar.gz -C "$HOME/.local/share/renode" --strip-components=1
+          echo "$HOME/.local/share/renode" >> "$GITHUB_PATH"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -140,7 +153,6 @@ jobs:
             --firmware build/lora_ping/zephyr/zephyr.elf \
             --duration 30
         timeout-minutes: 5
-        continue-on-error: true
 
       - name: Run 5-node Renode mesh test
         run: |
@@ -149,12 +161,10 @@ jobs:
             --firmware build/lora_ping/zephyr/zephyr.elf \
             --duration 60
         timeout-minutes: 10
-        continue-on-error: true
 
   ec2-arm64-renode:
-    name: EC2 ARM64 Renode Tests
+    name: Validate EC2 ARM64 Fleet AMI
     runs-on: ubuntu-latest
-    needs: build-firmware
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
@@ -164,20 +174,18 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
+          aws-region: us-west-2
 
-      - name: Download firmware
-        uses: actions/download-artifact@v4
-        with:
-          name: firmware
-          path: build/
-
-      - name: Launch EC2 and run Renode tests
+      - name: Validate fleet AMI
         run: |
-          # TODO: Launch c7g.xlarge with Renode, run multi-node tests
-          echo "EC2 ARM64 Renode testing - implementation pending"
-          echo "Would run 10+ node tests with actual firmware"
-        continue-on-error: true
+          read -r owner architecture state project <<< "$(aws ec2 describe-images \
+            --image-ids ami-0764d1b512e22671f \
+            --query 'Images[0].[OwnerId,Architecture,State,Tags[?Key==`Project`].Value|[0]]' \
+            --output text)"
+          test "$owner" = "210337117346"
+          test "$architecture" = "arm64"
+          test "$state" = "available"
+          test "$project" = "LICHEN"
 
   create-beads-on-failure:
     name: Create Beads for Failures

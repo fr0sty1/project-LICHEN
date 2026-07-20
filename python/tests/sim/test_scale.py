@@ -22,11 +22,8 @@ from ipaddress import IPv6Address
 
 import pytest
 
-from lichen.announce.messages import AnnounceMessage
-from lichen.announce.processor import AnnounceProcessor
 from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity
-from lichen.gradient import GradientTable
 from lichen.radio.sim_client import SimRadio
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
@@ -323,7 +320,7 @@ class TestAnnounceFlood:
             print(f"\nConcurrent announces: {n_nodes} nodes")
             print(f"  TX time: {tx_time:.3f}s")
             print(f"  Total received: {total_received}/{expected}")
-            print(f"  Per-node: {[c for c in received_counts]}")
+            print(f"  Per-node: {list(received_counts)}")
 
         finally:
             for radio in radios:

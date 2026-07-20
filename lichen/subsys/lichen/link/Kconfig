@@ -74,4 +74,28 @@ config LICHEN_LINK_INSECURE_CRC32_MIC
 	  When enabled, a compile-time warning is emitted to ensure the
 	  insecure configuration is visible in build logs.
 
+config LICHEN_LINK_EPOCH_PERSIST
+	bool "Persist the link TX epoch across reboots"
+	depends on SETTINGS
+	help
+	  Persist the link-layer TX epoch to the settings subsystem and
+	  advance it by one on every boot. This keeps a rebooted node's
+	  (epoch, seqnum) counter monotonically ahead of what its peers
+	  remember in their replay windows, so frames sent after a reboot
+	  are not rejected as replays.
+
+	  Without this, link_ctx picks a random epoch in [128,255] at boot,
+	  which is lower than the peer's remembered epoch ~50% of the time
+	  and causes one-way replay deafness until both nodes reset together
+	  (lora_ipv6_mesh-3uhb). Costs one small settings write per boot.
+
+config LICHEN_LINK_EPOCH_TEST_HOOKS
+	bool "Test hooks for epoch persistence"
+	depends on LICHEN_LINK_EPOCH_PERSIST
+	depends on ZTEST
+	help
+	  Expose lichen_link_epoch_test_reset() to clear the in-RAM
+	  boot-epoch cache so tests can simulate a reboot and exercise the
+	  persist-and-advance behavior. Testing only.
+
 endif # LICHEN_LINK

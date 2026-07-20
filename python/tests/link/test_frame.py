@@ -171,7 +171,7 @@ class TestParseErrors:
             LichenFrame.from_bytes(b"\x03\x00\x00\x00")
 
     def test_too_short_for_declared_sizes(self) -> None:
-        # addr_mode SHORT (2B) + 32-bit MIC (4B) need 4+2+4=10 body bytes; only 4.
+        # addr_mode SHORT needs 4+2=6 body bytes; only 4 are present.
         with pytest.raises(FrameError, match="declared address/MIC"):
             LichenFrame.from_bytes(b"\x04\x01\x00\x00\x00")
 
@@ -179,6 +179,13 @@ class TestParseErrors:
         data = bytes.fromhex("12" "20" "00" "0000" + "00" * 10 + "deadbeef")
         with pytest.raises(FrameError, match="declared address/MIC"):
             LichenFrame.from_bytes(data)
+
+    def test_signature_present_short_payload_parses(self) -> None:
+        data = bytes.fromhex("3a" "20" "00" "0000" + "00" * 6 + "11" * 48)
+        frame = LichenFrame.from_bytes(data)
+        assert frame.signature_present is True
+        assert frame.payload == bytes(6)
+        assert frame.mic == bytes.fromhex("11" * 48)
 
     def test_signed_encrypted_is_rejected(self) -> None:
         data = bytes.fromhex("35 60 03 0004 78" + "00" * 48)
@@ -237,10 +244,7 @@ class TestSpecVectors:
         assert frame.epoch == expected["epoch"], f"{name}: epoch"
         assert frame.seqnum == expected["seqnum"], f"{name}: seqnum"
         assert frame.dst_addr == bytes.fromhex(expected["dst_addr_hex"]), f"{name}: dst_addr"
-        if expected["signature_present"]:
-            assert frame.mic == bytes.fromhex(expected["mic_hex"]), f"{name}: mic"
-        else:
-            assert frame.mic == bytes.fromhex(expected["mic_hex"]), f"{name}: mic"
+        assert frame.mic == bytes.fromhex(expected["mic_hex"]), f"{name}: mic"
 
         # Payload - check by length if specified, else by content
         if "payload_len" in expected:

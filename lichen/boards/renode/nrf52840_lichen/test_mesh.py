@@ -12,6 +12,9 @@ Usage:
 """
 
 import asyncio
+import contextlib
+import os
+import signal
 import sys
 from pathlib import Path
 
@@ -27,6 +30,36 @@ sys.path.insert(0, str(project_root / "python" / "src"))
 
 from lichen.sim.renode_server import start_renode_server  # noqa: E402
 from lichen.sim.simulation import Simulation  # noqa: E402
+
+
+# The T-Echo/RAK4631 firmware is built as an MCUboot slot-0 application: its
+# vector table lives at `_vector_table` (slot0 base + CONFIG_ROM_START_OFFSET,
+# e.g. 0x32200), NOT at flash 0x0. On real hardware MCUboot chain-loads it; in
+# Renode there is no MCUboot, so a bare `LoadELF` + `start` leaves the Cortex-M
+# reading its initial SP/PC from an empty 0x0 -> "PC and SP are equal to zero.
+# CPU was halted." -> the firmware never runs (and no LoRa frames are sent).
+#
+# Seed the reset state from the application's own vector table so the CPU boots
+# the image directly. Symbol-based so it works regardless of the exact offset.
+# Seed VTOR, initial MSP, and PC from the app vector table. A `$vt` variable
+# holds the table address so the SP read is a single un-nested monitor
+# expression (the nested-parens form intermittently fails to tokenize).
+_BOOT_MCUBOOT_APP = """\
+$vt=`sysbus GetSymbolAddress "_vector_table"`
+cpu VectorTableOffset $vt
+cpu SP `sysbus ReadDoubleWord $vt`
+cpu PC `sysbus GetSymbolAddress "__start"`
+cpu IsHalted false"""
+
+# Rotating base for each test's sim ports (and the +4000 Renode monitor ports),
+# so consecutive test cases in one run never reuse the same ports.
+_port_base_counter = [6000]
+
+
+def _next_port_base() -> int:
+    base = _port_base_counter[0]
+    _port_base_counter[0] += 20
+    return base
 
 
 @pytest.fixture
@@ -87,6 +120,7 @@ spi1.sx1262 SimPort {self.port}
 sysbus Tag <0x10000060, 0x10000063> "DEVICEID[0]" 0x1CE1{self.node_id:04X}
 sysbus Tag <0x10000064, 0x10000067> "DEVICEID[1]" 0x1CE2{self.node_id:04X}
 sysbus LoadELF @{self.firmware}
+{_BOOT_MCUBOOT_APP}
 cpu PerformanceInMips 64
 start
 """
@@ -98,20 +132,31 @@ start
         self.proc = await asyncio.create_subprocess_exec(
             "renode",
             "--disable-gui",
-            "--port", str(10100 + self.node_id),
+            # Monitor port derived from the (per-test rotated) sim port so two
+            # test cases never collide on a lingering Renode's fixed port.
+            "--port", str(self.port + 4000),
             str(script_path),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
+            # Own session/process group: Renode runs under Mono and spawns
+            # children that a plain terminate() on the parent leaves alive,
+            # holding ports and corrupting the next test. Kill the whole group.
+            start_new_session=True,
         )
 
     async def stop(self):
         """Stop the Renode process."""
-        if self.proc:
+        if self.proc is None:
+            return
+        try:
+            os.killpg(os.getpgid(self.proc.pid), signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
             self.proc.terminate()
-            try:
-                await asyncio.wait_for(self.proc.wait(), timeout=5)
-            except TimeoutError:
-                self.proc.kill()
+        try:
+            await asyncio.wait_for(self.proc.wait(), timeout=5)
+        except (TimeoutError, asyncio.TimeoutError):
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.killpg(os.getpgid(self.proc.pid), signal.SIGKILL)
 
 
 @pytest_asyncio.fixture
@@ -121,10 +166,14 @@ async def mesh_simulation(board, num_nodes, firmware_path):
     servers = []
     nodes = []
 
+    # Fresh sim-port range per test so a lingering Renode from a prior test
+    # cannot reconnect onto this test's node sockets.
+    base_port = _next_port_base()
+
     try:
         # Start simulation servers
         for i in range(num_nodes):
-            port = 6000 + i
+            port = base_port + i
             x = i * 50.0  # 50m spacing
             server, _ = await start_renode_server(
                 sim, f"node{i}", port=port, position=(x, 0.0, 0.0)
@@ -176,17 +225,47 @@ async def test_mesh_boots(mesh_simulation):
 async def test_mesh_tx(mesh_simulation):
     """Test that nodes transmit LoRa frames into lichen-sim.
 
-    Validated on Renode 1.16.1: the T-Echo puck firmware beacons over the
-    SX1262 bridge, so at least one transmission reaches the simulation.
-
-    Note: end-to-end RX into firmware is not asserted here — the SX1262.cs
-    RX path is one-shot at SetRx (see bead project-LICHEN-r7h4.6) and the
-    bridge/time-model interaction is unresolved (project-LICHEN-r7h4.7).
+    Passes on Renode 1.16.1 after the yot8 fix chain: boot the MCUboot slot-0
+    app from its own vector table, disable Renode-useless USB
+    (renode_console.conf) so the app reaches main(), wait past the puck's ~10 s
+    USB-settle window, and make the SX1262 RX path asynchronous so a node can
+    leave RX to transmit (SX1262.cs). The puck then boots, provisions its dev
+    peers, sends a CoAP GET, and the frame reaches the simulation medium.
     """
     sim = mesh_simulation["sim"]
 
-    # Wait for nodes to boot and emit their first beacon.
-    await asyncio.sleep(10)
+    # The puck holds its net interface (and radio RX thread) down for a ~10 s
+    # "USB settle" window before net_if_up(); the first CoAP TX follows shortly
+    # after. Wait past that so a transmission has a chance to occur.
+    await asyncio.sleep(20)
 
     # metrics.transmissions counts frames handed to the medium by any node.
     assert sim.metrics.transmissions > 0, "No LoRa transmissions reached lichen-sim"
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(_NO_FIRMWARE, reason="No firmware built")
+async def test_mesh_rx(mesh_simulation):
+    """Test that a frame from one node is delivered to another over the air.
+
+    Exercises the full receive path that the async SX1262 reader unlocked
+    (yot8): node A transmits, the sim medium propagates the frame to node B
+    within range, and the SX1262 bridge delivers it (RX_PACKET) into B's
+    firmware. Unlike test_mesh_tx (a frame merely *reaching* the medium), this
+    asserts inter-node *delivery*, so it requires >= 2 nodes.
+    """
+    sim = mesh_simulation["sim"]
+    nodes = mesh_simulation["nodes"]
+    if len(nodes) < 2:
+        pytest.skip("inter-node delivery needs >= 2 nodes")
+
+    # Wait past the ~10 s settle, then poll: once both nodes are up, deliveries
+    # are frequent, but a single half-duplex RX/TX alignment is timing-
+    # dependent, so poll rather than sampling one fixed instant. Pass as soon
+    # as any frame is delivered.
+    for _ in range(12):
+        await asyncio.sleep(5)
+        if sim.metrics.receptions > 0:
+            break
+
+    assert sim.metrics.receptions > 0, "No frames were delivered between nodes"

@@ -116,12 +116,7 @@ impl<'a> SchcContext<'a> {
 
     /// Look up a rule by ID.
     pub fn get(&self, rule_id: u8) -> Option<&Rule> {
-        for rule in self.rules {
-            if rule.rule_id == rule_id {
-                return Some(rule);
-            }
-        }
-        None
+        self.rules.iter().find(|rule| rule.rule_id == rule_id)
     }
 
     /// Find the first matching compression rule, or None if none matches.

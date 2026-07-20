@@ -15,6 +15,9 @@
 #include <zephyr/drivers/charger.h>
 #endif
 #if IS_ENABLED(CONFIG_FUEL_GAUGE)
+/* Zephyr 3.7's fuel_gauge.h inline helpers loop a signed index against
+ * a size_t bound, which trips LICHEN's -Werror=sign-compare.
+ */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
 #include <zephyr/drivers/fuel_gauge.h>
@@ -1641,8 +1644,8 @@ int lichen_hal_location_time_snapshot_get(
 	    snapshot->location_provider_available) {
 		snapshot->source_class_valid = true;
 		snapshot->source_class = LICHEN_HAL_LOCATION_SOURCE_ONBOARD_HARDWARE;
-		snprintf(snapshot->source_name, sizeof(snapshot->source_name),
-			 "gnss0");
+		(void)snprintf(snapshot->source_name, sizeof(snapshot->source_name),
+			       "gnss0");
 		snapshot->fix_state_valid = true;
 		snapshot->fix_state = LICHEN_HAL_LOCATION_FIX_NO_FIX;
 		snapshot->fix_source = LICHEN_HAL_FIX_SOURCE_GNSS;

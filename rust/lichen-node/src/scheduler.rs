@@ -433,10 +433,6 @@ mod tests {
         fn tx_count(&self) -> usize {
             self.tx_count.load(Ordering::SeqCst)
         }
-
-        fn last_data(&self) -> Vec<u8> {
-            self.last_data.lock().unwrap().clone()
-        }
     }
 
     impl AnnounceTransmitter for MockTransmitter {

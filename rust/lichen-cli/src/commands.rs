@@ -4,10 +4,14 @@
 //! response, and prints it using the selected output format.
 
 use crate::{output, ConfigAction, KeyAction, OutputFormat, PositionAction, RdAction};
+use lichen_client::keys::{KeyEntry, KeyList, KeyPin};
+use lichen_client::msg::{Inbox, OutgoingMessage, SentMessage};
+use lichen_client::paths;
+use lichen_client::pos::Position;
 use lichen_coap::client;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use sha2::{Digest, Sha256};
-use std::net::SocketAddr;
+use std::net::{Ipv6Addr, SocketAddr};
 use zeroize::{Zeroize, Zeroizing};
 
 type CmdResult = Result<(), Box<dyn std::error::Error>>;
@@ -34,6 +38,21 @@ fn encode_cbor(v: &serde_json::Value) -> Result<Vec<u8>, Box<dyn std::error::Err
     let mut buf = Vec::new();
     ciborium::ser::into_writer(&cbor_val, &mut buf)?;
     Ok(buf)
+}
+
+/// Derive a peer's key-store interface identifier from its IPv6 address.
+///
+/// The IID is the address's lower 64 bits, formatted as the firmware's
+/// `xxxx:xxxx:xxxx:xxxx` key path segment (see `coap_keys.c`).
+fn iid_from_ipv6(peer: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let addr: Ipv6Addr = peer
+        .parse()
+        .map_err(|_| format!("invalid IPv6 address: {peer}"))?;
+    let s = addr.segments();
+    Ok(format!(
+        "{:04x}:{:04x}:{:04x}:{:04x}",
+        s[4], s[5], s[6], s[7]
+    ))
 }
 
 fn json_to_cbor(v: &serde_json::Value) -> ciborium::value::Value {
@@ -95,26 +114,46 @@ pub async fn presence(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
 }
 
 pub async fn send(node: SocketAddr, to: &str, message: &str, fmt: &OutputFormat) -> CmdResult {
-    let body_json = serde_json::json!({ "to": to, "text": message });
-    let body = encode_cbor(&body_json)?;
-    let resp = client::post(node, "/messages", &body).await?;
-    if resp.is_success() {
-        output::print_kv("sent", message, fmt);
-        output::print_kv("to", to, fmt);
-    } else {
+    let msg = OutgoingMessage::new(to, message);
+    let resp = client::post(node, paths::MSG_SENT, &msg.to_cbor()).await?;
+    if !resp.is_success() {
         return Err(format!("send failed: {}", resp.code_str()).into());
+    }
+    // The firmware answers with {id, to, body, timestamp, status}; a bodyless
+    // 2.01 Created is also valid, so fall back to echoing the request.
+    match SentMessage::from_cbor(&resp.payload) {
+        Ok(sent) => match fmt {
+            OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&sent)?),
+            OutputFormat::Human => {
+                println!("  sent [{}] to {}: {}", sent.id, sent.to, sent.body);
+                println!("  status: {}", sent.status);
+            }
+        },
+        Err(_) => {
+            output::print_kv("sent", message, fmt);
+            output::print_kv("to", to, fmt);
+        }
     }
     Ok(())
 }
 
 pub async fn inbox(node: SocketAddr, fmt: &OutputFormat) -> CmdResult {
-    let resp = client::get(node, "/messages").await?;
-    let cbor = decode_cbor(&resp)?;
-    match &cbor {
-        ciborium::value::Value::Array(arr) if arr.is_empty() => {
-            println!("(inbox empty)");
+    let resp = client::get(node, paths::MSG_INBOX).await?;
+    let inbox = Inbox::from_cbor(&resp.payload)?;
+    match fmt {
+        OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&inbox)?),
+        OutputFormat::Human => {
+            if inbox.messages.is_empty() {
+                println!("(inbox empty)");
+            } else {
+                for m in &inbox.messages {
+                    println!(
+                        "  [{}] from {} (t={}): {}",
+                        m.id, m.from, m.received, m.body
+                    );
+                }
+            }
         }
-        _ => output::print_cbor(cbor, fmt),
     }
     Ok(())
 }
@@ -181,7 +220,7 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
                         .truncate(true)
                         .mode(0o600)
                         .open(&path)?;
-                    writeln!(file, "{}", &*seed_hex)?;
+                    writeln!(file, "{}", *seed_hex)?;
                 }
                 #[cfg(not(unix))]
                 {
@@ -191,7 +230,7 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
                     // SECURITY: Use writeln! instead of format! to avoid creating
                     // a temporary String that would leak seed material in memory
                     let mut file = File::create(&path)?;
-                    writeln!(file, "{}", &*seed_hex)?;
+                    writeln!(file, "{}", *seed_hex)?;
                     eprintln!(
                         "warning: could not set secure file permissions on non-Unix platform"
                     );
@@ -220,13 +259,65 @@ pub async fn key(node: SocketAddr, action: KeyAction, fmt: &OutputFormat) -> Cmd
             output::print_cbor(cbor, fmt);
         }
         KeyAction::List => {
-            output::print_kv("peers", "(no peer-key endpoint yet)", fmt);
+            let resp = client::get(node, paths::KEYS).await?;
+            if !resp.is_success() {
+                return Err(format!("key list failed: {}", resp.code_str()).into());
+            }
+            let list = KeyList::from_cbor(&resp.payload)?;
+            match fmt {
+                OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&list)?),
+                OutputFormat::Human => {
+                    if list.keys.is_empty() {
+                        println!("(no peer keys)");
+                    } else {
+                        for k in &list.keys {
+                            println!(
+                                "  {} [{}] {} (last seen {})",
+                                k.iid, k.trust, k.pubkey_fp, k.last_seen
+                            );
+                        }
+                    }
+                }
+            }
         }
-        KeyAction::Pin { peer: _ } => {
-            return Err("key pinning not implemented (no peer-key endpoint yet)".into());
+        KeyAction::Pin { peer } => {
+            let iid = iid_from_ipv6(&peer)?;
+            let path = paths::keys_iid(&iid);
+            // Read the key the node already pinned (TOFU) for this peer.
+            let resp = client::get(node, &path).await?;
+            if !resp.is_success() {
+                return Err(format!(
+                    "no key on record for {peer} (iid {iid}): {} — the node must \
+                     have seen this peer before its key can be confirmed",
+                    resp.code_str()
+                )
+                .into());
+            }
+            let entry = KeyEntry::from_cbor(&resp.payload)?;
+            // SECURITY: re-send the SAME pubkey with trust=verified. The node
+            // TOFU-rejects any pubkey change, so this only elevates trust on the
+            // already-seen key; it cannot inject a new key for this IID.
+            let pin = KeyPin {
+                pubkey: entry.pubkey.clone(),
+                trust: "verified".to_string(),
+            };
+            let put = client::put(node, &path, &pin.to_cbor()).await?;
+            if !put.is_success() {
+                return Err(format!("pin failed: {}", put.code_str()).into());
+            }
+            output::print_kv(
+                "pinned",
+                &format!("{peer} (iid {iid}): {} -> verified", entry.trust),
+                fmt,
+            );
         }
-        KeyAction::Unpin { peer: _ } => {
-            return Err("key unpinning not implemented (no peer-key endpoint yet)".into());
+        KeyAction::Unpin { peer } => {
+            let iid = iid_from_ipv6(&peer)?;
+            let resp = client::delete(node, &paths::keys_iid(&iid)).await?;
+            if !resp.is_success() {
+                return Err(format!("unpin failed: {}", resp.code_str()).into());
+            }
+            output::print_kv("unpinned", &format!("{peer} (iid {iid})"), fmt);
         }
     }
     Ok(())
@@ -272,9 +363,33 @@ pub async fn config(node: SocketAddr, action: ConfigAction, fmt: &OutputFormat) 
 pub async fn position(node: SocketAddr, action: PositionAction, fmt: &OutputFormat) -> CmdResult {
     match action {
         PositionAction::Show => {
-            let resp = client::get(node, "/location").await?;
-            let cbor = decode_cbor(&resp)?;
-            output::print_cbor(cbor, fmt);
+            // Spec §18.2.2: GET /sensors/location -> application/senml+cbor.
+            let resp = client::get(node, paths::SENSORS_LOCATION).await?;
+            if !resp.is_success() {
+                return Err(format!("position query failed: {}", resp.code_str()).into());
+            }
+            let p = Position::from_senml_cbor(&resp.payload)?;
+            match fmt {
+                OutputFormat::Json => println!("{}", serde_json::to_string_pretty(&p)?),
+                OutputFormat::Human => {
+                    if let Some(device) = p.device {
+                        println!("  device: {device}");
+                    }
+                    println!("  lat: {}  lon: {}", p.lat, p.lon);
+                    if let Some(alt) = p.alt {
+                        println!("  alt: {alt} m");
+                    }
+                    if let Some(speed) = p.speed {
+                        println!("  speed: {speed} m/s");
+                    }
+                    if let Some(heading) = p.heading {
+                        println!("  heading: {heading} deg");
+                    }
+                    if let Some(time) = p.time {
+                        println!("  time: {time}");
+                    }
+                }
+            }
         }
         PositionAction::Broadcast => {
             return Err("position broadcast not implemented".into());

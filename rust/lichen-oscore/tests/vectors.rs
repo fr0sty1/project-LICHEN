@@ -36,6 +36,12 @@ struct Vector {
     #[serde(default)]
     sender_seq: Option<u32>,
     #[serde(default)]
+    include_piv: Option<bool>,
+    #[serde(default)]
+    request_piv: Option<String>,
+    #[serde(default)]
+    request_kid: Option<String>,
+    #[serde(default)]
     plaintext: Option<Plaintext>,
     #[serde(default)]
     expected: Option<Expected>,
@@ -64,6 +70,9 @@ struct Expected {
     sender_key: Option<String>,
     recipient_key: Option<String>,
     common_iv: Option<String>,
+    nonce: Option<String>,
+    oscore_option: Option<String>,
+    ciphertext: Option<String>,
     is_replay: Option<bool>,
     new_highest: Option<u32>,
     new_window: Option<u32>,
@@ -96,59 +105,106 @@ fn hex_to_array<const N: usize>(hex: &str) -> [u8; N] {
 }
 
 #[test]
-fn test_roundtrip_vectors() {
+fn test_request_protection_vectors() {
     let vectors = load_vectors();
 
     for v in vectors
         .vectors
         .iter()
-        .filter(|v| v.vector_type == "roundtrip")
+        .filter(|v| v.vector_type == "request_protection" && v.id_context.is_none())
     {
         let master_secret: [u8; 16] = hex_to_array(v.master_secret.as_ref().unwrap());
         let master_salt = v.master_salt.as_ref().map(|s| hex_to_bytes(s));
         let sender_id = hex_to_bytes(v.sender_id.as_ref().unwrap());
         let recipient_id = hex_to_bytes(v.recipient_id.as_ref().unwrap());
 
-        // Create sender context
-        let mut sender_ctx = Context::new(
+        let mut ctx = Context::new(
             &master_secret,
             master_salt.as_deref(),
             &sender_id,
             &recipient_id,
         )
-        .expect(&format!("Failed to create sender context for {}", v.name));
+        .unwrap_or_else(|_| panic!("Failed to create context for {}", v.name));
 
-        // Create recipient context (swapped IDs)
-        let mut recipient_ctx = Context::new(
-            &master_secret,
-            master_salt.as_deref(),
-            &recipient_id,
-            &sender_id,
-        )
-        .expect(&format!(
-            "Failed to create recipient context for {}",
-            v.name
-        ));
-
-        // Get plaintext
         let pt = v.plaintext.as_ref().unwrap();
+        let options = hex_to_bytes(&pt.options);
         let payload = hex_to_bytes(&pt.payload);
+        for _ in 0..v.sender_seq.unwrap() {
+            ctx.protect_request(1, &[], &[]).unwrap();
+        }
 
-        // Protect request
-        let (ciphertext, oscore_opt) = sender_ctx
-            .protect_request(pt.code, &[], &payload)
-            .expect(&format!("protect_request failed for {}", v.name));
+        let (ciphertext, oscore_opt) = ctx
+            .protect_request(pt.code, &options, &payload)
+            .unwrap_or_else(|_| panic!("protect_request failed for {}", v.name));
+        let expected = v.expected.as_ref().unwrap();
 
-        // Unprotect request
-        let (dec_code, _dec_options, dec_payload) = recipient_ctx
-            .unprotect_request(&oscore_opt, &ciphertext)
-            .expect(&format!("unprotect_request failed for {}", v.name));
-
-        assert_eq!(dec_code, pt.code, "code mismatch for {}", v.name);
         assert_eq!(
-            dec_payload.as_slice(),
-            payload.as_slice(),
-            "payload mismatch for {}",
+            oscore_opt.as_slice(),
+            hex_to_bytes(expected.oscore_option.as_ref().unwrap()),
+            "OSCORE option mismatch for {}",
+            v.name
+        );
+        assert_eq!(
+            ciphertext.as_slice(),
+            hex_to_bytes(expected.ciphertext.as_ref().unwrap()),
+            "ciphertext mismatch for {}",
+            v.name
+        );
+    }
+}
+
+#[test]
+fn test_response_protection_vectors() {
+    let vectors = load_vectors();
+
+    for v in vectors
+        .vectors
+        .iter()
+        .filter(|v| v.vector_type == "response_protection")
+    {
+        let master_secret = hex_to_array(v.master_secret.as_ref().unwrap());
+        let master_salt = v.master_salt.as_ref().map(|s| hex_to_bytes(s));
+        let sender_id = hex_to_bytes(v.sender_id.as_ref().unwrap());
+        let recipient_id = hex_to_bytes(v.recipient_id.as_ref().unwrap());
+        let request_piv = hex_to_bytes(v.request_piv.as_ref().unwrap());
+        let request_kid = hex_to_bytes(v.request_kid.as_ref().unwrap());
+        let pt = v.plaintext.as_ref().unwrap();
+        let options = hex_to_bytes(&pt.options);
+        let payload = hex_to_bytes(&pt.payload);
+        let expected = v.expected.as_ref().unwrap();
+        let include_piv = v.include_piv.unwrap();
+        let mut ctx = Context::new(
+            &master_secret,
+            master_salt.as_deref(),
+            &sender_id,
+            &recipient_id,
+        )
+        .unwrap();
+        for _ in 0..v.sender_seq.unwrap() {
+            ctx.protect_request(1, &[], &[]).unwrap();
+        }
+
+        let (ciphertext, oscore_opt) = ctx
+            .protect_response(
+                pt.code,
+                &options,
+                &payload,
+                &request_kid,
+                &request_piv,
+                include_piv,
+            )
+            .unwrap_or_else(|_| panic!("protect_response failed for {}", v.name));
+
+        assert_eq!(
+            oscore_opt.as_slice(),
+            hex_to_bytes(expected.oscore_option.as_ref().unwrap()),
+            "OSCORE option mismatch for {}",
+            v.name
+        );
+        assert_eq!(
+            ciphertext.as_slice(),
+            hex_to_bytes(expected.ciphertext.as_ref().unwrap()),
+            "ciphertext mismatch for {}",
             v.name
         );
     }
@@ -191,24 +247,21 @@ fn test_invalid_inputs() {
         .iter()
         .filter(|v| v.vector_type == "invalid")
     {
-        match v.expected_error.as_deref() {
-            Some("invalid_param") => {
-                // Test ID too long
-                if v.sender_id.as_ref().map(|s| s.len()).unwrap_or(0) > 14 {
-                    let master_secret: [u8; 16] = hex_to_array(v.master_secret.as_ref().unwrap());
-                    let sender_id = hex_to_bytes(v.sender_id.as_ref().unwrap());
-                    let recipient_id = hex_to_bytes(v.recipient_id.as_ref().unwrap());
+        if let Some("invalid_param") = v.expected_error.as_deref() {
+            // Test ID too long
+            if v.sender_id.as_ref().map(|s| s.len()).unwrap_or(0) > 14 {
+                let master_secret: [u8; 16] = hex_to_array(v.master_secret.as_ref().unwrap());
+                let sender_id = hex_to_bytes(v.sender_id.as_ref().unwrap());
+                let recipient_id = hex_to_bytes(v.recipient_id.as_ref().unwrap());
 
-                    let result = Context::new(&master_secret, None, &sender_id, &recipient_id);
-                    assert!(
-                        matches!(result, Err(OscoreError::InvalidParam)),
-                        "Expected InvalidParam for {}, got {:?}",
-                        v.name,
-                        result
-                    );
-                }
+                let result = Context::new(&master_secret, None, &sender_id, &recipient_id);
+                assert!(
+                    matches!(result, Err(OscoreError::InvalidParam)),
+                    "Expected InvalidParam for {}, got {:?}",
+                    v.name,
+                    result
+                );
             }
-            _ => {}
         }
     }
 }

@@ -193,17 +193,17 @@ check_prereqs() {
     if [[ $ZEPHYR_NODES -gt 0 ]]; then
         if [[ ! -f "$ZEPHYR_ELF" ]]; then
             log_error "Zephyr firmware not found. Build it:"
-            log_error "  west build -b t_echo/nrf52840 lichen/apps/puck -d build/t_echo_renode"
+            log_error "  west build -b t_echo/nrf52840 lichen/apps/puck -d build/t_echo_renode -- -DEXTRA_DTC_OVERLAY_FILE=$PROJECT_ROOT/lichen/boards/renode/nrf52840_lichen/support/renode_console.overlay -DEXTRA_CONF_FILE=$PROJECT_ROOT/lichen/boards/renode/nrf52840_lichen/support/renode_console.conf"
             exit 1
         fi
         if nm -a "$ZEPHYR_ELF" 2>/dev/null | grep -E '[[:space:]](CONFIG_SPI_NRFX_SPIM|spi_nrfx_spim\.c)$' >/dev/null; then
             log_error "Zephyr firmware uses SPIM, which Renode 1.16.1 cannot run with this platform model"
-            log_error "Rebuild with renode_console.overlay to select nordic,nrf-spi"
+            log_error "Rebuild with both renode_console.overlay and renode_console.conf"
             exit 1
         fi
         if ! nm -a "$ZEPHYR_ELF" 2>/dev/null | grep -E '[[:space:]](CONFIG_SPI_NRFX_SPI|spi_nrfx_spi\.c)$' >/dev/null; then
             log_error "Zephyr firmware does not contain the required legacy nRF SPI driver"
-            log_error "Rebuild with renode_console.overlay"
+            log_error "Rebuild with both renode_console.overlay and renode_console.conf"
             exit 1
         fi
     fi

@@ -254,6 +254,7 @@ fn parse_ipv6_fields<'a>(raw: &'a [u8], parsed: &mut ParsedPacket<'a>) -> Result
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn write_ipv6_header(
     out: &mut [u8],
     payload_len: u16,

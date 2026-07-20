@@ -474,8 +474,8 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 			/* prefix with length */
 			cbor_put_key(&ctx, "prefix");
 			format_ipv6(r->prefix, ipv6_buf, sizeof(ipv6_buf));
-			snprintf(prefix_buf, sizeof(prefix_buf), "%s/%u",
-				 ipv6_buf, r->prefix_len);
+			(void)snprintf(prefix_buf, sizeof(prefix_buf), "%s/%u",
+				       ipv6_buf, r->prefix_len);
 			cbor_put_tstr(&ctx, prefix_buf);
 
 			cbor_put_key(&ctx, "via");
@@ -805,21 +805,6 @@ static const char * const routes_path[] = { "status", "routes", NULL };
  * The application must call COAP_RESOURCE_DEFINE or manually add these
  * to its service.
  */
-
-/* Forward declarations for resource definitions */
-static int status_get(struct coap_resource *resource,
-		      struct coap_packet *request,
-		      struct sockaddr *addr, socklen_t addr_len);
-static void status_notify(struct coap_resource *resource,
-			  struct coap_observer *observer);
-static int neighbors_get(struct coap_resource *resource,
-			 struct coap_packet *request,
-			 struct sockaddr *addr, socklen_t addr_len);
-static void neighbors_notify(struct coap_resource *resource,
-			     struct coap_observer *observer);
-static int routes_get(struct coap_resource *resource,
-		      struct coap_packet *request,
-		      struct sockaddr *addr, socklen_t addr_len);
 
 /* Exported resource descriptors for applications to use */
 const struct coap_resource lichen_coap_status_resource = {

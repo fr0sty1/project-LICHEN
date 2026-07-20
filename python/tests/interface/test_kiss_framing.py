@@ -207,6 +207,18 @@ class TestEncodeDecodeRoundtrip:
                     assert result.command == cmd
                     assert result.data == data
 
+    def test_cmd_byte_colliding_with_delimiters_is_escaped(self):
+        # (port=12, cmd=0) -> cmd byte 0xC0 == FEND; (port=13, cmd=11) ->
+        # 0xDB == FESC. Both must be escaped on the wire and round-trip.
+        for port, cmd in [(12, 0), (13, 11)]:
+            for data in [b"", b"Hi"]:
+                frame = kiss_encode(port, cmd, data)
+                assert frame[1] == 0xDB  # FESC: cmd byte is escaped
+                result = kiss_decode(frame)
+                assert result.port == port
+                assert result.command == cmd
+                assert result.data == data
+
 
 class TestKissReader:
     def test_single_frame(self):

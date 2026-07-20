@@ -31,18 +31,18 @@ log_error() { echo -e "\033[0;31mERROR:\033[0m $*" >&2; }
 FIRMWARE="$PROJECT_ROOT/build/lora_ping/zephyr/zephyr.elf"
 if [[ ! -f "$FIRMWARE" ]]; then
     log_error "Firmware not found. Build it first:"
-    log_error "  Build for t_echo/nrf52840 with the tracked Renode overlay and config"
+    log_error "  west build -b t_echo/nrf52840 lichen/samples/lora_ping -d build/lora_ping -- -DEXTRA_DTC_OVERLAY_FILE=$PROJECT_ROOT/lichen/boards/renode/nrf52840_lichen/support/renode_console.overlay -DEXTRA_CONF_FILE=$PROJECT_ROOT/lichen/boards/renode/nrf52840_lichen/support/renode_console.conf"
     exit 1
 fi
 
 if nm -a "$FIRMWARE" 2>/dev/null | grep -E '[[:space:]](CONFIG_SPI_NRFX_SPIM|spi_nrfx_spim\.c)$' >/dev/null; then
     log_error "Firmware uses SPIM, which Renode 1.16.1 cannot run with this platform model"
-    log_error "Rebuild with renode_console.overlay to select nordic,nrf-spi"
+    log_error "Rebuild with both renode_console.overlay and renode_console.conf"
     exit 1
 fi
 if ! nm -a "$FIRMWARE" 2>/dev/null | grep -E '[[:space:]](CONFIG_SPI_NRFX_SPI|spi_nrfx_spi\.c)$' >/dev/null; then
     log_error "Firmware does not contain the required legacy nRF SPI driver"
-    log_error "Rebuild with renode_console.overlay"
+    log_error "Rebuild with both renode_console.overlay and renode_console.conf"
     exit 1
 fi
 

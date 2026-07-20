@@ -7,10 +7,8 @@ import time
 import pytest
 
 from lichen.interface.meshtastic.gatt import (
-    DEFAULT_DEADLINE_SECS,
     FROMNUM_UUID,
     FROMRADIO_UUID,
-    MAX_MESSAGE_SIZE,
     MAX_QUEUE_DEPTH,
     SERVICE_UUID,
     TORADIO_UUID,
@@ -20,7 +18,7 @@ from lichen.interface.meshtastic.gatt import (
     build_from_radio_response,
     parse_ble_message,
 )
-from lichen.interface.meshtastic.proto import FromRadio, MeshPacket, ToRadio
+from lichen.interface.meshtastic.proto import FromRadio
 
 
 class TestUUIDs:

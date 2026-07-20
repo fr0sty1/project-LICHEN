@@ -1,0 +1,7 @@
+{
+  "id": "019f76aa-9017-7656-a023-1add53f9addf",
+  "issue_id": "lora_ipv6_mesh-fe1z",
+  "author": "Mark Frost",
+  "text": "2026-07-18 L2-funnel instrumentation localizes the gap to ABOVE L2. Added an 'l2rx' STATS group (frames/verified/rejected/injected) read over if02. On the T1000-E over 80s with the gateway pinning it: frames=22 (==rxdone, every demod frame reaches L2), verified=11==injected=11 (every gateway-signed frame verifies AND is injected to the IPv6 stack), rejected=11 (the T-Echo's frames, unpinned here), coap.ok=0/7. So the ENTIRE receive path works: radio RX -\u003e L2 peer-verify -\u003e net_recv_data injection. The round-trip failure is strictly above L2 (CoAP/addressing/timeout), NOT RX or L2. Two remaining hypotheses: (a) the gateway is not actually sending responses ADDRESSED to the T1000-E (all 11 injected frames are gateway-\u003eT-Echo responses that the T1000-E's IPv6 stack drops as not-for-us); (b) responses for the T1000-E ARE injected but arrive after the puck's CoAP ACK timeout (CONFIG_COAP_INIT_ACK_TIMEOUT_MS=5000) or fail token match. NEXT (cheapest discriminator): reflash the gateway to pin ONLY the T1000-E (drop the T-Echo) - a 2-node isolation. If coap.ok then climbs, the cause was 3-node contention/latency past the 5s timeout; if still 0, the gateway is not responding to the T1000-E (routing/CoAP-server) - add a gateway-side 'CoAP responses TXed to peer' counter. The l2rx/coap/lr1110 STATS groups are all in place to support either path.",
+  "created_at": "2026-07-18T19:18:37Z"
+}

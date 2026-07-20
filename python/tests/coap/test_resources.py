@@ -24,7 +24,9 @@ def _node_info() -> StaticNodeInfo:
 async def _client_server(node_info: StaticNodeInfo, *, config_allow_writes: bool = False):
     net = InMemoryNetwork()
     server = await create_lichen_context(
-        net.channel("server"), "server", site=build_site(node_info, config_allow_writes=config_allow_writes)
+        net.channel("server"),
+        "server",
+        site=build_site(node_info, config_allow_writes=config_allow_writes),
     )
     client = await create_lichen_context(net.channel("client"), "client")
     return client, server

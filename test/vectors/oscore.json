@@ -114,10 +114,11 @@
       "sender_seq": 20,
       "plaintext": {
         "code": 1,
-        "options": "8374763100",
+        "options": "b3747631",
         "payload": ""
       },
       "expected": {
+        "nonce": "4622d4dd6d944168eefb549868",
         "oscore_option": "0914",
         "ciphertext": "612f1092f1776f1c1668b3825e"
       }
@@ -135,11 +136,12 @@
       "sender_seq": 20,
       "plaintext": {
         "code": 1,
-        "options": "8374763100",
+        "options": "b3747631",
         "payload": ""
       },
       "expected": {
-        "oscore_option": "09140000",
+        "nonce": "bf35ae297d2dace910c52e99ed",
+        "oscore_option": "091400",
         "ciphertext": "4ed339a5a379b0b8bc731fffb0"
       }
     },
@@ -156,10 +158,11 @@
       "sender_seq": 20,
       "plaintext": {
         "code": 1,
-        "options": "8374763100",
+        "options": "b3747631",
         "payload": ""
       },
       "expected": {
+        "nonce": "2ca58fb85ff1b81c0b7181b84a",
         "oscore_option": "19140837cbf3210017a2d3",
         "ciphertext": "72cd7273fd331ac45cffbe55c3"
       }
@@ -175,6 +178,7 @@
       "id_context": null,
       "algorithm": 10,
       "sender_seq": 0,
+      "include_piv": false,
       "request_piv": "14",
       "request_kid": "",
       "plaintext": {
@@ -183,21 +187,23 @@
         "payload": "48656c6c6f20576f726c6421"
       },
       "expected": {
-        "oscore_option": "90",
+        "nonce": "4622d4dd6d944168eefb549868",
+        "oscore_option": "",
         "ciphertext": "dbaad1e9a7e7b2a813d3c31524378303cdafae119106"
       }
     },
     {
       "name": "rfc8613_c8_response_with_partial_iv",
       "type": "response_protection",
-      "description": "RFC 8613 Appendix C.8: OSCORE response with Partial IV echoed",
+      "description": "RFC 8613 Appendix C.8: OSCORE response with a new Partial IV",
       "master_secret": "0102030405060708090a0b0c0d0e0f10",
       "master_salt": "9e7ca92223786340",
       "sender_id": "01",
       "recipient_id": "",
       "id_context": null,
       "algorithm": 10,
-      "sender_seq": 256,
+      "sender_seq": 0,
+      "include_piv": true,
       "request_piv": "14",
       "request_kid": "",
       "plaintext": {
@@ -206,7 +212,8 @@
         "payload": "48656c6c6f20576f726c6421"
       },
       "expected": {
-        "oscore_option": "920100",
+        "nonce": "4722d4dd6d944169eefb54987c",
+        "oscore_option": "0100",
         "ciphertext": "4d4c13669384b67354b2b6175ff4b8658c666a6cf88e"
       }
     },

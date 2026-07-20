@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* Iterable section for the LICHEN CoAP server resources. */
+/* Iterable section for the standalone LICHEN CoAP service resources. */
 
 #include <zephyr/linker/iterable_sections.h>
 

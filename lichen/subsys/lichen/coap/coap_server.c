@@ -220,6 +220,7 @@ static const char * const config_attrs[] = {
 	NULL,
 };
 
+/* coap_config.c already owns the global symbol lichen_config. */
 COAP_RESOURCE_DEFINE(lichen_server_config, lichen_coap_server, {
 	.get = config_get,
 	.put = config_put,
@@ -276,7 +277,10 @@ static int key_get(struct coap_resource *resource,
 		   struct sockaddr *addr, socklen_t addr_len)
 {
 	uint8_t pubkey[32];
-	uint8_t payload[64]; /* CBOR map with fingerprint and pubkey */
+	/* CBOR map with fingerprint and pubkey: 1 (map) + 12 + 17 (fingerprint)
+	 * + 7 + 34 (pubkey) = 71 bytes encoded below.
+	 */
+	uint8_t payload[72];
 	int ret;
 	size_t idx = 0;
 

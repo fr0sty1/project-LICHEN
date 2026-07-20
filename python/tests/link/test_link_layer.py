@@ -247,6 +247,24 @@ class TestLinkLayerRx:
         assert result is None
 
     @pytest.mark.asyncio
+    async def test_receive_rejects_truncated_signature(
+        self, link_layer: LinkLayer, mock_radio: MockRadio
+    ):
+        """receive rejects signed frames with a truncated MIC signature."""
+        frame = LichenFrame(
+            epoch=0,
+            seqnum=0,
+            dst_addr=b"",
+            payload=b"test",
+            mic=bytes(SIGNATURE_LENGTH),
+            signature_present=True,
+        )
+        mock_radio.queue_rx(frame.to_bytes()[:-1])
+
+        result = await link_layer.receive(timeout_ms=100)
+        assert result is None
+
+    @pytest.mark.asyncio
     async def test_receive_rejects_bad_signature(
         self,
         link_layer: LinkLayer,

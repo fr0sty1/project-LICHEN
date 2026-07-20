@@ -200,7 +200,7 @@ fn parse_suites_i(data: &[u8]) -> Result<(u8, usize), EdhocError> {
     }
 
     // CBOR major type 4 (array): 0x80-0x97 (array of 0-23 items), 0x98 (1-byte length)
-    if first >= 0x80 && first <= 0x97 {
+    if (0x80..=0x97).contains(&first) {
         let arr_len = (first - 0x80) as usize;
         if arr_len == 0 {
             return Err(EdhocError::InvalidMessage); // Empty array not valid
@@ -332,7 +332,7 @@ impl EdhocInitiator {
     /// message_1 = (METHOD_CORR, SUITES_I, G_X, C_I)
     pub fn create_message_1(&mut self) -> Result<heapless::Vec<u8, 64>, EdhocError> {
         // METHOD_CORR = method * 4 + corr (method=0, corr=1 for CoAP)
-        let method_corr: u8 = 0 * 4 + 1;
+        let method_corr: u8 = 1;
 
         // Build message_1 as CBOR sequence
         let mut msg1 = heapless::Vec::<u8, 64>::new();

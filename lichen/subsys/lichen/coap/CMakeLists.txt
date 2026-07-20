@@ -9,11 +9,14 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_CLIENT
   coap_client.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_SERVER
+zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_SERVER_STANDALONE
   coap_server.c
 )
 
-if(CONFIG_LICHEN_COAP_SERVER)
+# The standalone service defines COAP_SERVICE_DEFINE(lichen_coap_server),
+# so the linker needs its iterable section to resolve
+# _coap_resource_lichen_coap_server_list_start / _list_end.
+if(CONFIG_LICHEN_COAP_SERVER_STANDALONE)
   zephyr_linker_sources(DATA_SECTIONS sections-ram.ld)
   zephyr_iterable_section(
     NAME coap_resource_lichen_coap_server
@@ -36,5 +39,15 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_MSG
 zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_KEYS
   coap_keys.c
 )
+
+zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_LOCATION
+  coap_location.c
+)
+
+# coap_location.c reads the node EUI-64 via the L2 header for its SenML
+# base name.
+if(CONFIG_LICHEN_COAP_LOCATION)
+  zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../l2)
+endif()
 
 zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)

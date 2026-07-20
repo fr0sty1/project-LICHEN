@@ -1,0 +1,16 @@
+{
+  "id": "lora_ipv6_mesh-a2a2",
+  "title": "LICHEN_COAP_KEYS is dead code: enabling it breaks the build (missing transport include path)",
+  "description": "coap_keys.c includes lichen/transport/slip_transport.h but the coap zephyr_library never adds the transport include dir, so -DCONFIG_LICHEN_COAP_KEYS=y fails at compile (fatal error: lichen/transport/slip_transport.h: No such file). No app or test config enables LICHEN_COAP_KEYS, so the file is compiled nowhere - its cppcheck uninitvar (day, fixed in the 2mla curation commit) survived because of this. Either wire the include (and question why a CoAP resource module depends on a transport header at all) plus add a native_sim build of it to twister, or drop the module until the /keys LCI work needs it.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "assignee": "Mark Frost",
+  "owner": "mark.frost@gmail.com",
+  "created_at": "2026-07-15T04:31:51Z",
+  "created_by": "Mark Frost",
+  "updated_at": "2026-07-17T22:01:16Z",
+  "started_at": "2026-07-17T21:42:48Z",
+  "closed_at": "2026-07-17T22:01:16Z",
+  "close_reason": "Fixed: LICHEN_COAP_KEYS now depends on LICHEN_SLIP_TRANSPORT (it calls slip_transport_iface_get() and includes the SLIP header to scope admin access to the LCI interface — that transport provides both the include path and the symbol). Wiring it into a build surfaced and fixed 5 latent bugs the file accumulated while compiling nowhere: missing \u003cstdio.h\u003e for snprintf, int/size_t sign-compare in iid formatting, unused 'count' var, unused cbor_put_uint() helper, and a real off-by-one in LICHEN_KEY_FINGERPRINT_STR_LEN (51 -\u003e 52; base64 of the 32-byte SHA-256 is 44 padded chars, so the fingerprint API always returned -ENOMEM). Added lichen/tests/coap_keys (native_sim, 8/8) exercising put/get/delete/count/list, TOFU pin rejection, iid\u003c-\u003estr roundtrip, and fingerprint format/stability — so the module is now compiled + tested in CI and won't bit-rot again."
+}

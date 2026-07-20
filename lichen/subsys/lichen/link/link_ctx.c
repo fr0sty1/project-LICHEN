@@ -183,6 +183,65 @@ int lichen_link_generate_key(struct lichen_link_ctx *ctx)
 	return ret;
 }
 
+int lichen_link_derive_seed(const uint8_t base_seed[LICHEN_SEED_LEN],
+			    const uint8_t eui64[LICHEN_EUI64_LEN],
+			    uint8_t out_seed[LICHEN_SEED_LEN])
+{
+	if (base_seed == NULL || eui64 == NULL || out_seed == NULL) {
+		return -EINVAL;
+	}
+
+#ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
+	uint8_t hash[64];
+	crypto_sha512_ctx hash_ctx;
+
+	/* out = SHA-512(base_seed || eui64)[0:32] */
+	crypto_sha512_init(&hash_ctx);
+	crypto_sha512_update(&hash_ctx, base_seed, LICHEN_SEED_LEN);
+	crypto_sha512_update(&hash_ctx, eui64, LICHEN_EUI64_LEN);
+	crypto_sha512_final(&hash_ctx, hash);
+	memcpy(out_seed, hash, LICHEN_SEED_LEN);
+	crypto_wipe(hash, sizeof(hash));
+#else
+	/* Stub for builds without Monocypher - NOT FOR PRODUCTION.
+	 * XOR the EUI-64 into the seed so distinct nodes still get
+	 * distinct (but trivially related) seeds. */
+	memcpy(out_seed, base_seed, LICHEN_SEED_LEN);
+	for (size_t i = 0; i < LICHEN_EUI64_LEN; i++) {
+		out_seed[i] ^= eui64[i];
+	}
+#endif
+
+	return 0;
+}
+
+int lichen_link_derive_pubkey(const uint8_t seed[LICHEN_SEED_LEN],
+			      uint8_t out_pk[LICHEN_PK_LEN])
+{
+	if (seed == NULL || out_pk == NULL) {
+		return -EINVAL;
+	}
+
+#ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
+	uint8_t hash[64];
+	uint8_t sk[LICHEN_SK_LEN];
+
+	/* Must match lichen_link_load_key(): pk = clamp(SHA-512(seed)[0:32]) * B */
+	crypto_sha512(hash, seed, LICHEN_SEED_LEN);
+	memcpy(sk, hash, sizeof(sk));
+	schnorr48_clamp_scalar(sk);
+	crypto_eddsa_scalarbase(out_pk, sk);
+	crypto_wipe(hash, sizeof(hash));
+	crypto_wipe(sk, sizeof(sk));
+#else
+	/* Stub matches the lichen_link_load_key() stub pubkey */
+	memset(out_pk, 0, LICHEN_PK_LEN);
+	out_pk[0] = 0x01;
+#endif
+
+	return 0;
+}
+
 int lichen_link_next_seq(struct lichen_link_ctx *ctx, uint16_t *seqnum)
 {
 	uint8_t epoch;
@@ -192,6 +251,8 @@ int lichen_link_next_seq(struct lichen_link_ctx *ctx, uint16_t *seqnum)
 
 int lichen_link_next_tx(struct lichen_link_ctx *ctx, uint8_t *epoch, uint16_t *seqnum)
 {
+	uint8_t allocated_epoch;
+	uint16_t allocated_seq;
 	if (ctx == NULL || seqnum == NULL) {
 		return -EINVAL;
 	}
@@ -213,8 +274,20 @@ int lichen_link_next_tx(struct lichen_link_ctx *ctx, uint8_t *epoch, uint16_t *s
 		return -EOVERFLOW;
 	}
 
-	*epoch = ctx->epoch;
-	*seqnum = ctx->tx_seq;
+	allocated_epoch = ctx->epoch;
+	allocated_seq = ctx->tx_seq;
+
+#ifdef CONFIG_LICHEN_LINK_EPOCH_PERSIST
+	/* Commit the next live epoch before returning the final tuple from this
+	 * epoch. A reset at any later instruction can only skip tuples, not reuse
+	 * an epoch with sequence zero. */
+	if (ctx->tx_seq == UINT16_MAX && ctx->epoch != UINT8_MAX &&
+	    lichen_link_epoch_persist((uint8_t)(ctx->epoch + 1U)) != 0) {
+		(void)seq_unlock(ctx);
+		return -EIO;
+	}
+#endif
+
 	ctx->tx_seq++;
 
 	/*
@@ -239,6 +312,8 @@ int lichen_link_next_tx(struct lichen_link_ctx *ctx, uint8_t *epoch, uint16_t *s
 		}
 	}
 
+	*epoch = allocated_epoch;
+	*seqnum = allocated_seq;
 	(void)seq_unlock(ctx);
 	return 0;
 }

@@ -852,9 +852,7 @@ def _validate_coords(lat: float, lon: float) -> bool:
     # Near (0,0): rejected as null island sentinel (almost always invalid GPS data).
     if abs(lat) < NULL_ISLAND_EPSILON and abs(lon) < NULL_ISLAND_EPSILON:
         return False
-    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
-        return False
-    return True
+    return -90 <= lat <= 90 and -180 <= lon <= 180
 
 
 def _haversine(c1: tuple[float, float], c2: tuple[float, float]) -> float:

@@ -1,36 +1,35 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 
+# 64-bit native_sim only: CONFIG_BT_PERIPHERAL pulls in the Zephyr BLE HCI
+# controller device, which is not instantiated on the 32-bit native_sim build
+# (link fails with "undefined reference to __device_dts_ord_*"). The 64-bit
+# target links and runs it; that coverage runs in the EC2 ARM64 CI job.
 tests:
   net.lichen.ble_app_owner:
     platform_allow:
-      - native_sim
       - native_sim/native/64
     tags: bluetooth app-interface
   net.lichen.ble_app_owner.native:
     platform_allow:
-      - native_sim
       - native_sim/native/64
     extra_args:
       - BLE_APP_OWNER_TEST_MODE=native
     tags: bluetooth app-interface
   net.lichen.ble_app_owner.native_legacy:
     platform_allow:
-      - native_sim
       - native_sim/native/64
     extra_args:
       - BLE_APP_OWNER_TEST_MODE=native_legacy
     tags: bluetooth app-interface
   net.lichen.ble_app_owner.meshtastic:
     platform_allow:
-      - native_sim
       - native_sim/native/64
     extra_args:
       - BLE_APP_OWNER_TEST_MODE=meshtastic
     tags: bluetooth app-interface meshtastic
   net.lichen.ble_app_owner.meshcore:
     platform_allow:
-      - native_sim
       - native_sim/native/64
     extra_args:
       - BLE_APP_OWNER_TEST_MODE=meshcore

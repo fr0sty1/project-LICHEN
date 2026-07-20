@@ -191,10 +191,14 @@ static int64_t observed_uptime_from_age_seconds(uint32_t age_seconds)
 	const int64_t bounded_age_seconds =
 		(int64_t)MIN((uint64_t)age_seconds, (uint64_t)max_age_seconds);
 	const int64_t age_ms = bounded_age_seconds * 1000;
-	const int64_t result = now_ms - age_ms;
 
-	/* Clamp to zero: if age exceeds current uptime, return 0 instead of negative */
-	return (result < 0) ? 0 : result;
+	/*
+	 * May be negative when the sample is older than this node's uptime
+	 * (e.g. a mesh announce received right after boot). The HAL accepts
+	 * negative observed times and its age math handles them; clamping to
+	 * zero here would silently shrink the reported age to the uptime.
+	 */
+	return now_ms - age_ms;
 }
 
 int lichen_app_location_time_from_hal(

@@ -529,7 +529,7 @@ mod tests {
         assert_eq!(stats.max, -30);
         // Average should be between -120 and -30
         let avg = stats.avg().unwrap();
-        assert!(avg >= -120 && avg <= -30, "avg was {}", avg);
+        assert!((-120..=-30).contains(&avg), "avg was {}", avg);
     }
 
     #[test]
@@ -553,7 +553,7 @@ mod tests {
         // Should be very close to -60 now
         let avg = stats.avg().unwrap();
         assert!(
-            avg >= -62 && avg <= -60,
+            (-62..=-60).contains(&avg),
             "avg was {} after convergence",
             avg
         );

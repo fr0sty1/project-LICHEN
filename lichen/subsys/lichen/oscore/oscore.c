@@ -221,7 +221,11 @@ static int build_info_cbor(const uint8_t *id, size_t id_len,
 		buf[off++] = (uint8_t)id_len;
 	}
 	if (off + id_len > buf_len) return -1;
-	memcpy(buf + off, id, id_len);
+	/* id may be NULL for an empty kid (valid per RFC 8613); memcpy with a
+	 * NULL source is UB even for zero length, so guard it. */
+	if (id_len > 0) {
+		memcpy(buf + off, id, id_len);
+	}
 	off += id_len;
 
 	/*

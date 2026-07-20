@@ -459,8 +459,8 @@ impl Context {
     /// - Use sender's sender_id for nonce computation
     ///
     /// Per RFC 8613 Section 5.2, when a response includes a PIV, the nonce uses
-    /// the responder's sender_id and the responder's PIV. When omitting PIV, the
-    /// nonce uses the responder's sender_id and the original request's PIV.
+    /// the responder's Sender ID and PIV. When omitting PIV, the response reuses
+    /// the exact nonce from the original request.
     ///
     /// Returns (ciphertext, oscore_option_value).
     ///
@@ -493,7 +493,7 @@ impl Context {
                 let len = seq.encode_piv(&mut piv);
                 (piv, len, Some(len))
             } else {
-                // Use request PIV for nonce (no new sequence generated)
+                // Reuse the request nonce (no new sequence generated).
                 if request_piv.is_empty() || request_piv.len() > PIV_MAX_LEN {
                     return Err(OscoreError::InvalidParam);
                 }
@@ -502,8 +502,12 @@ impl Context {
                 (piv, request_piv.len(), None)
             };
 
-        // Compute nonce using responder's sender_id and the chosen PIV
-        let nonce = compute_nonce(self.sender_id(), &nonce_piv[..piv_len], &self.common_iv);
+        let nonce_id = if include_piv {
+            self.sender_id()
+        } else {
+            request_kid
+        };
+        let nonce = compute_nonce(nonce_id, &nonce_piv[..piv_len], &self.common_iv);
 
         // Build plaintext: code || options || 0xFF || payload
         const CT_CAP: usize = 280;
@@ -549,10 +553,6 @@ impl Context {
                 .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
             opt.extend_from_slice(&nonce_piv[..len])
                 .map_err(|_| BufferTooSmall::new(1 + len, OPT_CAP))?;
-        } else {
-            // No PIV in option - recipient will use request_piv
-            opt.push(0x00)
-                .map_err(|_| BufferTooSmall::new(1, OPT_CAP))?;
         }
 
         Ok((ct_out, opt))
@@ -594,8 +594,12 @@ impl Context {
             request_piv
         };
 
-        // Compute nonce using responder's sender_id (= our recipient_id)
-        let nonce = compute_nonce(self.recipient_id(), piv, &self.common_iv);
+        let nonce_id = if opt.piv_len > 0 {
+            self.recipient_id()
+        } else {
+            self.sender_id()
+        };
+        let nonce = compute_nonce(nonce_id, piv, &self.common_iv);
 
         // Build AAD per RFC 8613 Section 5.4 using ORIGINAL request's KID and PIV
         // We (the client) sent the request, so request_kid is our sender_id
@@ -1100,13 +1104,13 @@ fn find_payload_marker(options_and_payload: &[u8]) -> Option<usize> {
 ///   [0]      [1..NONCE_ID_END)  [NONCE_PIV_START..NONCE_LEN)
 /// ```
 ///
-/// S = sender_id_len XOR piv_len (RFC 8613 Section 5.2)
+/// S = sender_id_len (RFC 8613 Section 5.2)
 /// The entire nonce is XOR'd with Common IV before use.
 fn compute_nonce(sender_id: &[u8], piv: &[u8], common_iv: &[u8; NONCE_LEN]) -> [u8; NONCE_LEN] {
     let mut nonce = [0u8; NONCE_LEN];
 
-    // Byte 0: S = sender_id_len XOR piv_len
-    nonce[0] = (sender_id.len() as u8) ^ (piv.len() as u8);
+    // Byte 0: S is the sender ID length. The PIV length is not mixed into S.
+    nonce[0] = sender_id.len() as u8;
 
     // Bytes 1..NONCE_ID_END: left-padded sender ID (right-aligned, max NONCE_ID_LEN bytes)
     if sender_id.len() <= NONCE_ID_LEN {
@@ -1130,8 +1134,115 @@ fn compute_nonce(sender_id: &[u8], piv: &[u8], common_iv: &[u8; NONCE_LEN]) -> [
 
 #[cfg(test)]
 mod tests {
+    extern crate std;
+
     use super::*;
     use hex_literal::hex;
+    use serde_json::Value;
+
+    fn vector(name: &str) -> Value {
+        let vectors: Value =
+            serde_json::from_str(include_str!("../../../test/vectors/oscore.json")).unwrap();
+        vectors["vectors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|v| v["name"] == name)
+            .unwrap()
+            .clone()
+    }
+
+    fn json_hex(value: &Value) -> std::vec::Vec<u8> {
+        let text = value.as_str().unwrap();
+        (0..text.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&text[i..i + 2], 16).unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn rfc8613_key_iv_and_nonce_vectors() {
+        for name in [
+            "rfc8613_c1_key_derivation_client_with_salt",
+            "rfc8613_c1_key_derivation_server_with_salt",
+            "rfc8613_c2_key_derivation_client_no_salt",
+            "rfc8613_c2_key_derivation_server_no_salt",
+            "rfc8613_c3_key_derivation_client_with_id_context",
+            "rfc8613_c3_key_derivation_server_with_id_context",
+        ] {
+            let v = vector(name);
+            let secret: [u8; KEY_LEN] = json_hex(&v["master_secret"]).try_into().unwrap();
+            let salt = v["master_salt"]
+                .as_str()
+                .map(|_| json_hex(&v["master_salt"]));
+            let sender_id = json_hex(&v["sender_id"]);
+            let recipient_id = json_hex(&v["recipient_id"]);
+            let id_context = if v["id_context"].is_string() {
+                json_hex(&v["id_context"])
+            } else {
+                std::vec::Vec::new()
+            };
+            let salt = salt.as_deref().unwrap_or(&[]);
+
+            assert_eq!(
+                derive_key(&secret, salt, &sender_id, &id_context)
+                    .unwrap()
+                    .as_slice(),
+                json_hex(&v["expected"]["sender_key"])
+            );
+            assert_eq!(
+                derive_key(&secret, salt, &recipient_id, &id_context)
+                    .unwrap()
+                    .as_slice(),
+                json_hex(&v["expected"]["recipient_key"])
+            );
+            assert_eq!(
+                derive_iv(&secret, salt, &id_context).unwrap().as_slice(),
+                json_hex(&v["expected"]["common_iv"])
+            );
+        }
+
+        for name in [
+            "rfc8613_c4_request_protection",
+            "rfc8613_c5_request_protection_no_salt",
+            "rfc8613_c6_request_protection_with_id_context",
+            "rfc8613_c7_response_protection",
+            "rfc8613_c8_response_with_partial_iv",
+        ] {
+            let v = vector(name);
+            let expected = json_hex(&v["expected"]["nonce"]);
+            let sender_id = if v["type"] == "response_protection" && v["include_piv"] == false {
+                json_hex(&v["request_kid"])
+            } else {
+                json_hex(&v["sender_id"])
+            };
+            let piv = if v["type"] == "request_protection" {
+                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u32)
+            } else if v["include_piv"] == false {
+                OscoreSeqNum::from_piv(&json_hex(&v["request_piv"]))
+            } else {
+                OscoreSeqNum::new(v["sender_seq"].as_u64().unwrap() as u32)
+            };
+            let secret: [u8; KEY_LEN] = json_hex(&v["master_secret"]).try_into().unwrap();
+            let salt = v["master_salt"]
+                .as_str()
+                .map(|_| json_hex(&v["master_salt"]));
+            let id_context = if v["id_context"].is_string() {
+                json_hex(&v["id_context"])
+            } else {
+                std::vec::Vec::new()
+            };
+            let derived_iv =
+                derive_iv(&secret, salt.as_deref().unwrap_or(&[]), &id_context).unwrap();
+            let mut piv_bytes = [0u8; PIV_MAX_LEN];
+            let piv_len = piv.encode_piv(&mut piv_bytes);
+
+            assert_eq!(
+                compute_nonce(&sender_id, &piv_bytes[..piv_len], &derived_iv),
+                expected.as_slice()
+            );
+        }
+    }
 
     #[test]
     fn test_piv_encode_decode() {
@@ -1295,8 +1406,8 @@ mod tests {
             )
             .unwrap();
 
-        // Verify response option has no PIV (flags = 0x00)
-        assert_eq!(response_opt.as_slice(), &[0x00u8]);
+        // No PIV, KID, or KID Context encodes as an empty option value.
+        assert!(response_opt.is_empty());
 
         // Alice decrypts using unprotect_response with request_piv
         let (dec_code, _options, dec_payload) = alice_ctx

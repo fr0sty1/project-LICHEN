@@ -82,7 +82,6 @@ static struct lichen_gradient_entry *find_free_slot(
 static struct lichen_gradient_entry *find_lru(struct lichen_gradient_table *table)
 {
 	struct lichen_gradient_entry *lru = NULL;
-	uint32_t oldest_time = 0xFFFFFFFF;
 
 	for (size_t i = 0; i < CONFIG_LICHEN_ROUTING_GRADIENT_MAX_ENTRIES; i++) {
 		struct lichen_gradient_entry *e = &table->entries[i];
@@ -97,7 +96,6 @@ static struct lichen_gradient_entry *find_lru(struct lichen_gradient_table *tabl
 		 */
 		if (lru == NULL || (int32_t)(e->last_used_ms - lru->last_used_ms) < 0) {
 			lru = e;
-			oldest_time = e->last_used_ms;
 		}
 	}
 	return lru;

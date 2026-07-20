@@ -60,16 +60,6 @@ static void cbor_put_map_header(uint8_t *buf, size_t *off, uint8_t count)
 	}
 }
 
-static void cbor_put_array_header(uint8_t *buf, size_t *off, uint8_t count)
-{
-	if (count < 24U) {
-		buf[(*off)++] = 0x80U | count;
-	} else {
-		buf[(*off)++] = 0x98;
-		buf[(*off)++] = count;
-	}
-}
-
 static void cbor_put_tstr(uint8_t *buf, size_t *off, const char *value)
 {
 	size_t len = strlen(value);
@@ -93,26 +83,6 @@ static void cbor_put_key(uint8_t *buf, size_t *off, const char *key)
 	cbor_put_tstr(buf, off, key);
 }
 
-static void cbor_put_uint(uint8_t *buf, size_t *off, uint32_t value)
-{
-	if (value < 24U) {
-		buf[(*off)++] = (uint8_t)value;
-	} else if (value <= UINT8_MAX) {
-		buf[(*off)++] = 0x18;
-		buf[(*off)++] = (uint8_t)value;
-	} else if (value <= UINT16_MAX) {
-		buf[(*off)++] = 0x19;
-		buf[(*off)++] = (uint8_t)(value >> 8);
-		buf[(*off)++] = (uint8_t)(value & 0xffU);
-	} else {
-		buf[(*off)++] = 0x1a;
-		buf[(*off)++] = (uint8_t)(value >> 24);
-		buf[(*off)++] = (uint8_t)(value >> 16);
-		buf[(*off)++] = (uint8_t)(value >> 8);
-		buf[(*off)++] = (uint8_t)(value & 0xffU);
-	}
-}
-
 /* --------------------------------------------------------------------------
  * IID and fingerprint formatting
  * -------------------------------------------------------------------------- */
@@ -129,7 +99,7 @@ int lichen_key_iid_to_str(const uint8_t iid[LICHEN_KEY_IID_LEN],
 	/* Format: xxxx:xxxx:xxxx:xxxx */
 	size_t pos = 0;
 
-	for (int i = 0; i < LICHEN_KEY_IID_LEN; i++) {
+	for (size_t i = 0; i < LICHEN_KEY_IID_LEN; i++) {
 		if (i > 0 && (i % 2) == 0) {
 			buf[pos++] = ':';
 		}
@@ -572,6 +542,7 @@ static enum lichen_key_trust str_to_trust(const char *str, size_t len)
 
 /* Max CBOR size for GET /keys/{iid} single key response */
 #define KEY_SINGLE_CBOR_MAX_SIZE 256
+#define KEY_LIST_ENTRY_CBOR_MAX_SIZE 192
 
 static size_t encode_iso8601_timestamp(uint32_t unix_time, char *buf, size_t buf_len)
 {
@@ -589,7 +560,7 @@ static size_t encode_iso8601_timestamp(uint32_t unix_time, char *buf, size_t buf
 	uint32_t secs = unix_time % 86400;
 	uint16_t year = 1970;
 	uint8_t month = 1;
-	uint8_t day;
+	uint8_t day = 1;
 
 	static const uint16_t days_in_month[] = {
 		31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
@@ -632,7 +603,7 @@ static size_t encode_iso8601_timestamp(uint32_t unix_time, char *buf, size_t buf
 static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 {
 	size_t off = 0;
-	size_t count = lichen_key_store_count();
+	size_t encoded = 0;
 
 	if (buf == NULL || buf_size < 32) {
 		return 0;
@@ -646,9 +617,14 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 	struct lichen_key_entry entries[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
 	size_t n = lichen_key_store_list(entries, ARRAY_SIZE(entries));
 
-	cbor_put_array_header(buf, &off, (uint8_t)n);
+	/* Reserve a fixed-width definite array header; patch its count after
+	 * bounded entries are encoded so truncation always remains valid CBOR. */
+	buf[off++] = 0x98;
+	size_t count_offset = off++;
 
 	for (size_t i = 0; i < n; i++) {
+		uint8_t entry[KEY_LIST_ENTRY_CBOR_MAX_SIZE];
+		size_t entry_off = 0;
 		char iid_str[LICHEN_KEY_IID_STR_LEN];
 		char fp_str[LICHEN_KEY_FINGERPRINT_STR_LEN];
 		char first_str[24];
@@ -660,31 +636,41 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 		encode_iso8601_timestamp(entries[i].last_seen, last_str, sizeof(last_str));
 
 		/* Each key entry: 5 fields */
-		cbor_put_map_header(buf, &off, 5);
+		cbor_put_map_header(entry, &entry_off, 5);
 
-		cbor_put_key(buf, &off, "iid");
-		cbor_put_tstr(buf, &off, iid_str);
+		cbor_put_key(entry, &entry_off, "iid");
+		cbor_put_tstr(entry, &entry_off, iid_str);
 
-		cbor_put_key(buf, &off, "pubkey_fp");
-		cbor_put_tstr(buf, &off, fp_str);
+		cbor_put_key(entry, &entry_off, "pubkey_fp");
+		cbor_put_tstr(entry, &entry_off, fp_str);
 
-		cbor_put_key(buf, &off, "trust");
-		cbor_put_tstr(buf, &off, trust_to_str(entries[i].trust));
+		cbor_put_key(entry, &entry_off, "trust");
+		cbor_put_tstr(entry, &entry_off, trust_to_str(entries[i].trust));
 
-		cbor_put_key(buf, &off, "first_seen");
-		cbor_put_tstr(buf, &off, first_str);
+		cbor_put_key(entry, &entry_off, "first_seen");
+		cbor_put_tstr(entry, &entry_off, first_str);
 
-		cbor_put_key(buf, &off, "last_seen");
-		cbor_put_tstr(buf, &off, last_str);
+		cbor_put_key(entry, &entry_off, "last_seen");
+		cbor_put_tstr(entry, &entry_off, last_str);
 
-		if (off + 100 > buf_size) {
-			/* Safety margin */
+		if (off + entry_off > buf_size) {
 			break;
 		}
+		memcpy(&buf[off], entry, entry_off);
+		off += entry_off;
+		encoded++;
 	}
 
+	buf[count_offset] = (uint8_t)encoded;
 	return off;
 }
+
+#ifdef CONFIG_LICHEN_COAP_KEYS_TEST_HOOKS
+size_t lichen_key_store_test_encode_list(uint8_t *buf, size_t buf_size)
+{
+	return encode_keys_list_cbor(buf, buf_size);
+}
+#endif
 
 static size_t encode_key_single_cbor(const struct lichen_key_entry *entry,
 				     uint8_t *buf, size_t buf_size)

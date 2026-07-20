@@ -163,7 +163,7 @@ static int authenticate_inner_payload(struct lichen_link_rx_ctx *ctx,
 	parsed.inner_payload_len = auth_payload_len;
 
 	if (parsed.signature_present) {
-		if (ctx->peer_pubkey == NULL) {
+		if (ctx->peer_pubkey == NULL || auth_payload == NULL) {
 			ret = -LICHEN_EAUTH;
 			goto cleanup;
 		}

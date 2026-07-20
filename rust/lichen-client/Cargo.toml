@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+[package]
+name = "lichen-client"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "Shared client-side domain models and CBOR wire codecs for LICHEN apps (CLI, TUI, GUI)."
+
+[dependencies]
+serde        = { version = "1", features = ["derive"] }
+ciborium     = "0.2"
+lichen-senml = { path = "../lichen-senml" }
+
+[dev-dependencies]

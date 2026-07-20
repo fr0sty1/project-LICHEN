@@ -176,13 +176,15 @@ config LICHEN_L2_DEV_PROVISIONING
 	  production builds.
 
 config LICHEN_L2_DEV_PEER_EUI64
-	string "Dev peer EUI-64 (16 hex chars, ':' separators allowed)"
+	string "Dev peer EUI-64 list (comma-separated, ':' separators allowed)"
 	depends on LICHEN_L2_DEV_PROVISIONING
 	default ""
 	help
-	  EUI-64 of the single peer to accept signed frames from, e.g.
-	  "f4ce36001234abcd" or "f4:ce:36:00:12:34:ab:cd". Each node logs
-	  its own EUI-64 / link-local address at boot.
+	  Comma-separated EUI-64s of the peers to accept signed frames
+	  from, e.g. "f4ce36001234abcd" or
+	  "f4:ce:36:00:12:34:ab:cd,8a1a2c4b93812cab". Each node logs its
+	  own EUI-64 / link-local address at boot. Each peer's dev pubkey
+	  is derived from its EUI-64 (see lichen_link_derive_seed).
 
 config LICHEN_L2_TEST_HOOKS
 	bool "LICHEN L2 ztest-only test hooks"
