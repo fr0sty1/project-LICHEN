@@ -4,11 +4,13 @@
 
 import asyncio
 import struct
+from collections.abc import Callable
 
 import pytest
 
-from lichen.sim.renode_server import start_renode_server
-from lichen.sim.simulation import Simulation
+from lichen.sim.node import NodeState
+from lichen.sim.renode_server import RenodeServer, start_renode_server
+from lichen.sim.simulation import Simulation, TimeMode
 
 
 async def _send_message(writer: asyncio.StreamWriter, data: bytes) -> None:
@@ -24,6 +26,30 @@ async def _read_message(reader: asyncio.StreamReader) -> bytes:
     if length == 0:
         return b""
     return await reader.readexactly(length)
+
+
+async def _enter_rx_and_get_callbacks(
+    sim: Simulation, writer: asyncio.StreamWriter
+) -> tuple[Callable[..., None], Callable[[], None]]:
+    """Enter RX and return the callbacks registered by the server."""
+    from lichen.sim.protocol import encode_rx_enter
+
+    await _send_message(writer, encode_rx_enter(0xFFFFFFFF))
+    for _ in range(100):
+        node = sim.get_node("renode-node")
+        if node is not None and node.rx_callbacks is not None:
+            return node.rx_callbacks
+        await asyncio.sleep(0.001)
+    raise AssertionError("RX callbacks were not registered")
+
+
+async def _wait_for_disconnect(server: RenodeServer) -> None:
+    """Wait until a RenodeServer releases its active writer."""
+    for _ in range(100):
+        if server._writer is None:
+            return
+        await asyncio.sleep(0.001)
+    raise AssertionError("server did not release disconnected client")
 
 
 @pytest.mark.asyncio
@@ -92,19 +118,103 @@ async def test_renode_push_no_client_raises() -> None:
 
 
 @pytest.mark.asyncio
+async def test_stop_closes_active_client() -> None:
+    """Stopping the server closes an active Renode connection."""
+    sim = Simulation("test")
+    server, port = await start_renode_server(sim, "renode-node", port=0)
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+
+    payload = b"connected"
+    await _send_message(writer, bytes([0x10]) + struct.pack("<H", len(payload)) + payload)
+    assert (await _read_message(reader))[0] == 0x11
+    await _enter_rx_and_get_callbacks(sim, writer)
+    node = sim.get_node("renode-node")
+    assert node is not None
+    assert node.rx_callbacks is not None
+
+    await asyncio.wait_for(server.stop(), timeout=1)
+    await asyncio.wait_for(server.stop(), timeout=1)
+
+    assert node.state == NodeState.IDLE
+    assert node.rx_callbacks is None
+    assert not server._connection_tasks
+    assert await asyncio.wait_for(reader.read(), timeout=1) == b""
+    writer.close()
+    await writer.wait_closed()
+
+
+@pytest.mark.asyncio
+async def test_rejects_overlapping_client() -> None:
+    """A second client cannot replace the active Renode connection."""
+    sim = Simulation("test")
+    server, port = await start_renode_server(sim, "renode-node", port=0)
+    first_reader, first_writer = await asyncio.open_connection("127.0.0.1", port)
+    payload = b"first"
+    await _send_message(
+        first_writer, bytes([0x10]) + struct.pack("<H", len(payload)) + payload
+    )
+    assert (await _read_message(first_reader))[0] == 0x11
+
+    second_reader, second_writer = await asyncio.open_connection("127.0.0.1", port)
+    assert await asyncio.wait_for(second_reader.read(), timeout=1) == b""
+
+    await asyncio.wait_for(server.stop(), timeout=1)
+    first_writer.close()
+    second_writer.close()
+    await first_writer.wait_closed()
+    await second_writer.wait_closed()
+
+
+@pytest.mark.asyncio
+async def test_stale_rx_callback_does_not_reach_reconnected_client() -> None:
+    """A callback from a disconnected client cannot target its replacement."""
+    sim = Simulation("test", time_mode=TimeMode.REALTIME)
+    server, port = await start_renode_server(sim, "renode-node", port=0)
+    first_reader, first_writer = await asyncio.open_connection("127.0.0.1", port)
+    payload = b"first"
+    await _send_message(
+        first_writer, bytes([0x10]) + struct.pack("<H", len(payload)) + payload
+    )
+    assert (await _read_message(first_reader))[0] == 0x11
+    _, stale_timeout = await _enter_rx_and_get_callbacks(sim, first_writer)
+    first_writer.close()
+    await first_writer.wait_closed()
+    await _wait_for_disconnect(server)
+
+    second_reader, second_writer = await asyncio.open_connection("127.0.0.1", port)
+    payload = b"second"
+    await _send_message(
+        second_writer, bytes([0x10]) + struct.pack("<H", len(payload)) + payload
+    )
+    assert (await _read_message(second_reader))[0] == 0x11
+
+    stale_timeout()
+    with pytest.raises(TimeoutError):
+        await asyncio.wait_for(second_reader.read(1), timeout=0.05)
+
+    await server.stop()
+    second_writer.close()
+    await second_writer.wait_closed()
+
+
+@pytest.mark.asyncio
 async def test_renode_on_rx_packet_callback() -> None:
     """Test _on_rx_packet callback sends RX_PACKET to client."""
     from lichen.sim.protocol import MSG_RX_PACKET, decode_rx_packet
 
-    sim = Simulation("test")
+    sim = Simulation("test", time_mode=TimeMode.REALTIME)
     server, port = await start_renode_server(sim, "renode-node", port=0)
 
     try:
         reader, writer = await asyncio.open_connection("127.0.0.1", port)
-        await asyncio.sleep(0.01)
+        payload = b"connected"
+        await _send_message(
+            writer, bytes([0x10]) + struct.pack("<H", len(payload)) + payload
+        )
+        assert (await _read_message(reader))[0] == 0x11
 
-        # Trigger the callback
-        server._on_rx_packet(b"test payload", -80, 100)
+        on_packet, _ = await _enter_rx_and_get_callbacks(sim, writer)
+        on_packet(b"test payload", -80, 100)
 
         # Client should receive RX_PACKET
         resp = await _read_message(reader)
@@ -125,15 +235,19 @@ async def test_renode_on_rx_timeout_callback() -> None:
     """Test _on_rx_timeout callback sends RX_TIMEOUT_PUSH to client."""
     from lichen.sim.protocol import MSG_RX_TIMEOUT_PUSH
 
-    sim = Simulation("test")
+    sim = Simulation("test", time_mode=TimeMode.REALTIME)
     server, port = await start_renode_server(sim, "renode-node", port=0)
 
     try:
         reader, writer = await asyncio.open_connection("127.0.0.1", port)
-        await asyncio.sleep(0.01)
+        payload = b"connected"
+        await _send_message(
+            writer, bytes([0x10]) + struct.pack("<H", len(payload)) + payload
+        )
+        assert (await _read_message(reader))[0] == 0x11
 
-        # Trigger the callback
-        server._on_rx_timeout()
+        _, on_timeout = await _enter_rx_and_get_callbacks(sim, writer)
+        on_timeout()
 
         # Client should receive RX_TIMEOUT_PUSH
         resp = await _read_message(reader)
@@ -147,15 +261,21 @@ async def test_renode_on_rx_timeout_callback() -> None:
 
 
 @pytest.mark.asyncio
-async def test_renode_callbacks_no_client_logged() -> None:
-    """Test callbacks log warning when no client connected."""
-    sim = Simulation("test")
+async def test_stale_callbacks_without_client_do_not_raise() -> None:
+    """Stale callbacks are harmless after their client disconnects."""
+    sim = Simulation("test", time_mode=TimeMode.REALTIME)
     server, port = await start_renode_server(sim, "renode-node", port=0)
 
     try:
-        # No client connected - callbacks should not raise, just log
-        server._on_rx_packet(b"test", -80, 100)
-        server._on_rx_timeout()
+        _, writer = await asyncio.open_connection("127.0.0.1", port)
+        on_packet, on_timeout = await _enter_rx_and_get_callbacks(sim, writer)
+        writer.close()
+        await writer.wait_closed()
+        await asyncio.sleep(0.01)
+
+        # Stale callbacks should not raise or target a later client.
+        on_packet(b"test", -80, 100)
+        on_timeout()
         # No exception = success
     finally:
         await server.stop()
@@ -228,9 +348,8 @@ async def test_renode_rx_enter_sets_callbacks() -> None:
         assert node is not None
         assert node.state == NodeState.RX_WAIT
         assert node.rx_callbacks is not None
-        # Callbacks should be the server's methods
-        assert node.rx_callbacks[0] == server._on_rx_packet
-        assert node.rx_callbacks[1] == server._on_rx_timeout
+        assert callable(node.rx_callbacks[0])
+        assert callable(node.rx_callbacks[1])
 
         # Exit RX mode to clean up
         await _send_message(writer, encode_rx_exit())
@@ -307,6 +426,8 @@ async def test_renode_barrier_sync_packet_delivery() -> None:
         assert received_packets[0][0] == payload
         # RSSI should be negative (signal strength in dBm)
         assert received_packets[0][1] < 0
+        with pytest.raises(TimeoutError):
+            await asyncio.wait_for(_read_message(rx_reader), timeout=0.05)
 
         tx_writer.close()
         rx_writer.close()
