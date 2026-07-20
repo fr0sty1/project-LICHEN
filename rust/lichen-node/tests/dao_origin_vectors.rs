@@ -12,11 +12,16 @@ use lichen_node::gradient::GradientTable;
 use lichen_node::node::{DaoHandlingOutcome, RplNode};
 
 const JSON: &str = include_str!("../../../test/vectors/dao_origin_signature.json");
+
 fn root_id(dodag: [u8; 16]) -> NodeId {
     assert_eq!(&dodag[..8], &[0xfe, 0x80, 0, 0, 0, 0, 0, 0]);
     let mut eui: [u8; 8] = dodag[8..].try_into().unwrap();
     eui[0] ^= 0x02;
     NodeId(eui)
+}
+
+fn iid(address: [u8; 16]) -> [u8; 8] {
+    address[8..].try_into().unwrap()
 }
 
 fn field<'a>(object: &'a str, name: &str) -> &'a str {
@@ -157,6 +162,7 @@ fn fixed_dao_origin_vectors_match_rpl_node_handler() {
                 node.handle_dao(
                     &prior_wire,
                     prior_source,
+                    iid(prior_source),
                     &announces,
                     &mut rx_state,
                     &mut storage,
@@ -172,8 +178,12 @@ fn fixed_dao_origin_vectors_match_rpl_node_handler() {
 
         let victim = array::<16>("fd424c494348454e0011223344556677");
         let routes_before = (
-            node.router.lookup_route(&source).map(<[[u8; 16]]>::to_vec),
-            node.router.lookup_route(&victim).map(<[[u8; 16]]>::to_vec),
+            node.router()
+                .lookup_route(&source)
+                .map(<[[u8; 16]]>::to_vec),
+            node.router()
+                .lookup_route(&victim)
+                .map(<[[u8; 16]]>::to_vec),
         );
         let storage_before = storage_snapshot(&storage);
         let processor = if reason == "unknown_key" {
@@ -181,7 +191,15 @@ fn fixed_dao_origin_vectors_match_rpl_node_handler() {
         } else {
             &announces
         };
-        let outcome = node.handle_dao(&wire, source, processor, &mut rx_state, &mut storage, 2);
+        let outcome = node.handle_dao(
+            &wire,
+            source,
+            iid(source),
+            processor,
+            &mut rx_state,
+            &mut storage,
+            2,
+        );
         let expected = expected_outcome(reason);
         if outcome != expected {
             failures.push(format!("{name}: got {outcome:?}, expected {expected:?}"));
@@ -191,8 +209,12 @@ fn fixed_dao_origin_vectors_match_rpl_node_handler() {
             assert_eq!(
                 routes_before,
                 (
-                    node.router.lookup_route(&source).map(<[[u8; 16]]>::to_vec),
-                    node.router.lookup_route(&victim).map(<[[u8; 16]]>::to_vec),
+                    node.router()
+                        .lookup_route(&source)
+                        .map(<[[u8; 16]]>::to_vec),
+                    node.router()
+                        .lookup_route(&victim)
+                        .map(<[[u8; 16]]>::to_vec),
                 ),
                 "{name}: route mutation"
             );
@@ -207,6 +229,7 @@ fn fixed_dao_origin_vectors_match_rpl_node_handler() {
                     node.handle_dao(
                         &prior_wire,
                         source,
+                        iid(source),
                         &announces,
                         &mut rx_state,
                         &mut storage,
@@ -237,14 +260,30 @@ fn unavailable_replay_storage_leaves_dao_state_unchanged() {
 
     storage.fail_next_write();
     assert_eq!(
-        node.handle_dao(&wire, source, &announces, &mut rx_state, &mut storage, 1,),
+        node.handle_dao(
+            &wire,
+            source,
+            iid(source),
+            &announces,
+            &mut rx_state,
+            &mut storage,
+            1,
+        ),
         DaoHandlingOutcome::Persistence
     );
-    assert_eq!(node.router.lookup_route(&source), None);
+    assert_eq!(node.router().lookup_route(&source), None);
     assert_eq!(storage_snapshot(&storage), storage_before);
 
     assert_eq!(
-        node.handle_dao(&wire, source, &announces, &mut rx_state, &mut storage, 2,),
+        node.handle_dao(
+            &wire,
+            source,
+            iid(source),
+            &announces,
+            &mut rx_state,
+            &mut storage,
+            2,
+        ),
         DaoHandlingOutcome::Applied
     );
 }

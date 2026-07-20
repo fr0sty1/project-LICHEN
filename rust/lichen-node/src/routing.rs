@@ -34,16 +34,41 @@ pub use lichen_rpl::message::{
 #[cfg(feature = "std")]
 use lichen_rpl::routing::SignatureVerifiedDao;
 #[cfg(feature = "std")]
+pub(crate) use lichen_rpl::routing::{
+    dao_origin_digest, DaoManager, DaoProcessError, DaoProcessOutcome, DaoProcessTiming,
+    DaoTxError, DaoTxState, DaoVerifyError,
+};
+#[cfg(feature = "std")]
 pub use lichen_rpl::routing::{
-    dao_origin_digest, DaoManager, DaoOriginHighWater, DaoPersistentOpenError, DaoProcessError,
-    DaoProcessOutcome, DaoProcessTiming, DaoProvisionError, DaoRxState, DaoTxError, DaoTxState,
-    DaoVerifyError, RoutingTable, SourceRoutingHeader,
+    DaoPersistentOpenError, DaoProvisionError, DaoRxState, RouteTarget, RoutingTable,
+    SourceRoutingHeader,
 };
 #[cfg(feature = "std")]
 pub use lichen_rpl::trickle::{TrickleEvent, TrickleState, TrickleTimer};
 
 /// Maximum neighbors tracked.
 pub const MAX_NEIGHBORS: usize = 16;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DioProcessOutcome {
+    Rejected,
+    Consistent,
+    Inconsistent,
+}
+
+impl DioProcessOutcome {
+    fn accepted(inconsistent: bool) -> Self {
+        if inconsistent {
+            Self::Inconsistent
+        } else {
+            Self::Consistent
+        }
+    }
+
+    fn is_inconsistent(self) -> bool {
+        self == Self::Inconsistent
+    }
+}
 
 #[cfg(feature = "std")]
 const NON_STORING_MOP: u8 = 1;
@@ -351,7 +376,7 @@ impl Router {
         })
     }
 
-    pub fn provision_root<S: NonVolatile>(
+    pub(crate) fn provision_root<S: NonVolatile>(
         storage: &mut S,
         node_addr: [u8; 16],
     ) -> Result<(Self, DaoRxState), DaoProvisionError<S::Error>> {
@@ -362,7 +387,7 @@ impl Router {
         Ok((router, state))
     }
 
-    pub fn open_root<S: NonVolatile>(
+    pub(crate) fn open_root<S: NonVolatile>(
         storage: &S,
         node_addr: [u8; 16],
     ) -> Result<(Self, DaoRxState), DaoPersistentOpenError<S::Error>> {
@@ -406,8 +431,20 @@ impl Router {
         rssi: i8,
         now_ms: u64,
     ) -> bool {
+        self.process_dio_outcome(dio, dio_bytes, sender_addr, rssi, now_ms)
+            .is_inconsistent()
+    }
+
+    pub fn process_dio_outcome(
+        &mut self,
+        dio: &Dio,
+        dio_bytes: &[u8],
+        sender_addr: [u8; 16],
+        rssi: i8,
+        now_ms: u64,
+    ) -> DioProcessOutcome {
         let etx = self.neighbors.get_etx(&sender_addr).unwrap_or(1.0);
-        self.process_dio_with_etx(dio, dio_bytes, sender_addr, etx, rssi, now_ms)
+        self.process_dio_with_etx_outcome(dio, dio_bytes, sender_addr, etx, rssi, now_ms)
     }
 
     /// Process a DIO using a measured link ETX.
@@ -420,39 +457,52 @@ impl Router {
         rssi: i8,
         now_ms: u64,
     ) -> bool {
+        self.process_dio_with_etx_outcome(dio, dio_bytes, sender_addr, etx, rssi, now_ms)
+            .is_inconsistent()
+    }
+
+    pub fn process_dio_with_etx_outcome(
+        &mut self,
+        dio: &Dio,
+        dio_bytes: &[u8],
+        sender_addr: [u8; 16],
+        etx: LinkEtx,
+        rssi: i8,
+        now_ms: u64,
+    ) -> DioProcessOutcome {
         let now_ms = self.observe_now(now_ms);
         if !etx.is_finite() || etx < 1.0 {
-            return false;
+            return DioProcessOutcome::Rejected;
         }
         if Dio::from_bytes(dio_bytes).as_ref() != Ok(dio) {
-            return false;
+            return DioProcessOutcome::Rejected;
         }
         if self.dodag.is_root()
             || dio.rpl_instance_id != self.dodag.rpl_instance_id
             || dio.dodag_id != self.dodag_id
             || dio.mode_of_operation != NON_STORING_MOP
         {
-            return false;
+            return DioProcessOutcome::Rejected;
         }
 
         let Some(version_order) = version_cmp(dio.version, self.dodag.version) else {
-            return false;
+            return DioProcessOutcome::Rejected;
         };
         if version_order.is_lt() {
-            return false;
+            return DioProcessOutcome::Rejected;
         }
 
         let mut proposed_config = self.dodag_config.clone();
         for option in OptionIter::new(Dio::options_tail(dio_bytes)) {
             let Ok(option) = option else {
-                return false;
+                return DioProcessOutcome::Rejected;
             };
             if option.opt_type == OPT_DODAG_CONFIG {
                 if option.data.len() != DODAG_CONFIG_DATA_LEN {
-                    return false;
+                    return DioProcessOutcome::Rejected;
                 }
                 let Ok(parsed) = DodagConfig::from_bytes(option.data) else {
-                    return false;
+                    return DioProcessOutcome::Rejected;
                 };
                 if parsed.min_hop_rank_increase == 0
                     || parsed.min_hop_rank_increase > u16::MAX / 2
@@ -460,7 +510,7 @@ impl Router {
                     || parsed.ocp != MRHOF_OCP
                     || trickle_from_config(&parsed).is_none()
                 {
-                    return false;
+                    return DioProcessOutcome::Rejected;
                 }
                 proposed_config = parsed;
             }
@@ -468,7 +518,7 @@ impl Router {
         let neighbor_known = self.neighbors.get_etx(&sender_addr).is_some();
         if dio.rank == u16::MAX {
             if !version_order.is_eq() || !neighbor_known {
-                return false;
+                return DioProcessOutcome::Rejected;
             }
             let was_joined = self.dodag.is_joined();
             let old_parent = self.dodag.preferred_parent;
@@ -485,7 +535,7 @@ impl Router {
                     self.trickle.reset(now_ms, 0);
                 }
             }
-            return inconsistent;
+            return DioProcessOutcome::accepted(inconsistent);
         }
 
         let was_joined = self.dodag.is_joined();
@@ -500,7 +550,7 @@ impl Router {
             proposed_config.max_rank_increase,
         );
         if !applied {
-            return false;
+            return DioProcessOutcome::Rejected;
         }
         let mut staged_neighbors = self.neighbors.clone();
         let (_, evicted) = staged_neighbors.update_with_coords_and_eviction(
@@ -529,9 +579,9 @@ impl Router {
                         self.trickle.reset(now_ms, 0);
                     }
                 }
-                return inconsistent;
+                return DioProcessOutcome::accepted(inconsistent);
             }
-            DioOutcome::Removed | DioOutcome::Rejected => return false,
+            DioOutcome::Removed | DioOutcome::Rejected => return DioProcessOutcome::Rejected,
         }
 
         self.dodag = staged_dodag;
@@ -556,7 +606,7 @@ impl Router {
                 self.trickle.reset(now_ms, 0);
             }
         }
-        inconsistent
+        DioProcessOutcome::accepted(inconsistent)
     }
 
     #[cfg(test)]
@@ -618,8 +668,9 @@ impl Router {
             };
             let state = self.test_rx_state.as_mut().expect("test root has RX state");
             self.dao_manager
-                .process_signature_verified(
+                .process_signature_verified_with_lollipop(
                     &verified,
+                    identity.iid,
                     state,
                     &mut self.test_storage,
                     DaoProcessTiming {
@@ -637,9 +688,28 @@ impl Router {
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn process_signature_verified_dao_at_ms<S: NonVolatile>(
         &mut self,
         dao: &SignatureVerifiedDao<'_>,
+        authenticated_sender_iid: [u8; 8],
+        rx_state: &mut DaoRxState,
+        storage: &mut S,
+        now_ms: u64,
+    ) -> Result<DaoProcessOutcome, DaoProcessError<S::Error>> {
+        self.process_signature_verified_dao_from_at_ms(
+            dao,
+            authenticated_sender_iid,
+            rx_state,
+            storage,
+            now_ms,
+        )
+    }
+
+    pub(crate) fn process_signature_verified_dao_from_at_ms<S: NonVolatile>(
+        &mut self,
+        dao: &SignatureVerifiedDao<'_>,
+        authenticated_sender_iid: [u8; 8],
         rx_state: &mut DaoRxState,
         storage: &mut S,
         now_ms: u64,
@@ -652,6 +722,7 @@ impl Router {
         let lifetime_start_seconds = expire_seconds + u64::from(!now_ms.is_multiple_of(1_000));
         let outcome = self.dao_manager.process_signature_verified(
             dao,
+            authenticated_sender_iid,
             rx_state,
             storage,
             DaoProcessTiming {
@@ -701,7 +772,7 @@ impl Router {
 
     /// Build and sign one logical DAO with a caller-persisted origin sequence.
     /// Retransmissions must resend the returned bytes rather than call this again.
-    pub fn build_signed_dao<S: NonVolatile>(
+    pub(crate) fn build_signed_dao<S: NonVolatile>(
         &mut self,
         origin_ipv6: [u8; 16],
         tx_state: &mut DaoTxState,
@@ -714,7 +785,12 @@ impl Router {
         if origin_ipv6[8..] != iid_from_pubkey(&link.local_public_key()) {
             return Err(DaoTxError::InvalidOrigin);
         }
-        if !tx_state.is_for_public_key(&link.local_public_key()) {
+        if !tx_state.is_for_scope(
+            &link.local_public_key(),
+            origin_ipv6,
+            RPL_INSTANCE_ID,
+            self.dodag_id,
+        ) {
             return Err(DaoTxError::KeyMismatch);
         }
         let sequence = tx_state.reserve_next(storage)?;
@@ -754,6 +830,14 @@ impl Router {
     /// Get the route path for a destination (root only).
     pub fn lookup_route(&self, dst: &[u8; 16]) -> Option<&[[u8; 16]]> {
         self.dao_manager.routing_table().lookup(dst)
+    }
+
+    pub(crate) fn dao_origin_keys(&self) -> Vec<[u8; 32]> {
+        self.dao_manager
+            .origin_high_water()
+            .into_iter()
+            .map(|entry| entry.public_key)
+            .collect()
     }
 
     /// Expire finite routes and look up a destination using monotonic time.
@@ -1985,6 +2069,23 @@ mod tests {
     }
 
     #[test]
+    fn exact_dao_at_expiry_reports_accepted_update() {
+        let root_addr = link_local(1);
+        let target = test_origin(2);
+        let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
+        let dao = sender.build_dao_with_lifetime(root_addr, 1);
+        let exact = sender.build_dao_copy_with_lifetime(root_addr, 1);
+        let mut root = Router::new_root(root_addr);
+        assert!(root.set_dao_lifetime_unit(1));
+
+        assert!(root.process_dao_at_ms(&dao, target, target, 1_000));
+        assert!(!root.process_dao_at_ms(&exact, target, link_local(3), 2_000));
+        assert!(root.lookup_route(&target).is_some());
+        assert!(root.process_dao_at_ms(&exact, target, target, 2_000));
+        assert!(root.lookup_route(&target).is_none());
+    }
+
+    #[test]
     fn finite_route_expires_during_idle_lookup_and_timer() {
         let root_addr = link_local(1);
         let target = test_origin(2);
@@ -2688,7 +2789,14 @@ mod tests {
         router.process_dio(&dio, &dio_bytes(&dio), root, -40, 0);
         let other = Identity::from_seed(Seed::new([2; 32]));
         let mut wrong_storage = lichen_hal::storage::mem::MemStorage::new();
-        let mut wrong_tx = DaoTxState::provision(&mut wrong_storage, other.pubkey).unwrap();
+        let mut wrong_tx = DaoTxState::provision(
+            &mut wrong_storage,
+            other.pubkey,
+            origin_for(&identity),
+            RPL_INSTANCE_ID,
+            root,
+        )
+        .unwrap();
         let before_a = wrong_storage.raw("rpl.tx.a").map(<[u8]>::to_vec);
         let before_b = wrong_storage.raw("rpl.tx.b").map(<[u8]>::to_vec);
         assert_eq!(
@@ -2704,7 +2812,14 @@ mod tests {
         assert_eq!(wrong_storage.raw("rpl.tx.b"), before_b.as_deref());
 
         let mut storage = lichen_hal::storage::mem::MemStorage::new();
-        let mut tx = DaoTxState::provision(&mut storage, identity.pubkey).unwrap();
+        let mut tx = DaoTxState::provision(
+            &mut storage,
+            identity.pubkey,
+            origin_for(&identity),
+            RPL_INSTANCE_ID,
+            root,
+        )
+        .unwrap();
         storage.fail_next_write();
         assert!(matches!(
             router.build_signed_dao(
@@ -2731,9 +2846,15 @@ mod tests {
             1
         );
         assert_eq!(
-            DaoTxState::open(&storage, identity.pubkey)
-                .unwrap()
-                .last_signed_dao(),
+            DaoTxState::open(
+                &storage,
+                identity.pubkey,
+                origin_for(&identity),
+                RPL_INSTANCE_ID,
+                root,
+            )
+            .unwrap()
+            .last_signed_dao(),
             Some(wire.as_slice())
         );
 
@@ -2748,9 +2869,15 @@ mod tests {
             Err(DaoTxError::Persistence(_))
         ));
         assert_eq!(
-            DaoTxState::open(&storage, identity.pubkey)
-                .unwrap()
-                .last_signed_dao(),
+            DaoTxState::open(
+                &storage,
+                identity.pubkey,
+                origin_for(&identity),
+                RPL_INSTANCE_ID,
+                root,
+            )
+            .unwrap()
+            .last_signed_dao(),
             Some(wire.as_slice())
         );
         let after_failure = router
@@ -2793,11 +2920,23 @@ mod tests {
         let mut storage = lichen_hal::storage::mem::MemStorage::new();
         let (mut root, mut state) = Router::provision_root(&mut storage, root_addr).unwrap();
         assert_eq!(
-            root.process_signature_verified_dao_at_ms(&verified, &mut state, &mut storage, 0),
+            root.process_signature_verified_dao_at_ms(
+                &verified,
+                verified.origin_iid(),
+                &mut state,
+                &mut storage,
+                0,
+            ),
             Ok(DaoProcessOutcome::Applied)
         );
         assert_eq!(
-            root.process_signature_verified_dao_at_ms(&verified, &mut state, &mut storage, 1),
+            root.process_signature_verified_dao_at_ms(
+                &verified,
+                verified.origin_iid(),
+                &mut state,
+                &mut storage,
+                1,
+            ),
             Ok(DaoProcessOutcome::Duplicate)
         );
         let mut other_prefix = origin;
@@ -2819,13 +2958,20 @@ mod tests {
         )
         .unwrap();
         assert!(matches!(
-            root.process_signature_verified_dao_at_ms(&changed, &mut state, &mut storage, 2),
+            root.process_signature_verified_dao_at_ms(
+                &changed,
+                changed.origin_iid(),
+                &mut state,
+                &mut storage,
+                2,
+            ),
             Err(DaoProcessError::Replay)
         ));
         let (mut rebooted, mut rebooted_state) = Router::open_root(&storage, root_addr).unwrap();
         assert_eq!(
             rebooted.process_signature_verified_dao_at_ms(
                 &verified,
+                verified.origin_iid(),
                 &mut rebooted_state,
                 &mut storage,
                 3
@@ -2848,12 +2994,28 @@ mod tests {
             [0xfd; 8],
         );
         assert_eq!(
-            node.handle_dao(&wire, origin, &announces, &mut state, &mut storage, 0,),
+            node.handle_dao(
+                &wire,
+                origin,
+                identity.iid,
+                &announces,
+                &mut state,
+                &mut storage,
+                0,
+            ),
             crate::node::DaoHandlingOutcome::UnknownKey
         );
         announces.pin_for_test(identity.pubkey);
         assert_eq!(
-            node.handle_dao(&wire, origin, &announces, &mut state, &mut storage, 0,),
+            node.handle_dao(
+                &wire,
+                origin,
+                identity.iid,
+                &announces,
+                &mut state,
+                &mut storage,
+                0,
+            ),
             crate::node::DaoHandlingOutcome::Applied
         );
     }

@@ -342,6 +342,20 @@ impl LinkLayer {
         self.peers.remove(iid);
     }
 
+    /// Atomically remove a peer's configured key, pin, and replay window.
+    pub fn forget_peer(&mut self, iid: &[u8; 8]) {
+        let peer_key = self.peers.remove(iid).map(|peer| peer.pubkey);
+        let pinned_key = self.pinned.remove(iid);
+        if let Some(key) = peer_key {
+            self.replay.reset_peer(&key);
+        }
+        if let Some(key) = pinned_key {
+            if Some(key) != peer_key {
+                self.replay.reset_peer(&key);
+            }
+        }
+    }
+
     pub fn peer_count(&self) -> usize {
         self.peers.len()
     }
@@ -820,5 +834,25 @@ mod tests {
             ll_bob.pinned_pubkey_for(&new_alice_iid),
             Some(&new_alice_pubkey)
         );
+    }
+
+    #[test]
+    fn forget_peer_clears_peer_pin_and_replay_state() {
+        let alice = Identity::from_seed(Seed::new([0x42; 32]));
+        let peer = PeerIdentity::from_pubkey(alice.pubkey);
+        let iid = peer.iid;
+        let mut bob = make_ll(0x24);
+        bob.add_peer(peer.clone());
+        let mut wire = [0u8; 256];
+        let len = LinkLayer::new(alice)
+            .build_frame(1, seq(1), &[], b"hello", &mut wire)
+            .unwrap();
+        bob.receive_frame(&wire[..len]).unwrap();
+
+        bob.forget_peer(&iid);
+        assert_eq!(bob.peer_count(), 0);
+        assert_eq!(bob.pinned_pubkey_for(&iid), None);
+        bob.add_peer(peer);
+        assert!(bob.receive_frame(&wire[..len]).is_ok());
     }
 }
