@@ -137,10 +137,17 @@ pub trait NonVolatile {
     /// Error type for storage operations.
     type Error;
 
-    /// Read value for key into buffer. Returns bytes read, or None if not found.
-    fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize>;
+    /// Read a value, returning its complete stored length or `None` if absent.
+    ///
+    /// If `buf` is shorter than the value, implementations copy only the prefix
+    /// that fits but still return the complete stored length.
+    fn read(&self, key: &str, buf: &mut [u8]) -> Result<Option<usize>, Self::Error>;
 
-    /// Write value for key. Returns Err if storage full or key too long.
+    /// Atomically and durably replace one value.
+    ///
+    /// `Ok(())` guarantees the complete new value survives power loss. `Err`
+    /// guarantees the old value remains intact. Implementations must not expose
+    /// torn, partially written, or acknowledged-but-volatile values.
     fn write(&mut self, key: &str, data: &[u8]) -> Result<(), Self::Error>;
 
     /// Delete key. Returns true if key existed.
