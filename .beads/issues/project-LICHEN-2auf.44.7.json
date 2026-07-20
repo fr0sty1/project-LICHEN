@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-2auf.44.7",
+  "title": "Authenticate multi-hop DAO origins",
+  "description": "Non-Storing DAO forwarding preserves the origin IPv6 source while each relay replaces the link-layer signature. Hop authentication therefore cannot prove DAO origin at the root; an authenticated relay can forge another source/target and Path Sequence. Design and implement cryptographically preserved end-to-end DAO provenance, bound to RPLInstanceID, DODAGID, DAOSequence, ordered Target/Transit options, and origin IPv6 identity, without breaking hop forwarding.",
+  "design": "Implement the approved terminal provisional DAO Origin Signature option using existing Schnorr48 and pinned Announce identities. The option is unique and final, carries a persistent 64-bit origin sequence plus 48-byte signature, and signs a domain-separated SHA-512 transcript binding origin IPv6, effective DODAGID, origin sequence, and exact unsigned DAO bytes. Relays preserve it unchanged. Roots verify key/IID, signature, and persistent sequence before parsing authorization-sensitive semantics or mutating replay/routes. Exact static prefix delegations are handled by .44.9.2 after provenance.",
+  "acceptance_criteria": "A documented wire format and trust model identify the origin key; root verifies provenance before DAO replay/path/route mutation; relays can forward without resigning origin content; replay, target substitution, option reordering, withdrawal forgery, and unknown-key tests fail closed; C/Python/Rust protocol/spec/vector implications are tracked; three security reviews pass.",
+  "notes": "Recovered implementation preserved on integration/rust-rpl-recovery through 38f579532. Commits f8e400daa, a76c93590, d51318616, d8bc60cc4, and 828443c34 contain durable storage, DAO envelope, vectors, protocol draft, and Rust provenance implementation. Local Rust/Python/C gates pass. Do not treat as complete: production Stack dispatch/storage ownership and reconciliation with integration/rust-prefix-model remain for Linux follow-up.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T22:08:32.40085Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T02:01:05.655687Z",
+  "started_at": "2026-07-19T23:39:11.491363Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.7",
+      "depends_on_id": "project-LICHEN-2auf.44",
+      "type": "parent-child",
+      "created_at": "2026-07-17T22:08:32.530045Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

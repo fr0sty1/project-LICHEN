@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-io1k.1",
+  "title": "Repair ephemeral ARM builder SSH readiness",
+  "description": "Two consecutive scripts/ec2-claude.sh launches using known AMI ami-0f67ee33b59cb8565 started tagged c7g.xlarge instances and attached the LICHEN EBS volume, but strict SSH never became available within 180 seconds. Instances i-06b59e258e4170e46 and i-0fca8f23e46ab4d06 were cleaned up. Diagnose security-group ingress, key injection/EC2 Instance Connect, sshd/cloud-init, and readiness timeout behavior so Zephyr cross-build validation can run safely.",
+  "acceptance_criteria": "A fresh tagged ARM builder from the configured AMI accepts strict non-interactive SSH with independently verified identity, mounts/unmounts the EBS volume, runs a smoke command, and cleans up instance/SG/queue with volume available; regression test or launcher diagnostics identify future failures.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T20:36:01.184006Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T20:36:01.184006Z",
+  "labels": [
+    "fix-now"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-io1k.1",
+      "depends_on_id": "project-LICHEN-io1k",
+      "type": "parent-child",
+      "created_at": "2026-07-16T20:36:01.318643Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-w8rd.1",
+  "title": "Remove unsupported T-Beam Supreme commands",
+  "description": "Until a canonical T-Beam Supreme Zephyr board is added, remove active west build commands and documentation that present tbeam_supreme as a valid target. This does not decide whether future support will be added.",
+  "acceptance_criteria": "No active command presents tbeam_supreme as a valid west board; references clearly state unsupported/pending status; adding future support remains tracked by parent w8rd.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:41:17.755186Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:41:17.755186Z",
+  "labels": [
+    "fix-now"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-w8rd.1",
+      "depends_on_id": "project-LICHEN-w8rd",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:41:17.88511Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

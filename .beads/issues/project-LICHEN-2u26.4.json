@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2u26.4",
+  "title": "Resolve Heltec Wireless Tracker bridge mapping",
+  "description": "The heltec_wireless_tracker bridge fragment has no canonical Zephyr target. Validate a real board definition and radio/GNSS wiring or explicitly retire it.",
+  "acceptance_criteria": "Canonical target builds and reaches bridge runtime oracle, or approved retirement removes fragment and support claims.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:41:13.170362Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:41:13.170362Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2u26.4",
+      "depends_on_id": "project-LICHEN-2u26",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:41:13.305395Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

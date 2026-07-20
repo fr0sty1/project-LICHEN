@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-9ysb",
+  "title": "Remove SecureStack plaintext escape hatch",
+  "description": "SecureStack::stack() exposes mutable Stack, whose public plaintext CoAP send methods can bypass the OSCORE-required API. Remove or narrow the accessor and make plaintext CoAP helpers non-public unless an explicit diagnostic use exists.",
+  "notes": "Completed in a084bbc77. Removed SecureStack mutable Stack accessor, deleted unused public plaintext GET/POST/PUT helpers, and restricted raw CoAP transmission to crate-private OSCORE use. Validation: rustfmt on touched files, 124 node tests plus doctests, package-only strict Clippy, docs build, API grep, and three scoped reviews. Workspace-wide Clippy remains blocked by pre-existing lichen-schc manual_find/too_many_arguments lints.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-19T00:24:27.028665Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-19T01:18:05.942205Z",
+  "started_at": "2026-07-19T01:14:32.000546Z",
+  "closed_at": "2026-07-19T01:18:05.942205Z",
+  "close_reason": "Completed in a084bbc77; SecureStack no longer exposes plaintext CoAP transmission",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9ysb",
+      "depends_on_id": "project-LICHEN-e60z",
+      "type": "discovered-from",
+      "created_at": "2026-07-19T00:24:27.183117Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

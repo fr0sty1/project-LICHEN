@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2u26.10",
+  "title": "Resolve XIAO S3 Wio SX1262 bridge mapping",
+  "description": "The xiao_s3_wio_sx1262 fragment has no canonical composite board mapping. Define the XIAO ESP32-S3 plus Wio-SX1262 shield target and wiring or explicitly retire it.",
+  "acceptance_criteria": "Canonical board/shield composition builds and reaches bridge runtime oracle, or approved retirement removes fragment and support claims.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:41:16.018689Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:41:16.018689Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2u26.10",
+      "depends_on_id": "project-LICHEN-2u26",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:41:16.146976Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

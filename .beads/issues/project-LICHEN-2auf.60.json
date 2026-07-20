@@ -1,0 +1,36 @@
+{
+  "id": "project-LICHEN-2auf.60",
+  "title": "Fix lichen-node feature-matrix builds",
+  "description": "Discovered while validating project-LICHEN-2auf.44. On local main d156a2e74, cargo test -p lichen-node --all-features fails before RPL tests because rust/lichen-node/src/dispatch.rs imports both defmt::warn and log::warn under the same macro name. cargo test -p lichen-node also fails in the default no_std configuration because hybrid.rs imports std-gated GradientTable and hybrid.rs/routing.rs call unavailable f32/f64 sin/cos methods. Fix the crate feature gating and logging macro selection without weakening tests.",
+  "acceptance_criteria": "cargo test -p lichen-node, cargo test -p lichen-node --features std, cargo test -p lichen-node --all-features, and all-feature Clippy pass; three independent reviews pass.",
+  "notes": "Completed on integration/node-feature-recovery from d156a2e74. Fixed defmt/log precedence, std/no_std GradientTable gating, no_std libm math, scheduler diagnostics/dead-code warning, and two required lichen-schc strict-Clippy blockers plus unused vector field. Final gates: lichen-node default 29 tests, std 122, all-features 122; node all-feature/all-target Clippy -D warnings; thumbv7em-none-eabi/eabihf no-default checks; lichen-schc 51 tests and all-feature/all-target Clippy; git diff --check. Three closure reviews: no correctness findings; one scope opinion rejected because SCHC fixes are direct prerequisites for node all-feature Clippy acceptance. No AWS required.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T20:23:56.457157Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-18T01:00:07.568645Z",
+  "started_at": "2026-07-18T00:37:20.191755Z",
+  "closed_at": "2026-07-18T01:00:07.568645Z",
+  "close_reason": "All requested default/std/all-feature tests, strict Clippy, no-default ARM checks, SCHC prerequisite gates, and three reviews pass.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.60",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-17T20:23:56.600675Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.60",
+      "depends_on_id": "project-LICHEN-2auf.44",
+      "type": "discovered-from",
+      "created_at": "2026-07-17T20:23:56.729788Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

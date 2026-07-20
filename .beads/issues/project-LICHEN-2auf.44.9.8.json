@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-2auf.44.9.8",
+  "title": "Bind relay signer identity in link frames",
+  "description": "Per-hop forwarding re-signs DST||payload, but the current link frame omits a signer/source identifier and verification derives a key from the preserved IPv6 source. Define an authenticated relay identity/key-selection field or equivalent deterministic lookup that supports preserved DAO origins and RFC6554 destination mutation.",
+  "acceptance_criteria": "Each hop can identify and verify the immediate signer independently of preserved IPv6 origin; C/Python/Rust/spec/vectors agree; spoofing, key substitution, and multi-hop forwarding tests fail closed.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-18T21:14:53.372409Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-18T21:14:53.372409Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.9.8",
+      "depends_on_id": "project-LICHEN-2auf.44.9",
+      "type": "parent-child",
+      "created_at": "2026-07-18T21:14:53.498469Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.44.9.8",
+      "depends_on_id": "project-LICHEN-2auf.35",
+      "type": "blocks",
+      "created_at": "2026-07-18T21:14:53.613289Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

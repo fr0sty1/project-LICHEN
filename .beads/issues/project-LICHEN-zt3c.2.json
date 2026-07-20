@@ -1,0 +1,36 @@
+{
+  "id": "project-LICHEN-zt3c.2",
+  "title": "Gateway: Yggdrasil daemon integration",
+  "description": "## Overview\n\nRun Yggdrasil on gateway nodes to join the global backbone.\n\n## Implementation options\n\n### Option 1: External daemon (RPi/Linux)\n- Run stock yggdrasil binary\n- Configure via yggdrasil.conf\n- Gateway communicates via TUN interface\n- Simple, well-tested\n\n### Option 2: Embedded library (ESP32/nRF)\n- yggdrasil-go can be compiled as library (maybe)\n- Or: port core routing to C\n- Complex but self-contained\n\n### Option 3: Yggdrasil-lite\n- Implement minimal Yggdrasil client\n- Just enough to peer and route\n- No full DHT, rely on peers\n\n**Recommendation:**\n- RPi gateway: Option 1 (external daemon)\n- Embedded gateway: Option 3 (lite client), or proxy via RPi\n\n## Configuration\n\n### Peering\n```yaml\nPeers:\n  - tcp://ygg.mkg20001.io:80\n  - tcp://yggpeer.example.com:12345\n  # Or private peers only\n```\n\n### Private key\nImport from LICHEN identity:\n```yaml\nPrivateKey: \u003cLICHEN Ed25519 private key in Yggdrasil format\u003e\n```\n\n### Subnet routing\nAdvertise mesh prefix:\n```yaml\n# Gateway announces that it can reach these addresses\n# (mesh nodes under this gateway)\n```\n\n## Zephyr integration (embedded)\n\nIf running on Zephyr (not Linux):\n- Need Yggdrasil-lite in C\n- Or: use serial/IP bridge to external Yggdrasil\n- Evaluate complexity vs just requiring RPi for global backbone\n\n## Systemd service (Linux gateway)\n\n```ini\n[Unit]\nDescription=Yggdrasil for LICHEN gateway\nAfter=network.target\n\n[Service]\nExecStart=/usr/bin/yggdrasil -useconffile /etc/lichen/yggdrasil.conf\nRestart=always\n\n[Install]\nWantedBy=multi-user.target\n```",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T20:42:18.236961Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T20:42:18.236961Z",
+  "labels": [
+    "gateway",
+    "yggdrasil",
+    "global",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zt3c.2",
+      "depends_on_id": "project-LICHEN-zt3c",
+      "type": "parent-child",
+      "created_at": "2026-07-16T20:42:18.374964Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-zt3c.2",
+      "depends_on_id": "project-LICHEN-zt3c.1",
+      "type": "blocks",
+      "created_at": "2026-07-16T20:42:18.488086Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

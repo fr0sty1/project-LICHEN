@@ -8,5 +8,15 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:24:27.459452Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:24:27.459486Z"
+  "updated_at": "2026-07-12T06:24:27.459486Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-pihp",
+      "depends_on_id": "project-LICHEN-2auf.44.9.4",
+      "type": "relates-to",
+      "created_at": "2026-07-18T20:28:04.25266Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
 }

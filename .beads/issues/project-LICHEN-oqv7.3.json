@@ -1,0 +1,54 @@
+{
+  "id": "project-LICHEN-oqv7.3",
+  "title": "Repair Nucleo Renode LoRa linkage",
+  "description": "Align the Nucleo WL55JC Renode devicetree overlay, zephyr,lora selection, lichen,lora-renode node, HAL lookup, and SubGHz model so canonical gateway and puck builds no longer reference missing device ordinal __device_dts_ord_87.",
+  "acceptance_criteria": "Canonical gateway and puck Nucleo builds link without undefined device ordinals and reach their late runtime oracle plus simulator-observed radio effect; lora_ping remains passing; physical Nucleo configuration is unchanged.",
+  "notes": "Completed after dependencies: RNG model unblocked full apps. Gateway reaches full L2 startup and CoAP AUTOSTART; puck reaches main, arms 4000 ms watchdog, enters L2/CoAP mode, and produces four simulator-observed transmissions; lora_ping independently produces one 4-byte TX. Clean physical gateway/puck builds retain STM32WL model. Runtime logs and artifact hashes are recorded in linked project-LICHEN-5ix1.5 and project-LICHEN-oqv7.8 notes.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:40:33.856955Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T22:42:40.88113Z",
+  "started_at": "2026-07-16T21:00:20.793841Z",
+  "closed_at": "2026-07-16T22:42:40.88113Z",
+  "close_reason": "Canonical gateway/puck link and reach late runtime markers; simulator radio effects, lora_ping regression, and physical config isolation verified.",
+  "labels": [
+    "fix-now"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-oqv7.3",
+      "depends_on_id": "project-LICHEN-oqv7",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:40:33.991276Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-oqv7.3",
+      "depends_on_id": "project-LICHEN-mvrx",
+      "type": "discovered-from",
+      "created_at": "2026-07-16T19:40:34.111278Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-oqv7.3",
+      "depends_on_id": "project-LICHEN-5ix1.4.8",
+      "type": "blocks",
+      "created_at": "2026-07-16T21:31:48.948601Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-oqv7.3",
+      "depends_on_id": "project-LICHEN-oqv7.8",
+      "type": "blocks",
+      "created_at": "2026-07-16T22:06:25.378594Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

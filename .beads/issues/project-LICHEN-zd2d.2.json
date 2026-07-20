@@ -1,0 +1,38 @@
+{
+  "id": "project-LICHEN-zd2d.2",
+  "title": "Zephyr: SX1262 LR-FHSS driver support",
+  "description": "Add LR-FHSS support to Zephyr SX1262 driver.\n\n## Files to modify\n- lichen/drivers/lora/ or Zephyr upstream lora driver\n- lichen/subsys/lichen/link/ for mode selection\n\n## Changes\n1. Add LR-FHSS TX/RX APIs to SX1262 driver\n2. Configure hopping sequence per regional parameters\n3. Add mode switching (standard LoRa \u003c-\u003e LR-FHSS)\n4. Dual-mode RX for gateway role\n\n## SX1262 registers\n- RegModemConfig: select LR-FHSS mode\n- Hopping configuration registers\n- See Semtech AN1200.62 for LR-FHSS implementation guide\n\n## Kconfig\n- CONFIG_LICHEN_LR_FHSS_ENABLED=y\n- CONFIG_LICHEN_LR_FHSS_OCW=137 (or 336)\n- CONFIG_LICHEN_LR_FHSS_CR=1_3 (or 2_3)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T18:20:06.97841Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T18:20:06.97841Z",
+  "labels": [
+    "zephyr",
+    "c",
+    "firmware",
+    "phy",
+    "hardware",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zd2d.2",
+      "depends_on_id": "project-LICHEN-zd2d",
+      "type": "parent-child",
+      "created_at": "2026-07-16T18:20:07.158564Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-zd2d.2",
+      "depends_on_id": "project-LICHEN-zd2d.1",
+      "type": "blocks",
+      "created_at": "2026-07-16T18:20:07.30213Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

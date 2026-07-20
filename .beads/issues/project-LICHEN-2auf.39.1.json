@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-2auf.39.1",
+  "title": "Make secure CoAP state publication atomic",
+  "description": "Recover exactly-once token correlation and TOFU-before-context publication in Python secure CoAP. Separate inbound/outbound token namespaces, preserve valid correlations on authentication/send failure, retire final response correlations only after successful delivery, and never replace context/trust state when pinning rejects a key.",
+  "acceptance_criteria": "Opposite-direction equal tokens do not collide; forged/failed responses do not consume valid correlation; successful final responses consume exactly once; failed sends leave no orphan outbound correlation; TOFU mismatch publishes no replacement context; focused tests, Ruff, mypy, and three reviews pass.",
+  "notes": "Paused by user scope correction. Current uncommitted implementation in lichen-mainline-integration expanded beyond checkpoint recovery into new secure-CoAP lifecycle hardening. Preserve it untouched; do not commit or discard. Resume later under .65/.66 and review findings. Lost-work recovery continues in a fresh clean worktree from 40dcb4c2f.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-19T02:39:59.018136Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-19T03:49:40.238342Z",
+  "started_at": "2026-07-19T02:40:20.692773Z",
+  "lease_expires_at": "2026-07-19T02:45:20.692773Z",
+  "heartbeat_at": "2026-07-19T02:40:20.692773Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.39.1",
+      "depends_on_id": "project-LICHEN-2auf.39",
+      "type": "parent-child",
+      "created_at": "2026-07-19T02:39:59.152358Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

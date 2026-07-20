@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2auf.35.4.2",
+  "title": "Handle link context entropy failure",
+  "description": "Review during 2auf.35.4 found lichen_link_init ignores sys_csrand_get/getentropy results and may derive epoch from an indeterminate byte. Make initialization fail closed or use a documented deterministic fallback only where explicitly safe; add fault-injection coverage.",
+  "acceptance_criteria": "Entropy failure cannot consume uninitialized data; callers receive a deterministic documented error/fallback; Zephyr and POSIX failure tests pass; three reviews pass.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T15:23:05.993876Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-17T15:23:05.993876Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.35.4.2",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-17T15:42:21.339559Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

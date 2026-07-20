@@ -1,0 +1,35 @@
+{
+  "id": "project-LICHEN-hwx9.6",
+  "title": "Migrate Rust SCHC fragmentation",
+  "description": "Align lichen-schc fragmentation sender/receiver and ACK wire format with the approved profile and shared vectors; remove private bitmap-length and unlimited-window behavior.",
+  "acceptance_criteria": "Rust shared-vector, unit, fmt, and strict Clippy gates pass with no unsafe code.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-19T16:01:35.228287Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-19T19:20:46.61659Z",
+  "started_at": "2026-07-19T18:46:08.29147Z",
+  "closed_at": "2026-07-19T19:20:46.61659Z",
+  "close_reason": "Completed in e54f5320a: replaced legacy Rust fragmentation with no_std fixed-profile codecs, canonical ACK/controls, bounded sender and caller-buffer receiver state, retries/aborts/reuse, production shared-vector conformance, SHA-256 oracle checks, and updated fuzz target. Validation: 29 no-default lib tests; 42 full std tests; focused 10 sender/receiver plus shared vector pass; no_std check; changed-file Rust 2021 fmt; scoped strict Clippy; git diff --check; three final independent reviews clean. Broad strict Clippy remains blocked only by inherited untouched context.rs, headers.rs, and shared_vectors.rs warnings; cargo-fuzz unavailable/workspace-excluded.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-hwx9.6",
+      "depends_on_id": "project-LICHEN-hwx9",
+      "type": "parent-child",
+      "created_at": "2026-07-19T16:01:35.36026Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-hwx9.6",
+      "depends_on_id": "project-LICHEN-hwx9.1",
+      "type": "blocks",
+      "created_at": "2026-07-19T16:01:49.040273Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

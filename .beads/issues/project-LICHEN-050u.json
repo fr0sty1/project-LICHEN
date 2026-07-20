@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-050u",
+  "title": "Preserve Python TX queue on radio failure",
+  "description": "LinkLayer.drain_tx_queue pops before radio.transmit; a False result or exception loses the frame and TxQueue increments transmitted stats before hardware success. Redesign queue acknowledgement/removal so radio failure preserves priority/deadline/order and stats reflect confirmed transmission, with focused False/exception tests.",
+  "notes": "Implemented radio-confirmed two-phase dequeue, coarse TX serialization, False/exception/cancellation retention, byte-identical retry, confirmed-only stats/latency, own-frame send result, post-CAD expiry recheck, concurrent send/drain serialization, and startup-only sequence restoration preserving frame-byte uniqueness. Link tests 159 passed/4 skipped; Ruff and strict mypy changed sources pass; three direct hash-bound reviews have no in-scope blockers. Entry reservations/high-priority admission tracked 2452; capacity validation tracked separately.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-18T06:40:11.230185Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-18T07:55:39.241477Z",
+  "started_at": "2026-07-18T07:18:16.361743Z",
+  "closed_at": "2026-07-18T07:55:39.241477Z",
+  "close_reason": "Python radio failures preserve exact queued frames and confirmed stats",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-050u",
+      "depends_on_id": "project-LICHEN-2auf.61",
+      "type": "discovered-from",
+      "created_at": "2026-07-18T06:40:11.348668Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

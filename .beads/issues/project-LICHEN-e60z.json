@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-e60z",
+  "title": "Prevent Rust link tuple reuse",
+  "description": "Rust signed link transmission wraps LinkSeqNum after 65536 frames while production NodeStack does not advance or exhaust the epoch, allowing repeated (epoch, seqnum) signing tuples and replay rejection. Implement bounded 24-bit tuple allocation or enforced key rotation/exhaustion with tests.",
+  "notes": "Implementation complete in integration/wip-recovery-20260716 dirty atomic migration worktree. Stack now allocates epoch+sequence atomically, advances epoch on rollover, emits terminal tuple once, latches SequenceExhausted, removes component/reset/raw-signer APIs, and routes both production sends through the allocator. Validation: lichen-node 124 tests plus doctests; strict library Clippy; rustfmt/diff clean; current-filesystem reviews no allocator findings. Must commit atomically with project-LICHEN-2auf.35.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-18T23:45:07.481914Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-19T01:11:50.100746Z",
+  "started_at": "2026-07-19T00:10:29.053127Z",
+  "closed_at": "2026-07-19T01:11:50.100746Z",
+  "close_reason": "Completed in b4ebb84af; bounded Rust tuple allocation prevents reuse",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-e60z",
+      "depends_on_id": "project-LICHEN-2auf.35",
+      "type": "discovered-from",
+      "created_at": "2026-07-18T23:45:07.676494Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2auf.57",
+  "title": "Harden T1000-E DFU port selection",
+  "description": "Recover deterministic app/DFU serial-port selection, matching-device 1200-baud transition, explicit custom-port state, and ambiguity failures.",
+  "acceptance_criteria": "Mocked zero/one/multiple and re-enumeration cases pass; direct DFU does not touch; app transition follows serial; bash syntax passes; one physical T1000-E flash succeeds.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T19:09:59.158293Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-17T19:09:59.158293Z",
+  "labels": [
+    "hardware"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.57",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-17T19:09:59.281708Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

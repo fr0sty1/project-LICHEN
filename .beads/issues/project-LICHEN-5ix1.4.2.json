@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-5ix1.4.2",
+  "title": "Trace ping_l2 canary and auth failures",
+  "description": "Reproduce ping_l2 on ARM64 and x86_64 Native64 while tracing the idle canary and the two preceding lichen_l2 authentication failures (-200). Determine whether malformed/auth-failed RX handling performs the corrupting write.",
+  "acceptance_criteria": "Retain commands, hashes, cross-architecture logs, packet/auth context for both -200 failures, and watchpoint/call-stack evidence identifying the corrupting writer or separating auth failure from canary corruption.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:51:14.925976Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:51:14.925976Z",
+  "labels": [
+    "evidence-needed"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-5ix1.4.2",
+      "depends_on_id": "project-LICHEN-5ix1.4",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:51:15.066391Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

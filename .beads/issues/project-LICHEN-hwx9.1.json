@@ -1,0 +1,35 @@
+{
+  "id": "project-LICHEN-hwx9.1",
+  "title": "Add SCHC fragmentation vectors",
+  "description": "Add independently derived shared fragmentation vectors and schema coverage for regular, All-0, All-1, RCS, ACK C=0/C=1, bitmap compression/order, missing tiles, retransmission, malformed messages, capacity, and aborts. Never generate expected bytes with code under test.",
+  "acceptance_criteria": "Python, Rust, and C consume identical committed literal vectors with independent provenance documented.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-19T16:00:57.873052Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-19T17:47:04.478584Z",
+  "started_at": "2026-07-19T17:00:22.81857Z",
+  "closed_at": "2026-07-19T17:47:04.478584Z",
+  "close_reason": "Completed in d2ce3ff90: independent RFC 8724 fragmentation vectors cover regular/All-0/All-1, RCS, ACK bitmaps and recovery, retransmission, retry exhaustion and aborts, capacity boundaries, controls, and malformed inputs. Shared Draft-07 schema and typed Python/Rust/C mechanical consumers added. Validation: Python/Ruff 151 passed, Rust fixture test and Rust 2021 formatting passed, generated header passed strict host C11 compilation, git diff --check passed, and three final independent reviews found no blocking defects. Zephyr execution remains unavailable without a west workspace/AWS authentication.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-hwx9.1",
+      "depends_on_id": "project-LICHEN-hwx9",
+      "type": "parent-child",
+      "created_at": "2026-07-19T16:00:58.154955Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-hwx9.1",
+      "depends_on_id": "project-LICHEN-hwx9.4",
+      "type": "blocks",
+      "created_at": "2026-07-19T16:01:47.614985Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

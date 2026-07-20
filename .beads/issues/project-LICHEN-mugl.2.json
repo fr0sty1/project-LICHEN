@@ -1,0 +1,37 @@
+{
+  "id": "project-LICHEN-mugl.2",
+  "title": "Simulator: Multi-gateway coordination model",
+  "description": "Add multi-gateway coordination to simulator.\n\n## Changes\n\n1. Simulated backbone network between gateways\n2. Gateway discovery and slot negotiation\n3. Node handoff simulation\n4. Multi-gateway TDMA visualization\n\n## Test scenarios\n\n- 2 gateways, 500 nodes each, verify slot coordination\n- Node mobility between gateway coverage areas\n- Gateway failure and recovery\n- Conflicting slot claims and resolution",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:34:41.94668Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:34:41.94668Z",
+  "labels": [
+    "simulator",
+    "python",
+    "gateway",
+    "protocol",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-mugl.2",
+      "depends_on_id": "project-LICHEN-mugl",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:34:42.086324Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-mugl.2",
+      "depends_on_id": "project-LICHEN-mugl.1",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:34:42.203071Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

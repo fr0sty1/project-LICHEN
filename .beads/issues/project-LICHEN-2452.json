@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-2452",
+  "title": "Add Python TX reservation tokens",
+  "description": "Replace coarse LinkLayer TX serialization with entry-specific in-flight reservations and per-send completion. Concurrent high-priority frames should enter between transmissions without allowing preemption/removal of the in-flight entry, ambiguous send() results, duplicate retries on cancellation, or radio concurrency. Include bridge create_task concurrency and cancellation tests.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-18T07:31:16.688109Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-18T07:31:16.688109Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2452",
+      "depends_on_id": "project-LICHEN-050u",
+      "type": "discovered-from",
+      "created_at": "2026-07-18T07:31:16.805626Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "id": "project-LICHEN-zd2d.3",
+  "title": "Python/Rust: LR-FHSS simulation model",
+  "description": "Model LR-FHSS collision behavior in simulator.\n\n## Changes\n1. Add LR-FHSS mode to simulated radio\n2. Model fragment-level collisions (not packet-level)\n3. Simulate hopping sequence and partial packet recovery\n4. Compare collision rates: standard LoRa vs LR-FHSS\n\n## Collision model\n- Standard LoRa: any overlap = both packets lost\n- LR-FHSS: overlap corrupts fragments, FEC may recover\n\n## Metrics to capture\n- Packet delivery rate at various densities\n- Effective throughput with 2x airtime penalty\n- Crossover point where LR-FHSS wins",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "feature",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T18:20:14.922254Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T18:20:14.922254Z",
+  "labels": [
+    "simulator",
+    "python",
+    "rust",
+    "hardware",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zd2d.3",
+      "depends_on_id": "project-LICHEN-zd2d",
+      "type": "parent-child",
+      "created_at": "2026-07-16T18:20:15.082412Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-zd2d.3",
+      "depends_on_id": "project-LICHEN-zd2d.1",
+      "type": "blocks",
+      "created_at": "2026-07-16T18:20:15.201273Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

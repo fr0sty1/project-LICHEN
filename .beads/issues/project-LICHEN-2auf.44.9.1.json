@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2auf.44.9.1",
+  "title": "Define prefix DAO semantics",
+  "description": "Specify canonical RPL Target prefix encoding, /0 policy, owner/egress identity, Target/Transit grouping, longest-prefix selection, equal-prefix conflict behavior, lifetime/withdrawal, and SRH construction for destinations behind an advertising node. This blocks wire enablement of project-LICHEN-2auf.44.9.",
+  "acceptance_criteria": "Normative spec language defines /0,/64,/127,/128 canonical encoding, origin-as-owner or another explicit endpoint rule, lookup and lifecycle semantics, and source-route handling of the actual destination; three reviews pass.",
+  "notes": "Normative draft prepared and repeatedly reviewed in integration/rust-rpl-recovery but cannot be committed as final: foundational link framing lacks immediate signer identity for per-hop re-signing, source-route tunnel root authorization is undefined, unsigned RPL permissive mode conflicts with mandatory authentication, and RPL profile defaults conflict. Worktree preserves the uncommitted reviewed draft. Continue after new blocker children and project-LICHEN-2auf.44.7/.35 are resolved.",
+  "status": "blocked",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-18T20:27:31.47865Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-18T21:15:15.370959Z",
+  "started_at": "2026-07-18T20:28:04.57071Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.9.1",
+      "depends_on_id": "project-LICHEN-2auf.44.9",
+      "type": "parent-child",
+      "created_at": "2026-07-18T20:27:31.610349Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

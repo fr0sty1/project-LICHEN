@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2u26.8",
+  "title": "Resolve Wio Tracker 1110 bridge mapping",
+  "description": "The seeed_wio_tracker_1110 fragment copies T1000-E mappings without a canonical Wio Tracker 1110 board definition. Add and validate the real target or explicitly retire the fragment.",
+  "acceptance_criteria": "Canonical target with verified wiring builds and reaches bridge runtime oracle, or approved retirement removes copied mappings and support claims.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:41:15.068821Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:41:15.068821Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2u26.8",
+      "depends_on_id": "project-LICHEN-2u26",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:41:15.189115Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-2auf.44.5",
+  "title": "Implement DAO Path Sequence groups",
+  "description": "Implement RFC 6550 Sections 9.2.1 and 9.4 in Rust RPL: maintain Path Sequence per owned target/transit relationship; increment on lifetime, no-Path, and parent-list changes; parse one-or-more Target options followed by one-or-more Transit options as ordered groups; use associated Path Sequence rather than DAOSequence for per-target freshness; atomically reject malformed/cyclic updates before mutation.",
+  "acceptance_criteria": "Literal RFC-shaped tests cover multiple targets/transits, malformed ordering, stale/fresh per-target Path Sequence, restart/bootstrap DAOSequence, parent changes, lifetime refresh, no-Path, cycle rejection before state mutation, and route rebuild; RPL tests/Clippy and three reviews pass.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-17T21:57:25.894725Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-17T22:51:36.017061Z",
+  "started_at": "2026-07-17T21:57:38.809827Z",
+  "closed_at": "2026-07-17T22:51:36.017061Z",
+  "close_reason": "Implemented RFC-derived fixes with literal regression tests; combined gates pass 99 lichen-rpl tests, 143 lichen-node std tests, RPL all-feature Clippy, formatting, and repeated independent review cycles.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.5",
+      "depends_on_id": "project-LICHEN-2auf.44",
+      "type": "parent-child",
+      "created_at": "2026-07-17T21:57:26.025671Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

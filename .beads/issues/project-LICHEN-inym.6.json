@@ -1,0 +1,44 @@
+{
+  "id": "project-LICHEN-inym.6",
+  "title": "Scale test: Validate density-aware startup",
+  "description": "Validate that density-aware startup reduces collision rate at scale.\n\n## Test scenarios\n1. 100 nodes simultaneous boot - measure collision rate before/after\n2. 300 nodes staggered arrival (30 min window) - verify no storm\n3. Mixed density: 50 nodes in range, 50 out of range - verify correct detection\n\n## Metrics to capture\n- Time to first TX per node (should be spread over minutes, not seconds)\n- Collision rate during first 5 minutes\n- Channel utilization during startup vs steady state\n- Time to RPL convergence\n\n## Success criteria\n- Collision rate during startup \u003c 10% (vs current ~50%+ at 100 nodes)\n- No node exceeds duty cycle during startup\n- RPL converges within 10 minutes at 100 nodes",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T16:53:37.149716Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T16:53:37.149716Z",
+  "labels": [
+    "testing",
+    "validation",
+    "protocol",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-inym.6",
+      "depends_on_id": "project-LICHEN-inym",
+      "type": "parent-child",
+      "created_at": "2026-07-16T16:53:37.281478Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-inym.6",
+      "depends_on_id": "project-LICHEN-inym.2",
+      "type": "blocks",
+      "created_at": "2026-07-16T16:53:37.395397Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-inym.6",
+      "depends_on_id": "project-LICHEN-inym.3",
+      "type": "blocks",
+      "created_at": "2026-07-16T16:53:37.516461Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

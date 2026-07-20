@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2auf.44.9.7",
+  "title": "Align DAO Path Sequence parent changes",
+  "description": "LICHEN requires the complete redundant candidate set for one Target and Path Sequence to be packed into one atomic DAO. Align Rust with that profile: equal Path Sequence is exact idempotent replay only; reject later candidate additions, existing-candidate mutation, lifetime/Path Control refresh, stale withdrawal, and ambiguous updates.",
+  "acceptance_criteria": "A newer Path Sequence atomically installs the complete grouped candidate set; equal Path Sequence accepts only an exact idempotent copy; parent/lifetime/Path Control changes require a newer sequence; stale, expiry, withdrawal, replay, and capacity tests pass in all implementations.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-18T20:37:41.253126Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-18T21:04:10.144657Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.44.9.7",
+      "depends_on_id": "project-LICHEN-2auf.44.9",
+      "type": "parent-child",
+      "created_at": "2026-07-18T20:37:41.392165Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

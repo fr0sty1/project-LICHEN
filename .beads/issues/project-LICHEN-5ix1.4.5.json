@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-5ix1.4.5",
+  "title": "Capture nRF USBD register trace",
+  "description": "Capture all nRF52840 USBD MMIO reads/writes, tasks, events, interrupts, and Zephyr driver call context leading to repeated EVENTCAUSE polling in the RAK4631 bridge. Compare against Nordic register semantics and the firmware configuration.",
+  "acceptance_criteria": "Retained ordered register trace and driver call context identify the minimum missing USBD behavior needed for forward progress; include exact ELF/source hashes and a model implementation checklist.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:51:16.375083Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:51:16.375083Z",
+  "labels": [
+    "evidence-needed"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-5ix1.4.5",
+      "depends_on_id": "project-LICHEN-5ix1.4",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:51:16.50827Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

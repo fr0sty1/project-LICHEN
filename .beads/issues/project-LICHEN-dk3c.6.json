@@ -1,0 +1,44 @@
+{
+  "id": "project-LICHEN-dk3c.6",
+  "title": "Scale test: Validate gateway-centric mode",
+  "description": "Validate that gateway-centric mode reduces channel overhead at scale.\n\n## Test scenarios\n1. 100 nodes with gateway - measure announce rate before/after DODAG join\n2. 300 nodes with gateway - verify ~4% overhead vs ~24% without mode\n3. Gateway failure - verify nodes resume normal announces within 60 sec\n4. Mixed: some nodes in DODAG, some orphaned - verify correct behavior\n\n## Metrics\n- Announce rate per node (should drop 6x when DODAG joined)\n- Total channel utilization (target: \u003c5% overhead with gateway)\n- Recovery time on DODAG loss\n\n## Success criteria\n- Channel overhead with gateway-centric mode \u003c 5%\n- Normal announces resume within 60 sec of DODAG loss\n- No peer-to-peer regression (LOADng still works)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T17:23:56.465698Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T17:23:56.465698Z",
+  "labels": [
+    "testing",
+    "validation",
+    "protocol",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-dk3c.6",
+      "depends_on_id": "project-LICHEN-dk3c",
+      "type": "parent-child",
+      "created_at": "2026-07-16T17:23:56.593326Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-dk3c.6",
+      "depends_on_id": "project-LICHEN-dk3c.2",
+      "type": "blocks",
+      "created_at": "2026-07-16T17:23:56.703199Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-dk3c.6",
+      "depends_on_id": "project-LICHEN-dk3c.3",
+      "type": "blocks",
+      "created_at": "2026-07-16T17:23:56.80906Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

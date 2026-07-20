@@ -1,0 +1,42 @@
+{
+  "id": "project-LICHEN-5ix1.2",
+  "title": "Fix RAK4631 puck CoAP startup stall",
+  "description": "The canonical RAK4631 puck ELF boots, connects to lichen-sim, and transmits four frames, but stalls after LICHEN puck starting before the expected CoAP GET /status marker. Trace initialization and service scheduling after puck main to identify and fix the blocking path.",
+  "acceptance_criteria": "Canonical rak4631/nrf52840 puck reaches the late CoAP status marker and independently observed TX under the faithful Renode backend; exact commands, hashes, and logs retained; no production service disabled to pass.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:40:31.538602Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:40:31.538602Z",
+  "labels": [
+    "awaiting-evidence"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-5ix1.2",
+      "depends_on_id": "project-LICHEN-5ix1",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:40:31.661516Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-5ix1.2",
+      "depends_on_id": "project-LICHEN-ynxn",
+      "type": "discovered-from",
+      "created_at": "2026-07-16T19:40:31.774449Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-5ix1.2",
+      "depends_on_id": "project-LICHEN-5ix1.4.4",
+      "type": "blocks",
+      "created_at": "2026-07-16T19:51:31.168845Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

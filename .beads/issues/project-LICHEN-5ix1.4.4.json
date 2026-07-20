@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-5ix1.4.4",
+  "title": "Trace RAK4631 puck startup stall",
+  "description": "Instrument canonical RAK4631 puck execution after LICHEN puck starting through the missing CoAP GET /status. Capture service initialization, work queues/timers, thread states, USB/BLE dependencies, and simulator transmissions.",
+  "acceptance_criteria": "Trace identifies the first missing/blocked initialization step and owning function or a discriminating model-versus-firmware experiment; retain commands, hashes, UART/Renode logs, and transmission timeline.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:51:15.902665Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:51:15.902665Z",
+  "labels": [
+    "evidence-needed"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-5ix1.4.4",
+      "depends_on_id": "project-LICHEN-5ix1.4",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:51:16.041293Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

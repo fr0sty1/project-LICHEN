@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-2auf.66",
+  "title": "Define transactional OSCORE context persistence",
+  "description": "Custom/persistent OscoreContextStore implementations need an atomic put contract and durable sequence reservation. A store that mutates context state then raises cannot be safely rolled back alongside TOFU pins; cancellation and crash behavior must be specified and tested with a transactional backend.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-19T03:13:17.604813Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-19T03:13:17.604813Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.66",
+      "depends_on_id": "project-LICHEN-2auf",
+      "type": "parent-child",
+      "created_at": "2026-07-19T03:13:17.752632Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.66",
+      "depends_on_id": "project-LICHEN-2auf.39.1",
+      "type": "discovered-from",
+      "created_at": "2026-07-19T03:13:17.889496Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-cy6c.2",
+  "title": "Install deterministic ESP image tooling",
+  "description": "The ARM validation host linked ESP32-S3 ELFs but final image packaging failed because Python intelhex was unavailable. Add the packaging dependency to the locked/bootstrap builder environment and validate reproducible image generation.",
+  "acceptance_criteria": "Fresh documented builder bootstrap provides the pinned intelhex dependency; canonical Heltec V3 and T-Deck west builds finish packaging; dependency lock and bootstrap checks prevent recurrence.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "chore",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-16T19:40:34.929492Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-16T19:40:34.929492Z",
+  "labels": [
+    "fix-now"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-cy6c.2",
+      "depends_on_id": "project-LICHEN-cy6c",
+      "type": "parent-child",
+      "created_at": "2026-07-16T19:40:35.04995Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

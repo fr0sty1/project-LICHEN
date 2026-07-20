@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-2auf.48.2.1",
+  "title": "Enforce atomic OSCORE reservations",
+  "description": "Complete Rust OSCORE crash/concurrency safety with storage-mediated compare-and-swap or an exclusive context-owner lease. Every sequence-consuming public protect path must require a reservation token obtained by atomically advancing persisted state before encryption; Context::new must not let reused key material self-assert freshness; restored ordinary-response one-shot state must be persisted or no-PIV responses prohibited. Remove SecureStack plaintext/mutable-stack bypasses.",
+  "design": "Reservation storage owns CAS(expected,next) or an exclusive lease. In-memory Context state alone cannot coordinate multiple processes or prove key material is fresh.",
+  "acceptance_criteria": "Two simulated processes restoring the same expected sequence race and exactly one reserves/transmits; all public request/fresh-PIV response paths require reservation capability; blind-write callbacks reject; crashes after reserve cause gaps not reuse; ordinary response state is persisted or disabled; SecureStack cannot bypass OSCORE through mutable plaintext stack; no_std tests and three security reviews pass.",
+  "notes": "Completed atomic context-bound CAS reservations, explicit fresh registration versus restore-only loading, crash-safe sequence gaps, transactional ordinary response replay commits, strict RFC option/KID/context handling, authenticated secure ingress, CoAP correlation/ACK handling, and C.4-C.8 vectors. Observe deferred to linked follow-up. Gates: OSCORE all/no-default/Cortex-M, node std, scoped strict Clippy, and three hash-bound security reviews.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-18T00:36:35.659588Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-18T06:11:44.808142Z",
+  "started_at": "2026-07-18T03:19:59.760764Z",
+  "closed_at": "2026-07-18T06:11:44.808142Z",
+  "close_reason": "Atomic OSCORE reservation and secure ingress acceptance complete",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2auf.48.2.1",
+      "depends_on_id": "project-LICHEN-2auf.48.2",
+      "type": "parent-child",
+      "created_at": "2026-07-18T00:36:35.806967Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}
