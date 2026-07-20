@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-3ook.1",
+  "title": "Launch persistent EC2 builder",
+  "description": "Create a tagged ARM64 instance in us-west-2c with restricted SSH ingress, install the confirmed public key, attach vol-0a95eee8d1d8461eb, and record the instance identity.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-20T03:30:18.22275Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T03:35:33.879135Z",
+  "started_at": "2026-07-20T03:30:38.095355Z",
+  "closed_at": "2026-07-20T03:35:33.879135Z",
+  "close_reason": "Launched tagged c8g.4xlarge i-0d14dd9fb53dae004 in us-west-2c, restricted SSH to the client /32, installed the confirmed public key, and attached/mounted vol-0a95eee8d1d8461eb.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-3ook.1",
+      "depends_on_id": "project-LICHEN-3ook",
+      "type": "parent-child",
+      "created_at": "2026-07-20T03:30:18.648776Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}
