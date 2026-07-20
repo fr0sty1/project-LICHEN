@@ -19,13 +19,15 @@ from __future__ import annotations
 
 import aiocoap
 
-from lichen.coap.resources import build_site
+from lichen.coap.resources import NodeInfo, build_site
 
 
 async def bind_coap_udp(
-    node,
+    node: NodeInfo,
     port: int = 5683,
     bind: str = "::1",
+    *,
+    allow_config_write: bool = False,
 ) -> aiocoap.Context:
     """Bind a Node's CoAP resources to a real UDP port.
 
@@ -33,11 +35,12 @@ async def bind_coap_udp(
         node: A Node instance implementing get_status/get_neighbors/get_config.
         port: UDP port to bind (default 5683).
         bind: Address to bind (default "::1" for localhost).
+        allow_config_write: Explicitly permit PUT requests to /config.
 
     Returns:
         An aiocoap.Context that must be shutdown() when done.
     """
-    site = build_site(node)
+    site = build_site(node, allow_config_write=allow_config_write)
     # ponytail: aiocoap wants explicit address, not "::"
     context = await aiocoap.Context.create_server_context(site, bind=(bind, port))
     return context

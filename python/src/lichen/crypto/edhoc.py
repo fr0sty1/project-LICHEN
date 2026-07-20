@@ -514,6 +514,10 @@ class EdhocResponder:
         self._clear_session_material()
         self._state = _ResponderState.FAILED
 
+    def abort(self) -> None:
+        """Erase session material and leave the responder terminally failed."""
+        self._fail()
+
     def _require_state(self, expected: _ResponderState, operation: str) -> None:
         if self._state is not expected:
             self._fail()

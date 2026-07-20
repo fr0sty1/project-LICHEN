@@ -677,7 +677,11 @@ class Node:
         unknown = set(updates.keys()) - self._VALID_CONFIG_KEYS
         if unknown:
             raise ValueError(f"unknown config keys: {sorted(unknown)}")
+        receive_timeout_ms = self.config.receive_timeout_ms
+        announce_interval_ms = self.config.announce_interval_ms
         if "receive_timeout_ms" in updates:
-            self.config.receive_timeout_ms = int(cast(int | str, updates["receive_timeout_ms"]))
+            receive_timeout_ms = int(cast(int | str, updates["receive_timeout_ms"]))
         if "announce_interval_ms" in updates:
-            self.config.announce_interval_ms = int(cast(int | str, updates["announce_interval_ms"]))
+            announce_interval_ms = int(cast(int | str, updates["announce_interval_ms"]))
+        self.config.receive_timeout_ms = receive_timeout_ms
+        self.config.announce_interval_ms = announce_interval_ms

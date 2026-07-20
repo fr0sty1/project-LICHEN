@@ -35,9 +35,14 @@ a node-backed provider once it lands.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import copy
 import ipaddress
 import itertools
+import math
+import string
+import time
+import weakref
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
@@ -52,11 +57,13 @@ from aiocoap import (
     CONTENT,
     CREATED,
     DELETED,
+    INTERNAL_SERVER_ERROR,
+    SERVICE_UNAVAILABLE,
     UNAUTHORIZED,
     Message,
     resource,
 )
-from aiocoap.numbers import ContentFormat
+from aiocoap.numbers import ContentFormat, constants
 
 from lichen.coap.transport import EndpointPolicy
 
@@ -132,13 +139,175 @@ class StaticNodeInfo:
         return dict(self.config)
 
     def set_config(self, updates: dict[str, Any]) -> None:
-        self.config.update(updates)
+        unknown = set(updates) - set(self.config)
+        if unknown:
+            raise ValueError(f"unknown config keys: {sorted(unknown)}")
+        candidate = dict(self.config)
+        candidate.update(updates)
+        self.config = candidate
 
 
 def _cbor_response(value: Any) -> Message:
     msg = Message(code=CONTENT, payload=cbor2.dumps(value))
     msg.opt.content_format = CBOR
     return msg
+
+
+# Conservative mutation limits keep hostile CBOR work bounded for LoRa/CoAP
+# nodes while remaining well above every currently defined endpoint payload.
+_CBOR_MAX_ENCODED_BYTES = 4096
+_CBOR_MAX_DEPTH = 16
+_CBOR_MAX_MAP_ENTRIES = 64
+_CBOR_MAX_ARRAY_ENTRIES = 256
+_CBOR_MAX_ITEMS = 1024
+
+
+@dataclass
+class _CborScanBudget:
+    items: int = 0
+
+
+def _cbor_argument(payload: bytes, offset: int, additional: int) -> tuple[int, int]:
+    if additional < 24:
+        return additional, offset
+    widths = {24: 1, 25: 2, 26: 4, 27: 8}
+    width = widths.get(additional)
+    if width is None or offset + width > len(payload):
+        raise ValueError("invalid or truncated CBOR argument")
+    return int.from_bytes(payload[offset : offset + width], "big"), offset + width
+
+
+def _same_cbor_key(left: object, right: object, left_raw: bytes, right_raw: bytes) -> bool:
+    if left_raw == right_raw:
+        return True
+    if type(left) is not type(right):
+        return False
+    try:
+        return bool(left == right)
+    except Exception:
+        return False
+
+
+def _scan_cbor_item(
+    payload: bytes,
+    offset: int,
+    *,
+    depth: int = 0,
+    budget: _CborScanBudget | None = None,
+) -> int:
+    """Return the end of one RFC 8949 item while rejecting duplicate map keys."""
+    if depth > _CBOR_MAX_DEPTH:
+        raise ValueError("CBOR nesting depth exceeds mutation limit")
+    if budget is None:
+        budget = _CborScanBudget()
+    budget.items += 1
+    if budget.items > _CBOR_MAX_ITEMS:
+        raise ValueError("CBOR item count exceeds mutation limit")
+    if offset >= len(payload):
+        raise ValueError("truncated CBOR item")
+    initial = payload[offset]
+    if initial == 0xFF:
+        raise ValueError("unexpected CBOR break")
+    offset += 1
+    major = initial >> 5
+    additional = initial & 0x1F
+    indefinite = additional == 31
+
+    if major in (0, 1, 7):
+        if indefinite:
+            raise ValueError("invalid indefinite scalar")
+        _argument, offset = _cbor_argument(payload, offset, additional)
+        return offset
+
+    if major in (2, 3):
+        if not indefinite:
+            length, offset = _cbor_argument(payload, offset, additional)
+            end = offset + length
+            if end > len(payload):
+                raise ValueError("truncated CBOR string")
+            return end
+        while True:
+            if offset >= len(payload):
+                raise ValueError("unterminated indefinite CBOR string")
+            if payload[offset] == 0xFF:
+                return offset + 1
+            chunk = payload[offset]
+            if chunk >> 5 != major or chunk & 0x1F == 31:
+                raise ValueError("invalid indefinite CBOR string chunk")
+            offset = _scan_cbor_item(
+                payload, offset, depth=depth + 1, budget=budget
+            )
+
+    if major == 4:
+        if indefinite:
+            count = 0
+            while True:
+                if offset >= len(payload):
+                    raise ValueError("unterminated indefinite CBOR array")
+                if payload[offset] == 0xFF:
+                    return offset + 1
+                count += 1
+                if count > _CBOR_MAX_ARRAY_ENTRIES:
+                    raise ValueError("CBOR array exceeds mutation limit")
+                offset = _scan_cbor_item(
+                    payload, offset, depth=depth + 1, budget=budget
+                )
+        length, offset = _cbor_argument(payload, offset, additional)
+        if length > _CBOR_MAX_ARRAY_ENTRIES:
+            raise ValueError("CBOR array exceeds mutation limit")
+        for _ in range(length):
+            offset = _scan_cbor_item(
+                payload, offset, depth=depth + 1, budget=budget
+            )
+        return offset
+
+    if major == 5:
+        map_length: int | None = None
+        if not indefinite:
+            map_length, offset = _cbor_argument(payload, offset, additional)
+            if map_length > _CBOR_MAX_MAP_ENTRIES:
+                raise ValueError("CBOR map exceeds mutation limit")
+        keys: list[tuple[object, bytes]] = []
+        count = 0
+        while map_length is None or count < map_length:
+            if offset >= len(payload):
+                raise ValueError("unterminated CBOR map")
+            if map_length is None and payload[offset] == 0xFF:
+                return offset + 1
+            count += 1
+            if count > _CBOR_MAX_MAP_ENTRIES:
+                raise ValueError("CBOR map exceeds mutation limit")
+            key_start = offset
+            offset = _scan_cbor_item(
+                payload, offset, depth=depth + 1, budget=budget
+            )
+            key_raw = payload[key_start:offset]
+            key = cbor2.loads(key_raw)
+            if any(_same_cbor_key(key, old, key_raw, old_raw) for old, old_raw in keys):
+                raise ValueError("duplicate CBOR map key")
+            keys.append((key, key_raw))
+            offset = _scan_cbor_item(
+                payload, offset, depth=depth + 1, budget=budget
+            )
+        return offset
+
+    if major == 6:
+        # Mutation schemas contain no tagged values. Reject tags before cbor2
+        # can materialize shared/cyclic objects (RFC 8746 tags 28 and 29) or
+        # schema-external Python semantic types.
+        raise ValueError("CBOR tags are not allowed in mutation payloads")
+
+    raise ValueError("invalid CBOR major type")
+
+
+def _decode_single_cbor(payload: bytes) -> Any:
+    """Decode one RFC 8949 item, rejecting trailing items and duplicate keys."""
+    if len(payload) > _CBOR_MAX_ENCODED_BYTES:
+        raise ValueError("CBOR payload exceeds mutation byte limit")
+    end = _scan_cbor_item(payload, 0)
+    if end != len(payload):
+        raise ValueError("trailing data after CBOR item")
+    return cbor2.loads(payload)
 
 
 class _ReadResource(resource.Resource):
@@ -178,19 +347,28 @@ class ConfigResource(_ReadResource):
 
     rt = "lichen.config"
 
+    def __init__(self, node_info: NodeInfo, *, allow_config_write: bool = False) -> None:
+        super().__init__(node_info)
+        self._allow_config_write = allow_config_write
+
     async def render_get(self, request: Message) -> Message:
         return _cbor_response(self.node_info.get_config())
 
     async def render_put(self, request: Message) -> Message:
+        if not self._allow_config_write:
+            return Message(code=UNAUTHORIZED)
         if not request.payload:
             return Message(code=BAD_REQUEST)
         try:
-            updates = cbor2.loads(request.payload)
+            updates = _decode_single_cbor(request.payload)
         except Exception:
             return Message(code=BAD_REQUEST)
         if not isinstance(updates, dict):
             return Message(code=BAD_REQUEST)
-        self.node_info.set_config(updates)
+        try:
+            self.node_info.set_config(updates)
+        except (TypeError, ValueError, OverflowError):
+            return Message(code=BAD_REQUEST)
         return Message(code=CHANGED)
 
 
@@ -404,7 +582,7 @@ class SosResource(resource.ObservableResource):
         {"active": true, "from": "<hex-eui64>", "t": <float>}  # active
         {"active": false, "from": null, "t": null}              # idle
 
-    **PUT** activates SOS; body is optional CBOR ``{"from": "<hex>", "t": <float>}``.
+    **PUT** activates SOS with CBOR ``{"from": "<hex>", "t": <number>}``.
     **DELETE** cancels.  **GET** and **Observe** expose the current state to all
     subscribers so neighbouring nodes can relay/escalate the alert.
 
@@ -450,28 +628,27 @@ class SosResource(resource.ObservableResource):
         return msg
 
     async def render_put(self, request: Message) -> Message:
-        t: float | None = None
-        from_hex: str | None = None
-        if request.payload:
-            try:
-                body = cbor2.loads(request.payload)
-                if isinstance(body, dict):
-                    from_hex = body.get("from")
-                    t = body.get("t")
-            except Exception:
-                return Message(code=aiocoap.BAD_REQUEST)
-
-        # SECURITY: Validate from_hex is a string before hex decoding;
-        # CBOR body could contain non-string types that would raise TypeError.
-        if from_hex is not None and not isinstance(from_hex, str):
+        if not request.payload:
             return Message(code=aiocoap.BAD_REQUEST)
         try:
-            eui64 = bytes.fromhex(from_hex) if from_hex else b"\x00" * 8
-        except ValueError:
+            body = _decode_single_cbor(request.payload)
+        except Exception:
             return Message(code=aiocoap.BAD_REQUEST)
-        if len(eui64) != 8:
+        if not isinstance(body, dict) or "from" not in body or "t" not in body:
             return Message(code=aiocoap.BAD_REQUEST)
-        self.activate(eui64, t if t is not None else 0.0)
+        from_hex = body["from"]
+        timestamp = body["t"]
+        if (
+            not isinstance(from_hex, str)
+            or len(from_hex) != 16
+            or any(char not in "0123456789abcdefABCDEF" for char in from_hex)
+        ):
+            return Message(code=aiocoap.BAD_REQUEST)
+        if isinstance(timestamp, bool) or not isinstance(timestamp, int | float):
+            return Message(code=aiocoap.BAD_REQUEST)
+        if (isinstance(timestamp, float) and not math.isfinite(timestamp)) or timestamp < 0:
+            return Message(code=aiocoap.BAD_REQUEST)
+        self.activate(bytes.fromhex(from_hex), timestamp)
         return Message(code=aiocoap.CHANGED)
 
     async def render_delete(self, request: Message) -> Message:
@@ -479,7 +656,8 @@ class SosResource(resource.ObservableResource):
         return Message(code=aiocoap.DELETED)
 
 
-_MESSAGES_MAX = 100  # maximum inbox depth
+_MESSAGES_MAX = 100
+_MESSAGE_ID_MAX = (1 << 64) - 1
 
 
 class MessagesResource(resource.ObservableResource):
@@ -506,12 +684,14 @@ class MessagesResource(resource.ObservableResource):
         msgs.deliver({"from": "aabb...", "to": "all", "body": "hello", "ts": 1700000000})
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, max_messages: int = _MESSAGES_MAX) -> None:
         super().__init__()
+        if isinstance(max_messages, bool) or not isinstance(max_messages, int) or max_messages <= 0:
+            raise ValueError("max_messages must be a positive integer")
+        self._max_messages = max_messages
         self._inbox: list[dict[str, Any]] = []
         self._sent: dict[str, dict[str, Any]] = {}
         self._sent_order: list[str] = []
-        self._sent_detail_registrar: Callable[[str, dict[str, Any]], None] | None = None
         self._legacy_aliases: list[LegacyMessagesAliasResource] = []
         self._next_id = 1
 
@@ -524,8 +704,8 @@ class MessagesResource(resource.ObservableResource):
         Trims the inbox to :data:`_MESSAGES_MAX` entries (oldest dropped).
         """
         self._inbox.append(message)
-        if len(self._inbox) > _MESSAGES_MAX:
-            self._inbox = self._inbox[-_MESSAGES_MAX:]
+        if len(self._inbox) > self._max_messages:
+            self._inbox = self._inbox[-self._max_messages:]
         self.updated_state()
         for alias in self._legacy_aliases:
             alias.updated_state()
@@ -542,13 +722,6 @@ class MessagesResource(resource.ObservableResource):
         """Return one sent message by ID."""
         return self._sent.get(msg_id)
 
-    def set_sent_detail_registrar(
-        self,
-        registrar: Callable[[str, dict[str, Any]], None],
-    ) -> None:
-        """Install callback used to mount ``/msg/sent/{id}`` resources."""
-        self._sent_detail_registrar = registrar
-
     def register_legacy_alias(self, alias: LegacyMessagesAliasResource) -> None:
         """Register a legacy observable alias that mirrors inbox updates."""
         self._legacy_aliases.append(alias)
@@ -562,28 +735,55 @@ class MessagesResource(resource.ObservableResource):
         if not request.payload:
             return Message(code=aiocoap.BAD_REQUEST)
         try:
-            body = cbor2.loads(request.payload)
+            body = _decode_single_cbor(request.payload)
         except Exception:
             return Message(code=aiocoap.BAD_REQUEST)
         if not isinstance(body, dict):
             return Message(code=aiocoap.BAD_REQUEST)
         if not (isinstance(body.get("body"), str) or isinstance(body.get("text"), str)):
             return Message(code=aiocoap.BAD_REQUEST)
+        if "id" in body and (
+            type(body["id"]) is not int
+            or body["id"] < 0
+            or body["id"] > _MESSAGE_ID_MAX
+        ):
+            return Message(code=aiocoap.BAD_REQUEST)
         body = dict(body)
-        body.setdefault("id", self._next_id)
-        if isinstance(body["id"], int):
-            self._next_id = max(self._next_id + 1, body["id"] + 1)
+        candidate_next_id = self._next_id
+        if "id" not in body:
+            if candidate_next_id > _MESSAGE_ID_MAX:
+                return Message(code=SERVICE_UNAVAILABLE)
+            body["id"] = candidate_next_id
+            candidate_next_id += 1
         else:
-            self._next_id += 1
+            candidate_next_id = max(candidate_next_id, body["id"] + 1)
         if "body" not in body and "text" in body:
             body["body"] = body["text"]
-        self.deliver(body)
+
         msg_id = str(body["id"])
-        self._sent[msg_id] = copy.deepcopy(body)
-        if msg_id not in self._sent_order:
-            self._sent_order.append(msg_id)
-        if self._sent_detail_registrar is not None:
-            self._sent_detail_registrar(msg_id, body)
+        candidate_inbox = [
+            message
+            for message in self._inbox
+            if not (type(message.get("id")) is int and message["id"] == body["id"])
+        ]
+        candidate_inbox = [*candidate_inbox, body][-self._max_messages:]
+        candidate_sent = dict(self._sent)
+        candidate_order = list(self._sent_order)
+        if msg_id in candidate_sent:
+            candidate_order.remove(msg_id)
+        candidate_sent[msg_id] = copy.deepcopy(body)
+        candidate_order.append(msg_id)
+        while len(candidate_order) > self._max_messages:
+            evicted_id = candidate_order.pop(0)
+            del candidate_sent[evicted_id]
+
+        self._next_id = candidate_next_id
+        self._inbox = candidate_inbox
+        self._sent = candidate_sent
+        self._sent_order = candidate_order
+        self.updated_state()
+        for alias in self._legacy_aliases:
+            alias.updated_state()
         msg = Message(code=aiocoap.CREATED)
         msg.opt.location_path = ("msg", "sent", msg_id)
         return msg
@@ -603,15 +803,32 @@ class SentMessagesResource(resource.Resource):
         return _cbor_response({"messages": self._messages.sent_messages()})
 
 
-class SentMessageDetailResource(resource.Resource):
-    """``/msg/sent/{id}`` detail for one accepted message."""
+class SentMessageDetailsResource(resource.Resource, resource.PathCapable):
+    """Stable dynamic router for retained ``/msg/sent/{id}`` records."""
 
-    def __init__(self, message: dict[str, Any]) -> None:
+    def __init__(self, messages: MessagesResource) -> None:
         super().__init__()
-        self._message = dict(message)
+        self._messages = messages
 
     async def render_get(self, request: Message) -> Message:
-        return _cbor_response(dict(self._message))
+        if len(request.opt.uri_path) != 1:
+            return Message(code=aiocoap.NOT_FOUND)
+        msg_id = request.opt.uri_path[0]
+        if not msg_id or not msg_id.isascii() or not msg_id.isdecimal():
+            return Message(code=aiocoap.NOT_FOUND)
+        value = int(msg_id)
+        if value > _MESSAGE_ID_MAX or str(value) != msg_id:
+            return Message(code=aiocoap.NOT_FOUND)
+        message = self._messages.sent_message(msg_id)
+        if message is None:
+            return Message(code=aiocoap.NOT_FOUND)
+        return _cbor_response(dict(message))
+
+    def get_resources_as_linkheader(self) -> Any:
+        return resource.LinkFormat([
+            resource.Link(f"/{msg_id}", ct=str(int(CBOR)))
+            for msg_id in self._messages._sent_order
+        ])
 
 
 class MessageReceiptsResource(resource.Resource):
@@ -639,15 +856,20 @@ class MessageReceiptsResource(resource.Resource):
         if not request.payload:
             return Message(code=BAD_REQUEST)
         try:
-            payload = cbor2.loads(request.payload)
+            payload = _decode_single_cbor(request.payload)
         except Exception:
             return Message(code=BAD_REQUEST)
         receipt = self._normalize(payload)
         if receipt is None:
             return Message(code=BAD_REQUEST)
-        self._receipts.append(receipt)
         if self._handler is not None:
-            self._handler(dict(receipt))
+            try:
+                # Handlers should raise before external commit; side effects
+                # performed before raising cannot be rolled back here.
+                self._handler(dict(receipt))
+            except Exception:
+                return Message(code=INTERNAL_SERVER_ERROR)
+        self._receipts.append(receipt)
         return Message(code=CHANGED)
 
     @classmethod
@@ -657,11 +879,11 @@ class MessageReceiptsResource(resource.Resource):
         receipt_id = payload.get("id")
         status = payload.get("status")
         timestamp = payload.get("ts")
-        if not _is_uint(receipt_id):
+        if not _is_u64(receipt_id):
             return None
         if status not in cls.VALID_STATUSES:
             return None
-        if not _is_uint(timestamp):
+        if not _is_u64(timestamp):
             return None
         return {
             "id": receipt_id,
@@ -670,8 +892,8 @@ class MessageReceiptsResource(resource.Resource):
         }
 
 
-def _is_uint(value: Any) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+def _is_u64(value: Any) -> bool:
+    return type(value) is int and 0 <= value <= _MESSAGE_ID_MAX
 
 
 class LegacyMessagesAliasResource(resource.ObservableResource):
@@ -701,6 +923,7 @@ def _legacy_message_view(message: dict[str, Any]) -> dict[str, Any]:
 
 _RD_DEFAULT_LIFETIME = 86400  # seconds (RFC 9176 §7.3.1)
 _rd_id_counter = itertools.count(1)
+_RD_PATH_CHARS = frozenset(string.ascii_letters + string.digits + "-._~")
 
 
 @dataclass
@@ -735,9 +958,17 @@ class ResourceDirectoryResource(resource.Resource):
                     {"href": "/status",  "rt": "lichen.status"}]
     """
 
-    def __init__(self, site: resource.Site) -> None:
+    def __init__(
+        self,
+        site: resource.Site,
+        *,
+        route_remover: Callable[[str], None] | None = None,
+    ) -> None:
         super().__init__()
         self._site = site
+        self._route_remover = route_remover or (
+            lambda reg_id: site.remove_resource(["rd", reg_id])
+        )
         self._entries: dict[str, _RdEntry] = {}  # keyed by reg_id
 
     def _lookup(self, ep: str | None = None) -> list[dict[str, Any]]:
@@ -757,8 +988,37 @@ class ResourceDirectoryResource(resource.Resource):
         ]
 
     def remove_entry(self, reg_id: str) -> bool:
-        """Remove a registration; returns True if it existed."""
-        return self._entries.pop(reg_id, None) is not None
+        """Atomically remove a registration route and entry."""
+        if reg_id not in self._entries:
+            return False
+        self._route_remover(reg_id)
+        del self._entries[reg_id]
+        return True
+
+    @staticmethod
+    def _normalize_links(body: Any) -> list[dict[str, Any]] | None:
+        if not isinstance(body, list):
+            return None
+        normalized: list[dict[str, Any]] = []
+        for descriptor in body:
+            if not isinstance(descriptor, dict) or set(descriptor) - {"href", "rt"}:
+                return None
+            href = descriptor.get("href")
+            if not isinstance(href, str) or not href.startswith("/"):
+                return None
+            segments = href.split("/")[1:]
+            if not segments or any(
+                not segment
+                or segment in {".", ".."}
+                or any(char not in _RD_PATH_CHARS for char in segment)
+                for segment in segments
+            ):
+                return None
+            rt = descriptor.get("rt")
+            if rt is not None and (not isinstance(rt, str) or not rt):
+                return None
+            normalized.append(dict(descriptor))
+        return normalized
 
     async def render_get(self, request: Message) -> Message:
         ep_filter: str | None = None
@@ -779,9 +1039,15 @@ class ResourceDirectoryResource(resource.Resource):
             if q.startswith("ep="):
                 ep = q[3:]
             elif q.startswith("lt="):
-                try:
-                    lt = int(q[3:])
-                except ValueError:
+                raw_lifetime = q[3:]
+                if (
+                    not raw_lifetime
+                    or not raw_lifetime.isascii()
+                    or not raw_lifetime.isdecimal()
+                ):
+                    return Message(code=BAD_REQUEST)
+                lt = int(raw_lifetime)
+                if not 1 <= lt <= (1 << 32) - 1:
                     return Message(code=BAD_REQUEST)
             elif q.startswith("base="):
                 base = q[5:]
@@ -792,21 +1058,23 @@ class ResourceDirectoryResource(resource.Resource):
         links: list[dict[str, Any]] = []
         if request.payload:
             try:
-                body = cbor2.loads(request.payload)
-                if isinstance(body, list):
-                    links = body
+                body = _decode_single_cbor(request.payload)
             except Exception:
                 return Message(code=BAD_REQUEST)
+            normalized_links = self._normalize_links(body)
+            if normalized_links is None:
+                return Message(code=BAD_REQUEST)
+            links = normalized_links
 
         reg_id = str(next(_rd_id_counter))
         entry = _RdEntry(reg_id=reg_id, ep=ep, lt=lt, base=base, links=links)
-        self._entries[reg_id] = entry
 
         # Mount a deletion endpoint at /rd/<id>
         self._site.add_resource(
             ["rd", reg_id],
             _RdRegistrationResource(self, reg_id),
         )
+        self._entries[reg_id] = entry
 
         resp = Message(code=CREATED)
         resp.opt.location_path = ("rd", reg_id)
@@ -822,8 +1090,11 @@ class _RdRegistrationResource(resource.Resource):
         self._reg_id = reg_id
 
     async def render_delete(self, request: Message) -> Message:
-        self._rd.remove_entry(self._reg_id)
-        return Message(code=DELETED)
+        try:
+            removed = self._rd.remove_entry(self._reg_id)
+        except Exception:
+            return Message(code=INTERNAL_SERVER_ERROR)
+        return Message(code=DELETED if removed else aiocoap.NOT_FOUND)
 
 
 class KeyResource(resource.Resource):
@@ -844,6 +1115,14 @@ class KeyResource(resource.Resource):
             "pubkey": self._pubkey,
         }
         return _cbor_response(data)
+
+
+class _EdhocTimerHandle(Protocol):
+    def cancel(self) -> None: ...
+
+
+class _EdhocTransientError(RuntimeError):
+    """A resolver or store failure that may succeed when retried."""
 
 
 class EdhocResource(resource.Resource):
@@ -874,6 +1153,11 @@ class EdhocResource(resource.Resource):
         context_store: TransactionalOscoreContextStore,
         peer_resolver: EdhocPeerResolver,
         endpoint_policy: EndpointPolicy | None = None,
+        *,
+        max_sessions: int = 100,
+        session_lifetime: float = constants.TransportTuning().EXCHANGE_LIFETIME,
+        monotonic: Callable[[], float] = time.monotonic,
+        call_later: Callable[[float, Callable[[], None]], _EdhocTimerHandle] | None = None,
     ) -> None:
         """Create an EDHOC responder resource.
 
@@ -883,6 +1167,18 @@ class EdhocResource(resource.Resource):
             peer_resolver: EdhocPeerResolver to look up/pin peer pubkeys.
         """
         super().__init__()
+        if isinstance(max_sessions, bool) or not isinstance(max_sessions, int) or max_sessions <= 0:
+            raise ValueError("max_sessions must be a positive integer")
+        try:
+            lifetime = float(session_lifetime)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("session_lifetime must be finite and positive") from None
+        if isinstance(session_lifetime, bool) or not math.isfinite(lifetime) or lifetime <= 0:
+            raise ValueError("session_lifetime must be finite and positive")
+        self._max_sessions = max_sessions
+        self._session_lifetime = lifetime
+        self._monotonic = monotonic
+        self._call_later = call_later
         self._identity = identity
         self._context_store = context_store
         self._peer_resolver = peer_resolver
@@ -893,6 +1189,46 @@ class EdhocResource(resource.Resource):
             self._peer_resolver.bind_authority(self._context_store, endpoint_policy)
         # Active EDHOC sessions keyed by (peer_host, C_I)
         self._sessions: dict[tuple[str, bytes], Any] = {}
+        self._completing: dict[tuple[str, bytes], Any] = {}
+        self._closed = False
+        self._close_task: asyncio.Task[None] | None = None
+
+    async def close(self) -> None:
+        """Close once and drain every in-progress publication."""
+        if self._close_task is None:
+            self._closed = True
+            self._request_close()
+            self._close_task = asyncio.create_task(self._drain_close())
+        await asyncio.shield(self._close_task)
+
+    def _request_close(self) -> None:
+        self._closed = True
+        for key, session in list(self._sessions.items()):
+            self._remove_session(key, session, abort=True)
+        for session in list(self._completing.values()):
+            session["closed"] = True
+            self._abort_record(session)
+            publication = session.get("publication_task")
+            if publication is not None and not publication.done():
+                publication.cancel()
+
+    async def _drain_close(self) -> None:
+        completing = list(self._completing.values())
+        publications = [
+            session["publication_task"]
+            for session in completing
+            if session.get("publication_task") is not None
+        ]
+        if publications:
+            await asyncio.gather(*publications, return_exceptions=True)
+        if completing:
+            await asyncio.gather(
+                *(session["finalized_event"].wait() for session in completing)
+            )
+
+    def __del__(self) -> None:
+        with contextlib.suppress(Exception):
+            self._request_close()
 
     def bind_endpoint_policy(self, policy: EndpointPolicy) -> None:
         """Bind authoritative channel endpoint identity before serving."""
@@ -903,6 +1239,47 @@ class EdhocResource(resource.Resource):
         policy = self._endpoint_policy or EndpointPolicy()
         return policy.normalize(endpoint).authority
 
+    @staticmethod
+    def _message_1_connection_id(payload: bytes) -> bytes | None:
+        """Return C_I for a structurally valid Message 1, otherwise None."""
+        from lichen.crypto.edhoc import (
+            SUITE_0,
+            X25519_KEY_LEN,
+            Method,
+            _decode_cbor_sequence,
+            _validate_connection_id,
+        )
+
+        try:
+            items = _decode_cbor_sequence(payload)
+            if len(items) not in (4, 5):
+                return None
+            if type(items[0]) is not int or items[0] != Method.SIGN_SIGN * 4 + 1:
+                return None
+            if type(items[1]) is not int or items[1] != SUITE_0:
+                return None
+            if not isinstance(items[2], bytes) or len(items[2]) != X25519_KEY_LEN:
+                return None
+            if len(items) == 5 and not isinstance(items[4], bytes):
+                return None
+            return _validate_connection_id(items[3], "C_I")
+        except ValueError:
+            return None
+
+    def _peer_session(
+        self, peer_host: str
+    ) -> tuple[tuple[str, bytes], dict[str, Any]] | None:
+        for key, session in self._sessions.items():
+            if key[0] == peer_host:
+                return key, session
+        return None
+
+    @staticmethod
+    def _edhoc_response(payload: bytes) -> Message:
+        response = Message(code=CHANGED, payload=payload)
+        response.opt.content_format = ContentFormat(65535)
+        return response
+
     async def render_post(self, request: Message) -> Message:
         """Handle EDHOC POST request.
 
@@ -911,6 +1288,8 @@ class EdhocResource(resource.Resource):
         """
         if not request.payload:
             return Message(code=BAD_REQUEST)
+        if self._closed:
+            return Message(code=SERVICE_UNAVAILABLE)
 
         # Get peer address from remote
         peer_host = request.remote.hostinfo if request.remote else None
@@ -922,31 +1301,29 @@ class EdhocResource(resource.Resource):
             return Message(code=BAD_REQUEST)
 
         payload = request.payload
+        self._expire_sessions()
+        active = self._peer_session(peer_host)
 
-        # Try to find an active session for this peer
-        # Session key is (peer_host, c_i) but we don't know c_i yet for msg1
-        active_session = None
-        for (host, _), session in list(self._sessions.items()):
-            if host == peer_host:
-                active_session = session
-                break
-
-        if active_session is None:
-            # This is Message 1 - start new session
-            try:
+        try:
+            if active is None:
                 return await self._handle_message_1(peer_host, payload)
-            except Exception:
+
+            session_key, session = active
+            if payload == session["msg1"]:
+                return self._edhoc_response(session["msg2"])
+            if self._message_1_connection_id(payload) is not None:
                 return Message(code=BAD_REQUEST)
-        else:
-            # This is Message 3 - complete handshake
-            try:
-                return await self._handle_message_3(
-                    peer_host, payload, active_session
-                )
-            except Exception:
-                # Clean up failed session
-                self._cleanup_session(peer_host)
-                return Message(code=BAD_REQUEST)
+            return await self._handle_message_3(peer_host, payload, session)
+        except _EdhocTransientError:
+            return Message(code=SERVICE_UNAVAILABLE)
+        except ValueError:
+            if active is not None:
+                self._remove_session(active[0], active[1], abort=True)
+            return Message(code=BAD_REQUEST)
+        except Exception:
+            if active is not None:
+                self._remove_session(active[0], active[1], abort=True)
+            return Message(code=INTERNAL_SERVER_ERROR)
 
     async def _handle_message_1(self, peer_host: str, msg1: bytes) -> Message:
         """Process EDHOC Message 1 and return Message 2."""
@@ -957,11 +1334,33 @@ class EdhocResource(resource.Resource):
         # dummy key. An all-zeros key is a valid Ed25519 point, so passing it
         # to crypto routines could allow attacks. TOFU would defer this check
         # to Message 3, but we currently require pre-known peers.
-        await self._peer_resolver.ensure_bound()
-        peer_pubkey = await self._peer_resolver.get_peer_pubkey(peer_host)
+        try:
+            await self._peer_resolver.ensure_bound()
+        except Exception as exc:
+            raise _EdhocTransientError from exc
+        self._expire_sessions()
+        try:
+            peer_pubkey = await self._peer_resolver.get_peer_pubkey(peer_host)
+        except Exception as exc:
+            raise _EdhocTransientError from exc
+        self._expire_sessions()
         if peer_pubkey is None:
             return Message(code=UNAUTHORIZED)
-        expected_generation = await self._context_store.get_generation(peer_host)
+        try:
+            expected_generation = await self._context_store.get_generation(peer_host)
+        except Exception as exc:
+            raise _EdhocTransientError from exc
+        self._expire_sessions()
+
+        existing = self._peer_session(peer_host)
+        if existing is not None:
+            if existing[1]["msg1"] == msg1:
+                return self._edhoc_response(existing[1]["msg2"])
+            return Message(code=BAD_REQUEST)
+        if self._closed or len(self._sessions) + len(self._completing) >= self._max_sessions:
+            return Message(code=SERVICE_UNAVAILABLE)
+        if any(key[0] == peer_host for key in self._completing):
+            return Message(code=SERVICE_UNAVAILABLE)
 
         # Create responder and process Message 1
         responder = EdhocResponder.create(self._identity)
@@ -970,18 +1369,33 @@ class EdhocResource(resource.Resource):
         # Extract C_I from Message 1 for session tracking
         # Message 1: (METHOD_CORR, SUITES_I, G_X, C_I, ?EAD_1)
         c_i = responder._c_i
+        session_key = (peer_host, c_i)
+        if session_key in self._sessions:
+            responder.abort()
+            return Message(code=BAD_REQUEST)
 
-        # Store session
-        self._sessions[(peer_host, c_i)] = {
+        deadline = self._monotonic() + self._session_lifetime
+        session = {
+            "key": session_key,
             "responder": responder,
             "peer_pubkey": peer_pubkey,
             "expected_generation": expected_generation,
+            "deadline": deadline,
+            "expiry_handle": None,
+            "msg1": msg1,
+            "msg2": msg2,
+            "state": "ACTIVE",
+            "aborted": False,
+            "closed": False,
         }
+        self._sessions[session_key] = session
+        try:
+            self._schedule_expiry(session_key, session)
+        except Exception:
+            self._remove_session(session_key, session, abort=True)
+            raise
 
-        # Return Message 2
-        response = Message(code=CHANGED, payload=msg2)
-        response.opt.content_format = ContentFormat(65535)  # application/edhoc
-        return response
+        return self._edhoc_response(msg2)
 
     async def _handle_message_3(
         self, peer_host: str, msg3: bytes, session: dict[str, Any]
@@ -992,12 +1406,17 @@ class EdhocResource(resource.Resource):
         responder = session["responder"]
         peer_pubkey = session["peer_pubkey"]
         expected_generation = session["expected_generation"]
+        session_key = session["key"]
+
+        self._expire_sessions()
+        if self._sessions.get(session_key) is not session:
+            return Message(code=BAD_REQUEST)
 
         if peer_pubkey is None:
             # SECURITY: Defense-in-depth check. Message 1 handler now rejects
             # unknown peers early, but if a session somehow lacks a peer key,
             # fail here rather than proceeding with verification.
-            self._cleanup_session(peer_host)
+            self._remove_session(session_key, session, abort=True)
             return Message(code=UNAUTHORIZED)
 
         try:
@@ -1005,25 +1424,140 @@ class EdhocResource(resource.Resource):
             edhoc_ctx = responder.export_oscore()
             oscore_ctx = MemorySecurityContext.from_edhoc(edhoc_ctx)
 
-            # Publication is durable before Message 3 is acknowledged.
-            await self._peer_resolver.ensure_bound()
-            await self._context_store.put(
-                peer_host,
-                oscore_ctx,
-                peer_pubkey,
-                expected_generation=expected_generation,
-            )
+            # Message 3 completed synchronously before the deadline. Remove it
+            # from active expiry before publication, which may legitimately block.
+            if self._monotonic() >= session["deadline"]:
+                self._remove_session(session_key, session, abort=True)
+                return Message(code=BAD_REQUEST)
+            if not self._transition_to_completing(session_key, session):
+                return Message(code=BAD_REQUEST)
+        except Exception:
+            self._remove_session(session_key, session, abort=True)
+            raise
+
+        publication: asyncio.Task[None] | None = None
+        try:
+            async def publish() -> None:
+                await self._peer_resolver.ensure_bound()
+                await self._context_store.put(
+                    peer_host,
+                    oscore_ctx,
+                    peer_pubkey,
+                    expected_generation=expected_generation,
+                )
+
+            publication = asyncio.create_task(publish())
+            session["publication_task"] = publication
+            try:
+                await asyncio.shield(publication)
+            except asyncio.CancelledError:
+                current = asyncio.current_task()
+                if current is not None and current.cancelling():
+                    publication.cancel()
+                    await asyncio.gather(publication, return_exceptions=True)
+                    raise
+                raise _EdhocTransientError from None
+            except Exception as exc:
+                raise _EdhocTransientError from exc
+            return Message(code=CHANGED)
         finally:
-            self._cleanup_session(peer_host)
+            pending_tasks: list[asyncio.Task[Any]] = []
+            if publication is not None and not publication.done():
+                publication.cancel()
+                pending_tasks.append(publication)
+            if pending_tasks:
+                await asyncio.gather(*pending_tasks, return_exceptions=True)
+            self._finalize_completion(session_key, session)
 
-        # Return success (empty payload per RFC 9528)
-        return Message(code=CHANGED)
+    def _schedule_expiry(
+        self, session_key: tuple[str, bytes], session: dict[str, Any]
+    ) -> None:
+        delay = max(0.0, session["deadline"] - self._monotonic())
+        scheduler = self._call_later or asyncio.get_running_loop().call_later
+        resource_ref = weakref.ref(self)
 
-    def _cleanup_session(self, peer_host: str) -> None:
-        """Remove any active sessions for a peer."""
-        to_remove = [key for key in self._sessions if key[0] == peer_host]
-        for key in to_remove:
-            del self._sessions[key]
+        def expire() -> None:
+            resource = resource_ref()
+            if resource is not None:
+                resource._expire_session(session_key, session)
+
+        handle = scheduler(delay, expire)
+        if self._sessions.get(session_key) is session:
+            session["expiry_handle"] = handle
+        else:
+            handle.cancel()
+
+    def _expire_session(
+        self, session_key: tuple[str, bytes], session: dict[str, Any]
+    ) -> None:
+        if self._sessions.get(session_key) is not session:
+            return
+        if self._monotonic() < session["deadline"]:
+            self._schedule_expiry(session_key, session)
+            return
+        self._remove_session(session_key, session, abort=True)
+
+    def _remove_session(
+        self,
+        session_key: tuple[str, bytes],
+        session: dict[str, Any],
+        *,
+        abort: bool,
+    ) -> bool:
+        if self._sessions.get(session_key) is not session:
+            return False
+        handle = session.get("expiry_handle")
+        if handle is not None:
+            handle.cancel()
+            session["expiry_handle"] = None
+        if abort:
+            self._abort_record(session)
+            session["state"] = "ABORTED"
+        del self._sessions[session_key]
+        return True
+
+    def _transition_to_completing(
+        self, session_key: tuple[str, bytes], session: dict[str, Any]
+    ) -> bool:
+        if self._closed or self._sessions.get(session_key) is not session:
+            return False
+        handle = session.get("expiry_handle")
+        if handle is not None:
+            handle.cancel()
+            session["expiry_handle"] = None
+        del self._sessions[session_key]
+        session["state"] = "COMPLETING"
+        session["finalized_event"] = asyncio.Event()
+        session["publication_task"] = None
+        self._completing[session_key] = session
+        return True
+
+    def _finalize_completion(
+        self, session_key: tuple[str, bytes], session: dict[str, Any]
+    ) -> None:
+        if self._completing.get(session_key) is session:
+            del self._completing[session_key]
+        session["publication_task"] = None
+        self._abort_record(session)
+        session["state"] = "CLOSED" if session["closed"] else "COMPLETE"
+        session["finalized_event"].set()
+
+    @staticmethod
+    def _abort_record(session: dict[str, Any]) -> None:
+        if not session["aborted"]:
+            session["responder"].abort()
+            session["aborted"] = True
+
+    def _expire_sessions(self) -> None:
+        """Synchronously catch deadlines before request processing."""
+        now = self._monotonic()
+        expired = [
+            (key, session)
+            for key, session in self._sessions.items()
+            if now >= session["deadline"]
+        ]
+        for key, session in expired:
+            self._remove_session(key, session, abort=True)
 
 
 def build_site(
@@ -1040,6 +1574,7 @@ def build_site(
     resource_directory: bool = False,
     edhoc_resource: EdhocResource | None = None,
     endpoint_policy: EndpointPolicy | None = None,
+    allow_config_write: bool = False,
 ) -> resource.Site:
     """Build an aiocoap Site exposing the LICHEN node resources.
 
@@ -1062,7 +1597,9 @@ def build_site(
     )
     site.add_resource(["status"], StatusResource(node_info))
     site.add_resource(["neighbors"], NeighborsResource(node_info))
-    site.add_resource(["config"], ConfigResource(node_info))
+    site.add_resource(
+        ["config"], ConfigResource(node_info, allow_config_write=allow_config_write)
+    )
     if mesh_client is not None:
         site.add_resource(["proxy"], ProxyResource(mesh_client))
     if sensors_resource is not None:
@@ -1072,21 +1609,24 @@ def build_site(
     if presence_resource is not None:
         site.add_resource(["presence"], presence_resource)
     if messages_resource is not None:
-        def register_sent_detail(msg_id: str, message: dict[str, Any]) -> None:
-            site.add_resource(["msg", "sent", msg_id], SentMessageDetailResource(message))
-
-        messages_resource.set_sent_detail_registrar(register_sent_detail)
         legacy_messages = LegacyMessagesAliasResource(messages_resource)
         messages_resource.register_legacy_alias(legacy_messages)
         site.add_resource(["msg", "inbox"], messages_resource)
         site.add_resource(["msg", "sent"], SentMessagesResource(messages_resource))
+        site.add_resource(["msg", "sent"], SentMessageDetailsResource(messages_resource))
         site.add_resource(["messages"], legacy_messages)
     if message_receipts_resource is not None:
         site.add_resource(["msg", "ack"], message_receipts_resource)
     if sos_resource is not None:
         site.add_resource(["sos"], sos_resource)
     if resource_directory:
-        site.add_resource(["rd"], ResourceDirectoryResource(site))
+        def remove_rd_registration(reg_id: str) -> None:
+            site.remove_resource(["rd", reg_id])
+
+        site.add_resource(
+            ["rd"],
+            ResourceDirectoryResource(site, route_remover=remove_rd_registration),
+        )
     if pubkey is not None:
         site.add_resource(["key"], KeyResource(pubkey))
     if edhoc_resource is not None:

@@ -121,14 +121,14 @@ class TestSosPutDelete:
             await client.shutdown()
             await server.shutdown()
 
-    async def test_put_no_body_activates_with_defaults(self) -> None:
+    async def test_put_no_body_is_rejected(self) -> None:
         client, server, sos = await _setup()
         try:
             resp = await client.request(
                 Message(code=PUT, uri="coap://srv/sos", payload=b"")
             ).response
-            assert resp.code == aiocoap.CHANGED
-            assert sos._active is True
+            assert resp.code == aiocoap.BAD_REQUEST
+            assert sos._active is False
         finally:
             await client.shutdown()
             await server.shutdown()
@@ -157,6 +157,137 @@ class TestSosPutDelete:
             ).response
             assert resp.code == aiocoap.BAD_REQUEST
             assert sos._active is False  # should not activate
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_duplicate_cbor_keys_preserve_state_and_do_not_notify(self) -> None:
+        client, server, sos = await _setup()
+        try:
+            sos.activate(_EUI, _T0)
+            notifications = 0
+
+            def notified() -> None:
+                nonlocal notifications
+                notifications += 1
+
+            sos.updated_state = notified  # type: ignore[method-assign]
+            payload = (
+                b"\xa3"
+                + cbor2.dumps("from")
+                + cbor2.dumps(_EUI.hex())
+                + cbor2.dumps("t")
+                + cbor2.dumps(_T0)
+                + cbor2.dumps("t")
+                + cbor2.dumps(_T0 + 1)
+            )
+            response = await client.request(
+                Message(code=PUT, uri="coap://srv/sos", payload=payload)
+            ).response
+            assert response.code == aiocoap.BAD_REQUEST
+            assert (sos._active, sos._from, sos._t) == (True, _EUI.hex(), _T0)
+            assert notifications == 0
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    async def test_put_accepts_preferred_float16_timestamp(self) -> None:
+        client, server, sos = await _setup()
+        try:
+            payload = (
+                b"\xa2"
+                + cbor2.dumps("from")
+                + cbor2.dumps(_EUI.hex())
+                + cbor2.dumps("t")
+                + b"\xf9\x3e\x00"  # preferred float16 1.5
+            )
+            response = await client.request(
+                Message(code=PUT, uri="coap://srv/sos", payload=payload)
+            ).response
+            assert response.code == aiocoap.CHANGED
+            assert (sos._active, sos._from, sos._t) == (True, _EUI.hex(), 1.5)
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    @pytest.mark.parametrize(
+        "tagged_value",
+        [b"\xd8\x1c\x81\xf9\x3e\x00", b"\xd8\x1d\x00"],
+    )
+    async def test_put_rejects_tags_without_state_or_notification(
+        self, tagged_value: bytes
+    ) -> None:
+        client, server, sos = await _setup()
+        try:
+            sos.activate(_EUI, _T0)
+            notifications = 0
+
+            def notified() -> None:
+                nonlocal notifications
+                notifications += 1
+
+            sos.updated_state = notified  # type: ignore[method-assign]
+            payload = (
+                b"\xa2"
+                + cbor2.dumps("from")
+                + cbor2.dumps(_EUI.hex())
+                + cbor2.dumps("t")
+                + tagged_value
+            )
+            response = await client.request(
+                Message(code=PUT, uri="coap://srv/sos", payload=payload)
+            ).response
+            current = await client.request(
+                Message(code=GET, uri="coap://srv/sos")
+            ).response
+            assert response.code == aiocoap.BAD_REQUEST
+            assert cbor2.loads(current.payload) == {
+                "active": True,
+                "from": _EUI.hex(),
+                "t": _T0,
+            }
+            assert notifications == 0
+        finally:
+            await client.shutdown()
+            await server.shutdown()
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            cbor2.dumps([]),
+            cbor2.dumps({}),
+            cbor2.dumps({"from": _EUI.hex()}),
+            cbor2.dumps({"t": _T0}),
+            cbor2.dumps({"from": True, "t": _T0}),
+            cbor2.dumps({"from": "0102 030405060708", "t": _T0}),
+            cbor2.dumps({"from": "01:02:03:04:05:06:07:08", "t": _T0}),
+            cbor2.dumps({"from": _EUI.hex(), "t": True}),
+            cbor2.dumps({"from": _EUI.hex(), "t": -1}),
+            cbor2.dumps({"from": _EUI.hex(), "t": float("nan")}),
+            cbor2.dumps({"from": _EUI.hex(), "t": float("inf")}),
+            cbor2.dumps({"from": _EUI.hex(), "t": "1"}),
+            cbor2.dumps({"from": _EUI.hex(), "t": _T0}) + b"trailing",
+        ],
+    )
+    async def test_invalid_put_preserves_active_state_and_does_not_notify(
+        self, payload: bytes
+    ) -> None:
+        client, server, sos = await _setup()
+        try:
+            sos.activate(_EUI, _T0)
+            notifications = 0
+
+            def notified() -> None:
+                nonlocal notifications
+                notifications += 1
+
+            sos.updated_state = notified  # type: ignore[method-assign]
+            response = await client.request(
+                Message(code=PUT, uri="coap://srv/sos", payload=payload)
+            ).response
+            assert response.code == aiocoap.BAD_REQUEST
+            assert (sos._active, sos._from, sos._t) == (True, _EUI.hex(), _T0)
+            assert notifications == 0
         finally:
             await client.shutdown()
             await server.shutdown()
