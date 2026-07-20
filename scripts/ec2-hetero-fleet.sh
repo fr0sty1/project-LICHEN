@@ -109,10 +109,11 @@ log_info "  Duration:            ${DURATION_S}s"
 echo ""
 
 # AWS config
-AWS_PROFILE="${AWS_PROFILE:-AdministratorAccess-921772462201}"
-AWS_REGION="us-east-2"
-AMI_ID="ami-03a84069f5e253220"
-KEY_NAME="lichen-ct4d-20260702232050"
+AWS_PROFILE="${AWS_PROFILE:-personal}"
+AWS_REGION="${AWS_REGION:-us-west-2}"
+EXPECTED_AWS_ACCOUNT="210337117346"
+AMI_ID="${EC2_AMI_ID:-ami-0764d1b512e22671f}"
+KEY_NAME="${EC2_KEY_NAME:-markatwood}"
 EC2_SSH_KEY="${EC2_SSH_KEY:-$HOME/.ssh/id_ed25519}"
 ZEPHYR_ELF="${ZEPHYR_ELF:-$PROJECT_ROOT/build/t_echo_renode/zephyr/zephyr.elf}"
 ZEPHYR_VECTOR_OFFSET="${ZEPHYR_VECTOR_OFFSET:-0x32200}"
@@ -123,6 +124,69 @@ aws_cmd() {
     aws --profile "$AWS_PROFILE" --region "$AWS_REGION" "$@"
 }
 
+authenticate_ec2_host() {
+    local instance_id=$1 host=$2 console expected="" scanned="" actual=""
+    local attempt
+
+    for attempt in {1..60}; do
+        if console=$(aws_cmd ec2 get-console-output --instance-id "$instance_id" --latest \
+                --query Output --output text 2>/dev/null); then
+            expected=$(printf '%s\n' "$console" | sed -n \
+                -e '/BEGIN SSH HOST KEY FINGERPRINTS/,/END SSH HOST KEY FINGERPRINTS/ {' \
+                -e '/(ED25519)/ {' \
+                -e 's/^.*\(SHA256:[A-Za-z0-9+\/=]*\).*$/\1/p' \
+                -e '}' -e '}')
+            if [[ -z "$expected" ]]; then
+                expected=$(printf '%s\n' "$console" | sed -n \
+                    -e '/Generating public\/private ed25519 key pair/,/Generating public\/private ecdsa key pair/ {' \
+                    -e 's/^.*\(SHA256:[A-Za-z0-9+\/=]*\).*$/\1/p' \
+                    -e '}')
+            fi
+            [[ -n "$expected" ]] && break
+        fi
+        sleep 5
+    done
+    if [[ -z "$expected" || "$expected" == *$'\n'* ]]; then
+        log_error "No unique trusted ED25519 host fingerprint for $instance_id"
+        return 1
+    fi
+
+    for attempt in {1..12}; do
+        scanned=$(ssh-keyscan -T 5 -t ed25519 "$host" 2>/dev/null) || scanned=""
+        [[ -n "$scanned" ]] && break
+        sleep 5
+    done
+    if [[ -z "$scanned" || "$scanned" == *$'\n'* ]]; then
+        log_error "No unique ED25519 host key from $host"
+        return 1
+    fi
+
+    actual=$(printf '%s\n' "$scanned" | ssh-keygen -E sha256 -lf - 2>/dev/null |
+        sed -n 's/^[0-9][0-9]* \(SHA256:[^ ]*\) .*$/\1/p')
+    if [[ -z "$actual" || "$actual" != "$expected" ]]; then
+        log_error "SSH host key mismatch for $instance_id ($host)"
+        return 1
+    fi
+    printf '%s\n' "$scanned" >> "$KNOWN_HOSTS"
+}
+
+if [[ $ZEPHYR_NODES -gt 0 ]]; then
+    CALLER_ACCOUNT=$(aws_cmd sts get-caller-identity --query Account --output text)
+    if [[ "$CALLER_ACCOUNT" != "$EXPECTED_AWS_ACCOUNT" ]]; then
+        log_error "AWS profile $AWS_PROFILE resolves to account $CALLER_ACCOUNT, expected $EXPECTED_AWS_ACCOUNT"
+        exit 1
+    fi
+    read -r AMI_OWNER AMI_ARCH AMI_STATE AMI_PROJECT <<< "$(aws_cmd ec2 describe-images \
+        --image-ids "$AMI_ID" \
+        --query 'Images[0].[OwnerId,Architecture,State,Tags[?Key==`Project`].Value|[0]]' \
+        --output text)"
+    if [[ "$AMI_OWNER" != "$EXPECTED_AWS_ACCOUNT" || "$AMI_ARCH" != "arm64" || \
+          "$AMI_STATE" != "available" || "$AMI_PROJECT" != "LICHEN" ]]; then
+        log_error "AMI $AMI_ID is not an available account-owned ARM64 LICHEN runtime"
+        exit 1
+    fi
+fi
+
 # Check prerequisites
 check_prereqs() {
     # Zephyr firmware
@@ -130,6 +194,16 @@ check_prereqs() {
         if [[ ! -f "$ZEPHYR_ELF" ]]; then
             log_error "Zephyr firmware not found. Build it:"
             log_error "  west build -b t_echo/nrf52840 lichen/apps/puck -d build/t_echo_renode"
+            exit 1
+        fi
+        if nm -a "$ZEPHYR_ELF" 2>/dev/null | grep -E '[[:space:]](CONFIG_SPI_NRFX_SPIM|spi_nrfx_spim\.c)$' >/dev/null; then
+            log_error "Zephyr firmware uses SPIM, which Renode 1.16.1 cannot run with this platform model"
+            log_error "Rebuild with renode_console.overlay to select nordic,nrf-spi"
+            exit 1
+        fi
+        if ! nm -a "$ZEPHYR_ELF" 2>/dev/null | grep -E '[[:space:]](CONFIG_SPI_NRFX_SPI|spi_nrfx_spi\.c)$' >/dev/null; then
+            log_error "Zephyr firmware does not contain the required legacy nRF SPI driver"
+            log_error "Rebuild with renode_console.overlay"
             exit 1
         fi
     fi
@@ -146,14 +220,66 @@ check_prereqs
 
 # State
 INSTANCE_IDS=()
+SG_ID=""
+RUN_ID="$(date +%s)-$$-$RANDOM"
+EC2_USED=false
+[[ $ZEPHYR_NODES -gt 0 ]] && EC2_USED=true
 SIM_PID=""
 RUST_PIDS=()
 PYTHON_PIDS=()
 RESULTS_DIR="/tmp/hetero-fleet-$(date +%s)"
 mkdir -p "$RESULTS_DIR"
+KNOWN_HOSTS=$(mktemp "${TMPDIR:-/tmp}/lichen-hetero-known-hosts.XXXXXX")
+SSH_OPTS=(
+    -i "$EC2_SSH_KEY"
+    -o "UserKnownHostsFile=$KNOWN_HOSTS"
+    -o GlobalKnownHostsFile=/dev/null
+    -o StrictHostKeyChecking=yes
+    -o HostKeyAlgorithms=ssh-ed25519
+    -o UpdateHostKeys=no
+)
+SCP_LEGACY=()
+if ! scp -O 2>&1 | grep -E 'unknown option|illegal option' >/dev/null; then
+    SCP_LEGACY=(-O)
+fi
 
 cleanup() {
+    local original_status=$?
+    local cleanup_failed=false
+    trap - EXIT
     log_info "Cleaning up..."
+
+    if [[ "$EC2_USED" == "true" ]]; then
+        reconciled_ids=$(aws_cmd ec2 describe-instances \
+            --filters "Name=tag:RunId,Values=$RUN_ID" \
+                      "Name=tag:Project,Values=LICHEN" \
+                      "Name=tag:LaunchedBy,Values=ec2-hetero-fleet.sh" \
+                      "Name=instance-state-name,Values=pending,running,stopping,stopped" \
+            --query 'Reservations[*].Instances[*].InstanceId' --output text 2>/dev/null) || {
+            log_error "Could not reconcile instances for run $RUN_ID"
+            reconciled_ids=""
+            cleanup_failed=true
+        }
+        for id in $reconciled_ids; do
+            tracked=false
+            for tracked_id in "${INSTANCE_IDS[@]-}"; do
+                [[ "$id" == "$tracked_id" ]] && tracked=true
+            done
+            [[ "$tracked" == "true" ]] || INSTANCE_IDS+=("$id")
+        done
+        if [[ -z "$SG_ID" ]]; then
+            if ! SG_ID=$(aws_cmd ec2 describe-security-groups \
+                    --filters "Name=group-name,Values=lichen-hetero-fleet-$RUN_ID" \
+                              "Name=tag:RunId,Values=$RUN_ID" \
+                              "Name=tag:Project,Values=LICHEN" \
+                              "Name=tag:LaunchedBy,Values=ec2-hetero-fleet.sh" \
+                    --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null); then
+                SG_ID=""
+                cleanup_failed=true
+            fi
+            [[ "$SG_ID" == "None" ]] && SG_ID=""
+        fi
+    fi
 
     # Kill local processes
     [[ -n "$SIM_PID" ]] && kill "$SIM_PID" 2>/dev/null || true
@@ -165,10 +291,57 @@ cleanup() {
     done
 
     # Terminate EC2
-    if [[ ${#INSTANCE_IDS[@]} -gt 0 ]]; then
+    ownership_ok=true
+    for id in "${INSTANCE_IDS[@]-}"; do
+        read -r project launched_by run_id <<< "$(aws_cmd ec2 describe-instances --instance-ids "$id" \
+            --query 'Reservations[0].Instances[0].[Tags[?Key==`Project`].Value|[0],Tags[?Key==`LaunchedBy`].Value|[0],Tags[?Key==`RunId`].Value|[0]]' \
+            --output text 2>/dev/null)" || ownership_ok=false
+        if [[ "$project" != "LICHEN" || "$launched_by" != "ec2-hetero-fleet.sh" || "$run_id" != "$RUN_ID" ]]; then
+            log_error "Refusing to terminate unverified instance $id"
+            ownership_ok=false
+        fi
+    done
+    if [[ ${#INSTANCE_IDS[@]} -gt 0 && "$ownership_ok" == "true" ]]; then
         log_info "Terminating ${#INSTANCE_IDS[@]} EC2 instances..."
-        aws_cmd ec2 terminate-instances --instance-ids "${INSTANCE_IDS[@]}" >/dev/null 2>&1 || true
+        if ! aws_cmd ec2 terminate-instances --instance-ids "${INSTANCE_IDS[@]}" >/dev/null; then
+            log_error "Failed to request instance termination: ${INSTANCE_IDS[*]}"
+            cleanup_failed=true
+        elif ! aws_cmd ec2 wait instance-terminated --instance-ids "${INSTANCE_IDS[@]}"; then
+            log_error "Instances did not reach terminated state: ${INSTANCE_IDS[*]}"
+            cleanup_failed=true
+        fi
+    elif [[ ${#INSTANCE_IDS[@]} -gt 0 ]]; then
+        cleanup_failed=true
     fi
+    if [[ -n "$SG_ID" && "$cleanup_failed" == "false" ]]; then
+        read -r sg_project sg_launched_by sg_run_id <<< "$(aws_cmd ec2 describe-security-groups --group-ids "$SG_ID" \
+            --query 'SecurityGroups[0].[Tags[?Key==`Project`].Value|[0],Tags[?Key==`LaunchedBy`].Value|[0],Tags[?Key==`RunId`].Value|[0]]' \
+            --output text 2>/dev/null)" || cleanup_failed=true
+        if [[ "$sg_project" != "LICHEN" || "$sg_launched_by" != "ec2-hetero-fleet.sh" || "$sg_run_id" != "$RUN_ID" ]]; then
+            log_error "Refusing to delete unverified security group $SG_ID"
+            cleanup_failed=true
+        fi
+    fi
+    if [[ -n "$SG_ID" && "$cleanup_failed" == "false" ]]; then
+        deleted=false
+        for _ in {1..6}; do
+            if aws_cmd ec2 delete-security-group --group-id "$SG_ID" >/dev/null 2>&1; then
+                deleted=true
+                break
+            fi
+            sleep 5
+        done
+        if [[ "$deleted" != "true" ]]; then
+            log_error "Failed to delete per-run security group $SG_ID"
+            cleanup_failed=true
+        fi
+    fi
+    if [[ $original_status -ne 0 ]]; then
+        exit "$original_status"
+    elif [[ "$cleanup_failed" == "true" ]]; then
+        exit 1
+    fi
+    exit 0
 }
 trap cleanup EXIT
 
@@ -439,34 +612,24 @@ if [[ $ZEPHYR_NODES -gt 0 ]]; then
 
     NUM_EC2=$(( (ZEPHYR_NODES + RENODES_PER_EC2 - 1) / RENODES_PER_EC2 ))
 
-    # Find/create security group
-    SG_ID=$(aws_cmd ec2 describe-security-groups \
-        --filters "Name=group-name,Values=lichen-renode-fleet" \
-        --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null || echo "None")
-
-    if [[ "$SG_ID" == "None" ]]; then
-        SG_ID=$(aws_cmd ec2 create-security-group \
-            --group-name "lichen-renode-fleet" \
-            --description "LICHEN Renode fleet" \
-            --query 'GroupId' --output text)
-        aws_cmd ec2 authorize-security-group-ingress \
-            --group-id "$SG_ID" --protocol tcp --port 22 --cidr "0.0.0.0/0" >/dev/null
-        aws_cmd ec2 create-tags --resources "$SG_ID" --tags Key=Project,Value=LICHEN
+    SG_NAME="lichen-hetero-fleet-$RUN_ID"
+    if ! SG_ID=$(aws_cmd ec2 create-security-group \
+            --group-name "$SG_NAME" \
+            --description "LICHEN heterogeneous Renode fleet" \
+            --tag-specifications "ResourceType=security-group,Tags=[{Key=Project,Value=LICHEN},{Key=Purpose,Value=hetero-fleet},{Key=LaunchedBy,Value=ec2-hetero-fleet.sh},{Key=RunId,Value=$RUN_ID}]" \
+            --query 'GroupId' --output text); then
+        SG_ID=$(aws_cmd ec2 describe-security-groups \
+            --filters "Name=group-name,Values=$SG_NAME" "Name=tag:RunId,Values=$RUN_ID" \
+                      "Name=tag:Project,Values=LICHEN" \
+                      "Name=tag:LaunchedBy,Values=ec2-hetero-fleet.sh" \
+            --query 'SecurityGroups[0].GroupId' --output text)
     fi
-
-    # User data for Renode installation
-    USER_DATA=$(cat << 'EOF' | base64 -w0
-#!/bin/bash
-set -euxo pipefail
-dnf install -y python3 wget
-wget -q https://github.com/renode/renode/releases/download/v1.16.1/renode-1.16.1.linux-arm64-portable-dotnet.tar.gz -O /tmp/renode.tar.gz
-tar xf /tmp/renode.tar.gz -C /opt
-test -x /opt/renode_1.16.1-dotnet_portable/renode
-ln -sfn /opt/renode_1.16.1-dotnet_portable/renode /usr/local/bin/renode
-test -x /usr/local/bin/renode
-touch /tmp/renode-ready
-EOF
-)
+    if [[ -z "$SG_ID" || "$SG_ID" == "None" ]]; then
+        log_error "Could not create or reconcile security group for run $RUN_ID"
+        exit 1
+    fi
+    aws_cmd ec2 authorize-security-group-ingress \
+        --group-id "$SG_ID" --protocol tcp --port 22 --cidr "${PUBLIC_IP}/32" >/dev/null
 
     # Launch EC2 instances
     NODE_OFFSET=0
@@ -477,23 +640,46 @@ EOF
             NODES_THIS=$RENODES_PER_EC2
         fi
 
-        INSTANCE_ID=$(aws_cmd ec2 run-instances \
-            --image-id "$AMI_ID" \
-            --instance-type "c7g.xlarge" \
-            --key-name "$KEY_NAME" \
-            --security-group-ids "$SG_ID" \
-            --user-data "$USER_DATA" \
-            --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=hetero-zephyr-$ec2_num},{Key=Project,Value=LICHEN}]" \
-            --query 'Instances[0].InstanceId' --output text)
+        INSTANCE_ID=""
+        for _ in {1..3}; do
+            if INSTANCE_ID=$(aws_cmd ec2 run-instances \
+                    --client-token "$RUN_ID-$ec2_num" \
+                    --image-id "$AMI_ID" \
+                    --instance-type "c7g.xlarge" \
+                    --key-name "$KEY_NAME" \
+                    --security-group-ids "$SG_ID" \
+                    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=hetero-zephyr-$ec2_num},{Key=Project,Value=LICHEN},{Key=LaunchedBy,Value=ec2-hetero-fleet.sh},{Key=RunId,Value=$RUN_ID},{Key=LaunchIndex,Value=$ec2_num}]" \
+                    --query 'Instances[0].InstanceId' --output text); then
+                break
+            fi
+            sleep 5
+        done
+        if [[ -z "$INSTANCE_ID" ]]; then
+            INSTANCE_ID=$(aws_cmd ec2 describe-instances \
+                --filters "Name=tag:RunId,Values=$RUN_ID" "Name=tag:LaunchIndex,Values=$ec2_num" \
+                          "Name=tag:Project,Values=LICHEN" \
+                          "Name=tag:LaunchedBy,Values=ec2-hetero-fleet.sh" \
+                --query 'Reservations[0].Instances[0].InstanceId' --output text)
+        fi
+        if [[ -z "$INSTANCE_ID" || "$INSTANCE_ID" == "None" ]]; then
+            log_error "Failed to launch or reconcile EC2 instance $ec2_num"
+            exit 1
+        fi
 
         INSTANCE_IDS+=("$INSTANCE_ID")
         log_info "  EC2 $ec2_num: $INSTANCE_ID (Zephyr nodes $NODE_OFFSET-$((NODE_OFFSET + NODES_THIS - 1)))"
         NODE_OFFSET=$((NODE_OFFSET + NODES_THIS))
     done
 
+    if [[ ${#INSTANCE_IDS[@]} -ne $NUM_EC2 ]]; then
+        log_error "Launched ${#INSTANCE_IDS[@]} of $NUM_EC2 required instances"
+        exit 1
+    fi
+
     # Wait for instances
     log_info "Waiting for EC2 instances..."
     aws_cmd ec2 wait instance-running --instance-ids "${INSTANCE_IDS[@]}"
+    aws_cmd ec2 wait instance-status-ok --instance-ids "${INSTANCE_IDS[@]}"
 
     # Get IPs and wait for Renode
     INSTANCE_IPS=()
@@ -501,27 +687,13 @@ EOF
     for id in "${INSTANCE_IDS[@]}"; do
         IP=$(aws_cmd ec2 describe-instances --instance-ids "$id" \
             --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
-        AZ=$(aws_cmd ec2 describe-instances --instance-ids "$id" \
-            --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' --output text)
         INSTANCE_IPS+=("$IP")
-
-        aws --profile "$AWS_PROFILE" --region "$AWS_REGION" ec2-instance-connect \
-            send-ssh-public-key \
-            --instance-id "$id" \
-            --instance-os-user ec2-user \
-            --availability-zone "$AZ" \
-            --ssh-public-key "file://${EC2_SSH_KEY}.pub" >/dev/null
+        authenticate_ec2_host "$id" "$IP"
 
         READY=0
         for attempt in {1..30}; do
-            aws --profile "$AWS_PROFILE" --region "$AWS_REGION" ec2-instance-connect \
-                send-ssh-public-key \
-                --instance-id "$id" \
-                --instance-os-user ec2-user \
-                --availability-zone "$AZ" \
-                --ssh-public-key "file://${EC2_SSH_KEY}.pub" >/dev/null
-            if ssh -i "$EC2_SSH_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 ec2-user@"$IP" \
-                "test -f /tmp/renode-ready" 2>/dev/null; then
+            if ssh "${SSH_OPTS[@]}" -o ConnectTimeout=5 ec2-user@"$IP" \
+                "test -x /usr/local/bin/renode" 2>/dev/null; then
                 READY=1
                 break
             fi
@@ -540,16 +712,8 @@ EOF
     EC2_INDEX=0
     for id in "${INSTANCE_IDS[@]}"; do
         IP="${INSTANCE_IPS[$EC2_INDEX]}"
-        AZ=$(aws_cmd ec2 describe-instances --instance-ids "$id" \
-            --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' --output text)
-        aws --profile "$AWS_PROFILE" --region "$AWS_REGION" ec2-instance-connect \
-            send-ssh-public-key \
-            --instance-id "$id" \
-            --instance-os-user ec2-user \
-            --availability-zone "$AZ" \
-            --ssh-public-key "file://${EC2_SSH_KEY}.pub" >/dev/null
-        timeout 60 scp -O -i "$EC2_SSH_KEY" \
-            -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
+        scp "${SCP_LEGACY[@]}" "${SSH_OPTS[@]}" \
+            -o ConnectTimeout=15 \
             -o ServerAliveInterval=5 -o ServerAliveCountMax=2 -q \
             "$ZEPHYR_ELF" \
             "$PROJECT_ROOT/lichen/boards/renode/peripherals/SX1262.cs" \
@@ -575,7 +739,7 @@ EOF
             NODES_THIS=$RENODES_PER_EC2
         fi
 
-        ssh -i "$EC2_SSH_KEY" -o StrictHostKeyChecking=no ec2-user@"$IP" bash -s << REMOTE
+        ssh "${SSH_OPTS[@]}" ec2-user@"$IP" bash -s << REMOTE
 cd /tmp
 sed 's#using "../../nrf52840_lichen/support/nrf52840_lichen.repl"#using "/tmp/nrf52840_lichen.repl"#' \
     /tmp/t_echo.repl > /tmp/t_echo_runtime.repl
@@ -604,7 +768,7 @@ uart0 CreateFileBackend @/tmp/zephyr-\$NID-uart.log true
 start
 RESC
 
-    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 /opt/renode_1.16.1-dotnet_portable/renode --disable-xwt --console --port \$((50000 + NID)) node-\$NID.resc > /tmp/renode-\$NID.log 2>&1 &
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 /usr/local/bin/renode --disable-xwt --console --port \$((50000 + NID)) node-\$NID.resc > /tmp/renode-\$NID.log 2>&1 &
 done
 REMOTE
         NODE_ID=$((NODE_ID + NODES_THIS))
@@ -647,19 +811,11 @@ if [[ ${#INSTANCE_IDS[@]} -gt 0 ]]; then
     EC2_INDEX=0
     for id in "${INSTANCE_IDS[@]}"; do
         IP="${INSTANCE_IPS[$EC2_INDEX]}"
-        AZ=$(aws_cmd ec2 describe-instances --instance-ids "$id" \
-            --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' --output text)
-        aws --profile "$AWS_PROFILE" --region "$AWS_REGION" ec2-instance-connect \
-            send-ssh-public-key \
-            --instance-id "$id" \
-            --instance-os-user ec2-user \
-            --availability-zone "$AZ" \
-            --ssh-public-key "file://${EC2_SSH_KEY}.pub" >/dev/null
-        ssh -i "$EC2_SSH_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=15 \
+        ssh "${SSH_OPTS[@]}" -o ConnectTimeout=15 \
             ec2-user@"$IP" \
              "find /tmp -maxdepth 1 -type f \( -name 'zephyr-*' -o -name 'renode-*' \) -print -exec cat {} \\;" \
              > "$RESULTS_DIR/zephyr-remote-$EC2_INDEX.log" 2>&1 || true
-        scp -O -i "$EC2_SSH_KEY" -o StrictHostKeyChecking=no -q \
+        scp "${SCP_LEGACY[@]}" "${SSH_OPTS[@]}" -q \
             ec2-user@"$IP":/tmp/zephyr-* "$RESULTS_DIR/" 2>/dev/null || true
         EC2_INDEX=$((EC2_INDEX + 1))
     done
