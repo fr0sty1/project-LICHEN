@@ -10,13 +10,21 @@
 
 from .edhoc import EdhocInitiator, EdhocResponder, OscoreContext
 from .identity import Identity, PeerIdentity
-from .oscore import MemorySecurityContext
+from .oscore import (
+    MAX_OSCORE_SEQUENCE_NUMBER,
+    OSCORE_SEQUENCE_EXHAUSTED,
+    MemorySecurityContext,
+    OscoreContextParameters,
+)
 
 __all__ = [
     "EdhocInitiator",
     "EdhocResponder",
     "Identity",
+    "MAX_OSCORE_SEQUENCE_NUMBER",
     "MemorySecurityContext",
+    "OSCORE_SEQUENCE_EXHAUSTED",
     "OscoreContext",
+    "OscoreContextParameters",
     "PeerIdentity",
 ]

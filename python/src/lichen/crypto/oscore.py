@@ -30,6 +30,8 @@ SECURITY WARNING:
 from __future__ import annotations
 
 import secrets
+from dataclasses import dataclass
+from hashlib import sha256
 from typing import TYPE_CHECKING
 
 from aiocoap.oscore import (
@@ -51,6 +53,31 @@ if TYPE_CHECKING:
 # SECURITY: Maximum partial IV per RFC 8613 Section 5.2 (5 bytes = 40 bits).
 # Exceeding this would cause nonce reuse, breaking AEAD security.
 _MAX_SEQUENCE_NUMBER = (1 << 40) - 1
+MAX_OSCORE_SEQUENCE_NUMBER = _MAX_SEQUENCE_NUMBER
+OSCORE_SEQUENCE_EXHAUSTED = _MAX_SEQUENCE_NUMBER + 1
+
+
+def _frame_identity_parts(domain: bytes, *parts: bytes) -> bytes:
+    digest = sha256()
+    digest.update(domain)
+    for part in parts:
+        digest.update(len(part).to_bytes(4, "big"))
+        digest.update(part)
+    return digest.digest()
+
+
+@dataclass(frozen=True, slots=True)
+class OscoreContextParameters:
+    """Serializable inputs needed to reconstruct an OSCORE context."""
+
+    master_secret: bytes
+    master_salt: bytes
+    sender_id: bytes
+    recipient_id: bytes
+    algorithm: int
+    hashfun: str
+    window_size: int
+    id_context: bytes | None
 
 
 class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
@@ -73,7 +100,7 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
         sender_id: bytes,
         recipient_id: bytes,
         *,
-        algorithm: int = DEFAULT_ALGORITHM,
+        algorithm: str | int = DEFAULT_ALGORITHM,
         hashfun: str = DEFAULT_HASHFUNCTION,
         window_size: int = DEFAULT_WINDOWSIZE,
         id_context: bytes | None = None,
@@ -106,11 +133,30 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
             raise ValueError(
                 f"starting_sequence_number exceeds RFC 8613 limit ({_MAX_SEQUENCE_NUMBER})"
             )
-        self.alg_aead = algorithms[algorithm]
+        if isinstance(algorithm, int):
+            matching_algorithms = [
+                candidate for candidate in algorithms.values() if int(candidate.value) == algorithm
+            ]
+            if len(matching_algorithms) != 1:
+                raise ValueError(f"unknown or ambiguous COSE algorithm ID: {algorithm}")
+            self.alg_aead = matching_algorithms[0]
+        else:
+            self.alg_aead = algorithms[algorithm]
+        algorithm_id = int(self.alg_aead.value)
         self.hashfun = hashfunctions[hashfun]
-        self.sender_id = sender_id
-        self.recipient_id = recipient_id
-        self.id_context = id_context
+        self.sender_id = bytes(sender_id)
+        self.recipient_id = bytes(recipient_id)
+        self.id_context = bytes(id_context) if id_context is not None else None
+        self._parameters = OscoreContextParameters(
+            master_secret=bytes(master_secret),
+            master_salt=bytes(master_salt),
+            sender_id=self.sender_id,
+            recipient_id=self.recipient_id,
+            algorithm=algorithm_id,
+            hashfun=hashfun,
+            window_size=window_size,
+            id_context=self.id_context,
+        )
 
         # Validate ID lengths (RFC 8613 constraint)
         max_id_len = self.alg_aead.iv_bytes - 6
@@ -124,6 +170,9 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
         # the caller MUST provide a starting value greater than any previously used
         # to prevent nonce reuse (which breaks AEAD security).
         self.sender_sequence_number = starting_sequence_number
+        # Standalone contexts are ephemeral and retain the historical in-process
+        # behavior. A context store clears this range when publishing the context.
+        self._sender_sequence_reservation_end = _MAX_SEQUENCE_NUMBER + 1
 
         # Replay window for incoming messages
         self.recipient_replay_window = ReplayWindow(window_size, lambda: None)
@@ -137,7 +186,7 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
         cls,
         edhoc_ctx: OscoreContext,
         *,
-        algorithm: int = DEFAULT_ALGORITHM,
+        algorithm: str | int = DEFAULT_ALGORITHM,
         hashfun: str = DEFAULT_HASHFUNCTION,
         window_size: int = DEFAULT_WINDOWSIZE,
         starting_sequence_number: int = 0,
@@ -172,6 +221,95 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
             starting_sequence_number=starting_sequence_number,
         )
 
+    @classmethod
+    def from_parameters(
+        cls,
+        parameters: OscoreContextParameters,
+        *,
+        starting_sequence_number: int,
+    ) -> MemorySecurityContext:
+        """Reconstruct a context from exported parameters and durable state."""
+        if starting_sequence_number < 0 or starting_sequence_number > OSCORE_SEQUENCE_EXHAUSTED:
+            raise ValueError("invalid persisted OSCORE sender sequence high-water")
+        context = cls(
+            master_secret=parameters.master_secret,
+            master_salt=parameters.master_salt,
+            sender_id=parameters.sender_id,
+            recipient_id=parameters.recipient_id,
+            algorithm=parameters.algorithm,
+            hashfun=parameters.hashfun,
+            window_size=parameters.window_size,
+            id_context=parameters.id_context,
+            starting_sequence_number=min(starting_sequence_number, _MAX_SEQUENCE_NUMBER),
+        )
+        context.clear_sender_sequence_reservation(starting_sequence_number)
+        return context
+
+    def export_parameters(self) -> OscoreContextParameters:
+        """Return immutable copies of all context reconstruction inputs."""
+        return self._parameters
+
+    def _canonical_algorithm_id(self) -> bytes:
+        return int(self.alg_aead.value).to_bytes(8, "big", signed=True)
+
+    def sender_cryptographic_identity(self) -> bytes:
+        """Return the canonical identity of this context's sender nonce space."""
+        id_context = b"\x00" if self.id_context is None else b"\x01" + self.id_context
+        return _frame_identity_parts(
+            b"LICHEN-OSCORE-SENDER-NONCE-IDENTITY-v1\x00",
+            self._canonical_algorithm_id(),
+            bytes(self.sender_key),
+            bytes(self.common_iv),
+            self.sender_id,
+            id_context,
+        )
+
+    def recipient_cryptographic_identity(self) -> bytes:
+        """Return the canonical identity of this context's replay space."""
+        id_context = b"\x00" if self.id_context is None else b"\x01" + self.id_context
+        return _frame_identity_parts(
+            b"LICHEN-OSCORE-RECIPIENT-REPLAY-IDENTITY-v1\x00",
+            self._canonical_algorithm_id(),
+            bytes(self.recipient_key),
+            bytes(self.common_iv),
+            self.recipient_id,
+            id_context,
+        )
+
+    def export_replay_window(self) -> tuple[int, int]:
+        """Return the recipient replay window index and bitfield."""
+        persisted = self.recipient_replay_window.persist()
+        return int(persisted["index"]), int(persisted["bitfield"])
+
+    def restore_replay_window(self, index: int, bitfield: int) -> None:
+        """Restore a validated recipient replay window snapshot."""
+        if index < 0 or bitfield < 0:
+            raise ValueError("invalid OSCORE replay window state")
+        self.recipient_replay_window.initialize_from_persisted(
+            {"index": index, "bitfield": bitfield}
+        )
+
+    def set_sender_sequence_reservation(self, start: int, end: int) -> None:
+        """Install a committed half-open sender sequence range ``[start, end)``."""
+        if start < 0 or end < start or end > OSCORE_SEQUENCE_EXHAUSTED:
+            raise ValueError("invalid OSCORE sender sequence reservation")
+        if start < self.sender_sequence_number:
+            raise ValueError("reservation starts before the next sender sequence")
+        self.sender_sequence_number = start
+        self._sender_sequence_reservation_end = end
+
+    def clear_sender_sequence_reservation(self, high_water: int) -> None:
+        """Set the durable high-water and fail closed until a range is reserved."""
+        if high_water < 0 or high_water > OSCORE_SEQUENCE_EXHAUSTED:
+            raise ValueError("invalid OSCORE sender sequence high-water")
+        self.sender_sequence_number = high_water
+        self._sender_sequence_reservation_end = high_water
+
+    @property
+    def has_reserved_sender_sequence(self) -> bool:
+        """Whether at least one committed sender sequence remains available."""
+        return self.sender_sequence_number < self._sender_sequence_reservation_end
+
     def new_sequence_number(self) -> int:
         """Allocate and return the next sender sequence number.
 
@@ -181,9 +319,9 @@ class MemorySecurityContext(CanProtect, CanUnprotect, SecurityContextUtils):
         """
         # SECURITY: Check BEFORE returning to prevent nonce reuse
         if self.sender_sequence_number > _MAX_SEQUENCE_NUMBER:
-            raise OverflowError(
-                "OSCORE sequence number exhausted; context must be re-established"
-            )
+            raise OverflowError("OSCORE sequence number exhausted; context must be re-established")
+        if not self.has_reserved_sender_sequence:
+            raise OverflowError("no durable OSCORE sender sequence is reserved")
         seqno = self.sender_sequence_number
         self.sender_sequence_number += 1
         return seqno
