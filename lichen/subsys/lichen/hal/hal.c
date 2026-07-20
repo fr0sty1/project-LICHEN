@@ -15,7 +15,10 @@
 #include <zephyr/drivers/charger.h>
 #endif
 #if IS_ENABLED(CONFIG_FUEL_GAUGE)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
 #include <zephyr/drivers/fuel_gauge.h>
+#pragma GCC diagnostic pop
 #endif
 #include <zephyr/kernel.h>
 #if IS_ENABLED(CONFIG_REBOOT)
