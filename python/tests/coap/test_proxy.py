@@ -33,7 +33,9 @@ async def _setup():
     # Mesh node: serves /status, /neighbors, /config
     node_info = _mesh_node_info()
     mesh_node = await create_lichen_context(
-        mesh_net.channel("fd00::2"), "fd00::2", site=build_site(node_info)
+        mesh_net.channel("fd00::2"),
+        "fd00::2",
+        site=build_site(node_info, allow_config_write=True),
     )
 
     # Gateway mesh-side client (used by the proxy to forward requests)

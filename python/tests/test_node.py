@@ -420,3 +420,29 @@ class TestCallback:
         assert node._on_receive is callback
         assert node._on_receive_owner is owner
         assert callback_calls == []
+
+
+def test_set_config_validates_all_values_before_mutation(node: Node) -> None:
+    node.set_config({"receive_timeout_ms": "250", "announce_interval_ms": "500"})
+    assert node.get_config() == {
+        "receive_timeout_ms": 250,
+        "announce_interval_ms": 500,
+    }
+
+    with pytest.raises(ValueError):
+        node.set_config({
+            "receive_timeout_ms": "300",
+            "announce_interval_ms": "invalid",
+        })
+
+    assert node.get_config() == {
+        "receive_timeout_ms": 250,
+        "announce_interval_ms": 500,
+    }
+
+
+def test_set_config_rejects_unknown_fields_before_mutation(node: Node) -> None:
+    before = node.get_config()
+    with pytest.raises(ValueError, match="unknown config keys"):
+        node.set_config({"receive_timeout_ms": 300, "unknown": 1})
+    assert node.get_config() == before
