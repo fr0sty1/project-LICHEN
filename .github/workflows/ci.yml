@@ -264,6 +264,9 @@ jobs:
           - board: nucleo_wl55jc
             app: gateway
             extra-conf: ""
+          - board: nucleo_wl55jc
+            app: puck
+            extra-conf: ""
     steps:
       - uses: actions/checkout@v4
 
