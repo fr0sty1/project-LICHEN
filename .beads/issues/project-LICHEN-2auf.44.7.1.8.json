@@ -3,12 +3,16 @@
   "title": "Reject relayed link-local DAO origins",
   "description": "At roots, allow link-local DAO origin only when immediate authenticated sender matches the origin and the advertised parent is root. Perform rejection after signature/replay classification but before mutation.",
   "acceptance_criteria": "Direct authenticated link-local DAO with parent root can apply; malicious relay or non-root parent fails without route or persistence mutation; precedence tests pass.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-20T06:07:26.283615454Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-20T06:07:26.283615454Z",
+  "updated_at": "2026-07-20T06:20:26.176867535Z",
+  "started_at": "2026-07-20T06:20:26.176867535Z",
+  "lease_expires_at": "2026-07-20T06:25:26.176867535Z",
+  "heartbeat_at": "2026-07-20T06:20:26.176867535Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2auf.44.7.1.8",
