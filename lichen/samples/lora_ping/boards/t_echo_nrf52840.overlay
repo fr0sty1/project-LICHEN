@@ -1,0 +1,11 @@
+/* Enable the T-Echo SX1262 for the LoRa ping sample. */
+
+/ {
+	chosen {
+		zephyr,lora = &lora;
+	};
+};
+
+&lora {
+	status = "okay";
+};
