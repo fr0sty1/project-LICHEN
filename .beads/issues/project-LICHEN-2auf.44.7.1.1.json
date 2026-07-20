@@ -3,12 +3,16 @@
   "title": "Gate root DAO origins by explicit admission",
   "description": "Add bounded explicit admission of currently pinned Announce identities before a new DAO origin can consume durable high-water capacity. Existing persisted high-water origins remain admitted on open; no silent eviction or destructive retirement API.",
   "acceptance_criteria": "256 unadmitted churn identities consume no durable slots; admitted pinned identity applies; persisted high-water admission survives reopen; typed rejection/error exists; capacity fails closed.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-20T06:06:49.526638421Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-20T06:06:49.526638421Z",
+  "updated_at": "2026-07-20T06:16:45.844408767Z",
+  "started_at": "2026-07-20T06:16:45.844408767Z",
+  "lease_expires_at": "2026-07-20T06:21:45.844408767Z",
+  "heartbeat_at": "2026-07-20T06:16:45.844408767Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2auf.44.7.1.1",
