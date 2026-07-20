@@ -980,24 +980,21 @@ class EdhocResource(resource.Resource):
             self._cleanup_session(peer_host)
             return Message(code=UNAUTHORIZED)
 
-        # Process Message 3
-        responder.process_message_3(msg3, peer_pubkey)
+        try:
+            responder.process_message_3(msg3, peer_pubkey)
+            edhoc_ctx = responder.export_oscore()
+            oscore_ctx = MemorySecurityContext.from_edhoc(edhoc_ctx)
 
-        # Export OSCORE context
-        edhoc_ctx = responder.export_oscore()
-        oscore_ctx = MemorySecurityContext.from_edhoc(edhoc_ctx)
-
-        # Publication is durable before Message 3 is acknowledged.
-        await self._peer_resolver.ensure_bound()
-        await self._context_store.put(
-            peer_host,
-            oscore_ctx,
-            peer_pubkey,
-            expected_generation=expected_generation,
-        )
-
-        # Clean up session
-        self._cleanup_session(peer_host)
+            # Publication is durable before Message 3 is acknowledged.
+            await self._peer_resolver.ensure_bound()
+            await self._context_store.put(
+                peer_host,
+                oscore_ctx,
+                peer_pubkey,
+                expected_generation=expected_generation,
+            )
+        finally:
+            self._cleanup_session(peer_host)
 
         # Return success (empty payload per RFC 9528)
         return Message(code=CHANGED)
