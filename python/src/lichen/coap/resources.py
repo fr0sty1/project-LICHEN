@@ -58,6 +58,8 @@ from aiocoap import (
 )
 from aiocoap.numbers import ContentFormat
 
+from lichen.coap.transport import EndpointPolicy
+
 if TYPE_CHECKING:
     from lichen.coap.secure import (
         EdhocPeerResolver,
@@ -871,6 +873,7 @@ class EdhocResource(resource.Resource):
         identity: Any,
         context_store: TransactionalOscoreContextStore,
         peer_resolver: EdhocPeerResolver,
+        endpoint_policy: EndpointPolicy | None = None,
     ) -> None:
         """Create an EDHOC responder resource.
 
@@ -883,9 +886,22 @@ class EdhocResource(resource.Resource):
         self._identity = identity
         self._context_store = context_store
         self._peer_resolver = peer_resolver
-        self._peer_resolver.bind_context_store(self._context_store)
+        self._endpoint_policy = endpoint_policy
+        if endpoint_policy is None:
+            self._peer_resolver.bind_context_store(self._context_store)
+        else:
+            self._peer_resolver.bind_authority(self._context_store, endpoint_policy)
         # Active EDHOC sessions keyed by (peer_host, C_I)
         self._sessions: dict[tuple[str, bytes], Any] = {}
+
+    def bind_endpoint_policy(self, policy: EndpointPolicy) -> None:
+        """Bind authoritative channel endpoint identity before serving."""
+        self._peer_resolver.bind_authority(self._context_store, policy)
+        self._endpoint_policy = policy
+
+    def _endpoint_key(self, endpoint: str) -> str:
+        policy = self._endpoint_policy or EndpointPolicy()
+        return policy.normalize(endpoint).authority
 
     async def render_post(self, request: Message) -> Message:
         """Handle EDHOC POST request.
@@ -899,6 +915,10 @@ class EdhocResource(resource.Resource):
         # Get peer address from remote
         peer_host = request.remote.hostinfo if request.remote else None
         if not peer_host:
+            return Message(code=BAD_REQUEST)
+        try:
+            peer_host = self._endpoint_key(peer_host)
+        except ValueError:
             return Message(code=BAD_REQUEST)
 
         payload = request.payload
@@ -1019,6 +1039,7 @@ def build_site(
     sos_resource: SosResource | None = None,
     resource_directory: bool = False,
     edhoc_resource: EdhocResource | None = None,
+    endpoint_policy: EndpointPolicy | None = None,
 ) -> resource.Site:
     """Build an aiocoap Site exposing the LICHEN node resources.
 
@@ -1069,5 +1090,7 @@ def build_site(
     if pubkey is not None:
         site.add_resource(["key"], KeyResource(pubkey))
     if edhoc_resource is not None:
+        if endpoint_policy is not None:
+            edhoc_resource.bind_endpoint_policy(endpoint_policy)
         site.add_resource([".well-known", "edhoc"], edhoc_resource)
     return site

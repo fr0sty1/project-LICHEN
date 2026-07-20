@@ -5,23 +5,48 @@
 from __future__ import annotations
 
 import asyncio
+import sqlite3
 from pathlib import Path
+from typing import Any, cast
 
 import aiocoap
 import pytest
 
+from lichen.client.packet_coap import PacketDatagramChannel
 from lichen.coap.resources import EdhocResource, StaticNodeInfo, build_site
 from lichen.coap.secure import (
     OscoreContextStore,
     PeerContext,
+    SecureDatagramChannel,
     SqliteOscoreContextStore,
     TofuPeerResolver,
     TransactionalOscoreContextStore,
 )
-from lichen.coap.transport import InMemoryNetwork, create_lichen_context
+from lichen.coap.transport import (
+    EndpointPolicy,
+    InMemoryNetwork,
+    LichenRemote,
+    create_lichen_context,
+)
 from lichen.crypto.edhoc import EdhocInitiator
 from lichen.crypto.identity import Identity
 from lichen.crypto.oscore import MemorySecurityContext
+
+
+class _CapturedRequest:
+    def __init__(self, response: aiocoap.Message) -> None:
+        loop = asyncio.get_running_loop()
+        self.response: asyncio.Future[aiocoap.Message] = loop.create_future()
+        self.response.set_result(response)
+
+
+class _CapturingContext:
+    def __init__(self) -> None:
+        self.message: aiocoap.Message | None = None
+
+    def request(self, message: aiocoap.Message) -> _CapturedRequest:
+        self.message = message
+        return _CapturedRequest(aiocoap.Message(code=aiocoap.CHANGED, payload=b"response"))
 
 
 class _FailingPutStore(OscoreContextStore):
@@ -34,6 +59,90 @@ class _FailingPutStore(OscoreContextStore):
         expected_generation: int | None = None,
     ) -> PeerContext:
         raise RuntimeError("injected context publication failure")
+
+
+@pytest.mark.asyncio
+async def test_scoped_responder_normalizes_session_lookup_and_publication() -> None:
+    alice = Identity.generate()
+    bob = Identity.generate()
+    store = OscoreContextStore()
+    resolver = TofuPeerResolver()
+    await resolver.pin_peer("fe80::2", alice.pubkey)
+    channel = PacketDatagramChannel(cast(Any, object()), "fe80::1%ble0")
+    edhoc = EdhocResource(bob, store, resolver)
+    build_site(
+        StaticNodeInfo(),
+        edhoc_resource=edhoc,
+        endpoint_policy=channel.endpoint_policy,
+    )
+    initiator = EdhocInitiator.create(alice, c_i=b"\x00")
+
+    request_1 = aiocoap.Message(
+        code=aiocoap.POST,
+        payload=initiator.create_message_1(),
+    )
+    request_1.remote = LichenRemote("fe80::2")
+    response_2 = await edhoc.render_post(request_1)
+
+    assert response_2.code.is_successful()
+    assert {host for host, _c_i in edhoc._sessions} == {"[fe80::2%ble0]"}
+    request_3 = aiocoap.Message(
+        code=aiocoap.POST,
+        payload=initiator.process_message_2(response_2.payload, bob.pubkey),
+    )
+    request_3.remote = LichenRemote("fe80::2")
+    response_3 = await edhoc.render_post(request_3)
+
+    assert response_3.code.is_successful()
+    assert edhoc._sessions == {}
+    published = await store.get("[fe80::2%ble0]")
+    assert published is not None
+    assert await store.get("fe80::2") is published
+    assert set(store._records) == {"[fe80::2%ble0]"}
+
+
+@pytest.mark.asyncio
+async def test_default_edhoc_resource_installs_legacy_sqlite_policy(tmp_path: Path) -> None:
+    store = SqliteOscoreContextStore(tmp_path / "legacy-edhoc.sqlite3")
+    with sqlite3.connect(store._path) as connection:
+        connection.executemany(
+            "INSERT INTO oscore_hosts (host, peer_pubkey) VALUES (?, ?)",
+            [("Peer", b"peer-key"), ("peer", b"peer-key")],
+        )
+    resolver = TofuPeerResolver(store)
+    resource = EdhocResource(Identity.generate(), store, resolver)
+
+    assert await resource._peer_resolver.get_peer_pubkey("PEER") == b"peer-key"
+    with sqlite3.connect(store._path) as connection:
+        hosts = {str(row[0]) for row in connection.execute("SELECT host FROM oscore_hosts")}
+        metadata = connection.execute(
+            "SELECT value FROM oscore_metadata WHERE key = 'endpoint_policy'"
+        ).fetchone()
+    assert hosts == {"peer"}
+    assert metadata == (EndpointPolicy().serialize(),)
+
+
+@pytest.mark.asyncio
+async def test_secure_edhoc_uses_canonical_ipv6_endpoint_uri(monkeypatch) -> None:
+    channel = SecureDatagramChannel(
+        InMemoryNetwork().channel("[2001:db8::2]:61617"),
+        Identity.generate(),
+        local_host="[2001:db8::2]:61617",
+    )
+    context = _CapturingContext()
+
+    async def get_context() -> _CapturingContext:
+        return context
+
+    monkeypatch.setattr(channel, "_get_edhoc_context", get_context)
+
+    response = await channel._edhoc_exchange("[2001:db8::1]:61616", b"message-1")
+
+    assert response == b"response"
+    assert context.message is not None
+    assert context.message.get_request_uri() == (
+        "coap://[2001:db8::1]:61616/.well-known/edhoc"
+    )
 
 
 class TestEdhocResource:

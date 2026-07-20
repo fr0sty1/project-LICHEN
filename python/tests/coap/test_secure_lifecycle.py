@@ -36,6 +36,11 @@ class _RecordingChannel(DatagramChannel):
         self.receiver: Any = None
         self.fail_sends = 0
         self.closed = False
+        self.clear_calls = 0
+        self.close_calls = 0
+        self.shutdown_calls = 0
+        self.shutdown_error: BaseException | None = None
+        self.clear_error: BaseException | None = None
         self.identities: dict[tuple[str, bytes, bool], object] = {}
         self.interest_ended: list[tuple[str, bytes, object | None, bool]] = []
         self.exchanges_ended: list[tuple[str, int, bool]] = []
@@ -49,8 +54,22 @@ class _RecordingChannel(DatagramChannel):
     def set_receiver(self, receiver: Any) -> None:
         self.receiver = receiver
 
+    def clear_receiver(self, receiver: Any) -> None:
+        self.clear_calls += 1
+        if self.clear_error is not None:
+            raise self.clear_error
+        if self.receiver == receiver:
+            self.receiver = None
+
     def close(self) -> None:
+        self.close_calls += 1
         self.closed = True
+
+    async def shutdown(self) -> None:
+        self.shutdown_calls += 1
+        self.closed = True
+        if self.shutdown_error is not None:
+            raise self.shutdown_error
 
     def request_started(
         self, peer: str, token: bytes, *, locally_originated: bool
@@ -282,7 +301,11 @@ async def test_terminal_response_retires_only_after_successful_dispatch() -> Non
         )
 
     channel._unprotect_datagram = cast(Any, unprotect)
-    channel.set_receiver(lambda _data, _source: None)
+
+    def first_receiver(_data: bytes, _source: str) -> None:
+        pass
+
+    channel.set_receiver(first_receiver)
     await channel._process_incoming(cast(bytes, outer.encode()), "peer")
     assert token not in peer.outbound_requests
 
@@ -292,6 +315,7 @@ async def test_terminal_response_retires_only_after_successful_dispatch() -> Non
     def fail_delivery(_data: bytes, _source: str) -> None:
         raise RuntimeError("injected delivery failure")
 
+    channel.clear_receiver(first_receiver)
     channel.set_receiver(fail_delivery)
     await channel._process_incoming(cast(bytes, outer.encode()), "peer")
     assert token in peer.outbound_requests
@@ -949,6 +973,104 @@ async def test_shutdown_cancels_queued_packet_tasks_and_rejects_new_send() -> No
 
 
 @pytest.mark.asyncio
+async def test_shutdown_releases_receiver_and_inner_once() -> None:
+    channel, inner = _channel()
+    channel.set_receiver(lambda _data, _source: None)
+
+    await asyncio.gather(channel.shutdown(), channel.shutdown())
+    await channel.shutdown()
+    channel.close()
+
+    assert inner.receiver is None
+    assert inner.clear_calls == 1
+    assert inner.shutdown_calls == 1
+    assert inner.close_calls == 0
+    assert channel._receiver is None
+
+
+@pytest.mark.asyncio
+async def test_shutdown_cleans_up_and_shares_edhoc_failure() -> None:
+    channel, inner = _channel()
+    channel.set_receiver(lambda _data, _source: None)
+    edhoc_error = RuntimeError("injected EDHOC shutdown failure")
+
+    class _FailingEdhocContext:
+        calls = 0
+
+        async def shutdown(self) -> None:
+            self.calls += 1
+            raise edhoc_error
+
+    edhoc = _FailingEdhocContext()
+    channel._edhoc_ctx = cast(Any, edhoc)
+
+    results = await asyncio.gather(
+        channel.shutdown(), channel.shutdown(), return_exceptions=True
+    )
+    repeated = await asyncio.gather(channel.shutdown(), return_exceptions=True)
+
+    assert results == [edhoc_error, edhoc_error]
+    assert repeated == [edhoc_error]
+    assert edhoc.calls == 1
+    assert inner.shutdown_calls == 1
+    assert inner.receiver is None
+    assert channel._edhoc_ctx is None
+    assert channel._edhoc_channel is None
+    assert channel._active_peer_contexts == {}
+
+
+@pytest.mark.asyncio
+async def test_shutdown_continues_after_receiver_detach_failure() -> None:
+    channel, inner = _channel()
+    channel.set_receiver(lambda _data, _source: None)
+    clear_error = RuntimeError("injected receiver detach failure")
+    inner.clear_error = clear_error
+
+    results = await asyncio.gather(
+        channel.shutdown(), channel.shutdown(), return_exceptions=True
+    )
+
+    assert results == [clear_error, clear_error]
+    assert inner.clear_calls == 1
+    assert inner.shutdown_calls == 1
+    assert channel._inner_receiver_registered is False
+    assert channel._receiver is None
+
+
+def test_close_continues_after_receiver_detach_failure() -> None:
+    channel, inner = _channel()
+    channel.set_receiver(lambda _data, _source: None)
+    clear_error = RuntimeError("injected receiver detach failure")
+    inner.clear_error = clear_error
+
+    with pytest.raises(RuntimeError) as raised:
+        channel.close()
+    channel.close()
+
+    assert raised.value is clear_error
+    assert inner.clear_calls == 1
+    assert inner.close_calls == 1
+    assert channel._inner_receiver_registered is False
+    assert channel._receiver is None
+
+
+@pytest.mark.asyncio
+async def test_close_then_shutdown_does_not_repeat_inner_teardown() -> None:
+    channel, inner = _channel()
+    channel.set_receiver(lambda _data, _source: None)
+
+    channel.close()
+    channel.close()
+    await channel.shutdown()
+    await channel.shutdown()
+
+    assert inner.receiver is None
+    assert inner.clear_calls == 1
+    assert inner.close_calls == 1
+    assert inner.shutdown_calls == 0
+
+
+@pytest.mark.asyncio
 async def test_nstart_cancelled_backlogged_observe_never_sends() -> None:
     channel, inner = _channel()
     peer = _activate(channel, _FakeOscore())
@@ -1023,7 +1145,7 @@ async def test_nstart_backlogged_terminal_con_retains_until_ack() -> None:
         observe_request.remote = LichenRemote("peer")
         observe_request._lichen_lifecycle_id = correlation.lifecycle_id
         terminal = Message(code=CONTENT, _mtype=CON, _token=token, payload=b"done")
-        terminal.remote = LichenRemote("peer")
+        terminal.remote = blocker_message.remote
         terminal.request = observe_request
 
         message_manager.send_message(terminal, lambda: None)
@@ -1098,7 +1220,7 @@ async def test_max_retransmit_abandons_all_backlog_lifecycle_state() -> None:
             _token=response_token,
             payload=b"timeout",
         )
-        terminal.remote = LichenRemote("peer")
+        terminal.remote = blocker_message.remote
         terminal.request = incoming
         message_manager.send_message(terminal, lambda: None)
         assert terminal_correlation.pending_sends == 1
@@ -1149,6 +1271,11 @@ async def test_terminal_response_encode_failure_completes_after_admission_rollba
     response.request = request
     token_manager = context.request_interfaces[0]
     message_manager = token_manager.token_interface
+    remote = await message_manager.message_interface.determine_remote(
+        Message(code=GET, uri="coap://peer")
+    )
+    request.remote = remote
+    response.remote = remote
     try:
         with pytest.raises(TypeError):
             message_manager.send_message(response, lambda: None)

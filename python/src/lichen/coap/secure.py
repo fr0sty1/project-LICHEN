@@ -41,7 +41,7 @@ import os
 import sqlite3
 import stat
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, TypeGuard, TypeVar, cast, runtime_checkable
@@ -59,7 +59,15 @@ from lichen.crypto.oscore import (
     OscoreContextParameters,
 )
 
-from .transport import DatagramChannel, LichenRemote, LichenTransport, ReceiveCallback
+from .transport import (
+    DatagramChannel,
+    Endpoint,
+    EndpointPolicy,
+    LichenRemote,
+    LichenTransport,
+    ReceiveCallback,
+    parse_channel_endpoint,
+)
 
 if TYPE_CHECKING:
     from lichen.crypto.identity import Identity
@@ -90,7 +98,17 @@ class _EdhocChannel(DatagramChannel):
         self._inner.send_datagram(data, dest)
 
     def set_receiver(self, receiver: ReceiveCallback) -> None:
+        if self._receiver is not None:
+            raise RuntimeError("channel already has a receiver")
         self._receiver = receiver
+
+    def clear_receiver(self, receiver: ReceiveCallback) -> None:
+        if self._receiver == receiver:
+            self._receiver = None
+
+    @property
+    def endpoint_policy(self) -> EndpointPolicy:
+        return self._inner.endpoint_policy
 
     def dispatch(self, data: bytes, source: str) -> None:
         """Dispatch received data to the registered receiver.
@@ -200,8 +218,12 @@ class ReplayWindowConflictError(RuntimeError):
         self.current_state = (index, bitfield)
 
 
+class EndpointPolicyConflictError(RuntimeError):
+    """A store was bound to an incompatible endpoint namespace."""
+
+
 def validate_endpoint_key(endpoint: str) -> str:
-    """Validate and return an opaque DatagramChannel endpoint unchanged."""
+    """Validate and canonicalize a DatagramChannel endpoint key."""
     if not endpoint:
         raise ValueError("endpoint key must not be empty")
     if len(endpoint) > 4096:
@@ -212,11 +234,11 @@ def validate_endpoint_key(endpoint: str) -> str:
         endpoint.encode("utf-8")
     except UnicodeEncodeError as error:
         raise ValueError("endpoint key must be valid UTF-8") from error
-    return endpoint
+    return parse_channel_endpoint(endpoint).authority
 
 
 def normalize_host(host: str) -> str:
-    """Compatibility alias for validation-only opaque endpoint handling."""
+    """Compatibility alias for canonical endpoint handling."""
     return validate_endpoint_key(host)
 
 
@@ -233,12 +255,55 @@ class _HostRecord:
     generation: int = 0
 
 
+def _host_records_semantically_equal(left: _HostRecord, right: _HostRecord) -> bool:
+    if left.peer_pubkey != right.peer_pubkey or left.generation != right.generation:
+        return False
+    if left.context is None or right.context is None:
+        return left.context is right.context
+    return (
+        left.context.peer_pubkey == right.context.peer_pubkey
+        and left.context.generation == right.context.generation
+        and left.context.oscore.export_parameters()
+        == right.context.oscore.export_parameters()
+        and left.context.oscore.sender_sequence_number
+        == right.context.oscore.sender_sequence_number
+        and left.context.oscore.export_replay_window()
+        == right.context.oscore.export_replay_window()
+    )
+
+
+def _sqlite_host_values_semantically_equal(
+    left: tuple[Any, ...], right: tuple[Any, ...]
+) -> bool:
+    """Compare persisted host rows by reconstructed security meaning."""
+    if len(left) != 12 or len(right) != 12:
+        return False
+    blob_indexes = {0, 1, 2, 3, 4, 8, 9, 10}
+    for index, (left_value, right_value) in enumerate(zip(left, right, strict=True)):
+        if index == 5:
+            if left_value is None or right_value is None:
+                if left_value is not right_value:
+                    return False
+            elif json.loads(str(left_value)) != json.loads(str(right_value)):
+                return False
+        elif index in blob_indexes:
+            if left_value is None or right_value is None:
+                if left_value is not right_value:
+                    return False
+            elif bytes(left_value) != bytes(right_value):
+                return False
+        elif left_value != right_value:
+            return False
+    return True
+
+
 @runtime_checkable
 class TransactionalOscoreContextStore(Protocol):
     """Transactional OSCORE store contract.
 
-    Implementations MUST preserve endpoint keys exactly after validation. ``put``
-    MUST atomically verify/create the peer binding, compare ``expected_generation``,
+    Implementations MUST normalize endpoint keys under their bound
+    :class:`EndpointPolicy`. ``put`` MUST atomically verify/create the peer binding,
+    compare ``expected_generation``,
     advance generation, publish reconstructable context material, and recover the
     permanent sender/replay ledgers. A different bound key or stale generation MUST
     leave all state unchanged. ``reserve_sender_sequences`` MUST durably advance one
@@ -293,6 +358,12 @@ class TransactionalOscoreContextStore(Protocol):
     ) -> None: ...
     async def get_peer_pubkey(self, host: str) -> bytes | None: ...
     async def pin_peer(self, host: str, pubkey: bytes) -> None: ...
+    async def pin_peers(self, pins: Mapping[str, bytes]) -> None: ...
+    def migrate_endpoint_keys(
+        self,
+        policy: EndpointPolicy,
+        pending_pins: Mapping[str, bytes],
+    ) -> None: ...
     async def remove(self, host: str) -> None: ...
     def has_context_sync(self, host: str) -> bool: ...
     async def has_context(self, host: str) -> bool: ...
@@ -314,7 +385,11 @@ class InMemoryOscoreContextStore:
         self._sender_ledgers: dict[bytes, int] = {}
         self._replay_ledgers: dict[bytes, tuple[int, int]] = {}
         self._lock: asyncio.Lock | None = None
+        self._endpoint_policy: EndpointPolicy | None = None
         self._pid = os.getpid()
+
+    def _normalize_key(self, host: str) -> str:
+        return (self._endpoint_policy or EndpointPolicy()).normalize(host).authority
 
     def check_process(self) -> None:
         if os.getpid() != self._pid:
@@ -330,18 +405,18 @@ class InMemoryOscoreContextStore:
     def get_sync(self, host: str) -> PeerContext | None:
         """Get a context synchronously; supported by the in-memory store only."""
         self.check_process()
-        record = self._records.get(validate_endpoint_key(host))
+        record = self._records.get(self._normalize_key(host))
         return None if record is None else record.context
 
     async def get(self, host: str) -> PeerContext | None:
         """Get OSCORE context for a peer, or None if not established."""
         async with self._get_lock():
-            record = self._records.get(validate_endpoint_key(host))
+            record = self._records.get(self._normalize_key(host))
             return None if record is None else record.context
 
     async def get_generation(self, host: str) -> int | None:
         async with self._get_lock():
-            record = self._records.get(validate_endpoint_key(host))
+            record = self._records.get(self._normalize_key(host))
             return None if record is None or record.generation == 0 else record.generation
 
     async def put(
@@ -355,7 +430,7 @@ class InMemoryOscoreContextStore:
         """Atomically publish a context, enforcing peer binding and generation CAS."""
         async with self._get_lock():
             return self._put_locked(
-                validate_endpoint_key(host), oscore_ctx, bytes(peer_pubkey), expected_generation
+                self._normalize_key(host), oscore_ctx, bytes(peer_pubkey), expected_generation
             )
 
     def _put_locked(
@@ -412,7 +487,7 @@ class InMemoryOscoreContextStore:
         if self._lock is not None:
             raise RuntimeError("synchronous provisioning is only valid before async store use")
         return self._put_locked(
-            validate_endpoint_key(host), oscore_ctx, bytes(peer_pubkey), expected_generation
+            self._normalize_key(host), oscore_ctx, bytes(peer_pubkey), expected_generation
         )
 
     async def reserve_sender_sequences(
@@ -423,7 +498,7 @@ class InMemoryOscoreContextStore:
         if count <= 0:
             raise ValueError("reservation count must be positive")
         async with self._get_lock():
-            key = validate_endpoint_key(host)
+            key = self._normalize_key(host)
             record = self._records.get(key)
             if record is not None and record.generation != generation:
                 raise ContextGenerationError(f"context generation changed for {key}")
@@ -449,7 +524,7 @@ class InMemoryOscoreContextStore:
         new_bitfield: int,
     ) -> None:
         async with self._get_lock():
-            key = validate_endpoint_key(host)
+            key = self._normalize_key(host)
             record = self._records.get(key)
             if record is None or record.context is None:
                 raise ContextGenerationError(f"no context exists for {key}")
@@ -467,23 +542,69 @@ class InMemoryOscoreContextStore:
     async def get_peer_pubkey(self, host: str) -> bytes | None:
         """Return the authoritative peer binding, if present."""
         async with self._get_lock():
-            record = self._records.get(validate_endpoint_key(host))
+            record = self._records.get(self._normalize_key(host))
             return None if record is None else record.peer_pubkey
 
     async def pin_peer(self, host: str, pubkey: bytes) -> None:
         """Atomically create or verify a peer key binding."""
+        await self.pin_peers({host: pubkey})
+
+    async def pin_peers(self, pins: Mapping[str, bytes]) -> None:
+        """Atomically create or verify a batch of peer bindings."""
         async with self._get_lock():
-            key = validate_endpoint_key(host)
-            existing = self._records.get(key)
-            if existing is not None and existing.peer_pubkey != pubkey:
-                raise PeerKeyConflictError(f"TOFU violation: peer {key} key changed")
+            staged = dict(self._records)
+            for host, pubkey in pins.items():
+                key = self._normalize_key(host)
+                value = bytes(pubkey)
+                existing = staged.get(key)
+                if existing is not None and existing.peer_pubkey != value:
+                    raise PeerKeyConflictError(f"TOFU violation: peer {key} key changed")
+                if existing is None:
+                    staged[key] = _HostRecord(value)
+            self._records = staged
+
+    def migrate_endpoint_keys(
+        self,
+        policy: EndpointPolicy,
+        pending_pins: Mapping[str, bytes],
+    ) -> None:
+        """Atomically normalize all host records and merge pending pins."""
+        self.check_process()
+        if self._lock is not None and self._lock.locked():
+            raise RuntimeError("context store is busy")
+        if self._endpoint_policy is not None and self._endpoint_policy != policy:
+            raise EndpointPolicyConflictError(
+                "in-memory context store is bound to an incompatible endpoint policy"
+            )
+        staged: dict[str, tuple[str, _HostRecord]] = {}
+        for old_key, record in self._records.items():
+            key = policy.normalize(old_key).authority
+            existing = staged.get(key)
+            if existing is not None and not _host_records_semantically_equal(
+                existing[1], record
+            ):
+                raise PeerKeyConflictError(
+                    f"endpoint aliases normalize to conflicting record {key}"
+                )
+            if existing is None or (old_key == key and existing[0] != key):
+                staged[key] = (old_key, record)
+        for old_key, pubkey in pending_pins.items():
+            key = policy.normalize(old_key).authority
+            value = bytes(pubkey)
+            existing = staged.get(key)
+            if existing is not None and existing[1].peer_pubkey != value:
+                raise PeerKeyConflictError(
+                    f"endpoint aliases normalize to {key} with different keys"
+                )
             if existing is None:
-                self._records[key] = _HostRecord(bytes(pubkey))
+                staged[key] = (old_key, _HostRecord(value))
+        self._records = {key: value[1] for key, value in staged.items()}
+        self._endpoint_policy = policy
 
     async def remove(self, host: str) -> None:
         """Tombstone a context while preserving peer binding and identity ledgers."""
         async with self._get_lock():
-            record = self._records.get(validate_endpoint_key(host))
+            record = self._records.get(self._normalize_key(host))
             if record is not None and record.context is not None:
                 record.context = None
                 record.generation += 1
@@ -491,13 +612,13 @@ class InMemoryOscoreContextStore:
     def has_context_sync(self, host: str) -> bool:
         """Check if we have a context (synchronous)."""
         self.check_process()
-        record = self._records.get(validate_endpoint_key(host))
+        record = self._records.get(self._normalize_key(host))
         return record is not None and record.context is not None
 
     async def has_context(self, host: str) -> bool:
         """Check if we have a context for a peer."""
         async with self._get_lock():
-            record = self._records.get(validate_endpoint_key(host))
+            record = self._records.get(self._normalize_key(host))
             return record is not None and record.context is not None
 
 
@@ -519,6 +640,10 @@ class SqliteOscoreContextStore:
     """Durable SQLite implementation of the transactional context-store contract."""
 
     _SCHEMA = """
+        CREATE TABLE IF NOT EXISTS oscore_metadata (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS oscore_hosts (
             host TEXT PRIMARY KEY,
             peer_pubkey BLOB NOT NULL,
@@ -556,8 +681,66 @@ class SqliteOscoreContextStore:
         self._thread_lock = threading.Lock()
         self._hooks = hooks or SqliteStoreHooks()
         self._cache: dict[str, PeerContext] = {}
+        self._endpoint_policy: EndpointPolicy | None = None
         self._prepare_database_file()
         self._initialize()
+
+    def _policy_locked(self, connection: sqlite3.Connection) -> EndpointPolicy:
+        row = connection.execute(
+            "SELECT value FROM oscore_metadata WHERE key = 'endpoint_policy'"
+        ).fetchone()
+        if row is None:
+            policy = EndpointPolicy()
+            rows = connection.execute(
+                "SELECT host, peer_pubkey, master_secret, master_salt, sender_id, "
+                "recipient_id, algorithm_json, hashfun, window_size, id_context, "
+                "sender_identity, recipient_identity, generation "
+                "FROM oscore_hosts ORDER BY host"
+            ).fetchall()
+            staged: dict[str, tuple[str, tuple[Any, ...]]] = {}
+            for legacy_row in rows:
+                old_key = str(legacy_row[0])
+                key = policy.normalize(old_key).authority
+                values = tuple(legacy_row[1:])
+                existing = staged.get(key)
+                if existing is not None and not _sqlite_host_values_semantically_equal(
+                    existing[1], values
+                ):
+                    raise PeerKeyConflictError(
+                        f"legacy endpoint aliases normalize to conflicting record {key}"
+                    )
+                if existing is None or (old_key == key and existing[0] != key):
+                    staged[key] = (old_key, values)
+            current = {str(legacy_row[0]): tuple(legacy_row[1:]) for legacy_row in rows}
+            replacement = {key: values for key, (_old, values) in staged.items()}
+            if current != replacement:
+                connection.execute("DELETE FROM oscore_hosts")
+                connection.executemany(
+                    "INSERT INTO oscore_hosts (host, peer_pubkey, master_secret, master_salt, "
+                    "sender_id, recipient_id, algorithm_json, hashfun, window_size, "
+                    "id_context, sender_identity, recipient_identity, generation) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    [(key, *values) for key, values in replacement.items()],
+                )
+            connection.execute(
+                "INSERT INTO oscore_metadata (key, value) VALUES ('endpoint_policy', ?)",
+                (policy.serialize(),),
+            )
+            self._hooks.transaction_step("migrate", "after_write")
+            self._cache.clear()
+            return policy
+        persisted = EndpointPolicy.deserialize(str(row[0]))
+        if self._endpoint_policy is not None and self._endpoint_policy != persisted:
+            raise EndpointPolicyConflictError(
+                "SQLite context store endpoint policy changed incompatibly"
+            )
+        if self._endpoint_policy is None:
+            self._cache.clear()
+            self._endpoint_policy = persisted
+        return persisted
+
+    def _normalize_key_locked(self, connection: sqlite3.Connection, host: str) -> str:
+        return self._policy_locked(connection).normalize(host).authority
 
     def check_process(self) -> None:
         pid = os.getpid()
@@ -625,6 +808,11 @@ class SqliteOscoreContextStore:
     def _initialize(self) -> None:
         with self._thread_lock, self._connect() as connection:
             connection.executescript(self._SCHEMA)
+            row = connection.execute(
+                "SELECT value FROM oscore_metadata WHERE key = 'endpoint_policy'"
+            ).fetchone()
+            if row is not None:
+                self._endpoint_policy = EndpointPolicy.deserialize(str(row[0]))
 
     async def _transaction(self, operation: str, host: str, worker: Callable[[], _T]) -> _T:
         self.check_process()
@@ -634,23 +822,13 @@ class SqliteOscoreContextStore:
             try:
                 await asyncio.shield(task)
             except asyncio.CancelledError:
-                continue
+                current = asyncio.current_task()
+                if current is not None:
+                    while current.cancelling():
+                        current.uncancel()
+            except BaseException:
+                break
         return task.result()
-
-    def _read_row(self, host: str) -> tuple[Any, ...] | None:
-        self.check_process()
-        with self._thread_lock, self._connect() as connection:
-            row = connection.execute(
-                "SELECT peer_pubkey, master_secret, master_salt, sender_id, "
-                "recipient_id, algorithm_json, hashfun, window_size, id_context, "
-                "h.sender_identity, h.recipient_identity, generation, n.high_water, "
-                "r.window_index, r.bitfield FROM oscore_hosts AS h "
-                "LEFT JOIN oscore_sender_ledgers AS n ON n.sender_identity = h.sender_identity "
-                "LEFT JOIN oscore_replay_ledgers AS r "
-                "ON r.recipient_identity = h.recipient_identity WHERE host = ?",
-                (host,),
-            ).fetchone()
-            return cast(tuple[Any, ...] | None, row)
 
     @staticmethod
     def _row_context(row: tuple[Any, ...] | None) -> PeerContext | None:
@@ -677,34 +855,62 @@ class SqliteOscoreContextStore:
 
     async def get(self, host: str) -> PeerContext | None:
         self.check_process()
-        key = validate_endpoint_key(host)
-        row = await asyncio.to_thread(self._read_row, key)
-        if row is None or row[1] is None:
-            self._cache.pop(key, None)
-            return None
-        cached = self._cache.get(key)
-        if cached is not None and cached.generation == int(row[11]):
-            persisted_replay = (int(row[13]), int.from_bytes(bytes(row[14]), "big"))
-            if cached.oscore.export_replay_window() != persisted_replay:
-                cached.oscore.restore_replay_window(*persisted_replay)
-            return cached
-        context = self._row_context(row)
-        if context is not None:
-            self._cache[key] = context
-        return context
+
+        def worker() -> PeerContext | None:
+            with self._thread_lock, self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                policy = self._policy_locked(connection)
+                key = policy.normalize(host).authority
+                row = connection.execute(
+                    "SELECT peer_pubkey, master_secret, master_salt, sender_id, "
+                    "recipient_id, algorithm_json, hashfun, window_size, id_context, "
+                    "h.sender_identity, h.recipient_identity, generation, n.high_water, "
+                    "r.window_index, r.bitfield FROM oscore_hosts AS h "
+                    "LEFT JOIN oscore_sender_ledgers AS n "
+                    "ON n.sender_identity = h.sender_identity "
+                    "LEFT JOIN oscore_replay_ledgers AS r "
+                    "ON r.recipient_identity = h.recipient_identity WHERE host = ?",
+                    (key,),
+                ).fetchone()
+                self._hooks.transaction_step("get", "after_read")
+                connection.commit()
+                self._endpoint_policy = policy
+                if row is None or row[1] is None:
+                    self._cache.pop(key, None)
+                    return None
+                cached = self._cache.get(key)
+                if cached is not None and cached.generation == int(row[11]):
+                    persisted_replay = (
+                        int(row[13]),
+                        int.from_bytes(bytes(row[14]), "big"),
+                    )
+                    if cached.oscore.export_replay_window() != persisted_replay:
+                        cached.oscore.restore_replay_window(*persisted_replay)
+                    return cached
+                context = self._row_context(cast(tuple[Any, ...], row))
+                if context is not None:
+                    self._cache[key] = context
+                return context
+
+        return await self._transaction("get", host, worker)
 
     async def get_generation(self, host: str) -> int | None:
         self.check_process()
-        key = validate_endpoint_key(host)
 
         def worker() -> int | None:
             with self._thread_lock, self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                policy = self._policy_locked(connection)
+                key = policy.normalize(host).authority
                 row = connection.execute(
                     "SELECT generation FROM oscore_hosts WHERE host = ?", (key,)
                 ).fetchone()
+                self._hooks.transaction_step("get_generation", "after_read")
+                connection.commit()
+                self._endpoint_policy = policy
                 return None if row is None or int(row[0]) == 0 else int(row[0])
 
-        return await asyncio.to_thread(worker)
+        return await self._transaction("get_generation", host, worker)
 
     def get_sync(self, host: str) -> PeerContext | None:
         self.check_process()
@@ -719,21 +925,23 @@ class SqliteOscoreContextStore:
         expected_generation: int | None = None,
     ) -> PeerContext:
         self.check_process()
-        key = validate_endpoint_key(host)
         pubkey = bytes(peer_pubkey)
         parameters = oscore_ctx.export_parameters()
         high_water = oscore_ctx.sender_sequence_number
         sender_identity = oscore_ctx.sender_cryptographic_identity()
         recipient_identity = oscore_ctx.recipient_cryptographic_identity()
         initial_replay = oscore_ctx.export_replay_window()
-        cached = self._cache.get(key)
-        same_object_generation = (
-            cached.generation if cached is not None and cached.oscore is oscore_ctx else None
-        )
 
-        def worker() -> tuple[bool, int, int, int, int]:
+        def worker() -> PeerContext:
             with self._thread_lock, self._connect() as connection:
                 connection.execute("BEGIN IMMEDIATE")
+                key = self._normalize_key_locked(connection, host)
+                cached = self._cache.get(key)
+                same_object_generation = (
+                    cached.generation
+                    if cached is not None and cached.oscore is oscore_ctx
+                    else None
+                )
                 row = connection.execute(
                     "SELECT peer_pubkey, generation FROM oscore_hosts WHERE host = ?",
                     (key,),
@@ -788,13 +996,10 @@ class SqliteOscoreContextStore:
                     replay_bitfield = int.from_bytes(bytes(replay_row[1]), "big")
                 if idempotent:
                     connection.commit()
-                    return (
-                        True,
-                        generation,
-                        committed_high_water,
-                        replay_index,
-                        replay_bitfield,
-                    )
+                    self._endpoint_policy = self._policy_locked(connection)
+                    if cached is None:
+                        raise RuntimeError("idempotent SQLite context cache entry disappeared")
+                    return cached
                 values = (
                     pubkey,
                     parameters.master_secret,
@@ -828,24 +1033,14 @@ class SqliteOscoreContextStore:
                     )
                 self._hooks.transaction_step("put", "after_write")
                 connection.commit()
-                return False, generation, committed_high_water, replay_index, replay_bitfield
+                self._endpoint_policy = self._policy_locked(connection)
+                oscore_ctx.clear_sender_sequence_reservation(committed_high_water)
+                oscore_ctx.restore_replay_window(replay_index, replay_bitfield)
+                context = PeerContext(oscore_ctx, pubkey, generation=generation)
+                self._cache[key] = context
+                return context
 
-        (
-            idempotent,
-            generation,
-            committed_high_water,
-            replay_index,
-            replay_bitfield,
-        ) = await self._transaction("put", key, worker)
-        if idempotent:
-            if cached is None:
-                raise RuntimeError("idempotent SQLite context cache entry disappeared")
-            return cached
-        oscore_ctx.clear_sender_sequence_reservation(committed_high_water)
-        oscore_ctx.restore_replay_window(replay_index, replay_bitfield)
-        context = PeerContext(oscore_ctx, pubkey, generation=generation)
-        self._cache[key] = context
-        return context
+        return await self._transaction("put", host, worker)
 
     def put_sync(
         self,
@@ -862,11 +1057,10 @@ class SqliteOscoreContextStore:
     ) -> SequenceReservation:
         if count <= 0:
             raise ValueError("reservation count must be positive")
-        key = validate_endpoint_key(host)
-
         def worker() -> SequenceReservation:
             with self._thread_lock, self._connect() as connection:
                 connection.execute("BEGIN IMMEDIATE")
+                key = self._normalize_key_locked(connection, host)
                 row = connection.execute(
                     "SELECT h.generation, h.sender_identity, n.high_water "
                     "FROM oscore_hosts AS h LEFT JOIN oscore_sender_ledgers AS n "
@@ -888,9 +1082,10 @@ class SqliteOscoreContextStore:
                 )
                 self._hooks.transaction_step("reserve", "after_write")
                 connection.commit()
+                self._endpoint_policy = self._policy_locked(connection)
                 return SequenceReservation(start, end, generation)
 
-        return await self._transaction("reserve", key, worker)
+        return await self._transaction("reserve", host, worker)
 
     async def compare_and_set_replay_window(
         self,
@@ -905,12 +1100,13 @@ class SqliteOscoreContextStore:
         if min(expected_index, expected_bitfield, new_index, new_bitfield) < 0:
             raise ValueError("invalid OSCORE replay window state")
         self.check_process()
-        key = validate_endpoint_key(host)
         identity = bytes(recipient_identity)
 
         def worker() -> None:
             with self._thread_lock, self._connect() as connection:
                 connection.execute("BEGIN IMMEDIATE")
+                policy = self._policy_locked(connection)
+                key = policy.normalize(host).authority
                 row = connection.execute(
                     "SELECT h.generation, h.recipient_identity, r.window_index, r.bitfield "
                     "FROM oscore_hosts AS h JOIN oscore_replay_ledgers AS r "
@@ -934,44 +1130,160 @@ class SqliteOscoreContextStore:
                     raise RuntimeError("OSCORE replay ledger is missing")
                 self._hooks.transaction_step("replay_cas", "after_write")
                 connection.commit()
+                self._endpoint_policy = self._policy_locked(connection)
 
-        await self._transaction("replay_cas", key, worker)
+        await self._transaction("replay_cas", host, worker)
 
     async def get_peer_pubkey(self, host: str) -> bytes | None:
         self.check_process()
-        row = await asyncio.to_thread(self._read_row, validate_endpoint_key(host))
-        return None if row is None else bytes(row[0])
+
+        def worker() -> bytes | None:
+            with self._thread_lock, self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                policy = self._policy_locked(connection)
+                key = policy.normalize(host).authority
+                row = connection.execute(
+                    "SELECT peer_pubkey FROM oscore_hosts WHERE host = ?", (key,)
+                ).fetchone()
+                self._hooks.transaction_step("get_peer_pubkey", "after_read")
+                connection.commit()
+                self._endpoint_policy = policy
+                return None if row is None else bytes(row[0])
+
+        return await self._transaction("get_peer_pubkey", host, worker)
 
     async def pin_peer(self, host: str, pubkey: bytes) -> None:
+        await self.pin_peers({host: pubkey})
+
+    async def pin_peers(self, pins: Mapping[str, bytes]) -> None:
         self.check_process()
-        key = validate_endpoint_key(host)
-        value = bytes(pubkey)
+        pending = [(host, bytes(pubkey)) for host, pubkey in pins.items()]
 
         def worker() -> None:
             with self._thread_lock, self._connect() as connection:
                 connection.execute("BEGIN IMMEDIATE")
-                row = connection.execute(
-                    "SELECT peer_pubkey FROM oscore_hosts WHERE host = ?", (key,)
-                ).fetchone()
-                if row is not None and bytes(row[0]) != value:
-                    raise PeerKeyConflictError(f"TOFU violation: peer {key} key changed")
-                if row is None:
+                policy = self._policy_locked(connection)
+                normalized: dict[str, bytes] = {}
+                for host, value in pending:
+                    key = policy.normalize(host).authority
+                    if key in normalized and normalized[key] != value:
+                        raise PeerKeyConflictError(
+                            f"TOFU violation: peer aliases normalize to {key} "
+                            "with different keys"
+                        )
+                    normalized[key] = value
+                additions: list[tuple[str, bytes]] = []
+                for key, value in normalized.items():
+                    row = connection.execute(
+                        "SELECT peer_pubkey FROM oscore_hosts WHERE host = ?", (key,)
+                    ).fetchone()
+                    if row is not None and bytes(row[0]) != value:
+                        raise PeerKeyConflictError(
+                            f"TOFU violation: peer {key} key changed"
+                        )
+                    if row is None:
+                        additions.append((key, value))
+                for key, value in additions:
                     connection.execute(
                         "INSERT INTO oscore_hosts (host, peer_pubkey) VALUES (?, ?)",
                         (key, value),
                     )
-                self._hooks.transaction_step("pin", "after_write")
+                self._hooks.transaction_step("pin_batch", "after_write")
                 connection.commit()
+                self._endpoint_policy = policy
 
-        await self._transaction("pin", key, worker)
+        await self._transaction("pin_batch", "<batch>", worker)
+
+    def migrate_endpoint_keys(
+        self,
+        policy: EndpointPolicy,
+        pending_pins: Mapping[str, bytes],
+    ) -> None:
+        """Normalize all persisted host rows and merge pins in one transaction."""
+        self.check_process()
+        selected_sources: dict[str, str | None] = {}
+
+        with self._thread_lock, self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            policy_row = connection.execute(
+                "SELECT value FROM oscore_metadata WHERE key = 'endpoint_policy'"
+            ).fetchone()
+            if policy_row is not None:
+                persisted = EndpointPolicy.deserialize(str(policy_row[0]))
+                if persisted != policy:
+                    raise EndpointPolicyConflictError(
+                        "SQLite context store is bound to an incompatible endpoint policy"
+                    )
+            rows = connection.execute(
+                "SELECT host, peer_pubkey, master_secret, master_salt, sender_id, "
+                "recipient_id, algorithm_json, hashfun, window_size, id_context, "
+                "sender_identity, recipient_identity, generation "
+                "FROM oscore_hosts ORDER BY host"
+            ).fetchall()
+            staged: dict[str, tuple[str | None, tuple[Any, ...]]] = {}
+            for row in rows:
+                old_key = str(row[0])
+                key = policy.normalize(old_key).authority
+                values = tuple(row[1:])
+                existing = staged.get(key)
+                if existing is not None and not _sqlite_host_values_semantically_equal(
+                    existing[1], values
+                ):
+                    raise PeerKeyConflictError(
+                        f"endpoint aliases normalize to conflicting record {key}"
+                    )
+                if existing is None or (old_key == key and existing[0] != key):
+                    staged[key] = (old_key, values)
+            for old_key, pubkey in pending_pins.items():
+                key = policy.normalize(old_key).authority
+                value = bytes(pubkey)
+                existing = staged.get(key)
+                if existing is not None and bytes(existing[1][0]) != value:
+                    raise PeerKeyConflictError(
+                        f"endpoint aliases normalize to {key} with different keys"
+                    )
+                if existing is None:
+                    staged[key] = (
+                        None,
+                        (value, None, None, None, None, None, None, None, None, None, None, 0),
+                    )
+
+            current = {str(row[0]): tuple(row[1:]) for row in rows}
+            replacement = {key: values for key, (_old, values) in staged.items()}
+            changed = current != replacement or policy_row is None
+            if current != replacement:
+                connection.execute("DELETE FROM oscore_hosts")
+                connection.executemany(
+                    "INSERT INTO oscore_hosts (host, peer_pubkey, master_secret, master_salt, "
+                    "sender_id, recipient_id, algorithm_json, hashfun, window_size, "
+                    "id_context, sender_identity, recipient_identity, generation) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    [(key, *values) for key, values in replacement.items()],
+                )
+            if policy_row is None:
+                connection.execute(
+                    "INSERT INTO oscore_metadata (key, value) VALUES ('endpoint_policy', ?)",
+                    (policy.serialize(),),
+                )
+            if changed:
+                self._hooks.transaction_step("migrate", "after_write")
+            connection.commit()
+            self._endpoint_policy = policy
+            selected_sources = {key: old for key, (old, _values) in staged.items()}
+            migrated_cache: dict[str, PeerContext] = {}
+            for key, source_key in selected_sources.items():
+                if source_key is not None and source_key in self._cache:
+                    migrated_cache[key] = self._cache[source_key]
+            self._cache = migrated_cache
 
     async def remove(self, host: str) -> None:
         self.check_process()
-        key = validate_endpoint_key(host)
 
         def worker() -> None:
             with self._thread_lock, self._connect() as connection:
                 connection.execute("BEGIN IMMEDIATE")
+                policy = self._policy_locked(connection)
+                key = policy.normalize(host).authority
                 connection.execute(
                     "UPDATE oscore_hosts SET master_secret = NULL, master_salt = NULL, "
                     "sender_id = NULL, recipient_id = NULL, algorithm_json = NULL, "
@@ -983,9 +1295,10 @@ class SqliteOscoreContextStore:
                 )
                 self._hooks.transaction_step("remove", "after_write")
                 connection.commit()
+                self._endpoint_policy = policy
+                self._cache.pop(key, None)
 
-        await self._transaction("remove", key, worker)
-        self._cache.pop(key, None)
+        await self._transaction("remove", host, worker)
 
     def has_context_sync(self, host: str) -> bool:
         self.check_process()
@@ -1012,6 +1325,14 @@ class EdhocPeerResolver:
     def bind_context_store(self, context_store: TransactionalOscoreContextStore) -> None:
         """Bind resolver authority to a context store when applicable."""
 
+    def bind_authority(
+        self,
+        context_store: TransactionalOscoreContextStore,
+        policy: EndpointPolicy,
+    ) -> None:
+        """Bind storage and channel endpoint identity when applicable."""
+        self.bind_context_store(context_store)
+
     async def ensure_bound(self) -> None:
         """Complete any asynchronous authority migration before use."""
 
@@ -1032,7 +1353,41 @@ class TofuPeerResolver(EdhocPeerResolver):
         self._context_store = context_store
         self._pending_context_store: TransactionalOscoreContextStore | None = None
         self._pinned: dict[str, bytes] = {}
+        self._endpoint_policy: EndpointPolicy | None = None
         self._lock: asyncio.Lock | None = None
+
+    def bind_authority(
+        self,
+        context_store: TransactionalOscoreContextStore,
+        policy: EndpointPolicy,
+    ) -> None:
+        if self._lock is not None and self._lock.locked():
+            raise RuntimeError("TOFU resolver is busy")
+        if self._context_store is not None and self._context_store is not context_store:
+            raise ValueError("TOFU resolver is already bound to a different context store")
+        if (
+            self._pending_context_store is not None
+            and self._pending_context_store is not context_store
+        ):
+            raise ValueError("TOFU resolver is pending migration to a different context store")
+        if (
+            self._endpoint_policy is not None
+            and self._endpoint_policy != policy
+        ):
+            raise ValueError("TOFU resolver is already bound to a different endpoint policy")
+
+        if (
+            self._context_store is context_store
+            and self._pending_context_store is None
+            and self._endpoint_policy == policy
+            and not self._pinned
+        ):
+            return
+        context_store.migrate_endpoint_keys(policy, self._pinned)
+        self._endpoint_policy = policy
+        self._pinned = {}
+        self._context_store = context_store
+        self._pending_context_store = None
 
     def bind_context_store(self, context_store: TransactionalOscoreContextStore) -> None:
         if self._context_store is context_store:
@@ -1056,8 +1411,7 @@ class TofuPeerResolver(EdhocPeerResolver):
             store = self._pending_context_store
             if store is None:
                 return
-            for endpoint, pubkey in self._pinned.items():
-                await store.pin_peer(endpoint, pubkey)
+            await store.pin_peers(self._pinned)
             self._pinned.clear()
             self._context_store = store
             self._pending_context_store = None
@@ -1075,19 +1429,20 @@ class TofuPeerResolver(EdhocPeerResolver):
     async def get_peer_pubkey(self, host: str) -> bytes | None:
         """Get pinned public key for a peer."""
         await self.ensure_bound()
+        key = self._normalize_key(host)
         if self._context_store is not None:
-            return await self._context_store.get_peer_pubkey(host)
+            return await self._context_store.get_peer_pubkey(key)
         async with self._get_lock():
-            return self._pinned.get(validate_endpoint_key(host))
+            return self._pinned.get(key)
 
     async def pin_peer(self, host: str, pubkey: bytes) -> None:
         """Pin a peer's public key (TOFU)."""
         await self.ensure_bound()
+        key = self._normalize_key(host)
         if self._context_store is not None:
-            await self._context_store.pin_peer(host, pubkey)
+            await self._context_store.pin_peer(key, pubkey)
             return
         async with self._get_lock():
-            key = validate_endpoint_key(host)
             if key in self._pinned:
                 if self._pinned[key] != pubkey:
                     raise ValueError(
@@ -1096,6 +1451,11 @@ class TofuPeerResolver(EdhocPeerResolver):
             else:
                 self._pinned[key] = bytes(pubkey)
                 logger.info("TOFU: pinned key for %s", key)
+
+    def _normalize_key(self, host: str) -> str:
+        if self._endpoint_policy is None:
+            return validate_endpoint_key(host)
+        return self._endpoint_policy.normalize(host).authority
 
 
 class SecureDatagramChannel(DatagramChannel):
@@ -1133,6 +1493,8 @@ class SecureDatagramChannel(DatagramChannel):
         "compare_and_set_replay_window",
         "get_peer_pubkey",
         "pin_peer",
+        "pin_peers",
+        "migrate_endpoint_keys",
         "remove",
         "has_context_sync",
         "has_context",
@@ -1176,13 +1538,15 @@ class SecureDatagramChannel(DatagramChannel):
         if missing or not isinstance(candidate_store, TransactionalOscoreContextStore):
             details = ", ".join(missing) if missing else "protocol-incompatible attributes"
             raise TypeError(f"incomplete OSCORE context store: {details}")
+        candidate_resolver = peer_resolver if peer_resolver is not None else TofuPeerResolver()
+        candidate_resolver.bind_authority(candidate_store, inner.endpoint_policy)
         self._context_store = candidate_store
-        self._peer_resolver = peer_resolver if peer_resolver is not None else TofuPeerResolver()
-        self._peer_resolver.bind_context_store(self._context_store)
+        self._peer_resolver = candidate_resolver
         self._require_oscore = require_oscore
         self._local_host = local_host
         self._edhoc_timeout = edhoc_timeout
         self._receiver: ReceiveCallback | None = None
+        self._inner_receiver_registered = False
         self._pending_edhoc: dict[str, asyncio.Future[None]] = {}
         # Temporary CoAP context and channel for EDHOC exchange (created lazily)
         self._edhoc_ctx: aiocoap.Context | None = None
@@ -1197,6 +1561,8 @@ class SecureDatagramChannel(DatagramChannel):
         self._protected_cons: dict[tuple[str, int], _ProtectedCon] = {}
         self._tasks: set[asyncio.Task[Any]] = set()
         self._closing = False
+        self._inner_teardown_started = False
+        self._shutdown_task: asyncio.Task[None] | None = None
         self._pid = os.getpid()
 
     def _check_process(self) -> None:
@@ -1213,7 +1579,7 @@ class SecureDatagramChannel(DatagramChannel):
 
     async def _get_peer_context(self, host: str) -> PeerContext | None:
         self._check_process()
-        key = validate_endpoint_key(host)
+        key = self._endpoint_key(host)
         context = await self._context_store.get(key)
         self._publish_peer_context(key, context)
         return context
@@ -1369,7 +1735,7 @@ class SecureDatagramChannel(DatagramChannel):
     def request_started(
         self, peer: str, token: bytes, *, locally_originated: bool
     ) -> object | None:
-        key = validate_endpoint_key(peer)
+        key = self._endpoint_key(peer)
         if locally_originated:
             correlation = self._pending_outbound.get((key, token))
         else:
@@ -1380,7 +1746,7 @@ class SecureDatagramChannel(DatagramChannel):
     def message_admitted(self, message: Message, peer: str) -> object | None:
         if self._closing:
             return None
-        key = validate_endpoint_key(peer)
+        key = self._endpoint_key(peer)
         correlation = None
         locally_originated = message.code.is_request()
         if locally_originated:
@@ -1427,7 +1793,7 @@ class SecureDatagramChannel(DatagramChannel):
         *,
         locally_originated: bool,
     ) -> None:
-        key = validate_endpoint_key(peer)
+        key = self._endpoint_key(peer)
         context = self._active_peer_contexts.get(key)
         if locally_originated:
             correlation = self._pending_outbound.get((key, token))
@@ -1459,7 +1825,7 @@ class SecureDatagramChannel(DatagramChannel):
         lifecycle_id: object | None,
         exchange_lifetime: float,
     ) -> None:
-        key = validate_endpoint_key(peer)
+        key = self._endpoint_key(peer)
         context = self._active_peer_contexts.get(key)
         correlation = self._pending_outbound.get((key, token))
         if not self._matches_lifecycle(correlation, lifecycle_id) and context is not None:
@@ -1482,7 +1848,7 @@ class SecureDatagramChannel(DatagramChannel):
     def response_completed(
         self, peer: str, token: bytes, lifecycle_id: object | None
     ) -> None:
-        context = self._active_peer_contexts.get(validate_endpoint_key(peer))
+        context = self._active_peer_contexts.get(self._endpoint_key(peer))
         if context is None:
             return
         correlation = context.inbound_requests.get(token)
@@ -1492,7 +1858,7 @@ class SecureDatagramChannel(DatagramChannel):
         self._retire_inbound_if_done(context, token, correlation)
 
     def exchange_ended(self, peer: str, mid: int, *, reset: bool) -> None:
-        key = (validate_endpoint_key(peer), mid)
+        key = (self._endpoint_key(peer), mid)
         cached = self._protected_cons.pop(key, None)
         if cached is None:
             return
@@ -1522,8 +1888,31 @@ class SecureDatagramChannel(DatagramChannel):
         """Register a callback for received (unprotected) datagrams."""
         if self._closing:
             raise RuntimeError("secure datagram channel is closing")
-        self._receiver = receiver
+        if self._receiver is not None:
+            raise RuntimeError("channel already has a receiver")
         self._inner.set_receiver(self._on_datagram)
+        self._inner_receiver_registered = True
+        self._receiver = receiver
+
+    def clear_receiver(self, receiver: ReceiveCallback) -> None:
+        if self._receiver == receiver:
+            if self._inner_receiver_registered:
+                self._inner.clear_receiver(self._on_datagram)
+                self._inner_receiver_registered = False
+            self._receiver = None
+
+    @property
+    def endpoint_policy(self) -> EndpointPolicy:
+        return self._inner.endpoint_policy
+
+    def normalize_endpoint(self, endpoint: str | Endpoint) -> Endpoint:
+        try:
+            return self.endpoint_policy.normalize(endpoint)
+        except ValueError as exc:
+            raise ValueError(f"invalid endpoint: {exc}") from exc
+
+    def _endpoint_key(self, endpoint: str | Endpoint) -> str:
+        return self.normalize_endpoint(endpoint).authority
 
     def _on_datagram(self, data: bytes, source: str) -> None:
         """Handle an incoming datagram, unprotecting if OSCORE.
@@ -1558,7 +1947,7 @@ class SecureDatagramChannel(DatagramChannel):
                     except Exception:
                         if unprotected.added_correlation is not None:
                             peer_ctx = self._active_peer_contexts.get(
-                                validate_endpoint_key(source)
+                                self._endpoint_key(source)
                             )
                             if peer_ctx is not None:
                                 current = peer_ctx.inbound_requests.get(msg.token)
@@ -1567,11 +1956,12 @@ class SecureDatagramChannel(DatagramChannel):
                         raise
                     if unprotected.message.code.is_response():
                         peer_ctx = self._active_peer_contexts.get(
-                            validate_endpoint_key(source)
+                            self._endpoint_key(source)
                         )
                         correlation = unprotected.matched_correlation
                         if (
                             peer_ctx is not None
+                            and correlation is not None
                             and peer_ctx.outbound_requests.get(msg.token) is correlation
                             and (
                                 unprotected.message.opt.observe is None
@@ -1611,7 +2001,7 @@ class SecureDatagramChannel(DatagramChannel):
         self, msg: Message, source: str
     ) -> _UnprotectedDatagram | None:
         """Unprotect and stage correlation state for synchronous dispatch."""
-        key = validate_endpoint_key(source)
+        key = self._endpoint_key(source)
         lock = self._peer_locks.setdefault(key, asyncio.Lock())
         async with lock:
             if self._closing:
@@ -1700,7 +2090,8 @@ class SecureDatagramChannel(DatagramChannel):
         """
         if self._closing:
             raise RuntimeError("secure datagram channel is closing")
-        key = validate_endpoint_key(dest)
+        dest = self.normalize_endpoint(dest).authority
+        key = self._endpoint_key(dest)
         operation = self._prepare_send_operation(data, dest, key)
         self._schedule_send(data, dest, key, operation)
 
@@ -1708,7 +2099,8 @@ class SecureDatagramChannel(DatagramChannel):
         """Schedule an aiocoap message using its admission lifecycle identity."""
         if self._closing:
             raise RuntimeError("secure datagram channel is closing")
-        key = validate_endpoint_key(dest)
+        dest = self.normalize_endpoint(dest).authority
+        key = self._endpoint_key(dest)
         try:
             data = cast(bytes, message.encode())
         except Exception:
@@ -1890,7 +2282,8 @@ class SecureDatagramChannel(DatagramChannel):
         if self._closing:
             return
         self._check_process()
-        key = validate_endpoint_key(dest) if key is None else key
+        dest = self.normalize_endpoint(dest).authority
+        key = self._endpoint_key(dest) if key is None else key
         if operation is None:
             operation = self._prepare_send_operation(data, dest, key)
         lock = self._peer_locks.setdefault(key, asyncio.Lock())
@@ -2095,7 +2488,11 @@ class SecureDatagramChannel(DatagramChannel):
             self._edhoc_channel = _EdhocChannel(self._inner)
             self._edhoc_ctx = aiocoap.Context()
             await self._edhoc_ctx._append_tokenmanaged_messagemanaged_transport(
-                lambda mm: LichenTransport.create(mm, self._edhoc_channel, self._local_host)
+                lambda mm: LichenTransport.create(
+                    mm,
+                    self._edhoc_channel,
+                    self.normalize_endpoint(self._local_host).authority,
+                )
             )
         return self._edhoc_ctx
 
@@ -2115,11 +2512,12 @@ class SecureDatagramChannel(DatagramChannel):
         Raises:
             ValueError: If EDHOC exchange fails.
         """
+        dest = self.normalize_endpoint(dest).authority
         ctx = await self._get_edhoc_context()
 
         request = Message(
             code=POST,
-            uri=f"coap://{dest}/.well-known/edhoc",
+            uri=f"{self.normalize_endpoint(dest).uri}/.well-known/edhoc",
             payload=msg,
         )
 
@@ -2150,31 +2548,91 @@ class SecureDatagramChannel(DatagramChannel):
 
     def close(self) -> None:
         """Close the channel."""
-        if self._closing:
-            return
-        self._closing = True
-        for task in tuple(self._tasks):
-            task.cancel()
-        self._clear_lifecycle_state()
-        self._inner.close()
+        error: BaseException | None = None
+        teardown_was_started = self._inner_teardown_started
+        inner: DatagramChannel | None = None
+        try:
+            inner = self._begin_teardown()
+        except BaseException as exc:
+            error = exc
+            if not teardown_was_started and self._inner_teardown_started:
+                inner = self._inner
+        if inner is not None:
+            try:
+                inner.close()
+            except BaseException as exc:
+                if error is None:
+                    error = exc
+        if error is not None:
+            raise error
 
     async def shutdown(self) -> None:
         """Cancel and drain packet work before releasing the inner channel."""
-        if self._closing:
-            tasks = tuple(self._tasks)
-        else:
-            self._closing = True
-            tasks = tuple(self._tasks)
-            for task in tasks:
-                task.cancel()
+        if self._shutdown_task is None:
+            self._shutdown_task = asyncio.create_task(self._shutdown_once())
+        await asyncio.shield(self._shutdown_task)
+
+    async def _shutdown_once(self) -> None:
+        error: BaseException | None = None
+        teardown_was_started = self._inner_teardown_started
+        inner: DatagramChannel | None = None
+        try:
+            inner = self._begin_teardown()
+        except BaseException as exc:
+            error = exc
+            if not teardown_was_started and self._inner_teardown_started:
+                inner = self._inner
+
+        tasks = tuple(self._tasks)
         if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
-        if self._edhoc_ctx is not None:
-            await self._edhoc_ctx.shutdown()
-            self._edhoc_ctx = None
-            self._edhoc_channel = None
-        self._clear_lifecycle_state()
-        await self._inner.shutdown()
+            try:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            except BaseException as exc:
+                if error is None:
+                    error = exc
+
+        edhoc_ctx = self._edhoc_ctx
+        self._edhoc_ctx = None
+        self._edhoc_channel = None
+        if edhoc_ctx is not None:
+            try:
+                await edhoc_ctx.shutdown()
+            except BaseException as exc:
+                if error is None:
+                    error = exc
+
+        try:
+            self._clear_lifecycle_state()
+        except BaseException as exc:
+            if error is None:
+                error = exc
+        if inner is not None:
+            try:
+                await inner.shutdown()
+            except BaseException as exc:
+                if error is None:
+                    error = exc
+        if error is not None:
+            raise error
+
+    def _begin_teardown(self) -> DatagramChannel | None:
+        if not self._closing:
+            self._closing = True
+            for task in tuple(self._tasks):
+                task.cancel()
+            self._clear_lifecycle_state()
+        if self._inner_teardown_started:
+            return None
+        self._inner_teardown_started = True
+        if self._inner_receiver_registered:
+            try:
+                self._inner.clear_receiver(self._on_datagram)
+            finally:
+                self._inner_receiver_registered = False
+                self._receiver = None
+        else:
+            self._receiver = None
+        return self._inner
 
     # --- Context provisioning API ---
 
@@ -2191,7 +2649,7 @@ class SecureDatagramChannel(DatagramChannel):
         if isinstance(oscore_ctx, OscoreContext):
             oscore_ctx = MemorySecurityContext.from_edhoc(oscore_ctx)
         self._peer_resolver.ensure_bound_sync()
-        key = validate_endpoint_key(host)
+        key = self._endpoint_key(host)
         context = self._context_store.put_sync(key, oscore_ctx, peer_pubkey)
         self._publish_peer_context(key, context)
 
@@ -2214,7 +2672,7 @@ class SecureDatagramChannel(DatagramChannel):
         if isinstance(oscore_ctx, OscoreContext):
             oscore_ctx = MemorySecurityContext.from_edhoc(oscore_ctx)
         await self._peer_resolver.ensure_bound()
-        key = validate_endpoint_key(host)
+        key = self._endpoint_key(host)
         lock = self._peer_locks.setdefault(key, asyncio.Lock())
         async with lock:
             if self._closing:
@@ -2230,7 +2688,7 @@ class SecureDatagramChannel(DatagramChannel):
 
     async def remove_context(self, host: str) -> None:
         """Remove a peer context after draining in-flight packet state."""
-        key = validate_endpoint_key(host)
+        key = self._endpoint_key(host)
         lock = self._peer_locks.setdefault(key, asyncio.Lock())
         async with lock:
             if self._closing:
@@ -2240,11 +2698,11 @@ class SecureDatagramChannel(DatagramChannel):
 
     def has_context_sync(self, host: str) -> bool:
         """Check if we have an OSCORE context (synchronous)."""
-        return self._context_store.has_context_sync(host)
+        return self._context_store.has_context_sync(self._endpoint_key(host))
 
     async def has_context(self, host: str) -> bool:
         """Check if we have an OSCORE context for a peer."""
-        return await self._context_store.has_context(host)
+        return await self._context_store.has_context(self._endpoint_key(host))
 
 
 def create_secure_channel(
