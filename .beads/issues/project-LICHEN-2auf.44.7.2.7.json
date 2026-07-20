@@ -3,12 +3,16 @@
   "title": "Run final RPL regression gates",
   "description": "Run formatting, direct ipv6/link/rpl/node tests, strict scoped Clippy, integrity searches, and diff checks without unrelated edits or commit.",
   "acceptance_criteria": "All requested commands pass with exact results recorded; prior canonical/full-path tests pass; git diff --check passes.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-20T06:37:34.462338436Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-20T06:37:34.462338436Z",
+  "updated_at": "2026-07-20T07:02:18.075753937Z",
+  "started_at": "2026-07-20T07:02:18.075753937Z",
+  "lease_expires_at": "2026-07-20T07:07:18.075753937Z",
+  "heartbeat_at": "2026-07-20T07:02:18.075753937Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2auf.44.7.2.7",
