@@ -809,6 +809,7 @@ mod tests {
         assert_eq!(child.router.neighbors().iter().next().unwrap().etx, 2.0);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn only_valid_consistent_dios_increment_trickle_redundancy() {
         let root_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);

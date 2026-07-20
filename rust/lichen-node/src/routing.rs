@@ -56,6 +56,7 @@ pub enum DioProcessOutcome {
     Inconsistent,
 }
 
+#[cfg(feature = "std")]
 impl DioProcessOutcome {
     fn accepted(inconsistent: bool) -> Self {
         if inconsistent {
@@ -1114,6 +1115,7 @@ fn same_interface(left: &[u8; 16], right: &[u8; 16]) -> bool {
 }
 
 /// Haversine distance in meters between two (lat, lon) points.
+#[cfg(feature = "std")]
 fn haversine(c1: GeoCoords, c2: GeoCoords) -> f64 {
     const EARTH_RADIUS_M: f64 = 6_371_000.0;
 
@@ -1135,6 +1137,7 @@ fn haversine(c1: GeoCoords, c2: GeoCoords) -> f64 {
 
 /// Validate geographic coordinates.
 /// Returns false for NaN, inf, out-of-range, or null island (0,0).
+#[cfg(feature = "std")]
 fn is_valid_coords(coords: GeoCoords) -> bool {
     let (lat, lon) = coords;
 

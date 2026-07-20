@@ -13,7 +13,11 @@ extern crate std;
 #[cfg(feature = "std")]
 use std::{collections::VecDeque, vec::Vec};
 
-use crate::gradient::{GradientEntry, GradientSource, GradientTable, GeoCoords, GRADIENT_TIMEOUT_MS};
+#[cfg(feature = "std")]
+use crate::gradient::{
+    GeoCoords, GradientEntry, GradientSource, GradientTable, GRADIENT_TIMEOUT_MS,
+};
+#[cfg(feature = "std")]
 use lichen_core::loadng::{Idle, RouteDiscovery, Rreq, Searching};
 
 /// Classification of IPv6 destination address (spec 7.2 table).
@@ -512,6 +516,7 @@ impl HybridRouter {
 }
 
 /// Validate geographic coordinates.
+#[cfg(feature = "std")]
 fn is_valid_coords(coords: &GeoCoords) -> bool {
     if coords.lat.is_nan() || coords.lat.is_infinite() ||
        coords.lon.is_nan() || coords.lon.is_infinite() {
@@ -527,6 +532,7 @@ fn is_valid_coords(coords: &GeoCoords) -> bool {
 }
 
 /// Haversine distance in meters between two (lat, lon) points.
+#[cfg(feature = "std")]
 fn haversine(c1: &GeoCoords, c2: &GeoCoords) -> f32 {
     const EARTH_RADIUS_M: f32 = 6_371_000.0;
 
