@@ -62,6 +62,22 @@ class Method(IntEnum):
     STATIC_STATIC = 3  # Both use static DH
 
 
+class _InitiatorState(IntEnum):
+    NEW = 0
+    WAIT_MESSAGE_2 = 1
+    COMPLETE = 2
+    EXPORTED = 3
+    FAILED = 4
+
+
+class _ResponderState(IntEnum):
+    NEW = 0
+    WAIT_MESSAGE_3 = 1
+    COMPLETE = 2
+    EXPORTED = 3
+    FAILED = 4
+
+
 @dataclass
 class EdhocKeys:
     """Derived EDHOC keys for a session."""
@@ -177,26 +193,53 @@ def _encode_connection_id(c_x: bytes) -> bytes:
     return cbor2.dumps(c_x)
 
 
-def _decode_connection_id(data: bytes | int) -> bytes:
-    """Decode connection identifier from CBOR."""
-    if isinstance(data, int):
-        if data >= 0:
-            return bytes([data])
-        return bytes([data + 256])
-    return data
+def _validate_connection_id(value: object, name: str) -> bytes:
+    """Validate and normalize a connection identifier for this profile."""
+    if isinstance(value, bool):
+        raise ValueError(f"{name} must be a byte string or compact integer")
+    if isinstance(value, int):
+        if not -24 <= value <= 23:
+            raise ValueError(f"{name} compact integer is outside -24..23")
+        return bytes([value if value >= 0 else value + 256])
+    if not isinstance(value, bytes):
+        raise ValueError(f"{name} must be a byte string or compact integer")
+    if len(value) > 7:
+        raise ValueError(f"{name} must be at most 7 bytes")
+    return value
 
 
-def _decode_cbor_sequence(data: bytes) -> list:
+def _select_responder_connection_id(preferred: bytes, peer: bytes) -> bytes:
+    """Keep a valid preferred ID, or choose a bounded deterministic replacement."""
+    if preferred != peer:
+        return preferred
+    for value in range(256):
+        candidate = bytes([value])
+        if candidate != peer:
+            return candidate
+    raise ValueError("unable to select a noncolliding C_R")
+
+
+def _decode_cbor_sequence(data: bytes) -> list[object]:
     """Decode a CBOR sequence (concatenated CBOR items) into a list."""
-    items = []
+    if not isinstance(data, bytes):
+        raise ValueError("CBOR sequence must be bytes")
+    items: list[object] = []
     fp = io.BytesIO(data)
     while fp.tell() < len(data):
         try:
             item = cbor2.load(fp)
             items.append(item)
-        except cbor2.CBORDecodeEOF:
-            break
+        except cbor2.CBORDecodeError as exc:
+            raise ValueError("truncated or malformed CBOR sequence") from exc
     return items
+
+
+def _validate_bytes(value: object, name: str, length: int | None = None) -> bytes:
+    if not isinstance(value, bytes):
+        raise ValueError(f"{name} must be a byte string")
+    if length is not None and len(value) != length:
+        raise ValueError(f"{name} must be exactly {length} bytes")
+    return value
 
 
 @dataclass
@@ -222,6 +265,7 @@ class EdhocInitiator:
 
     # State accumulated during protocol
     _g_y: bytes = field(default=b"", repr=False)
+    _c_i: bytes = field(default=b"", repr=False)
     _c_r: bytes = field(default=b"", repr=False)
     _prk_2e: bytes = field(default=b"", repr=False)
     _prk_3e2m: bytes = field(default=b"", repr=False)
@@ -230,6 +274,30 @@ class EdhocInitiator:
     _th_3: bytes = field(default=b"", repr=False)
     _th_4: bytes = field(default=b"", repr=False)
     _msg1: bytes = field(default=b"", repr=False)
+    _state: _InitiatorState = field(default=_InitiatorState.NEW, init=False, repr=False)
+
+    def _clear_session_material(self) -> None:
+        self._eph_sk = b""
+        self._eph_pk = b""
+        self._g_y = b""
+        self._c_i = b""
+        self._c_r = b""
+        self._prk_2e = b""
+        self._prk_3e2m = b""
+        self._prk_4e3m = b""
+        self._th_2 = b""
+        self._th_3 = b""
+        self._th_4 = b""
+        self._msg1 = b""
+
+    def _fail(self) -> None:
+        self._clear_session_material()
+        self._state = _InitiatorState.FAILED
+
+    def _require_state(self, expected: _InitiatorState, operation: str) -> None:
+        if self._state is not expected:
+            self._fail()
+            raise ValueError(f"EDHOC not complete or {operation} is invalid in the current state")
 
     @classmethod
     def create(
@@ -255,28 +323,25 @@ class EdhocInitiator:
         Returns:
             CBOR-encoded Message 1.
         """
-        # METHOD_CORR: method * 4 + corr (corr=1 for CoAP)
-        # ponytail: corr always 1 for our CoAP transport
-        method_corr = self.method * 4 + 1
-
-        # SUITES_I: just Suite 0 for now
-        suites_i = SUITE_0
-
-        # G_X: initiator's ephemeral public key
-        g_x = self._eph_pk
-
-        # C_I: initiator's connection identifier
-        c_i = self.c_i
-
-        # Build message_1 as CBOR sequence
-        if ead_1:
-            msg1_content = [method_corr, suites_i, g_x, c_i, ead_1]
-        else:
-            msg1_content = [method_corr, suites_i, g_x, c_i]
-
-        # Encode as CBOR sequence (concatenated CBOR items)
-        self._msg1 = b"".join(cbor2.dumps(item) for item in msg1_content)
-        return self._msg1
+        self._require_state(_InitiatorState.NEW, "create_message_1")
+        try:
+            if self.method is not Method.SIGN_SIGN:
+                raise ValueError("only EDHOC SIGN_SIGN is supported")
+            c_i = _validate_connection_id(self.c_i, "C_I")
+            ead = _validate_bytes(ead_1, "EAD_1")
+            msg1_content = [self.method * 4 + 1, SUITE_0, self._eph_pk, c_i]
+            if ead:
+                msg1_content.append(ead)
+            msg1 = b"".join(cbor2.dumps(item) for item in msg1_content)
+        except Exception as exc:
+            self._fail()
+            if isinstance(exc, ValueError):
+                raise
+            raise ValueError("Message 1 creation failed") from exc
+        self._msg1 = msg1
+        self._c_i = c_i
+        self._state = _InitiatorState.WAIT_MESSAGE_2
+        return msg1
 
     def process_message_2(self, msg2: bytes, peer_pubkey: bytes) -> bytes:
         """Process EDHOC Message 2 and create Message 3.
@@ -291,128 +356,83 @@ class EdhocInitiator:
         Raises:
             ValueError: If message validation fails.
         """
-        # Decode message_2 = (G_Y || CIPHERTEXT_2, C_R) as CBOR sequence
-        # First item: bstr containing G_Y (32 bytes) concatenated with CIPHERTEXT_2
-        # Second item: C_R (connection identifier)
-        items = _decode_cbor_sequence(msg2)
-        if len(items) < 2:
-            raise ValueError(f"Malformed message_2: expected 2 CBOR items, got {len(items)}")
-        g_y_ciphertext_2 = items[0]
-        c_r_raw = items[1]
-
-        if len(g_y_ciphertext_2) < X25519_KEY_LEN:
-            raise ValueError(
-                f"Message 2 too short: G_Y requires {X25519_KEY_LEN} bytes, "
-                f"got {len(g_y_ciphertext_2)}"
-            )
-        self._g_y = g_y_ciphertext_2[:X25519_KEY_LEN]
-        ciphertext_2 = g_y_ciphertext_2[X25519_KEY_LEN:]
-        self._c_r = _decode_connection_id(c_r_raw)
-
-        # Compute shared secret
-        g_xy = _x25519_shared_secret(self._eph_sk, self._g_y)
-
-        # TH_2 = H(G_Y, H(message_1))
-        h_msg1 = _compute_th(self._msg1)
-        th_2_input = self._g_y + h_msg1
-        self._th_2 = _compute_th(th_2_input)
-
-        # PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
-        self._prk_2e = _hkdf_extract(self._th_2, g_xy)
-
-        # Derive KEYSTREAM_2 and decrypt CIPHERTEXT_2
-        keystream_2 = _edhoc_kdf(
-            self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(ciphertext_2)
-        )
-        plaintext_2 = bytes(a ^ b for a, b in zip(ciphertext_2, keystream_2, strict=True))
-
-        # PLAINTEXT_2 = (ID_CRED_R, Signature_or_MAC_2, ?EAD_2)
-        # For SIGN_SIGN, ID_CRED_R is bstr (pubkey), followed by Signature_2
-        pt2_items = _decode_cbor_sequence(plaintext_2)
-        if len(pt2_items) < 2:
-            raise ValueError(
-                f"Malformed PLAINTEXT_2: expected at least 2 CBOR items, got {len(pt2_items)}"
-            )
-
-        id_cred_r = pt2_items[0]
-        signature_2 = pt2_items[1]
-
-        # PRK_3e2m = PRK_2e for Suite 0 SIGN_SIGN (needed for MAC_2)
-        self._prk_3e2m = self._prk_2e
-
-        # SECURITY: Verify Signature_2 from responder per RFC 9528 Section 4.3.2
-        # For SIGN_SIGN: Signature_2 = Sign(SK_R, M_2)
-        cred_r = peer_pubkey  # CRED_R = pubkey for simplified case
-
-        # Recompute MAC_2
-        context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
-        mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
-
-        # M_2 = ["Signature1", << ID_CRED_R >>, TH_2, << CRED_R, ?EAD_2 >>, MAC_2]
-        m_2 = cbor2.dumps([
-            "Signature1",
-            cbor2.dumps(id_cred_r),
-            self._th_2,
-            cbor2.dumps(cred_r),
-            mac_2,
-        ])
-        verify_key = VerifyKey(peer_pubkey)
+        self._require_state(_InitiatorState.WAIT_MESSAGE_2, "process_message_2")
         try:
-            verify_key.verify(m_2, signature_2)
-        except Exception as e:
-            raise ValueError(f"Signature verification failed: {e}") from e
+            peer_key = _validate_bytes(peer_pubkey, "peer public key", ED25519_SIG_LEN // 2)
+            items = _decode_cbor_sequence(msg2)
+            if len(items) != 2:
+                raise ValueError(f"Malformed message_2: expected 2 CBOR items, got {len(items)}")
+            combined = _validate_bytes(items[0], "G_Y || CIPHERTEXT_2")
+            if len(combined) <= X25519_KEY_LEN:
+                raise ValueError("Message 2 has no CIPHERTEXT_2")
+            g_y = combined[:X25519_KEY_LEN]
+            ciphertext_2 = combined[X25519_KEY_LEN:]
+            c_r = _validate_connection_id(items[1], "C_R")
+            if c_r == self._c_i:
+                raise ValueError("C_R must differ from C_I")
 
-        # PRK_3e2m already set above
+            g_xy = _x25519_shared_secret(self._eph_sk, g_y)
+            th_2 = _compute_th(g_y + _compute_th(self._msg1))
+            prk_2e = _hkdf_extract(th_2, g_xy)
+            keystream_2 = _edhoc_kdf(prk_2e, th_2, "KEYSTREAM_2", b"", len(ciphertext_2))
+            plaintext_2 = bytes(
+                a ^ b for a, b in zip(ciphertext_2, keystream_2, strict=True)
+            )
+            pt2_items = _decode_cbor_sequence(plaintext_2)
+            if len(pt2_items) != 2:
+                raise ValueError(
+                    f"Malformed PLAINTEXT_2: expected 2 CBOR items, got {len(pt2_items)}"
+                )
+            id_cred_r = _validate_bytes(pt2_items[0], "ID_CRED_R", ED25519_SIG_LEN // 2)
+            signature_2 = _validate_bytes(pt2_items[1], "Signature_2", ED25519_SIG_LEN)
+            if id_cred_r != peer_key:
+                raise ValueError("ID_CRED_R does not match the authenticated peer")
 
-        # TH_3 = H(TH_2, CIPHERTEXT_2, ID_CRED_R)
-        th_3_input = cbor2.dumps(self._th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)
-        self._th_3 = _compute_th(th_3_input)
+            prk_3e2m = prk_2e
+            context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(peer_key)
+            mac_2 = _edhoc_kdf(prk_3e2m, th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
+            m_2 = cbor2.dumps(
+                ["Signature1", cbor2.dumps(id_cred_r), th_2, cbor2.dumps(peer_key), mac_2]
+            )
+            try:
+                VerifyKey(peer_key).verify(m_2, signature_2)
+            except Exception as exc:
+                raise ValueError("Signature_2 verification failed") from exc
 
-        # PRK_4e3m for Suite 0 SIGN_SIGN
-        self._prk_4e3m = self._prk_3e2m
+            th_3 = _compute_th(
+                cbor2.dumps(th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)
+            )
+            prk_4e3m = prk_3e2m
+            id_cred_i = _validate_bytes(
+                self.identity.pubkey, "local credential", ED25519_SIG_LEN // 2
+            )
+            context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(id_cred_i)
+            mac_3 = _edhoc_kdf(prk_4e3m, th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
+            m_3 = cbor2.dumps(
+                ["Signature1", cbor2.dumps(id_cred_i), th_3, cbor2.dumps(id_cred_i), mac_3]
+            )
+            signature_3 = SigningKey(self.identity.seed).sign(m_3).signature
+            plaintext_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(signature_3)
+            k_3 = _edhoc_kdf(prk_3e2m, th_3, "K_3", b"", CCM_KEY_LEN)
+            iv_3 = _edhoc_kdf(prk_3e2m, th_3, "IV_3", b"", CCM_NONCE_LEN)
+            a_3 = cbor2.dumps(["Encrypt0", b"", th_3])
+            ciphertext_3 = _aead_encrypt(k_3, iv_3, a_3, plaintext_3)
+            th_4 = _compute_th(cbor2.dumps(th_3) + cbor2.dumps(ciphertext_3))
+        except Exception as exc:
+            self._fail()
+            if isinstance(exc, ValueError):
+                raise
+            raise ValueError("Message 2 processing failed") from exc
 
-        # Create Message 3
-        # CIPHERTEXT_3 contains ID_CRED_I and Signature_3
-
-        # ID_CRED_I - our credential identifier (simplified: just pubkey)
-        id_cred_i = self.identity.pubkey
-        cred_i = self.identity.pubkey  # CRED_I = pubkey for simplified case
-
-        # Compute MAC_3 per RFC 9528 Section 4.4.2
-        # MAC_3 = EDHOC-KDF(PRK_4e3m, TH_3, "MAC_3", context_3, mac_length_3)
-        # context_3 = << ID_CRED_I, CRED_I, ?EAD_3 >>
-        context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(cred_i)
-        mac_3 = _edhoc_kdf(self._prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
-
-        # Compute Signature_3 per RFC 9528 Section 4.4.2 (COSE Sig_structure)
-        # M_3 = ["Signature1", << ID_CRED_I >>, TH_3, << CRED_I, ?EAD_3 >>, MAC_3]
-        m_3 = cbor2.dumps([
-            "Signature1",
-            cbor2.dumps(id_cred_i),  # << ID_CRED_I >> bstr-wrapped
-            self._th_3,
-            cbor2.dumps(cred_i),     # << CRED_I >> bstr-wrapped
-            mac_3,
-        ])
-        signing_key = SigningKey(self.identity.seed)
-        signature_3 = signing_key.sign(m_3).signature
-
-        # PLAINTEXT_3 = (ID_CRED_I, Signature_3, ?EAD_3)
-        plaintext_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(signature_3)
-
-        # K_3 and IV_3 for AEAD
-        k_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "K_3", b"", CCM_KEY_LEN)
-        iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
-
-        # A_3 = Enc(ID_CRED_I) for AAD
-        a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
-
-        ciphertext_3 = _aead_encrypt(k_3, iv_3, a_3, plaintext_3)
-
-        # TH_4 = H(TH_3, CIPHERTEXT_3)
-        th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)
-        self._th_4 = _compute_th(th_4_input)
-
-        # message_3 = CIPHERTEXT_3
+        self._g_y = g_y
+        self._c_r = c_r
+        self._prk_2e = prk_2e
+        self._prk_3e2m = prk_3e2m
+        self._prk_4e3m = prk_4e3m
+        self._th_2 = th_2
+        self._th_3 = th_3
+        self._th_4 = th_4
+        self._state = _InitiatorState.COMPLETE
         return ciphertext_3
 
     def export_oscore(self, oscore_salt_len: int = 8, oscore_key_len: int = 16) -> OscoreContext:
@@ -424,35 +444,21 @@ class EdhocInitiator:
         Raises:
             ValueError: If EDHOC is not complete.
         """
-        if not self._prk_4e3m or not self._th_4:
-            raise ValueError("EDHOC not complete - call process_message_2 first")
-
-        # OSCORE Master Secret = EDHOC-Exporter(0, h'', oscore_key_len)
-        master_secret = _edhoc_kdf(
-            self._prk_4e3m,
-            self._th_4,
-            "OSCORE_Master_Secret",
-            b"",
-            oscore_key_len,
-        )
-
-        # OSCORE Master Salt = EDHOC-Exporter(1, h'', oscore_salt_len)
-        master_salt = _edhoc_kdf(
-            self._prk_4e3m,
-            self._th_4,
-            "OSCORE_Master_Salt",
-            b"",
-            oscore_salt_len,
-        )
-
-        # Sender/Recipient IDs from connection IDs
-        # Initiator is sender with C_I, recipient is C_R
-        return OscoreContext(
-            master_secret=master_secret,
-            master_salt=master_salt,
-            sender_id=self.c_i,
-            recipient_id=self._c_r,
-        )
+        self._require_state(_InitiatorState.COMPLETE, "export_oscore")
+        try:
+            master_secret = _edhoc_kdf(
+                self._prk_4e3m, self._th_4, "OSCORE_Master_Secret", b"", oscore_key_len
+            )
+            master_salt = _edhoc_kdf(
+                self._prk_4e3m, self._th_4, "OSCORE_Master_Salt", b"", oscore_salt_len
+            )
+            context = OscoreContext(master_secret, master_salt, self._c_i, self._c_r)
+        except Exception:
+            self._fail()
+            raise
+        self._state = _InitiatorState.EXPORTED
+        self._clear_session_material()
+        return context
 
 
 @dataclass
@@ -478,6 +484,7 @@ class EdhocResponder:
     # State
     _g_x: bytes = field(default=b"", repr=False)
     _c_i: bytes = field(default=b"", repr=False)
+    _c_r: bytes = field(default=b"", repr=False)
     _prk_2e: bytes = field(default=b"", repr=False)
     _prk_3e2m: bytes = field(default=b"", repr=False)
     _prk_4e3m: bytes = field(default=b"", repr=False)
@@ -485,6 +492,30 @@ class EdhocResponder:
     _th_3: bytes = field(default=b"", repr=False)
     _th_4: bytes = field(default=b"", repr=False)
     _msg1: bytes = field(default=b"", repr=False)
+    _state: _ResponderState = field(default=_ResponderState.NEW, init=False, repr=False)
+
+    def _clear_session_material(self) -> None:
+        self._eph_sk = b""
+        self._eph_pk = b""
+        self._g_x = b""
+        self._c_i = b""
+        self._c_r = b""
+        self._prk_2e = b""
+        self._prk_3e2m = b""
+        self._prk_4e3m = b""
+        self._th_2 = b""
+        self._th_3 = b""
+        self._th_4 = b""
+        self._msg1 = b""
+
+    def _fail(self) -> None:
+        self._clear_session_material()
+        self._state = _ResponderState.FAILED
+
+    def _require_state(self, expected: _ResponderState, operation: str) -> None:
+        if self._state is not expected:
+            self._fail()
+            raise ValueError(f"EDHOC not complete or {operation} is invalid in the current state")
 
     @classmethod
     def create(
@@ -512,75 +543,67 @@ class EdhocResponder:
         Returns:
             CBOR-encoded Message 2.
         """
-        self._msg1 = msg1
+        self._require_state(_ResponderState.NEW, "process_message_1")
+        try:
+            if self.method is not Method.SIGN_SIGN:
+                raise ValueError("only EDHOC SIGN_SIGN is supported")
+            _validate_bytes(peer_pubkey, "peer public key", ED25519_SIG_LEN // 2)
+            message_1 = _validate_bytes(msg1, "message_1")
+            items = _decode_cbor_sequence(message_1)
+            if len(items) not in (4, 5):
+                raise ValueError(
+                    f"Malformed message_1: expected 4 or 5 CBOR items, got {len(items)}"
+                )
+            expected_method_corr = self.method * 4 + 1
+            if type(items[0]) is not int or items[0] != expected_method_corr:
+                raise ValueError(f"Unsupported METHOD_CORR: {items[0]!r}")
+            if type(items[1]) is not int or items[1] != SUITE_0:
+                raise ValueError(f"Unsupported cipher suite: {items[1]!r}")
+            g_x = _validate_bytes(items[2], "G_X", X25519_KEY_LEN)
+            c_i = _validate_connection_id(items[3], "C_I")
+            if len(items) == 5:
+                _validate_bytes(items[4], "EAD_1")
+            preferred_c_r = _validate_connection_id(self.c_r, "C_R")
+            c_r = _select_responder_connection_id(preferred_c_r, c_i)
 
-        # Decode message_1 = (METHOD_CORR, SUITES_I, G_X, C_I, ?EAD_1)
-        items = _decode_cbor_sequence(msg1)
-        if len(items) < 4:
-            raise ValueError(
-                f"Malformed message_1: expected at least 4 CBOR items, got {len(items)}"
+            g_xy = _x25519_shared_secret(self._eph_sk, g_x)
+            th_2 = _compute_th(self._eph_pk + _compute_th(message_1))
+            prk_2e = _hkdf_extract(th_2, g_xy)
+            prk_3e2m = prk_2e
+            id_cred_r = _validate_bytes(
+                self.identity.pubkey, "local credential", ED25519_SIG_LEN // 2
             )
+            context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(id_cred_r)
+            mac_2 = _edhoc_kdf(prk_3e2m, th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
+            m_2 = cbor2.dumps(
+                ["Signature1", cbor2.dumps(id_cred_r), th_2, cbor2.dumps(id_cred_r), mac_2]
+            )
+            signature_2 = SigningKey(self.identity.seed).sign(m_2).signature
+            plaintext_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(signature_2)
+            keystream_2 = _edhoc_kdf(prk_2e, th_2, "KEYSTREAM_2", b"", len(plaintext_2))
+            ciphertext_2 = bytes(
+                a ^ b for a, b in zip(plaintext_2, keystream_2, strict=True)
+            )
+            th_3 = _compute_th(
+                cbor2.dumps(th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)
+            )
+            msg2 = cbor2.dumps(self._eph_pk + ciphertext_2) + _encode_connection_id(c_r)
+        except Exception as exc:
+            self._fail()
+            if isinstance(exc, ValueError):
+                raise
+            raise ValueError("Message 1 processing failed") from exc
 
-        suites_i = items[1]
-        self._g_x = items[2]
-        self._c_i = _decode_connection_id(items[3])
-
-        # Verify suite is supported
-        if suites_i != SUITE_0:
-            raise ValueError(f"Unsupported cipher suite: {suites_i}")
-
-        # Compute shared secret
-        g_xy = _x25519_shared_secret(self._eph_sk, self._g_x)
-
-        # TH_2 = H(G_Y, H(message_1))
-        h_msg1 = _compute_th(msg1)
-        th_2_input = self._eph_pk + h_msg1
-        self._th_2 = _compute_th(th_2_input)
-
-        # PRK_2e = HKDF-Extract(salt=TH_2, IKM=G_XY)
-        self._prk_2e = _hkdf_extract(self._th_2, g_xy)
-
-        # PRK_3e2m = PRK_2e for SIGN_SIGN
-        self._prk_3e2m = self._prk_2e
-
-        # Create PLAINTEXT_2 = (ID_CRED_R, Signature_or_MAC_2, ?EAD_2)
-        id_cred_r = self.identity.pubkey
-        cred_r = self.identity.pubkey  # CRED_R = pubkey for simplified case
-
-        # Compute MAC_2 per RFC 9528 Section 4.3.2
-        # MAC_2 = EDHOC-KDF(PRK_3e2m, TH_2, "MAC_2", context_2, mac_length_2)
-        # context_2 = << ID_CRED_R, CRED_R, ?EAD_2 >>
-        context_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(cred_r)
-        mac_2 = _edhoc_kdf(self._prk_3e2m, self._th_2, "MAC_2", context_2, EDHOC_MAC_LEN)
-
-        # Compute Signature_2 per RFC 9528 Section 4.3.2 (COSE Sig_structure)
-        # M_2 = ["Signature1", << ID_CRED_R >>, TH_2, << CRED_R, ?EAD_2 >>, MAC_2]
-        m_2 = cbor2.dumps([
-            "Signature1",
-            cbor2.dumps(id_cred_r),
-            self._th_2,
-            cbor2.dumps(cred_r),
-            mac_2,
-        ])
-        signing_key = SigningKey(self.identity.seed)
-        signature_2 = signing_key.sign(m_2).signature
-
-        plaintext_2 = cbor2.dumps(id_cred_r) + cbor2.dumps(signature_2)
-
-        # KEYSTREAM_2 for XOR encryption
-        keystream_2 = _edhoc_kdf(
-            self._prk_2e, self._th_2, "KEYSTREAM_2", b"", len(plaintext_2)
-        )
-        ciphertext_2 = bytes(a ^ b for a, b in zip(plaintext_2, keystream_2, strict=True))
-
-        # TH_3 = H(TH_2, CIPHERTEXT_2, ID_CRED_R)
-        th_3_input = cbor2.dumps(self._th_2) + cbor2.dumps(ciphertext_2) + cbor2.dumps(id_cred_r)
-        self._th_3 = _compute_th(th_3_input)
-
-        # message_2 = (G_Y || CIPHERTEXT_2, C_R)
-        g_y_ciphertext_2 = self._eph_pk + ciphertext_2
-        msg2 = cbor2.dumps(g_y_ciphertext_2) + _encode_connection_id(self.c_r)
-
+        self._msg1 = message_1
+        self._g_x = g_x
+        self._c_i = c_i
+        self._c_r = c_r
+        self.c_r = c_r
+        self._prk_2e = prk_2e
+        self._prk_3e2m = prk_3e2m
+        self._th_2 = th_2
+        self._th_3 = th_3
+        self._state = _ResponderState.WAIT_MESSAGE_3
         return msg2
 
     def process_message_3(self, msg3: bytes, peer_pubkey: bytes) -> None:
@@ -593,81 +616,63 @@ class EdhocResponder:
         Raises:
             ValueError: If signature verification fails.
         """
-        ciphertext_3 = msg3
-
-        # K_3 and IV_3 for AEAD decryption
-        k_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "K_3", b"", CCM_KEY_LEN)
-        iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
-
-        # A_3 = Enc(ID_CRED_I) for AAD
-        a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
-
-        plaintext_3 = _aead_decrypt(k_3, iv_3, a_3, ciphertext_3)
-
-        # Parse PLAINTEXT_3 = (ID_CRED_I, Signature_3, ?EAD_3)
-        pt3_items = _decode_cbor_sequence(plaintext_3)
-        if len(pt3_items) < 2:
-            raise ValueError(
-                f"Malformed PLAINTEXT_3: expected at least 2 CBOR items, got {len(pt3_items)}"
-            )
-        id_cred_i = pt3_items[0]
-        signature_3 = pt3_items[1]
-
-        # PRK_4e3m = PRK_3e2m for SIGN_SIGN (needed for MAC_3)
-        self._prk_4e3m = self._prk_3e2m
-
-        # Verify Signature_3 per RFC 9528 Section 4.4.2
-        cred_i = peer_pubkey  # CRED_I = pubkey for simplified case
-
-        # Recompute MAC_3
-        context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(cred_i)
-        mac_3 = _edhoc_kdf(self._prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
-
-        # M_3 = ["Signature1", << ID_CRED_I >>, TH_3, << CRED_I, ?EAD_3 >>, MAC_3]
-        m_3 = cbor2.dumps([
-            "Signature1",
-            cbor2.dumps(id_cred_i),
-            self._th_3,
-            cbor2.dumps(cred_i),
-            mac_3,
-        ])
-        verify_key = VerifyKey(peer_pubkey)
+        self._require_state(_ResponderState.WAIT_MESSAGE_3, "process_message_3")
         try:
-            verify_key.verify(m_3, signature_3)
-        except Exception as e:
-            raise ValueError(f"Signature verification failed: {e}") from e
+            peer_key = _validate_bytes(peer_pubkey, "peer public key", ED25519_SIG_LEN // 2)
+            ciphertext_3 = _validate_bytes(msg3, "CIPHERTEXT_3")
+            if len(ciphertext_3) <= CCM_TAG_LEN:
+                raise ValueError("CIPHERTEXT_3 is too short")
+            k_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "K_3", b"", CCM_KEY_LEN)
+            iv_3 = _edhoc_kdf(self._prk_3e2m, self._th_3, "IV_3", b"", CCM_NONCE_LEN)
+            a_3 = cbor2.dumps(["Encrypt0", b"", self._th_3])
+            plaintext_3 = _aead_decrypt(k_3, iv_3, a_3, ciphertext_3)
+            pt3_items = _decode_cbor_sequence(plaintext_3)
+            if len(pt3_items) != 2:
+                raise ValueError(
+                    f"Malformed PLAINTEXT_3: expected 2 CBOR items, got {len(pt3_items)}"
+                )
+            id_cred_i = _validate_bytes(pt3_items[0], "ID_CRED_I", ED25519_SIG_LEN // 2)
+            signature_3 = _validate_bytes(pt3_items[1], "Signature_3", ED25519_SIG_LEN)
+            if id_cred_i != peer_key:
+                raise ValueError("ID_CRED_I does not match the authenticated peer")
+            prk_4e3m = self._prk_3e2m
+            context_3 = cbor2.dumps(id_cred_i) + cbor2.dumps(peer_key)
+            mac_3 = _edhoc_kdf(prk_4e3m, self._th_3, "MAC_3", context_3, EDHOC_MAC_LEN)
+            m_3 = cbor2.dumps(
+                ["Signature1", cbor2.dumps(id_cred_i), self._th_3, cbor2.dumps(peer_key), mac_3]
+            )
+            try:
+                VerifyKey(peer_key).verify(m_3, signature_3)
+            except Exception as exc:
+                raise ValueError("Signature_3 verification failed") from exc
+            th_4 = _compute_th(cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3))
+        except Exception as exc:
+            self._fail()
+            if isinstance(exc, ValueError):
+                raise
+            raise ValueError("Message 3 processing failed") from exc
 
-        # TH_4 = H(TH_3, CIPHERTEXT_3)
-        th_4_input = cbor2.dumps(self._th_3) + cbor2.dumps(ciphertext_3)
-        self._th_4 = _compute_th(th_4_input)
+        self._prk_4e3m = prk_4e3m
+        self._th_4 = th_4
+        self._state = _ResponderState.COMPLETE
 
     def export_oscore(self, oscore_salt_len: int = 8, oscore_key_len: int = 16) -> OscoreContext:
         """Export OSCORE security context.
 
         Note: Responder's sender/recipient IDs are swapped vs initiator.
         """
-        if not self._prk_4e3m or not self._th_4:
-            raise ValueError("EDHOC not complete")
-
-        master_secret = _edhoc_kdf(
-            self._prk_4e3m,
-            self._th_4,
-            "OSCORE_Master_Secret",
-            b"",
-            oscore_key_len,
-        )
-        master_salt = _edhoc_kdf(
-            self._prk_4e3m,
-            self._th_4,
-            "OSCORE_Master_Salt",
-            b"",
-            oscore_salt_len,
-        )
-
-        # Responder: sender=C_R, recipient=C_I (swapped from initiator)
-        return OscoreContext(
-            master_secret=master_secret,
-            master_salt=master_salt,
-            sender_id=self.c_r,
-            recipient_id=self._c_i,
-        )
+        self._require_state(_ResponderState.COMPLETE, "export_oscore")
+        try:
+            master_secret = _edhoc_kdf(
+                self._prk_4e3m, self._th_4, "OSCORE_Master_Secret", b"", oscore_key_len
+            )
+            master_salt = _edhoc_kdf(
+                self._prk_4e3m, self._th_4, "OSCORE_Master_Salt", b"", oscore_salt_len
+            )
+            context = OscoreContext(master_secret, master_salt, self._c_r, self._c_i)
+        except Exception:
+            self._fail()
+            raise
+        self._state = _ResponderState.EXPORTED
+        self._clear_session_material()
+        return context

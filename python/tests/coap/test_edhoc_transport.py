@@ -13,6 +13,7 @@ import pytest
 from lichen.coap.resources import EdhocResource, StaticNodeInfo, build_site
 from lichen.coap.secure import (
     OscoreContextStore,
+    PeerContext,
     SqliteOscoreContextStore,
     TofuPeerResolver,
     TransactionalOscoreContextStore,
@@ -21,6 +22,18 @@ from lichen.coap.transport import InMemoryNetwork, create_lichen_context
 from lichen.crypto.edhoc import EdhocInitiator
 from lichen.crypto.identity import Identity
 from lichen.crypto.oscore import MemorySecurityContext
+
+
+class _FailingPutStore(OscoreContextStore):
+    async def put(
+        self,
+        host: str,
+        oscore_ctx: MemorySecurityContext,
+        peer_pubkey: bytes,
+        *,
+        expected_generation: int | None = None,
+    ) -> PeerContext:
+        raise RuntimeError("injected context publication failure")
 
 
 class TestEdhocResource:
@@ -248,6 +261,80 @@ class TestEdhocResource:
 
         with pytest.raises(ValueError, match="different context store"):
             EdhocResource(bob_identity, OscoreContextStore(), resolver)
+
+    @pytest.mark.asyncio
+    async def test_malformed_message_1_publishes_nothing(
+        self,
+        alice_identity: Identity,
+        bob_identity: Identity,
+        context_store: TransactionalOscoreContextStore,
+        peer_resolver: TofuPeerResolver,
+    ) -> None:
+        await peer_resolver.pin_peer("alice", alice_identity.pubkey)
+        edhoc = EdhocResource(bob_identity, context_store, peer_resolver)
+
+        with pytest.raises(ValueError):
+            await edhoc._handle_message_1("alice", b"\x58")
+
+        assert edhoc._sessions == {}
+        assert context_store.get_sync("alice") is None
+
+    @pytest.mark.asyncio
+    async def test_failed_message_3_is_removed_and_fresh_handshake_succeeds(
+        self,
+        alice_identity: Identity,
+        bob_identity: Identity,
+        context_store: TransactionalOscoreContextStore,
+        peer_resolver: TofuPeerResolver,
+    ) -> None:
+        await peer_resolver.pin_peer("alice", alice_identity.pubkey)
+        edhoc = EdhocResource(bob_identity, context_store, peer_resolver)
+        initiator = EdhocInitiator.create(alice_identity, c_i=b"\x00")
+        response2 = await edhoc._handle_message_1("alice", initiator.create_message_1())
+        msg3 = initiator.process_message_2(response2.payload, bob_identity.pubkey)
+        session = next(iter(edhoc._sessions.values()))
+        corrupted_msg3 = bytes([msg3[0] ^ 1]) + msg3[1:]
+
+        with pytest.raises(ValueError):
+            await edhoc._handle_message_3("alice", corrupted_msg3, session)
+
+        assert edhoc._sessions == {}
+        assert context_store.get_sync("alice") is None
+
+        fresh = EdhocInitiator.create(alice_identity, c_i=b"\x00")
+        fresh_response2 = await edhoc._handle_message_1(
+            "alice", fresh.create_message_1()
+        )
+        fresh_msg3 = fresh.process_message_2(fresh_response2.payload, bob_identity.pubkey)
+        fresh_session = next(iter(edhoc._sessions.values()))
+        response3 = await edhoc._handle_message_3("alice", fresh_msg3, fresh_session)
+
+        assert response3.code.is_successful()
+        assert edhoc._sessions == {}
+        assert context_store.get_sync("alice") is not None
+
+    @pytest.mark.asyncio
+    async def test_publication_failure_cleans_session_without_publishing(
+        self,
+        alice_identity: Identity,
+        bob_identity: Identity,
+    ) -> None:
+        context_store = _FailingPutStore()
+        peer_resolver = TofuPeerResolver()
+        await peer_resolver.pin_peer("alice", alice_identity.pubkey)
+        edhoc = EdhocResource(bob_identity, context_store, peer_resolver)
+        initiator = EdhocInitiator.create(alice_identity, c_i=b"\x00")
+        response2 = await edhoc._handle_message_1("alice", initiator.create_message_1())
+        msg3 = initiator.process_message_2(response2.payload, bob_identity.pubkey)
+        session = next(iter(edhoc._sessions.values()))
+        responder = session["responder"]
+
+        with pytest.raises(RuntimeError, match="publication failure"):
+            await edhoc._handle_message_3("alice", msg3, session)
+
+        assert responder._state.name == "EXPORTED"
+        assert edhoc._sessions == {}
+        assert context_store.get_sync("alice") is None
 
 
 class TestEdhocContextDerivation:
