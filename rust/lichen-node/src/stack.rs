@@ -157,7 +157,9 @@ impl<R: Radio> Stack<R> {
             epoch >= 128,
             "SECURITY: epoch MUST be in [128, 255] per spec section 4.4"
         );
-        let node_id = NodeId(identity.iid);
+        let mut eui64 = identity.iid;
+        eui64[0] ^= 0x02;
+        let node_id = NodeId(eui64);
         Self {
             radio,
             link: lichen_link::link_layer::LinkLayer::new(identity),
@@ -574,6 +576,8 @@ mod tests {
     async fn stack_ping_pong() {
         let alice_id = Identity::from_seed(Seed::new([0x01; 32]));
         let bob_id = Identity::from_seed(Seed::new([0x02; 32]));
+        let alice_iid = alice_id.iid;
+        let bob_iid = bob_id.iid;
 
         let alice_peer = PeerIdentity::from_pubkey(alice_id.pubkey);
         let bob_peer = PeerIdentity::from_pubkey(bob_id.pubkey);
@@ -589,6 +593,8 @@ mod tests {
         // Build and send ICMPv6 Echo Request from Alice to Bob
         let alice_addr = alice.local_addr();
         let bob_addr = bob.local_addr();
+        assert_eq!(&alice_addr.0[8..], &alice_iid);
+        assert_eq!(&bob_addr.0[8..], &bob_iid);
 
         let echo = lichen_ipv6::Icmpv6Echo { id: 42, seq: 1 };
         let icmp = echo.build_request(&alice_addr, &bob_addr, b"ping").unwrap();
