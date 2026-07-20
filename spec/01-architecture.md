@@ -14,7 +14,7 @@ Every protocol layer uses existing IETF standards:
 | Layer | Standard | RFC |
 |-------|----------|-----|
 | Compression | SCHC | RFC 8724 |
-| Adaptation | 6LoWPAN | RFC 4944, 6282 |
+| Adaptation | SCHC | RFC 8724 |
 | Network | IPv6 | RFC 8200 |
 | Routing | RPL | RFC 6550 |
 | Security | OSCORE, LLSec | RFC 8613, custom |
@@ -57,11 +57,10 @@ Every protocol layer uses existing IETF standards:
 +----------------------------------------------------------+
 |                    Routing Layer                          |
 |  RPL (RFC 6550) - DODAG mesh formation                    |
-|  Source routing via 6LoRH (RFC 8138)                      |
+|  Source routing via RFC 6554 RH3                           |
 +----------------------------------------------------------+
 |                    Adaptation Layer                       |
-|  6LoWPAN (RFC 4944, 6282) - fragmentation                 |
-|  SCHC (RFC 8724) - header compression                     |
+|  SCHC (RFC 8724) - compression and fragmentation          |
 +----------------------------------------------------------+
 |                    Link Security Layer                    |
 |  Ed25519 signatures (truncated) | Replay protection       |
