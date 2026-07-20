@@ -44,11 +44,12 @@ import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, TypeGuard, TypeVar, cast, runtime_checkable
 
 import aiocoap
 from aiocoap import Message
-from aiocoap.numbers.codes import POST
+from aiocoap.numbers.codes import EMPTY, POST
+from aiocoap.numbers.types import ACK, CON, RST
 from aiocoap.oscore import Direction
 
 from lichen.crypto.edhoc import EdhocInitiator, OscoreContext
@@ -123,8 +124,47 @@ class PeerContext:
     peer_pubkey: bytes
     generation: int = 1
     established_at: float = field(default_factory=_monotonic_time)
-    # Track pending requests for response correlation
-    pending_requests: dict[bytes, object] = field(default_factory=dict)
+    outbound_requests: dict[bytes, _RequestCorrelation] = field(default_factory=dict)
+    inbound_requests: dict[bytes, _RequestCorrelation] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class _RequestCorrelation:
+    request_id: object | None
+    observe: bool
+    lifecycle_id: object = field(default_factory=object)
+    interested: bool = True
+    cancelled_observe: bool = False
+    cancellation_timer: asyncio.TimerHandle | None = None
+    cancellation_deadline: float | None = None
+    terminal: bool = False
+    pending_sends: int = 0
+    con_mids: set[int] = field(default_factory=set)
+
+
+@dataclass(slots=True)
+class _ProtectedCon:
+    data: bytes
+    token: bytes
+    locally_originated: bool
+    correlation: _RequestCorrelation | None = None
+    plaintext: bytes = b""
+
+
+@dataclass(slots=True)
+class _SendOperation:
+    correlation: _RequestCorrelation
+    token: bytes
+    locally_originated: bool
+    finished: bool = False
+
+
+@dataclass(slots=True)
+class _UnprotectedDatagram:
+    data: bytes
+    message: Message
+    added_correlation: _RequestCorrelation | None = None
+    matched_correlation: _RequestCorrelation | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -1150,8 +1190,13 @@ class SecureDatagramChannel(DatagramChannel):
         # Set of peers with active EDHOC exchange (allow plaintext from these)
         self._edhoc_active_peers: set[str] = set()
         self._sequence_reservation_size = sequence_reservation_size
-        self._send_locks: dict[str, asyncio.Lock] = {}
-        self._receive_locks: dict[str, asyncio.Lock] = {}
+        self._peer_locks: dict[str, asyncio.Lock] = {}
+        self._active_peer_contexts: dict[str, PeerContext] = {}
+        self._pending_outbound: dict[tuple[str, bytes], _RequestCorrelation] = {}
+        self._message_admissions: dict[int, tuple[str, _SendOperation]] = {}
+        self._protected_cons: dict[tuple[str, int], _ProtectedCon] = {}
+        self._tasks: set[asyncio.Task[Any]] = set()
+        self._closing = False
         self._pid = os.getpid()
 
     def _check_process(self) -> None:
@@ -1159,8 +1204,8 @@ class SecureDatagramChannel(DatagramChannel):
         pid = os.getpid()
         if pid != self._pid:
             self._pid = pid
-            self._send_locks = {}
-            self._receive_locks = {}
+            self._peer_locks = {}
+            self._clear_lifecycle_state()
             self._pending_edhoc = {}
             self._edhoc_active_peers = set()
             self._edhoc_ctx = None
@@ -1168,10 +1213,315 @@ class SecureDatagramChannel(DatagramChannel):
 
     async def _get_peer_context(self, host: str) -> PeerContext | None:
         self._check_process()
-        return await self._context_store.get(validate_endpoint_key(host))
+        key = validate_endpoint_key(host)
+        context = await self._context_store.get(key)
+        self._publish_peer_context(key, context)
+        return context
+
+    def _publish_peer_context(self, key: str, context: PeerContext | None) -> None:
+        previous = self._active_peer_contexts.get(key)
+        if previous is context:
+            return
+        if (
+            previous is not None
+            and context is not None
+            and previous.generation == context.generation
+        ):
+            context.outbound_requests = previous.outbound_requests
+            context.inbound_requests = previous.inbound_requests
+            self._active_peer_contexts[key] = context
+            return
+        if previous is not None:
+            self._abandon_peer_admissions(key)
+            self._clear_context_lifecycle(previous)
+        self._active_peer_contexts.pop(key, None)
+        if previous is not None:
+            self._pending_outbound = {
+                pending_key: correlation
+                for pending_key, correlation in self._pending_outbound.items()
+                if pending_key[0] != key
+            }
+            for con_key in [
+                con_key for con_key in self._protected_cons if con_key[0] == key
+            ]:
+                self._protected_cons.pop(con_key, None)
+        if context is not None:
+            self._active_peer_contexts[key] = context
+
+    def _clear_context_lifecycle(self, context: PeerContext) -> None:
+        for correlation in context.outbound_requests.values():
+            self._cancel_cancellation_timer(correlation)
+        context.outbound_requests.clear()
+        context.inbound_requests.clear()
+
+    def _clear_peer_lifecycle(self, peer: str, context: PeerContext | None = None) -> None:
+        self._abandon_peer_admissions(peer)
+        active = self._active_peer_contexts.pop(peer, None)
+        if context is not None:
+            self._clear_context_lifecycle(context)
+        if active is not None and active is not context:
+            self._clear_context_lifecycle(active)
+        self._pending_outbound = {
+            key: correlation
+            for key, correlation in self._pending_outbound.items()
+            if key[0] != peer
+        }
+        for key in [key for key in self._protected_cons if key[0] == peer]:
+            self._protected_cons.pop(key, None)
+
+    def _clear_lifecycle_state(self) -> None:
+        for peer in {peer for peer, _operation in self._message_admissions.values()}:
+            self._abandon_peer_admissions(peer)
+        for context in self._active_peer_contexts.values():
+            self._clear_context_lifecycle(context)
+        self._active_peer_contexts.clear()
+        self._pending_outbound.clear()
+        self._message_admissions.clear()
+        self._protected_cons.clear()
+
+    def _abandon_peer_admissions(self, peer: str) -> None:
+        context = self._active_peer_contexts.get(peer)
+        for message_id, (admission_peer, operation) in tuple(
+            self._message_admissions.items()
+        ):
+            if admission_peer == peer:
+                self._message_admissions.pop(message_id, None)
+                self._finish_send_operation(peer, context, operation)
+
+    def _track_task(
+        self, coroutine: Any, on_done: Callable[[], None] | None = None
+    ) -> None:
+        task = asyncio.get_running_loop().create_task(coroutine)
+        self._tasks.add(task)
+
+        def done(completed: asyncio.Task[Any]) -> None:
+            self._tasks.discard(completed)
+            if on_done is not None:
+                on_done()
+            if not completed.cancelled():
+                completed.exception()
+
+        task.add_done_callback(done)
+
+    @staticmethod
+    def _correlations(
+        context: PeerContext, locally_originated: bool
+    ) -> dict[bytes, _RequestCorrelation]:
+        return context.outbound_requests if locally_originated else context.inbound_requests
+
+    @staticmethod
+    def _matches_lifecycle(
+        correlation: _RequestCorrelation | None, lifecycle_id: object | None
+    ) -> TypeGuard[_RequestCorrelation]:
+        return correlation is not None and correlation.lifecycle_id is lifecycle_id
+
+    @staticmethod
+    def _cancel_cancellation_timer(correlation: _RequestCorrelation) -> None:
+        if correlation.cancellation_timer is not None:
+            correlation.cancellation_timer.cancel()
+            correlation.cancellation_timer = None
+        correlation.cancellation_deadline = None
+
+    def _retire_outbound(
+        self, context: PeerContext, token: bytes, correlation: _RequestCorrelation
+    ) -> None:
+        if context.outbound_requests.get(token) is correlation:
+            context.outbound_requests.pop(token, None)
+            self._cancel_cancellation_timer(correlation)
+
+    def _schedule_cancellation_expiry(
+        self, delay: float, callback: Callable[[], None]
+    ) -> asyncio.TimerHandle:
+        return asyncio.get_running_loop().call_later(delay, callback)
+
+    def _expire_cancelled_observation(
+        self,
+        peer: str,
+        generation: int,
+        token: bytes,
+        correlation: _RequestCorrelation,
+    ) -> None:
+        context = self._active_peer_contexts.get(peer)
+        if (
+            context is None
+            or context.generation != generation
+            or context.outbound_requests.get(token) is not correlation
+        ):
+            self._cancel_cancellation_timer(correlation)
+            return
+        correlation.cancellation_timer = None
+        correlation.cancellation_deadline = None
+        context.outbound_requests.pop(token, None)
+
+    def _retire_inbound_if_done(
+        self, context: PeerContext, token: bytes, correlation: _RequestCorrelation
+    ) -> None:
+        if context.inbound_requests.get(token) is not correlation:
+            return
+        ended_observation = correlation.observe and not correlation.interested
+        if (
+            correlation.pending_sends == 0
+            and not correlation.con_mids
+            and (correlation.terminal or ended_observation)
+        ):
+            context.inbound_requests.pop(token, None)
+
+    def request_started(
+        self, peer: str, token: bytes, *, locally_originated: bool
+    ) -> object | None:
+        key = validate_endpoint_key(peer)
+        if locally_originated:
+            correlation = self._pending_outbound.get((key, token))
+        else:
+            context = self._active_peer_contexts.get(key)
+            correlation = None if context is None else context.inbound_requests.get(token)
+        return None if correlation is None else correlation.lifecycle_id
+
+    def message_admitted(self, message: Message, peer: str) -> object | None:
+        if self._closing:
+            return None
+        key = validate_endpoint_key(peer)
+        correlation = None
+        locally_originated = message.code.is_request()
+        if locally_originated:
+            correlation = _RequestCorrelation(
+                None, observe=message.opt.observe == 0
+            )
+            self._pending_outbound[(key, message.token)] = correlation
+        elif message.code.is_response():
+            context = self._active_peer_contexts.get(key)
+            if context is not None:
+                correlation = context.inbound_requests.get(message.token)
+        if correlation is None:
+            return None
+        correlation.pending_sends += 1
+        self._message_admissions[id(message)] = (
+            key,
+            _SendOperation(correlation, message.token, locally_originated),
+        )
+        return correlation.lifecycle_id
+
+    def message_abandoned(self, message: Message) -> None:
+        admission = self._message_admissions.pop(id(message), None)
+        if admission is None:
+            return
+        key, operation = admission
+        if (
+            not operation.locally_originated
+            and message.code.is_response()
+            and message.opt.observe is None
+        ):
+            if not operation.finished:
+                operation.finished = True
+                operation.correlation.pending_sends -= 1
+            return
+        self._finish_send_operation(
+            key, self._active_peer_contexts.get(key), operation
+        )
+
+    def request_interest_ended(
+        self,
+        peer: str,
+        token: bytes,
+        lifecycle_id: object | None,
+        *,
+        locally_originated: bool,
+    ) -> None:
+        key = validate_endpoint_key(peer)
+        context = self._active_peer_contexts.get(key)
+        if locally_originated:
+            correlation = self._pending_outbound.get((key, token))
+            if not self._matches_lifecycle(correlation, lifecycle_id) and context is not None:
+                correlation = context.outbound_requests.get(token)
+            if not self._matches_lifecycle(correlation, lifecycle_id):
+                return
+            correlation.interested = False
+            if correlation.cancelled_observe:
+                return
+            if self._pending_outbound.get((key, token)) is correlation:
+                self._pending_outbound.pop((key, token), None)
+            if context is not None and context.outbound_requests.get(token) is correlation:
+                self._retire_outbound(context, token, correlation)
+            return
+
+        if context is None:
+            return
+        correlation = context.inbound_requests.get(token)
+        if not self._matches_lifecycle(correlation, lifecycle_id):
+            return
+        correlation.interested = False
+        self._retire_inbound_if_done(context, token, correlation)
+
+    def observation_cancelled(
+        self,
+        peer: str,
+        token: bytes,
+        lifecycle_id: object | None,
+        exchange_lifetime: float,
+    ) -> None:
+        key = validate_endpoint_key(peer)
+        context = self._active_peer_contexts.get(key)
+        correlation = self._pending_outbound.get((key, token))
+        if not self._matches_lifecycle(correlation, lifecycle_id) and context is not None:
+            correlation = context.outbound_requests.get(token)
+        if not self._matches_lifecycle(correlation, lifecycle_id):
+            return
+        correlation.interested = False
+        correlation.cancelled_observe = True
+        if context is None or correlation.cancellation_timer is not None:
+            return
+        delay = max(0.0, exchange_lifetime)
+        correlation.cancellation_deadline = asyncio.get_running_loop().time() + delay
+        correlation.cancellation_timer = self._schedule_cancellation_expiry(
+            delay,
+            lambda: self._expire_cancelled_observation(
+                key, context.generation, token, correlation
+            ),
+        )
+
+    def response_completed(
+        self, peer: str, token: bytes, lifecycle_id: object | None
+    ) -> None:
+        context = self._active_peer_contexts.get(validate_endpoint_key(peer))
+        if context is None:
+            return
+        correlation = context.inbound_requests.get(token)
+        if not self._matches_lifecycle(correlation, lifecycle_id):
+            return
+        correlation.terminal = True
+        self._retire_inbound_if_done(context, token, correlation)
+
+    def exchange_ended(self, peer: str, mid: int, *, reset: bool) -> None:
+        key = (validate_endpoint_key(peer), mid)
+        cached = self._protected_cons.pop(key, None)
+        if cached is None:
+            return
+        context = self._active_peer_contexts.get(key[0])
+        if context is None:
+            return
+        correlations = self._correlations(context, cached.locally_originated)
+        correlation = correlations.get(cached.token)
+        if correlation is None or correlation is not cached.correlation:
+            return
+        correlation.con_mids.discard(mid)
+        if reset:
+            correlation.interested = False
+        if (
+            cached.locally_originated
+            and not correlation.interested
+            and not correlation.cancelled_observe
+        ):
+            self._retire_outbound(context, cached.token, correlation)
+        elif not cached.locally_originated:
+            self._retire_inbound_if_done(context, cached.token, correlation)
+
+    def exchange_expired(self, peer: str, mid: int) -> None:
+        self.exchange_ended(peer, mid, reset=True)
 
     def set_receiver(self, receiver: ReceiveCallback) -> None:
         """Register a callback for received (unprotected) datagrams."""
+        if self._closing:
+            raise RuntimeError("secure datagram channel is closing")
         self._receiver = receiver
         self._inner.set_receiver(self._on_datagram)
 
@@ -1181,11 +1531,14 @@ class SecureDatagramChannel(DatagramChannel):
         This is synchronous since DatagramChannel callback is sync.
         We schedule async work for OSCORE processing.
         """
-        loop = asyncio.get_running_loop()
-        loop.create_task(self._process_incoming(data, source))
+        if self._closing:
+            return
+        self._track_task(self._process_incoming(data, source))
 
     async def _process_incoming(self, data: bytes, source: str) -> None:
         """Process an incoming datagram asynchronously."""
+        if self._closing:
+            return
         try:
             # Decode with a remote so aiocoap knows the source
             remote = LichenRemote(source)
@@ -1198,9 +1551,33 @@ class SecureDatagramChannel(DatagramChannel):
 
             if has_oscore:
                 # OSCORE protected - unprotect it
-                plaintext = await self._unprotect(msg, source)
-                if plaintext is not None and self._receiver is not None:
-                    self._receiver(plaintext, source)
+                unprotected = await self._unprotect_datagram(msg, source)
+                if unprotected is not None and self._receiver is not None:
+                    try:
+                        self._receiver(unprotected.data, source)
+                    except Exception:
+                        if unprotected.added_correlation is not None:
+                            peer_ctx = self._active_peer_contexts.get(
+                                validate_endpoint_key(source)
+                            )
+                            if peer_ctx is not None:
+                                current = peer_ctx.inbound_requests.get(msg.token)
+                                if current is unprotected.added_correlation:
+                                    peer_ctx.inbound_requests.pop(msg.token, None)
+                        raise
+                    if unprotected.message.code.is_response():
+                        peer_ctx = self._active_peer_contexts.get(
+                            validate_endpoint_key(source)
+                        )
+                        correlation = unprotected.matched_correlation
+                        if (
+                            peer_ctx is not None
+                            and peer_ctx.outbound_requests.get(msg.token) is correlation
+                            and (
+                                unprotected.message.opt.observe is None
+                            )
+                        ):
+                            self._retire_outbound(peer_ctx, msg.token, correlation)
             elif source in self._edhoc_active_peers:
                 # EDHOC in progress with this peer - allow plaintext
                 # (EDHOC responses are not OSCORE-protected)
@@ -1208,6 +1585,9 @@ class SecureDatagramChannel(DatagramChannel):
                 # Dispatch to EDHOC channel for response matching
                 if self._edhoc_channel is not None:
                     self._edhoc_channel.dispatch(data, source)
+            elif msg.code is EMPTY and msg.mtype in (ACK, RST):
+                if self._receiver is not None:
+                    self._receiver(data, source)
             elif self._require_oscore:
                 # Plaintext not allowed
                 logger.warning("Rejected plaintext message from %s (OSCORE required)", source)
@@ -1224,9 +1604,18 @@ class SecureDatagramChannel(DatagramChannel):
 
         Returns the plaintext CoAP bytes, or None if unprotection fails.
         """
+        result = await self._unprotect_datagram(msg, source)
+        return None if result is None else result.data
+
+    async def _unprotect_datagram(
+        self, msg: Message, source: str
+    ) -> _UnprotectedDatagram | None:
+        """Unprotect and stage correlation state for synchronous dispatch."""
         key = validate_endpoint_key(source)
-        lock = self._receive_locks.setdefault(key, asyncio.Lock())
+        lock = self._peer_locks.setdefault(key, asyncio.Lock())
         async with lock:
+            if self._closing:
+                return None
             peer_ctx = await self._get_peer_context(key)
             if peer_ctx is None:
                 logger.warning("No OSCORE context for %s, dropping message", source)
@@ -1238,8 +1627,9 @@ class SecureDatagramChannel(DatagramChannel):
 
                 # For responses, we need the request_id from when we sent the request
                 request_id = None
-                if is_response and msg.token in peer_ctx.pending_requests:
-                    request_id = peer_ctx.pending_requests.get(msg.token)
+                correlation = peer_ctx.outbound_requests.get(msg.token) if is_response else None
+                if correlation is not None:
+                    request_id = correlation.request_id
 
                 # Unprotect using aiocoap's OSCORE
                 expected_replay_index, expected_replay_bitfield = (
@@ -1265,9 +1655,6 @@ class SecureDatagramChannel(DatagramChannel):
                         expected_replay_index, expected_replay_bitfield
                     )
                     raise
-                if is_response:
-                    peer_ctx.pending_requests.pop(msg.token, None)
-
                 # OSCORE creates a new message but doesn't preserve mtype/mid/remote.
                 # Copy them from the outer message for proper encoding.
                 # SECURITY: These are outer CoAP header fields, copied from the
@@ -1278,6 +1665,7 @@ class SecureDatagramChannel(DatagramChannel):
                     unprotected_msg.mid = msg.mid
                 if unprotected_msg.remote is None:
                     unprotected_msg.remote = msg.remote
+                unprotected_msg.token = msg.token
                 # aiocoap's encode() asserts direction == OUTGOING. This message is
                 # semantically INCOMING, but we must set OUTGOING to satisfy encode().
                 # This is safe because we return bytes (not this Message object), so
@@ -1285,11 +1673,20 @@ class SecureDatagramChannel(DatagramChannel):
                 # The Message object is discarded after encoding.
                 unprotected_msg.direction = Direction.OUTGOING
 
-                # If this is a request, store request_id for the response
+                encoded = cast(bytes, unprotected_msg.encode())
+                added_correlation = None
                 if not is_response and new_request_id is not None:
-                    peer_ctx.pending_requests[msg.token] = new_request_id
+                    added_correlation = _RequestCorrelation(
+                        new_request_id, observe=unprotected_msg.opt.observe == 0
+                    )
+                    peer_ctx.inbound_requests[msg.token] = added_correlation
 
-                return cast(bytes, unprotected_msg.encode())
+                return _UnprotectedDatagram(
+                    encoded,
+                    unprotected_msg,
+                    added_correlation,
+                    correlation,
+                )
 
             except Exception as e:
                 logger.warning("OSCORE unprotection failed for %s: %r", source, e)
@@ -1301,29 +1698,262 @@ class SecureDatagramChannel(DatagramChannel):
         If no OSCORE context exists for dest, this will trigger EDHOC
         handshake (if peer resolver can provide their public key).
         """
+        if self._closing:
+            raise RuntimeError("secure datagram channel is closing")
         key = validate_endpoint_key(dest)
-        loop = asyncio.get_running_loop()
-        loop.create_task(self._send_protected(data, dest, key))
+        operation = self._prepare_send_operation(data, dest, key)
+        self._schedule_send(data, dest, key, operation)
 
-    async def _send_protected(self, data: bytes, dest: str, key: str | None = None) -> None:
+    def send_message(self, message: Message, dest: str) -> None:
+        """Schedule an aiocoap message using its admission lifecycle identity."""
+        if self._closing:
+            raise RuntimeError("secure datagram channel is closing")
+        key = validate_endpoint_key(dest)
+        try:
+            data = cast(bytes, message.encode())
+        except Exception:
+            self.message_abandoned(message)
+            raise
+        operation: _SendOperation | None
+        admission = self._message_admissions.pop(id(message), None)
+        if admission is not None:
+            admission_key, operation = admission
+            if admission_key != key:
+                self._finish_send_operation(
+                    admission_key,
+                    self._active_peer_contexts.get(admission_key),
+                    operation,
+                )
+                return
+        else:
+            operation = self._operation_for_lifecycle(message, key)
+            if operation is None and hasattr(message, "_lichen_lifecycle_id"):
+                return
+            if operation is None:
+                operation = self._prepare_send_operation(data, dest, key)
+        if operation is not None and message.mtype is CON:
+            self._stage_con(
+                key,
+                message,
+                data,
+                operation.correlation,
+                operation.locally_originated,
+            )
+        if (
+            operation is not None
+            and operation.locally_originated
+            and not operation.correlation.interested
+        ):
+            self._finish_send_operation(
+                key, self._active_peer_contexts.get(key), operation
+            )
+            return
+        self._schedule_send(data, dest, key, operation)
+
+    def _operation_for_lifecycle(
+        self, message: Message, key: str
+    ) -> _SendOperation | None:
+        lifecycle_id = getattr(message, "_lichen_lifecycle_id", None)
+        if lifecycle_id is None:
+            return None
+        locally_originated = message.code.is_request()
+        if locally_originated:
+            correlation = self._pending_outbound.get((key, message.token))
+            context = self._active_peer_contexts.get(key)
+            if not self._matches_lifecycle(correlation, lifecycle_id) and context is not None:
+                correlation = context.outbound_requests.get(message.token)
+        else:
+            context = self._active_peer_contexts.get(key)
+            correlation = (
+                None if context is None else context.inbound_requests.get(message.token)
+            )
+        if not self._matches_lifecycle(correlation, lifecycle_id):
+            return None
+        correlation.pending_sends += 1
+        return _SendOperation(correlation, message.token, locally_originated)
+
+    def _schedule_send(
+        self,
+        data: bytes,
+        dest: str,
+        key: str,
+        operation: _SendOperation | None,
+    ) -> None:
+        self._track_task(
+            self._send_protected(data, dest, key, operation),
+            lambda: self._finish_send_operation(
+                key, self._active_peer_contexts.get(key), operation
+            ),
+        )
+
+    def _prepare_send_operation(
+        self, data: bytes, dest: str, key: str
+    ) -> _SendOperation | None:
+        try:
+            message = Message.decode(data, LichenRemote(dest))
+        except Exception:
+            return None
+        if message.code.is_request():
+            cached = (
+                self._protected_cons.get((key, message.mid))
+                if message.mtype is CON
+                else None
+            )
+            if (
+                cached is not None
+                and cached.locally_originated
+                and cached.plaintext == data
+                and cached.correlation is not None
+            ):
+                correlation = cached.correlation
+            else:
+                correlation = _RequestCorrelation(
+                    None, observe=message.opt.observe == 0
+                )
+                self._pending_outbound[(key, message.token)] = correlation
+            if message.mtype is CON:
+                self._stage_con(key, message, data, correlation, True)
+            correlation.pending_sends += 1
+            return _SendOperation(correlation, message.token, True)
+        if message.code.is_response():
+            context = self._active_peer_contexts.get(key)
+            response_correlation = (
+                None if context is None else context.inbound_requests.get(message.token)
+            )
+            if response_correlation is not None:
+                if message.mtype is CON:
+                    self._stage_con(key, message, data, response_correlation, False)
+                response_correlation.pending_sends += 1
+                return _SendOperation(response_correlation, message.token, False)
+        return None
+
+    def _stage_con(
+        self,
+        key: str,
+        message: Message,
+        data: bytes,
+        correlation: _RequestCorrelation,
+        locally_originated: bool,
+    ) -> None:
+        con_key = (key, message.mid)
+        cached = self._protected_cons.get(con_key)
+        if (
+            cached is not None
+            and cached.plaintext == data
+            and cached.correlation is correlation
+            and cached.locally_originated == locally_originated
+        ):
+            return
+        if cached is not None and cached.correlation is not None:
+            cached.correlation.con_mids.discard(message.mid)
+            context = self._active_peer_contexts.get(key)
+            if context is not None and not cached.locally_originated:
+                self._retire_inbound_if_done(context, cached.token, cached.correlation)
+        self._protected_cons[con_key] = _ProtectedCon(
+            b"", message.token, locally_originated, correlation, data
+        )
+        correlation.con_mids.add(message.mid)
+
+    def _finish_send_operation(
+        self,
+        key: str,
+        context: PeerContext | None,
+        operation: _SendOperation | None,
+    ) -> None:
+        if operation is None:
+            return
+        if operation.finished:
+            return
+        operation.finished = True
+        correlation = operation.correlation
+        correlation.pending_sends -= 1
+        if operation.locally_originated:
+            if not correlation.interested and not correlation.cancelled_observe:
+                if self._pending_outbound.get((key, operation.token)) is correlation:
+                    self._pending_outbound.pop((key, operation.token), None)
+                if (
+                    context is not None
+                    and context.outbound_requests.get(operation.token) is correlation
+                ):
+                    self._retire_outbound(context, operation.token, correlation)
+        elif context is not None:
+            self._retire_inbound_if_done(context, operation.token, correlation)
+
+    async def _send_protected(
+        self,
+        data: bytes,
+        dest: str,
+        key: str | None = None,
+        operation: _SendOperation | None = None,
+    ) -> None:
         """Send with OSCORE protection (async implementation)."""
+        if self._closing:
+            return
         self._check_process()
         key = validate_endpoint_key(dest) if key is None else key
-        lock = self._send_locks.setdefault(key, asyncio.Lock())
+        if operation is None:
+            operation = self._prepare_send_operation(data, dest, key)
+        lock = self._peer_locks.setdefault(key, asyncio.Lock())
         async with lock:
-            peer_ctx = await self._get_peer_context(key)
-            if peer_ctx is None:
-                try:
-                    await self._establish_context(dest, key)
-                except Exception as e:
-                    logger.error("Failed to establish OSCORE context with %s: %s", key, e)
-                    return
-                peer_ctx = await self._get_peer_context(key)
-            if peer_ctx is None:
-                logger.error("Context lost after establishment for %s", key)
-                return
-
+            peer_ctx: PeerContext | None = None
             try:
+                if self._closing:
+                    return
+                remote = LichenRemote(dest)
+                msg = Message.decode(data, remote)
+                msg.direction = Direction.OUTGOING
+
+                if msg.code is EMPTY and msg.mtype in (ACK, RST):
+                    self._inner.send_datagram(data, dest)
+                    return
+
+                peer_ctx = await self._get_peer_context(key)
+                if peer_ctx is None:
+                    await self._establish_context(dest, key)
+                    peer_ctx = await self._get_peer_context(key)
+                if peer_ctx is None:
+                    raise RuntimeError("context lost after establishment")
+
+                if operation is not None:
+                    correlations = self._correlations(
+                        peer_ctx, operation.locally_originated
+                    )
+                    current = correlations.get(operation.token)
+                    if operation.locally_originated:
+                        pending = self._pending_outbound.get((key, operation.token))
+                        if (
+                            current is not operation.correlation
+                            and pending is not operation.correlation
+                        ):
+                            return
+                    elif current is not operation.correlation:
+                        return
+
+                con_key = (key, msg.mid)
+                cached = self._protected_cons.get(con_key) if msg.mtype is CON else None
+                if cached is not None and cached.plaintext == data and cached.data:
+                    if operation is None or cached.correlation is not operation.correlation:
+                        return
+                    self._inner.send_datagram(cached.data, dest)
+                    if (
+                        cached.locally_originated
+                        and cached.correlation is not None
+                        and cached.correlation.interested
+                        and self._pending_outbound.get((key, cached.token))
+                        is cached.correlation
+                    ):
+                        peer_ctx.outbound_requests[cached.token] = cached.correlation
+                        self._pending_outbound.pop((key, cached.token), None)
+                    return
+                if cached is not None and cached.plaintext != data:
+                    if cached.correlation is not None:
+                        cached.correlation.con_mids.discard(msg.mid)
+                        if not cached.locally_originated:
+                            self._retire_inbound_if_done(
+                                peer_ctx, cached.token, cached.correlation
+                            )
+                    self._protected_cons.pop(con_key, None)
+
                 if not peer_ctx.oscore.has_reserved_sender_sequence:
                     reservation = await self._context_store.reserve_sender_sequences(
                         key, peer_ctx.generation, self._sequence_reservation_size
@@ -1332,15 +1962,11 @@ class SecureDatagramChannel(DatagramChannel):
                         reservation.start, reservation.end
                     )
                 self._check_process()
-                # Decode the plaintext CoAP message
-                remote = LichenRemote(dest)
-                msg = Message.decode(data, remote)
-                msg.direction = Direction.OUTGOING
-
                 # Determine request_id for responses
                 request_id = None
-                if msg.code.is_response() and msg.token in peer_ctx.pending_requests:
-                    request_id = peer_ctx.pending_requests.get(msg.token)
+                inbound = peer_ctx.inbound_requests.get(msg.token)
+                if msg.code.is_response() and inbound is not None:
+                    request_id = inbound.request_id
 
                 # Protect with OSCORE
                 protected_msg, new_request_id = peer_ctx.oscore.protect(msg, request_id)
@@ -1353,17 +1979,39 @@ class SecureDatagramChannel(DatagramChannel):
                     protected_msg.mid = msg.mid
                 if protected_msg.remote is None:
                     protected_msg.remote = msg.remote
-
-                # Store request_id for requests (to correlate responses)
-                if msg.code.is_request() and new_request_id is not None:
-                    peer_ctx.pending_requests[msg.token] = new_request_id
+                protected_msg.token = msg.token
 
                 # Encode and send
-                protected_data = protected_msg.encode()
+                protected_data = cast(bytes, protected_msg.encode())
+                correlation = None
+                locally_originated = msg.code.is_request()
+                if locally_originated and new_request_id is not None:
+                    if operation is None:
+                        raise RuntimeError("outgoing request has no lifecycle operation")
+                    correlation = operation.correlation
+                    correlation.request_id = new_request_id
+                elif msg.code.is_response():
+                    correlation = inbound
+                if msg.mtype is CON:
+                    staged = self._protected_cons.get(con_key)
+                    if staged is None or staged.correlation is not correlation:
+                        raise RuntimeError("CON lifecycle ownership changed during protection")
+                    staged.data = protected_data
                 self._inner.send_datagram(protected_data, dest)
+
+                if (
+                    locally_originated
+                    and correlation is not None
+                    and correlation.interested
+                    and self._pending_outbound.get((key, msg.token)) is correlation
+                ):
+                    peer_ctx.outbound_requests[msg.token] = correlation
+                    self._pending_outbound.pop((key, msg.token), None)
 
             except Exception as e:
                 logger.error("Failed to protect message for %s: %s", key, e)
+            finally:
+                self._finish_send_operation(key, peer_ctx, operation)
 
     async def _establish_context(self, dest: str, key: str) -> None:
         """Establish an OSCORE context with a peer via EDHOC.
@@ -1411,12 +2059,13 @@ class SecureDatagramChannel(DatagramChannel):
             oscore_ctx = MemorySecurityContext.from_edhoc(edhoc_ctx)
 
             # Store the context
-            await self._context_store.put(
+            context = await self._context_store.put(
                 key,
                 oscore_ctx,
                 peer_pubkey,
                 expected_generation=expected_generation,
             )
+            self._publish_peer_context(key, context)
 
             logger.info("Established OSCORE context with %s via EDHOC", dest)
             future.set_result(None)
@@ -1501,7 +2150,31 @@ class SecureDatagramChannel(DatagramChannel):
 
     def close(self) -> None:
         """Close the channel."""
+        if self._closing:
+            return
+        self._closing = True
+        for task in tuple(self._tasks):
+            task.cancel()
+        self._clear_lifecycle_state()
         self._inner.close()
+
+    async def shutdown(self) -> None:
+        """Cancel and drain packet work before releasing the inner channel."""
+        if self._closing:
+            tasks = tuple(self._tasks)
+        else:
+            self._closing = True
+            tasks = tuple(self._tasks)
+            for task in tasks:
+                task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        if self._edhoc_ctx is not None:
+            await self._edhoc_ctx.shutdown()
+            self._edhoc_ctx = None
+            self._edhoc_channel = None
+        self._clear_lifecycle_state()
+        await self._inner.shutdown()
 
     # --- Context provisioning API ---
 
@@ -1518,7 +2191,9 @@ class SecureDatagramChannel(DatagramChannel):
         if isinstance(oscore_ctx, OscoreContext):
             oscore_ctx = MemorySecurityContext.from_edhoc(oscore_ctx)
         self._peer_resolver.ensure_bound_sync()
-        self._context_store.put_sync(host, oscore_ctx, peer_pubkey)
+        key = validate_endpoint_key(host)
+        context = self._context_store.put_sync(key, oscore_ctx, peer_pubkey)
+        self._publish_peer_context(key, context)
 
     async def add_context(
         self,
@@ -1539,13 +2214,29 @@ class SecureDatagramChannel(DatagramChannel):
         if isinstance(oscore_ctx, OscoreContext):
             oscore_ctx = MemorySecurityContext.from_edhoc(oscore_ctx)
         await self._peer_resolver.ensure_bound()
-        expected_generation = await self._context_store.get_generation(host)
-        await self._context_store.put(
-            host,
-            oscore_ctx,
-            peer_pubkey,
-            expected_generation=expected_generation,
-        )
+        key = validate_endpoint_key(host)
+        lock = self._peer_locks.setdefault(key, asyncio.Lock())
+        async with lock:
+            if self._closing:
+                raise RuntimeError("secure datagram channel is closing")
+            expected_generation = await self._context_store.get_generation(key)
+            context = await self._context_store.put(
+                key,
+                oscore_ctx,
+                peer_pubkey,
+                expected_generation=expected_generation,
+            )
+            self._publish_peer_context(key, context)
+
+    async def remove_context(self, host: str) -> None:
+        """Remove a peer context after draining in-flight packet state."""
+        key = validate_endpoint_key(host)
+        lock = self._peer_locks.setdefault(key, asyncio.Lock())
+        async with lock:
+            if self._closing:
+                raise RuntimeError("secure datagram channel is closing")
+            await self._context_store.remove(key)
+            self._publish_peer_context(key, None)
 
     def has_context_sync(self, host: str) -> bool:
         """Check if we have an OSCORE context (synchronous)."""
