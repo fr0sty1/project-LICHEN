@@ -304,6 +304,8 @@ class EdhocInitiator:
         cls, identity: Identity, c_i: bytes | None = None, method: Method = Method.SIGN_SIGN
     ) -> EdhocInitiator:
         """Create an EDHOC initiator with fresh ephemeral keys."""
+        if method is not Method.SIGN_SIGN:
+            raise ValueError("only EDHOC SIGN_SIGN is supported")
         if c_i is None:
             c_i = os.urandom(1)
         eph_sk, eph_pk = _x25519_keypair()

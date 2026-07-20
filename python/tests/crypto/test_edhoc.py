@@ -312,6 +312,13 @@ class TestEdhocValidation:
     @pytest.mark.parametrize(
         "method", [Method.SIGN_STATIC, Method.STATIC_SIGN, Method.STATIC_STATIC]
     )
+    def test_initiator_creation_rejects_unsupported_method(self, method: Method) -> None:
+        with pytest.raises(ValueError, match="SIGN_SIGN"):
+            EdhocInitiator.create(Identity.generate(), method=method)
+
+    @pytest.mark.parametrize(
+        "method", [Method.SIGN_STATIC, Method.STATIC_SIGN, Method.STATIC_STATIC]
+    )
     def test_responder_rejects_unsupported_configured_method(self, method: Method) -> None:
         initiator_id = Identity.generate()
         initiator = EdhocInitiator.create(initiator_id)
@@ -376,6 +383,7 @@ class TestEdhocValidation:
             b"\x58",
             _sequence(1, 0, b"x" * 32),
             _sequence(0, 0, b"x" * 32, b"\x00"),
+            _sequence(True, 0, b"x" * 32, b"\x00"),
             _sequence(1.0, 0, b"x" * 32, b"\x00"),
             _sequence(1, 1, b"x" * 32, b"\x00"),
             _sequence(1, 0.0, b"x" * 32, b"\x00"),
@@ -391,6 +399,7 @@ class TestEdhocValidation:
             "truncated",
             "too-few-items",
             "method-corr",
+            "method-corr-bool",
             "method-corr-float",
             "suite",
             "suite-float",
@@ -415,6 +424,24 @@ class TestEdhocValidation:
             responder.process_message_1(valid, peer.pubkey)
         with pytest.raises(ValueError):
             responder.export_oscore()
+
+    def test_invalid_method_is_rejected_before_dh(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def unexpected_dh(_private_key: bytes, _public_key: bytes) -> bytes:
+            raise AssertionError("DH must not run for an invalid METHOD_CORR")
+
+        monkeypatch.setattr(edhoc_module, "_x25519_shared_secret", unexpected_dh)
+        responder = EdhocResponder.create(Identity.generate())
+
+        with pytest.raises(ValueError, match="METHOD_CORR"):
+            responder.process_message_1(
+                _sequence(0, 0, b"x" * 32, b"\x00"),
+                Identity.generate().pubkey,
+            )
+
+        assert responder._state.name == "FAILED"
+        _assert_session_material_cleared(responder)
 
     @pytest.mark.parametrize(
         "failure",
