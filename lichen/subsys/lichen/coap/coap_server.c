@@ -18,6 +18,7 @@
  * All payloads use CBOR (content-format 60) for compact encoding.
  */
 
+#include <stdio.h>
 #include <string.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -219,7 +220,7 @@ static const char * const config_attrs[] = {
 	NULL,
 };
 
-COAP_RESOURCE_DEFINE(lichen_config, lichen_coap_server, {
+COAP_RESOURCE_DEFINE(lichen_server_config, lichen_coap_server, {
 	.get = config_get,
 	.put = config_put,
 	.path = config_path,
@@ -458,8 +459,7 @@ COAP_RESOURCE_DEFINE(lichen_msg_inbox, lichen_coap_server, {
  * CoAP server automatically handles /.well-known/core requests using
  * the resources registered with this service.
  */
-COAP_SERVICE_DEFINE(lichen_coap_server, NULL, &s_coap_port,
-		    COAP_SERVICE_AUTOSTART);
+COAP_SERVICE_DEFINE(lichen_coap_server, NULL, &s_coap_port, 0);
 
 int lichen_coap_server_init(const struct lichen_coap_server_handlers *handlers)
 {
@@ -470,7 +470,7 @@ int lichen_coap_server_init(const struct lichen_coap_server_handlers *handlers)
 	}
 
 	LOG_INF("CoAP server initialized on port %u", s_coap_port);
-	return 0;
+	return lichen_coap_server_start();
 }
 
 int lichen_coap_server_start(void)

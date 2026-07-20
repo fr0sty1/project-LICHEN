@@ -13,6 +13,14 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_SERVER
   coap_server.c
 )
 
+if(CONFIG_LICHEN_COAP_SERVER)
+  zephyr_linker_sources(DATA_SECTIONS sections-ram.ld)
+  zephyr_iterable_section(
+    NAME coap_resource_lichen_coap_server
+    GROUP DATA_REGION ${XIP_ALIGN_WITH_INPUT}
+    SUBALIGN CONFIG_LINKER_ITERABLE_SUBALIGN)
+endif()
+
 zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_STATUS
   coap_status.c
 )

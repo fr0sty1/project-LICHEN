@@ -8,8 +8,9 @@
  * Implements /msg resources per LCI spec section 17.5.7.
  */
 
-#include <string.h>
 #include <errno.h>
+#include <stdio.h>
+#include <string.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap.h>
