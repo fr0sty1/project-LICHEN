@@ -11,13 +11,16 @@
 
 **Scenario:** Leaf node sends CoAP temperature reading to border router.
 
+The byte count below is the non-OSCORE case. Enabling OSCORE adds approximately
+10 bytes for this example and changes the compressed payload length.
+
 **Application payload (CoAP):**
 ```
 Ver=1, T=NON, TKL=1, Code=2.05 (Content)
 Token: 0x42
 Options: Content-Format=60 (CBOR)
 Payload: {temperature: 23.5} -> A1 6B 74656D7065726174757265 F9 4BC0
-         (17 bytes)
+         (16 bytes)
 ```
 
 **After OSCORE:** (if enabled)
@@ -31,49 +34,53 @@ OSCORE option + encrypted payload + tag
 Rule ID: 0x00 (1 byte)
 Residue: SrcPort[3:0], DstPort[3:0] (1 byte)
 Compressed CoAP header: 0x42 0x45 (2 bytes)
-Payload: (17 bytes)
-Total: 21 bytes
+Payload: (16 bytes)
+Total: 20 bytes
 ```
 
 **With authenticated L2 payload dispatch:**
 ```
 SCHC dispatch: 0x14 (1 byte)
-SCHC packet: (21 bytes)
-Total: 22 bytes
+SCHC packet: (20 bytes)
+Total: 21 bytes
 ```
 
 **Link-layer frame:**
 ```
-Length: 76 (0x4C, body bytes after Length)
+Length: 75 (0x4B, body bytes after Length)
 LLSec: 0x21 (signature, no encryption, short addr) (1 byte)
 Epoch: 0x01 (1 byte)
 SeqNum: 0x0042 (2 bytes)
 DstAddr: 0x0001 (border router short) (2 bytes)
-Payload: dispatch 0x14 + SCHC packet (22 bytes)
+Payload: dispatch 0x14 + SCHC packet (21 bytes)
 Signature: (48 bytes, Schnorr e₁₂₈+s)
-Total: 77 bytes (Length byte plus 76-byte body)
+Total: 76 bytes (Length byte plus 75-byte body)
 ```
 
 **LoRa PHY:**
 ```
 Preamble: 8 symbols
-Header: 3 bytes (implicit mode)
-Payload: 60 bytes
+Header: explicit mode
+Payload: 76 bytes
 CRC: 2 bytes
 ```
 
+The complete link frame is the PHY payload. Airtime MUST be calculated from the
+actual payload length and configured SF, bandwidth, coding rate, preamble,
+header mode, CRC, and low-data-rate optimization. Implementations MUST NOT use
+the former 60-byte approximation for this example.
+
 ### 13.2. Packet Size Summary
 
-| Layer | This Protocol | Meshtastic | MeshCore |
-|-------|---------------|------------|----------|
-| App payload | 17 | 17 | 17 |
-| Security (E2E) | 10 | 0* | 2 |
-| Transport + Network | 2 | 16 | - |
-| Routing overhead | 0-6 | 0-7 | 0-64 |
-| Link security | 53 | 0 | 4 |
-| **Total** | **82-88** | **33-40** | **23-87** |
-
-*Meshtastic AES-CTR has no auth overhead; this is a weakness.
+| Component | Bytes in example |
+|-----------|------------------|
+| Application payload | 16 |
+| Compressed headers and SCHC residue | 4 |
+| L2 dispatch | 1 |
+| Destination address | 2 |
+| Link security and framing | 53 |
+| **Total without OSCORE** | **76** |
+| **Approximate total with OSCORE** | **86** |
 
 Link security breakdown: Length(1) + LLSec(1) + Epoch(1) + SeqNum(2) + Signature(48) = 53 bytes
 (DstAddr counted separately in addressing mode). Unsigned frames carry no MIC bytes.
@@ -127,13 +134,12 @@ Options:
 
 ### 14.4. Duty Cycle Compliance
 
-**EU 868 MHz (10% duty cycle):**
-
-At SF9/125kHz, airtime per 60-byte packet ~ 200ms.
-
-Max packets per hour: `3600s * 0.1 / 0.2s = 1800 packets`
-
-Per node, accounting for routing: ~100-300 packets/hour comfortable.
+Regulatory limits are properties of the configured regional plan and equipment
+authorization, not a single percentage per continent. Implementations MUST
+account complete RF airtime, including routing, synchronization, rendezvous,
+retries, and acknowledgments, against every applicable per-channel, sub-band,
+and aggregate budget. A slot or channel assignment never overrides duty-cycle,
+dwell-time, occupancy, power, or listen-before-talk requirements.
 
 ### 14.5. CSMA/CA Parameters
 
@@ -146,10 +152,17 @@ Per node, accounting for routing: ~100-300 packets/hour comfortable.
 
 ### 14.6. Time Synchronization
 
-Accurate time is needed for replay protection, message TTL, SenML timestamps,
-and scheduled operations. LICHEN firmware uses a unified time provider that
+Accurate time is needed for message TTL, SenML timestamps, and scheduled
+operations. Replay protection uses counters and does not require synchronized
+time. LICHEN firmware uses a unified time provider that
 separates monotonic uptime from wall-clock time and validates all time sources
 against epoch floors. See `docs/firmware-time-provider.md` for the full design.
+
+Scheduled MAC operation additionally requires a high-resolution monotonic slot
+clock with bounded drift and timestamp uncertainty. Unix wall clock and the DIO
+Time Option MUST NOT be used as the slot clock. See the
+[Coordinated Capacity Profile](02a-coordinated-capacity.md) for synchronization,
+guard, holdover, and fallback rules.
 
 **Time Provider Architecture:**
 

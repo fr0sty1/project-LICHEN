@@ -221,4 +221,4 @@ When updating firmware:
 
 ---
 
-[← Previous: Physical and Link Layers](02-physical-link.md) | [Index](README.md) | [Next: Network Layer →](04-network.md)
+[← Previous: Coordinated Capacity Profile](02a-coordinated-capacity.md) | [Index](README.md) | [Next: Network Layer →](04-network.md)

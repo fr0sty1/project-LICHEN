@@ -25,11 +25,19 @@ LoRa Chirp Spread Spectrum (CSS) as implemented by Semtech SX126x and SX127x.
 
 ### 3.3. Frequency Bands
 
-| Region | Band | Default Channel | Channels |
-|--------|------|-----------------|----------|
-| US/CA | 915 MHz ISM | 903.9 MHz | 64 (200 kHz spacing) |
-| EU | 868 MHz | 868.1 MHz | 3 (duty cycle limited) |
-| AU/NZ | 915 MHz | 916.8 MHz | 64 |
+| Region | Band | Baseline CH0 |
+|--------|------|--------------|
+| US/CA | 902-928 MHz ISM | 903.9 MHz |
+| EU | 863-870 MHz SRD | 868.1 MHz |
+| AU/NZ | 915-928 MHz | 916.8 MHz |
+
+CH0 is the mandatory interoperability and fallback channel. Additional
+channels are defined by versioned, locally provisioned regional plans; their
+legal use depends on bandwidth, power, duty-cycle or dwell-time accounting,
+listen-before-talk requirements, and equipment authorization. LoRaWAN channel
+counts and uplink/downlink roles MUST NOT be assumed to apply unchanged to a
+symmetric LICHEN mesh. See the
+[Coordinated Capacity Profile](02a-coordinated-capacity.md).
 
 ### 3.4. Adaptive Data Rate (ADR)
 
@@ -74,6 +82,11 @@ Receivers MUST NOT infer the payload namespace from the first body byte. This
 is required because SCHC rule `0x01` is global CoAP and LICHEN routing
 announce type `0x01` would otherwise collide. The dispatch byte is covered by
 the link signature and MIC because it is part of the frame payload.
+
+Routing/control message type `0x02` is provisionally allocated to the optional
+Coordinated Capacity Profile. Unknown routing/control message types and
+unsupported versions MUST be ignored by protocol logic and MUST NOT be
+delivered as application payload.
 
 ### 4.2. Link-Layer Security (LLSec) Byte
 
@@ -250,4 +263,4 @@ When a border router joins an isolated mesh:
 
 ---
 
-[← Previous: Architecture](01-architecture.md) | [Index](README.md) | [Next: Adaptation Layer →](03-adaptation.md)
+[← Previous: Architecture](01-architecture.md) | [Index](README.md) | [Next: Coordinated Capacity Profile →](02a-coordinated-capacity.md)

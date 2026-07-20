@@ -64,15 +64,20 @@ Every protocol layer uses existing IETF standards:
 |  SCHC (RFC 8724) - header compression                     |
 +----------------------------------------------------------+
 |                    Link Security Layer                    |
-|  Ed25519 signatures (truncated) | Replay protection       |
+|  Schnorr48 signatures using Ed25519 keys | Replay guard   |
 +----------------------------------------------------------+
 |                    MAC Layer                              |
-|  TSCH (RFC 7554) or CSMA/CA                               |
+|  CAD/CSMA baseline | Optional coordinated capacity       |
 +----------------------------------------------------------+
 |                    Physical Layer                         |
 |  LoRa CSS (Semtech SX126x/SX127x)                         |
 +----------------------------------------------------------+
 ```
+
+The optional [Coordinated Capacity Profile](02a-coordinated-capacity.md)
+borrows slot-clock concepts from TSCH but does not implement the IEEE 802.15.4
+TSCH MAC. It combines GNSS-PPS time and channel assignments while preserving
+baseline CAD/CSMA fallback.
 
 ---
 

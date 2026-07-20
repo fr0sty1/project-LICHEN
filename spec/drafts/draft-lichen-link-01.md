@@ -109,6 +109,14 @@ Octets: 1        1       1      2       var     var      var
   `LENGTH - fixed_header_size - DST_len - MIC_len`. MUST be at least 2 bytes
   for currently defined dispatch values.
 
+  Receivers that do not support a routing/control message type or version MUST
+  ignore it after link validation. They MUST NOT deliver unknown control bodies
+  as application payload. A non-SCHC control protocol that replaces the link
+  signature at each hop MUST carry the immediate sender IID in its
+  protocol-defined hop envelope so the receiver can select a pinned verification
+  key. End-to-end signed protocols such as Announce continue to identify and
+  authenticate their originator in their own immutable body.
+
 - **MIC** (0 or 48 octets): Message Integrity Code. When S=0, the MIC is
   absent regardless of MicLength. When S=1, the MIC is the full 48-byte
   Schnorr signature and MicLength is ignored. See Section 4.

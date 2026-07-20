@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-da2q.3",
+  "title": "Simulator: Validate CCP multi-channel capacity",
+  "description": "Implement the multi-channel and combined TDMA/channel portions of spec/02a-coordinated-capacity.md in the deterministic Python simulator. Model versioned regional plans, per-channel collisions/CAD, single-radio retune state, parallel receiver-chain limits, CH0 request/grant rendezvous, scheduled distinct-channel cells, regulatory accounting groups, control airtime, loss/timeouts, legacy fallback, and the canonical CCP-16 comparison scenarios. Produce versioned JSON scenario definitions and machine-readable per-seed results before production implementation is unblocked.",
+  "design": "Use the existing discrete-event simulator. Channel identity must filter receive/collision/CAD candidates. A single radio can occupy only one channel; a parallel gateway is limited by explicit chain count. Implement exact protocol timing and byte lengths from CCP v1. Keep baseline and CCP runs paired by seed and traffic trace. Do not implement firmware or claim a fixed multiplier outside the specified gates.",
+  "acceptance_criteria": "Canonical byte/airtime vectors pass; request/grant loss returns peers to CH0 within five seconds; prohibited plans/channels never transmit; single-radio gateways show no fabricated parallel reception; seven disjoint capable pairs achieve median payload ratio \u003e=4.0 and 5th percentile \u003e=3.0 across seeds 0..99; dense-star scheduled mode meets collision/PDR gates; mixed 25/50/75% deployments meet \u003c=5% 95th-percentile PDR and convergence regression; all CCP-16 security, compatibility, timing, and regulatory gates emit reproducible machine-readable evidence.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-20T04:51:04.583426Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T04:51:04.583426Z",
+  "labels": [
+    "simulator",
+    "python",
+    "testing",
+    "validation",
+    "phy",
+    "scalability",
+    "protocol"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.3",
+      "depends_on_id": "project-LICHEN-da2q",
+      "type": "parent-child",
+      "created_at": "2026-07-20T04:51:04.795994Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-da2q.3",
+      "depends_on_id": "project-LICHEN-da2q.1",
+      "type": "blocks",
+      "created_at": "2026-07-20T04:51:25.183975Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -95,19 +95,20 @@ Crypto must be fast enough to not drain a coin cell.
 The constraints force cleaner design. Every LICHEN protocol choice traces to a
 resource limit:
 
-### 3.1. 48-Byte Schnorr Signatures (Section 6)
+### 3.1. 48-Byte Schnorr Signatures (Section 8)
 
 Not elegant by choice--necessary because a 256-byte RSA signature won't fit in a
-LoRa frame alongside actual payload. Schnorr with a 192-bit curve gives 48
-bytes: small enough to include in every packet, secure enough for authentication.
+LoRa frame alongside actual payload. Schnorr48 uses the Ed25519 group with a
+128-bit truncated challenge to produce 48 bytes: small enough to include in
+every packet, secure enough for authentication.
 
-### 3.2. SCHC Instead of 6LoWPAN (Section 3)
+### 3.2. SCHC Instead of 6LoWPAN (Section 5)
 
 6LoWPAN assumes 127-byte IEEE 802.15.4 frames. LoRa frames are smaller and
 airtime is precious. SCHC compresses IPv6+UDP headers to 6-15 bytes instead of
 6LoWPAN's 20-40 bytes. Every saved byte is real airtime returned.
 
-### 3.3. Announce-Based Routing (Section 5, 9)
+### 3.3. Announce-Based Routing (Sections 9 and 14)
 
 Tactical radios probe links actively. LICHEN can't--probing consumes the channel.
 Instead, nodes broadcast periodic announces that double as:

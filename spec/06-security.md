@@ -61,8 +61,9 @@ valid = (e'[0:16] == e_received)
 
 ### 8.4. Signed vs Relay-Mutable Fields
 
-Signatures cover the **immutable** portion of the packet. Relays modify
-routing headers without re-signing.
+This section describes end-to-end data forwarding. Its origin signature covers
+the **immutable** portion of the packet; relays modify routing headers without
+replacing that signature.
 
 **Signed (immutable):**
 | Field | Notes |
@@ -83,6 +84,11 @@ routing headers without re-signing.
 
 **Implication:** Relays forward packets without re-signing. The original
 signature remains valid because signed fields are unchanged.
+
+Hop-by-hop routing/control protocols MAY instead define an outer link frame
+that every relay signs anew. Such protocols MUST separate any preserved
+origin/root authorization object from the mutable hop envelope. The
+Coordinated Capacity Profile uses this construction.
 
 ### 8.5. Signature Caching
 
