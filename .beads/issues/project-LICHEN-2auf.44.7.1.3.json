@@ -3,12 +3,16 @@
   "title": "Keep local Announce out of remote state",
   "description": "Make send_announce validate the local signed Announce and transmit it without processing it into the remote AnnounceProcessor.",
   "acceptance_criteria": "Sending a local Announce has no remote table insertion or eviction side effects, including at capacity.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-20T06:06:49.567443359Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-20T06:06:49.567443359Z",
+  "updated_at": "2026-07-20T06:21:37.969128217Z",
+  "started_at": "2026-07-20T06:21:37.969128217Z",
+  "lease_expires_at": "2026-07-20T06:26:37.969128217Z",
+  "heartbeat_at": "2026-07-20T06:21:37.969128217Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2auf.44.7.1.3",
