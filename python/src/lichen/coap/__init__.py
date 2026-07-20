@@ -24,6 +24,7 @@ from lichen.coap.schc_channel import SchcChannel, unwrap_coap, wrap_coap
 from lichen.coap.secure import (
     ContextGenerationError,
     EdhocPeerResolver,
+    EndpointPolicyConflictError,
     ForkSafetyError,
     InMemoryOscoreContextStore,
     OscoreContextStore,
@@ -42,6 +43,7 @@ from lichen.coap.secure import (
 )
 from lichen.coap.transport import (
     DatagramChannel,
+    EndpointPolicy,
     InMemoryChannel,
     InMemoryNetwork,
     LichenRemote,
@@ -53,6 +55,7 @@ from lichen.coap.udp_server import bind_coap_udp
 __all__ = [
     # Transport
     "DatagramChannel",
+    "EndpointPolicy",
     "InMemoryChannel",
     "InMemoryNetwork",
     "LichenRemote",
@@ -62,6 +65,7 @@ __all__ = [
     # Security (OSCORE)
     "ContextGenerationError",
     "EdhocPeerResolver",
+    "EndpointPolicyConflictError",
     "ForkSafetyError",
     "InMemoryOscoreContextStore",
     "OscoreContextStore",

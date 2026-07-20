@@ -19,6 +19,7 @@ from aiocoap.oscore import Direction
 
 from lichen.coap.secure import (
     ContextGenerationError,
+    EndpointPolicyConflictError,
     ForkSafetyError,
     InMemoryOscoreContextStore,
     OscoreContextStore,
@@ -34,7 +35,12 @@ from lichen.coap.secure import (
     normalize_host,
     validate_endpoint_key,
 )
-from lichen.coap.transport import DatagramChannel, LichenRemote, ReceiveCallback
+from lichen.coap.transport import (
+    DatagramChannel,
+    EndpointPolicy,
+    LichenRemote,
+    ReceiveCallback,
+)
 from lichen.crypto.edhoc import EdhocInitiator, EdhocResponder
 from lichen.crypto.identity import Identity
 from lichen.crypto.oscore import MAX_OSCORE_SEQUENCE_NUMBER, MemorySecurityContext
@@ -62,7 +68,11 @@ class _FailAfterWrite(SqliteStoreHooks):
         self.enabled = False
 
     def transaction_step(self, operation: str, step: str) -> None:
-        if self.enabled and operation in {"put", "replay_cas"} and step == "after_write":
+        if (
+            self.enabled
+            and operation in {"put", "replay_cas", "migrate"}
+            and step == "after_write"
+        ):
             raise OSError("injected write failure")
 
 
@@ -78,6 +88,17 @@ class _BlockBeforeTransaction(SqliteStoreHooks):
             await self.release.wait()
 
 
+class _BlockBeforePin(SqliteStoreHooks):
+    def __init__(self) -> None:
+        self.entered = asyncio.Event()
+        self.release = asyncio.Event()
+
+    async def before_transaction(self, operation: str, host: str) -> None:
+        if operation == "pin_batch":
+            self.entered.set()
+            await self.release.wait()
+
+
 class _BlockInTransaction(SqliteStoreHooks):
     def __init__(self) -> None:
         self.enabled = False
@@ -89,6 +110,22 @@ class _BlockInTransaction(SqliteStoreHooks):
             self.entered.set()
             if not self.release.wait(timeout=5):
                 raise TimeoutError("transaction test release timed out")
+
+
+class _BlockMigrationInTransaction(SqliteStoreHooks):
+    def __init__(self) -> None:
+        self.enabled = False
+        self.fail = False
+        self.entered = threading.Event()
+        self.release = threading.Event()
+
+    def transaction_step(self, operation: str, step: str) -> None:
+        if self.enabled and operation == "migrate" and step == "after_write":
+            self.entered.set()
+            if not self.release.wait(timeout=5):
+                raise TimeoutError("migration test release timed out")
+            if self.fail:
+                raise OSError("injected migration failure")
 
 
 class _ReplayCasBarrier(SqliteStoreHooks):
@@ -156,6 +193,50 @@ def _request(mid: int) -> bytes:
     message.remote = LichenRemote("peer")
     message.direction = Direction.OUTGOING
     return cast(bytes, message.encode())
+
+
+_SCOPED_POLICY = EndpointPolicy.owning_link_local("fe80::2%ble0")
+
+
+def _stored_host_keys(store: TransactionalOscoreContextStore) -> set[str]:
+    if isinstance(store, InMemoryOscoreContextStore):
+        return set(store._records)
+    sqlite_store = cast(SqliteOscoreContextStore, store)
+    with sqlite3.connect(sqlite_store._path) as connection:
+        return {str(row[0]) for row in connection.execute("SELECT host FROM oscore_hosts")}
+
+
+def _insert_legacy_pins(
+    store: SqliteOscoreContextStore, rows: list[tuple[str, bytes]]
+) -> None:
+    with sqlite3.connect(store._path) as connection:
+        connection.executemany(
+            "INSERT INTO oscore_hosts (host, peer_pubkey) VALUES (?, ?)", rows
+        )
+
+
+def _mark_sqlite_as_legacy(*stores: SqliteOscoreContextStore) -> None:
+    if not stores:
+        return
+    with sqlite3.connect(stores[0]._path) as connection:
+        connection.execute("DELETE FROM oscore_metadata WHERE key = 'endpoint_policy'")
+    for store in stores:
+        store._endpoint_policy = None
+
+
+def _duplicate_legacy_context(
+    store: SqliteOscoreContextStore, alias: str, *, generation: int | None = None
+) -> None:
+    with sqlite3.connect(store._path) as connection:
+        connection.execute(
+            "INSERT INTO oscore_hosts (host, peer_pubkey, master_secret, master_salt, "
+            "sender_id, recipient_id, algorithm_json, hashfun, window_size, id_context, "
+            "sender_identity, recipient_identity, generation) "
+            "SELECT ?, peer_pubkey, master_secret, master_salt, sender_id, recipient_id, "
+            "algorithm_json, hashfun, window_size, id_context, sender_identity, "
+            "recipient_identity, COALESCE(?, generation) FROM oscore_hosts WHERE host = 'peer'",
+            (alias, generation),
+        )
 
 
 def _partial_iv(datagram: bytes) -> int:
@@ -252,40 +333,424 @@ async def test_store_contract_conformance(
 ) -> None:
     store = conforming_store
     assert isinstance(store, TransactionalOscoreContextStore)
-    await store.pin_peer("Endpoint#A", b"peer-key")
-    await store.pin_peer("Endpoint#A", b"peer-key")
+    await store.pin_peer("endpoint-a:61616", b"peer-key")
+    await store.pin_peer("endpoint-a:61616", b"peer-key")
     context = _context()
-    published = await store.put("Endpoint#A", context, b"peer-key")
+    published = await store.put("endpoint-a:61616", context, b"peer-key")
     assert published.generation == 1
     with pytest.raises(ContextGenerationError):
-        await store.put("Endpoint#A", context, b"peer-key", expected_generation=0)
-    idempotent = await store.put("Endpoint#A", context, b"peer-key", expected_generation=1)
+        await store.put("endpoint-a:61616", context, b"peer-key", expected_generation=0)
+    idempotent = await store.put(
+        "endpoint-a:61616", context, b"peer-key", expected_generation=1
+    )
     assert idempotent is published
     assert idempotent.generation == 1
-    first = await store.reserve_sender_sequences("Endpoint#A", 1, 4)
-    second = await store.reserve_sender_sequences("Endpoint#A", 1, 4)
+    first = await store.reserve_sender_sequences("endpoint-a:61616", 1, 4)
+    second = await store.reserve_sender_sequences("endpoint-a:61616", 1, 4)
     assert (first.start, first.end) == (0, 4)
     assert (second.start, second.end) == (4, 8)
 
     recipient_identity = published.oscore.recipient_cryptographic_identity()
-    await store.compare_and_set_replay_window("Endpoint#A", 1, recipient_identity, 0, 0, 0, 1)
+    await store.compare_and_set_replay_window(
+        "endpoint-a:61616", 1, recipient_identity, 0, 0, 0, 1
+    )
     with pytest.raises(ReplayWindowConflictError) as conflict:
-        await store.compare_and_set_replay_window("Endpoint#A", 1, recipient_identity, 0, 0, 0, 2)
+        await store.compare_and_set_replay_window(
+            "endpoint-a:61616", 1, recipient_identity, 0, 0, 0, 2
+        )
     assert conflict.value.current_state == (0, 1)
 
     with pytest.raises(PeerKeyConflictError):
-        await store.put("Endpoint#A", _context(b"b" * 16), b"other-key", expected_generation=1)
-    assert await store.get_peer_pubkey("Endpoint#A") == b"peer-key"
-    assert await store.get_generation("Endpoint#A") == 1
+        await store.put(
+            "endpoint-a:61616",
+            _context(b"b" * 16),
+            b"other-key",
+            expected_generation=1,
+        )
+    assert await store.get_peer_pubkey("endpoint-a:61616") == b"peer-key"
+    assert await store.get_generation("endpoint-a:61616") == 1
 
-    await store.remove("Endpoint#A")
-    assert await store.get("Endpoint#A") is None
-    assert await store.get_peer_pubkey("Endpoint#A") == b"peer-key"
-    assert await store.get_generation("Endpoint#A") == 2
+    await store.remove("endpoint-a:61616")
+    assert await store.get("endpoint-a:61616") is None
+    assert await store.get_peer_pubkey("endpoint-a:61616") == b"peer-key"
+    assert await store.get_generation("endpoint-a:61616") == 2
     restored_context = _context()
-    restored = await store.put("Endpoint#A", restored_context, b"peer-key", expected_generation=2)
+    restored = await store.put(
+        "endpoint-a:61616", restored_context, b"peer-key", expected_generation=2
+    )
     assert restored.generation == 3
     assert restored_context.sender_sequence_number == 8
+
+
+@pytest.mark.asyncio
+async def test_batch_pin_late_conflict_is_atomic(
+    conforming_store: TransactionalOscoreContextStore,
+) -> None:
+    await conforming_store.pin_peer("existing", b"existing-key")
+
+    with pytest.raises(PeerKeyConflictError):
+        await conforming_store.pin_peers(
+            {
+                "new-peer": b"new-key",
+                "existing": b"conflicting-key",
+            }
+        )
+
+    assert await conforming_store.get_peer_pubkey("new-peer") is None
+    assert await conforming_store.get_peer_pubkey("existing") == b"existing-key"
+
+
+@pytest.mark.asyncio
+async def test_memory_case_aliases_have_one_canonical_record() -> None:
+    store = InMemoryOscoreContextStore()
+    await store.pin_peer("Peer", b"peer-key")
+    await store.pin_peer("peer", b"peer-key")
+
+    assert set(store._records) == {"peer"}
+    with pytest.raises(PeerKeyConflictError):
+        await store.pin_peer("PEER", b"different-key")
+    assert set(store._records) == {"peer"}
+
+
+@pytest.mark.asyncio
+async def test_sqlite_legacy_identical_aliases_coalesce_on_first_operation(
+    tmp_path: Path,
+) -> None:
+    store = SqliteOscoreContextStore(tmp_path / "legacy-identical.sqlite3")
+    _insert_legacy_pins(store, [("Peer", b"peer-key"), ("peer", b"peer-key")])
+
+    assert await store.get_peer_pubkey("PEER") == b"peer-key"
+    await store.pin_peer("Peer", b"peer-key")
+
+    assert _stored_host_keys(store) == {"peer"}
+    with sqlite3.connect(store._path) as connection:
+        metadata = connection.execute(
+            "SELECT value FROM oscore_metadata WHERE key = 'endpoint_policy'"
+        ).fetchone()
+    assert metadata == (EndpointPolicy().serialize(),)
+
+
+@pytest.mark.asyncio
+async def test_sqlite_legacy_conflicting_aliases_fail_without_mutation(
+    tmp_path: Path,
+) -> None:
+    store = SqliteOscoreContextStore(tmp_path / "legacy-conflict.sqlite3")
+    _insert_legacy_pins(store, [("Peer", b"key-a"), ("peer", b"key-b")])
+
+    with pytest.raises(PeerKeyConflictError, match="legacy endpoint aliases"):
+        await store.get_peer_pubkey("peer")
+    with pytest.raises(PeerKeyConflictError, match="legacy endpoint aliases"):
+        await store.pin_peer("peer", b"key-a")
+
+    assert _stored_host_keys(store) == {"Peer", "peer"}
+    with sqlite3.connect(store._path) as connection:
+        metadata = connection.execute(
+            "SELECT value FROM oscore_metadata WHERE key = 'endpoint_policy'"
+        ).fetchone()
+    assert metadata is None
+
+
+@pytest.mark.asyncio
+async def test_sqlite_legacy_identical_context_aliases_coalesce(tmp_path: Path) -> None:
+    store = SqliteOscoreContextStore(tmp_path / "legacy-context.sqlite3")
+    original = await store.put("peer", _context(), b"peer-key")
+    _mark_sqlite_as_legacy(store)
+    _duplicate_legacy_context(store, "Peer")
+
+    loaded = await store.get("PEER")
+
+    assert loaded is not None
+    assert loaded.generation == original.generation
+    assert loaded.oscore.export_parameters() == original.oscore.export_parameters()
+    assert _stored_host_keys(store) == {"peer"}
+
+
+@pytest.mark.asyncio
+async def test_sqlite_legacy_context_generation_conflict_rolls_back(tmp_path: Path) -> None:
+    store = SqliteOscoreContextStore(tmp_path / "legacy-generation.sqlite3")
+    await store.put("peer", _context(), b"peer-key")
+    _mark_sqlite_as_legacy(store)
+    _duplicate_legacy_context(store, "Peer", generation=2)
+
+    with pytest.raises(PeerKeyConflictError, match="legacy endpoint aliases"):
+        await store.get("peer")
+
+    assert _stored_host_keys(store) == {"Peer", "peer"}
+    with sqlite3.connect(store._path) as connection:
+        metadata = connection.execute(
+            "SELECT value FROM oscore_metadata WHERE key = 'endpoint_policy'"
+        ).fetchone()
+    assert metadata is None
+
+
+@pytest.mark.asyncio
+async def test_prebound_tofu_resolver_installs_legacy_default_policy(tmp_path: Path) -> None:
+    store = SqliteOscoreContextStore(tmp_path / "legacy-resolver.sqlite3")
+    _insert_legacy_pins(store, [("Peer", b"peer-key"), ("peer", b"peer-key")])
+    resolver = TofuPeerResolver(store)
+
+    assert await resolver.get_peer_pubkey("PEER") == b"peer-key"
+    assert _stored_host_keys(store) == {"peer"}
+    assert SqliteOscoreContextStore(store._path)._endpoint_policy == EndpointPolicy()
+
+
+@pytest.mark.asyncio
+async def test_sqlite_legacy_two_handle_race_converges(tmp_path: Path) -> None:
+    path = tmp_path / "legacy-race.sqlite3"
+    first = SqliteOscoreContextStore(path)
+    second = SqliteOscoreContextStore(path)
+    _insert_legacy_pins(first, [("Peer", b"peer-key"), ("peer", b"peer-key")])
+
+    loaded, pinned = await asyncio.gather(
+        first.get_peer_pubkey("PEER"),
+        second.pin_peer("peer", b"peer-key"),
+    )
+
+    assert loaded == b"peer-key"
+    assert pinned is None
+    assert _stored_host_keys(first) == {"peer"}
+    assert SqliteOscoreContextStore(path)._endpoint_policy == EndpointPolicy()
+
+
+@pytest.mark.asyncio
+async def test_context_alias_conflict_migration_rolls_back(
+    conforming_store: TransactionalOscoreContextStore,
+) -> None:
+    unscoped = await conforming_store.put("fe80::1", _context(b"a" * 16), b"peer-key")
+    scoped = await conforming_store.put(
+        "[fe80::1%ble0]", _context(b"b" * 16), b"peer-key"
+    )
+    if isinstance(conforming_store, SqliteOscoreContextStore):
+        _mark_sqlite_as_legacy(conforming_store)
+
+    with pytest.raises(PeerKeyConflictError, match="conflicting record"):
+        conforming_store.migrate_endpoint_keys(_SCOPED_POLICY, {})
+
+    loaded_unscoped = await conforming_store.get("fe80::1")
+    loaded_scoped = await conforming_store.get("[fe80::1%ble0]")
+    if isinstance(conforming_store, InMemoryOscoreContextStore):
+        assert loaded_unscoped is unscoped
+        assert loaded_scoped is scoped
+    else:
+        assert loaded_unscoped is not None
+        assert loaded_scoped is not None
+        assert loaded_unscoped.oscore.export_parameters() == unscoped.oscore.export_parameters()
+        assert loaded_scoped.oscore.export_parameters() == scoped.oscore.export_parameters()
+    assert await conforming_store.get_generation("fe80::1") == 1
+    assert await conforming_store.get_generation("[fe80::1%ble0]") == 1
+
+
+@pytest.mark.asyncio
+async def test_identical_context_aliases_coalesce_idempotently(
+    conforming_store: TransactionalOscoreContextStore,
+) -> None:
+    await conforming_store.put("fe80::1", _context(), b"peer-key")
+    await conforming_store.put("[fe80::1%ble0]", _context(), b"peer-key")
+    if isinstance(conforming_store, SqliteOscoreContextStore):
+        _mark_sqlite_as_legacy(conforming_store)
+
+    conforming_store.migrate_endpoint_keys(_SCOPED_POLICY, {})
+    first = await conforming_store.get("[fe80::1%ble0]")
+    conforming_store.migrate_endpoint_keys(_SCOPED_POLICY, {})
+    second = await conforming_store.get("[fe80::1%ble0]")
+
+    assert await conforming_store.get("fe80::1") is first
+    assert _stored_host_keys(conforming_store) == {"[fe80::1%ble0]"}
+    assert first is not None
+    assert second is first
+    assert second.generation == 1
+    assert second.peer_pubkey == b"peer-key"
+
+
+@pytest.mark.asyncio
+async def test_memory_queued_alias_pin_uses_migrated_normalizer() -> None:
+    store = InMemoryOscoreContextStore()
+    pin = asyncio.create_task(store.pin_peer("fe80::1", b"peer-key"))
+
+    store.migrate_endpoint_keys(_SCOPED_POLICY, {})
+    await pin
+
+    assert set(store._records) == {"[fe80::1%ble0]"}
+    assert await store.get_peer_pubkey("fe80::1") == b"peer-key"
+
+
+@pytest.mark.asyncio
+async def test_sqlite_queued_alias_pin_uses_migrated_normalizer(tmp_path: Path) -> None:
+    hooks = _BlockBeforePin()
+    store = SqliteOscoreContextStore(tmp_path / "queued-pin.sqlite3", hooks=hooks)
+    pin = asyncio.create_task(store.pin_peer("fe80::1", b"peer-key"))
+    await hooks.entered.wait()
+
+    store.migrate_endpoint_keys(_SCOPED_POLICY, {})
+    hooks.release.set()
+    await pin
+
+    with sqlite3.connect(store._path) as connection:
+        keys = [str(row[0]) for row in connection.execute("SELECT host FROM oscore_hosts")]
+    assert keys == ["[fe80::1%ble0]"]
+    assert await store.get_peer_pubkey("fe80::1") == b"peer-key"
+
+
+@pytest.mark.asyncio
+async def test_sqlite_queued_alias_put_uses_migrated_normalizer(tmp_path: Path) -> None:
+    hooks = _BlockBeforeTransaction()
+    hooks.enabled = True
+    store = SqliteOscoreContextStore(tmp_path / "queued-put.sqlite3", hooks=hooks)
+    put = asyncio.create_task(store.put("fe80::1", _context(), b"peer-key"))
+    await hooks.entered.wait()
+
+    store.migrate_endpoint_keys(_SCOPED_POLICY, {})
+    hooks.release.set()
+    published = await put
+
+    assert _stored_host_keys(store) == {"[fe80::1%ble0]"}
+    assert set(store._cache) == {"[fe80::1%ble0]"}
+    assert await store.get("fe80::1") is published
+
+
+@pytest.mark.asyncio
+async def test_sqlite_handles_share_persisted_endpoint_policy(tmp_path: Path) -> None:
+    path = tmp_path / "shared-policy.sqlite3"
+    hooks = _BlockBeforePin()
+    first = SqliteOscoreContextStore(path)
+    second = SqliteOscoreContextStore(path, hooks=hooks)
+    original = await first.put("fe80::1", _context(), b"context-key")
+    assert await second.get("fe80::1") is not None
+    _mark_sqlite_as_legacy(first, second)
+    queued_pin = asyncio.create_task(second.pin_peer("fe80::2", b"pin-key"))
+    await hooks.entered.wait()
+
+    first.migrate_endpoint_keys(_SCOPED_POLICY, {})
+    hooks.release.set()
+    await queued_pin
+
+    assert _stored_host_keys(first) == {"[fe80::1%ble0]", "[fe80::2%ble0]"}
+    migrated = await second.get("fe80::1")
+    assert migrated is not None
+    assert migrated.peer_pubkey == original.peer_pubkey
+    assert set(second._cache) == {"[fe80::1%ble0]"}
+    assert await second.get_peer_pubkey("fe80::2") == b"pin-key"
+    with pytest.raises(PeerKeyConflictError):
+        await second.pin_peer("fe80::2", b"different-key")
+
+    incompatible = EndpointPolicy.owning_link_local("fe80::9%other")
+    before = _stored_host_keys(first)
+    with pytest.raises(EndpointPolicyConflictError, match="incompatible"):
+        second.migrate_endpoint_keys(incompatible, {"fe80::3": b"new-key"})
+    assert _stored_host_keys(first) == before
+    assert await first.get_peer_pubkey("fe80::3") is None
+
+    reopened = SqliteOscoreContextStore(path)
+    assert reopened._endpoint_policy == _SCOPED_POLICY
+    assert await reopened.get("fe80::1") is not None
+    await reopened.pin_peer("fe80::3", b"reopened-key")
+    assert _stored_host_keys(reopened) == {
+        "[fe80::1%ble0]",
+        "[fe80::2%ble0]",
+        "[fe80::3%ble0]",
+    }
+
+
+def test_sqlite_compatible_policy_rebind_is_no_write(tmp_path: Path) -> None:
+    hooks = _FailAfterWrite()
+    store = SqliteOscoreContextStore(tmp_path / "idempotent-policy.sqlite3", hooks=hooks)
+    store.migrate_endpoint_keys(_SCOPED_POLICY, {})
+    hooks.enabled = True
+
+    store.migrate_endpoint_keys(_SCOPED_POLICY, {})
+
+    assert store._endpoint_policy == _SCOPED_POLICY
+
+
+@pytest.mark.asyncio
+async def test_sqlite_unknown_policy_fails_closed_before_insert(tmp_path: Path) -> None:
+    store = SqliteOscoreContextStore(tmp_path / "unknown-policy.sqlite3")
+    with sqlite3.connect(store._path) as connection:
+        connection.execute(
+            "INSERT INTO oscore_metadata (key, value) VALUES ('endpoint_policy', ?)",
+            ('{"ipv6_only":true,"link_local_scope":null,"scope_mode":"owning",'
+             '"version":2}',),
+        )
+
+    with pytest.raises(ValueError, match="unsupported endpoint policy"):
+        await store.pin_peer("fe80::1", b"peer-key")
+
+    assert _stored_host_keys(store) == set()
+
+
+@pytest.mark.asyncio
+async def test_malformed_scope_migration_preserves_store_state(
+    conforming_store: TransactionalOscoreContextStore,
+) -> None:
+    store = conforming_store
+    await store.pin_peer("pinned-peer", b"pin-key")
+    published = await store.put("context-peer", _context(), b"context-key")
+    if isinstance(store, SqliteOscoreContextStore):
+        assert await store.get("context-peer") is published
+    original_hosts = _stored_host_keys(store)
+    original_policy = store._endpoint_policy
+
+    for scope in (
+        "",
+        "bad@scope",
+        "bad?scope",
+        "bad#scope",
+        "bad[scope",
+        "bad]scope",
+        "bad/scope",
+        "bad scope",
+        "bad\x00scope",
+        "bad%scope",
+        chr(0xD800),
+    ):
+        with pytest.raises(ValueError, match="scope"):
+            store.migrate_endpoint_keys(
+                EndpointPolicy(
+                    scope_mode="owning",
+                    link_local_scope=scope,
+                    ipv6_only=True,
+                ),
+                {"new-pin": b"new-key"},
+            )
+
+        assert store._endpoint_policy == original_policy
+        assert _stored_host_keys(store) == original_hosts
+        assert await store.get("context-peer") is published
+        assert await store.get_generation("context-peer") == 1
+        assert await store.get_peer_pubkey("pinned-peer") == b"pin-key"
+        assert await store.get_peer_pubkey("new-pin") is None
+
+    if isinstance(store, SqliteOscoreContextStore):
+        with sqlite3.connect(store._path) as connection:
+            metadata = connection.execute(
+                "SELECT value FROM oscore_metadata WHERE key = 'endpoint_policy'"
+            ).fetchone()
+        assert metadata == (EndpointPolicy().serialize(),)
+
+
+@pytest.mark.asyncio
+async def test_sqlite_migration_write_failure_rolls_back(tmp_path: Path) -> None:
+    hooks = _FailAfterWrite()
+    store = SqliteOscoreContextStore(tmp_path / "migration-rollback.sqlite3", hooks=hooks)
+    original = await store.put("fe80::1", _context(), b"peer-key")
+    _mark_sqlite_as_legacy(store)
+    hooks.enabled = True
+
+    with pytest.raises(OSError, match="injected write failure"):
+        store.migrate_endpoint_keys(_SCOPED_POLICY, {})
+
+    with sqlite3.connect(store._path) as connection:
+        policy = connection.execute(
+            "SELECT value FROM oscore_metadata WHERE key = 'endpoint_policy'"
+        ).fetchone()
+    assert policy is None
+    hooks.enabled = False
+    loaded = await store.get("fe80::1")
+    assert loaded is not None
+    assert loaded.oscore.export_parameters() == original.oscore.export_parameters()
+    assert await store.get("[fe80::1%ble0]") is None
+    assert await store.get_generation("fe80::1") == 1
+    assert SqliteOscoreContextStore(store._path)._endpoint_policy == EndpointPolicy()
 
 
 def test_channel_rejects_incomplete_context_store() -> None:
@@ -304,15 +769,32 @@ def test_public_oscore_context_store_is_concrete_memory_store() -> None:
     assert isinstance(store, TransactionalOscoreContextStore)
 
 
-def test_endpoint_keys_are_opaque_and_validated() -> None:
-    assert validate_endpoint_key("[FD00:0:0:0:0:0:0:1]") == "[FD00:0:0:0:0:0:0:1]"
-    assert validate_endpoint_key("Peer.Example.") == "Peer.Example."
-    assert validate_endpoint_key("ble://Adapter 0/Peer#1") == "ble://Adapter 0/Peer#1"
-    assert normalize_host("Case.Sensitive.") == "Case.Sensitive."
-    with pytest.raises(ValueError):
-        validate_endpoint_key("")
-    with pytest.raises(ValueError):
-        validate_endpoint_key("bad\x00endpoint")
+def test_endpoint_keys_are_canonical_authorities() -> None:
+    assert validate_endpoint_key("[FD00:0:0:0:0:0:0:1]") == "[fd00::1]"
+    assert validate_endpoint_key("[fd00::1]:5683") == "[fd00::1]"
+    assert validate_endpoint_key("[fd00::1]:61616") == "[fd00::1]:61616"
+    assert validate_endpoint_key("fd00::1") == "[fd00::1]"
+    assert validate_endpoint_key("Peer.Example.") == "peer.example."
+    assert normalize_host("Case.Insensitive.") == "case.insensitive."
+    for malformed in ("", "bad\x00endpoint", "ble://Adapter 0/Peer#1"):
+        with pytest.raises(ValueError):
+            validate_endpoint_key(malformed)
+
+
+@pytest.mark.asyncio
+async def test_oscore_context_ip_aliases_resolve_to_one_source_key() -> None:
+    store = OscoreContextStore()
+    published = await store.put(
+        "[FD00:0:0:0:0:0:0:1]:61616",
+        _context(),
+        b"peer-key",
+    )
+
+    loaded = await store.get("[fd00::1]:61616")
+
+    assert loaded is published
+    assert await store.get_generation("fd00::1") is None
+    assert await store.get_generation("[fd00::1]:61616") == 1
 
 
 @pytest.mark.asyncio
@@ -353,15 +835,16 @@ async def test_sqlite_reads_legacy_string_algorithm_metadata(tmp_path: Path) -> 
 
 
 @pytest.mark.asyncio
-async def test_opaque_endpoint_keys_do_not_collide(tmp_path: Path) -> None:
+async def test_reg_name_case_aliases_collide_but_ports_do_not(tmp_path: Path) -> None:
     store = SqliteOscoreContextStore(tmp_path / "contexts.sqlite3")
     await store.put("Peer", _context(b"a" * 16), b"key-a")
-    await store.put("peer", _context(b"b" * 16), b"key-b")
-    await store.put("ble://Adapter 0/Peer#1", _context(b"c" * 16), b"key-c")
+    with pytest.raises(PeerKeyConflictError):
+        await store.put("peer", _context(b"b" * 16), b"key-b")
+    await store.put("peer:61616", _context(b"c" * 16), b"key-c")
 
     assert (await store.get_peer_pubkey("Peer")) == b"key-a"
-    assert (await store.get_peer_pubkey("peer")) == b"key-b"
-    assert (await store.get_peer_pubkey("ble://Adapter 0/Peer#1")) == b"key-c"
+    assert (await store.get_peer_pubkey("peer")) == b"key-a"
+    assert (await store.get_peer_pubkey("peer:61616")) == b"key-c"
 
 
 @pytest.mark.asyncio
@@ -427,11 +910,93 @@ async def test_cancellation_after_transaction_start_returns_commit(tmp_path: Pat
     hooks.release.set()
     reservation = await task
     assert (reservation.start, reservation.end) == (0, 4)
+    assert task.cancelling() == 0
 
     reopened = SqliteOscoreContextStore(tmp_path / "contexts.sqlite3")
     loaded = await reopened.get("peer")
     assert loaded is not None
     assert loaded.oscore.sender_sequence_number == 4
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["get", "get_generation", "get_peer_pubkey"])
+async def test_cancelled_sqlite_read_waits_for_legacy_migration_commit(
+    method: str, tmp_path: Path
+) -> None:
+    hooks = _BlockMigrationInTransaction()
+    path = tmp_path / f"cancel-{method}.sqlite3"
+    store = SqliteOscoreContextStore(path, hooks=hooks)
+    original = await store.put("peer", _context(), b"peer-key")
+    _mark_sqlite_as_legacy(store)
+    _duplicate_legacy_context(store, "Peer")
+    other = SqliteOscoreContextStore(path)
+    hooks.enabled = True
+
+    task = asyncio.create_task(getattr(store, method)("PEER"))
+    assert await asyncio.to_thread(hooks.entered.wait, 5)
+    task.cancel()
+    await asyncio.sleep(0)
+    assert not task.done()
+    hooks.release.set()
+    result = await task
+    assert task.cancelling() == 0
+
+    assert store._endpoint_policy == EndpointPolicy()
+    assert _stored_host_keys(store) == {"peer"}
+    with sqlite3.connect(path) as connection:
+        metadata = connection.execute(
+            "SELECT value FROM oscore_metadata WHERE key = 'endpoint_policy'"
+        ).fetchone()
+    assert metadata == (EndpointPolicy().serialize(),)
+    if method == "get":
+        assert result is not None
+        assert set(store._cache) == {"peer"}
+        assert store._cache["peer"].oscore.export_parameters() == (
+            original.oscore.export_parameters()
+        )
+    elif method == "get_generation":
+        assert result == 1
+    else:
+        assert result == b"peer-key"
+    assert await other.get_peer_pubkey("PEER") == b"peer-key"
+    assert other._endpoint_policy == EndpointPolicy()
+
+
+@pytest.mark.asyncio
+async def test_cancelled_sqlite_read_waits_for_migration_rollback(tmp_path: Path) -> None:
+    hooks = _BlockMigrationInTransaction()
+    path = tmp_path / "cancel-rollback.sqlite3"
+    store = SqliteOscoreContextStore(path, hooks=hooks)
+    original = await store.put("peer", _context(), b"peer-key")
+    _mark_sqlite_as_legacy(store)
+    _duplicate_legacy_context(store, "Peer")
+    hooks.enabled = True
+    hooks.fail = True
+
+    task = asyncio.create_task(store.get("PEER"))
+    assert await asyncio.to_thread(hooks.entered.wait, 5)
+    task.cancel()
+    await asyncio.sleep(0)
+    assert not task.done()
+    hooks.release.set()
+    with pytest.raises(OSError, match="injected migration failure"):
+        await task
+    assert task.cancelling() == 0
+
+    assert store._endpoint_policy is None
+    assert store._cache == {"peer": original}
+    assert _stored_host_keys(store) == {"Peer", "peer"}
+    with sqlite3.connect(path) as connection:
+        metadata = connection.execute(
+            "SELECT value FROM oscore_metadata WHERE key = 'endpoint_policy'"
+        ).fetchone()
+    assert metadata is None
+
+    hooks.enabled = False
+    store.migrate_endpoint_keys(EndpointPolicy(), {})
+    assert _stored_host_keys(store) == {"peer"}
+    with pytest.raises(EndpointPolicyConflictError):
+        store.migrate_endpoint_keys(_SCOPED_POLICY, {})
 
 
 @pytest.mark.asyncio
@@ -595,7 +1160,7 @@ async def test_default_tofu_uses_context_store_binding() -> None:
     await channel.add_context("PEER", _context(), b"peer-key")
 
     assert await channel._peer_resolver.get_peer_pubkey("PEER") == b"peer-key"
-    assert await channel._peer_resolver.get_peer_pubkey("peer") is None
+    assert await channel._peer_resolver.get_peer_pubkey("peer") == b"peer-key"
 
 
 @pytest.mark.asyncio
@@ -760,8 +1325,8 @@ async def test_replay_persistence_failure_drops_plaintext(tmp_path: Path) -> Non
     sender, recipient = _paired_contexts()
     store = SqliteOscoreContextStore(tmp_path / "contexts.sqlite3", hooks=hooks)
     await store.put("peer", recipient, b"peer-key")
-    hooks.enabled = True
     channel = SecureDatagramChannel(_RecordingChannel(), Identity.generate(), context_store=store)
+    hooks.enabled = True
 
     protected, wire = _protected_request(sender)
     assert await channel._unprotect(protected, "peer") is None
@@ -897,6 +1462,10 @@ async def test_repeated_cancellation_returns_definitive_commit(tmp_path: Path) -
 
     reservation = await task
     assert (reservation.start, reservation.end) == (0, 4)
+    assert task.cancelling() == 0
+    loaded = await SqliteOscoreContextStore(tmp_path / "contexts.sqlite3").get("peer")
+    assert loaded is not None
+    assert loaded.oscore.sender_sequence_number == 4
 
 
 def test_fork_sqlite_channel_discards_inherited_reservation(tmp_path: Path) -> None:
@@ -936,7 +1505,7 @@ def test_fork_in_memory_store_fails_closed() -> None:
 
 
 @pytest.mark.asyncio
-async def test_transport_preserves_case_sensitive_destination(tmp_path: Path) -> None:
+async def test_transport_canonicalizes_reg_name_destination(tmp_path: Path) -> None:
     inner = _RecordingChannel()
     context = _RemoteInspectingContext(
         master_secret=b"s" * 16,
@@ -952,8 +1521,8 @@ async def test_transport_preserves_case_sensitive_destination(tmp_path: Path) ->
     await channel.add_context("Peer", context, b"peer-key")
     await channel._send_protected(_request(1), "Peer")
 
-    assert inner.sent[0][1] == "Peer"
-    assert context.protected_remote == "Peer"
+    assert inner.sent[0][1] == "peer"
+    assert context.protected_remote == "peer"
 
 
 @pytest.mark.asyncio
@@ -978,7 +1547,7 @@ def test_empty_standalone_tofu_binds_to_channel_store() -> None:
 
 
 @pytest.mark.asyncio
-async def test_prepopulated_standalone_tofu_migrates_lazily() -> None:
+async def test_prepopulated_standalone_tofu_migrates_transactionally() -> None:
     resolver = TofuPeerResolver()
     await resolver.pin_peer("Peer.Legacy", b"peer-key")
     store = InMemoryOscoreContextStore()
@@ -989,10 +1558,9 @@ async def test_prepopulated_standalone_tofu_migrates_lazily() -> None:
         peer_resolver=resolver,
     )
 
-    assert resolver._pinned == {"Peer.Legacy": b"peer-key"}
+    assert resolver._pinned == {}
     assert await channel._peer_resolver.get_peer_pubkey("Peer.Legacy") == b"peer-key"
     assert await store.get_peer_pubkey("Peer.Legacy") == b"peer-key"
-    assert resolver._pinned == {}
 
 
 @pytest.mark.asyncio
@@ -1020,17 +1588,17 @@ async def test_prepopulated_tofu_migration_conflict_fails_closed() -> None:
     await resolver.pin_peer("Peer.Legacy", b"legacy-key")
     store = InMemoryOscoreContextStore()
     await store.pin_peer("Peer.Legacy", b"authoritative-key")
-    channel = SecureDatagramChannel(
-        _RecordingChannel(),
-        Identity.generate(),
-        context_store=store,
-        peer_resolver=resolver,
-    )
-
     with pytest.raises(PeerKeyConflictError):
-        await channel._peer_resolver.get_peer_pubkey("Peer.Legacy")
+        SecureDatagramChannel(
+            _RecordingChannel(),
+            Identity.generate(),
+            context_store=store,
+            peer_resolver=resolver,
+        )
     assert await store.get_peer_pubkey("Peer.Legacy") == b"authoritative-key"
-    assert resolver._pinned == {"Peer.Legacy": b"legacy-key"}
+    assert resolver._pinned == {"peer.legacy": b"legacy-key"}
+    assert resolver._context_store is None
+    assert resolver._endpoint_policy is None
 
 
 def test_tofu_bound_to_different_store_is_incompatible() -> None:
