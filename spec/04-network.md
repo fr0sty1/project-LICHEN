@@ -332,7 +332,8 @@ A node typically has all three when a BR with upstream connectivity is present.
 
 ### 12.3. Short Address Assignment
 
-16-bit short addresses optimize 6LoWPAN compression (2 bytes vs 8).
+16-bit short addresses optimize link-layer addressing and SCHC rule targets
+(2 bytes vs 8).
 
 Assignment methods (no central authority required):
 1. **Derived from EUI-64:** Hash lower 16 bits, check for collision

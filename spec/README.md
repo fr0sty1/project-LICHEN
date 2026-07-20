@@ -36,7 +36,7 @@ hardware as a reflash -- same radios, new protocol.
 
 1. [Architecture](01-architecture.md) - Design Principles and Protocol Stack
 2. [Physical and Link Layers](02-physical-link.md) - LoRa PHY and Frame Format
-3. [Adaptation Layer](03-adaptation.md) - SCHC/6LoWPAN Compression
+3. [Adaptation Layer](03-adaptation.md) - SCHC Compression and Fragmentation
 4. [Network Layer](04-network.md) - IPv6 Addressing
 5. [Routing](05-routing.md) - Three-Tier Routing (RPL + Announce + LOADng)
 6. [Security](06-security.md) - Security Architecture

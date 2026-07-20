@@ -61,42 +61,53 @@ valid = (e'[0:16] == e_received)
 
 ### 8.4. Signed vs Relay-Mutable Fields
 
-Signatures cover the **immutable** portion of the packet. Relays modify
-routing headers without re-signing.
+The LICHEN link signature is hop-by-hop. It covers the current link-layer
+destination and payload as specified by the link-layer draft. A receiver MUST
+verify that signature and update the authenticated peer's link replay window
+before processing the payload. A forwarding node then applies permitted
+mutations, creates a new link frame for the next hop, allocates its own replay
+counter, and signs the complete new frame. Hop Limit changes, RFC 6554 address
+swaps, source-routing-header updates, and link-address changes therefore never
+occur under an unchanged link signature.
 
-**Signed (immutable):**
-| Field | Notes |
-|-------|-------|
-| Source IPv6 address | Origin identity |
-| Destination IPv6 address | Final destination |
-| Payload | Application data |
-| Sequence number | Replay protection |
-| LLSec flags | Security parameters |
+An end-to-end origin signature is a separate object. DAOs carry the DAO Origin
+Signature Option defined in Routing Section 8.6. It signs a domain-separated
+SHA-512 transcript containing the preserved source, effective DODAGID,
+persistent 64-bit origin sequence, and exact unsigned DAO bytes. Relays MUST
+preserve the source and DAO bytes; only Hop Limit and the enclosing hop-by-hop
+link frame and signature may change.
 
-**Unsigned (relay-mutable):**
-| Field | Notes |
-|-------|-------|
-| Hop Limit / TTL | Decremented per hop |
-| 6LoRH source routing headers | Inserted/consumed by relays |
-| Link-layer destination | Changes each hop |
-| Link-layer source | Relay's address |
+The DAO origin key MUST be the public key of an existing pre-pinned Announce
+identity whose IID binding matches the preserved IPv6 Source Address. An
+arbitrary caller-supplied or self-certified key is insufficient, and a DAO
+cannot establish or replace the pin. Replay and crash-safe persistence state is
+keyed by that pinned public key, not by the full IPv6 address.
 
-**Implication:** Relays forward packets without re-signing. The original
-signature remains valid because signed fields are unchanged.
+The root MUST validate in this order: structural framing and active
+instance/DODAG context; pinned key, IID, transcript, and origin signature;
+per-key replay classification; semantic parsing; exact self `/128` Target
+validation; persistence of a fresh replay floor; and atomic in-memory route mutation.
+Structural failure therefore wins over replay, while a structurally and
+cryptographically valid replay wins over semantic or Target-validation failure.
+Missing, corrupt, or unavailable replay persistence fails closed. Signature
+validity establishes provenance only; `.44.7` accepts exactly one `/128` Target
+whose 16 octets equal the preserved Source Address. General prefix delegation
+remains future `.44.9` work.
 
-### 8.5. Signature Caching
+RX persistence stores the accepted sequence and digest of the complete signed
+DAO, not the complete DAO or RAM route table. An equal digest does not rewrite
+that floor. After a crash in the window between floor persistence and route
+mutation, the equal retransmission may be parsed and its exact self Target
+validated again solely to reconcile missing volatile route state. TX persistence is intentionally
+different: an origin MUST retain its complete last signed DAO bytes so it can
+retransmit those exact bytes after reboot without allocating a new sequence.
 
-To reduce verification overhead:
+### 8.5. Verification Caching
 
-1. **First-hop verification:** Verify signature when packet first arrives
-2. **Cache result:** Mark packet as "verified from <IID>" in forwarding state
-3. **Relay without re-verify:** Subsequent hops trust first-hop verification
-4. **Cache keyed by:** (source IID, sequence number) with TTL
-
-Cache entries expire after 2× expected mesh traversal time (default: 30 seconds).
-
-**Security note:** A compromised relay could inject unverified packets. In
-high-security deployments, enable per-hop verification (costs CPU, not bytes).
+Every hop MUST verify every received link signature. Implementations MAY cache
+peer public keys, trust decisions, and signature-verification precomputation,
+but MUST NOT cache a prior frame's verification result as authorization for a
+new frame or a different hop.
 
 ### 8.6. Key Management
 
@@ -355,12 +366,13 @@ defense-in-depth.
 
 All RPL control messages are frames, and all frames carry Schnorr signatures.
 This provides:
-- **Sender authentication:** DIO originates from claimed node
+- **Immediate-sender authentication:** The current link peer signed the frame
 - **Integrity:** Message not modified in transit
 - **Replay protection:** Epoch + seqnum prevents replay
 
-This is sufficient for most deployments. Attackers cannot forge DIOs or
-inject fake routing information without a valid keypair.
+For a DAO, this hop-by-hop protection is not origin provenance. The separate
+DAO Origin Signature Option is REQUIRED before DAO semantic processing or
+route mutation, as specified in Routing Section 8.6.
 
 **Limitation of link-layer signatures:**
 
@@ -380,8 +392,8 @@ for control plane messages. This provides:
 
 | Mode | When to Use |
 |------|-------------|
-| Unsecured + link sigs | Default, sufficient for most deployments |
-| Preinstalled + link sigs | Adversarial environments, critical infrastructure |
+| Unsecured + required link/origin sigs | Default, sufficient for most deployments |
+| Preinstalled + required link/origin sigs | Adversarial environments, critical infrastructure |
 
 **Configuration:**
 
