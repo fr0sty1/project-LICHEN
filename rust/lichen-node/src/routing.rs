@@ -56,6 +56,7 @@ pub enum DioProcessOutcome {
     Inconsistent,
 }
 
+#[cfg(feature = "std")]
 impl DioProcessOutcome {
     fn accepted(inconsistent: bool) -> Self {
         if inconsistent {
