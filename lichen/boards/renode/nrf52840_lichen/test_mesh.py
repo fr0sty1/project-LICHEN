@@ -12,21 +12,21 @@ Usage:
 """
 
 import asyncio
-import os
+import sys
+from pathlib import Path
+
 import pytest
 import pytest_asyncio
-from pathlib import Path
 
 # Skip entire module if Renode not available
 pytest.importorskip("lichen.sim.simulation")
 
 # Repo root: .../lichen/boards/renode/nrf52840_lichen/test_mesh.py -> parents[4]
 project_root = Path(__file__).resolve().parents[4]
-import sys
 sys.path.insert(0, str(project_root / "python" / "src"))
 
-from lichen.sim.simulation import Simulation
-from lichen.sim.renode_server import start_renode_server
+from lichen.sim.renode_server import start_renode_server  # noqa: E402
+from lichen.sim.simulation import Simulation  # noqa: E402
 
 
 @pytest.fixture
@@ -45,7 +45,6 @@ def _find_firmware(board: str) -> Path | None:
         # Renode build with the UART console overlay (see renode_console.overlay)
         project_root / f"build/{board}_renode/zephyr/zephyr.elf",
         project_root / f"build/{board}/zephyr/zephyr.elf",
-        project_root / "build/zephyr/zephyr.elf",
     ]
     for elf in candidates:
         if elf.exists():
@@ -91,7 +90,9 @@ sysbus LoadELF @{self.firmware}
 cpu PerformanceInMips 64
 start
 """
-        script_path = project_root / f"lichen/boards/renode/nrf52840_lichen/_test_node{self.node_id}.resc"
+        script_path = project_root / (
+            f"lichen/boards/renode/nrf52840_lichen/_test_node{self.node_id}.resc"
+        )
         script_path.write_text(script)
 
         self.proc = await asyncio.create_subprocess_exec(

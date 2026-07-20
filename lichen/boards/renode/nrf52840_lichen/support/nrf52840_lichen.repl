@@ -13,12 +13,11 @@ using "platforms/cpus/nrf52840.repl"
 // SX1262 SPI bridge works.
 twi1: @ none
 
-// easyDMA enables the SPIM (EasyDMA) register interface — TXD.PTR/MAXCNT,
-// RXD.PTR/MAXCNT, TASKS_START and EVENTS_END — which Zephyr's nordic,nrf-spim
-// driver requires. Without it the model only exposes the legacy SPI registers
-// and DMA transfers never complete.
+// Renode 1.16.1 does not model the SPIM STOP task/event used by Zephyr's nrfx
+// driver. Renode builds select nordic,nrf-spi in renode_console.overlay, so the
+// model must expose the matching legacy TXD/RXD/EVENTS_READY interface.
 spi1: SPI.NRF52840_SPI @ sysbus 0x40004000
-    easyDMA: true
+    easyDMA: false
     -> nvic@4
 
 // SX1262 LoRa radio on SPI1.

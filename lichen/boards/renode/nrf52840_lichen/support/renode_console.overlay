@@ -47,6 +47,11 @@
 	pinctrl-names = "default", "sleep";
 };
 
+/* Renode 1.16.1 does not model the SPIM STOP task/event used by nrfx. */
+&spi1 {
+	compatible = "nordic,nrf-spi";
+};
+
 / {
 	chosen {
 		zephyr,console = &uart0;

@@ -11,7 +11,6 @@ Usage:
 """
 
 import asyncio
-import subprocess
 import sys
 from pathlib import Path
 
@@ -19,8 +18,8 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(project_root / "python" / "src"))
 
-from lichen.sim.simulation import Simulation
-from lichen.sim.renode_server import start_renode_server
+from lichen.sim.renode_server import start_renode_server  # noqa: E402
+from lichen.sim.simulation import Simulation  # noqa: E402
 
 SUPPORTED_BOARDS = {"t_echo", "rak4631"}
 
@@ -69,12 +68,6 @@ async def run_simulation(boards: list[str]):
     peripherals_dir = project_root / "lichen/boards/renode/peripherals"
     sx1262_cs = peripherals_dir / "SX1262.cs"
 
-    # Check firmware exists
-    elf = project_root / "build/zephyr/zephyr.elf"
-    if not elf.exists():
-        # Try board-specific builds
-        print(f"Note: {elf} not found, will look for board-specific builds")
-
     try:
         # Start Renode servers for each node
         base_port = 5555
@@ -106,11 +99,10 @@ async def run_simulation(boards: list[str]):
                 print(f"ERROR: Platform not found: {platform}")
                 return
 
-            # Try board-specific firmware (Renode console build first), else generic
+            # Firmware must match the board-specific devicetree.
             candidates = [
                 project_root / f"build/{board}_renode/zephyr/zephyr.elf",
                 project_root / f"build/{board}/zephyr/zephyr.elf",
-                elf,
             ]
             firmware = next((c for c in candidates if c.exists()), None)
             if firmware is None:

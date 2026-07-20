@@ -1680,7 +1680,7 @@ static int lichen_l2_enable(struct net_if *iface, bool state)
 		k_mutex_unlock(&rx_mutex);
 		k_mutex_unlock(&tx_mutex);
 #endif
-		return ret;
+		return stop_ret;
 	}
 }
 
