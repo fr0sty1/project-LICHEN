@@ -26,6 +26,9 @@ use crate::Node;
 
 /// Maximum wire frame size (LoRa MTU with some headroom).
 pub const MAX_FRAME_SIZE: usize = 255;
+// 254-byte frame body minus fixed header, EUI-64 destination, 48-byte signature,
+// and the L2 SCHC dispatch byte.
+const MAX_EXTENDED_SCHC_SIZE: usize = 193;
 
 /// TX path error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,6 +48,12 @@ pub enum TxError {
     QueueFull,
     /// Every link-layer epoch/sequence tuple has been consumed.
     SequenceExhausted,
+    /// No next hop is available for the destination.
+    NoRoute,
+    /// Plaintext CoAP is forbidden on the production transmit path.
+    PlaintextCoap,
+    /// IPv6 extension headers are unsupported by the production router.
+    UnsupportedIpv6Extension,
 }
 
 impl core::fmt::Display for TxError {
@@ -57,6 +66,9 @@ impl core::fmt::Display for TxError {
             Self::BufferTooSmall => write!(f, "buffer too small"),
             Self::QueueFull => write!(f, "forwarding queue full"),
             Self::SequenceExhausted => write!(f, "link-layer sequence exhausted"),
+            Self::NoRoute => write!(f, "no route to destination"),
+            Self::PlaintextCoap => write!(f, "plaintext CoAP is forbidden"),
+            Self::UnsupportedIpv6Extension => write!(f, "IPv6 extension header is unsupported"),
         }
     }
 }
@@ -82,6 +94,16 @@ pub enum RxError {
     Link(LinkRxError),
     /// SCHC decompression failed.
     SchcDecompress,
+    /// Radio reported a packet larger than the supplied receive buffer.
+    RadioPacketTooLarge,
+    /// CoAP traffic was not protected with OSCORE.
+    PlaintextCoap,
+    /// OSCORE CoAP framing is malformed.
+    MalformedSecureCoap,
+    /// RPL source routing failed strict validation.
+    InvalidSourceRoute,
+    /// IPv6 Hop Limit was exhausted while forwarding.
+    HopLimitExceeded,
     /// Timeout waiting for frame.
     Timeout,
 }
@@ -92,6 +114,11 @@ impl core::fmt::Display for RxError {
             Self::RadioRx => write!(f, "radio RX failed"),
             Self::Link(e) => write!(f, "link error: {}", e),
             Self::SchcDecompress => write!(f, "SCHC decompression failed"),
+            Self::RadioPacketTooLarge => write!(f, "radio packet exceeds receive buffer"),
+            Self::PlaintextCoap => write!(f, "plaintext CoAP is forbidden"),
+            Self::MalformedSecureCoap => write!(f, "malformed secure CoAP"),
+            Self::InvalidSourceRoute => write!(f, "invalid RPL source route"),
+            Self::HopLimitExceeded => write!(f, "IPv6 Hop Limit exceeded"),
             Self::Timeout => write!(f, "receive timeout"),
         }
     }
@@ -231,7 +258,17 @@ impl<R: Radio> Stack<R> {
     /// Path: CoAP → IPv6/UDP → SCHC compress → L2 sign → Radio TX
     pub(crate) async fn send_coap_raw(&mut self, dst: &Addr, coap: &[u8]) -> Result<(), TxError> {
         let src = self.local_addr();
+        self.send_coap_raw_to(&src, dst, coap, &[], &[]).await
+    }
 
+    pub(crate) async fn send_coap_raw_to(
+        &mut self,
+        src: &Addr,
+        dst: &Addr,
+        coap: &[u8],
+        l2_destination: &[u8],
+        source_route: &[[u8; 16]],
+    ) -> Result<(), TxError> {
         // Build IPv6/UDP packet
         let mut ipv6 = [0u8; 256];
         let header_len = IPV6_HEADER_LEN + UDP_HEADER_LEN;
@@ -242,7 +279,7 @@ impl<R: Radio> Stack<R> {
         let udp_len = (UDP_HEADER_LEN + udp_payload_len) as u16;
 
         // IPv6 header
-        let ip_hdr = Ipv6Header::new(next_header::UDP, src, *dst);
+        let ip_hdr = Ipv6Header::new(next_header::UDP, *src, *dst);
         ip_hdr
             .write_to(udp_len, &mut ipv6[..IPV6_HEADER_LEN])
             .map_err(|_| TxError::BufferTooSmall)?;
@@ -251,7 +288,7 @@ impl<R: Radio> Stack<R> {
         let udp_hdr = UdpHeader::new(PORT_COAP, PORT_COAP);
         udp_hdr
             .write_to(
-                &src,
+                src,
                 dst,
                 coap,
                 &mut ipv6[IPV6_HEADER_LEN..IPV6_HEADER_LEN + UDP_HEADER_LEN],
@@ -262,10 +299,17 @@ impl<R: Radio> Stack<R> {
         let ipv6_len = IPV6_HEADER_LEN + UDP_HEADER_LEN + udp_payload_len;
         ipv6[IPV6_HEADER_LEN + UDP_HEADER_LEN..ipv6_len].copy_from_slice(coap);
 
+        let mut routed = [0u8; 512];
+        let ipv6 = if source_route.len() > 1 {
+            let routed_len = add_rpl_source_route(&ipv6[..ipv6_len], source_route, &mut routed)?;
+            &routed[..routed_len]
+        } else {
+            &ipv6[..ipv6_len]
+        };
+
         // SCHC compress
         let mut schc = [0u8; 200];
-        let schc_len =
-            codec::compress(&ipv6[..ipv6_len], &mut schc).map_err(|_| TxError::SchcCompress)?;
+        let schc_len = codec::compress(ipv6, &mut schc).map_err(|_| TxError::SchcCompress)?;
 
         let mut l2_payload = [0u8; 201];
         let l2_data = wrap_schc_payload(&schc[..schc_len], &mut l2_payload)?;
@@ -275,7 +319,7 @@ impl<R: Radio> Stack<R> {
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
             .link
-            .build_frame(epoch, seqnum, &[], l2_data, &mut wire)
+            .build_frame(epoch, seqnum, l2_destination, l2_data, &mut wire)
             .map_err(|_| TxError::FrameEncode)?;
 
         // Radio TX
@@ -307,11 +351,33 @@ impl<R: Radio> Stack<R> {
         self.send_l2_payload_to(l2_data, dst_addr).await
     }
 
+    pub(crate) async fn send_ipv6_to_route(
+        &mut self,
+        ipv6: &[u8],
+        dst_addr: &[u8],
+        source_route: &[[u8; 16]],
+    ) -> Result<(), TxError> {
+        if source_route.len() <= 1 {
+            return self.send_ipv6_to(ipv6, dst_addr).await;
+        }
+        let mut routed = [0u8; 512];
+        let routed_len = add_rpl_source_route(ipv6, source_route, &mut routed)?;
+        self.send_ipv6_to(&routed[..routed_len], dst_addr).await
+    }
+
     pub(crate) async fn send_l2_payload_to(
         &mut self,
         l2_payload: &[u8],
         dst_addr: &[u8],
     ) -> Result<(), TxError> {
+        let max_payload = if dst_addr.len() == 8 {
+            MAX_EXTENDED_SCHC_SIZE + 1
+        } else {
+            202
+        };
+        if l2_payload.len() > max_payload {
+            return Err(TxError::FrameEncode);
+        }
         let (epoch, seqnum) = self.try_next_link_tuple()?;
         let mut wire = [0u8; MAX_FRAME_SIZE];
         let wire_len = self
@@ -341,6 +407,9 @@ impl<R: Radio> Stack<R> {
         let Some(pkt) = rx else {
             return Ok(None);
         };
+        if pkt.len > buf.len() {
+            return Err(RxError::RadioPacketTooLarge);
+        }
 
         let wire = &buf[..pkt.len];
         let l2 = self.link.receive_frame(wire)?;
@@ -485,6 +554,49 @@ impl<R: Radio> Stack<R> {
     pub fn forward_buffer(&mut self) -> &mut ForwardBuffer {
         &mut self.forward_buffer
     }
+}
+
+pub(crate) fn add_rpl_source_route(
+    ipv6: &[u8],
+    route: &[[u8; 16]],
+    out: &mut [u8],
+) -> Result<usize, TxError> {
+    let remaining = route.len().checked_sub(1).ok_or(TxError::NoRoute)?;
+    if remaining == 0 || remaining > u8::MAX as usize {
+        return Err(TxError::NoRoute);
+    }
+    let routing_len = 8usize
+        .checked_add(remaining.checked_mul(16).ok_or(TxError::BufferTooSmall)?)
+        .ok_or(TxError::BufferTooSmall)?;
+    let total_len = ipv6
+        .len()
+        .checked_add(routing_len)
+        .ok_or(TxError::BufferTooSmall)?;
+    if ipv6.len() < IPV6_HEADER_LEN || total_len > out.len() {
+        return Err(TxError::BufferTooSmall);
+    }
+    let payload_len = usize::from(u16::from_be_bytes([ipv6[4], ipv6[5]]));
+    let routed_payload_len = payload_len
+        .checked_add(routing_len)
+        .and_then(|len| u16::try_from(len).ok())
+        .ok_or(TxError::BufferTooSmall)?;
+
+    out[..IPV6_HEADER_LEN].copy_from_slice(&ipv6[..IPV6_HEADER_LEN]);
+    out[4..6].copy_from_slice(&routed_payload_len.to_be_bytes());
+    let transport = out[6];
+    out[6] = 43;
+    out[24..40].copy_from_slice(&route[0]);
+    out[40] = transport;
+    out[41] = (routing_len / 8 - 1) as u8;
+    out[42] = 3;
+    out[43] = remaining as u8;
+    out[44..48].fill(0);
+    for (index, address) in route[1..].iter().enumerate() {
+        let start = 48 + index * 16;
+        out[start..start + 16].copy_from_slice(address);
+    }
+    out[IPV6_HEADER_LEN + routing_len..total_len].copy_from_slice(&ipv6[IPV6_HEADER_LEN..]);
+    Ok(total_len)
 }
 
 fn wrap_schc_payload<'a>(schc: &[u8], out: &'a mut [u8]) -> Result<&'a [u8], TxError> {

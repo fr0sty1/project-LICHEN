@@ -3,7 +3,7 @@
 
 //! Production ownership and dispatch for the std RPL stack.
 
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use std::vec;
 use std::vec::Vec;
 
@@ -20,8 +20,9 @@ use lichen_hal::{NonVolatile, Radio};
 use lichen_ipv6::{icmpv6_checksum, Addr, Ipv6Header};
 use lichen_link::frame::{AddrMode, LichenFrame};
 use lichen_link::identity::{iid_from_pubkey, PeerIdentity};
-use lichen_link::link_layer::{AuthenticatedFrame, LinkRxError};
+use lichen_link::link_layer::{AuthenticatedFrame, LinkRxError, PeerAuthState};
 use lichen_link::schnorr;
+use lichen_oscore::{Context, SenderStateStore};
 use lichen_rpl::routing::{
     DaoAdmissionState, DaoAdmissionUpdateError, DaoPersistentOpenError, DaoProvisionError,
     DaoTxError, DaoTxState,
@@ -35,8 +36,15 @@ use crate::node::{
 };
 use crate::routing::{DaoRxState, Router};
 use crate::runtime::{RplRuntime, RplRuntimeAction, RplRuntimeActionError, RplRuntimePoll};
-use crate::stack::{ReceivedIpv6, RxError, Stack, TxError, MAX_FRAME_SIZE};
+use crate::secure::{
+    secure_datagram_from_received, ReceivedSecureDatagram, RequestCorrelation, SecureError,
+    SecureRequest, SecureResponse, SecureResponseData, SecureRoute, SecureStack,
+};
+use crate::stack::{ReceivedIpv6, RxError, TxError, MAX_FRAME_SIZE};
 use crate::RplMaintenanceOutcome;
+
+#[cfg(test)]
+use crate::stack::Stack;
 
 const RPL_ALL_NODES: [u8; 16] = [0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1a];
 
@@ -251,8 +259,12 @@ impl<E: core::fmt::Debug> core::fmt::Display for DaoAdmissionError<E> {
 
 impl<E: core::fmt::Debug + 'static> core::error::Error for DaoAdmissionError<E> {}
 
+/// Result of one authenticated packet processed by the production owner.
 #[derive(Debug)]
 pub enum RplReceiveOutcome {
+    /// Authenticated IPv6 addressed to this node. CoAP candidates have already
+    /// passed fail-closed OSCORE framing validation and can be classified with
+    /// [`RplStack::secure_datagram`].
     DeliveredIpv6(ReceivedIpv6),
     AnnouncementAccepted {
         peer: PeerIdentity,
@@ -265,6 +277,7 @@ pub enum RplReceiveOutcome {
     Dao(DaoHandlingOutcome),
     DaoOriginNotAdmitted,
     Forwarded {
+        /// Link-local IPv6 address corresponding to the selected L2 next hop.
         next_hop: [u8; 16],
     },
 }
@@ -274,8 +287,18 @@ enum RplRole {
     Root(DaoRxState),
 }
 
+struct RoutePlan {
+    next_hop: [u8; 8],
+    source_route: Vec<[u8; 16]>,
+}
+
+/// Single production owner for RPL routing, authenticated links, and OSCORE CoAP.
+///
+/// Construct a public [`SecureStack`] first and move it into one of the leaf or
+/// root constructors. This prevents competing radio receive loops and keeps the
+/// plaintext base stack inaccessible to downstream code.
 pub struct RplStack<R: Radio, S: NonVolatile> {
-    stack: Stack<R>,
+    stack: SecureStack<R>,
     rpl: RplNode,
     announces: AnnounceProcessor,
     storage: S,
@@ -283,16 +306,19 @@ pub struct RplStack<R: Radio, S: NonVolatile> {
     local_rpl_addr: [u8; 16],
     bootstrap_peers: VecDeque<[u8; 8]>,
     dao_admissions: Option<DaoAdmissionState>,
+    routing_now_ms: u64,
+    direct_neighbors: HashSet<[u8; 8]>,
 }
 
 impl<R: Radio, S: NonVolatile> RplStack<R, S> {
-    pub fn provision_leaf(
-        stack: Stack<R>,
+    pub fn provision_leaf<T: Into<SecureStack<R>>>(
+        stack: T,
         local_rpl_addr: [u8; 16],
         dodag_id: [u8; 16],
         announces: AnnounceProcessor,
         mut storage: S,
     ) -> Result<Self, RplStackProvisionError<S::Error>> {
+        let stack = stack.into();
         validate_origin(&stack, local_rpl_addr)
             .map_err(|()| RplStackProvisionError::InvalidOrigin)?;
         let key = stack.local_public_key();
@@ -317,16 +343,19 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             local_rpl_addr,
             bootstrap_peers: VecDeque::new(),
             dao_admissions: None,
+            routing_now_ms: 0,
+            direct_neighbors: HashSet::new(),
         })
     }
 
-    pub fn open_leaf(
-        stack: Stack<R>,
+    pub fn open_leaf<T: Into<SecureStack<R>>>(
+        stack: T,
         local_rpl_addr: [u8; 16],
         dodag_id: [u8; 16],
         announces: AnnounceProcessor,
         storage: S,
     ) -> Result<Self, RplStackOpenError<S::Error>> {
+        let stack = stack.into();
         validate_origin(&stack, local_rpl_addr).map_err(|()| RplStackOpenError::InvalidOrigin)?;
         let key = stack.local_public_key();
         let tx = DaoTxState::open(
@@ -350,16 +379,19 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             local_rpl_addr,
             bootstrap_peers: VecDeque::new(),
             dao_admissions: None,
+            routing_now_ms: 0,
+            direct_neighbors: HashSet::new(),
         })
     }
 
-    pub fn provision_root(
-        stack: Stack<R>,
+    pub fn provision_root<T: Into<SecureStack<R>>>(
+        stack: T,
         root_addr: [u8; 16],
         dodag_id: [u8; 16],
         announces: AnnounceProcessor,
         mut storage: S,
     ) -> Result<Self, RplStackProvisionError<S::Error>> {
+        let stack = stack.into();
         validate_origin(&stack, root_addr).map_err(|()| RplStackProvisionError::InvalidOrigin)?;
         if root_addr != dodag_id {
             return Err(RplStackProvisionError::RootAddressMismatch);
@@ -382,16 +414,19 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             local_rpl_addr: root_addr,
             bootstrap_peers: VecDeque::new(),
             dao_admissions: Some(admissions),
+            routing_now_ms: 0,
+            direct_neighbors: HashSet::new(),
         })
     }
 
-    pub fn open_root(
-        stack: Stack<R>,
+    pub fn open_root<T: Into<SecureStack<R>>>(
+        stack: T,
         root_addr: [u8; 16],
         dodag_id: [u8; 16],
         announces: AnnounceProcessor,
         storage: S,
     ) -> Result<Self, RplStackOpenError<S::Error>> {
+        let stack = stack.into();
         validate_origin(&stack, root_addr).map_err(|()| RplStackOpenError::InvalidOrigin)?;
         if root_addr != dodag_id {
             return Err(RplStackOpenError::RootAddressMismatch);
@@ -424,6 +459,8 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             local_rpl_addr: root_addr,
             bootstrap_peers: VecDeque::new(),
             dao_admissions: Some(admissions),
+            routing_now_ms: 0,
+            direct_neighbors: HashSet::new(),
         })
     }
 
@@ -436,6 +473,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
     /// This is an advanced caller-clock API. Production single-owner loops should
     /// use [`Self::runtime_poll`] so clock clamping and cadence remain centralized.
     pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
+        self.routing_now_ms = self.routing_now_ms.max(now_ms);
         self.rpl.maintain(now_ms, neighbor_timeout_ms)
     }
 
@@ -445,6 +483,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         runtime: &mut RplRuntime,
         observed_now_ms: u64,
     ) -> RplRuntimePoll {
+        self.routing_now_ms = self.routing_now_ms.max(observed_now_ms);
         runtime.poll(&mut self.rpl, observed_now_ms)
     }
 
@@ -466,14 +505,21 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         let (now_ms, maintenance) = runtime
             .complete_receive(&mut self.rpl, action, observe_now_ms())
             .map_err(RplRuntimeReceiveError::Action)?;
+        self.routing_now_ms = self.routing_now_ms.max(now_ms);
         let packet = received.map_err(|_| {
             RplRuntimeReceiveError::Receive(RplReceiveError::Receive(RxError::RadioRx))
         })?;
         let received = match packet {
-            Some(packet) => self
-                .process_received(&wire[..packet.len], packet, now_ms)
-                .await
-                .map_err(RplRuntimeReceiveError::Receive)?,
+            Some(packet) => {
+                if packet.len > wire.len() {
+                    return Err(RplRuntimeReceiveError::Receive(RplReceiveError::Receive(
+                        RxError::RadioPacketTooLarge,
+                    )));
+                }
+                self.process_received(&wire[..packet.len], packet, now_ms)
+                    .await
+                    .map_err(RplRuntimeReceiveError::Receive)?
+            }
             None => None,
         };
         Ok(RplRuntimeReceiveOutcome {
@@ -490,6 +536,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         action: RplRuntimeAction,
         observed_now_ms: u64,
     ) -> Result<RplTrickleTransmitOutcome, RplRuntimeTrickleError> {
+        self.routing_now_ms = self.routing_now_ms.max(observed_now_ms);
         let (_, should_transmit) = runtime
             .complete_trickle_transmit(&mut self.rpl, action, observed_now_ms)
             .map_err(RplRuntimeTrickleError::Action)?;
@@ -510,6 +557,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         observed_now_ms: u64,
         rand_offset: u32,
     ) -> Result<Option<RplMaintenanceOutcome>, RplRuntimeTrickleError> {
+        self.routing_now_ms = self.routing_now_ms.max(observed_now_ms);
         runtime
             .complete_trickle_expire(&mut self.rpl, action, observed_now_ms, rand_offset)
             .map_err(RplRuntimeTrickleError::Action)
@@ -521,6 +569,177 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
 
     pub fn storage(&self) -> &S {
         &self.storage
+    }
+
+    /// Atomically register a newly established OSCORE context.
+    ///
+    /// `peer_iid` is the authoritative IPv6 identity binding for the context.
+    pub fn register_fresh_context<T: SenderStateStore>(
+        &mut self,
+        peer_iid: [u8; 8],
+        context: Context,
+        store: &mut T,
+    ) -> Result<(), SecureError> {
+        self.stack.register_fresh_context(peer_iid, context, store)
+    }
+
+    /// Restore authoritative sender state for an existing OSCORE context.
+    ///
+    /// `peer_iid` must match the IPv6 identity originally bound to the context.
+    pub fn restore_context<T: SenderStateStore>(
+        &mut self,
+        peer_iid: [u8; 8],
+        context: Context,
+        store: &mut T,
+    ) -> Result<(), SecureError> {
+        self.stack.restore_context(peer_iid, context, store)
+    }
+
+    /// Send OSCORE-protected CoAP through the single RPL/link owner.
+    pub async fn send_secure_get<T: SenderStateStore>(
+        &mut self,
+        dst: &Addr,
+        peer_iid: &[u8; 8],
+        uri_path: &[&str],
+        token: &[u8],
+        store: &mut T,
+        now_ms: u64,
+    ) -> Result<RequestCorrelation, SecureError> {
+        let route = self
+            .route_for(dst.0, now_ms, false)
+            .ok_or(SecureError::Tx(TxError::NoRoute))?;
+        self.stack
+            .send_secure_get_to(
+                SecureRoute {
+                    source: &Addr(self.local_rpl_addr),
+                    destination: dst,
+                    l2_destination: &route.next_hop,
+                    source_route: &route.source_route,
+                },
+                peer_iid,
+                uri_path,
+                token,
+                store,
+            )
+            .await
+    }
+
+    /// Send a non-CoAP IPv6 diagnostic through the selected RPL/gradient next hop.
+    pub async fn send_ipv6(&mut self, ipv6: &[u8], now_ms: u64) -> Result<(), TxError> {
+        let header = Ipv6Header::from_bytes(ipv6).map_err(|_| TxError::BufferTooSmall)?;
+        if !valid_ipv6_envelope(ipv6) {
+            return Err(TxError::BufferTooSmall);
+        }
+        if header.next_header == next_header::UDP {
+            let udp = lichen_ipv6::UdpHeader::from_bytes(&ipv6[IPV6_HEADER_LEN..])
+                .map_err(|_| TxError::BufferTooSmall)?;
+            if udp.src_port == lichen_core::constants::PORT_COAP
+                || udp.dst_port == lichen_core::constants::PORT_COAP
+            {
+                return Err(TxError::PlaintextCoap);
+            }
+        } else if matches!(header.next_header, 0 | 43 | 44 | 50 | 51 | 60) {
+            return Err(TxError::UnsupportedIpv6Extension);
+        }
+        let route = self
+            .route_for(header.dst.0, now_ms, false)
+            .ok_or(TxError::NoRoute)?;
+        self.stack
+            .send_ipv6_to_route(ipv6, &route.next_hop, &route.source_route)
+            .await
+    }
+
+    /// Send a non-CoAP IPv6 diagnostic using the current routing state.
+    #[deprecated(note = "use send_ipv6(ipv6, now_ms) to provide the routing timestamp")]
+    pub async fn send_ipv6_raw(&mut self, ipv6: &[u8]) -> Result<(), TxError> {
+        self.send_ipv6(ipv6, self.routing_now_ms).await
+    }
+
+    /// Authenticate and decrypt a response received through this owner.
+    pub async fn decrypt_response(
+        &mut self,
+        received: &ReceivedSecureDatagram,
+        correlation: &mut RequestCorrelation,
+        now_ms: u64,
+    ) -> Result<SecureResponse, SecureError> {
+        self.routing_now_ms = self.routing_now_ms.max(now_ms);
+        let source = received.destination();
+        let destination = received.source();
+        if received.requires_ack() {
+            match self
+                .stack
+                .decrypt_response_to(None, received, correlation)
+                .await
+            {
+                Err(SecureError::Tx(TxError::NoRoute)) => {}
+                result => return result,
+            }
+        }
+        let route = if received.requires_ack() {
+            let plan = self
+                .route_for(destination.0, self.routing_now_ms, false)
+                .ok_or(SecureError::Tx(TxError::NoRoute))?;
+            Some((plan.next_hop, plan.source_route))
+        } else {
+            None
+        };
+        self.stack
+            .decrypt_response_to(
+                route.as_ref().map(|(next_hop, source_route)| SecureRoute {
+                    source: &source,
+                    destination: &destination,
+                    l2_destination: next_hop,
+                    source_route,
+                }),
+                received,
+                correlation,
+            )
+            .await
+    }
+
+    /// Authenticate and decrypt a request received through this owner.
+    pub fn decrypt_request(
+        &mut self,
+        received: &ReceivedSecureDatagram,
+    ) -> Result<SecureRequest, SecureError> {
+        self.stack.decrypt_request(received)
+    }
+
+    /// Classify an already received IPv6 datagram as protected CoAP.
+    pub fn secure_datagram(
+        &self,
+        received: &ReceivedIpv6,
+    ) -> Result<Option<ReceivedSecureDatagram>, RxError> {
+        secure_datagram_from_received(received)
+    }
+
+    /// Protect and route a response bound to a decrypted request.
+    pub async fn send_secure_response<T: SenderStateStore>(
+        &mut self,
+        dst: &Addr,
+        peer_iid: &[u8; 8],
+        request: &SecureRequest,
+        response: SecureResponseData<'_>,
+        store: &mut T,
+        now_ms: u64,
+    ) -> Result<(), SecureError> {
+        let route = self
+            .route_for(dst.0, now_ms, false)
+            .ok_or(SecureError::Tx(TxError::NoRoute))?;
+        self.stack
+            .send_secure_response_to(
+                SecureRoute {
+                    source: &Addr(self.local_rpl_addr),
+                    destination: dst,
+                    l2_destination: &route.next_hop,
+                    source_route: &route.source_route,
+                },
+                peer_iid,
+                request,
+                response,
+                store,
+            )
+            .await
     }
 
     /// Admit the currently pinned Announce identity to create root DAO state.
@@ -558,10 +777,6 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             RplRole::Leaf(state) => state.last_signed_dao(),
             RplRole::Root(_) => None,
         }
-    }
-
-    pub async fn send_ipv6_raw(&mut self, ipv6: &[u8]) -> Result<(), TxError> {
-        self.stack.send_ipv6_raw(ipv6).await
     }
 
     pub fn configure_radio(&mut self, config: &RadioConfig) {
@@ -631,16 +846,19 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
 
     /// Low-level Trickle initialization for callers that own timer state.
     pub fn trickle_start(&mut self, now_ms: u64, rand_offset: u32) {
+        self.routing_now_ms = self.routing_now_ms.max(now_ms);
         self.rpl.trickle_start(now_ms, rand_offset);
     }
 
     /// Low-level Trickle reset for callers that own timer state.
     pub fn trickle_reset(&mut self, now_ms: u64, rand_offset: u32) {
+        self.routing_now_ms = self.routing_now_ms.max(now_ms);
         self.rpl.trickle_reset(now_ms, rand_offset);
     }
 
     /// Prefer [`Self::runtime_complete_trickle_expire`] in production loops.
     pub fn trickle_expire(&mut self, now_ms: u64, rand_offset: u32) {
+        self.routing_now_ms = self.routing_now_ms.max(now_ms);
         self.rpl.trickle_expire(now_ms, rand_offset);
     }
 
@@ -706,6 +924,9 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         let Some(packet) = packet else {
             return Ok(None);
         };
+        if packet.len > wire.len() {
+            return Err(RplReceiveError::Receive(RxError::RadioPacketTooLarge));
+        }
         self.process_received(&wire[..packet.len], packet, now_ms)
             .await
     }
@@ -716,6 +937,8 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         packet: lichen_hal::RxPacket,
         now_ms: u64,
     ) -> Result<Option<RplReceiveOutcome>, RplReceiveError> {
+        self.routing_now_ms = self.routing_now_ms.max(now_ms);
+        let now_ms = self.routing_now_ms;
         if !wire_is_for_local(wire, self.stack.node_id().0)
             .map_err(|error| RplReceiveError::Receive(RxError::Link(error)))?
         {
@@ -746,6 +969,7 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             }
             Err(error) => return Err(RplReceiveError::Receive(RxError::Link(error))),
         };
+        self.direct_neighbors.insert(frame.sender.iid);
 
         match classify_l2_payload(&frame.payload) {
             L2PayloadKind::Routing => self
@@ -775,6 +999,44 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                     snr: packet.snr,
                 };
                 if !is_rpl_ipv6(&received.ipv6) {
+                    let header = Ipv6Header::from_bytes(&received.ipv6)
+                        .map_err(|_| RplReceiveError::Receive(RxError::SchcDecompress))?;
+                    secure_datagram_from_received(&received).map_err(RplReceiveError::Receive)?;
+                    if header.next_header == 43 {
+                        return self.process_source_route(received, frame.sender.iid).await;
+                    }
+                    let local_link_addr = self.stack.local_addr().0;
+                    if header.dst.0 != self.local_rpl_addr
+                        && header.dst.0 != local_link_addr
+                        && header.dst.0[0] != 0xff
+                    {
+                        if header.dst.0[0] == 0xfe && header.dst.0[1] & 0xc0 == 0x80 {
+                            return Ok(None);
+                        }
+                        let from_parent = self
+                            .rpl
+                            .preferred_parent()
+                            .is_some_and(|parent| parent[8..] == frame.sender.iid);
+                        let next_hop = self
+                            .route_for(header.dst.0, now_ms, from_parent)
+                            .map(|route| route.next_hop)
+                            .ok_or(RplReceiveError::Transmit(TxError::NoRoute))?;
+                        if next_hop == ipv6_eui64(link_local_from_iid(frame.sender.iid)) {
+                            return Err(RplReceiveError::Receive(RxError::InvalidSourceRoute));
+                        }
+                        let mut forwarded = received.ipv6;
+                        if forwarded[7] <= 1 {
+                            return Err(RplReceiveError::Receive(RxError::HopLimitExceeded));
+                        }
+                        forwarded[7] -= 1;
+                        self.stack
+                            .send_ipv6_to(&forwarded, &next_hop)
+                            .await
+                            .map_err(RplReceiveError::Transmit)?;
+                        return Ok(Some(RplReceiveOutcome::Forwarded {
+                            next_hop: eui64_link_local(next_hop),
+                        }));
+                    }
                     return Ok(Some(RplReceiveOutcome::DeliveredIpv6(received)));
                 }
                 if !rpl_ipv6_multicast_is_allowed(&received.ipv6) {
@@ -792,6 +1054,101 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             }
             L2PayloadKind::Unknown => Err(RplReceiveError::Receive(RxError::SchcDecompress)),
         }
+    }
+
+    fn route_for(
+        &mut self,
+        destination: [u8; 16],
+        now_ms: u64,
+        from_parent: bool,
+    ) -> Option<RoutePlan> {
+        let now_ms = self.routing_now_ms.max(now_ms);
+        self.routing_now_ms = now_ms;
+        if destination[0] == 0xfe && destination[1] & 0xc0 == 0x80 {
+            let iid: [u8; 8] = destination[8..].try_into().unwrap();
+            let state = self.stack.link().peer_auth_state(&iid);
+            if state == PeerAuthState::Unknown
+                || (state == PeerAuthState::Authenticated && !self.direct_neighbors.contains(&iid))
+            {
+                return None;
+            }
+            return Some(RoutePlan {
+                next_hop: ipv6_eui64(destination),
+                source_route: Vec::new(),
+            });
+        }
+        if self.rpl.router.is_root() {
+            if let Some(path) = self.rpl.router.lookup_route_at(&destination, now_ms) {
+                let source_route = path.to_vec();
+                if source_route.last() != Some(&destination) {
+                    return None;
+                }
+                return source_route.first().copied().map(|first| RoutePlan {
+                    next_hop: ipv6_eui64(first),
+                    source_route,
+                });
+            }
+        }
+        if let Some(entry) = self
+            .announces
+            .gradient_table()
+            .lookup(&destination, now_ms as u32)
+        {
+            return Some(RoutePlan {
+                next_hop: ipv6_eui64(entry.next_hop),
+                source_route: Vec::new(),
+            });
+        }
+        if from_parent {
+            return None;
+        }
+        self.rpl.preferred_parent().map(|parent| RoutePlan {
+            next_hop: ipv6_eui64(parent),
+            source_route: Vec::new(),
+        })
+    }
+
+    async fn process_source_route(
+        &mut self,
+        mut received: ReceivedIpv6,
+        sender_iid: [u8; 8],
+    ) -> Result<Option<RplReceiveOutcome>, RplReceiveError> {
+        let local_link_addr = self.stack.local_addr().0;
+        let current_destination: [u8; 16] = received.ipv6[24..40].try_into().unwrap();
+        if current_destination != self.local_rpl_addr && current_destination != local_link_addr {
+            return Err(RplReceiveError::Receive(RxError::InvalidSourceRoute));
+        }
+        if self.rpl.router.is_root()
+            || self
+                .rpl
+                .preferred_parent()
+                .is_none_or(|parent| parent[8..] != sender_iid)
+        {
+            return Err(RplReceiveError::Receive(RxError::InvalidSourceRoute));
+        }
+        let source: [u8; 16] = received.ipv6[8..24].try_into().unwrap();
+        if source != self.rpl.router.dodag_id() {
+            return Err(RplReceiveError::Receive(RxError::InvalidSourceRoute));
+        }
+
+        let next_destination =
+            advance_rpl_source_route(&mut received.ipv6, current_destination, sender_iid)
+                .map_err(RplReceiveError::Receive)?;
+        let Some(next_destination) = next_destination else {
+            return Ok(Some(RplReceiveOutcome::DeliveredIpv6(received)));
+        };
+        if received.ipv6[7] <= 1 {
+            return Err(RplReceiveError::Receive(RxError::HopLimitExceeded));
+        }
+        received.ipv6[7] -= 1;
+        let next_hop = ipv6_eui64(next_destination);
+        self.stack
+            .send_ipv6_to(&received.ipv6, &next_hop)
+            .await
+            .map_err(RplReceiveError::Transmit)?;
+        Ok(Some(RplReceiveOutcome::Forwarded {
+            next_hop: eui64_link_local(next_hop),
+        }))
     }
 
     async fn process_announce(
@@ -864,13 +1221,17 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
                     self.stack.link().forget_peer(&evicted);
                 }
             }
-            let announce_peer_is_new = matches!(
-                self.stack.link().peer_auth_state(&peer.iid),
-                lichen_link::link_layer::PeerAuthState::Unknown
-            );
-            self.stack.add_peer(peer.clone());
-            if (bootstrapped || announce_peer_is_new) && !self.bootstrap_peers.contains(&peer.iid) {
-                self.bootstrap_peers.push_back(peer.iid);
+            if peer.iid == frame.sender.iid {
+                let announce_peer_is_new = matches!(
+                    self.stack.link().peer_auth_state(&peer.iid),
+                    lichen_link::link_layer::PeerAuthState::Unknown
+                );
+                self.stack.add_peer(peer.clone());
+                if (bootstrapped || announce_peer_is_new)
+                    && !self.bootstrap_peers.contains(&peer.iid)
+                {
+                    self.bootstrap_peers.push_back(peer.iid);
+                }
             }
             Ok(RplReceiveOutcome::AnnouncementAccepted {
                 peer,
@@ -977,9 +1338,70 @@ impl<R: Radio> RplStack<R, lichen_hal::storage::mem::MemStorage> {
     }
 }
 
-fn validate_origin<R: Radio>(stack: &Stack<R>, origin: [u8; 16]) -> Result<(), ()> {
+fn validate_origin<R: Radio>(stack: &SecureStack<R>, origin: [u8; 16]) -> Result<(), ()> {
     let expected = iid_from_pubkey(&stack.local_public_key());
     (origin[8..] == expected).then_some(()).ok_or(())
+}
+
+fn advance_rpl_source_route(
+    ipv6: &mut Vec<u8>,
+    current_destination: [u8; 16],
+    sender_iid: [u8; 8],
+) -> Result<Option<[u8; 16]>, RxError> {
+    if ipv6.len() < 64 || ipv6[6] != 43 || ipv6[24..40] != current_destination {
+        return Err(RxError::InvalidSourceRoute);
+    }
+    let payload_len = usize::from(u16::from_be_bytes([ipv6[4], ipv6[5]]));
+    let routing_len = (usize::from(ipv6[41]) + 1) * 8;
+    if routing_len < 24
+        || routing_len > payload_len
+        || (routing_len - 8) % 16 != 0
+        || IPV6_HEADER_LEN + payload_len != ipv6.len()
+        || ipv6[42] != 3
+        || ipv6[44..48] != [0, 0, 0, 0]
+    {
+        return Err(RxError::InvalidSourceRoute);
+    }
+    let address_count = (routing_len - 8) / 16;
+    let segments_left = usize::from(ipv6[43]);
+    if segments_left > address_count {
+        return Err(RxError::InvalidSourceRoute);
+    }
+    for index in 0..address_count {
+        let start = 48 + index * 16;
+        let address: [u8; 16] = ipv6[start..start + 16].try_into().unwrap();
+        if address[0] == 0xff || address == current_destination {
+            return Err(RxError::InvalidSourceRoute);
+        }
+        for prior in 0..index {
+            let prior_start = 48 + prior * 16;
+            if ipv6[prior_start..prior_start + 16] == address {
+                return Err(RxError::InvalidSourceRoute);
+            }
+        }
+    }
+
+    if segments_left == 0 {
+        let plain_payload_len = payload_len - routing_len;
+        let mut plain = vec![0u8; IPV6_HEADER_LEN + plain_payload_len];
+        plain[..IPV6_HEADER_LEN].copy_from_slice(&ipv6[..IPV6_HEADER_LEN]);
+        plain[4..6].copy_from_slice(&(plain_payload_len as u16).to_be_bytes());
+        plain[6] = ipv6[40];
+        plain[IPV6_HEADER_LEN..].copy_from_slice(&ipv6[IPV6_HEADER_LEN + routing_len..]);
+        *ipv6 = plain;
+        return Ok(None);
+    }
+
+    let next_index = address_count - segments_left;
+    let next_start = 48 + next_index * 16;
+    let next_destination: [u8; 16] = ipv6[next_start..next_start + 16].try_into().unwrap();
+    if ipv6_eui64(next_destination) == ipv6_eui64(link_local_from_iid(sender_iid)) {
+        return Err(RxError::InvalidSourceRoute);
+    }
+    ipv6[next_start..next_start + 16].copy_from_slice(&current_destination);
+    ipv6[24..40].copy_from_slice(&next_destination);
+    ipv6[43] -= 1;
+    Ok(Some(next_destination))
 }
 
 fn provision_or_resume_root_state<S: NonVolatile>(
@@ -1182,6 +1604,11 @@ fn link_local_from_iid(iid: [u8; 8]) -> [u8; 16] {
     address
 }
 
+fn eui64_link_local(mut eui64: [u8; 8]) -> [u8; 16] {
+    eui64[0] ^= 0x02;
+    link_local_from_iid(eui64)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1226,6 +1653,43 @@ mod tests {
     }
 
     struct RuntimeRadio(Arc<Mutex<RuntimeRadioState>>);
+
+    #[derive(Default)]
+    struct TestOscoreStore(Option<(lichen_oscore::ContextId, lichen_oscore::SenderSequenceState)>);
+
+    impl SenderStateStore for TestOscoreStore {
+        type Error = ();
+
+        fn load(
+            &mut self,
+            context_id: &lichen_oscore::ContextId,
+        ) -> Result<Option<lichen_oscore::SenderSequenceState>, Self::Error> {
+            Ok(Some(
+                self.0
+                    .filter(|(stored_context, _)| stored_context == context_id)
+                    .map_or(
+                        lichen_oscore::SenderSequenceState {
+                            next_sequence: 0,
+                            exhausted: false,
+                        },
+                        |(_, state)| state,
+                    ),
+            ))
+        }
+
+        fn compare_exchange(
+            &mut self,
+            context_id: &lichen_oscore::ContextId,
+            expected: Option<lichen_oscore::SenderSequenceState>,
+            next: lichen_oscore::SenderSequenceState,
+        ) -> Result<bool, Self::Error> {
+            if self.load(context_id)? != expected {
+                return Ok(false);
+            }
+            self.0 = Some((*context_id, next));
+            Ok(true)
+        }
+    }
 
     impl Radio for RuntimeRadio {
         type Error = Infallible;
@@ -1461,6 +1925,93 @@ mod tests {
             crate::GradientTable::new(crate::announce::MAX_TRACKED_ORIGINATORS),
             prefix,
         )
+    }
+
+    #[test]
+    fn rfc6554_route_crosses_two_relays_and_restores_packet() {
+        let source = address(&identity(60), 1);
+        let relay_one = address(&identity(61), 1);
+        let relay_two = address(&identity(62), 1);
+        let destination = address(&identity(63), 1);
+        let mut plain = vec![0u8; IPV6_HEADER_LEN + 8];
+        Ipv6Header::new(59, Addr(source), Addr(destination))
+            .write_to(8, &mut plain)
+            .unwrap();
+        plain[IPV6_HEADER_LEN..].copy_from_slice(b"payload!");
+
+        let mut wire = [0u8; 512];
+        let len = crate::stack::add_rpl_source_route(
+            &plain,
+            &[relay_one, relay_two, destination],
+            &mut wire,
+        )
+        .unwrap();
+        let mut routed = wire[..len].to_vec();
+        assert_eq!(&routed[24..40], &relay_one);
+        assert_eq!(&routed[40..48], &[59, 4, 3, 2, 0, 0, 0, 0]);
+        assert_eq!(&routed[48..64], &relay_two);
+        assert_eq!(&routed[64..80], &destination);
+        assert_eq!(routed[43], 2);
+
+        assert_eq!(
+            advance_rpl_source_route(&mut routed, relay_one, source[8..].try_into().unwrap())
+                .unwrap(),
+            Some(relay_two)
+        );
+        assert_eq!(routed[43], 1);
+        assert_eq!(
+            advance_rpl_source_route(&mut routed, relay_two, relay_one[8..].try_into().unwrap(),)
+                .unwrap(),
+            Some(destination)
+        );
+        assert_eq!(routed[43], 0);
+        assert_eq!(
+            advance_rpl_source_route(&mut routed, destination, relay_two[8..].try_into().unwrap(),)
+                .unwrap(),
+            None
+        );
+        assert_eq!(routed, plain);
+    }
+
+    #[tokio::test]
+    async fn plaintext_coap_is_not_delivered_by_rpl_owner() {
+        let (sender_radio, receiver_radio) = LoopbackRadio::pair();
+        let sender_identity = identity(51);
+        let receiver_identity = identity(52);
+        let receiver_addr = address(&receiver_identity, 1);
+
+        let mut sender = Stack::new_default_epoch(sender_radio, sender_identity.clone());
+        sender.add_peer(PeerIdentity::from_pubkey(receiver_identity.pubkey));
+        let mut receiver =
+            SecureStack::new(Stack::new_default_epoch(receiver_radio, receiver_identity));
+        receiver.add_peer(PeerIdentity::from_pubkey(sender_identity.pubkey));
+        let mut owner = RplStack::provision_leaf(
+            receiver,
+            receiver_addr,
+            receiver_addr,
+            announces(receiver_addr[..8].try_into().unwrap()),
+            MemStorage::new(),
+        )
+        .unwrap();
+
+        sender
+            .send_coap_raw(&Addr(receiver_addr), &[0x40, 0x01, 0x12, 0x34])
+            .await
+            .unwrap();
+
+        assert!(matches!(
+            owner.receive(0, 0).await,
+            Err(RplReceiveError::Receive(RxError::PlaintextCoap))
+        ));
+
+        let mut extension = vec![0u8; IPV6_HEADER_LEN + 8];
+        Ipv6Header::new(43, Addr(receiver_addr), Addr(receiver_addr))
+            .write_to(8, &mut extension)
+            .unwrap();
+        assert_eq!(
+            owner.send_ipv6(&extension, 0).await.unwrap_err(),
+            TxError::UnsupportedIpv6Extension
+        );
     }
 
     fn signed_announce(identity: &Identity, sequence: u16) -> Vec<u8> {
@@ -2537,6 +3088,8 @@ mod tests {
             Some(RplReceiveOutcome::Rpl(RplEvent::DioReceived { .. }))
         ));
         assert_eq!(leaf.rpl_node().preferred_parent(), Some(relay_addr));
+        let unknown_downward = address(&identity(99), 1);
+        assert!(leaf.route_for(unknown_downward, 0, true).is_none());
 
         leaf.send_announce(&signed_announce(&leaf_identity, 1), 0)
             .await
@@ -2603,6 +3156,74 @@ mod tests {
             root.rpl_node().router.lookup_route(&leaf_addr),
             Some([relay_addr, leaf_addr].as_slice())
         );
+
+        let secret = [0x42; 16];
+        let mut leaf_store = TestOscoreStore::default();
+        let mut root_store = TestOscoreStore::default();
+        let leaf_context =
+            Context::load_existing(&secret, None, None, &[0x00], &[0x01], &mut leaf_store).unwrap();
+        let root_context =
+            Context::load_existing(&secret, None, None, &[0x01], &[0x00], &mut root_store).unwrap();
+        leaf.restore_context(root_identity.iid, leaf_context, &mut leaf_store)
+            .unwrap();
+        root.restore_context(leaf_identity.iid, root_context, &mut root_store)
+            .unwrap();
+
+        let mut correlation = leaf
+            .send_secure_get(
+                &Addr(root_addr),
+                &root_identity.iid,
+                &["status"],
+                &[0xa1],
+                &mut leaf_store,
+                0,
+            )
+            .await
+            .unwrap();
+        assert!(matches!(
+            relay.receive(1, 0).await.unwrap(),
+            Some(RplReceiveOutcome::Forwarded { next_hop })
+                if next_hop == eui64_link_local(root_eui64)
+        ));
+        let Some(RplReceiveOutcome::DeliveredIpv6(received)) = root.receive(1, 0).await.unwrap()
+        else {
+            panic!("root did not receive routed secure CoAP");
+        };
+        let datagram = root.secure_datagram(&received).unwrap().unwrap();
+        let request = root.decrypt_request(&datagram).unwrap();
+        assert_eq!(request.sender_iid, leaf_identity.iid);
+        assert_eq!(request.code.0, 1);
+
+        root.send_secure_response(
+            &Addr(leaf_addr),
+            &leaf_identity.iid,
+            &request,
+            SecureResponseData {
+                code: lichen_coap::message::MessageCode(0x45),
+                options: &[],
+                payload: b"ok",
+            },
+            &mut root_store,
+            0,
+        )
+        .await
+        .unwrap();
+        assert!(matches!(
+            relay.receive(1, 0).await.unwrap(),
+            Some(RplReceiveOutcome::Forwarded { next_hop })
+                if next_hop == eui64_link_local(leaf_eui64)
+        ));
+        let Some(RplReceiveOutcome::DeliveredIpv6(received)) = leaf.receive(1, 0).await.unwrap()
+        else {
+            panic!("leaf did not receive routed secure response");
+        };
+        let response = leaf.secure_datagram(&received).unwrap().unwrap();
+        assert!(matches!(
+            leaf.decrypt_response(&response, &mut correlation, 0)
+                .await
+                .unwrap(),
+            SecureResponse::Decrypted { payload, .. } if payload == b"ok"
+        ));
     }
 
     #[tokio::test]

@@ -103,7 +103,7 @@ pub use scheduler::{AnnounceScheduler, AnnounceTransmitter, SchedulerConfig, Sch
 #[cfg(feature = "std")]
 pub use secure::{
     ReceivedSecureDatagram, RequestCorrelation, SecureError, SecureRequest, SecureResponse,
-    SecureStack,
+    SecureResponseData, SecureStack,
 };
 #[cfg(feature = "std")]
 pub use stack::{ReceivedIpv6, RxError, TxError};

@@ -15,9 +15,11 @@ use lichen_core::constants::PORT_COAP;
 use lichen_hal::Radio;
 use lichen_ipv6::{next_header, Addr, Ipv6Header, UdpHeader, IPV6_HEADER_LEN, UDP_HEADER_LEN};
 use lichen_link::identity::PeerIdentity;
+use lichen_link::link_layer::LinkLayer;
 use lichen_oscore::{
-    validate_option, Context, ContextId, ContextStoreError, OscoreError, ReservationError,
-    SenderStateStore, COAP_OPTION_OSCORE, PIV_MAX_LEN,
+    request_identifiers, validate_option, Context, ContextId, ContextStoreError, OscoreError,
+    RequestIdentifiers, ReservationError, SenderStateStore, COAP_OPTION_OSCORE, PIV_MAX_LEN,
+    TAG_LEN,
 };
 
 use crate::stack::{ReceivedIpv6, RxError, Stack, TxError};
@@ -114,6 +116,7 @@ pub struct RequestCorrelation {
     context_id: ContextId,
     destination_peer_iid: [u8; 8],
     completed: bool,
+    completed_confirmable: Option<(u16, Vec<u8>)>,
 }
 
 /// Result of processing a response correlated to a secure request.
@@ -132,11 +135,15 @@ pub enum SecureResponse {
     },
 }
 
-/// An authenticated, structurally validated secure CoAP datagram.
+/// A structurally validated OSCORE CoAP candidate or exact empty ACK.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReceivedSecureDatagram {
     coap: Vec<u8>,
     sender_iid: [u8; 8],
+    source: Addr,
+    destination: Addr,
+    source_port: u16,
+    destination_port: u16,
     rssi: Option<i16>,
     snr: Option<i8>,
 }
@@ -147,9 +154,22 @@ impl ReceivedSecureDatagram {
         &self.coap
     }
 
-    /// Sender IID from the authenticated link-layer identity.
+    /// Claimed IPv6 origin IID. It is authenticated only after OSCORE decryption.
     pub fn sender_iid(&self) -> [u8; 8] {
         self.sender_iid
+    }
+
+    pub(crate) fn source(&self) -> Addr {
+        self.source
+    }
+
+    pub(crate) fn destination(&self) -> Addr {
+        self.destination
+    }
+
+    pub(crate) fn requires_ack(&self) -> bool {
+        CoapPacket::from_bytes(&self.coap)
+            .is_ok_and(|packet| packet.msg_type() == MessageType::Confirmable)
     }
 
     /// RSSI in dBm, when reported by the radio.
@@ -163,7 +183,7 @@ impl ReceivedSecureDatagram {
     }
 }
 
-/// Decrypted OSCORE request from an authenticated link-layer peer.
+/// Decrypted OSCORE request from an authenticated end-to-end peer.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SecureRequest {
     /// Inner CoAP request code.
@@ -172,8 +192,46 @@ pub struct SecureRequest {
     pub options: Vec<u8>,
     /// Decrypted payload.
     pub payload: Vec<u8>,
-    /// Sender IID from the authenticated link-layer identity.
+    /// Sender IID authenticated by the OSCORE context.
     pub sender_iid: [u8; 8],
+}
+
+#[derive(Clone, Copy)]
+struct RequestMetadata {
+    message_id: u16,
+    token: [u8; MAX_TOKEN_LEN],
+    token_len: u8,
+    confirmable: bool,
+    identifiers: RequestIdentifiers,
+}
+
+impl RequestMetadata {
+    fn token(&self) -> &[u8] {
+        &self.token[..self.token_len as usize]
+    }
+}
+
+struct PendingRequest {
+    request: SecureRequest,
+    metadata: RequestMetadata,
+}
+
+/// Plaintext response fields to protect with OSCORE.
+#[derive(Debug, Clone, Copy)]
+pub struct SecureResponseData<'a> {
+    /// Inner CoAP response code.
+    pub code: MessageCode,
+    /// Encoded Class E response options.
+    pub options: &'a [u8],
+    /// Response payload.
+    pub payload: &'a [u8],
+}
+
+pub(crate) struct SecureRoute<'a> {
+    pub(crate) source: &'a Addr,
+    pub(crate) destination: &'a Addr,
+    pub(crate) l2_destination: &'a [u8],
+    pub(crate) source_route: &'a [[u8; 16]],
 }
 
 impl RequestCorrelation {
@@ -204,6 +262,7 @@ pub struct SecureStack<R: Radio> {
     stack: Stack<R>,
     /// OSCORE contexts keyed by peer IID.
     contexts: HashMap<[u8; 8], Context>,
+    pending_requests: Vec<PendingRequest>,
 }
 
 #[cfg(feature = "std")]
@@ -213,7 +272,47 @@ impl<R: Radio> SecureStack<R> {
         Self {
             stack,
             contexts: HashMap::new(),
+            pending_requests: Vec::new(),
         }
+    }
+
+    pub(crate) fn local_public_key(&self) -> lichen_link::keys::PublicKey {
+        self.stack.local_public_key()
+    }
+
+    pub(crate) fn radio(&mut self) -> &mut R {
+        self.stack.radio()
+    }
+
+    pub(crate) fn link(&mut self) -> &mut LinkLayer {
+        self.stack.link()
+    }
+
+    pub(crate) async fn send_l2_payload_to(
+        &mut self,
+        payload: &[u8],
+        destination: &[u8],
+    ) -> Result<(), TxError> {
+        self.stack.send_l2_payload_to(payload, destination).await
+    }
+
+    pub(crate) async fn send_ipv6_to(
+        &mut self,
+        ipv6: &[u8],
+        destination: &[u8],
+    ) -> Result<(), TxError> {
+        self.stack.send_ipv6_to(ipv6, destination).await
+    }
+
+    pub(crate) async fn send_ipv6_to_route(
+        &mut self,
+        ipv6: &[u8],
+        destination: &[u8],
+        source_route: &[[u8; 16]],
+    ) -> Result<(), TxError> {
+        self.stack
+            .send_ipv6_to_route(ipv6, destination, source_route)
+            .await
     }
 
     /// Enroll a peer for link-layer signature verification.
@@ -236,6 +335,10 @@ impl<R: Radio> SecureStack<R> {
     }
 
     /// Atomically register and install a newly established OSCORE context.
+    ///
+    /// `peer_iid` is the authoritative binding between the IPv6 peer identity and
+    /// this context. Installing a context under the wrong IID authenticates that
+    /// incorrect binding after otherwise valid OSCORE decryption.
     pub fn register_fresh_context<S: SenderStateStore>(
         &mut self,
         peer_iid: [u8; 8],
@@ -250,6 +353,8 @@ impl<R: Radio> SecureStack<R> {
     }
 
     /// Restore authoritative sender state and install an existing OSCORE context.
+    ///
+    /// `peer_iid` must be the authoritative IPv6 identity bound to this context.
     pub fn restore_context<S: SenderStateStore>(
         &mut self,
         peer_iid: [u8; 8],
@@ -282,6 +387,30 @@ impl<R: Radio> SecureStack<R> {
     pub async fn send_secure_get<S: SenderStateStore>(
         &mut self,
         dst: &Addr,
+        peer_iid: &[u8; 8],
+        uri_path: &[&str],
+        token: &[u8],
+        store: &mut S,
+    ) -> Result<RequestCorrelation, SecureError> {
+        let source = self.stack.local_addr();
+        self.send_secure_get_to(
+            SecureRoute {
+                source: &source,
+                destination: dst,
+                l2_destination: &[],
+                source_route: &[],
+            },
+            peer_iid,
+            uri_path,
+            token,
+            store,
+        )
+        .await
+    }
+
+    pub(crate) async fn send_secure_get_to<S: SenderStateStore>(
+        &mut self,
+        route: SecureRoute<'_>,
         peer_iid: &[u8; 8],
         uri_path: &[&str],
         token: &[u8],
@@ -342,6 +471,16 @@ impl<R: Radio> SecureStack<R> {
         // Reject bounded-output failures before consuming a sender sequence.
         ctx.preflight_protect_request(&class_e[..class_e_len], &[])
             .map_err(map_protect_error)?;
+        let oscore_option_len = ctx.next_request_option_len().map_err(map_protect_error)?;
+        preflight_secure_frame(
+            route.source,
+            route.destination,
+            route.l2_destination,
+            route.source_route,
+            token.len(),
+            1 + class_e_len + TAG_LEN,
+            oscore_option_len,
+        )?;
 
         // Protect request
         let reservation = ctx.reserve_sender(store).map_err(|error| match error {
@@ -383,7 +522,15 @@ impl<R: Radio> SecureStack<R> {
 
         let outer_len = builder.finish();
 
-        self.stack.send_coap_raw(dst, &outer[..outer_len]).await?;
+        self.stack
+            .send_coap_raw_to(
+                route.source,
+                route.destination,
+                &outer[..outer_len],
+                route.l2_destination,
+                route.source_route,
+            )
+            .await?;
         let mut correlation_token = [0; MAX_TOKEN_LEN];
         correlation_token[..token.len()].copy_from_slice(token);
         Ok(RequestCorrelation {
@@ -395,6 +542,7 @@ impl<R: Radio> SecureStack<R> {
             context_id,
             destination_peer_iid: *peer_iid,
             completed: false,
+            completed_confirmable: None,
         })
     }
 
@@ -406,11 +554,68 @@ impl<R: Radio> SecureStack<R> {
         received: &ReceivedSecureDatagram,
         correlation: &mut RequestCorrelation,
     ) -> Result<SecureResponse, SecureError> {
+        let source = received.destination();
+        let destination = received.source();
+        let mut l2_destination: [u8; 8] = destination.0[8..].try_into().unwrap();
+        l2_destination[0] ^= 0x02;
+        self.decrypt_response_to(
+            Some(SecureRoute {
+                source: &source,
+                destination: &destination,
+                l2_destination: &l2_destination,
+                source_route: &[],
+            }),
+            received,
+            correlation,
+        )
+        .await
+    }
+
+    pub(crate) async fn decrypt_response_to(
+        &mut self,
+        route: Option<SecureRoute<'_>>,
+        received: &ReceivedSecureDatagram,
+        correlation: &mut RequestCorrelation,
+    ) -> Result<SecureResponse, SecureError> {
         let peer_iid = &received.sender_iid;
-        if correlation.completed || *peer_iid != correlation.destination_peer_iid {
+        if *peer_iid != correlation.destination_peer_iid {
             return Err(SecureError::CorrelationMismatch);
         }
         let pkt = CoapPacket::from_bytes(&received.coap).map_err(|_| SecureError::CoapEncode)?;
+        if received.source_port != PORT_COAP || received.destination_port != PORT_COAP {
+            return Err(SecureError::CorrelationMismatch);
+        }
+        if correlation.completed {
+            let duplicate =
+                correlation
+                    .completed_confirmable
+                    .as_ref()
+                    .is_some_and(|(mid, coap)| {
+                        pkt.msg_type() == MessageType::Confirmable
+                            && pkt.message_id() == *mid
+                            && received.coap == *coap
+                    });
+            if !duplicate {
+                return Err(SecureError::CorrelationMismatch);
+            }
+            let route = route.ok_or(SecureError::Tx(TxError::NoRoute))?;
+            let ack = [
+                0x60,
+                MessageCode::EMPTY.0,
+                (pkt.message_id() >> 8) as u8,
+                pkt.message_id() as u8,
+            ];
+            self.stack
+                .send_coap_raw_to(
+                    route.source,
+                    route.destination,
+                    &ack,
+                    route.l2_destination,
+                    route.source_route,
+                )
+                .await?;
+            return Ok(SecureResponse::Acknowledged);
+        }
         if received.coap.len() == 4
             && pkt.msg_type() == MessageType::Acknowledgement
             && pkt.code() == MessageCode::EMPTY
@@ -421,7 +626,7 @@ impl<R: Radio> SecureStack<R> {
         if pkt.msg_type() == MessageType::Acknowledgement && pkt.code() == MessageCode::EMPTY {
             return Err(SecureError::CorrelationMismatch);
         }
-        if !matches!(pkt.code().class(), 2..=5) {
+        if pkt.code() != MessageCode::CHANGED {
             return Err(SecureError::DecryptFailed);
         }
         if pkt.token() != correlation.token()
@@ -457,24 +662,158 @@ impl<R: Radio> SecureStack<R> {
             .map_err(|_| SecureError::DecryptFailed)?;
 
         if pkt.msg_type() == MessageType::Confirmable {
+            let route = route.ok_or(SecureError::Tx(TxError::NoRoute))?;
             let ack = [
                 0x60,
                 MessageCode::EMPTY.0,
                 (pkt.message_id() >> 8) as u8,
                 pkt.message_id() as u8,
             ];
-            let destination = Addr::link_local_from_eui64(peer_iid);
-            stack.send_coap_raw(&destination, &ack).await?;
+            stack
+                .send_coap_raw_to(
+                    route.source,
+                    route.destination,
+                    &ack,
+                    route.l2_destination,
+                    route.source_route,
+                )
+                .await?;
         }
         let (code, options, payload) = pending.commit().map_err(|_| SecureError::DecryptFailed)?;
         let code = MessageCode(code);
         correlation.completed = true;
+        if pkt.msg_type() == MessageType::Confirmable {
+            correlation.completed_confirmable = Some((pkt.message_id(), received.coap.clone()));
+        }
 
         Ok(SecureResponse::Decrypted {
             code,
             options: options.to_vec(),
             payload: payload.to_vec(),
         })
+    }
+
+    /// Protect and send a response bound to a decrypted request.
+    pub async fn send_secure_response<S: SenderStateStore>(
+        &mut self,
+        dst: &Addr,
+        peer_iid: &[u8; 8],
+        request: &SecureRequest,
+        response: SecureResponseData<'_>,
+        store: &mut S,
+    ) -> Result<(), SecureError> {
+        let source = self.stack.local_addr();
+        self.send_secure_response_to(
+            SecureRoute {
+                source: &source,
+                destination: dst,
+                l2_destination: &[],
+                source_route: &[],
+            },
+            peer_iid,
+            request,
+            response,
+            store,
+        )
+        .await
+    }
+
+    pub(crate) async fn send_secure_response_to<S: SenderStateStore>(
+        &mut self,
+        route: SecureRoute<'_>,
+        peer_iid: &[u8; 8],
+        request: &SecureRequest,
+        response: SecureResponseData<'_>,
+        store: &mut S,
+    ) -> Result<(), SecureError> {
+        if request.sender_iid != *peer_iid {
+            return Err(SecureError::CorrelationMismatch);
+        }
+        let pending_index = self
+            .pending_requests
+            .iter()
+            .position(|pending| pending.request == *request)
+            .ok_or(SecureError::CorrelationMismatch)?;
+        let metadata = self.pending_requests[pending_index].metadata;
+        if !matches!(response.code.class(), 2..=5) {
+            return Err(SecureError::EncryptFailed);
+        }
+        let context = self
+            .get_context_mut(peer_iid)
+            .ok_or(SecureError::NoContext)?;
+        context
+            .preflight_protect_response(
+                response.options,
+                response.payload,
+                metadata.identifiers.kid(),
+                metadata.identifiers.piv(),
+            )
+            .map_err(map_protect_error)?;
+        let ciphertext_len = 1
+            + response.options.len()
+            + usize::from(!response.payload.is_empty())
+            + response.payload.len()
+            + TAG_LEN;
+        preflight_secure_frame(
+            route.source,
+            route.destination,
+            route.l2_destination,
+            route.source_route,
+            metadata.token().len(),
+            ciphertext_len,
+            1 + PIV_MAX_LEN,
+        )?;
+        let reservation = context.reserve_sender(store).map_err(|error| match error {
+            ReservationError::SequenceExhausted => SecureError::ContextExhausted,
+            ReservationError::Conflict => SecureError::ReservationConflict,
+            ReservationError::Storage(_) => SecureError::PersistenceFailed,
+        })?;
+        let (ciphertext, oscore_option) = reservation
+            .protect_response_with_piv(
+                response.code.0,
+                response.options,
+                response.payload,
+                metadata.identifiers.kid(),
+                metadata.identifiers.piv(),
+            )
+            .map_err(map_protect_error)?;
+        let message_type = if metadata.confirmable {
+            MessageType::Acknowledgement
+        } else {
+            MessageType::NonConfirmable
+        };
+        let message_id = if metadata.confirmable {
+            metadata.message_id
+        } else {
+            self.stack.next_message_id()
+        };
+        let mut outer = [0u8; 384];
+        let mut builder = CoapBuilder::new(
+            &mut outer,
+            message_type,
+            MessageCode(0x44),
+            message_id,
+            metadata.token(),
+        )
+        .map_err(|_| SecureError::CoapEncode)?;
+        builder
+            .option(OSCORE_OPTION, oscore_option.as_slice())
+            .map_err(|_| SecureError::CoapEncode)?;
+        builder
+            .payload(ciphertext.as_slice())
+            .map_err(|_| SecureError::CoapEncode)?;
+        let outer_len = builder.finish();
+        self.stack
+            .send_coap_raw_to(
+                route.source,
+                route.destination,
+                &outer[..outer_len],
+                route.l2_destination,
+                route.source_route,
+            )
+            .await?;
+        self.pending_requests.remove(pending_index);
+        Ok(())
     }
 
     /// Receive authenticated ICMPv6 diagnostics without exposing plaintext CoAP.
@@ -502,74 +841,11 @@ impl<R: Radio> SecureStack<R> {
         let Some(frame) = self.stack.receive(timeout_ms).await? else {
             return Ok(None);
         };
-        let header = Ipv6Header::from_bytes(&frame.ipv6).map_err(|_| RxError::SchcDecompress)?;
-        let payload_len = usize::from(header.payload_len);
-        if IPV6_HEADER_LEN.checked_add(payload_len) != Some(frame.ipv6.len()) {
-            return Err(RxError::SchcDecompress);
-        }
-        if header.next_header != next_header::UDP {
-            return Ok(None);
-        }
-        if payload_len < UDP_HEADER_LEN {
-            return Err(RxError::SchcDecompress);
-        }
-
-        let udp_bytes = &frame.ipv6[IPV6_HEADER_LEN..];
-        let udp = UdpHeader::from_bytes(udp_bytes).map_err(|_| RxError::SchcDecompress)?;
-        let udp_len = usize::from(udp.length);
-        if udp_len < UDP_HEADER_LEN || udp_len != payload_len {
-            return Err(RxError::SchcDecompress);
-        }
-        if udp.checksum == 0 {
-            return Err(RxError::SchcDecompress);
-        }
-        if udp.dst_port != PORT_COAP {
-            return Ok(None);
-        }
-
-        let coap = &udp_bytes[UDP_HEADER_LEN..udp_len];
-        let mut expected_udp = [0; UDP_HEADER_LEN];
-        UdpHeader::new(udp.src_port, udp.dst_port)
-            .write_to(&header.src, &header.dst, coap, &mut expected_udp)
-            .map_err(|_| RxError::SchcDecompress)?;
-        if udp_bytes[6..8] != expected_udp[6..8] {
-            return Err(RxError::SchcDecompress);
-        }
-        let packet = CoapPacket::from_bytes(coap).map_err(|_| RxError::SchcDecompress)?;
-        let empty_ack = coap.len() == 4
-            && packet.msg_type() == MessageType::Acknowledgement
-            && packet.code() == MessageCode::EMPTY;
-        let mut oscore_option = None;
-        let mut oscore_options = 0;
-        for option in packet.options() {
-            let option = option.map_err(|_| RxError::SchcDecompress)?;
-            if option.number == OSCORE_OPTION {
-                oscore_options += 1;
-                oscore_option = Some(option.value);
-            }
-        }
-        if empty_ack {
-            return Ok(Some(ReceivedSecureDatagram {
-                coap: coap.to_vec(),
-                sender_iid: frame.sender_iid,
-                rssi: frame.rssi,
-                snr: frame.snr,
-            }));
-        }
-        if oscore_options != 1 {
-            return Err(RxError::SchcDecompress);
-        }
-        validate_option(oscore_option.unwrap()).map_err(|_| RxError::SchcDecompress)?;
-
-        Ok(Some(ReceivedSecureDatagram {
-            coap: coap.to_vec(),
-            sender_iid: frame.sender_iid,
-            rssi: frame.rssi,
-            snr: frame.snr,
-        }))
+        secure_datagram_from_received(&frame)
     }
 
-    /// Decrypt a request using only its authenticated sender IID for context selection.
+    /// Decrypt a request using its claimed sender IID for context selection, then
+    /// authenticate that identity through the matching OSCORE context.
     pub fn decrypt_request(
         &mut self,
         received: &ReceivedSecureDatagram,
@@ -580,6 +856,17 @@ impl<R: Radio> SecureStack<R> {
             && packet.msg_type() == MessageType::Acknowledgement
             && packet.code() == MessageCode::EMPTY
         {
+            return Err(SecureError::DecryptFailed);
+        }
+        if packet.code() != MessageCode::POST
+            || !matches!(
+                packet.msg_type(),
+                MessageType::Confirmable | MessageType::NonConfirmable
+            )
+        {
+            return Err(SecureError::DecryptFailed);
+        }
+        if received.destination_port != PORT_COAP {
             return Err(SecureError::DecryptFailed);
         }
         let mut oscore_option = None;
@@ -593,7 +880,8 @@ impl<R: Radio> SecureStack<R> {
             }
         }
         let oscore_option = oscore_option.ok_or(SecureError::DecryptFailed)?;
-        validate_option(oscore_option).map_err(|_| SecureError::DecryptFailed)?;
+        let identifiers =
+            request_identifiers(oscore_option).map_err(|_| SecureError::DecryptFailed)?;
         let context = self
             .get_context_mut(&received.sender_iid)
             .ok_or(SecureError::NoContext)?;
@@ -605,12 +893,226 @@ impl<R: Radio> SecureStack<R> {
             return Err(SecureError::DecryptFailed);
         }
 
-        Ok(SecureRequest {
+        let mut token = [0; MAX_TOKEN_LEN];
+        token[..packet.token().len()].copy_from_slice(packet.token());
+        let request = SecureRequest {
             code,
             options: options.to_vec(),
             payload: payload.to_vec(),
             sender_iid: received.sender_iid,
-        })
+        };
+        let metadata = RequestMetadata {
+            message_id: packet.message_id(),
+            token,
+            token_len: packet.token().len() as u8,
+            confirmable: packet.msg_type() == MessageType::Confirmable,
+            identifiers,
+        };
+        const MAX_PENDING_REQUESTS: usize = 16;
+        if self.pending_requests.len() == MAX_PENDING_REQUESTS {
+            self.pending_requests.remove(0);
+        }
+        self.pending_requests.push(PendingRequest {
+            request: request.clone(),
+            metadata,
+        });
+        Ok(request)
+    }
+}
+
+fn preflight_secure_frame(
+    source: &Addr,
+    destination: &Addr,
+    l2_destination: &[u8],
+    source_route: &[[u8; 16]],
+    token_len: usize,
+    ciphertext_len: usize,
+    oscore_option_len: usize,
+) -> Result<(), SecureError> {
+    let option_header_len = if oscore_option_len < 13 {
+        1
+    } else if oscore_option_len < 269 {
+        2
+    } else {
+        3
+    };
+    let coap_len = 4usize
+        .checked_add(token_len)
+        .and_then(|n| n.checked_add(option_header_len))
+        .and_then(|n| n.checked_add(oscore_option_len))
+        .and_then(|n| n.checked_add(1))
+        .and_then(|n| n.checked_add(ciphertext_len))
+        .ok_or(SecureError::CoapEncode)?;
+    if coap_len > 256 - IPV6_HEADER_LEN - UDP_HEADER_LEN {
+        return Err(SecureError::CoapEncode);
+    }
+    let max_schc_len = if l2_destination.len() == 8 { 193 } else { 200 };
+    let schc_len = if source_route.len() > 1 {
+        let routing_len = 8usize
+            .checked_add(
+                source_route
+                    .len()
+                    .checked_sub(1)
+                    .and_then(|n| n.checked_mul(16))
+                    .ok_or(SecureError::CoapEncode)?,
+            )
+            .ok_or(SecureError::CoapEncode)?;
+        1usize
+            .checked_add(IPV6_HEADER_LEN + UDP_HEADER_LEN)
+            .and_then(|n| n.checked_add(coap_len))
+            .and_then(|n| n.checked_add(routing_len))
+            .ok_or(SecureError::CoapEncode)?
+    } else if is_link_local(&source.0) && is_link_local(&destination.0) {
+        coap_len.checked_add(22).ok_or(SecureError::CoapEncode)?
+    } else if is_global(&source.0) && is_global(&destination.0) {
+        coap_len.checked_add(38).ok_or(SecureError::CoapEncode)?
+    } else {
+        1usize
+            .checked_add(IPV6_HEADER_LEN + UDP_HEADER_LEN)
+            .and_then(|n| n.checked_add(coap_len))
+            .ok_or(SecureError::CoapEncode)?
+    };
+    if schc_len > max_schc_len {
+        return Err(SecureError::CoapEncode);
+    }
+    Ok(())
+}
+
+fn is_link_local(address: &[u8; 16]) -> bool {
+    address[0] == 0xfe && address[1] & 0xc0 == 0x80
+}
+
+fn is_global(address: &[u8; 16]) -> bool {
+    address[0] >> 5 == 0b001
+}
+
+pub(crate) fn secure_datagram_from_received(
+    frame: &ReceivedIpv6,
+) -> Result<Option<ReceivedSecureDatagram>, RxError> {
+    let header = Ipv6Header::from_bytes(&frame.ipv6).map_err(|_| RxError::SchcDecompress)?;
+    let payload_len = usize::from(header.payload_len);
+    if IPV6_HEADER_LEN.checked_add(payload_len) != Some(frame.ipv6.len()) {
+        return Err(RxError::SchcDecompress);
+    }
+    let (transport, transport_offset, transport_len, final_destination) =
+        secure_transport(&frame.ipv6, &header)?;
+    if transport != next_header::UDP {
+        return Ok(None);
+    }
+    if transport_len < UDP_HEADER_LEN {
+        return Err(RxError::SchcDecompress);
+    }
+
+    let udp_bytes = &frame.ipv6[transport_offset..];
+    let udp = UdpHeader::from_bytes(udp_bytes).map_err(|_| RxError::SchcDecompress)?;
+    let udp_len = usize::from(udp.length);
+    if udp_len < UDP_HEADER_LEN || udp_len != transport_len {
+        return Err(RxError::SchcDecompress);
+    }
+    if udp.checksum == 0 {
+        return Err(RxError::SchcDecompress);
+    }
+    if udp.dst_port != PORT_COAP && udp.src_port != PORT_COAP {
+        return Ok(None);
+    }
+
+    let coap = &udp_bytes[UDP_HEADER_LEN..udp_len];
+    let mut expected_udp = [0; UDP_HEADER_LEN];
+    UdpHeader::new(udp.src_port, udp.dst_port)
+        .write_to(&header.src, &final_destination, coap, &mut expected_udp)
+        .map_err(|_| RxError::SchcDecompress)?;
+    if udp_bytes[6..8] != expected_udp[6..8] {
+        return Err(RxError::SchcDecompress);
+    }
+    let packet = CoapPacket::from_bytes(coap).map_err(|_| RxError::MalformedSecureCoap)?;
+    let empty_ack = coap.len() == 4
+        && packet.msg_type() == MessageType::Acknowledgement
+        && packet.code() == MessageCode::EMPTY;
+    let mut oscore_option = None;
+    let mut oscore_options = 0;
+    for option in packet.options() {
+        let option = option.map_err(|_| RxError::MalformedSecureCoap)?;
+        if option.number == OSCORE_OPTION {
+            oscore_options += 1;
+            oscore_option = Some(option.value);
+        }
+    }
+    let sender_iid: [u8; 8] = header.src.0[8..].try_into().unwrap();
+    if empty_ack {
+        return Ok(Some(ReceivedSecureDatagram {
+            coap: coap.to_vec(),
+            sender_iid,
+            source: Addr(header.src.0),
+            destination: final_destination,
+            source_port: udp.src_port,
+            destination_port: udp.dst_port,
+            rssi: frame.rssi,
+            snr: frame.snr,
+        }));
+    }
+    if oscore_options != 1 {
+        return Err(RxError::PlaintextCoap);
+    }
+    if packet.payload().is_empty() {
+        return Err(RxError::MalformedSecureCoap);
+    }
+    validate_option(oscore_option.unwrap()).map_err(|_| RxError::MalformedSecureCoap)?;
+
+    Ok(Some(ReceivedSecureDatagram {
+        coap: coap.to_vec(),
+        sender_iid,
+        source: Addr(header.src.0),
+        destination: final_destination,
+        source_port: udp.src_port,
+        destination_port: udp.dst_port,
+        rssi: frame.rssi,
+        snr: frame.snr,
+    }))
+}
+
+fn secure_transport(ipv6: &[u8], header: &Ipv6Header) -> Result<(u8, usize, usize, Addr), RxError> {
+    let payload_len = usize::from(header.payload_len);
+    if header.next_header != 43 {
+        if matches!(header.next_header, 0 | 44 | 50 | 51 | 60) {
+            return Err(RxError::SchcDecompress);
+        }
+        return Ok((header.next_header, IPV6_HEADER_LEN, payload_len, header.dst));
+    }
+    if payload_len < 24 || ipv6.len() < 48 {
+        return Err(RxError::SchcDecompress);
+    }
+    let routing_len = (usize::from(ipv6[41]) + 1) * 8;
+    if routing_len < 24
+        || routing_len > payload_len
+        || (routing_len - 8) % 16 != 0
+        || IPV6_HEADER_LEN + routing_len > ipv6.len()
+        || ipv6[42] != 3
+        || ipv6[44..48] != [0, 0, 0, 0]
+    {
+        return Err(RxError::SchcDecompress);
+    }
+    let address_count = (routing_len - 8) / 16;
+    let segments_left = usize::from(ipv6[43]);
+    if segments_left > address_count {
+        return Err(RxError::SchcDecompress);
+    }
+    let final_destination = if segments_left == 0 {
+        header.dst
+    } else {
+        let start = 48 + (address_count - 1) * 16;
+        Addr(ipv6[start..start + 16].try_into().unwrap())
+    };
+    Ok((
+        ipv6[40],
+        IPV6_HEADER_LEN + routing_len,
+        payload_len - routing_len,
+        final_destination,
+    ))
+}
+
+impl<R: Radio> From<Stack<R>> for SecureStack<R> {
+    fn from(stack: Stack<R>) -> Self {
+        Self::new(stack)
     }
 }
 
@@ -625,11 +1127,16 @@ mod tests {
     use lichen_oscore::{Context as OscoreContext, ContextId, SenderSequenceState};
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::{Arc, Mutex};
+    use std::vec;
 
     fn received(coap: &[u8], sender_iid: [u8; 8]) -> ReceivedSecureDatagram {
         ReceivedSecureDatagram {
             coap: coap.to_vec(),
             sender_iid,
+            source: Addr::link_local_from_eui64(&sender_iid),
+            destination: Addr::link_local_from_eui64(&[0; 8]),
+            source_port: PORT_COAP,
+            destination_port: PORT_COAP,
             rssi: None,
             snr: None,
         }
@@ -902,7 +1409,7 @@ mod tests {
 
         let bob_addr = bob.local_addr();
         // Alice sends encrypted GET
-        let correlation = alice
+        let mut correlation = alice
             .send_secure_get(&bob_addr, &bob_iid, &["sensors"], &[0xAB], &mut alice_store)
             .await
             .unwrap();
@@ -915,11 +1422,90 @@ mod tests {
         assert_eq!(received.rssi(), Some(-50));
         assert_eq!(received.snr(), Some(10));
         assert!(!received.coap().is_empty());
+        let mut wrong_request_port = received.clone();
+        wrong_request_port.destination_port = 49_152;
+        assert_eq!(
+            bob.decrypt_request(&wrong_request_port).unwrap_err(),
+            SecureError::DecryptFailed
+        );
         let request = bob.decrypt_request(&received).unwrap();
         assert_eq!(request.code, MessageCode::GET);
         assert_eq!(request.options, b"\xb7sensors");
         assert!(request.payload.is_empty());
         assert_eq!(request.sender_iid, alice_iid);
+
+        let alice_addr = alice.local_addr();
+        let sender_before = bob_store.record;
+        assert_eq!(
+            bob.send_secure_response(
+                &alice_addr,
+                &alice_iid,
+                &request,
+                SecureResponseData {
+                    code: MessageCode::GET,
+                    options: &[],
+                    payload: b"invalid",
+                },
+                &mut bob_store,
+            )
+            .await
+            .unwrap_err(),
+            SecureError::EncryptFailed
+        );
+        assert_eq!(bob_store.record, sender_before);
+        let oversized_payload = [0u8; 129];
+        assert_eq!(
+            bob.send_secure_response(
+                &alice_addr,
+                &alice_iid,
+                &request,
+                SecureResponseData {
+                    code: MessageCode(0x45),
+                    options: &[],
+                    payload: &oversized_payload,
+                },
+                &mut bob_store,
+            )
+            .await
+            .unwrap_err(),
+            SecureError::EncryptFailed
+        );
+        assert_eq!(bob_store.record, sender_before);
+        bob.send_secure_response(
+            &alice_addr,
+            &alice_iid,
+            &request,
+            SecureResponseData {
+                code: MessageCode(0x45),
+                options: &[],
+                payload: b"ok",
+            },
+            &mut bob_store,
+        )
+        .await
+        .unwrap();
+        let response = alice.receive_secure_datagram(1000).await.unwrap().unwrap();
+        assert_eq!(
+            CoapPacket::from_bytes(response.coap()).unwrap().code(),
+            MessageCode::CHANGED
+        );
+        let mut wrong_response_port = response.clone();
+        wrong_response_port.source_port = 49_152;
+        assert_eq!(
+            alice
+                .decrypt_response(&wrong_response_port, &mut correlation)
+                .await
+                .unwrap_err(),
+            SecureError::CorrelationMismatch
+        );
+        assert!(matches!(
+            alice
+                .decrypt_response(&response, &mut correlation)
+                .await
+                .unwrap(),
+            SecureResponse::Decrypted { code, payload, .. }
+                if code == MessageCode(0x45) && payload == b"ok"
+        ));
     }
 
     #[tokio::test]
@@ -952,7 +1538,61 @@ mod tests {
 
         assert_eq!(
             bob.receive_secure_datagram(1000).await.unwrap_err(),
-            RxError::SchcDecompress
+            RxError::MalformedSecureCoap
+        );
+    }
+
+    #[test]
+    fn secure_classification_rejects_extension_headers() {
+        let mut ipv6 = vec![0u8; IPV6_HEADER_LEN + 8];
+        ipv6[0] = 0x60;
+        ipv6[4..6].copy_from_slice(&8u16.to_be_bytes());
+        ipv6[6] = 44;
+        ipv6[7] = 64;
+        let received = ReceivedIpv6 {
+            ipv6,
+            sender_iid: [0x11; 8],
+            rssi: None,
+            snr: None,
+        };
+
+        assert_eq!(
+            secure_datagram_from_received(&received),
+            Err(RxError::SchcDecompress)
+        );
+    }
+
+    #[test]
+    fn plaintext_coap_source_port_is_rejected() {
+        let source = Addr([0xfd, 0, 0, 0, 0, 0, 0, 1, 0x11, 0, 0, 0, 0, 0, 0, 1]);
+        let destination = Addr([0xfd, 0, 0, 0, 0, 0, 0, 1, 0x22, 0, 0, 0, 0, 0, 0, 2]);
+        let coap = [0x40, 0x45, 0x12, 0x34];
+        let mut ipv6 = vec![0u8; IPV6_HEADER_LEN + UDP_HEADER_LEN + coap.len()];
+        Ipv6Header::new(next_header::UDP, source, destination)
+            .write_to(
+                (UDP_HEADER_LEN + coap.len()) as u16,
+                &mut ipv6[..IPV6_HEADER_LEN],
+            )
+            .unwrap();
+        UdpHeader::new(PORT_COAP, 49_152)
+            .write_to(
+                &source,
+                &destination,
+                &coap,
+                &mut ipv6[IPV6_HEADER_LEN..IPV6_HEADER_LEN + UDP_HEADER_LEN],
+            )
+            .unwrap();
+        ipv6[IPV6_HEADER_LEN + UDP_HEADER_LEN..].copy_from_slice(&coap);
+        let received = ReceivedIpv6 {
+            ipv6,
+            sender_iid: [0x11; 8],
+            rssi: None,
+            snr: None,
+        };
+
+        assert_eq!(
+            secure_datagram_from_received(&received),
+            Err(RxError::PlaintextCoap)
         );
     }
 
@@ -1005,6 +1645,7 @@ mod tests {
             context_id,
             destination_peer_iid: peer_iid,
             completed: false,
+            completed_confirmable: None,
         };
 
         let empty_ack = [0x60, 0x00, 0x12, 0x34];
@@ -1101,9 +1742,11 @@ mod tests {
             secure
                 .decrypt_response(&received(&separate, peer_iid), &mut correlation)
                 .await
-                .unwrap_err(),
-            SecureError::CorrelationMismatch
+                .unwrap(),
+            SecureResponse::Acknowledged
         );
+        let duplicate_ack = peer_stack.receive(1000).await.unwrap().unwrap();
+        assert_eq!(&duplicate_ack.ipv6[48..], &[0x60, 0x00, 0x99, 0x99]);
     }
 
     #[tokio::test]
@@ -1185,6 +1828,7 @@ mod tests {
             context_id,
             destination_peer_iid: peer_iid,
             completed: false,
+            completed_confirmable: None,
         };
 
         assert_eq!(
@@ -1285,6 +1929,7 @@ mod tests {
             context_id,
             destination_peer_iid: peer_iid,
             completed: false,
+            completed_confirmable: None,
         };
 
         assert!(secure

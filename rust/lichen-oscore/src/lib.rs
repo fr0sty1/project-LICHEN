@@ -690,6 +690,56 @@ impl Context {
         Ok(())
     }
 
+    /// Exact OSCORE option length for the next request sender reservation.
+    pub fn next_request_option_len(&self) -> Result<usize, OscoreError> {
+        if !self.active || self.sender_seq_exhausted {
+            return Err(OscoreError::SeqExhausted);
+        }
+        let mut piv = [0u8; PIV_MAX_LEN];
+        let piv_len = self.sender_seq.encode_piv(&mut piv);
+        Ok(1 + piv_len
+            + usize::from(self.id_context_present) * (1 + self.id_context_len as usize)
+            + self.sender_id_len as usize)
+    }
+
+    /// Check that response protection can fit all bounded outputs before reserving a PIV.
+    pub fn preflight_protect_response(
+        &self,
+        class_e_options: &[u8],
+        payload: &[u8],
+        request_kid: &[u8],
+        request_piv: &[u8],
+    ) -> Result<(), OscoreError> {
+        if !self.active
+            || request_kid.len() > NONCE_ID_LEN
+            || request_kid != self.recipient_id()
+            || OscoreSeqNum::from_piv(request_piv).is_none()
+        {
+            return Err(OscoreError::InvalidParam);
+        }
+        const RECEIVER_OUTPUT_CAP: usize = 128;
+        if class_e_options.len() > RECEIVER_OUTPUT_CAP {
+            return Err(BufferTooSmall::new(class_e_options.len(), RECEIVER_OUTPUT_CAP).into());
+        }
+        if payload.len() > RECEIVER_OUTPUT_CAP {
+            return Err(BufferTooSmall::new(payload.len(), RECEIVER_OUTPUT_CAP).into());
+        }
+        let (parsed_options, parsed_payload) = parse_inner_body(class_e_options)?;
+        if parsed_options != class_e_options || !parsed_payload.is_empty() {
+            return Err(OscoreError::InvalidParam);
+        }
+        let required = 1usize
+            .checked_add(class_e_options.len())
+            .and_then(|n| n.checked_add(usize::from(!payload.is_empty())))
+            .and_then(|n| n.checked_add(payload.len()))
+            .and_then(|n| n.checked_add(TAG_LEN))
+            .ok_or(OscoreError::InvalidParam)?;
+        if required > 280 {
+            return Err(BufferTooSmall::new(required, 280).into());
+        }
+        Ok(())
+    }
+
     /// Return whether this context was reconstructed from persisted state.
     pub fn is_restored(&self) -> bool {
         self.restored
@@ -1353,9 +1403,44 @@ struct OscoreOption {
     kid_present: bool,
 }
 
+/// Request identifiers needed to bind an OSCORE response to its request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RequestIdentifiers {
+    kid: [u8; ID_MAX_LEN],
+    kid_len: u8,
+    piv: [u8; PIV_MAX_LEN],
+    piv_len: u8,
+}
+
+impl RequestIdentifiers {
+    /// Request sender identifier.
+    pub fn kid(&self) -> &[u8] {
+        &self.kid[..self.kid_len as usize]
+    }
+
+    /// Canonical request Partial IV.
+    pub fn piv(&self) -> &[u8] {
+        &self.piv[..self.piv_len as usize]
+    }
+}
+
 /// Validate an encoded OSCORE option without requiring an OSCORE context.
 pub fn validate_option(data: &[u8]) -> Result<(), OscoreError> {
     parse_option(data).map(|_| ())
+}
+
+/// Parse the KID and Partial IV required to protect a response.
+pub fn request_identifiers(data: &[u8]) -> Result<RequestIdentifiers, OscoreError> {
+    let option = parse_option(data)?;
+    if !option.kid_present || option.piv_len == 0 {
+        return Err(OscoreError::InvalidParam);
+    }
+    Ok(RequestIdentifiers {
+        kid: option.kid,
+        kid_len: option.kid_len,
+        piv: option.piv,
+        piv_len: option.piv_len,
+    })
 }
 
 fn parse_option(data: &[u8]) -> Result<OscoreOption, OscoreError> {
@@ -2985,6 +3070,14 @@ mod tests {
         responder
             .protect_response(0x45, &[], b"response", b"\x00", b"\x00")
             .unwrap();
+    }
+
+    #[test]
+    fn request_identifiers_accept_present_empty_kid() {
+        let identifiers = request_identifiers(b"\x09\x01").unwrap();
+
+        assert_eq!(identifiers.kid(), b"");
+        assert_eq!(identifiers.piv(), b"\x01");
     }
 
     #[test]
