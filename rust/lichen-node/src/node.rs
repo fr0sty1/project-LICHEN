@@ -22,7 +22,7 @@ use crate::port_dispatch::{dispatch_by_port, Dispatched, UdpDispatchError};
 const IPV6_VERSION: u8 = 6;
 
 #[cfg(feature = "std")]
-use crate::routing::{DioProcessOutcome, Router};
+use crate::routing::{DioProcessOutcome, Router, RplMaintenanceOutcome};
 #[cfg(feature = "std")]
 use crate::{
     announce::AnnounceProcessor,
@@ -596,6 +596,16 @@ impl RplNode {
     /// Get preferred parent address.
     pub fn preferred_parent(&self) -> Option<[u8; 16]> {
         self.router.preferred_parent()
+    }
+
+    /// Run DAO-route and neighbor maintenance from one monotonic observation.
+    pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
+        self.router.maintain(now_ms, neighbor_timeout_ms)
+    }
+
+    /// Return the current Trickle deadline without advancing it.
+    pub fn poll_trickle(&self) -> lichen_rpl::trickle::TrickleEvent {
+        self.router.poll_trickle()
     }
 
     /// Handle trickle timer transmit event.
