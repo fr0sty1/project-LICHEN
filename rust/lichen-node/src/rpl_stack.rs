@@ -34,7 +34,9 @@ use crate::node::{
     DaoHandlingOutcome, Node, RplEvent, RplNode,
 };
 use crate::routing::{DaoRxState, Router};
+use crate::runtime::{RplRuntime, RplRuntimeAction, RplRuntimeActionError, RplRuntimePoll};
 use crate::stack::{ReceivedIpv6, RxError, Stack, TxError, MAX_FRAME_SIZE};
+use crate::RplMaintenanceOutcome;
 
 const RPL_ALL_NODES: [u8; 16] = [0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x1a];
 
@@ -79,6 +81,33 @@ pub enum RplReceiveError {
 pub enum RplControlError {
     MalformedAnnounce,
     Transmit(TxError),
+}
+
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum RplRuntimeReceiveError {
+    Action(RplRuntimeActionError),
+    Receive(RplReceiveError),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum RplRuntimeTrickleError {
+    Action(RplRuntimeActionError),
+    Transmit(TxError),
+}
+
+#[derive(Debug)]
+pub struct RplRuntimeReceiveOutcome {
+    pub now_ms: u64,
+    pub maintenance: Option<RplMaintenanceOutcome>,
+    pub received: Option<RplReceiveOutcome>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RplTrickleTransmitOutcome {
+    Sent,
+    Suppressed,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -174,6 +203,28 @@ impl core::fmt::Display for RplControlError {
         }
     }
 }
+
+impl core::fmt::Display for RplRuntimeReceiveError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Action(error) => write!(f, "invalid RPL runtime receive action: {error:?}"),
+            Self::Receive(error) => write!(f, "{error}"),
+        }
+    }
+}
+
+impl core::error::Error for RplRuntimeReceiveError {}
+
+impl core::fmt::Display for RplRuntimeTrickleError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Action(error) => write!(f, "invalid RPL runtime Trickle action: {error:?}"),
+            Self::Transmit(error) => write!(f, "Trickle DIO transmission failed: {error}"),
+        }
+    }
+}
+
+impl core::error::Error for RplRuntimeTrickleError {}
 
 impl core::error::Error for RplControlError {
     fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
@@ -380,6 +431,90 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         &self.rpl
     }
 
+    /// Run DAO-route and neighbor maintenance from one monotonic observation.
+    ///
+    /// This is an advanced caller-clock API. Production single-owner loops should
+    /// use [`Self::runtime_poll`] so clock clamping and cadence remain centralized.
+    pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
+        self.rpl.maintain(now_ms, neighbor_timeout_ms)
+    }
+
+    /// Advance an executor-neutral runtime using this stack as the single owner.
+    pub fn runtime_poll(
+        &mut self,
+        runtime: &mut RplRuntime,
+        observed_now_ms: u64,
+    ) -> RplRuntimePoll {
+        runtime.poll(&mut self.rpl, observed_now_ms)
+    }
+
+    /// Complete a planned receive using a clock sampled after the radio await.
+    pub async fn runtime_receive<F>(
+        &mut self,
+        runtime: &mut RplRuntime,
+        action: RplRuntimeAction,
+        observe_now_ms: F,
+    ) -> Result<RplRuntimeReceiveOutcome, RplRuntimeReceiveError>
+    where
+        F: FnOnce() -> u64,
+    {
+        let timeout_ms = runtime
+            .receive_timeout(action)
+            .map_err(RplRuntimeReceiveError::Action)?;
+        let mut wire = [0u8; MAX_FRAME_SIZE];
+        let received = self.stack.radio().receive(&mut wire, timeout_ms).await;
+        let (now_ms, maintenance) = runtime
+            .complete_receive(&mut self.rpl, action, observe_now_ms())
+            .map_err(RplRuntimeReceiveError::Action)?;
+        let packet = received.map_err(|_| {
+            RplRuntimeReceiveError::Receive(RplReceiveError::Receive(RxError::RadioRx))
+        })?;
+        let received = match packet {
+            Some(packet) => self
+                .process_received(&wire[..packet.len], packet, now_ms)
+                .await
+                .map_err(RplRuntimeReceiveError::Receive)?,
+            None => None,
+        };
+        Ok(RplRuntimeReceiveOutcome {
+            now_ms,
+            maintenance,
+            received,
+        })
+    }
+
+    /// Complete a due Trickle transmit, including suppression and multicast policy.
+    pub async fn runtime_complete_trickle_transmit(
+        &mut self,
+        runtime: &mut RplRuntime,
+        action: RplRuntimeAction,
+        observed_now_ms: u64,
+    ) -> Result<RplTrickleTransmitOutcome, RplRuntimeTrickleError> {
+        let (_, should_transmit) = runtime
+            .complete_trickle_transmit(&mut self.rpl, action, observed_now_ms)
+            .map_err(RplRuntimeTrickleError::Action)?;
+        if !should_transmit {
+            return Ok(RplTrickleTransmitOutcome::Suppressed);
+        }
+        self.send_dio(RPL_ALL_NODES)
+            .await
+            .map_err(RplRuntimeTrickleError::Transmit)?;
+        Ok(RplTrickleTransmitOutcome::Sent)
+    }
+
+    /// Complete a due Trickle interval expiry with caller-supplied random offset.
+    pub fn runtime_complete_trickle_expire(
+        &mut self,
+        runtime: &mut RplRuntime,
+        action: RplRuntimeAction,
+        observed_now_ms: u64,
+        rand_offset: u32,
+    ) -> Result<Option<RplMaintenanceOutcome>, RplRuntimeTrickleError> {
+        runtime
+            .complete_trickle_expire(&mut self.rpl, action, observed_now_ms, rand_offset)
+            .map_err(RplRuntimeTrickleError::Action)
+    }
+
     pub fn announces(&self) -> &AnnounceProcessor {
         &self.announces
     }
@@ -533,18 +668,22 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             .await
     }
 
+    /// Low-level Trickle initialization for callers that own timer state.
     pub fn trickle_start(&mut self, now_ms: u64, rand_offset: u32) {
         self.rpl.trickle_start(now_ms, rand_offset);
     }
 
+    /// Low-level Trickle reset for callers that own timer state.
     pub fn trickle_reset(&mut self, now_ms: u64, rand_offset: u32) {
         self.rpl.trickle_reset(now_ms, rand_offset);
     }
 
+    /// Prefer [`Self::runtime_complete_trickle_expire`] in production loops.
     pub fn trickle_expire(&mut self, now_ms: u64, rand_offset: u32) {
         self.rpl.trickle_expire(now_ms, rand_offset);
     }
 
+    /// Prefer [`Self::runtime_complete_trickle_transmit`] in production loops.
     pub fn trickle_transmit(&mut self) -> bool {
         self.rpl.trickle_transmit()
     }
@@ -587,6 +726,10 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
             .map_err(DaoSendError::Transmit)
     }
 
+    /// Receive using a caller-provided packet-processing timestamp.
+    ///
+    /// The timestamp must be sampled after the radio wait. Production loops
+    /// should prefer [`Self::runtime_receive`], which enforces that ordering.
     pub async fn receive(
         &mut self,
         timeout_ms: u32,
@@ -602,7 +745,16 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         let Some(packet) = packet else {
             return Ok(None);
         };
-        let wire = &wire[..packet.len];
+        self.process_received(&wire[..packet.len], packet, now_ms)
+            .await
+    }
+
+    async fn process_received(
+        &mut self,
+        wire: &[u8],
+        packet: lichen_hal::RxPacket,
+        now_ms: u64,
+    ) -> Result<Option<RplReceiveOutcome>, RplReceiveError> {
         if !wire_is_for_local(wire, self.stack.node_id().0)
             .map_err(|error| RplReceiveError::Receive(RxError::Link(error)))?
         {
@@ -1071,6 +1223,7 @@ fn link_local_from_iid(iid: [u8; 8]) -> [u8; 16] {
 mod tests {
     use super::*;
     use crate::announce::MAX_TRACKED_ORIGINATORS;
+    use crate::runtime::RplRuntimeConfig;
     use lichen_core::announce::AnnounceBuilder;
     use lichen_core::constants::L2_DISPATCH_ROUTING;
     use lichen_hal::loopback::LoopbackRadio;
@@ -1101,6 +1254,34 @@ mod tests {
     struct FailOnceRadio {
         inner: LoopbackRadio,
         fail_next: bool,
+    }
+
+    #[derive(Default)]
+    struct RuntimeRadioState {
+        receive_timeouts: Vec<u32>,
+        transmitted: Vec<Vec<u8>>,
+    }
+
+    struct RuntimeRadio(Arc<Mutex<RuntimeRadioState>>);
+
+    impl Radio for RuntimeRadio {
+        type Error = Infallible;
+
+        async fn transmit(&mut self, payload: &[u8]) -> Result<(), Self::Error> {
+            self.0.lock().unwrap().transmitted.push(payload.to_vec());
+            Ok(())
+        }
+
+        async fn receive(
+            &mut self,
+            _buf: &mut [u8],
+            timeout_ms: u32,
+        ) -> Result<Option<RxPacket>, Self::Error> {
+            self.0.lock().unwrap().receive_timeouts.push(timeout_ms);
+            Ok(None)
+        }
+
+        fn configure(&mut self, _config: &RadioConfig) {}
     }
 
     impl FailOnceRadio {
@@ -1202,6 +1383,106 @@ mod tests {
 
     fn identity(seed: u8) -> Identity {
         Identity::from_seed(Seed::new([seed; 32]))
+    }
+
+    fn runtime_root() -> (
+        RplStack<RuntimeRadio, MemStorage>,
+        Arc<Mutex<RuntimeRadioState>>,
+    ) {
+        let identity = identity(254);
+        let root_addr = address(&identity, 1);
+        let state = Arc::new(Mutex::new(RuntimeRadioState::default()));
+        let stack = Stack::new_default_epoch(RuntimeRadio(Arc::clone(&state)), identity);
+        (
+            RplStack::provision_root(
+                stack,
+                root_addr,
+                root_addr,
+                announces(root_addr[..8].try_into().unwrap()),
+                MemStorage::new(),
+            )
+            .unwrap(),
+            state,
+        )
+    }
+
+    #[tokio::test]
+    async fn runtime_receive_uses_planned_timeout_and_post_await_clock() {
+        let (mut root, radio) = runtime_root();
+        let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
+        let action = root.runtime_poll(&mut runtime, 0).action;
+        assert_eq!(action, RplRuntimeAction::Receive { timeout_ms: 1_000 });
+
+        let completion = root
+            .runtime_receive(&mut runtime, action, || 1_000)
+            .await
+            .unwrap();
+        assert_eq!(completion.now_ms, 1_000);
+        assert_eq!(
+            completion.maintenance,
+            Some(RplMaintenanceOutcome::default())
+        );
+        assert!(completion.received.is_none());
+        assert_eq!(radio.lock().unwrap().receive_timeouts, [1_000]);
+
+        assert!(matches!(
+            root.runtime_receive(
+                &mut runtime,
+                RplRuntimeAction::Receive { timeout_ms: 9_999 },
+                || 2_000,
+            )
+            .await,
+            Err(RplRuntimeReceiveError::Action(
+                RplRuntimeActionError::ActionNotPending
+            ))
+        ));
+        assert_eq!(radio.lock().unwrap().receive_timeouts, [1_000]);
+    }
+
+    #[tokio::test]
+    async fn runtime_completes_trickle_multicast_suppression_and_expiry() {
+        let (mut root, radio) = runtime_root();
+        root.trickle_start(0, 0);
+        let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
+        let transmit = root.runtime_poll(&mut runtime, 4).action;
+        assert_eq!(transmit, RplRuntimeAction::TrickleTransmit);
+        assert_eq!(
+            root.runtime_complete_trickle_transmit(&mut runtime, transmit, 4)
+                .await
+                .unwrap(),
+            RplTrickleTransmitOutcome::Sent
+        );
+        let sent = radio.lock().unwrap().transmitted.clone();
+        assert_eq!(sent.len(), 1);
+        assert_eq!(
+            LichenFrame::from_bytes(&sent[0]).unwrap().addr_mode,
+            AddrMode::None
+        );
+
+        let expire = root.runtime_poll(&mut runtime, 8).action;
+        assert_eq!(expire, RplRuntimeAction::TrickleExpire);
+        root.runtime_complete_trickle_expire(&mut runtime, expire, 8, 0)
+            .unwrap();
+        assert_eq!(
+            root.runtime_poll(&mut runtime, 8).action,
+            RplRuntimeAction::Receive { timeout_ms: 8 }
+        );
+
+        let (mut suppressed, suppressed_radio) = runtime_root();
+        suppressed.trickle_start(0, 0);
+        for _ in 0..10 {
+            suppressed.rpl.router.trickle_consistent();
+        }
+        let mut runtime = RplRuntime::new(RplRuntimeConfig::default(), 0);
+        let action = suppressed.runtime_poll(&mut runtime, 4).action;
+        assert_eq!(
+            suppressed
+                .runtime_complete_trickle_transmit(&mut runtime, action, 4)
+                .await
+                .unwrap(),
+            RplTrickleTransmitOutcome::Suppressed
+        );
+        assert!(suppressed_radio.lock().unwrap().transmitted.is_empty());
     }
 
     fn address(identity: &Identity, host_prefix: u8) -> [u8; 16] {

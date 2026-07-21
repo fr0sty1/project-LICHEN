@@ -56,6 +56,15 @@ pub enum DioProcessOutcome {
     Inconsistent,
 }
 
+/// Effects of one cohesive routing maintenance observation.
+#[cfg(feature = "std")]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RplMaintenanceOutcome {
+    pub routes_expired: bool,
+    pub neighbors_pruned: bool,
+    pub topology_changed: bool,
+}
+
 #[cfg(feature = "std")]
 impl DioProcessOutcome {
     fn accepted(inconsistent: bool) -> Self {
@@ -739,7 +748,7 @@ impl Router {
     }
 
     #[cfg(test)]
-    fn process_dao_at_ms(
+    pub(crate) fn process_dao_at_ms(
         &mut self,
         dao_bytes: &[u8],
         packet_source: [u8; 16],
@@ -909,6 +918,23 @@ impl Router {
     /// Times use the same monotonic `u64` millisecond timeline as DIO processing.
     pub fn prune_neighbors(&mut self, now_ms: u64, max_age_ms: u64) -> bool {
         let now_ms = self.observe_now(now_ms);
+        self.prune_neighbors_at(now_ms, max_age_ms).1
+    }
+
+    /// Expire finite DAO routes and prune stale neighbors using one clock observation.
+    pub fn maintain(&mut self, now_ms: u64, neighbor_timeout_ms: u64) -> RplMaintenanceOutcome {
+        let now_ms = self.observe_now(now_ms);
+        let routes_expired = self.dao_manager.expire_routes(now_ms / 1_000);
+        let (neighbors_pruned, topology_changed) =
+            self.prune_neighbors_at(now_ms, neighbor_timeout_ms);
+        RplMaintenanceOutcome {
+            routes_expired,
+            neighbors_pruned,
+            topology_changed,
+        }
+    }
+
+    fn prune_neighbors_at(&mut self, now_ms: u64, max_age_ms: u64) -> (bool, bool) {
         let was_joined = self.dodag.is_joined();
         let old_parent = self.dodag.preferred_parent;
         let old_rank = self.dodag.rank;
@@ -933,7 +959,7 @@ impl Router {
                 self.trickle.reset(now_ms, 0);
             }
         }
-        inconsistent
+        (removed_len != 0, inconsistent)
     }
 
     pub fn dodag_id(&self) -> [u8; 16] {
@@ -2102,6 +2128,37 @@ mod tests {
     }
 
     #[test]
+    fn maintenance_expires_idle_route_at_boundary_without_changing_trickle() {
+        let root_addr = link_local(1);
+        let target = test_origin(2);
+        let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
+        let dao = sender.build_dao_with_lifetime(root_addr, 1);
+        let mut root = Router::new_root(root_addr);
+        assert!(root.set_dao_lifetime_unit(1));
+        assert!(root.process_dao_at_ms(&dao, target, target, 1_000));
+        root.trickle_start(1_000, 0);
+        let trickle = root.poll_trickle();
+
+        assert_eq!(
+            root.maintain(1_999, 10_000),
+            RplMaintenanceOutcome::default()
+        );
+        assert!(root.lookup_route(&target).is_some());
+        assert_eq!(root.poll_trickle(), trickle);
+
+        assert_eq!(
+            root.maintain(2_000, 10_000),
+            RplMaintenanceOutcome {
+                routes_expired: true,
+                neighbors_pruned: false,
+                topology_changed: false,
+            }
+        );
+        assert!(root.lookup_route(&target).is_none());
+        assert_eq!(root.poll_trickle(), trickle);
+    }
+
+    #[test]
     fn dao_clock_expires_across_u32_boundary() {
         const WRAP: u64 = 0x1_0000_0000;
         let root_addr = link_local(1);
@@ -2391,6 +2448,21 @@ mod tests {
         assert_eq!(router.preferred_parent(), None);
         assert_eq!(router.rank(), u16::MAX);
         assert_eq!(router.trickle.interval_start, WRAP + 100);
+    }
+
+    #[test]
+    fn maintenance_clamps_backward_clock_and_prunes_only_after_timeout() {
+        let mut router = Router::new(link_local(2), link_local(1));
+        let neighbor = link_local(3);
+        router.maintain(5_000, 10_000);
+        router.neighbors.update(&neighbor, 1.0, -40, 5_000);
+
+        assert!(!router.maintain(4_000, 0).neighbors_pruned);
+        assert_eq!(router.neighbors.count(), 1);
+        assert!(!router.maintain(15_000, 10_000).neighbors_pruned);
+        assert_eq!(router.neighbors.count(), 1);
+        assert!(router.maintain(15_001, 10_000).neighbors_pruned);
+        assert_eq!(router.neighbors.count(), 0);
     }
 
     // --- DTN Buffer Tests ---
