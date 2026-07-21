@@ -3,12 +3,16 @@
   "title": "Inventory recovery branch commits",
   "description": "Enumerate every commit unique to c-tx-clock-hardening, interop-fail-closed, lost-recovery-2, node-feature-recovery, oscore-recovery, python-radio-failure, rust-prefix-model, and rust-rpl-recovery. Map commits to Beads, changed paths, dependencies, duplicate patch IDs, and conflicts; classify integrate, superseded, drop, or blocked with rationale.",
   "acceptance_criteria": "A durable Beads note records every unique commit hash exactly once with branch, subject, disposition, rationale, dependency order, and conflict hotspots; no commit is silently omitted.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-21T00:52:55.822139313Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-21T00:52:55.822139313Z",
+  "updated_at": "2026-07-21T00:53:33.836067094Z",
+  "started_at": "2026-07-21T00:53:33.836067094Z",
+  "lease_expires_at": "2026-07-21T00:58:33.836067094Z",
+  "heartbeat_at": "2026-07-21T00:53:33.836067094Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-7fqg.1",
