@@ -2,12 +2,16 @@
   "id": "project-LICHEN-6uyi",
   "title": "Compose public secure RPL stack",
   "description": "After durable-state fail-closed changes, Stack is private but every public RplStack constructor requires Stack\u003cR\u003e, making RplStack externally unconstructible. Re-exporting Stack would reopen raw/plaintext CoAP paths through Stack and RplStack::send_ipv6_raw. Design one constructible production owner that combines RPL routing and SecureStack while preventing plaintext CoAP. This blocks claiming the converged public runtime API ready.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-21T02:14:39.625176096Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-21T02:14:39.625176096Z",
+  "updated_at": "2026-07-21T02:38:17.974419059Z",
+  "started_at": "2026-07-21T02:38:17.974419059Z",
+  "lease_expires_at": "2026-07-21T02:43:17.974419059Z",
+  "heartbeat_at": "2026-07-21T02:38:17.974419059Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-6uyi",
