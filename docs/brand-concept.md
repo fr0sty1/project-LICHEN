@@ -168,6 +168,10 @@ screen, print, enclosure, and accessibility testing.
   fill, rather than an orange outline alone.
 - On hardware, one orange control, gasket, label, or fastener is stronger than
   an orange enclosure.
+- Field radios may exceed the five-percent guideline with one replaceable band
+  of fluorescent or retroreflective high-visibility orange tape when visibility,
+  recovery, or team identification is the purpose. This operational exception
+  does not make broad orange coverage appropriate for general brand layouts.
 
 The brand must remain complete in black and white. Orange adds signal, not
 identity.
@@ -252,10 +256,20 @@ Hardware is a primary brand surface, not an adaptation of the website.
 ### Enclosures
 
 - Basalt or mineral should dominate the enclosure.
+- A matte silver-green enclosure may use sparse mineral or crustose-lichen
+  patterning. Keep the pattern organic and irregular without resembling
+  military camouflage.
 - Signal orange may identify one control, seal, antenna detail, or service point.
+- A replaceable high-visibility orange tape band may wrap the radio as a field
+  identification and recovery feature. Keep it clear of antennas, GNSS reception
+  areas, displays, controls, vents, microphones, speakers, ports, and required
+  safety or certification labels.
 - Labels should remain legible after wear and in low light.
 - The node fingerprint or recovery identity may appear inside the battery cover
   or on a replaceable label, not as ornamental visual noise.
+- Validate patterned coatings and tape materials for RF transparency, UV and
+  water exposure, abrasion, temperature extremes, gloved handling, adhesive
+  residue, and field replacement before production.
 
 ### PCB And Engraving
 
