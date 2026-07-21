@@ -1,0 +1,7 @@
+{
+  "id": "1784598044702007315-1",
+  "issue_id": "project-LICHEN-7fqg.1",
+  "author": "ec2-user",
+  "text": "RUST-RPL LEDGER, all INTEGRATE after shared foundations in listed order: f8e400daa5150a33c9535cdbf5a62049bab043aa persistent HAL storage; a76c93590295779dedb31206b35a3fe0f541e806 signed DAO envelope; d513186161719470646bbdfa1527a73e443d7a6d independent DAO-origin vectors; d8bc60cc476a25d5b03e7fd39edc4d9cda0a8f06 protocol draft; 828443c34f06e57fc92bcbc8668cde716e906bc2 origin authentication; 38f579532265f216bacbf8ec0d7332f0ac0b0176 identity address; 8766608352cccbc83b1e41d9f342cebc45140a19 complete provenance/prefix/snapshot model; a80394848570a80b912d3dd9333a7e9c9b5497de Python OSCORE persistence; 727b68fa8f4f410a5e4b3bf7343cc2fdd4e74f4c no-std repair; cce5793577e6db8276227f8c4536206f0ee03456 secure correlations; 9858600cb7ae20a919b4eb8fb5b38a4acb24b5ad single-use EDHOC; 58b724b3e355f8a7094a2155ec1e60b56d8bf1dd transport boundaries; 5fc96c59b9052b65414fb2fb7bd8ff89fa10018d method validation; eecae77ca967fa8c258dca3ca14d9fdddd80877b mutation resources; 93e54570328d4f99339cf85a7c4e6e46d02ee8e6 atomic cross-language DAO state; ba388efc1367afaf491b5d95e83669824323aa24 runtime maintenance core (known follow-up findings remain in 2auf.44.11.1, but commit is preserved as the fixed cutoff input).",
+  "created_at": "2026-07-21T01:40:44.702007315Z"
+}
