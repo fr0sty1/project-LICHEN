@@ -41,6 +41,14 @@
       "created_at": "2026-07-21T00:14:26.523201903Z",
       "created_by": "ec2-user",
       "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2auf.44.11.5",
+      "depends_on_id": "project-LICHEN-2auf.44.11.4",
+      "type": "blocks",
+      "created_at": "2026-07-21T00:14:30.725100693Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
     }
   ]
 }
