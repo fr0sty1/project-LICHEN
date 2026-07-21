@@ -4,6 +4,7 @@
   "description": "Envelope shared by all LICHEN vector files. Each file holds a list of vectors of one kind; see the per-vector definitions.",
   "oneOf": [
     {"$ref": "#/$defs/dao_origin_signature_document"},
+    {"$ref": "#/$defs/rpl_route_state_document"},
     {"$ref": "#/$defs/legacy_document"}
   ],
   "definitions": {
@@ -529,6 +530,251 @@
         }
       }
     },
+    "rpl_route_candidate": {
+      "type": "object",
+      "required": ["parent", "external", "path_control", "path_lifetime", "installed_at", "expires_at"],
+      "additionalProperties": false,
+      "properties": {
+        "parent": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+        "external": {"type": "boolean"},
+        "path_control": {"type": "integer", "minimum": 1, "maximum": 255},
+        "path_lifetime": {"type": "integer", "minimum": 0, "maximum": 255},
+        "installed_at": {"type": "integer", "minimum": 0},
+        "expires_at": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]}
+      }
+    },
+    "rpl_route_selected_candidate": {
+      "type": "object",
+      "required": ["parent", "preference_subfield", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "parent": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+        "preference_subfield": {"type": "integer", "minimum": 1, "maximum": 4},
+        "path": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {"type": "string", "pattern": "^[0-9a-f]{32}$"}
+        }
+      }
+    },
+    "rpl_route_target_state": {
+      "type": "object",
+      "required": ["prefix_length", "prefix", "descriptor", "sequence_authority", "path_sequence", "disposition", "candidates", "selected_candidate"],
+      "additionalProperties": false,
+      "properties": {
+        "prefix_length": {"type": "integer", "minimum": 0, "maximum": 128},
+        "prefix": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+        "descriptor": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 4294967295}, {"type": "null"}]},
+        "sequence_authority": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+        "path_sequence": {"type": "integer", "minimum": 0, "maximum": 255},
+        "disposition": {"type": "string", "enum": ["active", "withdrawn", "expired"]},
+        "candidates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/definitions/rpl_route_candidate"}
+        },
+        "selected_candidate": {
+          "oneOf": [
+            {"$ref": "#/definitions/rpl_route_selected_candidate"},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "rpl_route_table_entry": {
+      "type": "object",
+      "required": ["prefix_length", "prefix", "path", "path_lifetime", "installed_at", "expires_at"],
+      "additionalProperties": false,
+      "properties": {
+        "prefix_length": {"type": "integer", "minimum": 0, "maximum": 128},
+        "prefix": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+        "path": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {"type": "string", "pattern": "^[0-9a-f]{32}$"}
+        },
+        "path_lifetime": {"type": "integer", "minimum": 1, "maximum": 255},
+        "installed_at": {"type": "integer", "minimum": 0},
+        "expires_at": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]}
+      }
+    },
+    "rpl_route_snapshot": {
+      "type": "object",
+      "required": ["targets", "routing_table"],
+      "additionalProperties": false,
+      "properties": {
+        "targets": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/rpl_route_target_state"}
+        },
+        "routing_table": {
+          "type": "object",
+          "required": ["routes"],
+          "additionalProperties": false,
+          "properties": {
+            "routes": {
+              "type": "array",
+              "items": {"$ref": "#/definitions/rpl_route_table_entry"}
+            }
+          }
+        }
+      }
+    },
+    "rpl_route_target_option": {
+      "type": "object",
+      "required": ["kind", "prefix_length", "prefix", "encoded"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"const": "target"},
+        "prefix_length": {"type": "integer", "minimum": 0, "maximum": 128},
+        "prefix": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+        "encoded": {"$ref": "#/definitions/hex"}
+      }
+    },
+    "rpl_route_transit_option": {
+      "type": "object",
+      "required": ["kind", "external", "path_control", "path_sequence", "path_lifetime", "parent", "encoded"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"const": "transit"},
+        "external": {"type": "boolean"},
+        "path_control": {"type": "integer", "minimum": 1, "maximum": 255},
+        "path_sequence": {"type": "integer", "minimum": 0, "maximum": 255},
+        "path_lifetime": {"type": "integer", "minimum": 0, "maximum": 255},
+        "parent": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+        "encoded": {"$ref": "#/definitions/hex"}
+      }
+    },
+    "rpl_route_descriptor_option": {
+      "type": "object",
+      "required": ["kind", "value", "encoded"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"const": "descriptor"},
+        "value": {"type": "integer", "minimum": 0, "maximum": 4294967295},
+        "encoded": {"type": "string", "pattern": "^0904[0-9a-f]{8}$"}
+      }
+    },
+	"rpl_route_raw_descriptor_option": {
+	  "type": "object",
+	  "required": ["kind", "data", "encoded"],
+	  "additionalProperties": false,
+	  "properties": {
+		"kind": {"const": "raw_descriptor"},
+		"data": {"$ref": "#/definitions/hex"},
+		"encoded": {"$ref": "#/definitions/hex"}
+	  }
+	},
+	"rpl_route_unsupported_option": {
+	  "type": "object",
+	  "required": ["kind", "option_type", "data", "encoded"],
+	  "additionalProperties": false,
+	  "properties": {
+		"kind": {"const": "unsupported"},
+		"option_type": {"type": "integer", "minimum": 0, "maximum": 255},
+		"data": {"$ref": "#/definitions/hex"},
+		"encoded": {"$ref": "#/definitions/hex"}
+	  }
+	},
+    "rpl_route_sequence_relation": {
+      "type": "object",
+      "required": ["name", "current", "incoming", "expected"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "current": {"type": "integer", "minimum": 0, "maximum": 255},
+        "incoming": {"type": "integer", "minimum": 0, "maximum": 255},
+        "expected": {"type": "string", "enum": ["newer", "stale", "equal", "incomparable"]}
+      }
+    },
+    "rpl_route_tx_sequence_transition": {
+      "type": "object",
+      "required": ["name", "advance_path_sequence", "path_lifetime", "expected_dao_sequence", "expected_path_sequence"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "advance_path_sequence": {"type": "boolean"},
+        "path_lifetime": {"type": "integer", "minimum": 0, "maximum": 255},
+        "expected_dao_sequence": {"type": "integer", "minimum": 0, "maximum": 255},
+        "expected_path_sequence": {"type": "integer", "minimum": 0, "maximum": 255}
+      }
+    },
+    "rpl_route_hop_boundary": {
+      "type": "object",
+      "required": ["name", "path", "accepted"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "path": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 9,
+          "items": {"type": "string", "pattern": "^[0-9a-f]{32}$"}
+        },
+        "accepted": {"type": "boolean"}
+      }
+    },
+    "rpl_route_outcome": {
+      "type": "object",
+      "required": ["accepted", "state_changed", "refreshed", "reason", "state"],
+      "additionalProperties": false,
+      "properties": {
+        "accepted": {"type": "boolean"},
+        "state_changed": {"type": "boolean"},
+        "refreshed": {"type": "boolean"},
+        "reason": {
+          "type": "string",
+          "enum": [
+            "installed", "semantic_replay", "equal_expired_no_revival",
+            "equal_sequence_mutation", "stale_sequence", "incomparable_sequence",
+            "replaced", "stale_withdrawal", "withdrawn", "expired", "reinstalled",
+			"malformed_group", "malformed_descriptor", "inconsistent_group", "duplicate_target", "unsupported_external", "capacity", "cycle"
+          ]
+        },
+        "state": {"$ref": "#/definitions/rpl_route_snapshot"}
+      }
+    },
+    "rpl_route_dao_vector": {
+      "type": "object",
+      "required": ["name", "event", "now_seconds", "dao_sequence", "options", "dao_hex", "before", "expected"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "event": {"const": "dao"},
+        "now_seconds": {"type": "integer", "minimum": 0},
+        "dao_sequence": {"type": "integer", "minimum": 0, "maximum": 255},
+        "flags": {"type": "integer", "minimum": 1, "maximum": 63},
+        "reserved": {"type": "integer", "minimum": 1, "maximum": 255},
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"oneOf": [
+            {"$ref": "#/definitions/rpl_route_target_option"},
+            {"$ref": "#/definitions/rpl_route_descriptor_option"},
+			{"$ref": "#/definitions/rpl_route_raw_descriptor_option"},
+			{"$ref": "#/definitions/rpl_route_unsupported_option"},
+            {"$ref": "#/definitions/rpl_route_transit_option"}
+          ]}
+        },
+        "dao_hex": {"$ref": "#/definitions/hex"},
+        "before": {"$ref": "#/definitions/rpl_route_snapshot"},
+        "expected": {"$ref": "#/definitions/rpl_route_outcome"}
+      }
+    },
+    "rpl_route_expire_vector": {
+      "type": "object",
+      "required": ["name", "event", "now_seconds", "before", "expected"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "event": {"const": "expire"},
+        "now_seconds": {"type": "integer", "minimum": 0},
+        "before": {"$ref": "#/definitions/rpl_route_snapshot"},
+        "expected": {"$ref": "#/definitions/rpl_route_outcome"}
+      }
+    },
     "dao_origin_signature_vector": {
       "type": "object",
       "required": [
@@ -737,6 +983,66 @@
           "type": "array",
           "minItems": 1,
           "items": {"$ref": "#/definitions/dao_origin_signature_vector"}
+        }
+      }
+    },
+    "rpl_route_state_document": {
+      "type": "object",
+      "required": ["vector_type", "format_version", "description", "oracle", "sequence_relations", "tx_sequence_transitions", "route_hop_boundaries", "vectors"],
+      "additionalProperties": false,
+      "properties": {
+        "vector_type": {"const": "rpl_route_state"},
+        "format_version": {"type": "integer", "const": 1},
+        "description": {"type": "string", "minLength": 1},
+        "oracle": {
+          "type": "object",
+		  "required": ["basis", "scope", "sequence_policy", "lifetime_unit_seconds", "freshness_retention_seconds", "path_control_size", "max_route_hops", "rpl_instance_id", "dodag_id", "sequence_authority", "limits"],
+          "additionalProperties": false,
+          "properties": {
+            "basis": {"type": "string", "minLength": 1},
+            "scope": {"type": "string", "minLength": 1},
+            "sequence_policy": {"type": "string", "minLength": 1},
+            "lifetime_unit_seconds": {"type": "integer", "minimum": 1},
+			"freshness_retention_seconds": {"type": "integer", "minimum": 0},
+            "path_control_size": {"type": "integer", "const": 7},
+			"max_route_hops": {"type": "integer", "const": 8},
+            "rpl_instance_id": {"type": "integer", "minimum": 0, "maximum": 255},
+            "dodag_id": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+            "sequence_authority": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
+            "limits": {
+              "type": "object",
+              "required": ["max_targets", "max_candidates_per_target", "max_candidates"],
+              "additionalProperties": false,
+              "properties": {
+                "max_targets": {"type": "integer", "minimum": 1},
+                "max_candidates_per_target": {"type": "integer", "minimum": 1},
+                "max_candidates": {"type": "integer", "minimum": 1}
+              }
+            }
+          }
+        },
+        "sequence_relations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/definitions/rpl_route_sequence_relation"}
+        },
+        "tx_sequence_transitions": {
+          "type": "array",
+          "minItems": 3,
+          "items": {"$ref": "#/definitions/rpl_route_tx_sequence_transition"}
+        },
+        "route_hop_boundaries": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"$ref": "#/definitions/rpl_route_hop_boundary"}
+        },
+        "vectors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"oneOf": [
+            {"$ref": "#/definitions/rpl_route_dao_vector"},
+            {"$ref": "#/definitions/rpl_route_expire_vector"}
+          ]}
         }
       }
     },

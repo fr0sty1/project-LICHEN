@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 from pathlib import Path
 
 from lichen.crypto.schnorr48 import derive_keypair, sign
@@ -37,7 +38,7 @@ def transit(
     path_sequence: int = 0xF1,
     lifetime: int = 0xFF,
     flags: int = 0,
-    path_control: int = 0,
+    path_control: int = 0x80,
 ) -> bytes:
     return bytes([6, 20, flags, path_control, path_sequence, lifetime]) + parent
 
@@ -622,8 +623,7 @@ def generate() -> dict:
         "oracle_provenance": {
             "digest": "test/vectors/dao_origin_signature_oracle.c using Monocypher SHA-512",
             "signature_generation": (
-                "python/src/lichen/crypto/schnorr48.py (PyNaCl/libsodium), "
-                "generator only"
+                "python/src/lichen/crypto/schnorr48.py (PyNaCl/libsodium), generator only"
             ),
             "signature_cross_check": "test/vectors/dao_origin_signature_oracle.c (Monocypher)",
             "generator_command": (
@@ -648,4 +648,13 @@ def generate() -> dict:
 
 
 if __name__ == "__main__":
-    OUTPUT.write_text(json.dumps(generate(), indent=2) + "\n")
+    document = generate()
+    if sys.argv[1:] == ["--check"]:
+        if json.loads(OUTPUT.read_text()) != document:
+            raise SystemExit(f"{OUTPUT.name} is not deterministically generated")
+        print(f"checked {len(document['vectors'])} vectors in {OUTPUT.name}")
+    elif not sys.argv[1:]:
+        OUTPUT.write_text(json.dumps(document, indent=2) + "\n")
+        print(f"wrote {len(document['vectors'])} vectors to {OUTPUT.name}")
+    else:
+        raise SystemExit("usage: generate_dao_origin_signature.py [--check]")

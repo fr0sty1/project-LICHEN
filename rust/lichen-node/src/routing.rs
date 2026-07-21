@@ -2075,7 +2075,7 @@ mod tests {
         let target = test_origin(2);
         let mut sender = DaoManager::new(target, RPL_INSTANCE_ID, root_addr);
         let dao = sender.build_dao_with_lifetime(root_addr, 1);
-        let exact = sender.build_dao_copy_with_lifetime(root_addr, 1);
+        let exact = sender.build_dao_copy_with_lifetime(root_addr, 1).unwrap();
         let mut root = Router::new_root(root_addr);
         assert!(root.set_dao_lifetime_unit(1));
 
