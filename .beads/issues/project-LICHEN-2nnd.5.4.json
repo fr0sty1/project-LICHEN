@@ -1,0 +1,36 @@
+{
+  "id": "project-LICHEN-2nnd.5.4",
+  "title": "Evaluate PPS-capable T-Echo revision",
+  "description": "Evaluate LILYGO's response and any proposed existing-board access, rework, or custom T-Echo revision against LICHEN technical and commercial requirements. Do not order samples or authorize NRE under this Bead.",
+  "acceptance_criteria": "Compare current-board test-pad/rework, stock future revision, and custom revision options; verify selected GPIO supports nRF52840 GPIOTE/PPI capture and does not conflict with radio, e-ink, USB, buttons, RTC, or low-power operation; record PPS/EXTINT/power electrical design, schematic openness, bootloader/board support, sample availability, NRE, MOQ, unit-price bands, lead time, lifecycle, regulatory impact, and support terms; produce proceed/request-changes/reject recommendation with explicit assumptions; any spend or commitment remains separately authorized.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-20T17:22:30.123682Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T17:22:30.123682Z",
+  "labels": [
+    "demo",
+    "milestone",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2nnd.5.4",
+      "depends_on_id": "project-LICHEN-2nnd.5",
+      "type": "parent-child",
+      "created_at": "2026-07-20T17:22:30.370101Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-2nnd.5.4",
+      "depends_on_id": "project-LICHEN-2nnd.5.3",
+      "type": "blocks",
+      "created_at": "2026-07-20T17:22:30.843465Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

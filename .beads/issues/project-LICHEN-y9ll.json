@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-y9ll",
+  "title": "Write LICHEN designer commissioning note",
+  "description": "Create and revise a direct visual-identity commission for Jett Atwood translating the approved LICHEN brand concept into production artwork for a $2,000 USD creative fee. Define the assignment, fixed direction, deliverables, application tests, collaborative revision process, scope exclusions, and CC-BY-ND-4.0 licensing for final accepted work.",
+  "acceptance_criteria": "The note can be sent directly to Jett Atwood with docs/brand-concept.md; it states the $2,000 USD creative fee, requests three one-color concepts and production deliverables, provides for reasonable collaborative revisions without a rigid round count, contains no bidding language, and specifies CC-BY-ND-4.0 for final accepted identity artwork and guidelines.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "Mark Atwood",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-20T20:33:25.1589Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T20:42:40.734291Z",
+  "started_at": "2026-07-20T20:33:35.152971Z",
+  "closed_at": "2026-07-20T20:42:40.734291Z",
+  "close_reason": "Specified CC-BY-ND-4.0 for final accepted identity artwork and guidelines, distinguished drafts and rejected concepts, and retained separate copyright ownership, attribution, source-file, trademark, and third-party-material terms; verification passed."
+}

@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-pg54",
+  "title": "Fix reversed T-Echo GNSS UART pins",
+  "description": "Research under project-LICHEN-2nnd.5.2 found that the LICHEN T-Echo Zephyr pinctrl assigns MCU UART TX=P1.09 and RX=P1.08, while LilyGO's official code calls SerialGPS.setPins(RX=P1.09, TX=P1.08) and module-level evidence maps L76K TXD to MCU P1.09 and L76K RXD to MCU P1.08. Verify against the official schematic and physical board, correct devicetree pinctrl/comments if confirmed, and validate NMEA receive plus command transmit.",
+  "acceptance_criteria": "Pinned official schematic and source evidence establish signal direction; T-Echo UART1 devicetree uses MCU RX on the GNSS module TX net and MCU TX on the GNSS module RX net; native_sim/devicetree checks and a physical NMEA/command-response smoke test pass; three independent code reviews complete before closure.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "bug",
+  "owner": "me@mark.atwood.name",
+  "created_at": "2026-07-20T19:07:41.455359Z",
+  "created_by": "Mark Atwood",
+  "updated_at": "2026-07-20T19:07:41.455359Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-pg54",
+      "depends_on_id": "project-LICHEN-2nnd.5.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-20T19:07:41.661582Z",
+      "created_by": "Mark Atwood",
+      "metadata": "{}"
+    }
+  ]
+}

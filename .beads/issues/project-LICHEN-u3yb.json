@@ -10,8 +10,8 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-20T20:21:03.639891Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-20T20:26:28.71555Z",
+  "updated_at": "2026-07-20T21:08:03.634316Z",
   "started_at": "2026-07-20T20:21:17.716302Z",
-  "closed_at": "2026-07-20T20:26:28.71555Z",
-  "close_reason": "Created docs/brand-concept.md with production-ready aspirational positioning led by 'Where infrastructure ends, LICHEN grows.', Signal on Stone visual direction, restrained orange palette, Atkinson Hyperlegible typography, voice, accessibility, e-ink/hardware behavior, naming, boundaries, and next design deliverables. Three independent reviews completed; concrete coherence, accessibility, durability, and naming findings were resolved. git diff --check passes."
+  "closed_at": "2026-07-20T21:08:03.634316Z",
+  "close_reason": "Extended docs/brand-concept.md with a matte silver-green mineral/lichen enclosure pattern and replaceable high-visibility orange tape band for field visibility, recovery, or team identification. Added an operational exception to the five-percent orange guideline plus non-camouflage, RF-clearance, labeling, weathering, abrasion, adhesive, and field-replacement constraints. git diff --check passes."
 }
