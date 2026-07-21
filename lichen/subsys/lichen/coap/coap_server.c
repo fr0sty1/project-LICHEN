@@ -18,6 +18,7 @@
  * All payloads use CBOR (content-format 60) for compact encoding.
  */
 
+#include <stdio.h>
 #include <string.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>

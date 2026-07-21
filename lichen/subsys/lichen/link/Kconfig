@@ -7,6 +7,7 @@ menuconfig LICHEN_LINK
 	bool "LICHEN link layer"
 	depends on LICHEN
 	select LICHEN_SCHC
+	select TINYCRYPT
 	select TINYCRYPT_SHA256
 	help
 	  Enable the LICHEN link layer with Schnorr-48 signatures
