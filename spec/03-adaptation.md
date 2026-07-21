@@ -62,31 +62,12 @@ Each rule specifies, for each header field:
 - **MO (Matching Operator):** equal, ignore, MSB(n), etc.
 - **CDA (Compression/Decompression Action):** not-sent, value-sent, LSB(n), etc.
 
-### 5.5. Rule Registry
+### 5.5. Default Rules
 
-Rule IDs 0x00-0x77 are for compression rules. Rule IDs 0x78 and 0x79 are
-reserved for fragmentation from canonical signed-link endpoint A to B and B to
-A, respectively. A and B are ordered lexicographically by their 8-byte EUI-64
-identities established through link authentication.
-Rule ID 0xFF is reserved for uncompressed fallback (see 5.7).
+Rule IDs 0-127 are for compression rules. Rule ID 255 is reserved for
+uncompressed fallback (see 5.7).
 
-Rule Set Version 2 assigns whole-packet Rules 0-6 as follows:
-
-| Rule ID | Use |
-|---------|-----|
-| 0 | Link-local IPv6 + UDP + CoAP |
-| 1 | Global IPv6 + UDP + CoAP |
-| 2 | Link-local IPv6 + ICMPv6 Echo |
-| 3 | Link-local IPv6 + RPL DIO |
-| 4 | Link-local IPv6 + RPL DAO with DODAGID |
-| 5 | Link-local IPv6 + UDP + OSCORE-protected CoAP |
-| 6 | Global IPv6 + UDP + OSCORE-protected CoAP |
-
-The field tables below are retained as non-normative Version 1 history and MUST
-NOT be used for Version 2. The shared compression vectors define Version 2
-bit-exact behavior.
-
-**Legacy Version 1 Rule 0: Link-local IPv6 + UDP**
+**Rule 0: Link-local IPv6 + UDP (most common)**
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|
@@ -95,19 +76,19 @@ bit-exact behavior.
 | IPv6.FlowLabel | 0 | equal | not-sent |
 | IPv6.PayloadLength | - | ignore | compute |
 | IPv6.NextHeader | 17 (UDP) | equal | not-sent |
-| IPv6.HopLimit | - | ignore | value-sent |
+| IPv6.HopLimit | 64 | ignore | not-sent |
 | IPv6.SrcPrefix | fe80::/64 | equal | not-sent |
-| IPv6.SrcIID | - | ignore | value-sent (64 bits) |
+| IPv6.SrcIID | - | equal | not-sent (from L2) |
 | IPv6.DstPrefix | fe80::/64 | equal | not-sent |
-| IPv6.DstIID | - | ignore | value-sent (64 bits) |
+| IPv6.DstIID | - | equal | not-sent (from L2) |
 | UDP.SrcPort | 5683 | MSB(12) | LSB(4) |
 | UDP.DstPort | 5683 | MSB(12) | LSB(4) |
 | UDP.Length | - | ignore | compute |
 | UDP.Checksum | - | ignore | compute |
 
-**Compressed size: 19 bytes** (Rule ID + Hop Limit + endpoint IIDs + ports)
+**Compressed size: 2 bytes** (Rule ID + 2x 4-bit port residue)
 
-**Legacy Version 1 Rule 1: Global IPv6 + UDP**
+**Rule 1: Global IPv6 + UDP (internet-routable)**
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|
@@ -115,9 +96,9 @@ bit-exact behavior.
 | IPv6.DstPrefix | 0 | ignore | value-sent (64 bits) |
 | (other fields as Rule 0) | | | |
 
-**Compressed size: 27 bytes** (Rule 0 fields plus full destination prefix)
+**Compressed size: 10 bytes** (includes full destination prefix)
 
-**Legacy Version 1 Rule 2: Link-local IPv6 + UDP + MQTT-SN**
+**Rule 2: Link-local IPv6 + UDP + MQTT-SN**
 
 MQTT-SN uses port 10883, which lies outside the 5680-5695 range compressed
 by Rules 0 and 1. Rule 2 provides equivalent compression for MQTT-SN traffic.
@@ -129,17 +110,17 @@ by Rules 0 and 1. Rule 2 provides equivalent compression for MQTT-SN traffic.
 | IPv6.FlowLabel | 0 | equal | not-sent |
 | IPv6.PayloadLength | - | ignore | compute |
 | IPv6.NextHeader | 17 (UDP) | equal | not-sent |
-| IPv6.HopLimit | - | ignore | value-sent |
+| IPv6.HopLimit | 64 | ignore | not-sent |
 | IPv6.SrcPrefix | fe80::/64 | equal | not-sent |
-| IPv6.SrcIID | - | ignore | value-sent (64 bits) |
+| IPv6.SrcIID | - | equal | not-sent (from L2) |
 | IPv6.DstPrefix | fe80::/64 | equal | not-sent |
-| IPv6.DstIID | - | ignore | value-sent (64 bits) |
+| IPv6.DstIID | - | equal | not-sent (from L2) |
 | UDP.SrcPort | 10883 | equal | not-sent |
 | UDP.DstPort | 10883 | equal | not-sent |
 | UDP.Length | - | ignore | compute |
 | UDP.Checksum | - | ignore | compute |
 
-**Compressed size: 18 bytes** (Rule ID + Hop Limit + endpoint IIDs)
+**Compressed size: 1 byte** (Rule ID only; both ports exactly match)
 
 **Port Compression Note:**
 
@@ -150,39 +131,21 @@ NMEA (5687). See Section 9.1 for the complete port allocation.
 
 ### 5.6. Fragmentation
 
-Packets exceeding L2 MTU are fragmented using the fixed ACK-on-Error profile
-defined in Section 5 of `draft-lichen-schc-lora-00`:
-
-The compression sublayer MUST zero-pad its compressed header through the next
-octet boundary before the byte-aligned payload, so fragmentation always receives
-an octet-aligned SCHC Packet.
+Packets exceeding L2 MTU are fragmented per RFC 8724 Section 8:
 
 **Fragment Header:**
 ```
-+--------+---+--------+----------------------+---------+
-| RuleID | W |  FCN   | RCS and/or tile bits | Padding |
-+--------+---+--------+----------------------+---------+
-   8 bit  1b   6 bit        variable           variable
++--------+--------+--------+
+| RuleID | W | FCN | (MIC) |
++--------+--------+--------+
 ```
 
-- **Rule IDs:** 0x78 canonical endpoint A-to-B data, 0x79 B-to-A data
-- **W:** absolute window 0 or 1; no wrapping within a packet
-- **FCN:** regular tile indices 62 down to 0; 63 is All-1
-- **WINDOW_SIZE:** 63 tiles; maximum 126 tiles across two windows
-- **Tile size:** 187 bytes, except the non-empty final tile may be shorter
-- **RCS:** CRC-32/ISO-HDLC, carried before the final tile in All-1
-- **Packing:** MSB-first, bit-contiguous, with zero padding only at message end
+- **W (Window):** 1-bit window indicator
+- **FCN (Fragment Counter):** 6 bits, counts down from N to 0
+- **MIC:** Message Integrity Check on final fragment
 
-The receiver sends no ACK for All-0. It MUST respond to All-1 or ACK REQ with
-C=1 after successful whole-packet verification, or C=0 plus the RFC 8724
-compressed received-tile bitmap. Bitmap 1 means received and 0 means missing.
-The initial All-1 plus at most three retries gives MAX_ACK_REQUESTS=4.
-
-Receivers MUST support 1281-byte SCHC Packets, allowing a 1280-byte IPv6 packet
-plus the uncompressed fallback Rule ID. Larger buffers are optional up
-to the 23,562-byte profile ceiling. With T=0, only one fragmented packet per
-signed link and data Rule ID may be active. Fragmentation is hop-by-hop;
-routers reassemble and decompress before IPv6 forwarding.
+**ACK-on-Error mode** recommended for LoRa: receiver only sends NACK
+for missing fragments.
 
 ### 5.7. Rule Versioning and Interoperability
 
@@ -197,9 +160,8 @@ Version increments when rules are added, removed, or modified.
 | Version | Description |
 |---------|-------------|
 | 0 | Reserved (uncompressed fallback) |
-| 1 | Legacy experimental fragmentation formats; not interoperable |
-| 2 | RFC 8724 fragmentation profile defined in Section 5.6 |
-| 3+ | Future versions |
+| 1 | Initial LICHEN release |
+| 2+ | Future versions |
 
 **DIO Rule Version Option (Type TBD):**
 
@@ -230,13 +192,9 @@ Rule 255 packet:
 
 **When to use Rule 255:**
 - Decompression failure (unknown rule ID)
-- Compression-rule version mismatch when the packet fits one link frame
+- Version mismatch detected
 - Debugging / diagnostics
-- Communicating unfragmented packets with legacy nodes
-
-Rule 255 does not provide fragmentation compatibility. If the Rule 255 SCHC
-Packet exceeds one link frame, both peers MUST support the same fragmentation
-Rule Set Version or the packet cannot be sent.
+- Communicating with legacy nodes
 
 **Decompression Failure Handling:**
 
@@ -251,7 +209,7 @@ Rule Set Version or the packet cannot be sent.
 Explicit version negotiation is NOT required. The DIO advertisement
 provides passive discovery. Nodes with mismatched versions:
 1. Cannot join the same DODAG (DIO filter)
-2. Can communicate unfragmented packets via Rule 255 (degraded performance)
+2. Can still communicate via Rule 255 (degraded performance)
 3. Should be upgraded to matching firmware
 
 **Backward Compatibility:**

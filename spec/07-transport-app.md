@@ -546,11 +546,9 @@ with worse performance characteristics for LoRa.
 **SCHC fragmentation capacity:**
 
 ```
-FCN: 6 bits -> 63 tiles per window
-Windows: 2
-Tile size: 187 bytes
-Encoding ceiling: 126 × 187 = 23,562 bytes
-Mandatory receiver capacity: 1281 bytes
+FCN: 6 bits → 63 fragments per window
+Fragment size: ~200 bytes (L2 MTU)
+Max payload: 63 × 200 = ~12 KB per SCHC transaction
 ```
 
 Most LICHEN traffic (telemetry, messages, config) is <1 KB and requires
@@ -558,15 +556,14 @@ no fragmentation. SCHC handles the rare larger payloads transparently.
 
 **Large Transfers (Firmware, Bulk Data):**
 
-For payloads exceeding the receiver's known reassembly limit, use
-application-level chunking. If the limit is unknown, chunks MUST fit the
-mandatory 1281-byte SCHC receiver capacity:
+For payloads exceeding SCHC capacity (~12 KB), use application-level
+chunking:
 
 ```
 Application Chunking Protocol:
-1. Sender: POST /firmware/upload {chunk: 0, total: 500, data: <1KB>}
+1. Sender: POST /firmware/upload {chunk: 0, total: 50, data: <12KB>}
 2. Receiver: 2.04 Changed {received: 0}
-3. Sender: POST /firmware/upload {chunk: 1, total: 500, data: <1KB>}
+3. Sender: POST /firmware/upload {chunk: 1, total: 50, data: <12KB>}
 4. ... repeat ...
 5. Receiver: 2.01 Created {status: "complete", hash: "..."}
 ```

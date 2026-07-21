@@ -77,19 +77,6 @@ persistent 64-bit origin sequence, and exact unsigned DAO bytes. Relays MUST
 preserve the source and DAO bytes; only Hop Limit and the enclosing hop-by-hop
 link frame and signature may change.
 
-**Covered by each link signature:**
-| Field | Notes |
-|-------|-------|
-| Link-layer destination | Binds the frame to its immediate next hop |
-| SCHC fragment or packet payload | Authenticates the immediate transmitter |
-| Epoch and sequence number | Per-peer replay protection |
-| LLSec flags | Security parameters |
-
-IPv6 source and destination remain end-to-end network-layer fields, while Hop
-Limit and routing headers are updated before the relay signs its outgoing
-frame. End-to-end application authenticity and confidentiality use OSCORE or an
-application signature; the link signature is not an origin signature.
-
 The DAO origin key MUST be the public key of an existing pre-pinned Announce
 identity whose IID binding matches the preserved IPv6 Source Address. An
 arbitrary caller-supplied or self-certified key is insufficient, and a DAO
@@ -117,11 +104,10 @@ retransmit those exact bytes after reboot without allocating a new sequence.
 
 ### 8.5. Verification Caching
 
-Every receiver MUST verify every signed incoming link frame before replay-window
-acceptance, SCHC reassembly, or forwarding. Implementations MAY cache parsed
-public keys, trust decisions, or signature-verification precomputation, but MUST
-NOT cache a prior frame's verification result as authorization for a new frame
-or a different hop.
+Every hop MUST verify every received link signature. Implementations MAY cache
+peer public keys, trust decisions, and signature-verification precomputation,
+but MUST NOT cache a prior frame's verification result as authorization for a
+new frame or a different hop.
 
 ### 8.6. Key Management
 
