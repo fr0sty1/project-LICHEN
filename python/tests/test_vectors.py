@@ -37,6 +37,7 @@ from generate import (  # noqa: E402
     meshcore_app_compat_vectors,
     meshtastic_app_compat_vectors,
 )
+from generate_rpl_route_state import build_document as build_route_state_document  # noqa: E402
 
 CONFIG_SECTION_EXPECTATIONS = [
     ("device", 1, [(1, 0), (7, 900)]),
@@ -74,6 +75,7 @@ def test_vectors_directory_exists() -> None:
         "meshtastic_app_compat.json",
         "meshcore_app_compat.json",
         "rpl_messages.json",
+        "rpl_route_state.json",
         "dao_origin_signature.json",
     ],
 )
@@ -819,6 +821,11 @@ def test_dao_origin_signature_relational_corruptions_fail() -> None:
         mutate(corrupted)
         with pytest.raises(AssertionError):
             _assert_dao_relations(corrupted)
+
+
+def test_rpl_route_state_generation_is_deterministic() -> None:
+    document = _load("rpl_route_state.json")
+    assert document == build_route_state_document()
 
 
 @pytest.mark.parametrize("name,vector", _rpl_messages_cases())

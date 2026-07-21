@@ -1098,6 +1098,82 @@ mod tests {
 
     #[cfg(feature = "std")]
     #[test]
+    fn production_signed_dao_cannot_mutate_equal_path_sequence() {
+        use crate::{announce::AnnounceProcessor, gradient::GradientTable};
+        use lichen_hal::storage::mem::MemStorage;
+        use lichen_link::{identity::Identity, keys::Seed, link_layer::LinkLayer};
+
+        let root_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
+        let root_addr = ula(root_id);
+        let identity = Identity::from_seed(Seed::new([0x36; 32]));
+        let mut origin = root_addr;
+        origin[8..].copy_from_slice(&identity.iid);
+        let mut storage = MemStorage::new();
+        let (router, mut rx_state) = Router::provision_root(&mut storage, root_addr).unwrap();
+        let mut root = RplNode {
+            node: Node::new(root_id),
+            router,
+        };
+        assert!(root.router.set_dao_lifetime_unit(1));
+        let mut announces = AnnounceProcessor::new(
+            GradientTable::new(crate::announce::MAX_TRACKED_ORIGINATORS),
+            root_addr[..8].try_into().unwrap(),
+        );
+        announces.pin_for_test(identity.pubkey);
+        let link = LinkLayer::new(identity.clone());
+        let sign = |unsigned: &[u8], origin_sequence: u64| {
+            let digest =
+                crate::routing::dao_origin_digest(origin, root_addr, origin_sequence, unsigned);
+            let signature = link.sign_digest(&digest);
+            let mut wire = unsigned.to_vec();
+            let offset = wire.len();
+            wire.resize(offset + lichen_rpl::message::DAO_ORIGIN_SIGNATURE_LEN, 0);
+            lichen_rpl::message::DaoOriginSignature::write_to(
+                origin_sequence,
+                &signature,
+                &mut wire[offset..],
+            )
+            .unwrap();
+            wire
+        };
+        let mut sender = lichen_rpl::routing::DaoManager::new(origin, RPL_INSTANCE_ID, root_addr);
+        let first_unsigned = sender.build_dao_with_lifetime(root_addr, 10);
+        let first = sign(&first_unsigned, 1);
+        assert_eq!(
+            root.handle_dao(
+                &first,
+                origin,
+                identity.iid,
+                &announces,
+                &mut rx_state,
+                &mut storage,
+                100_000,
+            ),
+            DaoHandlingOutcome::Applied
+        );
+        let route = root.router.lookup_route(&origin).unwrap().to_vec();
+
+        let mut changed_lifetime = first_unsigned;
+        let lifetime_index = changed_lifetime.len() - 17;
+        changed_lifetime[lifetime_index] = 20;
+        let changed_lifetime = sign(&changed_lifetime, 2);
+        assert_eq!(
+            root.handle_dao(
+                &changed_lifetime,
+                origin,
+                identity.iid,
+                &announces,
+                &mut rx_state,
+                &mut storage,
+                101_000,
+            ),
+            DaoHandlingOutcome::RouteRejected
+        );
+        assert_eq!(root.router.lookup_route(&origin), Some(route.as_slice()));
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
     fn production_dao_time_is_seconds_and_expires_routes() {
         let root_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
         let first_id = NodeId([0x02, 0, 0, 0, 0, 0, 0, 2]);
