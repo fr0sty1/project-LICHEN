@@ -373,8 +373,9 @@ LICHEN resources are tagged:
 - `Project=LICHEN`
 - `LaunchedBy=ec2-claude-sh` (for instances launched by the script)
 
-The copied Zephyr builder EBS volume is the sole untagged exception. Identify it
-by the exact volume ID and `Name=lichen-zephyr-arm64` listed below.
+The Zephyr builder EBS volume is tagged `Project=LICHEN` and `aiwork=true` (as
+of 2026-07-21), alongside its `Name=lichen-zephyr-arm64` tag. Identify it by the
+exact volume ID `vol-0a95eee8d1d8461eb` listed below.
 
 Before ANY destructive operation (terminate, delete, stop), verify the resource belongs to LICHEN:
 
@@ -463,6 +464,77 @@ tools/zephyr-clean-worktree.sh verify "$PWD" <build-dir>
 ```
 
 The volume is single-attach. Before terminating a builder, run `sync`, unmount `/mnt/lichen-zephyr`, detach the volume, and wait for it to return to `available` so the next builder can attach it.
+
+### Persistent Zephyr Workstation (STOPPED — restart to resume)
+
+There is a **long-lived** Zephyr dev workstation (distinct from the throwaway
+builders above). It runs OpenCode in `tmux` so an implementer agent can do
+Zephyr/C work "locally" on a beefy Linux box. It is currently **stopped** to
+halt compute billing; the attached EBS cache persists all work.
+
+| Field | Value |
+|-------|-------|
+| Instance | `i-0d14dd9fb53dae004` |
+| Type / AZ | `c8g.4xlarge` (ARM64) / `us-west-2c` |
+| State | **stopped** (as of 2026-07-21; stop halts compute cost, EBS storage still billed) |
+| Tags | `Project=LICHEN` |
+| EBS | `vol-0a95eee8d1d8461eb` — stays attached at `/dev/sdf`, mounts `/mnt/lichen-zephyr` |
+| Security group | `sg-0be97be8501aeecd6` — SSH ingress from home `/32` only |
+| Login | `ssh -i ~/.ssh/id_ed25519 ec2-user@<public-ip>` |
+| OpenCode | v1.18.3, model `openai/gpt-5.6-sol`, global config `permission: allow` |
+
+**Restart procedure:**
+
+```bash
+aws login --profile personal
+export AWS_PROFILE=personal AWS_REGION=us-west-2
+aws sts get-caller-identity --query Account --output text   # must be 210337117346
+
+aws ec2 start-instances --instance-ids i-0d14dd9fb53dae004
+
+# Public IP CHANGES on every start (no Elastic IP). Fetch the new one:
+aws ec2 describe-instances --instance-ids i-0d14dd9fb53dae004 \
+  --query 'Reservations[].Instances[].PublicIpAddress' --output text
+
+# If the home IP changed, the SG will block SSH. Update ingress:
+#   MYIP=$(curl -s https://checkip.amazonaws.com)
+#   aws ec2 authorize-security-group-ingress --group-id sg-0be97be8501aeecd6 \
+#     --protocol tcp --port 22 --cidr ${MYIP}/32
+
+ssh -i ~/.ssh/id_ed25519 ec2-user@<public-ip>
+tmux attach -t lichen            # or: tmux new -s lichen
+cd /mnt/lichen-zephyr/work/project-LICHEN
+opencode
+```
+
+The EBS auto-mounts on boot; if not, follow the "Workflow for a fresh EC2
+instance" mount steps above. Push auth on the box is **git-over-SSH as
+MarkAtwood** (the ed25519 key authenticates to GitHub for git too); the HTTPS
+`origin` has no token and `gh` is not installed. To push, use an explicit SSH
+URL, e.g. `git push git@github.com:MarkAtwood/project-LICHEN.git <branch>`.
+
+**To stop again (halt billing) — flush first so nothing is lost:**
+
+```bash
+ssh -i ~/.ssh/id_ed25519 ec2-user@<public-ip> 'sync; sync'
+aws ec2 stop-instances --instance-ids i-0d14dd9fb53dae004
+aws ec2 wait instance-stopped --instance-ids i-0d14dd9fb53dae004
+```
+
+Use **stop**, not terminate — terminate would destroy the root volume and the
+in-flight uncommitted work living only on the EBS (see below).
+
+**Uncommitted work on the EBS (NOT on GitHub, survives stop):** as of the
+2026-07-21 checkpoint, three checkouts hold live uncommitted edits — deliberately
+left in place, base commit `8e02a7ae`:
+- `/mnt/lichen-zephyr/validation/project-LICHEN-m5m1` — 26 modified files (renode boards, coap, l2, hal, tests, a deleted linker script)
+- `/mnt/lichen-zephyr/work/project-LICHEN-m5m1` — 7 modified files (coap, l2, renode)
+- `/mnt/lichen-zephyr/workspace` — 2 modified files (`oscore.c`, `router.c`)
+
+All committed code work was pushed to `github.com/MarkAtwood/project-LICHEN`
+(branches `integration/convergence-20260721`, `integration/rust-rpl-complete`,
+`wip/checkpoint-20260715`). Off-EBS paths held only disposable uv caches and a
+clean interop clone — nothing at risk there.
 
 ### AWS Fleet Runtime AMI
 
