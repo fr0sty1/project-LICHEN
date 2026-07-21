@@ -3,12 +3,16 @@
   "title": "Build single-owner RPL runtime loop",
   "description": "Add a cohesive Router/RplStack maintenance outcome and an executor-neutral single-owner runtime state machine. It must use one injected monotonic u64 millisecond clock, bound receive waits by maintenance and Trickle deadlines, expire finite DAO routes while idle, prune stale neighbors at a configured timeout, and preserve existing Trickle reset/transmit/expire behavior.",
   "acceptance_criteria": "Literal fake-clock tests prove exact timeout boundaries, idle route and neighbor expiry without inbound traffic, bounded receive latency, monotonic clamping, and unchanged Trickle state for DAO-only expiry; lichen-node tests, no-std checks, Clippy, and three reviews pass.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-21T00:13:28.237821869Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-21T00:13:28.237821869Z",
+  "updated_at": "2026-07-21T00:14:53.709282816Z",
+  "started_at": "2026-07-21T00:14:53.709282816Z",
+  "lease_expires_at": "2026-07-21T00:19:53.709282816Z",
+  "heartbeat_at": "2026-07-21T00:14:53.709282816Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2auf.44.11.1",
