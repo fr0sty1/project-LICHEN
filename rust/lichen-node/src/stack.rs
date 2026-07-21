@@ -407,6 +407,11 @@ impl<R: Radio> Stack<R> {
         &mut self.radio
     }
 
+    /// Internal authenticated-link access for the production RPL owner.
+    pub(crate) fn link(&mut self) -> &mut lichen_link::link_layer::LinkLayer {
+        &mut self.link
+    }
+
     /// Access the node state.
     pub fn node(&self) -> &Node {
         &self.node

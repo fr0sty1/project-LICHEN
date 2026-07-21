@@ -21,7 +21,7 @@ use lichen_ipv6::{icmpv6_checksum, Addr, Ipv6Header};
 use lichen_link::frame::{AddrMode, LichenFrame};
 use lichen_link::identity::{iid_from_pubkey, PeerIdentity};
 use lichen_link::link_layer::{AuthenticatedFrame, LinkRxError};
-use lichen_link::schnorr::{self, SIGNATURE_LENGTH};
+use lichen_link::schnorr;
 use lichen_rpl::routing::{
     DaoAdmissionState, DaoAdmissionUpdateError, DaoPersistentOpenError, DaoProvisionError,
     DaoTxError, DaoTxState,
@@ -564,45 +564,6 @@ impl<R: Radio, S: NonVolatile> RplStack<R, S> {
         self.stack.send_ipv6_raw(ipv6).await
     }
 
-    pub async fn send_get(
-        &mut self,
-        dst: &Addr,
-        uri_path: &[&str],
-        token: &[u8],
-    ) -> Result<u16, TxError> {
-        self.stack.send_get(dst, uri_path, token).await
-    }
-
-    pub async fn send_post(
-        &mut self,
-        dst: &Addr,
-        uri_path: &[&str],
-        token: &[u8],
-        content_format: Option<u16>,
-        payload: &[u8],
-    ) -> Result<u16, TxError> {
-        self.stack
-            .send_post(dst, uri_path, token, content_format, payload)
-            .await
-    }
-
-    pub async fn send_put(
-        &mut self,
-        dst: &Addr,
-        uri_path: &[&str],
-        token: &[u8],
-        content_format: Option<u16>,
-        payload: &[u8],
-    ) -> Result<u16, TxError> {
-        self.stack
-            .send_put(dst, uri_path, token, content_format, payload)
-            .await
-    }
-
-    pub async fn send_coap_raw(&mut self, dst: &Addr, coap: &[u8]) -> Result<(), TxError> {
-        self.stack.send_coap_raw(dst, coap).await
-    }
-
     pub fn configure_radio(&mut self, config: &RadioConfig) {
         self.stack.radio().configure(config);
     }
@@ -1064,19 +1025,21 @@ fn provision_or_resume_root_state<S: NonVolatile>(
 
 fn bootstrap_announce_peer(wire: &[u8]) -> Option<PeerIdentity> {
     let frame = LichenFrame::from_bytes(wire).ok()?;
-    if !frame.signature.is_present() || frame.payload.len() < SIGNATURE_LENGTH {
+    if !frame.signature.is_present() {
         return None;
     }
-    let inner_len = frame.payload.len() - SIGNATURE_LENGTH;
-    let inner = &frame.payload[..inner_len];
+    let inner = frame.payload;
     let announce = Announce::from_bytes(routing_announce(inner).ok()?).ok()?;
     let peer = PeerIdentity::from_pubkey(lichen_link::keys::PublicKey::new(*announce.pubkey));
     if peer.iid != *announce.originator_iid
         || !schnorr::verify_frame(
+            wire[0],
+            wire[1],
             frame.epoch,
             frame.seqnum,
             frame.dst_addr,
             frame.payload,
+            frame.mic,
             &peer.pubkey,
         )
     {
@@ -1118,10 +1081,10 @@ fn wire_is_for_local(wire: &[u8], local_eui64: [u8; 8]) -> Result<bool, LinkRxEr
 }
 
 fn inspect_schc_ipv6(frame: &LichenFrame<'_>) -> Option<Vec<u8>> {
-    if !frame.signature.is_present() || frame.payload.len() < SIGNATURE_LENGTH {
+    if !frame.signature.is_present() {
         return None;
     }
-    let inner = &frame.payload[..frame.payload.len() - SIGNATURE_LENGTH];
+    let inner = frame.payload;
     if classify_l2_payload(inner) != L2PayloadKind::Schc {
         return None;
     }
