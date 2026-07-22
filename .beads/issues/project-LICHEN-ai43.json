@@ -2,10 +2,14 @@
   "id": "project-LICHEN-ai43",
   "title": "[codereview-pass1] coap_dtn.c: now_unix=0 placeholder breaks expiry logic; k_uptime_get needs _32() for uint32_t",
   "description": "Correctness: DTN expiry calculation uses dummy now_unix=0 which makes all messages expire immediately or never. Use proper wall-clock time from RTC or NTP/CoAP time sync per spec. Also cast from k_uptime_get() (int64) to uint32_t truncates. discovered-from:project-LICHEN-qk8y",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T15:20:02.886804804Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:20:02.886804804Z"
+  "updated_at": "2026-07-22T15:21:41.851850491Z",
+  "started_at": "2026-07-22T15:21:41.851850491Z",
+  "lease_expires_at": "2026-07-22T15:26:41.851850491Z",
+  "heartbeat_at": "2026-07-22T15:21:41.851850491Z"
 }
