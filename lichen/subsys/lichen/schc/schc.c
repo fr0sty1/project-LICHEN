@@ -746,12 +746,11 @@ static int compress_coap(const uint8_t *packet, size_t pkt_len,
 	const uint8_t *src = ipv6_src(packet);
 	const uint8_t *dst = ipv6_dst(packet);
 
-	/* Validate addresses match rule to prevent silent corruption. */
-	if (rule_id == SCHC_RULE_LINK_LOCAL_COAP) {
+	if (rule_id == SCHC_RULE_LINK_LOCAL_COAP || rule_id == SCHC_RULE_LINK_LOCAL_OSCORE) {
 		if (!is_link_local(src) || !is_link_local(dst)) {
 			return SCHC_ERR_NO_MATCHING_RULE;
 		}
-	} else if (rule_id == SCHC_RULE_GLOBAL_COAP) {
+	} else if (rule_id == SCHC_RULE_GLOBAL_COAP || rule_id == SCHC_RULE_GLOBAL_OSCORE) {
 		if (!is_global(src) || !is_global(dst)) {
 			return SCHC_ERR_NO_MATCHING_RULE;
 		}
@@ -781,14 +780,12 @@ static int compress_coap(const uint8_t *packet, size_t pkt_len,
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 
-	if (rule_id == SCHC_RULE_LINK_LOCAL_COAP) {
-		/* Send only IID (64 bits) */
+	if (rule_id == SCHC_RULE_LINK_LOCAL_COAP || rule_id == SCHC_RULE_LINK_LOCAL_OSCORE) {
 		if (schc_bit_writer_write128(&w, &src[8], 64) < 0 ||
 		    schc_bit_writer_write128(&w, &dst[8], 64) < 0) {
 			return SCHC_ERR_BUFFER_TOO_SMALL;
 		}
 	} else {
-		/* Send full 128-bit addresses */
 		if (schc_bit_writer_write128(&w, src, 128) < 0 ||
 		    schc_bit_writer_write128(&w, dst, 128) < 0) {
 			return SCHC_ERR_BUFFER_TOO_SMALL;
@@ -943,7 +940,7 @@ static int decompress_coap(const uint8_t *data, size_t data_len,
 	 * - Rule 0 (link-local): 8 + 64 + 64 + 16 + 16 + 2 + 4 + 8 + 16 = 198 bits = 25 bytes
 	 * - Rule 1 (global):     8 + 128 + 128 + 16 + 16 + 2 + 4 + 8 + 16 = 326 bits = 41 bytes
 	 */
-	size_t min_residue = (rule_id == SCHC_RULE_LINK_LOCAL_COAP) ? 25 : 41;
+	size_t min_residue = (rule_id == SCHC_RULE_LINK_LOCAL_COAP || rule_id == SCHC_RULE_LINK_LOCAL_OSCORE) ? 25 : 41;
 	if (data_len < 1 + min_residue) {
 		return SCHC_ERR_TOO_SHORT;
 	}
@@ -958,7 +955,7 @@ static int decompress_coap(const uint8_t *data, size_t data_len,
 
 	uint8_t src[16], dst[16];
 
-	if (rule_id == SCHC_RULE_LINK_LOCAL_COAP) {
+	if (rule_id == SCHC_RULE_LINK_LOCAL_COAP || rule_id == SCHC_RULE_LINK_LOCAL_OSCORE) {
 		/* Reconstruct link-local prefix + IID */
 		memset(src, 0, 16);
 		memset(dst, 0, 16);

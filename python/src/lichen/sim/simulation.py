@@ -603,7 +603,7 @@ class Simulation:
 
         # Record per-node metrics
         if node is not None:
-            packet_hash = hashlib.sha256(payload).hexdigest()[:16]
+            packet_hash = hashlib.sha256(payload).digest()[:16].hex()
             node.metrics.record_tx(payload, packet_hash)
 
         # Notify observers
@@ -874,7 +874,7 @@ class Simulation:
         # without this, callback-delivered packets (Renode nodes) never show up
         # in sim.metrics.receptions even though they were delivered.
         self._metrics.record_reception(node_id, tx.id, self._current_time_us)
-        packet_hash = hashlib.sha256(tx.payload).hexdigest()[:16]
+        packet_hash = hashlib.sha256(tx.payload).digest()[:16].hex()
         node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)
 
         # Find the candidate to get RSSI/SNR
@@ -964,7 +964,7 @@ class Simulation:
         self._metrics.record_reception(node_id, tx.id, self._current_time_us)
 
         # Record per-node metrics
-        packet_hash = hashlib.sha256(tx.payload).hexdigest()[:16]
+        packet_hash = hashlib.sha256(tx.payload).digest()[:16].hex()
         node.metrics.record_rx(tx.payload, packet_hash, from_peer=tx.source_node_id)
 
         # Find the candidate to get RSSI/SNR

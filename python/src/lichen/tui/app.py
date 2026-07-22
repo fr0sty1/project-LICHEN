@@ -39,6 +39,7 @@ from textual.widgets import (
     RichLog,
     Static,
 )
+from rich.markup import escape
 
 from lichen.radio.sim_client import SimRadio, SimRadioError
 
@@ -329,7 +330,7 @@ class SimNodeApp(App[None]):
         }
         color = colors.get(level, "white")
 
-        log.write(f"[{color}][{timestamp}] {message}[/{color}]")
+        log.write(f"[{color}][{timestamp}] {escape(message)}[/{color}]")
 
     @work(exclusive=True, group="connect")
     async def _connect_to_sim(self) -> None:

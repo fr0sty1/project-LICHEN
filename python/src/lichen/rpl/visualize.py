@@ -15,8 +15,10 @@ the evolving DODAG during a run.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
-from lichen.rpl.dodag import DodagState
+if TYPE_CHECKING:
+    from lichen.rpl.dodag import DodagState
 
 Topology = dict[str, str | None]
 
@@ -56,6 +58,12 @@ def _roots(parents: Topology) -> list[str]:
     )
 
 
+def _dot_escape(s: str) -> str:
+    s = s.replace("\\", "\\\\")
+    s = s.replace('"', '\\"')
+    return s
+
+
 def to_dot(
     parents: Topology,
     ranks: Mapping[str, int] | None = None,
@@ -64,17 +72,17 @@ def to_dot(
     """Render the topology as Graphviz DOT (child -> parent edges, root on top)."""
     lines = [f"digraph {name} {{", "  rankdir=BT;"]
     for node in sorted(parents):
-        label = node
+        label = _dot_escape(node)
         if ranks is not None and node in ranks:
-            label = f"{node}\\nrank={ranks[node]}"
+            label = f"{label}\\nrank={ranks[node]}"
         attrs = f'label="{label}"'
         if parents[node] is None:
             attrs += ", shape=doublecircle"
-        lines.append(f'  "{node}" [{attrs}];')
+        lines.append(f'  "{_dot_escape(node)}" [{attrs}];')
     for node in sorted(parents):
         parent = parents[node]
         if parent is not None:
-            lines.append(f'  "{node}" -> "{parent}";')
+            lines.append(f'  "{_dot_escape(node)}" -> "{_dot_escape(parent)}";')
     lines.append("}")
     return "\n".join(lines)
 

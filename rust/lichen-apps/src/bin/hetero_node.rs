@@ -207,7 +207,7 @@ fn main() {
 
                         // Parse announce to extract peer IID
                         // Format: [0x15 dispatch][type=0x01][seq:2][hop:1][iid:8]...
-                        if pkt.len > 10 && buf[0] == 0x15 && buf[1] == 0x01 {
+                        if pkt.len >= 13 && buf[0] == 0x15 && buf[1] == 0x01 {
                             let peer_iid: [u8; 8] = buf[5..13].try_into().unwrap();
                             if peer_iid != identity.iid {
                                 metrics.unique_peers.insert(peer_iid);

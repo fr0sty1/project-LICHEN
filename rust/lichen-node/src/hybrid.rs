@@ -84,11 +84,9 @@ impl RouteResult {
 #[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub struct PendingPacket {
-    /// Serialized IPv6 packet data.
     pub data: Vec<u8>,
-    /// Destination address being discovered.
     pub destination: [u8; 16],
-    /// Timestamp when queued (for timeout).
+    pub priority: u8,
     pub queued_at_ms: u32,
 }
 
@@ -303,18 +301,18 @@ impl HybridRouter {
     }
 
     /// Queue a packet pending route discovery.
-    pub fn queue_pending(&mut self, data: Vec<u8>, dst: [u8; 16], now_ms: u32) {
+    pub fn queue_pending(&mut self, data: Vec<u8>, dst: [u8; 16], priority: u8, now_ms: u32) {
         let pending = PendingPacket {
             data,
             destination: dst,
+            priority,
             queued_at_ms: now_ms,
         };
 
         let queue = self.pending_queue.entry(dst).or_default();
 
-        // Limit queue size per destination
         if queue.len() >= self.max_pending_per_dest {
-            queue.pop_front(); // Drop oldest
+            queue.pop_front();
         }
         queue.push_back(pending);
     }
@@ -694,8 +692,8 @@ mod tests {
         let mut router = HybridRouter::new(link_local(1));
         let dst = ula(2);
 
-        router.queue_pending(vec![1, 2, 3], dst, 1000);
-        router.queue_pending(vec![4, 5, 6], dst, 2000);
+        router.queue_pending(vec![1, 2, 3], dst, 2, 1000);
+        router.queue_pending(vec![4, 5, 6], dst, 2, 2000);
 
         let pending = router.get_pending(&dst);
         assert_eq!(pending.len(), 2);
@@ -709,9 +707,9 @@ mod tests {
         router.max_pending_per_dest = 2;
         let dst = ula(2);
 
-        router.queue_pending(vec![1], dst, 1000);
-        router.queue_pending(vec![2], dst, 2000);
-        router.queue_pending(vec![3], dst, 3000); // Should evict [1]
+        router.queue_pending(vec![1], dst, 2, 1000);
+        router.queue_pending(vec![2], dst, 2, 2000);
+        router.queue_pending(vec![3], dst, 2, 3000);
 
         let pending = router.get_pending(&dst);
         assert_eq!(pending.len(), 2);
@@ -724,8 +722,8 @@ mod tests {
         let mut router = HybridRouter::new(link_local(1));
         let dst = ula(2);
 
-        router.queue_pending(vec![1], dst, 1000);
-        router.queue_pending(vec![2], dst, 5000);
+        router.queue_pending(vec![1], dst, 2, 1000);
+        router.queue_pending(vec![2], dst, 2, 5000);
 
         let expired = router.expire_pending(6000, 4000);
         assert_eq!(expired, 1);
