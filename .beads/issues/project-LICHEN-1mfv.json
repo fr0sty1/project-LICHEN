@@ -2,11 +2,15 @@
   "id": "project-LICHEN-1mfv",
   "title": "[kimi-review] 7f46d18: [SEVERITY: high] **Missing `join()` before freeing resources",
   "description": "Commit: 7f46d1898\nMessage: fix(kiss): stop RX thread in deinit with shutdown flag\n\nFinding: [SEVERITY: high] **Missing `join()` before freeing resources** — If deinit sets the flag but doesn't join (or joins without ensuring wakeup), the RX thread may still run and access freed state (use-after-free).",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T22:07:36.691029626Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T22:07:36.691029626Z"
+  "updated_at": "2026-07-22T22:15:08.11812474Z",
+  "started_at": "2026-07-22T22:15:08.11812474Z",
+  "lease_expires_at": "2026-07-22T22:20:08.11812474Z",
+  "heartbeat_at": "2026-07-22T22:15:08.11812474Z"
 }
