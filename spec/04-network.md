@@ -22,7 +22,7 @@
 | ULA | fd00::/8 | DODAG root present | Entire mesh |
 | GUA | 2000::/3 | BR with upstream prefix | Internet |
 
-All addresses use the same IID, derived from EUI-64 (see 6.2).
+All addresses use the same IID derived from Ed25519 (unified per 06-security) (see 6.2).
 
 **1. Link-Local -- Always Available**
 

@@ -49,7 +49,7 @@ using `crc32_ieee` (see appendix-design-rationale.md:388, lichen/subsys/schc/sch
 
 For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation, set `wall_clock_valid`, and respect stratum before adoption. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.5. This integrates with `lichen_rpl_dodag_init()` ordering.
 
-Delta = (current_sfn - last_sfn) using uint32_t subtraction ensures correct wrap behavior. 
+delta = (current_sfn - last_sfn) using uint32_t subtraction ensures correct wrap behavior per RFC 1982. 
 
 Edge case example (0xFFFFFFFF boundary):
 ```
