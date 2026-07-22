@@ -815,8 +815,8 @@ class Router:
 
         for neighbor, coords in self.neighbor_coords.items():
             n_lat, n_lon = coords
-            if math.isnan(n_lat) or math.isnan(n_lon) or math.isinf(n_lat) or math.isinf(n_lon):
-                logger.warning("gpsr: neighbor %s has NaN/inf coords, skipping", neighbor)
+            if not _validate_coords(n_lat, n_lon):
+                logger.warning("gpsr: neighbor %s has invalid coords, skipping", neighbor)
                 continue
             d = _haversine(coords, dst_coords)
             if d < best_dist:
