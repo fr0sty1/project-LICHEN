@@ -789,6 +789,25 @@ mod tests {
     }
 
     #[test]
+    fn decode_skips_unknown_key_with_tag() {
+        // project-LICHEN-z3cf: major type 6 (CBOR tag) as value for unknown map key.
+        // array(1) map(2) [key=99, tag(42, text("x"))] [key=0, text("temp")]
+        // Tag: 0xd8 0x2a (major 6 + additional 24, tag#=42), then text("x")
+        let data = [
+            0x81, // array(1)
+            0xa2, // map(2)
+            0x18, 0x63, // key=99
+            0xd8, 0x2a, 0x61, 0x78, // tag(42, text "x")
+            0x00, // key=0 (n)
+            0x64, b't', b'e', b'm', b'p', // text("temp")
+        ];
+        let mut buf = [Record::empty()];
+        let count = decode(&data, &mut buf).unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(buf[0].name, Some("temp"));
+    }
+
+    #[test]
     fn record_method_encode_parse_roundtrip() {
         let record = Record {
             name: Some("temp"),

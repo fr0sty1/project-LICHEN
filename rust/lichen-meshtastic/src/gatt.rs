@@ -371,8 +371,9 @@ impl<const MTU: usize> MeshtasticGattService<MTU> {
 
     /// Read the next non-expired FromRadio message (for characteristic read).
     ///
-    /// Silently drops any expired entries from the front of the queue before
-    /// returning. The message remains in the queue until `pop_from_radio` is called.
+    /// Silently drops any expired entries before returning (handles
+    /// non-monotonic deadlines). The message remains in the queue until
+    /// `pop_from_radio` is called.
     ///
     /// # Arguments
     /// * `now_ms` - Current timestamp in milliseconds (monotonic clock)
@@ -383,8 +384,8 @@ impl<const MTU: usize> MeshtasticGattService<MTU> {
 
     /// Remove and return the next non-expired FromRadio message.
     ///
-    /// Silently drops any expired entries from the front of the queue before
-    /// returning.
+    /// Silently drops any expired entries before returning (handles
+    /// non-monotonic deadlines).
     ///
     /// # Arguments
     /// * `now_ms` - Current timestamp in milliseconds (monotonic clock)
@@ -393,7 +394,8 @@ impl<const MTU: usize> MeshtasticGattService<MTU> {
         self.from_radio_queue.pop_front().map(|e| e.into_data())
     }
 
-    /// Silently drop all expired entries from the front of the queue.
+    /// Silently drop all expired entries (handles non-monotonic deadlines
+    /// by rotating non-expired entries back to queue).
     ///
     /// Returns the number of entries dropped.
     fn drain_expired(&mut self, now_ms: u64) -> usize {

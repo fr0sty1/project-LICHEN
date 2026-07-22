@@ -17,9 +17,10 @@ Profiles implemented (spec appendix A.1):
 
 The variable trailer (CoAP token/options/payload, or RPL options) travels
 verbatim after the byte-aligned residue. Lengths and checksums are recomputed on
-decompression. Address note: link-local /64 prefixes are elided but the 64-bit
-IID is carried; global addresses are carried in full (prefix/IID context elision
-needs the link layer and is deferred — correct but larger than spec A.1 sizes).
+decompression. Address note: link-local /64 prefixes are elided (only 64-bit IID carried);
+global (02xx::/7 primary or 2000::/3 GUA) addresses carried in full. Prefix
+context elision for globals requires link-layer state (deferred). See
+_is_global() and spec/04-network.md for scope assumptions.
 """
 
 from __future__ import annotations
@@ -59,7 +60,11 @@ def _is_link_local(addr: int) -> bool:
 
 
 def _is_global(addr: int) -> bool:
-    return addr >> 125 == 0b001  # 2000::/3
+    # Primary: 02xx::/7 (Yggdrasil, first byte 0x02/0x03 per spec/04-network,
+    # 06-security). Also standard GUA 2000::/3 (optional BR upstream). Matches
+    # current deployment while avoiding some deprecated sub-prefixes.
+    first_byte = (addr >> 120) & 0xff
+    return (first_byte & 0xfe == 0x02) or (addr >> 125 == 0b001)
 
 
 def _is_ula(addr: int) -> bool:

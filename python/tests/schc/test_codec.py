@@ -49,6 +49,13 @@ class TestBitWriter:
         with pytest.raises(ValueError):
             w.write(-1, 3)
 
+    def test_excessive_bits_raises(self) -> None:
+        """BitWriter rejects bit counts that would exhaust memory."""
+        w = BitWriter()
+        w.write(0, 70000)  # exceeds 65536 limit
+        with pytest.raises(OverflowError, match="excessive bit count"):
+            w.to_bytes()
+
 
 class TestBitReader:
     def test_read_msb_first(self) -> None:

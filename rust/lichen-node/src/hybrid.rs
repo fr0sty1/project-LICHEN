@@ -92,6 +92,8 @@ pub struct PendingPacket {
     pub destination: [u8; 16],
     /// Timestamp when queued (for timeout).
     pub queued_at_ms: u32,
+    /// Priority (0=highest, 3=lowest per ForwardEntry/TxPriority spec).
+    pub priority: u8,
 }
 
 /// Active LOADng route discovery state.
@@ -305,19 +307,29 @@ impl HybridRouter {
     }
 
     /// Queue a packet pending route discovery.
-    pub fn queue_pending(&mut self, data: Vec<u8>, dst: [u8; 16], now_ms: u32) {
+    pub fn queue_pending(&mut self, data: Vec<u8>, dst: [u8; 16], priority: u8, now_ms: u32) {
         let pending = PendingPacket {
             data,
             destination: dst,
             queued_at_ms: now_ms,
+            priority,
         };
 
         let queue = self.pending_queue.entry(dst).or_default();
 
-        // Limit queue size per destination
-        if queue.len() >= self.max_pending_per_dest {
-            queue.pop_front(); // Drop oldest
+        queue.push_back(pending);
+
+        // If over limit, evict lowest-priority packet (highest `priority` u8 value,
+        // tie broken by oldest `queued_at_ms`). Prevents high-prio packets being
+        // evicted by later low-prio ones.
+        if queue.len() > self.max_pending_per_dest {
+            if let Some((idx, _)) = queue.iter().enumerate().max_by_key(|(_, p)| {
+                (p.priority, std::cmp::Reverse(p.queued_at_ms))
+            }) {
+                queue.remove(idx);
+            }
         }
+    }
         queue.push_back(pending);
     }
 

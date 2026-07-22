@@ -167,11 +167,12 @@ ICMPV6_ECHO_RULE = Rule(
 # Whole-packet rules (spec appendix A.1), built from shared field helpers.
 #
 # Constant IPv6/transport fields are elided. Link-local addresses match the
-# fe80::/64 prefix via MSB(64) so only the 64-bit IID travels; global addresses
-# are carried in full (prefix-context elision and full L2-derived IID elision
-# are future optimizations that need the link layer). Lengths and checksums are
-# recomputed on decompression. Variable trailers (CoAP token/options/payload,
-# RPL options) travel verbatim after the residue, handled by schc/headers.py.
+# fe80::/64 prefix via MSB(64) so only the 64-bit IID travels; global (02xx::/7
+# primary Yggdrasil or 2000::/3 GUA) addresses carried in full (prefix context
+# elision deferred to link layer per spec/03-adaptation.md and 04-network.md).
+# Lengths and checksums are recomputed on decompression. Variable trailers
+# (CoAP token/options/payload, RPL options) travel verbatim after the residue,
+# handled by schc/headers.py.
 # ---------------------------------------------------------------------------
 
 _LINK_LOCAL_PREFIX_TV = 0xFE80 << 112  # fe80::/64 as a 128-bit target value

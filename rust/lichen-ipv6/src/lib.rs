@@ -438,16 +438,19 @@ impl UdpHeader {
         Ok(UDP_HEADER_LEN)
     }
 
-    /// Parse header from bytes.
     pub fn from_bytes(buf: &[u8]) -> Result<Self, Ipv6Error> {
         if buf.len() < UDP_HEADER_LEN {
             return Err(TooShort::new(UDP_HEADER_LEN, buf.len()).into());
+        }
+        let length = ((buf[4] as u16) << 8) | (buf[5] as u16);
+        if length < UDP_HEADER_LEN as u16 || length as usize > buf.len() {
+            return Err(TooShort::new(length as usize, buf.len()).into());
         }
 
         Ok(Self {
             src_port: ((buf[0] as u16) << 8) | (buf[1] as u16),
             dst_port: ((buf[2] as u16) << 8) | (buf[3] as u16),
-            length: ((buf[4] as u16) << 8) | (buf[5] as u16),
+            length,
             checksum: ((buf[6] as u16) << 8) | (buf[7] as u16),
         })
     }
