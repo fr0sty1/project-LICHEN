@@ -2,12 +2,16 @@
   "id": "project-LICHEN-8m7x",
   "title": "codereview-P1: format_version=2 update requires schema.json const update and ccp vector schema defs",
   "description": "Changing FORMAT_VERSION without updating schema.json will cause validation failures in test suite. Also, ccp15 and ccp_load_balancing vectors not covered in schema oneOf. Add definitions for them in v2. Tagged codereview per task.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:45:55.07939235Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:45:55.07939235Z",
+  "updated_at": "2026-07-22T16:49:00.086614037Z",
+  "started_at": "2026-07-22T16:49:00.086614037Z",
+  "lease_expires_at": "2026-07-22T16:54:00.086614037Z",
+  "heartbeat_at": "2026-07-22T16:49:00.086614037Z",
   "labels": [
     "codereview"
   ],
