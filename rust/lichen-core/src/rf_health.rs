@@ -144,9 +144,7 @@ impl RssiStats {
         if self.count == 0 {
             self.avg_fp = rssi_fp;
         } else {
-            // EMA: avg = avg + alpha * (sample - avg) with alpha=1/4 for fast interference response (CCP-15)
-            // In fixed-point: avg = avg + (sample - avg) >> EMA_ALPHA_SHIFT
-            let diff = rssi_fp - self.avg_fp;
+            let diff = rssi_fp.saturating_sub(self.avg_fp);
             self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
         }
         self.count = self.count.saturating_add(1);
@@ -227,9 +225,7 @@ impl SnrStats {
         if self.count == 0 {
             self.avg_fp = snr_fp;
         } else {
-            // EMA: avg = avg + alpha * (sample - avg) with alpha=1/4 for fast interference response (CCP-15)
-            // In fixed-point: avg = avg + (sample - avg) >> EMA_ALPHA_SHIFT
-            let diff = snr_fp - self.avg_fp;
+            let diff = snr_fp.saturating_sub(self.avg_fp);
             self.avg_fp = self.avg_fp.saturating_add(diff >> EMA_ALPHA_SHIFT);
         }
         self.count = self.count.saturating_add(1);
