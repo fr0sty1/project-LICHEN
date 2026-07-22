@@ -2,15 +2,15 @@
   "id": "project-LICHEN-nm65",
   "title": "[merge-conflict] worktree-worker24: Kconfig",
   "notes": "Commit: 7db78ad",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:15.999718473Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:51:18.982454514Z",
+  "updated_at": "2026-07-22T23:51:21.076327887Z",
   "started_at": "2026-07-22T23:47:51.534297352Z",
-  "lease_expires_at": "2026-07-22T23:52:51.534297352Z",
-  "heartbeat_at": "2026-07-22T23:47:51.534297352Z"
+  "closed_at": "2026-07-22T23:51:21.076327887Z",
+  "close_reason": "Centralized LICHEN_ADAPTIVE_SF_ENABLED and LICHEN_DEFAULT_SF in lichen/subsys/lichen/Kconfig; removed duplicates from link/Kconfig to resolve merge conflict from worktree-worker24. Verified no redefinition, only intended Kconfig files touched."
 }
