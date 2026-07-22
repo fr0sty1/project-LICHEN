@@ -2,12 +2,14 @@
   "id": "project-LICHEN-w8sy",
   "title": "codereview pass 1 finding 1: missing current_channel in AnnounceBuilder construction sites",
   "description": "rust/lichen-core/src/announce.rs: multiple - after adding field to structs, all AnnounceBuilder {..} and tests will fail to compile until updated. Also update Error variants if needed for new channel validation. P0. codereview",
-  "status": "open",
+  "status": "closed",
   "priority": 0,
   "issue_type": "bug",
   "created_at": "2026-07-22T17:21:23.152426221Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:21:23.152426221Z",
+  "updated_at": "2026-07-22T17:23:10.794293132Z",
+  "closed_at": "2026-07-22T17:23:10.794293132Z",
+  "close_reason": "All construction sites in tests and scheduler updated with current_channel field. No compile issues for this change.",
   "labels": [
     "codereview"
   ]
