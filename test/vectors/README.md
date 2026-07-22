@@ -18,6 +18,9 @@ against these files (issue `ajr`, gate `ijj`).
 | `announce_coords.json` | Announce app_data Type=0x01 geographic coordinate encoding |
 | `meshtastic_app_compat.json` | Meshtastic BLE raw-protobuf app compatibility exchanges |
 | `meshcore_app_compat.json` | MeshCore byte-command app compatibility exchanges |
+| `ccp15.json` | CCP-15 coordinated capacity, adaptive SF, density, hash_32, EMA (v2) |
+| `ccp16.json` | CCP-16 load balancing, TDMA slot, now()/select_channel (v2) |
+| `ccp16-desync.json` | CCP-16 desynchronization/recovery vectors (v2 bare array root example). Independent oracle vs ccp15.json. Top-level comment/docs via description in vectors. |
 
 All byte strings are lowercase hex (possibly empty).
 
