@@ -397,7 +397,6 @@ impl UdpHeader {
             return Err(BufferTooSmall::new(UDP_HEADER_LEN, out.len()).into());
         }
 
-        // UDP length field is u16, max payload = 65535 - 8 = 65527 bytes
         let total = UDP_HEADER_LEN + payload.len();
         if total > u16::MAX as usize {
             return Err(Ipv6Error::PayloadTooLarge(payload.len()));
