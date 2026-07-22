@@ -1,0 +1,11 @@
+{
+  "id": "project-LICHEN-2j8z",
+  "title": "[codereview-pass2] opinion: add_route now mutates RoutingTable; consider separating concerns or using single source of truth",
+  "description": "P4 opinion on architecture. discovered-from:project-LICHEN-fy9q",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "chore",
+  "created_at": "2026-07-22T15:54:07.313945658Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:54:07.313945658Z"
+}
