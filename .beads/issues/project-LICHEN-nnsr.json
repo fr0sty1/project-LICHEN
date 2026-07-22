@@ -2,12 +2,16 @@
   "id": "project-LICHEN-nnsr",
   "title": "[codereview-pass1-chunk1] Abstract title and CCP-14 scope cross-refs added but TOC and Implementation Status not yet updated for new CCP-14 vectors",
   "description": "Scope paragraph updated with full test vector cross-refs and independent oracle note per finm and da2q.14.4. P2 for consistency. Must update TOC, add vector table in next chunk, reference draft if exists. Tag codereview. Discovered-from:project-LICHEN-finm",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:35:58.798526453Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:35:58.798526453Z",
+  "updated_at": "2026-07-22T16:37:01.325129253Z",
+  "started_at": "2026-07-22T16:37:01.325129253Z",
+  "lease_expires_at": "2026-07-22T16:42:01.325129253Z",
+  "heartbeat_at": "2026-07-22T16:37:01.325129253Z",
   "labels": [
     "codereview"
   ]
