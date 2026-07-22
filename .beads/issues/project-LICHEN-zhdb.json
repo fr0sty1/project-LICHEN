@@ -3,15 +3,15 @@
   "title": "SLIP header duplicate definition of SLIP constants",
   "description": "File: lichen/subsys/lichen/transport/include/lichen/transport/slip_transport.h\nLines: 32-36\n\nAND\n\nFile: lichen/subsys/lichen/transport/include/lichen/transport/ble_ipsp_transport.h\nLines: 53-57\n\nBoth headers define the same SLIP constants:\n\nslip_transport.h:\n    #define SLIP_END     0xC0u\n    #define SLIP_ESC     0xDBu\n    #define SLIP_ESC_END 0xDCu\n    #define SLIP_ESC_ESC 0xDDu\n\nble_ipsp_transport.h:\n    #define SLIP_END     0xC0\n    #define SLIP_ESC     0xDB\n    #define SLIP_ESC_END 0xDC\n    #define SLIP_ESC_ESC 0xDD\n\nNote that slip_transport.h uses unsigned suffix (0xC0u) while ble_ipsp_transport.h doesn't (0xC0).\n\nIf both headers are included in the same translation unit, this will cause a preprocessor warning or error about macro redefinition (even though values are the same, the suffixes differ).\n\nFix: Create a common slip_framing.h header that both include, or use include guards around the definitions.",
   "notes": "Commit: 8d57eb0e1",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:55:50.531377Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T22:50:54.407237479Z",
+  "updated_at": "2026-07-22T22:50:56.431638731Z",
   "started_at": "2026-07-22T22:48:49.276579248Z",
-  "lease_expires_at": "2026-07-22T22:53:49.276579248Z",
-  "heartbeat_at": "2026-07-22T22:48:49.276579248Z"
+  "closed_at": "2026-07-22T22:50:56.431638731Z",
+  "close_reason": "Added include guard around SLIP constants in slip_transport.h and cleaned duplicate include in ble_ipsp_transport.h; eliminates macro redefinition risk. Tests and builds unaffected."
 }
