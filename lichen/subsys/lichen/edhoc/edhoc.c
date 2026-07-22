@@ -832,7 +832,6 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		goto err_wipe;
 	}
 
-	/* A_3 for AAD - simplified */
 	uint8_t a_3[64];
 	ZCBOR_STATE_E(zse_a3, 0, a_3, sizeof(a_3), 0);
 	if (!zcbor_list_start_encode(zse_a3, 3) ||
@@ -1262,7 +1261,6 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 		goto err_wipe;
 	}
 
-	/* A_3 for AAD */
 	uint8_t a_3[64];
 	ZCBOR_STATE_E(zse_a3, 0, a_3, sizeof(a_3), 0);
 	if (!zcbor_list_start_encode(zse_a3, 3) ||

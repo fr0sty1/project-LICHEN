@@ -14,7 +14,9 @@
 #include <tinycrypt/sha256.h>
 #include <tinycrypt/hmac.h>
 #include <tinycrypt/constants.h>
+#if CONFIG_LICHEN_CRYPTO_MONOCYPHER
 #include <monocypher.h>
+#endif
 
 #include "hkdf.h"
 
