@@ -231,7 +231,7 @@ static const char *trust_level_str(enum lichen_coap_trust_level trust)
 		return 0;
 	}
 	cbor_ctx_init(&ctx, buf, buf_size);
-	map_count = 9;
+	map_count = 5;
 	map_count += status->battery_pct_valid ? 1 : 0;
 	map_count += status->battery_mv_valid ? 1 : 0;
 	if (map_count > 255) map_count = 255;
