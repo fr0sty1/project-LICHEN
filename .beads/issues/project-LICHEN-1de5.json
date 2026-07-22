@@ -2,15 +2,15 @@
   "id": "project-LICHEN-1de5",
   "title": "[merge-conflict] worktree-worker24: heltec_wireless_tracker.overlay",
   "notes": "Commit: 054d0c090",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:41:07.07261124Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:47:00.235658667Z",
+  "updated_at": "2026-07-22T23:47:02.248578487Z",
   "started_at": "2026-07-22T23:45:12.989634898Z",
-  "lease_expires_at": "2026-07-22T23:50:12.989634898Z",
-  "heartbeat_at": "2026-07-22T23:45:12.989634898Z"
+  "closed_at": "2026-07-22T23:47:02.248578487Z",
+  "close_reason": "Removed stale heltec_wireless_tracker overlay and conf to resolve merge conflict in worker24 worktree. Matches prior retirement in 2u26.4."
 }
