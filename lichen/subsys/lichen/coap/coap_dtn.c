@@ -18,6 +18,7 @@ static struct senml_pack s_senml_pack;
 static K_MUTEX_DEFINE(s_dtn_buf_mutex);
 static K_MUTEX_DEFINE(s_senml_pack_mutex);
 static struct k_work_delayable s_dtn_expire_work;
+static uint32_t s_last_confessions;
 
 static int coap_respond(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len, uint8_t code, const uint8_t *payload, size_t payload_len) {
 	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
@@ -74,6 +75,18 @@ static int deaddrop_get(struct coap_resource *resource, struct coap_packet *requ
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (len < 0) return 0xA0;
 	return coap_respond(resource, request, addr, addr_len, 0x45, buf, len);
+}
+
+static int confessions_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
+	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
+	uint32_t now = dtn_get_unix_time();
+	if (now - s_last_confessions < 30) {
+		k_mutex_unlock(&s_dtn_buf_mutex);
+		return 0xa0;
+	}
+	s_last_confessions = now;
+	k_mutex_unlock(&s_dtn_buf_mutex);
+	return 0x41;
 }
 
 static const char * const deaddrop_path[] = { "deaddrop", NULL };
