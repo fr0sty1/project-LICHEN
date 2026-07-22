@@ -393,6 +393,8 @@ Provides time synchronization for replay protection.
 
 Advertises node congestion for routing decisions.
 
+**ASSIGNED_SF and RF Metrics Option (CCP-16):** MUST be carried in RPL DIO options per CCP-16. Nodes MUST compute TX_SF via pseudocode in physical-link:3.4 and 02a:2a.3. Includes per-neighbor EMA, density, utilization. Test vectors ccp16.json MUST validate interop.
+
 ### 9.3. Prefix Information Option
 
 When DODAG root advertises prefix:

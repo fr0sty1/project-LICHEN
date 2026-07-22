@@ -62,36 +62,40 @@ Nodes without an assigned SF MUST use SF10. Implementations MUST support gateway
 
 Gateways MUST receive on all SFs. Cross-SF traffic adds one hop. Independent oracle: test/vectors/sf-assignment.json verified against OpenSSL and reference Python impl.
 
-### 3.4. Adaptive Spreading Factor
+### 3.4. Adaptive Spreading Factor (CCP-16)
 
-Nodes SHOULD implement adaptive SF based on link quality. Track per-neighbor (SNR, packet success rate). SNR > 10dB above sensitivity: decrease SF. SNR < 5dB above sensitivity: increase SF. Hysteresis: require N consecutive samples before changing.
+Nodes MUST receive on all SF7-SF12. Gateways and nodes MUST announce TX_SF in DIO options and Announce messages. ASSIGNED_SF and RF metrics (per-neighbor EMA SNR with alpha=1/4, packet loss rate) MUST be signaled in DIO per CCP-16. Per-neighbor state MUST track EMA values, loss rate, and sample count. Thresholds:
 
-Thresholds (SF10 baseline):
+| SF | Sensitivity | Upgrade (SHOULD decrease SF) | Downgrade (MUST increase SF) |
+|----|-------------|------------------------------|------------------------------|
+| 7  | -123 dBm   | N/A                          | SNR < 0 or loss > 0.25       |
+| 9  | -129 dBm   | SNR > 10 and density < 5     | SNR < 0 or density > 10      |
+| 10 | -132 dBm   | SNR > 8 and density < 5      | SNR < 5 or utilization > 150 |
+| 11 | -134 dBm   | SNR > 10                     | SNR < 0 or density > 12      |
+| 12 | -137 dBm   | SNR > 10                     | N/A                          |
 
-| SF | Sensitivity | Upgrade threshold | Downgrade threshold |
-|----|-------------|-------------------|---------------------|
-| SF7 | -123 dBm | -- | SNR < 0 dB |
-| SF8 | -126 dBm | SNR > 10 dB | SNR < 0 dB |
-| SF9 | -129 dBm | SNR > 10 dB | SNR < 0 dB |
-| SF10 | -132 dBm | SNR > 10 dB | SNR < 0 dB |
-| SF11 | -134 dBm | SNR > 10 dB | SNR < 0 dB |
-| SF12 | -137 dBm | SNR > 10 dB | -- |
+Nodes MUST use TX_SF from pseudocode for unicast. DIO MUST carry ASSIGNED_SF for load balance. RX on all SF is REQUIRED for gateways. Test vectors in test/vectors/ccp16.json for load_balancing inputs MUST match output exactly (SF9 for density=3/snr=12.5, SF11 for density=12/snr=-2, SF12+tx_allowed=false for density=255/utilization=255).
 
-Signaling: Announce includes current TX_SF (1 byte). Absence means SF10.
-
-**Backwards Compatibility**
-
-No flag day required.
-
-- Old nodes: Use SF10 for all traffic (current behavior)
-- New nodes: Adapt SF per-neighbor based on SNR
-- Mixed network: SF10 is common ground, always works
-
-SF10 MUST remain the default and fallback SF. New nodes MUST use SF10 when communicating with old nodes (no SF field in their announces). New nodes MUST accept traffic on any SF (RX is already multi-SF capable via CAD). Announce MAY include TX_SF field; absence means SF10.
-
-Adaptation logic: if dst.tx_sf is known (from announce): use adapted SF based on SNR to that neighbor else: use SF10 (safe default, works with old nodes).
-
-Degradation: Old nodes always use SF10 (no adaptation). New nodes adapt when talking to new nodes. New-to-old: SF10. Benefit scales with fraction of new nodes.
+```pseudocode
+ema_update(avg, sample):
+    diff = sample - avg
+    return avg + (diff >> 2)
+update_neighbor(nbr, snr, loss):
+    nbr.ema_snr = ema_update(nbr.ema_snr, snr)
+    nbr.ema_loss = ema_update(nbr.ema_loss, loss)
+    nbr.samples = nbr.samples + 1
+select_tx_sf(nbr, density, utilization):
+    sf = nbr.assigned_sf or 10
+    if density > 10 or utilization > 150:
+        sf = min(12, sf + 2)
+    if nbr.ema_snr > 8 and density < 5:
+        sf = max(7, sf - 1)
+    if nbr.ema_loss > 0.25:
+        sf = min(12, sf + 1)
+    if utilization > 200:
+        return 12, false
+    return sf, true
+```
 
 ### 3.5. SFN Delta for Coordinated Capacity
 

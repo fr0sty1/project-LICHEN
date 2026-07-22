@@ -26,6 +26,12 @@ protocol.
 
 ## CCP-2. Terminology
 
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+"OPTIONAL" in this document are to be interpreted as described in
+BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all
+capitals, as shown here.
+
 - **CCP domain:** One DODAG using one root identity and schedule generation.
 - **Coordinator:** The accepted DODAG root that authorizes schedules.
 - **ASN:** Absolute Slot Number, a monotonically increasing 64-bit slot index.
@@ -78,11 +84,36 @@ Each versioned plan contains:
 CCP PHY profile ID `0x01` is fixed as LoRa bandwidth 125 kHz, SF10, coding rate
 4/5, eight-symbol preamble, explicit header, payload CRC enabled, and low-data-
 rate optimization disabled. ADR MUST NOT change these parameters inside a
-schedule generation. Future profile IDs require canonical airtime vectors and a
+schedule generation. See 2a.3 for normative adaptive SF outside schedules. Future profile IDs require canonical airtime vectors and a
 new specification revision before use.
 
 Remote capability and schedule messages MAY reduce the locally permitted
 intersection. Unknown plan identifiers or versions MUST cause CH0 fallback.
+
+## 2a.3. Adaptive Spreading Factor
+
+Adaptive SF integrates with TDMA/channel selection per CCP-16. Nodes MUST maintain per-neighbor EMA state (alpha=1/4 from rf_health.rs), signal ASSIGNED_SF and metrics (SNR EMA, loss, density, utilization) in DIO, announce TX_SF, and RX on all SF. Pseudocode MUST be followed exactly and produce identical output to test/vectors/ccp16.json load_balancing vectors. Thresholds and logic from physical-link:3.4. DIO option for metrics is REQUIRED for root load balancing. All impls MUST match vectors (low density/good SNR yields SF9 on data channel; high density/poor SNR yields SF11 on CH0; high utilization suppresses TX).
+
+```pseudocode
+ema_update(avg, sample):
+    diff = sample - avg
+    return avg + (diff >> 2)
+update_neighbor(nbr, snr, loss):
+    nbr.ema_snr = ema_update(nbr.ema_snr, snr)
+    nbr.ema_loss = ema_update(nbr.ema_loss, loss)
+    nbr.samples = nbr.samples + 1
+select_tx_sf(nbr, density, utilization):
+    sf = nbr.assigned_sf or 10
+    if density > 10 or utilization > 150:
+        sf = min(12, sf + 2)
+    if nbr.ema_snr > 8 and density < 5:
+        sf = max(7, sf - 1)
+    if nbr.ema_loss > 0.25:
+        sf = min(12, sf + 1)
+    if utilization > 200:
+        return 12, false
+    return sf, true
+```
 
 LoRaWAN regional tables MAY inform a LICHEN plan, but LoRaWAN uplink/downlink
 roles MUST NOT be copied into a symmetric peer-to-peer plan without a separate
