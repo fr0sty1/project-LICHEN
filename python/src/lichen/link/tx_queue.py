@@ -1,17 +1,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-"""TX queue with priority levels and deadline expiry.
+"""TX queue with priority levels, deadline expiry, and CCP-16 TDMA awareness.
 
-Why this exists: LoRa channels are slow and subject to duty cycle limits.
-Packets must wait for channel access, but unbounded buffering causes
-latency explosion (bufferbloat). This queue provides:
+Why this exists: LoRa channels are slow and subject to duty cycle limits + TDMA slots (worker8 CCP-16). 
+Packets must wait for channel access; unbounded buffering causes latency explosion (bufferbloat). This queue provides:
 
 1. Bounded capacity (4 packets max)
 2. Priority-based preemption (routing > ACK > urgent > bulk)
 3. Time-based expiry (stale packets dropped before TX)
 4. Explicit backpressure (QueueFullError exception, not silent drop)
 
-See spec/appendix-bufferbloat.md for design rationale.
+See spec/appendix-bufferbloat.md and spec/02a-coordinated-capacity.md for rationale.
 """
 
 from __future__ import annotations
