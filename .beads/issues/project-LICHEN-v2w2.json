@@ -2,12 +2,16 @@
   "id": "project-LICHEN-v2w2",
   "title": "codereview pass 2: senml.h senml_encode_deaddrop decl",
   "description": "Independent review pass 2. P4 readability: declaration order follows existing pattern. No missing includes. No P0/P1 findings.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T15:24:36.042944916Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:24:36.042944916Z",
+  "updated_at": "2026-07-22T22:38:00.521483262Z",
+  "started_at": "2026-07-22T22:38:00.521483262Z",
+  "lease_expires_at": "2026-07-22T22:43:00.521483262Z",
+  "heartbeat_at": "2026-07-22T22:38:00.521483262Z",
   "labels": [
     "codereview"
   ],
