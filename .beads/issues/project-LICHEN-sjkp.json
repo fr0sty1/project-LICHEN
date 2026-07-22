@@ -3,15 +3,15 @@
   "title": "DIO grounded flag and MOP not validated before joining DODAG",
   "description": "File: lichen/subsys/lichen/rpl/dodag.c:270-304\n\nWhen processing a DIO and joining a DODAG, the code does not validate:\n1. The grounded flag (RFC 6550 Section 6.3.1) - whether the DODAG has a route to a destination\n2. The mode of operation (MOP) - whether the DODAG uses non-storing mode as expected\n\nThe DIO is parsed and these fields are available in the struct:\n```c\ndio-\u003egrounded = (gmop \u003e\u003e 7) \u0026 1;\ndio-\u003emode_of_operation = (gmop \u003e\u003e 3) \u0026 0x7;\n```\n\nBut `lichen_rpl_dodag_process_dio` does not check them before calling `adopt_version()`.\n\nImpact:\n- Joining an ungrounded DODAG may result in no actual connectivity to root\n- Joining a storing-mode DODAG when the code expects non-storing mode could cause routing failures\n\nSuggested fix: Add MOP validation (reject if MOP != expected) and optionally warn/log on ungrounded DODAGs.",
   "notes": "Commit: 8b50806",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:54:50.735042Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:17:09.30845778Z",
+  "updated_at": "2026-07-22T23:17:11.429334841Z",
   "started_at": "2026-07-22T23:14:30.633277609Z",
-  "lease_expires_at": "2026-07-22T23:19:30.633277609Z",
-  "heartbeat_at": "2026-07-22T23:14:30.633277609Z"
+  "closed_at": "2026-07-22T23:17:11.429334841Z",
+  "close_reason": "Implemented MOP validation in process_dio; grounded noted in notes. Commit 8b50806 pushed."
 }
