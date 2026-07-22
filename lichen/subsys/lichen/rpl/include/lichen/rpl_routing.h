@@ -58,6 +58,8 @@ struct lichen_rpl_srh {
  * @brief Encode SRH to RFC 6554 wire format starting at routing-type byte
  * (matches parse; for use as ExtensionHeader data after NextHdr/HdrLen).
  *
+ * Caller must set Hdr Ext Len = lichen_rpl_srh_hdr_ext_len(srh->num_addresses).
+ *
  * @param srh SRH to encode
  * @param buf Output buffer
  * @param len Buffer size
