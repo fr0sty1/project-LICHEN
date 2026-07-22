@@ -2,6 +2,7 @@
   "id": "project-LICHEN-pis9",
   "title": "Unbounded growth of packet_hashes_sent set",
   "description": "## Location\npython/src/lichen/sim/metrics.py:37\n\n## Description\nThe packet_hashes_sent set grows without bound as record_tx() is called. Each unique packet hash is stored forever. In long-running simulations with many unique packets, this accumulates memory indefinitely with no upper limit or eviction mechanism.\n\n## Failure Scenario\nA 24-hour stress test simulation generates 10 million unique packets. Each 16-char hash string consumes ~80 bytes in Python. The set accumulates ~800MB+ for hashes alone, eventually causing MemoryError or severe slowdown.\n\n## Category\nsafety",
+  "notes": "Commit: 052841719",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-13T04:16:39.920883Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T22:55:38.951605941Z",
+  "updated_at": "2026-07-22T22:56:29.858593209Z",
   "started_at": "2026-07-22T22:55:38.951605941Z",
   "lease_expires_at": "2026-07-22T23:00:38.951605941Z",
   "heartbeat_at": "2026-07-22T22:55:38.951605941Z"
