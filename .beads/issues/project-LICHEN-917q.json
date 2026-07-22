@@ -2,11 +2,15 @@
   "id": "project-LICHEN-917q",
   "title": "schnorr.rs: Domain separation vulnerability - build_signable lacks dst_addr length prefix",
   "description": "File: rust/lichen-link/src/schnorr.rs\nLines: 186-194\n\nThe build_signable function constructs the signed message as:\n\n    fn build_signable(epoch: u8, seqnum: LinkSeqNum, dst_addr: \u0026[u8], inner_payload: \u0026[u8]) -\u003e Vec\u003cu8\u003e {\n        let mut buf = Vec::with_capacity(3 + dst_addr.len() + inner_payload.len());\n        buf.push(epoch);\n        buf.extend_from_slice(\u0026seqnum.to_be_bytes());\n        buf.extend_from_slice(dst_addr);\n        buf.extend_from_slice(inner_payload);\n        buf\n    }\n\nWithout a length prefix for dst_addr, the same hash is produced for different (dst_addr, payload) combinations when addr_mode changes:\n\n- Frame A: addr_mode=EUI64, dst_addr=0x0102030405060708, payload=0x0A0B\n- Frame B: addr_mode=BROADCAST, payload=0x01020304050607080A0B\n\nBoth produce identical signed messages: epoch || seqnum || 0x0102030405060708 || 0x0A0B\n\nThis is the same vulnerability as project-LICHEN-j7rk but in the Rust implementation.\n\nFix: Add dst_addr.len() as a prefix byte in build_signable:\n    buf.push(dst_addr.len() as u8);\n    buf.extend_from_slice(dst_addr);",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:11:27.825026Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T17:11:27.825055Z"
+  "updated_at": "2026-07-22T20:09:43.160040811Z",
+  "started_at": "2026-07-22T20:09:43.160040811Z",
+  "lease_expires_at": "2026-07-22T20:14:43.160040811Z",
+  "heartbeat_at": "2026-07-22T20:09:43.160040811Z"
 }
