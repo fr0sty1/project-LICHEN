@@ -221,6 +221,8 @@ def process_announce(announce, from_neighbor):
         broadcast(announce)
 ```
 
+`now()` returns current TDMA slot/ASN per Slot struct (see draft-lichen-tdma for SFN interaction).
+
 ### 9.4. Announce Parameters
 
 | Parameter | Value | Description |
