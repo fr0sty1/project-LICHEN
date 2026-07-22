@@ -2,6 +2,7 @@
   "id": "project-LICHEN-jjyh",
   "title": "Inconsistent case sensitivity in TX/RX detection",
   "description": "## Location\nscripts/analyze-hetero-fleet.py:60\n\n## Description\nThe detection logic uses mixed case handling: '[TX]' is matched case-sensitively while 'TX:' uses line.upper() for case-insensitive matching. This inconsistency means '[tx]' is missed while 'tx:' is caught. Different implementations may use different casing conventions.\n\n## Failure Scenario\nA Python implementation logs '[tx] hash=ABC123' (lowercase brackets). The check for '[TX]' fails (case-sensitive), and '[tx]' doesn't match 'TX:' even with .upper(). The packet is not counted, causing under-reporting of Python TX statistics.\n\n## Category\nparsing",
+  "notes": "Commit: 499368ce3",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-13T04:16:58.759115Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T22:53:53.01086525Z",
+  "updated_at": "2026-07-22T22:56:00.741483071Z",
   "started_at": "2026-07-22T22:53:53.01086525Z",
   "lease_expires_at": "2026-07-22T22:58:53.01086525Z",
   "heartbeat_at": "2026-07-22T22:53:53.01086525Z"
