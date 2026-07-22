@@ -245,3 +245,27 @@ class TestModelDefaults:
         assert model.d0_m == 10.0
         assert model.n == 3.0
         assert model.noise_floor_dbm == -110.0
+
+
+class TestInitialization:
+    """Test __post_init__ validation for PropagationModel."""
+
+    def test_invalid_n_raises(self) -> None:
+        """n <= 0 raises ValueError."""
+        with pytest.raises(ValueError, match="Path loss exponent n must be positive"):
+            PropagationModel(n=0.0)
+        with pytest.raises(ValueError, match="Path loss exponent n must be positive"):
+            PropagationModel(n=-0.5)
+
+    def test_invalid_d0_m_raises(self) -> None:
+        """d0_m <= 0 raises ValueError."""
+        with pytest.raises(ValueError, match="Reference distance d0_m must be positive"):
+            PropagationModel(d0_m=0.0)
+        with pytest.raises(ValueError, match="Reference distance d0_m must be positive"):
+            PropagationModel(d0_m=-1.0)
+
+    def test_valid_parameters_succeed(self) -> None:
+        """Valid positive values for n and d0_m are accepted."""
+        model = PropagationModel(n=2.0, d0_m=5.0)
+        assert model.n == 2.0
+        assert model.d0_m == 5.0
