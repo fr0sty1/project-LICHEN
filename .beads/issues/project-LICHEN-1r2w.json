@@ -10,5 +10,15 @@
   "updated_at": "2026-07-22T16:11:04.488302661Z",
   "labels": [
     "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1r2w",
+      "depends_on_id": "project-LICHEN-2bix",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:11:04.595167821Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
   ]
 }
