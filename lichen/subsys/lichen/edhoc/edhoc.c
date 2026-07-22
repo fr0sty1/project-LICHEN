@@ -905,6 +905,7 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 		return -EINVAL;
 	}
 	if (ctx->state != EDHOC_STATE_COMPLETED) {
+		crypto_wipe(oscore, sizeof(*oscore));
 		return -EBUSY;
 	}
 
@@ -912,6 +913,7 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_4, "OSCORE_Master_Secret",
 			NULL, 0, oscore->master_secret, 16);
 	if (ret != 0) {
+		crypto_wipe(oscore, sizeof(*oscore));
 		return ret;
 	}
 
@@ -919,6 +921,7 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_4, "OSCORE_Master_Salt",
 			NULL, 0, oscore->master_salt, 8);
 	if (ret != 0) {
+		crypto_wipe(oscore, sizeof(*oscore));
 		return ret;
 	}
 
@@ -1395,18 +1398,21 @@ int edhoc_responder_export_oscore(struct edhoc_responder *ctx,
 		return -EINVAL;
 	}
 	if (ctx->state != EDHOC_STATE_COMPLETED) {
+		crypto_wipe(oscore, sizeof(*oscore));
 		return -EBUSY;
 	}
 
 	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_4, "OSCORE_Master_Secret",
 			NULL, 0, oscore->master_secret, 16);
 	if (ret != 0) {
+		crypto_wipe(oscore, sizeof(*oscore));
 		return ret;
 	}
 
 	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_4, "OSCORE_Master_Salt",
 			NULL, 0, oscore->master_salt, 8);
 	if (ret != 0) {
+		crypto_wipe(oscore, sizeof(*oscore));
 		return ret;
 	}
 

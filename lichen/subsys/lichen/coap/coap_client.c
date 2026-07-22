@@ -458,7 +458,12 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 		 */
 		struct oscore_option opt;
 		ret = oscore_option_parse(oscore_opt_buf, oscore_opt_len, &opt);
-		if (ret == OSCORE_OK && opt.has_piv && opt.piv_len > 0) {
+		if (ret != OSCORE_OK) {
+			LOG_ERR("OSCORE option parse failed: %d", ret);
+			k_free(ctx);
+			return LICHEN_COAP_ERR_OSCORE_PROTECT;
+		}
+		if (opt.has_piv && opt.piv_len > 0) {
 			memcpy(ctx->request_piv, opt.piv, opt.piv_len);
 			ctx->request_piv_len = opt.piv_len;
 		}
