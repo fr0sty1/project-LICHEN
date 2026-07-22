@@ -38,6 +38,14 @@ extern "C" {
 #define CONFIG_LICHEN_COAP_STATUS_MAX_ROUTES 8
 #endif
 
+#ifndef CONFIG_LICHEN_COAP_STATUS_MAX_TXQ
+#define CONFIG_LICHEN_COAP_STATUS_MAX_TXQ 4
+#endif
+
+#ifndef CONFIG_LICHEN_COAP_STATUS_MAX_FWD
+#define CONFIG_LICHEN_COAP_STATUS_MAX_FWD 8
+#endif
+
 /**
  * @brief Radio statistics for /status endpoint
  */
@@ -84,6 +92,10 @@ struct lichen_coap_node_status {
 	struct lichen_coap_time_state time;
 	struct lichen_coap_dodag_state dodag;
 	struct lichen_coap_radio_stats radio;
+	uint8_t txq_used;
+	uint8_t txq_cap;
+	uint8_t fwd_used;
+	uint8_t fwd_cap;
 };
 
 /**
@@ -149,12 +161,14 @@ typedef int (*lichen_coap_neighbors_get_cb)(struct lichen_coap_neighbor *neighbo
  *
  * @param[out] routes Array to fill with route entries
  * @param[in]  max_routes Maximum number of entries to return
- * @param[out] default_route Default route next-hop (16-byte IPv6 addr, or NULL if none)
+ * @param[out] default_route Default route next-hop IPv6 (filled only if has_default_route)
+ * @param[out] has_default_route Set to true if default_route was populated
  * @return Number of routes written, or negative errno on error
  */
 typedef int (*lichen_coap_routes_get_cb)(struct lichen_coap_route *routes,
 					 size_t max_routes,
-					 uint8_t default_route[16]);
+					 uint8_t default_route[16],
+					 bool *has_default_route);
 
 /**
  * @brief Status resource configuration
