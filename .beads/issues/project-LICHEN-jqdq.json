@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-jqdq",
   "title": "[codereview-pass1] coap_server.h: lichen_coap_respond declaration missing #include \u003clichen/oscore.h\u003e for struct oscore_ctx; forward declare or include",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T15:51:12.69603171Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:51:12.69603171Z",
+  "updated_at": "2026-07-22T15:53:50.667954529Z",
+  "started_at": "2026-07-22T15:53:50.667954529Z",
+  "lease_expires_at": "2026-07-22T15:58:50.667954529Z",
+  "heartbeat_at": "2026-07-22T15:53:50.667954529Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-jqdq",
