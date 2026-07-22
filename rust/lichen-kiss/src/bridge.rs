@@ -3,9 +3,12 @@
 //! Connects KISS framing to the LICHEN link layer, enabling TNC app
 //! compatibility (APRSDroid, aprs.fi).
 //!
-//! Port routing (matching Python reference):
-//! - Port 0: AX.25/APRS wrapped frames (for legacy TNC apps)
-//! - Port 1: Raw LICHEN payload (for native apps)
+//! Port routing:
+//! - Port 0 (AX25): AX.25/APRS wrapped frames (rejected here)
+//! - Port 1 (RAW): Raw LICHEN link frames (supported by handle_kiss_frame)
+//! - Port 2 (LCI_IPV6): IPv6 for Local Client Interface
+//! - Port 3 (LCI_CTRL): Control for Local Client Interface
+//! - Ports 4-15: unsupported (rejected with UnsupportedPort)
 //!
 //! Available with feature `bridge`.
 
