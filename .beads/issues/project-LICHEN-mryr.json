@@ -2,12 +2,16 @@
   "id": "project-LICHEN-mryr",
   "title": "[codereview-2] cbor_put_tstr header_len+overrun fix: security, bounds, memcpy",
   "description": "Pass 2 review: security audit of fix in lichen/subsys/lichen/coap/coap_status.c:88. Overflow guard prevents huge len memcpy overrun. check_space now accurate with correct header_len. All paths set overflow on fail. No P0-P1 findings. Matches cbor_put_uint style. codereview",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "chore",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:18:26.056928154Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:18:26.056928154Z",
+  "updated_at": "2026-07-22T22:55:47.583542564Z",
+  "started_at": "2026-07-22T22:55:47.583542564Z",
+  "lease_expires_at": "2026-07-22T23:00:47.583542564Z",
+  "heartbeat_at": "2026-07-22T22:55:47.583542564Z",
   "labels": [
     "codereview"
   ]
