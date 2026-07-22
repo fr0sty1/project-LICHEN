@@ -277,6 +277,40 @@ static const char *info_short_name(const struct lichen_meshtastic_local_info *in
 		info->short_name[0] != '\0') ? info->short_name : "LICH";
 }
 
+bool lichen_meshtastic_has_compatible_firmware_brand(const char *value)
+{
+	size_t meshtastic_pos = 0U;
+	size_t brand_len = strlen(LICHEN_BRAND);
+	char next;
+
+	if (value == NULL || strncmp(value, LICHEN_BRAND, brand_len) != 0) {
+		return false;
+	}
+
+	next = value[brand_len];
+	if (next != '\0' && next != ' ' && next != '-' && next != '+') {
+		return false;
+	}
+
+	for (const char *p = value; *p != '\0'; p++) {
+		char c = *p;
+
+		if (c >= 'A' && c <= 'Z') {
+			c = (char)(c - 'A' + 'a');
+		}
+		if (c == MESHTASTIC_BRAND[meshtastic_pos]) {
+			meshtastic_pos++;
+			if (MESHTASTIC_BRAND[meshtastic_pos] == '\0') {
+				return false;
+			}
+		} else {
+			meshtastic_pos = (c == MESHTASTIC_BRAND[0]) ? 1U : 0U;
+		}
+	}
+
+	return true;
+}
+
 /*
  * SECURITY: The returned pointer is only valid while the info struct and its
  * firmware_version string remain allocated and unmodified. Callers must encode
@@ -286,36 +320,12 @@ static const char *info_firmware_version(
 	const struct lichen_meshtastic_local_info *info)
 {
 	const char *version = (info != NULL) ? info->firmware_version : NULL;
-	size_t meshtastic_pos = 0U;
-	size_t brand_len = strlen(LICHEN_BRAND);
-	char next;
 
-	if (version == NULL || strncmp(version, LICHEN_BRAND, brand_len) != 0) {
+	if (!lichen_meshtastic_has_compatible_firmware_brand(version)) {
 		return "LICHEN Zephyr compat 0.0.0+unknown";
 	}
 
-	next = version[brand_len];
-	if (next != '\0' && next != ' ' && next != '-' && next != '+') {
-		return "LICHEN Zephyr compat 0.0.0+unknown";
-	}
-
-	for (const char *p = version; *p != '\0'; p++) {
-		char c = *p;
-
-		if (c >= 'A' && c <= 'Z') {
-			c = (char)(c - 'A' + 'a');
-		}
-		if (c == MESHTASTIC_BRAND[meshtastic_pos]) {
-			meshtastic_pos++;
-			if (MESHTASTIC_BRAND[meshtastic_pos] == '\0') {
-				return "LICHEN Zephyr compat 0.0.0+unknown";
-			}
-		} else {
-			meshtastic_pos = (c == MESHTASTIC_BRAND[0]) ? 1U : 0U;
-		}
-	}
-
-	return info->firmware_version;
+	return version;
 }
 
 static const char *info_pio_env(const struct lichen_meshtastic_local_info *info)
