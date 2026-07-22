@@ -2,12 +2,16 @@
   "id": "project-LICHEN-2h1i.2.4.3",
   "title": "Add test vectors and Python/Rust tests for /deaddrop and /confessions payloads, OSCORE E2E, SenML encoding",
   "description": "Extend test/vectors/ with new JSON for these resources. Update Python test_node_coap_integration.py and Rust tests. Must pass dual-impl cross validation. Fix all failures.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T14:58:10.759215173Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:58:10.759215173Z",
+  "updated_at": "2026-07-22T15:01:25.431607091Z",
+  "started_at": "2026-07-22T15:01:25.431607091Z",
+  "lease_expires_at": "2026-07-22T15:06:25.431607091Z",
+  "heartbeat_at": "2026-07-22T15:01:25.431607091Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2h1i.2.4.3",
