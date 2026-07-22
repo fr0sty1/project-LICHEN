@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-s2yi",
+  "title": "[codereview-pass2] Appendix A added with parameter justifications; RFC2119 reduced to normative only in 02a-coordinated-capacity.md:10-250",
+  "description": "P3 opinion: Consider moving full test vector descriptions to separate I-D appendix. No P0-P2 findings in this pass. Discovered-from:project-LICHEN-ofrf.1.2",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:28:37.234228787Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:28:37.234228787Z",
+  "labels": [
+    "codereview"
+  ]
+}
