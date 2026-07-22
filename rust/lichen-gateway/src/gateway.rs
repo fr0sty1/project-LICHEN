@@ -1,4 +1,4 @@
-//! Gateway state and packet forwarding.
+//! Gateway state and packet forwarding. Supports RAK2287 concentrator for multi-channel RX/TX.
 
 use lichen_core::addr::NodeId;
 use lichen_core::constants::L2_DISPATCH_SCHC;
