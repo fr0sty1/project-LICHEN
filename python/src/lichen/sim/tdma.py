@@ -1,8 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum, auto
+
+
 @dataclass
 class SuperframeClock:
     sfn: int = 0
@@ -35,7 +38,7 @@ class TDMAScheduler:
     def is_tx_allowed(self, current_time_us: int) -> bool:
         if self.state != TDMAState.SYNCED:
             return True
-        slot_start_us = (self.clock.sfn * self.num_slots * self.slot_duration_ms * 1000) + (self.assigned_slot * self.slot_duration_ms * 1000)
+        slot_start_us = (self.clock.sfn * self.num_slots * self.slot_duration_ms * 1000 + self.assigned_slot * self.slot_duration_ms * 1000)
         slot_end_us = slot_start_us + (self.slot_duration_ms * 1000)
         guard_us = self.guard_ms * 1000
         return (slot_start_us - guard_us) <= current_time_us <= (slot_end_us + guard_us)

@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 
 from lichen.sim.metrics import NodeMetrics
-from lichen.sim.tdma import TDMAScheduler, TDMAState
+from lichen.sim.tdma import TDMAScheduler
 from lichen.state_machine import StateMachine
 
 # Type alias for RX callbacks: (on_packet, on_timeout)

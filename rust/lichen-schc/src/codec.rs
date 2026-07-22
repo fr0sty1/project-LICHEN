@@ -199,7 +199,8 @@ fn finalize(sum: u32) -> u16 {
     while s >> 16 != 0 {
         s = (s & 0xFFFF) + (s >> 16);
     }
-    !(s as u16)
+    let c = !(s as u16);
+    if c == 0 { 0xFFFF } else { c }
 }
 
 fn udp_checksum(src: &[u8], dst: &[u8], src_port: u16, dst_port: u16, payload: &[u8]) -> Result<u16, SchcError> {
