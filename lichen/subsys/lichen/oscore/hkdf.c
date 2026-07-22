@@ -73,7 +73,7 @@ int lichen_hkdf_expand(const uint8_t prk[32],
 	uint8_t buf[SHA256_HASH_LEN + 256 + 1];
 	size_t t_len = 0;
 	size_t offset = 0;
-	uint8_t counter = 1U;
+	uint16_t counter = 1U;
 
 	if (prk == NULL || okm == NULL) {
 		return -EINVAL;

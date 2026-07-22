@@ -195,7 +195,7 @@ static int hkdf_expand(const uint8_t prk[32],
 
 	uint8_t t[32] = {0};
 	uint8_t t_len = 0;
-	uint8_t counter = 1;
+	uint16_t counter = 1;
 	size_t offset = 0;
 
 	while (offset < okm_len) {
@@ -278,7 +278,8 @@ static int edhoc_kdf(const uint8_t prk[32],
 	if (!zcbor_bstr_encode_ptr(zse, th, 32)) {
 		return -EINVAL;
 	}
-	if (!zcbor_tstr_put_term(zse, label, 32)) {
+	size_t label_len = strlen(label);
+	if (!zcbor_tstr_put_term(zse, label, label_len + 1)) {
 		return -EINVAL;
 	}
 	if (!zcbor_bstr_encode_ptr(zse, context, context_len)) {
