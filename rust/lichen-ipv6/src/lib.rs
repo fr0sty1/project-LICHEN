@@ -369,15 +369,16 @@ impl Ipv6Header {
         })
     }
 
-    /// Decrement hop limit per RFC 8200 §3 for forwarding. Returns None if it
-    /// would reach zero (caller must generate ICMPv6 Time Exceeded msg type 3).
-    /// Uses independent test vectors from RFC 8200 examples.
+    /// Decrement hop limit per RFC 8200 §3 for forwarding. Returns `None`
+    /// if decrement would reach zero (caller must generate ICMPv6 Time
+    /// Exceeded type 3/code 0). Test uses independent values per spec.
     pub fn with_decremented_hop_limit(&self) -> Option<Self> {
-        if self.hop_limit == 0 {
+        let new_hop_limit = self.hop_limit.saturating_sub(1);
+        if new_hop_limit == 0 {
             None
         } else {
             let mut hdr = *self;
-            hdr.hop_limit = hdr.hop_limit.saturating_sub(1);
+            hdr.hop_limit = new_hop_limit;
             Some(hdr)
         }
     }
