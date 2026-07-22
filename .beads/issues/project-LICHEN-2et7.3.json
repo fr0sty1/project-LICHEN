@@ -2,12 +2,16 @@
   "id": "project-LICHEN-2et7.3",
   "title": "Expand simulation test coverage and validation suite",
   "description": "Complete test_simulation_validation.py, add integration tests for hetero fleet scenarios, fidelity benchmarks comparing sim to hardware. Update tools/sim_validation.py. Add tests for chaos engine, metrics, all edge cases in events, node states. Ensure 95%+ coverage and interop with Rust/Zephyr sim clients.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T14:30:43.255905154Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:30:43.255905154Z",
+  "updated_at": "2026-07-22T14:30:54.621154443Z",
+  "started_at": "2026-07-22T14:30:54.621154443Z",
+  "lease_expires_at": "2026-07-22T14:35:54.621154443Z",
+  "heartbeat_at": "2026-07-22T14:30:54.621154443Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2et7.3",
