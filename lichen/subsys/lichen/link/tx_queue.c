@@ -26,9 +26,9 @@ static uint32_t tx_queue_posix_now_ms(void)
 {
 	struct timespec ts;
 	/* SECURITY: On failure, return 0 to avoid using uninitialized data.
-	 * This is safe: deadlines will appear not-yet-expired, preventing
-	 * premature packet drops. clock_gettime(CLOCK_MONOTONIC) should
-	 * essentially never fail with a valid pointer on any POSIX system. */
+	 * This is safe: deadlines will appear not-yet-expired (signed wrap
+	 * math in deadline_expired()), preventing premature packet drops.
+	 * clock_gettime(CLOCK_MONOTONIC) should essentially never fail. */
 	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
 		return 0;
 	}
