@@ -5,11 +5,11 @@
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "Mark Atwood",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:26:33.081498Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-13T04:56:24.2443Z",
-  "closed_at": "2026-07-13T04:56:24.2443Z",
-  "close_reason": "Closed"
+  "updated_at": "2026-07-22T20:19:00.000000000Z",
+  "closed_at": "2026-07-22T20:19:00.000000000Z",
+  "close_reason": "from_cbor_map calls _validate_field_type(name, val) for every SenML field (codec.py:164). Full RFC 8428 type checks (string/number/bool/bytes/int). Raises ValueError on mismatch. Matches suggested validation. Commit recorded."
 }
