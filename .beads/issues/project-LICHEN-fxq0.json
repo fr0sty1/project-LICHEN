@@ -2,6 +2,7 @@
   "id": "project-LICHEN-fxq0",
   "title": "UDP write_to computes checksum before payload is placed in output buffer",
   "description": "File: rust/lichen-ipv6/src/lib.rs:372-398\n\nUdpHeader::write_to() has a potentially confusing API:\n```rust\npub fn write_to(\n    \u0026self,\n    src: \u0026Addr,\n    dst: \u0026Addr,\n    payload: \u0026[u8],  // Used for checksum only\n    out: \u0026mut [u8],  // Only UDP header written here\n) -\u003e Result\u003cusize, Ipv6Error\u003e\n```\n\nThe function:\n1. Takes payload as input (for checksum computation)\n2. Only writes 8 bytes (UDP header) to out\n3. Returns 8 (UDP_HEADER_LEN)\n4. Caller must manually copy payload after the header\n\nThis is a valid design, but potentially error-prone:\n- Easy to forget to copy payload after calling write_to()\n- Resulting packet would have valid header but missing/wrong payload\n- Checksum would be invalid because it was computed over different data\n\nSuggestions:\n1. Rename to write_header_to() to clarify it only writes the header\n2. Add doc comment explicitly stating caller must copy payload\n3. Consider adding write_packet_to() that writes header+payload",
+  "notes": "Claimed; analyzing UdpHeader::write_to API footgun in lichen-ipv6 and usage in lichen-node/stack.rs",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:34:59.94309Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:27:35.957566254Z",
+  "updated_at": "2026-07-22T23:28:34.229689475Z",
   "started_at": "2026-07-22T23:27:35.957566254Z",
   "lease_expires_at": "2026-07-22T23:32:35.957566254Z",
   "heartbeat_at": "2026-07-22T23:27:35.957566254Z"
