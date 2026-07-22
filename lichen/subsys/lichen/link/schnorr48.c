@@ -207,6 +207,9 @@ bool schnorr48_verify(const uint8_t *pubkey,
 
 #include <stdlib.h>
 
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((noreturn))
+#endif
 static void schnorr48_stub_abort(const char *func)
 {
 	LOG_WRN("FATAL: %s called without Monocypher - aborting\n", func);
