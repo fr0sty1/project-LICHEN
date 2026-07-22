@@ -990,7 +990,7 @@ int lichen_router_fwd_dequeue(struct lichen_router *router,
 	/* Remove from buffer */
 	oldest_pkt->valid = false;
 	oldest_src->packet_count--;
-	router->fwd_stats.packets_forwarded++;
+	atomic_inc((atomic_t *)&router->fwd_stats.packets_forwarded);
 
 	/* Update activity timestamp */
 	oldest_src->last_activity_ms = oldest_pkt->enqueued_at_ms;
