@@ -2307,7 +2307,9 @@ class NativeClientApp(App[None]):
                 ),
                 recover_error=True,
             )
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_rf_health_error(str(exc))
 
     def enable_raw_diagnostics_admin(self, *, enabled: bool = True) -> None:
@@ -2340,7 +2342,9 @@ class NativeClientApp(App[None]):
         try:
             result = await self.client.arm_raw_rx(ttl_s=ttl_s, include_payload=include_payload)
             status = await self.client.get_raw_rx_status()
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_diagnostics_error(str(exc))
             return
         self._set_diagnostics_state(

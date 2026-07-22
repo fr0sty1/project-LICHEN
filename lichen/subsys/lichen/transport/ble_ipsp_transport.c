@@ -572,12 +572,25 @@ int lichen_ble_slip_send(const uint8_t *data, size_t len)
 
 		err = bt_gatt_notify_cb(transport_state.conn, &params);
 		if (err) {
-			LOG_WRN("Notify failed (err %d), sent %zu/%zu",
+			LOG_WRN("Notify failed (err %d), sent %zu/%zu bytes of SLIP frame",
 				err, offset, slip_len);
 			transport_state.stats.tx_errors++;
 			break;
 		}
 		offset += send_len;
+	}
+
+	if (err && offset < slip_len) {
+		/* Partial SLIP frame was sent (protocol corruption risk).
+		 * Send a terminating END byte to allow client SLIP decoder
+		 * to resync and discard the incomplete frame. Best effort. */
+		uint8_t end_byte = SLIP_END;
+		struct bt_gatt_notify_params end_params = {
+			.attr = tx_attr,
+			.data = &end_byte,
+			.len = 1,
+		};
+		(void)bt_gatt_notify_cb(transport_state.conn, &end_params);
 	}
 
 	if (err == 0) {
