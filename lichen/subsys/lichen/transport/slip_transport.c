@@ -270,7 +270,7 @@ static int slip_decode_byte(struct slip_transport_ctx *ctx, uint8_t b)
 			ctx->rx_state = SLIP_STATE_IDLE;
 			ctx->rx_len = 0;
 			ctx->rx_overflow = false;
-			break;
+			return 0;
 		}
 		ctx->rx_state = SLIP_STATE_DATA;
 		if (ctx->rx_len < sizeof(ctx->rx_pkt)) {
