@@ -379,6 +379,54 @@ The PHY parameters are incompatible--LICHEN and Meshtastic devices cannot hear
 each other even on the same frequency. This is intentional; mixing protocols
 on shared PHY would create interference without interoperability.
 
+### 7.6. CCP-16: Load Balancing (TDMA + Adaptive SF + Multi-Channel + Density-Aware)
+
+Single channel creates contention hotspot. CCP-16 coordinates capacity. All impls (Python sim/schc, Rust rpl/gateway, Zephyr lichen/subsys/lichen) MUST match test/vectors/ccp16.json exactly.
+
+**TDMA Slots (Zephyr scheduler, Rust sim)**
+- Root includes epoch and `num_slots` (default 8) in extended RPL config option (see draft-lichen-rpl-lora).
+- Slot ID = fnv1a32(EUI64 XOR epoch) % num_slots. Pseudocode:
+  ```
+  uint32_t fnv1a32(const uint8_t* data, size_t len) {
+    uint32_t h = 0x811c9dc5;
+    for (size_t i = 0; i < len; i++) h = (h ^ data[i]) * 0x01000193;
+    return h;
+  }
+  ```
+- Slot duration = max_airtime(current_SF) + 100ms guard. Node uses lichen_link_set_slot() in subsys.
+- TX suppressed outside slot (tdma_tx_allowed()).
+
+**Adaptive SF (ADR v2, density aware)**
+- Base SF10 (Kconfig CONFIG_LICHEN_DEFAULT_SF=10).
+- Inputs: SNR from lora_rx stats, density = |unique neighbors from RPL DODAG| over 300s.
+- Adaptation table (per vector):
+  - density < 5 && snr_db > 8.0 -> SF9
+  - density > 8 || snr_db < 0 -> SF11
+  - else SF10.
+- Zephyr: lichen_rpl_update_sf(density, snr); updates radio cfg. Reported in DIO metric container.
+
+**Multi-Channel + Density Balancing**
+- CH0 always for control (DIOs, all listen). Data channels via hash or root-assigned (RPL DAO-ACK carries channel_map).
+- Nodes report neighbor_count (u8), channel_util (percent*2.55) in DIO option.
+- Root (Rust gateway/rpl) runs central optimizer: minimize collisions using density map.
+- Python sim/schc: models multi-channel propagation, TDMA collisions, validates <5% loss at 50 nodes/km2.
+- Renode/west tests for Zephyr node behavior. Cargo tests for Rust rpl logic. Pytest for sim interop.
+
+**Kconfig**
+- CONFIG_LICHEN_CCP16=y
+- CONFIG_LICHEN_TDMA_SLOTS=8
+- CONFIG_LICHEN_ADAPTIVE_SF=y
+
+**Interop & Tests**
+- All platforms load test/vectors/ccp16.json.
+- pytest in python/tests/sim/test_ccp16.py
+- cargo test in rust/rpl, rust/gateway
+- west build -b native_sim && west build -t run for Zephyr
+- Renode scenarios for multi-node density test.
+- No dead code; all paths exercised by vectors.
+
+Integrates with existing SCHC (add channel to rule ID), RPL (new option type), link layer (new ctx fields). Auth via existing Schnorr/Ed25519. PHY spec now complete.
+
 ## 8. Summary
 
 LICHEN applies concepts proven in tactical MANETs to the constrained world of

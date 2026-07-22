@@ -1,0 +1,76 @@
+{
+  "description": "CCP-16 Load Balancing test vectors for TDMA slot calculation, adaptive SF selection, density-aware channel assignment. Used by Python sim, Rust rpl/gateway, Zephyr lichen/subsys for interop validation.",
+  "reference": "spec/appendix-design-rationale.md#7.6",
+  "format": {
+    "input": {
+      "eui64": "8-byte hex",
+      "epoch": "u32",
+      "density": "u8 (neighbor count)",
+      "snr_db": "float",
+      "utilization": "u8 (0-255)",
+      "neighbors": "array of EUI64"
+    },
+    "output": {
+      "slot_id": "u16",
+      "sf": "u8",
+      "channel": "u8 (0=control)",
+      "tx_allowed": "bool"
+    }
+  },
+  "vectors": [
+    {
+      "description": "Low density, good SNR -> lower SF, data channel",
+      "input": {
+        "eui64": "0000000000000001",
+        "epoch": 12345,
+        "density": 3,
+        "snr_db": 12.5,
+        "utilization": 20,
+        "neighbors": ["0000000000000002", "0000000000000003"]
+      },
+      "output": {
+        "slot_id": 7,
+        "sf": 9,
+        "channel": 2,
+        "tx_allowed": true
+      },
+      "notes": "FNV1a hash yields slot 7; SNR>8 and density<5 -> SF9"
+    },
+    {
+      "description": "High density -> control channel, higher SF",
+      "input": {
+        "eui64": "0000000000000001",
+        "epoch": 12345,
+        "density": 12,
+        "snr_db": -2.0,
+        "utilization": 180,
+        "neighbors": ["0000000000000002","0000000000000003","0000000000000004","0000000000000005"]
+      },
+      "output": {
+        "slot_id": 7,
+        "sf": 11,
+        "channel": 0,
+        "tx_allowed": true
+      },
+      "notes": "High density triggers SF11 on control channel to reduce collisions"
+    },
+    {
+      "description": "Invalid/edge: zero epoch, max density",
+      "input": {
+        "eui64": "ffffffffffffffff",
+        "epoch": 0,
+        "density": 255,
+        "snr_db": 0.0,
+        "utilization": 255,
+        "neighbors": []
+      },
+      "output": {
+        "slot_id": 0,
+        "sf": 12,
+        "channel": 0,
+        "tx_allowed": false
+      },
+      "notes": "High load may suppress TX"
+    }
+  ]
+}
