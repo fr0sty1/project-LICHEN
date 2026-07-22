@@ -2,11 +2,15 @@
   "id": "project-LICHEN-z3cf",
   "title": "senml: CBOR tags (major type 6) cause InvalidInput rejection",
   "description": "File: rust/lichen-senml/src/cbor.rs\nLines: 379-426 (skip_one_depth function)\n\nThe skip_one_depth function handles major types 0-5 and 7, but returns InvalidInput for major type 6 (CBOR tags). RFC 8949 defines tags as a valid CBOR construct, and some SenML encoders may wrap values in tags (e.g., for epoch-based time per RFC 8943, or for typed arrays).\n\nWhen an unknown map key has a tagged value, skip_one fails with InvalidInput instead of skipping the tagged item correctly.\n\nImpact: Decoder rejects valid CBOR containing tags, causing interop failures with encoders that use CBOR tags.\n\nFix: Add case for major type 6 in skip_one_depth:\n```rust\n6 =\u003e {\n    // Tag: consume the tag number, then skip the tagged content\n    let mut cur = pos + adv;\n    cur += skip_one_depth(data, cur, depth + 1)?;\n    Ok(cur - pos)\n}\n```",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:39:06.471497Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:39:06.471531Z"
+  "updated_at": "2026-07-22T23:24:55.324877008Z",
+  "started_at": "2026-07-22T23:24:55.324877008Z",
+  "lease_expires_at": "2026-07-22T23:29:55.324877008Z",
+  "heartbeat_at": "2026-07-22T23:24:55.324877008Z"
 }
