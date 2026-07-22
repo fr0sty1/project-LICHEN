@@ -132,10 +132,15 @@ class TxQueue:
         """Initialize TX queue.
 
         Args:
-            capacity: Maximum packets to buffer.
+            capacity: Maximum packets to buffer. Must be > 0.
             clock: Optional clock function for testing. Returns ms since
                    some epoch. Defaults to time.monotonic() * 1000.
+
+        Raises:
+            ValueError: If capacity <= 0.
         """
+        if capacity <= 0:
+            raise ValueError(f"capacity must be > 0, got {capacity}")
         self._capacity = capacity
         self._clock = clock or (lambda: int(time.monotonic() * 1000))
         self._entries: list[TxQueueEntry] = []

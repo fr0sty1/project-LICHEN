@@ -232,8 +232,8 @@ class TestDeadlineExpiry:
         assert len(q) == 1
         assert q.pop() == b"long"
 
-    def test_packet_at_deadline_not_expired(self):
-        """Packet exactly at deadline is NOT expired (deadline > now)."""
+    def test_packet_at_deadline_is_expired(self):
+        """Packets expire when deadline_ms <= now (deadline_ms > now check)."""
         clock = FakeClock(0)
         q = TxQueue(clock=clock)
 
@@ -242,8 +242,7 @@ class TestDeadlineExpiry:
         # Exactly at deadline
         clock.advance(100)
 
-        # Deadline is when packet expires, so at exactly deadline it's still expired
-        # (deadline_ms > now check means deadline=100 with now=100 is expired)
+        # deadline_ms > now means equal time expires the packet
         assert q.pop() is None
 
 
@@ -464,3 +463,10 @@ class TestEdgeCases:
         assert q.pop() == b"ack"
         assert q.pop() == b"urgent"
         assert q.pop() == b"bulk"
+
+    def test_invalid_capacity_raises(self):
+        """Validates capacity > 0; no behavior change for valid inputs."""
+        with pytest.raises(ValueError, match="capacity must be > 0"):
+            TxQueue(capacity=0)
+        with pytest.raises(ValueError, match="capacity must be > 0"):
+            TxQueue(capacity=-1)
