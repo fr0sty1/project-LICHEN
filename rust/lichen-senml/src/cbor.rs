@@ -165,8 +165,6 @@ fn value_field_count(r: &Record<'_>) -> usize {
 /// Returns `CborError::MultipleValues` if any record has more than one value
 /// field set (RFC 8428 Section 4.2 requires at most one of value/string_value/bool_value).
 pub fn encode<'a>(records: &[Record<'a>], out: &mut [u8]) -> Result<usize, CborError> {
-    // SECURITY: Validate RFC 8428 Section 4.2 constraint before encoding.
-    // At most one of value/string_value/bool_value may be present per record.
     for r in records {
         if value_field_count(r) > 1 {
             return Err(CborError::MultipleValues);
@@ -498,7 +496,7 @@ pub fn decode<'a>(data: &'a [u8], buf: &mut [Record<'a>]) -> Result<usize, CborE
         for _ in 0..n_kv {
             let (key, adv) = dec_int(data, pos)?;
             pos += adv;
-            if key >= -3 && key <= 12 {
+            if (-3..=12).contains(&key) {
                 let k = (key + 3) as u16;
                 if (seen_keys & (1u16 << k)) != 0 {
                     return Err(CborError::InvalidInput);
