@@ -65,14 +65,21 @@ def _decode_varint(data: bytes, offset: int = 0) -> tuple[int, int]:
 
 
 def _varint_to_int32(value: int) -> int:
-    """Convert protobuf varint to signed int32 using two's complement.
+    """Convert protobuf varint-decoded value to signed int32.
 
-    Handles sign-extended 10-byte encodings for negative values (e.g.
-    rx_rssi=-120, QueueStatus.res errors). Uses struct for clarity;
-    previous bit-test vs > comparison after mask was behaviorally a no-op.
+    Protobuf encodes int32 negative values as sign-extended varints
+    (often 10 bytes). _decode_varint yields a large positive int; we
+    reinterpret the low 32 bits as two's complement signed.
+
+    The cf7526a change (`value & 0x80000000` vs `value > 0x7FFFFFFF`
+    after the mask) was a no-op as noted in kimi-review; both are
+    equivalent for values in [0, 2**32). This implementation is correct
+    for rx_rssi and QueueStatus.res as verified by tests.
     """
-    u32 = value & 0xFFFFFFFF
-    return struct.unpack("<i", struct.pack("<I", u32))[0]
+    value = value & 0xFFFFFFFF
+    if value > 0x7FFFFFFF:
+        value -= 0x100000000
+    return value
 
 
 def _encode_tag(field_num: int, wire_type: int) -> bytes:

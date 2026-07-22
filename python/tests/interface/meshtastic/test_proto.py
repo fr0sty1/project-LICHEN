@@ -258,12 +258,22 @@ class TestDeviceMetadata:
 
 
 class TestQueueStatus:
-    """Test QueueStatus encoding."""
+    """Test QueueStatus encoding/decoding with signed int32 res."""
 
     def test_basic(self):
         qs = QueueStatus(res=0, free=8, maxlen=8, mesh_packet_id=0x42)
         encoded = qs.to_bytes()
         assert len(encoded) > 0
+
+    def test_negative_res(self):
+        """Test signed int32 handling for res (e.g. error codes)."""
+        qs = QueueStatus(res=-5, free=5, maxlen=10, mesh_packet_id=0x1234)
+        encoded = qs.to_bytes()
+        decoded = QueueStatus.from_bytes(encoded)
+        assert decoded.res == -5
+        assert decoded.free == 5
+        assert decoded.maxlen == 10
+        assert decoded.mesh_packet_id == 0x1234
 
 
 class TestNodeInfo:
