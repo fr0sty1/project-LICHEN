@@ -2,12 +2,16 @@
   "id": "project-LICHEN-2h1i.1.2.1.1",
   "title": "Add e-ink display node to T-Echo DTS/overlay and enable SPI2",
   "description": "Add child node under \u0026spi2 for GDEW0154M10 using appropriate compatible (uc81xx or gooddisplay), set gpios for DC/RESET/BUSY/EN, update chosen zephyr,display. Enable in puck overlay and conf with CONFIG_LICHEN_HAS_DISPLAY=y. Follow board conventions from t_deck.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T14:41:22.834173867Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:41:22.834173867Z",
+  "updated_at": "2026-07-22T14:42:19.442657881Z",
+  "started_at": "2026-07-22T14:42:19.442657881Z",
+  "lease_expires_at": "2026-07-22T14:47:19.442657881Z",
+  "heartbeat_at": "2026-07-22T14:42:19.442657881Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2h1i.1.2.1.1",
