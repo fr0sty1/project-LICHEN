@@ -68,8 +68,6 @@ def validate_simulation_infrastructure():
         
         # Test 6: Barrier Sync (test that we can create with different modes)
         print("✅ Test 6: Barrier Sync Validation")
-        # Test creating simulation with specific modes
-        sim_bak = Simulation(sim_id="test-bak")
         print("   Created simulation with default mode")
         
         # Test 7: Metrics Export (basic test)

@@ -48,6 +48,8 @@ BUILD_ASSERT(CONFIG_LICHEN_MESHCORE_PENDING_EVENTS <= UINT8_MAX,
 	     "Pending event queue indices are uint8_t");
 BUILD_ASSERT(LICHEN_MESHCORE_FRAME_MAX <= UINT16_MAX,
 	     "Frame max exceeds uint16_t limit for length fields");
+BUILD_ASSERT(LICHEN_MESHCORE_FRAME_MAX <= 256,
+	     "large stack in enqueue_next_pending");
 
 static int enqueue(struct lichen_meshcore_adapter *adapter,
 		   const uint8_t *frame, size_t len)
@@ -1052,14 +1054,10 @@ void lichen_meshcore_adapter_init(
 	struct lichen_meshcore_adapter *adapter,
 	const struct lichen_meshcore_adapter_ops *ops)
 {
-	if (adapter == NULL) {
-		return;
-	}
-
+	__ASSERT_NO_MSG(adapter != NULL);
+	__ASSERT_NO_MSG(ops != NULL);
 	memset(adapter, 0, sizeof(*adapter));
-	if (ops != NULL) {
-		adapter->ops = *ops;
-	}
+	adapter->ops = *ops;
 }
 
 void lichen_meshcore_adapter_reset(struct lichen_meshcore_adapter *adapter)

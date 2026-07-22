@@ -22,8 +22,8 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root / "python" / "src"))
 
-from lichen.sim.renode_server import start_renode_server
-from lichen.sim.simulation import Simulation
+from lichen.sim.renode_server import start_renode_server  # noqa: E402
+from lichen.sim.simulation import Simulation  # noqa: E402
 
 # Grid topology: 3x3 at 2km spacing with -5dBm TX power (~3.5km range)
 # This means:

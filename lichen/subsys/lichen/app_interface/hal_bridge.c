@@ -285,20 +285,6 @@ int lichen_app_time_from_hal(struct lichen_app_time_snapshot *app,
 	return 0;
 }
 
-static enum lichen_app_location_source_class app_source_class_from_hal(
-	enum lichen_hal_location_source_class source_class)
-{
-	switch (source_class) {
-	case LICHEN_HAL_LOCATION_SOURCE_NETWORK:
-		return LICHEN_APP_LOCATION_SOURCE_NETWORK;
-	case LICHEN_HAL_LOCATION_SOURCE_MANUAL_STATIC:
-		return LICHEN_APP_LOCATION_SOURCE_MANUAL_STATIC;
-	case LICHEN_HAL_LOCATION_SOURCE_LOCAL_CLIENT:
-	default:
-		return LICHEN_APP_LOCATION_SOURCE_LOCAL_CLIENT;
-	}
-}
-
 static int submit_to_hal_as(
 	const struct lichen_app_location_time_snapshot *app,
 	enum lichen_hal_location_source_class source_class)
@@ -310,7 +296,7 @@ static int submit_to_hal_as(
 	if (app == NULL) {
 		return -EINVAL;
 	}
-	expected_source_class = app_source_class_from_hal(source_class);
+	expected_source_class = app_location_source_class_from_hal(source_class);
 	if (app->fix_state_valid &&
 	    !valid_app_location_fix_state(app->fix_state)) {
 		return -EINVAL;
@@ -399,20 +385,6 @@ int lichen_app_manual_location_submit_to_hal(
 	return submit_to_hal_as(app, LICHEN_HAL_LOCATION_SOURCE_MANUAL_STATIC);
 }
 
-static enum lichen_app_time_source_class app_time_source_class_from_hal_source(
-	enum lichen_hal_time_source_class source_class)
-{
-	switch (source_class) {
-	case LICHEN_HAL_TIME_SOURCE_NETWORK:
-		return LICHEN_APP_TIME_SOURCE_NETWORK;
-	case LICHEN_HAL_TIME_SOURCE_MANUAL_STATIC:
-		return LICHEN_APP_TIME_SOURCE_MANUAL_STATIC;
-	case LICHEN_HAL_TIME_SOURCE_LOCAL_CLIENT:
-	default:
-		return LICHEN_APP_TIME_SOURCE_LOCAL_CLIENT;
-	}
-}
-
 static const char *default_time_source_name(
 	enum lichen_hal_time_source_class source_class)
 {
@@ -438,7 +410,7 @@ static int submit_time_to_hal_as(
 	if (app == NULL) {
 		return -EINVAL;
 	}
-	expected_source_class = app_time_source_class_from_hal_source(source_class);
+	expected_source_class = app_time_source_class_from_hal(source_class);
 	if (app->source_class_valid &&
 	    (!valid_app_time_source_class(app->source_class) ||
 	     app->source_class != expected_source_class)) {

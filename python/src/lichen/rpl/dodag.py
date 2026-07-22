@@ -81,6 +81,10 @@ class ParentCandidate:
     rank: int
     link_etx: float
 
+    def __post_init__(self) -> None:
+        if self.link_etx < 0:
+            raise ValueError("link_etx must be non-negative")
+
     def path_cost(self, min_hop_rank_increase: int) -> int:
         """Rank this node would have via this neighbour (MRHOF, spec B.1)."""
         return self.rank + round(self.link_etx * min_hop_rank_increase)

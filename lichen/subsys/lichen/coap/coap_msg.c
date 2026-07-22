@@ -52,9 +52,6 @@ static void cbor_put_array_header(uint8_t *buf, size_t *off, uint8_t count)
 
 static void cbor_put_tstr(uint8_t *buf, size_t *off, const char *value, size_t len)
 {
-	if (len > UINT16_MAX) {
-		return;
-	}
 	if (len < 24U) {
 		buf[(*off)++] = 0x60U | (uint8_t)len;
 	} else if (len <= UINT8_MAX) {
@@ -575,10 +572,9 @@ int lichen_msg_sent_id_get(struct coap_resource *resource,
 		id_buf[id_len] = '\0';
 
 		char *endptr;
-		errno = 0;
 		unsigned long val = strtoul(id_buf, &endptr, 10);
 
-		if (errno == ERANGE || endptr == id_buf || *endptr != '\0' || val > UINT32_MAX) {
+		if (*endptr != '\0' || val > UINT32_MAX) {
 			return coap_respond(resource, request, addr, addr_len,
 					    COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
 		}
@@ -637,10 +633,6 @@ int lichen_msg_sent_id_get(struct coap_resource *resource,
 
 static size_t encode_inbox_cbor(uint8_t *buf, size_t buf_size)
 {
-	if (buf == NULL || buf_size < 100) {
-		return 0;
-	}
-
 	size_t off = 0;
 	size_t count;
 	char addr_str[LICHEN_MSG_ADDR_LEN];
@@ -815,9 +807,8 @@ bad_request:
 /* --------------------------------------------------------------------------
  * CoAP resource definitions
  *
- * Register to lichen_coap_server service (standalone node) or application-provided
- * lichen_coap service (e.g. gateway). Updated per codereview to use lichen_coap_server
- * for node consistency with COAP_SERVICE_DEFINE and linker section.
+ * These are conditionally compiled and reference the lichen_coap_server
+ * service defined in coap_server.c (via COAP_SERVICE_DEFINE).
  * -------------------------------------------------------------------------- */
 
 #if IS_ENABLED(CONFIG_LICHEN_COAP_MSG)

@@ -133,7 +133,8 @@ class FragmentReceiver:
         # Reject fragments with FCN >= window_size (except ALL_1 which has special FCN)
         if not frag.is_all_1 and frag.fcn >= self.window_size:
             return ReceiverResult()
-        self._rule_id = frag.rule_id
+        if self._rule_id == 0:
+            self._rule_id = frag.rule_id
         abs_window = self._abs_window(frag)
 
         # SECURITY: Reject stale retransmissions from completed windows to

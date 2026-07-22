@@ -63,8 +63,12 @@ config LICHEN_HAS_PMIC
 	  charger, PMIC, or board-specific power telemetry/control device.
 
 config LICHEN_POE
-	bool
-	select LICHEN_HAS_PMIC
+	bool "Board has PoE"
+	depends on GPIO || POWER_SUPPLY
+	help
+	  Enable when devicetree provides an okay poe0 alias or PoE detection
+	  via GPIO/ADC for power source selection. DT binding in
+	  dts/bindings/power/lichen,poe.yaml.
 
 config LICHEN_HAS_BUTTONS
 	bool "Board has user buttons"

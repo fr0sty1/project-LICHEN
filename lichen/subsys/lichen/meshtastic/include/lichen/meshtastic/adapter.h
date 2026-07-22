@@ -89,8 +89,14 @@ struct lichen_meshtastic_adapter_packet_info {
 	uint32_t portnum;
 	uint8_t to_eui64[8];
 	uint8_t to_iid[8];
+	/*
+	 * WARNING: payload points directly into internal stream_buf/ToRadio buffer.
+	 * Valid ONLY during the callback that receives this packet_info (e.g.
+	 * handle_text()). DO NOT store the pointer - buffer is immediately
+	 * reused on next frame, leading to use-after-free or corruption.
+	 * Copy payload if retention is needed. Strict lifetime discipline required.
+	 */
 	const uint8_t *payload;
-	uint8_t payload_buf[LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX];
 	size_t payload_len;
 	bool has_from;
 	bool has_to;
@@ -262,7 +268,6 @@ struct lichen_meshtastic_adapter {
 	uint32_t from_radio_id;
 	bool stream_in_frame;
 	bool disconnected;
-	struct k_mutex lock;
 };
 
 void lichen_meshtastic_adapter_init(
@@ -287,9 +292,9 @@ int lichen_meshtastic_adapter_emit_status(
 	struct lichen_meshtastic_adapter *_Nonnull adapter,
 	const struct lichen_meshtastic_incoming_status *_Nonnull event);
 
-const struct lichen_meshtastic_adapter_stats *
+const struct lichen_meshtastic_adapter_stats *_Nonnull
 lichen_meshtastic_adapter_get_stats(
-	const struct lichen_meshtastic_adapter *adapter);
+	const struct lichen_meshtastic_adapter *_Nonnull adapter);
 
 bool lichen_meshtastic_adapter_disconnected(
 	const struct lichen_meshtastic_adapter *_Nonnull adapter);

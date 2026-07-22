@@ -143,7 +143,10 @@ def decode_register(data: bytes) -> tuple[str, str, float, float, float]:
     offset += 1
     if offset + sim_id_len > len(data):
         raise ProtocolError("REGISTER message truncated at sim_id")
-    sim_id = data[offset : offset + sim_id_len].decode("utf-8")
+    try:
+        sim_id = data[offset : offset + sim_id_len].decode("utf-8")
+    except UnicodeDecodeError:
+        raise ProtocolError("Invalid UTF-8 in sim_id") from None
     offset += sim_id_len
 
     # Read node_id
@@ -153,7 +156,10 @@ def decode_register(data: bytes) -> tuple[str, str, float, float, float]:
     offset += 1
     if offset + node_id_len > len(data):
         raise ProtocolError("REGISTER message truncated at node_id")
-    node_id = data[offset : offset + node_id_len].decode("utf-8")
+    try:
+        node_id = data[offset : offset + node_id_len].decode("utf-8")
+    except UnicodeDecodeError:
+        raise ProtocolError("Invalid UTF-8 in node_id") from None
     offset += node_id_len
 
     # Read coordinates
@@ -685,7 +691,10 @@ def decode_err(data: bytes) -> tuple[int, str]:
     if len(data) < 2 + msg_len:
         raise ProtocolError("ERR message truncated at message")
 
-    msg = data[2 : 2 + msg_len].decode("utf-8")
+    try:
+        msg = data[2 : 2 + msg_len].decode("utf-8")
+    except UnicodeDecodeError:
+        raise ProtocolError("Invalid UTF-8 in error message") from None
 
     return (code, msg)
 

@@ -46,14 +46,16 @@ static int copy_string(char *dst, size_t dst_len, const char *src)
 		return -EINVAL;
 	}
 
-	memset(dst, 0, dst_len);
 	if (src == NULL) {
+		memset(dst, 0, dst_len);
 		return 0;
 	}
-	if (strlen(src) >= dst_len) {
+	const size_t len = strlen(src); /* dedup: compute once (P3 codereview) */
+	if (len >= dst_len) {
 		return -ENAMETOOLONG;
 	}
-	memcpy(dst, src, strlen(src));
+	memset(dst, 0, dst_len);
+	memcpy(dst, src, len);
 	return 0;
 }
 
@@ -88,7 +90,7 @@ static int find_free_peer_locked(void)
 			return i;
 		}
 	}
-	return -ENOSPC;
+	return -ENOSPC; /* full table per CONFIG_LICHEN_APP_IDENTITY_MAX_PEERS */
 }
 
 int lichen_app_identity_set_self(

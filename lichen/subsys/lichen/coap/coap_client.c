@@ -52,6 +52,21 @@ LOG_MODULE_REGISTER(lichen_coap_client, LOG_LEVEL_INF);
 /* Fallback timeout is scheduled at 2x the request timeout. */
 #define COAP_MAX_REQUEST_TIMEOUT_MS (UINT32_MAX / 2U)
 
+static inline k_timeout_t safe_fallback_timeout(uint32_t ms)
+{
+	/* Use k_timeout_t with safe 64-bit conversion to avoid tick
+	 * overflow on systems with high CONFIG_SYS_CLOCK_TICKS_PER_SEC.
+	 * Race (h115): atomic completed flag + timeout_ref_held ensures
+	 * exactly one owner for ctx cleanup; loser bails early. The
+	 * double-timeout allows Zephyr coap_client internal timeout to fire
+	 * first.
+	 */
+	if (ms == 0 || ms > (UINT32_MAX / 2)) {
+		return K_FOREVER;
+	}
+	return K_MSEC(ms * 2U);
+}
+
 /* CoAP client socket - protected by s_mutex for thread safety */
 static int s_sock = -1;
 static struct coap_client s_client;
@@ -279,7 +294,7 @@ static void coap_response_handler(int16_t code, size_t offset, const uint8_t *pa
 		if (atomic_get(&ctx->completed) == 0 &&
 		    atomic_get(&ctx->timeout_ref_held) == 1) {
 			k_work_reschedule(&ctx->timeout_work,
-					  K_MSEC(ctx->timeout_ms * 2));
+					  safe_fallback_timeout(ctx->timeout_ms));
 		}
 		return;
 	}
@@ -541,7 +556,7 @@ int lichen_coap_request(const struct lichen_coap_request *req)
 	if (atomic_get(&ctx->completed) == 0) {
 		request_ctx_get(ctx);
 		atomic_set(&ctx->timeout_ref_held, 1);
-		k_work_schedule(&ctx->timeout_work, K_MSEC(timeout_ms * 2));
+		k_work_schedule(&ctx->timeout_work, safe_fallback_timeout(timeout_ms));
 		if (atomic_get(&ctx->completed) != 0) {
 			request_ctx_cancel_timeout_sync(ctx);
 		}

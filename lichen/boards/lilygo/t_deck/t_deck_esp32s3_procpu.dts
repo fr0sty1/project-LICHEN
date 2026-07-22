@@ -1,9 +1,18 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-FileCopyrightText: The contributors to the LICHEN project
+ *
+ * Lilygo T-Deck — ESP32-S3-WROOM-N16R8 (16 MB flash, 8 MB PSRAM) + SX1262 LoRa
+ *
+ * Pin assignments sourced from Lilygo T-Deck schematics and cross-checked
+ * against the Meshtastic firmware (variants/esp32s3/t-deck/variant.h).
+ */
+
 /dts-v1/;
 
 #include <espressif/esp32s3/esp32s3_wroom_n16r8.dtsi>
 #include "t_deck-pinctrl.dtsi"
 #include <zephyr/dt-bindings/input/input-event-codes.h>
-#include <zephyr/dt-bindings/lvgl/lvgl.h>
 #include <zephyr/dt-bindings/lora/sx126x.h>
 #include <zephyr/dt-bindings/mipi_dbi/mipi_dbi.h>
 
@@ -12,28 +21,26 @@
 	compatible = "lilygo,t-deck";
 
 	aliases {
-		led0 = &led0;
-		sw0 = &button0;
-		lora0 = &lora0;
+		led0      = &led0;
+		sw0       = &button0;
+		lora0     = &lora0;
 		watchdog0 = &wdt0;
-		keyboard0 = &keyboard0;
-		trackball0 = &trackball0;
-		display0 = &tdeck_display;
 	};
 
 	chosen {
-		zephyr,sram = &sram0;
-		zephyr,console = &uart0;
-		zephyr,shell-uart = &uart0;
-		zephyr,flash = &flash0;
+		zephyr,sram           = &sram0;
+		zephyr,console        = &uart0;
+		zephyr,shell-uart     = &uart0;
+		zephyr,flash          = &flash0;
 		zephyr,code-partition = &slot0_partition;
-		zephyr,bt-hci = &esp32_bt_hci;
+		zephyr,bt-hci         = &esp32_bt_hci;
 	};
 
 	leds {
 		compatible = "gpio-leds";
 		led0: led_0 {
-			gpios = <&gpio1 10 GPIO_ACTIVE_HIGH>;
+			/* T-Deck has no user LED; reuse display backlight GPIO */
+			gpios = <&gpio1 10 GPIO_ACTIVE_HIGH>; /* GPIO42 */
 			label = "LCD_BL";
 		};
 	};
@@ -41,47 +48,18 @@
 	buttons {
 		compatible = "gpio-keys";
 		button0: button_0 {
-			/* Boot/PRG button (GPIO0) */
 			gpios = <&gpio0 0 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 			label = "PRG";
 			zephyr,code = <INPUT_KEY_0>;
 		};
 	};
 
-	lvgl_keypad {
-		compatible = "zephyr,lvgl-keypad-input";
-		input = <&keyboard0>;
-		input-codes = <INPUT_KEY_UP INPUT_KEY_DOWN INPUT_KEY_LEFT INPUT_KEY_RIGHT INPUT_KEY_ENTER INPUT_KEY_BACKSPACE>;
-		lvgl-codes = <LV_KEY_UP LV_KEY_DOWN LV_KEY_LEFT LV_KEY_RIGHT LV_KEY_ENTER LV_KEY_ESC>;
+	power_monitor {
+		compatible = "lichen,poe-pg";
+		pg-gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>;
+		status = "okay";
 	};
 
-	lvgl_pointer {
-		compatible = "zephyr,lvgl-pointer-input";
-		input = <&keyboard0>;
-	};
-
-	/*
-	 * T-Deck input clarification (project-LICHEN-hzvh, fixed via
-	 * codereview beads project-LICHEN-53zg/6d6s/wou1):
-	 * - Keyboard: I2C slave (ESP32-C3) @0x55, SDA=GPIO18/SCL=GPIO8 (I2C0),
-	 *   INT=GPIO46 (BOARD_KEYBOARD_INT). Uses dedicated driver, NOT gpio-keys
-	 *   (see LilyGO Keyboard_ESP32C3 example; no standard Zephyr compatible
-	 *   yet -- human review needed for custom driver).
-	 * - Trackball: GPIO directions per LilyGO utilities.h BOARD_TBOX_*:
-	 *   BOARD_TBOX_G02=GPIO2, BOARD_TBOX_G01=GPIO3,
-	 *   BOARD_TBOX_G04=GPIO1, BOARD_TBOX_G03=GPIO15;
-	 *   press=BOARD_BOOT_PIN=GPIO0 (also used for PRG button).
-	 *   Pure GPIO, no I2C. Exact source: 
-	 *   https://raw.githubusercontent.com/Xinyuan-LilyGO/T-Deck/master/examples/UnitTest/utilities.h
-	 * Sources: LilyGO utilities.h, Meshtastic variant.h, Renode t_deck.repl.
-	 * I2C pinctrl added.
-	 * Blocking full LVGL/input until 3 clean codereview passes on hzvh.
-	 */
-
-	/*
-	 * ST7789 display on SPI3 CS1, disabled until display/input bring-up
-	 * validates panel init, orientation, and bus coexistence with LoRa.
-	 */
 	tdeck_mipi_dbi: mipi-dbi {
 		compatible = "zephyr,mipi-dbi-spi";
 		spi-dev = <&spi3>;
@@ -129,33 +107,25 @@
 	pinctrl-names = "default";
 };
 
-&i2c0 {
-	status = "okay";
-	clock-frequency = <I2C_BITRATE_STANDARD>;
-	pinctrl-0 = <&i2c0_default>;
-	pinctrl-names = "default";
-
-	keyboard0: keyboard@55 {
-		compatible = "lilygo,tdeck-keyboard";
-		reg = <0x55>;
-		status = "disabled";
-	};
-
-	trackball0: trackball {
-		compatible = "gpio-keys";
-		status = "disabled";
-	};
-};
-
 &gpio0 {
 	status = "okay";
 
+	/*
+	 * GPIO10 enables the T-Deck peripheral rail.  LilyGO and Meshtastic
+	 * sources both assert it before using the keyboard controller, display,
+	 * SD card, trackball, audio devices, or radio-adjacent peripherals.
+	 */
 	periph-pwr-hog {
 		gpio-hog;
 		gpios = <10 GPIO_ACTIVE_HIGH>;
 		output-high;
 	};
 
+	/*
+	 * The ST7789 display shares SPI3 with LoRa and SD.  Keep its CS
+	 * deselected until an overlay enables the display node and removes
+	 * this hog so SPI can own CS1.
+	 */
 	t_deck_tft_cs_hog: tft-cs-hog {
 		gpio-hog;
 		gpios = <12 GPIO_ACTIVE_LOW>;
@@ -166,13 +136,23 @@
 &gpio1 {
 	status = "okay";
 
+	/*
+	 * The SD card also shares SPI3.  Keep CS inactive until an overlay
+	 * enables storage and removes this hog so SPI can own CS2.
+	 */
 	t_deck_sd_cs_hog: sd-cs-hog {
 		gpio-hog;
-		gpios = <7 GPIO_ACTIVE_LOW>;
+		gpios = <7 GPIO_ACTIVE_LOW>; /* GPIO39 = gpio1[7] */
 		output-low;
 	};
 };
 
+/*
+ * SX1262 LoRa radio on SPI3.
+ *   CS=GPIO9  RESET=GPIO17  BUSY=GPIO13  DIO1=GPIO45
+ *   DIO2 drives the internal RF TX/RX switch (dio2-tx-enable).
+ *   DIO3 supplies the module TCXO at 1.8 V.
+ */
 &spi3 {
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -181,14 +161,14 @@
 	pinctrl-names = "default";
 	cs-gpios = <&gpio0 9 GPIO_ACTIVE_LOW>,
 		   <&gpio0 12 GPIO_ACTIVE_LOW>,
-		   <&gpio1 7 GPIO_ACTIVE_LOW>;
+		   <&gpio1 7 GPIO_ACTIVE_LOW>; /* GPIO39 = gpio1[7] */
 
 	lora0: lora@0 {
 		compatible = "semtech,sx1262";
 		reg = <0>;
 		reset-gpios = <&gpio0 17 (GPIO_OPEN_DRAIN | GPIO_ACTIVE_LOW)>;
-		busy-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
-		dio1-gpios = <&gpio1 13 GPIO_ACTIVE_HIGH>;
+		busy-gpios  = <&gpio0 13 GPIO_ACTIVE_HIGH>;
+		dio1-gpios  = <&gpio1 13 GPIO_ACTIVE_HIGH>; /* GPIO45 = gpio1[13] */
 		dio2-tx-enable;
 		dio3-tcxo-voltage = <SX126X_DIO3_TCXO_1V8>;
 		tcxo-power-startup-delay-ms = <5>;
@@ -231,42 +211,41 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
+		/* Reserve 64 kB for the bootloader */
 		boot_partition: partition@0 {
 			label = "mcuboot";
 			reg = <0x00000000 0x00010000>;
 			read-only;
 		};
+		/* Application slot 0 (4 MiB): sized for BLE/LVGL/UI growth. */
 		slot0_partition: partition@10000 {
 			label = "image-0";
 			reg = <0x00010000 0x00400000>;
 		};
+		/* Application slot 1 (4 MiB): same size for swap/OTA images. */
 		slot1_partition: partition@410000 {
 			label = "image-1";
 			reg = <0x00410000 0x00400000>;
 		};
+		/* MCUboot scratch (512 KiB). */
 		scratch_partition: partition@810000 {
 			label = "image-scratch";
 			reg = <0x00810000 0x00080000>;
 		};
+		/* NVS / LittleFS storage for config, keys, queues, and state. */
 		storage_partition: partition@890000 {
 			label = "storage";
 			reg = <0x00890000 0x00400000>;
 		};
+		/* UI assets and optional offline resources. */
 		assets_partition: partition@c90000 {
 			label = "assets";
 			reg = <0x00c90000 0x00300000>;
 		};
+		/* Field logs, crash exports, and bring-up captures. */
 		logs_partition: partition@f90000 {
 			label = "logs";
 			reg = <0x00f90000 0x00070000>;
 		};
-	};
-};
-
-&i2c0 {
-	status = "okay";
-	keyboard0: keyboard@55 {
-		compatible = "lilygo,tdeck-keyboard";
-		reg = <0x55>;
 	};
 };

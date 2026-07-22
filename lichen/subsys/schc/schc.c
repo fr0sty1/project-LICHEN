@@ -633,7 +633,8 @@ int schc_reassembler_input(struct schc_reassembler *reassembler,
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 
-	if (offset + tile_len > reassembler->packet_max_len) {
+	if (offset >= reassembler->packet_max_len ||
+	    tile_len > reassembler->packet_max_len - offset) {
 		return SCHC_ERR_BUFFER_TOO_SMALL;
 	}
 

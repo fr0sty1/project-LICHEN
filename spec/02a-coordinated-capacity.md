@@ -47,7 +47,7 @@ slot_id = (crc32_ieee(eui64, 8) ^ epoch) % num_slots
 
 using `crc32_ieee` (see appendix-design-rationale.md:388, lichen/subsys/schc/schc.c:90). This fixes prior inconsistency between crc16 (SMP/Meshtastic legacy) and hash_32 in CCP-15.8.3 pseudocode (`spec/02a-coordinated-capacity.md:41`). The XOR with epoch ensures time-varying slots to prevent persistent collisions. All impls MUST match ccp16.json vectors exactly.
 
-For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation, set `wall_clock_valid`, and respect stratum before adoption. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.5. This integrates with `lichen_rpl_dodag_init()` ordering.
+For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation (effective_epoch_floor = max(firmware_build_epoch, board_provision_epoch)), set `wall_clock_valid`, and respect stratum before adoption. This prevents replay attacks and ensures robustness on reboots. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.5. This integrates with `lichen_rpl_dodag_init()` ordering per AGENTS.md init graph.
 
 Delta = (current_sfn - last_sfn) using uint32_t subtraction ensures correct wrap behavior. 
 
@@ -775,3 +775,4 @@ The following require separate specifications and evidence:
 
 [← Physical and Link Layers](02-physical-link.md) | [Index](README.md) |
 [Next: Adaptation Layer →](03-adaptation.md)
+>>>>>>> 47566351a (spec(ccp): add desync recovery state machine (CCP-13a))

@@ -11,13 +11,15 @@ Usage::
     from lichen.senml.profiles import location, battery, temperature
     from lichen.senml.codec import pack
 
-    records = [*location(48.2, 16.4), *battery(percent=72.0), temperature(23.4)]
+    records = [
+        *location(lat=48.2049, lon=16.3710, alt=158.0),
+        *battery(voltage_v=3.85, percent=72.0),
+        temperature(23.4),
+    ]
     payload = pack(records)
 """
 
 from __future__ import annotations
-
-import math
 
 from lichen.senml.codec import SenmlRecord
 
@@ -26,44 +28,26 @@ from lichen.senml.codec import SenmlRecord
 # ---------------------------------------------------------------------------
 
 
-def location(
-    lat: float,
-    lon: float,
-    alt: float | None = None,
-    speed: float | None = None,
-) -> list[SenmlRecord]:
-    """Geographic position SenML per RFC 8428 for /position crowd map.
+def location(lat: float, lon: float, alt: float | None = None) -> list[SenmlRecord]:
+    """Geographic position as SenML records.
 
-    Validates WGS-84 lat/lon. Units: lat/lon=deg, alt=m, speed=m/s.
+    Uses IANA-registered SenML names "lat", "lon", "alt" with unit "deg" or
+    "m" (RFC 8428, IANA SenML Units).
 
     Args:
-        lat: Latitude [-90, 90].
-        lon: Longitude [-180, 180].
-        alt: Optional altitude in meters.
-        speed: Optional speed in m/s.
+        lat: Latitude in decimal degrees (WGS-84).
+        lon: Longitude in decimal degrees (WGS-84).
+        alt: Altitude in metres above WGS-84 ellipsoid, or None to omit.
 
     Returns:
-        List of 2-4 SenmlRecord.
-
-    Raises:
-        ValueError: For invalid lat/lon.
+        List of SenML records: lat, lon, and optionally alt.
     """
-    if (math.isnan(lat) or math.isnan(lon) or
-            math.isinf(lat) or math.isinf(lon)):
-        raise ValueError("lat/lon cannot be NaN or Inf")
-    if not (-90.0 <= lat <= 90.0):
-        raise ValueError(f"lat {lat} out of range [-90, 90]")
-    if not (-180.0 <= lon <= 180.0):
-        raise ValueError(f"lon {lon} out of range [-180, 180]")
-
     records = [
-        SenmlRecord(n="lat", u="lat", v=lat),
-        SenmlRecord(n="lon", u="lon", v=lon),
+        SenmlRecord(n="lat", u="deg", v=lat),
+        SenmlRecord(n="lon", u="deg", v=lon),
     ]
     if alt is not None:
         records.append(SenmlRecord(n="alt", u="m", v=alt))
-    if speed is not None:
-        records.append(SenmlRecord(n="speed", u="m/s", v=speed))
     return records
 
 
@@ -72,12 +56,23 @@ def location(
 # ---------------------------------------------------------------------------
 
 
-def battery(percent: float | None = None, mv: float | None = None) -> list[SenmlRecord]:
+def battery(voltage_v: float | None = None, percent: float | None = None) -> list[SenmlRecord]:
+    """Battery state as SenML records.
+
+    Args:
+        voltage_v: Terminal voltage in volts (unit "V"), or None to omit.
+        percent:   State of charge 0-100 % (unit "%EL"), or None to omit.
+
+    Returns:
+        List of 0-2 SenML records.  Pass at least one of the arguments.
+    """
     records = []
+    if voltage_v is not None:
+        records.append(SenmlRecord(n="voltage", u="V", v=voltage_v))
     if percent is not None:
-        records.append(SenmlRecord(n=SENML_BATTERY_PCT, u=SENML_BATTERY_UNIT_PCT, v=percent))
-    if mv is not None:
-        records.append(SenmlRecord(n=SENML_BATTERY_MV, u=SENML_BATTERY_UNIT_MV, v=mv))
+        if not (0.0 <= percent <= 100.0):
+            raise ValueError(f"percent {percent} out of range [0, 100]")
+        records.append(SenmlRecord(n="battery", u="%EL", v=percent))
     return records
 
 
@@ -87,7 +82,15 @@ def battery(percent: float | None = None, mv: float | None = None) -> list[Senml
 
 
 def temperature(celsius: float) -> SenmlRecord:
-    return SenmlRecord(n=SENML_TELEMETRY_TEMP, u=SENML_TELEMETRY_UNIT_CEL, v=celsius)
+    """Ambient temperature (unit "Cel" per RFC 8428 Table 12).
+
+    Args:
+        celsius: Temperature in degrees Celsius.
+
+    Returns:
+        A single SenML record.
+    """
+    return SenmlRecord(n="temperature", u="Cel", v=celsius)
 
 
 def humidity(percent_rh: float) -> SenmlRecord:
@@ -99,6 +102,8 @@ def humidity(percent_rh: float) -> SenmlRecord:
     Returns:
         A single SenML record.
     """
+    if not (0.0 <= percent_rh <= 100.0):
+        raise ValueError(f"percent_rh {percent_rh} out of range [0, 100]")
     return SenmlRecord(n="rel-humidity", u="%RH", v=percent_rh)
 
 
@@ -177,41 +182,6 @@ def voc_index(index: float) -> SenmlRecord:
     Returns:
         A single SenML record named "voc-index".
     """
+    if not (1.0 <= index <= 500.0):
+        raise ValueError(f"VOC index {index} out of range [1, 500]")
     return SenmlRecord(n="voc-index", v=index)
-
-
-def metrics(
-    rssi: int | None = None,
-    nodecount: int | None = None,
-    packets_per_sec: float | None = None,
-    battery: float | None = None,
-    collision_rate: float | None = None,
-) -> list[SenmlRecord]:
-    """Telemetry + battery profile for /metrics CoAP resource (RSSI, nodecount,
-    packets/sec, battery, collision rate).
-
-    Independent of C implementation; matches RFC 8428. Used with base name
-    from make_base_name(). Test vectors computed independently via cbor2.
-
-    Args:
-        rssi: RSSI in dBm (negative integer).
-        nodecount: Number of known nodes in mesh.
-        packets_per_sec: Average packets per second.
-        battery: Battery level 0-100 (%EL).
-        collision_rate: Collision rate in percent.
-
-    Returns:
-        List of SenmlRecord (0 or more).
-    """
-    records: list[SenmlRecord] = []
-    if rssi is not None:
-        records.append(SenmlRecord(n="rssi", u="dBm", v=float(rssi)))
-    if nodecount is not None:
-        records.append(SenmlRecord(n="nodecount", v=nodecount))
-    if packets_per_sec is not None:
-        records.append(SenmlRecord(n="pps", u="1/s", v=packets_per_sec))
-    if battery is not None:
-        records.append(SenmlRecord(n="battery", u="%EL", v=battery))
-    if collision_rate is not None:
-        records.append(SenmlRecord(n="collision-rate", u="%", v=collision_rate))
-    return records

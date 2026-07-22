@@ -165,6 +165,8 @@ fn value_field_count(r: &Record<'_>) -> usize {
 /// Returns `CborError::MultipleValues` if any record has more than one value
 /// field set (RFC 8428 Section 4.2 requires at most one of value/string_value/bool_value).
 pub fn encode<'a>(records: &[Record<'a>], out: &mut [u8]) -> Result<usize, CborError> {
+    // SECURITY: Validate RFC 8428 Section 4.2 constraint before encoding.
+    // At most one of value/string_value/bool_value may be present per record.
     for r in records {
         if value_field_count(r) > 1 {
             return Err(CborError::MultipleValues);
@@ -281,35 +283,31 @@ fn dec_text(data: &[u8], pos: usize) -> Result<(&str, usize), CborError> {
 ///
 /// Half-precision format: 1 sign bit, 5 exponent bits (bias 15), 10 mantissa bits.
 fn f16_to_f64(bits: u16) -> f64 {
-    let sign = (bits >> 15) & 1;
+    let sign = ((bits >> 15) & 1) as u64;
     let exp = (bits >> 10) & 0x1f;
     let mant = bits & 0x3ff;
 
     match exp {
         0 => {
             if mant == 0 {
-                if sign == 0 {
-                    0.0
-                } else {
-                    -0.0
-                }
+                // Preserve signed zero per IEEE 754 using explicit bit pattern
+                f64::from_bits(sign << 63)
             } else {
-                let v = (mant as f64) / 16777216.0;
-                if sign == 0 { v } else { -v }
+                let val = (mant as f64) / 16777216.0;
+                if sign == 1 { -val } else { val }
             }
         }
         31 => {
-            let v = if mant == 0 {
-                f64::INFINITY
+            if mant == 0 {
+                if sign == 1 { f64::NEG_INFINITY } else { f64::INFINITY }
             } else {
                 f64::NAN
-            };
-            if sign == 0 { v } else { -v }
+            }
         }
         _ => {
             let f64_exp = (exp as u64) - 15 + 1023;
             let f64_mant = (mant as u64) << 42;
-            let f64_bits = ((sign as u64) << 63) | (f64_exp << 52) | f64_mant;
+            let f64_bits = (sign << 63) | (f64_exp << 52) | f64_mant;
             f64::from_bits(f64_bits)
         }
     }
@@ -492,20 +490,19 @@ pub fn decode<'a>(data: &'a [u8], buf: &mut [Record<'a>]) -> Result<usize, CborE
         }
         pos += adv;
         *rec = Record::empty();
-        let mut seen_keys = 0u16;
+        let mut seen_keys = 0u16; // bitmap for keys -3..=6 to dedup per RFC 8949 §5.6
         for _ in 0..n_kv {
             let (key, adv) = dec_int(data, pos)?;
             pos += adv;
-            if (-3..=12).contains(&key) {
-                let k = (key + 3) as u16;
-                if (seen_keys & (1u16 << k)) != 0 {
-                    return Err(CborError::InvalidInput);
-                }
-                seen_keys |= 1u16 << k;
+            let bit = 1u16 << ((key + 3) as u32).clamp(0, 15); // guard for bitmap
+            if seen_keys & bit != 0 {
+                return Err(CborError::InvalidInput); // reject duplicate map keys
             }
+            seen_keys |= bit;
             match key {
                 -2 => {
                     let (s, adv) = dec_text(data, pos)?;
+                    if s.len() > 64 { return Err(CborError::InvalidInput); } // name length validation
                     rec.base_name = Some(s);
                     pos += adv;
                 }
@@ -516,6 +513,7 @@ pub fn decode<'a>(data: &'a [u8], buf: &mut [Record<'a>]) -> Result<usize, CborE
                 }
                 0 => {
                     let (s, adv) = dec_text(data, pos)?;
+                    if s.len() > 32 { return Err(CborError::InvalidInput); } // name length validation
                     rec.name = Some(s);
                     pos += adv;
                 }
@@ -549,9 +547,6 @@ pub fn decode<'a>(data: &'a [u8], buf: &mut [Record<'a>]) -> Result<usize, CborE
                 }
             }
         }
-    }
-    if pos != data.len() {
-        return Err(CborError::InvalidInput);
     }
     Ok(n_recs)
 }

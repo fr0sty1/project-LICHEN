@@ -589,8 +589,15 @@ static bool info_has_position(const struct lichen_meshtastic_local_info *info)
 static int write_user(uint8_t *buf, size_t buflen, size_t *pos,
 		      const struct lichen_meshtastic_local_info *info)
 {
-	char id[10];
+	if (info == NULL) {
+		return -EINVAL;
+	}
 	uint32_t node_num = info_node_num(info);
+	if (node_num == 0U) {
+		return -EINVAL;
+	}
+
+	char id[10];
 
 	id[0] = '!';
 	for (size_t i = 0U; i < 8U; i++) {

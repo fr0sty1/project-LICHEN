@@ -1,7 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
-from __future__ import annotations
-
 """RPL DAO handling for non-storing mode (RFC 6550, spec section 8.5).
 
 In non-storing mode every node sends a DAO directly to the root advertising
@@ -14,6 +12,8 @@ option codecs and a :class:`DaoManager` for both sending (non-root) and
 receiving (root) sides.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from ipaddress import IPv6Address
 
@@ -22,26 +22,6 @@ from lichen.rpl.messages import DAO, DAOAck, RplOption, RplOptionType
 from lichen.rpl.routing import RoutingTable
 
 _MAX_CHAIN = 64  # loop / runaway guard when assembling source routes
-
-# RFC 6550 §9.1: DAOSequence is lollipop counter (linear 0-127, circular 128-255)
-# with 16-value acceptance window in circular region. Matches Rust impl.
-LOLLIPOP_CIRCULAR_BIT = 128
-LOLLIPOP_SEQUENCE_WINDOW = 16
-
-
-def seq_is_newer(new_seq: int, old_seq: int) -> bool:
-    """Return whether new_seq is newer than old_seq per DAO lollipop rules.
-
-    Used for replay protection in DaoManager.process_dao().
-    """
-    new_linear = new_seq < LOLLIPOP_CIRCULAR_BIT
-    old_linear = old_seq < LOLLIPOP_CIRCULAR_BIT
-    if new_linear and old_linear:
-        return new_seq > old_seq
-    if not new_linear and not old_linear:
-        diff = (new_seq - old_seq) & 0x7F
-        return 0 < diff <= LOLLIPOP_SEQUENCE_WINDOW
-    return new_linear  # linear always newer than any circular
 
 
 class DaoError(Exception):
@@ -54,10 +34,6 @@ class RplTarget:
 
     target: IPv6Address
     prefix_length: int = 128
-
-    def __post_init__(self) -> None:
-        if not (0 <= self.prefix_length <= 128):
-            raise DaoError(f"prefix_length must be between 0 and 128, got {self.prefix_length}")
 
     def to_option(self) -> RplOption:
         nbytes = (self.prefix_length + 7) // 8
@@ -135,7 +111,6 @@ class DaoManager:
     routing_table: RoutingTable = field(default_factory=RoutingTable)
     _dao_sequence: int = 0
     _parent_map: dict[IPv6Address, IPv6Address] = field(default_factory=dict)
-    _dao_seq_map: dict[IPv6Address, int] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.node_address = to_ipv6(self.node_address)
@@ -159,29 +134,22 @@ class DaoManager:
         )
 
     def process_dao(self, dao: DAO) -> DAOAck | None:
-        """Root-side: record the target/parent edge (after sequence replay check)
-        and rebuild routes. Uses add_route via rebuild; no direct table mutation.
+        """Root-side: record the target/parent edge and rebuild routes.
 
-        SECURITY: DAO sequence replay protection (RFC 6550 §9.1) prevents stale
-        routes. Only accepted DAOs update parent_map and trigger rebuild.
-        Returns DAO-ACK only for accepted sequences that requested one.
+        Returns a DAO-ACK when the DAO requested one (K flag), else ``None``.
         """
         if not self.is_root:
             raise DaoError("process_dao is only valid on the root")
+        # SECURITY: RFC 6550 Section 9.5 requires filtering DAOs by RPL Instance ID.
+        # Accepting DAOs from a different instance could corrupt the routing table.
         if dao.rpl_instance_id != self.rpl_instance_id:
             raise DaoError(
                 f"DAO instance ID {dao.rpl_instance_id} != {self.rpl_instance_id}"
             )
-        if dao.dodag_id is not None and self.dodag_id is not None and dao.dodag_id != self.dodag_id:
-            raise DaoError(f"DAO DODAG ID {dao.dodag_id} != {self.dodag_id}")
+        if self.dodag_id is not None and dao.dodag_id != self.dodag_id:
+            raise DaoError(f"DAO DODAG ID mismatch: {dao.dodag_id} != {self.dodag_id}")
 
         target, parent = self._extract_edge(dao)
-        seq = dao.dao_sequence
-        if target in self._dao_seq_map:
-            last_seq = self._dao_seq_map[target]
-            if not seq_is_newer(seq, last_seq):
-                return None  # stale replay: ignore, no route update, no ACK
-        self._dao_seq_map[target] = seq
         self._parent_map[target] = parent
         self._rebuild_routes()
 
@@ -192,15 +160,12 @@ class DaoManager:
     def remove_edge(self, target: IPv6Address | str) -> bool:
         """Remove a target's parent edge and its route. Returns True if removed."""
         target = to_ipv6(target)
-        removed = target in self._parent_map or target in self._dao_seq_map
-        if target in self._parent_map:
-            del self._parent_map[target]
-        if target in self._dao_seq_map:
-            del self._dao_seq_map[target]
-        if removed:
-            self.routing_table.remove_route(target)
-            self._rebuild_routes()  # downstream routes may now be incomplete
-        return removed
+        if target not in self._parent_map:
+            return False
+        del self._parent_map[target]
+        self.routing_table.remove_route(target)
+        self._rebuild_routes()  # downstream routes may now be incomplete
+        return True
 
     def build_dao_ack(self, dao: DAO, status: int = 0) -> DAOAck:
         return DAOAck(
@@ -212,6 +177,13 @@ class DaoManager:
 
     @staticmethod
     def _extract_edge(dao: DAO) -> tuple[IPv6Address, IPv6Address]:
+        """Extract the single (target, parent) edge from a DAO.
+
+        RFC 6550 Section 6.7.7 allows multiple RPL Target options to share a
+        single Transit Information option. This implementation supports only
+        single-target DAOs. Multi-target DAOs are rejected with DaoError rather
+        than silently dropping targets.
+        """
         target: IPv6Address | None = None
         parent: IPv6Address | None = None
         for opt in dao.options:
@@ -223,23 +195,19 @@ class DaoManager:
                     )
                 target = RplTarget.from_option(opt).target
             elif opt.type == RplOptionType.TRANSIT_INFORMATION:
-                if parent is not None:
-                    raise DaoError(
-                        "multi-transit DAOs not supported; "
-                        "send one DAO per target"
-                    )
                 parent = TransitInformation.from_option(opt).parent_address
         if target is None or parent is None:
             raise DaoError("DAO missing RPL Target or Transit Information")
         return target, parent
 
     def _rebuild_routes(self) -> None:
-        """Rebuild the routing table from the parent map using add_route.
+        """Rebuild the routing table from the parent map.
 
-        Uses RoutingTable.clear() (no direct _routes mutation). Skips targets
-        that cannot be routed (incomplete chain, loop, or root self-route).
+        Skips targets that cannot be routed:
+        - None: incomplete chain (parent not yet advertised) or loop detected
+        - []: target equals node_address (pathological: root routing to itself)
         """
-        self.routing_table.clear()
+        self.routing_table._routes.clear()
         for target in self._parent_map:
             path = self._assemble_path(target)
             if path:

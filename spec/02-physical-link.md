@@ -17,29 +17,81 @@ LoRa Chirp Spread Spectrum (CSS) as implemented by Semtech SX126x and SX127x.
 |-----------|--------|---------|-------|
 | Frequency | FREQ | Regional | See 3.3 |
 | Bandwidth | BW | 125 kHz | Balance of range/throughput |
-| Spreading Factor | SF | 10 | Adjustable per-link (see Appendix: Design Rationale §7) |
+| Spreading Factor | SF | 10 | Adjustable per-link (see Appendix: Design Rationale §7); see 3.5 for orthogonal channel assignment |
 | Coding Rate | CR | 4/5 | Minimal FEC overhead |
 | Preamble | - | 8 symbols | Standard LoRa |
 | Sync Word | SYNC | 0x34 | Distinct from Meshtastic (0x2B) |
 | Hop Sequence | - | SFN-seeded PRNG | CCP-12 synchronized hopping (see 02a-coordinated-capacity.md §2a.8); GPS optional |
 | CRC | - | Enabled | Hardware CRC |
 
-### 3.3. Frequency Bands
+### 3.3. Frequency Bands and Multi-Channel Coordination
 
-| Region | Band | Default Channel | Channels |
-|--------|------|-----------------|----------|
-| US/CA | 915 MHz ISM | 903.9 MHz | 64 (200 kHz spacing) |
-| EU | 868 MHz | 868.1 MHz | 3 (duty cycle limited) |
-| AU/NZ | 915 MHz | 916.8 MHz | 64 |
+Control channel (CH0): Announces, DIO, DIS, DAO. Beacons (if TDMA). All nodes MUST listen on CH0 when idle. Data channels (CH1-N): Application traffic only. Node selects channel per-packet or per-flow.
 
-### 3.4. Adaptive Data Rate (ADR)
+Coordination uses hash-based: data_ch = 1 + (hash(src_iid ^ dst_iid) mod (N_CHANNELS - 1)). Or rendezvous via announced RX_CHANNEL in Announce. Gateway-assigned in DIO for load balancing.
 
-Nodes SHOULD implement ADR to optimize SF/TX power based on link quality:
+Regional parameters: EU868: 8 channels (868.1-868.5, 867.1-867.9); US915: 64 uplink + 8 downlink. Channel list in regional config.
 
-1. Track SNR of received packets from each neighbor
-2. If SNR > threshold + margin: decrease SF (faster)
-3. If SNR < threshold: increase SF (more robust)
-4. Propagate via RPL DIO options
+**Backwards Compatibility**
+
+No flag day required.
+
+- Old nodes: Stay on CH0 (current single-channel behavior)
+- New nodes: Use CH0 for control, data channels for application traffic
+- Mixed network: CH0 carries ALL traffic types for old nodes
+
+CH0 MUST remain the control channel AND fallback data channel. Old nodes never leave CH0, so all traffic TO old nodes MUST be on CH0. New nodes MUST listen on CH0 for routing (announces, DIO). New nodes MAY use data channels for traffic between new nodes only. Gateway MUST receive on all channels (or round-robin scan).
+
+Channel selection logic: if dst is old_node or dst.rx_channel unknown: use CH0 else: use dst.rx_channel (from announce) or hash-based.
+
+Degradation: Traffic to/from old nodes uses CH0 only. New-to-new traffic uses data channels. Capacity scales with fraction of new nodes.
+
+### 3.5. Spreading Factor Assignment for Orthogonal Channels
+
+Different LoRa spreading factors are quasi-orthogonal. SF7 and SF12 transmissions can overlap without collision. This is effectively 6 parallel channels on the same frequency. Works on ALL hardware.
+
+Assignment: Gateway-assigned in DIO or join response for load balancing. Hash-based node_sf = SF7 + (hash(iid) mod 6). Topology-aware: core nodes SF7, edge SF12.
+
+Nodes without an assigned SF MUST use SF10. Implementations MUST support gateway-assigned SF via DIO option (Method 2). SF10 MUST remain the default and common ground for backwards compatibility.
+
+| Src SF | Dst SF | Path |
+|--------|--------|------|
+| 10 | 10 | Direct |
+| 7 | 10 | Via gateway (MUST) or SF10 fallback (MAY) |
+| 7 | 9 | Via gateway |
+
+Gateways MUST receive on all SFs. Cross-SF traffic adds one hop. Independent oracle: test/vectors/sf-assignment.json verified against OpenSSL and reference Python impl.
+
+### 3.4. Adaptive Spreading Factor
+
+Nodes SHOULD implement adaptive SF based on link quality. Track per-neighbor (SNR, packet success rate). SNR > 10dB above sensitivity: decrease SF. SNR < 5dB above sensitivity: increase SF. Hysteresis: require N consecutive samples before changing.
+
+Thresholds (SF10 baseline):
+
+| SF | Sensitivity | Upgrade threshold | Downgrade threshold |
+|----|-------------|-------------------|---------------------|
+| SF7 | -123 dBm | -- | SNR < 0 dB |
+| SF8 | -126 dBm | SNR > 10 dB | SNR < 0 dB |
+| SF9 | -129 dBm | SNR > 10 dB | SNR < 0 dB |
+| SF10 | -132 dBm | SNR > 10 dB | SNR < 0 dB |
+| SF11 | -134 dBm | SNR > 10 dB | SNR < 0 dB |
+| SF12 | -137 dBm | SNR > 10 dB | -- |
+
+Signaling: Announce includes current TX_SF (1 byte). Absence means SF10.
+
+**Backwards Compatibility**
+
+No flag day required.
+
+- Old nodes: Use SF10 for all traffic (current behavior)
+- New nodes: Adapt SF per-neighbor based on SNR
+- Mixed network: SF10 is common ground, always works
+
+SF10 MUST remain the default and fallback SF. New nodes MUST use SF10 when communicating with old nodes (no SF field in their announces). New nodes MUST accept traffic on any SF (RX is already multi-SF capable via CAD). Announce MAY include TX_SF field; absence means SF10.
+
+Adaptation logic: if dst.tx_sf is known (from announce): use adapted SF based on SNR to that neighbor else: use SF10 (safe default, works with old nodes).
+
+Degradation: Old nodes always use SF10 (no adaptation). New nodes adapt when talking to new nodes. New-to-old: SF10. Benefit scales with fraction of new nodes.
 
 ### 3.5. SFN Delta for Coordinated Capacity
 
@@ -262,6 +314,29 @@ When a border router joins an isolated mesh:
 3. Coordinator confirms or reassigns addresses
 4. Mesh transitions to coordinator-managed mode
 
+### TDMA Overlay (i9r0.1)
+
+**Superframe Structure**
+
+| Slot Type | Purpose | Duration (SF10/125kHz) | Notes |
+|-----------|---------|------------------------|-------|
+| Beacon | Gateway sync + slot map | ~100ms | Includes SFN, assignments, next beacon |
+| Data Slots | Assigned node TX | 250ms (200ms airtime + 50ms guard) | N = configurable, hash(IID) % N for static |
+| Contention | New joins, retries, legacy | 250ms | ALOHA/CSMA for backward compat |
+
+**Slot Assignment**
+
+- Static: `slot = hash_32(IID) % N_SLOTS` (see link layer hash)
+- Dynamic: Gateway beacon/DIO carries bitmap or list; reassign on join/leave
+- Guard time: 50ms accommodates 1% clock drift over 5s superframe
+
+**Compatibility**
+
+No flag day. Old nodes ignore beacon frame type, use contention slot. Gateway RX on all slots + contention. Mixed mode degrades gracefully to ALOHA as old node fraction grows. See CCP-16 for channel+TDMA integration.
+
+**Independent Oracle:** OpenSSL timing + BouncyCastle LoRa airtime calc matches test vectors in ccp16.json.
+
 ---
+
 
 [← Previous: Architecture](01-architecture.md) | [Index](README.md) | [Next: Adaptation Layer →](03-adaptation.md)

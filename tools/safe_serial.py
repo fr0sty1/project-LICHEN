@@ -63,7 +63,7 @@ def main():
             if line:
                 try:
                     print(line.decode('utf-8', errors='replace').rstrip())
-                except:
+                except Exception:
                     print(f"[binary: {line.hex()}]")
                 lines += 1
 

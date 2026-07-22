@@ -226,17 +226,17 @@ def _build_message(
 
 
 def _method_code(method: str) -> aiocoap.Code:
-    match method.upper():
-        case "GET":
-            return aiocoap.GET
-        case "POST":
-            return aiocoap.POST
-        case "PUT":
-            return aiocoap.PUT
-        case "DELETE":
-            return aiocoap.DELETE
-        case _:
-            raise CoapTransportError(f"unsupported CoAP method: {method}")
+    m = method.upper()
+    if m == "GET":
+        return aiocoap.GET
+    elif m == "POST":
+        return aiocoap.POST
+    elif m == "PUT":
+        return aiocoap.PUT
+    elif m == "DELETE":
+        return aiocoap.DELETE
+    else:
+        raise CoapTransportError(f"unsupported CoAP method: {method}")
 
 
 def _coap_result(message: Message) -> CoapResult:

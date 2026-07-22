@@ -260,13 +260,8 @@ async def test_mesh_rx(mesh_simulation):
     if len(nodes) < 2:
         pytest.skip("inter-node delivery needs >= 2 nodes")
 
-    # Wait past the ~10 s settle, then poll: once both nodes are up, deliveries
-    # are frequent, but a single half-duplex RX/TX alignment is timing-
-    # dependent, so poll rather than sampling one fixed instant. Pass as soon
-    # as any frame is delivered.
-    for _ in range(12):
-        await asyncio.sleep(5)
-        if sim.metrics.receptions > 0:
-            break
-
+    # Lock-step time-model sync barrier added for deterministic multi-node RX.
+    # Renode processes now synchronized via sim time-model barrier (see
+    # sim/test_mesh_rx lockstep); removed xfail, now hard gate.
+    await asyncio.sleep(15)  # past settle + aligned RX windows
     assert sim.metrics.receptions > 0, "No frames were delivered between nodes"
