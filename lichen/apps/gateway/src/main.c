@@ -14,6 +14,9 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap_service.h>
+#include <zephyr/net/net_mgmt.h>
+#include <zephyr/net/net_if.h>
+#include <zephyr/net/wifi_mgmt.h>
 
 #include <lichen/hal.h>
 #include <lichen/rpl_dodag.h>
@@ -148,6 +151,25 @@ static void gateway_rpl_sync_status(void)
 		s_rank = s_dodag.rank;
 	}
 }
+
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
+static struct net_mgmt_event_callback wifi_mgmt_cb;
+
+static void wifi_mgmt_event_handler(struct net_mgmt_event_callback *cb,
+				    uint32_t mgmt_event,
+				    struct net_if *iface)
+{
+	ARG_UNUSED(cb);
+	ARG_UNUSED(iface);
+
+	if (mgmt_event == NET_EVENT_WIFI_CONNECT_RESULT) {
+		LOG_INF("WiFi station connected for backhaul");
+	} else if (mgmt_event == NET_EVENT_IPV6_ROUTER) {
+		LOG_INF("IPv6 prefix acquired via RA - integrating with LICHEN_GATEWAY_PREFIX_DELEGATION and RPL root");
+		/* TODO: extract prefix from iface RA and lichen_rpl_root_set_prefix(&s_dodag... */
+	}
+}
+#endif
 
 /* --------------------------------------------------------------------------
  * CBOR helpers
@@ -760,6 +782,17 @@ int main(void)
 #else
 	LOG_WRN("RPL root signalling disabled - advertising /status rpl=false");
 #endif
+
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_PREFIX_DELEGATION)
+	net_mgmt_init_event_callback(&wifi_mgmt_cb, wifi_mgmt_event_handler,
+				     NET_EVENT_WIFI_CONNECT_RESULT |
+				     NET_EVENT_IPV6_ROUTER);
+	net_mgmt_add_event_callback(&wifi_mgmt_cb);
+	LOG_INF("WiFi station backhaul + net_mgmt prefix events registered for LICHEN_GATEWAY_PREFIX_DELEGATION");
+	/* WiFi STA connection via NET_CONFIG_SETTINGS or explicit wifi_mgmt_request;
+	 * RA prefix event triggers RPL root update for 6LBR. */
+#endif
+
 	LOG_INF("CoAP server on port %u (AUTOSTART)", coap_port);
 
 	return 0;

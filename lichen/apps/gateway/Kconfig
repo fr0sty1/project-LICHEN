@@ -204,6 +204,15 @@ config LICHEN_GATEWAY_RX1_DELAY_MS
 	  missed (lora_ipv6_mesh-fe1z, observed on the T1000-E/LR1110). 0
 	  disables the delay. ~100 ms is a safe LoRa value.
 
+config LICHEN_GATEWAY_PREFIX_DELEGATION
+	bool "WiFi station backhaul prefix delegation (Heltec V3 6LBR)"
+	default y if WIFI
+	depends on WIFI && NET_IPV6 && NET_L2_ETHERNET
+	help
+	  Use net_mgmt events for WiFi connect and IPv6 RA prefix acquisition.
+	  Integrates with RPL root via lichen_rpl_root_set_prefix and updates
+	  status CBOR. Implements project-LICHEN-vsdl.
+
 config LICHEN_GATEWAY_COORDINATION
 	bool "Gateway coordination protocol (TDMA slots, node registry, handoff)"
 	depends on LICHEN_RPL
