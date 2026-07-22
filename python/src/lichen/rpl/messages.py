@@ -287,7 +287,7 @@ class DAOAck:
         )
 
 
-RplMessage = "DIS | DIO | DAO | DAOAck"
+RplMessage = DIS | DIO | DAO | DAOAck
 
 _CODE_BY_TYPE = {
     DIS: RplCode.DIS,
