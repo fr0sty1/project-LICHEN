@@ -15,6 +15,7 @@
  * - /key - Public key (GET)
  * - /msg/inbox - Messages (GET/POST)
  * - /deaddrop - DTN dead drop (POST, GET?recipient=...) when enabled
+ * - /confessions - Anonymous board (POST/GET, rate-limited RAM-only, per project-LICHEN-2nnd.4.2)
  *
  * All payloads use CBOR (content-format 60) for compact encoding.
  */

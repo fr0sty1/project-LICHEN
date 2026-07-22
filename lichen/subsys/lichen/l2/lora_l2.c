@@ -34,6 +34,7 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/random/random.h>
 #include <zephyr/drivers/hwinfo.h>
+#include <zephyr/sys/util.h>
 
 #include <lichen/hal.h>
 #include <lichen/tx_queue.h>
@@ -1120,13 +1121,12 @@ int lichen_lora_l2_deinit(void)
 static int lora_perform_cca(const struct device *dev, uint32_t timeout_ms)
 {
     ARG_UNUSED(dev);
-    ARG_UNUSED(timeout_ms);
+    LOG_DBG("lora_l2: CCA stub (timeout_ms=%u) - assuming channel clear", timeout_ms);
 
     if (!lora_data.cca_enabled) {
         return 0;
     }
 
-    LOG_DBG("lora_l2: CCA stub - assuming channel clear");
     return 0;
 }
 
