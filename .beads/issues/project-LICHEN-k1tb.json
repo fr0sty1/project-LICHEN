@@ -3,15 +3,15 @@
   "title": "Partial queue writes on failure not rolled back",
   "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:1432-1454 (enqueue_node_sync)\nFile: lichen/subsys/lichen/meshtastic/adapter.c:1339-1392 (enqueue_static_sync)\n\nWhen enqueueing multiple messages during config sync:\n\n  for (size_t i = 0U; i \u003c state-\u003eemit_count; i++) {\n      ...\n      ret = enqueue_single_node_info(adapter, \u0026peer_info);\n      if (ret \u003c 0) {\n          return ret;  // Partial data already in queue!\n      }\n  }\n\nIf enqueue fails mid-way through the loop, partial data has been written to the queue. The require_queue_space() preflight check helps but is not atomic - another producer could consume space between the check and the writes.\n\nThe comment at adapter.h:236-243 acknowledges this as 'best-effort degraded semantics' but the behavior could confuse clients expecting atomic config syncs.\n\nConsider documenting the partial-write behavior more prominently or implementing a transaction/rollback mechanism.",
   "notes": "Commit: 6b98e2625",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:48:46.81878Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:10:13.097329592Z",
+  "updated_at": "2026-07-22T23:10:15.432794315Z",
   "started_at": "2026-07-22T23:06:09.230858715Z",
-  "lease_expires_at": "2026-07-22T23:11:09.230858715Z",
-  "heartbeat_at": "2026-07-22T23:06:09.230858715Z"
+  "closed_at": "2026-07-22T23:10:15.432794315Z",
+  "close_reason": "Documented partial queue behavior per bead; tests already cover degraded semantics; no behavior change to avoid weakening test integrity"
 }
