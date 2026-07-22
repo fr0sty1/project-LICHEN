@@ -230,7 +230,7 @@ class DAO:
         kd = (
             (int(self.ack_requested) << 7)
             | (int(d_flag) << 6)
-            | self.flags
+            | (self.flags & 0x3F)
         )
         out = bytes([self.rpl_instance_id, kd, 0, self.dao_sequence])
         if self.dodag_id is not None:
@@ -286,7 +286,7 @@ class DAOAck:
             if not 0 <= val <= 255:
                 raise RplError(f"{name} out of range: {val}")
         d_flag = self.dodag_id is not None
-        d_byte = (int(d_flag) << 7) | self.flags
+        d_byte = (int(d_flag) << 7) | (self.flags & 0x7F)
         out = bytes(
             [self.rpl_instance_id, d_byte, self.dao_sequence, self.status]
         )

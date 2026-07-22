@@ -15,7 +15,7 @@
 
 #include <lichen/edhoc.h>
 #include <monocypher.h>
-#include <monocypher-ed25519.h>
+#include <lichen/schnorr48.h>
 #include <tinycrypt/sha256.h>
 #include <tinycrypt/hmac.h>
 #include <tinycrypt/aes.h>
