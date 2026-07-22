@@ -393,6 +393,10 @@ Provides time synchronization for replay protection.
 
 Advertises node congestion for routing decisions.
 
+**Adaptive SF Recommendation:**
+
+The DAG Metric Container MUST include current SF per-neighbor EMA-derived recommendation per CCP-16 in spec/02a-coordinated-capacity.md section 4.2. Thresholds and EMA update are normative there. DIOs on control channel provide the announcement. RX scanning on CH0 is REQUIRED.
+
 ### 9.3. Prefix Information Option
 
 When DODAG root advertises prefix:

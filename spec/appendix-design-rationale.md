@@ -389,10 +389,8 @@ Single channel creates contention hotspot. CCP-16 coordinates capacity. All impl
 - Slot duration = max_airtime(current_SF) + 100ms guard. Node uses lichen_link_set_slot() in subsys.
 - TX suppressed outside slot (tdma_tx_allowed()).
 
-**Adaptive SF (ADR v2, density aware)**
-- See spec/02a-coordinated-capacity.md:2a.3 for normative pseudocode, density rules, now()/select_channel, and clarified rationale vs SF10 default (SF10 REQUIRED baseline per 7.1; density rules MUST override only on explicit thresholds per RFC 2119 for capacity/robustness layering; matches ccp16.json vectors; no dead code).
-- Base SF10 (Kconfig CONFIG_LICHEN_DEFAULT_SF=10).
-- Zephyr: lichen_rpl_update_sf(density, snr); updates radio cfg. Reported in DIO metric container.
+**Adaptive SF**
+Nodes MUST use per-neighbor EMA SNR tracking with alpha=0.1. Thresholds per 02a-coordinated-capacity.md 4.2 adaptive_sf_select MUST be followed with RFC 2119. SF selection signaled in DIOs. RX on control channel for announcements. Matches CCP-16 and all ccp16.json vectors. SF10 REQUIRED baseline.
 
 **Multi-Channel + Density Balancing**
 - CH0 always for control (DIOs, all listen). Data channels via hash or root-assigned (RPL DAO-ACK carries channel_map).

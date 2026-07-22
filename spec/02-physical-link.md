@@ -31,14 +31,9 @@ LoRa Chirp Spread Spectrum (CSS) as implemented by Semtech SX126x and SX127x.
 | EU | 868 MHz | 868.1 MHz | 3 (duty cycle limited) |
 | AU/NZ | 915 MHz | 916.8 MHz | 64 |
 
-### 3.4. Adaptive Data Rate (ADR)
+### 3.4. Adaptive Spreading Factor
 
-Nodes SHOULD implement ADR to optimize SF/TX power based on link quality:
-
-1. Track SNR of received packets from each neighbor
-2. If SNR > threshold + margin: decrease SF (faster)
-3. If SNR < threshold: increase SF (more robust)
-4. Propagate via RPL DIO options
+See CCP-16 in spec/02a-coordinated-capacity.md for the normative adaptive SF algorithm, per-neighbor EMA tracking of SNR, density and load thresholds, signaling in DIOs, RX scanning on control channel, and test vector requirements. SF10 is REQUIRED default per appendix-design-rationale.md.
 
 ---
 

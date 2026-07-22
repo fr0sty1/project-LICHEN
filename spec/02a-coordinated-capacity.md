@@ -69,20 +69,21 @@ CH0 is the control channel; all nodes MUST listen continuously on it for DIOs an
 
 Data channels are selected via select_channel (normative pseudocode below, cross-ref draft-lichen-tdma for TDMA integration). All implementations MUST produce identical results to test/vectors/ccp16.json for CCP-14/15/16 vectors.
 
-### select_channel and now() (logical chunk: function definitions - pure pseudocode)
+### 4.1. select_channel and now()
+
+Nodes MUST implement select_channel and now as follows. All operators use spelled-out keywords for IETF compatibility. Implementations MUST match test vectors in test/vectors/ccp16.json exactly. Cross reference CCP-16.
 
 ```
 function select_channel(ctx, metrics, t):
     IF (metrics.density > 8) OR (NOT ctx.wall_clock_valid) THEN
-        RETURN 0   // control CH0 for high density or desync (per vectors[1,3])
-    hash = fnv1a32( (ctx.eui64 XOR t XOR ctx.epoch) )
+        RETURN 0
+    hash = fnv1a32((ctx.eui64 XOR t XOR ctx.epoch))
     n = ctx.num_data_channels IF ctx.num_data_channels > 0 ELSE 3
     RETURN 1 + (hash MOD n)
 
 function now():
-    RETURN current_sfn()   // from time-provider; unsigned modular arithmetic per 2a.2
+    RETURN current_sfn()
 ```
-Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IETF compatibility. No Rust 'or', no C types or structs, no dead code.
 
 ### Density Rules Rationale (logical chunk: rationale paragraph - updated)
 
@@ -90,11 +91,13 @@ SF10 is the REQUIRED default per appendix-design-rationale.md:7.1. Density rules
 
 Updates MUST be propagated in RPL metric container. Root optimizer uses reported neighbor_count and channel_util to minimize collisions.
 
-### 2a.3.2 adaptive_sf_select Pseudocode (logical chunk: SF function)
+### 4.2. adaptive_sf_select
+
+Nodes MUST maintain per-neighbor tracking of SNR using EMA with alpha 0.1 over 300s window. Density is neighbor count. Load factor from DIO utilization. The algorithm MUST be:
 
 ```
 function adaptive_sf_select(density, snr_db, load_factor, t):
-    snr_ema = ema_update(previous_ema, snr_db, t)  // alpha=0.1 over 300s window; exact match to vectors
+    snr_ema = ema_update(previous_ema, snr_db, t)
     IF (density > 8) OR (snr_ema < 0) OR (load_factor > 0.8) THEN
         RETURN 11
     ELSE IF (density < 5) AND (snr_ema > 8.0) THEN
@@ -105,7 +108,7 @@ function adaptive_sf_select(density, snr_db, load_factor, t):
         RETURN 10
 ```
 
-Per-SF SNR thresholds (normative, for ema_update fallback): SF9: >8dB, SF10: >0dB, SF11: >-5dB, SF12: any. Matches all ccp16.json vectors[0-4]. No dead code; all paths exercised by test vectors. Defines ema_update, select_channel, now() per prior beads.
+Per-SF SNR thresholds for fallback: SF9 >8 dB, SF10 >0 dB, SF11 >-5 dB, SF12 any. The selected SF MUST be signaled in DIOs per draft-lichen-rpl-lora-00. Nodes MUST RX scan control channel or use announcements for updates. Thresholds and EMA MUST produce identical results to ccp16.json vectors. See CCP-16.
 
 ## 2a.4. Time Synchronization
 
