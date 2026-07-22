@@ -12,8 +12,10 @@
 | 0 | Link-local IPv6 + UDP + CoAP | 4-6 bytes |
 | 1 | Global IPv6 + UDP + CoAP | 12-14 bytes |
 | 2 | ICMPv6 Echo | 3 bytes |
-| 3 | RPL DIO | 8 bytes |
-| 4 | RPL DAO | 6 bytes |
+| 3 | RPL DIO (link-local) | 8 bytes |
+| 4 | RPL DAO (routable ULA source for multi-hop) | 6 bytes |
+| 5 | Link-local IPv6 + UDP + OSCORE | 6 bytes |
+| 6 | Global IPv6 + UDP + OSCORE | 14 bytes |
 | 255 | No compression | Full headers |
 
 ## A.2. CoAP Compression

@@ -226,32 +226,38 @@ For traffic to/from internet via border router.
 
 **Compressed size:** 41 bytes (minimal compression for global traffic)
 
-### 4.5. Rule 3: ICMPv6 (RPL Control)
+### 4.5. Rule 3: ICMPv6 RPL DIO (link-local)
 
-For RPL control messages (DIO, DAO, DIS).
+For RPL DIO control messages.
 
 **Applicability:**
 - Next header is ICMPv6 (58)
 - ICMPv6 type is RPL (155)
+- Code indicates DIO
 
-**Rule Definition:**
+**Rule Definition:** (as above, SrcPrefix=fe80::/64)
 
-| Field | TV | MO | CDA | Sent |
-|-------|----|----|-----|------|
-| IPv6.Version | 6 | equal | not-sent | 0 |
-| IPv6.TrafficClass | 0 | equal | not-sent | 0 |
-| IPv6.FlowLabel | 0 | equal | not-sent | 0 |
-| IPv6.PayloadLength | - | ignore | compute | 0 |
-| IPv6.NextHeader | 58 | equal | not-sent | 0 |
-| IPv6.HopLimit | 255 | equal | not-sent | 0 |
-| IPv6.SrcPrefix | fe80::/64 | equal | not-sent | 0 |
-| IPv6.SrcIID | - | ignore | deviid | 0 |
-| IPv6.DstAddr | ff02::1a | equal | not-sent | 0 |
-| ICMPv6.Type | 155 | equal | not-sent | 0 |
-| ICMPv6.Code | - | ignore | value-sent | 8 bits |
-| ICMPv6.Checksum | - | ignore | compute | 0 |
+**Compressed size:** 2 bytes (Rule ID + code)
 
-**Compressed size:** 2 bytes (Rule ID + ICMPv6 code)
+### 4.6. Rule 4: RPL DAO (routable multi-hop)
+
+Uses routable ULA source (fd00::/8 from DODAG) for end-to-end source preservation across relays (per RPL §6 and security spec). Link-local forbidden for forwarded DAO.
+
+**Applicability:** Same as rule 3 but SrcPrefix = mesh ULA, Dst may be root ULA.
+
+**Compressed size:** 6 bytes
+
+### 4.7. Rules 5-6: OSCORE-protected CoAP
+
+Rule 5: Link-local IPv6 + UDP + OSCORE (matches CoAP option delta=9)
+
+Rule 6: Global IPv6 + UDP + OSCORE
+
+Field descriptors mirror rules 0/1 with additional OSCORE option matching (equal on critical bits, value-sent for nonce/ID). Encrypted payload as tail.
+
+**Compressed size:** 6/14 bytes
+
+### 4.8. Rule 255: No Compression (Fallback)
 
 ### 4.6. Rule 255: No Compression (Fallback)
 
