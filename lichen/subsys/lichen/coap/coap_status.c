@@ -101,6 +101,10 @@ static void cbor_put_tstr(struct cbor_ctx *ctx, const char *value)
 	} else {
 		header_len = 5;
 	}
+	if (len > (size_t)-1 - header_len) {
+		ctx->overflow = true;
+		return;
+	}
 	if (!cbor_check_space(ctx, header_len + len)) {
 		return;
 	}
