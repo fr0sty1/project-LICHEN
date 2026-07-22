@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LICHEN test vector file",
-  "description": "Supports object envelope with format_version or v2 bare array root of vectors (for ccp16-desync.json). Each file holds list of one vector kind.",
+  "description": "Supports object envelope with format_version or v2 bare array root of vectors. Each file holds list of one vector kind.",
   "oneOf": [
     {
       "type": "object",
@@ -42,7 +42,7 @@
           {"$ref": "#/definitions/ccp_vector"}
         ]
       },
-      "description": "v2 bare array root for ccp16-desync.json and similar"
+      "description": "v2 bare array root for vector lists"
     }
   ],
   "definitions": {
