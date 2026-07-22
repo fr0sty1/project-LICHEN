@@ -5,14 +5,16 @@ use lichen_core::constants::L2_DISPATCH_SCHC;
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
-use lichen_node::Node;
+use lichen_node::{RplEvent, RplNode};
 use lichen_schc::codec::{compress, decompress, SchcError};
+use std::time::Instant;
 use tracing::{info, warn};
 
 /// Top-level border router state.
 #[derive(Debug)]
 pub struct Gateway {
-    pub node: Node,
+    pub node: RplNode,
+    start_time: Instant,
     /// Routes installed in the kernel routing table.
     /// Key: mesh IPv6 address (16 bytes, network order); Value: nexthop EUI-64.
     routes: std::collections::HashMap<[u8; 16], NodeId>,
@@ -22,7 +24,8 @@ impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
         Self {
-            node: Node::new(node_id),
+            node: RplNode::new_root(node_id),
+            start_time: Instant::now(),
             routes: std::collections::HashMap::new(),
         }
     }
@@ -32,6 +35,12 @@ impl Gateway {
     /// Returns the raw IPv6 packet to inject into the upstream TUN device, or
     /// `None` if decompression fails or the result is not a valid IPv6 packet.
     pub fn mesh_to_upstream(&mut self, l2_payload: &[u8]) -> Option<Vec<u8>> {
+        let now_ms = self.start_time.elapsed().as_millis() as u32;
+        let mut reply = [0u8; 259];
+        let (_, event) = self.node.handle_frame_rpl(l2_payload, &mut reply, now_ms);
+        if let RplEvent::DaoReceived { route_updated: true } = event {
+            self.node.router.dao_manager.populate_routes(&mut self.routes);
+        }
         if classify_l2_payload(l2_payload) != L2PayloadKind::Schc {
             warn!("non-SCHC L2 payload received on upstream gateway path");
             return None;
@@ -86,9 +95,14 @@ impl Gateway {
         }
     }
 
-    /// Record that `node_id` is reachable via `addr`.
+    pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
+        self.routes.contains_key(dst) || (dst[0] == 0xfe && dst[1] == 0x80) || dst[0] == 0xfd
+    }
+
     pub fn add_route(&mut self, addr: [u8; 16], node_id: NodeId) {
         self.routes.insert(addr, node_id);
+        let nexthop = node_id.link_local_addr().0;
+        self.node.router.dao_manager.routing_table.add_route(addr, &[nexthop]);
     }
 }
 
@@ -120,11 +134,9 @@ mod tests {
 
         let recovered = gw.mesh_to_upstream(&schc).expect("decompress failed");
 
-        // IPv6 header fields
         assert_eq!(recovered[6], 58, "NH should be ICMPv6");
         assert_eq!(&recovered[8..24], &src.0, "src mismatch");
         assert_eq!(&recovered[24..40], &dst.0, "dst mismatch");
-        // ICMPv6 fields
         assert_eq!(recovered[40], icmpv6::ECHO_REQUEST, "type should be 128");
         assert_eq!(recovered[41], 0, "code should be 0");
         assert_eq!(&recovered[44..46], &[0x12, 0x34], "id mismatch");
@@ -160,7 +172,6 @@ mod tests {
     #[test]
     fn unknown_schc_rule_is_dropped() {
         let mut gw = test_gateway();
-        // Rule 0xAA is not defined
         assert!(gw
             .mesh_to_upstream(&[L2_DISPATCH_SCHC, 0xAAu8, 0x00])
             .is_none());

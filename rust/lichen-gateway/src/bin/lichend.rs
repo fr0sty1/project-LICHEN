@@ -348,7 +348,11 @@ where
 
 async fn forward_mesh_to_upstream<T: TunLike>(gw: &mut Gateway, frame: &[u8], tun: &Option<T>) {
     if let Some(ipv6) = gw.mesh_to_upstream(frame) {
-        if let Some(t) = tun {
+        if ipv6.len() < 40 || ipv6[0] >> 4 != 6 { return; }
+        let mut dst = [0u8; 16]; dst.copy_from_slice(&ipv6[24..40]);
+        if gw.is_local_mesh(&dst) {
+            let _ = gw.node.router.dao_manager.routing_table.lookup(&dst);
+        } else if let Some(t) = tun {
             if let Err(e) = t.send_pkt(&ipv6).await {
                 error!("TUN write: {e}");
             }
