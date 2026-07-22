@@ -35,6 +35,7 @@ pub enum CoapError {
     InvalidOptionLength,
     /// Option runs past end of message.
     TruncatedOption,
+    InvalidPayloadMarker,
     /// Output buffer too small.
     BufferTooSmall(BufferTooSmall),
     /// Invalid Block option value.
@@ -58,6 +59,7 @@ impl core::fmt::Display for CoapError {
             Self::InvalidOptionDelta => write!(f, "invalid option delta 15"),
             Self::InvalidOptionLength => write!(f, "invalid option length 15"),
             Self::TruncatedOption => write!(f, "option runs past end of message"),
+            Self::InvalidPayloadMarker => write!(f, "payload marker followed by zero-length payload"),
             Self::BufferTooSmall(e) => write!(f, "CoAP {}", e),
             Self::InvalidBlockOption => write!(f, "invalid Block option value"),
             Self::UintOptionTooLong => write!(f, "uint option value too long (>4 bytes)"),
@@ -125,10 +127,15 @@ impl<'a> CoapPacket<'a> {
             return Err(TooShort::new(options_start, data.len()).into());
         }
 
-        // Find payload marker
         let (options_end, payload_start) = match find_payload_marker(&data[options_start..])? {
-            Some(off) => (options_start + off, options_start + off + 1), // off is at 0xFF, +1 to skip
-            None => (data.len(), data.len()),                            // no marker, no payload
+            Some(off) => {
+                let payload_start = options_start + off + 1;
+                if payload_start == data.len() {
+                    return Err(CoapError::InvalidPayloadMarker);
+                }
+                (options_start + off, payload_start)
+            }
+            None => (data.len(), data.len()),
         };
 
         Ok(Self {
@@ -760,6 +767,15 @@ mod tests {
             CoapPacket::from_bytes(&[0x40, 0x01]),
             Err(CoapError::TooShort(_))
         ));
+    }
+
+    #[test]
+    fn invalid_payload_marker() {
+        let data = [0x40, 0x01, 0x00, 0x01, 0xFF];
+        assert_eq!(
+            CoapPacket::from_bytes(&data),
+            Err(CoapError::InvalidPayloadMarker)
+        );
     }
 
     #[test]
