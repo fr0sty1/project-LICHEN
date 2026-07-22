@@ -2,11 +2,15 @@
   "id": "project-LICHEN-sl32",
   "title": "Heltec V3 WiFi backhaul border router",
   "description": "Implement WiFi station mode, upstream IPv6 prefix, RPL root, and bridging for Heltec WiFi LoRa 32 V3 as 6LBR. Break into issues for Kconfig, main.c init, RPL integration, testing. Parent of project-LICHEN-79pj.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "epic",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:26:48.705096737Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T20:26:48.705096737Z"
+  "updated_at": "2026-07-22T22:15:06.376846642Z",
+  "started_at": "2026-07-22T22:15:06.376846642Z",
+  "lease_expires_at": "2026-07-22T22:20:06.376846642Z",
+  "heartbeat_at": "2026-07-22T22:15:06.376846642Z"
 }
