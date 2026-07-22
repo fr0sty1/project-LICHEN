@@ -76,9 +76,6 @@ static struct k_thread s_rx_thread;
 
 void kiss_decode_init(struct kiss_decode_ctx *ctx)
 {
-	if (ctx == NULL) {
-		return;
-	}
 	memset(ctx, 0, sizeof(*ctx));
 }
 
@@ -269,8 +266,7 @@ static void handle_sethardware(struct kiss_transport_ctx *ctx,
 	resp_len = ctx->config.hw_cmd_cb(data, len, response, sizeof(response),
 					 ctx->config.user_ctx);
 	if (resp_len > 0) {
-		/* Send response: echo command byte with MSB set */
-		uint8_t resp_frame[128];
+		uint8_t resp_frame[132];
 		size_t resp_frame_len;
 		uint8_t resp_cmd = KISS_CMD_SETHARDWARE | 0x80u;
 
@@ -294,35 +290,36 @@ static void dispatch_frame(struct kiss_transport_ctx *ctx)
 
 	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 	ctx->stats.rx_frames++;
+	if (cmd_type == KISS_CMD_DATA) {
+		if (port == KISS_PORT_AX25) {
+			ctx->stats.rx_data_port0++;
+		} else if (port == KISS_PORT_LICHEN_RAW) {
+			ctx->stats.rx_data_port1++;
+		} else {
+			ctx->stats.unknown_port++;
+		}
+	} else if (cmd_type == KISS_CMD_TXDELAY || cmd_type == KISS_CMD_PERSISTENCE ||
+		   cmd_type == KISS_CMD_SLOTTIME || cmd_type == KISS_CMD_TXTAIL ||
+		   cmd_type == KISS_CMD_FULLDUPLEX || cmd_type == KISS_CMD_SETHARDWARE) {
+		ctx->stats.rx_commands++;
+	}
 	k_mutex_unlock(&ctx->stats_mutex);
 
 	LOG_DBG("KISS RX: port=%u cmd=%u len=%zu", port, cmd_type, ctx->rx_ctx.len);
 
 	switch (cmd_type) {
 	case KISS_CMD_DATA:
-		/* Data frame - dispatch based on port */
 		if (port == KISS_PORT_AX25) {
-			k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-			ctx->stats.rx_data_port0++;
-			k_mutex_unlock(&ctx->stats_mutex);
-
 			if (ctx->config.ax25_rx_cb != NULL) {
 				ctx->config.ax25_rx_cb(ctx->rx_ctx.buf, ctx->rx_ctx.len,
 						       ctx->config.user_ctx);
 			}
 		} else if (port == KISS_PORT_LICHEN_RAW) {
-			k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-			ctx->stats.rx_data_port1++;
-			k_mutex_unlock(&ctx->stats_mutex);
-
 			if (ctx->config.raw_rx_cb != NULL) {
 				ctx->config.raw_rx_cb(ctx->rx_ctx.buf, ctx->rx_ctx.len,
 						      ctx->config.user_ctx);
 			}
 		} else {
-			k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-			ctx->stats.unknown_port++;
-			k_mutex_unlock(&ctx->stats_mutex);
 			LOG_WRN("KISS: data on unsupported port %u", port);
 		}
 		break;
@@ -332,21 +329,14 @@ static void dispatch_frame(struct kiss_transport_ctx *ctx)
 	case KISS_CMD_SLOTTIME:
 	case KISS_CMD_TXTAIL:
 	case KISS_CMD_FULLDUPLEX:
-		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-		ctx->stats.rx_commands++;
-		k_mutex_unlock(&ctx->stats_mutex);
 		handle_timing_command(ctx, cmd_type, ctx->rx_ctx.buf, ctx->rx_ctx.len);
 		break;
 
 	case KISS_CMD_SETHARDWARE:
-		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-		ctx->stats.rx_commands++;
-		k_mutex_unlock(&ctx->stats_mutex);
 		handle_sethardware(ctx, ctx->rx_ctx.buf, ctx->rx_ctx.len);
 		break;
 
 	case KISS_CMD_RETURN:
-		/* LICHEN stays in KISS mode permanently - ignore */
 		LOG_DBG("KISS: Return command ignored");
 		break;
 
