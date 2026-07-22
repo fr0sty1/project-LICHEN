@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-9u77",
+  "title": "coap_status.c: format_ipv6 now uses net_addr_ntop - consider shared helper with coap_msg.c",
+  "description": "After fixing snprintf truncation in format_ipv6 by switching to net_addr_ntop (standard compressed format, no return-value issue), notice duplication with format_ipv6_addr in coap_msg.c. Both do similar IPv6 formatting. P3 codereview finding. Should extract to lichen/coap/common or similar.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:15:27.145723752Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:15:27.145723752Z",
+  "labels": [
+    "codereview"
+  ]
+}
