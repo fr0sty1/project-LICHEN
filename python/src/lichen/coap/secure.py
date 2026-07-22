@@ -399,8 +399,6 @@ class SecureDatagramChannel(DatagramChannel):
             # Determine if this is a request or response
             is_response = msg.code.is_response()
 
-            # For responses, we need the request_id from when we sent the request.
-            # Use atomic pop(key, None) to avoid race between concurrent tasks.
             request_id = None
             if is_response:
                 request_id = peer_ctx.pending_requests.pop(msg.token, None)
