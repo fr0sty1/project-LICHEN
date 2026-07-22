@@ -1,23 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LICHEN test vector file",
-<<<<<<< HEAD
   "description": "Envelope shared by all LICHEN vector files. Supports object envelope with format_version (1 or 2) or v2 bare array root of vectors (for ccp16-desync.json and similar). Each file holds a list of vectors of one kind; see the per-vector definitions. Combined to support all vector types (including ccp15_vector and ccp_vector), descriptions, format_version handling, bare array support, and all definitions from both sides without losing functionality.",
   "oneOf": [
     {
       "type": "object",
       "required": ["format_version", "description", "vectors"],
-      "properties": {
-        "format_version": {"type": "integer", "enum": [1, 2]},
-        "description": {"type": "string"},
-        "vectors": {
-          "type": "array",
-          "minItems": 1,
-=======
-  "description": "Supports v1 object envelope (format_version + vectors) and v2 bare array root of ccp_vector (ccp16-desync.json). Top-level oneOf for array root support.",
-  "oneOf": [
-    {
-      "type": "object",
       "additionalProperties": true,
       "properties": {
         "format_version": {"type": "integer", "enum": [1, 2]},
@@ -25,7 +13,7 @@
         "$schema": {"type": "string"},
         "vectors": {
           "type": "array",
->>>>>>> origin/integration/worker2-20260722
+          "minItems": 1,
           "items": {
             "oneOf": [
               {"$ref": "#/definitions/schc_vector"},
@@ -35,16 +23,10 @@
               {"$ref": "#/definitions/meshtastic_app_compat_vector"},
               {"$ref": "#/definitions/meshcore_app_compat_vector"},
               {"$ref": "#/definitions/oscore_vector"},
-<<<<<<< HEAD
-               {"$ref": "#/definitions/rpl_messages_vector"},
-               {"$ref": "#/definitions/ccp13_vector"},
-               {"$ref": "#/definitions/ccp15_vector"},
-               {"$ref": "#/definitions/ccp_vector"}
-
-=======
               {"$ref": "#/definitions/rpl_messages_vector"},
+              {"$ref": "#/definitions/ccp13_vector"},
+              {"$ref": "#/definitions/ccp15_vector"},
               {"$ref": "#/definitions/ccp_vector"}
->>>>>>> origin/integration/worker2-20260722
             ]
           }
         }
@@ -52,7 +34,6 @@
     },
     {
       "type": "array",
-<<<<<<< HEAD
       "minItems": 1,
       "items": {
         "oneOf": [
@@ -63,17 +44,13 @@
           {"$ref": "#/definitions/meshtastic_app_compat_vector"},
           {"$ref": "#/definitions/meshcore_app_compat_vector"},
           {"$ref": "#/definitions/oscore_vector"},
-           {"$ref": "#/definitions/rpl_messages_vector"},
-           {"$ref": "#/definitions/ccp13_vector"},
-           {"$ref": "#/definitions/ccp15_vector"},
-           {"$ref": "#/definitions/ccp_vector"}
-
+          {"$ref": "#/definitions/rpl_messages_vector"},
+          {"$ref": "#/definitions/ccp13_vector"},
+          {"$ref": "#/definitions/ccp15_vector"},
+          {"$ref": "#/definitions/ccp_vector"}
         ]
       },
       "description": "v2 bare array root support for CCP desync vectors (ccp16-desync.json) and load balancing tests"
-=======
-      "items": {"$ref": "#/definitions/ccp_vector"}
->>>>>>> origin/integration/worker2-20260722
     }
   ],
   "definitions": {
