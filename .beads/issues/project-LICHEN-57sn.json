@@ -7,11 +7,10 @@
   "status": "open",
   "priority": 1,
   "issue_type": "bug",
-  "assignee": "Mark Atwood",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-16T18:16:30.204597Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-16T20:36:01.647335Z",
+  "updated_at": "2026-07-22T14:16:53.780969175Z",
   "started_at": "2026-07-16T20:12:50.183167Z",
   "labels": [
     "fix-now"
