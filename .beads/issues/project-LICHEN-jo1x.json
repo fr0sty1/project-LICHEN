@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-jo1x",
+  "title": "[codereview-pass3 post-string] no test coverage for senml_add_string",
+  "description": "lichen/subsys/lichen/senml/senml.c:167 - New senml_add_string and STRING case in encode_record have no unit tests or vector coverage. Test vectors in test/vectors/ must include string case for deaddrop. discovered-from:project-LICHEN-pp9k",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:20:36.530095672Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:20:36.530095672Z",
+  "labels": [
+    "codereview"
+  ]
+}
