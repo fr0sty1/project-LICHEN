@@ -2,12 +2,16 @@
   "id": "project-LICHEN-f05s",
   "title": "[codereview-pass1-chunk1] Gateway::is_local_mesh still uses stale routes HashMap that is never updated from DAO events",
   "description": "add_route only updates HashMap; is_local_mesh should primarily rely on rpl.lookup_route( ) from DAO table for accuracy in non-storing RPL root. Current impl may miss routes. P1 correctness. discovered-from:project-LICHEN-3k6w.3",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T15:44:40.484842226Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:44:40.484842226Z",
+  "updated_at": "2026-07-22T15:45:54.77240821Z",
+  "started_at": "2026-07-22T15:45:54.77240821Z",
+  "lease_expires_at": "2026-07-22T15:50:54.77240821Z",
+  "heartbeat_at": "2026-07-22T15:45:54.77240821Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-f05s",
