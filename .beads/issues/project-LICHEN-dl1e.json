@@ -2,10 +2,14 @@
   "id": "project-LICHEN-dl1e",
   "title": "[codereview-pass2] handle_frame_rpl DAO handling does not extract target to call the new add_route with full assembled path; rebuild_routes is called inside process_dao but explicit call after route_updated=true is still missing per xc4d",
   "description": "P2 finding. The route_updated flag is set but not used to invoke add_route with path from assemble_path. discovered-from:project-LICHEN-nkxi",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T15:55:38.484895726Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:55:38.484895726Z"
+  "updated_at": "2026-07-22T15:55:55.643848704Z",
+  "started_at": "2026-07-22T15:55:55.643848704Z",
+  "lease_expires_at": "2026-07-22T16:00:55.643848704Z",
+  "heartbeat_at": "2026-07-22T15:55:55.643848704Z"
 }
