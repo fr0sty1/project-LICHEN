@@ -2,12 +2,16 @@
   "id": "project-LICHEN-g7p3",
   "title": "[codereview-pass2] coap_status.c validation",
   "description": "lichen/subsys/lichen/coap/coap_status.c:562,664,770 - len==0 from encoder should distinguish ENOBUFS case for full capacity. Update test vectors in status_cbor or Rust side to cover buffer full case returning proper CoAP code or -ENOBUFS. No dead code in notify funcs.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:06:57.652320631Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:06:57.652320631Z",
+  "updated_at": "2026-07-22T16:07:01.767316672Z",
+  "started_at": "2026-07-22T16:07:01.767316672Z",
+  "lease_expires_at": "2026-07-22T16:12:01.767316672Z",
+  "heartbeat_at": "2026-07-22T16:07:01.767316672Z",
   "labels": [
     "codereview"
   ]
