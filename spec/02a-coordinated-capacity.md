@@ -58,4 +58,9 @@ MAX_TX_MS MUST be computed as `(WINDOW_MS * duty_permille) / 1000` from current 
 
 **Implementation Status:** Zephyr lora_l2.c:implemented (adaptive_duty_permille), Rust duty_cycle updated for dynamic MAX_TX_MS, spec+CCP-13 complete. See da2q.13.5/qsr0/vpu8/q0yt.
 
-See parent epic da2q.13 and da2q.13.5 for full CCP.
+**Pseudocode Conventions (for CCP-15 frequency agility and all sections):**
+- `now()`: current monotonic time in milliseconds (u64, from boot or GNSS epoch).
+- `clamp(x, lo, hi)`: `max(lo, min(x, hi))` for numeric x (prevents wraparound).
+- Floating point thresholds (e.g. interference scores): MUST use exact values 0.1 (low), 0.5 (medium), 0.8 (high) for interoperability. Normative per §2.
+
+See parent epic da2q.13 and da2q.13.5 for full CCP. Frequency agility pseudocode (mitigate_and_transmit, channel selection with history scores) fixed per codereview wlb0.
