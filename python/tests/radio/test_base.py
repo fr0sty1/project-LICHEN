@@ -14,9 +14,10 @@ class MockRadio:
         self.last_transmitted: bytes | None = None
         self.receive_queue: list[tuple[bytes, int, int]] = []
 
-    async def transmit(self, payload: bytes) -> bool:
-        """Record the payload and return success."""
+    async def transmit(self, payload: bytes, channel: int = 0) -> bool:
+        """Record the payload and return success. Supports channel for multi-channel."""
         self.last_transmitted = payload
+        self.last_channel = channel
         return True
 
     async def receive(self, timeout_ms: int) -> tuple[bytes, int, int] | None:

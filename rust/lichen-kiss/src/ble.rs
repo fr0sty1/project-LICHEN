@@ -12,9 +12,6 @@
 //!
 //! Available with feature `kiss-ble`.
 
-#[cfg(feature = "log")]
-use log::warn;
-
 use crate::framing::{KissCommand, KissError, KissReader, KissWriter};
 
 /// KISS BLE service UUID.
@@ -53,10 +50,19 @@ pub struct AppFrame {
 /// // App writes to TX characteristic (KISS-framed data)
 /// tnc.on_tx_write(&[0xC0, 0x00, b'H', b'i', 0xC0]);
 ///
-/// // Process complete frames from app
+/// // Process complete frames from app. Distinguishes `Ok(Some)` (valid frame),
+/// // `Ok(None)` (no frame ready), and `Err` (parse error).
 /// let mut buf = [0u8; 256];
-/// while let Some(frame) = tnc.try_get_app_frame(&mut buf) {
-///     // frame.data contains "Hi", forward to radio
+/// match tnc.try_get_app_frame(&mut buf) {
+///     Ok(Some(frame)) => {
+///         // frame.data contains "Hi", forward to radio
+///     }
+///     Ok(None) => {
+///         // waiting for more data
+///     }
+///     Err(e) => {
+///         // handle parse error (e.g. for debugging or metrics)
+///     }
 /// }
 ///
 /// // Queue a frame received from radio to send to app
