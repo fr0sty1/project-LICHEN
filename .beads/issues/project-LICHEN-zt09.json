@@ -2,11 +2,15 @@
   "id": "project-LICHEN-zt09",
   "title": "Document Distributed EC2 Deployment for LICHEN Simulation",
   "description": "Document Distributed EC2 Deployment for LICHEN Simulation - Develop comprehensive documentation for deploying LICHEN simulation infrastructure across multiple AWS EC2 instances for large-scale distributed mesh testing. Include deployment methods, scaling strategies, resource requirements, and best practices for heterogeneous mesh testing using the simulation validation framework. This work supports the broader Epic: Complete Simulation Infrastructure Enhancement Epic.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-15T03:18:11.335809Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-15T03:18:30.480631Z"
+  "updated_at": "2026-07-22T14:23:37.387610499Z",
+  "started_at": "2026-07-22T14:23:37.387610499Z",
+  "lease_expires_at": "2026-07-22T14:28:37.387610499Z",
+  "heartbeat_at": "2026-07-22T14:23:37.387610499Z"
 }
