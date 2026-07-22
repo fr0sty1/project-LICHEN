@@ -348,6 +348,15 @@ int lichen_hal_reset_diagnostics_clear(void);
 int lichen_hal_reboot_status(void);
 int lichen_hal_reset_request(enum lichen_hal_reset_request request);
 
+enum lichen_duty_cycle_limit { LICHEN_DUTY_CYCLE_DEFAULT_PERMILLE = 10, };
+struct lichen_duty_cycle_tracker { uint64_t records[32]; uint32_t durations[32]; uint8_t head; uint8_t len; uint16_t duty_permille; };
+void lichen_duty_cycle_tracker_init(struct lichen_duty_cycle_tracker *t, uint16_t permille);
+bool lichen_duty_cycle_tracker_record_tx(struct lichen_duty_cycle_tracker *t, uint64_t ts, uint32_t dur);
+uint32_t lichen_duty_cycle_tracker_remaining_ms(struct lichen_duty_cycle_tracker *t, uint64_t now);
+uint16_t lichen_duty_cycle_tracker_usage_permille(struct lichen_duty_cycle_tracker *t, uint64_t now);
+uint64_t lichen_duty_cycle_tracker_next_tx_available_ms(struct lichen_duty_cycle_tracker *t, uint64_t now, uint32_t dur);
+bool lichen_duty_cycle_tracker_can_transmit(struct lichen_duty_cycle_tracker *t, uint64_t now, uint32_t dur);
+
 #ifdef CONFIG_ZTEST
 void lichen_hal_location_test_set_uptime_ms(int64_t uptime_ms);
 void lichen_hal_location_test_use_real_uptime(void);

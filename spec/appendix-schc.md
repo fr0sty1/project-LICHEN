@@ -49,6 +49,20 @@ Rules 5/6 reuse FieldDescriptors from rules 0/1 but with distinct rule IDs (rule
 
 No deviid/port-MSB optimizations yet. Hop limit value-sent. Exact descriptors and `residue_byte_length` govern behavior per test vectors. `rules.rs:55` stub to be populated from Python for Rust as source of truth (P2 follow-up filed separately if needed).
 
+## A.4. RPL Compression (Rules 3 and 4)
+
+Rules 3 (RPL_DIO) and 4 (RPL_DAO) compress IPv6+ICMPv6+base RPL fields to fixed residue (8B DIO, ~6B DAO). RPL options (TLVs per RFC 6550 §6.7) appended verbatim as tail after residue (headers.rs:19-20).
+
+Per RFC 8724 §10 TLV compression, example for Pad1 (type=0x00):
+
+| Field | TV | MO | CDA |
+|-------|----|----|-----|
+| RPL.Option.Type | 0 | equal | not-sent |
+
+PadN/Target(5)/Transit(6)/PIO(3)/Config(4) use Ignore+ValueSent or mapping. Full descriptors: rules.rs:480 (RPL_DIO_RULE), headers.rs:692 (profiles), test/vectors/rpl_messages.json:254 (pad1/padn vector), python/src/lichen/schc/rules.py:274.
+
+See test/vectors/schc_compression.json for base cases.
+
 ---
 
 [← Previous: Applications](12-apps.md) | [Index](README.md) | [Next: Appendix B →](appendix-rpl.md)

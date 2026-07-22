@@ -215,15 +215,15 @@ For diagnostic and reachability testing.
 
 ### 4.5. Rule 3: RPL DIO (link-local)
 
-For DODAG formation, maintenance, and prefix distribution (including PIO). Matches `RPL_DIO_RULE` in `rust/lichen-schc/src/rules.rs:480` and `constants.toml:32` (ICMPv6 type=155, code=0).
+For DODAG formation, maintenance, and prefix distribution (including PIO). Matches `RPL_DIO_RULE` in `rust/lichen-schc/src/rules.rs:480` and `constants.toml:32` (ICMPv6 type=155, code=1). See appendix-schc.md §A.4 for RPL options (TLV) compression details and FieldDescriptor examples (e.g. Pad1 per RFC 8724 §10).
 
-**Compressed size:** 8 bytes
+**Compressed size:** 8 bytes residue + options tail
 
 ### 4.6. Rule 4: RPL DAO (routable multi-hop)
 
-Uses ULA source (fd00::/8) for end-to-end preservation across relays (RPL Non-Storing mode). Link-local forbidden for forwarded DAO. Matches `RPL_DAO_RULE`.
+Uses ULA source (fd00::/8) for end-to-end preservation across relays (RPL Non-Storing mode). Link-local forbidden for forwarded DAO. Matches `RPL_DAO_RULE`. See appendix-schc.md §A.4 for options handling.
 
-**Compressed size:** 6 bytes
+**Compressed size:** 6 bytes residue + options tail
 
 ### 4.7. Rule 7: MQTT-SN
 

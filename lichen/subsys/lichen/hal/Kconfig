@@ -249,4 +249,9 @@ config LICHEN_TIME_FRESHNESS_MAX_AGE_S
 	  Stale samples remain visible as diagnostics but no longer establish
 	  wall-clock validity.
 
+config LICHEN_DUTY_CYCLE
+	bool "Duty cycle tracker"
+	depends on LICHEN_HAL
+	default y
+
 endif # LICHEN_HAL
