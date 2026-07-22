@@ -2,12 +2,16 @@
   "id": "project-LICHEN-6e0t",
   "title": "codereview-P0: duty_cycle MAX_TX_MS removal plan",
   "description": "Plan for first logical chunk: remove const MAX_TX_MS using DEFAULT; make max_tx_ms pub; update all 15 test asserts to use current duty_permille via max_tx_ms() or derived without magic numbers. Follows previous density thresholds in adaptive_duty_permille. No formula ambiguity.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T17:08:07.819114024Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:08:07.819114024Z",
+  "updated_at": "2026-07-22T17:08:17.987670783Z",
+  "started_at": "2026-07-22T17:08:17.987670783Z",
+  "lease_expires_at": "2026-07-22T17:13:17.987670783Z",
+  "heartbeat_at": "2026-07-22T17:08:17.987670783Z",
   "labels": [
     "codereview"
   ]
