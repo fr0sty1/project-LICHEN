@@ -2,11 +2,15 @@
   "id": "project-LICHEN-uwnn",
   "title": "[spec-compliance] Trickle Imin default violates spec constant",
   "description": "Kconfig LICHEN_RPL_TRICKLE_IMIN_MS defaults to 1000 but spec/05-routing.md:129, appendix-rpl.md:25, constants.toml:59 and draft-lichen-rpl-lora-00.md require 4096ms (Imin=4s). Recent change in lichen/subsys/lichen/rpl/Kconfig and trickle.c:58,74,89. Violates MUST for RPL timing on LoRa. See explore task ses_073e4d927ffefBtVI7t0ZbfOkP for details.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:16:00.668204686Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:16:00.668204686Z"
+  "updated_at": "2026-07-22T23:19:10.282999086Z",
+  "started_at": "2026-07-22T23:19:10.282999086Z",
+  "lease_expires_at": "2026-07-22T23:24:10.282999086Z",
+  "heartbeat_at": "2026-07-22T23:19:10.282999086Z"
 }
