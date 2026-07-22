@@ -2,11 +2,15 @@
   "id": "project-LICHEN-ablx",
   "title": "BLE transport: state getter has data race",
   "description": "File: lichen/subsys/lichen/transport/ble_ipsp_transport.c\nLines: 556-559\n\nlichen_ble_transport_get_state() reads transport_state.state without holding the mutex:\n\n    enum lichen_ble_conn_state lichen_ble_transport_get_state(void)\n    {\n        return transport_state.state;\n    }\n\nThe state field is modified in connected_cb(), disconnected_cb(), and security_changed_cb() while holding the mutex. This is a data race.\n\nSimilar issue in lichen_ble_transport_is_secure() at lines 561-564.\n\nFix: Acquire transport_state.lock before reading state, or document that this is a best-effort snapshot.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:53:23.455915Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:53:23.455958Z"
+  "updated_at": "2026-07-22T23:03:05.706091871Z",
+  "started_at": "2026-07-22T23:03:05.706091871Z",
+  "lease_expires_at": "2026-07-22T23:08:05.706091871Z",
+  "heartbeat_at": "2026-07-22T23:03:05.706091871Z"
 }
