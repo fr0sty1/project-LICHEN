@@ -132,7 +132,7 @@ config LICHEN_L2
 	depends on NETWORKING
 	depends on NET_IPV6
 	depends on LICHEN_IPV6
-	default y if NET_IPV6
+	default y if LICHEN_LORA_L2
 	help
 	  Register LICHEN as a Zephyr L2 network interface so the IPv6 stack
 	  routes packets through LoRa. This implements the net_l2 callbacks
