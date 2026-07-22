@@ -5,6 +5,8 @@
 
 # Appendix A: SCHC Compression Rules
 
+See draft-lichen-schc-lora-00.md §4 for rules, §5 for fragmentation (M=1 N=6 T=0, RCS=CRC32, timers, bitmap MSB-first) from constants.toml and test/vectors/.
+
 ## A.1. Rule Set
 
 | Rule ID | Use Case | Compressed Size |

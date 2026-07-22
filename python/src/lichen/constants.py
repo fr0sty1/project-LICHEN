@@ -55,3 +55,11 @@ RPL_TRICKLE_K: int = 10               # Redundancy constant
 
 # LICHEN Announce message (spec §05-routing)
 ANNOUNCE_TYPE: int = 0x01
+
+SCHC_FRAGMENT_M: int = 1
+SCHC_FRAGMENT_N: int = 6
+SCHC_FRAGMENT_T: int = 0
+SCHC_RCS_BYTES: int = 4
+SCHC_RETRANSMISSION_TIMEOUT_S: int = 10
+SCHC_MAX_ACK_REQUESTS: int = 3
+SCHC_INACTIVITY_TIMEOUT_S: int = 60

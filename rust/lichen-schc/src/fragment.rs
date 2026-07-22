@@ -14,14 +14,16 @@
 
 use lichen_core::error::{BufferTooSmall, TooShort};
 
-/// 6-bit all-ones FCN, marks the last fragment of a datagram.
-pub const ALL_1_FCN: u8 = 63;
-/// CRC32 MIC length in bytes.
+pub const FRAGMENT_M: u8 = 1;
+pub const FRAGMENT_N: u8 = 6;
+pub const FRAGMENT_T: u8 = 0;
+pub const ALL_1_FCN: u8 = (1 << FRAGMENT_N) - 1;
 pub const MIC_LENGTH: usize = 4;
-/// Default window size (fragment count per window, excluding the All-1).
 pub const DEFAULT_WINDOW_SIZE: usize = 7;
-/// Maximum window size (62 regular FCNs, since 63 = ALL_1).
 pub const MAX_WINDOW_SIZE: usize = 62;
+pub const RETRANSMISSION_TIMEOUT_S: u32 = 10;
+pub const MAX_ACK_REQUESTS: u32 = 3;
+pub const INACTIVITY_TIMEOUT_S: u32 = 60;
 
 #[derive(Debug, PartialEq, Eq)]
 #[non_exhaustive]
@@ -125,7 +127,7 @@ impl<'a> Fragment<'a> {
             return Err(BufferTooSmall::new(needed, out.len()).into());
         }
         out[0] = self.rule_id;
-        out[1] = ((self.window & 1) << 6) | (self.fcn & 0x3F);
+        out[1] = ((self.window & 1) << FRAGMENT_N) | (self.fcn & ((1 << FRAGMENT_N) - 1));
         if self.is_all_1() {
             out[2..6].copy_from_slice(&self.mic);
             out[6..6 + self.payload.len()].copy_from_slice(self.payload);
@@ -135,14 +137,13 @@ impl<'a> Fragment<'a> {
         Ok(needed)
     }
 
-    /// Parse a fragment from `data`, borrowing the payload slice.
     pub fn from_bytes(data: &'a [u8]) -> Result<Self, FragmentError> {
         if data.len() < 2 {
             return Err(TooShort::new(2, data.len()).into());
         }
         let rule_id = data[0];
-        let window = (data[1] >> 6) & 1;
-        let fcn = data[1] & 0x3F;
+        let window = (data[1] >> FRAGMENT_N) & 1;
+        let fcn = data[1] & ((1 << FRAGMENT_N) - 1);
         let rest = &data[2..];
         if fcn == ALL_1_FCN {
             if rest.len() < MIC_LENGTH {
@@ -203,9 +204,8 @@ impl Ack {
             return Err(BufferTooSmall::new(needed, out.len()).into());
         }
         out[0] = self.rule_id;
-        out[1] = ((self.window & 1) << 6) | (if self.complete { 1 } else { 0 });
+        out[1] = ((self.window & 1) << FRAGMENT_N) | (if self.complete { 1 } else { 0 });
         out[2] = n as u8;
-        // Pack bitmap MSB-first
         for b in out[3..3 + body_bytes].iter_mut() {
             *b = 0;
         }
@@ -222,7 +222,7 @@ impl Ack {
             return Err(TooShort::new(3, data.len()).into());
         }
         let rule_id = data[0];
-        let window = (data[1] >> 6) & 1;
+        let window = (data[1] >> FRAGMENT_N) & 1;
         let complete = (data[1] & 0x01) != 0;
         let n = data[2] as usize;
         let body = &data[3..];

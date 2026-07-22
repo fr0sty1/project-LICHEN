@@ -45,11 +45,11 @@ RULE 2: Global IPv6+UDP        | 2000::/3                     | 41B
 RULE 3: ICMPv6 RPL (DIO/DAO)   | NH=58, Type=155              | 2B
 RULE 255: No compression (fallback)
 
-FRAGMENTATION (ACK-on-Error):
-  FCN=6b(63/win) DTAG=0b WINDOW=1b RCS=CRC32 RETX=10s RETRIES=3 INACT=60s
+FRAGMENTATION (ACK-on-Error M=1 N=6 T=0 from constants.toml [schc.fragment], RuleIDs per schc.rule_id, bitmap MSB-first, MIC=RCS=CRC32/4B, timers 10s/3/60s):
   Regular: RuleID(8) + W(1) + FCN(6) + Tile
-  All-1:   RuleID(8) + W(1) + 111111(6) + RCS(32) + Tile
-  ACK:     RuleID(8) + W(1) + Bitmap
+  All-1:   RuleID(8) + W(1) + 0b111111 + RCS(32) + Tile
+  ACK:     RuleID(8) + control(8) + len(8) + bitmap
+  Vectors: test/vectors/ + bead hwx9-vectors
 ```
 
 ## draft-lichen-rpl-lora-00: RPL Configuration

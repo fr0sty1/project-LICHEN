@@ -286,70 +286,34 @@ CoAP compression is OPTIONAL and implementation-dependent.
 
 ## 5. Fragmentation Profile
 
+LICHEN uses ACK-on-Error (RFC 8724 §8.4.3) with M=1 N=6 T=0 (constants.toml [schc.fragment]), RuleIDs from §4. Bitmap, MIC/RCS=CRC32(4B), timers per constants. See test/vectors/schc_compression.json and fragmentation bead.
+
 ### 5.1. Parameters
 
-| Parameter | Value | Rationale |
+| Parameter | Value | Reference |
 |-----------|-------|-----------|
-| Mode | ACK-on-Error | Minimize ACK overhead |
-| FCN size | 6 bits | 63 fragments per window |
-| DTAG size | 0 bits | Single packet in flight |
-| Window size | 1 bit | 2 windows max |
-| Tile size | L2 MTU - header | Maximize per-fragment payload |
-| Retransmission timer | 10 seconds | LoRa latency tolerance |
-| Max retries | 3 | Balance reliability/efficiency |
-| Inactivity timer | 60 seconds | Clean up stale state |
+| M (W bits) | 1 | constants.toml |
+| N (FCN bits) | 6 | constants.toml |
+| T (DTAG bits) | 0 | constants.toml |
+| Rule ID | 8 bits (0-6,255) | §4 |
+| RCS/MIC | CRC-32, 4 bytes | RFC 8724 App B |
+| RETX timer | 10s | constants.toml |
+| MAX_ACK_REQUESTS | 3 | constants.toml |
+| INACTIVITY timer | 60s | constants.toml |
 
-### 5.2. ACK-on-Error Mode
+### 5.2. Formats
 
-In ACK-on-Error mode:
-1. Sender transmits all fragments without waiting for ACKs
-2. Receiver tracks received fragments via bitmap
-3. After final fragment, receiver sends ACK only if fragments missing
-4. Sender retransmits missing fragments
-5. Repeat until complete or max retries exceeded
+Regular fragment: RuleID(8) + W(1) + FCN(6) + Tile
 
-This minimizes overhead for the common case (no loss).
+All-1: RuleID(8) + W(1) + 0b111111 + RCS(32) + Tile
 
-### 5.3. Fragment Format
+ACK: RuleID(8) + control(8) + n(8) + bitmap-bytes (MSB-first, 1=missing)
 
-**Regular Fragment:**
-```
-+--------+---+--------+------------------+
-| RuleID | W |  FCN   |     Tile         |
-+--------+---+--------+------------------+
-   8 bit  1b   6 bit      variable
-```
+### 5.3. Operation
 
-**All-1 Fragment (final):**
-```
-+--------+---+--------+--------+---------+
-| RuleID | W | 111111 |  RCS   |  Tile   |
-+--------+---+--------+--------+---------+
-   8 bit  1b   6 bit   32 bit   variable
-```
+Sender tiles with window_size from constants, uses FCN countdown per window, sends All-1 with RCS. Receiver uses bitmap for NACKs, verifies RCS on reassembly. Max ~12KB/datagram; larger use app chunking.
 
-- **W:** Window bit (alternates 0/1)
-- **FCN:** Fragment Counter (63 down to 0, then All-1)
-- **RCS:** Reassembly Check Sequence (CRC-32)
-
-### 5.4. ACK Format
-
-```
-+--------+---+--------+
-| RuleID | W | Bitmap |
-+--------+---+--------+
-   8 bit  1b  variable
-```
-
-Bitmap indicates missing fragments (1 = missing, 0 = received).
-
-### 5.5. Maximum Packet Size
-
-With 63 fragments per window × 2 windows × ~200 bytes per fragment:
-- Maximum packet size: ~25 KB
-- Practical limit: ~12 KB (single window recommended)
-
-Packets exceeding this MUST be chunked at application layer.
+## 6. Rule Versioning
 
 ## 6. Rule Versioning
 

@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#define SCHC_DEFAULT_WINDOW_BITS 2
+#define SCHC_DEFAULT_WINDOW_BITS 1
 #define SCHC_DEFAULT_FCN_BITS 6
 #define SCHC_FRAGMENT_RULE_ID_LEN 1
 #define SCHC_FRAGMENT_CONTROL_LEN 1

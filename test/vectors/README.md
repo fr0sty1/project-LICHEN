@@ -13,6 +13,7 @@ against these files (issue `ajr`, gate `ijj`).
 |------|--------|
 | `schema.json` | JSON Schema (draft-07) for the envelope and vector shapes |
 | `schc_compression.json` | SCHC whole-packet compression (RFC 8724), rules 0–4 |
+| `schc_fragment.json` | SCHC fragmentation (RFC 8724 §8): single/multi, window, ACK-on-error, MIC fail, OOO, retransmit (independent RFC oracles) |
 | `l2_payload.json` | Authenticated L2 inner-payload dispatch wrapping SCHC and routing/control bodies |
 | `link_frame.json` | LICHEN link-layer frame encoding (spec section 4) |
 | `announce_coords.json` | Announce app_data Type=0x01 geographic coordinate encoding |
