@@ -89,6 +89,10 @@ class SimRadio:
         self._sim_id = sim_id
         self._node_id = node_id
         self._position = position
+        if len(sim_id.encode("utf-8")) > 255 or len(node_id.encode("utf-8")) > 255:
+            raise ProtocolError("sim_id or node_id exceeds 255 bytes")
+        if not sim_id or not node_id:
+            raise ProtocolError("sim_id and node_id cannot be empty")
         self._stream: SocketStream | None = None
         self._freq_hz: int = 915_000_000
         self._tx_power_dbm: int = 14
@@ -109,6 +113,21 @@ class SimRadio:
     def tx_power_dbm(self) -> int:
         """Current configured transmit power in dBm."""
         return self._tx_power_dbm
+
+    def _validate_response(self, response: bytes) -> int:
+        """Validate response length before decoding payload.
+
+        Raises SimRadioError on empty or too-short responses for types that
+        carry payload.
+        """
+        if not response:
+            raise SimRadioError("Empty simulator response")
+        msg_type = self._validate_response(response)
+        if len(response) < 2 and msg_type in (MSG_ERR, MSG_RX_PACKET, MSG_TIME_OK):
+            raise SimRadioError(
+                f"Simulator response type 0x{msg_type:02x} too short for payload"
+            )
+        return msg_type
 
     async def connect(self) -> None:
         """Open TCP connection to the simulator and register this node.
@@ -139,7 +158,7 @@ class SimRadio:
                 async with self._lock:
                     await self._send(msg)
                     response = await self._recv()
-                msg_type = get_message_type(response)
+                msg_type = self._validate_response(response)
 
                 if msg_type == MSG_OK:
                     return
@@ -173,7 +192,7 @@ class SimRadio:
         async with self._lock:
             await self._send(msg)
             response = await self._recv()
-        msg_type = get_message_type(response)
+        msg_type = self._validate_response(response)
 
         if msg_type == MSG_TX_DONE:
             packet_hash = hashlib.sha256(payload).hexdigest()[:16]
@@ -225,7 +244,7 @@ class SimRadio:
         async with self._lock:
             await self._send(msg)
             response = await self._recv()
-        msg_type = get_message_type(response)
+        msg_type = self._validate_response(response)
 
         if msg_type == MSG_RX_PACKET:
             payload, rssi, snr = decode_rx_packet(response[1:])
@@ -263,7 +282,7 @@ class SimRadio:
         async with self._lock:
             await self._send(msg)
             response = await self._recv()
-        msg_type = get_message_type(response)
+        msg_type = self._validate_response(response)
 
         if msg_type == MSG_TIME_OK:
             return decode_time_ok(response[1:])
@@ -294,7 +313,7 @@ class SimRadio:
         async with self._lock:
             await self._send(msg)
             response = await self._recv()
-        msg_type = get_message_type(response)
+        msg_type = self._validate_response(response)
 
         if msg_type == MSG_CAD_RESULT:
             return decode_cad_result(response[1:])
