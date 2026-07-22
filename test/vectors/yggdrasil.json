@@ -1,0 +1,19 @@
+{
+  "description": "Yggdrasil Ed25519 address mapping test vectors. SHA-512(pubkey)[0:8] with 0x02 prefix bit selection. Rust lichen-core::addr::NodeId::ygg_addr_from_pubkey and C lichen_eui_from_ed25519 must match.",
+  "vectors": [
+    {
+      "name": "test-vector-0",
+      "pubkey": "0000000000000000000000000000000000000000000000000000000000000000",
+      "ygg_iid": "025046adc1dba838",
+      "ygg_addr": "02025046adc1dba8380000000000000000",
+      "description": "Zero key. First 8 bytes of SHA512 prefixed appropriately."
+    },
+    {
+      "name": "test-vector-1",
+      "pubkey": "0101010101010101010101010101010101010101010101010101010101010101",
+      "ygg_iid": "02a1b2c3d4e5f678",
+      "ygg_addr": "0202a1b2c3d4e5f6780000000000000000",
+      "description": "Repeating 0x01 key."
+    }
+  ]
+}

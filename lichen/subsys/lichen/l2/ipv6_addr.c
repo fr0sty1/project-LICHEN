@@ -120,12 +120,21 @@ int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
      * "locally-administered" status. The Python implementation in
      * lichen/crypto/identity.py uses the same approach (clear, not flip).
      */
-    iid[0] &= ~UL_BIT;  /* Clear U/L bit */
+    iid[0] &= ~UL_BIT;
 
 cleanup:
-    /* SECURITY: Zero hash on all paths (sha_state zeroed by helper) */
     secure_zero(hash, sizeof(hash));
     return ret;
+}
+
+int lichen_eui_from_ed25519(const uint8_t *pubkey, uint8_t *eui) {
+    uint8_t hash[64];
+    if (pubkey == NULL || eui == NULL) return -EINVAL;
+    lichen_sha512(hash, pubkey, 32);
+    memcpy(eui, hash, 8);
+    eui[0] = (eui[0] & 0xfe) | 0x02;
+    secure_zero(hash, sizeof(hash));
+    return 0;
 }
 
 int lichen_make_link_local(const uint8_t *iid, struct in6_addr *addr)

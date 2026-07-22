@@ -138,6 +138,7 @@ int lichen_eui64_to_iid(const uint8_t *eui64, uint8_t *iid);
  * @return 0 on success, -EINVAL if NULL pointer
  */
 int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid);
+int lichen_eui_from_ed25519(const uint8_t *pubkey, uint8_t *eui);
 
 /**
  * @brief Construct link-local address from IID
