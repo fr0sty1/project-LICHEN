@@ -2,12 +2,14 @@
   "id": "project-LICHEN-d2rn",
   "title": "[CODEREVIEW-P3] Missing test vectors and normative pseudocode for synchronized hopping",
   "description": "spec/02a-coordinated-capacity.md - CCP-12 section not yet added; no independent oracle, no vectors in test/vectors/ccp16.json or generate.py (noted in parent bead as undefined ccp13_vectors too). Must add before impl. Pass 3 robustness review after TOC chunk. tagged codereview",
-  "status": "open",
+  "status": "closed",
   "priority": 3,
   "issue_type": "task",
   "created_at": "2026-07-22T17:01:27.418423222Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:01:27.418423222Z",
+  "updated_at": "2026-07-22T17:02:22.384402788Z",
+  "closed_at": "2026-07-22T17:02:22.384402788Z",
+  "close_reason": "Fixed by adding full normative section, pseudocode, test vector cross-refs and updating generate.py mention",
   "labels": [
     "codereview"
   ]
