@@ -62,8 +62,7 @@ impl TrickleTimer {
     /// Create a new timer. `imax_doublings` is the number of times `imin` is
     /// doubled to reach the maximum interval (RFC 6206 uses this convention).
     pub fn new(imin_ms: u32, imax_doublings: u32, k: u32) -> Self {
-        // checked_shl only detects invalid shift counts, not multiplication overflow.
-        // Use checked_mul to properly detect when imin * 2^doublings overflows.
+        assert!(imin_ms > 0, "Trickle Imin must be non-zero");
         let max_interval = 1u32
             .checked_shl(imax_doublings)
             .and_then(|mult| imin_ms.checked_mul(mult))
@@ -147,7 +146,8 @@ impl TrickleTimer {
     ///
     /// `rand_offset` is a caller-supplied random value in `[0, new_interval/2)`.
     pub fn expire(&mut self, now: u32, rand_offset: u32) {
-        let _ = self.try_expire(now, rand_offset);
+        self.try_expire(now, rand_offset)
+            .expect("expire only valid after transmit");
     }
 
     pub fn try_expire(
@@ -169,7 +169,8 @@ impl TrickleTimer {
     ///
     /// No-op if the interval is already `imin` (RFC 6206 §4.2).
     pub fn reset(&mut self, now: u32, rand_offset: u32) {
-        let _ = self.try_reset(now, rand_offset);
+        self.try_reset(now, rand_offset)
+            .expect("reset only valid on active timer");
     }
 
     pub fn try_reset(
