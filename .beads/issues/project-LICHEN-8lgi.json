@@ -2,11 +2,15 @@
   "id": "project-LICHEN-8lgi",
   "title": "[kimi-review] 58345e8: [SEVERITY: medium] Commit claims a security-relevant fix (pu",
   "description": "Commit: 58345e865\nMessage: fix(edhoc): validate peer pubkey before ed25519_verify\n\nFinding: [SEVERITY: medium] Commit claims a security-relevant fix (pubkey validation before signature verification) but contains no code. Either the change is missing from what was submitted for review, or the commit is empty — in which case the fix is not actually applied and the underlying vulnerability (calling `ed25519_verify` on an unvalidated/malformed point, e.g., small-order or non-canonical keys) may still be present.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T21:45:00.392034591Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T21:45:00.392034591Z"
+  "updated_at": "2026-07-22T23:13:50.067580676Z",
+  "started_at": "2026-07-22T23:13:50.067580676Z",
+  "lease_expires_at": "2026-07-22T23:18:50.067580676Z",
+  "heartbeat_at": "2026-07-22T23:13:50.067580676Z"
 }
