@@ -346,6 +346,22 @@ static int build_sig_structure(const uint8_t *id_cred, size_t id_cred_len,
 	return 0;
 }
 
+static int build_enc_structure(uint8_t *out, size_t out_size, size_t *out_len,
+			       const uint8_t *th, size_t th_len)
+{
+	ZCBOR_STATE_E(zse, 0, out, out_size, 0);
+	if (!zcbor_list_start_encode(zse, 3) ||
+	    !zcbor_tstr_put_lit(zse, "Encrypt0") ||
+	    !zcbor_bstr_encode_ptr(zse, NULL, 0) ||
+	    !zcbor_bstr_encode_ptr(zse, th, th_len) ||
+	    !zcbor_list_end_encode(zse, 3)) {
+		return -ENOMEM;
+	}
+
+	*out_len = zse->payload - out;
+	return 0;
+}
+
 /*
  * AES-CCM-16-64-128 encryption
  */
