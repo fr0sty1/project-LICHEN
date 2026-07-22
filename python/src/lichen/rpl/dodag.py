@@ -163,14 +163,12 @@ class DodagState:
         neighbor_id = to_ipv6(neighbor_id)
         if self.role is DodagRole.ROOT:
             return
-        # SECURITY: RFC 6550 Section 8.2.2.5 - nodes MUST NOT select themselves as parent
         if self.node_address is not None and neighbor_id == self.node_address:
-            return  # Ignore DIOs appearing to come from self
-        # SECURITY: RFC 6550 Section 8.2 - filter DIOs by RPL Instance ID
+            return
         if dio.rpl_instance_id != self.rpl_instance_id and self.is_joined():
-            return  # belongs to a different RPL instance
+            return
         if str(dio.dodag_id) != self.dodag_id and self.is_joined():
-            return  # belongs to a different DODAG
+            return
 
         if version_is_newer(dio.version, self.version) or not self.is_joined():
             # Adopt this (newer or first-seen) DODAG version and rejoin.
