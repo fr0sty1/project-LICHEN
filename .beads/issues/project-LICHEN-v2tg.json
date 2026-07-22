@@ -2,6 +2,7 @@
   "id": "project-LICHEN-v2tg",
   "title": "FragmentSender.retransmit does not handle bitmap shorter than window",
   "description": "File: python/src/lichen/schc/fragment.py:200-202\n\nFragmentSender.retransmit() handles short bitmaps:\n  for pos, frag in enumerate(window_frags):\n      if pos \u003e= len(bitmap) or not bitmap[pos]:\n          missing.append(frag)\n\nIf bitmap is shorter than window_frags, fragments beyond len(bitmap) are treated as missing. This is intentional for handling bitmaps that cover only part of the window.\n\nHowever, there's no validation or warning if bitmap is longer than window_frags. A bitmap with extra bits beyond the window size would silently ignore those bits.\n\nWhile not strictly a bug (the extra bits don't affect correctness), it could mask issues where a mismatched window_size between sender and receiver causes bitmap/window misalignment.\n\nFix: Consider logging a warning if len(bitmap) \u003e len(window_frags) to aid debugging.\n\nCategory: PROTOCOL",
+  "notes": "Commit: a46daf147",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:30:25.030482Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:32:20.218428089Z",
+  "updated_at": "2026-07-22T23:36:23.483363268Z",
   "started_at": "2026-07-22T23:32:20.218428089Z",
   "lease_expires_at": "2026-07-22T23:37:20.218428089Z",
   "heartbeat_at": "2026-07-22T23:32:20.218428089Z"
