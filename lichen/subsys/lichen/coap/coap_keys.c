@@ -183,12 +183,9 @@ static size_t base64_encode(const uint8_t *data, size_t len, char *out, size_t o
 	size_t i;
 
 	for (i = 0; i + 2 < len; i += 3) {
-<<<<<<< HEAD
-=======
 		if (out_idx + 5 > out_len) {
 			return 0;
 		}
->>>>>>> origin/integration/worker11-20260722
 		out[out_idx++] = base64_chars[(data[i] >> 2) & 0x3f];
 		out[out_idx++] = base64_chars[((data[i] & 0x03) << 4) | ((data[i + 1] >> 4) & 0x0f)];
 		out[out_idx++] = base64_chars[((data[i + 1] & 0x0f) << 2) | ((data[i + 2] >> 6) & 0x03)];
@@ -196,12 +193,9 @@ static size_t base64_encode(const uint8_t *data, size_t len, char *out, size_t o
 	}
 
 	if (i < len) {
-<<<<<<< HEAD
-=======
 		if (out_idx + 5 > out_len) {
 			return 0;
 		}
->>>>>>> origin/integration/worker11-20260722
 		out[out_idx++] = base64_chars[(data[i] >> 2) & 0x3f];
 		if (i + 1 < len) {
 			out[out_idx++] = base64_chars[((data[i] & 0x03) << 4) |
