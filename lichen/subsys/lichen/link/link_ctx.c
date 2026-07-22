@@ -555,39 +555,21 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 		return;
 	}
 
-	int locked = (seq_lock(ctx) == 0);
+	seq_lock(ctx);
 
-	/*
-	 * SECURITY: Always wipe keys, even if lock fails. This prioritizes
-	 * key erasure over correctness of concurrent operations.
-	 *
-	 * If the lock failed, another thread is using this context - this
-	 * indicates improper usage (cleanup was called without ensuring
-	 * exclusive access). Log a warning but proceed with the wipe.
-	 */
-	if (!locked) {
-		LOG_WRN("cleanup called while context is locked - potential race condition\n");
-	}
 	secure_wipe(ctx->ed25519_sk, LICHEN_SK_LEN);
 	secure_wipe(ctx->link_key, LICHEN_LINK_KEY_LEN);
 
-	/* Clear public key and flags (not secret, but clean up completely) */
 	memset(ctx->ed25519_pk, 0, LICHEN_PK_LEN);
 	ctx->has_key = false;
 	ctx->has_link_key = false;
 
-	/* Reset sequence state and nonce exhaustion flag */
 	ctx->epoch = 0;
 	ctx->tx_seq = 0;
 	ctx->nonce_exhausted = false;
 
-	if (locked) {
-		(void)seq_unlock(ctx);
+	(void)seq_unlock(ctx);
 #ifndef __ZEPHYR__
-		/* Only destroy mutex if we successfully acquired and released it.
-		 * If lock failed, mutex may be held by another thread - destroying
-		 * would cause undefined behavior per POSIX. */
-		pthread_mutex_destroy(&ctx->seq_lock);
+	pthread_mutex_destroy(&ctx->seq_lock);
 #endif
-	}
 }
