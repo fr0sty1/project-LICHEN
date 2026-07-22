@@ -2,12 +2,16 @@
   "id": "project-LICHEN-opql",
   "title": "codereview-P2 schema pass3",
   "description": "Pass3/3: converged clean, no P0-P4 findings left. Schema supports v2 array root for ccp16-desync.json. All tests pass. Ready to close b7dh.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T17:10:18.188537729Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:10:18.188537729Z",
+  "updated_at": "2026-07-22T22:15:09.897392274Z",
+  "started_at": "2026-07-22T22:15:09.897392274Z",
+  "lease_expires_at": "2026-07-22T22:20:09.897392274Z",
+  "heartbeat_at": "2026-07-22T22:15:09.897392274Z",
   "labels": [
     "codereview"
   ]
