@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ydtk",
+  "title": "codereview: gateway forwarding always sends to TUN without RPL preference check",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:17:59.723050017Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:17:59.723050017Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ydtk",
+      "depends_on_id": "project-LICHEN-zt3c.17",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:17:59.84554704Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
