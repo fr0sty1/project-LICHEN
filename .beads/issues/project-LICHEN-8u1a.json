@@ -1,12 +1,13 @@
 {
   "id": "project-LICHEN-8u1a",
   "title": "codereview-pass1: coap_status.c top cleaned, errno added, no non-SPDX comments",
+  "notes": "Commit: 44bc90c05",
   "status": "open",
   "priority": 3,
   "issue_type": "chore",
   "created_at": "2026-07-22T16:07:33.491246475Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:07:33.491246475Z",
+  "updated_at": "2026-07-22T22:36:04.755999837Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-8u1a",
