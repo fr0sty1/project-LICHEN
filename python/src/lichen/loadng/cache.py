@@ -122,6 +122,9 @@ class RouteCache:
         entry = self._entries.get(dest)
         if entry is None:
             return False
+        if entry.valid_until <= now:
+            del self._entries[dest]
+            return False
         entry.valid_until = now + self.route_timeout_ms
         self._entries.move_to_end(dest)
         return True
