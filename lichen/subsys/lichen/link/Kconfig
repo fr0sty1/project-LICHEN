@@ -116,6 +116,7 @@ config LICHEN_TDMA
 	depends on LICHEN_LINK
 	depends on LICHEN_RPL
 	select LICHEN_LINK_CCP16_LOAD_BALANCING
+	select LICHEN_SCHC
 	help
 	  TDMA overlay for gateway-centric deployments per spec/02a-coordinated-capacity.md.
 	  Supports beacon sync, GPS sync, dynamic slot assignment from root DIO/beacon,

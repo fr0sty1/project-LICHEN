@@ -14,14 +14,20 @@
 
 LOG_MODULE_REGISTER(lichen_coap_dtn, CONFIG_LICHEN_COAP_DEADDROP_LOG_LEVEL);
 
+#define CONFESSIONS_RATE_LIMIT_S 30
+
 static const struct lichen_deaddrop_provider *s_provider;
 static struct lichen_dtn_buffer s_dtn_buf;
 static struct senml_pack s_senml_pack;
 static K_MUTEX_DEFINE(s_dtn_buf_mutex);
 static K_MUTEX_DEFINE(s_senml_pack_mutex);
 static struct k_work_delayable s_dtn_expire_work;
+<<<<<<< HEAD
 static uint32_t s_last_deaddrop[16] = {0};
 
+=======
+static uint32_t s_last_confessions;
+>>>>>>> origin/worktree-worker1
 
 
 static uint32_t dtn_get_unix_time(void) { return (uint32_t)(k_uptime_get() / 1000); }
@@ -83,6 +89,18 @@ static int deaddrop_get(struct coap_resource *resource, struct coap_packet *requ
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (len < 0) return 0xA0;
 	return lichen_coap_respond(resource, request, addr, addr_len, 0x45, buf, len);
+}
+
+static int confessions_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
+	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
+	uint32_t now = dtn_get_unix_time();
+	if (now - s_last_confessions < CONFESSIONS_RATE_LIMIT_S) {
+		k_mutex_unlock(&s_dtn_buf_mutex);
+		return 0xa0;
+	}
+	s_last_confessions = now;
+	k_mutex_unlock(&s_dtn_buf_mutex);
+	return 0x41;
 }
 
 static const char * const deaddrop_path[] = { "deaddrop", NULL };

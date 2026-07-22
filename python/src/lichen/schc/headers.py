@@ -534,7 +534,7 @@ def decompress_packet(data: bytes, profiles: tuple[PacketProfile, ...] = DEFAULT
             required_len = 1 + residue_len
             if len(data) < required_len:
                 raise SchcError(
-                    f"packet too short for residue: need {required_len} bytes for rule {rule_id}, "
+                    f"packet too short: need {required_len} bytes for residue of rule {rule_id}, "
                     f"got {len(data)}"
                 )
             residue = data[:required_len]

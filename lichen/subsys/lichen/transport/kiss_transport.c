@@ -397,26 +397,24 @@ static void kiss_rx_thread_fn(void *p1, void *p2, void *p3)
 
 	while (atomic_get(&ctx->shutdown) == 0) {
 		k_sem_take(&ctx->rx_sem, K_FOREVER);
+<<<<<<< HEAD
 
 		if (atomic_get(&ctx->shutdown) != 0) {
+=======
+		if (ctx->shutdown) {
+>>>>>>> origin/worktree-worker1
 			break;
 		}
-
-		/* Drain the ring buffer */
-		while ((n = ring_buf_get(&ctx->rx_ring, buf, sizeof(buf))) > 0) {
+		while (!ctx->shutdown && (n = ring_buf_get(&ctx->rx_ring, buf, sizeof(buf))) > 0) {
 			k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 			ctx->stats.rx_bytes += n;
 			k_mutex_unlock(&ctx->stats_mutex);
-
-			for (uint32_t i = 0; i < n; i++) {
+			for (uint32_t i = 0; !ctx->shutdown && i < n; i++) {
 				int ret = kiss_decode_byte(&ctx->rx_ctx, buf[i]);
-
 				if (ret == 1) {
-					/* Complete frame ready */
 					dispatch_frame(ctx);
 					kiss_decode_init(&ctx->rx_ctx);
 				} else if (ret < 0) {
-					/* Error - frame already reset */
 					k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 					if (ret == -EOVERFLOW) {
 						ctx->stats.overflow_errors++;

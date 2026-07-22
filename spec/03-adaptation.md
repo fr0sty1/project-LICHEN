@@ -170,7 +170,7 @@ Version increments when rules are added, removed, or modified.
 | 1 | Initial LICHEN release |
 | 2+ | Future versions |
 
-**DIO Rule Version Option (Type TBD):** PIO proposal for RPL options (incl. potential PIO) at python/src/lichen/schc/rules.py:272 and 03-adaptation.md:184 (cross-ref 04-network.md:52 no-PIO in no-ULA model per 06-security.md:128).
+**DIO Rule Version Option (Type TBD):** PIO proposal for RPL options (incl. potential PIO) at python/src/lichen/schc/rules.py:262, spec/drafts/draft-lichen-schc-lora-00.md:228 (table/calc) and 03-adaptation.md:184 (cross-ref 04-network.md:52 no-PIO in no-ULA model per 06-security.md:128).
 
 DODAG roots advertise their rule set version in DIO messages:
 

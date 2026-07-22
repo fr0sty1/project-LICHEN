@@ -235,9 +235,10 @@ struct lichen_meshtastic_adapter_ops {
 	 * enqueued. The hook must report the same queue used by
 	 * enqueue_from_radio; it is not a reservation or rollback mechanism, so
 	 * stale hook values or later enqueue failures can still leave partial
-	 * output. When omitted, the adapter keeps best-effort degraded semantics:
-	 * records are enqueued until enqueue_from_radio fails, and the caller may
-	 * observe a partial sync.
+	 * output (see enqueue_static_sync/enqueue_node_sync). When omitted, the
+	 * adapter keeps best-effort degraded semantics: records are enqueued
+	 * until enqueue_from_radio fails, and the caller may observe a partial
+	 * sync. Re-issue WantConfig to recover. (project-LICHEN-k1tb)
 	 */
 	lichen_meshtastic_adapter_queue_free_fn queue_free;
 	lichen_meshtastic_adapter_local_info_fn get_local_info;

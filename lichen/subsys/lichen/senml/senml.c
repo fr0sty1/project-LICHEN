@@ -167,6 +167,33 @@ int senml_add_bool(struct senml_pack *pack,
 	return 0;
 }
 
+int senml_add_string(struct senml_pack *pack,
+		    const char *name,
+		    const char *value)
+{
+	if (pack == NULL || name == NULL) {
+		return -EINVAL;
+	}
+
+	if (validate_name(name) < 0 || (value != NULL && validate_string(value) < 0)) {
+		return -EMSGSIZE;
+	}
+
+	if (pack->record_count >= SENML_MAX_RECORDS) {
+		return -ENOMEM;
+	}
+
+	struct senml_record *rec = &pack->records[pack->record_count++];
+	rec->name = name;
+	rec->unit = NULL;
+	rec->type = SENML_VALUE_STRING;
+	rec->value.s = value;
+	rec->time_offset = 0;
+	rec->has_time = false;
+
+	return 0;
+}
+
 /*
  * Encode a single SenML record as a CBOR map.
  * Returns: 0 on success, -ENOTSUP for unsupported types, -ENOMEM on CBOR error

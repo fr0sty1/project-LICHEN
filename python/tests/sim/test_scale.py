@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """Scale tests for the LICHEN simulator.
 
-These tests verify the simulator handles larger meshes and higher message rates.
+These tests verify the simulator handles larger meshes and higher message rates (exercises radio, medium, collisions, chaos for conference scenarios).
 Run with:
     pytest tests/sim/test_scale.py -v --timeout=120
     LICHEN_SCALE_NODES=100 pytest tests/sim/test_scale.py -v  # Override node count
@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import random
 import time
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
@@ -25,6 +26,7 @@ import pytest
 from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity
 from lichen.radio.sim_client import SimRadio
+from lichen.sim.chaos import DropRule
 from lichen.sim.server import SimulatorServer
 from lichen.sim.simulation import Simulation, TimeMode
 
@@ -97,6 +99,11 @@ class TestMeshScale:
         assert node_port is not None
 
         n_nodes = min(SCALE_NODES, SCALE_CAP)  # Cap for this test (configurable, no hardcoded)
+        random.seed(42)  # reproducibility for conference/dense mesh stress (exercises radio/medium/chaos)
+
+        # Exercise full stack + chaos (fixes bypass in conference test per project-LICHEN-1jvr)
+        if sim.chaos_engine is not None:
+            sim.chaos_engine.add_rule(DropRule(node_id="node-0", direction="rx"))
 
         # Setup nodes
         start = time.time()

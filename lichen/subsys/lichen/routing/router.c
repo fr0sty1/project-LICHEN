@@ -1027,7 +1027,7 @@ int lichen_router_fwd_expire(struct lichen_router *router, uint32_t now_ms)
 			if (age > CONFIG_LICHEN_ROUTER_FORWARDING_DEADLINE_MS) {
 				pkt->valid = false;
 				src->packet_count--;
-				router->fwd_stats.packets_dropped_deadline++;
+				atomic_inc((atomic_t *)&router->fwd_stats.packets_dropped_deadline);
 				expired++;
 			}
 		}

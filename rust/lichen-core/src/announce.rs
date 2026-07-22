@@ -101,7 +101,7 @@ impl<'a> Announce<'a> {
         }
         let rx_channel = data[5];
         if rx_channel > 15 {
-            return Err(AnnounceError::InvalidChannel);
+            return Err(AnnounceError::InvalidChannel(rx_channel));
         }
 
         // ponytail: unwrap safe, bounds checked above
@@ -256,6 +256,11 @@ mod tests {
     #[test]
     fn invalid_channel() {
         let mut wire = make_announce();
+        wire[5] = 16;
+        assert_eq!(
+            Announce::from_bytes(&wire),
+            Err(AnnounceError::InvalidChannel(16))
+        );
         wire[93] = 8;
         assert_eq!(
             Announce::from_bytes(&wire),

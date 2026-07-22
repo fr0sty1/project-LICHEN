@@ -76,6 +76,7 @@ Nodes MUST receive on all SF7-SF12. Gateways and nodes MUST announce TX_SF in DI
 
 Nodes MUST use TX_SF from pseudocode for unicast. DIO MUST carry ASSIGNED_SF for load balance. RX on all SF is REQUIRED for gateways. Test vectors in test/vectors/ccp16.json for load_balancing inputs MUST match output exactly (SF9 for density=3/snr=12.5, SF11 for density=12/snr=-2, SF12+tx_allowed=false for density=255/utilization=255).
 
+<<<<<<< HEAD
 ```pseudocode
 ema_update(avg, sample):
     diff = sample - avg
@@ -96,6 +97,41 @@ select_tx_sf(nbr, density, utilization):
         return 12, false
     return sf, true
 ```
+=======
+Signaling: Announce includes current TX_SF (1 byte). Absence means SF10.
+
+**Backwards Compatibility**
+
+No flag day required.
+
+- Old nodes: Use SF10 for all traffic (current behavior)
+- New nodes: Adapt SF per-neighbor based on SNR
+- Mixed network: SF10 is common ground, always works
+
+SF10 MUST remain the default and fallback SF. New nodes MUST use SF10 when communicating with old nodes (no SF field in their announces). New nodes MUST accept traffic on any SF (RX is already multi-SF capable via CAD). Announce MAY include TX_SF field; absence means SF10.
+
+Adaptation logic (normative, density-aware per CCP §2a.7.2):
+
+```pseudocode
+function adaptive_sf_select(density: u8, snr_ema: f32, load_factor: f32 = 0.0) -> u8
+    // Floating-point exactness: IEEE-754 f32 required for test vector match (EMA rounded to 6 decimals per ccp15.json).
+    // Embedded no_std note: avoid f32 in hot path; use Q7.8 fixed-point (snr_ema * 256, integer mul/add/shift) or lookup table. See rf_health.rs:64, lichen_rpl_update_sf for reference.
+    // Vector cross-refs per branch (ccp15.json + ccp_load_balancing.json):
+    //   high-density (>8 or load>0.8 or snr_ema<0): seed1 -> SF11
+    //   low-density good link (<5 and snr_ema>8): low_density_capacity -> SF9/SF7
+    //   poor link (>20 or snr_ema<-5): SF12
+    //   default: SF10 (baseline per 7.1)
+    if density > 8 or snr_ema < 0.0 or load_factor > 0.8:
+        return 11
+    elif density < 5 and snr_ema > 8.0:
+        return 9
+    elif density > 20 or snr_ema < -5.0:
+        return 12
+    return 10
+```
+
+Degradation: Old nodes always use SF10 (no adaptation). New nodes adapt when talking to new nodes. New-to-old: SF10. Benefit scales with fraction of new nodes.
+>>>>>>> origin/worktree-worker1
 
 ### 3.5. SFN Delta for Coordinated Capacity
 

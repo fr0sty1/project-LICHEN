@@ -1549,7 +1549,7 @@ int oscore_protect_request(struct oscore_ctx *ctx,
 	/* Build OSCORE option */
 	struct oscore_option opt = {
 		.has_piv = true,
-		.piv_len = (uint8_t)piv_len,
+		.piv_len = (uint8_t)(piv_len & 0x07),
 		.has_kid = true,
 		.kid_len = ctx->sender_id_len,
 	};

@@ -21,9 +21,11 @@
               {"$ref": "#/definitions/meshtastic_app_compat_vector"},
               {"$ref": "#/definitions/meshcore_app_compat_vector"},
               {"$ref": "#/definitions/oscore_vector"},
-              {"$ref": "#/definitions/rpl_messages_vector"},
-              {"$ref": "#/definitions/ccp15_vector"},
-              {"$ref": "#/definitions/ccp_vector"}
+               {"$ref": "#/definitions/rpl_messages_vector"},
+               {"$ref": "#/definitions/ccp13_vector"},
+               {"$ref": "#/definitions/ccp15_vector"},
+               {"$ref": "#/definitions/ccp_vector"}
+
             ]
           }
         }
@@ -41,9 +43,11 @@
           {"$ref": "#/definitions/meshtastic_app_compat_vector"},
           {"$ref": "#/definitions/meshcore_app_compat_vector"},
           {"$ref": "#/definitions/oscore_vector"},
-          {"$ref": "#/definitions/rpl_messages_vector"},
-          {"$ref": "#/definitions/ccp15_vector"},
-          {"$ref": "#/definitions/ccp_vector"}
+           {"$ref": "#/definitions/rpl_messages_vector"},
+           {"$ref": "#/definitions/ccp13_vector"},
+           {"$ref": "#/definitions/ccp15_vector"},
+           {"$ref": "#/definitions/ccp_vector"}
+
         ]
       },
       "description": "v2 bare array root support for CCP desync vectors (ccp16-desync.json) and load balancing tests"
@@ -728,6 +732,21 @@
         "hash_32": {"type": "string", "pattern": "^[0-9a-f]{8}$"}
       }
     },
+    "ccp13_vector": {
+      "type": "object",
+      "required": ["name", "description", "limit_permille", "window_ms", "expected_remaining_ms"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "limit_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "window_ms": {"type": "integer", "minimum": 1000},
+        "tx_ms": {"type": "integer", "minimum": 0},
+        "expected_remaining_ms": {"type": "integer", "minimum": 0},
+        "expected_usage_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "notes": {"type": "string"}
+      }
+    },
     "ccp_vector": {
       "type": "object",
       "required": ["description"],
@@ -739,6 +758,14 @@
           "description": "CCP-16 vector type (added for schema completeness per codereview)"
         },
         "description": {"type": "string"},
+        "name": {"type": "string"},
+        "rssi_dbm": {"type": "number", "minimum": -140, "maximum": 0},
+        "per": {"type": "number", "minimum": 0, "maximum": 1},
+        "snr_samples": {
+          "type": "array",
+          "items": {"type": "number"}
+        },
+        "hash_32_example": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
         "input": {
           "type": "object",
           "properties": {
@@ -768,6 +795,7 @@
             "slot_id": {"type": "integer"},
             "sf": {"type": "integer", "minimum": 7, "maximum": 12},
             "channel": {"type": "integer", "minimum": 0},
+            "expected_channel": {"type": "integer", "minimum": 0},
             "tx_allowed": {"type": "boolean"},
             "expected_sf": {"type": "integer"},
             "snr_ema": {"type": "number"},
@@ -782,7 +810,21 @@
           }
         },
         "notes": {"type": "string"}
-      }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "slot_selection"}}},
+          "then": {"required": ["input", "output"]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "load_balancing"}}},
+          "then": {"required": ["input", "output"]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "desync"}}},
+          "then": {"required": ["input", "output"]}
+        }
+      ]
     }
   }
 }

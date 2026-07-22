@@ -365,13 +365,14 @@ in the same DODAG.
 
 ## 8. IANA Considerations
 
-This document requests no IANA allocations. SCHC registry coordination with LPWAN WG required.
+This document has no IANA actions.
 
-Any future SCHC Context ID registry MUST coordinate with the IETF LPWAN WG to prevent namespace fragmentation.
+This SCHC profile for LoRa mesh uses pre-provisioned rules with 8-bit Rule IDs (no dynamic Context ID negotiation per RFC 8724). Future extensions that register SCHC Context IDs or standardized Rule IDs for LoRa MUST coordinate with the IETF LPWAN WG to prevent namespace fragmentation and ensure interoperability with other LPWAN SCHC profiles.
 
-Future versions may request:
-- DIO Option Type for Rule Version advertisement
-- Rule ID registry for standardized rules
+Future versions of this document may request:
+- A dedicated SCHC Context ID range for LoRa (if negotiated rules are added)
+- An IANA registry for standardized LoRa SCHC rules
+- A CoAP Option or RPL Option Type for rule version advertisement
 
 ## 9. References
 
