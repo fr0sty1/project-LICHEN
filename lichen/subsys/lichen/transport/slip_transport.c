@@ -216,13 +216,13 @@ static int slip_decode_byte(struct slip_transport_ctx *ctx, uint8_t b)
 	switch (ctx->rx_state) {
 	case SLIP_STATE_IDLE:
 		if (b == SLIP_END) {
-			/* Empty frame or frame delimiter - stay idle */
 			ctx->rx_len = 0;
 			ctx->rx_overflow = false;
 		} else if (b == SLIP_ESC) {
 			ctx->rx_state = SLIP_STATE_ESC;
+			ctx->rx_len = 0;
+			ctx->rx_overflow = false;
 		} else {
-			/* First data byte */
 			ctx->rx_state = SLIP_STATE_DATA;
 			ctx->rx_len = 0;
 			ctx->rx_overflow = false;
