@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-36jc",
   "title": "[merge-conflict] worktree-worker17: main.c",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:19.0371968Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:43:19.0371968Z"
+  "updated_at": "2026-07-22T23:48:43.613048646Z",
+  "started_at": "2026-07-22T23:48:43.613048646Z",
+  "lease_expires_at": "2026-07-22T23:53:43.613048646Z",
+  "heartbeat_at": "2026-07-22T23:48:43.613048646Z"
 }
