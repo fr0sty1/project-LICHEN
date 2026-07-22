@@ -2,11 +2,15 @@
   "id": "project-LICHEN-cqce",
   "title": "EDHOC signing key not zeroized in EdhocInitiator/EdhocResponder",
   "description": "File: rust/lichen-oscore/src/edhoc.rs\nLines: 177-193, 599-614\n\nThe EdhocInitiator and EdhocResponder structs contain SigningKey (Ed25519 private key):\n```rust\npub struct EdhocInitiator {\n    /// Our Ed25519 signing key.\n    signing_key: SigningKey,\n    ...\n}\n```\n\nThe state structs (InitiatorState, ResponderState) derive Zeroize/ZeroizeOnDrop, but the outer structs (EdhocInitiator, EdhocResponder) do NOT.\n\nThe SigningKey from ed25519-dalek does implement Zeroize, but without #[zeroize(drop)] on the outer struct, dropping an EdhocInitiator/EdhocResponder won't zeroize the signing_key.\n\nImpact: Ed25519 signing key may remain in memory after EDHOC completion.\n\nFix: Add #[derive(Zeroize)] and #[zeroize(drop)] to EdhocInitiator and EdhocResponder:\n```rust\n#[derive(Zeroize)]\n#[zeroize(drop)]\npub struct EdhocInitiator {\n    signing_key: SigningKey,\n    ...\n}\n```",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:38:57.413023Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:38:57.413063Z"
+  "updated_at": "2026-07-22T20:17:19.955555761Z",
+  "started_at": "2026-07-22T20:17:19.955555761Z",
+  "lease_expires_at": "2026-07-22T20:22:19.955555761Z",
+  "heartbeat_at": "2026-07-22T20:17:19.955555761Z"
 }
