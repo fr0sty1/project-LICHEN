@@ -131,46 +131,20 @@ class PropagationModel:
         return rx_power - self.noise_floor_dbm
 
     def can_decode(
-        self, tx_power_dbm: float, distance_m: float, *, sensitivity_dbm: float = SENSITIVITY_SF10
+        self,
+        tx_power_dbm: float,
+        distance_m: float,
+        *,
+        sensitivity_dbm: float = SENSITIVITY_SF10,
     ) -> bool:
-        """Check if a signal can be decoded at a given distance.
-
-        A signal can be decoded if the received power exceeds the
-        receiver sensitivity threshold for the given spreading factor.
-
-        Args:
-            tx_power_dbm: Transmit power in dBm.
-            distance_m: Distance from transmitter in meters. Must be > 0.
-            sensitivity_dbm: Receiver sensitivity threshold in dBm.
-                Defaults to SF10 sensitivity (-132 dBm).
-
-        Returns:
-            True if the signal can be decoded, False otherwise.
-
-        Raises:
-            ValueError: If distance_m <= 0.
-        """
         rx_power = self.received_power(tx_power_dbm, distance_m)
         return rx_power >= sensitivity_dbm
 
     def max_range(
-        self, tx_power_dbm: float, *, sensitivity_dbm: float = SENSITIVITY_SF10
+        self,
+        tx_power_dbm: float,
+        *,
+        sensitivity_dbm: float = SENSITIVITY_SF10,
     ) -> float:
-        """Calculate the maximum communication range.
-
-        Finds the distance at which received power equals the sensitivity
-        threshold.
-
-        Args:
-            tx_power_dbm: Transmit power in dBm.
-            sensitivity_dbm: Receiver sensitivity threshold in dBm.
-                Defaults to SF10 sensitivity (-132 dBm).
-
-        Returns:
-            Maximum range in meters.
-        """
-        # Solve for d: sensitivity = tx_power - pl0 - 10*n*log10(d/d0)
-        # 10*n*log10(d/d0) = tx_power - pl0 - sensitivity
-        # d = d0 * 10^((tx_power - pl0 - sensitivity) / (10*n))
         exponent = (tx_power_dbm - self.pl0_dbm - sensitivity_dbm) / (10.0 * self.n)
         return self.d0_m * math.pow(10.0, exponent)
