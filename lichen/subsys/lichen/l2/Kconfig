@@ -125,6 +125,31 @@ config LICHEN_LORA_TX_POWER
 	  LoRa transmit power in dBm. Default 14 dBm is safe worldwide.
 	  Higher values may violate regional regulations.
 
+config LICHEN_SF_ASSIGNMENT_ENABLED
+	bool "LICHEN SF assignment and multi-SF gateway (project-LICHEN-6mka)"
+	depends on LICHEN_LORA_L2
+	default n
+	help
+	  Enable SF assignment from DIO or IID hash (per spec 02a). Nodes TX/RX
+	  on assigned SF only. Gateways support multi-SF RX via CAD scan or
+	  multiple radios. Enables orthogonal channel capacity (6x on one freq).
+
+config LICHEN_GATEWAY_MULTI_SF
+	bool "Multi-SF RX for gateways"
+	depends on LICHEN_SF_ASSIGNMENT_ENABLED
+	default n
+	help
+	  Gateway listens on all SFs (CAD scan for single-radio or dedicated
+	  configs). Required for cross-SF relay and load-balanced assignment.
+
+config LICHEN_DEFAULT_SF
+	int "Default spreading factor"
+	depends on LICHEN_LORA_L2
+	default 10
+	range 7 12
+	help
+	  Default SF for LICHEN mesh (SF10 per spec). Overridden by assignment.
+
 config LICHEN_L2
 	bool "LICHEN Zephyr L2 network interface"
 	depends on LICHEN_LORA_L2
