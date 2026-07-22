@@ -153,7 +153,7 @@ def parse_rust_logs(log_dir: Path) -> dict[str, NodeStats]:
 
         # Summary line
         for line in content.splitlines():
-            summary = re.search(r"TX=(\d+)\s+RX=(\d+)", line)
+            summary = re.search(r"TX=(\d+)\s+RX=(\d+)", line, re.IGNORECASE)
             if summary:
                 stats.tx_count = max(stats.tx_count, int(summary.group(1)))
                 stats.rx_count = max(stats.rx_count, int(summary.group(2)))

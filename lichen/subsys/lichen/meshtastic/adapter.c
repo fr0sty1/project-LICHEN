@@ -1042,6 +1042,8 @@ static const enum lichen_meshtastic_config_section s_config_sections[] = {
 
 BUILD_ASSERT(ARRAY_SIZE(s_config_sections) ==
 	     LICHEN_MESHTASTIC_STATIC_SYNC_CONFIG_SECTIONS);
+BUILD_ASSERT(LICHEN_MESHTASTIC_NODE_NAME_MAX >= 1U,
+	     "name buffer must have space for terminator");
 
 static uint32_t static_sync_record_count(void)
 {

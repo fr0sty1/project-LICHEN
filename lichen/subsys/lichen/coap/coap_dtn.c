@@ -19,6 +19,7 @@ static struct senml_pack s_senml_pack;
 static K_MUTEX_DEFINE(s_dtn_buf_mutex);
 static K_MUTEX_DEFINE(s_senml_pack_mutex);
 static struct k_work_delayable s_dtn_expire_work;
+static uint32_t s_last_deaddrop[16] = {0};
 
 
 
@@ -44,6 +45,17 @@ int lichen_coap_deaddrop_register(const struct lichen_deaddrop_provider *provide
 static int deaddrop_post(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
 	if (s_provider == NULL || s_provider->store == NULL) return 0x84;
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
+	uint32_t now = k_uptime_get();
+	uint8_t idx = 0;
+	if (addr_len >= sizeof(struct sockaddr_in6)) {
+		const struct sockaddr_in6 *in6 = (const struct sockaddr_in6 *)addr;
+		idx = in6->sin6_addr.s6_addr[15];
+	}
+	if (now - s_last_deaddrop[idx] < CONFIG_LICHEN_COAP_DEADDROP_RATE_LIMIT_MS) {
+		k_mutex_unlock(&s_dtn_buf_mutex);
+		return 0xA3;
+	}
+	s_last_deaddrop[idx] = now;
 	uint16_t payload_len = 0;
 	const uint8_t *payload = coap_packet_get_payload(request, &payload_len);
 	if (payload == NULL || payload_len == 0) { k_mutex_unlock(&s_dtn_buf_mutex); return 0x80; }
