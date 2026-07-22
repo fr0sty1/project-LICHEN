@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-jq2k",
   "title": "[merge-conflict] integration/worker15-20260722: test_vectors.py",
+  "notes": "Commit: 0b957cee2",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:27:09.030107452Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:39:09.907934651Z",
+  "updated_at": "2026-07-22T23:44:34.713384138Z",
   "started_at": "2026-07-22T23:39:09.907934651Z",
   "lease_expires_at": "2026-07-22T23:44:09.907934651Z",
   "heartbeat_at": "2026-07-22T23:39:09.907934651Z"
