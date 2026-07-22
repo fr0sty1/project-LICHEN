@@ -7,6 +7,7 @@
  */
 
 #include <lichen/link_ctx.h>
+#include <lichen/link.h>
 #include <lichen/schnorr48.h>
 #include <lichen/errno.h>
 #include <string.h>
@@ -572,4 +573,15 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 #ifndef __ZEPHYR__
 	pthread_mutex_destroy(&ctx->seq_lock);
 #endif
+}
+
+int lichen_tdma_init(struct lichen_tdma_slot *_Nonnull s)
+{
+	if (s == NULL) {
+		return -EINVAL;
+	}
+	s->id = 0;
+	s->assigned = 0;
+	s->next = 0;
+	return 0;
 }

@@ -22,7 +22,7 @@ struct NodeMetrics {
     tx_bytes: u64,
     rx_bytes: u64,
     unique_peers: HashSet<[u8; 8]>,
-    errors: Vec<String>,
+    error_count: u32,
     packet_hashes_sent: HashSet<[u8; 16]>,
     packet_hashes_received: HashSet<[u8; 16]>,
 }
