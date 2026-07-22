@@ -1,12 +1,14 @@
 {
   "id": "project-LICHEN-veet",
   "title": "Codereview pass 2 (P0-P4 findings on SenML profiles)",
-  "status": "open",
+  "status": "closed",
   "priority": 2,
   "issue_type": "task",
   "created_at": "2026-07-22T14:52:27.335270792Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:52:27.335270792Z",
+  "updated_at": "2026-07-22T14:52:43.019043891Z",
+  "closed_at": "2026-07-22T14:52:43.019043891Z",
+  "close_reason": "Pass 2 complete (P0-P1: none; P2 none; P3 minor duplicate const in C header; P4 bikeshed on unit names). Tests pass, interop preserved.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-veet",
