@@ -597,10 +597,10 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 	ret = slip_encode(ipv6, len, ctx->tx_frame, sizeof(ctx->tx_frame),
 			  &frame_len);
 	if (ret < 0) {
+		k_mutex_unlock(&ctx->tx_mutex);
 		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.tx_errors++;
 		k_mutex_unlock(&ctx->stats_mutex);
-		k_mutex_unlock(&ctx->tx_mutex);
 		return ret;
 	}
 
@@ -613,18 +613,21 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 		for (size_t i = 0; i < frame_len; i++) {
 			uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
 		}
-		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-		ctx->stats.tx_packets++;
-		ctx->stats.tx_bytes += (uint32_t)len;
-		k_mutex_unlock(&ctx->stats_mutex);
 	} else {
-		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-		ctx->stats.tx_errors++;
-		k_mutex_unlock(&ctx->stats_mutex);
 		ret = -ENODEV;
 	}
 
 	k_mutex_unlock(&ctx->tx_mutex);
+
+	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+	if (ret == 0) {
+		ctx->stats.tx_packets++;
+		ctx->stats.tx_bytes += (uint32_t)len;
+	} else {
+		ctx->stats.tx_errors++;
+	}
+	k_mutex_unlock(&ctx->stats_mutex);
+
 	return ret;
 }
 
