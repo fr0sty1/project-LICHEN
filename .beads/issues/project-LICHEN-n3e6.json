@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-n3e6",
+  "title": "Add dynamic radio SF reconfiguration in drivers (lr1110, sim, renode) and lichen_l2",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:32:46.780452916Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:32:46.780452916Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-n3e6",
+      "depends_on_id": "project-LICHEN-zrh2",
+      "type": "blocks",
+      "created_at": "2026-07-22T22:32:46.904198521Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
