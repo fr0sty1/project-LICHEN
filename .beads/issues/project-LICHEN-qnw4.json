@@ -2,11 +2,15 @@
   "id": "project-LICHEN-qnw4",
   "title": "context.rs: Mo::MatchMapping always returns false (unimplemented)",
   "description": "File: rust/lichen-schc/src/context.rs\nLines: 74-77\n\nCategory: CORRECTNESS / API MISUSE\n\nThe rule_matches() function has a stub implementation for Mo::MatchMapping that always returns false:\n```rust\nMo::MatchMapping =\u003e {\n    // Mapping table not yet implemented in rules.rs\n    // For now, return false (no mapping = no match)\n    return false;\n}\n```\n\nRFC 8724 section 7.4 defines match-mapping as matching against an ordered list of values. The current implementation makes it impossible for any rule using MatchMapping to ever match.\n\nImpact: Any rule configured with Mo::MatchMapping will never be selected, forcing traffic to fall back to less efficient rules or uncompressed mode.\n\nFix: Either implement the mapping table lookup, or mark Mo::MatchMapping as unimplemented at compile time (e.g., remove it from the enum and document the limitation).",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:40:55.904339Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:40:55.904372Z"
+  "updated_at": "2026-07-22T23:28:37.12567214Z",
+  "started_at": "2026-07-22T23:28:37.12567214Z",
+  "lease_expires_at": "2026-07-22T23:33:37.12567214Z",
+  "heartbeat_at": "2026-07-22T23:28:37.12567214Z"
 }
