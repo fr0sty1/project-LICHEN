@@ -274,6 +274,7 @@ impl Default for GradientTable {
 }
 
 #[inline]
+#[allow(dead_code)]
 fn is_expired(expires_ms: u32, now_ms: u32) -> bool {
     let elapsed = now_ms.wrapping_sub(expires_ms);
     elapsed > 0 && elapsed < 0x8000_0000

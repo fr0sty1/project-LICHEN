@@ -800,7 +800,8 @@ pub fn handle_icmpv6(
             // RFC 4443 Section 4.2: reply source SHOULD be the destination of the request.
             // This ensures nodes with multiple addresses reply from the address that was pinged.
             let reply_icmp = echo.build_reply(&ip_header.dst, &ip_header.src, truncated_data)?;
-            let reply_ip = Ipv6Header::new(next_header::ICMPV6, ip_header.dst, ip_header.src);
+            let mut reply_ip = Ipv6Header::new(next_header::ICMPV6, ip_header.dst, ip_header.src);
+            reply_ip.hop_limit = 255;
 
             let mut pkt = Vec::new();
             let mut ip_buf = [0u8; IPV6_HEADER_LEN];
@@ -861,7 +862,8 @@ pub fn handle_icmpv6(
             };
 
             let reply_icmp = na.build(local_addr, &reply_dst);
-            let reply_ip = Ipv6Header::new(next_header::ICMPV6, *local_addr, reply_dst);
+            let mut reply_ip = Ipv6Header::new(next_header::ICMPV6, *local_addr, reply_dst);
+            reply_ip.hop_limit = 255;
 
             let mut pkt = Vec::new();
             let mut ip_buf = [0u8; IPV6_HEADER_LEN];
@@ -954,10 +956,10 @@ mod tests {
         // Should be IPv6 header + ICMPv6 reply
         assert!(pkt.len() > IPV6_HEADER_LEN);
 
-        // Parse response
         let (resp_ip, resp_payload) = parse_packet(&pkt).unwrap();
         assert_eq!(resp_ip.src, local);
         assert_eq!(resp_ip.dst, remote);
+        assert_eq!(resp_ip.hop_limit, 255);
         assert_eq!(resp_payload[0], icmpv6_type::ECHO_REPLY);
     }
 
