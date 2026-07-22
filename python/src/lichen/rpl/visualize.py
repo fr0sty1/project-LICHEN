@@ -71,8 +71,6 @@ def to_dot(
     name: str = "DODAG",
 ) -> str:
     """Render the topology as Graphviz DOT (child -> parent edges, root on top)."""
-    def _escape_dot(s: str) -> str:
-        return s.replace("\\", "\\\\").replace('"', '\\"')
     lines = [f"digraph {name} {{", "  rankdir=BT;"]
     for node in sorted(parents):
         label = _dot_escape(node)

@@ -1020,9 +1020,7 @@ void lichen_meshcore_adapter_init(
 	}
 
 	memset(adapter, 0, sizeof(*adapter));
-	if (ops != NULL) {
-		adapter->ops = *ops;
-	}
+	adapter->ops = *ops;
 }
 
 void lichen_meshcore_adapter_reset(struct lichen_meshcore_adapter *adapter)

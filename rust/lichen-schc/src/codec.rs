@@ -777,7 +777,10 @@ fn decompress_rpl_dao(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     Ok(total)
 }
 
-fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], _rule_id: u8) -> Result<usize, SchcError> {
+fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, SchcError> {
+    if data.is_empty() || data[0] != rule_id {
+        return Err(SchcError::NoMatchingRule);
+    }
     let mut r = BitReader::new(&data[1..]);
 
     let hop_limit = r.read(8)? as u8;

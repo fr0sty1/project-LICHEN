@@ -126,16 +126,45 @@ impl AddressMapper {
         Self::default()
     }
 
-    pub fn learn_mapping(&mut self, node_id: MeshtasticNodeId, pubkey: &PublicKey) {
+    /// Learn (or update) the mapping from a Meshtastic node ID to a LICHEN
+    /// public key (and its derived IID).
+    ///
+    /// Implements TOFU key pinning per IID: the first pubkey seen for a given
+    /// IID is pinned; subsequent different pubkeys for the same IID are
+    /// rejected. This fixes the collision/stale mapping issue (see bead
+    /// project-LICHEN-fmjo). Node key rotation (different IID) is allowed
+    /// and cleans up the old mapping.
+    ///
+    /// Returns `true` if the mapping was accepted/updated, `false` if
+    /// rejected due to TOFU violation (collision on IID with different key).
+    pub fn learn_mapping(&mut self, node_id: MeshtasticNodeId, pubkey: &PublicKey) -> bool {
         let iid = iid_from_pubkey(pubkey);
 
+        // TOFU/collision check: reject if IID already pinned to a different pubkey.
+        // This prevents the by_iid map from pointing to the wrong node_id and
+        // avoids stale entries when pubkeys collide on the first 8 bytes of hash.
+        if let Some(&existing_node) = self.by_iid.get(&iid) {
+            if let Some(existing_entry) = self.by_node_id.get(&existing_node) {
+                if existing_entry.pubkey != *pubkey {
+                    return false; // TOFU violation or IID collision; keep pinned mapping
+                }
+            }
+            if existing_node != node_id {
+                return false; // different node claiming same IID
+            }
+        }
+
+        // Handle update for this node_id (e.g. rekeying changes IID)
         if let Some(old) = self.by_node_id.get(&node_id) {
+            if old.pubkey == *pubkey && old.iid == iid {
+                return true; // no change
+            }
             if old.iid != iid {
-                self.by_iid.remove(&old.iid);
+                let _ = self.by_iid.remove(&old.iid);
             }
         } else if let Some(&existing_node) = self.by_iid.get(&iid) {
             if existing_node != node_id {
-                self.by_node_id.remove(&existing_node);
+                let _ = self.by_node_id.remove(&existing_node);
             }
         }
 
@@ -147,6 +176,7 @@ impl AddressMapper {
                 iid,
             },
         );
+        true
     }
 
     pub fn meshtastic_to_ipv6(&self, node_id: MeshtasticNodeId) -> Ipv6Addr {
@@ -184,13 +214,6 @@ impl AddressMapper {
     pub fn is_empty(&self) -> bool {
         self.by_node_id.is_empty()
     }
-}
-
-fn iid_from_pubkey(pubkey: &PublicKey) -> [u8; 8] {
-    let hash = Sha256::digest(pubkey.as_bytes());
-    let mut iid: [u8; 8] = hash[..8].try_into().unwrap();
-    iid[0] &= 0b1111_1101;
-    iid
 }
 
 fn iid_to_link_local(iid: &[u8; 8]) -> Ipv6Addr {

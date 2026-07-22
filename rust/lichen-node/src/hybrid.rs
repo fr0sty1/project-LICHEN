@@ -738,8 +738,8 @@ mod tests {
         let mut router = HybridRouter::new(link_local(1));
         let dst = ula(2);
 
-        router.queue_pending(vec![1], dst, 1000);
-        router.queue_pending(vec![2], dst, 5000);
+        router.queue_pending(vec![1], dst, 2, 1000);
+        router.queue_pending(vec![2], dst, 2, 5000);
 
         let expired = router.expire_pending(6000, 4000);
         assert_eq!(expired, 1);
