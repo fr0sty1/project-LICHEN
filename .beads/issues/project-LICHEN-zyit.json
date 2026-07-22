@@ -2,12 +2,16 @@
   "id": "project-LICHEN-zyit",
   "title": "Zephyr linker section duplication in puck vs coap subsys CMake",
   "description": "Review of changes moving zephyr_linker_sources() to top-level in lichen/apps/puck/CMakeLists.txt:11 and unconditional zephyr_iterable_section(coap_resource_lichen_coap_server) + sections-ram.ld addition (now defines both sections). Compared to gateway/CMakeLists.txt:38 (coap only, uses its sections-ram.ld), subsys/lichen/coap/CMakeLists.txt:21 (standalone-only, its own sections-ram.ld with server only), and tests/*/CMakeLists.txt that source gateway/sections-ram.ld. Violates Zephyr iterable section conventions (subsys should own registration; see zephyr/subsys/net/lib/coap/coap_service.c examples). Causes duplicate ITERABLE_SECTION_RAM(coap_resource_lichen_coap_server) expansion when STANDALONE=y (link failure on _list_start/end symbols). P1 correctness bug. Cross-app inconsistency for puck/gateway/tests/subsy s.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T14:51:43.529975621Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:51:43.529975621Z",
+  "updated_at": "2026-07-22T14:52:57.308870192Z",
+  "started_at": "2026-07-22T14:52:57.308870192Z",
+  "lease_expires_at": "2026-07-22T14:57:57.308870192Z",
+  "heartbeat_at": "2026-07-22T14:52:57.308870192Z",
   "labels": [
     "codereview"
   ]
