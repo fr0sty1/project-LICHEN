@@ -2,6 +2,7 @@
   "id": "project-LICHEN-cx3a",
   "title": "coap_server.c: shared response buffer creates race condition",
   "description": "File: lichen/subsys/lichen/coap/coap_server.c\nLine: 43\n\nGlobal shared response buffer:\n```c\nstatic uint8_t s_response_buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];\n```\n\nWhile the comment at line 42 says \"handlers are serialized by CoAP service\", this assumption may not hold:\n1. Multiple CoAP services could share these handlers\n2. Observer notifications (status_notify, neighbors_notify) are called from different contexts and use separate stack buffers, but share coap_resource_send path\n3. If multiple interfaces have CoAP servers, responses could interleave\n\nThe safer pattern is stack-allocated buffers per handler (as done in coap_status.c).\n\nCategory: CONCURRENCY - potential data race",
+  "notes": "Commit: 3bd50d339",
   "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:42:59.534774Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:16:19.016003154Z",
+  "updated_at": "2026-07-22T20:16:29.868528823Z",
   "started_at": "2026-07-22T20:16:19.016003154Z",
   "lease_expires_at": "2026-07-22T20:21:19.016003154Z",
   "heartbeat_at": "2026-07-22T20:16:19.016003154Z"
