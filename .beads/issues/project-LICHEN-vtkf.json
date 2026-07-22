@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-vtkf",
+  "title": "[codereview3] missing capacity validation in encode_status_cbor and neighbors_get; struct fields not serialized",
+  "description": "Implement the specified capacity checks. In encode, add check and include txq_cap/txq_used/fwd_cap/fwd_used in CBOR map (use fixed map_count=8 per bead). In neighbors_get, enforce count \u003c= MAX_NEIGHBORS or error. Update map_count calculation. Run build/test after. No comments.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:00:23.557698078Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:00:23.557698078Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-vtkf",
+      "depends_on_id": "s7t8",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:00:23.665215969Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
