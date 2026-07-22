@@ -62,9 +62,9 @@ config LICHEN_HAS_PMIC
 	  Enable when devicetree provides an okay pmic0 alias for a Zephyr
 	  charger, PMIC, or board-specific power telemetry/control device.
 
-config LICHEN_POE
+config LICHEN_HAS_POE
 	bool "Board has PoE"
-	depends on GPIO || POWER_SUPPLY
+	depends on GPIO || POWER_SUPPLY || REGULATOR
 	help
 	  Enable when devicetree provides an okay poe0 alias or PoE detection
 	  via GPIO/ADC for power source selection. DT binding in

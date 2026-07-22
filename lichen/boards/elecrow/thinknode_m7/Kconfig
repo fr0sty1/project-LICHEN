@@ -8,5 +8,6 @@ config BOARD_ELECROW_THINKNODE_M7
 	select BOARD
 	select NET_L2_ETHERNET
 	select LICHEN_HAS_PMIC
+	select LICHEN_HAS_POE
 	help
 	  Elecrow ThinkNode M7 PoE board with LR1110 and SI3402 PoE controller.
