@@ -12,6 +12,7 @@
 #include <errno.h>
 
 #include <lichen/coap_status.h>
+#include <lichen/coap_config.h>
 
 LOG_MODULE_REGISTER(lichen_coap_status, CONFIG_LICHEN_COAP_STATUS_LOG_LEVEL);
 
@@ -227,7 +228,7 @@ int lichen_coap_format_ipv6(const uint8_t *addr, char *buf, size_t buf_size)
 {
 	struct in6_addr in6;
 
-	if (addr == NULL || buf == NULL || buf_size < 46) {
+	if (addr == NULL || buf == NULL || buf_size < LICHEN_CONFIG_ADDR_MAX_LEN) {
 		return -ENOBUFS;
 	}
 
@@ -257,7 +258,7 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 {
 	struct cbor_ctx ctx;
 	uint8_t map_count;
-	char ipv6_buf[46];
+	char ipv6_buf[LICHEN_CONFIG_ADDR_MAX_LEN];
 
 
 	if (buf == NULL || status == NULL || buf_size == 0) {
@@ -392,7 +393,7 @@ size_t lichen_coap_encode_neighbors_cbor(uint8_t *buf, size_t buf_size,
 					 size_t count)
 {
 	struct cbor_ctx ctx;
-	char ipv6_buf[46];
+	char ipv6_buf[LICHEN_CONFIG_ADDR_MAX_LEN];
 
 	if (buf == NULL || buf_size == 0) {
 		return 0;
@@ -455,7 +456,7 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 				      const uint8_t *default_route)
 {
 	struct cbor_ctx ctx;
-	char ipv6_buf[46];
+	char ipv6_buf[LICHEN_CONFIG_ADDR_MAX_LEN];
 	char prefix_buf[48];
 	uint16_t map_count = 1;
 
@@ -489,7 +490,10 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 			cbor_put_map_header(&ctx, 4);
 
 			cbor_put_key(&ctx, "prefix");
-			lichen_coap_format_ipv6(r->prefix, ipv6_buf, sizeof(ipv6_buf));
+			if (lichen_coap_format_ipv6(r->prefix, ipv6_buf, sizeof(ipv6_buf)) < 0) {
+				ctx.overflow = true;
+				return 0;
+			}
 			int pr = snprintf(prefix_buf, sizeof(prefix_buf), "%s/%u", ipv6_buf, r->prefix_len);
 			if (pr < 0 || (size_t)pr >= sizeof(prefix_buf)) {
 				ctx.overflow = true;
