@@ -296,11 +296,16 @@ class SimRadio:
         self._tx_power_dbm = tx_power_dbm
 
     async def close(self) -> None:
-        """Close the TCP connection to the simulator."""
-        stream = self._stream
-        if stream is not None:
-            self._stream = None
-            await stream.aclose()
+        """Close the TCP connection to the simulator.
+
+        Acquires the operation lock to ensure no in-flight operations
+        are using the stream, preventing BrokenResourceError races.
+        """
+        async with self._lock:
+            stream = self._stream
+            if stream is not None:
+                self._stream = None
+                await stream.aclose()
 
     async def __aenter__(self) -> SimRadio:
         """Enter async context manager, connecting to the simulator."""
