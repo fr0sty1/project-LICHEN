@@ -2,15 +2,15 @@
   "id": "project-LICHEN-7e17",
   "title": "[merge-conflict] worktree-worker19: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: ee9e8ef30",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:20.467914568Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:48:30.855545833Z",
+  "updated_at": "2026-07-22T23:48:32.852698224Z",
   "started_at": "2026-07-22T23:47:00.353431169Z",
-  "lease_expires_at": "2026-07-22T23:52:00.353431169Z",
-  "heartbeat_at": "2026-07-22T23:47:00.353431169Z"
+  "closed_at": "2026-07-22T23:48:32.852698224Z",
+  "close_reason": "Merge conflict resolved in heltec_wifi_lora32_v3_esp32s3_procpu.conf and related xiao config; spec conflicts noted for follow-up"
 }
