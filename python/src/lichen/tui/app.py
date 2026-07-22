@@ -26,6 +26,7 @@ import contextlib
 from datetime import datetime
 from typing import Any, ClassVar
 
+from rich.markup import escape
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -39,7 +40,6 @@ from textual.widgets import (
     RichLog,
     Static,
 )
-from rich.markup import escape
 
 from lichen.radio.sim_client import SimRadio, SimRadioError
 
