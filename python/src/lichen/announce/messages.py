@@ -69,6 +69,8 @@ class AnnounceMessage:
         hop_count: How many hops this announce has traveled.
             Why NOT signed: Each relay increments it. If signed, relays couldn't
             update it without breaking the signature.
+        current_channel: Preferred RX channel (0-15) for rendezvous per CCP-9.
+            Included in signed_data() to bind announced channel against tampering.
         signature: 48-byte Schnorr signature over signed_data().
             Why 48: Schnorr48 spec (16-byte truncated challenge + 32-byte response).
         app_data: Optional application data (node name, capabilities).
@@ -81,12 +83,12 @@ class AnnounceMessage:
     pubkey: bytes
     seq_num: int
     hop_count: int = 0
+    current_channel: int = 0
     signature: bytes = field(default=b"")
     app_data: bytes = field(default=b"")
     flags: int = 0
 
     def __post_init__(self) -> None:
-        # Why validate early: Catch bugs at construction, not serialization.
         if len(self.originator_iid) != 8:
             raise AnnounceError(
                 f"originator_iid must be 8 bytes, got {len(self.originator_iid)}"
@@ -97,10 +99,10 @@ class AnnounceMessage:
             raise AnnounceError(f"seq_num out of range: {self.seq_num}")
         if not 0 <= self.hop_count <= 0xFF:
             raise AnnounceError(f"hop_count out of range: {self.hop_count}")
+        if not 0 <= self.current_channel <= 15:
+            raise AnnounceError(f"current_channel out of range: {self.current_channel}")
         if not 0 <= self.flags <= 0xFF:
             raise AnnounceError(f"flags out of range: {self.flags}")
-        # Why allow empty signature: Caller constructs message, then signs it.
-        # The signature is added after computing signed_data().
         if self.signature and len(self.signature) != SIGNATURE_LENGTH:
             raise AnnounceError(
                 f"signature must be 0 or {SIGNATURE_LENGTH} bytes, "
