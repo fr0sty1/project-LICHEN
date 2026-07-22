@@ -16,6 +16,7 @@ import json
 import re
 import sys
 from collections import defaultdict
+from typing import DefaultDict
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -357,15 +358,13 @@ def generate_report(logs_dir: Path, output: Path) -> None:
         lines.append("No interop failures detected (all impl pairs communicated).")
         lines.append("")
 
-    # Missing packets
     lines.append("## Missing Packets")
     lines.append("")
-    lines.append(f"**Total missing:** {len(missing)} packets sent but never received.")
+    lines.append(f"**Total missing unique hashes:** {len(missing)} (forwarding-aware with first-wins and all-senders tracking).")
     lines.append("")
 
     if missing:
-        # Group by implementation
-        by_impl: dict[str, list[tuple[str, str]]] = defaultdict(list)
+        by_impl: DefaultDict[str, list[tuple[str, str]]] = defaultdict(list)
         for h, node_id, impl in missing:
             by_impl[impl].append((h, node_id))
 
@@ -373,14 +372,12 @@ def generate_report(logs_dir: Path, output: Path) -> None:
             if impl in by_impl and by_impl[impl]:
                 lines.append(f"### {impl} ({len(by_impl[impl])} missing)")
                 lines.append("")
-                # Show first 10, summarize rest
                 for h, node_id in by_impl[impl][:10]:
                     lines.append(f"- `{h}` from {node_id}")
                 if len(by_impl[impl]) > 10:
                     lines.append(f"- ... and {len(by_impl[impl]) - 10} more")
                 lines.append("")
 
-    # Summary
     lines.append("## Summary")
     lines.append("")
 
@@ -399,7 +396,7 @@ def generate_report(logs_dir: Path, output: Path) -> None:
     lines.append(f"- **Reception rate:** {rx_rate:.1f}%")
     lines.append(f"- **Unique TX hashes:** {total_tx_hashes}")
     lines.append(f"- **Unique RX hashes:** {total_rx_hashes}")
-    lines.append(f"- **Missing packets:** {len(missing)}")
+    lines.append(f"- **Missing unique packets:** {len(missing)} (supports mesh forwarding scenarios)")
 
     if issues:
         lines.append(f"- **Interop failures:** {len(issues)}")
