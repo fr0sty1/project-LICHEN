@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-da2q.15.8.3",
   "title": "Frequency agility channel selection algorithm pseudocode for interference avoidance",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:31:02.93515986Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:31:02.93515986Z",
+  "updated_at": "2026-07-22T16:37:02.390240961Z",
+  "started_at": "2026-07-22T16:37:02.390240961Z",
+  "lease_expires_at": "2026-07-22T16:42:02.390240961Z",
+  "heartbeat_at": "2026-07-22T16:37:02.390240961Z",
   "labels": [
     "codereview",
     "ccp",
