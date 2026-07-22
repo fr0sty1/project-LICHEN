@@ -2,12 +2,16 @@
   "id": "project-LICHEN-bjlw",
   "title": "Python/Rust packet_hash type mismatch breaks cross-impl metrics",
   "description": "Python NodeMetrics uses set[str] of 32-char hex strings for packet_hashes_sent/received (see metrics.py:45,96). Rust hetero_node uses HashSet\u003c[u8; 16]\u003e bytes. JSON exports incompatible formats. This prevents reliable cross-impl consistency verification intended by the packet_hash standardization. Affects sim/metrics.py, hetero_node.rs:26-27,146-178, export_metrics. New bug surfaced by codereview.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T14:46:24.323564663Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:46:24.323564663Z",
+  "updated_at": "2026-07-22T14:49:05.837174156Z",
+  "started_at": "2026-07-22T14:49:05.837174156Z",
+  "lease_expires_at": "2026-07-22T14:54:05.837174156Z",
+  "heartbeat_at": "2026-07-22T14:49:05.837174156Z",
   "labels": [
     "codereview"
   ]
