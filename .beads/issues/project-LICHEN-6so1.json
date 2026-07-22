@@ -2,6 +2,7 @@
   "id": "project-LICHEN-6so1",
   "title": "LichenFrame.to_bytes does not include signature in serialization",
   "description": "File: python/src/lichen/link/frame.py:127-146, link_layer.py:254-256\n\nThe frame format includes a signature_present flag (bit 5 of LLSec), but the signature is embedded in the payload, not as a separate field. LichenFrame has no signature field.\n\nIn link_layer.py:254-256:\n    signed_payload = payload + signature\n    frame = LichenFrame(..., payload=signed_payload, signature_present=True)\n\nThis means:\n1. Frame.payload contains application data + signature concatenated\n2. Frame.signature_present is True but there's no Frame.signature field\n3. Receiver must know to strip signature from end of payload\n\nThe serialization/deserialization is asymmetric. to_bytes() serializes payload (which may contain signature), but from_bytes() doesn't extract the signature. This is handled in link_layer.receive() but could be confusing.\n\nConsider: Add optional signature field to LichenFrame, or document this design clearly.",
+  "notes": "Commit: 500f28d68",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:23:28.693658Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:32:38.434599627Z",
+  "updated_at": "2026-07-22T23:37:41.293735709Z",
   "started_at": "2026-07-22T23:32:38.434599627Z",
   "lease_expires_at": "2026-07-22T23:37:38.434599627Z",
   "heartbeat_at": "2026-07-22T23:32:38.434599627Z"
