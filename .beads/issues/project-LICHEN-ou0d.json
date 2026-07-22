@@ -2,11 +2,15 @@
   "id": "project-LICHEN-ou0d",
   "title": "link_layer.rs: Unbounded peer/replay/pinned tables enable memory exhaustion",
   "description": "File: rust/lichen-link/src/link_layer.rs\nLines: 216-218, 292-296\n\nThe ReplayProtector and LinkLayer use unbounded HashMaps:\n\n    pub struct ReplayProtector {\n        peers: HashMap\u003cPublicKey, PeerReplayState\u003e,  // Line 218\n    }\n\n    pub struct LinkLayer {\n        peers: HashMap\u003c[u8; 8], PeerIdentity\u003e,       // Line 293\n        replay: ReplayProtector,                      // Line 294\n        pinned: HashMap\u003c[u8; 8], PublicKey\u003e,         // Line 295\n    }\n\nThese tables grow without bound as peers are added. In a mesh network, an attacker could:\n1. Send frames from many different public keys\n2. Each triggers a new entry in ReplayProtector.peers\n3. Memory exhaustion when table exceeds available RAM\n\nThis is the same class of issue as project-LICHEN-ozob (Python ReplayProtector) but in the Rust implementation.\n\nFix options:\n1. Add a maximum peer count with LRU eviction\n2. Rate-limit new peer additions\n3. Document the limitation and require application-level peer management\n\nNote: The current design relies on add_peer() being called explicitly, so untrusted frames don't auto-enroll. However, the replay protector is keyed by pubkey which grows on successful verify.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:11:42.64686Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T17:11:42.6469Z"
+  "updated_at": "2026-07-22T22:47:46.25813845Z",
+  "started_at": "2026-07-22T22:47:46.25813845Z",
+  "lease_expires_at": "2026-07-22T22:52:46.25813845Z",
+  "heartbeat_at": "2026-07-22T22:47:46.25813845Z"
 }
