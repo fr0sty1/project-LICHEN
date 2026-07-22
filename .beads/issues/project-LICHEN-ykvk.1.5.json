@@ -2,12 +2,16 @@
   "id": "project-LICHEN-ykvk.1.5",
   "title": "codereview: P2 senml include but no usage in coap_deaddrop.c",
   "description": "Include of senml.h but no senml_* calls yet. Mimic coap_location.c by adding SenML encode for deaddrop payload. discovered-from:project-LICHEN-ykvk.1",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T15:13:36.522572875Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:13:36.522572875Z",
+  "updated_at": "2026-07-22T15:14:25.255759111Z",
+  "started_at": "2026-07-22T15:14:25.255759111Z",
+  "lease_expires_at": "2026-07-22T15:19:25.255759111Z",
+  "heartbeat_at": "2026-07-22T15:14:25.255759111Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-ykvk.1.5",
