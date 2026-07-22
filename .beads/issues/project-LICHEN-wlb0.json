@@ -2,12 +2,16 @@
   "id": "project-LICHEN-wlb0",
   "title": "codereview pass 3: frequency agility pseudocode",
   "description": "Findings: 1. Pseudocode uses now() and clamp() without defining in spec (P3). 2. No exact floating point thresholds specified as required by normative note. 3. Alternative rejected (pure random) not documented in appendix. All P3+ opinion. Label codereview.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:38:25.156565327Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:38:25.156565327Z",
+  "updated_at": "2026-07-22T21:52:36.70416891Z",
+  "started_at": "2026-07-22T21:52:36.70416891Z",
+  "lease_expires_at": "2026-07-22T21:57:36.70416891Z",
+  "heartbeat_at": "2026-07-22T21:52:36.70416891Z",
   "labels": [
     "codereview"
   ],
