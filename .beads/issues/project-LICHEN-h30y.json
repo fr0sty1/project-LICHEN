@@ -2,15 +2,15 @@
   "id": "project-LICHEN-h30y",
   "title": "[merge-conflict] worktree-worker19: CMakeLists.txt",
   "notes": "Commit: bd0e090 (worker19 CMakeLists.txt + input driver resolution, main merge 21117a0)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:54:13.236133841Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:59:20.281805954Z",
+  "updated_at": "2026-07-22T23:59:21.975647455Z",
   "started_at": "2026-07-22T23:58:18.642083521Z",
-  "lease_expires_at": "2026-07-23T00:03:18.642083521Z",
-  "heartbeat_at": "2026-07-22T23:58:18.642083521Z"
+  "closed_at": "2026-07-22T23:59:21.975647455Z",
+  "close_reason": "Resolved merge conflict in CMakeLists.txt and related input driver; cleaned build artifacts; resolved coap merge conflicts in main"
 }
