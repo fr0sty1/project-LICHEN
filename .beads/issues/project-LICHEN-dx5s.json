@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-dx5s",
+  "title": "[codereview-P2] Implementation Status claims 3 passes prematurely",
+  "description": "spec/02a-coordinated-capacity.md:42 - Implementation Status section claims \"3 codereview passes completed\" before this bead (project-LICHEN-nnsr) has completed its 3 clean passes per task instructions. Update to reflect ongoing process or remove claim. Also, add file:line refs for all impl locations per project convention (e.g. rust/lichen-core/src/rf_health.rs:149). Tag: codereview. Discovered-from:project-LICHEN-nnsr",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:39:08.155860572Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:39:08.155860572Z",
+  "labels": [
+    "codereview"
+  ]
+}
