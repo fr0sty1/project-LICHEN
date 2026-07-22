@@ -749,7 +749,7 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		ret = -EINVAL;
 		goto err_wipe;
 	}
-	if (signature_2.len != EDHOC_ED25519_SIG_LEN) {
+	if (signature_2.len != EDHOC_SIG_LEN) {
 		ret = -EINVAL;
 		goto err_wipe;
 	}
