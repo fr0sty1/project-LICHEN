@@ -90,17 +90,19 @@ static int cbor_map_is_complete(const uint8_t *buf, size_t len)
 
 	while (!zcbor_array_at_end(zsd)) {
 		if (!zcbor_any_skip(zsd, NULL) || !zcbor_any_skip(zsd, NULL)) {
-			(void)zcbor_list_map_end_force_decode(zsd);
-			return -EINVAL;
+			goto cleanup;
 		}
 	}
 
 	if (!zcbor_map_end_decode(zsd) || !zcbor_payload_at_end(zsd)) {
-		(void)zcbor_list_map_end_force_decode(zsd);
-		return -EINVAL;
+		goto cleanup;
 	}
 
 	return 0;
+
+cleanup:
+	(void)zcbor_list_map_end_force_decode(zsd);
+	return -EINVAL;
 }
 
 static void native_enable_log_stream_for_test(void)
