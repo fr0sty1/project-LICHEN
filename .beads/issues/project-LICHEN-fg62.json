@@ -2,15 +2,15 @@
   "id": "project-LICHEN-fg62",
   "title": "[merge-conflict] worktree-worker19: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 6cc7a79 (cleaned duplicate Kconfig in heltec gateway conf for worker19 worktree)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:11.62865405Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:49:38.77745518Z",
+  "updated_at": "2026-07-22T23:49:41.203599948Z",
   "started_at": "2026-07-22T23:48:53.247226152Z",
-  "lease_expires_at": "2026-07-22T23:53:53.247226152Z",
-  "heartbeat_at": "2026-07-22T23:48:53.247226152Z"
+  "closed_at": "2026-07-22T23:49:41.203599948Z",
+  "close_reason": "Cleaned up merge-conflict remnants: removed 45 lines of duplicate Kconfig settings (stack sizes, WiFi buffers, prefix delegation, etc.) and consolidated into canonical form matching main. Updated comments. Verified no duplicates with grep. Committed and pushed to worktree-worker19 branch. Matches acceptance for P1 bug."
 }
