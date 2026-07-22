@@ -2,15 +2,15 @@
   "id": "project-LICHEN-s555",
   "title": "[merge-conflict] worktree-worker18: Kconfig.defconfig",
   "notes": "Commit: cb325db8c",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:19.861854201Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:53:57.383964208Z",
+  "updated_at": "2026-07-22T23:53:59.459579185Z",
   "started_at": "2026-07-22T23:50:01.677941758Z",
-  "lease_expires_at": "2026-07-22T23:55:01.677941758Z",
-  "heartbeat_at": "2026-07-22T23:50:01.677941758Z"
+  "closed_at": "2026-07-22T23:53:59.459579185Z",
+  "close_reason": "Renamed LICHEN_POE to LICHEN_HAS_POE for HAL naming consistency; updated board select, cleaned dts comment, fixed Kconfig.defconfig merge artifacts from worker18/t_deck/PoE changes. Verified no remaining markers for this bead."
 }
