@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-da2q.15.12",
+  "title": "Define interference mitigation algorithm: frequency agility, density-aware adaptive SF, TDMA with pseudocode",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:31:02.781813789Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:31:02.781813789Z",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.15.12",
+      "depends_on_id": "project-LICHEN-da2q.15",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:31:02.901927233Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
