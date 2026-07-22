@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-2et7.1",
+  "title": "Enhance radio propagation and interference models",
+  "description": "Implement more accurate LoRa propagation model including path loss, shadowing, fading. Update Medium class with better fidelity for distance-based RSSI/SNR calculation. Add interference model for concurrent transmissions. Include test vectors from real hardware measurements. Link to spec section on link budget.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:30:38.964548391Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:30:38.964548391Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2et7.1",
+      "depends_on_id": "project-LICHEN-2et7",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:30:39.050165998Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
