@@ -162,6 +162,8 @@ class ExtensionHeader:
                 "extension header length (data + 2) must be a multiple of 8, "
                 f"got {len(self.data) + 2}"
             )
+        if len(self.data) > 2046:
+            raise PacketError(f"extension header data too large: {len(self.data)} > 2046")
 
     def to_bytes(self, next_header: int) -> bytes:
         """Serialize, with ``next_header`` pointing at the following header."""

@@ -766,13 +766,15 @@ class Router:
         """
         matching: list[DtnMessage] = []
         remaining: deque[DtnMessage] = deque()
-        for msg in self.dtn_buffer:
+        bytes_reduced: int = 0
+        for msg in list(self.dtn_buffer):
             if msg.destination_iid == destination_iid:
                 matching.append(msg)
-                self._dtn_buffer_bytes -= msg.size()
+                bytes_reduced += msg.size()
             else:
                 remaining.append(msg)
         self.dtn_buffer = remaining
+        self._dtn_buffer_bytes -= bytes_reduced
         logger.debug("dtn: retrieved %d messages for %s",
                     len(matching), destination_iid.hex())
         return matching

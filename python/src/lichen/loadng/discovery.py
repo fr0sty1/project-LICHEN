@@ -57,6 +57,7 @@ class LoadngRouter:
 
     # Prune _seen cache every N suppression checks to amortize O(n) cost.
     _PRUNE_INTERVAL = 16
+    _MAX_SEEN_ENTRIES = 1024
 
     def __init__(
         self,
@@ -193,6 +194,11 @@ class LoadngRouter:
 
     def _mark_seen(self, rreq: RREQ, now: int) -> None:
         key = self._rreq_key(rreq)
+        if len(self._seen) >= self._MAX_SEEN_ENTRIES:
+            self._prune_seen(now)
+            if len(self._seen) >= self._MAX_SEEN_ENTRIES:
+                oldest_key = min(self._seen, key=lambda k: self._seen[k][1])
+                del self._seen[oldest_key]
         cached = self._seen.get(key)
         if cached is None or rreq.seq_num == cached[0] or _is_seq_fresher(cached[0], rreq.seq_num):
             self._seen[key] = (rreq.seq_num, now)
@@ -208,7 +214,10 @@ class LoadngRouter:
         cached_seq, cached_ts = cached
         if _is_seq_fresher(cached_seq, rreq.seq_num):
             return False
-        return now - cached_ts < self.suppress_window_ms
+        elapsed = now - cached_ts
+        if elapsed < 0:
+            return False
+        return elapsed < self.suppress_window_ms
 
     def _prune_seen(self, now: int) -> None:
         stale = [k for k, (_, ts) in self._seen.items() if now - ts >= self.suppress_window_ms]

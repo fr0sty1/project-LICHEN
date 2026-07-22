@@ -185,6 +185,8 @@ class DIO:
     def from_bytes(cls, data: bytes) -> DIO:
         if len(data) < DIO_BASE_LENGTH:
             raise RplError(f"DIO too short: {len(data)} bytes")
+        if data[7] != 0:
+            raise RplError(f"DIO reserved field must be zero per RFC 6550 §6.3, got {data[7]}")
         gmop_prf = data[4]
         return cls(
             rpl_instance_id=data[0],
@@ -195,7 +197,7 @@ class DIO:
             preference=gmop_prf & 0x7,
             dtsn=data[5],
             flags=data[6],
-            reserved=0,
+            reserved=data[7],
             dodag_id=IPv6Address(data[8:24]),
             options=_parse_options(data[24:]),
         )

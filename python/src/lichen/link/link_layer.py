@@ -366,12 +366,7 @@ class LinkLayer:
         while True:
             self.tx_queue.expire_stale()
             if len(self.tx_queue) == 0:
-<<<<<<< HEAD
-                break
-=======
                 break  # Queue empty
-
->>>>>>> origin/integration/worker5-20260722
             if self.cad_enabled and not await self._wait_for_clear_channel():
                 logger.warning(
                     "TX deferred: channel busy after %d backoff cycles, "

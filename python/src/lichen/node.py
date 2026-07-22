@@ -45,7 +45,7 @@ from lichen.l2_payload import (
     wrap_routing_payload,
     wrap_schc_payload,
 )
-from lichen.link.link_layer import LinkLayer, RxFrame
+from lichen.link.link_layer import LinkLayer, ReceiveError, RxFrame
 from lichen.radio.base import Radio
 from lichen.routing.router import RouteDecision, Router
 from lichen.schc.headers import compress_packet, decompress_packet
@@ -340,8 +340,13 @@ class Node:
         while True:
             try:
                 rx = await self.link.receive(self.config.receive_timeout_ms)
-                if rx is not None:
+                if isinstance(rx, RxFrame):
                     await self._process_received(rx)
+                elif isinstance(rx, ReceiveError):
+                    if rx in (ReceiveError.KEY_CHANGE, ReceiveError.REPLAY, ReceiveError.MIC_FAILED):
+                        logger.warning("link RX security event: %s", rx)
+                    else:
+                        logger.debug("link RX rejected: %s", rx)
             except asyncio.CancelledError:
                 break
             except Exception as e:

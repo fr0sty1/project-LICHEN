@@ -125,27 +125,12 @@ sub-band budget.
 
 All nodes MUST use CH0 for:
 
-<<<<<<< HEAD
 - Announce, DIO, DIS, DAO, and DAO-ACK traffic;
 - LOADng RREQ, RREP, and RERR traffic;
 - CCP capability, schedule, join, and rendezvous control;
 - multicast, broadcast, and emergency traffic;
 - unicast to peers whose compatible capability is unknown;
 - fallback after any CCP failure.
-=======
-**Rules (MUST follow for interoperability):**
-- Baseline default is SF10/125kHz per appendix-design-rationale.md:7.1 (IETF layering: RFC2119 RECOMMENDED general-purpose compromise). The density-aware logic in this CCP-16 section layers on top per RFC 2119: implementations MUST follow the adaptive_sf_select pseudocode and match test vectors exactly; overrides to SF7/8/11/12 occur only on explicit local metric triggers (density, SNR, PER, success_rate, load_factor). This resolves any apparent conflict with SF10 rationale.
-- Density drives primary choice: high density (>40 neighbors) biases toward higher SF to improve link margin at cost of airtime (TDMA slots compensate; explicit rationale per codereview-P3). Thresholds tuned to match ccp_load_balancing.json vectors 3/5. Appendix A updated with constants.
-- SNR and PER are secondary modifiers. Success_rate <0.85 forces SF increase.
-- Gateway load_factor >70 forces SF=10 for network-wide balance (overrides local).
-- Use EMA for SNR to smooth noise. All computations deterministic. Exact EMA formula (validated against rust/lichen-tui/src/rf_health.rs and Python sim reference):
-  ```
-  snr_ema = snr_ema_prev * (1 - 0.25) + snr_current * 0.25
-  ```
-  Integer form (embedded, Q2): `snr_ema = (snr_ema_prev * 3 + snr_current) / 4`. Matches vectors.
-- Embedded impls SHOULD use integer approximation (e.g. snr_q8 = snr_db * 256). Python reference uses f32.
-- Output MUST exactly reproduce test vector expected SF for given inputs (see ccp_load_balancing.json vectors 3 and 5; pseudocode now does).
->>>>>>> origin/integration/worker3-20260722
 
 A single-radio node MUST listen on CH0 whenever it is not transmitting or
 participating in an active cell or rendezvous. Reception of legacy CH0 traffic

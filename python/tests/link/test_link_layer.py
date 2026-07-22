@@ -287,7 +287,7 @@ class TestLinkLayerRx:
         mock_radio.queue_rx(frame.to_bytes())
 
         result = await link_layer.receive(timeout_ms=100)
-        assert result is None
+        assert result == ReceiveError.BAD_SIGNATURE
 
     @pytest.mark.asyncio
     async def test_receive_rejects_replay(
@@ -326,7 +326,7 @@ class TestLinkLayerRx:
         # Second receive (replay) should fail
         mock_radio.queue_rx(frame_bytes)
         result2 = await link_layer.receive(timeout_ms=100)
-        assert result2 is None
+        assert result2 == ReceiveError.REPLAY
 
 
 class TestLinkLayerRoundTrip:
@@ -787,7 +787,7 @@ class TestKeyPinning:
         await peer_ll2.send(b"second")
         mock_radio.queue_rx(peer_ll2.radio.tx_history[0])
         result2 = await node_ll.receive(timeout_ms=100)
-        assert result2 is None
+        assert result2 == ReceiveError.KEY_CHANGE
 
     @pytest.mark.asyncio
     async def test_unpin_allows_key_rotation(

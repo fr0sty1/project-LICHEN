@@ -21,18 +21,7 @@ These are pure functions over a snapshot; the caller decides when to snapshot
 the evolving DODAG during a run.
 """
 
-<<<<<<< HEAD
-Topology = dict[str, Optional[str]]  # noqa: UP045
-=======
-from __future__ import annotations
-
-from collections.abc import Mapping
-from typing import Optional
-
-from lichen.rpl.dodag import DodagState
-
 Topology = dict[str, Optional[str]]
->>>>>>> origin/integration/worker3-20260722
 
 
 def topology_from_states(states: Mapping[str, DodagState]) -> Topology:

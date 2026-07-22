@@ -40,6 +40,8 @@ class RplTarget:
             raise DaoError(f"prefix_length must be between 0 and 128, got {self.prefix_length}")
 
     def to_option(self) -> RplOption:
+        if not (0 <= self.prefix_length <= 128):
+            raise DaoError(f"prefix_length must be between 0 and 128, got {self.prefix_length}")
         nbytes = (self.prefix_length + 7) // 8
         data = bytes([0, self.prefix_length]) + self.target.packed[:nbytes]
         return RplOption(RplOptionType.RPL_TARGET, data)
@@ -51,6 +53,8 @@ class RplTarget:
         if len(opt.data) < 2:
             raise DaoError("RPL Target option too short")
         prefix_length = opt.data[1]
+        if not (0 <= prefix_length <= 128):
+            raise DaoError(f"prefix_length must be between 0 and 128, got {prefix_length}")
         nbytes = (prefix_length + 7) // 8
         prefix = opt.data[2 : 2 + nbytes]
         if len(prefix) != nbytes:

@@ -473,11 +473,6 @@ static bool is_all_zeros(const uint8_t *buf, size_t len)
 	return acc == 0;
 }
 
-/*
- * Schnorr48 sign/verify for EDHOC signatures (48 bytes per draft-lichen-schnorr-00.md)
- * Replaces Ed25519 path to fix verification incompatibility, buffer safety,
- * and constant-time properties. Matches link/schnorr48.h and test vectors.
- */
 static int edhoc_sign(uint8_t sig[EDHOC_SIG_LEN],
 		      const uint8_t *seed,
 		      const uint8_t *pubkey,
@@ -485,16 +480,12 @@ static int edhoc_sign(uint8_t sig[EDHOC_SIG_LEN],
 {
 	uint8_t privkey[SCHNORR48_PRIVKEY_LEN];
 	uint8_t computed_pub[SCHNORR48_PUBKEY_LEN];
-
 	schnorr48_derive_keypair(seed, privkey, computed_pub);
-
-	/* SECURITY: Prevent key mismatch between provided pubkey and derived one */
 	if (crypto_verify32(pubkey, computed_pub) != 0) {
 		crypto_wipe(privkey, sizeof(privkey));
 		crypto_wipe(computed_pub, sizeof(computed_pub));
 		return -EINVAL;
 	}
-
 	int ret = schnorr48_sign(privkey, pubkey, msg, msg_len, sig);
 	crypto_wipe(privkey, sizeof(privkey));
 	crypto_wipe(computed_pub, sizeof(computed_pub));
@@ -505,7 +496,6 @@ static int edhoc_verify(const uint8_t *pubkey,
 			const uint8_t *sig,
 			const uint8_t *msg, size_t msg_len)
 {
-	/* SECURITY: Constant-time via schnorr48_verify (crypto_verify16 + s-nonzero acc) */
 	return schnorr48_verify(pubkey, msg, msg_len, sig) ? 0 : -1;
 }
 
@@ -1014,7 +1004,7 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 {
 	int ret;
 	uint8_t g_xy[32] = {0};
-	uint8_t signature_2[64] = {0};
+	uint8_t signature_2[EDHOC_SIG_LEN] = {0};
 	uint8_t mac_2[32] = {0};
 	uint8_t sig_struct_2[256] = {0};
 	uint8_t plaintext_2[128] = {0};

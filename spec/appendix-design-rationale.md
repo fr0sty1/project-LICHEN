@@ -389,12 +389,7 @@ Single channel creates contention hotspot. CCP-16 coordinates capacity. All impl
 - Slot duration = max_airtime(current_SF) + 100ms guard. Node uses lichen_link_set_slot() in subsys.
 - TX suppressed outside slot (tdma_tx_allowed()).
 
-<<<<<<< HEAD
-Normative pseudocode and thresholds now in physical-link:3.4 and 02a-coordinated-capacity:2a.3 (EMA alpha=1/4, per-neighbor state, DIO for ASSIGNED_SF/metrics, RX on all SF, TX_SF announcement). MUST match ccp16.json vectors exactly with RFC2119 language (MUST for SF selection on density/SNR/loss/utilization thresholds, SHOULD for optimization). SF10 baseline per 7.1; adaptive overrides only on explicit thresholds. No dead code; all paths exercised by vectors. Integrates with RPL DIO, TDMA slot hash, and CCP-16 simulator gates.
-=======
-**Adaptive SF**
-Nodes MUST use per-neighbor EMA SNR tracking with alpha=0.1. Thresholds per 02a-coordinated-capacity.md 4.2 adaptive_sf_select MUST be followed with RFC 2119. SF selection signaled in DIOs. RX on control channel for announcements. Matches CCP-16 and all ccp16.json vectors. SF10 REQUIRED baseline.
->>>>>>> origin/integration/worker11-20260722
+Normative pseudocode and thresholds are in physical-link:3.4 and 02a-coordinated-capacity:2a.3 (EMA alpha=1/4 from rf_health.rs, per-neighbor state, DIO for ASSIGNED_SF/metrics, RX all SF, TX_SF announcement). Implementations MUST match test/vectors/ccp16.json vectors exactly with RFC 2119 keywords (MUST for SF selection, density/SNR/loss/utilization thresholds; SHOULD for optimizations). SF10 baseline per 7.1; adaptive overrides only on explicit thresholds. Integrates with RPL DIO, TDMA slot hash, and CCP-16 simulator gates. No dead code; all paths exercised by vectors.
 
 **Multi-Channel + Density Balancing**
 - CH0 always for control (DIOs, all listen). Data channels via hash or root-assigned (RPL DAO-ACK carries channel_map).

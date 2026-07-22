@@ -47,7 +47,7 @@ class FieldDescriptor:
     """One field's compression behaviour within a rule.
 
     Attributes:
-        field_id: Stable identifier for the field (e.g. "CoAP.MID").
+        field_id: Stable identifier for the field (e.g. "CoAP.mid").
         length_bits: Field width in bits.
         mo: Matching Operator.
         cda: Compression/Decompression Action.

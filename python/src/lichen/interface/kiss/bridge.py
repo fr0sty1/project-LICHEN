@@ -47,9 +47,12 @@ KISS_MSG_PREFIX = b"\x02"
 
 if TYPE_CHECKING:
     from ...crypto.identity import Identity, PeerIdentity
-    from ...link.link_layer import LinkLayer, RxFrame
+    from ...link.link_layer import LinkLayer, ReceiveError, RxFrame
 
 log = logging.getLogger(__name__)
+
+# Runtime import for ReceiveError used in isinstance checks
+from ...link.link_layer import ReceiveError
 
 # Port assignments
 PORT_AX25 = 0  # AX.25-wrapped frames (for legacy TNC apps)
@@ -333,8 +336,13 @@ class KissBridge:
         while self._running:
             try:
                 rx = await self.link_layer.receive(timeout_ms)
-                if rx is not None:
+                if isinstance(rx, RxFrame):
                     await self._on_link_rx(rx)
+                elif isinstance(rx, ReceiveError):
+                    if rx in (ReceiveError.KEY_CHANGE, ReceiveError.REPLAY, ReceiveError.MIC_FAILED):
+                        log.warning("link RX security event: %s", rx)
+                    else:
+                        log.debug("link RX rejected: %s", rx)
             except asyncio.CancelledError:
                 break
             except Exception as e:
