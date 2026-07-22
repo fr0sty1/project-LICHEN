@@ -2,15 +2,15 @@
   "id": "project-LICHEN-kaba",
   "title": "[merge-conflict] worktree-worker22: Kconfig",
   "notes": "Commit: 64804b4 (worker13); Kconfig dedup",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:23.331758303Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:49:46.566375615Z",
+  "updated_at": "2026-07-22T23:50:40.736480537Z",
   "started_at": "2026-07-22T23:47:04.986164541Z",
-  "lease_expires_at": "2026-07-22T23:52:04.986164541Z",
-  "heartbeat_at": "2026-07-22T23:47:04.986164541Z"
+  "closed_at": "2026-07-22T23:50:40.736480537Z",
+  "close_reason": "Resolved all merge conflicts in board .conf/.overlay files, spec/03-addressing.md, and Kconfig duplicates for adaptive SF/DEFAULT_SF. Removed duplicate configs from link/Kconfig, centralized in lichen/Kconfig with correct dependency. Cleaned indentation. Committed to main and worker13. Verified with git status."
 }
