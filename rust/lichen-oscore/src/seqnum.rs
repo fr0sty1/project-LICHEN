@@ -48,7 +48,7 @@ impl OscoreSeqNum {
     /// to prevent nonce reuse, which would compromise AES-CCM confidentiality.
     #[inline]
     #[must_use = "returns a new value; does not modify self"]
-    pub fn increment(self) -> Option<Self> {
+    pub const fn increment(self) -> Option<Self> {
         self.0.checked_add(1).map(Self)
     }
 
