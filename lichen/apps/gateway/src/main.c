@@ -14,6 +14,8 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap_service.h>
+#include <zephyr/net/net_mgmt.h>
+#include <zephyr/net/wifi_mgmt.h>
 
 #include <lichen/hal.h>
 #include <lichen/rpl_dodag.h>
@@ -760,6 +762,12 @@ int main(void)
 #else
 	LOG_WRN("RPL root signalling disabled - advertising /status rpl=false");
 #endif
+
+#if IS_ENABLED(CONFIG_LICHEN_GATEWAY_WIFI_STATION)
+	wifi_station_init();
+	LOG_INF("WiFi station backhaul initialized");
+#endif
+
 	LOG_INF("CoAP server on port %u (AUTOSTART)", coap_port);
 
 	return 0;

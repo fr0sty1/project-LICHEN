@@ -249,6 +249,27 @@ config LICHEN_GW_PSK
 config LICHEN_COAP_SERVER_STANDALONE
 	default n
 
+config LICHEN_GATEWAY_WIFI_STATION
+	bool "WiFi station backhaul (Heltec V3)"
+	default y if BOARD_HELTEC_WIFI_LORA32_V3_ESP32S3_PROCPU
+	select WIFI
+	select WIFI_NM
+	select ESP_WIFI_ENABLED
+	help
+	  Enable WiFi station mode for internet backhaul, prefix acquisition via RA, and LICHEN_GATEWAY_PREFIX_DELEGATION. Uses net_mgmt events for NET_EVENT_WIFI_CONNECT_RESULT and NET_EVENT_IPV6_ADDR_ADD. SSID/PSK from Kconfig or /config CoAP resource. Follows AGENTS.md init order.
+
+config LICHEN_GATEWAY_WIFI_SSID
+	string "WiFi SSID"
+	depends on LICHEN_GATEWAY_WIFI_STATION
+	default "lichen-backhaul"
+
+config LICHEN_GATEWAY_WIFI_PSK
+	string "WiFi PSK"
+	depends on LICHEN_GATEWAY_WIFI_STATION
+	default "lichen123"
+	help
+	  WPA2 PSK for station mode. Override via CoAP /config for production.
+
 endmenu
 
 source "Kconfig.zephyr"
