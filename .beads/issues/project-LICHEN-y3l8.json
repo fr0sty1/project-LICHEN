@@ -2,11 +2,15 @@
   "id": "project-LICHEN-y3l8",
   "title": "gradient.rs: off-by-one in is_expired makes entries expire at exact expiry time",
   "description": "File: rust/lichen-node/src/gradient.rs:240-242\n\nThe is_expired function returns true when now_ms equals expires_ms, treating entries as expired AT their expiry time rather than AFTER:\n\n```rust\nfn is_expired(expires_ms: u32, now_ms: u32) -\u003e bool {\n    now_ms.wrapping_sub(expires_ms) \u003c 0x8000_0000\n}\n```\n\nWhen now_ms == expires_ms, wrapping_sub returns 0, and 0 \u003c 0x8000_0000 is true, so the entry is considered expired. This causes premature cache invalidation - entries should remain valid at their exact expiry time and only expire afterward.\n\nFix: Change condition to `now_ms.wrapping_sub(expires_ms) != 0 \u0026\u0026 now_ms.wrapping_sub(expires_ms) \u003c 0x8000_0000`",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:35:06.217967Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:35:06.218017Z"
+  "updated_at": "2026-07-22T20:18:09.072203373Z",
+  "started_at": "2026-07-22T20:18:09.072203373Z",
+  "lease_expires_at": "2026-07-22T20:23:09.072203373Z",
+  "heartbeat_at": "2026-07-22T20:18:09.072203373Z"
 }
