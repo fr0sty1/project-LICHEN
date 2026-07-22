@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-gue0",
+  "title": "Missing lichen_lora_perform_cca definition and Kconfig for CCA threshold",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:33:36.596547783Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:33:36.596547783Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-gue0",
+      "depends_on_id": "project-LICHEN-bwmc",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:33:36.701148329Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
