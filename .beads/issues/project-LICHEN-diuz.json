@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-diuz",
+  "title": "codereview: missing yggdrasil config section in lichen-gateway",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:37:46.574280397Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:37:46.574280397Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-diuz",
+      "depends_on_id": "project-LICHEN-zt3c.2",
+      "type": "blocks",
+      "created_at": "2026-07-22T17:37:46.69224801Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
