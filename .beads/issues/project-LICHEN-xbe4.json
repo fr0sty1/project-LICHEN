@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-xbe4",
   "title": "[merge-conflict] worktree-worker18: CMakeLists.txt",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:54:12.227115381Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:54:12.227115381Z"
+  "updated_at": "2026-07-22T23:56:20.677391155Z",
+  "started_at": "2026-07-22T23:56:20.677391155Z",
+  "lease_expires_at": "2026-07-23T00:01:20.677391155Z",
+  "heartbeat_at": "2026-07-22T23:56:20.677391155Z"
 }
