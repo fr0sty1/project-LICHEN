@@ -75,9 +75,25 @@ int lichen_announce_ingest_l2_payload(
 int lichen_announce_register_app_data_observer(
 	lichen_announce_app_data_fn _Nonnull cb, void *_Nullable user_data);
 
+/**
+ * @brief Register callback for announce app_data (coords, congestion, etc).
+ *
+ * @param cb Non-null callback (NULL returns -EINVAL).
+ * @param user_data Opaque context passed to cb.
+ * @param flags Observer flags (e.g. LICHEN_ANNOUNCE_OBSERVER_F_ALLOW_SEQ_RESET).
+ * @return 0 on success, -EINVAL if cb NULL, -ENOMEM if table full.
+ */
 int lichen_announce_register_app_data_observer_ex(
 	lichen_announce_app_data_fn _Nonnull cb, void *_Nullable user_data,
 	uint8_t flags);
+
+/**
+ * @brief Unregister all app data observers.
+ *
+ * Clears the entire observer table under lock. Use during reset or to
+ * disable all hooks. Preferred over NULL-cb (now rejected).
+ */
+void lichen_announce_unregister_all_app_data_observers(void);
 
 void lichen_announce_reset(void);
 

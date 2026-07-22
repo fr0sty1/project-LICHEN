@@ -373,12 +373,11 @@ int lichen_announce_register_app_data_observer_ex(
 {
 	struct announce_observer *free_slot = NULL;
 
-	k_mutex_lock(&observer_mutex, K_FOREVER);
 	if (cb == NULL) {
-		memset(announce_observers, 0, sizeof(announce_observers));
-		k_mutex_unlock(&observer_mutex);
-		return 0;
+		return -EINVAL;
 	}
+
+	k_mutex_lock(&observer_mutex, K_FOREVER);
 
 	for (size_t i = 0U; i < ARRAY_SIZE(announce_observers); i++) {
 		if (!announce_observers[i].active) {
@@ -410,14 +409,19 @@ int lichen_announce_register_app_data_observer_ex(
 	return 0;
 }
 
+void lichen_announce_unregister_all_app_data_observers(void)
+{
+	k_mutex_lock(&observer_mutex, K_FOREVER);
+	memset(announce_observers, 0, sizeof(announce_observers));
+	k_mutex_unlock(&observer_mutex);
+}
+
 void lichen_announce_reset(void)
 {
 	k_mutex_lock(&announce_mutex, K_FOREVER);
 	memset(announce_peers, 0, sizeof(announce_peers));
 	k_mutex_unlock(&announce_mutex);
-	k_mutex_lock(&observer_mutex, K_FOREVER);
-	memset(announce_observers, 0, sizeof(announce_observers));
-	k_mutex_unlock(&observer_mutex);
+	lichen_announce_unregister_all_app_data_observers();
 }
 
 /* =========================================================================
