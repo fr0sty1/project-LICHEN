@@ -1,12 +1,14 @@
 {
   "id": "project-LICHEN-s500",
   "title": "codereview: identity.py missing yggdrasil derivation matching Rust and spec 8.6",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "created_at": "2026-07-22T17:37:51.12933264Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:37:51.12933264Z",
+  "updated_at": "2026-07-22T17:39:09.017997164Z",
+  "closed_at": "2026-07-22T17:39:09.017997164Z",
+  "close_reason": "Fixed yggdrasil derivation in identity.py with matching Rust impl, added to Identity, updated tests and repr; 3 clean ruff passes (E501, F401 fixed)",
   "labels": [
     "codereview"
   ]
