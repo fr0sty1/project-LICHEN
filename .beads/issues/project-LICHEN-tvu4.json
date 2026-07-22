@@ -2,6 +2,7 @@
   "id": "project-LICHEN-tvu4",
   "title": "schnorr.rs: Nonce derivation uses privkey directly instead of RFC 8032 prefix",
   "description": "File: rust/lichen-link/src/schnorr.rs\nLines: 51-56\n\nThe sign function derives the nonce as:\n\n    let nonce_hash = Sha512::new()\n        .chain_update(privkey.as_bytes())\n        .chain_update(msg)\n        .finalize();\n    let r = Scalar::from_bytes_mod_order_wide(\u0026nonce_hash.into());\n\nThis uses the clamped private scalar (32 bytes) directly in the nonce derivation.\n\nStandard Ed25519 (RFC 8032) uses:\n    r = H(prefix || msg) where prefix = H(seed)[32:64]\n\nThe difference:\n- RFC 8032: Uses the second half of H(seed), never the scalar itself\n- schnorr.rs: Uses the clamped scalar derived from first half of H(seed)\n\nWhile both are deterministic and secure, using the actual private scalar in the hash input is non-standard. If there is ever a hash collision or related-message attack, the attacker gains information about the private scalar directly rather than the nonce prefix.\n\nThis is the same issue as project-LICHEN-z8r8 but in the Rust implementation.\n\nImpact: Non-standard nonce derivation. Standard Ed25519 security proofs may not apply directly. Should be documented as an intentional design deviation or changed to match RFC 8032.",
+  "notes": "Commit: ad62235b6",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:11:35.841726Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T22:53:02.103597092Z",
+  "updated_at": "2026-07-22T22:55:27.464847171Z",
   "started_at": "2026-07-22T22:53:02.103597092Z",
   "lease_expires_at": "2026-07-22T22:58:02.103597092Z",
   "heartbeat_at": "2026-07-22T22:53:02.103597092Z"
