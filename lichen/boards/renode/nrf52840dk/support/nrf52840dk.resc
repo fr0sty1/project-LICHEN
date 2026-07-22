@@ -1,0 +1,28 @@
+:name: nRF52840DK-Gateway
+:description: nRF52840DK gateway (BLE/CoAP, no LoRa)
+
+$name?="nRF52840DK-Gateway"
+$elf?="build/nrf52840dk_gateway_renode/zephyr/zephyr.elf"
+
+using sysbus
+
+include $ORIGIN/../../peripherals/BLE.cs
+
+mach create $name
+machine LoadPlatformDescription $ORIGIN/nrf52840dk.repl
+
+showAnalyzer uart0
+cpu PerformanceInMips 64
+
+macro reset
+"""
+    sysbus LoadELF $elf
+    $vt=`sysbus GetSymbolAddress "_vector_table"`
+    cpu VectorTableOffset $vt
+    cpu SP `sysbus ReadDoubleWord $vt`
+    cpu PC `sysbus GetSymbolAddress "__start"`
+    cpu IsHalted false
+    radio0 SetConnected true
+    radio0 SetReadValue 0x800 1
+"""
+runMacro $reset

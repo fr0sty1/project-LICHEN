@@ -386,11 +386,7 @@ impl MeshtasticBridge {
             variant: Some(routing::Variant::ErrorReason(error as i32)),
         };
 
-        let mut payload = alloc::vec::Vec::new();
-        // Encoding to a growable Vec cannot fail (no I/O, no size limits)
-        routing
-            .encode(&mut payload)
-            .expect("protobuf encode to Vec cannot fail");
+        let payload = routing.encode_to_vec();
 
         let packet_id = self.next_packet_id;
         self.next_packet_id = self.next_packet_id.wrapping_add(1);

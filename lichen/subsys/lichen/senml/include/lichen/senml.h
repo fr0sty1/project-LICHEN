@@ -204,6 +204,10 @@ LICHEN_WARN_UNUSED_RESULT
 int senml_encode_cbor(const struct senml_pack *_Nonnull pack,
 		      uint8_t *_Nonnull buf, size_t buflen);
 
+LICHEN_WARN_UNUSED_RESULT
+int senml_encode_deaddrop(const struct senml_pack *_Nonnull pack,
+			  uint8_t *_Nonnull buf, size_t buflen);
+
 /* --------------------------------------------------------------------------
  * Convenience functions for common sensor types
  * -------------------------------------------------------------------------- */

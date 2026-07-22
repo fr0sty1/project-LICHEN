@@ -1,0 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: The contributors to the LICHEN project
+
+using "../../nrf52840_lichen/support/nrf52840_lichen.repl"
+
+radio0: Wireless.NRF52840_BLE @ sysbus 0x40001000
+    IRQ -> nvic@1

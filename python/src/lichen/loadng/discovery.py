@@ -115,9 +115,13 @@ class LoadngRouter:
         )
 
         if rreq.destination == self.node_address:
+<<<<<<< HEAD
             # We are the destination; reply with our own sequence number
             # (not the RREQ's seq_num, which belongs to the RREQ originator).
             self._own_seq = (self._own_seq + 1) & _SEQ_MAX
+=======
+            self._own_seq = (self._own_seq + 1) & 0xFFFF
+>>>>>>> origin/integration/worker11-20260722
             rrep = RREP(
                 originator=self.node_address,
                 destination=rreq.originator,
@@ -126,7 +130,10 @@ class LoadngRouter:
             )
             return RreqResult(reply=rrep, reply_next_hop=from_neighbor)
 
+<<<<<<< HEAD
         # Intermediate reply if we already hold a gradient to the destination.
+=======
+>>>>>>> origin/integration/worker11-20260722
         grad = self.gradient.lookup(rreq.destination, now)
         if grad is not None:
             rrep = RREP(

@@ -302,31 +302,28 @@ impl<R: Radio> Stack<R> {
     pub async fn send_coap_raw(&mut self, dst: &Addr, coap: &[u8]) -> Result<(), TxError> {
         let src = self.local_addr();
 
-        // Build IPv6/UDP packet
-        let udp_payload_len = coap.len();
-        let udp_len = (UDP_HEADER_LEN + udp_payload_len) as u16;
+        // Build IPv6 + UDP + CoAP packet
+        let udp_total = UDP_HEADER_LEN + coap.len();
         let mut ipv6 = [0u8; 256];
 
-        // IPv6 header
+        // IPv6 header (payload_len = UDP datagram size)
         let ip_hdr = Ipv6Header::new(next_header::UDP, src, *dst);
         ip_hdr
-            .write_to(udp_len, &mut ipv6[..IPV6_HEADER_LEN])
+            .write_to(udp_total as u16, &mut ipv6[..IPV6_HEADER_LEN])
             .map_err(|_| TxError::BufferTooSmall)?;
 
-        // UDP header (computes checksum via pseudo-header)
+        // UDP datagram (preferred write_packet_to ensures payload placed before checksum use)
         let udp_hdr = UdpHeader::new(PORT_COAP, PORT_COAP);
         udp_hdr
-            .write_to(
+            .write_packet_to(
                 &src,
                 dst,
                 coap,
-                &mut ipv6[IPV6_HEADER_LEN..IPV6_HEADER_LEN + UDP_HEADER_LEN],
+                &mut ipv6[IPV6_HEADER_LEN..IPV6_HEADER_LEN + udp_total],
             )
             .map_err(|_| TxError::BufferTooSmall)?;
 
-        // CoAP payload
-        let ipv6_len = IPV6_HEADER_LEN + UDP_HEADER_LEN + udp_payload_len;
-        ipv6[IPV6_HEADER_LEN + UDP_HEADER_LEN..ipv6_len].copy_from_slice(coap);
+        let ipv6_len = IPV6_HEADER_LEN + udp_total;
 
         // SCHC compress
         let mut schc = [0u8; 200];

@@ -783,7 +783,7 @@ pub fn parse_packet(buf: &[u8]) -> Result<(Ipv6Header, &[u8]), Ipv6Error> {
     let payload_start = IPV6_HEADER_LEN;
     let payload_end = payload_start + header.payload_len as usize;
 
-    if buf.len() < payload_end {
+    if buf.len() != payload_end {
         return Err(TooShort::new(payload_end, buf.len()).into());
     }
 

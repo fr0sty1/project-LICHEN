@@ -15,8 +15,10 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_SERVER_STANDALONE
 
 # Standalone (lichen_coap_server) is mutually exclusive with
 # LICHEN_COAP_CONFIG (see Kconfig); modular lichen_coap is preferred
-# single owner for gateway/nucleo_wl55jc/r1_neo. Iterable section for
-# correct service (lichen_coap not _server) provided by app CMake.
+# single owner for gateway/nucleo_wl55jc/r1_neo (worker8 conditionalized
+# standalone server; no resource renaming). lichen_coap iterable section
+# ensured for gateways; correct service (lichen_coap not _server) provided
+# by app CMake. subsys provides sections-ram.ld for standalone.
 if(CONFIG_LICHEN_COAP_SERVER_STANDALONE)
   zephyr_linker_sources(DATA_SECTIONS sections-ram.ld)
   zephyr_iterable_section(

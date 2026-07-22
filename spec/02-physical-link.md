@@ -28,6 +28,7 @@ LoRa Chirp Spread Spectrum (CSS) as implemented by Semtech SX126x and SX127x.
 
 **Channel Plan**
 
+<<<<<<< HEAD
 | Channel | Role | Traffic | Listen Requirement |
 |---------|------|---------|--------------------|
 | CH0 (control) | Routing, control | Announces, DIO, DIS, DAO, beacons (TDMA) | All nodes MUST listen when idle |
@@ -135,6 +136,11 @@ Coordinated transmissions on a single frequency (SFN) improve capacity and relia
 Boundary example: When delta exceeds 0.25 symbols, destructive interference occurs unless SF increased or separate slot used (see 14.8 TDMA). Deltas computed from known positions or RSSI-derived ranging. MUST synchronize via shared time source (GNSS/DIO).
 
 See CCP-12 synchronized hopping in [02a-coordinated-capacity.md](02a-coordinated-capacity.md) for full multi-channel coordination via SFN/GPS, hash_32 channel selection, and rendezvous announcements in beacons/DIOs.
+=======
+### 3.4. Adaptive Spreading Factor
+
+See CCP-16 in spec/02a-coordinated-capacity.md for the normative adaptive SF algorithm, per-neighbor EMA tracking of SNR, density and load thresholds, signaling in DIOs, RX scanning on control channel, and test vector requirements. SF10 is REQUIRED default per appendix-design-rationale.md.
+>>>>>>> origin/integration/worker11-20260722
 
 ---
 
