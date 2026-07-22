@@ -477,7 +477,7 @@ int oscore_ctx_persist_ssn(struct oscore_ctx *_Nonnull ctx);
  * @return 0 on success, OSCORE_ERR_NO_CONTEXT if not found,
  *         OSCORE_ERR_INVALID_PARAM if ctx_out is NULL
  */
-int oscore_ctx_lookup(const uint8_t *_Nonnull recipient_id,
+__deprecated int oscore_ctx_lookup(const uint8_t *_Nonnull recipient_id,
 		      size_t recipient_id_len,
 		      struct oscore_ctx *_Nonnull ctx_out);
 
