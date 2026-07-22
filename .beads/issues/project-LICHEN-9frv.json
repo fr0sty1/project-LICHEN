@@ -3,15 +3,15 @@
   "title": "router.c: GPSR distance calculation vulnerable to integer overflow",
   "description": "File: lichen/subsys/lichen/routing/router.c\nLines: 523-561\n\nIn distance_approx_m():\n\n    int64_t dlat_m_100 = dlat_e7 * 111;  /* *100 of meters for precision */\n    int64_t dlon_m_100 = dlon_e7 * 111;  /* needs cos(lat) correction */\n    dlon_m_100 = (dlon_m_100 * 707) / 1000;\n\n    uint64_t dist_sq_100 = (uint64_t)((dlat_m_100 * dlat_m_100) +\n                                      (dlon_m_100 * dlon_m_100));\n\nFor maximum coordinate delta (e.g., lat from -90 to +90 degrees = 1.8e9 in e7):\n- dlat_e7 = 1800000000\n- dlat_m_100 = 1800000000 * 111 = 199,800,000,000 (fits in int64)\n- dlat_m_100 * dlat_m_100 = ~3.99e22 which OVERFLOWS int64 (max ~9.2e18)\n\nThe cast to uint64_t happens AFTER the multiplication, so the overflow has already occurred in signed int64 arithmetic (undefined behavior in C).\n\nFix: Cast to uint64_t before squaring, or scale down earlier to prevent overflow.",
   "notes": "Commit: f8d259667\nScaled to e4 + pre-square abs cast to uint64_t already in distance_approx_m() (with SECURITY comments). Prevents signed overflow UB for full earth deltas. Matches test vectors and GPSR usage. P2 fixed completely.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:50:31.894278Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:13:38.303579066Z",
+  "updated_at": "2026-07-22T20:13:40.043337272Z",
   "started_at": "2026-07-22T20:13:32.086220656Z",
-  "lease_expires_at": "2026-07-22T20:18:32.086220656Z",
-  "heartbeat_at": "2026-07-22T20:13:32.086220656Z"
+  "closed_at": "2026-07-22T20:13:40.043337272Z",
+  "close_reason": "Overflow prevented via e4 scaling + uint64 cast-before-square; commit f8d259667"
 }
