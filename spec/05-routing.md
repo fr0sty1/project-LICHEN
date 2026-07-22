@@ -54,6 +54,8 @@ def route_packet(dst):
 | Other GUA | Off-mesh | RPL to border router |
 | Unknown | Off-mesh | RPL to border router |
 
+Addresses derived from Ed25519 pubkey (see 06-security.md §6.1).
+
 ### 7.3. Conformance Requirements
 
 Keywords per RFC 2119. Device classes:
