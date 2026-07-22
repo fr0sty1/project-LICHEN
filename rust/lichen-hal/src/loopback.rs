@@ -88,9 +88,8 @@ impl Radio for LoopbackRadio {
     async fn receive(
         &mut self,
         buf: &mut [u8],
-        _timeout_ms: u32,
+        timeout_ms: u32,
     ) -> Result<Option<RxPacket>, Self::Error> {
-        // ponytail: no actual timeout in loopback, just check queue
         let data = self.rx_chan.lock().unwrap().recv();
 
         // SECURITY: Enforce buffer contract from Radio trait docs.
@@ -115,7 +114,10 @@ impl Radio for LoopbackRadio {
                     snr: Some(10),
                 }))
             }
-            None => Ok(None),
+            None => {
+                std::thread::sleep(std::time::Duration::from_millis(timeout_ms as u64));
+                Ok(None)
+            }
         }
     }
 
