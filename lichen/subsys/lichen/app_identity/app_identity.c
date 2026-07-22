@@ -286,9 +286,10 @@ size_t lichen_app_identity_copy_peers(
 {
 	size_t count = 0U;
 
-	if (out == NULL || out_len == 0U) {
+	if (out_len == 0U) {
 		return 0U;
 	}
+	__ASSERT_NO_MSG(out != NULL);
 
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	for (uint8_t i = 0U; i < ARRAY_SIZE(s_peers) && count < out_len; i++) {
