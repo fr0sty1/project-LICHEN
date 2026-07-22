@@ -136,11 +136,12 @@ class TxQueue:
             clock: Optional clock function for testing. Returns ms since
                    some epoch. Defaults to time.monotonic() * 1000.
         """
+        if capacity <= 0:
+            raise ValueError("capacity must be positive")
         self._capacity = capacity
         self._clock = clock or (lambda: int(time.monotonic() * 1000))
         self._entries: list[TxQueueEntry] = []
         self.stats = TxQueueStats()
-        # Raw EMA accumulator (float for precision, truncated to int for stats)
         self._avg_latency_ema: float = 0.0
 
     def __len__(self) -> int:

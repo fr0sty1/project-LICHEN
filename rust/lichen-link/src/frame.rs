@@ -1,7 +1,7 @@
 //! LICHEN frame format (spec section 4).
 
 use crate::seqnum::LinkSeqNum;
-use lichen_core::error::TooShort;
+use lichen_core::error::{BufferTooSmall, TooShort};
 
 /// Coarse states in zero-copy link-frame parsing.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -174,6 +174,7 @@ pub const MAX_FRAME_BODY: usize = 255;
 pub enum FrameError {
     Empty,
     TooShort(TooShort),
+    BufferTooSmall(BufferTooSmall),
     ReservedBitSet,
     ReservedMicLength(u8),
     AddrLenMismatch,
@@ -189,6 +190,7 @@ impl core::fmt::Display for FrameError {
         match self {
             Self::Empty => write!(f, "empty frame"),
             Self::TooShort(e) => write!(f, "frame {}", e),
+            Self::BufferTooSmall(e) => write!(f, "frame {}", e),
             Self::ReservedBitSet => write!(f, "reserved bit set"),
             Self::ReservedMicLength(v) => write!(f, "reserved MIC length: {}", v),
             Self::AddrLenMismatch => write!(f, "address length mismatch"),
@@ -207,6 +209,7 @@ impl core::error::Error for FrameError {
     fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         match self {
             Self::TooShort(e) => Some(e),
+            Self::BufferTooSmall(e) => Some(e),
             _ => None,
         }
     }
@@ -215,6 +218,12 @@ impl core::error::Error for FrameError {
 impl From<TooShort> for FrameError {
     fn from(e: TooShort) -> Self {
         Self::TooShort(e)
+    }
+}
+
+impl From<BufferTooSmall> for FrameError {
+    fn from(e: BufferTooSmall) -> Self {
+        Self::BufferTooSmall(e)
     }
 }
 
@@ -268,7 +277,6 @@ impl<'a> LichenFrame<'a> {
         if self.signature.is_present() && self.encryption.is_encrypted() {
             return Err(FrameError::SignedEncryptedUnsupported);
         }
-        // body = LLSec(1) + epoch(1) + seqnum(2) + dst_addr + payload + MIC
         if self.addr_mode.addr_len() != self.dst_addr.len() {
             return Err(FrameError::AddrLenMismatch);
         }
@@ -286,7 +294,7 @@ impl<'a> LichenFrame<'a> {
         }
         let total = 1 + body_len;
         if buf.len() < total {
-            return Err(FrameError::FrameTooLarge);
+            return Err(BufferTooSmall::new(total, buf.len()).into());
         }
         buf[0] = body_len as u8;
         buf[1] = self.llsec_byte();
