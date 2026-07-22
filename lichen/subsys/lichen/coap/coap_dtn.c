@@ -77,7 +77,7 @@ static int deaddrop_get(struct coap_resource *resource, struct coap_packet *requ
 }
 
 static const char * const deaddrop_path[] = { "deaddrop", NULL };
-COAP_RESOURCE_DEFINE(lichen_deaddrop, lichen_coap, {
+COAP_RESOURCE_DEFINE(lichen_deaddrop, lichen_coap_server, {
 	.get = deaddrop_get,
 	.post = deaddrop_post,
 	.path = deaddrop_path,

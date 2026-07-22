@@ -1234,7 +1234,7 @@ static int keys_single_delete(struct coap_resource *resource,
 #if IS_ENABLED(CONFIG_LICHEN_COAP_KEYS)
 
 static const char * const keys_path[] = { "keys", NULL };
-COAP_RESOURCE_DEFINE(keys_list, lichen_coap, {
+COAP_RESOURCE_DEFINE(keys_list, lichen_coap_server, {
 	.get = keys_list_get,
 	.path = keys_path,
 });
@@ -1244,7 +1244,7 @@ COAP_RESOURCE_DEFINE(keys_list, lichen_coap, {
  * Requires CONFIG_COAP_URI_WILDCARD=y
  */
 static const char * const keys_single_path[] = { "keys", "+", NULL };
-COAP_RESOURCE_DEFINE(keys_single, lichen_coap, {
+COAP_RESOURCE_DEFINE(keys_single, lichen_coap_server, {
 	.get = keys_single_get,
 	.put = keys_single_put,
 	.del = keys_single_delete,

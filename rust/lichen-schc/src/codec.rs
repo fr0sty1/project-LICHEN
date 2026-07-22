@@ -267,6 +267,9 @@ fn write_ipv6_header(
 
 /// Rule 0 (link-local) and Rule 1 (global): IPv6 + UDP + CoAP.
 fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, SchcError> {
+    if packet.len() < 40 || packet[0] >> 4 != 6 {
+        return Err(SchcError::NoMatchingRule);
+    }
     if packet.len() < 40 + 8 + 4 {
         return Err(SchcError::NoMatchingRule);
     }
@@ -324,6 +327,9 @@ fn compress_coap(packet: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, Sc
 
 /// Rule 2: link-local IPv6 + ICMPv6 Echo.
 fn compress_icmpv6_echo(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
+    if packet.len() < 40 || packet[0] >> 4 != 6 {
+        return Err(SchcError::NoMatchingRule);
+    }
     // 40 (IPv6) + 8 (ICMPv6 Echo: type + code + checksum + id + seq)
     if packet.len() < 40 + 8 {
         return Err(SchcError::NoMatchingRule);
@@ -365,6 +371,9 @@ fn compress_icmpv6_echo(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcErro
 
 /// Rule 3: link-local IPv6 + ICMPv6 RPL DIO.
 fn compress_rpl_dio(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
+    if packet.len() < 40 || packet[0] >> 4 != 6 {
+        return Err(SchcError::NoMatchingRule);
+    }
     // 40 (IPv6) + 4 (ICMPv6 header) + 24 (DIO base: instance + version + rank + G/MOP/Prf + DTSN + flags + reserved + DODAGID)
     if packet.len() < 40 + 4 + 24 {
         return Err(SchcError::NoMatchingRule);
@@ -413,6 +422,9 @@ fn compress_rpl_dio(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
 
 /// Rule 4: link-local IPv6 + ICMPv6 RPL DAO with DODAGID.
 fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
+    if packet.len() < 40 || packet[0] >> 4 != 6 {
+        return Err(SchcError::NoMatchingRule);
+    }
     // 40 (IPv6) + 4 (ICMPv6 header) + 20 (DAO base with D=1: instance + K/D/flags + reserved + seq + DODAGID)
     if packet.len() < 40 + 4 + 20 {
         return Err(SchcError::NoMatchingRule);
@@ -461,6 +473,9 @@ fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
 /// are compressed the same as Rule 0/1 (link-local IID only vs full global).
 /// The port that is NOT 10883 is sent as 16-bit residue; port 10883 is NOT_SENT.
 fn compress_mqtt_sn(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
+    if packet.len() < 40 || packet[0] >> 4 != 6 {
+        return Err(SchcError::NoMatchingRule);
+    }
     // 40 (IPv6) + 8 (UDP header) minimum
     if packet.len() < 40 + 8 {
         return Err(SchcError::NoMatchingRule);
