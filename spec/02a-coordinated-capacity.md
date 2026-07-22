@@ -143,7 +143,6 @@ listen-before-talk procedure even in a dedicated cell.
 
 ## CCP-6. Capability Advertisement
 
-<<<<<<< HEAD
 Slow-changing domain parameters are advertised in a CCP Capability DIO option.
 The provisional experimental option type is `0xE0`; it MUST be replaced by an
 assigned value before publication as an interoperable Internet standard.
@@ -167,7 +166,7 @@ big-endian. `Setup Window` bounds retune, receiver readiness, and CAD before RF
 transmission. `Occupied Time` bounds data plus immediate acknowledgment.
 `Guard` is the total separation required between occupied transmission
 envelopes. `Max PHY Len` includes the complete link frame.
-=======
+
 CH0 is the control channel; all nodes MUST listen continuously on it for DIOs and beacons (see draft-lichen-schc-lora-00).
 
 Data channels are selected via select_channel (normative pseudocode below, cross-ref draft-lichen-tdma for TDMA integration). All implementations MUST produce identical results to test/vectors/ccp16.json for CCP-14/15/16 vectors.
@@ -228,6 +227,7 @@ Per-SF SNR thresholds for fallback: SF9 >8 dB, SF10 >0 dB, SF11 >-5 dB, SF12 any
 
 Flags are:
 
+<<<<<<< HEAD
 | Bit | Meaning |
 |-----|---------|
 | 0 | Scheduled mode supported |
@@ -245,6 +245,11 @@ intervals are too long and their receive timestamps too uncertain for slot
 synchronization.
 
 ## CCP-7. GNSS-PPS Slot Clock
+=======
+Time sync provided by DODAG root via epoch in beacons/RPL options (see 2a.2 for time-provider, epoch_floor validation, SFN modulo/wrap independence). Nodes MUST maintain `epoch_floor`, `stratum`, `wall_clock_valid` (see `docs/firmware-time-provider.md`).
+
+Root time-provider is authoritative. Adopt lowest DODAG ID root. Drift > threshold triggers desync (2a.5). Integrates with `lichen_rpl_dodag_init()` per AGENTS.md.
+>>>>>>> 32955f837 (project-LICHEN-bp2v: fix)
 
 Scheduled mode version 1 requires every participating node to have a GNSS
 receiver with a hardware pulse-per-second (PPS) output connected to a capture
