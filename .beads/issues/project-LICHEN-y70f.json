@@ -3,15 +3,15 @@
   "title": "[cross-impl] Python omits dst_addr_len byte in link signing",
   "description": "Python link_layer.py:_build_signable_data builds length||llsec||epoch||seq||dst_addr||payload. Rust schnorr.rs:build_signable and C schnorr48_sign_frame include explicit dst_addr_len(1) byte after seq (for domain separation per project-LICHEN-j7rk comments). Signatures mismatch on all L2 frames (link_frame.json vectors fail cross-impl). Affects Python sim vs Rust/Zephyr nodes. See explore task ses_073d06565ffe0757aB3IsPzxp0 for full diff.",
   "notes": "Commit: 3f40a156c",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:37:56.178442984Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:47:30.294541719Z",
+  "updated_at": "2026-07-22T23:47:32.421221672Z",
   "started_at": "2026-07-22T23:42:14.216096048Z",
-  "lease_expires_at": "2026-07-22T23:47:14.216096048Z",
-  "heartbeat_at": "2026-07-22T23:42:14.216096048Z"
+  "closed_at": "2026-07-22T23:47:32.421221672Z",
+  "close_reason": "Added dst_addr_len byte to Python _build_signable_data, updated Rust build_signable, C schnorr48_*_frame, spec, and test assertion for consistent cross-impl link signing and domain separation. Tests and lints pass. Commit 3f40a156c"
 }
