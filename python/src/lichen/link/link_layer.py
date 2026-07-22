@@ -24,6 +24,7 @@ import random
 import secrets
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from enum import IntEnum
 from typing import TYPE_CHECKING
 
 from ..constants import (
@@ -138,6 +139,16 @@ class RxFrame:
     sender: PeerIdentity
     rssi_dbm: int
     snr_db: int
+
+
+class ReceiveError(IntEnum):
+    MALFORMED = 1
+    UNSIGNED = 2
+    ENCRYPTED = 3
+    BAD_SIGNATURE = 4
+    KEY_CHANGE = 5
+    MIC_FAILED = 6
+    REPLAY = 7
 
 
 @dataclass

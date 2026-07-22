@@ -103,19 +103,6 @@ def _monotonic_time() -> float:
         return time.monotonic()
 
 
-def _hash_32(sfn: int, key: int = 0) -> int:
-    lichen_seed = 0x4C494348454E
-    h = 0x811C9DC5
-    sfn = sfn ^ lichen_seed
-    for i in range(4):
-        b = (sfn >> (i * 8)) & 0xFF
-        h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF
-    for i in range(8):
-        b = (key >> (i * 8)) & 0xFF
-        h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF
-    return h
-
-
 @dataclass
 class PeerContext:
     """OSCORE context and metadata for a peer."""

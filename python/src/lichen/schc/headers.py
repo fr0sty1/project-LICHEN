@@ -427,7 +427,7 @@ class RplDaoProfile(_RplProfile):
     def _parse_base(self, base: bytes) -> dict[str, int]:
         return {
             "RPL.instance": base[0],
-            "RPL.flags": base[1],
+            "RPL.kd_flags": base[1],
             "RPL.reserved": base[2],
             "RPL.seq": base[3],
             "RPL.dodagid": int.from_bytes(base[4:20], "big"),
@@ -436,12 +436,12 @@ class RplDaoProfile(_RplProfile):
     def _build_base(self, fields: dict[str, int | None]) -> bytes:
         return bytes(
             [
-                fields["RPL.instance"],
-                fields["RPL.flags"],
-                fields["RPL.reserved"],
-                fields["RPL.seq"],
+                _require_field(fields, "RPL.instance"),
+                _require_field(fields, "RPL.kd_flags"),
+                _require_field(fields, "RPL.reserved"),
+                _require_field(fields, "RPL.seq"),
             ]
-        ) + int(fields.get("RPL.dodagid") or 0).to_bytes(16, "big")
+        ) + _require_field(fields, "RPL.dodagid").to_bytes(16, "big")
 
 
 class Icmpv6EchoProfile(PacketProfile):
@@ -484,12 +484,12 @@ class Icmpv6EchoProfile(PacketProfile):
         return fields, icmpv6[_ICMPV6_ECHO_BASE:]
 
     def build(self, fields: dict[str, int | None], tail: bytes) -> bytes:
-        src = IPv6Address(int(fields.get("IPv6.src") or 0))
-        dst = IPv6Address(int(fields.get("IPv6.dst") or 0))
-        ident = int(fields.get("ICMPv6.identifier") or 0)
-        seq = int(fields.get("ICMPv6.sequence") or 0)
-        msg_type = int(fields.get("ICMPv6.type") or 128)
-        code = int(fields.get("ICMPv6.code") or 0)
+        src = IPv6Address(_require_field(fields, "IPv6.src"))
+        dst = IPv6Address(_require_field(fields, "IPv6.dst"))
+        ident = _require_field(fields, "ICMPv6.identifier")
+        seq = _require_field(fields, "ICMPv6.sequence")
+        msg_type = _require_field(fields, "ICMPv6.type")
+        code = _require_field(fields, "ICMPv6.code")
         body = ident.to_bytes(2, "big") + seq.to_bytes(2, "big") + tail
         zero = bytes([msg_type, code, 0, 0]) + body
         checksum = icmpv6_checksum(src, dst, zero)

@@ -177,16 +177,10 @@ impl Dao {
             return Err(TooShort::new(base_len, data.len()).into());
         }
         let dodag_id = if d_flag == 1 {
-<<<<<<< HEAD
-            data[4..20].try_into().unwrap()
-        } else {
-            [0u8; 16] // D=0 elides DODAGID per RFC 6550 §6.4.2; use context DODAG
-=======
             // SAFETY: length check ensures data.len() >= 20; 4..20 is 16 bytes
             data[4..20].try_into().unwrap()
         } else {
-            [0u8; 16]
->>>>>>> origin/integration/worker12-20260722
+            [0u8; 16] // D=0 elides DODAGID per RFC 6550 §6.4.2; use context DODAG
         };
         Ok(Self {
             rpl_instance_id: data[0],
@@ -202,11 +196,7 @@ impl Dao {
             return Err(BufferTooSmall::new(Self::BASE_LEN, out.len()).into());
         }
         let kd = ((self.ack_requested as u8) << 7)
-<<<<<<< HEAD
             | (1u8 << 6) // D-flag always set (LICHEN/SCHC rule 4)
-=======
-            | (1u8 << 6) // D-flag always set per LICHEN/SCHC
->>>>>>> origin/integration/worker12-20260722
             | (self.flags & 0x3F);
         out[0] = self.rpl_instance_id;
         out[1] = kd;
@@ -221,16 +211,10 @@ impl Dao {
             return &[];
         }
         let kd = data[1];
-<<<<<<< HEAD
         let d_flag = (kd >> 6) & 1;
         let base_len = if d_flag == 1 { 20 } else { 4 };
         if data.len() > base_len {
             &data[base_len..]
-=======
-        let base = if (kd >> 6) & 1 == 1 { 20 } else { 4 };
-        if data.len() > base {
-            &data[base..]
->>>>>>> origin/integration/worker12-20260722
         } else {
             &[]
         }
