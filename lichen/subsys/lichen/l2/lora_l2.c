@@ -256,6 +256,7 @@ static struct {
     lichen_lora_rx_cb_t rx_callback;
     void *rx_callback_user_data;
     bool cca_enabled;
+    uint8_t current_channel;
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
     struct lichen_duty_cycle_ctx duty;
 #endif
@@ -672,6 +673,7 @@ int lichen_lora_l2_init(void)
     lora_data.rx_callback = NULL;
     lora_data.rx_callback_user_data = NULL;
     lora_data.cca_enabled = IS_ENABLED(CONFIG_LICHEN_LORA_CCA_ENABLE);
+    lora_data.current_channel = 0;
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
     lichen_duty_cycle_init(&lora_data.duty, LICHEN_DUTY_CYCLE_DEFAULT_PERMILLE);
 #endif
@@ -1064,6 +1066,7 @@ int lichen_lora_l2_deinit(void)
     lora_data.rx_callback = NULL;
     lora_data.rx_callback_user_data = NULL;
     lora_data.cca_enabled = false;
+    lora_data.current_channel = 0;
 
     /*
      * Reinitialize lichen_l2's rx_mutex (project-LICHEN-dq6n.22).

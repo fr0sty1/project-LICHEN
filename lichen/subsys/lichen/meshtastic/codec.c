@@ -10,8 +10,6 @@
 #include <lichen/meshtastic/codec.h>
 
 #include <lichen/meshtastic/pb_internal.h>
-#define LICHEN_BRAND "LICHEN"
-#define MESHTASTIC_BRAND "meshtastic"
 
 #define TORADIO_PACKET_FIELD 1U
 #define TORADIO_WANT_CONFIG_ID_FIELD 3U

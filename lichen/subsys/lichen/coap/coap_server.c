@@ -363,18 +363,18 @@ static int msg_inbox_get(struct coap_resource *resource,
 
 	if (s_handlers.msg_get == NULL) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
+					   COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 	}
 
 	len = s_handlers.msg_get(payload, sizeof(payload));
 	if (len < 0) {
 		LOG_ERR("Message GET callback failed: %d", len);
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
+					   COAP_RESPONSE_CODE_INTERNAL_ERROR, 0, NULL, 0);
 	}
 
 	return lichen_coap_respond(resource, request, addr, addr_len,
-			      COAP_RESPONSE_CODE_CONTENT, payload, len);
+			      COAP_RESPONSE_CODE_CONTENT, 60, payload, len);
 }
 
 static int msg_inbox_post(struct coap_resource *resource,
@@ -392,20 +392,20 @@ static int msg_inbox_post(struct coap_resource *resource,
 
 	if (s_handlers.msg_post == NULL) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_NOT_FOUND, NULL, 0);
+					   COAP_RESPONSE_CODE_NOT_FOUND, 0, NULL, 0);
 	}
 
 	payload = coap_packet_get_payload(request, &payload_len);
 	if (payload == NULL || payload_len == 0) {
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
+					   COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
 
 	ret = s_handlers.msg_post(payload, payload_len, &msg_id);
 	if (ret < 0) {
 		LOG_ERR("Message POST callback failed: %d", ret);
 		return lichen_coap_respond(resource, request, addr, addr_len,
-					   COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
+					   COAP_RESPONSE_CODE_BAD_REQUEST, 0, NULL, 0);
 	}
 
 	static uint8_t response_buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];

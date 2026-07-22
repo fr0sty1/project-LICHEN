@@ -87,23 +87,21 @@ static int enqueue_ok(struct lichen_meshcore_adapter *adapter)
 }
 
 void lichen_meshcore_compat_settings_reset(
-	struct lichen_meshcore_compat_settings *settings)
+	struct lichen_meshcore_compat_settings *_Nonnull settings)
 {
-	if (settings != NULL) {
-		memset(settings, 0, sizeof(*settings));
-	}
+	memset(settings, 0, sizeof(*settings));
 }
 
-static struct lichen_meshcore_compat_settings *
-compat_settings(struct lichen_meshcore_adapter *adapter)
+static struct lichen_meshcore_compat_settings *_Nonnull
+compat_settings(struct lichen_meshcore_adapter *_Nonnull adapter)
 {
-	return adapter != NULL ? adapter->ops.compat_settings : NULL;
+	return adapter->ops.compat_settings;
 }
 
-static const struct lichen_meshcore_compat_settings *
-compat_settings_const(const struct lichen_meshcore_adapter *adapter)
+static const struct lichen_meshcore_compat_settings *_Nonnull
+compat_settings_const(const struct lichen_meshcore_adapter *_Nonnull adapter)
 {
-	return adapter != NULL ? adapter->ops.compat_settings : NULL;
+	return adapter->ops.compat_settings;
 }
 
 static void copy_fixed_string(uint8_t *dst, size_t dst_len,
@@ -185,7 +183,7 @@ static int enqueue_self_info(struct lichen_meshcore_adapter *adapter)
 		}
 	}
 #endif
-	if (settings != NULL && settings->advert_name_valid) {
+	if (settings->advert_name_valid) {
 		name = settings->advert_name;
 	}
 	out[44] = 0U;   /* multi ACKs */
@@ -224,14 +222,14 @@ static int enqueue_device_info(struct lichen_meshcore_adapter *adapter)
 		}
 	}
 #endif
-	if (settings != NULL && settings->advert_name_valid) {
+	if (settings->advert_name_valid) {
 		model = settings->advert_name;
 	}
 
 	out[1] = LICHEN_MESHCORE_APP_PROTOCOL_VERSION;
 	out[2] = 0U; /* max contacts / 2 */
 	out[3] = 1U; /* one placeholder public channel */
-	if (settings != NULL && settings->device_pin_valid) {
+	if (settings->device_pin_valid) {
 		sys_put_le32(settings->device_pin, &out[4]);
 	}
 	copy_fixed_string(&out[LICHEN_MESHCORE_DEVICE_INFO_BUILD_OFF],
@@ -418,7 +416,7 @@ static int enqueue_channel(struct lichen_meshcore_adapter *adapter,
 		return enqueue_error(adapter, LICHEN_MESHCORE_ERR_NOT_FOUND);
 	}
 
-	if (settings != NULL && settings->channel0_valid) {
+	if (settings->channel0_valid) {
 		memcpy(&out[1], settings->channel0_body,
 		       sizeof(settings->channel0_body));
 		return enqueue(adapter, out, sizeof(out));
@@ -1013,7 +1011,7 @@ static int dispatch_supported(struct lichen_meshcore_adapter *adapter,
 		const struct lichen_meshcore_compat_settings *settings =
 			compat_settings_const(adapter);
 
-		if (settings != NULL && settings->autoadd_config_valid) {
+		if (settings->autoadd_config_valid) {
 			memcpy(&out[1], settings->autoadd_config,
 			       sizeof(settings->autoadd_config));
 		}

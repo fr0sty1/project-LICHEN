@@ -45,6 +45,8 @@ extern "C" {
 #define LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX 200U
 #define LICHEN_MESHTASTIC_NODE_NAME_MAX 32U
 #define LICHEN_MESHTASTIC_DEFAULT_NODE_NUM 0x4c494348U
+#define LICHEN_BRAND "LICHEN"
+#define MESHTASTIC_BRAND "meshtastic"
 
 enum lichen_meshtastic_to_radio_type {
 	LICHEN_MESHTASTIC_TO_RADIO_UNSET = 0,
@@ -158,6 +160,8 @@ enum lichen_meshtastic_from_radio_message {
 	LICHEN_MESHTASTIC_FROM_RADIO_CLIENT_NOTIFICATION = 16,
 	LICHEN_MESHTASTIC_FROM_RADIO_REGION_PRESETS = 19,
 };
+
+bool lichen_meshtastic_has_compatible_firmware_brand(const char *value);
 
 int lichen_meshtastic_decode_to_radio(const uint8_t *_Nonnull buf, size_t len,
 				      struct lichen_meshtastic_to_radio *_Nonnull out);

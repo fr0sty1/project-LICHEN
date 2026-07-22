@@ -578,7 +578,8 @@ static size_t encode_iso8601_timestamp(uint32_t unix_time, char *buf, size_t buf
 		year++;
 	}
 
-	for (int m = 0; m < 12; m++) {
+	int m;
+	for (m = 0; m < 12; m++) {
 		uint16_t mdays = days_in_month[m];
 
 		if (m == 1 && ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))) {
@@ -590,6 +591,10 @@ static size_t encode_iso8601_timestamp(uint32_t unix_time, char *buf, size_t buf
 			break;
 		}
 		days -= mdays;
+	}
+	if (m == 12) {
+		month = 12;
+		day = 31;
 	}
 
 	uint8_t hour = secs / 3600;
