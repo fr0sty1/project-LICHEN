@@ -302,12 +302,14 @@ class TxQueue:
     def peek(self) -> tuple[bytes, Priority] | None:
         """Peek at the highest-priority packet without removing it.
 
-        Does NOT expire stale packets (use expire_stale() explicitly
-        if needed before peek).
+        Expires stale packets first (like pop()) for consistency. This
+        ensures peek() never returns a packet that would be expired by pop().
 
         Returns:
-            (data, priority) tuple or None if queue empty.
+            (data, priority) tuple or None if queue empty (after expiry).
         """
+        self.expire_stale()
+
         if not self._entries:
             return None
         entry = self._entries[0]
