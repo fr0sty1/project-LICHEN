@@ -2,21 +2,25 @@
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
 """TX queue with priority levels, deadline expiry, and CCP-16 TDMA awareness.
 
-Why this exists: LoRa channels are slow and subject to duty cycle limits + TDMA slots (worker8 CCP-16). 
-Packets must wait for channel access; unbounded buffering causes latency explosion (bufferbloat). This queue provides:
+Why this exists: LoRa channels are slow and subject to duty cycle limits +
+TDMA slots (worker8 CCP-16). Packets must wait for channel access;
+unbounded buffering causes latency explosion (bufferbloat). This queue
+provides:
 
 1. Bounded capacity (4 packets max)
 2. Priority-based preemption (routing > ACK > urgent > bulk)
 3. Time-based expiry (stale packets dropped before TX)
 4. Explicit backpressure (QueueFullError exception, not silent drop)
 
-See spec/appendix-bufferbloat.md and spec/02a-coordinated-capacity.md for rationale.
+See spec/appendix-bufferbloat.md and spec/02a-coordinated-capacity.md.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
+from asyncio import Future
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import IntEnum
@@ -66,6 +70,28 @@ class QueueFullError(Exception):
 
 
 @dataclass
+class TxReservation:
+    """Reservation for awaiting completion of a specific queued packet.
+
+    Fixes the re-queue deadline bug: the reservation carries the original
+    deadline from push(), so re-queues (CAD failure, TX failure) preserve
+    the absolute deadline rather than computing a fresh one.
+    """
+
+    _future: Future[bool] = field(
+        default_factory=lambda: asyncio.Future(), repr=False
+    )
+
+    async def wait(self) -> bool:
+        """Await transmission outcome. Returns True if transmitted."""
+        return await self._future
+
+    def set_result(self, success: bool) -> None:
+        if not self._future.done():
+            self._future.set_result(success)
+
+
+@dataclass
 class TxQueueEntry:
     """A packet waiting for transmission.
 
@@ -74,12 +100,14 @@ class TxQueueEntry:
         priority: Packet priority (lower = more urgent).
         deadline_ms: Absolute timestamp (ms since epoch) when packet expires.
         enqueue_time_ms: When packet was queued (for latency stats).
+        reservation: Optional reservation for the send() caller to await.
     """
 
     data: bytes
     priority: Priority
     deadline_ms: int
     enqueue_time_ms: int = field(default_factory=lambda: int(time.monotonic() * 1000))
+    reservation: TxReservation | None = field(default=None, repr=False)
 
 
 @dataclass
@@ -184,7 +212,8 @@ class TxQueue:
         data: bytes,
         priority: Priority = Priority.BULK,
         deadline_ms: int | None = None,
-    ) -> None:
+        return_reservation: bool = False,
+    ) -> TxReservation | None:
         """Add a packet to the queue.
 
         Behavior when full:
@@ -193,11 +222,19 @@ class TxQueue:
         - If new packet has same or lower priority than all queued packets,
           raise QueueFullError (explicit backpressure).
 
+        The return_reservation option supports LinkLayer.send() awaiting
+        specific packet completion. This also fixes the re-queue deadline
+        bug by attaching the original absolute deadline to the entry.
+
         Args:
             data: Frame bytes to transmit.
             priority: Packet priority level.
             deadline_ms: Absolute deadline (ms since monotonic epoch).
                          If None, uses default for priority level.
+            return_reservation: If True, return TxReservation for this packet.
+
+        Returns:
+            TxReservation if return_reservation=True, else None.
 
         Raises:
             QueueFullError: If queue is full and preemption not possible.
@@ -209,11 +246,16 @@ class TxQueue:
         if deadline_ms is None:
             deadline_ms = now + _default_deadline_for(priority)
 
+        reservation: TxReservation | None = None
+        if return_reservation:
+            reservation = TxReservation()
+
         entry = TxQueueEntry(
             data=data,
             priority=priority,
             deadline_ms=deadline_ms,
             enqueue_time_ms=now,
+            reservation=reservation,
         )
 
         if len(self._entries) < self._capacity:
@@ -226,7 +268,7 @@ class TxQueue:
                 len(self._entries),
                 self._capacity,
             )
-            return
+            return reservation
 
         # Queue is full - check if we can preempt
         # Find lowest-priority (highest numeric value) packet
@@ -243,6 +285,7 @@ class TxQueue:
             )
             self._insert_sorted(entry)
             self.stats.packets_queued += 1
+            return reservation
         else:
             # Cannot preempt - raise backpressure error
             self.stats.packets_dropped_full += 1
@@ -326,6 +369,58 @@ class TxQueue:
         count = len(self._entries)
         self._entries.clear()
         return count
+
+    def reserve(self) -> TxQueueEntry | None:
+        """Reserve the highest-priority packet for transmission.
+
+        Returns the entry (peek, does not remove) so deadline is preserved
+        on failure (the re-queue case). This fixes the bug where re-queue
+        after CAD failure would assign a fresh deadline.
+        Caller MUST call complete(entry, success) afterward.
+        """
+        self.expire_stale()
+        if not self._entries:
+            return None
+        return self._entries[0]
+
+    def complete(self, entry: TxQueueEntry, success: bool) -> None:
+        """Signal completion of a reserved entry.
+
+        success=True: removes it, updates stats/latency, signals reservation.
+        success=False: leaves it queued with ORIGINAL deadline (bug fix),
+        signals failure.
+        """
+        if entry.reservation is not None:
+            entry.reservation.set_result(success)
+
+        if success:
+            if self._entries and self._entries[0] is entry:
+                popped = self._entries.pop(0)
+                latency = self._clock() - popped.enqueue_time_ms
+                if latency > self.stats.max_latency_ms:
+                    self.stats.max_latency_ms = latency
+                self._avg_latency_ema = (
+                    self._EMA_ALPHA * latency
+                    + (1 - self._EMA_ALPHA) * self._avg_latency_ema
+                )
+                self.stats.avg_latency_ms = int(self._avg_latency_ema)
+                self.stats.packets_transmitted += 1
+                logger.debug(
+                    "TX complete success: priority=%s latency=%dms avg=%dms len=%d/%d",
+                    Priority(popped.priority).name,
+                    latency,
+                    self.stats.avg_latency_ms,
+                    len(self._entries),
+                    self._capacity,
+                )
+            else:
+                logger.warning("complete(success) but entry not head of queue")
+        else:
+            # re-queued with original deadline_ms - prevents lifetime extension
+            logger.debug(
+                "TX re-queued after failure, preserved deadline=%d",
+                entry.deadline_ms,
+            )
 
     def _insert_sorted(self, entry: TxQueueEntry) -> None:
         """Insert entry maintaining sort order (priority ASC, time ASC).
