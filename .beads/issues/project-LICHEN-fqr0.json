@@ -2,11 +2,15 @@
   "id": "project-LICHEN-fqr0",
   "title": "AddrMode.ELIDED case not handled in send()",
   "description": "File: python/src/lichen/link/link_layer.py:208-270, frame.py:36\n\nThe send() method accepts addr_mode parameter including ELIDED:\n\n    async def send(\n        self,\n        payload: bytes,\n        dst_addr: bytes = b'',\n        addr_mode: AddrMode = AddrMode.NONE,\n        ...\n    ):\n\nAnd AddrMode.ELIDED is defined as:\n    ELIDED = 3  # derived from IPv6 destination, 0 address bytes\n\nBut send() doesn't validate that dst_addr matches addr_mode. If caller passes:\n    send(payload, dst_addr=b'\\x12\\x34', addr_mode=AddrMode.ELIDED)\n\nThe LichenFrame._validate() will fail because:\n- ELIDED requires 0 address bytes (per _ADDR_LEN_TABLE)\n- But dst_addr has 2 bytes\n\nThe error happens at frame.to_bytes() call, which is late. Should validate early or document requirements.\n\nAlso: For ELIDED mode, where does the address come from? The comment says 'derived from IPv6 destination' but there's no IPv6 context passed to send().",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:24:23.232373Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:24:23.232404Z"
+  "updated_at": "2026-07-22T20:20:28.269777829Z",
+  "started_at": "2026-07-22T20:20:28.269777829Z",
+  "lease_expires_at": "2026-07-22T20:25:28.269777829Z",
+  "heartbeat_at": "2026-07-22T20:20:28.269777829Z"
 }
