@@ -28,7 +28,7 @@ static int coap_respond(struct coap_resource *resource, struct coap_packet *requ
 	int r = coap_packet_init(&resp, buf, sizeof(buf), COAP_VERSION_1, type, tkl, token, code, coap_header_get_id(request));
 	if (r < 0) return r;
 	if (payload && payload_len) {
-		coap_append_option_int(&resp, COAP_OPTION_CONTENT_FORMAT, 112);
+		coap_append_option_int(&resp, COAP_OPTION_CONTENT_FORMAT, SENML_CBOR_CONTENT_FORMAT);
 		coap_packet_append_payload_marker(&resp);
 		coap_packet_append_payload(&resp, payload, payload_len);
 	}
