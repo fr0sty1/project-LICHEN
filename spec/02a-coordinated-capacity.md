@@ -918,6 +918,16 @@ Simulator gates (4.0 median / 3.0 5th-percentile payload ratio, 50% collision re
 
 19-byte cells, paging, 48-byte Schnorr48, 16-byte digest: LoRa bandwidth-driven scaling for large schedules. See test/vectors/ccp*.json for validation.
 
+## References
+
+### Normative References
+
+- [RFC2119] Bradner, S., "Key words for use in RFCs to Indicate
+  Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+- [RFC8174] Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC 2119
+  Key Words", BCP 14, RFC 8174, May 2017.
+
 ---
 
 [← Physical and Link Layers](02-physical-link.md) | [Index](README.md) |
