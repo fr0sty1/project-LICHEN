@@ -120,8 +120,11 @@ class DIS:
     def from_bytes(cls, data: bytes) -> DIS:
         if len(data) < 2:
             raise RplError(f"DIS too short: {len(data)} bytes")
+        reserved = data[1]
+        if reserved != 0:
+            raise RplError(f"DIS reserved field must be zero per RFC 6550 §6.2, got {reserved}")
         return cls(
-            flags=data[0], reserved=0, options=_parse_options(data[2:])
+            flags=data[0], reserved=reserved, options=_parse_options(data[2:])
         )
 
 

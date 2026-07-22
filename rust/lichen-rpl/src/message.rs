@@ -565,25 +565,6 @@ mod tests {
     }
 
     #[test]
-<<<<<<< HEAD
-    fn dao_supports_both_d_flags() {
-        // Per RFC 6550 §6.4.2 both D=0 (elided DODAGID) and D=1 valid.
-        // D=0 uses zeroed dodag_id (context DODAG assumed); SCHC rule 4 uses D=1.
-        let mut buf = [0u8; 20];
-        buf[0] = 0;
-        buf[1] = 0x00; // D=0
-        buf[2] = 0;
-        buf[3] = 1;
-        let dao0 = Dao::from_bytes(&buf).unwrap();
-        assert_eq!(dao0.dao_sequence, 1);
-        assert_eq!(dao0.dodag_id, [0u8; 16]);
-
-        buf[1] = 0x40; // D=1
-        buf[4] = 0xfd;
-        let dao1 = Dao::from_bytes(&buf).unwrap();
-        assert_eq!(dao1.dao_sequence, 1);
-        assert_eq!(dao1.dodag_id[0], 0xfd);
-=======
     fn dao_supports_d_flag_zero() {
         // Per RFC 6550 both D=0 and D=1 valid; LICHEN prefers D=1 but
         // accepts D=0 with zeroed DODAGID for interop (use DIO DODAGID).
@@ -614,7 +595,6 @@ mod tests {
         assert!(!dao.ack_requested);
         assert_eq!(dao.dao_sequence, 5);
         assert_eq!(dao.dodag_id[0], 0xfd);
->>>>>>> origin/integration/worker12-20260722
     }
 
     // ── RPL Target option ─────────────────────────────────────────────────────

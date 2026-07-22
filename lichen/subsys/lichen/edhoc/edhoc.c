@@ -620,7 +620,7 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	uint8_t g_xy[32] = {0};
 	uint8_t k_3[16] = {0};
 	uint8_t iv_3[13] = {0};
-	uint8_t signature_3[64] = {0};
+	uint8_t signature_3[EDHOC_SIG_LEN] = {0};
 	uint8_t keystream_2[128] = {0};
 	uint8_t plaintext_2[128] = {0};
 	uint8_t mac_2[32] = {0};
@@ -797,13 +797,13 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 
 	/*
 	 * SECURITY: Constant-time signature verification.
-	 * - crypto_ed25519_check is constant-time internally
+	 * - schnorr48_verify uses crypto_verify16 + nonzero accumulator (see schnorr48.c:156)
 	 * - volatile prevents compiler from optimizing away the check
 	 * - No logging here to avoid timing variation from log backends
 	 * - Generic error hides which verification step failed
 	 */
-	volatile int sig2_result = ed25519_verify(peer_pubkey, signature_2.value,
-						  sig_struct_2, sig_struct_2_len);
+	volatile int sig2_result = edhoc_verify(peer_pubkey, signature_2.value,
+						sig_struct_2, sig_struct_2_len);
 	if (sig2_result != 0) {
 		ret = -EACCES;
 		goto err_wipe;

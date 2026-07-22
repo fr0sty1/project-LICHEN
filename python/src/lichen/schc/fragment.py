@@ -156,6 +156,8 @@ class FragmentSender:
             raise FragmentError("tile_size must be positive")
         if not 1 <= self.window_size <= MAX_WINDOW_SIZE:
             raise FragmentError(f"window_size must be 1..{MAX_WINDOW_SIZE}")
+        if len(self.payload) > 1280:
+            raise FragmentError(f"payload too large ({len(self.payload)} > 1280)")
         self._fragments = self._build()
 
     def _build(self) -> list[Fragment]:
