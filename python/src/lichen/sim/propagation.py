@@ -19,6 +19,10 @@ Sensitivity thresholds and capture effect parameters are based on:
     Proceedings of the 19th ACM International Conference on
     Modeling, Analysis and Simulation of Wireless and Mobile Systems.
 
+LR-FHSS sensitivity from Semtech AN1200.64 and SX1262 datasheet (varies by CR/OCW;
+-137.0 used for sim consistency with fragment FEC and 2x airtime).
+See beads project-LICHEN-9o94/yd9a for independent test vectors.
+
 SF sensitivity thresholds at 125kHz bandwidth:
     SF7: -123 dBm, SF8: -126 dBm, SF9: -129 dBm,
     SF10: -132 dBm, SF11: -134.5 dBm, SF12: -137 dBm
