@@ -40,8 +40,10 @@ of IPv6 packets over LoRa links with typical payloads of 50-200 bytes.
 7. Security Considerations
 8. IANA Considerations
 9. References
+A. Complete Rule Set
+B. Compression Examples
 
-(Note: Rule versioning is defined in spec/03-adaptation.md:5.7 to avoid duplication.)
+(Note: Full rule details, versioning (Rule Set Version in DIO), and constants are defined in spec/03-adaptation.md:5.7, appendix-schc.md, rust/lichen-schc/src/rules.rs, and constants.toml to avoid duplication.)
 
 ## 1. Introduction
 
@@ -211,62 +213,37 @@ For diagnostic and reachability testing.
 
 **Compressed size:** 3 bytes
 
-### 4.5. Rule 3: RPL DIO with PIO (link-local)
+### 4.5. Rule 3: RPL DIO (link-local)
 
-For DODAG formation, maintenance, and prefix distribution via PIO (Prefix Information Option).
-
-**Rule Definition:** (aligned with appendix-schc.md and rules.py:272 RPL_DIO_RULE)
-
-Includes specific PIO compression using match-mapping for common types (0=Pad1, 3=PIO with LICHEN lifetimes per draft-rpl-lora).
-
-| Field | TV | MO | CDA |
-|-------|----|----|-----|
-| IPv6.Version | 6 | equal | not-sent |
-| IPv6.NextHeader | 58 | equal | not-sent |
-| ICMPv6.Type | 155 | equal | not-sent |
-| RPL.Base | - | ignore | value-sent |
-| PIO.Type | 3 | match-mapping | mapping-sent (2 bits) |
-| PIO.Lifetime | specific | equal | not-sent |
-| RPL.options | specific | MSB(8) | LSB(8) |
-
-**Compressed size:** 8 bytes (base + PIO residue)
-
-For DODAG formation and maintenance.
-
-**Rule Definition:** (aligned with appendix-schc.md)
-
-| Field | TV | MO | CDA |
-|-------|----|----|-----|
-| IPv6.Version | 6 | equal | not-sent |
-| IPv6.NextHeader | 58 | equal | not-sent |
-| ICMPv6.Type | 155 | equal | not-sent |
-| RPL options | specific | MSB/LSB | compressed |
+For DODAG formation, maintenance, and prefix distribution (including PIO). Matches `RPL_DIO_RULE` in `rust/lichen-schc/src/rules.rs:480` and `constants.toml:32` (ICMPv6 type=155, code=0).
 
 **Compressed size:** 8 bytes
 
 ### 4.6. Rule 4: RPL DAO (routable multi-hop)
 
-Uses routable ULA source (fd00::/8 from DODAG) for end-to-end source preservation across relays (per RPL and security specs). Link-local forbidden for forwarded DAO.
+Uses ULA source (fd00::/8) for end-to-end preservation across relays (RPL Non-Storing mode). Link-local forbidden for forwarded DAO. Matches `RPL_DAO_RULE`.
 
 **Compressed size:** 6 bytes
 
-### 4.7. Rules 5-6: OSCORE-protected CoAP
+### 4.7. Rule 7: MQTT-SN
 
-Rule 5: Link-local IPv6 + UDP + OSCORE (matches LINK_LOCAL_OSCORE_RULE)
+IPv6 + UDP to port 10883 (exact). Matches `RULE_MQTT_SN`. See appendix-schc.md and rules.rs.
 
-Rule 6: Global IPv6 + UDP + OSCORE (matches GLOBAL_OSCORE_RULE)
+**Compressed size:** ~6 bytes
 
-Uses base fields from Rules 0/1 with additional OSCORE option compression. Encrypted payload travels as tail.
+### 4.8. Rules 5-6: OSCORE-protected CoAP
 
-**Compressed size:** ~20+ bytes residue + tail (Rule 5); ~40+ bytes residue + tail (Rule 6)
+Rule 5 (link-local) and Rule 6 (global) reuse base fields from Rules 0/1 plus OSCORE option. Encrypted payload as tail. Matches `LINK_LOCAL_OSCORE_RULE` / `GLOBAL_OSCORE_RULE`.
 
-### 4.8. Rule 255: No Compression (Fallback)
+**Compressed size:** ~6-14 bytes residue + OSCORE tail (per appendix-schc.md)
 
-When no rule matches, for version mismatch, or interoperability fallback. All implementations MUST support Rule 255 (see spec/03-adaptation.md:5.7 for details).
+### 4.9. Rule 255: No Compression (Fallback)
 
-### 4.9. CoAP Compression
+When no rule matches, version mismatch, or for interoperability. All implementations MUST support Rule 255 (see spec/03-adaptation.md:5.7 and appendix-schc.md).
 
-See Appendix A for the CoAP compression table (Version, Type, TKL, Code, MID, Token using standard CDA from RFC 8824). CoAP compression is OPTIONAL.
+### 4.10. CoAP Compression Details
+
+See Appendix A and RFC 8824. CoAP compression (Version=1 not-sent, Type/MID/Token value-sent) is used in Rules 0/1/5/6/7. OPTIONAL for non-CoAP traffic.
 
 ## 5. Fragmentation Profile
 
@@ -413,15 +390,18 @@ Future versions may request:
 
 ## Appendix A. Complete Rule Set
 
+See `rust/lichen-schc/src/rules.rs`, `constants.toml:[schc.rule_id]`, `test/vectors/schc_compression.json`, and `spec/appendix-schc.md` for exact FieldDescriptors, test vectors (independent oracle), and interop validation. Rule IDs 0-7 defined; 255 fallback.
+
 | Rule ID | Use Case | Compressed Size | Notes |
 |---------|----------|-----------------|-------|
-| 0 | Link-local IPv6 + UDP + CoAP | 4-6 bytes | MSB(64) IIDs; ports via MSB(12)/LSB(4) for 5680-5695 range (CoAP/SenML/etc.) |
-| 1 | Global IPv6 + UDP + CoAP | 12-14 bytes | ULA/GUA source, full dst where needed |
-| 2 | ICMPv6 Echo | 3 bytes | |
-| 3 | RPL DIO (link-local) | 8 bytes | |
+| 0 | Link-local IPv6 + UDP + CoAP | 4-6 bytes | MSB(64) IIDs; ports MSB(12)/LSB(4) for CoAP/SenML range |
+| 1 | Global IPv6 + UDP + CoAP | 12-14 bytes | ULA/GUA source, full dst as needed |
+| 2 | ICMPv6 Echo | 3 bytes | Type 128/129, Code=0 not-sent |
+| 3 | RPL DIO (link-local) | 8 bytes | ICMPv6 type=155/code=0 + options |
 | 4 | RPL DAO (routable ULA) | 6 bytes | Multi-hop source preservation |
-| 5 | Link-local IPv6 + UDP + OSCORE | ~20+ bytes + OSCORE tail | Full ports, hop_limit value-sent |
-| 6 | Global IPv6 + UDP + OSCORE | ~40+ bytes + OSCORE tail | |
+| 5 | Link-local IPv6 + UDP + OSCORE | ~6 bytes residue | + OSCORE tail |
+| 6 | Global IPv6 + UDP + OSCORE | ~14 bytes residue | + OSCORE tail |
+| 7 | MQTT-SN (port 10883) | ~6 bytes | Exact port match |
 | 255 | No compression | Full headers | Version mismatch or unknown rule fallback |
 
 CoAP compression details (RFC 8824):
@@ -439,7 +419,7 @@ Rule versioning and interoperability (including DIO advertisement of rule set ve
 
 ## Appendix B. Compression Examples
 
-See test/vectors/schc-rules.json and test/vectors/schc-fragment.json for canonical test vectors. These are the independent oracle for interop validation between Rust, C, and Python implementations. All compression and fragmentation paths MUST match these vectors bit-exactly.
+Canonical test vectors in `test/vectors/schc_compression.json` (rules 0-6) and `test/vectors/schc-fragment.json` (ACK-on-Error, single/multi-fragment, retransmit, MIC failure, OOO, per RFC 8724 §8) provide bit-exact oracles. All implementations (Rust `lichen-schc`, C Zephyr subsys, Python sim) MUST match these exactly for interop. See `test/vectors/README.md` and `generate.py`.
 
 ## Authors' Address
 
