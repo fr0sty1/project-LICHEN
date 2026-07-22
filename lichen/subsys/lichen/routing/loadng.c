@@ -370,7 +370,7 @@ void lichen_loadng_seen_init(void)
 {
 	k_mutex_lock(&seen_mutex, K_FOREVER);
 	memset(seen_table, 0, sizeof(seen_table));
-	prune_countdown = PRUNE_INTERVAL;
+	atomic_set(&prune_countdown, PRUNE_INTERVAL);
 	k_mutex_unlock(&seen_mutex);
 }
 
@@ -405,11 +405,9 @@ bool lichen_loadng_seen_check_and_mark(const struct lichen_loadng_rreq *rreq,
 
 	k_mutex_lock(&seen_mutex, K_FOREVER);
 
-	if (prune_countdown <= 1) {
+	if (atomic_dec(&prune_countdown) <= 1) {
 		prune_seen_locked(now_ms);
-		prune_countdown = PRUNE_INTERVAL;
-	} else {
-		prune_countdown--;
+		atomic_set(&prune_countdown, PRUNE_INTERVAL);
 	}
 
 	/* Check if already seen. */
