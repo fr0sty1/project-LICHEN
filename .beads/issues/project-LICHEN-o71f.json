@@ -2,11 +2,15 @@
   "id": "project-LICHEN-o71f",
   "title": "Multiple files: CBOR cbor_put_tstr overflow on strings \u003e 65535 bytes",
   "description": "File: lichen/subsys/lichen/coap/coap_status.c, coap_keys.c, coap_msg.c\nMultiple occurrences of cbor_put_tstr function\n\nThe CBOR text string encoding handles lengths up to 65535:\n```c\nstatic void cbor_put_tstr(uint8_t *buf, size_t *off, const char *value)\n{\n    size_t len = strlen(value);\n    if (len \u003c 24U) {\n        buf[(*off)++] = 0x60U | (uint8_t)len;\n    } else if (len \u003c= UINT8_MAX) {\n        buf[(*off)++] = 0x78;\n        buf[(*off)++] = (uint8_t)len;\n    } else {\n        buf[(*off)++] = 0x79;\n        buf[(*off)++] = (uint8_t)(len \u003e\u003e 8);\n        buf[(*off)++] = (uint8_t)(len \u0026 0xffU);\n    }\n    memcpy(\u0026buf[*off], value, len);\n    *off += len;\n}\n```\n\nIf len \u003e 65535, the length encoding overflows:\n- 0x79 indicates 2-byte length, but only 16 bits are written\n- memcpy copies the full len bytes, potentially overrunning buffer\n\nShould handle 4-byte lengths (0x7a) or reject strings \u003e 65535.\n\nCategory: MEMORY - buffer overflow on large strings",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:44:36.694904Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:44:36.694937Z"
+  "updated_at": "2026-07-22T23:08:05.84612051Z",
+  "started_at": "2026-07-22T23:08:05.84612051Z",
+  "lease_expires_at": "2026-07-22T23:13:05.84612051Z",
+  "heartbeat_at": "2026-07-22T23:08:05.84612051Z"
 }
