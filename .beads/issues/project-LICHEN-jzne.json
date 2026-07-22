@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-jzne",
+  "title": "[codereview-pass1-mutex] coap_dtn.c: add K_MUTEX_DEFINE for s_dtn_buf and s_senml_pack protection per Zephyr conventions and native.c pattern",
+  "description": "P0 security: static buffer requires mutex to prevent races between CoAP service thread, system workqueue, and potential RPL/router threads accessing DTN state. K_MUTEX_DEFINE(s_dtn_mutex); + lock/unlock pairs. Tagged codereview. Discovered during first chunk.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:41:40.13971665Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:41:40.13971665Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-jzne",
+      "depends_on_id": "project-LICHEN-d8ks",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:41:40.23920701Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
