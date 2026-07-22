@@ -339,9 +339,6 @@ impl BlockReceiver {
         if block.num != self.expected_block {
             return Err(CoapError::BlockOutOfOrder);
         }
-        // Use cumulative data_len as offset, not block_num * block_size.
-        // This prevents corruption when the server sends blocks with sizes
-        // different from the receiver's expected block_size.
         let offset = self.data_len;
         let needed = offset + data.len();
         if needed > Self::MAX_PAYLOAD {
