@@ -51,12 +51,12 @@ For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST com
 
 Delta = wrapping_sub(current_sfn, last_sfn) or unsigned uint32_t subtraction.
 Edge case example (0xFFFFFFFF boundary):
+```c
+uint32_t last_sfn = 0xFFFFFFFFu;
+uint32_t current_sfn = 0x00000000u;
+uint32_t delta = current_sfn - last_sfn;  // yields 1 via unsigned wrap
 ```
-last_sfn = 0xFFFFFFFFu;
-current_sfn = 0x00000002u;
-delta = current_sfn - last_sfn;
-```
-This MUST be treated as advancement of 3 slots. Test vectors in ccp16.json MUST cover boundaries.
+This MUST be treated as advancement of 1 slot (epoch_floor validation independent of SFN per time-provider). Test vectors in ccp16.json MUST cover boundaries.
 
 A node MUST only transmit in its assigned slot. Slot duration = max_airtime(current_SF) + 100 ms guard. The link layer MUST enforce via `lichen_link_set_slot()` and `tdma_tx_allowed()` (see lichen/subsys/lichen/link: implementation).
 
