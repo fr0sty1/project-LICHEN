@@ -142,6 +142,7 @@ async fn main() {
         prefix = %config.ipv6.prefix,
         rpl_mode = %config.rpl.mode,
         ygg_peers = config.yggdrasil.peers.len(),
+        auto_peer = ?config.yggdrasil.auto_peer,
         "lichend starting"
     );
 

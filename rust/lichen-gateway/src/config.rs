@@ -54,13 +54,26 @@ pub struct BackhaulConfig {
 }
 
 #[derive(Debug, Deserialize, Default)]
+pub struct AutoPeerConfig {
+    /// Peer with public Yggdrasil network (baseline connectivity).
+    #[serde(default = "default_true")]
+    pub public_network: bool,
+    /// Register with LICHEN peer registry for direct peering.
+    #[serde(default = "default_true")]
+    pub lichen_registry: bool,
+    /// Enable local mDNS discovery for same-LAN gateways.
+    #[serde(default = "default_true")]
+    pub local_discovery: bool,
+}
+
+#[derive(Debug, Deserialize, Default)]
 pub struct YggdrasilConfig {
-    /// List of Yggdrasil peers (tcp://host:port).
+    /// Layered auto-peering (public, registry, local mDNS) per project-LICHEN-zt3c.4.
+    #[serde(default)]
+    pub auto_peer: AutoPeerConfig,
+    /// Manual peers (optional).
     #[serde(default)]
     pub peers: Vec<String>,
-    /// Whether to enable public peering.
-    #[serde(default = "default_true")]
-    pub public_peering: bool,
     /// Path to yggdrasil binary (default: /usr/bin/yggdrasil).
     #[serde(default = "default_ygg_binary")]
     pub binary: String,
