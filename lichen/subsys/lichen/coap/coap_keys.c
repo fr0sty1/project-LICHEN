@@ -62,7 +62,10 @@ static void cbor_put_map_header(uint8_t *buf, size_t *off, uint8_t count)
 
 static void cbor_put_tstr(uint8_t *buf, size_t *off, const char *value)
 {
-	size_t len = strlen(value);
+	size_t len = value ? strlen(value) : 0;
+	if (len > UINT16_MAX) {
+		return;
+	}
 
 	if (len < 24U) {
 		buf[(*off)++] = 0x60U | (uint8_t)len;

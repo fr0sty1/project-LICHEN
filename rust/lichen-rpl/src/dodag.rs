@@ -22,13 +22,16 @@ pub const MIN_HOP_RANK_INCREASE: u16 = 256;
 pub const MAX_RANK_INCREASE: u16 = 2048;
 pub const PARENT_SWITCH_THRESHOLD: u16 = 192;
 
+#[cfg(feature = "std")]
 /// RFC 6550 Section 7.2: Lollipop sequence comparison for DODAG version.
 ///
 /// Values 0-127 are the linear region (restart); 128-255 are circular (normal).
 /// Returns true if `new_ver` is newer than `old_ver`.
 const LOLLIPOP_CIRCULAR_BIT: u8 = 128;
+#[cfg(feature = "std")]
 const LOLLIPOP_SEQUENCE_WINDOW: u8 = 16;
 
+#[cfg(feature = "std")]
 fn version_is_newer(new_ver: u8, old_ver: u8) -> bool {
     match (
         new_ver < LOLLIPOP_CIRCULAR_BIT,
@@ -261,6 +264,7 @@ impl DodagState {
                     .expect("joined DODAG can return to unjoined");
                 self.preferred_parent = None;
                 self.rank = INFINITE_RANK;
+                self.lowest_rank = INFINITE_RANK;
             }
             return;
         };

@@ -105,6 +105,7 @@ struct edhoc_oscore_ctx {
 struct edhoc_initiator {
 	enum edhoc_state state;
 	enum edhoc_method method;
+	uint8_t corr;
 
 	/* Our identity (Ed25519 keypair, copied from caller) */
 	uint8_t ed_seed[EDHOC_ED25519_SK_LEN];
@@ -144,6 +145,7 @@ struct edhoc_initiator {
 struct edhoc_responder {
 	enum edhoc_state state;
 	enum edhoc_method method;
+	uint8_t corr;
 
 	/* Our identity (Ed25519 keypair, copied from caller) */
 	uint8_t ed_seed[EDHOC_ED25519_SK_LEN];
@@ -190,7 +192,8 @@ struct edhoc_responder {
 int edhoc_initiator_init(struct edhoc_initiator *_Nonnull ctx,
 			 const uint8_t *_Nonnull ed_seed,
 			 const uint8_t *_Nonnull ed_pubkey,
-			 const uint8_t *_Nonnull c_i, size_t c_i_len);
+			 const uint8_t *_Nonnull c_i, size_t c_i_len,
+			 uint8_t corr);
 
 /**
  * @brief Create EDHOC Message 1
@@ -249,7 +252,8 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *_Nonnull ctx,
 int edhoc_responder_init(struct edhoc_responder *_Nonnull ctx,
 			 const uint8_t *_Nonnull ed_seed,
 			 const uint8_t *_Nonnull ed_pubkey,
-			 const uint8_t *_Nonnull c_r, size_t c_r_len);
+			 const uint8_t *_Nonnull c_r, size_t c_r_len,
+			 uint8_t corr);
 
 /**
  * @brief Process EDHOC Message 1 and create Message 2

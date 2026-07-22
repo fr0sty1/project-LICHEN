@@ -146,6 +146,8 @@ class SenmlRecord:
                 continue
             label = _FIELD_TO_LABEL[f.name]
             out[label] = val
+        if sum(1 for k in (2,3,4,8) if k in out) > 1:
+            raise ValueError("multiple SenML value fields")
         return out
 
     @classmethod
@@ -161,6 +163,8 @@ class SenmlRecord:
             if name is not None:
                 _validate_field_type(name, val)
                 kwargs[name] = val
+        if len({k for k in ("v","vs","vb","vd") if k in kwargs}) > 1:
+            raise ValueError("multiple SenML value fields")
         return cls(**kwargs)
 
 

@@ -295,12 +295,14 @@ class SenMLSensorsResource(resource.ObservableResource):
             records: List of :class:`~lichen.senml.codec.SenmlRecord`.
         """
         from lichen.senml.codec import pack
+
         self._records = records
         self._payload = pack(records)
         self.updated_state()
 
     async def render_get(self, request: Message) -> Message:
         from lichen.senml.codec import pack
+
         payload = getattr(self, "_payload", pack([]))
         msg = Message(code=CONTENT, payload=payload)
         msg.opt.content_format = SENML_CBOR
@@ -332,11 +334,13 @@ class SenMLLocationResource(resource.ObservableResource):
         """
         from lichen.senml.codec import pack
         from lichen.senml.profiles import location
+
         self._payload = pack(location(lat, lon, alt))
         self.updated_state()
 
     async def render_get(self, request: Message) -> Message:
         from lichen.senml.codec import pack
+
         payload = getattr(self, "_payload", pack([]))
         msg = Message(code=CONTENT, payload=payload)
         msg.opt.content_format = SENML_CBOR
@@ -437,9 +441,7 @@ class SosResource(resource.ObservableResource):
         self._t: float | None = None
 
     def _state_payload(self) -> bytes:
-        return cbor2.dumps(
-            {"active": self._active, "from": self._from, "t": self._t}
-        )
+        return cbor2.dumps({"active": self._active, "from": self._from, "t": self._t})
 
     def activate(self, from_eui64: bytes, t: float) -> None:
         """Activate SOS from *from_eui64* at time *t* and notify observers."""
@@ -801,7 +803,7 @@ class ResourceDirectoryResource(resource.Resource):
         ep: str | None = None
         lt: int = _RD_DEFAULT_LIFETIME
         base: str | None = None
-        for q in (request.opt.uri_query or []):
+        for q in request.opt.uri_query or []:
             if q.startswith("ep="):
                 ep = q[3:]
             elif q.startswith("lt="):
@@ -947,9 +949,7 @@ class EdhocResource(resource.Resource):
         else:
             # This is Message 3 - complete handshake
             try:
-                return await self._handle_message_3(
-                    peer_host, payload, active_session
-                )
+                return await self._handle_message_3(peer_host, payload, active_session)
             except Exception:
                 # Clean up failed session
                 self._cleanup_session(peer_host)
@@ -968,15 +968,10 @@ class EdhocResource(resource.Resource):
         if peer_pubkey is None:
             return Message(code=UNAUTHORIZED)
 
-        # Create responder and process Message 1
+        self._cleanup_session(peer_host)
         responder = EdhocResponder.create(self._identity)
         msg2 = responder.process_message_1(msg1, peer_pubkey)
-
-        # Extract C_I from Message 1 for session tracking
-        # Message 1: (METHOD_CORR, SUITES_I, G_X, C_I, ?EAD_1)
         c_i = responder._c_i
-
-        # Store session
         self._sessions[(peer_host, c_i)] = {
             "responder": responder,
             "peer_pubkey": peer_pubkey,
@@ -1077,6 +1072,7 @@ def build_site(
     if presence_resource is not None:
         site.add_resource(["presence"], presence_resource)
     if messages_resource is not None:
+
         def register_sent_detail(msg_id: str, message: dict[str, Any]) -> None:
             site.add_resource(["msg", "sent", msg_id], SentMessageDetailResource(message))
 

@@ -17,11 +17,13 @@ use crate::message::{
     Dao, OptionIter, RplError, RplTarget, TransitInfo, OPT_RPL_TARGET, OPT_TRANSIT_INFO,
 };
 
+#[cfg(feature = "std")]
 /// RFC 6550 Section 9.1: Lollipop sequence comparison for DAO sequence.
 ///
 /// Values 0-127 are the linear region (restart); 128-255 are circular (normal).
 /// Returns true if `new_seq` is newer than `old_seq`.
 const LOLLIPOP_CIRCULAR_BIT: u8 = 128;
+#[cfg(feature = "std")]
 const LOLLIPOP_SEQUENCE_WINDOW: u8 = 16;
 
 #[cfg(feature = "std")]

@@ -88,6 +88,10 @@ static void cbor_put_tstr(struct cbor_ctx *ctx, const char *value)
 	size_t len = value ? strlen(value) : 0;
 	size_t header_len;
 
+	if (len > UINT16_MAX) {
+		ctx->overflow = true;
+		return;
+	}
 	if (len < 24U) {
 		header_len = 1;
 	} else if (len <= UINT8_MAX) {
@@ -253,7 +257,7 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 
 	cbor_ctx_init(&ctx, buf, buf_size);
 
-	map_count = 6;
+	map_count = 5;
 	if (status->battery_pct_valid && map_count < 255) map_count++;
 	if (status->battery_mv_valid && map_count < 255) map_count++;
 	cbor_put_map_header(&ctx, map_count);
@@ -337,7 +341,7 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 	}
 
 	cbor_put_key(&ctx, "radio");
-	cbor_put_map_header(&ctx, 4);
+	cbor_put_map_header(&ctx, 5);
 
 	cbor_put_key(&ctx, "rx_packets");
 	cbor_put_uint(&ctx, status->radio.rx_packets);

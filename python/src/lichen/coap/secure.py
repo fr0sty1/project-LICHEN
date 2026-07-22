@@ -99,6 +99,7 @@ def _monotonic_time() -> float:
     except RuntimeError:
         # No running event loop, use time.monotonic()
         import time
+
         return time.monotonic()
 
 
@@ -142,9 +143,7 @@ class OscoreContextStore:
         async with self._get_lock():
             return self._contexts.get(host)
 
-    async def put(
-        self, host: str, oscore_ctx: MemorySecurityContext, peer_pubkey: bytes
-    ) -> None:
+    async def put(self, host: str, oscore_ctx: MemorySecurityContext, peer_pubkey: bytes) -> None:
         """Store OSCORE context for a peer."""
         async with self._get_lock():
             self._contexts[host] = PeerContext(
@@ -152,9 +151,7 @@ class OscoreContextStore:
                 peer_pubkey=peer_pubkey,
             )
 
-    def put_sync(
-        self, host: str, oscore_ctx: MemorySecurityContext, peer_pubkey: bytes
-    ) -> None:
+    def put_sync(self, host: str, oscore_ctx: MemorySecurityContext, peer_pubkey: bytes) -> None:
         """Store OSCORE context (synchronous)."""
         self._contexts[host] = PeerContext(
             oscore=oscore_ctx,
@@ -221,8 +218,7 @@ class TofuPeerResolver(EdhocPeerResolver):
             if host in self._pinned:
                 if self._pinned[host] != pubkey:
                     raise ValueError(
-                        f"TOFU violation: peer {host} key changed "
-                        f"(possible MITM or hardware swap)"
+                        f"TOFU violation: peer {host} key changed (possible MITM or hardware swap)"
                     )
             else:
                 self._pinned[host] = pubkey
@@ -312,34 +308,23 @@ class SecureDatagramChannel(DatagramChannel):
             # Decode with a remote so aiocoap knows the source
             remote = LichenRemote(source)
             msg = Message.decode(data, remote)
-
-            # Check for OSCORE option (option number 9)
-            # Use 'oscore' attribute (aiocoap >= 0.4 naming)
+            msg.direction = Direction.INCOMING
             has_oscore = msg.opt.oscore is not None
 
             if has_oscore:
-                # Set direction only for OSCORE path where _unprotect needs it.
-                # EDHOC and passthrough paths dispatch raw bytes, so the decoded
-                # message (and its direction) is not used.
-                msg.direction = Direction.INCOMING
-                # OSCORE protected - unprotect it
                 plaintext = await self._unprotect(msg, source)
                 if plaintext is not None and self._receiver is not None:
                     self._receiver(plaintext, source)
             elif source in self._edhoc_active_peers:
                 # EDHOC in progress with this peer - allow plaintext
                 # (EDHOC responses are not OSCORE-protected)
-                logger.debug(
-                    "Allowing plaintext from %s (EDHOC in progress)", source
-                )
+                logger.debug("Allowing plaintext from %s (EDHOC in progress)", source)
                 # Dispatch to EDHOC channel for response matching
                 if self._edhoc_channel is not None:
                     self._edhoc_channel.dispatch(data, source)
             elif self._require_oscore:
                 # Plaintext not allowed
-                logger.warning(
-                    "Rejected plaintext message from %s (OSCORE required)", source
-                )
+                logger.warning("Rejected plaintext message from %s (OSCORE required)", source)
             elif self._receiver is not None:
                 # Passthrough plaintext
                 self._receiver(data, source)
@@ -574,9 +559,7 @@ class SecureDatagramChannel(DatagramChannel):
             raise ValueError(f"EDHOC exchange with {dest} failed: {e}") from e
 
         if not response.code.is_successful():
-            raise ValueError(
-                f"EDHOC exchange with {dest} returned error: {response.code}"
-            )
+            raise ValueError(f"EDHOC exchange with {dest} returned error: {response.code}")
 
         return response.payload or b""
 

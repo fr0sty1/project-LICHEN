@@ -472,7 +472,8 @@ static int ed25519_verify(const uint8_t pk[32],
 int edhoc_initiator_init(struct edhoc_initiator *ctx,
 			 const uint8_t *ed_seed,
 			 const uint8_t *ed_pubkey,
-			 const uint8_t *c_i, size_t c_i_len)
+			 const uint8_t *c_i, size_t c_i_len,
+			 uint8_t corr)
 {
 	if (ctx == NULL || ed_seed == NULL || ed_pubkey == NULL) {
 		return -EINVAL;
@@ -480,10 +481,14 @@ int edhoc_initiator_init(struct edhoc_initiator *ctx,
 	if (c_i_len > EDHOC_CID_MAX_LEN) {
 		return -EINVAL;
 	}
+	if (corr > 3) {
+		return -EINVAL;
+	}
 
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->state = EDHOC_STATE_IDLE;
 	ctx->method = EDHOC_METHOD_SIGN_SIGN;
+	ctx->corr = corr;
 	memcpy(ctx->ed_seed, ed_seed, EDHOC_ED25519_SK_LEN);
 	memcpy(ctx->ed_pubkey, ed_pubkey, EDHOC_ED25519_PK_LEN);
 
@@ -519,9 +524,7 @@ int edhoc_initiator_create_msg1(struct edhoc_initiator *ctx,
 		return -EBUSY;
 	}
 
-	/* message_1 = (METHOD_CORR, SUITES_I, G_X, C_I) */
-	/* METHOD_CORR = method * 4 + corr (corr=1 for CoAP) */
-	uint8_t method_corr = ctx->method * 4 + 1;
+	uint8_t method_corr = ctx->method * 4 + ctx->corr;
 
 	ZCBOR_STATE_E(zse, 0, msg1, msg1_size, 0);
 
@@ -942,7 +945,8 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 int edhoc_responder_init(struct edhoc_responder *ctx,
 			 const uint8_t *ed_seed,
 			 const uint8_t *ed_pubkey,
-			 const uint8_t *c_r, size_t c_r_len)
+			 const uint8_t *c_r, size_t c_r_len,
+			 uint8_t corr)
 {
 	if (ctx == NULL || ed_seed == NULL || ed_pubkey == NULL) {
 		return -EINVAL;
@@ -950,10 +954,14 @@ int edhoc_responder_init(struct edhoc_responder *ctx,
 	if (c_r_len > EDHOC_CID_MAX_LEN) {
 		return -EINVAL;
 	}
+	if (corr > 3) {
+		return -EINVAL;
+	}
 
 	memset(ctx, 0, sizeof(*ctx));
 	ctx->state = EDHOC_STATE_IDLE;
 	ctx->method = EDHOC_METHOD_SIGN_SIGN;
+	ctx->corr = corr;
 	memcpy(ctx->ed_seed, ed_seed, EDHOC_ED25519_SK_LEN);
 	memcpy(ctx->ed_pubkey, ed_pubkey, EDHOC_ED25519_PK_LEN);
 
@@ -1006,20 +1014,20 @@ int edhoc_responder_process_msg1(struct edhoc_responder *ctx,
 	memcpy(ctx->msg1, msg1, msg1_len);
 	ctx->msg1_len = msg1_len;
 
-	/* Decode message_1 */
 	ZCBOR_STATE_D(zsd, 0, msg1, msg1_len, 5, 0);
 
 	int32_t method_corr;
 	if (!zcbor_int32_decode(zsd, &method_corr)) {
 		return -EINVAL;
 	}
-	/* METHOD_CORR = method * 4 + corr; extract method */
-	/* SECURITY: Generic errors hide negotiation details */
 	int method = method_corr / 4;
-	if (method != EDHOC_METHOD_SIGN_SIGN) {
+	uint8_t corr = method_corr % 4;
+	if (method != EDHOC_METHOD_SIGN_SIGN || corr > 3) {
 		LOG_WRN("Unsupported protocol parameters");
 		return -ENOTSUP;
 	}
+	ctx->method = method;
+	ctx->corr = corr;
 
 	int32_t suites_i;
 	if (!zcbor_int32_decode(zsd, &suites_i)) {

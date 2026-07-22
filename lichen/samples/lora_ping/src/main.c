@@ -29,9 +29,8 @@ static struct {
 	uint32_t rx_bytes;
 	uint32_t errors;
 	uint32_t unique_hashes_seen;
-	/* Simple hash set (fixed size for embedded) */
 	uint32_t seen_hashes[64];
-	uint8_t seen_hash_count;
+	size_t seen_hash_count;
 } metrics;
 
 /* Compute packet hash using CRC32 */

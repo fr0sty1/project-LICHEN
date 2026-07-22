@@ -74,13 +74,19 @@ class RREQ:
     def from_bytes(cls, data: bytes) -> RREQ:
         if len(data) < _RREQ_RREP_PREFIX:
             raise LoadngError(f"RREQ too short: {len(data)} bytes")
+        signature = data[36:]
+        if len(signature) not in (0, SIGNATURE_LENGTH):
+            raise LoadngError(
+                f"invalid signature length: {len(signature)}, "
+                f"expected 0 or {SIGNATURE_LENGTH}"
+            )
         return cls(
             flags=data[0],
             hop_limit=data[1],
             seq_num=int.from_bytes(data[2:4], "big"),
             originator=IPv6Address(data[4:20]),
             destination=IPv6Address(data[20:36]),
-            signature=data[36:],
+            signature=signature,
         )
 
 
@@ -112,13 +118,19 @@ class RREP:
     def from_bytes(cls, data: bytes) -> RREP:
         if len(data) < _RREQ_RREP_PREFIX:
             raise LoadngError(f"RREP too short: {len(data)} bytes")
+        signature = data[36:]
+        if len(signature) not in (0, SIGNATURE_LENGTH):
+            raise LoadngError(
+                f"invalid signature length: {len(signature)}, "
+                f"expected 0 or {SIGNATURE_LENGTH}"
+            )
         return cls(
             flags=data[0],
             hop_count=data[1],
             seq_num=int.from_bytes(data[2:4], "big"),
             originator=IPv6Address(data[4:20]),
             destination=IPv6Address(data[20:36]),
-            signature=data[36:],
+            signature=signature,
         )
 
 
@@ -142,11 +154,17 @@ class RERR:
     def from_bytes(cls, data: bytes) -> RERR:
         if len(data) < _RERR_PREFIX:
             raise LoadngError(f"RERR too short: {len(data)} bytes")
+        signature = data[18:]
+        if len(signature) not in (0, SIGNATURE_LENGTH):
+            raise LoadngError(
+                f"invalid signature length: {len(signature)}, "
+                f"expected 0 or {SIGNATURE_LENGTH}"
+            )
         return cls(
             flags=data[0],
             error_code=data[1],
             unreachable=IPv6Address(data[2:18]),
-            signature=data[18:],
+            signature=signature,
         )
 
 

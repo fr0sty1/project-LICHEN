@@ -22,8 +22,7 @@
 | ULA | fd00::/8 | DODAG root present | Entire mesh |
 | GUA | 2000::/3 | BR with upstream prefix | Internet |
 
-All addresses use the same IID, derived from EUI-64 (see 6.2).
-
+All addresses use the same IID, derived from EUI-64 using unified Ed25519 method (see 06-security.md and draft-lichen-link). Link-local restricted to after lichen_link_init per AGENTS.md graph.
 **1. Link-Local -- Always Available**
 
 Every node has a link-local address from boot:
