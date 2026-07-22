@@ -96,11 +96,11 @@ class TestCoapRule:
     def test_decompress_recovers_fields(self) -> None:
         rule_id, fields = decompress(bytes([64, 0x00, 0x04, 0x48, 0xD0]))
         assert rule_id == 64
-        assert fields["CoAP.Version"] == 1  # reconstructed from not-sent target
-        assert fields["CoAP.Type"] == 0
-        assert fields["CoAP.TKL"] == 0
-        assert fields["CoAP.Code"] == 1
-        assert fields["CoAP.MID"] == 0x1234
+        assert fields["CoAP.version"] == 1
+        assert fields["CoAP.type"] == 0
+        assert fields["CoAP.tkl"] == 0
+        assert fields["CoAP.code"] == 1
+        assert fields["CoAP.mid"] == 0x1234
 
     def test_roundtrip_nonzero(self) -> None:
         original = {
