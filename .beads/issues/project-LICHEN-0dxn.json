@@ -2,12 +2,16 @@
   "id": "project-LICHEN-0dxn",
   "title": "codereview pass 2: frequency agility pseudocode score weights inconsistent with main mitigate_and_transmit",
   "description": "Main TX pseudocode comment uses busy_time*0.6 + (PER*100)*0.4. New select_channel uses (busy*60 + per*40)/100 which is equivalent but should be unified and reference exact formula from rf_health or test vectors. Also, pseudocode mixes pseudocode with Rust array syntax; make language-agnostic. File: spec/02a-coordinated-capacity.md:160-210. Tag: codereview. Linked to project-LICHEN-da2q.15.8.3.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:38:14.904038943Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:38:14.904038943Z",
+  "updated_at": "2026-07-22T16:45:22.304322693Z",
+  "started_at": "2026-07-22T16:45:22.304322693Z",
+  "lease_expires_at": "2026-07-22T16:50:22.304322693Z",
+  "heartbeat_at": "2026-07-22T16:45:22.304322693Z",
   "labels": [
     "codereview"
   ],
