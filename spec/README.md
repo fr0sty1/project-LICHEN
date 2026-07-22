@@ -44,10 +44,11 @@ hardware as a reflash -- same radios, new protocol.
 7. [Security](06-security.md) - Security Architecture
 8. [Transport and Application](07-transport-app.md) - UDP, CoAP, MQTT-SN
 9. [Node Types](08-nodes.md) - Roles and Responsibilities
-10. [Packets and Timing](09-packets-timing.md) - Formats and Duty Cycle
-11. [Implementation](10-implementation.md) - Platform and Software Notes
-12. [Local Client Interface](11-lci.md) - Phone/Desktop Connectivity
-13. [Applications](12-apps.md) - Messaging, Position, Emergency
+10. [Gateway Coordination](08-gateway-coordination.md) - Multi-gateway TDMA slot allocation, federation modes (closed PSK + open Ed25519/TOFU), node handoff, CoAP coordination (project-LICHEN-mugl.1)
+11. [Packets and Timing](09-packets-timing.md) - Formats and Duty Cycle
+12. [Implementation](10-implementation.md) - Platform and Software Notes
+13. [Local Client Interface](11-lci.md) - Phone/Desktop Connectivity
+14. [Applications](12-apps.md) - Messaging, Position, Emergency
 
 ### Appendices
 
