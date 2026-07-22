@@ -729,6 +729,7 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	/* Verify Signature_2 per RFC 9528 */
 	/* MAC_2 = EDHOC-KDF(PRK_3e2m, TH_2, "MAC_2", context_2, 32) */
 	uint8_t context_2[128];
+	BUILD_ASSERT(sizeof(context_2) >= 128, "context_2 buffer too small");
 	ZCBOR_STATE_E(zse_ctx2, 0, context_2, sizeof(context_2), 0);
 	if (!zcbor_bstr_encode_ptr(zse_ctx2, ctx->c_r, ctx->c_r_len) ||
 	    !zcbor_bstr_encode_ptr(zse_ctx2, peer_pubkey, 32) ||
