@@ -2,15 +2,15 @@
   "id": "project-LICHEN-isfr",
   "title": "[merge-conflict] worktree-worker19: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 37ca60f2e",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:49:51.974764441Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:53:16.252932392Z",
+  "updated_at": "2026-07-22T23:53:18.494973034Z",
   "started_at": "2026-07-22T23:50:57.23243952Z",
-  "lease_expires_at": "2026-07-22T23:55:57.23243952Z",
-  "heartbeat_at": "2026-07-22T23:50:57.23243952Z"
+  "closed_at": "2026-07-22T23:53:18.494973034Z",
+  "close_reason": "Resolved merge conflicts in heltec_wifi_lora32_v3_esp32s3_procpu.conf by consolidating Kconfig options, stack sizes, buffers, battery support, and removing all conflict markers from multiple worker integrations (worker1,5,7,16,19). Verified clean file. Commit 37ca60f2e"
 }
