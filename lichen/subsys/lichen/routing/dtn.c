@@ -28,16 +28,20 @@ static uint32_t message_size(const struct lichen_dtn_message *msg)
 static int find_oldest(const struct lichen_dtn_buffer *buf)
 {
 	int oldest_idx = -1;
-	uint32_t oldest_time = UINT32_MAX;
 
 	for (int i = 0; i < CONFIG_LICHEN_DTN_MAX_MESSAGES; i++) {
-		if (buf->messages[i].valid) {
-			/* Wraparound-safe: we just compare raw values.
-			 * Lower value = older (assuming monotonic clock) */
-			if (buf->messages[i].buffered_at_ms < oldest_time) {
-				oldest_time = buf->messages[i].buffered_at_ms;
-				oldest_idx = i;
-			}
+		if (!buf->messages[i].valid) {
+			continue;
+		}
+		if (oldest_idx == -1) {
+			oldest_idx = i;
+			continue;
+		}
+		/* Wraparound-safe signed diff (assumes <2^31ms span). Smaller = older. */
+		int32_t diff = (int32_t)(buf->messages[i].buffered_at_ms -
+					 buf->messages[oldest_idx].buffered_at_ms);
+		if (diff < 0) {
+			oldest_idx = i;
 		}
 	}
 
