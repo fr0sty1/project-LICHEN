@@ -2,11 +2,15 @@
   "id": "project-LICHEN-c97s",
   "title": "[kimi-review] 29abf80: [SEVERITY: medium] The diff contains no code changes — the c",
   "description": "Commit: 29abf801b\nMessage: fix(schc): add mo_arg validation in _check_msb\n\nFinding: [SEVERITY: medium] The diff contains no code changes — the commit is empty despite the message claiming to add `mo_arg` validation in `_check_msb`. Either the actual change was omitted from the diff or this is a no-op commit that doesn't implement the stated fix. Cannot verify correctness of validation logic that isn't present; the commit should be amended to include the change or dropped.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T21:29:54.20549383Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T21:29:54.20549383Z"
+  "updated_at": "2026-07-22T21:31:12.719178056Z",
+  "started_at": "2026-07-22T21:31:12.719178056Z",
+  "lease_expires_at": "2026-07-22T21:36:12.719178056Z",
+  "heartbeat_at": "2026-07-22T21:31:12.719178056Z"
 }
