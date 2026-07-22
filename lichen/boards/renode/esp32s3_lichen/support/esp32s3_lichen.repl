@@ -5,6 +5,15 @@
 // Minimal platform for T-Deck, Heltec V3, and similar ESP32-S3 + SX1262 boards.
 // ponytail: stub memory regions and tagged peripherals - enough for simulation
 
+// ELF characterization (Heltec V3 / T-Deck canonical Zephyr puck/gateway ELFs):
+// - PT_LOAD segments: .text/.rodata in flash cache window (0x42000000+), IRAM (0x40370000+), DRAM (0x3FC88000+)
+// - Entry: ROM reset vector -> app entry ~0x4037c000 (varies with build hash)
+// - First accesses: RTC_CNTL/EFUSE (MAC/strap), SYSTEM (clocks), GPIO matrix, UART0 console, then SPI2 for SX1262
+// - Hash example (current main): tied to west build output SHA of zephyr.elf
+// Gaps identified: no native ESP32-S3 SPI/GPIO-matrix model (STM32SPI stub), incomplete interrupt controller, no Xtensa ESP32S3 CPU model (sample_controller), cache/MMU not modeled. 
+// Minimum model milestones: 1. UART boot, 2. timer/interrupts, 3. GPIO/SPI init, 4. SX1262 TX. No surrogate boot.
+// Updated for LICHEN tags only; see docs/bench-operations.md:8 for full inventory.
+
 // ESP32-S3 memory map (from TRM)
 // ROM at 0x40000000-0x4005FFFF (384KB)
 // SRAM at 0x3FC88000-0x3FCFFFFF (512KB)
@@ -58,6 +67,10 @@ sysbus:
         Tag <0x6001C000 0x1000> "TIMG0"
         Tag <0x6001D000 0x1000> "TIMG1"
         Tag <0x60010000 0x1000> "EFUSE"
+        Tag <0x6001E000 0x1000> "WDT"
+        Tag <0x6003F000 0x1000> "TRNG"
+        Tag <0x60002000 0x2000> "CACHE_CTRL"
+        Tag <0x6000A000 0x1000> "GPIO_SD"
         // Boot mode: SPI fast flash boot
         Tag <0x60004038 4> "GPIO_STRAP" 0x0c
         // Chip version tag

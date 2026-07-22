@@ -230,3 +230,18 @@ wrap is far beyond that. Watchdog-recovery correctness (bd `gald`) is also *not*
 exercised unless a crash occurs — a clean soak proves stability but leaves the
 recovery path untested. Plan wrap/recovery coverage as targeted tests, not as a
 longer soak.
+
+## 8. ESP32-S3 ELF and peripheral gaps for Zephyr (bd 5ix1.4.7)
+
+Used EC2 builder volume with LICHEN tags (`Project=LICHEN`). Ran `west build -b heltec_wifi_lora32_v3/esp32s3/procpu` and `t_deck/esp32s3/procpu` variants for puck/gateway apps; captured `readelf -l -S -h`, `nm`, Renode trace of first accesses and unmapped loads.
+
+**Inventory** (tied to ELF hashes from builds; see repl comments for exact per-build):
+- Program headers: 5-7 PT_LOAD (flash XIP @0x42000000, IRAM @0x4037xxxx, DRAM @0x3FC88xxx, ROM vectors).
+- Entry/vector: ROM at 0x4000xxxx jumps to Zephyr __start ~0x4037cxxx.
+- Peripheral access order: EFUSE/RTC_CNTL (MAC, strap=0x0c), SYSTEM clocks, GPIO matrix/pinctrl, UART0 (console), TIMG/WDT, SPI2 (SX1262 CS/reset/dio).
+- Gaps fixed: expanded sysbus tags in esp32s3_lichen.repl for GPIO_SD, CACHE, additional RTC/SYSTEM regs; added milestone comments. No surrogate boot.
+- Tests: Renode .resc loads clean (UART+SPI path exercised), west build -t run on proxy targets, interop with C/Rust vectors unchanged.
+
+3 review passes (correctness P0, security, edge-cases) completed with no new beads. All gaps addressed in scope.
+
+Closes project-LICHEN-5ix1.4.7.
