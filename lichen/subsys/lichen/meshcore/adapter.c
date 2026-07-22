@@ -304,6 +304,9 @@ static void pending_drop_tail(struct lichen_meshcore_adapter *adapter)
 	 * (or must be protected by irq_lock/irq_unlock) because the
 	 * tail update + memset + count decrement sequence is not atomic.
 	 * pending_count == 0U guard prevents uint8_t underflow wrap.
+	 * Python (link/tx_queue.py) and Rust (lichen-core/tx_queue.rs)
+	 * now model equivalent non-atomic expire/preempt/rebuild ops
+	 * with matching documentation and external-sync requirement.
 	 */
 	if (adapter->pending_count == 0U) {
 		return;
