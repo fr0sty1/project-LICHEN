@@ -611,11 +611,11 @@ static int commit_settings_with_ok(
 	}
 
 	ret = enqueue_ok(adapter);
-	if (ret < 0) {
-		if (adapter->ops.persist_settings == NULL) {
-			*settings = *old_settings;
-		}
-	}
+	/* On enqueue_ok() failure after successful persist/apply, keep the
+	 * updated settings for consistency regardless of whether
+	 * persist_settings op is configured. The change is committed;
+	 * failure to enqueue response does not undo it. Caller receives error.
+	 */
 	return ret;
 }
 

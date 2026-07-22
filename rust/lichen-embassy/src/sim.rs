@@ -121,6 +121,9 @@ impl Radio for SimRadio {
     type Error = SimError;
 
     async fn transmit(&mut self, channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
+        if payload.len() > u16::MAX as usize {
+            return Err(RadioError::Protocol);
+        }
         let mut msg = Vec::with_capacity(3 + payload.len());
         msg.push(0x10);
         msg.extend_from_slice(&(payload.len() as u16).to_le_bytes());
@@ -219,8 +222,7 @@ impl Radio for SimRadio {
         // ponytail: config sent to sim on next TX/RX if sim supports it
     }
 
-    async fn cca(&mut self, _threshold_dbm: i8) -> Result<bool, Self::Error> {
-        // Sim always clear for CCP-15 test vectors; real radio sim would query backend.
+    async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
         Ok(true)
     }
 }

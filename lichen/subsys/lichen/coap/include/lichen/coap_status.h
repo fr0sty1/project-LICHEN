@@ -11,10 +11,7 @@
  * - GET /status/routes - Routing table
  *
  * All resources support RFC 7641 Observe for push notifications.
-<<<<<<< HEAD
-=======
  * CCP-17: capacity validation for CBOR encoders (BUILD_ASSERT + runtime checks).
->>>>>>> origin/integration/worker2-20260722
  */
 
 #ifndef LICHEN_COAP_STATUS_H_
