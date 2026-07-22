@@ -1,0 +1,12 @@
+{
+  "id": "project-LICHEN-hjt3",
+  "title": "Clean up merge conflicts in coordinated capacity and related specs",
+  "description": "Consolidate merge conflicts from multiple worker branches in spec/02a-coordinated-capacity.md, draft-lichen-rpl-lora-00.md, draft-lichen-schc-lora-00.md, 03-addressing.md, sales-playbook.md into coherent normative text. Include spelled-out pseudocode for select_channel/adaptive_sf_select/now(), CH0 control rules, capability DIO, CCP-9 da2q, density/EMA/load, test vector xrefs. Remove conflicts, duplicates, notes. Consistent with independent oracles. Keep CC-BY-4.0. Summarize resolved sections.",
+  "status": "open",
+  "priority": 0,
+  "issue_type": "epic",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T23:55:30.345933857Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T23:55:30.345933857Z"
+}
