@@ -13,7 +13,7 @@ use lora_phy::mod_traits::InterfaceVariant;
 use lora_phy::sx126x::{self, Sx1262, Sx126x, TcxoCtrlVoltage};
 use lora_phy::{LoRa, RxMode};
 
-use lichen_hal::{Radio, RadioConfig, RadioError, RxPacket};
+use lichen_hal::{ChannelConfig, Radio, RadioConfig, RadioError, RxPacket};
 
 /// SX1262 Radio wrapper implementing lichen_hal::Radio.
 ///

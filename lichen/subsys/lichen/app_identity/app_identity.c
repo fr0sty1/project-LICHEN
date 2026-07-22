@@ -50,7 +50,7 @@ static int copy_string(char *dst, size_t dst_len, const char *src)
 		memset(dst, 0, dst_len);
 		return 0;
 	}
-	const size_t len = strlen(src); /* dedup: compute once (P3 codereview) */
+	const size_t len = strlen(src);
 	if (len >= dst_len) {
 		return -ENAMETOOLONG;
 	}

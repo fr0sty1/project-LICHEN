@@ -652,15 +652,7 @@ static int reset_compat_settings(struct lichen_meshcore_adapter *adapter,
 	}
 
 	ret = enqueue_ok(adapter);
-	if (ret < 0 && adapter->ops.persist_settings == NULL) {
-		*settings = old_settings;
-		if (adapter->ops.apply_pin != NULL) {
-			(void)adapter->ops.apply_pin(
-				old_settings.device_pin_valid ?
-					old_settings.device_pin : 0U,
-				adapter->ops.user_data);
-		}
-	}
+	/* Keep updated settings on enqueue_ok failure (see commit_settings_with_ok). */
 	return ret;
 }
 
@@ -759,15 +751,9 @@ static int store_device_pin(struct lichen_meshcore_adapter *adapter,
 	}
 
 	ret = enqueue_ok(adapter);
-	if (ret < 0) {
-		if (adapter->ops.persist_settings == NULL) {
-			*settings = old_settings;
-			(void)adapter->ops.apply_pin(
-				old_settings.device_pin_valid ?
-					old_settings.device_pin : 0U,
-				adapter->ops.user_data);
-		}
-	}
+	/* Keep updated settings (and applied pin) on enqueue_ok failure for
+	 * consistency (see commit_settings_with_ok).
+	 */
 	return ret;
 }
 
