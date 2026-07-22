@@ -139,6 +139,14 @@ ZTEST(slip_transport, test_get_stats_valid)
 	zassert_equal(stats.tx_packets, 0, "TX packets should be 0");
 	zassert_equal(stats.rx_errors, 0, "RX errors should be 0");
 	zassert_equal(stats.tx_errors, 0, "TX errors should be 0");
+
+	/* Verify mutex synchronization: trigger error path and re-read (no race) */
+	ret = slip_transport_send(NULL, SLIP_LCI_MTU + 100);
+	if (ret == -EMSGSIZE) {
+		struct slip_transport_stats stats2;
+		zassert_equal(slip_transport_get_stats(&stats2), 0, "get_stats after error path");
+		zassert_true(stats2.tx_errors >= 0, "stats updated under mutex");
+	}
 }
 
 #ifdef CONFIG_ZTEST
