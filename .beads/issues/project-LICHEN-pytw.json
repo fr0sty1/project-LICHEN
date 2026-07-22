@@ -2,11 +2,15 @@
   "id": "project-LICHEN-pytw",
   "title": "UDP checksum not verified on parse - RFC 8200 violation",
   "description": "File: python/src/lichen/ipv6/udp.py:79-90\n\nThe UdpDatagram.from_bytes() method parses UDP datagrams and stores the checksum field, but never verifies it. For IPv6, UDP checksums are MANDATORY per RFC 8200 section 8.1 (unlike IPv4 where they can be zero).\n\nCurrent code (line 87):\n```python\nchecksum = int.from_bytes(data[6:8], 'big')\n```\nThe checksum is stored but there is no verify_checksum() method and no automatic verification.\n\nImpact: Corrupted packets with invalid checksums could be accepted and processed, potentially causing data corruption or security issues.\n\nFix: Add a verify_checksum() method similar to Icmpv6Message.verify_checksum() and document that callers must verify checksums before processing.\n\nTags: protocol, security, ipv6",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:20:57.824025Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:20:57.824055Z"
+  "updated_at": "2026-07-22T20:22:01.358511211Z",
+  "started_at": "2026-07-22T20:22:01.358511211Z",
+  "lease_expires_at": "2026-07-22T20:27:01.358511211Z",
+  "heartbeat_at": "2026-07-22T20:22:01.358511211Z"
 }
