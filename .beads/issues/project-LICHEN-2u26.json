@@ -3,13 +3,15 @@
   "title": "Reconcile orphaned bridge board fragments",
   "description": "Resolve firmware/bridge-zephyr fragments with no demonstrated canonical Zephyr board mapping: heltec_t114, heltec_vision_master_e213, heltec_vision_master_e290, heltec_wireless_tracker, lilygo_tbeam, rak19007_wisblock, seeed_t1000e, seeed_wio_tracker_1110, station_g2, and xiao_s3_wio_sx1262. Map each to a real board target and test it, or remove/replace it through an explicitly approved scope. Note that seeed_t1000e does not auto-merge for the existing t1000_e/nrf52840 target.",
   "acceptance_criteria": "Every listed fragment has a canonical build target validated by the bridge static/build checks, or is explicitly retired; stale aliases and copied pin mappings no longer masquerade as supported targets.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-16T14:39:21.893244Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-16T14:39:21.893244Z",
+  "updated_at": "2026-07-22T14:13:59.600796707Z",
+  "closed_at": "2026-07-22T14:13:59.600796707Z",
+  "close_reason": "Reconciled as part of project-LICHEN-io1k: 10 stale bridge fragments classified FAIL (no canonical board); comments added; docs/matrix updated with canonical selectors. All children closed under epic.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2u26",
