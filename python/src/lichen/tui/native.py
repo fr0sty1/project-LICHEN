@@ -2251,10 +2251,10 @@ class NativeClientApp(App[None]):
             local_rf = LocalRFStats(
                 noise_floor_dbm=rf_info.get("noise_floor_dbm"),
                 channel_busy_pct=rf_info.get("channel_busy_pct"),
-                rx_crc_errors=int(rf_info.get("rx_crc_errors", 0)),
-                rx_timeout_errors=int(rf_info.get("rx_timeout_errors", 0)),
-                rx_header_errors=int(rf_info.get("rx_header_errors", 0)),
-                rx_total=int(rf_info.get("rx_total", 0)),
+                rx_crc_errors=int(rf_info.get("rx_crc_errors") or 0),
+                rx_timeout_errors=int(rf_info.get("rx_timeout_errors") or 0),
+                rx_header_errors=int(rf_info.get("rx_header_errors") or 0),
+                rx_total=int(rf_info.get("rx_total") or 0),
             )
 
             self._set_rf_health_state(

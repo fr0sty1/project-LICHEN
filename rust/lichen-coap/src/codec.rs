@@ -281,7 +281,8 @@ impl<'a> CoapOption<'a> {
     /// Interpret value as u32 (for integer options like Max-Age).
     pub fn as_uint(&self) -> u32 {
         let mut val = 0u32;
-        for &b in self.value {
+        let start = self.value.len().saturating_sub(4);
+        for &b in &self.value[start..] {
             val = (val << 8) | b as u32;
         }
         val

@@ -62,10 +62,7 @@ These are hard-won; violating them wedges a device or corrupts a flash.
   (`do_select`, S-state). Read-only probes only, with a `timeout` wrapper.
 - **NEVER open a LICHEN native CDC port at 1200 baud** except as a deliberate
   DFU touch — 1200 baud reboots nRF boards into the UF2 bootloader.
-- **The Heltec V3 CP2102 resets the ESP32 on *any* port open** (bd `9ia2`), even
-  with `dtr=False`/`rts=False` set before `open()`. Console observation is
-  therefore reset-destructive; you get a fresh boot banner but you rebooted the
-  node (and rerolled its epoch — see §5). Budget for that.
+- Heltec V3 gateway console now on UART1 (GPIO21/22); CP2102 open is non-destructive.
 - **Never pipe a flasher through `head`/`tail`** — the `SIGPIPE` when the reader
   closes aborts the transfer mid-write.
 - Opening the T1000-E `if02` SMP port is safe; it can wedge (CDC write timeout)

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, ClassVar
 
 
 @dataclass
@@ -34,7 +34,7 @@ class NodeMetrics:
 
     # Maximum entries in packet_hashes_sent and packet_hashes_received.
     # Prevents unbounded memory growth in long-running simulations.
-    _PACKET_HASH_SET_MAX_SIZE: int = field(default=10000, repr=False)
+    _PACKET_HASH_SET_MAX_SIZE: ClassVar[int] = 10000
 
     tx_count: int = 0
     rx_count: int = 0
@@ -92,7 +92,7 @@ class NodeMetrics:
             "tx_bytes": self.tx_bytes,
             "rx_bytes": self.rx_bytes,
             "unique_peers": sorted(self.unique_peers),
-            "errors": self.errors,
+            "errors": list(self.errors),
             "packet_hashes_sent": sorted(self.packet_hashes_sent),
             "packet_hashes_received": sorted(self.packet_hashes_received),
         }
@@ -171,7 +171,7 @@ class Metrics:
             return
         self._delivered.add(key)
         start = self._tx_start_times.get(tx_id)
-        if start is not None and time_us >= start:
+        if start is not None:
             latency = time_us - start
             self._latency_count += 1
             self._latency_sum_us += latency

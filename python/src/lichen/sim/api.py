@@ -9,6 +9,7 @@ nodes, and chaos rules programmatically.
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -326,6 +327,8 @@ class SimulatorAPI:
             z = float(z)
         except (TypeError, ValueError):
             return _error_response("Position coordinates must be numeric")
+        if not all(math.isfinite(v) for v in (x, y, z)):
+            return _error_response("Position coordinates must be finite numbers")
 
         try:
             node = sim.add_node(node_id, x, y, z)
@@ -392,6 +395,8 @@ class SimulatorAPI:
             z = float(z)
         except (TypeError, ValueError):
             return _error_response("Position coordinates must be numeric")
+        if not all(math.isfinite(v) for v in (x, y, z)):
+            return _error_response("Position coordinates must be finite numbers")
 
         node.set_position(x, y, z)
 

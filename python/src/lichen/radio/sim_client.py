@@ -181,7 +181,7 @@ class SimRadio:
                 "tx",
                 node_id=self._node_id,
                 len=len(payload),
-                hex=payload.hex(),
+                hex=payload[:16].hex(),
                 packet_hash=packet_hash,
             )
             return True
@@ -191,7 +191,7 @@ class SimRadio:
                 "tx_fail",
                 node_id=self._node_id,
                 len=len(payload),
-                hex=payload.hex(),
+                hex=payload[:16].hex(),
                 packet_hash=packet_hash,
             )
             return False
@@ -234,7 +234,7 @@ class SimRadio:
                 "rx",
                 node_id=self._node_id,
                 len=len(payload),
-                hex=payload.hex(),
+                hex=payload[:16].hex(),
                 rssi=rssi,
                 snr=snr,
                 packet_hash=packet_hash,

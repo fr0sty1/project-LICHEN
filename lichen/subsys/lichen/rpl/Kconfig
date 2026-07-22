@@ -6,6 +6,8 @@
 menuconfig LICHEN_RPL
 	bool "LICHEN RPL routing"
 	depends on LICHEN
+	select NET_IPV6_NBR_CACHE
+	select NET_ROUTE
 	help
 	  Enable RPL (RFC 6550) routing for DODAG mesh formation.
 	  Provides upward routing via preferred parents and downward

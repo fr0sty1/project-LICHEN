@@ -357,16 +357,23 @@ class SimNodeApp(App[None]):
 
         except SimRadioError as e:
             self._log_event("error", f"Connection failed: {e}")
+            if self._radio is not None:
+                with contextlib.suppress(Exception):
+                    await self._radio.close()
             self._radio = None
         except Exception as e:
             self._log_event("error", f"Unexpected error: {e}")
+            if self._radio is not None:
+                with contextlib.suppress(Exception):
+                    await self._radio.close()
             self._radio = None
 
-    @work(exclusive=True, group="connect")
-    async def _disconnect(self) -> None:
-        """Disconnect from the simulator (async worker)."""
-        if self._radio is None:
-            self._log_event("warn", "Not connected")
+        @work(exclusive=True, group="connect")
+        async def _disconnect(self) -> None:
+            """Disconnect from the simulator (async worker)."""
+            if self._radio is None:
+                self._log_event("warn", "Not connected")
+
             return
 
         # Cancel any pending receive

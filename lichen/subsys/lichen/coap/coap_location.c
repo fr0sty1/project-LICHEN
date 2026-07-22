@@ -29,10 +29,6 @@
 
 LOG_MODULE_REGISTER(lichen_coap_location, CONFIG_LICHEN_COAP_LOCATION_LOG_LEVEL);
 
-/* application/senml+cbor (IANA CoAP Content-Format) */
-#define SENML_CBOR_CONTENT_FORMAT 112
-
-/* Bounded: base record (~40 B urn) + lat/lon/alt records. 128 B is ample. */
 #define LOCATION_SENML_MAX 128
 
 /* "urn:dev:mac:" + 16 hex + ":" + NUL */

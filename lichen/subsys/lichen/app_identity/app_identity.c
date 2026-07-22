@@ -286,7 +286,8 @@ size_t lichen_app_identity_copy_peers(
 {
 	size_t count = 0U;
 
-	if (out == NULL || out_len == 0U) {
+	__ASSERT(out != NULL, "lichen_app_identity_copy_peers out cannot be NULL");
+	if (out_len == 0U) {
 		return 0U;
 	}
 

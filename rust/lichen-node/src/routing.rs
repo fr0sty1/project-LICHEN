@@ -282,8 +282,10 @@ impl Router {
         dio.write_to(out).unwrap_or(0)
     }
 
-    /// Get the route path for a destination (root only).
     pub fn lookup_route(&self, dst: &[u8; 16]) -> Option<&[[u8; 16]]> {
+        if !self.dodag.is_root() {
+            return None;
+        }
         self.dao_manager.routing_table.lookup(dst)
     }
 
