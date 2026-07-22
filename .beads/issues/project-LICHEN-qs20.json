@@ -11,5 +11,5 @@
   "created_by": "Mark Atwood",
   "updated_at": "2026-07-13T05:13:42.48103Z",
   "closed_at": "2026-07-13T05:13:42.48103Z",
-  "close_reason": "Closed"
+  "close_reason": "Fixed with NULL check for invoking_packet when invoking_len > 0 in build_error() and callers (lines 362, 399). Matches build_echo pattern. No info disclosure. Commit 44bc90c05."
 }
