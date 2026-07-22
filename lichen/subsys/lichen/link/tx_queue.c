@@ -320,14 +320,17 @@ int tx_queue_count(const struct tx_queue *queue)
 		return -EINVAL;
 	}
 
-	int count = 0;
+	struct tx_queue *q = (struct tx_queue *)queue;
+	lock_queue(q);
 
+	int count = 0;
 	for (int i = 0; i < TX_QUEUE_SIZE; i++) {
-		if (queue->entries[i].valid) {
+		if (q->entries[i].valid) {
 			count++;
 		}
 	}
 
+	unlock_queue(q);
 	return count;
 }
 
@@ -337,12 +340,17 @@ bool tx_queue_empty(const struct tx_queue *queue)
 		return true;
 	}
 
+	struct tx_queue *q = (struct tx_queue *)queue;
+	lock_queue(q);
+
 	for (int i = 0; i < TX_QUEUE_SIZE; i++) {
-		if (queue->entries[i].valid) {
+		if (q->entries[i].valid) {
+			unlock_queue(q);
 			return false;
 		}
 	}
 
+	unlock_queue(q);
 	return true;
 }
 
