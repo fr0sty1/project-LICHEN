@@ -12,7 +12,9 @@ log = ["lichen-core/log", "lichen-kiss/log", "lichen-node/log", "lichen-schc/log
 
 [dependencies]
 lichen-core = { path = "../lichen-core" }
+lichen-hal = { path = "../lichen-hal", features = ["std"] }
 lichen-kiss = { path = "../lichen-kiss", features = ["kiss"] }
+lichen-link = { path = "../lichen-link", features = ["std"] }
 lichen-node = { path = "../lichen-node", features = ["std"] }
 lichen-schc = { path = "../lichen-schc", features = ["std"] }
 lichen-sim  = { path = "../lichen-sim" }
