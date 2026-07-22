@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-jza5",
   "title": "[merge-conflict] worktree-worker16: xiao_s3_wio_sx1262.conf",
-  "notes": "Commit: 10fcce335",
+  "notes": "Commit: a7bdf46e3 (resolved merge conflict in xiao_s3_wio_sx1262.overlay and .conf in worker16 worktree)",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:52:00.957354186Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:54:57.641343437Z",
+  "updated_at": "2026-07-22T23:55:18.826460328Z",
   "started_at": "2026-07-22T23:53:01.502381621Z",
   "closed_at": "2026-07-22T23:54:57.641343437Z",
   "close_reason": "Standardized RETIRED comment in xiao_s3_wio_sx1262.{conf,overlay} in worktree-worker16 to match canonical version from project-LICHEN-8aym merge fix (commit 06ef92ebe). Committed as 10fcce335 and pushed."

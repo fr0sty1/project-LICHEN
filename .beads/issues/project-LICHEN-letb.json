@@ -2,15 +2,15 @@
   "id": "project-LICHEN-letb",
   "title": "[merge-conflict] worktree-worker17: heltec_wifi_lora32_v3_esp32s3_procpu.conf",
   "notes": "Commit: 3da3c0924 (worktree-worker17)",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:49:50.099311424Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:55:03.977755607Z",
+  "updated_at": "2026-07-22T23:55:16.849500766Z",
   "started_at": "2026-07-22T23:53:39.160421189Z",
-  "lease_expires_at": "2026-07-22T23:58:39.160421189Z",
-  "heartbeat_at": "2026-07-22T23:53:39.160421189Z"
+  "closed_at": "2026-07-22T23:55:16.849500766Z",
+  "close_reason": "Resolved merge conflict in lichend.rs by adopting process_rpl convenience method from Gateway (includes handle_frame_rpl + reply construction, DAO logging, mesh-to-upstream forwarding with local-mesh filter). Clean version committed to worktree-worker17 as 3da3c0924 and pushed. Matches pattern from prior similar beads (isgq, 9ppq, bvoc)."
 }
