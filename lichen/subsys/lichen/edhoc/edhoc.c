@@ -924,35 +924,36 @@ int edhoc_initiator_export_oscore(struct edhoc_initiator *ctx,
 		return -EBUSY;
 	}
 
-	/* Master Secret = EDHOC-KDF(PRK_4e3m, TH_4, "OSCORE_Master_Secret", "", 16) */
 	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_4, "OSCORE_Master_Secret",
 			NULL, 0, oscore->master_secret, 16);
 	if (ret != 0) {
-		return ret;
+		goto wipe;
 	}
 
-	/* Master Salt = EDHOC-KDF(PRK_4e3m, TH_4, "OSCORE_Master_Salt", "", 8) */
 	ret = edhoc_kdf(ctx->prk_4e3m, ctx->th_4, "OSCORE_Master_Salt",
 			NULL, 0, oscore->master_salt, 8);
 	if (ret != 0) {
-		return ret;
+		goto wipe;
 	}
 
-	/* Sender ID = C_I, Recipient ID = C_R */
 	memcpy(oscore->sender_id, ctx->c_i, ctx->c_i_len);
 	oscore->sender_id_len = ctx->c_i_len;
 	memcpy(oscore->recipient_id, ctx->c_r, ctx->c_r_len);
 	oscore->recipient_id_len = ctx->c_r_len;
 
-	/* Wipe PRK material after export - PRK can derive any key */
 	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
 	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
 	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
 
-	/* SECURITY: Prevent double-export which would derive from zeroed PRK */
 	ctx->state = EDHOC_STATE_EXPORTED;
 
 	return 0;
+
+wipe:
+	crypto_wipe(ctx->prk_2e, sizeof(ctx->prk_2e));
+	crypto_wipe(ctx->prk_3e2m, sizeof(ctx->prk_3e2m));
+	crypto_wipe(ctx->prk_4e3m, sizeof(ctx->prk_4e3m));
+	return ret;
 }
 
 int edhoc_responder_init(struct edhoc_responder *ctx,

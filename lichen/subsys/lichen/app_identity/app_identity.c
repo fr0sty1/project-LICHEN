@@ -295,13 +295,17 @@ size_t lichen_app_identity_copy_peers(
 	__ASSERT(out != NULL, "lichen_app_identity_copy_peers out cannot be NULL");
 
 	k_mutex_lock(&s_mutex, K_FOREVER);
-	for (uint8_t i = 0U; i < ARRAY_SIZE(s_peers) && count < out_len; i++) {
+	size_t total = 0U;
+	for (uint8_t i = 0U; i < ARRAY_SIZE(s_peers); i++) {
 		if (s_peers[i].used) {
-			out[count++] = s_peers[i].peer;
+			total++;
+			if (count < out_len) {
+				out[count++] = s_peers[i].peer;
+			}
 		}
 	}
 	k_mutex_unlock(&s_mutex);
-	return count;
+	return total;
 }
 
 size_t lichen_app_identity_peer_count(void)

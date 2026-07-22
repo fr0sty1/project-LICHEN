@@ -284,10 +284,12 @@ class SimNodeApp(App[None]):
             self._do_receive()
 
     async def action_quit(self) -> None:
-        """Quit the application with cleanup."""
         if self._receive_task is not None:
-            self._receive_task.cancel()
-        # Properly close the radio connection before exiting
+            receive_task = self._receive_task
+            self._receive_task = None
+            receive_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, asyncio.InvalidStateError):
+                await receive_task
         if self._radio is not None:
             with contextlib.suppress(Exception):
                 await self._radio.close()
