@@ -107,6 +107,9 @@ Use `select_sf(density, snr_ema, load_factor=1.0)` (cross-ref draft-lichen-tdma 
 | 11 | -17.5            |
 | 12 | -20.0            |
 
+**SF Orthogonality for Parallel Channels (CCP-17 extension, see 02-physical-link.md:3.6):**
+Quasi-orthogonal SF7-SF12 enable 6x capacity on same frequency via assigned SF (gateway DIO or hash(IID)). Nodes honor assigned SF for TX/RX; cross-SF via gateway relay. Gateway multi-SF RX (CAD scan or multi-radio). Scale tests in ccp16-desync.json validate reduced collisions. Nodes default to SF10 for compatibility.
+
 Base_SF = snr_to_sf(snr_ema); if override condition then SF = min(12, Base_SF + 1). Propagated via RPL DIO metric.
 
 **Multi-Channel (MUST for >1 channel regions):**
