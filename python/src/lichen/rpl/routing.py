@@ -175,10 +175,10 @@ def advance_source_route(
     if not 0 <= i < len(srh.addresses):
         raise RoutingError("segments_left inconsistent with address list")
     next_hop = srh.addresses[i]
-    srh.segments_left -= 1
+    new_srh = replace(srh, segments_left=srh.segments_left - 1)
 
     new_exts = list(packet.extension_headers)
-    new_exts[idx] = srh.to_extension_header()
+    new_exts[idx] = new_srh.to_extension_header()
     new_header = replace(packet.header, dst_addr=next_hop)
     new_packet = replace(packet, header=new_header, extension_headers=new_exts)
     return new_packet, next_hop
