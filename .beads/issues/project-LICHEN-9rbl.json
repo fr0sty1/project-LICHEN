@@ -2,15 +2,15 @@
   "id": "project-LICHEN-9rbl",
   "title": "[merge-conflict] worktree-worker17: 03-addressing.md",
   "notes": "Commit: c7bdfb873",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:49:50.293773272Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:53:09.940166717Z",
+  "updated_at": "2026-07-22T23:53:16.161805545Z",
   "started_at": "2026-07-22T23:51:27.304569084Z",
-  "lease_expires_at": "2026-07-22T23:56:27.304569084Z",
-  "heartbeat_at": "2026-07-22T23:51:27.304569084Z"
+  "closed_at": "2026-07-22T23:53:16.161805545Z",
+  "close_reason": "Resolved merge conflict in spec/03-addressing.md by merging content from both branches into coherent spec matching current IID derivation, test vectors, and cross-references. Commit c7bdfb873"
 }
