@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-qonj",
+  "title": "P4: EMA pseudocode could cross-ref exact line in rf_health.rs:151 for shift",
+  "description": "Documentation improvement only. codereview pass 2. discovered-from:project-LICHEN-8gac",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:42:19.838372026Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:42:19.838372026Z",
+  "labels": [
+    "codereview",
+    "opinion"
+  ]
+}
