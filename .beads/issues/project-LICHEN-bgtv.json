@@ -3,15 +3,15 @@
   "title": "router.c: lichen_router_dtn_retrieve returns pointers to invalidated slots",
   "description": "File: lichen/subsys/lichen/routing/router.c\nLines: 707-726\n\nIn lichen_router_dtn_retrieve():\n\n    if (m-\u003evalid \u0026\u0026 memcmp(m-\u003edestination_iid, dst_iid, 8) == 0) {\n        out_messages[count++] = m;\n        router-\u003edtn_buffer_bytes -= m-\u003elen;\n        m-\u003evalid = false;  // \u003c-- marked invalid here\n    }\n\nThe function returns pointers to lichen_dtn_message slots that have been marked invalid. The caller receives pointers to entries where:\n1. valid=false (inconsistent state)\n2. The 'data' field is a pointer the caller owns, not the slot\n\nThis leads to confusing semantics - the caller gets pointers to slots they shouldn't use after the call (since valid=false means they can be reused), and the actual message data lives elsewhere.\n\nEither the function should not invalidate the slot until the caller explicitly releases it, or it should copy the messages out rather than returning slot pointers.",
   "notes": "Commit: ccd41a4df",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:49:48.074332Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:14:28.976311189Z",
+  "updated_at": "2026-07-22T20:14:29.387531257Z",
   "started_at": "2026-07-22T20:14:20.895500546Z",
-  "lease_expires_at": "2026-07-22T20:19:20.895500546Z",
-  "heartbeat_at": "2026-07-22T20:14:20.895500546Z"
+  "closed_at": "2026-07-22T20:14:29.387531257Z",
+  "close_reason": "Closed"
 }
