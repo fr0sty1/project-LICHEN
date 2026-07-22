@@ -266,9 +266,14 @@ def opportunistic_wait_time_ms(rank: int) -> int:
     Higher ranks wait progressively longer.
 
     Args:
-        rank: Forwarder rank (0 = best, higher = worse).
+        rank: Forwarder rank (0 = best, higher = worse). Must be non-negative.
 
     Returns:
         Wait time in milliseconds.
+
+    Raises:
+        ValueError: If rank is negative (resolves z23c).
     """
+    if rank < 0:
+        raise ValueError("rank must be non-negative")
     return rank * OPPORTUNISTIC_SLOT_TIME_MS

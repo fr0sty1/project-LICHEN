@@ -118,10 +118,13 @@ class RouteCache:
         return dests
 
     def refresh(self, destination: IPv6Address | str, now: int) -> bool:
-        """Extend a route's validity to ``now + route_timeout``; True if found."""
+        """Extend validity to now+timeout if not expired; True if refreshed."""
         dest = to_ipv6(destination)
         entry = self._entries.get(dest)
         if entry is None:
+            return False
+        if entry.valid_until <= now:
+            del self._entries[dest]
             return False
         entry.valid_until = now + self.route_timeout_ms
         self._entries.move_to_end(dest)
