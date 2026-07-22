@@ -1223,5 +1223,6 @@ const struct lichen_meshcore_adapter_stats *_Nonnull
 lichen_meshcore_adapter_get_stats(
 	const struct lichen_meshcore_adapter *_Nonnull adapter)
 {
+	/* _Nonnull on return and param: stats is embedded struct; never NULL. */
 	return &adapter->stats;
 }

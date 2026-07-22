@@ -701,7 +701,9 @@ def _encode_chat(chat: ChatPayload) -> bytes:
     parts = [bytes([CompactCotType.CHAT, chat.dest_type])]
 
     if chat.dest_type == DestType.TEAM:
-        parts.append(bytes([chat.dest_team or 0]))
+        if chat.dest_team is None:
+            raise ValueError("dest_team required when dest_type is TEAM")
+        parts.append(bytes([chat.dest_team]))
     elif chat.dest_type == DestType.DIRECT:
         iid = chat.dest_iid or bytes(8)
         if len(iid) != 8:

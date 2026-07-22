@@ -151,9 +151,18 @@ impl Dio {
 
 // ── DAO ──────────────────────────────────────────────────────────────────────
 
+<<<<<<< HEAD
 /// DAO base object (RFC 6550 §6.4). D-flag (bit 6 of byte 1) determines length:
 /// D=1 includes 16-byte DODAGID (20 bytes total); D=0 elides it (4 bytes total).
 /// LICHEN/SCHC rule 4 uses D=1; parser supports both (D=0 zeros dodag_id).
+=======
+/// DAO base object (4 bytes if D=0, 20 bytes if D=1 per RFC 6550 §6.4).
+/// LICHEN/SCHC requires D=1 but parser accepts D=0 for interop (dodag_id
+/// zeroed; callers should prefer DODAGID from DIO in that case).
+///
+/// In a full decompressed packet the DAO base starts at offset 44; options
+/// start at offset 64 (for D=1).
+>>>>>>> origin/integration/worker12-20260722
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Dao {
     pub rpl_instance_id: u8,
@@ -177,9 +186,16 @@ impl Dao {
             return Err(TooShort::new(base_len, data.len()).into());
         }
         let dodag_id = if d_flag == 1 {
+<<<<<<< HEAD
             data[4..20].try_into().unwrap()
         } else {
             [0u8; 16] // D=0 elides DODAGID per RFC 6550 §6.4.2; use context DODAG
+=======
+            // SAFETY: length check ensures data.len() >= 20; 4..20 is 16 bytes
+            data[4..20].try_into().unwrap()
+        } else {
+            [0u8; 16]
+>>>>>>> origin/integration/worker12-20260722
         };
         Ok(Self {
             rpl_instance_id: data[0],
@@ -195,7 +211,11 @@ impl Dao {
             return Err(BufferTooSmall::new(Self::BASE_LEN, out.len()).into());
         }
         let kd = ((self.ack_requested as u8) << 7)
+<<<<<<< HEAD
             | (1u8 << 6) // D-flag always set (LICHEN/SCHC rule 4)
+=======
+            | (1u8 << 6) // D-flag always set per LICHEN/SCHC
+>>>>>>> origin/integration/worker12-20260722
             | (self.flags & 0x3F);
         out[0] = self.rpl_instance_id;
         out[1] = kd;
@@ -210,10 +230,16 @@ impl Dao {
             return &[];
         }
         let kd = data[1];
+<<<<<<< HEAD
         let d_flag = (kd >> 6) & 1;
         let base_len = if d_flag == 1 { 20 } else { 4 };
         if data.len() > base_len {
             &data[base_len..]
+=======
+        let base = if (kd >> 6) & 1 == 1 { 20 } else { 4 };
+        if data.len() > base {
+            &data[base..]
+>>>>>>> origin/integration/worker12-20260722
         } else {
             &[]
         }
@@ -548,6 +574,7 @@ mod tests {
     }
 
     #[test]
+<<<<<<< HEAD
     fn dao_supports_both_d_flags() {
         // Per RFC 6550 §6.4.2 both D=0 (elided DODAGID) and D=1 valid.
         // D=0 uses zeroed dodag_id (context DODAG assumed); SCHC rule 4 uses D=1.
@@ -565,6 +592,38 @@ mod tests {
         let dao1 = Dao::from_bytes(&buf).unwrap();
         assert_eq!(dao1.dao_sequence, 1);
         assert_eq!(dao1.dodag_id[0], 0xfd);
+=======
+    fn dao_supports_d_flag_zero() {
+        // Per RFC 6550 both D=0 and D=1 valid; LICHEN prefers D=1 but
+        // accepts D=0 with zeroed DODAGID for interop (use DIO DODAGID).
+        let mut buf = [0u8; 20];
+        buf[0] = 0; // rpl_instance_id
+        buf[1] = 0x00; // K=0, D=0, flags=0
+        buf[2] = 0; // reserved
+        buf[3] = 1; // dao_sequence
+        let dao = Dao::from_bytes(&buf).unwrap();
+        assert_eq!(dao.rpl_instance_id, 0);
+        assert!(!dao.ack_requested);
+        assert_eq!(dao.flags, 0);
+        assert_eq!(dao.dao_sequence, 1);
+        assert_eq!(dao.dodag_id, [0u8; 16]);
+    }
+
+    #[test]
+    fn dao_accepts_d_flag_one() {
+        // DAO with D=1 (LICHEN/SCHC preferred case)
+        let mut buf = [0u8; 20];
+        buf[0] = 0; // rpl_instance_id
+        buf[1] = 0x40; // K=0, D=1, flags=0
+        buf[2] = 0; // reserved
+        buf[3] = 5; // dao_sequence
+        buf[4] = 0xfd; // DODAGID starts here
+        let dao = Dao::from_bytes(&buf).unwrap();
+        assert_eq!(dao.rpl_instance_id, 0);
+        assert!(!dao.ack_requested);
+        assert_eq!(dao.dao_sequence, 5);
+        assert_eq!(dao.dodag_id[0], 0xfd);
+>>>>>>> origin/integration/worker12-20260722
     }
 
     // ── RPL Target option ─────────────────────────────────────────────────────

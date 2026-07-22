@@ -167,14 +167,17 @@ fn value_field_count(r: &Record<'_>) -> usize {
 /// Encode a slice of records into `out` as SenML-CBOR.
 ///
 /// Returns the number of bytes written, or an error if `out` is too small.
-/// Returns `CborError::MultipleValues` if any record has more than one value
-/// field set (RFC 8428 Section 4.2 requires at most one of value/string_value/bool_value).
+/// Returns `CborError::MultipleValues` if multiple value fields or
+/// `CborError::NameTooLong` if resolved name exceeds 128 bytes (RFC 8428 §4.2).
 pub fn encode<'a>(records: &[Record<'a>], out: &mut [u8]) -> Result<usize, CborError> {
-    // SECURITY: Validate RFC 8428 Section 4.2 constraint before encoding.
-    // At most one of value/string_value/bool_value may be present per record.
     for r in records {
         if value_field_count(r) > 1 {
             return Err(CborError::MultipleValues);
+        }
+        let bn_len = r.base_name.map_or(0, |s| s.len());
+        let n_len = r.name.map_or(0, |s| s.len());
+        if bn_len.checked_add(n_len).map_or(true, |l| l > 128) || bn_len > 128 || n_len > 128 {
+            return Err(CborError::NameTooLong);
         }
     }
 
@@ -860,9 +863,6 @@ mod tests {
         let mut decoded = [Record::empty()];
         let count = decode(&buf[..n], &mut decoded).unwrap();
         assert_eq!(count, 1);
-
-        // valid 1-record pack + trailing garbage bytes must be rejected
-        // (tests the pos == data.len() check and Record::parse path)
         let mut bad = [0u8; 80];
         bad[..n].copy_from_slice(&buf[..n]);
         for b in &mut bad[n..n + 16] {
@@ -1031,5 +1031,30 @@ mod tests {
         let data = [0xf9, 0x04, 0x00];
         let (val, _) = dec_f64(&data, 0).unwrap();
         assert_eq!(val, 6.103515625e-5);
+    }
+
+    #[test]
+    fn encode_rejects_long_concatenated_name() {
+        let long_suffix = "x".repeat(110);
+        let records = [Record {
+            base_name: Some("urn:dev:mac:0123456789abcdef:"),
+            name: Some(&long_suffix),
+            value: Some(42.0),
+            ..Record::empty()
+        }];
+        let mut buf = [0u8; 512];
+        assert_eq!(encode(&records, &mut buf), Err(CborError::NameTooLong));
+    }
+
+    #[test]
+    fn encode_rejects_long_single_name() {
+        let long_name = "x".repeat(129);
+        let records = [Record {
+            name: Some(&long_name),
+            value: Some(42.0),
+            ..Record::empty()
+        }];
+        let mut buf = [0u8; 512];
+        assert_eq!(encode(&records, &mut buf), Err(CborError::NameTooLong));
     }
 }

@@ -159,6 +159,36 @@ pub trait Rng {
     fn fill_bytes(&mut self, buf: &mut [u8]);
 }
 
+#[cfg(feature = "rand")]
+use rand_core::{CryptoRng, RngCore};
+
+#[cfg(feature = "rand")]
+impl<T: Rng + ?Sized> RngCore for T {
+    fn next_u32(&mut self) -> u32 {
+        let mut buf = [0u8; 4];
+        self.fill_bytes(&mut buf);
+        u32::from_ne_bytes(buf)
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        let mut buf = [0u8; 8];
+        self.fill_bytes(&mut buf);
+        u64::from_ne_bytes(buf)
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        <Self as Rng>::fill_bytes(self, dest);
+    }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
+        self.fill_bytes(dest);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "rand")]
+impl<T: Rng + ?Sized> CryptoRng for T {}
+
 /// Non-volatile storage for persistent state.
 ///
 /// Used for identity keys, routing state, etc. Keys are short ASCII strings.

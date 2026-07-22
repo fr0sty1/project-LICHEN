@@ -2,11 +2,15 @@
   "id": "project-LICHEN-b4x7",
   "title": "_dtn_buffer_bytes can underflow if message sizes change",
   "description": "File: python/src/lichen/routing/router.py:366-367, 679, 704-705, 726\n\nThe _dtn_buffer_bytes counter is updated incrementally:\n\n```python\n# On add (line 679):\nself._dtn_buffer_bytes += msg.size()\n\n# On remove (line 704-705):\nself._dtn_buffer_bytes -= msg.size()\n```\n\nWHY IT'S A BUG:\n1. DtnMessage.size() depends on len(self.packet.payload)\n2. If IPv6Packet is mutable and payload changes between add and remove, size() returns different values\n3. This causes _dtn_buffer_bytes to drift from actual sum\n4. Could go negative if payload grows, causing eviction logic to fail\n\nExample:\n- Buffer message with payload=100 bytes, size()=200\n- _dtn_buffer_bytes += 200\n- Modify packet.payload to 200 bytes\n- Retrieve message, size()=300\n- _dtn_buffer_bytes -= 300 (now -100!)\n\nIMPACT: Buffer accounting corruption; could cause either buffer overrun (thinks there's less than actual) or excessive eviction (thinks there's more than actual).\n\nFIX: Store the size at buffer time:\n```python\n@dataclass\nclass DtnMessage:\n    _cached_size: int = field(default=0, repr=False)\n    \n    def __post_init__(self):\n        self._cached_size = len(self.packet.payload) + 100\n    \n    def size(self) -\u003e int:\n        return self._cached_size\n```",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:26:32.714475Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:26:32.714525Z"
+  "updated_at": "2026-07-22T23:32:10.992499858Z",
+  "started_at": "2026-07-22T23:32:10.992499858Z",
+  "lease_expires_at": "2026-07-22T23:37:10.992499858Z",
+  "heartbeat_at": "2026-07-22T23:32:10.992499858Z"
 }

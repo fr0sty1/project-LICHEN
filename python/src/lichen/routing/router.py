@@ -128,7 +128,6 @@ class DtnMessage:
     expiry_unix: int
     buffered_at_ms: int
     _cached_size: int = field(default=0, repr=False)
-<<<<<<< HEAD
 
     def __post_init__(self) -> None:
         if len(self.destination_iid) != 8:
@@ -136,13 +135,6 @@ class DtnMessage:
         self._cached_size = len(self.packet.payload) + 100
 
     def size(self) -> int:
-=======
-
-    def size(self) -> int:
-        """Approximate size in bytes for buffer accounting (cached)."""
-        if self._cached_size == 0:
-            self._cached_size = len(self.packet.payload) + 100  # header overhead estimate
->>>>>>> origin/integration/worker5-20260722
         return self._cached_size
 
 

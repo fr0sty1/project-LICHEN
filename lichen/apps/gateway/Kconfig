@@ -187,10 +187,16 @@ config LORA_LICHEN_GATEWAY_MESSAGE_QUEUE_DEPTH
 config LORA_LICHEN_GATEWAY_RPL_ROOT
 	bool "RPL root signalling"
 	depends on LICHEN_RPL
+<<<<<<< HEAD
 	default y
 	help
 	  Enable gateway DIO/DAO processing and root signalling for LICHEN_RPL.
 	  Gateway now acts as RPL root per project-LICHEN-t4in.
+=======
+	default n
+	help
+	  Enable gateway DIO/DAO processing and root signalling (for WiFi backhaul border router on Heltec V3 and similar).
+>>>>>>> origin/integration/worker12-20260722
 
 config LICHEN_GATEWAY_RX1_DELAY_MS
 	int "RX1-style delay before answering a CoAP request (ms)"

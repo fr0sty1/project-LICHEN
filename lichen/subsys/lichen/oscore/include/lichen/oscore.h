@@ -202,10 +202,6 @@ typedef int (*oscore_nvm_read_cb)(const uint8_t *_Nullable eui64, uint32_t *_Non
  *
  * The struct layout is subject to change without notice. Code that accesses
  * fields directly will break.
- *
- * @note oscore_ctx_lookup() copies this struct including key material to the
- * caller's stack. Prefer oscore_ctx_get() which returns a pointer and keeps
- * key material in the protected context array.
  */
 struct oscore_ctx {
 	/* Common context (shared) */
