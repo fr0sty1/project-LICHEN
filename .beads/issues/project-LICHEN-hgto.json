@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-hgto",
+  "title": "Update specs for adaptive SF (02-physical-link, 02a, rationale, drafts)",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "owner": "agent@lichen-project.dev",
+  "created_at": "2026-07-22T22:32:43.749463753Z",
+  "created_by": "AI Agent",
+  "updated_at": "2026-07-22T22:32:43.749463753Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-hgto",
+      "depends_on_id": "project-LICHEN-zrh2",
+      "type": "blocks",
+      "created_at": "2026-07-22T22:32:43.86463259Z",
+      "created_by": "AI Agent",
+      "metadata": "{}"
+    }
+  ]
+}
