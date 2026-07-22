@@ -173,9 +173,10 @@ pub mod mem {
 
         fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize> {
             let data = self.data.get(key)?;
-            let n = data.len().min(buf.len());
+            let stored = data.len();
+            let n = stored.min(buf.len());
             buf[..n].copy_from_slice(&data[..n]);
-            Some(n)
+            Some(stored)
         }
 
         fn write(&mut self, key: &str, data: &[u8]) -> Result<(), Self::Error> {
@@ -224,9 +225,10 @@ pub mod fs {
                 Ok(d) => d,
                 Err(_) => return None,
             };
-            let n = data.len().min(buf.len());
+            let stored = data.len();
+            let n = stored.min(buf.len());
             buf[..n].copy_from_slice(&data[..n]);
-            Some(n)
+            Some(stored)
         }
         fn write(&mut self, key: &str, data: &[u8]) -> Result<(), Self::Error> {
             let t = self.tmp_path(key);

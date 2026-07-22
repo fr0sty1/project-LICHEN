@@ -139,19 +139,17 @@ pub trait Radio {
     /// Apply radio configuration.
     fn configure(&mut self, config: &RadioConfig);
 
-<<<<<<< HEAD
     /// Configure multiple channels for concentrator mode (SX1302 gateways).
     fn configure_channels(
         &mut self,
         channels: &[ChannelConfig],
     ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
-=======
+
     /// Returns current RX channel for multi-channel gateways (SX1302).
     /// Defaults to 0 to mimic single-channel SX126x behavior.
     fn current_channel(&self) -> u8 {
         0
     }
->>>>>>> origin/integration/worker3-20260722
 }
 
 /// Minimal ChannelPlan support (u8 index into regional plan per CCP-4).
@@ -206,12 +204,12 @@ pub trait NonVolatile {
     /// Error type for storage operations.
     type Error;
 
-    /// Read value for key into buffer. Returns `Some(n)` with bytes copied
-    /// (n = min(stored_len, buf.len())), or `None` if key not found.
+    /// Read value for key into buffer. If key exists, returns `Some(stored_len)`
+    /// (the full original stored length), copying the first `min(stored_len, buf.len())`
+    /// bytes into `buf`. Returns `None` if key not found.
     ///
-    /// NOTE: If stored value exceeds buffer size, it is silently truncated.
-    /// Callers MUST use a buffer of adequate size and verify `n == expected_len`
-    /// to detect truncation or corruption. See load_* functions in storage.rs.
+    /// Callers can detect truncation or size mismatch by comparing the returned
+    /// `stored_len` against `buf.len()` and expected size (see `load_*` in storage.rs).
     fn read(&self, key: &str, buf: &mut [u8]) -> Option<usize>;
 
     /// Write value for key. Returns Err if storage full or key too long.
