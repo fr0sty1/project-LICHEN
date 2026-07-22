@@ -91,11 +91,10 @@ impl<E: core::fmt::Debug + core::error::Error + 'static> core::error::Error for 
 
 impl Default for RadioConfig {
     fn default() -> Self {
-        // ponytail: LICHEN defaults from spec
         Self {
             spreading_factor: 10,
             bandwidth: 125_000,
-            coding_rate: 5, // CR 4/5 -- denominator only (4 is fixed per LoRa spec)
+            coding_rate: 5,
             tx_power: 14,
             frequency: 915_000_000,
         }

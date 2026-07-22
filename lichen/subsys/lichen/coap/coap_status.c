@@ -332,7 +332,7 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 
 	if (status->dodag.has_parent) {
 		cbor_put_key(&ctx, "parent");
-		if (format_ipv6(status->dodag.parent, ipv6_buf, sizeof(ipv6_buf)) < 0) {
+		if (lichen_coap_format_ipv6(status->dodag.parent, ipv6_buf, sizeof(ipv6_buf)) < 0) {
 			ctx.overflow = true;
 			return 0;
 		}
@@ -341,7 +341,7 @@ size_t lichen_coap_encode_status_cbor(uint8_t *buf, size_t buf_size,
 
 	if (status->dodag.has_root) {
 		cbor_put_key(&ctx, "root");
-		if (format_ipv6(status->dodag.root, ipv6_buf, sizeof(ipv6_buf)) < 0) {
+		if (lichen_coap_format_ipv6(status->dodag.root, ipv6_buf, sizeof(ipv6_buf)) < 0) {
 			ctx.overflow = true;
 			return 0;
 		}
@@ -415,7 +415,7 @@ size_t lichen_coap_encode_neighbors_cbor(uint8_t *buf, size_t buf_size,
 		cbor_put_map_header(&ctx, 6);
 
 		cbor_put_key(&ctx, "addr");
-		if (format_ipv6(n->addr, ipv6_buf, sizeof(ipv6_buf)) < 0) {
+		if (lichen_coap_format_ipv6(n->addr, ipv6_buf, sizeof(ipv6_buf)) < 0) {
 			ctx.overflow = true;
 			return 0;
 		}
@@ -484,7 +484,7 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 			cbor_put_map_header(&ctx, 4);
 
 			cbor_put_key(&ctx, "prefix");
-			format_ipv6(r->prefix, ipv6_buf, sizeof(ipv6_buf));
+			lichen_coap_format_ipv6(r->prefix, ipv6_buf, sizeof(ipv6_buf));
 			int pr = snprintf(prefix_buf, sizeof(prefix_buf), "%s/%u", ipv6_buf, r->prefix_len);
 			if (pr < 0 || (size_t)pr >= sizeof(prefix_buf)) {
 				ctx.overflow = true;
@@ -493,7 +493,7 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 			cbor_put_tstr(&ctx, prefix_buf);
 
 			cbor_put_key(&ctx, "via");
-			if (format_ipv6(r->via, ipv6_buf, sizeof(ipv6_buf)) < 0) {
+			if (lichen_coap_format_ipv6(r->via, ipv6_buf, sizeof(ipv6_buf)) < 0) {
 				ctx.overflow = true;
 				return 0;
 			}
@@ -509,7 +509,7 @@ size_t lichen_coap_encode_routes_cbor(uint8_t *buf, size_t buf_size,
 
 	if (default_route) {
 		cbor_put_key(&ctx, "default_route");
-		if (format_ipv6(default_route, ipv6_buf, sizeof(ipv6_buf)) < 0) {
+		if (lichen_coap_format_ipv6(default_route, ipv6_buf, sizeof(ipv6_buf)) < 0) {
 			ctx.overflow = true;
 			return 0;
 		}

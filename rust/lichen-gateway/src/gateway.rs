@@ -5,16 +5,13 @@ use lichen_core::constants::L2_DISPATCH_SCHC;
 use lichen_core::l2_payload::{
     body as l2_payload_body, classify as classify_l2_payload, L2PayloadKind,
 };
-use lichen_node::Node;
+use lichen_node::{RplEvent, RplNode};
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{info, warn};
 
-/// Top-level border router state.
 #[derive(Debug)]
 pub struct Gateway {
-    pub node: Node,
-    /// Routes installed in the kernel routing table.
-    /// Key: mesh IPv6 address (16 bytes, network order); Value: nexthop EUI-64.
+    pub rpl_node: RplNode,
     routes: std::collections::HashMap<[u8; 16], NodeId>,
 }
 
@@ -22,7 +19,7 @@ impl Gateway {
     pub fn new(node_id: NodeId) -> Self {
         info!(?node_id, "gateway initialising");
         Self {
-            node: Node::new(node_id),
+            rpl_node: RplNode::new_root(node_id),
             routes: std::collections::HashMap::new(),
         }
     }
@@ -91,7 +88,19 @@ impl Gateway {
     }
 
     pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
-        self.routes.contains_key(dst) || (dst[0] == 0xfe && dst[1] == 0x80)
+        self.routes.contains_key(dst) || (dst[0] == 0xfe && dst[1] == 0x80) || self.rpl_node.router.lookup_route(dst).is_some()
+    }
+
+    pub fn process_rpl(&mut self, frame: &[u8], now_ms: u32) -> (Option<std::vec::Vec<u8>>, RplEvent) {
+        let mut reply = vec![0u8; 512];
+        let (reply_len, event) = self.rpl_node.handle_frame_rpl(frame, &mut reply, now_ms);
+        let reply_opt = if reply_len > 0 {
+            reply.truncate(reply_len);
+            Some(reply)
+        } else {
+            None
+        };
+        (reply_opt, event)
     }
 }
 

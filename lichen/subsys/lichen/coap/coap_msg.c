@@ -19,6 +19,7 @@
 #include <zcbor_decode.h>
 
 #include <lichen/coap_msg.h>
+#include <lichen/coap_status.h>
 
 LOG_MODULE_REGISTER(lichen_coap_msg, CONFIG_LICHEN_COAP_MSG_LOG_LEVEL);
 
@@ -385,20 +386,6 @@ static int parse_ipv6_addr(const char *str, size_t len, uint8_t *addr)
 	return 0;
 }
 
-/* Format IPv6 address to string */
-static int format_ipv6_addr(const uint8_t *addr, char *buf, size_t buf_size)
-{
-	struct in6_addr in6;
-
-	memcpy(in6.s6_addr, addr, 16);
-
-	if (net_addr_ntop(AF_INET6, &in6, buf, buf_size) == NULL) {
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
 /* --------------------------------------------------------------------------
  * POST /msg/sent - Queue outbound message
  * -------------------------------------------------------------------------- */
@@ -606,7 +593,7 @@ int lichen_msg_sent_id_get(struct coap_resource *resource,
 		break;
 	}
 
-	if (format_ipv6_addr(msg.peer_addr, addr_str, sizeof(addr_str)) < 0) {
+	if (lichen_coap_format_ipv6(msg.peer_addr, addr_str, sizeof(addr_str)) < 0) {
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_INTERNAL_ERROR, NULL, 0);
 	}
@@ -648,7 +635,7 @@ static size_t encode_inbox_cbor(uint8_t *buf, size_t buf_size)
 	for (size_t i = 0; i < count && off + 100 < buf_size; i++) {
 		const struct lichen_msg *msg = &s_inbox[i];
 
-		if (format_ipv6_addr(msg->peer_addr, addr_str,
+		if (lichen_coap_format_ipv6(msg->peer_addr, addr_str,
 				     sizeof(addr_str)) < 0) {
 			continue;
 		}
