@@ -2,11 +2,15 @@
   "id": "project-LICHEN-zz0q",
   "title": "Off-by-one in packet length check allows reading stale buffer data",
   "description": "## Location\nrust/lichen-apps/src/bin/hetero_node.rs:140\n\n## Description\nThe condition `pkt.len \u003e 10` allows packets of length 11 or 12, but the IID extraction at line 141 reads bytes 5..13 (8 bytes), requiring at least 13 bytes. When pkt.len is 11 or 12, `buf[5..13]` reads beyond the actual packet into stale buffer content from previous receives, since the buffer is reused without clearing. The check should be `pkt.len \u003e= 13`.\n\n## Failure Scenario\nA peer sends a truncated or malformed announce packet of exactly 11 or 12 bytes. The length check passes, but buf[5..13] reads 2 or 1 bytes of stale data from a previous packet. This extracts a corrupted peer IID, inflating unique_peers count and logging incorrect peer identities. Analysis scripts comparing cross-implementation data would see phantom peers that never existed.\n\n## Category\nparsing",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-13T04:16:50.054489Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-13T04:16:50.054526Z"
+  "updated_at": "2026-07-22T14:38:08.246491784Z",
+  "started_at": "2026-07-22T14:38:08.246491784Z",
+  "lease_expires_at": "2026-07-22T14:43:08.246491784Z",
+  "heartbeat_at": "2026-07-22T14:38:08.246491784Z"
 }
