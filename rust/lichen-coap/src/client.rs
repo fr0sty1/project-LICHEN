@@ -275,7 +275,7 @@ fn request_sequence() -> &'static AtomicU64 {
 mod tests {
     use super::*;
     use std::collections::HashSet;
-    use std::sync::atomic::Ordering;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::sync::Arc;
     use std::thread;
 
@@ -299,8 +299,8 @@ mod tests {
 
     #[test]
     fn decode_accepts_matching_mid_and_token() {
-        let mid = 0x1234;
-        let token = [0x4c, 0x49, 0x43, 0x48]; // "LICH"
+        let sequence = AtomicU64::new(0x1234);
+        let (mid, token) = next_request_id(&sequence).unwrap();
         let resp_data = build_response(0x45, mid, &token, Some(b"hello")); // 2.05 Content
         let result = decode(&resp_data, mid, &token);
         assert!(result.is_ok());
