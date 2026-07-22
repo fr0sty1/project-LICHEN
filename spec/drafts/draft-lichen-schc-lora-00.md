@@ -81,7 +81,7 @@ document are to be interpreted as described in RFC 2119.
 - **Rule:** A SCHC compression/decompression rule
 - **Rule ID:** Identifier for a rule (variable length in SCHC, fixed 8-bit here)
 - **TV:** Target Value in a rule entry
-- **MO:** Matching Operator (equal, ignore, MSB, etc.)
+- **MO:** Matching Operator: `equal` (exact match), `ignore` (always match), `MSB(k)` (match most-significant k bits), `match-mapping` (value must be in the `mapping` list per FieldDescriptor; see `python/src/lichen/schc/rules.py:32`, equivalent in rules.rs:15). Example: `FieldDescriptor("M", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT, mapping=(0x10, 0x20))` (cross-ref: appendix-schc.md:A.1, test/vectors/schc_compression.json for PIO vectors).
 - **CDA:** Compression/Decompression Action (not-sent, value-sent, etc.)
 - **FCN:** Fragment Counter Number
 - **DTAG:** Datagram Tag (identifies fragments of same packet)
@@ -132,11 +132,11 @@ Rule IDs are 8 bits (1 byte):
 
 | Range | Usage |
 |-------|-------|
-| 0-127 | Compression rules |
-| 128-254 | Reserved for future use |
+| 0-4 | Compression rules |
+| 5-254 | Reserved for future use |
 | 255 | No compression (uncompressed fallback) |
 
-### 4.2. Rule 0: Link-Local IPv6 + UDP
+### 4.2. Rule 0: Link-local IPv6 + UDP + CoAP
 
 Most common case: link-local communication with CoAP.
 
@@ -164,42 +164,11 @@ Most common case: link-local communication with CoAP.
 | UDP.Length | - | ignore | compute | 0 |
 | UDP.Checksum | - | ignore | compute | 0 |
 
-**Compressed size:** 2 bytes (1 byte Rule ID + 1 byte port residue)
+**Compressed size:** 4-6 bytes
 
 **deviid:** Derive IID from link-layer address (EUI-64 or short address).
 
-### 4.3. Rule 1: Mesh-Local IPv6 + UDP
-
-For ULA (mesh-routable) traffic where source is local, destination is
-within mesh.
-
-**Applicability:**
-- IPv6 source is mesh ULA (fd00::/8)
-- IPv6 destination is mesh ULA (fd00::/8)
-- Same mesh prefix (known from DODAG)
-
-**Rule Definition:**
-
-| Field | TV | MO | CDA | Sent |
-|-------|----|----|-----|------|
-| IPv6.Version | 6 | equal | not-sent | 0 |
-| IPv6.TrafficClass | 0 | equal | not-sent | 0 |
-| IPv6.FlowLabel | 0 | equal | not-sent | 0 |
-| IPv6.PayloadLength | - | ignore | compute | 0 |
-| IPv6.NextHeader | 17 | equal | not-sent | 0 |
-| IPv6.HopLimit | - | ignore | value-sent | 8 bits |
-| IPv6.SrcPrefix | <mesh-prefix> | equal | not-sent | 0 |
-| IPv6.SrcIID | - | ignore | deviid | 0 |
-| IPv6.DstPrefix | <mesh-prefix> | equal | not-sent | 0 |
-| IPv6.DstIID | - | ignore | value-sent | 64 bits |
-| UDP.SrcPort | 5683 | MSB(12) | LSB | 4 bits |
-| UDP.DstPort | 5683 | MSB(12) | LSB | 4 bits |
-| UDP.Length | - | ignore | compute | 0 |
-| UDP.Checksum | - | ignore | compute | 0 |
-
-**Compressed size:** 10 bytes (Rule ID + HopLimit + DstIID + ports)
-
-### 4.4. Rule 2: Global IPv6 + UDP
+### 4.3. Rule 1: Global IPv6 + UDP + CoAP
 
 For traffic to/from internet via border router.
 
@@ -224,15 +193,44 @@ For traffic to/from internet via border router.
 | UDP.Length | - | ignore | compute | 0 |
 | UDP.Checksum | - | ignore | compute | 0 |
 
-**Compressed size:** 41 bytes (minimal compression for global traffic)
+**Compressed size:** 41 bytes
 
-### 4.5. Rule 3: ICMPv6 (RPL Control)
+### 4.4. Rule 2: ICMPv6 Echo
 
-For RPL control messages (DIO, DAO, DIS).
+For ICMPv6 echo request and reply.
+
+**Applicability:**
+- Next header is ICMPv6 (58)
+- ICMPv6 type is 128 or 129
+
+**Rule Definition:**
+
+| Field | TV | MO | CDA | Sent |
+|-------|----|----|-----|------|
+| IPv6.Version | 6 | equal | not-sent | 0 |
+| IPv6.TrafficClass | 0 | equal | not-sent | 0 |
+| IPv6.FlowLabel | 0 | equal | not-sent | 0 |
+| IPv6.PayloadLength | - | ignore | compute | 0 |
+| IPv6.NextHeader | 58 | equal | not-sent | 0 |
+| IPv6.HopLimit | 64 | ignore | not-sent | 0 |
+| IPv6.SrcPrefix | fe80::/64 | equal | not-sent | 0 |
+| IPv6.SrcIID | - | ignore | deviid | 0 |
+| IPv6.DstPrefix | fe80::/64 | equal | not-sent | 0 |
+| IPv6.DstIID | - | ignore | deviid | 0 |
+| ICMPv6.Type | - | ignore | value-sent | 8 bits |
+| ICMPv6.Code | - | ignore | value-sent | 8 bits |
+| ICMPv6.Checksum | - | ignore | compute | 0 |
+
+**Compressed size:** 3 bytes
+
+### 4.5. Rule 3: RPL DIO
+
+For RPL DODAG Information Object (code 1).
 
 **Applicability:**
 - Next header is ICMPv6 (58)
 - ICMPv6 type is RPL (155)
+- ICMPv6 code is 1
 
 **Rule Definition:**
 
@@ -248,39 +246,85 @@ For RPL control messages (DIO, DAO, DIS).
 | IPv6.SrcIID | - | ignore | deviid | 0 |
 | IPv6.DstAddr | ff02::1a | equal | not-sent | 0 |
 | ICMPv6.Type | 155 | equal | not-sent | 0 |
-| ICMPv6.Code | - | ignore | value-sent | 8 bits |
+| ICMPv6.Code | 1 | equal | not-sent | 0 |
 | ICMPv6.Checksum | - | ignore | compute | 0 |
 
-**Compressed size:** 2 bytes (Rule ID + ICMPv6 code)
+**Compressed size:** 8 bytes
 
-### 4.6. Rule 255: No Compression (Fallback)
+### 4.6. Rule 4: RPL DAO
 
-When no rule matches or for interoperability fallback.
+For RPL Destination Advertisement Object (code 2).
 
-```
-+----------+----------------------+
-| Rule ID  | Full IPv6 Packet     |
-| (1 byte) | (40+ bytes)          |
-+----------+----------------------+
-```
+**Applicability:**
+- Next header is ICMPv6 (58)
+- ICMPv6 type is RPL (155)
+- ICMPv6 code is 2
 
-All implementations MUST support Rule 255.
+**Rule Definition:**
 
-### 4.7. CoAP Compression
+| Field | TV | MO | CDA | Sent |
+|-------|----|----|-----|------|
+| IPv6.Version | 6 | equal | not-sent | 0 |
+| IPv6.TrafficClass | 0 | equal | not-sent | 0 |
+| IPv6.FlowLabel | 0 | equal | not-sent | 0 |
+| IPv6.PayloadLength | - | ignore | compute | 0 |
+| IPv6.NextHeader | 58 | equal | not-sent | 0 |
+| IPv6.HopLimit | 255 | equal | not-sent | 0 |
+| IPv6.SrcPrefix | fe80::/64 | equal | not-sent | 0 |
+| IPv6.SrcIID | - | ignore | deviid | 0 |
+| IPv6.DstPrefix | fe80::/64 | equal | not-sent | 0 |
+| IPv6.DstIID | - | ignore | deviid | 0 |
+| ICMPv6.Type | 155 | equal | not-sent | 0 |
+| ICMPv6.Code | 2 | equal | not-sent | 0 |
+| ICMPv6.Checksum | - | ignore | compute | 0 |
+
+**Compressed size:** 6 bytes
+
+### 4.7. Rule 5: Link-local IPv6 + UDP + MQTT-SN
+
+For MQTT-SN traffic (port 10883) per adaptation rules.
+
+**Applicability:**
+- IPv6 source and destination are link-local (fe80::/10)
+- Next header is UDP
+- UDP ports are 10883
+
+**Rule Definition:**
+
+| Field | TV | MO | CDA | Sent |
+|-------|----|----|-----|------|
+| IPv6.Version | 6 | equal | not-sent | 0 |
+| IPv6.TrafficClass | 0 | equal | not-sent | 0 |
+| IPv6.FlowLabel | 0 | equal | not-sent | 0 |
+| IPv6.PayloadLength | - | ignore | compute | 0 |
+| IPv6.NextHeader | 17 | equal | not-sent | 0 |
+| IPv6.HopLimit | 64 | ignore | not-sent | 0 |
+| IPv6.SrcPrefix | fe80::/64 | equal | not-sent | 0 |
+| IPv6.SrcIID | - | ignore | deviid | 0 |
+| IPv6.DstPrefix | fe80::/64 | equal | not-sent | 0 |
+| IPv6.DstIID | - | ignore | deviid | 0 |
+| UDP.SrcPort | 10883 | equal | not-sent | 0 |
+| UDP.DstPort | 10883 | equal | not-sent | 0 |
+| UDP.Length | - | ignore | compute | 0 |
+| UDP.Checksum | - | ignore | compute | 0 |
+
+**Compressed size:** 1 byte (Rule ID only)
+
+### 4.8. CoAP Compression
 
 CoAP header compression MAY be applied after IPv6/UDP compression using
 SCHC for CoAP (RFC 8824). This profile does not mandate CoAP compression
 but provides guidance:
 
-| CoAP Field | Typical Handling |
-|------------|------------------|
-| Version | not-sent (always 1) |
-| Type | value-sent (2 bits) |
-| Token Length | value-sent (4 bits) |
-| Code | value-sent (8 bits) |
-| Message ID | value-sent (16 bits) |
-| Token | value-sent (variable) |
-| Options | value-sent (variable) |
+| CoAP Field | TV | MO | CDA |
+|------------|----|----|-----|
+| Version | 1 | equal | not-sent |
+| Type | - | ignore | value-sent |
+| TKL | - | ignore | value-sent |
+| Code | - | ignore | value-sent |
+| MID | - | ignore | value-sent |
+| Token | - | ignore | value-sent |
+| Options | - | ignore | value-sent |
 
 CoAP compression is OPTIONAL and implementation-dependent.
 
@@ -444,6 +488,8 @@ in the same DODAG.
 
 This document requests no IANA allocations.
 
+Note: SCHC Context ID registry entries (if any future versions request them) MUST be coordinated with the IETF LPWAN WG to ensure no conflicts with other LPWAN SCHC profiles (RFC 9011 and successors).
+
 Future versions may request:
 - DIO Option Type for Rule Version advertisement
 - Rule ID registry for standardized rules
@@ -468,16 +514,18 @@ Future versions may request:
 ```
 Rule Set Version: 1
 
-Rule 0: Link-local IPv6 + UDP (2 bytes compressed)
-Rule 1: Mesh-local IPv6 + UDP (10 bytes compressed)
-Rule 2: Global IPv6 + UDP (41 bytes compressed)
-Rule 3: ICMPv6 RPL control (2 bytes compressed)
+Rule 0: Link-local IPv6 + UDP + CoAP (4-6 bytes compressed)
+Rule 1: Global IPv6 + UDP + CoAP (41 bytes compressed)
+Rule 2: ICMPv6 Echo (3 bytes compressed)
+Rule 3: RPL DIO (8 bytes compressed)
+Rule 4: RPL DAO (6 bytes compressed)
+Rule 5: Link-local IPv6 + UDP + MQTT-SN (1 byte compressed)
 Rule 255: No compression (fallback)
 ```
 
 ## Appendix B. Compression Examples
 
-**TODO:** Add worked examples showing compression of sample packets.
+Worked examples of packet compression/decompression appear in `test/vectors/schc_compression.json` (and related schc*.json vectors).
 
 ## Authors' Address
 
