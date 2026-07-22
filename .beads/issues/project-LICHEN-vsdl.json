@@ -2,11 +2,15 @@
   "id": "project-LICHEN-vsdl",
   "title": "WiFi station backhaul for Heltec V3 gateway",
   "description": "Implement WiFi station mode, net_mgmt events for connection and prefix acquisition, integrate with LICHEN_GATEWAY_PREFIX_DELEGATION and status CBOR. Child of project-LICHEN-sl32.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "epic",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T22:38:39.505374934Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T22:38:39.505374934Z"
+  "updated_at": "2026-07-22T22:40:58.014272611Z",
+  "started_at": "2026-07-22T22:40:58.014272611Z",
+  "lease_expires_at": "2026-07-22T22:45:58.014272611Z",
+  "heartbeat_at": "2026-07-22T22:40:58.014272611Z"
 }
