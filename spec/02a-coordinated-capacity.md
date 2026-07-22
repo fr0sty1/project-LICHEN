@@ -80,9 +80,9 @@ function select_channel(ctx, metrics, t):
     RETURN 1 + (hash MOD n)
 
 function now():
-    RETURN current_sfn()   // from time-provider per draft-lichen-tdma:2a.2 (wrap semantics)
+    RETURN current_sfn()   // superframe tick aligned to LICHEN_TDMA_Slot (exact: now_ts = sfn * ticks_per_slot from struct; modulo superframe for rendezvous per draft-lichen-tdma)
 ```
-Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IETF compatibility. No Rust 'or', no C types or structs, no dead code.
+Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IETF compatibility. No Rust 'or', no C types or structs, no dead code. now_ts TDMA alignment uses LICHEN_TDMA_Slot relation for slot calc.
 
 ### Density Rules Rationale (logical chunk: rationale paragraph - updated)
 
