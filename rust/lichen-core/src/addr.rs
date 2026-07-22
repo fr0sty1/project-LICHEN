@@ -27,6 +27,18 @@ impl NodeId {
         self.addr_with_prefix(prefix)
     }
 
+    /// Reconstruct a NodeId from the interface identifier in an IPv6 address.
+    ///
+    /// Reverses the U/L bit flip (XOR 0x02 on first IID byte) performed by
+    /// `link_local_addr` and `ula_addr`. Works for both link-local and ULA/GUA
+    /// addresses per spec §6.1. Independent roundtrip oracle used in tests.
+    pub fn from_ipv6(addr: Ipv6Addr) -> Self {
+        let bytes = addr.0;
+        let mut iid = [bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]];
+        iid[0] ^= 0x02;
+        NodeId(iid)
+    }
+
     fn addr_with_prefix(&self, prefix: [u8; 8]) -> Ipv6Addr {
         let e = self.0;
         Ipv6Addr([
@@ -141,5 +153,16 @@ mod tests {
         assert!(!addr.is_ula());
         assert!(!addr.is_gua());
         assert!(!addr.is_multicast());
+    }
+
+    #[test]
+    fn from_ipv6_roundtrip_link_local_and_ula() {
+        let node = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
+        let ll = node.link_local_addr();
+        assert_eq!(NodeId::from_ipv6(ll), node);
+
+        let prefix = [0xfd, 0x00, 0, 0, 0, 0, 0, 0];
+        let ula = node.ula_addr(prefix);
+        assert_eq!(NodeId::from_ipv6(ula), node);
     }
 }

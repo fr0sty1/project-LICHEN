@@ -254,6 +254,7 @@ mod tests {
             want_ack: false,
             priority: mesh_packet::Priority::Default as i32,
             rx_rssi: 0,
+            #[allow(deprecated)]
             delayed: 0,
             via_mqtt: false,
             hop_start: 0,
