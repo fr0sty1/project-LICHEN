@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-i8ph",
   "title": "[merge-conflict] worktree-worker17: main.c",
-  "status": "in_progress",
+  "notes": "Commit: 77c323997",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:18.658143372Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:46:55.584371113Z",
+  "updated_at": "2026-07-22T23:47:50.211489722Z",
   "started_at": "2026-07-22T23:46:55.584371113Z",
-  "lease_expires_at": "2026-07-22T23:51:55.584371113Z",
-  "heartbeat_at": "2026-07-22T23:46:55.584371113Z"
+  "closed_at": "2026-07-22T23:47:50.211489722Z",
+  "close_reason": "Resolved merge conflict in lichen/tests/app_interface/src/main.c by adopting consistent strnlen+memcpy string copy pattern from hal_bridge.c. Committed to worktree-worker17 branch."
 }
