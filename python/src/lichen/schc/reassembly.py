@@ -21,7 +21,7 @@ from collections import OrderedDict
 from collections.abc import Hashable
 from dataclasses import dataclass
 
-from lichen.schc.fragment import Ack, Fragment, compute_mic
+from lichen.schc.fragment import MAX_WINDOW_SIZE, Ack, Fragment, FragmentError, compute_mic
 
 DEFAULT_MAX_CONTEXTS = 4
 
@@ -47,10 +47,12 @@ class FragmentReceiver:
     """
 
     def __init__(self, window_size: int) -> None:
+        if not isinstance(window_size, int) or not 1 <= window_size <= MAX_WINDOW_SIZE:
+            raise FragmentError(f"window_size must be integer 1..{MAX_WINDOW_SIZE}")
         self.window_size = window_size
-        self._tiles: dict[int, bytes] = {}  # regular tiles: global index -> bytes
+        self._tiles: dict[int, bytes] = {}
         self._current_window = 0
-        self._completed_windows: set[int] = set()  # windows fully received and ACKed
+        self._completed_windows: set[int] = set()
         self._all1_seen = False
         self._all1_window = 0
         self._all1_payload = b""
@@ -217,6 +219,8 @@ class ReassemblyManager:
     def __init__(
         self, window_size: int, max_contexts: int = DEFAULT_MAX_CONTEXTS
     ) -> None:
+        if not isinstance(window_size, int) or not 1 <= window_size <= MAX_WINDOW_SIZE:
+            raise FragmentError(f"window_size must be integer 1..{MAX_WINDOW_SIZE}")
         if max_contexts <= 0:
             raise ValueError("max_contexts must be positive")
         self.window_size = window_size

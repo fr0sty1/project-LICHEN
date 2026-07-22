@@ -36,7 +36,7 @@ class FragmentError(Exception):
 
 
 def compute_mic(payload: bytes) -> bytes:
-    """Reassembly Check Sequence (RCS) per RFC 8724 §8.1 using CRC-32 (IEEE 802.3 poly 0x04C11DB7, init 0xFFFFFFFF, final XOR 0xFFFFFFFF) as provided by zlib.crc32()."""
+    """Reassembly Check Sequence (RCS) per RFC 8724 §8.1 using CRC-32 from zlib.crc32()."""
     return zlib.crc32(payload).to_bytes(MIC_LENGTH, "big")
 
 
@@ -150,10 +150,10 @@ class FragmentSender:
     _fragments: list[Fragment] = field(default_factory=list, init=False)
 
     def __post_init__(self) -> None:
-        if self.tile_size <= 0:
-            raise FragmentError("tile_size must be positive")
-        if not 1 <= self.window_size <= MAX_WINDOW_SIZE:
-            raise FragmentError(f"window_size must be 1..{MAX_WINDOW_SIZE}")
+        if not isinstance(self.tile_size, int) or self.tile_size <= 0:
+            raise FragmentError("tile_size must be positive integer")
+        if not isinstance(self.window_size, int) or not 1 <= self.window_size <= MAX_WINDOW_SIZE:
+            raise FragmentError(f"window_size must be integer 1..{MAX_WINDOW_SIZE}")
         self._fragments = self._build()
 
     def _build(self) -> list[Fragment]:
