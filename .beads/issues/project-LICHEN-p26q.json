@@ -2,7 +2,7 @@
   "id": "project-LICHEN-p26q",
   "title": "handle_icmpv6 responds to invalid source addresses",
   "description": "File: python/src/lichen/ipv6/icmpv6.py:230-265\n\nThe handle_icmpv6() function does not validate the source address of incoming packets before sending a reply.\n\nPer RFC 4443 section 2.4(e), ICMPv6 messages MUST NOT be sent in response to packets with certain source addresses:\n- The unspecified address (::)\n- Any multicast address\n\nCurrent code (lines 256-257):\n```python\nreply_src = packet.header.dst_addr\nreply_dst = packet.header.src_addr\n```\n\nIf the Echo Request has src_addr=:: (unspecified) or src_addr=ff02::1 (multicast), the reply would be sent to that invalid address.\n\nImpact:\n- Replying to :: could cause packets to be dropped or misrouted\n- Replying to a multicast address violates protocol and could cause amplification attacks\n\nFix: Before generating a reply, check:\n```python\nif packet.header.src_addr.is_unspecified or packet.header.src_addr.is_multicast:\n    return None  # RFC 4443: do not reply\n```\n\nTags: protocol, security, ipv6",
-  "notes": "Commit: 3cd5b0918",
+  "notes": "Commit: 029f16950",
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
@@ -10,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:22:15.287713Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:22:14.806726105Z",
+  "updated_at": "2026-07-22T20:22:45.76115867Z",
   "started_at": "2026-07-22T20:21:36.642306781Z",
   "closed_at": "2026-07-22T20:21:48.002693294Z",
   "close_reason": "Closed"
