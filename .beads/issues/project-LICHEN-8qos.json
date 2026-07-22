@@ -2,11 +2,15 @@
   "id": "project-LICHEN-8qos",
   "title": "TUI log event is vulnerable to Rich markup injection",
   "description": "File: python/src/lichen/tui/app.py\nLine: 327\n\nThe _log_event method writes user/network-supplied message content with Rich markup:\n\n    log.write(f\"[{color}][{timestamp}] {message}[/{color}]\")\n\nIf 'message' contains Rich markup characters like '[bold]' or malformed tags like '[/', this could:\n1. Corrupt the log display\n2. Allow injection of unexpected styling\n3. Potentially cause Rich parsing errors\n\nExample: A payload containing '[/red]injected[red]' would break the intended color wrapping.\n\nImpact: Display corruption, potential DoS via malformed markup causing exceptions.\n\nFix: Escape the message before interpolation:\n    from rich.markup import escape\n    log.write(f\"[{color}][{timestamp}] {escape(message)}[/{color}]\")",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:28:42.811331Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:28:42.811364Z"
+  "updated_at": "2026-07-22T23:37:23.166265632Z",
+  "started_at": "2026-07-22T23:37:23.166265632Z",
+  "lease_expires_at": "2026-07-22T23:42:23.166265632Z",
+  "heartbeat_at": "2026-07-22T23:37:23.166265632Z"
 }
