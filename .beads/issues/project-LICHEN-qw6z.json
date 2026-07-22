@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-qw6z",
   "title": "[merge-conflict] worktree-worker19: heltec_wireless_tracker.overlay",
-  "notes": "Commit: 08d5cfbe2",
+  "notes": "Commit: c573e6473",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:11.243564587Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:46:32.649813644Z",
+  "updated_at": "2026-07-22T23:47:29.21504392Z",
   "started_at": "2026-07-22T23:44:14.231361422Z",
   "closed_at": "2026-07-22T23:46:21.323151493Z",
   "close_reason": "Resolved merge conflict in worktree-worker19 by removing stale heltec_wireless_tracker bridge fragment (retired per 2u26.4). Cleaned coap merge conflicts in keys/config/dtn. Worktree now clean."
