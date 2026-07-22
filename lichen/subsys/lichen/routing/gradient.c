@@ -95,12 +95,13 @@ static struct lichen_gradient_entry *find_lru(struct lichen_gradient_table *tabl
 	return lru;
 }
 
-void lichen_gradient_table_init(struct lichen_gradient_table *table)
+int lichen_gradient_table_init(struct lichen_gradient_table *table)
 {
 	if (table == NULL) {
-		return;
+		return -EINVAL;
 	}
 	memset(table, 0, sizeof(*table));
+	return 0;
 }
 
 struct lichen_gradient_entry *lichen_gradient_lookup(

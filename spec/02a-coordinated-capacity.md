@@ -588,7 +588,10 @@ This section defines how a node detects synchronization loss and recovers.
 Terminology uses plain language because the state machine must be implementable
 by firmware engineers without real-time systems backgrounds.
 
-### States
+Implementations MUST follow the desynchronization recovery FSM defined in
+Table 1 exactly. Table 1 is normative per [RFC2119].
+
+### Table 1: Desynchronization Recovery States
 
 A CCP-capable node is always in exactly one of these states:
 

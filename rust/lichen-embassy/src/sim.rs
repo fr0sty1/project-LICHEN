@@ -228,7 +228,8 @@ impl Radio for SimRadio {
         Ok(())
     }
 
-    async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
+    async fn cca(&mut self, channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
+        eprintln!("[CCA ch={}] clear", channel);
         Ok(true)
     }
 }

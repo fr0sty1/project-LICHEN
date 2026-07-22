@@ -111,7 +111,7 @@ where
 {
     type Error = Sx1262Error<SPI::Error>;
 
-    async fn transmit(&mut self, payload: &[u8]) -> Result<(), Self::Error> {
+    async fn transmit(&mut self, _channel: u8, payload: &[u8]) -> Result<(), Self::Error> {
         let mdltn = self
             .lora
             .create_modulation_params(
@@ -137,8 +137,13 @@ where
         Ok(())
     }
 
+    async fn cca(&mut self, _channel: u8, _threshold_dbm: i8) -> Result<bool, Self::Error> {
+        Ok(true)
+    }
+
     async fn receive(
         &mut self,
+        _channel: u8,
         buf: &mut [u8],
         timeout_ms: u32,
     ) -> Result<Option<RxPacket>, Self::Error> {
@@ -157,7 +162,6 @@ where
             .create_rx_packet_params(8, false, 255, true, false, &mdltn)
             .map_err(|_| RadioError::Hardware)?;
 
-        // RxMode::Single takes u16, saturate if timeout exceeds u16::MAX
         let timeout = timeout_ms.min(u16::MAX as u32) as u16;
 
         self.lora
@@ -169,7 +173,7 @@ where
             Ok((len, status)) => Ok(Some(RxPacket {
                 len: len as usize,
                 rssi: Some(status.rssi),
-                snr: Some(status.snr as i8), // lora-phy uses i16, we use i8
+                snr: Some(status.snr as i8),
             })),
             Err(LoraRadioError::ReceiveTimeout) => Ok(None),
             Err(_) => Err(RadioError::Hardware),
@@ -178,7 +182,13 @@ where
 
     fn configure(&mut self, config: &RadioConfig) {
         self.config = *config;
-        // ponytail: config applied lazily on next TX/RX
+    }
+
+    async fn configure_channels(
+        &mut self,
+        _channels: &[ChannelConfig],
+    ) -> Result<(), Self::Error> {
+        Err(RadioError::NotSupported)
     }
 }
 

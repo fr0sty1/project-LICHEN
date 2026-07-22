@@ -61,7 +61,7 @@ static inline k_timeout_t safe_fallback_timeout(uint32_t ms)
 	 * double-timeout allows Zephyr coap_client internal timeout to fire
 	 * first.
 	 */
-	if (ms == 0 || ms > (UINT32_MAX / 2)) {
+	if (ms == 0 || ms > COAP_MAX_REQUEST_TIMEOUT_MS) {
 		return K_FOREVER;
 	}
 	return K_MSEC(ms * 2U);
