@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-2h1i.1.2.1",
+  "title": "Complete e-ink display driver and integration for T-Echo",
+  "description": "Add display child node to t_echo_nrf52840.dts or overlay, enable in HAL, integrate with lichen_hal_display, add test coverage. Update Renode if possible. Verify with test vectors if applicable.",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:39:58.089926358Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:39:58.089926358Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2h1i.1.2.1",
+      "depends_on_id": "project-LICHEN-2h1i.1.2",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:39:58.177188208Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
