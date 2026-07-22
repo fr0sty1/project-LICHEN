@@ -49,7 +49,7 @@ def route_packet(dst):
 | Address Type | Classification | Routing |
 |--------------|----------------|---------|
 | Link-local (fe80::/10) | Direct neighbor | Send to neighbor |
-| ULA (fd00::/8) in mesh prefix | Mesh peer | Gradient or LOADng |
+| ULA (fd00::/8) in mesh prefix | Mesh peer (Ed25519 per 06-security) | Gradient or LOADng |
 | GUA in mesh prefix | Mesh peer | Gradient or LOADng |
 | Other GUA | Off-mesh | RPL to border router |
 | Unknown | Off-mesh | RPL to border router |
