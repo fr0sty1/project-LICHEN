@@ -787,7 +787,7 @@ pub fn handle_icmpv6(
             };
 
             // RFC 4443 Section 4.2: reply source SHOULD be the destination of the request.
-            // This ensures nodes with multiple addresses reply from the address that was pinged.
+            // This ensures nodes with multiple addresses reply from the address that was pinged (resolves pw7o).
             let reply_icmp = echo.build_reply(&ip_header.dst, &ip_header.src, truncated_data)?;
             let reply_ip = Ipv6Header::new(next_header::ICMPV6, ip_header.dst, ip_header.src);
 
