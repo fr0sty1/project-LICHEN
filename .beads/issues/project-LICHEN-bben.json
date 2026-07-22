@@ -2,11 +2,15 @@
   "id": "project-LICHEN-bben",
   "title": "Add LICHEN_DUTY_CYCLE struct and API to hal.h",
   "description": "Add struct lichen_duty_cycle_ctx with static array[32], init, record_tx, remaining_ms, usage_permille, can_transmit, next_tx_available_ms. Use LICHEN_ prefixes, no comments. Match Rust logic for prune/prorate.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T22:36:06.453316242Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T22:36:06.453316242Z"
+  "updated_at": "2026-07-22T22:50:39.969882244Z",
+  "started_at": "2026-07-22T22:50:39.969882244Z",
+  "lease_expires_at": "2026-07-22T22:55:39.969882244Z",
+  "heartbeat_at": "2026-07-22T22:50:39.969882244Z"
 }
