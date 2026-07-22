@@ -167,4 +167,12 @@ mod tests {
         let ula = node.ula_addr(prefix);
         assert_eq!(NodeId::from_ipv6(ula), node);
     }
+
+    #[test]
+    fn from_ipv6_roundtrip_ula() {
+        let node = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
+        let prefix = [0xfd, 0x00, 0x12, 0x34, 0, 0, 0, 0];
+        let ula = node.ula_addr(prefix);
+        assert_eq!(NodeId::from_ipv6(ula), node);
+    }
 }
