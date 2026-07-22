@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-nkbl",
+  "title": "codereview pass 2: coap_dtn fixes",
+  "description": "Pass 2: All changes mimic senml/coap style (no comments added). s_provider added for DTN. Builds clean expected. No P0/P1 findings.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:27:16.531891973Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:27:16.531891973Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-nkbl",
+      "depends_on_id": "project-LICHEN-ov12",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:27:16.640068739Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
