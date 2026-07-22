@@ -97,8 +97,12 @@ impl SourceRoutingHeader {
             .chunks_exact(16)
             .map(|chunk| chunk.try_into().unwrap())
             .collect();
+        let segments_left = data[1];
+        if (segments_left as usize) > addresses.len() {
+            return Err(RplError::InvalidOption);
+        }
         Ok(Self {
-            segments_left: data[1],
+            segments_left,
             addresses,
         })
     }

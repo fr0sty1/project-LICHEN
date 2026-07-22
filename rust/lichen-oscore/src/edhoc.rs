@@ -50,6 +50,8 @@ pub enum EdhocError {
     InvalidMessage,
     /// Unsupported cipher suite.
     UnsupportedSuite,
+    /// Unsupported EDHOC method (only method 0 / SIGN_SIGN supported).
+    UnsupportedMethod,
     /// Signature verification failed.
     SignatureVerification,
     /// AEAD decryption failed.
@@ -66,6 +68,7 @@ impl core::fmt::Display for EdhocError {
             Self::InvalidState => write!(f, "invalid protocol state"),
             Self::InvalidMessage => write!(f, "invalid message format"),
             Self::UnsupportedSuite => write!(f, "unsupported cipher suite"),
+            Self::UnsupportedMethod => write!(f, "unsupported EDHOC method"),
             Self::SignatureVerification => write!(f, "signature verification failed"),
             Self::DecryptFailed => write!(f, "AEAD decryption failed"),
             Self::BufferTooSmall => write!(f, "buffer too small"),
@@ -787,7 +790,9 @@ impl EdhocResponder {
             return Err(EdhocError::InvalidMessage);
         }
 
-        let _method_corr = msg1[0];
+        if msg1[0] != 1 {
+            return Err(EdhocError::UnsupportedMethod);
+        }
 
         // Parse SUITES_I per RFC 9528 Section 3.3.2:
         // - Single int: the selected suite

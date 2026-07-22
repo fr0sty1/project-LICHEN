@@ -473,7 +473,7 @@ pub struct DtnMessage {
 impl DtnMessage {
     /// Approximate size in bytes for buffer accounting.
     pub fn size(&self) -> usize {
-        self.packet.len() + 100 // header overhead estimate
+        self.packet.len() + std::mem::size_of::<Self>()
     }
 }
 
@@ -803,21 +803,18 @@ mod tests {
 
     #[test]
     fn dtn_buffer_eviction_on_full() {
-        let mut buf = DtnBuffer::with_max_bytes(500);
+        let mut buf = DtnBuffer::with_max_bytes(350);
         let iid1 = make_iid(1);
         let iid2 = make_iid(2);
         let iid3 = make_iid(3);
 
-        // Each message is ~200 bytes (100 + 100 overhead)
         buf.buffer_message(vec![0u8; 100], iid1, 1000, 100, 10);
         buf.buffer_message(vec![0u8; 100], iid2, 1000, 100, 20);
         assert_eq!(buf.len(), 2);
 
-        // Adding a third should evict the oldest (iid1)
         buf.buffer_message(vec![0u8; 100], iid3, 1000, 100, 30);
         assert_eq!(buf.len(), 2);
 
-        // iid1 should be gone
         let pending = buf.get_pending_iids();
         assert!(!pending.contains(&iid1));
         assert!(pending.contains(&iid2));

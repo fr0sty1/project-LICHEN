@@ -174,13 +174,17 @@ impl Addr {
 
     /// Create link-local address from 8-byte node ID (EUI-64).
     ///
-    /// Format: fe80::XX:XX:XX:ff:fe:XX:XX:XX with U/L bit flipped.
+    /// Input is treated as EUI-64 per RFC 4291. U/L bit (LSB of first octet)
+    /// is flipped. No IEEE validation performed (no OUI check, no reserved
+    /// patterns rejected like all-zero or broadcast). Caller responsible for
+    /// valid input. Synthetic node IDs permitted for LICHEN mesh.
+    ///
+    /// See also: link_local_from_mac for 48-bit MACs.
     pub fn link_local_from_eui64(eui64: &[u8; 8]) -> Self {
         let mut addr = [0u8; 16];
         addr[0] = 0xfe;
         addr[1] = 0x80;
-        // bytes 2-7 are zero (link-local prefix)
-        addr[8] = eui64[0] ^ 0x02; // Flip U/L bit
+        addr[8] = eui64[0] ^ 0x02;
         addr[9] = eui64[1];
         addr[10] = eui64[2];
         addr[11] = eui64[3];
@@ -191,7 +195,10 @@ impl Addr {
         Self(addr)
     }
 
-    /// Create link-local address from 6-byte MAC (insert ff:fe).
+    /// Create link-local address from 6-byte MAC by inserting 0xfffe
+    /// to form modified EUI-64 (RFC 4291), then calling link_local_from_eui64.
+    /// No validation on resulting EUI-64 (e.g. all-zero MAC produces
+    /// fe80::ff:fe00:0 which is technically invalid per some strict impls).
     pub fn link_local_from_mac(mac: &[u8; 6]) -> Self {
         let mut eui64 = [0u8; 8];
         eui64[0] = mac[0];
@@ -697,17 +704,17 @@ fn udp_checksum(src: &Addr, dst: &Addr, udp_header: &[u8], payload: &[u8]) -> u1
     sum += next_header::UDP as u32;
 
     // UDP header (skip checksum field at bytes 6-7)
-    for i in (0..udp_header.len()).step_by(2) {
+    let mut i = 0;
+    while i + 1 < udp_header.len() {
         if i == 6 {
-            continue; // Skip checksum
+            i += 2;
+            continue;
         }
-        let high = udp_header[i] as u32;
-        let low = if i + 1 < udp_header.len() {
-            udp_header[i + 1] as u32
-        } else {
-            0
-        };
-        sum += (high << 8) | low;
+        sum += ((udp_header[i] as u32) << 8) | (udp_header[i + 1] as u32);
+        i += 2;
+    }
+    if i < udp_header.len() {
+        sum += (udp_header[i] as u32) << 8;
     }
 
     // Payload

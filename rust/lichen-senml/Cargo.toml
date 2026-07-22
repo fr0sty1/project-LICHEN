@@ -3,7 +3,7 @@ name = "lichen-senml"
 edition.workspace = true
 version.workspace = true
 license.workspace = true
-rust-version = "1.81"
+rust-version.workspace = true
 description = "SenML (RFC 8428): record type and CBOR encode/decode stubs."
 
 [features]

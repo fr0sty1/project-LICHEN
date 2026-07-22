@@ -495,7 +495,6 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 
 	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
 
-	/* Extract packet data */
 	net_pkt_cursor_init(pkt);
 	ret = net_pkt_read(pkt, pkt_buf, pkt_len);
 	if (ret < 0) {
@@ -507,7 +506,6 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 		return ret;
 	}
 
-	/* Encode with SLIP framing */
 	ret = slip_encode(pkt_buf, pkt_len, ctx->tx_frame, sizeof(ctx->tx_frame),
 			  &frame_len);
 	if (ret < 0) {
@@ -524,23 +522,24 @@ static int slip_iface_send(const struct device *dev, struct net_pkt *pkt)
 	ctx->last_tx_len = frame_len;
 #endif
 
-	/* Transmit over UART */
 	if (ctx->uart_dev != NULL) {
 		for (size_t i = 0; i < frame_len; i++) {
 			uart_poll_out(ctx->uart_dev, ctx->tx_frame[i]);
 		}
-		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-		ctx->stats.tx_packets++;
-		ctx->stats.tx_bytes += (uint32_t)pkt_len;
-		k_mutex_unlock(&ctx->stats_mutex);
 	} else {
-		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-		ctx->stats.tx_errors++;
-		k_mutex_unlock(&ctx->stats_mutex);
 		ret = -ENODEV;
 	}
 
 	k_mutex_unlock(&ctx->tx_mutex);
+
+	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+	if (ret == 0) {
+		ctx->stats.tx_packets++;
+		ctx->stats.tx_bytes += (uint32_t)pkt_len;
+	} else {
+		ctx->stats.tx_errors++;
+	}
+	k_mutex_unlock(&ctx->stats_mutex);
 
 	LOG_DBG("SLIP TX: %zu bytes IPv6 -> %zu bytes framed", pkt_len, frame_len);
 	return ret;
