@@ -13,9 +13,11 @@ extern crate std;
 #[cfg(feature = "std")]
 use std::{collections::VecDeque, vec::Vec};
 
+#[cfg(feature = "std")]
 use crate::gradient::{
     GeoCoords, GradientEntry, GradientSource, GradientTable, GRADIENT_TIMEOUT_MS,
 };
+#[cfg(feature = "std")]
 use lichen_core::loadng::{Idle, RouteDiscovery, Rreq, Searching};
 
 /// Classification of IPv6 destination address (spec 7.2 table).
@@ -349,14 +351,8 @@ impl HybridRouter {
     /// Start a LOADng route discovery for a destination.
     /// Returns the RREQ to broadcast.
     pub fn start_discovery(&mut self, dst: [u8; 16], now_ms: u32) -> Rreq {
-        // Check if discovery already active
-        if self.active_discoveries.iter().any(|d| d.destination == dst) {
-            // Return existing RREQ
-            let discovery = self
-                .active_discoveries
-                .iter()
-                .find(|d| d.destination == dst)
-                .unwrap();
+        if let Some(discovery) = self.active_discoveries.iter_mut().find(|d| d.destination == dst) {
+            discovery.sent_at_ms = now_ms;
             return discovery.discovery.rreq();
         }
 
@@ -518,6 +514,7 @@ impl HybridRouter {
     }
 }
 
+#[cfg(feature = "std")]
 /// Validate geographic coordinates.
 fn is_valid_coords(coords: &GeoCoords) -> bool {
     if coords.lat.is_nan()
@@ -535,6 +532,7 @@ fn is_valid_coords(coords: &GeoCoords) -> bool {
     coords.lat >= -90.0 && coords.lat <= 90.0 && coords.lon >= -180.0 && coords.lon <= 180.0
 }
 
+#[cfg(feature = "std")]
 /// Haversine distance in meters between two (lat, lon) points.
 fn haversine(c1: &GeoCoords, c2: &GeoCoords) -> f32 {
     const EARTH_RADIUS_M: f32 = 6_371_000.0;

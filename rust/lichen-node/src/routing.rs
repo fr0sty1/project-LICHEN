@@ -396,6 +396,7 @@ impl Router {
     }
 }
 
+#[cfg(feature = "std")]
 /// Haversine distance in meters between two (lat, lon) points.
 fn haversine(c1: GeoCoords, c2: GeoCoords) -> f64 {
     const EARTH_RADIUS_M: f64 = 6_371_000.0;
@@ -416,6 +417,7 @@ fn haversine(c1: GeoCoords, c2: GeoCoords) -> f64 {
     EARTH_RADIUS_M * c
 }
 
+#[cfg(feature = "std")]
 /// Validate geographic coordinates.
 /// Returns false for NaN, inf, out-of-range, or null island (0,0).
 fn is_valid_coords(coords: GeoCoords) -> bool {

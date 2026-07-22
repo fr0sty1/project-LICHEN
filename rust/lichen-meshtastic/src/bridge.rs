@@ -181,12 +181,10 @@ impl MeshtasticBridge {
 
         match portnum {
             PortNum::IpTunnelApp => {
-                // Raw IPv6 packet encapsulated
-                if data.payload.len() < 40 {
+                if data.payload.len() < 40 || (data.payload[0] >> 4) != 6 {
                     return Err(BridgeError::InvalidPacket);
                 }
 
-                // Extract src/dst from IPv6 header
                 let src_bytes: [u8; 16] = data.payload[8..24]
                     .try_into()
                     .map_err(|_| BridgeError::InvalidPacket)?;

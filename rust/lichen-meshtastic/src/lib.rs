@@ -228,6 +228,7 @@ mod tests {
 
     #[cfg(feature = "alloc")]
     #[test]
+    #[allow(deprecated)]
     fn test_to_radio_packet_variant() {
         use prost::Message;
 
