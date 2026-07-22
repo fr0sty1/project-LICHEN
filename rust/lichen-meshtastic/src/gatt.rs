@@ -209,7 +209,9 @@ impl<const MTU: usize> MeshtasticGattService<MTU> {
     ///
     /// Returns `Some(data)` when a complete message is ready.
     pub fn write_to_radio(&mut self, chunk: &[u8]) -> Result<Option<&[u8]>, GattError> {
-        // If this is the start of a new message, parse the header
+        if self.write_expected_len.is_some() {
+            self.clear_write_buffer();
+        }
         if self.write_expected_len.is_none() {
             // Meshtastic uses a 4-byte little-endian length prefix
             // (first 2 bytes are length, last 2 are reserved/zero)
