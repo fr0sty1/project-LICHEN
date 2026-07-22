@@ -2,15 +2,15 @@
   "id": "project-LICHEN-rwnm",
   "title": "[merge-conflict] worktree-worker21: t_deck_esp32s3_procpu.conf",
   "notes": "Commit: 699b562",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:41:04.72256486Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:46:44.435842616Z",
+  "updated_at": "2026-07-22T23:46:47.031252119Z",
   "started_at": "2026-07-22T23:45:15.803401582Z",
-  "lease_expires_at": "2026-07-22T23:50:15.803401582Z",
-  "heartbeat_at": "2026-07-22T23:45:15.803401582Z"
+  "closed_at": "2026-07-22T23:46:47.031252119Z",
+  "close_reason": "Merge conflict in coap_keys.c resolved by accepting expanded LCI /keys implementation; t_deck configs synchronized across puck/gateway/bridge; bead closed."
 }
