@@ -95,6 +95,7 @@ static void slip_rx_thread_fn(void *p1, void *p2, void *p3);
 /* RX thread */
 static K_THREAD_STACK_DEFINE(s_rx_stack, RX_THREAD_STACK_SIZE);
 static struct k_thread s_rx_thread;
+static K_MUTEX_DEFINE(s_init_mutex);
 
 /* --------------------------------------------------------------------------
  * IPv6 helpers
@@ -220,6 +221,8 @@ static int slip_decode_byte(struct slip_transport_ctx *ctx, uint8_t b)
 			ctx->rx_len = 0;
 			ctx->rx_overflow = false;
 		} else if (b == SLIP_ESC) {
+			ctx->rx_len = 0;
+			ctx->rx_overflow = false;
 			ctx->rx_state = SLIP_STATE_ESC;
 		} else {
 			/* First data byte */
@@ -575,6 +578,9 @@ int slip_transport_send(const uint8_t *ipv6, size_t len)
 	if (len > SLIP_LCI_MTU) {
 		return -EMSGSIZE;
 	}
+	if (!ctx->initialized) {
+		return -ENODEV;
+	}
 
 	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
 
@@ -620,6 +626,10 @@ int slip_transport_get_stats(struct slip_transport_stats *stats)
 	if (stats == NULL) {
 		return -EINVAL;
 	}
+	if (!ctx->initialized) {
+		memset(stats, 0, sizeof(*stats));
+		return 0;
+	}
 
 	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 	*stats = ctx->stats;
@@ -630,6 +640,10 @@ int slip_transport_get_stats(struct slip_transport_stats *stats)
 void slip_transport_reset_stats(void)
 {
 	struct slip_transport_ctx *ctx = &s_ctx;
+
+	if (!ctx->initialized) {
+		return;
+	}
 
 	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 	memset(&ctx->stats, 0, sizeof(ctx->stats));
@@ -648,26 +662,24 @@ int slip_transport_init(void)
 	struct slip_transport_ctx *ctx = &s_ctx;
 	const struct device *uart_dev;
 
+	k_mutex_lock(&s_init_mutex, K_FOREVER);
 	if (ctx->initialized) {
+		k_mutex_unlock(&s_init_mutex);
 		return -EALREADY;
 	}
 
-	/* Initialize synchronization primitives */
 	k_mutex_init(&ctx->tx_mutex);
 	k_mutex_init(&ctx->rx_mutex);
 	k_mutex_init(&ctx->stats_mutex);
 	k_sem_init(&ctx->rx_sem, 0, K_SEM_MAX_LIMIT);
 	ring_buf_init(&ctx->rx_ring, sizeof(ctx->rx_ring_buf), ctx->rx_ring_buf);
 
-	/* Initialize RX state */
 	ctx->rx_state = SLIP_STATE_IDLE;
 	ctx->rx_len = 0;
 	ctx->rx_overflow = false;
 
-	/* Reset statistics */
 	memset(&ctx->stats, 0, sizeof(ctx->stats));
 
-	/* Get UART device */
 #if DT_HAS_CHOSEN(lichen_slip_uart)
 	uart_dev = DEVICE_DT_GET(DT_CHOSEN(lichen_slip_uart));
 #else
@@ -677,7 +689,6 @@ int slip_transport_init(void)
 	if (uart_dev != NULL && device_is_ready(uart_dev)) {
 		ctx->uart_dev = uart_dev;
 
-		/* Configure UART interrupts for RX */
 		uart_irq_callback_user_data_set(uart_dev, uart_rx_callback, ctx);
 		uart_irq_rx_enable(uart_dev);
 
@@ -687,13 +698,18 @@ int slip_transport_init(void)
 		ctx->uart_dev = NULL;
 	}
 
-	/* Start RX processing thread */
-	k_thread_create(&s_rx_thread, s_rx_stack, K_THREAD_STACK_SIZEOF(s_rx_stack),
+	k_tid_t tid = k_thread_create(&s_rx_thread, s_rx_stack, K_THREAD_STACK_SIZEOF(s_rx_stack),
 			slip_rx_thread_fn, ctx, NULL, NULL,
 			RX_THREAD_PRIORITY, 0, K_NO_WAIT);
+	if (tid == NULL) {
+		k_mutex_unlock(&s_init_mutex);
+		LOG_ERR("slip_transport: k_thread_create failed");
+		return -ENOMEM;
+	}
 	k_thread_name_set(&s_rx_thread, "slip_rx");
 
 	ctx->initialized = true;
+	k_mutex_unlock(&s_init_mutex);
 	LOG_INF("SLIP transport initialized");
 
 	return 0;

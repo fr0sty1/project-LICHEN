@@ -90,8 +90,11 @@ struct lichen_meshtastic_adapter_packet_info {
 	uint8_t to_eui64[8];
 	uint8_t to_iid[8];
 	/*
-	 * Points into the ToRadio buffer passed to process_raw/feed_stream.
-	 * The pointer is valid only for the duration of handle_text().
+	 * WARNING: payload points directly into internal stream_buf/ToRadio buffer.
+	 * Valid ONLY during the callback that receives this packet_info (e.g.
+	 * handle_text()). DO NOT store the pointer - buffer is immediately
+	 * reused on next frame, leading to use-after-free or corruption.
+	 * Copy payload if retention is needed. Strict lifetime discipline required.
 	 */
 	const uint8_t *payload;
 	size_t payload_len;

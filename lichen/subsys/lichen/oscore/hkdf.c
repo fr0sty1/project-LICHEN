@@ -131,7 +131,7 @@ int lichen_hkdf_expand(const uint8_t prk[32],
 		}
 
 		/* counter (1-byte) */
-		buf[buf_len++] = counter++;
+		buf[buf_len++] = (uint8_t)counter++;
 
 		/* T(i) = HMAC(PRK, T(i-1) || info || i) */
 		int ret = hmac_sha256(prk, SHA256_HASH_LEN, buf, buf_len, t);
