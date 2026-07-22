@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-jxfz",
   "title": "DTN storage in coap_dtn.c uses raw byte array without TTL expiry or SenML/CBOR structure per spec 18 and senml.h",
-  "status": "open",
+  "status": "in_progress",
   "priority": 0,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T15:02:44.983771892Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:02:44.983771892Z",
+  "updated_at": "2026-07-22T15:22:58.118527192Z",
+  "started_at": "2026-07-22T15:22:58.118527192Z",
+  "lease_expires_at": "2026-07-22T15:27:58.118527192Z",
+  "heartbeat_at": "2026-07-22T15:22:58.118527192Z",
   "labels": [
     "codereview"
   ],
