@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-y139",
+  "title": "[codereview-pass3-robustness-3] Time-provider interaction and IETF style nits in new SFN subsection",
+  "description": "spec/02a-coordinated-capacity.md:125-150. New SFN wrap text uses good IETF keywords but misses explicit MUST for all nodes to use same modulo semantics in hash (cross-ref to draft-lichen-tdma). Time-provider interaction (ts validation against epoch_floor on wrap) not detailed. Desync recovery not yet a full FSM. P2. This completes first set of 3 codereviews after chunk 1. Do not close epic until all 3 passes clean.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:21:18.477189069Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:21:18.477189069Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-y139",
+      "depends_on_id": "project-LICHEN-ofrf",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:21:18.58438802Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
