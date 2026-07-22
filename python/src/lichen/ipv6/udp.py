@@ -65,6 +65,9 @@ class UdpDatagram:
         for name, port in (("src_port", self.src_port), ("dst_port", self.dst_port)):
             if not 0 <= port <= 0xFFFF:
                 raise UdpError(f"{name} out of range: {port}")
+        max_payload = 0xFFFF - UDP_HEADER_LENGTH
+        if len(self.payload) > max_payload:
+            raise UdpError(f"payload too large: {len(self.payload)} > {max_payload}")
         without_checksum = (
             self.src_port.to_bytes(2, "big")
             + self.dst_port.to_bytes(2, "big")
