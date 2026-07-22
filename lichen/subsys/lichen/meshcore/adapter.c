@@ -267,12 +267,14 @@ static int enqueue_time(struct lichen_meshcore_adapter *adapter)
 static struct lichen_meshcore_pending_event *
 pending_tail(struct lichen_meshcore_adapter *adapter)
 {
+	__ASSERT_NO_MSG(adapter->pending_tail < ARRAY_SIZE(adapter->pending));
 	return &adapter->pending[adapter->pending_tail];
 }
 
 static const struct lichen_meshcore_pending_event *
 pending_head(const struct lichen_meshcore_adapter *adapter)
 {
+	__ASSERT_NO_MSG(adapter->pending_head < ARRAY_SIZE(adapter->pending));
 	return &adapter->pending[adapter->pending_head];
 }
 

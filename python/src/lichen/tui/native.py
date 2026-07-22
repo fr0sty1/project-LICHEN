@@ -2519,7 +2519,9 @@ class NativeClientApp(App[None]):
         )
         try:
             messages = tuple(await self.client.inbox(self.inbox_path))
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_messaging(self._messaging_error(str(exc)))
             return
         self._set_messaging(
