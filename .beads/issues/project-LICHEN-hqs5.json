@@ -2,6 +2,7 @@
   "id": "project-LICHEN-hqs5",
   "title": "coap_msg.c: encode_inbox_cbor bounds check integer underflow",
   "description": "File: lichen/subsys/lichen/coap/coap_msg.c\nLine: 650\n\nThe bounds check in encode_inbox_cbor() uses:\n  for (size_t i = 0; i \u003c count \u0026\u0026 off \u003c buf_size - 100; i++)\n\nIf buf_size \u003c 100, the expression 'buf_size - 100' underflows (size_t is unsigned), wrapping to a very large value (~UINT64_MAX). This makes the condition 'off \u003c large_number' always true, effectively disabling bounds checking.\n\nThe loop then writes to buf[] without proper protection, causing buffer overflow.\n\nSame pattern exists in coap_keys.c encode_keys_list_cbor() at line 679, which is already tracked by project-LICHEN-byge.\n\nFix: Use safe comparison that doesn't underflow:\n  for (size_t i = 0; i \u003c count \u0026\u0026 off + 100 \u003c buf_size; i++)\n\nOr add explicit check:\n  if (buf_size \u003c 100) return 0;\n\nImpact: Buffer overflow when encode_inbox_cbor is called with small buffer (theoretical since callers currently use 512-byte buffers).",
+  "notes": "Fixed with commit 5c727131b88c3c3810f4945529740e30741fb562: added explicit buf==NULL || buf_size\u003c100 guard in encode_inbox_cbor() matching pattern in coap_keys.c. Original underflow (buf_size-100) already replaced by safe off+100\u003cbuf_size in prior work. No other underflow patterns found via grep.",
   "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T17:21:42.345134Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:08:12.742817195Z",
+  "updated_at": "2026-07-22T20:09:23.146821352Z",
   "started_at": "2026-07-22T20:08:12.742817195Z",
   "lease_expires_at": "2026-07-22T20:13:12.742817195Z",
   "heartbeat_at": "2026-07-22T20:08:12.742817195Z"
