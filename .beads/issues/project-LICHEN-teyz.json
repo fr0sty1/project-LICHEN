@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-teyz",
+  "title": "codereview-pass2: coap_status.c ENOBUFS vectors",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:13:13.424039133Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:13:13.424039133Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-teyz",
+      "depends_on_id": "project-LICHEN-2g58",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:13:13.528552291Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
