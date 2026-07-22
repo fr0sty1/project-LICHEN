@@ -2231,19 +2231,19 @@ class NativeClientApp(App[None]):
             radio_info = status.radio or {}
 
             # Extract duty cycle info from radio status if available
-            duty_usage = float(radio_info.get("duty_cycle_usage_pct") or 0.0)
-            duty_remaining = int(radio_info.get("duty_cycle_remaining_ms") or 36000)
-            duty_refill = int(radio_info.get("duty_cycle_refill_ms") or 0)
+            duty_usage = safe_float(radio_info.get("duty_cycle_usage_pct"), 0.0)
+            duty_remaining = safe_int(radio_info.get("duty_cycle_remaining_ms"), 36000)
+            duty_refill = safe_int(radio_info.get("duty_cycle_refill_ms"), 0)
 
             # Extract TX queue info if available
             queue_info = radio_info.get("tx_queue") or {}
             depth_by_priority = tuple(
-                (int(k or 0), int(v or 0))
+                (safe_int(k), safe_int(v))
                 for k, v in sorted(queue_info.get("depth_by_priority", {}).items())
             )
-            total_bytes = int(queue_info.get("total_bytes") or 0)
-            drain_time = int(queue_info.get("drain_time_ms") or 0)
-            oldest_age = int(queue_info.get("oldest_age_ms") or 0)
+            total_bytes = safe_int(queue_info.get("total_bytes"))
+            drain_time = safe_int(queue_info.get("drain_time_ms"))
+            oldest_age = safe_int(queue_info.get("oldest_age_ms"))
 
             self._set_radio_state(
                 RadioTuiState(
