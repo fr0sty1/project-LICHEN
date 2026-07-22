@@ -1,7 +1,7 @@
 {
   "id": "project-LICHEN-bhyz",
   "title": "[merge-conflict] worktree-worker18: Kconfig",
-  "notes": "Commit: 8a0d56310 (worker18 Kconfig merge resolution)",
+  "notes": "Commit: 2c5f1bdfc (Kconfig merge resolution in main); also d1a7eef81",
   "status": "closed",
   "priority": 1,
   "issue_type": "bug",
@@ -9,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:10.44511381Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:50:56.665291142Z",
+  "updated_at": "2026-07-22T23:51:14.46408221Z",
   "started_at": "2026-07-22T23:49:25.321108672Z",
   "closed_at": "2026-07-22T23:50:56.665291142Z",
   "close_reason": "Closed"
