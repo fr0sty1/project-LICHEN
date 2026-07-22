@@ -191,12 +191,33 @@ config LORA_LICHEN_GATEWAY_RPL_ROOT
 	  Initializes per AGENTS.md order after link_ctx. Drives Trickle DIOs
 	  as root for mesh formation. Updates /status to reflect joined root role.
 
+config LICHEN_GATEWAY_WIFI_SSID
+	string "WiFi SSID for Heltec V3 backhaul"
+	default "LICHEN-TEST"
+	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
+	help
+	  SSID for WiFi station mode on Heltec V3 6LBR (used by wifi_mgmt in main.c).
+
+config LICHEN_GATEWAY_WIFI_PSK
+	string "WiFi PSK for Heltec V3 backhaul"
+	default "lichen123"
+	depends on LICHEN_GATEWAY_PREFIX_DELEGATION
+	help
+	  Pre-shared key for WiFi STA. INSECURE default for bench; override per deployment.
+
 config LICHEN_GATEWAY_PREFIX_DELEGATION
 	bool "Enable IPv6 prefix delegation from WiFi/Ethernet backhaul to RPL mesh"
 	depends on LICHEN_RPL
 	depends on NET_DHCPV6
 	depends on NET_IPV6_ND
+	select WIFI
+	select NET_L2_WIFI_MGMT
+	select NET_IPV6_ND6
+	imply NET_DHCPV6_CLIENT
 	default y
+	help
+	  WiFi STA + upstream prefix to RPL DODAG for Heltec V3 6LBR (spec/appendix-border-router.md).
+	  Requires main.c event handlers + AGENTS.md init order. Increases heap (see board defconfig).
 
 config LICHEN_GATEWAY_RX1_DELAY_MS
 	int "RX1-style delay before answering a CoAP request (ms)"
