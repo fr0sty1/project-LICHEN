@@ -809,8 +809,12 @@ fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], _rule_id: u8) -> Result<usize
 
     let tail = &data[1 + r.residue_byte_end()..];
 
-    let udp_len = (8 + tail.len()) as u16;
-    let udp_cksum = udp_checksum(&src, &dst, src_port, dst_port, tail);
+    let total_len = 8usize.saturating_add(tail.len());
+    if total_len > u16::MAX as usize {
+        return Err(BufferTooSmall::new(total_len, u16::MAX as usize).into());
+    }
+    let udp_len = total_len as u16;
+    let udp_cksum = udp_checksum(&src, &dst, src_port, dst_port, tail)?;
     let total = 40 + 8 + tail.len();
     if total > out.len() {
         return Err(BufferTooSmall::new(total, out.len()).into());
@@ -905,8 +909,8 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
         }
     }
 
-    // Uncompressed fallback
-    let needed = 1 + packet.len();
+    // Uncompressed fallback (saturating_add prevents usize overflow)
+    let needed = packet.len().saturating_add(1);
     if out.len() < needed {
         return Err(BufferTooSmall::new(needed, out.len()).into());
     }
@@ -1053,7 +1057,7 @@ mod tests {
         let udp_len: u16 = 8 + payload.len() as u16;
 
         // Compute UDP checksum
-        let cksum = udp_checksum(&src_addr, &dst_addr, src_port, dst_port, payload);
+        let cksum = udp_checksum(&src_addr, &dst_addr, src_port, dst_port, payload).unwrap();
 
         // Build full IPv6 packet
         let mut packet = [0u8; 60];
@@ -1094,7 +1098,7 @@ mod tests {
         let payload = b"connect";
 
         let udp_len: u16 = 8 + payload.len() as u16;
-        let cksum = udp_checksum(&src_addr, &dst_addr, src_port, dst_port, payload);
+        let cksum = udp_checksum(&src_addr, &dst_addr, src_port, dst_port, payload).unwrap();
 
         let mut packet = [0u8; 64];
         packet[0] = 0x60;
@@ -1132,7 +1136,7 @@ mod tests {
         let payload = b"pub";
 
         let udp_len: u16 = 8 + payload.len() as u16;
-        let cksum = udp_checksum(&src_addr, &dst_addr, src_port, dst_port, payload);
+        let cksum = udp_checksum(&src_addr, &dst_addr, src_port, dst_port, payload).unwrap();
 
         let mut packet = [0u8; 64];
         packet[0] = 0x60;
