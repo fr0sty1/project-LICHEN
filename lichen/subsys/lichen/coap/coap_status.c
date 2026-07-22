@@ -1,23 +1,15 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
-#include <stdio.h>
-#include <string.h>
-<<<<<<< HEAD
-=======
 #include <errno.h>
+#include <stdio.h>
 #include <stdint.h>
->>>>>>> origin/integration/worker7-20260722
-
+#include <string.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/net/coap.h>
 #include <zephyr/net/coap_service.h>
-<<<<<<< HEAD
-#include <errno.h>
-=======
 #include <zephyr/net/net_ip.h>
->>>>>>> origin/integration/worker7-20260722
 
 #include <lichen/coap_status.h>
 
