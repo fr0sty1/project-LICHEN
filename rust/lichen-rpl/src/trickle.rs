@@ -167,9 +167,10 @@ impl TrickleTimer {
 
     /// Handle an inconsistency: shrink to `imin` and restart (RFC 6206 step 6).
     ///
-    /// No-op if the interval is already `imin` (RFC 6206 §4.2).
+    /// Starts timer if stopped; no-op if already at `imin` and running (RFC 6206 §4.2).
     pub fn reset(&mut self, now: u32, rand_offset: u32) {
-        let _ = self.try_reset(now, rand_offset);
+        self.try_reset(now, rand_offset)
+            .expect("invalid trickle timer transition");
     }
 
     pub fn try_reset(
@@ -286,8 +287,17 @@ mod tests {
         let mut t = TrickleTimer::new(1000, 4, 10);
         t.start(0, 0);
         let tt_before = t.transmit_time;
-        t.reset(0, 999); // different rand_offset — should not restart
+        t.reset(0, 999);
         assert_eq!(t.transmit_time, tt_before);
+    }
+
+    #[test]
+    fn reset_from_stopped_starts_timer() {
+        let mut t = TrickleTimer::new(1000, 4, 10);
+        assert_eq!(t.state, TrickleState::Stopped);
+        t.reset(0, 0);
+        assert_eq!(t.state, TrickleState::WaitingTransmit);
+        assert_eq!(t.interval, 1000);
     }
 
     #[test]
@@ -311,6 +321,12 @@ mod tests {
         // Verify non-overflowing case still works
         let t3 = TrickleTimer::new(1000, 4, 10); // 1000 * 16 = 16000
         assert_eq!(t3.max_interval, 16000);
+    }
+
+    #[test]
+    #[should_panic(expected = "Trickle Imin must be non-zero")]
+    fn new_rejects_zero_imin() {
+        let _ = TrickleTimer::new(0, 4, 10);
     }
 
     #[test]
