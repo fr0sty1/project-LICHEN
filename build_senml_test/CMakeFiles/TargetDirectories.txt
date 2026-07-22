@@ -1,3 +1,0 @@
-/Volumes/Attic/Desktop/Projects/project-LICHEN/.claude/worktrees/agent-aeadad85e0f7cfb30/build_senml_test/CMakeFiles/senml_test.dir
-/Volumes/Attic/Desktop/Projects/project-LICHEN/.claude/worktrees/agent-aeadad85e0f7cfb30/build_senml_test/CMakeFiles/edit_cache.dir
-/Volumes/Attic/Desktop/Projects/project-LICHEN/.claude/worktrees/agent-aeadad85e0f7cfb30/build_senml_test/CMakeFiles/rebuild_cache.dir

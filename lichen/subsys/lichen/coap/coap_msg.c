@@ -310,7 +310,7 @@ static int coap_respond(struct coap_resource *resource,
 			uint8_t resp_code,
 			const uint8_t *payload, size_t payload_len)
 {
-	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 	struct coap_packet resp;
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint8_t tkl = coap_header_get_token(request, token);
@@ -487,7 +487,7 @@ int lichen_msg_sent_post(struct coap_resource *resource,
 
 	/* Build response with Location-Path */
 	{
-		uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+		static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 		struct coap_packet resp;
 		uint8_t token[COAP_TOKEN_MAX_LEN];
 		uint8_t tkl = coap_header_get_token(request, token);
@@ -690,7 +690,7 @@ int lichen_msg_inbox_get_handler(struct coap_resource *resource,
 void lichen_msg_inbox_notify_cb(struct coap_resource *resource,
 				struct coap_observer *observer)
 {
-	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 	uint8_t cbor_buf[MSG_CBOR_MAX_SIZE];
 	struct coap_packet notif;
 	size_t cbor_len;

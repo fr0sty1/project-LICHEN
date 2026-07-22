@@ -57,7 +57,7 @@ static int deaddrop_post(struct coap_resource *resource, struct coap_packet *req
 static int deaddrop_get(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len) {
 	if (s_provider == NULL || s_provider->retrieve == NULL) return 0x84;
 	k_mutex_lock(&s_dtn_buf_mutex, K_FOREVER);
-	uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
+	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 	int len = s_provider->retrieve(buf, sizeof(buf), NULL);
 	k_mutex_unlock(&s_dtn_buf_mutex);
 	if (len < 0) return 0xA0;

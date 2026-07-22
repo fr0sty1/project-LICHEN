@@ -173,8 +173,8 @@ static int encode_record(zcbor_state_t *state,
 {
 	/* Count map entries */
 	size_t entries = 1; /* value always present */
-	if (is_first && pack->base_name != NULL) entries++;
 	if (is_first && pack->has_base_time) entries++;
+	if (is_first && pack->base_name != NULL) entries++;
 	if (rec->name != NULL) entries++;
 	if (rec->unit != NULL) entries++;
 	if (rec->has_time) entries++;

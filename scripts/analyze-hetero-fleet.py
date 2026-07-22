@@ -57,6 +57,8 @@ def parse_telemetry(content: str, stats: NodeStats) -> bool:
         if event.get("schema") != "lichen.telemetry.v1":
             continue
         direction = event.get("direction")
+        if isinstance(direction, str):
+            direction = direction.lower()
         packet_hash = event.get("packet_hash")
         if direction not in {"tx", "rx"} or not isinstance(packet_hash, str):
             continue
