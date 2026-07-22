@@ -3,15 +3,15 @@
   "title": "TUI _is_sensitive_display_name has incomplete redaction heuristic",
   "description": "File: python/src/lichen/tui/native.py\nLines: 451-459\n\nThe sensitive field detection:\n\n    SENSITIVE_FIELD_PARTS = (\n        \"key\", \"payload\", \"psk\", \"raw\", \"secret\", \"seed\", \"token\", \"password\",\n    )\n    \n    def _is_sensitive_display_name(name: str) -\u003e bool:\n        lowered = name.lower()\n        leaf = lowered.rsplit(\".\", maxsplit=1)[-1]\n        if leaf == \"frame\":\n            return True\n        return (\n            any(part in lowered for part in SENSITIVE_FIELD_PARTS)\n            and \"fingerprint\" not in lowered\n        )\n\nMissing common sensitive field patterns:\n- 'credential' / 'cred'\n- 'auth' (authorization tokens)\n- 'private'\n- 'cert' / 'certificate' (could contain private key material)\n- 'nonce' (cryptographic nonces can aid attacks if exposed)\n- 'iv' (initialization vectors)\n- 'mac' (message authentication codes)\n\nAlso, the 'raw' keyword may over-redact legitimate fields like 'raw_data' or 'raw_count'.\n\nImpact: Potential exposure of sensitive values through diagnostic displays.\n\nFix: Expand the sensitive field list and consider using more specific patterns:\n    SENSITIVE_FIELD_PARTS = (\n        \"key\", \"psk\", \"secret\", \"seed\", \"token\", \"password\",\n        \"credential\", \"cred\", \"auth\", \"private\", \"nonce\", \"mac\",\n    )",
   "notes": "Commit: ddc683b41",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:30:19.576311Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:31:18.243105695Z",
+  "updated_at": "2026-07-22T23:31:20.222596958Z",
   "started_at": "2026-07-22T23:28:52.735027482Z",
-  "lease_expires_at": "2026-07-22T23:33:52.735027482Z",
-  "heartbeat_at": "2026-07-22T23:28:52.735027482Z"
+  "closed_at": "2026-07-22T23:31:20.222596958Z",
+  "close_reason": "Closed"
 }
