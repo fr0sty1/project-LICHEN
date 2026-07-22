@@ -16,8 +16,6 @@ These are pure functions over a snapshot; the caller decides when to snapshot
 the evolving DODAG during a run.
 """
 
-from __future__ import annotations
-
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 

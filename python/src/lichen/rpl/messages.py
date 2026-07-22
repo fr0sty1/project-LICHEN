@@ -22,8 +22,6 @@ generic :class:`RplOption` values and built out by the DODAG state machine.
 LICHEN uses RPLInstanceID 0 and Non-Storing mode (MOP=1) per spec B.2.
 """
 
-from __future__ import annotations
-
 RPL_ICMPV6_TYPE = 155
 DIO_BASE_LENGTH = 24
 DODAGID_LENGTH = 16
