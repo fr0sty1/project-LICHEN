@@ -656,7 +656,7 @@ bool slip_transport_is_ready(void)
 {
 	struct slip_transport_ctx *ctx = &s_ctx;
 
-	return ctx->initialized && ctx->uart_dev != NULL;
+	return ctx->initialized;
 }
 
 int slip_transport_init(void)
