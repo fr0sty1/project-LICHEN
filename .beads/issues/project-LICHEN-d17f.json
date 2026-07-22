@@ -2,12 +2,16 @@
   "id": "project-LICHEN-d17f",
   "title": "codereview pass 2/3 post-chunk2: Update test/vectors and generate.py to use new hash instead of any CRC for short_addr tests",
   "description": "P3 finding: test/vectors/frame.json and generate.py may assume old CRC16 behavior for short address examples. Ensure vectors match new link layer hash for CCP consistency. Discovered during codereview of CCP-15.8.3 pseudocode update.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:42:03.583877211Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:42:03.583877211Z",
+  "updated_at": "2026-07-22T22:28:28.64559022Z",
+  "started_at": "2026-07-22T22:28:28.64559022Z",
+  "lease_expires_at": "2026-07-22T22:33:28.64559022Z",
+  "heartbeat_at": "2026-07-22T22:28:28.64559022Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-d17f",
