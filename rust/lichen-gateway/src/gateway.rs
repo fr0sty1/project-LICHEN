@@ -9,18 +9,14 @@ use lichen_node::{RplEvent, RplNode};
 use lichen_schc::codec::{compress, decompress, SchcError};
 use tracing::{info, warn};
 
-<<<<<<< HEAD
-=======
-/// Concentrator trait for border router link abstraction (LoRa HAT, SLIP, sim).
-/// Allows multiple concentrator implementations for different hardware.
+use std::vec::Vec;
+
 pub trait Concentrator {
     fn send(&mut self, data: &[u8]) -> Result<(), String>;
     fn receive(&mut self) -> Result<Option<Vec<u8>>, String>;
     fn get_node_id(&self) -> NodeId;
 }
 
-/// Top-level border router state.
->>>>>>> origin/integration/worker4-20260722
 #[derive(Debug)]
 pub struct Gateway {
     pub rpl_node: RplNode,
@@ -98,10 +94,9 @@ impl Gateway {
     pub fn add_route(&mut self, addr: [u8; 16], node_id: NodeId) {
         self.routes.insert(addr, node_id);
     }
-<<<<<<< HEAD
 
     pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
-        self.routes.contains_key(dst) || (dst[0] == 0xfe && dst[1] == 0x80) || self.rpl_node.router.lookup_route(dst).is_some()
+        self.routes.contains_key(dst) || (dst[0] == 0xfe && dst[1] == 0x80) || (dst[0] == 0xfd) || self.rpl_node.router.lookup_route(dst).is_some()
     }
 
     pub fn process_rpl(&mut self, frame: &[u8], now_ms: u32) -> (Option<Vec<u8>>, RplEvent) {
@@ -114,13 +109,10 @@ impl Gateway {
             None
         };
         (reply_opt, event)
-=======
-    pub fn is_local_mesh(&self, dst: &[u8; 16]) -> bool {
-        dst[0] == 0xfe && dst[1] == 0x80 || dst[0] == 0xfd
     }
+
     pub fn mesh_to_mesh(&self, ipv6: &[u8]) -> Option<Vec<u8>> {
         Some(ipv6.to_vec())
->>>>>>> origin/integration/worker8-20260722
     }
 }
 
@@ -205,21 +197,14 @@ mod tests {
     }
 
     #[test]
-<<<<<<< HEAD
-    fn yggdrasil_cross_mesh_routing() {
+    fn is_local_mesh_and_mesh_to_mesh() {
         let gw = test_gateway();
         let local = ll(1);
         let ygg_cross = [0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2];
         assert!(gw.is_local_mesh(&local.0));
         assert!(!gw.is_local_mesh(&ygg_cross));
-=======
-    fn local_mesh_packet_uses_mesh_to_mesh_path() {
-        let mut gw = test_gateway();
-        let dst = ll(2);
-        assert!(gw.is_local_mesh(&dst.0));
         let packet = [0x60, 0, 0, 0, 40, 0, 58, 0, 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
         let result = gw.mesh_to_mesh(&packet);
         assert!(result.is_some());
->>>>>>> origin/integration/worker8-20260722
     }
 }
