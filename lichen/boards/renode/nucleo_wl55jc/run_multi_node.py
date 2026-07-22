@@ -6,17 +6,15 @@ Usage: python3 run_multi_node.py [num_nodes]
 """
 
 import asyncio
-import subprocess
 import sys
-import signal
 from pathlib import Path
 
 # Add project python path
 project_root = Path(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root / "python" / "src"))
 
-from lichen.sim.simulation import Simulation
-from lichen.sim.renode_server import start_renode_server
+from lichen.sim.renode_server import start_renode_server  # noqa: E402
+from lichen.sim.simulation import Simulation  # noqa: E402
 
 RENODE_SCRIPT_TEMPLATE = """\
 :name: Node {node_id}
