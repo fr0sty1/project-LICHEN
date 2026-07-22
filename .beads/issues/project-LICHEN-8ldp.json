@@ -2,6 +2,7 @@
   "id": "project-LICHEN-8ldp",
   "title": "Missing Hdr Ext Len calculation in SRH write",
   "description": "File: lichen/subsys/lichen/rpl/routing.c:83-113\n\nEven if the partial SRH format (starting at routing-type byte) is intentional, the code doesn't help the caller compute Hdr Ext Len which is required per RFC 6554.\n\nRFC 6554 defines Hdr Ext Len as: (n * 2) where n = number of 128-bit addresses, if CmprI=CmprE=0 (uncompressed).\n\nThe caller must compute this independently, which is error-prone. Consider adding a helper function:\n```c\nstatic inline uint8_t lichen_rpl_srh_hdr_ext_len(uint8_t num_addresses) {\n    return num_addresses * 2;  // uncompressed\n}\n```\n\nImpact: Callers may incorrectly compute Hdr Ext Len leading to malformed packets.",
+  "notes": "Commit: ce35621f6",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:52:47.678621Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:09:02.225795455Z",
+  "updated_at": "2026-07-22T23:11:19.852807958Z",
   "started_at": "2026-07-22T23:09:02.225795455Z",
   "lease_expires_at": "2026-07-22T23:14:02.225795455Z",
   "heartbeat_at": "2026-07-22T23:09:02.225795455Z"
