@@ -2,15 +2,15 @@
   "id": "project-LICHEN-puqs",
   "title": "[merge-conflict] worktree-worker22: Kconfig",
   "notes": "Commit: fb5443c8f",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:41:05.312958435Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:53:54.88536972Z",
+  "updated_at": "2026-07-22T23:53:58.29243937Z",
   "started_at": "2026-07-22T23:50:09.829429404Z",
-  "lease_expires_at": "2026-07-22T23:55:09.829429404Z",
-  "heartbeat_at": "2026-07-22T23:50:09.829429404Z"
+  "closed_at": "2026-07-22T23:53:58.29243937Z",
+  "close_reason": "Resolved Kconfig merge conflicts in gateway boards and related files; cleaned heltec_wifi_lora32_v3_esp32s3_procpu.conf, t_deck_esp32s3_procpu.conf, xiao_s3_wio_sx1262.conf; committed fb5443c8f"
 }
