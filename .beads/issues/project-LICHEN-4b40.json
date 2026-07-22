@@ -2,11 +2,15 @@
   "id": "project-LICHEN-4b40",
   "title": "stream_buf contents exposed via pointer in packet_info",
   "description": "File: lichen/subsys/lichen/meshtastic/adapter.c:1888-1890\n\nAfter processing a stream frame:\n  last = lichen_meshtastic_adapter_process_raw(\n      adapter, adapter-\u003estream_buf, adapter-\u003estream_len);\n\nAnd in parse_packet, pointers into the packet buffer are stored:\n  info-\u003epayload = payload;  // Points into stream_buf\n\nThe comment at adapter.h:91-96 documents this:\n  /*\n   * Points into the ToRadio buffer passed to process_raw/feed_stream.\n   * The pointer is valid only for the duration of handle_text().\n   */\n\nSECURITY CONCERN: If handle_text() stores the pointer for later use, or if another frame arrives before handle_text() completes (in interrupt-driven systems), the payload could be overwritten.\n\nThe stream_buf is reused for each frame, so the window of validity is very small. This is documented, but the danger of pointer escaping should be emphasized more strongly in the header.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:50:40.843446Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:50:40.843474Z"
+  "updated_at": "2026-07-22T22:57:47.466702384Z",
+  "started_at": "2026-07-22T22:57:47.466702384Z",
+  "lease_expires_at": "2026-07-22T23:02:47.466702384Z",
+  "heartbeat_at": "2026-07-22T22:57:47.466702384Z"
 }
