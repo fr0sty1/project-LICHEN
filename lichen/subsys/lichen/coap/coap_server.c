@@ -37,11 +37,9 @@ LOG_MODULE_REGISTER(lichen_coap_server, CONFIG_LICHEN_COAP_SERVER_LOG_LEVEL);
 /* CoAP server port */
 static uint16_t s_coap_port = 5683;
 
-/* Registered handlers */
 static struct lichen_coap_server_handlers s_handlers;
-
-/* Response buffer size for stack allocation */
-#define COAP_RESPONSE_BUF_SIZE CONFIG_COAP_SERVER_MESSAGE_SIZE
+static K_MUTEX_DEFINE(s_coap_response_mutex);
+static uint8_t s_coap_response_buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
 
 /*
  * Common response helper for all CoAP resources (including deaddrop_post).
@@ -55,21 +53,23 @@ int lichen_coap_respond(struct coap_resource *resource,
 			const uint8_t *payload, size_t payload_len)
 {
 	struct coap_packet response;
-	uint8_t response_buf[COAP_RESPONSE_BUF_SIZE];
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint16_t id;
 	uint8_t tkl;
 	int ret;
+
+	k_mutex_lock(&s_coap_response_mutex, K_FOREVER);
 
 	id = coap_header_get_id(request);
 	tkl = coap_header_get_token(request, token);
 	uint8_t type = (coap_header_get_type(request) == COAP_TYPE_CON)
 		       ? COAP_TYPE_ACK : COAP_TYPE_NON_CON;
 
-	ret = coap_packet_init(&response, response_buf, sizeof(response_buf),
+	ret = coap_packet_init(&response, s_coap_response_buf, sizeof(s_coap_response_buf),
 			       COAP_VERSION_1, type, tkl, token, resp_code, id);
 	if (ret < 0) {
 		LOG_ERR("Failed to init response packet: %d", ret);
+		k_mutex_unlock(&s_coap_response_mutex);
 		return ret;
 	}
 
@@ -78,23 +78,28 @@ int lichen_coap_respond(struct coap_resource *resource,
 					     CBOR_CONTENT_FORMAT);
 		if (ret < 0) {
 			LOG_ERR("Failed to add content-format: %d", ret);
+			k_mutex_unlock(&s_coap_response_mutex);
 			return ret;
 		}
 
 		ret = coap_packet_append_payload_marker(&response);
 		if (ret < 0) {
 			LOG_ERR("Failed to add payload marker: %d", ret);
+			k_mutex_unlock(&s_coap_response_mutex);
 			return ret;
 		}
 
 		ret = coap_packet_append_payload(&response, payload, (uint16_t)payload_len);
 		if (ret < 0) {
 			LOG_ERR("Failed to add payload: %d", ret);
+			k_mutex_unlock(&s_coap_response_mutex);
 			return ret;
 		}
 	}
 
-	return coap_resource_send(resource, &response, addr, addr_len, NULL);
+	ret = coap_resource_send(resource, &response, addr, addr_len, NULL);
+	k_mutex_unlock(&s_coap_response_mutex);
+	return ret;
 }
 
 /*
@@ -106,23 +111,27 @@ static int send_ack(struct coap_resource *resource,
 		    uint8_t code)
 {
 	struct coap_packet response;
-	uint8_t response_buf[COAP_RESPONSE_BUF_SIZE];
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint16_t id;
 	uint8_t tkl;
 	int ret;
 
+	k_mutex_lock(&s_coap_response_mutex, K_FOREVER);
+
 	id = coap_header_get_id(request);
 	tkl = coap_header_get_token(request, token);
 
-	ret = coap_packet_init(&response, response_buf, sizeof(response_buf),
+	ret = coap_packet_init(&response, s_coap_response_buf, sizeof(s_coap_response_buf),
 			       COAP_VERSION_1, COAP_TYPE_ACK, tkl, token,
 			       code, id);
 	if (ret < 0) {
+		k_mutex_unlock(&s_coap_response_mutex);
 		return ret;
 	}
 
-	return coap_resource_send(resource, &response, addr, addr_len, NULL);
+	ret = coap_resource_send(resource, &response, addr, addr_len, NULL);
+	k_mutex_unlock(&s_coap_response_mutex);
+	return ret;
 }
 
 /*
@@ -394,7 +403,6 @@ static int msg_inbox_post(struct coap_resource *resource,
 			  struct sockaddr *addr, socklen_t addr_len)
 {
 	struct coap_packet response;
-	uint8_t response_buf[COAP_RESPONSE_BUF_SIZE];
 	uint8_t token[COAP_TOKEN_MAX_LEN];
 	uint16_t id;
 	uint8_t tkl;
@@ -421,41 +429,46 @@ static int msg_inbox_post(struct coap_resource *resource,
 					   COAP_RESPONSE_CODE_BAD_REQUEST, NULL, 0);
 	}
 
-	/* Build response with Location-Path for created message */
+	k_mutex_lock(&s_coap_response_mutex, K_FOREVER);
+
 	id = coap_header_get_id(request);
 	tkl = coap_header_get_token(request, token);
 
-	ret = coap_packet_init(&response, response_buf, sizeof(response_buf),
+	ret = coap_packet_init(&response, s_coap_response_buf, sizeof(s_coap_response_buf),
 			       COAP_VERSION_1, COAP_TYPE_ACK, tkl, token,
 			       COAP_RESPONSE_CODE_CREATED, id);
 	if (ret < 0) {
+		k_mutex_unlock(&s_coap_response_mutex);
 		return ret;
 	}
 
-	/* Add Location-Path: /msg/sent/<id> */
 	ret = coap_packet_append_option(&response, COAP_OPTION_LOCATION_PATH,
 					"msg", 3);
 	if (ret < 0) {
+		k_mutex_unlock(&s_coap_response_mutex);
 		return ret;
 	}
 
 	ret = coap_packet_append_option(&response, COAP_OPTION_LOCATION_PATH,
 					"sent", 4);
 	if (ret < 0) {
+		k_mutex_unlock(&s_coap_response_mutex);
 		return ret;
 	}
 
-	/* Convert msg_id to string */
 	char id_str[12];
 	int id_len = snprintf(id_str, sizeof(id_str), "%u", msg_id);
 
 	ret = coap_packet_append_option(&response, COAP_OPTION_LOCATION_PATH,
 					id_str, id_len);
 	if (ret < 0) {
+		k_mutex_unlock(&s_coap_response_mutex);
 		return ret;
 	}
 
-	return coap_resource_send(resource, &response, addr, addr_len, NULL);
+	ret = coap_resource_send(resource, &response, addr, addr_len, NULL);
+	k_mutex_unlock(&s_coap_response_mutex);
+	return ret;
 }
 
 static const char * const msg_inbox_path[] = { "msg", "inbox", NULL };
