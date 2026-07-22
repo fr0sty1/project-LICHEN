@@ -205,7 +205,7 @@ class DaoManager:
         - None: incomplete chain (parent not yet advertised) or loop detected
         - []: target equals node_address (pathological: root routing to itself)
         """
-        self.routing_table._routes.clear()
+        self.routing_table.clear()
         for target in self._parent_map:
             path = self._assemble_path(target)
             if path:

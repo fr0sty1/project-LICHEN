@@ -404,9 +404,7 @@ class Router:
         if addr in self._ULA_PREFIX:
             return AddressClass.MESH_LOCAL
 
-        # Why check mesh_prefixes: GUA prefixes from DIO/border router
-        # should be routed as mesh-local.
-        for prefix in self.mesh_prefixes:
+        for prefix in list(self.mesh_prefixes):
             if addr in prefix:
                 return AddressClass.MESH_LOCAL
 
