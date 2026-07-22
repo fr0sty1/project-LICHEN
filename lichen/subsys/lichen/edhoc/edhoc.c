@@ -706,8 +706,12 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 	 * for verification. Without this check, a malicious party could include
 	 * arbitrary ID_CRED data while we verify against a different key.
 	 */
-	if (id_cred_r.len != EDHOC_ED25519_PK_LEN ||
-	    crypto_verify32(id_cred_r.value, peer_pubkey) != 0) {
+	if (id_cred_r.len != EDHOC_ED25519_PK_LEN) {
+		LOG_WRN("Peer identity mismatch");
+		ret = -EACCES;
+		goto err_wipe;
+	}
+	if (crypto_verify32(id_cred_r.value, peer_pubkey) != 0) {
 		LOG_WRN("Peer identity mismatch");
 		ret = -EACCES;
 		goto err_wipe;
@@ -1299,8 +1303,12 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 	 * for verification. Without this check, a malicious party could include
 	 * arbitrary ID_CRED data while we verify against a different key.
 	 */
-	if (id_cred_i.len != EDHOC_ED25519_PK_LEN ||
-	    crypto_verify32(id_cred_i.value, peer_pubkey) != 0) {
+	if (id_cred_i.len != EDHOC_ED25519_PK_LEN) {
+		LOG_WRN("Peer identity mismatch");
+		ret = -EACCES;
+		goto err_wipe;
+	}
+	if (crypto_verify32(id_cred_i.value, peer_pubkey) != 0) {
 		LOG_WRN("Peer identity mismatch");
 		ret = -EACCES;
 		goto err_wipe;
