@@ -694,15 +694,7 @@ void oscore_ctx_free(struct oscore_ctx *ctx)
 		replay_clear_pending_context_locked(ctx_idx);
 	}
 
-	/* Secure wipe of key material (crypto_wipe cannot be optimized away) */
-	crypto_wipe(ctx->master_secret, sizeof(ctx->master_secret));
-	crypto_wipe(ctx->master_salt, sizeof(ctx->master_salt));
-	crypto_wipe(ctx->sender_key, sizeof(ctx->sender_key));
-	crypto_wipe(ctx->recipient_key, sizeof(ctx->recipient_key));
-	crypto_wipe(ctx->common_iv, sizeof(ctx->common_iv));
-	crypto_wipe(ctx->id_context, sizeof(ctx->id_context)); /* python-ano.74 */
-	ctx->has_peer_eui64 = false;
-	ctx->active = false;
+	crypto_wipe(ctx, sizeof(*ctx));
 
 	k_mutex_unlock(&s_ctx_mutex);
 }
