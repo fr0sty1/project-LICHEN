@@ -619,8 +619,8 @@ When multiple next-hops have equal hop count:
 
 ```
 def select_next_hop(candidates):
-    # Prefer least-congested path. See draft-lichen-tdma §2a.2
-    # for TDMA channel selection + now() SFN wrap semantics.
+    # Prefer least-congested path. See Section 2a.2 of draft-lichen-tdma
+    # for TDMA channel selection + now() SFN wrap semantics (unsigned modular arithmetic).
     return min(candidates, key=lambda n: n.queue_depth)
 ```
 

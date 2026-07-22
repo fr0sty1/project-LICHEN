@@ -279,7 +279,7 @@ Sender State Entry:
 
 **Wrap Behavior:**
 
-At ~1 packet/second, 16-bit seqnum wraps every ~18 hours (per draft-lichen-tdma §2a.2 for SFN/now() unsigned wrap semantics). The epoch
+At ~1 packet/second, 16-bit seqnum wraps every ~18 hours (per Section 2a.2 of draft-lichen-tdma for SFN/now() unsigned modular arithmetic / wrap semantics). The epoch
 increment ensures the 24-bit logical counter advances monotonically.
 At maximum traffic (10 pkt/sec), epoch wraps in ~7.5 years--acceptable.
 
