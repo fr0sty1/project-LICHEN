@@ -3,15 +3,15 @@
   "title": "EDHOC: Missing length validation before memcpy in multiple locations",
   "description": "CORRECTNESS: Several memcpy calls have implicit length assumptions that could cause issues if constants are changed.\n\nLocations:\n1. Line 501: memcpy(ctx-\u003eg_y, g_y_ct2.value, EDHOC_X25519_KEY_LEN)\n   - No explicit check that ctx-\u003eg_y has size \u003e= EDHOC_X25519_KEY_LEN\n   - Relies on struct definition matching constant\n\n2. Line 864: memcpy(ctx-\u003eg_x, g_x.value, EDHOC_X25519_KEY_LEN)\n   - Same issue for g_x\n\n3. Lines 399-400, 788-789: memcpy(ctx-\u003eed_seed/ed_pubkey, ...)\n   - Assumes caller buffer is exactly 32 bytes\n\nWhile these are currently safe due to struct definitions, they create maintenance hazards:\n- If EDHOC_X25519_KEY_LEN is changed but struct fields aren't updated\n- Static analysis tools may flag these as potential overflows\n\nFix: Add static_assert or explicit size validation:\nBUILD_ASSERT(sizeof(ctx-\u003eg_y) \u003e= EDHOC_X25519_KEY_LEN);\n\nFile: lichen/subsys/lichen/edhoc/edhoc.c:501,864,399-400,788-789",
   "notes": "Commit: 30675e235 - Extended BUILD_ASSERT coverage to eph_sk in both initiator/responder structs (plus existing ones for g_y/g_x/ed_seed/pubkey). All memcpy targets now explicitly validated at compile time. Resolves maintenance hazard.",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 2,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:46:37.2828Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:16:01.704202854Z",
+  "updated_at": "2026-07-22T20:16:02.119646571Z",
   "started_at": "2026-07-22T20:15:18.301356891Z",
-  "lease_expires_at": "2026-07-22T20:20:18.301356891Z",
-  "heartbeat_at": "2026-07-22T20:15:18.301356891Z"
+  "closed_at": "2026-07-22T20:16:02.119646571Z",
+  "close_reason": "BUILD_ASSERTs added/extended for all key buffers (commit 30675e235). Static analysis and maintenance issues fixed."
 }
