@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-mncb",
   "title": "codereview-pass3: duplicate coap_respond and deaddrop_get between coap_deaddrop.c and coap_dtn.c",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T15:21:27.708484625Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:21:27.708484625Z",
+  "updated_at": "2026-07-22T23:08:02.921923583Z",
+  "started_at": "2026-07-22T23:08:02.921923583Z",
+  "lease_expires_at": "2026-07-22T23:13:02.921923583Z",
+  "heartbeat_at": "2026-07-22T23:08:02.921923583Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-mncb",

@@ -2,10 +2,14 @@
   "id": "project-LICHEN-9e4w",
   "title": "[codereview-pass3-3] coap_status.c: cast on const resource for coap_resource_notify is acceptable but not ideal; consider non-const resources in follow-up",
   "description": "With the initialized guard added, the notify functions are now functional and no longer dead code. The const cast works because the service uses the pointer for observer list. No compile issues expected. P3 style. No P0-P2 in this pass. All prior review beads from this task should be addressed before closing project-LICHEN-2op3. discovered-from:project-LICHEN-2op3",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T16:10:50.904957806Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:10:50.904957806Z"
+  "updated_at": "2026-07-22T23:08:02.886356403Z",
+  "started_at": "2026-07-22T23:08:02.886356403Z",
+  "lease_expires_at": "2026-07-22T23:13:02.886356403Z",
+  "heartbeat_at": "2026-07-22T23:08:02.886356403Z"
 }
