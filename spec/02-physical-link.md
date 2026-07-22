@@ -26,25 +26,29 @@ LoRa Chirp Spread Spectrum (CSS) as implemented by Semtech SX126x and SX127x.
 
 ### 3.3. Frequency Bands and Multi-Channel Coordination
 
-Control channel (CH0): Announces, DIO, DIS, DAO. Beacons (if TDMA). All nodes MUST listen on CH0 when idle. Data channels (CH1-N): Application traffic only. Node selects channel per-packet or per-flow.
+**Channel Plan**
 
-Coordination uses hash-based: data_ch = 1 + (hash(src_iid ^ dst_iid) mod (N_CHANNELS - 1)). Or rendezvous via announced RX_CHANNEL in Announce. Gateway-assigned in DIO for load balancing.
+| Channel | Role | Traffic | Listen Requirement |
+|---------|------|---------|--------------------|
+| CH0 (control) | Routing, control | Announces, DIO, DIS, DAO, beacons (TDMA) | All nodes MUST listen when idle |
+| CH1-N (data) | Application | App traffic only | Per-packet selection |
 
-Regional parameters: EU868: 8 channels (868.1-868.5, 867.1-867.9); US915: 64 uplink + 8 downlink. Channel list in regional config.
+**Coordination Methods** (see CCP-9 in 02a-coordinated-capacity.md)
+
+- Hash-based (stateless): `data_ch = 1 + (hash(src_iid ^ dst_iid) mod (N_CHANNELS - 1))`
+- Rendezvous: Announce includes `rx_channel`; sender uses announced (TOFU pinning)
+- Gateway-assigned: DIO carries channel for load balancing (MRHOF variant)
+
+**Regional Parameters**
+
+Channel list in regional config (not hardcoded):
+
+- EU868: 8 channels (868.1-868.5, 867.1-867.9)
+- US915: 64 uplink + 8 downlink
 
 **Backwards Compatibility**
 
-No flag day required.
-
-- Old nodes: Stay on CH0 (current single-channel behavior)
-- New nodes: Use CH0 for control, data channels for application traffic
-- Mixed network: CH0 carries ALL traffic types for old nodes
-
-CH0 MUST remain the control channel AND fallback data channel. Old nodes never leave CH0, so all traffic TO old nodes MUST be on CH0. New nodes MUST listen on CH0 for routing (announces, DIO). New nodes MAY use data channels for traffic between new nodes only. Gateway MUST receive on all channels (or round-robin scan).
-
-Channel selection logic: if dst is old_node or dst.rx_channel unknown: use CH0 else: use dst.rx_channel (from announce) or hash-based.
-
-Degradation: Traffic to/from old nodes uses CH0 only. New-to-new traffic uses data channels. Capacity scales with fraction of new nodes.
+No flag day required. CH0 is universal fallback. Old nodes stay on CH0. New nodes listen on CH0 for routing + data channels for new-to-new. Gateway RX on all channels. Selection: CH0 if old/unknown else announced or hash. Degradation scales with new node fraction. Test vectors in test/vectors/ccp9*.json and ccp16*.json.
 
 ### 3.5. Spreading Factor Assignment for Orthogonal Channels
 
