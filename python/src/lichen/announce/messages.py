@@ -64,9 +64,7 @@ class AnnounceMessage:
         signature: 48-byte Schnorr signature over signed_data().
         app_data: Optional application data (node name, capabilities).
         flags: Reserved for future use.
-        rx_channel: u8 RX channel for CCP-9 rendezvous.
     """
-
 
     originator_iid: bytes
     pubkey: bytes
@@ -76,7 +74,6 @@ class AnnounceMessage:
     signature: bytes = field(default=b"")
     app_data: bytes = field(default=b"")
     flags: int = 0
-    rx_channel: int = 0
 
     def __post_init__(self) -> None:
         if len(self.originator_iid) != 8:
@@ -95,13 +92,12 @@ class AnnounceMessage:
             )
         if not 0 <= self.flags <= 0xFF:
             raise AnnounceError(f"flags out of range: {self.flags}")
-        if not 0 <= self.rx_channel <= 15:
-            raise AnnounceError(f"rx_channel out of range: {self.rx_channel}")
         if self.signature and len(self.signature) != SIGNATURE_LENGTH:
             raise AnnounceError(
                 f"signature must be 0 or {SIGNATURE_LENGTH} bytes, "
                 f"got {len(self.signature)}"
             )
+
 
     def signed_data(self) -> bytes:
         """Data covered by the signature (spec 9.2 + CCP-9).
@@ -144,9 +140,8 @@ class AnnounceMessage:
             raise AnnounceError("cannot serialize unsigned announce message")
 
         return (
-            bytes([ANNOUNCE_TYPE, self.flags, self.hop_count, self.rx_channel])
+            bytes([ANNOUNCE_TYPE, self.flags, self.hop_count])
             + self.seq_num.to_bytes(2, "big")
-            + bytes([self.rx_channel])
             + self.originator_iid
             + self.pubkey
             + self.signature
