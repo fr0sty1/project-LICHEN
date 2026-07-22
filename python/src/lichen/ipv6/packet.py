@@ -197,7 +197,9 @@ class IPv6Packet:
             )
             chunks.append(ext.to_bytes(nxt))
         ext_bytes = b"".join(chunks)
-
+        pl = len(ext_bytes) + len(self.payload)
+        if not 0 <= pl <= 0xFFFF:
+            raise PacketError(f"payload_length out of range: {pl}")
         wire_next_header = (
             self.extension_headers[0].header_type
             if self.extension_headers
@@ -206,7 +208,7 @@ class IPv6Packet:
         header = replace(
             self.header,
             next_header=wire_next_header,
-            payload_length=len(ext_bytes) + len(self.payload),
+            payload_length=pl,
         )
         return header.to_bytes() + ext_bytes + self.payload
 

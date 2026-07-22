@@ -21,6 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import IntEnum
 from ipaddress import IPv6Address
+from typing import Union
 
 from lichen.ipv6.icmpv6 import Icmpv6Message
 
@@ -150,7 +151,7 @@ class RERR:
         )
 
 
-LoadngMessage = RREQ | RREP | RERR
+LoadngMessage = Union[RREQ, RREP, RERR]
 
 _CODE_BY_TYPE = {RREQ: LoadngCode.RREQ, RREP: LoadngCode.RREP, RERR: LoadngCode.RERR}
 _CLASS_BY_CODE = {
@@ -162,7 +163,10 @@ _CLASS_BY_CODE = {
 
 def to_icmpv6(message: LoadngMessage) -> Icmpv6Message:
     """Wrap a LOADng message as an ICMPv6 type-158 message."""
-    code = _CODE_BY_TYPE[type(message)]
+    try:
+        code = _CODE_BY_TYPE[type(message)]
+    except KeyError:
+        raise LoadngError(f"unsupported message type: {type(message).__name__}") from None
     return Icmpv6Message(LOADNG_ICMPV6_TYPE, int(code), message.to_bytes())
 
 

@@ -2038,6 +2038,8 @@ class NativeClientApp(App[None]):
                 self.client.list_neighbors(),
                 self.client.list_routes(),
             )
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             self._set_mesh_error(str(exc))
             return
@@ -2058,6 +2060,8 @@ class NativeClientApp(App[None]):
                 self.client.get_radio_config(),
                 self.client.get_identity(),
             )
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             self._set_config_error(str(exc))
             return
@@ -2113,6 +2117,8 @@ class NativeClientApp(App[None]):
             else:
                 self._set_config_error(f"{path} writes are unsupported")
                 return
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             self._set_config_error(f"{path} write failed: {exc}")
             return
@@ -2145,6 +2151,8 @@ class NativeClientApp(App[None]):
                 if raw_available and self.raw_diagnostics_admin_enabled
                 else None
             )
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             self._set_diagnostics_error(str(exc))
             return
@@ -2220,6 +2228,8 @@ class NativeClientApp(App[None]):
                 ),
                 recover_error=True,
             )
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             self._set_radio_error(str(exc))
 
@@ -2270,6 +2280,8 @@ class NativeClientApp(App[None]):
                 ),
                 recover_error=True,
             )
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             self._set_rf_health_error(str(exc))
 
@@ -2303,6 +2315,8 @@ class NativeClientApp(App[None]):
         try:
             result = await self.client.arm_raw_rx(ttl_s=ttl_s, include_payload=include_payload)
             status = await self.client.get_raw_rx_status()
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
             self._set_diagnostics_error(str(exc))
             return

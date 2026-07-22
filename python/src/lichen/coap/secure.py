@@ -99,6 +99,7 @@ def _monotonic_time() -> float:
     except RuntimeError:
         # No running event loop, use time.monotonic()
         import time
+
         return time.monotonic()
 
 
@@ -107,15 +108,15 @@ def _hash_32(sfn: int, key: int = 0) -> int:
     For OSCORE nonce check: _hash_32(seqno, int.from_bytes(nonce[0:8], 'big')) ^ LICHEN_SEED.
     See RFC8613 4.1, spec/06-security.md:15.3 for replay/nonce uniqueness.
     """
-    lichen_seed = 0x4c494348454e  # "LICHEN" as u48 for seed (task requirement)
-    h = 0x811c9dc5
+    lichen_seed = 0x4C494348454E  # "LICHEN" as u48 for seed (task requirement)
+    h = 0x811C9DC5
     sfn = sfn ^ lichen_seed  # incorporate LICHEN per task
     for i in range(4):
-        b = (sfn >> (i * 8)) & 0xff
-        h = ((h ^ b) * 0x01000193) & 0xffffffff
+        b = (sfn >> (i * 8)) & 0xFF
+        h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF
     for i in range(8):
-        b = (key >> (i * 8)) & 0xff
-        h = ((h ^ b) * 0x01000193) & 0xffffffff
+        b = (key >> (i * 8)) & 0xFF
+        h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF
     return h
 
 
@@ -164,9 +165,7 @@ class OscoreContextStore:
         async with self._get_lock():
             return self._contexts.get(host)
 
-    async def put(
-        self, host: str, oscore_ctx: MemorySecurityContext, peer_pubkey: bytes
-    ) -> None:
+    async def put(self, host: str, oscore_ctx: MemorySecurityContext, peer_pubkey: bytes) -> None:
         """Store OSCORE context for a peer."""
         async with self._get_lock():
             self._contexts[host] = PeerContext(
@@ -174,9 +173,7 @@ class OscoreContextStore:
                 peer_pubkey=peer_pubkey,
             )
 
-    def put_sync(
-        self, host: str, oscore_ctx: MemorySecurityContext, peer_pubkey: bytes
-    ) -> None:
+    def put_sync(self, host: str, oscore_ctx: MemorySecurityContext, peer_pubkey: bytes) -> None:
         """Store OSCORE context (synchronous)."""
         self._contexts[host] = PeerContext(
             oscore=oscore_ctx,
@@ -243,8 +240,7 @@ class TofuPeerResolver(EdhocPeerResolver):
             if host in self._pinned:
                 if self._pinned[host] != pubkey:
                     raise ValueError(
-                        f"TOFU violation: peer {host} key changed "
-                        f"(possible MITM or hardware swap)"
+                        f"TOFU violation: peer {host} key changed (possible MITM or hardware swap)"
                     )
             else:
                 self._pinned[host] = pubkey
@@ -351,17 +347,13 @@ class SecureDatagramChannel(DatagramChannel):
             elif source in self._edhoc_active_peers:
                 # EDHOC in progress with this peer - allow plaintext
                 # (EDHOC responses are not OSCORE-protected)
-                logger.debug(
-                    "Allowing plaintext from %s (EDHOC in progress)", source
-                )
+                logger.debug("Allowing plaintext from %s (EDHOC in progress)", source)
                 # Dispatch to EDHOC channel for response matching
                 if self._edhoc_channel is not None:
                     self._edhoc_channel.dispatch(data, source)
             elif self._require_oscore:
                 # Plaintext not allowed
-                logger.warning(
-                    "Rejected plaintext message from %s (OSCORE required)", source
-                )
+                logger.warning("Rejected plaintext message from %s (OSCORE required)", source)
             elif self._receiver is not None:
                 # Passthrough plaintext
                 self._receiver(data, source)
@@ -609,9 +601,7 @@ class SecureDatagramChannel(DatagramChannel):
             raise ValueError(f"EDHOC exchange with {dest} failed: {e}") from e
 
         if not response.code.is_successful():
-            raise ValueError(
-                f"EDHOC exchange with {dest} returned error: {response.code}"
-            )
+            raise ValueError(f"EDHOC exchange with {dest} returned error: {response.code}")
 
         return response.payload or b""
 

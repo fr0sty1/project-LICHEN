@@ -456,7 +456,7 @@ mod std_ext {
     #[derive(Debug)]
     pub struct FragmentReceiver {
         window_size: usize,
-        rule_id: u8,
+        rule_id: Option<u8>,
         tiles: HashMap<usize, Vec<u8>>,
         current_window: usize,
         all1_seen: bool,
