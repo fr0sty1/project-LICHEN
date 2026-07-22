@@ -2,15 +2,15 @@
   "id": "project-LICHEN-5zov",
   "title": "[merge-conflict] worktree-worker1: main.c",
   "notes": "Commit: e7d4b3dcd",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:43:18.023399515Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:51:42.42425943Z",
+  "updated_at": "2026-07-22T23:51:44.680900729Z",
   "started_at": "2026-07-22T23:50:25.301349836Z",
-  "lease_expires_at": "2026-07-22T23:55:25.301349836Z",
-  "heartbeat_at": "2026-07-22T23:50:25.301349836Z"
+  "closed_at": "2026-07-22T23:51:44.680900729Z",
+  "close_reason": "Resolved merge conflict in worktree-worker1 .beads/issues/project-LICHEN-uzsj.json by retaining the closed state with complete metadata and close_reason. Fixed via edit, committed empty commit for tracking, pushed."
 }
