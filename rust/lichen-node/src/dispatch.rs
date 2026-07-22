@@ -54,20 +54,17 @@ pub mod content_format {
 pub struct Response {
     pub code: MessageCode,
     pub content_format: Option<u16>,
-    pub payload: [u8; 128],
+    pub payload: [u8; 256],
     pub payload_len: usize,
 }
 
 impl Response {
     pub fn content(payload: &[u8]) -> Self {
-        let payload_len = payload.len().min(128);
-        if payload.len() > 128 {
-            warn!("payload truncated from {} to 128 bytes", payload.len());
-        }
+        let payload_len = payload.len().min(256);
         let mut resp = Self {
             code: MessageCode::CONTENT,
             content_format: Some(content_format::APPLICATION_CBOR),
-            payload: [0u8; 128],
+            payload: [0u8; 256],
             payload_len,
         };
         resp.payload[..payload_len].copy_from_slice(&payload[..payload_len]);
@@ -78,7 +75,7 @@ impl Response {
         Self {
             code: MessageCode::CREATED,
             content_format: None,
-            payload: [0u8; 128],
+            payload: [0u8; 256],
             payload_len: 0,
         }
     }
@@ -87,7 +84,7 @@ impl Response {
         Self {
             code: MessageCode::CHANGED,
             content_format: None,
-            payload: [0u8; 128],
+            payload: [0u8; 256],
             payload_len: 0,
         }
     }
@@ -96,7 +93,7 @@ impl Response {
         Self {
             code: MessageCode::NOT_FOUND,
             content_format: None,
-            payload: [0u8; 128],
+            payload: [0u8; 256],
             payload_len: 0,
         }
     }
@@ -105,7 +102,7 @@ impl Response {
         Self {
             code: MessageCode::METHOD_NOT_ALLOWED,
             content_format: None,
-            payload: [0u8; 128],
+            payload: [0u8; 256],
             payload_len: 0,
         }
     }
@@ -114,7 +111,7 @@ impl Response {
         Self {
             code: MessageCode::BAD_REQUEST,
             content_format: None,
-            payload: [0u8; 128],
+            payload: [0u8; 256],
             payload_len: 0,
         }
     }
@@ -377,7 +374,7 @@ mod tests {
         let mut req_buf = [0u8; 64];
         let req_len = build_get(&["sensors"], &mut req_buf);
 
-        let mut resp_buf = [0u8; 128];
+        let mut resp_buf = [0u8; 256];
         let resp_len = dispatcher.handle_coap(&req_buf[..req_len], &mut resp_buf);
         assert!(resp_len.is_some());
 
@@ -392,7 +389,7 @@ mod tests {
         let mut req_buf = [0u8; 64];
         let req_len = build_put(&["config"], b"{\"interval\":120}", &mut req_buf);
 
-        let mut resp_buf = [0u8; 128];
+        let mut resp_buf = [0u8; 256];
         let resp_len = dispatcher.handle_coap(&req_buf[..req_len], &mut resp_buf);
         assert!(resp_len.is_some());
 
@@ -406,7 +403,7 @@ mod tests {
         let mut req_buf = [0u8; 64];
         let req_len = build_get(&["nonexistent"], &mut req_buf);
 
-        let mut resp_buf = [0u8; 128];
+        let mut resp_buf = [0u8; 256];
         let resp_len = dispatcher.handle_coap(&req_buf[..req_len], &mut resp_buf);
         assert!(resp_len.is_some());
 
@@ -431,7 +428,7 @@ mod tests {
         builder.payload(b"test").unwrap();
         let req_len = builder.finish();
 
-        let mut resp_buf = [0u8; 128];
+        let mut resp_buf = [0u8; 256];
         let resp_len = dispatcher.handle_coap(&req_buf[..req_len], &mut resp_buf);
         assert!(resp_len.is_some());
 
@@ -445,7 +442,7 @@ mod tests {
         let mut req_buf = [0u8; 64];
         let req_len = build_get(&[".well-known", "core"], &mut req_buf);
 
-        let mut resp_buf = [0u8; 128];
+        let mut resp_buf = [0u8; 256];
         let resp_len = dispatcher.handle_coap(&req_buf[..req_len], &mut resp_buf);
         assert!(resp_len.is_some());
 
