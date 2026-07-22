@@ -1,4 +1,6 @@
 /*
+ * STALE/RETIRED per project-LICHEN-2u26.10: no canonical Zephyr composite board+shield target.
+ * Fragment retired; do not use for bridge builds. Support claims removed per 2u26 audit.
  * Seeed XIAO ESP32S3 + Wio-SX1262 device tree overlay for LICHEN bridge
  *
  * ESP32-S3 + SX1262 LoRa (via B2B connector)
