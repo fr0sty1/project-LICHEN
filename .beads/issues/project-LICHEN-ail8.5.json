@@ -2,13 +2,14 @@
   "id": "project-LICHEN-ail8.5",
   "title": "Follow-up from worker13 merge of 0fce3b724",
   "description": "Any new issues discovered during 3 codereview passes on merged changes from worker13",
+  "notes": "Merged in cycle. Main hash 1d41821e7",
   "status": "open",
   "priority": 3,
   "issue_type": "task",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:04:06.974444964Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T20:04:06.974444964Z",
+  "updated_at": "2026-07-22T20:05:28.401048514Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-ail8.5",
