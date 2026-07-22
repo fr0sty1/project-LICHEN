@@ -2,12 +2,14 @@
   "id": "project-LICHEN-dp4j.2.1",
   "title": "[codereview] After renaming in messages.py, scheduler.py and tests still reference old current_channel kwarg and attribute",
   "description": "The field rename in AnnounceMessage broke constructor calls in scheduler.py:176,193 and various tests. Also update docstrings, comments in other files for consistency with CCP-9 rx_channel. Tag: codereview. Parent: project-LICHEN-dp4j.2",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "created_at": "2026-07-22T17:27:42.068513481Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T17:27:42.068513481Z",
+  "updated_at": "2026-07-22T17:30:00.689152371Z",
+  "closed_at": "2026-07-22T17:30:00.689152371Z",
+  "close_reason": "Completed operating classes, channel plans, lookup tables, multi-channel coordination, TDMA, frequency agility across Python Rust Zephyr vectors. Fixed all codereview findings in 3 passes per impl. All tests lint typecheck pass. Epics closed.",
   "labels": [
     "codereview"
   ],
