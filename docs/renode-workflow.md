@@ -97,6 +97,10 @@ renode lichen/boards/renode/t_echo/support/t_echo.resc \
 # RAK4631 board
 renode lichen/boards/renode/rak4631/support/rak4631.resc \
     -e "\$elf=@build/rak4631/zephyr/zephyr.elf; start"
+
+# TTGO LoRa32 (ESP32+SX1276) - new Renode backend (g80o)
+renode lichen/boards/renode/ttgo_lora32/support/ttgo_lora32.resc \
+    -e "\$elf=@build/ttgo_lora32/zephyr/zephyr.elf; start"
 ```
 
 ### 4. Interact
