@@ -3,15 +3,15 @@
   "title": "senml: missing tests for f16 subnormal numbers",
   "description": "File: rust/lichen-senml/src/cbor.rs\nLines: 761-820 (f16 tests)\n\nThe test suite covers f16 normal numbers, zero, infinity, and NaN, but does not test subnormal (denormalized) numbers. The f16_to_f64 function has special handling for subnormals at lines 256-259.\n\nMissing test cases:\n1. Smallest positive subnormal: 0x0001 (2^-24)\n2. Largest positive subnormal: 0x03ff (1023 * 2^-24)  \n3. Negative subnormals: 0x8001, 0x83ff\n4. Boundary: 0x0400 (smallest normal) vs 0x03ff (largest subnormal)\n\nThe subnormal calculation uses a magic constant (16777216.0 = 2^24) which should be verified against test vectors.\n\nImpact: Potential undetected bugs in subnormal handling; math formula not validated.\n\nFix: Add test cases:\n```rust\n#[test]\nfn dec_f64_half_precision_subnormal() {\n    // Smallest positive subnormal: 0x0001 = 2^-24\n    let data = [0xf9, 0x00, 0x01];\n    let (val, _) = dec_f64(\u0026data, 0).unwrap();\n    assert!((val - 5.960464477539063e-8).abs() \u003c 1e-20);\n}\n```",
   "notes": "Commit: d2d234f78",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 3,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:41:05.390178Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:15:42.608453486Z",
+  "updated_at": "2026-07-22T23:15:48.752822899Z",
   "started_at": "2026-07-22T23:11:12.577209389Z",
-  "lease_expires_at": "2026-07-22T23:16:12.577209389Z",
-  "heartbeat_at": "2026-07-22T23:11:12.577209389Z"
+  "closed_at": "2026-07-22T23:15:48.752822899Z",
+  "close_reason": "Closed"
 }
