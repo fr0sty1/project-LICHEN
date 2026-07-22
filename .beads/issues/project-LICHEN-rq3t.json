@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-rq3t",
+  "title": "[codereview-pass3] coap_dtn.c: fix deaddrop_post IID lookup, add string.h for memcpy, rate limit collision from IID[7], direct oscore_unprotect_request, update confessions_post",
+  "status": "open",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:43:09.35840299Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:43:09.35840299Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rq3t",
+      "depends_on_id": "project-LICHEN-u9in",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:09.455691483Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
