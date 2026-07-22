@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ugka",
+  "title": "P2: encode_*_cbor functions lack explicit capacity validation on count parameter before uint8_t cast and array header",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:00:46.188809389Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:00:46.188809389Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ugka",
+      "depends_on_id": "project-LICHEN-s7t8",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:00:46.287568584Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
