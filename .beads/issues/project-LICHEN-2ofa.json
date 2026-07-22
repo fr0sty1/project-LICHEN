@@ -3,15 +3,15 @@
   "title": "[merge-conflict] worker8: draft-lichen-schc-lora-00.md",
   "description": "Resolve merge conflict in spec/drafts/draft-lichen-schc-lora-00.md between main and integration/worker8-20260722. Keep BOTH sets of changes.",
   "notes": "Commit: b63519472 - Merged rule tables, PIO details, test vector refs, CoAP compression table, and appendix updates from both branches into spec/drafts/draft-lichen-schc-lora-00.md",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:15.776998599Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T21:22:31.746240014Z",
+  "updated_at": "2026-07-22T21:22:33.629698777Z",
   "started_at": "2026-07-22T21:20:39.475965039Z",
-  "lease_expires_at": "2026-07-22T21:25:39.475965039Z",
-  "heartbeat_at": "2026-07-22T21:20:39.475965039Z"
+  "closed_at": "2026-07-22T21:22:33.629698777Z",
+  "close_reason": "Merge conflict resolved by combining detailed PIO/RPL options compression, implementation references, test vector enforcement from current branch with updated rule tables, Appendix A table with sizes, CoAP compression details, and reduced duplication from worker8 branch. File updated, committed as b63519472, pushed."
 }
