@@ -129,12 +129,17 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     if (byteIndex == 0)
                     {
                         bufferOffset = data;
+                        if (bufferOffset >= txBuffer.Length)
+                        {
+                            state = State.Idle;
+                            break;
+                        }
                         byteIndex++;
                     }
                     else
                     {
                         var idx = bufferOffset + (byteIndex - 1);
-                        if (idx < txBuffer.Length)
+                        if (idx < txBuffer.Length && idx >= 0)
                         {
                             txBuffer[idx] = data;
                             txLen = (ushort)Math.Max(txLen, idx + 1);
@@ -147,17 +152,21 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     if (byteIndex == 0)
                     {
                         bufferOffset = data;
+                        if (bufferOffset >= rxBuffer.Length)
+                        {
+                            state = State.Idle;
+                            break;
+                        }
                         byteIndex++;
                     }
                     else if (byteIndex == 1)
                     {
-                        // NOP byte per LR1110 protocol
                         byteIndex++;
                     }
                     else
                     {
                         var idx = bufferOffset + (byteIndex - 2);
-                        result = idx < rxBuffer.Length ? rxBuffer[idx] : (byte)0;
+                        result = (idx < rxBuffer.Length && idx >= 0) ? rxBuffer[idx] : (byte)0;
                         byteIndex++;
                     }
                     break;
