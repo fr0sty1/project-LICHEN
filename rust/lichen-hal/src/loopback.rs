@@ -6,7 +6,7 @@
 //! Provides a pair of connected radios for host-side integration tests.
 //! TX on one side appears as RX on the other.
 
-use crate::{Radio, RadioConfig, RadioError, RxPacket};
+use crate::{ChannelConfig, Radio, RadioConfig, RadioError, RxPacket};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
@@ -121,6 +121,13 @@ impl Radio for LoopbackRadio {
 
     fn configure(&mut self, config: &RadioConfig) {
         self.config = *config;
+    }
+
+    async fn configure_channels(
+        &mut self,
+        _channels: &[ChannelConfig],
+    ) -> Result<(), Self::Error> {
+        Ok(())
     }
 }
 
