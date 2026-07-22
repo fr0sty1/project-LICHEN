@@ -136,12 +136,13 @@ def parse_rust_logs(log_dir: Path) -> dict[str, NodeStats]:
             continue
 
         for line in content.splitlines():
-            if "[TX]" in line or "TX:" in line.upper():
+            line_upper = line.upper()
+            if "[TX]" in line_upper or "TX:" in line_upper:
                 match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
                 if match:
                     stats.tx_hashes.add(match.group(1).lower())
                 stats.tx_count += 1
-            elif "[RX]" in line or "RX:" in line.upper():
+            elif "[RX]" in line_upper or "RX:" in line_upper:
                 match = re.search(r"hash[=:]?\s*([a-fA-F0-9]{8,})", line)
                 if match:
                     stats.rx_hashes.add(match.group(1).lower())

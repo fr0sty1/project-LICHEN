@@ -521,24 +521,3 @@ int lichen_coap_server_is_running(void)
 {
 	return coap_service_is_running(&lichen_coap_server);
 }
-
-int lichen_coap_respond(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len, uint8_t resp_code, uint16_t content_format, const uint8_t *payload, size_t payload_len) {
-	static uint8_t buf[CONFIG_COAP_SERVER_MESSAGE_SIZE];
-	struct coap_packet resp;
-	uint8_t token[COAP_TOKEN_MAX_LEN];
-	uint8_t tkl = coap_header_get_token(request, token);
-	uint8_t type = (coap_header_get_type(request) == COAP_TYPE_CON) ? COAP_TYPE_ACK : COAP_TYPE_NON_CON;
-	int r = coap_packet_init(&resp, buf, sizeof(buf), COAP_VERSION_1, type, tkl, token, resp_code, coap_header_get_id(request));
-	if (r < 0) return r;
-	if (payload != NULL && payload_len > 0) {
-		if (content_format != 0) {
-			r = coap_append_option_int(&resp, COAP_OPTION_CONTENT_FORMAT, content_format);
-			if (r < 0) return r;
-		}
-		r = coap_packet_append_payload_marker(&resp);
-		if (r < 0) return r;
-		r = coap_packet_append_payload(&resp, payload, (uint16_t)payload_len);
-		if (r < 0) return r;
-	}
-	return coap_resource_send(resource, &resp, addr, addr_len, NULL);
-}
