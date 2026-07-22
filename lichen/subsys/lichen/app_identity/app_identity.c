@@ -9,10 +9,8 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/util.h>
-#include <zephyr/sys/__assert.h>
 
 #include <lichen/app_identity/app_identity.h>
-#include <lichen/coap_keys.h>
 
 #ifndef ENOKEY
 #define ENOKEY ENOENT
@@ -34,10 +32,12 @@ static bool s_has_self;
 static struct peer_slot s_peers[CONFIG_LICHEN_APP_IDENTITY_MAX_PEERS];
 static K_MUTEX_DEFINE(s_mutex);
 
-static void derive_iid(const uint8_t pubkey[LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN],
-			uint8_t iid[LICHEN_APP_IDENTITY_EUI64_LEN])
+static void eui64_to_iid(
+	const uint8_t eui64[LICHEN_APP_IDENTITY_EUI64_LEN],
+	uint8_t iid[LICHEN_APP_IDENTITY_EUI64_LEN])
 {
-	(void)lichen_key_pubkey_to_iid(pubkey, iid);
+	memcpy(iid, eui64, LICHEN_EUI64_LEN);
+	iid[0] ^= 0x02U;
 }
 
 static int copy_string(char *dst, size_t dst_len, const char *src)
@@ -128,7 +128,7 @@ int lichen_app_identity_set_self(
 
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	s_self = normalized;
-	derive_iid(s_self.public_key, s_self.iid);
+	eui64_to_iid(s_self.eui64, s_self.iid);
 	s_has_self = true;
 	k_mutex_unlock(&s_mutex);
 	return 0;
@@ -204,29 +204,13 @@ int lichen_app_identity_upsert_peer(
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	slot = find_peer_locked(peer->eui64);
 	if (slot >= 0) {
-		__ASSERT(s_peers[slot].peer.has_public_key, "existing peer must have key");
-		/*
-		 * SECURITY: TOFU key pinning (spec 8.6). First contact pins
-		 * pubkey; subsequent contacts must present the same key.
-		 * Key rotation requires lichen_app_identity_remove_peer()
-		 * followed by re-upsert (resolves aiq3). Silent key changes
-		 * rejected to prevent impersonation.
-		 */
 		if (s_peers[slot].peer.has_public_key &&
 		    memcmp(s_peers[slot].peer.public_key, peer->public_key,
 			   LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN) != 0) {
 			k_mutex_unlock(&s_mutex);
-			return -EEXIST;  /* TOFU violation: pubkey mismatch */
+			return -EEXIST;
 		}
 	} else {
-		/*
-		 * SECURITY: a full table rejects new peers (-ENOSPC) rather
-		 * than evicting an LRU entry. TOFU pins (spec 8.6) must not
-		 * be silently discarded: an attacker who floods the table
-		 * with ephemeral peers could evict a victim's pinned key and
-		 * then be accepted as that victim's "first contact". Freeing
-		 * capacity requires explicit peer removal.
-		 */
 		slot = find_free_peer_locked();
 	}
 	if (slot < 0) {
@@ -234,12 +218,11 @@ int lichen_app_identity_upsert_peer(
 		return slot;
 	}
 
-	memset(&s_peers[slot].peer, 0, sizeof(s_peers[slot].peer));
 	s_peers[slot].peer = *peer;
-	(void)copy_string(s_peers[slot].peer.display_name,
-			  sizeof(s_peers[slot].peer.display_name),
-			  peer->display_name);
-	derive_iid(s_peers[slot].peer.public_key, s_peers[slot].peer.iid);
+	copy_string(s_peers[slot].peer.display_name,
+		    sizeof(s_peers[slot].peer.display_name),
+		    peer->display_name);
+	eui64_to_iid(s_peers[slot].peer.eui64, s_peers[slot].peer.iid);
 	s_peers[slot].used = true;
 	k_mutex_unlock(&s_mutex);
 	return 0;

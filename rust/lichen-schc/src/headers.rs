@@ -643,12 +643,17 @@ impl PacketProfile for Icmpv6EchoProfile {
                 available: out.len(),
             });
         }
+        if tail.len() > 248 {
+            return Err(PacketError::BufferTooSmall {
+                needed: ICMPV6_ECHO_BASE + tail.len(),
+                available: 248,
+            });
+        }
 
-        // Build ICMPv6 with zero checksum
         let mut icmp_buf = [0u8; 256];
         icmp_buf[0] = icmp_type;
         icmp_buf[1] = icmp_code;
-        icmp_buf[2] = 0; // checksum placeholder
+        icmp_buf[2] = 0;
         icmp_buf[3] = 0;
         icmp_buf[4] = (icmp_id >> 8) as u8;
         icmp_buf[5] = icmp_id as u8;
@@ -807,12 +812,17 @@ impl PacketProfile for RplDioProfile {
                 available: out.len(),
             });
         }
+        if rpl_body_len > 256 {
+            return Err(PacketError::BufferTooSmall {
+                needed: rpl_body_len,
+                available: 256,
+            });
+        }
 
-        // Build ICMPv6 with zero checksum
         let mut icmp_buf = [0u8; 256];
         icmp_buf[0] = ICMPV6_RPL_TYPE;
-        icmp_buf[1] = 1; // DIO code
-        icmp_buf[2] = 0; // checksum placeholder
+        icmp_buf[1] = 1;
+        icmp_buf[2] = 0;
         icmp_buf[3] = 0;
         icmp_buf[4] = instance;
         icmp_buf[5] = version;
@@ -958,12 +968,17 @@ impl PacketProfile for RplDaoProfile {
                 available: out.len(),
             });
         }
+        if rpl_body_len > 256 {
+            return Err(PacketError::BufferTooSmall {
+                needed: rpl_body_len,
+                available: 256,
+            });
+        }
 
-        // Build ICMPv6 with zero checksum
         let mut icmp_buf = [0u8; 256];
         icmp_buf[0] = ICMPV6_RPL_TYPE;
-        icmp_buf[1] = 2; // DAO code
-        icmp_buf[2] = 0; // checksum placeholder
+        icmp_buf[1] = 2;
+        icmp_buf[2] = 0;
         icmp_buf[3] = 0;
         icmp_buf[4] = instance;
         icmp_buf[5] = flags;

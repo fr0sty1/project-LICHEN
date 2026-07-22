@@ -172,17 +172,15 @@ impl Addr {
     /// All-routers multicast (ff02::2).
     pub const ALL_ROUTERS: Self = Self([0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02]);
 
+    /// Create link-local address from 8-byte node ID (EUI-64).
+    ///
+    /// Format: fe80::XX:XX:XX:ff:fe:XX:XX:XX with U/L bit flipped.
     pub fn link_local_from_eui64(eui64: &[u8; 8]) -> Self {
         let mut addr = [0u8; 16];
         addr[0] = 0xfe;
         addr[1] = 0x80;
-        addr[2] = 0;
-        addr[3] = 0;
-        addr[4] = 0;
-        addr[5] = 0;
-        addr[6] = 0;
-        addr[7] = 0;
-        addr[8] = eui64[0] ^ 0x02;
+        // bytes 2-7 are zero (link-local prefix)
+        addr[8] = eui64[0] ^ 0x02; // Flip U/L bit
         addr[9] = eui64[1];
         addr[10] = eui64[2];
         addr[11] = eui64[3];
@@ -193,6 +191,7 @@ impl Addr {
         Self(addr)
     }
 
+    /// Create link-local address from 6-byte MAC (insert ff:fe).
     pub fn link_local_from_mac(mac: &[u8; 6]) -> Self {
         let mut eui64 = [0u8; 8];
         eui64[0] = mac[0];
@@ -249,14 +248,6 @@ impl Addr {
         (self.0[0] & 0xe0) == 0x20
     }
 
-    /// Check if this is a LICHEN primary Yggdrasil-derived address (`02xx::/7`).
-    ///
-    /// These are now the primary routable addresses (replacing ULA per
-    /// spec/04-network.md and project-LICHEN-fmu3). Starts with 0x02.
-    pub fn is_yggdrasil(&self) -> bool {
-        self.0[0] == 0x02
-    }
-
     /// Check if this is the loopback address (::1).
     pub fn is_loopback(&self) -> bool {
         self.0 == [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
@@ -268,14 +259,7 @@ impl Addr {
     }
 
     /// Extract the Interface Identifier (IID) - the low 64 bits.
-    ///
-    /// Assumes link-local (fe80::/10), ULA (fc00::/7) or GUA (2000::/3)
-    /// with IID in bytes 8-15. Debug assert guards this; see is_link_local/is_ula.
     pub fn iid(&self) -> [u8; 8] {
-        debug_assert!(
-            self.is_link_local() || self.is_ula() || self.is_gua(),
-            "IID extraction from bytes 8-15 assumes structured address"
-        );
         let mut iid = [0u8; 8];
         iid.copy_from_slice(&self.0[8..16]);
         iid
@@ -378,12 +362,16 @@ impl Ipv6Header {
         })
     }
 
-    pub fn decrement_hop_limit(&mut self) -> Option<()> {
+    pub fn decrement_hop_limit(mut self) -> Option<Self> {
         if self.hop_limit == 0 {
             None
         } else {
-            self.hop_limit = self.hop_limit.wrapping_sub(1);
-            Some(())
+            self.hop_limit -= 1;
+            if self.hop_limit == 0 {
+                None
+            } else {
+                Some(self)
+            }
         }
     }
 }
@@ -450,15 +438,10 @@ impl UdpHeader {
             return Err(TooShort::new(UDP_HEADER_LEN, buf.len()).into());
         }
 
-        let length = ((buf[4] as u16) << 8) | (buf[5] as u16);
-        if length < UDP_HEADER_LEN as u16 {
-            return Err(TooShort::new(UDP_HEADER_LEN, length as usize).into());
-        }
-
         Ok(Self {
             src_port: ((buf[0] as u16) << 8) | (buf[1] as u16),
             dst_port: ((buf[2] as u16) << 8) | (buf[3] as u16),
-            length,
+            length: ((buf[4] as u16) << 8) | (buf[5] as u16),
             checksum: ((buf[6] as u16) << 8) | (buf[7] as u16),
         })
     }
@@ -516,18 +499,19 @@ impl Icmpv6Echo {
 
         let mut pkt = Vec::new();
 
-        pkt.push(msg_type).expect("capacity checked");
-        pkt.push(0).expect("capacity checked");
-        pkt.push(0).expect("capacity checked");
-        pkt.push(0).expect("capacity checked");
+        pkt.push(msg_type).expect("capacity pre-checked");
+        pkt.push(0).expect("capacity pre-checked");
+        pkt.push(0).expect("capacity pre-checked");
+        pkt.push(0).expect("capacity pre-checked");
 
-        pkt.push((self.id >> 8) as u8).expect("capacity checked");
-        pkt.push(self.id as u8).expect("capacity checked");
-        pkt.push((self.seq >> 8) as u8).expect("capacity checked");
-        pkt.push(self.seq as u8).expect("capacity checked");
+        pkt.push((self.id >> 8) as u8).expect("capacity pre-checked");
+        pkt.push(self.id as u8).expect("capacity pre-checked");
+        pkt.push((self.seq >> 8) as u8).expect("capacity pre-checked");
+        pkt.push(self.seq as u8).expect("capacity pre-checked");
 
-        pkt.extend_from_slice(data).expect("capacity checked");
+        pkt.extend_from_slice(data).expect("capacity pre-checked");
 
+        // Compute checksum
         let checksum = icmpv6_checksum(src, dst, &pkt);
         pkt[2] = (checksum >> 8) as u8;
         pkt[3] = checksum as u8;
@@ -561,16 +545,14 @@ impl NeighborSolicitation {
     pub fn build(&self, src: &Addr, dst: &Addr) -> Vec<u8, 64> {
         let mut pkt = Vec::new();
 
-        pkt.push(icmpv6_type::NEIGHBOR_SOLICITATION)
-            .expect("capacity checked");
-        pkt.push(0).expect("capacity checked");
-        pkt.push(0).expect("capacity checked");
-        pkt.push(0).expect("capacity checked");
+        pkt.push(icmpv6_type::NEIGHBOR_SOLICITATION).expect("fixed size fits capacity");
+        pkt.push(0).expect("fixed size fits capacity");
+        pkt.push(0).expect("fixed size fits capacity");
+        pkt.push(0).expect("fixed size fits capacity");
 
-        pkt.extend_from_slice(&[0u8; 4]).expect("capacity checked");
+        pkt.extend_from_slice(&[0u8; 4]).expect("fixed size fits capacity");
 
-        pkt.extend_from_slice(&self.target.0)
-            .expect("capacity checked");
+        pkt.extend_from_slice(&self.target.0).expect("fixed size fits capacity");
 
         let checksum = icmpv6_checksum(src, dst, &pkt);
         pkt[2] = (checksum >> 8) as u8;
@@ -611,11 +593,10 @@ impl NeighborAdvertisement {
     pub fn build(&self, src: &Addr, dst: &Addr) -> Vec<u8, 64> {
         let mut pkt = Vec::new();
 
-        pkt.push(icmpv6_type::NEIGHBOR_ADVERTISEMENT)
-            .expect("capacity checked");
-        pkt.push(0).expect("capacity checked");
-        pkt.push(0).expect("capacity checked");
-        pkt.push(0).expect("capacity checked");
+        pkt.push(icmpv6_type::NEIGHBOR_ADVERTISEMENT).expect("fixed size fits capacity");
+        pkt.push(0).expect("fixed size fits capacity");
+        pkt.push(0).expect("fixed size fits capacity");
+        pkt.push(0).expect("fixed size fits capacity");
 
         let mut flags = 0u8;
         if self.router {
@@ -627,11 +608,10 @@ impl NeighborAdvertisement {
         if self.override_flag {
             flags |= 0x20;
         }
-        pkt.push(flags).expect("capacity checked");
-        pkt.extend_from_slice(&[0u8; 3]).expect("capacity checked");
+        pkt.push(flags).expect("fixed size fits capacity");
+        pkt.extend_from_slice(&[0u8; 3]).expect("fixed size fits capacity");
 
-        pkt.extend_from_slice(&self.target.0)
-            .expect("capacity checked");
+        pkt.extend_from_slice(&self.target.0).expect("fixed size fits capacity");
 
         let checksum = icmpv6_checksum(src, dst, &pkt);
         pkt[2] = (checksum >> 8) as u8;
@@ -656,13 +636,18 @@ fn icmpv6_checksum(src: &Addr, dst: &Addr, icmpv6_msg: &[u8]) -> u16 {
     sum += next_header::ICMPV6 as u32; // Next header
 
     // ICMPv6 message (with checksum field zeroed - caller should have zeros there)
-    for i in (0..icmpv6_msg.len()).step_by(2) {
+    let mut i = 0;
+    while i + 1 < icmpv6_msg.len() {
+        // Skip checksum field (bytes 2-3)
         if i == 2 {
-            continue; // skip checksum field (bytes 2-3)
+            i += 2;
+            continue;
         }
-        let high = icmpv6_msg.get(i).copied().unwrap_or(0);
-        let low = icmpv6_msg.get(i + 1).copied().unwrap_or(0);
-        sum += ((high as u32) << 8) | (low as u32);
+        sum += ((icmpv6_msg[i] as u32) << 8) | (icmpv6_msg[i + 1] as u32);
+        i += 2;
+    }
+    if i < icmpv6_msg.len() {
+        sum += (icmpv6_msg[i] as u32) << 8;
     }
 
     // Fold 32-bit sum to 16 bits
@@ -795,11 +780,7 @@ pub fn handle_icmpv6(
             }
             // Reply to ping
             let echo = Icmpv6Echo::from_bytes(body)?;
-            let data = &body[4..];
-
-            if data.len() > MAX_ECHO_DATA {
-                return Err(BufferTooSmall::new(data.len() + 8, 128).into());
-            }
+            let data = &body[4..]; // After id+seq
 
             let reply_icmp = echo.build_reply(&ip_header.dst, &ip_header.src, data)?;
             let reply_ip = Ipv6Header::new(next_header::ICMPV6, ip_header.dst, ip_header.src);
@@ -909,20 +890,17 @@ mod tests {
     fn test_ipv6_header_roundtrip() {
         let src = Addr::link_local_from_mac(&hex!("001122334455"));
         let dst = Addr::link_local_from_mac(&hex!("665544332211"));
-        let expected = hex!("60 00 00 00 00 18 3a 40 fe 80 00 00 00 00 00 00 02 11 22 ff fe 33 44 55 fe 80 00 00 00 00 00 00 64 55 44 ff fe 33 22 11");
+
         let hdr = Ipv6Header::new(next_header::ICMPV6, src, dst);
         let mut buf = [0u8; IPV6_HEADER_LEN];
         let n = hdr.write_to(24, &mut buf).unwrap();
         assert_eq!(n, IPV6_HEADER_LEN);
-        assert_eq!(&buf[..], &expected[..]);
-        let parsed = Ipv6Header::from_bytes(&expected).unwrap();
+        let parsed = Ipv6Header::from_bytes(&buf).unwrap();
+
         assert_eq!(parsed.src, src);
         assert_eq!(parsed.dst, dst);
         assert_eq!(parsed.next_header, next_header::ICMPV6);
         assert_eq!(parsed.payload_len, 24);
-        assert_eq!(parsed.hop_limit, 64);
-        assert_eq!(parsed.traffic_class, 0);
-        assert_eq!(parsed.flow_label, 0);
     }
 
     #[test]

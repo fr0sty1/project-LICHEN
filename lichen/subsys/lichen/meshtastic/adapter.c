@@ -359,12 +359,13 @@ static int pb_read_varint(struct pb_cursor *cur, uint64_t *value)
 	return -EINVAL;
 }
 
+#define PB_MAX_FIELD_NUMBER 536870911ULL
 static int pb_read_key(struct pb_cursor *cur, uint32_t *field, uint32_t *wire_type)
 {
 	uint64_t key;
 	int ret = pb_read_varint(cur, &key);
 
-	if (ret < 0 || (key >> 3) == 0U || (key >> 3) > UINT32_MAX) {
+	if (ret < 0 || (key >> 3) == 0U || (key >> 3) > PB_MAX_FIELD_NUMBER) {
 		return -EINVAL;
 	}
 

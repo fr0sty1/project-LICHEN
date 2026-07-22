@@ -20,7 +20,6 @@ Typical usage::
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, fields
 from typing import Any
 
@@ -61,11 +60,6 @@ _FIELD_TYPES: dict[str, str] = {
 def _validate_field_type(name: str, value: object) -> None:
     """Validate that a SenML field value has the correct type per RFC 8428.
 
-    Non-finite floats (NaN, ±Inf) are rejected for numeric fields. CBOR
-    Tag 4 (decimal fraction) and Tag 5 (bigfloat) decode to Decimal and
-    are rejected to keep implementation simple and matching embedded
-    float32 constraints.
-
     Raises:
         ValueError: If the value type does not match the field's expected type.
     """
@@ -79,14 +73,10 @@ def _validate_field_type(name: str, value: object) -> None:
                 f"SenML field '{name}' must be a string, got {type(value).__name__}"
             )
     elif expected == "num":
-        # Accept int or finite float; reject bool, non-finite, Decimal (tags)
+        # Accept int or float, but not bool (bool is subclass of int in Python)
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise ValueError(
                 f"SenML field '{name}' must be a number, got {type(value).__name__}"
-            )
-        if isinstance(value, float) and not math.isfinite(value):
-            raise ValueError(
-                f"SenML field '{name}' must be finite, got {value}"
             )
     elif expected == "int":
         # Must be int, not float, not bool
@@ -102,28 +92,6 @@ def _validate_field_type(name: str, value: object) -> None:
     elif expected == "bytes" and not isinstance(value, bytes):
         raise ValueError(
             f"SenML field '{name}' must be bytes, got {type(value).__name__}"
-        )
-
-
-def _validate_value_fields(record: SenmlRecord | dict[str, Any]) -> None:
-    """Ensure at most one value field per record per RFC 8428 §4.5.
-
-    Accepts either a SenmlRecord instance or kwargs dict from from_cbor_map.
-    """
-    if isinstance(record, dict):
-        value_fields = [
-            k for k in ("v", "vs", "vb", "vd") if k in record and record[k] is not None
-        ]
-    else:
-        value_fields = [
-            f.name
-            for f in fields(record)
-            if f.name in ("v", "vs", "vb", "vd")
-            and getattr(record, f.name) is not None
-        ]
-    if len(value_fields) > 1:
-        raise ValueError(
-            f"SenML record must have at most one value field (v/vs/vb/vd), got {value_fields}"
         )
 
 
@@ -144,13 +112,13 @@ class SenmlRecord:
 
     * ``n``  — name (appended to bn to form the full resource name)
     * ``u``  — unit (overrides bu for this record)
-    * ``v``  — numeric value (finite float)
+    * ``v``  — numeric value (float)
     * ``vs`` — string value
     * ``vb`` — boolean value
     * ``vd`` — data value (bytes)
     * ``s``  — sum (running total)
-    * ``t``  — time offset from bt (seconds, finite float)
-    * ``ut`` — update time (seconds, finite float)
+    * ``t``  — time offset from bt (seconds, float)
+    * ``ut`` — update time (seconds, float)
     """
 
     bn: str | None = None
@@ -169,19 +137,8 @@ class SenmlRecord:
     t: float | None = None
     ut: float | None = None
 
-    def __post_init__(self):
-        """Enforce RFC 8428 §4.5: at most one value field (v/vs/vb/vd) per record."""
-        value_fields = sum(
-            1 for f in (self.v, self.vs, self.vb, self.vd) if f is not None
-        )
-        if value_fields > 1:
-            raise ValueError(
-                "SenML record must have at most one value field (v, vs, vb, or vd) per RFC 8428 §4.5"
-            )
-
     def to_cbor_map(self) -> dict[int, Any]:
         """Serialise to a dict with numeric CBOR keys (omits None fields)."""
-        # Validation already done by __post_init__
         out: dict[int, Any] = {}
         for f in fields(self):
             val = getattr(self, f.name)
@@ -189,6 +146,8 @@ class SenmlRecord:
                 continue
             label = _FIELD_TO_LABEL[f.name]
             out[label] = val
+        if sum(1 for k in (2,3,4,8) if k in out) > 1:
+            raise ValueError("multiple SenML value fields")
         return out
 
     @classmethod
@@ -204,7 +163,8 @@ class SenmlRecord:
             if name is not None:
                 _validate_field_type(name, val)
                 kwargs[name] = val
-        _validate_value_fields(kwargs)
+        if len({k for k in ("v","vs","vb","vd") if k in kwargs}) > 1:
+            raise ValueError("multiple SenML value fields")
         return cls(**kwargs)
 
 

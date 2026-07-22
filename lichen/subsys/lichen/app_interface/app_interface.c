@@ -83,9 +83,7 @@ int lichen_app_interface_register_sink(
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	for (size_t i = 0U; i < ARRAY_SIZE(s_sinks); i++) {
 		if (s_sinks[i].used && same_sink(&s_sinks[i].sink, sink)) {
-			if (out_id != NULL) {
-				*out_id = (uint8_t)i;
-			}
+			*out_id = (uint8_t)i;
 			k_mutex_unlock(&s_mutex);
 			return 0;
 		}
@@ -104,9 +102,7 @@ int lichen_app_interface_register_sink(
 
 	s_sinks[free_idx].sink = *sink;
 	s_sinks[free_idx].used = true;
-	if (out_id != NULL) {
-		*out_id = (uint8_t)free_idx;
-	}
+	*out_id = (uint8_t)free_idx;
 	k_mutex_unlock(&s_mutex);
 	return 0;
 }

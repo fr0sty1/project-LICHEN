@@ -43,36 +43,18 @@ namespace Antmicro.Renode.Peripherals.Wireless
             Reset();
         }
 
-        public string SimHost
-        {
-            get => simHost;
-            set
-            {
-                lock (connectionLock)
-                {
-                    Disconnect();
-                    simHost = value;
-                }
-                this.Log(LogLevel.Info, "SimHost set to {0}", value);
-            }
-        }
-
         public int SimPort
         {
             get => simPort;
             set
             {
-                lock (connectionLock)
-                {
-                    Disconnect();
-                    simPort = value;
-                }
+                Disconnect();
+                simPort = value;
                 this.Log(LogLevel.Info, "SimPort set to {0}", value);
             }
         }
 
-        // GPIO pins - DIO9 for LR1110 (vs DIO1 for SX1262)
-        public GPIO DIO9 { get; } = new GPIO();
+        public GPIO IRQ { get; } = new GPIO();
         public GPIO Busy { get; } = new GPIO();
 
         public void OnGPIO(int number, bool value)
@@ -95,37 +77,30 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
         public void Reset()
         {
-            lock (stateLock)
-            {
-                state = State.Idle;
-                opcode = 0;
-                opcodeByteCount = 0;
-                byteIndex = 0;
-                bufferOffset = 0;
-                txLen = 0;
-                rxLen = 0;
-                rxRssi = 0;
-                rxSnr = 0;
-                irqFlags = 0;
-                latchedIrqFlags = 0;
-                clearIrqMask = 0;
-                rxMode = false;
-                Array.Clear(txBuffer, 0, txBuffer.Length);
-                Array.Clear(rxBuffer, 0, rxBuffer.Length);
-                Array.Clear(rxTimeoutBytes, 0, rxTimeoutBytes.Length);
-                Busy.Set(false);
-                DIO9.Set(false);
-            }
+            state = State.Idle;
+            opcode = 0;
+            opcodeByteCount = 0;
+            byteIndex = 0;
+            bufferOffset = 0;
+            txLen = 0;
+            rxLen = 0;
+            rxRssi = 0;
+            rxSnr = 0;
+            irqFlags = 0;
+            latchedIrqFlags = 0;
+            rxMode = false;
+            Array.Clear(txBuffer, 0, txBuffer.Length);
+            Array.Clear(rxBuffer, 0, rxBuffer.Length);
+            Array.Clear(rxTimeoutBytes, 0, rxTimeoutBytes.Length);
+            Busy.Set(false);
+            IRQ.Set(false);
         }
 
         public void FinishTransmission()
         {
-            lock (stateLock)
-            {
-                state = State.Idle;
-                opcodeByteCount = 0;
-                byteIndex = 0;
-            }
+            state = State.Idle;
+            opcodeByteCount = 0;
+            byteIndex = 0;
         }
 
         public byte Transmit(byte data)
@@ -158,7 +133,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     }
                     else
                     {
-                        var idx = bufferOffset + (byteIndex - 1);
+                        var idx = (int)bufferOffset + byteIndex - 1;
                         if (idx < txBuffer.Length)
                         {
                             txBuffer[idx] = data;
@@ -176,28 +151,34 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     }
                     else if (byteIndex == 1)
                     {
-                        // NOP byte per LR1110 protocol
                         byteIndex++;
                     }
                     else
                     {
-                        var idx = bufferOffset + (byteIndex - 2);
+                        var idx = (int)bufferOffset + byteIndex - 2;
                         result = idx < rxBuffer.Length ? rxBuffer[idx] : (byte)0;
                         byteIndex++;
                     }
                     break;
 
+                case State.ClearIrq:
+                    if (byteIndex < 4) {
+                        irqFlags &= ~((uint)data << (24 - byteIndex * 8));
+                        byteIndex++;
+                        if (byteIndex == 4) {
+                            IRQ.Set(irqFlags != 0);
+                            latchedIrqFlags = irqFlags;
+                        }
+                    }
+                    break;
                 case State.SetTx:
                 case State.SetPacketParams:
                 case State.SetModulationParams:
-                case State.ClearIrq:
                 case State.SetDioIrqParams:
-                    // Consume parameter bytes, ignore values
                     byteIndex++;
                     break;
 
                 case State.SetRx:
-                    // Collect 3 timeout bytes (24-bit big-endian)
                     if (byteIndex < 3)
                     {
                         rxTimeoutBytes[byteIndex] = data;
@@ -218,22 +199,22 @@ namespace Antmicro.Renode.Peripherals.Wireless
                 case State.GetIrqStatus:
                     if (byteIndex == 0)
                     {
-                        result = (byte)((irqFlags >> 24) & 0xFF);
+                        result = (byte)((latchedIrqFlags >> 24) & 0xFF);
                         byteIndex++;
                     }
                     else if (byteIndex == 1)
                     {
-                        result = (byte)((irqFlags >> 16) & 0xFF);
+                        result = (byte)((latchedIrqFlags >> 16) & 0xFF);
                         byteIndex++;
                     }
                     else if (byteIndex == 2)
                     {
-                        result = (byte)((irqFlags >> 8) & 0xFF);
+                        result = (byte)((latchedIrqFlags >> 8) & 0xFF);
                         byteIndex++;
                     }
                     else
                     {
-                        result = (byte)(irqFlags & 0xFF);
+                        result = (byte)(latchedIrqFlags & 0xFF);
                     }
                     break;
 
@@ -314,10 +295,8 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     state = State.GetStatus;
                     break;
 
-                case 0x0012: // ClearIrq
+                case 0x0012:
                     state = State.ClearIrq;
-                    irqFlags = 0;
-                    DIO9.Set(false);
                     break;
 
                 case 0x0020: // GetRxBufferStatus
@@ -328,8 +307,9 @@ namespace Antmicro.Renode.Peripherals.Wireless
                     state = State.GetPacketStatus;
                     break;
 
-                case 0x0014: // GetIrqStatus
+                case 0x0014:
                     state = State.GetIrqStatus;
+                    latchedIrqFlags = irqFlags;
                     break;
 
                 // Config commands - acknowledge but ignore
@@ -434,7 +414,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
             Busy.Set(false);
             txLen = 0;
-            DIO9.Set(irqFlags != 0);
+            IRQ.Set(irqFlags != 0);
         }
 
         private void SendRxEnter()
@@ -582,7 +562,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
 
                 rxMode = false;
                 Busy.Set(false);
-                DIO9.Set(irqFlags != 0);
+                IRQ.Set(irqFlags != 0);
             }
             catch (Exception e)
             {
@@ -701,7 +681,7 @@ namespace Antmicro.Renode.Peripherals.Wireless
         }
 
         private readonly IMachine machine;
-        private string simHost;
+        private readonly string simHost;
         private int simPort;
         private readonly byte[] txBuffer;
         private readonly byte[] rxBuffer;
@@ -718,18 +698,9 @@ namespace Antmicro.Renode.Peripherals.Wireless
         private ushort rxLen;
         private short rxRssi;
         private short rxSnr;
-        private uint irqFlags;  // 32-bit for LR1110 (vs 16-bit for SX1262)
+        private uint irqFlags;
         private uint latchedIrqFlags;
-        private uint clearIrqMask;
         private bool rxMode;
         private byte[] rxTimeoutBytes = new byte[3];
-
-        // Background reader for async messages from lichen-sim (TX_DONE, RX_PACKET,
-        // RX_TIMEOUT). Prevents SPI bus deadlock during RX (critical for nRF52840
-        // Meshtastic boards like T1000-E).
-        private System.Threading.Thread readerThread;
-        private readonly object writeLock = new object();
-        private readonly object stateLock = new object();
-        private readonly object connectionLock = new object();
     }
 }

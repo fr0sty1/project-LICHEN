@@ -124,9 +124,6 @@ impl<'a> BitReader<'a> {
     }
 
     fn read(&mut self, nbits: usize) -> Result<u128, SchcError> {
-        if nbits > 128 {
-            return Err(TooShort::new(nbits, 128).into());
-        }
         let required_bits = self.pos + nbits;
         let available_bits = self.buf.len() * 8;
         if required_bits > available_bits {
@@ -148,13 +145,14 @@ impl<'a> BitReader<'a> {
     }
 }
 
-// ─── IPv6 address helpers ────────────────────────────────────────────────────
+// ─── address helpers ─────────────────────────────────────────────────────────
 
 fn is_link_local(addr: &[u8]) -> bool {
     addr.len() == 16 && addr[0] == 0xFE && (addr[1] & 0xC0) == 0x80
 }
 
 // ─── checksum helpers (no_std) ───────────────────────────────────────────────
+
 fn oc_add(a: u32, b: u32) -> u32 {
     let s = a + b;
     if s >> 16 != 0 {
@@ -409,6 +407,7 @@ fn compress_rpl_dio(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     Ok(needed)
 }
 
+/// Rule 4: link-local IPv6 + ICMPv6 RPL DAO with DODAGID.
 fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     if packet.len() < 40 + 4 + 20 {
         return Err(SchcError::NoMatchingRule);
@@ -419,10 +418,9 @@ fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let rpl = &packet[44..];
     let instance = rpl[0];
     let kd_flags = rpl[1];
-    if (kd_flags & 0x40) == 0 {
+    if kd_flags & 0x40 == 0 {
         return Err(SchcError::NoMatchingRule);
     }
-    // reserved (rpl[2]) is NOT_SENT
     let seq = rpl[3];
     let dodagid = u128::from_be_bytes(rpl[4..20].try_into().unwrap());
     let tail = &rpl[20..];
@@ -433,10 +431,10 @@ fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     out[0] = RULE_RPL_DAO;
     let mut w = BitWriter::new(&mut out[1..]);
     w.write(hop_limit as u128, 8)?;
-    let src_addr = u128::from_be_bytes(src.try_into().unwrap());
-    let dst_addr = u128::from_be_bytes(dst.try_into().unwrap());
-    w.write(src_addr, 128)?;
-    w.write(dst_addr, 128)?;
+    let src_iid = u64::from_be_bytes(src[8..16].try_into().unwrap());
+    let dst_iid = u64::from_be_bytes(dst[8..16].try_into().unwrap());
+    w.write(src_iid as u128, 64)?;
+    w.write(dst_iid as u128, 64)?;
     w.write(instance as u128, 8)?;
     w.write(kd_flags as u128, 8)?;
     w.write(seq as u128, 8)?;
@@ -702,8 +700,8 @@ fn decompress_rpl_dao(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let mut r = BitReader::new(&data[1..]);
 
     let hop_limit = r.read(8)? as u8;
-    let src_addr = r.read(128)?;
-    let dst_addr = r.read(128)?;
+    let src_iid = r.read(64)?;
+    let dst_iid = r.read(64)?;
     let instance = r.read(8)? as u8;
     let kd_flags = r.read(8)? as u8;
     let seq = r.read(8)? as u8;
@@ -711,8 +709,8 @@ fn decompress_rpl_dao(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
 
     let tail = &data[1 + r.residue_byte_end()..];
 
-    let src = src_addr.to_be_bytes();
-    let dst = dst_addr.to_be_bytes();
+    let src = (LINK_LOCAL_PREFIX | src_iid).to_be_bytes();
+    let dst = (LINK_LOCAL_PREFIX | dst_iid).to_be_bytes();
 
     let rpl_body_len = 20 + tail.len();
     let icmp_len = 4 + rpl_body_len;
@@ -748,16 +746,10 @@ fn decompress_rpl_dao(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     Ok(total)
 }
 
-fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, SchcError> {
-    if rule_id != RULE_MQTT_SN {
-        return Err(SchcError::UnknownRuleId(rule_id));
-    }
-
+fn decompress_mqtt_sn(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     let mut r = BitReader::new(&data[1..]);
-
     let hop_limit = r.read(8)? as u8;
     let addr_mode = r.read(1)? as u8;
-
     let (src, dst) = if addr_mode == 0 {
         let src_iid = r.read(64)?;
         let dst_iid = r.read(64)?;
@@ -770,41 +762,29 @@ fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize,
         let dst_int = r.read(128)?;
         (src_int.to_be_bytes(), dst_int.to_be_bytes())
     };
-
-    let is_ll_pair = is_link_local(&src) && is_link_local(&dst);
-    if (addr_mode == 0) != is_ll_pair {
+    if (addr_mode == 0) != (is_link_local(&src) && is_link_local(&dst)) {
         return Err(SchcError::NoMatchingRule);
     }
-
     let direction = r.read(1)? as u8;
     let other_port = r.read(16)? as u16;
-
     let (src_port, dst_port) = if direction == 0 {
         (PORT_MQTT_SN, other_port)
     } else {
         (other_port, PORT_MQTT_SN)
     };
-
     let tail = &data[1 + r.residue_byte_end()..];
-
     let udp_len = (8 + tail.len()) as u16;
     let udp_cksum = udp_checksum(&src, &dst, src_port, dst_port, tail);
     let total = 40 + 8 + tail.len();
     if total > out.len() {
         return Err(BufferTooSmall::new(total, out.len()).into());
     }
-
     write_ipv6_header(out, udp_len, 17, hop_limit, &src, &dst);
-
-    // UDP header
     out[40..42].copy_from_slice(&src_port.to_be_bytes());
     out[42..44].copy_from_slice(&dst_port.to_be_bytes());
     out[44..46].copy_from_slice(&udp_len.to_be_bytes());
     out[46..48].copy_from_slice(&udp_cksum.to_be_bytes());
-
-    // MQTT-SN payload
     out[48..48 + tail.len()].copy_from_slice(tail);
-
     Ok(total)
 }
 
@@ -841,15 +821,12 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
                 }
             }
         }
-        // Select CoAP rule preferring link-local IID compression (rule 0) when
-        // both src/dst are LL; otherwise GLOBAL_COAP (rule 1, full addrs). This
-        // fixes the mixed-address-type and ULA fallback to uncompressed.
-        let rule_id = if is_link_local(src) && is_link_local(dst) {
-            RULE_LINK_LOCAL_COAP
-        } else {
-            RULE_GLOBAL_COAP
-        };
-        if let Ok(n) = compress_coap(packet, out, rule_id) {
+        if is_link_local(src) && is_link_local(dst) {
+            if let Ok(n) = compress_coap(packet, out, RULE_LINK_LOCAL_COAP) {
+                return Ok(n);
+            }
+        }
+        if let Ok(n) = compress_coap(packet, out, RULE_GLOBAL_COAP) {
             return Ok(n);
         }
     } else if nh == 58 && packet.len() >= 40 + 4 {
@@ -866,16 +843,15 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
             if let Ok(n) = compress_icmpv6_echo(packet, out) {
                 return Ok(n);
             }
-        } else if icmp_type == 155
-            && (is_link_local(src) || is_ula(src))
-            && (is_link_local(dst) || is_ula(dst))
-        {
+        } else if icmp_type == 155 && is_link_local(src) && is_link_local(dst) {
             if icmp_code == 1 && packet.len() >= 40 + 4 + 24 {
                 // DIO
                 if let Ok(n) = compress_rpl_dio(packet, out) {
                     return Ok(n);
                 }
             } else if icmp_code == 2 && packet.len() >= 40 + 4 + 20 {
+                // DAO — only rule 4 if D flag set
+                // packet[45] = offset 40 (IPv6) + 4 (ICMPv6 header) + 1 (instance) = K/D/flags byte
                 let kd_flags = packet[45];
                 if kd_flags & 0x40 != 0 {
                     if let Ok(n) = compress_rpl_dao(packet, out) {
@@ -909,7 +885,7 @@ pub fn decompress(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
         RULE_ICMPV6_ECHO => decompress_icmpv6_echo(data, out),
         RULE_RPL_DIO => decompress_rpl_dio(data, out),
         RULE_RPL_DAO => decompress_rpl_dao(data, out),
-        RULE_MQTT_SN => decompress_mqtt_sn(data, out, RULE_MQTT_SN),
+        RULE_MQTT_SN => decompress_mqtt_sn(data, out),
         RULE_UNCOMPRESSED => {
             let payload = &data[1..];
             if out.len() < payload.len() {
@@ -1011,11 +987,11 @@ mod tests {
     #[test]
     fn vector_rpl_dao() {
         round_trip(
-            "6000000000183a40fd000db8000000000000000000000001\
-             fd000db80000000000000000000000029b02443700400005\
-             fd000db8000000000000000000000001",
-            "0440fd000db8000000000000000000000001fd000db8000000000000000000000002004005\
-             fd000db8000000000000000000000001",
+            "6000000000183a40fe800000000000000000000000000001\
+             fe8000000000000000000000000000029b0268df00400005\
+             fe800000000000000000000000000001",
+            "044000000000000000010000000000000002004005\
+             fe800000000000000000000000000001",
             4,
         );
     }

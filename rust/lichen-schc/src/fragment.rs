@@ -523,8 +523,23 @@ mod std_ext {
                     mic_ok: None,
                 };
             }
-            self.rule_id = frag.rule_id;
+            if self.rule_id == 0 {
+                self.rule_id = frag.rule_id;
+            } else if self.rule_id != frag.rule_id {
+                return ReceiverResult {
+                    ack: None,
+                    reassembled: None,
+                    mic_ok: None,
+                };
+            }
             let abs_window = self.abs_window(frag);
+            if abs_window > self.current_window + 1 {
+                return ReceiverResult {
+                    ack: None,
+                    reassembled: None,
+                    mic_ok: None,
+                };
+            }
             self.current_window = abs_window;
 
             if frag.is_all_1() {
@@ -535,8 +550,6 @@ mod std_ext {
                 return self.finalize();
             }
 
-            // Bounds check: FCN must not exceed window_size - 1 for non-All-1 fragments.
-            // Invalid FCN would cause underflow; ignore such fragments.
             if frag.fcn as usize >= self.window_size {
                 return ReceiverResult {
                     ack: None,

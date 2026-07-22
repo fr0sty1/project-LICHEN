@@ -16,12 +16,34 @@ use std::{
 use crate::message::{
     Dao, OptionIter, RplError, RplTarget, TransitInfo, OPT_RPL_TARGET, OPT_TRANSIT_INFO,
 };
-#[cfg(feature = "std")]
-use lichen_core::addr::NodeId;
 
 #[cfg(feature = "std")]
-use crate::lollipop_is_newer;
+/// RFC 6550 Section 9.1: Lollipop sequence comparison for DAO sequence.
+///
+/// Values 0-127 are the linear region (restart); 128-255 are circular (normal).
+/// Returns true if `new_seq` is newer than `old_seq`.
+const LOLLIPOP_CIRCULAR_BIT: u8 = 128;
+#[cfg(feature = "std")]
+const LOLLIPOP_SEQUENCE_WINDOW: u8 = 16;
 
+#[cfg(feature = "std")]
+fn seq_is_newer(new_seq: u8, old_seq: u8) -> bool {
+    match (
+        new_seq < LOLLIPOP_CIRCULAR_BIT,
+        old_seq < LOLLIPOP_CIRCULAR_BIT,
+    ) {
+        // Both in linear region (0-127): simple comparison
+        (true, true) => new_seq > old_seq,
+        // Both in circular region (128-255): modular comparison with window
+        (false, false) => {
+            let diff = new_seq.wrapping_sub(old_seq) & 0x7F;
+            diff > 0 && diff <= LOLLIPOP_SEQUENCE_WINDOW
+        }
+        // Mixed: linear (restart) is always newer than circular
+        (true, false) => true,
+        (false, true) => false,
+    }
+}
 #[cfg(feature = "std")]
 use lichen_core::error::{BufferTooSmall, TooShort};
 
@@ -90,48 +112,6 @@ impl SourceRoutingHeader {
     }
 }
 
-/// Canonical route target for prefix routes (per closed 2auf.44.9.12).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct RouteTarget {
-    pub prefix: [u8; 16],
-    pub prefix_len: u8,
-}
-
-impl RouteTarget {
-    pub fn new(prefix: [u8; 16], prefix_len: u8) -> Option<Self> {
-        if prefix_len > 128 {
-            return None;
-        }
-        Some(Self { prefix, prefix_len })
-    }
-
-    pub fn canonical(prefix: [u8; 16], prefix_len: u8) -> Option<Self> {
-        if prefix_len > 128 {
-            return None;
-        }
-        let len = match prefix_len {
-            0 => 0,
-            l if l <= 64 => 64,
-            l if l <= 127 => 127,
-            _ => 128,
-        };
-        let mut p = prefix;
-        let bytes = (len / 8) as usize;
-        if bytes < 16 {
-            p[bytes..].fill(0);
-            let bits = len % 8;
-            if bits > 0 {
-                let mask = 0xff << (8 - bits);
-                p[bytes] &= mask;
-            }
-        }
-        Some(Self {
-            prefix: p,
-            prefix_len: len,
-        })
-    }
-}
-
 // ── Routing table ─────────────────────────────────────────────────────────────
 
 #[cfg(feature = "std")]
@@ -170,19 +150,14 @@ pub struct InvalidRouteEntryTransition {
 pub struct RouteEntry {
     pub path: Vec<[u8; 16]>,
     pub state: RouteEntryState,
-    /// Egress for reparenting/expiry handling in atomic DAO rebuilds. For hosts this is
-    /// the target; for prefixes it is the border router. Prevents stale source paths.
-    pub egress: [u8; 16],
 }
 
 #[cfg(feature = "std")]
 impl RouteEntry {
     pub fn fresh(path: &[[u8; 16]]) -> Self {
-        let egress = *path.last().expect("route path must not be empty");
         Self {
             path: path.to_vec(),
             state: RouteEntryState::Fresh,
-            egress,
         }
     }
 
@@ -214,9 +189,6 @@ impl RouteEntry {
             });
         }
         self.path = path.to_vec();
-        if let Some(&e) = path.last() {
-            self.egress = e;
-        }
         self.transition_to(RouteEntryState::Fresh)
     }
 
@@ -242,17 +214,6 @@ impl RoutingTable {
     }
 
     pub fn add_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) {
-        let mut seen = HashSet::new();
-        let mut deduped_path = Vec::with_capacity(path.len());
-        for &addr in path {
-            if seen.insert(addr) {
-                deduped_path.push(addr);
-            }
-        }
-        if !deduped_path.contains(&target) {
-            deduped_path.push(target);
-        }
-        let path = deduped_path.as_slice();
         match self.routes.get_mut(&target) {
             Some(entry) if entry.state != RouteEntryState::Expired => {
                 entry
@@ -301,14 +262,6 @@ impl RoutingTable {
 
     pub fn is_empty(&self) -> bool {
         self.routes.is_empty()
-    }
-
-    pub fn add_prefix_route(&mut self, target: RouteTarget, path: &[[u8; 16]]) {
-        self.add_route(target.prefix, path);
-    }
-
-    pub fn remove_prefix_route(&mut self, target: &RouteTarget) {
-        self.remove_route(&target.prefix);
     }
 }
 
@@ -394,33 +347,34 @@ impl DaoManager {
         buf[..pos].to_vec()
     }
 
-    /// Process a received DAO on the root. Returns `Some(target)` if a route was installed,
-    /// `None` otherwise. Uses parsed RPL Target option (not IPv6 src) to avoid divergence.
+    /// Process a received DAO on the root. Returns `true` if a route was installed.
     ///
     /// `dao_bytes` is the raw DAO wire bytes (base object + options).
     /// SECURITY: Validates DAO sequence to prevent replay attacks with stale routes.
-    pub fn process_dao(&mut self, dao_bytes: &[u8]) -> Option<[u8; 16]> {
+    pub fn process_dao(&mut self, dao_bytes: &[u8]) -> bool {
         if !self.is_root {
-            return None;
+            return false;
         }
         // Parse DAO to get sequence number
         let Ok(dao) = Dao::from_bytes(dao_bytes) else {
-            return None;
+            return false;
         };
-        let (target, parent) = self.extract_edge(dao_bytes)?;
+        let Some((target, parent)) = self.extract_edge(dao_bytes) else {
+            return false;
+        };
         // SECURITY: Reject stale DAO sequences to prevent replay attacks
         if let Some(&last_seq) = self.dao_seq_map.get(&target) {
-            if !lollipop_is_newer(dao.dao_sequence, last_seq) {
+            if !seq_is_newer(dao.dao_sequence, last_seq) {
                 return false;
             }
         }
         self.dao_seq_map.insert(target, dao.dao_sequence);
         self.parent_map.insert(target, parent);
         self.rebuild_routes();
-        Some(target)
+        true
     }
 
-    pub fn extract_edge(&self, dao_bytes: &[u8]) -> Option<([u8; 16], [u8; 16])> {
+    fn extract_edge(&self, dao_bytes: &[u8]) -> Option<([u8; 16], [u8; 16])> {
         let options = Dao::options_tail(dao_bytes);
         let mut target: Option<[u8; 16]> = None;
         let mut parent: Option<[u8; 16]> = None;
@@ -441,7 +395,7 @@ impl DaoManager {
         Some((target?, parent?))
     }
 
-    pub fn rebuild_routes(&mut self) {
+    fn rebuild_routes(&mut self) {
         let targets: Vec<[u8; 16]> = self.parent_map.keys().copied().collect();
         for target in targets {
             if let Some(path) = self.assemble_path(target) {
@@ -473,28 +427,6 @@ impl DaoManager {
 
         chain.reverse();
         Some(chain)
-    }
-
-    pub fn populate_routes(&self, routes: &mut HashMap<[u8; 16], NodeId>) {
-        routes.clear();
-        let targets: Vec<[u8; 16]> = self.parent_map.keys().copied().collect();
-        for target in targets {
-            if let Some(path) = self.assemble_path(target) {
-                if let Some(&nexthop) = path.first() {
-                    let id = if nexthop[0] == 0x02 && nexthop[9..].iter().all(|&b| b == 0) {
-                        let mut id = [0u8; 8];
-                        id.copy_from_slice(&nexthop[1..9]);
-                        id
-                    } else {
-                        let mut id = [0u8; 8];
-                        id.copy_from_slice(&nexthop[8..16]);
-                        id[0] ^= 0x02;
-                        id
-                    };
-                    routes.insert(target, NodeId(id));
-                }
-            }
-        }
     }
 }
 
@@ -529,13 +461,6 @@ mod tests {
         table.remove_route(&target);
         assert!(table.lookup(&target).is_none());
         assert!(table.is_empty());
-
-        let rt = RouteTarget::new(ll(4), 128).unwrap();
-        let ppath = [ll(2), ll(4)];
-        table.add_prefix_route(rt, &ppath);
-        assert_eq!(table.lookup(&ll(4)), Some(ppath.as_slice()));
-        table.remove_prefix_route(&rt);
-        assert!(table.lookup(&ll(4)).is_none());
     }
 
     #[test]
@@ -664,7 +589,7 @@ mod tests {
         let mut node2 = DaoManager::new(ll(2), 0, dodag_id());
         let dao = node2.build_dao(root_addr);
 
-        assert!(root.process_dao(&dao).is_some());
+        assert!(root.process_dao(&dao));
         // Single-hop path: [ll(2)]
         let path = root.routing_table.lookup(&ll(2)).unwrap();
         assert_eq!(path, &[ll(2)]);
@@ -677,11 +602,11 @@ mod tests {
 
         // Node ll(2) sends DAO: target=ll(2), parent=root
         let mut node2 = DaoManager::new(ll(2), 0, dodag_id());
-        assert!(root.process_dao(&node2.build_dao(root_addr)).is_some());
+        root.process_dao(&node2.build_dao(root_addr));
 
         // Node ll(3) sends DAO: target=ll(3), parent=ll(2)
         let mut node3 = DaoManager::new(ll(3), 0, dodag_id());
-        assert!(root.process_dao(&node3.build_dao(ll(2))).is_some());
+        root.process_dao(&node3.build_dao(ll(2)));
 
         // Two-hop path: root → ll(2) → ll(3)
         let path = root.routing_table.lookup(&ll(3)).unwrap();
@@ -695,7 +620,7 @@ mod tests {
 
         // ll(3) sends DAO pointing to ll(2), but ll(2) hasn't sent a DAO yet.
         let mut node3 = DaoManager::new(ll(3), 0, dodag_id());
-        let _ = root.process_dao(&node3.build_dao(ll(2)));
+        root.process_dao(&node3.build_dao(ll(2)));
 
         assert!(root.routing_table.lookup(&ll(3)).is_none());
     }
@@ -716,23 +641,20 @@ mod tests {
         // Node ll(2) sends DAO with sequence 1
         let mut node2 = DaoManager::new(ll(2), 0, dodag_id());
         let dao1 = node2.build_dao(root_addr);
-        assert!(root.process_dao(&dao1).is_some());
+        assert!(root.process_dao(&dao1));
         assert!(root.routing_table.lookup(&ll(2)).is_some());
 
         // Node ll(2) sends DAO with sequence 2 (newer, should be accepted)
         let dao2 = node2.build_dao(root_addr);
-        assert!(root.process_dao(&dao2).is_some());
+        assert!(root.process_dao(&dao2));
 
         // Replay attack: attacker replays dao1 (sequence 1, now stale)
-        assert!(
-            root.process_dao(&dao1).is_none(),
-            "stale DAO should be rejected"
-        );
+        assert!(!root.process_dao(&dao1), "stale DAO should be rejected");
 
         // Same sequence should also be rejected
         let dao2_copy = dao2.clone();
         assert!(
-            root.process_dao(&dao2_copy).is_none(),
+            !root.process_dao(&dao2_copy),
             "same sequence should be rejected"
         );
     }
@@ -743,27 +665,27 @@ mod tests {
         // Linear region: 0-127, Circular region: 128-255
 
         // Linear region: simple comparison
-        assert!(super::lollipop_is_newer(1, 0));
-        assert!(super::lollipop_is_newer(127, 0));
-        assert!(!super::lollipop_is_newer(0, 1));
+        assert!(super::seq_is_newer(1, 0));
+        assert!(super::seq_is_newer(127, 0));
+        assert!(!super::seq_is_newer(0, 1));
 
         // Circular region: modular comparison with sequence window
-        assert!(super::lollipop_is_newer(129, 128));
-        assert!(super::lollipop_is_newer(144, 128)); // diff=16, within window
-        assert!(!super::lollipop_is_newer(145, 128)); // diff=17, outside window
-        assert!(super::lollipop_is_newer(255, 254));
-        assert!(super::lollipop_is_newer(128, 255)); // wraps around within circular
+        assert!(super::seq_is_newer(129, 128));
+        assert!(super::seq_is_newer(144, 128)); // diff=16, within window
+        assert!(!super::seq_is_newer(145, 128)); // diff=17, outside window
+        assert!(super::seq_is_newer(255, 254));
+        assert!(super::seq_is_newer(128, 255)); // wraps around within circular
 
         // Mixed: linear (restart) is always newer than circular
-        assert!(super::lollipop_is_newer(0, 255));
-        assert!(super::lollipop_is_newer(0, 128));
-        assert!(super::lollipop_is_newer(127, 200));
-        assert!(super::lollipop_is_newer(127, 128)); // key bug case from bead
-        assert!(!super::lollipop_is_newer(200, 127)); // circular not newer than linear
-        assert!(!super::lollipop_is_newer(128, 127)); // circular not newer than linear
+        assert!(super::seq_is_newer(0, 255));
+        assert!(super::seq_is_newer(0, 128));
+        assert!(super::seq_is_newer(127, 200));
+        assert!(super::seq_is_newer(127, 128)); // key bug case from bead
+        assert!(!super::seq_is_newer(200, 127)); // circular not newer than linear
+        assert!(!super::seq_is_newer(128, 127)); // circular not newer than linear
 
         // Same sequence is not newer
-        assert!(!super::lollipop_is_newer(100, 100));
-        assert!(!super::lollipop_is_newer(200, 200));
+        assert!(!super::seq_is_newer(100, 100));
+        assert!(!super::seq_is_newer(200, 200));
     }
 }

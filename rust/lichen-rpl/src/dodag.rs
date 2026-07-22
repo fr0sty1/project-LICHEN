@@ -269,6 +269,7 @@ impl DodagState {
                     .expect("joined DODAG can return to unjoined");
                 self.preferred_parent = None;
                 self.rank = INFINITE_RANK;
+                self.lowest_rank = INFINITE_RANK;
             }
             return;
         };

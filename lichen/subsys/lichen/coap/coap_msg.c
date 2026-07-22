@@ -52,6 +52,9 @@ static void cbor_put_array_header(uint8_t *buf, size_t *off, uint8_t count)
 
 static void cbor_put_tstr(uint8_t *buf, size_t *off, const char *value, size_t len)
 {
+	if (len > UINT16_MAX) {
+		return;
+	}
 	if (len < 24U) {
 		buf[(*off)++] = 0x60U | (uint8_t)len;
 	} else if (len <= UINT8_MAX) {

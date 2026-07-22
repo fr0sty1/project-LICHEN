@@ -37,7 +37,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import aiocoap
 from aiocoap import Message
@@ -99,40 +99,19 @@ def _monotonic_time() -> float:
     except RuntimeError:
         # No running event loop, use time.monotonic()
         import time
+
         return time.monotonic()
-
-
-def _hash_32(sfn: int, key: int = 0) -> int:
-    """FNV-1a 32-bit hash (matches C lichen_hash_32:502 and test/vectors/generate.py:1600).
-    For OSCORE nonce check: _hash_32(seqno, int.from_bytes(nonce[0:8], 'big')) ^ LICHEN_SEED.
-    See RFC8613 4.1, spec/06-security.md:15.3 for replay/nonce uniqueness.
-    """
-    lichen_seed = 0x4c494348454e  # "LICHEN" as u48 for seed (task requirement)
-    h = 0x811c9dc5
-    sfn = sfn ^ lichen_seed  # incorporate LICHEN per task
-    for i in range(4):
-        b = (sfn >> (i * 8)) & 0xff
-        h = ((h ^ b) * 0x01000193) & 0xffffffff
-    for i in range(8):
-        b = (key >> (i * 8)) & 0xff
-        h = ((h ^ b) * 0x01000193) & 0xffffffff
-    return h
 
 
 @dataclass
 class PeerContext:
-    """OSCORE context and metadata for a peer.
-    SECURITY: replay_hashes tracks nonce hashes using _hash_32(LICHEN) to enforce
-    replay protection (RFC 8613 §4.1, spec/06-security:15.3). Prevents CoAP observe replays.
-    """
+    """OSCORE context and metadata for a peer."""
 
     oscore: MemorySecurityContext
     peer_pubkey: bytes
     established_at: float = field(default_factory=_monotonic_time)
     # Track pending requests for response correlation
     pending_requests: dict[bytes, object] = field(default_factory=dict)
-    # Replay protection: set of hashed nonces/seqnos (32-bit to bound memory)
-    replay_hashes: set[int] = field(default_factory=set)
 
 
 class OscoreContextStore:
@@ -164,9 +143,7 @@ class OscoreContextStore:
         async with self._get_lock():
             return self._contexts.get(host)
 
-    async def put(
-        self, host: str, oscore_ctx: MemorySecurityContext, peer_pubkey: bytes
-    ) -> None:
+    async def put(self, host: str, oscore_ctx: MemorySecurityContext, peer_pubkey: bytes) -> None:
         """Store OSCORE context for a peer."""
         async with self._get_lock():
             self._contexts[host] = PeerContext(
@@ -174,9 +151,7 @@ class OscoreContextStore:
                 peer_pubkey=peer_pubkey,
             )
 
-    def put_sync(
-        self, host: str, oscore_ctx: MemorySecurityContext, peer_pubkey: bytes
-    ) -> None:
+    def put_sync(self, host: str, oscore_ctx: MemorySecurityContext, peer_pubkey: bytes) -> None:
         """Store OSCORE context (synchronous)."""
         self._contexts[host] = PeerContext(
             oscore=oscore_ctx,
@@ -243,8 +218,7 @@ class TofuPeerResolver(EdhocPeerResolver):
             if host in self._pinned:
                 if self._pinned[host] != pubkey:
                     raise ValueError(
-                        f"TOFU violation: peer {host} key changed "
-                        f"(possible MITM or hardware swap)"
+                        f"TOFU violation: peer {host} key changed (possible MITM or hardware swap)"
                     )
             else:
                 self._pinned[host] = pubkey
@@ -335,30 +309,22 @@ class SecureDatagramChannel(DatagramChannel):
             remote = LichenRemote(source)
             msg = Message.decode(data, remote)
             msg.direction = Direction.INCOMING
-
-            # Check for OSCORE option (option number 9)
-            # Use 'oscore' attribute (aiocoap >= 0.4 naming)
             has_oscore = msg.opt.oscore is not None
 
             if has_oscore:
-                # OSCORE protected - unprotect it (uses the INCOMING direction)
                 plaintext = await self._unprotect(msg, source)
                 if plaintext is not None and self._receiver is not None:
                     self._receiver(plaintext, source)
             elif source in self._edhoc_active_peers:
                 # EDHOC in progress with this peer - allow plaintext
                 # (EDHOC responses are not OSCORE-protected)
-                logger.debug(
-                    "Allowing plaintext from %s (EDHOC in progress)", source
-                )
-                # Dispatch to EDHOC channel for response matching (raw bytes to avoid double-decode)
+                logger.debug("Allowing plaintext from %s (EDHOC in progress)", source)
+                # Dispatch to EDHOC channel for response matching
                 if self._edhoc_channel is not None:
                     self._edhoc_channel.dispatch(data, source)
             elif self._require_oscore:
                 # Plaintext not allowed
-                logger.warning(
-                    "Rejected plaintext message from %s (OSCORE required)", source
-                )
+                logger.warning("Rejected plaintext message from %s (OSCORE required)", source)
             elif self._receiver is not None:
                 # Passthrough plaintext
                 self._receiver(data, source)
@@ -377,25 +343,12 @@ class SecureDatagramChannel(DatagramChannel):
             logger.warning("No OSCORE context for %s, dropping message", source)
             return None
 
-        # SECURITY: nonce check using hash_32(LICHEN) for replay protection
-        # (supplements aiocoap ReplayWindow per RFC8613 §4.1 and spec/06-security.md:15.3;
-        # fixes missing protection for CoAP observes/replays). Full PIV extraction in future.
-        if peer_ctx.peer_pubkey:
-            key = int.from_bytes(peer_ctx.peer_pubkey[:8], "big")
-            # Use mid or token byte as proxy for nonce/seq (unique per msg)
-            proxy = getattr(msg, "mid", 0) or (msg.token[0] if msg.token else 0)
-            nonce_hash = _hash_32(proxy, key)
-            if nonce_hash in peer_ctx.replay_hashes:
-                logger.info("Replay detected (hash_32) for %s", source)
-                return None
-            peer_ctx.replay_hashes.add(nonce_hash)
-            if len(peer_ctx.replay_hashes) > 256:  # bound memory per constrained design
-                peer_ctx.replay_hashes.pop()  # LRU-like; better window in prod
-
         try:
             # Determine if this is a request or response
             is_response = msg.code.is_response()
 
+            # For responses, we need the request_id from when we sent the request.
+            # Use atomic pop(key, None) to avoid race between concurrent tasks.
             request_id = None
             if is_response:
                 request_id = peer_ctx.pending_requests.pop(msg.token, None)
@@ -424,7 +377,7 @@ class SecureDatagramChannel(DatagramChannel):
             if not is_response and new_request_id is not None:
                 peer_ctx.pending_requests[msg.token] = new_request_id
 
-            return cast(bytes, unprotected_msg.encode())
+            return unprotected_msg.encode()
 
         except Exception as e:
             logger.warning("OSCORE unprotection failed for %s: %r", source, e)
@@ -606,9 +559,7 @@ class SecureDatagramChannel(DatagramChannel):
             raise ValueError(f"EDHOC exchange with {dest} failed: {e}") from e
 
         if not response.code.is_successful():
-            raise ValueError(
-                f"EDHOC exchange with {dest} returned error: {response.code}"
-            )
+            raise ValueError(f"EDHOC exchange with {dest} returned error: {response.code}")
 
         return response.payload or b""
 
