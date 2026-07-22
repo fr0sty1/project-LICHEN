@@ -15,7 +15,8 @@
   "labels": [
     "ccp",
     "phy",
-    "scalability"
+    "scalability",
+    "codereview"
   ],
   "dependencies": [
     {
