@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-pfgp",
+  "title": "codereview: NodeId::from_ipv6 lacks unit test coverage",
+  "description": "New method added in addr.rs:52 should have test similar to link_local_addr tests verifying roundtrip with ula_addr or link_local_addr. P3 test coverage. discovered-from:project-LICHEN-yufp",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:55:51.093448755Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:55:51.093448755Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-pfgp",
+      "depends_on_id": "project-LICHEN-yufp",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:55:51.197035039Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
