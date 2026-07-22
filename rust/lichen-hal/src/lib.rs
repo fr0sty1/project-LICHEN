@@ -40,6 +40,15 @@ pub struct RadioConfig {
     pub frequency: u32,
 }
 
+/// Channel configuration for multi-channel concentrators (SX1302/RAK2287).
+#[derive(Debug, Clone, Copy)]
+pub struct ChannelConfig {
+    pub frequency: u32,
+    pub spreading_factor: u8,
+    pub bandwidth: u32,
+    pub coding_rate: u8,
+}
+
 /// Common error type for Radio implementations.
 ///
 /// Generic over `E` for hardware-specific errors (e.g., SPI errors).
@@ -55,6 +64,8 @@ pub enum RadioError<E> {
     Protocol,
     /// Connection lost (for networked/simulated radios).
     Connection,
+    /// Operation not supported by this radio (e.g. multi-channel on single-radio impl).
+    NotSupported,
 }
 
 impl<E: core::fmt::Debug> core::fmt::Display for RadioError<E> {
@@ -64,6 +75,7 @@ impl<E: core::fmt::Debug> core::fmt::Display for RadioError<E> {
             Self::Hardware => write!(f, "radio hardware error"),
             Self::Protocol => write!(f, "protocol error"),
             Self::Connection => write!(f, "connection lost"),
+            Self::NotSupported => write!(f, "not supported"),
         }
     }
 }
@@ -116,6 +128,12 @@ pub trait Radio {
 
     /// Apply radio configuration.
     fn configure(&mut self, config: &RadioConfig);
+
+    /// Configure multiple channels for concentrator mode (SX1302 gateways).
+    fn configure_channels(
+        &mut self,
+        channels: &[ChannelConfig],
+    ) -> impl core::future::Future<Output = Result<(), Self::Error>>;
 }
 
 /// Monotonic clock source.
