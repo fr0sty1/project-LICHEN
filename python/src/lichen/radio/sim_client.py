@@ -283,10 +283,10 @@ class SimRadio:
     def configure(self, freq_hz: int, tx_power_dbm: int) -> None:
         """Configure the radio parameters.
 
-        These values are stored locally only and exposed via the ``freq_hz`` and
-        ``tx_power_dbm`` properties. The current wire protocol's TX message
-        carries only the payload, so the simulator does not receive or act on
-        these settings; sending them would require a new protocol message.
+        See Radio.configure() in base.py for contract. Values are stored
+        locally for the properties; no wire protocol message is sent (TX
+        carries only payload and channel). Simulator propagation uses
+        defaults until CONFIGURE support is added.
 
         Args:
             freq_hz: Center frequency in Hz (e.g., 915_000_000 for 915 MHz).
