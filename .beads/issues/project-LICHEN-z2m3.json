@@ -2,11 +2,15 @@
   "id": "project-LICHEN-z2m3",
   "title": "KissBleTnc::try_get_app_frame cannot distinguish no-data from parse-error",
   "description": "File: rust/lichen-kiss/src/ble.rs\nLines: 105-129\n\nThe `try_get_app_frame` method returns `Option\u003cAppFrame\u003e`, which means callers cannot distinguish between:\n1. No complete frame available yet (waiting for more data)\n2. Frame was received but was malformed and discarded\n\n```rust\nErr(_e) =\u003e {\n    #[cfg(feature = \"log\")]\n    warn!(\"kiss_ble: try_get_app_frame parse error: {}\", _e);\n    return None;  // Looks same as \"no data\" case\n}\n```\n\nImpact: Callers wanting to track parse errors for debugging or security monitoring cannot do so without enabling logging.\n\nSuggestion: Consider returning `Result\u003cOption\u003cAppFrame\u003e, KissError\u003e` or provide a separate method to query last error. Low priority as the current behavior is acceptable for most use cases.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "feature",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:35:21.733958Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:35:21.733986Z"
+  "updated_at": "2026-07-22T23:19:13.757232678Z",
+  "started_at": "2026-07-22T23:19:13.757232678Z",
+  "lease_expires_at": "2026-07-22T23:24:13.757232678Z",
+  "heartbeat_at": "2026-07-22T23:19:13.757232678Z"
 }
