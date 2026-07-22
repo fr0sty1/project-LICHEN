@@ -13,6 +13,9 @@
   "started_at": "2026-07-22T05:12:20.152740148Z",
   "lease_expires_at": "2026-07-22T05:17:20.152740148Z",
   "heartbeat_at": "2026-07-22T05:12:20.152740148Z",
+  "labels": [
+    "human"
+  ],
   "dependencies": [
     {
       "issue_id": "project-LICHEN-05zu",
