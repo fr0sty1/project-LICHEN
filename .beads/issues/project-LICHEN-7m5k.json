@@ -1,12 +1,16 @@
 {
   "id": "project-LICHEN-7m5k",
   "title": "codereview-pass-3 final-clean: no P0-P2 findings; all prior codereview issues in draft-lichen-schc-lora-00.md addressed (duplicate section removed, rules/appendix/TOC updated, cross-refs fixed); only P3/opinion filed",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "task",
+  "assignee": "AI Agent",
   "created_at": "2026-07-22T14:49:38.168018079Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:49:38.168018079Z",
+  "updated_at": "2026-07-22T22:35:47.692673765Z",
+  "started_at": "2026-07-22T22:35:47.692673765Z",
+  "lease_expires_at": "2026-07-22T22:40:47.692673765Z",
+  "heartbeat_at": "2026-07-22T22:35:47.692673765Z",
   "labels": [
     "codereview"
   ],
