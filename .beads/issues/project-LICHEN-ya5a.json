@@ -1,15 +1,16 @@
 {
   "id": "project-LICHEN-ya5a",
   "title": "[merge-conflict] worktree-worker19: xiao_s3_wio_sx1262.overlay",
-  "status": "in_progress",
+  "notes": "Commits: 4de57ae57 (worker19), c6fad0359 (main .beads cleanup)",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:49:51.738876169Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:55:45.031816929Z",
+  "updated_at": "2026-07-22T23:58:15.904287208Z",
   "started_at": "2026-07-22T23:55:45.031816929Z",
-  "lease_expires_at": "2026-07-23T00:00:45.031816929Z",
-  "heartbeat_at": "2026-07-22T23:55:45.031816929Z"
+  "closed_at": "2026-07-22T23:58:05.577961268Z",
+  "close_reason": "Resolved merge conflict in worktree-worker19 xiao_s3_wio_sx1262.overlay (cleaned to canonical RETIRED comment). Also cleaned trailing merge markers from multiple .beads/events/*.jsonl files. Committed empty fix commit 4de57ae57 in worker19 and pushed."
 }

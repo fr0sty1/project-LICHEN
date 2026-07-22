@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-jne8",
   "title": "[merge-conflict] worktree-worker20: t_deck_esp32s3_procpu.conf",
+  "notes": "Commit: $(git -C /mnt/lichen-zephyr/work/project-LICHEN-worker20 rev-parse --short HEAD)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:52:03.89508232Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:55:41.053975591Z",
+  "updated_at": "2026-07-22T23:58:10.255929614Z",
   "started_at": "2026-07-22T23:55:41.053975591Z",
   "lease_expires_at": "2026-07-23T00:00:41.053975591Z",
   "heartbeat_at": "2026-07-22T23:55:41.053975591Z"

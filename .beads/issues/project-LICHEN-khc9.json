@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-khc9",
   "title": "[merge-conflict] worktree-worker24: lilygo_tdeck_keyboard.c",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:54:17.632434237Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:54:17.632434237Z"
+  "updated_at": "2026-07-22T23:57:39.083094394Z",
+  "started_at": "2026-07-22T23:57:39.083094394Z",
+  "lease_expires_at": "2026-07-23T00:02:39.083094394Z",
+  "heartbeat_at": "2026-07-22T23:57:39.083094394Z"
 }

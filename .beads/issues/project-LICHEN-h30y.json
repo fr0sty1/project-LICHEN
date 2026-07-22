@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-h30y",
   "title": "[merge-conflict] worktree-worker19: CMakeLists.txt",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:54:13.236133841Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:54:13.236133841Z"
+  "updated_at": "2026-07-22T23:58:18.642083521Z",
+  "started_at": "2026-07-22T23:58:18.642083521Z",
+  "lease_expires_at": "2026-07-23T00:03:18.642083521Z",
+  "heartbeat_at": "2026-07-22T23:58:18.642083521Z"
 }
