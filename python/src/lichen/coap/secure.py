@@ -103,16 +103,10 @@ def _monotonic_time() -> float:
         return time.monotonic()
 
 
-<<<<<<< HEAD
-=======
 def _hash_32(sfn: int, key: int = 0) -> int:
-    """FNV-1a 32-bit hash (matches C lichen_hash_32:502 and test/vectors/generate.py:1600).
-    For OSCORE nonce check: _hash_32(seqno, int.from_bytes(nonce[0:8], 'big')) ^ LICHEN_SEED.
-    See RFC8613 4.1, spec/06-security.md:15.3 for replay/nonce uniqueness.
-    """
-    lichen_seed = 0x4C494348454E  # "LICHEN" as u48 for seed (task requirement)
+    lichen_seed = 0x4C494348454E
     h = 0x811C9DC5
-    sfn = sfn ^ lichen_seed  # incorporate LICHEN per task
+    sfn = sfn ^ lichen_seed
     for i in range(4):
         b = (sfn >> (i * 8)) & 0xFF
         h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF
@@ -122,7 +116,6 @@ def _hash_32(sfn: int, key: int = 0) -> int:
     return h
 
 
->>>>>>> origin/integration/worker3-20260722
 @dataclass
 class PeerContext:
     """OSCORE context and metadata for a peer."""

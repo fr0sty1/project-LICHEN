@@ -125,8 +125,8 @@ class TestCoapRule:
 
     def test_value_out_of_range_raises(self) -> None:
         with pytest.raises(SchcError, match="does not fit"):
-            compress(COAP_RULE, {"CoAP.Version": 1, "CoAP.Type": 4,  # 2-bit field
-                                 "CoAP.TKL": 0, "CoAP.Code": 0, "CoAP.MID": 0})
+            compress(COAP_RULE, {"CoAP.version": 1, "CoAP.type": 4,
+                                 "CoAP.tkl": 0, "CoAP.code": 0, "CoAP.mid": 0})
 
 
 class TestUdpPortRule:
@@ -135,21 +135,21 @@ class TestUdpPortRule:
 
         Residue = 0011 0100 = 0x34; Rule ID 65.
         """
-        out = compress(UDP_PORT_RULE, {"UDP.SrcPort": 5683, "UDP.DstPort": 5684})
+        out = compress(UDP_PORT_RULE, {"UDP.src_port": 5683, "UDP.dst_port": 5684})
         assert out == bytes([65, 0x34])
 
     def test_roundtrip(self) -> None:
         rule_id, fields = decompress(compress(
-            UDP_PORT_RULE, {"UDP.SrcPort": 5683, "UDP.DstPort": 5690}
+            UDP_PORT_RULE, {"UDP.src_port": 5683, "UDP.dst_port": 5690}
         ))
         assert rule_id == 65
-        assert fields["UDP.SrcPort"] == 5683
-        assert fields["UDP.DstPort"] == 5690
+        assert fields["UDP.src_port"] == 5683
+        assert fields["UDP.dst_port"] == 5690
 
     def test_msb_mismatch_raises(self) -> None:
         # Port 1234 has different top 12 bits than 5683 -> rule does not apply.
         with pytest.raises(SchcError, match="MSB"):
-            compress(UDP_PORT_RULE, {"UDP.SrcPort": 1234, "UDP.DstPort": 5683})
+            compress(UDP_PORT_RULE, {"UDP.src_port": 1234, "UDP.dst_port": 5683})
 
 
 class TestDecompressRegistry:

@@ -358,8 +358,8 @@ class _RplProfile(PacketProfile):
         return fields, rpl[self.base_length :]
 
     def build(self, fields: dict[str, int | None], tail: bytes) -> bytes:
-        src = IPv6Address(int(fields.get("IPv6.src") or 0))
-        dst = IPv6Address(int(fields.get("IPv6.dst") or 0))
+        src = IPv6Address(_require_field(fields, "IPv6.src"))
+        dst = IPv6Address(_require_field(fields, "IPv6.dst"))
         body = self._build_base(fields) + tail
         zero = bytes([_ICMPV6_RPL_TYPE, self.code, 0, 0]) + body
         checksum = icmpv6_checksum(src, dst, zero)
@@ -395,17 +395,17 @@ class RplDioProfile(_RplProfile):
 
     def _build_base(self, fields: dict[str, int | None]) -> bytes:
         return (
-            bytes([int(fields.get("RPL.instance") or 0), int(fields.get("RPL.version") or 0)])
-            + int(fields.get("RPL.rank") or 0).to_bytes(2, "big")
+            bytes([_require_field(fields, "RPL.instance"), _require_field(fields, "RPL.version")])
+            + _require_field(fields, "RPL.rank").to_bytes(2, "big")
             + bytes(
                 [
-                    int(fields.get("RPL.gmop") or 0),
-                    int(fields.get("RPL.dtsn") or 0),
-                    int(fields.get("RPL.flags") or 0),
-                    int(fields.get("RPL.reserved") or 0),
+                    _require_field(fields, "RPL.gmop"),
+                    _require_field(fields, "RPL.dtsn"),
+                    _require_field(fields, "RPL.flags"),
+                    _require_field(fields, "RPL.reserved"),
                 ]
             )
-            + int(fields.get("RPL.dodagid") or 0).to_bytes(16, "big")
+            + _require_field(fields, "RPL.dodagid").to_bytes(16, "big")
         )
 
 
