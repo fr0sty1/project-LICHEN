@@ -895,16 +895,15 @@ fn build_info_cbor(
     off += type_bytes.len();
 
     // L: uint
-    if out_len > 255 {
-        return Err(OscoreError::InvalidParam);
-    }
     if out_len <= 23 {
         buf[off] = out_len as u8;
         off += 1;
-    } else {
+    } else if out_len <= 255 {
         buf[off] = 0x18;
         buf[off + 1] = out_len as u8;
         off += 2;
+    } else {
+        return Err(OscoreError::InvalidParam);
     }
 
     Ok(off)
