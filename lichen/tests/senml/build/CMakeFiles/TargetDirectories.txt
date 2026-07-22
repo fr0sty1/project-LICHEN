@@ -1,9 +1,0 @@
-<<<<<<< HEAD
-/mnt/lichen-zephyr/work/project-LICHEN-worker3/lichen/tests/senml/build/CMakeFiles/senml_test.dir
-/mnt/lichen-zephyr/work/project-LICHEN-worker3/lichen/tests/senml/build/CMakeFiles/edit_cache.dir
-/mnt/lichen-zephyr/work/project-LICHEN-worker3/lichen/tests/senml/build/CMakeFiles/rebuild_cache.dir
-=======
-/mnt/lichen-zephyr/work/project-LICHEN-worker5/lichen/tests/senml/build/CMakeFiles/senml_test.dir
-/mnt/lichen-zephyr/work/project-LICHEN-worker5/lichen/tests/senml/build/CMakeFiles/edit_cache.dir
-/mnt/lichen-zephyr/work/project-LICHEN-worker5/lichen/tests/senml/build/CMakeFiles/rebuild_cache.dir
->>>>>>> origin/integration/worker5-20260722
