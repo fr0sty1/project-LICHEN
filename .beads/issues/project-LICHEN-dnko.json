@@ -2,11 +2,15 @@
   "id": "project-LICHEN-dnko",
   "title": "[epic] SenseCAP T1000-E tracker support",
   "description": "Seeed SenseCAP T1000-E card tracker: nRF52840 + LR1110 (LoRa+GNSS+WiFi combo). Board definition exists at lichen/boards/seeed/t1000_e/. LR1110 binding exists. Need driver implementation, simulation, and hardware validation.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "epic",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-10T22:18:38.769802Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-10T22:18:38.769829Z"
+  "updated_at": "2026-07-22T20:25:40.762790206Z",
+  "started_at": "2026-07-22T20:25:40.762790206Z",
+  "lease_expires_at": "2026-07-22T20:30:40.762790206Z",
+  "heartbeat_at": "2026-07-22T20:25:40.762790206Z"
 }
