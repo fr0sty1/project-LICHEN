@@ -338,6 +338,7 @@ int lichen_loadng_cache_expire(uint32_t now_ms)
 		if (route_cache[i].active &&
 		    (int32_t)(route_cache[i].valid_until_ms - now_ms) <= 0) {
 			route_cache[i].active = false;
+			route_access_order[i] = 0;
 			expired++;
 		}
 	}
