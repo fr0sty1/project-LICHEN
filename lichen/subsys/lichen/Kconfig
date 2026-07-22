@@ -28,4 +28,22 @@ rsource "rpl/Kconfig"
 rsource "routing/Kconfig"
 rsource "transport/Kconfig"
 
+config LICHEN_ADAPTIVE_SF_ENABLED
+	bool "Adaptive spreading factor selection (per-neighbor SNR/CCP16)"
+	default y
+	depends on LICHEN
+	help
+	  Enable dynamic selection of LoRa spreading factor per neighbor based on
+	  SNR measurements and density signals from CCP16. Improves network
+	  capacity in dense deployments.
+
+config LICHEN_DEFAULT_SF
+	int "Default spreading factor (when adaptive SF disabled)"
+	default 10
+	range 7 12
+	depends on LICHEN
+	help
+	  Default SF for transmissions when adaptive SF is not enabled.
+	  SF10 balances range and airtime for typical LoRa meshes.
+
 endif # LICHEN
