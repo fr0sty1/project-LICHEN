@@ -2,6 +2,7 @@
   "id": "project-LICHEN-ns9k",
   "title": "Unbounded payload hex in log entries can cause log bloat",
   "description": "## Location\npython/src/lichen/radio/sim_client.py:184\n\n## Description\nThe TX log at line 184 includes hex=payload.hex() which logs the entire payload as a hexadecimal string. The protocol supports payloads up to 65535 bytes (per comment on line 46), which would produce a 131KB hex string in a single log entry. The same issue exists at line 229 for RX logging. This can cause log file bloat, slow log processing, and make logs difficult to read when analyzing high-volume traffic.\n\n## Failure Scenario\nA node receives or transmits large payloads (e.g., firmware update chunks of 4KB each). Each TX/RX event logs an 8KB hex string. Under high throughput (100 packets/minute), logs grow by 800KB/minute just from hex dumps. Log aggregation systems may truncate entries, storage fills quickly, and grep/analysis tools slow down. To trigger: call transmit() or receive() with payloads larger than a few hundred bytes.\n\n## Category\nlogging",
+  "notes": "Commit: 31de7602f",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-13T04:16:32.316766Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:41:48.140297033Z",
+  "updated_at": "2026-07-22T23:43:56.198745454Z",
   "started_at": "2026-07-22T23:41:48.140297033Z",
   "lease_expires_at": "2026-07-22T23:46:48.140297033Z",
   "heartbeat_at": "2026-07-22T23:41:48.140297033Z"
