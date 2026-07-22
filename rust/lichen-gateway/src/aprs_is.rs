@@ -16,8 +16,8 @@
 //!
 //! Full packet: `CALL>APRS,TCPIP*:!DDMM.mmN/DDDMM.mmW-comment\r\n`
 
-use std::io::{self, BufRead, BufReader, Write};
-use std::net::TcpStream;
+use std::io::{self, BufRead, BufReader, Read, Write};
+use std::net::{Shutdown, TcpStream};
 use std::time::Duration;
 
 /// APRS-IS default TCP port.
@@ -159,6 +159,12 @@ pub enum AprsError {
     ParseError(String),
     /// Callsign contains invalid characters.
     InvalidCallsign(String),
+    /// An inbound APRS-IS line exceeded the wire-size limit.
+    LineTooLong {
+        limit: usize,
+    },
+    /// The connection ended after a partial line without a line terminator.
+    UnterminatedLine,
 }
 
 /// Validate an APRS callsign.
@@ -199,6 +205,10 @@ impl std::fmt::Display for AprsError {
             AprsError::LoginFailed(msg) => write!(f, "login failed: {}", msg),
             AprsError::ParseError(msg) => write!(f, "parse error: {}", msg),
             AprsError::InvalidCallsign(msg) => write!(f, "invalid callsign: {}", msg),
+            AprsError::LineTooLong { limit } => {
+                write!(f, "APRS-IS line exceeds {limit} bytes")
+            }
+            AprsError::UnterminatedLine => write!(f, "unterminated APRS-IS line"),
         }
     }
 }
@@ -220,6 +230,7 @@ pub struct AprsIsClient {
     reader: BufReader<TcpStream>,
     callsign: String,
     verification: Option<AprsVerification>,
+    poisoned: bool,
 }
 
 impl AprsIsClient {
@@ -240,6 +251,7 @@ impl AprsIsClient {
             reader,
             callsign: String::new(),
             verification: None,
+            poisoned: false,
         })
     }
 
@@ -261,20 +273,17 @@ impl AprsIsClient {
         validate_callsign(callsign)?;
 
         // Read server banner
-        let mut banner = String::new();
-        self.reader.read_line(&mut banner)?;
+        let _ = self.read_required_line("missing APRS-IS banner")?;
 
         // Send login
         let login_cmd = format!(
             "user {} pass {} vers LICHEN 0.1 filter r/0/0/100\r\n",
             callsign, passcode
         );
-        self.stream.write_all(login_cmd.as_bytes())?;
-        self.stream.flush()?;
+        self.write_bytes(login_cmd.as_bytes())?;
 
         // Read login response
-        let mut response = String::new();
-        self.reader.read_line(&mut response)?;
+        let response = self.read_required_line("missing APRS-IS login response")?;
 
         if response.contains("logresp") && response.contains("verified") {
             self.callsign = callsign.to_string();
@@ -297,14 +306,13 @@ impl AprsIsClient {
 
     /// Send an APRS packet to the server.
     pub fn send(&mut self, packet: &str) -> Result<(), AprsError> {
+        self.ensure_connected()?;
         let line = if packet.ends_with("\r\n") {
             packet.to_string()
         } else {
             format!("{}\r\n", packet)
         };
-        self.stream.write_all(line.as_bytes())?;
-        self.stream.flush()?;
-        Ok(())
+        self.write_bytes(line.as_bytes())
     }
 
     /// Receive the next APRS packet from the server.
@@ -315,33 +323,72 @@ impl AprsIsClient {
     ///
     /// # Errors
     ///
-    /// Returns `ParseError` if a line exceeds [`MAX_LINE_LEN`] bytes. This
-    /// bounds memory usage against malicious servers.
+    /// Returns `LineTooLong` if a line exceeds [`MAX_LINE_LEN`] bytes or
+    /// `UnterminatedLine` for partial lines at EOF. This keeps reads bounded
+    /// before allocation against malicious servers or session poisoning.
     pub fn recv(&mut self) -> Result<Option<String>, AprsError> {
         loop {
-            let mut line = String::new();
-            match self.reader.read_line(&mut line) {
-                Ok(0) => return Ok(None), // EOF
-                Ok(_) => {
-                    // SECURITY: Reject excessively long lines to bound memory usage
-                    if line.len() > MAX_LINE_LEN {
-                        return Err(AprsError::ParseError(format!(
-                            "line too long ({} bytes, max {})",
-                            line.len(),
-                            MAX_LINE_LEN
-                        )));
-                    }
+            match self.read_line()? {
+                None => return Ok(None),
+                Some(line) => {
                     // Skip server comments (lines starting with #) and continue
                     if line.starts_with('#') {
                         continue;
                     }
                     return Ok(Some(line.trim_end().to_string()));
                 }
-                Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(None),
-                Err(e) if e.kind() == io::ErrorKind::TimedOut => return Ok(None),
-                Err(e) => return Err(e.into()),
             }
         }
+    }
+
+    fn read_line(&mut self) -> Result<Option<String>, AprsError> {
+        self.ensure_connected()?;
+        match read_line_bounded(&mut self.reader) {
+            Ok(line) => Ok(line),
+            Err(error) => {
+                self.poison();
+                Err(error)
+            }
+        }
+    }
+
+    fn read_required_line(&mut self, message: &'static str) -> Result<String, AprsError> {
+        match self.read_line()? {
+            Some(line) => Ok(line),
+            None => {
+                self.poison();
+                Err(io::Error::new(io::ErrorKind::UnexpectedEof, message).into())
+            }
+        }
+    }
+
+    fn write_bytes(&mut self, bytes: &[u8]) -> Result<(), AprsError> {
+        self.ensure_connected()?;
+        if let Err(error) = self
+            .stream
+            .write_all(bytes)
+            .and_then(|()| self.stream.flush())
+        {
+            self.poison();
+            return Err(error.into());
+        }
+        Ok(())
+    }
+
+    fn poison(&mut self) {
+        self.poisoned = true;
+        let _ = self.stream.shutdown(Shutdown::Both);
+    }
+
+    fn ensure_connected(&self) -> Result<(), AprsError> {
+        if self.poisoned {
+            return Err(io::Error::new(
+                io::ErrorKind::NotConnected,
+                "APRS-IS connection is unusable",
+            )
+            .into());
+        }
+        Ok(())
     }
 
     /// Get the logged-in callsign.
@@ -360,8 +407,42 @@ impl AprsIsClient {
 
     /// Check if this connection can transmit (is verified).
     pub fn can_transmit(&self) -> bool {
-        self.verification == Some(AprsVerification::Verified)
+        !self.poisoned && self.verification == Some(AprsVerification::Verified)
     }
+}
+
+fn read_line_bounded<R: BufRead>(reader: &mut R) -> Result<Option<String>, AprsError> {
+    let mut bytes = Vec::with_capacity(MAX_LINE_LEN + 1);
+    let result = reader
+        .take((MAX_LINE_LEN + 1) as u64)
+        .read_until(b'\n', &mut bytes);
+
+    if let Err(error) = result {
+        if bytes.is_empty()
+            && matches!(
+                error.kind(),
+                io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
+            )
+        {
+            return Ok(None);
+        }
+        return Err(error.into());
+    }
+    if bytes.is_empty() {
+        return Ok(None);
+    }
+    if bytes.len() > MAX_LINE_LEN {
+        return Err(AprsError::LineTooLong {
+            limit: MAX_LINE_LEN,
+        });
+    }
+    if !bytes.ends_with(b"\n") {
+        return Err(AprsError::UnterminatedLine);
+    }
+
+    String::from_utf8(bytes)
+        .map(Some)
+        .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error).into())
 }
 
 /// Convert Compact CoT PLI to APRS position packet.
