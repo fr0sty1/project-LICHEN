@@ -3,15 +3,15 @@
   "title": "[merge-conflict] worker8: transport.py",
   "description": "Resolve merge conflict in python/src/lichen/coap/transport.py between main and integration/worker8-20260722. Keep BOTH sets of changes.",
   "notes": "Commit: cf127a697",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T20:52:03.593495917Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T21:26:00.479220009Z",
+  "updated_at": "2026-07-22T21:26:01.066986566Z",
   "started_at": "2026-07-22T21:25:47.099509611Z",
-  "lease_expires_at": "2026-07-22T21:30:47.099509611Z",
-  "heartbeat_at": "2026-07-22T21:25:47.099509611Z"
+  "closed_at": "2026-07-22T21:26:01.066986566Z",
+  "close_reason": "Merged exception handling + removed comment in python/src/lichen/coap/transport.py:_on_datagram per both branches (UnparsableMessage + ValueError/IndexError). Matches Rust/CoAP error paths. Committed cf127a697."
 }
