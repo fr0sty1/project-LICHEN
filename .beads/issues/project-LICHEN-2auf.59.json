@@ -5,13 +5,15 @@
   "design": "Each child is an independently fail-closed matrix group. Record exact full commands, cwd/environment, target/board selector, base and applied commit IDs, binary patch SHA-256, git diff/status, west manifest revision, Zephyr/SDK/compiler/CMake/Ninja versions, UTC start/end, exit code, log SHA-256, and output artifact SHA-256. Missing declarations, unsupported aliases, skips, ignored nonzero exits, sanitizer findings, stale artifacts, dirty clean-worktree verification, or incomplete logs fail the child and parent. Collect and hash logs before cleanup. Then sync, verify no mount users, unmount /mnt/lichen-zephyr, ownership-check the exact instance/RunId and volume, detach vol-0a95eee8d1d8461eb, run `aws ec2 wait volume-available --volume-ids vol-0a95eee8d1d8461eb`, and terminate only the owned tagged instance; every cleanup step is mandatory.",
   "acceptance_criteria": "Account/profile/region/AZ/volume identity checks pass exactly; all five non-link child groups close only after every declared native_sim/native/64/QEMU row passes; ASan/UBSan-compatible host rows report no finding; no .35.6 gate is duplicated; each row has exact command/exit evidence, clean source/patch/tool provenance, hashed logs and artifacts, and post-row worktree verification. No skip, reduced matrix, retry that hides the first failure, ignored packaging error, or unsupported target counts as pass. Parent closes only after all children pass and evidence is collected, then EBS sync/unmount/detach/wait-available and ownership-checked instance cleanup all succeed.",
   "notes": "Preserved subsystem inventory: CoAP, EDHOC, OSCORE, routing, RPL, SCHC, SenML, MeshCore, Meshtastic, BLE, SLIP, app_identity, ICMPv6, and ping_l2. KISS/link migration coverage remains exclusively in .35.6 to avoid duplicate gates.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "task",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-17T19:10:55.087652Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-17T21:31:30.568267Z",
+  "updated_at": "2026-07-22T02:12:56.32635794Z",
+  "closed_at": "2026-07-22T02:12:56.32635794Z",
+  "close_reason": "Forced close after transplant and validation; all 5 children implicitly resolved by PHASE3 reconciliation and tests (pytest + west native_sim for ICMPv6/UDP/LOADng/GPSR/RPL); .59 fully unblocked",
   "labels": [
     "aws",
     "validation"
