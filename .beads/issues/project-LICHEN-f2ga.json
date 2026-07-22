@@ -2,10 +2,14 @@
   "id": "project-LICHEN-f2ga",
   "title": "Develop conference sales playbook and purchase funnel for LICHEN nodes",
   "description": "Finalize sales strategy for selling 500 pre-flashed T-Echo LICHEN nodes at DEFCON, HOPE, CCC and online. \n\n**Actionable next steps:**\n1. Research and select payment processors suitable for conferences (Square, crypto wallets, cash with receipts).\n2. Develop demo-to-purchase sales script that highlights LICHEN's IPv6 mesh, SCHC, RPL, OSCORE advantages over Meshtastic.\n3. Set pricing at 5-85 per unit (including case, battery, firmware, GPL source offer).\n4. Implement simple inventory tracking system (Google Sheet or CLI tool).\n5. Design packaging with GPL compliance notice and QR to source repo.\n6. Plan post-event online sales channel (dedicated site, GitHub Sponsors, or partnered storefront).\n7. Create follow-up beads for sales execution, booth logistics, and training volunteers.\n\nThis makes the revenue model immediately executable for conferences.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T14:37:41.901366154Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:38:14.938872178Z"
+  "updated_at": "2026-07-22T15:02:05.685034583Z",
+  "started_at": "2026-07-22T15:02:05.685034583Z",
+  "lease_expires_at": "2026-07-22T15:07:05.685034583Z",
+  "heartbeat_at": "2026-07-22T15:02:05.685034583Z"
 }
