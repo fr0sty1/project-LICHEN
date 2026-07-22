@@ -110,4 +110,22 @@ config LICHEN_LINK_CCP16_LOAD_BALANCING
 	  spec/appendix-design-rationale.md. Explicitly selects SCHC and
 	  link epoch features required for TDMA/multi-channel operation.
 
+config LICHEN_TDMA
+	bool "TDMA gateway-centric mode (beacon-sync, slot assign, spatial reuse)"
+	depends on LICHEN_LINK
+	depends on LICHEN_RPL
+	select LICHEN_LINK_CCP16_LOAD_BALANCING
+	help
+	  TDMA overlay for gateway-centric deployments per spec/02a-coordinated-capacity.md.
+	  Supports beacon sync, GPS sync, dynamic slot assignment from root DIO/beacon,
+	  and spatial reuse based on hash(EUI ^ epoch) % num_slots with RPL integration.
+	  Mimics lichen_link_ctx pattern exactly. Fixes project-LICHEN-5273.
+
+config LICHEN_TDMA_BEACON_SYNC
+	bool "Beacon-based TDMA synchronization"
+	depends on LICHEN_TDMA
+	default y
+	help
+	  Nodes sync time and slots from gateway periodic beacons.
+
 endif # LICHEN_LINK

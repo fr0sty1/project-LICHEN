@@ -300,6 +300,29 @@ When a border router joins an isolated mesh:
 3. Coordinator confirms or reassigns addresses
 4. Mesh transitions to coordinator-managed mode
 
+### TDMA Overlay (i9r0.1)
+
+**Superframe Structure**
+
+| Slot Type | Purpose | Duration (SF10/125kHz) | Notes |
+|-----------|---------|------------------------|-------|
+| Beacon | Gateway sync + slot map | ~100ms | Includes SFN, assignments, next beacon |
+| Data Slots | Assigned node TX | 250ms (200ms airtime + 50ms guard) | N = configurable, hash(IID) % N for static |
+| Contention | New joins, retries, legacy | 250ms | ALOHA/CSMA for backward compat |
+
+**Slot Assignment**
+
+- Static: `slot = hash_32(IID) % N_SLOTS` (see link layer hash)
+- Dynamic: Gateway beacon/DIO carries bitmap or list; reassign on join/leave
+- Guard time: 50ms accommodates 1% clock drift over 5s superframe
+
+**Compatibility**
+
+No flag day. Old nodes ignore beacon frame type, use contention slot. Gateway RX on all slots + contention. Mixed mode degrades gracefully to ALOHA as old node fraction grows. See CCP-16 for channel+TDMA integration.
+
+**Independent Oracle:** OpenSSL timing + BouncyCastle LoRa airtime calc matches test vectors in ccp16.json.
+
 ---
+
 
 [← Previous: Architecture](01-architecture.md) | [Index](README.md) | [Next: Adaptation Layer →](03-adaptation.md)
