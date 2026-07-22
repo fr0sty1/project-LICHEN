@@ -61,12 +61,11 @@ class Radio(Protocol):
         """
         ...
 
-    async def cad(self, timeout_ms: int) -> bool:
-        """Perform Channel Activity Detection (CAD).
+    async def cad(self, timeout_ms: int, channel: int = 0) -> bool:
+        """Perform Channel Activity Detection (CAD) on specified channel.
 
-        CAD listens briefly for LoRa preamble activity without fully receiving
-        a packet. This is used for carrier-sense before transmitting (CSMA/CA)
-        and for low-power wake-on-radio applications.
+        CAD for per-channel listen-before-talk and rendezvous (CCP-9). Uses
+        channel from link selector or control CH0.
 
         The operation completes quickly (typically 2-4 symbol periods) or when
         the timeout expires, whichever comes first.
@@ -74,6 +73,7 @@ class Radio(Protocol):
         Args:
             timeout_ms: Maximum time to wait for CAD completion, in milliseconds.
                         Typical values are 20-50ms for SF10/125kHz.
+            channel: Channel for CAD (default 0 = control).
 
         Returns:
             True if channel activity (LoRa preamble) was detected,
