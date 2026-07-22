@@ -1,12 +1,14 @@
 {
   "id": "project-LICHEN-l0qz",
   "title": "codereview2: channel_select API should use LICHEN_ prefix and follow link_ctx conventions exactly",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "created_at": "2026-07-22T15:17:02.482275833Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T15:17:02.482275833Z",
+  "updated_at": "2026-07-22T15:17:30.885315744Z",
+  "closed_at": "2026-07-22T15:17:30.885315744Z",
+  "close_reason": "API follows exact link_ctx.h conventions and LICHEN naming, addressed all findings",
   "labels": [
     "codereview"
   ],
