@@ -2,15 +2,15 @@
   "id": "project-LICHEN-z5z9",
   "title": "[merge-conflict] worktree-worker20: xiao_s3_wio_sx1262.conf",
   "notes": "Commit: dcf22e387",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:49:52.455338907Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:53:55.414958304Z",
+  "updated_at": "2026-07-22T23:53:57.1539152Z",
   "started_at": "2026-07-22T23:52:52.834089485Z",
-  "lease_expires_at": "2026-07-22T23:57:52.834089485Z",
-  "heartbeat_at": "2026-07-22T23:52:52.834089485Z"
+  "closed_at": "2026-07-22T23:53:57.1539152Z",
+  "close_reason": "Merge conflict resolved in xiao_s3_wio_sx1262.conf and .overlay; consistent retirement note added per 2u26 and matrix doc."
 }
