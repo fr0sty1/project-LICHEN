@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-o3ym",
+  "title": "codereview: CCP-15.8.3 pseudocode references undefined ChannelHistory and u64_from_eui",
+  "description": "The added pseudocode assumes ChannelHistory type and u64_from_eui helper not defined in spec or referenced impl. Must specify or remove. Also per-channel PER should be tracked separately per CCP-15 requirements for accurate avoidance. Tag: codereview. Discovered during first pass after adding frequency agility pseudocode in spec/02a-coordinated-capacity.md:170.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:38:10.135255653Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:38:10.135255653Z",
+  "labels": [
+    "codereview",
+    "ccp"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-o3ym",
+      "depends_on_id": "project-LICHEN-da2q.15.8.3",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:38:10.243604594Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
