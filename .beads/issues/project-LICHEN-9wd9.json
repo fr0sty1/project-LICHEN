@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-9wd9",
+  "title": "[codereview] coap_dtn.c: coap_respond and handlers lack DTN/SenML provider callback integration and robustness",
+  "description": "Handlers still return 0 instead of using coap_respond(COAP_RESPONSE_CODE_*, ...). No use of lichen_dtn_* or senml_encode_* per spec and bead title. Missing include may still be needed for full COAP_RESPONSE_CODE_* resolution (see coap_location.c which uses additional headers). No logging on errors. Fix all before closing main bead. lichen/subsys/lichen/coap/coap_dtn.c:14",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:21:55.844017849Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:21:55.844017849Z",
+  "labels": [
+    "codereview"
+  ]
+}
