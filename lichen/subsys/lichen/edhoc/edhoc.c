@@ -44,6 +44,10 @@ BUILD_ASSERT(sizeof(((struct edhoc_responder *)0)->ed_seed) >= EDHOC_ED25519_SK_
 	     "ed_seed too small for EDHOC_ED25519_SK_LEN");
 BUILD_ASSERT(sizeof(((struct edhoc_responder *)0)->ed_pubkey) >= EDHOC_ED25519_PK_LEN,
 	     "ed_pubkey too small for EDHOC_ED25519_PK_LEN");
+BUILD_ASSERT(sizeof(((struct edhoc_initiator *)0)->eph_sk) == EDHOC_X25519_KEY_LEN,
+	     "eph_sk size mismatch");
+BUILD_ASSERT(sizeof(((struct edhoc_responder *)0)->eph_sk) == EDHOC_X25519_KEY_LEN,
+	     "eph_sk size mismatch");
 
 /* CBOR encoding buffer size */
 #define CBOR_BUF_SIZE 128
