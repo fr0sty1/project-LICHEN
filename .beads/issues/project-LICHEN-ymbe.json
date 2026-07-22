@@ -2,11 +2,15 @@
   "id": "project-LICHEN-ymbe",
   "title": "Chat encoder silently encodes invalid team byte 0 when dest_team is None",
   "description": "File: python/src/lichen/gateway/compact_cot.py\nLine: 634\n\nWhen encoding a chat message with dest_type=TEAM:\n```python\nif chat.dest_type == DestType.TEAM:\n    parts.append(bytes([chat.dest_team or 0]))\n```\n\nIf chat.dest_team is None, this encodes team byte as 0. However, 0 is NOT a valid Team value (the Team enum starts at 1 with BLUE=0x01).\n\nThis creates an invalid message that:\n1. Will decode successfully but produce team_name='White' (fallback)\n2. Violates the protocol specification\n3. Masks a programming error (None team for TEAM dest_type)\n\nFix: Raise an error instead of silently using an invalid value:\n```python\nif chat.dest_type == DestType.TEAM:\n    if chat.dest_team is None:\n        raise ValueError('dest_team required when dest_type is TEAM')\n    parts.append(bytes([chat.dest_team]))\n```",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:17:04.84033Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:17:04.84037Z"
+  "updated_at": "2026-07-22T20:24:32.823591227Z",
+  "started_at": "2026-07-22T20:24:32.823591227Z",
+  "lease_expires_at": "2026-07-22T20:29:32.823591227Z",
+  "heartbeat_at": "2026-07-22T20:24:32.823591227Z"
 }
