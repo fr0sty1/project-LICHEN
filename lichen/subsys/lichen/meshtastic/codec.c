@@ -541,7 +541,7 @@ static const char *info_pio_env(const struct lichen_meshtastic_local_info *info)
 static uint32_t info_node_num(const struct lichen_meshtastic_local_info *info)
 {
 	return (info != NULL && info->node_num != 0U) ? info->node_num :
-							0x4c494348U;
+							LICHEN_MESHTASTIC_DEFAULT_NODE_NUM;
 }
 
 static uint32_t info_min_app_version(

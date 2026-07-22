@@ -89,11 +89,8 @@ struct lichen_meshtastic_adapter_packet_info {
 	uint32_t portnum;
 	uint8_t to_eui64[8];
 	uint8_t to_iid[8];
-	/*
-	 * Points into the ToRadio buffer passed to process_raw/feed_stream.
-	 * The pointer is valid only for the duration of handle_text().
-	 */
 	const uint8_t *payload;
+	uint8_t payload_buf[LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX];
 	size_t payload_len;
 	bool has_from;
 	bool has_to;
