@@ -633,6 +633,10 @@ int lichen_msg_sent_id_get(struct coap_resource *resource,
 
 static size_t encode_inbox_cbor(uint8_t *buf, size_t buf_size)
 {
+	if (buf == NULL || buf_size < 100) {
+		return 0;
+	}
+
 	size_t off = 0;
 	size_t count;
 	char addr_str[LICHEN_MSG_ADDR_LEN];
