@@ -1,11 +1,15 @@
 {
   "id": "project-LICHEN-kuo5",
   "title": "[merge-conflict] worktree-worker24: CMakeLists.txt",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:54:17.437832079Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:54:17.437832079Z"
+  "updated_at": "2026-07-22T23:58:57.341290945Z",
+  "started_at": "2026-07-22T23:58:57.341290945Z",
+  "lease_expires_at": "2026-07-23T00:03:57.341290945Z",
+  "heartbeat_at": "2026-07-22T23:58:57.341290945Z"
 }

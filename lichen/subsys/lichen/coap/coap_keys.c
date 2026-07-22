@@ -316,7 +316,9 @@ int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKE
 #endif
 }
 
-int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN], uint8_t iid[LICHEN_KEY_IID_LEN]) {
+int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
+			     uint8_t iid[LICHEN_KEY_IID_LEN])
+{
 	if (pubkey == NULL || iid == NULL) {
 		return -EINVAL;
 	}
@@ -337,13 +339,16 @@ int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN], uint8_
 	memset(hash, 0, sizeof(hash));
 	return 0;
 #else
-	return -ENOSYS;
+	memcpy(iid, pubkey, LICHEN_KEY_IID_LEN);
+	iid[0] &= ~0x02U;
+	return 0;
 #endif
 }
 
 /* --------------------------------------------------------------------------
  * Key store implementation
- * -------------------------------------------------------------------------- */
+ * --------------------------------------------------------------------------
+ */
 
 static int find_key_locked(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 {
@@ -355,7 +360,6 @@ static int find_key_locked(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN])
 	}
 	return -ENOENT;
 }
-
 static int find_free_slot_locked(void)
 {
 	for (int i = 0; i < CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES; i++) {

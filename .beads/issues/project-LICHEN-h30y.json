@@ -1,6 +1,7 @@
 {
   "id": "project-LICHEN-h30y",
   "title": "[merge-conflict] worktree-worker19: CMakeLists.txt",
+  "notes": "Commit: bd0e090c2 (worktree-worker19: resolved CMakeLists.txt and driver merge conflict)",
   "status": "in_progress",
   "priority": 1,
   "issue_type": "bug",
@@ -8,7 +9,7 @@
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:54:13.236133841Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:58:18.642083521Z",
+  "updated_at": "2026-07-22T23:58:36.229773127Z",
   "started_at": "2026-07-22T23:58:18.642083521Z",
   "lease_expires_at": "2026-07-23T00:03:18.642083521Z",
   "heartbeat_at": "2026-07-22T23:58:18.642083521Z"

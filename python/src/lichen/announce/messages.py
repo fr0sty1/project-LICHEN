@@ -87,9 +87,9 @@ class AnnounceMessage:
             raise AnnounceError(f"seq_num out of range: {self.seq_num}")
         if not 0 <= self.hop_count <= 0xFF:
             raise AnnounceError(f"hop_count out of range: {self.hop_count}")
-        if not 0 <= self.rx_channel <= 7:
+        if not 0 <= self.rx_channel <= 15:
             raise AnnounceError(
-                f"rx_channel must be 0-7 for CCP-9, got {self.rx_channel}"
+                f"rx_channel must be 0-15, got {self.rx_channel}"
             )
         if not 0 <= self.flags <= 0xFF:
             raise AnnounceError(f"flags out of range: {self.flags}")

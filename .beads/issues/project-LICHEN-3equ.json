@@ -2,15 +2,15 @@
   "id": "project-LICHEN-3equ",
   "title": "[merge-conflict] worktree-worker20: coap_keys.c",
   "notes": "Commit: 36057cdf",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:54:14.954761415Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:58:27.74207043Z",
+  "updated_at": "2026-07-22T23:58:35.947015444Z",
   "started_at": "2026-07-22T23:56:37.160636574Z",
-  "lease_expires_at": "2026-07-23T00:01:37.160636574Z",
-  "heartbeat_at": "2026-07-22T23:56:37.160636574Z"
+  "closed_at": "2026-07-22T23:58:35.947015444Z",
+  "close_reason": "Resolved merge conflict in coap_keys.c by applying _Nonnull annotations, null checks, resource server name fix, and related improvements from worker20"
 }
