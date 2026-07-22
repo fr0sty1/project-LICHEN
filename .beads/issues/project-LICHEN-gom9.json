@@ -2,6 +2,7 @@
   "id": "project-LICHEN-gom9",
   "title": "GPSR fallback uses expired gradient entries for coordinates",
   "description": "File: python/src/lichen/routing/router.py:480-484\n\nWhen LOADng is not configured, GPSR fallback looks up gradient entries WITHOUT the 'now' parameter:\n\n```python\ndst_entry = self.gradient_table.lookup(dst)  # may be expired but has coords\nif dst_entry is not None and dst_entry.coords is not None:\n    next_hop = self.gpsr_forward(dst_entry.coords)\n```\n\nThe comment acknowledges this returns potentially expired entries.\n\nWHY IT'S A BUG: Using coordinates from an expired entry means routing based on stale location data. In a mobile mesh, a node could have moved significantly since the entry expired. GPSR would forward toward the node's old position, causing packets to be routed to the wrong location.\n\nIMPACT: Misdirected packets in mobile deployments when GPSR fallback is used. Security concern: a compromised node could advertise false coordinates, then let the entry expire while GPSR continues routing based on those coordinates.\n\nFIX: Either reject expired coords entirely, or add a separate 'coord_expires' field that allows a grace period for location data distinct from route freshness.",
+  "notes": "Commit: 36c5e7ff5\nUpdated GPSR fallback in _route_mesh_local to explicitly pass now_ms to gradient_table.lookup (rejects expired coords). Enhanced comment with security note. Matches lookup behavior used for primary routing path.",
   "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:23:11.595062Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T20:20:42.530568515Z",
+  "updated_at": "2026-07-22T20:20:57.401220407Z",
   "started_at": "2026-07-22T20:20:42.530568515Z",
   "lease_expires_at": "2026-07-22T20:25:42.530568515Z",
   "heartbeat_at": "2026-07-22T20:20:42.530568515Z"
