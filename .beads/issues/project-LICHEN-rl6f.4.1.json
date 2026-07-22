@@ -2,12 +2,16 @@
   "id": "project-LICHEN-rl6f.4.1",
   "title": "Spec: TDMA time slot structure, guard times, assignment",
   "description": "Add section to spec/02-physical-link.md defining superframe, beacon slot, data slots, contention slot, 50ms guard time, 250ms slot at SF10, static hash and dynamic gateway assignment via DIO/beacon. Include test vectors reference. Backwards compat with CSMA.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:16:25.178903055Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:16:25.178903055Z",
+  "updated_at": "2026-07-22T16:16:49.675321367Z",
+  "started_at": "2026-07-22T16:16:49.675321367Z",
+  "lease_expires_at": "2026-07-22T16:21:49.675321367Z",
+  "heartbeat_at": "2026-07-22T16:16:49.675321367Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-rl6f.4.1",
