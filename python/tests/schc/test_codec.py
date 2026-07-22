@@ -88,8 +88,8 @@ class TestCoapRule:
         """
         out = compress(
             COAP_RULE,
-            {"CoAP.Version": 1, "CoAP.Type": 0, "CoAP.TKL": 0,
-             "CoAP.Code": 1, "CoAP.MID": 0x1234},
+            {"CoAP.version": 1, "CoAP.type": 0, "CoAP.tkl": 0,
+             "CoAP.code": 1, "CoAP.mid": 0x1234},
         )
         assert out == bytes([64, 0x00, 0x04, 0x48, 0xD0])
 

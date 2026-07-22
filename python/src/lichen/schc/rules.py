@@ -154,11 +154,11 @@ UDP_PORT_RULE = Rule(
 ICMPV6_ECHO_RULE = Rule(
     rule_id=66,
     fields=(
-        FieldDescriptor("ICMPv6.Type", 8, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("ICMPv6.Code", 8, MO.EQUAL, CDA.NOT_SENT, target_value=0),
-        FieldDescriptor("ICMPv6.Checksum", 16, MO.IGNORE, CDA.COMPUTE),
-        FieldDescriptor("ICMPv6.Identifier", 16, MO.IGNORE, CDA.VALUE_SENT),
-        FieldDescriptor("ICMPv6.Sequence", 16, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("ICMPv6.type", 8, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("ICMPv6.code", 8, MO.EQUAL, CDA.NOT_SENT, target_value=0),
+        FieldDescriptor("ICMPv6.checksum", 16, MO.IGNORE, CDA.COMPUTE),
+        FieldDescriptor("ICMPv6.identifier", 16, MO.IGNORE, CDA.VALUE_SENT),
+        FieldDescriptor("ICMPv6.sequence", 16, MO.IGNORE, CDA.VALUE_SENT),
     ),
 )
 

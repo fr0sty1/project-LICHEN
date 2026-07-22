@@ -340,7 +340,7 @@ class Node:
         while True:
             try:
                 rx = await self.link.receive(self.config.receive_timeout_ms)
-                if isinstance(rx, RxFrame):
+                if rx is not None and not isinstance(rx, ReceiveError):
                     await self._process_received(rx)
                 elif isinstance(rx, ReceiveError):
                     if rx in (ReceiveError.KEY_CHANGE, ReceiveError.REPLAY, ReceiveError.MIC_FAILED):
