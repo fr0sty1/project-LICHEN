@@ -83,14 +83,14 @@ def _decode_base36(s: str) -> int:
 def iid_to_callsign(iid: bytes, ssid: int = 0) -> str:
     """Convert 8-byte IID to callsign.
 
-    Takes last 3 bytes (24 bits), encodes as base-36, prefixes with "LI".
+    Takes last 3 bytes (24 bits) as base-36 (5 chars), prefixes with LICHEN_PREFIX ("L").
 
     Args:
         iid: 8-byte Interface Identifier
         ssid: SSID suffix 0-15 (default 0, omitted in output)
 
     Returns:
-        Callsign like "LI7H5LC" or "LI7H5LC-5"
+        Callsign like "LABCDE" or "LABCDE-5"
     """
     if len(iid) != 8:
         raise ValueError(f"IID must be 8 bytes, got {len(iid)}")
@@ -98,8 +98,7 @@ def iid_to_callsign(iid: bytes, ssid: int = 0) -> str:
     # Last 3 bytes as 24-bit value
     suffix = (iid[5] << 16) | (iid[6] << 8) | iid[7]
 
-    # Base-36 encode (max 5 chars for 24 bits: 36^5 > 2^24)
-    encoded = _encode_base36(suffix, width=4)  # 4 chars + 2 prefix = 6 max
+    encoded = _encode_base36(suffix, width=5)
 
     call = LICHEN_PREFIX + encoded
 
@@ -112,7 +111,7 @@ def callsign_to_suffix(callsign: str) -> int | None:
     """Extract IID suffix from LICHEN callsign.
 
     Args:
-        callsign: Callsign like "LI7H5LC" or "LI7H5LC-5"
+        callsign: Callsign like "LABCDE" or "LABCDE-5"
 
     Returns:
         24-bit suffix value, or None if not a LICHEN callsign
@@ -146,7 +145,7 @@ def callsign_to_iid(callsign: str, peers: PeerLookup) -> bytes | None:
     """Look up full IID from callsign.
 
     Args:
-        callsign: Callsign like "LI7H5LC"
+        callsign: Callsign like "LABCDE"
         peers: Peer lookup for suffix → IID mapping
 
     Returns:
