@@ -160,6 +160,11 @@ int lichen_rpl_srh_parse(struct lichen_rpl_srh *srh,
 	return LICHEN_RPL_OK;
 }
 
+uint8_t lichen_rpl_srh_hdr_ext_len(uint8_t num_addresses)
+{
+	return num_addresses * 2u;
+}
+
 /* ── Routing Table ─────────────────────────────────────────────────────────── */
 
 void lichen_rpl_routing_table_init(struct lichen_rpl_routing_table *rt)

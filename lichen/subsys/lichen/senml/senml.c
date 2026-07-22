@@ -57,6 +57,11 @@ static int validate_unit(const char *unit)
 	return string_too_long(unit, SENML_MAX_UNIT_LEN) ? -EMSGSIZE : 0;
 }
 
+static int validate_string(const char *str)
+{
+	return string_too_long(str, SENML_MAX_STRING_LEN) ? -EMSGSIZE : 0;
+}
+
 int senml_pack_init(struct senml_pack *pack,
 		    const char *base_name,
 		    uint64_t base_time)

@@ -7,6 +7,7 @@
  */
 
 #include <lichen/routing/router.h>
+#include <zephyr/sys/atomic.h>
 
 #include <errno.h>
 #include <string.h>
@@ -853,7 +854,7 @@ static struct lichen_fwd_source *fwd_get_or_alloc_source(
 			for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_MAX_PACKETS_PER_SOURCE; i++) {
 				if (slot->packets[i].valid) {
 					slot->packets[i].valid = false;
-					router->fwd_stats.packets_dropped_full++;
+					atomic_inc((atomic_t *)&router->fwd_stats.packets_dropped_full);
 				}
 			}
 		}
@@ -912,8 +913,8 @@ int lichen_router_fwd_enqueue(struct lichen_router *router,
 	/* SECURITY: Check per-source limit to prevent one chatty source from
 	 * monopolizing relay capacity */
 	if (src->packet_count >= CONFIG_LICHEN_ROUTER_MAX_PACKETS_PER_SOURCE) {
-		router->fwd_stats.packets_dropped_full++;
-		router->fwd_stats.nacks_sent++;
+		atomic_inc((atomic_t *)&router->fwd_stats.packets_dropped_full);
+		atomic_inc((atomic_t *)&router->fwd_stats.nacks_sent);
 		return -ENOBUFS;
 	}
 
@@ -938,7 +939,7 @@ int lichen_router_fwd_enqueue(struct lichen_router *router,
 	slot->valid = true;
 	src->packet_count++;
 	src->last_activity_ms = now_ms;
-	router->fwd_stats.packets_queued++;
+	atomic_inc((atomic_t *)&router->fwd_stats.packets_queued);
 
 	return 0;
 }

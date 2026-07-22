@@ -814,19 +814,19 @@ static const char * const status_path[] = { "status", NULL };
 static const char * const neighbors_path[] = { "status", "neighbors", NULL };
 static const char * const routes_path[] = { "status", "routes", NULL };
 
-const struct coap_resource lichen_coap_status_resource = {
+struct coap_resource lichen_coap_status_resource = {
 	.get    = status_get,
 	.notify = status_notify,
 	.path   = status_path,
 };
 
-const struct coap_resource lichen_coap_neighbors_resource = {
+struct coap_resource lichen_coap_neighbors_resource = {
 	.get    = neighbors_get,
 	.notify = neighbors_notify,
 	.path   = neighbors_path,
 };
 
-const struct coap_resource lichen_coap_routes_resource = {
+struct coap_resource lichen_coap_routes_resource = {
 	.get  = routes_get,
 	.path = routes_path,
 };
@@ -850,10 +850,16 @@ int lichen_coap_status_init(const struct lichen_coap_status_config *config)
 
 void lichen_coap_status_notify(void)
 {
-	LOG_DBG("Status notification triggered");
+	if (!s_initialized || !s_config.status_get) {
+		return;
+	}
+	coap_resource_notify(&lichen_coap_status_resource);
 }
 
 void lichen_coap_status_neighbors_notify(void)
 {
-	LOG_DBG("Neighbors notification triggered");
+	if (!s_initialized || !s_config.neighbors_get) {
+		return;
+	}
+	coap_resource_notify(&lichen_coap_neighbors_resource);
 }

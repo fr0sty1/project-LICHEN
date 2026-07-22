@@ -55,7 +55,8 @@ struct lichen_rpl_srh {
 };
 
 /**
- * @brief Encode SRH to wire format.
+ * @brief Encode SRH to RFC 6554 wire format starting at routing-type byte
+ * (matches parse; for use as ExtensionHeader data after NextHdr/HdrLen).
  *
  * @param srh SRH to encode
  * @param buf Output buffer
@@ -76,6 +77,8 @@ int lichen_rpl_srh_write(const struct lichen_rpl_srh *_Nonnull srh,
 LICHEN_WARN_UNUSED_RESULT
 int lichen_rpl_srh_parse(struct lichen_rpl_srh *_Nonnull srh,
 			 const uint8_t *_Nonnull data, size_t len);
+
+uint8_t lichen_rpl_srh_hdr_ext_len(uint8_t num_addresses);
 
 /* ── Routing Table ─────────────────────────────────────────────────────────── */
 

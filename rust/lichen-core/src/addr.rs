@@ -33,10 +33,7 @@ impl NodeId {
     /// `link_local_addr` and `ula_addr`. Works for both link-local and ULA/GUA
     /// addresses per spec §6.1. Independent roundtrip oracle used in tests.
     pub fn from_ipv6(addr: Ipv6Addr) -> Self {
-        let bytes = addr.0;
-        let mut iid = [
-            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
-        ];
+        let mut iid = addr.iid();
         iid[0] ^= 0x02;
         NodeId(iid)
     }
