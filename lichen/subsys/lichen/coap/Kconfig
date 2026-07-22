@@ -55,6 +55,7 @@ config LICHEN_COAP_SERVER
 config LICHEN_COAP_SERVER_STANDALONE
 	bool "Standalone subsystem-owned CoAP service (coap_server.c)"
 	depends on LICHEN_COAP_SERVER
+	depends on !LICHEN_COAP_CONFIG
 	default n
 	help
 	  Compile the subsystem-owned COAP_SERVICE (lichen_coap_server) from

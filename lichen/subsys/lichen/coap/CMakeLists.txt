@@ -13,9 +13,10 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_SERVER_STANDALONE
   coap_server.c
 )
 
-# The standalone service defines COAP_SERVICE_DEFINE(lichen_coap_server),
-# so the linker needs its iterable section to resolve
-# _coap_resource_lichen_coap_server_list_start / _list_end.
+# Standalone (lichen_coap_server) is mutually exclusive with
+# LICHEN_COAP_CONFIG (see Kconfig); modular lichen_coap is preferred
+# single owner for gateway/nucleo_wl55jc/r1_neo. Iterable section for
+# correct service (lichen_coap not _server) provided by app CMake.
 if(CONFIG_LICHEN_COAP_SERVER_STANDALONE)
   zephyr_linker_sources(DATA_SECTIONS sections-ram.ld)
   zephyr_iterable_section(

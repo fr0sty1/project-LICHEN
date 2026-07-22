@@ -207,6 +207,12 @@ config LICHEN_GATEWAY_RX1_DELAY_MS
 	  missed (lora_ipv6_mesh-fe1z, observed on the T1000-E/LR1110). 0
 	  disables the delay. ~100 ms is a safe LoRa value.
 
+# Force modular CoAP (lichen_coap service + LICHEN_COAP_CONFIG) for
+# gateway; legacy standalone server (lichen_coap_server) would duplicate
+# lichen_config ownership and lacks linker bounds on nucleo_wl55jc/r1_neo.
+config LICHEN_COAP_SERVER_STANDALONE
+	default n
+
 endmenu
 
 source "Kconfig.zephyr"
