@@ -26,6 +26,7 @@ BRIDGE_OBSOLETE_ALIAS_BOARD_FILES = (
     "heltec_lora32_v3",
     "lilygo_tdeck",
     "lilygo_techo",
+    "heltec_vision_master_e290",
 )
 
 
