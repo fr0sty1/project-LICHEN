@@ -2,6 +2,7 @@
   "id": "project-LICHEN-k0dn",
   "title": "__aexit__ suppresses exceptions from close() during cleanup",
   "description": "**File:** python/src/lichen/radio/sim_client.py\n**Lines:** 303-310\n\n**Issue:** The __aexit__ method calls close() unconditionally:\n```python\nasync def __aexit__(\n    self,\n    exc_type: type[BaseException] | None,\n    exc_val: BaseException | None,\n    exc_tb: object,\n) -\u003e None:\n    await self.close()\n```\n\n**Problem:** If an exception occurred in the context body (`exc_type is not None`) and then close() also raises an exception, the close() exception will mask the original exception.\n\n**Example:**\n```python\nasync with SimRadio(...) as radio:\n    raise ValueError(\"important error\")\n    # __aexit__ calls close()\n    # If close() fails, ValueError is lost\n```\n\n**Impact:** The original exception that caused context exit is lost, making debugging difficult.\n\n**Fix:** Suppress close() errors when an exception is already active:\n```python\nasync def __aexit__(self, exc_type, exc_val, exc_tb) -\u003e None:\n    try:\n        await self.close()\n    except Exception:\n        if exc_type is None:\n            raise  # No existing exception, propagate close error\n        # Existing exception takes priority; log close error if needed\n```",
+  "notes": "Commit: a73291b76",
   "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
@@ -9,7 +10,7 @@
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:24:02.986302Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-22T23:34:01.109632999Z",
+  "updated_at": "2026-07-22T23:35:59.976662402Z",
   "started_at": "2026-07-22T23:34:01.109632999Z",
   "lease_expires_at": "2026-07-22T23:39:01.109632999Z",
   "heartbeat_at": "2026-07-22T23:34:01.109632999Z"
