@@ -2,12 +2,16 @@
   "id": "project-LICHEN-2wtv",
   "title": "[codereview-pass1.6 correctness] rf_health.rs: test rssi_avg_multiple_samples comment and assertion outdated for new alpha=1/4",
   "description": "Update test comment to reflect  -80 + (1/4)*20 = -75. Change assertion to match computed -75. Or better parametrize as per task. file: rust/lichen-core/src/rf_health.rs:410",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T16:32:30.405929052Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T16:32:30.405929052Z",
+  "updated_at": "2026-07-22T16:35:18.562199661Z",
+  "started_at": "2026-07-22T16:35:18.562199661Z",
+  "lease_expires_at": "2026-07-22T16:40:18.562199661Z",
+  "heartbeat_at": "2026-07-22T16:35:18.562199661Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-2wtv",
