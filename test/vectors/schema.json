@@ -739,6 +739,14 @@
           "description": "CCP-16 vector type (added for schema completeness per codereview)"
         },
         "description": {"type": "string"},
+        "name": {"type": "string"},
+        "rssi_dbm": {"type": "number", "minimum": -140, "maximum": 0},
+        "per": {"type": "number", "minimum": 0, "maximum": 1},
+        "snr_samples": {
+          "type": "array",
+          "items": {"type": "number"}
+        },
+        "hash_32_example": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
         "input": {
           "type": "object",
           "properties": {
@@ -782,7 +790,21 @@
           }
         },
         "notes": {"type": "string"}
-      }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "slot_selection"}}},
+          "then": {"required": ["input", "output"]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "load_balancing"}}},
+          "then": {"required": ["input", "output"]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "desync"}}},
+          "then": {"required": ["input", "output"]}
+        }
+      ]
     }
   }
 }
