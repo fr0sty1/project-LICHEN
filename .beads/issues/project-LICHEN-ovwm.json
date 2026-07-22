@@ -2,12 +2,16 @@
   "id": "project-LICHEN-ovwm",
   "title": "Plan shipping and customs for 500x T-Echo procurement",
   "description": "After quote/PO, handle bulk shipping from Shenzhen (DHL/FedEx recommended for speed), customs clearance for electronics (FCC/CE certs available), insurance, delivery to dev lab. Estimate total landed cost including duties. Link to procurement bead. Acceptance: logistics plan documented, potential vendors/forwarders listed.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "task",
+  "assignee": "ec2-user",
   "created_at": "2026-07-22T14:42:40.382372535Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-22T14:42:40.382372535Z",
+  "updated_at": "2026-07-22T14:45:09.80004867Z",
+  "started_at": "2026-07-22T14:45:09.80004867Z",
+  "lease_expires_at": "2026-07-22T14:50:09.80004867Z",
+  "heartbeat_at": "2026-07-22T14:45:09.80004867Z",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-ovwm",
