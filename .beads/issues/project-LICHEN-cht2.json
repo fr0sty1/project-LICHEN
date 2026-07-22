@@ -2,11 +2,15 @@
   "id": "project-LICHEN-cht2",
   "title": "SourceRoutingHeader silently misparsing compressed addresses",
   "description": "File: python/src/lichen/rpl/routing.py:51-66\n\nThe SourceRoutingHeader.from_ext_data() assumes all addresses are uncompressed (CmprI=CmprE=0) but doesn't validate this assumption. If a packet with compressed addresses is received, it will silently misparse.\n\nRFC 6554 Section 3:\n- CmprI (4 bits): number of prefix octets elided from internal addresses\n- CmprE (4 bits): number of prefix octets elided from the last address\n\nCurrent code:\n```python\naddr_bytes = data[_SRH_FIELDS_LENGTH:]  # Bytes after the 6-byte header\nif len(addr_bytes) % 16 != 0:\n    raise RoutingError(\"source-route address list is not 16-byte aligned\")\naddresses = [\n    IPv6Address(addr_bytes[i : i + 16])\n    for i in range(0, len(addr_bytes), 16)\n]\n```\n\nProblems:\n1. CmprI and CmprE at data[2] and data[3] are ignored\n2. If CmprI \u003e 0, addresses are \u003c 16 bytes, causing misalignment or wrong parsing\n3. The length check will pass if compressed length happens to be 16-aligned\n\nFix: Validate CmprI == 0 and CmprE == 0:\n```python\ncmpr = data[2]\nif cmpr != 0:  # CmprI or CmprE non-zero\n    raise RoutingError(\"compressed source routing headers not supported\")\n```",
-  "status": "open",
+  "status": "in_progress",
   "priority": 2,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:23:26.389174Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:23:26.389212Z"
+  "updated_at": "2026-07-22T20:20:39.165438738Z",
+  "started_at": "2026-07-22T20:20:39.165438738Z",
+  "lease_expires_at": "2026-07-22T20:25:39.165438738Z",
+  "heartbeat_at": "2026-07-22T20:20:39.165438738Z"
 }
