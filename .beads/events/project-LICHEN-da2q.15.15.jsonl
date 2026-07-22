@@ -3,3 +3,4 @@
 {"id":"019f8aaf-6973-777d-9bf0-2d7d00a54f69","issue_id":"project-LICHEN-da2q.15.15","event_type":"label_added","actor":"ec2-user","comment":"Added label: ccp","created_at":"2026-07-22T16:36:19.443491286Z"}
 {"id":"019f8aaf-6976-7888-a38f-74e78c46e864","issue_id":"project-LICHEN-da2q.15.15","event_type":"label_added","actor":"ec2-user","comment":"Added label: phy","created_at":"2026-07-22T16:36:19.446560115Z"}
 {"id":"019f8aaf-6979-79f3-9751-871f172b87d5","issue_id":"project-LICHEN-da2q.15.15","event_type":"label_added","actor":"ec2-user","comment":"Added label: scalability","created_at":"2026-07-22T16:36:19.449652573Z"}
+{"id":"019f8aaf-a769-71bd-a644-99dbab0f9844","issue_id":"project-LICHEN-da2q.15.15","event_type":"closed","actor":"ec2-user","old_value":"","new_value":"Rust fnv1a32 and ccp_mitigation use wrapping_mul, no_std compatible, matches 3 vectors exactly","created_at":"2026-07-22T16:36:35.30511549Z"}
