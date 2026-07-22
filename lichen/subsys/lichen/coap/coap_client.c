@@ -165,6 +165,13 @@ static void request_ctx_cancel_timeout_sync(struct request_ctx *ctx)
 
 static void request_ctx_cancel_coap_slot(struct request_ctx *ctx)
 {
+	/* WARNING: Internal Zephyr coap_client access (v3.7.0).
+	 * Relies on struct coap_client { ... struct k_mutex send_mutex; ... struct coap_client_request_state requests[CONFIG_COAP_CLIENT_MAX_INSTANCES]; ... } layout,
+	 * including request_ongoing, coap_request.cb/user_data, and is_observe fields.
+	 * Used to neuter pending callback after timeout to avoid use-after-free on ctx.
+	 * Update or replace with public API if Zephyr changes internals. See net/coap_client.c.
+	 * Pinned to Zephyr v3.7.0 per AGENTS.md initialization graph.
+	 */
 	k_mutex_lock(&s_client.send_mutex, K_FOREVER);
 	for (size_t i = 0; i < ARRAY_SIZE(s_client.requests); i++) {
 		if (s_client.requests[i].request_ongoing &&

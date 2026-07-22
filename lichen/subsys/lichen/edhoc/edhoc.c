@@ -347,13 +347,16 @@ static int build_sig_structure(const uint8_t *id_cred, size_t id_cred_len,
 }
 
 static int build_enc_structure(uint8_t *out, size_t out_size, size_t *out_len,
-			       const uint8_t *th, size_t th_len)
+			       const uint8_t *th, const uint8_t *cred)
 {
+	uint8_t ext_aad[64];
+	memcpy(ext_aad, th, 32);
+	memcpy(ext_aad + 32, cred, 32);
 	ZCBOR_STATE_E(zse, 0, out, out_size, 0);
 	if (!zcbor_list_start_encode(zse, 3) ||
 	    !zcbor_tstr_put_lit(zse, "Encrypt0") ||
 	    !zcbor_bstr_encode_ptr(zse, NULL, 0) ||
-	    !zcbor_bstr_encode_ptr(zse, th, th_len) ||
+	    !zcbor_bstr_encode_ptr(zse, ext_aad, 64) ||
 	    !zcbor_list_end_encode(zse, 3)) {
 		return -ENOMEM;
 	}
@@ -851,23 +854,12 @@ int edhoc_initiator_process_msg2(struct edhoc_initiator *ctx,
 		goto err_wipe;
 	}
 
-	/* A_3 = ["Encrypt0", h'', TH_3 || CRED_I] per RFC 9528 §4.4.2 / RFC 9052 §5.3
-	 * external_aad includes CRED for binding (matches Python reference impl)
-	 */
-	uint8_t ext_aad[64];
-	memcpy(ext_aad, ctx->th_3, 32);
-	memcpy(ext_aad + 32, ctx->ed_pubkey, 32);
 	uint8_t a_3[96];
-	ZCBOR_STATE_E(zse_a3, 0, a_3, sizeof(a_3), 0);
-	if (!zcbor_list_start_encode(zse_a3, 3) ||
-	    !zcbor_tstr_put_lit(zse_a3, "Encrypt0") ||
-	    !zcbor_bstr_encode_ptr(zse_a3, NULL, 0) ||
-	    !zcbor_bstr_encode_ptr(zse_a3, ext_aad, 64) ||
-	    !zcbor_list_end_encode(zse_a3, 3)) {
-		ret = -ENOMEM;
+	size_t a_3_len;
+	ret = build_enc_structure(a_3, sizeof(a_3), &a_3_len, ctx->th_3, ctx->ed_pubkey);
+	if (ret != 0) {
 		goto err_wipe;
 	}
-	size_t a_3_len = zse_a3->payload - a_3;
 
 	/* Encrypt PLAINTEXT_3 -> CIPHERTEXT_3 (Message 3) */
 	if (msg3_size < pt3_len + 8) {
@@ -1280,23 +1272,12 @@ int edhoc_responder_process_msg3(struct edhoc_responder *ctx,
 		goto err_wipe;
 	}
 
-	/* A_3 = ["Encrypt0", h'', TH_3 || CRED_I] per RFC 9528 §4.4.2 / RFC 9052 §5.3
-	 * external_aad includes CRED for binding (matches Python reference impl)
-	 */
-	uint8_t ext_aad[64];
-	memcpy(ext_aad, ctx->th_3, 32);
-	memcpy(ext_aad + 32, peer_pubkey, 32);
 	uint8_t a_3[96];
-	ZCBOR_STATE_E(zse_a3, 0, a_3, sizeof(a_3), 0);
-	if (!zcbor_list_start_encode(zse_a3, 3) ||
-	    !zcbor_tstr_put_lit(zse_a3, "Encrypt0") ||
-	    !zcbor_bstr_encode_ptr(zse_a3, NULL, 0) ||
-	    !zcbor_bstr_encode_ptr(zse_a3, ext_aad, 64) ||
-	    !zcbor_list_end_encode(zse_a3, 3)) {
-		ret = -ENOMEM;
+	size_t a_3_len;
+	ret = build_enc_structure(a_3, sizeof(a_3), &a_3_len, ctx->th_3, peer_pubkey);
+	if (ret != 0) {
 		goto err_wipe;
 	}
-	size_t a_3_len = zse_a3->payload - a_3;
 
 	/* Decrypt CIPHERTEXT_3 */
 	ret = aead_decrypt(k_3, iv_3, a_3, a_3_len, msg3, msg3_len, plaintext_3);

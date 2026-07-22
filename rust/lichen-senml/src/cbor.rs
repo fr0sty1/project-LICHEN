@@ -510,7 +510,7 @@ pub fn decode<'a>(data: &'a [u8], buf: &mut [Record<'a>]) -> Result<usize, CborE
         for _ in 0..n_kv {
             let (key, adv) = dec_int(data, pos)?;
             pos += adv;
-            if key >= -3 && key <= 6 {
+            if (-3..=6).contains(&key) {
                 let bit = (key + 3) as u32;
                 let mask = 1u16 << bit;
                 if (seen_keys & mask) != 0 {

@@ -206,6 +206,8 @@ int lichen_app_identity_upsert_peer(
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	slot = find_peer_locked(peer->eui64);
 	if (slot >= 0) {
+		__ASSERT(s_peers[slot].peer.has_public_key,
+			 "lichen_app_identity_upsert_peer: existing peer must have public key");
 		/*
 		 * SECURITY: TOFU key pinning (spec 8.6). First contact pins
 		 * pubkey; subsequent contacts must present the same key.
