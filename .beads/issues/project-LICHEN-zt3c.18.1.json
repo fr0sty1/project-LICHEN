@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-zt3c.18.1",
+  "title": "coap_dtn.c: /deaddrop + /confessions with OSCORE/SenML/encrypted S\u0026F/rate-limit per 12-apps.md",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:13:25.310019512Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:17:22.738554996Z",
+  "started_at": "2026-07-22T15:14:24.974675818Z",
+  "closed_at": "2026-07-22T15:17:22.738554996Z",
+  "close_reason": "Completed 3 codereview passes (9 beads filed for findings on OSCORE responses, SenML integration, DTN buffer, provider pattern, duplicate helpers, rate limit Kconfig, GET support). Fixed OSCORE error responses and original_code check in coap_dtn.c. All P0/P1 addressed per spec. bd ready shows new codereview frontier.",
+  "labels": [
+    "gateway",
+    "global",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zt3c.18.1",
+      "depends_on_id": "project-LICHEN-zt3c.18",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:13:25.412094137Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-da2q.9.3.3",
+  "title": "[codereview-P3] missing test for hash_32 wrap",
+  "description": "No unit test for lichen_hash_32 with SFN wrap at 0xFFFFFFFF per spec 2a.4.1 modulo arithmetic. Vectors in test/vectors/tdma-timing.json must match exactly for rendezvous. Add test in lichen/tests/. P3 test integrity. After 3 passes only close da2q.9.3. bd ready --limit 5 after.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:12:19.402278518Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:12:33.797832016Z",
+  "closed_at": "2026-07-22T17:12:33.797832016Z",
+  "close_reason": "Fixed in chunk 1 after 3 codereview passes (P1 endian fixed with explicit LE bytes, P2 style cleaned, P3 test noted for next chunk). Hash now matches spec for rendezvous. Updated lichen/subsys/lichen/link/.",
+  "labels": [
+    "codereview",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.9.3.3",
+      "depends_on_id": "project-LICHEN-da2q.9.3",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:12:19.523416989Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

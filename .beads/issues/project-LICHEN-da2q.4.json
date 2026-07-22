@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-da2q.4",
+  "title": "CCP-4: Channel Plans",
+  "description": "Coordinated Capacity Profile section on channel plans inferred from da2q multi-channel coordination context. Details frequency allocations, spacing, and usage rules.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "created_at": "2026-07-22T15:12:01.046255076Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:30:06.154024036Z",
+  "closed_at": "2026-07-22T17:30:06.154024036Z",
+  "close_reason": "All CCP-3/4 impls, operating classes, lookup tables, TDMA, frequency agility, channel plans completed in 4 areas with 3 codereview passes each. All findings fixed. Epics complete.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.4",
+      "depends_on_id": "project-LICHEN-da2q",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:12:01.148472508Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-5mh9",
+  "title": "[codereview] spec/02a-coordinated-capacity.md:18 scope update misses appendix and drift constant",
+  "description": "After edit to add cross-refs, appendix for vectors not added. 'identical within 1 tick' in drift still arbitrary (see ccp vector slot_adjust_ticks=8). Tag codereview. Discovered-from:project-LICHEN-finm",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:29:39.517295984Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:32:32.048317842Z",
+  "started_at": "2026-07-22T16:30:12.053377188Z",
+  "closed_at": "2026-07-22T16:32:32.048317842Z",
+  "close_reason": "Completed scope update at :18 with appendix, drift constant (ppm*100), slot_adjust_ticks=8 cross-refs, TOC addition. 3 codereview passes filed+closed (k2c6/jdhz/r7cx + child 5mh9.1). bd ready run.",
+  "labels": [
+    "codereview"
+  ]
+}

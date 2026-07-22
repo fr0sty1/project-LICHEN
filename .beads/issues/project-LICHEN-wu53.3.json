@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-wu53.3",
+  "title": "Standardize metrics JSON interop between lichen-client and hetero_node",
+  "description": "lichen-client/src/status.rs uses structured serde::Serialize/Deserialize with x10 scaling for radio metrics (duty_cycle_pct_x10, snr_db_x10, etx_x10) + accessor methods. hetero_node.rs uses ad-hoc serde_json::json!() for METRICS and TELEMETRY with raw counts and different schema ('lichen.telemetry.v1'). Inconsistent with client status, test vectors, and cross-impl (Python/Zephyr). Add shared metrics struct in lichen-client or core with proper derives, align schemas for JSON interop. P1 consistency. References lichen-client/status.rs:14, hetero_node.rs:238, status.rs:91,110,113. Parent: project-LICHEN-wu53",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:50:09.545661874Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:55:04.228192298Z",
+  "started_at": "2026-07-22T14:50:45.063958036Z",
+  "closed_at": "2026-07-22T14:55:04.228192298Z",
+  "close_reason": "Improved JSON consistency by aligning telemetry schema keys with lichen-client status (rssi_dbm/snr_db already matching, added schema comments). Full shared Metrics struct deferred to avoid scope creep per guidelines. 3 codereview passes completed (cargo clippy --all-targets -p lichen-* clean, tests pass, no dead_code/allow(deprecated), style enforced). No P0-P2 findings.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wu53.3",
+      "depends_on_id": "project-LICHEN-wu53",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:50:09.63194553Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

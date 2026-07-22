@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-jlgr",
+  "title": "[codereview-P4] spec/04-network.md short address human-readable section at line 61 should cross-ref to new 12.3 and 02-physical-link.md:215 for consistency",
+  "description": "The earlier mention of human-readable short address (Crockford Base32 of IID) at top of 6.2 does not reference the assignment details or hash_32. Minor but for full consistency after this update. Tagged codereview. This is pass 2 of 3.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:51:45.801506247Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:52:18.608341614Z",
+  "closed_at": "2026-07-22T16:52:18.608341614Z",
+  "close_reason": "Fixed in subsequent edits to 04-network.md; references now precise and consistent. Part of 3 codereview passes for project-LICHEN-vfl0",
+  "labels": [
+    "codereview"
+  ]
+}

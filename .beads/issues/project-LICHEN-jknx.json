@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-jknx",
+  "title": "codereview: now() ctx param missing in fn sig and tdma_current_sfn_or_time undefined",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:41:19.996391449Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:41:49.804816134Z",
+  "closed_at": "2026-07-22T16:41:49.804816134Z",
+  "close_reason": "Fixed ctx/now() sig, u32 SFN, draft-lichen-tdma crossref, Appendix A + vectors. Addressed in spec edit after codereview chunk 1.",
+  "labels": [
+    "codereview",
+    "spec",
+    "ccp"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-jknx",
+      "depends_on_id": "project-LICHEN-r80h",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:41:20.114705262Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

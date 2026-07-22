@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-2ibu.1",
+  "title": "codereview-pass2: reference 02a from 02-physical-link.md and update Kconfig comment",
+  "description": "02-physical-link.md and Kconfig should link to new 02a-coordinated-capacity.md. Impl notes should point to specific functions like lichen_tdma_init in link_ctx.c:508.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:24:33.061855943Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:25:20.489233323Z",
+  "closed_at": "2026-07-22T16:25:20.489233323Z",
+  "close_reason": "Closed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2ibu.1",
+      "depends_on_id": "project-LICHEN-2ibu",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:24:33.169460246Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

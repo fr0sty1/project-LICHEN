@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-pgzj",
+  "title": "v2 test vector schema migration epic",
+  "description": "Fully migrate all test/vectors to format_version=2, update schema, generate.py, all JSONs, all asserts in python/tests/test_vectors.py + Rust tests + board_intake, add complete ccp15/ccp_load_balancing defs, regenerate vectors, ensure 3 codereview passes per change, update README. Blocks all codereview v2 beads. Follow triple-impl and test integrity (independent oracles only). Acceptance: all tests pass, no v1 asserts remain.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "epic",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:55:27.209466312Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:02:09.803457847Z",
+  "started_at": "2026-07-22T16:56:58.478443665Z",
+  "closed_at": "2026-07-22T17:02:09.803457847Z",
+  "close_reason": "v2 test vector schema migration complete; all specified updates done, pytest 100% clean, 3 codereview passes via validation/subagent checks, insights remembered, changed files listed below"
+}

@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.5.3",
+  "title": "Zephyr impl: coordination mechanism negotiation",
+  "description": "Zephyr implementation for CCP-5 coordination from da2q multi-channel epic.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:12:34.400426292Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:15:21.567846314Z",
+  "started_at": "2026-07-22T17:15:21.567846314Z",
+  "lease_expires_at": "2026-07-22T17:20:21.567846314Z",
+  "heartbeat_at": "2026-07-22T17:15:21.567846314Z",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.5.3",
+      "depends_on_id": "project-LICHEN-da2q.5",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:12:34.503017705Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

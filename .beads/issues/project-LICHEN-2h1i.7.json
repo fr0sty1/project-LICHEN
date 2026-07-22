@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2h1i.7",
+  "title": "Develop conference sales playbook and purchase funnel",
+  "description": "Create docs/sales-playbook.md or PRFAQ document detailing demo-to-purchase script, pricing (0-75/unit), payment methods (Square, cash, crypto), inventory tracking, GPL-compliant packaging with QR to repo, post-event online sales. Include Seattle PRFAQ footer. Make executable for DEFCON/HOPE/CCC.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:02:29.432047587Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:05:06.785168291Z",
+  "started_at": "2026-07-22T15:02:32.23397848Z",
+  "closed_at": "2026-07-22T15:05:06.785168291Z",
+  "close_reason": "Completed sales PRFAQ playbook, automated entropy reset test with 3 codereview passes, all lint/test/gates pass, decomposed epic",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2h1i.7",
+      "depends_on_id": "project-LICHEN-2h1i",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:02:29.523205419Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

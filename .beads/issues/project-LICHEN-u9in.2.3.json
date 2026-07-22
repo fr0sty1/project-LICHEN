@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-u9in.2.3",
+  "title": "codereview-pass3: LICHEN_COAP_DEADDROP Kconfig removed LICHEN_ROUTING dep but coap_dtn.c still calls dtn functions; update needed for full integration",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:45:13.210431455Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:45:19.547416451Z",
+  "closed_at": "2026-07-22T15:45:19.547416451Z",
+  "close_reason": "codereview pass3 filed",
+  "labels": [
+    "review",
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-u9in.2.3",
+      "depends_on_id": "project-LICHEN-u9in.2",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:45:13.317889452Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

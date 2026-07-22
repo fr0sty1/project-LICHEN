@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-ukro",
+  "title": "[CODEREVIEW-2] generate.py FORMAT_VERSION=2 change may break existing vector consumers that hardcode v1 expectation",
+  "description": "test/vectors/generate.py:29 - Changing default to 2 without updating all generated JSON files or test loaders in Python/C/Rust may cause validation failures in test/vectors/test_vectors.py or Zephyr tests. Needs regeneration of all vectors.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:50:55.792123103Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:53:16.243163387Z",
+  "started_at": "2026-07-22T16:51:59.882143335Z",
+  "closed_at": "2026-07-22T16:53:16.243163387Z",
+  "close_reason": "Fixed: updated schema.json with format_version=2 support + ccp15/ccp16 defs (oneOf fixed to avoid overlap validation error); generate.py=2; test_vectors.py asserts updated to 2 + rpl_messages.json; Python future import ordering fixed for rpl/messages.py; vector tests pass (130/130); lora_l2.c CCA with IS_ENABLED read, lora_cad(), busy abort via -EBUSY + modem_mutex already present and correct (no further changes); Zephyr native_sim builds clean, no new issues after 3 codereview passes (correctness/security/robustness all clean, no open findings)",
+  "labels": [
+    "codereview"
+  ]
+}

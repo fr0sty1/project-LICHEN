@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.6",
+  "title": "CCP-6: Hash-Based Channel Assignment",
+  "description": "Coordinated Capacity Profile section on hash functions and assignment algorithms for channels.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:12:04.370017409Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:28:00.817906669Z",
+  "started_at": "2026-07-22T17:27:40.310174303Z",
+  "closed_at": "2026-07-22T17:28:00.817906669Z",
+  "close_reason": "Completed CCP-6 hash-based assignment, frequency agility, rendezvous impls across Python/Rust/Zephyr + test vectors. 3 full codereview passes (correctness/security/robustness) completed with all findings fixed. TDMA superframes/cells/scheduled mode integrated.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.6",
+      "depends_on_id": "project-LICHEN-da2q",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:12:04.477550245Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

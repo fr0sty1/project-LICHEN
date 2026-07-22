@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-j8bl",
+  "title": "codereview pass 3: test vectors and roundtrip not updated for channel",
+  "description": "rust/lichen-core/src/announce.rs:182 - make_announce still uses 93 bytes, no channel byte at [93], roundtrip test doesn't assert or set current_channel= e.g. 2 per ccp9.json. Will fail after fix. Also update should_relay doc. P2. codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T17:21:27.349761499Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:23:11.862444204Z",
+  "closed_at": "2026-07-22T17:23:11.862444204Z",
+  "close_reason": "Tests now use 94-byte buffer, set channel byte, assert current_channel, updated too_short. 3 clean codereview passes completed with no remaining findings.",
+  "labels": [
+    "codereview"
+  ]
+}

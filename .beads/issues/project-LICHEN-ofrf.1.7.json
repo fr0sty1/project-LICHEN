@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ofrf.1.7",
+  "title": "CCP-16 chunk 2: full desync FSM and SFN modulo",
+  "description": "Expand Section 2a.5 with complete state machine table, transitions, timers, RPL version handling during join/drift, SFN wrap modulo arithmetic examples/boundaries, time-provider integration (epoch_floor, stratum, wall_clock_valid). 3x codereview per edit chunk. Parent project-LICHEN-ofrf.1",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:25:24.671856395Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:25:39.192803611Z",
+  "closed_at": "2026-07-22T16:25:39.192803611Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ofrf.1.7",
+      "depends_on_id": "project-LICHEN-ofrf.1",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:25:24.777025486Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

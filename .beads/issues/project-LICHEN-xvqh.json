@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-xvqh",
+  "title": "[codereview-pass1-correctness] gateway.rs missing mesh_to_mesh and is_local_mesh branching in forward",
+  "description": "P0: forward_mesh_to_upstream(lichend.rs:350) unconditionally calls mesh_to_upstream then TUN. Per spec/05-routing.md and project-LICHEN-lug0, must check is_local_mesh(dst) before TUN vs mesh_to_mesh path with SRH. Current routes map and rpl not used for classification. File as codereview. Discovered-from: project-LICHEN-lug0",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:11.369334695Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:00:57.383044439Z",
+  "started_at": "2026-07-22T15:44:18.816503216Z",
+  "closed_at": "2026-07-22T16:00:57.383044439Z",
+  "close_reason": "gateway.rs forward fixed with is_local_mesh (routes+prefix) and mesh_to_mesh branching in lichend.rs; version check + error logging restored; 3 codereview passes filed+addressed (no remaining P0-P4); Rust cargo test+clippy pass; Renode sim compatible. All beads closed after convergence. No dead code.",
+  "labels": [
+    "codereview"
+  ]
+}

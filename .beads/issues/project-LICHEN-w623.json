@@ -1,0 +1,21 @@
+{
+  "id": "project-LICHEN-w623",
+  "title": "[codereview-pass3-3] coap_status.c Zephyr style and robustness",
+  "description": "lichen/subsys/lichen/coap/coap_status.c: LOG_MODULE_REGISTER ok but many magic numbers in CBOR, no use of Zephyr CBOR library (tinycbor or zcbor). notify functions have incomplete observer handling. After removing comments, ensure no dead code left (the public notify funcs do little). Check for races in s_initialized.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:06:54.961713682Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:06:54.961713682Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-w623",
+      "depends_on_id": "project-LICHEN-2g58",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:06:55.064065639Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

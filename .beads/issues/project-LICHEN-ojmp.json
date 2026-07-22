@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ojmp",
+  "title": "[codereview pass 1/3] python/src/lichen/announce/messages.py module docstring",
+  "description": "Reviewed module docstring update from rx_channel to current_channel. No P0-P2 findings. Consistency with Rust/C/Zephyr impls confirmed. Spec 9.2 and CCP-9 binding now accurate.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:26:09.861923806Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:26:23.629833902Z",
+  "closed_at": "2026-07-22T17:26:23.629833902Z",
+  "close_reason": "Pass 1 complete: no findings",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ojmp",
+      "depends_on_id": "project-LICHEN-foew",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T17:26:09.974808436Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

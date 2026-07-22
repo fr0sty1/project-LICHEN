@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-2oe9",
+  "title": "codereview: from_ipv6 assumes IID in bytes 8-15 without validation",
+  "description": "No check if address is link-local/ULA or has valid IID structure. Could add is_ula() || is_link_local() guard or make infallible assumption explicit in docs. P2 robustness for codereview. discovered-from:project-LICHEN-yufp",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:55:54.017308639Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:02:12.842673162Z",
+  "started_at": "2026-07-22T15:58:53.785596077Z",
+  "closed_at": "2026-07-22T16:02:12.842673162Z",
+  "close_reason": "Fixed from_ipv6 to use Ipv6Addr::iid() + explicit docs+test for IID assumption; updated iid() doc; verified with cargo test+clippy. 3 codereview passes completed via test/correctness, doc/robustness, clippy/security. No other real issues found.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2oe9",
+      "depends_on_id": "project-LICHEN-yufp",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:55:54.119223683Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

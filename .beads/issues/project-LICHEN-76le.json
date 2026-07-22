@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-76le",
+  "title": "[codereview-pass1] Medium.get_rx_candidates ignores channel load for CCP-16 balancing",
+  "description": "python/src/lichen/sim/medium.py:154 - No channel selection or load metric update per da2q CCP-16 reqs. Leads to unrealistic single-channel contention in scale tests. Fix: track per-channel utilization.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:11:33.344756486Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:27:31.501287146Z",
+  "started_at": "2026-07-22T16:27:30.983850568Z",
+  "closed_at": "2026-07-22T16:27:31.501287146Z",
+  "close_reason": "Fixed Medium.get_rx_candidates for CCP-16 channel load, tests+codereviews passed",
+  "labels": [
+    "codereview"
+  ]
+}

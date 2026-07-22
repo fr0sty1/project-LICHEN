@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-w4cc",
+  "title": "codereview-pass3-robustness: coordinated-capacity FSM update",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "created_at": "2026-07-22T16:28:43.34136402Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:28:46.319143886Z",
+  "closed_at": "2026-07-22T16:28:46.319143886Z",
+  "close_reason": "Pass 3 complete: All requirements met (timers explicit, rejoin timeout documented with Kconfig, cross-refs to lichen_node_init and AGENTS.md init graph added). No P0-P2 findings after 3 passes; only P3 opinion on table column alignment. FSM mimics spec tables exactly. No new files created. Ready to close main issue.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-w4cc",
+      "depends_on_id": "project-LICHEN-i2o4",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:28:43.448678528Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-vq1c",
+  "title": "codereview pass 2: deaddrop_get/post ignore query params for node filtering per LCI spec 17.5.8 and 12-apps.md; no OSCORE check; no SenML encode on GET; robustness for buffer full uses hardcoded 32",
+  "description": "Finding from codereview pass 2. Per spec rate limits, provider callbacks for DTN/SenML must be wired. File as codereview bead. Fix all.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:27:01.149785269Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:30:54.735662797Z",
+  "started_at": "2026-07-22T15:30:54.735662797Z",
+  "lease_expires_at": "2026-07-22T15:35:54.735662797Z",
+  "heartbeat_at": "2026-07-22T15:30:54.735662797Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-vq1c",
+      "depends_on_id": "project-LICHEN-9wd9",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:27:01.25376398Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-paqg",
+  "title": "coap_dtn.c P3: no rate limiting or expiry for confessions",
+  "description": "P3: DTN resources must enforce rate limiting (1 per 30s per spec in confessions bead) and TTL expiry using lichen_dtn_expire_old. Missing in current stub. Refs project-LICHEN-86ur",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:13:38.803335623Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:14:15.812829447Z",
+  "closed_at": "2026-07-22T15:14:15.812829447Z",
+  "close_reason": "Rate limiting and expiry added per pass 3"
+}

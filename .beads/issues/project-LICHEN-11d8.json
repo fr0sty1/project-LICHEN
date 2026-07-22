@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-11d8",
+  "title": "codereview2 after lora_l2 CCA",
+  "description": "Pass 2: CCA placed after tx_pending inc but before modem lock - good for arbitration. However, on busy return, the tx_buf_mutex is not unlocked in one path (bug). Fix mutex handling. Also, link layer integration missing. (project-LICHEN-da2q.15.7)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:33:00.28238156Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:38:46.911797736Z",
+  "started_at": "2026-07-22T16:35:19.531821865Z",
+  "closed_at": "2026-07-22T16:38:46.911797736Z",
+  "close_reason": "Fixed CCA mutex unlock in all busy/timeout paths in lora_l2_tx (tx_buf_mutex now unlocked before every return). Added TDMA/link layer integration calls in lora_l2 per spec (lichen_link_tx + slot check). Zephyr builds/tests clean. 3 codereview passes (Rust/C/spec) produced 0 open findings after fixes. All 4 beads closed clean.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-11d8",
+      "depends_on_id": "project-LICHEN-da2q.15.7",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:33:00.385617154Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

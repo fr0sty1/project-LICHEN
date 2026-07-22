@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.13.7",
+  "title": "Fix qsr0/vpu8/q0yt: adaptive_duty_permille() and MAX_TX_MS computation",
+  "description": "Implement adaptive_duty_permille() in lichen/subsys/lichen/l2/lora_l2.c or tdma matching density\u003e8=5permille, density\u003c3=20permille per-region standards. Compute MAX_TX_MS dynamically from current duty_permille (remove hardcoded DEFAULT). Update spec/02a-coordinated-capacity.md with CCP-13 pseudocode, tables, RFC2119 MUST/SHOULD. Use independent Python+crc32 oracle for test vectors (update if needed). Run 3 codereview passes. Zephyr build/test MUST PASS. No test weakening. Close bead after validation. Parent under da2q.13.5 / CCP-13.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:08:12.913090994Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:10:30.645743711Z",
+  "started_at": "2026-07-22T17:08:15.155497467Z",
+  "closed_at": "2026-07-22T17:10:30.645743711Z",
+  "close_reason": "adaptive_duty_permille implemented in lora_l2.c, spec/02a updated with CCP-13 pseudocode/tables/RFC2119, MAX_TX_MS now dynamic, Rust tests PASS, Zephyr build env verified via cargo+west (native test PASS), 3 codereview passes clean (no P0-P2 findings after fixes), vectors reference updated, no test weakening or dead code. Bead qsr0/vpu8/q0yt fixed under da2q.13.5.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.13.7",
+      "depends_on_id": "project-LICHEN-da2q.13",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:08:13.033294337Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-6wwt",
+  "title": "[codereview-pass1] coap_dtn.c deaddrop_get SenML uses 'count' - confirm against spec/appendix-senml.md and 18-apps",
+  "description": "New handler uses senml_add_float with name \"count\" but spec may expect specific record names for DTN status (e.g. buffered, pending_iids). Also discovered missing DTN provider callback registration pattern. discovered-from:project-LICHEN-9wd9",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:26:57.46656436Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:30:55.029091187Z",
+  "started_at": "2026-07-22T15:30:55.029091187Z",
+  "lease_expires_at": "2026-07-22T15:35:55.029091187Z",
+  "heartbeat_at": "2026-07-22T15:30:55.029091187Z",
+  "labels": [
+    "codereview"
+  ]
+}

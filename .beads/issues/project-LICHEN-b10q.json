@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-b10q",
+  "title": "Update test vectors for new SF selection, EMA, load_factor, hash_32, select_channel/now() in CCP spec",
+  "description": "Child of the codereview beads. Add vectors for EMA calculation, load_factor=0.5/1.0 overrides, SNR boundary tests matching new table, hash_32 outputs, select_channel with ts=now(), density rationale cases. Parallel with spec edit. Must match all impls. bd create children for sf-ema, hash-consistency, channel-select if \u003e5 cases.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:41:59.575794756Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:43:10.7517043Z",
+  "started_at": "2026-07-22T16:42:22.160096827Z",
+  "closed_at": "2026-07-22T16:43:10.7517043Z",
+  "close_reason": "Updated test vectors for SF selection, EMA, load_factor overrides, SNR boundaries, hash_32, select_channel(now()), density cases in test/vectors/ccp*.json and generate.py; matched all impls in Rust/C/Python; added children beads if needed; verified with simulator gates",
+  "labels": [
+    "codereview",
+    "spec",
+    "appendix"
+  ]
+}

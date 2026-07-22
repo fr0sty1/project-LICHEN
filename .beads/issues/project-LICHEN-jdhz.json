@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-jdhz",
+  "title": "[codereview-2] spec/02a-coordinated-capacity.md scope/drift - arbitrary tick tolerance vs slot_adjust_ticks=8",
+  "description": "The drift section still has 'match within 1 tick' which was flagged as arbitrary. Scope now references slot_adjust_ticks=8 from ccp vector but vector and Appendix A need update for precision. File as codereview bead. discovered-from:project-LICHEN-5mh9",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:31:16.67020558Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:31:49.941371439Z",
+  "closed_at": "2026-07-22T16:31:49.941371439Z",
+  "close_reason": "Arbitrary '1 tick' replaced with slot_adjust_ticks=8 cross-ref; drift field clarified with ppm*100. 3 codereview passes now complete with fixes.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-jdhz",
+      "depends_on_id": "project-LICHEN-5mh9",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:31:16.778862897Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

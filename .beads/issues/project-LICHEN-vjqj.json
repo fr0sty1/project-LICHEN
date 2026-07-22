@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-vjqj",
+  "title": "codereview P3: wire format doc updated but _FIXED_LENGTH still 93 in messages.py",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T17:15:03.329434166Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:34:56.008734634Z",
+  "closed_at": "2026-07-22T17:34:56.008734634Z",
+  "close_reason": "Fixed all docstring, wire format, constant, and attribute description issues for current_channel in announce messages across Python and Rust impls per CCP completion. Ran 3 independent codereview passes per workflow rule (no P0-P2 findings in final pass). Updated _FIXED_LENGTH, parsing, serialization, tests, and docs to match spec. Quality gates passed. Parallel fixes completed. No CCP left.",
+  "labels": [
+    "codereview"
+  ]
+}

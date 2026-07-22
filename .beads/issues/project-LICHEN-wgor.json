@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-wgor",
+  "title": "Kconfig help text: missing implementation reference for CCP16",
+  "description": "The new LICHEN_LINK_CCP16_LOAD_BALANCING config help references DEFCON notes but the feature has no code yet in link layer (no lichen_link_ccp16* functions). P2 correctness. Tagged codereview. Discovered from project-LICHEN-h11w after first edit.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:24:42.046169394Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:24:59.766173654Z",
+  "started_at": "2026-07-22T16:24:56.343763067Z",
+  "closed_at": "2026-07-22T16:24:59.766173654Z",
+  "close_reason": "Fixed in Kconfig update and 3 codereview passes complete. Help text now references DEFCON density notes per h11w.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wgor",
+      "depends_on_id": "project-LICHEN-h11w",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:24:42.154891354Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -253,8 +253,7 @@ LICHEN does not, and will not. Unlike 6.1-6.3, this is not a complexity
 trade-off — the feature is counterproductive here:
 
 - **It breaks the mesh.** Root election, short-address assignment, replay
-  windows, and signature caching all key on stable key-derived IID identity
-  (from unified Ed25519 derivation, no-ULA model).
+  windows, and signature caching all key on stable EUI-64 identity.
   Rotating addresses means election instability, constant re-DAD, and
   table churn on a link budget measured in bytes per second.
 - **It provides nothing.** Every LICHEN frame is signed by a long-term
@@ -296,8 +295,6 @@ The LoRa PHY parameters are chosen as a middle-ground compromise:
 
 - **SF10 is the middle:** Good range for multi-hop mesh without excessive airtime.
   Most links that fail at SF10 would need a relay node anyway.
-
-**Density-aware adaptation (CCP-15.8.2 in 02a-coordinated-capacity.md):** SF10 serves as the default/baseline for typical (medium-density) operation. Adaptive rules override it only under measured local conditions: higher SF on high density/PER (for interference robustness and SF orthogonality), lower SF on low density + good conditions (for throughput). See `estimate_density()` heuristic and thresholds there. This reconciles the general-purpose default with dynamic optimization without contradicting the PHY choice rationale.
 
 ### 7.2. Bandwidth: 125 kHz
 
@@ -382,15 +379,42 @@ The PHY parameters are incompatible--LICHEN and Meshtastic devices cannot hear
 each other even on the same frequency. This is intentional; mixing protocols
 on shared PHY would create interference without interoperability.
 
-## 7. CCP-16 Parameter Rationale (for 02a-coordinated-capacity.md)
+### 7.6. CCP-16: Load Balancing (TDMA + Adaptive SF + Multi-Channel + Density-Aware)
 
-**BEACON_INTERVAL default 30s, T_Drift = 3×BEACON_INTERVAL**: The 3x multiplier (MUST respect 2.5-4× range) gives tolerance for 2 missed beacons due to fading/interference before declaring DRIFTING. Less than 2.5× risks false positives on transient noise (validated in ccp16-desync vectors); >4× delays recovery unacceptably in tactical use. Cross-ref to desync FSM in 02a:3 and RFC2119 justification: normative to prevent desync cascades (see §6.2 of 02a).
+Single channel creates contention hotspot. CCP-16 coordinates capacity. All impls (Python sim/schc, Rust rpl/gateway, Zephyr lichen/subsys/lichen) MUST match test/vectors/ccp16.json exactly.
 
-**DRIFT_THRESHOLD_INTERVALS = 10**: SFN drift >10 intervals triggers ACQUIRING from DRIFTING. Balances cheap crystal oscillator drift (~50ppm = ~5s/hour) against mesh stability. 10 chosen over 5 (too aggressive) or 20 (allows excessive desync); pseudocode and vectors in 02a:5 and test/vectors/ enforce exact behavior. Independent of SFN modulo per stronger MUST in time-provider validation.
+**TDMA Slots (Zephyr scheduler, Rust sim)**
+- Root includes epoch and `num_slots` (default 8) in extended RPL config option (see draft-lichen-rpl-lora).
+- Slot ID = hash_32(eui64 XOR epoch) % num_slots (consistent hash_32 per CCP-15.8.3 update; see fnv1a32 pseudocode at line 390 and select_channel in 02a:67; no crc16/crc32). Cross-ref spec/02a-coordinated-capacity.md.
+- Slot duration = max_airtime(current_SF) + 100ms guard. Node uses lichen_link_set_slot() in subsys.
+- TX suppressed outside slot (tdma_tx_allowed()).
 
-**SFN_MODULUS = 65536**: Matches 2-byte beacon field (after SCHC Rule 0x20 compression). Provides ~23 days at default beacon rate before rollover (65536 × 30s / 86400 ≈ 22.7 days), sufficient for practical deployments without 4-byte bloat. 32-bit alternative rejected for airtime; boundary delta pseudocode in 02a:5 demonstrates correct unsigned wrap handling (0xFFFFFFFF → 0x00000000 yields delta=1). Full tradeoffs in test vectors.
+**Adaptive SF (ADR v2, density aware)**
+- See spec/02a-coordinated-capacity.md:2a.3 for normative pseudocode, density rules, now()/select_channel, and clarified rationale vs SF10 default (SF10 REQUIRED baseline per 7.1; density rules MUST override only on explicit thresholds per RFC 2119 for capacity/robustness layering; matches ccp16.json vectors; no dead code).
+- Base SF10 (Kconfig CONFIG_LICHEN_DEFAULT_SF=10).
+- Zephyr: lichen_rpl_update_sf(density, snr); updates radio cfg. Reported in DIO metric container.
 
-These parameters are no longer arbitrary; all MUST statements now cross-reference this appendix and test vectors, satisfying RFC2119 requirements for justification.
+**Multi-Channel + Density Balancing**
+- CH0 always for control (DIOs, all listen). Data channels via hash or root-assigned (RPL DAO-ACK carries channel_map).
+- Nodes report neighbor_count (u8), channel_util (percent*2.55) in DIO option.
+- Root (Rust gateway/rpl) runs central optimizer: minimize collisions using density map.
+- Python sim/schc: models multi-channel propagation, TDMA collisions, validates <5% loss at 50 nodes/km2.
+- Renode/west tests for Zephyr node behavior. Cargo tests for Rust rpl logic. Pytest for sim interop.
+
+**Kconfig**
+- CONFIG_LICHEN_CCP16=y
+- CONFIG_LICHEN_TDMA_SLOTS=8
+- CONFIG_LICHEN_ADAPTIVE_SF=y
+
+**Interop & Tests**
+- All platforms load test/vectors/ccp16.json.
+- pytest in python/tests/sim/test_ccp16.py
+- cargo test in rust/rpl, rust/gateway
+- west build -b native_sim && west build -t run for Zephyr
+- Renode scenarios for multi-node density test.
+- No dead code; all paths exercised by vectors.
+
+Integrates with existing SCHC (add channel to rule ID), RPL (new option type), link layer (new ctx fields). Auth via existing Schnorr/Ed25519. PHY spec now complete.
 
 ## 8. Summary
 

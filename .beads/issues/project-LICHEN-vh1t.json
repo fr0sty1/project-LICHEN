@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-vh1t",
+  "title": "[codereview1] coap_dtn.c: coap_respond still duplicates logic from coap_oscore_unprotect_request; use helper for full OSCORE compliance per LCI spec section 17",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:51:38.775065449Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:57:22.716806768Z",
+  "started_at": "2026-07-22T15:53:50.366656724Z",
+  "closed_at": "2026-07-22T15:57:22.716806768Z",
+  "close_reason": "Duplication fixed using shared helper; 3 codereview passes completed (P0/P1 addressed in pass1, only P2+ in subsequent); all findings filed as codereview beads; bd ready shows continued work",
+  "labels": [
+    "codereview"
+  ]
+}

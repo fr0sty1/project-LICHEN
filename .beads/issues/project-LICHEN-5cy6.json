@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-5cy6",
+  "title": "[codereview-pass2] add_route only mutates local HashMap; no delegation or sync to RoutingTable after DAO rebuild",
+  "description": "Gateway::add_route:91 does self.routes.insert but never updates or reads from dao_manager.routing_table. When DAO path changes the RoutingTable in handle_frame_rpl:316, the Gateway map stays stale. P0 correctness for local_mesh classification. discovered-from:project-LICHEN-fy9q",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:49:52.919895879Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:51:56.514750799Z",
+  "started_at": "2026-07-22T15:50:53.518407339Z",
+  "closed_at": "2026-07-22T15:51:56.514750799Z",
+  "close_reason": "Fixed add_route delegation to RoutingTable for DAO rebuild sync; coap/rpl init/providers/hash/vectors addressed per CCP spec; style match; gates clean"
+}

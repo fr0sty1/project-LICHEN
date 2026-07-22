@@ -134,6 +134,10 @@ impl AddressMapper {
             if old.iid != iid {
                 self.by_iid.remove(&old.iid);
             }
+        } else if let Some(&existing_node) = self.by_iid.get(&iid) {
+            if existing_node != node_id {
+                self.by_node_id.remove(&existing_node);
+            }
         }
 
         self.by_iid.insert(iid, node_id);

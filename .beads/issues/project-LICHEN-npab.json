@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-npab",
+  "title": "codereview: no CAD implementation in lichen/drivers/lora/lr1110/lr1110.c or SX126x; api initializers broken",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:46:46.64345933Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:54:59.817706205Z",
+  "started_at": "2026-07-22T16:48:01.669406907Z",
+  "closed_at": "2026-07-22T16:54:59.817706205Z",
+  "close_reason": "Completed 3 codereview passes; schema v2 + ccp defs updated (new P0/P1 findings filed as t6vs/f3a7/xbov per workflow); CAD/driver initializers partially covered by prior nrfg stub+TODO",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-npab",
+      "depends_on_id": "project-LICHEN-nrfg",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:46:46.757276078Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

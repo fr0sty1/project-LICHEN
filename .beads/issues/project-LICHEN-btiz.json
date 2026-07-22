@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-btiz",
+  "title": "[codereview-pass3] P2: populate_routes assumes IPv6 IID in bytes 8-15; valid for link-local but not all prefixes",
+  "description": "Edge case for GUA/ULA without standard IID. Low impact. discovered-from:project-LICHEN-fy9q",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:54:07.730068752Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:59:11.570655798Z",
+  "started_at": "2026-07-22T15:55:40.832864316Z",
+  "closed_at": "2026-07-22T15:59:11.570655798Z",
+  "close_reason": "Updated populate_routes to detect Yggdrasil-style GUA addresses (0x02 prefix with trailing zeros) and extract NodeId from bytes 1..9 without bitflip; standard path for link-local/ULA/GUA uses bytes 8..16 with ^=0x02 on first byte. Tests and clippy pass for lichen-rpl. 3 codereview passes completed with beads filed for related findings in routing, addr, and gateway. No comments added."
+}

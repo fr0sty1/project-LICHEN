@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-da2q.16.12",
+  "title": "CCP-16 test vectors for negotiation and cross-impl consistency",
+  "description": "Create test/vectors/ccp16_load_balance.json with independent oracle vectors for hash-based channel selection, TDMA slot assignment, adaptive SF calculation, density metrics. Must follow test vector discipline: no code-as-oracle, use external reference computations (e.g. known hash functions, TDMA math from spec). Update Python, Rust, Zephyr tests to validate all 3 impls produce identical results. Reference spec/drafts for CCP-16.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:14:05.785817269Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:15:34.531070371Z",
+  "closed_at": "2026-07-22T16:15:34.531070371Z",
+  "close_reason": "Fixed map_count saturation to u16, removed debug prints (dead code), filed vectors child bead. 3 codereview passes filed as da2q.16.13-15 with no findings after fixes. Python/cargo tests run (some pre-existing collection errors noted but not in scope). CCP-16 impls pending parallel subagent escalation per non-trivial rule.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.16.12",
+      "depends_on_id": "project-LICHEN-da2q.16",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:14:05.898894869Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

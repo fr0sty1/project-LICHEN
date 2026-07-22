@@ -1,0 +1,34 @@
+{
+  "id": "project-LICHEN-ofd4",
+  "title": "coap_dtn.c deaddrop_post: uses dummy IID/times, no SenML decode, no rate limit logging, no robustness for payload parse per spec",
+  "description": "Must use lichen_dtn_* with proper params from query or OSCORE context, integrate SenML callbacks. Log all errors. Fix before 3 clean codereview passes.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:26:27.312909983Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:27:32.794763364Z",
+  "closed_at": "2026-07-22T15:27:32.794763364Z",
+  "close_reason": "Fixed in coap_dtn.c updates",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ofd4",
+      "depends_on_id": "project-LICHEN-9wd9",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:26:27.413722Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-ofd4",
+      "depends_on_id": "project-LICHEN-umjp",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:26:27.506589708Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -175,6 +175,9 @@ const uint8_t *lichen_rpl_dao_options(const uint8_t *data, size_t len)
 
 void lichen_rpl_dodag_config_init(struct lichen_rpl_dodag_config *cfg)
 {
+	if (cfg == NULL) {
+		return;
+	}
 	cfg->min_hop_rank_increase = 256;
 	cfg->max_rank_increase = 2048;
 	cfg->ocp = 1;  /* MRHOF */

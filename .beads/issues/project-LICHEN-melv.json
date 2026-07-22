@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-melv",
+  "title": "codereview pass 1: coap_status.c dynamic map counts",
+  "description": "Updated time/dodag map_counts to exact number of fields (conditionals for wall_clock/unix/source/parent/root). Root remains 9 base (uptime/mem/time/dodag/radio + txq/fwd 4 capacity) + batteries. Matches spec. Zephyr test clean. No P0-P1 findings.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "created_at": "2026-07-22T16:07:03.444074417Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:07:16.896906244Z",
+  "closed_at": "2026-07-22T16:07:16.896906244Z",
+  "close_reason": "3 codereview passes complete after fixes to coap_status map counts (dynamic for submaps, 9 base+capacity+batteries) and DAO-ACK generation in RPL handling for C/Zephyr/tests. All issues fixed, clean."
+}

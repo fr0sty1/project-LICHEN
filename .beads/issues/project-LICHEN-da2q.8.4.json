@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.8.4",
+  "title": "Vectors: CCP-8 requirements from da2q context",
+  "description": "Vectors implementation for CCP-8 Channel Hopping requirements from da2q context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:40.973507757Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:11:51.677074748Z",
+  "started_at": "2026-07-22T17:10:36.451145439Z",
+  "closed_at": "2026-07-22T17:11:51.677074748Z",
+  "close_reason": "CCP-8 vectors finalized with duty cycle integration via CCP-13 oracle",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.8.4",
+      "depends_on_id": "project-LICHEN-da2q.8",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:41.080595729Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

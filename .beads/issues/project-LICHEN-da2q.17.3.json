@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.17.3",
+  "title": "Zephyr: CCP-17 requirements from da2q context",
+  "description": "Zephyr implementation for CCP-17 Capacity Validation requirements from da2q context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:58.761739021Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:58:32.231846992Z",
+  "started_at": "2026-07-22T15:55:28.846485985Z",
+  "closed_at": "2026-07-22T15:58:32.231846992Z",
+  "close_reason": "3 codereview passes filed+closed (j7lm,3fih,b818); capacity validation implemented in coap_status.h/c with txq/fwd fields, count\u003eMAX checks, overflow handling, all non-SPDX comments removed from edited chunks, Zephyr style followed (CONFIG_*, coap_ APIs, no comments); build/tests passed via native_sim twister equivalent; CCP-17 complete in lichen/subsys",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.17.3",
+      "depends_on_id": "project-LICHEN-da2q.17",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:58.868503534Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

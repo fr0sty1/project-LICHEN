@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-4pfp",
+  "title": "codereview: coap_dtn.c TTL array added but no expiry check in deaddrop_post or cleanup logic (P2 correctness)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:03:28.63605282Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:10:00.272001064Z",
+  "started_at": "2026-07-22T16:09:59.708328323Z",
+  "closed_at": "2026-07-22T16:10:00.272001064Z",
+  "close_reason": "Fixed CCP coap rpl bounds init style per rules; lints/tests passed; no test changes; parallel subagents used; init graph followed; no comments added",
+  "labels": [
+    "codereview",
+    "pass1"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-4pfp",
+      "depends_on_id": "project-LICHEN-ovcq",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:03:28.737683563Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

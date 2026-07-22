@@ -18,7 +18,7 @@ import math
 import struct
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import IntEnum
 from xml.etree.ElementTree import Element, SubElement, tostring
 
@@ -194,7 +194,7 @@ def _derive_uid_from_cot(cot: CompactCot) -> str:
 # -- Data classes --
 
 
-@dataclass
+@dataclass(slots=True)
 class PliPayload:
     """Position Location Information payload."""
 
@@ -243,7 +243,7 @@ class PliPayload:
         return role_to_name(self.role)
 
 
-@dataclass
+@dataclass(slots=True)
 class ChatPayload:
     """Chat message payload."""
 
@@ -397,7 +397,7 @@ def expand_cot_to_xml(
         cot: Decoded compact CoT message.
         sender_uid: Sender UID (e.g., IID as hex). If None, generates UUID.
         sender_callsign: Sender callsign for chat messages.
-        now: Current timestamp. If None, uses datetime.now(timezone.utc).
+        now: Current timestamp. If None, uses datetime.now(UTC).
         stale_seconds: Seconds until event goes stale (default 120).
 
     Returns:
@@ -407,13 +407,13 @@ def expand_cot_to_xml(
         ValueError: If message type cannot be expanded.
     """
     if now is None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
     if sender_uid is None:
         # Derive deterministic UID from message content for idempotent expansion
         sender_uid = _derive_uid_from_cot(cot)
 
-    stale = datetime.fromtimestamp(now.timestamp() + stale_seconds, tz=timezone.utc)
+    stale = datetime.fromtimestamp(now.timestamp() + stale_seconds, tz=UTC)
 
     # Format timestamps as ISO 8601 with Z suffix
     time_str = now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
@@ -747,8 +747,7 @@ def parse_cot_xml(xml_data: str | bytes) -> CompactCot:
         CompactCot message ready for encoding.
 
     Raises:
-        ValueError: If XML cannot be parsed, required elements missing, or
-            course/speed/altitude values are NaN or infinite.
+        ValueError: If XML cannot be parsed or required elements are missing.
     """
     # SECURITY: Use defusedxml to prevent XML entity expansion attacks
     # (Billion Laughs, Quadratic Blowup) from untrusted ATAK sources
@@ -820,23 +819,18 @@ def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
         raise ValueError("Missing lat/lon attributes on <point>")
 
     lat = float(lat_str)
-    if not math.isfinite(lat):
-        raise ValueError(f"Latitude value {lat} is not a finite number")
     lon = float(lon_str)
-    if not math.isfinite(lon):
-        raise ValueError(f"Longitude value {lon} is not a finite number")
-
-    # Validate geographic coordinates early for clear error messages
+    if not math.isfinite(lat) or not math.isfinite(lon):
+        raise ValueError(f"Invalid coordinate: lat={lat}, lon={lon}")
     if not (-90.0 <= lat <= 90.0):
         raise ValueError(f"Latitude {lat} out of range [-90, 90]")
     if not (-180.0 <= lon <= 180.0):
         raise ValueError(f"Longitude {lon} out of range [-180, 180]")
 
-    # hae = height above ellipsoid (altitude in meters)
     hae_str = point.get("hae")
     alt_m = float(hae_str) if hae_str else 0.0
     if not math.isfinite(alt_m):
-        raise ValueError(f"Altitude value {alt_m} is not a finite number")
+        alt_m = 0.0
 
     # Extract course/speed from <track> element
     course_deg = 0.0
@@ -850,13 +844,12 @@ def _parse_xml_pli(root: Element, subtype: CompactCotType) -> CompactCot:
             if course_str:
                 course_deg = float(course_str)
                 if not math.isfinite(course_deg):
-                    raise ValueError(f"Course value {course_deg} is not a finite number")
-                # Normalize course to [0, 360) for valid bearing
+                    raise ValueError(f"Invalid course: {course_deg}")
                 course_deg = course_deg % 360.0
             if speed_str:
                 speed_m_s = float(speed_str)
                 if not math.isfinite(speed_m_s):
-                    raise ValueError(f"Speed value {speed_m_s} is not a finite number")
+                    raise ValueError(f"Invalid speed: {speed_m_s}")
                 if speed_m_s < 0:
                     raise ValueError(f"Speed {speed_m_s} cannot be negative")
 

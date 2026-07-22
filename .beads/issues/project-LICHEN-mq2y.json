@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-mq2y",
+  "title": "[codereview P1] draft-lichen-schc-lora-00.md:293 table line refs (rules.rs:59) will bit-rot; use symbolic names like LINK_LOCAL_COAP_RULE instead",
+  "description": "After Appendix A update, comments reference specific line numbers in rules.rs that are fragile. Also Rule 5/6 line refs point to const but should verify against current implementation. File: spec/drafts/draft-lichen-schc-lora-00.md:300",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T14:56:33.435436962Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:57:11.041055361Z",
+  "closed_at": "2026-07-22T14:57:11.041055361Z",
+  "close_reason": "Fixed fragile line numbers by using symbolic const names (LINK_LOCAL_COAP_RULE) and clarified OSCORE handling in updated Appendix A. Duplication acknowledged with sync note. References numbering fixed and OSCORE RFC added. 3 review passes now clean of P0/P1/P2 findings."
+}

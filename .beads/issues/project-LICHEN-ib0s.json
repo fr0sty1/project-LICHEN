@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-ib0s",
+  "title": "Codereview P3: 02a-coordinated-capacity.md hash_32 comment should explicitly include key=0x4c494348454e for interop",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:51:41.381657517Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:51:59.058611622Z",
+  "closed_at": "2026-07-22T16:51:59.058611622Z",
+  "close_reason": "Updated hash_32 comment in 02a-coordinated-capacity.md:121 with key. Matches DAD note. Codereview pass 1 clean after fix.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ib0s",
+      "depends_on_id": "project-LICHEN-bo37",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:51:41.493650336Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

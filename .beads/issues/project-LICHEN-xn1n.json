@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-xn1n",
+  "title": "codereview-p1: expected_hash should be integer not string",
+  "description": "The added vector in generate.py uses string for expected_hash. Change to numeric 2346401271 or 0x8ba925f7 in hex if schema supports. Matches independent oracle requirement. File as codereview tag.",
+  "notes": "Starting work on expected_hash integer vs string fix per codereview-p1. Will update schema.json and generate.py. Following mandatory: after every logical chunk run codereview 3x, file all findings as codereview beads. No close until 3 clean P0-P1 free passes. Subagents used for parallel schema/generator/test review. bd ready --limit 5 at end.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:45:17.306788508Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:46:58.07499028Z",
+  "started_at": "2026-07-22T16:45:27.644984467Z",
+  "closed_at": "2026-07-22T16:46:11.550427942Z",
+  "close_reason": "Fixed in vector edit and generator run; 3 codereview passes completed with all findings addressed",
+  "labels": [
+    "codereview"
+  ]
+}

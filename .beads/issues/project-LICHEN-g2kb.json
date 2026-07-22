@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-g2kb",
+  "title": "codereview pass 1: senml.h addition of senml_encode_deaddrop",
+  "description": "Reviewed the added declaration in senml.h. Findings: P3 - missing SENML_ define for name; P4 - style matches but could use pack directly in coap. No P0/P1.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:24:32.783647109Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:15:16.400488367Z",
+  "started_at": "2026-07-22T17:13:57.486527147Z",
+  "closed_at": "2026-07-22T17:15:16.400488367Z",
+  "close_reason": "Fixed senml.h for deaddrop: added SENML_ define, style; applications spec update; 3 codereview passes complete; no P0/P1 left",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-g2kb",
+      "depends_on_id": "project-LICHEN-ov12",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:24:32.879118039Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ofrf.1.6",
+  "title": "codereview-pass3: Forward reference and meta content",
+  "description": "spec/02a-coordinated-capacity.md:42 references non-existent 'Section 2a.5', and line 48 has meta 'aligns with parent epic' which violates 'No dead code in spec'. Remove meta, add stub or defer section. Use strict RFC2119 only. P3. After 3 passes, converge on clean.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:24:54.736542277Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:25:32.216232709Z",
+  "closed_at": "2026-07-22T16:25:32.216232709Z",
+  "close_reason": "Addressed: removed meta text, added stub for 2a.5, ensured strict RFC2119, no forward-ref errors in current scope. Final passes show only P4/opinion (style polish). 3 clean passes converged. No P0-P2.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ofrf.1.6",
+      "depends_on_id": "project-LICHEN-ofrf.1",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:24:54.843124258Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

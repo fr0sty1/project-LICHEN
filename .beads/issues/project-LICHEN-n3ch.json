@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-n3ch",
+  "title": "[CODEREVIEW-P1] README table addition for CCP-16",
+  "description": "test/vectors/README.md:25 - New row references non-existent ccp_load_balancing.json; generator must produce it before validation passes. P1 correctness.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:07:02.537932643Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:10:56.773464412Z",
+  "started_at": "2026-07-22T16:08:06.187068967Z",
+  "closed_at": "2026-07-22T16:10:56.773464412Z",
+  "close_reason": "Fixed typing, added ccp vectors+README, cleaned coap_status.c dead code+map_count, ENOBUFS coverage; 3 codereviews passed; gates passed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-n3ch",
+      "depends_on_id": "project-LICHEN-da2q.16.4",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:07:02.640414951Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

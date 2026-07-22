@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-s055",
+  "title": "codereview pass 3: clean C/coap/rpl Zephyr/tests",
+  "description": "All findings from previous passes fixed. DAO-ACK now generated in handle_frame_rpl for ack_requested (K flag). coap_status map_count updated and dynamic for submaps. Tests pass, lint clean, no remaining issues. 3 passes complete.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "created_at": "2026-07-22T16:07:09.693498668Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:07:17.277444087Z",
+  "closed_at": "2026-07-22T16:07:17.277444087Z",
+  "close_reason": "3 codereview passes complete after fixes to coap_status map counts (dynamic for submaps, 9 base+capacity+batteries) and DAO-ACK generation in RPL handling for C/Zephyr/tests. All issues fixed, clean."
+}

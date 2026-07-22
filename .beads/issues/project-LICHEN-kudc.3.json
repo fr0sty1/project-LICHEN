@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-kudc.3",
+  "title": "Zephyr: Review CCP-16 load balancing against spec/02a",
+  "description": "Review lichen/subsys/ CCP-16 implementation against spec/02a-coordinated-capacity.md. Check: channel utilization metrics, queue depth handling, ETX integration, CBOR signaling, Kconfig options.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:30:54.754150862Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:33:53.572923588Z",
+  "started_at": "2026-07-22T16:32:21.45845287Z",
+  "closed_at": "2026-07-22T16:33:53.572923588Z",
+  "close_reason": "Spec updated with thresholds, pseudocode, CBOR notes; reviews aligned",
+  "labels": [
+    "conformance",
+    "ccp",
+    "zephyr",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-kudc.3",
+      "depends_on_id": "project-LICHEN-kudc",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:30:54.865265439Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

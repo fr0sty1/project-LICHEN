@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.5",
+  "title": "CCP-5: Coordination Mechanisms",
+  "description": "Coordinated Capacity Profile section on coordination mechanisms for multi-channel operation from da2q epic context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:12:03.834379549Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:28:11.839719929Z",
+  "started_at": "2026-07-22T17:27:40.523932729Z",
+  "closed_at": "2026-07-22T17:28:11.839719929Z",
+  "close_reason": "CCP-5 coordination, rendezvous, frequency agility complete. Impl Python/Rust/Zephyr/test vectors. All codereview findings fixed.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.5",
+      "depends_on_id": "project-LICHEN-da2q",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:12:03.937123829Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

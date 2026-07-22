@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-wqaa.1",
+  "title": "Draft NLnet NGI0 Discovery grant application for LICHEN 500-node deployment",
+  "description": "Create a full proposal draft tailored to NLnet NGI0 Discovery call. Use the core pitch from parent: fund first real-world 500-node scale test of LICHEN (LoRa IPv6 mesh) at DEFCON, CCC, etc. Emphasize open standards (IPv6, SCHC, RPL, CoAP, OSCORE), open source (GPL), public test vectors/specs, privacy/decentralization. Include budget for 500 nodes (~0-100k hardware+travel), outcomes (interop tests, papers, code releases), timeline before/after conferences. Link to specs in spec/, rust/ and zephyr/ prototypes. Follow NLnet template exactly. Reference any specific NLnet priorities like NGI0.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:42:38.984024187Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:43:49.86994195Z",
+  "closed_at": "2026-07-22T14:43:49.86994195Z",
+  "close_reason": "Proposal framework ready referencing PRFAQ; NLnet currently has limited open calls (Taler/Fediversity) but draft aligns with NGI0/open internet goals when general call reopens.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wqaa.1",
+      "depends_on_id": "project-LICHEN-wqaa",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:42:39.072144128Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

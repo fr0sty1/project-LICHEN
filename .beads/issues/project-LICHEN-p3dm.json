@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-p3dm",
+  "title": "[codereview-pass1] Kconfig: LICHEN_COAP_DEADDROP help text incomplete, missing rate limit/DTN specifics, OSCORE init dependency not documented",
+  "description": "lichen/subsys/lichen/coap/Kconfig:260 - New option added but does not reference subsystem init order from AGENTS.md or spec for OSCORE before CoAP. Also no mention of DTN storage backend required. P1 correctness.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:00:10.533097032Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:03:27.253195923Z",
+  "started_at": "2026-07-22T15:00:17.711022572Z",
+  "closed_at": "2026-07-22T15:03:27.253195923Z",
+  "close_reason": "Fixed Kconfig help for LICHEN_COAP_DEADDROP covering init order (AGENTS.md graph, OSCORE before CoAP/server registration), rate limits (MAX_* + TIMER/ATOMIC selects), DTN storage/TTL, added missing selects (URI_WILDCARD), configs, 3 full codereview passes with all 6 findings filed+fixed+verified. No more issues in coap/Kconfig. Ran bd ready --limit 5.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-p3dm",
+      "depends_on_id": "project-LICHEN-2h1i.2.4.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:00:10.626082118Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

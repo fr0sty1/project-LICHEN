@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-c4ic",
+  "title": "codereview-pass-1: appendix-rpl.md and rpl draft should cross-reference lichen_rpl_dodag_init() and exact trickle params from constants.toml:56-60",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:45:54.989552257Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:46:41.801997143Z",
+  "started_at": "2026-07-22T14:46:41.339534825Z",
+  "closed_at": "2026-07-22T14:46:41.801997143Z",
+  "close_reason": "Fixed: added cross-refs to rpl_dodag_init, constants, and trickle params",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-c4ic",
+      "depends_on_id": "project-LICHEN-2cle",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T14:45:55.082692917Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

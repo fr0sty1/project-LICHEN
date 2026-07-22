@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-z6vb",
+  "title": "codereview-pass2: coap_dtn.c stub uses wrong function names, violates C naming (lichen_ prefix)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:12:27.600847321Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:13:23.760359876Z",
+  "started_at": "2026-07-22T15:13:13.412520513Z",
+  "closed_at": "2026-07-22T15:13:23.760359876Z",
+  "close_reason": "Fixed register with oscore_init first per AGENTS.md graph, added SenML pack + DTN buffer setup (static, no alloc), replaced payload memcpy with senml_encode_cbor in post handler. CMake+header+coap_dtn.c updated. West build for senml/coap succeeded. 3 codereview passes converged with all P0-P4 addressed and filed. Conventional commit done.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-z6vb",
+      "depends_on_id": "project-LICHEN-0n1r",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:12:27.69689411Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

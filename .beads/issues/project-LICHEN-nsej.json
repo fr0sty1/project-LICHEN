@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-nsej",
+  "title": "codereview pass 2: missing cross-ref to draft-lichen-tdma in select_channel; now() SFN wrap semantics unclear per 2a.2",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:45:07.920750773Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:45:45.401469309Z",
+  "started_at": "2026-07-22T16:45:28.994197222Z",
+  "closed_at": "2026-07-22T16:45:45.401469309Z",
+  "close_reason": "Addressed in edit: full defs added, SFN unsigned wrap clarified",
+  "labels": [
+    "codereview",
+    "spec"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-nsej",
+      "depends_on_id": "project-LICHEN-r80h",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:45:08.036896197Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

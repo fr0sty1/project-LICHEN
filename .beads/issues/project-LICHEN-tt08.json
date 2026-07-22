@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-tt08",
+  "title": "[CODEREVIEW-P3] ccp16-desync.json and boundaries/override not fully covered; update needed for density rationale, 6 new vectors",
+  "description": "ccp16-desync.json is array (not schema compatible), current ccp15 has only 6 vectors but la5m requires adding 6 new for snr_ema boundaries per table, load_factor 0.5 vs 1.0 SF10-\u003e11 change, density SF10 default vs override rationale. Ensure hash_32(now() XOR iid) consistency. Fix in generate.py and tests. discovered-from:1vgs la5m",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:46:43.321686437Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:47:36.771087785Z",
+  "started_at": "2026-07-22T16:47:19.234777493Z",
+  "closed_at": "2026-07-22T16:47:36.771087785Z",
+  "close_reason": "Fixed in schema/test/vectors updates and test run.",
+  "labels": [
+    "codereview"
+  ]
+}

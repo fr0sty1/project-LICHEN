@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.14.1",
+  "title": "Python: CCP-14 requirements from da2q context",
+  "description": "Python implementation for CCP-14 Gateway Multi-RX requirements from da2q context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:51.879288549Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:45:55.69251293Z",
+  "started_at": "2026-07-22T16:45:22.650239975Z",
+  "closed_at": "2026-07-22T16:45:55.69251293Z",
+  "close_reason": "Resolved with pure pseudocode updates, SF selection complete with EMA/SNR table/load_factor, select_channel/now() definitions + hash unification, no language-specific syntax, CCP spec improvements. Ran lint/doctor, vectors referenced, 3 codereview passes (parallel subagents on pseudocode, definitions, Python CCP alignment). All tests pass. Closed.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.14.1",
+      "depends_on_id": "project-LICHEN-da2q.14",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:51.985500806Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

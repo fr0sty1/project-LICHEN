@@ -1,0 +1,39 @@
+{
+  "id": "project-LICHEN-5do8",
+  "title": "[codereview] Rust METRICS JSON lacks full packet_hashes lists",
+  "description": "Rust hetero_node METRICS output only reports len() of packet_hashes_sent/received. Python NodeMetrics.to_dict() includes sorted lists of all hashes. This reduces utility for interop analysis in analyze-hetero-fleet.py which relies on hashes. Update Rust to export full lists in METRICS or align with telemetry. P3. Tied to project-LICHEN-14hl.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:46:22.792559971Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:47:55.852910588Z",
+  "closed_at": "2026-07-22T14:47:55.852910588Z",
+  "close_reason": "Fixed with full sorted lists in METRICS JSON. All reviews now clean.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-5do8",
+      "depends_on_id": "project-LICHEN-14hl",
+      "type": "blocks",
+      "created_at": "2026-07-22T14:46:22.98094021Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-5do8",
+      "depends_on_id": "project-LICHEN-6o8m",
+      "type": "blocks",
+      "created_at": "2026-07-22T14:46:23.068044618Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-5do8",
+      "depends_on_id": "project-LICHEN-v536",
+      "type": "blocks",
+      "created_at": "2026-07-22T14:46:23.155561184Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

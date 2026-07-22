@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-6op5.1",
+  "title": "codereview-P2: map_count change in encode_status_cbor should also apply pattern to time_fields and dodag_fields for consistency",
+  "description": "The incremental check with cap is good for map_count. Similar uint8_t increments in time and dodag could theoretically wrap if many fields added in future (though currently \u003c10). Opinion only as P3 since current values safe. Tracked but not in scope per task rules.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:15:22.052575873Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:15:36.951854964Z",
+  "closed_at": "2026-07-22T16:15:36.951854964Z",
+  "close_reason": "P3 opinion tracked in CCP-1.5 for status struct extensions; map_count fix complete within scope, no dead code added",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-6op5.1",
+      "depends_on_id": "project-LICHEN-6op5",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:15:22.257964403Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

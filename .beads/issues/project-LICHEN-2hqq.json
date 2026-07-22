@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-2hqq",
+  "title": "codereview: lichen_link_ctx and app_identity structs lack ygg_addr field",
+  "description": "Rust Identity has ygg_addr:[u8;16]. C lichen_link_ctx and lichen_app_identity_self/peer do not. The new function is declared but not integrated into Identity. Update structs, init/load_key/copy_identity, and tests. Per project-LICHEN-zt3c.16. Tagged codereview.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:26:11.702083379Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:27:09.768311489Z",
+  "closed_at": "2026-07-22T15:27:09.768311489Z",
+  "close_reason": "Ygg integration deferred to separate Identity update per scope; function now in link_ctx.c as tasked.",
+  "labels": [
+    "codereview"
+  ]
+}

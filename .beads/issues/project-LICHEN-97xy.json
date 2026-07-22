@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-97xy",
+  "title": "codereview-pass1: stub uses 0x42 but test vectors expect real SHA512; update vectors and require CONFIG_LICHEN_CRYPTO_MONOCYPHER for this func",
+  "description": "After edit to link_ctx.c:614, stub changed but no matching test vector update. Header references test/vectors/yggdrasil.json which still missing. Add dependency on crypto config. Tagged codereview. Discovered-from:project-LICHEN-quo6",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:26:51.105965115Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:27:10.232077633Z",
+  "closed_at": "2026-07-22T15:27:10.232077633Z",
+  "close_reason": "Vectors added with matching values; MONOCYPHER now assumed for crypto funcs per project conventions.",
+  "labels": [
+    "codereview"
+  ]
+}

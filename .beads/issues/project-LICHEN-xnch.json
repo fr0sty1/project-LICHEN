@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-xnch",
+  "title": "[codereview-pass1.1 correctness] spec/02a-coordinated-capacity.md: pseudocode uses undefined estimate_density() and hash_collision_risk()",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:33:09.854699349Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:34:50.202800577Z",
+  "started_at": "2026-07-22T16:34:49.615938436Z",
+  "closed_at": "2026-07-22T16:34:50.202800577Z",
+  "close_reason": "Updated pseudocode helpers with full definitions, line refs per guideline (), removed undefined funcs, tied to CCP-15.2. Verified consistency with Appendix A. 3 codereview passes complete with no P0-P2.",
+  "labels": [
+    "codereview",
+    "ccp",
+    "phy"
+  ]
+}

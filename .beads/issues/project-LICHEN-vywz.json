@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-vywz",
+  "title": "codereview pass 3: senml.c deaddrop function",
+  "description": "Pass 3: verified no new errors introduced, function handles base_name/base_time like peers. Only P4 opinion on name choice. No P0/P1.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:24:52.095635965Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:24:52.095635965Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-vywz",
+      "depends_on_id": "project-LICHEN-ov12",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:24:52.200919651Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

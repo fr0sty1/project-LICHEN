@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-4rrn",
+  "title": "[codereview-pass1] coap_dtn.c: s_dtn_buf declared but uses of dtn_buf remain - will not compile",
+  "description": "lichen/subsys/lichen/coap/coap_dtn.c:30,34,44,95,106,110,120 - rename all dtn_buf to s_dtn_buf and add locks. P0 correctness. codereview",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:58.48563434Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:45:02.175157595Z",
+  "started_at": "2026-07-22T15:44:15.965088052Z",
+  "closed_at": "2026-07-22T15:45:02.175157595Z",
+  "close_reason": "Fixed: now using s_dtn_buf and s_senml_pack with proper K_MUTEX_DEFINE in coap_dtn.c after 3 codereview passes."
+}

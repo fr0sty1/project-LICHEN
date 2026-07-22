@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-g62o",
+  "title": "codereview: lichen_identity_ygg_addr_from_ed25519 stub zeros high bytes instead of computing SHA512",
+  "description": "In link_ctx.c:612-614, non-MONOCYPHER path memsets hash to 0. This breaks match with Rust yggdrasil_addr_from_pubkey and test vectors. Use conditional compile or provide SHA512 stub that matches test expectation. File as codereview per task.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:26:08.165595592Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:27:08.836833392Z",
+  "closed_at": "2026-07-22T15:27:08.836833392Z",
+  "close_reason": "Fixed stub, added test vectors yggdrasil.json, updated function to match Rust exactly with comments and wipes. 3 codereview passes filed and resolved.",
+  "labels": [
+    "codereview"
+  ]
+}

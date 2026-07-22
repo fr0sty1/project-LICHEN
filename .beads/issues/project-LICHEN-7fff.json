@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-7fff",
+  "title": "codereview: identity.py unused IPv6Address import (F401)",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T17:38:31.348340362Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:39:10.094948982Z",
+  "closed_at": "2026-07-22T17:39:10.094948982Z",
+  "close_reason": "Unused import removed after repr update; 3 clean passes confirmed",
+  "labels": [
+    "codereview"
+  ]
+}

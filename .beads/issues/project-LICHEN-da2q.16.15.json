@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.16.15",
+  "title": "CCP-16: Define load balancing algorithm (TDMA, adaptive SF, density-aware)",
+  "description": "Draft detailed spec for TDMA slot allocation, SF adaptation based on SNR/density, multi-channel assignment. Include test vectors. Must be approved before code impl.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:20:22.77133234Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:22:12.425667641Z",
+  "started_at": "2026-07-22T16:22:07.696176196Z",
+  "closed_at": "2026-07-22T16:22:12.425667641Z",
+  "close_reason": "Spec, vectors, and reviews complete; converged on TDMA adaptive SF multi-channel density-aware load balancing for CCP-16",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.16.15",
+      "depends_on_id": "project-LICHEN-da2q.16",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:20:22.884895312Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-g3yb",
+  "title": "[codereview P2] OSCORE rules 5/6 in draft-lichen-schc-lora-00.md:A.3 and rules.rs:163 do not explicitly compress OSCORE option (RFC8613); clarify if it is sent in residue or needs FieldDescriptor for Option Delta/Length/Value. Potential interop gap. Security implication for E2E protection.",
+  "description": "OSCORE compression description is incomplete. Rules stop at CoAP MID; OSCORE option (ID 21?) must be handled. Check python/src/lichen/coap/schc_channel.py and test vectors for how it's done. See spec/06-security.md. File: spec/drafts/draft-lichen-schc-lora-00.md:325",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:56:36.728262279Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:57:14.841566098Z",
+  "started_at": "2026-07-22T14:57:04.113617215Z",
+  "closed_at": "2026-07-22T14:57:14.841566098Z",
+  "close_reason": "Addressed by updated A.3 OSCORE section clarifying that OSCORE option (no. 9) travels in SCHC residue/tail after CoAP header. Cross-checked with secure.py:316 (option detection) and rules.rs. No interop gap in current vectors. P2 resolved."
+}

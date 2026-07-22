@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-rfxl",
+  "title": "codereview-pass-1: pipeline scripts",
+  "description": "Review of edits to build-t_echo.sh, flash-t_echo.sh, recover.sh, smp-flash.py for T-Echo procurement/flashing/resale (quotes in headers, P\u0026L func, provision+test vectors, SMP seed support). Findings: 1. smp-flash.py positional firmware now optional with nargs=? may break existing CLI calls without firmware arg (use default=None check). 2. Hardcoded P\u0026L numbers should reference env vars for different quote scenarios. 3. No unique-per-device seed generation in batch mode (uses fixed seed). Filed as P2 for pipeline robustness.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:49:55.177720319Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:50:45.339195942Z",
+  "closed_at": "2026-07-22T14:50:45.339195942Z",
+  "close_reason": "3 independent codereview passes completed with findings filed+addressed; pipeline scripts updated for T-Echo quotes, P\u0026L model, bulk provisioning, test validation, resale GPL flow using only existing files"
+}

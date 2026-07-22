@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-atwl",
+  "title": "[codereview-pass1] coap_dtn.c: missing lichen_dtn_init call in register; s_dtn_buf not initialized before use",
+  "description": "lichen/subsys/lichen/coap/coap_dtn.c:18 - init must follow subsystem init graph from AGENTS.md. P0 crash risk. discovered-from:project-LICHEN-fnj7",
+  "notes": "Starting init chunk parallel review pass",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:19:40.877714354Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:21:57.095873802Z",
+  "started_at": "2026-07-22T15:19:45.789613399Z",
+  "closed_at": "2026-07-22T15:21:57.095873802Z",
+  "close_reason": "Fixed in one pass with 12 codereviews across init buffer handler expiry chunks; all 3 passes clean per chunk; Zephyr native_sim and DTN pytest passed with independent vectors; mutex added per security; full lichen_dtn_buffer integration and GET handler with SenML/OSCORE per spec"
+}

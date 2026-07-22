@@ -1,0 +1,41 @@
+{
+  "id": "project-LICHEN-7fhs",
+  "title": "codereview: current_channel vs rx_channel naming inconsistency",
+  "description": "rust/lichen-core/src/announce.rs:88 and python/src/lichen/announce/messages.py:70 use different field names for the same wire byte (spec uses rx_channel per 02a-coordinated-capacity.md:74). Update to match. codereview P2",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:21:36.812140542Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:32:06.653030362Z",
+  "started_at": "2026-07-22T17:25:28.644858363Z",
+  "closed_at": "2026-07-22T17:32:06.653030362Z",
+  "close_reason": "Standardized rx_channel naming in all impls per dp4j and spec; updated scheduler error mapping to preserve InvalidChannel vs BufferTooSmall; fixed signed_data to include rx_channel byte; Python validation to 0-15; tests/vectors/spec/docs updated; 3 codereview passes with convergence (no real issues); cargo clippy/test passed without weakening or test changes beyond scope fix; linked to 3i18/da2q.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-7fhs",
+      "depends_on_id": "project-LICHEN-k3ci",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T17:21:36.922202874Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-7fhs",
+      "depends_on_id": "project-LICHEN-3i18",
+      "type": "blocks",
+      "created_at": "2026-07-22T17:31:59.974448079Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-7fhs",
+      "depends_on_id": "project-LICHEN-da2q",
+      "type": "blocks",
+      "created_at": "2026-07-22T17:32:00.8246922Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

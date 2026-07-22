@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-ri61",
+  "title": "P0: cbor_put_map_header truncates count \u003e 255 without overflow flag",
+  "description": "cbor_put_map_header accepts uint8_t but when count\u003e255 from caller like (uint8_t)size_t in encode_neighbors_cbor, it silently truncates the header byte without setting ctx.overflow=true. Violates the 'ensure no truncation' SECURITY comment that was removed. This can produce invalid CBOR for \u003e255 neighbors. Discovered during comment removal in coap_status.c. Related to project-LICHEN-2bix.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:10:56.499340983Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:15:30.568509683Z",
+  "started_at": "2026-07-22T16:12:24.313191024Z",
+  "closed_at": "2026-07-22T16:15:30.568509683Z",
+  "close_reason": "cbor_put_map_header:16 and array_header now size_t, handle \u003e255 by setting overflow=true (python/src/lichen/rpl/visualize.py:15, lichen/subsys/lichen/coap/coap_status.c:65,84,410). Updated callers. cargo test/clippy, west build pass. No truncation.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ri61",
+      "depends_on_id": "project-LICHEN-2bix",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:10:56.59792725Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

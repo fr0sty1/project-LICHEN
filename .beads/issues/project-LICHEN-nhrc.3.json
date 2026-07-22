@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-nhrc.3",
+  "title": "codereview-pass3: rule list now accurate; no P0-P1; documentation improved per RFC",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:00:36.580804131Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:00:45.694881Z",
+  "closed_at": "2026-07-22T15:00:45.694881Z",
+  "close_reason": "Confirmed no P0-P1 after 3 passes",
+  "labels": [
+    "codereview",
+    "opinion"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-nhrc.3",
+      "depends_on_id": "project-LICHEN-nhrc",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:00:36.683474172Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

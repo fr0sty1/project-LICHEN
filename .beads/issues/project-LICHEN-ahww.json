@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-ahww",
+  "title": "P2: format_ipv6 snprintf return value ignored",
+  "description": "lichen/subsys/lichen/coap/coap_status.c:313,318,376 etc - format_ipv6 calls snprintf but return value (potential truncation or error) is ignored in multiple call sites. Could lead to unterminated or invalid IPv6 string in CBOR. Should check ret \u003e=0 \u0026\u0026 ret \u003c buf_size. codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:16:12.658354662Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:20:16.826992964Z",
+  "started_at": "2026-07-22T16:18:31.712961633Z",
+  "closed_at": "2026-07-22T16:20:16.826992964Z",
+  "close_reason": "fixed format_ipv6 in coap_status.c:230 to check snprintf ret, handle error; updated call sites implicitly via robust fn; relates to CBOR IPv6 strings; gates pass",
+  "labels": [
+    "codereview"
+  ]
+}

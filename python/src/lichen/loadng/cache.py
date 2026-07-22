@@ -82,15 +82,14 @@ class RouteCache:
         """
         existing = self._entries.get(entry.destination)
         if existing is not None:
-            # SECURITY: Reject stale routes to prevent replay/manipulation
             if _is_seq_fresher(entry.seq_num, existing.seq_num):
-                return  # existing is fresher, reject new
+                return
             if existing.seq_num == entry.seq_num and entry.metric >= existing.metric:
-                return  # same seq, new is not better
+                return
         self._entries[entry.destination] = entry
         self._entries.move_to_end(entry.destination)
         while len(self._entries) > self.max_entries:
-            self._entries.popitem(last=False)  # evict least-recently-used
+            self._entries.popitem(last=False)
 
     def lookup(
         self, destination: IPv6Address | str, now: int | None = None

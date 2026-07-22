@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-ufqh",
+  "title": "[codereview-P2] README.md not updated for new ccp9-rendezvous.json",
+  "description": "Update test/vectors/README.md to document the new CCP-9 vectors file and its test semantics (hash-based rendezvous calc, etc). Follow existing pattern for ccp*.json.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:11:16.458475967Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:13:14.60703142Z",
+  "closed_at": "2026-07-22T17:13:14.60703142Z",
+  "close_reason": "README updated with CCP-9 entry",
+  "labels": [
+    "codereview"
+  ]
+}

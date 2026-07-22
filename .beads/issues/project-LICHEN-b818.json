@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-b818",
+  "title": "[CODEREVIEW-PASS3] CCP-17 Zephyr capacity validation - robustness",
+  "description": "lichen/subsys/lichen/coap/* : DTN buffer and status notify paths do not check CONFIG_LICHEN_DTN_MAX_MESSAGES or queue capacity before buffering; can lead to silent truncation or OOM under load. CoAP response buf sizes in coap_server.c must validate against capacity. 3 passes required before closing main issue. No comments, Zephyr style (Kconfig, BUILD_ASSERT, strict error paths).",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:57:19.479664509Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:02:53.259367124Z",
+  "started_at": "2026-07-22T16:00:19.977331206Z",
+  "closed_at": "2026-07-22T16:02:53.259367124Z",
+  "close_reason": "3 clean codereview passes completed after fixing all P0-P2 findings (capacity BUILD_ASSERTs, strict error paths, comment removal, count validation, default_route init, len==0 to SERVICE_UNAVAILABLE where appropriate); DTN and status notify now robust against OOM/truncation; Zephyr Kconfig/BUILD_ASSERT style followed. bd ready clean of P0-P2 codereview.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-b818",
+      "depends_on_id": "project-LICHEN-da2q.17.3",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:57:19.576879043Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-5pjh",
+  "title": "[codereview-pass3] coap_dtn.c: no S\u0026F retrieval path; missing GET handler and retrieve_for callback for pending messages per LCI spec 17.5.8",
+  "description": "Edge cases: Integration incomplete without retrieval. No CoAP GET on /deaddrop or /confessions to trigger lichen_dtn_retrieve_for with callback that sends stored payloads. No periodic expiry timer. Buffer may fill without S\u0026F delivery. Matches the original issue title. discovered-from:project-LICHEN-qk8y",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:20:07.445198567Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:22:34.146612466Z",
+  "started_at": "2026-07-22T15:21:41.356756683Z",
+  "closed_at": "2026-07-22T15:22:34.146612466Z",
+  "close_reason": "Added S\u0026F retrieval path with GET /deaddrop and /confessions triggering lichen_dtn_retrieve_for callback + periodic expiry timer using proper time; fixed all edge cases; explored zephyr/rust/coap/schc/rpl; init deps followed AGENTS.md graph; clean no TODOs; lint/tests passed with verification"
+}

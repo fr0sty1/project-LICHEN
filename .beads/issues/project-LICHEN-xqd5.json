@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-xqd5",
+  "title": "codereview-pass-3: security/idiomatic review of RPL_DAO sync changes",
+  "description": "No security issues (no new crypto, no secret exposure, input validation in matches() preserved). Style now consistent with Rust FieldDescriptor explicit targets. No dead code. Tests pass including cross-impl vector check. Ready to close uwuz and child review beads.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:01:37.016004067Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:01:40.698871328Z",
+  "closed_at": "2026-07-22T15:01:40.698871328Z",
+  "close_reason": "Synced rules.py FieldDescriptors (explicit target_value=0 for reserved), codec/headers.py comments per adaptation.md and Rust RPL_DAO model (lines ~280 in rules.py, ~414 in codec.rs). 3 independent codereview passes filed as beads n6lb/jxdw/xqd5 (correctness, alignment, security/idiom). Python+ Rust tests/vectors pass. Mimics Rust style and triple-impl discipline.",
+  "labels": [
+    "codereview"
+  ]
+}

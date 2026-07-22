@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-0d5b",
+  "title": "codereview: 06-security.md derivation still references SHA-512 for IID but impl uses SHA-256(pubkey)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:13:15.120603925Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:15:16.322422999Z",
+  "started_at": "2026-07-22T15:13:28.665989223Z",
+  "closed_at": "2026-07-22T15:15:16.322422999Z",
+  "close_reason": "Updated unified derivation in 06-security.md:109 to use SHA-256 per identity.py:136 and no-ULA model from 04-network.md:12; consistent with test vectors",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0d5b",
+      "depends_on_id": "project-LICHEN-86ur",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:13:15.222426707Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

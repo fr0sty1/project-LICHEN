@@ -210,6 +210,9 @@ int lichen_app_location_time_from_hal(
 	if (app == NULL || hal == NULL) {
 		return -EINVAL;
 	}
+	if (strnlen(hal->source_name, sizeof(app->source_name)) >= sizeof(app->source_name)) {
+		return -ENAMETOOLONG;
+	}
 
 	*app = (struct lichen_app_location_time_snapshot){
 		.location_provider_available = hal->location_provider_available,
@@ -250,6 +253,10 @@ int lichen_app_time_from_hal(struct lichen_app_time_snapshot *app,
 {
 	if (app == NULL || hal == NULL) {
 		return -EINVAL;
+	}
+	if (strnlen(hal->source_name, sizeof(app->source_name)) >= sizeof(app->source_name) ||
+	    strnlen(hal->rejection_source_name, sizeof(app->rejection_source_name)) >= sizeof(app->rejection_source_name)) {
+		return -ENAMETOOLONG;
 	}
 
 	*app = (struct lichen_app_time_snapshot){

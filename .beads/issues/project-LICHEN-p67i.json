@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-p67i",
+  "title": "codereview: Builder error swallowed in scheduler",
+  "description": "rust/lichen-node/src/scheduler.rs:247 maps all AnnounceError to BufferTooSmall, losing InvalidChannel distinction. Update error mapping for robustness. codereview P2",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:21:40.848267521Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:32:02.808994957Z",
+  "started_at": "2026-07-22T17:25:28.538482587Z",
+  "closed_at": "2026-07-22T17:32:02.808994957Z",
+  "close_reason": "Standardized rx_channel naming in all impls per dp4j; updated scheduler error mapping to preserve InvalidChannel; fixed signed_data inclusion and validation to 0-15; updated tests/vectors/spec/docs; cargo clippy/test passed 3x with no weakenings; 3 codereview passes converged with no P0-P2 findings.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-p67i",
+      "depends_on_id": "project-LICHEN-k3ci",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T17:21:40.958224732Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-p67i",
+      "depends_on_id": "project-LICHEN-3i18",
+      "type": "blocks",
+      "created_at": "2026-07-22T17:32:01.662326142Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

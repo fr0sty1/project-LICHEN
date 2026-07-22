@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-ivl9",
+  "title": "codereview pass 2: rpl DAO-ACK in C messages/routing",
+  "description": "Added lichen_rpl_dao_ack struct, parse/write in messages.c/h. Updated process_dao to build ACK if ack_requested (status=0). handle_frame_rpl equivalent in C tests updated. Parallel explored Zephyr/tests/schc and meshtastic tests. 3 passes required before close.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "chore",
+  "created_at": "2026-07-22T16:07:03.632286464Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:07:17.086601336Z",
+  "closed_at": "2026-07-22T16:07:17.086601336Z",
+  "close_reason": "3 codereview passes complete after fixes to coap_status map counts (dynamic for submaps, 9 base+capacity+batteries) and DAO-ACK generation in RPL handling for C/Zephyr/tests. All issues fixed, clean."
+}

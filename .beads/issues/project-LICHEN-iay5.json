@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-iay5",
+  "title": "packet_hash standardization left inconsistent SHA256 computation in simulation.py RX paths",
+  "description": "After standardization edit, TX uses hashlib.sha256(payload).digest()[:16].hex() (32-char hex for 16 bytes) at simulation.py:606 but RX paths at :877 and :967 use .hexdigest()[:16] (16-char string = 8 bytes). This breaks sent/received hash matching in NodeMetrics for cross-impl verification and within-sim metrics. Tests pass superficially but correctness is broken. See python/src/lichen/sim/simulation.py:877,967 and metrics.py:53,65. Cross-check with Rust hetero_node.rs:146,177 which uses 16-byte prefix bytes.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:46:21.316639203Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:51:27.880195989Z",
+  "started_at": "2026-07-22T14:48:56.232422719Z",
+  "closed_at": "2026-07-22T14:51:27.880195989Z",
+  "close_reason": "Standardized all packet_hash computations to hashlib.sha256(...).digest()[:16].hex() (32-char hex for 16-byte prefix to match Rust hetero_node.rs). Updated metrics.py docs, fixed dataclass constant, improved test_simulation_validation.py for hash length verification and added json import. Fixed all related uses in sim_client.py. Ran ruff lint (clean), pytest validation test (updated assertions pass), 3 independent codereview passes completed with 0 open findings (no bikeshedding; all real issues fixed in scope). Cross-impl metrics now consistent.",
+  "labels": [
+    "codereview"
+  ]
+}

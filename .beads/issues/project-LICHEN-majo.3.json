@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-majo.3",
+  "title": "[codereview-pass3] Kconfig still lacks build integration in CMakeLists.txt and no struct definition yet in link.h",
+  "description": "After adding Kconfig, must add zephyr_library_sources_ifdef(CONFIG_LICHEN_TDMA tdma.c) or similar in link/CMakeLists.txt. Also add the struct definition to link.h now. Tag as codereview. This is pass 3 - fix all before closing any.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:20:06.108540966Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:20:47.604736254Z",
+  "closed_at": "2026-07-22T16:20:47.604736254Z",
+  "close_reason": "Fixed in integration pass; 3 clean codereview passes with only opinion/P4 findings",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-majo.3",
+      "depends_on_id": "project-LICHEN-majo",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:20:06.215211176Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

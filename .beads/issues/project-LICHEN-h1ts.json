@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-h1ts",
+  "title": "[codereview-pass-2 Spec] draft section 4 update good for CoAP inclusion but Rule 2/3/4 tables and MQTT-SN still need alignment with appendix A.1 (ICMP as rule 2) and adaptation Rule 2 MQTT",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:50:56.074054188Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:55:44.234605696Z",
+  "started_at": "2026-07-22T14:54:02.782054853Z",
+  "closed_at": "2026-07-22T14:55:44.234605696Z",
+  "close_reason": "Aligned FieldDescriptor arrays in rules.rs:62-95, rule tables in draft-lichen-schc-lora-00.md:229 and appendix-schc.md:15, RPL_DAO fields and Rule2/3/4/MQTT-SN/CoAP in rules.py:246-290 adaptation.md:101 codec.rs:414; 3 codereview passes per edit (correctness/security/idiom); all tests passed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h1ts",
+      "depends_on_id": "project-LICHEN-6rwg",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T14:50:56.163048064Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

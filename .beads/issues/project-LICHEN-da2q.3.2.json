@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-da2q.3.2",
+  "title": "Python impl: operating class parameter definitions and lookup tables",
+  "description": "Implement operating class support in Python as part of CCP-3 from da2q.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:12:24.956055908Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:30:01.950108973Z",
+  "closed_at": "2026-07-22T17:30:01.950108973Z",
+  "close_reason": "Completed operating classes, channel plans, lookup tables, multi-channel coordination, TDMA, frequency agility across Python Rust Zephyr vectors. Fixed all codereview findings in 3 passes per impl. All tests lint typecheck pass. Epics closed.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.3.2",
+      "depends_on_id": "project-LICHEN-da2q.3",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:12:25.057744677Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

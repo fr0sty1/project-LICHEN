@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-bq37",
+  "title": "codereview-pass3-t6ic: full integration verified, no P0-P2 findings",
+  "description": "3rd pass on updated 2a.7 pseudocode chunk, SNR table, now()/select_channel integration with adaptive SF and EMA, TOC, cross-refs to test vectors and TDMA draft all clean. Only P4 table alignment opinion (not fixed as bikeshed). No correctness, security, or test vector issues. discovered-from:project-LICHEN-t6ic",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:52:50.423836301Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:52:53.047671535Z",
+  "closed_at": "2026-07-22T16:52:53.047671535Z",
+  "close_reason": "3 clean codereview passes completed with only P4/opinion findings (bikeshedding convergence). All issues fixed in spec/02a-coordinated-capacity.md. Matches test vectors, init graph, and rf_health integration.",
+  "labels": [
+    "codereview"
+  ]
+}

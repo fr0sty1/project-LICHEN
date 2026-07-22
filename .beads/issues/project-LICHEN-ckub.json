@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-ckub",
+  "title": "C/Zephyr: include current_channel in build_signed_data() and lichen_announce_view for CCP-9 announce",
+  "description": "Add current_channel/rx_channel to lichen_announce_view, update LICHEN_ANNOUNCE_MIN_LEN to 94, update parse to read channel byte at offset 3, shift seq/IID etc. Update build_signed_data to include channel byte after seq_num in signed data. Update scheduler build_announce_frame to include and sign current channel (need to decide how scheduler gets current_channel value - perhaps from config or param). Update tests in lichen/tests/routing_announce. This binds the announced channel against tampering for CCP-9 rendezvous. --parent=project-LICHEN-3i18 --type=task --priority=1 --labels=codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:16:59.052115289Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:24:54.529615843Z",
+  "started_at": "2026-07-22T17:17:10.392678487Z",
+  "closed_at": "2026-07-22T17:24:54.529615843Z",
+  "close_reason": "Included rx_channel in lichen_announce_view (offset 3 in parse, after seq in signed_data and frame), updated MIN_LEN to 94, build_signed_data, scheduler build_announce_frame with channel_snapshot, gateway view and parse copy, test build/parse assertions and offsets. Fixed field name per codereview/epic dp4j. Ran codereview 3x (findings filed as codereview beads dsqy and system ones, all fixed with clean final passes). Updated tests/vectors implicitly via parity. All tests pass."
+}

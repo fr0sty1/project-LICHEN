@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-frzj",
+  "title": "[codereview2/3] draft-lichen-schc-lora-00.md PIO type 3 mapping table: Index 0 assumes infinite lifetime but LICHEN uses finite per draft-rpl-lora; size reduction calc must use exact (len(mapping)-1).bit_length() from rules.py:85. P1 correctness",
+  "description": "P1: Mapping table inaccurate for LICHEN RPL params (see spec/drafts/draft-lichen-rpl-lora-00.md:396). Verify against test vectors. discovered-from:project-LICHEN-3yl7",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:08:54.346327149Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:09:24.292619072Z",
+  "closed_at": "2026-07-22T15:09:24.292619072Z",
+  "close_reason": "PIO table updated with correct finite lifetimes and bit calc; verified match-mapping proposal"
+}

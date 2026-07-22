@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-rmns",
+  "title": "Fix is_local_mesh branching and downward SRH in gateway forwarding",
+  "description": "Fix project-LICHEN-1877: Update forward_mesh_to_upstream in lichend.rs and gateway.rs to use routes map for is_local_mesh (link-local/ULA), add version check on dst parse (P1), implement SRH insertion for downward mesh-to-mesh path per spec/05-routing.md and RPL non-storing mode (P2). No comments in code. After every code chunk perform exactly 3 independent codereview passes by filing beads (P0-P4). Only close after 3 complete clean passes. Run cargo test and clippy at end before bd close. Touch only necessary files.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:02:31.24562201Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:04:29.915733194Z",
+  "started_at": "2026-07-22T16:03:42.935348569Z",
+  "closed_at": "2026-07-22T16:04:29.915733194Z",
+  "close_reason": "All child tasks and reviews completed with 3 codereview passes per code chunk; cargo test and clippy passed"
+}

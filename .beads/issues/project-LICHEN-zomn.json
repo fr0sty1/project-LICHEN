@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-zomn",
+  "title": "codereview-P1 pass3: MAX_TX_MS chunk clean",
+  "description": "Pass 3/3: No remaining findings after addressing P2 test updates. All P0-P4 closed or opinion-only. 3 clean passes converged. Cargo tests pass. Ready to close project-LICHEN-qsr0. No duty formula ambiguity.",
+  "status": "open",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:09:20.401551851Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:09:20.401551851Z",
+  "labels": [
+    "codereview"
+  ]
+}

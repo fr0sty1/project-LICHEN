@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-zt3c.6",
+  "title": "Update spec/04-network.md and related specs for link-local + Yggdrasil addressing only",
+  "description": "Simplify addressing per nqz6: drop ULA/GUA, make 02xx from Ed25519 the primary address. Update all references. Include derivation, routing logic, identity unification.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:07:26.954832521Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:09:28.089325968Z",
+  "started_at": "2026-07-22T15:07:53.332083756Z",
+  "closed_at": "2026-07-22T15:09:28.089325968Z",
+  "close_reason": "Spec updated for simplified link-local + Yggdrasil addressing and unified Ed25519 identity (chunks completed with 3 codereview passes filed/fixed). Implementation deferred to HUMAN design review on gateway integration, derivation exactness, routing tests. Conventional commit style prepared but not executed per policy. Tests for identity/routing in follow-up.",
+  "labels": [
+    "gateway",
+    "global",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zt3c.6",
+      "depends_on_id": "project-LICHEN-zt3c",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:07:27.06061006Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

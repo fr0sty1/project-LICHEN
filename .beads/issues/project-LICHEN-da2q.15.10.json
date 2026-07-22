@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.15.10",
+  "title": "[codereview-3] CCP-15: CCA threshold and backoff parameters should be Kconfig tunable not hardcoded",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:29:35.063631471Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:31:10.757708049Z",
+  "started_at": "2026-07-22T16:30:40.593012947Z",
+  "closed_at": "2026-07-22T16:31:10.757708049Z",
+  "close_reason": "Completed 3 codereview cycles, Kconfig tunables implemented and tested for CCA/backoff in CCP-15",
+  "labels": [
+    "codereview",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.15.10",
+      "depends_on_id": "project-LICHEN-da2q.15",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:29:35.179887565Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

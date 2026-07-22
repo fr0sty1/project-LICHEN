@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ozqr",
+  "title": "codereview: unused senml include after stub simplification",
+  "description": "Finding from codereview pass 1: senml.h included but not used in coap_server.c after replacing memcpy logic with minimal stub. Also, deaddrop_register should integrate with handlers struct per coap_server.h pattern. Fix before closing ykvk.1",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "created_at": "2026-07-22T15:42:23.053537178Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:43:49.403315409Z",
+  "closed_at": "2026-07-22T15:43:49.403315409Z",
+  "close_reason": "Fixed by adding coap_dtn.c with senml_encode/decode replacing memcpy pattern, updated includes/handlers/init/Kconfig/CMakeLists, oscore_init first in register",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ozqr",
+      "depends_on_id": "project-LICHEN-ykvk.1",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:42:23.150388397Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

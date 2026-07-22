@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-sw4c",
+  "title": "[CODEREVIEW2] route detection capacity+security",
+  "description": "lichen/subsys/lichen/coap/coap_status.c:770 - Added capacity check for routes count \u003e CONFIG_LICHEN_COAP_STATUS_MAX_ROUTES before encoding (P2). Updated callback call. Pass 2 security review: no overflow, no uninit default_route. Tagged codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:04:33.138944917Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:05:03.986324037Z",
+  "started_at": "2026-07-22T16:05:03.39401116Z",
+  "closed_at": "2026-07-22T16:05:03.986324037Z",
+  "close_reason": "Addressed P2 capacity in handlers+encoders; 3 codereview passes filed and converged",
+  "labels": [
+    "codereview"
+  ]
+}

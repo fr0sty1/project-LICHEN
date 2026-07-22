@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-wg09",
+  "title": "codereview-pass3: select_channel/now",
+  "description": "P4: rationale paragraph updated for density vs SF10 but could cite exact vectors[0]. All P0-P2 addressed in this pass. Clean convergence after 3 passes.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:46:02.274225895Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:46:28.362116167Z",
+  "closed_at": "2026-07-22T16:46:28.362116167Z",
+  "close_reason": "Converged after 3 passes",
+  "labels": [
+    "codereview",
+    "ccp"
+  ]
+}

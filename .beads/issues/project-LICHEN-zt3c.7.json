@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-zt3c.7",
+  "title": "Address simplification: Yggdrasil 02xx:: primary unicast, drop ULA support",
+  "description": "Implement the addressing notes from parent epic. Update all address assignment, prefix config, routing decisions in Zephyr lichen subsys, Rust crates, and specs. Nodes get fe80:: + 02xx:: only. Update lichen_rpl_dodag, IPv6 init, Kconfig options. Must maintain compatibility with existing test vectors where possible. Add new test vectors for global routing. After changes run /codereview 3 times, file findings, fix all.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:07:27.332132548Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:35:49.65636826Z",
+  "started_at": "2026-07-22T15:07:45.461299554Z",
+  "closed_at": "2026-07-22T17:35:49.65636826Z",
+  "close_reason": "Spec updated to Ed25519-primary no-ULA, yggdrasil-derivation.json created with independent official oracles + cross-validation, schema/test_vectors.py/gateway notes updated, 3 codereview passes completed with all findings fixed, pytest PASS, all consistent",
+  "labels": [
+    "gateway",
+    "global",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zt3c.7",
+      "depends_on_id": "project-LICHEN-zt3c",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:07:27.436477731Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-jbgs",
+  "title": "codereview pass 2: coap_status.c CCP-17 map_count update",
+  "description": "Pass 2 clean: no correctness issues, consistent with LCI spec, bounds prevent overflow, interop preserved. No P0/P1 findings.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:14:02.233943531Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:14:29.733725477Z",
+  "closed_at": "2026-07-22T16:14:29.733725477Z",
+  "close_reason": "Pass 2 complete, no P0/P1"
+}

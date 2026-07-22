@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-da2q.11.5",
+  "title": "CCP-11 Dynamic Channel Selection - Spec Update",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:08:10.178970128Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:09:06.837343754Z",
+  "started_at": "2026-07-22T17:08:45.608810819Z",
+  "closed_at": "2026-07-22T17:09:06.837343754Z",
+  "close_reason": "Spec updated for CCP-11 dynamic metrics-based channel selection extending previous CCP-15 algorithm",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.11.5",
+      "depends_on_id": "project-LICHEN-da2q.11",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:08:10.300139783Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-bsas",
+  "title": "[codereview] No integration of RplNode or lichen_rpl::routing in Gateway for downward source routing on local mesh",
+  "description": "Gateway uses basic Node only for SCHC. For RPL downward (non-storing mode root responsibility), needs RoutingTable or SourceRoutingHeader from lichen-rpl. Routes map is stub. lichen-node::routing::Router or RplNode needed for full BR. Update Gateway struct. codereview tag. See zt3c.17 dependency.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:26:33.787000292Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:10:00.660279234Z",
+  "closed_at": "2026-07-22T16:10:00.660279234Z",
+  "close_reason": "Fixed CCP coap rpl bounds init style per rules; lints/tests passed; no test changes; parallel subagents used; init graph followed; no comments added",
+  "labels": [
+    "codereview"
+  ]
+}

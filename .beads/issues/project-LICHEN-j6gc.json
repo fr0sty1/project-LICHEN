@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-j6gc",
+  "title": "DTS e-ink review pass 1: compatible and resolution",
+  "description": "Codereview pass 1: P2 - node name 'uc81xx@0' should mimic t_deck_display style; P3 - add rotation property?; confirmed resolution 152x152 per panel datasheet cross-check with Meshtastic variant. No P0/P1. Tag: codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "chore",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:47:48.738727834Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:58:31.280945685Z",
+  "started_at": "2026-07-22T14:55:35.321640404Z",
+  "closed_at": "2026-07-22T14:58:31.280945685Z",
+  "close_reason": "Fixed DTS node label to t_echo_display (mimics t_deck_display), compatible to ultrachip,uc8176 for correct driver quirks and 152x152 resolution support, updated puck overlay references and comments. Verified with 3 codereview passes (P0-P4 all addressed or tracked as opinion). West build clean for t_echo puck."
+}

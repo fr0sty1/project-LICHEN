@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-5byd",
+  "title": "codereview: sampling procedure power budget unspecified for embedded (100ms CCA)",
+  "description": "spec/02a-coordinated-capacity.md:265 - Normative 100ms CCA sampler on STM32WL/nRF may exceed power budget in low-power nodes. Must specify duty-cycled sampling, max samples per minute, or integration with TDMA idle slots. Robustness P3.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:38:27.923302701Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:39:06.00467107Z",
+  "closed_at": "2026-07-22T16:39:06.00467107Z",
+  "close_reason": "Specified power-aware sampling integrated with TDMA/beacons (\u003c=1Hz avg); no constant background sampler. Addressed in normative section. Clean passes achieved.",
+  "labels": [
+    "codereview"
+  ]
+}

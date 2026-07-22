@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-xsxf",
+  "title": "[codereview-pass1] lichen_identity_ygg_addr_from_ed25519 adds comments violating NO COMMENTS rule",
+  "description": "link_ctx.c:492-502 and header have detailed comments. Per AGENTS.md and project-LICHEN-3x9v, remove all comments from implementation. discovered-from:project-LICHEN-quo6",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:26:45.869622851Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:30:55.618187814Z",
+  "started_at": "2026-07-22T15:30:55.618187814Z",
+  "lease_expires_at": "2026-07-22T15:35:55.618187814Z",
+  "heartbeat_at": "2026-07-22T15:30:55.618187814Z",
+  "labels": [
+    "codereview"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-y57l",
+  "title": "codereview: docstring style for current_channel could align closer to hop_count phrasing",
+  "description": "The Why clause for current_channel is more terse than hop_count's multi-line explanation. Consider consistent 'Why' format across attributes for readability. P3 opinion. File: python/src/lichen/announce/messages.py:58. Related to project-LICHEN-hjo8.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:26:21.648570346Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:34:55.366430196Z",
+  "closed_at": "2026-07-22T17:34:55.366430196Z",
+  "close_reason": "Fixed all docstring, wire format, constant, and attribute description issues for current_channel in announce messages across Python and Rust impls per CCP completion. Ran 3 independent codereview passes per workflow rule (no P0-P2 findings in final pass). Updated _FIXED_LENGTH, parsing, serialization, tests, and docs to match spec. Quality gates passed. Parallel fixes completed. No CCP left.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-y57l",
+      "depends_on_id": "project-LICHEN-hjo8",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T17:26:21.762444049Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

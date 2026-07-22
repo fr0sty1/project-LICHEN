@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-la5m",
+  "title": "vectors: SF/EMA/load_factor test cases",
+  "description": "Child of b10q. Add 6 new vectors covering snr_ema boundaries per table, load_factor override cases (0.5 vs 1.0 changing SF10-\u003e11), density rationale (SF10 default vs override). Update description and format_version to 2. codereview-tagged.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:42:15.133287114Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:47:34.884428964Z",
+  "started_at": "2026-07-22T16:43:48.053309414Z",
+  "closed_at": "2026-07-22T16:47:34.884428964Z",
+  "close_reason": "Completed as above. All Python/vectors/tests fixed.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-la5m",
+      "depends_on_id": "b10q",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:42:15.247108713Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-9qjs",
+  "title": "codereview-P2: inconsistent crc16 vs new hash_32 in CCP-15.8.3 pseudocode",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:38:44.057169326Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:42:27.79370141Z",
+  "started_at": "2026-07-22T16:40:26.830660331Z",
+  "closed_at": "2026-07-22T16:42:27.79370141Z",
+  "close_reason": "Fixed inconsistent crc16 vs hash_32 in CCP-15.8.3 pseudocode by standardizing on crc32_ieee across spec/02a-coordinated-capacity.md:41 and appendix-design-rationale.md:388 with proper line refs and consistency to schc.c:90 and link layer. Completed 3 codereview passes (9rot,7mc5,uvaz) with all findings fixed and clean. No P0-P2 issues remain.",
+  "labels": [
+    "codereview",
+    "ccp",
+    "spec"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9qjs",
+      "depends_on_id": "project-LICHEN-da2q.15.8.4",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:38:44.166426401Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

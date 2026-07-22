@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-87up",
+  "title": "[codereview P3] Remaining rule tables in draft-lichen-schc-lora-00.md sections 4.3-4.7 still duplicate appendix-schc.md content after partial fix in 4.2",
+  "description": "spec/drafts/draft-lichen-schc-lora-00.md:169 Continue replacement with references only per illv. Also update TOC and section numbers for consistency with 10.1 after 9. Use --parent project-LICHEN-illv",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:59:26.759649964Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:00:30.707199216Z",
+  "closed_at": "2026-07-22T15:00:30.707199216Z",
+  "close_reason": "All rule table duplication removed; draft now references appendix-schc.md only. Section numbers fixed (10.1 follows 9.). OSCORE 5/6 documented with residue for option per RFC8613. 3 codereview passes completed with zero remaining findings after final edits to draft and rules.rs. hetero_node.rs hash now consistent 16-byte/32-hex.",
+  "labels": [
+    "codereview"
+  ]
+}

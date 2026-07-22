@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-k58k",
+  "title": "codereview-pass1-sfn-kconfig",
+  "description": "Reviewed SFN paragraph+example and Kconfig chunk. Findings: P3 wording in delta example could reference exact test vector ID; Kconfig help references DEFCON but could link specific section. No P0-P2. Tagged codereview. Addressed in follow-up.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:26:22.522105674Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:26:38.069432817Z",
+  "closed_at": "2026-07-22T16:26:38.069432817Z",
+  "close_reason": "Convergence after 3 codereview passes per logical chunk (SFN para, example, Kconfig). All P0-P2 addressed; only P3/P4/opinion filed and fixed. West build validated Kconfig/selects (native_sim target); tests/vectors referenced. No dead code. Followed draft/IETF style. Conventional commit created.",
+  "labels": [
+    "codereview"
+  ]
+}

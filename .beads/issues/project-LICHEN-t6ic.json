@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-t6ic",
+  "title": "codereview-pass1: select_channel/now pseudocode chunk",
+  "description": "P2: missing integration with adaptive SF full function and SNR EMA formula. P3: TOC not updated for new 2a.7 subsection. Pure pseudocode good but add per-SF SNR table reference. File as codereview.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:46:01.767961411Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:52:56.136099619Z",
+  "started_at": "2026-07-22T16:51:10.663584728Z",
+  "closed_at": "2026-07-22T16:52:56.136099619Z",
+  "close_reason": "Fixed select_channel/now pseudocode in spec/02a-coordinated-capacity.md: added 2a.7 section with per-SF SNR table, integrated adaptive_sf_select + snr_ema_update + TDMA now(), consolidated helpers, updated TOC and integration notes. Performed 3 codereview passes (beads vts4/s32d/bq37 all filed as codereview, fixed, closed with clean P3+/opinion only). No P0-P2 remain. Verified against ccp15.json and rf_health.rs:149, tdma init graph.",
+  "labels": [
+    "codereview",
+    "ccp"
+  ]
+}

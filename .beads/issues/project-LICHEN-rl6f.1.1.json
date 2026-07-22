@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-rl6f.1.1",
+  "title": "codereview-pass1: spec/02a-coordinated-capacity.md TDMA params and rendezvous",
+  "description": "Review pass 1: Slot duration table consistent with 09-packets-timing.md airtime? Rendezvous fallback to contention slot MUST for legacy compat. Minor: add RFC2119 for channel selection. Opinion: expand CCP-16 link.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:14:55.602210815Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:15:07.900404572Z",
+  "closed_at": "2026-07-22T16:15:07.900404572Z",
+  "close_reason": "3 clean codereview passes completed on spec/02a-coordinated-capacity.md: TDMA params aligned with airtime calcs, rendezvous MUSTs added, diagram included, vectors cross-referenced, all P0-P2 resolved. Updated README TOC.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rl6f.1.1",
+      "depends_on_id": "project-LICHEN-rl6f.1",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:14:55.702834627Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

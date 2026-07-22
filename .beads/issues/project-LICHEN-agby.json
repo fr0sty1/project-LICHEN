@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-agby",
+  "title": "codereview-pass3: SF function",
+  "description": "All P0-P4 addressed or closed as opinion. 3 clean passes converge on pure pseudocode, no Rust 'or', language-agnostic, vectors match, no dead code. Ready to update TOC and close parent beads.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:46:20.004087877Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:46:29.963418646Z",
+  "closed_at": "2026-07-22T16:46:29.963418646Z",
+  "close_reason": "3 clean passes converged; no P0-P4 remain",
+  "labels": [
+    "codereview",
+    "ccp"
+  ]
+}

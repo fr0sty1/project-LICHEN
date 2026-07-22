@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-8rn9",
+  "title": "codereview pass 2 chunk2: adaptive_sf_select uses Rust syntax (let mut, core::cmp) while select_mitigation and select_channel use Python-like; standardize to pseudocode",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:41:47.933235156Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:45:40.581201649Z",
+  "started_at": "2026-07-22T16:44:06.561426939Z",
+  "closed_at": "2026-07-22T16:45:40.581201649Z",
+  "close_reason": "standardized all pseudocode; removed let mut/core::cmp/Python lambda",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-8rn9",
+      "depends_on_id": "project-LICHEN-r80h",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:41:48.046057355Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

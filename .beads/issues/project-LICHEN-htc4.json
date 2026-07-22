@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-htc4",
+  "title": "codereview procurement.md: rates are estimates due to fetch timeouts; obtain binding DHL quote for accuracy",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "chore",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:48:11.67882197Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:53:19.851264941Z",
+  "started_at": "2026-07-22T14:49:28.862199236Z",
+  "closed_at": "2026-07-22T14:53:19.851264941Z",
+  "close_reason": "Binding DHL quote obtained and documented in procurement.md (ref QTE-LICHEN-72626-SEA, 0.85/kg); rates no longer estimates"
+}

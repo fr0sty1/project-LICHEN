@@ -1,0 +1,36 @@
+{
+  "id": "project-LICHEN-00ov",
+  "title": "codereview pass 3: hash_32 param order and dodag_id vs eui64; density rationale needs explicit IETF/RFC2119 layering vs SF10",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:45:08.275808469Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:45:45.964363017Z",
+  "started_at": "2026-07-22T16:45:28.658879626Z",
+  "closed_at": "2026-07-22T16:45:45.964363017Z",
+  "close_reason": "Addressed: hash_32 used consistently (replaced crc16 ref in CCP-15.8.3 and appendix), rationale paragraph added with layering explanation",
+  "labels": [
+    "codereview",
+    "spec"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-00ov",
+      "depends_on_id": "project-LICHEN-mq7a",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:45:08.392399442Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-00ov",
+      "depends_on_id": "project-LICHEN-9qjs",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:45:08.497375174Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

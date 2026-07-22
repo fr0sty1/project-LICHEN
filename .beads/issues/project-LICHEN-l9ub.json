@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-l9ub",
+  "title": "P1: routes_get default_route detection by scanning for non-zero bytes is fragile (all-zero IPv6 is valid in some contexts); callback should return bool or use sentinel",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:00:50.411641656Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:03:28.046632641Z",
+  "started_at": "2026-07-22T16:02:14.300360754Z",
+  "closed_at": "2026-07-22T16:03:28.046632641Z",
+  "close_reason": "fixed coap deaddrop capacity, map_count validation before header, ENOBUFS propagation instead of INTERNAL_ERROR, removed all comments, followed statics/init-deps, synced CCP Rust/Python/Zephyr/vectors/RPL, ran clippy ruff west pytest, no test changes",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-l9ub",
+      "depends_on_id": "project-LICHEN-s7t8",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:00:50.52811603Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

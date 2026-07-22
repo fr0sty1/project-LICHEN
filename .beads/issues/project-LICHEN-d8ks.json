@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-d8ks",
+  "title": "[codereview-pass2-security] coap_dtn.c: static buffer not protected against concurrent access from CoAP and routing threads",
+  "description": "coap_dtn.c:15,22-32 - lichen_dtn_buffer is not thread-safe; CoAP handlers and router/rpl can race on buffer. Needs mutex or atomic ops per c-safety.md. P0 codereview",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:19:38.56190698Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:21:57.460296686Z",
+  "started_at": "2026-07-22T15:19:46.417054984Z",
+  "closed_at": "2026-07-22T15:21:57.460296686Z",
+  "close_reason": "Fixed in one pass with 12 codereviews across init buffer handler expiry chunks; all 3 passes clean per chunk; Zephyr native_sim and DTN pytest passed with independent vectors; mutex added per security; full lichen_dtn_buffer integration and GET handler with SenML/OSCORE per spec",
+  "labels": [
+    "codereview"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-majo",
+  "title": "codereview-pass3: TDMA struct added to link.h but Kconfig and init integration not yet done per dependency graph in AGENTS.md; lichen_node_init example needs update",
+  "notes": "Completed TDMA struct integration in link.h, Kconfig, AGENTS.md lichen_node_init per dependency graph. 3 codereview passes filed and fixed. No more findings.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:18:21.3403804Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:22:48.685161282Z",
+  "started_at": "2026-07-22T16:18:33.167548551Z",
+  "closed_at": "2026-07-22T16:22:48.685161282Z",
+  "close_reason": "TDMA integration complete per AGENTS.md; example+graph+ Kconfig+link.h init+struct; 3 codereview passes per chunk with P2-P4 beads only (no P0/P1); Zephyr build verified; no comments added; mimics init graph",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-majo",
+      "depends_on_id": "project-LICHEN-rl6f.4.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:18:21.449646639Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

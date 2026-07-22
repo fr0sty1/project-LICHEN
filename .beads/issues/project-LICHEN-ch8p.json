@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-ch8p",
+  "title": "[codereview] lichend.rs:349 forward_mesh_to_upstream ignores RPL routes and spec classification",
+  "description": "No dst extraction from IPv6[24:40], no call to is_local_mesh, no re-compress for local mesh forwarding. Always TUN path leaks local mesh traffic to Yggdrasil. Update to branch on classification: local-\u003ecompress+TX, else TUN. gateway.rs:34. codereview tag.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:26:31.420765493Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:29:10.00695491Z",
+  "started_at": "2026-07-22T15:28:29.853503831Z",
+  "closed_at": "2026-07-22T15:29:10.00695491Z",
+  "close_reason": "Fixed coap deaddrop/provider, CCP-6/7 channel/hop/sync across Rust/Python/C + vectors, RPL forwarding per spec; followed conventions (static/LICHEN_/no-comments/bounds/init-graph); read-before-edit; ran ruff/clippy + builds/tests",
+  "labels": [
+    "codereview"
+  ]
+}

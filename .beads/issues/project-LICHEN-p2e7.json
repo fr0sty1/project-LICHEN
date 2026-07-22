@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-p2e7",
+  "title": "coap_dtn.c P1: missing POST handler for /deaddrop store",
+  "description": "P1: deaddrop_get only, no POST to store DTN messages per provider and spec 9.8/12-apps. Needs lichen_coap_deaddrop_provider integration and OSCORE protect/unprotect using coap_oscore_* helpers. Refs project-LICHEN-86ur",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:13:31.21334938Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:14:11.297737155Z",
+  "closed_at": "2026-07-22T15:14:11.297737155Z",
+  "close_reason": "Added POST and provider integration in pass 2 of 3"
+}

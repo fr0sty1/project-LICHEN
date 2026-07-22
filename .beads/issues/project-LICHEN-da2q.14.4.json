@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-da2q.14.4",
+  "title": "Vectors: CCP-14 requirements from da2q context",
+  "description": "Vectors implementation for CCP-14 Gateway Multi-RX requirements from da2q context.",
+  "notes": "Added gateway multi-RX vectors to test/vectors/ccp_load_balancing.json per da2q multi-channel context. Ran 3 codereview passes after each chunk (findings filed as codereview-tagged beads and fixed). 3 clean passes achieved. Vectors cover concurrent SF RX, channel demux, load reporting.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:53.050216995Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:36:30.495539672Z",
+  "started_at": "2026-07-22T16:28:40.07263887Z",
+  "closed_at": "2026-07-22T16:36:30.495539672Z",
+  "close_reason": "Vectors and cross-refs added per task",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.14.4",
+      "depends_on_id": "project-LICHEN-da2q.14",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:53.156445095Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

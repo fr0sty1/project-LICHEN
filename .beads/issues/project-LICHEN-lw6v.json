@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-lw6v",
+  "title": "codereview-pass-3 project-LICHEN-hm3t: overall SOP/scripts for 500x T-Echo UF2/DFU/provision/test",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:46:53.385914402Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:46:58.647076349Z",
+  "closed_at": "2026-07-22T14:46:58.647076349Z",
+  "close_reason": "codereview pass 3: SOP embedded in script logic for 500x scale (USB by-id detection, sequential provisioning+tests); UF2/DFU covered; tests added",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-lw6v",
+      "depends_on_id": "project-LICHEN-hm3t",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T14:46:53.475525784Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-oiyr",
+  "title": "codereview: select_channel should reference draft-lichen-tdma-00 explicitly in comment and use consistent SFN type u32 not u64",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:41:22.787405317Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:41:52.060147773Z",
+  "closed_at": "2026-07-22T16:41:52.060147773Z",
+  "close_reason": "Fixed: explicit draft-lichen-tdma-00.md ref added, SFN u32 consistent with TDMA spec and sfn-delta vectors. No bikeshed.",
+  "labels": [
+    "codereview",
+    "spec",
+    "tdma"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-oiyr",
+      "depends_on_id": "project-LICHEN-r80h",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:41:22.907964216Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

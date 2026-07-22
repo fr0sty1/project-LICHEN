@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-9h7p.1",
+  "title": "[codereview-P2] SimNode hop_schedule should use frozen dict or tuple for immutability in simulation",
+  "description": "After adding hop_schedule to SimNode, it should be immutable to prevent accidental mutation in sim loop. Use tuple or frozendict. Also update tests that instantiate SimNode directly. discovered-from:project-LICHEN-9h7p",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:07:01.131512096Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:08:22.693486367Z",
+  "closed_at": "2026-07-22T17:08:22.693486367Z",
+  "close_reason": "Fixed in synchronized hopping updates to SimNode/Simulation; channel propagation, immutability with tuple, docstring/tests addressed in passes",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9h7p.1",
+      "depends_on_id": "project-LICHEN-9h7p",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:07:01.244254138Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

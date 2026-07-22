@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-2yjv",
+  "title": "codereview-pass1 coap_status.c",
+  "description": "Reviewed for comments removal, map_count=5 base+optionals, ENOBUFS-\u003eTOO_MANY_REQUESTS in 3 getters, no dead code, format_ipv6 cleaned. Clean pass.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:12:24.892993962Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:12:46.11946684Z",
+  "closed_at": "2026-07-22T16:12:46.11946684Z",
+  "close_reason": "Clean codereview pass"
+}

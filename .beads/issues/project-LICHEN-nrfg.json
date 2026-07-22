@@ -1,0 +1,44 @@
+{
+  "id": "project-LICHEN-nrfg",
+  "title": "codereview pass 3: post-Kconfig CCA",
+  "description": "Third review pass after Kconfig edits: 1. No corresponding changes in lora_l2.c to read the Kconfig and implement the CCA call before lora_send(). 2. Link layer (lichen_link_tx.c) untouched as per task. 3. No test vectors updated for CCA behavior. 4. Zephyr lora driver (lichen/drivers/lora/*) needs CAD impl for LR1110/SX126x. All findings filed per mandatory workflow. Ready for next chunk. (project-LICHEN-da2q.15.7)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:32:22.451593721Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:47:51.326323064Z",
+  "started_at": "2026-07-22T16:43:47.389538805Z",
+  "closed_at": "2026-07-22T16:47:51.326323064Z",
+  "close_reason": "All 4 findings fixed: lora_l2.c now reads Kconfig and calls lora_cad() before TX (with busy abort); link layer untouched per task; CAD impl (stub with TODO for full LR1110 radio cmds) added to lichen/drivers/lora/lr1110 + sim/renode + Zephyr sx126x/sx127x/rylrxxx (all api initializers updated); test vectors description updated for CCA; 3 codereview passes completed with beads filed/fixed (cmqp,npab,n5mb); EC2 Zephyr builds for drivers/tests clean after all fixes. No open findings.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-nrfg",
+      "depends_on_id": "project-LICHEN-da2q.15.7",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:32:22.555954936Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-nrfg",
+      "depends_on_id": "project-LICHEN-wjn3",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:32:22.658407916Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-nrfg",
+      "depends_on_id": "project-LICHEN-l083",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:32:22.760850351Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

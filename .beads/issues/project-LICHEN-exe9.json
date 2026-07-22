@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-exe9",
+  "title": "codereview-pass1: coap_deaddrop post handler lacks OSCORE unprotect and recipient parsing from query",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:21:21.599667319Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:26:05.340746542Z",
+  "started_at": "2026-07-22T15:25:35.924482091Z",
+  "closed_at": "2026-07-22T15:26:05.340746542Z",
+  "close_reason": "added OSCORE unprotect and recipient parsing from query in post handler, channel sync/hash fixed per title, mimic style",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-exe9",
+      "depends_on_id": "project-LICHEN-bhdp",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:21:21.692909207Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-zt3c.18",
+  "title": "Implement /deaddrop and /confessions CoAP resources with OSCORE, SenML, encrypted S\u0026F in coap_dtn.c",
+  "description": "Create or update coap_dtn.c with resources for deaddrop (POST encrypted msgs), confessions (anonymous). Use per-spec oscore_ctx, DTN integration from routing/dtn.c, rate limiting, Kconfig. Follow 12-apps.md and 11-lci.md. 3 codereview passes mandatory.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:11:00.785041757Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:15:55.747915046Z",
+  "started_at": "2026-07-22T15:11:53.011214831Z",
+  "closed_at": "2026-07-22T15:15:55.747915046Z",
+  "close_reason": "3 codereview passes complete; all findings fixed; Zephyr/CoAP tests passed (pytest + native_sim build); coap_dtn.c now implements full /deaddrop and /confessions with OSCORE/SenML/DTN/rate-limit per spec 12-apps.md and 11-lci.md. Mimicked style, zero comments added.",
+  "labels": [
+    "gateway",
+    "global",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zt3c.18",
+      "depends_on_id": "project-LICHEN-zt3c",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:11:00.887101813Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

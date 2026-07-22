@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-8gac",
+  "title": "codereview pass 1: SF selection pseudocode",
+  "description": "Pass 1 review of chunk 1 edit to 2a.7: The pointer to adaptive_sf_select is good but the full function in §2a.7.2 is missing. Add detailed per-SF SNR thresholds table, exact EMA formula for SNR, integration with load_factor override from gateway. P2 correctness (must match vectors). discovered-from:project-LICHEN-da2q.15.8.2",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:38:59.334137391Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:42:39.524575032Z",
+  "started_at": "2026-07-22T16:40:23.639008475Z",
+  "closed_at": "2026-07-22T16:42:39.524575032Z",
+  "close_reason": "SF selection pseudocode in §2a.7.2 completed with SNR table, exact EMA from rf_health, load_factor override. All codereview beads fixed across 3 passes (P2/P3 addressed in edits, final passes opinion/P4 only with convergence). Matches ccp15.json and ccp_load_balancing.json vectors.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-8gac",
+      "depends_on_id": "project-LICHEN-da2q.15.8.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:38:59.436933795Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

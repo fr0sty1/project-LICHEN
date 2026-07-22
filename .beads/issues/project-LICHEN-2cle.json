@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-2cle",
+  "title": "Pass 3: Missing docs updates for current SCHC/RPL/SenML rule IDs and profiles",
+  "description": "spec/appendix-schc.md, appendix-rpl.md, appendix-senml.md and drafts/*.md not updated to reflect exact constants in rust/lichen-core/src/constants.rs and lichen/subsys/schc/. Interop and compliance documentation incomplete. Different focus from prior passes on code style.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:44:12.541189935Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:46:51.866386616Z",
+  "started_at": "2026-07-22T14:44:27.000153267Z",
+  "closed_at": "2026-07-22T14:46:51.866386616Z",
+  "close_reason": "Completed 3 codereview passes with all findings filed+fixed; docs updated",
+  "labels": [
+    "codereview"
+  ]
+}

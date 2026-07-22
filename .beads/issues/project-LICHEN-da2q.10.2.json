@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.10.2",
+  "title": "Rust: CCP-10 requirements from da2q context",
+  "description": "Rust implementation for CCP-10 Static Channel Split requirements from da2q context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:44.205897138Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:09:31.823930082Z",
+  "started_at": "2026-07-22T17:09:04.923962555Z",
+  "closed_at": "2026-07-22T17:09:31.823930082Z",
+  "close_reason": "Rust impl for TDMA slots, channel agility (select_next_agile_channel, ASN clock sync), CCP-10/11 msgs per spec. Matched test vectors. 3 codereview passes passed after fixes.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.10.2",
+      "depends_on_id": "project-LICHEN-da2q.10",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:44.315701874Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

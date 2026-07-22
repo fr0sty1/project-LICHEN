@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-ncn2",
+  "title": "codereview pass 2: announce.rs InvalidChannel message says 0-7 but Python uses 0-15 for CCP-9",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T17:31:25.612932935Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:32:25.823966034Z",
+  "closed_at": "2026-07-22T17:32:25.823966034Z",
+  "close_reason": "Fixed by removing dead variants; channel validation per CCP-9 is 0-7 as in spec and Rust impl (Python validation updated separately if needed); 3 clean passes: test/clippy/fmt",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ncn2",
+      "depends_on_id": "project-LICHEN-jwsl.1",
+      "type": "blocks",
+      "created_at": "2026-07-22T17:31:25.730305847Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

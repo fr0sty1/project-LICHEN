@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-89kk",
+  "title": "[codereview-pass2-security] coap_dtn.c: s_senml_pack and s_dtn_buf not defined with K_MUTEX_DEFINE; static senml_pack and buffer must follow native.c pattern to prevent concurrent modification during encode/respond",
+  "description": "lichen/subsys/lichen/coap/coap_dtn.c per Zephyr/native.c. Current locals in deaddrop_get are racy if CoAP callbacks reentrant. Add statics + mutex. Tagged codereview. Pass 2 after chunk 1.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:49.033443003Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:45:00.165751482Z",
+  "started_at": "2026-07-22T15:44:16.259324648Z",
+  "closed_at": "2026-07-22T15:45:00.165751482Z",
+  "close_reason": "Fixed in coap_dtn.c with K_MUTEX_DEFINE(s_senml_pack_mutex) and usage of statics + locks. 3 clean passes."
+}

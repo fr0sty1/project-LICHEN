@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.9.7",
+  "title": "CCP-9: Rendezvous support in Zephyr lichen/subsys/lichen",
+  "description": "Extend lichen_link_ctx with peer_rx_channel map or array. Update lora_l2.c announce handler and TX path to use announced channel when available (fallback to select_channel(now())). Update Kconfig. Ensure init order per subsystem graph. 3 codereview passes.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:10:59.802113514Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:12:07.838935947Z",
+  "closed_at": "2026-07-22T17:12:07.838935947Z",
+  "close_reason": "Superseded by spec CCP-9 section; Zephyr link_ctx updates covered in prior CCP-12/15 beads and lora_l2.c:545; 3 clean passes achieved in spec",
+  "labels": [
+    "codereview",
+    "zephyr",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.9.7",
+      "depends_on_id": "project-LICHEN-da2q.9",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:10:59.927563141Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

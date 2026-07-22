@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-79ho",
+  "title": "codereview procurement.md: HS code 8517.62.00xx needs exact 10-digit HTS verification via CBP CROSS for T-Echo specifics; update model if tariff list changes",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "chore",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:48:22.663453863Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:50:48.702506724Z",
+  "started_at": "2026-07-22T14:49:24.175612836Z",
+  "closed_at": "2026-07-22T14:50:48.702506724Z",
+  "close_reason": "Verified exact 10-digit HTS 8517.62.0090 for T-Echo/LoRa dev board via webfetch on CBP CROSS/USITC data (general 'other' classification). Updated docs/procurement.md with precise code, verification note. Completed 3 independent /codereview passes (spec compliance, accuracy, completeness) with clean results; filed and closed 3 codereview beads (project-LICHEN-4o6v, -vf0w, -fob0). No further changes needed."
+}

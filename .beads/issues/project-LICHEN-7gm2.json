@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-7gm2",
+  "title": "[codereview-pass-3 Python] rules.py:290 RPL_DAO uses kd_flags but adaptation.md and Rust codec use different DAO base fields - needs sync",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:50:56.347389747Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:04:07.698343197Z",
+  "started_at": "2026-07-22T14:54:03.956108921Z",
+  "closed_at": "2026-07-22T15:04:07.698343197Z",
+  "close_reason": "Aligned after 3 codereview passes (P0-P4 beads filed and closed); pytest executed; rules.py DAO base now explicitly matches Rust FieldDescriptor style",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-7gm2",
+      "depends_on_id": "project-LICHEN-9h39",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T14:50:56.43588552Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

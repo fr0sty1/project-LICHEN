@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-pw7u",
+  "title": "[codereview-pass1] coap_status.c capacity validation updated to allow reporting over-capacity state",
+  "description": "Reviewed edit removing used\u003ecap check from encode_status_cbor validation. Allows /status to report full txq/fwd capacity even on overflow per CCP-17. No comments added. Struct fields already present. Pass 1 correctness: validation now only rejects invalid MAX or NULL. Map count remains correct for 9 fixed keys. Tests needed.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:07:23.983773504Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:07:38.656313515Z",
+  "closed_at": "2026-07-22T16:07:38.656313515Z",
+  "close_reason": "pass1 clean: validation edit allows capacity reporting; map_count and CBOR correct; no comments added",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-pw7u",
+      "depends_on_id": "project-LICHEN-b3oj",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:07:24.083229154Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

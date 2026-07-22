@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.6.4",
+  "title": "Vectors: hash based channel selection algorithm",
+  "description": "Test vectors for CCP-6 hash functions and channel selection.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:12:38.723930442Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:15:58.337905762Z",
+  "started_at": "2026-07-22T15:15:03.817434701Z",
+  "closed_at": "2026-07-22T15:15:58.337905762Z",
+  "close_reason": "Vectors added",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.6.4",
+      "depends_on_id": "project-LICHEN-da2q.6",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:12:38.826032914Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

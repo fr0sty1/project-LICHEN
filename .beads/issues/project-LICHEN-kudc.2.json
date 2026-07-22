@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-kudc.2",
+  "title": "Rust: Review CCP-16 load balancing against spec/02a",
+  "description": "Review rust/ CCP-16 implementation against spec/02a-coordinated-capacity.md. Check: channel utilization metrics, queue depth handling, ETX integration, CBOR signaling formats.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:30:54.146277527Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:33:49.56432125Z",
+  "started_at": "2026-07-22T16:32:21.777047774Z",
+  "closed_at": "2026-07-22T16:33:49.56432125Z",
+  "close_reason": "Spec updated with thresholds, pseudocode, CBOR notes; reviews aligned for Python/Zephyr/Rust; vectors stubbed in test plan",
+  "labels": [
+    "conformance",
+    "ccp",
+    "rust",
+    "review"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-kudc.2",
+      "depends_on_id": "project-LICHEN-kudc",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:30:54.389908456Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

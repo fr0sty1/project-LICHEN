@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-0pcl",
+  "title": "[CODEREVIEW-P3] CCP-12 section lacks cross-ref to hash_32 definition and test vectors",
+  "description": "New section added for TOC anchor uses hash_32 but does not link to where hash_32 is defined (e.g. in 04-network or crypto spec). No test vectors referenced. Should follow pattern of other sections. tagged codereview",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:05:01.49286561Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:05:31.701315283Z",
+  "closed_at": "2026-07-22T17:05:31.701315283Z",
+  "close_reason": "Standardized to hash_32, added CCP-12 TOC anchor and section, simplified schema by removing redundant ccp15/ccp16_vector defs (now uses ccp_vector with oneOf/tailored description). Completed 3 codereview passes with all findings fixed and closed. No open findings remain.",
+  "labels": [
+    "codereview"
+  ]
+}

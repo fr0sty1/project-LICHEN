@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-axvb",
+  "title": "[codereview-pass1] dedup logic in add_route uses HashSet+Vec which is correct but could use iterator filter for no alloc in hot path; also handle_frame_rpl still needs explicit add_route call with full path extracted from DAO",
+  "description": "P3 codereview finding on the recent edit to routing.rs:214 and node.rs:316. discovered-from:project-LICHEN-xc4d",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:55:33.212182322Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:57:42.454891235Z",
+  "closed_at": "2026-07-22T15:57:42.454891235Z",
+  "close_reason": "All fixes applied: handle_frame_rpl now calls add_route with full path after route_updated=true via extract+lookup; add_route uses full assembled path + dedup for multi-hop; RoutingTable/HashMap clean. 3 codereview passes completed with all findings addressed and closed. Tests, clippy, fmt, cargo test all pass clean."
+}

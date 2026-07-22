@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-gyg1",
+  "title": "[codereview-pass1] spec/02a: Mermaid transition still mixes syntax; make fully declarative pseudocode without 'OR'",
+  "description": "After edit to replace 'or', the condition_met() wrapper is not pure pseudocode per CCP style in other sections. Should use separate transition arrows or full if-elseif table. Also, cross-ref to draft-lichen-tdma missing in §3. P1 correctness. codereview-tagged. discovered-from:e70b",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:41:08.234045727Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:43:15.158300712Z",
+  "started_at": "2026-07-22T16:42:55.624272165Z",
+  "closed_at": "2026-07-22T16:43:15.158300712Z",
+  "close_reason": "Fixed Mermaid and pseudocode in spec/02a-coordinated-capacity.md to fully declarative IF-ELSE without OR or mixed syntax; added cross-ref to draft-lichen-tdma in §3; completed codereview pass 1-3 with no remaining P0-P2 issues",
+  "labels": [
+    "codereview"
+  ]
+}

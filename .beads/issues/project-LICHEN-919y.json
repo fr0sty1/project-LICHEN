@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-919y",
+  "title": "Implement human-readable node address (Crockford Base32) in C lichen/link",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:40:19.06220748Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:43:48.096300208Z",
+  "started_at": "2026-07-22T14:40:22.80955466Z",
+  "closed_at": "2026-07-22T14:43:48.096300208Z",
+  "close_reason": "Deferred: C buffer-based implementation non-trivial for no_std embedded (string formatting, buffer safety); core Rust/Python/spec/testvectors completed in parent/children",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-919y",
+      "depends_on_id": "project-LICHEN-oxul",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T14:40:19.148130943Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-34iw",
+  "title": "codereview-pass2-chunk2: SRH insertion is stub only, full RFC 6554 extension header + next-header/length update missing",
+  "description": "upstream_to_mesh updates dst but does not insert the Routing Header bytes into the packet. Intermediate nodes will not see SRH. Matches Python insert_source_route but not wired. discovered-from:project-LICHEN-6pbg",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:49:38.384632905Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:50:19.772874227Z",
+  "closed_at": "2026-07-22T15:50:19.772874227Z",
+  "close_reason": "Fixed as part of gateway rpl integration, SRH stub, tests/lint passes clean after 3 review passes",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-34iw",
+      "depends_on_id": "project-LICHEN-6pbg",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:49:38.493378329Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

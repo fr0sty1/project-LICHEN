@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-647e",
+  "title": "codereview-pass3: estimate_density cap at 20 arbitrary; needs justification or link to DEFCON scale target from 2nnd epic. Also missing update to test/vectors/ccp15.json for new vectors",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:38:27.940842684Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:41:52.06312605Z",
+  "started_at": "2026-07-22T16:40:41.2812297Z",
+  "closed_at": "2026-07-22T16:41:52.06312605Z",
+  "close_reason": "Fixed estimate_density cap justification linked to 2nnd/DEFCON epic; updated ccp15.json with independent oracle vectors from generate.py; 3 codereview passes + gates passed",
+  "labels": [
+    "codereview",
+    "ccp",
+    "test"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-647e",
+      "depends_on_id": "project-LICHEN-da2q.15.8.2",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:38:28.051487696Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-r3rl",
+  "title": "[codereview-pass1-chunk1] coap_dtn.c:20 deaddrop_post duplicates OSCORE option extraction, PIV parsing, and payload retrieval logic that is now encapsulated in coap_oscore_unprotect_request (coap_oscore.c:99-142). Violates DRY and LCI spec 17.5 OSCORE requirement for consistent protection. P1 correctness.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:55:48.63548212Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:58:59.984938068Z",
+  "started_at": "2026-07-22T15:57:31.837443901Z",
+  "closed_at": "2026-07-22T15:58:59.984938068Z",
+  "close_reason": "exact coap_deaddrop/rpl fixes per codereview, init graph, style, no comments; lints+builds+tests pass; parallel research done",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-r3rl",
+      "depends_on_id": "project-LICHEN-vh1t",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:55:48.738746369Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

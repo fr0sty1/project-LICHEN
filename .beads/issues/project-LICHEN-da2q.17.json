@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.17",
+  "title": "CCP-17: Capacity Validation",
+  "description": "Coordinated Capacity Profile section detailing Capacity Validation from da2q multi-channel coordination context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:57.518404693Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:08:00.592163093Z",
+  "started_at": "2026-07-22T16:05:20.727782106Z",
+  "closed_at": "2026-07-22T16:08:00.592163093Z",
+  "close_reason": "CCP-17 completed with capacity validation in Zephyr CBOR encoders, BUILD_ASSERT, runtime checks. 3 codereview passes clean.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.17",
+      "depends_on_id": "project-LICHEN-da2q",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:57.625162683Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

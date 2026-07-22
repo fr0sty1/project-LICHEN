@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.9",
+  "title": "CCP-9: Rendezvous Mechanisms",
+  "description": "Coordinated Capacity Profile section detailing Rendezvous Mechanisms from da2q multi-channel coordination context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:41.377176904Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:12:14.384362556Z",
+  "started_at": "2026-07-22T17:10:13.454310207Z",
+  "closed_at": "2026-07-22T17:12:14.384362556Z",
+  "close_reason": "CCP-9 Rendezvous Mechanisms completed and reviewed. spec/02a-coordinated-capacity.md updated mandatorily with normative 2a.3 details, announce extensions, hash integration per da2q. All 3 codereview passes clean.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.9",
+      "depends_on_id": "project-LICHEN-da2q",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:41.484540453Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

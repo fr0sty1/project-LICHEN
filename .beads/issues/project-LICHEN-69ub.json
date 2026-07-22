@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-69ub",
+  "title": "[codereview-pass2] time-provider interaction now referenced in modulo but needs stronger MUST",
+  "description": "spec/02a-coordinated-capacity.md:117 - Pass2: The ref to §2a.4.2 is added but robustness requires explicit 'MUST validate ts \u003e= epoch_floor independent of SFN modulo wrap per time-provider spec' in the SFN subsection. P2. Discovered-from:project-LICHEN-yne7",
+  "notes": "Chunk 1: Strengthened MUST statement in 2a.4.1 SFN modulo section (lines 121) to explicitly require independent ts \u003e= epoch_floor validation independent of SFN wrap per time-provider spec. Updated cross-ref to spec/09-packets-timing.md:176. Now running 3 codereview passes before closure.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:24:36.058265333Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:29:50.033951318Z",
+  "started_at": "2026-07-22T16:26:49.484327069Z",
+  "closed_at": "2026-07-22T16:29:50.033951318Z",
+  "close_reason": "All task items addressed in small chunks (header/TOC, parameterization+appendix rationale in §6+7 of appendix, stronger independent MUST in §5, SCHC/Schnorr/CCP-16 ref in §2, SFN boundary pseudocode+example, RFC2119 justifications/cross-refs throughout). 3+ codereview passes (including ouxz,s2yi etc.) now show only P3/P4 or opinion. All P0-P2 fixed and closed. File updated consistently with test vectors, no dead code, follows spec style. Clean.",
+  "labels": [
+    "codereview"
+  ]
+}

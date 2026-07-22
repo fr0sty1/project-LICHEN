@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-ufjy",
+  "title": "[codereview-2] ccp9_vectors rendezvous test cases lack independent oracle for announce parse",
+  "description": "test/vectors/generate.py:1770 announce_channel_parse_roundtrip should reference exact L2 dispatch or SenML format from spec. Add oracle computation. File as codereview. Tag: codereview",
+  "notes": "3 clean codereview passes completed after fixing independent oracle in ccp9_vectors (added _l2_announce_with_channel top-level constructor matching spec L2 dispatch 0x15+flags=channel, regenerated ccp9.json). All prior findings (nested fn P2, missing write) fixed. No P0-P2 left in this scope. Related follow-up beads filed for CCP-9 impl gaps in signed_data/current_channel. ",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:11:37.550205057Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:17:07.554780982Z",
+  "started_at": "2026-07-22T17:13:38.454610873Z",
+  "closed_at": "2026-07-22T17:17:07.554780982Z",
+  "close_reason": "3 clean codereview passes; oracle fixed per test integrity rules"
+}

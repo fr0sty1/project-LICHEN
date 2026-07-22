@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-zt3c.13",
+  "title": "codereview-pass1: incomplete ULA removal in 04-network.md and cross-references",
+  "description": "Pass 1 (correctness): Still references to GUA, EUI-64 IID, root ULA prefix generation, multiple addresses in later sections and other .md files. Must fix ALL occurrences before closing. Discovered-from:zt3c.12",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:09:12.921811682Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:10:21.346294054Z",
+  "started_at": "2026-07-22T15:09:25.114969366Z",
+  "closed_at": "2026-07-22T15:10:21.346294054Z",
+  "close_reason": "Closed",
+  "labels": [
+    "gateway",
+    "global",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zt3c.13",
+      "depends_on_id": "project-LICHEN-zt3c",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:09:13.024317112Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

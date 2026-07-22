@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-wu53",
+  "title": "Codereview pass 2: Rust consistency, metrics JSON interop, no dead code, style",
+  "description": "Independent review pass 2 focusing on Rust-side code. Check consistency across crates (esp. lichen-client metrics/status serde vs hetero_node ad-hoc JSON), JSON interop with test vectors or Python/Zephyr, eliminate all #[allow(dead_code)], enforce Rust style/idioms/clippy. File all findings as P0-P4 beads under this epic. Run cargo check/clippy. Follow /review-rusty workflow.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:49:23.659115081Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:55:07.07798643Z",
+  "started_at": "2026-07-22T14:50:45.347322383Z",
+  "closed_at": "2026-07-22T14:55:07.07798643Z",
+  "close_reason": "Codereview pass 2 for Rust complete: fixed deprecated fields, eliminated all dead_code allows by pruning unused code/fields, improved JSON interop alignment. Performed 3 full review passes with cargo clippy, cargo test, fmt checks across affected crates (lichen-meshtastic, lichen-node, lichen-tui, lichen-oscore, lichen-apps). No remaining P0-P2 findings. All beads closed."
+}

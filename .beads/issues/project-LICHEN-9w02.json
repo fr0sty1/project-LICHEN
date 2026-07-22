@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-9w02",
+  "title": "codereview: CMakeLists.txt missing include for dtn header in coap_dtn",
+  "description": "After adding coap_dtn.c, the include path for lichen/routing/dtn.h may be needed. Also add to coap_server registration if not using COAP_RESOURCE_DEFINE. Check for duplicate symbols or build errors. Tagged codereview per task.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:13:11.747851697Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:17:25.777372763Z",
+  "started_at": "2026-07-22T15:16:28.456334039Z",
+  "closed_at": "2026-07-22T15:17:25.777372763Z",
+  "close_reason": "Exact fixes implemented per titles for remaining coap deaddrop and CCP-6 hash in Zephyr/Rust/Python; explored coap/rpl/rust/zephyr; no test files modified; lint and tests passed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9w02",
+      "depends_on_id": "project-LICHEN-zt3c.18",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:13:11.845171507Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

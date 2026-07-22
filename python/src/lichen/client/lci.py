@@ -62,11 +62,23 @@ class ResourceTransport(Protocol):
         """Close the underlying transport session."""
 
     async def observe(self, path: str, *, method: str = "GET") -> ResourceSubscription:
-        """Open an Observe subscription for a resource."""
+        """Open an Observe subscription for a resource.
+
+        The caller MUST call close() on the returned ResourceSubscription
+        (or use it as an async context manager if implemented) to cancel the
+        Observe and release resources. If observe() raises, no subscription
+        is returned and no cleanup is required. close() is idempotent and
+        safe to call from exception handlers.
+        """
 
 
 class ResourceSubscription(Protocol):
-    """Handle for a CoAP Observe relationship."""
+    """Handle for a CoAP Observe relationship.
+
+    Caller owns lifecycle: MUST await close() exactly once after results()
+    iteration completes or is cancelled. close() is idempotent. Implementations
+    should suppress expected errors during close().
+    """
 
     def results(self) -> AsyncIterator[CoapResult]:
         """Yield initial and later notification responses."""

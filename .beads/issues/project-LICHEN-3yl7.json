@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-3yl7",
+  "title": "[codereview-pass2.1] draft-lichen-schc-lora-00.md: match-mapping proposal for RPL PIO type 3 - verify size reduction calc and mapping table",
+  "description": "Review chunk 1 edit to SCHC draft. Check if match-mapping for option type=3 with standard PIO values is correct per RFC6550/8724. File any P0-P2 findings. discovered-from:project-LICHEN-ftlq",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:02:51.886036662Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:09:31.935218594Z",
+  "started_at": "2026-07-22T15:06:54.186349633Z",
+  "closed_at": "2026-07-22T15:09:31.935218594Z",
+  "close_reason": "Match-mapping for PIO type 3 size reduction/mapping table fixed and converged; all codereview complete"
+}

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-qsr0",
+  "title": "codereview-P1: MAX_TX_MS still hardcoded to DEFAULT after density constants added; should be computed from current duty_permille",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:06:50.492117002Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:07:38.580784596Z",
+  "started_at": "2026-07-22T17:06:58.195023915Z",
+  "closed_at": "2026-07-22T17:07:38.580784596Z",
+  "close_reason": "MAX_TX_MS dynamic via self.duty_permille in max_tx_ms; adaptive fn added",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-qsr0",
+      "depends_on_id": "project-LICHEN-da2q.13.5",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T17:06:50.603908622Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

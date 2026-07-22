@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-0gwm",
+  "title": "codereview: Transmission channel field added but get_rx_candidates not yet updated to filter by channel",
+  "description": "After adding channel to Transmission and start_tx, the get_rx_candidates and detect_activity still need channel param and filtering to implement rendezvous (RX only on expected hop channel per SFN/time) and independent per-channel oracle. This is P2 correctness for multi-channel. Tagged codereview. Parent project-LICHEN-64um.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:07:07.272891091Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:07:49.863516822Z",
+  "closed_at": "2026-07-22T17:07:49.863516822Z",
+  "close_reason": "Fixed by extending get_rx_candidates and detect_activity with channel filtering for rendezvous and per-channel independence (as part of main 64um updates). 3 clean passes completed.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0gwm",
+      "depends_on_id": "project-LICHEN-64um",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T17:07:07.3883511Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

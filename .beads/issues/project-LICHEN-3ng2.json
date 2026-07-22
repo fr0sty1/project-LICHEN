@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-3ng2",
+  "title": "[codereview-pass3-2] coap_status.c notify functions lack s_initialized check and error handling",
+  "description": "New implementations of lichen_coap_status_notify and _neighbors_notify call coap_resource_notify unconditionally. Internal status_notify/neighbors_notify check !s_initialized. Should add similar guard. Also no LOG_DBG now (good per no-debug-prints rule). P2 robustness. discovered-from:project-LICHEN-2op3",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:10:34.191302633Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:24:21.710067133Z",
+  "closed_at": "2026-07-22T16:24:21.710067133Z",
+  "close_reason": "added s_initialized guards to notify functions, fixed error handling, no debug prints, tests pass, addressed in 3 codereview rounds"
+}

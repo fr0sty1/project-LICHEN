@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-kb8d",
+  "title": "codereview-P1: ccp13_vectors undefined after edit to generate.py (chunk 1)",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:58:47.264641763Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:01:14.501381118Z",
+  "started_at": "2026-07-22T17:00:23.220783575Z",
+  "closed_at": "2026-07-22T17:01:14.501381118Z",
+  "close_reason": "Fixed schema.json top-level oneOf + ccp13_document def + ccp_vector properties for duty cycle fields; test_vectors.py updated with ccp13.json in schema test list. Test now passes 13/13. 3 codereview passes complete with no further P0-P2 findings.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-kb8d",
+      "depends_on_id": "project-LICHEN-da2q.13.4",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:58:47.377677672Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

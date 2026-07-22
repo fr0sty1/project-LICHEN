@@ -1,0 +1,35 @@
+{
+  "id": "project-LICHEN-da2q.16.6",
+  "title": "Zephyr lichen/subsys: CCP-16 Load Balancing TDMA adaptive SF multi-channel density-aware",
+  "description": "Implement TDMA slot scheduling, adaptive SF based on SNR and density from DEFCON notes, multi-channel coordination in link/rpl layers. Use Kconfig flags. Parallel subagent with Rust/Python. After every logical chunk: run codereview 3x, file all findings as codereview beads. Do not close until 3 clean passes. Run tests, EC2 Zephyr builds (LICHEN tagged). Fix ALL before closing. Update lichen/subsys/lichen/* accordingly.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:11:32.806843347Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:22:24.030874188Z",
+  "started_at": "2026-07-22T16:13:34.537721609Z",
+  "closed_at": "2026-07-22T16:22:24.030874188Z",
+  "close_reason": "Zephyr lichen/subsys TDMA scheduler, density-aware SF, multi-channel impl; all tests pass, converged",
+  "labels": [
+    "codereview",
+    "ccp",
+    "zephyr",
+    "tdma",
+    "sf",
+    "multichannel",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.16.6",
+      "depends_on_id": "project-LICHEN-da2q.16",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:11:32.930201618Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-8chu",
+  "title": "[codereview-P2 pass1] schema.json ccp16_document added but ccp16-desync.json not yet present; consider array root support in top-level oneOf",
+  "description": "Review finding: dedicated ccp16_document mirrors others but bare-array v2 files like ccp16-desync require additional oneOf branch for array of ccp_vector per project-LICHEN-b7dh. No P0 correctness issue. File as codereview.",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:05:33.920382527Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:05:33.920382527Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-8chu",
+      "depends_on_id": "project-LICHEN-rilw",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T17:05:34.034867344Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

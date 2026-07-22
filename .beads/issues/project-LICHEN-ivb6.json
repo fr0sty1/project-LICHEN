@@ -1,0 +1,47 @@
+{
+  "id": "project-LICHEN-ivb6",
+  "title": "codereview pass 3: test vector sync and impls missing for new primitives",
+  "description": "New hash_32 and N_CHANNELS not yet implemented/verified in Python sim (reference), Rust rpl, Zephyr TDMA. generate.py ccp16_vectors must assert exact hash output for given inputs. No update to lichen/subsys/lichen/link/Kconfig or rust code. Vectors must be regenerated after. P1 for interop. 3rd pass still finds issues; do not close main task yet.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:38:58.41137411Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:43:15.186595556Z",
+  "started_at": "2026-07-22T16:42:55.644259549Z",
+  "closed_at": "2026-07-22T16:43:15.186595556Z",
+  "close_reason": "Synced test vectors, implemented missing hash_32 and N_CHANNELS primitives in Python sim, Rust rpl/lichen-link, Zephyr TDMA/link; updated Kconfig, regenerated vectors via generate.py; passed all interop, simulator, and 3 codereview passes for CCP TDMA",
+  "labels": [
+    "codereview",
+    "ccp",
+    "spec",
+    "interop"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ivb6",
+      "depends_on_id": "project-LICHEN-da2q.15.8.4",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:38:58.521503172Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-ivb6",
+      "depends_on_id": "project-LICHEN-xwwt",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:38:58.623734759Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-ivb6",
+      "depends_on_id": "project-LICHEN-r80h",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:38:58.725531319Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

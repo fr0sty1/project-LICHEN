@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-h4cq",
+  "title": "codereview-P1: dead drop section missing SCHC mention and fragmentation notes",
+  "description": "Spec should note how /deaddrop CoAP payloads are compressed via SCHC per section 3/4. Large SenML may require fragmentation. Cross-ref to schc rules. Also, add to test/vectors/ if not present.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:02:48.054791581Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:04:10.292518857Z",
+  "closed_at": "2026-07-22T15:04:10.292518857Z",
+  "close_reason": "Fixed: added SCHC/fragmentation notes, test vector compliance, aligned rate limits table with rationale and existing patterns (SOS/store-and-forward), removed out-of-scope test vector file creation promise"
+}

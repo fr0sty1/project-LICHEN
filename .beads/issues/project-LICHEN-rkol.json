@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-rkol",
+  "title": "[codereview-P4] Inconsistent casing and terminology in DAD note (dodag_id vs DODAGID, local_entropy undefined)",
+  "description": "Spec uses DODAG ID consistently elsewhere. Define or use existing term for local entropy. Minor but per 'fix ALL' policy. discovered-from:bo37 gl2r vfl0. This is pass 2 finding.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:46:12.184629043Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:46:25.033633158Z",
+  "closed_at": "2026-07-22T16:46:25.033633158Z",
+  "close_reason": "Fixed casing to DODAGID and clarified 'local 32-bit entropy'. Third codereview pass found no further P0-P3 issues (P4 opinion only, addressed). All findings from 3 passes fixed; spec updates complete and clean. No bikeshedding.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rkol",
+      "depends_on_id": "bo37",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:46:12.29239128Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

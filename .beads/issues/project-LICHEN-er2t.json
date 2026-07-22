@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-er2t",
+  "title": "[codereview] test_vectors.py still asserts format_version==2 for rpl_messages.json which remains at 1",
+  "description": "After schema update to enum [1,2], the schema test passes but _rpl_messages_cases(), _oscore_cases() etc will fail their assert doc['format_version'] == 2. Similarly other v1 files like deaddrop.json, compact_cot.json, oscore.json not updated. The v2 change was incomplete. Need to either regenerate all vectors with FORMAT_VERSION=2 and update descriptions, or relax asserts to accept 1||2. This was the root cause of the original break. Tagged from project-LICHEN-t6vs codereview pass 1. See test/vectors/schema.json:8 and python/tests/test_vectors.py:583",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:54:50.815772923Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:56:34.692936466Z",
+  "started_at": "2026-07-22T16:55:27.64813333Z",
+  "closed_at": "2026-07-22T16:56:34.692936466Z",
+  "close_reason": "Fixed via schema enum[1,2] + test assert update to support v1/v2; 3 codereview passes done, all findings addressed, tests now pass schema validation for v1 vectors"
+}

@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-vpu8",
+  "title": "codereview-P2: No adaptive_duty_permille function defined yet despite constants; must match density\u003e8=5, \u003c3=20 logic and integrate per-region base from standards/",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:06:53.406690284Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:07:39.119829006Z",
+  "started_at": "2026-07-22T17:06:58.304030441Z",
+  "closed_at": "2026-07-22T17:07:39.119829006Z",
+  "close_reason": "adaptive_duty_permille fn defined and integrated per bead spec",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-vpu8",
+      "depends_on_id": "project-LICHEN-da2q.13.5",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T17:06:53.523642671Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

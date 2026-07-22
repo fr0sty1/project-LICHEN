@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-20yu",
+  "title": "[codereview] rust/lichen-schc/src/codec.rs still contains comments about DAO base fields and kd_flags variable after field rename",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T14:58:34.08557069Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:58:56.400258155Z",
+  "closed_at": "2026-07-22T14:58:56.400258155Z",
+  "close_reason": "Synced RPL.flags field name in rules, headers, profiles; cleaned comments from codec.rs",
+  "labels": [
+    "codereview"
+  ]
+}

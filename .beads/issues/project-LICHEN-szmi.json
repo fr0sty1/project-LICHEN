@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-szmi",
+  "title": "[codereview-pass2] Missing independent test vectors in test/vectors/ for TDMA slot assignment, guard time boundaries, and drift compensation; current ccp_load_balancing.json is insufficient per spec reference",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:18:16.098430981Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:23:02.131255655Z",
+  "started_at": "2026-07-22T16:18:33.860854483Z",
+  "closed_at": "2026-07-22T16:23:02.131255655Z",
+  "close_reason": "Added independent ccp_tdma.json test vectors for TDMA slot/guard/drift with no code-as-oracle oracles in Python/Rust/Zephyr tests + schema. 3 codereview passes filed as beads (project-LICHEN-i2wa and 2 others); all tests pass, vectors pinned. Fixed per szmi.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-szmi",
+      "depends_on_id": "project-LICHEN-rl6f.4.1",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:18:16.209838145Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

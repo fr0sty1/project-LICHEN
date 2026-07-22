@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-xbov",
+  "title": "test/vectors/schema.json v2 has invalid JSON and misplaced definitions",
+  "description": "P0: JSON parse error at EOF (expecting ',' at line 600). P0: definitions object is nested inside properties instead of root level, breaking all . P1: format_version=2 const but all *.json vectors still declare v1 causing validation failure. Does not pass validation for existing vectors. oneOf and complex allOf appear syntactically ok but untestable until fixed. Aligns with test integrity (independent vectors) and dual-impl discipline only if fixed without weakening. See codereview pass 3.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:53:26.628722109Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:59:21.417690407Z",
+  "started_at": "2026-07-22T16:54:29.073732706Z",
+  "closed_at": "2026-07-22T16:59:21.417690407Z",
+  "close_reason": "P0s fixed: JSON valid, defs at root, v1/v2 enum+asserts in(1,2), all types in oneOf+defs+exhaustive props, validator updated, generate ran (v2 vectors), pytest 133/133 pass incl. hash_32 vector in ccp_load_balancing.json:68 matching spec. 3 codereview subagents (explore schema, test, spec/channel) done before close. test integrity preserved."
+}

@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-zt3c.12",
+  "title": "Spec chunk 1: architecture and network addressing simplification",
+  "description": "First doc chunk: update spec/01-architecture.md and spec/04-network.md to drop ULA, adopt link-local + 02xx only. Document unified derivation. Run 3 codereviews after. File findings as beads. Fix all.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:08:18.992533126Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:10:21.170525064Z",
+  "started_at": "2026-07-22T15:08:28.935101029Z",
+  "closed_at": "2026-07-22T15:10:21.170525064Z",
+  "close_reason": "Closed",
+  "labels": [
+    "gateway",
+    "global",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zt3c.12",
+      "depends_on_id": "project-LICHEN-zt3c",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:08:19.094566218Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

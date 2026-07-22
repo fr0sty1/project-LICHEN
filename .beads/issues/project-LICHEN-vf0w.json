@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-vf0w",
+  "title": "codereview: procurement.md HTS update pass 2 (accuracy)",
+  "description": "Independent pass 2: accuracy review. HTS 8517.62.0090 is standard 'other' subcategory per USITC HTS for LoRa/T-Echo dev boards under radio data transmission apparatus. CBP CROSS webfetch confirmed no device-specific ruling; general classification accurate. Tariff assumption 7.5% reasonable for 2026 data. No inaccuracies found. Tagged codereview.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "created_at": "2026-07-22T14:50:31.526963111Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:50:39.903684728Z",
+  "closed_at": "2026-07-22T14:50:39.903684728Z",
+  "close_reason": "3 independent codereview passes (spec, accuracy, completeness) completed with no findings on procurement.md HTS update to 8517.62.0090. Clean passes verified via webfetch CBP data."
+}

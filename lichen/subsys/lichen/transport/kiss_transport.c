@@ -368,6 +368,7 @@ static void uart_rx_callback(const struct device *dev, void *user_data)
 
 			if (written == 0) {
 				LOG_WRN("KISS RX: ring buffer overflow");
+				ctx->stats.overflow_errors++;
 			}
 			k_sem_give(&ctx->rx_sem);
 		}
@@ -732,24 +733,23 @@ void kiss_transport_test_reset(void)
 {
 	struct kiss_transport_ctx *ctx = &s_ctx;
 
-	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
-	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 	k_mutex_lock(&ctx->params_mutex, K_FOREVER);
-
-	kiss_decode_init(&ctx->rx_ctx);
-	ring_buf_reset(&ctx->rx_ring);
-	memset(&ctx->stats, 0, sizeof(ctx->stats));
-	ctx->last_tx_len = 0;
-
-	/* Reset to defaults */
 	ctx->params.txdelay = KISS_DEFAULT_TXDELAY;
 	ctx->params.persistence = KISS_DEFAULT_PERSISTENCE;
 	ctx->params.slottime = KISS_DEFAULT_SLOTTIME;
 	ctx->params.txtail = 0;
 	ctx->params.fullduplex = false;
-
 	k_mutex_unlock(&ctx->params_mutex);
-	k_mutex_unlock(&ctx->stats_mutex);
+
+	k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
+	ctx->last_tx_len = 0;
 	k_mutex_unlock(&ctx->tx_mutex);
+
+	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
+	memset(&ctx->stats, 0, sizeof(ctx->stats));
+	k_mutex_unlock(&ctx->stats_mutex);
+
+	kiss_decode_init(&ctx->rx_ctx);
+	ring_buf_reset(&ctx->rx_ring);
 }
 #endif /* CONFIG_ZTEST */

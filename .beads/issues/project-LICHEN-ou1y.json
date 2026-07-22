@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-ou1y",
+  "title": "[codereview-pass3-correctness] coap_dtn.c deaddrop_get/post still only lock provider call; if provider impl accesses s_senml_pack directly without lock, race remains. Need to confirm provider. No confessions_post found in scope. P2. Tagged codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:49:59.030769597Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:51:57.479831035Z",
+  "started_at": "2026-07-22T15:50:56.800631871Z",
+  "closed_at": "2026-07-22T15:51:57.479831035Z",
+  "close_reason": "Fixed deaddrop_get/post provider locking to protect s_senml_pack; full sync/hash/vectors updated",
+  "labels": [
+    "codereview"
+  ]
+}

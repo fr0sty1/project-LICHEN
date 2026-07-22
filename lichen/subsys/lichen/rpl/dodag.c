@@ -328,28 +328,24 @@ void lichen_rpl_dodag_process_dio(struct lichen_rpl_dodag *d,
 	/* Update or add parent candidate */
 	struct lichen_rpl_parent *p = find_parent(d, neighbor_addr);
 	if (p == NULL) {
+		uint32_t new_increment = ((uint32_t)link_etx * d->min_hop_rank_increase) / 256;
+		uint32_t new_cost = (uint32_t)dio->rank + new_increment;
+		if (new_cost > 0xFFFF) {
+			new_cost = 0xFFFF;
+		}
+		if (d->lowest_rank != LICHEN_RPL_INFINITE_RANK && new_cost > (uint32_t)d->lowest_rank + d->max_rank_increase) {
+			return;
+		}
 		p = find_free_slot(d);
 		if (p == NULL) {
-			/*
-			 * Table full - evict the worst parent if the new
-			 * candidate would be better. Compute the new
-			 * candidate's path cost to compare.
-			 */
 			struct lichen_rpl_parent *worst = find_worst_parent(d);
 			if (worst == NULL) {
 				return;
 			}
 			uint16_t worst_cost = path_cost(worst, d->min_hop_rank_increase);
-			uint32_t new_increment = ((uint32_t)link_etx * d->min_hop_rank_increase) / 256;
-			uint32_t new_cost = (uint32_t)dio->rank + new_increment;
-			if (new_cost > 0xFFFF) {
-				new_cost = 0xFFFF;
-			}
 			if (new_cost >= worst_cost) {
-				/* New candidate is not better - ignore it */
 				return;
 			}
-			/* Evict the worst and use its slot */
 			p = worst;
 		}
 		memcpy(p->addr, neighbor_addr, 16);

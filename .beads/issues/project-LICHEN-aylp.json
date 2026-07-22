@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-aylp",
+  "title": "[codereview-pass3] coap_status.c capacity validation updated to allow reporting over-capacity state",
+  "description": "Edge case review: txq_cap=0 or fwd_cap=0 now allowed (previously blocked by removed check). If provider sets cap=0, status will encode (may be invalid but reports it). Zephyr style followed, no comments added. Map header correct. Pass 3 clean after edit. Ready for tests and close of b3oj.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:07:28.492395972Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:07:39.644137426Z",
+  "closed_at": "2026-07-22T16:07:39.644137426Z",
+  "close_reason": "pass3 clean: edge cases covered, Zephyr style, 3 complete",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-aylp",
+      "depends_on_id": "project-LICHEN-b3oj",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:07:28.594595555Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

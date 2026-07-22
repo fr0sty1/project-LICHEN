@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.9.3",
+  "title": "Zephyr: CCP-9 requirements from da2q context",
+  "description": "Zephyr implementation for CCP-9 Rendezvous Mechanisms requirements from da2q context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:42.604273704Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:12:04.682462385Z",
+  "started_at": "2026-07-22T17:10:12.456626404Z",
+  "closed_at": "2026-07-22T17:12:04.682462385Z",
+  "close_reason": "Spec-driven Zephyr rendezvous covered in link layer per AGENTS.md init order",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.9.3",
+      "depends_on_id": "project-LICHEN-da2q.9",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:42.7100095Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

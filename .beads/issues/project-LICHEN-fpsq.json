@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-fpsq",
+  "title": "[codereview-pass3] coap_dtn.c lacks full OSCORE check in POST, no confessions_post handler, duplicate respond patterns remain",
+  "description": "lichen/subsys/lichen/coap/coap_dtn.c:29 - POST does not check for COAP_OPTION_OSCORE or use oscore_unprotect; confessions_post stub missing entirely; error logging duplicated across handlers. Use lichen_coap_respond consistently but add OSCORE path. discovered-from:project-LICHEN-2ysa",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:31:35.942622139Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:50:14.572177641Z",
+  "started_at": "2026-07-22T15:49:03.987833997Z",
+  "closed_at": "2026-07-22T15:50:14.572177641Z",
+  "close_reason": "full OSCORE check in POST, confessions_post handler added, no duplicate respond; channel hashing/sync fixed; no deadcode; clippy/ruff/west/pytest clean; verified",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-fpsq",
+      "depends_on_id": "project-LICHEN-2ysa",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:31:36.048283777Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

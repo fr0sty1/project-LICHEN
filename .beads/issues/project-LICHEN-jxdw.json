@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-jxdw",
+  "title": "codereview-pass-2: codec.py and headers.py RPL_DAO model alignment with Rust compress_rpl_dao and spec/03-adaptation.md",
+  "description": "No discrepancies found in residue construction (hop_limit+IID+instance+kd_flags+seq+dodagid). Python general codec matches Rust specialized functions for rule 4. Updated comments to reference adaptation.md:101. All schc_compression.json vectors validate. Mimics Rust style exactly.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:01:36.827169649Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:01:40.527292021Z",
+  "closed_at": "2026-07-22T15:01:40.527292021Z",
+  "close_reason": "Synced rules.py FieldDescriptors (explicit target_value=0 for reserved), codec/headers.py comments per adaptation.md and Rust RPL_DAO model (lines ~280 in rules.py, ~414 in codec.rs). 3 independent codereview passes filed as beads n6lb/jxdw/xqd5 (correctness, alignment, security/idiom). Python+ Rust tests/vectors pass. Mimics Rust style and triple-impl discipline.",
+  "labels": [
+    "codereview"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-64um",
+  "title": "Update Medium for multi-channel support and rendezvous",
+  "description": "Extend Medium.start_tx, get_rx_candidates, detect_activity to accept channel param. Implement rendezvous logic so RX only on expected hop channel at given SFN/time. Independent oracle for collision/propagation per channel. codereview tagged. Child of da2q.12.8",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:04:50.804848715Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:07:46.334997914Z",
+  "started_at": "2026-07-22T17:05:21.642774179Z",
+  "closed_at": "2026-07-22T17:07:46.334997914Z",
+  "close_reason": "3 clean codereview passes achieved after updating Medium.start_tx/get_rx_candidates/detect_activity + Transmission for channel param, rendezvous filtering (expected hop channel from SFN/time), independent per-channel oracle. All tests pass, ruff clean, docstrings updated. Fixed the codereview bead project-LICHEN-0gwm.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-64um",
+      "depends_on_id": "project-LICHEN-da2q.12.8",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:04:50.916912595Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

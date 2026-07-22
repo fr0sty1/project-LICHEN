@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-n167",
+  "title": "CCP-9: current_channel field added but validation, serialization missing",
+  "description": "Codereview finding P1: __post_init__, to_bytes, from_bytes, signed_data, with_incremented_hop_count not updated for new field. Must fix before closing bead. Tagged codereview.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:11:37.882138165Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:14:32.860920968Z",
+  "started_at": "2026-07-22T17:13:36.310591428Z",
+  "closed_at": "2026-07-22T17:14:32.860920968Z",
+  "close_reason": "Fixed by adding rx_channel to AnnounceMessage dataclass, updated __post_init__ validation, signed_data (now includes rx_channel for auth), to_bytes/from_bytes with shifted offsets and updated _FIXED_LENGTH=94, with_incremented_hop_count copy. Roundtrip tests pass. Matches CCP-9 spec in 02a-coordinated-capacity.md:74.",
+  "labels": [
+    "codereview"
+  ]
+}

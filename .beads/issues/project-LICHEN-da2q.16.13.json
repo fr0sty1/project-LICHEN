@@ -1,0 +1,32 @@
+{
+  "id": "project-LICHEN-da2q.16.13",
+  "title": "Codereview: Duplicate lollipop logic in dodag.rs and routing.rs",
+  "description": "Identical lollipop sequence comparison code duplicated. Extract to shared utility in lib.rs to eliminate dead code warnings and improve maintainability. Tagged for CCP integration as version/seq coordination may relate to TDMA rendezvous.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:15:20.699004323Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:20:16.230614062Z",
+  "started_at": "2026-07-22T16:18:32.033547599Z",
+  "closed_at": "2026-07-22T16:20:16.230614062Z",
+  "close_reason": "extracted lollipop_is_newer to lib.rs:20; updated dodag.rs:25 and routing.rs:28 to delegate; cargo test+clippy pass 3x; no test changes",
+  "labels": [
+    "codereview",
+    "duplication",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.16.13",
+      "depends_on_id": "project-LICHEN-da2q.16",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:15:20.81480281Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

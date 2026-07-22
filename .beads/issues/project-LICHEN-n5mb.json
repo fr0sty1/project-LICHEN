@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-n5mb",
+  "title": "codereview: test/vectors/ccp15.json and schnorr48 not updated for new CCA/CAD behavior and test vectors",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:46:46.670321738Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:52:00.897172335Z",
+  "started_at": "2026-07-22T16:52:00.897172335Z",
+  "lease_expires_at": "2026-07-22T16:57:00.897172335Z",
+  "heartbeat_at": "2026-07-22T16:52:00.897172335Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-n5mb",
+      "depends_on_id": "project-LICHEN-nrfg",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:46:46.781629387Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

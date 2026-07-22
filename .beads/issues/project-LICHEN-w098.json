@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-w098",
+  "title": "codereview: Python AnnounceMessage docstring missing current_channel attribute description",
+  "description": "After renaming field in messages.py:70, the class docstring (lines 47-64) does not document the new current_channel field (range 0-15, purpose for CCP-9 rendezvous). P3 documentation. Should add: current_channel: u8 RX channel announced for CCP-9 peer rendezvous (spec 2a.3). Linked to project-LICHEN-3i18.1. Tagged codereview.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:21:41.857037608Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:34:55.580391822Z",
+  "closed_at": "2026-07-22T17:34:55.580391822Z",
+  "close_reason": "Fixed all docstring, wire format, constant, and attribute description issues for current_channel in announce messages across Python and Rust impls per CCP completion. Ran 3 independent codereview passes per workflow rule (no P0-P2 findings in final pass). Updated _FIXED_LENGTH, parsing, serialization, tests, and docs to match spec. Quality gates passed. Parallel fixes completed. No CCP left.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-w098",
+      "depends_on_id": "project-LICHEN-3i18.1",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T17:21:41.972666477Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

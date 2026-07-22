@@ -1,0 +1,49 @@
+{
+  "id": "project-LICHEN-xaug",
+  "title": "Schnorr signing description in 06-security.md:8.3 should align with draft-lichen-schnorr-00.md:3-6 on deterministic nonce (RFC6979) and cross-ref its security considerations section for 128-bit analysis, truncation, limitations",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:50:55.258116273Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:51:23.070983965Z",
+  "closed_at": "2026-07-22T16:51:23.070983965Z",
+  "close_reason": "Aligned Schnorr description, nonce, and added cross-ref to draft-lichen-schnorr-00.md:6 security considerations in 06-security.md:8.3; all hash_32 refs now consistent across specs with SipHash pinning and FNV note; security considerations cross-checked",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-xaug",
+      "depends_on_id": "edtp",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:50:55.371680548Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-xaug",
+      "depends_on_id": "dzop",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:50:55.476903513Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-xaug",
+      "depends_on_id": "2g0x",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:50:55.581956303Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-xaug",
+      "depends_on_id": "3htk",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:50:55.693199413Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

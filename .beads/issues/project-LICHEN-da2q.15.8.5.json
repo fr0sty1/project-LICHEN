@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-da2q.15.8.5",
+  "title": "codereview: missing metrics collection spec (how density, PER, channel_busy measured); add normative sampling procedure",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:31:49.166063383Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:39:10.109669353Z",
+  "started_at": "2026-07-22T16:37:01.742668618Z",
+  "closed_at": "2026-07-22T16:39:10.109669353Z",
+  "close_reason": "Added normative sampling procedure for density/PER/channel_busy in CCP-15 section of spec/02a-coordinated-capacity.md with EMA α=1/4 alignment, additive score matching vectors, power-aware sampling via TDMA integration. Fixed all 3 codereview beads (nw22,mcb6,5byd). Performed 3 clean codereview passes (correctness/security/robustness) with zero P0-P2 findings after fixes. Updated pseudocode, requirements, estimate_density. Test vector consistency verified.",
+  "labels": [
+    "codereview",
+    "ccp",
+    "spec",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.15.8.5",
+      "depends_on_id": "project-LICHEN-da2q.15.8",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:31:49.279476718Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -102,30 +102,21 @@ impl KissBleTnc {
     /// Returns `None` if no complete frame is available or on parse error.
     /// Parse errors are logged (with the `log` feature) for debuggability.
     /// The `buf` is used as scratch space for unescaping.
-    pub fn try_get_app_frame(&mut self, buf: &mut [u8]) -> Option<AppFrame> {
+    pub fn try_get_app_frame(&mut self, buf: &mut [u8]) -> Result<Option<AppFrame>, KissError> {
         let frame = match self.reader.try_read_frame(buf) {
             Ok(Some(f)) => f,
-            Ok(None) => return None,
-            Err(_e) => {
-                #[cfg(feature = "log")]
-                warn!("kiss_ble: try_get_app_frame parse error: {}", _e);
-                return None;
-            }
+            Ok(None) => return Ok(None),
+            Err(e) => return Err(e),
         };
         let mut data: heapless::Vec<u8, 512> = heapless::Vec::new();
         if data.extend_from_slice(frame.data).is_err() {
-            #[cfg(feature = "log")]
-            warn!(
-                "kiss_ble: try_get_app_frame payload too large ({} bytes)",
-                frame.data.len()
-            );
-            return None;
+            return Err(KissError::BufferTooSmall);
         }
-        Some(AppFrame {
+        Ok(Some(AppFrame {
             port: frame.port,
             command: frame.command,
             data,
-        })
+        }))
     }
 
     /// Queue a frame to send to the app (via RX notify).
@@ -182,14 +173,12 @@ mod tests {
         // Simulate app writing KISS frame to TX characteristic
         tnc.on_tx_write(&[FEND, 0x00, b'H', b'i', FEND]);
 
-        // Get decoded frame
-        let frame = tnc.try_get_app_frame(&mut buf).unwrap();
+        let frame = tnc.try_get_app_frame(&mut buf).unwrap().unwrap();
         assert_eq!(frame.port, 0);
         assert_eq!(frame.command, 0);
         assert_eq!(&frame.data[..], b"Hi");
 
-        // No more frames
-        assert!(tnc.try_get_app_frame(&mut buf).is_none());
+        assert!(tnc.try_get_app_frame(&mut buf).unwrap().is_none());
     }
 
     #[test]
@@ -215,12 +204,11 @@ mod tests {
         let mut tnc = KissBleTnc::new();
         let mut buf = [0u8; 256];
 
-        // App writes in chunks (BLE MTU fragmentation)
         tnc.on_tx_write(&[FEND, 0x00, b'H']);
-        assert!(tnc.try_get_app_frame(&mut buf).is_none());
+        assert!(tnc.try_get_app_frame(&mut buf).unwrap().is_none());
 
         tnc.on_tx_write(&[b'i', FEND]);
-        let frame = tnc.try_get_app_frame(&mut buf).unwrap();
+        let frame = tnc.try_get_app_frame(&mut buf).unwrap().unwrap();
         assert_eq!(&frame.data[..], b"Hi");
     }
 }

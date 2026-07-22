@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-e9a1",
+  "title": "codereview pass 1: select_channel and now() pseudocode missing normative definition and TDMA cross-ref",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:44:57.013935466Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:45:44.853161068Z",
+  "closed_at": "2026-07-22T16:45:44.853161068Z",
+  "close_reason": "select_channel/now() pseudocode defined with TDMA cross-ref, hash_32 consistent, density rationale clarified with RFC2119; 3 codereview passes filed and addressed with convergence; matches CCP vectors and previous fixes; no dead code",
+  "labels": [
+    "codereview",
+    "spec"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-e9a1",
+      "depends_on_id": "project-LICHEN-r80h",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:44:57.12810247Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

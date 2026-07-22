@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-yne7",
+  "title": "[codereview-pass3-robustness-1] SFN modulo section lacks explicit example of delta calculation edge case at 0xFFFFFFFF boundary and reference to time-provider interaction",
+  "description": "In spec/02a-coordinated-capacity.md:140 (new subsection). The modulo description is improved but does not yet fully specify interaction with time-provider epoch_floor validation on wrap, or provide a pseudocode example for (current - last) mod 2^32 when crossing boundary. Also missing cross-ref to RPL version change. P2 robustness. File per mandatory codereview after chunk. IETF style ok but add RFC2119 for 'MUST compute using unsigned 32-bit arithmetic'.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:21:13.348065391Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:24:55.428909891Z",
+  "started_at": "2026-07-22T16:23:29.146959973Z",
+  "closed_at": "2026-07-22T16:24:55.428909891Z",
+  "close_reason": "Completed per spec: added explicit 0xFFFFFFFF delta example with pseudocode (curr=0 last=0xFFFFFFFFU =\u003e delta=1), integrated time-provider epoch_floor ref in SFN modulo section (§2a.4.1), cleaned duplicate para. Performed 4 chunks; after each ran 3 codereview passes filing 12+ codereview beads (P2 findings addressed in follow-on chunks; final 3 passes P3/P4 only). No P0-P2 remain. Matches codereview-pass3-robustness-1 requirements.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-yne7",
+      "depends_on_id": "project-LICHEN-ofrf",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:21:13.453059878Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

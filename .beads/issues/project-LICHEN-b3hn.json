@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-b3hn",
+  "title": "codereview-pass2: TDMA Kconfig integration",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:20:25.104834403Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:22:31.447131571Z",
+  "closed_at": "2026-07-22T16:22:31.447131571Z",
+  "close_reason": "P4: Kconfig clean",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-b3hn",
+      "depends_on_id": "project-LICHEN-majo",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:20:25.208457085Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

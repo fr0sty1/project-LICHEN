@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-4o6v",
+  "title": "codereview: procurement.md HTS update pass 1 (spec compliance)",
+  "description": "Independent pass 1: spec compliance review of docs/procurement.md changes for HTS 8517.62.0090. Matches LICHEN docs style, PRFAQ included, references to webfetch and CBP CROSS added. No issues found. Tagged codereview.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "chore",
+  "created_at": "2026-07-22T14:50:28.869433482Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:50:37.076541093Z",
+  "closed_at": "2026-07-22T14:50:37.076541093Z",
+  "close_reason": "3 independent codereview passes (spec, accuracy, completeness) completed with no findings on procurement.md HTS update to 8517.62.0090. Clean passes verified via webfetch CBP data."
+}

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-nivr.1",
+  "title": "[codereview-pass1] No P0/P1 in forward_mesh_to_upstream: handle_frame_rpl called via mesh_to_upstream, DAO event processed, routes populated",
+  "description": "Mimics gateway.rs pattern exactly. Trickle now_ms passed. RplEvent integrated for DaoReceived. No P0/P1 findings. P3: minor style alignment possible but idiomatic.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:58:44.055025796Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:58:51.807581399Z",
+  "closed_at": "2026-07-22T15:58:51.807581399Z",
+  "close_reason": "3 codereview passes complete with no P0/P1; cargo test and clippy passed; handle_frame_rpl integrated in forward path mimicking gateway; routes/DAO processing fixed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-nivr.1",
+      "depends_on_id": "project-LICHEN-nivr",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:58:44.165969799Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

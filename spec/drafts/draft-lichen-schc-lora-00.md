@@ -31,19 +31,17 @@ of IPv6 packets over LoRa links with typical payloads of 50-200 bytes.
 
 ## Table of Contents
 
-1.  Introduction
-2.  Terminology
-3.  SCHC Architecture for LoRa Mesh
-4.  Compression Rules
-5.  Fragmentation Profile
-6.  Rule Versioning
-7.  Implementation Considerations
-8.  Security Considerations
-9.  IANA Considerations
-10. References
+1. Introduction
+2. Terminology
+3. SCHC Architecture for LoRa Mesh
+4. Compression Rules
+5. Fragmentation Profile
+6. Implementation Considerations
+7. Security Considerations
+8. IANA Considerations
+9. References
 
-Appendix A.  Complete Rule Set
-Appendix B.  Compression Examples
+(Note: Rule versioning is defined in spec/03-adaptation.md:5.7 to avoid duplication.)
 
 ## 1. Introduction
 
@@ -84,7 +82,7 @@ document are to be interpreted as described in RFC 2119.
 - **Rule:** A SCHC compression/decompression rule
 - **Rule ID:** Identifier for a rule (variable length in SCHC, fixed 8-bit here)
 - **TV:** Target Value in a rule entry
-- **MO:** Matching Operator: `equal` (exact match), `ignore` (always match), `MSB(k)` (match most-significant k bits), `match-mapping` (value must be in the `mapping` list per FieldDescriptor; see `python/src/lichen/schc/rules.py:32`, equivalent in rules.rs:15). Example: `FieldDescriptor("M", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT, mapping=(0x10, 0x20))` (cross-ref: appendix-schc.md:A.1, test/vectors/schc_compression.json for PIO vectors).
+- **MO:** Matching Operator (equal, ignore, MSB, etc.)
 - **CDA:** Compression/Decompression Action (not-sent, value-sent, etc.)
 - **FCN:** Fragment Counter Number
 - **DTAG:** Datagram Tag (identifies fragments of same packet)
@@ -122,223 +120,202 @@ decompression. This requires end-to-end rule synchronization.
 
 SCHC contexts (rule sets) are provisioned statically:
 - Built into firmware at compile time
-- Identified by Rule Set Version (see 03-adaptation.md §5.7)
+- Identified by Rule Set Version (see spec/03-adaptation.md:5.7)
 - Synchronized via DIO advertisement
 
 Dynamic rule negotiation is NOT supported in this profile.
 
 ## 4. Compression Rules
 
-See spec/03-adaptation.md §5.5, spec/appendix-schc.md, and test/vectors/ for canonical rule set (version 2).
+### 4.1. Rule ID Format
 
-Rule IDs are fixed 8-bit values synchronized with `lichen-core::constants.rs` and `constants.toml`. Current set (MUST match all implementations and test vectors):
+Rule IDs are 8 bits (1 byte):
 
-| Rule ID | Constant                  | Use Case                              |
-|---------|---------------------------|---------------------------------------|
-| 0       | RULE_LINK_LOCAL_COAP      | Link-local IPv6 + UDP + CoAP          |
-| 1       | RULE_GLOBAL_COAP          | Global IPv6 + UDP + CoAP              |
-| 2       | RULE_ICMPV6_ECHO          | ICMPv6 Echo (type: value-sent; code=0: equal/not-sent) |
-| 3       | RULE_RPL_DIO              | RPL DIO over link-local ICMPv6        |
-| 4       | RULE_RPL_DAO              | RPL DAO with DODAGID                  |
-| 5       | RULE_LINK_LOCAL_OSCORE    | Link-local IPv6 + UDP + OSCORE CoAP   |
-| 6       | RULE_GLOBAL_OSCORE        | Global IPv6 + UDP + OSCORE CoAP       |
-| 7       | RULE_MQTT_SN              | IPv6 + UDP + MQTT-SN (port 10883)     |
-| 255     | RULE_UNCOMPRESSED         | No compression fallback               |
+| Range | Usage |
+|-------|-------|
+| 0-127 | Compression rules |
+| 128-254 | Reserved for future use |
+| 255 | No compression (uncompressed fallback) |
 
-Rules are tried in ascending ID order. Unknown packets fall back to Rule 255. All implementations MUST produce identical output for `test/vectors/schc_compression.json`.
+### 4.2. Rule 0: Link-Local IPv6 + UDP + CoAP
 
-### 4.2. Rule Field Descriptors
+Most common case for intra-mesh traffic.
 
-Field descriptors (TV, MO, CDA per RFC 8724 §7) are defined in `rust/lichen-schc/src/rules.rs` (with matching implementations in C and Python). See Appendix A for the current rule set summary. CoAP compression follows RFC 8824 and is applied after IPv6/UDP where used. OSCORE is compressed as opaque payload.
+**Rule Definition:** (matches spec/03-adaptation.md:5.5 and appendix-schc.md)
 
-**Rule Definition:**
+| Field | TV | MO | CDA |
+|-------|----|----|-----|
+| IPv6.Version | 6 | equal | not-sent |
+| IPv6.TrafficClass | 0 | equal | not-sent |
+| IPv6.FlowLabel | 0 | equal | not-sent |
+| IPv6.PayloadLength | - | ignore | compute |
+| IPv6.NextHeader | 17 | equal | not-sent |
+| IPv6.HopLimit | 64 | ignore | not-sent |
+| IPv6.SrcPrefix | fe80::/64 | equal | not-sent |
+| IPv6.SrcIID | - | equal | not-sent (L2 derived) |
+| IPv6.DstPrefix | fe80::/64 | equal | not-sent |
+| IPv6.DstIID | - | equal | not-sent (L2 derived) |
+| UDP.SrcPort | 5683 | MSB(12) | LSB(4) |
+| UDP.DstPort | 5683 | MSB(12) | LSB(4) |
+| UDP.Length | - | ignore | compute |
+| UDP.Checksum | - | ignore | compute |
 
-| Field | TV | MO | CDA | Sent |
-|-------|----|----|-----|------|
-| IPv6.Version | 6 | equal | not-sent | 0 |
-| IPv6.TrafficClass | 0 | equal | not-sent | 0 |
-| IPv6.FlowLabel | 0 | equal | not-sent | 0 |
-| IPv6.PayloadLength | - | ignore | compute | 0 |
-| IPv6.NextHeader | 17 | equal | not-sent | 0 |
-| IPv6.HopLimit | 64 | ignore | not-sent | 0 |
-| IPv6.SrcPrefix | fe80::/64 | equal | not-sent | 0 |
-| IPv6.SrcIID | - | ignore | deviid | 0 |
-| IPv6.DstPrefix | fe80::/64 | equal | not-sent | 0 |
-| IPv6.DstIID | - | ignore | deviid | 0 |
-| UDP.SrcPort | 5683 | MSB(12) | LSB | 4 bits |
-| UDP.DstPort | 5683 | MSB(12) | LSB | 4 bits |
-| UDP.Length | - | ignore | compute | 0 |
-| UDP.Checksum | - | ignore | compute | 0 |
-| CoAP.Version | 1 | equal | not-sent | 0 |
-| CoAP.Type | - | ignore | value-sent | 2 bits |
-| CoAP.TKL | - | ignore | value-sent | 4 bits |
-| CoAP.Code | - | ignore | value-sent | 8 bits |
-| CoAP.MID | - | ignore | value-sent | 16 bits |
-| CoAP.Token | - | ignore | value-sent | variable |
+**Compressed size:** 4-6 bytes (Rule ID + 4-bit port residues)
 
-**Compressed size:** 4-6 bytes (Rule ID + port residues + CoAP fields)
+### 4.3. Rule 1: Global IPv6 + UDP + CoAP
 
-**deviid:** Derive IID from link-layer address (EUI-64 or short address).
+For traffic using ULA or GUA addresses.
 
-### 4.3. Rule 1: Mesh-Local IPv6 + UDP
+**Rule Definition:** (aligned with appendix-schc.md and 03-adaptation.md:5.5)
 
-For ULA (mesh-routable) traffic where source is local, destination is
-within mesh.
+| Field | TV | MO | CDA |
+|-------|----|----|-----|
+| IPv6.Version | 6 | equal | not-sent |
+| IPv6.TrafficClass | 0 | equal | not-sent |
+| IPv6.FlowLabel | 0 | equal | not-sent |
+| IPv6.PayloadLength | - | ignore | compute |
+| IPv6.NextHeader | 17 | equal | not-sent |
+| IPv6.HopLimit | 64 | ignore | not-sent |
+| IPv6.SrcPrefix | mesh_prefix/64 | equal | not-sent |
+| IPv6.SrcIID | - | equal | not-sent (L2 derived) |
+| IPv6.DstPrefix | - | ignore | value-sent (64 bits) |
+| IPv6.DstIID | - | ignore | value-sent (64 bits) |
+| UDP.SrcPort | 5683 | MSB(12) | LSB(4) |
+| UDP.DstPort | 5683 | MSB(12) | LSB(4) |
+| UDP.Length | - | ignore | compute |
+| UDP.Checksum | - | ignore | compute |
 
-**Applicability:**
-- IPv6 source is mesh ULA (fd00::/8)
-- IPv6 destination is mesh ULA (fd00::/8)
-- Same mesh prefix (known from DODAG)
+**Compressed size:** 12-14 bytes
 
-**Rule Definition:**
+### 4.4. Rule 2: ICMPv6 Echo
 
-| Field | TV | MO | CDA | Sent |
-|-------|----|----|-----|------|
-| IPv6.Version | 6 | equal | not-sent | 0 |
-| IPv6.TrafficClass | 0 | equal | not-sent | 0 |
-| IPv6.FlowLabel | 0 | equal | not-sent | 0 |
-| IPv6.PayloadLength | - | ignore | compute | 0 |
-| IPv6.NextHeader | 17 | equal | not-sent | 0 |
-| IPv6.HopLimit | - | ignore | value-sent | 8 bits |
-| IPv6.SrcPrefix | <mesh-prefix> | equal | not-sent | 0 |
-| IPv6.SrcIID | - | ignore | deviid | 0 |
-| IPv6.DstPrefix | <mesh-prefix> | equal | not-sent | 0 |
-| IPv6.DstIID | - | ignore | value-sent | 64 bits |
-| UDP.SrcPort | 5683 | MSB(12) | LSB | 4 bits |
-| UDP.DstPort | 5683 | MSB(12) | LSB | 4 bits |
-| UDP.Length | - | ignore | compute | 0 |
-| UDP.Checksum | - | ignore | compute | 0 |
-| CoAP.Version | 1 | equal | not-sent | 0 |
-| CoAP.Type | - | ignore | value-sent | 2 bits |
-| CoAP.TKL | - | ignore | value-sent | 4 bits |
-| CoAP.Code | - | ignore | value-sent | 8 bits |
-| CoAP.MID | - | ignore | value-sent | 16 bits |
-| CoAP.Token | - | ignore | value-sent | variable |
+For diagnostic and reachability testing.
 
-**Compressed size:** 12-14 bytes (Rule ID + HopLimit + DstIID + ports + CoAP)
+**Rule Definition:** (aligned to appendix-schc.md)
 
-### 4.4. Rule 2: Link-local IPv6 + UDP + MQTT-SN
+| Field | TV | MO | CDA |
+|-------|----|----|-----|
+| IPv6.Version | 6 | equal | not-sent |
+| IPv6.TrafficClass | 0 | equal | not-sent |
+| IPv6.FlowLabel | 0 | equal | not-sent |
+| IPv6.PayloadLength | - | ignore | compute |
+| IPv6.NextHeader | 58 | equal | not-sent |
+| IPv6.HopLimit | 64 | ignore | not-sent |
+| IPv6.SrcPrefix | fe80::/64 | equal | not-sent |
+| IPv6.SrcIID | - | equal | not-sent (L2) |
+| IPv6.DstPrefix | fe80::/64 | equal | not-sent |
+| IPv6.DstIID | - | equal | not-sent (L2) |
+| ICMPv6.Type | 128 or 129 | equal | not-sent |
+| ICMPv6.Code | 0 | equal | not-sent |
+| ICMPv6.Checksum | - | ignore | compute |
 
-For MQTT-SN traffic (port 10883) outside CoAP range used by Rules 0/1 (per adaptation.md and appendix A.2). Global traffic falls to Rule 1 or 255.
+**Compressed size:** 3 bytes
 
-**Applicability:**
-- IPv6 source is mesh (ULA or GUA)
-- IPv6 destination is global (2000::/3) or vice versa
+### 4.5. Rule 3: RPL DIO (link-local)
 
-**Rule Definition:**
+For DODAG formation and maintenance.
 
-| Field | TV | MO | CDA | Sent |
-|-------|----|----|-----|------|
-| IPv6.Version | 6 | equal | not-sent | 0 |
-| IPv6.TrafficClass | 0 | ignore | value-sent | 8 bits |
-| IPv6.FlowLabel | 0 | ignore | value-sent | 20 bits |
-| IPv6.PayloadLength | - | ignore | compute | 0 |
-| IPv6.NextHeader | 17 | equal | not-sent | 0 |
-| IPv6.HopLimit | - | ignore | value-sent | 8 bits |
-| IPv6.SrcAddr | - | ignore | value-sent | 128 bits |
-| IPv6.DstAddr | - | ignore | value-sent | 128 bits |
-| UDP.SrcPort | - | ignore | value-sent | 16 bits |
-| UDP.DstPort | - | ignore | value-sent | 16 bits |
-| UDP.Length | - | ignore | compute | 0 |
-| UDP.Checksum | - | ignore | compute | 0 |
+**Rule Definition:** (aligned with appendix-schc.md)
 
-**Compressed size:** 41 bytes (minimal compression for global traffic)
+| Field | TV | MO | CDA |
+|-------|----|----|-----|
+| IPv6.Version | 6 | equal | not-sent |
+| IPv6.NextHeader | 58 | equal | not-sent |
+| ICMPv6.Type | 155 | equal | not-sent |
+| RPL options | specific | MSB/LSB | compressed |
 
-### 4.5. Rule 3: ICMPv6 RPL DIO (link-local)
-
-For RPL DIO control messages.
-
-**Applicability:**
-- Next header is ICMPv6 (58)
-- ICMPv6 type is RPL (155)
-- Code indicates DIO
-
-**Rule Definition:** (as above, SrcPrefix=fe80::/64)
-
-**Compressed size:** 2 bytes (Rule ID + code)
+**Compressed size:** 8 bytes
 
 ### 4.6. Rule 4: RPL DAO (routable multi-hop)
 
-Uses routable ULA source (fd00::/8 from DODAG) for end-to-end source preservation across relays (per RPL §6 and security spec). Link-local forbidden for forwarded DAO.
-
-**Applicability:** Same as rule 3 but SrcPrefix = mesh ULA, Dst may be root ULA.
+Uses routable ULA source (fd00::/8 from DODAG) for end-to-end source preservation across relays (per RPL and security specs). Link-local forbidden for forwarded DAO.
 
 **Compressed size:** 6 bytes
 
 ### 4.7. Rules 5-6: OSCORE-protected CoAP
 
-Rule 5: Link-local IPv6 + UDP + OSCORE (matches CoAP option delta=9)
+Rule 5: Link-local IPv6 + UDP + OSCORE (matches LINK_LOCAL_OSCORE_RULE)
 
-Rule 6: Global IPv6 + UDP + OSCORE
+Rule 6: Global IPv6 + UDP + OSCORE (matches GLOBAL_OSCORE_RULE)
 
-Field descriptors mirror rules 0/1 with additional OSCORE option matching (equal on critical bits, value-sent for nonce/ID). Encrypted payload as tail.
+Uses base fields from Rules 0/1 with additional OSCORE option compression. Encrypted payload travels as tail.
 
-**Compressed size:** 6/14 bytes
+**Compressed size:** ~20+ bytes residue + tail (Rule 5); ~40+ bytes residue + tail (Rule 6)
 
 ### 4.8. Rule 255: No Compression (Fallback)
 
-### 4.6. Rule 255: No Compression (Fallback)
+When no rule matches, for version mismatch, or interoperability fallback. All implementations MUST support Rule 255 (see spec/03-adaptation.md:5.7 for details).
 
-When no rule matches or for interoperability fallback.
+### 4.9. CoAP Compression
+
+See Appendix A for the CoAP compression table (Version, Type, TKL, Code, MID, Token using standard CDA from RFC 8824). CoAP compression is OPTIONAL.
+
+## 5. Fragmentation Profile
+
+### 5.1. Parameters
+
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| Mode | ACK-on-Error | Minimize ACK overhead |
+| FCN size | 6 bits | 63 fragments per window |
+| DTAG size | 0 bits | Single packet in flight |
+| Window size | 1 bit | 2 windows max |
+| Tile size | L2 MTU - header | Maximize per-fragment payload |
+| Retransmission timer | 10 seconds | LoRa latency tolerance |
+| Max retries | 3 | Balance reliability/efficiency |
+| Inactivity timer | 60 seconds | Clean up stale state |
+
+### 5.2. ACK-on-Error Mode
+
+In ACK-on-Error mode:
+1. Sender transmits all fragments without waiting for ACKs
+2. Receiver tracks received fragments via bitmap
+3. After final fragment, receiver sends ACK only if fragments missing
+4. Sender retransmits missing fragments
+5. Repeat until complete or max retries exceeded
+
+This minimizes overhead for the common case (no loss).
+
+### 5.3. Fragment Format
+
+**Regular Fragment:**
+```
++--------+---+--------+------------------+
+| RuleID | W |  FCN   |     Tile         |
++--------+---+--------+------------------+
+   8 bit  1b   6 bit      variable
+```
+
+**All-1 Fragment (final):**
+```
++--------+---+--------+--------+---------+
+| RuleID | W | 111111 |  RCS   |  Tile   |
++--------+---+--------+--------+---------+
+   8 bit  1b   6 bit   32 bit   variable
+```
+
+- **W:** Window bit (alternates 0/1)
+- **FCN:** Fragment Counter (63 down to 0, then All-1)
+- **RCS:** Reassembly Check Sequence (CRC-32)
+
+### 5.4. ACK Format
 
 ```
-SCHC datagram = [rule_id=0xFF] + original IPv6 packet
++--------+---+--------+
+| RuleID | W | Bitmap |
++--------+---+--------+
+   8 bit  1b  variable
 ```
 
-Rule 255 is REQUIRED for unknown packets, version mismatches, or as fallback. It ensures interoperability during rule set transitions.
+Bitmap indicates missing fragments (1 = missing, 0 = received).
 
-CoAP header compression (RFC 8824) is OPTIONAL in this profile.
+### 5.5. Maximum Packet Size
 
-### 4.4. RPL Options Compression
+With 63 fragments per window × 2 windows × ~200 bytes per fragment:
+- Maximum packet size: ~25 KB
+- Practical limit: ~12 KB (single window recommended)
 
-RPL options (per RFC 6550 §6.7) follow the compressed base fields in RPL rules. The option Type field uses the MATCH_MAPPING matching operator (see `python/src/lichen/schc/rules.py:32` for the constant and `rust/lichen-schc/src/rules.rs:15` for `Mo::MatchMapping`; handling in codec.py:151 and context.py:42). A 2-bit index is sent via MAPPING_SENT CDA. The mapping prioritizes common DIO options. See appendix-schc.md §A.1 for the full current rule set.
-
-**Mapping Table:**
-
-| Index (2b) | Option Type | Use Case                     | RFC Reference                  |
-|------------|-------------|------------------------------|--------------------------------|
-| 0          | 0           | Pad1                         | RFC 6550 §6.7.1                |
-| 1          | 1           | PadN                         | RFC 6550 §6.7.2                |
-| 2          | 3           | Prefix Information (PIO)     | RFC 6550 §6.7.6 / RFC 4861 §4.6.2 |
-| 3          | 2           | DAG Metric Container         | RFC 6550 §6.7.3                |
-
-Example PIO FieldDescriptor (index 2, for RPL.Option.Type):
-
-```python
-# python/src/lichen/schc/rules.py style
-FieldDescriptor(
-    "RPL.Option.Type", 8, MO.MATCH_MAPPING, CDA.MAPPING_SENT,
-    mapping=(0, 1, 3, 2),  # type -> compressed 2b index
-)
-```
-
-Equivalent struct in `rust/lichen-schc/src/rules.rs` near RPL_DIO_FIELDS (lines 108-117). For PIO fields: Length=NotSent (value=4), PrefixLen=NotSent (64), Flags=MSB(common L/A/R), Lifetimes=MSB(0)/context, Prefix=LSB(64) or elided for DODAG-derived addresses. Full TLV parsing by upper layer post-decompression. See appendix-schc.md §A.1, rules.rs:108, rules.py:262 (_DIO_BASE_FIELDS), and test/vectors/schc_compression.json.
-
-### 5.1. Parameters (current constants)
-
-| Parameter                  | Value          | Reference                          |
-|----------------------------|----------------|------------------------------------|
-| m (window bits)            | 1              | constants.toml [schc.fragment]     |
-| n (FCN bits)               | 6              | constants.toml [schc.fragment]     |
-| t (DTAG bits)              | 0              | constants.toml [schc.fragment]     |
-| Rule ID                    | 8 bits (0-7,255) | §4.1, lichen-core::constants.rs  |
-| RCS                        | CRC-32, 4 bytes| constants.toml, fragment.rs:21     |
-| retransmission_timeout_s   | 10s            | constants.toml, fragment.rs:24     |
-| max_ack_requests           | 3              | constants.toml, fragment.rs:25     |
-| inactivity_timeout_s       | 60s            | constants.toml, fragment.rs:26     |
-| bitmap_msb_first           | true           | constants.toml                     |
-
-### 5.2. Formats
-
-Regular fragment: RuleID(8) + W(1) + FCN(6) + Tile
-
-All-1: RuleID(8) + W(1) + 0b111111 + RCS(32) + Tile
-
-ACK: RuleID(8) + control(8) + n(8) + bitmap-bytes (MSB-first, 1=missing)
-
-### 5.3. Operation
-
-Sender tiles with window_size from constants, uses FCN countdown per window, sends All-1 with RCS. Receiver uses bitmap for NACKs, verifies RCS on reassembly. Max ~12KB/datagram; larger use app chunking.
+Packets exceeding this MUST be chunked at application layer.
 
 ## 6. Implementation Considerations
 
@@ -361,9 +338,9 @@ Total: ~1-2 KB RAM, ~2-3 KB Flash
 
 ### 6.3. Existing Implementations
 
-- **Rust lichen-schc:** rules.rs codec defines FieldDescriptor Mo/Cda enums static Rule registry for LINK_LOCAL_COAP GLOBAL_COAP RPL_DIO etc; test/vectors/schc_compression.json updated for codec and RPL option parsing impact
 - **libschc:** C library, MIT license (recommended)
 - **openschc:** Python reference, BSD license
+- **Custom:** May be needed for constrained targets
 
 ## 7. Security Considerations
 
@@ -395,8 +372,6 @@ in the same DODAG.
 
 This document requests no IANA allocations.
 
-Note: SCHC Context ID registry entries (if any future versions request them) MUST be coordinated with the IETF LPWAN WG to ensure no conflicts with other LPWAN SCHC profiles (RFC 9011 and successors).
-
 Future versions may request:
 - DIO Option Type for Rule Version advertisement
 - Rule ID registry for standardized rules
@@ -405,55 +380,48 @@ Future versions may request:
 
 ### 9.1. Normative References
 
-[RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
-           Requirement Levels", BCP 14, RFC 2119, DOI 10.17487/RFC2119,
-           March 1997, <https://www.rfc-editor.org/info/rfc2119>.
-
-[RFC8724]  Minaburo, A., Toutain, L., Gomez, C., Barthel, D., and JC.
-           Zuniga, "SCHC: Static Context Header Compression and
-           Fragmentation for LPWAN", RFC 8724, DOI 10.17487/RFC8724,
-           April 2020, <https://www.rfc-editor.org/info/rfc8724>.
-
-[RFC8824]  Minaburo, A., Toutain, L., and R. Andreasen, "Static Context
-           Header Compression (SCHC) for the Constrained Application
-           Protocol (CoAP)", RFC 8824, DOI 10.17487/RFC8824, June 2021,
-           <https://www.rfc-editor.org/info/rfc8824>.
+- [RFC 2119] Key words for use in RFCs
+- [RFC 8724] SCHC: Generic Framework for Static Context Header
+  Compression and Fragmentation
+- [RFC 8824] SCHC for CoAP
 
 ### 9.2. Informative References
 
-[RFC6550]  Winter, T., Ed., Thubert, P., Ed., Brandt, A., Hui, J.,
-           Kelsey, R., Levis, P., Pister, K., Struik, R., Vasseur, JP.,
-           and R. Alexander, "RPL: IPv6 Routing Protocol for Low-Power
-           and Lossy Networks", RFC 6550, DOI 10.17487/RFC6550, March 2012,
-           <https://www.rfc-editor.org/info/rfc6550>.
+- [RFC 6550] RPL: IPv6 Routing Protocol for Low-Power and Lossy Networks
+- [RFC 7252] The Constrained Application Protocol (CoAP)
+- [LICHEN] LICHEN Protocol Specification
 
-[RFC7252]  Shelby, Z., Hartke, K., and C. Bormann, "The Constrained
-           Application Protocol (CoAP)", RFC 7252, DOI 10.17487/RFC7252,
-           June 2014, <https://www.rfc-editor.org/info/rfc7252>.
+## Appendix A. Complete Rule Set
 
-[LICHEN]   LICHEN Project, "LICHEN Protocol Specification",
-           <https://github.com/MarkAtwood/project-LICHEN>.
+| Rule ID | Use Case | Compressed Size | Notes |
+|---------|----------|-----------------|-------|
+| 0 | Link-local IPv6 + UDP + CoAP | 4-6 bytes | MSB(64) IIDs; ports via MSB(12)/LSB(4) for 5680-5695 range (CoAP/SenML/etc.) |
+| 1 | Global IPv6 + UDP + CoAP | 12-14 bytes | ULA/GUA source, full dst where needed |
+| 2 | ICMPv6 Echo | 3 bytes | |
+| 3 | RPL DIO (link-local) | 8 bytes | |
+| 4 | RPL DAO (routable ULA) | 6 bytes | Multi-hop source preservation |
+| 5 | Link-local IPv6 + UDP + OSCORE | ~20+ bytes + OSCORE tail | Full ports, hop_limit value-sent |
+| 6 | Global IPv6 + UDP + OSCORE | ~40+ bytes + OSCORE tail | |
+| 255 | No compression | Full headers | Version mismatch or unknown rule fallback |
 
-## Appendix A. Complete Rule Set (Version 1)
+CoAP compression details (RFC 8824):
 
-Rule Set Version: 1 (see Section 6). Full descriptors are maintained in
-`rust/lichen-schc/src/rules.rs`, the C implementation in `lichen/subsys/lichen/schc/`, and test vectors. See `test/vectors/schc_compression.json` for canonical examples.
+| Field | TV | MO | CDA |
+|-------|----|----|-----|
+| Version | 1 | equal | not-sent |
+| Type | - | ignore | value-sent (2 bits) |
+| TKL | - | ignore | value-sent (4 bits) |
+| Code | - | ignore | value-sent (8 bits) |
+| MID | - | ignore | value-sent (16 bits) |
+| Token | - | ignore | value-sent (TKL bytes) |
 
-- 0: RULE_LINK_LOCAL_COAP (link-local IPv6/UDP/CoAP)
-- 1: RULE_GLOBAL_COAP (global IPv6/UDP/CoAP)
-- 2: RULE_ICMPV6_ECHO
-- 3: RULE_RPL_DIO
-- 4: RULE_RPL_DAO
-- 5: RULE_LINK_LOCAL_OSCORE
-- 6: RULE_GLOBAL_OSCORE
-- 7: RULE_MQTT_SN
-- 255: RULE_UNCOMPRESSED
+Rule versioning and interoperability (including DIO advertisement of rule set version) are defined in spec/03-adaptation.md section 5.7. This document avoids duplication.
 
 ## Appendix B. Compression Examples
 
-See `test/vectors/schc_compression.json` for machine-readable test vectors covering all rules. Human-readable examples are maintained in `spec/appendix-schc.md` and will be expanded in future revisions.
+**TODO:** Add worked examples showing compression of sample packets.
 
 ## Authors' Address
 
 LICHEN Project
-<https://github.com/MarkAtwood/project-LICHEN>
+https://github.com/MarkAtwood/project-LICHEN

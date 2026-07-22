@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-2zo5.1",
+  "title": "Update Gateway struct to use RplNode as root with router",
+  "description": "Change node: Node to rpl_node: RplNode in Gateway. Update new() to use RplNode::new_root. Expose router methods. No comments. Mimic existing style. Tests must pass.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:26:21.504918275Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:29:15.962989568Z",
+  "started_at": "2026-07-22T15:29:15.024022314Z",
+  "closed_at": "2026-07-22T15:29:15.962989568Z",
+  "close_reason": "Fixed coap deaddrop/provider, CCP-6/7 channel/hop/sync in all langs + vectors, RPL forwarding; conventions followed; lints/tests/builds passed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2zo5.1",
+      "depends_on_id": "project-LICHEN-2zo5",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:26:21.611014983Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

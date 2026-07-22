@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-nivr.3",
+  "title": "[codereview-pass3] Full review: DAO processing ensures RoutingTable updated for is_local_mesh/SRH. Mimic complete. All quality gates passed. No P0/P1 findings.",
+  "description": "3 passes complete with only P3/P4. Ready to close parent.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:58:48.578788664Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:58:52.188114728Z",
+  "closed_at": "2026-07-22T15:58:52.188114728Z",
+  "close_reason": "3 codereview passes complete with no P0/P1; cargo test and clippy passed; handle_frame_rpl integrated in forward path mimicking gateway; routes/DAO processing fixed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-nivr.3",
+      "depends_on_id": "project-LICHEN-nivr",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:58:48.681606794Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

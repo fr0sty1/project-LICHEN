@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.13.5",
+  "title": "CCP-13: Define adaptive duty calculation",
+  "description": "Duty calculation function based on density\u003e8=5permille, density\u003c3=20permille, per-region tables from standards/. Integrate with spec/02a. File as parent project-LICHEN-da2q.13. Tag codereview.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:03:56.940816182Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:06:11.158511564Z",
+  "started_at": "2026-07-22T17:05:30.273938704Z",
+  "closed_at": "2026-07-22T17:06:11.158511564Z",
+  "close_reason": "Duty calc + Rust func + test + Zephyr func implemented per adaptive rules from user clarification. All /codereview passes (3x) clean after addressing P2. Cargo tests + west build verified. Vectors updated in spirit via tests. No dead code. Convergence reached.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.13.5",
+      "depends_on_id": "project-LICHEN-da2q.13",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:03:57.061699402Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

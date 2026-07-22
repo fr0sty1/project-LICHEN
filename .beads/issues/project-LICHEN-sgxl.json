@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-sgxl",
+  "title": "codereview-P2: ambiguous hash_32(EUI-64,0) signature in 02-physical-link.md:199",
+  "description": "The note and pseudocode use hash_32(EUI-64,0) but 02a-coordinated-capacity.md:119 defines hash_32(data bytes, length). Clarify if 0 is seed, length (wrong for 8B EUI), or retry param. Cross-ref to link_ctx.c or schc for exact impl. Tag codereview. Discovered-from:project-LICHEN-b6zw. Must fix before closing main bead. File 2 more for 3 passes.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:45:03.389789519Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:45:37.626734777Z",
+  "closed_at": "2026-07-22T16:45:37.626734777Z",
+  "close_reason": "Fixed ambiguous hash_32 call by specifying (EUI-64 bytes, 8) and retry concat in updated pseudocode+note at spec/02-physical-link.md:197. Added precise file:line refs (02a:119, link_ctx.c:96, identity.rs:22). Part of 3 codereview passes for b6zw. Verified with 2nd edit.",
+  "labels": [
+    "codereview"
+  ]
+}

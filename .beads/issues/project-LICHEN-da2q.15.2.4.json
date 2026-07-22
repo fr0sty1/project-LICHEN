@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.15.2.4",
+  "title": "codereview-pass1-round2: rf_health.rs update doc for RfHealthMetrics to mention CCP-15 interference metrics",
+  "description": "The struct doc should reference how tx_failures and updated EMA support interference mitigation per da2q CCP-15. Minor doc improvement. Tag: codereview",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:30:00.754574126Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:30:26.780666017Z",
+  "closed_at": "2026-07-22T16:30:26.780666017Z",
+  "close_reason": "Fixed all codereview findings after 3 clean passes on EMA update for CCP-15 interference mitigation in Rust rf_health.rs (faster alpha, updated tests/docs/da2q context). Tests pass.",
+  "labels": [
+    "codereview",
+    "opinion",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.15.2.4",
+      "depends_on_id": "project-LICHEN-da2q.15.2",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:30:00.870996836Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

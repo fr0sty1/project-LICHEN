@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-8tjp",
+  "title": "[codereview-pass1] coap_server.h unconditional oscore.h include may bloat public API or cause config issues",
+  "description": "Client uses conditional #if defined(CONFIG_LICHEN_COAP_CLIENT_OSCORE). Server now includes unconditionally. If OSCORE disabled, may pull unnecessary code or fail if oscore subsys not selected. Consider forward declare again or conditional but keep signature stable. P2 API/maintainability. discovered-from:project-LICHEN-jqdq",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:56:07.404947971Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:56:34.223073722Z",
+  "closed_at": "2026-07-22T15:56:34.223073722Z",
+  "close_reason": "Addressed with forward declare instead of unconditional include; coap/socket includes added separately. 3 codereview passes filed and resolved",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-8tjp",
+      "depends_on_id": "project-LICHEN-jqdq",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:56:07.504920373Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

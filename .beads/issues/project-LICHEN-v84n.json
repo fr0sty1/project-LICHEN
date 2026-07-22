@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-v84n",
+  "title": "codereview pass 1: outdated wire format comment in announce.rs",
+  "description": "rust/lichen-core/src/announce.rs:1-19 - wire format doc and FIXED_LENGTH still show pre-CCP-9 (no current_channel byte after sig at offset 93). Matches Python update but Rust doc lags. P2 correctness. codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:20:43.812517719Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:23:10.18802444Z",
+  "closed_at": "2026-07-22T17:23:10.18802444Z",
+  "close_reason": "Updated wire format doc, FIXED_LENGTH, struct, from_bytes, builder, tests, scheduler signed_data and builder to include current_channel=0 per CCP-9 and Python parity. All tests updated and roundtrip verified.",
+  "labels": [
+    "codereview"
+  ]
+}

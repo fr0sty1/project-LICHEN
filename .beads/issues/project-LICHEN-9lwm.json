@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-9lwm",
+  "title": "[codereview-3] Missing update to test/vectors/README.md and spec TOC for new CCP-9 vectors",
+  "description": "test/vectors/README.md and spec/02a-coordinated-capacity.md must document ccp9.json per CCP-14 vector requirements and da2q context. All vectors must be listed in Appendix A. codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:11:37.551299391Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:15:03.302284145Z",
+  "started_at": "2026-07-22T17:13:56.449588428Z",
+  "closed_at": "2026-07-22T17:15:03.302284145Z",
+  "close_reason": "Updated test/vectors/README.md and spec/02a-coordinated-capacity.md (or equivalent in 09-packets-timing.md:188) with CCP-9 docs, TOC, Appendix A per CCP-14"
+}

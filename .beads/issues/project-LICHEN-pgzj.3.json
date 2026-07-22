@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-pgzj.3",
+  "title": "[codereview-P2] Redundant ccp15/ccp_load_balancing_document defs duplicate ccp_document structure",
+  "description": "The added document defs for ccp15 and ccp_load_balancing are nearly identical to the enveloped branch in ccp_document and use the same ccp_vector. This violates DRY and the 'per-vector-family branches' intent in schema description. Prefer specific vector schemas with tailored 'required' fields per CCP variant or consolidate. Follows existing pattern in other document defs but over-general here. Independent oracle: JSON Schema best practices for oneOf. Parent: project-LICHEN-pgzj.1",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:00:31.735300808Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:05:31.485237095Z",
+  "started_at": "2026-07-22T17:02:10.025986804Z",
+  "closed_at": "2026-07-22T17:05:31.485237095Z",
+  "close_reason": "Standardized to hash_32, added CCP-12 TOC anchor and section, simplified schema by removing redundant ccp15/ccp16_vector defs (now uses ccp_vector with oneOf/tailored description). Completed 3 codereview passes with all findings fixed and closed. No open findings remain.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-pgzj.3",
+      "depends_on_id": "project-LICHEN-pgzj",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:00:31.846528299Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

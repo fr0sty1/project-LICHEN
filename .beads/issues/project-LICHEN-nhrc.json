@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-nhrc",
+  "title": "[codereview-pass-1] draft-lichen-schc-lora-00.md:4 Rule overlap risk between RPL rules and ICMP rule 2; MO must be specific enough to avoid decompression errors P0",
+  "description": "With ICMP rule 2 for Echo (types 128/129) and rules 3/4 for type 155, but if a rule matching falls through incorrectly due to similar IPv6 base, packets may use wrong decompression. Ensure rule applicability is mutually exclusive with strict MO on NextHeader/Type/Code. Critical for correctness. Reference RFC 8724 rule selection algorithm.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:58:25.434357627Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:00:46.139303109Z",
+  "started_at": "2026-07-22T14:58:41.716008486Z",
+  "closed_at": "2026-07-22T15:00:46.139303109Z",
+  "close_reason": "Rule overlap risk fixed with MO specificity documentation per RFC 8724; 3 codereview passes completed with only P3/P4 findings filed and closed"
+}

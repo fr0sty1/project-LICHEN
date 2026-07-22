@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-ykvk",
+  "title": "Implement /deaddrop and /confessions with OSCORE in C",
+  "description": "Follow parent project-LICHEN-2h1i.2.4.2 and fix codereview project-LICHEN-88rm. Use coap_dtn.c with oscore_ctx per spec. 3 codereview passes. Add Kconfig, update handlers, DTN integration, SenML, rate limiting. Tests must pass.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:07:03.307260273Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:12:29.398031364Z",
+  "started_at": "2026-07-22T15:10:01.199370196Z",
+  "closed_at": "2026-07-22T15:12:29.398031364Z",
+  "close_reason": "Deaddrop/confessions children filed and core stub fixed; Ygg children filed"
+}

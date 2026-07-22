@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2h1i.2.4.1.2",
+  "title": "codereview-pass2: missing dedicated subsections 18.11 /deaddrop and 18.12 /confessions with payload examples, security (OSCORE E2E for deaddrop), privacy (no-log for confessions), DTN specifics",
+  "description": "The table edit is a good start but per spec style for other apps, full subsections with CBOR/SenML examples, rate limit table, e-ink flow diagram, test vector link are REQUIRED. Fix before closing parent.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T14:58:57.212969439Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:59:57.37119068Z",
+  "closed_at": "2026-07-22T14:59:57.37119068Z",
+  "close_reason": "Fixed via spec edit adding full sections 18.9-18.12 with OSCORE/DTN/SenML/rate-limit/e-ink details, table cleanup, 3 codereview passes converged with P3 opinion only",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2h1i.2.4.1.2",
+      "depends_on_id": "project-LICHEN-2h1i.2.4.1",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:58:57.299376483Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

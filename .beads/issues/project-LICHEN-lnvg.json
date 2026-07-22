@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-lnvg",
+  "title": "[codereview-pass1] coap_status.c: map_count now overcounts without capacity encoding",
+  "description": "After updating map_count to 9 base keys, the encode still only emits ~7 keys. This will produce invalid CBOR map with wrong count. Per previous j7lm/48l1. Also update error handling for ENOBUFS case. Tag: codereview",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:06:47.303790375Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:08:17.585847169Z",
+  "started_at": "2026-07-22T16:07:03.058956273Z",
+  "closed_at": "2026-07-22T16:08:17.585847169Z",
+  "close_reason": "Capacity fields added to encode, map_count fixed to 9 base+optionals, cbor_header updated with \u003e255 overflow guard, error paths now use REQUEST_ENTITY_TOO_LARGE for encode-fail (ENOBUFS case). All codereview findings addressed across 3 passes with no new P0-P2 issues after final validation build.",
+  "labels": [
+    "codereview"
+  ]
+}

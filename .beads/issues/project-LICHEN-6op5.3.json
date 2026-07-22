@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-6op5.3",
+  "title": "codereview-pass3: Minor P4 bikeshed on variable init style (map_count = 6 vs 6u)",
+  "description": "P4 only, opinion on unsigned literal. No functional impact. Convergence achieved after 3 passes with only P3+ and opinion.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "created_at": "2026-07-22T16:15:32.153642452Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:15:37.991703875Z",
+  "closed_at": "2026-07-22T16:15:37.991703875Z",
+  "close_reason": "P4 bikeshed ignored per no-bikeshedding rule; 3 clean passes converged",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-6op5.3",
+      "depends_on_id": "project-LICHEN-6op5",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:15:32.257851759Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

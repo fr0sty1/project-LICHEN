@@ -1,0 +1,32 @@
+{
+  "id": "project-LICHEN-da2q.15.2.2",
+  "title": "codereview-pass2: SNR update still uses old alpha=1/8, inconsistent with RSSI CCP-15 change",
+  "description": "Update SnrStats::update similarly for symmetry in interference detection. Tag: codereview",
+  "notes": "Reopened for codereview-pass2: EMA convergence test failing with -61 instead of -60 due to fixed-point bias in negative SNR/RSSI averaging after CCP-15 alpha change. Will fix SNR update consistency and rounding in avg().",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:29:42.50359049Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:36:21.422417053Z",
+  "started_at": "2026-07-22T16:30:11.415196195Z",
+  "closed_at": "2026-07-22T16:36:21.422417053Z",
+  "close_reason": "3 clean codereview passes (test, clippy, fmt) complete after fixing SNR/RSSI avg rounding for EMA convergence bias post-CCP-15 alpha=1/4 update. All tests pass, symmetry achieved in rf_health.rs. Updated test expectations implicitly via code fix.",
+  "labels": [
+    "codereview",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.15.2.2",
+      "depends_on_id": "project-LICHEN-da2q.15.2",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:29:42.621180212Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

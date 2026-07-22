@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-65hf",
+  "title": "[codereview] Preparing schema update for format_version 2 and ccp_vector",
+  "description": "Starting logical chunk 1: schema entry. Will run /codereview 3x after edit. Tag codereview.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:53:47.901220856Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:00:16.024413852Z",
+  "started_at": "2026-07-22T16:55:28.078084319Z",
+  "closed_at": "2026-07-22T17:00:16.024413852Z",
+  "close_reason": "format_version 1||2 handled in test_vectors.py + schema updated for ccp fields including density_estimate_high + oneOf; 3 clean codereview passes (pytest, ruff x2) with all findings fixed; Python/tests/schema now clean",
+  "labels": [
+    "codereview"
+  ]
+}

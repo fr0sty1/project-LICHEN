@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-nqrt",
+  "title": "codereview-pass2-sfn-kconfig",
+  "description": "Second pass: SFN time-provider cross-ref solid, modulo example correct for 0xFFFFFFFF, Kconfig selects now include SCHC and EPOCH_PERSIST. IETF style clean. P4 opinion on adding PHY note (HUMAN if ambiguous). No P0-P2.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:26:22.744773996Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:26:38.266874387Z",
+  "closed_at": "2026-07-22T16:26:38.266874387Z",
+  "close_reason": "Convergence after 3 codereview passes per logical chunk (SFN para, example, Kconfig). All P0-P2 addressed; only P3/P4/opinion filed and fixed. West build validated Kconfig/selects (native_sim target); tests/vectors referenced. No dead code. Followed draft/IETF style. Conventional commit created.",
+  "labels": [
+    "codereview"
+  ]
+}

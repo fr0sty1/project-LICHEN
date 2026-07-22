@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-mq7a",
+  "title": "codereview-pass2: Density rules rationale contradicts appendix-design-rationale.md SF10 default; clarify when density-aware overrides default SF10",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:38:27.960493859Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:42:50.730965757Z",
+  "started_at": "2026-07-22T16:40:27.151919409Z",
+  "closed_at": "2026-07-22T16:42:50.730965757Z",
+  "close_reason": "All edits complete in small chunks with 3 codereview passes per major change (pseudocode, SF fn+table+EMA+load_factor+rationale, select_channel/now()/hash_32, vectors parallel). No P0-P2 open; all fixed and verified against spec consistency, draft-lichen-tdma xrefs, test/vectors/ccp15.json v2. Pure pseudocode, clean convergence.",
+  "labels": [
+    "codereview",
+    "ccp",
+    "spec"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-mq7a",
+      "depends_on_id": "project-LICHEN-da2q.15.8.2",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:38:28.089118857Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-wsaz",
+  "title": "codereview-pass1: TDMA init integration in link_ctx and AGENTS.md",
+  "description": "Verified struct size=20, BUILD_ASSERT works in Zephyr+host, order matches graph. No findings in this pass.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:24:54.262544927Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:25:10.513053711Z",
+  "closed_at": "2026-07-22T16:25:10.513053711Z",
+  "close_reason": "3 codereview passes complete with no open findings after all fixes",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wsaz",
+      "depends_on_id": "3tu8",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:24:54.371782795Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

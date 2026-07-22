@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.16.1",
+  "title": "Python: CCP-16 requirements from da2q context",
+  "description": "Python implementation for CCP-16 Load Balancing requirements from da2q context.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:55.880393537Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:10:32.392530416Z",
+  "started_at": "2026-07-22T16:10:32.392530416Z",
+  "lease_expires_at": "2026-07-22T16:15:32.392530416Z",
+  "heartbeat_at": "2026-07-22T16:10:32.392530416Z",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.16.1",
+      "depends_on_id": "project-LICHEN-da2q.16",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:55.987045012Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

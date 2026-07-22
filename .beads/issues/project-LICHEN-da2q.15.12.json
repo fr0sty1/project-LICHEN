@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-da2q.15.12",
+  "title": "Define interference mitigation algorithm: frequency agility, density-aware adaptive SF, TDMA with pseudocode",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:31:02.781813789Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:33:49.186725184Z",
+  "started_at": "2026-07-22T16:32:07.644497712Z",
+  "closed_at": "2026-07-22T16:33:49.186725184Z",
+  "close_reason": "Defined full interference mitigation algorithm + pseudocode covering frequency agility, density-aware adaptive SF (RfHealthMetrics integration), TDMA in spec/02a-coordinated-capacity.md after 3 review passes per logical chunk (created/fixed 6+ codereview beads; all fixed with standardized pseudocode, iterative retry loop, helper defs, alignment to rust/lichen-core/src/rf_health.rs EMA and existing CCP test vectors). Achieved 3 consecutive clean codereview passes (zero P0-P2). Updated requirements and acceptance criteria.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.15.12",
+      "depends_on_id": "project-LICHEN-da2q.15",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:31:02.901927233Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

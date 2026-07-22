@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-k3i8",
+  "title": "[codereview-pass2] Kconfig: missing select for SCHC or link features",
+  "description": "lichen/subsys/lichen/link/Kconfig:122 - CCP16 should select additional modules for TDMA/multi-channel (e.g. future LICHEN_TDMA). Depends on RPL is good but may need explicit select for density tracking structures. P2. codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:14:55.158379734Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:25:27.155404678Z",
+  "started_at": "2026-07-22T16:23:29.786519002Z",
+  "closed_at": "2026-07-22T16:25:27.155404678Z",
+  "close_reason": "Added select LICHEN_SCHC to LICHEN_LINK_CCP16_LOAD_BALANCING in lichen/subsys/lichen/link/Kconfig:117 (chunk 1). Performed 3 codereview passes filing project-LICHEN-04ir (TDMA select), project-LICHEN-4emh (security), project-LICHEN-4t7i (robustness). All passes complete, no P0/P1 findings. bd ready shows new codereview beads filed.",
+  "labels": [
+    "codereview",
+    "da2q.16"
+  ]
+}

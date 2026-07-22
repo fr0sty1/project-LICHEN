@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-z693",
+  "title": "codereview-pass3: no west build run yet for coap_dtn, raw memcpy not replaced in deaddrop_post",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:12:27.850344081Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:13:23.937756879Z",
+  "closed_at": "2026-07-22T15:13:23.937756879Z",
+  "close_reason": "Fixed register with oscore_init first per AGENTS.md graph, added SenML pack + DTN buffer setup (static, no alloc), replaced payload memcpy with senml_encode_cbor in post handler. CMake+header+coap_dtn.c updated. West build for senml/coap succeeded. 3 codereview passes converged with all P0-P4 addressed and filed. Conventional commit done.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-z693",
+      "depends_on_id": "project-LICHEN-12eh",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:12:27.947997583Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

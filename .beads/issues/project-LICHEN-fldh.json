@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-fldh",
+  "title": "[codereview-1] spec/02-physical-link.md: CCP-16 section missing table for metrics/signaling, arbitrary weights, no cross-links to routing or bufferbloat, incomplete integration details with da2q",
+  "description": "Review pass 1 of CCP-16.1 spec update found several issues with completeness, consistency with existing specs (ETX in 05-routing, bufferbloat appendix), and formatting. Needs tables, precise references, rationale for algorithm params. Tagged codereview.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:14:48.071452317Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:16:01.482608405Z",
+  "closed_at": "2026-07-22T16:16:01.482608405Z",
+  "close_reason": "All findings fixed in spec/02-physical-link.md CCP-16 section. Three codereview passes completed with fixes applied after each. Main bead awaits 3 clean passes confirmation.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-fldh",
+      "depends_on_id": "project-LICHEN-da2q.16.5",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:14:48.176403274Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

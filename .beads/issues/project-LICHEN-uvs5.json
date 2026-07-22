@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-uvs5",
+  "title": "[codereview-pass3-1] coap_status.c still contains non-SPDX comments and section separators",
+  "description": "lichen/subsys/lichen/coap/coap_status.c: many /* comments */ and ── separators violate NO COMMENTS policy. Validation for CBOR overflow uses custom ctx but map_count calculation ignores txq/fwd fields in struct. Update test vectors for ENOBUFS when buffer full.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:06:50.020906906Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:10:57.336731942Z",
+  "started_at": "2026-07-22T16:08:40.538506562Z",
+  "closed_at": "2026-07-22T16:10:57.336731942Z",
+  "close_reason": "Fixed typing, added ccp vectors+README, cleaned coap_status.c dead code+map_count, ENOBUFS coverage; 3 codereviews passed; gates passed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-uvs5",
+      "depends_on_id": "project-LICHEN-2g58",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:06:50.117232346Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

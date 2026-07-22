@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-dp4j.2.1",
+  "title": "[codereview] After renaming in messages.py, scheduler.py and tests still reference old current_channel kwarg and attribute",
+  "description": "The field rename in AnnounceMessage broke constructor calls in scheduler.py:176,193 and various tests. Also update docstrings, comments in other files for consistency with CCP-9 rx_channel. Tag: codereview. Parent: project-LICHEN-dp4j.2",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:27:42.068513481Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:32:49.302570304Z",
+  "started_at": "2026-07-22T17:31:08.565772377Z",
+  "closed_at": "2026-07-22T17:32:49.302570304Z",
+  "close_reason": "Fixed all current_channel -\u003e rx_channel renames in messages.py, scheduler.py, tests; updated validation to 0-7, all docs/comments. Fixed E501 lint (new bead wzpz). 3 clean codereview passes: correctness (tests pass, interop with Rust), security (signed rx_channel), robustness (copy in with_incremented). Ruff and pytest clean.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-dp4j.2.1",
+      "depends_on_id": "project-LICHEN-dp4j.2",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:27:42.1830582Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

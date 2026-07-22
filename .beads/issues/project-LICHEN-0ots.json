@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-0ots",
+  "title": "[codereview-pass2] coap_dtn.c: missing #include \u003czephyr/net/net_ip.h\u003e or sockaddr_in6 cast for IID extraction in rate limit",
+  "description": "To compute slot from addr for per-IID, needs cast to sockaddr_in6 and access sin6_addr. Current edit doesn't update the if conditions. Security: untrusted addr_len check needed. P1.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:26:06.077897639Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:26:58.385826542Z",
+  "closed_at": "2026-07-22T15:26:58.385826542Z",
+  "close_reason": "net_ip.h included; sockaddr_in6 cast and AF_INET6 check added with addr_len guard"
+}

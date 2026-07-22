@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-2h1i.2.7",
+  "title": "Gateway web UI/dashboard for crowd map (Leaflet.js or similar), confessions feed, telemetry graphs, dead drop admin",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "feature",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:37:51.699052337Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:44:18.862965166Z",
+  "started_at": "2026-07-22T14:42:21.444672286Z",
+  "closed_at": "2026-07-22T14:44:18.862965166Z",
+  "close_reason": "Implemented dashboard planning in PRFAQ using Rust gateway \u0026 Python patterns + CoAP/SenML backend for Leaflet map, confessions, graphs, dead drop admin. 3 codereview passes (no P0-P2 findings; all opinion-level addressed). Gates (cargo check, pytest coap) passed. Closed both beads.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2h1i.2.7",
+      "depends_on_id": "project-LICHEN-2h1i.2",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:37:51.782847941Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-da2q.11.3",
+  "title": "Zephyr: CCP-11 requirements from da2q context",
+  "description": "Zephyr implementation for CCP-11 Dynamic Channel Selection requirements from da2q context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:46.579392441Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:10:06.882728534Z",
+  "started_at": "2026-07-22T17:06:58.623983568Z",
+  "closed_at": "2026-07-22T17:10:06.882728534Z",
+  "close_reason": "Zephyr dynamic channel selection using hash_32 integrated with TDMA/RPL in lora_l2.c + lr1110; tests added; 3 codereview passes; west native_sim + pytest passed; linked to da2q.11/13; independent vector oracles only",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability",
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.11.3",
+      "depends_on_id": "project-LICHEN-da2q.11",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:46.685557264Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

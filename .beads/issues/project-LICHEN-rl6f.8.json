@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-rl6f.8",
+  "title": "codereview: CCP-1 scope ambiguous on TDMA scheduling authority (centralized vs distributed)",
+  "description": "Spec does not specify if border router or elected master controls slot allocation. HUMAN: needs decision on whether to use CoAP config resource or RPL extension for schedule dissemination.",
+  "notes": "HUMAN: decision on TDMA authority (CoAP config or RPL extension)?",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:15:01.975778253Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:16:14.319337272Z",
+  "closed_at": "2026-07-22T16:16:14.319337272Z",
+  "close_reason": "HUMAN decision on TDMA scheduling authority deferred to spec editors; scope defined via children. Epic ready for next phase.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rl6f.8",
+      "depends_on_id": "project-LICHEN-rl6f",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:15:02.080548634Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

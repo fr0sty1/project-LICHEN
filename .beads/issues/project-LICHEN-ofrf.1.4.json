@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ofrf.1.4",
+  "title": "codereview-pass3: CCP-16 robustness incomplete without desync FSM",
+  "description": "The overview mentions desync recovery but does not include or reference the state machine for desync/join/drift as required by the parent epic project-LICHEN-ofrf and chunk task. The multi-root section is good start but robustness requires explicit FSM table with states (UNSYNC, ACQUIRING, SYNCED, DRIFTING), transitions, timers (e.g. beacon-timeout, version-hold), actions. This is P1 for the robustness focus of this bead. Parallel desync research noted in task not incorporated.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:24:50.330840194Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:25:39.298035869Z",
+  "closed_at": "2026-07-22T16:25:39.298035869Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ofrf.1.4",
+      "depends_on_id": "project-LICHEN-ofrf.1",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:24:50.434760863Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

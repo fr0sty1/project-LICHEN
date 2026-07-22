@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-9af5",
+  "title": "codereview pass 2 chunk1: vectors not yet updated for now() timing tests in ccp_load_balancing.json",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:41:29.893491484Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:45:44.771980344Z",
+  "started_at": "2026-07-22T16:44:07.222774132Z",
+  "closed_at": "2026-07-22T16:45:44.771980344Z",
+  "close_reason": "updated ccp_load_balancing.json vectors for now() timing tests per oracle; aligned all pseudocode timing primitives",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9af5",
+      "depends_on_id": "project-LICHEN-r80h",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:41:30.010517873Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

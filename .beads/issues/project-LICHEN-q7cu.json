@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-q7cu",
+  "title": "codereview-pass-2 post-TOC-edit: Fragmentation profile in draft-lichen-schc-lora-00.md:333 uses old FCN 6bit/W 1bit but main spec uses simplified header; update params and diagrams to current canonical",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:48:32.348596755Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:49:06.380632586Z",
+  "started_at": "2026-07-22T14:49:06.380632586Z",
+  "lease_expires_at": "2026-07-22T14:54:06.380632586Z",
+  "heartbeat_at": "2026-07-22T14:49:06.380632586Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-q7cu",
+      "depends_on_id": "project-LICHEN-g38a",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T14:48:32.44352842Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

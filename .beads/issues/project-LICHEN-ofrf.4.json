@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ofrf.4",
+  "title": "codereview-pass2: add state diagram or mermaid for desync machine",
+  "description": "The table is good but visual state diagram (Mermaid or ASCII) would improve clarity for transitions involving RPL version, SFN reset, time-provider stratum changes. P2.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:24:32.245412415Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:25:19.800710521Z",
+  "closed_at": "2026-07-22T16:25:19.800710521Z",
+  "close_reason": "Closed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ofrf.4",
+      "depends_on_id": "project-LICHEN-ofrf",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:24:32.351077106Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

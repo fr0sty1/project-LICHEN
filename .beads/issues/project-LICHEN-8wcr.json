@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-8wcr",
+  "title": "[codereview-pass3] coap_status.c error handling incomplete for capacity",
+  "description": "When encode returns 0 (overflow/ENOBUFS), status_get and notify still return INTERNAL_ERROR (2.05? no, 5.00). Should distinguish capacity exhaustion per spec bufferbloat appendix. Return 4.29 Too Many Requests or update to use ENOBUFS errno mapping. Struct capacity fields now documented but not encoded. Tag: codereview",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:06:51.208390635Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:08:18.657652029Z",
+  "started_at": "2026-07-22T16:07:02.738213783Z",
+  "closed_at": "2026-07-22T16:08:18.657652029Z",
+  "close_reason": "Error code chunk fixed with proper CoAP 4.13 for capacity/encode errors. 3 clean review passes completed.",
+  "labels": [
+    "codereview"
+  ]
+}

@@ -3,3 +3,5 @@ board:
   vendor: heltec
   socs:
   - name: esp32s3
+    variants:
+    - name: procpu

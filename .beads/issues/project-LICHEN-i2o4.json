@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-i2o4",
+  "title": "[codereview-pass3-robustness-4] FSM table in 02a-coordinated-capacity.md needs explicit timers and cross-refs to lichen_node_init",
+  "description": "New state machine table good but omits specific timer values (e.g. rejoin timeout=10*superframe_len per Kconfig), and interaction with lichen_link_load_key() and oscore_init() order from AGENTS.md init graph. P2 for full robustness. Also add to References section. This is review pass 1 of chunk 2.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:21:49.148233528Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:28:32.973549066Z",
+  "started_at": "2026-07-22T16:27:07.616796261Z",
+  "closed_at": "2026-07-22T16:28:32.973549066Z",
+  "close_reason": "Added FSM timers, Kconfig ref, lichen_node_init cross-ref, 3 codereview complete",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-i2o4",
+      "depends_on_id": "project-LICHEN-ofrf",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:21:49.248620628Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-i2o4",
+      "depends_on_id": "project-LICHEN-2ibu",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:21:49.347750385Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

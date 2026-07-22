@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-0rqi",
+  "title": "codereview-P0 medium.get_rx_candidates signature break",
+  "description": "python/src/lichen/sim/medium.py:134 - Added rx_frequency_hz param but simulation.py:808,907 and node_server.py calls do not pass it. Will raise TypeError on next RX. Also detect_activity needs parallel update for CAD in rendezvous. P0 correctness.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:11:46.577825145Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:17:45.363714144Z",
+  "started_at": "2026-07-22T17:11:56.702562687Z",
+  "closed_at": "2026-07-22T17:17:45.363714144Z",
+  "close_reason": "Fixed get_rx_candidates signature, added rx_frequency_hz=None with filter for rendezvous/CAD, updated all callers explicitly, independent oracle in ccp9 vectors with expected=7, explicit freq in medium/start_tx, added _ccp9_cases test with external crc32 oracle, ruff clean after 3 passes, pytest test_vectors+ccp9 PASS, no test changes/weakening",
+  "labels": [
+    "codereview"
+  ]
+}

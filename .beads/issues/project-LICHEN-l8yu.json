@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-l8yu",
+  "title": "P4/opinion: load_factor thresholds (70/90) arbitrary; should reference CCP-16 load rebalance vectors or Kconfig default",
+  "description": "Add normative values from ccp_load_balancing.json or justify. codereview tag. discovered-from:project-LICHEN-8gac",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:41:52.266625487Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:42:32.221237207Z",
+  "closed_at": "2026-07-22T16:42:32.221237207Z",
+  "close_reason": "Fixed: load_factor tied to ccp_load_balancing.json",
+  "labels": [
+    "codereview"
+  ]
+}

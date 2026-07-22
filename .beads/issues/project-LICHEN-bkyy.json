@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-bkyy",
+  "title": "[codereview-pass3] senml.c SENML_VALUE_STRING for DTN messages",
+  "description": "Implementation complete. Added to union, encode case correct, no new comments added, follows existing zcbor pattern exactly. DTN can now use senml_add_string or set type directly for messages per spec appendix. Tests pass after this. Ready to close parent after 3 passes.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:44:45.490628191Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:44:48.79173434Z",
+  "closed_at": "2026-07-22T15:44:48.79173434Z",
+  "close_reason": "3 codereview passes completed with no P0/P1 findings; string support implemented per spec for DTN",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-bkyy",
+      "depends_on_id": "project-LICHEN-2ysa",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:44:45.59003014Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

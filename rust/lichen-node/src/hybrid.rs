@@ -23,9 +23,11 @@ use lichen_core::loadng::{Idle, RouteDiscovery, Rreq, Searching};
 /// Classification of IPv6 destination address (spec 7.2 table).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AddressClass {
+    /// fe80::/10 - direct neighbor, one hop away.
     LinkLocal,
+    /// ULA (fd00::/8) or configured mesh GUA - peer in mesh.
     MeshLocal,
-    Yggdrasil,
+    /// Other GUA or unknown - route via border router.
     External,
 }
 
@@ -84,11 +86,12 @@ impl RouteResult {
 #[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub struct PendingPacket {
+    /// Serialized IPv6 packet data.
     pub data: Vec<u8>,
+    /// Destination address being discovered.
     pub destination: [u8; 16],
-    pub priority: u8,
+    /// Timestamp when queued (for timeout).
     pub queued_at_ms: u32,
-    pub priority: u8,
 }
 
 /// Active LOADng route discovery state.
@@ -194,23 +197,24 @@ impl HybridRouter {
 
     /// Classify an IPv6 destination address (spec 7.2 table).
     pub fn classify_address(&self, addr: &[u8; 16]) -> AddressClass {
+        // Link-local: fe80::/10 (first 10 bits = 1111111010)
+        // Check bytes: fe80:: through febf::
         if addr[0] == 0xfe && (addr[1] & 0xc0) == 0x80 {
             return AddressClass::LinkLocal;
         }
-        if addr[0] == 0x02 {
-            return AddressClass::MeshLocal;
-        }
+
+        // ULA: fd00::/8
         if addr[0] == 0xfd {
             return AddressClass::MeshLocal;
         }
-        if addr[0] == 0x02 {
-            return AddressClass::Yggdrasil;
-        }
+
+        // Check configured mesh prefixes
         for prefix in &self.mesh_prefixes {
             if prefix.contains(addr) {
                 return AddressClass::MeshLocal;
             }
         }
+
         AddressClass::External
     }
 
@@ -227,9 +231,11 @@ impl HybridRouter {
         let addr_class = self.classify_address(dst);
 
         match addr_class {
-            AddressClass::LinkLocal => RouteResult::forward(*dst),
+            AddressClass::LinkLocal => {
+                // Link-local: destination IS the next hop
+                RouteResult::forward(*dst)
+            }
             AddressClass::MeshLocal => self.route_mesh_local(dst, now_ms),
-            AddressClass::Yggdrasil => self.route_external(),
             AddressClass::External => self.route_external(),
         }
     }
@@ -299,19 +305,18 @@ impl HybridRouter {
     }
 
     /// Queue a packet pending route discovery.
-    pub fn queue_pending(&mut self, data: Vec<u8>, dst: [u8; 16], priority: u8, now_ms: u32) {
+    pub fn queue_pending(&mut self, data: Vec<u8>, dst: [u8; 16], now_ms: u32) {
         let pending = PendingPacket {
             data,
             destination: dst,
-            priority,
             queued_at_ms: now_ms,
-            priority,
         };
 
         let queue = self.pending_queue.entry(dst).or_default();
 
+        // Limit queue size per destination
         if queue.len() >= self.max_pending_per_dest {
-            queue.pop_front();
+            queue.pop_front(); // Drop oldest
         }
         queue.push_back(pending);
     }
@@ -346,14 +351,8 @@ impl HybridRouter {
     /// Start a LOADng route discovery for a destination.
     /// Returns the RREQ to broadcast.
     pub fn start_discovery(&mut self, dst: [u8; 16], now_ms: u32) -> Rreq {
-        // Check if discovery already active
-        if self.active_discoveries.iter().any(|d| d.destination == dst) {
-            // Return existing RREQ
-            let discovery = self
-                .active_discoveries
-                .iter()
-                .find(|d| d.destination == dst)
-                .unwrap();
+        if let Some(discovery) = self.active_discoveries.iter_mut().find(|d| d.destination == dst) {
+            discovery.sent_at_ms = now_ms;
             return discovery.discovery.rreq();
         }
 
@@ -516,6 +515,7 @@ impl HybridRouter {
 }
 
 #[cfg(feature = "std")]
+/// Validate geographic coordinates.
 fn is_valid_coords(coords: &GeoCoords) -> bool {
     if coords.lat.is_nan()
         || coords.lat.is_infinite()
@@ -524,13 +524,16 @@ fn is_valid_coords(coords: &GeoCoords) -> bool {
     {
         return false;
     }
+    // Reject null island (0, 0) as likely invalid GPS data
     if coords.lat == 0.0 && coords.lon == 0.0 {
         return false;
     }
+    // Valid range
     coords.lat >= -90.0 && coords.lat <= 90.0 && coords.lon >= -180.0 && coords.lon <= 180.0
 }
 
 #[cfg(feature = "std")]
+/// Haversine distance in meters between two (lat, lon) points.
 fn haversine(c1: &GeoCoords, c2: &GeoCoords) -> f32 {
     const EARTH_RADIUS_M: f32 = 6_371_000.0;
 
@@ -543,6 +546,7 @@ fn haversine(c1: &GeoCoords, c2: &GeoCoords) -> f32 {
     let dlon = lon2 - lon1;
 
     let a = (dlat / 2.0).sin().powi(2) + lat1.cos() * lat2.cos() * (dlon / 2.0).sin().powi(2);
+    // Clamp for floating point errors
     let c = 2.0 * a.min(1.0).sqrt().asin();
 
     EARTH_RADIUS_M * c
@@ -599,15 +603,6 @@ mod tests {
     fn classify_ula() {
         let router = HybridRouter::new(link_local(1));
         assert_eq!(router.classify_address(&ula(2)), AddressClass::MeshLocal);
-    }
-
-    #[test]
-    fn classify_02xx_primary() {
-        let router = HybridRouter::new(link_local(1));
-        let mut addr = [0u8; 16];
-        addr[0] = 0x02;
-        addr[15] = 2;
-        assert_eq!(router.classify_address(&addr), AddressClass::MeshLocal);
     }
 
     #[test]
@@ -697,8 +692,8 @@ mod tests {
         let mut router = HybridRouter::new(link_local(1));
         let dst = ula(2);
 
-        router.queue_pending(vec![1, 2, 3], dst, 2, 1000);
-        router.queue_pending(vec![4, 5, 6], dst, 2, 2000);
+        router.queue_pending(vec![1, 2, 3], dst, 1000);
+        router.queue_pending(vec![4, 5, 6], dst, 2000);
 
         let pending = router.get_pending(&dst);
         assert_eq!(pending.len(), 2);
@@ -712,9 +707,9 @@ mod tests {
         router.max_pending_per_dest = 2;
         let dst = ula(2);
 
-        router.queue_pending(vec![1], dst, 2, 1000);
-        router.queue_pending(vec![2], dst, 2, 2000);
-        router.queue_pending(vec![3], dst, 2, 3000);
+        router.queue_pending(vec![1], dst, 1000);
+        router.queue_pending(vec![2], dst, 2000);
+        router.queue_pending(vec![3], dst, 3000); // Should evict [1]
 
         let pending = router.get_pending(&dst);
         assert_eq!(pending.len(), 2);
@@ -727,8 +722,8 @@ mod tests {
         let mut router = HybridRouter::new(link_local(1));
         let dst = ula(2);
 
-        router.queue_pending(vec![1], dst, 2, 1000);
-        router.queue_pending(vec![2], dst, 2, 5000);
+        router.queue_pending(vec![1], dst, 1000);
+        router.queue_pending(vec![2], dst, 5000);
 
         let expired = router.expire_pending(6000, 4000);
         assert_eq!(expired, 1);

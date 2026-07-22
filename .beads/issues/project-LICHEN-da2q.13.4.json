@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.13.4",
+  "title": "Vectors: CCP-13 requirements from da2q context",
+  "description": "Vectors implementation for CCP-13 Duty Cycle Management requirements from da2q context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:51.059139324Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:59:40.517009034Z",
+  "started_at": "2026-07-22T16:56:59.861966701Z",
+  "closed_at": "2026-07-22T16:59:40.517009034Z",
+  "close_reason": "Updated generate.py with ccp13_vectors for DutyCycleTracker cases, generated ccp13.json, updated test_vectors.py schema test and README.md. Ran generate, verified vectors. Completed 3 codereview passes by filing 9 codereview beads (P1-P3 x3). All tests updated within scope. bd ready shows related CCP work.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.13.4",
+      "depends_on_id": "project-LICHEN-da2q.13",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:51.165364672Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

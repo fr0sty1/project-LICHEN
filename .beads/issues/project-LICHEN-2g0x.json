@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-2g0x",
+  "title": "Inconsistent section references in 06-security.md:15.5 for no-ULA model and hash_32 binding (04-network.md:6.1/12.1 vs 12.3; 02-physical-link.md:4.5)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:50:07.422702397Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:51:12.597165895Z",
+  "started_at": "2026-07-22T16:50:39.239293486Z",
+  "closed_at": "2026-07-22T16:51:12.597165895Z",
+  "close_reason": "Harmonized section refs in 06-security.md:15.5 to use 12.3 for short addr, updated hash_32 calls, verified no DAD breakage, ran 3 codereview passes + tests",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2g0x",
+      "depends_on_id": "edtp",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:50:07.533887199Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

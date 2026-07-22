@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-w86r",
+  "title": "[codereview-pass1] SFN section chunk2: delta ref improved but example still pending",
+  "description": "spec/02a-coordinated-capacity.md:114-118 - Pass1 correctness: cross-ref added but concrete pseudocode example for 0xFFFFFFFF boundary (e.g. current=0x00000000 last=0xFFFFFFFFU =\u003e delta=1) not yet inserted. P2. Discovered-from:project-LICHEN-yne7",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:24:32.744664868Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:28:19.738835702Z",
+  "started_at": "2026-07-22T16:26:49.809369628Z",
+  "closed_at": "2026-07-22T16:28:19.738835702Z",
+  "close_reason": "Added explicit pseudocode for 0xFFFFFFFF SFN delta boundary in 02a-coordinated-capacity.md SFN section (2 chunks). Ran codereview 3x via beads project-LICHEN-uyz9, project-LICHEN-i50p + convergence pass (all fixed, no P\u003e1 findings left). Updated test vector cross-refs. Verified with bd ready.",
+  "labels": [
+    "codereview"
+  ]
+}

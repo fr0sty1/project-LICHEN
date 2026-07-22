@@ -6,7 +6,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include <zephyr/sys/util.h>
 
 #include <lichen/meshtastic/codec.h>
 
@@ -68,8 +67,6 @@
 #define MESHTASTIC_MODEM_LONG_FAST 0U
 #define MESHTASTIC_DEFAULT_TX_POWER_DBM 14
 #define MESHTASTIC_NODE_INFO_BROADCAST_SECS 900U
-#define MESHTASTIC_BROADCAST_NODE 0xffffffffU
-#define LICHEN_DEFAULT_NODE_NUM 0x4c494348U
 
 #define MY_INFO_NODE_NUM_FIELD 1U
 #define MY_INFO_REBOOT_COUNT_FIELD 8U
@@ -450,8 +447,6 @@ static int pb_write_string_field(uint8_t *buf, size_t buflen, size_t *pos,
 static int copy_tmp_payload(const uint8_t *tmp, size_t len,
 			    uint8_t *buf, size_t buflen)
 {
-	BUILD_ASSERT(LICHEN_MESHTASTIC_FROM_RADIO_MAX <= INT_MAX,
-		     "LICHEN_MESHTASTIC_FROM_RADIO_MAX must fit in int");
 	if (buf == NULL) {
 		return -EINVAL;
 	}
@@ -545,11 +540,8 @@ static const char *info_pio_env(const struct lichen_meshtastic_local_info *info)
 
 static uint32_t info_node_num(const struct lichen_meshtastic_local_info *info)
 {
-	if (info == NULL || info->node_num == 0U ||
-	    info->node_num == MESHTASTIC_BROADCAST_NODE) {
-		return LICHEN_DEFAULT_NODE_NUM;
-	}
-	return info->node_num;
+	return (info != NULL && info->node_num != 0U) ? info->node_num :
+							LICHEN_MESHTASTIC_DEFAULT_NODE_NUM;
 }
 
 static uint32_t info_min_app_version(
@@ -608,9 +600,6 @@ static int write_user(uint8_t *buf, size_t buflen, size_t *pos,
 				     'a' + (nibble - 10));
 	}
 	id[9] = '\0';
-	if (id[0] != '!' || id[9] != '\0') {
-		return -EINVAL;
-	}
 
 	if (pb_write_string_field(buf, buflen, pos, USER_ID_FIELD, id) < 0 ||
 	    pb_write_string_field(buf, buflen, pos, USER_LONG_NAME_FIELD,

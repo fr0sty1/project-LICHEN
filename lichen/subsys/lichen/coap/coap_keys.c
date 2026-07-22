@@ -584,8 +584,7 @@ static size_t encode_iso8601_timestamp(uint32_t unix_time, char *buf, size_t buf
 	uint32_t days = unix_time / 86400;
 	uint32_t secs = unix_time % 86400;
 	uint16_t year = 1970;
-	uint8_t month = 1;
-	uint8_t day = 1;
+	uint8_t month = 1, day = 1;
 
 	static const uint16_t days_in_month[] = {
 		31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
@@ -639,7 +638,7 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 	cbor_put_key(buf, &off, "keys");
 
 	/* Get all keys */
-	struct lichen_key_entry entries[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
+	static struct lichen_key_entry entries[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
 	size_t n = lichen_key_store_list(entries, ARRAY_SIZE(entries));
 
 	/* Reserve a fixed-width definite array header; patch its count after

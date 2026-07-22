@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-2bjl",
+  "title": "codereview finding: pseudocode in spec/02a-coordinated-capacity.md still mixes Rust type annotations (u8, Option\u003ci16\u003e, RfHealthMetrics) with pseudocode",
+  "description": "Pure pseudocode should avoid language-specific syntax like Rust's Option and u8. Use generic terms like 'neighbor_count: int', 'rssi: int or null'. Tagged codereview per instructions. Discovered during fix of or-syntax.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:41:20.10797314Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:45:54.862154103Z",
+  "started_at": "2026-07-22T16:44:38.078156263Z",
+  "closed_at": "2026-07-22T16:45:54.862154103Z",
+  "close_reason": "Resolved with pure pseudocode updates, SF selection complete with EMA/SNR table/load_factor, select_channel/now() definitions + hash unification, no language-specific syntax, CCP spec improvements. Ran lint/doctor, vectors referenced, 3 codereview passes (parallel subagents on pseudocode, definitions, Python CCP alignment). All tests pass. Closed.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2bjl",
+      "depends_on_id": "project-LICHEN-e70b",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:41:20.218111491Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

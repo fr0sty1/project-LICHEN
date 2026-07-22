@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-szmi.2",
+  "title": "codereview: guard_time and drift numbers inconsistent with formula in description",
+  "description": "The example numbers for 1% drift should be cross-checked against 2*drift_rate*interval formula. Update vectors or description for exact match.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:21:04.21315824Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:22:12.69988633Z",
+  "closed_at": "2026-07-22T16:22:12.69988633Z",
+  "close_reason": "All codereview findings fixed: slot now matches CRC16=1, drift_ppm=5000 for exact 50ms guard match, _write call added to main+generated successfully, README updated; 3 clean passes with no new P0-P2 findings after fixes",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-szmi.2",
+      "depends_on_id": "project-LICHEN-szmi",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:21:04.31923575Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

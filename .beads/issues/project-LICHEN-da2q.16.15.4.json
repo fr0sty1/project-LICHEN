@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-da2q.16.15.4",
+  "title": "codereview: CCP-16 algorithm underspecified",
+  "description": "Define exact TDMA hash function, density calculation, SNR thresholds for adaptive SF, multi-channel rules. Add pseudocode. Link to test/vectors.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:23:33.142788677Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:24:54.973852161Z",
+  "started_at": "2026-07-22T16:23:47.10063109Z",
+  "closed_at": "2026-07-22T16:24:54.973852161Z",
+  "close_reason": "fixed CCP-16 spec with TDMA hash pseudocode SNR thresholds vectors link/rpl/client scope edits",
+  "labels": [
+    "codereview",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.16.15.4",
+      "depends_on_id": "project-LICHEN-da2q.16.15",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:23:33.260415824Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

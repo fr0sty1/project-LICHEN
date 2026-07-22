@@ -80,6 +80,10 @@ class TestTxQueueBasic:
         q = TxQueue(capacity=8)
         assert q.capacity == 8
 
+    def test_invalid_capacity(self):
+        with pytest.raises(ValueError):
+            TxQueue(capacity=0)
+
     def test_clear_removes_all(self):
         """clear() empties the queue."""
         q = TxQueue()

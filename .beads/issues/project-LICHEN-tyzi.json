@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-tyzi",
+  "title": "[CODEREVIEW-P2] test_vectors.py lacks validation for ccp15 SF/EMA/load_factor/hash_32 logic",
+  "description": "Schema test added but no _ccp15_cases() or parametrized test that reimplements pseudocode and asserts expected_sf, expected_channel, etc match computed from density/snr_ema/load_factor/ts_now/node_iid. This is required for 'Python/vectors/tests. Fix ALL'. Add reference impl in generate or lichen.tdma. discovered-from:1vgs la5m zlw5 7hq8",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:46:40.971937754Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:47:36.563490011Z",
+  "started_at": "2026-07-22T16:47:06.87461162Z",
+  "closed_at": "2026-07-22T16:47:36.563490011Z",
+  "close_reason": "Fixed in schema/test/vectors updates and test run.",
+  "labels": [
+    "codereview"
+  ]
+}

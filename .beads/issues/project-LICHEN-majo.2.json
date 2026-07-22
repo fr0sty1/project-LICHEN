@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-majo.2",
+  "title": "[codereview-pass2] TDMA Kconfig help text too vague; missing reference to struct in link.h and init ordering",
+  "description": "Help should reference the TDMA struct to be added to link.h and exact placement in lichen_node_init after lichen_link_init but before oscore_init. File as codereview. Fix before next pass.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:20:01.536591937Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:20:47.407179822Z",
+  "started_at": "2026-07-22T16:20:09.585501732Z",
+  "closed_at": "2026-07-22T16:20:47.407179822Z",
+  "close_reason": "Fixed in integration pass; 3 clean codereview passes with only opinion/P4 findings",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-majo.2",
+      "depends_on_id": "project-LICHEN-majo",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:20:01.643816142Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

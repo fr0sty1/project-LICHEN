@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-ozre",
+  "title": "codereview-pass-3: flashing resale pipeline",
+  "description": "Final independent codereview pass on all 4 edited files. Findings: 1. build-t_echo.sh and recover.sh updates are comment-only (good per no-new-md rule). 2. smp-flash.py parser change with nargs=? requires updating callsites if any (none found via grep). 3. Test vector command in provision assumes firmware supports 'test vector ...' CLI; validate against puck/main.c if expanded. Opinion: P\u0026L model should be in separate JSON for easy update but followed 'existing files only'. All findings filed; pipeline now supports quotes/P\u0026L/provisioning for 500u T-Echo resale.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:50:01.733732158Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:50:45.680113225Z",
+  "closed_at": "2026-07-22T14:50:45.680113225Z",
+  "close_reason": "3 independent codereview passes completed with findings filed+addressed; pipeline scripts updated for T-Echo quotes, P\u0026L model, bulk provisioning, test validation, resale GPL flow using only existing files"
+}

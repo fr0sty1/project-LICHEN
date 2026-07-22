@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-da2q.15.16",
+  "title": "codereview: Python interop with ccp16.json",
+  "description": "Review for exact vector match, no fabrication of test values",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:36:19.886787189Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:36:35.816872792Z",
+  "closed_at": "2026-07-22T16:36:35.816872792Z",
+  "close_reason": "Python side to follow; no test value fabrication",
+  "labels": [
+    "codereview",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.15.16",
+      "depends_on_id": "project-LICHEN-da2q.15",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:36:20.005748022Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

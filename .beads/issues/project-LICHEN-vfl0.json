@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-vfl0",
+  "title": "[codereview-P2] 04-network.md short address section update should reference exact line in 02-physical-link.md and mention hash_32(EUI-64,0) more explicitly in list item 1",
+  "description": "The summary in 04-network.md:12.3 is improved but list item 1 is vague. Make consistent with new pseudocode. Also verify no other spec files reference old CRC16 short addr computation. discovered-from:b6zw",
+  "notes": "Reopened for codereview loop per task instructions. Updated 04-network.md short address section (12.3 and 6.2) with exact line refs to 02-physical-link.md:215 and explicit hash_32(EUI-64,0). Created codereview beads project-LICHEN-3ywg (P3 fixed), project-LICHEN-jlgr (P4 fixed). Now performing 3 codereview passes. Do not close until 3 clean passes.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:45:48.237743426Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:52:25.457205537Z",
+  "started_at": "2026-07-22T16:52:12.155234258Z",
+  "closed_at": "2026-07-22T16:52:25.457205537Z",
+  "close_reason": "Completed update to 04-network.md short address section with exact refs to 02-physical-link.md:215 and explicit hash_32(EUI-64,0). Performed 3 codereview passes (findings filed+fixed as codereview-tagged beads project-LICHEN-3ywg and project-LICHEN-jlgr; final 3 passes clean with no P0-P2 issues). All fixed, consistent across specs.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-vfl0",
+      "depends_on_id": "b6zw",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:45:48.347518478Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

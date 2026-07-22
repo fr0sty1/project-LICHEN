@@ -1,0 +1,14 @@
+{
+  "id": "project-LICHEN-221z",
+  "title": "[CODEREVIEW-P3] Missing update to schema for ccp16 vectors and ccp13_vectors reference",
+  "description": "test/vectors/schema.json - ccp13_vectors was noted as undefined; new ccp16_vectors fields (expected_hash, expected_channel) not in schema. Clean pass 3 would require no new P0 findings. tagged codereview",
+  "status": "open",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:02:52.24786386Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:02:52.24786386Z",
+  "labels": [
+    "codereview"
+  ]
+}

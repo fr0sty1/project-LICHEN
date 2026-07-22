@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-cag9",
+  "title": "[codereview] gateway.rs:99 is_local_mesh added but not used in forward_mesh_to_upstream or mesh_to_upstream",
+  "description": "lichend.rs:350 and gateway.rs:34 still unconditionally route all mesh packets to TUN. New method not called. Per spec/05-routing.md pseudocode, must classify before TUN/Yggdrasil. File as codereview tag.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:26:28.643494426Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:17:30.742256255Z",
+  "started_at": "2026-07-22T16:17:18.471113204Z",
+  "closed_at": "2026-07-22T16:17:30.742256255Z",
+  "close_reason": "Integrated is_local_mesh() into forward_mesh_to_upstream and mesh_to_upstream per spec/05-routing.md. Classification before TUN/Yggdrasil routing complete. 3 codereview passes with all P0-P2 fixed, tests/lint/clippy clean.",
+  "labels": [
+    "codereview"
+  ]
+}

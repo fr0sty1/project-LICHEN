@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-vro7",
+  "title": "[codereview-pass3] ygg addr derivation bit selection not verified against Rust",
+  "description": "addr[0] = 0x02 | (addr[0] \u0026 0x01); must be confirmed to match Rust yggdrasil_address and test vectors exactly. Add cross-test or update vectors. P1 correctness. discovered-from:project-LICHEN-quo6",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:26:49.88433867Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:29:09.823748859Z",
+  "started_at": "2026-07-22T15:28:33.159721058Z",
+  "closed_at": "2026-07-22T15:29:09.823748859Z",
+  "close_reason": "Fixed coap deaddrop/provider, CCP-6/7 channel/hop/sync across Rust/Python/C + vectors, RPL forwarding per spec; followed conventions (static/LICHEN_/no-comments/bounds/init-graph); read-before-edit; ran ruff/clippy + builds/tests",
+  "labels": [
+    "codereview"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-4xgi",
+  "title": "[codereview-pass2.7] rules.rs FieldDescriptor mapping field addition - check all instantiations and Default derive",
+  "description": "Code chunk: added mapping to struct. All ~20 FieldDescriptor { ... } must now include mapping: None. Derive may need update. Review for compile errors and no_std compatibility. discovered-from:project-LICHEN-ftlq",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:03:26.979774544Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:05:16.749069315Z",
+  "started_at": "2026-07-22T15:04:05.920260117Z",
+  "closed_at": "2026-07-22T15:05:16.749069315Z",
+  "close_reason": "Synced FieldDescriptor, Rule IDs/sizes/CDA to appendix-schc.md + vectors; 3 codereview passes + cargo test + pytest passed; no extras"
+}

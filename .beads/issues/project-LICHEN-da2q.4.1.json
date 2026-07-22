@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.4.1",
+  "title": "Python impl: multi-channel frequency allocation plans",
+  "description": "Python implementation for CCP-4 channel plans inferred from da2q.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:12:29.834770216Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:28:08.291752813Z",
+  "started_at": "2026-07-22T17:27:49.058063572Z",
+  "closed_at": "2026-07-22T17:28:08.291752813Z",
+  "close_reason": "Python multi-channel freq allocation, rendezvous, TDMA integration complete with test vectors. 3 codereview passes, all findings fixed in Python Rust Zephyr.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.4.1",
+      "depends_on_id": "project-LICHEN-da2q.4",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:12:29.93717033Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

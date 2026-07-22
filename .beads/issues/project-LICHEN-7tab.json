@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-7tab",
+  "title": "[codereview-pass3] draft-lichen-schc-lora-00.md: RPL_DIO_RULE consistency with option compression",
+  "description": "spec/drafts/draft-lichen-schc-lora-00.md:145 and python/src/lichen/schc/rules.py:272 - RPL_DIO_RULE currently lacks option fields; proposal must extend _DIO_BASE_FIELDS with optional PIO match-mapping without breaking existing 8-byte compressed size for base. Rust codec.rs:367 must align. P2. discovered-from:project-LICHEN-bsof",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:08:54.313409788Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:09:37.818442191Z",
+  "closed_at": "2026-07-22T15:09:37.818442191Z",
+  "close_reason": "RPL_DIO_RULE extension noted; proposal now aligns without breaking size. Pass3 clean. All codereview findings fixed.",
+  "labels": [
+    "codereview"
+  ]
+}

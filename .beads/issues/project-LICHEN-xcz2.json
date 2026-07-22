@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-xcz2",
+  "title": "codereview: wire format comment uses non-standard abbreviation 'Cur Ch'",
+  "description": "rust/lichen-core/src/announce.rs:7 - Diagram should use 'Current Channel' or match Python/spec naming exactly for consistency. P3 readability. codereview pass1",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T17:16:59.218677837Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:34:55.794346215Z",
+  "closed_at": "2026-07-22T17:34:55.794346215Z",
+  "close_reason": "Fixed all docstring, wire format, constant, and attribute description issues for current_channel in announce messages across Python and Rust impls per CCP completion. Ran 3 independent codereview passes per workflow rule (no P0-P2 findings in final pass). Updated _FIXED_LENGTH, parsing, serialization, tests, and docs to match spec. Quality gates passed. Parallel fixes completed. No CCP left.",
+  "labels": [
+    "codereview"
+  ]
+}

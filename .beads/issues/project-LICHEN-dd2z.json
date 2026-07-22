@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-dd2z",
+  "title": "codereview-pass1 chunk1: update adaptive_sf_select note and select_channel to remove Rust types and .get() syntax",
+  "description": "Normative note still references Rust lora_phy::adaptive_sf and uses .get(ch, default) which is Python/Rust. Rewrite all functions as pure pseudocode with standard notation (IF, := , MOD, MAX, MIN). File P0 if it affects test vector match. Linked to project-LICHEN-e70b.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:41:53.288045144Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:45:40.04615761Z",
+  "started_at": "2026-07-22T16:44:06.235245356Z",
+  "closed_at": "2026-07-22T16:45:40.04615761Z",
+  "close_reason": "standardized adaptive_sf_select and select_channel to pure pseudocode (IF, :=, MOD, MAX, MIN); removed Rust lora_phy ref and .get()",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-dd2z",
+      "depends_on_id": "project-LICHEN-e70b",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:41:53.401430236Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

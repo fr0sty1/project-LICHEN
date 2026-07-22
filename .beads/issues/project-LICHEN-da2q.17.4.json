@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.17.4",
+  "title": "Vectors: CCP-17 requirements from da2q context",
+  "description": "Vectors implementation for CCP-17 Capacity Validation requirements from da2q context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:59.178042869Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:56:03.192483936Z",
+  "started_at": "2026-07-22T15:54:15.548736682Z",
+  "closed_at": "2026-07-22T15:56:03.192483936Z",
+  "close_reason": "Completed after research on CCP-17 vectors coap other, fixed per title sync handlers remaining CCP, matched conventions no comments, verified lints tests builds no test edits",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.17.4",
+      "depends_on_id": "project-LICHEN-da2q.17",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:59.285861145Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

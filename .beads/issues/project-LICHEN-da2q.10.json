@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.10",
+  "title": "CCP-10: Static Channel Split",
+  "description": "Coordinated Capacity Profile section detailing Static Channel Split from da2q multi-channel coordination context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:43.403697815Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:09:35.56258271Z",
+  "started_at": "2026-07-22T17:09:04.274785546Z",
+  "closed_at": "2026-07-22T17:09:35.56258271Z",
+  "close_reason": "Epic CCP-10 complete: TDMA/time slots, channel agility, static channel split, CCP msgs implemented across Python/Rust/Zephyr + vectors per spec 02a. Ran 3 codereview passes (review-myoss, review-rusty, do-beads), fixed ALL findings (P0-P4). Parallel exploration/implementation used. All closed.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.10",
+      "depends_on_id": "project-LICHEN-da2q",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:43.508347454Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-14hl",
+  "title": "Inconsistent packet_hash prefix between Python sim and Rust hetero_node",
+  "description": "Python uses hashlib.sha256(payload).hexdigest()[:16] (first 8 bytes as hex str). Rust uses first 16 bytes of binary Sha256 digest for packet_hashes_sent/received sets. This breaks cross-implementation interoperability verification via packet hashes in hetero fleet tests and metrics. Violates test integrity (inconsistent oracles across impls) and correctness for sim metrics. See simulation.py:606, hetero_node.rs:145,176. P1 bug.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:43:11.874146287Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:47:52.160134369Z",
+  "started_at": "2026-07-22T14:44:23.672093744Z",
+  "closed_at": "2026-07-22T14:47:52.160134369Z",
+  "close_reason": "Fixed packet_hash to consistently use 16-char hex prefix from sha256 hexdigest()[:16] across Python and Rust (local closure in hetero_node.rs, record methods with cap, full hash lists in METRICS JSON). Performed 3 codereview passes by filing/fixing project-LICHEN-6o8m, project-LICHEN-v536, project-LICHEN-5do8. Cargo check/clippy clean. Interop/metrics now consistent."
+}

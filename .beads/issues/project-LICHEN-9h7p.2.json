@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-9h7p.2",
+  "title": "[codereview-P1] Simulation loop does not yet integrate SFN based channel selection for tx/rx rendezvous",
+  "description": "The _handle_tx_start and barrier sync in Simulation must use node.hop_schedule or compute synchronized_hop_channel using current SFN/time before calling start_tx with channel. Add SFN tracking to Simulation. Matches ccp16.json vectors. Fix test integrity by using independent oracle. discovered-from:project-LICHEN-9h7p",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:07:05.448366288Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:08:22.904433737Z",
+  "closed_at": "2026-07-22T17:08:22.904433737Z",
+  "close_reason": "Fixed in synchronized hopping updates to SimNode/Simulation; channel propagation, immutability with tuple, docstring/tests addressed in passes",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9h7p.2",
+      "depends_on_id": "project-LICHEN-9h7p",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:07:05.565781121Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

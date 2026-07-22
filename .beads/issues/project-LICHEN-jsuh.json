@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-jsuh",
+  "title": "codereview-pass2.9: 06-security.md derivation",
+  "description": "Pass 3 (Completeness): Section ties together link, OSCORE, address, routing per parent epic notes. Updated cross-refs in other files now consistent. 3 passes on this file complete for pass2. No P0 findings. Remaining DAO/ULA cleanup in 04-network.md filed as P1 above. Ready for full spec consistency pass. file:spec/06-security.md:82 discovered-from:project-LICHEN-zt3c.14",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:11:06.746341194Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:35:32.411189744Z",
+  "started_at": "2026-07-22T17:33:29.865301204Z",
+  "closed_at": "2026-07-22T17:35:32.411189744Z",
+  "close_reason": "Derivation for no-ULA model fixed in 06-security.md with precise normative steps matching Rust/Python/impl and test vectors. 3 codereview passes completed with all findings filed+fixed (w60o,8r3c,3r5x closed). Section ordering and cross-refs corrected. No P0-P2 remaining in this file.",
+  "labels": [
+    "codereview"
+  ]
+}

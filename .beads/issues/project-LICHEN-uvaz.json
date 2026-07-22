@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-uvaz",
+  "title": "codereview-pass3: verify no remaining crc16/hash_32 refs in CCP-15.8.3 or related pseudocode/docs; confirm consistency with rf_health and link_ctx",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:42:21.395820017Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:42:25.34093421Z",
+  "started_at": "2026-07-22T16:42:24.813814543Z",
+  "closed_at": "2026-07-22T16:42:25.34093421Z",
+  "close_reason": "3rd clean pass: no remaining inconsistent crc16 or hash_32; all point to crc32_ieee with proper file:line refs (spec/02a-coordinated-capacity.md:41, appendix-design-rationale.md:388, schc.c:90). All findings fixed. Ready for main bead close.",
+  "labels": [
+    "codereview",
+    "ccp",
+    "spec"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-uvaz",
+      "depends_on_id": "project-LICHEN-9qjs",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:42:21.512352635Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

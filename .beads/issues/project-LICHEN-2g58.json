@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-2g58",
+  "title": "[codereview-pass3] coap_status.c validation and comments",
+  "description": "Validation chunk pending. File has many non-SPDX comments and section separators violating no-comment rule and Zephyr style. Update vectors for full capacity (ENOBUFS case). No dead code. Tag: codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:04:23.447974736Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:14:15.621520609Z",
+  "started_at": "2026-07-22T16:05:20.421357572Z",
+  "closed_at": "2026-07-22T16:14:15.621520609Z",
+  "close_reason": "added capacity validation for txq/fwd cap/used, removed all non-SPDX comments and section separators, updated ENOBUFS handling for full capacity vectors; 3 codereview passes filed per chunk; no comments left; native_sim builds clean",
+  "labels": [
+    "codereview"
+  ]
+}

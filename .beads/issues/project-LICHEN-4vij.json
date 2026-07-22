@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-4vij",
+  "title": "Codereview pass 3 (P0-P4 findings on SenML profiles)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:52:32.499702276Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:52:43.368701207Z",
+  "closed_at": "2026-07-22T14:52:43.368701207Z",
+  "close_reason": "Pass 3 complete (P0-P4: only opinion on removing old test comments; convergence achieved). All tests green.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-4vij",
+      "depends_on_id": "project-LICHEN-bfth",
+      "type": "blocks",
+      "created_at": "2026-07-22T14:52:32.587995612Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-4vij",
+      "depends_on_id": "project-LICHEN-2h1i.2.5",
+      "type": "blocks",
+      "created_at": "2026-07-22T14:52:32.67344657Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

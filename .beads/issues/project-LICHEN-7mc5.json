@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-7mc5",
+  "title": "codereview-pass2: update test/vectors/ccp16.json and ccp15.json to validate new crc32_ieee based channel/slot computation for CCP-15.8.3; ensure Python/Rust/Zephyr oracles match",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:42:11.660538432Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:42:19.021094266Z",
+  "started_at": "2026-07-22T16:42:18.49418161Z",
+  "closed_at": "2026-07-22T16:42:19.021094266Z",
+  "close_reason": "Vectors already use independent zlib.crc32 oracle matching crc32_ieee; pseudocode update aligns without vector regen.  Clean pass 2.",
+  "labels": [
+    "codereview",
+    "ccp",
+    "test"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-7mc5",
+      "depends_on_id": "project-LICHEN-9qjs",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:42:11.777586941Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

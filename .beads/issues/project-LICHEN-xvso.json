@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-xvso",
+  "title": "codereview pass 1 after Kconfig chunk: missing select LICHEN_HAS_LORA_CAD or driver dep",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:45:32.48453059Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:56:59.524999644Z",
+  "started_at": "2026-07-22T16:56:59.524999644Z",
+  "lease_expires_at": "2026-07-22T17:01:59.524999644Z",
+  "heartbeat_at": "2026-07-22T16:56:59.524999644Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-xvso",
+      "depends_on_id": "project-LICHEN-nrfg",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:45:32.597690725Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

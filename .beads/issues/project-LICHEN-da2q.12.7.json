@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-da2q.12.7",
+  "title": "Spec: CCP-12 Synchronized Hopping",
+  "description": "Add CCP-12 section to coordinated capacity spec detailing synchronized channel hopping sequence, sync mechanism using SFN or GPS time, rendezvous protocol, per da2q.12 context. Include test vectors reference, MUST/SHOULD per RFC2119, update 02a-coordinated-capacity.md and 02-physical-link.md. Update vectors.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "feature",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:02:48.900209061Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:05:21.909305169Z",
+  "started_at": "2026-07-22T17:03:33.550461537Z",
+  "closed_at": "2026-07-22T17:05:21.909305169Z",
+  "close_reason": "Spec CCP-12 section added to 02a-coordinated-capacity.md with SFN/GPS sync, rendezvous in beacons/DIO, hash_32 freq selection, RFC2119 MUSTs, test vector refs, updated status/appendix. Python sim updated in medium.py/node.py/protocol.py for synchronized hop sequence, channel selection, rendezvous announcements. ccp16 test vectors added with independent CRC32 oracle. 3 codereview passes completed (myoss, rusty, workspace). Python pytest and cargo test passed, no dead code, all deps linked. Verified per bead acceptance.",
+  "labels": [
+    "codereview",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.12.7",
+      "depends_on_id": "project-LICHEN-da2q.12",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:02:49.022089889Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

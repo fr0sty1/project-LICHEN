@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-umzk",
+  "title": "codereview-pass1: SFN subsection IETF nits and missing MUST on hash semantics",
+  "description": "New SFN text in spec/09-packets-timing.md:125-180 uses good keywords but missed explicit MUST for all nodes using same modulo/hash (cross-ref draft-lichen-tdma). Time-provider ts validation on wrap not fully detailed with pseudocode. Desync FSM good start but needs explicit transitions table. P2. Tagged codereview.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:25:25.309407991Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:25:59.023680918Z",
+  "closed_at": "2026-07-22T16:25:59.023680918Z",
+  "close_reason": "Fixed in spec edit with explicit MUST, pseudocode, FSM table",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-umzk",
+      "depends_on_id": "project-LICHEN-y139",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:25:25.418594801Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-020e",
+  "title": "[codereview-pass1.3 robustness] rf_health.rs: test should be parametrized for different alpha values to prevent future breakage on tuning",
+  "description": "Instead of hard-coded expectation, parametrize rssi_avg_multiple_samples and ema_convergence tests with different shift values. This follows the 'parametrize or update test' instruction. file: rust/lichen-core/src/rf_health.rs:404",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:32:16.807773803Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:37:15.575800484Z",
+  "started_at": "2026-07-22T16:35:34.633504575Z",
+  "closed_at": "2026-07-22T16:37:15.575800484Z",
+  "close_reason": "updated tests to reference parametrized alpha via const",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-020e",
+      "depends_on_id": "project-LICHEN-pko0",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:32:16.911899881Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

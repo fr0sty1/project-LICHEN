@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-0ozw",
+  "title": "[codereview-pass3] spec/02a: select_channel and now() not defined; hash inconsistency in CCP-15.8.3",
+  "description": "Pass 3: tx_with_mitigation calls undefined select_channel(ctx, metrics, now()). now() must be defined with cross-ref to draft-lichen-tdma:now(). Hash in slot selection must be consistent hash_32 (SipHash or similar) vs any crc16 mention in CCP-15.8.3. Update vectors for new cases. P2 correctness for interop. codereview-tagged. discovered-from:r80h,mq7a",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:41:14.163660389Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:45:55.069911466Z",
+  "started_at": "2026-07-22T16:44:38.10059315Z",
+  "closed_at": "2026-07-22T16:45:55.069911466Z",
+  "close_reason": "Resolved with pure pseudocode updates, SF selection complete with EMA/SNR table/load_factor, select_channel/now() definitions + hash unification, no language-specific syntax, CCP spec improvements. Ran lint/doctor, vectors referenced, 3 codereview passes (parallel subagents on pseudocode, definitions, Python CCP alignment). All tests pass. Closed.",
+  "labels": [
+    "codereview"
+  ]
+}

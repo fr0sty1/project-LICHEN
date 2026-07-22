@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-vdug",
+  "title": "codereview pass 2 finding 2/3: now() SFN clarification added to primitives but §2a.2 not defined in current TOC (perhaps alias for 2a.4.1?); add explicit note in select_channel that now_ts % (superframe_duration * num_slots) for rendezvous or clarify per draft",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:46:36.517396298Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:48:56.620547561Z",
+  "started_at": "2026-07-22T16:47:19.567612589Z",
+  "closed_at": "2026-07-22T16:48:56.620547561Z",
+  "close_reason": "Clarified now() SFN rendezvous modulus in select_channel per draft; resolved TOC §2a.2/2a.4.1 alias for CCP",
+  "labels": [
+    "codereview",
+    "spec"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-vdug",
+      "depends_on_id": "project-LICHEN-nsej",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:46:36.630110417Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

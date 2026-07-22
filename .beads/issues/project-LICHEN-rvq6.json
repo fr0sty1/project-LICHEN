@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-rvq6",
+  "title": "[codereview-P3] coap_dtn.c: duplicate code with location.c + confessions issue",
+  "description": "coap_respond helper and SENML define duplicated from coap_location.c. Confessions resource may not match spec (uses deaddrop but OSCORE mandatory?). Remove duplicate, fix per LCI spec. discovered-from:project-LICHEN-fnj7",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:20:11.242429531Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:57:13.839935605Z",
+  "started_at": "2026-07-22T15:26:08.716865705Z",
+  "closed_at": "2026-07-22T15:57:13.839935605Z",
+  "close_reason": "refactor complete",
+  "labels": [
+    "codereview"
+  ]
+}

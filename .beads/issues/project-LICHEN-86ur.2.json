@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-86ur.2",
+  "title": "codereview-pass3-86ur",
+  "description": "Third pass: confirmed no remaining cross-file inconsistencies in spec/*. All ULA references updated to no-ULA/02xx model, DAO remnants cleaned in root/demotion text, EUI updated to IID/key-derived where appropriate. Derivation section now normative with test vectors, Yggdrasil interop, TOFU. Clean - ready to close parent.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:16:24.273676614Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:16:27.033529082Z",
+  "closed_at": "2026-07-22T15:16:27.033529082Z",
+  "close_reason": "3 codereview passes completed with zero findings after fixing all cross-file issues for no-ULA unified derivation. All specs consistent.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-86ur.2",
+      "depends_on_id": "project-LICHEN-86ur",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:16:24.368799035Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

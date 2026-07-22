@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-u6gi",
+  "title": "codereview-pass3-chunk3-physical-link",
+  "description": "Pass 2/3: confirmed short_addr computation still avoids zero and uses consistent primitive. Clean with RFC2119 refs.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:47:26.305286249Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:49:26.63909067Z",
+  "closed_at": "2026-07-22T16:49:26.63909067Z",
+  "close_reason": "3 codereview passes completed with fixes applied, no further findings",
+  "labels": [
+    "codereview"
+  ]
+}

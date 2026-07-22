@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-27pe",
+  "title": "[codereview-pass2] Kconfig: DEADDROP help text still imprecise on init and query support",
+  "description": "lichen/subsys/lichen/coap/Kconfig:270 - Improved but OSCORE dep is there, clarify server standalone vs client. Query param now covered by select. P2. codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:03:46.597340463Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:04:36.864476355Z",
+  "closed_at": "2026-07-22T15:04:36.864476355Z",
+  "close_reason": "Kconfig chunk addressed with DTN dep, refined help, log level config; 3 codereview passes converged; no new children",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-27pe",
+      "depends_on_id": "project-LICHEN-huho",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:03:46.690356129Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

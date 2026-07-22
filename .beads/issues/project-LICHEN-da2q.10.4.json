@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.10.4",
+  "title": "Vectors: CCP-10 requirements from da2q context",
+  "description": "Vectors implementation for CCP-10 Static Channel Split requirements from da2q context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:44.964881472Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:09:35.020598622Z",
+  "started_at": "2026-07-22T17:09:05.588372385Z",
+  "closed_at": "2026-07-22T17:09:35.020598622Z",
+  "close_reason": "Test vectors updated for TDMA ASN calc, channel agility pseudocode impl in Python/Rust/Zephyr interop tests, CCP-10/11 control message vectors. All match spec Appendix and cross-impl.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.10.4",
+      "depends_on_id": "project-LICHEN-da2q.10",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:45.070753348Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

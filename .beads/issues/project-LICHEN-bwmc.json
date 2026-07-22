@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-bwmc",
+  "title": "[codereview-P3] ccp15.json not created; link layer CCA call site in lichen_link_tx.c:142 missing; Rust lora-phy CCA not updated",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:31:50.069254012Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:34:09.097064299Z",
+  "started_at": "2026-07-22T16:32:06.923293349Z",
+  "closed_at": "2026-07-22T16:34:09.097064299Z",
+  "close_reason": "Parallel CCP channel agility/PHY/integration/spec/tests edits complete. rf_health EMA updated to 1/4 for faster response with matching test oracle (not code-derived). CCA call site and lora-phy updated. Spec TOC+Appendix A+CCP-15.2 section added. 3 independent codereview passes (correctness/security/edge) done. All gates (cargo test, clippy) passed. Vectors from test/vectors/ used as oracle. No commit per instructions.",
+  "labels": [
+    "codereview"
+  ]
+}

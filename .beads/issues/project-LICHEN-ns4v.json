@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-ns4v",
+  "title": "[codereview-pass3] missing coap_respond helper and DTN buffer integration in coap_dtn",
+  "description": "lichen/subsys/lichen/coap/coap_dtn.c:1-20 - Lacks shared coap_respond from coap_location.c:41 (duplication risk), no integration with lichen_dtn_buffer or rate limiting per spec 18.9. Payloads would use raw memcpy if implemented naively. discovered-from:project-LICHEN-pp9k",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:19:35.149735891Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:57:14.418282651Z",
+  "started_at": "2026-07-22T15:26:09.047947542Z",
+  "closed_at": "2026-07-22T15:57:14.418282651Z",
+  "close_reason": "helper+integration complete",
+  "labels": [
+    "codereview"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-pmg3",
+  "title": "P0: coap_dtn.c handlers do not compile - coap_respond undefined, wrong service name lichen_coap vs lichen_coap_server, missing include for COAP_RESPONSE_CODE_*, provider callbacks not integrated with DTN/SenML per spec",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:17:15.135238502Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:18:21.159609509Z",
+  "started_at": "2026-07-22T15:18:06.457021818Z",
+  "closed_at": "2026-07-22T15:18:21.159609509Z",
+  "close_reason": "P0 fixed: s_provider now used in deaddrop_post and deaddrop_get handlers per coap_config.c; coap_respond defined locally; service and codes fixed; SenML/DTN integrated",
+  "labels": [
+    "codereview"
+  ]
+}

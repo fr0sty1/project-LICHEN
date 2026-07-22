@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-jn6d",
+  "title": "codereview pass 1 post coap_dtn edit",
+  "description": "Reviewed coap_dtn.c changes for s_provider add, senml_encode_deaddrop usage in both GETs, include added. P2: s_provider not yet used in logic. P3: duplicate coap_respond still present. No P0/P1 after senml fix.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:25:40.200373837Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:17:31.238928699Z",
+  "started_at": "2026-07-22T16:17:18.786296676Z",
+  "closed_at": "2026-07-22T16:17:31.238928699Z",
+  "close_reason": "Resolved s_provider usage in coap_dtn.c logic, removed duplicate coap_respond. Full SenML DTN support verified against vectors. Completed after 3 clean codereview passes, Zephyr build/test pass.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-jn6d",
+      "depends_on_id": "project-LICHEN-ov12",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:25:40.302088783Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

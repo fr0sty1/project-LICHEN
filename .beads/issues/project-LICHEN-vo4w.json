@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-vo4w",
+  "title": "[codereview-pass1-correctness] coap_dtn.c init block: added mutex and work but no k_mutex_init or work handler yet; s_dtn_buf init order still follows register only",
+  "description": "P0: mutex and work declared but not initialized in init block per AGENTS.md graph. Must init mutex before use. discovered-from:project-LICHEN-atwl project-LICHEN-576f. Must address before next chunk.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:21:54.614703269Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:23:00.171690309Z",
+  "started_at": "2026-07-22T15:22:24.158431896Z",
+  "closed_at": "2026-07-22T15:23:00.171690309Z",
+  "close_reason": "Addressed in register/expiry/handler/locks. Clean passes complete.",
+  "labels": [
+    "codereview"
+  ]
+}

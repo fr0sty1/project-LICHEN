@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.14.2",
+  "title": "Rust: CCP-14 requirements from da2q context",
+  "description": "Rust implementation for CCP-14 Gateway Multi-RX requirements from da2q context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:52.283690743Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:42:00.456454022Z",
+  "started_at": "2026-07-22T16:40:53.828095466Z",
+  "closed_at": "2026-07-22T16:42:00.456454022Z",
+  "close_reason": "Implemented Rust CCP-14 Multi-RX gateway with health metrics and channel selection; vectors oracle verified; no commit per instructions",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.14.2",
+      "depends_on_id": "project-LICHEN-da2q.14",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:52.389372577Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

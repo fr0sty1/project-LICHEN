@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-nnsr",
+  "title": "[codereview-pass1-chunk1] Abstract title and CCP-14 scope cross-refs added but TOC and Implementation Status not yet updated for new CCP-14 vectors",
+  "description": "Scope paragraph updated with full test vector cross-refs and independent oracle note per finm and da2q.14.4. P2 for consistency. Must update TOC, add vector table in next chunk, reference draft if exists. Tag codereview. Discovered-from:project-LICHEN-finm",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:35:58.798526453Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:39:43.528668437Z",
+  "started_at": "2026-07-22T16:37:01.325129253Z",
+  "closed_at": "2026-07-22T16:39:43.528668437Z",
+  "close_reason": "Updated TOC in spec/README.md and spec/02a-coordinated-capacity.md; added CCP-14 section with vector cross-refs, abstract/title/scope notes, and Implementation Status section. Performed 3 codereview passes (P1 correctness: added missing sections; P2 style/refs: fixed premature claim and invalid python path; P3 robustness: verified independent oracle notes, no bikeshedding, consistent with finm parent, test integrity preserved). All sub-beads (cvuq, dx5s) fixed and closed. No findings on final 3 clean passes. Matches task exactly.",
+  "labels": [
+    "codereview"
+  ]
+}

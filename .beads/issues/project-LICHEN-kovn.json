@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-kovn",
+  "title": "[codereview pass 2/3] python/src/lichen/announce/messages.py module docstring",
+  "description": "Pass 2: Security and binding review. current_channel inclusion in signed_data() correctly binds RX rendezvous per CCP-9. Docstring now matches implementation and cross-lang consistency. No issues.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:26:13.032025065Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:26:24.166960327Z",
+  "closed_at": "2026-07-22T17:26:24.166960327Z",
+  "close_reason": "Pass 2 complete: no findings",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-kovn",
+      "depends_on_id": "project-LICHEN-foew",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T17:26:13.145268405Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

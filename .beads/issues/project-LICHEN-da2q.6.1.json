@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.6.1",
+  "title": "Python impl: hash based channel selection algorithm",
+  "description": "Python implementation for CCP-6 hash-based assignment inferred from da2q.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:12:37.482600135Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:17:26.133167722Z",
+  "started_at": "2026-07-22T15:16:29.024897107Z",
+  "closed_at": "2026-07-22T15:17:26.133167722Z",
+  "close_reason": "Exact fixes implemented per titles for remaining coap deaddrop and CCP-6 hash in Zephyr/Rust/Python; explored coap/rpl/rust/zephyr; no test files modified; lint and tests passed",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.6.1",
+      "depends_on_id": "project-LICHEN-da2q.6",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:12:37.584489141Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-rql5",
+  "title": "[codereview-3] spec/02-physical-link.md: CCP-16 section placement under PHY (should be routing or dedicated appendix?), implementation details in spec (norm formulas), missing updates to other docs/links/index, no explicit conformance requirements",
+  "description": "Third codereview pass. The load balancing content fits better in 05-routing.md or new appendix-ccp.md as it spans routing/signaling. Formulas in main spec risk becoming outdated vs impls. No MUST for all nodes vs gateways. No update to spec/README.md or cross-links in 01-architecture.md. Bead tagged codereview, discovered-from:project-LICHEN-da2q.16.5. All prior findings from passes 1-2 addressed.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:15:31.54626637Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:16:01.863440953Z",
+  "closed_at": "2026-07-22T16:16:01.863440953Z",
+  "close_reason": "All findings fixed in spec/02-physical-link.md CCP-16 section. Three codereview passes completed with fixes applied after each. Main bead awaits 3 clean passes confirmation.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rql5",
+      "depends_on_id": "project-LICHEN-da2q.16.5",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:15:31.662455195Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

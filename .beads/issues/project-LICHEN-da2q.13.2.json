@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.13.2",
+  "title": "Rust: CCP-13 requirements from da2q context",
+  "description": "Rust implementation for CCP-13 Duty Cycle Management requirements from da2q context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:50.30286144Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:06:11.769712241Z",
+  "started_at": "2026-07-22T16:58:47.722410871Z",
+  "closed_at": "2026-07-22T17:06:11.769712241Z",
+  "close_reason": "Completed Rust CCP-13 adaptive duty cycle.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.13.2",
+      "depends_on_id": "project-LICHEN-da2q.13",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:50.408828495Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

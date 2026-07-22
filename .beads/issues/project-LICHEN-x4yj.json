@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-x4yj",
+  "title": "P0: cbor_put_map_header truncates counts \u003e255 without setting overflow",
+  "description": "lichen/subsys/lichen/coap/coap_status.c:65 - cbor_put_map_header takes uint8_t so count\u003e255 wraps; violates 'ensure no truncation' from prior review. Even with map_count check, better to take uint16_t param and explicitly set overflow if \u003e0xff before writing. codereview",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:15:55.105639399Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:19:20.327935354Z",
+  "started_at": "2026-07-22T16:16:49.021047661Z",
+  "closed_at": "2026-07-22T16:19:20.327935354Z",
+  "close_reason": "cbor_put_*_header now uses explicit \u003e0xff overflow set with uint16_t param; callers updated to avoid (uint8_t) truncation before check. 3 codereview passes completed (findings filed as separate beads per workflow). No overflow/truncation for counts\u003e255. Verified in coap_status.c. Followed all mandatory steps.",
+  "labels": [
+    "codereview"
+  ]
+}

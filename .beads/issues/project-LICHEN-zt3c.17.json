@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-zt3c.17",
+  "title": "Implement mesh to Yggdrasil forwarding/routing logic",
+  "description": "Add forward function in gateway and node IPv6 routing to prefer RPL for local, forward to Yggdrasil TUN otherwise. Update rpl_dodag, routing table. In C for node.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:11:00.398962955Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:19:17.474265895Z",
+  "started_at": "2026-07-22T15:11:55.973577847Z",
+  "closed_at": "2026-07-22T15:19:17.474265895Z",
+  "close_reason": "mesh\u003c-\u003eYggdrasil forwarding implemented preferring RPL local then Yggdrasil TUN. Updated rpl_routing, router classify/route, hybrid.rs. 3 codereview passes (beads 3ano,ydtk,cyag) completed with no P0/P1. Tests pass. Mimic style, no comments added.",
+  "labels": [
+    "gateway",
+    "global",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zt3c.17",
+      "depends_on_id": "project-LICHEN-zt3c",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:11:00.500776817Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

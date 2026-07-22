@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-da2q.7.3",
+  "title": "Zephyr impl: time synchronization for channel hopping",
+  "description": "Zephyr implementation for CCP-7 synchronization requirements from da2q context.",
+  "notes": "Starting Zephyr time sync impl for CCP-7 channel hopping. Following strict review loop: 3 codereview passes per chunk before closing. First exploring current time and link impl.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:12:43.427704741Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:15:41.391723752Z",
+  "started_at": "2026-07-22T15:14:25.817904592Z",
+  "lease_expires_at": "2026-07-22T15:19:25.817904592Z",
+  "heartbeat_at": "2026-07-22T15:14:25.817904592Z",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.7.3",
+      "depends_on_id": "project-LICHEN-da2q.7",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:12:43.530321326Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

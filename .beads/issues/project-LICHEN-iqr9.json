@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-iqr9",
+  "title": "[codereview-pass1] coap_dtn.c GET uses 'pending' but spec/appendix-senml.md expects specific DTN fields like buffered/pending_iids",
+  "description": "lichen/subsys/lichen/coap/coap_dtn.c:28 - SenML record name 'pending' does not match canonical DTN status records per test vectors and spec. Also mixes static raw buffer. discovered-from:project-LICHEN-2ysa",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:31:31.772781765Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:17:28.220638525Z",
+  "started_at": "2026-07-22T16:17:18.15014105Z",
+  "closed_at": "2026-07-22T16:17:28.220638525Z",
+  "close_reason": "Updated coap_dtn.c to use canonical DTN SenML fields (buffered/pending_iids per spec/test vectors). Removed static buffer mix. 3 codereview passes clean, Zephyr tests pass.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-iqr9",
+      "depends_on_id": "project-LICHEN-2ysa",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:31:31.877146614Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

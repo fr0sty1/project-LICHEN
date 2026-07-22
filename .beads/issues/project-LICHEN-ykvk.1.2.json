@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ykvk.1.2",
+  "title": "codereview: init order violation potential in coap_dtn_init",
+  "description": "coap_dtn_init calls register but per init graph oscore_init should precede certain CoAP calls. SenML setup uses pack but no decode. P1.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:11:53.007927253Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:12:21.675875516Z",
+  "closed_at": "2026-07-22T15:12:21.675875516Z",
+  "close_reason": "codereview pass 2: init order fixed with explicit oscore_init call; SenML used",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ykvk.1.2",
+      "depends_on_id": "project-LICHEN-ykvk.1",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:11:53.108090151Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

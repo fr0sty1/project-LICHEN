@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-yufp",
+  "title": "codereview-pass1: Gateway.routes map never populated (add_route still unused)",
+  "description": "Despite integration, gw.add_route is never invoked. The routes HashMap stays empty forever. Either remove it, populate from DAO targets by deriving NodeId from IPv6 IID (xor 0x02 on byte 8), or call from announce/ LCI path. is_local_mesh falls back to it but it's dead code. P2 dead-code / maintainability. discovered-from:project-LICHEN-3k6w.2",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "chore",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:46:53.699492891Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:53:50.969059602Z",
+  "started_at": "2026-07-22T15:53:50.969059602Z",
+  "lease_expires_at": "2026-07-22T15:58:50.969059602Z",
+  "heartbeat_at": "2026-07-22T15:53:50.969059602Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-yufp",
+      "depends_on_id": "project-LICHEN-3k6w.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:46:53.798776014Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

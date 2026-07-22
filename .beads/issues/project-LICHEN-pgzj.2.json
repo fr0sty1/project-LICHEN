@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-pgzj.2",
+  "title": "[codereview-P1] Missing ccp16-desync.json despite schema reference to v2 array root support",
+  "description": "Schema and ccp_document explicitly reference ccp16-desync.json as v2 array-root example, but file does not exist in test/vectors/. This breaks completeness of v2 migration. Add the file with array of vectors or update schema to remove reference. Independent oracle: compare to similar v2 enveloped files. Parent: project-LICHEN-pgzj.1",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:59:49.112581546Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:03:30.093589983Z",
+  "started_at": "2026-07-22T17:00:26.391774368Z",
+  "closed_at": "2026-07-22T17:03:30.093589983Z",
+  "close_reason": "Added ccp16-desync.json (v2 enveloped with desync vectors matching ccp_vector schema extension). Updated schema for new fields, test_vectors.py param list, README table. All codereview findings (P1-P3 beads) fixed. 3 clean passes achieved (no remaining P0-P2). Schema and vector tests pass. Completes v2 array root prep for migration epic.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-pgzj.2",
+      "depends_on_id": "project-LICHEN-pgzj",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:59:49.221052642Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

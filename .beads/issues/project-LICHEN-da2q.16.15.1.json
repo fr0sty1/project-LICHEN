@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-da2q.16.15.1",
+  "title": "codereview: CCP-16 spec draft missing exact test vector JSON and FNV1a pseudocode",
+  "description": "Spec added but test/vectors/ccp16.json and hash impl details missing. P2: blocks impl.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:21:06.888397277Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:21:37.631052862Z",
+  "closed_at": "2026-07-22T16:21:37.631052862Z",
+  "close_reason": "Spec updated with vectors, pseudocode, Kconfig, interop plan",
+  "labels": [
+    "codereview",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.16.15.1",
+      "depends_on_id": "project-LICHEN-da2q.16.15",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:21:07.002629614Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

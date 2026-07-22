@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-9hux",
+  "title": "[codereview pass 1/3] AnnounceMessage: remaining rx_channel references after field rename to current_channel",
+  "description": "Methods signed_data, to_bytes, from_bytes, with_incremented_hop_count and their docstrings still use rx_channel or local var rx_channel. Also update _FIXED_LENGTH comment, wire format docs. P2 consistency for CCP-9. Tagged codereview. Depends on project-LICHEN-hjo8. File: python/src/lichen/announce/messages.py",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T17:28:26.132477681Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:31:39.274039207Z",
+  "started_at": "2026-07-22T17:31:01.07427658Z",
+  "closed_at": "2026-07-22T17:31:39.274039207Z",
+  "close_reason": "3 clean codereview passes completed. No remaining rx_channel references in AnnounceMessage or docstrings after rename to current_channel. All methods, comments, _FIXED_LENGTH, wire format updated and consistent with Python range 0-15. Verified with tests. All codereview findings fixed.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9hux",
+      "depends_on_id": "project-LICHEN-hjo8",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T17:28:26.246094236Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

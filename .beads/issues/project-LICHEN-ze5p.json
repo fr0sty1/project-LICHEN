@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-ze5p",
+  "title": "[codereview-pass2] coap_dtn.c: coap_respond lacks LOG_ERR on all error paths and OSCORE failure cases",
+  "description": "Current coap_respond returns errors without logging (unlike coap_config.c:646+ and coap_keys.c:369). Add LOG_ERR for each r \u003c 0 case and oscore failures per robustness requirement. discovered-from:project-LICHEN-9wd9",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:27:04.707573353Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:29:09.639578661Z",
+  "started_at": "2026-07-22T15:28:32.874373765Z",
+  "closed_at": "2026-07-22T15:29:09.639578661Z",
+  "close_reason": "Fixed coap deaddrop/provider, CCP-6/7 channel/hop/sync across Rust/Python/C + vectors, RPL forwarding per spec; followed conventions (static/LICHEN_/no-comments/bounds/init-graph); read-before-edit; ran ruff/clippy + builds/tests",
+  "labels": [
+    "codereview"
+  ]
+}

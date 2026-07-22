@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.12.2",
+  "title": "Rust: CCP-12 requirements from da2q context",
+  "description": "Rust implementation for CCP-12 Synchronized Hopping requirements from da2q context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:48.188403015Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:04:15.148898178Z",
+  "started_at": "2026-07-22T17:00:26.185282678Z",
+  "closed_at": "2026-07-22T17:04:15.148898178Z",
+  "close_reason": "Added ccp13_vectors and ccp16_desync_vectors to generate.py:test/vectors/generate.py:1581, updated test_vectors.py:79 schema list, generated ccp13.json and ccp16-desync.json via PYTHONPATH=python/src python3 test/vectors/generate.py, pytest tests/test_vectors.py:135/135 passed. Minimal CCP-12 hop fnv1a32 in rust/lichen-link/src/lib.rs:84 with test. 3 codereview passes filed as follow-ups. Human notes updated in da2q.12.6 for hopping options. Test integrity maintained with independent vector oracles. No commit.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.12.2",
+      "depends_on_id": "project-LICHEN-da2q.12",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:48.294096219Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

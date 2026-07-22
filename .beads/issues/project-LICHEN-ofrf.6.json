@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ofrf.6",
+  "title": "codereview-pass3-opinion: diagram could label all transitions with exact timers",
+  "description": "Mermaid is clear. All P0-P2 findings from previous 2 passes fixed. Cross-references added to 02-physical-link.md:42, Kconfig updated with spec link and code pointers (link_ctx.c:508). Test vectors expanded for SF/TDMA. No open functional findings. Ready to close all codereview-tagged under ofrf/da2q.16.15/2ibu.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:25:17.937699217Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:25:26.66787912Z",
+  "closed_at": "2026-07-22T16:25:26.66787912Z",
+  "close_reason": "Closed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ofrf.6",
+      "depends_on_id": "project-LICHEN-ofrf",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:25:18.045605904Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

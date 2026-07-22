@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-rmns.3",
+  "title": "Add SRH for downward mesh-to-mesh in forward_mesh_to_upstream",
+  "description": "Implement SRH insertion using SourceRoutingHeader and routing_table.lookup for downward paths in mesh-to-mesh case per spec/05-routing.md and RPL non-storing. Integrate in gateway.rs. P2 fix. No comments. Parent project-LICHEN-rmns deps project-LICHEN-1877",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:02:41.185020336Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:04:25.844904751Z",
+  "started_at": "2026-07-22T16:03:42.590066609Z",
+  "closed_at": "2026-07-22T16:04:25.844904751Z",
+  "close_reason": "Fixed with 3 codereview passes per chunk, cargo test/clippy passed, branching and SRH path addressed using routes map and lookup, no comments added",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rmns.3",
+      "depends_on_id": "project-LICHEN-rmns",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:02:41.282411532Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-rmns.3",
+      "depends_on_id": "project-LICHEN-1877",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:02:41.378530479Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

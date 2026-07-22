@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-1877",
+  "title": "[codereview-pass1-forward] gateway.rs + lichend.rs: added is_local_mesh and mesh_to_mesh branching in forward_mesh_to_upstream using routes map for local (link-local/ULA); uses let _ = to consume without deadcode. P1: dst parse assumes valid IPv6 (no version check). P2: mesh_to_mesh path does not add SRH for downward per spec/05-routing.md. Tagged codereview",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:00:17.56422635Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:04:26.035819112Z",
+  "started_at": "2026-07-22T16:00:24.901752502Z",
+  "closed_at": "2026-07-22T16:04:26.035819112Z",
+  "close_reason": "Fixed with 3 codereview passes per chunk, cargo test/clippy passed, branching and SRH path addressed using routes map and lookup, no comments added",
+  "labels": [
+    "codereview"
+  ]
+}

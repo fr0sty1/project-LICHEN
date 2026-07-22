@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-n8c6",
+  "title": "[codereview-pass2] multi-root section still imprecise on signature failure handling vs overlap",
+  "description": "Update the multi-root conflict text (now at ~line 25) to explicitly list MUST for each selection criteria, signature fail (discard, no state change), and overlap resolution using EUI or priority. Add what RPL version change does in multi-root case. P1 until fixed. Use strict IETF language.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:24:45.67495508Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:25:39.498792557Z",
+  "closed_at": "2026-07-22T16:25:39.498792557Z",
+  "close_reason": "Closed",
+  "labels": [
+    "codereview"
+  ]
+}

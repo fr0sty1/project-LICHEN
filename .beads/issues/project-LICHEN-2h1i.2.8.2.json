@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2h1i.2.8.2",
+  "title": "Update lichen-oscore for Group OSCORE (RFC 9203) support and E2E dead-drop contexts",
+  "description": "Extend Context to support group IDs, common contexts for multicast confessions, and per-recipient OSCORE for dead drops. Add key derivation from Ed25519 peer keys. Update tests.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:39:09.730626076Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:40:31.71043984Z",
+  "closed_at": "2026-07-22T14:40:31.71043984Z",
+  "close_reason": "Created as child to scope lichen-oscore Group OSCORE (RFC 9203) and dead-drop E2E context support",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2h1i.2.8.2",
+      "depends_on_id": "project-LICHEN-2h1i.2.8",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:39:09.815597144Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

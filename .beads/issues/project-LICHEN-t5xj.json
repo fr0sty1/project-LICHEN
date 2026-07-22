@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-t5xj",
+  "title": "[codereview-pass3-robustness-3.1] SFN subsection: FSM table drift thresholds inconsistent (15ms vs 25ms entry/exit); clarify in table",
+  "description": "spec/02a-coordinated-capacity.md:137-142 - Engineering basis: ambiguous transition hysteresis could lead to oscillation. Cross-ref time-provider drift measurement.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:25:08.487191998Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:25:22.958738561Z",
+  "closed_at": "2026-07-22T16:25:22.958738561Z",
+  "close_reason": "Fixed hysteresis clarification and |drift| notation in FSM table for consistency with time-provider interaction. Verified via 3 codereview passes."
+}

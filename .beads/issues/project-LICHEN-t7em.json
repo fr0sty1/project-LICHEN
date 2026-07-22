@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-t7em",
+  "title": "[codereview-pass1] coap_dtn.c: mutex defined but not yet used in any access paths; all deaddrop_get/post/confessions_post and init must lock/unlock around s_dtn_buffer accesses",
+  "description": "File: lichen/subsys/lichen/coap/coap_dtn.c:9-70. Per native.c pattern and Zephyr thread safety (CoAP service thread vs workqueue vs routing). Tag: codereview. Discovered in pass 1 after first chunk.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:44.663134622Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:44:56.12736315Z",
+  "started_at": "2026-07-22T15:44:18.519881249Z",
+  "closed_at": "2026-07-22T15:44:56.12736315Z",
+  "close_reason": "Fixed: added locks around all s_dtn_buffer accesses + static s_dtn_buf/s_senml_pack + K_MUTEX_DEFINE following native.c and Zephyr conventions. 3 clean codereview passes completed with no remaining findings."
+}

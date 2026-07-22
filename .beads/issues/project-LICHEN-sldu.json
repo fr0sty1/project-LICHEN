@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-sldu",
+  "title": "codereview-pass2-clean: SFN time-provider and FSM fully specified",
+  "description": "Second independent review: pseudocode improved with // comments and line refs to firmware-time-provider.md:20,56. FSM table references draft-lichen-tdma:5. No correctness, security, or style issues found (P4 opinion on adding figure optional). Clean. Tagged codereview.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:25:51.060368846Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:26:01.45115254Z",
+  "closed_at": "2026-07-22T16:26:01.45115254Z",
+  "close_reason": "Clean pass complete",
+  "labels": [
+    "codereview",
+    "opinion"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-sldu",
+      "depends_on_id": "project-LICHEN-y139",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:25:51.170486775Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-4p71",
+  "title": "[codereview2] coap_status.c still contains hundreds of non-SPDX comments and section separators violating Zephyr/no-comment rule from q7ij/s7t8",
+  "description": "The c file has extensive Doxygen, SECURITY notes, ASCII art separators, inline comments. Must remove all non-SPDX comments entirely to match the header cleanup and bead requirements. Also add capacity check in neighbors_get for count \u003e CONFIG_LICHEN_COAP_STATUS_MAX_NEIGHBORS returning error code.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:00:23.556261423Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:01:44.581280568Z",
+  "started_at": "2026-07-22T16:00:49.479800842Z",
+  "closed_at": "2026-07-22T16:01:44.581280568Z",
+  "close_reason": "3 codereview passes complete with no open findings after fixes; capacity fields added to struct, checks implemented in encode_status_cbor (fixed map+validation) and neighbors_get (count\u003eMAX error); all non-SPDX comments removed, Zephyr style; build and tests passed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-4p71",
+      "depends_on_id": "q7ij",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:00:23.669325858Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

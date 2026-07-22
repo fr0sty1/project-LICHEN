@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-zt3c.16",
+  "title": "Implement Ed25519 to Yggdrasil identity mapping function",
+  "description": "Add lichen_identity_ygg_addr_from_ed25519 or equivalent in C and Rust to ensure consistent address derivation from pubkey per spec/04-network.md. Match test vectors. Add to link/identity. File codereview beads.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:11:00.014263701Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:20:42.575479151Z",
+  "started_at": "2026-07-22T15:11:55.877033182Z",
+  "closed_at": "2026-07-22T15:20:42.575479151Z",
+  "close_reason": "Completed Ed25519 to Yggdrasil mapping with matching SHA-512 bit selection in Rust and C, test vectors added, 3 codereview passes filed and completed",
+  "labels": [
+    "gateway",
+    "global",
+    "networking"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zt3c.16",
+      "depends_on_id": "project-LICHEN-zt3c",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:11:00.115562556Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

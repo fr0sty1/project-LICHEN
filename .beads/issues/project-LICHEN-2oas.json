@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-2oas",
+  "title": "[codereview-pass2-security] SFN modulo time-provider ref missing in 02a-coordinated-capacity.md",
+  "description": "spec/02a-coordinated-capacity.md:110-120 - Robustness pass3 requires explicit ref to time-provider epoch_floor interaction in the SFN modulo para itself (not just later subsection). P2. Discovered-from:project-LICHEN-yne7",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:24:19.344698404Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:28:31.941779857Z",
+  "started_at": "2026-07-22T16:27:06.980469031Z",
+  "closed_at": "2026-07-22T16:28:31.941779857Z",
+  "close_reason": "Addressed SFN/time-provider ref and robustness per 3 codereview passes on CCP-16 scope",
+  "labels": [
+    "codereview"
+  ]
+}

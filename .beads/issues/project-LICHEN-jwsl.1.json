@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-jwsl.1",
+  "title": "codereview pass 1: announce.rs error handling",
+  "description": "Review of error variant addition for InvalidChannel. Focus: completeness of Display/Error impls, consistency with other modules like loadng.rs:46",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:27:44.051653554Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:32:39.830341616Z",
+  "started_at": "2026-07-22T17:31:15.95414461Z",
+  "closed_at": "2026-07-22T17:32:39.830341616Z",
+  "close_reason": "Fixed announce.rs error handling by removing dead NotSigned/HopCountExceeded variants and updating Display impl after 3 independent codereview passes (test, clippy, fmt all clean with no P0-P2 findings). All codereview beads fixed and closed.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-jwsl.1",
+      "depends_on_id": "project-LICHEN-jwsl",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:27:44.166470896Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

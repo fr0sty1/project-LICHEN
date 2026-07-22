@@ -98,32 +98,16 @@ config LICHEN_LINK_EPOCH_TEST_HOOKS
 	  boot-epoch cache so tests can simulate a reboot and exercise the
 	  persist-and-advance behavior. Testing only.
 
-config LICHEN_TDMA
-	bool "TDMA scheduling"
-	depends on LICHEN_LINK
-	select LICHEN_RPL
-	default n
-	help
-	  Enable TDMA struct in link.h and integration with lichen_link_init()
-	  and lichen_node_init() example per AGENTS.md dependency graph (after
-	  link_init, before oscore_init).
-
-# CCP16 (project-LICHEN-k3i8 codereview) selects SCHC (for compressed TDMA control frames),
-# ROUTING (for gradient/density tracking structures), and TDMA. Depends-on-RPL
-# in parent is retained; explicit selects prevent missing features at high density.
 config LICHEN_LINK_CCP16_LOAD_BALANCING
-	bool "CCP-16 load balancing for TDMA"
-	depends on LICHEN_TDMA
+	bool "CCP16 density-aware load balancing"
+	depends on LICHEN_RPL
 	select LICHEN_SCHC
-	select LICHEN_ROUTING
-	select LICHEN_TDMA
-	default y
+	select LICHEN_LINK_EPOCH_PERSIST
 	help
-	  Enable CCP-16 congestion control point load metric and rebalancing for
-	  TDMA slot assignment at DEFCON-scale densities. See DEFCON density
-	  notes in project-LICHEN-2nnd (500-node mesh at hacker conferences),
-	  adaptive SF thresholds from project-LICHEN-zrh2, and independent
-	  mathematical oracles in test/vectors/ccp_load_balancing.json. Critical
-	  for high-density operation where simple ALOHA fails.
+	  Enable CCP-16 coordinated load balancing for high-density
+	  (DEFCON-scale) deployments. References density tracking, adaptive
+	  SF thresholds, and channel utilization from
+	  spec/appendix-design-rationale.md. Explicitly selects SCHC and
+	  link epoch features required for TDMA/multi-channel operation.
 
 endif # LICHEN_LINK

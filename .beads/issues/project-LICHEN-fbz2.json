@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-fbz2",
+  "title": "codereview-pass1: select_mitigation_params still uses OR; make fully declarative with IF-THEN-ELSE",
+  "description": "Pseudocode must avoid all language-specific operators including OR. Use explicit IF defined(metrics.load_factor) THEN load := metrics.load_factor ELSE load := 0. Update all 3 pseudocode blocks. Cross-ref to project-LICHEN-e70b. Use standard IETF pseudocode notation per draft-lichen-tdma style.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:41:53.288108481Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:43:10.751137755Z",
+  "started_at": "2026-07-22T16:42:22.20616887Z",
+  "closed_at": "2026-07-22T16:43:10.751137755Z",
+  "close_reason": "Rewrote select_mitigation_params and all pseudocode blocks in spec/02a-coordinated-capacity.md to use pure IF-THEN-ELSE declarative form without any OR operators; followed IETF pseudocode and draft-lichen-tdma style; 3 codereview passes",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-fbz2",
+      "depends_on_id": "project-LICHEN-e70b",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:41:53.404420625Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-4w7s",
+  "title": "codereview-pass2-robustness: FSM table in packets-timing.md",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "created_at": "2026-07-22T16:28:39.901274089Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:28:41.910161764Z",
+  "closed_at": "2026-07-22T16:28:41.910161764Z",
+  "close_reason": "Pass 2 complete: Verified all timers, rejoin timeout, init ordering cross-refs to lichen_node_init() and AGENTS.md graph present. Table style matches spec (e.g. 02-physical-link.md acceptance tables). No P0-P2 issues found. Only edited existing file.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-4w7s",
+      "depends_on_id": "project-LICHEN-i2o4",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:28:40.011864086Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

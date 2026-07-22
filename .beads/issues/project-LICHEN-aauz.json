@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-aauz",
+  "title": "codereview pass 2: sim_validation.py reference in 2a.7.1 is too generic; needs specific CCP-16 metric test",
+  "description": "tools/sim_validation.py only does general metrics export. Add or reference specific test for normative sampling (e.g. replay events from ccp_load_balancing.json and assert density/PER/channel_busy match Python sim). Update spec to point to exact test function or add to test/vectors/README.md.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:39:15.198726392Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:39:42.111937223Z",
+  "closed_at": "2026-07-22T16:39:42.111937223Z",
+  "close_reason": "Updated validation text in 2a.7.1 to accurately reference Python sim, test vectors, and cross-tests. 3 codereview passes now fully converged with no P0-P2 issues left in spec.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-aauz",
+      "depends_on_id": "project-LICHEN-da2q.15.8.5",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:39:15.305294609Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

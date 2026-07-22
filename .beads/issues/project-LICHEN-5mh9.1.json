@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-5mh9.1",
+  "title": "[codereview-P1] spec/02a-coordinated-capacity.md scope update: TOC not updated for Appendix A, CCP-15.2 section missing",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:31:39.251017007Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:32:31.53357454Z",
+  "started_at": "2026-07-22T16:32:06.582085573Z",
+  "closed_at": "2026-07-22T16:32:31.53357454Z",
+  "close_reason": "Added TOC to scope section referencing Appendix A, CCP-15.2 CCA integration, slot_adjust_ticks. All codereview findings addressed.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-5mh9.1",
+      "depends_on_id": "project-LICHEN-5mh9",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:31:39.354314888Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

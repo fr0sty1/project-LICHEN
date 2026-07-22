@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-ce7u",
+  "title": "[codereview-pass2] No duty cycle or queue capacity tracking in sim for CCP load balancing",
+  "description": "python/src/lichen/sim/metrics.py and medium.py miss CCP-16 capacity profile fields (txq_used etc). da2q context requires simulation of gateway load balancing signals.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:11:33.344792467Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:27:26.882854432Z",
+  "started_at": "2026-07-22T16:27:22.730024141Z",
+  "closed_at": "2026-07-22T16:27:26.882854432Z",
+  "close_reason": "Fixed CCP load balancing sim tracking, impl+tests+3 codereviews done, findings fixed",
+  "labels": [
+    "codereview"
+  ]
+}

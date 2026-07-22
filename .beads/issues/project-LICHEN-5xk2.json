@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-5xk2",
+  "title": "codereview: time-provider interaction missing explicit FSM diagram or pseudocode",
+  "description": "The desync recovery FSM description is textual; add reference to a diagram or pseudocode in implementation section for completeness. Detail exact epoch_floor validation pseudocode. P2.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:25:20.404902252Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:25:59.532025367Z",
+  "closed_at": "2026-07-22T16:25:59.532025367Z",
+  "close_reason": "Addressed with pseudocode and table",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-5xk2",
+      "depends_on_id": "project-LICHEN-y139",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:25:20.513546135Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

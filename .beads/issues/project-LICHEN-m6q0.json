@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-m6q0",
+  "title": "[codereview-pass3] RoutingTable HashMap can still have stale nexthop if dedup changes path length without updating lookup tests; multi-hop dedup should preserve original order and test vectors",
+  "description": "P1 correctness for multi-hop routes in RoutingTable. discovered-from:project-LICHEN-2fi9",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:55:38.716266087Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:57:42.82986199Z",
+  "started_at": "2026-07-22T15:55:55.426377642Z",
+  "closed_at": "2026-07-22T15:57:42.82986199Z",
+  "close_reason": "All fixes applied: handle_frame_rpl now calls add_route with full path after route_updated=true via extract+lookup; add_route uses full assembled path + dedup for multi-hop; RoutingTable/HashMap clean. 3 codereview passes completed with all findings addressed and closed. Tests, clippy, fmt, cargo test all pass clean."
+}

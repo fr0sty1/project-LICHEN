@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-g38a",
+  "title": "codereview-pass-1: draft-lichen-schc-lora-00.md still has duplicate '## 6. Rule Versioning' section and outdated rule examples in Appendix A",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:45:53.193146929Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:46:38.697121014Z",
+  "started_at": "2026-07-22T14:46:08.856043684Z",
+  "closed_at": "2026-07-22T14:46:38.697121014Z",
+  "close_reason": "Fixed: removed duplicate heading and outdated rule sections; updated fragmentation params and Appendix A",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-g38a",
+      "depends_on_id": "project-LICHEN-2cle",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T14:45:53.287221822Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

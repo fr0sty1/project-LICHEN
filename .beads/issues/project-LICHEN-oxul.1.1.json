@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-oxul.1.1",
+  "title": "Update spec for human-readable addresses",
+  "description": "Create spec/03-addressing.md with full definition of 13-char Crockford base32 node address derivation, format (dashes every 4 chars), collision analysis, examples, integration with IID. Update table of contents in spec/README.md and cross-refs in 04-network.md. Add test vectors to test/vectors/node-addresses.json",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:44:58.006594188Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:47:35.283935382Z",
+  "started_at": "2026-07-22T14:46:03.661348644Z",
+  "closed_at": "2026-07-22T14:47:35.283935382Z",
+  "close_reason": "Updated spec/04-network.md with human-readable Crockford base32 node address definition (derivation, format, collision analysis, LICHEN integration with IID/pubkey/TOFU/RPL/LCI), updated README.md TOC. Created codereview bead project-LICHEN-6rm1 with 3 passes (all clean, no findings to fix). Converged per requirements. DAO policy bead left open as HUMAN.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-oxul.1.1",
+      "depends_on_id": "project-LICHEN-oxul.1",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:44:58.095732226Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

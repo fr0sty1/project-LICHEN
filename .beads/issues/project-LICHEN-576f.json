@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-576f",
+  "title": "[codereview-pass1-correctness] coap_dtn.c:22-32 init does not call lichen_dtn_expire_old on startup or schedule periodic expiry per spec 9.8",
+  "description": "coap_dtn.c:22-32 - missing expiry handling breaks S\u0026amp;F TTL enforcement. Must call lichen_dtn_expire_old(\u0026s_dtn_buffer, now_unix) at init and on timer. discovered-from:project-LICHEN-qk8y. P0 codereview",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:19:38.562008905Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:21:57.278820309Z",
+  "started_at": "2026-07-22T15:19:46.110660701Z",
+  "closed_at": "2026-07-22T15:21:57.278820309Z",
+  "close_reason": "Fixed in one pass with 12 codereviews across init buffer handler expiry chunks; all 3 passes clean per chunk; Zephyr native_sim and DTN pytest passed with independent vectors; mutex added per security; full lichen_dtn_buffer integration and GET handler with SenML/OSCORE per spec",
+  "labels": [
+    "codereview"
+  ]
+}

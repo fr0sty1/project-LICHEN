@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-w3du",
+  "title": "codereview-pass2: coap_deaddrop_register does not init DTN buffer or handle confessions resource",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:21:27.140594319Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:26:04.982533482Z",
+  "started_at": "2026-07-22T15:25:22.629048045Z",
+  "closed_at": "2026-07-22T15:26:04.982533482Z",
+  "close_reason": "fixed init order, provider callbacks in coap_deaddrop_register and confessions resource, verified no test mods",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-w3du",
+      "depends_on_id": "project-LICHEN-bhdp",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:21:27.238031878Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

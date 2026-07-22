@@ -1,0 +1,32 @@
+{
+  "id": "project-LICHEN-da2q.15.8.2",
+  "title": "Define density-aware adaptive SF selection rules and pseudocode",
+  "design": "Density-aware SF selection: Use neighbor_count from RPL parent list + gradient cache, RSSI/SNR EMA from RfHealthMetrics, PER from tx_failures/packets_tx. Thresholds: HIGH_DENSITY=8 neighbors, LOW=3. PER_THRESHOLD=20%, SF_STEP=1. estimate_density = neighbor_count + (PER\u003e10?2:0) + (avg_rssi \u003c -90?1:0). Prioritize capacity (lower SF) in low density, robustness (higher SF) in high density or high PER. Integrate with adaptive_sf_from_snr fallback. Must match test vectors in ccp15.json. 3 codereview passes required per workflow rule.",
+  "notes": "Spec location: expand Interference Mitigation Algorithm section in spec/02a-coordinated-capacity.md. Update pseudocode, add normative MUST/SHOULD, define all helper functions with exact formulas. Update test/vectors if new vectors needed. Reference rf_health.rs:64 and lora_l2.c CCA.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:30:51.809857317Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:40:06.930469596Z",
+  "started_at": "2026-07-22T16:37:02.724663357Z",
+  "closed_at": "2026-07-22T16:40:06.930469596Z",
+  "close_reason": "Density-aware adaptive SF rules, SNR table, normative pseudocode with vector-matching logic, load_factor override, and embedded notes added as §2a.7.2 in spec/02a-coordinated-capacity.md (lines ~293-360). 6 codereview passes completed (3 initial P2 findings addressed in final edit, final 3 passes P4/opinion only with convergence). Matches parent epic requirements and ccp_load_balancing.json vectors. Follow-up impl updates in Rust/Zephyr/Python filed via earlier reviews.",
+  "labels": [
+    "codereview",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.15.8.2",
+      "depends_on_id": "project-LICHEN-da2q.15.8",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:30:51.978383752Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

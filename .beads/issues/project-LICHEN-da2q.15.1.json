@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.15.1",
+  "title": "Python: CCP-15 requirements from da2q context",
+  "description": "Python implementation for CCP-15 Interference Mitigation requirements from da2q context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:53.862199213Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:38:57.436304573Z",
+  "started_at": "2026-07-22T16:28:41.141210518Z",
+  "closed_at": "2026-07-22T16:38:57.436304573Z",
+  "close_reason": "Python ccp_mitigation in sim/metrics matches vectors/SF rules, lint clean with ruff",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.15.1",
+      "depends_on_id": "project-LICHEN-da2q.15",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:53.966041712Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

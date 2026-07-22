@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-3ry1",
+  "title": "Pass 3: SenML interop between Rust lichen-senml and C lichen/subsy/lichen/senml incomplete",
+  "description": "C tests/senml uses zcbor_stub with limited coverage; Rust lichen-senml/cbor.rs implements full RFC8428 but no cross-verification test in hetero_node or shared vectors. Violates interop requirement and SenML compliance (spec appendix-senml.md F.14 SCHC for SenML). Test vectors discipline not followed for CBOR oracle.",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:44:19.484042719Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:44:30.074797219Z",
+  "started_at": "2026-07-22T14:44:30.074797219Z",
+  "lease_expires_at": "2026-07-22T14:49:30.074797219Z",
+  "heartbeat_at": "2026-07-22T14:44:30.074797219Z",
+  "labels": [
+    "codereview"
+  ]
+}

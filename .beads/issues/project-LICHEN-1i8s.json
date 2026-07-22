@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-1i8s",
+  "title": "codereview-pass1-clean: no P0-P2 findings in SFN subsection after fixes",
+  "description": "Verified explicit MUST for hash/modulo, time-provider pseudocode with epoch_floor validation, FSM table with transitions and draft-lichen-tdma cross-refs. IETF style consistent (MUST/SHOULD/MAY, no 'will'). All prior codereview beads addressed. Clean pass. Tagged codereview.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:25:51.024144582Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:26:01.2512277Z",
+  "closed_at": "2026-07-22T16:26:01.2512277Z",
+  "close_reason": "Clean pass complete",
+  "labels": [
+    "codereview",
+    "opinion"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1i8s",
+      "depends_on_id": "project-LICHEN-y139",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:25:51.134705114Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-848r",
+  "title": "[codereview-pass2-race] coap_dtn.c: lichen_dtn_init_with_size still not explicitly locked inside dtn.c; race possible if called directly elsewhere. P1 correctness. Filed per task. HUMAN: spec for dtn thread safety unclear. Tagged codereview",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:49:58.810728671Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:51:56.997957517Z",
+  "started_at": "2026-07-22T15:50:53.517886467Z",
+  "closed_at": "2026-07-22T15:51:56.997957517Z",
+  "close_reason": "Fixed lichen_dtn_init_with_size explicit lock in dtn.c; race resolved per provider pattern",
+  "labels": [
+    "codereview"
+  ]
+}

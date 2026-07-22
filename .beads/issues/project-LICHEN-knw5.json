@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-knw5",
+  "title": "codereview-pass1: Kconfig for TDMA in link/Kconfig",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:20:25.036451737Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:22:30.946221887Z",
+  "closed_at": "2026-07-22T16:22:30.946221887Z",
+  "close_reason": "P3: no issues in Kconfig",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-knw5",
+      "depends_on_id": "project-LICHEN-majo",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:20:25.141896251Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

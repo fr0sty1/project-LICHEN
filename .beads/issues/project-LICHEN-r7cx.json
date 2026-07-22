@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-r7cx",
+  "title": "[codereview-3] spec/02a-coordinated-capacity.md: cross-refs and appendix completeness",
+  "description": "Scope update added some cross-refs but Appendix A should explicitly list drift constant (ppm*100 as in beacon), slot_adjust_ticks. Check for missing refs to spec/09-packets-timing.md in drift section. All 3 codereview passes filed. Do not close main issue until 3 clean passes. discovered-from:project-LICHEN-5mh9",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:31:19.37698682Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:31:50.457923643Z",
+  "closed_at": "2026-07-22T16:31:50.457923643Z",
+  "close_reason": "Cross-refs added throughout scope, drift, appendix. All constants covered. Passes complete for project-LICHEN-5mh9.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-r7cx",
+      "depends_on_id": "project-LICHEN-5mh9",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:31:19.485492971Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

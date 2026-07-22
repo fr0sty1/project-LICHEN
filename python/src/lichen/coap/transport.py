@@ -19,15 +19,12 @@ module only moves opaque datagrams between endpoints addressed by host string.
 from __future__ import annotations
 
 import asyncio
-import struct
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 
 import aiocoap
 from aiocoap import Message, error, interfaces, util
 from aiocoap.numbers import constants
-
-from lichen.crypto.identity import hash_32
 
 ReceiveCallback = Callable[[bytes, str], None]
 
@@ -134,7 +131,7 @@ class LichenRemote(interfaces.EndpointAddress):
         return isinstance(other, LichenRemote) and other._host == self._host
 
     def __hash__(self) -> int:
-        return hash_32(self._host)
+        return hash(self._host)
 
     def __repr__(self) -> str:
         return f"<LichenRemote {self._host}>"
@@ -166,8 +163,8 @@ class LichenTransport(interfaces.MessageInterface):
     def _on_datagram(self, data: bytes, source: str) -> None:
         try:
             message = Message.decode(data, LichenRemote(source))
-        except (error.UnparsableMessage, ValueError, struct.error, IndexError, TypeError):
-            return  # drop malformed datagrams
+        except (error.UnparsableMessage, ValueError, IndexError):
+            return
         self._mm.dispatch_message(message)
 
     def send(self, message: Message) -> None:

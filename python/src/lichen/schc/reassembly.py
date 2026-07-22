@@ -47,10 +47,12 @@ class FragmentReceiver:
     """
 
     def __init__(self, window_size: int) -> None:
+        if window_size < 1:
+            raise ValueError("window_size must be positive")
         self.window_size = window_size
-        self._tiles: dict[int, bytes] = {}  # regular tiles: global index -> bytes
+        self._tiles: dict[int, bytes] = {}
         self._current_window = 0
-        self._completed_windows: set[int] = set()  # windows fully received and ACKed
+        self._completed_windows: set[int] = set()
         self._all1_seen = False
         self._all1_window = 0
         self._all1_payload = b""

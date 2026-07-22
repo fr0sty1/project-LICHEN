@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-wpgm",
+  "title": "[codereview] lora_data.cca_enabled not reset in deinit/reinit_after_abort",
+  "description": "After struct update in lora_l2.c:260, the deinit path (lines ~1020+) and lichen_l2_reinit_after_abort do not reset the new bool field. This can lead to incorrect CCA behavior after an abort recovery. Must fix to maintain runtime flag correctness. See project-LICHEN-525f. P2 robustness.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:54:53.112193537Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:58:28.037559529Z",
+  "started_at": "2026-07-22T16:55:27.863541399Z",
+  "closed_at": "2026-07-22T16:58:28.037559529Z",
+  "close_reason": "Reset lora_data.cca_enabled in deinit (lora_l2.c:1061) and lichen_l2_reinit_after_abort path after struct update at :260. Parallel explored files. Fixed ALL related in C/Rust/sample/tests."
+}

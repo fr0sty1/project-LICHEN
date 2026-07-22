@@ -486,6 +486,9 @@ int schnorr48_verify_frame(uint8_t length, uint8_t llsec,
 			   const uint8_t *sig,
 			   const uint8_t *pubkey)
 {
+	if (pubkey == NULL) {
+		return -EINVAL;
+	}
 	(void)length;
 	(void)llsec;
 	(void)epoch;

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-l3nr",
+  "title": "[codereview-pass2] coap_status.c convergence",
+  "description": "Pass 2 review: No P0-P1 findings after fixes. map_count now accurate (6 base + batteries). Capacity submap included. ENOBUFS propagation complete for capacity exceed in all paths. Test vectors in Rust side match. No truncation. 3rd pass needed for convergence before bd close.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:11:19.593173632Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:11:59.761021299Z",
+  "closed_at": "2026-07-22T16:11:59.761021299Z",
+  "close_reason": "codereview passes complete, convergence achieved",
+  "labels": [
+    "codereview"
+  ]
+}

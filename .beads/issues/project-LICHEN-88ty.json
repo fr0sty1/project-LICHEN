@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-88ty",
+  "title": "[codereview-pass3-style] spec/09-packets-timing.md SFN para now comprehensive; minor P4 opinion on adding explicit 'per RFC 2119' after first MUST cluster for IETF conformance",
+  "description": "P4 opinion only. The updated SFN modulo section now explicitly references time-provider epoch_floor interaction in the paragraph itself, uses consistent spec style, normative MUSTs, pseudocode neutral, test vector link, and cross-refs. No P0/P1/P2 findings. Discovered-from:project-LICHEN-2oas project-LICHEN-pawf project-LICHEN-685x. This completes the 3 independent codereview passes.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:29:25.667942998Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:29:32.141609651Z",
+  "closed_at": "2026-07-22T16:29:32.141609651Z",
+  "close_reason": "Completed 3 independent codereview passes (P2/P3 addressed, final P4 opinion only; no P0/P1). Updated spec/09-packets-timing.md SFN modulo paragraph with explicit time-provider epoch_floor interaction, unsigned arithmetic example, test vector ref, and IETF-style normative language. Matches parent yne7/ofrf requirements. No new files created; only edited existing spec per task scope.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-88ty",
+      "depends_on_id": "project-LICHEN-2oas",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:29:25.775398693Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

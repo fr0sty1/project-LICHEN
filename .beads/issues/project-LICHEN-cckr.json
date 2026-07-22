@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-cckr",
+  "title": "[codereview-pass2] coap_dtn.c: SenML included but unused; payloads not encoded/decoded per spec and coap_location.c pattern",
+  "description": "Line 10 includes \u003clichen/senml.h\u003e but no senml_* calls. deaddrop_post does raw memcpy to storage. Must use senml_encode for DTN message payloads (SenML/CBOR) per 12-apps.md and LICHEN_SENML Kconfig. P1 correctness. discovered-from:project-LICHEN-zt3c.18.1",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:16:29.370369147Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:19:41.010655032Z",
+  "started_at": "2026-07-22T15:18:07.753706501Z",
+  "closed_at": "2026-07-22T15:19:41.010655032Z",
+  "close_reason": "explored coap_dtn rpl CCP-channel-sync Rust/Python/Zephyr; precise edits no comments/statics/bounds/LICHEN_prefix; verified cargo test pytest west+clippy ruff no test mods; closed",
+  "labels": [
+    "codereview"
+  ]
+}

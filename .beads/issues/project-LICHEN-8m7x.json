@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-8m7x",
+  "title": "codereview-P1: format_version=2 update requires schema.json const update and ccp vector schema defs",
+  "description": "Changing FORMAT_VERSION without updating schema.json will cause validation failures in test suite. Also, ccp15 and ccp_load_balancing vectors not covered in schema oneOf. Add definitions for them in v2. Tagged codereview per task.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:45:55.07939235Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:53:15.830035532Z",
+  "started_at": "2026-07-22T16:49:00.086614037Z",
+  "closed_at": "2026-07-22T16:53:15.830035532Z",
+  "close_reason": "Fixed: updated schema.json with format_version=2 support + ccp15/ccp16 defs (oneOf fixed to avoid overlap validation error); generate.py=2; test_vectors.py asserts updated to 2 + rpl_messages.json; Python future import ordering fixed for rpl/messages.py; vector tests pass (130/130); lora_l2.c CCA with IS_ENABLED read, lora_cad(), busy abort via -EBUSY + modem_mutex already present and correct (no further changes); Zephyr native_sim builds clean, no new issues after 3 codereview passes (correctness/security/robustness all clean, no open findings)",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-8m7x",
+      "depends_on_id": "project-LICHEN-la5m",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:45:55.192044151Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

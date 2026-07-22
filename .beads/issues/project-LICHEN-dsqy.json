@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-dsqy",
+  "title": "[codereview] Use rx_channel instead of current_channel in lichen_announce_view per standardization epic project-LICHEN-dp4j",
+  "description": "lichen/subsys/lichen/routing/include/lichen/routing/announce.h:40 and announce.c:245,128 use current_channel but epic specifies rx_channel for consistency with spec/02a-coordinated-capacity.md and Rust/Python. Tag: codereview. Discovered during implementation of project-LICHEN-ckub.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T17:22:19.548449488Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:25:01.804199482Z",
+  "closed_at": "2026-07-22T17:25:01.804199482Z",
+  "close_reason": "Fixed by renaming to rx_channel in header, parse, build_signed_data, scheduler, gateway view/parse, test. Matches standardization epic and spec. 3 clean codereview passes completed with no further findings on this change.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-dsqy",
+      "depends_on_id": "project-LICHEN-ckub",
+      "type": "blocks",
+      "created_at": "2026-07-22T17:22:19.659284848Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

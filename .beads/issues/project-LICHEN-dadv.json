@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-dadv",
+  "title": "[codereview-pass3] coap_status.c dead code",
+  "description": "lichen/subsys/lichen/coap/coap_status.c:833-850 - lichen_coap_status_notify and neighbors_notify contain only LOG_DBG and comments about registration. Either implement properly using coap_resource_notify or remove if dead code. Zephyr coap_resource_notify requires the resource be part of a service with observer tracking.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:06:59.781284517Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:10:57.148970114Z",
+  "started_at": "2026-07-22T16:08:40.236164915Z",
+  "closed_at": "2026-07-22T16:10:57.148970114Z",
+  "close_reason": "Fixed typing, added ccp vectors+README, cleaned coap_status.c dead code+map_count, ENOBUFS coverage; 3 codereviews passed; gates passed",
+  "labels": [
+    "codereview"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-dv42",
+  "title": "Python 3.9+ union type hints break on older Python",
+  "description": "visualize.py:21 uses dict[str, str | None] causing TypeError on import in generate.py and tests. Add from __future__ import annotations to all type-hint files or use Dict/Optional. discovered-from:project-LICHEN-77u0",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:11:07.220998323Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:15:08.962744115Z",
+  "started_at": "2026-07-22T16:12:24.311904333Z",
+  "closed_at": "2026-07-22T16:15:08.962744115Z",
+  "close_reason": "Moved future annotations to top of visualize.py:15 and related rpl files; type aliases now compatible with older Python. pytest passed."
+}

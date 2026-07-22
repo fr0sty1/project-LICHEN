@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-2uba",
+  "title": "[codereview-pass2] coap_dtn.c stubs instead of SenML DTN implementation",
+  "description": "lichen/subsys/lichen/coap/coap_dtn.c:12-20 - All handlers are empty stubs returning 0; no senml_encode call despite include at line 8. Violates spec/12-apps.md:1211 requiring SenML CBOR (ct=112) for /deaddrop and /confessions. Compare to coap_location.c:123 which uses senml_encode_location. No raw memcpy but also no encoding at all. discovered-from:project-LICHEN-pp9k",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:19:32.864350604Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:42:29.772052097Z",
+  "started_at": "2026-07-22T15:19:59.508372006Z",
+  "closed_at": "2026-07-22T15:42:29.772052097Z",
+  "close_reason": "Full SenML DTN handlers with encode_cbor, observable, CBOR 112, no stubs",
+  "labels": [
+    "codereview"
+  ]
+}

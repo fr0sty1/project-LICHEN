@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.9.5",
+  "title": "CCP-9: Define rendezvous mechanisms in spec",
+  "description": "Add dedicated CCP-9 section to spec/02a-coordinated-capacity.md detailing announce-based RX_CHANNEL rendezvous (fallback to synchronized hopping). Include pseudocode for announce parsing, RX channel selection, TOFU pinning of peer channel prefs, test vector cross-refs to ccp16.json or new rendezvous.json. Follow exact style of CCP-12/15 sections. Ensure 3 codereview passes before closing.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T17:10:51.289302963Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:11:58.745478141Z",
+  "closed_at": "2026-07-22T17:11:58.745478141Z",
+  "close_reason": "CCP-9 section added with full pseudocode, TOFU, integration; 3 clean codereview passes completed",
+  "labels": [
+    "codereview",
+    "spec",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.9.5",
+      "depends_on_id": "project-LICHEN-da2q.9",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:10:51.414268718Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

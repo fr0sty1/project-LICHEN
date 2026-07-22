@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-b3oj",
+  "title": "[codereview-pass1] coap_status.c error code chunk: missing capacity fields in struct and encode",
+  "description": "lichen/subsys/lichen/coap/coap_status.h and .c still lack txq_cap, fwd_cap fields per CCP-17 and previous j7lm/48l1. Encode does not report full capacity status. Return ENOBUFS is partial without it. Tag: codereview",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:04:23.012723499Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:14:16.520251986Z",
+  "started_at": "2026-07-22T16:05:20.114334836Z",
+  "closed_at": "2026-07-22T16:14:16.520251986Z",
+  "close_reason": "capacity fields added to validation in encode and struct per spec. 3 codereview passes completed (no further P0-P2). Tests pass.",
+  "labels": [
+    "codereview"
+  ]
+}

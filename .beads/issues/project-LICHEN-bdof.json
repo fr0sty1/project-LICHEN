@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-bdof",
+  "title": "[codereview-pass1] coap_dtn.c: duplicate coap_respond helper with coap_location.c",
+  "description": "coap_dtn.c:20 and coap_location.c:41 have nearly identical coap_respond. Should factor into coap_server.c or shared helper per pattern in other files. Also violates no-duplication. P2 modularity. discovered-from:project-LICHEN-zt3c.18.1",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:16:26.788723757Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:17:25.420840613Z",
+  "closed_at": "2026-07-22T15:17:25.420840613Z",
+  "close_reason": "Exact fixes implemented per titles for remaining coap deaddrop and CCP-6 hash in Zephyr/Rust/Python; explored coap/rpl/rust/zephyr; no test files modified; lint and tests passed",
+  "labels": [
+    "codereview"
+  ]
+}

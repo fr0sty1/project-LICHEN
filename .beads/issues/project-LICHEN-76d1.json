@@ -1,0 +1,35 @@
+{
+  "id": "project-LICHEN-76d1",
+  "title": "codereview-pass2: minor IETF nit in SFN pseudocode comment",
+  "description": "Pseudocode uses # comment; IETF docs prefer // or plain text. Also add reference to exact line in firmware-time-provider.md for epoch_floor. P4 opinion only. Tagged codereview.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:25:38.116746371Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:26:00.04135918Z",
+  "closed_at": "2026-07-22T16:26:00.04135918Z",
+  "close_reason": "Comment style and refs updated",
+  "labels": [
+    "codereview",
+    "opinion"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-76d1",
+      "depends_on_id": "project-LICHEN-y139",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:25:38.230455073Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-76d1",
+      "depends_on_id": "project-LICHEN-umzk",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:25:38.332145908Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

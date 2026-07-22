@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.11.7",
+  "title": "Codereview P2: select_channel pseudocode does not update table of contents or add CCP-11 section header",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:08:29.030694419Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:09:06.30033073Z",
+  "started_at": "2026-07-22T17:08:45.802055178Z",
+  "closed_at": "2026-07-22T17:09:06.30033073Z",
+  "close_reason": "Added CCP-11 to TOC and section stub; all codereview findings resolved after 3 passes",
+  "labels": [
+    "codereview",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.11.7",
+      "depends_on_id": "project-LICHEN-da2q.11",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:08:29.154324303Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

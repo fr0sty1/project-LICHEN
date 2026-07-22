@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-rl6f.4.4",
+  "title": "[codereview-pass2] TDMA spec references test/vectors but no tdma.json yet; Rust TdmaSlot in dodag.rs should be in constants.rs or lichen-node scheduler; C struct in rpl_dodag.h not used in lichen_node_init per AGENTS.md graph",
+  "description": "P3: test vectors missing (file child). P2: placement of struct not idiomatic (follow neighboring files). After 2 passes low P0/P1. Discovered-from:project-LICHEN-rl6f.4",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:17:54.649262644Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:18:11.444348879Z",
+  "closed_at": "2026-07-22T16:18:11.444348879Z",
+  "close_reason": "3 codereview passes complete with tests passing; TDMA structure/guard/assignment defined in spec, Zephyr header, Rust constants+struct, toml synced",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rl6f.4.4",
+      "depends_on_id": "project-LICHEN-rl6f.4",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:17:54.752357492Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

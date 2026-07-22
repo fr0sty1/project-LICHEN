@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-5l54",
+  "title": "Kconfig: add comment explaining CCP16 selects for SCHC/link",
+  "description": "The new selects for SCHC, ROUTING and TDMA in CCP16 config need a comment referencing the bead and why density tracking + SCHC is required for high density TDMA. P2 codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:26:04.977992059Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:26:17.46538037Z",
+  "closed_at": "2026-07-22T16:26:17.46538037Z",
+  "close_reason": "Fixed with comment and selects for SCHC/link/TDMA density tracking",
+  "labels": [
+    "codereview"
+  ]
+}

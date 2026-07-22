@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-0s6u",
+  "title": "codereview-pass3: lichend forward_mesh_to_upstream must call process_dao for RPL DAOs from mesh before TUN forward",
+  "description": "Without this, DAO table stays empty, is_local_mesh always false, no downward routes. Update RX path to parse for RPL type 155 and call gw.process_dao on the DAO payload per node.rs handle. discovered-from:project-LICHEN-6pbg",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:49:41.889463766Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:50:20.140608939Z",
+  "closed_at": "2026-07-22T15:50:20.140608939Z",
+  "close_reason": "Fixed as part of gateway rpl integration, SRH stub, tests/lint passes clean after 3 review passes",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0s6u",
+      "depends_on_id": "project-LICHEN-6pbg",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:49:41.997820718Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

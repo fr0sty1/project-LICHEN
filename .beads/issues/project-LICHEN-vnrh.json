@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-vnrh",
+  "title": "codereview: size reduction calc for PIO assumes fixed Length=4 but RPL PIO Length field is in 8-octet units per RFC6550; verify against actual packet",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:08:55.008459005Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:09:42.342087034Z",
+  "closed_at": "2026-07-22T15:09:42.342087034Z",
+  "close_reason": "Fixed: updated PIO length description and size reduction calc with 8-octet units per RFC6550",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-vnrh",
+      "depends_on_id": "project-LICHEN-3yl7",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:08:55.106988067Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

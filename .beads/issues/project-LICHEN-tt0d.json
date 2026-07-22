@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-tt0d",
+  "title": "[codereview] coap/Kconfig: init order description for LICHEN_COAP_DEADDROP imprecise",
+  "description": "lichen/subsys/lichen/coap/Kconfig:270 - References lichen_coap_client_init() but deaddrop is primarily server-side. AGENTS.md shows client auto-inits; server has LICHEN_COAP_SERVER_STANDALONE. Clarify dependency on full CoAP server init and OSCORE ctx. discovered-from:project-LICHEN-p3dm",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:01:54.556576041Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:03:14.543628622Z",
+  "started_at": "2026-07-22T15:02:09.384420196Z",
+  "closed_at": "2026-07-22T15:03:14.543628622Z",
+  "close_reason": "Updated init order description to accurately cover server registration and OSCORE ctx"
+}

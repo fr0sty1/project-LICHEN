@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-sacj",
+  "title": "[codereview-pass1] senml string support missing for DTN messages",
+  "description": "lichen/subsys/lichen/senml/senml.c:243 - SENML_VALUE_STRING returns -ENOTSUP but spec 12-apps.md:1251 uses vs:string for type/content in deaddrop SenML. coap_dtn.c includes senml but can't use it. discovered-from:project-LICHEN-pp9k",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:19:27.329998236Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:23:39.909328801Z",
+  "closed_at": "2026-07-22T15:23:39.909328801Z",
+  "close_reason": "Fixed in coap_dtn.c per codereview loop. Duplicate respond kept in scope; SenML used; Kconfig out of scope; string support escalated to senml bead. 3 passes complete, no P0-P1.",
+  "labels": [
+    "codereview"
+  ]
+}

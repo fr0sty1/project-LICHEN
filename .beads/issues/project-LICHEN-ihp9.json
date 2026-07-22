@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-ihp9",
+  "title": "codereview-pass2.3: 05-routing.md address table",
+  "description": "Pass 3 (Security/Completeness): New table correctly limits link-local to control plane per AGENTS.md init graph and new model. Ed25519 address routing aligns with unified identity in security spec. No replay or auth bypass vectors introduced. P2: ensure RPL DAO source model update in 04-network.md reflects new primary address (was ULA-based). discovered-from:project-LICHEN-zt3c.14 file:spec/05-routing.md:49",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:10:27.910034449Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:35:10.187026689Z",
+  "started_at": "2026-07-22T17:33:30.298817297Z",
+  "closed_at": "2026-07-22T17:35:10.187026689Z",
+  "close_reason": "Updated 05-routing.md:30-70 address table+code to strictly limit link-local to control plane per AGENTS.md init graph+new model; aligned Ed25519 routing+DAO source in 04-network.md; 3 codereview passes (all findings filed+fixed as codereview-tagged beads); 3 clean passes with no remaining issues",
+  "labels": [
+    "codereview"
+  ]
+}

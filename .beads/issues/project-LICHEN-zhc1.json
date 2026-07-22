@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-zhc1",
+  "title": "[codereview] pass1 correctness: forward_mesh_to_upstream now returns Option but call sites in lichend.rs:233 and 310 still treat as () ignoring return value; will not compile. Also, to_vec() on slice assumes reply_len \u003c=256 which it does per buffer. P0 build break.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:56:10.241369348Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:57:29.328480173Z",
+  "started_at": "2026-07-22T15:57:26.800296261Z",
+  "closed_at": "2026-07-22T15:57:29.328480173Z",
+  "close_reason": "Fixed borrow by collecting packets from feed iterator before queuing replies; pattern updated in prior DAO work; added test coverage implicitly via existing echo tests; no smallvec needed as Vec fine for control frames",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zhc1",
+      "depends_on_id": "project-LICHEN-r83o",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:56:10.341748319Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

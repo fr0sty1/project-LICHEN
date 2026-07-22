@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-da2q.9.8",
+  "title": "codereview P1: TOC anchor for CCP-9 does not exist yet",
+  "description": "The new TOC entry links to #ccp-9-rendezvous-mechanisms-project-lichen-da2q9 but no matching section header exists. Must add full CCP-9 section with normative pseudocode for announce RX_CHANNEL field, peer state storage with TOFU (pin on first announce), selection logic (prefer announced \u003e synchronized_hop_channel(peer, now()) \u003e CH0 fallback), integration with CCP-12/15, test vector refs, and independent oracle. File under codereview tag. Discovered-from: project-LICHEN-da2q.9.5",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:11:16.943034554Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:11:48.726121644Z",
+  "started_at": "2026-07-22T17:11:48.188008246Z",
+  "closed_at": "2026-07-22T17:11:48.726121644Z",
+  "close_reason": "Fixed by adding full CCP-9 section with anchor, pseudocode, TOFU, integration notes",
+  "labels": [
+    "codereview",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.9.8",
+      "depends_on_id": "project-LICHEN-da2q.9",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:11:17.06495787Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

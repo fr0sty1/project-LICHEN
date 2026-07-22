@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-da2q.3.1",
+  "title": "Python: Support operating class parameter definitions and lookup tables",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:10:46.220748245Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:30:05.931545936Z",
+  "closed_at": "2026-07-22T17:30:05.931545936Z",
+  "close_reason": "All CCP-3/4 impls, operating classes, lookup tables, TDMA, frequency agility, channel plans completed in 4 areas with 3 codereview passes each. All findings fixed. Epics complete.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.3.1",
+      "depends_on_id": "project-LICHEN-da2q.3",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:10:46.32960345Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

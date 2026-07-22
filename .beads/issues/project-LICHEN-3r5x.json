@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-3r5x",
+  "title": "codereview: 06-security.md section order and cross-refs",
+  "description": "Pass3-robustness: Updated 8.6/8.7 order good but update all internal refs from old 8.6/8.7 and 04-network.md line nums if changed. Check consistency with 04-network.md IID description (still says SHA-512 but now clarified here). file:spec/06-security.md tagged codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:34:46.292882939Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:35:12.386439793Z",
+  "started_at": "2026-07-22T17:35:03.828491508Z",
+  "closed_at": "2026-07-22T17:35:12.386439793Z",
+  "close_reason": "Section order fixed, cross-refs updated in derivation. 04-network.md left for separate P1 bead. codereview pass complete",
+  "labels": [
+    "codereview"
+  ]
+}

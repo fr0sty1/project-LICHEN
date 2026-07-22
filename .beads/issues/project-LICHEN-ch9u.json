@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-ch9u",
+  "title": "ccp15.json description should reference ccp-interference.json from spec/02a-coordinated-capacity.md; add more vectors for backoff jitter and interference score formula",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:33:42.871649199Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:34:43.932251044Z",
+  "closed_at": "2026-07-22T16:34:43.932251044Z",
+  "close_reason": "ccp15.json updated with full vectors, interference formula, TDMA CCA, spec cross-ref",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ch9u",
+      "depends_on_id": "project-LICHEN-bwmc",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:33:42.977810726Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

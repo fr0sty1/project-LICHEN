@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-9rot",
+  "title": "codereview-pass1: CCP-15.8.3 pseudocode still references outdated fnv1a32 in some cross-refs; ensure all point to crc32_ieee and add line ref to schc.c:90",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:41:52.88378589Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:42:09.591957632Z",
+  "started_at": "2026-07-22T16:41:57.228194139Z",
+  "closed_at": "2026-07-22T16:42:09.591957632Z",
+  "close_reason": "Fixed all cross-refs to use crc32_ieee consistently per lichen/subsys/schc/schc.c:90 and spec/02a-coordinated-capacity.md:41; added line refs per guideline; updated both spec files. No P0-P2 remain for this pass.",
+  "labels": [
+    "codereview",
+    "ccp",
+    "spec"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-9rot",
+      "depends_on_id": "project-LICHEN-9qjs",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:41:53.003255786Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

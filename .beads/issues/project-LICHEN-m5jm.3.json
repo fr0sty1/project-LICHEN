@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-m5jm.3",
+  "title": "Add test vectors for coordination mechanism negotiation (JSON in test/vectors/, cross Python/Rust/C validation)",
+  "description": "Extend test/vectors/ with JSON for negotiation. Ensure cross-impl validation in tests. Match all 3 impls. Run cargo test, pytest, ruff. 3 codereview passes. No dead code.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:18:17.538901205Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:18:22.190983832Z",
+  "started_at": "2026-07-22T15:18:22.190983832Z",
+  "lease_expires_at": "2026-07-22T15:23:22.190983832Z",
+  "heartbeat_at": "2026-07-22T15:18:22.190983832Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-m5jm.3",
+      "depends_on_id": "project-LICHEN-m5jm",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:18:17.632408963Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

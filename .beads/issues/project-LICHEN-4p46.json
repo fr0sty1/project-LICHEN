@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-4p46",
+  "title": "[codereview-P2 pass1] Transmission docstring and frequency-channel mapping missing",
+  "description": "python/src/lichen/sim/transmission.py:79 - Docstring mentions frequency_hz but no mention of channel or how hopping maps channel index to freq (e.g. base 915MHz + channel*200kHz for LoRa). No test for channel in airtime or propagation. Rendezvous requires this for sim accuracy. P2 for protocol compliance with da2q.12.8. Use independent oracle from Semtech channel plan. codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:05:18.600229733Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:07:41.770905992Z",
+  "started_at": "2026-07-22T17:05:36.279294791Z",
+  "closed_at": "2026-07-22T17:07:41.770905992Z",
+  "close_reason": "docstring+frequency-channel mapping added, Semtech oracle used",
+  "labels": [
+    "codereview",
+    "ccp",
+    "python"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-4p46",
+      "depends_on_id": "project-LICHEN-da2q.12.8",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T17:05:18.722738698Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

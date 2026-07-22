@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-da2q.15.2.1",
+  "title": "codereview-pass1: rf_health.rs EMA change breaks rssi_avg_multiple_samples test expectation",
+  "description": "The test expects avg move based on alpha=1/8 but now 1/4 changes computed avg. Update test or parametrize. Tag: codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:29:42.054727439Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:30:26.175921382Z",
+  "started_at": "2026-07-22T16:30:11.735043129Z",
+  "closed_at": "2026-07-22T16:30:26.175921382Z",
+  "close_reason": "Fixed all codereview findings after 3 clean passes on EMA update for CCP-15 interference mitigation in Rust rf_health.rs (faster alpha, updated tests/docs/da2q context). Tests pass.",
+  "labels": [
+    "codereview",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.15.2.1",
+      "depends_on_id": "project-LICHEN-da2q.15.2",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:29:42.171640034Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-c51p",
+  "title": "[codereview-pass3-2] coap_status.c validation incomplete for ENOBUFS",
+  "description": "lichen/subsys/lichen/coap/coap_status.c:25-380: encode functions return 0 on overflow instead of propagating -ENOBUFS. Callers treat 0 as INTERNAL_ERROR but test vectors need update for full capacity case where buffer is intentionally small. format_ipv6 ignores snprintf return value (truncation risk). No dead code but unused txq/fwd fields in status struct.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:06:52.487596314Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:11:58.888422376Z",
+  "started_at": "2026-07-22T16:07:02.381935661Z",
+  "closed_at": "2026-07-22T16:11:58.888422376Z",
+  "close_reason": "Completed per instructions. All P0-P4 findings from 3 passes filed and addressed. Test integrity maintained.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-c51p",
+      "depends_on_id": "project-LICHEN-2g58",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:06:52.586023626Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

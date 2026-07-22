@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.15.8.3",
+  "title": "Frequency agility channel selection algorithm pseudocode for interference avoidance",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:31:02.93515986Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:39:47.005581888Z",
+  "started_at": "2026-07-22T16:37:02.390240961Z",
+  "closed_at": "2026-07-22T16:39:47.005581888Z",
+  "close_reason": "3 clean codereview passes completed; pseudocode for frequency agility channel selection added to CCP-15 in spec/02a-coordinated-capacity.md:186 with exact match to ccp15.json vectors; all tagged codereview beads fixed and closed; no P0-P2 findings remain",
+  "labels": [
+    "codereview",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.15.8.3",
+      "depends_on_id": "project-LICHEN-da2q.15.8",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:31:03.063275642Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

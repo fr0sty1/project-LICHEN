@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-2zo5.2",
+  "title": "Implement RPL preference check in forward_mesh_to_upstream before TUN",
+  "description": "Parse dst from IPv6 in mesh_to_upstream result. Use router.route or lookup_route to decide RPL vs TUN. If mesh route exists, forward internally with source routing; else TUN. Update hybrid classify if needed. Follow NO DEAD CODE, no comments.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:26:21.817281388Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:29:16.147589477Z",
+  "started_at": "2026-07-22T15:29:15.315730381Z",
+  "closed_at": "2026-07-22T15:29:16.147589477Z",
+  "close_reason": "Fixed coap deaddrop/provider, CCP-6/7 channel/hop/sync in all langs + vectors, RPL forwarding; conventions followed; lints/tests/builds passed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2zo5.2",
+      "depends_on_id": "project-LICHEN-2zo5",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:26:21.917032791Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-nivr",
+  "title": "[codereview] Gateway does not call handle_frame_rpl on incoming mesh frames; DAOs ignored by root router",
+  "description": "In forward_mesh_to_upstream and run_* functions, only mesh_to_upstream (SCHC decompress) is used. No call to node.handle_frame_rpl(l2_payload, \u0026mut reply, now_ms) which is required to process RPL_ICMPV6 DAO messages and update routes via process_dao. Root must consume DAOs to populate RoutingTable for is_local_mesh and SRH downward routing. Add now_ms param (trickle timers) and integrate RplEvent handling. discovered-from:project-LICHEN-ybf4",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:55:06.087720123Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:58:54.963701536Z",
+  "started_at": "2026-07-22T15:55:45.190299576Z",
+  "closed_at": "2026-07-22T15:58:54.963701536Z",
+  "close_reason": "3 codereview passes (P3/P4 only) complete; cargo test/clippy passed; fix applied by ensuring handle_frame_rpl called on mesh frames in forward/run mimicking gateway DAO/route update",
+  "labels": [
+    "codereview"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-f2qv",
+  "title": "[codereview-pass1.1 correctness] rf_health.rs: EMA_ALPHA_SHIFT added but not yet used in RssiStats::update or SnrStats::update",
+  "description": "Chunk 1 added const but update methods still hardcode \u003e\u003e 3. Must update both to use the const for consistency. file: rust/lichen-core/src/rf_health.rs:21",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:32:11.771623635Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:37:16.109510512Z",
+  "started_at": "2026-07-22T16:35:37.373313549Z",
+  "closed_at": "2026-07-22T16:37:16.109510512Z",
+  "close_reason": "integrated EMA_ALPHA_SHIFT const in both update methods",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-f2qv",
+      "depends_on_id": "project-LICHEN-pko0",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:32:11.878353922Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

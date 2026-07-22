@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-0p8t",
+  "title": "[codereview-P1] Transmission.channel added but not propagated in start_tx or __post_init__",
+  "description": "python/src/lichen/sim/transmission.py:82 - New channel field defaults to 0 but Medium.start_tx and Simulation TX methods do not pass channel param. Will cause all TX on ch0 until fixed. Also update dataclass docstring. Independent oracle test would fail current vectors. P1 correctness for hopping. discovered-from:project-LICHEN-da2q.12.8",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:05:13.520650426Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:07:40.179332723Z",
+  "started_at": "2026-07-22T17:05:35.295013142Z",
+  "closed_at": "2026-07-22T17:07:40.179332723Z",
+  "close_reason": "channel propagated, docstring+tests updated, independent oracle preserved",
+  "labels": [
+    "codereview",
+    "ccp",
+    "python"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-0p8t",
+      "depends_on_id": "project-LICHEN-da2q.12.8",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T17:05:13.637572079Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

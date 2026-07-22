@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-t5iq",
+  "title": "codereview pass 2: Rust Announce struct missing current_channel field after wire update",
+  "description": "rust/lichen-core/src/announce.rs:90 - struct Announce and AnnounceBuilder must include current_channel: u8 to match updated from_bytes/to_bytes and Python. P0 correctness for CCP-9 rendezvous. Will cause compile error or mismatch. codereview",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:17:03.552417737Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:23:15.27404912Z",
+  "started_at": "2026-07-22T17:18:28.407880974Z",
+  "closed_at": "2026-07-22T17:23:15.27404912Z",
+  "close_reason": "Fixed missing current_channel: u8 in Announce and AnnounceBuilder (rust/lichen-core/src/announce.rs:83), updated FIXED_LENGTH=94, from_bytes/parse at offset 93/94, signed_data_len+write_signed_data (includes byte after seq_num), builder write_to, all test cases, scheduler.rs signed_data+builder (channel=0), node announce.rs test helpers. 3 clean codereview passes with all findings filed+fixed as codereview beads (v84n,w8sy,jwsl,j8bl). Matches Python messages.py and ccp9.json vectors. Verified via cargo test where possible.",
+  "labels": [
+    "codereview"
+  ]
+}

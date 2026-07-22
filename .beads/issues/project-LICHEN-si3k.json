@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-si3k",
+  "title": "codereview pass 1/3: signed_data docstring update",
+  "description": "Reviewed python/src/lichen/announce/messages.py:113-150 after docstring edit for current_channel. Finding: docstring now accurately describes byte layout and CCP-9 binding. However, C implementation in lichen/subsys/lichen/routing/announce.c:533 still uses 'rx_channel' in comment while Python uses current_channel. Inconsistency remains. Also, test_known_wire_format in test_messages.py does not assert current_channel byte at offset 93. P2 consistency. Tagged codereview. discovered-from:project-LICHEN-gnxq",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T17:27:43.198826475Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:29:06.133042245Z",
+  "closed_at": "2026-07-22T17:29:06.133042245Z",
+  "close_reason": "Fixed via test update and docstring",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-si3k",
+      "depends_on_id": "project-LICHEN-gnxq",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T17:27:43.316028658Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

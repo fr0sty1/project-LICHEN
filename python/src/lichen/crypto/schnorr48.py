@@ -169,8 +169,6 @@ def verify(pubkey: bytes, msg: bytes, sig: bytes) -> bool:
     # 1. Parse signature
     e_received = sig[:16]
     s_bytes = sig[16:48]
-    if len(s_bytes) != 32:
-        return False
     s = _scalar_from_bytes(s_bytes)
     # Reject s == 0 or s >= L (non-canonical)
     if s == 0 or s >= L:

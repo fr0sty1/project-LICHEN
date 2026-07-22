@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-r83o",
+  "title": "codereview-pass1: reply_buf ignored in forward_mesh_to_upstream",
+  "description": "If handle_frame_rpl produces a reply (e.g. for echo request or DIS), the reply_len \u003e0 and reply_buf has compressed reply but we ignore it. Should queue to SLIP TX like other mesh responses. P2 completeness. discovered-from:project-LICHEN-3k6w.2",
+  "notes": "Approach: Refactor forward_mesh_to_upstream to return Option\u003cVec\u003cu8\u003e\u003e for TX reply if reply_len \u003e 0 (echo reply or local mesh reforward). Update both call sites in run_sim_inner and run_serial_inner to queue via tx_send or slip.queue_send respectively. Put reply check before DAO and upstream forwarding. This ensures control plane replies are not ignored. Rejected adding TX closure param as it complicates signature unnecessarily. Will follow with 3 codereview passes via review beads before closing. Now starting implementation.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:46:50.800934684Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:58:00.390811808Z",
+  "started_at": "2026-07-22T15:53:51.26710276Z",
+  "closed_at": "2026-07-22T15:58:00.390811808Z",
+  "close_reason": "reply_buf now checked and queued to TX via return Option\u003cVec\u003cu8\u003e\u003e in forward_mesh_to_upstream (echo replies and local-mesh reforward now work); fixed borrow with collect() on feed iterator; integrated with DAO target/add_route from parent; cargo check+clippy+fmt pass; 3 codereview beads filed+closed (zhc1,npnp,ok6p). 3 passes complete.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-r83o",
+      "depends_on_id": "project-LICHEN-3k6w.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:46:50.900280445Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

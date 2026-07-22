@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-g52i",
+  "title": "[codereview-pass1] coap_server.h missing includes for coap structs and socket after oscore addition",
+  "description": "coap_server.h uses struct coap_resource, struct coap_packet, struct sockaddr, socklen_t but only includes std headers + oscore.h now. Transitive includes are fragile and may fail in some build configs. Add explicit #include \u003czephyr/net/coap.h\u003e and \u003czephyr/net/socket.h\u003e. P1 correctness. discovered-from:project-LICHEN-jqdq",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:56:04.377712867Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:56:33.737563981Z",
+  "closed_at": "2026-07-22T15:56:33.737563981Z",
+  "close_reason": "Fixed by adding explicit includes for zephyr/net/coap.h and zephyr/net/socket.h; forward declare for oscore_ctx restored to avoid public API bloat",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-g52i",
+      "depends_on_id": "project-LICHEN-jqdq",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:56:04.481891368Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-t4hf",
+  "title": "codereview pass 2: deaddrop_register not wired to CoAP resource or handlers",
+  "description": "codereview finding: lichen_coap_deaddrop_register stub added but no COAP_RESOURCE_DEFINE for /deaddrop and not integrated in lichen_coap_server_handlers. Kconfig updated but CMakeLists.txt not updated for new source if separate. Per init graph fixed but more work needed for full DTN/SenML. File as P2.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "chore",
+  "created_at": "2026-07-22T15:42:28.658702924Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:43:49.880492577Z",
+  "closed_at": "2026-07-22T15:43:49.880492577Z",
+  "close_reason": "Fixed wiring of deaddrop resource and register call",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-t4hf",
+      "depends_on_id": "project-LICHEN-ykvk.1",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:42:28.759026394Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

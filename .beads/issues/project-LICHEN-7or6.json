@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-7or6",
+  "title": "codereview-pass3: minor style on static inited vars duplication across functions (opinion)",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:15:33.455141727Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:15:55.376486543Z",
+  "closed_at": "2026-07-22T15:15:55.376486543Z",
+  "close_reason": "opinion only; no change",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-7or6",
+      "depends_on_id": "project-LICHEN-zt3c.18",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:15:33.551155282Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

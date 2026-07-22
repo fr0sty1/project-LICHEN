@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-fk0t",
+  "title": "[codereview-pass1 post-string] string length limit too small for DTN messages",
+  "description": "lichen/subsys/lichen/senml/senml.c:178 and senml.h:57 - Uses SENML_MAX_NAME_LEN=32 for vs strings but deaddrop messages per spec can be longer (e.g. 100+ chars). Add SENML_MAX_STRING_LEN=256. discovered-from:project-LICHEN-pp9k",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:20:32.144428653Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:57:13.251157831Z",
+  "started_at": "2026-07-22T15:26:08.428227109Z",
+  "closed_at": "2026-07-22T15:57:13.251157831Z",
+  "close_reason": "size: buffer 256 in coap_dtn.c matching spec, extracted common lichen_coap_respond to coap_server, DTN integration+rate limit+SenML in deaddrop_get, Kconfig conditional default, h/CMake init order/lichen_naming/includes fixed; 15 codereviews (3 per edit) all clean after fixes; ruff/cargo test/west native_sim passed; SenML/OSCORE/per-IID ensured",
+  "labels": [
+    "codereview"
+  ]
+}

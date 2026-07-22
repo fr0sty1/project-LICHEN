@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-4cfe",
+  "title": "[codereview] outdated fd12 example in coap_config.h comment",
+  "description": "Header comment still showed old ula/fd12 despite LCI spec update to primary/0200. Fixed in edit. Verify other docs.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:35:38.373182761Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:41:28.834089899Z",
+  "started_at": "2026-07-22T17:36:51.757039638Z",
+  "closed_at": "2026-07-22T17:41:28.834089899Z",
+  "close_reason": "coap_config.h comment updated to primary/0200 example removing fd12/ULA reference per spec change. Part of zt3c.2 gateway/ygg fixes. Verified with 3 codereview passes, pytest/cargo/west. Scoped changes only.",
+  "labels": [
+    "codereview"
+  ]
+}

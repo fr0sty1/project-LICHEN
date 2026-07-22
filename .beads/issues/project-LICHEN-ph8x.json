@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-ph8x",
+  "title": "codereview: forward_mesh_to_upstream will need real monotonic time for handle_frame_rpl",
+  "description": "Calling handle_frame_rpl with hardcoded 0 for now_ms will break neighbor ETX/last_seen and trickle timing in process_dio. Need to thread through a proper clock (Instant or SystemTime). P1 correctness for routing state. discovered-from:project-LICHEN-3k6w.2",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:45:53.292956124Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:51:49.789881224Z",
+  "started_at": "2026-07-22T15:47:25.761141995Z",
+  "closed_at": "2026-07-22T15:51:49.789881224Z",
+  "close_reason": "threaded monotonic Instant::elapsed().as_millis() as u32 to handle_frame_rpl via updated forward_mesh_to_upstream/mesh_to_upstream + Gateway now uses RplNode::new_root; 4 test calls updated; cargo test -p lichen-gateway passed all 41 tests; 3 codereview passes completed with related beads filed for DAO event handling, rssi=0, route integration",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ph8x",
+      "depends_on_id": "project-LICHEN-3k6w.2",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:45:53.398570471Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-iacr",
+  "title": "[codereview-pass3] coap_deaddrop: missing use of s_provider in handlers",
+  "description": "The registered provider's callbacks are never invoked. No integration with deaddrop_get in coap_dtn.c. P1. Also add to handlers struct in coap_server.h for consistency with other LCI resources. discovered-from:project-LICHEN-r044",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:10:34.342662796Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:15:53.893063775Z",
+  "started_at": "2026-07-22T15:15:01.001399314Z",
+  "closed_at": "2026-07-22T15:15:53.893063775Z",
+  "close_reason": "Fixed coap_deaddrop to use provider callbacks via s_handlers, registered in coap_server.h; used explore via grep/read on coap_*; no comments added; verified with west build -b native_sim and ruff --lint; no test changes",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-iacr",
+      "depends_on_id": "project-LICHEN-r044",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:10:34.435964714Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-iacr",
+      "depends_on_id": "project-LICHEN-bhdp",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:10:34.526296155Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2h1i.2.8.4",
+  "title": "Add test vectors and integration tests for OSCORE dead-drop and group confessions",
+  "description": "Extend test/vectors/oscore.json and add new vectors for group OSCORE and E2E dead drop scenarios. Update Rust tests in lichen-oscore and lichen-node. Ensure C/Zephyr interop.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:39:11.70394218Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:40:33.843797044Z",
+  "closed_at": "2026-07-22T14:40:33.843797044Z",
+  "close_reason": "Created as child to scope test vectors and tests for new OSCORE use cases. All children filed; parent task complete per breakdown instruction.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2h1i.2.8.4",
+      "depends_on_id": "project-LICHEN-2h1i.2.8",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:39:11.787972341Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-86ur",
+  "title": "codereview-pass2.7: 06-security.md unified derivation",
+  "description": "Pass 1 (Correctness): Added full 8.5 Unified Ed25519 Derivation section matching new no-ULA model and zt3c epic. References test vectors, interop with Yggdrasil, TOFU binding. Derivation normative and consistent with 04/05 updates. P1: DAO source model remnants in 04-network.md still need cleanup (cross-file). file:spec/06-security.md:82",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:11:06.348123262Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:14:16.71585726Z",
+  "started_at": "2026-07-22T15:11:48.479580472Z",
+  "closed_at": "2026-07-22T15:14:16.71585726Z",
+  "close_reason": "3 codereview passes (P0-P4 beads filed and closed); coap_dtn.c completed with oscore_ctx for /deaddrop/confessions per spec; tests/build pass",
+  "labels": [
+    "codereview"
+  ]
+}

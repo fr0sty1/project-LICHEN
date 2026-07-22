@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-4iot",
+  "title": "P3: init order follows graph but no call to lichen_coap_client_init per AGENTS.md for OSCORE in deaddrop; no rate limiting",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:17:56.112401597Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:18:22.110055242Z",
+  "closed_at": "2026-07-22T15:18:22.110055242Z",
+  "close_reason": "P3 fixed in 3rd pass: lichen_coap_client_init added per AGENTS.md init graph; no P0-P4 remain",
+  "labels": [
+    "codereview"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-1526",
+  "title": "[codereview-pass2.4] SCHC draft A.5 PIO rule table - validate against RFC 6550 PIO format and LICHEN DODAG prefix",
+  "description": "Review chunk 2 (new A.5 section). PIO format: Type(1), Len(1), PrefixLen(1), LA(1), Valid(4), Preferred(4), Reserved(4), Prefix(var). Flags 0xC0 is L+A. Check if lifetimes infinite is common in LICHEN (per appendix-rpl). discovered-from:project-LICHEN-ftlq",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:03:11.975537247Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:05:17.196256998Z",
+  "started_at": "2026-07-22T15:04:06.198132469Z",
+  "closed_at": "2026-07-22T15:05:17.196256998Z",
+  "close_reason": "Synced PIO table and sizes/CDA; tests pass"
+}

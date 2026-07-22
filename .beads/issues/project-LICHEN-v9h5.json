@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-v9h5",
+  "title": "codereview-pass3 main: direct oscore_unprotect_request + IID fix + IID[7] rate limit implemented; no mutex on s_last_confessions or s_dtn_buf yet (see jzne); P2 on shared statics; 3 passes complete with no P0/P1",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:44:44.49594095Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:55:59.451845405Z",
+  "started_at": "2026-07-22T15:54:08.63281753Z",
+  "closed_at": "2026-07-22T15:55:59.451845405Z",
+  "close_reason": "Completed after CCP-17 vectors/coap research, fixed sync/handlers/remaining CCP, no comments, conventions matched, lints+tests+builds passed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-v9h5",
+      "depends_on_id": "project-LICHEN-rq3t",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:44:44.598817409Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

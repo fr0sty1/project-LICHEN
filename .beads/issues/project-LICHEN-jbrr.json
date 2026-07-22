@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-jbrr",
+  "title": "[codereview-pass2-security] Missing security note in CCP16 Kconfig help",
+  "description": "lichen/subsys/lichen/link/Kconfig:118-125 - The help text for LICHEN_LINK_CCP16_LOAD_BALANCING does not mention the security rationale for selecting LICHEN_SCHC (prevents disabling compression on density/load metrics in RPL control traffic which could enable amplification attacks or buffer issues). CoAP Kconfig has explicit SECURITY: notes. Add similar comment per spec/06-security.md. P3 readability/maintainability. No P0-P1 bypass found - select is correct and effective.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:28:12.471176527Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:29:14.461622618Z",
+  "started_at": "2026-07-22T16:29:13.950527689Z",
+  "closed_at": "2026-07-22T16:29:14.461622618Z",
+  "close_reason": "Added SECURITY note to CCP16 help text explaining SCHC select rationale for density metrics control messages per other insecure-option patterns and spec. All codereview findings resolved.",
+  "labels": [
+    "codereview",
+    "security"
+  ]
+}

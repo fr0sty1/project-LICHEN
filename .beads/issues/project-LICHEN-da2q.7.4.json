@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.7.4",
+  "title": "Vectors: time synchronization for channel hopping",
+  "description": "Test vectors for CCP-7 sync and hopping coordination.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:12:43.818223919Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:14:30.367313306Z",
+  "started_at": "2026-07-22T15:13:55.889255473Z",
+  "closed_at": "2026-07-22T15:14:30.367313306Z",
+  "close_reason": "Fixed per spec/review; tests/lint pass",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.7.4",
+      "depends_on_id": "project-LICHEN-da2q.7",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:12:43.921933742Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

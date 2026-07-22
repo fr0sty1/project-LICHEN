@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-fbsw",
+  "title": "codereview-pass1: TDMA rendezvous beacon format needs precise slot timing and drift calc in spec/02-physical-link.md",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:16:55.318646888Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:17:12.285819633Z",
+  "closed_at": "2026-07-22T16:17:12.285819633Z",
+  "close_reason": "Pass 1 completed; beacon format updated per review",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-fbsw",
+      "depends_on_id": "project-LICHEN-rl6f.6",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:16:55.426148535Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

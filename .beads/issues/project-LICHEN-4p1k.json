@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-4p1k",
+  "title": "[codereview-pass2-security] coap_dtn.c: s_dtn_mutex added but no lock/unlock in existing deaddrop_post/get or dtn calls; race on buffer state possible",
+  "description": "P0 security: without locks around lichen_dtn_* and senml calls, concurrent CoAP requests can corrupt count/current_bytes/valid flags. Per next bead for thread-safety. discovered-from:project-LICHEN-atwl. Address all P0-P4 before next logical chunk.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:21:58.159642918Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:23:00.348638875Z",
+  "started_at": "2026-07-22T15:22:24.546413526Z",
+  "closed_at": "2026-07-22T15:23:00.348638875Z",
+  "close_reason": "Addressed in register/expiry/handler/locks. Clean passes complete.",
+  "labels": [
+    "codereview"
+  ]
+}

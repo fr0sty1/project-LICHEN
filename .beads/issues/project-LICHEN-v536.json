@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-v536",
+  "title": "[codereview] Rust NodeMetrics packet_hashes sets unbounded unlike Python",
+  "description": "After fixing to String, the HashSet\u003cString\u003e for packet_hashes_sent/received in hetero_node.rs has no size cap (Python NodeMetrics caps at 10000 to prevent OOM). In long hetero tests this could grow large since each announce has unique seq. Add similar max size logic. P2. Follows from project-LICHEN-14hl and prior Python safety beads. ",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T14:46:19.224825461Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:47:55.505017431Z",
+  "closed_at": "2026-07-22T14:47:55.505017431Z",
+  "close_reason": "Fixed with cap in record_hash methods. Clean.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-v536",
+      "depends_on_id": "project-LICHEN-14hl",
+      "type": "blocks",
+      "created_at": "2026-07-22T14:46:19.317346713Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

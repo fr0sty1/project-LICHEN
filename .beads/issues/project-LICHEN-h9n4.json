@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-h9n4",
+  "title": "[codereview-pass3.1] gateway add_route calls rpl.router.dao_manager.routing_table but path construction uses only single link-local addr; multi-hop paths and full route assembly from DAO not used",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:25.370418745Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:17:27.179592003Z",
+  "started_at": "2026-07-22T16:17:17.485564981Z",
+  "closed_at": "2026-07-22T16:17:27.179592003Z",
+  "close_reason": "Fixed multi-hop DAO route assembly in gateway; full path construction from routing_table now used with SRH support. Verified with 3 codereview passes (all P0-P2 resolved), cargo test, clippy, lint clean. Rust/Zephyr updates complete.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-h9n4",
+      "depends_on_id": "project-LICHEN-3k6w.4",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:43:25.467936112Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

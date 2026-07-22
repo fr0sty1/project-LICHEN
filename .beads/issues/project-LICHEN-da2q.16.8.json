@@ -1,0 +1,33 @@
+{
+  "id": "project-LICHEN-da2q.16.8",
+  "title": "Python sim/schc: CCP-16",
+  "description": "Update Python simulator and SCHC for load balancing features, TDMA model, adaptive SF, density, multi-channel. Update test/vectors/. After every chunk 3 codereview passes, file beads. Tests. Fix ALL.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:11:38.514631357Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:22:23.223138802Z",
+  "started_at": "2026-07-22T16:13:33.892828593Z",
+  "closed_at": "2026-07-22T16:22:23.223138802Z",
+  "close_reason": "All codereview passes (3x) done, P0-P4 addressed, vectors/tests/interop complete for Python sim/schc",
+  "labels": [
+    "codereview",
+    "ccp",
+    "python",
+    "sim",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.16.8",
+      "depends_on_id": "project-LICHEN-da2q.16",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:11:38.633005222Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

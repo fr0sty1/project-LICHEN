@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-042d",
+  "title": "Codereview pass 2: project-LICHEN-pspk puck/CMakeLists.txt - conditional removal correct per Kconfig deps, iterable always safe for empty list, style mimic perfect",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:55:23.741577113Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:56:06.715593263Z",
+  "closed_at": "2026-07-22T14:56:06.715593263Z",
+  "close_reason": "clean codereview pass 2: conditional aligned, style mimicked, safe for all configs",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-042d",
+      "depends_on_id": "project-LICHEN-pspk",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T14:55:23.828118499Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

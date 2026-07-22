@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-bcsn",
+  "title": "Implement human-readable node address (Base32) in Rust lichen-link::identity",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:40:16.996860947Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:43:40.857463882Z",
+  "started_at": "2026-07-22T14:40:22.282329178Z",
+  "closed_at": "2026-07-22T14:43:40.857463882Z",
+  "close_reason": "Added human_address() fn in rust/lichen-link/src/identity.rs (no_std compatible, returns [u8;15]); added test; cargo check and tests pass",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-bcsn",
+      "depends_on_id": "project-LICHEN-oxul",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T14:40:17.086328829Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

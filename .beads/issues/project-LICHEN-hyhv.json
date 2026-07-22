@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-hyhv",
+  "title": "codereview pass 1: coap_status.c map_count uint16_t + bounds in cbor_put_*_header for CCP-17",
+  "description": "Verified uint16_t map_count calculations, added \u003eUINT8_MAX check in both header funcs to set overflow preventing bad CBOR. No P0/P1. Scope limited to coap_status.c per instructions. Zephyr build pending.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:13:57.550155395Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:14:29.233858953Z",
+  "closed_at": "2026-07-22T16:14:29.233858953Z",
+  "close_reason": "Pass 1 complete, no P0/P1"
+}

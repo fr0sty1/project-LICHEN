@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ofrf.1",
+  "title": "Spec chunk 1: CCP-16 file creation and overview",
+  "description": "Create spec/02a-coordinated-capacity.md with header, intro to CCP-16, multi-root beacon conflict section using strict RFC2119. Parallel with desync state machine research.",
+  "notes": "Completed chunk 1: created and populated spec/02a-coordinated-capacity.md with header, overview, TDMA/hash, channel agility, time sync, multi-root conflict, desync stub per parent. Addressed 3 codereview beads (P1-P3) via edit. 3 review passes filed. Consistent IETF/RFC2119 style matching schc/rpl drafts. No P0-P2 in final passes. No dead code/meta. Ready for next chunks on FSM details.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:23:11.346799351Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:25:27.066711963Z",
+  "started_at": "2026-07-22T16:23:28.517405236Z",
+  "closed_at": "2026-07-22T16:25:27.066711963Z",
+  "close_reason": "Closed",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ofrf.1",
+      "depends_on_id": "project-LICHEN-ofrf",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:23:11.448961231Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

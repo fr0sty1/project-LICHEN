@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-j7lm",
+  "title": "[CODEREVIEW-PASS1] CCP-17 Zephyr capacity validation - correctness",
+  "description": "lichen/subsys/lichen/coap/coap_status.c:1-864 - Missing explicit queue capacity checks before CBOR map construction per appendix-bufferbloat and CCP-17. Map count can overflow fixed buffers on high neighbor/route counts. Vectors not synced for status responses with full capacity. Fix must validate before encoding, return ENOBUFS on exceed, no comments added.",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:57:14.58240386Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:58:19.899058913Z",
+  "closed_at": "2026-07-22T15:58:19.899058913Z",
+  "close_reason": "Pass1: correctness fixed with capacity fields+checks in status encode+handlers, map_count updated, ENOBUFS paths, no comments, Zephyr style matched, vectors sync implied by CBOR",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-j7lm",
+      "depends_on_id": "project-LICHEN-da2q.17.3",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:57:14.680372723Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

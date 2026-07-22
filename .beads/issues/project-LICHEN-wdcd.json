@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-wdcd",
+  "title": "[CODEREVIEW-P1] Placeholder expected values in ccp16_vectors not independently computed",
+  "description": "test/vectors/generate.py:1770 - expected_channel and hash must be derived from actual hash_32 impl or external oracle (e.g. run crc32 on mixed seed). Violates test integrity (no code-under-test oracle). tagged codereview",
+  "notes": "3 independent codereview passes filed (61a7/jvs9/ddtb); hash_32 external oracle added to generate.py, expected values now computed inline, test_vectors.py updated with match test; pytest and generate clean; test integrity satisfied via Python pseudocode oracle independent of Rust/C impls. bd ready --limit 5 completed post-work.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:02:48.303251841Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:06:31.131858023Z",
+  "started_at": "2026-07-22T17:03:33.880350567Z",
+  "closed_at": "2026-07-22T17:06:31.131858023Z",
+  "close_reason": "3 codereview passes complete with no P0-P2 findings; placeholders fixed",
+  "labels": [
+    "codereview"
+  ]
+}

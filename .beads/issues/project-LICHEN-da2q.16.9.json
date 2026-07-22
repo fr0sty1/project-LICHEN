@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-da2q.16.9",
+  "title": "CCP-16.2: Implement load metric collection",
+  "description": "Extend lichen_coap_radio_stats and node_status with channel utilization, per-channel load, balancing score. Update encode functions and Kconfig buffers. Update status_get_cb implementations in apps. Acceptance: CBOR includes load fields, tests pass.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:11:39.513987494Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:27:23.228658247Z",
+  "started_at": "2026-07-22T16:27:22.700127955Z",
+  "closed_at": "2026-07-22T16:27:23.228658247Z",
+  "close_reason": "Implemented load metric collection per CCP-16.2 with tests, 3 codereviews passed, all findings fixed",
+  "labels": [
+    "ccp",
+    "phy",
+    "implementation",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.16.9",
+      "depends_on_id": "project-LICHEN-da2q.16",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:11:39.626685186Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

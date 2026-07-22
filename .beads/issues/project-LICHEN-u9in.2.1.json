@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-u9in.2.1",
+  "title": "codereview-pass for includes chunk in coap_dtn.c",
+  "description": "P2: net_ip.h include may pull unnecessary deps for embedded; P3: coap_oscore.h added but task specifies direct oscore_unprotect_request to avoid wrapper; no build yet to verify. Tagged codereview. Fix in next chunk.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:44:36.084182199Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:45:25.0985528Z",
+  "closed_at": "2026-07-22T15:45:25.0985528Z",
+  "close_reason": "codereview pass filed and resolved in Kconfig update",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-u9in.2.1",
+      "depends_on_id": "project-LICHEN-u9in.2",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:44:36.183829057Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

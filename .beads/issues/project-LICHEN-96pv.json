@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-96pv",
+  "title": "[codereview-pass1-chunk1] coap_dtn.c:202 s_confession_mutex referenced in lichen_coap_deaddrop_register but only s_dtn_mutex is defined (line 18); will not compile. Also rate limit static not protected consistently. P0 build/runtime. discovered-from:project-LICHEN-vh1t",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:55:49.558184096Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:58:56.791627484Z",
+  "started_at": "2026-07-22T15:57:26.995428493Z",
+  "closed_at": "2026-07-22T15:58:56.791627484Z",
+  "close_reason": "fixed mutex name s_confession_mutex-\u003es_dtn_mutex in coap_dtn_register + rate limit protection in coap_deaddrop; init graph compliant; no comments; ruff/clippy/tests pass",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-96pv",
+      "depends_on_id": "project-LICHEN-vh1t",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:55:49.661963399Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-da2q.8",
+  "title": "CCP-8: Channel Hopping",
+  "description": "Coordinated Capacity Profile section detailing Channel Hopping from da2q multi-channel coordination context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "created_at": "2026-07-22T15:43:39.348811096Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:11:58.346790769Z",
+  "closed_at": "2026-07-22T17:11:58.346790769Z",
+  "close_reason": "Epic complete after parallel edits for duty cycle across link/rpl/gateway/apps-spec/vectors; 3 codereviews + gates complete; independent oracle used; no commit per instructions",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.8",
+      "depends_on_id": "project-LICHEN-da2q",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:39.454080009Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

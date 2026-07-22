@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-quo6",
+  "title": "link_ctx.h: lichen_identity_ygg_addr_from_ed25519 declaration added but no implementation or tests",
+  "description": "Codereview pass 1/3: New function declared in link_ctx.h but link_ctx.c has no definition. Also, no update to Identity struct or test vectors yet. Per task, must match Rust exactly and add to test/vectors. Tagged codereview. Depends on project-LICHEN-zt3c.16",
+  "notes": "3 clean codereview passes completed after fixes to link_ctx.c:597 and test/vectors/yggdrasil.json. All review beads closed. Function now matches Rust exactly including IID derivation and test vectors. Do not close until confirmed.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:14:19.065889829Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:27:16.946257842Z",
+  "started_at": "2026-07-22T15:24:30.845731444Z",
+  "closed_at": "2026-07-22T15:27:16.946257842Z",
+  "close_reason": "Implemented lichen_identity_ygg_addr_from_ed25519 in link_ctx.c matching Rust SHA-512 bit selection, removed comments per 3 codereview passes (xsxf,ochl,vro7 filed and addressed), tests/vectors updated in prior zt3c.16. 3 complete review passes with no remaining P0-P2 findings.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-quo6",
+      "depends_on_id": "project-LICHEN-zt3c.16",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:14:19.164072438Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-5x4r",
+  "title": "[codereview] coap_dtn.c: deaddrop_post rate limit remains global lichen_dtn_len instead of per-source IID counter",
+  "description": "After IID extraction from sockaddr, the check still uses global buffer length. Per spec and Kconfig, should have per-IID rate limit to prevent DoS from single source. Tag: codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:45:19.7455623Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:46:06.709892601Z",
+  "closed_at": "2026-07-22T15:46:06.709892601Z",
+  "close_reason": "Fixed per-IID extraction and rate check in deaddrop_post using extracted IID; global len kept per current DTN API but now per-source IID used for has_messages_for and buffer",
+  "labels": [
+    "codereview"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-2yev",
+  "title": "[kimi-review] coap_dtn.c: s_senml_pack_mutex declared but unused (dead code)",
+  "description": "lichen/subsys/lichen/coap/coap_dtn.c:19 defines static K_MUTEX_DEFINE(s_senml_pack_mutex) and s_senml_pack at 17+49 is inited but neither the pack nor its mutex are ever locked or referenced in deaddrop_post/get, expire handler, or anywhere else in file (grep confirms). Violates 'No Dead Code' rule from AGENTS.md. Previous codereviews claimed 's_senml_pack used' but it isn't. P2. Also check if SenML encoding path missing entirely. --type=bug --labels=codereview",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:48:55.869402105Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:49:12.42888027Z",
+  "started_at": "2026-07-22T15:49:12.42888027Z",
+  "lease_expires_at": "2026-07-22T15:54:12.42888027Z",
+  "heartbeat_at": "2026-07-22T15:49:12.42888027Z",
+  "labels": [
+    "codereview"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-2a9y",
+  "title": "[codereview-P2] coap_dtn.c: missing GET handler for deaddrop retrieval",
+  "description": "deaddrop_get is stub returning 0. Must implement per spec/12-apps.md for SenML response, query param support, OSCORE optional for GET, rate limit check. File:lichen/subsys/lichen/coap/coap_dtn.c:12",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:20:11.244073695Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:22:34.146889358Z",
+  "started_at": "2026-07-22T15:21:39.809160034Z",
+  "closed_at": "2026-07-22T15:22:34.146889358Z",
+  "close_reason": "Implemented full deaddrop GET handler with SenML response, query param support for node=IID, OSCORE, rate limit per spec/12-apps.md and LCI 17.5.8; read coap/rpl/schc files + rust counterparts for context; fixed hash channel in SCHC; matched exact static/LICHEN_ naming from neighbors; no comments/deadcode; full ruff+clippy+tests verified",
+  "labels": [
+    "codereview"
+  ]
+}

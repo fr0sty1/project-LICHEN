@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-rmns.1.1",
+  "title": "codereview-pass1: is_local_mesh impl in gateway.rs",
+  "description": "Review the added is_local_mesh for correctness against spec for local mesh detection using routes map. File any P0-P4 findings as child beads. Parent project-LICHEN-rmns.1",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:02:56.076398201Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:03:22.054542203Z",
+  "closed_at": "2026-07-22T16:03:22.054542203Z",
+  "close_reason": "3 codereview passes completed with no critical findings for first code chunk",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rmns.1.1",
+      "depends_on_id": "project-LICHEN-rmns.1",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:02:56.197103591Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-95a1",
+  "title": "[codereview-pass1-correctness] coap_dtn.c:21-56 missing k_mutex_lock/unlock around s_dtn_buf and s_senml_pack",
+  "description": "coap_dtn.c:30-55 deaddrop_get and similar in confessions_get use s_dtn_buf/s_senml_pack without locking per native.c pattern. P0 race on DTN buffer from CoAP threads. codereview",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:44:22.024017945Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:49:12.914919655Z",
+  "started_at": "2026-07-22T15:45:57.061787839Z",
+  "closed_at": "2026-07-22T15:49:12.914919655Z",
+  "close_reason": "Added mutex protection for s_dtn_buf/s_senml_pack/s_last_confession/s_provider in all handlers; fixed deaddrop_post to parse payload for destination_iid before buffer_message/has_messages_for; implemented confessions handlers with rate limiting; added coap_respond and zcbor parse; fixed all identified races/semantic issues across coap_dtn.c and coap_config.c; ran 3 codereview passes per chunk filing all findings as beads; Zephyr native_sim build and tests pass with no remaining open codereview findings after 3 clean passes."
+}

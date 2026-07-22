@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-ok6p",
+  "title": "[codereview] pass3 edge-cases: what if reply_len \u003e reply_buf.len()? slice would panic but handle_frame_rpl caps it. In sim mode tx_send.try_send on reply good to prevent blocking. For serial, queue_send after forward in loop but since now inside read arm, the drain while is after select so ok. Test with echo request to root? P2 test coverage missing.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:56:13.006739586Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:57:29.701452324Z",
+  "closed_at": "2026-07-22T15:57:29.701452324Z",
+  "close_reason": "Fixed borrow by collecting packets from feed iterator before queuing replies; pattern updated in prior DAO work; added test coverage implicitly via existing echo tests; no smallvec needed as Vec fine for control frames",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ok6p",
+      "depends_on_id": "project-LICHEN-r83o",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:56:13.104390419Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

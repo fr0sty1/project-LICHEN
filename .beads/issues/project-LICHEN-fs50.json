@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-fs50",
+  "title": "codereview-P2 schema pass2",
+  "description": "Pass2: test_vector_file_schema still passes for all listed files. generate.py compatible. No hardcoded in schema. Clean.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:10:17.932950711Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:11:51.11474856Z",
+  "started_at": "2026-07-22T17:10:36.118941431Z",
+  "closed_at": "2026-07-22T17:11:51.11474856Z",
+  "close_reason": "Schema duplication fixed via optional_hex extraction; 3 codereview passes + gates passed; vectors use independent oracle",
+  "labels": [
+    "codereview"
+  ]
+}

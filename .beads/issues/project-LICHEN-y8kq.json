@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-y8kq",
+  "title": "codereview pass1: Builder struct update missed in from_bytes impl",
+  "description": "rust/lichen-core/src/announce.rs:108 - from_bytes() does not yet set current_channel in returned Announce. Will default to 0 or panic on struct update. P1. codereview",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:17:17.771707246Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:24:13.665257407Z",
+  "started_at": "2026-07-22T17:18:28.624703889Z",
+  "closed_at": "2026-07-22T17:24:13.665257407Z",
+  "close_reason": "bit-exact signed_data and wire format across Python/Rust/C with channel after seq_num; tests updated with independent oracle; cargo test/pytest/clippy/fmt pass; 3 review passes completed via codereview beads",
+  "labels": [
+    "codereview"
+  ]
+}

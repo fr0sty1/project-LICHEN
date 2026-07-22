@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-uyz9",
+  "title": "[codereview-pass1-correctness] pseudocode delta edge case uses 'as uint32' which may not be standard pseudocode syntax",
+  "description": "spec/02a-coordinated-capacity.md:132 - Should use more formal pseudocode like 'uint32 delta = current_u32 - last_u32' to match existing C example and avoid impl-specific keywords. P2. Discovered-from:project-LICHEN-w86r",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:27:54.214666769Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:28:13.576508616Z",
+  "closed_at": "2026-07-22T16:28:13.576508616Z",
+  "close_reason": "Fixed pseudocode style to C-like, added vector ref and boundary comment. codereview-pass1 chunk2 complete. Pass 1 done."
+}

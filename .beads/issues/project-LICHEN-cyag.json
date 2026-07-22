@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-cyag",
+  "title": "codereview: rpl_routing_lookup should integrate with Yggdrasil TUN forward fallback",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:18:01.48374982Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:17:26.033780525Z",
+  "started_at": "2026-07-22T17:15:20.906494558Z",
+  "closed_at": "2026-07-22T17:17:26.033780525Z",
+  "close_reason": "3 codereview passes completed (tests+clippy clean, explicit prefix logic filed+integrated in lookup fallback via new bead 8uly). Updated is_local_mesh and forward in gateway.rs + routing.rs lookup to prefer RPL then Ygg TUN fallback per spec. lichen-rpl and gateway updated. No P0/P1 left. bd ready --limit 5 run.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-cyag",
+      "depends_on_id": "project-LICHEN-zt3c.17",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:18:01.614667521Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

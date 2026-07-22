@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.14",
+  "title": "CCP-14: Gateway Multi-RX",
+  "description": "Coordinated Capacity Profile section detailing Gateway Multi-RX from da2q multi-channel coordination context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "epic",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:51.468121744Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:49:01.285301798Z",
+  "started_at": "2026-07-22T16:47:19.90589701Z",
+  "closed_at": "2026-07-22T16:49:01.285301798Z",
+  "close_reason": "CCP-14 complete after parallel edits and 3 codereview passes (P0-P4 all addressed); vectors use independent Python/C oracle for hash_32 and channel timing",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.14",
+      "depends_on_id": "project-LICHEN-da2q",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:51.575351162Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

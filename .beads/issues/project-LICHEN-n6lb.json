@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-n6lb",
+  "title": "codereview-pass-1: RPL_DAO rules.py FieldDescriptor target_value explicit sync with Rust",
+  "description": "Verified explicit target_value=0 for EQUAL/NOT_SENT on reserved field matches Rust rules.rs:128 and adaptation.md model. No behavior change. Python codec/headers.py parse/build for DAO base (20 bytes with kd_flags D-bit check) aligns with Rust RplDaoProfile. Test vector rpl_dao matches exactly.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:01:32.928793738Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:01:40.353916543Z",
+  "closed_at": "2026-07-22T15:01:40.353916543Z",
+  "close_reason": "Synced rules.py FieldDescriptors (explicit target_value=0 for reserved), codec/headers.py comments per adaptation.md and Rust RPL_DAO model (lines ~280 in rules.py, ~414 in codec.rs). 3 independent codereview passes filed as beads n6lb/jxdw/xqd5 (correctness, alignment, security/idiom). Python+ Rust tests/vectors pass. Mimics Rust style and triple-impl discipline.",
+  "labels": [
+    "codereview"
+  ]
+}

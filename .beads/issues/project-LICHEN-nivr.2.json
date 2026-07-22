@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-nivr.2",
+  "title": "[codereview-pass2] Rusty idiom pass: forward_mesh_to_upstream/run_* match gateway style, no unsafe, heapless where possible not applicable, clippy clean",
+  "description": "No P0/P1. P4 readability: async fn signature idiomatic for TunLike. Tests cover DAO path indirectly via gateway tests. No P0/P1.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:58:48.163193847Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:58:51.999296067Z",
+  "closed_at": "2026-07-22T15:58:51.999296067Z",
+  "close_reason": "3 codereview passes complete with no P0/P1; cargo test and clippy passed; handle_frame_rpl integrated in forward path mimicking gateway; routes/DAO processing fixed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-nivr.2",
+      "depends_on_id": "project-LICHEN-nivr",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:58:48.265597893Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

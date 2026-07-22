@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-2h1i.9.2",
+  "title": "codereview-pass2-sales-playbook",
+  "description": "Second independent review: GPL compliance note clear. Pricing consistent with f2ga. Suggest adding sample QR generation command. Minor: fix inventory.sh shebang portability. Fixed in edit.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:04:16.755796278Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:04:55.57385633Z",
+  "closed_at": "2026-07-22T15:04:55.57385633Z",
+  "close_reason": "3 codereview passes complete, script tested and fixed, playbook developed and integrated into epic. All tests pass for sales chunk.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2h1i.9.2",
+      "depends_on_id": "project-LICHEN-2h1i.9",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:04:16.847314132Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

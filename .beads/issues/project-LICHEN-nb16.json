@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-nb16",
+  "title": "coap_dtn.c: OSCORE ctx lookup uses hardcoded ID 1 for confessions",
+  "description": "P0 correctness: deaddrop_get assumes oscore_ctx with recipient ID 0x01 but spec requires per-peer or unified derivation from 06-security.md. Use oscore_ctx_get_by_eui64 or proper KID from OSCORE option. Cross refs project-LICHEN-86ur",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:13:27.173186506Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:14:10.843889935Z",
+  "closed_at": "2026-07-22T15:14:10.843889935Z",
+  "close_reason": "Fixed OSCORE ctx per unified derivation in pass 1 of 3"
+}

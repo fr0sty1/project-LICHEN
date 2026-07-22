@@ -77,7 +77,6 @@ struct lichen_meshtastic_position_snapshot {
 	uint8_t precision_bits;
 	bool timestamp_field_valid;
 	bool fix_time_rejected_below_epoch_floor;
-	bool fix_time_rejected_future;
 	uint32_t effective_epoch_floor;
 };
 
@@ -90,10 +89,9 @@ struct lichen_meshtastic_adapter_packet_info {
 	uint32_t portnum;
 	uint8_t to_eui64[8];
 	uint8_t to_iid[8];
-	uint8_t payload_buf[LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX];
 	const uint8_t *payload;
-	size_t payload_len;
 	uint8_t payload_buf[LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX];
+	size_t payload_len;
 	bool has_from;
 	bool has_to;
 	bool has_id;
@@ -257,7 +255,6 @@ struct lichen_meshtastic_adapter {
 	struct lichen_meshtastic_adapter_ops ops;
 	struct lichen_meshtastic_adapter_stats stats;
 	uint8_t stream_buf[LICHEN_MESHTASTIC_TO_RADIO_MAX];
-	uint8_t tx_buf[LICHEN_MESHTASTIC_FROM_RADIO_MAX];
 	size_t stream_len;
 	size_t stream_expected;
 	uint8_t stream_header[LICHEN_MESHTASTIC_STREAM_HEADER_LEN];
@@ -266,12 +263,6 @@ struct lichen_meshtastic_adapter {
 	bool stream_in_frame;
 	bool disconnected;
 };
-
-/*
- * Thread-safety: No internal mutex or atomics. Caller must serialize all
- * accesses to a given adapter instance (emit_*, feed_*, process_*, get_stats,
- * etc). Stats updates are racy but best-effort. Matches embedded usage.
- */
 
 void lichen_meshtastic_adapter_init(
 	struct lichen_meshtastic_adapter *_Nonnull adapter,
@@ -295,7 +286,7 @@ int lichen_meshtastic_adapter_emit_status(
 	struct lichen_meshtastic_adapter *_Nonnull adapter,
 	const struct lichen_meshtastic_incoming_status *_Nonnull event);
 
-const struct lichen_meshtastic_adapter_stats *_Nonnull
+const struct lichen_meshtastic_adapter_stats *
 lichen_meshtastic_adapter_get_stats(
 	const struct lichen_meshtastic_adapter *_Nonnull adapter);
 
@@ -310,9 +301,9 @@ bool lichen_meshtastic_adapter_disconnected(
  *
  * Each entry describes an unsupported operation. For entries where has_portnum
  * is true, the portnum field identifies the Meshtastic portnum that triggers
- * this operation. Callers MUST check `op->has_portnum` before reading `op->portnum`
- * (see parse_data:794 for example). When false, portnum is invalid (e.g. admin
- * config writes). Resolves l5ym.
+ * this operation. Callers must check has_portnum before using portnum; when
+ * has_portnum is false, portnum is unset and the operation is not associated
+ * with a specific portnum (e.g., config writes that come via admin commands).
  */
 size_t lichen_meshtastic_adapter_unsupported_operations(
 	const struct lichen_meshtastic_adapter_unsupported_operation *_Nullable *_Nonnull operations);

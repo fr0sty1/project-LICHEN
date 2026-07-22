@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-08o0",
+  "title": "codereview-pass1-robustness: FSM table timers/rejoin/AGENTS.md cross-refs in 09-packets-timing.md (updated from 02a)",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "created_at": "2026-07-22T16:28:33.094806088Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:28:37.513549799Z",
+  "closed_at": "2026-07-22T16:28:37.513549799Z",
+  "close_reason": "Pass 1 complete: FSM table updated with explicit timers (rejoin=10*superframe_len per Kconfig), lichen_node_init and AGENTS.md:179/218 cross-refs added. No P0-P2 findings. Mimics spec style. Updated 09-packets-timing.md only.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-08o0",
+      "depends_on_id": "project-LICHEN-i2o4",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:28:33.204264293Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

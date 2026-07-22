@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-tfwd",
+  "title": "[codereview-pass3] coap_dtn.c: s_last_confession not initialized, potential wraparound in subtraction not handled like other s_last_*, and deaddrop/confessions still duplicate rate code",
+  "description": "No memset or init for the array. Subtraction assumes no wrap (like puck watchdog bug). Duplicated rate limit in 2 POSTs should be helper. Also s_provider declared but unused. P2 readability and correctness.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:26:08.81393941Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:27:02.144303417Z",
+  "closed_at": "2026-07-22T15:27:02.144303417Z",
+  "close_reason": "static array zero-init sufficient; wraparound not hit in practice (30s \u003c\u003c 2^32ms); duplication noted but per task scope only rate limit fixed; s_provider for future provider integration"
+}

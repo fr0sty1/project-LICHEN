@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-m94e",
+  "title": "codereview-pass3: FSM table should reference specific draft section",
+  "description": "TDMA FSM table good but add explicit cross-ref to draft-lichen-tdma Section 5 for recovery. No P0-P2 findings in this pass. Clean on correctness. Tagged codereview.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:25:38.743030695Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:26:00.547099999Z",
+  "closed_at": "2026-07-22T16:26:00.547099999Z",
+  "close_reason": "Cross-ref added to draft-lichen-tdma:5",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-m94e",
+      "depends_on_id": "project-LICHEN-y139",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:25:38.853470657Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

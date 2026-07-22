@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-s38z",
+  "title": "[codereview-pass1] status_notify paths lack capacity check before CBOR encoding and packet construction",
+  "description": "In coap_status.c:status_notify, neighbors_notify: no check against CONFIG_LICHEN_DTN_MAX_MESSAGES or observer queue capacity before buffering notification. Can lead to OOM or truncation under high load/ many observers. Add strict check and error path. Also add BUILD_ASSERT in lichen_coap_status_init for buffer sizes vs CONFIG_COAP_SERVER_MESSAGE_SIZE.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:00:44.947242821Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:01:38.562533294Z",
+  "closed_at": "2026-07-22T16:01:38.562533294Z",
+  "close_reason": "Fixed in pass3: capacity BUILD_ASSERTs, strict checks, comment stripping per task",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-s38z",
+      "depends_on_id": "project-LICHEN-b818",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:00:45.04726128Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

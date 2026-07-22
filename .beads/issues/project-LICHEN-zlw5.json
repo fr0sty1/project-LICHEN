@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-zlw5",
+  "title": "[CODEREVIEW] schema.json does not support format_version 2 for ccp15.json",
+  "description": "test_vector_file_schema parametrized test excludes ccp15.json and schema const=1 while ccp15 uses 2. Also no definition for ccp vectors with snr_ema, load_factor, expected_sf, hash_32_example fields. Impacts Python/vectors/tests consistency. discovered-from:1vgs la5m",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:45:47.385823101Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:47:36.148763014Z",
+  "started_at": "2026-07-22T16:47:07.549121749Z",
+  "closed_at": "2026-07-22T16:47:36.148763014Z",
+  "close_reason": "Fixed in schema/test/vectors updates and test run.",
+  "labels": [
+    "codereview"
+  ]
+}

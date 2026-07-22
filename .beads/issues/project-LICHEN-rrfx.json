@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-rrfx",
+  "title": "Rust CCP-16: missing serde defaults for new capacity fields",
+  "description": "After adding txq/fwd fields to NodeStatus for load balancing per da2q/CCP-16, the CBOR decode tests and real payloads without explicit defaults will fail deserialization. Use #[serde(default)] or provide defaults. Tagged codereview.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:11:53.795775099Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:12:42.832876832Z",
+  "started_at": "2026-07-22T16:12:28.309351731Z",
+  "closed_at": "2026-07-22T16:12:42.832876832Z",
+  "close_reason": "Fixed with serde(default) and test updates",
+  "labels": [
+    "codereview"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-illv.1",
+  "title": "[codereview P2] OSCORE rule definitions in rust/lichen-schc/src/rules.rs:744 are incomplete stubs; must match python/src/lichen/schc/rules.py:304 full fields for rules 5/6 per RFC8613 option handling in residue",
+  "description": "rust/lichen-schc/src/rules.rs:744 and headers.rs:993. Parallel with spec/drafts/draft-lichen-schc-lora-00.md update for OSCORE. Parent: project-LICHEN-illv. File as codereview.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:59:53.657911767Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:00:31.243512548Z",
+  "started_at": "2026-07-22T15:00:18.520562967Z",
+  "closed_at": "2026-07-22T15:00:31.243512548Z",
+  "close_reason": "OSCORE rules completed by sharing fields slices (no duplication, matches Python). All 3 passes clean.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-illv.1",
+      "depends_on_id": "project-LICHEN-illv",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:59:53.746192389Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

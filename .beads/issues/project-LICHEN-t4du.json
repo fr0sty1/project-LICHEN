@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-t4du",
+  "title": "Rust CCP-16: add test coverage for new queue fields in status_decodes_firmware_map",
+  "description": "The test should assert the new txq_*/fwd_* fields default to 0 or test with explicit values. This is a codereview finding for completeness of CCP-16 load balancing support. Fix by updating test.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:12:18.564882722Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:12:44.755365466Z",
+  "closed_at": "2026-07-22T16:12:44.755365466Z",
+  "close_reason": "Added explicit values and assertions in test for CCP-16 fields",
+  "labels": [
+    "codereview"
+  ]
+}

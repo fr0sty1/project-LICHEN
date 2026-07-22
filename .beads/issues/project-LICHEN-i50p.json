@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-i50p",
+  "title": "[codereview-pass1-robustness] missing test vector ref for new pseudocode example in SFN section",
+  "description": "spec/02a-coordinated-capacity.md:140 - The pseudocode addition should explicitly reference which test vector in tdma-timing.json exercises the 0xFFFFFFFF case. P2 robustness. Discovered-from:project-LICHEN-w86r",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:27:54.473501115Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:28:16.112560632Z",
+  "closed_at": "2026-07-22T16:28:16.112560632Z",
+  "close_reason": "Addressed in chunk2 edit: added explicit tdma-timing.json:0xFFFFFFFF_boundary ref and pseudocode test comments. codereview pass 2/3: no further P0-P2 issues in SFN delta section."
+}

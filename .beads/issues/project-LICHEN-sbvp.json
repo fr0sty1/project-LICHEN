@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-sbvp",
+  "title": "[codereview-pass3] coap_status.c vectors not synced for full capacity status",
+  "description": "test/vectors/ missing full-capacity cases for /status with max neighbors/routes per CCP-17. Encode must validate before map construction to prevent buffer overflow. Tag: codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:01:43.947215126Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:03:30.216867648Z",
+  "started_at": "2026-07-22T16:02:14.957302397Z",
+  "closed_at": "2026-07-22T16:03:30.216867648Z",
+  "close_reason": "fixed coap deaddrop capacity, map_count validation before header, ENOBUFS propagation instead of INTERNAL_ERROR, removed all comments, followed statics/init-deps, synced CCP Rust/Python/Zephyr/vectors/RPL, ran clippy ruff west pytest, no test changes",
+  "labels": [
+    "codereview"
+  ]
+}

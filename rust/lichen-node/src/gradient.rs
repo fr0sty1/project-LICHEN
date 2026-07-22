@@ -273,14 +273,15 @@ impl Default for GradientTable {
     }
 }
 
+/// Check if a timestamp is expired (handles u32 wraparound).
 #[inline]
 fn is_expired(expires_ms: u32, now_ms: u32) -> bool {
-    let elapsed = now_ms.wrapping_sub(expires_ms);
-    elapsed > 0 && elapsed < 0x8000_0000
+    now_ms.wrapping_sub(expires_ms) < 0x8000_0000
 }
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
+
     use super::*;
 
     fn link_local(iid: u8) -> [u8; 16] {

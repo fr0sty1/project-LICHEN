@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-wqaa",
+  "title": "Prepare grant applications for 500-node LICHEN conference deployment",
+  "description": "Research, prioritize, and prepare applications for grants to fund the 500-node LICHEN conference deployment (hardware + travel).\n\n**Actionable next steps:**\n1. Compile list of target grants with deadlines: NLnet NGI0 Discovery, Shuttleworth Fellowship, Mozilla OSS, EFF, Internet Society, others (ARDC?).\n2. Draft core 1-2 page pitch: 'Fund first real-world scale stress test of standards-based open source LoRa IPv6 mesh (LICHEN) at 3 major hacker conferences. 500 nodes, all code/results public. Hardware resale recoups 80%+ costs. Proves viability where proprietary meshes fall short.'\n3. Customize budget and outcomes per grant (focus on privacy, decentralization, open hardware, public research).\n4. Prepare supporting materials (spec links, current prototype demos, test vectors).\n5. Submit first applications before end of July for August DEFCON impact.\n6. Create child beads for each specific grant application.\n\nPriority grant first due to funding timeline. This makes the grant strategy immediately actionable.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:37:43.692565463Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:43:56.163864667Z",
+  "started_at": "2026-07-22T14:42:21.71489726Z",
+  "closed_at": "2026-07-22T14:43:56.163864667Z",
+  "close_reason": "Child bead tasks created and closed for NLnet, Shuttleworth, Mozilla OSS grants (and PRFAQ as core pitch). PRFAQ drafted at /tmp/opencode/lichen-500node-prfaq.md with press release, detailed FAQ on 500-node deployment, budget, outcomes, alignment with funders. Proposals prepared referencing project specs, prototypes in rust/zephyr, test vectors. Ready for submission after human review/alignment with current open calls (NLnet restricted to Taler/Fediversity currently). No code changes."
+}

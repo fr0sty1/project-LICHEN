@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-6rwg",
+  "title": "codereview-pass-1 post-TOC-edit: Compression Rules section 4 in draft-lichen-schc-lora-00.md:129 still uses old Rule 0/1/2/3/4 definitions without CoAP fields, MQTT-SN Rule, updated RPL DAO model from appendix-schc.md and 03-adaptation.md",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:48:27.928454687Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:52:06.150628756Z",
+  "started_at": "2026-07-22T14:48:57.223643211Z",
+  "closed_at": "2026-07-22T14:52:06.150628756Z",
+  "close_reason": "draft section 4 updated + CoAP fields added per appendix/03-adaptation; 3 codereview passes filed+addressed",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-6rwg",
+      "depends_on_id": "project-LICHEN-g38a",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T14:48:28.023397059Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

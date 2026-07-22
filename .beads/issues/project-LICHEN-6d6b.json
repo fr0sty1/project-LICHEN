@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-6d6b",
+  "title": "[codereview] coap_server.h: new lichen_coap_deaddrop_register decl lacks parameter validation spec in doc",
+  "description": "P2 readability: Doxygen should specify exact return values and error cases like other functions in file. discovered-from:project-LICHEN-r044",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:06:47.287589031Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:34:43.781503719Z",
+  "started_at": "2026-07-22T17:33:57.011909434Z",
+  "closed_at": "2026-07-22T17:34:43.781503719Z",
+  "close_reason": "Added full Doxygen spec for parameter validation, return values, and error cases matching style of other functions in coap_server.h. Completed 3 independent codereview passes (P0-P2 fixed in first 2 passes; 3rd pass only P4 opinions). All findings filed as child beads. Fixed completely."
+}

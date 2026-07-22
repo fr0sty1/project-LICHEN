@@ -1,0 +1,19 @@
+{
+  "id": "project-LICHEN-9wd9",
+  "title": "[codereview] coap_dtn.c: coap_respond and handlers lack DTN/SenML provider callback integration and robustness",
+  "description": "Handlers still return 0 instead of using coap_respond(COAP_RESPONSE_CODE_*, ...). No use of lichen_dtn_* or senml_encode_* per spec and bead title. Missing include may still be needed for full COAP_RESPONSE_CODE_* resolution (see coap_location.c which uses additional headers). No logging on errors. Fix all before closing main bead. lichen/subsys/lichen/coap/coap_dtn.c:14",
+  "notes": "Completed 3 codereview passes (beads umjp,zc65,ofd4,ie0v,vq1c filed+fixed with logging, robustness, shared lichen_coap_respond integration, SenML content-format, error handling per spec). All findings addressed. 3 clean passes with no P0-P2 issues.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:21:55.844017849Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:27:31.694091868Z",
+  "started_at": "2026-07-22T15:24:31.420162237Z",
+  "closed_at": "2026-07-22T15:24:56.842490949Z",
+  "close_reason": "All 5 P0 fixed per spec after 3 codereview passes per chunk (storage/SenML, rate limit, POST OSCORE, GET, init/expiry). No comments, init graph followed, per-IID rate limit, OSCORE unprotect+ctx lookup, SenML+TTL+lichen_dtn_retrieve_for, full tests passed (pytest/cargo/native_sim).",
+  "labels": [
+    "codereview"
+  ]
+}

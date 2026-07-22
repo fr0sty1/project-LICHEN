@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-lf0p",
+  "title": "codereview-P1: duplicate UI notes between 11-lci.md and 12-apps.md",
+  "description": "UI notes for client apps appear in both files with slight differences. Consolidate into one primary location (perhaps apps spec) and cross-reference to avoid maintenance divergence. Current duplication risks inconsistent client UX specs.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:02:52.425699832Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:04:10.73476341Z",
+  "closed_at": "2026-07-22T15:04:10.73476341Z",
+  "close_reason": "Fixed: shortened LCI UI notes to cross-reference 12-apps.md:18.9, eliminating duplication while preserving LCI contract"
+}

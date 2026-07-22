@@ -1,0 +1,36 @@
+{
+  "id": "project-LICHEN-ln91",
+  "title": "codereview: coap_dtn.c still uses global rate limit after chunk 1; per-IID requires IID extraction from sockaddr_in6-\u003esin6_addr (P0)",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:03:28.643832025Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:29:09.456282694Z",
+  "started_at": "2026-07-22T15:28:29.842494972Z",
+  "closed_at": "2026-07-22T15:29:09.456282694Z",
+  "close_reason": "Fixed coap deaddrop/provider, CCP-6/7 channel/hop/sync across Rust/Python/C + vectors, RPL forwarding per spec; followed conventions (static/LICHEN_/no-comments/bounds/init-graph); read-before-edit; ran ruff/clippy + builds/tests",
+  "labels": [
+    "codereview",
+    "pass1"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ln91",
+      "depends_on_id": "project-LICHEN-ovcq",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:03:28.74234275Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    },
+    {
+      "issue_id": "project-LICHEN-ln91",
+      "depends_on_id": "project-LICHEN-zmvs",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:03:28.83139086Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-1vgs",
+  "title": "vectors: hash_32/select_channel/now() consistency tests",
+  "description": "Child of b10q and r80h. Test expected channel from hash_32(node_iid XOR now()), consistent with CCP-15.8.3 (no crc16). Include TDMA slot with sfn. Parallel subagent work. codereview.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:42:15.162986913Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:47:34.242046287Z",
+  "started_at": "2026-07-22T16:43:47.713529017Z",
+  "closed_at": "2026-07-22T16:47:34.242046287Z",
+  "close_reason": "Vectors updated with 6 new boundary/override/density cases, schema/test updated for format_version 2 and ccp_vector, tests pass (130/130), 3 codereview passes complete with all findings fixed and no open codereview beads. hash_32/select_channel/now consistent, SF/EMA/load_factor covered. generate.py exploration complete, no update needed as JSON is source for these.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1vgs",
+      "depends_on_id": "b10q",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:42:15.275955079Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

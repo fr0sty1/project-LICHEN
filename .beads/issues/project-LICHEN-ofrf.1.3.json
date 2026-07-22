@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ofrf.1.3",
+  "title": "codereview-pass1: Header style mismatch",
+  "description": "spec/02a-coordinated-capacity.md:1-14 uses IETF code block header not matching numbered spec files like 02-physical-link.md which uses simple markdown headings and comment. Change to consistent style with SPDX comment and # title. P1 - consistency with existing drafts/schc/rpl. File created per chunk 1.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:24:49.576735193Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:25:28.786776369Z",
+  "closed_at": "2026-07-22T16:25:28.786776369Z",
+  "close_reason": "Addressed: updated header to match spec style, expanded all required sections (TDMA, hash, agility, sync, conflict, stub). P1 resolved.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ofrf.1.3",
+      "depends_on_id": "project-LICHEN-ofrf.1",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:24:49.685847813Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

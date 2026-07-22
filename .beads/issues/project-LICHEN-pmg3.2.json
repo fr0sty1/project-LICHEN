@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-pmg3.2",
+  "title": "codereview: DTN handlers do not integrate SenML encoding per spec 18.9 and coap_location.c pattern",
+  "description": "Payloads should use senml_encode_* functions with CBOR content format 112. Current code stores raw bytes without SenML. Add GET handler too. P1 correctness for DTN/SenML integration. Fix all 12 findings includes this.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:20:33.679256975Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:22:26.254385894Z",
+  "started_at": "2026-07-22T15:21:39.517070857Z",
+  "closed_at": "2026-07-22T15:22:26.254385894Z",
+  "close_reason": "Integrated SenML encoding in DTN deaddrop_post/get handlers using senml_encode_* + content-format 112 per coap_location.c and spec 18.9; added GET handler; read all coap/ senml/ for patterns; fixed init deps; no deadcode/comments; lint+tests passed with verification",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-pmg3.2",
+      "depends_on_id": "project-LICHEN-pmg3",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:20:33.777183512Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

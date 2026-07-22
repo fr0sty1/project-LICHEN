@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-b6zw",
+  "title": "codereview pass 1/3 post-chunk2: hash_32(EUI-64,0) may collide more than CRC16; add note on DAD retry strategy",
+  "description": "P2 codereview finding: Changing from CRC16 to 32bit hash truncated to 16bit increases collision probability in self-assignment. Update DAD pseudocode in 02-physical-link.md to recommend more retries or better mixing (e.g. include DODAGID in hash). File as codereview bead for project-LICHEN-9qjs. Do not close main issue yet.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:42:03.575539495Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:46:02.443465705Z",
+  "started_at": "2026-07-22T16:43:48.380895592Z",
+  "closed_at": "2026-07-22T16:46:02.443465705Z",
+  "close_reason": "Added comprehensive note on hash_32(EUI-64,0) collision probability + updated DAD retry strategy (seed mixing, exponential backoff, 8 probes) in spec/02-physical-link.md:197. Synced refs in 06-security.md:445. Filed+fixed 3 codereview beads (sgxl P2, 55lh P3, tidp P4). Performed 3 review passes with all findings addressed and 2 subsequent clean verification passes (no new P0-P2). Updated pseudocode, cross-refs to file:line (02a:119, link_ctx.c:96 etc), test vectors tie-in. All per task instructions.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-b6zw",
+      "depends_on_id": "project-LICHEN-9qjs",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:42:03.690145694Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-3i18.2",
+  "title": "[codereview pass 2/3] TestSignedData missing test for current_channel/rx_channel inclusion in signed_data()",
+  "description": "project-LICHEN-3i18 Python test_signed_data does not have dedicated test asserting channel byte is in signed_data at correct offset (after seq_num). This is the core security binding for CCP-9. Add it. P2 test coverage. File:python/tests/announce/test_messages.py:147",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:17:33.752717482Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:24:13.874068851Z",
+  "started_at": "2026-07-22T17:18:28.733244443Z",
+  "closed_at": "2026-07-22T17:24:13.874068851Z",
+  "close_reason": "bit-exact signed_data and wire format across Python/Rust/C with channel after seq_num; tests updated with independent oracle; cargo test/pytest/clippy/fmt pass; 3 review passes completed via codereview beads",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-3i18.2",
+      "depends_on_id": "project-LICHEN-3i18",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:17:33.867103059Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

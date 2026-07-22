@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-iakv",
+  "title": "codereview-p8i6-2c: LOG_ERR in new function uses old module name",
+  "description": "ipv6_addr module logs as 'ipv6_addr' but LOG_MODULE_REGISTER is lichen_ipv6. Inconsistent. tagged codereview",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:38:52.821412789Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:43:22.537373771Z",
+  "started_at": "2026-07-22T17:43:22.537373771Z",
+  "lease_expires_at": "2026-07-22T17:48:22.537373771Z",
+  "heartbeat_at": "2026-07-22T17:43:22.537373771Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-iakv",
+      "depends_on_id": "project-LICHEN-p8i6",
+      "type": "blocks",
+      "created_at": "2026-07-22T17:38:52.938658004Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

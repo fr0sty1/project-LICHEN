@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-ov12",
+  "title": "[codereview-pass1 post-edit] coap_dtn.c: senml_encode_deaddrop undefined; needs implementation or use existing senml func",
+  "description": "New compile error after adding GET handler. Also duplicate coap_respond still in location.c:41. No s_provider for DTN. P0 correctness. Fix immediately. File:lichen/subsys/lichen/coap/coap_dtn.c:78",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:22:43.761816682Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:28:18.823063883Z",
+  "started_at": "2026-07-22T15:22:57.832356906Z",
+  "closed_at": "2026-07-22T15:28:18.823063883Z",
+  "close_reason": "senml_encode_deaddrop impl + coap_dtn use + s_provider added + duplicate coap_respond fixed via shared decl/definition. 3 independent codereview passes (project-LICHEN-w1xb,nkbl,8nfr + priors) with no P0/P1. Zephyr native_sim puck build verified clean after Kconfig/epoch flags. All findings addressed per instructions.",
+  "labels": [
+    "codereview"
+  ]
+}

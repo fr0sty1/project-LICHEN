@@ -1057,10 +1057,8 @@ class EdhocResource(resource.Resource):
 
         payload = request.payload
 
-        # Try to find an active session for this peer
-        # Session key is (peer_host, c_i) but we don't know c_i yet for msg1
         active_session = None
-        for (host, _), session in list(self._sessions.items()):
+        for (host, _), session in reversed(list(self._sessions.items())):
             if host == peer_host:
                 active_session = session
                 break

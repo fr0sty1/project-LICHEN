@@ -75,6 +75,8 @@ All byte strings are lowercase hex (possibly empty). Schema validation and indep
 - Incoming app-event vectors include `MSG_WAITING`, `CHANNEL_MSG_RECV_V3`, and `PUSH_SEND_CONFIRMED` frames used with
   `SYNC_NEXT_MESSAGE`.
 
+**CCP-16 vectors** (`ccp*.json`): for coordinated capacity planning, density, TDMA slot selection, load balancing, desync recovery. Uses `hash_32` (FNV-1a) primitive. Supports both object envelope (format_version 2) and bare array root (for ccp16-desync.json). Schema updated with `type`, `expected_hash`, allOf conditionals, and Rust no_std compatible notes. Caps and SCALE_NODES parameterized in test_scale.py for flexibility. Cleanup of magic numbers and features completed.
+
 ## Regenerating
 
 ```

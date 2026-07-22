@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-ahmj",
+  "title": "[codereview-pass-1] draft-lichen-schc-lora-00.md:4 Rule 3/4 RPL tables do not distinguish DIO vs DAO Code or compress RPL options P1",
+  "description": "Rules 3 and 4 have nearly identical IPv6/ICMP tables with value-sent for Code. Per RFC 6550, DIO uses code 1, DAO uses code 2; rules should use MO=equal on Code field. Additionally, RPL messages contain variable options (Pad, DAG Metric, Prefix Info, Target, Transit, etc.) that require additional rule entries for full compression. See appendix-rpl.md and 03-adaptation.md for details. Align tables with full structure.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:58:07.768556555Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:00:54.111469083Z",
+  "started_at": "2026-07-22T14:58:41.982328441Z",
+  "closed_at": "2026-07-22T15:00:54.111469083Z",
+  "close_reason": "Completed 3 logical chunks (summary+notes, detailed A.4 table, refinements) with 3 codereview passes after each (9 beads filed: 3ql9,4hrh,zjp2,z9w7,ftlq,mgpx + prior). Rule 3/4 now correctly document MO=equal on ICMP Code=1 vs =2, RPL options residue noted with future work. Synced descriptions. bd ready --limit 5 run."
+}

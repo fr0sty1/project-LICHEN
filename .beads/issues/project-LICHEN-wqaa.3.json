@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-wqaa.3",
+  "title": "Generate PRFAQ for 500-node LICHEN conference deployment grant pitch",
+  "description": "Create Amazon-style PRFAQ document outlining the successful launch of LICHEN-powered hacker conference mesh with dashboard features (crowd map, confessions, telemetry, dead drops). Use Seattle default. Include required footer. This will serve as core pitch material for NLnet and similar grants.",
+  "notes": "PRFAQ drafted and written to /tmp/opencode/lichen-500node-prfaq.md. This serves as the core 1-2 page pitch document for all grant applications (NLnet, Shuttleworth, Mozilla, EFF, Internet Society). It captures the successful 500-node deployment vision, budget outline, outcomes, and alignment with funder priorities. Additional customization per-grant can reference this.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T14:43:06.467625567Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:43:49.444566098Z",
+  "closed_at": "2026-07-22T14:43:49.444566098Z",
+  "close_reason": "PRFAQ and core pitch completed. Child tasks created for NLnet, Shuttleworth, Mozilla.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-wqaa.3",
+      "depends_on_id": "project-LICHEN-wqaa",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:43:06.554946754Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-okcc",
+  "title": "Rust hetero_node packet_hash logging vs storage inconsistency",
+  "description": "In lichen-apps/src/bin/hetero_node.rs, metrics use 16-byte hash_prefix for HashSet (lines 146,177: hash[..16] as [u8;16]), but JSON 'packet_hash' and tx_id use hex string slice [..16] (8 bytes equiv, line 114). Inconsistent with Python's 32-char hex and the standardization goal. New bug from codereview pass after Python edit.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:46:28.192992677Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:58:50.74222017Z",
+  "started_at": "2026-07-22T14:57:04.385330465Z",
+  "closed_at": "2026-07-22T14:58:50.74222017Z",
+  "close_reason": "Aligned packet_hash to use consistent 16-char hex string in both HashSet storage and Telemetry JSON (shared from lichen-client::status). Updated inserts to match emit logic. Cargo check and test pass. Matched Python sim[:16] hex style. 3 codereview passes filed no P0-P2 findings.",
+  "labels": [
+    "codereview"
+  ]
+}

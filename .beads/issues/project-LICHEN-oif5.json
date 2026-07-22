@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-oif5",
+  "title": "[codereview-pass3] coap_status.c final",
+  "description": "Pass 3: Clean. All P0-P4 addressed or opinion-only. No dead code/comments. Validation complete. Ready for west coap test and conventional commit. Convergence achieved after 3 passes per chunk.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:11:19.811678408Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:11:59.956273588Z",
+  "closed_at": "2026-07-22T16:11:59.956273588Z",
+  "close_reason": "codereview passes complete, convergence achieved",
+  "labels": [
+    "codereview"
+  ]
+}

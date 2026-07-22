@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-da2q.15.14",
+  "title": "codereview: algorithm definition for CCP-15 frequency agility and density rules",
+  "description": "Review of initial algorithm pseudocode and test vector match. P2 correctness",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:36:18.979912004Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:36:34.779565976Z",
+  "closed_at": "2026-07-22T16:36:34.779565976Z",
+  "close_reason": "Algorithm matches spec and vectors; u64-style XOR confirmed by computation",
+  "labels": [
+    "codereview",
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.15.14",
+      "depends_on_id": "project-LICHEN-da2q.15",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:36:19.100122511Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-uymz",
+  "title": "CCP-1: Python implementation - Scope",
+  "description": "Python implementation of TDMA scheduling, time slot management, channel agility, rendezvous and CCP-1 features from spec",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:11:41.072632747Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:28:33.50884862Z",
+  "started_at": "2026-07-22T16:27:07.966738546Z",
+  "closed_at": "2026-07-22T16:28:33.50884862Z",
+  "close_reason": "CCP-16 channel balancing logic, client/rpl/link updates in scope only"
+}

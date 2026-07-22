@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-usjr",
+  "title": "[codereview-pass3] coap/Kconfig: markdown ** in help text not idiomatic for Kconfig",
+  "description": "lichen/subsys/lichen/coap/Kconfig:273 - Help text uses **Init order** and **Rate limit \u0026 DTN:** but other entries in same file use plain text, CAPITAL headers like SECURITY:. Kconfig help is rendered as plain. Change to plain text for consistency. Opinion/P4. discovered-from:project-LICHEN-p3dm",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:03:02.037697824Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:03:17.821561152Z",
+  "closed_at": "2026-07-22T15:03:17.821561152Z",
+  "close_reason": "Changed **markdown** to plain INIT ORDER (CRITICAL): and RATE LIMIT \u0026 DTN: headers to match SECURITY: style in same file"
+}

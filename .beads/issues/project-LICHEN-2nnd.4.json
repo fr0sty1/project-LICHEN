@@ -14,7 +14,8 @@
     "demo",
     "apps",
     "milestone",
-    "scalability"
+    "scalability",
+    "human"
   ],
   "dependencies": [
     {

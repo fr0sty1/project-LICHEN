@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-hjo8",
+  "title": "codereview: AnnounceMessage class docstring omits current_channel",
+  "description": "Attributes list in docstring (lines ~47-64) does not list current_channel despite it being a core field for CCP-9. P2 docs. Add description: current_channel: Preferred RX channel for rendezvous (0-15). Matches Rust/C structs. Tagged codereview.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:22:00.756218361Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:29:27.746266955Z",
+  "started_at": "2026-07-22T17:25:09.60043165Z",
+  "closed_at": "2026-07-22T17:29:27.746266955Z",
+  "close_reason": "3 clean codereview passes completed after fixing docstring, field consistency to current_channel, range to 0-15, all references updated and verified with python -c test. All findings fixed. No P0-P2 left.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-hjo8",
+      "depends_on_id": "project-LICHEN-3i18.1",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T17:22:00.874355403Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

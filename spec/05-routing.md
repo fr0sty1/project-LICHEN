@@ -25,42 +25,34 @@ LICHEN uses a three-tier routing architecture optimized for different traffic pa
 
 - **LOADng** handles edge cases: new nodes, nodes that missed announces, or rarely-contacted destinations. Reactive discovery when gradient doesn't exist.
 
-### 7.2. Routing Decision (updated for 02xx-only)
-
-With simplified addressing (**link-local strictly for control plane only** + 02xx primary per 04-network.md:14 and unified Ed25519 identity per 06-security.md:111):
+### 7.2. Routing Decision
 
 ```
 def route_packet(dst):
-    if is_link_local(dst):
-        # Control plane ONLY (NDP, RPL DIO/DIS/DAO, LCI, bootstrap)
-        # Matches AGENTS.md init graph (link_init before rpl_dodag_init)
-        # Data plane MUST use cryptographically-bound 02xx address
-        return forward_to_neighbor(dst)
+    if is_off_mesh(dst):
+        # External destination (GUA not in mesh, or unknown)
+        return forward_to_rpl_parent()
 
-    # All data/mesh traffic uses primary 02xx address (Ed25519-derived IID)
-    if is_local_mesh(dst):  # 02xx in gradient table or RPL DODAG
-        gradient = gradient_table.lookup(dst.iid)
-        if gradient and not gradient.expired:
-            return forward_to(gradient.next_hop)
-        else:
-            # Use RPL downward or LOADng
-            return rpl_or_loadng_route(dst)
+    gradient = gradient_table.lookup(dst)
+    if gradient and not gradient.expired:
+        # Known peer - follow gradient
+        return forward_to(gradient.next_hop)
 
-    # 02xx not in local mesh: fall back to Yggdrasil if available,
-    # otherwise to nearest border router
-    if yggdrasil_available():
-        return forward_to_yggdrasil(dst)
     else:
-        return forward_to_rpl_border_router(dst)
+        # Unknown peer - reactive discovery
+        loadng_discover(dst)
+        return queue_pending(dst, packet)
 ```
 
-**Address classification (control vs data plane - updated for security/completeness per codereview):**
+**Address classification:**
 
-| Address Type | Plane | Classification | Routing |
-|--------------|-------|----------------|---------|
-| Link-local (fe80::/10) | **Control plane ONLY** | Direct neighbor/bootstrap | NDP/RPL control (DIO/DIS/DAO), LCI; immediate forward to neighbor. **Data traffic forbidden** (prevents replay/auth bypass; aligns with unified Ed25519→IID→02xx model) |
-| 02xx::/7 (local match via gradient/RPL) | Data plane | Mesh peer | Gradient from announce (primary), RPL downward, or LOADng fallback |
-| 02xx::/7 (no local match) | Data plane | Off-mesh/Yggdrasil | Yggdrasil overlay or forward to nearest BR |
+| Address Type | Classification | Routing |
+|--------------|----------------|---------|
+| Link-local (fe80::/10) | Direct neighbor | Send to neighbor |
+| ULA (fd00::/8) in mesh prefix | Mesh peer (Ed25519 per 06-security) | Gradient or LOADng |
+| GUA in mesh prefix | Mesh peer | Gradient or LOADng |
+| Other GUA | Off-mesh | RPL to border router |
+| Unknown | Off-mesh | RPL to border router |
 
 ### 7.3. Conformance Requirements
 
@@ -77,7 +69,7 @@ Keywords per RFC 2119. Device classes:
 | Feature | Constrained | Router | BR |
 |---------|-------------|--------|-----|
 | RPL join (DIO/DIS/DAO) | MUST | MUST | MUST |
-| Announce send | MUST* | MUST* | MUST |
+| Announce send | MUST | MUST | MUST |
 | Announce receive + gradient install | MUST | MUST | MUST |
 | Announce relay | SHOULD | MUST | MUST |
 | LOADng originate (RREQ/RREP) | MUST | MUST | MUST |
@@ -96,7 +88,6 @@ Keywords per RFC 2119. Device classes:
 
 **Notes:**
 
-- "*" : Announce send conditional on gateway-centric mode (see §9.10). MUST when no DODAG parent; MAY reduce rate or disable when GATEWAY_CENTRIC flag present.
 - "--" means feature not applicable (insufficient resources).
 - Constrained nodes MAY set DTN S-flag but do not buffer.
 - Constrained nodes use unicast forwarding only (no opportunistic).
@@ -137,9 +128,8 @@ RPL is NOT used for peer-to-peer mesh traffic (see Sections 9-10).
 | Objective Function | MRHOF with ETX |
 | Trickle Imin | 4 sec |
 | Trickle Imax | 17 min |
-| GATEWAY_CENTRIC flag | Set by root in DODAG Config Option |
 
-See Appendix B for full RPL configuration. Border routers (DODAG roots) MUST set the GATEWAY_CENTRIC flag (bit 7 of the Flags field in the DODAG Configuration Option per RFC 6550 §6.7) in every DIO. Nodes auto-detect gateway-centric mode by parsing this flag from their parent's DIO (see §9.10). Legacy nodes ignore unknown bits per RPL requirements.
+See Appendix B for full RPL configuration.
 
 ### 8.4. Control Messages
 
@@ -174,7 +164,7 @@ announce because SCHC global CoAP also uses rule ID `0x01`.
 
 ```
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| Type=ANN  | Flags     | Hop Count   | Seq Num | rx_valid_until_sfn (2) |
+| Type=ANN  | Flags     | Hop Count   | Seq Num               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                    Originator IID (8 bytes)                   |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -186,17 +176,16 @@ announce because SCHC global CoAP also uses rule ID `0x01`.
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-Total: ~94 bytes minimum (rx_valid_until_sfn adds 2 bytes; human decision on format noted).
+Total: ~92 bytes minimum.
 
 **Fields:**
 - **Type:** Announce message identifier
 - **Flags:** Reserved
 - **Hop Count:** Incremented at each relay
 - **Seq Num:** Monotonic, detects duplicates and freshness
-- **rx_valid_until_sfn:** SFN until which RX window/announce is valid (human decision on format noted; included in signed_data per link spec)
 - **Originator IID:** 8-byte Interface Identifier of announcer
 - **Public Key:** Ed25519 public key (32 bytes)
-- **Signature:** Schnorr signature over signed_data (reference signed_data definition only; independent of impls)
+- **Signature:** Schnorr signature over (IID, pubkey, seq, app_data)
 - **App Data:** Optional application data (node name, capabilities, etc.)
 
 ### 9.3. Announce Processing
@@ -462,64 +451,6 @@ Sender chooses opportunistic mode when:
 Routers only. Constrained nodes use standard unicast forwarding--timing coordination adds code complexity.
 
 <!-- ponytail: no ACK-based batch, add if throughput matters -->
-
-### 9.10. Gateway-Centric Mode
-
-When a DODAG root (gateway) is present, frequent announces dominate channel usage even though RPL handles border router traffic. Gateway-centric mode reduces announce overhead via auto-detection. No per-node configuration is required.
-
-**Auto-Detection**
-
-Border routers MUST set the GATEWAY_CENTRIC flag in the DODAG Configuration Option of every DIO (§8.3). Nodes parse this flag from their selected parent's DIO upon joining or refreshing the DODAG. If the flag is set, the node enters gateway-centric mode.
-
-Nodes without a DODAG parent or receiving DIOs without the flag MUST use normal announce behavior.
-
-**Constants**
-
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| ANNOUNCE_INTERVAL_NORMAL | 300 sec | Default when no gateway-centric DODAG |
-| ANNOUNCE_INTERVAL_GATEWAY | 1800 sec | Reduced rate with flag (6× slower; MAY be 0 to disable) |
-| GATEWAY_CENTRIC_FLAG | bit 7 (0x80) | In reserved bits of DODAG Config Flags field |
-| DODAG_LOSS_GRACE_PERIOD | 60 sec | Maximum time to resume normal announces after DODAG loss |
-
-**Node Behavior**
-
-```
-def get_announce_interval(dodag):
-    if not dodag.has_valid_parent or not dodag.gateway_centric_flag:
-        return ANNOUNCE_INTERVAL_NORMAL
-    else:
-        return ANNOUNCE_INTERVAL_GATEWAY  # or disable entirely
-
-# On DIO from parent:
-if dio.gateway_centric_flag_set():
-    dodag.gateway_centric_flag = True
-    reschedule_announce_timer(ANNOUNCE_INTERVAL_GATEWAY)
-else:
-    dodag.gateway_centric_flag = False
-    reschedule_announce_timer(ANNOUNCE_INTERVAL_NORMAL)
-
-# On DODAG loss (no DIO within Trickle timeout or parent failure):
-    dodag.gateway_centric_flag = False
-    MUST reschedule_announce_timer(ANNOUNCE_INTERVAL_NORMAL)
-    # Resume normal rate within DODAG_LOSS_GRACE_PERIOD
-```
-
-**Peer-to-Peer Fallback**
-
-In gateway-centric mode gradients from announces are rare. The routing decision (§7.2) MUST fall back to LOADng (§10) when no valid (non-expired) gradient exists. This accepts higher peer-to-peer latency as a scalability tradeoff for high-density deployments with gateways. Data-driven passive gradients (§11.2) remain valid if present.
-
-**Backwards Compatibility**
-
-No flag day is required. The GATEWAY_CENTRIC flag MUST be placed in a previously reserved/ignored bit of the existing DODAG Configuration Option (RFC 6550). 
-
-- Legacy nodes ignore unknown flag bits and continue normal 300 sec announces (MUST per RPL).
-- New nodes honor the flag when present but MUST accept and process announces arriving at any interval.
-- In mixed networks, old nodes provide dense gradients while new nodes use LOADng more often for suppressed peers.
-- Peer-to-peer between any combination of nodes continues to function via the three-tier architecture.
-- Border routers that set the flag MUST still relay announces as required by conformance table.
-
-This ensures incremental deployment and full interoperability.
 
 ---
 

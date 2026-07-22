@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-rq3t",
+  "title": "[codereview-pass3] coap_dtn.c: fix deaddrop_post IID lookup, add string.h for memcpy, rate limit collision from IID[7], direct oscore_unprotect_request, update confessions_post",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:09.35840299Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:44:54.744504508Z",
+  "started_at": "2026-07-22T15:43:11.332802096Z",
+  "closed_at": "2026-07-22T15:44:54.744504508Z",
+  "close_reason": "Completed 3 codereview passes with beads am76,i986,v9h5; fixed IID lookup with lichen_eui64_to_iid normalization, string.h via ipv6_addr include+memcpy, per-IID[7] rate limit array in confessions_post to prevent collisions, switched to direct oscore_unprotect_request+option parse in deaddrop_post, updated init. No P0/P1 left in this scope (mutex in separate jzne). Verified via 3 review passes. bd ready shows related mutex issues filed.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rq3t",
+      "depends_on_id": "project-LICHEN-u9in",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:09.455691483Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

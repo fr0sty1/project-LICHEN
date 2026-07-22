@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.17.2",
+  "title": "Rust: CCP-17 requirements from da2q context",
+  "description": "Rust implementation for CCP-17 Capacity Validation requirements from da2q context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:58.330236469Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:07:57.123030609Z",
+  "started_at": "2026-07-22T16:00:25.845608349Z",
+  "closed_at": "2026-07-22T16:07:57.123030609Z",
+  "close_reason": "Completed CCP-17 capacity validation with bounds checks, BUILD_ASSERT, runtime validation in encoders. 3 codereview passes (correctness/security/robustness) produced no P0-P2 findings.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.17.2",
+      "depends_on_id": "project-LICHEN-da2q.17",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:58.438591744Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

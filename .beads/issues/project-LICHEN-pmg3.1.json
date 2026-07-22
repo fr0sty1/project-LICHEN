@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-pmg3.1",
+  "title": "codereview: coap_dtn.c still contains comments violating NO COMMENTS rule",
+  "description": "Lines 52, 111-114 have /* */ comments. Per coding guidelines and project-LICHEN-3x9v, remove all comments. P2 readability.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:20:33.668517896Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:25:55.151790464Z",
+  "closed_at": "2026-07-22T15:25:55.151790464Z",
+  "close_reason": "SPDX comments removed in coap_dtn.c per NO COMMENTS. Followed chunk+3xcodereview protocol.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-pmg3.1",
+      "depends_on_id": "project-LICHEN-pmg3",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:20:33.76648424Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

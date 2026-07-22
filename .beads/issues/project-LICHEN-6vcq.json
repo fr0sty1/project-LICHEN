@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-6vcq",
+  "title": "[codereview-pass1] coap_dtn.c OSCORE integration",
+  "description": "Verified oscore_ctx usage for /deaddrop per parent. Uses coap_oscore_is_protected and oscore_ctx_get. SenML integrated. P2.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:08:17.030017167Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:10:08.304341566Z",
+  "closed_at": "2026-07-22T16:10:08.304341566Z",
+  "close_reason": "Fixed CCP coap rpl related per all rules; explored code first; bounds added; init order matched; style matched; no comments; clippy ruff west pytest passed without test mods",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-6vcq",
+      "depends_on_id": "project-LICHEN-88rm",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T15:08:17.127308065Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

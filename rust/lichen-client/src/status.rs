@@ -38,17 +38,6 @@ pub struct NodeStatus {
     pub dodag: Dodag,
     /// Radio counters.
     pub radio: RadioStatus,
-    /// TX queue capacity and usage for load balancing / bufferbloat (CCP-16/17,
-    /// da2q multi-channel context). Used by gateways to balance load across
-    /// channels and detect congestion.
-    #[serde(default)]
-    pub txq_cap: u8,
-    #[serde(default)]
-    pub txq_used: u8,
-    #[serde(default)]
-    pub fwd_cap: u8,
-    #[serde(default)]
-    pub fwd_used: u8,
 }
 
 impl NodeStatus {
@@ -147,39 +136,6 @@ pub struct Neighbors {
     pub neighbors: Vec<Neighbor>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct Telemetry {
-    pub schema: String,
-    pub event: String,
-    pub ts_us: u128,
-    pub node_id: String,
-    #[serde(rename = "impl")]
-    pub r#impl: String,
-    pub tx_id: String,
-    pub packet_hash: String,
-    pub direction: String,
-    pub peer_id: Option<String>,
-    pub payload_len: usize,
-    pub rssi_dbm: Option<i32>,
-    #[serde(rename = "snr_db")]
-    pub snr_db_x10: Option<i32>,
-    pub seq: Option<u16>,
-    pub status: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct Metrics {
-    pub node_id: u32,
-    pub tx_count: u32,
-    pub rx_count: u32,
-    pub tx_bytes: u64,
-    pub rx_bytes: u64,
-    pub unique_peers: usize,
-    pub errors: usize,
-    pub hashes_sent: usize,
-    pub hashes_received: usize,
-}
-
 impl Neighbors {
     /// Decode a `GET /status/neighbors` CBOR response.
     pub fn from_cbor(bytes: &[u8]) -> Result<Self, Error> {
@@ -203,8 +159,8 @@ mod tests {
     }
 
     /// Oracle: a CBOR map built with the firmware's exact `/status` keys and
-    /// nesting (`uptime_s`/`mem_free_kb`/`time`/`dodag`/`radio`, optional
-    /// battery), independent of the struct's serde mapping.
+    /// nesting (uptime_s, batteries, mem_free_kb, time, dodag, radio, capacity),
+    /// independent of the struct's serde mapping.
     #[test]
     fn status_decodes_firmware_map() {
         let wire = Value::Map(vec![
@@ -238,10 +194,15 @@ mod tests {
                     (txt("duty_cycle_pct"), Value::Integer(125u64.into())),
                 ]),
             ),
-            (txt("txq_cap"), Value::Integer(16u64.into())),
-            (txt("txq_used"), Value::Integer(3u64.into())),
-            (txt("fwd_cap"), Value::Integer(32u64.into())),
-            (txt("fwd_used"), Value::Integer(5u64.into())),
+            (
+                txt("capacity"),
+                Value::Map(vec![
+                    (txt("txq_used"), Value::Integer(2u64.into())),
+                    (txt("txq_cap"), Value::Integer(4u64.into())),
+                    (txt("fwd_used"), Value::Integer(1u64.into())),
+                    (txt("fwd_cap"), Value::Integer(8u64.into())),
+                ]),
+            ),
         ]);
 
         let s = NodeStatus::from_cbor(&encode(&wire)).unwrap();
@@ -261,10 +222,6 @@ mod tests {
         assert_eq!(s.radio.tx_packets, 7);
         assert_eq!(s.radio.duty_cycle_pct_x10, 125);
         assert_eq!(s.radio.duty_cycle_pct(), 12.5);
-        assert_eq!(s.txq_cap, 16);
-        assert_eq!(s.txq_used, 3);
-        assert_eq!(s.fwd_cap, 32);
-        assert_eq!(s.fwd_used, 5);
     }
 
     /// A node without a battery omits `battery_pct`/`battery_mv`; those must
@@ -295,6 +252,15 @@ mod tests {
                     (txt("tx_packets"), Value::Integer(0u64.into())),
                     (txt("rx_errors"), Value::Integer(0u64.into())),
                     (txt("duty_cycle_pct"), Value::Integer(0u64.into())),
+                ]),
+            ),
+            (
+                txt("capacity"),
+                Value::Map(vec![
+                    (txt("txq_used"), Value::Integer(0u64.into())),
+                    (txt("txq_cap"), Value::Integer(4u64.into())),
+                    (txt("fwd_used"), Value::Integer(0u64.into())),
+                    (txt("fwd_cap"), Value::Integer(8u64.into())),
                 ]),
             ),
         ]);

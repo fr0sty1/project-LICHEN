@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-6op5.2",
+  "title": "codereview-pass2: No P0-P1 in map_count fix; uint8_t change eliminates theoretical overflow cleanly",
+  "description": "Pass 2 clean on correctness. The cap check prevents any future overflow even if more battery-like optionals added. Good.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:15:31.678897033Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:15:37.45725466Z",
+  "closed_at": "2026-07-22T16:15:37.45725466Z",
+  "close_reason": "Pass 2 clean, verified",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-6op5.2",
+      "depends_on_id": "project-LICHEN-6op5",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:15:31.799753601Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

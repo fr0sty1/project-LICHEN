@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-x7ir",
+  "title": "codereview-pass-2: appendix-senml.md battery example uses wrong unit '%RH' for 'pct' (should be '%'); cross-check with lichen-senml record units",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:46:29.681158437Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:46:47.109845478Z",
+  "started_at": "2026-07-22T14:46:46.681870114Z",
+  "closed_at": "2026-07-22T14:46:47.109845478Z",
+  "close_reason": "Fixed: corrected battery 'pct' unit from '%RH' to '%' in example; matches SenML spec",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-x7ir",
+      "depends_on_id": "project-LICHEN-2cle",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T14:46:29.768957047Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

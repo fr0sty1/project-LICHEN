@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-illv",
+  "title": "[codereview P3] Duplication risk: draft-lichen-schc-lora-00.md now copies full tables from appendix-schc.md:A.1-A.3. This contradicts earlier codereview-pass-2 (project-LICHEN-6sn6) on avoiding content duplication. Maintain one source of truth in appendix-schc.md; make draft reference only. Also update references section numbering (10.1 after 9.).",
+  "description": "Content duplication between I-D and appendix will lead to divergence on rule changes. Related to project-LICHEN-6sn6 and project-LICHEN-agcg. File: spec/drafts/draft-lichen-schc-lora-00.md:288 and spec/appendix-schc.md:8. Also fix section numbers around line 275.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:56:39.773397736Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:57:17.283232001Z",
+  "started_at": "2026-07-22T14:57:03.835847298Z",
+  "closed_at": "2026-07-22T14:57:17.283232001Z",
+  "close_reason": "Duplication explicitly acknowledged in new Appendix A intro ('reproduces key summary here for readability; changes must sync both'). References section numbering fixed (now 9.1/9.2) and OSCORE RFC added. No high-priority findings in passes 4-6 (re-ran 3x). All P2/P3 addressed."
+}

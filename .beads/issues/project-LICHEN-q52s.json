@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-q52s",
+  "title": "P2: SNR thresholds in 2a.7.2 table do not align with LoRaWAN sensitivity values or ccp15.json vectors",
+  "description": "Table uses -6.0 for SF7 but standard is closer to -7.5; vectors expect specific trigger points. Add cross-ref to independent oracle in generate.py. Tag codereview. discovered-from:project-LICHEN-8gac",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:41:48.543879388Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:42:31.166828199Z",
+  "closed_at": "2026-07-22T16:42:31.166828199Z",
+  "close_reason": "Fixed in edit: table updated to -7.5dB standard values with vector cross-refs",
+  "labels": [
+    "codereview"
+  ]
+}

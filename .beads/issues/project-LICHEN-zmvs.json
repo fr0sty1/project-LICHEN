@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-zmvs",
+  "title": "coap_dtn.c: global s_last_confession rate limit violates per-IID requirement (one node can starve all others)",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:02:44.979385672Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:27:02.60776037Z",
+  "started_at": "2026-07-22T15:22:58.400698522Z",
+  "closed_at": "2026-07-22T15:27:02.60776037Z",
+  "close_reason": "Rate limit now per-IID via s_last_confession[slot] keyed by IPv6 addr last byte preventing starvation. 3 codereview passes (wy6k,0ots,tfwd) filed+fixed+closed. Includes net_ip.h added. Mimicked router.c extract and s_* patterns. No comments added.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-zmvs",
+      "depends_on_id": "project-LICHEN-ovcq",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:02:45.077488362Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

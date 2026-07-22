@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.15.3",
+  "title": "Zephyr: CCP-15 requirements from da2q context",
+  "description": "Zephyr implementation for CCP-15 Interference Mitigation requirements from da2q context.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:54.666186583Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:27:32.315616792Z",
+  "started_at": "2026-07-22T16:27:31.779565212Z",
+  "closed_at": "2026-07-22T16:27:32.315616792Z",
+  "close_reason": "Zephyr CCP-15 interference mitigation impl, tests, 3 codereviews with fixes",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.15.3",
+      "depends_on_id": "project-LICHEN-da2q.15",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:54.772141953Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

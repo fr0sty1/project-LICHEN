@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-da2q.16.4",
+  "title": "Vectors: CCP-16 requirements from da2q context",
+  "description": "Vectors implementation for CCP-16 Load Balancing requirements from da2q context.",
+  "notes": "3 clean codereview passes completed after vector addition. All findings fixed.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:43:57.101029645Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:06:38.970741142Z",
+  "started_at": "2026-07-22T16:05:21.029007334Z",
+  "closed_at": "2026-07-22T16:06:38.970741142Z",
+  "close_reason": "Vectors added and reviewed",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.16.4",
+      "depends_on_id": "project-LICHEN-da2q.16",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:43:57.209304332Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

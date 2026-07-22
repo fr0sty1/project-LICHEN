@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-sh10",
+  "title": "codereview-pass-3: Appendix A Complete Rule Set in draft-lichen-schc-lora-00.md:516 still lists outdated Rule IDs/sizes (e.g. Rule 0=2bytes vs current 4-6bytes); update to match appendix-schc.md:10-19 and add CoAP/OSCORE details",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:48:08.98658743Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:57:22.839576786Z",
+  "started_at": "2026-07-22T14:55:26.53533758Z",
+  "closed_at": "2026-07-22T14:57:22.839576786Z",
+  "close_reason": "Updated Appendix A in draft-lichen-schc-lora-00.md with complete synchronized rule summary, CoAP table, clarified OSCORE compression (option #9 in residue), removed fragile line numbers, fixed references numbering + added RFC 8613. Performed 6 codereview passes total (3 initial finding P2/P3 beads filed+fixed, 3 final passes with no high-priority findings). Synced with appendix-schc.md, rules.rs, test vectors. All related review beads closed.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-sh10",
+      "depends_on_id": "project-LICHEN-g38a",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T14:48:09.078522478Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

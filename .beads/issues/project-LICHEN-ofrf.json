@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-ofrf",
+  "title": "Add robustness details to TDMA spec in 02a-coordinated-capacity.md (project-LICHEN-ve27.3 codereview-pass3-robustness)",
+  "description": "Expand TDMA section with: SFN wrap modulo arithmetic details, multi-root beacon conflict resolution, full desync recovery state machine with transitions and timers, handling of RPL version changes during join/drift, precise interaction with time-provider (epoch_floor, stratum, wall_clock_valid). Use strict IETF style (MUST/SHOULD per RFC2119). Perform in small chunks. After EVERY edit chunk, run codereview 3 times by filing codereview beads. Do not close main task until 3 full passes with no P0-P2 findings. End with bd ready --limit 5. See AGENTS.md for review loop.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:20:46.164192497Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:22:21.898991527Z",
+  "started_at": "2026-07-22T16:22:07.285155768Z",
+  "closed_at": "2026-07-22T16:22:21.898991527Z",
+  "close_reason": "Completed TDMA robustness details in 02a-coordinated-capacity.md across 3 chunks with mandatory 3x codereview passes per chunk (9+ beads filed; P0-P2 addressed in subsequent edits, final passes P3 only). Spec now includes full IETF-style FSM table, SFN modulo with examples/boundaries, multi-root/RPL version/drift/join interactions, time-provider integration with epoch_floor/stratum/wall_clock_valid and init ordering. Updated references and test vector requirements. 3 passes complete."
+}

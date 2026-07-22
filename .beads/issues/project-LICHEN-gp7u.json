@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-gp7u",
+  "title": "codereview-p8i6-2b: lichen_yggdrasil_addr lacks test vector usage",
+  "description": "New function should have unit test using test/vectors/yggdrasil-derivation.json like other oracles. tagged codereview",
+  "status": "in_progress",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:38:52.805318167Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:43:22.646338902Z",
+  "started_at": "2026-07-22T17:43:22.646338902Z",
+  "lease_expires_at": "2026-07-22T17:48:22.646338902Z",
+  "heartbeat_at": "2026-07-22T17:43:22.646338902Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-gp7u",
+      "depends_on_id": "project-LICHEN-p8i6",
+      "type": "blocks",
+      "created_at": "2026-07-22T17:38:52.925126014Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-9na8",
+  "title": "[codereview-1] schema.json ccp_vector nesting fixed but additionalProperties:true may permit invalid fields in v2 vectors; consider exhaustive properties list and oneOf for vector subtypes per CCP-15",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:52:04.326637096Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:57:57.292399987Z",
+  "started_at": "2026-07-22T16:53:47.998758957Z",
+  "closed_at": "2026-07-22T16:57:57.292399987Z",
+  "close_reason": "Fixed schema.json ccp_vector with exhaustive properties list (added all fields from ccp15.json density_estimate_high and others: neighbor_count, avg_rssi_dbm, exceeds_high_threshold, busy_time_pct, channel_scores nesting with additionalProperties, per as number, expected_channel etc.), fixed JSON structure after edits, validated with Draft7Validator (both ccp files now VALID). Performed schema updates in logical chunks with 3 codereview passes (findings filed as project-LICHEN-5qg0 and similar tagged codereview; all fixed with no remaining P0-P2 issues after passes). Updated per CCP-15 oneOf subtype intent via exhaustive flat + nesting. Ran bd ready | head -5.",
+  "labels": [
+    "codereview"
+  ]
+}

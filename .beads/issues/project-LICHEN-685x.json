@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-685x",
+  "title": "[codereview-pass2-robustness] spec/09-packets-timing.md: SFN section cross-ref to epoch_floor validation rules could be more precise with stratum interaction; P3 readability. Also verify test vector file exists for ccp_tdma",
+  "description": "P3 finding. The SFN para refs Section 14.6 but could explicitly note interaction with Time Stratum and DIO Time Option. Test vector file  was added in prior work. Discovered-from:project-LICHEN-2oas project-LICHEN-pawf. No P0/P1.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:29:17.941844414Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:29:31.935707442Z",
+  "closed_at": "2026-07-22T16:29:31.935707442Z",
+  "close_reason": "Completed 3 independent codereview passes (P2/P3 addressed, final P4 opinion only; no P0/P1). Updated spec/09-packets-timing.md SFN modulo paragraph with explicit time-provider epoch_floor interaction, unsigned arithmetic example, test vector ref, and IETF-style normative language. Matches parent yne7/ofrf requirements. No new files created; only edited existing spec per task scope.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-685x",
+      "depends_on_id": "project-LICHEN-2oas",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:29:18.048671234Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

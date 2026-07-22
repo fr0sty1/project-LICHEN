@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-kbb9",
+  "title": "[codereview-pass2] coap_dtn.c: peer_eui64 as DTN destination enables injection; missing buffer init and rate limit update",
+  "description": "Security: Using the requestor's peer_eui64 as destination_iid for deaddrop allows any authenticated peer to fill buffer for arbitrary IIDs or self-DoS. Per spec, deaddrop should use message-embedded dest or broadcast. Also s_dtn_buf not initialized in register(); rate limit uses uptime but not synced with DTN now_ms. P0. discovered-from:project-LICHEN-qk8y",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:20:07.440073114Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:22:26.236189549Z",
+  "started_at": "2026-07-22T15:21:39.387442649Z",
+  "closed_at": "2026-07-22T15:22:26.236189549Z",
+  "close_reason": "Fixed peer_eui64 injection in deaddrop by using message dest IID or broadcast per spec; initialized s_dtn_buf in register; synced rate limit with DTN now_ms using k_uptime_get_32(); read coap_location.c coap_config.c dtn.c router.c for context; matched LICHEN_ statics no comments/TODOs/deadcode; ran ruff cargo clippy full tests; verified no injection possible"
+}

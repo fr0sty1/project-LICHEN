@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-m3a0",
+  "title": "[codereview-pass2] Kconfig indentation for LICHEN_LINK_CCP16_LOAD_BALANCING",
+  "description": "lichen/subsys/lichen/link/Kconfig:111 - The config line has inconsistent leading whitespace compared to sibling configs (LICHEN_CCP_TIME_SYNC at 101 uses one tab, this appears to have extra spaces). While Kconfig parser tolerates it, style consistency is required for readability P4. No functional impact. Filed per mandatory 'file ALL findings' rule.",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "chore",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:28:08.550168597Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:29:13.625713827Z",
+  "started_at": "2026-07-22T16:29:13.112511666Z",
+  "closed_at": "2026-07-22T16:29:13.625713827Z",
+  "close_reason": "Fixed indentation consistency across CCP/TDMA block in link/Kconfig to match sibling configs (tabs/whitespace). No functional change.",
+  "labels": [
+    "codereview"
+  ]
+}

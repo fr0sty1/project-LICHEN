@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-dp4j.4",
+  "title": "Update C announce for rx_channel field",
+  "description": "Rename current_channel to rx_channel in lichen/subsys/lichen/routing/announce.c, include/lichen/routing/announce.h, tests/routing_announce, any other C files. Update struct lichen_announce_view, parsing, building, comments, tests. Ensure wire format and signed data position unchanged.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:25:51.400505015Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:27:16.614065893Z",
+  "started_at": "2026-07-22T17:27:16.614065893Z",
+  "lease_expires_at": "2026-07-22T17:32:16.614065893Z",
+  "heartbeat_at": "2026-07-22T17:27:16.614065893Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-dp4j.4",
+      "depends_on_id": "project-LICHEN-dp4j",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:25:51.508418464Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

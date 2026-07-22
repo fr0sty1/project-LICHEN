@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-jhcz",
+  "title": "codereview pass 1: ccp9_vectors announce parse oracle",
+  "description": "Review finding: current announce_channel_parse_roundtrip uses expected_encoded_flag=0x02 which appears derived from impl (flags=channel). Needs explicit independent byte construction per L2_DISPATCH_ROUTING=0x15. Tagged codereview. P1 correctness.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:15:25.243302216Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:16:49.559566886Z",
+  "started_at": "2026-07-22T17:16:48.958342152Z",
+  "closed_at": "2026-07-22T17:16:49.559566886Z",
+  "close_reason": "Fixed announce parse oracle to use explicit L2_DISPATCH_ROUTING=0x15 construction independent of impl flags",
+  "labels": [
+    "codereview"
+  ]
+}

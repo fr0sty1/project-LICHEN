@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2wtv",
+  "title": "[codereview-pass1.6 correctness] rf_health.rs: test rssi_avg_multiple_samples comment and assertion outdated for new alpha=1/4",
+  "description": "Update test comment to reflect  -80 + (1/4)*20 = -75. Change assertion to match computed -75. Or better parametrize as per task. file: rust/lichen-core/src/rf_health.rs:410",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:32:30.405929052Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:38:39.448704703Z",
+  "started_at": "2026-07-22T16:35:18.562199661Z",
+  "closed_at": "2026-07-22T16:38:39.448704703Z",
+  "close_reason": "Updated rf_health.rs with EMA_ALPHA_SHIFT const, parametrized rssi_avg_multiple_samples test comment/assert for alpha=1/4, made SnrStats::update match exactly (no \u003e\u003e3). Tests pass, cargo test/clippy/fmt clean. 3 codereview passes (correctness P0-P4, robustness, Rust idioms) filed 0 new beads - all clean. Parallel explore subagent confirmed no other EMA inconsistencies.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2wtv",
+      "depends_on_id": "project-LICHEN-pko0",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:32:30.513306925Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

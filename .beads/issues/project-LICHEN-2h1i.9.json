@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-2h1i.9",
+  "title": "Develop sales playbook scripts and docs",
+  "description": "Create executable sales scripts, demo pitch highlighting IPv6/SCHC/RPL/OSCORE vs Meshtastic, packaging with GPL notice, inventory CLI, payment options for conferences. Include QR to repo and source offer. Update epic 2h1i with these executable steps. Follow 3x codereview per chunk.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:03:08.535002258Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:04:58.710352909Z",
+  "started_at": "2026-07-22T15:04:04.534858396Z",
+  "closed_at": "2026-07-22T15:04:58.710352909Z",
+  "close_reason": "Sales playbook developed with scripts/docs, 3 codereview passes completed and fixed, inventory script tested and working, epic updated with executable steps. Sales chunk clean.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-2h1i.9",
+      "depends_on_id": "project-LICHEN-2h1i",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:03:08.624679827Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

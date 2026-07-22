@@ -1,0 +1,29 @@
+{
+  "id": "project-LICHEN-6op5",
+  "title": "P1: map_count in encode_status_cbor can theoretically overflow uint16_t",
+  "description": "Although 4 base + 4 optionals is small, the calculation map_count += ... for time and dodag fields uses uint16_t but if status struct had many more optional fields it could overflow before the bounds check. The check is after calculation. Better to use saturating add or check incrementally. Discovered in codereview pass1 of coap_status.c comment removal. Related to project-LICHEN-2bix.",
+  "notes": "codereview pass 2: security review - no overflow paths remain, all cbor calls check overflow flag, no secrets, bounds checked snprintf in format_ipv6. Clean.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:11:04.39629679Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:16:30.483781848Z",
+  "started_at": "2026-07-22T16:13:34.856689403Z",
+  "closed_at": "2026-07-22T16:15:59.292608022Z",
+  "close_reason": "Fixed theoretical uint16_t overflow in lichen_coap_encode_status_cbor:uint8_t map_count with incremental cap checks before add (lines 256-259). Defined CCP-1 scope via 5 child tasks under rl6f for TDMA/channel. 3 codereview passes per chunk (scope, map_count, encode) with all P0-P4 filed+addressed+closed as codereview. West build and coap test vectors verified clean. No dead code, conventional commit prepared. Convergence on P4 only.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-6op5",
+      "depends_on_id": "project-LICHEN-2bix",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:11:04.495267059Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

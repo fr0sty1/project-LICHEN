@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-u9in.1",
+  "title": "[codereview-pass1] coap_dtn.c deaddrop_post: added IID extraction + oscore_ctx_get_by_eui64 but missing string.h for memcpy; rate limit still uses global array P2; unprotect always called even if lookup fails P1",
+  "description": "P1: ctx may be NULL but unprotect not guarded in all paths. P2: needs #include \u003cstring.h\u003e. P3: dummy_iid still used after unprotect. P4: no error handling for oscore_ctx_get_by_eui64 return value. Follows oscore.h pattern but incomplete for POST.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:31:28.229247419Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:42:50.353998103Z",
+  "started_at": "2026-07-22T15:42:26.18261063Z",
+  "closed_at": "2026-07-22T15:42:50.353998103Z",
+  "close_reason": "fixed after 3 codereview passes; tests pass",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-u9in.1",
+      "depends_on_id": "project-LICHEN-u9in",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:31:28.328576393Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

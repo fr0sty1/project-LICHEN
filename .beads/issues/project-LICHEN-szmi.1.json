@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-szmi.1",
+  "title": "codereview: tdma_slot expected_slot=3 may not match CRC16(EUI64) mod 16",
+  "description": "Verify the hash computation for static slot assignment in new vectors. Independent oracle should use exact CRC16 poly 0x1021 init 0x0000 on the 8 bytes.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:21:02.782104466Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:22:12.501674434Z",
+  "closed_at": "2026-07-22T16:22:12.501674434Z",
+  "close_reason": "All codereview findings fixed: slot now matches CRC16=1, drift_ppm=5000 for exact 50ms guard match, _write call added to main+generated successfully, README updated; 3 clean passes with no new P0-P2 findings after fixes",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-szmi.1",
+      "depends_on_id": "project-LICHEN-szmi",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:21:02.887087296Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

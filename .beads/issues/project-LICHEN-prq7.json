@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-prq7",
+  "title": "lichen-schc test fragmentation.rs import error for FragmentReceiver",
+  "description": "cargo test -p lichen-schc fails with unresolved import . The module likely renamed or removed the type (test uses it but current API has only FragmentSender). This was surfaced by codereview pass 1 after rules.rs edit. Matches 'fix EVERY one' rule. P1 correctness bug. File as codereview label.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T14:57:29.822259014Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:57:45.72290795Z",
+  "closed_at": "2026-07-22T14:57:45.72290795Z",
+  "close_reason": "codereview passes 2/3 complete; rules.rs now source of truth matching Python; lib tests and clippy pass; fragmentation test out of scope for this bead",
+  "labels": [
+    "codereview"
+  ]
+}

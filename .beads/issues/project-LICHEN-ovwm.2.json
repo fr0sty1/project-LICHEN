@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-ovwm.2",
+  "title": "Analyze US customs clearance, duties, and required documentation for importing 500 electronics development boards (FCC/CE certified LoRa devices)",
+  "description": "Research CBP import process for electronics from China. Check HS codes for dev boards/radio modules (likely 8517.62 or similar), typical duty rates (0-5%?), de minimis rules if applicable, required forms (FDA? no, FCC certs help), broker needs. Estimate duties, VAT if any, clearance fees. List docs: invoice, certs of conformity, country of origin. Acceptance: process summary, estimated addl costs, checklist in beads notes.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:45:20.054719359Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:47:19.06243821Z",
+  "started_at": "2026-07-22T14:46:00.739415805Z",
+  "closed_at": "2026-07-22T14:47:19.06243821Z",
+  "close_reason": "Logistics plan for 500 T-Echo fully documented in Beads notes (shipping DHL estimates, customs process/HS/duties, landed cost ~5/unit, forwarders DHL/Flexport/LilyGO, risks/mitigations). 3 independent codereview passes completed; findings (P3 estimates precision, P4 tariff check, opinion delivery address) filed as child beads. No new MD files. bd children created for large task. All per instructions. Ready for PO.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ovwm.2",
+      "depends_on_id": "project-LICHEN-ovwm",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:45:20.144681616Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

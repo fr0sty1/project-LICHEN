@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-uf58",
+  "title": "coap_dtn.c P4: logging and SenML misuse",
+  "description": "P4 style: uses senml for deaddrop but confessions should use plain text or CBOR per 2nnd.4.2 bead. LOG_MODULE level not respected in stub. Add proper OSCORE error handling with coap_oscore_send_unauthorized. Refs project-LICHEN-86ur",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T15:13:38.831661376Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:14:16.263126501Z",
+  "closed_at": "2026-07-22T15:14:16.263126501Z",
+  "close_reason": "Logging and SenML fixed in final pass"
+}

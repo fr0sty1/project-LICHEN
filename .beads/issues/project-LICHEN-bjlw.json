@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-bjlw",
+  "title": "Python/Rust packet_hash type mismatch breaks cross-impl metrics",
+  "description": "Python NodeMetrics uses set[str] of 32-char hex strings for packet_hashes_sent/received (see metrics.py:45,96). Rust hetero_node uses HashSet\u003c[u8; 16]\u003e bytes. JSON exports incompatible formats. This prevents reliable cross-impl consistency verification intended by the packet_hash standardization. Affects sim/metrics.py, hetero_node.rs:26-27,146-178, export_metrics. New bug surfaced by codereview.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:46:24.323564663Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:53:16.982341493Z",
+  "started_at": "2026-07-22T14:49:05.837174156Z",
+  "closed_at": "2026-07-22T14:53:16.982341493Z",
+  "close_reason": "Fixed packet_hash to use [u8;16] in Rust hetero_node.rs for efficiency while ensuring JSON exports use 32-char hex strings via hex::encode for full interop with Python simulation.py:str (updated [:16]-\u003e[:32] in 3 locations + export_metrics doc). Ran cargo clippy (3x clean after use hex; removal), ruff check (clean). Addressed all codereview beads via parallel fixes in rules alignment (SCHC/RPL/CoAP/MQTT-SN per ready queue). 3 clean review passes completed with no P0-P2 findings.",
+  "labels": [
+    "codereview"
+  ]
+}

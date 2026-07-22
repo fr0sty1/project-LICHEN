@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-ayr1",
+  "title": "codereview-pass3: AGENTS.md lichen_node_init update",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:20:30.237973505Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:22:31.947680309Z",
+  "closed_at": "2026-07-22T16:22:31.947680309Z",
+  "close_reason": "P2: example updated cleanly",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ayr1",
+      "depends_on_id": "project-LICHEN-majo",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:20:30.343301961Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

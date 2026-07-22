@@ -1,0 +1,17 @@
+{
+  "id": "project-LICHEN-xbw3",
+  "title": "codereview-pass2: SF function chunk",
+  "description": "P3: TOC update pending for 2a.3.2. IETF style consistent with MUST, pseudocode clean. Rationale for density vs SF10 updated per task.",
+  "status": "closed",
+  "priority": 3,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:46:19.761204181Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:46:29.433654692Z",
+  "closed_at": "2026-07-22T16:46:29.433654692Z",
+  "close_reason": "TOC updated; all addressed",
+  "labels": [
+    "codereview",
+    "ccp"
+  ]
+}

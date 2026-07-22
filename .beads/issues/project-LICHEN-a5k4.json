@@ -1,0 +1,22 @@
+{
+  "id": "project-LICHEN-a5k4",
+  "title": "Codereview pass 2: ensure C lichen_eui_from_ed25519 produces identical 8-byte IID",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:20:12.234416497Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:20:35.631976933Z",
+  "closed_at": "2026-07-22T15:20:35.631976933Z",
+  "close_reason": "Pass 2 complete: C and Rust IID derivation aligned, test vectors added",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-a5k4",
+      "depends_on_id": "project-LICHEN-zt3c.16",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:20:12.350855047Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

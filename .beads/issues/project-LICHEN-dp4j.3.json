@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-dp4j.3",
+  "title": "Update Rust announce to use rx_channel",
+  "description": "Rename current_channel to rx_channel in rust/lichen-core/src/announce.rs, lichen-node/src/announce.rs, scheduler.rs, all tests, comments, and any other references. Update structs, builders, error handling, signed_data, tests to maintain CCP-9 consistency.",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:25:49.178161216Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:27:08.393323055Z",
+  "started_at": "2026-07-22T17:27:08.393323055Z",
+  "lease_expires_at": "2026-07-22T17:32:08.393323055Z",
+  "heartbeat_at": "2026-07-22T17:27:08.393323055Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-dp4j.3",
+      "depends_on_id": "project-LICHEN-dp4j",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:25:49.286691543Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

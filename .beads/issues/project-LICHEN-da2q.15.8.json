@@ -1,0 +1,30 @@
+{
+  "id": "project-LICHEN-da2q.15.8",
+  "title": "Algorithm: Interference mitigation via frequency agility, density-aware adaptive SF and TDMA",
+  "description": "Define exact algorithm, pseudocode, match test vectors in ccp16.json. File as child of project-LICHEN-da2q.15",
+  "status": "in_progress",
+  "priority": 1,
+  "issue_type": "epic",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:29:11.9526423Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:30:10.785034623Z",
+  "started_at": "2026-07-22T16:30:10.785034623Z",
+  "lease_expires_at": "2026-07-22T16:35:10.785034623Z",
+  "heartbeat_at": "2026-07-22T16:30:10.785034623Z",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.15.8",
+      "depends_on_id": "project-LICHEN-da2q.15",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:29:12.066522113Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

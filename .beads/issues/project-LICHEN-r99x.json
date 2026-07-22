@@ -1,0 +1,27 @@
+{
+  "id": "project-LICHEN-r99x",
+  "title": "codereview: section numbering broken after inserting 8.5 Unified Derivation in 06-security.md (old 8.6+ now off-by-one)",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:13:33.477191102Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:15:16.77361219Z",
+  "started_at": "2026-07-22T15:14:25.537247269Z",
+  "closed_at": "2026-07-22T15:15:16.77361219Z",
+  "close_reason": "Fixed section numbers: unified as 8.6, key management 8.7, OSCORE 8.8, EDHOC 8.9, RPL 8.10; cross-refs updated",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-r99x",
+      "depends_on_id": "project-LICHEN-86ur",
+      "type": "blocks",
+      "created_at": "2026-07-22T15:13:33.577703331Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

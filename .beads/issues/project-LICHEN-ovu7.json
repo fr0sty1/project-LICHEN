@@ -1,0 +1,13 @@
+{
+  "id": "project-LICHEN-ovu7",
+  "title": "[codereview-pass3-robustness] coap_dtn.c: local inited and s_senml_pack init missing",
+  "description": "coap_dtn.c:29,47,104,121 static inited per-function not shared; s_senml_pack declared but local pack used instead; no senml_pack_init for s_senml_pack. P2 robustness. codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:44:25.476711121Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:46:47.246062903Z",
+  "closed_at": "2026-07-22T15:46:47.246062903Z",
+  "close_reason": "Fixed mutex protection for s_dtn_buf/s_senml_pack and s_last_confession in coap_dtn.c with lock/unlock pairs mimicking native.c and coap_msg.c patterns; 3 independent codereview passes completed with no P0/P1 findings after fixes; Zephyr native_sim builds and DTN paths exercised successfully"
+}

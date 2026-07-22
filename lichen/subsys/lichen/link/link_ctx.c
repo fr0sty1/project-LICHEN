@@ -7,7 +7,6 @@
  */
 
 #include <lichen/link_ctx.h>
-#include <lichen/link.h>
 #include <lichen/schnorr48.h>
 #include <lichen/errno.h>
 #include <string.h>
@@ -24,8 +23,6 @@
 #include "monocypher.h"
 #include "monocypher-ed25519.h"
 #endif
-
-#include <tinycrypt/sha256.h>
 
 /* ─── Logging ─────────────────────────────────────────────────────────────── */
 
@@ -94,16 +91,8 @@ static int link_nvs_mount(void)
 static uint32_t tuple_crc(const struct link_persisted_tuple *t)
 {
 	if (t == NULL) return 0;
-	/* Keyed with b"LICHEN" (0x4c494348454e) as initializer per
-	 * project-LICHEN-swvz, spec 02a-coordinated-capacity.md, and
-	 * Rust lichen_link::identity::hash_32(). Syncs packet_hash.
-	 */
-	const uint8_t key[] = "LICHEN";
-	uint8_t combined[6 + sizeof(*t) - sizeof(uint32_t)];
-	memcpy(combined, key, 6);
-	memcpy(combined + 6, (const uint8_t *)t + sizeof(uint32_t),
-	       sizeof(*t) - sizeof(uint32_t));
-	return crc32_ieee(combined, sizeof(combined));
+	return crc32_ieee((const uint8_t *)t + sizeof(uint32_t),
+			 sizeof(*t) - sizeof(uint32_t));
 }
 
 static int save_tuple(const struct lichen_link_ctx *ctx)
@@ -159,18 +148,7 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 	if (ctx == NULL || eui64 == NULL) {
 		return -EINVAL;
 	}
-	uint8_t rand_byte;
-#ifdef __ZEPHYR__
-	if (sys_csrand_get(&rand_byte, 1) != 0) {
-		return -EIO;
-	}
-#elif defined(__linux__) || defined(__APPLE__)
-	if (getentropy(&rand_byte, 1) != 0) {
-		return -EIO;
-	}
-#else
-	return -EIO;
-#endif
+
 #ifdef __ZEPHYR__
 	k_mutex_init(&ctx->seq_lock);
 #else
@@ -178,6 +156,7 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 		return -EIO;
 	}
 #endif
+
 	memcpy(ctx->eui64, eui64, LICHEN_EUI64_LEN);
 	memset(ctx->ed25519_sk, 0, LICHEN_SK_LEN);
 	memset(ctx->ed25519_pk, 0, LICHEN_PK_LEN);
@@ -185,13 +164,35 @@ int lichen_link_init(struct lichen_link_ctx *ctx, const uint8_t *eui64)
 	ctx->has_key = false;
 	ctx->has_link_key = false;
 	ctx->nonce_exhausted = false;
+
 #ifdef CONFIG_NVS
+	/* Initialization-only restore of persisted tuple (EUI, keys, replay counters,
+	 * epoch/seq tuple + exhaustion). Prevents reuse of previously signed tuple
+	 * across reboot. Falls back to random epoch if no persisted state. */
 	if (restore_tuple(ctx) == 0) {
 		return 0;
 	}
 #endif
-	ctx->epoch = 128 + (rand_byte & 0x7F);
+
+	/* ponytail: random epoch in [128,255] for reboot resilience without flash.
+	 * Half-space arithmetic treats upper-half counters as "ahead" of lower-half.
+	 * Callers with persisted epoch should call lichen_link_set_epoch() after init.
+	 *
+	 * SECURITY: ESP32 HW RNG produces weak/predictable output before WiFi/BT radio
+	 * init. On ESP32 without epoch persistence, an attacker who knows the boot
+	 * timing may predict the epoch. Mitigation: persist epoch to flash, or defer
+	 * this call until after radio subsystem init. */
+	uint8_t rand_byte;
+#ifdef __ZEPHYR__
+	sys_csrand_get(&rand_byte, 1);
+#elif defined(__linux__) || defined(__APPLE__)
+	(void)getentropy(&rand_byte, 1);
+#else
+	rand_byte = 0; /* fallback: no CSPRNG available */
+#endif
+	ctx->epoch = 128 + (rand_byte & 0x7F); /* [128, 255] */
 	ctx->tx_seq = 0;
+
 	return 0;
 }
 
@@ -548,95 +549,27 @@ int lichen_link_copy_identity(const struct lichen_link_ctx *ctx,
 	return 0;
 }
 
-	void lichen_link_cleanup(struct lichen_link_ctx *ctx)
+void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 {
 	if (ctx == NULL) {
 		return;
 	}
 
-	int locked = (seq_lock(ctx) == 0);
+	seq_lock(ctx);
 
-	/*
-	 * SECURITY: Always wipe keys, even if lock fails. This prioritizes
-	 * key erasure over correctness of concurrent operations.
-	 *
-	 * If the lock failed, another thread is using this context - this
-	 * indicates improper usage (cleanup was called without ensuring
-	 * exclusive access). Log a warning but proceed with the wipe.
-	 */
-	if (!locked) {
-		LOG_WRN("cleanup called while context is locked - potential race condition\n");
-	}
 	secure_wipe(ctx->ed25519_sk, LICHEN_SK_LEN);
 	secure_wipe(ctx->link_key, LICHEN_LINK_KEY_LEN);
 
-	/* Clear public key and flags (not secret, but clean up completely) */
 	memset(ctx->ed25519_pk, 0, LICHEN_PK_LEN);
 	ctx->has_key = false;
 	ctx->has_link_key = false;
 
-	/* Reset sequence state and nonce exhaustion flag */
 	ctx->epoch = 0;
 	ctx->tx_seq = 0;
 	ctx->nonce_exhausted = false;
 
-	if (locked) {
-		(void)seq_unlock(ctx);
+	(void)seq_unlock(ctx);
 #ifndef __ZEPHYR__
-		pthread_mutex_destroy(&ctx->seq_lock);
+	pthread_mutex_destroy(&ctx->seq_lock);
 #endif
-	}
 }
-
-int lichen_identity_ygg_addr_from_ed25519(const uint8_t *pubkey,
-					  uint8_t ygg_addr[16])
-{
-	if (pubkey == NULL || ygg_addr == NULL) {
-		return -EINVAL;
-	}
-
-	uint8_t hash[64];
-	uint8_t iid[8];
-	struct tc_sha256_state_struct sha_state;
-	uint8_t sha_hash[TC_SHA256_DIGEST_SIZE];
-
-	/* Derive Yggdrasil address per Rust lichen-link::identity::yggdrasil_addr_from_pubkey
-	 * (see test/vectors/yggdrasil-derivation.json for official + cross-oracle vectors)
-	 * and spec/04-network.md: byte0=0x02, bytes1-7=SHA512(pubkey)[0:7],
-	 * bytes8-15 = IID = SHA256(pubkey)[0:8] with U/L bit cleared.
-	 * Guarantees LICHEN IID matches lower 64 bits of Ygg address. Updated gateway impl notes. */
-#ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
-	crypto_sha512(hash, pubkey, 32);
-#else
-	/* Stub for test builds without full crypto. Test vectors assume MONOCYPHER. */
-	memset(hash, 0x42, sizeof(hash)); /* deterministic non-zero for testability */
-#endif
-
-	(void)tc_sha256_init(&sha_state);
-	(void)tc_sha256_update(&sha_state, pubkey, 32);
-	(void)tc_sha256_final(sha_hash, &sha_state);
-	memcpy(iid, sha_hash, 8);
-	iid[0] &= 0xfd; /* clear U/L bit (bit 1); matches Rust 0b1111_1101 and RFC 4291 */
-
-	ygg_addr[0] = 0x02;
-	memcpy(&ygg_addr[1], hash, 7);
-	memcpy(&ygg_addr[8], iid, 8);
-
-	secure_wipe(hash, sizeof(hash));
-	secure_wipe(sha_hash, sizeof(sha_hash));
-	secure_wipe(iid, sizeof(iid));
-
-	return 0;
-}
-
-int lichen_coordination_negotiate(struct lichen_link_ctx *ctx)
-{
-	if (ctx == NULL) {
-		return -EINVAL;
-	}
-	if (!ctx->has_key) {
-		return -ENOKEY;
-	}
-	return 0;
-}
-

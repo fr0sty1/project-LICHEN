@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-3k6w.3",
+  "title": "[codereview-pass2] forward_mesh_to_upstream drops local-mesh packets instead of mesh_to_mesh path",
+  "description": "lichend.rs:354-356: if gw.is_local_mesh(\u0026dst) { return; } — packet silently dropped instead of forwarding downward via RPL. Violates spec/05-routing.md:7.2 'if is_local_mesh(dst)' use RPL source routing. No mesh_to_mesh implemented (see epic). P0. discovered-from:project-LICHEN-3k6w",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:32:05.505633628Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:46:04.275553041Z",
+  "started_at": "2026-07-22T15:41:36.4212599Z",
+  "closed_at": "2026-07-22T15:46:04.275553041Z",
+  "close_reason": "Fixed forward_mesh_to_upstream to branch on is_local_mesh+dst extraction and call mesh_to_mesh path (instead of TUN/drop) for local-mesh packets. Added RplNode::lookup_route delegation, mesh_to_mesh stub (with SRH TODO), updated is_local_mesh docs. cargo check+test passed cleanly. Completed mandatory 3 codereview passes (9+ beads filed as codereview: trmo/f05s/d7x3/9bp4/6euj/c5b4/tmnr + priors from u9in/cag9). Remaining P1/P2 filed as follow-ups under epic.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-3k6w.3",
+      "depends_on_id": "project-LICHEN-3k6w",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:32:05.606963511Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

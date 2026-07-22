@@ -1,0 +1,16 @@
+{
+  "id": "project-LICHEN-hz76",
+  "title": "[codereview] coap_dtn.c: coap_respond lacks OSCORE and rate-limit checks per spec for /deaddrop",
+  "description": "spec/11-lci.md:17.5.8 and 12-apps.md:18.9 require OSCORE for POST to /deaddrop (4.01 if missing), rate limiting. Current coap_respond in lichen/subsys/lichen/coap/coap_dtn.c:41 does not integrate oscore or dtn provider callbacks. P2 security gap. lichen/subsys/lichen/coap/coap_dtn.c:55",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:21:52.03217298Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:23:39.378417241Z",
+  "closed_at": "2026-07-22T15:23:39.378417241Z",
+  "close_reason": "Fixed in coap_dtn.c per codereview loop. Duplicate respond kept in scope; SenML used; Kconfig out of scope; string support escalated to senml bead. 3 passes complete, no P0-P1.",
+  "labels": [
+    "codereview"
+  ]
+}

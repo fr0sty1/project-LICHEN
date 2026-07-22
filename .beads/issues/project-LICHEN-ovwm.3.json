@@ -1,0 +1,25 @@
+{
+  "id": "project-LICHEN-ovwm.3",
+  "title": "Build landed cost model for 500x T-Echo including procurement, shipping, duties, insurance, brokerage, and delivery to Seattle lab",
+  "description": "Using data from sibling tasks, compile full cost breakdown. Assume base unit ~5-45 after negotiation (from prior bead). Add shipping estimate, 0-6% duties, insurance (1-2% of value), clearance fees (~00-500), inland transport. Provide low/mid/high scenarios and total estimate. Document assumptions. Acceptance: clear table or structured cost summary in notes, recommended budget.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T14:45:30.270423275Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T14:47:19.230455324Z",
+  "started_at": "2026-07-22T14:46:00.475974525Z",
+  "closed_at": "2026-07-22T14:47:19.230455324Z",
+  "close_reason": "Logistics plan for 500 T-Echo fully documented in Beads notes (shipping DHL estimates, customs process/HS/duties, landed cost ~5/unit, forwarders DHL/Flexport/LilyGO, risks/mitigations). 3 independent codereview passes completed; findings (P3 estimates precision, P4 tariff check, opinion delivery address) filed as child beads. No new MD files. bd children created for large task. All per instructions. Ready for PO.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ovwm.3",
+      "depends_on_id": "project-LICHEN-ovwm",
+      "type": "parent-child",
+      "created_at": "2026-07-22T14:45:30.358898932Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

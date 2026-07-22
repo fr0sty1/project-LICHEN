@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-crmx",
+  "title": "[codereview-pass1] CCP-16 intro: missing reference to SCHC compression impact on beacon size for multi-root",
+  "description": "The new CCP-16 intro should reference how SCHC Rule for beacon (0x20) affects multi-root signature verification latency. P2. Link to draft-lichen-schnorr. Discovered-from current edit.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:24:45.667558377Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:29:49.835517535Z",
+  "started_at": "2026-07-22T16:26:49.162957429Z",
+  "closed_at": "2026-07-22T16:29:49.835517535Z",
+  "close_reason": "All task items addressed in small chunks (header/TOC, parameterization+appendix rationale in §6+7 of appendix, stronger independent MUST in §5, SCHC/Schnorr/CCP-16 ref in §2, SFN boundary pseudocode+example, RFC2119 justifications/cross-refs throughout). 3+ codereview passes (including ouxz,s2yi etc.) now show only P3/P4 or opinion. All P0-P2 fixed and closed. File updated consistently with test vectors, no dead code, follows spec style. Clean.",
+  "labels": [
+    "codereview"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-r044",
+  "title": "[codereview] coap: missing lichen_coap_deaddrop_register API in header and impl",
+  "description": "lichen/subsys/lichen/coap/include/lichen/coap_server.h and coap_deaddrop.c (missing): The Kconfig help for LICHEN_COAP_DEADDROP references lichen_coap_deaddrop_register() but no such function or file exists. This makes the new config incomplete. discovered-from:project-LICHEN-b6cs huho. P1 correctness. Must add stub or full impl to close.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:04:27.097269783Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:07:21.378162358Z",
+  "started_at": "2026-07-22T15:05:09.48894804Z",
+  "closed_at": "2026-07-22T15:07:21.378162358Z",
+  "close_reason": "API added to coap_server.h + coap_dtn.c; completed 3 codereview passes (P2/P3 fixed, final pass only P4 opinion); all findings filed as codereview beads"
+}

@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-jz6f",
+  "title": "[CODEREVIEW-P2] TOC anchor for CCP-12 not yet present in document",
+  "description": "spec/02a-coordinated-capacity.md:12 - New TOC entry links to undefined section #ccp-12-synchronized-hopping-project-lichen-da2q126. Will cause broken link in rendered spec. Discovered in first codereview pass after TOC edit. tagged codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:01:22.106440568Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:02:21.295590108Z",
+  "started_at": "2026-07-22T17:02:10.034163657Z",
+  "closed_at": "2026-07-22T17:02:21.295590108Z",
+  "close_reason": "Fixed by adding CCP-12 section with anchor, standardized hash_32, added pseudocode and vector refs",
+  "labels": [
+    "codereview"
+  ]
+}

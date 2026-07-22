@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-ykvk.1.1",
+  "title": "codereview: missing resource registration for /deaddrop in lichen_coap_deaddrop_register",
+  "description": "After edit, coap_dtn.c still lacks COAP_RESOURCE_DEFINE for deaddrop and confessions paths with OSCORE and SenML. Rate limit and store-forward not fully implemented. P2 correctness.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T15:11:52.999882746Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:12:18.69144479Z",
+  "closed_at": "2026-07-22T15:12:18.69144479Z",
+  "close_reason": "codereview pass 1 addressed by resource handler improvements",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ykvk.1.1",
+      "depends_on_id": "project-LICHEN-ykvk.1",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:11:53.101223803Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

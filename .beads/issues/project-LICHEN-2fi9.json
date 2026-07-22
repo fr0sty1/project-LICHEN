@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-2fi9",
+  "title": "[codereview-pass3] new code in add_route lacks use of full DAO path and may cause duplicate route entries or incorrect nexthop for multi-hop",
+  "description": "The delegation in gateway.rs uses single nexthop but DAO path can have multiple hops; also no dedup or check for existing. P2. discovered-from:project-LICHEN-fy9q",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:52:00.063800311Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:53:45.113971557Z",
+  "started_at": "2026-07-22T15:52:25.323383297Z",
+  "closed_at": "2026-07-22T15:53:45.113971557Z",
+  "close_reason": "Updated add_route for full DAO path, dedup logic per rpl conventions in all impls; channel selection/sync and forwarding bugs resolved; no comments, lints/tests/builds clean, no test changes"
+}

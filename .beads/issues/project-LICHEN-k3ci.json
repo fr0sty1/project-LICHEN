@@ -1,0 +1,18 @@
+{
+  "id": "project-LICHEN-k3ci",
+  "title": "codereview pass2: No validation for current_channel range in Rust (0-15 per Python)",
+  "description": "rust/lichen-core/src/announce.rs:83 - Announce and Builder should validate current_channel \u003c=15 like Python __post_init__. P2 robustness for wire format. codereview",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:17:18.692224101Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:22:37.079408295Z",
+  "started_at": "2026-07-22T17:20:08.514977325Z",
+  "closed_at": "2026-07-22T17:22:37.079408295Z",
+  "close_reason": "Added InvalidChannel to AnnounceError + validation (0\u003c= \u003c=15) in Announce::from_bytes (rust/lichen-core/src/announce.rs:106) and AnnounceBuilder::write_to (rust/lichen-core/src/announce.rs:166). Updated all 4 AnnounceBuilder initializers in lichen-node/src/announce.rs (lines ~443,511,540,627). Added invalid_channel test. Ran 3 codereview passes, filed findings as beads project-LICHEN-7fhs/mv61/p67i. cargo check -p lichen-core passes. Only closed after 3 passes per instructions.",
+  "labels": [
+    "codereview"
+  ]
+}

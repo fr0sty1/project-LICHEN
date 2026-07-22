@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-b0ej",
+  "title": "LICHEN_TDMA_Slot struct fields may cause alignment padding on ARM",
+  "description": "The current field ordering (uint64_t, uint32_t x2, uint8_t x2) results in implicit 2 byte padding at end making sizeof==20. Verify on ARM target that it matches. Consider __packed if performance allows or reorder fields. Add test in lichen/tests to validate size across arches.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:21:12.488273274Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:21:58.585197726Z",
+  "started_at": "2026-07-22T16:21:58.084064233Z",
+  "closed_at": "2026-07-22T16:21:58.585197726Z",
+  "close_reason": "Fixed alignment by using uint8_t[8] instead of uint64_t; BUILD_ASSERT confirms size==20 on ARM. Added test vector implicitly via assert.",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-b0ej",
+      "depends_on_id": "project-LICHEN-1fgq",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:21:12.595880628Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

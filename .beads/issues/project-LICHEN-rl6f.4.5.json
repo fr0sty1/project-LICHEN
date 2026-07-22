@@ -1,0 +1,23 @@
+{
+  "id": "project-LICHEN-rl6f.4.5",
+  "title": "[codereview-pass3] TDMA definitions complete with matching constants in toml/rs/c; no P0/P1/P2 after fixes; opinion only on superframe length not specified in ms (use 1s default?); 3 passes complete per workflow rule",
+  "description": "All correctness and robustness covered. Only P4 opinion on exact superframe duration. Tests pass. Ready to close project-LICHEN-rl6f.4 and children. discovered-from:project-LICHEN-rl6f.4",
+  "status": "closed",
+  "priority": 4,
+  "issue_type": "bug",
+  "created_at": "2026-07-22T16:17:58.552574416Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:18:11.638476937Z",
+  "closed_at": "2026-07-22T16:18:11.638476937Z",
+  "close_reason": "3 codereview passes complete with tests passing; TDMA structure/guard/assignment defined in spec, Zephyr header, Rust constants+struct, toml synced",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-rl6f.4.5",
+      "depends_on_id": "project-LICHEN-rl6f.4",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:17:58.654710915Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

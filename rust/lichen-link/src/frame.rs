@@ -174,6 +174,7 @@ pub const MAX_FRAME_BODY: usize = 255;
 pub enum FrameError {
     Empty,
     TooShort(TooShort),
+    BufferTooSmall(BufferTooSmall),
     ReservedBitSet,
     ReservedMicLength(u8),
     AddrLenMismatch,
@@ -190,6 +191,7 @@ impl core::fmt::Display for FrameError {
         match self {
             Self::Empty => write!(f, "empty frame"),
             Self::TooShort(e) => write!(f, "frame {}", e),
+            Self::BufferTooSmall(e) => write!(f, "frame {}", e),
             Self::ReservedBitSet => write!(f, "reserved bit set"),
             Self::ReservedMicLength(v) => write!(f, "reserved MIC length: {}", v),
             Self::AddrLenMismatch => write!(f, "address length mismatch"),

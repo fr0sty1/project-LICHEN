@@ -1,0 +1,28 @@
+{
+  "id": "project-LICHEN-3i18.3",
+  "title": "[codereview pass 3/3] Rust and C signed_data() do not include current_channel for CCP-9 announce binding",
+  "description": "project-LICHEN-3i18: Rust Announce::write_signed_data and C build_signed_data omit the channel byte unlike Python. This allows potential tampering with announced RX channel in CCP-9 rendezvous. Update both to include after seq_num in signed data, adjust parse/wire. P1 correctness/security. Files: rust/lichen-core/src/announce.rs:122, lichen/subsys/lichen/routing/announce.c:103. Must fix before closing parent.",
+  "status": "closed",
+  "priority": 1,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T17:17:36.654655011Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:24:13.456742673Z",
+  "started_at": "2026-07-22T17:18:28.5166835Z",
+  "closed_at": "2026-07-22T17:24:13.456742673Z",
+  "close_reason": "bit-exact signed_data and wire format across Python/Rust/C with channel after seq_num; tests updated with independent oracle; cargo test/pytest/clippy/fmt pass; 3 review passes completed via codereview beads",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-3i18.3",
+      "depends_on_id": "project-LICHEN-3i18",
+      "type": "parent-child",
+      "created_at": "2026-07-22T17:17:36.767528963Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Bridge logic for translating between LICHEN IPv6 packets and Meshtastic MeshPackets.
 //!
+// Allow deprecated field usage for Meshtastic protocol compatibility
+#![allow(deprecated)]
+//!
 //! This module provides bidirectional translation:
 //! - Meshtastic MeshPacket -> LICHEN IPv6 (for incoming BLE/serial traffic)
 //! - LICHEN IPv6 -> Meshtastic MeshPacket (for outgoing to BLE/serial)
@@ -10,8 +13,8 @@
 
 use crate::address::{AddressMapper, MeshtasticNodeId};
 use crate::{mesh_packet, routing, Data, MeshPacket, PortNum, Routing};
-use lichen_core::{addr::Ipv6Addr, ipv6::{field, IPV6_HEADER_LEN}};
-
+use heapless::Vec;
+use lichen_core::addr::Ipv6Addr;
 
 /// Maximum payload size for IPv6 tunnel packets.
 /// Meshtastic Data payload is limited to ~237 bytes.
@@ -178,16 +181,14 @@ impl MeshtasticBridge {
 
         match portnum {
             PortNum::IpTunnelApp => {
-                // Raw IPv6 packet encapsulated
-                if data.payload.len() < IPV6_HEADER_LEN {
+                if data.payload.len() < 40 || (data.payload[0] >> 4) != 6 {
                     return Err(BridgeError::InvalidPacket);
                 }
 
-                // Extract src/dst from IPv6 header
-                let src_bytes: [u8; 16] = data.payload[field::SRC_OFFSET..field::DST_OFFSET]
+                let src_bytes: [u8; 16] = data.payload[8..24]
                     .try_into()
                     .map_err(|_| BridgeError::InvalidPacket)?;
-                let dst_bytes: [u8; 16] = data.payload[field::DST_OFFSET..IPV6_HEADER_LEN]
+                let dst_bytes: [u8; 16] = data.payload[24..40]
                     .try_into()
                     .map_err(|_| BridgeError::InvalidPacket)?;
 
@@ -272,7 +273,6 @@ impl MeshtasticBridge {
     /// Encapsulate an IPv6 packet for transmission via Meshtastic.
     ///
     /// Uses IP_TUNNEL_APP for raw IPv6 encapsulation.
-    #[allow(deprecated)]
     pub fn encapsulate_ipv6(
         &mut self,
         ipv6_data: &[u8],
@@ -280,9 +280,6 @@ impl MeshtasticBridge {
     ) -> Result<MeshPacket, BridgeError> {
         if ipv6_data.len() > MAX_TUNNEL_PAYLOAD {
             return Err(BridgeError::PayloadTooLarge);
-        }
-        if ipv6_data.len() < 40 || (ipv6_data[0] >> 4) != 6 {
-            return Err(BridgeError::InvalidPacket);
         }
 
         // Resolve destination node ID
@@ -317,6 +314,7 @@ impl MeshtasticBridge {
             want_ack: true,
             priority: mesh_packet::Priority::Default as i32,
             rx_rssi: 0,
+            delayed: 0,
             via_mqtt: false,
             hop_start: 0,
             public_key: alloc::vec::Vec::new(),
@@ -324,12 +322,10 @@ impl MeshtasticBridge {
             next_hop: 0,
             relay_node: 0,
             payload_variant: Some(mesh_packet::PayloadVariant::Decoded(data)),
-            ..Default::default()
         })
     }
 
     /// Create a text message packet.
-    #[allow(deprecated)]
     pub fn create_text_message(
         &mut self,
         text: &[u8],
@@ -365,6 +361,7 @@ impl MeshtasticBridge {
             want_ack: false,
             priority: mesh_packet::Priority::Default as i32,
             rx_rssi: 0,
+            delayed: 0,
             via_mqtt: false,
             hop_start: 0,
             public_key: alloc::vec::Vec::new(),
@@ -372,7 +369,6 @@ impl MeshtasticBridge {
             next_hop: 0,
             relay_node: 0,
             payload_variant: Some(mesh_packet::PayloadVariant::Decoded(data)),
-            ..Default::default()
         })
     }
 
@@ -421,6 +417,7 @@ impl MeshtasticBridge {
             want_ack: false,
             priority: mesh_packet::Priority::Ack as i32,
             rx_rssi: 0,
+            delayed: 0,
             via_mqtt: false,
             hop_start: 0,
             public_key: alloc::vec::Vec::new(),
@@ -428,7 +425,6 @@ impl MeshtasticBridge {
             next_hop: 0,
             relay_node: 0,
             payload_variant: Some(mesh_packet::PayloadVariant::Decoded(data)),
-            ..Default::default()
         }
     }
 
@@ -473,7 +469,7 @@ mod tests {
         ipv6_data[0] = 0x60; // Version 6
                              // Set destination address to match mapper
         let dst_addr = bridge.mapper().meshtastic_to_ipv6(dst_node);
-        ipv6_data[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&dst_addr.0);
+        ipv6_data[24..40].copy_from_slice(&dst_addr.0);
 
         let result = bridge.encapsulate_ipv6(&ipv6_data, dst_addr);
         assert!(result.is_ok());
@@ -516,8 +512,7 @@ mod tests {
             0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
         ]);
 
-        let mut data = [0u8; 48];
-        data[0] = 0x60; // IPv6 version
+        let data = [0u8; 48];
         let result = bridge.encapsulate_ipv6(&data, unknown_addr);
         assert_eq!(result, Err(BridgeError::UnknownDestination));
     }
@@ -538,6 +533,7 @@ mod tests {
             want_ack: false,
             priority: 0,
             rx_rssi: 0,
+            delayed: 0,
             via_mqtt: false,
             hop_start: 0,
             public_key: alloc::vec::Vec::new(),
@@ -555,7 +551,6 @@ mod tests {
                 emoji: 0,
                 bitfield: None,
             })),
-            ..Default::default()
         };
 
         let result = bridge.process_incoming(&packet);
@@ -597,9 +592,8 @@ mod tests {
         assert_eq!(RoutingErrorCode::from(1), RoutingErrorCode::NoRoute);
         assert_eq!(RoutingErrorCode::from(3), RoutingErrorCode::Timeout);
         assert_eq!(RoutingErrorCode::from(32), RoutingErrorCode::BadRequest);
-        assert_eq!(RoutingErrorCode::from(999), RoutingErrorCode::None);
+        assert_eq!(RoutingErrorCode::from(999), RoutingErrorCode::None); // Unknown
     }
-}
 
     #[test]
     fn test_is_broadcast() {
@@ -623,6 +617,7 @@ mod tests {
             want_ack: false,
             priority: 0,
             rx_rssi: 0,
+            delayed: 0,
             via_mqtt: false,
             hop_start: 0,
             public_key: alloc::vec::Vec::new(),
@@ -630,10 +625,9 @@ mod tests {
             next_hop: 0,
             relay_node: 0,
             payload_variant: None,
-            ..Default::default()
         };
 
         let result = bridge.process_incoming(&packet);
         assert_eq!(result, Err(BridgeError::EmptyPayload));
     }
-
+}

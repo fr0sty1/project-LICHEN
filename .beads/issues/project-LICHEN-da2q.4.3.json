@@ -1,0 +1,31 @@
+{
+  "id": "project-LICHEN-da2q.4.3",
+  "title": "Zephyr impl: multi-channel frequency allocation plans",
+  "description": "Zephyr implementation for CCP-4 channel plans inferred from da2q.",
+  "notes": "Working Zephyr lora_l2 hash_32 channel selection per CCP-4; rx_channel name",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "task",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:12:30.623571371Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T17:28:33.010200461Z",
+  "started_at": "2026-07-22T17:25:28.857399443Z",
+  "closed_at": "2026-07-22T17:28:33.010200461Z",
+  "close_reason": "Implemented rx_channel rename+frequency allocation plans in Rust(lichen-core/node with hash_32), Zephyr(announce/lora_l2 sync), Python(announce/messages+sim coordination). Synced test/vectors/ccp16-hop.json and spec refs. 3 codereview passes via parallel subagents+tests. Cargo test lichen-core PASS, pytest announce/vectors updated, west native_sim compatible. Independent CRC32/hash oracles matched. No dead code added.",
+  "labels": [
+    "ccp",
+    "phy",
+    "scalability"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-da2q.4.3",
+      "depends_on_id": "project-LICHEN-da2q.4",
+      "type": "parent-child",
+      "created_at": "2026-07-22T15:12:30.726007054Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}

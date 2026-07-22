@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-8nq9",
+  "title": "[codereview-pass3] handle_frame_rpl:316 ignores route_updated for Gateway.routes population",
+  "description": "In RplNode::handle_frame_rpl the DaoReceived event returns route_updated from process_dao but caller in gateway forwarding does not use it to call add_route with DAO-derived path/nexthop. No path-to-NodeId conversion either. P0. discovered-from:project-LICHEN-fy9q",
+  "status": "closed",
+  "priority": 0,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:49:52.951281693Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:51:56.031777967Z",
+  "started_at": "2026-07-22T15:50:53.324405026Z",
+  "closed_at": "2026-07-22T15:51:56.031777967Z",
+  "close_reason": "Fixed rpl handle_frame_rpl route_updated sync to Gateway.routes and RoutingTable; matched lichen-node/rust style; no comments/dead code; quality gates passed"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "project-LICHEN-k8vt",
+  "title": "[codereview-pass2.5] draft A.5 match-mapping proposal - check Rust/Python FieldDescriptor compatibility and residue size calc",
+  "description": "Chunk 2 review. Rust rules.rs needs mapping: Vec or array in FieldDescriptor (currently missing full support per context.rs comment). Python has it. Size reduction: mapping index 3bits + lsb(64) for prefix = ~9B vs 32B. Verify no breaking change to existing rules. discovered-from:project-LICHEN-ftlq",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T15:03:12.196975142Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T15:05:18.526749728Z",
+  "started_at": "2026-07-22T15:04:07.032477627Z",
+  "closed_at": "2026-07-22T15:05:18.526749728Z",
+  "close_reason": "Aligned FieldDescriptor mapping, residue size calc with Python and appendix"
+}

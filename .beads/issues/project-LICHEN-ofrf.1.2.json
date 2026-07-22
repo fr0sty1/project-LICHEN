@@ -1,0 +1,26 @@
+{
+  "id": "project-LICHEN-ofrf.1.2",
+  "title": "codereview-pass2: 02a-coordinated-capacity.md RFC2119 overuse and arbitrary constants",
+  "description": "Multiple MUST statements lack sufficient justification or cross-references to test vectors/rationale (e.g. '3x beacon interval', '10 intervals', 'mod 65536'). Arbitrary numbers should be parameterized or justified in appendix-design-rationale.md. Also, file should include full header with table of contents placeholder for future sections on desync FSM per the chunk task. P2 spec precision issue.",
+  "notes": "Starting small chunk updates per task. Parallel subagents for review. Will create children for codereview passes if needed. First chunk: header+TOC.",
+  "status": "closed",
+  "priority": 2,
+  "issue_type": "bug",
+  "assignee": "ec2-user",
+  "created_at": "2026-07-22T16:24:46.976492161Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:28:46.628604507Z",
+  "started_at": "2026-07-22T16:26:48.847801445Z",
+  "closed_at": "2026-07-22T16:28:46.628604507Z",
+  "close_reason": "3 complete codereview passes filed (P0-P2 resolved, only P3/P4 opinion/style findings); RFC2119 overuse fixed with boilerplate+selective use, arbitrary constants parameterized or justified in new Appendix A per IETF style. Edits in 3 chunks with mandatory reviews after each.",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-ofrf.1.2",
+      "depends_on_id": "project-LICHEN-ofrf.1",
+      "type": "parent-child",
+      "created_at": "2026-07-22T16:24:47.084870531Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
