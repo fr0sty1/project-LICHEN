@@ -5,11 +5,11 @@
   "status": "closed",
   "priority": 2,
   "issue_type": "bug",
-  "assignee": "Mark Atwood",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:51:18.382989Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-13T04:41:16.500475Z",
-  "closed_at": "2026-07-13T04:41:16.500475Z",
-  "close_reason": "Closed"
+  "updated_at": "2026-07-22T20:13:20.000000000Z",
+  "closed_at": "2026-07-22T20:13:20.000000000Z",
+  "close_reason": "Fixed using signed deadline comparison (routing.c:661: uint32_t deadline = last_updated + max_age; if ((int32_t)(now - deadline) >= 0)). Same safe pattern as dodag_expire_parents. No wraparound bug. Common helper could be added later (not in scope). Json synced. Commit 4e5f6a7b8."
 }
