@@ -7,7 +7,7 @@
 
 ## Abstract
 
-CCP-16 defines mechanisms for coordinated capacity management in LICHEN LoRa meshes including TDMA slot assignment, channel agility, adaptive SF selection, time synchronization, and hash-based selection. CCP-14 specifies Gateway Multi-RX for simultaneous reception across channels (control + data), increasing capacity per da2q multi-channel context. 
+CCP-16 defines mechanisms for coordinated capacity management in LICHEN LoRa meshes including TDMA slot assignment, channel agility, adaptive SF selection, time synchronization, and hash-based selection. CCP-14 specifies Gateway Multi-RX for simultaneous reception across channels (control + data), increasing capacity per nrfg multi-channel context. 
 
 All implementations MUST produce identical behavior to test vectors in `test/vectors/ccp16.json`:
 - vectors[0-2]: TDMA slot, SF, channel, tx_allowed per CCP-16 (see 2a.2, 2a.3)
@@ -140,7 +140,7 @@ See `test/vectors/ccp16.json#vectors[3+]` for Gateway Multi-RX test cases with i
 - `spec/drafts/draft-lichen-rpl-lora-00.md`
 - `spec/appendix-design-rationale.md#7.6`
 - `spec/09-packets-timing.md`
-- da2q multi-channel context for CCP-14
+- nrfg multi-channel context for CCP-14 (Kconfig CCA)
 
 For slot `n`, let `t0` be its local monotonic start and `t1` its end. Each
 endpoint begins retuning at `t0`. The receiver MUST be in receive mode by
