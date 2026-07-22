@@ -2,11 +2,15 @@
   "id": "project-LICHEN-3mri",
   "title": "Fully define adaptive SF in specs per query",
   "description": "Update 02-physical-link.md, 02a-coordinated-capacity.md, appendix-design-rationale.md, relevant drafts with normative adaptive SF algorithm using existing pseudocode, DIO signaling, per-neighbor EMA tracking, thresholds, RX/announcement, test vector integration, RFC2119, CCP-16 xrefs. No comments. Verify vectors. Output only edited sections.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 1,
   "issue_type": "epic",
+  "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T22:33:27.257231677Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T22:33:27.257231677Z"
+  "updated_at": "2026-07-22T23:02:20.099690164Z",
+  "started_at": "2026-07-22T23:02:20.099690164Z",
+  "lease_expires_at": "2026-07-22T23:07:20.099690164Z",
+  "heartbeat_at": "2026-07-22T23:02:20.099690164Z"
 }
