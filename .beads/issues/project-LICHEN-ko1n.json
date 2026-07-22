@@ -2,11 +2,15 @@
   "id": "project-LICHEN-ko1n",
   "title": "EDHOC: Plaintext buffer in responder_process_msg3 exactly at size limit",
   "description": "CORRECTNESS: plaintext_3 buffer size exactly matches maximum, no margin for error.\n\nLocation: lichen/subsys/lichen/edhoc/edhoc.c:1066\n\nuint8_t plaintext_3[128];  // EDHOC_MAX_PLAINTEXT_LEN\n\nCheck at line 1038: if (msg3_len \u003e EDHOC_MAX_MSG3_LEN) // 136 = 128 + 8\n\nDecryption at line 1067: aead_decrypt(..., msg3, msg3_len, plaintext_3)\nOutput size: msg3_len - 8 = up to 128 bytes\n\nThis is correct but tight:\n- If EDHOC_MAX_PLAINTEXT_LEN or EDHOC_MAX_MSG3_LEN are ever changed independently\n- Or if the tag size (8) changes\n- The buffer would overflow\n\nFix: Define plaintext_3 size in terms of EDHOC_MAX_MSG3_LEN - EDHOC_TAG_LEN for clarity and safety:\nuint8_t plaintext_3[EDHOC_MAX_MSG3_LEN - EDHOC_TAG_LEN];\n\nFile: lichen/subsys/lichen/edhoc/edhoc.c:1066",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:45:44.496206Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:45:44.496236Z"
+  "updated_at": "2026-07-22T23:09:19.965807065Z",
+  "started_at": "2026-07-22T23:09:19.965807065Z",
+  "lease_expires_at": "2026-07-22T23:14:19.965807065Z",
+  "heartbeat_at": "2026-07-22T23:09:19.965807065Z"
 }
