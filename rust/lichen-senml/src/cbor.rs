@@ -64,6 +64,7 @@ const L_T: u8 = 6; // time
 fn enc_head(out: &mut [u8], pos: usize, major: u8, n: u64) -> Result<usize, CborError> {
     match n {
         0..=23 => {
+            // Consistent pos + N > len() prevents underflow (project-LICHEN-dkji)
             if pos + 1 > out.len() {
                 return Err(BufferTooSmall::new(pos + 1, out.len()).into());
             }

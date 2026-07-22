@@ -1257,7 +1257,7 @@ int lichen_meshcore_adapter_emit_status(
 	return 0;
 }
 
-const struct lichen_meshcore_adapter_stats *
+const struct lichen_meshcore_adapter_stats *_Nonnull
 lichen_meshcore_adapter_get_stats(
 	const struct lichen_meshcore_adapter *_Nonnull adapter)
 {

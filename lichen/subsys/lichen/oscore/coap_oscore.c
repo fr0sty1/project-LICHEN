@@ -19,6 +19,10 @@
 
 LOG_MODULE_REGISTER(coap_oscore, CONFIG_LICHEN_OSCORE_LOG_LEVEL);
 
+/* Static buffer for OSCORE ciphertext to avoid large stack usage on constrained
+ * devices (fixes project-LICHEN-zg2d). Size matches CONFIG + tag. */
+static uint8_t coap_response_ciphertext[CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX + OSCORE_TAG_LEN];
+
 /**
  * @brief Translate Zephyr CoAP errno to OSCORE error space.
  */
@@ -151,8 +155,8 @@ int coap_oscore_protect_response(struct oscore_ctx *ctx,
 				 struct coap_packet *response,
 				 uint8_t *resp_buf, size_t resp_buf_len)
 {
-	uint8_t ciphertext[CONFIG_LICHEN_OSCORE_PLAINTEXT_MAX + OSCORE_TAG_LEN];
-	size_t ciphertext_len = sizeof(ciphertext);
+	uint8_t *ciphertext = coap_response_ciphertext;
+	size_t ciphertext_len = sizeof(coap_response_ciphertext);
 	uint8_t oscore_opt[16];
 	size_t oscore_opt_len = sizeof(oscore_opt);
 	uint8_t token[COAP_TOKEN_MAX_LEN];

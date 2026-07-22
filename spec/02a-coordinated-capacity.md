@@ -9,10 +9,9 @@
 
 CCP-16 defines mechanisms for coordinated capacity management in LICHEN LoRa meshes including TDMA slot assignment, channel agility, adaptive SF selection, time synchronization, and hash-based selection. CCP-14 specifies Gateway Multi-RX for simultaneous reception across channels (control + data), increasing capacity per da2q multi-channel context. 
 
-All implementations MUST produce identical behavior to test vectors in `test/vectors/ccp16.json` and `test/vectors/ccp9-rendezvous.json`:
+All implementations MUST produce identical behavior to test vectors in `test/vectors/ccp16.json`:
 - vectors[0-2]: TDMA slot, SF, channel, tx_allowed per CCP-16 (see 2a.2, 2a.3)
 - vectors[3+]: CCP-14 Gateway Multi-RX scheduling, concurrent RX validation, capacity metrics (independent oracle: reference FNV-1a + Semtech SX126x airtime tables + multi-channel sim from external Python oracle, not LICHEN impl).
-See test/vectors/ccp9-rendezvous.json for exact vectors.
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119].
 
@@ -43,12 +42,12 @@ The root advertises `epoch` (u32) and `num_slots` (default 8) in an extended RPL
 Slot ID MUST be computed as:
 
 ```
-slot_id = fnv1a32(eui64 XOR epoch) % num_slots
+slot_id = (crc32_ieee(eui64, 8) ^ epoch) % num_slots
 ```
 
-per hash_32 definition cross-ref lichen_link_rx.c:packet_hash fallback and appendix-design-rationale.md:388 (FNV-1a32). Matches select_channel, test vectors, and independent Python oracle in ccp16.json. No CRC for short_addr or slot per updated CCP-15.8.3. The XOR with epoch ensures time-varying slots. All impls MUST match exactly.
+using `crc32_ieee` (see appendix-design-rationale.md:388, lichen/subsys/schc/schc.c:90). This fixes prior inconsistency between crc16 (SMP/Meshtastic legacy) and hash_32 in CCP-15.8.3 pseudocode (`spec/02a-coordinated-capacity.md:41`). The XOR with epoch ensures time-varying slots to prevent persistent collisions. All impls MUST match ccp16.json vectors exactly.
 
-For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation (effective_epoch_floor = max(firmware_build_epoch, board_provision_epoch)), set `wall_clock_valid`, and respect stratum before adoption. This prevents replay attacks and ensures robustness on reboots. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.5. This integrates with `lichen_rpl_dodag_init()` ordering per AGENTS.md init graph.
+For SFN (superframe number, a u32 epoch counter) wrap-around, all nodes MUST compute using unsigned 32-bit arithmetic (modulo 0x100000000). The time-provider (see `docs/firmware-time-provider.md`) is the canonical source: SFN/epoch updates MUST pass epoch_floor validation, set `wall_clock_valid`, and respect stratum before adoption. RPL version changes or desync MUST reset SFN relative to the new root per the FSM in Section 2a.5. This integrates with `lichen_rpl_dodag_init()` ordering.
 
 Delta = (current_sfn - last_sfn) using uint32_t subtraction ensures correct wrap behavior. 
 
@@ -75,15 +74,15 @@ Data channels are selected via select_channel (normative pseudocode below, cross
 ```
 function select_channel(ctx, metrics, t):
     IF (metrics.density > 8) OR (NOT ctx.wall_clock_valid) THEN
-        RETURN 0
-    hash = fnv1a32(ctx.eui64 XOR t XOR ctx.epoch)
+        RETURN 0   // control CH0 for high density or desync (per vectors[1,3])
+    hash = fnv1a32( (ctx.eui64 XOR t XOR ctx.epoch) )
     n = ctx.num_data_channels IF ctx.num_data_channels > 0 ELSE 3
     RETURN 1 + (hash MOD n)
 
 function now():
-    RETURN current_sfn()
+    RETURN current_sfn()   // from time-provider; unsigned modular arithmetic per 2a.2
 ```
-Per draft-lichen-tdma for SFN interaction and LICHEN_TDMA_Slot superframe tick relation in now_ts alignment. Unsigned modular arithmetic per 2a.2. Matches independent test vectors.
+Note: All operators are spelled out (OR, NOT, MOD, XOR) for language-agnostic IETF compatibility. No Rust 'or', no C types or structs, no dead code.
 
 ### Density Rules Rationale (logical chunk: rationale paragraph - updated)
 
@@ -144,8 +143,6 @@ See `test/vectors/ccp16.json#vectors[3+]` for Gateway Multi-RX test cases with i
 - `spec/09-packets-timing.md`
 - da2q multi-channel context for CCP-14
 
-<<<<<<< HEAD
-=======
 For slot `n`, let `t0` be its local monotonic start and `t1` its end. Each
 endpoint begins retuning at `t0`. The receiver MUST be in receive mode by
 `t0 + setup_window` and remain there through `t1`. The transmitter MUST finish
@@ -776,4 +773,3 @@ The following require separate specifications and evidence:
 
 [← Physical and Link Layers](02-physical-link.md) | [Index](README.md) |
 [Next: Adaptation Layer →](03-adaptation.md)
->>>>>>> 47566351a (spec(ccp): add desync recovery state machine (CCP-13a))

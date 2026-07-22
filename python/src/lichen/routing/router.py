@@ -474,11 +474,10 @@ class Router:
 
         # Why check loadng: If LOADng isn't configured, try GPSR fallback.
         if self.loadng is None:
-            # Try GPSR if we know destination coords (spec 9.7)
-            # SECURITY: Pass now_ms to reject expired entries. Using stale
-            # coordinates could route packets to a node's old location in
-            # mobile deployments, or allow an attacker to advertise false
-            # coordinates and let the entry expire while routing continues.
+            # Try GPSR if we know destination coords (spec 9.7, project-LICHEN-gom9)
+            # SECURITY: Pass now_ms to reject expired entries (lookup uses
+            # coord_expiry if present). Stale coords could misroute in mobile
+            # meshes or enable coord-spoofing attacks after expiry.
             dst_entry = self.gradient_table.lookup(dst, now=now_ms)
             if dst_entry is not None and dst_entry.coords is not None:
                 next_hop = self.gpsr_forward(dst_entry.coords)
