@@ -32,7 +32,6 @@ VECTORS_DIR = Path(__file__).resolve().parents[2] / "test" / "vectors"
 sys.path.insert(0, str(VECTORS_DIR))
 from generate import (  # noqa: E402
     announce_coords_vectors,
-    ccp15_vectors,
     l2_payload_vectors,
     meshcore_app_compat_vectors,
     meshtastic_app_compat_vectors,
@@ -71,7 +70,6 @@ def test_vectors_directory_exists() -> None:
         "l2_payload.json",
         "link_frame.json",
         "announce_coords.json",
-        "ccp15.json",
         "ccp16.json",
         "meshtastic_app_compat.json",
         "meshcore_app_compat.json",
@@ -220,7 +218,7 @@ def test_meshcore_app_compat_vectors_match_generator() -> None:
 
 
 def _ccp15_cases():
-    doc = _load("ccp15.json")
+    doc = _load("ccp16.json")
     assert doc["format_version"] == 2
     return [(v["name"], v) for v in doc["vectors"]]
 
