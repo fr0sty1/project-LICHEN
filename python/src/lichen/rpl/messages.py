@@ -149,12 +149,26 @@ class DIO:
         )
 
     def to_bytes(self) -> bytes:
+        if not 0 <= self.rpl_instance_id <= 255:
+            raise RplError(f"rpl_instance_id out of range: {self.rpl_instance_id}")
+        if not 0 <= self.version <= 255:
+            raise RplError(f"version out of range: {self.version}")
         if not 0 <= self.rank <= 0xFFFF:
             raise RplError(f"rank out of range: {self.rank}")
+        if not 0 <= self.dtsn <= 255:
+            raise RplError(f"dtsn out of range: {self.dtsn}")
+        if not 0 <= self.mode_of_operation <= 7:
+            raise RplError(f"mode_of_operation out of range: {self.mode_of_operation}")
+        if not 0 <= self.preference <= 7:
+            raise RplError(f"preference out of range: {self.preference}")
+        if not 0 <= self.flags <= 255:
+            raise RplError(f"flags out of range: {self.flags}")
+        if not 0 <= self.reserved <= 255:
+            raise RplError(f"reserved out of range: {self.reserved}")
         gmop_prf = (
             (int(self.grounded) << 7)
-            | ((self.mode_of_operation & 0x7) << 3)
-            | (self.preference & 0x7)
+            | (self.mode_of_operation << 3)
+            | self.preference
         )
         return (
             bytes([self.rpl_instance_id, self.version])
@@ -204,11 +218,19 @@ class DAO:
             self.dodag_id = IPv6Address(self.dodag_id)
 
     def to_bytes(self) -> bytes:
+        for name, val in [
+            ("rpl_instance_id", self.rpl_instance_id),
+            ("dao_sequence", self.dao_sequence),
+            ("reserved", self.reserved),
+            ("flags", self.flags),
+        ]:
+            if not 0 <= val <= 255:
+                raise RplError(f"{name} out of range: {val}")
         d_flag = self.dodag_id is not None
         kd = (
             (int(self.ack_requested) << 7)
             | (int(d_flag) << 6)
-            | (self.flags & 0x3F)
+            | self.flags
         )
         out = bytes([self.rpl_instance_id, kd, self.reserved, self.dao_sequence])
         if self.dodag_id is not None:
@@ -255,8 +277,16 @@ class DAOAck:
             self.dodag_id = IPv6Address(self.dodag_id)
 
     def to_bytes(self) -> bytes:
+        for name, val in [
+            ("rpl_instance_id", self.rpl_instance_id),
+            ("dao_sequence", self.dao_sequence),
+            ("status", self.status),
+            ("flags", self.flags),
+        ]:
+            if not 0 <= val <= 255:
+                raise RplError(f"{name} out of range: {val}")
         d_flag = self.dodag_id is not None
-        d_byte = (int(d_flag) << 7) | (self.flags & 0x7F)
+        d_byte = (int(d_flag) << 7) | self.flags
         out = bytes(
             [self.rpl_instance_id, d_byte, self.dao_sequence, self.status]
         )

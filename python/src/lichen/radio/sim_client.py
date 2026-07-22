@@ -9,6 +9,7 @@ server over TCP, enabling simulated radio operations for testing and development
 from __future__ import annotations
 
 import hashlib
+import math
 import struct
 from typing import TYPE_CHECKING
 
@@ -84,6 +85,9 @@ class SimRadio:
             node_id: Unique identifier for this node.
             position: Node position as (x, y, z) coordinates in meters.
         """
+        for coord in position:
+            if not math.isfinite(coord):
+                raise ValueError(f"Position coordinates must be finite, got {position}")
         self._host = host
         self._port = port
         self._sim_id = sim_id
@@ -92,12 +96,7 @@ class SimRadio:
         self._stream: SocketStream | None = None
         self._freq_hz: int = 915_000_000
         self._tx_power_dbm: int = 14
-        # Serializes each request/response exchange. Without it, concurrent
-        # operations could interleave their _send/_recv calls and mismatch
-        # responses to requests (or corrupt frame framing on the shared stream).
         self._lock = anyio.Lock()
-        # Serializes connect() calls to prevent leaking connections when
-        # multiple tasks call connect() concurrently.
         self._connect_lock = anyio.Lock()
 
     @property
@@ -336,8 +335,11 @@ class SimRadio:
         exc_val: BaseException | None,
         exc_tb: object,
     ) -> None:
-        """Exit async context manager, closing the connection."""
-        await self.close()
+        try:
+            await self.close()
+        except Exception:
+            if exc_type is None:
+                raise
 
     def _ensure_connected(self) -> SocketStream:
         """Verify that we have an active connection and return the stream.

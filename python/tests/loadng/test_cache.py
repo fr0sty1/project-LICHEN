@@ -51,8 +51,8 @@ def test_expiry_via_lookup_and_expire_old() -> None:
 def test_refresh_extends_validity() -> None:
     cache = RouteCache(route_timeout_ms=300_000)
     cache.add(_entry(valid_until=1000))
-    assert cache.refresh(DEST, now=5000) is True
-    assert cache.lookup(DEST).valid_until == 5000 + 300_000
+    assert cache.refresh(DEST, now=500) is True
+    assert cache.lookup(DEST).valid_until == 500 + 300_000
     assert cache.lookup(DEST, now=100_000) is not None
 
 

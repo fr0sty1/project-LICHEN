@@ -1624,7 +1624,9 @@ class NativeClientApp(App[None]):
             return None
         try:
             await connect()
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             return str(exc)
         return None
 
@@ -1928,7 +1930,9 @@ class NativeClientApp(App[None]):
             return
         try:
             await self._disconnect_current_client()
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             if next_client is not None and candidate_ready:
                 with suppress(Exception):
                     await self._disconnect_client(next_client)
@@ -2007,7 +2011,9 @@ class NativeClientApp(App[None]):
                 self.client.get_identity(),
                 self.client.discover(),
             )
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_dashboard_error(str(exc))
             return
         self._set_dashboard_state(
@@ -2032,7 +2038,9 @@ class NativeClientApp(App[None]):
                 self.client.list_neighbors(),
                 self.client.list_routes(),
             )
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_mesh_error(str(exc))
             return
         self._set_mesh_state(
@@ -2052,7 +2060,9 @@ class NativeClientApp(App[None]):
                 self.client.get_radio_config(),
                 self.client.get_identity(),
             )
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_config_error(str(exc))
             return
         self._set_config_state(
@@ -2107,7 +2117,9 @@ class NativeClientApp(App[None]):
             else:
                 self._set_config_error(f"{path} writes are unsupported")
                 return
-        except Exception as exc:
+        except BaseException as exc:
+            if isinstance(exc, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             self._set_config_error(f"{path} write failed: {exc}")
             return
         if not result.is_success:
