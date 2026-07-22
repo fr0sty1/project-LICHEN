@@ -11,15 +11,9 @@
 #include <errno.h>
 #include <string.h>
 
-/** Overhead estimate for size accounting (similar to Python/Rust) */
-#define MESSAGE_OVERHEAD 100
-
-/**
- * Calculate message size for buffer accounting.
- */
 static uint32_t message_size(const struct lichen_dtn_message *msg)
 {
-	return (uint32_t)msg->packet_len + MESSAGE_OVERHEAD;
+	return sizeof(*msg);
 }
 
 /**
@@ -130,7 +124,7 @@ bool lichen_dtn_buffer_message(struct lichen_dtn_buffer *buf,
 		return false;
 	}
 
-	uint32_t msg_size = packet_len + MESSAGE_OVERHEAD;
+	uint32_t msg_size = sizeof(struct lichen_dtn_message);
 
 	/* SECURITY: This check is essential - evict_if_needed() assumes
 	 * new_size <= max_bytes. Without this, a message larger than max_bytes
