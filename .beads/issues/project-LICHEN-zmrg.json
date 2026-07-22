@@ -2,11 +2,15 @@
   "id": "project-LICHEN-zmrg",
   "title": "write_user generates ID without validation",
   "description": "File: lichen/subsys/lichen/meshtastic/codec.c:567-600\n\n  static int write_user(uint8_t *buf, size_t buflen, size_t *pos,\n                const struct lichen_meshtastic_local_info *info)\n  {\n      char id[10];\n      uint32_t node_num = info_node_num(info);\n\n      id[0] = '!';\n      for (size_t i = 0U; i \u003c 8U; i++) {\n          uint8_t nibble = (uint8_t)((node_num \u003e\u003e ((7U - i) * 4U)) \u0026 0x0fU);\n          id[i + 1U] = (char)(nibble \u003c 10U ? '0' + nibble : 'a' + (nibble - 10));\n      }\n      id[9] = '\\0';\n\nThe node_num is converted to hex without checking if info_node_num returned a valid value. info_node_num defaults to 0x4c494348U if node_num is 0, so there's always a value.\n\nHowever, if node_num were somehow invalid (e.g., containing non-printable characters after conversion... wait, hex is always printable).\n\nActually this is fine - the hex conversion is safe. False alarm.\n\nBut worth noting: no validation that node_num won't produce a Meshtastic-reserved ID range.",
-  "status": "open",
+  "status": "in_progress",
   "priority": 3,
   "issue_type": "bug",
+  "assignee": "AI Agent",
   "owner": "me@mark.atwood.name",
   "created_at": "2026-07-12T06:50:47.928394Z",
   "created_by": "Mark Atwood",
-  "updated_at": "2026-07-12T06:50:47.928426Z"
+  "updated_at": "2026-07-22T23:07:08.230446561Z",
+  "started_at": "2026-07-22T23:07:08.230446561Z",
+  "lease_expires_at": "2026-07-22T23:12:08.230446561Z",
+  "heartbeat_at": "2026-07-22T23:07:08.230446561Z"
 }
