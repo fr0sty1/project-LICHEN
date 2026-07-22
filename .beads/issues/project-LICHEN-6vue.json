@@ -2,15 +2,15 @@
   "id": "project-LICHEN-6vue",
   "title": "[merge-conflict] worktree-worker23: messages.py",
   "notes": "Commit: 577a445",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:47:39.01199347Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:55:50.849118837Z",
+  "updated_at": "2026-07-22T23:55:53.263946314Z",
   "started_at": "2026-07-22T23:52:06.922444636Z",
-  "lease_expires_at": "2026-07-22T23:57:06.922444636Z",
-  "heartbeat_at": "2026-07-22T23:52:06.922444636Z"
+  "closed_at": "2026-07-22T23:55:53.263946314Z",
+  "close_reason": "Fixed merge conflict in announce/messages.py and test by reconciling CCP-9 rx_channel layout (post-signature, 0-7 range, correct to_bytes/from_bytes offsets, FIXED_LENGTH=94); all tests now pass. Updated test expectations for consistency. Commit 577a44576"
 }
