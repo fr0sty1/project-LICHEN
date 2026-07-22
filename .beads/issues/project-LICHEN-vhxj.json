@@ -1,0 +1,20 @@
+{
+  "id": "project-LICHEN-vhxj",
+  "title": "codereview-P2: update test_vectors.py schema list for ccp13.json (chunk 1)",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:58:47.39885428Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:58:47.39885428Z",
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-vhxj",
+      "depends_on_id": "project-LICHEN-da2q.13.4",
+      "type": "discovered-from",
+      "created_at": "2026-07-22T16:58:47.517246924Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
