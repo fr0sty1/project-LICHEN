@@ -35,10 +35,10 @@
 
 LOG_MODULE_REGISTER(lichen_coap_keys, CONFIG_LICHEN_COAP_KEYS_LOG_LEVEL);
 
-/* Maximum keys to store */
 #ifndef CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES
 #define CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES 16
 #endif
+BUILD_ASSERT(CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES <= 16, "CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES >16 risks stack overflow in encode_keys_list_cbor (project-LICHEN-vw14)");
 
 #define CBOR_CONTENT_FORMAT 60
 
@@ -631,8 +631,7 @@ static size_t encode_keys_list_cbor(uint8_t *buf, size_t buf_size)
 	cbor_put_map_header(buf, &off, 1);
 	cbor_put_key(buf, &off, "keys");
 
-	/* Get all keys */
-	struct lichen_key_entry entries[16];
+	struct lichen_key_entry entries[CONFIG_LICHEN_COAP_KEYS_MAX_ENTRIES];
 	size_t n = lichen_key_store_list(entries, ARRAY_SIZE(entries));
 
 	/* Reserve a fixed-width definite array header; patch its count after

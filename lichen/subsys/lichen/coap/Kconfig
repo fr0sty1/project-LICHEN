@@ -206,14 +206,16 @@ config LICHEN_COAP_KEYS
 	  SECURITY: Write operations require local admin access (loopback or
 	  BLE LCI interface).
 
-config LICHEN_COAP_KEYS_MAX_ENTRIES
+	config LICHEN_COAP_KEYS_MAX_ENTRIES
 	int "Maximum key store entries"
 	depends on LICHEN_COAP_KEYS
 	default 16
-	range 4 64
+	range 4 16
 	help
-	  Maximum number of peer keys to store. Each entry requires
-	  approximately 80 bytes of RAM.
+	  Maximum number of peer keys to store. Limited <=16 to bound
+	  stack usage (~900B) in /keys handler. Each entry requires
+	  ~57 bytes of RAM.
+
 
 config LICHEN_COAP_KEYS_LOG_LEVEL
 	int "CoAP keys log level"
