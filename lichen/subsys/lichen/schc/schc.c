@@ -3,7 +3,7 @@
 
 /**
  * @file schc.c
- * @brief SCHC compress/decompress (RFC 8724) - rules 0-4 + uncompressed fallback
+ * @brief SCHC compress/decompress (RFC 8724) - rules 0-7 + uncompressed fallback
  *
  * Ported from rust/lichen-schc/src/codec.rs.
  * Bit order: MSB-first (network bit order). The residue is zero-padded to

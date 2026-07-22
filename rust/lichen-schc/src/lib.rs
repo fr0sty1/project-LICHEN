@@ -21,6 +21,7 @@ pub mod fragment;
 pub mod headers;
 pub mod rules;
 
+pub use codec::{compress, decompress, SchcError};
 pub use context::{rule_matches, FieldId, NoMatchingRuleError, SchcContext};
 pub use headers::{
     CoapUdpGlobalProfile, CoapUdpLinkLocalProfile, Icmpv6EchoProfile, PacketError, PacketProfile,

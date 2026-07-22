@@ -404,7 +404,7 @@ class RplDaoProfile(_RplProfile):
     def _parse_base(self, base: bytes) -> dict[str, int]:
         return {
             "RPL.instance": base[0],
-            "RPL.kd_flags": base[1],
+            "RPL.flags": base[1],
             "RPL.reserved": base[2],
             "RPL.seq": base[3],
             "RPL.dodagid": int.from_bytes(base[4:20], "big"),
@@ -414,7 +414,7 @@ class RplDaoProfile(_RplProfile):
         return bytes(
             [
                 fields["RPL.instance"],
-                fields["RPL.kd_flags"],
+                fields["RPL.flags"],
                 fields["RPL.reserved"],
                 fields["RPL.seq"],
             ]

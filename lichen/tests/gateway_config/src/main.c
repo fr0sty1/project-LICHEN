@@ -2,6 +2,7 @@
 /* SPDX-FileCopyrightText: The contributors to the LICHEN project */
 
 #include <zephyr/ztest.h>
+#include <errno.h>
 
 #include <lichen/hal.h>
 
@@ -330,6 +331,16 @@ ZTEST(gateway_config, test_decode_rejects_invalid_manual_source_name_bytes)
 		0x6b, 's', 'o', 'u', 'r', 'c', 'e', '_', 'n', 'a', 'm', 'e',
 		0x63, 'c', 0xc3, 0xa9,
 	};
+	const uint8_t too_long[] = {
+		0xa1,
+		0x6f, 'm', 'a', 'n', 'u', 'a', 'l', '_', 'l', 'o', 'c', 'a', 't', 'i', 'o', 'n',
+		0xa3,
+		0x65, 'l', 'a', 't', '_', 'i', 0x01,
+		0x65, 'l', 'o', 'n', '_', 'i', 0x02,
+		0x6b, 's', 'o', 'u', 'r', 'c', 'e', '_', 'n', 'a', 'm', 'e',
+		0x78, 0x18, 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
+		'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a',
+	};
 	struct lichen_gateway_config_update update = { 0 };
 
 	zassert_equal(lichen_gateway_decode_config_cbor(embedded_nul,
@@ -346,6 +357,10 @@ ZTEST(gateway_config, test_decode_rejects_invalid_manual_source_name_bytes)
 	zassert_equal(lichen_gateway_decode_config_cbor(utf8, sizeof(utf8),
 							&update),
 		      -EINVAL);
+	zassert_equal(lichen_gateway_decode_config_cbor(too_long,
+							sizeof(too_long),
+							&update),
+		      -ENAMETOOLONG);
 }
 
 ZTEST(gateway_config, test_decode_rejects_invalid_manual_location)
@@ -363,7 +378,7 @@ ZTEST(gateway_config, test_decode_rejects_invalid_manual_location)
 		0x65, 'l', 'a', 't', '_', 'i', 0x1a, 0x35, 0xa4, 0xe9, 0x01,
 		0x65, 'l', 'o', 'n', '_', 'i', 0x01,
 	};
-	struct lichen_gateway_config_update update;
+	struct lichen_gateway_config_update update = { 0 };
 
 	zassert_equal(lichen_gateway_decode_config_cbor(missing_lon,
 							sizeof(missing_lon),

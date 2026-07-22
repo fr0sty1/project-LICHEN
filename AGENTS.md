@@ -200,6 +200,7 @@ The LICHEN Zephyr subsystems in `lichen/subsys/lichen/` have **implicit initiali
 | Subsystem | Init Function | Prerequisites | Thread-Safety |
 |-----------|--------------|---------------|---------------|
 | **Link Layer** | `lichen_link_init(ctx, eui64)` | None | Per-context (no global state) |
+| **TDMA** | `lichen_tdma_init(&tdma_ctx, &link_ctx)` | `lichen_link_init()` | Per-context |
 | **Link Keys** | `lichen_link_load_key(ctx, seed)` | `lichen_link_init()` | Per-context |
 | **RPL DODAG** | `lichen_rpl_dodag_init(d, ...)` | None | Per-DODAG (caller must synchronize) |
 | **OSCORE** | `oscore_init()` | None | Thread-safe (internal mutex) |
@@ -223,12 +224,14 @@ The LICHEN Zephyr subsystems in `lichen/subsys/lichen/` have **implicit initiali
 #include <lichen/oscore.h>
 #include <lichen/rpl_dodag.h>
 #include <lichen/coap_client.h>
+#ifdef CONFIG_LICHEN_TDMA
+#include <lichen/link.h>
+#endif
 
 int lichen_node_init(const uint8_t eui64[8], const uint8_t seed[32])
 {
     int ret;
 
-    /* 1. Link layer context (identity + crypto) */
     static struct lichen_link_ctx link_ctx;
     ret = lichen_link_init(&link_ctx, eui64);
     if (ret < 0) return ret;
@@ -236,17 +239,18 @@ int lichen_node_init(const uint8_t eui64[8], const uint8_t seed[32])
     ret = lichen_link_load_key(&link_ctx, seed);
     if (ret < 0) return ret;
 
-    /* 2. OSCORE subsystem (must init before creating contexts) */
+#ifdef CONFIG_LICHEN_TDMA
+    static struct lichen_tdma_ctx tdma_ctx;
+    lichen_tdma_init(&tdma_ctx, &link_ctx);  /* after link_init per graph */
+    if (ret < 0) return ret;  /* placeholder */
+#endif
+
     ret = oscore_init();
     if (ret < 0) return ret;
 
-    /* 3. RPL DODAG (if routing enabled) */
     static struct lichen_rpl_dodag dodag;
-    uint8_t dodag_id[16] = { /* your DODAG ID */ };
+    uint8_t dodag_id[16] = {0};
     lichen_rpl_dodag_init(&dodag, 0x00, dodag_id, 0);
-
-    /* 4. CoAP client auto-inits on first request, or call explicitly */
-    /* lichen_coap_client_init(); */
 
     return 0;
 }

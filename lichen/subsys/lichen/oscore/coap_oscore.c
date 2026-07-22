@@ -157,6 +157,7 @@ int coap_oscore_protect_response(struct oscore_ctx *ctx,
 	uint8_t tkl;
 	uint8_t type;
 	int ret;
+	if (resp_buf_len > 0xffffu) return -EINVAL;
 
 	/* Protect the response */
 	ret = oscore_protect_response(ctx,

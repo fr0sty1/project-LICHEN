@@ -8,6 +8,10 @@ using sysbus
 
 # Load SX1262 peripheral
 include $ORIGIN/../../peripherals/SX1262.cs
+# Load custom nRF USBD model (wires registers/tasks/events/interrupts per 5ix1.4.5 trace)
+include $ORIGIN/../../peripherals/USBD.cs
+# Load BLE/RADIO model for LCI + Meshtastic BLE on nRF52840 boards
+include $ORIGIN/../../peripherals/BLE.cs
 
 mach create $name
 machine LoadPlatformDescription $ORIGIN/rak4631.repl

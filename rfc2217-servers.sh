@@ -6,7 +6,7 @@
 # Port assignments:
 #   4000 — T3 V1.6.1    usb-1a86_USB_Single_Serial (CH340)
 #   4001 — T-Deck       usb-Espressif_USB_JTAG ... -if01  (serial iface, not JTAG -if00)
-#   4002 — Heltec V3    usb-Silicon_Labs_CP2102
+#   4002 — Heltec V3    usb-Silicon_Labs_CP2102 (flashing only; console on UART1/GPIO21-22 to avoid reset, bd lora_ipv6_mesh-9ia2)
 #   4003 — T-Echo       usb-TTGO_TTGO_eink
 #   4004 — T1000-E      usb-Seeed_Studio_T1000-E-BOOT  (UF2 bootloader)
 #           OR          usb-LICHEN_Node_*-if00          (LICHEN firmware — LICHEN Native)

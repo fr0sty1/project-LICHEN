@@ -21,6 +21,8 @@ Usage::
 
 from __future__ import annotations
 
+import math
+
 from lichen.senml.codec import SenmlRecord
 
 # ---------------------------------------------------------------------------
@@ -28,26 +30,47 @@ from lichen.senml.codec import SenmlRecord
 # ---------------------------------------------------------------------------
 
 
-def location(lat: float, lon: float, alt: float | None = None) -> list[SenmlRecord]:
-    """Geographic position as SenML records.
+def location(
+    lat: float,
+    lon: float,
+    alt: float | None = None,
+    speed: float | None = None,
+) -> list[SenmlRecord]:
+    """Geographic position SenML per RFC 8428 for /position crowd map.
 
-    Uses IANA-registered SenML names "lat", "lon", "alt" with unit "deg" or
-    "m" (RFC 8428, IANA SenML Units).
+    Validates WGS-84 lat/lon. Units: lat/lon=deg, alt=m, speed=m/s.
 
     Args:
-        lat: Latitude in decimal degrees (WGS-84).
-        lon: Longitude in decimal degrees (WGS-84).
-        alt: Altitude in metres above WGS-84 ellipsoid, or None to omit.
+        lat: Latitude [-90, 90].
+        lon: Longitude [-180, 180].
+        alt: Optional altitude in meters.
+        speed: Optional speed in m/s.
 
     Returns:
-        List of SenML records: lat, lon, and optionally alt.
+        List of 2-4 SenmlRecord.
+
+    Raises:
+        ValueError: For invalid lat/lon.
     """
+    if (
+        math.isnan(lat)
+        or math.isnan(lon)
+        or math.isinf(lat)
+        or math.isinf(lon)
+    ):
+        raise ValueError("lat/lon cannot be NaN or Inf")
+    if not (-90.0 <= lat <= 90.0):
+        raise ValueError(f"lat {lat} out of range [-90, 90]")
+    if not (-180.0 <= lon <= 180.0):
+        raise ValueError(f"lon {lon} out of range [-180, 180]")
     records = [
-        SenmlRecord(n="lat", u="deg", v=lat),
-        SenmlRecord(n="lon", u="deg", v=lon),
+        SenmlRecord(n="lat", u="lat", v=lat),
+        SenmlRecord(n="lon", u="lon", v=lon),
     ]
     if alt is not None:
         records.append(SenmlRecord(n="alt", u="m", v=alt))
+    if speed is not None:
+        records.append(SenmlRecord(n="speed", u="m/s", v=speed))
     return records
 
 
@@ -179,3 +202,40 @@ def voc_index(index: float) -> SenmlRecord:
         A single SenML record named "voc-index".
     """
     return SenmlRecord(n="voc-index", v=index)
+
+
+def metrics(
+    rssi: int | None = None,
+    nodecount: int | None = None,
+    packets_per_sec: float | None = None,
+    battery: float | None = None,
+    collision_rate: float | None = None,
+) -> list[SenmlRecord]:
+    """Telemetry + battery profile for /metrics CoAP resource (RSSI, nodecount,
+    packets/sec, battery, collision rate).
+
+    Independent of C implementation; matches RFC 8428. Used with base name
+    from make_base_name(). Test vectors computed independently via cbor2.
+
+    Args:
+        rssi: RSSI in dBm (negative integer).
+        nodecount: Number of known nodes in mesh.
+        packets_per_sec: Average packets per second.
+        battery: Battery level 0-100 (%EL).
+        collision_rate: Collision rate in percent.
+
+    Returns:
+        List of SenmlRecord (0 or more).
+    """
+    records: list[SenmlRecord] = []
+    if rssi is not None:
+        records.append(SenmlRecord(n="rssi", u="dBm", v=float(rssi)))
+    if nodecount is not None:
+        records.append(SenmlRecord(n="nodecount", v=nodecount))
+    if packets_per_sec is not None:
+        records.append(SenmlRecord(n="pps", u="1/s", v=packets_per_sec))
+    if battery is not None:
+        records.append(SenmlRecord(n="battery", u="%EL", v=battery))
+    if collision_rate is not None:
+        records.append(SenmlRecord(n="collision-rate", u="%", v=collision_rate))
+    return records

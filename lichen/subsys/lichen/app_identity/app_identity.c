@@ -11,6 +11,7 @@
 #include <zephyr/sys/util.h>
 
 #include <lichen/app_identity/app_identity.h>
+#include <lichen/coap_keys.h>
 
 #ifndef ENOKEY
 #define ENOKEY ENOENT
@@ -32,12 +33,10 @@ static bool s_has_self;
 static struct peer_slot s_peers[CONFIG_LICHEN_APP_IDENTITY_MAX_PEERS];
 static K_MUTEX_DEFINE(s_mutex);
 
-static void eui64_to_iid(
-	const uint8_t eui64[LICHEN_APP_IDENTITY_EUI64_LEN],
-	uint8_t iid[LICHEN_APP_IDENTITY_EUI64_LEN])
+static void derive_iid(const uint8_t pubkey[LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN],
+			uint8_t iid[LICHEN_APP_IDENTITY_EUI64_LEN])
 {
-	memcpy(iid, eui64, LICHEN_EUI64_LEN);
-	iid[0] ^= 0x02U;
+	(void)lichen_key_pubkey_to_iid(pubkey, iid);
 }
 
 static int copy_string(char *dst, size_t dst_len, const char *src)
@@ -88,7 +87,7 @@ static int find_free_peer_locked(void)
 			return i;
 		}
 	}
-	return -ENOMEM;
+	return -ENOSPC;
 }
 
 int lichen_app_identity_set_self(
@@ -128,7 +127,7 @@ int lichen_app_identity_set_self(
 
 	k_mutex_lock(&s_mutex, K_FOREVER);
 	s_self = normalized;
-	eui64_to_iid(s_self.eui64, s_self.iid);
+	derive_iid(s_self.public_key, s_self.iid);
 	s_has_self = true;
 	k_mutex_unlock(&s_mutex);
 	return 0;
@@ -218,7 +217,7 @@ int lichen_app_identity_upsert_peer(
 		}
 	} else {
 		/*
-		 * SECURITY: a full table rejects new peers (-ENOMEM) rather
+		 * SECURITY: a full table rejects new peers (-ENOSPC) rather
 		 * than evicting an LRU entry. TOFU pins (spec 8.6) must not
 		 * be silently discarded: an attacker who floods the table
 		 * with ephemeral peers could evict a victim's pinned key and
@@ -237,7 +236,7 @@ int lichen_app_identity_upsert_peer(
 	(void)copy_string(s_peers[slot].peer.display_name,
 			  sizeof(s_peers[slot].peer.display_name),
 			  peer->display_name);
-	eui64_to_iid(s_peers[slot].peer.eui64, s_peers[slot].peer.iid);
+	derive_iid(s_peers[slot].peer.public_key, s_peers[slot].peer.iid);
 	s_peers[slot].used = true;
 	k_mutex_unlock(&s_mutex);
 	return 0;

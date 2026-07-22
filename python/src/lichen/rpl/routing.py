@@ -100,6 +100,12 @@ class RoutingTable:
     def remove_route(self, target: IPv6Address | str) -> None:
         self._routes.pop(to_ipv6(target), None)
 
+    def clear(self) -> None:
+        """Clear all routes. Used by DaoManager._rebuild_routes to avoid
+        direct mutation of private _routes (per codereview).
+        """
+        self._routes.clear()
+
     def lookup(self, target: IPv6Address | str) -> list[IPv6Address] | None:
         path = self._routes.get(to_ipv6(target))
         return list(path) if path is not None else None

@@ -1,1 +1,11 @@
-/ { chosen { zephyr,lora = &lora0; }; };
+/ {
+	chosen {
+		zephyr,lora = &lora0;
+		/* Non-destructive console on UART1 (GPIO21/22) for gateway.
+		 * Overrides base DTS (now status=okay per project-LICHEN-g38y).
+		 * Fixes CP2102 serial open rebooting the node (lora_ipv6_mesh-9ia2).
+		 */
+		zephyr,console = &uart1;
+		zephyr,shell-uart = &uart1;
+	};
+};

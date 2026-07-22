@@ -17,8 +17,13 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-export ZEPHYR_SDK_INSTALL_DIR=/home/frosty/.local/share/safe-agent/b9243483d7697056/zephyr-sdk-0.16.8
-export PYTHONPATH="/home/frosty/.local/lib/python3.10/site-packages:${PYTHONPATH:-}"
+# Use standardized EC2/Zephyr builder env for 500-node procurement scalability
+if [[ -f /mnt/lichen-zephyr/env.sh ]]; then
+    . /mnt/lichen-zephyr/env.sh
+else
+    export ZEPHYR_SDK_INSTALL_DIR=/home/frosty/.local/share/safe-agent/b9243483d7697056/zephyr-sdk-0.16.8
+    export PYTHONPATH="/home/frosty/.local/lib/python3.10/site-packages:${PYTHONPATH:-}"
+fi
 # Build-epoch check (lichen/cmake/lichen_build_epoch.cmake) requires this;
 # upstream convention is the last commit's timestamp.
 export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git log -1 --format=%ct)}"

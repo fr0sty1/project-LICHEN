@@ -24,10 +24,9 @@
 extern "C" {
 #endif
 
-/* Maximum CBOR payload sizes */
-#define LICHEN_COAP_STATUS_CBOR_MAX_SIZE    256U
-#define LICHEN_COAP_NEIGHBORS_CBOR_MAX_SIZE 512U
-#define LICHEN_COAP_ROUTES_CBOR_MAX_SIZE    512U
+#define LICHEN_COAP_STATUS_CBOR_MAX_SIZE CONFIG_LICHEN_COAP_STATUS_CBOR_MAX_SIZE
+#define LICHEN_COAP_NEIGHBORS_CBOR_MAX_SIZE CONFIG_LICHEN_COAP_NEIGHBORS_CBOR_MAX_SIZE
+#define LICHEN_COAP_ROUTES_CBOR_MAX_SIZE CONFIG_LICHEN_COAP_ROUTES_CBOR_MAX_SIZE
 
 /* Maximum neighbors/routes in response */
 #ifndef CONFIG_LICHEN_COAP_STATUS_MAX_NEIGHBORS
@@ -73,18 +72,28 @@ struct lichen_coap_time_state {
 
 /**
  * @brief Node status for /status endpoint
+ *
+ * Capacity fields (txq_*, fwd_*) report current queue depths per
+ * CCP-17 / appendix-bufferbloat. Clients use these to detect
+ * backpressure and return ENOBUFS before queues overflow.
  */
 struct lichen_coap_node_status {
 	uint32_t uptime_s;
-	uint8_t battery_pct;         /**< Battery percentage (0-100) */
+	uint8_t battery_pct;
 	bool battery_pct_valid;
-	uint16_t battery_mv;         /**< Battery voltage in mV */
+	uint16_t battery_mv;
 	bool battery_mv_valid;
 	uint32_t mem_free_kb;
 	struct lichen_coap_time_state time;
 	struct lichen_coap_dodag_state dodag;
 	struct lichen_coap_radio_stats radio;
+	uint8_t txq_cap;
+	uint8_t txq_used;
+	uint8_t fwd_cap;
+	uint8_t fwd_used;
 };
+
+
 
 /**
  * @brief Trust level for neighbors

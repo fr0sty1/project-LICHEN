@@ -83,7 +83,7 @@ struct lichen_config_identity {
 	uint8_t pubkey[32];                          /* Ed25519 public key */
 	bool pubkey_valid;                           /* True if pubkey is set */
 	char link_local[LICHEN_CONFIG_ADDR_MAX_LEN]; /* fe80::... */
-	char ula[LICHEN_CONFIG_ADDR_MAX_LEN];        /* ULA address or empty */
+	char ygg[LICHEN_CONFIG_ADDR_MAX_LEN];        /* primary 02xx Yggdrasil address */
 	char gua[LICHEN_CONFIG_ADDR_MAX_LEN];        /* GUA address or empty */
 };
 
@@ -225,11 +225,12 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
  *   "eui64": "0x0011223344556677",
  *   "pubkey": "<base64 Ed25519 public key>",
  *   "pubkey_fingerprint": "SHA256:xY7...",
- *   "addrs": {
- *     "link_local": "fe80::0211:22ff:fe33:4455",
- *     "ula": "fd12:3456:789a:1::0211:22ff:fe33:4455",
- *     "gua": null
- *   }
+  *   "addrs": {
+  *     "link_local": "fe80::0211:22ff:fe33:4455",
+  *     "primary": "0200:1234:5678:9abc::0211:22ff:fe33:4455",
+  *     "gua": null
+  *   }
+
  * }
  *
  * @param[out] buf Output buffer

@@ -67,6 +67,14 @@ struct lichen_gradient_entry {
 	int32_t lon_e7;             /**< Longitude (1e-7 degrees), 0 if unknown */
 	bool coords_valid;          /**< True if lat/lon are valid */
 	bool valid;                 /**< Slot in use */
+#if defined(CONFIG_LICHEN_ADAPTIVE_SF_ENABLED)
+	struct {
+		uint8_t current_sf;     /**< SF7-SF12 for this neighbor */
+		int8_t snr_ewma;        /**< Exponential weighted moving average SNR */
+		uint8_t upgrade_count;  /**< Consecutive samples above upgrade threshold */
+		uint8_t downgrade_count; /**< Consecutive samples below downgrade threshold */
+	} sf;                       /**< Per-neighbor SF tracking (zrh2.2) */
+#endif
 };
 
 /**

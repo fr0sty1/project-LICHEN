@@ -145,18 +145,13 @@ impl<'a> BitReader<'a> {
     }
 }
 
-// ─── address helpers ─────────────────────────────────────────────────────────
+// ─── IPv6 address helpers ────────────────────────────────────────────────────
 
 fn is_link_local(addr: &[u8]) -> bool {
     addr.len() == 16 && addr[0] == 0xFE && (addr[1] & 0xC0) == 0x80
 }
 
-fn is_global(addr: &[u8]) -> bool {
-    addr.len() == 16 && (addr[0] >> 5) == 0b001
-}
-
 // ─── checksum helpers (no_std) ───────────────────────────────────────────────
-
 fn oc_add(a: u32, b: u32) -> u32 {
     let s = a + b;
     if s >> 16 != 0 {
@@ -411,21 +406,16 @@ fn compress_rpl_dio(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     Ok(needed)
 }
 
-/// Rule 4: link-local IPv6 + ICMPv6 RPL DAO with DODAGID.
 fn compress_rpl_dao(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
-    // 40 (IPv6) + 4 (ICMPv6 header) + 20 (DAO base with D=1: instance + K/D/flags + reserved + seq + DODAGID)
     if packet.len() < 40 + 4 + 20 {
         return Err(SchcError::NoMatchingRule);
     }
-    // IPv6 header fields (see layout comment above)
     let hop_limit = packet[7];
     let src = &packet[8..24];
     let dst = &packet[24..40];
-    // RPL body starts at offset 44: skip 40-byte IPv6 + 4-byte ICMPv6 header (type/code/checksum)
     let rpl = &packet[44..];
     let instance = rpl[0];
     let kd_flags = rpl[1];
-    // reserved (rpl[2]) is NOT_SENT
     let seq = rpl[3];
     let dodagid = u128::from_be_bytes(rpl[4..20].try_into().unwrap());
     let tail = &rpl[20..];
@@ -751,14 +741,17 @@ fn decompress_rpl_dao(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
     Ok(total)
 }
 
-fn decompress_mqtt_sn(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
+fn decompress_mqtt_sn(data: &[u8], out: &mut [u8], rule_id: u8) -> Result<usize, SchcError> {
+    if rule_id != RULE_MQTT_SN {
+        return Err(SchcError::UnknownRuleId(rule_id));
+    }
+
     let mut r = BitReader::new(&data[1..]);
 
     let hop_limit = r.read(8)? as u8;
     let addr_mode = r.read(1)? as u8;
 
     let (src, dst) = if addr_mode == 0 {
-        // Link-local
         let src_iid = r.read(64)?;
         let dst_iid = r.read(64)?;
         (
@@ -766,11 +759,15 @@ fn decompress_mqtt_sn(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
             (LINK_LOCAL_PREFIX | dst_iid).to_be_bytes(),
         )
     } else {
-        // Full addresses
         let src_int = r.read(128)?;
         let dst_int = r.read(128)?;
         (src_int.to_be_bytes(), dst_int.to_be_bytes())
     };
+
+    let is_ll_pair = is_link_local(&src) && is_link_local(&dst);
+    if (addr_mode == 0) != is_ll_pair {
+        return Err(SchcError::NoMatchingRule);
+    }
 
     let direction = r.read(1)? as u8;
     let other_port = r.read(16)? as u16;
@@ -838,14 +835,16 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
                 }
             }
         }
-        if is_link_local(src) && is_link_local(dst) {
-            if let Ok(n) = compress_coap(packet, out, RULE_LINK_LOCAL_COAP) {
-                return Ok(n);
-            }
-        } else if is_global(src) && is_global(dst) {
-            if let Ok(n) = compress_coap(packet, out, RULE_GLOBAL_COAP) {
-                return Ok(n);
-            }
+        // Select CoAP rule preferring link-local IID compression (rule 0) when
+        // both src/dst are LL; otherwise GLOBAL_COAP (rule 1, full addrs). This
+        // fixes the mixed-address-type and ULA fallback to uncompressed.
+        let rule_id = if is_link_local(src) && is_link_local(dst) {
+            RULE_LINK_LOCAL_COAP
+        } else {
+            RULE_GLOBAL_COAP
+        };
+        if let Ok(n) = compress_coap(packet, out, rule_id) {
+            return Ok(n);
         }
     } else if nh == 58 && packet.len() >= 40 + 4 {
         // ICMPv6
@@ -868,8 +867,6 @@ pub fn compress(packet: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
                     return Ok(n);
                 }
             } else if icmp_code == 2 && packet.len() >= 40 + 4 + 20 {
-                // DAO — only rule 4 if D flag set
-                // packet[45] = offset 40 (IPv6) + 4 (ICMPv6 header) + 1 (instance) = K/D/flags byte
                 let kd_flags = packet[45];
                 if kd_flags & 0x40 != 0 {
                     if let Ok(n) = compress_rpl_dao(packet, out) {
@@ -903,7 +900,7 @@ pub fn decompress(data: &[u8], out: &mut [u8]) -> Result<usize, SchcError> {
         RULE_ICMPV6_ECHO => decompress_icmpv6_echo(data, out),
         RULE_RPL_DIO => decompress_rpl_dio(data, out),
         RULE_RPL_DAO => decompress_rpl_dao(data, out),
-        RULE_MQTT_SN => decompress_mqtt_sn(data, out),
+        RULE_MQTT_SN => decompress_mqtt_sn(data, out, RULE_MQTT_SN),
         RULE_UNCOMPRESSED => {
             let payload = &data[1..];
             if out.len() < payload.len() {

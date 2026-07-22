@@ -40,4 +40,21 @@
 			output-low;
 		};
 	};
+
+	/*
+	 * I2C0 for T-Deck keyboard (addr 0x55): SDA=GPIO18, SCL=GPIO8
+	 * (from LilyGO utilities.h BOARD_I2C_SDA/SCL and Keyboard_ESP32C3).
+	 * Trackball uses separate GPIOs per BOARD_TBOX_G0* defines (see 
+	 * t_deck_esp32s3_procpu.dts comment and utilities.h); not on this bus.
+	 * Disabled until input driver validation (see codereview beads).
+	 */
+	i2c0_default: i2c0_default {
+		group1 {
+			pinmux = <I2C0_SDA_GPIO18>,
+				 <I2C0_SCL_GPIO8>;
+			bias-pull-up;
+			drive-open-drain;
+			output-high;
+		};
+	};
 };

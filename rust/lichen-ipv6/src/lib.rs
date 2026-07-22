@@ -248,6 +248,14 @@ impl Addr {
         (self.0[0] & 0xe0) == 0x20
     }
 
+    /// Check if this is a LICHEN primary Yggdrasil-derived address (`02xx::/7`).
+    ///
+    /// These are now the primary routable addresses (replacing ULA per
+    /// spec/04-network.md and project-LICHEN-fmu3). Starts with 0x02.
+    pub fn is_yggdrasil(&self) -> bool {
+        self.0[0] == 0x02
+    }
+
     /// Check if this is the loopback address (::1).
     pub fn is_loopback(&self) -> bool {
         self.0 == [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]

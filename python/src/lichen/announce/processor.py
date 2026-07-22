@@ -221,8 +221,8 @@ class AnnounceProcessor:
         # will be rejected as STALE_SEQNUM but we have no route to the originator.
         # By updating the gradient first, failure leaves state unchanged.
         destination = self.address_builder(iid)
-        coords = decode_coords(announce.app_data)  # None if not present
-        congestion = decode_congestion(announce.app_data)  # None if not present
+        coords = decode_coords(announce.app_data)
+        congestion = decode_congestion(announce.app_data)
         entry = GradientEntry(
             destination=destination,
             next_hop=from_neighbor,

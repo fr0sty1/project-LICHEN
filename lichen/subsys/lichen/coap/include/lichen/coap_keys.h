@@ -90,7 +90,7 @@ struct lichen_key_entry {
  * @param[in] iid        8-byte interface identifier
  * @param[in] pubkey     32-byte Ed25519 public key
  * @param[in] trust      Trust level for the key
- * @return 0 on success, -ENOMEM if store full, -EEXIST on key mismatch
+ * @return 0 on success, -ENOSPC if store full, -EEXIST on key mismatch
  */
 int lichen_key_store_put(const uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN],
 			 const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
@@ -180,6 +180,17 @@ int lichen_key_str_to_iid(const char *_Nonnull str,
  */
 int lichen_key_pubkey_fingerprint(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
 				  char *_Nonnull buf, size_t buf_len);
+
+/**
+ * @brief Derive 64-bit IID from Ed25519 public key (SHA-256 first 8 bytes)
+ *
+ * Implements node IPv6 address format per project-LICHEN-zt3c:
+ * link-local fe80::/10 (control plane only), primary 02xx::/iid (Yggdrasil-derived,
+ * works for both local mesh and global backbone). Drop ULA. IID = first 8 bytes
+ * of SHA-256(pubkey). Matches Yggdrasil crypto addressing for unified identity.
+ */
+int lichen_key_pubkey_to_iid(const uint8_t pubkey[_Nonnull LICHEN_KEY_PUBKEY_LEN],
+			     uint8_t iid[_Nonnull LICHEN_KEY_IID_LEN]);
 
 #ifdef CONFIG_LICHEN_COAP_KEYS_TEST_HOOKS
 /**

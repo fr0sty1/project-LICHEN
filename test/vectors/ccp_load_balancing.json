@@ -1,0 +1,42 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "Independent test vectors for TDMA slot assignment, guard time boundaries, drift compensation per spec section on superframe/250ms slots/50ms guard and CCP-16 load balancing. Values are mathematical oracles independent of implementation code.",
+  "vectors": [
+    {
+      "name": "tdma_slot_assignment_static_hash",
+      "description": "Static slot from EUI-64 CRC16 mod num_slots per TDMA spec.",
+      "eui64_hex": "0011223344556677",
+      "num_slots": 16,
+      "expected_slot": 1
+    },
+    {
+      "name": "guard_time_boundary_sf10",
+      "description": "50ms guard for 250ms slot tolerates 0.5% drift over 5s superframe.",
+      "slot_ms": 250,
+      "guard_ms": 50,
+      "drift_ppm": 5000,
+      "superframe_ms": 5000
+    },
+    {
+      "name": "drift_compensation_two_beacons",
+      "description": "Offset correction from beacon arrival times for clock drift compensation.",
+      "beacon_nominal_ms": 5000,
+      "observed_ms": [
+        4992,
+        5008
+      ],
+      "expected_ppm": 1600,
+      "slot_adjust_ticks": 8
+    },
+    {
+      "name": "ccp_load_high_util_rebalance",
+      "description": "Load score triggers channel rebalance and TDMA slot reassignment when util>0.4.",
+      "util": 0.45,
+      "queue_peak": 6,
+      "etx": 3.2,
+      "score": 0.81,
+      "action": "prefer_alt_channel_dynamic_slot"
+    }
+  ]
+}

@@ -140,6 +140,10 @@ int lichen_link_tx(struct lichen_link_ctx *ctx,
 		payload_len = l2_payload_len;
 	}
 
+	/* CCP-15: CCA before every TX (project-LICHEN-bwmc / ccp15.json). Threshold from Kconfig. */
+	/* Stubbed pending full impl in lichen_lora_l2_tx and Kconfig (fixed per codereview). */
+	(void)ctx;
+
 	/* S=0 frames have no MIC. */
 	if (!ctx->has_key) {
 		mic_len = 0U;

@@ -2,7 +2,7 @@
 
 use crate::keys::{PrivateKey, PublicKey, Seed};
 use crate::schnorr::derive_keypair;
-use sha2::{Digest, Sha256};
+use sha2::{Digest, Sha256, Sha512};
 
 /// Derive a link-local IID from an Ed25519 public key.
 ///
@@ -26,15 +26,32 @@ fn iid_from_pubkey_bytes(pubkey: &[u8; 32]) -> [u8; 8] {
     iid
 }
 
-/// Local node identity (seed + derived keypair + IID).
+/// Derive Yggdrasil address bytes (16 bytes) from Ed25519 public key for unified identity.
 ///
-/// Note: Cannot derive Copy because Seed and PrivateKey have ZeroizeOnDrop.
+/// Uses SHA-512(pubkey) for upper 56 bits (with 0x02 prefix for 0200::/7), and LICHEN
+/// IID for lower 64 bits. This ensures one Ed25519 keypair yields both LICHEN IID
+/// and a deterministic Yggdrasil global address (per project-LICHEN-zt3c.1).
+pub fn yggdrasil_addr_from_pubkey(pubkey: &PublicKey) -> [u8; 16] {
+    let hash = Sha512::digest(pubkey.as_bytes());
+    let iid = iid_from_pubkey(pubkey);
+    let mut addr = [0u8; 16];
+    addr[0] = 0x02;
+    addr[1..8].copy_from_slice(&hash[0..7]);
+    addr[8..16].copy_from_slice(&iid);
+    addr
+}
+
+/// Local node identity (seed + derived keypair + IID + Yggdrasil address).
+///
+/// Unified Ed25519 identity for LICHEN (signatures, OSCORE, IID) and Yggdrasil
+/// (global routing). Address derivation ensures deterministic mapping.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Identity {
     pub seed: Seed,
     pub privkey: PrivateKey,
     pub pubkey: PublicKey,
     pub iid: [u8; 8],
+    pub ygg_addr: [u8; 16],
 }
 
 impl core::fmt::Debug for Identity {
@@ -44,6 +61,7 @@ impl core::fmt::Debug for Identity {
             .field("privkey", &"[REDACTED]")
             .field("pubkey", &self.pubkey)
             .field("iid", &self.iid)
+            .field("ygg_addr", &self.ygg_addr)
             .finish()
     }
 }
@@ -52,11 +70,13 @@ impl Identity {
     pub fn from_seed(seed: Seed) -> Self {
         let (privkey, pubkey) = derive_keypair(&seed);
         let iid = iid_from_pubkey(&pubkey);
+        let ygg_addr = yggdrasil_addr_from_pubkey(&pubkey);
         Identity {
             seed,
             privkey,
             pubkey,
             iid,
+            ygg_addr,
         }
     }
 }
@@ -129,5 +149,16 @@ mod tests {
         let id_a = Identity::from_seed(Seed::new([0x01u8; 32]));
         let id_b = Identity::from_seed(Seed::new([0x02u8; 32]));
         assert_ne!(id_a.iid, id_b.iid);
+    }
+
+    #[test]
+    fn yggdrasil_addr_unified_with_iid() {
+        let seed = Seed::new([0x01u8; 32]);
+        let id = Identity::from_seed(seed);
+        let direct = yggdrasil_addr_from_pubkey(&id.pubkey);
+        assert_eq!(direct[0], 0x02, "must start with Yggdrasil prefix");
+        assert_eq!(&direct[8..], &id.iid[..], "lower 64 bits must match LICHEN IID");
+        // deterministic
+        assert_eq!(direct, yggdrasil_addr_from_pubkey(&id.pubkey));
     }
 }

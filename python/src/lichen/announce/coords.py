@@ -78,16 +78,18 @@ def decode_coords(app_data: bytes) -> tuple[float, float] | None:
     """
     if len(app_data) < 9:
         return None
-    if app_data[0] != APP_DATA_TYPE_COORDS:
-        return None
-
-    lat_raw, lon_raw = struct.unpack(">ii", app_data[1:9])
-    if not (_LAT_E7_MIN <= lat_raw <= _LAT_E7_MAX):
-        return None
-    if not (_LON_E7_MIN <= lon_raw <= _LON_E7_MAX):
-        return None
-
-    return (lat_raw / _SCALE, lon_raw / _SCALE)
+    for i in range(len(app_data) - 8):
+        if app_data[i] == APP_DATA_TYPE_COORDS:
+            try:
+                lat_raw, lon_raw = struct.unpack(">ii", app_data[i + 1 : i + 9])
+                if not (_LAT_E7_MIN <= lat_raw <= _LAT_E7_MAX):
+                    continue
+                if not (_LON_E7_MIN <= lon_raw <= _LON_E7_MAX):
+                    continue
+                return (lat_raw / _SCALE, lon_raw / _SCALE)
+            except struct.error:
+                continue
+    return None
 
 
 # --- Congestion encoding (spec 11.4) ---
@@ -121,9 +123,10 @@ def decode_congestion(app_data: bytes) -> int | None:
     """
     if len(app_data) < 2:
         return None
-    if app_data[0] != APP_DATA_TYPE_CONGESTION:
-        return None
-    return app_data[1]
+    for i in range(len(app_data) - 1):
+        if app_data[i] == APP_DATA_TYPE_CONGESTION:
+            return app_data[i + 1]
+    return None
 
 
 # --- DTN encoding (spec 9.8) ---
@@ -157,10 +160,14 @@ def decode_dtn_expiry(app_data: bytes) -> int | None:
     """
     if len(app_data) < 5:
         return None
-    if app_data[0] != APP_DATA_TYPE_DTN_EXPIRY:
-        return None
-    expiry: int = struct.unpack(">I", app_data[1:5])[0]
-    return expiry
+    for i in range(len(app_data) - 4):
+        if app_data[i] == APP_DATA_TYPE_DTN_EXPIRY:
+            try:
+                expiry: int = struct.unpack(">I", app_data[i + 1 : i + 5])[0]
+                return expiry
+            except struct.error:
+                continue
+    return None
 
 
 def encode_dtn_pending(iids: list[bytes]) -> bytes:
@@ -194,17 +201,17 @@ def decode_dtn_pending(app_data: bytes) -> list[bytes] | None:
     """
     if len(app_data) < 2:
         return None
-    if app_data[0] != APP_DATA_TYPE_DTN_PENDING:
-        return None
-    count = app_data[1]
-    expected_len = 2 + count * 8
-    if len(app_data) < expected_len:
-        return None
-    iids = []
-    for i in range(count):
-        start = 2 + i * 8
-        iids.append(app_data[start : start + 8])
-    return iids
+    for i in range(len(app_data) - 1):
+        if app_data[i] == APP_DATA_TYPE_DTN_PENDING:
+            count = app_data[i + 1]
+            expected_len = 2 + count * 8
+            if len(app_data) - i >= expected_len:
+                iids = []
+                for j in range(count):
+                    start = i + 2 + j * 8
+                    iids.append(app_data[start : start + 8])
+                return iids
+    return None
 
 
 # --- Opportunistic forwarding (spec 9.9) ---

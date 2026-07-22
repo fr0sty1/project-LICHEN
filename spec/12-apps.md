@@ -25,8 +25,8 @@ Text messaging between nodes, supporting unicast, multicast, and broadcast.
 ```cbor
 {
   "id": 12345,                    ; unique message ID (uint)
-  "from": "fd12:...:1111",        ; sender IPv6 (string)
-  "to": "fd12:...:2222",          ; recipient or "ff02::1" for broadcast (string)
+  "from": "0200:...:1111",        ; sender IPv6 (string)
+  "to": "0200:...:2222",          ; recipient or "ff02::1" for broadcast (string)
   "ts": 1716742800,               ; Unix timestamp (uint)
   "body": "Hello from the mesh",  ; message text (tstr)
   "ack": true,                    ; request delivery receipt (bool, optional)
@@ -258,7 +258,7 @@ Content-Format: application/cbor
 {
   "positions": [
     {
-      "node": "fd12:...:1111",
+      "node": "0200:...:1111",
       "lat": 37.774929,
       "lon": -122.419416,
       "alt": 10.5,
@@ -368,7 +368,7 @@ In `private` mode:
 PUT coap://[node]/config/privacy/allowed
 Content-Format: application/cbor
 
-{"peers": ["fd12:...:1111", "fd12:...:2222"]}
+{"peers": ["0200:...:1111", "0200:...:2222"]}
 ```
 
 Only whitelisted peers' OSCORE-protected queries are answered.
@@ -415,7 +415,7 @@ Shareable points of interest with metadata.
   "color": "#FF0000",           ; color hint (tstr, optional)
   "notes": "Meet here at 1400", ; description (tstr, optional)
   "created": 1716742800,        ; creation time (uint)
-  "creator": "fd12:...:1111",   ; creator node (tstr)
+  "creator": "0200:...:1111",   ; creator node (tstr)
   "expires": 1716829200         ; expiration time (uint, optional)
 }
 ```
@@ -476,7 +476,7 @@ Content-Format: application/cbor
   "lat": 37.774929,
   "lon": -122.419416,
   "notes": "Meet here at 1400",
-  "creator": "fd12:...:1111"
+  "creator": "0200:...:1111"
 }
 
 Response: 2.01 Created
@@ -510,7 +510,7 @@ Ordered list of waypoints:
   "waypoints": ["wpt-001", "wpt-002", "wpt-003"],
   "distance_m": 2500,           ; total distance (uint, optional)
   "created": 1716742800,
-  "creator": "fd12:...:1111"
+  "creator": "0200:...:1111"
 }
 ```
 
@@ -582,7 +582,7 @@ Nodes SHOULD support operator commands to:
 ```cbor
 {
   "type": "sos",               ; "sos", "medical", "security", "cancel" (tstr)
-  "node": "fd12:...:1111",     ; originating node (tstr)
+  "node": "0200:...:1111",     ; originating node (tstr)
   "ts": 1716742800,            ; timestamp (uint)
   "lat": 37.774929,            ; position if available (float, optional)
   "lon": -122.419416,          ; (float, optional)
@@ -644,7 +644,7 @@ Content-Format: application/cbor
 {
   "active": [
     {
-      "node": "fd12:...:1111",
+      "node": "0200:...:1111",
       "type": "medical",
       "ts": 1716742800,
       "lat": 37.77,
@@ -755,8 +755,8 @@ Content-Format: application/cbor
 
 {
   "nodes": [
-    {"addr": "fd12:...:1111", "status": "available", "battery": 87, "age_s": 30},
-    {"addr": "fd12:...:2222", "status": "away", "battery": 45, "age_s": 120}
+    {"addr": "0200:...:1111", "status": "available", "battery": 87, "age_s": 30},
+    {"addr": "0200:...:2222", "status": "away", "battery": 45, "age_s": 120}
   ]
 }
 ```
@@ -790,7 +790,7 @@ POST coap://[leader]/checkin
 Content-Format: application/cbor
 
 {
-  "node": "fd12:...:1111",
+  "node": "0200:...:1111",
   "ts": 1716742800,
   "lat": 37.77,
   "lon": -122.42,
@@ -811,7 +811,7 @@ Content-Format: application/cbor
 
 {
   "id": "roll-001",
-  "from": "fd12:...:leader",
+  "from": "0200:...:leader",
   "ts": 1716742800,
   "timeout_s": 60
 }
@@ -832,11 +832,11 @@ Content-Format: application/cbor
   "started": 1716742800,
   "timeout_s": 60,
   "responded": [
-    {"node": "fd12:...:1111", "ts": 1716742810, "status": "ok"},
-    {"node": "fd12:...:2222", "ts": 1716742815, "status": "ok"}
+    {"node": "0200:...:1111", "ts": 1716742810, "status": "ok"},
+    {"node": "0200:...:2222", "ts": 1716742815, "status": "ok"}
   ],
   "missing": [
-    {"node": "fd12:...:3333", "last_seen": 1716740000}
+    {"node": "0200:...:3333", "last_seen": 1716740000}
   ]
 }
 ```
@@ -851,7 +851,7 @@ Content-Format: application/cbor
 
 {
   "enabled": true,
-  "target": "fd12:...:leader",
+  "target": "0200:...:leader",
   "interval_s": 900,           ; every 15 minutes
   "include_location": true
 }
@@ -872,7 +872,7 @@ Link quality diagnostics.
 Standard ICMPv6 Echo Request/Reply for reachability:
 
 ```
-ping6 fd12:3456:789a:1::1111
+ping6 0200:1234:5678:9abc::1111
 ```
 
 Returns: RTT, reachable/unreachable.
@@ -958,13 +958,13 @@ Groups provide:
 {
   "id": "team-alpha",
   "name": "Team Alpha",
-  "mcast": "ff35:40:fd12:3456:789a:1::1",  ; mesh-local multicast
-  "owner": "fd12:...:1111",                ; group creator
-  "admins": ["fd12:...:2222"],             ; delegated admins
+  "mcast": "ff35:40:0200:1234:5678:9abc::1",  ; mesh-local multicast
+  "owner": "0200:...:1111",                ; group creator
+  "admins": ["0200:...:2222"],             ; delegated admins
   "members": [
-    "fd12:...:1111",
-    "fd12:...:2222",
-    "fd12:...:3333"
+    "0200:...:1111",
+    "0200:...:2222",
+    "0200:...:3333"
   ],
   "key_id": "key-alpha-001",   ; OSCORE Group key reference (optional)
   "created": 1716742800,
@@ -1022,7 +1022,7 @@ Content-Format: application/cbor
   "group_id": "team-alpha",
   "group_name": "Team Alpha",
   "mcast": "ff35:0040:...",
-  "inviter": "fd12:...:1111",
+  "inviter": "0200:...:1111",
   "role": "member",            ; "member" or "admin"
   "expires": 1716829200,       ; invitation expiry
   "signature": "<inviter's signature over above fields>"
@@ -1045,7 +1045,7 @@ OSCORE: <secured with pairwise context>
 
 {
   "request": "join_key",
-  "node": "fd12:...:3333"
+  "node": "0200:...:3333"
 }
 
 Response: 2.05 Content
@@ -1084,7 +1084,7 @@ Content-Format: application/cbor
 
 {
   "group_id": "team-alpha",
-  "removed_by": "fd12:...:1111",
+  "removed_by": "0200:...:1111",
   "reason": "no longer on team",
   "signature": "<remover's signature>"
 }
@@ -1108,9 +1108,9 @@ OSCORE: <group context>
 
 Response: 2.05 Content
 {
-  "owner": "fd12:...:1111",
-  "admins": ["fd12:...:2222"],
-  "members": ["fd12:...:3333", "fd12:...:4444"]
+  "owner": "0200:...:1111",
+  "admins": ["0200:...:2222"],
+  "members": ["0200:...:3333", "0200:...:4444"]
 }
 ```
 
@@ -1134,7 +1134,7 @@ Content-Format: application/cbor
 
 {
   "action": "promote",
-  "node": "fd12:...:2222"
+  "node": "0200:...:2222"
 }
 
 Response: 2.04 Changed
@@ -1144,15 +1144,15 @@ Only owner can promote/demote admins.
 
 #### 18.8.3. Group Multicast Addressing
 
-Per RFC 7390 and RFC 3306 (unicast-prefix-based multicast):
+Per RFC 7390 and RFC 3306 (unicast-prefix-based multicast). With 02xx primary addresses, use the /64 of the 02xx prefix:
 
 ```
-ff35:0040:<64-bit ULA prefix>::<16-bit group ID>
+ff35:0040:<64-bit 02xx prefix>::<16-bit group ID>
 ```
 
-Example: Group 1 on mesh `fd12:3456:789a:1::/64`:
+Example: Group 1 on mesh `0200:1234:5678:9abc::/64`:
 ```
-ff35:0040:fd12:3456:789a:0001::0001
+ff35:0040:0200:1234:5678:9abc:0001::0001
 ```
 
 #### 18.8.4. Group Resources
@@ -1206,7 +1206,94 @@ Content-Format: application/cbor
 
 Key distribution is out-of-band or via secure unicast to each member.
 
-### 18.9. Resource Summary
+### 18.9. Dead Drop
+
+Asynchronous, rate-limited data drops for store-and-forward style communication without direct addressing. Nodes POST SenML-formatted payloads to `/deaddrop`; others retrieve via GET (with optional Observe). Ideal for leaving sensor data, short files (as base64 in SenML), waypoints, or "messages in a bottle" for later pickup. See also LCI 17.5.8 for client UI.
+
+**Relevant Standards:**
+- SenML (RFC 8428, Content-Format 112; see Appendix F)
+- OSCORE (RFC 8613) for confidentiality and authenticity of drops
+- CoAP Observe (RFC 7641) for live updates when new drops arrive
+- Rate limiting patterns from 18.4.1 (SOS)
+- SCHC (RFC 8724, RFC 8824) for compression and fragmentation (see sections 3 and 4)
+
+**SCHC and Fragmentation:**
+/deaddrop CoAP messages MUST use the project's SCHC rule set. SenML payloads >~100 bytes after compression trigger fragmentation/reassembly per the SCHC profile. Rules for path `/deaddrop`, content-format 112, and OSCORE options are pre-provisioned (see appendix-schc.md and constants.toml). Implementations MUST match test vector outputs for compressed packets.
+
+**Rate Limits (REQUIRED):**
+Prevents spam and storage exhaustion on constrained nodes. Enforced per-source (IID or OSCORE context). Values aligned with SOS (max 3-6/hour) and store-and-forward budgets (18.1.4).
+
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| POSTs per hour per context | 6 | Matches SOS cooldown patterns; prevents DoS on storage |
+| Max drop size | 1536 B | Fits typical SCHC-compressed SenML; aligns with msg limits |
+| Total storage | 8 KB (leaf), 32 KB (BR) | Static allocation; see 18.1.4 platform budgets |
+| Default retention | 24 h (max 7 d) | Balances utility vs. memory pressure on STM32WL/ESP32 |
+
+Exceeding limits returns:
+- `4.29 Too Many Requests` with `Retry-After` for rate limits
+- `4.13 Request Entity Too Large` for oversized drops
+- `5.03 Service Unavailable` with CBOR details `{ "reason": "storage_full", "retry_after": 3600, "available_kb": 2 }` for storage
+
+Eviction: expired first, then oldest. No dynamic allocation; static buffers per platform (see memory reservation in 18.1.4).
+
+**OSCORE Requirements:**
+- **Writes (POST):** MUST be protected with OSCORE. Unprotected POSTs → `4.01 Unauthorized {"error": "oscore_required"}`. Supports both pairwise (EDHOC-derived) and group contexts.
+- **Reads (GET):** Public drops allowed without; private drops require matching OSCORE context or return 4.03 Forbidden. Use `oscore` option in requests.
+- Integrates with trust model (TOFU/DANE/PKIX from section 8). Group drops use OSCORE group key for multicast-like sharing.
+- Replay protection via OSCORE sequence numbers; nodes track recent nonces.
+
+**SenML Payload (Canonical Example):**
+
+```cbor
+[
+  {"bn": "urn:dev:mac:0011223344556677:", "bt": 1721654321},
+  {"n": "type", "vs": "message"},
+  {"n": "content", "vs": "Supply cache at these coords - do not broadcast"},
+  {"n": "lat", "u": "lat", "v": 37.7749},
+  {"n": "lon", "u": "lon", "v": -122.4194},
+  {"n": "ttl", "v": 86400},
+  {"n": "signature", "vs": "base64-truncated-schnorr-optional"}
+]
+```
+
+For binary data, use SenML "vd" (base64) or external reference.
+
+**Resources:**
+
+```
+POST coap://[node]/deaddrop
+Content-Format: application/senml+cbor
+OSCORE: ...
+
+[above payload]
+
+Response: 2.01 Created
+Location-Path: /deaddrop/7f3a9c
+Max-Age: 86400
+```
+
+```
+GET coap://[node]/deaddrop
+Observe: 0
+Content-Format: application/senml+cbor
+
+[ array of current drops, each wrapped with metadata ]
+```
+
+Or `GET /deaddrop/7f3a9c` for specific. Supports query params like `?type=message&after=17216...`.
+
+**UI Notes for Client Apps (LCI-aware):**
+- Prominent "Dead Drop" module/tab with large "Drop Here" affordance (drag-drop support for files → auto SenML conversion)
+- Real-time Observe feed showing new drops as cards with SenML-parsed title, type badge, age, and "Pickup" action (downloads, optionally deletes or forwards)
+- Rate limit dashboard: circular progress for hourly quota, color-coded (green/yellow/red)
+- Privacy toggles: "Public Drop", "OSCORE-Paired Only", "Group Only"
+- Search/filter by SenML fields. Apps SHOULD cache drops locally and sync on reconnect.
+- Warning for constrained nodes: "This node has limited storage (4KB); large drops may be evicted quickly."
+
+Implementations MUST produce identical SenML output for test vectors (see test/vectors/).
+
+### 18.10. Resource Summary
 
 | Resource | Methods | Observable | Description |
 |----------|---------|------------|-------------|
@@ -1231,8 +1318,9 @@ Key distribution is out-of-band or via secure unicast to each member.
 | /groups/{id} | GET, PUT, DELETE | No | Single group |
 | /diag/rangetest | GET, POST | Yes | Range testing |
 | /diag/traceroute | GET | No | Path discovery |
+| /deaddrop | GET, POST | Yes | Rate-limited SenML dead drop storage |
 
-### 18.10. Content-Format Summary
+### 18.11. Content-Format Summary
 
 | Content-Format | ID | Usage |
 |----------------|-----|-------|

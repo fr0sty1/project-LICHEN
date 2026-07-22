@@ -9,6 +9,7 @@ nodes, and chaos rules programmatically.
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -142,6 +143,45 @@ class SimulatorAPI:
             The chaos engine, or None if simulation not found.
         """
         return self._chaos_engines.get(sim_id)
+
+    def _parse_position(
+        self, body: dict[str, Any], defaults: tuple[float, float, float] | None = None
+    ) -> tuple[float, float, float]:
+        """Parse x, y, z from JSON body and validate they are finite numbers.
+
+        Rejects NaN, Inf, -Inf to prevent downstream NaN propagation in
+        distance calculations and comparisons (medium.py, chaos.py, etc).
+
+        Args:
+            body: The parsed JSON request body dict.
+            defaults: Optional (x, y, z) tuple for partial updates (used by move_node).
+
+        Returns:
+            Validated (x, y, z) tuple.
+
+        Raises:
+            ValueError: On invalid or non-finite coordinates.
+        """
+        if defaults is None:
+            x = body.get("x", 0.0)
+            y = body.get("y", 0.0)
+            z = body.get("z", 0.0)
+        else:
+            x = body.get("x", defaults[0])
+            y = body.get("y", defaults[1])
+            z = body.get("z", defaults[2])
+
+        try:
+            x = float(x)
+            y = float(y)
+            z = float(z)
+        except (TypeError, ValueError):
+            raise ValueError("Position coordinates must be numeric") from None
+
+        if not all(math.isfinite(v) for v in (x, y, z)):
+            raise ValueError("Position coordinates must be finite numbers (no NaN or Inf)")
+
+        return x, y, z
 
     async def create_simulation(self, request: Request) -> JSONResponse:
         """Create a new simulation.
@@ -316,18 +356,8 @@ class SimulatorAPI:
         if not node_id:
             return _error_response("Missing required field: id")
 
-        x = body.get("x", 0.0)
-        y = body.get("y", 0.0)
-        z = body.get("z", 0.0)
-
         try:
-            x = float(x)
-            y = float(y)
-            z = float(z)
-        except (TypeError, ValueError):
-            return _error_response("Position coordinates must be numeric")
-
-        try:
+            x, y, z = self._parse_position(body)
             node = sim.add_node(node_id, x, y, z)
         except ValueError as e:
             return _error_response(str(e))
@@ -382,18 +412,11 @@ class SimulatorAPI:
         except json.JSONDecodeError:
             return _error_response("Invalid JSON body")
 
-        x = body.get("x", node.position[0])
-        y = body.get("y", node.position[1])
-        z = body.get("z", node.position[2])
-
         try:
-            x = float(x)
-            y = float(y)
-            z = float(z)
-        except (TypeError, ValueError):
-            return _error_response("Position coordinates must be numeric")
-
-        node.set_position(x, y, z)
+            x, y, z = self._parse_position(body, defaults=node.position)
+            node.set_position(x, y, z)
+        except ValueError as e:
+            return _error_response(str(e))
 
         return JSONResponse(
             {
@@ -552,6 +575,9 @@ class SimulatorAPI:
             radius_m = float(radius_m)
         except (TypeError, ValueError):
             return _error_response("Position and radius must be numeric")
+
+        if not all(math.isfinite(v) for v in (x, y, z, radius_m)):
+            return _error_response("Position and radius must be finite numbers (no NaN or Inf)")
 
         if radius_m <= 0:
             return _error_response("radius_m must be positive")

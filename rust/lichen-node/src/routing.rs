@@ -210,7 +210,7 @@ impl Router {
     /// Create a new router as DODAG root.
     pub fn new_root(node_addr: [u8; 16]) -> Self {
         let dodag_id = node_addr; // Root's address is DODAG ID
-        Self {
+        let mut s = Self {
             dodag: DodagState::as_root(RPL_INSTANCE_ID, dodag_id, 0),
             trickle: TrickleTimer::new(256, 8, 10),
             dao_manager: DaoManager::as_root(node_addr, RPL_INSTANCE_ID, dodag_id),
@@ -218,7 +218,9 @@ impl Router {
             node_addr,
             dodag_id,
             node_coords: None,
-        }
+        };
+        s.trickle_start(0, 0); // start trickle for root DIOs; real impl supplies now_ms+rand
+        s
     }
 
     /// Process a received DIO message from a neighbor.

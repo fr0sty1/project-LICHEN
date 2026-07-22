@@ -11,12 +11,12 @@ generic data collection.
 
 ## F.1. Overview
 
-All sensor data SHOULD be encoded as SenML over CoAP:
+All sensor data SHOULD be encoded as SenML over CoAP (see lichen-senml, rust/lichen-senml/src/):
 
-- Content-Format: `application/senml+cbor` (112)
+- Content-Format: `application/senml+cbor` = 112 (lichen-coap/src/option.rs:33, constants.toml ports)
 - Observable resources for streaming data
-- Base name derived from node identity
-- Timestamps relative to base time when possible (saves bytes)
+- Base name = `urn:dev:mac:<EUI-64>:` (from lichen link EUI-64)
+- Timestamps relative to base time when possible (saves bytes, see lichen_core constants for time)
 
 ## F.2. Base Name Convention
 
@@ -64,7 +64,7 @@ Resource: `/sensors/battery`
 ```cbor
 [
   {"bn": "urn:dev:mac:0011223344556677:", "bt": 1716742800},
-  {"n": "pct", "u": "%RH", "v": 87},
+  {"n": "pct", "u": "%", "v": 87},
   {"n": "mv", "u": "mV", "v": 3950},
   {"n": "charging", "vb": false}
 ]
@@ -268,10 +268,44 @@ Content-Format: application/link-format
 
 </sensors/location>;rt="senml";if="sensor";geo="*",
 </sensors/temp>;rt="senml";if="sensor",
-</sensors/battery>;rt="senml";if="sensor"
+</sensors/battery>;rt="senml";if="sensor",
+</metrics>;rt="senml";if="sensor";obs
 ```
 
 The `geo="*"` attribute indicates location-providing resources.
+
+## F.16. Metrics Telemetry + Battery Profile
+
+Resource: `/metrics`
+
+Combines network telemetry (RSSI, node count, packet rate, collision rate) and battery status in one SenML pack. Useful for dashboard and monitoring.
+
+```cbor
+[
+  {"bn": "urn:dev:mac:0011223344556677:", "bt": 1716742800},
+  {"n": "rssi", "u": "dBm", "v": -85},
+  {"n": "nodecount", "v": 12},
+  {"n": "pps", "u": "1/s", "v": 2.3},
+  {"n": "battery", "u": "%EL", "v": 75},
+  {"n": "collision-rate", "u": "%", "v": 0.1}
+]
+```
+
+Independent test vector (CBOR hex, 81 bytes with bn):
+
+`83a121781d75726e3a6465763a6d61633a303031313232333334343535363637373aa3006472737369016364426d02fbc055400000000000a3006762617474657279016325454c02fb4052c00000000000`
+
+(Computed independently using cbor2; matches `pack([SenmlRecord(bn=...), *metrics(...)])`).
+
+| Name | Unit | Description |
+|------|------|-------------|
+| rssi | dBm | Received signal strength |
+| nodecount | - | Number of mesh nodes seen |
+| pps | 1/s | Packets per second |
+| battery | %EL | Battery state of charge |
+| collision-rate | % | Packet collision rate |
+
+Use with CoAP Observe for live telemetry streaming. SCHC compresses well.
 
 ---
 

@@ -66,8 +66,9 @@ class Transmission:
     """A LoRa radio transmission in the simulated channel.
 
     Represents a single transmission from a node, including its timing,
-    power, and payload information. Used by the channel simulator to
-    model propagation and interference.
+    power, payload, and channel. Used by the channel simulator to
+    model propagation and interference. Different channels are orthogonal
+    (independent collision/propagation oracle).
 
     Attributes:
         id: Unique identifier for this transmission (UUID).
@@ -77,6 +78,8 @@ class Transmission:
         start_time_us: Simulation time when transmission starts (microseconds).
         end_time_us: Simulation time when transmission ends (microseconds).
         frequency_hz: Carrier frequency in Hz (default 915 MHz).
+        channel: Channel index for multi-channel support and rendezvous
+            (default 0). RX only sees matching channel.
     """
 
     source_node_id: str
@@ -86,3 +89,4 @@ class Transmission:
     end_time_us: int
     id: str = field(default_factory=lambda: str(uuid4()))
     frequency_hz: int = 915_000_000
+    channel: int = 0

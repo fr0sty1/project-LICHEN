@@ -338,9 +338,15 @@ static int decode_manual_location(
 				(void)zcbor_list_map_end_force_decode(zsd);
 				return -EINVAL;
 			}
-			if (!zcbor_tstr_decode(zsd, &tstr) ||
-			    tstr.len >= sizeof(location->source_name) ||
-			    !valid_source_name_bytes(tstr.value, tstr.len)) {
+			if (!zcbor_tstr_decode(zsd, &tstr)) {
+				(void)zcbor_list_map_end_force_decode(zsd);
+				return -EINVAL;
+			}
+			if (tstr.len >= sizeof(location->source_name)) {
+				(void)zcbor_list_map_end_force_decode(zsd);
+				return -ENAMETOOLONG;
+			}
+			if (!valid_source_name_bytes(tstr.value, tstr.len)) {
 				(void)zcbor_list_map_end_force_decode(zsd);
 				return -EINVAL;
 			}

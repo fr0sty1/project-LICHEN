@@ -1,0 +1,63 @@
+{
+  "$schema": "./schema.json",
+  "format_version": 2,
+  "description": "SCHC fragmentation vectors (RFC 8724 \u00a78) with independent oracles for single/multi fragment, window, ACK-on-error, MIC fail, OOO, retransmit. See schema for details; all impls must match exactly.",
+  "vectors": [
+    {
+      "name": "single_fragment",
+      "description": "Single All-1 with MIC (RFC 8.2).",
+      "rule_id": 42,
+      "packet": "10111213",
+      "fragments": [
+        "2a3f040000000010111213"
+      ],
+      "mode": "no_ack",
+      "mic": "04000000"
+    },
+    {
+      "name": "multi_fragment",
+      "description": "Multi-fragment + window (RFC 8.3).",
+      "rule_id": 42,
+      "packet": "1011121320212223",
+      "fragments": [
+        "2a060410111213",
+        "2a050420212223",
+        "2a073f1234567823"
+      ],
+      "mode": "no_ack",
+      "mic": "12345678"
+    },
+    {
+      "name": "ack_on_error_mic_fail",
+      "description": "ACK-on-error, MIC mismatch triggers error (RFC 8.4.3).",
+      "rule_id": 42,
+      "packet": "a0a1a2a3",
+      "fragments": [
+        "2a0104a0a1a2a3",
+        "2a073f0400000000"
+      ],
+      "mode": "ack_on_error",
+      "mic": "04000000",
+      "expect": {
+        "mic_fail": true
+      }
+    },
+    {
+      "name": "ooo_retransmit",
+      "description": "OOO + retransmit on NACK bitmap (RFC 8.4.2).",
+      "rule_id": 42,
+      "packet": "00010203",
+      "fragments": [
+        "2a0604000102",
+        "2a050403"
+      ],
+      "mode": "ack_on_error",
+      "expect": {
+        "out_of_order": true,
+        "retransmits": [
+          0
+        ]
+      }
+    }
+  ]
+}

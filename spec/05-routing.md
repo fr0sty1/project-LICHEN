@@ -27,32 +27,40 @@ LICHEN uses a three-tier routing architecture optimized for different traffic pa
 
 ### 7.2. Routing Decision
 
+With simplified addressing (**link-local strictly for control plane only** + 02xx primary per 04-network.md:14 and unified Ed25519 identity per 06-security.md:111):
+
 ```
 def route_packet(dst):
-    if is_off_mesh(dst):
-        # External destination (GUA not in mesh, or unknown)
-        return forward_to_rpl_parent()
+    if is_link_local(dst):
+        # Control plane ONLY (NDP, RPL DIO/DIS/DAO, LCI, bootstrap)
+        # Matches AGENTS.md init graph (link_init before rpl_dodag_init)
+        # Data plane MUST use cryptographically-bound 02xx address
+        return forward_to_neighbor(dst)
 
-    gradient = gradient_table.lookup(dst)
-    if gradient and not gradient.expired:
-        # Known peer - follow gradient
-        return forward_to(gradient.next_hop)
+    # All data/mesh traffic uses primary 02xx address (Ed25519-derived IID)
+    if is_local_mesh(dst):  # 02xx in gradient table or RPL DODAG
+        gradient = gradient_table.lookup(dst.iid)
+        if gradient and not gradient.expired:
+            return forward_to(gradient.next_hop)
+        else:
+            # Use RPL downward or LOADng
+            return rpl_or_loadng_route(dst)
 
+    # 02xx not in local mesh: fall back to Yggdrasil if available,
+    # otherwise to nearest border router
+    if yggdrasil_available():
+        return forward_to_yggdrasil(dst)
     else:
-        # Unknown peer - reactive discovery
-        loadng_discover(dst)
-        return queue_pending(dst, packet)
+        return forward_to_rpl_border_router(dst)
 ```
 
-**Address classification:**
+**Address classification (control vs data plane - updated for security/completeness per codereview):**
 
-| Address Type | Classification | Routing |
-|--------------|----------------|---------|
-| Link-local (fe80::/10) | Direct neighbor | Send to neighbor |
-| ULA (fd00::/8) in mesh prefix | Mesh peer | Gradient or LOADng |
-| GUA in mesh prefix | Mesh peer | Gradient or LOADng |
-| Other GUA | Off-mesh | RPL to border router |
-| Unknown | Off-mesh | RPL to border router |
+| Address Type | Plane | Classification | Routing |
+|--------------|-------|----------------|---------|
+| Link-local (fe80::/10) | **Control plane ONLY** | Direct neighbor/bootstrap | NDP/RPL control (DIO/DIS/DAO), LCI; immediate forward to neighbor. **Data traffic forbidden** (prevents replay/auth bypass; aligns with unified Ed25519→IID→02xx model) |
+| 02xx::/7 (local match via gradient/RPL) | Data plane | Mesh peer | Gradient from announce (primary), RPL downward, or LOADng fallback |
+| 02xx::/7 (no local match) | Data plane | Off-mesh/Yggdrasil | Yggdrasil overlay or forward to nearest BR |
 
 ### 7.3. Conformance Requirements
 

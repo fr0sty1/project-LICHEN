@@ -278,10 +278,20 @@ pub struct CoapOption<'a> {
 }
 
 impl<'a> CoapOption<'a> {
-    /// Interpret value as u32 (for integer options like Max-Age).
+    /// Interpret value as u32 (for integer options like Max-Age, Content-Format).
+    ///
+    /// Per RFC 7252 §3.2 integer options MUST NOT exceed 4 bytes. For
+    /// robustness to malformed >4-byte values, this explicitly uses only the
+    /// last 4 bytes (least significant in big-endian encoding). This matches
+    /// prior shift-out behavior but is now documented.
     pub fn as_uint(&self) -> u32 {
+        let bytes = if self.value.len() > 4 {
+            &self.value[self.value.len() - 4..]
+        } else {
+            self.value
+        };
         let mut val = 0u32;
-        for &b in self.value {
+        for &b in bytes {
             val = (val << 8) | b as u32;
         }
         val
@@ -821,5 +831,19 @@ mod tests {
             CoapPacket::from_bytes(&data),
             Err(CoapError::OptionNumberOverflow)
         );
+    }
+
+    #[test]
+    fn as_uint_truncates_long_values() {
+        let long = CoapOption {
+            number: 0,
+            value: &[0x01u8, 0x02, 0x03, 0x04, 0x05],
+        };
+        assert_eq!(long.as_uint(), 0x02030405);
+        let normal = CoapOption {
+            number: 0,
+            value: &[0x01, 0x02, 0x03, 0x04],
+        };
+        assert_eq!(normal.as_uint(), 0x01020304);
     }
 }

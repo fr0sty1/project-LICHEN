@@ -1,28 +1,52 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "LICHEN test vector file",
-  "description": "Envelope shared by all LICHEN vector files. Each file holds a list of vectors of one kind; see the per-vector definitions.",
-  "type": "object",
-  "required": ["format_version", "description", "vectors"],
-  "properties": {
-    "format_version": {"type": "integer", "const": 1},
-    "description": {"type": "string"},
-    "vectors": {
+  "title": "LICHEN test vector file (v1 and v2)",
+  "description": "Envelope shared by all LICHEN vector files (supports format_version 1 and 2 for backward compatibility with existing v1 vectors). Supports bare array root for v2 CCP vectors (ccp16-desync.json). New CCP-9 vector family added to ccp_vector definition with rendezvous fields. Each file holds a list of vectors of one kind; see the per-vector definitions.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["description", "vectors"],
+      "properties": {
+        "format_version": {"type": "integer", "enum": [1, 2]},
+        "description": {"type": "string"},
+        "$schema": {"type": "string"},
+        "name": {"type": "string"},
+        "spec": {"type": "string"},
+        "vectors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              {"$ref": "#/definitions/schc_vector"},
+              {"$ref": "#/definitions/l2_payload_vector"},
+              {"$ref": "#/definitions/frame_vector"},
+              {"$ref": "#/definitions/announce_coords_vector"},
+              {"$ref": "#/definitions/meshtastic_app_compat_vector"},
+              {"$ref": "#/definitions/meshcore_app_compat_vector"},
+              {"$ref": "#/definitions/oscore_vector"},
+              {"$ref": "#/definitions/rpl_messages_vector"},
+              {"$ref": "#/definitions/schc_fragment_vector"},
+              {"$ref": "#/definitions/deaddrop_vector"},
+              {"$ref": "#/definitions/ccp_vector"},
+              {"$ref": "#/definitions/compact_cot_vector"},
+              {"$ref": "#/definitions/schnorr_vector"}
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "type": "array",
+      "minItems": 1,
       "items": {
         "oneOf": [
-          {"$ref": "#/definitions/schc_vector"},
-          {"$ref": "#/definitions/l2_payload_vector"},
-          {"$ref": "#/definitions/frame_vector"},
-          {"$ref": "#/definitions/announce_coords_vector"},
-          {"$ref": "#/definitions/meshtastic_app_compat_vector"},
-          {"$ref": "#/definitions/meshcore_app_compat_vector"},
-          {"$ref": "#/definitions/oscore_vector"},
-          {"$ref": "#/definitions/rpl_messages_vector"}
+          {"$ref": "#/definitions/ccp_vector"}
         ]
-      }
+      },
+      "description": "v2 bare array root support for CCP desync vectors (ccp16-desync.json)"
     }
-  },
+  ],
   "definitions": {
     "hex": {
       "type": "string",
@@ -438,6 +462,7 @@
     "oscore_vector": {
       "type": "object",
       "required": ["name", "type"],
+      "additionalProperties": false,
       "description": "OSCORE (RFC 8613) test vector for key derivation, request/response protection, replay detection, or invalid input.",
       "properties": {
         "name": {"type": "string"},
@@ -522,6 +547,7 @@
     "rpl_messages_vector": {
       "type": "object",
       "required": ["name", "type", "encoded"],
+      "additionalProperties": false,
       "description": "RPL control message (RFC 6550) parse/generate vector.",
       "properties": {
         "name": {"type": "string"},
@@ -550,6 +576,188 @@
           "$ref": "#/definitions/hex",
           "description": "Encoded message bytes (excluding ICMPv6 header)"
         }
+      }
+    },
+    "schc_fragment_vector": {
+      "type": "object",
+      "required": ["name", "description", "rule_id", "packet", "fragments"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "rule_id": {"type": "integer", "minimum": 0, "maximum": 255},
+        "packet": {"$ref": "#/definitions/hex", "description": "Uncompressed payload to fragment (independent from compression)."},
+        "fragments": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/hex"},
+          "description": "Expected SCHC fragment bytes in transmission order (from RFC 8724 §8 or external oracle)."
+        },
+        "mode": {"type": "string", "enum": ["no_ack", "ack_on_error", "ack_always"]},
+        "mic": {"$ref": "#/definitions/hex", "description": "Expected MIC for All-1 (CRC32)."},
+        "acks": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/hex"},
+          "description": "Expected ACK bitmaps or responses for ACK-on-error cases."
+        },
+        "expect": {
+          "type": "object",
+          "properties": {
+            "mic_fail": {"type": "boolean"},
+            "out_of_order": {"type": "boolean"},
+            "retransmits": {"type": "array", "items": {"type": "integer"}},
+            "abort_after_attempts": {"type": "integer", "description": "Per RFC 8724 8.4.3.2: ACK then abort on exceeding MAX_ACK_REQUESTS (not immediate abort on 5th)."}
+          }
+        }
+      }
+    },
+    "deaddrop_vector": {
+      "type": "object",
+      "required": ["name", "type", "description", "recipient", "ciphertext", "ttl", "encoded"],
+      "additionalProperties": false,
+      "description": "Independent test vectors for /deaddrop DTN endpoint (POST submission, GET pickup). Aligns with oscore.json for OSCORE-wrapped ciphertexts and RFC 8428 SenML for message content. Uses external RFC oracles only.",
+      "properties": {
+        "name": {"type": "string"},
+        "type": {
+          "type": "string",
+          "enum": ["post_submission", "pickup", "rejection", "oscore_wrapped"]
+        },
+        "description": {"type": "string"},
+        "recipient": {"type": "string", "description": "Node ID or EUI for recipient"},
+        "ciphertext": {"$ref": "#/definitions/hex", "description": "OSCORE-protected payload (cross-ref oscore.json)"},
+        "ttl": {"type": "integer", "minimum": 0},
+        "encoded": {"$ref": "#/definitions/hex", "description": "Full CoAP request/response bytes (independent oracle from RFC 7252 + OSCORE)"},
+        "senml_payload": {"$ref": "#/definitions/hex", "description": "Optional SenML-CBOR inside ciphertext (RFC 8428)"},
+        "expected": {
+          "type": "object",
+          "properties": {
+            "response_code": {"type": "integer"},
+            "num_pending": {"type": "integer"},
+            "oscore_option": {"$ref": "#/definitions/hex"}
+          }
+        }
+      }
+    },
+    "ccp_vector": {
+      "type": "object",
+      "required": ["name", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "type": {"type": "string"},
+        "rssi_dbm": {"type": "integer", "minimum": -120, "maximum": 0},
+        "threshold_dbm": {"type": "integer", "minimum": -120, "maximum": 0},
+        "expected": {"type": "string"},
+        "action": {"type": "string"},
+        "current_sf": {"type": "integer", "minimum": 7, "maximum": 12},
+        "snr_ema": {"type": "integer", "minimum": -30, "maximum": 30},
+        "density": {"type": "integer", "minimum": 0},
+        "per": {"type": "number", "minimum": 0, "maximum": 100},
+        "load_factor": {"type": "number", "minimum": 0, "maximum": 1},
+        "expected_sf": {"type": "integer", "minimum": 7, "maximum": 12},
+        "reason": {"type": "string"},
+        "snr_samples": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": -30, "maximum": 30}
+        },
+        "expected_ema": {"type": "integer"},
+        "expected_sf_from_ema": {"type": "integer", "minimum": 7, "maximum": 12},
+        "eui64_hex": {"$ref": "#/definitions/hex"},
+        "num_slots": {"type": "integer", "minimum": 1},
+        "expected_slot": {"type": "integer"},
+        "slot_ms": {"type": "integer"},
+        "guard_ms": {"type": "integer"},
+        "drift_ppm": {"type": "integer"},
+        "superframe_ms": {"type": "integer"},
+        "beacon_nominal_ms": {"type": "integer"},
+        "observed_ms": {
+          "type": "array",
+          "items": {"type": "integer"}
+        },
+        "expected_ppm": {"type": "integer"},
+        "slot_adjust_ticks": {"type": "integer"},
+        "current_sfn": {"type": "integer", "minimum": 0},
+        "last_sfn": {"type": "integer", "minimum": 0},
+        "guard_ppm": {"type": "integer"},
+        "version": {"type": "integer", "minimum": 0},
+        "alternate_version": {"type": "integer", "minimum": 0},
+        "util": {"type": "number", "minimum": 0, "maximum": 1},
+        "queue_peak": {"type": "integer"},
+        "etx": {"type": "number"},
+        "score": {"type": "number"},
+        "expected_density": {"type": "integer", "minimum": 0},
+        "hash_32_example": {"$ref": "#/definitions/hex"},
+        "busy_time_pct": {"type": "number", "minimum": 0, "maximum": 100},
+        "expected_score": {"type": "number"},
+        "channel_scores": {
+          "type": "object",
+          "additionalProperties": {"type": "integer", "minimum": 0, "maximum": 100}
+        },
+        "threshold": {"type": "number", "minimum": 0, "maximum": 1},
+        "cca_result": {"type": "string"},
+        "interference_score": {"type": "number"},
+        "queue_depth": {"type": "integer", "minimum": 0},
+        "sfn": {"type": "integer", "minimum": 0},
+        "expected_hash": {"type": "integer"},
+        "n_channels": {"type": "integer", "minimum": 1, "maximum": 16},
+        "tdma_sfn": {"type": "integer", "minimum": 0},
+        "tdma_slot": {"type": "integer", "minimum": 0},
+        "select_channel_expected": {"type": "integer", "minimum": 0},
+        "expected_channel": {"type": "integer", "minimum": 0, "maximum": 15},
+        "announce_rx_ch": {"type": "integer", "minimum": 0, "maximum": 15},
+        "peer_known": {"type": "boolean"},
+        "control_fallback": {"type": "boolean"},
+        "expected_rendezvous_ch": {"type": "integer", "minimum": 0, "maximum": 15},
+        "uses_sync_hop": {"type": "boolean"},
+        "t": {"type": "integer", "minimum": 0},
+        "epoch": {"type": "integer", "minimum": 0},
+        "channel": {"type": "integer", "minimum": 0, "maximum": 15},
+        "l2_dispatch": {"type": "integer", "minimum": 0, "maximum": 255},
+        "encoded": {"$ref": "#/definitions/hex"},
+        "expected_flags": {"type": "integer", "minimum": 0, "maximum": 255},
+        "expected_encoded_flag": {"type": "integer", "minimum": 0, "maximum": 255},
+        "can_transmit": {"type": "boolean"},
+        "can_transmit_100ms": {"type": "boolean"},
+        "limit_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "window_ms": {"type": "integer", "minimum": 0},
+        "now_ms": {"type": "integer", "minimum": 0},
+        "remaining_ms": {"type": "integer", "minimum": 0},
+        "usage_permille": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "txs": {"type": "array"},
+        "duration_ms": {"type": "integer", "minimum": 0},
+        "next_available_ms": {"type": "integer", "minimum": 0},
+        "type": {"type": "string"},
+        "avg_rssi_dbm": {"type": "integer", "minimum": -120, "maximum": 0},
+        "neighbor_count": {"type": "integer", "minimum": 0},
+        "exceeds_high_threshold": {"type": "boolean"}
+      }
+    },
+    "compact_cot_vector": {
+      "type": "object",
+      "required": ["name", "description", "binary_hex", "decoded_fields"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "binary_hex": {"$ref": "#/definitions/hex"},
+        "decoded_fields": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "schnorr_vector": {
+      "type": "object",
+      "required": ["description", "public_key", "message", "signature", "valid"],
+      "additionalProperties": false,
+      "properties": {
+        "description": {"type": "string"},
+        "seed": {"$ref": "#/definitions/hex"},
+        "private_key": {"$ref": "#/definitions/hex"},
+        "public_key": {"$ref": "#/definitions/hex"},
+        "message": {"$ref": "#/definitions/hex"},
+        "signature": {"$ref": "#/definitions/hex"},
+        "valid": {"type": "boolean"}
       }
     }
   }

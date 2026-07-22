@@ -91,29 +91,6 @@ STATS_SECT_DECL(lichen_coap_stats) lichen_coap_stats;
  */
 #define BEACON_HDR_LEN 5
 #define BEACON_TOTAL_LEN BEACON_HDR_LEN
-static uint8_t s_beacon[BEACON_TOTAL_LEN];
-static uint8_t s_seqnum;
-static uint8_t s_epoch;
-
-static void telemetry_packet(const char *event, const uint8_t *payload, size_t len,
-				     uint8_t seq, int16_t rssi, int8_t snr)
-{
-	uint8_t digest[32];
-	char hash[17];
-
-	if (lichen_sha256(payload, len, digest) != 0) {
-		LOG_ERR("TELEMETRY hash_failed event=%s", event);
-		return;
-	}
-	for (size_t i = 0; i < 8; i++) {
-		snprintk(&hash[i * 2], 3, "%02x", digest[i]);
-	}
-	hash[16] = '\0';
-	LOG_INF("TELEMETRY {\"schema\":\"lichen.telemetry.v1\",\"event\":\"%s\",\"ts_us\":%llu,\"node_id\":\"zephyr-t_echo\",\"impl\":\"zephyr\",\"tx_id\":\"%s\",\"packet_hash\":\"%s\",\"direction\":\"%s\",\"peer_id\":null,\"payload_len\":%u,\"rssi_dbm\":%d,\"snr_db\":%d,\"seq\":%u,\"status\":\"ok\"}",
-		 event, (unsigned long long)k_uptime_get() * 1000ULL, hash, hash,
-		 strcmp(event, "tx") == 0 ? "tx" : "rx", (unsigned int)len,
-		 rssi, snr, seq);
-}
 
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 /* Placeholder IID — in production derive from nRF52840 FICR. */
@@ -207,15 +184,19 @@ static inline void set_phase(enum stall_phase ph)
 #if !IS_ENABLED(CONFIG_LICHEN_L2)
 static void send_beacon(const struct device *dev)
 {
-	/* Build beacon header */
-	s_beacon[0] = BEACON_TOTAL_LEN - 1U;
-	s_beacon[1] = 0x00;  /* LLSec: broadcast, unsigned, plaintext */
-	if (++s_seqnum == 0) {
-		s_epoch++;  /* Increment epoch on seqnum wrap */
+	/* Build beacon header. Static state persists across calls. */
+	static uint8_t beacon[BEACON_TOTAL_LEN];
+	static uint8_t seqnum;
+	static uint8_t epoch;
+
+	beacon[0] = BEACON_TOTAL_LEN - 1U;
+	beacon[1] = 0x00;  /* LLSec: broadcast, unsigned, plaintext */
+	if (++seqnum == 0) {
+		epoch++;  /* Increment epoch on seqnum wrap */
 	}
-	s_beacon[2] = s_epoch;   /* epoch */
-	s_beacon[3] = 0x00;      /* seqhi */
-	s_beacon[4] = s_seqnum;  /* seqlo */
+	beacon[2] = epoch;   /* epoch */
+	beacon[3] = 0x00;      /* seqhi */
+	beacon[4] = seqnum;  /* seqlo */
 
 	set_phase(PH_CFG_TX);
 	if (lora_set_mode(dev, true) < 0) {
@@ -223,12 +204,11 @@ static void send_beacon(const struct device *dev)
 		return;
 	}
 	set_phase(PH_TX);
-	int ret = lora_send(dev, s_beacon, sizeof(s_beacon));
+	int ret = lora_send(dev, beacon, sizeof(beacon));
 	if (ret < 0) {
 		LOG_ERR("beacon TX failed: %d", ret);
 	} else {
-		LOG_INF("beacon seq=%u", s_seqnum);
-		telemetry_packet("tx", s_beacon, sizeof(s_beacon), s_seqnum, 0, 0);
+		LOG_INF("beacon seq=%u", seqnum);
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 		s_radio_stats.tx_pkts++;
 #endif
@@ -586,7 +566,6 @@ int main(void)
 			LOG_INF("RX %d B rssi=%d snr=%d [%02x %02x]",
 				len, rssi, snr,
 				buf[0], len > 1 ? buf[1] : 0u);
-			telemetry_packet("rx", buf, (size_t)len, 0, rssi, snr);
 #if IS_ENABLED(CONFIG_LICHEN_NATIVE)
 			s_radio_stats.rx_pkts++;
 			/* Forward to connected host.

@@ -72,7 +72,7 @@ build_flags =
         variant_headers=[variant],
     )
 
-    assert report["format_version"] == 1
+    assert report["format_version"] == 2
     assert report["source_set"]["source_project"] == "meshtastic"
     assert report["parsed_facts"]
     assert_every_fact_has_source(report)

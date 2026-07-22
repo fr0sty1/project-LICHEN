@@ -66,6 +66,7 @@ config LORA_LICHEN_MESHTASTIC_BLE
 	depends on BT_MAX_CONN = 1
 	depends on LICHEN_MESHTASTIC_CODEC
 	depends on LICHEN_LINK
+	select LICHEN_LINK
 	depends on !LORA_LICHEN_BLE
 	select LICHEN_APP_IDENTITY
 	select LICHEN_APP_INTERFACE
@@ -89,6 +90,7 @@ config LORA_LICHEN_MESHCORE_BLE
 	depends on BT_FIXED_PASSKEY || ZTEST
 	depends on LICHEN_MESHCORE_CODEC
 	depends on LICHEN_LINK
+	select LICHEN_LINK
 	depends on !LORA_LICHEN_BLE
 	depends on !LORA_LICHEN_MESHTASTIC_BLE
 	select LICHEN_APP_IDENTITY
@@ -185,20 +187,15 @@ config LORA_LICHEN_GATEWAY_MESSAGE_QUEUE_DEPTH
 config LORA_LICHEN_GATEWAY_RPL_ROOT
 	bool "RPL root signalling"
 	depends on LICHEN_RPL
-	depends on BROKEN
-	default n
+	default y
 	help
-	  Enable gateway DIO/DAO processing and root signalling.
-
-	  This is intentionally unavailable until the gateway has an app-level
-	  packet I/O integration that drives the caller-owned LICHEN RPL state
-	  machine. With this option disabled, the gateway advertises itself as
-	  non-RPL-capable in /status so users do not mistake it for a complete
-	  mesh root.
+	  Enable gateway DIO/DAO processing and root signalling for LICHEN_RPL.
+	  Gateway now acts as RPL root per project-LICHEN-t4in.
 
 config LICHEN_GATEWAY_RX1_DELAY_MS
 	int "RX1-style delay before answering a CoAP request (ms)"
 	default 0
+	range 0 1000
 	help
 	  Milliseconds to wait after receiving a CoAP request before sending
 	  the response, giving a half-duplex requesting node time to switch
@@ -206,6 +203,45 @@ config LICHEN_GATEWAY_RX1_DELAY_MS
 	  reply can arrive during the requester's TX->RX turnaround and be
 	  missed (lora_ipv6_mesh-fe1z, observed on the T1000-E/LR1110). 0
 	  disables the delay. ~100 ms is a safe LoRa value.
+
+config LICHEN_GATEWAY_COORDINATION
+	bool "Gateway coordination protocol (TDMA slots, node registry, handoff)"
+	depends on LICHEN_RPL
+	depends on LICHEN_COAP
+	depends on LICHEN_COAP_SERVER || LICHEN_COAP_CONFIG
+	default n
+	help
+	  Enable multi-gateway coordination per mugl.3 / spec/05-routing.md:145
+	  (backbone UDP/CoAP to /.well-known/lichen-gw). Supports closed (PSK+OSCORE)
+	  and open (Ed25519 signatures+TOFU) federation modes. Stubs in subsys and
+	  rust/lichen-gateway to follow. Required for >1 gateway deployments.
+
+choice LICHEN_GW_FEDERATION_MODE
+	prompt "Gateway federation mode for coordination"
+	default LICHEN_GW_FEDERATION_CLOSED
+	depends on LICHEN_GATEWAY_COORDINATION
+	help
+	  Closed: PSK-based for single-operator. Open: signature-based for
+	  multi-operator with TOFU. Dual supports both simultaneously (mugl.3).
+
+config LICHEN_GW_FEDERATION_CLOSED
+	bool "Closed federation (PSK + OSCORE)"
+
+config LICHEN_GW_FEDERATION_OPEN
+	bool "Open federation (Ed25519 + TOFU)"
+
+config LICHEN_GW_FEDERATION_DUAL
+	bool "Dual federation (both modes)"
+
+endchoice
+
+config LICHEN_GW_PSK
+	string "Base64-encoded PSK for closed/dual federation"
+	depends on LICHEN_GATEWAY_COORDINATION
+	depends on LICHEN_GW_FEDERATION_CLOSED || LICHEN_GW_FEDERATION_DUAL
+	help
+	  Shared secret for OSCORE in closed federation. Must match on all
+	  cooperating gateways in closed mode. 32+ bytes recommended.
 
 # Force modular CoAP (lichen_coap service + LICHEN_COAP_CONFIG) for
 # gateway; legacy standalone server (lichen_coap_server) would duplicate

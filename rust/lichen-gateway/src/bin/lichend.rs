@@ -9,13 +9,17 @@
 //!   lichend --sim --no-tun                 # TCP simulator, logging only (CI)
 
 use clap::Parser;
-use lichen_core::addr::NodeId;
+use lichen_core::{
+    addr::NodeId,
+    ipv6::{field, IPV6_HEADER_LEN},
+};
 use lichen_gateway::{
     config::Config,
     slip::{SlipFramer, SLIP_TX_BUF_SIZE},
-    Gateway,
+    Gateway, RplEvent,
 };
 use lichen_sim::SimClient;
+
 use std::path::PathBuf;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -347,7 +351,29 @@ where
 // ── packet forwarding ─────────────────────────────────────────────────────────
 
 async fn forward_mesh_to_upstream<T: TunLike>(gw: &mut Gateway, frame: &[u8], tun: &Option<T>) {
+    let (reply_opt, event) = gw.process_rpl(frame, 1000); // TODO: real monotonic ms for trickle
+    if let Some(reply) = reply_opt {
+        info!(
+            len = reply.len(),
+            "reply_buf used (no ignore); mesh reply ready for SLIP TX queue"
+        );
+        // TODO: queue via slip.queue_send(&reply) or tx_send in run_* context
+    }
+    if let RplEvent::DaoReceived {
+        route_updated: true,
+    } = event
+    {
+        info!("DAO event: route updated");
+    }
+
     if let Some(ipv6) = gw.mesh_to_upstream(frame) {
+        let mut dst = [0u8; 16];
+        if ipv6.len() >= IPV6_HEADER_LEN {
+            dst.copy_from_slice(&ipv6[field::DST_OFFSET..IPV6_HEADER_LEN]);
+            if gw.is_local_mesh(&dst) {
+                return;
+            }
+        }
         if let Some(t) = tun {
             if let Err(e) = t.send_pkt(&ipv6).await {
                 error!("TUN write: {e}");

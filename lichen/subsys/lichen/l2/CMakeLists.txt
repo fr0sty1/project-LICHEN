@@ -20,3 +20,9 @@ if(CONFIG_LICHEN_L2_DEV_PROVISIONING)
 endif()
 
 zephyr_include_directories(.)
+zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../link/include)
+
+# Link subsystem headers required for lichen_identity_ygg_addr_from_ed25519
+# (used by lichen_yggdrasil_addr in ipv6_addr.c). Matches pattern used in
+# routing/ and senml/ CMakeLists.txt. (codereview-p8i6-2a)
+zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../link/include)

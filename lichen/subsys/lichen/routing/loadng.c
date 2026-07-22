@@ -405,11 +405,11 @@ bool lichen_loadng_seen_check_and_mark(const struct lichen_loadng_rreq *rreq,
 
 	k_mutex_lock(&seen_mutex, K_FOREVER);
 
-	/* Lazy prune. */
-	prune_countdown--;
-	if (prune_countdown <= 0) {
+	if (prune_countdown <= 1) {
 		prune_seen_locked(now_ms);
 		prune_countdown = PRUNE_INTERVAL;
+	} else {
+		prune_countdown--;
 	}
 
 	/* Check if already seen. */
@@ -455,6 +455,7 @@ void lichen_loadng_seen_prune(uint32_t now_ms)
 {
 	k_mutex_lock(&seen_mutex, K_FOREVER);
 	prune_seen_locked(now_ms);
+	prune_countdown = PRUNE_INTERVAL;
 	k_mutex_unlock(&seen_mutex);
 }
 

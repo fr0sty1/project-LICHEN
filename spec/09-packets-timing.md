@@ -228,6 +228,50 @@ Border routers with internet connectivity SHOULD:
 - Provide NTS/Roughtime proxy for LCI clients
 - Expose time provider state (source class, validity, age) via CoAP status
 
+### 14.7. TDMA Superframe Number (SFN)
+
+All nodes in a DODAG MUST compute TDMA slot assignments using identical hash
+function and modulo semantics as defined in 02a-coordinated-capacity.md#tdma-frame-structure-and-slot-assignment-project-lichen-i9r01 (see also
+Section 4.5 of this document for hash-based self-assignment precedent using
+hash_32). Nodes MUST NOT use implementation-specific variations. Slot index
+is computed as `slot = (hash_32(eui64 bytes, 8) + sfn) mod num_slots`
+(exact per is_assigned_slot pseudocode and ccp_load_balancing.json).
+
+**Time-Provider Interaction on SFN Wrap:**
+
+```pseudocode
+// on_sfn_wrap(beacon): see docs/firmware-time-provider.md:20 for
+// effective_epoch_floor definition and lichen_hal_time_submit()
+on_sfn_wrap(beacon):
+    ts = beacon.timestamp
+    if not time_provider.validate(ts >= effective_epoch_floor
+                                  and wall_clock_valid):
+        enter_desync_recovery()
+        return
+    update_local_sfn(ts, beacon.sfn)
+    remain_synced()
+```
+
+Nodes MUST reject SFN updates unless the timestamp passes the time provider's
+effective epoch floor validation (see docs/firmware-time-provider.md:56 for
+rejection semantics). This interaction prevents wrap-induced desynchronization
+from stale or bogus time.
+
+**Desynchronization Recovery FSM:**
+
+The recovery mechanism is a finite state machine (see 02a-coordinated-capacity.md#tdma-frame-structure-and-slot-assignment-project-lichen-i9r01 and project-LICHEN-i9r0.1 for full normative definition, timing parameters, and test vectors). States and transitions:
+
+| Current State | Event | Next State | Action |
+|---------------|-------|------------|--------|
+| SYNCED | SFN wrap + invalid time provider | DESYNCED | Suppress TDMA TX, use contention only |
+| DESYNCED | Valid beacon (ts >= floor, matching SFN) | RECOVERING | Start extended listen timer |
+| RECOVERING | 3 consecutive valid beacons | SYNCED | Resume normal TDMA slot usage |
+| RECOVERING | Timeout or invalid ts | DESYNCED | Reset listen window |
+
+Implementations MUST implement this FSM in the TDMA subsystem (lichen_tdma_init()
+in lichen/subsys/lichen/link) and document timeout values (RECOMMENDED: 3
+superframes for RECOVERING).
+
 ---
 
 [← Previous: Node Types](08-nodes.md) | [Index](README.md) | [Next: Implementation →](10-implementation.md)

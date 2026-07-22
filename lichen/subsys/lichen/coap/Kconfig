@@ -145,6 +145,30 @@ config LICHEN_COAP_STATUS_MAX_ROUTES
 	  Maximum number of route entries returned in a single
 	  /status/routes response.
 
+config LICHEN_COAP_STATUS_CBOR_MAX_SIZE
+	int "Maximum CBOR size for /status"
+	depends on LICHEN_COAP_STATUS
+	default 256
+	range 64 512
+	help
+	  Maximum buffer for lichen_coap_encode_status_cbor (CCP-17 capacity).
+
+config LICHEN_COAP_NEIGHBORS_CBOR_MAX_SIZE
+	int "Maximum CBOR size for /status/neighbors"
+	depends on LICHEN_COAP_STATUS
+	default 512
+	range 128 2048
+	help
+	  Maximum buffer for lichen_coap_encode_neighbors_cbor (CCP-17).
+
+config LICHEN_COAP_ROUTES_CBOR_MAX_SIZE
+	int "Maximum CBOR size for /status/routes"
+	depends on LICHEN_COAP_STATUS
+	default 512
+	range 128 2048
+	help
+	  Maximum buffer for lichen_coap_encode_routes_cbor (CCP-17).
+
 config LICHEN_COAP_STATUS_LOG_LEVEL
 	int "CoAP status log level"
 	depends on LICHEN_COAP_STATUS
@@ -252,4 +276,65 @@ config LICHEN_COAP_LOCATION_LOG_LEVEL
 	  Log level for the LICHEN CoAP location handler:
 	  0=off, 1=error, 2=warning, 3=info, 4=debug
 
+config LICHEN_COAP_DEADDROP
+ 	bool "LCI /deaddrop DTN dead-drop store-and-forward"
+ 	depends on LICHEN_COAP_SERVER
+ 	depends on LICHEN_OSCORE
+ 	depends on LICHEN_DTN
+ 	select ZCBOR
+ 	select COAP_URI_WILDCARD
+ 	select TIMER
+ 	select ATOMIC_OPERATIONS
+ 	select LICHEN_DTN
+ 	default n
+ 	help
+
+	  Enable LCI dead drop (DTN store-and-forward) CoAP resources
+	  (/deaddrop POST for OSCORE-encrypted submissions, GET
+	  /deaddrop?node=... for pickup). See project-LICHEN-2nnd.4.4 epic
+	  and spec/18-applications.md.
+
+	  Messages use OSCORE E2E encryption with recipient's public key.
+	  Gateway provides DTN storage with TTL-based expiration.
+
+	  INIT ORDER (CRITICAL): Follow AGENTS.md exactly: lichen_link_init()
+	  + lichen_link_load_key() -> oscore_init() -> lichen_coap_server_init()
+	  (or LICHEN_COAP_SERVER_STANDALONE). Deaddrop is server-side; client
+	  auto-inits. OSCORE ctx required before any CoAP resource registration
+	  to prevent zeroed signatures or use-before-init crashes.
+
+	  RATE LIMIT & DTN: Uses LICHEN_COAP_DEADDROP_MAX_MESSAGES and
+	  LICHEN_COAP_DEADDROP_MAX_TTL_SECONDS with kernel timer + atomics for
+	  per-source rate limits, eviction, and DoS protection (spec/12-apps.md
+	  and appendix-bufferbloat.md). Persistent backend for production.
+
+config LICHEN_COAP_DEADDROP_MAX_MESSAGES
+	int "Maximum concurrent dead drop messages"
+	depends on LICHEN_COAP_DEADDROP
+	default 32
+	range 8 256
+	help
+	  Upper bound on stored dead drop messages before rate limiting
+	  rejects new submissions. Balances DTN utility vs. RAM usage
+	  (each message ~200-500 bytes depending on size).
+
+config LICHEN_COAP_DEADDROP_MAX_TTL
+	int "Maximum TTL for dead drops (seconds)"
+	depends on LICHEN_COAP_DEADDROP
+	default 86400
+	range 3600 2592000
+	help
+	  Maximum allowed time-to-live for a dead drop message. Prevents
+	  indefinite storage; default 24 hours. Enforced at submission.
+
+config LICHEN_COAP_DEADDROP_LOG_LEVEL
+	int "CoAP deaddrop log level"
+	depends on LICHEN_COAP_DEADDROP
+	default 3
+	range 0 4
+	help
+	  Log level for the LICHEN CoAP dead drop handlers:
+	  0=off, 1=error, 2=warning, 3=info, 4=debug
+
 endif # LICHEN_COAP
+

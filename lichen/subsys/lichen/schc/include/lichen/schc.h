@@ -97,6 +97,7 @@ extern "C" {
 #define SCHC_RULE_RPL_DAO           4
 #define SCHC_RULE_LINK_LOCAL_OSCORE 5
 #define SCHC_RULE_GLOBAL_OSCORE     6
+#define SCHC_RULE_MQTT_SN           7
 #define SCHC_RULE_UNCOMPRESSED      255
 #define SCHC_FRAGMENT_M 1
 #define SCHC_FRAGMENT_N 6

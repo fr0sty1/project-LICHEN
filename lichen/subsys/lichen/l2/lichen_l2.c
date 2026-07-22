@@ -2166,6 +2166,24 @@ void lichen_l2_iface_init(struct net_if *iface)
 		goto fail_late_init;
 	}
 
+	/* Derive and add primary Yggdrasil address (project-LICHEN-p8i6)
+	 * as NET_ADDR_PREFERRED. Key may not be loaded yet in all paths;
+	 * address added when identity available. Replaces ULA. */
+	uint8_t pubkey[32];
+	bool has_key = false;
+	ret = lichen_link_copy_identity(&link_ctx, NULL, pubkey, &has_key);
+	if (ret == 0 && has_key) {
+		struct in6_addr ygg;
+		ret = lichen_yggdrasil_addr(pubkey, &ygg);
+		if (ret == 0) {
+			char addr_str[LICHEN_IPV6_ADDR_STR_LEN];
+			if (lichen_ipv6_addr_to_str(&ygg, addr_str, sizeof(addr_str)) == 0) {
+				LOG_INF("lichen_l2: primary yggdrasil %s", addr_str);
+			}
+			(void)net_if_ipv6_addr_add(iface, &ygg, NET_ADDR_PREFERRED, 0);
+		}
+	}
+
 #if HAVE_LICHEN_LINK
 #if IS_ENABLED(CONFIG_STATS)
 	(void)STATS_INIT_AND_REG(lichen_l2rx_stats, STATS_SIZE_32, "l2rx");

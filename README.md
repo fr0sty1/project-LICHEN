@@ -110,9 +110,8 @@ Primary embedded target: **Zephyr RTOS** (native IPv6 stack).
 Every node has an IPv6 address derived from its hardware ID:
 
 ```
-Link-local:  fe80::1234:5678:9abc:def0        (always)
-ULA:         fd12:3456:789a:1::1234:5678:...  (when mesh has root)
-Global:      2001:db8:1::1234:5678:...        (when border router present)
+Link-local: fe80::1234:5678:9abc:def0          (always)
+Primary:    0200:1234:5678:9abc::1234:5678:9abc:def0 (Yggdrasil-derived, always)
 ```
 
 Addresses are stable, routable, and work with standard IPv6 tools.

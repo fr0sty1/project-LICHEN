@@ -9,156 +9,46 @@
 
 ### 6.1. IPv6 Addressing
 
-**Design Principles:**
-- Isolated meshes (no border router) MUST work
-- Multiple border routers MUST be tolerated
-- No central address authority required
+**Model: Link-Local (control) + Primary 02xx (Ed25519/Yggdrasil-derived, no ULA)**
 
-**Address Types (Layered):**
+Every node has exactly two addresses. The 02xx address is primary and routable for nearly all traffic (see project-LICHEN-f9x1 for DAO source model).
 
-| Type | Prefix | When Available | Routable To |
-|------|--------|----------------|-------------|
-| Link-local | fe80::/10 | Always | Direct neighbors |
-| ULA | fd00::/8 | DODAG root present | Entire mesh |
-| GUA | 2000::/3 | BR with upstream prefix | Internet |
+| Address | Scope | Use |
+|---------|-------|-----|
+| `fe80::<IID>` | Link-local | NDP, single-hop RPL control (DIO/DIS), bootstrap |
+| `02xx::<IID>` | Global (`02xx::/7`) | **Primary**: application data, multi-hop RPL (DAO to root), mesh routing, Yggdrasil overlay, internet forwarding |
 
-All addresses use the same IID, derived from EUI-64 (see 6.2).
+**Derivation:** Ed25519 pubkey (32 bytes) → SHA-512 → Yggdrasil-style truncation with `02` prefix (normative details, test vectors in 6.2, 06-security.md:109, test/vectors/). IID (lower 64 bits) shared. Unifies identity across signatures, OSCORE, addressing (see 06-security.md).
 
-**1. Link-Local -- Always Available**
+**DAO Source Address Model (routable multi-hop, resolves prior ULA model per project-LICHEN-f9x1):**
+- Single-hop control (DIO, DIS, NDP): IPv6 source = link-local `fe80::<IID>`
+- Multi-hop upward control (DAO): IPv6 source = primary `02xx::<IID>` (routable end-to-end; relays preserve source)
+- This replaces old ULA DAO source model; SCHC rules/vectors to be updated in 03-adaptation.md
 
-Every node has a link-local address from boot:
-```
-fe80::<IID>
-```
-Works without any infrastructure. Sufficient for single-hop communication
-and mesh formation. RPL control messages use link-local.
+**Why no ULA:**
+- 02xx addresses fully routable in RPL DODAG without prefix ads or per-node Yggdrasil
+- Self-elected roots coordinate DODAG; no PIO/RA prefix generation
+- Eliminates source selection policy (no ULA/global confusion)
+- Simplifies SCHC rules, test vectors, impl, security binding to one primary address
+- Yggdrasil provides inter-mesh when BRs join (zt3c epic)
 
-**2. ULA -- Mesh-Routable (Default)**
+**Isolated meshes:** Stable 02xx at boot from keypair. Lowest-IID root election. RPL: link-local for local control, 02xx for data/DAOs. No prefix advertisement.
 
-When a DODAG root is present, it advertises a ULA /64 prefix via RPL DIO:
-```
-fd<40-bit random>:<16-bit subnet>::<IID>
-```
+**Multiple BRs:** No coordination needed. 02xx primary for non-link-local; Yggdrasil for global overlay.
 
-ULA prefix generation (at DODAG root):
-- Generate 40-bit random value per RFC 4193
-- Persist across reboots (stable prefix)
-- 16-bit subnet ID: 0x0001 for primary mesh
-
-Nodes derive their ULA address from the advertised prefix + their IID.
-Traffic is routable throughout the mesh but not to the internet.
-
-**3. GUA -- Internet-Routable (Optional)**
-
-When a border router has an upstream prefix, it advertises a GUA /64:
-```
-<delegated prefix>::<IID>
-```
-
-Sources of GUA prefix:
-- DHCPv6-PD from upstream ISP
-- Static configuration
-- Tunnel broker (e.g., Hurricane Electric)
-- Own PI space
-
-Nodes MAY have both ULA and GUA addresses simultaneously.
-
-**Isolated Meshes (No Border Router):**
-
-When no border router is present, the mesh self-organizes:
-
-**Root Election:**
-- Any router MAY elect itself as DODAG root
-- Election: lowest EUI-64 wins (deterministic, no negotiation)
-- Self-elected root generates and advertises ULA prefix
-- If a "real" border router appears, nodes prefer it (lower rank)
-
-**Root Failure Detection:**
-
-Nodes monitor root health via DIO reception:
-
-| Condition | Action |
-|-----------|--------|
-| No DIO from root for 3× Imax | Declare root unreachable |
-| Root unreachable + no alternate path | Initiate re-election |
-
-Re-election process:
-1. Node with next-lowest EUI-64 waits random delay (0-5 seconds)
-2. If no DIO received during delay, self-elect as root
-3. Generate new ULA prefix (or reuse if known)
-4. Advertise DIO; other candidates stand down
-
-**Root Demotion:**
-
-Nodes MAY vote to demote a misbehaving root:
-
-| Misbehavior | Evidence |
-|-------------|----------|
-| Selective forwarding | Packets dropped, detected via E2E ACKs |
-| Rank manipulation | Advertised rank inconsistent with topology |
-| Resource exhaustion | Root stops responding to DAO |
-
-Demotion protocol:
-1. Detecting node broadcasts DEMOTION_REQUEST with evidence hash
-2. Other nodes validate evidence independently
-3. If >50% of mesh (by node count) agree, root is demoted
-4. Demoted node MUST NOT self-elect for 1 hour
-5. Next-lowest EUI-64 becomes root
-
-DEMOTION_REQUEST format (ICMPv6 RPL Control Message):
-```
-+--------+--------+--------+--------+
-| Type   | Code   | Checksum        |
-+--------+--------+--------+--------+
-| Target EUI-64 (8 bytes)           |
-+--------+--------+--------+--------+
-| Evidence Hash (16 bytes, SHA-256 truncated) |
-+--------+--------+--------+--------+
-| Signature (48 bytes, Schnorr)     |
-+--------+--------+--------+--------+
-```
-
-Nodes track demotion votes per-target. Votes expire after 10 minutes.
-
-**Limitations:**
-
-- EUI-64 gaming requires hardware access; if attacker controls hardware,
-  network is already compromised
-- Demotion requires >50% honest nodes (Byzantine assumption)
-- Small meshes (<5 nodes) should use manual root configuration
-
-**Multiple Border Routers:**
-
-Multiple BRs are supported. Each BR:
-- Advertises its own prefix(es) via RPL DIO
-- Forms its own DODAG (same or different RPL Instance)
-- Nodes may join multiple DODAGs or pick the best one
-
-Coordination between BRs is NOT required. Nodes handle multiple prefixes:
-- May have multiple addresses (one per prefix)
-- Route selection based on destination prefix
-- Default route via any BR with GUA prefix
+RPL control: link-local for single-hop; 02xx for multi-hop routability.
 
 ### 6.2. Interface Identifier (IID) Derivation
 
-From EUI-64 (IEEE method):
-```
-IID = EUI-64 XOR 0x0200_0000_0000_0000
-```
+IID is the lower 64 bits of the cryptographically derived value from the node's Ed25519 keypair (exact algorithm, truncation, and U/L bit clear in 06-security.md:109 "unified Ed25519 derivation (no-ULA model)" and test/vectors/). Ensures binding between identity, signatures, OSCORE contexts, and both addresses.
 
-From 16-bit short address:
-```
-IID = 0x0000_00FF_FE00_0000 | (short_addr << 48)
-```
+**Formats:**
+- Link-local: `fe80::[IID]` (always available, control plane)
+- Primary: `02xx::[IID]` (Yggdrasil-derived global, data plane and multi-hop)
 
-**Stable IIDs only.** IIDs are stable and hardware-derived for the life of
-the node. Temporary addresses (RFC 4941) and opaque/random IIDs (RFC 7217)
-MUST NOT be used. This is a deliberate deviation from the RFC 8064 default:
-root election, short-address assignment, replay windows, and signature
-caching all key on a node's stable EUI-64, and every frame is already bound
-to a stable public key, so a rotating IID would break the mesh while
-providing no unlinkability. See Privacy in Security Considerations
-(section 15.5 in Security) for the full analysis.
+**Human-readable short address:** Crockford Base32 of IID (13 chars with dashes): e.g. `KCVN-MRPX-QWERT`. See 12.3, `02-physical-link.md:215`, test/vectors/ for derivation (`hash_32(EUI-64,0)` with collision/DAD rules), vectors, and short address assignment.
+
+**Stable IIDs only** (no RFC 4941/7217 temporaries). Root election by lowest IID. EUI-64 used only for link layer per `02-physical-link.md:101`. Full consistency with 6.1 DAO model and 06-security.md.
 
 ### 6.3. Multicast and Broadcast
 
@@ -310,39 +200,32 @@ Standard ICMPv6 (RFC 4443) for:
 
 ### 12.1. Address Structure
 
-See Section 6.1 for full addressing design. Summary:
+See Section 6.1 for full design. Nodes have exactly two addresses:
 
-```
-Link-local:  fe80::<IID>                    (always available)
-ULA:         fd<40-bit random>:<subnet>::<IID>  (mesh-routable)
-GUA:         <delegated prefix>::<IID>      (internet-routable)
-```
+- Link-local: `fe80::<IID>` (for control plane)
+- Primary: `02xx::<IID>` (Yggdrasil-derived, used for all application traffic)
 
-IID is derived from EUI-64 (see Section 6.2), ensuring stable identity.
+IID and 02xx address are both deterministically derived from the Ed25519 public key (see 6.2 and 6.1). This binds identity across layers.
 
 ### 12.2. Example Addresses
 
-| Type | Example | Routable To |
-|------|---------|-------------|
-| Link-local | fe80::1234:5678:9abc:def0 | Direct neighbors |
-| ULA | fd12:3456:789a:0001::1234:5678:9abc:def0 | Entire mesh |
-| GUA | 2001:db8:1234:1::1234:5678:9abc:def0 | Internet |
+| Address | Example | Routable To |
+|---------|---------|-------------|
+| Link-local | fe80::1234:5678:9abc:def0 | Direct neighbors, NDP, RPL |
+| Primary (02xx) | 02ab:cd12:3456:7890:1234:5678:9abc:def0 | Mesh + global (via Yggdrasil) |
 
-A node typically has all three when a BR with upstream connectivity is present.
+The 02xx address is always present and primary. No ULA or per-prefix GUAs.
 
 ### 12.3. Short Address Assignment
 
-16-bit short addresses optimize 6LoWPAN compression (2 bytes vs 8).
+16-bit short addresses optimize 6LoWPAN compression (2 bytes vs 8 bytes for IID). Full details and hybrid (coordinator vs self-assignment) procedure in `02-physical-link.md:171` (section 4.5); see exact line `02-physical-link.md:215` for note on `hash_32(EUI-64,0)` collision risk (with crc32_ieee per `02a-coordinated-capacity.md:119`), DAD retry strategy using `concat(EUI-64, retry)` seed mixing, exponential backoff, and 8-probe max.
 
 Assignment methods (no central authority required):
-1. **Derived from EUI-64:** Hash lower 16 bits, check for collision
-2. **Self-assigned + DAD:** Pick random, verify uniqueness via DAD
-3. **DODAG root assignment:** Root allocates from pool (optional optimization)
+1. **Derived from IID:** `short_addr = (hash_32(EUI-64 bytes, 8) & 0xFFFE) | 0x0001` (explicit `hash_32(EUI-64,0)` per `02-physical-link.md:199`; collision mitigation at :215)
+2. **Self-assigned + DAD:** Hash-derived or random candidate, verified via DAD probe on link (up to 8 attempts)
+3. **Root-assisted (optional):** DODAG root coordinates pool and assigns authoritatively via DAO-ACK (see `02-physical-link.md:178`)
 
-Collision resolution: If DAD detects duplicate, regenerate and retry.
-
-Short addresses are mesh-local; they compress the IID for routing efficiency
-but the full IID remains the stable identifier for security (key binding).
+Short addresses are mesh-local and compress the IID; full 02xx or link-local used for end-to-end identification and security binding. EUI-64 retained only for link layer per `02-physical-link.md:101`.
 
 ---
 

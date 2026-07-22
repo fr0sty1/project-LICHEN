@@ -38,6 +38,17 @@ pub struct NodeStatus {
     pub dodag: Dodag,
     /// Radio counters.
     pub radio: RadioStatus,
+    /// TX queue capacity and usage for load balancing / bufferbloat (CCP-16/17,
+    /// da2q multi-channel context). Used by gateways to balance load across
+    /// channels and detect congestion.
+    #[serde(default)]
+    pub txq_cap: u8,
+    #[serde(default)]
+    pub txq_used: u8,
+    #[serde(default)]
+    pub fwd_cap: u8,
+    #[serde(default)]
+    pub fwd_used: u8,
 }
 
 impl NodeStatus {
@@ -194,6 +205,10 @@ mod tests {
                     (txt("duty_cycle_pct"), Value::Integer(125u64.into())),
                 ]),
             ),
+            (txt("txq_cap"), Value::Integer(16u64.into())),
+            (txt("txq_used"), Value::Integer(3u64.into())),
+            (txt("fwd_cap"), Value::Integer(32u64.into())),
+            (txt("fwd_used"), Value::Integer(5u64.into())),
         ]);
 
         let s = NodeStatus::from_cbor(&encode(&wire)).unwrap();
@@ -213,6 +228,10 @@ mod tests {
         assert_eq!(s.radio.tx_packets, 7);
         assert_eq!(s.radio.duty_cycle_pct_x10, 125);
         assert_eq!(s.radio.duty_cycle_pct(), 12.5);
+        assert_eq!(s.txq_cap, 16);
+        assert_eq!(s.txq_used, 3);
+        assert_eq!(s.fwd_cap, 32);
+        assert_eq!(s.fwd_used, 5);
     }
 
     /// A node without a battery omits `battery_pct`/`battery_mv`; those must

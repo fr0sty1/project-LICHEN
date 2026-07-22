@@ -49,3 +49,19 @@ sysbus:
     init add:
         Tag <0x10000060, 0x10000063> "DEVICEID[0]" 0x1CE00001
         Tag <0x10000064, 0x10000067> "DEVICEID[1]" 0x1CE00002
+
+// BLE/RADIO peripheral (0x40001000) for LICHEN BLE LCI (NUS) and Meshtastic GATT.
+// Overrides stock nRF RADIO model. Wires IRQ to NVIC 1 per nRF52 spec. Uses
+// custom GATT stub for KISS/LCI compatibility testing in Renode. No dead code.
+radio: @ none
+radio: Wireless.NRF52840_BLE @ sysbus 0x40001000
+    -> nvic@1
+
+// Override stock USBD (incomplete; caused EVENTCAUSE polling stall in
+// nrfx_usbd_common::usbd_enable and Zephyr USB init). Our model sets READY
+// bit (EVENTCAUSE[11]), handles ENABLE/TASKS/EVENTS/INTEN per 5ix1.4.5 trace,
+// asserts IRQ on USBEVENT/EP0SETUP, simulates attached+powered state. Enables
+// full LICHEN_NATIVE/USBD_CDC without config bypasses. Reuse for T1000-E/R1.
+usbd: @ none
+usbd: Wireless.NRF52840_USBD @ sysbus 0x40027000
+    -> nvic@39

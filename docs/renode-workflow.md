@@ -81,10 +81,10 @@ lichen-sim --node-port 5555 --api-port 5556 --pcap capture.pcapng
 
 ```bash
 # From the lichen/ directory (Zephyr workspace)
-west build -b t_echo_nrf52840 app/shell -d build/t_echo
+west build -b t_echo/nrf52840 lichen/apps/puck -d build/t_echo
 
 # Or for RAK4631
-west build -b rak4631_nrf52840 app/shell -d build/rak4631
+west build -b rak4631/nrf52840 lichen/apps/puck -d build/rak4631
 ```
 
 ### 3. Run in Renode
@@ -458,7 +458,7 @@ jobs:
       - name: Build firmware
         run: |
           # Assumes Zephyr toolchain is cached/installed
-          west build -b t_echo_nrf52840 lichen/app/shell
+          west build -b t_echo/nrf52840 lichen/apps/puck
 
       - name: Run Renode tests
         run: |

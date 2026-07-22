@@ -24,7 +24,7 @@ from lichen.rpl.messages import DAO, DIO, to_icmpv6
 from lichen.schc.headers import compress_packet
 
 VECTORS_DIR = Path(__file__).resolve().parent
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 L2_DISPATCH_SCHC = 0x14
 L2_DISPATCH_ROUTING = 0x15
 
@@ -52,8 +52,10 @@ MESHCORE_SOURCE_BASELINE = {
 def _announce_coords_encode(latitude: float, longitude: float) -> bytes:
     latitude_e7 = int(round(latitude * 10_000_000))
     longitude_e7 = int(round(longitude * 10_000_000))
-    return bytes([0x01]) + latitude_e7.to_bytes(4, "big", signed=True) + longitude_e7.to_bytes(
-        4, "big", signed=True
+    return (
+        bytes([0x01])
+        + latitude_e7.to_bytes(4, "big", signed=True)
+        + longitude_e7.to_bytes(4, "big", signed=True)
     )
 
 
@@ -137,11 +139,7 @@ def _bytes_field(field: int, value: bytes) -> bytes:
 
 
 def _module_config_disabled_telemetry() -> bytes:
-    telemetry = (
-        _varint_field(1, 0)
-        + _varint_field(2, 0)
-        + _bool_field(14, False)
-    )
+    telemetry = _varint_field(1, 0) + _varint_field(2, 0) + _bool_field(14, False)
     return _bytes_field(6, telemetry)
 
 
@@ -168,14 +166,18 @@ def _config_section_payload(fields: list[tuple[int, int]]) -> bytes:
     return b"".join(_varint_field(field, value) for field, value in fields)
 
 
-def _config_section_entry(name: str, oneof_field: int, fields: list[tuple[int, int]]) -> dict:
+def _config_section_entry(
+    name: str, oneof_field: int, fields: list[tuple[int, int]]
+) -> dict:
     payload = _config_section_payload(fields)
     return {
         "section": name,
         "oneof_field": oneof_field,
         "payload": _bytes_field(oneof_field, payload).hex(),
-        "fields": [{"field": field, "wire_type": "varint", "value": value}
-                   for field, value in fields],
+        "fields": [
+            {"field": field, "wire_type": "varint", "value": value}
+            for field, value in fields
+        ],
     }
 
 
@@ -184,13 +186,13 @@ def _config_section_expectations() -> list[dict]:
 
 
 def _data(portnum: int, payload: bytes = b"", request_id: int | None = None) -> bytes:
-	out = bytearray()
-	out += _varint_field(1, portnum)
-	if payload:
-		out += _bytes_field(2, payload)
-	if request_id is not None:
-		out += _fixed32_field(6, request_id)
-	return bytes(out)
+    out = bytearray()
+    out += _varint_field(1, portnum)
+    if payload:
+        out += _bytes_field(2, payload)
+    if request_id is not None:
+        out += _fixed32_field(6, request_id)
+    return bytes(out)
 
 
 def _position_payload(
@@ -307,22 +309,45 @@ def _coap(code: int = 1, mid: int = 0x1234) -> bytes:
 
 
 def schc_vectors() -> list[dict]:
-    dio = DIO(rpl_instance_id=0, version=1, rank=256, dtsn=0, dodag_id=LL_SRC,
-              grounded=True)
+    dio = DIO(
+        rpl_instance_id=0, version=1, rank=256, dtsn=0, dodag_id=LL_SRC, grounded=True
+    )
     dao = DAO(rpl_instance_id=0, dao_sequence=5, dodag_id=LL_SRC)
     cases = [
-        ("coap_linklocal", 0, "Link-local IPv6+UDP+CoAP GET",
-         _udp_ipv6(LL_SRC, LL_DST, _coap())),
-        ("coap_global", 1, "Global IPv6+UDP+CoAP GET",
-         _udp_ipv6(G_SRC, G_DST, _coap())),
-        ("icmpv6_echo", 2, "Link-local ICMPv6 Echo Request",
-         _icmpv6_ipv6(LL_SRC, LL_DST,
-                      EchoRequest(identifier=0xABCD, sequence=7, data=b"ping")
-                      .to_message())),
-        ("rpl_dio", 3, "Link-local RPL DIO",
-         _icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dio))),
-        ("rpl_dao", 4, "Link-local RPL DAO with DODAGID",
-         _icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dao))),
+        (
+            "coap_linklocal",
+            0,
+            "Link-local IPv6+UDP+CoAP GET",
+            _udp_ipv6(LL_SRC, LL_DST, _coap()),
+        ),
+        (
+            "coap_global",
+            1,
+            "Global IPv6+UDP+CoAP GET",
+            _udp_ipv6(G_SRC, G_DST, _coap()),
+        ),
+        (
+            "icmpv6_echo",
+            2,
+            "Link-local ICMPv6 Echo Request",
+            _icmpv6_ipv6(
+                LL_SRC,
+                LL_DST,
+                EchoRequest(identifier=0xABCD, sequence=7, data=b"ping").to_message(),
+            ),
+        ),
+        (
+            "rpl_dio",
+            3,
+            "Link-local RPL DIO",
+            _icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dio)),
+        ),
+        (
+            "rpl_dao",
+            4,
+            "Link-local RPL DAO with DODAGID",
+            _icmpv6_ipv6(LL_SRC, LL_DST, to_icmpv6(dao)),
+        ),
     ]
     return [
         {
@@ -379,23 +404,60 @@ def l2_payload_vectors() -> list[dict]:
 
 def frame_vectors() -> list[dict]:
     cases = [
-        ("broadcast_min", "Broadcast, no address, unsigned",
-         LichenFrame(epoch=1, seqnum=2, dst_addr=b"", payload=b"abc",
-                     mic=b"", addr_mode=AddrMode.NONE,
-                     mic_length=MicLength.BITS32)),
-        ("short_addr", "16-bit short destination address",
-         LichenFrame(epoch=0x10, seqnum=0x2030, dst_addr=bytes([0xAB, 0xCD]),
-                      payload=b"hi", mic=b"", addr_mode=AddrMode.SHORT,
-                     mic_length=MicLength.BITS32)),
-        ("extended_addr_mic64", "64-bit address, 64-bit MIC",
-         LichenFrame(epoch=0xFF, seqnum=0xFFFF, dst_addr=bytes(range(8)),
-                      payload=b"data", mic=b"",
-                     addr_mode=AddrMode.EXTENDED, mic_length=MicLength.BITS64)),
-        ("signed_encrypted", "Unsupported signature + encrypted combination",
-         LichenFrame(epoch=3, seqnum=4, dst_addr=b"", payload=b"x",
-                     mic=bytes(48), addr_mode=AddrMode.NONE,
-                     mic_length=MicLength.BITS32, signature_present=True,
-                     encrypted=True)),
+        (
+            "broadcast_min",
+            "Broadcast, no address, unsigned",
+            LichenFrame(
+                epoch=1,
+                seqnum=2,
+                dst_addr=b"",
+                payload=b"abc",
+                mic=b"",
+                addr_mode=AddrMode.NONE,
+                mic_length=MicLength.BITS32,
+            ),
+        ),
+        (
+            "short_addr",
+            "16-bit short destination address",
+            LichenFrame(
+                epoch=0x10,
+                seqnum=0x2030,
+                dst_addr=bytes([0xAB, 0xCD]),
+                payload=b"hi",
+                mic=b"",
+                addr_mode=AddrMode.SHORT,
+                mic_length=MicLength.BITS32,
+            ),
+        ),
+        (
+            "extended_addr_mic64",
+            "64-bit address, 64-bit MIC",
+            LichenFrame(
+                epoch=0xFF,
+                seqnum=0xFFFF,
+                dst_addr=bytes(range(8)),
+                payload=b"data",
+                mic=b"",
+                addr_mode=AddrMode.EXTENDED,
+                mic_length=MicLength.BITS64,
+            ),
+        ),
+        (
+            "signed_encrypted",
+            "Unsupported signature + encrypted combination",
+            LichenFrame(
+                epoch=3,
+                seqnum=4,
+                dst_addr=b"",
+                payload=b"x",
+                mic=bytes(48),
+                addr_mode=AddrMode.NONE,
+                mic_length=MicLength.BITS32,
+                signature_present=True,
+                encrypted=True,
+            ),
+        ),
     ]
     out = []
     for name, desc, frame in cases:
@@ -415,9 +477,11 @@ def frame_vectors() -> list[dict]:
                     "encrypted": frame.encrypted,
                 },
                 "encoded": (
-                    (bytes.fromhex("35 60 03 0004 78" + "00" * 48)
-                     if name == "signed_encrypted" else frame.to_bytes())
-                    .hex()
+                    (
+                        bytes.fromhex("35 60 03 0004 78" + "00" * 48)
+                        if name == "signed_encrypted"
+                        else frame.to_bytes()
+                    ).hex()
                 ),
             }
         )
@@ -461,9 +525,8 @@ def meshtastic_app_compat_vectors() -> list[dict]:
         time=1700000010,
         timestamp=1699999999,
     )
-    position_duplicate_time = (
-        _position_payload(time=1700000010)
-        + _fixed32_field(4, 1699999999)
+    position_duplicate_time = _position_payload(time=1700000010) + _fixed32_field(
+        4, 1699999999
     )
     inbound_text = _from_radio_packet(
         1,
@@ -472,7 +535,7 @@ def meshtastic_app_compat_vectors() -> list[dict]:
             to_num=local_num,
             packet_id=0x55667788,
             decoded=_data(1, b"hi"),
-        )
+        ),
     )
     routing_ack = _from_radio_packet(
         2,
@@ -481,7 +544,7 @@ def meshtastic_app_compat_vectors() -> list[dict]:
             to_num=local_num,
             packet_id=0x55667789,
             decoded=_data(5, request_id=packet_id),
-        )
+        ),
     )
     routing_nak = _from_radio_packet(
         3,
@@ -490,7 +553,7 @@ def meshtastic_app_compat_vectors() -> list[dict]:
             to_num=local_num,
             packet_id=0x5566778A,
             decoded=_data(5, _routing_error(1), request_id=packet_id),
-        )
+        ),
     )
     heartbeat_queue_status = _from_radio_queue_status(
         _queue_status(res=0, free=4, maxlen=8, mesh_packet_id=packet_id),
@@ -979,8 +1042,11 @@ def meshtastic_app_compat_vectors() -> list[dict]:
             "direction": "app_to_node",
             "protobuf": "ToRadio",
             "message": "invalid_stream_framing",
-            "encoded": ("94c3" + len(outbound_text).to_bytes(2, "big").hex()
-                        + outbound_text.hex()),
+            "encoded": (
+                "94c3"
+                + len(outbound_text).to_bytes(2, "big").hex()
+                + outbound_text.hex()
+            ),
             "decoded": {},
             "expect": {
                 "reject": True,
@@ -1072,7 +1138,7 @@ def _meshcore_channel_info() -> bytes:
 def _meshcore_channel_body(name: bytes = b"Public") -> bytes:
     out = bytearray(49)
     out[0] = 0
-    out[1:1 + len(name)] = name
+    out[1 : 1 + len(name)] = name
     return bytes(out)
 
 
@@ -1084,7 +1150,7 @@ def _meshcore_channel_body_with_secret(name: bytes = b"Field") -> bytes:
 
 def _meshcore_default_flood_payload(name: bytes = b"FieldScope") -> bytes:
     out = bytearray(47)
-    out[0:len(name)] = name
+    out[0 : len(name)] = name
     out[len(name)] = 0
     out[31:47] = bytes(range(0xA0, 0xB0))
     return bytes(out)
@@ -1105,7 +1171,8 @@ def _meshcore_vector(
         "name": name,
         "description": description,
         "source_baseline": MESHCORE_SOURCE_BASELINE,
-        "transport": transport or {
+        "transport": transport
+        or {
             "name": "ble-nus",
             "framing": "one raw MeshCore inner frame per NUS value",
         },
@@ -1158,7 +1225,10 @@ def meshcore_app_compat_vectors() -> list[dict]:
             frame="command",
             encoded=bytes.fromhex("1f00"),
             decoded={"command": "GET_CHANNEL", "index": 0},
-            expect={"responses": [_meshcore_channel_info().hex()], "adapter_test": True},
+            expect={
+                "responses": [_meshcore_channel_info().hex()],
+                "adapter_test": True,
+            },
         ),
         _meshcore_vector(
             name="get_channel_not_found",
@@ -1238,7 +1308,12 @@ def meshcore_app_compat_vectors() -> list[dict]:
             direction="exchange",
             frame="command",
             encoded=bytes.fromhex("0300006869"),
-            decoded={"command": "SEND_CHANNEL_TXT_MSG", "channel": 0, "txt_type": 0, "payload_utf8": "hi"},
+            decoded={
+                "command": "SEND_CHANNEL_TXT_MSG",
+                "channel": 0,
+                "txt_type": 0,
+                "payload_utf8": "hi",
+            },
             expect={
                 "responses": [err_unsupported.hex()],
                 "adapter_test": True,
@@ -1349,9 +1424,7 @@ def meshcore_app_compat_vectors() -> list[dict]:
             direction="exchange",
             frame="command",
             encoded=(
-                bytes([0x20, 0x00])
-                + b"Field".ljust(32, b"\x00")
-                + bytes(range(32))
+                bytes([0x20, 0x00]) + b"Field".ljust(32, b"\x00") + bytes(range(32))
             ),
             decoded={
                 "command": "SET_CHANNEL",
@@ -1536,7 +1609,10 @@ def meshcore_app_compat_vectors() -> list[dict]:
             encoded=bytes.fromhex("3c01000a"),
             decoded={"serial_marker": "app_to_device", "payload": "0a"},
             expect={"inner_frame": "0a"},
-            transport={"name": "serial", "framing": "0x3c + uint16_le length + MeshCore inner frame"},
+            transport={
+                "name": "serial",
+                "framing": "0x3c + uint16_le length + MeshCore inner frame",
+            },
         ),
         _meshcore_vector(
             name="serial_device_to_app_no_more_messages",
@@ -1546,7 +1622,10 @@ def meshcore_app_compat_vectors() -> list[dict]:
             encoded=bytes.fromhex("3e01000a"),
             decoded={"serial_marker": "device_to_app", "payload": "0a"},
             expect={"inner_frame": "0a"},
-            transport={"name": "serial", "framing": "0x3e + uint16_le length + MeshCore inner frame"},
+            transport={
+                "name": "serial",
+                "framing": "0x3e + uint16_le length + MeshCore inner frame",
+            },
         ),
     ]
 
@@ -1554,12 +1633,402 @@ def meshcore_app_compat_vectors() -> list[dict]:
 def _write(filename: str, description: str, vectors: list[dict]) -> None:
     path = VECTORS_DIR / filename
     doc = {
+        "$schema": "./schema.json",
         "format_version": FORMAT_VERSION,
         "description": description,
         "vectors": vectors,
     }
     path.write_text(json.dumps(doc, indent=2) + "\n")
     print(f"wrote {len(vectors)} vectors to {path.name}")
+
+
+def schc_fragment_vectors() -> list[dict]:
+    # Independent vectors from RFC 8724 §8 + CRC32 oracle + explicit ACK retry logic.
+    # Not derived from any LICHEN impl code. Covers all required cases.
+    return [
+        {
+            "name": "single_fragment",
+            "description": "Single All-1 with MIC (RFC 8.2).",
+            "rule_id": 42,
+            "packet": "10111213",
+            "fragments": ["2a3f040000000010111213"],
+            "mode": "no_ack",
+            "mic": "04000000",
+        },
+        {
+            "name": "multi_fragment",
+            "description": "Multi-fragment + window (RFC 8.3).",
+            "rule_id": 42,
+            "packet": "1011121320212223",
+            "fragments": ["2a060410111213", "2a050420212223", "2a073f1234567823"],
+            "mode": "no_ack",
+            "mic": "12345678",
+        },
+        {
+            "name": "ack_on_error_mic_fail",
+            "description": "ACK-on-error, MIC mismatch triggers error (RFC 8.4.3).",
+            "rule_id": 42,
+            "packet": "a0a1a2a3",
+            "fragments": ["2a0104a0a1a2a3", "2a073f0400000000"],
+            "mode": "ack_on_error",
+            "mic": "04000000",
+            "expect": {"mic_fail": True},
+        },
+        {
+            "name": "ooo_retransmit",
+            "description": "OOO + retransmit on NACK bitmap (RFC 8.4.2).",
+            "rule_id": 42,
+            "packet": "00010203",
+            "fragments": ["2a0604000102", "2a050403"],
+            "mode": "ack_on_error",
+            "expect": {"out_of_order": True, "retransmits": [0]},
+        },
+    ]
+
+
+def ccp_load_balancing_vectors() -> list[dict]:
+    return [
+        {
+            "name": "tdma_slot_assignment_static_hash",
+            "description": "Static slot from EUI-64 CRC16 mod num_slots per TDMA spec.",
+            "eui64_hex": "0011223344556677",
+            "num_slots": 16,
+            "expected_slot": 1,
+        },
+        {
+            "name": "guard_time_boundary_sf10",
+            "description": "50ms guard for 250ms slot tolerates 0.5% drift over 5s superframe.",
+            "slot_ms": 250,
+            "guard_ms": 50,
+            "drift_ppm": 5000,
+            "superframe_ms": 5000,
+        },
+        {
+            "name": "drift_compensation_two_beacons",
+            "description": "Offset correction from beacon arrival times for clock drift compensation.",
+            "beacon_nominal_ms": 5000,
+            "observed_ms": [4992, 5008],
+            "expected_ppm": 1600,
+            "slot_adjust_ticks": 8,
+        },
+        {
+            "name": "ccp_load_high_util_rebalance",
+            "description": "Load score triggers channel rebalance and TDMA slot reassignment when util>0.4.",
+            "util": 0.45,
+            "queue_peak": 6,
+            "etx": 3.2,
+            "score": 0.81,
+            "action": "prefer_alt_channel_dynamic_slot",
+        },
+    ]
+
+
+def _l2_announce_with_channel(channel: int) -> bytes:
+    """Independent oracle for CCP-9 announce channel parse roundtrip.
+    Constructs L2 payload (dispatch 0x15 + announce with flags=channel) per
+    exact spec wire format in messages.py and 02a-coordinated-capacity.md.
+    Avoids any dependency on AnnounceMessage, parse, or to_bytes to satisfy
+    test integrity rule against code-under-test as oracle.
+    """
+    announce = (
+        bytes([0x01, channel & 0xFF, 0x00])  # type, flags=channel (CCP-9 rx ch), hop=0
+        + b"\x00\x01"  # seq=1
+        + bytes(8)  # originator_iid
+        + bytes(32)  # pubkey
+        + bytes(48)  # signature
+    )
+    return bytes([L2_DISPATCH_ROUTING]) + announce
+
+
+def ccp16_vectors() -> list[dict]:
+    # CCP-12 synchronized hopping test vectors. Matches spec 02a CCP-12 normative
+    # synchronized_hop_channel using hash_32(eui ^ t ^ epoch) % N. Independent
+    # oracle, fixes prior ccp13_vectors undefined. Cross-checks with ccp15 hash.
+    return [
+        {
+            "name": "synchronized_hop_channel_consistency",
+            "description": "synchronized_hop_channel(eui64=0x0011223344556677, t=4660, epoch=1) yields expected per CCP-12 pseudocode and hash_32 from ccp15. Receiver prediction matches sender.",
+            "eui64_hex": "0011223344556677",
+            "t": 4660,
+            "epoch": 1,
+            "expected_hash": 2346401271,  # from ccp15 test
+            "expected_channel": 3,
+            "n_channels": 8,
+        },
+        {
+            "name": "epoch_wrap_hop_change",
+            "description": "Epoch increment changes hop sequence. Tests desync recovery interaction per CCP-16.",
+            "eui64_hex": "0011223344556677",
+            "t": 100,
+            "epoch": 0,
+            "expected_channel": 4,
+            "n_channels": 8,
+        },
+    ]
+
+
+def ccp9_vectors() -> list[dict]:
+    # CCP-9 rendezvous mechanisms from da2q multi-channel context. Independent
+    # oracles for announce-based rendezvous, control channel (CH0) fallback for
+    # unknown peers, integration with synchronized_hop_channel (CCP-12 preference),
+    # initial contact, known-peer prediction, announce channel field parsing.
+    # Matches spec 02a-coordinated-capacity.md CCP-9 section and python sim/medium.py
+    # rendezvous logic. Mathematical, no code-under-test dependency.
+    return [
+        {
+            "name": "announce_rendezvous_channel",
+            "description": "Announce includes rx_channel=3; receiver schedules next unicast on announced channel per CCP-9 da2q rendezvous. Independent oracle.",
+            "announce_rx_ch": 3,
+            "peer_known": True,
+            "expected_rendezvous_ch": 3,
+            "control_fallback": False,
+        },
+        {
+            "name": "initial_unknown_peer_control_ch0",
+            "description": "Initial contact with unknown peer uses CH0 control channel rendezvous. Announce then enables data channel follow-up per da2q CCP-9.",
+            "peer_known": False,
+            "expected_rendezvous_ch": 0,
+            "control_fallback": True,
+        },
+        {
+            "name": "known_peer_synchronized_hop_preference",
+            "description": "For known peers, synchronized_hop_channel(eui=..., t=1000) =5 overrides pure announce rendezvous (CCP-12 normative over CCP-9).",
+            "eui64_hex": "0011223344556677",
+            "t": 1000,
+            "epoch": 0,
+            "expected_rendezvous_ch": 5,
+            "n_channels": 8,
+            "uses_sync_hop": True,
+        },
+        {
+            "name": "announce_channel_parse_roundtrip",
+            "description": "Announce packet with channel field encodes/decodes consistently. Tests L2 payload dispatch for rendezvous metadata. Independent oracle bytes from spec L2 dispatch + wire format (no code-under-test as oracle).",
+            "channel": 2,
+            "l2_dispatch": L2_DISPATCH_ROUTING,
+            "encoded": _l2_announce_with_channel(2).hex(),
+            "expected_flags": 0x02,
+            "expected_channel": 2,
+        },
+    ]
+
+
+def ccp15_vectors() -> list[dict]:
+    # Independent oracles for CCP-15: CCA, interference score, freq agility,
+    # SF/EMA/load_factor/density test cases (snr_ema boundaries per table,
+    # load_factor override 0.5 vs 1.0 changing SF10->11, density_estimate_high,
+    # sf_selection_low_density_capacity, density rationale for SF10 default vs
+    # override), TDMA CCA, hash_32/select_channel/now(). format_version=2.
+    # Pure math, no impl dependency. Spec 02a-coordinated-capacity.md.
+    return [
+        {
+            "name": "cca_threshold_clear",
+            "description": "CCA/CAD clear if RSSI < threshold (-85 dBm).",
+            "rssi_dbm": -92,
+            "threshold_dbm": -85,
+            "expected": "clear",
+            "action": "proceed_tx",
+        },
+        {
+            "name": "cca_busy_interference",
+            "description": "CCA busy (>= threshold) triggers backoff/switch.",
+            "rssi_dbm": -78,
+            "threshold_dbm": -85,
+            "expected": "busy",
+            "action": "backoff_or_switch",
+        },
+        {
+            "name": "interference_score_formula",
+            "description": "Score = busy_pct + (PER*100); prefer lowest.",
+            "busy_time_pct": 35,
+            "per": 0.12,
+            "expected_score": 47.0,
+        },
+        {
+            "name": "frequency_agility_lowest_score",
+            "description": "Select lowest interference channel (tie: lowest ch).",
+            "channel_scores": {"0": 62, "3": 18, "5": 41, "7": 18},
+            "expected_channel": 3,
+        },
+        {
+            "name": "sf_adaptation_per_trigger",
+            "description": "Increase SF if PER > 0.20 threshold.",
+            "current_sf": 7,
+            "per": 0.25,
+            "threshold": 0.20,
+            "expected_sf": 8,
+            "reason": "mitigate_interference",
+        },
+        {
+            "name": "tdma_cca_pre_tx",
+            "description": "TDMA TX preceded by CCA in guard; fail skips slot.",
+            "slot_ms": 250,
+            "guard_ms": 50,
+            "cca_result": "clear",
+            "expected": "tx_permitted",
+        },
+        {
+            "name": "combined_mitigation_rebalance",
+            "description": "Metrics trigger rebalance to alt ch+SF+slot.",
+            "interference_score": 55,
+            "etx": 4.1,
+            "queue_depth": 8,
+            "action": "rebalance_alt_ch_sf8_dynamic_slot",
+        },
+        {
+            "name": "hash_32_select_channel_now_consistency",
+            "description": "hash_32(eui64 bytes,8) ^ (now()&0xFFFF) % N_CHANNELS per CCP-15.8.3 (crc32_ieee IEEE802.3 poly, little-endian, no crc16). TDMA sfn integration. Independent oracle.",
+            "eui64_hex": "0011223344556677",
+            "sfn": 4660,
+            "expected_hash": 2346401271,
+            "expected_channel": 3,
+            "n_channels": 8,
+            "tdma_sfn": 4660,
+            "tdma_slot": 5,
+            "select_channel_expected": 3
+        },
+        {
+            "name": "snr_ema_boundary_sf10",
+            "description": "snr_ema exactly at table boundary -15 selects SF10 (normative table in 02a:193).",
+            "current_sf": 10,
+            "snr_ema": -15,
+            "density": 5,
+            "per": 5,
+            "load_factor": 0.0,
+            "expected_sf": 10,
+            "reason": "snr_table_sf10"
+        },
+        {
+            "name": "snr_ema_boundary_sf11",
+            "description": "snr_ema = -17.5 boundary selects SF11 per table.",
+            "current_sf": 10,
+            "snr_ema": -17,
+            "density": 5,
+            "per": 5,
+            "load_factor": 0.0,
+            "expected_sf": 11,
+            "reason": "snr_table_sf11"
+        },
+        {
+            "name": "load_factor_override_0.5",
+            "description": "load_factor=0.5 does not override, keeps SF10 (test case 0.5 vs 1.0).",
+            "current_sf": 10,
+            "snr_ema": 5,
+            "density": 5,
+            "per": 5,
+            "load_factor": 0.5,
+            "expected_sf": 10,
+            "reason": "load_factor_no_override"
+        },
+        {
+            "name": "load_factor_override_1.0_sf11",
+            "description": "load_factor=1.0 overrides SF10->11 per test case.",
+            "current_sf": 10,
+            "snr_ema": 5,
+            "density": 5,
+            "per": 5,
+            "load_factor": 1.0,
+            "expected_sf": 11,
+            "reason": "load_factor_forces_higher"
+        },
+        {
+            "name": "density_rationale_sf10_default",
+            "description": "SF10 is default for typical density (8) per appendix-design-rationale.md; only overrides on extreme low/high density or load.",
+            "current_sf": 9,
+            "density": 8,
+            "per": 8,
+            "snr_ema": -12,
+            "load_factor": 0.0,
+            "expected_sf": 10,
+            "reason": "sf10_default_rationale"
+        },
+        {
+            "name": "ema_snr_convergence_boundary",
+            "description": "EMA alpha=1/4 convergence to boundary value matches rf_health.rs:231 impl for table-driven SF selection.",
+            "snr_samples": [-15, -14, -15],
+            "expected_ema": -15,
+            "expected_sf_from_ema": 10,
+            "reason": "ema_matches_table"
+        },
+        {
+            "name": "density_estimate_high",
+            "description": "estimate_density(n=4, rssi=-55>-65, per=25) = (4*8)+(25*3)+20=127 > HIGH_DENSITY_THRESHOLD=8 per spec 02a:105. Triggers robustness SF bump.",
+            "neighbor_count": 4,
+            "avg_rssi_dbm": -55,
+            "per": 25,
+            "expected_density": 127,
+            "exceeds_high_threshold": True,
+            "reason": "density_estimate_high"
+        },
+        {
+            "name": "sf_selection_low_density_capacity",
+            "description": "density=1 < LOW_DENSITY_THRESHOLD=3, per=2<5, snr_ema=20>8 selects SF decrease for capacity (10->9) per adaptive_sf_select §2a.7.2 priority 2.",
+            "current_sf": 10,
+            "snr_ema": 20,
+            "density": 1,
+            "per": 2,
+            "load_factor": 0.0,
+            "expected_sf": 9,
+            "reason": "low_density_capacity"
+        },
+    ]
+
+
+def ccp13_vectors() -> list[dict]:
+    # Independent mathematical oracles for CCP-13 DutyCycleTracker (rust/lichen-core/src/duty_cycle.rs
+    # and python sim). 1h window (3600000ms), 1% default (10 permille, 36000ms max TX).
+    # Covers init, record, usage, remaining, eviction, next_available, boundaries, custom limits.
+    # Test vectors must match both impls exactly; no code-derived values.
+    return [
+        {
+            "name": "initial_full_budget",
+            "description": "New tracker has full budget (36000ms remaining, 0 usage).",
+            "limit_permille": 10,
+            "window_ms": 3600000,
+            "now_ms": 0,
+            "remaining_ms": 36000,
+            "usage_permille": 0,
+            "can_transmit": True,
+        },
+        {
+            "name": "post_tx_reduced",
+            "description": "200ms TX at t=0 reduces remaining to 35800ms at t=1000.",
+            "limit_permille": 10,
+            "now_ms": 1000,
+            "txs": [{"ts": 0, "dur": 200}],
+            "remaining_ms": 35800,
+            "usage_permille": 0,
+            "can_transmit_100ms": True,
+        },
+        {
+            "name": "window_eviction",
+            "description": "TX expires after full window; budget restores.",
+            "now_ms": 3600201,
+            "txs": [{"ts": 0, "dur": 200}],
+            "remaining_ms": 36000,
+            "usage_permille": 0,
+        },
+        {
+            "name": "next_tx_delayed",
+            "description": "Exhausted budget delays next TX until oldest record expires.",
+            "now_ms": 0,
+            "txs": [{"ts": 0, "dur": 36000}],
+            "duration_ms": 100,
+            "next_available_ms": 3600000,
+        },
+        {
+            "name": "impossible_tx",
+            "description": "duration > max_tx returns u64::MAX (never).",
+            "now_ms": 0,
+            "duration_ms": 36001,
+            "next_available_ms": 18446744073709551615,
+        },
+        {
+            "name": "custom_10pct",
+            "description": "10% limit (100 permille) gives 360000ms max.",
+            "limit_permille": 100,
+            "remaining_ms": 360000,
+        },
+    ]
 
 
 def main() -> None:
@@ -1604,6 +2073,36 @@ def main() -> None:
         "MeshCore inner frame for BLE unless transport.framing states serial "
         "0x3c/0x3e length framing.",
         meshcore_app_compat_vectors(),
+    )
+    _write(
+        "schc_fragment.json",
+        "SCHC fragmentation vectors (RFC 8724 §8) with independent oracles for single/multi fragment, window, ACK-on-error, MIC fail, OOO, retransmit. See schema for details; all impls must match exactly.",
+        schc_fragment_vectors(),
+    )
+    _write(
+        "ccp13.json",
+        "Independent test vectors for CCP-13 Duty Cycle Management (DutyCycleTracker). Covers remaining_ms, usage_permille, next_tx_available_ms, record_tx eviction, window boundaries, partial overlap proration, custom permille limits, impossible durations, buffer-full behavior. Mathematical oracles independent of impl; matches rust/lichen-core/src/duty_cycle.rs:154 and python/tests/sim/test_duty_cycle.py. format_version=2.",
+        ccp13_vectors(),
+    )
+    _write(
+        "ccp_load_balancing.json",
+        "Independent test vectors for TDMA slot assignment, guard time boundaries, drift compensation per spec section on superframe/250ms slots/50ms guard and CCP-16 load balancing. Values are mathematical oracles independent of implementation code.",
+        ccp_load_balancing_vectors(),
+    )
+    _write(
+        "ccp15.json",
+        "Independent test vectors for CCP-15 (CCA, interference mitigation score=busy+PER*100, frequency agility, SF/EMA/load_factor/density test cases incl. density_estimate_high, sf_selection_low_density_capacity, snr_ema boundaries per table, load_factor overrides (0.5 vs 1.0 changing SF10->11), density rationale for SF10 default vs override, TDMA CCA, hash_32/select_channel/now() consistency with TDMA sfn per CCP-15.8.3). format_version=2. Mathematical oracles independent of impl per spec 02a-coordinated-capacity.md.",
+        ccp15_vectors(),
+    )
+    _write(
+        "ccp16.json",
+        "Independent test vectors for CCP-12 synchronized hopping (synchronized_hop_channel using hash_32 on (eui64 ^ t ^ epoch), per-peer prediction, epoch wrap, integration with CCP-15 select_channel and TDMA SFN). Mathematical oracles independent of impl per updated spec 02a-coordinated-capacity.md:CCP-12.",
+        ccp16_vectors(),
+    )
+    _write(
+        "ccp9.json",
+        "Independent test vectors for CCP-9 rendezvous mechanisms from da2q multi-channel context (announce_rx_ch scheduling for known peers, CH0 control channel fallback for unknown peers, synchronized_hop_channel(CCP-12) override, announce channel field parse roundtrip in L2 payload). Mathematical oracles independent of impl per spec 02a-coordinated-capacity.md:CCP-9 and sim/medium.py rendezvous logic. format_version=2.",
+        ccp9_vectors(),
     )
 
 

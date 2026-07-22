@@ -26,6 +26,9 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <zephyr/net/coap.h>
+#include <zephyr/net/net_ip.h>
+#include <zephyr/net/socket.h>
 
 /* Nullability annotations for pointer safety */
 #ifndef __has_feature
@@ -189,6 +192,29 @@ int lichen_coap_server_stop(void);
  * @return 1 if running, 0 if stopped, negative on error
  */
 int lichen_coap_server_is_running(void);
+
+/**
+ * @brief Shared CoAP response helper for SenML and other content formats.
+ *
+ * Eliminates duplication between coap_dtn.c, coap_location.c and internal
+ * server handlers. Handles CON->ACK vs NON_CON, content-format option,
+ * and payload. Uses SENML_CBOR_CONTENT_FORMAT from senml.h when appropriate.
+ *
+ * @param resource CoAP resource
+ * @param request Incoming request
+ * @param addr Client address
+ * @param addr_len Address length
+ * @param resp_code CoAP response code (e.g. COAP_RESPONSE_CODE_CONTENT)
+ * @param content_format IANA content format (60 for CBOR, 112 for SenML+CBOR)
+ * @param payload Payload or NULL
+ * @param payload_len Length or 0
+ * @return 0 on success, negative on error
+ */
+int lichen_coap_respond(struct coap_resource *resource,
+			struct coap_packet *request,
+			struct sockaddr *addr, socklen_t addr_len,
+			uint8_t resp_code, uint16_t content_format,
+			const uint8_t *payload, size_t payload_len);
 
 #ifdef __cplusplus
 }

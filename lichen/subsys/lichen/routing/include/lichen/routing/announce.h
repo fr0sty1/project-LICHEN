@@ -26,7 +26,7 @@ extern "C" {
 #endif
 
 #define LICHEN_ANNOUNCE_TYPE 0x01U
-#define LICHEN_ANNOUNCE_MIN_LEN 93U
+#define LICHEN_ANNOUNCE_MIN_LEN 94U
 #define LICHEN_ANNOUNCE_MAX_HOPS 15U
 #define LICHEN_ANNOUNCE_IID_LEN 8U
 #define LICHEN_ANNOUNCE_PUBKEY_LEN 32U
@@ -37,6 +37,7 @@ extern "C" {
 struct lichen_announce_view {
 	uint8_t flags;
 	uint8_t hop_count;
+	uint8_t rx_channel;
 	uint16_t wire_seq_num;
 	uint32_t seq_num;
 	bool seq_stale;
@@ -126,6 +127,8 @@ struct lichen_announce_sched_config {
 	const uint8_t *_Nullable app_data;
 	/** Length of application data. */
 	size_t app_data_len;
+	/** RX channel to announce and bind in signature (CCP-9). Default 0 for CH0. */
+	uint8_t rx_channel;
 };
 
 /**

@@ -1,6 +1,8 @@
 # Using Your Meshtastic App with LICHEN
 
-Your Meshtastic app works with LICHEN nodes. This guide explains what to expect.
+**CRITICAL: LICHEN provides Meshtastic *app compatibility only* (BLE local interface). It is NOT compatible with Meshtastic RF/LoRa mesh protocol.** Different sync word (0x34 vs 0x2B), different framing, real IPv6 + SCHC/RPL/OSCORE instead of Meshtastic proprietary addressing and mesh. You cannot communicate with Meshtastic nodes over radio. A device runs LICHEN *or* Meshtastic, never both. See `docs/meshtastic-compat-dev.md` for full technical matrix and policy.
+
+Your Meshtastic app works with LICHEN nodes for the local phone-to-node interface. This guide explains what to expect for R1 MVP.
 
 ## Quick Start
 
@@ -90,20 +92,21 @@ We built Meshtastic compatibility so you can use a familiar app while we develop
 
 If you want the full LICHEN experience, watch for native apps that expose all features.
 
-## Limitations Summary
+## Meshtastic App Compatibility Matrix (R1 MVP)
 
-| Feature | Status |
-|---------|--------|
-| Text messaging | Works |
-| Position sharing | Works |
-| Node discovery | Works |
-| Multiple channels | Not supported |
-| Channel encryption settings | Ignored |
-| Radio configuration | Ignored |
-| Store-and-forward | Not supported |
-| Remote admin | Not supported |
-| Range test | Not supported |
-| Traceroute | Not supported |
+This matrix reflects smoke-tested behavior from `project-LICHEN-t2hn.11` and implemented handlers in `t2hn.6`–`t2hn.9`. All values are synthetic where noted; RF mesh is never Meshtastic.
+
+| Category | Feature | Status | Notes / Placeholders | Remaining Gap |
+|----------|---------|--------|----------------------|---------------|
+| Discovery/Pairing | BLE scan + connect to `LICHEN-XXXX` | Supported | Advertises LICHEN-branded name; GATT service per Meshtastic baseline | None |
+| Node Info | MyNodeInfo, DeviceMetadata, User, NodeInfo | Supported | Synthetic LICHEN firmware string, PRIVATE_HW=255, CLIENT role, single channel "LICHEN"; min_app_version=30200 | Battery/GNSS real integration (filed as follow-ups) |
+| Status/Config | Config read, moduleConfig telemetry placeholder, region_presets | Supported | Read-only; excluded_modules bitmask for unsupported features; one LONG_FAST/US preset | Full multi-section config (project-LICHEN-t2hn.6 follow-ups) |
+| Messaging | Text send (broadcast) | Supported | Only 0xffffffff broadcast to primary channel; UTF-8 validated, <=200 bytes | Directed node resolution (`project-LICHEN-t2hn.7.1`) |
+| Messaging | Text receive / FromRadio events | Supported | Incoming LICHEN messages surfaced as TEXT_MESSAGE_APP | Status/ROUTING events fully wired (`project-LICHEN-t2hn.8.1` closed) |
+| Unsupported | Channel config writes, LoRa settings, admin, range test, traceroute, store-forward, most PortNums | Explicit errors | Returns deterministic queueStatus error (res=2); catalog in `lichen_meshtastic_adapter_unsupported` | All tracked; see `project-LICHEN-t2hn.9` and `project-LICHEN-llgw` |
+| RF Mesh | Any LoRa interoperability | Not supported | Unambiguous: different protocol, sync word, framing, addressing | N/A (by design) |
+
+Every gap has a Bead. See `docs/meshtastic-compat-dev.md` for detailed translation policies, synthetic metadata rules, and test vectors in `test/vectors/meshtastic_app_compat.json`.
 
 ## Not All LICHEN Nodes Support This
 

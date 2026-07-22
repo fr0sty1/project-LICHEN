@@ -2638,11 +2638,11 @@ ZTEST(meshtastic_adapter, test_position_invalid_payloads_are_malformed)
 	}
 }
 
-ZTEST(meshtastic_adapter, test_late_encrypted_oneof_overrides_decoded_text)
+ZTEST(meshtastic_adapter, test_meshpacket_with_both_decoded_and_encrypted_is_malformed)
 {
 	struct lichen_meshtastic_adapter adapter;
 	struct test_ctx ctx;
-	const uint8_t text_then_encrypted_packet[] = {
+	const uint8_t both_fields_packet[] = {
 		0x0a, 0x1b, 0x15, 0xff, 0xff, 0xff, 0xff, 0x22,
 		0x09, 0x08, 0x01, 0x12, 0x05, 0x68, 0x65, 0x6c,
 		0x6c, 0x6f, 0x2a, 0x02, 0xaa, 0xbb, 0x35, 0x78,
@@ -2653,19 +2653,19 @@ ZTEST(meshtastic_adapter, test_late_encrypted_oneof_overrides_decoded_text)
 
 	init_adapter(&adapter, &ctx, ARRAY_SIZE(ctx.out));
 	ret = lichen_meshtastic_adapter_process_raw(&adapter,
-						    text_then_encrypted_packet,
-						    sizeof(text_then_encrypted_packet));
+						    both_fields_packet,
+						    sizeof(both_fields_packet));
 
 	zassert_equal(ret, 0);
 	zassert_equal(ctx.text_count, 0U);
 	zassert_equal(ctx.out_count, 1U);
 	decode_queue_status(ctx.out[0], ctx.out_len[0], &status);
 	zassert_true(status.has_res);
-	zassert_equal(status.res, 2U);
+	zassert_equal(status.res, 3U);
 	zassert_true(status.has_mesh_packet_id);
 	zassert_equal(status.mesh_packet_id, 0x12345678U);
 	zassert_equal(lichen_meshtastic_adapter_get_stats(&adapter)->
-			      unsupported_packet_count,
+			      malformed_count,
 		      1U);
 }
 

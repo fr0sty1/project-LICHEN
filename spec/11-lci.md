@@ -198,7 +198,8 @@ Response:
 </diag>;rt="diagnostics",
 </msg/inbox>;rt="msg.inbox";ct=60;obs,
 </msg/sent>;rt="msg.sent";ct=60,
-</msg/ack>;rt="msg.ack";ct=60
+</msg/ack>;rt="msg.ack";ct=60,
+</deaddrop>;rt="deaddrop";ct=112;obs
 ```
 
 #### 17.5.2. Configuration Resources
@@ -269,8 +270,7 @@ Content-Format: application/cbor
   "pubkey_fingerprint": "SHA256:xY7...",
   "addrs": {
     "link_local": "fe80::0211:22ff:fe33:4455",
-    "ula": "fd12:3456:789a:1::0211:22ff:fe33:4455",
-    "gua": null
+    "primary": "0200:1234:5678:9abc::0211:22ff:fe33:4455"
   }
 }
 ```
@@ -300,7 +300,7 @@ Content-Format: application/cbor
     "joined": true,
     "rank": 512,
     "parent": "fe80::1234:5678:9abc:def0",
-    "root": "fd12:3456:789a:1::1"
+    "root": "0200:1234:5678:9abc::1"
   },
   "radio": {
     "rx_packets": 1234,
@@ -357,7 +357,7 @@ Content-Format: application/cbor
 {
   "routes": [
     {
-      "prefix": "fd12:3456:789a:1::/64",
+      "prefix": "0200:1234:5678:9abc::/64",
       "via": "fe80::1234:5678:9abc:def0",
       "metric": 512,
       "lifetime_s": 1800
@@ -531,7 +531,7 @@ not an LCI forward-proxy resource.
 
 ```
 # Client sends directly to mesh node
-GET coap://[fd12:3456:789a:1::aaaa:bbbb:cccc:dddd]/sensors/temp
+GET coap://[0200:1234:5678:9abc::aaaa:bbbb:cccc:dddd]/sensors/temp
 
 # Node routes via LoRa mesh, returns response to client
 Response: 2.05 Content
@@ -541,7 +541,7 @@ Response: 2.05 Content
 For discovery, the client can query the Resource Directory (if available):
 
 ```
-GET coap://[fd12:3456:789a:1::1]/rd-lookup/res?rt=temperature
+GET coap://[0200:1234:5678:9abc::1]/rd-lookup/res?rt=temperature
 ```
 
 Implementations MAY expose an optional RFC 7252 forward proxy at `/proxy` for
@@ -553,7 +553,7 @@ name the mesh target; the gateway strips proxy options before forwarding.
 
 ```
 GET coap://[fe80::1]/proxy
-Proxy-Uri: coap://[fd12:3456:789a:1::aaaa:bbbb:cccc:dddd]/status
+Proxy-Uri: coap://[0200:1234:5678:9abc::aaaa:bbbb:cccc:dddd]/status
 ```
 
 #### 17.5.7. Messaging (Application-Level)
@@ -566,7 +566,7 @@ POST /msg/inbox
 Content-Format: application/cbor
 
 {
-  "to": "fd12:3456:789a:1::aaaa:bbbb:cccc:dddd",
+  "to": "0200:1234:5678:9abc::aaaa:bbbb:cccc:dddd",
   "body": "Hello from the mesh!",
   "ack": true
 }
@@ -585,7 +585,7 @@ Content-Format: application/cbor
   "messages": [
     {
       "id": 17,
-      "from": "fd12:3456:789a:1::1111:2222:3333:4444",
+      "from": "0200:1234:5678:9abc::1111:2222:3333:4444",
       "body": "Hi there!",
       "received": "2026-05-26T14:35:00Z"
     }
@@ -596,6 +596,44 @@ Content-Format: application/cbor
 This is OPTIONAL. Applications MAY instead use CoAP directly to mesh nodes.
 The legacy Python demo `/messages` resource is not part of LCI and MUST NOT be
 advertised as a native messaging resource.
+
+#### 17.5.8. Dead Drop
+
+The `/deaddrop` resource provides a rate-limited, OSCORE-protected store for
+asynchronous data exchange. Nodes and clients can POST SenML payloads for later
+pickup by others (useful for delayed messaging, sensor logs without live
+connection). Follows SenML profile from Appendix F.
+
+**Access and Protection:**
+
+- All writes (POST) MUST use OSCORE (pairwise preferred; group context allowed)
+- Unauthenticated POSTs return 4.01 Unauthorized
+- Reads (GET) MAY be public but sensitive drops SHOULD require OSCORE match
+- Rate limits enforced per OSCORE context or source IID (see 18.9 in apps spec)
+
+**Example Usage:**
+
+```
+POST coap://[fe80::1]/deaddrop
+Content-Format: application/senml+cbor
+OSCORE: <context-id=42>
+
+[
+  {"bn":"urn:dev:mac:0011223344556677:","bt":1721650000},
+  {"n":"type","vs":"message"},
+  {"n":"body","vs":"Pickup coords for supply cache at 48.1N 11.5E"},
+  {"n":"expires","v":1721736400}
+]
+```
+
+Response: `2.01 Created` with `Location-Path: /deaddrop/d4a3f2`
+
+```
+GET coap://[fe80::1]/deaddrop?obs=0
+Content-Format: application/senml+cbor
+```
+
+Returns array of available drops (filtered by access). Rate limits, OSCORE rules, SenML details, SCHC handling, and full client UI guidance (Observe, templates, rate indicators, privacy toggles) are authoritative in 12-apps.md:18.9. LCI clients implement the CoAP contract exactly as specified there.
 
 ### 17.6. Security
 

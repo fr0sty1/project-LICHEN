@@ -21,7 +21,7 @@ renode lichen/boards/renode/t_deck/support/t_deck.resc \
 | UART0 console | Working | TX=GPIO43, RX=GPIO44 |
 | ST7789 display | Stub | 240x320, SPI3 CS1 (GPIO12), DC=GPIO11 |
 | Keyboard | Stub | I2C0 addr 0x55 |
-| Trackball | Stub | I2C1 |
+| Trackball | Stub | GPIO (TBOX_G0[1-4]: pins 1,2,3,15 per utilities.h; press shares GPIO0) - NOT I2C |
 | SD card | Stub | SPI3 CS2 (GPIO39) |
 | Backlight | Stub | GPIO42 |
 | Peripheral power | Stub | GPIO10 (enables all peripherals) |

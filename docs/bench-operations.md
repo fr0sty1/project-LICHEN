@@ -3,6 +3,17 @@
 
 # Hardware Bench Operations
 
+## 0. T-Echo Procurement for 500-Node Demo (project-LICHEN-2nnd.8)
+
+**Target hardware**: 500x LilyGO T-Echo (nRF52840 + SX1262 + e-ink + GNSS).
+
+**Verified**:
+- Bootloader: Adafruit nRF52 UF2 (0xADA52840 family ID); double-tap reset for initial flash, serial DFU thereafter (`flash-t_echo.sh --bulk`).
+- Bulk flashing: Supports 10-port powered USB hubs; parallel mode in script targets 50 units/hr (MAX_PARALLEL=5); rate-limited for USB stability.
+- Inclusion: Battery (850mAh LiPo), basic case, antenna — confirm per-vendor in PO.
+- Flashing jigs: by-id paths mandatory; pogo-pin SWD jigs recommended for >100 units to bypass UF2.
+- Timeline: Procurement 4-6w lead; aligns with rust/mesh-sim scaling for full 500-node validation. Update epic project-LICHEN-2nnd after receipt.
+
 Operational reference for the physical LICHEN test bench: device inventory,
 port-safety rules, flash/OTA procedures, over-the-air verification, and the
 findings that shaped current bench practice.
@@ -62,10 +73,11 @@ These are hard-won; violating them wedges a device or corrupts a flash.
   (`do_select`, S-state). Read-only probes only, with a `timeout` wrapper.
 - **NEVER open a LICHEN native CDC port at 1200 baud** except as a deliberate
   DFU touch — 1200 baud reboots nRF boards into the UF2 bootloader.
-- **The Heltec V3 CP2102 resets the ESP32 on *any* port open** (bd `9ia2`), even
-  with `dtr=False`/`rts=False` set before `open()`. Console observation is
-  therefore reset-destructive; you get a fresh boot banner but you rebooted the
-  node (and rerolled its epoch — see §5). Budget for that.
+- **Heltec V3 console monitoring** (fixed project-LICHEN-g38y / lora_ipv6_mesh-9ia2): 
+  CP2102 (UART0 GPIO43/44) for flashing only. UART1 (GPIO21/22) now enabled by
+  default in heltec_wifi_lora32_v3_procpu.dts with aliases; gateway overlay selects
+  via chosen for non-destructive console/logs. External USB-UART on UART1. CP2102
+  open no longer reboots node (epoch persisted).
 - **Never pipe a flasher through `head`/`tail`** — the `SIGPIPE` when the reader
   closes aborts the transfer mid-write.
 - Opening the T1000-E `if02` SMP port is safe; it can wedge (CDC write timeout)
@@ -230,3 +242,16 @@ wrap is far beyond that. Watchdog-recovery correctness (bd `gald`) is also *not*
 exercised unless a crash occurs — a clean soak proves stability but leaves the
 recovery path untested. Plan wrap/recovery coverage as targeted tests, not as a
 longer soak.
+
+## Conference Node Distribution Logistics (project-LICHEN-2nnd.3)
+
+See `bd show project-LICHEN-2nnd.3` for full plan and LICHEN-plan.md:distribution.
+
+**Recommendation:** Option A (sell at cost, $50-60/unit at booth). Attendees keep nodes; no recovery logistics required. Revenue offsets costs. Builds invested community for post-event meshes.
+
+**Booth setup:**
+- Square or cash payment.
+- Box includes: printed quick-start card, QR code linking to mesh visualizer/join instructions, sticker "I survived the LICHEN mesh".
+- Simple, clean execution for first 500-node demo.
+
+**Post-event:** Nodes seed local meshes. Future firmware enables "report back" for global participation map.

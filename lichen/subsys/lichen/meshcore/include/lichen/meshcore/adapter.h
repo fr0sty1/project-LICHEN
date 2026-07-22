@@ -22,6 +22,7 @@
 #endif
 
 #include <lichen/meshcore/codec.h>
+#include <lichen/meshcore/limits.h>
 
 struct lichen_meshcore_compat_settings;
 
@@ -137,6 +138,7 @@ struct lichen_meshcore_adapter {
 	uint8_t stream_header[3];
 	uint8_t stream_header_len;
 	uint8_t stream_buf[LICHEN_MESHCORE_FRAME_MAX];
+	uint8_t tx_buf[LICHEN_MESHCORE_FRAME_MAX];
 	uint16_t stream_len;
 	uint16_t stream_expected;
 	uint8_t pending_head;

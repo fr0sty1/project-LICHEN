@@ -8,5 +8,5 @@ from ordinary test modules, so the ``--board`` / ``--nodes`` options live here.
 
 
 def pytest_addoption(parser):
-    parser.addoption("--board", default="t_echo", help="Board type (t_echo, rak4631)")
+    parser.addoption("--board", default="t_echo", help="Board type (t_echo, rak4631, t1000_e)")
     parser.addoption("--nodes", default=2, type=int, help="Number of nodes")

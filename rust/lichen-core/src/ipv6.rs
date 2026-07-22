@@ -137,12 +137,20 @@ impl<'a> Ipv6Header<'a> {
 
     /// Source address.
     pub fn src(&self) -> Ipv6Addr {
-        Ipv6Addr(self.data[8..24].try_into().unwrap())
+        Ipv6Addr(
+            self.data[field::SRC_OFFSET..field::DST_OFFSET]
+                .try_into()
+                .unwrap(),
+        )
     }
 
     /// Destination address.
     pub fn dst(&self) -> Ipv6Addr {
-        Ipv6Addr(self.data[24..40].try_into().unwrap())
+        Ipv6Addr(
+            self.data[field::DST_OFFSET..IPV6_HEADER_LEN]
+                .try_into()
+                .unwrap(),
+        )
     }
 
     /// Payload slice (after fixed header).
@@ -187,8 +195,8 @@ pub fn write_header(
     out[4..6].copy_from_slice(&payload_len.to_be_bytes());
     out[6] = next_header;
     out[7] = hop_limit;
-    out[8..24].copy_from_slice(&src.0);
-    out[24..40].copy_from_slice(&dst.0);
+    out[field::SRC_OFFSET..field::DST_OFFSET].copy_from_slice(&src.0);
+    out[field::DST_OFFSET..IPV6_HEADER_LEN].copy_from_slice(&dst.0);
     Ok(IPV6_HEADER_LEN)
 }
 

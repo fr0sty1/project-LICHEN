@@ -52,9 +52,37 @@ extern "C" {
 #define KISS_CMD_SETHARDWARE 0x06u  /**< TNC-specific commands */
 #define KISS_CMD_RETURN      0x0Fu  /**< Exit KISS mode (ignored by LICHEN) */
 
-/** KISS port numbers */
+/** KISS port numbers for LICHEN (updated per codereview project-LICHEN-9bnm)
+ *
+ * Per spec/kiss-framing.md:3.3 and LCI spec 11-lci.md:17.3:
+ * - 0: AX.25/APRS (legacy TNC app compatibility)
+ * - 1: Raw LICHEN link frames (debug, injection)
+ * - 2: LCI IPv6 datagrams (Meshtastic uMB4.2-style LCI mapping)
+ * - 3: LCI control plane (config, status, keys, CoAP)
+ *
+ * **Error Mapping Table** (LCI errors returned via port 3; uses SenML-CBOR ct=112 per 11-lci.md for status compatibility):
+ * | Code | Type                | Payload (SenML-CBOR)                     | Notes |
+ * |------|---------------------|------------------------------------------|-------|
+ * | 0x00 | Success             | {"bn":"urn:dev:mac:...", "s":0}         | Standard ACK; aligns with LCI status |
+ * | 0x01 | Framing/Parse Error | {"bn":"...", "e":"framing","v":1}       | Matches KISS decode errors (see kiss_decode_byte) |
+ * | 0x02 | Unsupported         | {"bn":"...", "e":"unsupported","port":N}| For ports >3 or unknown cmd; tools ignore per KISS |
+ * | 0x03 | Overflow            | {"bn":"...", "e":"overflow","v":1024}   | KISS_MAX_PAYLOAD exceeded; stats updated |
+ * | 0x04 | Security/OSCORE     | {"bn":"...", "e":"auth","v":"oscore"}   | OSCORE failures mapped for LCI security |
+ * | 0xFF | Generic             | {"bn":"...", "e":"generic","vs":"msg"}  | Catch-all; prefers SenML for LCI consistency |
+ *
+ * **Compatibility Notes with Existing KISS Tools:** (see standards/ham-radio.md:43 and kiss-framing.md:2.1)
+ * - kissparms/kissutil/Direwolf/Xastir/APRSDroid: port 0 only; ports 2/3 + error payloads on 3 safely ignored (KISS spec allows).
+ * - Meshtastic serial (uMB4.2+ protobuf over KISS port 0): LCI ports 2/3 are extensions; no conflict as clients filter by port/cmd. Error table ensures graceful fallback.
+ * - No breakage for legacy AX.25; port 3 errors use SenML-CBOR for easy parsing by modern clients.
+ * - SetHardware (cmd=6) on any port; responses use cmd|0x80 on port 0 per KA9Q spec.
+ * - Unknown port: stats.unknown_port++, LOG_WRN; optional lci_ctrl_cb error 0x02 per table.
+ *
+ * Cross-refs updated. Parallel Rust impl in lichen-kiss/src/bridge.rs:287 should adopt same table for interop.
+ */
 #define KISS_PORT_AX25       0u     /**< AX.25/APRS frames */
 #define KISS_PORT_LICHEN_RAW 1u     /**< Raw LICHEN link frames */
+#define KISS_PORT_LCI_IPV6   2u     /**< IPv6 datagrams for LCI (Meshtastic-style LCI mapping) */
+#define KISS_PORT_LCI_CTRL   3u     /**< Control (config, status, keys) for LCI */
 #define KISS_PORT_MAX        15u    /**< Maximum port number */
 
 /** Extract port and command from CMD byte */
@@ -116,9 +144,13 @@ struct kiss_transport_stats {
 	uint32_t rx_frames;         /**< Total frames received */
 	uint32_t tx_frames;         /**< Total frames transmitted */
 	uint32_t rx_data_port0;     /**< Data frames received on port 0 (AX.25) */
-	uint32_t rx_data_port1;     /**< Data frames received on port 1 (raw) */
+	uint32_t rx_data_port1;     /**< Data frames received on port 1 (raw LICHEN) */
+	uint32_t rx_data_lci_ipv6;  /**< LCI IPv6 datagrams (port 2) */
+	uint32_t rx_data_lci_ctrl;  /**< LCI control (port 3: config/status/keys) */
 	uint32_t tx_data_port0;     /**< Data frames transmitted on port 0 */
 	uint32_t tx_data_port1;     /**< Data frames transmitted on port 1 */
+	uint32_t tx_data_lci_ipv6;  /**< LCI IPv6 transmitted */
+	uint32_t tx_data_lci_ctrl;  /**< LCI control transmitted */
 	uint32_t rx_commands;       /**< Control commands received */
 	uint32_t rx_bytes;          /**< Total bytes received */
 	uint32_t tx_bytes;          /**< Total bytes transmitted */
@@ -148,6 +180,16 @@ typedef void (*kiss_ax25_rx_cb_t)(const uint8_t *data, size_t len, void *user_ct
 typedef void (*kiss_raw_rx_cb_t)(const uint8_t *data, size_t len, void *user_ctx);
 
 /**
+ * @brief Callback for LCI IPv6 datagrams (port 2, Meshtastic-style mapping)
+ */
+typedef void (*kiss_lci_ipv6_rx_cb_t)(const uint8_t *data, size_t len, void *user_ctx);
+
+/**
+ * @brief Callback for LCI control messages (port 3: config, status, keys)
+ */
+typedef void (*kiss_lci_ctrl_rx_cb_t)(const uint8_t *data, size_t len, void *user_ctx);
+
+/**
  * @brief Callback for SetHardware commands (cmd 6)
  *
  * @param data Pointer to hardware command data
@@ -163,10 +205,12 @@ typedef int (*kiss_hw_cmd_cb_t)(const uint8_t *data, size_t len,
  * @brief KISS transport configuration
  */
 struct kiss_transport_config {
-	kiss_ax25_rx_cb_t ax25_rx_cb;   /**< Callback for AX.25 frames (port 0) */
-	kiss_raw_rx_cb_t raw_rx_cb;     /**< Callback for raw frames (port 1) */
-	kiss_hw_cmd_cb_t hw_cmd_cb;     /**< Optional SetHardware callback */
-	void *user_ctx;                 /**< User context for callbacks */
+	kiss_ax25_rx_cb_t ax25_rx_cb;      /**< Callback for AX.25 frames (port 0) */
+	kiss_raw_rx_cb_t raw_rx_cb;        /**< Callback for raw frames (port 1) */
+	kiss_lci_ipv6_rx_cb_t lci_ipv6_cb; /**< Callback for LCI IPv6 (port 2, Meshtastic-style) */
+	kiss_lci_ctrl_rx_cb_t lci_ctrl_cb; /**< Callback for LCI control (port 3: config/status/keys) */
+	kiss_hw_cmd_cb_t hw_cmd_cb;        /**< Optional SetHardware callback */
+	void *user_ctx;                    /**< User context for callbacks */
 };
 
 /* ─── Public API ──────────────────────────────────────────────────────────── */
@@ -277,7 +321,9 @@ void kiss_transport_reset_stats(void);
 /**
  * @brief Encode data with KISS framing
  *
- * Adds FEND delimiters and escapes special bytes.
+ * Adds FEND delimiters and escapes special bytes (FEND/FESC only).
+ * Uses incremental buffer checks (exact size, not conservative worst-case).
+ * Matches Rust lichen-kiss::kiss_encode_raw and kiss_escape.
  *
  * @param port    KISS port number (0-15)
  * @param cmd     Command type (KISS_CMD_DATA for data frames)
@@ -287,8 +333,8 @@ void kiss_transport_reset_stats(void);
  * @param frame_max Maximum output buffer size
  * @param frame_len Output: actual frame length
  * @return 0 on success
- * @return -EINVAL if data or frame is NULL
- * @return -ENOMEM if output buffer too small
+ * @return -EINVAL if arguments invalid
+ * @return -ENOMEM if output buffer too small for actual encoded frame
  */
 int kiss_encode(uint8_t port, uint8_t cmd,
 		const uint8_t *data, size_t data_len,

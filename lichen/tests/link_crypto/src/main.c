@@ -14,6 +14,7 @@
 #include <lichen/link_ctx.h>
 #include <lichen/schc.h>
 #include <lichen/schnorr48.h>
+#include "ipv6_addr.h"
 
 #include <string.h>
 
@@ -341,6 +342,67 @@ ZTEST(link_crypto, test_derived_node_keys_authenticate_cross_node)
 				     &signed_payload[sizeof(payload)],
 				     pk_b);
 	zassert_equal(ret, 0, "wrong pubkey must not verify");
+}
+
+ZTEST(link_crypto, test_lichen_yggdrasil_addr_matches_test_vectors)
+{
+	/* Uses test/vectors/yggdrasil-derivation.json vectors (first two).
+	 * Matches Rust lichen-link::identity::yggdrasil_addr_from_pubkey,
+	 * C lichen_identity_ygg_addr_from_ed25519 oracle, and Python.
+	 * Tests the lichen_yggdrasil_addr wrapper (project-LICHEN-gp7u). */
+	static const uint8_t vec1_pubkey[32] = {
+		0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14,
+		0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f, 0xb9, 0x24,
+		0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c,
+		0xa4, 0x95, 0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55
+	};
+	static const uint8_t vec1_ygg[16] = {
+		0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0xe1, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14
+	};
+
+	struct in6_addr addr;
+	int ret;
+
+	ret = lichen_yggdrasil_addr(vec1_pubkey, &addr);
+	zassert_equal(ret, 0, "yggdrasil_addr vec1 failed: %d", ret);
+	zassert_mem_equal(addr.s6_addr, vec1_ygg, sizeof(vec1_ygg),
+			  "vector 1 does not match yggdrasil-derivation.json");
+
+	/* Vector 2 from JSON: zero pubkey verifies U/L bit handling */
+	static const uint8_t vec2_pubkey[32] = {0};
+	static const uint8_t vec2_ygg[16] = {
+		0x02, 0xd4, 0xa4, 0xa4, 0xa4, 0xa4, 0xa4, 0xa4,
+		0xe1, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14
+	};
+
+	ret = lichen_yggdrasil_addr(vec2_pubkey, &addr);
+	zassert_equal(ret, 0, "yggdrasil_addr vec2 failed: %d", ret);
+	zassert_mem_equal(addr.s6_addr, vec2_ygg, sizeof(vec2_ygg),
+			  "vector 2 does not match yggdrasil-derivation.json");
+
+	/* Vector 3 from JSON (official Yggdrasil test suite adapted for LICHEN IID) */
+	static const uint8_t vec3_pubkey[32] = {
+		0xd7, 0x5a, 0x98, 0x01, 0x82, 0xb1, 0x0a, 0xb7,
+		0xd5, 0x4b, 0xfe, 0xd3, 0xc9, 0x64, 0x07, 0x3a,
+		0x0e, 0xe1, 0x72, 0xf3, 0xda, 0xa6, 0x23, 0x25,
+		0xaf, 0x02, 0x1a, 0x68, 0xf7, 0x07, 0x51, 0x1a
+	};
+	static const uint8_t vec3_ygg[16] = {
+		0x02, 0x05, 0xa3, 0xf6, 0xc5, 0xe5, 0xe5, 0xe5,
+		0xe1, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14
+	};
+
+	ret = lichen_yggdrasil_addr(vec3_pubkey, &addr);
+	zassert_equal(ret, 0, "yggdrasil_addr vec3 failed: %d", ret);
+	zassert_mem_equal(addr.s6_addr, vec3_ygg, sizeof(vec3_ygg),
+			  "vector 3 does not match yggdrasil-derivation.json");
+
+	/* Error path test (matches other ipv6_addr functions) */
+	ret = lichen_yggdrasil_addr(NULL, &addr);
+	zassert_equal(ret, -EINVAL, "NULL pubkey should return -EINVAL");
+	ret = lichen_yggdrasil_addr(vec1_pubkey, NULL);
+	zassert_equal(ret, -EINVAL, "NULL addr should return -EINVAL");
 }
 
 ZTEST_SUITE(link_crypto, NULL, NULL, NULL, NULL, NULL);

@@ -17,6 +17,15 @@
 #
 set -euo pipefail
 
+# Self syntax check and dry-run support (per LICHEN-2auf.56 recovery)
+if [[ "${1:-}" == "--dry-run" || "${1:-}" == "-n" ]]; then
+  DRY_RUN=1
+  echo "=== DRY-RUN MODE for AWS recovery demo (LICHEN-2auf.56) ==="
+  shift
+fi
+bash -n "$0" || { echo "ERROR: bash syntax check failed for $0"; exit 1; }
+echo "UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ) | Script hash: $(sha256sum "$0" | cut -d' ' -f1) | bash -n OK"
+
 # === Configuration ===
 AWS_PROFILE="${AWS_PROFILE:-personal}"
 AWS_REGION="${AWS_REGION:-us-west-2}"
@@ -81,12 +90,22 @@ log_ok()    { echo -e "${GREEN}>>>${NC} $*" >&2; }
 log_warn()  { echo -e "${YELLOW}>>>${NC} $*" >&2; }
 log_error() { echo -e "${RED}ERROR:${NC} $*" >&2; }
 
-# === AWS CLI wrapper with profile ===
+# === AWS CLI wrapper with profile (enhanced for LICHEN-2auf.56: dry-run, logging, fail-closed) ===
 aws_cmd() {
+    local cmd="aws --profile $AWS_PROFILE --region $AWS_REGION $*"
+    echo "UTC: $(date -u +%Y-%m-%dT%H:%M:%SZ) | CMD: $cmd | hash: $(echo -n "$cmd" | sha256sum | cut -d' ' -f1)" >&2
+    if [[ "${DRY_RUN:-0}" == "1" ]]; then
+        echo "[DRY-RUN] Would run: $cmd" >&2
+        return 0
+    fi
     aws --profile "$AWS_PROFILE" --region "$AWS_REGION" "$@"
 }
 
 check_aws_account() {
+    if [[ "${DRY_RUN:-0}" == "1" ]]; then
+        echo "[DRY-RUN] Skipping account proof (would prove 210337117346). Fail-closed on mismatch in real run."
+        return 0
+    fi
     local caller_account
     if ! caller_account=$(aws_cmd sts get-caller-identity --query Account --output text 2>/dev/null); then
         log_error "AWS credentials not configured or expired for profile: $AWS_PROFILE"
@@ -96,6 +115,7 @@ check_aws_account() {
         log_error "AWS profile $AWS_PROFILE resolves to account $caller_account, expected $EXPECTED_AWS_ACCOUNT"
         exit 1
     fi
+    log_ok "Proved account $EXPECTED_AWS_ACCOUNT"
 }
 
 # === SQS Status Queue ===

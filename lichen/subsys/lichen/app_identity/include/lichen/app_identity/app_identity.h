@@ -79,6 +79,10 @@ int lichen_app_identity_copy_self(
 
 int lichen_app_identity_upsert_peer(
 	const struct lichen_app_identity_peer *_Nonnull peer);
+/*
+ * Returns: 0 success; -EINVAL bad param; -ENOKEY no pubkey; -ENAMETOOLONG
+ * name too long; -EEXIST TOFU key mismatch; -ENOSPC peer table full.
+ */
 int lichen_app_identity_upsert_peer_key(
 	const uint8_t eui64[_Nonnull LICHEN_APP_IDENTITY_EUI64_LEN],
 	const uint8_t public_key[_Nonnull LICHEN_APP_IDENTITY_PUBLIC_KEY_LEN]);

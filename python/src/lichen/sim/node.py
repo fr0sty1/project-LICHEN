@@ -37,7 +37,8 @@ NODE_STATE_TRANSITIONS: dict[NodeState, frozenset[NodeState]] = {
 class SimNode:
     """State for a single simulated node in the LICHEN mesh.
 
-    Tracks position, radio state, and connection status for simulation.
+    Tracks position, radio state, connection status, and synchronized
+    hopping state (current_channel, hop_schedule based on SFN/time).
     Position is mutable to support node mobility scenarios.
     """
 
@@ -49,6 +50,8 @@ class SimNode:
     last_seen_time_us: int
     rx_callbacks: RxCallbacks | None = field(repr=False)
     metrics: NodeMetrics = field(repr=False)
+    current_channel: int = 0
+    hop_schedule: tuple[int, ...] = field(default_factory=tuple, repr=False)
     _state_machine: StateMachine[NodeState] = field(init=False, repr=False)
 
     def __init__(
@@ -62,6 +65,8 @@ class SimNode:
         last_seen_time_us: int = 0,
         rx_callbacks: RxCallbacks | None = None,
         metrics: NodeMetrics | None = None,
+        current_channel: int = 0,
+        hop_schedule: tuple[int, ...] | None = None,
     ) -> None:
         self.id = id
         self.position = position
@@ -71,6 +76,8 @@ class SimNode:
         self.last_seen_time_us = last_seen_time_us
         self.rx_callbacks = rx_callbacks
         self.metrics = metrics if metrics is not None else NodeMetrics()
+        self.current_channel = current_channel
+        self.hop_schedule = tuple(hop_schedule) if hop_schedule is not None else ()
         self._state_machine = StateMachine(
             initial=state,
             transitions=NODE_STATE_TRANSITIONS,

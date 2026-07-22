@@ -417,13 +417,17 @@ def outbound_record(draft: MessageDraft, result: SendResult) -> MessageRecord:
 
 SENSITIVE_FIELD_PARTS = (
     "key",
-    "payload",
     "psk",
-    "raw",
     "secret",
     "seed",
     "token",
     "password",
+    "credential",
+    "cred",
+    "auth",
+    "private",
+    "nonce",
+    "mac",
 )
 RADIO_CONFIG_FIELDS = frozenset({"freq_mhz", "bw_khz", "sf", "cr", "tx_power_dbm"})
 NODE_CONFIG_FIELDS = frozenset({"name", "role"})

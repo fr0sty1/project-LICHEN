@@ -15,6 +15,8 @@ Usage:
   ./ci-to-beads.py clang-tidy clang-tidy.log
 """
 
+from __future__ import annotations
+
 import argparse
 import subprocess
 import sys

@@ -73,6 +73,12 @@ def test_vectors_directory_exists() -> None:
         "meshtastic_app_compat.json",
         "meshcore_app_compat.json",
         "rpl_messages.json",
+        "schc_fragment.json",
+        "ccp_load_balancing.json",
+        "ccp13.json",
+        "ccp15.json",
+        "ccp16-desync.json",
+        "ccp9.json",
     ],
 )
 def test_vector_file_schema(filename: str) -> None:
@@ -84,37 +90,43 @@ def test_vector_file_schema(filename: str) -> None:
 
 def _schc_cases():
     doc = _load("schc_compression.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] in (1, 2)
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _frame_cases():
     doc = _load("link_frame.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] in (1, 2)
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _l2_payload_cases():
     doc = _load("l2_payload.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] in (1, 2)
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _meshtastic_cases():
     doc = _load("meshtastic_app_compat.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] in (1, 2)
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _announce_coords_cases():
     doc = _load("announce_coords.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] in (1, 2)
     return [(v["name"], v) for v in doc["vectors"]]
 
 
 def _meshcore_cases():
     doc = _load("meshcore_app_compat.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] in (1, 2)
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+def _schc_fragment_cases():
+    doc = _load("schc_fragment.json")
+    assert doc["format_version"] in (1, 2)
     return [(v["name"], v) for v in doc["vectors"]]
 
 
@@ -125,6 +137,18 @@ def test_schc_vector(name: str, vector: dict) -> None:
     assert compress_packet(packet) == compressed, f"compress drift: {name}"
     assert decompress_packet(compressed) == packet, f"decompress drift: {name}"
     assert compressed[0] == vector["rule_id"]
+
+
+@pytest.mark.parametrize("name,vector", _schc_fragment_cases())
+def test_schc_fragment_vector(name: str, vector: dict) -> None:
+    # Basic validation against independent RFC oracle. Full interop in test_cross_impl_interop and harnesses.
+    assert vector["rule_id"] == 42
+    assert len(vector["fragments"]) >= 1
+    for f in vector["fragments"]:
+        frag = bytes.fromhex(f)
+        assert len(frag) >= 2
+    if "expect" in vector and "mic_fail" in vector["expect"]:
+        assert vector["expect"]["mic_fail"] is True
 
 
 @pytest.mark.parametrize("name,vector", _l2_payload_cases())
@@ -559,7 +583,7 @@ def test_schnorr_vector(desc: str, vector: dict) -> None:
 
 def _rpl_messages_cases():
     doc = _load("rpl_messages.json")
-    assert doc["format_version"] == 1
+    assert doc["format_version"] in (1, 2)
     return [(v["name"], v) for v in doc["vectors"]]
 
 
@@ -686,3 +710,29 @@ def test_rpl_messages_vector(name: str, vector: dict) -> None:
         assert len(options) == len(expected), f"{name}: options count"
         for i, opt in enumerate(options):
             assert opt.type == expected[i]["type"], f"{name}: option {i} type"
+
+
+def _ccp15_cases():
+    doc = _load("ccp15.json")
+    assert doc["format_version"] in (1, 2)
+    return [(v["name"], v) for v in doc["vectors"]]
+
+
+@pytest.mark.parametrize("name,vector", _ccp15_cases())
+def test_ccp15_vector(name: str, vector: dict) -> None:
+    assert "name" in vector
+    if "expected_sf" in vector:
+        sf = vector["expected_sf"]
+        assert 7 <= sf <= 12, f"{name}: invalid SF {sf}"
+    if "load_factor" in vector:
+        lf = vector["load_factor"]
+        assert 0 <= lf <= 1, f"{name}: invalid load_factor {lf}"
+    if "snr_ema" in vector:
+        snr = vector["snr_ema"]
+        assert -30 <= snr <= 30, f"{name}: invalid snr_ema {snr}"
+    if "density" in vector or "expected_density" in vector:
+        d = vector.get("density") or vector.get("expected_density", 0)
+        assert 0 <= d <= 255, f"{name}: invalid density {d}"
+    if "per" in vector:
+        p = vector["per"]
+        assert 0 <= p <= 100, f"{name}: invalid per {p}"

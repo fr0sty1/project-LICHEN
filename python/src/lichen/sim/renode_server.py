@@ -244,7 +244,12 @@ class RenodeServer:
             return
 
         tx_airtime = airtime_us(len(payload))
-        logger.debug("Renode TX: %d bytes, airtime %d us", len(payload), tx_airtime)
+        logger.debug(
+            "Renode TX: node=%s bytes=%d airtime=%d us",
+            self._node_id,
+            len(payload),
+            tx_airtime,
+        )
         await _write_message(writer, encode_tx_done(tx_airtime))
 
     def _handle_rx_enter(self, data: bytes, writer: asyncio.StreamWriter) -> None:

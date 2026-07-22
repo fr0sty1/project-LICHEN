@@ -119,7 +119,7 @@ coap-client -m delete coap://[fe80::1%sl0]/keys/1234:5678:9abc:def0
 
 ```bash
 # Direct to mesh node (node routes via LoRa)
-coap-client -m get coap://[fd12:3456:789a:1::aaaa:bbbb:cccc:dddd]/sensors/temp
+coap-client -m get coap://[0200:1234:5678:9abc::aaaa:bbbb:cccc:dddd]/sensors/temp
 ```
 
 ## Python aiocoap Examples

@@ -61,15 +61,12 @@ struct slip_transport_stats {
 /**
  * @brief Initialize the SLIP transport
  *
- * Sets up the UART device, configures the network interface with link-local
- * addressing, and starts the RX thread for packet reception.
+ * Sets up synchronization primitives, optional UART device (via
+ * devicetree chosen { lichen,slip-uart = &uart0; }), starts RX thread.
+ * UART is optional for test modes using test helpers; warning logged if
+ * unavailable. Network interface is always available.
  *
- * The UART device is selected via devicetree:
- *   chosen { lichen,slip-uart = &uart0; };
- *
- * @return 0 on success
- * @return -ENODEV if UART device not found or not ready
- * @return -EALREADY if already initialized
+ * @return 0 on success (or -EALREADY if already initialized)
  */
 int slip_transport_init(void);
 
@@ -112,9 +109,12 @@ int slip_transport_get_stats(struct slip_transport_stats *stats);
 void slip_transport_reset_stats(void);
 
 /**
- * @brief Check if transport is initialized and UART is ready
+ * @brief Check if SLIP transport is initialized and ready
  *
- * @return true if UART is available and transport initialized
+ * UART device is optional (test mode uses inject/get_last_tx helpers).
+ * Matches kiss_transport_is_ready() pattern.
+ *
+ * @return true if transport has been initialized
  */
 bool slip_transport_is_ready(void);
 

@@ -37,7 +37,7 @@ int schc_bit_writer_write(struct schc_bit_writer *writer,
 		}
 
 		int shift = remaining - bits_to_align;
-		uint8_t partial = (value >> shift) & ((1 << bits_to_align) - 1);
+		uint8_t partial = (uint8_t)((value >> shift) & ((1U << bits_to_align) - 1));
 
 		writer->buf[writer->nbits / 8] |=
 			partial << (8 - bit_offset - bits_to_align);
@@ -52,7 +52,7 @@ int schc_bit_writer_write(struct schc_bit_writer *writer,
 	}
 
 	if (remaining > 0) {
-		uint8_t partial = value & ((1 << remaining) - 1);
+		uint8_t partial = (uint8_t)(value & ((1U << remaining) - 1));
 
 		writer->buf[writer->nbits / 8] = partial << (8 - remaining);
 		writer->nbits += remaining;

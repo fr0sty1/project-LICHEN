@@ -7,27 +7,31 @@
 
 See draft-lichen-schc-lora-00.md §4 for rules, §5 for fragmentation (M=1 N=6 T=0, RCS=CRC32, timers, bitmap MSB-first) from constants.toml and test/vectors/.
 
-## A.1. Rule Set
+## A.1. Rule Set (from constants.toml [schc.rule_id] and lichen-core::constants, lichen/schc.h)
 
-| Rule ID | Use Case | Compressed Size |
-|---------|----------|-----------------|
-| 0 | Link-local IPv6 + UDP + CoAP | 4-6 bytes |
-| 1 | Global IPv6 + UDP + CoAP | 12-14 bytes |
-| 2 | ICMPv6 Echo | 3 bytes |
-| 3 | RPL DIO | 8 bytes |
-| 4 | RPL DAO | 6 bytes |
-| 255 | No compression | Full headers |
+Current constants (Rust/C synchronized):
 
-## A.2. CoAP Compression
+| Rule ID | Name | Use Case |
+|---------|------|----------|
+| 0 | LINK_LOCAL_COAP | Link-local IPv6 + UDP + CoAP |
+| 1 | GLOBAL_COAP | Global IPv6 + UDP + CoAP |
+| 2 | ICMPV6_ECHO | ICMPv6 Echo Request/Reply |
+| 3 | RPL_DIO | RPL DIO over link-local ICMPv6 |
+| 4 | RPL_DAO | RPL DAO with DODAGID over link-local ICMPv6 |
+| 5 | LINK_LOCAL_OSCORE | Link-local IPv6 + UDP + OSCORE-protected CoAP |
+| 6 | GLOBAL_OSCORE | Global IPv6 + UDP + OSCORE-protected CoAP |
+| 7 | MQTT_SN | IPv6 + UDP + MQTT-SN (port 10883) |
+| 255 | UNCOMPRESSED | No compression (full headers passthrough) |
 
-| Field | TV | MO | CDA |
-|-------|----|----|-----|
-| Version | 1 | equal | not-sent |
-| Type | - | ignore | value-sent (2 bits) |
-| TKL | - | ignore | value-sent (4 bits) |
-| Code | - | ignore | value-sent (8 bits) |
-| MID | - | ignore | value-sent (16 bits) |
-| Token | - | ignore | value-sent (TKL bytes) |
+See rust/lichen-schc/src/rules.rs, lichen/subsys/lichen/schc/include/lichen/schc.h:93, constants.toml:29-36, and test/vectors/schc_compression.json for exact matching logic and test vectors. Fragmentation uses [schc.fragment]: M=1, N=6, T=0, RCS=4 bytes, RETX=10s, MAX_ACK=3, INACTIVITY=60s (MSB-first bitmap).
+
+## A.2. Fragmentation (from constants.toml [schc.fragment])
+
+See draft-lichen-schc-lora-00.md §5 (updated to match current constants).
+
+## A.3. CoAP Compression
+
+See RFC 8824 and lichen-coap. Content-Format for SenML-CBOR is 112 (see lichen-coap/src/option.rs:33 and appendix-senml.md).
 
 ---
 

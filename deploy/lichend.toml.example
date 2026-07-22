@@ -26,3 +26,21 @@ instance_id = 1
 
 # RPL mode of operation: "non-storing" (MOP 1) or "storing" (MOP 2).
 mode = "non-storing"
+
+[yggdrasil]
+# Yggdrasil peers for global backbone connectivity (see project-LICHEN-zt3c.2).
+# List of tcp://host:port endpoints.
+peers = [
+  "tcp://ygg.mkg20001.io:80",
+  # Add private peers here for production
+]
+# Enable public peering (default: true).
+public_peering = true
+# Path to yggdrasil binary (default provided).
+# binary = "/usr/bin/yggdrasil"
+
+[backhaul]
+# Backhaul transport kind ("tun" is default and recommended).
+kind = "tun"
+# Name of the TUN interface created for LICHEN traffic.
+interface = "lichen0"

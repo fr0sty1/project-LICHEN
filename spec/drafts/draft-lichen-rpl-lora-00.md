@@ -139,13 +139,12 @@ minimizes RAM requirements at routers.
 
 ### 4.2. DODAG Configuration
 
-| Parameter | Value | Rationale |
-|-----------|-------|-----------|
-| RPLInstanceID | 0 | Single instance |
-| Mode | Non-Storing | Memory efficiency |
-| MOP | 1 | Non-Storing, no multicast |
-| Grounded | Yes (if BR) | Internet connectivity |
-| DAG Metric Container | Yes | Required for MRHOF |
+| Parameter | Value | Rationale | Source |
+|-----------|-------|-----------|--------|
+| RPLInstanceID | 0 | Single instance | constants.toml:46, lichen-core::constants::RPL_INSTANCE_ID |
+| Mode | Non-Storing (MOP=1) | Memory efficiency (root holds routes) | constants.toml:47, RPL_MODE_OF_OPERATION |
+| Grounded | Yes (if BR) | Internet connectivity via 6LBR | draft-lichen-border-router |
+| DAG Metric Container | Yes | Required for MRHOF ETX | RFC 6550 |
 
 ### 4.3. Multiple DODAGs
 
@@ -509,7 +508,7 @@ Specific values TBD.
 
 ```
 RPLInstanceID: 0
-DODAGID: fd12:3456:789a:1::1
+DODAGID: 0200:1234:5678:9abc::1
 Version: 1
 Rank: 256 (root)
 Mode: Non-Storing
@@ -522,7 +521,7 @@ Trickle:
   Imax: 8 doublings (17 min)
   k: 10
 
-Prefix: fd12:3456:789a:1::/64
+# No prefix advertisement (02xx addresses are self-derived from key)
 Valid Lifetime: 86400s (1 day)
 Preferred Lifetime: 43200s (12 hours)
 ```

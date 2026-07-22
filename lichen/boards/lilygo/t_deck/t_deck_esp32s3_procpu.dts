@@ -48,12 +48,30 @@
 	buttons {
 		compatible = "gpio-keys";
 		button0: button_0 {
-			/* Boot/PRG button */
+			/* Boot/PRG button (GPIO0) */
 			gpios = <&gpio0 0 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 			label = "PRG";
 			zephyr,code = <INPUT_KEY_0>;
 		};
 	};
+
+	/*
+	 * T-Deck input clarification (project-LICHEN-hzvh, fixed via
+	 * codereview beads project-LICHEN-53zg/6d6s/wou1):
+	 * - Keyboard: I2C slave (ESP32-C3) @0x55, SDA=GPIO18/SCL=GPIO8 (I2C0),
+	 *   INT=GPIO46 (BOARD_KEYBOARD_INT). Uses dedicated driver, NOT gpio-keys
+	 *   (see LilyGO Keyboard_ESP32C3 example; no standard Zephyr compatible
+	 *   yet -- human review needed for custom driver).
+	 * - Trackball: GPIO directions per LilyGO utilities.h BOARD_TBOX_*:
+	 *   BOARD_TBOX_G02=GPIO2, BOARD_TBOX_G01=GPIO3,
+	 *   BOARD_TBOX_G04=GPIO1, BOARD_TBOX_G03=GPIO15;
+	 *   press=BOARD_BOOT_PIN=GPIO0 (also used for PRG button).
+	 *   Pure GPIO, no I2C. Exact source: 
+	 *   https://raw.githubusercontent.com/Xinyuan-LilyGO/T-Deck/master/examples/UnitTest/utilities.h
+	 * Sources: LilyGO utilities.h, Meshtastic variant.h, Renode t_deck.repl.
+	 * I2C pinctrl added.
+	 * Blocking full LVGL/input until 3 clean codereview passes on hzvh.
+	 */
 
 	/*
 	 * ST7789 display on SPI3 CS1, disabled until display/input bring-up

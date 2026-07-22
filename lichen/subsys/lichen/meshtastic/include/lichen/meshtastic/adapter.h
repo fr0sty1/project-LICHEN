@@ -90,11 +90,19 @@ struct lichen_meshtastic_adapter_packet_info {
 	uint8_t to_eui64[8];
 	uint8_t to_iid[8];
 	/*
-	 * Points into the ToRadio buffer passed to process_raw/feed_stream.
-	 * The pointer is valid only for the duration of handle_text().
+	 * payload points into payload_buf (part of this struct) when set.
+	 * The buffer and pointer are valid for the lifetime of the
+	 * packet_info (i.e. for the duration of the handle_*() callback
+	 * ONLY). Storing the pointer, queuing it across threads, or using
+	 * it after the callback returns will read from reused stream_buf
+	 * and see corrupted data on the next frame. Callers MUST copy
+	 * payload if retention beyond callback is needed. This fixes the
+	 * pointer-escape exposure (project-LICHEN-4b40 and codereview
+	 * beads w0or/bex2/2guf).
 	 */
 	const uint8_t *payload;
 	size_t payload_len;
+	uint8_t payload_buf[LICHEN_MESHTASTIC_TEXT_PAYLOAD_MAX];
 	bool has_from;
 	bool has_to;
 	bool has_id;

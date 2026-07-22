@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, ClassVar
 
 
 @dataclass
@@ -34,7 +34,7 @@ class NodeMetrics:
 
     # Maximum entries in packet_hashes_sent and packet_hashes_received.
     # Prevents unbounded memory growth in long-running simulations.
-    _PACKET_HASH_SET_MAX_SIZE: int = field(default=10000, repr=False)
+    _PACKET_HASH_SET_MAX_SIZE: ClassVar[int] = 10000
 
     tx_count: int = 0
     rx_count: int = 0
@@ -50,7 +50,7 @@ class NodeMetrics:
 
         Args:
             payload: The transmitted payload bytes.
-            packet_hash: SHA256[:16] hash of the payload.
+            packet_hash: First 16 bytes of SHA256(payload) as 32-char lowercase hex.
         """
         self.tx_count += 1
         self.tx_bytes += len(payload)
@@ -62,7 +62,7 @@ class NodeMetrics:
 
         Args:
             payload: The received payload bytes.
-            packet_hash: SHA256[:16] hash of the payload.
+            packet_hash: First 16 bytes of SHA256(payload) as 32-char lowercase hex.
             from_peer: Optional IID or node ID of the sender.
         """
         self.rx_count += 1

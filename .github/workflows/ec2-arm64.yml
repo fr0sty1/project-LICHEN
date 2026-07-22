@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies (if needed)
         run: |
           which west || pip3 install west
-          which cmake || sudo dnf install -y cmake ninja-build gcc
+          which cmake || sudo dnf install -y cmake ninja-build gcc meson
 
       - name: Setup west workspace
         run: |

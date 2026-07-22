@@ -27,17 +27,9 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/util.h>
+#include <lichen/transport/slip_transport.h>
 
 LOG_MODULE_REGISTER(ble_uart, LOG_LEVEL_INF);
-
-/* RFC 1055 SLIP byte values */
-#define SLIP_END     0xC0u
-#define SLIP_ESC     0xDBu
-#define SLIP_ESC_END 0xDCu
-#define SLIP_ESC_ESC 0xDDu
-
-/* Maximum IPv6 packet size (RFC 8200 §5) */
-#define SLIP_BUF_SIZE 1280u
 
 /* NUS UUIDs — 128-bit, little-endian as Zephyr expects */
 #define BT_UUID_NUS_VAL \
@@ -108,7 +100,7 @@ static struct ble_uart_test_tx_state s_test_tx_state;
 #endif
 
 /* SLIP reassembly state — protected by s_rx_mutex */
-static uint8_t  s_rx_buf[SLIP_BUF_SIZE];
+static uint8_t  s_rx_buf[SLIP_LCI_MTU];
 static uint16_t s_rx_len;
 static bool     s_rx_esc;
 static bool     s_rx_overflow;
@@ -349,7 +341,7 @@ int ble_uart_send_slip(const uint8_t *ipv6, size_t len)
 {
 	/* Worst-case SLIP frame: every byte escaped → 2x len, plus 2 END bytes.
 	 * Protected by s_tx_mutex below. */
-	static uint8_t s_tx_frame[SLIP_BUF_SIZE * 2u + 2u];
+	static uint8_t s_tx_frame[SLIP_LCI_MTU * 2u + 2u];
 	uint16_t fi = 0;
 	int rc = 0;
 	struct bt_conn *conn;
@@ -360,7 +352,7 @@ int ble_uart_send_slip(const uint8_t *ipv6, size_t len)
 	}
 
 	/* Validate input length to prevent overflow */
-	if (len > SLIP_BUF_SIZE) {
+	if (len > SLIP_LCI_MTU) {
 		rc = -ENOMEM;
 		goto out_unref;
 	}

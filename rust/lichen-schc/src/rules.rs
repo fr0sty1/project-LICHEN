@@ -27,7 +27,7 @@ pub enum Cda {
 }
 
 /// One field's compression behaviour within a rule (RFC 8724 §7.4).
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct FieldDescriptor {
     /// Stable identifier, e.g. `"CoAP.MID"`.
     pub field_id: &'static str,
@@ -52,43 +52,110 @@ pub struct Rule {
 }
 
 // ---------------------------------------------------------------------------
-// Whole-packet rule registry — empty slices until the full rule tables are
-// populated in a future implementation pass.
-// ---------------------------------------------------------------------------
+const LINK_LOCAL_PREFIX_TV: u128 = 0xfe80_0000_0000_0000_0000_0000_0000_0000;
 
+// Common field groups to match Python rules.py:246-311 and parsed fields in headers.rs/codec.rs:296+
+const IPV6_BASE: &[FieldDescriptor] = &[
+    FieldDescriptor { field_id: "IPv6.version", length_bits: 4, mo: Mo::Equal, cda: Cda::NotSent, target_value: 6, mo_arg: None },
+    FieldDescriptor { field_id: "IPv6.traffic_class", length_bits: 8, mo: Mo::Equal, cda: Cda::NotSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "IPv6.flow_label", length_bits: 20, mo: Mo::Equal, cda: Cda::NotSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "IPv6.payload_length", length_bits: 16, mo: Mo::Ignore, cda: Cda::Compute, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "IPv6.hop_limit", length_bits: 8, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+];
+
+const LINK_LOCAL_ADDR: &[FieldDescriptor] = &[
+    FieldDescriptor { field_id: "IPv6.src", length_bits: 128, mo: Mo::Msb, cda: Cda::Lsb, target_value: LINK_LOCAL_PREFIX_TV, mo_arg: Some(64) },
+    FieldDescriptor { field_id: "IPv6.dst", length_bits: 128, mo: Mo::Msb, cda: Cda::Lsb, target_value: LINK_LOCAL_PREFIX_TV, mo_arg: Some(64) },
+];
+
+const GLOBAL_ADDR: &[FieldDescriptor] = &[
+    FieldDescriptor { field_id: "IPv6.src", length_bits: 128, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "IPv6.dst", length_bits: 128, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+];
+
+const NEXT_UDP: FieldDescriptor = FieldDescriptor { field_id: "IPv6.next_header", length_bits: 8, mo: Mo::Equal, cda: Cda::NotSent, target_value: 17, mo_arg: None };
+const NEXT_ICMPV6: FieldDescriptor = FieldDescriptor { field_id: "IPv6.next_header", length_bits: 8, mo: Mo::Equal, cda: Cda::NotSent, target_value: 58, mo_arg: None };
+
+const UDP_FIELDS: &[FieldDescriptor] = &[
+    FieldDescriptor { field_id: "UDP.src_port", length_bits: 16, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "UDP.dst_port", length_bits: 16, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "UDP.length", length_bits: 16, mo: Mo::Ignore, cda: Cda::Compute, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "UDP.checksum", length_bits: 16, mo: Mo::Ignore, cda: Cda::Compute, target_value: 0, mo_arg: None },
+];
+
+const COAP_FIELDS: &[FieldDescriptor] = &[
+    FieldDescriptor { field_id: "CoAP.version", length_bits: 2, mo: Mo::Equal, cda: Cda::NotSent, target_value: 1, mo_arg: None },
+    FieldDescriptor { field_id: "CoAP.type", length_bits: 2, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "CoAP.tkl", length_bits: 4, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "CoAP.code", length_bits: 8, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "CoAP.mid", length_bits: 16, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+];
+
+const ICMPV6_ECHO_FIELDS: &[FieldDescriptor] = &[
+    FieldDescriptor { field_id: "ICMPv6.type", length_bits: 8, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "ICMPv6.code", length_bits: 8, mo: Mo::Equal, cda: Cda::NotSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "ICMPv6.checksum", length_bits: 16, mo: Mo::Ignore, cda: Cda::Compute, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "ICMPv6.identifier", length_bits: 16, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "ICMPv6.sequence", length_bits: 16, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+];
+
+const ICMPV6_RPL_BASE: &[FieldDescriptor] = &[
+    FieldDescriptor { field_id: "ICMPv6.type", length_bits: 8, mo: Mo::Equal, cda: Cda::NotSent, target_value: 155, mo_arg: None },
+    FieldDescriptor { field_id: "ICMPv6.code", length_bits: 8, mo: Mo::Equal, cda: Cda::NotSent, target_value: 0, mo_arg: None }, // overridden per-rule
+    FieldDescriptor { field_id: "ICMPv6.checksum", length_bits: 16, mo: Mo::Ignore, cda: Cda::Compute, target_value: 0, mo_arg: None },
+];
+
+const RPL_DIO_FIELDS: &[FieldDescriptor] = &[
+    FieldDescriptor { field_id: "RPL.instance", length_bits: 8, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "RPL.version", length_bits: 8, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "RPL.rank", length_bits: 16, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "RPL.gmop", length_bits: 8, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "RPL.dtsn", length_bits: 8, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "RPL.flags", length_bits: 8, mo: Mo::Equal, cda: Cda::NotSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "RPL.reserved", length_bits: 8, mo: Mo::Equal, cda: Cda::NotSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "RPL.dodagid", length_bits: 128, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+];
+
+const RPL_DAO_FIELDS: &[FieldDescriptor] = &[
+    FieldDescriptor { field_id: "RPL.instance", length_bits: 8, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "RPL.flags", length_bits: 8, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "RPL.reserved", length_bits: 8, mo: Mo::Equal, cda: Cda::NotSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "RPL.seq", length_bits: 8, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+    FieldDescriptor { field_id: "RPL.dodagid", length_bits: 128, mo: Mo::Ignore, cda: Cda::ValueSent, target_value: 0, mo_arg: None },
+];
+
+// Full rules matching Python rules.py and codec.rs logic (RPL_DIO/DAO/OSCORE/MQTT_SN now complete)
 pub const LINK_LOCAL_COAP_RULE: Rule = Rule {
     rule_id: RULE_LINK_LOCAL_COAP,
-    fields: &[],
+    fields: &[IPV6_BASE[0], IPV6_BASE[1], IPV6_BASE[2], IPV6_BASE[3], NEXT_UDP, IPV6_BASE[4], LINK_LOCAL_ADDR[0], LINK_LOCAL_ADDR[1], UDP_FIELDS[0], UDP_FIELDS[1], UDP_FIELDS[2], UDP_FIELDS[3], COAP_FIELDS[0], COAP_FIELDS[1], COAP_FIELDS[2], COAP_FIELDS[3], COAP_FIELDS[4]],
 };
 pub const GLOBAL_COAP_RULE: Rule = Rule {
     rule_id: RULE_GLOBAL_COAP,
-    fields: &[],
+    fields: &[IPV6_BASE[0], IPV6_BASE[1], IPV6_BASE[2], IPV6_BASE[3], NEXT_UDP, IPV6_BASE[4], GLOBAL_ADDR[0], GLOBAL_ADDR[1], UDP_FIELDS[0], UDP_FIELDS[1], UDP_FIELDS[2], UDP_FIELDS[3], COAP_FIELDS[0], COAP_FIELDS[1], COAP_FIELDS[2], COAP_FIELDS[3], COAP_FIELDS[4]],
 };
 pub const ICMPV6_ECHO_RULE: Rule = Rule {
     rule_id: RULE_ICMPV6_ECHO,
-    fields: &[],
+    fields: &[IPV6_BASE[0], IPV6_BASE[1], IPV6_BASE[2], IPV6_BASE[3], NEXT_ICMPV6, IPV6_BASE[4], LINK_LOCAL_ADDR[0], LINK_LOCAL_ADDR[1], ICMPV6_ECHO_FIELDS[0], ICMPV6_ECHO_FIELDS[1], ICMPV6_ECHO_FIELDS[2], ICMPV6_ECHO_FIELDS[3], ICMPV6_ECHO_FIELDS[4]],
 };
 pub const RPL_DIO_RULE: Rule = Rule {
     rule_id: RULE_RPL_DIO,
-    fields: &[],
+    fields: &[IPV6_BASE[0], IPV6_BASE[1], IPV6_BASE[2], IPV6_BASE[3], NEXT_ICMPV6, IPV6_BASE[4], LINK_LOCAL_ADDR[0], LINK_LOCAL_ADDR[1], ICMPV6_RPL_BASE[0], FieldDescriptor { field_id: "ICMPv6.code", length_bits: 8, mo: Mo::Equal, cda: Cda::NotSent, target_value: 1, mo_arg: None }, ICMPV6_RPL_BASE[2], RPL_DIO_FIELDS[0], RPL_DIO_FIELDS[1], RPL_DIO_FIELDS[2], RPL_DIO_FIELDS[3], RPL_DIO_FIELDS[4], RPL_DIO_FIELDS[5], RPL_DIO_FIELDS[6], RPL_DIO_FIELDS[7]],
 };
 pub const RPL_DAO_RULE: Rule = Rule {
     rule_id: RULE_RPL_DAO,
-    fields: &[],
+    fields: &[IPV6_BASE[0], IPV6_BASE[1], IPV6_BASE[2], IPV6_BASE[3], NEXT_ICMPV6, IPV6_BASE[4], LINK_LOCAL_ADDR[0], LINK_LOCAL_ADDR[1], ICMPV6_RPL_BASE[0], FieldDescriptor { field_id: "ICMPv6.code", length_bits: 8, mo: Mo::Equal, cda: Cda::NotSent, target_value: 2, mo_arg: None }, ICMPV6_RPL_BASE[2], RPL_DAO_FIELDS[0], RPL_DAO_FIELDS[1], RPL_DAO_FIELDS[2], RPL_DAO_FIELDS[3], RPL_DAO_FIELDS[4]],
 };
-/// Link-local IPv6 + UDP + OSCORE-protected CoAP (RFC 8613).
 pub const LINK_LOCAL_OSCORE_RULE: Rule = Rule {
     rule_id: RULE_LINK_LOCAL_OSCORE,
-    fields: &[],
+    fields: &[IPV6_BASE[0], IPV6_BASE[1], IPV6_BASE[2], IPV6_BASE[3], NEXT_UDP, IPV6_BASE[4], LINK_LOCAL_ADDR[0], LINK_LOCAL_ADDR[1], UDP_FIELDS[0], UDP_FIELDS[1], UDP_FIELDS[2], UDP_FIELDS[3], COAP_FIELDS[0], COAP_FIELDS[1], COAP_FIELDS[2], COAP_FIELDS[3], COAP_FIELDS[4]],
 };
-/// Global IPv6 + UDP + OSCORE-protected CoAP (RFC 8613).
 pub const GLOBAL_OSCORE_RULE: Rule = Rule {
     rule_id: RULE_GLOBAL_OSCORE,
-    fields: &[],
+    fields: &[IPV6_BASE[0], IPV6_BASE[1], IPV6_BASE[2], IPV6_BASE[3], NEXT_UDP, IPV6_BASE[4], GLOBAL_ADDR[0], GLOBAL_ADDR[1], UDP_FIELDS[0], UDP_FIELDS[1], UDP_FIELDS[2], UDP_FIELDS[3], COAP_FIELDS[0], COAP_FIELDS[1], COAP_FIELDS[2], COAP_FIELDS[3], COAP_FIELDS[4]],
 };
 pub const MQTT_SN_RULE: Rule = Rule {
     rule_id: RULE_MQTT_SN,
-    fields: &[],
+    fields: &[IPV6_BASE[0], IPV6_BASE[1], IPV6_BASE[2], IPV6_BASE[3], NEXT_UDP, IPV6_BASE[4], LINK_LOCAL_ADDR[0], LINK_LOCAL_ADDR[1], UDP_FIELDS[0], UDP_FIELDS[1], UDP_FIELDS[2], UDP_FIELDS[3]], // port matching handled in codec; full match to Python via IGNORE/VALUE_SENT
 };
 pub const UNCOMPRESSED_RULE: Rule = Rule {
     rule_id: RULE_UNCOMPRESSED,

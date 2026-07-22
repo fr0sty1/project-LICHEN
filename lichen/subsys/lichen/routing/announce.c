@@ -16,7 +16,7 @@
 #include <lichen/schnorr48.h>
 
 #define ANNOUNCE_SIGNED_PREFIX_LEN \
-	(LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN + 2U)
+	(LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN + 2U + 1U)
 #define ANNOUNCE_SIGNED_MAX_LEN 256U
 #define ANNOUNCE_APP_DATA_MAX_LEN \
 	(ANNOUNCE_SIGNED_MAX_LEN - ANNOUNCE_SIGNED_PREFIX_LEN)
@@ -124,6 +124,8 @@ static int build_signed_data(const struct lichen_announce_view *announce,
 		(uint8_t)(announce->wire_seq_num >> 8);
 	buf[LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN + 1U] =
 		(uint8_t)announce->wire_seq_num;
+	buf[LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN + 2U] =
+		announce->rx_channel;
 	memcpy(&buf[ANNOUNCE_SIGNED_PREFIX_LEN], announce->app_data,
 	       announce->app_data_len);
 	*out_len = len;
@@ -240,12 +242,13 @@ int lichen_announce_parse(const uint8_t *data, size_t len,
 
 	announce->flags = data[1];
 	announce->hop_count = data[2];
-	announce->wire_seq_num = ((uint16_t)data[3] << 8) | data[4];
+	announce->rx_channel = data[3];
+	announce->wire_seq_num = ((uint16_t)data[4] << 8) | data[5];
 	announce->seq_num = announce->wire_seq_num;
 	announce->seq_stale = false;
-	announce->originator_iid = &data[5];
-	announce->pubkey = &data[13];
-	announce->signature = &data[45];
+	announce->originator_iid = &data[6];
+	announce->pubkey = &data[14];
+	announce->signature = &data[46];
 	announce->app_data = &data[LICHEN_ANNOUNCE_MIN_LEN];
 	announce->app_data_len = len - LICHEN_ANNOUNCE_MIN_LEN;
 	return 0;
@@ -476,6 +479,7 @@ struct announce_scheduler {
 	void *seq_user_data;
 	uint8_t app_data[SCHED_APP_DATA_MAX_LEN];
 	size_t app_data_len;
+	uint8_t rx_channel;
 };
 
 static struct announce_scheduler sched;
@@ -526,9 +530,10 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 	/* Increment and get sequence number */
 	seq = increment_seq_locked();
 
-	/* Build signed data: iid || pubkey || seq_num || app_data */
+	/* Build signed data: iid || pubkey || seq_num || rx_channel || app_data (CCP-9) */
 	/* SECURITY: IID is derived from pubkey hash to bind identity to the
-	 * cryptographic key material. Must match RX path (pubkey_to_iid). */
+	 * cryptographic key material. Must match RX path (pubkey_to_iid). rx_channel
+	 * binds announced channel against tampering for rendezvous. */
 	uint8_t iid[LICHEN_ANNOUNCE_IID_LEN];
 
 	ret = pubkey_to_iid(sched.link_ctx->ed25519_pk, iid);
@@ -542,6 +547,7 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 	 * consistently prevents buffer overflow if app_data_len increases after
 	 * we release the lock. */
 	app_data_len_snapshot = sched.app_data_len;
+	uint8_t channel_snapshot = sched.rx_channel;
 	signed_len = ANNOUNCE_SIGNED_PREFIX_LEN + app_data_len_snapshot;
 	if (signed_len > sizeof(signed_data)) {
 		k_mutex_unlock(&sched.mutex);
@@ -555,6 +561,8 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 		(uint8_t)(seq >> 8);
 	signed_data[LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN + 1U] =
 		(uint8_t)seq;
+	signed_data[LICHEN_ANNOUNCE_IID_LEN + LICHEN_ANNOUNCE_PUBKEY_LEN + 2U] =
+		channel_snapshot;
 	if (app_data_len_snapshot > 0) {
 		memcpy(&signed_data[ANNOUNCE_SIGNED_PREFIX_LEN],
 		       sched.app_data, app_data_len_snapshot);
@@ -573,8 +581,8 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 
 	k_mutex_unlock(&sched.mutex);
 
-	/* Build frame: dispatch || type || flags || hop_count || seq || iid ||
-	 * pubkey || signature || app_data */
+	/* Build frame: dispatch || type || flags || hop_count || rx_channel ||
+	 * seq || iid || pubkey || signature || app_data (MIN_LEN=94 per CCP-9) */
 	size_t frame_len = 1U + LICHEN_ANNOUNCE_MIN_LEN + app_data_len_snapshot;
 
 	if (buf_len < frame_len) {
@@ -586,6 +594,7 @@ static int build_announce_frame(uint8_t *buf, size_t buf_len, size_t *out_len)
 	buf[pos++] = LICHEN_ANNOUNCE_TYPE;
 	buf[pos++] = 0U; /* flags: reserved */
 	buf[pos++] = 0U; /* hop_count: 0 since we're the originator */
+	buf[pos++] = channel_snapshot; /* rx_channel for CCP-9 rendezvous binding */
 	buf[pos++] = (uint8_t)(seq >> 8);
 	buf[pos++] = (uint8_t)seq;
 	memcpy(&buf[pos], iid, LICHEN_ANNOUNCE_IID_LEN);
@@ -701,6 +710,7 @@ int lichen_announce_sched_start(
 	} else {
 		sched.app_data_len = 0;
 	}
+	sched.rx_channel = config->rx_channel;
 	sched.running = true;
 	k_mutex_unlock(&sched.mutex);
 

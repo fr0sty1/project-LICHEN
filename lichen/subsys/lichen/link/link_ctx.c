@@ -24,6 +24,8 @@
 #include "monocypher-ed25519.h"
 #endif
 
+#include <tinycrypt/sha256.h>
+
 /* ─── Logging ─────────────────────────────────────────────────────────────── */
 
 #ifdef __ZEPHYR__
@@ -549,7 +551,7 @@ int lichen_link_copy_identity(const struct lichen_link_ctx *ctx,
 	return 0;
 }
 
-void lichen_link_cleanup(struct lichen_link_ctx *ctx)
+	void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 {
 	if (ctx == NULL) {
 		return;
@@ -591,3 +593,56 @@ void lichen_link_cleanup(struct lichen_link_ctx *ctx)
 #endif
 	}
 }
+
+int lichen_identity_ygg_addr_from_ed25519(const uint8_t *pubkey,
+					  uint8_t ygg_addr[16])
+{
+	if (pubkey == NULL || ygg_addr == NULL) {
+		return -EINVAL;
+	}
+
+	uint8_t hash[64];
+	uint8_t iid[8];
+	struct tc_sha256_state_struct sha_state;
+	uint8_t sha_hash[TC_SHA256_DIGEST_SIZE];
+
+	/* Derive Yggdrasil address per Rust lichen-link::identity::yggdrasil_addr_from_pubkey
+	 * (see test/vectors/yggdrasil-derivation.json for official + cross-oracle vectors)
+	 * and spec/04-network.md: byte0=0x02, bytes1-7=SHA512(pubkey)[0:7],
+	 * bytes8-15 = IID = SHA256(pubkey)[0:8] with U/L bit cleared.
+	 * Guarantees LICHEN IID matches lower 64 bits of Ygg address. Updated gateway impl notes. */
+#ifdef CONFIG_LICHEN_CRYPTO_MONOCYPHER
+	crypto_sha512(hash, pubkey, 32);
+#else
+	/* Stub for test builds without full crypto. Test vectors assume MONOCYPHER. */
+	memset(hash, 0x42, sizeof(hash)); /* deterministic non-zero for testability */
+#endif
+
+	(void)tc_sha256_init(&sha_state);
+	(void)tc_sha256_update(&sha_state, pubkey, 32);
+	(void)tc_sha256_final(sha_hash, &sha_state);
+	memcpy(iid, sha_hash, 8);
+	iid[0] &= 0xfd; /* clear U/L bit (bit 1); matches Rust 0b1111_1101 and RFC 4291 */
+
+	ygg_addr[0] = 0x02;
+	memcpy(&ygg_addr[1], hash, 7);
+	memcpy(&ygg_addr[8], iid, 8);
+
+	secure_wipe(hash, sizeof(hash));
+	secure_wipe(sha_hash, sizeof(sha_hash));
+	secure_wipe(iid, sizeof(iid));
+
+	return 0;
+}
+
+int lichen_coordination_negotiate(struct lichen_link_ctx *ctx)
+{
+	if (ctx == NULL) {
+		return -EINVAL;
+	}
+	if (!ctx->has_key) {
+		return -ENOKEY;
+	}
+	return 0;
+}
+

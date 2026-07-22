@@ -43,15 +43,23 @@ def test_logs_transmission_start_and_reception() -> None:
 
     with structlog.testing.capture_logs() as logs:
         sim.start_transmission("tx", b"hello world")
-        sim.advance_to(1000)
+        sim.advance_to(100_000)  # during TX window
         assert sim.get_rx_result("rx") is not None
+        sim.advance_to(400_000)  # past TX end to fire tx_end event
 
     events = _events(logs)
     assert "tx_start" in events
+    assert "tx_end" in events
     assert "rx_success" in events
     rx_log = next(entry for entry in logs if entry["event"] == "rx_success")
     assert rx_log["from_node_id"] == "tx"
     assert rx_log["payload_len"] == len(b"hello world")
+    tx_end_log = next(entry for entry in logs if entry["event"] == "tx_end")
+    assert tx_end_log["node_id"] == "tx"
+    assert "current_time_us" in tx_end_log
+    assert tx_end_log.get("node_state") in (None, "IDLE")
+    assert "pending_txs" in tx_end_log
+    assert "event_queue_len" in tx_end_log
 
 
 def test_logs_rx_start_and_timeout() -> None:
@@ -66,6 +74,12 @@ def test_logs_rx_start_and_timeout() -> None:
     events = _events(logs)
     assert "rx_start" in events
     assert "rx_timeout" in events
+    rx_timeout_log = next(entry for entry in logs if entry["event"] == "rx_timeout")
+    assert rx_timeout_log["node_id"] == "rx"
+    assert "current_time_us" in rx_timeout_log
+    assert rx_timeout_log.get("node_state") in (None, "IDLE")
+    assert "pending_timeouts" in rx_timeout_log
+    assert "event_queue_len" in rx_timeout_log
 
 
 def test_logs_collision() -> None:

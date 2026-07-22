@@ -275,8 +275,8 @@ fn request_sequence() -> &'static AtomicU64 {
 mod tests {
     use super::*;
     use std::collections::HashSet;
-    use std::sync::Arc;
     use std::sync::atomic::Ordering;
+    use std::sync::Arc;
     use std::thread;
 
     /// Build a minimal CoAP response: Ver=1, Type=ACK, TKL, Code, MID, Token, optional payload.

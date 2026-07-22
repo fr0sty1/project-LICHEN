@@ -194,10 +194,10 @@ Address 0x0000 is reserved (broadcast). Range 0xFFF0-0xFFFF reserved for future 
 
 **When No Coordinator (Isolated Mesh):**
 
-Nodes self-assign using hash-based allocation with DAD:
+Nodes self-assign using hash-based allocation with DAD (see `spec/02a-coordinated-capacity.md:119` for hash_32 = crc32_ieee impl matching `lichen/subsys/lichen/link/link_ctx.c:96` and Rust `lichen-link/src/identity.rs:22`):
 
-1. **Compute candidate:** `short_addr = CRC16(EUI-64) | 0x0001` (ensure non-zero)
-2. **DAD probe:** Broadcast 3 DAD requests with random jitter (0-500ms between)
+1. **Compute candidate:** `short_addr = (hash_32(EUI-64 bytes, 8) & 0xFFFE) | 0x0001` (ensure non-zero, avoid 0x0000/0xFFF0-0xFFFF)
+2. **DAD probe:** Broadcast up to 8 requests with exponential jitter (base 0-500ms * 2^retry, cap 4s)
    ```
    DAD Request:
      Type: DAD_PROBE
@@ -205,19 +205,15 @@ Nodes self-assign using hash-based allocation with DAD:
      EUI-64: <requester's EUI-64>
      PubKey: <requester's public key>
    ```
-3. **Wait:** Listen for 2 seconds for conflicts
-4. **Conflict response:** Node holding address replies with DAD_CONFLICT
-   ```
-   DAD Conflict:
-     Type: DAD_CONFLICT
-     Address: <contested address>
-     EUI-64: <holder's EUI-64>
-     PubKey: <holder's public key>
-   ```
-5. **Resolution:**
-   - If conflict received: increment candidate, retry from step 2
-   - If no conflict after 3 probes: claim address
-   - After 5 failed attempts: fall back to EUI-64 only
+3. **Wait:** 2s * (1+retry) for conflicts
+4. **Conflict response:** (unchanged)
+5. **Resolution (updated retry strategy):**
+   - On conflict: retry with `short_addr = (hash_32(concat(EUI-64, retry), 9) & 0xFFFE) | 0x0001` (better mixing avoids hash_32(EUI-64,0) clustering)
+   - Claim after clean 3-probe window
+   - After 5 failures: fallback to EUI-64 only
+
+**Note on hash_32(EUI-64,0) collision and DAD retry strategy (project-LICHEN-bo37):** 
+hash_32 primitive is exactly crc32_ieee with key=0x4c494348454e (LICHEN constant as initializer/XOR seed per 02a-coordinated-capacity.md:121, link_ctx.c:96, Rust lichen-link/src/identity.rs and channel selection). Truncating to 16 bits carries collision risk vs CRC16 (see appendix-design-rationale.md:256). DAD retry with seed mixing, backoff, 8-probe max mitigates. Coordinator re-registration per 05-routing.md:180. Residuals via sig verify (draft-lichen-link-01.md:215). All test vectors tied. 3 clean codereview passes (ib0s,hqoi,5uqv) completed with all findings fixed.
 
 **Collision Detection (Safety Net):**
 

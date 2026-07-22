@@ -407,7 +407,7 @@ from lichen.announce.scheduler import AnnounceScheduler, SchedulerConfig
 from lichen.crypto.identity import Identity
 
 def telemetry(event, node_id, payload, status="ok", rssi=None, snr=None):
-    packet_hash = hashlib.sha256(payload).hexdigest()[:16]
+    packet_hash = hashlib.sha256(payload).hexdigest()[:32]
     record = {
         "schema": "lichen.telemetry.v1",
         "event": event,

@@ -296,6 +296,8 @@ The LoRa PHY parameters are chosen as a middle-ground compromise:
 - **SF10 is the middle:** Good range for multi-hop mesh without excessive airtime.
   Most links that fail at SF10 would need a relay node anyway.
 
+**Density-aware adaptation (CCP-15.8.2 in 02a-coordinated-capacity.md):** SF10 serves as the default/baseline for typical (medium-density) operation. Adaptive rules override it only under measured local conditions: higher SF on high density/PER (for interference robustness and SF orthogonality), lower SF on low density + good conditions (for throughput). See `estimate_density()` heuristic and thresholds there. This reconciles the general-purpose default with dynamic optimization without contradicting the PHY choice rationale.
+
 ### 7.2. Bandwidth: 125 kHz
 
 | BW | Data Rate | Sensitivity | Crystal Tolerance |

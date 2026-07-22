@@ -1,6 +1,8 @@
-//! RF health metrics tracking for LICHEN nodes.
+//! RF health metrics tracking for LICHEN nodes (CCP-15 interference mitigation
+//! from da2q multi-channel context).
 //!
-//! Tracks packet statistics, signal quality (RSSI/SNR), and packet loss rates
+//! Tracks packet statistics, signal quality (RSSI/SNR with accelerated EMA for
+//! rapid interference response), channel-busy TX failures, and packet loss rates
 //! using fixed-point arithmetic for no_std compatibility.
 //!
 //! # Fixed-Point Representation
@@ -10,14 +12,17 @@
 //! This gives ~0.00002 resolution, more than sufficient for dBm values.
 //!
 //! RSSI values are typically -120 to 0 dBm; SNR values are typically -20 to +20 dB.
+//! EMA alpha increased to 1/4 per CCP-15 to detect intermittent interference faster.
 
 /// Fixed-point scale factor (2^16 = 65536).
 const FP_SCALE: i32 = 1 << 16;
 
-/// RF health metrics aggregator.
+/// RF health metrics aggregator for CCP-15 interference mitigation.
 ///
-/// Tracks packet counts and signal quality statistics. All counters saturate
-/// at their maximum value rather than wrapping.
+/// Tracks packet counts, TX failures (including channel busy for interference
+/// detection), and accelerated signal quality statistics (EMA alpha=1/4 per
+/// da2q multi-channel requirements). All counters saturate at their maximum
+/// value rather than wrapping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct RfHealthMetrics {
     /// Total packets transmitted.
@@ -141,8 +146,9 @@ impl RssiStats {
             // EMA: avg = avg + alpha * (sample - avg)
             // In fixed-point: avg = avg + (alpha * (sample - avg)) >> 16
             let diff = rssi_fp - self.avg_fp;
-            // Multiply then shift to maintain precision
-            self.avg_fp += diff >> 3; // alpha = 1/8
+            // Multiply then shift to maintain precision; alpha=1/4 for faster
+            // response to intermittent interference (CCP-15)
+            self.avg_fp += diff >> 2; // alpha = 1/4
         }
         self.count = self.count.saturating_add(1);
     }
@@ -224,7 +230,9 @@ impl SnrStats {
         } else {
             // EMA: avg = avg + alpha * (sample - avg)
             let diff = snr_fp - self.avg_fp;
-            self.avg_fp += diff >> 3; // alpha = 1/8
+            // alpha=1/4 for faster response to intermittent interference (CCP-15
+            // from da2q multi-channel context: quicker adaptation to busy channels)
+            self.avg_fp += diff >> 2; // alpha = 1/4
         }
         self.count = self.count.saturating_add(1);
     }
@@ -407,12 +415,14 @@ mod tests {
         stats.update(-80);
         assert_eq!(stats.avg(), Some(-80));
 
-        // Second sample: EMA with alpha=1/8
-        // new_avg = -80 + (1/8) * (-60 - (-80)) = -80 + 2.5 = -77.5 -> -77
+        // Second sample: EMA with alpha=1/4 (CCP-15 interference mitigation
+        // from da2q: faster response to changing RF conditions like channel
+        // busy/interference in multi-channel coordination)
+        // new_avg = -80 + (1/4)*(-60 - (-80)) = -80 + 5 = -75
         stats.update(-60);
-        // The avg should move toward -60
+        // The avg should move toward -60 faster than before
         let avg = stats.avg().unwrap();
-        assert!(avg > -80 && avg <= -77, "avg was {}", avg);
+        assert!(avg > -80 && avg <= -75, "avg was {}", avg);
     }
 
     #[test]

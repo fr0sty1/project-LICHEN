@@ -1611,51 +1611,49 @@ static int find_coap_payload_marker(const uint8_t *data, size_t len)
 	while (pos < len) {
 		uint8_t byte = data[pos];
 
-		/* 0xFF is the payload marker - found it */
 		if (byte == 0xFF) {
+			if (pos > (size_t)INT_MAX) {
+				return -1;
+			}
 			return (int)pos;
 		}
 
-		/* Parse option delta and length nibbles */
 		uint8_t delta_nibble = (byte >> 4) & 0x0F;
 		uint8_t len_nibble = byte & 0x0F;
 		pos++;
 
-		/* Decode delta (determines how many extra bytes for delta) */
 		if (delta_nibble == 13) {
-			if (pos >= len) return -1;  /* Malformed */
-			pos++;  /* 1 extended byte */
+			if (pos >= len) return -1;
+			pos++;
 		} else if (delta_nibble == 14) {
-			if (pos + 1 >= len) return -1;  /* Malformed */
-			pos += 2;  /* 2 extended bytes */
+			if (pos + 1 >= len) return -1;
+			pos += 2;
 		} else if (delta_nibble == 15) {
-			/* Reserved for payload marker, but we already checked 0xFF */
-			return -1;  /* Malformed */
+			return -1;
 		}
 
-		/* Decode length */
 		size_t opt_len;
 		if (len_nibble == 13) {
-			if (pos >= len) return -1;  /* Malformed */
+			if (pos >= len) return -1;
 			opt_len = data[pos] + 13;
 			pos++;
 		} else if (len_nibble == 14) {
-			if (pos + 1 >= len) return -1;  /* Malformed */
+			if (pos + 1 >= len) return -1;
 			opt_len = ((size_t)data[pos] << 8) + data[pos + 1] + 269;
 			pos += 2;
 		} else if (len_nibble == 15) {
-			/* Reserved */
-			return -1;  /* Malformed */
+			return -1;
 		} else {
 			opt_len = len_nibble;
 		}
 
-		/* Skip option value */
-		if (pos + opt_len > len) return -1;  /* Malformed */
+		if (pos + opt_len > len) return -1;
 		pos += opt_len;
 	}
 
-	/* No payload marker found - all data is options */
+	if (len > (size_t)INT_MAX) {
+		return -1;
+	}
 	return (int)len;
 }
 

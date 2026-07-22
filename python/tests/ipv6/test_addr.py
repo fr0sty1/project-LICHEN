@@ -93,8 +93,8 @@ def test_make_link_local_rejects_bad_iid() -> None:
 
 def test_make_ula_matches_spec_example() -> None:
     prefix = IPv6Network("fd12:3456:789a:0001::/64")
-    # The spec 12.2 example literal "fd12:...:0001::1234:..." is malformed (a
-    # "::" alongside a full IID); the valid concatenation has no "::".
+    # Note: ULA support deprecated per 04-network.md (primary 02xx only); test
+    # retained for legacy prefix handling during transition.
     assert make_ula(prefix, SPEC_IID) == IPv6Address(
         "fd12:3456:789a:1:1234:5678:9abc:def0"
     )

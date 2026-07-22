@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <zephyr/sys/util.h>
 
 /* Nullability annotations for pointer safety (Clang/GCC compatibility) */
 #ifndef __has_feature
@@ -45,8 +46,21 @@ extern "C" {
 
 /** Maximum LICHEN frame payload size (LoRa SF10 255B - overhead) */
 #define LICHEN_MAX_PAYLOAD 200
+#define SLOT_DURATION_MS 250
+#define GUARD_TIME_MS 50
 
-/** Schnorr-48 signature length in bytes */
+#ifdef CONFIG_LICHEN_TDMA
+struct LICHEN_TDMA_Slot {
+	uint32_t start_ms;
+	uint32_t duration_ms;
+	uint8_t node_id[8];
+	uint8_t slot_id;
+	uint8_t priority;
+};
+BUILD_ASSERT(sizeof(struct LICHEN_TDMA_Slot) == 20);
+#endif
+
+ /** Schnorr-48 signature length in bytes */
 #define LICHEN_SIG_LEN 48
 
 /** Maximum destination address length (EUI-64) */
@@ -118,7 +132,15 @@ struct lichen_frame {
 	bool encrypted;          /**< Encrypted frame flag; currently unsupported */
 };
 
-/**
+struct lichen_tdma_ctx {
+	uint32_t superframe;
+	uint8_t slot;
+	uint8_t n_slots;
+	uint16_t slot_duration;
+	bool synced;
+};
+
+	/**
  * @brief Parse a LICHEN frame from wire bytes.
  *
  * @param[out] frame  Parsed frame structure
@@ -128,6 +150,7 @@ struct lichen_frame {
  */
 int lichen_frame_parse(struct lichen_frame *_Nonnull frame,
 		       const uint8_t *_Nonnull data, size_t len);
+
 
 /**
  * @brief Serialize a LICHEN frame to wire bytes.

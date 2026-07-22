@@ -1,63 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: The contributors to the LICHEN project
 //
-// BLE peripheral stub for Renode - accepts GATT operations without real Bluetooth.
-// ponytail: minimal stub for app compatibility testing, not full BLE emulation.
-//
-// This peripheral provides a simplified register interface that allows firmware
-// to initialize BLE and perform GATT operations without actual radio hardware.
-// All operations are logged for debugging but don't transmit/receive data.
-//
-// Memory map (relative to base address, typically 0x40001000 on nRF52840):
-//   0x000: TASKS_TXEN       (write) - trigger TX enable
-//   0x004: TASKS_RXEN       (write) - trigger RX enable
-//   0x008: TASKS_START      (write) - trigger start
-//   0x00C: TASKS_STOP       (write) - trigger stop
-//   0x010: TASKS_DISABLE    (write) - trigger disable
-//   0x100: EVENTS_READY     (read/write) - ready event
-//   0x104: EVENTS_ADDRESS   (read/write) - address match event
-//   0x108: EVENTS_PAYLOAD   (read/write) - payload ready event
-//   0x10C: EVENTS_END       (read/write) - packet sent/received event
-//   0x110: EVENTS_DISABLED  (read/write) - radio disabled event
-//   0x200: SHORTS           (read/write) - shortcuts register
-//   0x304: INTENSET         (read/write) - interrupt enable set
-//   0x308: INTENCLR         (read/write) - interrupt enable clear
-//   0x400: CRCSTATUS        (read) - CRC status (always OK)
-//   0x408: RXMATCH          (read) - logical address match
-//   0x40C: RXCRC            (read) - received CRC
-//   0x504: PACKETPTR        (read/write) - packet data pointer
-//   0x508: FREQUENCY        (read/write) - frequency offset
-//   0x510: TXPOWER          (read/write) - TX power
-//   0x514: MODE             (read/write) - radio mode (BLE_1MBIT, etc.)
-//   0x518: PCNF0            (read/write) - packet config 0
-//   0x51C: PCNF1            (read/write) - packet config 1
-//   0x524: PREFIX0          (read/write) - address prefix 0
-//   0x528: PREFIX1          (read/write) - address prefix 1
-//   0x52C: TXADDRESS        (read/write) - TX address select
-//   0x530: RXADDRESSES      (read/write) - RX address enables
-//   0x534: CRCCNF           (read/write) - CRC config
-//   0x538: CRCPOLY          (read/write) - CRC polynomial
-//   0x53C: CRCINIT          (read/write) - CRC initial value
-//   0x544: TIFS             (read/write) - inter-frame spacing
-//   0x550: DATAWHITEIV      (read/write) - data whitening IV
-//   0x560: BCC              (read/write) - bit counter compare
-//   0x600: DAB[0-7]         (read/write) - device address base
-//   0x620: DAP[0-7]         (read/write) - device address prefix
-//   0x640: DACNF            (read/write) - device address match config
-//   0x650: MODECNF0         (read/write) - radio mode config
-//   0x660: SFD              (read/write) - start of frame delimiter
-//   0x664: EDCNT            (read/write) - energy detect count
-//   0x668: EDSAMPLE         (read) - energy detect sample
-//   0x66C: CCACTRL          (read/write) - clear channel assessment control
-//   0xFFC: POWER            (read/write) - peripheral power control
-//
-// GATT stub interface (at offset 0x800):
-//   0x800: GATT_STATUS      (read) - GATT status (0=idle, 1=connected)
-//   0x804: GATT_HANDLE      (read/write) - characteristic handle
-//   0x808: GATT_VALUE_LEN   (read/write) - value length
-//   0x80C: GATT_OPERATION   (write) - 1=read, 2=write, 3=notify
-//   0x810: GATT_RESULT      (read) - operation result (0=success)
-//   0x900-0x9FF: GATT_VALUE (256 bytes) - read/write buffer
+// NRF52840_BLE (RADIO) peripheral for Renode on nRF52840 Meshtastic boards (T-Echo, RAK4631).
+// Supports LICHEN BLE LCI (legacy NUS + CoAP/SLIP) and Meshtastic-compatible GATT.
+// Follows USBD.cs pattern: minimal registers/tasks/events/interrupts exercised by Zephyr
+// BT controller + custom GATT MMIO stub at 0x800 for KISS/LCI testing without real radio.
+// Base @0x40001000, IRQ->nvic@1. No dead code. West build + Renode validation required.
+// SetConnected() for test harness to simulate LCI peer. See bead project-LICHEN-r7h4.11.
 
 using System;
 using System.Collections.Generic;

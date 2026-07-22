@@ -316,6 +316,31 @@ int lichen_key_pubkey_fingerprint(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
 #endif
 }
 
+int lichen_key_pubkey_to_iid(const uint8_t pubkey[LICHEN_KEY_PUBKEY_LEN],
+			     uint8_t iid[LICHEN_KEY_IID_LEN])
+{
+	if (pubkey == NULL || iid == NULL) {
+		return -EINVAL;
+	}
+
+#ifdef CONFIG_TINYCRYPT_SHA256
+	struct tc_sha256_state_struct sha_state;
+	uint8_t hash[32];
+
+	if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_update(&sha_state, pubkey, LICHEN_KEY_PUBKEY_LEN) != TC_CRYPTO_SUCCESS ||
+	    tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+		return -EIO;
+	}
+	memcpy(iid, hash, LICHEN_KEY_IID_LEN);
+	return 0;
+#else
+	/* Fallback for test: first 8 bytes of pubkey */
+	memcpy(iid, pubkey, LICHEN_KEY_IID_LEN);
+	return 0;
+#endif
+}
+
 /* --------------------------------------------------------------------------
  * Key store implementation
  * -------------------------------------------------------------------------- */
@@ -338,7 +363,7 @@ static int find_free_slot_locked(void)
 			return i;
 		}
 	}
-	return -ENOMEM;
+	return -ENOSPC;
 }
 
 static uint32_t get_unix_time(void)
@@ -382,7 +407,7 @@ int lichen_key_store_put(const uint8_t iid[LICHEN_KEY_IID_LEN],
 	slot = find_free_slot_locked();
 	if (slot < 0) {
 		k_mutex_unlock(&s_mutex);
-		return -ENOMEM;
+		return slot;
 	}
 
 	memcpy(s_keys[slot].iid, iid, LICHEN_KEY_IID_LEN);
@@ -1155,7 +1180,7 @@ static int keys_single_put(struct coap_resource *resource,
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_CONFLICT, NULL, 0);
 	}
-	if (ret == -ENOMEM) {
+	if (ret == -ENOSPC || ret == -ENOMEM) {
 		return coap_respond(resource, request, addr, addr_len,
 				    COAP_RESPONSE_CODE_SERVICE_UNAVAILABLE, NULL, 0);
 	}

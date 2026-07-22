@@ -8,6 +8,10 @@ pub struct Config {
     pub mesh: MeshConfig,
     pub ipv6: Ipv6Config,
     pub rpl: RplConfig,
+    #[serde(default)]
+    pub yggdrasil: YggdrasilConfig,
+    #[serde(default)]
+    pub backhaul: BackhaulConfig,
 }
 
 #[derive(Debug, Deserialize)]
@@ -34,9 +38,29 @@ pub struct Ipv6Config {
 pub struct RplConfig {
     #[serde(default = "default_instance_id")]
     pub instance_id: u8,
-    /// `"non-storing"` (MOP 1) or `"storing"` (MOP 2).
     #[serde(default = "default_mop")]
     pub mode: String,
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub struct BackhaulConfig {
+    #[serde(default = "default_backhaul_kind")]
+    pub kind: String,
+    #[serde(default = "default_backhaul_interface")]
+    pub interface: String,
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub struct YggdrasilConfig {
+    /// List of Yggdrasil peers (tcp://host:port).
+    #[serde(default)]
+    pub peers: Vec<String>,
+    /// Whether to enable public peering.
+    #[serde(default = "default_true")]
+    pub public_peering: bool,
+    /// Path to yggdrasil binary (default: /usr/bin/yggdrasil).
+    #[serde(default = "default_ygg_binary")]
+    pub binary: String,
 }
 
 fn default_baud() -> u32 {
@@ -47,6 +71,18 @@ fn default_instance_id() -> u8 {
 }
 fn default_mop() -> String {
     "non-storing".to_string()
+}
+fn default_true() -> bool {
+    true
+}
+fn default_ygg_binary() -> String {
+    "/usr/bin/yggdrasil".to_string()
+}
+fn default_backhaul_kind() -> String {
+    "tun".to_string()
+}
+fn default_backhaul_interface() -> String {
+    "lichen0".to_string()
 }
 
 impl Config {
@@ -72,6 +108,8 @@ impl Config {
                 instance_id: 1,
                 mode: "non-storing".to_string(),
             },
+            yggdrasil: YggdrasilConfig::default(),
+            backhaul: BackhaulConfig::default(),
         }
     }
 }

@@ -768,8 +768,17 @@ static int parse_data(const uint8_t *data, size_t len,
 			    pb_read_len_value(&cur, &payload, &payload_len) < 0) {
 				return -EINVAL;
 			}
-			info->payload = payload;
-			info->payload_len = payload_len;
+			if (payload_len > sizeof(info->payload_buf)) {
+				info->payload = NULL;
+				info->payload_len = 0U;
+			} else if (payload_len > 0U) {
+				memcpy(info->payload_buf, payload, payload_len);
+				info->payload = info->payload_buf;
+				info->payload_len = payload_len;
+			} else {
+				info->payload = NULL;
+				info->payload_len = 0U;
+			}
 			break;
 		default:
 			if (pb_skip_value(&cur, wt) < 0) {
@@ -811,8 +820,10 @@ static int parse_packet(const uint8_t *packet, size_t len,
 			struct lichen_meshtastic_adapter_packet_info *info)
 {
 	struct pb_cursor cur = { .buf = packet, .len = len };
+	bool has_decoded_field = false;
+	bool has_encrypted_field = false;
 
-	memset(info, 0, sizeof(*info));
+	*info = (struct lichen_meshtastic_adapter_packet_info){0};
 
 	while (cur.pos < cur.len) {
 		uint32_t field;
@@ -884,16 +895,24 @@ static int parse_packet(const uint8_t *packet, size_t len,
 			if (parse_data(data, data_len, info) < 0) {
 				return -EINVAL;
 			}
+			has_decoded_field = true;
+			if (has_encrypted_field) {
+				info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
+			}
 			break;
 		case MESH_PACKET_ENCRYPTED_FIELD:
 			if (wt != PB_WT_LEN ||
 			    pb_read_len_value(&cur, &data, &data_len) < 0) {
 				return -EINVAL;
 			}
+			has_encrypted_field = true;
 			info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_UNSUPPORTED;
 			info->portnum = 0U;
 			info->payload = NULL;
 			info->payload_len = 0U;
+			if (has_decoded_field) {
+				info->kind = LICHEN_MESHTASTIC_ADAPTER_PACKET_MALFORMED;
+			}
 			break;
 		default:
 			if (pb_skip_value(&cur, wt) < 0) {

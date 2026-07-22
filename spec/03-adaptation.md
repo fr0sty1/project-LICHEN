@@ -92,16 +92,15 @@ uncompressed fallback (see 5.7).
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|
-| IPv6.SrcPrefix | mesh_prefix/64 | equal | not-sent |
+| IPv6.SrcPrefix | 02xx-prefix/64 | equal | not-sent |
 | IPv6.DstPrefix | 0 | ignore | value-sent (64 bits) |
 | (other fields as Rule 0) | | | |
 
 **Compressed size: 10 bytes** (includes full destination prefix)
 
-**Rule 2: Link-local IPv6 + UDP + MQTT-SN**
+**Rule 7: IPv6 + UDP + MQTT-SN (port 10883)**
 
-MQTT-SN uses port 10883, which lies outside the 5680-5695 range compressed
-by Rules 0 and 1. Rule 2 provides equivalent compression for MQTT-SN traffic.
+MQTT-SN uses port 10883 (outside CoAP range compressed by Rules 0/1). Rule 7 supports both link-local and global addresses (via address-mode bit) and direction bit + residue for the non-10883 port. See draft-lichen-schc-lora-00.md §4 and Rust implementation for exact residue format. Updated to align with appendix A.1 (ICMP=Rule 2).
 
 | Field | TV | MO | CDA |
 |-------|----|----|-----|

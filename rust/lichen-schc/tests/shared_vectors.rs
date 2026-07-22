@@ -84,7 +84,6 @@ fn test_schc_compression_vectors() {
             ));
         }
 
-        // Compression should reduce size
         if compressed.len() >= packet.len() {
             failures.push(format!(
                 "Vector '{}': compression did not reduce size ({} -> {})",
@@ -94,15 +93,48 @@ fn test_schc_compression_vectors() {
             ));
         }
 
-        // TODO: When Rust SCHC implementation is ready, test actual compression:
-        // let mut output = [0u8; 1500];
-        // let result = lichen_schc::compress(&packet, &mut output).unwrap();
-        // assert_eq!(result, &compressed[..]);
+        let mut output = [0u8; 1500];
+        let n = match lichen_schc::compress(&packet, &mut output) {
+            Ok(n) => n,
+            Err(e) => {
+                failures.push(format!(
+                    "Vector '{}': compress failed: {:?}",
+                    vector.name, e
+                ));
+                continue;
+            }
+        };
+        let compressed_result = &output[..n];
+        if compressed_result != &compressed[..] {
+            failures.push(format!(
+                "Vector '{}': compress mismatch for rule {}: expected {} bytes got {}",
+                vector.name,
+                vector.rule_id,
+                compressed.len(),
+                n
+            ));
+            continue;
+        }
 
-        // TODO: Test decompression:
-        // let mut decompressed = [0u8; 1500];
-        // let result = lichen_schc::decompress(&compressed, &mut decompressed).unwrap();
-        // assert_eq!(&decompressed[..result], &packet[..]);
+        let mut decompressed = [0u8; 1500];
+        let m = match lichen_schc::decompress(&compressed, &mut decompressed) {
+            Ok(m) => m,
+            Err(e) => {
+                failures.push(format!(
+                    "Vector '{}': decompress failed: {:?}",
+                    vector.name, e
+                ));
+                continue;
+            }
+        };
+        if decompressed[..m] != packet[..] {
+            failures.push(format!(
+                "Vector '{}': decompress mismatch: got {} bytes, expected {}",
+                vector.name,
+                m,
+                packet.len()
+            ));
+        }
 
         println!(
             "Vector '{}' ({}; rule {}): {} -> {} bytes ({}% reduction)",
@@ -154,4 +186,35 @@ fn test_schc_rule_coverage() {
             eprintln!("WARNING: No vector for rule_id {}", expected);
         }
     }
+}
+
+#[test]
+fn test_schc_fragment_vectors() {
+    let vectors_path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test/vectors/schc_fragment.json");
+
+    if !vectors_path.exists() {
+        eprintln!("Fragment vectors not found at {:?}, skipping", vectors_path);
+        return;
+    }
+
+    let content = fs::read_to_string(&vectors_path).expect("Failed to read fragment vectors");
+    let doc: serde_json::Value = serde_json::from_str(&content).expect("Failed to parse JSON");
+
+    assert_eq!(doc["format_version"], 1, "Unexpected vector format version");
+
+    let vectors = doc["vectors"].as_array().unwrap();
+    assert!(!vectors.is_empty(), "No fragment vectors");
+
+    let names: Vec<&str> = vectors
+        .iter()
+        .map(|v| v["name"].as_str().unwrap())
+        .collect();
+    assert!(names.contains(&"single_fragment"));
+    assert!(names.contains(&"ooo_retransmit"));
+
+    println!(
+        "Validated {} SCHC fragment vectors from independent RFC oracle",
+        vectors.len()
+    );
 }
