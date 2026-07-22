@@ -288,7 +288,8 @@ verify_worktree() {
 	local expected
 	local forbidden
 
-	dest=$(canonical_path "$1")
+	dest=$(resolve_worktree "$1")
+	dest=$(canonical_path "$dest")
 	build_dir=$(canonical_path "$2")
 	modules_file="$build_dir/zephyr_modules.txt"
 	kconfig_modules="$build_dir/Kconfig/Kconfig.modules"
