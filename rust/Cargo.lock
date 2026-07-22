@@ -221,6 +221,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2f6c7dbe95a6ed67ad9f18e57daf93a2f034c524b99fd2b76d18fdfeb6660aa"
 dependencies = [
  "hybrid-array",
+ "zeroize",
 ]
 
 [[package]]
@@ -814,6 +815,7 @@ dependencies = [
  "block-buffer 0.12.1",
  "crypto-common 0.2.2",
  "ctutils",
+ "zeroize",
 ]
 
 [[package]]
@@ -1871,7 +1873,9 @@ dependencies = [
  "clap",
  "libc",
  "lichen-core",
+ "lichen-hal",
  "lichen-kiss",
+ "lichen-link",
  "lichen-node",
  "lichen-schc",
  "lichen-sim",
@@ -1974,6 +1978,7 @@ dependencies = [
  "heapless",
  "hex-literal",
  "hkdf",
+ "hmac",
  "lichen-core",
  "log",
  "rand_core",

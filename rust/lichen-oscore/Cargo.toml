@@ -18,7 +18,8 @@ aes = { version = "0.8", default-features = false }
 ccm = { version = "0.5", default-features = false }
 heapless = "0.8"
 hkdf = { version = "0.13", default-features = false }
-sha2 = { version = "0.11", default-features = false }
+hmac = { version = "0.13", default-features = false, features = ["zeroize"] }
+sha2 = { version = "0.11", default-features = false, features = ["zeroize"] }
 zeroize = { version = "1.8", default-features = false, features = ["derive"] }
 
 # EDHOC (RFC 9528) Suite 0 - feature-gated since it adds dependencies
