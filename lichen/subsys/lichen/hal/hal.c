@@ -1697,7 +1697,7 @@ void lichen_hal_reset_test_clear_request(void)
 }
 #endif
 
-static void duty_evict_stale(struct lichen_duty_cycle_tracker *t, uint64_t now)
+static void duty_evict_stale(struct lichen_duty_cycle_ctx *t, uint64_t now)
 {
 	uint64_t ws = now > 3600000ULL ? now - 3600000ULL : 0;
 	while (t->len > 0) {
@@ -1712,7 +1712,7 @@ static void duty_evict_stale(struct lichen_duty_cycle_tracker *t, uint64_t now)
 	}
 }
 
-static uint32_t duty_total_tx(const struct lichen_duty_cycle_tracker *t, uint64_t now)
+static uint32_t duty_total_tx(const struct lichen_duty_cycle_ctx *t, uint64_t now)
 {
 	uint64_t ws = now > 3600000ULL ? now - 3600000ULL : 0;
 	uint32_t tot = 0;
@@ -1732,14 +1732,14 @@ static uint32_t duty_total_tx(const struct lichen_duty_cycle_tracker *t, uint64_
 	return tot;
 }
 
-void lichen_duty_cycle_tracker_init(struct lichen_duty_cycle_tracker *t, uint16_t permille)
+void lichen_duty_cycle_init(struct lichen_duty_cycle_ctx *t, uint16_t permille)
 {
 	t->head = 0;
 	t->len = 0;
 	t->duty_permille = (permille == 0 || permille > 1000) ? 10 : permille;
 }
 
-bool lichen_duty_cycle_tracker_record_tx(struct lichen_duty_cycle_tracker *t, uint64_t ts, uint32_t dur)
+bool lichen_duty_cycle_record_tx(struct lichen_duty_cycle_ctx *t, uint64_t ts, uint32_t dur)
 {
 	duty_evict_stale(t, ts);
 	if (t->len == 32) {
@@ -1752,7 +1752,7 @@ bool lichen_duty_cycle_tracker_record_tx(struct lichen_duty_cycle_tracker *t, ui
 	return true;
 }
 
-uint32_t lichen_duty_cycle_tracker_remaining_ms(struct lichen_duty_cycle_tracker *t, uint64_t now)
+uint32_t lichen_duty_cycle_remaining_ms(struct lichen_duty_cycle_ctx *t, uint64_t now)
 {
 	duty_evict_stale(t, now);
 	uint32_t m = 3600UL * t->duty_permille;
@@ -1760,14 +1760,14 @@ uint32_t lichen_duty_cycle_tracker_remaining_ms(struct lichen_duty_cycle_tracker
 	return m > u ? m - u : 0;
 }
 
-uint16_t lichen_duty_cycle_tracker_usage_permille(struct lichen_duty_cycle_tracker *t, uint64_t now)
+uint16_t lichen_duty_cycle_usage_permille(struct lichen_duty_cycle_ctx *t, uint64_t now)
 {
 	duty_evict_stale(t, now);
 	uint32_t u = duty_total_tx(t, now);
 	return (uint16_t)((uint64_t)u * 1000ULL / 3600000ULL);
 }
 
-uint64_t lichen_duty_cycle_tracker_next_tx_available_ms(struct lichen_duty_cycle_tracker *t, uint64_t now, uint32_t dur)
+uint64_t lichen_duty_cycle_next_tx_available_ms(struct lichen_duty_cycle_ctx *t, uint64_t now, uint32_t dur)
 {
 	duty_evict_stale(t, now);
 	uint32_t m = 3600UL * t->duty_permille;
@@ -1787,7 +1787,7 @@ uint64_t lichen_duty_cycle_tracker_next_tx_available_ms(struct lichen_duty_cycle
 	return (uint64_t)-1;
 }
 
-bool lichen_duty_cycle_tracker_can_transmit(struct lichen_duty_cycle_tracker *t, uint64_t now, uint32_t dur)
+bool lichen_duty_cycle_can_transmit(struct lichen_duty_cycle_ctx *t, uint64_t now, uint32_t dur)
 {
-	return lichen_duty_cycle_tracker_remaining_ms(t, now) >= dur;
+	return lichen_duty_cycle_remaining_ms(t, now) >= dur;
 }

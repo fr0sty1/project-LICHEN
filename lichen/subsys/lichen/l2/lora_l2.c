@@ -257,7 +257,7 @@ static struct {
     void *rx_callback_user_data;
     bool cca_enabled;
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
-    struct lichen_duty_cycle_tracker duty;
+    struct lichen_duty_cycle_ctx duty;
 #endif
 } lora_data;
 
@@ -673,7 +673,7 @@ int lichen_lora_l2_init(void)
     lora_data.rx_callback_user_data = NULL;
     lora_data.cca_enabled = IS_ENABLED(CONFIG_LICHEN_LORA_CCA_ENABLE);
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
-    lichen_duty_cycle_tracker_init(&lora_data.duty, LICHEN_DUTY_CYCLE_DEFAULT_PERMILLE);
+    lichen_duty_cycle_init(&lora_data.duty, LICHEN_DUTY_CYCLE_DEFAULT_PERMILLE);
 #endif
 
     if (!device_is_ready(lora_data.lora_dev)) {
@@ -1147,7 +1147,7 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
         return -EMSGSIZE;
     }
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
-    if (!lichen_duty_cycle_tracker_can_transmit(&lora_data.duty, k_uptime_get(), 50)) return -EBUSY;
+    if (!lichen_duty_cycle_can_transmit(&lora_data.duty, k_uptime_get(), 50)) return -EBUSY;
 #endif
 
     /*
@@ -1302,7 +1302,7 @@ int lichen_lora_l2_tx(const uint8_t *data, size_t len)
     ret = lora_send(lora_data.lora_dev, tx_buf, (uint32_t)pop_len);
     k_mutex_unlock(&modem_mutex);
 #if IS_ENABLED(CONFIG_LICHEN_DUTY_CYCLE)
-    if (ret >= 0) lichen_duty_cycle_tracker_record_tx(&lora_data.duty, k_uptime_get(), 50);
+    if (ret >= 0) lichen_duty_cycle_record_tx(&lora_data.duty, k_uptime_get(), 50);
 #endif
 
     atomic_dec(&tx_pending);
