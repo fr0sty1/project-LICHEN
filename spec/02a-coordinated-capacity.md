@@ -3,13 +3,15 @@
 
 <!-- Part of LICHEN Protocol Specification -->
 
-# Coordinated Capacity Protocol (CCP-16)
+# Coordinated Capacity Protocol (CCP-16 with CCP-14 Gateway Multi-RX)
 
 ## Abstract
 
-CCP-16 defines mechanisms for coordinated capacity management in LICHEN LoRa meshes including TDMA slot assignment, channel agility, adaptive SF selection, time synchronization, and hash-based selection. It ensures deterministic transmission windows, reduces collisions in dense deployments, and maintains bit-exact interoperability with test vectors in `test/vectors/ccp16.json`.
+CCP-16 defines mechanisms for coordinated capacity management in LICHEN LoRa meshes including TDMA slot assignment, channel agility, adaptive SF selection, time synchronization, and hash-based selection. CCP-14 specifies Gateway Multi-RX for simultaneous reception across channels (control + data), increasing capacity per da2q multi-channel context. 
 
-All implementations MUST produce identical `slot_id`, `sf`, `channel`, and `tx_allowed` outputs for the defined test vectors.
+All implementations MUST produce identical behavior to test vectors in `test/vectors/ccp16.json`:
+- vectors[0-2]: TDMA slot, SF, channel, tx_allowed per CCP-16 (see 2a.2, 2a.3)
+- vectors[3+]: CCP-14 Gateway Multi-RX scheduling, concurrent RX validation, capacity metrics (independent oracle: reference FNV-1a + Semtech SX126x airtime tables + multi-channel sim from external Python oracle, not LICHEN impl).
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119].
 
@@ -95,13 +97,19 @@ Nodes entering this state from multi-root conflict (different epoch/version on s
 
 ## Implementation Status
 
-- Python simulator, Rust RPL/gateway, Zephyr `lichen/subsys` all validate against `ccp16.json`.
+- Python simulator, Rust RPL/gateway, Zephyr `lichen/subsys` all validate against `test/vectors/ccp16.json` (full cross-refs in Abstract; CCP-14 vectors[3+] for Gateway Multi-RX).
 - Kconfig: `CONFIG_LICHEN_CCP16=y`, `CONFIG_LICHEN_TDMA_SLOTS=8`.
+- Updated per draft-lichen-ccp scope (this document serves as relevant spec update).
+
+## Vector Table (CCP-14 extension)
+
+See `test/vectors/ccp16.json#vectors[3+]` for Gateway Multi-RX test cases with independent oracles. All MUST match exactly for interoperability.
 
 ## References
 
-- `test/vectors/ccp16.json`
+- `test/vectors/ccp16.json` (full cross-refs for MUST identical behavior)
 - `spec/drafts/draft-lichen-rpl-lora-00.md`
 - `spec/appendix-design-rationale.md#7.6`
 - `spec/09-packets-timing.md`
+- da2q multi-channel context for CCP-14
 
