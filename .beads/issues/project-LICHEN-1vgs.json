@@ -1,0 +1,24 @@
+{
+  "id": "project-LICHEN-1vgs",
+  "title": "vectors: hash_32/select_channel/now() consistency tests",
+  "description": "Child of b10q and r80h. Test expected channel from hash_32(node_iid XOR now()), consistent with CCP-15.8.3 (no crc16). Include TDMA slot with sfn. Parallel subagent work. codereview.",
+  "status": "open",
+  "priority": 2,
+  "issue_type": "task",
+  "created_at": "2026-07-22T16:42:15.162986913Z",
+  "created_by": "ec2-user",
+  "updated_at": "2026-07-22T16:42:15.162986913Z",
+  "labels": [
+    "codereview"
+  ],
+  "dependencies": [
+    {
+      "issue_id": "project-LICHEN-1vgs",
+      "depends_on_id": "b10q",
+      "type": "blocks",
+      "created_at": "2026-07-22T16:42:15.275955079Z",
+      "created_by": "ec2-user",
+      "metadata": "{}"
+    }
+  ]
+}
