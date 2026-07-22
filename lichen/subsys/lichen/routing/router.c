@@ -146,8 +146,8 @@ enum lichen_addr_class lichen_router_classify(const struct lichen_router *router
 	if (is_ula(dst_addr)) {
 		return LICHEN_ADDR_MESH_LOCAL;
 	}
-	if ((dst_addr[0] & 0xfe) == 0x02) {
-		return LICHEN_ADDR_MESH_LOCAL;
+	if (dst_addr[0] == 0x02) {
+		return LICHEN_ADDR_YGGDRASIL;
 	}
 	for (size_t i = 0; i < CONFIG_LICHEN_ROUTER_MAX_MESH_PREFIXES; i++) {
 		const struct lichen_mesh_prefix *p = &router->mesh_prefixes[i];
@@ -158,7 +158,6 @@ enum lichen_addr_class lichen_router_classify(const struct lichen_router *router
 			return LICHEN_ADDR_MESH_LOCAL;
 		}
 	}
-
 	return LICHEN_ADDR_EXTERNAL;
 }
 
@@ -265,10 +264,9 @@ int lichen_router_route(struct lichen_router *router,
 	switch (addr_class) {
 	case LICHEN_ADDR_LINK_LOCAL:
 		return route_link_local(dst_addr, result);
-
 	case LICHEN_ADDR_MESH_LOCAL:
 		return route_mesh_local(router, dst_iid, now_ms, result);
-
+	case LICHEN_ADDR_YGGDRASIL:
 	case LICHEN_ADDR_EXTERNAL:
 		return route_external(router, result);
 	}

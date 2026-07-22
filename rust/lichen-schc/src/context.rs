@@ -41,7 +41,7 @@ pub fn field_requires_value(fd: &FieldDescriptor) -> bool {
 /// Returns true if all descriptors match:
 /// - For `Mo::Equal`: field value must equal target_value
 /// - For `Mo::Msb`: the most-significant `mo_arg` bits must match
-/// - For `Mo::MatchMapping`: mapping table (future work)
+/// - For `Mo::MatchMapping`: value must be in the mapping table from rule
 /// - For `Mo::Ignore`: always matches (field may or may not be present)
 pub fn rule_matches(rule: &Rule, fields: &[(FieldId, u128)]) -> bool {
     for fd in rule.fields {
@@ -72,9 +72,13 @@ pub fn rule_matches(rule: &Rule, fields: &[(FieldId, u128)]) -> bool {
                         }
                     }
                     Mo::MatchMapping => {
-                        // Mapping table not yet implemented in rules.rs
-                        // For now, return false (no mapping = no match)
-                        return false;
+                        if let Some(mapping) = fd.mapping {
+                            if !mapping.contains(&val) {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
                     }
                     Mo::Ignore => {
                         // Always matches, value is ignored
@@ -164,6 +168,7 @@ mod tests {
             cda: Cda::NotSent,
             target_value: 6,
             mo_arg: None,
+            mapping: None,
         },
         FieldDescriptor {
             field_id: "IPv6.hop_limit",
@@ -172,6 +177,7 @@ mod tests {
             cda: Cda::ValueSent,
             target_value: 64,
             mo_arg: None,
+            mapping: None,
         },
     ];
 
@@ -244,6 +250,7 @@ mod tests {
             cda: Cda::Lsb,
             target_value: 0xFE80_0000_0000_0000_0000_0000_0000_0000,
             mo_arg: Some(64), // Match first 64 bits
+            mapping: None,
         }];
         const MSB_RULE: Rule = Rule {
             rule_id: 1,
@@ -257,5 +264,28 @@ mod tests {
         // Global address should not match
         let fields: &[(FieldId, u128)] = &[("IPv6.src", 0x2001_0DB8_0000_0000_1234_5678_9ABC_DEF0)];
         assert!(!rule_matches(&MSB_RULE, fields));
+    }
+
+    #[test]
+    fn rule_matches_mapping() {
+        const MAPPING_FIELDS: &[FieldDescriptor] = &[FieldDescriptor {
+            field_id: "test.field",
+            length_bits: 8,
+            mo: Mo::MatchMapping,
+            cda: Cda::MappingSent,
+            target_value: 0,
+            mo_arg: None,
+            mapping: Some(&[10u128, 20, 30]),
+        }];
+        const MAPPING_RULE: Rule = Rule {
+            rule_id: 42,
+            fields: MAPPING_FIELDS,
+        };
+
+        let fields_match: &[(FieldId, u128)] = &[("test.field", 20)];
+        assert!(rule_matches(&MAPPING_RULE, fields_match));
+
+        let fields_no_match: &[(FieldId, u128)] = &[("test.field", 99)];
+        assert!(!rule_matches(&MAPPING_RULE, fields_no_match));
     }
 }

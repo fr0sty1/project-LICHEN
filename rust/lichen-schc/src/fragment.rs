@@ -228,10 +228,15 @@ impl Ack {
         let window = (data[1] >> 6) & 1;
         let complete = (data[1] & 0x01) != 0;
         let n = data[2] as usize;
+        let body_bytes = n.div_ceil(8);
+        let required = 3 + body_bytes;
+        if data.len() < required {
+            return Err(TooShort::new(required, data.len()).into());
+        }
         let body = &data[3..];
         let mut bitmap = [false; MAX_WINDOW_SIZE];
         for i in 0..n.min(MAX_WINDOW_SIZE) {
-            let byte = if i / 8 < body.len() { body[i / 8] } else { 0 };
+            let byte = body[i / 8];
             bitmap[i] = (byte >> (7 - (i % 8))) & 1 != 0;
         }
         Ok(Ack {

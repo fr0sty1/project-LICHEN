@@ -39,6 +39,7 @@ struct lichen_announce_view {
 	uint8_t hop_count;
 	uint8_t rx_channel;
 	uint16_t wire_seq_num;
+	uint8_t rx_channel;
 	uint32_t seq_num;
 	bool seq_stale;
 	const uint8_t *_Nonnull originator_iid;

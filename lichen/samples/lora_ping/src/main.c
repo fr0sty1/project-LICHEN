@@ -15,6 +15,7 @@
 #include <zephyr/drivers/lora.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/crc.h>
+#include <string.h>
 
 LOG_MODULE_REGISTER(lora_ping, LOG_LEVEL_DBG);
 
@@ -34,14 +35,21 @@ static struct {
 	uint8_t seen_hash_count;
 } metrics;
 
-/* Compute packet hash using hash_32 with LICHEN key per spec (replaces crc32_ieee) */
+/* Compute keyed packet hash using b"LICHEN" (0x4c494348454e) as initializer.
+ * Prefixes key before CRC32 to match Rust lichen_link::identity::hash_32(),
+ * updated tuple_crc in link_ctx.c, and spec 02a-coordinated-capacity.md.
+ * Independent oracle from Python zlib.crc32(key + data).
+ */
 static uint32_t packet_hash(const uint8_t *data, size_t len)
 {
-	uint32_t h = 0x4c494348; /* LICHEN key seed */
-	for (size_t i = 0; i < len; i++) {
-		h = (h ^ data[i]) * 0x01000193u;
+	const uint8_t key[] = "LICHEN";
+	uint8_t combined[6 + 256]; /* safe upper bound for sample packets */
+	memcpy(combined, key, 6);
+	if (len > 256) {
+		len = 256;
 	}
-	return h;
+	memcpy(combined + 6, data, len);
+	return crc32_ieee(combined, 6 + len);
 }
 
 /* Track unique packets by hash */

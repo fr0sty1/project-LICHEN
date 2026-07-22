@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "lichen_util.h"
+#include "../crypto/monocypher-ed25519.h"
 
 /*
  * Logging abstraction: use Zephyr logging when available, otherwise
@@ -121,51 +122,26 @@ int lichen_pubkey_to_iid(const uint8_t *pubkey, uint8_t *iid)
      * "locally-administered" status. The Python implementation in
      * lichen/crypto/identity.py uses the same approach (clear, not flip).
      */
-    iid[0] &= ~UL_BIT;  /* Clear U/L bit */
+    iid[0] &= ~UL_BIT;
 
 cleanup:
-    /* SECURITY: Zero hash on all paths (sha_state zeroed by helper) */
     secure_zero(hash, sizeof(hash));
     return ret;
 }
 
-int lichen_pubkey_to_human_address(const uint8_t *pubkey,
-                                   char *buf, size_t buflen)
-{
-    if (pubkey == NULL || buf == NULL || buflen < 16) {
-        LOG_ERR("ipv6_addr: pubkey_to_human_address failed (NULL or small buf)");
+int lichen_yggdrasil_addr(const uint8_t *pubkey, struct in6_addr *out) {
+    uint8_t hash[64];
+    if (pubkey == NULL || out == NULL) {
+        LOG_ERR("lichen_ipv6: yggdrasil_addr failed (NULL input)");
         return -EINVAL;
     }
-
-    uint8_t hash[TC_SHA256_DIGEST_SIZE];
-    int ret = lichen_sha256(pubkey, LICHEN_ED25519_PUBKEY_LEN, hash);
-    if (ret != 0) {
-        LOG_ERR("ipv6_addr: pubkey_to_human_address failed (SHA-256 error %d)", ret);
-        goto cleanup;
-    }
-
-    uint64_t num = 0;
-    for (size_t i = 0; i < 8; i++) {
-        num = (num << 8) | hash[i];
-    }
-
-    char temp[13];
-    for (int i = 12; i >= 0; i--) {
-        temp[i] = CROCKFORD_ALPHABET[num % 32];
-        num /= 32;
-    }
-
-    /* Format: XXXX-XXXX-XXXXX (13 chars + 2 dashes + NUL = 16) */
-    memcpy(buf, temp, 4);
-    buf[4] = '-';
-    memcpy(buf + 5, temp + 4, 4);
-    buf[9] = '-';
-    memcpy(buf + 10, temp + 8, 5);
-    buf[15] = '\0';
-
-cleanup:
+    crypto_sha512(hash, pubkey, 32);
+    memset(out->s6_addr, 0, 16);
+    out->s6_addr[0] = 0x02;
+    out->s6_addr[1] = 0x02;
+    memcpy(&out->s6_addr[2], hash, 7);
     secure_zero(hash, sizeof(hash));
-    return ret;
+    return 0;
 }
 
 int lichen_make_link_local(const uint8_t *iid, struct in6_addr *addr)

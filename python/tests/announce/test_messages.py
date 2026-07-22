@@ -167,16 +167,30 @@ class TestSignedData:
         assert pubkey in msg.signed_data()
 
     def test_signed_data_includes_seq_num(self):
-        """signed_data() includes seq_num."""
-        # Why test: seq_num in signed data prevents replay of old announces.
         msg = AnnounceMessage(
             originator_iid=bytes(8),
             pubkey=bytes(32),
             seq_num=0x1234,
         )
         signed = msg.signed_data()
-        # seq_num is at offset 8+32=40, 2 bytes big-endian
         assert signed[40:42] == bytes([0x12, 0x34])
+
+    def test_signed_data_includes_rx_channel_at_offset(self):
+        msg = AnnounceMessage(
+            originator_iid=b"\x01\x02\x03\x04\x05\x06\x07\x08",
+            pubkey=b"\x00" * 32,
+            seq_num=0x1234,
+            rx_channel=0x0a,
+        )
+        signed = msg.signed_data()
+        expected = (
+            b"\x01\x02\x03\x04\x05\x06\x07\x08"
+            + b"\x00" * 32
+            + b"\x12\x34"
+            + b"\x0a"
+        )
+        assert signed == expected
+        assert signed[42] == 0x0a
 
     def test_signed_data_includes_app_data(self):
         """signed_data() includes app_data."""
@@ -404,8 +418,6 @@ class TestHopCount:
 
 
 class TestKnownVectors:
-    """Test against known wire format for regression detection."""
-
     def test_known_wire_format(self):
         msg = AnnounceMessage(
             originator_iid=bytes([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08]),
@@ -413,16 +425,18 @@ class TestKnownVectors:
             seq_num=0x1234,
             hop_count=3,
             flags=0,
+            rx_channel=0,
             signature=bytes([0xBB] * SIGNATURE_LENGTH),
             app_data=b"",
             rx_channel=7,
         )
         wire = msg.to_bytes()
+
         assert wire[0] == ANNOUNCE_TYPE
         assert wire[1] == 0
         assert wire[2] == 3
-        assert wire[3] == 7
-        assert wire[4:6] == bytes([0x12, 0x34])
+        assert wire[3:5] == bytes([0x12, 0x34])
+        assert wire[5] == 0
         assert wire[6:14] == bytes([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08])
         assert wire[14:46] == bytes([0xAA] * 32)
         assert wire[46:94] == bytes([0xBB] * SIGNATURE_LENGTH)

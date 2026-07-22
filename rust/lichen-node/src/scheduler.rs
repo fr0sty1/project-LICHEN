@@ -66,6 +66,7 @@ pub enum SchedulerError {
     AlreadyRunning,
     /// Buffer too small for announce message.
     BufferTooSmall,
+    InvalidChannel,
     /// Transmission failed.
     TransmitFailed,
 }
@@ -76,6 +77,7 @@ impl core::fmt::Display for SchedulerError {
             Self::NotRunning => write!(f, "scheduler not running"),
             Self::AlreadyRunning => write!(f, "scheduler already running"),
             Self::BufferTooSmall => write!(f, "buffer too small"),
+            Self::InvalidChannel => write!(f, "invalid channel"),
             Self::TransmitFailed => write!(f, "transmit failed"),
         }
     }
@@ -219,33 +221,31 @@ impl<T: AnnounceTransmitter + 'static> AnnounceScheduler<T> {
     pub fn build_announce(&self, out: &mut [u8]) -> Result<usize, SchedulerError> {
         let seq = self.increment_seq();
 
-        // Build signed data: IID + pubkey + seq_num + rx_channel + app_data
         let signed_data_len = 8 + 32 + 2 + 1 + self.app_data.len();
         let mut signed_data = vec![0u8; signed_data_len];
         signed_data[..8].copy_from_slice(&self.identity.iid);
         signed_data[8..40].copy_from_slice(self.identity.pubkey.as_bytes());
         signed_data[40..42].copy_from_slice(&seq.to_be_bytes());
-        signed_data[42] = 0; // rx_channel default for originator
+        signed_data[42] = 0;
         signed_data[43..].copy_from_slice(&self.app_data);
 
-        // Sign with our key: proves we own this IID/pubkey.
         let signature = sign(&self.identity.privkey, &self.identity.pubkey, &signed_data);
 
-        // Build the announce message
         let builder = AnnounceBuilder {
             originator_iid: &self.identity.iid,
             pubkey: self.identity.pubkey.as_bytes(),
             seq_num: seq,
-            hop_count: 0, // We're the originator
+            hop_count: 0,
             rx_channel: 0,
             signature: &signature,
             app_data: &self.app_data,
             flags: 0,
         };
 
-        builder
-            .write_to(out)
-            .map_err(|_| SchedulerError::BufferTooSmall)
+        builder.write_to(out).map_err(|e| match e {
+            lichen_core::announce::AnnounceError::InvalidChannel => SchedulerError::InvalidChannel,
+            _ => SchedulerError::BufferTooSmall,
+        })
     }
 
     /// Start the announce scheduler.

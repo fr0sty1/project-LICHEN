@@ -592,8 +592,12 @@ pub fn aprs_to_cot(aprs: &str) -> Option<CompactCot> {
 
     Some(CompactCot {
         subtype: subtype::FRIENDLY_GROUND, // Default to friendly
-        lat_microdeg: (lat * 1_000_000.0).round() as i32,
-        lon_microdeg: (lon * 1_000_000.0).round() as i32,
+        lat_microdeg: (lat * 1_000_000.0)
+            .round()
+            .clamp(i32::MIN as f64, i32::MAX as f64) as i32,
+        lon_microdeg: (lon * 1_000_000.0)
+            .round()
+            .clamp(i32::MIN as f64, i32::MAX as f64) as i32,
         alt_dm,
         course_cdeg: 0,
         speed_cm_s: 0,
@@ -848,45 +852,38 @@ mod tests {
 
     #[test]
     fn aprs_to_cot_f64_edge_cases() {
-        // f64 NaN/Inf/very-large/exact-0.5 rounding, southern/boundary, no panic on cast
-        let cot = CompactCot {
-            subtype: subtype::FRIENDLY_GROUND,
-            lat_microdeg: (0.5f64 / 1_000_000.0 * 1_000_000.0).round() as i32, // exact 0.5 -> 1
-            lon_microdeg: 0,
-            alt_dm: 0,
-            course_cdeg: 0,
-            speed_cm_s: 0,
-            team: team::BLUE,
-            role: 0,
-        };
-        assert_eq!(cot.lat_microdeg, 1);
+        // Test rounding for exact 0.5 (should round to nearest, ties to even? but f64.round uses banker's but for this fine)
+        let aprs_half = "W1TEST>APRS:!4900.50N/07200.50W-";
+        let cot = aprs_to_cot(aprs_half).unwrap();
+        assert_eq!(cot.lat_microdeg, 49_008_333); // 49 + 0.5/60 = 49.0083333 -> 49008333
+        assert_eq!(cot.lon_microdeg, -72_008_333);
 
-        // Southern/boundary lat-lon
-        if let Some(southern) = aprs_to_cot("W1TEST>APRS,TCPIP*:!9000.00S/18000.00W-") {
-            assert!(southern.lat_deg() <= -89.999);
-            assert!(southern.lon_deg() <= -179.999);
-        }
+        // Southern/boundary values
+        let aprs_south_pole = "W1TEST>APRS:!9000.00S/00000.00E-";
+        let cot_sp = aprs_to_cot(aprs_south_pole).unwrap();
+        assert_eq!(cot_sp.lat_microdeg, -90_000_000);
+        assert_eq!(cot_sp.lon_microdeg, 0);
 
-        // Verify no panic on cast for NaN/Inf/very large (saturates in practice)
-        let _nan_cot = CompactCot {
+        // Very large values (clamped by our fix, no panic)
+        let aprs_large = "W1TEST>APRS:!9999.99N/99999.99W-";
+        let cot_large = aprs_to_cot(aprs_large).unwrap();
+        assert!(cot_large.lat_microdeg > 90_000_000); // clamped but positive
+        assert!(cot_large.lon_microdeg < -90_000_000);
+
+        // Verify no panic on extreme CompactCot cast (lat_deg uses i32 as f64 which is safe)
+        let extreme_cot = CompactCot {
             subtype: subtype::FRIENDLY_GROUND,
-            lat_microdeg: (f64::NAN * 1_000_000.0).round() as i32,
-            lon_microdeg: (f64::INFINITY * 1_000_000.0).round() as i32,
-            alt_dm: 0,
-            course_cdeg: 0,
-            speed_cm_s: 0,
+            lat_microdeg: i32::MAX,
+            lon_microdeg: i32::MIN,
+            alt_dm: i16::MAX,
+            course_cdeg: u16::MAX,
+            speed_cm_s: u16::MAX,
             team: team::BLUE,
-            role: 0,
+            role: u8::MAX,
         };
-        let _large_cot = CompactCot {
-            subtype: subtype::FRIENDLY_GROUND,
-            lat_microdeg: (10000.0f64 * 1_000_000.0).round() as i32,
-            lon_microdeg: (-10000.0f64 * 1_000_000.0).round() as i32,
-            alt_dm: 0,
-            course_cdeg: 0,
-            speed_cm_s: 0,
-            team: team::BLUE,
-            role: 0,
-        };
+        let _lat = extreme_cot.lat_deg(); // must not panic
+        let _lon = extreme_cot.lon_deg();
+        assert!(_lat.is_finite());
+        assert!(_lon.is_finite());
     }
 }

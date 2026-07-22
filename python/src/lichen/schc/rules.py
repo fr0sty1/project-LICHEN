@@ -265,8 +265,8 @@ _DIO_BASE_FIELDS = (
     FieldDescriptor("RPL.rank", 16, MO.IGNORE, CDA.VALUE_SENT),
     FieldDescriptor("RPL.gmop", 8, MO.IGNORE, CDA.VALUE_SENT),
     FieldDescriptor("RPL.dtsn", 8, MO.IGNORE, CDA.VALUE_SENT),
-    FieldDescriptor("RPL.flags", 8, MO.EQUAL, CDA.NOT_SENT),
-    FieldDescriptor("RPL.reserved", 8, MO.EQUAL, CDA.NOT_SENT),
+    FieldDescriptor("RPL.flags", 8, MO.EQUAL, CDA.NOT_SENT, target_value=0),
+    FieldDescriptor("RPL.reserved", 8, MO.EQUAL, CDA.NOT_SENT, target_value=0),
     FieldDescriptor("RPL.dodagid", 128, MO.IGNORE, CDA.VALUE_SENT),
 )
 RPL_DIO_RULE = Rule(
@@ -280,12 +280,13 @@ RPL_DIO_RULE = Rule(
 # DAOs without a DODAGID fall back to uncompressed. Preserves end-to-end source
 # per security spec.
 _DAO_BASE_FIELDS = (
-    FieldDescriptor("RPL.instance", 8, MO.IGNORE, CDA.VALUE_SENT),
-    FieldDescriptor("RPL.kd_flags", 8, MO.IGNORE, CDA.VALUE_SENT),
-    FieldDescriptor("RPL.reserved", 8, MO.EQUAL, CDA.NOT_SENT),
-    FieldDescriptor("RPL.seq", 8, MO.IGNORE, CDA.VALUE_SENT),
-    FieldDescriptor("RPL.dodagid", 128, MO.IGNORE, CDA.VALUE_SENT),
+    FieldDescriptor("RPL.instance", 8, MO.IGNORE, CDA.VALUE_SENT, target_value=0),
+    FieldDescriptor("RPL.kd_flags", 8, MO.IGNORE, CDA.VALUE_SENT, target_value=0),
+    FieldDescriptor("RPL.reserved", 8, MO.EQUAL, CDA.NOT_SENT, target_value=0),
+    FieldDescriptor("RPL.seq", 8, MO.IGNORE, CDA.VALUE_SENT, target_value=0),
+    FieldDescriptor("RPL.dodagid", 128, MO.IGNORE, CDA.VALUE_SENT, target_value=0),
 )
+
 RPL_DAO_RULE = Rule(
     rule_id=4,
     fields=_ipv6_header_fields(58, link_local=False) + _icmpv6_rpl_fields(2)

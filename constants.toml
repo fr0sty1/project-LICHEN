@@ -62,3 +62,38 @@ k               = 10    # Redundancy constant
 [announce]
 # LICHEN Announce message (spec §05-routing)
 type_byte = 0x01   # First byte inside dispatch=0x15 routing/control payloads
+
+[senml]
+# RFC 8428 SenML profiles (Content-Format 112) for location, telemetry, battery/status.
+# Shared across Python, Rust, C. Base name always urn:dev:mac:<EUI64>:
+content_format = 112
+base_name_prefix = "urn:dev:mac:"
+
+# Location (crowd map §18.2)
+location_lat = "lat"
+location_lon = "lon"
+location_alt = "alt"
+location_speed = "speed"
+location_heading = "heading"
+location_unit_deg = "deg"
+location_unit_m = "m"
+location_unit_ms = "m/s"
+
+# Battery and status
+battery_pct = "pct"
+battery_mv = "mv"
+battery_charging = "charging"
+battery_unit_pct = "%"
+battery_unit_mv = "mV"
+
+# Telemetry metrics
+telemetry_temp = "temp"
+telemetry_humidity = "hum"
+telemetry_pressure = "pressure"
+telemetry_unit_cel = "Cel"
+telemetry_unit_rh = "%RH"
+telemetry_unit_pa = "Pa"
+
+[tdma]
+guard_ms = 50
+slot_ms = 250

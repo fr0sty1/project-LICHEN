@@ -95,22 +95,16 @@ Supported without coordination. Each BR forms DODAG; nodes select best. Global r
 
 ### 6.2. Interface Identifier (IID) Derivation
 
-**Unified from Ed25519 public key (per zt3c.1 and 06-security.md):**
+See [03-addressing.md](03-addressing.md) for full definition of human-readable node address and IID derivation.
 
+Primary method (preferred, used by all implementations):
 ```
-pubkey (32 bytes) --SHA-512--> hash[0:8] with U/L bit cleared (bit 1 = 0)
+IID = SHA-256(Ed25519_pubkey)[0:8] with U/L bit cleared (iid[0] &= 0b11111101)
 ```
 
-Exact algorithm (to be detailed in security spec and test vectors):
+Legacy fallback from EUI-64 or short address for compatibility (see addressing spec).
 
-1. Compute SHA-512 of the Ed25519 public key.
-2. Take first 8 bytes of hash.
-3. Clear the U/L bit (IID[0] &= ~0x02) for consistency with modified EUI-64 convention.
-4. The same derivation produces the 02xx address prefix bytes.
-
-This unifies all identity elements (key, signatures, OSCORE, IID, global address) to a single Ed25519 keypair per node. No dependence on hardware EUI-64 for addressing (though EUI may still be used for initial key provisioning or board identity).
-
-**Stable IIDs only.** Rotating or privacy IIDs are prohibited; all protocol mechanisms (RPL, gradients, replay protection, TOFU, OSCORE) depend on stable key-derived identity. See 06-security.md for privacy analysis. Short addresses (for 6LoWPAN compression) are derived secondarily from the IID.
+**Stable IIDs only.** The pubkey-derived IID provides cryptographic binding. See 03-addressing.md for human-readable Base32 format, collision analysis, and test vectors.
 
 ### 6.3. Multicast and Broadcast
 

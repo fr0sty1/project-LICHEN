@@ -62,6 +62,10 @@ BUILD_ASSERT(sizeof(struct LICHEN_TDMA_Slot) == 16);
 /** Schnorr-48 signature length in bytes */
 #define LICHEN_SIG_LEN 48
 
+#define LICHEN_TDMA_GUARD_MS 50
+#define LICHEN_TDMA_SLOT_MS 250
+struct lichen_tdma_slot {uint8_t id;uint8_t assigned;uint32_t next;};
+
 /** Maximum destination address length (EUI-64) */
 #define LICHEN_ADDR_MAX 8
 
@@ -308,30 +312,7 @@ int lichen_link_rx(struct lichen_link_rx_ctx *_Nonnull ctx,
 		   uint8_t *_Nonnull out_ipv6, size_t *_Nonnull out_len,
 		   uint8_t *_Nonnull src_eui64);
 
-/* ─── TDMA (CCP-16 load balancing) ──────────────────────────────────────── */
-
-#ifdef CONFIG_LICHEN_TDMA
-/**
- * @brief TDMA slot for collision-free scheduling (20 bytes exact for ARM).
- */
-struct lichen_tdma_slot {
-	uint32_t start_time_us;  /**< Slot start time in microseconds */
-	uint16_t duration_ms;    /**< Slot duration */
-	uint8_t slot_id;         /**< Slot identifier */
-	uint8_t flags;           /**< Scheduling flags */
-	uint8_t owner_eui64[8];  /**< Owning node's EUI-64 */
-	uint8_t padding[4];      /**< Explicit padding for alignment */
-};
-
-BUILD_ASSERT(sizeof(struct lichen_tdma_slot) == 20,
-	     "lichen_tdma_slot must be exactly 20 bytes (Zephyr ARM targets)");
-
-/**
- * @brief Initialize TDMA subsystem (call after lichen_link_load_key(),
- * before oscore_init() per AGENTS.md dependency graph).
- */
-int lichen_tdma_init(struct lichen_link_ctx *_Nonnull link_ctx);
-#endif /* CONFIG_LICHEN_TDMA */
+int lichen_tdma_init(struct lichen_tdma_slot *_Nonnull s);
 
 #ifdef __cplusplus
 }

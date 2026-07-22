@@ -248,9 +248,16 @@ static int encode_record(zcbor_state_t *state,
 		break;
 
 	case SENML_VALUE_STRING:
+		if (!zcbor_int32_put(state, SENML_LABEL_VS) ||
+		    !zcbor_tstr_put_term(state, rec->value.s, 256)) {
+			return -ENOMEM;
+		}
+		break;
+
 	case SENML_VALUE_DATA:
-		/* String and binary data types not yet implemented */
 		return -ENOTSUP;
+	default:
+		return -EINVAL;
 	}
 
 	/* Time offset */
@@ -337,19 +344,18 @@ int senml_encode_location(const char *base_name, uint64_t base_time,
 		return ret;
 	}
 
-	/* RFC 8428 uses "deg" (degrees) as the SenML unit for lat/lon */
-	ret = senml_add_float(&pack, "lat", "deg", lat);
+	ret = senml_add_float(&pack, SENML_LOCATION_LAT, SENML_LOCATION_UNIT_DEG, lat);
 	if (ret < 0) {
 		return ret;
 	}
 
-	ret = senml_add_float(&pack, "lon", "deg", lon);
+	ret = senml_add_float(&pack, SENML_LOCATION_LON, SENML_LOCATION_UNIT_DEG, lon);
 	if (ret < 0) {
 		return ret;
 	}
 
 	if (!isnan(alt)) {
-		ret = senml_add_float(&pack, "alt", "m", alt);
+		ret = senml_add_float(&pack, SENML_LOCATION_ALT, SENML_LOCATION_UNIT_M, alt);
 		if (ret < 0) {
 			return ret;
 		}
@@ -370,18 +376,17 @@ int senml_encode_battery(const char *base_name, uint64_t base_time,
 		return ret;
 	}
 
-	/* Use "%" for battery percentage (not %RH which is relative humidity) */
-	ret = senml_add_float(&pack, "pct", "%", (float)percent);
+	ret = senml_add_float(&pack, SENML_BATTERY_PCT, SENML_BATTERY_UNIT_PCT, (float)percent);
 	if (ret < 0) {
 		return ret;
 	}
 
-	ret = senml_add_float(&pack, "mv", "mV", (float)mv);
+	ret = senml_add_float(&pack, SENML_BATTERY_MV, SENML_BATTERY_UNIT_MV, (float)mv);
 	if (ret < 0) {
 		return ret;
 	}
 
-	ret = senml_add_bool(&pack, "charging", charging);
+	ret = senml_add_bool(&pack, SENML_BATTERY_CHARGING, charging);
 	if (ret < 0) {
 		return ret;
 	}
@@ -401,7 +406,27 @@ int senml_encode_temperature(const char *base_name, uint64_t base_time,
 		return ret;
 	}
 
-	ret = senml_add_float(&pack, "temp", "Cel", temp_c);
+	ret = senml_add_float(&pack, SENML_TELEMETRY_TEMP, SENML_TELEMETRY_UNIT_CEL, temp_c);
+	if (ret < 0) {
+		return ret;
+	}
+
+	return senml_encode_cbor(&pack, buf, buflen);
+}
+
+int senml_encode_deaddrop(const char *base_name, uint64_t base_time,
+			  uint16_t pending,
+			  uint8_t *buf, size_t buflen)
+{
+	struct senml_pack pack;
+	int ret;
+
+	ret = senml_pack_init(&pack, base_name, base_time);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = senml_add_float(&pack, "pending", NULL, (float)pending);
 	if (ret < 0) {
 		return ret;
 	}

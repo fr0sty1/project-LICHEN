@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-FileCopyrightText: The contributors to the LICHEN project
+from __future__ import annotations
+
 """Radio protocol definition for LICHEN.
 
 This module defines the Radio protocol that all radio implementations must satisfy.

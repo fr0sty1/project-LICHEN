@@ -4,8 +4,28 @@ extern crate alloc;
 
 use crate::keys::{PrivateKey, PublicKey, Seed};
 use crate::schnorr::derive_keypair;
-use alloc::string::String;
-use sha2::{Digest, Sha256};
+
+/// Keyed 32-bit hash using fixed network key b"LICHEN" (0x4c494348454e)
+/// as initializer. Per spec 02a-coordinated-capacity.md and test vectors.
+/// Used for packet_hash, tuple CRCs, short-addr derivation, channel selection.
+/// Syncs with lichen/subsys/lichen/link/link_ctx.c:tuple_crc().
+/// Prefixes key bytes into standard CRC32 (matches Zephyr crc32_ieee and
+/// schc CRC impl).
+pub fn hash_32(data: &[u8]) -> u32 {
+    const KEY: &[u8] = b"LICHEN";
+    let mut crc: u32 = 0xffff_ffff;
+    for &byte in KEY.iter().chain(data.iter()) {
+        crc ^= byte as u32;
+        for _ in 0..8 {
+            if (crc & 1) != 0 {
+                crc = (crc >> 1) ^ 0xedb8_8320;
+            } else {
+                crc >>= 1;
+            }
+        }
+    }
+    !crc
+}
 
 /// hash_32 with fixed LICHEN key=0x4c494348454e per spec for consistent
 /// short-addr, channel, slot, and tuple_crc computations (replaces
@@ -21,57 +41,49 @@ pub fn hash_32(data: &[u8]) -> u32 {
 
 /// Derive a link-local IID from an Ed25519 public key.
 ///
-/// IID = SHA-256(pubkey)\[0:8\] with the U/L bit (bit 1 of byte 0) cleared.
-/// RFC 4291 §2.5.1 — locally-administered identifier.
+/// Updated per project-LICHEN-swvz to use keyed hash_32 (twice for 64 bits)
+/// with key b"LICHEN" instead of plain SHA-256. U/L bit cleared per RFC 4291.
+/// This ensures consistency with coordinated capacity channel/short-addr hashes.
 ///
 /// # Panics
 ///
-/// This function does not panic. Internal `.unwrap()` calls operate on
-/// fixed-size SHA-256 output slices that are provably the correct length.
+/// This function does not panic.
 pub fn iid_from_pubkey(pubkey: &PublicKey) -> [u8; 8] {
     iid_from_pubkey_bytes(pubkey.as_bytes())
 }
 
-/// Derive a link-local IID from raw public key bytes.
+/// Derive a link-local IID from raw public key bytes using keyed hash_32.
 fn iid_from_pubkey_bytes(pubkey: &[u8; 32]) -> [u8; 8] {
-    let hash = Sha256::digest(pubkey);
-    // SAFETY: SHA-256 output is 32 bytes, so [..8] is exactly 8 bytes
-    let mut iid: [u8; 8] = hash[..8].try_into().unwrap();
-    iid[0] &= 0b1111_1101; // clear U/L bit
+    let h1 = hash_32(pubkey);
+    let mut buf2 = [0u8; 33];
+    buf2[0..32].copy_from_slice(pubkey);
+    buf2[32] = 1;
+    let h2 = hash_32(&buf2);
+    let mut iid = [0u8; 8];
+    iid[0..4].copy_from_slice(&h1.to_be_bytes());
+    iid[4..8].copy_from_slice(&h2.to_be_bytes());
+    iid[0] &= 0b1111_1101; // clear U/L bit (bit 1)
     iid
 }
 
-/// Human-readable 13-character Crockford base32 node address derived from
-/// SHA-256(Ed25519 pubkey) first 8 bytes. Formatted with dashes every 4 chars
-/// (XXXX-XXXX-XXXXX). Matches test vectors exactly. Reuses hash from IID path.
-pub fn human_address_from_pubkey(pubkey: &PublicKey) -> String {
-    human_address_from_pubkey_bytes(pubkey.as_bytes())
-}
-
-fn human_address_from_pubkey_bytes(pubkey: &[u8; 32]) -> String {
-    let hash = Sha256::digest(pubkey);
-    let data: [u8; 8] = hash[..8].try_into().unwrap();
-    crockford_base32(&data)
-}
-
-const CROCKFORD_ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-
-fn crockford_base32(data: &[u8; 8]) -> String {
-    let mut num = u64::from_be_bytes(*data);
+/// Format 8-byte IID as 15-byte human-readable address `XXXX-XXXX-XXXXX`
+/// using Crockford Base32 (spec 03-addressing.md).
+pub fn human_address(iid: &[u8; 8]) -> [u8; 15] {
+    const ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+    let mut n = u64::from_be_bytes(*iid);
     let mut chars = [0u8; 13];
     for i in (0..13).rev() {
-        let rem = (num % 32) as usize;
-        chars[i] = CROCKFORD_ALPHABET[rem];
-        num /= 32;
+        let rem = (n % 32) as usize;
+        chars[i] = ALPHABET[rem];
+        n /= 32;
     }
-    let s = core::str::from_utf8(&chars).unwrap();
-    let mut formatted = String::with_capacity(15);
-    formatted.push_str(&s[0..4]);
-    formatted.push('-');
-    formatted.push_str(&s[4..8]);
-    formatted.push('-');
-    formatted.push_str(&s[8..13]);
-    formatted
+    let mut buf = [0u8; 15];
+    buf[0..4].copy_from_slice(&chars[0..4]);
+    buf[4] = b'-';
+    buf[5..9].copy_from_slice(&chars[4..8]);
+    buf[9] = b'-';
+    buf[10..15].copy_from_slice(&chars[8..13]);
+    buf
 }
 
 /// Local node identity (seed + derived keypair + IID).
@@ -133,13 +145,21 @@ mod tests {
     }
 
     #[test]
+    fn hash_32_keyed_with_lichen() {
+        // Independent oracle computed with Python zlib.crc32(b"LICHEN" + data)
+        // (standard CRC32 with key prefixed as initializer; matches spec and C impl)
+        assert_eq!(hash_32(b""), 0x77f9adf0);
+        assert_eq!(hash_32(b"test"), 0x84a618f3);
+        assert_eq!(hash_32(&[0u8; 32]), 0x922b4f72);
+    }
+
+    #[test]
     fn iid_u_l_bit_cleared() {
         let pubkey = PublicKey::new([0u8; 32]);
         let iid = iid_from_pubkey(&pubkey);
-        // SHA-256(0x00*32) = e3b0c44298fc1c149afb... — first byte 0xe3 & ~0x02 = 0xe1
-        let expected_hash = Sha256::digest([0u8; 32]);
-        let mut expected: [u8; 8] = expected_hash[..8].try_into().unwrap();
-        expected[0] &= 0b1111_1101;
+        // New derivation per project-LICHEN-swvz: keyed hash_32(pubkey) + hash_32(pubkey+1)
+        // Independent oracle: 0x902b4f721b9ce444 (U/L bit already clear)
+        let expected = [0x90, 0x2b, 0x4f, 0x72, 0x1b, 0x9c, 0xe4, 0x44];
         assert_eq!(iid, expected);
         assert_eq!(iid[0] & 0x02, 0, "U/L bit must be cleared");
     }
@@ -180,13 +200,11 @@ mod tests {
     }
 
     #[test]
-    fn human_address_matches_test_vector() {
-        let pubkey = PublicKey::new([0u8; 32]);
-        let addr = human_address_from_pubkey(&pubkey);
-        assert_eq!(addr, "6CT3-TNQW-65FBQ");
-        // Also test AB case from vectors
-        let pubkey_ab = PublicKey::new([0xabu8; 32]);
-        let addr_ab = human_address_from_pubkey(&pubkey_ab);
-        assert_eq!(addr_ab, "9MBD-JW8Z-HA16D");
+    fn human_address_format() {
+        let iid = [0x11, 0x9e, 0x39, 0x40, 0xe6, 0x4b, 0x54, 0x91];
+        let human = human_address(&iid);
+        let s = core::str::from_utf8(&human).unwrap();
+        assert_eq!(s, "137H-S83K-4PN4H");
+        assert_eq!(human_address(&[0u8; 8]), *b"90AT-FE8D-SSS24"); // updated for keyed hash_32(seed=0)
     }
 }

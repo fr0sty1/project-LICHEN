@@ -242,12 +242,18 @@ Track these key metrics:
 
 ## Cost Optimization
 
+### Q4 Budget (Seattle default):
+- 500-node deployment hardware: $25,000 base ($50/unit)
+- Landed cost (Seattle WA taxes + shipping): $27,500 ($55/unit)
+- EC2 simulation fleet: ~$4,200/mo (spot t4g.medium coordinator + 20x node instances)
+- Total Q4: $32k (hardware + 3mo sim ops buffer)
+
 ### Budget Control:
 1. Use spot instances for non-critical testing
 2. Auto-scale based on workload demands
 3. Terminate unused instances after testing
 4. Monitor hourly costs using AWS Cost Explorer
-5. Implement tagging for easy cost allocation
+5. Implement tagging for easy cost allocation (`Project=LICHEN`)
 
 ### Cost Estimation Formula:
 ``` 
@@ -267,12 +273,9 @@ Consider these improvements for larger-scale deployments:
 
 ## References
 
-- **docs/renode-workflow.md**: Renode setup, multi-node tests, peripherals
-- **docs/simulation-api.md**: REST/WebSocket/TCP protocol details
-- **docs/enhanced-debugging-observability.md**: Logging, chaos rules, metrics
-- **scripts/ec2-*.sh**: Distributed fleet launchers with full option reference
-- **AGENTS.md**: AWS isolation rules (`Project=LICHEN`), EBS volume, EC2 usage
-- **python/src/lichen/sim/**: SimulatorServer, chaos, metrics, node_server
-- **lichen/tests/** + **test/vectors/**: Validation suite and cross-impl vectors
+- **LICHEN AGENTS.md**: Main project documentation for EC2 setup
+- **Scripts**: `ec2-hetero-fleet.sh`, `ec2-renode-fleet.sh`
+- **AWS CLI Documentation**: Official AWS EC2 and CloudWatch documentation
+- **Simulation Protocol**: `lichen/sim/protocol.py` for wire format details
 
-This completes documentation for distributed EC2 simulation deployment per project-LICHEN-zt09. Always verify tags before EC2 operations.
+> **What is a PRFAQ?** A PRFAQ (Press Release / FAQ) is an Amazon-originated product planning technique. It starts with a fictional press release written as if the product has already launched successfully, forcing clarity on customer benefit and desired outcome. The FAQ section then anticipates hard internal and external questions. Writing the press release first ensures the team aligns on what success looks like before committing to implementation.

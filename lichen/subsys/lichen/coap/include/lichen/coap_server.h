@@ -230,6 +230,14 @@ int lichen_coap_respond(struct coap_resource *resource,
 			size_t payload_len, struct oscore_ctx *oscore_ctx,
 			const uint8_t *request_piv, size_t request_piv_len);
 
+struct lichen_coap_deaddrop_provider {
+	int (*store)(const uint8_t *payload, size_t len, const uint8_t *recipient, uint32_t ttl);
+	int (*retrieve)(const uint8_t *recipient, uint8_t *buf, size_t buf_len);
+};
+
+int lichen_coap_deaddrop_register(const struct lichen_coap_deaddrop_provider *provider);
+int coap_respond(struct coap_resource *resource, struct coap_packet *request, struct sockaddr *addr, socklen_t addr_len, uint8_t resp_code, const uint8_t *payload, size_t payload_len);
+
 #ifdef __cplusplus
 }
 #endif

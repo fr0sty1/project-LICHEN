@@ -16,6 +16,7 @@ the evolving DODAG during a run.
 """
 
 from collections.abc import Mapping
+from typing import Optional
 
 from lichen.rpl.dodag import DodagState
 

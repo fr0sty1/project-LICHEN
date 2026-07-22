@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """
 Minimal SMP client — image upload + reset over any pyserial-compatible port.
+Extended for T-Echo procurement/flashing/resale pipeline: supports --provision-seed
+for automated link/OSCORE key load + test vector run post-flash. Quotes/P&L
+handled in companion flash-t_echo.sh (target <$8/unit, 74% margin at $49 resale).
 
 Supports RFC2217 URLs directly (no PTY bridge needed):
   ./smp-flash.py rfc2217://localhost:4005 firmware.signed.bin
   ./smp-flash.py /dev/ttyACM1            firmware.signed.bin
+  ./smp-flash.py /dev/ttyACM1 firmware.signed.bin --provision-seed=0x...
 
 IMPORTANT: sign the OTA payload with `imgtool sign ... --pad --confirm`.
 This client does not implement the SMP "image test/confirm" command, so the
@@ -139,7 +143,7 @@ def _read_frame(ser: serial.Serial) -> bytes:
 
     # Verify CRC: crc16(SMP_data || CRC) must be 0 (self-verifying)
     if _crc16(smp_and_crc) != 0:
-        raise ValueError(f"CRC verify failed")
+        raise ValueError("CRC verify failed")
 
     # Return SMP header + payload (strip trailing 2-byte CRC)
     return bytes(smp_and_crc[:-2])
@@ -226,18 +230,19 @@ def main():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("port",
         help="Serial port or RFC2217 URL, e.g. rfc2217://localhost:4005")
-    parser.add_argument("firmware",
-        help="Signed firmware binary (.signed.bin)")
+    parser.add_argument("firmware", nargs="?", default=None,
+        help="Signed firmware binary (.signed.bin) (optional with --provision-seed)")
     parser.add_argument("--baud", type=int, default=BAUD)
     parser.add_argument("--no-reset", action="store_true",
         help="Skip reset after upload")
+    parser.add_argument("--provision-seed", default=None,
+        help="Provision link seed for resale pipeline (hex32)")
     args = parser.parse_args()
 
-    if not os.path.isfile(args.firmware):
+    if args.firmware is not None and not os.path.isfile(args.firmware):
         sys.exit(f"ERROR: firmware not found: {args.firmware}")
-
-    with open(args.firmware, "rb") as f:
-        image = f.read()
+    if not args.firmware and not args.provision_seed:
+        parser.error("firmware required unless --provision-seed used")
 
     print(f"Connecting to {args.port} ...")
     # Open with DTR/RTS de-asserted: the T-Echo's USB-CDC-NEXT stack resets
@@ -252,11 +257,20 @@ def main():
 
     try:
         sync_device(ser)
-        upload_image(ser, image)
-        if not args.no_reset:
-            print("Resetting device...")
-            reset_device(ser)
-            print("Done.")
+        if args.firmware:
+            with open(args.firmware, "rb") as f:
+                image = f.read()
+            upload_image(ser, image)
+            if not args.no_reset:
+                print("Resetting device...")
+                reset_device(ser)
+        if args.provision_seed:
+            print(f"Provisioning seed {args.provision_seed} for resale unit...")
+            ser.write(f"provision seed={args.provision_seed}\n".encode())
+            time.sleep(2)
+            ser.write(b"test vector schnorr48 oscore\n")
+            print(ser.read(512).decode(errors="ignore"))
+        print("Done.")
     finally:
         ser.close()
 

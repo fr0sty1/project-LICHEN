@@ -23,11 +23,9 @@ use lichen_core::loadng::{Idle, RouteDiscovery, Rreq, Searching};
 /// Classification of IPv6 destination address (spec 7.2 table).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AddressClass {
-    /// fe80::/10 - direct neighbor, one hop away.
     LinkLocal,
-    /// ULA (fd00::/8) or configured mesh GUA - peer in mesh.
     MeshLocal,
-    /// Other GUA or unknown - route via border router.
+    Yggdrasil,
     External,
 }
 
@@ -204,6 +202,9 @@ impl HybridRouter {
         if addr[0] == 0xfd {
             return AddressClass::MeshLocal;
         }
+        if addr[0] == 0x02 {
+            return AddressClass::Yggdrasil;
+        }
         for prefix in &self.mesh_prefixes {
             if prefix.contains(addr) {
                 return AddressClass::MeshLocal;
@@ -225,11 +226,9 @@ impl HybridRouter {
         let addr_class = self.classify_address(dst);
 
         match addr_class {
-            AddressClass::LinkLocal => {
-                // Link-local: destination IS the next hop
-                RouteResult::forward(*dst)
-            }
+            AddressClass::LinkLocal => RouteResult::forward(*dst),
             AddressClass::MeshLocal => self.route_mesh_local(dst, now_ms),
+            AddressClass::Yggdrasil => self.route_external(),
             AddressClass::External => self.route_external(),
         }
     }

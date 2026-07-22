@@ -183,6 +183,7 @@ void lichen_rpl_dodag_config_init(struct lichen_rpl_dodag_config *cfg)
 	cfg->dio_int_min = 3;
 	cfg->dio_int_doublings = 8;
 	cfg->dio_redundancy_const = 10;
+	cfg->gateway_centric = false;
 }
 
 int lichen_rpl_dodag_config_parse(struct lichen_rpl_dodag_config *cfg,
@@ -195,7 +196,7 @@ int lichen_rpl_dodag_config_parse(struct lichen_rpl_dodag_config *cfg,
 		return LICHEN_RPL_ERR_TOO_SHORT;
 	}
 
-	/* data[0] = A/PCS flags, skipped */
+	cfg->gateway_centric = (data[0] & 0x80) != 0;
 	cfg->dio_int_doublings = data[1];
 	cfg->dio_int_min = data[2];
 	cfg->dio_redundancy_const = data[3];
@@ -222,7 +223,7 @@ int lichen_rpl_dodag_config_write(const struct lichen_rpl_dodag_config *cfg,
 
 	buf[0] = LICHEN_RPL_OPT_DODAG_CONFIG;
 	buf[1] = LICHEN_RPL_DODAG_CONFIG_DATA_LEN;
-	buf[2] = 0;  /* A/PCS flags */
+	buf[2] = cfg->gateway_centric ? 0x80 : 0;  /* GATEWAY_CENTRIC bit 7 */
 	buf[3] = cfg->dio_int_doublings;
 	buf[4] = cfg->dio_int_min;
 	buf[5] = cfg->dio_redundancy_const;

@@ -290,6 +290,11 @@ int schnorr48_sign_frame(uint8_t length, uint8_t llsec,
 		return -EINVAL;
 	}
 
+	/* Validate crypto pointers per _Nonnull contract (umdu) */
+	if (privkey == NULL || pubkey == NULL || sig == NULL) {
+		return -EINVAL;
+	}
+
 	/* Build the exact wire prefix, excluding the signature MIC. */
 	header[header_len++] = length;
 	header[header_len++] = llsec;

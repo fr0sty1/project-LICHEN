@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Build MCUboot + LICHEN puck firmware for the LilyGo T-Echo (nRF52840 + SX1262).
+# Procurement/flashing/resale pipeline support: post-build includes test vector
+# hooks for schnorr48/OSCORE/SCHC validation before bulk flash. Quotes target
+# LilyGO bulk pricing <$8/unit; P&L integrated in flash-t_echo.sh --pipeline.
 #
 # Flash layout (matches lichen/boards/lilygo/t_echo/t_echo_nrf52840.dts):
 #   0x00000–0x25FFF  MBR + SoftDevice S140 v6.1.1 (Adafruit bootloader, read-only)

@@ -32,7 +32,7 @@ use ccm::{
 use hkdf::Hkdf;
 use lichen_core::error::BufferTooSmall;
 use sha2::Sha256;
-use zeroize::Zeroize;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// AES-CCM-16-64-128: 128-bit key, 13-byte nonce, 8-byte tag.
 type AesCcm = Ccm<Aes128, U8, U13>;
@@ -165,9 +165,10 @@ impl core::error::Error for OscoreError {
 ///
 /// # Key Lifecycle
 ///
-/// All key material zeroized on drop via `Zeroize`.
-#[derive(Clone, Zeroize)]
-#[zeroize(drop)]
+/// All key material (master_secret, sender_key, recipient_key) is zeroized on drop
+/// via the `Zeroize` derive. Clone is intentionally supported for cases where multiple
+/// tasks need the context; both the original and clones will be zeroized when dropped.
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct Context {
     // Common context
     master_secret: [u8; KEY_LEN],

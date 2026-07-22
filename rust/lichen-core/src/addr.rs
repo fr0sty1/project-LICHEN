@@ -3,6 +3,7 @@
 // Re-export Addr from lichen-ipv6 as Ipv6Addr for backward compatibility.
 // This eliminates the duplicate type definition while preserving the API.
 pub use lichen_ipv6::Addr as Ipv6Addr;
+use sha2::{Digest, Sha512};
 
 /// A 64-bit node identifier (EUI-64 derived from the radio hardware address).
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -27,19 +28,13 @@ impl NodeId {
         self.addr_with_prefix(prefix)
     }
 
-    /// Derive NodeId from an IPv6 address by extracting its IID (low 64 bits)
-    /// and reversing the modified EUI-64 U/L bit (XOR 0x02 on first IID byte).
-    ///
-    /// **Codereview fix**: Now uses `Ipv6Addr::iid()` (centralized extraction)
-    /// instead of assuming bytes 8-15 directly. Explicitly documents that
-    /// callers (RPL DAO targets, gateway routes) guarantee link-local/ULA/GUA
-    /// address with standard /64 IID. No runtime check added to avoid no_std
-    /// overhead; validation is caller's responsibility per current design.
-    pub fn from_ipv6(addr: &[u8; 16]) -> Self {
-        let ipv6 = Ipv6Addr(*addr);
-        let mut eui = ipv6.iid();
-        eui[0] ^= 0x02;
-        NodeId(eui)
+    pub fn yggdrasil_address(pubkey: &[u8; 32]) -> Ipv6Addr {
+        let hash = Sha512::digest(pubkey);
+        let mut addr = [0u8; 16];
+        addr[0] = 0x02;
+        addr[1] = 0x02;
+        addr[2..9].copy_from_slice(&hash[0..7]);
+        Ipv6Addr(addr)
     }
 
     fn addr_with_prefix(&self, prefix: [u8; 8]) -> Ipv6Addr {
@@ -159,10 +154,18 @@ mod tests {
     }
 
     #[test]
-    fn from_ipv6_roundtrips_link_local() {
-        let node = NodeId([0x02, 0, 0, 0, 0, 0, 0, 1]);
-        let ll = node.link_local_addr();
-        let recovered = NodeId::from_ipv6(&ll.0);
-        assert_eq!(recovered, node);
+    fn yggdrasil_address_matches_vectors() {
+        let zero = [0u8; 32];
+        let a0 = NodeId::yggdrasil_address(&zero);
+        assert_eq!(
+            a0.0,
+            [0x02, 0x02, 0x50, 0x46, 0xad, 0xc1, 0xdb, 0xa8, 0x38, 0, 0, 0, 0, 0, 0, 0]
+        );
+        let one = [1u8; 32];
+        let a1 = NodeId::yggdrasil_address(&one);
+        assert_eq!(
+            a1.0,
+            [0x02, 0x02, 0x5c, 0xe8, 0x6e, 0xfb, 0x75, 0xfa, 0x4e, 0, 0, 0, 0, 0, 0, 0]
+        );
     }
 }

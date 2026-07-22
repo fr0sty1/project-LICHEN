@@ -227,6 +227,7 @@ pub struct DodagConfig {
     pub dio_int_min: u8,
     pub dio_int_doublings: u8,
     pub dio_redundancy_const: u8,
+    pub gateway_centric: bool,
 }
 
 impl Default for DodagConfig {
@@ -240,6 +241,7 @@ impl Default for DodagConfig {
             dio_int_min: 3,
             dio_int_doublings: 8,
             dio_redundancy_const: 10,
+            gateway_centric: false,
         }
     }
 }
@@ -258,6 +260,7 @@ impl DodagConfig {
             ocp: u16::from_be_bytes([data[8], data[9]]),
             def_lifetime: data[11],
             lifetime_unit: u16::from_be_bytes([data[12], data[13]]),
+            gateway_centric: (data[0] & 0x80) != 0,
         })
     }
 
@@ -268,7 +271,7 @@ impl DodagConfig {
         }
         out[0] = OPT_DODAG_CONFIG;
         out[1] = DODAG_CONFIG_DATA_LEN as u8;
-        out[2] = 0; // A/PCS flags
+        out[2] = if self.gateway_centric { 0x80 } else { 0 }; // GATEWAY_CENTRIC bit 7
         out[3] = self.dio_int_doublings;
         out[4] = self.dio_int_min;
         out[5] = self.dio_redundancy_const;

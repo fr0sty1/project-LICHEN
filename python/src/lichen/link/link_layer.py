@@ -362,51 +362,33 @@ class LinkLayer:
         return await reservation.wait()
 
     async def drain_tx_queue(self) -> bool:
-        """Transmit packets from the TX queue until empty or channel busy.
-
-        Uses per-entry reservations for concurrent safety. In-flight entries
-        protected; stats updated only on confirmed success. Lock serializes
-        radio path.
-
-        Returns:
-            True if at least one packet was transmitted, False otherwise.
-        """
-        async with self._tx_lock:
-            transmitted_any = False
-
-            while True:
-                # Expire stale packets and check if queue has work
-                self.tx_queue.expire_stale()
-                if len(self.tx_queue) == 0:
-                    break  # Queue empty
-
-                # CAD before pop_reservation - packets remain safely queued.
-                if self.cad_enabled and not await self._wait_for_clear_channel():
-                    logger.warning(
-                        "TX deferred: channel busy after %d backoff cycles, "
-                        "%d packets remain queued",
-                        CAD_MAX_CYCLES,
-                        len(self.tx_queue),
-                    )
-                    break
-
-                reservation = self.tx_queue.pop_reservation()
-                if reservation is None:
-                    break
-
-                # Transmit
-                success = await self.radio.transmit(reservation.data)
-                self.tx_queue.complete_reservation(reservation, success)
-                if success:
-                    transmitted_any = True
-                    logger.debug(
-                        "TX success, %d packets remain queued",
-                        len(self.tx_queue),
-                    )
-                else:
-                    logger.warning("TX radio transmit failed")
-                    break  # Radio failure - stop draining
-
+        transmitted_any = False
+        while True:
+            self.tx_queue.expire_stale()
+            if len(self.tx_queue) == 0:
+                break
+            if self.cad_enabled and not await self._wait_for_clear_channel():
+                logger.warning(
+                    "TX deferred: channel busy after %d backoff cycles, "
+                    "%d packets remain queued",
+                    CAD_MAX_CYCLES,
+                    len(self.tx_queue),
+                )
+                break
+            entry = self.tx_queue.reserve()
+            if entry is None:
+                break
+            if await self.radio.transmit(entry.data):
+                transmitted_any = True
+                logger.debug(
+                    "TX success, %d packets remain queued",
+                    len(self.tx_queue),
+                )
+                self.tx_queue.complete(entry, True)
+            else:
+                logger.warning("TX radio transmit failed")
+                self.tx_queue.complete(entry, False)
+                break
         return transmitted_any
 
     async def _wait_for_clear_channel(self) -> bool:

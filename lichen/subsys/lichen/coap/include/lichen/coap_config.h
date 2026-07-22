@@ -227,7 +227,7 @@ int lichen_config_decode_radio_cbor(const uint8_t *buf, size_t len,
  *   "pubkey_fingerprint": "SHA256:xY7...",
  *   "addrs": {
  *     "link_local": "fe80::0211:22ff:fe33:4455",
- *     "ula": "fd12:3456:789a:1::0211:22ff:fe33:4455",
+ *     "primary": "0202:5046:adc1:dba8:3800::0211:22ff:fe33:4455",  /* 0200::/7 Yggdrasil-derived, no ULA */
  *     "gua": null
  *   }
  * }

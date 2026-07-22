@@ -11,16 +11,29 @@ Usage::
     from lichen.senml.profiles import location, battery, temperature
     from lichen.senml.codec import pack
 
-    records = [
-        *location(lat=48.2049, lon=16.3710, alt=158.0),
-        *battery(voltage_v=3.85, percent=72.0),
-        temperature(23.4),
-    ]
+    records = [*location(48.2, 16.4), *battery(percent=72.0), temperature(23.4)]
     payload = pack(records)
 """
 
 from __future__ import annotations
 
+from lichen.constants import (
+    SENML_BATTERY_CHARGING,
+    SENML_BATTERY_MV,
+    SENML_BATTERY_PCT,
+    SENML_BATTERY_UNIT_MV,
+    SENML_BATTERY_UNIT_PCT,
+    SENML_LOCATION_ALT,
+    SENML_LOCATION_HEADING,
+    SENML_LOCATION_LAT,
+    SENML_LOCATION_LON,
+    SENML_LOCATION_SPEED,
+    SENML_LOCATION_UNIT_DEG,
+    SENML_LOCATION_UNIT_M,
+    SENML_LOCATION_UNIT_MS,
+    SENML_TELEMETRY_TEMP,
+    SENML_TELEMETRY_UNIT_CEL,
+)
 from lichen.senml.codec import SenmlRecord
 
 # ---------------------------------------------------------------------------
@@ -29,25 +42,12 @@ from lichen.senml.codec import SenmlRecord
 
 
 def location(lat: float, lon: float, alt: float | None = None) -> list[SenmlRecord]:
-    """Geographic position as SenML records.
-
-    Uses IANA-registered SenML names "lat", "lon", "alt" with unit "deg" or
-    "m" (RFC 8428, IANA SenML Units).
-
-    Args:
-        lat: Latitude in decimal degrees (WGS-84).
-        lon: Longitude in decimal degrees (WGS-84).
-        alt: Altitude in metres above WGS-84 ellipsoid, or None to omit.
-
-    Returns:
-        List of SenML records: lat, lon, and optionally alt.
-    """
     records = [
-        SenmlRecord(n="lat", u="deg", v=lat),
-        SenmlRecord(n="lon", u="deg", v=lon),
+        SenmlRecord(n=SENML_LOCATION_LAT, u=SENML_LOCATION_UNIT_DEG, v=lat),
+        SenmlRecord(n=SENML_LOCATION_LON, u=SENML_LOCATION_UNIT_DEG, v=lon),
     ]
     if alt is not None:
-        records.append(SenmlRecord(n="alt", u="m", v=alt))
+        records.append(SenmlRecord(n=SENML_LOCATION_ALT, u=SENML_LOCATION_UNIT_M, v=alt))
     return records
 
 
@@ -56,21 +56,12 @@ def location(lat: float, lon: float, alt: float | None = None) -> list[SenmlReco
 # ---------------------------------------------------------------------------
 
 
-def battery(voltage_v: float | None = None, percent: float | None = None) -> list[SenmlRecord]:
-    """Battery state as SenML records.
-
-    Args:
-        voltage_v: Terminal voltage in volts (unit "V"), or None to omit.
-        percent:   State of charge 0-100 % (unit "%"), or None to omit.
-
-    Returns:
-        List of 0-2 SenML records.  Pass at least one of the arguments.
-    """
+def battery(percent: float | None = None, mv: float | None = None) -> list[SenmlRecord]:
     records = []
-    if voltage_v is not None:
-        records.append(SenmlRecord(n="voltage", u="V", v=voltage_v))
     if percent is not None:
-        records.append(SenmlRecord(n="battery", u="%", v=percent))
+        records.append(SenmlRecord(n=SENML_BATTERY_PCT, u=SENML_BATTERY_UNIT_PCT, v=percent))
+    if mv is not None:
+        records.append(SenmlRecord(n=SENML_BATTERY_MV, u=SENML_BATTERY_UNIT_MV, v=mv))
     return records
 
 
@@ -80,15 +71,7 @@ def battery(voltage_v: float | None = None, percent: float | None = None) -> lis
 
 
 def temperature(celsius: float) -> SenmlRecord:
-    """Ambient temperature (unit "Cel" per RFC 8428 Table 12).
-
-    Args:
-        celsius: Temperature in degrees Celsius.
-
-    Returns:
-        A single SenML record.
-    """
-    return SenmlRecord(n="temperature", u="Cel", v=celsius)
+    return SenmlRecord(n=SENML_TELEMETRY_TEMP, u=SENML_TELEMETRY_UNIT_CEL, v=celsius)
 
 
 def humidity(percent_rh: float) -> SenmlRecord:

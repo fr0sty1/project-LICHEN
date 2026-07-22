@@ -21,7 +21,7 @@ pub use lichen_rpl::dodag::{DodagRole, DodagState, ParentCandidate, ROOT_RANK};
 #[cfg(feature = "std")]
 pub use lichen_rpl::message::{Dao, Dio, DodagConfig, RplError};
 #[cfg(feature = "std")]
-pub use lichen_rpl::routing::{DaoManager, RoutingTable, SourceRoutingHeader};
+pub use lichen_rpl::routing::{DaoManager, RouteTarget, RoutingTable, SourceRoutingHeader};
 #[cfg(feature = "std")]
 pub use lichen_rpl::trickle::{TrickleEvent, TrickleTimer};
 
@@ -281,14 +281,30 @@ impl Router {
         dio.write_to(out).unwrap_or(0)
     }
 
-    /// Get the route path for a destination (root only).
     pub fn lookup_route(&self, dst: &[u8; 16]) -> Option<&[[u8; 16]]> {
         self.dao_manager.routing_table.lookup(dst)
     }
 
-    /// Add a route using full DAO path from assemble_path/rebuild_routes (not 1-element nexthop).
-    pub fn add_route(&mut self, target: [u8; 16], path: &[[u8; 16]]) {
-        self.dao_manager.routing_table.add_route(target, path);
+    pub fn authorized_install_prefix_route(
+        &mut self,
+        target: RouteTarget,
+        path: &[[u8; 16]],
+    ) -> bool {
+        if !self.is_root() {
+            return false;
+        }
+        self.dao_manager
+            .routing_table
+            .add_prefix_route(target, path);
+        true
+    }
+
+    pub fn authorized_remove_prefix_route(&mut self, target: &RouteTarget) -> bool {
+        if !self.is_root() {
+            return false;
+        }
+        self.dao_manager.routing_table.remove_prefix_route(target);
+        true
     }
 
     /// Check trickle timer and return pending event.

@@ -36,7 +36,7 @@ class FragmentError(Exception):
 
 
 def compute_mic(payload: bytes) -> bytes:
-    """Reassembly Check Sequence over the full datagram (RFC 8724 default CRC32)."""
+    """Reassembly Check Sequence (RCS) per RFC 8724 §8.1 using CRC-32 (IEEE 802.3 poly 0x04C11DB7, init 0xFFFFFFFF, final XOR 0xFFFFFFFF) as provided by zlib.crc32()."""
     return zlib.crc32(payload).to_bytes(MIC_LENGTH, "big")
 
 

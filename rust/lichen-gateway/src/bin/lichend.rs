@@ -9,6 +9,7 @@
 //!   lichend --sim --no-tun                 # TCP simulator, logging only (CI)
 
 use clap::Parser;
+use lichen_core::addr::Ipv6Addr;
 use lichen_core::addr::NodeId;
 use lichen_core::ipv6::{field, IPV6_HEADER_LEN};
 use lichen_gateway::{
@@ -138,6 +139,7 @@ async fn main() {
         ?node_id,
         prefix = %config.ipv6.prefix,
         rpl_mode = %config.rpl.mode,
+        ygg_peers = config.yggdrasil.peers.len(),
         "lichend starting"
     );
 
@@ -436,19 +438,22 @@ async fn forward_mesh_to_upstream<T: TunLike>(
         return None;
     }
     if let Some(ipv6) = gw.mesh_to_upstream(frame) {
-        if ipv6.len() >= IPV6_HEADER_LEN {
-            let mut dst = [0u8; 16];
-            dst.copy_from_slice(&ipv6[field::DST_OFFSET..IPV6_HEADER_LEN]);
-            if gw.is_local_mesh(&dst) {
-                let _ = gw.mesh_to_mesh(&ipv6);
-                return None;
-            }
+        if ipv6.len() < 40 || ipv6[0] >> 4 != 6 {
+            return;
         }
-
-        if let Some(t) = tun {
-            if let Err(e) = t.send_pkt(&ipv6).await {
-                error!("TUN write: {e}");
+        let mut dst_bytes = [0u8; 16];
+        dst_bytes.copy_from_slice(&ipv6[24..40]);
+        let dst = Ipv6Addr(dst_bytes);
+        // Inter-mesh routing decision: local RPL via LoRa, 02xx::/7 to Yggdrasil TUN,
+        // other to backhaul; MTU note: Yggdrasil encapsulation + SCHC (effective ~200B).
+        if gw.is_local_mesh(&dst_bytes) {
+            let _ = gw.node.router.dao_manager.routing_table.lookup(&dst_bytes);
+        } else if dst.is_yggdrasil() {
+            if let Some(t) = tun {
+                let _ = t.send_pkt(&ipv6).await;
             }
+        } else {
+            // backhaul or icmp unreachable (TODO for full impl)
         }
     }
     None

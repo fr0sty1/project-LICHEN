@@ -256,7 +256,7 @@ static void handle_timing_command(struct kiss_transport_ctx *ctx,
 }
 
 static void handle_sethardware(struct kiss_transport_ctx *ctx,
-			       const uint8_t *data, size_t len)
+			       uint8_t port, const uint8_t *data, size_t len)
 {
 	uint8_t response[64];
 	int resp_len;
@@ -274,7 +274,7 @@ static void handle_sethardware(struct kiss_transport_ctx *ctx,
 		size_t resp_frame_len;
 		uint8_t resp_cmd = KISS_CMD_SETHARDWARE | 0x80u;
 
-		if (kiss_encode(0, resp_cmd, response, (size_t)resp_len,
+		if (kiss_encode(port, resp_cmd, response, (size_t)resp_len,
 				resp_frame, sizeof(resp_frame), &resp_frame_len) == 0) {
 			k_mutex_lock(&ctx->tx_mutex, K_FOREVER);
 			if (ctx->uart_dev != NULL) {
@@ -342,7 +342,7 @@ static void dispatch_frame(struct kiss_transport_ctx *ctx)
 		k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
 		ctx->stats.rx_commands++;
 		k_mutex_unlock(&ctx->stats_mutex);
-		handle_sethardware(ctx, ctx->rx_ctx.buf, ctx->rx_ctx.len);
+		handle_sethardware(ctx, port, ctx->rx_ctx.buf, ctx->rx_ctx.len);
 		break;
 
 	case KISS_CMD_RETURN:

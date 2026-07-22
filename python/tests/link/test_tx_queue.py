@@ -464,9 +464,8 @@ class TestEdgeCases:
         assert q.pop() == b"urgent"
         assert q.pop() == b"bulk"
 
-    def test_invalid_capacity_raises(self):
-        """Validates capacity > 0; no behavior change for valid inputs."""
-        with pytest.raises(ValueError, match="capacity must be > 0"):
+    def test_invalid_capacity(self):
+        with pytest.raises(ValueError):
             TxQueue(capacity=0)
-        with pytest.raises(ValueError, match="capacity must be > 0"):
+        with pytest.raises(ValueError):
             TxQueue(capacity=-1)

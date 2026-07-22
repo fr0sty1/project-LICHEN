@@ -21,6 +21,7 @@ dependencies = [
  "cfg-if",
  "cipher",
  "cpufeatures 0.2.17",
+ "zeroize",
 ]
 
 [[package]]
@@ -1806,6 +1807,7 @@ name = "lichen-client"
 version = "0.1.0"
 dependencies = [
  "ciborium",
+ "lichen-core",
  "lichen-senml",
  "serde",
 ]
@@ -1828,6 +1830,7 @@ dependencies = [
  "heapless",
  "lichen-ipv6",
  "log",
+ "sha2 0.11.0",
 ]
 
 [[package]]

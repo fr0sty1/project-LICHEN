@@ -599,8 +599,9 @@ mod tests {
         assert_eq!(RoutingErrorCode::from(1), RoutingErrorCode::NoRoute);
         assert_eq!(RoutingErrorCode::from(3), RoutingErrorCode::Timeout);
         assert_eq!(RoutingErrorCode::from(32), RoutingErrorCode::BadRequest);
-        assert_eq!(RoutingErrorCode::from(999), RoutingErrorCode::None); // Unknown
+        assert_eq!(RoutingErrorCode::from(999), RoutingErrorCode::None);
     }
+}
 
     #[test]
     fn test_is_broadcast() {
@@ -637,4 +638,4 @@ mod tests {
         let result = bridge.process_incoming(&packet);
         assert_eq!(result, Err(BridgeError::EmptyPayload));
     }
-}
+

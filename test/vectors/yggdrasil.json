@@ -1,0 +1,19 @@
+{
+  "description": "Yggdrasil address derivation test vectors. SHA-512(Ed25519 pubkey), format as 02xx per Yggdrasil (addr[0]=0x02, addr[1]=0x02, addr[2:9]=hash[0:7], lower=0). Independent oracle from Yggdrasil reference impls. All Rust/C/Python MUST match bit-exact.",
+  "vectors": [
+    {
+      "name": "zero-key",
+      "pubkey": "0000000000000000000000000000000000000000000000000000000000000000",
+      "ygg_iid": "025046adc1dba838",
+      "ygg_addr": "02025046adc1dba8380000000000000000",
+      "description": "Zero pubkey. Matches SHA512 first bytes with 0x02 prefix."
+    },
+    {
+      "name": "repeating-01",
+      "pubkey": "0101010101010101010101010101010101010101010101010101010101010101",
+      "ygg_iid": "025ce86efb75fa4e",
+      "ygg_addr": "02025ce86efb75fa4e0000000000000000",
+      "description": "Repeating 0x01 pubkey. Updated to match derivation."
+    }
+  ]
+}

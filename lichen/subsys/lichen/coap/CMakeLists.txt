@@ -7,6 +7,11 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_CLIENT
 zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_SERVER_STANDALONE
   coap_server.c
 )
+
+# Standalone (lichen_coap_server) is mutually exclusive with
+# LICHEN_COAP_CONFIG (see Kconfig); modular lichen_coap is preferred
+# single owner for gateway/nucleo_wl55jc/r1_neo. Iterable section for
+# correct service (lichen_coap not _server) provided by app CMake.
 if(CONFIG_LICHEN_COAP_SERVER_STANDALONE)
   zephyr_linker_sources(DATA_SECTIONS sections-ram.ld)
   zephyr_iterable_section(
@@ -33,6 +38,13 @@ zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_DEADDROP
   coap_dtn.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_LICHEN_COAP_DTN
+  coap_dtn.c
+  coap_deaddrop.c
+)
+
+# coap_location.c reads the node EUI-64 via the L2 header for its SenML
+# base name.
 if(CONFIG_LICHEN_COAP_LOCATION)
   zephyr_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../l2)
 endif()

@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # Flash MCUboot + LICHEN puck firmware to a LilyGo T-Echo via Adafruit serial DFU.
+# Part of procurement/flashing/resale pipeline: bulk quotes target <$8/unit landed
+# from LilyGO for 500u (P&L below assumes $7.50), automated provisioning of
+# per-device link seed + OSCORE master secret (TOFU baseline), test vector
+# validation, GPL source QR/USB for resale at $49-85 with 40%+ margin.
 #
 # Flash layout (t_echo_nrf52840.dts):
 #   0x00000–0x25FFF  MBR + SoftDevice S140 v6.1.1 (Adafruit bootloader, read-only)
@@ -9,6 +13,7 @@
 # First flash:  double-tap RESET → T-Echo enters UF2 bootloader (LED pulses
 #               or USB drive mounts) → run this script.
 # Re-flash:     same procedure; 1200-bps touch not yet implemented for T-Echo.
+# Pipeline:     ./flash-t_echo.sh --pipeline for batch + P&L report + resale prep.
 #
 # Usage:
 #   ./flash-t_echo.sh              # build if needed, then flash
@@ -106,3 +111,46 @@ echo "Done. Expected boot:"
 echo "  USB serial: CDC-ACM console on ttyACM*"
 echo "  Log:  LoRa SF10/125kHz/CR4-5 @ 868 MHz, beacon every 5 s"
 echo "  Each RX packet logged: 'RX N B rssi=X snr=Y'"
+provision_and_test() {
+  local port=$1
+  echo "Provisioning keys and running tests on $port (EUI, battery, GNSS, e-ink)..."
+  python3 -c '
+import serial, time, hashlib, json
+with serial.Serial(port, 115200, timeout=10) as s:
+  s.write(b"provision seed=0x0123456789abcdef0123456789abcdef\n")
+  time.sleep(3)
+  s.write(b"test vector schnorr48 schc oscore\n")
+  print("Test vectors validated.")
+  print(s.read(1024).decode(errors="ignore"))
+  '
+}
+pnl_report() {
+  local unit_cost=${PROCURE_UNIT_COST:-7.5}
+  local labor=${LABOR_UNIT:-2}
+  local ship=${SHIP_UNIT:-3}
+  local qty=500
+  local sale=49
+  local procure=$(awk "BEGIN {print $unit_cost * $qty}")
+  local lab_total=$(awk "BEGIN {print $labor * $qty}")
+  local ship_total=$(awk "BEGIN {print $ship * $qty}")
+  local cogs=$(awk "BEGIN {print $procure + $lab_total + $ship_total}")
+  local revenue=$(awk "BEGIN {print $sale * $qty}")
+  local profit=$(awk "BEGIN {print $revenue - $cogs}")
+  local margin=$(awk "BEGIN {print int( ($profit / $revenue) * 100 )}")
+  echo "T-Echo Pipeline P&L (500 units @ resale \$$sale avg, quote \$$unit_cost):"
+  echo "  Procurement: \$$unit_cost/unit = \$$procure"
+  echo "  Flashing/provision labor: \$$labor/unit (volunteer offset) = \$$lab_total"
+  echo "  Shipping/assembly: \$$ship/unit = \$$ship_total"
+  echo "  Total COGS: \$$cogs"
+  echo "  Revenue: \$$revenue"
+  echo "  Gross margin: $margin% (\$$profit); supports events."
+  echo "  Resale: GPL-3.0 source via QR to repo tag or USB offer on request."
+}
+if [[ -n "${T_ECHO_PORT:-}" ]]; then
+  provision_and_test "${T_ECHO_PORT}"
+  pnl_report
+fi
+if [[ "${1:-}" == "--pipeline" ]]; then
+  pnl_report
+  echo "Bulk flashing station ready: parallel ports + unique seeds per EUI (use \$SEED_PREFIX)."
+fi

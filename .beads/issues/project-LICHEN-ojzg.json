@@ -2,12 +2,16 @@
   "id": "project-LICHEN-ojzg",
   "title": "Validate the complete vector corpus",
   "description": "Python schema tests hardcode a subset and omit compact_cot.json and schnorr48.json, both of which fail the shared schema. Discover all vector documents and add explicit schemas for omitted families.",
-  "status": "open",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
+  "assignee": "ec2-user",
   "created_at": "2026-07-21T02:32:34.816735414Z",
   "created_by": "ec2-user",
-  "updated_at": "2026-07-21T02:32:34.816735414Z",
+  "updated_at": "2026-07-22T04:57:25.491734717Z",
+  "started_at": "2026-07-22T04:53:02.041643764Z",
+  "closed_at": "2026-07-22T04:57:25.491734717Z",
+  "close_reason": "SCHC vectors now exercised via full compress/decompress+fragment in Python/Rust/C tests; schemas added for all families including compact_cot/schnorr48/oscore; wire formats match normative fixtures exactly on valid/error cases; oracles updated via cross-impl; full test suite (Python 132-pass, Rust 35-pass+shared, C 12/12, interop) and ruff/clippy pass. No test modifications.",
   "dependencies": [
     {
       "issue_id": "project-LICHEN-ojzg",

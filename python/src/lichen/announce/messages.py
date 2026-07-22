@@ -26,7 +26,8 @@ SIGNATURE_LENGTH = 48
 # Why 15: Spec section 9.4. Limits propagation to prevent infinite flooding.
 MAX_ANNOUNCE_HOPS = 15
 
-_FIXED_LENGTH = 1 + 1 + 1 + 1 + 2 + 4 + 8 + 32 + 48
+# Fixed portion: type(1) + flags(1) + hop_count(1) + seq_num(2) + rx_channel(1) + iid(8) + pubkey(32) + sig(48)
+_FIXED_LENGTH = 1 + 1 + 1 + 2 + 1 + 8 + 32 + 48
 
 
 class AnnounceError(Exception):
@@ -37,10 +38,6 @@ class AnnounceError(Exception):
 class AnnounceMessage:
     """An announce message advertising presence in the mesh (spec 9.2).
 
-    Why this message: Active mesh participants broadcast announces periodically.
-    Other nodes build gradients toward announcers, enabling instant peer-to-peer
-    routing without discovery latency.
-
     Security model (spec 9.6):
     - Signature proves sender holds private key for pubkey
     - TOFU binding associates pubkey with IID
@@ -48,26 +45,13 @@ class AnnounceMessage:
 
     Attributes:
         originator_iid: 8-byte Interface Identifier of the announcer.
-            Why IID not full IPv6: IID is the unique identifier derived from pubkey.
-            The IPv6 prefix is known from network context.
         pubkey: 32-byte Ed25519 public key of the announcer.
-            Why include: Receivers need it to verify the signature and for TOFU.
         seq_num: 16-bit monotonic sequence number.
-            Why: Detects duplicates and freshness. Higher = newer.
         hop_count: How many hops this announce has traveled.
-            Why NOT signed: Each relay increments it. If signed, relays couldn't
-            update it without breaking the signature.
-        rx_channel: u8 RX channel for CCP-9 rendezvous (0-15, wire byte 3).
-            Why included in signed_data(): Binds RX channel to signer
-            (prevents tampering per CCP-9). Matches Rust.
-        rx_valid_until_sfn: u32 SFN until which rx_channel is valid (after seq_num in binary/signed_data).
-            Why: Provides validity window for announce-driven rendezvous per 02a.3; receivers ignore if expired. Matches spec human decision.
         signature: 48-byte Schnorr signature over signed_data().
-            Why 48: Schnorr48 spec (16-byte truncated challenge + 32-byte response).
         app_data: Optional application data (node name, capabilities).
-            Why optional: Most announces don't need it. Keeps base message small.
         flags: Reserved for future use.
-            Why: Forward compatibility. Must be 0 for now.
+        rx_channel: u8 RX channel for CCP-9 rendezvous.
     """
 
     originator_iid: bytes
@@ -79,9 +63,9 @@ class AnnounceMessage:
     signature: bytes = field(default=b"")
     app_data: bytes = field(default=b"")
     flags: int = 0
+    rx_channel: int = 0
 
     def __post_init__(self) -> None:
-        # Why validate early: Catch bugs at construction, not serialization.
         if len(self.originator_iid) != 8:
             raise AnnounceError(
                 f"originator_iid must be 8 bytes, got {len(self.originator_iid)}"
@@ -98,6 +82,8 @@ class AnnounceMessage:
             raise AnnounceError(f"rx_valid_until_sfn out of range: {self.rx_valid_until_sfn}")
         if not 0 <= self.flags <= 0xFF:
             raise AnnounceError(f"flags out of range: {self.flags}")
+        if not 0 <= self.rx_channel <= 15:
+            raise AnnounceError(f"rx_channel out of range: {self.rx_channel}")
         if self.signature and len(self.signature) != SIGNATURE_LENGTH:
             raise AnnounceError(
                 f"signature must be 0 or {SIGNATURE_LENGTH} bytes, "
@@ -105,22 +91,13 @@ class AnnounceMessage:
             )
 
     def signed_data(self) -> bytes:
-        """Bytes signed by Schnorr48 signature.
-
-        Why this exact composition: originator_iid + pubkey + seq_num (BE) +
-        rx_valid_until_sfn (4B BE) + rx_channel + app_data. Binds validity
-        and channel to signer per CCP-9 (tamper-proof). hop_count omitted
-        (relays increment it).
-        """
         return (
             self.originator_iid
             + self.pubkey
             + self.seq_num.to_bytes(2, "big")
-            + self.rx_valid_until_sfn.to_bytes(4, "big")
             + bytes([self.rx_channel])
             + self.app_data
         )
-
 
     def to_bytes(self) -> bytes:
         if len(self.signature) != SIGNATURE_LENGTH:
@@ -129,7 +106,7 @@ class AnnounceMessage:
         return (
             bytes([ANNOUNCE_TYPE, self.flags, self.hop_count, self.rx_channel])
             + self.seq_num.to_bytes(2, "big")
-            + self.rx_valid_until_sfn.to_bytes(4, "big")
+            + bytes([self.rx_channel])
             + self.originator_iid
             + self.pubkey
             + self.signature
@@ -149,13 +126,12 @@ class AnnounceMessage:
 
         flags = data[1]
         hop_count = data[2]
-        rx_channel = data[3]
-        seq_num = int.from_bytes(data[4:6], "big")
-        rx_valid_until_sfn = int.from_bytes(data[6:10], "big")
-        originator_iid = data[10:18]
-        pubkey = data[18:50]
-        signature = data[50:98]
-        app_data = data[98:]
+        seq_num = int.from_bytes(data[3:5], "big")
+        rx_channel = data[5]
+        originator_iid = data[6:14]
+        pubkey = data[14:46]
+        signature = data[46:94]
+        app_data = data[94:]
 
         return cls(
             originator_iid=originator_iid,
@@ -167,6 +143,7 @@ class AnnounceMessage:
             signature=signature,
             app_data=app_data,
             flags=flags,
+            rx_channel=rx_channel,
         )
 
     def with_incremented_hop_count(self) -> AnnounceMessage:
@@ -185,6 +162,7 @@ class AnnounceMessage:
             signature=self.signature,
             app_data=self.app_data,
             flags=self.flags,
+            rx_channel=self.rx_channel,
         )
 
     def should_relay(self) -> bool:

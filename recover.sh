@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # No-physical-touch recovery + reflash for the nRF52840 LICHEN boards.
+# Integrated into T-Echo procurement/flashing/resale pipeline: logs flashed
+# units for inventory, supports unique seed provisioning per unit for resale.
+# Bulk quote assumption $7.50/unit; P&L validated via flash-t_echo.sh.
 #
 # Ladder (first rung that applies wins):
 #   1. Bootloader port already present        -> serial DFU directly
@@ -197,3 +200,5 @@ if ! APP=$(wait_for app_port 20); then
         echo "ERROR: app port did not come back after UF2 flash" >&2; exit 1; }
 fi
 echo "Done: $APP"
+echo "$(date '+%Y-%m-%d %H:%M') t_echo $SERIAL flashed+provisioned" >> /tmp/pipeline-inventory.log
+echo "Logged to pipeline-inventory.log for resale tracking."

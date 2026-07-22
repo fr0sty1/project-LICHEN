@@ -1,0 +1,6 @@
+config INPUT_LILYGO_TDECK_KEYBOARD
+	bool "LilyGO T-Deck keyboard and trackball (I2C 0x55)"
+	default y
+	depends on DT_HAS_LILYGO_TDECK_KEYBOARD_ENABLED
+	select INPUT
+	select I2C

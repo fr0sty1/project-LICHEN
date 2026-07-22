@@ -61,6 +61,7 @@
 		led2      = &led2;
 		sw0       = &button0;
 		lora0     = &lora;
+		display0  = &eink0;
 		watchdog0 = &wdt0;
 	};
 };
@@ -143,34 +144,39 @@
 	};
 };
 
-/*
- * GDEW0154M10 e-ink display on SPI2.
- * CS=P0.30, DC=P0.28, RESET=P0.02, BUSY=P0.03, EN=P0.12 (tied to periph-pwr-hog).
- * Child node under &spi2 using solomon,ssd1681 compatible (matches ssd16xx driver
- * and busy active-high). Follows t_deck board conventions. Enable via puck overlay.
- * (project-LICHEN-2h1i.1.2.1.1)
- */
+	/*
+	 * GDEW0154M10 e-ink (152x152) on SPI2 — disabled by default.
+	 * CS=P0.30, DC=P0.28, RESET=P0.02, BUSY=P0.03, EINK_EN=P1.11.
+	 * Uses ultrachip,uc81xx binding (P0 fix from gooddisplay,gdew0154m10).
+	 * enable-gpios fixed per binding (matches common MIPI-DBI + panel power).
+	 * Node disabled here; enable via app overlay + alias/chosen zephyr,display.
+	 * Mimics lora@0 and st7789v@1 patterns from sibling boards (status, pinctrl,
+	 * per-device properties before generic SPI params).
+	 */
 &spi2 {
 	compatible = "nordic,nrf-spim";
 	status = "disabled";
 	cs-gpios = <&gpio0 30 GPIO_ACTIVE_LOW>;
+	#address-cells = <1>;
+	#size-cells = <0>;
 	pinctrl-0 = <&spi2_default>;
 	pinctrl-1 = <&spi2_sleep>;
 	pinctrl-names = "default", "sleep";
 
-	eink0: gdew0154m10@0 {
-		compatible = "solomon,ssd1681", "gooddisplay,gdew0154m10";
+	eink0: uc81xx@0 {
+		compatible = "ultrachip,uc81xx";
 		reg = <0>;
 		status = "disabled";
 		dc-gpios = <&gpio0 28 GPIO_ACTIVE_HIGH>;
 		reset-gpios = <&gpio0 2 GPIO_ACTIVE_LOW>;
 		busy-gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
-		en-gpios = <&gpio0 12 GPIO_ACTIVE_HIGH>;
-		spi-max-frequency = <4000000>;
-		width = <200>;
-		height = <200>;
+		enable-gpios = <&gpio1 11 GPIO_ACTIVE_HIGH>;
+		width = <152>;
+		height = <152>;
+		spi-max-frequency = <2000000>;
 	};
 };
+
 
 /*
  * L76K GPS on UART1 (9600 baud) — disabled by default.

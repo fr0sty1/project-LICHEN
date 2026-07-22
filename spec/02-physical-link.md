@@ -41,9 +41,21 @@ Nodes SHOULD implement ADR to optimize SF/TX power based on link quality:
 3. If SNR < threshold: increase SF (more robust)
 4. Propagate via RPL DIO options
 
-### 3.5. Coordinated Capacity (CCP-16)
+### 3.5. SFN Delta for Coordinated Capacity
 
-See spec/02a-coordinated-capacity.md for full details on TDMA, multi-root beacon conflict resolution, desync recovery state machine (including RPL version/drift interactions, SFN reset, time-provider stratum), adaptive SF on SNR/density, multi-channel load balancing, and all robustness requirements per RFC 2119. Test vectors in test/vectors/ccp16-desync.json MUST be matched by all implementations.
+Coordinated transmissions on a single frequency (SFN) improve capacity and reliability by having multiple nodes transmit identical frames with deliberate timing deltas. Receivers combine signals constructively if deltas fall within the cyclic prefix/symbol guard.
+
+**SFN Delta Example (SF10, BW=125 kHz, symbol time ≈ 8.19 ms):**
+
+| Transmitter | Dist to RX (km) | Prop. Delay (µs) | Applied Delta (symbols) | Effective Alignment |
+|-------------|-----------------|------------------|-------------------------|---------------------|
+| A (lead)    | 2               | 6.7              | +0.8                    | Within guard        |
+| B (ref)     | 5               | 16.7             | 0.0                     | Reference           |
+| C (follow)  | 12              | 40.0             | -1.2                    | Boundary case       |
+
+Boundary example: When delta exceeds 0.25 symbols, destructive interference occurs unless SF increased or separate slot used (see 14.8 TDMA). Deltas computed from known positions or RSSI-derived ranging. MUST synchronize via shared time source (GNSS/DIO).
+
+See CCP-12 synchronized hopping in [02a-coordinated-capacity.md](02a-coordinated-capacity.md) for full multi-channel coordination via SFN/GPS, hash_32 channel selection, and rendezvous announcements in beacons/DIOs.
 
 ---
 

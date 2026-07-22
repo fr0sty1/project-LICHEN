@@ -16,10 +16,7 @@ Language-neutral conformance vectors for the LICHEN protocol using **format_vers
 | `announce_coords.json` | Announce app_data Type=0x01 geographic coordinate encoding |
 | `meshtastic_app_compat.json` | Meshtastic BLE raw-protobuf app compatibility exchanges |
 | `meshcore_app_compat.json` | MeshCore byte-command app compatibility exchanges |
-| `ccp_load_balancing.json` | CCP-16 load balancing (da2q multi-channel, TDMA/SF adaptation) |
-| `ccp15.json` | CCP-15 RF health/EMA/CCA/CAD metrics and pseudocode |
-| `ccp13.json` | Additional CCP-13 vectors (regenerated) |
-| `ccp9-rendezvous.json` | CCP-9 Rendezvous Mechanisms from da2q context (hash-based f(SFN,peer_EUI), scheduled, announce-driven, fallback). Independent oracles only per test integrity rules. |
+| `ccp_tdma.json` | TDMA slot assignment, guard time boundaries, drift compensation (independent vectors per test vector discipline) |
 
 All byte strings are lowercase hex (possibly empty). Schema validation and independent oracles used in tests.
 

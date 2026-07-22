@@ -182,10 +182,7 @@ The LICHEN Zephyr subsystems in `lichen/subsys/lichen/` have **implicit initiali
     lichen_link_load_key()     lichen_rpl_dodag_init()
          |                                |
          v                                v
-    lichen_tdma_init()         [RPL routing available]
-         | 
-         v
-    [Signing + TDMA available]             |
+    [Signing available]        [RPL routing + TDMA]
          |                                |
          └─────────────┬──────────────────┘
                        v
@@ -199,7 +196,7 @@ The LICHEN Zephyr subsystems in `lichen/subsys/lichen/` have **implicit initiali
                  oscore_ctx_create()
                        |
                        v
-           lichen_coap_client_init()  [auto-initializes on first request]
+            lichen_coap_client_init()  [auto-initializes on first request]
 ```
 
 ### Subsystem Requirements
@@ -210,19 +207,10 @@ The LICHEN Zephyr subsystems in `lichen/subsys/lichen/` have **implicit initiali
 | **Link Keys** | `lichen_link_load_key(ctx, seed)` | `lichen_link_init()` | Per-context |
 | **TDMA** | `lichen_tdma_init(ctx)` | `lichen_link_load_key()` | Per-context |
 | **RPL DODAG** | `lichen_rpl_dodag_init(d, ...)` | None | Per-DODAG (caller must synchronize) |
+| **TDMA** | `lichen_tdma_init(slot)` | `lichen_link_init()` | Per-context |
 | **OSCORE** | `oscore_init()` | None | Thread-safe (internal mutex) |
 | **OSCORE Contexts** | `oscore_ctx_create(...)` | `oscore_init()` | Thread-safe |
 | **CoAP Client** | `lichen_coap_client_init()` | Network stack up | Thread-safe (auto-init on first use) |
-
-### Common Pitfalls
-
-1. **Signing without key loaded** - `lichen_link_ctx.has_key` will be `false` if `lichen_link_load_key()` was never called. The stub crypto (when `CONFIG_LICHEN_CRYPTO_MONOCYPHER` is disabled) produces zeroed signatures. Check `ctx->has_key` before signing.
-
-2. **OSCORE context before init** - `oscore_ctx_create()` accesses the global context array without checking initialization. Call `oscore_init()` once at startup.
-
-3. **CoAP socket lifecycle** - `lichen_coap_client_init()` creates a global UDP socket. It's safe to auto-call, but the socket persists for the lifetime of the process. No explicit cleanup API exists.
-
-4. **RPL state on version change** - `lichen_rpl_dodag_process_dio()` calls `adopt_version()` internally, which clears all parent state. Callers must be prepared for `role` to change from `JOINED` to `UNJOINED`.
 
 ### Example: Full Node Initialization
 
@@ -234,35 +222,23 @@ The LICHEN Zephyr subsystems in `lichen/subsys/lichen/` have **implicit initiali
 
 int lichen_node_init(const uint8_t eui64[8], const uint8_t seed[32])
 {
-    int ret;
-
-    /* 1. Link layer context (identity + crypto) */
-    static struct lichen_link_ctx link_ctx;
-    ret = lichen_link_init(&link_ctx, eui64);
-    if (ret < 0) return ret;
-
-    ret = lichen_link_load_key(&link_ctx, seed);
-    if (ret < 0) return ret;
-
-    /* TDMA after link_init/load_key, before oscore per updated graph */
-    ret = lichen_tdma_init(&link_ctx);
-    if (ret < 0) return ret;
-
-    /* 2. OSCORE subsystem (must init before creating contexts) */
-    ret = oscore_init();
-    if (ret < 0) return ret;
-
-    /* 3. RPL DODAG (if routing enabled) */
-    static struct lichen_rpl_dodag dodag;
-    uint8_t dodag_id[16] = { /* your DODAG ID */ };
-    lichen_rpl_dodag_init(&dodag, 0x00, dodag_id, 0);
-
-    /* 4. CoAP client auto-inits on first request, or call explicitly */
-    /* lichen_coap_client_init(); */
-
-    return 0;
+	int ret;
+	static struct lichen_link_ctx link_ctx;
+	ret = lichen_link_init(&link_ctx, eui64);
+	if (ret < 0) return ret;
+	ret = lichen_link_load_key(&link_ctx, seed);
+	if (ret < 0) return ret;
+	static struct lichen_tdma_slot tdma;
+	lichen_tdma_init(&tdma);
+	ret = oscore_init();
+	if (ret < 0) return ret;
+	static struct lichen_rpl_dodag dodag;
+	uint8_t dodag_id[16] = {0};
+	lichen_rpl_dodag_init(&dodag, 0x00, dodag_id, 0);
+	return 0;
 }
 ```
+
 
 ## Agent Work Ethic: NO LAZINESS
 

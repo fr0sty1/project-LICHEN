@@ -186,12 +186,12 @@ class TxQueue:
             ValueError: If capacity <= 0.
         """
         if capacity <= 0:
-            raise ValueError(f"capacity must be > 0, got {capacity}")
+            raise ValueError(f"capacity must be positive, got {capacity}")
         self._capacity = capacity
         self._clock = clock or (lambda: int(time.monotonic() * 1000))
-        self._entries: list[TxQueueEntry | TxReservation] = []
+        self._entries: list[TxQueueEntry] = []
+        self._in_flight: list[TxQueueEntry] = []
         self.stats = TxQueueStats()
-        # Raw EMA accumulator (float for precision, truncated to int for stats)
         self._avg_latency_ema: float = 0.0
 
     def __len__(self) -> int:
@@ -204,31 +204,14 @@ class TxQueue:
         return self._capacity
 
     def expire_stale(self) -> int:
-        """Remove packets that have passed their deadline.
-
-        In-flight reservations (per-entry) are never expired to prevent loss
-        of the protected TX entry. Supports both legacy TxQueueEntry and
-        TxReservation.
-
-        Returns:
-            Number of packets expired.
-        """
         now = self._clock()
-        before_count = len(self._entries)
-
-        # Keep only non-inflight entries with deadline in the future
-        def should_keep(e: TxQueueEntry | TxReservation) -> bool:
-            if getattr(e, "is_in_flight", lambda: False)():
-                return True
-            return e.deadline_ms > now
-
-        self._entries = [e for e in self._entries if should_keep(e)]
-
-        expired = before_count - len(self._entries)
+        before_count = len(self._entries) + len(self._in_flight)
+        self._entries = [e for e in self._entries if e.deadline_ms > now]
+        self._in_flight = [e for e in self._in_flight if e.deadline_ms > now]
+        expired = before_count - (len(self._entries) + len(self._in_flight))
         if expired > 0:
             self.stats.packets_dropped_deadline += expired
             logger.debug("expired %d stale packets from TX queue", expired)
-
         return expired
 
     def push(
@@ -329,47 +312,39 @@ class TxQueue:
         return None
 
     def pop(self) -> bytes | None:
-        """Remove and return the highest-priority packet.
+        entry = self.reserve()
+        if entry is None:
+            return None
+        self.complete(entry, True)
+        return entry.data
 
-        Expires stale packets first, then returns the packet with lowest
-        priority value (highest urgency). If multiple packets have the
-        same priority, returns the oldest (FIFO within priority).
-
-        Returns:
-            Frame bytes to transmit, or None if queue empty.
-        """
+    def reserve(self) -> TxQueueEntry | None:
         self.expire_stale()
-
         if not self._entries:
             return None
-
-        # Entries are sorted: highest priority (lowest value) first
         entry = self._entries.pop(0)
+        self._in_flight.append(entry)
+        return entry
 
-        # Track latency stats
-        latency = self._clock() - entry.enqueue_time_ms
-        if latency > self.stats.max_latency_ms:
-            self.stats.max_latency_ms = latency
-
-        # Update EMA for average latency
-        # Formula: new_avg = alpha * latency + (1 - alpha) * old_avg
-        self._avg_latency_ema = (
-            self._EMA_ALPHA * latency + (1 - self._EMA_ALPHA) * self._avg_latency_ema
-        )
-        self.stats.avg_latency_ms = int(self._avg_latency_ema)
-
-        self.stats.packets_transmitted += 1
-
-        logger.debug(
-            "TX queue pop: priority=%s latency=%dms avg=%dms len=%d/%d",
-            Priority(entry.priority).name,
-            latency,
-            self.stats.avg_latency_ms,
-            len(self._entries),
-            self._capacity,
-        )
-
-        return entry.data
+    def complete(self, entry: TxQueueEntry, success: bool = True) -> None:
+        if entry in self._in_flight:
+            self._in_flight.remove(entry)
+        if success:
+            now = self._clock()
+            latency = now - entry.enqueue_time_ms
+            if latency > self.stats.max_latency_ms:
+                self.stats.max_latency_ms = latency
+            self._avg_latency_ema = (
+                self._EMA_ALPHA * latency + (1 - self._EMA_ALPHA) * self._avg_latency_ema
+            )
+            self.stats.avg_latency_ms = int(self._avg_latency_ema)
+            self.stats.packets_transmitted += 1
+        else:
+            now = self._clock()
+            if entry.deadline_ms > now:
+                self._insert_sorted(entry)
+            else:
+                self.stats.packets_dropped_deadline += 1
 
     def pop_reservation(self) -> TxReservation | None:
         """Pop the next highest-priority reservation for transmission.
@@ -465,13 +440,9 @@ class TxQueue:
         return (entry.data, entry.priority)
 
     def clear(self) -> int:
-        """Remove all packets from the queue.
-
-        Returns:
-            Number of packets cleared.
-        """
-        count = len(self._entries)
+        count = len(self._entries) + len(self._in_flight)
         self._entries.clear()
+        self._in_flight.clear()
         return count
 
     def _insert_sorted(self, entry: TxQueueEntry | TxReservation) -> None:

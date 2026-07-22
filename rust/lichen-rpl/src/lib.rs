@@ -21,6 +21,9 @@ pub mod routing;
 pub mod trickle;
 
 #[cfg(feature = "std")]
+pub use routing::RouteTarget;
+
+#[cfg(feature = "std")]
 extern crate std;
 
 pub fn lollipop_is_newer(new_val: u8, old_val: u8) -> bool {

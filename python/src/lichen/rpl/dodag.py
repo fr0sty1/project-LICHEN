@@ -104,6 +104,7 @@ class DodagState:
     min_hop_rank_increase: int = MIN_HOP_RANK_INCREASE
     max_rank_increase: int = MAX_RANK_INCREASE
     parent_switch_threshold: int = PARENT_SWITCH_THRESHOLD
+    gateway_centric: bool = False
     _lowest_rank: int = INFINITE_RANK
 
     def __post_init__(self) -> None:

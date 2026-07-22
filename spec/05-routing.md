@@ -71,7 +71,7 @@ Keywords per RFC 2119. Device classes:
 | Feature | Constrained | Router | BR |
 |---------|-------------|--------|-----|
 | RPL join (DIO/DIS/DAO) | MUST | MUST | MUST |
-| Announce send | MUST | MUST | MUST |
+| Announce send | MUST* | MUST* | MUST |
 | Announce receive + gradient install | MUST | MUST | MUST |
 | Announce relay | SHOULD | MUST | MUST |
 | LOADng originate (RREQ/RREP) | MUST | MUST | MUST |
@@ -90,6 +90,7 @@ Keywords per RFC 2119. Device classes:
 
 **Notes:**
 
+- "*" : Announce send conditional on gateway-centric mode (see §9.10). MUST when no DODAG parent; MAY reduce rate or disable when GATEWAY_CENTRIC flag present.
 - "--" means feature not applicable (insufficient resources).
 - Constrained nodes MAY set DTN S-flag but do not buffer.
 - Constrained nodes use unicast forwarding only (no opportunistic).
@@ -130,8 +131,9 @@ RPL is NOT used for peer-to-peer mesh traffic (see Sections 9-10).
 | Objective Function | MRHOF with ETX |
 | Trickle Imin | 4 sec |
 | Trickle Imax | 17 min |
+| GATEWAY_CENTRIC flag | Set by root in DODAG Config Option |
 
-See Appendix B for full RPL configuration.
+See Appendix B for full RPL configuration. Border routers (DODAG roots) MUST set the GATEWAY_CENTRIC flag (bit 7 of the Flags field in the DODAG Configuration Option per RFC 6550 §6.7) in every DIO. Nodes auto-detect gateway-centric mode by parsing this flag from their parent's DIO (see §9.10). Legacy nodes ignore unknown bits per RPL requirements.
 
 ### 8.4. Control Messages
 
@@ -454,6 +456,64 @@ Sender chooses opportunistic mode when:
 Routers only. Constrained nodes use standard unicast forwarding--timing coordination adds code complexity.
 
 <!-- ponytail: no ACK-based batch, add if throughput matters -->
+
+### 9.10. Gateway-Centric Mode
+
+When a DODAG root (gateway) is present, frequent announces dominate channel usage even though RPL handles border router traffic. Gateway-centric mode reduces announce overhead via auto-detection. No per-node configuration is required.
+
+**Auto-Detection**
+
+Border routers MUST set the GATEWAY_CENTRIC flag in the DODAG Configuration Option of every DIO (§8.3). Nodes parse this flag from their selected parent's DIO upon joining or refreshing the DODAG. If the flag is set, the node enters gateway-centric mode.
+
+Nodes without a DODAG parent or receiving DIOs without the flag MUST use normal announce behavior.
+
+**Constants**
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| ANNOUNCE_INTERVAL_NORMAL | 300 sec | Default when no gateway-centric DODAG |
+| ANNOUNCE_INTERVAL_GATEWAY | 1800 sec | Reduced rate with flag (6× slower; MAY be 0 to disable) |
+| GATEWAY_CENTRIC_FLAG | bit 7 (0x80) | In reserved bits of DODAG Config Flags field |
+| DODAG_LOSS_GRACE_PERIOD | 60 sec | Maximum time to resume normal announces after DODAG loss |
+
+**Node Behavior**
+
+```
+def get_announce_interval(dodag):
+    if not dodag.has_valid_parent or not dodag.gateway_centric_flag:
+        return ANNOUNCE_INTERVAL_NORMAL
+    else:
+        return ANNOUNCE_INTERVAL_GATEWAY  # or disable entirely
+
+# On DIO from parent:
+if dio.gateway_centric_flag_set():
+    dodag.gateway_centric_flag = True
+    reschedule_announce_timer(ANNOUNCE_INTERVAL_GATEWAY)
+else:
+    dodag.gateway_centric_flag = False
+    reschedule_announce_timer(ANNOUNCE_INTERVAL_NORMAL)
+
+# On DODAG loss (no DIO within Trickle timeout or parent failure):
+    dodag.gateway_centric_flag = False
+    MUST reschedule_announce_timer(ANNOUNCE_INTERVAL_NORMAL)
+    # Resume normal rate within DODAG_LOSS_GRACE_PERIOD
+```
+
+**Peer-to-Peer Fallback**
+
+In gateway-centric mode gradients from announces are rare. The routing decision (§7.2) MUST fall back to LOADng (§10) when no valid (non-expired) gradient exists. This accepts higher peer-to-peer latency as a scalability tradeoff for high-density deployments with gateways. Data-driven passive gradients (§11.2) remain valid if present.
+
+**Backwards Compatibility**
+
+No flag day is required. The GATEWAY_CENTRIC flag MUST be placed in a previously reserved/ignored bit of the existing DODAG Configuration Option (RFC 6550). 
+
+- Legacy nodes ignore unknown flag bits and continue normal 300 sec announces (MUST per RPL).
+- New nodes honor the flag when present but MUST accept and process announces arriving at any interval.
+- In mixed networks, old nodes provide dense gradients while new nodes use LOADng more often for suppressed peers.
+- Peer-to-peer between any combination of nodes continues to function via the three-tier architecture.
+- Border routers that set the flag MUST still relay announces as required by conformance table.
+
+This ensures incremental deployment and full interoperability.
 
 ---
 

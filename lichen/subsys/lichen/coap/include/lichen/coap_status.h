@@ -24,6 +24,17 @@ extern "C" {
 #define CONFIG_LICHEN_COAP_STATUS_MAX_ROUTES 8
 #endif
 
+#ifndef CONFIG_LICHEN_COAP_STATUS_MAX_TXQ
+#define CONFIG_LICHEN_COAP_STATUS_MAX_TXQ 8
+#endif
+
+#ifndef CONFIG_LICHEN_COAP_STATUS_MAX_FWD
+#define CONFIG_LICHEN_COAP_STATUS_MAX_FWD 16
+#endif
+
+/**
+ * @brief Radio statistics for /status endpoint
+ */
 struct lichen_coap_radio_stats {
 	uint32_t rx_packets;
 	uint32_t tx_packets;
@@ -58,10 +69,10 @@ struct lichen_coap_node_status {
 	struct lichen_coap_time_state time;
 	struct lichen_coap_dodag_state dodag;
 	struct lichen_coap_radio_stats radio;
-	uint16_t txq_cap;
-	uint16_t txq_used;
-	uint16_t fwd_cap;
-	uint16_t fwd_used;
+	uint8_t txq_cap;
+	uint8_t txq_used;
+	uint8_t fwd_cap;
+	uint8_t fwd_used;
 };
 
 enum lichen_coap_trust_level {

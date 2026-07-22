@@ -24,6 +24,7 @@
 
 #include <lichen/hal.h>
 #include <lichen/senml.h>
+#include <lichen/coap_server.h>
 
 #include "lora_l2.h"
 

@@ -55,3 +55,26 @@ RPL_TRICKLE_K: int = 10               # Redundancy constant
 
 # LICHEN Announce message (spec §05-routing)
 ANNOUNCE_TYPE: int = 0x01
+
+# SenML profiles (RFC 8428 CBOR Content-Format 112) - shared with constants.toml
+SENML_CONTENT_FORMAT: int = 112
+SENML_BASE_NAME_PREFIX: str = "urn:dev:mac:"
+SENML_LOCATION_LAT: str = "lat"
+SENML_LOCATION_LON: str = "lon"
+SENML_LOCATION_ALT: str = "alt"
+SENML_LOCATION_SPEED: str = "speed"
+SENML_LOCATION_HEADING: str = "heading"
+SENML_LOCATION_UNIT_DEG: str = "deg"
+SENML_LOCATION_UNIT_M: str = "m"
+SENML_LOCATION_UNIT_MS: str = "m/s"
+SENML_BATTERY_PCT: str = "pct"
+SENML_BATTERY_MV: str = "mv"
+SENML_BATTERY_CHARGING: str = "charging"
+SENML_BATTERY_UNIT_PCT: str = "%"
+SENML_BATTERY_UNIT_MV: str = "mV"
+SENML_TELEMETRY_TEMP: str = "temp"
+SENML_TELEMETRY_HUMIDITY: str = "hum"
+SENML_TELEMETRY_PRESSURE: str = "pressure"
+SENML_TELEMETRY_UNIT_CEL: str = "Cel"
+SENML_TELEMETRY_UNIT_RH: str = "%RH"
+SENML_TELEMETRY_UNIT_PA: str = "Pa"

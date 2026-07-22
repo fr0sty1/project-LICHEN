@@ -14,7 +14,7 @@ lichen-core = { path = "../lichen-core" }
 # ponytail: using pure-Rust crypto crates until a battle-tested no_std OSCORE
 # crate exists (liboscore requires C FFI which complicates embedded cross-compile).
 # Switch to liboscore or coapcore when they mature for embedded targets.
-aes = { version = "0.8", default-features = false }
+aes = { version = "0.8", default-features = false, features = ["zeroize"] }
 ccm = { version = "0.5", default-features = false }
 heapless = "0.8"
 hkdf = { version = "0.13", default-features = false }
