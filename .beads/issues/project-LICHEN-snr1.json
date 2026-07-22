@@ -2,15 +2,15 @@
   "id": "project-LICHEN-snr1",
   "title": "[merge-conflict] worktree-worker1: heltec_wireless_tracker.conf",
   "notes": "Commit: d8a94bdc8",
-  "status": "in_progress",
+  "status": "closed",
   "priority": 1,
   "issue_type": "bug",
   "assignee": "AI Agent",
   "owner": "agent@lichen-project.dev",
   "created_at": "2026-07-22T23:42:08.054360585Z",
   "created_by": "AI Agent",
-  "updated_at": "2026-07-22T23:46:10.198333526Z",
+  "updated_at": "2026-07-22T23:46:13.405225272Z",
   "started_at": "2026-07-22T23:45:16.889003854Z",
-  "lease_expires_at": "2026-07-22T23:50:16.889003854Z",
-  "heartbeat_at": "2026-07-22T23:45:16.889003854Z"
+  "closed_at": "2026-07-22T23:46:13.405225272Z",
+  "close_reason": "Resolved merge conflict in lichen/subsys/lichen/coap/coap_keys.c by removing conflict markers and keeping full encode_keys_list_cbor implementation. Committed as project-LICHEN-snr1: fix. Pushed to main."
 }
