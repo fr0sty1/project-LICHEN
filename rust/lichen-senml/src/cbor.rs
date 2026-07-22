@@ -22,6 +22,8 @@ pub enum CborError {
     NotImplemented,
     /// Multiple value fields set in a single record (RFC 8428 violation).
     MultipleValues,
+    /// Resolved name too long (RFC 8428 §4.2).
+    NameTooLong,
 }
 
 impl From<BufferTooSmall> for CborError {
@@ -37,6 +39,7 @@ impl core::fmt::Display for CborError {
             Self::InvalidInput => write!(f, "invalid CBOR input"),
             Self::NotImplemented => write!(f, "CBOR feature not implemented"),
             Self::MultipleValues => write!(f, "multiple value fields set (RFC 8428 violation)"),
+            Self::NameTooLong => write!(f, "resolved name too long (RFC 8428 §4.2)"),
         }
     }
 }

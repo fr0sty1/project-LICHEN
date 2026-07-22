@@ -14,6 +14,7 @@
 #include "heltec_wifi_lora32_v3-pinctrl.dtsi"
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <zephyr/dt-bindings/lora/sx126x.h>
+#include <zephyr/dt-bindings/adc/adc.h>
 
 / {
 	model = "Heltec WiFi LoRa 32 V3 PROCPU";
@@ -24,6 +25,20 @@
 		sw0       = &button0;
 		lora0     = &lora0;
 		watchdog0 = &wdt0;
+<<<<<<< HEAD
+=======
+		uart0     = &uart0;
+		uart1     = &uart1;
+		battery0  = &vbatt;
+	};
+
+	vbatt: vbatt {
+		compatible = "voltage-divider";
+		io-channels = <&adc1 0>; /* GPIO1 = ADC1_CH0 per Meshtastic variant.h */
+		output-ohms = <10000>;
+		full-ohms = <49000>; /* ~4.9x multiplier for typical Heltec divider */
+		status = "okay";
+>>>>>>> origin/integration/worker5-20260722
 	};
 
 	chosen {
@@ -150,6 +165,21 @@
 
 &esp32_bt_hci {
 	status = "okay";
+};
+
+/* ADC for battery voltage (GPIO1 = ADC1_CH0). GPIO37 (gpio1 pin 5) is
+ * ADC_CTRL active-low to enable the voltage divider only during measurement.
+ */
+&adc1 {
+	status = "okay";
+};
+
+&gpio1 {
+	adc_ctrl_hog: adc-ctrl-hog {
+		gpio-hog;
+		gpios = <5 GPIO_ACTIVE_LOW>;
+		output-low;
+	};
 };
 
 &flash0 {

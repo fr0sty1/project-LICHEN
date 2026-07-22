@@ -1,23 +1,25 @@
 /*
+<<<<<<< HEAD
  * STALE/RETIRED per project-LICHEN-2u26.10: no canonical Zephyr composite board+shield target.
  * Fragment retired; do not use for bridge builds. Support claims removed per 2u26 audit.
  * Seeed XIAO ESP32S3 + Wio-SX1262 device tree overlay for LICHEN bridge
+=======
+ * BLOCKED/RETIRED: Seeed XIAO ESP32-S3 + Wio-SX1262 bridge overlay
+ * (project-LICHEN-2u26.10 / project-LICHEN-2u26 / m5m1.8)
+>>>>>>> origin/integration/worker5-20260722
  *
+ * No canonical Zephyr board/composite (seeed_xiao_esp32s3 + Wio-SX1262
+ * shield not in tree or upstream; xiao_s3_wio_sx1262 not a valid -b target).
+ * Closest proxies: heltec_wifi_lora32_v3/esp32s3/procpu.
+ * Classified FAIL (no canonical board) in bridge audit; orphaned fragment.
+ * Do not present as supported. Follows tbeam_supreme pattern (w8rd).
+ * Pin map retained for reference only.
+ *
+ * Original:
  * ESP32-S3 + SX1262 LoRa (via B2B connector)
- *
- * SX1262 SPI pins:
- *   SCK  = GPIO7
- *   MISO = GPIO8
- *   MOSI = GPIO9
- *   NSS  = GPIO41
- *
- * SX1262 control pins:
- *   RESET = GPIO42
- *   BUSY  = GPIO40
- *   DIO1  = GPIO39
- *
- * User LED:
- *   GPIO21 (yellow, active low)
+ * SX1262 SPI: SCK=GPIO7, MISO=GPIO8, MOSI=GPIO9, NSS=GPIO41
+ * Control: RESET=GPIO42, BUSY=GPIO40, DIO1=GPIO39
+ * LED: GPIO21 yellow active-low
  */
 
 #include <zephyr/dt-bindings/pinctrl/esp32s3-pinctrl.h>

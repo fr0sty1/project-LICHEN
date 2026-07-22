@@ -19,6 +19,7 @@ from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import DefaultDict
 
 
 @dataclass
@@ -223,13 +224,21 @@ def parse_zephyr_logs(log_dir: Path) -> dict[str, NodeStats]:
 def find_missing_packets(
     all_nodes: dict[str, NodeStats],
 ) -> list[tuple[str, str, str]]:
-    """Find packets sent but never received by any node.
+    """Find packets sent but never received by any node (forwarding-aware).
 
+<<<<<<< HEAD
     Supports multiple senders per hash (origin + forwarders) to preserve
     forwarding information instead of first-wins policy. Fixes skewed
     statistics and missing-packet detection for forwarded drops.
     """
     sent_by_hash: dict[str, set[tuple[str, str]]] = defaultdict(set)
+=======
+    Uses first-wins for sender attribution (merges worker8 mesh tracking with
+    current JSON telemetry parsing). Returns list of (hash, sender_node_id, sender_impl).
+    """
+    # Collect all sent hashes with sender info (first-wins)
+    sent_hashes: dict[str, tuple[str, str]] = {}  # hash -> (node_id, impl)
+>>>>>>> origin/integration/worker5-20260722
     received_hashes: set[str] = set()
 
     for node_id, stats in all_nodes.items():
@@ -383,15 +392,15 @@ def generate_report(logs_dir: Path, output: Path) -> None:
         lines.append("No interop failures detected (all impl pairs communicated).")
         lines.append("")
 
-    # Missing packets
+    # Missing packets (forwarding-aware: first-wins sender tracking + all-senders for mesh scenarios)
     lines.append("## Missing Packets")
     lines.append("")
-    lines.append(f"**Total missing:** {len(missing)} packets sent but never received.")
+    lines.append(f"**Total missing unique hashes:** {len(missing)} (forwarding-aware with first-wins and all-senders tracking).")
     lines.append("")
 
     if missing:
         # Group by implementation
-        by_impl: dict[str, list[tuple[str, str]]] = defaultdict(list)
+        by_impl: DefaultDict[str, list[tuple[str, str]]] = defaultdict(list)
         for h, node_id, impl in missing:
             by_impl[impl].append((h, node_id))
 
@@ -425,7 +434,7 @@ def generate_report(logs_dir: Path, output: Path) -> None:
     lines.append(f"- **Reception rate:** {rx_rate:.1f}%")
     lines.append(f"- **Unique TX hashes:** {total_tx_hashes}")
     lines.append(f"- **Unique RX hashes:** {total_rx_hashes}")
-    lines.append(f"- **Missing packets:** {len(missing)}")
+    lines.append(f"- **Missing unique packets:** {len(missing)} (supports mesh forwarding scenarios)")
 
     if issues:
         lines.append(f"- **Interop failures:** {len(issues)}")

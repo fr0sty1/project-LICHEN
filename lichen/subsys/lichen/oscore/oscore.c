@@ -944,41 +944,6 @@ int oscore_ctx_persist_ssn(struct oscore_ctx *ctx)
 	return OSCORE_OK;
 }
 
-int oscore_ctx_lookup(const uint8_t *recipient_id,
-		      size_t recipient_id_len,
-		      struct oscore_ctx *ctx_out)
-{
-	struct oscore_ctx *ctx;
-	int ret = OSCORE_ERR_NO_CONTEXT;
-
-	if (ctx_out == NULL) {
-		return OSCORE_ERR_INVALID_PARAM;
-	}
-
-	/* SECURITY: Prevent NULL dereference in ctx_find_by_recipient_locked */
-	if (recipient_id == NULL && recipient_id_len > 0) {
-		return OSCORE_ERR_INVALID_PARAM;
-	}
-
-	k_mutex_lock(&s_ctx_mutex, K_FOREVER);
-
-	ctx = ctx_find_by_recipient_locked(recipient_id, recipient_id_len);
-	if (ctx != NULL) {
-		memcpy(ctx_out, ctx, sizeof(*ctx_out));
-		ret = OSCORE_OK;
-	}
-
-	k_mutex_unlock(&s_ctx_mutex);
-	return ret;
-}
-
-void oscore_ctx_wipe(struct oscore_ctx *ctx)
-{
-	if (ctx != NULL) {
-		crypto_wipe(ctx, sizeof(*ctx));
-	}
-}
-
 int oscore_ctx_get(const uint8_t *recipient_id,
 		   size_t recipient_id_len,
 		   struct oscore_ctx **ctx_out)
@@ -990,7 +955,6 @@ int oscore_ctx_get(const uint8_t *recipient_id,
 		return OSCORE_ERR_INVALID_PARAM;
 	}
 
-	/* SECURITY: Prevent NULL dereference in ctx_find_by_recipient_locked */
 	if (recipient_id == NULL && recipient_id_len > 0) {
 		return OSCORE_ERR_INVALID_PARAM;
 	}

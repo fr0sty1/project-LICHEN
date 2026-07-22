@@ -163,7 +163,11 @@ class LichenTransport(interfaces.MessageInterface):
     def _on_datagram(self, data: bytes, source: str) -> None:
         try:
             message = Message.decode(data, LichenRemote(source))
+<<<<<<< HEAD
         except (error.UnparsableMessage, ValueError, IndexError):
+=======
+        except (error.UnparsableMessage, IndexError, struct.error, TypeError, ValueError):
+>>>>>>> origin/integration/worker5-20260722
             return  # drop malformed datagrams
         self._mm.dispatch_message(message)
 

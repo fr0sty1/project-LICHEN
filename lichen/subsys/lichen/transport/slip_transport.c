@@ -643,7 +643,7 @@ int slip_transport_get_stats(struct slip_transport_stats *stats)
 	}
 
 	k_mutex_lock(&ctx->stats_mutex, K_FOREVER);
-	*stats = ctx->stats;
+	memcpy(stats, &ctx->stats, sizeof(*stats));
 	k_mutex_unlock(&ctx->stats_mutex);
 	return 0;
 }
